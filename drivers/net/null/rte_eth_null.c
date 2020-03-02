@@ -36,6 +36,11 @@ struct null_queue {
 	rte_atomic64_t tx_pkts;
 };
 
+struct pmd_options {
+	unsigned int packet_copy;
+	unsigned int packet_size;
+};
+
 struct pmd_internals {
 	unsigned int packet_size;
 	unsigned int packet_copy;
@@ -462,9 +467,7 @@ static const struct eth_dev_ops ops = {
 };
 
 static int
-eth_dev_null_create(struct rte_vdev_device *dev,
-		unsigned int packet_size,
-		unsigned int packet_copy)
+eth_dev_null_create(struct rte_vdev_device *dev, struct pmd_options *args)
 {
 	const unsigned int nb_rx_queues = 1;
 	const unsigned int nb_tx_queues = 1;
@@ -499,8 +502,8 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 	 * so the nulls are local per-process */
 
 	internals = eth_dev->data->dev_private;
-	internals->packet_size = packet_size;
-	internals->packet_copy = packet_copy;
+	internals->packet_size = args->packet_size;
+	internals->packet_copy = args->packet_copy;
 	internals->port_id = eth_dev->data->port_id;
 	rte_eth_random_addr(internals->eth_addr.addr_bytes);
 
@@ -520,7 +523,7 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 	eth_dev->dev_ops = &ops;
 
 	/* finally assign rx and tx ops */
-	if (packet_copy) {
+	if (internals->packet_copy) {
 		eth_dev->rx_pkt_burst = eth_null_copy_rx;
 		eth_dev->tx_pkt_burst = eth_null_copy_tx;
 	} else {
@@ -570,8 +573,10 @@ static int
 rte_pmd_null_probe(struct rte_vdev_device *dev)
 {
 	const char *name, *params;
-	unsigned int packet_size = default_packet_size;
-	unsigned int packet_copy = default_packet_copy;
+	struct pmd_options args = {
+		.packet_copy = default_packet_copy,
+		.packet_size = default_packet_size,
+	};
 	struct rte_kvargs *kvlist = NULL;
 	struct rte_eth_dev *eth_dev;
 	int ret;
@@ -612,23 +617,23 @@ rte_pmd_null_probe(struct rte_vdev_device *dev)
 
 		ret = rte_kvargs_process(kvlist,
 				ETH_NULL_PACKET_SIZE_ARG,
-				&get_packet_size_arg, &packet_size);
+				&get_packet_size_arg, &args.packet_size);
 		if (ret < 0)
 			goto free_kvlist;
 
 
 		ret = rte_kvargs_process(kvlist,
 				ETH_NULL_PACKET_COPY_ARG,
-				&get_packet_copy_arg, &packet_copy);
+				&get_packet_copy_arg, &args.packet_copy);
 		if (ret < 0)
 			goto free_kvlist;
 	}
 
 	PMD_LOG(INFO, "Configure pmd_null: packet size is %d, "
-			"packet copy is %s", packet_size,
-			packet_copy ? "enabled" : "disabled");
+			"packet copy is %s", args.packet_size,
+			args.packet_copy ? "enabled" : "disabled");
 
-	ret = eth_dev_null_create(dev, packet_size, packet_copy);
+	ret = eth_dev_null_create(dev, &args);
 
 free_kvlist:
 	if (kvlist)
