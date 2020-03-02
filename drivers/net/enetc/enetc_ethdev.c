@@ -150,6 +150,12 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 	/* WA for Rx lock-up HW erratum */
 	enetc_port_wr(enetc_hw, ENETC_PM0_RX_FIFO, 1);
 
+	/* set ENETC transaction flags to coherent, don't allocate.
+	 * BD writes merge with surrounding cache line data, frame data writes
+	 * overwrite cache line.
+	 */
+	enetc_wr(enetc_hw, ENETC_SICAR0, ENETC_SICAR0_COHERENT);
+
 	/* Enabling Station Interface */
 	enetc_wr(enetc_hw, ENETC_SIMR, ENETC_SIMR_EN);
 

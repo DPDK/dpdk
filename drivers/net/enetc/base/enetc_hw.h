@@ -22,6 +22,8 @@
 #define ENETC_SIMR			0x0
 #define ENETC_SIMR_EN			BIT(31)
 
+#define ENETC_SICAR0			0x40
+#define ENETC_SICAR0_COHERENT		0x2B2B6727
 #define ENETC_SIPMAR0			0x80
 #define ENETC_SIPMAR1			0x84
 
