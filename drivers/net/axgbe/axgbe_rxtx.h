@@ -185,5 +185,7 @@ uint16_t axgbe_recv_pkts_threshold_refresh(void *rx_queue,
 					   struct rte_mbuf **rx_pkts,
 					   uint16_t nb_pkts);
 void axgbe_dev_clear_queues(struct rte_eth_dev *dev);
+int axgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset);
+int axgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
 
 #endif /* _AXGBE_RXTX_H_ */

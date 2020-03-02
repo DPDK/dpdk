@@ -819,3 +819,49 @@ void axgbe_dev_clear_queues(struct rte_eth_dev *dev)
 		}
 	}
 }
+
+int
+axgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct axgbe_rx_queue *rxq = rx_queue;
+	volatile union axgbe_rx_desc *desc;
+	uint16_t idx;
+
+
+	if (unlikely(offset >= rxq->nb_desc))
+		return -EINVAL;
+
+	if (offset >= rxq->nb_desc - rxq->dirty)
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	idx = AXGBE_GET_DESC_IDX(rxq, rxq->cur);
+	desc = &rxq->desc[idx + offset];
+
+	if (!AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3, OWN))
+		return RTE_ETH_RX_DESC_DONE;
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
+int
+axgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct axgbe_tx_queue *txq = tx_queue;
+	volatile struct axgbe_tx_desc *desc;
+	uint16_t idx;
+
+
+	if (unlikely(offset >= txq->nb_desc))
+		return -EINVAL;
+
+	if (offset >= txq->nb_desc - txq->dirty)
+		return RTE_ETH_TX_DESC_UNAVAIL;
+
+	idx = AXGBE_GET_DESC_IDX(txq, txq->dirty + txq->free_batch_cnt - 1);
+	desc = &txq->desc[idx + offset];
+
+	if (!AXGMAC_GET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN))
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}
