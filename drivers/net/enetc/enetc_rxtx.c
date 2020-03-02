@@ -20,8 +20,9 @@ static int
 enetc_clean_tx_ring(struct enetc_bdr *tx_ring)
 {
 	int tx_frm_cnt = 0;
-	struct enetc_swbd *tx_swbd;
-	int i, hwci;
+	struct enetc_swbd *tx_swbd, *tx_swbd_base;
+	int i, hwci, bd_count;
+	struct rte_mbuf *m[ENETC_RXBD_BUNDLE];
 
 	/* we don't need barriers here, we just want a relatively current value
 	 * from HW.
@@ -29,8 +30,10 @@ enetc_clean_tx_ring(struct enetc_bdr *tx_ring)
 	hwci = (int)(rte_read32_relaxed(tx_ring->tcisr) &
 		     ENETC_TBCISR_IDX_MASK);
 
+	tx_swbd_base = tx_ring->q_swbd;
+	bd_count = tx_ring->bd_count;
 	i = tx_ring->next_to_clean;
-	tx_swbd = &tx_ring->q_swbd[i];
+	tx_swbd = &tx_swbd_base[i];
 
 	/* we're only reading the CI index once here, which means HW may update
 	 * it while we're doing clean-up.  We could read the register in a loop
@@ -42,20 +45,33 @@ enetc_clean_tx_ring(struct enetc_bdr *tx_ring)
 	 * meantime.
 	 */
 	while (i != hwci) {
-		rte_pktmbuf_free(tx_swbd->buffer_addr);
+		/* It seems calling rte_pktmbuf_free is wasting a lot of cycles,
+		 * make a list and call _free when it's done.
+		 */
+		if (tx_frm_cnt == ENETC_RXBD_BUNDLE) {
+			rte_pktmbuf_free_bulk(m, tx_frm_cnt);
+			tx_frm_cnt = 0;
+		}
+
+		m[tx_frm_cnt] = tx_swbd->buffer_addr;
 		tx_swbd->buffer_addr = NULL;
-		tx_swbd++;
+
 		i++;
-		if (unlikely(i == tx_ring->bd_count)) {
+		tx_swbd++;
+		if (unlikely(i == bd_count)) {
 			i = 0;
-			tx_swbd = &tx_ring->q_swbd[0];
+			tx_swbd = tx_swbd_base;
 		}
 
 		tx_frm_cnt++;
 	}
 
+	if (tx_frm_cnt)
+		rte_pktmbuf_free_bulk(m, tx_frm_cnt);
+
 	tx_ring->next_to_clean = i;
-	return tx_frm_cnt++;
+
+	return 0;
 }
 
 uint16_t

@@ -11,3 +11,4 @@ sources = files('enetc_ethdev.c',
 		'enetc_rxtx.c')
 
 includes += include_directories('base')
+allow_experimental_apis = true
