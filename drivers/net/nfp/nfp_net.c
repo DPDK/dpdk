@@ -3014,7 +3014,7 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 	size_t count, curlen, totlen = 0;
 	int err = 0;
 
-	PMD_CPP_LOG(DEBUG, "%s: offset size %lu, count_size: %lu\n", __func__,
+	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu\n", __func__,
 		sizeof(off_t), sizeof(size_t));
 
 	/* Reading the count param */
@@ -3033,9 +3033,9 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 	cpp_id = (offset >> 40) << 8;
 	nfp_offset = offset & ((1ull << 40) - 1);
 
-	PMD_CPP_LOG(DEBUG, "%s: count %lu and offset %ld\n", __func__, count,
+	PMD_CPP_LOG(DEBUG, "%s: count %zu and offset %jd\n", __func__, count,
 		offset);
-	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %ld\n", __func__,
+	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %jd\n", __func__,
 		cpp_id, nfp_offset);
 
 	/* Adjust length if not aligned */
@@ -3067,12 +3067,12 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 			if (len > sizeof(tmpbuf))
 				len = sizeof(tmpbuf);
 
-			PMD_CPP_LOG(DEBUG, "%s: Receive %u of %lu\n", __func__,
+			PMD_CPP_LOG(DEBUG, "%s: Receive %u of %zu\n", __func__,
 					   len, count);
 			err = recv(sockfd, tmpbuf, len, MSG_WAITALL);
 			if (err != (int)len) {
 				RTE_LOG(ERR, PMD,
-					"%s: error when receiving, %d of %lu\n",
+					"%s: error when receiving, %d of %zu\n",
 					__func__, err, count);
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
@@ -3116,7 +3116,7 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 	size_t count, curlen, totlen = 0;
 	int err = 0;
 
-	PMD_CPP_LOG(DEBUG, "%s: offset size %lu, count_size: %lu\n", __func__,
+	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu\n", __func__,
 		sizeof(off_t), sizeof(size_t));
 
 	/* Reading the count param */
@@ -3135,9 +3135,9 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 	cpp_id = (offset >> 40) << 8;
 	nfp_offset = offset & ((1ull << 40) - 1);
 
-	PMD_CPP_LOG(DEBUG, "%s: count %lu and offset %ld\n", __func__, count,
+	PMD_CPP_LOG(DEBUG, "%s: count %zu and offset %jd\n", __func__, count,
 			   offset);
-	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %ld\n", __func__,
+	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %jd\n", __func__,
 			   cpp_id, nfp_offset);
 
 	/* Adjust length if not aligned */
@@ -3174,13 +3174,13 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 				nfp_cpp_area_free(area);
 				return -EIO;
 			}
-			PMD_CPP_LOG(DEBUG, "%s: sending %u of %lu\n", __func__,
+			PMD_CPP_LOG(DEBUG, "%s: sending %u of %zu\n", __func__,
 					   len, count);
 
 			err = send(sockfd, tmpbuf, len, 0);
 			if (err != (int)len) {
 				RTE_LOG(ERR, PMD,
-					"%s: error when sending: %d of %lu\n",
+					"%s: error when sending: %d of %zu\n",
 					__func__, err, count);
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
