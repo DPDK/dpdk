@@ -651,7 +651,8 @@ struct mlx5_ifc_fte_match_set_lyr_2_4_bits {
 	u8 tcp_flags[0x9];
 	u8 tcp_sport[0x10];
 	u8 tcp_dport[0x10];
-	u8 reserved_at_c0[0x20];
+	u8 reserved_at_c0[0x18];
+	u8 ip_ttl_hoplimit[0x8];
 	u8 udp_sport[0x10];
 	u8 udp_dport[0x10];
 	union mlx5_ifc_ipv6_layout_ipv4_layout_auto_bits src_ipv4_src_ipv6;
