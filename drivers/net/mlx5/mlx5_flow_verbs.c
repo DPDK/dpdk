@@ -494,14 +494,12 @@ flow_verbs_translate_item_ipv6(struct mlx5_flow *dev_flow,
 		ipv6.val.traffic_class = (vtc_flow_val & RTE_IPV6_HDR_TC_MASK) >>
 					 RTE_IPV6_HDR_TC_SHIFT;
 		ipv6.val.next_hdr = spec->hdr.proto;
-		ipv6.val.hop_limit = spec->hdr.hop_limits;
 		ipv6.mask.flow_label =
 			rte_cpu_to_be_32((vtc_flow_mask & RTE_IPV6_HDR_FL_MASK) >>
 					 RTE_IPV6_HDR_FL_SHIFT);
 		ipv6.mask.traffic_class = (vtc_flow_mask & RTE_IPV6_HDR_TC_MASK) >>
 					  RTE_IPV6_HDR_TC_SHIFT;
 		ipv6.mask.next_hdr = mask->hdr.proto;
-		ipv6.mask.hop_limit = mask->hdr.hop_limits;
 		/* Remove unwanted bits from values. */
 		for (i = 0; i < RTE_DIM(ipv6.val.src_ip); ++i) {
 			ipv6.val.src_ip[i] &= ipv6.mask.src_ip[i];
@@ -510,7 +508,6 @@ flow_verbs_translate_item_ipv6(struct mlx5_flow *dev_flow,
 		ipv6.val.flow_label &= ipv6.mask.flow_label;
 		ipv6.val.traffic_class &= ipv6.mask.traffic_class;
 		ipv6.val.next_hdr &= ipv6.mask.next_hdr;
-		ipv6.val.hop_limit &= ipv6.mask.hop_limit;
 	}
 	flow_verbs_spec_add(&dev_flow->verbs, &ipv6, size);
 }

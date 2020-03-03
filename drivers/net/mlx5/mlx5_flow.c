@@ -1640,7 +1640,6 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 				"\xff\xff\xff\xff\xff\xff\xff\xff",
 			.vtc_flow = RTE_BE32(0xffffffff),
 			.proto = 0xff,
-			.hop_limits = 0xff,
 		},
 	};
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
