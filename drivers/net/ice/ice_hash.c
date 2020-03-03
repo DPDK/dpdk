@@ -409,7 +409,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 			void **meta,
 			struct rte_flow_error *error)
 {
-	int ret = -rte_errno;
+	int ret = 0;
 	struct ice_pattern_match_item *pattern_match_item;
 	struct rss_meta *rss_meta_ptr;
 
@@ -424,8 +424,10 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 	/* Check rss supported pattern and find matched pattern. */
 	pattern_match_item = ice_search_pattern_match_item(pattern,
 					array, array_len, error);
-	if (!pattern_match_item)
+	if (!pattern_match_item) {
+		ret = -rte_errno;
 		goto error;
+	}
 
 	ret = ice_hash_check_inset(pattern, error);
 	if (ret)
