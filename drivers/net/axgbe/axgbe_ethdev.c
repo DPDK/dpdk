@@ -62,6 +62,10 @@ axgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 static int axgbe_dev_xstats_reset(struct rte_eth_dev *dev);
 static int  axgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
+static int axgbe_flow_ctrl_get(struct rte_eth_dev *dev,
+				struct rte_eth_fc_conf *fc_conf);
+static int axgbe_flow_ctrl_set(struct rte_eth_dev *dev,
+				struct rte_eth_fc_conf *fc_conf);
 
 struct axgbe_xstats {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -195,6 +199,8 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.rx_queue_release     = axgbe_dev_rx_queue_release,
 	.tx_queue_setup       = axgbe_dev_tx_queue_setup,
 	.tx_queue_release     = axgbe_dev_tx_queue_release,
+	.flow_ctrl_get        = axgbe_flow_ctrl_get,
+	.flow_ctrl_set        = axgbe_flow_ctrl_set,
 };
 
 static int axgbe_phy_reset(struct axgbe_port *pdata)
@@ -1004,6 +1010,84 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.tx_free_thresh = AXGBE_TX_FREE_THRESH,
 	};
+
+	return 0;
+}
+
+static int
+axgbe_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct xgbe_fc_info fc = pdata->fc;
+	unsigned int reg, reg_val = 0;
+
+	reg = MAC_Q0TFCR;
+	reg_val = AXGMAC_IOREAD(pdata, reg);
+	fc.low_water[0] =  AXGMAC_MTL_IOREAD_BITS(pdata, 0, MTL_Q_RQFCR, RFA);
+	fc.high_water[0] =  AXGMAC_MTL_IOREAD_BITS(pdata, 0, MTL_Q_RQFCR, RFD);
+	fc.pause_time[0] = AXGMAC_GET_BITS(reg_val, MAC_Q0TFCR, PT);
+	fc.autoneg = pdata->pause_autoneg;
+
+	if (pdata->rx_pause && pdata->tx_pause)
+		fc.mode = RTE_FC_FULL;
+	else if (pdata->rx_pause)
+		fc.mode = RTE_FC_RX_PAUSE;
+	else if (pdata->tx_pause)
+		fc.mode = RTE_FC_TX_PAUSE;
+	else
+		fc.mode = RTE_FC_NONE;
+
+	fc_conf->high_water =  (1024 + (fc.low_water[0] << 9)) / 1024;
+	fc_conf->low_water =  (1024 + (fc.high_water[0] << 9)) / 1024;
+	fc_conf->pause_time = fc.pause_time[0];
+	fc_conf->send_xon = fc.send_xon;
+	fc_conf->mode = fc.mode;
+
+	return 0;
+}
+
+static int
+axgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct xgbe_fc_info fc = pdata->fc;
+	unsigned int reg, reg_val = 0;
+	reg = MAC_Q0TFCR;
+
+	pdata->pause_autoneg = fc_conf->autoneg;
+	pdata->phy.pause_autoneg = pdata->pause_autoneg;
+	fc.send_xon = fc_conf->send_xon;
+	AXGMAC_MTL_IOWRITE_BITS(pdata, 0, MTL_Q_RQFCR, RFA,
+			AXGMAC_FLOW_CONTROL_VALUE(1024 * fc_conf->high_water));
+	AXGMAC_MTL_IOWRITE_BITS(pdata, 0, MTL_Q_RQFCR, RFD,
+			AXGMAC_FLOW_CONTROL_VALUE(1024 * fc_conf->low_water));
+	AXGMAC_SET_BITS(reg_val, MAC_Q0TFCR, PT, fc_conf->pause_time);
+	AXGMAC_IOWRITE(pdata, reg, reg_val);
+	fc.mode = fc_conf->mode;
+
+	if (fc.mode == RTE_FC_FULL) {
+		pdata->tx_pause = 1;
+		pdata->rx_pause = 1;
+	} else if (fc.mode == RTE_FC_RX_PAUSE) {
+		pdata->tx_pause = 0;
+		pdata->rx_pause = 1;
+	} else if (fc.mode == RTE_FC_TX_PAUSE) {
+		pdata->tx_pause = 1;
+		pdata->rx_pause = 0;
+	} else {
+		pdata->tx_pause = 0;
+		pdata->rx_pause = 0;
+	}
+
+	if (pdata->tx_pause != (unsigned int)pdata->phy.tx_pause)
+		pdata->hw_if.config_tx_flow_control(pdata);
+
+	if (pdata->rx_pause != (unsigned int)pdata->phy.rx_pause)
+		pdata->hw_if.config_rx_flow_control(pdata);
+
+	pdata->hw_if.config_flow_control(pdata);
+	pdata->phy.tx_pause = pdata->tx_pause;
+	pdata->phy.rx_pause = pdata->rx_pause;
 
 	return 0;
 }

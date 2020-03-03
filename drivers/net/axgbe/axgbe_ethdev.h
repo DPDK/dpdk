@@ -486,6 +486,16 @@ struct axgbe_mmc_stats {
 	uint64_t rxwatchdogerror;
 };
 
+/* Flow control parameters */
+struct xgbe_fc_info {
+	uint32_t high_water[AXGBE_PRIORITY_QUEUES];
+	uint32_t low_water[AXGBE_PRIORITY_QUEUES];
+	uint16_t pause_time[AXGBE_PRIORITY_QUEUES];
+	uint16_t send_xon;
+	enum rte_eth_fc_mode mode;
+	uint8_t autoneg;
+};
+
 /*
  * Structure to store private data for each port.
  */
@@ -626,6 +636,7 @@ struct axgbe_port {
 	uint32_t rx_csum_enable;
 
 	struct axgbe_mmc_stats mmc_stats;
+	struct xgbe_fc_info fc;
 
 	/* Hash filtering */
 	unsigned int hash_table_shift;
