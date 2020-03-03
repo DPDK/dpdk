@@ -587,6 +587,7 @@ struct axgbe_port {
 	unsigned int rx_rfa[AXGBE_MAX_QUEUES];
 	unsigned int rx_rfd[AXGBE_MAX_QUEUES];
 	unsigned int fifo;
+	unsigned int pfc_map[AXGBE_MAX_QUEUES];
 
 	/* Receive Side Scaling settings */
 	u8 rss_key[AXGBE_RSS_HASH_KEY_SIZE];

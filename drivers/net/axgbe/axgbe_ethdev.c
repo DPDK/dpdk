@@ -66,6 +66,8 @@ static int axgbe_flow_ctrl_get(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
 static int axgbe_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
+static int axgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
+				struct rte_eth_pfc_conf *pfc_conf);
 
 struct axgbe_xstats {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -201,6 +203,7 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.tx_queue_release     = axgbe_dev_tx_queue_release,
 	.flow_ctrl_get        = axgbe_flow_ctrl_get,
 	.flow_ctrl_set        = axgbe_flow_ctrl_set,
+	.priority_flow_ctrl_set = axgbe_priority_flow_ctrl_set,
 };
 
 static int axgbe_phy_reset(struct axgbe_port *pdata)
@@ -1085,6 +1088,97 @@ axgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	if (pdata->rx_pause != (unsigned int)pdata->phy.rx_pause)
 		pdata->hw_if.config_rx_flow_control(pdata);
 
+	pdata->hw_if.config_flow_control(pdata);
+	pdata->phy.tx_pause = pdata->tx_pause;
+	pdata->phy.rx_pause = pdata->rx_pause;
+
+	return 0;
+}
+
+static int
+axgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
+		struct rte_eth_pfc_conf *pfc_conf)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	struct xgbe_fc_info fc = pdata->fc;
+	uint8_t tc_num;
+
+	tc_num = pdata->pfc_map[pfc_conf->priority];
+
+	if (pfc_conf->priority >= pdata->hw_feat.tc_cnt) {
+		PMD_INIT_LOG(ERR, "Max supported  traffic class: %d\n",
+				pdata->hw_feat.tc_cnt);
+	return -EINVAL;
+	}
+
+	pdata->pause_autoneg = pfc_conf->fc.autoneg;
+	pdata->phy.pause_autoneg = pdata->pause_autoneg;
+	fc.send_xon = pfc_conf->fc.send_xon;
+	AXGMAC_MTL_IOWRITE_BITS(pdata, tc_num, MTL_Q_RQFCR, RFA,
+		AXGMAC_FLOW_CONTROL_VALUE(1024 * pfc_conf->fc.high_water));
+	AXGMAC_MTL_IOWRITE_BITS(pdata, tc_num, MTL_Q_RQFCR, RFD,
+		AXGMAC_FLOW_CONTROL_VALUE(1024 * pfc_conf->fc.low_water));
+
+	switch (tc_num) {
+	case 0:
+		AXGMAC_IOWRITE_BITS(pdata, MTL_TCPM0R,
+				PSTC0, pfc_conf->fc.pause_time);
+		break;
+	case 1:
+		AXGMAC_IOWRITE_BITS(pdata, MTL_TCPM0R,
+				PSTC1, pfc_conf->fc.pause_time);
+		break;
+	case 2:
+		AXGMAC_IOWRITE_BITS(pdata, MTL_TCPM0R,
+				PSTC2, pfc_conf->fc.pause_time);
+		break;
+	case 3:
+		AXGMAC_IOWRITE_BITS(pdata, MTL_TCPM0R,
+				PSTC3, pfc_conf->fc.pause_time);
+		break;
+	case 4:
+		AXGMAC_IOWRITE_BITS(pdata, MTL_TCPM1R,
+				PSTC4, pfc_conf->fc.pause_time);
+		break;
+	case 5:
+		AXGMAC_IOWRITE_BITS(pdata, MTL_TCPM1R,
+				PSTC5, pfc_conf->fc.pause_time);
+		break;
+	case 7:
+		AXGMAC_IOWRITE_BITS(pdata, MTL_TCPM1R,
+				PSTC6, pfc_conf->fc.pause_time);
+		break;
+	case 6:
+		AXGMAC_IOWRITE_BITS(pdata, MTL_TCPM1R,
+				PSTC7, pfc_conf->fc.pause_time);
+		break;
+	}
+
+	fc.mode = pfc_conf->fc.mode;
+
+	if (fc.mode == RTE_FC_FULL) {
+		pdata->tx_pause = 1;
+		pdata->rx_pause = 1;
+		AXGMAC_IOWRITE_BITS(pdata, MAC_RFCR, PFCE, 1);
+	} else if (fc.mode == RTE_FC_RX_PAUSE) {
+		pdata->tx_pause = 0;
+		pdata->rx_pause = 1;
+		AXGMAC_IOWRITE_BITS(pdata, MAC_RFCR, PFCE, 1);
+	} else if (fc.mode == RTE_FC_TX_PAUSE) {
+		pdata->tx_pause = 1;
+		pdata->rx_pause = 0;
+		AXGMAC_IOWRITE_BITS(pdata, MAC_RFCR, PFCE, 0);
+	} else {
+		pdata->tx_pause = 0;
+		pdata->rx_pause = 0;
+		AXGMAC_IOWRITE_BITS(pdata, MAC_RFCR, PFCE, 0);
+	}
+
+	if (pdata->tx_pause != (unsigned int)pdata->phy.tx_pause)
+		pdata->hw_if.config_tx_flow_control(pdata);
+
+	if (pdata->rx_pause != (unsigned int)pdata->phy.rx_pause)
+		pdata->hw_if.config_rx_flow_control(pdata);
 	pdata->hw_if.config_flow_control(pdata);
 	pdata->phy.tx_pause = pdata->tx_pause;
 	pdata->phy.rx_pause = pdata->rx_pause;
