@@ -179,6 +179,8 @@ int axgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int axgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 uint16_t axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts);
+uint16_t eth_axgbe_recv_scattered_pkts(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 uint16_t axgbe_recv_pkts_threshold_refresh(void *rx_queue,
 					   struct rte_mbuf **rx_pkts,
 					   uint16_t nb_pkts);

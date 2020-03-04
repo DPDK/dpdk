@@ -255,6 +255,10 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
 	int ret;
+	struct rte_eth_dev_data *dev_data = dev->data;
+	uint16_t max_pkt_len = dev_data->dev_conf.rxmode.max_rx_pkt_len;
+
+	dev->dev_ops = &axgbe_eth_dev_ops;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -285,6 +289,16 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 
 	axgbe_clear_bit(AXGBE_STOPPED, &pdata->dev_state);
 	axgbe_clear_bit(AXGBE_DOWN, &pdata->dev_state);
+	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
+				max_pkt_len > pdata->rx_buf_size)
+		dev_data->scattered_rx = 1;
+
+	/*  Scatter Rx handling */
+	if (dev_data->scattered_rx)
+		dev->rx_pkt_burst = &eth_axgbe_recv_scattered_pkts;
+	else
+		dev->rx_pkt_burst = &axgbe_recv_pkts;
+
 	return 0;
 }
 
@@ -816,6 +830,8 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_UDP_CKSUM  |
 		DEV_RX_OFFLOAD_TCP_CKSUM  |
+		DEV_RX_OFFLOAD_JUMBO_FRAME	|
+		DEV_RX_OFFLOAD_SCATTER	  |
 		DEV_RX_OFFLOAD_KEEP_CRC;
 
 	dev_info->tx_offload_capa =
@@ -1047,7 +1063,6 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	eth_dev->dev_ops = &axgbe_eth_dev_ops;
-	eth_dev->rx_pkt_burst = &axgbe_recv_pkts;
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary
