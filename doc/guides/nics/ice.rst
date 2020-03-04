@@ -54,10 +54,6 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle display of generic debugging messages.
 
-- ``CONFIG_RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC`` (default ``y``)
-
-  Toggle bulk allocation for RX.
-
 - ``CONFIG_RTE_LIBRTE_ICE_16BYTE_RX_DESC`` (default ``n``)
 
   Toggle to use a 16-byte RX descriptor, by default the RX descriptor is 32 byte.
