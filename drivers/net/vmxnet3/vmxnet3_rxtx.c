@@ -1311,6 +1311,14 @@ vmxnet3_v4_rss_configure(struct rte_eth_dev *dev)
 
 	cmdInfo->setRSSFields = 0;
 	port_rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
+
+	if ((port_rss_conf->rss_hf & VMXNET3_MANDATORY_V4_RSS) !=
+	    VMXNET3_MANDATORY_V4_RSS) {
+		PMD_INIT_LOG(WARNING, "RSS: IPv4/6 TCP is required for vmxnet3 v4 RSS,"
+			     "automatically setting it");
+		port_rss_conf->rss_hf |= VMXNET3_MANDATORY_V4_RSS;
+	}
+
 	rss_hf = port_rss_conf->rss_hf &
 		(VMXNET3_V4_RSS_MASK | VMXNET3_RSS_OFFLOAD_ALL);
 

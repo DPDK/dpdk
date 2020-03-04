@@ -771,7 +771,8 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(DEBUG, "Failed to setup memory region\n");
 	}
 
-	if (VMXNET3_VERSION_GE_4(hw)) {
+	if (VMXNET3_VERSION_GE_4(hw) &&
+	    dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_RSS) {
 		/* Check for additional RSS  */
 		ret = vmxnet3_v4_rss_configure(dev);
 		if (ret != VMXNET3_SUCCESS) {
