@@ -1088,10 +1088,17 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 				   "Invalid input action");
 		goto error;
 	}
-	*meta = sw_meta_ptr;
-	((struct sw_meta *)*meta)->list = list;
-	((struct sw_meta *)*meta)->lkups_num = lkups_num;
-	((struct sw_meta *)*meta)->rule_info = rule_info;
+
+	if (meta) {
+		*meta = sw_meta_ptr;
+		((struct sw_meta *)*meta)->list = list;
+		((struct sw_meta *)*meta)->lkups_num = lkups_num;
+		((struct sw_meta *)*meta)->rule_info = rule_info;
+	} else {
+		rte_free(list);
+		rte_free(sw_meta_ptr);
+	}
+
 	rte_free(pattern_match_item);
 
 	return 0;

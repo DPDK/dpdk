@@ -1966,7 +1966,8 @@ ice_fdir_parse(struct ice_adapter *ad,
 	if (ret)
 		goto error;
 
-	*meta = filter;
+	if (meta)
+		*meta = filter;
 error:
 	rte_free(item);
 	return ret;

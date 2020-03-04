@@ -434,14 +434,17 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 		goto error;
 
 	/* Save protocol header to rss_meta. */
-	*meta = rss_meta_ptr;
-	((struct rss_meta *)*meta)->pkt_hdr = ((struct rss_type_match_hdr *)
+	rss_meta_ptr->pkt_hdr = ((struct rss_type_match_hdr *)
 		(pattern_match_item->meta))->hdr_mask;
 
 	/* Check rss action. */
-	ret = ice_hash_parse_action(pattern_match_item, actions, meta, error);
+	ret = ice_hash_parse_action(pattern_match_item, actions,
+				    (void **)&rss_meta_ptr, error);
+
 error:
-	if (ret)
+	if (!ret && meta)
+		*meta = rss_meta_ptr;
+	else
 		rte_free(rss_meta_ptr);
 	rte_free(pattern_match_item);
 

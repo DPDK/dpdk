@@ -1375,7 +1375,6 @@ typedef struct ice_flow_engine * (*parse_engine_t)(struct ice_adapter *ad,
 		struct ice_parser_list *parser_list,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
-		void **meta,
 		struct rte_flow_error *error);
 
 void
@@ -1713,11 +1712,11 @@ ice_parse_engine_create(struct ice_adapter *ad,
 		struct ice_parser_list *parser_list,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
-		void **meta,
 		struct rte_flow_error *error)
 {
 	struct ice_flow_engine *engine = NULL;
 	struct ice_flow_parser_node *parser_node;
+	void *meta = NULL;
 	void *temp;
 
 	TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
@@ -1726,18 +1725,12 @@ ice_parse_engine_create(struct ice_adapter *ad,
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
-				pattern, actions, meta, error) < 0)
+				pattern, actions, &meta, error) < 0)
 			continue;
 
 		engine = parser_node->parser->engine;
-		if (engine->create == NULL) {
-			rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_HANDLE,
-					NULL, "Invalid engine");
-			continue;
-		}
-
-		ret = engine->create(ad, flow, *meta, error);
+		RTE_ASSERT(engine->create != NULL);
+		ret = engine->create(ad, flow, meta, error);
 		if (ret == 0)
 			return engine;
 		else if (ret == -EEXIST)
@@ -1752,7 +1745,6 @@ ice_parse_engine_validate(struct ice_adapter *ad,
 		struct ice_parser_list *parser_list,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
-		void **meta,
 		struct rte_flow_error *error)
 {
 	struct ice_flow_engine *engine = NULL;
@@ -1763,7 +1755,7 @@ ice_parse_engine_validate(struct ice_adapter *ad,
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
-				pattern, actions, meta, error) < 0)
+				pattern, actions, NULL, error) < 0)
 			continue;
 
 		engine = parser_node->parser->engine;
@@ -1779,7 +1771,6 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct ice_flow_engine **engine,
-		void **meta,
 		parse_engine_t ice_parse_engine,
 		struct rte_flow_error *error)
 {
@@ -1814,7 +1805,7 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 		return ret;
 
 	*engine = ice_parse_engine(ad, flow, &pf->rss_parser_list,
-			pattern, actions, meta, error);
+			pattern, actions, error);
 	if (*engine != NULL)
 		return 0;
 
@@ -1822,11 +1813,11 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 	case ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR_ONLY:
 	case ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR:
 		*engine = ice_parse_engine(ad, flow, &pf->dist_parser_list,
-				pattern, actions, meta, error);
+				pattern, actions, error);
 		break;
 	case ICE_FLOW_CLASSIFY_STAGE_PERMISSION:
 		*engine = ice_parse_engine(ad, flow, &pf->perm_parser_list,
-				pattern, actions, meta, error);
+				pattern, actions, error);
 		break;
 	default:
 		return -EINVAL;
@@ -1845,11 +1836,10 @@ ice_flow_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
 {
-	void *meta;
 	struct ice_flow_engine *engine;
 
 	return ice_flow_process_filter(dev, NULL, attr, pattern, actions,
-			&engine, &meta, ice_parse_engine_validate, error);
+			&engine, ice_parse_engine_validate, error);
 }
 
 static struct rte_flow *
@@ -1863,7 +1853,6 @@ ice_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow *flow = NULL;
 	int ret;
 	struct ice_flow_engine *engine = NULL;
-	void *meta;
 
 	flow = rte_zmalloc("ice_flow", sizeof(struct rte_flow), 0);
 	if (!flow) {
@@ -1874,7 +1863,7 @@ ice_flow_create(struct rte_eth_dev *dev,
 	}
 
 	ret = ice_flow_process_filter(dev, flow, attr, pattern, actions,
-			&engine, &meta, ice_parse_engine_create, error);
+			&engine, ice_parse_engine_create, error);
 	if (ret < 0)
 		goto free_flow;
 	flow->engine = engine;
