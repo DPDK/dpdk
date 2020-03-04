@@ -260,7 +260,7 @@ New Features
 * **Enabled Single Pass GCM acceleration on QAT GEN3.**
 
   Added support for Single Pass GCM, available on QAT GEN3 only (Intel
-  QuickAssist Technology C4xxx). It is automatically chosen instead of the
+  QuickAssist Technology P5xxx). It is automatically chosen instead of the
   classic 2-pass mode when running on QAT GEN3, significantly improving
   the performance of AES GCM operations.
 
