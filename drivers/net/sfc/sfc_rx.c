@@ -719,6 +719,7 @@ retry:
 		sfc_warn(sa, "promiscuous mode will be disabled");
 
 		port->promisc = B_FALSE;
+		sa->eth_dev->data->promiscuous = 0;
 		rc = sfc_set_rx_mode(sa);
 		if (rc != 0)
 			return rc;
@@ -732,6 +733,7 @@ retry:
 		sfc_warn(sa, "all-multicast mode will be disabled");
 
 		port->allmulti = B_FALSE;
+		sa->eth_dev->data->all_multicast = 0;
 		rc = sfc_set_rx_mode(sa);
 		if (rc != 0)
 			return rc;
