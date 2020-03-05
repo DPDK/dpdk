@@ -241,8 +241,8 @@ sfc_estimate_resource_limits(struct sfc_adapter *sa)
 	return 0;
 
 fail_get_vi_pool:
-fail_nic_init:
 	efx_nic_fini(sa->nic);
+fail_nic_init:
 	return rc;
 }
 
