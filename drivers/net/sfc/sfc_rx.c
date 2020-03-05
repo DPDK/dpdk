@@ -822,10 +822,12 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	return 0;
 
 fail_mac_filter_default_rxq_set:
+	sfc_rx_qflush(sa, sw_index);
 	sa->priv.dp_rx->qstop(rxq_info->dp, &rxq->evq->read_ptr);
+	rxq_info->state = SFC_RXQ_INITIALIZED;
 
 fail_dp_qstart:
-	sfc_rx_qflush(sa, sw_index);
+	efx_rx_qdestroy(rxq->common);
 
 fail_rx_qcreate:
 fail_bad_contig_block_size:
