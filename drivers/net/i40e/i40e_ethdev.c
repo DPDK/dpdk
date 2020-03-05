@@ -11670,11 +11670,15 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 	 * LLDP MIB change event.
 	 */
 	if (sw_dcb == TRUE) {
-		if (i40e_need_stop_lldp(dev)) {
-			ret = i40e_aq_stop_lldp(hw, TRUE, TRUE, NULL);
-			if (ret != I40E_SUCCESS)
-				PMD_INIT_LOG(DEBUG, "Failed to stop lldp");
-		}
+		/* Stopping lldp is necessary for DPDK, but it will cause
+		 * DCB init failed. For i40e_init_dcb(), the prerequisite
+		 * for successful initialization of DCB is that LLDP is
+		 * enabled. So it is needed to start lldp before DCB init
+		 * and stop it after initialization.
+		 */
+		ret = i40e_aq_start_lldp(hw, true, NULL);
+		if (ret != I40E_SUCCESS)
+			PMD_INIT_LOG(DEBUG, "Failed to start lldp");
 
 		ret = i40e_init_dcb(hw, true);
 		/* If lldp agent is stopped, the return value from
@@ -11718,6 +11722,12 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 				"DCB initialization in FW fails, err = %d, aq_err = %d.",
 				ret, hw->aq.asq_last_status);
 			return -ENOTSUP;
+		}
+
+		if (i40e_need_stop_lldp(dev)) {
+			ret = i40e_aq_stop_lldp(hw, true, true, NULL);
+			if (ret != I40E_SUCCESS)
+				PMD_INIT_LOG(DEBUG, "Failed to stop lldp");
 		}
 	} else {
 		ret = i40e_aq_start_lldp(hw, true, NULL);
