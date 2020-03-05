@@ -21,7 +21,7 @@ DEPDIRS-compress := bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vdpa
 DEPDIRS-vdpa := common bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += event
-DEPDIRS-event := common bus mempool net
+DEPDIRS-event := common bus mempool net crypto
 DIRS-$(CONFIG_RTE_LIBRTE_RAWDEV) += raw
 DEPDIRS-raw := common bus mempool net event
 
