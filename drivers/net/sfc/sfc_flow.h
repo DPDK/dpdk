@@ -35,8 +35,15 @@ struct sfc_flow_rss {
 	unsigned int	rss_tbl[EFX_RSS_TBL_SIZE];
 };
 
-/* Filter specification storage */
-struct sfc_flow_spec {
+/* Flow engines supported by the implementation */
+enum sfc_flow_spec_type {
+	SFC_FLOW_SPEC_FILTER = 0,
+
+	SFC_FLOW_SPEC_NTYPES
+};
+
+/* VNIC-specific flow specification */
+struct sfc_flow_spec_filter {
 	/* partial specification from flow rule */
 	efx_filter_spec_t template;
 	/* fully elaborated hardware filters specifications */
@@ -49,9 +56,21 @@ struct sfc_flow_spec {
 	struct sfc_flow_rss rss_conf;
 };
 
+/* Flow specification */
+struct sfc_flow_spec {
+	/* Flow specification type (engine-based) */
+	enum sfc_flow_spec_type type;
+
+	RTE_STD_C11
+	union {
+		/* Filter-based (VNIC level flows) specification */
+		struct sfc_flow_spec_filter filter;
+	};
+};
+
 /* PMD-specific definition of the opaque type from rte_flow.h */
 struct rte_flow {
-	struct sfc_flow_spec spec;	/* flow spec for hardware filter(s) */
+	struct sfc_flow_spec spec;	/* flow specification */
 	TAILQ_ENTRY(rte_flow) entries;	/* flow list entries */
 };
 
