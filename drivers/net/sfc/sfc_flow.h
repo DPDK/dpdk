@@ -78,6 +78,58 @@ TAILQ_HEAD(sfc_flow_list, rte_flow);
 
 extern const struct rte_flow_ops sfc_flow_ops;
 
+enum sfc_flow_item_layers {
+	SFC_FLOW_ITEM_ANY_LAYER,
+	SFC_FLOW_ITEM_START_LAYER,
+	SFC_FLOW_ITEM_L2,
+	SFC_FLOW_ITEM_L3,
+	SFC_FLOW_ITEM_L4,
+};
+
+/* Flow parse context types */
+enum sfc_flow_parse_ctx_type {
+	SFC_FLOW_PARSE_CTX_FILTER = 0,
+
+	SFC_FLOW_PARSE_CTX_NTYPES
+};
+
+/* Flow parse context */
+struct sfc_flow_parse_ctx {
+	enum sfc_flow_parse_ctx_type type;
+
+	RTE_STD_C11
+	union {
+		/* Context pointer valid for filter-based (VNIC) flows */
+		efx_filter_spec_t *filter;
+	};
+};
+
+typedef int (sfc_flow_item_parse)(const struct rte_flow_item *item,
+				  struct sfc_flow_parse_ctx *parse_ctx,
+				  struct rte_flow_error *error);
+
+struct sfc_flow_item {
+	enum rte_flow_item_type type;		/* Type of item */
+	enum sfc_flow_item_layers layer;	/* Layer of item */
+	enum sfc_flow_item_layers prev_layer;	/* Previous layer of item */
+	enum sfc_flow_parse_ctx_type ctx_type;	/* Parse context type */
+	sfc_flow_item_parse *parse;		/* Parsing function */
+};
+
+int sfc_flow_parse_pattern(const struct sfc_flow_item *flow_items,
+			   unsigned int nb_flow_items,
+			   const struct rte_flow_item pattern[],
+			   struct sfc_flow_parse_ctx *parse_ctx,
+			   struct rte_flow_error *error);
+
+int sfc_flow_parse_init(const struct rte_flow_item *item,
+			const void **spec_ptr,
+			const void **mask_ptr,
+			const void *supp_mask,
+			const void *def_mask,
+			unsigned int size,
+			struct rte_flow_error *error);
+
 struct sfc_adapter;
 
 void sfc_flow_init(struct sfc_adapter *sa);

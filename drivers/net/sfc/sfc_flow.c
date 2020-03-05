@@ -69,25 +69,6 @@ sfc_flow_get_ops_by_spec(struct rte_flow *flow)
  * of such a field.
  */
 
-enum sfc_flow_item_layers {
-	SFC_FLOW_ITEM_ANY_LAYER,
-	SFC_FLOW_ITEM_START_LAYER,
-	SFC_FLOW_ITEM_L2,
-	SFC_FLOW_ITEM_L3,
-	SFC_FLOW_ITEM_L4,
-};
-
-typedef int (sfc_flow_item_parse)(const struct rte_flow_item *item,
-				  efx_filter_spec_t *spec,
-				  struct rte_flow_error *error);
-
-struct sfc_flow_item {
-	enum rte_flow_item_type type;		/* Type of item */
-	enum sfc_flow_item_layers layer;	/* Layer of item */
-	enum sfc_flow_item_layers prev_layer;	/* Previous layer of item */
-	sfc_flow_item_parse *parse;		/* Parsing function */
-};
-
 static sfc_flow_item_parse sfc_flow_parse_void;
 static sfc_flow_item_parse sfc_flow_parse_eth;
 static sfc_flow_item_parse sfc_flow_parse_vlan;
@@ -144,7 +125,7 @@ sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
 /*
  * Validate item and prepare structures spec and mask for parsing
  */
-static int
+int
 sfc_flow_parse_init(const struct rte_flow_item *item,
 		    const void **spec_ptr,
 		    const void **mask_ptr,
@@ -243,7 +224,7 @@ exit:
 
 static int
 sfc_flow_parse_void(__rte_unused const struct rte_flow_item *item,
-		    __rte_unused efx_filter_spec_t *efx_spec,
+		    __rte_unused struct sfc_flow_parse_ctx *parse_ctx,
 		    __rte_unused struct rte_flow_error *error)
 {
 	return 0;
@@ -265,10 +246,11 @@ sfc_flow_parse_void(__rte_unused const struct rte_flow_item *item,
  */
 static int
 sfc_flow_parse_eth(const struct rte_flow_item *item,
-		   efx_filter_spec_t *efx_spec,
+		   struct sfc_flow_parse_ctx *parse_ctx,
 		   struct rte_flow_error *error)
 {
 	int rc;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_eth *spec = NULL;
 	const struct rte_flow_item_eth *mask = NULL;
 	const struct rte_flow_item_eth supp_mask = {
@@ -377,11 +359,12 @@ fail_bad_mask:
  */
 static int
 sfc_flow_parse_vlan(const struct rte_flow_item *item,
-		    efx_filter_spec_t *efx_spec,
+		    struct sfc_flow_parse_ctx *parse_ctx,
 		    struct rte_flow_error *error)
 {
 	int rc;
 	uint16_t vid;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_vlan *spec = NULL;
 	const struct rte_flow_item_vlan *mask = NULL;
 	const struct rte_flow_item_vlan supp_mask = {
@@ -463,10 +446,11 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
  */
 static int
 sfc_flow_parse_ipv4(const struct rte_flow_item *item,
-		    efx_filter_spec_t *efx_spec,
+		    struct sfc_flow_parse_ctx *parse_ctx,
 		    struct rte_flow_error *error)
 {
 	int rc;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_ipv4 *spec = NULL;
 	const struct rte_flow_item_ipv4 *mask = NULL;
 	const uint16_t ether_type_ipv4 = rte_cpu_to_le_16(EFX_ETHER_TYPE_IPV4);
@@ -553,10 +537,11 @@ fail_bad_mask:
  */
 static int
 sfc_flow_parse_ipv6(const struct rte_flow_item *item,
-		    efx_filter_spec_t *efx_spec,
+		    struct sfc_flow_parse_ctx *parse_ctx,
 		    struct rte_flow_error *error)
 {
 	int rc;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_ipv6 *spec = NULL;
 	const struct rte_flow_item_ipv6 *mask = NULL;
 	const uint16_t ether_type_ipv6 = rte_cpu_to_le_16(EFX_ETHER_TYPE_IPV6);
@@ -661,10 +646,11 @@ fail_bad_mask:
  */
 static int
 sfc_flow_parse_tcp(const struct rte_flow_item *item,
-		   efx_filter_spec_t *efx_spec,
+		   struct sfc_flow_parse_ctx *parse_ctx,
 		   struct rte_flow_error *error)
 {
 	int rc;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_tcp *spec = NULL;
 	const struct rte_flow_item_tcp *mask = NULL;
 	const struct rte_flow_item_tcp supp_mask = {
@@ -742,10 +728,11 @@ fail_bad_mask:
  */
 static int
 sfc_flow_parse_udp(const struct rte_flow_item *item,
-		   efx_filter_spec_t *efx_spec,
+		   struct sfc_flow_parse_ctx *parse_ctx,
 		   struct rte_flow_error *error)
 {
 	int rc;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_udp *spec = NULL;
 	const struct rte_flow_item_udp *mask = NULL;
 	const struct rte_flow_item_udp supp_mask = {
@@ -900,10 +887,11 @@ sfc_flow_set_efx_spec_vni_or_vsid(efx_filter_spec_t *efx_spec,
  */
 static int
 sfc_flow_parse_vxlan(const struct rte_flow_item *item,
-		     efx_filter_spec_t *efx_spec,
+		     struct sfc_flow_parse_ctx *parse_ctx,
 		     struct rte_flow_error *error)
 {
 	int rc;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_vxlan *spec = NULL;
 	const struct rte_flow_item_vxlan *mask = NULL;
 	const struct rte_flow_item_vxlan supp_mask = {
@@ -952,10 +940,11 @@ sfc_flow_parse_vxlan(const struct rte_flow_item *item,
  */
 static int
 sfc_flow_parse_geneve(const struct rte_flow_item *item,
-		      efx_filter_spec_t *efx_spec,
+		      struct sfc_flow_parse_ctx *parse_ctx,
 		      struct rte_flow_error *error)
 {
 	int rc;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_geneve *spec = NULL;
 	const struct rte_flow_item_geneve *mask = NULL;
 	const struct rte_flow_item_geneve supp_mask = {
@@ -1019,10 +1008,11 @@ sfc_flow_parse_geneve(const struct rte_flow_item *item,
  */
 static int
 sfc_flow_parse_nvgre(const struct rte_flow_item *item,
-		     efx_filter_spec_t *efx_spec,
+		     struct sfc_flow_parse_ctx *parse_ctx,
 		     struct rte_flow_error *error)
 {
 	int rc;
+	efx_filter_spec_t *efx_spec = parse_ctx->filter;
 	const struct rte_flow_item_nvgre *spec = NULL;
 	const struct rte_flow_item_nvgre *mask = NULL;
 	const struct rte_flow_item_nvgre supp_mask = {
@@ -1061,60 +1051,70 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.type = RTE_FLOW_ITEM_TYPE_VOID,
 		.prev_layer = SFC_FLOW_ITEM_ANY_LAYER,
 		.layer = SFC_FLOW_ITEM_ANY_LAYER,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_void,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 		.prev_layer = SFC_FLOW_ITEM_START_LAYER,
 		.layer = SFC_FLOW_ITEM_L2,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_eth,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VLAN,
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L2,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_vlan,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L3,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_ipv4,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L3,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_ipv6,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_L4,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_tcp,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_L4,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_udp,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
 		.prev_layer = SFC_FLOW_ITEM_L4,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_vxlan,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_GENEVE,
 		.prev_layer = SFC_FLOW_ITEM_L4,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_geneve,
 	},
 	{
 		.type = RTE_FLOW_ITEM_TYPE_NVGRE,
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_START_LAYER,
+		.ctx_type = SFC_FLOW_PARSE_CTX_FILTER,
 		.parse = sfc_flow_parse_nvgre,
 	},
 };
@@ -1176,28 +1176,30 @@ sfc_flow_parse_attr(const struct rte_flow_attr *attr,
 
 /* Get item from array sfc_flow_items */
 static const struct sfc_flow_item *
-sfc_flow_get_item(enum rte_flow_item_type type)
+sfc_flow_get_item(const struct sfc_flow_item *items,
+		  unsigned int nb_items,
+		  enum rte_flow_item_type type)
 {
 	unsigned int i;
 
-	for (i = 0; i < RTE_DIM(sfc_flow_items); i++)
-		if (sfc_flow_items[i].type == type)
-			return &sfc_flow_items[i];
+	for (i = 0; i < nb_items; i++)
+		if (items[i].type == type)
+			return &items[i];
 
 	return NULL;
 }
 
-static int
-sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
-		       struct rte_flow *flow,
+int
+sfc_flow_parse_pattern(const struct sfc_flow_item *flow_items,
+		       unsigned int nb_flow_items,
+		       const struct rte_flow_item pattern[],
+		       struct sfc_flow_parse_ctx *parse_ctx,
 		       struct rte_flow_error *error)
 {
 	int rc;
 	unsigned int prev_layer = SFC_FLOW_ITEM_ANY_LAYER;
 	boolean_t is_ifrm = B_FALSE;
 	const struct sfc_flow_item *item;
-	struct sfc_flow_spec *spec = &flow->spec;
-	struct sfc_flow_spec_filter *spec_filter = &spec->filter;
 
 	if (pattern == NULL) {
 		rte_flow_error_set(error, EINVAL,
@@ -1207,7 +1209,8 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 	}
 
 	for (; pattern->type != RTE_FLOW_ITEM_TYPE_END; pattern++) {
-		item = sfc_flow_get_item(pattern->type);
+		item = sfc_flow_get_item(flow_items, nb_flow_items,
+					 pattern->type);
 		if (item == NULL) {
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ITEM, pattern,
@@ -1262,7 +1265,14 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 			break;
 		}
 
-		rc = item->parse(pattern, &spec_filter->template, error);
+		if (parse_ctx->type != item->ctx_type) {
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM, pattern,
+					"Parse context type mismatch");
+			return -rte_errno;
+		}
+
+		rc = item->parse(pattern, parse_ctx, error);
 		if (rc != 0)
 			return rc;
 
@@ -2318,9 +2328,16 @@ sfc_flow_parse_rte_to_filter(struct rte_eth_dev *dev,
 			     struct rte_flow_error *error)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct sfc_flow_spec *spec = &flow->spec;
+	struct sfc_flow_spec_filter *spec_filter = &spec->filter;
+	struct sfc_flow_parse_ctx ctx;
 	int rc;
 
-	rc = sfc_flow_parse_pattern(pattern, flow, error);
+	ctx.type = SFC_FLOW_PARSE_CTX_FILTER;
+	ctx.filter = &spec_filter->template;
+
+	rc = sfc_flow_parse_pattern(sfc_flow_items, RTE_DIM(sfc_flow_items),
+				    pattern, &ctx, error);
 	if (rc != 0)
 		goto fail_bad_value;
 
