@@ -242,6 +242,8 @@ struct sfc_adapter {
 	struct sfc_port			port;
 	struct sfc_filter		filter;
 
+	struct sfc_flow_list		flow_list;
+
 	unsigned int			rxq_max;
 	unsigned int			txq_max;
 

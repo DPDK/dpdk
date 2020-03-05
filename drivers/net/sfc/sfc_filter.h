@@ -23,8 +23,6 @@ struct sfc_filter {
 	size_t				supported_match_num;
 	/** Driver cache of supported filter match masks */
 	uint32_t			*supported_match;
-	/** List of flow rules */
-	struct sfc_flow_list		flow_list;
 	/**
 	 * Supports any of ip_proto, remote host or local host
 	 * filters. This flag is used for filter match exceptions
