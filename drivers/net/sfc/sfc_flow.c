@@ -1262,7 +1262,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	unsigned int rxq_hw_index_max;
 	efx_rx_hash_type_t efx_hash_types;
 	const uint8_t *rss_key;
-	struct sfc_flow_rss *sfc_rss_conf = &flow->rss_conf;
+	struct sfc_flow_rss *sfc_rss_conf = &flow->spec.rss_conf;
 	unsigned int i;
 
 	if (action_rss->queue_num == 0)
@@ -1334,7 +1334,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 		rss_key = rss->key;
 	}
 
-	flow->rss = B_TRUE;
+	flow->spec.rss = B_TRUE;
 
 	sfc_rss_conf->rxq_hw_index_min = rxq_hw_index_min;
 	sfc_rss_conf->rxq_hw_index_max = rxq_hw_index_max;
@@ -1402,12 +1402,12 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 {
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_rss *rss = &sas->rss;
-	struct sfc_flow_rss *flow_rss = &flow->rss_conf;
+	struct sfc_flow_rss *flow_rss = &flow->spec.rss_conf;
 	uint32_t efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 	unsigned int i;
 	int rc = 0;
 
-	if (flow->rss) {
+	if (flow->spec.rss) {
 		unsigned int rss_spread = MIN(flow_rss->rxq_hw_index_max -
 					      flow_rss->rxq_hw_index_min + 1,
 					      EFX_MAXRSS);
@@ -1450,7 +1450,7 @@ sfc_flow_filter_insert(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_filter_insert;
 
-	if (flow->rss) {
+	if (flow->spec.rss) {
 		/*
 		 * Scale table is set after filter insertion because
 		 * the table entries are relative to the base RxQ ID
@@ -1491,7 +1491,7 @@ sfc_flow_filter_remove(struct sfc_adapter *sa,
 	if (rc != 0)
 		return rc;
 
-	if (flow->rss) {
+	if (flow->spec.rss) {
 		/*
 		 * All specifications for a given flow rule have the same RSS
 		 * context, so that RSS context value is taken from the first

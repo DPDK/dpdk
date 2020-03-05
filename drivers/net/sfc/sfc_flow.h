@@ -43,13 +43,15 @@ struct sfc_flow_spec {
 	efx_filter_spec_t filters[SF_FLOW_SPEC_NB_FILTERS_MAX];
 	/* number of complete specifications */
 	unsigned int count;
+	/* RSS toggle */
+	boolean_t rss;
+	/* RSS configuration */
+	struct sfc_flow_rss rss_conf;
 };
 
 /* PMD-specific definition of the opaque type from rte_flow.h */
 struct rte_flow {
 	struct sfc_flow_spec spec;	/* flow spec for hardware filter(s) */
-	boolean_t rss;			/* RSS toggle */
-	struct sfc_flow_rss rss_conf;	/* RSS configuration */
 	TAILQ_ENTRY(rte_flow) entries;	/* flow list entries */
 };
 
