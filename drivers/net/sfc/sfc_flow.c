@@ -2309,6 +2309,27 @@ fail_bad_value:
 	return rc;
 }
 
+static struct rte_flow *
+sfc_flow_zmalloc(struct rte_flow_error *error)
+{
+	struct rte_flow *flow;
+
+	flow = rte_zmalloc("sfc_rte_flow", sizeof(*flow), 0);
+	if (flow == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to allocate memory");
+	}
+
+	return flow;
+}
+
+static void
+sfc_flow_free(__rte_unused struct sfc_adapter *sa, struct rte_flow *flow)
+{
+	rte_free(flow);
+}
+
 static int
 sfc_flow_validate(struct rte_eth_dev *dev,
 		  const struct rte_flow_attr *attr,
@@ -2316,11 +2337,19 @@ sfc_flow_validate(struct rte_eth_dev *dev,
 		  const struct rte_flow_action actions[],
 		  struct rte_flow_error *error)
 {
-	struct rte_flow flow;
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct rte_flow *flow;
+	int rc;
 
-	memset(&flow, 0, sizeof(flow));
+	flow = sfc_flow_zmalloc(error);
+	if (flow == NULL)
+		return -rte_errno;
 
-	return sfc_flow_parse(dev, attr, pattern, actions, &flow, error);
+	rc = sfc_flow_parse(dev, attr, pattern, actions, flow, error);
+
+	sfc_flow_free(sa, flow);
+
+	return rc;
 }
 
 static struct rte_flow *
@@ -2334,13 +2363,9 @@ sfc_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow *flow = NULL;
 	int rc;
 
-	flow = rte_zmalloc("sfc_rte_flow", sizeof(*flow), 0);
-	if (flow == NULL) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Failed to allocate memory");
+	flow = sfc_flow_zmalloc(error);
+	if (flow == NULL)
 		goto fail_no_mem;
-	}
 
 	rc = sfc_flow_parse(dev, attr, pattern, actions, flow, error);
 	if (rc != 0)
@@ -2368,7 +2393,7 @@ fail_filter_insert:
 	TAILQ_REMOVE(&sa->flow_list, flow, entries);
 
 fail_bad_value:
-	rte_free(flow);
+	sfc_flow_free(sa, flow);
 	sfc_adapter_unlock(sa);
 
 fail_no_mem:
@@ -2393,7 +2418,7 @@ sfc_flow_remove(struct sfc_adapter *sa,
 	}
 
 	TAILQ_REMOVE(&sa->flow_list, flow, entries);
-	rte_free(flow);
+	sfc_flow_free(sa, flow);
 
 	return rc;
 }
@@ -2497,7 +2522,7 @@ sfc_flow_fini(struct sfc_adapter *sa)
 
 	while ((flow = TAILQ_FIRST(&sa->flow_list)) != NULL) {
 		TAILQ_REMOVE(&sa->flow_list, flow, entries);
-		rte_free(flow);
+		sfc_flow_free(sa, flow);
 	}
 }
 
