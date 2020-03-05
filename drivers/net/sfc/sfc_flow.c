@@ -26,12 +26,18 @@
 
 struct sfc_flow_ops_by_spec {
 	sfc_flow_parse_cb_t	*parse;
+	sfc_flow_insert_cb_t	*insert;
+	sfc_flow_remove_cb_t	*remove;
 };
 
 static sfc_flow_parse_cb_t sfc_flow_parse_rte_to_filter;
+static sfc_flow_insert_cb_t sfc_flow_filter_insert;
+static sfc_flow_remove_cb_t sfc_flow_filter_remove;
 
 static const struct sfc_flow_ops_by_spec sfc_flow_ops_filter = {
 	.parse = sfc_flow_parse_rte_to_filter,
+	.insert = sfc_flow_filter_insert,
+	.remove = sfc_flow_filter_remove,
 };
 
 static const struct sfc_flow_ops_by_spec *
@@ -2380,6 +2386,54 @@ sfc_flow_free(__rte_unused struct sfc_adapter *sa, struct rte_flow *flow)
 }
 
 static int
+sfc_flow_insert(struct sfc_adapter *sa, struct rte_flow *flow,
+		struct rte_flow_error *error)
+{
+	const struct sfc_flow_ops_by_spec *ops;
+	int rc;
+
+	ops = sfc_flow_get_ops_by_spec(flow);
+	if (ops == NULL || ops->insert == NULL) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "No backend to handle this flow");
+		return rte_errno;
+	}
+
+	rc = ops->insert(sa, flow);
+	if (rc != 0) {
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "Failed to insert the flow rule");
+	}
+
+	return rc;
+}
+
+static int
+sfc_flow_remove(struct sfc_adapter *sa, struct rte_flow *flow,
+		struct rte_flow_error *error)
+{
+	const struct sfc_flow_ops_by_spec *ops;
+	int rc;
+
+	ops = sfc_flow_get_ops_by_spec(flow);
+	if (ops == NULL || ops->remove == NULL) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "No backend to handle this flow");
+		return rte_errno;
+	}
+
+	rc = ops->remove(sa, flow);
+	if (rc != 0) {
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "Failed to remove the flow rule");
+	}
+
+	return rc;
+}
+
+static int
 sfc_flow_validate(struct rte_eth_dev *dev,
 		  const struct rte_flow_attr *attr,
 		  const struct rte_flow_item pattern[],
@@ -2425,20 +2479,16 @@ sfc_flow_create(struct rte_eth_dev *dev,
 	TAILQ_INSERT_TAIL(&sa->flow_list, flow, entries);
 
 	if (sa->state == SFC_ADAPTER_STARTED) {
-		rc = sfc_flow_filter_insert(sa, flow);
-		if (rc != 0) {
-			rte_flow_error_set(error, rc,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Failed to insert filter");
-			goto fail_filter_insert;
-		}
+		rc = sfc_flow_insert(sa, flow, error);
+		if (rc != 0)
+			goto fail_flow_insert;
 	}
 
 	sfc_adapter_unlock(sa);
 
 	return flow;
 
-fail_filter_insert:
+fail_flow_insert:
 	TAILQ_REMOVE(&sa->flow_list, flow, entries);
 
 fail_bad_value:
@@ -2447,29 +2497,6 @@ fail_bad_value:
 
 fail_no_mem:
 	return NULL;
-}
-
-static int
-sfc_flow_remove(struct sfc_adapter *sa,
-		struct rte_flow *flow,
-		struct rte_flow_error *error)
-{
-	int rc = 0;
-
-	SFC_ASSERT(sfc_adapter_is_locked(sa));
-
-	if (sa->state == SFC_ADAPTER_STARTED) {
-		rc = sfc_flow_filter_remove(sa, flow);
-		if (rc != 0)
-			rte_flow_error_set(error, rc,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				"Failed to destroy flow rule");
-	}
-
-	TAILQ_REMOVE(&sa->flow_list, flow, entries);
-	sfc_flow_free(sa, flow);
-
-	return rc;
 }
 
 static int
@@ -2494,7 +2521,11 @@ sfc_flow_destroy(struct rte_eth_dev *dev,
 		goto fail_bad_value;
 	}
 
-	rc = sfc_flow_remove(sa, flow, error);
+	if (sa->state == SFC_ADAPTER_STARTED)
+		rc = sfc_flow_remove(sa, flow, error);
+
+	TAILQ_REMOVE(&sa->flow_list, flow, entries);
+	sfc_flow_free(sa, flow);
 
 fail_bad_value:
 	sfc_adapter_unlock(sa);
@@ -2508,15 +2539,21 @@ sfc_flow_flush(struct rte_eth_dev *dev,
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct rte_flow *flow;
-	int rc = 0;
 	int ret = 0;
 
 	sfc_adapter_lock(sa);
 
 	while ((flow = TAILQ_FIRST(&sa->flow_list)) != NULL) {
-		rc = sfc_flow_remove(sa, flow, error);
-		if (rc != 0)
-			ret = rc;
+		if (sa->state == SFC_ADAPTER_STARTED) {
+			int rc;
+
+			rc = sfc_flow_remove(sa, flow, error);
+			if (rc != 0)
+				ret = rc;
+		}
+
+		TAILQ_REMOVE(&sa->flow_list, flow, entries);
+		sfc_flow_free(sa, flow);
 	}
 
 	sfc_adapter_unlock(sa);
@@ -2583,7 +2620,7 @@ sfc_flow_stop(struct sfc_adapter *sa)
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	TAILQ_FOREACH(flow, &sa->flow_list, entries)
-		sfc_flow_filter_remove(sa, flow);
+		sfc_flow_remove(sa, flow, NULL);
 }
 
 int
@@ -2597,7 +2634,7 @@ sfc_flow_start(struct sfc_adapter *sa)
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	TAILQ_FOREACH(flow, &sa->flow_list, entries) {
-		rc = sfc_flow_filter_insert(sa, flow);
+		rc = sfc_flow_insert(sa, flow, NULL);
 		if (rc != 0)
 			goto fail_bad_flow;
 	}

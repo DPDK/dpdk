@@ -91,6 +91,12 @@ typedef int (sfc_flow_parse_cb_t)(struct rte_eth_dev *dev,
 				  struct rte_flow *flow,
 				  struct rte_flow_error *error);
 
+typedef int (sfc_flow_insert_cb_t)(struct sfc_adapter *sa,
+				   struct rte_flow *flow);
+
+typedef int (sfc_flow_remove_cb_t)(struct sfc_adapter *sa,
+				   struct rte_flow *flow);
+
 #ifdef __cplusplus
 }
 #endif
