@@ -1069,16 +1069,14 @@ eth_dev_close(struct rte_eth_dev *dev)
 
 	eth_dev_stop(dev);
 
-	rte_vhost_driver_unregister(internal->iface_name);
-
 	list = find_internal_resource(internal->iface_name);
-	if (!list)
-		return;
-
-	pthread_mutex_lock(&internal_list_lock);
-	TAILQ_REMOVE(&internal_list, list, next);
-	pthread_mutex_unlock(&internal_list_lock);
-	rte_free(list);
+	if (list) {
+		rte_vhost_driver_unregister(internal->iface_name);
+		pthread_mutex_lock(&internal_list_lock);
+		TAILQ_REMOVE(&internal_list, list, next);
+		pthread_mutex_unlock(&internal_list_lock);
+		rte_free(list);
+	}
 
 	if (dev->data->rx_queues)
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
