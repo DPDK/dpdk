@@ -85,6 +85,12 @@ void sfc_flow_fini(struct sfc_adapter *sa);
 int sfc_flow_start(struct sfc_adapter *sa);
 void sfc_flow_stop(struct sfc_adapter *sa);
 
+typedef int (sfc_flow_parse_cb_t)(struct rte_eth_dev *dev,
+				  const struct rte_flow_item items[],
+				  const struct rte_flow_action actions[],
+				  struct rte_flow *flow,
+				  struct rte_flow_error *error);
+
 #ifdef __cplusplus
 }
 #endif

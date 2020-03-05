@@ -24,6 +24,34 @@
 #include "sfc_log.h"
 #include "sfc_dp_rx.h"
 
+struct sfc_flow_ops_by_spec {
+	sfc_flow_parse_cb_t	*parse;
+};
+
+static sfc_flow_parse_cb_t sfc_flow_parse_rte_to_filter;
+
+static const struct sfc_flow_ops_by_spec sfc_flow_ops_filter = {
+	.parse = sfc_flow_parse_rte_to_filter,
+};
+
+static const struct sfc_flow_ops_by_spec *
+sfc_flow_get_ops_by_spec(struct rte_flow *flow)
+{
+	struct sfc_flow_spec *spec = &flow->spec;
+	const struct sfc_flow_ops_by_spec *ops = NULL;
+
+	switch (spec->type) {
+	case SFC_FLOW_SPEC_FILTER:
+		ops = &sfc_flow_ops_filter;
+		break;
+	default:
+		SFC_ASSERT(false);
+		break;
+	}
+
+	return ops;
+}
+
 /*
  * Currently, filter-based (VNIC) flow API is implemented in such a manner
  * that each flow rule is converted to one or more hardware filters.
@@ -1108,34 +1136,34 @@ sfc_flow_parse_attr(const struct rte_flow_attr *attr,
 				   "Groups are not supported");
 		return -rte_errno;
 	}
-	if (attr->priority != 0) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY, attr,
-				   "Priorities are not supported");
-		return -rte_errno;
-	}
 	if (attr->egress != 0) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, attr,
 				   "Egress is not supported");
 		return -rte_errno;
 	}
-	if (attr->transfer != 0) {
+	if (attr->ingress == 0) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS, attr,
+				   "Ingress is compulsory");
+		return -rte_errno;
+	}
+	if (attr->transfer == 0) {
+		if (attr->priority != 0) {
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					   attr, "Priorities are unsupported");
+			return -rte_errno;
+		}
+		spec->type = SFC_FLOW_SPEC_FILTER;
+		spec_filter->template.efs_flags |= EFX_FILTER_FLAG_RX;
+		spec_filter->template.efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
+	} else {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, attr,
 				   "Transfer is not supported");
 		return -rte_errno;
 	}
-	if (attr->ingress == 0) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS, attr,
-				   "Only ingress is supported");
-		return -rte_errno;
-	}
-
-	spec->type = SFC_FLOW_SPEC_FILTER;
-	spec_filter->template.efs_flags |= EFX_FILTER_FLAG_RX;
-	spec_filter->template.efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 
 	return 0;
 }
@@ -2277,19 +2305,14 @@ sfc_flow_validate_match_flags(struct sfc_adapter *sa,
 }
 
 static int
-sfc_flow_parse(struct rte_eth_dev *dev,
-	       const struct rte_flow_attr *attr,
-	       const struct rte_flow_item pattern[],
-	       const struct rte_flow_action actions[],
-	       struct rte_flow *flow,
-	       struct rte_flow_error *error)
+sfc_flow_parse_rte_to_filter(struct rte_eth_dev *dev,
+			     const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[],
+			     struct rte_flow *flow,
+			     struct rte_flow_error *error)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	int rc;
-
-	rc = sfc_flow_parse_attr(attr, flow, error);
-	if (rc != 0)
-		goto fail_bad_value;
 
 	rc = sfc_flow_parse_pattern(pattern, flow, error);
 	if (rc != 0)
@@ -2307,6 +2330,32 @@ sfc_flow_parse(struct rte_eth_dev *dev,
 
 fail_bad_value:
 	return rc;
+}
+
+static int
+sfc_flow_parse(struct rte_eth_dev *dev,
+	       const struct rte_flow_attr *attr,
+	       const struct rte_flow_item pattern[],
+	       const struct rte_flow_action actions[],
+	       struct rte_flow *flow,
+	       struct rte_flow_error *error)
+{
+	const struct sfc_flow_ops_by_spec *ops;
+	int rc;
+
+	rc = sfc_flow_parse_attr(attr, flow, error);
+	if (rc != 0)
+		return rc;
+
+	ops = sfc_flow_get_ops_by_spec(flow);
+	if (ops == NULL || ops->parse == NULL) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "No backend to handle this flow");
+		return -rte_errno;
+	}
+
+	return ops->parse(dev, pattern, actions, flow, error);
 }
 
 static struct rte_flow *
