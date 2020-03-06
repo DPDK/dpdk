@@ -90,7 +90,7 @@ struct mbox_msghdr {
 #define OTX2_MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __otx2_io sig;
-#define OTX2_MBOX_VERSION (0x0004)
+#define OTX2_MBOX_VERSION (0x0005)
 	/* Version of msg's structure for this ID */
 	uint16_t __otx2_io ver;
 	/* Offset of next msg within mailbox region */
@@ -255,7 +255,7 @@ M(NIX_TXSCH_ALLOC,	0x8004, nix_txsch_alloc, nix_txsch_alloc_req,	\
 M(NIX_TXSCH_FREE,	0x8005, nix_txsch_free,	nix_txsch_free_req,	\
 				msg_rsp)				\
 M(NIX_TXSCHQ_CFG,	0x8006, nix_txschq_cfg, nix_txschq_config,	\
-				msg_rsp)				\
+				nix_txschq_config)			\
 M(NIX_STATS_RST,	0x8007, nix_stats_rst, msg_req, msg_rsp)	\
 M(NIX_VTAG_CFG,		0x8008, nix_vtag_cfg, nix_vtag_config, msg_rsp)	\
 M(NIX_RSS_FLOWKEY_CFG,	0x8009, nix_rss_flowkey_cfg,			\
@@ -693,6 +693,8 @@ enum nix_af_status {
 	NIX_AF_INVAL_NPA_PF_FUNC    = -419,
 	NIX_AF_INVAL_SSO_PF_FUNC    = -420,
 	NIX_AF_ERR_TX_VTAG_NOSPC    = -421,
+	NIX_AF_ERR_RX_VTAG_INUSE    = -422,
+	NIX_AF_ERR_PTP_CONFIG_FAIL  = -423,
 };
 
 /* For NIX LF context alloc and init */
@@ -733,7 +735,8 @@ struct nix_lf_alloc_rsp {
 
 struct nix_lf_free_req {
 	struct mbox_msghdr hdr;
-#define NIX_LF_DISABLE_FLOWS   0x1
+#define NIX_LF_DISABLE_FLOWS		BIT_ULL(0)
+#define NIX_LF_DONT_FREE_TX_VTAG	BIT_ULL(1)
 	uint64_t __otx2_io flags;
 };
 
@@ -822,6 +825,7 @@ struct nix_txsch_free_req {
 struct nix_txschq_config {
 	struct mbox_msghdr hdr;
 	uint8_t __otx2_io lvl; /* SMQ/MDQ/TL4/TL3/TL2/TL1 */
+	uint8_t __otx2_io read;
 #define TXSCHQ_IDX_SHIFT 16
 #define TXSCHQ_IDX_MASK (BIT_ULL(10) - 1)
 #define TXSCHQ_IDX(reg, shift) (((reg) >> (shift)) & TXSCHQ_IDX_MASK)
@@ -829,6 +833,8 @@ struct nix_txschq_config {
 #define MAX_REGS_PER_MBOX_MSG 20
 	uint64_t __otx2_io reg[MAX_REGS_PER_MBOX_MSG];
 	uint64_t __otx2_io regval[MAX_REGS_PER_MBOX_MSG];
+	/* All 0's => overwrite with new value */
+	uint64_t __otx2_io regval_mask[MAX_REGS_PER_MBOX_MSG];
 };
 
 struct nix_vtag_config {
@@ -1229,6 +1235,7 @@ enum npc_af_status {
 	NPC_MCAM_ALLOC_DENIED	= -702,
 	NPC_MCAM_ALLOC_FAILED	= -703,
 	NPC_MCAM_PERM_DENIED	= -704,
+	NPC_AF_ERR_HIGIG_CONFIG_FAIL	= -705,
 };
 
 struct npc_mcam_alloc_entry_req {
