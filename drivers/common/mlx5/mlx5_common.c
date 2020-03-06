@@ -2,10 +2,12 @@
  * Copyright 2019 Mellanox Technologies, Ltd
  */
 
-#include <dlfcn.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#ifdef RTE_IBVERBS_LINK_DLOPEN
+#include <dlfcn.h>
+#endif
 
 #include <rte_errno.h>
 
@@ -209,8 +211,6 @@ error:
  */
 RTE_INIT_PRIO(mlx5_glue_init, CLASS)
 {
-	void *handle = NULL;
-
 	/* Initialize common log type. */
 	mlx5_common_logtype = rte_log_register("pmd.common.mlx5");
 	if (mlx5_common_logtype >= 0)
@@ -233,6 +233,8 @@ RTE_INIT_PRIO(mlx5_glue_init, CLASS)
 	/* The glue initialization was done earlier by mlx5 common library. */
 #ifdef RTE_IBVERBS_LINK_DLOPEN
 	char glue_path[sizeof(RTE_EAL_PMD_PATH) - 1 + sizeof("-glue")];
+	void *handle = NULL;
+
 	const char *path[] = {
 		/*
 		 * A basic security check is necessary before trusting
@@ -320,8 +322,10 @@ RTE_INIT_PRIO(mlx5_glue_init, CLASS)
 	mlx5_glue->fork_init();
 	return;
 glue_error:
+#ifdef RTE_IBVERBS_LINK_DLOPEN
 	if (handle)
 		dlclose(handle);
+#endif
 	DRV_LOG(WARNING, "Cannot initialize MLX5 common due to missing"
 		" run-time dependency on rdma-core libraries (libibverbs,"
 		" libmlx5)");

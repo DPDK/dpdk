@@ -8,7 +8,6 @@
  * mlx4 driver initialization.
  */
 
-#include <dlfcn.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stddef.h>
@@ -18,6 +17,9 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#ifdef RTE_IBVERBS_LINK_DLOPEN
+#include <dlfcn.h>
+#endif
 
 /* Verbs headers do not support -pedantic. */
 #ifdef PEDANTIC
