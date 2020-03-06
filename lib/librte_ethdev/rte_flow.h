@@ -520,6 +520,13 @@ enum rte_flow_item_type {
 	 */
 	RTE_FLOW_ITEM_TYPE_L2TPV3OIP,
 
+	/**
+	 * Matches PFCP Header.
+	 * See struct rte_flow_item_pfcp.
+	 *
+	 */
+	RTE_FLOW_ITEM_TYPE_PFCP,
+
 };
 
 /**
@@ -1505,6 +1512,29 @@ struct rte_flow_item_ah {
 #ifndef __cplusplus
 static const struct rte_flow_item_ah rte_flow_item_ah_mask = {
 	.spi = 0xffffffff,
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ITEM_TYPE_PFCP
+ *
+ * Match PFCP Header
+ */
+struct rte_flow_item_pfcp {
+	uint8_t s_field;
+	uint8_t msg_type;
+	rte_be16_t msg_len;
+	rte_be64_t seid;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_PFCP. */
+#ifndef __cplusplus
+static const struct rte_flow_item_pfcp rte_flow_item_pfcp_mask = {
+	.s_field = 0x01,
+	.seid = RTE_BE64(0xffffffffffffffff),
 };
 #endif
 

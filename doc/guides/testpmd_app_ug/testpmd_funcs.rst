@@ -3991,6 +3991,11 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``spi {unsigned}``: security parameters index.
 
+- ``pfcp``: match PFCP header.
+
+  - ``s_field {unsigned}``: S field.
+  - ``seid {unsigned}``: session endpoint identifier.
+
 Actions list
 ^^^^^^^^^^^^
 
@@ -4839,6 +4844,21 @@ AH rules can be created by the following commands::
         queue index 3 / end
  testpmd> flow create 0 ingress pattern eth / ipv6 / udp / ah spi is 1 / end
         actions queue index 3 / end
+
+Sample PFCP rules
+~~~~~~~~~~~~~~~~~
+
+PFCP rules can be created by the following commands(s_field need to be 1
+if seid is set)::
+
+ testpmd> flow create 0 ingress pattern eth / ipv4 / pfcp s_field is 0 / end
+        actions queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv4 / pfcp s_field is 1
+        seid is 1 / end actions queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv6 / pfcp s_field is 0 / end
+        actions queue index 3 / end
+ testpmd> flow create 0 ingress pattern eth / ipv6 / pfcp s_field is 1
+        seid is 1 / end actions queue index 3 / end
 
 BPF Functions
 --------------

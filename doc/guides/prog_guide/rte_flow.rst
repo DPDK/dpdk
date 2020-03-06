@@ -1344,6 +1344,17 @@ Matches a L2TPv3 over IP header.
 - ``session_id``: L2TPv3 over IP session identifier.
 - Default ``mask`` matches session_id only.
 
+Item: ``PFCP``
+^^^^^^^^^^^^^^
+
+Matches a PFCP Header.
+
+- ``s_field``: S field.
+- ``msg_type``: message type.
+- ``msg_len``: message length.
+- ``seid``: session endpoint identifier.
+- Default ``mask`` matches s_field and seid.
+
 Actions
 ~~~~~~~
 
