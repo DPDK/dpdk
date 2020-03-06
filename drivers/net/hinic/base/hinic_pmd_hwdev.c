@@ -1395,9 +1395,9 @@ static void print_cable_info(struct hinic_link_info *info)
 		 tmp_vendor, info->sfp_type ? "SFP" : "QSFP", port_type,
 		 info->cable_length, info->cable_max_speed);
 	if (info->port_type != LINK_PORT_COPPER)
-		snprintf(tmp_str + strlen(tmp_str), (sizeof(tmp_str) - 1),
-			 "%s, Temperature: %u", tmp_str,
-			 info->cable_temp);
+		snprintf(tmp_str + strlen(tmp_str),
+			 sizeof(tmp_str) - strlen(tmp_str),
+			 ", Temperature: %u", info->cable_temp);
 
 	PMD_DRV_LOG(INFO, "Cable information: %s", tmp_str);
 }
