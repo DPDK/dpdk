@@ -898,7 +898,6 @@ static struct rte_cryptodev_ops cptvf_ops = {
 	.stats_reset = otx_cpt_stats_reset,
 	.queue_pair_setup = otx_cpt_que_pair_setup,
 	.queue_pair_release = otx_cpt_que_pair_release,
-	.queue_pair_count = NULL,
 
 	/* Crypto related operations */
 	.sym_session_get_size = otx_cpt_get_session_size,

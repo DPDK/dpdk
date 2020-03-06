@@ -247,13 +247,6 @@ qp_setup_cleanup:
 	return -1;
 }
 
-/** Return the number of allocated queue pairs */
-static uint32_t
-null_crypto_pmd_qp_count(struct rte_cryptodev *dev)
-{
-	return dev->data->nb_queue_pairs;
-}
-
 /** Returns the size of the NULL crypto session structure */
 static unsigned
 null_crypto_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
@@ -327,7 +320,6 @@ static struct rte_cryptodev_ops pmd_ops = {
 
 		.queue_pair_setup	= null_crypto_pmd_qp_setup,
 		.queue_pair_release	= null_crypto_pmd_qp_release,
-		.queue_pair_count	= null_crypto_pmd_qp_count,
 
 		.sym_session_get_size	= null_crypto_pmd_sym_session_get_size,
 		.sym_session_configure	= null_crypto_pmd_sym_session_configure,

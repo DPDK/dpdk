@@ -754,13 +754,6 @@ qp_setup_cleanup:
 	return -1;
 }
 
-/** Return the number of allocated queue pairs */
-static uint32_t
-openssl_pmd_qp_count(struct rte_cryptodev *dev)
-{
-	return dev->data->nb_queue_pairs;
-}
-
 /** Returns the size of the symmetric session structure */
 static unsigned
 openssl_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
@@ -1242,7 +1235,6 @@ struct rte_cryptodev_ops openssl_pmd_ops = {
 
 		.queue_pair_setup	= openssl_pmd_qp_setup,
 		.queue_pair_release	= openssl_pmd_qp_release,
-		.queue_pair_count	= openssl_pmd_qp_count,
 
 		.sym_session_get_size	= openssl_pmd_sym_session_get_size,
 		.asym_session_get_size	= openssl_pmd_asym_session_get_size,

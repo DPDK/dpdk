@@ -454,13 +454,6 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return 0;
 }
 
-/** Return the number of allocated queue pairs */
-static uint32_t
-scheduler_pmd_qp_count(struct rte_cryptodev *dev)
-{
-	return dev->data->nb_queue_pairs;
-}
-
 static uint32_t
 scheduler_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
@@ -534,7 +527,6 @@ static struct rte_cryptodev_ops scheduler_pmd_ops = {
 
 		.queue_pair_setup	= scheduler_pmd_qp_setup,
 		.queue_pair_release	= scheduler_pmd_qp_release,
-		.queue_pair_count	= scheduler_pmd_qp_count,
 
 		.sym_session_get_size	= scheduler_pmd_sym_session_get_size,
 		.sym_session_configure	= scheduler_pmd_sym_session_configure,

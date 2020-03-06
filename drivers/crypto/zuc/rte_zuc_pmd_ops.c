@@ -239,13 +239,6 @@ qp_setup_cleanup:
 	return -1;
 }
 
-/** Return the number of allocated queue pairs */
-static uint32_t
-zuc_pmd_qp_count(struct rte_cryptodev *dev)
-{
-	return dev->data->nb_queue_pairs;
-}
-
 /** Returns the size of the ZUC session structure */
 static unsigned
 zuc_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
@@ -320,7 +313,6 @@ struct rte_cryptodev_ops zuc_pmd_ops = {
 
 		.queue_pair_setup   = zuc_pmd_qp_setup,
 		.queue_pair_release = zuc_pmd_qp_release,
-		.queue_pair_count   = zuc_pmd_qp_count,
 
 		.sym_session_get_size   = zuc_pmd_sym_session_get_size,
 		.sym_session_configure  = zuc_pmd_sym_session_configure,

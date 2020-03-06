@@ -1204,7 +1204,6 @@ struct rte_cryptodev_ops otx2_cpt_ops = {
 	.stats_reset = NULL,
 	.queue_pair_setup = otx2_cpt_queue_pair_setup,
 	.queue_pair_release = otx2_cpt_queue_pair_release,
-	.queue_pair_count = NULL,
 
 	/* Symmetric crypto ops */
 	.sym_session_get_size = otx2_cpt_sym_session_get_size,

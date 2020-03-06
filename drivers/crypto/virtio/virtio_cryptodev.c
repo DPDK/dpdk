@@ -514,7 +514,6 @@ static struct rte_cryptodev_ops virtio_crypto_dev_ops = {
 
 	.queue_pair_setup                = virtio_crypto_qp_setup,
 	.queue_pair_release              = virtio_crypto_qp_release,
-	.queue_pair_count                = NULL,
 
 	/* Crypto related operations */
 	.sym_session_get_size		= virtio_crypto_sym_get_session_private_size,

@@ -1538,15 +1538,6 @@ caam_jr_queue_pair_setup(
 	return 0;
 }
 
-/* Return the number of allocated queue pairs */
-static uint32_t
-caam_jr_queue_pair_count(struct rte_cryptodev *dev)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	return dev->data->nb_queue_pairs;
-}
-
 /* Returns the size of the aesni gcm session structure */
 static unsigned int
 caam_jr_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
@@ -2062,7 +2053,6 @@ static struct rte_cryptodev_ops caam_jr_ops = {
 	.stats_reset	      = caam_jr_stats_reset,
 	.queue_pair_setup     = caam_jr_queue_pair_setup,
 	.queue_pair_release   = caam_jr_queue_pair_release,
-	.queue_pair_count     = caam_jr_queue_pair_count,
 	.sym_session_get_size = caam_jr_sym_session_get_size,
 	.sym_session_configure = caam_jr_sym_session_configure,
 	.sym_session_clear    = caam_jr_sym_session_clear

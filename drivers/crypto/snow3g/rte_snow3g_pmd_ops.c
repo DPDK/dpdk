@@ -239,13 +239,6 @@ qp_setup_cleanup:
 	return -1;
 }
 
-/** Return the number of allocated queue pairs */
-static uint32_t
-snow3g_pmd_qp_count(struct rte_cryptodev *dev)
-{
-	return dev->data->nb_queue_pairs;
-}
-
 /** Returns the size of the SNOW 3G session structure */
 static unsigned
 snow3g_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
@@ -321,7 +314,6 @@ struct rte_cryptodev_ops snow3g_pmd_ops = {
 
 		.queue_pair_setup   = snow3g_pmd_qp_setup,
 		.queue_pair_release = snow3g_pmd_qp_release,
-		.queue_pair_count   = snow3g_pmd_qp_count,
 
 		.sym_session_get_size   = snow3g_pmd_sym_session_get_size,
 		.sym_session_configure  = snow3g_pmd_sym_session_configure,

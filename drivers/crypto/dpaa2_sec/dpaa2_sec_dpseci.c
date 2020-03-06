@@ -1798,15 +1798,6 @@ dpaa2_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return retcode;
 }
 
-/** Return the number of allocated queue pairs */
-static uint32_t
-dpaa2_sec_queue_pair_count(struct rte_cryptodev *dev)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	return dev->data->nb_queue_pairs;
-}
-
 /** Returns the size of the aesni gcm session structure */
 static unsigned int
 dpaa2_sec_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
@@ -3674,7 +3665,6 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.stats_reset	      = dpaa2_sec_stats_reset,
 	.queue_pair_setup     = dpaa2_sec_queue_pair_setup,
 	.queue_pair_release   = dpaa2_sec_queue_pair_release,
-	.queue_pair_count     = dpaa2_sec_queue_pair_count,
 	.sym_session_get_size     = dpaa2_sec_sym_session_get_size,
 	.sym_session_configure    = dpaa2_sec_sym_session_configure,
 	.sym_session_clear        = dpaa2_sec_sym_session_clear,

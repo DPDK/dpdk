@@ -203,7 +203,6 @@ struct rte_cryptodev_ops crypto_qat_ops = {
 	.stats_reset		= qat_asym_stats_reset,
 	.queue_pair_setup	= qat_asym_qp_setup,
 	.queue_pair_release	= qat_asym_qp_release,
-	.queue_pair_count	= NULL,
 
 	/* Crypto related operations */
 	.asym_session_get_size	= qat_asym_session_get_private_size,

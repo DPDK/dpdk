@@ -749,12 +749,6 @@ qp_setup_cleanup:
 	return -1;
 }
 
-static uint32_t
-ccp_pmd_qp_count(struct rte_cryptodev *dev)
-{
-	return dev->data->nb_queue_pairs;
-}
-
 static unsigned
 ccp_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
@@ -824,7 +818,6 @@ struct rte_cryptodev_ops ccp_ops = {
 
 		.queue_pair_setup	= ccp_pmd_qp_setup,
 		.queue_pair_release	= ccp_pmd_qp_release,
-		.queue_pair_count	= ccp_pmd_qp_count,
 
 		.sym_session_get_size	= ccp_pmd_sym_session_get_size,
 		.sym_session_configure	= ccp_pmd_sym_session_configure,

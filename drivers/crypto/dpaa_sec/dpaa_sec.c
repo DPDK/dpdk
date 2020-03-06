@@ -1990,15 +1990,6 @@ dpaa_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return 0;
 }
 
-/** Return the number of allocated queue pairs */
-static uint32_t
-dpaa_sec_queue_pair_count(struct rte_cryptodev *dev)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	return dev->data->nb_queue_pairs;
-}
-
 /** Returns the size of session structure */
 static unsigned int
 dpaa_sec_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
@@ -3296,7 +3287,6 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.dev_infos_get        = dpaa_sec_dev_infos_get,
 	.queue_pair_setup     = dpaa_sec_queue_pair_setup,
 	.queue_pair_release   = dpaa_sec_queue_pair_release,
-	.queue_pair_count     = dpaa_sec_queue_pair_count,
 	.sym_session_get_size     = dpaa_sec_sym_session_get_size,
 	.sym_session_configure    = dpaa_sec_sym_session_configure,
 	.sym_session_clear        = dpaa_sec_sym_session_clear
