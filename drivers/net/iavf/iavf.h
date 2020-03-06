@@ -119,7 +119,7 @@ struct iavf_info {
 	uint16_t rxq_map[IAVF_MAX_MSIX_VECTORS];
 };
 
-#define IAVF_MAX_PKT_TYPE 256
+#define IAVF_MAX_PKT_TYPE 1024
 
 /* Structure to store private data for each VF instance. */
 struct iavf_adapter {
@@ -131,6 +131,7 @@ struct iavf_adapter {
 	/* For vector PMD */
 	bool rx_vec_allowed;
 	bool tx_vec_allowed;
+	const uint32_t *ptype_tbl;
 	bool stopped;
 };
 

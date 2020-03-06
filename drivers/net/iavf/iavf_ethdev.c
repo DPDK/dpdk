@@ -1334,6 +1334,9 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
+	/* set default ptype table */
+	adapter->ptype_tbl = iavf_get_default_ptype_table();
+
 	/* copy mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc(
 		"iavf_mac", RTE_ETHER_ADDR_LEN * IAVF_NUM_MACADDR_MAX, 0);

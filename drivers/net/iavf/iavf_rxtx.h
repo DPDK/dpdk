@@ -105,6 +105,7 @@ struct iavf_rx_queue {
 	uint16_t rx_buf_len;    /* The packet buffer size */
 	uint16_t rx_hdr_len;    /* The header buffer size */
 	uint16_t max_pkt_len;   /* Maximum packet length */
+	struct iavf_vsi *vsi; /**< the VSI this queue belongs to */
 
 	bool q_set;             /* if rx queue has been configured */
 	bool rx_deferred_start; /* don't start this queue in dev start */
@@ -215,6 +216,8 @@ int iavf_rx_vec_dev_check(struct rte_eth_dev *dev);
 int iavf_tx_vec_dev_check(struct rte_eth_dev *dev);
 int iavf_rxq_vec_setup(struct iavf_rx_queue *rxq);
 int iavf_txq_vec_setup(struct iavf_tx_queue *txq);
+
+const uint32_t *iavf_get_default_ptype_table(void);
 
 static inline
 void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,

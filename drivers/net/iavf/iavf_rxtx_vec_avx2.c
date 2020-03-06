@@ -142,25 +142,8 @@ _iavf_recv_raw_pkts_vec_avx2(struct iavf_rx_queue *rxq,
 #define IAVF_DESCS_PER_LOOP_AVX 8
 
 	/* const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl; */
-	static const uint32_t type_table[UINT8_MAX + 1] __rte_cache_aligned = {
-		/* [0] reserved */
-		[1] = RTE_PTYPE_L2_ETHER,
-		/* [2] - [21] reserved */
-		[22] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
-			RTE_PTYPE_L4_FRAG,
-		[23] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
-			RTE_PTYPE_L4_NONFRAG,
-		[24] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
-			RTE_PTYPE_L4_UDP,
-		/* [25] reserved */
-		[26] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
-			RTE_PTYPE_L4_TCP,
-		[27] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
-			RTE_PTYPE_L4_SCTP,
-		[28] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
-			RTE_PTYPE_L4_ICMP,
-		/* All others reserved */
-	};
+	const uint32_t *type_table = rxq->vsi->adapter->ptype_tbl;
+
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0,
 			0, rxq->mbuf_initializer);
 	/* struct iavf_rx_entry *sw_ring = &rxq->sw_ring[rxq->rx_tail]; */
