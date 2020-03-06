@@ -174,16 +174,6 @@ typedef int (*compressdev_queue_pair_release_t)(struct rte_compressdev *dev,
 		uint16_t qp_id);
 
 /**
- * Get number of available queue pairs of a device.
- *
- * @param dev
- *   Compress device
- * @return
- *   Returns number of queue pairs on success.
- */
-typedef uint32_t (*compressdev_queue_pair_count_t)(struct rte_compressdev *dev);
-
-/**
  * Create driver private stream data.
  *
  * @param dev
