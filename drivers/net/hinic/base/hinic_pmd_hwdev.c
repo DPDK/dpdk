@@ -1390,7 +1390,7 @@ static void print_cable_info(struct hinic_link_info *info)
 	}
 
 	memcpy(tmp_vendor, info->vendor_name, sizeof(info->vendor_name));
-	snprintf(tmp_str, (sizeof(tmp_str) - 1),
+	snprintf(tmp_str, sizeof(tmp_str),
 		 "Vendor: %s, %s, %s, length: %um, max_speed: %uGbps",
 		 tmp_vendor, info->sfp_type ? "SFP" : "QSFP", port_type,
 		 info->cable_length, info->cable_max_speed);
