@@ -270,7 +270,9 @@ nix_create_rx_ol_flags_array(void *mem)
 
 		switch (errlev) {
 		case NPC_ERRLEV_RE:
-			/* Mark all errors as BAD checksum errors */
+			/* Mark all errors as BAD checksum errors
+			 * including Outer L2 length mismatch error
+			 */
 			if (errcode) {
 				val |= PKT_RX_IP_CKSUM_BAD;
 				val |= PKT_RX_L4_CKSUM_BAD;
@@ -295,18 +297,25 @@ nix_create_rx_ol_flags_array(void *mem)
 				val |= PKT_RX_IP_CKSUM_GOOD;
 			break;
 		case NPC_ERRLEV_NIX:
-			val |= PKT_RX_IP_CKSUM_GOOD;
-			if (errcode == NIX_RX_PERRCODE_OL4_CHK) {
+			if (errcode == NIX_RX_PERRCODE_OL4_CHK ||
+			    errcode == NIX_RX_PERRCODE_OL4_LEN ||
+			    errcode == NIX_RX_PERRCODE_OL4_PORT) {
+				val |= PKT_RX_IP_CKSUM_GOOD;
 				val |= PKT_RX_OUTER_L4_CKSUM_BAD;
+			} else if (errcode == NIX_RX_PERRCODE_IL4_CHK ||
+				   errcode == NIX_RX_PERRCODE_IL4_LEN ||
+				   errcode == NIX_RX_PERRCODE_IL4_PORT) {
+				val |= PKT_RX_IP_CKSUM_GOOD;
 				val |= PKT_RX_L4_CKSUM_BAD;
-			} else if (errcode == NIX_RX_PERRCODE_IL4_CHK) {
-				val |= PKT_RX_L4_CKSUM_BAD;
+			} else if (errcode == NIX_RX_PERRCODE_IL3_LEN ||
+				   errcode == NIX_RX_PERRCODE_OL3_LEN) {
+				val |= PKT_RX_IP_CKSUM_BAD;
 			} else {
+				val |= PKT_RX_IP_CKSUM_GOOD;
 				val |= PKT_RX_L4_CKSUM_GOOD;
 			}
 			break;
 		}
-
 		ol_flags[idx] = val;
 	}
 }

@@ -70,7 +70,13 @@ nix_lf_alloc(struct otx2_eth_dev *dev, uint32_t nb_rxq, uint32_t nb_txq)
 		req->rx_cfg |= BIT_ULL(37 /* CSUM_OL4 */);
 		req->rx_cfg |= BIT_ULL(36 /* CSUM_IL4 */);
 	}
-	req->rx_cfg |= BIT_ULL(32 /* DROP_RE */);
+	req->rx_cfg |= (BIT_ULL(32 /* DROP_RE */)             |
+			BIT_ULL(33 /* Outer L2 Length */)     |
+			BIT_ULL(38 /* Inner L4 UDP Length */) |
+			BIT_ULL(39 /* Inner L3 Length */)     |
+			BIT_ULL(40 /* Outer L4 UDP Length */) |
+			BIT_ULL(41 /* Outer L3 Length */));
+
 	if (dev->rss_tag_as_xor == 0)
 		req->flags = NIX_LF_RSS_TAG_LSB_AS_ADDER;
 
