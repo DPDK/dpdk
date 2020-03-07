@@ -543,7 +543,6 @@ extern int vhost_data_log_level;
 #define PRINT_PACKET(device, addr, size, header) do {} while (0)
 #endif
 
-extern uint64_t VHOST_FEATURES;
 #define MAX_VHOST_DEVICE	1024
 extern struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 
