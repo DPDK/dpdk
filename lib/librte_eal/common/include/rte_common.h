@@ -344,7 +344,7 @@ __extension__ typedef uint8_t  RTE_MARKER8[0];
 /** Marker for 2B alignment in a structure. */
 __extension__ typedef uint16_t RTE_MARKER16[0];
 /** Marker for 4B alignment in a structure. */
-__extension__ typedef uint16_t RTE_MARKER32[0];
+__extension__ typedef uint32_t RTE_MARKER32[0];
 /** Marker for 8B alignment in a structure. */
 __extension__ typedef uint64_t RTE_MARKER64[0];
 
