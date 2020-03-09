@@ -93,11 +93,14 @@
 #define DSW_MIGRATION_INTERVAL (1000)
 #define DSW_MIN_SOURCE_LOAD_FOR_MIGRATION (DSW_LOAD_FROM_PERCENT(70))
 #define DSW_MAX_TARGET_LOAD_FOR_MIGRATION (DSW_LOAD_FROM_PERCENT(95))
+#define DSW_REBALANCE_THRESHOLD (DSW_LOAD_FROM_PERCENT(3))
 
 #define DSW_MAX_EVENTS_RECORDED (128)
 
+#define DSW_MAX_FLOWS_PER_MIGRATION (8)
+
 /* Only one outstanding migration per port is allowed */
-#define DSW_MAX_PAUSED_FLOWS (DSW_MAX_PORTS)
+#define DSW_MAX_PAUSED_FLOWS (DSW_MAX_PORTS*DSW_MAX_FLOWS_PER_MIGRATION)
 
 /* Enough room for paus request/confirm and unpaus request/confirm for
  * all possible senders.
@@ -170,8 +173,10 @@ struct dsw_port {
 	uint64_t emigrations;
 	uint64_t emigration_latency;
 
-	uint8_t emigration_target_port_id;
-	struct dsw_queue_flow emigration_target_qf;
+	uint8_t emigration_target_port_ids[DSW_MAX_FLOWS_PER_MIGRATION];
+	struct dsw_queue_flow
+		emigration_target_qfs[DSW_MAX_FLOWS_PER_MIGRATION];
+	uint8_t emigration_targets_len;
 	uint8_t cfm_cnt;
 
 	uint64_t immigrations;
@@ -244,8 +249,8 @@ struct dsw_evdev {
 struct dsw_ctl_msg {
 	uint8_t type;
 	uint8_t originating_port_id;
-	uint8_t queue_id;
-	uint16_t flow_hash;
+	uint8_t qfs_len;
+	struct dsw_queue_flow qfs[DSW_MAX_FLOWS_PER_MIGRATION];
 } __rte_aligned(4);
 
 uint16_t dsw_event_enqueue(void *port, const struct rte_event *event);
