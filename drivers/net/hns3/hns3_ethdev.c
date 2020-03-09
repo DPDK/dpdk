@@ -3649,7 +3649,7 @@ hns3_cmd_set_promisc_mode(struct hns3_hw *hw, struct hns3_promisc_param *param)
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
-		PMD_INIT_LOG(ERR, "Set promisc mode fail, status is %d", ret);
+		PMD_INIT_LOG(ERR, "Set promisc mode fail, ret = %d", ret);
 
 	return ret;
 }
@@ -3702,14 +3702,14 @@ hns3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	bool en_mc_pmc = (dev->data->all_multicast == 1) ? true : false;
 	int ret;
 
 	rte_spinlock_lock(&hw->lock);
-	ret = hns3_set_promisc_mode(hw, true, en_mc_pmc);
+	ret = hns3_set_promisc_mode(hw, true, true);
 	rte_spinlock_unlock(&hw->lock);
 	if (ret)
-		hns3_err(hw, "Failed to enable promiscuous mode: %d", ret);
+		hns3_err(hw, "Failed to enable promiscuous mode, ret = %d",
+			 ret);
 
 	return ret;
 }
@@ -3717,17 +3717,18 @@ hns3_dev_promiscuous_enable(struct rte_eth_dev *dev)
 static int
 hns3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 {
+	bool allmulti = dev->data->all_multicast ? true : false;
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	bool en_mc_pmc = (dev->data->all_multicast == 1) ? true : false;
 	int ret;
 
 	/* If now in all_multicast mode, must remain in all_multicast mode. */
 	rte_spinlock_lock(&hw->lock);
-	ret = hns3_set_promisc_mode(hw, false, en_mc_pmc);
+	ret = hns3_set_promisc_mode(hw, false, allmulti);
 	rte_spinlock_unlock(&hw->lock);
 	if (ret)
-		hns3_err(hw, "Failed to disable promiscuous mode: %d", ret);
+		hns3_err(hw, "Failed to disable promiscuous mode, ret = %d",
+			 ret);
 
 	return ret;
 }
@@ -3737,14 +3738,17 @@ hns3_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	bool en_uc_pmc = (dev->data->promiscuous == 1) ? true : false;
 	int ret;
 
+	if (dev->data->promiscuous)
+		return 0;
+
 	rte_spinlock_lock(&hw->lock);
-	ret = hns3_set_promisc_mode(hw, en_uc_pmc, true);
+	ret = hns3_set_promisc_mode(hw, false, true);
 	rte_spinlock_unlock(&hw->lock);
 	if (ret)
-		hns3_err(hw, "Failed to enable allmulticast mode: %d", ret);
+		hns3_err(hw, "Failed to enable allmulticast mode, ret = %d",
+			 ret);
 
 	return ret;
 }
@@ -3754,18 +3758,18 @@ hns3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	bool en_uc_pmc = (dev->data->promiscuous == 1) ? true : false;
 	int ret;
 
 	/* If now in promiscuous mode, must remain in all_multicast mode. */
-	if (dev->data->promiscuous == 1)
+	if (dev->data->promiscuous)
 		return 0;
 
 	rte_spinlock_lock(&hw->lock);
-	ret = hns3_set_promisc_mode(hw, en_uc_pmc, false);
+	ret = hns3_set_promisc_mode(hw, false, false);
 	rte_spinlock_unlock(&hw->lock);
 	if (ret)
-		hns3_err(hw, "Failed to disable allmulticast mode: %d", ret);
+		hns3_err(hw, "Failed to disable allmulticast mode, ret =  %d",
+			 ret);
 
 	return ret;
 }
@@ -3774,13 +3778,12 @@ static int
 hns3_dev_promisc_restore(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
-	bool en_mc_pmc;
-	bool en_uc_pmc;
+	bool allmulti = hw->data->all_multicast ? true : false;
 
-	en_uc_pmc = (hw->data->promiscuous == 1) ? true : false;
-	en_mc_pmc = (hw->data->all_multicast == 1) ? true : false;
+	if (hw->data->promiscuous)
+		return hns3_set_promisc_mode(hw, true, true);
 
-	return hns3_set_promisc_mode(hw, en_uc_pmc, en_mc_pmc);
+	return hns3_set_promisc_mode(hw, false, allmulti);
 }
 
 static int
