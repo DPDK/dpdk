@@ -1491,6 +1491,7 @@ memif_create(struct rte_vdev_device *vdev, enum memif_role_t role,
 	pmd->cfg.num_m2s_rings = 0;
 
 	pmd->cfg.pkt_buffer_size = pkt_buffer_size;
+	rte_spinlock_init(&pmd->cc_lock);
 
 	data = eth_dev->data;
 	data->dev_private = pmd;

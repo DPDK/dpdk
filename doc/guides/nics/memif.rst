@@ -272,3 +272,21 @@ Send ping from VPP::
     64 bytes from 192.168.1.2: icmp_seq=3 ttl=254 time=23.3927 ms
     64 bytes from 192.168.1.2: icmp_seq=4 ttl=254 time=24.2975 ms
     64 bytes from 192.168.1.2: icmp_seq=5 ttl=254 time=17.7049 ms
+
+Example: testpmd memif loopback
+-------------------------------
+In this example we will create 2 memif ports connected into loopback.
+The situation is analogous to cross connecting 2 ports of the NIC by cable.
+
+To set the loopback, just use the same socket and id with different roles::
+
+    #./testpmd --vdev=net_memif0,role=master,id=0 --vdev=net_memif1,role=slave,id=0 -- -i
+
+Then start the communication::
+
+    testpmd> start tx_first
+
+Finally we can check port stats to see the traffic::
+
+    testpmd> show port stats all
+    testpmd> show port stats all

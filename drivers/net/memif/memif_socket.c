@@ -203,7 +203,7 @@ memif_msg_receive_init(struct memif_control_channel *cc, memif_msg_t *msg)
 		dev = elt->dev;
 		pmd = dev->data->dev_private;
 		if (((pmd->flags & ETH_MEMIF_FLAG_DISABLED) == 0) &&
-		    pmd->id == i->id) {
+		    (pmd->id == i->id) && (pmd->role == MEMIF_ROLE_MASTER)) {
 			/* assign control channel to device */
 			cc->dev = dev;
 			pmd->cc = cc;
@@ -528,6 +528,7 @@ memif_disconnect(struct rte_eth_dev *dev)
 	pmd->flags &= ~ETH_MEMIF_FLAG_CONNECTING;
 	pmd->flags &= ~ETH_MEMIF_FLAG_CONNECTED;
 
+	rte_spinlock_lock(&pmd->cc_lock);
 	if (pmd->cc != NULL) {
 		/* Clear control message queue (except disconnect message if any). */
 		for (elt = TAILQ_FIRST(&pmd->cc->msg_queue); elt != NULL; elt = next) {
@@ -570,6 +571,7 @@ memif_disconnect(struct rte_eth_dev *dev)
 					"Failed to unregister control channel callback.");
 		}
 	}
+	rte_spinlock_unlock(&pmd->cc_lock);
 
 	/* unconfig interrupts */
 	for (i = 0; i < pmd->cfg.num_s2m_rings; i++) {
@@ -612,7 +614,8 @@ memif_disconnect(struct rte_eth_dev *dev)
 	/* reset connection configuration */
 	memset(&pmd->run, 0, sizeof(pmd->run));
 
-	MIF_LOG(DEBUG, "Disconnected.");
+	MIF_LOG(DEBUG, "Disconnected, id: %d, role: %s.", pmd->id,
+		(pmd->role == MEMIF_ROLE_MASTER) ? "master" : "slave");
 }
 
 static int
@@ -642,8 +645,12 @@ memif_msg_receive(struct memif_control_channel *cc)
 
 	size = recvmsg(cc->intr_handle.fd, &mh, 0);
 	if (size != sizeof(memif_msg_t)) {
-		MIF_LOG(DEBUG, "Invalid message size.");
-		memif_msg_enq_disconnect(cc, "Invalid message size", 0);
+		MIF_LOG(DEBUG, "Invalid message size = %zd", size);
+		if (size > 0)
+			/* 0 means end-of-file, negative size means error,
+			 * don't send further disconnect message in such cases.
+			 */
+			memif_msg_enq_disconnect(cc, "Invalid message size", 0);
 		return -1;
 	}
 	MIF_LOG(DEBUG, "Received msg type: %u.", msg.type);
@@ -965,20 +972,11 @@ memif_socket_init(struct rte_eth_dev *dev, const char *socket_filename)
 	}
 	pmd->socket_filename = socket->filename;
 
-	if (socket->listener != 0 && pmd->role == MEMIF_ROLE_SLAVE) {
-		MIF_LOG(ERR, "Socket is a listener.");
-		return -1;
-	} else if ((socket->listener == 0) && (pmd->role == MEMIF_ROLE_MASTER)) {
-		MIF_LOG(ERR, "Socket is not a listener.");
-		return -1;
-	}
-
 	TAILQ_FOREACH(elt, &socket->dev_queue, next) {
 		tmp_pmd = elt->dev->data->dev_private;
-		if (tmp_pmd->id == pmd->id) {
-			MIF_LOG(ERR, "Memif device with id %d already "
-				"exists on socket %s",
-				pmd->id, socket->filename);
+		if (tmp_pmd->id == pmd->id && tmp_pmd->role == pmd->role) {
+			MIF_LOG(ERR, "Two interfaces with the same id (%d) can "
+				"not have the same role.", pmd->id);
 			return -1;
 		}
 	}
