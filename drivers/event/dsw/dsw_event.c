@@ -1242,11 +1242,11 @@ dsw_event_dequeue_burst(void *port, struct rte_event *events, uint16_t num,
 		 * seem to improve performance.
 		 */
 		dsw_port_record_seen_events(port, events, dequeued);
-	}
-	/* XXX: Assuming the port can't produce any more work,
-	 *	consider flushing the output buffer, on dequeued ==
-	 *	0.
-	 */
+	} else /* Zero-size dequeue means a likely idle port, and thus
+		* we can afford trading some efficiency for a slightly
+		* reduced event wall-time latency.
+		*/
+		dsw_port_flush_out_buffers(dsw, port);
 
 #ifdef DSW_SORT_DEQUEUED
 	dsw_stable_sort(events, dequeued, sizeof(events[0]), dsw_cmp_event);
