@@ -1046,7 +1046,7 @@ eal_parse_log_level(const char *arg)
 	if (regex) {
 		if (rte_log_set_level_regexp(regex, priority) < 0) {
 			fprintf(stderr, "cannot set log level %s,%d\n",
-				pattern, priority);
+				regex, priority);
 			goto fail;
 		}
 		if (rte_log_save_regexp(regex, priority) < 0)
