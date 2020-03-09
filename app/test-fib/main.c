@@ -2,14 +2,10 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
-#include <rte_string_fns.h>
 #include <getopt.h>
 #include <string.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 #include <rte_cycles.h>
 #include <rte_errno.h>
@@ -444,6 +440,32 @@ gen_rnd_lookup_tbl(int af)
 }
 
 static int
+_inet_net_pton(int af, char *prefix, void *addr)
+{
+	const char *dlm = "/";
+	char *s, *sp;
+	int ret, depth;
+	unsigned int max_depth;
+
+	if ((prefix == NULL) || (addr == NULL))
+		return -EINVAL;
+
+	s = strtok_r(prefix, dlm, &sp);
+	if (s == NULL)
+		return -EINVAL;
+
+	ret = inet_pton(af, s, addr);
+	if (ret != 1)
+		return -errno;
+
+	s = strtok_r(NULL, dlm, &sp);
+	max_depth = (af == AF_INET) ? 32 : 128;
+	GET_CB_FIELD(s, depth, 0, max_depth, 0);
+
+	return depth;
+}
+
+static int
 parse_rt_4(FILE *f)
 {
 	int ret, i, j = 0;
@@ -463,8 +485,7 @@ parse_rt_4(FILE *f)
 			s = NULL;
 		}
 
-		ret = inet_net_pton(AF_INET, in[RT_PREFIX], &rt[j].addr,
-			sizeof(rt[j].addr));
+		ret = _inet_net_pton(AF_INET, in[RT_PREFIX], &rt[j].addr);
 		if (ret == -1)
 			return -errno;
 
@@ -476,30 +497,6 @@ parse_rt_4(FILE *f)
 		j++;
 	}
 	return 0;
-}
-
-static int
-__inet_net_pton6(char *prefix, uint8_t *addr)
-{
-	const char *dlm = "/";
-	char *s, *sp;
-	int ret, depth;
-
-	if ((prefix == NULL) || (addr == NULL))
-		return -EINVAL;
-
-	s = strtok_r(prefix, dlm, &sp);
-	if (s == NULL)
-		return -EINVAL;
-
-	ret = inet_pton(AF_INET6, s, addr);
-	if (ret != 1)
-		return -errno;
-
-	s = strtok_r(NULL, dlm, &sp);
-	GET_CB_FIELD(s, depth, 0, 128, 0);
-
-	return depth;
 }
 
 static int
@@ -522,7 +519,7 @@ parse_rt_6(FILE *f)
 			s = NULL;
 		}
 
-		ret = __inet_net_pton6(in[RT_PREFIX], rt[j].addr);
+		ret = _inet_net_pton(AF_INET6, in[RT_PREFIX], rt[j].addr);
 		if (ret < 0)
 			return ret;
 
