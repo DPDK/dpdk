@@ -165,9 +165,11 @@ contigmem_load()
 
 error:
 	for (i = 0; i < contigmem_num_buffers; i++) {
-		if (contigmem_buffers[i].addr != NULL)
+		if (contigmem_buffers[i].addr != NULL) {
 			contigfree(contigmem_buffers[i].addr,
 				contigmem_buffer_size, M_CONTIGMEM);
+			contigmem_buffers[i].addr = NULL;
+		}
 		if (mtx_initialized(&contigmem_buffers[i].mtx))
 			mtx_destroy(&contigmem_buffers[i].mtx);
 	}
