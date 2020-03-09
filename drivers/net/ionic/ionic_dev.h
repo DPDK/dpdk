@@ -5,6 +5,8 @@
 #ifndef _IONIC_DEV_H_
 #define _IONIC_DEV_H_
 
+#include <stdbool.h>
+
 #include "ionic_osdep.h"
 #include "ionic_if.h"
 #include "ionic_regs.h"

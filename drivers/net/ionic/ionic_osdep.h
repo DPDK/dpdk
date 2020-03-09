@@ -44,12 +44,6 @@ typedef uint16_t __le16;
 typedef uint32_t __le32;
 typedef uint64_t __le64;
 
-#ifndef __cplusplus
-typedef uint8_t bool;
-#define false   0
-#define true    1
-#endif
-
 static inline uint32_t div_round_up(uint32_t n, uint32_t d)
 {
 	return (n + d - 1) / d;

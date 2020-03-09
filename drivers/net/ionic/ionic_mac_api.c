@@ -2,6 +2,8 @@
  * Copyright(c) 2018-2019 Pensando Systems, Inc. All rights reserved.
  */
 
+#include <stdbool.h>
+
 #include "ionic_mac_api.h"
 
 int32_t

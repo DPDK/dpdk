@@ -3,6 +3,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 
 #include <rte_malloc.h>
 
