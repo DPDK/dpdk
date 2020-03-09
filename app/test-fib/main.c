@@ -362,7 +362,7 @@ complete_v6_addr(uint32_t *addr, uint32_t rnd, int n)
 static void
 gen_random_rt_6(struct rt_rule_6 *rt, int nh_sz)
 {
-	uint32_t i, j, k = 0;
+	uint32_t a, i, j, k = 0;
 
 	if (config.nb_routes_per_depth[0] != 0) {
 		memset(rt[k].addr, 0, 16);
@@ -370,7 +370,7 @@ gen_random_rt_6(struct rt_rule_6 *rt, int nh_sz)
 		rt[k++].nh = rte_rand() & get_max_nh(nh_sz);
 	}
 
-	for (int a = 0; a < 4; a++) {
+	for (a = 0; a < 4; a++) {
 		for (i = 1; i <= 32; i++) {
 			uint32_t rnd;
 			double edge = 0;
@@ -1145,7 +1145,8 @@ int
 main(int argc, char **argv)
 {
 	int ret, af, rt_ent_sz, lookup_ent_sz;
-	FILE	*fr, *fl;
+	FILE *fr = NULL;
+	FILE *fl = NULL;
 	uint8_t depth_lim;
 
 	ret = rte_eal_init(argc, argv);
@@ -1207,7 +1208,7 @@ main(int argc, char **argv)
 		rte_exit(-ENOMEM, "Can not alloc lookup table\n");
 
 	/* Fill routes table */
-	if (config.routes_file == NULL) {
+	if (fr == NULL) {
 		if (distrib_string != NULL)
 			ret = parse_distrib(depth_lim, config.nb_routes);
 		else {
@@ -1243,7 +1244,7 @@ main(int argc, char **argv)
 	}
 
 	/* Fill lookup table with ip's*/
-	if (config.lookup_ips_file == NULL)
+	if (fl == NULL)
 		gen_rnd_lookup_tbl(af);
 	else {
 		ret = parse_lookup(fl, af);
