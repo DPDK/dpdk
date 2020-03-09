@@ -1065,11 +1065,6 @@ dsw_port_ctl_process(struct dsw_evdev *dsw, struct dsw_port *port)
 {
 	struct dsw_ctl_msg msg;
 
-	/* So any table loads happens before the ring dequeue, in the
-	 * case of a 'paus' message.
-	 */
-	rte_smp_rmb();
-
 	if (dsw_port_ctl_dequeue(port, &msg) == 0) {
 		switch (msg.type) {
 		case DSW_CTL_PAUS_REQ:
