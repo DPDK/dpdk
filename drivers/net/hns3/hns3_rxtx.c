@@ -499,11 +499,45 @@ hns3_reset_all_queues(struct hns3_adapter *hns)
 }
 
 void
-hns3_tqp_intr_enable(struct hns3_hw *hw, uint16_t tpq_int_num, bool en)
+hns3_set_queue_intr_gl(struct hns3_hw *hw, uint16_t queue_id,
+		       uint8_t gl_idx, uint16_t gl_value)
+{
+	uint32_t offset[] = {HNS3_TQP_INTR_GL0_REG,
+			     HNS3_TQP_INTR_GL1_REG,
+			     HNS3_TQP_INTR_GL2_REG};
+	uint32_t addr, value;
+
+	if (gl_idx >= RTE_DIM(offset) || gl_value > HNS3_TQP_INTR_GL_MAX)
+		return;
+
+	addr = offset[gl_idx] + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	value = HNS3_GL_USEC_TO_REG(gl_value);
+
+	hns3_write_dev(hw, addr, value);
+}
+
+void
+hns3_set_queue_intr_rl(struct hns3_hw *hw, uint16_t queue_id, uint16_t rl_value)
 {
 	uint32_t addr, value;
 
-	addr = HNS3_TQP_INTR_CTRL_REG + tpq_int_num * HNS3_VECTOR_REG_OFFSET;
+	if (rl_value > HNS3_TQP_INTR_RL_MAX)
+		return;
+
+	addr = HNS3_TQP_INTR_RL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	value = HNS3_RL_USEC_TO_REG(rl_value);
+	if (value > 0)
+		value |= HNS3_TQP_INTR_RL_ENABLE_MASK;
+
+	hns3_write_dev(hw, addr, value);
+}
+
+static void
+hns3_queue_intr_enable(struct hns3_hw *hw, uint16_t queue_id, bool en)
+{
+	uint32_t addr, value;
+
+	addr = HNS3_TQP_INTR_CTRL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;
 	value = en ? 1 : 0;
 
 	hns3_write_dev(hw, addr, value);
@@ -519,8 +553,7 @@ hns3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	if (dev->data->dev_conf.intr_conf.rxq == 0)
 		return -ENOTSUP;
 
-	/* enable the vectors */
-	hns3_tqp_intr_enable(hw, queue_id, true);
+	hns3_queue_intr_enable(hw, queue_id, true);
 
 	return rte_intr_ack(intr_handle);
 }
@@ -533,8 +566,7 @@ hns3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	if (dev->data->dev_conf.intr_conf.rxq == 0)
 		return -ENOTSUP;
 
-	/* disable the vectors */
-	hns3_tqp_intr_enable(hw, queue_id, false);
+	hns3_queue_intr_enable(hw, queue_id, false);
 
 	return 0;
 }
@@ -940,7 +972,6 @@ hns3_fake_rx_queue_config(struct hns3_hw *hw, uint16_t nb_queues)
 
 	if (hw->fkq_data.rx_queues == NULL && nb_queues != 0) {
 		/* first time configuration */
-
 		uint32_t size;
 		size = sizeof(hw->fkq_data.rx_queues[0]) * nb_queues;
 		hw->fkq_data.rx_queues = rte_zmalloc("fake_rx_queues", size,
@@ -951,7 +982,6 @@ hns3_fake_rx_queue_config(struct hns3_hw *hw, uint16_t nb_queues)
 		}
 	} else if (hw->fkq_data.rx_queues != NULL && nb_queues != 0) {
 		/* re-configure */
-
 		rxq = hw->fkq_data.rx_queues;
 		for (i = nb_queues; i < old_nb_queues; i++)
 			hns3_dev_rx_queue_release(rxq[i]);
@@ -989,7 +1019,6 @@ hns3_fake_tx_queue_config(struct hns3_hw *hw, uint16_t nb_queues)
 
 	if (hw->fkq_data.tx_queues == NULL && nb_queues != 0) {
 		/* first time configuration */
-
 		uint32_t size;
 		size = sizeof(hw->fkq_data.tx_queues[0]) * nb_queues;
 		hw->fkq_data.tx_queues = rte_zmalloc("fake_tx_queues", size,
@@ -1000,7 +1029,6 @@ hns3_fake_tx_queue_config(struct hns3_hw *hw, uint16_t nb_queues)
 		}
 	} else if (hw->fkq_data.tx_queues != NULL && nb_queues != 0) {
 		/* re-configure */
-
 		txq = hw->fkq_data.tx_queues;
 		for (i = nb_queues; i < old_nb_queues; i++)
 			hns3_dev_tx_queue_release(txq[i]);

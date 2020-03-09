@@ -430,6 +430,96 @@ hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc)
 }
 
 static int
+hns3vf_bind_ring_with_vector(struct hns3_hw *hw, uint8_t vector_id,
+			     bool mmap, enum hns3_ring_type queue_type,
+			     uint16_t queue_id)
+{
+	struct hns3_vf_bind_vector_msg bind_msg;
+	const char *op_str;
+	uint16_t code;
+	int ret;
+
+	memset(&bind_msg, 0, sizeof(bind_msg));
+	code = mmap ? HNS3_MBX_MAP_RING_TO_VECTOR :
+		HNS3_MBX_UNMAP_RING_TO_VECTOR;
+	bind_msg.vector_id = vector_id;
+
+	if (queue_type == HNS3_RING_TYPE_RX)
+		bind_msg.param[0].int_gl_index = HNS3_RING_GL_RX;
+	else
+		bind_msg.param[0].int_gl_index = HNS3_RING_GL_TX;
+
+	bind_msg.param[0].ring_type = queue_type;
+	bind_msg.ring_num = 1;
+	bind_msg.param[0].tqp_index = queue_id;
+	op_str = mmap ? "Map" : "Unmap";
+	ret = hns3_send_mbx_msg(hw, code, 0, (uint8_t *)&bind_msg,
+				sizeof(bind_msg), false, NULL, 0);
+	if (ret) {
+		hns3_err(hw, "%s TQP %d fail, vector_id is %d, ret is %d.",
+			 op_str, queue_id, bind_msg.vector_id, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+hns3vf_init_ring_with_vector(struct hns3_hw *hw)
+{
+	uint8_t vec;
+	int ret;
+	int i;
+
+	/*
+	 * In hns3 network engine, vector 0 is always the misc interrupt of this
+	 * function, vector 1~N can be used respectively for the queues of the
+	 * function. Tx and Rx queues with the same number share the interrupt
+	 * vector. In the initialization clearing the all hardware mapping
+	 * relationship configurations between queues and interrupt vectors is
+	 * needed, so some error caused by the residual configurations, such as
+	 * the unexpected Tx interrupt, can be avoid. Because of the hardware
+	 * constraints in hns3 hardware engine, we have to implement clearing
+	 * the mapping relationship configurations by binding all queues to the
+	 * last interrupt vector and reserving the last interrupt vector. This
+	 * method results in a decrease of the maximum queues when upper
+	 * applications call the rte_eth_dev_configure API function to enable
+	 * Rx interrupt.
+	 */
+	vec = hw->num_msi - 1; /* vector 0 for misc interrupt, not for queue */
+	hw->intr_tqps_num = vec - 1; /* the last interrupt is reserved */
+	for (i = 0; i < hw->intr_tqps_num; i++) {
+		/*
+		 * Set gap limiter and rate limiter configuration of queue's
+		 * interrupt.
+		 */
+		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_RX,
+				       HNS3_TQP_INTR_GL_DEFAULT);
+		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_TX,
+				       HNS3_TQP_INTR_GL_DEFAULT);
+		hns3_set_queue_intr_rl(hw, i, HNS3_TQP_INTR_RL_DEFAULT);
+
+		ret = hns3vf_bind_ring_with_vector(hw, vec, false,
+						   HNS3_RING_TYPE_TX, i);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "VF fail to unbind TX ring(%d) with "
+					  "vector: %d, ret=%d", i, vec, ret);
+			return ret;
+		}
+
+		ret = hns3vf_bind_ring_with_vector(hw, vec, false,
+						   HNS3_RING_TYPE_RX, i);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "VF fail to unbind RX ring(%d) with "
+					  "vector: %d, ret=%d", i, vec, ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
 hns3vf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -563,8 +653,16 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
+	uint16_t q_num = hw->tqps_num;
 
-	info->max_rx_queues = hw->tqps_num;
+	/*
+	 * In interrupt mode, 'max_rx_queues' is set based on the number of
+	 * MSI-X interrupt resources of the hardware.
+	 */
+	if (hw->data->dev_conf.intr_conf.rxq == 1)
+		q_num = hw->intr_tqps_num;
+
+	info->max_rx_queues = q_num;
 	info->max_tx_queues = hw->tqps_num;
 	info->max_rx_pktlen = HNS3_MAX_FRAME_LEN; /* CRC included */
 	info->min_rx_bufsize = hw->rx_buf_len;
@@ -1115,6 +1213,35 @@ hns3vf_service_handler(void *param)
 }
 
 static int
+hns3_query_vf_resource(struct hns3_hw *hw)
+{
+	struct hns3_vf_res_cmd *req;
+	struct hns3_cmd_desc desc;
+	uint16_t num_msi;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_QUERY_VF_RSRC, true);
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "query vf resource failed, ret = %d", ret);
+		return ret;
+	}
+
+	req = (struct hns3_vf_res_cmd *)desc.data;
+	num_msi = hns3_get_field(rte_le_to_cpu_16(req->vf_intr_vector_number),
+				 HNS3_VEC_NUM_M, HNS3_VEC_NUM_S);
+	if (num_msi < HNS3_MIN_VECTOR_NUM) {
+		hns3_err(hw, "Just %u msi resources, not enough for vf(min:%d)",
+			 num_msi, HNS3_MIN_VECTOR_NUM);
+		return -EINVAL;
+	}
+
+	hw->num_msi = (num_msi > hw->tqps_num + 1) ? hw->tqps_num + 1 : num_msi;
+
+	return 0;
+}
+
+static int
 hns3vf_init_hardware(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
@@ -1190,6 +1317,11 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_cmd_init;
 	}
 
+	/* Get VF resource */
+	ret = hns3_query_vf_resource(hw);
+	if (ret)
+		goto err_cmd_init;
+
 	rte_spinlock_init(&hw->mbx_resp.lock);
 
 	hns3vf_clear_event_cause(hw, 0);
@@ -1239,6 +1371,16 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 
 	hns3_set_default_rss_args(hw);
 
+	/*
+	 * In the initialization clearing the all hardware mapping relationship
+	 * configurations between queues and interrupt vectors is needed, so
+	 * some error caused by the residual configurations, such as the
+	 * unexpected interrupt, can be avoid.
+	 */
+	ret = hns3vf_init_ring_with_vector(hw);
+	if (ret)
+		goto err_get_config;
+
 	return 0;
 
 err_get_config:
@@ -1280,36 +1422,6 @@ hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 }
 
 static int
-hns3vf_bind_ring_with_vector(struct rte_eth_dev *dev, uint8_t vector_id,
-			     bool mmap, uint16_t queue_id)
-
-{
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct hns3_vf_bind_vector_msg bind_msg;
-	uint16_t code;
-	int ret;
-
-	memset(&bind_msg, 0, sizeof(bind_msg));
-	code = mmap ? HNS3_MBX_MAP_RING_TO_VECTOR :
-		HNS3_MBX_UNMAP_RING_TO_VECTOR;
-	bind_msg.vector_id = vector_id;
-	bind_msg.ring_num = 1;
-	bind_msg.param[0].ring_type = HNS3_RING_TYPE_RX;
-	bind_msg.param[0].tqp_index = queue_id;
-	bind_msg.param[0].int_gl_index = HNS3_RING_GL_RX;
-
-	ret = hns3_send_mbx_msg(hw, code, 0, (uint8_t *)&bind_msg,
-				sizeof(bind_msg), false, NULL, 0);
-	if (ret) {
-		hns3_err(hw, "Map TQP %d fail, vector_id is %d, ret is %d.",
-			 queue_id, vector_id, ret);
-		return ret;
-	}
-
-	return 0;
-}
-
-static int
 hns3vf_do_stop(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
@@ -1345,7 +1457,8 @@ hns3vf_unmap_rx_interrupt(struct rte_eth_dev *dev)
 	}
 	if (rte_intr_dp_is_en(intr_handle)) {
 		for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
-			(void)hns3vf_bind_ring_with_vector(dev, vec, false,
+			(void)hns3vf_bind_ring_with_vector(hw, vec, false,
+							   HNS3_RING_TYPE_RX,
 							   q_id);
 			if (vec < base + intr_handle->nb_efd - 1)
 				vec++;
@@ -1511,7 +1624,8 @@ hns3vf_map_rx_interrupt(struct rte_eth_dev *dev)
 	}
 	if (rte_intr_dp_is_en(intr_handle)) {
 		for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
-			ret = hns3vf_bind_ring_with_vector(dev, vec, true,
+			ret = hns3vf_bind_ring_with_vector(hw, vec, true,
+							   HNS3_RING_TYPE_RX,
 							   q_id);
 			if (ret)
 				goto vf_bind_vector_error;

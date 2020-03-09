@@ -83,9 +83,6 @@
 
 #define HNS3_RING_EN_B				0
 
-#define HNS3_VECTOR_REG_OFFSET			0x4
-#define HNS3_VECTOR_VF_OFFSET			0x100000
-
 #define HNS3_TQP_REG_OFFSET			0x80000
 #define HNS3_TQP_REG_SIZE			0x200
 
@@ -97,6 +94,16 @@
 #define HNS3_TQP_INTR_RL_REG			0x20900
 
 #define HNS3_TQP_INTR_REG_SIZE			4
+#define HNS3_TQP_INTR_GL_MAX			0x1FE0
+#define HNS3_TQP_INTR_GL_DEFAULT		20
+#define HNS3_TQP_INTR_RL_MAX			0xEC
+#define HNS3_TQP_INTR_RL_ENABLE_MASK		0x40
+#define HNS3_TQP_INTR_RL_DEFAULT		0
+
+/* gl_usec convert to hardware count, as writing each 1 represents 2us */
+#define HNS3_GL_USEC_TO_REG(gl_usec)		((gl_usec) >> 1)
+/* rl_usec convert to hardware count, as writing each 1 represents 4us */
+#define HNS3_RL_USEC_TO_REG(rl_usec)		((rl_usec) >> 2)
 
 int hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs);
 #endif /* _HNS3_REGS_H_ */

@@ -357,6 +357,7 @@ struct hns3_hw {
 	uint16_t num_msi;
 	uint16_t total_tqps_num;    /* total task queue pairs of this PF */
 	uint16_t tqps_num;          /* num task queue pairs of this function */
+	uint16_t intr_tqps_num;     /* num queue pairs mapping interrupt */
 	uint16_t rss_size_max;      /* HW defined max RSS task queue */
 	uint16_t rx_buf_len;
 	uint16_t num_tx_desc;       /* desc num of per tx queue */

@@ -320,7 +320,10 @@ uint16_t hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);
-void hns3_tqp_intr_enable(struct hns3_hw *hw, uint16_t tpq_int_num, bool en);
+void hns3_set_queue_intr_gl(struct hns3_hw *hw, uint16_t queue_id,
+			    uint8_t gl_idx, uint16_t gl_value);
+void hns3_set_queue_intr_rl(struct hns3_hw *hw, uint16_t queue_id,
+			    uint16_t rl_value);
 int hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 				  uint16_t nb_tx_q);
 
