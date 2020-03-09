@@ -2370,9 +2370,6 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	/* disable all queue interrupts */
 	ice_vsi_disable_queues_intr(main_vsi);
 
-	/* Clear all queues and release mbufs */
-	ice_clear_queues(dev);
-
 	if (pf->init_link_up)
 		ice_dev_set_link_up(dev);
 	else

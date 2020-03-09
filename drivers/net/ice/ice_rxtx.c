@@ -244,12 +244,6 @@ _ice_rx_queue_release_mbufs(struct ice_rx_queue *rxq)
 	rxq->rx_nb_avail = 0;
 }
 
-static void
-ice_rx_queue_release_mbufs(struct ice_rx_queue *rxq)
-{
-	rxq->rx_rel_mbufs(rxq);
-}
-
 /* turn on or off rx queue
  * @q_idx: queue index in pf scope
  * @on: turn on or off the queue
@@ -408,7 +402,7 @@ ice_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
 			    rx_queue_id);
 
-		ice_rx_queue_release_mbufs(rxq);
+		rxq->rx_rel_mbufs(rxq);
 		ice_reset_rx_queue(rxq);
 		return -EINVAL;
 	}
@@ -435,7 +429,7 @@ ice_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 				    rx_queue_id);
 			return -EINVAL;
 		}
-		ice_rx_queue_release_mbufs(rxq);
+		rxq->rx_rel_mbufs(rxq);
 		ice_reset_rx_queue(rxq);
 		dev->data->rx_queue_state[rx_queue_id] =
 			RTE_ETH_QUEUE_STATE_STOPPED;
@@ -698,11 +692,6 @@ _ice_tx_queue_release_mbufs(struct ice_tx_queue *txq)
 		}
 	}
 }
-static void
-ice_tx_queue_release_mbufs(struct ice_tx_queue *txq)
-{
-	txq->tx_rel_mbufs(txq);
-}
 
 static void
 ice_reset_tx_queue(struct ice_tx_queue *txq)
@@ -778,7 +767,7 @@ ice_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
-	ice_tx_queue_release_mbufs(txq);
+	txq->tx_rel_mbufs(txq);
 	ice_reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -801,7 +790,7 @@ ice_fdir_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 			    rx_queue_id);
 		return -EINVAL;
 	}
-	ice_rx_queue_release_mbufs(rxq);
+	rxq->rx_rel_mbufs(rxq);
 
 	return 0;
 }
@@ -837,7 +826,7 @@ ice_fdir_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
-	ice_tx_queue_release_mbufs(txq);
+	txq->tx_rel_mbufs(txq);
 
 	return 0;
 }
@@ -976,7 +965,7 @@ ice_rx_queue_release(void *rxq)
 		return;
 	}
 
-	ice_rx_queue_release_mbufs(q);
+	q->rx_rel_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_free(q);
 }
@@ -1172,7 +1161,7 @@ ice_tx_queue_release(void *txq)
 		return;
 	}
 
-	ice_tx_queue_release_mbufs(q);
+	q->tx_rel_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_free(q);
 }
@@ -1902,24 +1891,6 @@ ice_tx_descriptor_status(void *tx_queue, uint16_t offset)
 		return RTE_ETH_TX_DESC_DONE;
 
 	return RTE_ETH_TX_DESC_FULL;
-}
-
-void
-ice_clear_queues(struct rte_eth_dev *dev)
-{
-	uint16_t i;
-
-	PMD_INIT_FUNC_TRACE();
-
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		ice_tx_queue_release_mbufs(dev->data->tx_queues[i]);
-		ice_reset_tx_queue(dev->data->tx_queues[i]);
-	}
-
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		ice_rx_queue_release_mbufs(dev->data->rx_queues[i]);
-		ice_reset_rx_queue(dev->data->rx_queues[i]);
-	}
 }
 
 void
