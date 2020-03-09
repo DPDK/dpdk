@@ -19,8 +19,20 @@
 
 #define DSW_MAX_EVENTS (16384)
 
-/* Code changes are required to allow more flows than 32k. */
-#define DSW_MAX_FLOWS_BITS (15)
+/* Multiple 24-bit flow ids will map to the same DSW-level flow. The
+ * number of DSW flows should be high enough make it unlikely that
+ * flow ids of several large flows hash to the same DSW-level flow.
+ * Such collisions will limit parallism and thus the number of cores
+ * that may be utilized. However, configuring a large number of DSW
+ * flows might potentially, depending on traffic and actual
+ * application flow id value range, result in each such DSW-level flow
+ * being very small. The effect of migrating such flows will be small,
+ * in terms amount of processing load redistributed. This will in turn
+ * reduce the load balancing speed, since flow migration rate has an
+ * upper limit. Code changes are required to allow > 32k DSW-level
+ * flows.
+ */
+#define DSW_MAX_FLOWS_BITS (13)
 #define DSW_MAX_FLOWS (1<<(DSW_MAX_FLOWS_BITS))
 #define DSW_MAX_FLOWS_MASK (DSW_MAX_FLOWS-1)
 
