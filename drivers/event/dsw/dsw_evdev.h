@@ -220,6 +220,8 @@ struct dsw_port {
 
 	/* Estimate of current port load. */
 	rte_atomic16_t load __rte_cache_aligned;
+	/* Estimate of flows currently migrating to this port. */
+	rte_atomic32_t immigration_load __rte_cache_aligned;
 } __rte_cache_aligned;
 
 struct dsw_queue {

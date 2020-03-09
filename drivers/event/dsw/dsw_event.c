@@ -160,6 +160,11 @@ dsw_port_load_update(struct dsw_port *port, uint64_t now)
 		(DSW_OLD_LOAD_WEIGHT+1);
 
 	rte_atomic16_set(&port->load, new_load);
+
+	/* The load of the recently immigrated flows should hopefully
+	 * be reflected the load estimate by now.
+	 */
+	rte_atomic32_set(&port->immigration_load, 0);
 }
 
 static void
@@ -362,7 +367,13 @@ dsw_retrieve_port_loads(struct dsw_evdev *dsw, int16_t *port_loads,
 	uint16_t i;
 
 	for (i = 0; i < dsw->num_ports; i++) {
-		int16_t load = rte_atomic16_read(&dsw->ports[i].load);
+		int16_t measured_load = rte_atomic16_read(&dsw->ports[i].load);
+		int32_t immigration_load =
+			rte_atomic32_read(&dsw->ports[i].immigration_load);
+		int32_t load = measured_load + immigration_load;
+
+		load = RTE_MIN(load, DSW_MAX_LOAD);
+
 		if (load < load_limit)
 			below_limit = true;
 		port_loads[i] = load;
@@ -491,6 +502,9 @@ dsw_select_emigration_target(struct dsw_evdev *dsw,
 	target_qfs[*targets_len] = *candidate_qf;
 	(*targets_len)++;
 
+	rte_atomic32_add(&dsw->ports[candidate_port_id].immigration_load,
+			 candidate_flow_load);
+
 	return true;
 }
 
@@ -503,7 +517,7 @@ dsw_select_emigration_targets(struct dsw_evdev *dsw,
 	struct dsw_queue_flow *target_qfs = source_port->emigration_target_qfs;
 	uint8_t *target_port_ids = source_port->emigration_target_port_ids;
 	uint8_t *targets_len = &source_port->emigration_targets_len;
-	uint8_t i;
+	uint16_t i;
 
 	for (i = 0; i < DSW_MAX_FLOWS_PER_MIGRATION; i++) {
 		bool found;

@@ -62,6 +62,7 @@ dsw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	port->ctl_in_ring = ctl_in_ring;
 
 	rte_atomic16_init(&port->load);
+	rte_atomic32_init(&port->immigration_load);
 
 	port->load_update_interval =
 		(DSW_LOAD_UPDATE_INTERVAL * rte_get_timer_hz()) / US_PER_S;
