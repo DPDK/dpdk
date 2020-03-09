@@ -1704,6 +1704,78 @@ hns3_tx_free_useless_buffer(struct hns3_tx_queue *txq)
 	txq->tx_bd_ready   = tx_bd_ready;
 }
 
+static int
+hns3_tso_proc_tunnel(struct hns3_desc *desc, uint64_t ol_flags,
+		     struct rte_mbuf *rxm, uint8_t *l2_len)
+{
+	uint64_t tun_flags;
+	uint8_t ol4_len;
+	uint32_t otmp;
+
+	tun_flags = ol_flags & PKT_TX_TUNNEL_MASK;
+	if (tun_flags == 0)
+		return 0;
+
+	otmp = rte_le_to_cpu_32(desc->tx.ol_type_vlan_len_msec);
+	switch (tun_flags) {
+	case PKT_TX_TUNNEL_GENEVE:
+	case PKT_TX_TUNNEL_VXLAN:
+		*l2_len = rxm->l2_len - RTE_ETHER_VXLAN_HLEN;
+		break;
+	case PKT_TX_TUNNEL_GRE:
+		/*
+		 * OL4 header size, defined in 4 Bytes, it contains outer
+		 * L4(GRE) length and tunneling length.
+		 */
+		ol4_len = hns3_get_field(otmp, HNS3_TXD_L4LEN_M,
+					 HNS3_TXD_L4LEN_S);
+		*l2_len = rxm->l2_len - (ol4_len << HNS3_L4_LEN_UNIT);
+		break;
+	default:
+		/* For non UDP / GRE tunneling, drop the tunnel packet */
+		return -EINVAL;
+	}
+	hns3_set_field(otmp, HNS3_TXD_L2LEN_M, HNS3_TXD_L2LEN_S,
+		       rxm->outer_l2_len >> HNS3_L2_LEN_UNIT);
+	desc->tx.ol_type_vlan_len_msec = rte_cpu_to_le_32(otmp);
+
+	return 0;
+}
+
+static void
+hns3_set_tso(struct hns3_desc *desc,
+	     uint64_t ol_flags, struct rte_mbuf *rxm)
+{
+	uint32_t paylen, hdr_len;
+	uint32_t tmp;
+	uint8_t l2_len = rxm->l2_len;
+
+	if (!(ol_flags & PKT_TX_TCP_SEG))
+		return;
+
+	if (hns3_tso_proc_tunnel(desc, ol_flags, rxm, &l2_len))
+		return;
+
+	hdr_len = rxm->l2_len + rxm->l3_len + rxm->l4_len;
+	hdr_len += (ol_flags & PKT_TX_TUNNEL_MASK) ?
+		    rxm->outer_l2_len + rxm->outer_l3_len : 0;
+	paylen = rxm->pkt_len - hdr_len;
+	if (paylen <= rxm->tso_segsz)
+		return;
+
+	tmp = rte_le_to_cpu_32(desc->tx.type_cs_vlan_tso_len);
+	hns3_set_bit(tmp, HNS3_TXD_TSO_B, 1);
+	hns3_set_bit(tmp, HNS3_TXD_L3CS_B, 1);
+	hns3_set_field(tmp, HNS3_TXD_L4T_M, HNS3_TXD_L4T_S, HNS3_L4T_TCP);
+	hns3_set_bit(tmp, HNS3_TXD_L4CS_B, 1);
+	hns3_set_field(tmp, HNS3_TXD_L4LEN_M, HNS3_TXD_L4LEN_S,
+		       sizeof(struct rte_tcp_hdr) >> HNS3_L4_LEN_UNIT);
+	hns3_set_field(tmp, HNS3_TXD_L2LEN_M, HNS3_TXD_L2LEN_S,
+		       l2_len >> HNS3_L2_LEN_UNIT);
+	desc->tx.type_cs_vlan_tso_len = rte_cpu_to_le_32(tmp);
+	desc->tx.mss = rte_cpu_to_le_16(rxm->tso_segsz);
+}
+
 static void
 fill_desc(struct hns3_tx_queue *txq, uint16_t tx_desc_id, struct rte_mbuf *rxm,
 	  bool first, int offset)
@@ -1711,9 +1783,9 @@ fill_desc(struct hns3_tx_queue *txq, uint16_t tx_desc_id, struct rte_mbuf *rxm,
 	struct hns3_desc *tx_ring = txq->tx_ring;
 	struct hns3_desc *desc = &tx_ring[tx_desc_id];
 	uint8_t frag_end = rxm->next == NULL ? 1 : 0;
+	uint64_t ol_flags = rxm->ol_flags;
 	uint16_t size = rxm->data_len;
 	uint16_t rrcfv = 0;
-	uint64_t ol_flags = rxm->ol_flags;
 	uint32_t hdr_len;
 	uint32_t paylen;
 	uint32_t tmp;
@@ -1728,6 +1800,7 @@ fill_desc(struct hns3_tx_queue *txq, uint16_t tx_desc_id, struct rte_mbuf *rxm,
 			   rxm->outer_l2_len + rxm->outer_l3_len : 0;
 		paylen = rxm->pkt_len - hdr_len;
 		desc->tx.paylen = rte_cpu_to_le_32(paylen);
+		hns3_set_tso(desc, ol_flags, rxm);
 	}
 
 	hns3_set_bit(rrcfv, HNS3_TXD_FE_B, frag_end);
@@ -2041,6 +2114,136 @@ hns3_txd_enable_checksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
 	desc->tx.type_cs_vlan_tso_len |= rte_cpu_to_le_32(value);
 }
 
+static bool
+hns3_pkt_need_linearized(struct rte_mbuf *tx_pkts, uint32_t bd_num)
+{
+	struct rte_mbuf *m_first = tx_pkts;
+	struct rte_mbuf *m_last = tx_pkts;
+	uint32_t tot_len = 0;
+	uint32_t hdr_len;
+	uint32_t i;
+
+	/*
+	 * Hardware requires that the sum of the data length of every 8
+	 * consecutive buffers is greater than MSS in hns3 network engine.
+	 * We simplify it by ensuring pkt_headlen + the first 8 consecutive
+	 * frags greater than gso header len + mss, and the remaining 7
+	 * consecutive frags greater than MSS except the last 7 frags.
+	 */
+	if (bd_num <= HNS3_MAX_NON_TSO_BD_PER_PKT)
+		return false;
+
+	for (i = 0; m_last && i < HNS3_MAX_NON_TSO_BD_PER_PKT - 1;
+	     i++, m_last = m_last->next)
+		tot_len += m_last->data_len;
+
+	if (!m_last)
+		return true;
+
+	/* ensure the first 8 frags is greater than mss + header */
+	hdr_len = tx_pkts->l2_len + tx_pkts->l3_len + tx_pkts->l4_len;
+	hdr_len += (tx_pkts->ol_flags & PKT_TX_TUNNEL_MASK) ?
+		   tx_pkts->outer_l2_len + tx_pkts->outer_l3_len : 0;
+	if (tot_len + m_last->data_len < tx_pkts->tso_segsz + hdr_len)
+		return true;
+
+	/*
+	 * ensure the sum of the data length of every 7 consecutive buffer
+	 * is greater than mss except the last one.
+	 */
+	for (i = 0; m_last && i < bd_num - HNS3_MAX_NON_TSO_BD_PER_PKT; i++) {
+		tot_len -= m_first->data_len;
+		tot_len += m_last->data_len;
+
+		if (tot_len < tx_pkts->tso_segsz)
+			return true;
+
+		m_first = m_first->next;
+		m_last = m_last->next;
+	}
+
+	return false;
+}
+
+static void
+hns3_outer_header_cksum_prepare(struct rte_mbuf *m)
+{
+	uint64_t ol_flags = m->ol_flags;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_udp_hdr *udp_hdr;
+	uint32_t paylen, hdr_len;
+
+	if (!(ol_flags & (PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IPV6)))
+		return;
+
+	if (ol_flags & PKT_TX_IPV4) {
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
+						   m->outer_l2_len);
+
+		if (ol_flags & PKT_TX_IP_CKSUM)
+			ipv4_hdr->hdr_checksum = 0;
+	}
+
+	if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM &&
+	    ol_flags & PKT_TX_TCP_SEG) {
+		hdr_len = m->l2_len + m->l3_len + m->l4_len;
+		hdr_len += (ol_flags & PKT_TX_TUNNEL_MASK) ?
+				m->outer_l2_len + m->outer_l3_len : 0;
+		paylen = m->pkt_len - hdr_len;
+		if (paylen <= m->tso_segsz)
+			return;
+		udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
+						  m->outer_l2_len +
+						  m->outer_l3_len);
+		udp_hdr->dgram_cksum = 0;
+	}
+}
+
+static inline bool
+hns3_pkt_is_tso(struct rte_mbuf *m)
+{
+	return (m->tso_segsz != 0 && m->ol_flags & PKT_TX_TCP_SEG);
+}
+
+static int
+hns3_check_tso_pkt_valid(struct rte_mbuf *m)
+{
+	uint32_t tmp_data_len_sum = 0;
+	uint16_t nb_buf = m->nb_segs;
+	uint32_t paylen, hdr_len;
+	struct rte_mbuf *m_seg;
+	int i;
+
+	if (nb_buf > HNS3_MAX_TSO_BD_PER_PKT)
+		return -EINVAL;
+
+	hdr_len = m->l2_len + m->l3_len + m->l4_len;
+	hdr_len += (m->ol_flags & PKT_TX_TUNNEL_MASK) ?
+			m->outer_l2_len + m->outer_l3_len : 0;
+	if (hdr_len > HNS3_MAX_TSO_HDR_SIZE)
+		return -EINVAL;
+
+	paylen = m->pkt_len - hdr_len;
+	if (paylen > HNS3_MAX_BD_PAYLEN)
+		return -EINVAL;
+
+	/*
+	 * The TSO header (include outer and inner L2, L3 and L4 header)
+	 * should be provided by three descriptors in maximum in hns3 network
+	 * engine.
+	 */
+	m_seg = m;
+	for (i = 0; m_seg != NULL && i < HNS3_MAX_TSO_HDR_BD_NUM && i < nb_buf;
+	     i++, m_seg = m_seg->next) {
+		tmp_data_len_sum += m_seg->data_len;
+	}
+
+	if (hdr_len > tmp_data_len_sum)
+		return -EINVAL;
+
+	return 0;
+}
+
 uint16_t
 hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	       uint16_t nb_pkts)
@@ -2058,6 +2261,13 @@ hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
+		if (hns3_pkt_is_tso(m) &&
+		    (hns3_pkt_need_linearized(m, m->nb_segs) ||
+		     hns3_check_tso_pkt_valid(m))) {
+			rte_errno = EINVAL;
+			return i;
+		}
+
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
@@ -2070,6 +2280,8 @@ hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			rte_errno = -ret;
 			return i;
 		}
+
+		hns3_outer_header_cksum_prepare(m);
 	}
 
 	return i;
@@ -2093,13 +2305,39 @@ hns3_parse_cksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
 	return 0;
 }
 
+static int
+hns3_check_non_tso_pkt(uint16_t nb_buf, struct rte_mbuf **m_seg,
+		      struct rte_mbuf *tx_pkt, struct hns3_tx_queue *txq)
+{
+	struct rte_mbuf *new_pkt;
+	int ret;
+
+	if (hns3_pkt_is_tso(*m_seg))
+		return 0;
+
+	/*
+	 * If packet length is greater than HNS3_MAX_FRAME_LEN
+	 * driver support, the packet will be ignored.
+	 */
+	if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) > HNS3_MAX_FRAME_LEN))
+		return -EINVAL;
+
+	if (unlikely(nb_buf > HNS3_MAX_NON_TSO_BD_PER_PKT)) {
+		ret = hns3_reassemble_tx_pkts(txq, tx_pkt, &new_pkt);
+		if (ret)
+			return ret;
+		*m_seg = new_pkt;
+	}
+
+	return 0;
+}
+
 uint16_t
 hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct rte_net_hdr_lens hdr_lens = {0};
 	struct hns3_tx_queue *txq = tx_queue;
 	struct hns3_entry *tx_bak_pkt;
-	struct rte_mbuf *new_pkt;
 	struct rte_mbuf *tx_pkt;
 	struct rte_mbuf *m_seg;
 	uint32_t nb_hold = 0;
@@ -2132,13 +2370,6 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/*
-		 * If packet length is greater than HNS3_MAX_FRAME_LEN
-		 * driver support, the packet will be ignored.
-		 */
-		if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) > HNS3_MAX_FRAME_LEN))
-			break;
-
-		/*
 		 * If packet length is less than minimum packet size, driver
 		 * need to pad it.
 		 */
@@ -2156,12 +2387,9 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		m_seg = tx_pkt;
-		if (unlikely(nb_buf > HNS3_MAX_TX_BD_PER_PKT)) {
-			if (hns3_reassemble_tx_pkts(txq, tx_pkt, &new_pkt))
-				goto end_of_tx;
-			m_seg = new_pkt;
-			nb_buf = m_seg->nb_segs;
-		}
+
+		if (hns3_check_non_tso_pkt(nb_buf, &m_seg, tx_pkt, txq))
+			goto end_of_tx;
 
 		if (hns3_parse_cksum(txq, tx_next_use, m_seg, &hdr_lens))
 			goto end_of_tx;
