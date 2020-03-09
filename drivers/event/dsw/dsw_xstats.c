@@ -109,6 +109,13 @@ dsw_xstats_port_get_event_proc_latency(struct dsw_evdev *dsw, uint8_t port_id,
 	return dequeued > 0 ? total_busy_cycles / dequeued : 0;
 }
 
+static uint64_t
+dsw_xstats_port_get_busy_cycles(struct dsw_evdev *dsw, uint8_t port_id,
+				uint8_t queue_id __rte_unused)
+{
+	return dsw->ports[port_id].total_busy_cycles;
+}
+
 DSW_GEN_PORT_ACCESS_FN(inflight_credits)
 
 DSW_GEN_PORT_ACCESS_FN(pending_releases)
@@ -146,6 +153,8 @@ static struct dsw_xstats_port dsw_port_xstats[] = {
 	{ "port_%u_immigrations", dsw_xstats_port_get_immigrations,
 	  false },
 	{ "port_%u_event_proc_latency", dsw_xstats_port_get_event_proc_latency,
+	  false },
+	{ "port_%u_busy_cycles", dsw_xstats_port_get_busy_cycles,
 	  false },
 	{ "port_%u_inflight_credits", dsw_xstats_port_get_inflight_credits,
 	  false },
