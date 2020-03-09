@@ -160,7 +160,7 @@ __rte_ring_enqueue_elems_64(struct rte_ring *r, uint32_t prod_head,
 	const uint32_t size = r->size;
 	uint32_t idx = prod_head & r->mask;
 	uint64_t *ring = (uint64_t *)&r[1];
-	const uint64_t *obj = (const uint64_t *)obj_table;
+	const unaligned_uint64_t *obj = (const unaligned_uint64_t *)obj_table;
 	if (likely(idx + n < size)) {
 		for (i = 0; i < (n & ~0x3); i += 4, idx += 4) {
 			ring[idx] = obj[i];
@@ -294,7 +294,7 @@ __rte_ring_dequeue_elems_64(struct rte_ring *r, uint32_t prod_head,
 	const uint32_t size = r->size;
 	uint32_t idx = prod_head & r->mask;
 	uint64_t *ring = (uint64_t *)&r[1];
-	uint64_t *obj = (uint64_t *)obj_table;
+	unaligned_uint64_t *obj = (unaligned_uint64_t *)obj_table;
 	if (likely(idx + n < size)) {
 		for (i = 0; i < (n & ~0x3); i += 4, idx += 4) {
 			obj[i] = ring[idx];
