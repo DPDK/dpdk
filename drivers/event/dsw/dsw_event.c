@@ -1328,11 +1328,6 @@ static uint16_t
 dsw_port_dequeue_burst(struct dsw_port *port, struct rte_event *events,
 		       uint16_t num)
 {
-	struct dsw_port *source_port = port;
-	struct dsw_evdev *dsw = source_port->dsw;
-
-	dsw_port_ctl_process(dsw, source_port);
-
 	if (unlikely(port->in_buffer_len > 0)) {
 		uint16_t dequeued = RTE_MIN(num, port->in_buffer_len);
 
