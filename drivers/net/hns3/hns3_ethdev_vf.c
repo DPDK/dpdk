@@ -619,12 +619,14 @@ hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	uint32_t frame_size = mtu + HNS3_ETH_OVERHEAD;
 	int ret;
 
-	if (dev->data->dev_started) {
-		hns3_err(hw, "Failed to set mtu, port %u must be stopped "
-			 "before configuration", dev->data->port_id);
-		return -EBUSY;
-	}
-
+	/*
+	 * The hns3 PF/VF devices on the same port share the hardware MTU
+	 * configuration. Currently, we send mailbox to inform hns3 PF kernel
+	 * ethdev driver to finish hardware MTU configuration in hns3 VF PMD
+	 * driver, there is no need to stop the port for hns3 VF device, and the
+	 * MTU value issued by hns3 VF PMD driver must be less than or equal to
+	 * PF's MTU.
+	 */
 	if (rte_atomic16_read(&hw->reset.resetting)) {
 		hns3_err(hw, "Failed to set mtu during resetting");
 		return -EIO;
