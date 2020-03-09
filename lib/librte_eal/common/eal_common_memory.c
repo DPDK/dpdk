@@ -97,7 +97,7 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 			return NULL;
 		}
 
-		mapped_addr = mmap(requested_addr, (size_t)map_sz, PROT_READ,
+		mapped_addr = mmap(requested_addr, (size_t)map_sz, PROT_NONE,
 				mmap_flags, -1, 0);
 		if (mapped_addr == MAP_FAILED && allow_shrink)
 			*size -= page_sz;
