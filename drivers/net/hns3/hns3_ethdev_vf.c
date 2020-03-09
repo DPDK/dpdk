@@ -410,7 +410,8 @@ hns3vf_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
 }
 
 static int
-hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc)
+hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc,
+			bool en_uc_pmc, bool en_mc_pmc)
 {
 	struct hns3_mbx_vf_to_pf_cmd *req;
 	struct hns3_cmd_desc desc;
@@ -418,15 +419,113 @@ hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc)
 
 	req = (struct hns3_mbx_vf_to_pf_cmd *)desc.data;
 
+	/*
+	 * The hns3 VF PMD driver depends on the hns3 PF kernel ethdev driver,
+	 * so there are some features for promiscuous/allmulticast mode in hns3
+	 * VF PMD driver as below:
+	 * 1. The promiscuous/allmulticast mode can be configured successfully
+	 *    only based on the trusted VF device. If based on the non trusted
+	 *    VF device, configuring promiscuous/allmulticast mode will fail.
+	 *    The hns3 VF device can be confiruged as trusted device by hns3 PF
+	 *    kernel ethdev driver on the host by the following command:
+	 *      "ip link set <eth num> vf <vf id> turst on"
+	 * 2. After the promiscuous mode is configured successfully, hns3 VF PMD
+	 *    driver can receive the ingress and outgoing traffic. In the words,
+	 *    all the ingress packets, all the packets sent from the PF and
+	 *    other VFs on the same physical port.
+	 * 3. Note: Because of the hardware constraints, By default vlan filter
+	 *    is enabled and couldn't be turned off based on VF device, so vlan
+	 *    filter is still effective even in promiscuous mode. If upper
+	 *    applications don't call rte_eth_dev_vlan_filter API function to
+	 *    set vlan based on VF device, hns3 VF PMD driver will can't receive
+	 *    the packets with vlan tag in promiscuoue mode.
+	 */
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MBX_VF_TO_PF, false);
 	req->msg[0] = HNS3_MBX_SET_PROMISC_MODE;
 	req->msg[1] = en_bc_pmc ? 1 : 0;
+	req->msg[2] = en_uc_pmc ? 1 : 0;
+	req->msg[3] = en_mc_pmc ? 1 : 0;
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
-		hns3_err(hw, "Set promisc mode fail, status is %d", ret);
+		hns3_err(hw, "Set promisc mode fail, ret = %d", ret);
 
 	return ret;
+}
+
+static int
+hns3vf_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	ret = hns3vf_set_promisc_mode(hw, true, true, true);
+	if (ret)
+		hns3_err(hw, "Failed to enable promiscuous mode, ret = %d",
+			ret);
+	return ret;
+}
+
+static int
+hns3vf_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	bool allmulti = dev->data->all_multicast ? true : false;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	ret = hns3vf_set_promisc_mode(hw, true, false, allmulti);
+	if (ret)
+		hns3_err(hw, "Failed to disable promiscuous mode, ret = %d",
+			ret);
+	return ret;
+}
+
+static int
+hns3vf_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	if (dev->data->promiscuous)
+		return 0;
+
+	ret = hns3vf_set_promisc_mode(hw, true, false, true);
+	if (ret)
+		hns3_err(hw, "Failed to enable allmulticast mode, ret = %d",
+			ret);
+	return ret;
+}
+
+static int
+hns3vf_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	int ret;
+
+	if (dev->data->promiscuous)
+		return 0;
+
+	ret = hns3vf_set_promisc_mode(hw, true, false, false);
+	if (ret)
+		hns3_err(hw, "Failed to disable allmulticast mode, ret = %d",
+			ret);
+	return ret;
+}
+
+static int
+hns3vf_restore_promisc(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	bool allmulti = hw->data->all_multicast ? true : false;
+
+	if (hw->data->promiscuous)
+		return hns3vf_set_promisc_mode(hw, true, true, true);
+
+	return hns3vf_set_promisc_mode(hw, true, false, allmulti);
 }
 
 static int
@@ -1250,7 +1349,7 @@ hns3vf_init_hardware(struct hns3_adapter *hns)
 	uint16_t mtu = hw->data->mtu;
 	int ret;
 
-	ret = hns3vf_set_promisc_mode(hw, true);
+	ret = hns3vf_set_promisc_mode(hw, true, false, false);
 	if (ret)
 		return ret;
 
@@ -1280,7 +1379,7 @@ hns3vf_init_hardware(struct hns3_adapter *hns)
 	return 0;
 
 err_init_hardware:
-	(void)hns3vf_set_promisc_mode(hw, false);
+	(void)hns3vf_set_promisc_mode(hw, false, false, false);
 	return ret;
 }
 
@@ -1413,7 +1512,7 @@ hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 
 	hns3_rss_uninit(hns);
 	(void)hns3vf_set_alive(hw, false);
-	(void)hns3vf_set_promisc_mode(hw, false);
+	(void)hns3vf_set_promisc_mode(hw, false, false, false);
 	hns3vf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
 	hns3_intr_unregister(&pci_dev->intr_handle, hns3vf_interrupt_handler,
@@ -1896,6 +1995,10 @@ hns3vf_restore_conf(struct hns3_adapter *hns)
 	if (ret)
 		goto err_mc_mac;
 
+	ret = hns3vf_restore_promisc(hns);
+	if (ret)
+		goto err_vlan_table;
+
 	ret = hns3vf_restore_vlan_conf(hns);
 	if (ret)
 		goto err_vlan_table;
@@ -2048,6 +2151,10 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.dev_stop           = hns3vf_dev_stop,
 	.dev_close          = hns3vf_dev_close,
 	.mtu_set            = hns3vf_dev_mtu_set,
+	.promiscuous_enable = hns3vf_dev_promiscuous_enable,
+	.promiscuous_disable = hns3vf_dev_promiscuous_disable,
+	.allmulticast_enable = hns3vf_dev_allmulticast_enable,
+	.allmulticast_disable = hns3vf_dev_allmulticast_disable,
 	.stats_get          = hns3_stats_get,
 	.stats_reset        = hns3_stats_reset,
 	.xstats_get         = hns3_dev_xstats_get,

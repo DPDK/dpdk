@@ -324,6 +324,21 @@ hns3_handle_link_change_event(struct hns3_hw *hw,
 	hns3_update_link_status(hw);
 }
 
+static void
+hns3_handle_promisc_info(struct hns3_hw *hw, uint16_t promisc_en)
+{
+	if (!promisc_en) {
+		/*
+		 * When promisc/allmulti mode is closed by the hns3 PF kernel
+		 * ethdev driver for untrusted, modify VF's related status.
+		 */
+		hns3_warn(hw, "Promisc mode will be closed by host for being "
+			      "untrusted.");
+		hw->data->promiscuous = 0;
+		hw->data->all_multicast = 0;
+	}
+}
+
 void
 hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 {
@@ -379,6 +394,14 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			break;
 		case HNS3_MBX_PUSH_LINK_STATUS:
 			hns3_handle_link_change_event(hw, req);
+			break;
+		case HNS3_MBX_PUSH_PROMISC_INFO:
+			/*
+			 * When the trust status of VF device changed by the
+			 * hns3 PF kernel driver, VF driver will receive this
+			 * mailbox message from PF driver.
+			 */
+			hns3_handle_promisc_info(hw, req->msg[1]);
 			break;
 		default:
 			hns3_err(hw,
