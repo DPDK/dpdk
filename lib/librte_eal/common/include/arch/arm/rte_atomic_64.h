@@ -19,20 +19,17 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_debug.h>
 
-#define dsb(opt) asm volatile("dsb " #opt : : : "memory")
-#define dmb(opt) asm volatile("dmb " #opt : : : "memory")
+#define rte_mb() asm volatile("dsb sy" : : : "memory")
 
-#define rte_mb() dsb(sy)
+#define rte_wmb() asm volatile("dsb st" : : : "memory")
 
-#define rte_wmb() dsb(st)
+#define rte_rmb() asm volatile("dsb ld" : : : "memory")
 
-#define rte_rmb() dsb(ld)
+#define rte_smp_mb() asm volatile("dmb ish" : : : "memory")
 
-#define rte_smp_mb() dmb(ish)
+#define rte_smp_wmb() asm volatile("dmb ishst" : : : "memory")
 
-#define rte_smp_wmb() dmb(ishst)
-
-#define rte_smp_rmb() dmb(ishld)
+#define rte_smp_rmb() asm volatile("dmb ishld" : : : "memory")
 
 #define rte_io_mb() rte_mb()
 
@@ -40,9 +37,9 @@ extern "C" {
 
 #define rte_io_rmb() rte_rmb()
 
-#define rte_cio_wmb() dmb(oshst)
+#define rte_cio_wmb() asm volatile("dmb oshst" : : : "memory")
 
-#define rte_cio_rmb() dmb(oshld)
+#define rte_cio_rmb() asm volatile("dmb oshld" : : : "memory")
 
 /*------------------------ 128 bit atomic operations -------------------------*/
 
