@@ -129,6 +129,8 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_ADD_CLOUD_FILTER = 32,
 	VIRTCHNL_OP_DEL_CLOUD_FILTER = 33,
 	/* opcodes 34, 35, 36, 37 and 38 are reserved */
+	VIRTCHNL_OP_DCF_CMD_DESC = 39,
+	VIRTCHNL_OP_DCF_CMD_BUFF = 40,
 };
 
 /* These macros are used to generate compilation errors if a structure/union
@@ -879,6 +881,12 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 	case VIRTCHNL_OP_DEL_CLOUD_FILTER:
 		valid_len = sizeof(struct virtchnl_filter);
 		break;
+	case VIRTCHNL_OP_DCF_CMD_DESC:
+	case VIRTCHNL_OP_DCF_CMD_BUFF:
+		/* These two opcodes are specific to handle the AdminQ command,
+		 * so the validation needs to be done in PF's context.
+		 */
+		return 0;
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL_OP_EVENT:
 	case VIRTCHNL_OP_UNKNOWN:
