@@ -628,56 +628,52 @@ ef10_filter_add_internal(
 	 * else a free slot to insert at.  If any of them are busy,
 	 * we have to wait and retry.
 	 */
-	for (;;) {
-		ins_index = -1;
-		depth = 1;
-		EFSYS_LOCK(enp->en_eslp, state);
-		locked = B_TRUE;
+retry:
+	EFSYS_LOCK(enp->en_eslp, state);
+	locked = B_TRUE;
 
-		for (;;) {
-			i = (hash + depth) & (EFX_EF10_FILTER_TBL_ROWS - 1);
-			saved_spec = ef10_filter_entry_spec(eftp, i);
+	ins_index = -1;
 
-			if (!saved_spec) {
-				if (ins_index < 0) {
-					ins_index = i;
-				}
-			} else if (ef10_filter_equal(spec, saved_spec)) {
-				if (ef10_filter_entry_is_busy(eftp, i))
-					break;
-				if (saved_spec->efs_priority
-					    == EFX_FILTER_PRI_AUTO) {
-					ins_index = i;
-					goto found;
-				} else if (ef10_filter_is_exclusive(spec)) {
-					if (may_replace) {
-						ins_index = i;
-						goto found;
-					} else {
-						rc = EEXIST;
-						goto fail1;
-					}
-				}
+	for (depth = 1; depth <= EF10_FILTER_SEARCH_LIMIT; depth++) {
+		i = (hash + depth) & (EFX_EF10_FILTER_TBL_ROWS - 1);
+		saved_spec = ef10_filter_entry_spec(eftp, i);
 
-				/* Leave existing */
+		if (saved_spec == NULL) {
+			if (ins_index < 0)
+				ins_index = i;
+		} else if (ef10_filter_equal(spec, saved_spec)) {
+			if (ef10_filter_entry_is_busy(eftp, i)) {
+				EFSYS_UNLOCK(enp->en_eslp, state);
+				locked = B_FALSE;
+				goto retry;
 			}
 
-			/*
-			 * Once we reach the maximum search depth, use
-			 * the first suitable slot or return EBUSY if
-			 * there was none.
-			 */
-			if (depth == EF10_FILTER_SEARCH_LIMIT) {
-				if (ins_index < 0) {
-					rc = EBUSY;
-					goto fail2;
-				}
+			if (saved_spec->efs_priority == EFX_FILTER_PRI_AUTO) {
+				ins_index = i;
 				goto found;
 			}
-			depth++;
+
+			if (ef10_filter_is_exclusive(spec)) {
+				if (may_replace) {
+					ins_index = i;
+					goto found;
+				} else {
+					rc = EEXIST;
+					goto fail1;
+				}
+			}
+
+			/* Leave existing */
 		}
-		EFSYS_UNLOCK(enp->en_eslp, state);
-		locked = B_FALSE;
+	}
+
+	/*
+	 * Once we reach the maximum search depth, use the first suitable slot
+	 * or return EBUSY if there was none.
+	 */
+	if (ins_index < 0) {
+		rc = EBUSY;
+		goto fail2;
 	}
 
 found:
