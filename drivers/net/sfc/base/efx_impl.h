@@ -246,12 +246,31 @@ typedef struct efx_phy_ops_s {
 } efx_phy_ops_t;
 
 #if EFSYS_OPT_FILTER
+
+/*
+ * Policy for replacing existing filter when inserting a new one.
+ * Note that all policies allow for storing the new lower priority
+ * filters as overridden by existing higher priority ones. It is needed
+ * to restore the lower priority filters on higher priority ones removal.
+ */
+typedef enum efx_filter_replacement_policy_e {
+	/* Cannot replace existing filter */
+	EFX_FILTER_REPLACEMENT_NEVER,
+	/* Higher priority filters can replace lower priotiry ones */
+	EFX_FILTER_REPLACEMENT_HIGHER_PRIORITY,
+	/*
+	 * Higher priority filters can replace lower priority ones and
+	 * equal priority filters can replace each other.
+	 */
+	EFX_FILTER_REPLACEMENT_HIGHER_OR_EQUAL_PRIORITY,
+} efx_filter_replacement_policy_t;
+
 typedef struct efx_filter_ops_s {
 	efx_rc_t	(*efo_init)(efx_nic_t *);
 	void		(*efo_fini)(efx_nic_t *);
 	efx_rc_t	(*efo_restore)(efx_nic_t *);
 	efx_rc_t	(*efo_add)(efx_nic_t *, efx_filter_spec_t *,
-				   boolean_t may_replace);
+				   efx_filter_replacement_policy_t policy);
 	efx_rc_t	(*efo_delete)(efx_nic_t *, efx_filter_spec_t *);
 	efx_rc_t	(*efo_supported_filters)(efx_nic_t *, uint32_t *,
 				   size_t, size_t *);
