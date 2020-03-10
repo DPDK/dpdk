@@ -113,8 +113,8 @@ rte_lpm6_add(struct rte_lpm6 *lpm, const uint8_t *ip, uint8_t depth,
  *   1 if the rule exists, 0 if it does not, a negative value on failure
  */
 int
-rte_lpm6_is_rule_present(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
-		uint32_t *next_hop);
+rte_lpm6_is_rule_present(struct rte_lpm6 *lpm, const uint8_t *ip, uint8_t depth,
+			 uint32_t *next_hop);
 
 /**
  * Delete a rule from the LPM table.
@@ -129,7 +129,7 @@ rte_lpm6_is_rule_present(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
  *   0 on success, negative value otherwise
  */
 int
-rte_lpm6_delete(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth);
+rte_lpm6_delete(struct rte_lpm6 *lpm, const uint8_t *ip, uint8_t depth);
 
 /**
  * Delete a rule from the LPM table.

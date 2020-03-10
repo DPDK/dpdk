@@ -1019,8 +1019,8 @@ rte_lpm6_lookup_bulk_func(const struct rte_lpm6 *lpm,
  * Look for a rule in the high-level rules table
  */
 int
-rte_lpm6_is_rule_present(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
-		uint32_t *next_hop)
+rte_lpm6_is_rule_present(struct rte_lpm6 *lpm, const uint8_t *ip, uint8_t depth,
+			 uint32_t *next_hop)
 {
 	uint8_t masked_ip[RTE_LPM6_IPV6_ADDR_SIZE];
 
@@ -1290,7 +1290,7 @@ remove_tbl(struct rte_lpm6 *lpm, struct rte_lpm_tbl8_hdr *tbl_hdr,
  * Deletes a rule
  */
 int
-rte_lpm6_delete(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth)
+rte_lpm6_delete(struct rte_lpm6 *lpm, const uint8_t *ip, uint8_t depth)
 {
 	uint8_t masked_ip[RTE_LPM6_IPV6_ADDR_SIZE];
 	struct rte_lpm6_rule lsp_rule_obj;
