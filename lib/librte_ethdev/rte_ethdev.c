@@ -1164,14 +1164,14 @@ check_lro_pkt_size(uint16_t port_id, uint32_t config_size,
 
 /*
  * Validate offloads that are requested through rte_eth_dev_configure against
- * the offloads successfuly set by the ethernet device.
+ * the offloads successfully set by the ethernet device.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param req_offloads
  *   The offloads that have been requested through `rte_eth_dev_configure`.
  * @param set_offloads
- *   The offloads successfuly set by the ethernet device.
+ *   The offloads successfully set by the ethernet device.
  * @param offload_type
  *   The offload type i.e. Rx/Tx string.
  * @param offload_name
@@ -1200,7 +1200,7 @@ validate_offloads(uint16_t port_id, uint64_t req_offloads,
 			ret = -EINVAL;
 		}
 
-		/* Chech if offload couldn't be disabled. */
+		/* Check if offload couldn't be disabled. */
 		if (offload & set_offloads) {
 			RTE_ETHDEV_LOG(DEBUG,
 				"Port %u %s offload %s is not requested but enabled\n",
@@ -3261,7 +3261,7 @@ rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask)
 	orig_offloads = dev->data->dev_conf.rxmode.offloads;
 	dev_offloads = orig_offloads;
 
-	/*check which option changed by application*/
+	/* check which option changed by application */
 	cur = !!(offload_mask & ETH_VLAN_STRIP_OFFLOAD);
 	org = !!(dev_offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 	if (cur != org) {
@@ -4452,7 +4452,7 @@ rte_eth_add_first_rx_callback(uint16_t port_id, uint16_t queue_id,
 	cb->param = user_param;
 
 	rte_spinlock_lock(&rte_eth_rx_cb_lock);
-	/* Add the callbacks at fisrt position*/
+	/* Add the callbacks at first position */
 	cb->next = rte_eth_devices[port_id].post_rx_burst_cbs[queue_id];
 	rte_smp_wmb();
 	rte_eth_devices[port_id].post_rx_burst_cbs[queue_id] = cb;
