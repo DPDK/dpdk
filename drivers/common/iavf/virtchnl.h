@@ -132,6 +132,7 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DCF_CMD_DESC = 39,
 	VIRTCHNL_OP_DCF_CMD_BUFF = 40,
 	VIRTCHNL_OP_DCF_DISABLE = 41,
+	VIRTCHNL_OP_DCF_GET_VSI_MAP = 42,
 };
 
 /* These macros are used to generate compilation errors if a structure/union
@@ -624,6 +625,25 @@ struct virtchnl_filter {
 
 VIRTCHNL_CHECK_STRUCT_LEN(272, virtchnl_filter);
 
+/* VIRTCHNL_OP_DCF_GET_VSI_MAP
+ * VF sends this message to get VSI mapping table.
+ * PF responds with an indirect message containing VF's
+ * HW VSI IDs.
+ * The index of vf_vsi array is the logical VF ID, the
+ * value of vf_vsi array is the VF's HW VSI ID with its
+ * valid configuration.
+ */
+struct virtchnl_dcf_vsi_map {
+	u16 pf_vsi;	/* PF's HW VSI ID */
+	u16 num_vfs;	/* The actual number of VFs allocated */
+#define VIRTCHNL_DCF_VF_VSI_ID_S	0
+#define VIRTCHNL_DCF_VF_VSI_ID_M	(0xFFF << VIRTCHNL_DCF_VF_VSI_ID_S)
+#define VIRTCHNL_DCF_VF_VSI_VALID	(1 << 15)
+	u16 vf_vsi[1];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(6, virtchnl_dcf_vsi_map);
+
 /* VIRTCHNL_OP_EVENT
  * PF sends this message to inform the VF driver of events that may affect it.
  * No direct response is expected from the VF, though it may generate other
@@ -634,6 +654,7 @@ enum virtchnl_event_codes {
 	VIRTCHNL_EVENT_LINK_CHANGE,
 	VIRTCHNL_EVENT_RESET_IMPENDING,
 	VIRTCHNL_EVENT_PF_DRIVER_CLOSE,
+	VIRTCHNL_EVENT_DCF_VSI_MAP_UPDATE,
 };
 
 #define PF_EVENT_SEVERITY_INFO		0
@@ -661,6 +682,10 @@ struct virtchnl_pf_event {
 			u32 link_speed;
 			u8 link_status;
 		} link_event_adv;
+		struct {
+			u16 vf_id;
+			u16 vsi_id;
+		} vf_vsi_map;
 	} event_data;
 
 	int severity;
@@ -890,6 +915,10 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		 */
 		return 0;
 	case VIRTCHNL_OP_DCF_DISABLE:
+	case VIRTCHNL_OP_DCF_GET_VSI_MAP:
+		/* The two opcodes are required by DCF without message buffer,
+		 * so the valid length keeps the default value 0.
+		 */
 		break;
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL_OP_EVENT:
