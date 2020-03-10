@@ -131,6 +131,7 @@ enum virtchnl_ops {
 	/* opcodes 34, 35, 36, 37 and 38 are reserved */
 	VIRTCHNL_OP_DCF_CMD_DESC = 39,
 	VIRTCHNL_OP_DCF_CMD_BUFF = 40,
+	VIRTCHNL_OP_DCF_DISABLE = 41,
 };
 
 /* These macros are used to generate compilation errors if a structure/union
@@ -245,6 +246,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vsi_resource);
 #define VIRTCHNL_VF_OFFLOAD_ADQ			0X00800000
 #define VIRTCHNL_VF_OFFLOAD_ADQ_V2		0X01000000
 #define VIRTCHNL_VF_OFFLOAD_USO			0X02000000
+#define VIRTCHNL_VF_CAP_DCF			0X40000000
 	/* 0X80000000 is reserved */
 
 /* Define below the capability flags that are not offloads */
@@ -887,6 +889,8 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		 * so the validation needs to be done in PF's context.
 		 */
 		return 0;
+	case VIRTCHNL_OP_DCF_DISABLE:
+		break;
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL_OP_EVENT:
 	case VIRTCHNL_OP_UNKNOWN:
