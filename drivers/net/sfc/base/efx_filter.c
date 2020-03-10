@@ -93,8 +93,15 @@ efx_filter_insert(
 		goto fail2;
 	}
 
+	if (spec->efs_priority == EFX_FILTER_PRI_AUTO) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
 	return (efop->efo_add(enp, spec, B_FALSE));
 
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
