@@ -1164,6 +1164,7 @@ sfc_flow_parse_attr(const struct rte_flow_attr *attr,
 		spec->type = SFC_FLOW_SPEC_FILTER;
 		spec_filter->template.efs_flags |= EFX_FILTER_FLAG_RX;
 		spec_filter->template.efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
+		spec_filter->template.efs_priority = EFX_FILTER_PRI_MANUAL;
 	} else {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, attr,
