@@ -55,7 +55,7 @@ extern "C" {
  *
  * As pointed by Java guys, that makes possible to use lock-prefixed
  * instructions to get the same effect as mfence and on most modern HW
- * that gives a better perfomance then using mfence:
+ * that gives a better performance then using mfence:
  * https://shipilev.net/blog/2014/on-the-fence-with-dependencies/
  * Basic idea is to use lock prefixed add with some dummy memory location
  * as the destination. From their experiments 128B(2 cache lines) below

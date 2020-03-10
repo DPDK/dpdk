@@ -57,7 +57,7 @@ __rte_rdtsc_syscall(void)
  *      asm volatile("mcr p15, 0, %0, c9, c12, 0" : : "r"(29));
  *      asm volatile("mcr p15, 0, %0, c9, c12, 1" : : "r"(0x8000000f));
  *
- * which is possible only from the priviledged mode (kernel space).
+ * which is possible only from the privileged mode (kernel space).
  */
 static inline uint64_t
 __rte_rdtsc_pmccntr(void)

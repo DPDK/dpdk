@@ -1337,7 +1337,7 @@ fbarray_find_biggest(struct rte_fbarray *arr, unsigned int start, bool used,
 	 */
 
 	/* the API's called are thread-safe, but something may still happen
-	 * inbetween the API calls, so lock the fbarray. all other API's are
+	 * between the API calls, so lock the fbarray. all other API's are
 	 * read-locking the fbarray, so read lock here is OK.
 	 */
 	rte_rwlock_read_lock(&arr->rwlock);

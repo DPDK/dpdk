@@ -171,7 +171,7 @@ malloc_elem_insert(struct malloc_elem *elem)
 		next_elem = NULL;
 		heap->last = elem;
 	} else {
-		/* the new memory is somewhere inbetween start and end */
+		/* the new memory is somewhere between start and end */
 		uint64_t dist_from_start, dist_from_end;
 
 		dist_from_end = RTE_PTR_DIFF(heap->last, elem);

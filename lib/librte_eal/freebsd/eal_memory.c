@@ -449,7 +449,7 @@ memseg_primary_init(void)
 		 *
 		 * we need (N*2)-1 segments because we cannot guarantee that
 		 * each segment will be IOVA-contiguous with the previous one,
-		 * so we will allocate more and put spaces inbetween segments
+		 * so we will allocate more and put spaces between segments
 		 * that are non-contiguous.
 		 */
 		avail_segs = (hpi->num_pages[0] * 2) - 1;
