@@ -314,7 +314,7 @@ efx_filter_spec_init_tx(
 	EFSYS_ASSERT3P(etp, !=, NULL);
 
 	memset(spec, 0, sizeof (*spec));
-	spec->efs_priority = EFX_FILTER_PRI_REQUIRED;
+	spec->efs_priority = EFX_FILTER_PRI_MANUAL;
 	spec->efs_flags = EFX_FILTER_FLAG_TX;
 	spec->efs_dmaq_id = (uint16_t)etp->et_index;
 }

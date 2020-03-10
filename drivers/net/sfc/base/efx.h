@@ -2950,16 +2950,12 @@ typedef uint8_t efx_filter_flags_t;
 typedef uint32_t efx_filter_match_flags_t;
 
 typedef enum efx_filter_priority_s {
-	EFX_FILTER_PRI_HINT = 0,	/* Performance hint */
-	EFX_FILTER_PRI_AUTO,		/* Automatic filter based on device
+	EFX_FILTER_PRI_AUTO = 0,	/* Automatic filter based on device
 					 * address list or hardware
 					 * requirements. This may only be used
 					 * by the filter implementation for
 					 * each NIC type. */
 	EFX_FILTER_PRI_MANUAL,		/* Manually configured filter */
-	EFX_FILTER_PRI_REQUIRED,	/* Required for correct behaviour of the
-					 * client (e.g. SR-IOV, HyperV VMQ etc.)
-					 */
 } efx_filter_priority_t;
 
 /*
