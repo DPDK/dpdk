@@ -43,6 +43,77 @@
 #include "smt.h"
 #include "mps_tcam.h"
 
+static const u16 cxgbe_filter_mode_features[] = {
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_ETHERTYPE |
+	 F_PROTOCOL | F_PORT),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_ETHERTYPE |
+	 F_PROTOCOL | F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_ETHERTYPE | F_TOS |
+	 F_PORT),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_ETHERTYPE | F_TOS |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_ETHERTYPE | F_PORT |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_PROTOCOL | F_TOS |
+	 F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_PROTOCOL | F_VLAN |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_PROTOCOL | F_VNIC_ID |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_TOS | F_VLAN |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_TOS | F_VNIC_ID |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_VLAN | F_PORT |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_MACMATCH | F_VNIC_ID | F_PORT |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_ETHERTYPE | F_PROTOCOL | F_TOS |
+	 F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_ETHERTYPE | F_VLAN | F_PORT),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_ETHERTYPE | F_VLAN | F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_ETHERTYPE | F_VNIC_ID | F_PORT),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_ETHERTYPE | F_VNIC_ID | F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_PROTOCOL | F_TOS | F_VLAN | F_PORT),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_PROTOCOL | F_TOS | F_VLAN | F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_PROTOCOL | F_TOS | F_VNIC_ID |
+	 F_PORT),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_PROTOCOL | F_TOS | F_VNIC_ID |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_PROTOCOL | F_VLAN | F_PORT |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_PROTOCOL | F_VNIC_ID | F_PORT |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_TOS | F_VLAN | F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_TOS | F_VNIC_ID | F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_MPSHITTYPE | F_VLAN | F_VNIC_ID | F_FCOE),
+	(F_FRAGMENTATION | F_MACMATCH | F_ETHERTYPE | F_PROTOCOL | F_PORT |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MACMATCH | F_ETHERTYPE | F_TOS | F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_MACMATCH | F_PROTOCOL | F_VLAN | F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_MACMATCH | F_PROTOCOL | F_VNIC_ID | F_PORT |
+	 F_FCOE),
+	(F_FRAGMENTATION | F_MACMATCH | F_TOS | F_VLAN | F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_MACMATCH | F_TOS | F_VNIC_ID | F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_ETHERTYPE | F_VLAN | F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_ETHERTYPE | F_VNIC_ID | F_PORT | F_FCOE),
+	(F_FRAGMENTATION | F_PROTOCOL | F_TOS | F_VLAN | F_FCOE),
+	(F_FRAGMENTATION | F_PROTOCOL | F_TOS | F_VNIC_ID | F_FCOE),
+	(F_FRAGMENTATION | F_VLAN | F_VNIC_ID | F_PORT | F_FCOE),
+	(F_MPSHITTYPE | F_MACMATCH | F_ETHERTYPE | F_PROTOCOL | F_PORT |
+	 F_FCOE),
+	(F_MPSHITTYPE | F_MACMATCH | F_ETHERTYPE | F_TOS | F_PORT | F_FCOE),
+	(F_MPSHITTYPE | F_MACMATCH | F_PROTOCOL | F_VLAN | F_PORT),
+	(F_MPSHITTYPE | F_MACMATCH | F_PROTOCOL | F_VNIC_ID | F_PORT),
+	(F_MPSHITTYPE | F_MACMATCH | F_TOS | F_VLAN | F_PORT),
+	(F_MPSHITTYPE | F_MACMATCH | F_TOS | F_VNIC_ID | F_PORT),
+	(F_MPSHITTYPE | F_ETHERTYPE | F_VLAN | F_PORT | F_FCOE),
+	(F_MPSHITTYPE | F_ETHERTYPE | F_VNIC_ID | F_PORT | F_FCOE),
+	(F_MPSHITTYPE | F_PROTOCOL | F_TOS | F_VLAN | F_PORT | F_FCOE),
+	(F_MPSHITTYPE | F_PROTOCOL | F_TOS | F_VNIC_ID | F_PORT | F_FCOE),
+	(F_MPSHITTYPE | F_VLAN | F_VNIC_ID | F_PORT),
+};
+
 /**
  * Allocate a chunk of memory. The allocated memory is cleared.
  */
@@ -687,6 +758,19 @@ static int check_devargs_handler(const char *key, const char *value, void *p)
 		}
 	}
 
+	if (!strncmp(key, CXGBE_DEVARG_PF_FILTER_MODE, strlen(key)) ||
+	    !strncmp(key, CXGBE_DEVARG_PF_FILTER_MASK, strlen(key))) {
+		u32 *dst_val = (u32 *)p;
+		char *endptr = NULL;
+		u32 arg_val;
+
+		arg_val = strtoul(value, &endptr, 16);
+		if (errno || endptr == value)
+			return -EINVAL;
+
+		*dst_val = arg_val;
+	}
+
 	return 0;
 }
 
@@ -732,6 +816,24 @@ static void cxgbe_get_devargs_int(struct adapter *adap, bool *dst,
 	*dst = devarg_value;
 }
 
+static void cxgbe_get_devargs_u32(struct adapter *adap, u32 *dst,
+				  const char *key, u32 default_value)
+{
+	struct rte_pci_device *pdev = adap->pdev;
+	u32 devarg_value = default_value;
+	int ret;
+
+	*dst = default_value;
+	if (!pdev)
+		return;
+
+	ret = cxgbe_get_devargs(pdev->device.devargs, key, &devarg_value);
+	if (ret)
+		return;
+
+	*dst = devarg_value;
+}
+
 void cxgbe_process_devargs(struct adapter *adap)
 {
 	cxgbe_get_devargs_int(adap, &adap->devargs.keep_ovlan,
@@ -740,6 +842,10 @@ void cxgbe_process_devargs(struct adapter *adap)
 			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY, false);
 	cxgbe_get_devargs_int(adap, &adap->devargs.force_link_up,
 			      CXGBE_DEVARG_VF_FORCE_LINK_UP, false);
+	cxgbe_get_devargs_u32(adap, &adap->devargs.filtermode,
+			      CXGBE_DEVARG_PF_FILTER_MODE, 0);
+	cxgbe_get_devargs_u32(adap, &adap->devargs.filtermask,
+			      CXGBE_DEVARG_PF_FILTER_MASK, 0);
 }
 
 static void configure_vlan_types(struct adapter *adapter)
@@ -774,6 +880,134 @@ static void configure_vlan_types(struct adapter *adapter)
 
 	t4_tp_wr_bits_indirect(adapter, A_TP_INGRESS_CONFIG, V_RM_OVLAN(1),
 			       V_RM_OVLAN(!adapter->devargs.keep_ovlan));
+}
+
+static int cxgbe_get_filter_vnic_mode_from_devargs(u32 val)
+{
+	u32 vnic_mode;
+
+	vnic_mode = val & (CXGBE_DEVARGS_FILTER_MODE_PF_VF |
+			   CXGBE_DEVARGS_FILTER_MODE_VLAN_OUTER);
+	if (vnic_mode) {
+		switch (vnic_mode) {
+		case CXGBE_DEVARGS_FILTER_MODE_VLAN_OUTER:
+			return CXGBE_FILTER_VNIC_MODE_OVLAN;
+		case CXGBE_DEVARGS_FILTER_MODE_PF_VF:
+			return CXGBE_FILTER_VNIC_MODE_PFVF;
+		default:
+			return -EINVAL;
+		}
+	}
+
+	return CXGBE_FILTER_VNIC_MODE_NONE;
+}
+
+static int cxgbe_get_filter_mode_from_devargs(u32 val, bool closest_match)
+{
+	int vnic_mode, fmode = 0;
+	bool found = false;
+	u8 i;
+
+	if (val >= CXGBE_DEVARGS_FILTER_MODE_MAX) {
+		pr_err("Unsupported flags set in filter mode. Must be < 0x%x\n",
+		       CXGBE_DEVARGS_FILTER_MODE_MAX);
+		return -ERANGE;
+	}
+
+	vnic_mode = cxgbe_get_filter_vnic_mode_from_devargs(val);
+	if (vnic_mode < 0) {
+		pr_err("Unsupported Vnic-mode, more than 1 Vnic-mode selected\n");
+		return vnic_mode;
+	}
+
+	if (vnic_mode)
+		fmode |= F_VNIC_ID;
+	if (val & CXGBE_DEVARGS_FILTER_MODE_PHYSICAL_PORT)
+		fmode |= F_PORT;
+	if (val & CXGBE_DEVARGS_FILTER_MODE_ETHERNET_DSTMAC)
+		fmode |= F_MACMATCH;
+	if (val & CXGBE_DEVARGS_FILTER_MODE_ETHERNET_ETHTYPE)
+		fmode |= F_ETHERTYPE;
+	if (val & CXGBE_DEVARGS_FILTER_MODE_VLAN_INNER)
+		fmode |= F_VLAN;
+	if (val & CXGBE_DEVARGS_FILTER_MODE_IP_TOS)
+		fmode |= F_TOS;
+	if (val & CXGBE_DEVARGS_FILTER_MODE_IP_PROTOCOL)
+		fmode |= F_PROTOCOL;
+
+	for (i = 0; i < ARRAY_SIZE(cxgbe_filter_mode_features); i++) {
+		if ((cxgbe_filter_mode_features[i] & fmode) == fmode) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return -EINVAL;
+
+	return closest_match ? cxgbe_filter_mode_features[i] : fmode;
+}
+
+static int configure_filter_mode_mask(struct adapter *adap)
+{
+	u32 params[2], val[2], nparams = 0;
+	int ret;
+
+	if (!adap->devargs.filtermode && !adap->devargs.filtermask)
+		return 0;
+
+	if (!adap->devargs.filtermode || !adap->devargs.filtermask) {
+		pr_err("Unsupported, Provide both filtermode and filtermask devargs\n");
+		return -EINVAL;
+	}
+
+	if (adap->devargs.filtermask & ~adap->devargs.filtermode) {
+		pr_err("Unsupported, filtermask (0x%x) must be subset of filtermode (0x%x)\n",
+		       adap->devargs.filtermask, adap->devargs.filtermode);
+
+		return -EINVAL;
+	}
+
+	params[0] = CXGBE_FW_PARAM_DEV(FILTER) |
+		    V_FW_PARAMS_PARAM_Y(FW_PARAM_DEV_FILTER_MODE_MASK);
+
+	ret = cxgbe_get_filter_mode_from_devargs(adap->devargs.filtermode,
+						 true);
+	if (ret < 0) {
+		pr_err("Unsupported filtermode devargs combination:0x%x\n",
+		       adap->devargs.filtermode);
+		return ret;
+	}
+
+	val[0] = V_FW_PARAMS_PARAM_FILTER_MODE(ret);
+
+	ret = cxgbe_get_filter_mode_from_devargs(adap->devargs.filtermask,
+						 false);
+	if (ret < 0) {
+		pr_err("Unsupported filtermask devargs combination:0x%x\n",
+		       adap->devargs.filtermask);
+		return ret;
+	}
+
+	val[0] |= V_FW_PARAMS_PARAM_FILTER_MASK(ret);
+
+	nparams++;
+
+	ret = cxgbe_get_filter_vnic_mode_from_devargs(adap->devargs.filtermode);
+	if (ret < 0)
+		return ret;
+
+	if (ret) {
+		params[1] = CXGBE_FW_PARAM_DEV(FILTER) |
+			    V_FW_PARAMS_PARAM_Y(FW_PARAM_DEV_FILTER_VNIC_MODE);
+
+		val[1] = ret - 1;
+
+		nparams++;
+	}
+
+	return t4_set_params(adap, adap->mbox, adap->pf, 0, nparams,
+			     params, val);
 }
 
 static void configure_pcie_ext_tag(struct adapter *adapter)
@@ -1300,6 +1534,9 @@ static int adap_init0(struct adapter *adap)
 			     adap->params.b_wnd);
 	}
 	t4_init_sge_params(adap);
+	ret = configure_filter_mode_mask(adap);
+	if (ret < 0)
+		goto bye;
 	t4_init_tp_params(adap);
 	configure_pcie_ext_tag(adap);
 	configure_vlan_types(adap);

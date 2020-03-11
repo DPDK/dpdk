@@ -309,6 +309,8 @@ struct adapter_devargs {
 	bool keep_ovlan;
 	bool force_link_up;
 	bool tx_mode_latency;
+	u32 filtermode;
+	u32 filtermask;
 };
 
 struct adapter {

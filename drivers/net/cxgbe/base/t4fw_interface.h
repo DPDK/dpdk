@@ -674,12 +674,16 @@ enum fw_params_mnem {
 
 #define S_FW_PARAMS_PARAM_FILTER_MODE 16
 #define M_FW_PARAMS_PARAM_FILTER_MODE 0xffff
+#define V_FW_PARAMS_PARAM_FILTER_MODE(x)          \
+	((x) << S_FW_PARAMS_PARAM_FILTER_MODE)
 #define G_FW_PARAMS_PARAM_FILTER_MODE(x)          \
 	(((x) >> S_FW_PARAMS_PARAM_FILTER_MODE) & \
 	M_FW_PARAMS_PARAM_FILTER_MODE)
 
 #define S_FW_PARAMS_PARAM_FILTER_MASK 0
 #define M_FW_PARAMS_PARAM_FILTER_MASK 0xffff
+#define V_FW_PARAMS_PARAM_FILTER_MASK(x)          \
+	((x) << S_FW_PARAMS_PARAM_FILTER_MASK)
 #define G_FW_PARAMS_PARAM_FILTER_MASK(x)          \
 	(((x) >> S_FW_PARAMS_PARAM_FILTER_MASK) & \
 	M_FW_PARAMS_PARAM_FILTER_MASK)
@@ -725,6 +729,7 @@ enum fw_params_param_dmaq {
 };
 
 enum fw_params_param_dev_filter {
+	FW_PARAM_DEV_FILTER_VNIC_MODE   = 0x00,
 	FW_PARAM_DEV_FILTER_MODE_MASK   = 0x01,
 };
 

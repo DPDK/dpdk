@@ -1244,7 +1244,9 @@ RTE_PMD_REGISTER_PCI_TABLE(net_cxgbe, cxgb4_pci_tbl);
 RTE_PMD_REGISTER_KMOD_DEP(net_cxgbe, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_cxgbe,
 			      CXGBE_DEVARG_CMN_KEEP_OVLAN "=<0|1> "
-			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY "=<0|1> ");
+			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY "=<0|1> "
+			      CXGBE_DEVARG_PF_FILTER_MODE "=<uint32> "
+			      CXGBE_DEVARG_PF_FILTER_MASK "=<uint32> ");
 
 RTE_INIT(cxgbe_init_log)
 {
