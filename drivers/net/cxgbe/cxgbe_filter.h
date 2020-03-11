@@ -19,7 +19,7 @@
 #define PROTO_BITWIDTH 8
 #define TOS_BITWIDTH 8
 #define PF_BITWIDTH 3
-#define VF_BITWIDTH 8
+#define VF_BITWIDTH 13
 #define IVLAN_BITWIDTH 16
 #define OVLAN_BITWIDTH 16
 

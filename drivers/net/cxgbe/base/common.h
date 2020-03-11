@@ -273,6 +273,7 @@ struct adapter_params {
 	bool ulptx_memwrite_dsgl;          /* use of T5 DSGL allowed */
 	u8 fw_caps_support;		  /* 32-bit Port Capabilities */
 	u8 filter2_wr_support;            /* FW support for FILTER2_WR */
+	u32 viid_smt_extn_support:1;	  /* FW returns vin and smt index */
 	u32 max_tx_coalesce_num; /* Max # of Tx packets that can be coalesced */
 };
 
@@ -382,10 +383,11 @@ int t4_set_params(struct adapter *adap, unsigned int mbox, unsigned int pf,
 int t4_alloc_vi_func(struct adapter *adap, unsigned int mbox,
 		     unsigned int port, unsigned int pf, unsigned int vf,
 		     unsigned int nmac, u8 *mac, unsigned int *rss_size,
-		     unsigned int portfunc, unsigned int idstype);
+		     unsigned int portfunc, unsigned int idstype,
+		     u8 *vivld, u8 *vin);
 int t4_alloc_vi(struct adapter *adap, unsigned int mbox, unsigned int port,
 		unsigned int pf, unsigned int vf, unsigned int nmac, u8 *mac,
-		unsigned int *rss_size);
+		unsigned int *rss_size, u8 *vivild, u8 *vin);
 int t4_free_vi(struct adapter *adap, unsigned int mbox,
 	       unsigned int pf, unsigned int vf,
 	       unsigned int viid);

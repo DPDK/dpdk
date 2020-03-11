@@ -159,9 +159,9 @@ cxgbe_fill_filter_region(struct adapter *adap,
 			ntuple_mask |= (u64)(fs->val.ovlan_vld << 16 |
 					     fs->mask.ovlan) << tp->vnic_shift;
 		else if (fs->mask.pfvf_vld)
-			ntuple_mask |= (u64)((fs->mask.pfvf_vld << 16) |
-					     (fs->mask.pf << 13)) <<
-					     tp->vnic_shift;
+			ntuple_mask |= (u64)(fs->mask.pfvf_vld << 16 |
+					     fs->mask.pf << 13 |
+					     fs->mask.vf) << tp->vnic_shift;
 	}
 	if (tp->tos_shift >= 0)
 		ntuple_mask |= (u64)fs->mask.tos << tp->tos_shift;
@@ -313,6 +313,34 @@ ch_rte_parsetype_pf(const void *dmask __rte_unused,
 	CXGBE_FILL_FS(1, 1, pfvf_vld);
 
 	CXGBE_FILL_FS(adap->pf, 0x7, pf);
+	return 0;
+}
+
+static int
+ch_rte_parsetype_vf(const void *dmask, const struct rte_flow_item *item,
+		    struct ch_filter_specification *fs,
+		    struct rte_flow_error *e)
+{
+	const struct rte_flow_item_vf *umask = item->mask;
+	const struct rte_flow_item_vf *val = item->spec;
+	const struct rte_flow_item_vf *mask;
+
+	/* If user has not given any mask, then use chelsio supported mask. */
+	mask = umask ? umask : (const struct rte_flow_item_vf *)dmask;
+
+	CXGBE_FILL_FS(1, 1, pfvf_vld);
+
+	if (!val)
+		return 0; /* Wildcard, match all Vf */
+
+	if (val->id > UCHAR_MAX)
+		return rte_flow_error_set(e, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "VF ID > MAX(255)");
+
+	CXGBE_FILL_FS(val->id, mask->id, vf);
+
 	return 0;
 }
 
@@ -947,6 +975,13 @@ static struct chrte_fparse parseitem[] = {
 	[RTE_FLOW_ITEM_TYPE_PF] = {
 		.fptr = ch_rte_parsetype_pf,
 		.dmask = NULL,
+	},
+
+	[RTE_FLOW_ITEM_TYPE_VF] = {
+		.fptr = ch_rte_parsetype_vf,
+		.dmask = &(const struct rte_flow_item_vf){
+			.id = 0xffffffff,
+		}
 	},
 };
 

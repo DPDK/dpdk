@@ -4017,7 +4017,8 @@ int t4_set_params(struct adapter *adap, unsigned int mbox, unsigned int pf,
 int t4_alloc_vi_func(struct adapter *adap, unsigned int mbox,
 		     unsigned int port, unsigned int pf, unsigned int vf,
 		     unsigned int nmac, u8 *mac, unsigned int *rss_size,
-		     unsigned int portfunc, unsigned int idstype)
+		     unsigned int portfunc, unsigned int idstype,
+		     u8 *vivld, u8 *vin)
 {
 	int ret;
 	struct fw_vi_cmd c;
@@ -4055,6 +4056,10 @@ int t4_alloc_vi_func(struct adapter *adap, unsigned int mbox,
 	}
 	if (rss_size)
 		*rss_size = G_FW_VI_CMD_RSSSIZE(be16_to_cpu(c.norss_rsssize));
+	if (vivld)
+		*vivld = G_FW_VI_CMD_VFVLD(be32_to_cpu(c.alloc_to_len16));
+	if (vin)
+		*vin = G_FW_VI_CMD_VIN(be32_to_cpu(c.alloc_to_len16));
 	return G_FW_VI_CMD_VIID(cpu_to_be16(c.type_to_viid));
 }
 
@@ -4075,10 +4080,10 @@ int t4_alloc_vi_func(struct adapter *adap, unsigned int mbox,
  */
 int t4_alloc_vi(struct adapter *adap, unsigned int mbox, unsigned int port,
 		unsigned int pf, unsigned int vf, unsigned int nmac, u8 *mac,
-		unsigned int *rss_size)
+		unsigned int *rss_size, u8 *vivld, u8 *vin)
 {
 	return t4_alloc_vi_func(adap, mbox, port, pf, vf, nmac, mac, rss_size,
-				FW_VI_FUNC_ETH, 0);
+				FW_VI_FUNC_ETH, 0, vivld, vin);
 }
 
 /**
@@ -5346,6 +5351,7 @@ int t4_port_init(struct adapter *adap, int mbox, int pf, int vf)
 	fw_port_cap32_t pcaps, acaps;
 	enum fw_port_type port_type;
 	struct fw_port_cmd cmd;
+	u8 vivld = 0, vin = 0;
 	int ret, i, j = 0;
 	int mdio_addr;
 	u32 action;
@@ -5417,7 +5423,8 @@ int t4_port_init(struct adapter *adap, int mbox, int pf, int vf)
 			acaps = be32_to_cpu(cmd.u.info32.acaps32);
 		}
 
-		ret = t4_alloc_vi(adap, mbox, j, pf, vf, 1, addr, &rss_size);
+		ret = t4_alloc_vi(adap, mbox, j, pf, vf, 1, addr, &rss_size,
+				  &vivld, &vin);
 		if (ret < 0)
 			return ret;
 
@@ -5425,6 +5432,18 @@ int t4_port_init(struct adapter *adap, int mbox, int pf, int vf)
 		pi->tx_chan = j;
 		pi->rss_size = rss_size;
 		t4_os_set_hw_addr(adap, i, addr);
+
+		/* If fw supports returning the VIN as part of FW_VI_CMD,
+		 * save the returned values.
+		 */
+		if (adap->params.viid_smt_extn_support) {
+			pi->vivld = vivld;
+			pi->vin = vin;
+		} else {
+			/* Retrieve the values from VIID */
+			pi->vivld = G_FW_VIID_VIVLD(pi->viid);
+			pi->vin =  G_FW_VIID_VIN(pi->viid);
+		}
 
 		pi->port_type = port_type;
 		pi->mdio_addr = mdio_addr;

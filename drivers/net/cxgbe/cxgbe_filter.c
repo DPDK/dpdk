@@ -312,8 +312,9 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 	if (tp->vnic_shift >= 0) {
 		if ((adap->params.tp.ingress_config & F_VNIC) &&
 		    f->fs.mask.pfvf_vld)
-			ntuple |= (u64)((f->fs.val.pfvf_vld << 16) |
-					(f->fs.val.pf << 13)) << tp->vnic_shift;
+			ntuple |= (u64)(f->fs.val.pfvf_vld << 16 |
+					f->fs.val.pf << 13 | f->fs.val.vf) <<
+					tp->vnic_shift;
 		else if (!(adap->params.tp.ingress_config & F_VNIC) &&
 			 f->fs.mask.ovlan_vld)
 			ntuple |= (u64)(f->fs.val.ovlan_vld << 16 |
@@ -1067,8 +1068,8 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	 * to hardware.
 	 */
 	if (iconf & F_VNIC) {
-		f->fs.val.ovlan = fs->val.pf << 13;
-		f->fs.mask.ovlan = fs->mask.pf << 13;
+		f->fs.val.ovlan = fs->val.pf << 13 | fs->val.vf;
+		f->fs.mask.ovlan = fs->mask.pf << 13 | fs->mask.vf;
 		f->fs.val.ovlan_vld = fs->val.pfvf_vld;
 		f->fs.mask.ovlan_vld = fs->mask.pfvf_vld;
 	}

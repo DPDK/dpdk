@@ -1207,6 +1207,15 @@ static int adap_init0(struct adapter *adap)
 		adap->params.filter2_wr_support = (ret == 0 && val[0] != 0);
 	}
 
+	/* Check if FW supports returning vin.
+	 * If this is not supported, driver will interpret
+	 * these values from viid.
+	 */
+	params[0] = CXGBE_FW_PARAM_DEV(OPAQUE_VIID_SMT_EXTN);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0,
+			      1, params, val);
+	adap->params.viid_smt_extn_support = (ret == 0 && val[0] != 0);
+
 	/* query tid-related parameters */
 	params[0] = CXGBE_FW_PARAM_DEV(NTID);
 	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1,

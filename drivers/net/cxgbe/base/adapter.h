@@ -55,6 +55,12 @@ struct port_info {
 	u8     rss_mode;                /* rss mode */
 	u16    rss_size;                /* size of VI's RSS table slice */
 	u64    rss_hf;			/* RSS Hash Function */
+
+	/* viid fields either returned by fw
+	 * or decoded by parsing viid by driver.
+	 */
+	u8 vin;
+	u8 vivld;
 };
 
 /* Enable or disable autonegotiation.  If this is set to enable,

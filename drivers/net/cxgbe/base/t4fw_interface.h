@@ -679,6 +679,7 @@ enum fw_params_param_dev {
 	FW_PARAMS_PARAM_DEV_TPREV	= 0x0C, /* tp version */
 	FW_PARAMS_PARAM_DEV_ULPTX_MEMWRITE_DSGL = 0x17,
 	FW_PARAMS_PARAM_DEV_FILTER2_WR	= 0x1D,
+	FW_PARAMS_PARAM_DEV_OPAQUE_VIID_SMT_EXTN = 0x27,
 };
 
 /*
@@ -1235,6 +1236,18 @@ enum fw_vi_func {
 	FW_VI_FUNC_ETH,
 };
 
+/* Macros for VIID parsing:
+ * VIID - [10:8] PFN, [7] VI Valid, [6:0] VI number
+ */
+
+#define S_FW_VIID_VIVLD         7
+#define M_FW_VIID_VIVLD         0x1
+#define G_FW_VIID_VIVLD(x)      (((x) >> S_FW_VIID_VIVLD) & M_FW_VIID_VIVLD)
+
+#define S_FW_VIID_VIN           0
+#define M_FW_VIID_VIN           0x7F
+#define G_FW_VIID_VIN(x)        (((x) >> S_FW_VIID_VIN) & M_FW_VIID_VIN)
+
 struct fw_vi_cmd {
 	__be32 op_to_vfn;
 	__be32 alloc_to_len16;
@@ -1275,6 +1288,16 @@ struct fw_vi_cmd {
 #define V_FW_VI_CMD_FREE(x)	((x) << S_FW_VI_CMD_FREE)
 #define G_FW_VI_CMD_FREE(x)	(((x) >> S_FW_VI_CMD_FREE) & M_FW_VI_CMD_FREE)
 #define F_FW_VI_CMD_FREE	V_FW_VI_CMD_FREE(1U)
+
+#define S_FW_VI_CMD_VFVLD       24
+#define M_FW_VI_CMD_VFVLD       0x1
+#define G_FW_VI_CMD_VFVLD(x)    \
+	(((x) >> S_FW_VI_CMD_VFVLD) & M_FW_VI_CMD_VFVLD)
+
+#define S_FW_VI_CMD_VIN         16
+#define M_FW_VI_CMD_VIN         0xff
+#define G_FW_VI_CMD_VIN(x)      \
+	(((x) >> S_FW_VI_CMD_VIN) & M_FW_VI_CMD_VIN)
 
 #define S_FW_VI_CMD_TYPE	15
 #define M_FW_VI_CMD_TYPE	0x1
