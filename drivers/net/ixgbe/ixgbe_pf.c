@@ -783,8 +783,10 @@ ixgbe_set_vf_macvlan_msg(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		hw->mac.ops.set_rar(hw, vf_info[vf].mac_count,
 				new_mac, vf, IXGBE_RAH_AV);
 	} else {
-		hw->mac.ops.clear_rar(hw, vf_info[vf].mac_count);
-		vf_info[vf].mac_count = 0;
+		if (vf_info[vf].mac_count) {
+			hw->mac.ops.clear_rar(hw, vf_info[vf].mac_count);
+			vf_info[vf].mac_count = 0;
+		}
 	}
 	return 0;
 }
