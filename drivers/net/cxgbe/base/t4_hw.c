@@ -5253,6 +5253,7 @@ int t4_init_tp_params(struct adapter *adap)
 								F_ETHERTYPE);
 	adap->params.tp.macmatch_shift = t4_filter_field_shift(adap,
 							       F_MACMATCH);
+	adap->params.tp.tos_shift = t4_filter_field_shift(adap, F_TOS);
 
 	v = t4_read_reg(adap, LE_3_DB_HASH_MASK_GEN_IPV4_T6_A);
 	adap->params.tp.hash_filter_mask = v;

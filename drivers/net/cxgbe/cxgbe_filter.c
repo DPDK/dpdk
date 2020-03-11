@@ -72,7 +72,8 @@ int cxgbe_validate_filter(struct adapter *adapter,
 
 	if (U(F_PORT, iport) || U(F_ETHERTYPE, ethtype) ||
 	    U(F_PROTOCOL, proto) || U(F_MACMATCH, macidx) ||
-	    U(F_VLAN, ivlan_vld) || U(F_VNIC_ID, ovlan_vld))
+	    U(F_VLAN, ivlan_vld) || U(F_VNIC_ID, ovlan_vld) ||
+	    U(F_TOS, tos))
 		return -EOPNOTSUPP;
 
 	/* Ensure OVLAN match is enabled in hardware */
@@ -312,6 +313,8 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 			ntuple |= (u64)(f->fs.val.ovlan_vld << 16 |
 					f->fs.val.ovlan) << tp->vnic_shift;
 	}
+	if (tp->tos_shift >= 0 && f->fs.mask.tos)
+		ntuple |= (u64)f->fs.val.tos << tp->tos_shift;
 
 	return ntuple;
 }
@@ -806,6 +809,8 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 			    V_FW_FILTER_WR_PORTM(f->fs.mask.iport));
 	fwr->ptcl = f->fs.val.proto;
 	fwr->ptclm = f->fs.mask.proto;
+	fwr->ttyp = f->fs.val.tos;
+	fwr->ttypm = f->fs.mask.tos;
 	fwr->ivlan = cpu_to_be16(f->fs.val.ivlan);
 	fwr->ivlanm = cpu_to_be16(f->fs.mask.ivlan);
 	fwr->ovlan = cpu_to_be16(f->fs.val.ovlan);

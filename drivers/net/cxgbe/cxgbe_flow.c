@@ -157,6 +157,8 @@ cxgbe_fill_filter_region(struct adapter *adap,
 	if (tp->vnic_shift >= 0 && fs->mask.ovlan_vld)
 		ntuple_mask |= (u64)(F_FT_VLAN_VLD | fs->mask.ovlan) <<
 			       tp->vnic_shift;
+	if (tp->tos_shift >= 0)
+		ntuple_mask |= (u64)fs->mask.tos << tp->tos_shift;
 
 	if (ntuple_mask != hash_filter_mask)
 		return;
@@ -354,9 +356,9 @@ ch_rte_parsetype_ipv4(const void *dmask, const struct rte_flow_item *item,
 
 	mask = umask ? umask : (const struct rte_flow_item_ipv4 *)dmask;
 
-	if (mask->hdr.time_to_live || mask->hdr.type_of_service)
+	if (mask->hdr.time_to_live)
 		return rte_flow_error_set(e, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
-					  item, "ttl/tos are not supported");
+					  item, "ttl is not supported");
 
 	if (fs->mask.ethtype &&
 	    (fs->val.ethtype != RTE_ETHER_TYPE_IPV4))
@@ -370,6 +372,7 @@ ch_rte_parsetype_ipv4(const void *dmask, const struct rte_flow_item *item,
 	CXGBE_FILL_FS(val->hdr.next_proto_id, mask->hdr.next_proto_id, proto);
 	CXGBE_FILL_FS_MEMCPY(val->hdr.dst_addr, mask->hdr.dst_addr, lip);
 	CXGBE_FILL_FS_MEMCPY(val->hdr.src_addr, mask->hdr.src_addr, fip);
+	CXGBE_FILL_FS(val->hdr.type_of_service, mask->hdr.type_of_service, tos);
 
 	return 0;
 }
@@ -382,14 +385,17 @@ ch_rte_parsetype_ipv6(const void *dmask, const struct rte_flow_item *item,
 	const struct rte_flow_item_ipv6 *val = item->spec;
 	const struct rte_flow_item_ipv6 *umask = item->mask;
 	const struct rte_flow_item_ipv6 *mask;
+	u32 vtc_flow, vtc_flow_mask;
 
 	mask = umask ? umask : (const struct rte_flow_item_ipv6 *)dmask;
 
-	if (mask->hdr.vtc_flow ||
+	vtc_flow_mask = be32_to_cpu(mask->hdr.vtc_flow);
+
+	if (vtc_flow_mask & RTE_IPV6_HDR_FL_MASK ||
 	    mask->hdr.payload_len || mask->hdr.hop_limits)
 		return rte_flow_error_set(e, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
-					  "tc/flow/hop are not supported");
+					  "flow/hop are not supported");
 
 	if (fs->mask.ethtype &&
 	    (fs->val.ethtype != RTE_ETHER_TYPE_IPV6))
@@ -401,6 +407,14 @@ ch_rte_parsetype_ipv6(const void *dmask, const struct rte_flow_item *item,
 		return 0; /* ipv6 wild card */
 
 	CXGBE_FILL_FS(val->hdr.proto, mask->hdr.proto, proto);
+
+	vtc_flow = be32_to_cpu(val->hdr.vtc_flow);
+	CXGBE_FILL_FS((vtc_flow & RTE_IPV6_HDR_TC_MASK) >>
+		      RTE_IPV6_HDR_TC_SHIFT,
+		      (vtc_flow_mask & RTE_IPV6_HDR_TC_MASK) >>
+		      RTE_IPV6_HDR_TC_SHIFT,
+		      tos);
+
 	CXGBE_FILL_FS_MEMCPY(val->hdr.dst_addr, mask->hdr.dst_addr, lip);
 	CXGBE_FILL_FS_MEMCPY(val->hdr.src_addr, mask->hdr.src_addr, fip);
 
@@ -871,12 +885,28 @@ static struct chrte_fparse parseitem[] = {
 
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
 		.fptr  = ch_rte_parsetype_ipv4,
-		.dmask = &rte_flow_item_ipv4_mask,
+		.dmask = &(const struct rte_flow_item_ipv4) {
+			.hdr = {
+				.src_addr = RTE_BE32(0xffffffff),
+				.dst_addr = RTE_BE32(0xffffffff),
+				.type_of_service = 0xff,
+			},
+		},
 	},
 
 	[RTE_FLOW_ITEM_TYPE_IPV6] = {
 		.fptr  = ch_rte_parsetype_ipv6,
-		.dmask = &rte_flow_item_ipv6_mask,
+		.dmask = &(const struct rte_flow_item_ipv6) {
+			.hdr = {
+				.src_addr =
+					"\xff\xff\xff\xff\xff\xff\xff\xff"
+					"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.dst_addr =
+					"\xff\xff\xff\xff\xff\xff\xff\xff"
+					"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.vtc_flow = RTE_BE32(0xff000000),
+			},
+		},
 	},
 
 	[RTE_FLOW_ITEM_TYPE_UDP] = {

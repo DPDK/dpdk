@@ -158,6 +158,7 @@ struct tp_params {
 	int protocol_shift;
 	int ethertype_shift;
 	int macmatch_shift;
+	int tos_shift;
 
 	u64 hash_filter_mask;
 };
