@@ -62,7 +62,8 @@ qat_bpicipher_preprocess(struct qat_sym_session *ctx,
 		last_block = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_src,
 				uint8_t *, last_block_offset);
 
-		if (unlikely(sym_op->m_dst != NULL))
+		if (unlikely((sym_op->m_dst != NULL)
+				&& (sym_op->m_dst != sym_op->m_src)))
 			/* out-of-place operation (OOP) */
 			dst = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_dst,
 						uint8_t *, last_block_offset);
@@ -437,7 +438,8 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	if (unlikely(min_ofs >= rte_pktmbuf_data_len(op->sym->m_src) && do_sgl))
 		min_ofs = 0;
 
-	if (unlikely(op->sym->m_dst != NULL)) {
+	if (unlikely((op->sym->m_dst != NULL) &&
+			(op->sym->m_dst != op->sym->m_src))) {
 		/* Out-of-place operation (OOP)
 		 * Don't align DMA start. DMA the minimum data-set
 		 * so as not to overwrite data in dest buffer
@@ -565,7 +567,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			return ret;
 		}
 
-		if (likely(op->sym->m_dst == NULL))
+		if (in_place)
 			qat_req->comn_mid.dest_data_addr =
 				qat_req->comn_mid.src_data_addr =
 				cookie->qat_sgl_src_phys_addr;
