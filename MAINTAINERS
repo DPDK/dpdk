@@ -523,7 +523,6 @@ F: drivers/net/bonding/
 F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
 F: app/test/test_link_bonding*
 F: examples/bond/
-F: doc/guides/nics/features/bonding.ini
 
 Linux KNI
 M: Ferruh Yigit <ferruh.yigit@intel.com>
@@ -751,7 +750,6 @@ Microsoft vdev_netvsc - EXPERIMENTAL
 M: Matan Azrad <matan@mellanox.com>
 F: drivers/net/vdev_netvsc/
 F: doc/guides/nics/vdev_netvsc.rst
-F: doc/guides/nics/features/vdev_netvsc.ini
 
 Microsoft Hyper-V netvsc - EXPERIMENTAL
 M: Stephen Hemminger <sthemmin@microsoft.com>
@@ -901,7 +899,6 @@ KNI PMD
 M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/net/kni/
 F: doc/guides/nics/kni.rst
-F: doc/guides/nics/features/kni.ini
 
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
@@ -909,12 +906,10 @@ F: drivers/net/ring/
 F: doc/guides/nics/pcap_ring.rst
 F: app/test/test_pmd_ring.c
 F: app/test/test_pmd_ring_perf.c
-F: doc/guides/nics/features/ring.ini
 
 Null Networking PMD
 M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 F: drivers/net/null/
-F: doc/guides/nics/features/null.ini
 
 Fail-safe PMD
 M: Gaetan Rivet <grive@u256.net>
@@ -926,7 +921,6 @@ Softnic PMD
 M: Jasvinder Singh <jasvinder.singh@intel.com>
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: drivers/net/softnic/
-F: doc/guides/nics/features/softnic.ini
 F: doc/guides/nics/softnic.rst
 
 Memif PMD
