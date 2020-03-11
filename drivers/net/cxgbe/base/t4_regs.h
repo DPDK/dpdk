@@ -572,6 +572,10 @@
 
 #define A_TP_INGRESS_CONFIG 0x141
 
+#define S_USE_ENC_IDX    13
+#define V_USE_ENC_IDX(x) ((x) << S_USE_ENC_IDX)
+#define F_USE_ENC_IDX    V_USE_ENC_IDX(1U)
+
 #define S_VNIC    11
 #define V_VNIC(x) ((x) << S_VNIC)
 #define F_VNIC    V_VNIC(1U)

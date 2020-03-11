@@ -56,12 +56,14 @@ int cxgbe_init_hash_filter(struct adapter *adap)
 int cxgbe_validate_filter(struct adapter *adapter,
 			  struct ch_filter_specification *fs)
 {
-	u32 fconf;
+	u32 fconf, iconf;
 
 	/*
 	 * Check for unconfigured fields being used.
 	 */
 	fconf = adapter->params.tp.vlan_pri_map;
+
+	iconf = adapter->params.tp.ingress_config;
 
 #define S(_field) \
 	(fs->val._field || fs->mask._field)
@@ -70,7 +72,15 @@ int cxgbe_validate_filter(struct adapter *adapter,
 
 	if (U(F_PORT, iport) || U(F_ETHERTYPE, ethtype) ||
 	    U(F_PROTOCOL, proto) || U(F_MACMATCH, macidx) ||
-	    U(F_VLAN, ivlan_vld))
+	    U(F_VLAN, ivlan_vld) || U(F_VNIC_ID, ovlan_vld))
+		return -EOPNOTSUPP;
+
+	/* Ensure OVLAN match is enabled in hardware */
+	if (S(ovlan_vld) && (iconf & F_VNIC))
+		return -EOPNOTSUPP;
+
+	/* To use OVLAN, L4 encapsulation match must not be enabled */
+	if (S(ovlan_vld) && (iconf & F_USE_ENC_IDX))
 		return -EOPNOTSUPP;
 
 #undef S
@@ -296,6 +306,12 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 	if (tp->vlan_shift >= 0 && f->fs.mask.ivlan)
 		ntuple |= (u64)(F_FT_VLAN_VLD | f->fs.val.ivlan) <<
 			  tp->vlan_shift;
+	if (tp->vnic_shift >= 0) {
+		if (!(adap->params.tp.ingress_config & F_VNIC) &&
+		    f->fs.mask.ovlan_vld)
+			ntuple |= (u64)(f->fs.val.ovlan_vld << 16 |
+					f->fs.val.ovlan) << tp->vnic_shift;
+	}
 
 	return ntuple;
 }
@@ -775,7 +791,9 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 	fwr->ethtypem = cpu_to_be16(f->fs.mask.ethtype);
 	fwr->frag_to_ovlan_vldm =
 		(V_FW_FILTER_WR_IVLAN_VLD(f->fs.val.ivlan_vld) |
-		 V_FW_FILTER_WR_IVLAN_VLDM(f->fs.mask.ivlan_vld));
+		 V_FW_FILTER_WR_IVLAN_VLDM(f->fs.mask.ivlan_vld) |
+		 V_FW_FILTER_WR_OVLAN_VLD(f->fs.val.ovlan_vld) |
+		 V_FW_FILTER_WR_OVLAN_VLDM(f->fs.mask.ovlan_vld));
 	fwr->smac_sel = 0;
 	fwr->rx_chan_rx_rpl_iq =
 		cpu_to_be16(V_FW_FILTER_WR_RX_CHAN(0) |
@@ -790,6 +808,8 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 	fwr->ptclm = f->fs.mask.proto;
 	fwr->ivlan = cpu_to_be16(f->fs.val.ivlan);
 	fwr->ivlanm = cpu_to_be16(f->fs.mask.ivlan);
+	fwr->ovlan = cpu_to_be16(f->fs.val.ovlan);
+	fwr->ovlanm = cpu_to_be16(f->fs.mask.ovlan);
 	rte_memcpy(fwr->lip, f->fs.val.lip, sizeof(fwr->lip));
 	rte_memcpy(fwr->lipm, f->fs.mask.lip, sizeof(fwr->lipm));
 	rte_memcpy(fwr->fip, f->fs.val.fip, sizeof(fwr->fip));

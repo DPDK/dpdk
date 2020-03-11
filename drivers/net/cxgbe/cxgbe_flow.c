@@ -87,6 +87,15 @@ cxgbe_tweak_filter_spec(struct adapter *adap,
 				fs->mask.ethtype = 0;
 			}
 			break;
+		case RTE_ETHER_TYPE_QINQ:
+			if (adap->params.tp.ethertype_shift < 0 &&
+			    adap->params.tp.vnic_shift >= 0) {
+				fs->val.ovlan_vld = 1;
+				fs->mask.ovlan_vld = 1;
+				fs->val.ethtype = 0;
+				fs->mask.ethtype = 0;
+			}
+			break;
 		default:
 			break;
 		}
@@ -145,6 +154,9 @@ cxgbe_fill_filter_region(struct adapter *adap,
 	if (tp->vlan_shift >= 0 && fs->mask.ivlan_vld)
 		ntuple_mask |= (u64)(F_FT_VLAN_VLD | fs->mask.ivlan) <<
 			       tp->vlan_shift;
+	if (tp->vnic_shift >= 0 && fs->mask.ovlan_vld)
+		ntuple_mask |= (u64)(F_FT_VLAN_VLD | fs->mask.ovlan) <<
+			       tp->vnic_shift;
 
 	if (ntuple_mask != hash_filter_mask)
 		return;
@@ -166,22 +178,6 @@ ch_rte_parsetype_eth(const void *dmask, const struct rte_flow_item *item,
 
 	if (!spec)
 		return 0;
-
-	/* Chelsio hardware supports matching on only one ethertype
-	 * (i.e. either the outer or inner ethertype, but not both). If
-	 * we already encountered VLAN item, then ensure that the outer
-	 * ethertype is VLAN (0x8100) and don't overwrite the inner
-	 * ethertype stored during VLAN item parsing. Note that if
-	 * 'ivlan_vld' bit is set in Chelsio filter spec, then the
-	 * hardware automatically only matches packets with outer
-	 * ethertype having VLAN (0x8100).
-	 */
-	if (fs->mask.ivlan_vld &&
-	    be16_to_cpu(spec->type) != RTE_ETHER_TYPE_VLAN)
-		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-					  item,
-					  "Already encountered VLAN item,"
-					  " but outer ethertype is not 0x8100");
 
 	/* we don't support SRC_MAC filtering*/
 	if (!rte_is_zero_ether_addr(&mask->src))
@@ -206,13 +202,9 @@ ch_rte_parsetype_eth(const void *dmask, const struct rte_flow_item *item,
 		CXGBE_FILL_FS(idx, 0x1ff, macidx);
 	}
 
-	/* Only set outer ethertype, if we didn't encounter VLAN item yet.
-	 * Otherwise, the inner ethertype set by VLAN item will get
-	 * overwritten.
-	 */
-	if (!fs->mask.ivlan_vld)
-		CXGBE_FILL_FS(be16_to_cpu(spec->type),
-			      be16_to_cpu(mask->type), ethtype);
+	CXGBE_FILL_FS(be16_to_cpu(spec->type),
+		      be16_to_cpu(mask->type), ethtype);
+
 	return 0;
 }
 
@@ -249,32 +241,48 @@ ch_rte_parsetype_vlan(const void *dmask, const struct rte_flow_item *item,
 	/* If user has not given any mask, then use chelsio supported mask. */
 	mask = umask ? umask : (const struct rte_flow_item_vlan *)dmask;
 
-	CXGBE_FILL_FS(1, 1, ivlan_vld);
-	if (!spec)
-		return 0; /* Wildcard, match all VLAN */
+	if (!fs->mask.ethtype)
+		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "Can't parse VLAN item without knowing ethertype");
 
-	/* Chelsio hardware supports matching on only one ethertype
-	 * (i.e. either the outer or inner ethertype, but not both).
-	 * If outer ethertype is already set and is not VLAN (0x8100),
-	 * then don't proceed further. Otherwise, reset the outer
-	 * ethertype, so that it can be replaced by inner ethertype.
-	 * Note that the hardware will automatically match on outer
-	 * ethertype 0x8100, if 'ivlan_vld' bit is set in Chelsio
-	 * filter spec.
+	/* If ethertype is already set and is not VLAN (0x8100) or
+	 * QINQ(0x88A8), then don't proceed further. Otherwise,
+	 * reset the outer ethertype, so that it can be replaced by
+	 * innermost ethertype. Note that hardware will automatically
+	 * match against VLAN or QINQ packets, based on 'ivlan_vld' or
+	 * 'ovlan_vld' bit set in Chelsio filter spec, respectively.
 	 */
 	if (fs->mask.ethtype) {
-		if (fs->val.ethtype != RTE_ETHER_TYPE_VLAN)
+		if (fs->val.ethtype != RTE_ETHER_TYPE_VLAN &&
+		    fs->val.ethtype != RTE_ETHER_TYPE_QINQ)
 			return rte_flow_error_set(e, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  item,
-						  "Outer ethertype not 0x8100");
-
-		fs->val.ethtype = 0;
-		fs->mask.ethtype = 0;
+						  "Ethertype must be 0x8100 or 0x88a8");
 	}
 
-	CXGBE_FILL_FS(be16_to_cpu(spec->tci), be16_to_cpu(mask->tci), ivlan);
-	if (spec->inner_type)
+	if (fs->val.ethtype == RTE_ETHER_TYPE_QINQ) {
+		CXGBE_FILL_FS(1, 1, ovlan_vld);
+		if (spec) {
+			CXGBE_FILL_FS(be16_to_cpu(spec->tci),
+				      be16_to_cpu(mask->tci), ovlan);
+
+			fs->mask.ethtype = 0;
+			fs->val.ethtype = 0;
+		}
+	} else if (fs->val.ethtype == RTE_ETHER_TYPE_VLAN) {
+		CXGBE_FILL_FS(1, 1, ivlan_vld);
+		if (spec) {
+			CXGBE_FILL_FS(be16_to_cpu(spec->tci),
+				      be16_to_cpu(mask->tci), ivlan);
+
+			fs->mask.ethtype = 0;
+			fs->val.ethtype = 0;
+		}
+	}
+
+	if (spec)
 		CXGBE_FILL_FS(be16_to_cpu(spec->inner_type),
 			      be16_to_cpu(mask->inner_type), ethtype);
 
@@ -351,8 +359,7 @@ ch_rte_parsetype_ipv4(const void *dmask, const struct rte_flow_item *item,
 					  item, "ttl/tos are not supported");
 
 	if (fs->mask.ethtype &&
-	    (fs->val.ethtype != RTE_ETHER_TYPE_VLAN &&
-	     fs->val.ethtype != RTE_ETHER_TYPE_IPV4))
+	    (fs->val.ethtype != RTE_ETHER_TYPE_IPV4))
 		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "Couldn't find IPv4 ethertype");
@@ -385,8 +392,7 @@ ch_rte_parsetype_ipv6(const void *dmask, const struct rte_flow_item *item,
 					  "tc/flow/hop are not supported");
 
 	if (fs->mask.ethtype &&
-	    (fs->val.ethtype != RTE_ETHER_TYPE_VLAN &&
-	     fs->val.ethtype != RTE_ETHER_TYPE_IPV6))
+	    (fs->val.ethtype != RTE_ETHER_TYPE_IPV6))
 		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "Couldn't find IPv6 ethertype");
@@ -907,10 +913,12 @@ cxgbe_rtef_parse_items(struct rte_flow *flow,
 			continue;
 		default:
 			/* check if item is repeated */
-			if (repeat[i->type])
+			if (repeat[i->type] &&
+			    i->type != RTE_FLOW_ITEM_TYPE_VLAN)
 				return rte_flow_error_set(e, ENOTSUP,
 						RTE_FLOW_ERROR_TYPE_ITEM, i,
-						"parse items cannot be repeated (except void)");
+						"parse items cannot be repeated(except void/vlan)");
+
 			repeat[i->type] = 1;
 
 			/* No spec found for this pattern item. Skip it */
