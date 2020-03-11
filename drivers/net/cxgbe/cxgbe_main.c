@@ -40,6 +40,7 @@
 #include "cxgbe_pfvf.h"
 #include "clip_tbl.h"
 #include "l2t.h"
+#include "smt.h"
 #include "mps_tcam.h"
 
 /**
@@ -1735,6 +1736,7 @@ void cxgbe_close(struct adapter *adapter)
 		t4_cleanup_mpstcam(adapter);
 		t4_cleanup_clip_tbl(adapter);
 		t4_cleanup_l2t(adapter);
+		t4_cleanup_smt(adapter);
 		if (is_pf4(adapter))
 			t4_intr_disable(adapter);
 		t4_sge_tx_monitor_stop(adapter);
@@ -1753,13 +1755,45 @@ void cxgbe_close(struct adapter *adapter)
 		t4_fw_bye(adapter, adapter->mbox);
 }
 
+static void adap_smt_index(struct adapter *adapter, u32 *smt_start_idx,
+			   u32 *smt_size)
+{
+	u32 params[2], smt_val[2];
+	int ret;
+
+	params[0] = CXGBE_FW_PARAM_PFVF(GET_SMT_START);
+	params[1] = CXGBE_FW_PARAM_PFVF(GET_SMT_SIZE);
+
+	ret = t4_query_params(adapter, adapter->mbox, adapter->pf, 0,
+			      2, params, smt_val);
+
+	/* if FW doesn't recognize this command then set it to default setting
+	 * which is start index as 0 and size as 256.
+	 */
+	if (ret < 0) {
+		*smt_start_idx = 0;
+		*smt_size = SMT_SIZE;
+	} else {
+		*smt_start_idx = smt_val[0];
+		/* smt size can be zero, if nsmt is not yet configured in
+		 * the config file or set as zero, then configure all the
+		 * remaining entries to this PF itself.
+		 */
+		if (!smt_val[1])
+			*smt_size = SMT_SIZE - *smt_start_idx;
+		else
+			*smt_size = smt_val[1];
+	}
+}
+
 int cxgbe_probe(struct adapter *adapter)
 {
+	u32 smt_start_idx, smt_size;
 	struct port_info *pi;
-	int chip;
 	int func, i;
 	int err = 0;
 	u32 whoami;
+	int chip;
 
 	whoami = t4_read_reg(adapter, A_PL_WHOAMI);
 	chip = t4_get_chip_type(adapter,
@@ -1903,6 +1937,11 @@ allocate_mac:
 		 */
 		dev_warn(adapter, "could not allocate CLIP. Continuing\n");
 	}
+
+	adap_smt_index(adapter, &smt_start_idx, &smt_size);
+	adapter->smt = t4_init_smt(smt_start_idx, smt_size);
+	if (!adapter->smt)
+		dev_warn(adapter, "could not allocate SMT, continuing\n");
 
 	adapter->l2t = t4_init_l2t(adapter->l2t_start, adapter->l2t_end);
 	if (!adapter->l2t) {

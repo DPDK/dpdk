@@ -342,6 +342,7 @@ struct adapter {
 	unsigned int l2t_end;     /* Layer 2 table end */
 	struct clip_tbl *clipt;   /* CLIP table */
 	struct l2t_data *l2t;     /* Layer 2 table */
+	struct smt_data *smt;     /* Source mac table */
 	struct mpstcam_table *mpstcam;
 
 	struct tid_info tids;     /* Info used to access TID related tables */
