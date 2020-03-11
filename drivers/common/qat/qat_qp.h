@@ -54,6 +54,7 @@ struct qat_queue {
 	uint32_t	modulo_mask;
 	uint32_t	msg_size;
 	uint32_t	queue_size;
+	uint8_t		trailz;
 	uint8_t		hw_bundle_number;
 	uint8_t		hw_queue_number;
 	/* HW queue aka ring offset on bundle */

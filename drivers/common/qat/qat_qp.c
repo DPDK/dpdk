@@ -430,6 +430,9 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	queue->tail = 0;
 	queue->msg_size = desc_size;
 
+	/* For fast calculation of cookie index, relies on msg_size being 2^n */
+	queue->trailz = __builtin_ctz(desc_size);
+
 	/*
 	 * Write an unused pattern to the queue memory.
 	 */
@@ -623,7 +626,7 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 
 	while (nb_ops_sent != nb_ops_possible) {
 		ret = tmp_qp->build_request(*ops, base_addr + tail,
-				tmp_qp->op_cookies[tail / queue->msg_size],
+				tmp_qp->op_cookies[tail >> queue->trailz],
 				tmp_qp->qat_dev_gen);
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
@@ -665,12 +668,12 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 			qat_sym_process_response(ops, resp_msg);
 		else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION)
 			qat_comp_process_response(ops, resp_msg,
-				tmp_qp->op_cookies[head / rx_queue->msg_size],
+				tmp_qp->op_cookies[head >> rx_queue->trailz],
 				&tmp_qp->stats.dequeue_err_count);
 		else if (tmp_qp->service_type == QAT_SERVICE_ASYMMETRIC) {
 #ifdef BUILD_QAT_ASYM
 			qat_asym_process_response(ops, resp_msg,
-				tmp_qp->op_cookies[head / rx_queue->msg_size]);
+				tmp_qp->op_cookies[head >> rx_queue->trailz]);
 #endif
 		}
 
