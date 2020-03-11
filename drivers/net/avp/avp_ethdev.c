@@ -1694,7 +1694,7 @@ avp_xmit_scattered_pkts(void *tx_queue,
 			uint16_t nb_pkts)
 {
 	struct rte_avp_desc *avp_bufs[(AVP_MAX_TX_BURST *
-				       RTE_AVP_MAX_MBUF_SEGMENTS)];
+				       RTE_AVP_MAX_MBUF_SEGMENTS)] = {};
 	struct avp_queue *txq = (struct avp_queue *)tx_queue;
 	struct rte_avp_desc *tx_bufs[AVP_MAX_TX_BURST];
 	struct avp_dev *avp = txq->avp;
