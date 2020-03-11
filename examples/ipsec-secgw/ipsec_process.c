@@ -126,6 +126,7 @@ sa_group(void *sa_ptr[], struct rte_mbuf *pkts[],
 	void * const nosa = &spi;
 
 	sa = nosa;
+	grp[0].m = pkts;
 	for (i = 0, n = 0; i != num; i++) {
 
 		if (sa != sa_ptr[i]) {
