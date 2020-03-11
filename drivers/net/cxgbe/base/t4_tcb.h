@@ -32,6 +32,8 @@
 #define M_TCB_T_RTSEQ_RECENT    0xffffffffULL
 #define V_TCB_T_RTSEQ_RECENT(x) ((x) << S_TCB_T_RTSEQ_RECENT)
 
+#define S_TF_CCTRL_ECE    60
+
 #define S_TF_CCTRL_RFR    62
 
 #endif /* _T4_TCB_DEFS_H */

@@ -593,7 +593,7 @@ static int cxgbe_set_hash_filter(struct rte_eth_dev *dev,
 	 * rewriting then we need to allocate a Layer 2 Table (L2T) entry for
 	 * the filter.
 	 */
-	if (f->fs.newvlan == VLAN_INSERT ||
+	if (f->fs.newdmac || f->fs.newvlan == VLAN_INSERT ||
 	    f->fs.newvlan == VLAN_REWRITE) {
 		/* allocate L2T entry for new filter */
 		f->l2t = cxgbe_l2t_alloc_switching(dev, f->fs.vlan,
@@ -749,10 +749,11 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 	 * rewriting then we need to allocate a Layer 2 Table (L2T) entry for
 	 * the filter.
 	 */
-	if (f->fs.newvlan) {
+	if (f->fs.newvlan || f->fs.newdmac) {
 		/* allocate L2T entry for new filter */
 		f->l2t = cxgbe_l2t_alloc_switching(f->dev, f->fs.vlan,
 						   f->fs.eport, f->fs.dmac);
+
 		if (!f->l2t)
 			return -ENOMEM;
 	}
@@ -787,6 +788,7 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 		cpu_to_be32(V_FW_FILTER_WR_DROP(f->fs.action == FILTER_DROP) |
 			    V_FW_FILTER_WR_DIRSTEER(f->fs.dirsteer) |
 			    V_FW_FILTER_WR_LPBK(f->fs.action == FILTER_SWITCH) |
+			    V_FW_FILTER_WR_DMAC(f->fs.newdmac) |
 			    V_FW_FILTER_WR_INSVLAN
 				(f->fs.newvlan == VLAN_INSERT ||
 				 f->fs.newvlan == VLAN_REWRITE) |
@@ -1137,6 +1139,8 @@ void cxgbe_hash_filter_rpl(struct adapter *adap,
 				      V_TCB_TIMESTAMP(0ULL) |
 				      V_TCB_T_RTT_TS_RECENT_AGE(0ULL),
 				      1);
+		if (f->fs.newdmac)
+			set_tcb_tflag(adap, tid, S_TF_CCTRL_ECE, 1, 1);
 		if (f->fs.newvlan == VLAN_INSERT ||
 		    f->fs.newvlan == VLAN_REWRITE)
 			set_tcb_tflag(adap, tid, S_TF_CCTRL_RFR, 1, 1);
