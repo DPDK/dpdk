@@ -428,7 +428,8 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		min_ofs = op->sym->aead.data.offset;
 	}
 
-	if (op->sym->m_src->next || (op->sym->m_dst && op->sym->m_dst->next))
+	if (op->sym->m_src->nb_segs > 1 ||
+			(op->sym->m_dst && op->sym->m_dst->nb_segs > 1))
 		do_sgl = 1;
 
 	/* adjust for chain case */
