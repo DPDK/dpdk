@@ -5,6 +5,8 @@
 #ifndef __CXGBE_SMT_H_
 #define __CXGBE_SMT_H_
 
+#include "base/t4_msg.h"
+
 enum {
 	SMT_STATE_SWITCHING,
 	SMT_STATE_UNUSED,
@@ -34,6 +36,9 @@ struct smt_data {
 
 struct smt_data *t4_init_smt(u32 smt_start_idx, u32 smt_size);
 void t4_cleanup_smt(struct adapter *adap);
+void cxgbe_do_smt_write_rpl(struct adapter *adap,
+			    const struct cpl_smt_write_rpl *rpl);
+struct smt_entry *cxgbe_smt_alloc_switching(struct rte_eth_dev *dev, u8 *smac);
 
 #endif  /* __CXGBE_SMT_H_ */
 

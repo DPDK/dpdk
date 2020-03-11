@@ -100,9 +100,11 @@ struct ch_filter_specification {
 	uint32_t iq:10;		/* ingress queue */
 
 	uint32_t eport:2;	/* egress port to switch packet out */
+	uint32_t newsmac:1;     /* rewrite source MAC address */
 	uint32_t newdmac:1;     /* rewrite destination MAC address */
 	uint32_t swapmac:1;     /* swap SMAC/DMAC for loopback packet */
 	uint32_t newvlan:2;     /* rewrite VLAN Tag */
+	uint8_t smac[RTE_ETHER_ADDR_LEN];   /* new source MAC address */
 	uint8_t dmac[RTE_ETHER_ADDR_LEN];   /* new destination MAC address */
 	uint16_t vlan;          /* VLAN Tag to insert */
 
@@ -181,6 +183,7 @@ struct filter_entry {
 	struct filter_ctx *ctx;     /* caller's completion hook */
 	struct clip_entry *clipt;   /* CLIP Table entry for IPv6 */
 	struct l2t_entry *l2t;      /* Layer Two Table entry for dmac */
+	struct smt_entry *smt;      /* Source Mac Table entry for smac */
 	struct rte_eth_dev *dev;    /* Port's rte eth device */
 	void *private;              /* For use by apps using filter_entry */
 

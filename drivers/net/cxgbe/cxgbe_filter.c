@@ -10,6 +10,7 @@
 #include "cxgbe_filter.h"
 #include "clip_tbl.h"
 #include "l2t.h"
+#include "smt.h"
 
 /**
  * Initialize Hash Filters
@@ -604,6 +605,17 @@ static int cxgbe_set_hash_filter(struct rte_eth_dev *dev,
 		}
 	}
 
+	/* If the new filter requires Source MAC rewriting then we need to
+	 * allocate a SMT entry for the filter
+	 */
+	if (f->fs.newsmac) {
+		f->smt = cxgbe_smt_alloc_switching(f->dev, f->fs.smac);
+		if (!f->smt) {
+			ret = -EAGAIN;
+			goto out_err;
+		}
+	}
+
 	atid = cxgbe_alloc_atid(t, f);
 	if (atid < 0)
 		goto out_err;
@@ -758,6 +770,20 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 			return -ENOMEM;
 	}
 
+	/* If the new filter requires Source MAC rewriting then we need to
+	 * allocate a SMT entry for the filter
+	 */
+	if (f->fs.newsmac) {
+		f->smt = cxgbe_smt_alloc_switching(f->dev, f->fs.smac);
+		if (!f->smt) {
+			if (f->l2t) {
+				cxgbe_l2t_release(f->l2t);
+				f->l2t = NULL;
+			}
+			return -ENOMEM;
+		}
+	}
+
 	ctrlq = &adapter->sge.ctrlq[port_id];
 	mbuf = rte_pktmbuf_alloc(ctrlq->mb_pool);
 	if (!mbuf) {
@@ -788,6 +814,7 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 		cpu_to_be32(V_FW_FILTER_WR_DROP(f->fs.action == FILTER_DROP) |
 			    V_FW_FILTER_WR_DIRSTEER(f->fs.dirsteer) |
 			    V_FW_FILTER_WR_LPBK(f->fs.action == FILTER_SWITCH) |
+			    V_FW_FILTER_WR_SMAC(f->fs.newsmac) |
 			    V_FW_FILTER_WR_DMAC(f->fs.newdmac) |
 			    V_FW_FILTER_WR_INSVLAN
 				(f->fs.newvlan == VLAN_INSERT ||
@@ -806,7 +833,7 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 		 V_FW_FILTER_WR_IVLAN_VLDM(f->fs.mask.ivlan_vld) |
 		 V_FW_FILTER_WR_OVLAN_VLD(f->fs.val.ovlan_vld) |
 		 V_FW_FILTER_WR_OVLAN_VLDM(f->fs.mask.ovlan_vld));
-	fwr->smac_sel = 0;
+	fwr->smac_sel = f->smt ? f->smt->hw_idx : 0;
 	fwr->rx_chan_rx_rpl_iq =
 		cpu_to_be16(V_FW_FILTER_WR_RX_CHAN(0) |
 			    V_FW_FILTER_WR_RX_RPL_IQ(adapter->sge.fw_evtq.abs_id
@@ -1144,6 +1171,12 @@ void cxgbe_hash_filter_rpl(struct adapter *adap,
 		if (f->fs.newvlan == VLAN_INSERT ||
 		    f->fs.newvlan == VLAN_REWRITE)
 			set_tcb_tflag(adap, tid, S_TF_CCTRL_RFR, 1, 1);
+		if (f->fs.newsmac) {
+			set_tcb_tflag(adap, tid, S_TF_CCTRL_CWR, 1, 1);
+			set_tcb_field(adap, tid, W_TCB_SMAC_SEL,
+				      V_TCB_SMAC_SEL(M_TCB_SMAC_SEL),
+				      V_TCB_SMAC_SEL(f->smt->hw_idx), 1);
+		}
 		break;
 	}
 	default:

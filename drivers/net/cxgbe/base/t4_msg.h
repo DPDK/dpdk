@@ -12,10 +12,12 @@ enum {
 	CPL_ABORT_REQ         = 0xA,
 	CPL_ABORT_RPL         = 0xB,
 	CPL_L2T_WRITE_REQ     = 0x12,
+	CPL_SMT_WRITE_REQ     = 0x14,
 	CPL_TID_RELEASE       = 0x1A,
 	CPL_L2T_WRITE_RPL     = 0x23,
 	CPL_ACT_OPEN_RPL      = 0x25,
 	CPL_ABORT_RPL_RSS     = 0x2D,
+	CPL_SMT_WRITE_RPL     = 0x2E,
 	CPL_SET_TCB_RPL       = 0x3A,
 	CPL_ACT_OPEN_REQ6     = 0x83,
 	CPL_SGE_EGR_UPDATE    = 0xA5,
@@ -464,6 +466,44 @@ struct cpl_l2t_write_rpl {
 	__u8 status;
 	__u8 rsvd[3];
 };
+
+struct cpl_smt_write_req {
+	WR_HDR;
+	union opcode_tid ot;
+	__be32 params;
+	__be16 pfvf1;
+	__u8   src_mac1[6];
+	__be16 pfvf0;
+	__u8   src_mac0[6];
+};
+
+struct cpl_t6_smt_write_req {
+	WR_HDR;
+	union opcode_tid ot;
+	__be32 params;
+	__be64 tag;
+	__be16 pfvf0;
+	__u8   src_mac0[6];
+	__be32 local_ip;
+	__be32 rsvd;
+};
+
+struct cpl_smt_write_rpl {
+	RSS_HDR
+	union opcode_tid ot;
+	u8 status;
+	u8 rsvd[3];
+};
+
+/* cpl_smt_{read,write}_req.params fields */
+#define S_SMTW_OVLAN_IDX    16
+#define V_SMTW_OVLAN_IDX(x) ((x) << S_SMTW_OVLAN_IDX)
+
+#define S_SMTW_IDX    20
+#define V_SMTW_IDX(x) ((x) << S_SMTW_IDX)
+
+#define S_SMTW_NORPL    31
+#define V_SMTW_NORPL(x) ((x) << S_SMTW_NORPL)
 
 /* rx_pkt.l2info fields */
 #define S_RXF_UDP    22

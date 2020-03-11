@@ -6,6 +6,12 @@
 #ifndef _T4_TCB_DEFS_H
 #define _T4_TCB_DEFS_H
 
+/* 31:24 */
+#define W_TCB_SMAC_SEL    0
+#define S_TCB_SMAC_SEL    24
+#define M_TCB_SMAC_SEL    0xffULL
+#define V_TCB_SMAC_SEL(x) ((x) << S_TCB_SMAC_SEL)
+
 /* 95:32 */
 #define W_TCB_T_FLAGS    1
 
@@ -33,6 +39,8 @@
 #define V_TCB_T_RTSEQ_RECENT(x) ((x) << S_TCB_T_RTSEQ_RECENT)
 
 #define S_TF_CCTRL_ECE    60
+
+#define S_TF_CCTRL_CWR    61
 
 #define S_TF_CCTRL_RFR    62
 

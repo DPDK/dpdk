@@ -795,6 +795,19 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 						  "found");
 		fs->swapmac = 1;
 		break;
+	case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+		item_index = cxgbe_get_flow_item_index(items,
+						       RTE_FLOW_ITEM_TYPE_ETH);
+		if (item_index < 0)
+			return rte_flow_error_set(e, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION, a,
+						  "No RTE_FLOW_ITEM_TYPE_ETH "
+						  "found");
+		mac = (const struct rte_flow_action_set_mac *)a->conf;
+
+		fs->newsmac = 1;
+		memcpy(fs->smac, mac->mac_addr, sizeof(fs->smac));
+		break;
 	case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
 		item_index = cxgbe_get_flow_item_index(items,
 						       RTE_FLOW_ITEM_TYPE_ETH);
@@ -883,6 +896,7 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 			goto action_switch;
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
 action_switch:
 			/* We allow multiple switch actions, but switch is

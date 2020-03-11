@@ -248,6 +248,9 @@ struct fw_filter2_wr {
 #define S_FW_FILTER_WR_DMAC	19
 #define V_FW_FILTER_WR_DMAC(x)	((x) << S_FW_FILTER_WR_DMAC)
 
+#define S_FW_FILTER_WR_SMAC     18
+#define V_FW_FILTER_WR_SMAC(x)  ((x) << S_FW_FILTER_WR_SMAC)
+
 #define S_FW_FILTER_WR_INSVLAN		17
 #define V_FW_FILTER_WR_INSVLAN(x)	((x) << S_FW_FILTER_WR_INSVLAN)
 
@@ -1335,8 +1338,8 @@ struct fw_vi_cmd {
 #define FW_VI_MAC_ID_BASED_FREE         0x3FC
 
 enum fw_vi_mac_smac {
-	FW_VI_MAC_MPS_TCAM_ENTRY,
-	FW_VI_MAC_SMT_AND_MPSTCAM
+	FW_VI_MAC_MPS_TCAM_ENTRY = 0x0,
+	FW_VI_MAC_SMT_AND_MPSTCAM = 0x3
 };
 
 enum fw_vi_mac_entry_types {
