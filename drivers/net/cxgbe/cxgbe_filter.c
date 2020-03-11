@@ -73,15 +73,17 @@ int cxgbe_validate_filter(struct adapter *adapter,
 	if (U(F_PORT, iport) || U(F_ETHERTYPE, ethtype) ||
 	    U(F_PROTOCOL, proto) || U(F_MACMATCH, macidx) ||
 	    U(F_VLAN, ivlan_vld) || U(F_VNIC_ID, ovlan_vld) ||
-	    U(F_TOS, tos))
+	    U(F_TOS, tos) || U(F_VNIC_ID, pfvf_vld))
 		return -EOPNOTSUPP;
 
-	/* Ensure OVLAN match is enabled in hardware */
-	if (S(ovlan_vld) && (iconf & F_VNIC))
+	/* Either OVLAN or PFVF match is enabled in hardware, but not both */
+	if ((S(pfvf_vld) && !(iconf & F_VNIC)) ||
+	    (S(ovlan_vld) && (iconf & F_VNIC)))
 		return -EOPNOTSUPP;
 
-	/* To use OVLAN, L4 encapsulation match must not be enabled */
-	if (S(ovlan_vld) && (iconf & F_USE_ENC_IDX))
+	/* To use OVLAN or PFVF, L4 encapsulation match must not be enabled */
+	if ((S(ovlan_vld) && (iconf & F_USE_ENC_IDX)) ||
+	    (S(pfvf_vld) && (iconf & F_USE_ENC_IDX)))
 		return -EOPNOTSUPP;
 
 #undef S
@@ -308,8 +310,12 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 		ntuple |= (u64)(F_FT_VLAN_VLD | f->fs.val.ivlan) <<
 			  tp->vlan_shift;
 	if (tp->vnic_shift >= 0) {
-		if (!(adap->params.tp.ingress_config & F_VNIC) &&
-		    f->fs.mask.ovlan_vld)
+		if ((adap->params.tp.ingress_config & F_VNIC) &&
+		    f->fs.mask.pfvf_vld)
+			ntuple |= (u64)((f->fs.val.pfvf_vld << 16) |
+					(f->fs.val.pf << 13)) << tp->vnic_shift;
+		else if (!(adap->params.tp.ingress_config & F_VNIC) &&
+			 f->fs.mask.ovlan_vld)
 			ntuple |= (u64)(f->fs.val.ovlan_vld << 16 |
 					f->fs.val.ovlan) << tp->vnic_shift;
 	}
@@ -965,10 +971,11 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 {
 	struct port_info *pi = ethdev2pinfo(dev);
 	struct adapter *adapter = pi->adapter;
-	unsigned int fidx, iq;
+	u8 nentries, bitoff[16] = {0};
 	struct filter_entry *f;
 	unsigned int chip_ver;
-	u8 nentries, bitoff[16] = {0};
+	unsigned int fidx, iq;
+	u32 iconf;
 	int ret;
 
 	if (is_hashfilter(adapter) && fs->cap)
@@ -1051,6 +1058,20 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	f->fs = *fs;
 	f->fs.iq = iq;
 	f->dev = dev;
+
+	iconf = adapter->params.tp.ingress_config;
+
+	/* Either PFVF or OVLAN can be active, but not both
+	 * So, if PFVF is enabled, then overwrite the OVLAN
+	 * fields with PFVF fields before writing the spec
+	 * to hardware.
+	 */
+	if (iconf & F_VNIC) {
+		f->fs.val.ovlan = fs->val.pf << 13;
+		f->fs.mask.ovlan = fs->mask.pf << 13;
+		f->fs.val.ovlan_vld = fs->val.pfvf_vld;
+		f->fs.mask.ovlan_vld = fs->mask.pfvf_vld;
+	}
 
 	/*
 	 * Attempt to set the filter.  If we don't succeed, we clear

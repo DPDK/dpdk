@@ -154,9 +154,15 @@ cxgbe_fill_filter_region(struct adapter *adap,
 	if (tp->vlan_shift >= 0 && fs->mask.ivlan_vld)
 		ntuple_mask |= (u64)(F_FT_VLAN_VLD | fs->mask.ivlan) <<
 			       tp->vlan_shift;
-	if (tp->vnic_shift >= 0 && fs->mask.ovlan_vld)
-		ntuple_mask |= (u64)(F_FT_VLAN_VLD | fs->mask.ovlan) <<
-			       tp->vnic_shift;
+	if (tp->vnic_shift >= 0) {
+		if (fs->mask.ovlan_vld)
+			ntuple_mask |= (u64)(fs->val.ovlan_vld << 16 |
+					     fs->mask.ovlan) << tp->vnic_shift;
+		else if (fs->mask.pfvf_vld)
+			ntuple_mask |= (u64)((fs->mask.pfvf_vld << 16) |
+					     (fs->mask.pf << 13)) <<
+					     tp->vnic_shift;
+	}
 	if (tp->tos_shift >= 0)
 		ntuple_mask |= (u64)fs->mask.tos << tp->tos_shift;
 
@@ -220,6 +226,9 @@ ch_rte_parsetype_port(const void *dmask, const struct rte_flow_item *item,
 	const struct rte_flow_item_phy_port *mask;
 
 	mask = umask ? umask : (const struct rte_flow_item_phy_port *)dmask;
+
+	if (!val)
+		return 0; /* Wildcard, match all physical ports */
 
 	if (val->index > 0x7)
 		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
@@ -288,6 +297,22 @@ ch_rte_parsetype_vlan(const void *dmask, const struct rte_flow_item *item,
 		CXGBE_FILL_FS(be16_to_cpu(spec->inner_type),
 			      be16_to_cpu(mask->inner_type), ethtype);
 
+	return 0;
+}
+
+static int
+ch_rte_parsetype_pf(const void *dmask __rte_unused,
+		    const struct rte_flow_item *item __rte_unused,
+		    struct ch_filter_specification *fs,
+		    struct rte_flow_error *e __rte_unused)
+{
+	struct rte_flow *flow = (struct rte_flow *)fs->private;
+	struct rte_eth_dev *dev = flow->dev;
+	struct adapter *adap = ethdev2adap(dev);
+
+	CXGBE_FILL_FS(1, 1, pfvf_vld);
+
+	CXGBE_FILL_FS(adap->pf, 0x7, pf);
 	return 0;
 }
 
@@ -918,6 +943,11 @@ static struct chrte_fparse parseitem[] = {
 		.fptr  = ch_rte_parsetype_tcp,
 		.dmask = &rte_flow_item_tcp_mask,
 	},
+
+	[RTE_FLOW_ITEM_TYPE_PF] = {
+		.fptr = ch_rte_parsetype_pf,
+		.dmask = NULL,
+	},
 };
 
 static int
@@ -950,10 +980,6 @@ cxgbe_rtef_parse_items(struct rte_flow *flow,
 						"parse items cannot be repeated(except void/vlan)");
 
 			repeat[i->type] = 1;
-
-			/* No spec found for this pattern item. Skip it */
-			if (!i->spec)
-				break;
 
 			/* validate the item */
 			ret = cxgbe_validate_item(i, e);
