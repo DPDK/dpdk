@@ -5215,8 +5215,8 @@ int t4_init_sge_params(struct adapter *adapter)
  */
 int t4_init_tp_params(struct adapter *adap)
 {
-	int chan;
-	u32 v;
+	int chan, ret;
+	u32 param, v;
 
 	v = t4_read_reg(adap, A_TP_TIMER_RESOLUTION);
 	adap->params.tp.tre = G_TIMERRESOLUTION(v);
@@ -5227,11 +5227,47 @@ int t4_init_tp_params(struct adapter *adap)
 		adap->params.tp.tx_modq[chan] = chan;
 
 	/*
-	 * Cache the adapter's Compressed Filter Mode and global Incress
+	 * Cache the adapter's Compressed Filter Mode/Mask and global Ingress
 	 * Configuration.
 	 */
-	t4_read_indirect(adap, A_TP_PIO_ADDR, A_TP_PIO_DATA,
-			 &adap->params.tp.vlan_pri_map, 1, A_TP_VLAN_PRI_MAP);
+	param = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DEV) |
+		 V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_DEV_FILTER) |
+		 V_FW_PARAMS_PARAM_Y(FW_PARAM_DEV_FILTER_MODE_MASK));
+
+	/* Read current value */
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0,
+			      1, &param, &v);
+	if (!ret) {
+		dev_info(adap, "Current filter mode/mask 0x%x:0x%x\n",
+			 G_FW_PARAMS_PARAM_FILTER_MODE(v),
+			 G_FW_PARAMS_PARAM_FILTER_MASK(v));
+		adap->params.tp.vlan_pri_map =
+			G_FW_PARAMS_PARAM_FILTER_MODE(v);
+		adap->params.tp.filter_mask =
+			G_FW_PARAMS_PARAM_FILTER_MASK(v);
+	} else {
+		dev_info(adap,
+			 "Failed to read filter mode/mask via fw api, using indirect-reg-read\n");
+
+		/* In case of older-fw (which doesn't expose the api
+		 * FW_PARAM_DEV_FILTER_MODE_MASK) and newer-driver (which uses
+		 * the fw api) combination, fall-back to older method of reading
+		 * the filter mode from indirect-register
+		 */
+		t4_read_indirect(adap, A_TP_PIO_ADDR, A_TP_PIO_DATA,
+				 &adap->params.tp.vlan_pri_map, 1,
+				 A_TP_VLAN_PRI_MAP);
+
+		/* With the older-fw and newer-driver combination we might run
+		 * into an issue when user wants to use hash filter region but
+		 * the filter_mask is zero, in this case filter_mask validation
+		 * is tough. To avoid that we set the filter_mask same as filter
+		 * mode, which will behave exactly as the older way of ignoring
+		 * the filter mask validation.
+		 */
+		adap->params.tp.filter_mask = adap->params.tp.vlan_pri_map;
+	}
+
 	t4_read_indirect(adap, A_TP_PIO_ADDR, A_TP_PIO_DATA,
 			 &adap->params.tp.ingress_config, 1,
 			 A_TP_INGRESS_CONFIG);

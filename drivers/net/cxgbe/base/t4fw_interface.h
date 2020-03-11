@@ -671,6 +671,19 @@ enum fw_params_mnem {
 /*
  * device parameters
  */
+
+#define S_FW_PARAMS_PARAM_FILTER_MODE 16
+#define M_FW_PARAMS_PARAM_FILTER_MODE 0xffff
+#define G_FW_PARAMS_PARAM_FILTER_MODE(x)          \
+	(((x) >> S_FW_PARAMS_PARAM_FILTER_MODE) & \
+	M_FW_PARAMS_PARAM_FILTER_MODE)
+
+#define S_FW_PARAMS_PARAM_FILTER_MASK 0
+#define M_FW_PARAMS_PARAM_FILTER_MASK 0xffff
+#define G_FW_PARAMS_PARAM_FILTER_MASK(x)          \
+	(((x) >> S_FW_PARAMS_PARAM_FILTER_MASK) & \
+	M_FW_PARAMS_PARAM_FILTER_MASK)
+
 enum fw_params_param_dev {
 	FW_PARAMS_PARAM_DEV_CCLK	= 0x00, /* chip core clock in khz */
 	FW_PARAMS_PARAM_DEV_PORTVEC	= 0x01, /* the port vector */
@@ -683,6 +696,7 @@ enum fw_params_param_dev {
 	FW_PARAMS_PARAM_DEV_ULPTX_MEMWRITE_DSGL = 0x17,
 	FW_PARAMS_PARAM_DEV_FILTER2_WR	= 0x1D,
 	FW_PARAMS_PARAM_DEV_OPAQUE_VIID_SMT_EXTN = 0x27,
+	FW_PARAMS_PARAM_DEV_FILTER      = 0x2E,
 };
 
 /*
@@ -708,6 +722,10 @@ enum fw_params_param_pfvf {
 enum fw_params_param_dmaq {
 	FW_PARAMS_PARAM_DMAQ_IQ_INTCNTTHRESH = 0x01,
 	FW_PARAMS_PARAM_DMAQ_CONM_CTXT = 0x20,
+};
+
+enum fw_params_param_dev_filter {
+	FW_PARAM_DEV_FILTER_MODE_MASK   = 0x01,
 };
 
 #define S_FW_PARAMS_MNEM	24

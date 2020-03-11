@@ -62,7 +62,8 @@ int cxgbe_validate_filter(struct adapter *adapter,
 	/*
 	 * Check for unconfigured fields being used.
 	 */
-	fconf = adapter->params.tp.vlan_pri_map;
+	fconf = fs->cap ? adapter->params.tp.filter_mask :
+			  adapter->params.tp.vlan_pri_map;
 
 	iconf = adapter->params.tp.ingress_config;
 
