@@ -561,7 +561,10 @@ def main(stream=None):
 
     pcifile_default = "./pci.ids"  # For unknown OS's assume local file
     if platform.system() == 'Linux':
-        pcifile_default = "/usr/share/hwdata/pci.ids"
+        # hwdata is the legacy location, misc is supported going forward
+        pcifile_default = "/usr/share/misc/pci.ids"
+        if not os.path.exists(pcifile_default):
+            pcifile_default = "/usr/share/hwdata/pci.ids"
     elif platform.system() == 'FreeBSD':
         pcifile_default = "/usr/local/share/pciids/pci.ids"
         if not os.path.exists(pcifile_default):
