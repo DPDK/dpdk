@@ -62,7 +62,7 @@ rte_rdtsc(void)
 static inline uint64_t
 rte_rdtsc_precise(void)
 {
-	rte_mb();
+	asm volatile("isb" : : : "memory");
 	return rte_rdtsc();
 }
 
