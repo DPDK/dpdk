@@ -2109,10 +2109,6 @@ flow_dv_validate_action_set_meta(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "meta data must be within reg C0");
-	if (!(conf->data & conf->mask))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "zero value has no effect");
 	return 0;
 }
 
