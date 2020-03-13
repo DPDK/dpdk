@@ -658,6 +658,9 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 	uint8_t key_length = auth_xform->key.length;
 	session->aes_cmac = 0;
 
+	session->auth_iv.offset = auth_xform->iv.offset;
+	session->auth_iv.length = auth_xform->iv.length;
+
 	switch (auth_xform->algo) {
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA1;
@@ -689,6 +692,8 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
+		if (session->auth_iv.length == 0)
+			session->auth_iv.length = AES_GCM_J0_LEN;
 
 		break;
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
@@ -727,9 +732,6 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				auth_xform->algo);
 		return -EINVAL;
 	}
-
-	session->auth_iv.offset = auth_xform->iv.offset;
-	session->auth_iv.length = auth_xform->iv.length;
 
 	if (auth_xform->algo == RTE_CRYPTO_AUTH_AES_GMAC) {
 		if (auth_xform->op == RTE_CRYPTO_AUTH_OP_GENERATE) {
@@ -813,6 +815,9 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
+		if (session->cipher_iv.length == 0)
+			session->cipher_iv.length = AES_GCM_J0_LEN;
+
 		break;
 	case RTE_CRYPTO_AEAD_AES_CCM:
 		if (qat_sym_validate_aes_key(aead_xform->key.length,

@@ -20,6 +20,11 @@
 
 #define KASUMI_F8_KEY_MODIFIER_4_BYTES   0x55555555
 
+/*
+ * AES-GCM J0 length
+ */
+#define AES_GCM_J0_LEN 16
+
 /* 3DES key sizes */
 #define QAT_3DES_KEY_SZ_OPT1 24 /* Keys are independent */
 #define QAT_3DES_KEY_SZ_OPT2 16 /* K3=K1 */

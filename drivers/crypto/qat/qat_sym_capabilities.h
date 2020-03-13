@@ -227,9 +227,9 @@
 					.increment = 1			\
 				},					\
 				.iv_size = {				\
-					.min = 12,			\
+					.min = 0,			\
 					.max = 12,			\
-					.increment = 0			\
+					.increment = 12			\
 				},					\
 			}, }						\
 		}, }							\
@@ -252,9 +252,9 @@
 					.increment = 4			\
 				},					\
 				.iv_size = {				\
-					.min = 12,			\
+					.min = 0,			\
 					.max = 12,			\
-					.increment = 0			\
+					.increment = 12			\
 				}					\
 			}, }						\
 		}, }							\
