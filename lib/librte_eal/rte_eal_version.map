@@ -335,4 +335,7 @@ EXPERIMENTAL {
 
 	# added in 20.02
 	rte_thread_is_intr;
+
+	# added in 20.05
+	rte_log_can_log;
 };

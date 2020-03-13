@@ -1597,7 +1597,7 @@ mlx5_mr_release(struct mlx5_ibv_shared *sh)
 {
 	struct mlx5_mr *mr_next;
 
-	if (rte_log_get_level(mlx5_logtype) == RTE_LOG_DEBUG)
+	if (rte_log_can_log(mlx5_logtype, RTE_LOG_DEBUG))
 		mlx5_mr_dump_dev(sh);
 	rte_rwlock_write_lock(&sh->mr.rwlock);
 	/* Detach from MR list and move to free list. */

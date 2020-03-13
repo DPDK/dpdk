@@ -20,6 +20,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <sys/queue.h>
 
 #include <rte_common.h>
@@ -142,6 +143,19 @@ uint32_t rte_log_get_global_level(void);
  *   0 on success, a negative value if logtype is invalid.
  */
 int rte_log_get_level(uint32_t logtype);
+
+/**
+ * For a given `logtype`, check if a log with `loglevel` can be printed.
+ *
+ * @param logtype
+ *   The log type identifier
+ * @param loglevel
+ *   Log level. A value between RTE_LOG_EMERG (1) and RTE_LOG_DEBUG (8).
+ * @return
+ * Returns 'true' if log can be printed and 'false' if it can't.
+ */
+__rte_experimental
+bool rte_log_can_log(uint32_t logtype, uint32_t loglevel);
 
 /**
  * Set the log level for a given type based on shell pattern.

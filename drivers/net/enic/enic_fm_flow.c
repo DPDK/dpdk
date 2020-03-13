@@ -1504,7 +1504,7 @@ enic_fm_dump_tcam_entry(const struct fm_tcam_match_entry *fm_match,
 			const struct fm_action *fm_action,
 			uint8_t ingress)
 {
-	if (rte_log_get_level(enic_pmd_logtype) < (int)RTE_LOG_DEBUG)
+	if (!rte_log_can_log(enic_pmd_logtype, RTE_LOG_DEBUG))
 		return;
 	enic_fm_dump_tcam_match(fm_match, ingress);
 	enic_fm_dump_tcam_actions(fm_action);

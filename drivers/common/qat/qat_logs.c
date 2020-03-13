@@ -14,12 +14,9 @@ int
 qat_hexdump_log(uint32_t level, uint32_t logtype, const char *title,
 		const void *buf, unsigned int len)
 {
-	if (level > rte_log_get_global_level())
-		return 0;
-	if (level > (uint32_t)(rte_log_get_level(logtype)))
-		return 0;
+	if (rte_log_can_log(logtype, level))
+		rte_hexdump(rte_log_get_stream(), title, buf, len);
 
-	rte_hexdump(rte_log_get_stream(), title, buf, len);
 	return 0;
 }
 
