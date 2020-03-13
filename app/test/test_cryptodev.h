@@ -44,6 +44,7 @@
 #define TRUNCATED_DIGEST_BYTE_LENGTH_SHA512		(32)
 
 #define MAXIMUM_IV_LENGTH				(16)
+#define AES_GCM_J0_LENGTH				(16)
 
 #define IV_OFFSET			(sizeof(struct rte_crypto_op) + \
 		sizeof(struct rte_crypto_sym_op) + DEFAULT_NUM_XFORMS * \

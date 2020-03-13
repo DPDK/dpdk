@@ -6885,9 +6885,15 @@ create_aead_operation(enum rte_crypto_aead_operation op,
 		uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
 				uint8_t *, IV_OFFSET);
 
-		rte_memcpy(iv_ptr, tdata->iv.data, tdata->iv.len);
-		debug_hexdump(stdout, "iv:", iv_ptr,
-			tdata->iv.len);
+		if (tdata->iv.len == 0) {
+			rte_memcpy(iv_ptr, tdata->iv.data, AES_GCM_J0_LENGTH);
+			debug_hexdump(stdout, "iv:", iv_ptr,
+				AES_GCM_J0_LENGTH);
+		} else {
+			rte_memcpy(iv_ptr, tdata->iv.data, tdata->iv.len);
+			debug_hexdump(stdout, "iv:", iv_ptr,
+				tdata->iv.len);
+		}
 	}
 
 	/* Append plaintext/ciphertext */
@@ -7713,6 +7719,12 @@ test_AES_GCM_authenticated_encryption_test_case_8(void)
 }
 
 static int
+test_AES_GCM_J0_authenticated_encryption_test_case_1(void)
+{
+	return test_authenticated_encryption(&gcm_J0_test_case_1);
+}
+
+static int
 test_AES_GCM_auth_encryption_test_case_192_1(void)
 {
 	return test_authenticated_encryption(&gcm_test_case_192_1);
@@ -8043,6 +8055,12 @@ static int
 test_AES_GCM_authenticated_decryption_test_case_8(void)
 {
 	return test_authenticated_decryption(&gcm_test_case_8);
+}
+
+static int
+test_AES_GCM_J0_authenticated_decryption_test_case_1(void)
+{
+	return test_authenticated_decryption(&gcm_J0_test_case_1);
 }
 
 static int
@@ -11755,6 +11773,8 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_AES_GCM_authenticated_encryption_test_case_7),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_authenticated_encryption_test_case_8),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_J0_authenticated_encryption_test_case_1),
 
 		/** AES GCM Authenticated Decryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -11773,6 +11793,8 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_AES_GCM_authenticated_decryption_test_case_7),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_authenticated_decryption_test_case_8),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_J0_authenticated_decryption_test_case_1),
 
 		/** AES GCM Authenticated Encryption 192 bits key */
 		TEST_CASE_ST(ut_setup, ut_teardown,
