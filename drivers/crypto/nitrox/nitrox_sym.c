@@ -314,6 +314,10 @@ get_flexi_cipher_type(enum rte_crypto_cipher_algorithm algo, bool *is_aes)
 		type = CIPHER_AES_CBC;
 		*is_aes = true;
 		break;
+	case RTE_CRYPTO_CIPHER_3DES_CBC:
+		type = CIPHER_3DES_CBC;
+		*is_aes = false;
+		break;
 	default:
 		type = CIPHER_INVALID;
 		NITROX_LOG(ERR, "Algorithm not supported %d\n", algo);

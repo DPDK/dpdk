@@ -13139,6 +13139,7 @@ static struct unit_test_suite cryptodev_nitrox_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_queue_pair_ids),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}

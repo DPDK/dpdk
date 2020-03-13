@@ -18,6 +18,7 @@ Nitrox crypto PMD has support for:
 Cipher algorithms:
 
 * ``RTE_CRYPTO_CIPHER_AES_CBC``
+* ``RTE_CRYPTO_CIPHER_3DES_CBC``
 
 Hash algorithms:
 
@@ -29,6 +30,7 @@ Limitations
 -----------
 
 * AES_CBC Cipher Only combination is not supported.
+* 3DES Cipher Only combination is not supported.
 * Session-less APIs are not supported.
 
 Installation
