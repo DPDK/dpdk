@@ -240,7 +240,7 @@ static int alloc_eq_pages(struct hinic_eq *eq)
 		eq->virt_addr[pg_num] =
 			(u8 *)dma_zalloc_coherent_aligned(eq->hwdev,
 					eq->page_size, &eq->dma_addr[pg_num],
-					GFP_KERNEL);
+					SOCKET_ID_ANY);
 		if (!eq->virt_addr[pg_num]) {
 			err = -ENOMEM;
 			goto dma_alloc_err;

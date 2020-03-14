@@ -171,8 +171,7 @@ struct hinic_cmd_buf *hinic_alloc_cmd_buf(void *hwdev)
 		return NULL;
 	}
 
-	cmd_buf->buf = pci_pool_alloc(cmdqs->cmd_buf_pool, GFP_KERNEL,
-				      &cmd_buf->dma_addr);
+	cmd_buf->buf = pci_pool_alloc(cmdqs->cmd_buf_pool, &cmd_buf->dma_addr);
 	if (!cmd_buf->buf) {
 		PMD_DRV_LOG(ERR, "Allocate cmd from the pool failed");
 		goto alloc_pci_buf_err;

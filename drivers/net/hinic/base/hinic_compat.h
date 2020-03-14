@@ -149,22 +149,25 @@ static inline int hinic_test_and_set_bit(int nr, volatile unsigned long *addr)
 }
 
 void *dma_zalloc_coherent(void *dev, size_t size, dma_addr_t *dma_handle,
-			  gfp_t flag);
-void *dma_zalloc_coherent_aligned(void *dev, size_t size,
-				dma_addr_t *dma_handle, gfp_t flag);
-void *dma_zalloc_coherent_aligned256k(void *dev, size_t size,
-				dma_addr_t *dma_handle, gfp_t flag);
+			  unsigned int socket_id);
+
+void *dma_zalloc_coherent_aligned(void *hwdev, size_t size,
+		dma_addr_t *dma_handle, unsigned int socket_id);
+
+void *dma_zalloc_coherent_aligned256k(void *hwdev, size_t size,
+			      dma_addr_t *dma_handle, unsigned int socket_id);
+
 void dma_free_coherent(void *dev, size_t size, void *virt, dma_addr_t phys);
 
 /* dma pool alloc and free */
 #define	pci_pool dma_pool
-#define	pci_pool_alloc(pool, flags, handle) dma_pool_alloc(pool, flags, handle)
+#define	pci_pool_alloc(pool, handle) dma_pool_alloc(pool, handle)
 #define	pci_pool_free(pool, vaddr, addr) dma_pool_free(pool, vaddr, addr)
 
 struct dma_pool *dma_pool_create(const char *name, void *dev, size_t size,
 				size_t align, size_t boundary);
 void dma_pool_destroy(struct dma_pool *pool);
-void *dma_pool_alloc(struct pci_pool *pool, int flags, dma_addr_t *dma_addr);
+void *dma_pool_alloc(struct pci_pool *pool, dma_addr_t *dma_addr);
 void dma_pool_free(struct pci_pool *pool, void *vaddr, dma_addr_t dma);
 
 #define kzalloc(size, flag) rte_zmalloc(NULL, size, HINIC_MEM_ALLOC_ALIGN_MIN)

@@ -1216,7 +1216,8 @@ int hinic_setup_tx_resources(struct hinic_txq *txq)
 	u64 tx_info_sz;
 
 	tx_info_sz = txq->q_depth * sizeof(*txq->tx_info);
-	txq->tx_info = kzalloc_aligned(tx_info_sz, GFP_KERNEL);
+	txq->tx_info = rte_zmalloc_socket("tx_info", tx_info_sz,
+			RTE_CACHE_LINE_SIZE, txq->socket_id);
 	if (!txq->tx_info)
 		return -ENOMEM;
 
@@ -1228,11 +1229,12 @@ void hinic_free_tx_resources(struct hinic_txq *txq)
 	if (txq->tx_info == NULL)
 		return;
 
-	kfree(txq->tx_info);
+	rte_free(txq->tx_info);
 	txq->tx_info = NULL;
 }
 
-int hinic_create_sq(struct hinic_hwdev *hwdev, u16 q_id, u16 sq_depth)
+int hinic_create_sq(struct hinic_hwdev *hwdev, u16 q_id,
+			u16 sq_depth, unsigned int socket_id)
 {
 	int err;
 	struct hinic_nic_io *nic_io = hwdev->nic_io;
@@ -1246,7 +1248,8 @@ int hinic_create_sq(struct hinic_hwdev *hwdev, u16 q_id, u16 sq_depth)
 
 	/* alloc wq */
 	err = hinic_wq_allocate(nic_io->hwdev, &nic_io->sq_wq[q_id],
-				HINIC_SQ_WQEBB_SHIFT, nic_io->sq_depth);
+				HINIC_SQ_WQEBB_SHIFT, nic_io->sq_depth,
+				socket_id);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to allocate WQ for SQ");
 		return err;

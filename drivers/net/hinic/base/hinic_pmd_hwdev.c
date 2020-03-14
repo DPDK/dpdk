@@ -112,9 +112,9 @@ void hinic_be32_to_cpu(void *data, u32 len)
 	}
 }
 
-static void *
-hinic_dma_mem_zalloc(struct hinic_hwdev *hwdev, size_t size,
-		dma_addr_t *dma_handle, unsigned int flag, unsigned int align)
+static void *hinic_dma_mem_zalloc(struct hinic_hwdev *hwdev, size_t size,
+			   dma_addr_t *dma_handle, unsigned int align,
+			   unsigned int socket_id)
 {
 	int rc, alloc_cnt;
 	const struct rte_memzone *mz;
@@ -129,8 +129,8 @@ hinic_dma_mem_zalloc(struct hinic_hwdev *hwdev, size_t size,
 	snprintf(z_name, sizeof(z_name), "%s_%d",
 		 hwdev->pcidev_hdl->name, alloc_cnt);
 
-	mz = rte_memzone_reserve_aligned(z_name, size, SOCKET_ID_ANY,
-					 flag, align);
+	mz = rte_memzone_reserve_aligned(z_name, size, socket_id,
+					 RTE_MEMZONE_IOVA_CONTIG, align);
 	if (!mz) {
 		PMD_DRV_LOG(ERR, "Alloc dma able memory failed, errno: %d, ma_name: %s, size: 0x%zx",
 			    rte_errno, z_name, size);
@@ -209,25 +209,26 @@ hinic_dma_mem_free(struct hinic_hwdev *hwdev, size_t size,
 	(void)rte_memzone_free(mz);
 }
 
-void *dma_zalloc_coherent(void *hwdev, size_t size,
-			  dma_addr_t *dma_handle, gfp_t flag)
+void *dma_zalloc_coherent(void *hwdev, size_t size, dma_addr_t *dma_handle,
+			  unsigned int socket_id)
 {
-	return hinic_dma_mem_zalloc(hwdev, size, dma_handle, flag,
-				    RTE_CACHE_LINE_SIZE);
+	return hinic_dma_mem_zalloc(hwdev, size, dma_handle,
+				    RTE_CACHE_LINE_SIZE, socket_id);
 }
 
 void *dma_zalloc_coherent_aligned(void *hwdev, size_t size,
-				  dma_addr_t *dma_handle, gfp_t flag)
+				dma_addr_t *dma_handle, unsigned int socket_id)
 {
-	return hinic_dma_mem_zalloc(hwdev, size, dma_handle, flag,
-				    HINIC_PAGE_SIZE);
+	return hinic_dma_mem_zalloc(hwdev, size, dma_handle, HINIC_PAGE_SIZE,
+				    socket_id);
 }
 
 void *dma_zalloc_coherent_aligned256k(void *hwdev, size_t size,
-				      dma_addr_t *dma_handle, gfp_t flag)
+				      dma_addr_t *dma_handle,
+				      unsigned int socket_id)
 {
-	return hinic_dma_mem_zalloc(hwdev, size, dma_handle, flag,
-				    HINIC_PAGE_SIZE * 64);
+	return hinic_dma_mem_zalloc(hwdev, size, dma_handle,
+				    HINIC_PAGE_SIZE * 64, socket_id);
 }
 
 void dma_free_coherent(void *hwdev, size_t size, void *virt, dma_addr_t phys)
@@ -304,12 +305,12 @@ void dma_pool_destroy(struct dma_pool *pool)
 	rte_free(pool);
 }
 
-void *dma_pool_alloc(struct pci_pool *pool, int flags, dma_addr_t *dma_addr)
+void *dma_pool_alloc(struct pci_pool *pool, dma_addr_t *dma_addr)
 {
 	void *buf;
 
-	buf = hinic_dma_mem_zalloc(pool->hwdev, pool->elem_size,
-				   dma_addr, flags, (u32)pool->align);
+	buf = hinic_dma_mem_zalloc(pool->hwdev, pool->elem_size, dma_addr,
+				(u32)pool->align, SOCKET_ID_ANY);
 	if (buf)
 		rte_atomic32_inc(&pool->inuse);
 

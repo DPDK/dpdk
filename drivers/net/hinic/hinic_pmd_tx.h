@@ -114,6 +114,7 @@ struct hinic_txq {
 	u16 q_id;
 	u16 q_depth;
 	u32 cos;
+	u32 socket_id;
 
 	/* cacheline1 */
 	struct hinic_txq_stats txq_stats;
@@ -137,7 +138,8 @@ void hinic_txq_get_stats(struct hinic_txq *txq, struct hinic_txq_stats *stats);
 
 void hinic_txq_stats_reset(struct hinic_txq *txq);
 
-int hinic_create_sq(struct hinic_hwdev *hwdev, u16 q_id, u16 sq_depth);
+int hinic_create_sq(struct hinic_hwdev *hwdev, u16 q_id,
+			u16 sq_depth, unsigned int socket_id);
 
 void hinic_destroy_sq(struct hinic_hwdev *hwdev, u16 q_id);
 

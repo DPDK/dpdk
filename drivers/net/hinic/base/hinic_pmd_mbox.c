@@ -404,10 +404,8 @@ static int alloc_mbox_wb_status(struct hinic_mbox_func_to_func *func_to_func)
 	struct hinic_hwif *hwif = hwdev->hwif;
 	u32 addr_h, addr_l;
 
-	send_mbox->wb_vaddr = dma_zalloc_coherent(hwdev,
-				  MBOX_WB_STATUS_LEN,
-				  &send_mbox->wb_paddr,
-				  GFP_KERNEL);
+	send_mbox->wb_vaddr = dma_zalloc_coherent(hwdev, MBOX_WB_STATUS_LEN,
+					&send_mbox->wb_paddr, SOCKET_ID_ANY);
 	if (!send_mbox->wb_vaddr) {
 		PMD_DRV_LOG(ERR, "Allocating memory for mailbox wb status failed");
 		return -ENOMEM;

@@ -442,7 +442,6 @@ struct hinic_hwdev {
 	struct hinic_msg_pf_to_mgmt *pf_to_mgmt;
 	struct hinic_cmdqs *cmdqs;
 	struct hinic_nic_io *nic_io;
-
 };
 
 int hinic_osdep_init(struct hinic_hwdev *hwdev);

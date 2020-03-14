@@ -57,6 +57,7 @@
 #define HINIC_DEFAULT_BURST_SIZE	32
 #define HINIC_DEFAULT_NB_QUEUES		1
 #define HINIC_DEFAULT_RING_SIZE		1024
+#define HINIC_MAX_LRO_SIZE		65536
 
 /*
  * vlan_id is a 12 bit number.
@@ -439,7 +440,7 @@ static int hinic_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	nic_dev->rxqs[queue_idx] = rxq;
 
 	/* alloc rx sq hw wqepage*/
-	rc = hinic_create_rq(hwdev, queue_idx, rq_depth);
+	rc = hinic_create_rq(hwdev, queue_idx, rq_depth, socket_id);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "Create rxq[%d] failed, dev_name: %s, rq_depth: %d",
 			    queue_idx, dev->data->name, rq_depth);
@@ -466,6 +467,7 @@ static int hinic_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->q_depth = rq_depth;
 	rxq->buf_len = (u16)buf_size;
 	rxq->rx_free_thresh = rx_free_thresh;
+	rxq->socket_id = socket_id;
 
 	/* the last point cant do mbuf rearm in bulk */
 	rxq->rxinfo_align_end = rxq->q_depth - rxq->rx_free_thresh;
@@ -593,7 +595,7 @@ static int hinic_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	nic_dev->txqs[queue_idx] = txq;
 
 	/* alloc tx sq hw wqepage */
-	rc = hinic_create_sq(hwdev, queue_idx, sq_depth);
+	rc = hinic_create_sq(hwdev, queue_idx, sq_depth, socket_id);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "Create txq[%d] failed, dev_name: %s, sq_depth: %d",
 			    queue_idx, dev->data->name, sq_depth);
@@ -612,6 +614,7 @@ static int hinic_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->sq_bot_sge_addr = HINIC_GET_WQ_TAIL(txq) -
 					sizeof(struct hinic_sq_bufdesc);
 	txq->cos = nic_dev->default_cos;
+	txq->socket_id = socket_id;
 
 	/* alloc software txinfo */
 	rc = hinic_setup_tx_resources(txq);

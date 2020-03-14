@@ -15,13 +15,14 @@ static void free_wq_pages(struct hinic_hwdev *hwdev, struct hinic_wq *wq)
 	wq->queue_buf_vaddr = 0;
 }
 
-static int alloc_wq_pages(struct hinic_hwdev *hwdev, struct hinic_wq *wq)
+static int alloc_wq_pages(struct hinic_hwdev *hwdev, struct hinic_wq *wq,
+			unsigned int socket_id)
 {
 	dma_addr_t dma_addr = 0;
 
 	wq->queue_buf_vaddr = (u64)(u64 *)
 		dma_zalloc_coherent_aligned256k(hwdev, wq->wq_buf_size,
-						&dma_addr, GFP_KERNEL);
+						&dma_addr, socket_id);
 	if (!wq->queue_buf_vaddr) {
 		PMD_DRV_LOG(ERR, "Failed to allocate wq page");
 		return -ENOMEM;
@@ -40,7 +41,7 @@ static int alloc_wq_pages(struct hinic_hwdev *hwdev, struct hinic_wq *wq)
 }
 
 int hinic_wq_allocate(struct hinic_hwdev *hwdev, struct hinic_wq *wq,
-		      u32 wqebb_shift, u16 q_depth)
+		      u32 wqebb_shift, u16 q_depth, unsigned int socket_id)
 {
 	int err;
 
@@ -60,7 +61,7 @@ int hinic_wq_allocate(struct hinic_hwdev *hwdev, struct hinic_wq *wq,
 		return -EINVAL;
 	}
 
-	err = alloc_wq_pages(hwdev, wq);
+	err = alloc_wq_pages(hwdev, wq, socket_id);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to allocate wq pages");
 		return err;
@@ -114,7 +115,7 @@ int hinic_cmdq_alloc(struct hinic_wq *wq, struct hinic_hwdev *hwdev,
 		wq[i].wq_buf_size = wq_buf_size;
 		wq[i].q_depth = q_depth;
 
-		err = alloc_wq_pages(hwdev, &wq[i]);
+		err = alloc_wq_pages(hwdev, &wq[i], SOCKET_ID_ANY);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to alloc CMDQ blocks");
 			goto cmdq_block_err;

@@ -658,7 +658,7 @@ static int alloc_cmd_buf(struct hinic_api_cmd_chain *chain,
 
 	cmd_vaddr_alloc = dma_zalloc_coherent(dev, (API_CMD_BUF_SIZE +
 					      API_PAYLOAD_ALIGN_SIZE),
-					      &cmd_paddr, GFP_KERNEL);
+					      &cmd_paddr, SOCKET_ID_ANY);
 	if (!cmd_vaddr_alloc) {
 		PMD_DRV_LOG(ERR, "Allocate API CMD dma memory failed");
 		return -ENOMEM;
@@ -712,7 +712,7 @@ static int api_cmd_create_cell(struct hinic_api_cmd_chain *chain,
 
 	node_vaddr_alloc = dma_zalloc_coherent(dev, (chain->cell_size +
 					       API_CMD_NODE_ALIGN_SIZE),
-					       &node_paddr, GFP_KERNEL);
+					       &node_paddr, SOCKET_ID_ANY);
 	if (!node_vaddr_alloc) {
 		PMD_DRV_LOG(ERR, "Allocate dma API CMD cell failed");
 		return -ENOMEM;
@@ -889,8 +889,7 @@ static int api_chain_init(struct hinic_api_cmd_chain *chain,
 
 	chain->wb_status = (struct hinic_api_cmd_status *)
 			   dma_zalloc_coherent(dev, sizeof(*chain->wb_status),
-					       &chain->wb_status_paddr,
-					       GFP_KERNEL);
+				&chain->wb_status_paddr, SOCKET_ID_ANY);
 	if (!chain->wb_status) {
 		PMD_DRV_LOG(ERR, "Allocate DMA wb status failed");
 		err = -ENOMEM;

@@ -82,6 +82,8 @@ struct hinic_rxq {
 	u16 rx_free_thresh;
 	u16 rxinfo_align_end;
 
+	u32 socket_id;
+
 	unsigned long status;
 	struct hinic_rxq_stats rxq_stats;
 
@@ -121,7 +123,8 @@ void hinic_rx_remove_configure(struct rte_eth_dev *dev);
 
 void hinic_get_func_rx_buf_size(struct hinic_nic_dev *nic_dev);
 
-int hinic_create_rq(struct hinic_hwdev *hwdev, u16 q_id, u16 rq_depth);
+int hinic_create_rq(struct hinic_hwdev *hwdev, u16 q_id,
+			u16 rq_depth, unsigned int socket_id);
 
 void hinic_destroy_rq(struct hinic_hwdev *hwdev, u16 q_id);
 

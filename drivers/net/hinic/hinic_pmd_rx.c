@@ -209,7 +209,8 @@ void hinic_get_func_rx_buf_size(struct hinic_nic_dev *nic_dev)
 	nic_dev->hwdev->nic_io->rq_buf_size = buf_size;
 }
 
-int hinic_create_rq(struct hinic_hwdev *hwdev, u16 q_id, u16 rq_depth)
+int hinic_create_rq(struct hinic_hwdev *hwdev, u16 q_id,
+			u16 rq_depth, unsigned int socket_id)
 {
 	int err;
 	struct hinic_nic_io *nic_io = hwdev->nic_io;
@@ -223,17 +224,15 @@ int hinic_create_rq(struct hinic_hwdev *hwdev, u16 q_id, u16 rq_depth)
 	nic_io->rq_depth = rq_depth;
 
 	err = hinic_wq_allocate(hwdev, &nic_io->rq_wq[q_id],
-				HINIC_RQ_WQEBB_SHIFT, nic_io->rq_depth);
+			HINIC_RQ_WQEBB_SHIFT, nic_io->rq_depth, socket_id);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to allocate WQ for RQ");
 		return err;
 	}
 	rq->wq = &nic_io->rq_wq[q_id];
 
-	rq->pi_virt_addr =
-		(volatile u16 *)dma_zalloc_coherent(hwdev, HINIC_PAGE_SIZE,
-						    &rq->pi_dma_addr,
-						    GFP_KERNEL);
+	rq->pi_virt_addr = (volatile u16 *)dma_zalloc_coherent(hwdev,
+			HINIC_PAGE_SIZE, &rq->pi_dma_addr, socket_id);
 	if (!rq->pi_virt_addr) {
 		PMD_DRV_LOG(ERR, "Failed to allocate rq pi virt addr");
 		err = -ENOMEM;
@@ -305,15 +304,13 @@ void hinic_rxq_stats_reset(struct hinic_rxq *rxq)
 	memset(rxq_stats, 0, sizeof(*rxq_stats));
 }
 
-static int hinic_rx_alloc_cqe(struct hinic_rxq *rxq)
+static int hinic_rx_alloc_cqe(struct hinic_rxq *rxq, unsigned int socket_id)
 {
 	size_t cqe_mem_size;
 
 	cqe_mem_size = sizeof(struct hinic_rq_cqe) * rxq->q_depth;
-	rxq->cqe_start_vaddr =
-		dma_zalloc_coherent(rxq->nic_dev->hwdev,
-				    cqe_mem_size, &rxq->cqe_start_paddr,
-				    GFP_KERNEL);
+	rxq->cqe_start_vaddr = dma_zalloc_coherent(rxq->nic_dev->hwdev,
+				cqe_mem_size, &rxq->cqe_start_paddr, socket_id);
 	if (!rxq->cqe_start_vaddr) {
 		PMD_DRV_LOG(ERR, "Allocate cqe dma memory failed");
 		return -ENOMEM;
@@ -369,11 +366,12 @@ int hinic_setup_rx_resources(struct hinic_rxq *rxq)
 	int err, pkts;
 
 	rx_info_sz = rxq->q_depth * sizeof(*rxq->rx_info);
-	rxq->rx_info = kzalloc_aligned(rx_info_sz, GFP_KERNEL);
+	rxq->rx_info = rte_zmalloc_socket("rx_info", rx_info_sz,
+				RTE_CACHE_LINE_SIZE, rxq->socket_id);
 	if (!rxq->rx_info)
 		return -ENOMEM;
 
-	err = hinic_rx_alloc_cqe(rxq);
+	err = hinic_rx_alloc_cqe(rxq, rxq->socket_id);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Allocate rx cqe failed");
 		goto rx_cqe_err;
@@ -392,7 +390,7 @@ rx_fill_err:
 	hinic_rx_free_cqe(rxq);
 
 rx_cqe_err:
-	kfree(rxq->rx_info);
+	rte_free(rxq->rx_info);
 	rxq->rx_info = NULL;
 
 	return err;
@@ -404,7 +402,7 @@ void hinic_free_rx_resources(struct hinic_rxq *rxq)
 		return;
 
 	hinic_rx_free_cqe(rxq);
-	kfree(rxq->rx_info);
+	rte_free(rxq->rx_info);
 	rxq->rx_info = NULL;
 }
 

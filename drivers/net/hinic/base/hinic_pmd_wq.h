@@ -122,7 +122,7 @@ void hinic_cmdq_free(struct hinic_hwdev *hwdev, struct hinic_wq *wq,
 		     int cmdq_blocks);
 
 int hinic_wq_allocate(struct hinic_hwdev *hwdev, struct hinic_wq *wq,
-		      u32 wqebb_shift, u16 q_depth);
+		      u32 wqebb_shift, u16 q_depth, unsigned int socket_id);
 
 void hinic_wq_free(struct hinic_hwdev *hwdev, struct hinic_wq *wq);
 
