@@ -2598,7 +2598,8 @@ ipn3ke_rpst_scan_check(void)
 	int ret;
 
 	if (ipn3ke_rpst_scan_num == 1) {
-		ret = pthread_create(&ipn3ke_rpst_scan_thread,
+		ret = rte_ctrl_thread_create(&ipn3ke_rpst_scan_thread,
+			"ipn3ke scanner",
 			NULL,
 			ipn3ke_rpst_scan_handle_request, NULL);
 		if (ret) {
