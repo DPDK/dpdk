@@ -17,6 +17,7 @@ extern "C" {
 
 #include <rte_bus.h>
 #include <rte_pci.h>
+#include <rte_interrupts.h>
 #include <rte_spinlock.h>
 
 /** Name of Intel FPGA Bus */

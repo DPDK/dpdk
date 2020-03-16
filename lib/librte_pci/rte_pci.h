@@ -16,16 +16,10 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <errno.h>
 #include <sys/queue.h>
-#include <stdint.h>
 #include <inttypes.h>
-
-#include <rte_debug.h>
-#include <rte_interrupts.h>
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
