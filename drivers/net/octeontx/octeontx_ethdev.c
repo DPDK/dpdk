@@ -139,7 +139,7 @@ octeontx_port_open(struct octeontx_nic *nic)
 	nic->base_ochan = bgx_port_conf.base_chan;
 	nic->num_ichans = bgx_port_conf.num_chans;
 	nic->num_ochans = bgx_port_conf.num_chans;
-	nic->mtu = bgx_port_conf.mtu;
+	nic->bgx_mtu = bgx_port_conf.mtu;
 	nic->bpen = bgx_port_conf.bpen;
 	nic->fcs_strip = bgx_port_conf.fcs_strip;
 	nic->bcast_mode = bgx_port_conf.bcast_mode;
@@ -408,6 +408,55 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
+octeontx_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	uint32_t buffsz, frame_size = mtu + OCCTX_L2_OVERHEAD;
+	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	int rc = 0;
+
+	/* Check if MTU is within the allowed range */
+	if (frame_size < OCCTX_MIN_FRS || frame_size > OCCTX_MAX_FRS)
+		return -EINVAL;
+
+	buffsz = data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
+
+	/* Refuse MTU that requires the support of scattered packets
+	 * when this feature has not been enabled before.
+	 */
+	if (data->dev_started && frame_size > buffsz &&
+	    !(nic->rx_offloads & DEV_RX_OFFLOAD_SCATTER)) {
+		octeontx_log_err("Scatter mode is disabled");
+		return -EINVAL;
+	}
+
+	/* Check <seg size> * <max_seg>  >= max_frame */
+	if ((nic->rx_offloads & DEV_RX_OFFLOAD_SCATTER)	&&
+	    (frame_size > buffsz * OCCTX_RX_NB_SEG_MAX))
+		return -EINVAL;
+
+	rc = octeontx_pko_send_mtu(nic->port_id, frame_size);
+	if (rc)
+		return rc;
+
+	rc = octeontx_bgx_port_mtu_set(nic->port_id, frame_size);
+	if (rc)
+		return rc;
+
+	if (frame_size > RTE_ETHER_MAX_LEN)
+		nic->rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
+		nic->rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
+
+	/* Update max_rx_pkt_len */
+	data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+	octeontx_log_info("Received pkt beyond  maxlen %d will be dropped",
+			  frame_size);
+
+	return rc;
+}
+
+static int
 octeontx_recheck_rx_offloads(struct octeontx_rxq *rxq)
 {
 	struct rte_eth_dev *eth_dev = rxq->eth_dev;
@@ -435,6 +484,9 @@ octeontx_recheck_rx_offloads(struct octeontx_rxq *rxq)
 	evdev_priv->rx_offload_flags = nic->rx_offload_flags;
 	evdev_priv->tx_offload_flags = nic->tx_offload_flags;
 
+	/* Setup MTU based on max_rx_pkt_len */
+	nic->mtu = data->dev_conf.rxmode.max_rx_pkt_len - OCCTX_L2_OVERHEAD;
+
 	return 0;
 }
 
@@ -445,6 +497,7 @@ octeontx_dev_start(struct rte_eth_dev *dev)
 	struct octeontx_rxq *rxq;
 	int ret = 0, i;
 
+	PMD_INIT_FUNC_TRACE();
 	/* Rechecking if any new offload set to update
 	 * rx/tx burst function pointer accordingly.
 	 */
@@ -453,7 +506,13 @@ octeontx_dev_start(struct rte_eth_dev *dev)
 		octeontx_recheck_rx_offloads(rxq);
 	}
 
-	PMD_INIT_FUNC_TRACE();
+	/* Setting up the mtu based on max_rx_pkt_len */
+	ret = octeontx_dev_mtu_set(dev, nic->mtu);
+	if (ret) {
+		octeontx_log_err("Failed to set default MTU size %d", ret);
+		goto error;
+	}
+
 	/*
 	 * Tx start
 	 */
@@ -712,6 +771,12 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 	dev_info->speed_capa |= ETH_LINK_SPEED_10M | ETH_LINK_SPEED_100M |
 			ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
 			ETH_LINK_SPEED_40G;
+
+	/* Min/Max MTU supported */
+	dev_info->min_rx_bufsize = OCCTX_MIN_FRS;
+	dev_info->max_rx_pktlen = OCCTX_MAX_FRS;
+	dev_info->max_mtu = dev_info->max_rx_pktlen - OCCTX_L2_OVERHEAD;
+	dev_info->min_mtu = dev_info->min_rx_bufsize - OCCTX_L2_OVERHEAD;
 
 	dev_info->max_mac_addrs =
 				octeontx_bgx_port_mac_entries_get(nic->port_id);
@@ -1127,6 +1192,7 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.rx_queue_setup		 = octeontx_dev_rx_queue_setup,
 	.rx_queue_release	 = octeontx_dev_rx_queue_release,
 	.dev_supported_ptypes_get = octeontx_dev_supported_ptypes_get,
+	.mtu_set                 = octeontx_dev_mtu_set,
 	.pool_ops_supported      = octeontx_pool_ops,
 };
 
@@ -1256,7 +1322,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 				nic->port_id, nic->port_ena,
 				nic->base_ochan, nic->num_ochans,
 				nic->num_tx_queues);
-	PMD_INIT_LOG(DEBUG, "speed %d mtu %d", nic->speed, nic->mtu);
+	PMD_INIT_LOG(DEBUG, "speed %d mtu %d", nic->speed, nic->bgx_mtu);
 
 	rte_octeontx_pchan_map[(nic->base_ochan >> 8) & 0x7]
 		[(nic->base_ochan >> 4) & 0xF] = data->port_id;

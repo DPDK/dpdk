@@ -466,6 +466,27 @@ octeontx_pko_get_vfid(void)
 }
 
 int
+octeontx_pko_send_mtu(int port, int mtu)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+	mbox_pko_mtu_cfg_t cfg;
+
+	cfg.mtu = mtu;
+
+	hdr.coproc = OCTEONTX_PKO_COPROC;
+	hdr.msg = MBOX_PKO_MTU_CONFIG;
+	hdr.vfid = port;
+
+	res = octeontx_mbox_send(&hdr, &cfg, sizeof(mbox_pko_mtu_cfg_t),
+				 NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
 octeontx_pko_init_fc(const size_t pko_vf_count)
 {
 	int dq_ix;

@@ -43,6 +43,13 @@
 #define PKO_SEND_GATHER_LDTYPE(x)	((x) << 58)
 #define PKO_SEND_GATHER_GAUAR(x)	((x) << 24)
 
+#define OCTEONTX_PKO_COPROC                     4
+#define MBOX_PKO_MTU_CONFIG			1
+
+typedef struct mbox_pko_mtu_cfg {
+	uint32_t mtu;
+} mbox_pko_mtu_cfg_t;
+
 typedef struct octeontx_dq_s {
 	void *lmtline_va;
 	void *ioreg_va;
@@ -71,5 +78,6 @@ int octeontx_pko_vf_count(void);
 size_t octeontx_pko_get_vfid(void);
 int octeontx_pko_init_fc(const size_t pko_vf_count);
 void octeontx_pko_fc_free(void);
+int octeontx_pko_send_mtu(int port, int mtu);
 
 #endif /* __OCTEONTX_PKO_H__ */

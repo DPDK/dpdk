@@ -22,6 +22,7 @@ Features of the OCTEON TX Ethdev PMD are:
 - Jumbo frames
 - Scatter-Gather IO support
 - Link state information
+- MTU update
 - SR-IOV VF
 - Multiple queues for TX
 - Lock-free Tx queue

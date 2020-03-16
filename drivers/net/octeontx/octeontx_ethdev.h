@@ -29,6 +29,30 @@
 #define OCTEONTX_MAX_BGX_PORTS			4
 #define OCTEONTX_MAX_LMAC_PER_BGX		4
 
+#define OCCTX_RX_NB_SEG_MAX			6
+
+/* VLAN tag inserted by OCCTX_TX_VTAG_ACTION.
+ * In Tx space is always reserved for this in FRS.
+ */
+#define OCCTX_MAX_VTAG_INS		2
+#define OCCTX_MAX_VTAG_ACT_SIZE		(4 * OCCTX_MAX_VTAG_INS)
+
+/* HW config of frame size doesn't include FCS */
+#define OCCTX_MAX_HW_FRS		9212
+#define OCCTX_MIN_HW_FRS		60
+
+/* ETH_HLEN+ETH_FCS+2*VLAN_HLEN */
+#define OCCTX_L2_OVERHEAD	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + \
+				 OCCTX_MAX_VTAG_ACT_SIZE)
+
+/* Since HW FRS includes NPC VTAG insertion space, user has reduced FRS */
+#define OCCTX_MAX_FRS	\
+	(OCCTX_MAX_HW_FRS + RTE_ETHER_CRC_LEN - OCCTX_MAX_VTAG_ACT_SIZE)
+
+#define OCCTX_MIN_FRS		(OCCTX_MIN_HW_FRS + RTE_ETHER_CRC_LEN)
+
+#define OCCTX_MAX_MTU		(OCCTX_MAX_FRS - OCCTX_L2_OVERHEAD)
+
 #define OCTEONTX_RX_OFFLOADS		(DEV_RX_OFFLOAD_CHECKSUM     | \
 					 DEV_RX_OFFLOAD_SCATTER	     | \
 					 DEV_RX_OFFLOAD_JUMBO_FRAME)
@@ -67,6 +91,7 @@ struct octeontx_nic {
 	uint8_t link_up;
 	uint8_t	duplex;
 	uint8_t speed;
+	uint16_t bgx_mtu;
 	uint16_t mtu;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	/* Rx port parameters */

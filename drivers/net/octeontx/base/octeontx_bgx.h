@@ -131,6 +131,7 @@ int octeontx_bgx_port_mac_set(int port, uint8_t *mac_addr);
 int octeontx_bgx_port_mac_add(int port, uint8_t *mac_addr, int index);
 int octeontx_bgx_port_mac_del(int port, uint32_t index);
 int octeontx_bgx_port_mac_entries_get(int port);
+int octeontx_bgx_port_mtu_set(int port, int mtu);
 
 #endif	/* __OCTEONTX_BGX_H__ */
 

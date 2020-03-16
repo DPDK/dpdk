@@ -227,6 +227,23 @@ octeontx_bgx_port_promisc_set(int port, int en)
 }
 
 int
+octeontx_bgx_port_mtu_set(int port, int mtu)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_SET_MTU;
+	hdr.vfid = port;
+
+	res = octeontx_mbox_send(&hdr, &mtu, sizeof(mtu), NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
 octeontx_bgx_port_mac_set(int port, uint8_t *mac_addr)
 {
 	struct octeontx_mbox_hdr hdr;
