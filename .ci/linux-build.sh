@@ -42,9 +42,15 @@ if [ "$BUILD_32BIT" = "1" ]; then
     export PKG_CONFIG_LIBDIR="/usr/lib32/pkgconfig"
 fi
 
+if [ "$DEF_LIB" = "static" ]; then
+    OPTS="$OPTS -Dexamples=l2fwd,l3fwd"
+else
+    OPTS="$OPTS -Dexamples=all"
+fi
+
 OPTS="$OPTS --default-library=$DEF_LIB"
 OPTS="$OPTS --buildtype=debugoptimized"
-meson build --werror -Dexamples=all $OPTS
+meson build --werror $OPTS
 ninja -C build
 
 if [ "$AARCH64" != "1" ]; then
