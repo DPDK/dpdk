@@ -109,90 +109,119 @@ ptype_table[PTYPE_SIZE][PTYPE_SIZE][PTYPE_SIZE] = {
 
 };
 
-static __rte_always_inline int
-__octeontx_xmit_pkts(void *lmtline_va, void *ioreg_va, int64_t *fc_status_va,
-			struct rte_mbuf *tx_pkt, const uint16_t flag)
+
+static __rte_always_inline uint16_t
+__octeontx_xmit_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
+			const uint16_t flag __rte_unused)
 {
-	uint8_t sz = (4 + (!!(flag & OCCTX_TX_MULTI_SEG_F) * 10));
-	/* Max size of PKO SEND desc is 112 bytes*/
-	uint64_t cmd_buf[sz] __rte_cache_aligned;
-	uint8_t nb_segs, nb_desc = 0;
+	uint16_t gaura_id, nb_desc = 0;
+
+	/* Setup PKO_SEND_HDR_S */
+	cmd_buf[nb_desc++] = tx_pkt->data_len & 0xffff;
+	cmd_buf[nb_desc++] = 0x0;
+
+	/* Mark mempool object as "put" since it is freed by PKO */
+	if (!(cmd_buf[0] & (1ULL << 58)))
+		__mempool_check_cookies(tx_pkt->pool, (void **)&tx_pkt,
+					1, 0);
+	/* Get the gaura Id */
+	gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)
+					      tx_pkt->pool->pool_id);
+
+	/* Setup PKO_SEND_BUFLINK_S */
+	cmd_buf[nb_desc++] = PKO_SEND_BUFLINK_SUBDC |
+		PKO_SEND_BUFLINK_LDTYPE(0x1ull) |
+		PKO_SEND_BUFLINK_GAUAR((long)gaura_id) |
+		tx_pkt->data_len;
+	cmd_buf[nb_desc++] = rte_mbuf_data_iova(tx_pkt);
+
+	return nb_desc;
+}
+
+static __rte_always_inline uint16_t
+__octeontx_xmit_mseg_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
+			const uint16_t flag __rte_unused)
+{
+	uint16_t nb_segs, nb_desc = 0;
 	uint16_t gaura_id, len = 0;
 	struct rte_mbuf *m_next = NULL;
 
-	if (unlikely(*((volatile int64_t *)fc_status_va) < 0))
-		return -ENOSPC;
+	nb_segs = tx_pkt->nb_segs;
+	/* Setup PKO_SEND_HDR_S */
+	cmd_buf[nb_desc++] = tx_pkt->pkt_len & 0xffff;
+	cmd_buf[nb_desc++] = 0x0;
 
-
-	if (flag & OCCTX_TX_MULTI_SEG_F) {
-		nb_segs = tx_pkt->nb_segs;
-		/* Setup PKO_SEND_HDR_S */
-		cmd_buf[nb_desc++] = tx_pkt->pkt_len & 0xffff;
-		cmd_buf[nb_desc++] = 0x0;
-
-		do {
-			m_next = tx_pkt->next;
-			/* To handle case where mbufs belong to diff pools, like
-			 * fragmentation
-			 */
-			gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)
-							tx_pkt->pool->pool_id);
-
-			/* Setup PKO_SEND_GATHER_S */
-			cmd_buf[nb_desc] = PKO_SEND_GATHER_SUBDC           |
-					     PKO_SEND_GATHER_LDTYPE(0x1ull)  |
-					     PKO_SEND_GATHER_GAUAR((long)
-								   gaura_id) |
-					     tx_pkt->data_len;
-			/* Mark mempool object as "put" since it is freed by
-			 * PKO.
-			 */
-			if (!(cmd_buf[nb_desc] & (1ULL << 57))) {
-				tx_pkt->next = NULL;
-				__mempool_check_cookies(tx_pkt->pool,
-							(void **)&tx_pkt, 1, 0);
-			}
-			nb_desc++;
-
-			cmd_buf[nb_desc++] = rte_mbuf_data_iova(tx_pkt);
-
-			nb_segs--;
-			len += tx_pkt->data_len;
-			tx_pkt = m_next;
-		} while (nb_segs);
-	} else {
-		/* Setup PKO_SEND_HDR_S */
-		cmd_buf[nb_desc++] = tx_pkt->data_len & 0xffff;
-		cmd_buf[nb_desc++] = 0x0;
-
-		/* Mark mempool object as "put" since it is freed by PKO */
-		if (!(cmd_buf[0] & (1ULL << 58)))
-			__mempool_check_cookies(tx_pkt->pool, (void **)&tx_pkt,
-						1, 0);
-		/* Get the gaura Id */
+	do {
+		m_next = tx_pkt->next;
+		/* To handle case where mbufs belong to diff pools, like
+		 * fragmentation
+		 */
 		gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)
 						      tx_pkt->pool->pool_id);
 
-		/* Setup PKO_SEND_BUFLINK_S */
-		cmd_buf[nb_desc++] = PKO_SEND_BUFLINK_SUBDC |
-				     PKO_SEND_BUFLINK_LDTYPE(0x1ull) |
-				     PKO_SEND_BUFLINK_GAUAR((long)gaura_id) |
-				     tx_pkt->data_len;
-		cmd_buf[nb_desc++] = rte_mbuf_data_iova(tx_pkt);
-	}
-	octeontx_reg_lmtst(lmtline_va, ioreg_va, cmd_buf, nb_desc);
+		/* Setup PKO_SEND_GATHER_S */
+		cmd_buf[nb_desc] = PKO_SEND_GATHER_SUBDC		 |
+				   PKO_SEND_GATHER_LDTYPE(0x1ull)	 |
+				   PKO_SEND_GATHER_GAUAR((long)gaura_id) |
+				   tx_pkt->data_len;
 
-	return 0;
+		/* Mark mempool object as "put" since it is freed by
+		 * PKO.
+		 */
+		if (!(cmd_buf[nb_desc] & (1ULL << 57))) {
+			tx_pkt->next = NULL;
+			__mempool_check_cookies(tx_pkt->pool,
+						(void **)&tx_pkt, 1, 0);
+		}
+		nb_desc++;
+
+		cmd_buf[nb_desc++] = rte_mbuf_data_iova(tx_pkt);
+
+		nb_segs--;
+		len += tx_pkt->data_len;
+		tx_pkt = m_next;
+	} while (nb_segs);
+
+	return nb_desc;
 }
 
-uint16_t
-octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+static __rte_always_inline uint16_t
+__octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		     uint16_t nb_pkts, uint64_t *cmd_buf,
+		     const uint16_t flags)
+{
+	struct octeontx_txq *txq = tx_queue;
+	octeontx_dq_t *dq = &txq->dq;
+	uint16_t count = 0, nb_desc;
+	rte_cio_wmb();
 
-uint16_t
-octeontx_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
-			uint16_t nb_pkts);
+	while (count < nb_pkts) {
+		if (unlikely(*((volatile int64_t *)dq->fc_status_va) < 0))
+			break;
+
+		if (flags & OCCTX_TX_MULTI_SEG_F) {
+			nb_desc = __octeontx_xmit_mseg_prepare(tx_pkts[count],
+							       cmd_buf, flags);
+		} else {
+			nb_desc = __octeontx_xmit_prepare(tx_pkts[count],
+							  cmd_buf, flags);
+		}
+
+		octeontx_reg_lmtst(dq->lmtline_va, dq->ioreg_va, cmd_buf,
+				   nb_desc);
+
+		count++;
+	}
+	return count;
+}
 
 uint16_t
 octeontx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
-#endif /* __OCTEONTX_RXTX_H__ */
+#define MULT_F       OCCTX_TX_MULTI_SEG_F
+/* [NOFF] [MULTI_SEG] */
+#define OCCTX_TX_FASTPATH_MODES						      \
+T(no_offload,				0,	4,   OCCTX_TX_OFFLOAD_NONE)   \
+T(mseg,					1,	14,  MULT_F)		      \
+
+ #endif /* __OCTEONTX_RXTX_H__ */

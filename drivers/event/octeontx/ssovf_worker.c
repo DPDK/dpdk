@@ -272,7 +272,7 @@ sso_event_tx_adapter_enqueue(void *port,
 	struct rte_eth_dev *ethdev;
 	struct ssows *ws = port;
 	struct octeontx_txq *txq;
-	octeontx_dq_t *dq;
+	uint64_t cmd[4];
 
 	RTE_SET_USED(nb_events);
 	switch (ev->sched_type) {
@@ -297,11 +297,6 @@ sso_event_tx_adapter_enqueue(void *port,
 	queue_id = rte_event_eth_tx_adapter_txq_get(m);
 	ethdev = &rte_eth_devices[port_id];
 	txq = ethdev->data->tx_queues[queue_id];
-	dq = &txq->dq;
 
-	if (__octeontx_xmit_pkts(dq->lmtline_va, dq->ioreg_va, dq->fc_status_va,
-				m, OCCTX_TX_OFFLOAD_NONE) < 0)
-		return 0;
-
-	return 1;
+	return __octeontx_xmit_pkts(txq, &m, 1, cmd, OCCTX_TX_OFFLOAD_NONE);
 }

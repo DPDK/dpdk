@@ -436,27 +436,20 @@ octeontx_recheck_rx_offloads(struct octeontx_rxq *rxq)
 	return 0;
 }
 
-static void
-octeontx_set_tx_function(struct rte_eth_dev *dev)
-{
-	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
-
-	const eth_tx_burst_t tx_burst_func[2] = {
-		[0] = octeontx_xmit_pkts,
-		[1] = octeontx_xmit_pkts_mseg,
-	};
-
-	dev->tx_pkt_burst =
-		tx_burst_func[!!(nic->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)];
-}
-
 static int
 octeontx_dev_start(struct rte_eth_dev *dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
-	int ret;
+	struct octeontx_rxq *rxq;
+	int ret = 0, i;
 
-	ret = 0;
+	/* Rechecking if any new offload set to update
+	 * rx/tx burst function pointer accordingly.
+	 */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		octeontx_recheck_rx_offloads(rxq);
+	}
 
 	PMD_INIT_FUNC_TRACE();
 	/*
@@ -1159,7 +1152,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 
 		eth_dev->dev_ops = &octeontx_dev_ops;
 		eth_dev->device = &dev->device;
-		eth_dev->tx_pkt_burst = octeontx_xmit_pkts;
+		octeontx_set_tx_function(eth_dev);
 		eth_dev->rx_pkt_burst = octeontx_recv_pkts;
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;

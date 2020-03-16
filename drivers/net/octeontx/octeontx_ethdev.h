@@ -29,12 +29,12 @@
 #define OCTEONTX_MAX_BGX_PORTS			4
 #define OCTEONTX_MAX_LMAC_PER_BGX		4
 
-#define OCTEONTX_RX_OFFLOADS			(DEV_RX_OFFLOAD_CHECKSUM     | \
-						 DEV_RX_OFFLOAD_SCATTER	     | \
-						 DEV_RX_OFFLOAD_JUMBO_FRAME)
+#define OCTEONTX_RX_OFFLOADS		(DEV_RX_OFFLOAD_CHECKSUM     | \
+					 DEV_RX_OFFLOAD_SCATTER	     | \
+					 DEV_RX_OFFLOAD_JUMBO_FRAME)
 
-#define OCTEONTX_TX_OFFLOADS			(DEV_TX_OFFLOAD_MT_LOCKFREE  | \
-						 DEV_TX_OFFLOAD_MULTI_SEGS)
+#define OCTEONTX_TX_OFFLOADS		(DEV_TX_OFFLOAD_MT_LOCKFREE    |  \
+					 DEV_TX_OFFLOAD_MULTI_SEGS)
 
 static inline struct octeontx_nic *
 octeontx_pmd_priv(struct rte_eth_dev *dev)
@@ -99,4 +99,6 @@ struct octeontx_rxq {
 	struct rte_mempool *pool;
 } __rte_cache_aligned;
 
+void
+octeontx_set_tx_function(struct rte_eth_dev *dev);
 #endif /* __OCTEONTX_ETHDEV_H__ */

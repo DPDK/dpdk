@@ -20,56 +20,6 @@
 #include "octeontx_logs.h"
 
 uint16_t __rte_hot
-octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	int count;
-	struct octeontx_txq *txq = tx_queue;
-	octeontx_dq_t *dq = &txq->dq;
-	int res;
-
-	count = 0;
-
-	rte_cio_wmb();
-	while (count < nb_pkts) {
-		res = __octeontx_xmit_pkts(dq->lmtline_va, dq->ioreg_va,
-					   dq->fc_status_va, tx_pkts[count],
-					   OCCTX_TX_OFFLOAD_NONE);
-		if (res < 0)
-			break;
-
-		count++;
-	}
-
-	return count; /* return number of pkts transmitted */
-}
-
-uint16_t __hot
-octeontx_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
-			uint16_t nb_pkts)
-{
-	int count;
-	struct octeontx_txq *txq = tx_queue;
-	octeontx_dq_t *dq = &txq->dq;
-	int res;
-
-	count = 0;
-
-	rte_cio_wmb();
-	while (count < nb_pkts) {
-		res = __octeontx_xmit_pkts(dq->lmtline_va, dq->ioreg_va,
-					   dq->fc_status_va, tx_pkts[count],
-					   OCCTX_TX_OFFLOAD_NONE |
-					   OCCTX_TX_MULTI_SEG_F);
-		if (res < 0)
-			break;
-
-		count++;
-	}
-
-	return count; /* return number of pkts transmitted */
-}
-
-uint16_t __rte_hot
 octeontx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct octeontx_rxq *rxq;
@@ -89,4 +39,35 @@ octeontx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	}
 
 	return count; /* return number of pkts received */
+}
+
+#define T(name, f1, sz, flags)					\
+static uint16_t __rte_noinline	__rte_hot				\
+octeontx_xmit_pkts_ ##name(void *tx_queue,				\
+			struct rte_mbuf **tx_pkts, uint16_t pkts)	\
+{									\
+	uint64_t cmd[(sz)];						\
+									\
+	return __octeontx_xmit_pkts(tx_queue, tx_pkts, pkts, cmd,	\
+				    flags);				\
+}
+
+OCCTX_TX_FASTPATH_MODES
+#undef T
+
+void __rte_hot
+octeontx_set_tx_function(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	const eth_tx_burst_t tx_burst_func[2] = {
+#define T(name, f0, sz, flags)			\
+	[f0] =  octeontx_xmit_pkts_ ##name,
+
+OCCTX_TX_FASTPATH_MODES
+#undef T
+	};
+
+	dev->tx_pkt_burst = tx_burst_func
+		[!!(nic->tx_offload_flags & OCCTX_TX_MULTI_SEG_F)];
 }
