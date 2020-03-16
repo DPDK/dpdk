@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-#include <stdlib.h>
+#include <stdio.h>
 #include <limits.h>
 #include <sys/queue.h>
 #include <inttypes.h>
