@@ -36,6 +36,8 @@
 #define MBOX_PKI_PORT_ALLOC_QPG			21
 #define MBOX_PKI_PORT_FREE_QPG			22
 #define MBOX_PKI_SET_PORT_CONFIG		23
+#define MBOX_PKI_PORT_VLAN_FILTER_CONFIG	24
+#define MBOX_PKI_PORT_VLAN_FILTER_ENTRY_CONFIG	25
 
 #define MBOX_PKI_MAX_QOS_ENTRY 64
 
@@ -236,6 +238,20 @@ typedef struct pki_port_modify_qos_entry {
 	struct pki_qos_entry qos_entry;
 } pki_mod_qos_t;
 
+/* pki port VLAN filter config */
+typedef struct pki_port_vlan_filter_config {
+	uint8_t port_type;  /* OCTTX_PORT_TYPE_[NET/INT/PCI] */
+	uint8_t fltr_conf; /* '1' to enable & '0' to disable */
+} pki_port_vlan_filter_config_t;
+
+/* pki port VLAN filter entry config */
+typedef struct pki_port_vlan_filter_entry_config {
+	uint8_t port_type;  /* OCTTX_PORT_TYPE_[NET/INT/PCI] */
+	uint8_t entry_conf; /* '1' to add & '0' to remove */
+	uint16_t vlan_tpid; /* in host byte-order */
+	uint16_t vlan_id;   /* in host byte-order */
+} pki_port_vlan_filter_entry_config_t;
+
 static inline int
 octeontx_pki_port_modify_qos(int port, pki_mod_qos_t *qos_cfg)
 {
@@ -348,5 +364,9 @@ int octeontx_pki_port_pktbuf_config(int port, pki_pktbuf_cfg_t *buf_cfg);
 int octeontx_pki_port_create_qos(int port, pki_qos_cfg_t *qos_cfg);
 int octeontx_pki_port_close(int port);
 int octeontx_pki_port_errchk_config(int port, pki_errchk_cfg_t *cfg);
+int octeontx_pki_port_vlan_fltr_config(int port,
+				pki_port_vlan_filter_config_t *fltr_cfg);
+int octeontx_pki_port_vlan_fltr_entry_config(int port,
+				pki_port_vlan_filter_entry_config_t *entry_cfg);
 
 #endif /* __OCTEONTX_PKI_H__ */

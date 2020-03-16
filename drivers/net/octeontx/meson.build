@@ -5,7 +5,8 @@ subdir('base')
 objs = [base_objs]
 
 sources = files('octeontx_rxtx.c',
-		'octeontx_ethdev.c'
+		'octeontx_ethdev.c',
+		'octeontx_ethdev_ops.c'
 		)
 
 deps += ['mempool_octeontx', 'eventdev']

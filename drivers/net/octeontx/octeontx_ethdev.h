@@ -55,7 +55,8 @@
 
 #define OCTEONTX_RX_OFFLOADS		(DEV_RX_OFFLOAD_CHECKSUM     | \
 					 DEV_RX_OFFLOAD_SCATTER	     | \
-					 DEV_RX_OFFLOAD_JUMBO_FRAME)
+					 DEV_RX_OFFLOAD_JUMBO_FRAME  | \
+					 DEV_RX_OFFLOAD_VLAN_FILTER)
 
 #define OCTEONTX_TX_OFFLOADS		(DEV_TX_OFFLOAD_MT_LOCKFREE    |  \
 					 DEV_TX_OFFLOAD_MBUF_FAST_FREE |  \
@@ -69,6 +70,18 @@ octeontx_pmd_priv(struct rte_eth_dev *dev)
 
 extern uint16_t
 rte_octeontx_pchan_map[OCTEONTX_MAX_BGX_PORTS][OCTEONTX_MAX_LMAC_PER_BGX];
+
+struct vlan_entry {
+	TAILQ_ENTRY(vlan_entry) next;
+	uint16_t vlan_id;
+};
+
+TAILQ_HEAD(octeontx_vlan_filter_tbl, vlan_entry);
+
+struct octeontx_vlan_info {
+	struct octeontx_vlan_filter_tbl fltr_tbl;
+	uint8_t filter_on;
+};
 
 /* Octeontx ethdev nic */
 struct octeontx_nic {
@@ -107,6 +120,7 @@ struct octeontx_nic {
 	uint16_t rx_offload_flags;
 	uint64_t tx_offloads;
 	uint16_t tx_offload_flags;
+	struct octeontx_vlan_info vlan_info;
 } __rte_cache_aligned;
 
 struct octeontx_txq {
@@ -127,4 +141,12 @@ struct octeontx_rxq {
 
 void
 octeontx_set_tx_function(struct rte_eth_dev *dev);
+
+/* VLAN */
+int octeontx_dev_vlan_offload_init(struct rte_eth_dev *dev);
+int octeontx_dev_vlan_offload_fini(struct rte_eth_dev *eth_dev);
+int octeontx_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+int octeontx_dev_vlan_filter_set(struct rte_eth_dev *dev,
+				 uint16_t vlan_id, int on);
+
 #endif /* __OCTEONTX_ETHDEV_H__ */

@@ -136,6 +136,46 @@ octeontx_pki_port_errchk_config(int port, pki_errchk_cfg_t *cfg)
 	return res;
 }
 
+int
+octeontx_pki_port_vlan_fltr_config(int port,
+				   pki_port_vlan_filter_config_t *fltr_cfg)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	pki_port_vlan_filter_config_t cfg = *fltr_cfg;
+	int len = sizeof(pki_port_vlan_filter_config_t);
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_VLAN_FILTER_CONFIG;
+	hdr.vfid = port;
+
+	res = octeontx_mbox_send(&hdr, &cfg, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+	return res;
+}
+
+int
+octeontx_pki_port_vlan_fltr_entry_config(int port,
+				   pki_port_vlan_filter_entry_config_t *e_cfg)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	pki_port_vlan_filter_entry_config_t cfg = *e_cfg;
+	int len = sizeof(pki_port_vlan_filter_entry_config_t);
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_VLAN_FILTER_ENTRY_CONFIG;
+	hdr.vfid = port;
+
+	res = octeontx_mbox_send(&hdr, &cfg, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+	return res;
+}
+
 #define PCI_VENDOR_ID_CAVIUM               0x177D
 #define PCI_DEVICE_ID_OCTEONTX_PKI_VF      0xA0DD
 

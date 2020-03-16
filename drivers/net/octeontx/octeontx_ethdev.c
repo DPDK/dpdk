@@ -360,6 +360,12 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 		return -EFAULT;
 	}
 
+	ret = octeontx_dev_vlan_offload_init(dev);
+	if (ret) {
+		octeontx_log_err("failed to initialize vlan offload");
+		return -EFAULT;
+	}
+
 	nic->pki.classifier_enable = false;
 	nic->pki.hash_enable = true;
 	nic->pki.initialized = false;
@@ -383,6 +389,8 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	rte_event_dev_close(nic->evdev);
+
+	octeontx_dev_vlan_offload_fini(dev);
 
 	ret = octeontx_pko_channel_close(nic->base_ochan);
 	if (ret < 0) {
@@ -1185,6 +1193,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.mac_addr_remove	 = octeontx_dev_mac_addr_del,
 	.mac_addr_add		 = octeontx_dev_mac_addr_add,
 	.mac_addr_set		 = octeontx_dev_default_mac_addr_set,
+	.vlan_offload_set	 = octeontx_dev_vlan_offload_set,
+	.vlan_filter_set	 = octeontx_dev_vlan_filter_set,
 	.tx_queue_start		 = octeontx_dev_tx_queue_start,
 	.tx_queue_stop		 = octeontx_dev_tx_queue_stop,
 	.tx_queue_setup		 = octeontx_dev_tx_queue_setup,

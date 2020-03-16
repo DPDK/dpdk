@@ -15,6 +15,7 @@
 
 #define OCCTX_RX_OFFLOAD_NONE		(0)
 #define OCCTX_RX_OFFLOAD_RSS_F          BIT(0)
+#define OCCTX_RX_VLAN_FLTR_F            BIT(1)
 #define OCCTX_RX_MULTI_SEG_F		BIT(15)
 
 #define OCCTX_TX_OFFLOAD_NONE		(0)

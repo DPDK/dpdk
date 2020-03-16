@@ -28,6 +28,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_pkovf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_pkivf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_bgx.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_ethdev_ops.c
 
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_octeontx_rxtx.o += -fno-prefetch-loop-arrays
