@@ -24,6 +24,7 @@
 #include <rte_kvargs.h>
 #include <rte_alarm.h>
 #include <rte_string_fns.h>
+#include <rte_debug.h>
 
 #include "rte_rawdev.h"
 #include "rte_rawdev_pmd.h"
