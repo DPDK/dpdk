@@ -34,6 +34,7 @@
 					 DEV_RX_OFFLOAD_JUMBO_FRAME)
 
 #define OCTEONTX_TX_OFFLOADS		(DEV_TX_OFFLOAD_MT_LOCKFREE    |  \
+					 DEV_TX_OFFLOAD_MBUF_FAST_FREE |  \
 					 DEV_TX_OFFLOAD_MULTI_SEGS)
 
 static inline struct octeontx_nic *

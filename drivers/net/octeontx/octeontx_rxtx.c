@@ -41,8 +41,8 @@ octeontx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	return count; /* return number of pkts received */
 }
 
-#define T(name, f1, sz, flags)					\
-static uint16_t __rte_noinline	__rte_hot				\
+#define T(name, f1, f0, sz, flags)					\
+static uint16_t __rte_noinline	__rte_hot					\
 octeontx_xmit_pkts_ ##name(void *tx_queue,				\
 			struct rte_mbuf **tx_pkts, uint16_t pkts)	\
 {									\
@@ -60,14 +60,15 @@ octeontx_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 
-	const eth_tx_burst_t tx_burst_func[2] = {
-#define T(name, f0, sz, flags)			\
-	[f0] =  octeontx_xmit_pkts_ ##name,
+	const eth_tx_burst_t tx_burst_func[2][2] = {
+#define T(name, f1, f0, sz, flags)			\
+	[f1][f0] =  octeontx_xmit_pkts_ ##name,
 
 OCCTX_TX_FASTPATH_MODES
 #undef T
 	};
 
 	dev->tx_pkt_burst = tx_burst_func
+		[!!(nic->tx_offload_flags & OCCTX_TX_OFFLOAD_MBUF_NOFF_F)]
 		[!!(nic->tx_offload_flags & OCCTX_TX_MULTI_SEG_F)];
 }

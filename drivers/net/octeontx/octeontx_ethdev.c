@@ -267,7 +267,9 @@ octeontx_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
 	uint16_t flags = 0;
 
-	/* Created function for supoorting future offloads */
+	if (!(nic->tx_offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE))
+		flags |= OCCTX_TX_OFFLOAD_MBUF_NOFF_F;
+
 	if (nic->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
 		flags |= OCCTX_TX_MULTI_SEG_F;
 
