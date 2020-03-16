@@ -370,6 +370,16 @@ octeontx_tx_offload_flags(struct rte_eth_dev *eth_dev)
 	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
 	uint16_t flags = 0;
 
+	if (nic->tx_offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM ||
+	    nic->tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+		flags |= OCCTX_TX_OFFLOAD_OL3_OL4_CSUM_F;
+
+	if (nic->tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM ||
+	    nic->tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM ||
+	    nic->tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM ||
+	    nic->tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM)
+		flags |= OCCTX_TX_OFFLOAD_L3_L4_CSUM_F;
+
 	if (!(nic->tx_offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE))
 		flags |= OCCTX_TX_OFFLOAD_MBUF_NOFF_F;
 
@@ -383,13 +393,15 @@ static uint16_t
 octeontx_rx_offload_flags(struct rte_eth_dev *eth_dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
-	struct rte_eth_dev_data *data = eth_dev->data;
-	struct rte_eth_conf *conf = &data->dev_conf;
-	struct rte_eth_rxmode *rxmode = &conf->rxmode;
 	uint16_t flags = 0;
 
-	if (rxmode->mq_mode == ETH_MQ_RX_RSS)
-		flags |= OCCTX_RX_OFFLOAD_RSS_F;
+	if (nic->rx_offloads & (DEV_RX_OFFLOAD_TCP_CKSUM |
+			 DEV_RX_OFFLOAD_UDP_CKSUM))
+		flags |= OCCTX_RX_OFFLOAD_CSUM_F;
+
+	if (nic->rx_offloads & (DEV_RX_OFFLOAD_IPV4_CKSUM |
+				DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM))
+		flags |= OCCTX_RX_OFFLOAD_CSUM_F;
 
 	if (nic->rx_offloads & DEV_RX_OFFLOAD_SCATTER) {
 		flags |= OCCTX_RX_MULTI_SEG_F;
