@@ -300,7 +300,7 @@ sso_event_tx_adapter_enqueue(void *port,
 	dq = &txq->dq;
 
 	if (__octeontx_xmit_pkts(dq->lmtline_va, dq->ioreg_va, dq->fc_status_va,
-				m) < 0)
+				m, OCCTX_TX_OFFLOAD_NONE) < 0)
 		return 0;
 
 	return 1;

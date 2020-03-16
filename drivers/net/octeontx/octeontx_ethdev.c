@@ -24,6 +24,10 @@
 #include "octeontx_rxtx.h"
 #include "octeontx_logs.h"
 
+struct evdev_priv_data {
+	OFFLOAD_FLAGS; /*Sequence should not be changed */
+} __rte_cache_aligned;
+
 struct octeontx_vdev_init_params {
 	uint8_t	nr_port;
 };
@@ -257,6 +261,43 @@ devconf_set_default_sane_values(struct rte_event_dev_config *dev_conf,
 			info->max_num_events;
 }
 
+static uint16_t
+octeontx_tx_offload_flags(struct rte_eth_dev *eth_dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
+	uint16_t flags = 0;
+
+	/* Created function for supoorting future offloads */
+	if (nic->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+		flags |= OCCTX_TX_MULTI_SEG_F;
+
+	return flags;
+}
+
+static uint16_t
+octeontx_rx_offload_flags(struct rte_eth_dev *eth_dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rte_eth_conf *conf = &data->dev_conf;
+	struct rte_eth_rxmode *rxmode = &conf->rxmode;
+	uint16_t flags = 0;
+
+	if (rxmode->mq_mode == ETH_MQ_RX_RSS)
+		flags |= OCCTX_RX_OFFLOAD_RSS_F;
+
+	if (nic->rx_offloads & DEV_RX_OFFLOAD_SCATTER) {
+		flags |= OCCTX_RX_MULTI_SEG_F;
+		eth_dev->data->scattered_rx = 1;
+		/* If scatter mode is enabled, TX should also be in multi
+		 * seg mode, else memory leak will occur
+		 */
+		nic->tx_offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+	}
+
+	return flags;
+}
+
 static int
 octeontx_dev_configure(struct rte_eth_dev *dev)
 {
@@ -321,6 +362,11 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 	nic->pki.hash_enable = true;
 	nic->pki.initialized = false;
 
+	nic->rx_offloads |= rxmode->offloads;
+	nic->tx_offloads |= txmode->offloads;
+	nic->rx_offload_flags |= octeontx_rx_offload_flags(dev);
+	nic->tx_offload_flags |= octeontx_tx_offload_flags(dev);
+
 	return 0;
 }
 
@@ -360,6 +406,51 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
+octeontx_recheck_rx_offloads(struct octeontx_rxq *rxq)
+{
+	struct rte_eth_dev *eth_dev = rxq->eth_dev;
+	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	struct evdev_priv_data *evdev_priv;
+	struct rte_eventdev *dev;
+	uint32_t buffsz;
+
+	/* Get rx buffer size */
+	mbp_priv = rte_mempool_get_priv(rxq->pool);
+	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+
+	/* Setup scatter mode if needed by jumbo */
+	if (data->dev_conf.rxmode.max_rx_pkt_len > buffsz) {
+		nic->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
+		nic->rx_offload_flags |= octeontx_rx_offload_flags(eth_dev);
+		nic->tx_offload_flags |= octeontx_tx_offload_flags(eth_dev);
+	}
+
+	/* Sharing offload flags via eventdev priv region */
+	dev = &rte_eventdevs[rxq->evdev];
+	evdev_priv = dev->data->dev_private;
+	evdev_priv->rx_offload_flags = nic->rx_offload_flags;
+	evdev_priv->tx_offload_flags = nic->tx_offload_flags;
+
+	return 0;
+}
+
+static void
+octeontx_set_tx_function(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	const eth_tx_burst_t tx_burst_func[2] = {
+		[0] = octeontx_xmit_pkts,
+		[1] = octeontx_xmit_pkts_mseg,
+	};
+
+	dev->tx_pkt_burst =
+		tx_burst_func[!!(nic->tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS)];
+}
+
+static int
 octeontx_dev_start(struct rte_eth_dev *dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
@@ -371,7 +462,7 @@ octeontx_dev_start(struct rte_eth_dev *dev)
 	/*
 	 * Tx start
 	 */
-	dev->tx_pkt_burst = octeontx_xmit_pkts;
+	octeontx_set_tx_function(dev);
 	ret = octeontx_pko_channel_start(nic->base_ochan);
 	if (ret < 0) {
 		octeontx_log_err("fail to conf VF%d no. txq %d chan %d ret %d",
@@ -599,10 +690,8 @@ octeontx_dev_default_mac_addr_set(struct rte_eth_dev *dev,
 					struct rte_ether_addr *addr)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
-	uint8_t prom_mode = dev->data->promiscuous;
 	int ret;
 
-	dev->data->promiscuous = 0;
 	ret = octeontx_bgx_port_mac_set(nic->port_id, addr->addr_bytes);
 	if (ret == 0) {
 		/* Update same mac address to BGX CAM table */
@@ -610,7 +699,6 @@ octeontx_dev_default_mac_addr_set(struct rte_eth_dev *dev,
 						0);
 	}
 	if (ret < 0) {
-		dev->data->promiscuous = prom_mode;
 		octeontx_log_err("failed to set MAC address on port %d",
 				 nic->port_id);
 	}
@@ -977,7 +1065,9 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	rxq->evdev = nic->evdev;
 	rxq->ev_queues = ev_queues;
 	rxq->ev_ports = ev_ports;
+	rxq->pool = mb_pool;
 
+	octeontx_recheck_rx_offloads(rxq);
 	dev->data->rx_queues[qidx] = rxq;
 	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;

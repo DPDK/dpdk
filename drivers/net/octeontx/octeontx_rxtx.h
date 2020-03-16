@@ -7,6 +7,19 @@
 
 #include <rte_ethdev_driver.h>
 
+#define OFFLOAD_FLAGS					\
+	uint16_t rx_offload_flags;			\
+	uint16_t tx_offload_flags
+
+#define BIT(nr) (1UL << (nr))
+
+#define OCCTX_RX_OFFLOAD_NONE		(0)
+#define OCCTX_RX_OFFLOAD_RSS_F          BIT(0)
+#define OCCTX_RX_MULTI_SEG_F		BIT(15)
+
+#define OCCTX_TX_OFFLOAD_NONE		(0)
+
+#define OCCTX_TX_MULTI_SEG_F		BIT(15)
 /* Packet type table */
 #define PTYPE_SIZE	OCCTX_PKI_LTYPE_LAST
 
@@ -98,39 +111,86 @@ ptype_table[PTYPE_SIZE][PTYPE_SIZE][PTYPE_SIZE] = {
 
 static __rte_always_inline int
 __octeontx_xmit_pkts(void *lmtline_va, void *ioreg_va, int64_t *fc_status_va,
-			struct rte_mbuf *tx_pkt)
+			struct rte_mbuf *tx_pkt, const uint16_t flag)
 {
-	uint64_t cmd_buf[4] __rte_cache_aligned;
-	uint16_t gaura_id;
+	uint8_t sz = (4 + (!!(flag & OCCTX_TX_MULTI_SEG_F) * 10));
+	/* Max size of PKO SEND desc is 112 bytes*/
+	uint64_t cmd_buf[sz] __rte_cache_aligned;
+	uint8_t nb_segs, nb_desc = 0;
+	uint16_t gaura_id, len = 0;
+	struct rte_mbuf *m_next = NULL;
 
 	if (unlikely(*((volatile int64_t *)fc_status_va) < 0))
 		return -ENOSPC;
 
-	/* Get the gaura Id */
-	gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)tx_pkt->pool->pool_id);
 
-	/* Setup PKO_SEND_HDR_S */
-	cmd_buf[0] = tx_pkt->data_len & 0xffff;
-	cmd_buf[1] = 0x0;
+	if (flag & OCCTX_TX_MULTI_SEG_F) {
+		nb_segs = tx_pkt->nb_segs;
+		/* Setup PKO_SEND_HDR_S */
+		cmd_buf[nb_desc++] = tx_pkt->pkt_len & 0xffff;
+		cmd_buf[nb_desc++] = 0x0;
 
-	/* Set don't free bit if reference count > 1 */
-	if (rte_mbuf_refcnt_read(tx_pkt) > 1)
-		cmd_buf[0] |= (1ULL << 58); /* SET DF */
+		do {
+			m_next = tx_pkt->next;
+			/* To handle case where mbufs belong to diff pools, like
+			 * fragmentation
+			 */
+			gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)
+							tx_pkt->pool->pool_id);
 
-	/* Setup PKO_SEND_GATHER_S */
-	cmd_buf[(1 << 1) | 1] = rte_mbuf_data_iova(tx_pkt);
-	cmd_buf[(1 << 1) | 0] = PKO_SEND_GATHER_SUBDC |
-				PKO_SEND_GATHER_LDTYPE(0x1ull) |
-				PKO_SEND_GATHER_GAUAR((long)gaura_id) |
-				tx_pkt->data_len;
+			/* Setup PKO_SEND_GATHER_S */
+			cmd_buf[nb_desc] = PKO_SEND_GATHER_SUBDC           |
+					     PKO_SEND_GATHER_LDTYPE(0x1ull)  |
+					     PKO_SEND_GATHER_GAUAR((long)
+								   gaura_id) |
+					     tx_pkt->data_len;
+			/* Mark mempool object as "put" since it is freed by
+			 * PKO.
+			 */
+			if (!(cmd_buf[nb_desc] & (1ULL << 57))) {
+				tx_pkt->next = NULL;
+				__mempool_check_cookies(tx_pkt->pool,
+							(void **)&tx_pkt, 1, 0);
+			}
+			nb_desc++;
 
-	octeontx_reg_lmtst(lmtline_va, ioreg_va, cmd_buf, PKO_CMD_SZ);
+			cmd_buf[nb_desc++] = rte_mbuf_data_iova(tx_pkt);
+
+			nb_segs--;
+			len += tx_pkt->data_len;
+			tx_pkt = m_next;
+		} while (nb_segs);
+	} else {
+		/* Setup PKO_SEND_HDR_S */
+		cmd_buf[nb_desc++] = tx_pkt->data_len & 0xffff;
+		cmd_buf[nb_desc++] = 0x0;
+
+		/* Mark mempool object as "put" since it is freed by PKO */
+		if (!(cmd_buf[0] & (1ULL << 58)))
+			__mempool_check_cookies(tx_pkt->pool, (void **)&tx_pkt,
+						1, 0);
+		/* Get the gaura Id */
+		gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)
+						      tx_pkt->pool->pool_id);
+
+		/* Setup PKO_SEND_BUFLINK_S */
+		cmd_buf[nb_desc++] = PKO_SEND_BUFLINK_SUBDC |
+				     PKO_SEND_BUFLINK_LDTYPE(0x1ull) |
+				     PKO_SEND_BUFLINK_GAUAR((long)gaura_id) |
+				     tx_pkt->data_len;
+		cmd_buf[nb_desc++] = rte_mbuf_data_iova(tx_pkt);
+	}
+	octeontx_reg_lmtst(lmtline_va, ioreg_va, cmd_buf, nb_desc);
 
 	return 0;
 }
 
 uint16_t
 octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+
+uint16_t
+octeontx_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts);
 
 uint16_t
 octeontx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);

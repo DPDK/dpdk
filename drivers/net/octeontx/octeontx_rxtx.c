@@ -32,8 +32,34 @@ octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	rte_cio_wmb();
 	while (count < nb_pkts) {
 		res = __octeontx_xmit_pkts(dq->lmtline_va, dq->ioreg_va,
-					   dq->fc_status_va,
-					   tx_pkts[count]);
+					   dq->fc_status_va, tx_pkts[count],
+					   OCCTX_TX_OFFLOAD_NONE);
+		if (res < 0)
+			break;
+
+		count++;
+	}
+
+	return count; /* return number of pkts transmitted */
+}
+
+uint16_t __hot
+octeontx_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts)
+{
+	int count;
+	struct octeontx_txq *txq = tx_queue;
+	octeontx_dq_t *dq = &txq->dq;
+	int res;
+
+	count = 0;
+
+	rte_cio_wmb();
+	while (count < nb_pkts) {
+		res = __octeontx_xmit_pkts(dq->lmtline_va, dq->ioreg_va,
+					   dq->fc_status_va, tx_pkts[count],
+					   OCCTX_TX_OFFLOAD_NONE |
+					   OCCTX_TX_MULTI_SEG_F);
 		if (res < 0)
 			break;
 

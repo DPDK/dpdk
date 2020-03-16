@@ -215,4 +215,36 @@ enum lf_type_e {
 	LF_UDP_VXLAN	= OCCTX_PKI_LTYPE_UDP_VXLAN,
 	LF_NVGRE	= OCCTX_PKI_LTYPE_NVGRE,
 };
+
+/* Word 0 of HW segment buflink structure */
+typedef union octtx_pki_buflink_w0_u {
+	uint64_t v;
+	struct {
+		uint64_t        size:16;
+		uint64_t        rsvd1:15;
+		uint64_t        invfree:1;
+		/** Aura number of the next segment */
+		uint64_t        aura:16;
+		uint64_t        sw:9;
+		uint64_t        later_invfree:1;
+		uint64_t        rsvd2:5;
+		/** 1 if aura number is set */
+		uint64_t        has_aura:1;
+	} s;
+} octtx_pki_buflink_w0_t;
+
+/* Word 1 of HW segment buflink structure */
+typedef union octtx_pki_buflink_w1_u {
+	uint64_t v;
+	struct {
+		uint64_t        addr;
+	} s;
+} octtx_pki_buflink_w1_t;
+
+/* HW structure linking packet segments into singly linked list */
+typedef struct octtx_pki_buflink_s {
+	octtx_pki_buflink_w0_t    w0; /* Word 0 of the buflink */
+	octtx_pki_buflink_w1_t    w1; /* Word 1 of the buflink */
+} octtx_pki_buflink_t;
+
 #endif /* __OCTEONTX_PKI_VAR_H__ */

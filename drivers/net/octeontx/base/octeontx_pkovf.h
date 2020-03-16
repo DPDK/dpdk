@@ -36,7 +36,10 @@
 
 /* pko_send_hdr_s + pko_send_link */
 #define PKO_CMD_SZ			(2 << 1)
-#define PKO_SEND_GATHER_SUBDC		(0x0ull << 60)
+#define PKO_SEND_BUFLINK_SUBDC		(0x0ull << 60)
+#define PKO_SEND_BUFLINK_LDTYPE(x)	((x) << 58)
+#define PKO_SEND_BUFLINK_GAUAR(x)	((x) << 24)
+#define PKO_SEND_GATHER_SUBDC		(0x2ull << 60)
 #define PKO_SEND_GATHER_LDTYPE(x)	((x) << 58)
 #define PKO_SEND_GATHER_GAUAR(x)	((x) << 24)
 

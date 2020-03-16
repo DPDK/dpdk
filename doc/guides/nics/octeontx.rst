@@ -20,6 +20,7 @@ Features of the OCTEON TX Ethdev PMD are:
 - Promiscuous mode
 - Port hardware statistics
 - Jumbo frames
+- Scatter-Gather IO support
 - Link state information
 - SR-IOV VF
 - Multiple queues for TX
