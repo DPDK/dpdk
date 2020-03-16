@@ -30,7 +30,7 @@
 #define OCTEONTX_MAX_LMAC_PER_BGX		4
 
 #define OCCTX_RX_NB_SEG_MAX			6
-
+#define OCCTX_INTR_POLL_INTERVAL_MS		1000
 /* VLAN tag inserted by OCCTX_TX_VTAG_ACTION.
  * In Tx space is always reserved for this in FRS.
  */
@@ -121,6 +121,7 @@ struct octeontx_nic {
 	uint64_t tx_offloads;
 	uint16_t tx_offload_flags;
 	struct octeontx_vlan_info vlan_info;
+	int print_flag;
 } __rte_cache_aligned;
 
 struct octeontx_txq {
@@ -143,10 +144,14 @@ void
 octeontx_set_tx_function(struct rte_eth_dev *dev);
 
 /* VLAN */
+int octeontx_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx);
+int octeontx_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx);
 int octeontx_dev_vlan_offload_init(struct rte_eth_dev *dev);
 int octeontx_dev_vlan_offload_fini(struct rte_eth_dev *eth_dev);
 int octeontx_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 int octeontx_dev_vlan_filter_set(struct rte_eth_dev *dev,
 				 uint16_t vlan_id, int on);
+int octeontx_dev_set_link_up(struct rte_eth_dev *eth_dev);
+int octeontx_dev_set_link_down(struct rte_eth_dev *eth_dev);
 
 #endif /* __OCTEONTX_ETHDEV_H__ */

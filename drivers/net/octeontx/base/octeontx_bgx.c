@@ -208,6 +208,18 @@ octeontx_bgx_port_link_status(int port)
 }
 
 int
+octeontx_bgx_port_set_link_state(int port, bool enable)
+{
+	struct octeontx_mbox_hdr hdr;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_SET_LINK_STATE;
+	hdr.vfid = port;
+
+	return octeontx_mbox_send(&hdr, &enable, sizeof(bool), NULL, 0);
+}
+
+int
 octeontx_bgx_port_promisc_set(int port, int en)
 {
 	struct octeontx_mbox_hdr hdr;

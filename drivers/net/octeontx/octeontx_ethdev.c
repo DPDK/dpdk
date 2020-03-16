@@ -11,6 +11,8 @@
 
 #include <rte_alarm.h>
 #include <rte_branch_prediction.h>
+#include <rte_bus_vdev.h>
+#include <rte_cycles.h>
 #include <rte_debug.h>
 #include <rte_devargs.h>
 #include <rte_dev.h>
@@ -18,7 +20,6 @@
 #include <rte_malloc.h>
 #include <rte_mbuf_pool_ops.h>
 #include <rte_prefetch.h>
-#include <rte_bus_vdev.h>
 
 #include "octeontx_ethdev.h"
 #include "octeontx_rxtx.h"
@@ -154,10 +155,101 @@ octeontx_port_open(struct octeontx_nic *nic)
 }
 
 static void
+octeontx_link_status_print(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_link *link)
+{
+	if (link && link->link_status)
+		octeontx_log_info("Port %u: Link Up - speed %u Mbps - %s",
+			  (eth_dev->data->port_id),
+			  link->link_speed,
+			  link->link_duplex == ETH_LINK_FULL_DUPLEX ?
+			  "full-duplex" : "half-duplex");
+	else
+		octeontx_log_info("Port %d: Link Down",
+				  (int)(eth_dev->data->port_id));
+}
+
+static void
+octeontx_link_status_update(struct octeontx_nic *nic,
+			 struct rte_eth_link *link)
+{
+	memset(link, 0, sizeof(*link));
+
+	link->link_status = nic->link_up ? ETH_LINK_UP : ETH_LINK_DOWN;
+
+	switch (nic->speed) {
+	case OCTEONTX_LINK_SPEED_SGMII:
+		link->link_speed = ETH_SPEED_NUM_1G;
+		break;
+
+	case OCTEONTX_LINK_SPEED_XAUI:
+		link->link_speed = ETH_SPEED_NUM_10G;
+		break;
+
+	case OCTEONTX_LINK_SPEED_RXAUI:
+	case OCTEONTX_LINK_SPEED_10G_R:
+		link->link_speed = ETH_SPEED_NUM_10G;
+		break;
+	case OCTEONTX_LINK_SPEED_QSGMII:
+		link->link_speed = ETH_SPEED_NUM_5G;
+		break;
+	case OCTEONTX_LINK_SPEED_40G_R:
+		link->link_speed = ETH_SPEED_NUM_40G;
+		break;
+
+	case OCTEONTX_LINK_SPEED_RESERVE1:
+	case OCTEONTX_LINK_SPEED_RESERVE2:
+	default:
+		link->link_speed = ETH_SPEED_NUM_NONE;
+		octeontx_log_err("incorrect link speed %d", nic->speed);
+		break;
+	}
+
+	link->link_duplex = ETH_LINK_FULL_DUPLEX;
+	link->link_autoneg = ETH_LINK_AUTONEG;
+}
+
+static void
+octeontx_link_status_poll(void *arg)
+{
+	struct octeontx_nic *nic = arg;
+	struct rte_eth_link link;
+	struct rte_eth_dev *dev;
+	int res;
+
+	PMD_INIT_FUNC_TRACE();
+
+	dev = nic->dev;
+
+	res = octeontx_bgx_port_link_status(nic->port_id);
+	if (res < 0) {
+		octeontx_log_err("Failed to get port %d link status",
+				nic->port_id);
+	} else {
+		if (nic->link_up != (uint8_t)res) {
+			nic->link_up = (uint8_t)res;
+			octeontx_link_status_update(nic, &link);
+			octeontx_link_status_print(dev, &link);
+			rte_eth_linkstatus_set(dev, &link);
+			_rte_eth_dev_callback_process(dev,
+						      RTE_ETH_EVENT_INTR_LSC,
+						      NULL);
+		}
+	}
+
+	res = rte_eal_alarm_set(OCCTX_INTR_POLL_INTERVAL_MS * 1000,
+				octeontx_link_status_poll, nic);
+	if (res < 0)
+		octeontx_log_err("Failed to restart alarm for port %d, err: %d",
+				nic->port_id, res);
+}
+
+static void
 octeontx_port_close(struct octeontx_nic *nic)
 {
 	PMD_INIT_FUNC_TRACE();
 
+	rte_eal_alarm_cancel(octeontx_link_status_poll, nic);
 	octeontx_bgx_port_close(nic->port_id);
 	octeontx_log_dbg("port closed %d", nic->port_id);
 }
@@ -411,6 +503,8 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
 
+	octeontx_port_close(nic);
+
 	dev->tx_pkt_burst = NULL;
 	dev->rx_pkt_burst = NULL;
 }
@@ -503,7 +597,7 @@ octeontx_dev_start(struct rte_eth_dev *dev)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 	struct octeontx_rxq *rxq;
-	int ret = 0, i;
+	int ret, i;
 
 	PMD_INIT_FUNC_TRACE();
 	/* Rechecking if any new offload set to update
@@ -636,7 +730,10 @@ octeontx_port_link_status(struct octeontx_nic *nic)
 		return res;
 	}
 
-	nic->link_up = (uint8_t)res;
+	if (nic->link_up != (uint8_t)res || nic->print_flag == -1) {
+		nic->link_up = (uint8_t)res;
+		nic->print_flag = 1;
+	}
 	octeontx_log_dbg("port %d link status %d", nic->port_id, nic->link_up);
 
 	return res;
@@ -661,38 +758,11 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 		return res;
 	}
 
-	link.link_status = nic->link_up;
-
-	switch (nic->speed) {
-	case OCTEONTX_LINK_SPEED_SGMII:
-		link.link_speed = ETH_SPEED_NUM_1G;
-		break;
-
-	case OCTEONTX_LINK_SPEED_XAUI:
-		link.link_speed = ETH_SPEED_NUM_10G;
-		break;
-
-	case OCTEONTX_LINK_SPEED_RXAUI:
-	case OCTEONTX_LINK_SPEED_10G_R:
-		link.link_speed = ETH_SPEED_NUM_10G;
-		break;
-	case OCTEONTX_LINK_SPEED_QSGMII:
-		link.link_speed = ETH_SPEED_NUM_5G;
-		break;
-	case OCTEONTX_LINK_SPEED_40G_R:
-		link.link_speed = ETH_SPEED_NUM_40G;
-		break;
-
-	case OCTEONTX_LINK_SPEED_RESERVE1:
-	case OCTEONTX_LINK_SPEED_RESERVE2:
-	default:
-		link.link_speed = ETH_SPEED_NUM_NONE;
-		octeontx_log_err("incorrect link speed %d", nic->speed);
-		break;
+	octeontx_link_status_update(nic, &link);
+	if (nic->print_flag) {
+		octeontx_link_status_print(nic->dev, &link);
+		nic->print_flag = 0;
 	}
-
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	link.link_autoneg = ETH_LINK_AUTONEG;
 
 	return rte_eth_linkstatus_set(dev, &link);
 }
@@ -855,7 +925,7 @@ close_port:
 	return res;
 }
 
-static int
+int
 octeontx_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
@@ -881,7 +951,7 @@ octeontx_vf_stop_tx_queue(struct rte_eth_dev *dev, struct octeontx_nic *nic,
 	return ret;
 }
 
-static int
+int
 octeontx_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
@@ -1201,6 +1271,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.tx_queue_release	 = octeontx_dev_tx_queue_release,
 	.rx_queue_setup		 = octeontx_dev_rx_queue_setup,
 	.rx_queue_release	 = octeontx_dev_rx_queue_release,
+	.dev_set_link_up          = octeontx_dev_set_link_up,
+	.dev_set_link_down        = octeontx_dev_set_link_down,
 	.dev_supported_ptypes_get = octeontx_dev_supported_ptypes_get,
 	.mtu_set                 = octeontx_dev_mtu_set,
 	.pool_ops_supported      = octeontx_pool_ops,
@@ -1285,6 +1357,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 
 	nic->ev_queues = 1;
 	nic->ev_ports = 1;
+	nic->print_flag = -1;
 
 	data->dev_link.link_status = ETH_LINK_DOWN;
 	data->dev_started = 0;
@@ -1319,6 +1392,13 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 				data->port_id, nic->port_id);
 		res = -EINVAL;
 		goto free_mac_addrs;
+	}
+
+	res = rte_eal_alarm_set(OCCTX_INTR_POLL_INTERVAL_MS * 1000,
+				octeontx_link_status_poll, nic);
+	if (res) {
+		octeontx_log_err("Failed to start link polling alarm");
+		goto err;
 	}
 
 	/* Update port_id mac to eth_dev */

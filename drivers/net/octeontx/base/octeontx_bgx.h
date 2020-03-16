@@ -5,6 +5,7 @@
 #ifndef __OCTEONTX_BGX_H__
 #define __OCTEONTX_BGX_H__
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -31,6 +32,7 @@
 #define MBOX_BGX_PORT_ADD_MACADDR	15
 #define MBOX_BGX_PORT_DEL_MACADDR	16
 #define MBOX_BGX_PORT_GET_MACADDR_ENTRIES 17
+#define MBOX_BGX_PORT_SET_LINK_STATE	20
 
 /* BGX port configuration parameters: */
 typedef struct octeontx_mbox_bgx_port_conf {
@@ -132,6 +134,7 @@ int octeontx_bgx_port_mac_add(int port, uint8_t *mac_addr, int index);
 int octeontx_bgx_port_mac_del(int port, uint32_t index);
 int octeontx_bgx_port_mac_entries_get(int port);
 int octeontx_bgx_port_mtu_set(int port, int mtu);
+int octeontx_bgx_port_set_link_state(int port, bool en);
 
 #endif	/* __OCTEONTX_BGX_H__ */
 

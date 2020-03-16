@@ -182,3 +182,34 @@ octeontx_dev_vlan_offload_fini(struct rte_eth_dev *dev)
 
 	return rc;
 }
+
+int
+octeontx_dev_set_link_up(struct rte_eth_dev *eth_dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
+	int rc, i;
+
+	rc = octeontx_bgx_port_set_link_state(nic->port_id, true);
+	if (rc)
+		goto done;
+
+	/* Start tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		octeontx_dev_tx_queue_start(eth_dev, i);
+
+done:
+	return rc;
+}
+
+int
+octeontx_dev_set_link_down(struct rte_eth_dev *eth_dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(eth_dev);
+	int i;
+
+	/* Stop tx queues  */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		octeontx_dev_tx_queue_stop(eth_dev, i);
+
+	return octeontx_bgx_port_set_link_state(nic->port_id, false);
+}
