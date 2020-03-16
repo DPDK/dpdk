@@ -326,3 +326,53 @@ octeontx_bgx_port_mac_entries_get(int port)
 
 	return resp;
 }
+
+int octeontx_bgx_port_get_fifo_cfg(int port,
+				   octeontx_mbox_bgx_port_fifo_cfg_t *cfg)
+{
+	int len = sizeof(octeontx_mbox_bgx_port_fifo_cfg_t);
+	octeontx_mbox_bgx_port_fifo_cfg_t conf;
+	struct octeontx_mbox_hdr hdr;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_GET_FIFO_CFG;
+	hdr.vfid = port;
+
+	if (octeontx_mbox_send(&hdr, NULL, 0, &conf, len) < 0)
+		return -EACCES;
+
+	cfg->rx_fifosz = conf.rx_fifosz;
+
+	return 0;
+}
+
+int octeontx_bgx_port_flow_ctrl_cfg(int port,
+				    octeontx_mbox_bgx_port_fc_cfg_t *cfg)
+{
+	int len = sizeof(octeontx_mbox_bgx_port_fc_cfg_t);
+	octeontx_mbox_bgx_port_fc_cfg_t conf;
+	struct octeontx_mbox_hdr hdr;
+
+	hdr.coproc = OCTEONTX_BGX_COPROC;
+	hdr.msg = MBOX_BGX_PORT_FLOW_CTRL_CFG;
+	hdr.vfid = port;
+
+	if (cfg->fc_cfg == BGX_PORT_FC_CFG_SET)
+		memcpy(&conf, cfg, len);
+	else
+		memset(&conf, 0, len);
+
+	if (octeontx_mbox_send(&hdr, &conf, len, &conf, len) < 0)
+		return -EACCES;
+
+	if (cfg->fc_cfg == BGX_PORT_FC_CFG_SET)
+		goto done;
+
+	cfg->rx_pause = conf.rx_pause;
+	cfg->tx_pause = conf.tx_pause;
+	cfg->low_water = conf.low_water;
+	cfg->high_water = conf.high_water;
+
+done:
+	return 0;
+}

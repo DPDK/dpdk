@@ -122,6 +122,7 @@ static int
 octeontx_port_open(struct octeontx_nic *nic)
 {
 	octeontx_mbox_bgx_port_conf_t bgx_port_conf;
+	octeontx_mbox_bgx_port_fifo_cfg_t fifo_cfg;
 	int res;
 
 	res = 0;
@@ -146,6 +147,16 @@ octeontx_port_open(struct octeontx_nic *nic)
 	nic->bcast_mode = bgx_port_conf.bcast_mode;
 	nic->mcast_mode = bgx_port_conf.mcast_mode;
 	nic->speed	= bgx_port_conf.mode;
+
+	memset(&fifo_cfg, 0x0, sizeof(fifo_cfg));
+
+	res = octeontx_bgx_port_get_fifo_cfg(nic->port_id, &fifo_cfg);
+	if (res < 0) {
+		octeontx_log_err("failed to get port %d fifo cfg", res);
+		return res;
+	}
+
+	nic->fc.rx_fifosz = fifo_cfg.rx_fifosz;
 
 	memcpy(&nic->mac_addr[0], &bgx_port_conf.macaddr[0],
 		RTE_ETHER_ADDR_LEN);
@@ -481,6 +492,8 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	rte_event_dev_close(nic->evdev);
+
+	octeontx_dev_flow_ctrl_fini(dev);
 
 	octeontx_dev_vlan_offload_fini(dev);
 
@@ -1208,6 +1221,7 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	octeontx_recheck_rx_offloads(rxq);
 	dev->data->rx_queues[qidx] = rxq;
 	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+
 	return 0;
 }
 
@@ -1276,6 +1290,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.dev_supported_ptypes_get = octeontx_dev_supported_ptypes_get,
 	.mtu_set                 = octeontx_dev_mtu_set,
 	.pool_ops_supported      = octeontx_pool_ops,
+	.flow_ctrl_get           = octeontx_dev_flow_ctrl_get,
+	.flow_ctrl_set           = octeontx_dev_flow_ctrl_set,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
@@ -1406,6 +1422,10 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 
 	/* Update same mac address to BGX CAM table at index 0 */
 	octeontx_bgx_port_mac_add(nic->port_id, nic->mac_addr, 0);
+
+	res = octeontx_dev_flow_ctrl_init(eth_dev);
+	if (res < 0)
+		goto err;
 
 	PMD_INIT_LOG(DEBUG, "ethdev info: ");
 	PMD_INIT_LOG(DEBUG, "port %d, port_ena %d ochan %d num_ochan %d tx_q %d",

@@ -83,6 +83,16 @@ struct octeontx_vlan_info {
 	uint8_t filter_on;
 };
 
+struct octeontx_fc_info {
+	enum rte_eth_fc_mode mode;  /**< Link flow control mode */
+	enum rte_eth_fc_mode def_mode;
+	uint16_t high_water;
+	uint16_t low_water;
+	uint16_t def_highmark;
+	uint16_t def_lowmark;
+	uint32_t rx_fifosz;
+};
+
 /* Octeontx ethdev nic */
 struct octeontx_nic {
 	struct rte_eth_dev *dev;
@@ -122,6 +132,7 @@ struct octeontx_nic {
 	uint16_t tx_offload_flags;
 	struct octeontx_vlan_info vlan_info;
 	int print_flag;
+	struct octeontx_fc_info fc;
 } __rte_cache_aligned;
 
 struct octeontx_txq {
@@ -153,5 +164,13 @@ int octeontx_dev_vlan_filter_set(struct rte_eth_dev *dev,
 				 uint16_t vlan_id, int on);
 int octeontx_dev_set_link_up(struct rte_eth_dev *eth_dev);
 int octeontx_dev_set_link_down(struct rte_eth_dev *eth_dev);
+
+/* Flow control */
+int octeontx_dev_flow_ctrl_init(struct rte_eth_dev *dev);
+int octeontx_dev_flow_ctrl_fini(struct rte_eth_dev *dev);
+int octeontx_dev_flow_ctrl_get(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf);
+int octeontx_dev_flow_ctrl_set(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf);
 
 #endif /* __OCTEONTX_ETHDEV_H__ */
