@@ -2160,7 +2160,7 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 {
 	unsigned int count = MLX5_TX_COMP_MAX_CQE;
 	volatile struct mlx5_cqe *last_cqe = NULL;
-	uint16_t ci = txq->cq_ci;
+	bool ring_doorbell = false;
 	int ret;
 
 	static_assert(MLX5_CQE_STATUS_HW_OWN < 0, "Must be negative value");
@@ -2168,8 +2168,8 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 	do {
 		volatile struct mlx5_cqe *cqe;
 
-		cqe = &txq->cqes[ci & txq->cqe_m];
-		ret = check_cqe(cqe, txq->cqe_s, ci);
+		cqe = &txq->cqes[txq->cq_ci & txq->cqe_m];
+		ret = check_cqe(cqe, txq->cqe_s, txq->cq_ci);
 		if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
 			if (likely(ret != MLX5_CQE_STATUS_ERR)) {
 				/* No new CQEs in completion queue. */
@@ -2183,7 +2183,6 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 			 * here, before we might perform SQ reset.
 			 */
 			rte_wmb();
-			txq->cq_ci = ci;
 			ret = mlx5_tx_error_cqe_handle
 				(txq, (volatile struct mlx5_err_cqe *)cqe);
 			if (unlikely(ret < 0)) {
@@ -2199,16 +2198,18 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 			 * MLX5_CQE_SYNDROME_WR_FLUSH_ERR status.
 			 * The send queue is supposed to be empty.
 			 */
-			++ci;
-			txq->cq_pi = ci;
+			ring_doorbell = true;
+			++txq->cq_ci;
+			txq->cq_pi = txq->cq_ci;
 			last_cqe = NULL;
 			continue;
 		}
 		/* Normal transmit completion. */
-		MLX5_ASSERT(ci != txq->cq_pi);
-		MLX5_ASSERT((txq->fcqs[ci & txq->cqe_m] >> 16) ==
+		MLX5_ASSERT(txq->cq_ci != txq->cq_pi);
+		MLX5_ASSERT((txq->fcqs[txq->cq_ci & txq->cqe_m] >> 16) ==
 			    cqe->wqe_counter);
-		++ci;
+		ring_doorbell = true;
+		++txq->cq_ci;
 		last_cqe = cqe;
 		/*
 		 * We have to restrict the amount of processed CQEs
@@ -2221,14 +2222,10 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
 		if (likely(--count == 0))
 			break;
 	} while (true);
-	if (likely(ci != txq->cq_ci)) {
-		/*
-		 * Update completion queue consuming index
-		 * and ring doorbell to notify hardware.
-		 */
+	if (likely(ring_doorbell)) {
+		/* Ring doorbell to notify hardware. */
 		rte_compiler_barrier();
-		txq->cq_ci = ci;
-		*txq->cq_db = rte_cpu_to_be_32(ci);
+		*txq->cq_db = rte_cpu_to_be_32(txq->cq_ci);
 		mlx5_tx_comp_flush(txq, last_cqe, olx);
 	}
 }
