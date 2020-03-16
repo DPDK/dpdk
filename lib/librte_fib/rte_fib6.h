@@ -14,6 +14,10 @@
 
 #include <rte_compat.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define RTE_FIB6_IPV6_ADDR_SIZE		16
 /** Maximum depth value possible for IPv6 FIB. */
 #define RTE_FIB6_MAXDEPTH       128
@@ -189,5 +193,9 @@ rte_fib6_get_dp(struct rte_fib6 *fib);
 __rte_experimental
 struct rte_rib6 *
 rte_fib6_get_rib(struct rte_fib6 *fib);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_FIB6_H_ */
