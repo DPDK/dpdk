@@ -62,7 +62,7 @@ vaddvq_u16(uint16x8_t a)
 
 #endif
 
-#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70000)
+#if RTE_CC_IS_GNU && (GCC_VERSION < 70000)
 static inline uint32x4_t
 vcopyq_laneq_u32(uint32x4_t a, const int lane_a,
 		 uint32x4_t b, const int lane_b)
@@ -72,7 +72,7 @@ vcopyq_laneq_u32(uint32x4_t a, const int lane_a,
 #endif
 
 #if defined(RTE_ARCH_ARM64)
-#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70000)
+#if RTE_CC_IS_GNU && (GCC_VERSION < 70000)
 
 #if (GCC_VERSION < 40900)
 typedef uint64_t poly64_t;

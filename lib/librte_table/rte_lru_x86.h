@@ -19,7 +19,7 @@ extern "C" {
 
 #if RTE_TABLE_HASH_LRU_STRATEGY == 2
 
-#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION > 40306)
+#if RTE_CC_IS_GNU && (GCC_VERSION > 40306)
 #include <x86intrin.h>
 #else
 #include <emmintrin.h>
@@ -63,7 +63,7 @@ do {									\
 
 #elif RTE_TABLE_HASH_LRU_STRATEGY == 3
 
-#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION > 40306)
+#if RTE_CC_IS_GNU && (GCC_VERSION > 40306)
 #include <x86intrin.h>
 #else
 #include <emmintrin.h>

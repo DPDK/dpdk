@@ -42,8 +42,23 @@ extern "C" {
 #define RTE_STD_C11
 #endif
 
-/** Define GCC_VERSION **/
-#ifdef RTE_TOOLCHAIN_GCC
+/*
+ * RTE_TOOLCHAIN_GCC is defined if the target is built with GCC,
+ * while a host application (like pmdinfogen) may have another compiler.
+ * RTE_CC_IS_GNU is true if the file is compiled with GCC,
+ * no matter it is a target or host application.
+ */
+#define RTE_CC_IS_GNU 0
+#if defined __clang__
+#define RTE_CC_CLANG
+#elif defined __INTEL_COMPILER
+#define RTE_CC_ICC
+#elif defined __GNUC__
+#define RTE_CC_GCC
+#undef RTE_CC_IS_GNU
+#define RTE_CC_IS_GNU 1
+#endif
+#if RTE_CC_IS_GNU
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 +	\
 		__GNUC_PATCHLEVEL__)
 #endif
