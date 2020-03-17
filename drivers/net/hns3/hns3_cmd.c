@@ -289,7 +289,7 @@ hns3_cmd_convert_err_code(uint16_t desc_ret)
 	case HNS3_CMD_INVALID:
 		return -EBADR;
 	default:
-		return -EIO;
+		return -EREMOTEIO;
 	}
 }
 
@@ -349,11 +349,23 @@ static int hns3_cmd_poll_reply(struct hns3_hw *hw)
 
 /*
  * hns3_cmd_send - send command to command queue
- * @hw: pointer to the hw struct
- * @desc: prefilled descriptor for describing the command
- * @num : the number of descriptors to be sent
  *
- * This is the main send command for command queue, it
+ * @param hw
+ *   pointer to the hw struct
+ * @param desc
+ *   prefilled descriptor for describing the command
+ * @param num
+ *   the number of descriptors to be sent
+ * @return
+ *   - -EBUSY if detect device is in resetting
+ *   - -EIO   if detect cmd csq corrupted (due to reset) or
+ *            there is reset pending
+ *   - -ENOMEM/-ETIME/...(Non-Zero) if other error case
+ *   - Zero   if operation completed successfully
+ *
+ * Note -BUSY/-EIO only used in reset case
+ *
+ * Note this is the main send command for command queue, it
  * sends the queue, cleans the queue, etc
  */
 int
