@@ -1582,7 +1582,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		first_seg->pkt_len = pkt_len;
 		first_seg->port = rxq->port_id;
 		first_seg->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
-		first_seg->ol_flags |= PKT_RX_RSS_HASH;
+		first_seg->ol_flags = PKT_RX_RSS_HASH;
 		if (unlikely(hns3_get_bit(bd_base_info, HNS3_RXD_LUM_B))) {
 			first_seg->hash.fdir.hi =
 				rte_le_to_cpu_32(rxd.rx.fd_id);
@@ -1599,7 +1599,8 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 								  ol_info);
 
 		if (bd_base_info & BIT(HNS3_RXD_L3L4P_B))
-			hns3_rx_set_cksum_flag(rxm, first_seg->packet_type,
+			hns3_rx_set_cksum_flag(first_seg,
+					       first_seg->packet_type,
 					       cksum_err);
 
 		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.rx.vlan_tag);
