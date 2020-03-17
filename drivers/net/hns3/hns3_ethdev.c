@@ -232,23 +232,25 @@ hns3_interrupt_handler(void *param)
 static int
 hns3_set_port_vlan_filter(struct hns3_adapter *hns, uint16_t vlan_id, int on)
 {
-#define HNS3_VLAN_OFFSET_160		160
+#define HNS3_VLAN_ID_OFFSET_STEP	160
+#define HNS3_VLAN_BYTE_SIZE		8
 	struct hns3_vlan_filter_pf_cfg_cmd *req;
 	struct hns3_hw *hw = &hns->hw;
 	uint8_t vlan_offset_byte_val;
 	struct hns3_cmd_desc desc;
 	uint8_t vlan_offset_byte;
-	uint8_t vlan_offset_160;
+	uint8_t vlan_offset_base;
 	int ret;
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_VLAN_FILTER_PF_CFG, false);
 
-	vlan_offset_160 = vlan_id / HNS3_VLAN_OFFSET_160;
-	vlan_offset_byte = (vlan_id % HNS3_VLAN_OFFSET_160) / 8;
-	vlan_offset_byte_val = 1 << (vlan_id % 8);
+	vlan_offset_base = vlan_id / HNS3_VLAN_ID_OFFSET_STEP;
+	vlan_offset_byte = (vlan_id % HNS3_VLAN_ID_OFFSET_STEP) /
+			   HNS3_VLAN_BYTE_SIZE;
+	vlan_offset_byte_val = 1 << (vlan_id % HNS3_VLAN_BYTE_SIZE);
 
 	req = (struct hns3_vlan_filter_pf_cfg_cmd *)desc.data;
-	req->vlan_offset = vlan_offset_160;
+	req->vlan_offset = vlan_offset_base;
 	req->vlan_cfg = on ? 0 : 1;
 	req->vlan_offset_bitmap[vlan_offset_byte] = vlan_offset_byte_val;
 
