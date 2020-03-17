@@ -183,17 +183,19 @@ static void set_ppf(struct hinic_hwif *hwif)
 		attr->func_type = TYPE_PPF;
 }
 
-static void init_db_area_idx(struct hinic_free_db_area *free_db_area)
+static void init_db_area_idx(struct hinic_hwif *hwif)
 {
+	struct hinic_free_db_area *free_db_area = &hwif->free_db_area;
+	u32 db_max_areas = hwif->db_max_areas;
 	u32 i;
 
-	for (i = 0; i < HINIC_DB_MAX_AREAS; i++)
+	for (i = 0; i < db_max_areas; i++)
 		free_db_area->db_idx[i] = i;
 
 	free_db_area->alloc_pos = 0;
 	free_db_area->return_pos = 0;
 
-	free_db_area->num_free = HINIC_DB_MAX_AREAS;
+	free_db_area->num_free = db_max_areas;
 
 	spin_lock_init(&free_db_area->idx_lock);
 }
@@ -214,7 +216,7 @@ static int get_db_idx(struct hinic_hwif *hwif, u32 *idx)
 	free_db_area->num_free--;
 
 	pos = free_db_area->alloc_pos++;
-	pos &= HINIC_DB_MAX_AREAS - 1;
+	pos &= (hwif->db_max_areas - 1);
 
 	pg_idx = free_db_area->db_idx[pos];
 
@@ -235,7 +237,7 @@ static void free_db_idx(struct hinic_hwif *hwif, u32 idx)
 	spin_lock(&free_db_area->idx_lock);
 
 	pos = free_db_area->return_pos++;
-	pos &= HINIC_DB_MAX_AREAS - 1;
+	pos &= (hwif->db_max_areas - 1);
 
 	free_db_area->db_idx[pos] = idx;
 
@@ -391,7 +393,12 @@ static int hinic_init_hwif(struct hinic_hwdev *hwdev, void *cfg_reg_base,
 		    void *db_base, __rte_unused void *dwqe_mapping)
 {
 	struct hinic_hwif *hwif;
+	struct rte_pci_device *pci_dev;
+	u64 db_bar_len;
 	int err;
+
+	pci_dev = (struct rte_pci_device *)(hwdev->pcidev_hdl);
+	db_bar_len = pci_dev->mem_resource[HINIC_DB_MEM_BAR].len;
 
 	hwif = hwdev->hwif;
 
@@ -400,7 +407,11 @@ static int hinic_init_hwif(struct hinic_hwdev *hwdev, void *cfg_reg_base,
 
 	hwif->db_base_phy = db_base_phy;
 	hwif->db_base = (u8 __iomem *)db_base;
-	init_db_area_idx(&hwif->free_db_area);
+	hwif->db_max_areas = db_bar_len / HINIC_DB_PAGE_SIZE;
+	if (hwif->db_max_areas > HINIC_DB_MAX_AREAS)
+		hwif->db_max_areas = HINIC_DB_MAX_AREAS;
+
+	init_db_area_idx(hwif);
 
 	get_hwif_attr(hwif);
 

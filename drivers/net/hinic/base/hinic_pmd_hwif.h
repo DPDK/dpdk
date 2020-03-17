@@ -73,6 +73,7 @@ struct hinic_hwif {
 	u8 __iomem			*intr_regs_base;
 	u64				db_base_phy;
 	u8 __iomem			*db_base;
+	u64				db_max_areas;
 	struct hinic_free_db_area	free_db_area;
 	struct hinic_func_attr		attr;
 };
