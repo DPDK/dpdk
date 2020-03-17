@@ -104,8 +104,13 @@ compile () # <builddir>
 install_target () # <builddir> <installdir>
 {
 	rm -rf $2
-	echo "DESTDIR=$2 $ninja_cmd -C $1 install"
-	DESTDIR=$2 $ninja_cmd -C $1 install
+	if [ -n "$TEST_MESON_BUILD_VERY_VERBOSE$TEST_MESON_BUILD_VERBOSE" ]; then
+		echo "DESTDIR=$2 $ninja_cmd -C $1 install"
+		DESTDIR=$2 $ninja_cmd -C $1 install
+	else
+		echo "DESTDIR=$2 $ninja_cmd -C $1 install >/dev/null"
+		DESTDIR=$2 $ninja_cmd -C $1 install >/dev/null
+	fi
 }
 
 build () # <directory> <target compiler> <meson options>
