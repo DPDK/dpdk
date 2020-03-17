@@ -1833,6 +1833,81 @@ static int hinic_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	return rc;
 }
 
+static int hinic_flow_ctrl_get(struct rte_eth_dev *dev,
+			struct rte_eth_fc_conf *fc_conf)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct nic_pause_config nic_pause;
+	int err;
+
+	memset(&nic_pause, 0, sizeof(nic_pause));
+
+	err = hinic_get_pause_info(nic_dev->hwdev, &nic_pause);
+	if (err)
+		return err;
+
+	if (nic_dev->pause_set || !nic_pause.auto_neg) {
+		nic_pause.rx_pause = nic_dev->nic_pause.rx_pause;
+		nic_pause.tx_pause = nic_dev->nic_pause.tx_pause;
+	}
+
+	fc_conf->autoneg = nic_pause.auto_neg;
+
+	if (nic_pause.tx_pause && nic_pause.rx_pause)
+		fc_conf->mode = RTE_FC_FULL;
+	else if (nic_pause.tx_pause)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+	else if (nic_pause.rx_pause)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else
+		fc_conf->mode = RTE_FC_NONE;
+
+	PMD_DRV_LOG(INFO, "Get pause options, tx: %s, rx: %s, auto: %s\n",
+		nic_pause.tx_pause ? "on" : "off",
+		nic_pause.rx_pause ? "on" : "off",
+		nic_pause.auto_neg ? "on" : "off");
+
+	return 0;
+}
+
+static int hinic_flow_ctrl_set(struct rte_eth_dev *dev,
+			struct rte_eth_fc_conf *fc_conf)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct nic_pause_config nic_pause;
+	int err;
+
+	nic_pause.auto_neg = fc_conf->autoneg;
+
+	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
+		(fc_conf->mode & RTE_FC_TX_PAUSE))
+		nic_pause.tx_pause = true;
+	else
+		nic_pause.tx_pause = false;
+
+	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
+		(fc_conf->mode & RTE_FC_RX_PAUSE))
+		nic_pause.rx_pause = true;
+	else
+		nic_pause.rx_pause = false;
+
+	err = hinic_set_pause_config(nic_dev->hwdev, nic_pause);
+	if (err)
+		return err;
+
+	nic_dev->pause_set = true;
+	nic_dev->nic_pause.auto_neg = nic_pause.auto_neg;
+	nic_dev->nic_pause.rx_pause = nic_pause.rx_pause;
+	nic_dev->nic_pause.tx_pause = nic_pause.tx_pause;
+
+	PMD_DRV_LOG(INFO, "Get pause options, tx: %s, rx: %s, auto: %s\n",
+		nic_pause.tx_pause ? "on" : "off",
+		nic_pause.rx_pause ? "on" : "off",
+		nic_pause.auto_neg ? "on" : "off");
+
+	return 0;
+}
+
 /**
  * DPDK callback to update the RSS hash key and RSS hash type.
  *
@@ -2453,12 +2528,22 @@ static int hinic_dev_filter_ctrl(struct rte_eth_dev *dev,
 static int hinic_set_default_pause_feature(struct hinic_nic_dev *nic_dev)
 {
 	struct nic_pause_config pause_config = {0};
+	int err;
 
 	pause_config.auto_neg = 0;
 	pause_config.rx_pause = HINIC_DEFAUT_PAUSE_CONFIG;
 	pause_config.tx_pause = HINIC_DEFAUT_PAUSE_CONFIG;
 
-	return hinic_set_pause_config(nic_dev->hwdev, pause_config);
+	err = hinic_set_pause_config(nic_dev->hwdev, pause_config);
+	if (err)
+		return err;
+
+	nic_dev->pause_set = true;
+	nic_dev->nic_pause.auto_neg = pause_config.auto_neg;
+	nic_dev->nic_pause.rx_pause = pause_config.rx_pause;
+	nic_dev->nic_pause.tx_pause = pause_config.tx_pause;
+
+	return 0;
 }
 
 static int hinic_set_default_dcb_feature(struct hinic_nic_dev *nic_dev)
@@ -2886,6 +2971,8 @@ static const struct eth_dev_ops hinic_pmd_ops = {
 	.allmulticast_disable          = hinic_dev_allmulticast_disable,
 	.promiscuous_enable            = hinic_dev_promiscuous_enable,
 	.promiscuous_disable           = hinic_dev_promiscuous_disable,
+	.flow_ctrl_get                 = hinic_flow_ctrl_get,
+	.flow_ctrl_set                 = hinic_flow_ctrl_set,
 	.rss_hash_update               = hinic_rss_hash_update,
 	.rss_hash_conf_get             = hinic_rss_conf_get,
 	.reta_update                   = hinic_rss_indirtbl_update,

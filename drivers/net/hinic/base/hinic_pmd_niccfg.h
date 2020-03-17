@@ -850,6 +850,8 @@ int hinic_set_rx_vhd_mode(void *hwdev, u16 vhd_mode, u16 rx_buf_sz);
 
 int hinic_set_pause_config(void *hwdev, struct nic_pause_config nic_pause);
 
+int hinic_get_pause_info(void *hwdev, struct nic_pause_config *nic_pause);
+
 int hinic_reset_port_link_cfg(void *hwdev);
 
 int hinic_dcb_set_ets(void *hwdev, u8 *up_tc, u8 *pg_bw, u8 *pgid, u8 *up_bw,

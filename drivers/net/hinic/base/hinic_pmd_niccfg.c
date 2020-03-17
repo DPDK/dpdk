@@ -668,6 +668,35 @@ int hinic_set_pause_config(void *hwdev, struct nic_pause_config nic_pause)
 	return 0;
 }
 
+int hinic_get_pause_info(void *hwdev, struct nic_pause_config *nic_pause)
+{
+	struct hinic_pause_config pause_info;
+	u16 out_size = sizeof(pause_info);
+	int err;
+
+	if (!hwdev || !nic_pause)
+		return -EINVAL;
+
+	memset(&pause_info, 0, sizeof(pause_info));
+	pause_info.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	pause_info.func_id = hinic_global_func_id(hwdev);
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_GET_PAUSE_INFO,
+				     &pause_info, sizeof(pause_info),
+				     &pause_info, &out_size);
+	if (err || !out_size || pause_info.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR, "Failed to get pause info, err: %d, status: 0x%x, out size: 0x%x\n",
+			err, pause_info.mgmt_msg_head.status, out_size);
+		return -EINVAL;
+	}
+
+	nic_pause->auto_neg = pause_info.auto_neg;
+	nic_pause->rx_pause = pause_info.rx_pause;
+	nic_pause->tx_pause = pause_info.tx_pause;
+
+	return 0;
+}
+
 int hinic_dcb_set_ets(void *hwdev, u8 *up_tc, u8 *pg_bw,
 		      u8 *pgid, u8 *up_bw, u8 *prio)
 {

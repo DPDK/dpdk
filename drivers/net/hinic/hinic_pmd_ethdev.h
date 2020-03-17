@@ -263,6 +263,9 @@ struct hinic_nic_dev {
 	u8 num_rss;
 	u8 rx_queue_list[HINIC_MAX_RX_QUEUES];
 
+	bool pause_set;
+	struct nic_pause_config nic_pause;
+
 	u32 vfta[HINIC_VFTA_SIZE];	/* VLAN bitmap */
 
 	struct rte_ether_addr default_addr;

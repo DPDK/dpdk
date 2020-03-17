@@ -16,6 +16,7 @@
 #include "base/hinic_pmd_hwif.h"
 #include "base/hinic_pmd_wq.h"
 #include "base/hinic_pmd_nicio.h"
+#include "base/hinic_pmd_niccfg.h"
 #include "hinic_pmd_ethdev.h"
 #include "hinic_pmd_tx.h"
 
