@@ -533,6 +533,15 @@ int hinic_init_qp_ctxts(struct hinic_hwdev *hwdev)
 		return err;
 	}
 
+	if (hwdev->cmdqs->status & HINIC_CMDQ_SET_FAIL) {
+		err = hinic_reinit_cmdq_ctxts(hwdev);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Reinit cmdq context failed, rc: %d\n",
+				err);
+			return err;
+		}
+	}
+
 	err = init_qp_ctxts(nic_io);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Init QP ctxts failed, rc: %d", err);

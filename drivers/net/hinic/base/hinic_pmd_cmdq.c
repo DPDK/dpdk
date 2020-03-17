@@ -7,6 +7,7 @@
 #include "hinic_pmd_hwif.h"
 #include "hinic_pmd_wq.h"
 #include "hinic_pmd_mgmt.h"
+#include "hinic_pmd_mbox.h"
 #include "hinic_pmd_cmdq.h"
 
 #define CMDQ_CMD_TIMEOUT				5000 /* millisecond */
@@ -439,11 +440,14 @@ static int hinic_set_cmdq_ctxts(struct hinic_hwdev *hwdev)
 					     cmdq_ctxt, in_size, NULL,
 					     NULL, 0);
 		if (err) {
+			if (err == HINIC_MBOX_PF_BUSY_ACTIVE_FW)
+				cmdqs->status |= HINIC_CMDQ_SET_FAIL;
 			PMD_DRV_LOG(ERR, "Set cmdq ctxt failed");
 			return -EFAULT;
 		}
 	}
 
+	cmdqs->status &= ~HINIC_CMDQ_SET_FAIL;
 	cmdqs->status |= HINIC_CMDQ_ENABLE;
 
 	return 0;

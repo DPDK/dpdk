@@ -170,6 +170,7 @@ struct hinic_cmdq_ctxt {
 
 enum hinic_cmdq_status {
 	HINIC_CMDQ_ENABLE = BIT(0),
+	HINIC_CMDQ_SET_FAIL = BIT(1)
 };
 
 enum hinic_cmdq_cmd_type {
