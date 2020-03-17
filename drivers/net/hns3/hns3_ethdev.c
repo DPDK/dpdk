@@ -873,6 +873,12 @@ hns3_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
+	if (pvid > RTE_ETHER_MAX_VLAN_ID) {
+		hns3_err(hw, "Invalid vlan_id = %u > %d", pvid,
+			 RTE_ETHER_MAX_VLAN_ID);
+		return -EINVAL;
+	}
+
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_vlan_pvid_configure(hns, pvid, on);
 	rte_spinlock_unlock(&hw->lock);
