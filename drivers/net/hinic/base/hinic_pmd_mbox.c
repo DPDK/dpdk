@@ -191,8 +191,7 @@ static int recv_vf_mbox_handler(struct hinic_mbox_func_to_func *func_to_func,
 						buf_out, out_size);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "No handler, mod = %d",
-				recv_mbox->mod);
+		PMD_DRV_LOG(ERR, "No handler, mod: %d", recv_mbox->mod);
 		rc = HINIC_MBOX_VF_CMD_ERROR;
 		break;
 	}

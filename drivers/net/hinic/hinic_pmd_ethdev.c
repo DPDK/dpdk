@@ -347,7 +347,7 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 	err = hinic_vlan_offload_set(dev,
 				ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK);
 	if (err) {
-		PMD_DRV_LOG(ERR, "Initialize vlan filter and strip failed\n");
+		PMD_DRV_LOG(ERR, "Initialize vlan filter and strip failed");
 		(void)hinic_config_mq_mode(dev, FALSE);
 		return err;
 	}
@@ -785,7 +785,7 @@ static int hinic_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 
 	err = hinic_get_mgmt_version(nic_dev->hwdev, fw_ver);
 	if (err) {
-		PMD_DRV_LOG(ERR, "Failed to get fw version\n");
+		PMD_DRV_LOG(ERR, "Failed to get fw version");
 		return -EINVAL;
 	}
 
@@ -1198,7 +1198,7 @@ static void hinic_dev_stop(struct rte_eth_dev *dev)
 	/* just stop phy port and vport */
 	rc = hinic_set_port_enable(nic_dev->hwdev, false);
 	if (rc)
-		PMD_DRV_LOG(WARNING, "Disable phy port failed, error: %d, dev_name:%s, port_id:%d",
+		PMD_DRV_LOG(WARNING, "Disable phy port failed, error: %d, dev_name: %s, port_id: %d",
 			  rc, name, port_id);
 
 	rc = hinic_set_vport_enable(nic_dev->hwdev, false);
@@ -1861,7 +1861,7 @@ static int hinic_rss_hash_update(struct rte_eth_dev *dev,
 	}
 
 	if (rss_conf->rss_key_len > HINIC_RSS_KEY_SIZE) {
-		PMD_DRV_LOG(ERR, "Invalid rss key, rss_key_len:%d",
+		PMD_DRV_LOG(ERR, "Invalid rss key, rss_key_len: %d",
 			    rss_conf->rss_key_len);
 		return HINIC_ERROR;
 	}
@@ -1982,7 +1982,7 @@ static int hinic_rss_indirtbl_update(struct rte_eth_dev *dev,
 		return HINIC_OK;
 
 	if (reta_size != NIC_RSS_INDIR_SIZE) {
-		PMD_DRV_LOG(ERR, "Invalid reta size, reta_size:%d", reta_size);
+		PMD_DRV_LOG(ERR, "Invalid reta size, reta_size: %d", reta_size);
 		return HINIC_ERROR;
 	}
 
@@ -2000,7 +2000,7 @@ static int hinic_rss_indirtbl_update(struct rte_eth_dev *dev,
 
 	for (i = 0 ; i < reta_size; i++) {
 		if (indirtbl[i] >= nic_dev->num_rq) {
-			PMD_DRV_LOG(ERR, "Invalid reta entry, index:%d, num_rq:%d",
+			PMD_DRV_LOG(ERR, "Invalid reta entry, index: %d, num_rq: %d",
 				    i, nic_dev->num_rq);
 			goto disable_rss;
 		}
@@ -2047,13 +2047,13 @@ static int hinic_rss_indirtbl_query(struct rte_eth_dev *dev,
 	u16 i = 0;
 
 	if (reta_size != NIC_RSS_INDIR_SIZE) {
-		PMD_DRV_LOG(ERR, "Invalid reta size, reta_size:%d", reta_size);
+		PMD_DRV_LOG(ERR, "Invalid reta size, reta_size: %d", reta_size);
 		return HINIC_ERROR;
 	}
 
 	err = hinic_rss_get_indir_tbl(nic_dev->hwdev, tmpl_idx, indirtbl);
 	if (err) {
-		PMD_DRV_LOG(ERR, "Get rss indirect table failed, error:%d",
+		PMD_DRV_LOG(ERR, "Get rss indirect table failed, error: %d",
 			    err);
 		return err;
 	}
@@ -2272,7 +2272,7 @@ static int hinic_set_mac_addr(struct rte_eth_dev *dev,
 
 	rte_ether_addr_copy(addr, &nic_dev->default_addr);
 
-	PMD_DRV_LOG(INFO, "Set new mac address %02x:%02x:%02x:%02x:%02x:%02x\n",
+	PMD_DRV_LOG(INFO, "Set new mac address %02x:%02x:%02x:%02x:%02x:%02x",
 		    addr->addr_bytes[0], addr->addr_bytes[1],
 		    addr->addr_bytes[2], addr->addr_bytes[3],
 		    addr->addr_bytes[4], addr->addr_bytes[5]);
@@ -2286,7 +2286,7 @@ static int hinic_set_mac_addr(struct rte_eth_dev *dev,
  * @param dev
  *   Pointer to Ethernet device structure.
  * @param index
- *   MAC address index.
+ *   MAC address index, should less than 128.
  */
 static void hinic_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
@@ -2315,16 +2315,15 @@ static void hinic_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
  * @param dev
  *   Pointer to Ethernet device structure.
  * @param mac_addr
- *   MAC address to register.
+ *   Pointer to MAC address
  * @param index
- *   MAC address index.
+ *   MAC address index, should less than 128.
  * @param vmdq
- *   VMDq pool index to associate address with (ignored).
+ *   VMDq pool index(not used).
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   0 on success, negative error value otherwise.
  */
-
 static int hinic_mac_addr_add(struct rte_eth_dev *dev,
 			      struct rte_ether_addr *mac_addr, uint32_t index,
 			      __rte_unused uint32_t vmdq)
@@ -2335,7 +2334,7 @@ static int hinic_mac_addr_add(struct rte_eth_dev *dev,
 	int ret;
 
 	if (index >= HINIC_MAX_UC_MAC_ADDRS) {
-		PMD_DRV_LOG(INFO, "Add mac index(%u) is out of range,", index);
+		PMD_DRV_LOG(INFO, "Add mac index(%u) is out of range", index);
 		return -EINVAL;
 	}
 

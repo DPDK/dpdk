@@ -449,7 +449,7 @@ hinic_pf_to_mgmt_sync(struct hinic_hwdev *hwdev,
 			       recv_msg->msg_len);
 			*out_size = recv_msg->msg_len;
 		} else {
-			PMD_DRV_LOG(ERR, "Mgmt rsp's msg len:%u overflow.",
+			PMD_DRV_LOG(ERR, "Mgmt rsp's msg len: %u overflow.",
 				recv_msg->msg_len);
 			err = -ERANGE;
 		}
@@ -577,7 +577,7 @@ static void hinic_mgmt_recv_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 						buf_out, &out_size);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "No handler, mod = %d", recv_msg->mod);
+		PMD_DRV_LOG(ERR, "No handler, mod: %d", recv_msg->mod);
 		break;
 	}
 
@@ -617,7 +617,7 @@ static int recv_mgmt_msg_handler(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 
 	if (!check_mgmt_seq_id_and_seg_len(recv_msg, seq_id, seq_len)) {
 		PMD_DRV_LOG(ERR,
-			"Mgmt msg sequence and segment check fail, "
+			"Mgmt msg sequence and segment check failed, "
 			"func id: 0x%x, front id: 0x%x, current id: 0x%x, seg len: 0x%x",
 			hinic_global_func_id(pf_to_mgmt->hwdev),
 			recv_msg->sed_id, seq_id, seq_len);
@@ -741,8 +741,7 @@ int hinic_aeq_poll_msg(struct hinic_eq *eq, u32 timeout, void *param)
 
 		event = EQ_ELEM_DESC_GET(aeqe_desc, TYPE);
 		if (EQ_ELEM_DESC_GET(aeqe_desc, SRC)) {
-			PMD_DRV_LOG(ERR, "AEQ sw event not support %d",
-				event);
+			PMD_DRV_LOG(ERR, "AEQ sw event not support %d", event);
 			return -ENODEV;
 
 		} else {

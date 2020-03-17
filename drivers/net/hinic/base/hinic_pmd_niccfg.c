@@ -276,7 +276,7 @@ int hinic_update_mac(void *hwdev, u8 *old_mac, u8 *new_mac, u16 vlan_id,
 	int err;
 
 	if (!hwdev || !old_mac || !new_mac) {
-		PMD_DRV_LOG(ERR, "Hwdev, old_mac or new_mac is NULL\n");
+		PMD_DRV_LOG(ERR, "Hwdev, old_mac or new_mac is NULL");
 		return -EINVAL;
 	}
 
@@ -293,12 +293,12 @@ int hinic_update_mac(void *hwdev, u8 *old_mac, u8 *new_mac, u16 vlan_id,
 	if (err || !out_size ||
 	    (mac_info.mgmt_msg_head.status &&
 	     mac_info.mgmt_msg_head.status != HINIC_PF_SET_VF_ALREADY)) {
-		PMD_DRV_LOG(ERR, "Failed to update MAC, err: %d, status: 0x%x, out size: 0x%x\n",
+		PMD_DRV_LOG(ERR, "Failed to update MAC, err: %d, status: 0x%x, out size: 0x%x",
 			    err, mac_info.mgmt_msg_head.status, out_size);
 		return -EINVAL;
 	}
 	if (mac_info.mgmt_msg_head.status == HINIC_PF_SET_VF_ALREADY) {
-		PMD_DRV_LOG(WARNING, "PF has already set vf mac, Ignore update operation.\n");
+		PMD_DRV_LOG(WARNING, "PF has already set vf mac, Ignore update operation");
 		return HINIC_PF_SET_VF_ALREADY;
 	}
 
@@ -385,7 +385,7 @@ int hinic_add_remove_vlan(void *hwdev, u16 vlan_id, u16 func_id, bool add)
 				     &out_size);
 	if (err || !out_size || vlan_info.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR,
-			"Failed to %s vlan, err: %d, status: 0x%x, out size: 0x%x\n",
+			"Failed to %s vlan, err: %d, status: 0x%x, out size: 0x%x",
 			add ? "add" : "remove", err,
 			vlan_info.mgmt_msg_head.status, out_size);
 		return -EINVAL;
@@ -431,7 +431,7 @@ int hinic_config_vlan_filter(void *hwdev, u32 vlan_filter_ctrl)
 		err = HINIC_MGMT_CMD_UNSUPPORTED;
 	} else if (err || !out_size || vlan_filter.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR,
-			"Failed to config vlan filter, vlan_filter_ctrl: 0x%x, err: %d, status: 0x%x, out size: 0x%x\n",
+			"Failed to config vlan filter, vlan_filter_ctrl: 0x%x, err: %d, status: 0x%x, out size: 0x%x",
 			vlan_filter_ctrl, err,
 			vlan_filter.mgmt_msg_head.status, out_size);
 		err = -EINVAL;
@@ -473,7 +473,7 @@ int hinic_set_rx_vlan_offload(void *hwdev, u8 en)
 					&vlan_cfg, &out_size);
 	if (err || !out_size || vlan_cfg.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR,
-			"Failed to set rx vlan offload, err: %d, status: 0x%x, out size: 0x%x\n",
+			"Failed to set rx vlan offload, err: %d, status: 0x%x, out size: 0x%x",
 			err, vlan_cfg.mgmt_msg_head.status, out_size);
 		return -EINVAL;
 	}
@@ -687,8 +687,7 @@ int hinic_dcb_set_ets(void *hwdev, u8 *up_tc, u8 *pg_bw,
 		pg_bw_t += *(pg_bw + i);
 
 		if (*(up_tc + i) > HINIC_DCB_TC_MAX) {
-			PMD_DRV_LOG(ERR,
-				"Invalid up %d mapping tc: %d", i,
+			PMD_DRV_LOG(ERR, "Invalid up %d mapping tc: %d", i,
 				*(up_tc + i));
 			return -EINVAL;
 		}
@@ -1400,7 +1399,7 @@ int hinic_set_anti_attack(void *hwdev, bool enable)
 				     &rate, sizeof(rate), &rate,
 				     &out_size);
 	if (err || !out_size || rate.mgmt_msg_head.status) {
-		PMD_DRV_LOG(ERR, "can't %s port Anti-Attack rate limit, err: %d, status: 0x%x, out size: 0x%x",
+		PMD_DRV_LOG(ERR, "Can't %s port Anti-Attack rate limit, err: %d, status: 0x%x, out size: 0x%x",
 			(enable ? "enable" : "disable"), err,
 			rate.mgmt_msg_head.status, out_size);
 		return -EINVAL;
@@ -1502,8 +1501,7 @@ int hinic_set_fast_recycle_mode(void *hwdev, u8 mode)
 				     sizeof(fast_recycled_mode),
 				     &fast_recycled_mode, &out_size, 0);
 	if (err || fast_recycled_mode.mgmt_msg_head.status || !out_size) {
-		PMD_DRV_LOG(ERR,
-			"Failed to set recycle mode, ret = %d",
+		PMD_DRV_LOG(ERR, "Failed to set recycle mode, ret: %d",
 			fast_recycled_mode.mgmt_msg_head.status);
 		return -EFAULT;
 	}
