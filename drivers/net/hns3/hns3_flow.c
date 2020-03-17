@@ -1827,8 +1827,11 @@ hns3_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	}
 
 	ret = hns3_clear_rss_filter(dev);
-	if (ret)
+	if (ret) {
+		rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "Failed to flush rss filter");
 		return ret;
+	}
 
 	hns3_filterlist_flush(dev);
 
