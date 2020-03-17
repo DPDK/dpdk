@@ -192,14 +192,10 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	int ret;
 
-	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
-		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-				      mac_addr);
-		hns3_err(hw, "Failed to set mac addr, addr(%s) invalid.",
-			 mac_str);
-		return -EINVAL;
-	}
-
+	/*
+	 * It has been guaranteed that input parameter named mac_addr is valid
+	 * address in the rte layer of DPDK framework.
+	 */
 	old_addr = (struct rte_ether_addr *)hw->mac.mac_addr;
 	rte_spinlock_lock(&hw->lock);
 	memcpy(addr_bytes, mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN);
