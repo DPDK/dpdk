@@ -736,6 +736,7 @@ hinic_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_mac_addrs  = HINIC_MAX_UC_MAC_ADDRS;
 	info->min_mtu = HINIC_MIN_MTU_SIZE;
 	info->max_mtu = HINIC_MAX_MTU_SIZE;
+	info->max_lro_pkt_size = HINIC_MAX_LRO_SIZE;
 
 	hinic_get_speed_capa(dev, &info->speed_capa);
 	info->rx_queue_offload_capa = 0;
@@ -811,12 +812,10 @@ static int hinic_config_rx_mode(struct hinic_nic_dev *nic_dev, u32 rx_mode_ctrl)
 	return 0;
 }
 
-
 static int hinic_rxtx_configure(struct rte_eth_dev *dev)
 {
-	int err;
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
-	bool lro_en;
+	int err;
 
 	/* rx configure, if rss enable, need to init default configuration */
 	err = hinic_rx_configure(dev);
@@ -830,18 +829,6 @@ static int hinic_rxtx_configure(struct rte_eth_dev *dev)
 	if (err) {
 		PMD_DRV_LOG(ERR, "Configure rx_mode:0x%x failed",
 			HINIC_DEFAULT_RX_MODE);
-		goto set_rx_mode_fail;
-	}
-
-	/* config lro */
-	lro_en = dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO ?
-			true : false;
-
-	err = hinic_set_rx_lro(nic_dev->hwdev, lro_en, lro_en,
-				HINIC_LRO_WQE_NUM_DEFAULT);
-	if (err) {
-		PMD_DRV_LOG(ERR, "%s lro failed, err: %d",
-			lro_en ? "Enable" : "Disable", err);
 		goto set_rx_mode_fail;
 	}
 

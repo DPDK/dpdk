@@ -656,6 +656,10 @@ int hinic_rx_configure(struct rte_eth_dev *dev)
 	struct rte_eth_rss_conf rss_conf =
 		dev->data->dev_conf.rx_adv_conf.rss_conf;
 	int err;
+	bool lro_en;
+	int max_lro_size;
+	int lro_wqe_num;
+	int buf_size;
 
 	if (nic_dev->flags & ETH_MQ_RX_RSS_FLAG) {
 		if (rss_conf.rss_hf == 0) {
@@ -681,13 +685,40 @@ int hinic_rx_configure(struct rte_eth_dev *dev)
 	if (err)
 		goto rx_csum_ofl_err;
 
+	/* config lro */
+	lro_en = dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO ?
+			true : false;
+	max_lro_size = dev->data->dev_conf.rxmode.max_lro_pkt_size;
+	buf_size = nic_dev->hwdev->nic_io->rq_buf_size;
+	lro_wqe_num = max_lro_size / buf_size ? (max_lro_size / buf_size) : 1;
+
+	err = hinic_set_rx_lro(nic_dev->hwdev, lro_en, lro_en, lro_wqe_num);
+	if (err) {
+		PMD_DRV_LOG(ERR, "%s %s lro failed, err: %d, max_lro_size: %d",
+				dev->data->name, lro_en ? "Enable" : "Disable",
+				err, max_lro_size);
+		goto set_rx_lro_err;
+	}
+
 	return 0;
 
+set_rx_lro_err:
 rx_csum_ofl_err:
 rss_config_err:
+
 	hinic_destroy_num_qps(nic_dev);
 
 	return HINIC_ERROR;
+}
+
+static void hinic_rx_remove_lro(struct hinic_nic_dev *nic_dev)
+{
+	int err;
+
+	err = hinic_set_rx_lro(nic_dev->hwdev, false, false, 0);
+	if (err)
+		PMD_DRV_LOG(ERR, "%s disable LRO failed",
+			    nic_dev->proc_dev_name);
 }
 
 void hinic_rx_remove_configure(struct rte_eth_dev *dev)
@@ -698,6 +729,8 @@ void hinic_rx_remove_configure(struct rte_eth_dev *dev)
 		hinic_rss_deinit(nic_dev);
 		hinic_destroy_num_qps(nic_dev);
 	}
+
+	hinic_rx_remove_lro(nic_dev);
 }
 
 void hinic_free_all_rx_mbufs(struct hinic_rxq *rxq)
@@ -956,7 +989,7 @@ u16 hinic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 	volatile struct hinic_rq_cqe *rx_cqe;
 	u16 rx_buf_len, pkts = 0;
 	u16 sw_ci, ci_mask, wqebb_cnt = 0;
-	u32 pkt_len, status, vlan_len;
+	u32 pkt_len, status, vlan_len, lro_num;
 	u64 rx_bytes = 0;
 	struct hinic_rq_cqe cqe;
 	u32 offload_type, rss_hash;
@@ -1023,6 +1056,13 @@ u16 hinic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 		rss_hash = cqe.rss_hash;
 		rxm->ol_flags |= hinic_rx_rss_hash(offload_type, rss_hash,
 						   &rxm->hash.rss);
+
+		/* lro offload */
+		lro_num = HINIC_GET_RX_NUM_LRO(cqe.status);
+		if (unlikely(lro_num != 0)) {
+			rxm->ol_flags |= PKT_RX_LRO;
+			rxm->tso_segsz = pkt_len / lro_num;
+		}
 
 		/* 6. clear done bit */
 		rx_cqe->status = 0;
