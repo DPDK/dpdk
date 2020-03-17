@@ -19,22 +19,6 @@
 			buf_out, out_size, 0)
 
 
-#define TCAM_SET	0x1
-#define TCAM_CLEAR	0x2
-
-struct hinic_port_qfilter_info {
-	struct hinic_mgmt_msg_head mgmt_msg_head;
-
-	u16 func_id;
-	u8 normal_type_enable;
-	u8 filter_type_enable;
-	u8 filter_enable;
-	u8 filter_type;
-	u8 qid;
-	u8 fdir_flag;
-	u32 key;
-};
-
 /**
  * hinic_init_function_table - Initialize function table.
  *
@@ -1901,7 +1885,7 @@ int hinic_set_fdir_tcam(void *hwdev, u16 type_mask,
 			&port_tcam_cmd, sizeof(port_tcam_cmd),
 			&port_tcam_cmd, &out_size);
 	if (err || !out_size || port_tcam_cmd.mgmt_msg_head.status) {
-		PMD_DRV_LOG(ERR, "Set tcam table failed, err: %d, status: 0x%x, out size: 0x%x\n",
+		PMD_DRV_LOG(ERR, "Set tcam table failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, port_tcam_cmd.mgmt_msg_head.status, out_size);
 		return -EFAULT;
 	}
@@ -1938,10 +1922,174 @@ int hinic_clear_fdir_tcam(void *hwdev, u16 type_mask)
 			&port_tcam_cmd, sizeof(port_tcam_cmd),
 			&port_tcam_cmd, &out_size);
 	if (err || !out_size || port_tcam_cmd.mgmt_msg_head.status) {
-		PMD_DRV_LOG(ERR, "Clear tcam table failed, err: %d, status: 0x%x, out size: 0x%x\n",
+		PMD_DRV_LOG(ERR, "Clear tcam table failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, port_tcam_cmd.mgmt_msg_head.status, out_size);
 		return -EFAULT;
 	}
 
 	return 0;
 }
+
+int hinic_add_tcam_rule(void *hwdev, struct tag_tcam_cfg_rule *tcam_rule)
+{
+	u16 out_size = sizeof(struct tag_fdir_add_rule_cmd);
+	struct tag_fdir_add_rule_cmd tcam_cmd;
+	int err;
+
+	if (!hwdev) {
+		PMD_DRV_LOG(ERR, "Hwdev is NULL");
+		return -EINVAL;
+	}
+
+	if (tcam_rule->index >= HINIC_MAX_TCAM_RULES_NUM) {
+		PMD_DRV_LOG(ERR, "Tcam rules num to add is invalid");
+		return -EFAULT;
+	}
+
+	memset(&tcam_cmd, 0, sizeof(struct tag_fdir_add_rule_cmd));
+	tcam_cmd.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	memcpy((void *)&tcam_cmd.rule, (void *)tcam_rule,
+		sizeof(struct tag_tcam_cfg_rule));
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_UP_TC_ADD_FLOW,
+				&tcam_cmd, sizeof(tcam_cmd),
+				&tcam_cmd, &out_size);
+	if (err || tcam_cmd.mgmt_msg_head.status || !out_size) {
+		PMD_DRV_LOG(ERR,
+			"Add tcam rule failed, err: %d, status: 0x%x, out size: 0x%x",
+			err, tcam_cmd.mgmt_msg_head.status, out_size);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+int hinic_del_tcam_rule(void *hwdev, u32 index)
+{
+	u16 out_size = sizeof(struct tag_fdir_del_rule_cmd);
+	struct tag_fdir_del_rule_cmd tcam_cmd;
+	int err;
+
+	if (!hwdev) {
+		PMD_DRV_LOG(ERR, "Hwdev is NULL");
+		return -EINVAL;
+	}
+
+	if (index >= HINIC_MAX_TCAM_RULES_NUM) {
+		PMD_DRV_LOG(ERR, "Tcam rules num to del is invalid");
+		return -EFAULT;
+	}
+
+	memset(&tcam_cmd, 0, sizeof(struct tag_fdir_del_rule_cmd));
+	tcam_cmd.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	tcam_cmd.index_start = index;
+	tcam_cmd.index_num = 1;
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_UP_TC_DEL_FLOW,
+				&tcam_cmd, sizeof(tcam_cmd),
+				&tcam_cmd, &out_size);
+	if (err || tcam_cmd.mgmt_msg_head.status || !out_size) {
+		PMD_DRV_LOG(ERR,
+			"Del tcam rule failed, err: %d, status: 0x%x, out size: 0x%x",
+			err, tcam_cmd.mgmt_msg_head.status, out_size);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+static int hinic_mgmt_tcam_block(void *hwdev, u8 alloc_en,
+				u8 block_type, u16 *index)
+{
+	struct hinic_cmd_ctrl_tcam_block tcam_block_info;
+	u16 out_size = sizeof(struct hinic_cmd_ctrl_tcam_block);
+	struct hinic_hwdev *nic_hwdev = (struct hinic_hwdev *)hwdev;
+	int err;
+
+	if (!hwdev) {
+		PMD_DRV_LOG(ERR, "Hwdev is NULL");
+		return -EINVAL;
+	}
+
+	memset(&tcam_block_info, 0, sizeof(struct hinic_cmd_ctrl_tcam_block));
+	tcam_block_info.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	tcam_block_info.func_id = hinic_global_func_id(hwdev);
+	tcam_block_info.alloc_en = alloc_en;
+	tcam_block_info.tcam_type = block_type;
+	tcam_block_info.tcam_block_index = *index;
+
+	err = l2nic_msg_to_mgmt_sync(hwdev,
+				HINIC_PORT_CMD_UP_TC_CTRL_TCAM_BLOCK,
+				&tcam_block_info, sizeof(tcam_block_info),
+				&tcam_block_info, &out_size);
+	if (tcam_block_info.mgmt_msg_head.status ==
+		HINIC_MGMT_CMD_UNSUPPORTED) {
+		err = HINIC_MGMT_CMD_UNSUPPORTED;
+		PMD_DRV_LOG(INFO, "Firmware/uP doesn't support alloc or del tcam block");
+		return err;
+	} else if ((err == HINIC_MBOX_VF_CMD_ERROR) &&
+			(HINIC_IS_VF(nic_hwdev))) {
+		err = HINIC_MGMT_CMD_UNSUPPORTED;
+		PMD_DRV_LOG(INFO, "VF doesn't support alloc and del tcam block.");
+		return err;
+	} else if (err || (!out_size) || tcam_block_info.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR,
+			"Set tcam block failed, err: %d, status: 0x%x, out size: 0x%x",
+			err, tcam_block_info.mgmt_msg_head.status, out_size);
+		return -EFAULT;
+	}
+
+	if (alloc_en)
+		*index = tcam_block_info.tcam_block_index;
+
+	return 0;
+}
+
+int hinic_alloc_tcam_block(void *hwdev, u8 block_type, u16 *index)
+{
+	return hinic_mgmt_tcam_block(hwdev, HINIC_TCAM_BLOCK_ENABLE,
+				block_type, index);
+}
+
+int hinic_free_tcam_block(void *hwdev, u8 block_type, u16 *index)
+{
+	return hinic_mgmt_tcam_block(hwdev, HINIC_TCAM_BLOCK_DISABLE,
+				block_type, index);
+}
+
+int hinic_flush_tcam_rule(void *hwdev)
+{
+	struct hinic_cmd_flush_tcam_rules tcam_flush;
+	u16 out_size = sizeof(struct hinic_cmd_flush_tcam_rules);
+	struct hinic_hwdev *nic_hwdev = (struct hinic_hwdev *)hwdev;
+	int err;
+
+	if (!hwdev) {
+		PMD_DRV_LOG(ERR, "Hwdev is NULL");
+		return -EINVAL;
+	}
+
+	memset(&tcam_flush, 0, sizeof(struct hinic_cmd_flush_tcam_rules));
+	tcam_flush.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	tcam_flush.func_id = hinic_global_func_id(hwdev);
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_UP_TC_FLUSH_TCAM,
+			&tcam_flush, sizeof(struct hinic_cmd_flush_tcam_rules),
+			&tcam_flush, &out_size);
+	if (tcam_flush.mgmt_msg_head.status == HINIC_MGMT_CMD_UNSUPPORTED) {
+		err = HINIC_MGMT_CMD_UNSUPPORTED;
+		PMD_DRV_LOG(INFO, "Firmware/uP doesn't support flush tcam fdir");
+	} else if ((err == HINIC_MBOX_VF_CMD_ERROR) &&
+			(HINIC_IS_VF(nic_hwdev))) {
+		err = HINIC_MGMT_CMD_UNSUPPORTED;
+		PMD_DRV_LOG(INFO, "VF doesn't support flush tcam fdir");
+	} else if (err || (!out_size) || tcam_flush.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR,
+			"Flush tcam fdir rules failed, err: %d, status: 0x%x, out size: 0x%x",
+			err, tcam_flush.mgmt_msg_head.status, out_size);
+		err = -EFAULT;
+	}
+
+	return err;
+}
+

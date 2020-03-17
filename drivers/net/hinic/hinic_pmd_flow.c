@@ -46,7 +46,12 @@
 #define PA_IP_PROTOCOL_TYPE_SCTP	5
 #define PA_IP_PROTOCOL_TYPE_VRRP	112
 
-#define IP_HEADER_PROTOCOL_TYPE_TCP	6
+#define IP_HEADER_PROTOCOL_TYPE_TCP     6
+#define IP_HEADER_PROTOCOL_TYPE_UDP     17
+#define IP_HEADER_PROTOCOL_TYPE_ICMP    1
+
+#define FDIR_TCAM_NORMAL_PACKET         0
+#define FDIR_TCAM_TUNNEL_PACKET         1
 
 #define HINIC_MIN_N_TUPLE_PRIO		1
 #define HINIC_MAX_N_TUPLE_PRIO		7
@@ -81,6 +86,10 @@
 
 #define HINIC_DEV_PRIVATE_TO_FILTER_INFO(nic_dev) \
 	(&((struct hinic_nic_dev *)nic_dev)->filter)
+
+#define HINIC_DEV_PRIVATE_TO_TCAM_INFO(nic_dev) \
+	(&((struct hinic_nic_dev *)nic_dev)->tcam)
+
 
 enum hinic_atr_flow_type {
 	HINIC_ATR_FLOW_TYPE_IPV4_DIP    = 0x1,
@@ -270,8 +279,7 @@ hinic_parse_ethertype_aciton(const struct rte_flow_action *actions,
  * other members in mask and spec should set to 0x00.
  * item->last should be NULL.
  */
-static int
-cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
+static int cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
 			const struct rte_flow_item *pattern,
 			const struct rte_flow_action *actions,
 			struct rte_eth_ethertype_filter *filter,
@@ -341,8 +349,7 @@ cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
 	return 0;
 }
 
-static int
-hinic_parse_ethertype_filter(struct rte_eth_dev *dev,
+static int hinic_parse_ethertype_filter(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
@@ -728,8 +735,7 @@ static int hinic_check_ntuple_item_ele(const struct rte_flow_item *item,
  * Because the pattern is used to describe the packets,
  * normally the packets should use network order.
  */
-static int
-cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
+static int cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
 			struct rte_eth_ntuple_filter *filter,
@@ -752,8 +758,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	return 0;
 }
 
-static int
-hinic_parse_ntuple_filter(struct rte_eth_dev *dev,
+static int hinic_parse_ntuple_filter(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
@@ -891,6 +896,7 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 
 		rule->mask.dst_ipv4_mask = ipv4_mask->hdr.dst_addr;
 		rule->mask.src_ipv4_mask = ipv4_mask->hdr.src_addr;
+		rule->mode = HINIC_FDIR_MODE_NORMAL;
 
 		if (item->spec) {
 			ipv4_spec =
@@ -906,6 +912,8 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 		item = next_no_void_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
 		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_ICMP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_ANY &&
 		    item->type != RTE_FLOW_ITEM_TYPE_END) {
 			memset(rule, 0, sizeof(struct hinic_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
@@ -920,115 +928,22 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 }
 
 static int hinic_normal_item_check_l4(const struct rte_flow_item **in_out_item,
-				const struct rte_flow_item pattern[],
-				struct hinic_fdir_rule *rule,
-				struct rte_flow_error *error)
+			__rte_unused const struct rte_flow_item pattern[],
+			__rte_unused struct hinic_fdir_rule *rule,
+			struct rte_flow_error *error)
 {
-	const struct rte_flow_item_tcp *tcp_spec;
-	const struct rte_flow_item_tcp *tcp_mask;
-	const struct rte_flow_item_udp *udp_spec;
-	const struct rte_flow_item_udp *udp_mask;
 	const struct rte_flow_item *item = *in_out_item;
 
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
-		/* Not supported last point for range */
-		if (item->last) {
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				item, "Not supported last point for range");
-			return -rte_errno;
-		}
-
-		/* Get TCP/UDP info */
-		if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
-			/*
-			 * Only care about src & dst ports,
-			 * others should be masked.
-			 */
-			if (!item->mask) {
-				memset(rule, 0, sizeof(struct hinic_fdir_rule));
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM, item,
-					"Not supported by fdir filter,support src,dst ports");
-				return -rte_errno;
-			}
-
-			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
-			if (tcp_mask->hdr.sent_seq ||
-				tcp_mask->hdr.recv_ack ||
-				tcp_mask->hdr.data_off ||
-				tcp_mask->hdr.tcp_flags ||
-				tcp_mask->hdr.rx_win ||
-				tcp_mask->hdr.cksum ||
-				tcp_mask->hdr.tcp_urp) {
-				memset(rule, 0, sizeof(struct hinic_fdir_rule));
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item, "Not supported by fdir filter,support tcp");
-				return -rte_errno;
-			}
-
-			rule->mask.src_port_mask = tcp_mask->hdr.src_port;
-			rule->mask.dst_port_mask = tcp_mask->hdr.dst_port;
-
-			if (item->spec) {
-				tcp_spec =
-					(const struct rte_flow_item_tcp *)
-					item->spec;
-				rule->hinic_fdir.src_port =
-					tcp_spec->hdr.src_port;
-				rule->hinic_fdir.dst_port =
-					tcp_spec->hdr.dst_port;
-			}
-
-		} else if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
-			/*
-			 * Only care about src & dst ports,
-			 * others should be masked.
-			 */
-			if (!item->mask) {
-				memset(rule, 0, sizeof(struct hinic_fdir_rule));
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item, "Not supported by fdir filter,support src,dst ports");
-				return -rte_errno;
-			}
-
-			udp_mask = (const struct rte_flow_item_udp *)item->mask;
-			if (udp_mask->hdr.dgram_len ||
-			    udp_mask->hdr.dgram_cksum) {
-				memset(rule, 0, sizeof(struct hinic_fdir_rule));
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item, "Not supported by fdir filter,support udp");
-				return -rte_errno;
-			}
-			rule->mask.src_port_mask = udp_mask->hdr.src_port;
-			rule->mask.dst_port_mask = udp_mask->hdr.dst_port;
-
-			if (item->spec) {
-				udp_spec =
-					(const struct rte_flow_item_udp *)
-					item->spec;
-				rule->hinic_fdir.src_port =
-					udp_spec->hdr.src_port;
-				rule->hinic_fdir.dst_port =
-					udp_spec->hdr.dst_port;
-			}
-		} else {
-			memset(rule, 0, sizeof(struct hinic_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter,support tcp/udp");
-			return -rte_errno;
-		}
-
-		/* Get next no void item */
-		*in_out_item = next_no_void_pattern(pattern, item);
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item, "Not supported by normal fdir filter,not support l4");
+		return -rte_errno;
 	}
 
 	return 0;
 }
+
 
 static int hinic_normal_item_check_end(const struct rte_flow_item *item,
 					struct hinic_fdir_rule *rule,
@@ -1054,6 +969,333 @@ static int hinic_check_normal_item_ele(const struct rte_flow_item *item,
 	if (hinic_normal_item_check_ether(&item, pattern, error) ||
 		hinic_normal_item_check_ip(&item, pattern, rule, error) ||
 		hinic_normal_item_check_l4(&item, pattern, rule, error) ||
+		hinic_normal_item_check_end(item, rule, error))
+		return -rte_errno;
+
+	return 0;
+}
+
+static int
+hinic_tcam_normal_item_check_l4(const struct rte_flow_item **in_out_item,
+				const struct rte_flow_item pattern[],
+				struct hinic_fdir_rule *rule,
+				struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item = *in_out_item;
+	const struct rte_flow_item_tcp *tcp_spec;
+	const struct rte_flow_item_tcp *tcp_mask;
+	const struct rte_flow_item_udp *udp_spec;
+	const struct rte_flow_item_udp *udp_mask;
+
+	if (item->type == RTE_FLOW_ITEM_TYPE_ICMP) {
+		rule->mode = HINIC_FDIR_MODE_TCAM;
+		rule->mask.proto_mask = UINT16_MAX;
+		rule->hinic_fdir.proto = IP_HEADER_PROTOCOL_TYPE_ICMP;
+	} else if (item->type == RTE_FLOW_ITEM_TYPE_ANY) {
+		rule->mode = HINIC_FDIR_MODE_TCAM;
+	} else if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
+		if (!item->mask) {
+			(void)memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter, support src, dst ports");
+			return -rte_errno;
+		}
+
+		tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+
+		/*
+		 * Only support src & dst ports, tcp flags,
+		 * others should be masked.
+		 */
+		if (tcp_mask->hdr.sent_seq ||
+			tcp_mask->hdr.recv_ack ||
+			tcp_mask->hdr.data_off ||
+			tcp_mask->hdr.rx_win ||
+			tcp_mask->hdr.cksum ||
+			tcp_mask->hdr.tcp_urp) {
+			(void)memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir normal tcam filter");
+			return -rte_errno;
+		}
+
+		rule->mode = HINIC_FDIR_MODE_TCAM;
+		rule->mask.proto_mask = UINT16_MAX;
+		rule->mask.dst_port_mask = tcp_mask->hdr.dst_port;
+		rule->mask.src_port_mask = tcp_mask->hdr.src_port;
+
+		rule->hinic_fdir.proto = IP_HEADER_PROTOCOL_TYPE_TCP;
+		if (item->spec) {
+			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
+			rule->hinic_fdir.dst_port = tcp_spec->hdr.dst_port;
+			rule->hinic_fdir.src_port = tcp_spec->hdr.src_port;
+		}
+	} else if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
+		/*
+		 * Only care about src & dst ports,
+		 * others should be masked.
+		 */
+		if (!item->mask) {
+			(void)memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter, support src, dst ports");
+			return -rte_errno;
+		}
+
+		udp_mask = (const struct rte_flow_item_udp *)item->mask;
+		if (udp_mask->hdr.dgram_len ||
+			udp_mask->hdr.dgram_cksum) {
+			(void)memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter, support udp");
+			return -rte_errno;
+		}
+
+		rule->mode = HINIC_FDIR_MODE_TCAM;
+		rule->mask.proto_mask = UINT16_MAX;
+		rule->mask.src_port_mask = udp_mask->hdr.src_port;
+		rule->mask.dst_port_mask = udp_mask->hdr.dst_port;
+
+		rule->hinic_fdir.proto = IP_HEADER_PROTOCOL_TYPE_UDP;
+		if (item->spec) {
+			udp_spec = (const struct rte_flow_item_udp *)item->spec;
+			rule->hinic_fdir.src_port = udp_spec->hdr.src_port;
+			rule->hinic_fdir.dst_port = udp_spec->hdr.dst_port;
+		}
+	} else {
+		(void)memset(rule,  0, sizeof(struct hinic_fdir_rule));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter tcam normal, l4 only support icmp, tcp");
+		return -rte_errno;
+	}
+
+	item = next_no_void_pattern(pattern, item);
+	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		(void)memset(rule, 0, sizeof(struct hinic_fdir_rule));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item, "Not supported by fdir filter tcam normal, support end");
+		return -rte_errno;
+	}
+
+	/* get next no void item */
+	*in_out_item = item;
+
+	return 0;
+}
+
+static int hinic_check_tcam_normal_item_ele(const struct rte_flow_item *item,
+					const struct rte_flow_item pattern[],
+					struct hinic_fdir_rule *rule,
+					struct rte_flow_error *error)
+{
+	if (hinic_normal_item_check_ether(&item, pattern, error) ||
+		hinic_normal_item_check_ip(&item, pattern, rule, error) ||
+		hinic_tcam_normal_item_check_l4(&item, pattern, rule, error) ||
+		hinic_normal_item_check_end(item, rule, error))
+		return -rte_errno;
+
+	return 0;
+}
+
+static int hinic_tunnel_item_check_l4(const struct rte_flow_item **in_out_item,
+					const struct rte_flow_item pattern[],
+					struct hinic_fdir_rule *rule,
+					struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item = *in_out_item;
+
+	if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
+		item = next_no_void_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_VXLAN) {
+			(void)memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter, support vxlan");
+			return -rte_errno;
+		}
+
+		*in_out_item = item;
+	} else {
+		(void)memset(rule, 0, sizeof(struct hinic_fdir_rule));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter tcam tunnel, outer l4 only support udp");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+hinic_tunnel_item_check_vxlan(const struct rte_flow_item **in_out_item,
+				const struct rte_flow_item pattern[],
+				struct hinic_fdir_rule *rule,
+				struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item = *in_out_item;
+
+
+	if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN) {
+		item = next_no_void_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_ANY) {
+			(void)memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter, support tcp/udp");
+			return -rte_errno;
+		}
+
+		*in_out_item = item;
+	}
+
+	return 0;
+}
+
+static int
+hinic_tunnel_inner_item_check_l4(const struct rte_flow_item **in_out_item,
+				const struct rte_flow_item pattern[],
+				struct hinic_fdir_rule *rule,
+				struct rte_flow_error *error)
+{
+	const struct rte_flow_item_tcp *tcp_spec;
+	const struct rte_flow_item_tcp *tcp_mask;
+	const struct rte_flow_item_udp *udp_spec;
+	const struct rte_flow_item_udp *udp_mask;
+	const struct rte_flow_item *item = *in_out_item;
+
+	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		/* Not supported last point for range */
+		if (item->last) {
+			memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				item, "Not supported last point for range");
+			return -rte_errno;
+		}
+
+		/* get the TCP/UDP info */
+		if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
+			/*
+			 * Only care about src & dst ports,
+			 * others should be masked.
+			 */
+			if (!item->mask) {
+				memset(rule, 0, sizeof(struct hinic_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter, support src, dst ports");
+				return -rte_errno;
+			}
+
+			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+			if (tcp_mask->hdr.sent_seq ||
+				tcp_mask->hdr.recv_ack ||
+				tcp_mask->hdr.data_off ||
+				tcp_mask->hdr.tcp_flags ||
+				tcp_mask->hdr.rx_win ||
+				tcp_mask->hdr.cksum ||
+				tcp_mask->hdr.tcp_urp) {
+				(void)memset(rule, 0,
+					sizeof(struct hinic_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter, support tcp");
+				return -rte_errno;
+			}
+
+			rule->mode = HINIC_FDIR_MODE_TCAM;
+			rule->mask.tunnel_flag = UINT16_MAX;
+			rule->mask.tunnel_inner_src_port_mask =
+							tcp_mask->hdr.src_port;
+			rule->mask.tunnel_inner_dst_port_mask =
+							tcp_mask->hdr.dst_port;
+			rule->mask.proto_mask = UINT16_MAX;
+
+			rule->hinic_fdir.proto = IP_HEADER_PROTOCOL_TYPE_TCP;
+			if (item->spec) {
+				tcp_spec =
+				(const struct rte_flow_item_tcp *)item->spec;
+				rule->hinic_fdir.tunnel_inner_src_port =
+							tcp_spec->hdr.src_port;
+				rule->hinic_fdir.tunnel_inner_dst_port =
+							tcp_spec->hdr.dst_port;
+			}
+		} else if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
+			/*
+			 * Only care about src & dst ports,
+			 * others should be masked.
+			 */
+			if (!item->mask) {
+				memset(rule, 0, sizeof(struct hinic_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter, support src, dst ports");
+				return -rte_errno;
+			}
+
+			udp_mask = (const struct rte_flow_item_udp *)item->mask;
+			if (udp_mask->hdr.dgram_len ||
+			    udp_mask->hdr.dgram_cksum) {
+				memset(rule, 0, sizeof(struct hinic_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter, support udp");
+				return -rte_errno;
+			}
+
+			rule->mode = HINIC_FDIR_MODE_TCAM;
+			rule->mask.tunnel_flag = UINT16_MAX;
+			rule->mask.tunnel_inner_src_port_mask =
+							udp_mask->hdr.src_port;
+			rule->mask.tunnel_inner_dst_port_mask =
+							udp_mask->hdr.dst_port;
+			rule->mask.proto_mask = UINT16_MAX;
+
+			rule->hinic_fdir.proto = IP_HEADER_PROTOCOL_TYPE_UDP;
+			if (item->spec) {
+				udp_spec =
+				(const struct rte_flow_item_udp *)item->spec;
+				rule->hinic_fdir.tunnel_inner_src_port =
+							udp_spec->hdr.src_port;
+				rule->hinic_fdir.tunnel_inner_dst_port =
+							udp_spec->hdr.dst_port;
+			}
+		} else if (item->type == RTE_FLOW_ITEM_TYPE_ANY) {
+			rule->mode = HINIC_FDIR_MODE_TCAM;
+			rule->mask.tunnel_flag = UINT16_MAX;
+		} else {
+			memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter, support tcp/udp");
+			return -rte_errno;
+		}
+
+		/* get next no void item */
+		*in_out_item = next_no_void_pattern(pattern, item);
+	}
+
+	return 0;
+}
+
+static int hinic_check_tcam_tunnel_item_ele(const struct rte_flow_item *item,
+					const struct rte_flow_item pattern[],
+					struct hinic_fdir_rule *rule,
+					struct rte_flow_error *error)
+{
+	if (hinic_normal_item_check_ether(&item, pattern, error) ||
+		hinic_normal_item_check_ip(&item, pattern, rule, error) ||
+		hinic_tunnel_item_check_l4(&item, pattern, rule, error) ||
+		hinic_tunnel_item_check_vxlan(&item, pattern, rule, error) ||
+		hinic_tunnel_inner_item_check_l4(&item, pattern, rule, error) ||
 		hinic_normal_item_check_end(item, rule, error))
 		return -rte_errno;
 
@@ -1172,8 +1414,107 @@ hinic_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 	return 0;
 }
 
+/**
+ * Parse the rule to see if it is a IP or MAC VLAN flow director rule.
+ * And get the flow director filter info BTW.
+ * UDP/TCP/SCTP PATTERN:
+ * The first not void item can be ETH or IPV4 or IPV6
+ * The second not void item must be IPV4 or IPV6 if the first one is ETH.
+ * The next not void item can be ANY/TCP/UDP
+ * ACTION:
+ * The first not void action should be QUEUE.
+ * The second not void optional action should be MARK,
+ * mark_id is a uint32_t number.
+ * The next not void action should be END.
+ * UDP/TCP pattern example:
+ * ITEM                 Spec	                       Mask
+ * ETH            NULL                                 NULL
+ * IPV4           src_addr  1.2.3.6                 0xFFFFFFFF
+ *                dst_addr  1.2.3.5                 0xFFFFFFFF
+ * UDP/TCP        src_port  80                      0xFFFF
+ *                dst_port  80                      0xFFFF
+ * END
+ * Other members in mask and spec should set to 0x00.
+ * Item->last should be NULL.
+ */
 static int
-hinic_parse_fdir_filter(struct rte_eth_dev *dev,
+hinic_parse_fdir_filter_tcam_normal(const struct rte_flow_attr *attr,
+			       const struct rte_flow_item pattern[],
+			       const struct rte_flow_action actions[],
+			       struct hinic_fdir_rule *rule,
+			       struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item = NULL;
+
+	if (hinic_check_filter_arg(attr, pattern, actions, error))
+		return -rte_errno;
+
+	if (hinic_check_tcam_normal_item_ele(item, pattern, rule, error))
+		return -rte_errno;
+
+	if (hinic_check_normal_attr_ele(attr, rule, error))
+		return -rte_errno;
+
+	if (hinic_check_normal_act_ele(item, actions, rule, error))
+		return -rte_errno;
+
+	return 0;
+}
+
+/**
+ * Parse the rule to see if it is a IP or MAC VLAN flow director rule.
+ * And get the flow director filter info BTW.
+ * UDP/TCP/SCTP PATTERN:
+ * The first not void item can be ETH or IPV4 or IPV6
+ * The second not void item must be IPV4 or IPV6 if the first one is ETH.
+ * The next not void item must be UDP
+ * The next not void item must be VXLAN(optional)
+ * The first not void item can be ETH or IPV4 or IPV6
+ * The next not void item could be ANY or UDP or TCP(optional)
+ * The next not void item must be END.
+ * ACTION:
+ * The first not void action should be QUEUE.
+ * The second not void optional action should be MARK,
+ * mark_id is a uint32_t number.
+ * The next not void action should be END.
+ * UDP/TCP pattern example:
+ * ITEM             Spec	                    Mask
+ * ETH            NULL                              NULL
+ * IPV4        src_addr  1.2.3.6                 0xFFFFFFFF
+ *             dst_addr  1.2.3.5                 0xFFFFFFFF
+ * UDP            NULL                              NULL
+ * VXLAN          NULL                              NULL
+ * UDP/TCP     src_port  80                      0xFFFF
+ *             dst_port  80                      0xFFFF
+ * END
+ * Other members in mask and spec should set to 0x00.
+ * Item->last should be NULL.
+ */
+static int
+hinic_parse_fdir_filter_tacm_tunnel(const struct rte_flow_attr *attr,
+			       const struct rte_flow_item pattern[],
+			       const struct rte_flow_action actions[],
+			       struct hinic_fdir_rule *rule,
+			       struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item = NULL;
+
+	if (hinic_check_filter_arg(attr, pattern, actions, error))
+		return -rte_errno;
+
+	if (hinic_check_tcam_tunnel_item_ele(item, pattern, rule, error))
+		return -rte_errno;
+
+	if (hinic_check_normal_attr_ele(attr, rule, error))
+		return -rte_errno;
+
+	if (hinic_check_normal_act_ele(item, actions, rule, error))
+		return -rte_errno;
+
+	return 0;
+}
+
+static int hinic_parse_fdir_filter(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
@@ -1182,11 +1523,22 @@ hinic_parse_fdir_filter(struct rte_eth_dev *dev,
 {
 	int ret;
 
-	ret = hinic_parse_fdir_filter_normal(attr, pattern,
-						actions, rule, error);
+	ret = hinic_parse_fdir_filter_normal(attr, pattern, actions,
+						rule, error);
+	if (!ret)
+		goto step_next;
+
+	ret = hinic_parse_fdir_filter_tcam_normal(attr, pattern, actions,
+						rule, error);
+	if (!ret)
+		goto step_next;
+
+	ret = hinic_parse_fdir_filter_tacm_tunnel(attr, pattern, actions,
+						rule, error);
 	if (ret)
 		return ret;
 
+step_next:
 	if (rule->queue >= dev->data->nb_rx_queues)
 		return -ENOTSUP;
 
@@ -1229,18 +1581,17 @@ static int hinic_flow_validate(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static inline int
-ntuple_ip_filter(struct rte_eth_ntuple_filter *filter,
-		 struct hinic_5tuple_filter_info *filter_info)
+static inline int ntuple_ip_filter(struct rte_eth_ntuple_filter *filter,
+		 struct hinic_5tuple_filter_info *hinic_filter_info)
 {
 	switch (filter->dst_ip_mask) {
 	case UINT32_MAX:
-		filter_info->dst_ip_mask = 0;
-		filter_info->dst_ip = filter->dst_ip;
+		hinic_filter_info->dst_ip_mask = 0;
+		hinic_filter_info->dst_ip = filter->dst_ip;
 		break;
 	case 0:
-		filter_info->dst_ip_mask = 1;
-		filter_info->dst_ip = 0;
+		hinic_filter_info->dst_ip_mask = 1;
+		hinic_filter_info->dst_ip = 0;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid dst_ip mask.");
@@ -1249,12 +1600,12 @@ ntuple_ip_filter(struct rte_eth_ntuple_filter *filter,
 
 	switch (filter->src_ip_mask) {
 	case UINT32_MAX:
-		filter_info->src_ip_mask = 0;
-		filter_info->src_ip = filter->src_ip;
+		hinic_filter_info->src_ip_mask = 0;
+		hinic_filter_info->src_ip = filter->src_ip;
 		break;
 	case 0:
-		filter_info->src_ip_mask = 1;
-		filter_info->src_ip = 0;
+		hinic_filter_info->src_ip_mask = 1;
+		hinic_filter_info->src_ip = 0;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid src_ip mask.");
@@ -1263,18 +1614,17 @@ ntuple_ip_filter(struct rte_eth_ntuple_filter *filter,
 	return 0;
 }
 
-static inline int
-ntuple_port_filter(struct rte_eth_ntuple_filter *filter,
-		   struct hinic_5tuple_filter_info *filter_info)
+static inline int ntuple_port_filter(struct rte_eth_ntuple_filter *filter,
+		   struct hinic_5tuple_filter_info *hinic_filter_info)
 {
 	switch (filter->dst_port_mask) {
 	case UINT16_MAX:
-		filter_info->dst_port_mask = 0;
-		filter_info->dst_port = filter->dst_port;
+		hinic_filter_info->dst_port_mask = 0;
+		hinic_filter_info->dst_port = filter->dst_port;
 		break;
 	case 0:
-		filter_info->dst_port_mask = 1;
-		filter_info->dst_port = 0;
+		hinic_filter_info->dst_port_mask = 1;
+		hinic_filter_info->dst_port = 0;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid dst_port mask.");
@@ -1283,12 +1633,12 @@ ntuple_port_filter(struct rte_eth_ntuple_filter *filter,
 
 	switch (filter->src_port_mask) {
 	case UINT16_MAX:
-		filter_info->src_port_mask = 0;
-		filter_info->src_port = filter->src_port;
+		hinic_filter_info->src_port_mask = 0;
+		hinic_filter_info->src_port = filter->src_port;
 		break;
 	case 0:
-		filter_info->src_port_mask = 1;
-		filter_info->src_port = 0;
+		hinic_filter_info->src_port_mask = 1;
+		hinic_filter_info->src_port = 0;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid src_port mask.");
@@ -1298,18 +1648,17 @@ ntuple_port_filter(struct rte_eth_ntuple_filter *filter,
 	return 0;
 }
 
-static inline int
-ntuple_proto_filter(struct rte_eth_ntuple_filter *filter,
-		    struct hinic_5tuple_filter_info *filter_info)
+static inline int ntuple_proto_filter(struct rte_eth_ntuple_filter *filter,
+		    struct hinic_5tuple_filter_info *hinic_filter_info)
 {
 	switch (filter->proto_mask) {
 	case UINT8_MAX:
-		filter_info->proto_mask = 0;
-		filter_info->proto = filter->proto;
+		hinic_filter_info->proto_mask = 0;
+		hinic_filter_info->proto = filter->proto;
 		break;
 	case 0:
-		filter_info->proto_mask = 1;
-		filter_info->proto = 0;
+		hinic_filter_info->proto_mask = 1;
+		hinic_filter_info->proto = 0;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid protocol mask.");
@@ -1319,8 +1668,7 @@ ntuple_proto_filter(struct rte_eth_ntuple_filter *filter,
 	return 0;
 }
 
-static inline int
-ntuple_filter_to_5tuple(struct rte_eth_ntuple_filter *filter,
+static inline int ntuple_filter_to_5tuple(struct rte_eth_ntuple_filter *filter,
 			struct hinic_5tuple_filter_info *filter_info)
 {
 	if (filter->queue >= HINIC_MAX_RX_QUEUE_NUM ||
@@ -1468,30 +1816,20 @@ static int hinic_set_vrrp_tcam(struct hinic_nic_dev *nic_dev)
  */
 void hinic_free_fdir_filter(struct hinic_nic_dev *nic_dev)
 {
-	struct hinic_filter_info *filter_info =
-		HINIC_DEV_PRIVATE_TO_FILTER_INFO(nic_dev);
+	(void)hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0, false);
 
-	if (filter_info->type_mask &
-	    (1 << HINIC_PKT_TYPE_FIND_ID(PKT_BGPD_DPORT_TYPE)))
-		hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_DPORT);
+	(void)hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_DPORT);
 
-	if (filter_info->type_mask &
-	    (1 << HINIC_PKT_TYPE_FIND_ID(PKT_BGPD_SPORT_TYPE)))
-		hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_SPORT);
+	(void)hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_SPORT);
 
-	if (filter_info->type_mask &
-	    (1 << HINIC_PKT_TYPE_FIND_ID(PKT_VRRP_TYPE)))
-		hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_VRRP);
+	(void)hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_VRRP);
 
-	if (filter_info->type_mask &
-	    (1 << HINIC_PKT_TYPE_FIND_ID(PKT_LACP_TYPE)))
-		hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_LACP);
+	(void)hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_LACP);
 
-	hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0, false);
+	(void)hinic_flush_tcam_rule(nic_dev->hwdev);
 }
 
-static int
-hinic_filter_info_init(struct hinic_5tuple_filter *filter,
+static int hinic_filter_info_init(struct hinic_5tuple_filter *filter,
 		       struct hinic_filter_info *filter_info)
 {
 	switch (filter->filter_info.proto) {
@@ -1544,10 +1882,8 @@ hinic_filter_info_init(struct hinic_5tuple_filter *filter,
 	return 0;
 }
 
-static int
-hinic_lookup_new_filter(struct hinic_5tuple_filter *filter,
-			struct hinic_filter_info *filter_info,
-			int *index)
+static int hinic_lookup_new_filter(struct hinic_5tuple_filter *filter,
+			struct hinic_filter_info *filter_info, int *index)
 {
 	int type_id;
 
@@ -1586,9 +1922,8 @@ hinic_lookup_new_filter(struct hinic_5tuple_filter *filter,
  *    - On success, zero.
  *    - On failure, a negative value.
  */
-static int
-hinic_add_5tuple_filter(struct rte_eth_dev *dev,
-			struct hinic_5tuple_filter *filter)
+static int hinic_add_5tuple_filter(struct rte_eth_dev *dev,
+				struct hinic_5tuple_filter *filter)
 {
 	struct hinic_filter_info *filter_info =
 		HINIC_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
@@ -1676,8 +2011,7 @@ hinic_add_5tuple_filter(struct rte_eth_dev *dev,
  * @param filter
  *  The pointer of the filter will be removed.
  */
-static void
-hinic_remove_5tuple_filter(struct rte_eth_dev *dev,
+static void hinic_remove_5tuple_filter(struct rte_eth_dev *dev,
 			   struct hinic_5tuple_filter *filter)
 {
 	struct hinic_filter_info *filter_info =
@@ -1929,7 +2263,6 @@ hinic_add_del_ethertype_filter(struct rte_eth_dev *dev,
 		default:
 			break;
 		}
-
 	} else {
 		ethertype_filter.pkt_proto = filter->ether_type;
 		i = hinic_ethertype_filter_lookup(filter_info,
@@ -1972,9 +2305,8 @@ hinic_add_del_ethertype_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int
-hinic_fdir_info_init(struct hinic_fdir_rule *rule,
-		     struct hinic_fdir_info *fdir_info)
+static int hinic_fdir_info_init(struct hinic_fdir_rule *rule,
+				struct hinic_fdir_info *fdir_info)
 {
 	switch (rule->mask.src_ipv4_mask) {
 	case UINT32_MAX:
@@ -2014,10 +2346,8 @@ hinic_fdir_info_init(struct hinic_fdir_rule *rule,
 	return 0;
 }
 
-static inline int
-hinic_add_del_fdir_filter(struct rte_eth_dev *dev,
-			  struct hinic_fdir_rule *rule,
-			  bool add)
+static inline int hinic_add_del_fdir_filter(struct rte_eth_dev *dev,
+					struct hinic_fdir_rule *rule, bool add)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	struct hinic_fdir_info fdir_info;
@@ -2057,6 +2387,352 @@ hinic_add_del_fdir_filter(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(INFO, "Del fdir filter succeed, flag: 0x%x, qid: 0x%x, key: 0x%x",
 				fdir_info.fdir_flag, fdir_info.qid,
 				fdir_info.fdir_key);
+	}
+
+	return 0;
+}
+
+static void tcam_translate_key_y(u8 *key_y, u8 *src_input, u8 *mask, u8 len)
+{
+	u8 idx;
+
+	for (idx = 0; idx < len; idx++)
+		key_y[idx] = src_input[idx] & mask[idx];
+}
+
+static void tcam_translate_key_x(u8 *key_x, u8 *key_y, u8 *mask, u8 len)
+{
+	u8 idx;
+
+	for (idx = 0; idx < len; idx++)
+		key_x[idx] = key_y[idx] ^ mask[idx];
+}
+
+static void tcam_key_calculate(struct tag_tcam_key *tcam_key,
+				struct tag_tcam_cfg_rule *fdir_tcam_rule)
+{
+	tcam_translate_key_y(fdir_tcam_rule->key.y,
+		(u8 *)(&tcam_key->key_info),
+		(u8 *)(&tcam_key->key_mask),
+		TCAM_FLOW_KEY_SIZE);
+	tcam_translate_key_x(fdir_tcam_rule->key.x,
+		fdir_tcam_rule->key.y,
+		(u8 *)(&tcam_key->key_mask),
+		TCAM_FLOW_KEY_SIZE);
+}
+
+static int hinic_fdir_tcam_info_init(struct rte_eth_dev *dev,
+				struct hinic_fdir_rule *rule,
+				struct tag_tcam_key *tcam_key,
+				struct tag_tcam_cfg_rule *fdir_tcam_rule)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	switch (rule->mask.dst_ipv4_mask) {
+	case UINT32_MAX:
+		tcam_key->key_info.ext_dip_h =
+			(rule->hinic_fdir.dst_ip >> 16) & 0xffffU;
+		tcam_key->key_info.ext_dip_l =
+			rule->hinic_fdir.dst_ip & 0xffffU;
+		tcam_key->key_mask.ext_dip_h =
+			(rule->mask.dst_ipv4_mask >> 16) & 0xffffU;
+		tcam_key->key_mask.ext_dip_l =
+			rule->mask.dst_ipv4_mask & 0xffffU;
+		break;
+
+	case 0:
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "invalid src_ip mask.");
+		return -EINVAL;
+	}
+
+	if (rule->mask.dst_port_mask > 0) {
+		tcam_key->key_info.dst_port = rule->hinic_fdir.dst_port;
+		tcam_key->key_mask.dst_port = rule->mask.dst_port_mask;
+	}
+
+	if (rule->mask.src_port_mask > 0) {
+		tcam_key->key_info.src_port = rule->hinic_fdir.src_port;
+		tcam_key->key_mask.src_port = rule->mask.src_port_mask;
+	}
+
+	switch (rule->mask.tunnel_flag) {
+	case UINT16_MAX:
+		tcam_key->key_info.tunnel_flag = FDIR_TCAM_TUNNEL_PACKET;
+		tcam_key->key_mask.tunnel_flag = UINT8_MAX;
+		break;
+
+	case 0:
+		tcam_key->key_info.tunnel_flag = FDIR_TCAM_NORMAL_PACKET;
+		tcam_key->key_mask.tunnel_flag = 0;
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "invalid tunnel flag mask.");
+		return -EINVAL;
+	}
+
+	if (rule->mask.tunnel_inner_dst_port_mask > 0) {
+		tcam_key->key_info.dst_port =
+					rule->hinic_fdir.tunnel_inner_dst_port;
+		tcam_key->key_mask.dst_port =
+					rule->mask.tunnel_inner_dst_port_mask;
+	}
+
+	if (rule->mask.tunnel_inner_src_port_mask > 0) {
+		tcam_key->key_info.src_port =
+					rule->hinic_fdir.tunnel_inner_src_port;
+		tcam_key->key_mask.src_port =
+					rule->mask.tunnel_inner_src_port_mask;
+	}
+
+	switch (rule->mask.proto_mask) {
+	case UINT16_MAX:
+		tcam_key->key_info.protocol = rule->hinic_fdir.proto;
+		tcam_key->key_mask.protocol = UINT8_MAX;
+		break;
+
+	case 0:
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "invalid tunnel flag mask.");
+		return -EINVAL;
+	}
+
+	tcam_key->key_mask.function_id = UINT16_MAX;
+
+	tcam_key->key_info.function_id = hinic_global_func_id(nic_dev->hwdev);
+
+	fdir_tcam_rule->data.qid = rule->queue;
+
+	tcam_key_calculate(tcam_key, fdir_tcam_rule);
+
+	return 0;
+}
+
+static inline struct hinic_tcam_filter *
+hinic_tcam_filter_lookup(struct hinic_tcam_filter_list *filter_list,
+			struct tag_tcam_key *key)
+{
+	struct hinic_tcam_filter *it;
+
+	TAILQ_FOREACH(it, filter_list, entries) {
+		if (memcmp(key, &it->tcam_key,
+			sizeof(struct tag_tcam_key)) == 0) {
+			return it;
+		}
+	}
+
+	return NULL;
+}
+
+static int hinic_lookup_new_tcam_filter(struct rte_eth_dev *dev,
+					struct hinic_tcam_info *tcam_info,
+					struct hinic_tcam_filter *tcam_filter,
+					u16 *tcam_index)
+{
+	int index;
+	int max_index;
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	if (hinic_func_type(nic_dev->hwdev) == TYPE_VF)
+		max_index = HINIC_VF_MAX_TCAM_FILTERS;
+	else
+		max_index = HINIC_PF_MAX_TCAM_FILTERS;
+
+	for (index = 0; index < max_index; index++) {
+		if (tcam_info->tcam_index_array[index] == 0)
+			break;
+	}
+
+	if (index == max_index) {
+		PMD_DRV_LOG(ERR, "function 0x%x tcam filters only support %d filter rules",
+			hinic_global_func_id(nic_dev->hwdev), max_index);
+		return -EINVAL;
+	}
+
+	tcam_filter->index = index;
+	*tcam_index = index;
+
+	return 0;
+}
+
+static int hinic_add_tcam_filter(struct rte_eth_dev *dev,
+				struct hinic_tcam_filter *tcam_filter,
+				struct tag_tcam_cfg_rule *fdir_tcam_rule)
+{
+	struct hinic_tcam_info *tcam_info =
+		HINIC_DEV_PRIVATE_TO_TCAM_INFO(dev->data->dev_private);
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	u16 index = 0;
+	u16 tcam_block_index = 0;
+	int rc;
+
+	if (hinic_lookup_new_tcam_filter(dev, tcam_info, tcam_filter, &index))
+		return -EINVAL;
+
+	if (tcam_info->tcam_rule_nums == 0) {
+		if (hinic_func_type(nic_dev->hwdev) == TYPE_VF) {
+			rc = hinic_alloc_tcam_block(nic_dev->hwdev,
+				HINIC_TCAM_BLOCK_TYPE_VF, &tcam_block_index);
+			if (rc != 0) {
+				PMD_DRV_LOG(ERR, "VF fdir filter tcam alloc block failed!");
+				return -EFAULT;
+			}
+		} else {
+			rc = hinic_alloc_tcam_block(nic_dev->hwdev,
+				HINIC_TCAM_BLOCK_TYPE_PF, &tcam_block_index);
+			if (rc != 0) {
+				PMD_DRV_LOG(ERR, "PF fdir filter tcam alloc block failed!");
+				return -EFAULT;
+			}
+		}
+
+		tcam_info->tcam_block_index = tcam_block_index;
+	} else {
+		tcam_block_index = tcam_info->tcam_block_index;
+	}
+
+	if (hinic_func_type(nic_dev->hwdev) == TYPE_VF) {
+		fdir_tcam_rule->index =
+			HINIC_PKT_VF_TCAM_INDEX_START(tcam_block_index) + index;
+	} else {
+		fdir_tcam_rule->index =
+			tcam_block_index * HINIC_PF_MAX_TCAM_FILTERS + index;
+	}
+
+	rc = hinic_add_tcam_rule(nic_dev->hwdev, fdir_tcam_rule);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR, "Fdir_tcam_rule add failed!");
+		return -EFAULT;
+	}
+
+	PMD_DRV_LOG(INFO, "Add fdir_tcam_rule function_id: 0x%x,"
+		"tcam_block_id: %d, index: %d, queue: %d, tcam_rule_nums: %d succeed",
+		hinic_global_func_id(nic_dev->hwdev), tcam_block_index,
+		fdir_tcam_rule->index, fdir_tcam_rule->data.qid,
+		tcam_info->tcam_rule_nums + 1);
+
+	if (tcam_info->tcam_rule_nums == 0) {
+		rc = hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0, true);
+		if (rc < 0) {
+			(void)hinic_del_tcam_rule(nic_dev->hwdev,
+						fdir_tcam_rule->index);
+			return rc;
+		}
+	}
+
+	TAILQ_INSERT_TAIL(&tcam_info->tcam_list, tcam_filter, entries);
+
+	tcam_info->tcam_index_array[index] = 1;
+	tcam_info->tcam_rule_nums++;
+
+	return 0;
+}
+
+static int hinic_del_tcam_filter(struct rte_eth_dev *dev,
+				struct hinic_tcam_filter *tcam_filter)
+{
+	struct hinic_tcam_info *tcam_info =
+		HINIC_DEV_PRIVATE_TO_TCAM_INFO(dev->data->dev_private);
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	u32 index = 0;
+	u16 tcam_block_index = tcam_info->tcam_block_index;
+	int rc;
+	u8 block_type = 0;
+
+	if (hinic_func_type(nic_dev->hwdev) == TYPE_VF) {
+		index = HINIC_PKT_VF_TCAM_INDEX_START(tcam_block_index) +
+			tcam_filter->index;
+		block_type = HINIC_TCAM_BLOCK_TYPE_VF;
+	} else {
+		index = tcam_block_index * HINIC_PF_MAX_TCAM_FILTERS +
+			tcam_filter->index;
+		block_type = HINIC_TCAM_BLOCK_TYPE_PF;
+	}
+
+	rc = hinic_del_tcam_rule(nic_dev->hwdev, index);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR, "fdir_tcam_rule del failed!");
+		return -EFAULT;
+	}
+
+	PMD_DRV_LOG(INFO, "Del fdir_tcam_rule function_id: 0x%x, "
+		"tcam_block_id: %d, index: %d, tcam_rule_nums: %d succeed",
+		hinic_global_func_id(nic_dev->hwdev), tcam_block_index, index,
+		tcam_info->tcam_rule_nums - 1);
+
+	TAILQ_REMOVE(&tcam_info->tcam_list, tcam_filter, entries);
+
+	tcam_info->tcam_index_array[tcam_filter->index] = 0;
+
+	rte_free(tcam_filter);
+
+	tcam_info->tcam_rule_nums--;
+
+	if (tcam_info->tcam_rule_nums == 0) {
+		(void)hinic_free_tcam_block(nic_dev->hwdev, block_type,
+					&tcam_block_index);
+	}
+
+	return 0;
+}
+
+static int hinic_add_del_tcam_fdir_filter(struct rte_eth_dev *dev,
+					struct hinic_fdir_rule *rule, bool add)
+{
+	struct hinic_tcam_info *tcam_info =
+		HINIC_DEV_PRIVATE_TO_TCAM_INFO(dev->data->dev_private);
+	struct hinic_tcam_filter *tcam_filter;
+	struct tag_tcam_cfg_rule fdir_tcam_rule;
+	struct tag_tcam_key tcam_key;
+	int ret;
+
+	memset(&fdir_tcam_rule, 0, sizeof(struct tag_tcam_cfg_rule));
+	memset((void *)&tcam_key, 0, sizeof(struct tag_tcam_key));
+
+	ret = hinic_fdir_tcam_info_init(dev, rule, &tcam_key, &fdir_tcam_rule);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Init hiovs fdir info failed!");
+		return ret;
+	}
+
+	tcam_filter = hinic_tcam_filter_lookup(&tcam_info->tcam_list,
+						&tcam_key);
+	if (tcam_filter != NULL && add) {
+		PMD_DRV_LOG(ERR, "Filter exists.");
+		return -EEXIST;
+	}
+	if (tcam_filter == NULL && !add) {
+		PMD_DRV_LOG(ERR, "Filter doesn't exist.");
+		return -ENOENT;
+	}
+
+	if (add) {
+		tcam_filter = rte_zmalloc("hiovs_5tuple_filter",
+				sizeof(struct hinic_tcam_filter), 0);
+		if (tcam_filter == NULL)
+			return -ENOMEM;
+		(void)rte_memcpy(&tcam_filter->tcam_key,
+				 &tcam_key, sizeof(struct tag_tcam_key));
+		tcam_filter->queue = fdir_tcam_rule.data.qid;
+
+		ret = hinic_add_tcam_filter(dev, tcam_filter, &fdir_tcam_rule);
+		if (ret < 0) {
+			rte_free(tcam_filter);
+			return ret;
+		}
+
+		rule->tcam_index = fdir_tcam_rule.index;
+
+	} else {
+		PMD_DRV_LOG(ERR, "Begin to hiovs_del_tcam_filter");
+		ret = hinic_del_tcam_filter(dev, tcam_filter);
+		if (ret < 0)
+			return ret;
 	}
 
 	return 0;
@@ -2158,7 +2834,16 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 	ret = hinic_parse_fdir_filter(dev, attr, pattern,
 				      actions, &fdir_rule, error);
 	if (!ret) {
-		ret = hinic_add_del_fdir_filter(dev, &fdir_rule, TRUE);
+		if (fdir_rule.mode == HINIC_FDIR_MODE_NORMAL) {
+			ret = hinic_add_del_fdir_filter(dev,
+					&fdir_rule, TRUE);
+		} else if (fdir_rule.mode == HINIC_FDIR_MODE_TCAM) {
+			ret = hinic_add_del_tcam_fdir_filter(dev,
+					&fdir_rule, TRUE);
+		}  else {
+			PMD_DRV_LOG(INFO, "flow fdir rule create failed, rule mode wrong");
+			goto out;
+		}
 		if (!ret) {
 			fdir_rule_ptr = rte_zmalloc("hinic_fdir_rule",
 				sizeof(struct hinic_fdir_rule_ele), 0);
@@ -2187,9 +2872,8 @@ out:
 }
 
 /* Destroy a flow rule on hinic. */
-static int hinic_flow_destroy(struct rte_eth_dev *dev,
-			      struct rte_flow *flow,
-			      struct rte_flow_error *error)
+static int hinic_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
+				struct rte_flow_error *error)
 {
 	int ret;
 	struct rte_flow *pmd_flow = flow;
@@ -2235,7 +2919,15 @@ static int hinic_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&fdir_rule,
 			&fdir_rule_ptr->filter_info,
 			sizeof(struct hinic_fdir_rule));
-		ret = hinic_add_del_fdir_filter(dev, &fdir_rule, FALSE);
+		if (fdir_rule.mode == HINIC_FDIR_MODE_NORMAL) {
+			ret = hinic_add_del_fdir_filter(dev, &fdir_rule, FALSE);
+		} else if (fdir_rule.mode == HINIC_FDIR_MODE_TCAM) {
+			ret = hinic_add_del_tcam_fdir_filter(dev, &fdir_rule,
+								FALSE);
+		} else {
+			PMD_DRV_LOG(ERR, "FDIR Filter type is wrong!");
+			ret = -EINVAL;
+		}
 		if (!ret) {
 			TAILQ_REMOVE(&nic_dev->filter_fdir_rule_list,
 				fdir_rule_ptr, entries);
@@ -2318,8 +3010,16 @@ static void hinic_clear_all_ethertype_filter(struct rte_eth_dev *dev)
 static void hinic_clear_all_fdir_filter(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct hinic_tcam_info *tcam_info =
+		HINIC_DEV_PRIVATE_TO_TCAM_INFO(dev->data->dev_private);
+	struct hinic_tcam_filter *tcam_filter_ptr;
+
+	while ((tcam_filter_ptr = TAILQ_FIRST(&tcam_info->tcam_list)))
+		(void)hinic_del_tcam_filter(dev, tcam_filter_ptr);
 
 	(void)hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0, false);
+
+	(void)hinic_flush_tcam_rule(nic_dev->hwdev);
 }
 
 static void hinic_filterlist_flush(struct rte_eth_dev *dev)
@@ -2377,9 +3077,18 @@ static int hinic_flow_flush(struct rte_eth_dev *dev,
 	return 0;
 }
 
+void hinic_destroy_fdir_filter(struct rte_eth_dev *dev)
+{
+	hinic_clear_all_ntuple_filter(dev);
+	hinic_clear_all_ethertype_filter(dev);
+	hinic_clear_all_fdir_filter(dev);
+	hinic_filterlist_flush(dev);
+}
+
 const struct rte_flow_ops hinic_flow_ops = {
 	.validate = hinic_flow_validate,
 	.create = hinic_flow_create,
 	.destroy = hinic_flow_destroy,
 	.flush = hinic_flow_flush,
 };
+

@@ -1222,7 +1222,7 @@ static void hinic_dev_stop(struct rte_eth_dev *dev)
 	/* clean root context */
 	hinic_free_qp_ctxts(nic_dev->hwdev);
 
-	hinic_free_fdir_filter(nic_dev);
+	hinic_destroy_fdir_filter(dev);
 
 	/* free mbuf */
 	hinic_free_all_rx_mbuf(dev);
@@ -2946,6 +2946,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 	struct rte_ether_addr *eth_addr;
 	struct hinic_nic_dev *nic_dev;
 	struct hinic_filter_info *filter_info;
+	struct hinic_tcam_info *tcam_info;
 	u32 mac_size;
 	int rc;
 
@@ -3035,9 +3036,12 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 
 	/* initialize filter info */
 	filter_info = &nic_dev->filter;
+	tcam_info = &nic_dev->tcam;
 	memset(filter_info, 0, sizeof(struct hinic_filter_info));
+	memset(tcam_info, 0, sizeof(struct hinic_tcam_info));
 	/* initialize 5tuple filter list */
 	TAILQ_INIT(&filter_info->fivetuple_list);
+	TAILQ_INIT(&tcam_info->tcam_list);
 	TAILQ_INIT(&nic_dev->filter_ntuple_list);
 	TAILQ_INIT(&nic_dev->filter_ethertype_list);
 	TAILQ_INIT(&nic_dev->filter_fdir_rule_list);

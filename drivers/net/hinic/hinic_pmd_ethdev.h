@@ -95,20 +95,113 @@ struct hinic_hw_fdir_mask {
 	uint32_t dst_ipv4_mask;
 	uint16_t src_port_mask;
 	uint16_t dst_port_mask;
+	uint16_t proto_mask;
+	uint16_t tunnel_flag;
+	uint16_t tunnel_inner_src_port_mask;
+	uint16_t tunnel_inner_dst_port_mask;
 };
 
 /* Flow Director attribute */
 struct hinic_atr_input {
-	u32 dst_ip;
-	u32 src_ip;
-	u16 src_port;
-	u16 dst_port;
+	uint32_t dst_ip;
+	uint32_t src_ip;
+	uint16_t src_port;
+	uint16_t dst_port;
+	uint16_t proto;
+	uint16_t tunnel_flag;
+	uint16_t tunnel_inner_src_port;
+	uint16_t tunnel_inner_dst_port;
+};
+
+enum hinic_fdir_mode {
+	HINIC_FDIR_MODE_NORMAL      = 0,
+	HINIC_FDIR_MODE_TCAM        = 1,
+};
+
+#define HINIC_PF_MAX_TCAM_FILTERS	1024
+#define HINIC_VF_MAX_TCAM_FILTERS	128
+#define HINIC_SUPPORT_PF_MAX_NUM	4
+#define HINIC_TOTAL_PF_MAX_NUM		16
+#define HINIC_SUPPORT_VF_MAX_NUM	32
+#define HINIC_TCAM_BLOCK_TYPE_PF	0 /* 1024 tcam index of a block */
+#define HINIC_TCAM_BLOCK_TYPE_VF	1 /* 128 tcam index of a block */
+
+#define HINIC_PKT_VF_TCAM_INDEX_START(block_index)  \
+		(HINIC_PF_MAX_TCAM_FILTERS * HINIC_SUPPORT_PF_MAX_NUM + \
+		HINIC_VF_MAX_TCAM_FILTERS * (block_index))
+
+TAILQ_HEAD(hinic_tcam_filter_list, hinic_tcam_filter);
+
+struct hinic_tcam_info {
+	struct hinic_tcam_filter_list tcam_list;
+	u8 tcam_index_array[HINIC_PF_MAX_TCAM_FILTERS];
+	u16 tcam_block_index;
+	u16 tcam_rule_nums;
+};
+
+struct tag_tcam_key_mem {
+#if (RTE_BYTE_ORDER == RTE_BIG_ENDIAN)
+
+		u32 rsvd0:16;
+		u32 function_id:16;
+
+		u32 protocol:8;
+		/*
+		 * tunnel packet, mask must be 0xff, spec value is 1;
+		 * normal packet, mask must be 0, spec value is 0;
+		 * if tunnal packet, ucode use
+		 * sip/dip/protocol/src_port/dst_dport from inner packet
+		 */
+		u32 tunnel_flag:8;
+		u32 sip_h:16;
+
+		u32 sip_l:16;
+		u32 dip_h:16;
+
+		u32 dip_l:16;
+		u32 src_port:16;
+
+		u32 dst_port:16;
+		/*
+		 * tunnel packet and normal packet,
+		 * ext_dip mask must be 0xffffffff
+		 */
+		u32 ext_dip_h:16;
+		u32 ext_dip_l:16;
+		u32 rsvd2:16;
+#else
+		u32 function_id:16;
+		u32 rsvd0:16;
+
+		u32 sip_h:16;
+		u32 tunnel_flag:8;
+		u32 protocol:8;
+
+		u32 dip_h:16;
+		u32 sip_l:16;
+
+		u32 src_port:16;
+		u32 dip_l:16;
+
+		u32 ext_dip_h:16;
+		u32 dst_port:16;
+
+		u32 rsvd2:16;
+		u32 ext_dip_l:16;
+#endif
+};
+
+struct tag_tcam_key {
+	struct tag_tcam_key_mem key_info;
+	struct tag_tcam_key_mem key_mask;
 };
 
 struct hinic_fdir_rule {
 	struct hinic_hw_fdir_mask mask;
 	struct hinic_atr_input hinic_fdir; /* key of fdir filter */
 	uint8_t queue; /* queue assigned when matched */
+	enum hinic_fdir_mode mode; /* fdir type */
+	u16 tcam_index;
 };
 
 /* ntuple filter list structure */
@@ -127,6 +220,13 @@ struct hinic_ethertype_filter_ele {
 struct hinic_fdir_rule_ele {
 	TAILQ_ENTRY(hinic_fdir_rule_ele) entries;
 	struct hinic_fdir_rule filter_info;
+};
+
+struct hinic_tcam_filter {
+	TAILQ_ENTRY(hinic_tcam_filter) entries;
+	uint16_t index; /* tcam index */
+	struct tag_tcam_key tcam_key;
+	uint16_t queue; /* rx queue assigned to */
 };
 
 struct rte_flow {
@@ -181,6 +281,7 @@ struct hinic_nic_dev {
 	u32 rx_csum_en;
 
 	struct hinic_filter_info    filter;
+	struct hinic_tcam_info      tcam;
 	struct hinic_ntuple_filter_list filter_ntuple_list;
 	struct hinic_ethertype_filter_list filter_ethertype_list;
 	struct hinic_fdir_rule_filter_list filter_fdir_rule_list;
@@ -189,4 +290,5 @@ struct hinic_nic_dev {
 
 void hinic_free_fdir_filter(struct hinic_nic_dev *nic_dev);
 
+void hinic_destroy_fdir_filter(struct rte_eth_dev *dev);
 #endif /* _HINIC_PMD_ETHDEV_H_ */
