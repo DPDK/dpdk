@@ -529,7 +529,7 @@ hns3_cmd_init(struct hns3_hw *hw)
 	return 0;
 
 err_cmd_init:
-	hns3_cmd_uninit(hw);
+	rte_atomic16_set(&hw->reset.disable_cmd, 1);
 	return ret;
 }
 

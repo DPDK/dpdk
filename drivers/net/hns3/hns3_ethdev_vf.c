@@ -1486,11 +1486,9 @@ err_get_config:
 	hns3_intr_unregister(&pci_dev->intr_handle, hns3vf_interrupt_handler,
 			     eth_dev);
 err_intr_callback_register:
-	hns3_cmd_uninit(hw);
-
 err_cmd_init:
+	hns3_cmd_uninit(hw);
 	hns3_cmd_destroy_queue(hw);
-
 err_cmd_init_queue:
 	hw->io_base = NULL;
 
@@ -2104,7 +2102,7 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 	ret = hns3_cmd_init(hw);
 	if (ret) {
 		hns3_err(hw, "Failed to init cmd: %d", ret);
-		goto err_cmd_init;
+		return ret;
 	}
 
 	if (hw->reset.level == HNS3_VF_FULL_RESET) {
@@ -2124,22 +2122,16 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 	ret = hns3_reset_all_queues(hns);
 	if (ret) {
 		hns3_err(hw, "Failed to reset all queues: %d", ret);
-		goto err_init;
+		return ret;
 	}
 
 	ret = hns3vf_init_hardware(hns);
 	if (ret) {
 		hns3_err(hw, "Failed to init hardware: %d", ret);
-		goto err_init;
+		return ret;
 	}
 
 	return 0;
-
-err_cmd_init:
-	hns3vf_set_bus_master(pci_dev, false);
-err_init:
-	hns3_cmd_uninit(hw);
-	return ret;
 }
 
 static const struct eth_dev_ops hns3vf_eth_dev_ops = {

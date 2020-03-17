@@ -4126,13 +4126,10 @@ err_get_config:
 	rte_intr_disable(&pci_dev->intr_handle);
 	hns3_intr_unregister(&pci_dev->intr_handle, hns3_interrupt_handler,
 			     eth_dev);
-
 err_intr_callback_register:
-	hns3_cmd_uninit(hw);
-
 err_cmd_init:
+	hns3_cmd_uninit(hw);
 	hns3_cmd_destroy_queue(hw);
-
 err_cmd_init_queue:
 	hw->io_base = NULL;
 
@@ -4610,31 +4607,24 @@ hns3_reinit_dev(struct hns3_adapter *hns)
 	ret = hns3_reset_all_queues(hns);
 	if (ret) {
 		hns3_err(hw, "Failed to reset all queues: %d", ret);
-		goto err_init;
+		return ret;
 	}
 
 	ret = hns3_init_hardware(hns);
 	if (ret) {
 		hns3_err(hw, "Failed to init hardware: %d", ret);
-		goto err_init;
+		return ret;
 	}
 
 	ret = hns3_enable_hw_error_intr(hns, true);
 	if (ret) {
 		hns3_err(hw, "fail to enable hw error interrupts: %d",
 			     ret);
-		goto err_mac_init;
+		return ret;
 	}
 	hns3_info(hw, "Reset done, driver initialization finished.");
 
 	return 0;
-
-err_mac_init:
-	hns3_uninit_umv_space(hw);
-err_init:
-	hns3_cmd_uninit(hw);
-
-	return ret;
 }
 
 static bool
