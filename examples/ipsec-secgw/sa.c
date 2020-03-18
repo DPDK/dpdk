@@ -669,9 +669,11 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			if (status->status < 0)
 				return;
 			fb = ipsec_get_fallback_session(rule);
-			if (strcmp(tokens[ti], "lookaside-none") == 0) {
+			if (strcmp(tokens[ti], "lookaside-none") == 0)
 				fb->type = RTE_SECURITY_ACTION_TYPE_NONE;
-			} else {
+			else if (strcmp(tokens[ti], "cpu-crypto") == 0)
+				fb->type = RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO;
+			else {
 				APP_CHECK(0, status, "unrecognized fallback "
 					"type %s.", tokens[ti]);
 				return;

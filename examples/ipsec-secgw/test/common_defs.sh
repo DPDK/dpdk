@@ -51,6 +51,13 @@ select_mode()
 		SGW_CFG_XPRM="${SGW_CFG_XPRM} ${CRYPTO_PRIM_TYPE}"
 	fi
 
+	# check if fallback type is needed
+	if [[ "${MODE}" == *fallback* ]]; then
+		if [[ -n "${CRYPTO_FLBK_TYPE}" ]]; then
+			echo "${CRYPTO_FLBK_TYPE} is enabled"
+		fi
+	fi
+
 	#make linux to generate fragmented packets
 	if [[ -n "${MULTI_SEG_TEST}" && -n "${SGW_CMD_XPRM}" ]]; then
 		echo "multi-segment test is enabled"
@@ -58,6 +65,11 @@ select_mode()
 		PING_LEN=5000
 		MTU_LEN=1500
 	else
+		if [[ -z "${MULTI_SEG_TEST}" && "${MODE}" == *fallback* ]]; then
+			echo "MULTI_SEG_TEST environment variable needs to be \
+set for ${MODE} test"
+			exit 127
+		fi
 		PING_LEN=${DEF_PING_LEN}
 		MTU_LEN=${DEF_MTU_LEN}
 	fi
