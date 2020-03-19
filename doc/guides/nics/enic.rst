@@ -14,7 +14,7 @@ How to obtain ENIC PMD integrated DPDK
 --------------------------------------
 
 ENIC PMD support is integrated into the DPDK suite. dpdk-<version>.tar.gz
-should be downloaded from http://core.dpdk.org/download/
+should be downloaded from https://core.dpdk.org/download/
 
 
 Configuration information

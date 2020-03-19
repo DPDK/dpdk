@@ -1128,4 +1128,4 @@ Asymmetric Crypto Device API
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The cryptodev Library API is described in the
-`DPDK API Reference <http://doc.dpdk.org/api/>`_
+`DPDK API Reference <https://doc.dpdk.org/api/>`_

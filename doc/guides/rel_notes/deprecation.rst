@@ -43,7 +43,7 @@ Deprecation Notices
   kernel module to the dpdk-kmods repository in the /linux/igb_uio/ directory
   in 20.11.
   Minutes of Technical Board Meeting of `2019-11-06
-  <http://mails.dpdk.org/archives/dev/2019-November/151763.html>`_.
+  <https://mails.dpdk.org/archives/dev/2019-November/151763.html>`_.
 
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is

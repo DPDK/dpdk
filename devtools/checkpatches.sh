@@ -78,6 +78,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# links must prefer https over http
+	awk -v FOLDERS='doc' \
+		-v EXPRESSIONS='http://.*dpdk.org' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using non https link to dpdk.org' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	return $res
 }
 

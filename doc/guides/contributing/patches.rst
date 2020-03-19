@@ -28,9 +28,9 @@ The DPDK development process has the following features:
 * All sub-repositories are merged into main repository for ``-rc1`` and ``-rc2`` versions of the release.
 * After the ``-rc2`` release all patches should target the main repository.
 
-The mailing list for DPDK development is `dev@dpdk.org <http://mails.dpdk.org/archives/dev/>`_.
-Contributors will need to `register for the mailing list <http://mails.dpdk.org/listinfo/dev>`_ in order to submit patches.
-It is also worth registering for the DPDK `Patchwork <http://patches.dpdk.org/project/dpdk/list/>`_
+The mailing list for DPDK development is `dev@dpdk.org <https://mails.dpdk.org/archives/dev/>`_.
+Contributors will need to `register for the mailing list <https://mails.dpdk.org/listinfo/dev>`_ in order to submit patches.
+It is also worth registering for the DPDK `Patchwork <https://patches.dpdk.org/project/dpdk/list/>`_
 
 If you are using the GitHub service, you can link your repository to
 the ``travis-ci.org`` build service.  When you push patches to your GitHub
@@ -130,12 +130,12 @@ The source code can be cloned using either of the following:
 main repository::
 
     git clone git://dpdk.org/dpdk
-    git clone http://dpdk.org/git/dpdk
+    git clone https://dpdk.org/git/dpdk
 
-sub-repositories (`list <http://git.dpdk.org/next>`_)::
+sub-repositories (`list <https://git.dpdk.org/next>`_)::
 
     git clone git://dpdk.org/next/dpdk-next-*
-    git clone http://dpdk.org/git/next/dpdk-next-*
+    git clone https://dpdk.org/git/next/dpdk-next-*
 
 Make your Changes
 -----------------
@@ -320,7 +320,7 @@ Patch for Stable Releases
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All fix patches to the master branch that are candidates for backporting
-should also be CCed to the `stable@dpdk.org <http://mails.dpdk.org/listinfo/stable>`_
+should also be CCed to the `stable@dpdk.org <https://mails.dpdk.org/listinfo/stable>`_
 mailing list.
 In the commit message body the Cc: stable@dpdk.org should be inserted as follows::
 
@@ -565,7 +565,7 @@ If the patch is in relation to a previous email thread you can add it to the sam
    git send-email --to dev@dpdk.org --in-reply-to <1234-foo@bar.com> 000*.patch
 
 The Message ID can be found in the raw text of emails or at the top of each Patchwork patch,
-`for example <http://patches.dpdk.org/patch/7646/>`_.
+`for example <https://patches.dpdk.org/patch/7646/>`_.
 Shallow threading (``--thread --no-chain-reply-to``) is preferred for a patch series.
 
 Once submitted your patches will appear on the mailing list and in Patchwork.

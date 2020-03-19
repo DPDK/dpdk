@@ -72,7 +72,7 @@ These examples can be compiled and run as described in :ref:`compiling_sample_ap
 .. note::
 
    To install a copy of the DPDK compiled using gcc, please download the
-   official DPDK package from http://core.dpdk.org/download/ and install manually using
+   official DPDK package from https://core.dpdk.org/download/ and install manually using
    the instructions given in the next chapter, :ref:`building_from_source`
 
 An example application can therefore be copied to a user's home directory and
