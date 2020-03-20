@@ -1168,6 +1168,34 @@ test_ipsec_dump_buffers(struct ipsec_unitest_params *ut_params, int i)
 }
 
 static void
+destroy_dummy_sec_session(struct ipsec_unitest_params *ut,
+	uint32_t j)
+{
+	rte_security_session_destroy(&dummy_sec_ctx,
+					ut->ss[j].security.ses);
+	ut->ss[j].security.ctx = NULL;
+}
+
+static void
+destroy_crypto_session(struct ipsec_unitest_params *ut,
+	uint8_t crypto_dev, uint32_t j)
+{
+	rte_cryptodev_sym_session_clear(crypto_dev, ut->ss[j].crypto.ses);
+	rte_cryptodev_sym_session_free(ut->ss[j].crypto.ses);
+	memset(&ut->ss[j], 0, sizeof(ut->ss[j]));
+}
+
+static void
+destroy_session(struct ipsec_unitest_params *ut,
+	uint8_t crypto_dev, uint32_t j)
+{
+	if (ut->ss[j].type == RTE_SECURITY_ACTION_TYPE_NONE)
+		return destroy_crypto_session(ut, crypto_dev, j);
+	else
+		return destroy_dummy_sec_session(ut, j);
+}
+
+static void
 destroy_sa(uint32_t j)
 {
 	struct ipsec_unitest_params *ut = &unittest_params;
@@ -1175,9 +1203,8 @@ destroy_sa(uint32_t j)
 
 	rte_ipsec_sa_fini(ut->ss[j].sa);
 	rte_free(ut->ss[j].sa);
-	rte_cryptodev_sym_session_clear(ts->valid_dev, ut->ss[j].crypto.ses);
-	rte_cryptodev_sym_session_free(ut->ss[j].crypto.ses);
-	memset(&ut->ss[j], 0, sizeof(ut->ss[j]));
+
+	destroy_session(ut, ts->valid_dev, j);
 }
 
 static int
