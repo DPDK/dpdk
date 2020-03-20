@@ -3021,18 +3021,21 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 	/* Build a new flow. */
 	if (mark_id != MLX5_DEFAULT_COPY_ID) {
 		items[0] = (struct rte_flow_item){
-			.type = MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+			.type = (enum rte_flow_item_type)
+				MLX5_RTE_FLOW_ITEM_TYPE_TAG,
 			.spec = &tag_spec,
 		};
 		items[1] = (struct rte_flow_item){
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		};
 		actions[0] = (struct rte_flow_action){
-			.type = MLX5_RTE_FLOW_ACTION_TYPE_MARK,
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_MARK,
 			.conf = &ftag,
 		};
 		actions[1] = (struct rte_flow_action){
-			.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 			.conf = &cp_mreg,
 		};
 		actions[2] = (struct rte_flow_action){
@@ -3049,7 +3052,8 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		};
 		actions[0] = (struct rte_flow_action){
-			.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 			.conf = &cp_mreg,
 		};
 		actions[1] = (struct rte_flow_action){
@@ -3456,7 +3460,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	}
 	/* Add set meta action and end action for the Rx flow. */
 	tag_action = actions_rx;
-	tag_action->type = MLX5_RTE_FLOW_ACTION_TYPE_TAG;
+	tag_action->type = (enum rte_flow_action_type)
+			   MLX5_RTE_FLOW_ACTION_TYPE_TAG;
 	actions_rx++;
 	rte_memcpy(actions_rx, actions, sizeof(struct rte_flow_action));
 	actions_rx++;
@@ -3469,7 +3474,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	rte_memcpy(actions_tx, actions, sizeof(struct rte_flow_action));
 	addr = (void *)&pattern_tx[2];
 	item = pattern_tx;
-	item->type = MLX5_RTE_FLOW_ITEM_TYPE_TAG;
+	item->type = (enum rte_flow_item_type)
+		     MLX5_RTE_FLOW_ITEM_TYPE_TAG;
 	tag_item = (void *)addr;
 	tag_item->data = *flow_id;
 	tag_item->id = mlx5_flow_get_reg_id(dev, MLX5_HAIRPIN_TX, 0, NULL);
@@ -3606,7 +3612,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_METER:
 			/* Add the extra tag action first. */
 			tag_action = actions_pre;
-			tag_action->type = MLX5_RTE_FLOW_ACTION_TYPE_TAG;
+			tag_action->type = (enum rte_flow_action_type)
+					   MLX5_RTE_FLOW_ACTION_TYPE_TAG;
 			actions_pre++;
 			action_cur = &actions_pre;
 			break;
@@ -3667,7 +3674,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 				 * Convert to internal match item, it is used
 				 * for vlan push and set vid.
 				 */
-				sfx_items->type = MLX5_RTE_FLOW_ITEM_TYPE_VLAN;
+				sfx_items->type = (enum rte_flow_item_type)
+						  MLX5_RTE_FLOW_ITEM_TYPE_VLAN;
 				sfx_items++;
 			}
 			break;
@@ -3682,7 +3690,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	tag_spec->id = mlx5_flow_get_reg_id(dev, MLX5_MTR_SFX, 0, &error);
 	tag_mask = tag_spec + 1;
 	tag_mask->data = 0xffffff00;
-	tag_item->type = MLX5_RTE_FLOW_ITEM_TYPE_TAG;
+	tag_item->type = (enum rte_flow_item_type)
+			 MLX5_RTE_FLOW_ITEM_TYPE_TAG;
 	tag_item->spec = tag_spec;
 	tag_item->last = NULL;
 	tag_item->mask = tag_mask;
@@ -3785,7 +3794,8 @@ flow_mreg_split_qrss_prep(struct rte_eth_dev *dev,
 		/* Construct new actions array. */
 		/* Replace QUEUE/RSS action. */
 		split_actions[qrss_idx] = (struct rte_flow_action){
-			.type = MLX5_RTE_FLOW_ACTION_TYPE_TAG,
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_TAG,
 			.conf = set_tag,
 		};
 	}
@@ -3848,7 +3858,8 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
 		memcpy(ext_actions, actions, sizeof(*ext_actions) * encap_idx);
 	if (encap_idx == actions_n - 1) {
 		ext_actions[actions_n - 1] = (struct rte_flow_action){
-			.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 			.conf = cp_mreg,
 		};
 		ext_actions[actions_n] = (struct rte_flow_action){
@@ -3856,7 +3867,8 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
 		};
 	} else {
 		ext_actions[encap_idx] = (struct rte_flow_action){
-			.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 			.conf = cp_mreg,
 		};
 		memcpy(ext_actions + encap_idx + 1, actions + encap_idx,
@@ -3973,6 +3985,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 						RTE_FLOW_ACTION_TYPE_VOID;
 		else
 			ext_actions[qrss - actions].type =
+						(enum rte_flow_action_type)
 						MLX5_RTE_FLOW_ACTION_TYPE_TAG;
 		/*
 		 * Create the new actions list with removed Q/RSS action
@@ -4024,7 +4037,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		};
 		struct rte_flow_item q_items[] = {
 			{
-				.type = MLX5_RTE_FLOW_ITEM_TYPE_TAG,
+				.type = (enum rte_flow_item_type)
+					MLX5_RTE_FLOW_ITEM_TYPE_TAG,
 				.spec = &q_tag_spec,
 				.last = NULL,
 				.mask = NULL,
@@ -4830,7 +4844,8 @@ mlx5_ctrl_flow_source_queue(struct rte_eth_dev *dev,
 	};
 	struct rte_flow_item items[] = {
 		{
-			.type = MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+			.type = (enum rte_flow_item_type)
+				MLX5_RTE_FLOW_ITEM_TYPE_TX_QUEUE,
 			.spec = &queue_spec,
 			.last = NULL,
 			.mask = &queue_mask,
@@ -6100,7 +6115,8 @@ mlx5_flow_discover_mreg_c(struct rte_eth_dev *dev)
 		};
 		struct rte_flow_action actions[] = {
 			[0] = {
-				.type = MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+				.type = (enum rte_flow_action_type)
+					MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
 				.conf = &(struct mlx5_flow_action_copy_mreg){
 					.src = REG_C_1,
 					.dst = idx,
