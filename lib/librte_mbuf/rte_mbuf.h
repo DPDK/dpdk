@@ -1335,10 +1335,10 @@ rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 	if (likely(rte_mbuf_refcnt_read(m) == 1)) {
 
 		if (!RTE_MBUF_DIRECT(m)) {
-			if (!RTE_MBUF_HAS_EXTBUF(m) ||
-			    !RTE_MBUF_HAS_PINNED_EXTBUF(m))
-				rte_pktmbuf_detach(m);
-			else if (__rte_pktmbuf_pinned_extbuf_decref(m))
+			rte_pktmbuf_detach(m);
+			if (RTE_MBUF_HAS_EXTBUF(m) &&
+			    RTE_MBUF_HAS_PINNED_EXTBUF(m) &&
+			    __rte_pktmbuf_pinned_extbuf_decref(m))
 				return NULL;
 		}
 
@@ -1352,10 +1352,10 @@ rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 	} else if (__rte_mbuf_refcnt_update(m, -1) == 0) {
 
 		if (!RTE_MBUF_DIRECT(m)) {
-			if (!RTE_MBUF_HAS_EXTBUF(m) ||
-			    !RTE_MBUF_HAS_PINNED_EXTBUF(m))
-				rte_pktmbuf_detach(m);
-			else if (__rte_pktmbuf_pinned_extbuf_decref(m))
+			rte_pktmbuf_detach(m);
+			if (RTE_MBUF_HAS_EXTBUF(m) &&
+			    RTE_MBUF_HAS_PINNED_EXTBUF(m) &&
+			    __rte_pktmbuf_pinned_extbuf_decref(m))
 				return NULL;
 		}
 
