@@ -423,7 +423,7 @@ are loaded from the following files, in order of preference::
    ~/.config/dpdk/devel.config
    /etc/dpdk/devel.config.
 
-Once the environment variable the script can be run as follows::
+Once the environment variable is set, the script can be run as follows::
 
    devtools/checkpatches.sh ~/patch/
 
