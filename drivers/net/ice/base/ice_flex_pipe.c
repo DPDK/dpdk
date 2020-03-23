@@ -1253,6 +1253,8 @@ static void ice_init_pkg_regs(struct ice_hw *hw)
 #define ICE_SW_BLK_INP_MASK_L 0xFFFFFFFF
 #define ICE_SW_BLK_INP_MASK_H 0x0000FFFF
 #define ICE_SW_BLK_IDX	0
+	if (hw->dcf_enabled)
+		return;
 
 	/* setup Switch block input mask, which is 48-bits in two parts */
 	wr32(hw, GL_PREEXT_L2_PMASK0(ICE_SW_BLK_IDX), ICE_SW_BLK_INP_MASK_L);
@@ -3602,7 +3604,8 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 		ice_free(hw, r);
 	}
 	ice_destroy_lock(&hw->rss_locks);
-	ice_shutdown_all_prof_masks(hw);
+	if (!hw->dcf_enabled)
+		ice_shutdown_all_prof_masks(hw);
 	ice_memset(hw->blk, 0, sizeof(hw->blk), ICE_NONDMA_MEM);
 }
 
@@ -3682,7 +3685,8 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 
 	ice_init_lock(&hw->rss_locks);
 	INIT_LIST_HEAD(&hw->rss_list_head);
-	ice_init_all_prof_masks(hw);
+	if (!hw->dcf_enabled)
+		ice_init_all_prof_masks(hw);
 	for (i = 0; i < ICE_BLK_COUNT; i++) {
 		struct ice_prof_redir *prof_redir = &hw->blk[i].prof_redir;
 		struct ice_prof_tcam *prof = &hw->blk[i].prof;

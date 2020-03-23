@@ -463,12 +463,13 @@ ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
  * ice_init_fltr_mgmt_struct - initializes filter management list and locks
  * @hw: pointer to the HW struct
  */
-static enum ice_status ice_init_fltr_mgmt_struct(struct ice_hw *hw)
+enum ice_status ice_init_fltr_mgmt_struct(struct ice_hw *hw)
 {
 	struct ice_switch_info *sw;
 
 	hw->switch_info = (struct ice_switch_info *)
 			  ice_malloc(hw, sizeof(*hw->switch_info));
+
 	sw = hw->switch_info;
 
 	if (!sw)
@@ -483,7 +484,7 @@ static enum ice_status ice_init_fltr_mgmt_struct(struct ice_hw *hw)
  * ice_cleanup_fltr_mgmt_struct - cleanup filter management list and locks
  * @hw: pointer to the HW struct
  */
-static void ice_cleanup_fltr_mgmt_struct(struct ice_hw *hw)
+void ice_cleanup_fltr_mgmt_struct(struct ice_hw *hw)
 {
 	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_vsi_list_map_info *v_pos_map;
@@ -1914,6 +1915,8 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 					  dev_p->num_flow_director_fltr);
 			}
 			if (func_p) {
+				if (hw->dcf_enabled)
+					break;
 				reg_val = rd32(hw, GLQF_FD_SIZE);
 				val = (reg_val & GLQF_FD_SIZE_FD_GSIZE_M) >>
 				      GLQF_FD_SIZE_FD_GSIZE_S;

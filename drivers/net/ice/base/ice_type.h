@@ -822,6 +822,7 @@ struct ice_hw {
 	int (*aq_send_cmd_fn)(void *param, struct ice_aq_desc *desc,
 			      void *buf, u16 buf_size);
 	void *aq_send_cmd_param;
+	u8 dcf_enabled;		/* Device Config Function */
 
 	u8 api_branch;		/* API branch version */
 	u8 api_maj_ver;		/* API major version */
