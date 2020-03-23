@@ -1680,7 +1680,7 @@ ice_alloc_hw_res(struct ice_hw *hw, u16 type, u16 num, bool btm, u16 *res)
 	enum ice_status status;
 	u16 buf_len;
 
-	buf_len = sizeof(*buf) + sizeof(buf->elem) * (num - 1);
+	buf_len = ice_struct_size(buf, elem, num - 1);
 	buf = (struct ice_aqc_alloc_free_res_elem *)
 		ice_malloc(hw, buf_len);
 	if (!buf)
@@ -1720,7 +1720,7 @@ ice_free_hw_res(struct ice_hw *hw, u16 type, u16 num, u16 *res)
 	enum ice_status status;
 	u16 buf_len;
 
-	buf_len = sizeof(*buf) + sizeof(buf->elem) * (num - 1);
+	buf_len = ice_struct_size(buf, elem, num - 1);
 	buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;

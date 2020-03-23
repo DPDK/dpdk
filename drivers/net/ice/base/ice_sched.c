@@ -899,7 +899,7 @@ ice_sched_add_elems(struct ice_port_info *pi, struct ice_sched_node *tc_node,
 	u16 buf_size;
 	u32 teid;
 
-	buf_size = sizeof(*buf) + sizeof(*buf->generic) * (num_nodes - 1);
+	buf_size = ice_struct_size(buf, generic, num_nodes - 1);
 	buf = (struct ice_aqc_add_elem *)ice_malloc(hw, buf_size);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;

@@ -34,6 +34,9 @@
 
 #define IS_ASCII(_ch)	((_ch) < 0x80)
 
+#define ice_struct_size(ptr, field, num) \
+	(sizeof(*(ptr)) + sizeof(*(ptr)->field) * (num))
+
 #include "ice_status.h"
 #include "ice_hw_autogen.h"
 #include "ice_devids.h"
