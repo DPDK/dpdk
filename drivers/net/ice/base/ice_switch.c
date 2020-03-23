@@ -11,6 +11,7 @@
 #define ICE_ETH_VLAN_TCI_OFFSET		14
 #define ICE_MAX_VLAN_ID			0xFFF
 #define ICE_IPV4_NVGRE_PROTO_ID		0x002F
+#define ICE_PPP_IPV6_PROTO_ID		0x0057
 
 /* Dummy ethernet header needed in the ice_aqc_sw_rules_elem
  * struct to configure any switch filter rules.
@@ -559,7 +560,7 @@ static const struct ice_dummy_pkt_offsets dummy_pppoe_packet_offsets[] = {
 	{ ICE_PROTOCOL_LAST,	0 },
 };
 
-static const u8 dummy_pppoe_packet[] = {
+static const u8 dummy_pppoe_ipv4_packet[] = {
 	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
@@ -574,6 +575,34 @@ static const u8 dummy_pppoe_packet[] = {
 	0x00, 0x21,		/* PPP Link Layer 24 */
 
 	0x45, 0x00, 0x00, 0x14, /* ICE_IPV4_IL 26 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
+static const u8 dummy_pppoe_ipv6_packet[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x81, 0x00,		/* ICE_ETYPE_OL 12 */
+
+	0x00, 0x00, 0x88, 0x64, /* ICE_VLAN_OFOS 14 */
+
+	0x11, 0x00, 0x00, 0x00, /* ICE_PPPOE 18 */
+	0x00, 0x2a,
+
+	0x00, 0x57,		/* PPP Link Layer 24 */
+
+	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 26 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
@@ -5912,18 +5941,6 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 	bool gre = false;
 	u16 i;
 
-	if (tun_type == ICE_SW_TUN_GTP) {
-		*pkt = dummy_udp_gtp_packet;
-		*pkt_len = sizeof(dummy_udp_gtp_packet);
-		*offsets = dummy_udp_gtp_packet_offsets;
-		return;
-	}
-	if (tun_type == ICE_SW_TUN_PPPOE) {
-		*pkt = dummy_pppoe_packet;
-		*pkt_len = sizeof(dummy_pppoe_packet);
-		*offsets = dummy_pppoe_packet_offsets;
-		return;
-	}
 	for (i = 0; i < lkups_cnt; i++) {
 		if (lkups[i].type == ICE_UDP_ILOS)
 			udp = true;
@@ -5939,6 +5956,30 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			 lkups[i].m_u.ipv4_hdr.protocol ==
 				0xFF)
 			gre = true;
+		else if (lkups[i].type == ICE_PPPOE &&
+			 lkups[i].h_u.pppoe_hdr.ppp_prot_id ==
+				CPU_TO_BE16(ICE_PPP_IPV6_PROTO_ID) &&
+			 lkups[i].m_u.pppoe_hdr.ppp_prot_id ==
+				0xFFFF)
+			ipv6 = true;
+	}
+
+	if (tun_type == ICE_SW_TUN_GTP) {
+		*pkt = dummy_udp_gtp_packet;
+		*pkt_len = sizeof(dummy_udp_gtp_packet);
+		*offsets = dummy_udp_gtp_packet_offsets;
+		return;
+	}
+	if (tun_type == ICE_SW_TUN_PPPOE && ipv6) {
+		*pkt = dummy_pppoe_ipv6_packet;
+		*pkt_len = sizeof(dummy_pppoe_ipv6_packet);
+		*offsets = dummy_pppoe_packet_offsets;
+		return;
+	} else if (tun_type == ICE_SW_TUN_PPPOE) {
+		*pkt = dummy_pppoe_ipv4_packet;
+		*pkt_len = sizeof(dummy_pppoe_ipv4_packet);
+		*offsets = dummy_pppoe_packet_offsets;
+		return;
 	}
 
 	if (tun_type == ICE_ALL_TUNNELS) {
