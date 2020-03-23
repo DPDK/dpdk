@@ -236,10 +236,17 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
 		}
 		attr.available_addr = gpa;
 	}
-	rte_vhost_get_vring_base(priv->vid, index, &last_avail_idx,
+	ret = rte_vhost_get_vring_base(priv->vid, index, &last_avail_idx,
 				 &last_used_idx);
-	DRV_LOG(INFO, "vid %d: Init last_avail_idx=%d, last_used_idx=%d for "
-		"virtq %d.", priv->vid, last_avail_idx, last_used_idx, index);
+	if (ret) {
+		last_avail_idx = 0;
+		last_used_idx = 0;
+		DRV_LOG(WARNING, "Couldn't get vring base, idx are set to 0");
+	} else {
+		DRV_LOG(INFO, "vid %d: Init last_avail_idx=%d, last_used_idx=%d for "
+				"virtq %d.", priv->vid, last_avail_idx,
+				last_used_idx, index);
+	}
 	attr.hw_available_index = last_avail_idx;
 	attr.hw_used_index = last_used_idx;
 	attr.q_size = vq.size;
