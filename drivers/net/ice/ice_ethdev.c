@@ -3846,21 +3846,19 @@ static int
 ice_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	u32 full_ver;
 	u8 ver, patch;
 	u16 build;
 	int ret;
 
-	full_ver = hw->nvm.oem_ver;
-	ver = (u8)(full_ver >> 24);
-	build = (u16)((full_ver >> 8) & 0xffff);
-	patch = (u8)(full_ver & 0xff);
+	ver = hw->nvm.orom.major;
+	patch = hw->nvm.orom.patch;
+	build = hw->nvm.orom.build;
 
 	ret = snprintf(fw_version, fw_size,
-			"%d.%d%d 0x%08x %d.%d.%d",
-			((hw->nvm.ver >> 12) & 0xf),
-			((hw->nvm.ver >> 4) & 0xff),
-			(hw->nvm.ver & 0xf), hw->nvm.eetrack,
+			"%d.%d 0x%08x %d.%d.%d",
+			hw->nvm.major_ver,
+			hw->nvm.minor_ver,
+			hw->nvm.eetrack,
 			ver, build, patch);
 
 	/* add the size of '\0' */
