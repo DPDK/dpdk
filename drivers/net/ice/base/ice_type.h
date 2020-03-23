@@ -524,7 +524,7 @@ struct ice_sched_node {
 #define ICE_TXSCHED_GET_EIR_BWALLOC(x)	\
 	LE16_TO_CPU((x)->info.eir_bw.bw_alloc)
 
-struct ice_sched_rl_profle {
+struct ice_sched_rl_profile {
 	u32 rate; /* In Kbps */
 	struct ice_aqc_rl_profile_elem info;
 };
@@ -741,6 +741,8 @@ struct ice_hw {
 	struct ice_sched_rl_profile **cir_profiles;
 	struct ice_sched_rl_profile **eir_profiles;
 	struct ice_sched_rl_profile **srl_profiles;
+	/* PSM clock frequency for calculating RL profile params */
+	u32 psm_clk_freq;
 	u64 debug_mask;		/* BITMAP for debug mask */
 	enum ice_mac_type mac_type;
 

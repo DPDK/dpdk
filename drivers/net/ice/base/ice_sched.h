@@ -25,11 +25,15 @@
 	((BIT(11) - 1) * 64) /* In Bytes */
 #define ICE_MAX_BURST_SIZE_KBYTE_GRANULARITY	ICE_MAX_BURST_SIZE_ALLOWED
 
-#define ICE_RL_PROF_FREQUENCY 446000000
 #define ICE_RL_PROF_ACCURACY_BYTES 128
 #define ICE_RL_PROF_MULTIPLIER 10000
 #define ICE_RL_PROF_TS_MULTIPLIER 32
 #define ICE_RL_PROF_FRACTION 512
+
+#define ICE_PSM_CLK_367MHZ_IN_HZ 367647059
+#define ICE_PSM_CLK_416MHZ_IN_HZ 416666667
+#define ICE_PSM_CLK_446MHZ_IN_HZ 446428571
+#define ICE_PSM_CLK_390MHZ_IN_HZ 390625000
 
 struct rl_profile_params {
 	u32 bw;			/* in Kbps */
@@ -83,6 +87,7 @@ ice_aq_query_sched_elems(struct ice_hw *hw, u16 elems_req,
 			 u16 *elems_ret, struct ice_sq_cd *cd);
 enum ice_status ice_sched_init_port(struct ice_port_info *pi);
 enum ice_status ice_sched_query_res_alloc(struct ice_hw *hw);
+void ice_sched_get_psm_clk_freq(struct ice_hw *hw);
 
 /* Functions to cleanup scheduler SW DB */
 void ice_sched_clear_port(struct ice_port_info *pi);
