@@ -1337,8 +1337,11 @@ struct ice_aqc_get_phy_caps_data {
 #define ICE_AQC_PHY_EN_LESM				BIT(6)
 #define ICE_AQC_PHY_EN_AUTO_FEC				BIT(7)
 #define ICE_AQC_PHY_CAPS_MASK				MAKEMASK(0xff, 0)
-	u8 low_power_ctrl;
+	u8 low_power_ctrl_an;
 #define ICE_AQC_PHY_EN_D3COLD_LOW_POWER_AUTONEG		BIT(0)
+#define ICE_AQC_PHY_AN_EN_CLAUSE28			BIT(1)
+#define ICE_AQC_PHY_AN_EN_CLAUSE73			BIT(2)
+#define ICE_AQC_PHY_AN_EN_CLAUSE37			BIT(3)
 	__le16 eee_cap;
 #define ICE_AQC_PHY_EEE_EN_100BASE_TX			BIT(0)
 #define ICE_AQC_PHY_EEE_EN_1000BASE_T			BIT(1)
@@ -1413,7 +1416,7 @@ struct ice_aqc_set_phy_cfg_data {
 #define ICE_AQ_PHY_ENA_AUTO_LINK_UPDT	BIT(5)
 #define ICE_AQ_PHY_ENA_LESM		BIT(6)
 #define ICE_AQ_PHY_ENA_AUTO_FEC		BIT(7)
-	u8 low_power_ctrl;
+	u8 low_power_ctrl_an;
 	__le16 eee_cap; /* Value from ice_aqc_get_phy_caps */
 	__le16 eeer_value;
 	u8 link_fec_opt; /* Use defines from ice_aqc_get_phy_caps */

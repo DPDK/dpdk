@@ -3170,7 +3170,7 @@ ice_force_phys_link_state(struct ice_hw *hw, bool link_up)
 	cfg.phy_type_low = pcaps->phy_type_low;
 	cfg.phy_type_high = pcaps->phy_type_high;
 	cfg.caps = pcaps->caps | ICE_AQ_PHY_ENA_AUTO_LINK_UPDT;
-	cfg.low_power_ctrl = pcaps->low_power_ctrl;
+	cfg.low_power_ctrl_an = pcaps->low_power_ctrl_an;
 	cfg.eee_cap = pcaps->eee_cap;
 	cfg.eeer_value = pcaps->eeer_value;
 	cfg.link_fec_opt = pcaps->link_fec_options;
