@@ -1506,11 +1506,11 @@ ice_get_sw_prof_type(struct ice_hw *hw, struct ice_fv *fv)
 /**
  * ice_get_sw_fv_bitmap - Get switch field vector bitmap based on profile type
  * @hw: pointer to hardware structure
- * @type: type of profiles requested
+ * @req_profs: type of profiles requested
  * @bm: pointer to memory for returning the bitmap of field vectors
  */
 void
-ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type type,
+ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type req_profs,
 		     ice_bitmap_t *bm)
 {
 	struct ice_pkg_enum state;
@@ -1519,7 +1519,7 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type type,
 
 	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
 
-	if (type == ICE_PROF_ALL) {
+	if (req_profs == ICE_PROF_ALL) {
 		u16 i;
 
 		for (i = 0; i < ICE_MAX_NUM_PROFILES; i++)
@@ -1543,7 +1543,7 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type type,
 			/* Determine field vector type */
 			prof_type = ice_get_sw_prof_type(hw, fv);
 
-			if (type & prof_type)
+			if (req_profs & prof_type)
 				ice_set_bit((u16)offset, bm);
 		}
 	} while (fv);

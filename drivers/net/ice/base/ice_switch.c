@@ -1872,7 +1872,7 @@ enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw)
 			struct ice_aqc_get_sw_cfg_resp_elem *ele;
 			u16 pf_vf_num, swid, vsi_port_num;
 			bool is_vf = false;
-			u8 type;
+			u8 res_type;
 
 			ele = rbuf[i].elements;
 			vsi_port_num = LE16_TO_CPU(ele->vsi_port_num) &
@@ -1887,10 +1887,10 @@ enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw)
 			    ICE_AQC_GET_SW_CONF_RESP_IS_VF)
 				is_vf = true;
 
-			type = LE16_TO_CPU(ele->vsi_port_num) >>
-				ICE_AQC_GET_SW_CONF_RESP_TYPE_S;
+			res_type = (u8)(LE16_TO_CPU(ele->vsi_port_num) >>
+					ICE_AQC_GET_SW_CONF_RESP_TYPE_S);
 
-			switch (type) {
+			switch (res_type) {
 			case ICE_AQC_GET_SW_CONF_RESP_PHYS_PORT:
 			case ICE_AQC_GET_SW_CONF_RESP_VIRT_PORT:
 				if (j == num_total_ports) {
@@ -1900,7 +1900,7 @@ enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw)
 					goto out;
 				}
 				ice_init_port_info(hw->port_info,
-						   vsi_port_num, type, swid,
+						   vsi_port_num, res_type, swid,
 						   pf_vf_num, is_vf);
 				j++;
 				break;
@@ -2355,7 +2355,7 @@ ice_update_vsi_list_rule(struct ice_hw *hw, u16 *vsi_handle_arr, u16 num_vsi,
 	struct ice_aqc_sw_rules_elem *s_rule;
 	enum ice_status status;
 	u16 s_rule_size;
-	u16 type;
+	u16 rule_type;
 	int i;
 
 	if (!num_vsi)
@@ -2368,11 +2368,11 @@ ice_update_vsi_list_rule(struct ice_hw *hw, u16 *vsi_handle_arr, u16 num_vsi,
 	    lkup_type == ICE_SW_LKUP_PROMISC ||
 	    lkup_type == ICE_SW_LKUP_PROMISC_VLAN ||
 	    lkup_type == ICE_SW_LKUP_LAST)
-		type = remove ? ICE_AQC_SW_RULES_T_VSI_LIST_CLEAR :
-				ICE_AQC_SW_RULES_T_VSI_LIST_SET;
+		rule_type = remove ? ICE_AQC_SW_RULES_T_VSI_LIST_CLEAR :
+			ICE_AQC_SW_RULES_T_VSI_LIST_SET;
 	else if (lkup_type == ICE_SW_LKUP_VLAN)
-		type = remove ? ICE_AQC_SW_RULES_T_PRUNE_LIST_CLEAR :
-				ICE_AQC_SW_RULES_T_PRUNE_LIST_SET;
+		rule_type = remove ? ICE_AQC_SW_RULES_T_PRUNE_LIST_CLEAR :
+			ICE_AQC_SW_RULES_T_PRUNE_LIST_SET;
 	else
 		return ICE_ERR_PARAM;
 
@@ -2390,7 +2390,7 @@ ice_update_vsi_list_rule(struct ice_hw *hw, u16 *vsi_handle_arr, u16 num_vsi,
 			CPU_TO_LE16(ice_get_hw_vsi_num(hw, vsi_handle_arr[i]));
 	}
 
-	s_rule->type = CPU_TO_LE16(type);
+	s_rule->type = CPU_TO_LE16(rule_type);
 	s_rule->pdata.vsi_list.number_vsi = CPU_TO_LE16(num_vsi);
 	s_rule->pdata.vsi_list.index = CPU_TO_LE16(vsi_list_id);
 
@@ -5671,35 +5671,35 @@ static void
 ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 			 ice_bitmap_t *bm)
 {
-	enum ice_prof_type type;
+	enum ice_prof_type prof_type;
 
 	switch (rinfo->tun_type) {
 	case ICE_NON_TUN:
-		type = ICE_PROF_NON_TUN;
+		prof_type = ICE_PROF_NON_TUN;
 		break;
 	case ICE_ALL_TUNNELS:
-		type = ICE_PROF_TUN_ALL;
+		prof_type = ICE_PROF_TUN_ALL;
 		break;
 	case ICE_SW_TUN_VXLAN_GPE:
 	case ICE_SW_TUN_GENEVE:
 	case ICE_SW_TUN_VXLAN:
 	case ICE_SW_TUN_UDP:
 	case ICE_SW_TUN_GTP:
-		type = ICE_PROF_TUN_UDP;
+		prof_type = ICE_PROF_TUN_UDP;
 		break;
 	case ICE_SW_TUN_NVGRE:
-		type = ICE_PROF_TUN_GRE;
+		prof_type = ICE_PROF_TUN_GRE;
 		break;
 	case ICE_SW_TUN_PPPOE:
-		type = ICE_PROF_TUN_PPPOE;
+		prof_type = ICE_PROF_TUN_PPPOE;
 		break;
 	case ICE_SW_TUN_AND_NON_TUN:
 	default:
-		type = ICE_PROF_ALL;
+		prof_type = ICE_PROF_ALL;
 		break;
 	}
 
-	ice_get_sw_fv_bitmap(hw, type, bm);
+	ice_get_sw_fv_bitmap(hw, prof_type, bm);
 }
 
 /**
