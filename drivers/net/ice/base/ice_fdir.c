@@ -628,13 +628,13 @@ static void ice_pkt_insert_u8(u8 *pkt, int offset, u8 data)
 }
 
 /**
- * ice_pkt_insert_u8_tc - insert a u8 value into a memory buffer for tc ipv6.
+ * ice_pkt_insert_u8_tc - insert a u8 value into a memory buffer for TC ipv6.
  * @pkt: packet buffer
  * @offset: offset into buffer
  * @data: 8 bit value to convert and insert into pkt at offset
  *
- * This function is designed for inserting Traffic Class (tc) for IPv6,
- * since that tc is not aligned in number of bytes. Here we split it out
+ * This function is designed for inserting Traffic Class (TC) for IPv6,
+ * since that TC is not aligned in number of bytes. Here we split it out
  * into two part and fill each byte with data copy from pkt, then insert
  * the two bytes data one by one.
  */

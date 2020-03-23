@@ -2107,7 +2107,7 @@ ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
  * @ptg: pointer to variable that receives the PTG
  *
  * This function will search the PTGs for a particular ptype, returning the
- * PTG ID that contains it through the ptg parameter, with the value of
+ * PTG ID that contains it through the PTG parameter, with the value of
  * ICE_DEFAULT_PTG (0) meaning it is part the default PTG.
  */
 static enum ice_status
@@ -2124,9 +2124,9 @@ ice_ptg_find_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 *ptg)
  * ice_ptg_alloc_val - Allocates a new packet type group ID by value
  * @hw: pointer to the hardware structure
  * @blk: HW block
- * @ptg: the ptg to allocate
+ * @ptg: the PTG to allocate
  *
- * This function allocates a given packet type group ID specified by the ptg
+ * This function allocates a given packet type group ID specified by the PTG
  * parameter.
  */
 static void ice_ptg_alloc_val(struct ice_hw *hw, enum ice_block blk, u8 ptg)
@@ -2139,9 +2139,9 @@ static void ice_ptg_alloc_val(struct ice_hw *hw, enum ice_block blk, u8 ptg)
  * @hw: pointer to the hardware structure
  * @blk: HW block
  * @ptype: the ptype to remove
- * @ptg: the ptg to remove the ptype from
+ * @ptg: the PTG to remove the ptype from
  *
- * This function will remove the ptype from the specific ptg, and move it to
+ * This function will remove the ptype from the specific PTG, and move it to
  * the default PTG (ICE_DEFAULT_PTG).
  */
 static enum ice_status
@@ -2184,7 +2184,7 @@ ice_ptg_remove_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
  * @hw: pointer to the hardware structure
  * @blk: HW block
  * @ptype: the ptype to add or move
- * @ptg: the ptg to add or move the ptype to
+ * @ptg: the PTG to add or move the ptype to
  *
  * This function will either add or move a ptype to a particular PTG depending
  * on if the ptype is already part of another group. Note that using a
@@ -2237,7 +2237,7 @@ struct ice_blk_size_details {
 	u16 xlt2;			/* # XLT2 entries */
 	u16 prof_tcam;			/* # profile ID TCAM entries */
 	u16 prof_id;			/* # profile IDs */
-	u8 prof_cdid_bits;		/* # cdid one-hot bits used in key */
+	u8 prof_cdid_bits;		/* # CDID one-hot bits used in key */
 	u16 prof_redir;			/* # profile redirection entries */
 	u16 es;				/* # extraction sequence entries */
 	u16 fvw;			/* # field vector words */
@@ -2356,9 +2356,9 @@ ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig)
  * ice_vsig_alloc_val - allocate a new VSIG by value
  * @hw: pointer to the hardware structure
  * @blk: HW block
- * @vsig: the vsig to allocate
+ * @vsig: the VSIG to allocate
  *
- * This function will allocate a given VSIG specified by the vsig parameter.
+ * This function will allocate a given VSIG specified by the VSIG parameter.
  */
 static u16 ice_vsig_alloc_val(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 {
@@ -3791,7 +3791,7 @@ err:
  * @blk: the block in which to write profile ID to
  * @ptg: packet type group (PTG) portion of key
  * @vsig: VSIG portion of key
- * @cdid: cdid portion of key
+ * @cdid: CDID portion of key
  * @flags: flag portion of key
  * @vl_msk: valid mask
  * @dc_msk: don't care mask
@@ -3848,7 +3848,7 @@ ice_prof_gen_key(struct ice_hw *hw, enum ice_block blk, u8 ptg, u16 vsig,
  * @prof_id: profile ID
  * @ptg: packet type group (PTG) portion of key
  * @vsig: VSIG portion of key
- * @cdid: cdid portion of key
+ * @cdid: CDID: portion of key
  * @flags: flag portion of key
  * @vl_msk: valid mask
  * @dc_msk: don't care mask
@@ -4406,8 +4406,8 @@ ice_get_ptype_attrib_info(enum ice_ptype_attrib_type type,
 }
 
 /**
- * ice_add_prof_attrib - add any ptg with attributes to profile
- * @prof: pointer to the profile to which ptg entries will be added
+ * ice_add_prof_attrib - add any PTG with attributes to profile
+ * @prof: pointer to the profile to which PTG entries will be added
  * @ptg: PTG to be added
  * @ptype: PTYPE that needs to be looked up
  * @attr: array of attributes that will be considered
@@ -4549,7 +4549,7 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 				if (status == ICE_ERR_MAX_LIMIT)
 					break;
 				if (status) {
-					/* This is simple a ptype/ptg with no
+					/* This is simple a ptype/PTG with no
 					 * attribute
 					 */
 					prof->ptg[prof->ptg_cnt] = ptg;
@@ -5036,7 +5036,7 @@ ice_move_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig,
 }
 
 /**
- * ice_set_tcam_flags - set tcam flag don't care mask
+ * ice_set_tcam_flags - set TCAM flag don't care mask
  * @mask: mask for flags
  * @dc_mask: pointer to the don't care mask
  */
@@ -5050,9 +5050,9 @@ static void ice_set_tcam_flags(u16 mask, u8 dc_mask[ICE_TCAM_KEY_VAL_SZ])
 }
 
 /**
- * ice_rem_chg_tcam_ent - remove a specific tcam entry from change list
+ * ice_rem_chg_tcam_ent - remove a specific TCAM entry from change list
  * @hw: pointer to the HW struct
- * @idx: the index of the tcam entry to remove
+ * @idx: the index of the TCAM entry to remove
  * @chg: the list of change structures to search
  */
 static void
@@ -5073,7 +5073,7 @@ ice_rem_chg_tcam_ent(struct ice_hw *hw, u16 idx, struct LIST_HEAD_TYPE *chg)
  * @hw: pointer to the HW struct
  * @blk: hardware block
  * @enable: true to enable, false to disable
- * @vsig: the vsig of the TCAM entry
+ * @vsig: the VSIG of the TCAM entry
  * @tcam: pointer the TCAM info structure of the TCAM to disable
  * @chg: the change list
  *
@@ -5091,13 +5091,13 @@ ice_prof_tcam_ena_dis(struct ice_hw *hw, enum ice_block blk, bool enable,
 	u8 dc_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFF, 0xFF, 0x00, 0x00, 0x00 };
 	u8 nm_msk[ICE_TCAM_KEY_VAL_SZ] = { 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-	/* if disabling, free the tcam */
+	/* if disabling, free the TCAM */
 	if (!enable) {
 		status = ice_rel_tcam_idx(hw, blk, tcam->tcam_idx);
 
-		/* if we have already created a change for this tcam entry, then
+		/* if we have already created a change for this TCAM entry, then
 		 * we need to remove that entry, in order to prevent writing to
-		 * a tcam entry we no longer will have ownership of.
+		 * a TCAM entry we no longer will have ownership of.
 		 */
 		ice_rem_chg_tcam_ent(hw, tcam->tcam_idx, chg);
 		tcam->tcam_idx = 0;
@@ -5105,7 +5105,7 @@ ice_prof_tcam_ena_dis(struct ice_hw *hw, enum ice_block blk, bool enable,
 		return status;
 	}
 
-	/* for re-enabling, reallocate a tcam */
+	/* for re-enabling, reallocate a TCAM */
 	status = ice_alloc_tcam_ent(hw, blk, &tcam->tcam_idx);
 	if (status)
 		return status;
@@ -5115,7 +5115,7 @@ ice_prof_tcam_ena_dis(struct ice_hw *hw, enum ice_block blk, bool enable,
 	if (!p)
 		return ICE_ERR_NO_MEMORY;
 
-	/* set don't care masks for tcam flags */
+	/* set don't care masks for TCAM flags */
 	ice_set_tcam_flags(tcam->attr.mask, dc_msk);
 
 	status = ice_tcam_write_entry(hw, blk, tcam->tcam_idx, tcam->prof_id,
@@ -5326,7 +5326,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 		p->vsig = vsig;
 		p->tcam_idx = t->tcam[i].tcam_idx;
 
-		/* set don't care masks for tcam flags */
+		/* set don't care masks for TCAM flags */
 		ice_set_tcam_flags(t->tcam[i].attr.mask, dc_msk);
 
 		/* write the TCAM entry */
@@ -5414,7 +5414,7 @@ err_ice_create_prof_id_vsig:
  * @blk: hardware block
  * @vsi: the initial VSI that will be in VSIG
  * @lst: the list of profile that will be added to the VSIG
- * @new_vsig: return of new vsig
+ * @new_vsig: return of new VSIG
  * @chg: the change list
  */
 static enum ice_status
@@ -5555,7 +5555,7 @@ ice_add_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 		u16 or_vsig;
 		u16 ref;
 
-		/* found in vsig */
+		/* found in VSIG */
 		or_vsig = vsig;
 
 		/* make sure that there is no overlap/conflict between the new

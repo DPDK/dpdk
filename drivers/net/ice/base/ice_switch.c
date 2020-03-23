@@ -3180,7 +3180,6 @@ ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 		goto ice_add_mac_exit;
 	}
 
-
 	/* Allocate switch rule buffer for the bulk update for unicast */
 	s_rule_size = ICE_SW_RULE_RX_TX_ETH_HDR_SIZE;
 	s_rule = (struct ice_aqc_sw_rules_elem *)

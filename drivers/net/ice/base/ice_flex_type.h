@@ -642,8 +642,8 @@ struct ice_xlt1 {
 #define ICE_XLT2_CNT	768
 #define ICE_MAX_VSIGS	768
 
-/* Vsig bit layout:
- * [0:12]: incremental vsig index 1 to ICE_MAX_VSIGS
+/* VSIG bit layout:
+ * [0:12]: incremental VSIG index 1 to ICE_MAX_VSIGS
  * [13:15]: PF number of device
  */
 #define ICE_VSIG_IDX_M	(0x1FFF)
@@ -713,7 +713,7 @@ struct ice_prof_tcam {
 	u16 count;
 	u16 max_prof_id;
 	struct ice_prof_tcam_entry *t;
-	u8 cdid_bits; /* # cdid bits to use in key, 0, 2, 4, or 8 */
+	u8 cdid_bits; /* # CDID bits to use in key, 0, 2, 4, or 8 */
 };
 
 struct ice_prof_redir {
