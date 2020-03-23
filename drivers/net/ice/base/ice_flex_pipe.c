@@ -4051,19 +4051,13 @@ ice_prof_bld_xlt2(enum ice_block blk, struct ice_buf_build *bld,
 	struct ice_chs_chg *tmp;
 
 	LIST_FOR_EACH_ENTRY(tmp, chgs, ice_chs_chg, list_entry) {
-		bool found = false;
+		struct ice_xlt2_section *p;
+		u32 id;
 
-		if (tmp->type == ICE_VSIG_ADD)
-			found = true;
-		else if (tmp->type == ICE_VSI_MOVE)
-			found = true;
-		else if (tmp->type == ICE_VSIG_REM)
-			found = true;
-
-		if (found) {
-			struct ice_xlt2_section *p;
-			u32 id;
-
+		switch (tmp->type) {
+		case ICE_VSIG_ADD:
+		case ICE_VSI_MOVE:
+		case ICE_VSIG_REM:
 			id = ice_sect_id(blk, ICE_XLT2);
 			p = (struct ice_xlt2_section *)
 				ice_pkg_buf_alloc_section(bld, id, sizeof(*p));
@@ -4074,6 +4068,9 @@ ice_prof_bld_xlt2(enum ice_block blk, struct ice_buf_build *bld,
 			p->count = CPU_TO_LE16(1);
 			p->offset = CPU_TO_LE16(tmp->vsi);
 			p->value[0] = CPU_TO_LE16(tmp->vsig);
+			break;
+		default:
+			break;
 		}
 	}
 
