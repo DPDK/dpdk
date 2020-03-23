@@ -4398,7 +4398,7 @@ ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
 
 	switch (lkup) {
 	case ICE_SW_LKUP_MAC:
-		ice_remove_mac_rule(hw, &remove_list_head, recp_list);
+		ice_remove_mac_rule(hw, &remove_list_head, &recp_list[lkup]);
 		break;
 	case ICE_SW_LKUP_VLAN:
 		ice_remove_vlan(hw, &remove_list_head);
