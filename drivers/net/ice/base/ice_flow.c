@@ -937,15 +937,14 @@ ice_flow_create_xtrct_seq(struct ice_hw *hw,
 
 	for (i = 0; i < params->prof->segs_cnt; i++) {
 		u64 match = params->prof->segs[i].match;
-		u16 j;
+		enum ice_flow_field j;
 
 		for (j = 0; j < ICE_FLOW_FIELD_IDX_MAX && match; j++) {
 			const u64 bit = BIT_ULL(j);
 
 			if (match & bit) {
-				status = ice_flow_xtract_fld
-					(hw, params, i, (enum ice_flow_field)j,
-					 match);
+				status = ice_flow_xtract_fld(hw, params, i, j,
+							     match);
 				if (status)
 					return status;
 				match &= ~bit;
