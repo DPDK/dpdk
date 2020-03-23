@@ -6227,9 +6227,12 @@ ice_adv_add_update_vsi_list(struct ice_hw *hw,
 		if (status)
 			return status;
 
+		ice_memset(&tmp_fltr, 0, sizeof(tmp_fltr), ICE_NONDMA_MEM);
 		tmp_fltr.fltr_rule_id = cur_fltr->fltr_rule_id;
 		tmp_fltr.fltr_act = ICE_FWD_TO_VSI_LIST;
 		tmp_fltr.fwd_id.vsi_list_id = vsi_list_id;
+		tmp_fltr.lkup_type = ICE_SW_LKUP_LAST;
+
 		/* Update the previous switch rule of "forward to VSI" to
 		 * "fwd to VSI list"
 		 */
@@ -6473,6 +6476,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	if (rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI) {
 		struct ice_fltr_info tmp_fltr;
 
+		ice_memset(&tmp_fltr, 0, sizeof(tmp_fltr), ICE_NONDMA_MEM);
 		tmp_fltr.fltr_rule_id =
 			LE16_TO_CPU(s_rule->pdata.lkup_tx_rx.index);
 		tmp_fltr.fltr_act = ICE_FWD_TO_VSI;
@@ -6557,6 +6561,8 @@ ice_adv_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 						  lkup_type);
 		if (status)
 			return status;
+
+		ice_memset(&tmp_fltr, 0, sizeof(tmp_fltr), ICE_NONDMA_MEM);
 		tmp_fltr.fltr_rule_id = fm_list->rule_info.fltr_rule_id;
 		fm_list->rule_info.sw_act.fltr_act = ICE_FWD_TO_VSI;
 		tmp_fltr.fltr_act = ICE_FWD_TO_VSI;
