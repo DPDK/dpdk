@@ -403,37 +403,33 @@ timeout_seconds_fast = 10
 get_coremask = find_program('get-coremask.sh')
 num_cores_arg = '-l ' + run_command(get_coremask).stdout().strip()
 
-test_args = [num_cores_arg]
+default_test_args = [num_cores_arg]
 
 foreach arg : fast_test_names
+	test_args = default_test_args
+
 	if (get_option('default_library') == 'shared' and
 		arg == 'event_eth_tx_adapter_autotest')
 		foreach drv:dpdk_drivers
 			test_args += ['-d', drv.full_path().split('.a')[0] + '.so']
 		endforeach
 	endif
-	if host_machine.system() == 'linux'
-		test(arg, dpdk_test,
-			  env : ['DPDK_TEST=' + arg],
-			  args : test_args +
-				 ['--file-prefix=@0@'.format(arg)],
-		timeout : timeout_seconds_fast,
-		is_parallel : false,
-		suite : 'fast-tests')
-	else
-		test(arg, dpdk_test,
-			env : ['DPDK_TEST=' + arg],
-			args : test_args,
-		timeout : timeout_seconds_fast,
-		is_parallel : false,
-		suite : 'fast-tests')
+	if is_linux
+		test_args += ['--file-prefix=@0@'.format(arg)]
 	endif
+
+	test(arg, dpdk_test,
+		env : ['DPDK_TEST=' + arg],
+		args : test_args,
+		timeout : timeout_seconds_fast,
+		is_parallel : false,
+		suite : 'fast-tests')
 endforeach
 
 foreach arg : perf_test_names
 	test(arg, dpdk_test,
 	env : ['DPDK_TEST=' + arg],
-	args : test_args,
+	args : default_test_args,
 	timeout : timeout_seconds,
 	is_parallel : false,
 	suite : 'perf-tests')
@@ -442,7 +438,7 @@ endforeach
 foreach arg : driver_test_names
 	test(arg, dpdk_test,
 		env : ['DPDK_TEST=' + arg],
-		args : test_args,
+		args : default_test_args,
 		timeout : timeout_seconds,
 		is_parallel : false,
 		suite : 'driver-tests')
@@ -451,7 +447,7 @@ endforeach
 foreach arg : dump_test_names
 	test(arg, dpdk_test,
 		env : ['DPDK_TEST=' + arg],
-		args : test_args,
+		args : default_test_args,
 		timeout : timeout_seconds,
 		is_parallel : false,
 		suite : 'debug-tests')
