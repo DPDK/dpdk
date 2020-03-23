@@ -10,6 +10,7 @@
 #define ICE_ETH_ETHTYPE_OFFSET		12
 #define ICE_ETH_VLAN_TCI_OFFSET		14
 #define ICE_MAX_VLAN_ID			0xFFF
+#define ICE_IPV4_NVGRE_PROTO_ID		0x002F
 
 /* Dummy ethernet header needed in the ice_aqc_sw_rules_elem
  * struct to configure any switch filter rules.
@@ -5908,6 +5909,7 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		      const struct ice_dummy_pkt_offsets **offsets)
 {
 	bool tcp = false, udp = false, ipv6 = false, vlan = false;
+	bool gre = false;
 	u16 i;
 
 	if (tun_type == ICE_SW_TUN_GTP) {
@@ -5931,6 +5933,12 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			ipv6 = true;
 		else if (lkups[i].type == ICE_VLAN_OFOS)
 			vlan = true;
+		else if (lkups[i].type == ICE_IPV4_OFOS &&
+			 lkups[i].h_u.ipv4_hdr.protocol ==
+				ICE_IPV4_NVGRE_PROTO_ID &&
+			 lkups[i].m_u.ipv4_hdr.protocol ==
+				0xFF)
+			gre = true;
 	}
 
 	if (tun_type == ICE_ALL_TUNNELS) {
@@ -5940,7 +5948,7 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		return;
 	}
 
-	if (tun_type == ICE_SW_TUN_NVGRE) {
+	if (tun_type == ICE_SW_TUN_NVGRE || gre) {
 		if (tcp) {
 			*pkt = dummy_gre_tcp_packet;
 			*pkt_len = sizeof(dummy_gre_tcp_packet);
