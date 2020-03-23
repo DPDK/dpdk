@@ -117,91 +117,33 @@ ice_read_flat_nvm(struct ice_hw *hw, u32 offset, u32 *length, u8 *data,
 }
 
 /**
- * ice_check_sr_access_params - verify params for Shadow RAM R/W operations.
- * @hw: pointer to the HW structure
- * @offset: offset in words from module start
- * @words: number of words to access
- */
-static enum ice_status
-ice_check_sr_access_params(struct ice_hw *hw, u32 offset, u16 words)
-{
-	if ((offset + words) > hw->nvm.sr_words) {
-		ice_debug(hw, ICE_DBG_NVM,
-			  "NVM error: offset beyond SR lmt.\n");
-		return ICE_ERR_PARAM;
-	}
-
-	if (words > ICE_SR_SECTOR_SIZE_IN_WORDS) {
-		/* We can access only up to 4KB (one sector), in one AQ write */
-		ice_debug(hw, ICE_DBG_NVM,
-			  "NVM error: tried to access %d words, limit is %d.\n",
-			  words, ICE_SR_SECTOR_SIZE_IN_WORDS);
-		return ICE_ERR_PARAM;
-	}
-
-	if (((offset + (words - 1)) / ICE_SR_SECTOR_SIZE_IN_WORDS) !=
-	    (offset / ICE_SR_SECTOR_SIZE_IN_WORDS)) {
-		/* A single access cannot spread over two sectors */
-		ice_debug(hw, ICE_DBG_NVM,
-			  "NVM error: cannot spread over two sectors.\n");
-		return ICE_ERR_PARAM;
-	}
-
-	return ICE_SUCCESS;
-}
-
-/**
- * ice_read_sr_aq - Read Shadow RAM.
- * @hw: pointer to the HW structure
- * @offset: offset in words from module start
- * @words: number of words to read
- * @data: buffer for words reads from Shadow RAM
- * @last_command: tells the AdminQ that this is the last command
- *
- * Reads 16-bit word buffers from the Shadow RAM using the admin command.
- */
-static enum ice_status
-ice_read_sr_aq(struct ice_hw *hw, u32 offset, u16 words, u16 *data,
-	       bool last_command)
-{
-	enum ice_status status;
-
-	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
-
-	status = ice_check_sr_access_params(hw, offset, words);
-
-	/* values in "offset" and "words" parameters are sized as words
-	 * (16 bits) but ice_aq_read_nvm expects these values in bytes.
-	 * So do this conversion while calling ice_aq_read_nvm.
-	 */
-	if (!status)
-		status = ice_aq_read_nvm(hw, ICE_AQC_NVM_START_POINT,
-					 2 * offset, 2 * words, data,
-					 last_command, true, NULL);
-
-	return status;
-}
-
-/**
  * ice_read_sr_word_aq - Reads Shadow RAM via AQ
  * @hw: pointer to the HW structure
  * @offset: offset of the Shadow RAM word to read (0x000000 - 0x001FFF)
  * @data: word read from the Shadow RAM
  *
- * Reads one 16 bit word from the Shadow RAM using the ice_read_sr_aq method.
+ * Reads one 16 bit word from the Shadow RAM using ice_read_flat_nvm.
  */
 static enum ice_status
 ice_read_sr_word_aq(struct ice_hw *hw, u16 offset, u16 *data)
 {
+	u32 bytes = sizeof(u16);
 	enum ice_status status;
+	__le16 data_local;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
-	status = ice_read_sr_aq(hw, offset, 1, data, true);
-	if (!status)
-		*data = LE16_TO_CPU(*(_FORCE_ __le16 *)data);
+	/* Note that ice_read_flat_nvm checks if the read is past the Shadow
+	 * RAM size, and ensures we don't read across a Shadow RAM sector
+	 * boundary
+	 */
+	status = ice_read_flat_nvm(hw, offset * sizeof(u16), &bytes,
+				   (u8 *)&data_local, true);
+	if (status)
+		return status;
 
-	return status;
+	*data = LE16_TO_CPU(data_local);
+	return ICE_SUCCESS;
 }
 
 /**
