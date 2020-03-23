@@ -2704,8 +2704,7 @@ ice_find_rule_entry(struct LIST_HEAD_TYPE *list_head,
 
 /**
  * ice_find_vsi_list_entry - Search VSI list map with VSI count 1
- * @hw: pointer to the hardware structure
- * @recp_id: lookup type for which VSI lists needs to be searched
+ * @recp_list: VSI lists needs to be searched
  * @vsi_handle: VSI handle to be found in VSI list
  * @vsi_list_id: VSI list ID found containing vsi_handle
  *
@@ -2714,15 +2713,14 @@ ice_find_rule_entry(struct LIST_HEAD_TYPE *list_head,
  * than 1 vsi_count. Returns pointer to VSI list entry if found.
  */
 static struct ice_vsi_list_map_info *
-ice_find_vsi_list_entry(struct ice_hw *hw, u8 recp_id, u16 vsi_handle,
+ice_find_vsi_list_entry(struct ice_sw_recipe *recp_list, u16 vsi_handle,
 			u16 *vsi_list_id)
 {
 	struct ice_vsi_list_map_info *map_info = NULL;
-	struct ice_switch_info *sw = hw->switch_info;
 	struct LIST_HEAD_TYPE *list_head;
 
-	list_head = &sw->recp_list[recp_id].filt_rules;
-	if (sw->recp_list[recp_id].adv_rule) {
+	list_head = &recp_list->filt_rules;
+	if (recp_list->adv_rule) {
 		struct ice_adv_fltr_mgmt_list_entry *list_itr;
 
 		LIST_FOR_EACH_ENTRY(list_itr, list_head,
@@ -3267,7 +3265,7 @@ ice_add_mac_exit:
  * @hw: pointer to the hardware structure
  * @m_list: list of MAC addresses and forwarding information
  *
- * Function add mac rule for logical port from hw struct
+ * Function add MAC rule for logical port from HW struct
  */
 enum ice_status
 ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
@@ -3282,15 +3280,15 @@ ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 /**
  * ice_add_vlan_internal - Add one VLAN based filter rule
  * @hw: pointer to the hardware structure
+ * @recp_list: recipe list for which rule has to be added
  * @f_entry: filter entry containing one VLAN information
  */
 static enum ice_status
-ice_add_vlan_internal(struct ice_hw *hw, struct ice_fltr_list_entry *f_entry)
+ice_add_vlan_internal(struct ice_hw *hw, struct ice_sw_recipe *recp_list,
+		      struct ice_fltr_list_entry *f_entry)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_fltr_mgmt_list_entry *v_list_itr;
 	struct ice_fltr_info *new_fltr, *cur_fltr;
-	struct ice_sw_recipe *recp_list;
 	enum ice_sw_lkup_type lkup_type;
 	u16 vsi_list_id = 0, vsi_handle;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
@@ -3313,7 +3311,6 @@ ice_add_vlan_internal(struct ice_hw *hw, struct ice_fltr_list_entry *f_entry)
 	new_fltr->src = new_fltr->fwd_id.hw_vsi_id;
 	lkup_type = new_fltr->lkup_type;
 	vsi_handle = new_fltr->vsi_handle;
-	recp_list = &sw->recp_list[ICE_SW_LKUP_VLAN];
 	rule_lock = &recp_list->filt_rule_lock;
 	ice_acquire_lock(rule_lock);
 	v_list_itr = ice_find_rule_entry(&recp_list->filt_rules, new_fltr);
@@ -3326,7 +3323,7 @@ ice_add_vlan_internal(struct ice_hw *hw, struct ice_fltr_list_entry *f_entry)
 			 * want to add. If found, use the same vsi_list_id for
 			 * this new VLAN rule or else create a new list.
 			 */
-			map_info = ice_find_vsi_list_entry(hw, ICE_SW_LKUP_VLAN,
+			map_info = ice_find_vsi_list_entry(recp_list,
 							   vsi_handle,
 							   &vsi_list_id);
 			if (!map_info) {
@@ -3436,28 +3433,46 @@ exit:
 }
 
 /**
- * ice_add_vlan - Add VLAN based filter rule
+ * ice_add_vlan_rule - Add VLAN based filter rule
  * @hw: pointer to the hardware structure
  * @v_list: list of VLAN entries and forwarding information
+ * @sw: pointer to switch info struct for which function add rule
  */
-enum ice_status
-ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
+static enum ice_status
+ice_add_vlan_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list,
+		  struct ice_switch_info *sw)
 {
 	struct ice_fltr_list_entry *v_list_itr;
+	struct ice_sw_recipe *recp_list;
 
-	if (!v_list || !hw)
-		return ICE_ERR_PARAM;
-
+	recp_list = &sw->recp_list[ICE_SW_LKUP_VLAN];
 	LIST_FOR_EACH_ENTRY(v_list_itr, v_list, ice_fltr_list_entry,
 			    list_entry) {
 		if (v_list_itr->fltr_info.lkup_type != ICE_SW_LKUP_VLAN)
 			return ICE_ERR_PARAM;
 		v_list_itr->fltr_info.flag = ICE_FLTR_TX;
-		v_list_itr->status = ice_add_vlan_internal(hw, v_list_itr);
+		v_list_itr->status = ice_add_vlan_internal(hw, recp_list,
+							   v_list_itr);
 		if (v_list_itr->status)
 			return v_list_itr->status;
 	}
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_add_vlan - Add a VLAN based filter rule
+ * @hw: pointer to the hardware structure
+ * @v_list: list of VLAN and forwarding information
+ *
+ * Function add VLAN rule for logical port from HW struct
+ */
+enum ice_status
+ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
+{
+	if (!v_list || !hw)
+		return ICE_ERR_PARAM;
+
+	return ice_add_vlan_rule(hw, v_list, hw->switch_info);
 }
 
 /**
@@ -3499,31 +3514,29 @@ ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
 }
 
 /**
- * ice_add_eth_mac - Add ethertype and MAC based filter rule
+ * ice_add_eth_mac_rule - Add ethertype and MAC based filter rule
  * @hw: pointer to the hardware structure
  * @em_list: list of ether type MAC filter, MAC is optional
+ * @sw: pointer to switch info struct for which function add rule
+ * @lport: logic port number on which function add rule
  *
  * This function requires the caller to populate the entries in
  * the filter list with the necessary fields (including flags to
  * indicate Tx or Rx rules).
  */
-enum ice_status
-ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
+static enum ice_status
+ice_add_eth_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list,
+		     struct ice_switch_info *sw, u8 lport)
 {
 	struct ice_fltr_list_entry *em_list_itr;
-	u8 lport;
 
-	if (!em_list || !hw)
-		return ICE_ERR_PARAM;
-
-	lport = hw->port_info->lport;
 	LIST_FOR_EACH_ENTRY(em_list_itr, em_list, ice_fltr_list_entry,
 			    list_entry) {
 		struct ice_sw_recipe *recp_list;
 		enum ice_sw_lkup_type l_type;
 
 		l_type = em_list_itr->fltr_info.lkup_type;
-		recp_list = &hw->switch_info->recp_list[l_type];
+		recp_list = &sw->recp_list[l_type];
 
 		if (l_type != ICE_SW_LKUP_ETHERTYPE_MAC &&
 		    l_type != ICE_SW_LKUP_ETHERTYPE)
@@ -3538,36 +3551,68 @@ ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
 	return ICE_SUCCESS;
 }
 
-/**
- * ice_remove_eth_mac - Remove an ethertype (or MAC) based filter rule
- * @hw: pointer to the hardware structure
- * @em_list: list of ethertype or ethertype MAC entries
- */
 enum ice_status
-ice_remove_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
+/**
+ * ice_add_eth_mac - Add a ethertype based filter rule
+ * @hw: pointer to the hardware structure
+ * @em_list: list of ethertype and forwarding information
+ *
+ * Function add ethertype rule for logical port from HW struct
+ */
+ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
 {
-	struct ice_fltr_list_entry *em_list_itr, *tmp;
-	struct ice_sw_recipe *recp_list;
-
 	if (!em_list || !hw)
 		return ICE_ERR_PARAM;
 
+	return ice_add_eth_mac_rule(hw, em_list, hw->switch_info,
+				    hw->port_info->lport);
+}
+
+/**
+ * ice_remove_eth_mac_rule - Remove an ethertype (or MAC) based filter rule
+ * @hw: pointer to the hardware structure
+ * @em_list: list of ethertype or ethertype MAC entries
+ * @sw: pointer to switch info struct for which function add rule
+ */
+static enum ice_status
+ice_remove_eth_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list,
+			struct ice_switch_info *sw)
+{
+	struct ice_fltr_list_entry *em_list_itr, *tmp;
+
 	LIST_FOR_EACH_ENTRY_SAFE(em_list_itr, tmp, em_list, ice_fltr_list_entry,
 				 list_entry) {
-		enum ice_sw_lkup_type l_type =
-			em_list_itr->fltr_info.lkup_type;
+		struct ice_sw_recipe *recp_list;
+		enum ice_sw_lkup_type l_type;
+
+		l_type = em_list_itr->fltr_info.lkup_type;
 
 		if (l_type != ICE_SW_LKUP_ETHERTYPE_MAC &&
 		    l_type != ICE_SW_LKUP_ETHERTYPE)
 			return ICE_ERR_PARAM;
 
-		recp_list = &hw->switch_info->recp_list[l_type];
+		recp_list = &sw->recp_list[l_type];
 		em_list_itr->status = ice_remove_rule_internal(hw, recp_list,
 							       em_list_itr);
 		if (em_list_itr->status)
 			return em_list_itr->status;
 	}
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_remove_eth_mac - remove a ethertype based filter rule
+ * @hw: pointer to the hardware structure
+ * @em_list: list of ethertype and forwarding information
+ *
+ */
+enum ice_status
+ice_remove_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
+{
+	if (!em_list || !hw)
+		return ICE_ERR_PARAM;
+
+	return ice_remove_eth_mac_rule(hw, em_list, hw->switch_info);
 }
 
 /**
@@ -3826,20 +3871,17 @@ ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 }
 
 /**
- * ice_remove_vlan - Remove VLAN based filter rule
+ * ice_remove_vlan_rule - Remove VLAN based filter rule
  * @hw: pointer to the hardware structure
  * @v_list: list of VLAN entries and forwarding information
+ * @recp_list: list from which function remove VLAN
  */
-enum ice_status
-ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
+static enum ice_status
+ice_remove_vlan_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list,
+		     struct ice_sw_recipe *recp_list)
 {
 	struct ice_fltr_list_entry *v_list_itr, *tmp;
-	struct ice_sw_recipe *recp_list;
 
-	if (!v_list || !hw)
-		return ICE_ERR_PARAM;
-
-	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_VLAN];
 	LIST_FOR_EACH_ENTRY_SAFE(v_list_itr, tmp, v_list, ice_fltr_list_entry,
 				 list_entry) {
 		enum ice_sw_lkup_type l_type = v_list_itr->fltr_info.lkup_type;
@@ -3852,6 +3894,24 @@ ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 			return v_list_itr->status;
 	}
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_remove_vlan - remove a VLAN address based filter rule
+ * @hw: pointer to the hardware structure
+ * @v_list: list of VLAN and forwarding information
+ *
+ */
+enum ice_status
+ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
+{
+	struct ice_sw_recipe *recp_list;
+
+	if (!v_list || !hw)
+		return ICE_ERR_PARAM;
+
+	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_VLAN];
+	return ice_remove_vlan_rule(hw, v_list, recp_list);
 }
 
 /**
@@ -4401,7 +4461,7 @@ ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
 		ice_remove_mac_rule(hw, &remove_list_head, &recp_list[lkup]);
 		break;
 	case ICE_SW_LKUP_VLAN:
-		ice_remove_vlan(hw, &remove_list_head);
+		ice_remove_vlan_rule(hw, &remove_list_head, &recp_list[lkup]);
 		break;
 	case ICE_SW_LKUP_PROMISC:
 	case ICE_SW_LKUP_PROMISC_VLAN:
@@ -6770,7 +6830,8 @@ ice_rem_adv_rule_for_vsi(struct ice_hw *hw, u16 vsi_handle)
 		map_info = NULL;
 		LIST_FOR_EACH_ENTRY(list_itr, list_head,
 				    ice_adv_fltr_mgmt_list_entry, list_entry) {
-			map_info = ice_find_vsi_list_entry(hw, rid, vsi_handle,
+			map_info = ice_find_vsi_list_entry(&sw->recp_list[rid],
+							   vsi_handle,
 							   &vsi_list_id);
 			if (!map_info)
 				continue;
@@ -6843,7 +6904,8 @@ ice_replay_fltr(struct ice_hw *hw, u8 recp_id, struct LIST_HEAD_TYPE *list_head)
 				ice_get_hw_vsi_num(hw, vsi_handle);
 			f_entry.fltr_info.fltr_act = ICE_FWD_TO_VSI;
 			if (recp_id == ICE_SW_LKUP_VLAN)
-				status = ice_add_vlan_internal(hw, &f_entry);
+				status = ice_add_vlan_internal(hw, recp_list,
+							       &f_entry);
 			else
 				status = ice_add_rule_internal(hw, recp_list,
 							       lport,
@@ -6933,7 +6995,7 @@ ice_replay_vsi_fltr(struct ice_hw *hw, u16 vsi_handle, u8 recp_id,
 		if (f_entry.fltr_info.src_id == ICE_SRC_ID_VSI)
 			f_entry.fltr_info.src = hw_vsi_id;
 		if (recp_id == ICE_SW_LKUP_VLAN)
-			status = ice_add_vlan_internal(hw, &f_entry);
+			status = ice_add_vlan_internal(hw, recp_list, &f_entry);
 		else
 			status = ice_add_rule_internal(hw, recp_list,
 						       hw->port_info->lport,
