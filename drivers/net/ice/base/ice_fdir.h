@@ -204,6 +204,8 @@ struct ice_fdir_fltr {
 	u16 cnt_index;
 	u8 fdid_prio;
 	u32 fltr_id;
+	/* Set to true for an ACL filter */
+	bool acl_fltr;
 };
 
 /* Dummy packet filter definition structure. */
@@ -234,6 +236,7 @@ bool ice_fdir_has_frag(enum ice_fltr_ptype flow);
 struct ice_fdir_fltr *
 ice_fdir_find_fltr_by_idx(struct ice_hw *hw, u32 fltr_idx);
 void
-ice_fdir_update_cntrs(struct ice_hw *hw, enum ice_fltr_ptype flow, bool add);
+ice_fdir_update_cntrs(struct ice_hw *hw, enum ice_fltr_ptype flow,
+		      bool acl_fltr, bool add);
 void ice_fdir_list_add_fltr(struct ice_hw *hw, struct ice_fdir_fltr *input);
 #endif /* _ICE_FDIR_H_ */

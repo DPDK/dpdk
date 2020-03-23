@@ -3528,7 +3528,8 @@ static void ice_free_flow_profs(struct ice_hw *hw, u8 blk_idx)
 
 		LIST_FOR_EACH_ENTRY_SAFE(e, t, &p->entries,
 					 ice_flow_entry, l_entry)
-			ice_flow_rem_entry(hw, ICE_FLOW_ENTRY_HNDL(e));
+			ice_flow_rem_entry(hw, (enum ice_block)blk_idx,
+					   ICE_FLOW_ENTRY_HNDL(e));
 
 		LIST_DEL(&p->l_entry);
 		if (p->acts)

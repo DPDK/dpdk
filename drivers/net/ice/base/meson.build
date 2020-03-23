@@ -11,6 +11,8 @@ sources = [
 	'ice_flow.c',
 	'ice_dcb.c',
 	'ice_fdir.c',
+	'ice_acl.c',
+	'ice_acl_ctrl.c',
 ]
 
 error_cflags = ['-Wno-unused-value',

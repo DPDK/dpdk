@@ -6,6 +6,7 @@
 #define _ICE_FLOW_H_
 
 #include "ice_flex_type.h"
+#include "ice_acl.h"
 #define ICE_IPV4_MAKE_PREFIX_MASK(prefix) ((u32)(~0) << (32 - (prefix)))
 #define ICE_FLOW_PROF_ID_INVAL		0xfffffffffffffffful
 #define ICE_FLOW_PROF_ID_BYPASS		0
@@ -308,9 +309,14 @@ struct ice_flow_entry {
 	struct ice_flow_action *acts;
 	/* Flow entry's content */
 	void *entry;
+	/* Range buffer (For ACL only) */
+	struct ice_aqc_acl_profile_ranges *range_buf;
 	enum ice_flow_priority priority;
 	u16 vsi_handle;
 	u16 entry_sz;
+	/* Entry index in the ACL's scenario */
+	u16 scen_entry_idx;
+#define ICE_FLOW_ACL_MAX_NUM_ACT	2
 	u8 acts_cnt;
 };
 
@@ -336,6 +342,7 @@ struct ice_flow_prof {
 
 	union {
 		/* struct sw_recipe */
+		struct ice_acl_scen *scen;
 		/* struct fd */
 		u32 data;
 		/* Symmetric Hash for RSS */
@@ -381,6 +388,7 @@ enum ice_flow_action_type {
 struct ice_flow_action {
 	enum ice_flow_action_type type;
 	union {
+		struct ice_acl_act_entry acl_act;
 		u32 dummy;
 	} data;
 };
@@ -408,7 +416,8 @@ ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 		   u64 entry_id, u16 vsi, enum ice_flow_priority prio,
 		   void *data, struct ice_flow_action *acts, u8 acts_cnt,
 		   u64 *entry_h);
-enum ice_status ice_flow_rem_entry(struct ice_hw *hw, u64 entry_h);
+enum ice_status ice_flow_rem_entry(struct ice_hw *hw, enum ice_block blk,
+				   u64 entry_h);
 void
 ice_flow_set_fld(struct ice_flow_seg_info *seg, enum ice_flow_field fld,
 		 u16 val_loc, u16 mask_loc, u16 last_loc, bool range);

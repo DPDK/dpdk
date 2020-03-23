@@ -99,6 +99,7 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 #define ICE_HI_DWORD(x)		((u32)((((x) >> 16) >> 16) & 0xFFFFFFFF))
 #define ICE_LO_DWORD(x)		((u32)((x) & 0xFFFFFFFF))
 #define ICE_HI_WORD(x)		((u16)(((x) >> 16) & 0xFFFF))
+#define ICE_LO_WORD(x)		((u16)((x) & 0xFFFF))
 
 /* debug masks - set these bits in hw->debug_mask to control output */
 #define ICE_DBG_TRACE		BIT_ULL(0) /* for function-trace only */
@@ -119,6 +120,7 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 
 #define ICE_DBG_PKG		BIT_ULL(16)
 #define ICE_DBG_RES		BIT_ULL(17)
+#define ICE_DBG_ACL		BIT_ULL(18)
 #define ICE_DBG_AQ_MSG		BIT_ULL(24)
 #define ICE_DBG_AQ_DESC		BIT_ULL(25)
 #define ICE_DBG_AQ_DESC_BUF	BIT_ULL(26)
@@ -389,6 +391,8 @@ struct ice_hw_common_caps {
 	u8 apm_wol_support;
 	u8 acpi_prog_mthd;
 	u8 proxy_support;
+	bool nvm_unified_update;
+#define ICE_NVM_MGMT_UNIFIED_UPD_SUPPORT	BIT(3)
 };
 
 /* Function specific capabilities */
@@ -879,6 +883,9 @@ struct ice_hw {
 	/* tunneling info */
 	struct ice_tunnel_table tnl;
 
+	struct ice_acl_tbl *acl_tbl;
+	struct ice_fd_hw_prof **acl_prof;
+	u16 acl_fltr_cnt[ICE_FLTR_PTYPE_MAX];
 	/* HW block tables */
 	struct ice_blk_info blk[ICE_BLK_COUNT];
 	struct ice_lock fl_profs_locks[ICE_BLK_COUNT];	/* lock fltr profiles */
