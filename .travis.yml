@@ -105,6 +105,9 @@ jobs:
   - env: DEF_LIB="static"
     arch: arm64
     compiler: gcc
+  - env: DEF_LIB="shared" RUN_TESTS=1
+    arch: arm64
+    compiler: gcc
   - env: DEF_LIB="shared" BUILD_DOCS=1
     arch: arm64
     compiler: gcc
@@ -125,6 +128,6 @@ jobs:
   - env: DEF_LIB="static"
     arch: arm64
     compiler: clang
-  - env: DEF_LIB="shared"
+  - env: DEF_LIB="shared" RUN_TESTS=1
     arch: arm64
     compiler: clang
