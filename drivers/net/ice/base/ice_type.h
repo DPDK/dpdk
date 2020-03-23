@@ -888,6 +888,7 @@ struct ice_hw {
 	u32 pkg_size;
 
 	/* tunneling info */
+	struct ice_lock tnl_lock;
 	struct ice_tunnel_table tnl;
 
 	struct ice_acl_tbl *acl_tbl;

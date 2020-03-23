@@ -1883,7 +1883,7 @@ static struct ice_buf *ice_pkg_buf(struct ice_buf_build *bld)
 }
 
 /**
- * ice_tunnel_port_in_use
+ * ice_tunnel_port_in_use_hlpr - helper function to determine tunnel usage
  * @hw: pointer to the HW structure
  * @port: port to search for
  * @index: optionally returns index
@@ -1891,7 +1891,7 @@ static struct ice_buf *ice_pkg_buf(struct ice_buf_build *bld)
  * Returns whether a port is already in use as a tunnel, and optionally its
  * index
  */
-bool ice_tunnel_port_in_use(struct ice_hw *hw, u16 port, u16 *index)
+static bool ice_tunnel_port_in_use_hlpr(struct ice_hw *hw, u16 port, u16 *index)
 {
 	u16 i;
 
@@ -1906,6 +1906,26 @@ bool ice_tunnel_port_in_use(struct ice_hw *hw, u16 port, u16 *index)
 }
 
 /**
+ * ice_tunnel_port_in_use
+ * @hw: pointer to the HW structure
+ * @port: port to search for
+ * @index: optionally returns index
+ *
+ * Returns whether a port is already in use as a tunnel, and optionally its
+ * index
+ */
+bool ice_tunnel_port_in_use(struct ice_hw *hw, u16 port, u16 *index)
+{
+	bool res;
+
+	ice_acquire_lock(&hw->tnl_lock);
+	res = ice_tunnel_port_in_use_hlpr(hw, port, index);
+	ice_release_lock(&hw->tnl_lock);
+
+	return res;
+}
+
+/**
  * ice_tunnel_get_type
  * @hw: pointer to the HW structure
  * @port: port to search for
@@ -1916,15 +1936,21 @@ bool ice_tunnel_port_in_use(struct ice_hw *hw, u16 port, u16 *index)
 bool
 ice_tunnel_get_type(struct ice_hw *hw, u16 port, enum ice_tunnel_type *type)
 {
+	bool res = false;
 	u16 i;
+
+	ice_acquire_lock(&hw->tnl_lock);
 
 	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
 		if (hw->tnl.tbl[i].in_use && hw->tnl.tbl[i].port == port) {
 			*type = hw->tnl.tbl[i].type;
-			return true;
+			res = true;
+			break;
 		}
 
-	return false;
+	ice_release_lock(&hw->tnl_lock);
+
+	return res;
 }
 
 /**
@@ -1962,16 +1988,22 @@ bool
 ice_get_open_tunnel_port(struct ice_hw *hw, enum ice_tunnel_type type,
 			 u16 *port)
 {
+	bool res = false;
 	u16 i;
+
+	ice_acquire_lock(&hw->tnl_lock);
 
 	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
 		if (hw->tnl.tbl[i].valid && hw->tnl.tbl[i].in_use &&
 		    (type == TNL_ALL || hw->tnl.tbl[i].type == type)) {
 			*port = hw->tnl.tbl[i].port;
-			return true;
+			res = true;
+			break;
 		}
 
-	return false;
+	ice_release_lock(&hw->tnl_lock);
+
+	return res;
 }
 
 /**
@@ -1992,15 +2024,24 @@ ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
 	struct ice_buf_build *bld;
 	u16 index;
 
-	if (ice_tunnel_port_in_use(hw, port, NULL))
-		return ICE_ERR_ALREADY_EXISTS;
+	ice_acquire_lock(&hw->tnl_lock);
 
-	if (!ice_find_free_tunnel_entry(hw, type, &index))
-		return ICE_ERR_OUT_OF_RANGE;
+	if (ice_tunnel_port_in_use_hlpr(hw, port, &index)) {
+		hw->tnl.tbl[index].ref++;
+		status = ICE_SUCCESS;
+		goto ice_create_tunnel_end;
+	}
+
+	if (!ice_find_free_tunnel_entry(hw, type, &index)) {
+		status = ICE_ERR_OUT_OF_RANGE;
+		goto ice_create_tunnel_end;
+	}
 
 	bld = ice_pkg_buf_alloc(hw);
-	if (!bld)
-		return ICE_ERR_NO_MEMORY;
+	if (!bld) {
+		status = ICE_ERR_NO_MEMORY;
+		goto ice_create_tunnel_end;
+	}
 
 	/* allocate 2 sections, one for Rx parser, one for Tx parser */
 	if (ice_pkg_buf_reserve_section(bld, 2))
@@ -2040,10 +2081,14 @@ ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
 	if (!status) {
 		hw->tnl.tbl[index].port = port;
 		hw->tnl.tbl[index].in_use = true;
+		hw->tnl.tbl[index].ref = 1;
 	}
 
 ice_create_tunnel_err:
 	ice_pkg_buf_free(hw, bld);
+
+ice_create_tunnel_end:
+	ice_release_lock(&hw->tnl_lock);
 
 	return status;
 }
@@ -2064,8 +2109,18 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 	enum ice_status status = ICE_ERR_MAX_LIMIT;
 	struct ice_buf_build *bld;
 	u16 count = 0;
+	u16 index;
 	u16 size;
 	u16 i;
+
+	ice_acquire_lock(&hw->tnl_lock);
+
+	if (!all && ice_tunnel_port_in_use_hlpr(hw, port, &index))
+		if (hw->tnl.tbl[index].ref > 1) {
+			hw->tnl.tbl[index].ref--;
+			status = ICE_SUCCESS;
+			goto ice_destroy_tunnel_end;
+		}
 
 	/* determine count */
 	for (i = 0; i < hw->tnl.count && i < ICE_TUNNEL_MAX_ENTRIES; i++)
@@ -2073,15 +2128,19 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 		    (all || hw->tnl.tbl[i].port == port))
 			count++;
 
-	if (!count)
-		return ICE_ERR_PARAM;
+	if (!count) {
+		status = ICE_ERR_PARAM;
+		goto ice_destroy_tunnel_end;
+	}
 
 	/* size of section - there is at least one entry */
 	size = ice_struct_size(sect_rx, tcam, count - 1);
 
 	bld = ice_pkg_buf_alloc(hw);
-	if (!bld)
-		return ICE_ERR_NO_MEMORY;
+	if (!bld) {
+		status = ICE_ERR_NO_MEMORY;
+		goto ice_destroy_tunnel_end;
+	}
 
 	/* allocate 2 sections, one for Rx parser, one for Tx parser */
 	if (ice_pkg_buf_reserve_section(bld, 2))
@@ -2123,6 +2182,7 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 		for (i = 0; i < hw->tnl.count &&
 		     i < ICE_TUNNEL_MAX_ENTRIES; i++)
 			if (hw->tnl.tbl[i].marked) {
+				hw->tnl.tbl[i].ref = 0;
 				hw->tnl.tbl[i].port = 0;
 				hw->tnl.tbl[i].in_use = false;
 				hw->tnl.tbl[i].marked = false;
@@ -2130,6 +2190,9 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 
 ice_destroy_tunnel_err:
 	ice_pkg_buf_free(hw, bld);
+
+ice_destroy_tunnel_end:
+	ice_release_lock(&hw->tnl_lock);
 
 	return status;
 }

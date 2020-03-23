@@ -531,6 +531,7 @@ struct ice_tunnel_entry {
 	enum ice_tunnel_type type;
 	u16 boost_addr;
 	u16 port;
+	u16 ref;
 	struct ice_boost_tcam_entry *boost_entry;
 	u8 valid;
 	u8 in_use;
