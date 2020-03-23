@@ -1953,7 +1953,7 @@ ice_find_free_tunnel_entry(struct ice_hw *hw, enum ice_tunnel_type type,
 }
 
 /**
- * ice_get_tunnel_port - retrieve an open tunnel port
+ * ice_get_open_tunnel_port - retrieve an open tunnel port
  * @hw: pointer to the HW structure
  * @type: tunnel type (TNL_ALL will return any open port)
  * @port: returns open port

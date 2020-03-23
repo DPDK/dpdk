@@ -2656,8 +2656,8 @@ ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 		   void *data, struct ice_flow_action *acts, u8 acts_cnt,
 		   u64 *entry_h)
 {
-	struct ice_flow_prof *prof = NULL;
 	struct ice_flow_entry *e = NULL;
+	struct ice_flow_prof *prof;
 	enum ice_status status = ICE_SUCCESS;
 
 	/* ACL entries must indicate an action */

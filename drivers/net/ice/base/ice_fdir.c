@@ -916,7 +916,7 @@ bool ice_fdir_has_frag(enum ice_fltr_ptype flow)
 struct ice_fdir_fltr *
 ice_fdir_find_fltr_by_idx(struct ice_hw *hw, u32 fltr_idx)
 {
-	struct ice_fdir_fltr *rule = NULL;
+	struct ice_fdir_fltr *rule;
 
 	LIST_FOR_EACH_ENTRY(rule, &hw->fdir_list_head, ice_fdir_fltr,
 			    fltr_node) {
@@ -965,7 +965,7 @@ ice_fdir_update_cntrs(struct ice_hw *hw, enum ice_fltr_ptype flow,
 {
 	int incr;
 
-	incr = (add) ? 1 : -1;
+	incr = add ? 1 : -1;
 	hw->fdir_active_fltr += incr;
 	if (flow == ICE_FLTR_PTYPE_NONF_NONE || flow >= ICE_FLTR_PTYPE_MAX) {
 		ice_debug(hw, ICE_DBG_SW, "Unknown filter type %d\n", flow);
@@ -990,7 +990,7 @@ static int ice_cmp_ipv6_addr(__be32 *a, __be32 *b)
 }
 
 /**
- * ice_fdir_comp_ipv6_rules - compare 2 filters
+ * ice_fdir_comp_rules - compare 2 filters
  * @a: a Flow Director filter data structure
  * @b: a Flow Director filter data structure
  * @v6: bool true if v6 filter
@@ -1053,30 +1053,30 @@ ice_fdir_comp_rules(struct ice_fdir_fltr *a,  struct ice_fdir_fltr *b, bool v6)
  */
 bool ice_fdir_is_dup_fltr(struct ice_hw *hw, struct ice_fdir_fltr *input)
 {
-	enum ice_fltr_ptype flow_type;
 	struct ice_fdir_fltr *rule;
 	bool ret = false;
 
-	rule = NULL;
-
 	LIST_FOR_EACH_ENTRY(rule, &hw->fdir_list_head, ice_fdir_fltr,
 			    fltr_node) {
-		if (rule->flow_type == input->flow_type) {
-			flow_type = input->flow_type;
-			if (flow_type == ICE_FLTR_PTYPE_NONF_IPV4_TCP ||
-			    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_UDP ||
-			    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_SCTP ||
-			    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_OTHER)
-				ret = ice_fdir_comp_rules(rule, input, false);
+		enum ice_fltr_ptype flow_type;
+
+		if (rule->flow_type != input->flow_type)
+			continue;
+
+		flow_type = input->flow_type;
+		if (flow_type == ICE_FLTR_PTYPE_NONF_IPV4_TCP ||
+		    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_UDP ||
+		    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_SCTP ||
+		    flow_type == ICE_FLTR_PTYPE_NONF_IPV4_OTHER)
+			ret = ice_fdir_comp_rules(rule, input, false);
+		else
+			ret = ice_fdir_comp_rules(rule, input, true);
+		if (ret) {
+			if (rule->fltr_id == input->fltr_id &&
+			    rule->q_index != input->q_index)
+				ret = false;
 			else
-				ret = ice_fdir_comp_rules(rule, input, true);
-			if (ret) {
-				if (rule->fltr_id == input->fltr_id &&
-				    rule->q_index != input->q_index)
-					ret = false;
-				else
-					break;
-			}
+				break;
 		}
 	}
 
