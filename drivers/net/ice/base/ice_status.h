@@ -28,6 +28,7 @@ enum ice_status {
 	ICE_ERR_MAX_LIMIT			= -17,
 	ICE_ERR_RESET_ONGOING			= -18,
 	ICE_ERR_HW_TABLE			= -19,
+	ICE_ERR_FW_DDP_MISMATCH			= -20,
 
 	/* NVM specific error codes: Range -50..-59 */
 	ICE_ERR_NVM				= -50,
