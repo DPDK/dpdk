@@ -2077,10 +2077,7 @@ ice_aq_manage_mac_write(struct ice_hw *hw, const u8 *mac_addr, u8 flags,
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_manage_mac_write);
 
 	cmd->flags = flags;
-
-	/* Prep values for flags, sah, sal */
-	cmd->sah = HTONS(*((const u16 *)mac_addr));
-	cmd->sal = HTONL(*((const u32 *)(mac_addr + 2)));
+	ice_memcpy(cmd->mac_addr, mac_addr, ETH_ALEN, ICE_NONDMA_TO_DMA);
 
 	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
 }
