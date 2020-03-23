@@ -1397,16 +1397,18 @@ test_invalid_parameters(void)
 	} else
 		rte_acl_free(acx);
 
-	/* invalid NUMA node */
-	memcpy(&param, &acl_param, sizeof(param));
-	param.socket_id = RTE_MAX_NUMA_NODES + 1;
+	if (rte_eal_has_hugepages()) {
+		/* invalid NUMA node */
+		memcpy(&param, &acl_param, sizeof(param));
+		param.socket_id = RTE_MAX_NUMA_NODES + 1;
 
-	acx = rte_acl_create(&param);
-	if (acx != NULL) {
-		printf("Line %i: ACL context creation with invalid NUMA "
-				"should have failed!\n", __LINE__);
-		rte_acl_free(acx);
-		return -1;
+		acx = rte_acl_create(&param);
+		if (acx != NULL) {
+			printf("Line %i: ACL context creation with invalid "
+					"NUMA should have failed!\n", __LINE__);
+			rte_acl_free(acx);
+			return -1;
+		}
 	}
 
 	/* NULL name */

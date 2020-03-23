@@ -190,11 +190,13 @@ check_pipeline_invalid_params(void)
 		goto fail;
 	}
 
-	p = rte_pipeline_create(&pipeline_params_3);
-	if (p != NULL) {
-		RTE_LOG(INFO, PIPELINE, "%s: Configure pipeline with invalid "
-			"socket\n", __func__);
-		goto fail;
+	if (rte_eal_has_hugepages()) {
+		p = rte_pipeline_create(&pipeline_params_3);
+		if (p != NULL) {
+			RTE_LOG(INFO, PIPELINE, "%s: Configure pipeline with "
+				"invalid socket\n", __func__);
+			goto fail;
+		}
 	}
 
 	/* Check pipeline consistency */

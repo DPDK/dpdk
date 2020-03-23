@@ -1136,8 +1136,11 @@ fbk_hash_unit_test(void)
 	handle = rte_fbk_hash_create(&invalid_params_7);
 	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
 
-	handle = rte_fbk_hash_create(&invalid_params_8);
-	RETURN_IF_ERROR_FBK(handle != NULL, "fbk hash creation should have failed");
+	if (rte_eal_has_hugepages()) {
+		handle = rte_fbk_hash_create(&invalid_params_8);
+		RETURN_IF_ERROR_FBK(handle != NULL,
+					"fbk hash creation should have failed");
+	}
 
 	handle = rte_fbk_hash_create(&invalid_params_same_name_1);
 	RETURN_IF_ERROR_FBK(handle == NULL, "fbk hash creation should have succeeded");
