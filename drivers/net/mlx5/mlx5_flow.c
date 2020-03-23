@@ -1836,7 +1836,6 @@ mlx5_flow_validate_item_vxlan(const struct rte_flow_item *item,
 		uint32_t vlan_id;
 		uint8_t vni[4];
 	} id = { .vlan_id = 0, };
-	uint32_t vlan_id = 0;
 
 
 	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
@@ -1863,23 +1862,8 @@ mlx5_flow_validate_item_vxlan(const struct rte_flow_item *item,
 		return ret;
 	if (spec) {
 		memcpy(&id.vni[1], spec->vni, 3);
-		vlan_id = id.vlan_id;
 		memcpy(&id.vni[1], mask->vni, 3);
-		vlan_id &= id.vlan_id;
 	}
-	/*
-	 * Tunnel id 0 is equivalent as not adding a VXLAN layer, if
-	 * only this layer is defined in the Verbs specification it is
-	 * interpreted as wildcard and all packets will match this
-	 * rule, if it follows a full stack layer (ex: eth / ipv4 /
-	 * udp), all packets matching the layers before will also
-	 * match this rule.  To avoid such situation, VNI 0 is
-	 * currently refused.
-	 */
-	if (!vlan_id)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "VXLAN vni cannot be 0");
 	if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -1918,7 +1902,6 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 		uint32_t vlan_id;
 		uint8_t vni[4];
 	} id = { .vlan_id = 0, };
-	uint32_t vlan_id = 0;
 
 	if (!priv->config.l3_vxlan_en)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -1956,22 +1939,8 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 						  "VxLAN-GPE protocol"
 						  " not supported");
 		memcpy(&id.vni[1], spec->vni, 3);
-		vlan_id = id.vlan_id;
 		memcpy(&id.vni[1], mask->vni, 3);
-		vlan_id &= id.vlan_id;
 	}
-	/*
-	 * Tunnel id 0 is equivalent as not adding a VXLAN layer, if only this
-	 * layer is defined in the Verbs specification it is interpreted as
-	 * wildcard and all packets will match this rule, if it follows a full
-	 * stack layer (ex: eth / ipv4 / udp), all packets matching the layers
-	 * before will also match this rule.  To avoid such situation, VNI 0
-	 * is currently refused.
-	 */
-	if (!vlan_id)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "VXLAN-GPE vni cannot be 0");
 	if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
