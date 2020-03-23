@@ -1152,7 +1152,7 @@ ice_flow_add_prof_sync(struct ice_hw *hw, enum ice_block blk,
 		       struct ice_flow_prof **prof)
 {
 	struct ice_flow_prof_params params;
-	enum ice_status status = ICE_SUCCESS;
+	enum ice_status status;
 	u8 i;
 
 	if (!prof || (acts_cnt && !acts))
@@ -1825,14 +1825,11 @@ void ice_rem_vsi_rss_list(struct ice_hw *hw, u16 vsi_handle)
 	ice_acquire_lock(&hw->rss_locks);
 	LIST_FOR_EACH_ENTRY_SAFE(r, tmp, &hw->rss_list_head,
 				 ice_rss_cfg, l_entry) {
-		if (ice_is_bit_set(r->vsis, vsi_handle)) {
-			ice_clear_bit(vsi_handle, r->vsis);
-
+		if (ice_test_and_clear_bit(vsi_handle, r->vsis))
 			if (!ice_is_any_bit_set(r->vsis, ICE_MAX_VSI)) {
 				LIST_DEL(&r->l_entry);
 				ice_free(hw, r);
 			}
-		}
 	}
 	ice_release_lock(&hw->rss_locks);
 }

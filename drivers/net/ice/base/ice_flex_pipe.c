@@ -610,7 +610,7 @@ ice_gen_key_word(u8 val, u8 valid, u8 dont_care, u8 nvr_mtch, u8 *key,
 static bool ice_bits_max_set(const u8 *mask, u16 size, u16 max)
 {
 	u16 count = 0;
-	u16 i, j;
+	u16 i;
 
 	/* check each byte */
 	for (i = 0; i < size; i++) {
@@ -626,11 +626,9 @@ static bool ice_bits_max_set(const u8 *mask, u16 size, u16 max)
 			return false;
 
 		/* count the bits in this byte, checking threshold */
-		for (j = 0; j < BITS_PER_BYTE; j++) {
-			count += (mask[i] & (0x1 << j)) ? 1 : 0;
-			if (count > max)
-				return false;
-		}
+		count += ice_hweight8(mask[i]);
+		if (count > max)
+			return false;
 	}
 
 	return true;
@@ -914,9 +912,8 @@ ice_update_pkg(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 		return status;
 
 	for (i = 0; i < count; i++) {
-		bool last = ((i + 1) == count);
-
 		struct ice_buf_hdr *bh = (struct ice_buf_hdr *)(bufs + i);
+		bool last = ((i + 1) == count);
 
 		status = ice_aq_update_pkg(hw, bh, LE16_TO_CPU(bh->data_end),
 					   last, &offset, &info, NULL);
@@ -1565,7 +1562,7 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type req_profs,
  * allocated for every list entry.
  */
 enum ice_status
-ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
+ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u16 ids_cnt,
 		   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list)
 {
 	struct ice_sw_fv_list_entry *fvl;
@@ -1582,7 +1579,7 @@ ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u8 ids_cnt,
 
 	ice_seg = hw->seg;
 	do {
-		u8 i;
+		u16 i;
 
 		fv = (struct ice_fv *)
 			ice_pkg_enum_entry(ice_seg, &state, ICE_SID_FLD_VEC_SW,
@@ -1806,7 +1803,7 @@ static u16 ice_pkg_buf_get_active_sections(struct ice_buf_build *bld)
 }
 
 /**
- * ice_pkg_buf_header
+ * ice_pkg_buf
  * @bld: pointer to pkg build (allocated by ice_pkg_buf_alloc())
  *
  * Return a pointer to the buffer's header
@@ -1915,9 +1912,11 @@ ice_get_open_tunnel_port(struct ice_hw *hw, enum ice_tunnel_type type,
  * ice_create_tunnel
  * @hw: pointer to the HW structure
  * @type: type of tunnel
- * @port: port to use for vxlan tunnel
+ * @port: port of tunnel to create
  *
- * Creates a tunnel
+ * Create a tunnel by updating the parse graph in the parser. We do that by
+ * creating a package buffer with the tunnel info and issuing an update package
+ * command.
  */
 enum ice_status
 ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
@@ -3887,6 +3886,7 @@ ice_vsig_get_ref(struct ice_hw *hw, enum ice_block blk, u16 vsig, u16 *refs)
 {
 	u16 idx = vsig & ICE_VSIG_IDX_M;
 	struct ice_vsig_vsi *ptr;
+
 	*refs = 0;
 
 	if (!hw->blk[blk].xlt2.vsig_tbl[idx].in_use)
@@ -4090,12 +4090,12 @@ ice_upd_prof_hw(struct ice_hw *hw, enum ice_block blk,
 	struct ice_buf_build *b;
 	struct ice_chs_chg *tmp;
 	enum ice_status status;
-	u16 pkg_sects = 0;
-	u16 sects = 0;
+	u16 pkg_sects;
 	u16 xlt1 = 0;
 	u16 xlt2 = 0;
 	u16 tcam = 0;
 	u16 es = 0;
+	u16 sects;
 
 	/* count number of sections we need */
 	LIST_FOR_EACH_ENTRY(tmp, chgs, ice_chs_chg, list_entry) {
@@ -4193,8 +4193,6 @@ static void ice_update_fd_mask(struct ice_hw *hw, u16 prof_id, u32 mask_sel)
 	ice_debug(hw, ICE_DBG_INIT, "fd mask(%d): %x = %x\n", prof_id,
 		  GLQF_FDMASK_SEL(prof_id), mask_sel);
 }
-
-#define ICE_SRC_DST_MAX_COUNT	8
 
 struct ice_fd_src_dst_pair {
 	u8 prot_id;
@@ -4754,9 +4752,7 @@ ice_rem_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 		} while (vsi_cur);
 	}
 
-	status = ice_vsig_free(hw, blk, vsig);
-
-	return status;
+	return ice_vsig_free(hw, blk, vsig);
 }
 
 /**
@@ -4974,8 +4970,8 @@ static enum ice_status
 ice_add_prof_to_lst(struct ice_hw *hw, enum ice_block blk,
 		    struct LIST_HEAD_TYPE *lst, u64 hdl)
 {
-	struct ice_vsig_prof *p;
 	struct ice_prof_map *map;
+	struct ice_vsig_prof *p;
 	u16 i;
 
 	map = ice_search_prof_id(hw, blk, hdl);
@@ -5252,7 +5248,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 	/* new VSIG profile structure */
 	t = (struct ice_vsig_prof *)ice_malloc(hw, sizeof(*t));
 	if (!t)
-		goto err_ice_add_prof_id_vsig;
+		return ICE_ERR_NO_MEMORY;
 
 	t->profile_cookie = map->profile_cookie;
 	t->prof_id = map->prof_id;
@@ -5371,7 +5367,7 @@ err_ice_create_prof_id_vsig:
 }
 
 /**
- * ice_create_vsig_from_list - create a new VSIG with a list of profiles
+ * ice_create_vsig_from_lst - create a new VSIG with a list of profiles
  * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsi: the initial VSI that will be in VSIG
@@ -5498,13 +5494,11 @@ ice_add_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 	struct ice_vsig_prof *tmp1, *del1;
 	struct LIST_HEAD_TYPE union_lst;
 	struct ice_chs_chg *tmp, *del;
-	struct LIST_HEAD_TYPE chrs;
 	struct LIST_HEAD_TYPE chg;
 	enum ice_status status;
-	u16 vsig, or_vsig = 0;
+	u16 vsig;
 
 	INIT_LIST_HEAD(&union_lst);
-	INIT_LIST_HEAD(&chrs);
 	INIT_LIST_HEAD(&chg);
 
 	/* Get profile */
@@ -5516,6 +5510,7 @@ ice_add_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 	status = ice_vsig_find_vsi(hw, blk, vsi, &vsig);
 	if (!status && vsig) {
 		bool only_vsi;
+		u16 or_vsig;
 		u16 ref;
 
 		/* found in vsig */
@@ -5621,11 +5616,6 @@ err_ice_add_prof_id_flow:
 	}
 
 	LIST_FOR_EACH_ENTRY_SAFE(del1, tmp1, &union_lst, ice_vsig_prof, list) {
-		LIST_DEL(&del1->list);
-		ice_free(hw, del1);
-	}
-
-	LIST_FOR_EACH_ENTRY_SAFE(del1, tmp1, &chrs, ice_vsig_prof, list) {
 		LIST_DEL(&del1->list);
 		ice_free(hw, del1);
 	}
