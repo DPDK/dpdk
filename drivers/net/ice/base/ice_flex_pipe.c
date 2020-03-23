@@ -1435,8 +1435,8 @@ static struct ice_buf_build *ice_pkg_buf_alloc(struct ice_hw *hw)
 		return NULL;
 
 	buf = (struct ice_buf_hdr *)bld;
-	buf->data_end = CPU_TO_LE16(sizeof(*buf) -
-				    sizeof(buf->section_entry[0]));
+	buf->data_end = CPU_TO_LE16(offsetof(struct ice_buf_hdr,
+					     section_entry));
 	return bld;
 }
 
@@ -3834,7 +3834,7 @@ ice_prof_gen_key(struct ice_hw *hw, enum ice_block blk, u8 ptg, u16 vsig,
 	default:
 		ice_debug(hw, ICE_DBG_PKG, "Error in profile config\n");
 		break;
-	};
+	}
 
 	return ice_set_key(key, ICE_TCAM_KEY_SZ, (u8 *)&inkey, vl_msk, dc_msk,
 			   nm_msk, 0, ICE_TCAM_KEY_SZ / 2);
@@ -4863,8 +4863,6 @@ enum ice_status ice_rem_prof(struct ice_hw *hw, enum ice_block blk, u64 id)
 	LIST_DEL(&pmap->list);
 	ice_free(hw, pmap);
 
-	status = ICE_SUCCESS;
-
 err_ice_rem_prof:
 	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
 	return status;
@@ -5146,6 +5144,32 @@ err_ice_prof_tcam_ena_dis:
 }
 
 /**
+ * ice_ptg_attr_in_use - determine if PTG and attribute pair is in use
+ * @ptg_attr: pointer to the PTG and attribute pair to check
+ * @ptgs_used: bitmap that denotes which PTGs are in use
+ * @attr_used: array of PTG and attributes pairs already used
+ * @attr_cnt: count of entries in the attr_used array
+ */
+static bool
+ice_ptg_attr_in_use(struct ice_tcam_inf *ptg_attr, ice_bitmap_t *ptgs_used,
+		    struct ice_tcam_inf *attr_used[], u16 attr_cnt)
+{
+	u16 i;
+
+	if (!ice_is_bit_set(ptgs_used, ptg_attr->ptg))
+		return false;
+
+	/* the PTG is used, so now look for correct attributes */
+	for (i = 0; i < attr_cnt; i++)
+		if (attr_used[i]->ptg == ptg_attr->ptg &&
+		    attr_used[i]->attr.flags == ptg_attr->attr.flags &&
+		    attr_used[i]->attr.mask == ptg_attr->attr.mask)
+			return true;
+
+	return false;
+}
+
+/**
  * ice_adj_prof_priorities - adjust profile based on priorities
  * @hw: pointer to the HW struct
  * @blk: hardware block
@@ -5157,9 +5181,17 @@ ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 			struct LIST_HEAD_TYPE *chg)
 {
 	ice_declare_bitmap(ptgs_used, ICE_XLT1_CNT);
+	struct ice_tcam_inf **attr_used;
+	enum ice_status status = ICE_SUCCESS;
 	struct ice_vsig_prof *t;
-	enum ice_status status;
+	u16 attr_used_cnt = 0;
 	u16 idx;
+
+#define ICE_MAX_PTG_ATTRS	1024
+	attr_used = (struct ice_tcam_inf **)ice_calloc(hw, ICE_MAX_PTG_ATTRS,
+						       sizeof(*attr_used));
+	if (!attr_used)
+		return ICE_ERR_NO_MEMORY;
 
 	ice_zero_bitmap(ptgs_used, ICE_XLT1_CNT);
 	idx = vsig & ICE_VSIG_IDX_M;
@@ -5178,11 +5210,15 @@ ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 		u16 i;
 
 		for (i = 0; i < t->tcam_count; i++) {
+			bool used;
+
 			/* Scan the priorities from newest to oldest.
 			 * Make sure that the newest profiles take priority.
 			 */
-			if (ice_is_bit_set(ptgs_used, t->tcam[i].ptg) &&
-			    t->tcam[i].in_use) {
+			used = ice_ptg_attr_in_use(&t->tcam[i], ptgs_used,
+						   attr_used, attr_used_cnt);
+
+			if (used && t->tcam[i].in_use) {
 				/* need to mark this PTG as never match, as it
 				 * was already in use and therefore duplicate
 				 * (and lower priority)
@@ -5192,9 +5228,8 @@ ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 							       &t->tcam[i],
 							       chg);
 				if (status)
-					return status;
-			} else if (!ice_is_bit_set(ptgs_used, t->tcam[i].ptg) &&
-				   !t->tcam[i].in_use) {
+					goto err_ice_adj_prof_priorities;
+			} else if (!used && !t->tcam[i].in_use) {
 				/* need to enable this PTG, as it in not in use
 				 * and not enabled (highest priority)
 				 */
@@ -5203,15 +5238,22 @@ ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 							       &t->tcam[i],
 							       chg);
 				if (status)
-					return status;
+					goto err_ice_adj_prof_priorities;
 			}
 
 			/* keep track of used ptgs */
 			ice_set_bit(t->tcam[i].ptg, ptgs_used);
+			if (attr_used_cnt < ICE_MAX_PTG_ATTRS)
+				attr_used[attr_used_cnt++] = &t->tcam[i];
+			else
+				ice_debug(hw, ICE_DBG_INIT,
+					  "Warn: ICE_MAX_PTG_ATTRS exceeded\n");
 		}
 	}
 
-	return ICE_SUCCESS;
+err_ice_adj_prof_priorities:
+	ice_free(hw, attr_used);
+	return status;
 }
 
 /**
