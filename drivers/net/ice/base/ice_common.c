@@ -1315,6 +1315,28 @@ enum ice_status
 ice_aq_send_cmd(struct ice_hw *hw, struct ice_aq_desc *desc, void *buf,
 		u16 buf_size, struct ice_sq_cd *cd)
 {
+	if (hw->aq_send_cmd_fn) {
+		enum ice_status status = ICE_ERR_NOT_READY;
+		u16 retval = ICE_AQ_RC_OK;
+
+		ice_acquire_lock(&hw->adminq.sq_lock);
+		if (!hw->aq_send_cmd_fn(hw->aq_send_cmd_param, desc,
+					buf, buf_size)) {
+			retval = LE16_TO_CPU(desc->retval);
+			/* strip off FW internal code */
+			if (retval)
+				retval &= 0xff;
+			if (retval == ICE_AQ_RC_OK)
+				status = ICE_SUCCESS;
+			else
+				status = ICE_ERR_AQ_ERROR;
+		}
+
+		hw->adminq.sq_last_status = (enum ice_aq_err)retval;
+		ice_release_lock(&hw->adminq.sq_lock);
+
+		return status;
+	}
 	return ice_sq_send_cmd(hw, &hw->adminq, desc, buf, buf_size, cd);
 }
 
