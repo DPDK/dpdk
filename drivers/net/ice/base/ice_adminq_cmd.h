@@ -1720,6 +1720,32 @@ struct ice_aqc_nvm {
 #define ICE_AQC_NVM_LLDP_STATUS_M_LEN		4 /* In Bits */
 #define ICE_AQC_NVM_LLDP_STATUS_RD_LEN		4 /* In Bytes */
 
+/* The result of netlist NVM read comes in a TLV format. The actual data
+ * (netlist header) starts from word offset 1 (byte 2). The FW strips
+ * out the type field from the TLV header so all the netlist fields
+ * should adjust their offset value by 1 word (2 bytes) in order to map
+ * their correct location.
+ */
+#define ICE_AQC_NVM_LINK_TOPO_NETLIST_MOD_ID		0x11B
+#define ICE_AQC_NVM_LINK_TOPO_NETLIST_LEN_OFFSET	1
+#define ICE_AQC_NVM_LINK_TOPO_NETLIST_LEN		2 /* In bytes */
+#define ICE_AQC_NVM_NETLIST_NODE_COUNT_OFFSET		2
+#define ICE_AQC_NVM_NETLIST_NODE_COUNT_LEN		2 /* In bytes */
+#define ICE_AQC_NVM_NETLIST_ID_BLK_START_OFFSET		5
+#define ICE_AQC_NVM_NETLIST_ID_BLK_LEN			0x30 /* In words */
+
+/* netlist ID block field offsets (word offsets) */
+#define ICE_AQC_NVM_NETLIST_ID_BLK_MAJOR_VER_LOW	2
+#define ICE_AQC_NVM_NETLIST_ID_BLK_MAJOR_VER_HIGH	3
+#define ICE_AQC_NVM_NETLIST_ID_BLK_MINOR_VER_LOW	4
+#define ICE_AQC_NVM_NETLIST_ID_BLK_MINOR_VER_HIGH	5
+#define ICE_AQC_NVM_NETLIST_ID_BLK_TYPE_LOW		6
+#define ICE_AQC_NVM_NETLIST_ID_BLK_TYPE_HIGH		7
+#define ICE_AQC_NVM_NETLIST_ID_BLK_REV_LOW		8
+#define ICE_AQC_NVM_NETLIST_ID_BLK_REV_HIGH		9
+#define ICE_AQC_NVM_NETLIST_ID_BLK_SHA_HASH		0xA
+#define ICE_AQC_NVM_NETLIST_ID_BLK_CUST_VER		0x2F
+
 /* Used for 0x0704 as well as for 0x0705 commands */
 struct ice_aqc_nvm_cfg {
 	u8	cmd_flags;
