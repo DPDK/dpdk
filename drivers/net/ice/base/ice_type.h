@@ -205,6 +205,7 @@ enum ice_set_fc_aq_failures {
 /* MAC types */
 enum ice_mac_type {
 	ICE_MAC_UNKNOWN = 0,
+	ICE_MAC_E810,
 	ICE_MAC_GENERIC,
 };
 

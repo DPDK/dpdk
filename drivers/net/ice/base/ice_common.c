@@ -20,24 +20,38 @@
  */
 static enum ice_status ice_set_mac_type(struct ice_hw *hw)
 {
-	enum ice_status status = ICE_SUCCESS;
-
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
-	if (hw->vendor_id == ICE_INTEL_VENDOR_ID) {
-		switch (hw->device_id) {
-		default:
-			hw->mac_type = ICE_MAC_GENERIC;
-			break;
-		}
-	} else {
-		status = ICE_ERR_DEVICE_NOT_SUPPORTED;
+	if (hw->vendor_id != ICE_INTEL_VENDOR_ID)
+		return ICE_ERR_DEVICE_NOT_SUPPORTED;
+
+	switch (hw->device_id) {
+	case ICE_DEV_ID_E810C_BACKPLANE:
+	case ICE_DEV_ID_E810C_QSFP:
+	case ICE_DEV_ID_E810C_SFP:
+	case ICE_DEV_ID_E810_XXV_BACKPLANE:
+	case ICE_DEV_ID_E810_XXV_QSFP:
+	case ICE_DEV_ID_E810_XXV_SFP:
+		hw->mac_type = ICE_MAC_E810;
+		break;
+	case ICE_DEV_ID_E822C_10G_BASE_T:
+	case ICE_DEV_ID_E822C_BACKPLANE:
+	case ICE_DEV_ID_E822C_QSFP:
+	case ICE_DEV_ID_E822C_SFP:
+	case ICE_DEV_ID_E822C_SGMII:
+	case ICE_DEV_ID_E822L_10G_BASE_T:
+	case ICE_DEV_ID_E822L_BACKPLANE:
+	case ICE_DEV_ID_E822L_SFP:
+	case ICE_DEV_ID_E822L_SGMII:
+		hw->mac_type = ICE_MAC_GENERIC;
+		break;
+	default:
+		hw->mac_type = ICE_MAC_UNKNOWN;
+		break;
 	}
 
-	ice_debug(hw, ICE_DBG_INIT, "found mac_type: %d, status: %d\n",
-		  hw->mac_type, status);
-
-	return status;
+	ice_debug(hw, ICE_DBG_INIT, "mac_type: %d\n", hw->mac_type);
+	return ICE_SUCCESS;
 }
 
 /**
