@@ -623,8 +623,9 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	struct ice_aqc_recipe_data_elem *tmp;
 	u16 num_recps = ICE_MAX_NUM_RECIPES;
 	struct ice_prot_lkup_ext *lkup_exts;
-	u16 i, sub_recps, fv_word_idx = 0;
 	enum ice_status status;
+	u8 fv_word_idx = 0;
+	u16 sub_recps;
 
 	ice_zero_bitmap(result_bm, ICE_MAX_FV_WORDS);
 
@@ -662,7 +663,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	for (sub_recps = 0; sub_recps < num_recps; sub_recps++) {
 		struct ice_aqc_recipe_data_elem root_bufs = tmp[sub_recps];
 		struct ice_recp_grp_entry *rg_entry;
-		u8 prof, idx, prot = 0;
+		u8 i, prof, idx, prot = 0;
 		bool is_root;
 		u16 off = 0;
 
@@ -718,7 +719,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		LIST_ADD(&rg_entry->l_entry, &recps[rid].rg_list);
 
 		/* Propagate some data to the recipe database */
-		recps[idx].is_root = is_root;
+		recps[idx].is_root = !!is_root;
 		recps[idx].priority = root_bufs.content.act_ctrl_fwd_priority;
 		ice_zero_bitmap(recps[idx].res_idxs, ICE_MAX_FV_WORDS);
 		if (root_bufs.content.result_indx & ICE_AQ_RECIPE_RESULT_EN) {
@@ -1842,10 +1843,10 @@ enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw)
 {
 	struct ice_aqc_get_sw_cfg_resp *rbuf;
 	enum ice_status status;
-	u16 num_total_ports;
+	u8 num_total_ports;
 	u16 req_desc = 0;
 	u16 num_elems;
-	u16 j = 0;
+	u8 j = 0;
 	u16 i;
 
 	num_total_ports = 1;
@@ -3124,11 +3125,11 @@ ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 	struct ice_aqc_sw_rules_elem *s_rule, *r_iter;
 	struct ice_fltr_list_entry *m_list_itr;
 	struct LIST_HEAD_TYPE *rule_head;
-	u16 elem_sent, total_elem_left;
+	u16 total_elem_left, s_rule_size;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
 	enum ice_status status = ICE_SUCCESS;
 	u16 num_unicast = 0;
-	u16 s_rule_size;
+	u8 elem_sent;
 
 	s_rule = NULL;
 	rule_lock = &recp_list->filt_rule_lock;
@@ -3210,8 +3211,8 @@ ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 	     total_elem_left -= elem_sent) {
 		struct ice_aqc_sw_rules_elem *entry = r_iter;
 
-		elem_sent = min(total_elem_left,
-				(u16)(ICE_AQ_MAX_BUF_LEN / s_rule_size));
+		elem_sent = MIN_T(u8, total_elem_left,
+				  (ICE_AQ_MAX_BUF_LEN / s_rule_size));
 		status = ice_aq_sw_rules(hw, entry, elem_sent * s_rule_size,
 					 elem_sent, ice_aqc_opc_add_sw_rules,
 					 NULL);
@@ -4943,7 +4944,7 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
 {
 	bool refresh_required = true;
 	struct ice_sw_recipe *recp;
-	u16 i;
+	u8 i;
 
 	/* Walk through existing recipes to find a match */
 	recp = hw->switch_info->recp_list;
@@ -5009,9 +5010,9 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
  *
  * Returns true if found, false otherwise
  */
-static bool ice_prot_type_to_id(enum ice_protocol_type type, u16 *id)
+static bool ice_prot_type_to_id(enum ice_protocol_type type, u8 *id)
 {
-	u16 i;
+	u8 i;
 
 	for (i = 0; i < ARRAY_SIZE(ice_prot_id_tbl); i++)
 		if (ice_prot_id_tbl[i].type == type) {
@@ -5028,13 +5029,11 @@ static bool ice_prot_type_to_id(enum ice_protocol_type type, u16 *id)
  *
  * calculate valid words in a lookup rule using mask value
  */
-static u16
+static u8
 ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 		     struct ice_prot_lkup_ext *lkup_exts)
 {
-	u16 j, word = 0;
-	u16 prot_id;
-	u16 ret_val;
+	u8 j, word, prot_id, ret_val;
 
 	if (!ice_prot_type_to_id(rule->type, &prot_id))
 		return 0;
@@ -5043,7 +5042,7 @@ ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 
 	for (j = 0; j < sizeof(rule->m_u) / sizeof(u16); j++)
 		if (((u16 *)&rule->m_u)[j] &&
-		    (unsigned long)rule->type < ARRAY_SIZE(ice_prot_ext)) {
+		    rule->type < ARRAY_SIZE(ice_prot_ext)) {
 			/* No more space to accommodate */
 			if (word >= ICE_MAX_CHAIN_WORDS)
 				return 0;
@@ -5612,10 +5611,10 @@ ice_get_fv(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 	   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list)
 {
 	enum ice_status status;
-	u16 *prot_ids;
+	u8 *prot_ids;
 	u16 i;
 
-	prot_ids = (u16 *)ice_calloc(hw, lkups_cnt, sizeof(*prot_ids));
+	prot_ids = (u8 *)ice_calloc(hw, lkups_cnt, sizeof(*prot_ids));
 	if (!prot_ids)
 		return ICE_ERR_NO_MEMORY;
 
@@ -5791,7 +5790,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		match_tun = true;
 
 	/* set the recipe priority if specified */
-	rm->priority = rinfo->priority ? rinfo->priority : 0;
+	rm->priority = (u8)rinfo->priority;
 
 	/* Find offsets from the field vector. Pick the first one for all the
 	 * recipes.
@@ -6197,7 +6196,7 @@ ice_fill_adv_packet_tun(struct ice_hw *hw, enum ice_sw_tunnel_type tun_type,
  */
 static struct ice_adv_fltr_mgmt_list_entry *
 ice_find_adv_rule_entry(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
-			u16 lkups_cnt, u8 recp_id,
+			u16 lkups_cnt, u16 recp_id,
 			struct ice_adv_rule_info *rinfo)
 {
 	struct ice_adv_fltr_mgmt_list_entry *list_itr;

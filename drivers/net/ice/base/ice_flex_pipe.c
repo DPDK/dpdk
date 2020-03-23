@@ -1562,7 +1562,7 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type req_profs,
  * allocated for every list entry.
  */
 enum ice_status
-ice_get_sw_fv_list(struct ice_hw *hw, u16 *prot_ids, u16 ids_cnt,
+ice_get_sw_fv_list(struct ice_hw *hw, u8 *prot_ids, u16 ids_cnt,
 		   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list)
 {
 	struct ice_sw_fv_list_entry *fvl;
@@ -1963,7 +1963,7 @@ ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
 	 */
 	ice_set_key((u8 *)&sect_rx->tcam[0].key, sizeof(sect_rx->tcam[0].key),
 		    (u8 *)&port, NULL, NULL, NULL,
-		    offsetof(struct ice_boost_key_value, hv_dst_port_key),
+		    (u16)offsetof(struct ice_boost_key_value, hv_dst_port_key),
 		    sizeof(sect_rx->tcam[0].key.key.hv_dst_port_key));
 
 	/* exact copy of entry to Tx section entry */
@@ -2011,7 +2011,7 @@ enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 		return ICE_ERR_PARAM;
 
 	/* size of section - there is at least one entry */
-	size = (count - 1) * sizeof(*sect_rx->tcam) + sizeof(*sect_rx);
+	size = ice_struct_size(sect_rx, tcam, count - 1);
 
 	bld = ice_pkg_buf_alloc(hw);
 	if (!bld)
@@ -2078,7 +2078,7 @@ ice_destroy_tunnel_err:
  * @off: variable to receive the protocol offset
  */
 enum ice_status
-ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
+ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 fv_idx,
 		  u8 *prot, u16 *off)
 {
 	struct ice_fv_word *fv_ext;
@@ -2680,9 +2680,9 @@ ice_find_prof_id_with_mask(struct ice_hw *hw, enum ice_block blk,
 			   struct ice_fv_word *fv, u16 *masks, u8 *prof_id)
 {
 	struct ice_es *es = &hw->blk[blk].es;
-	u16 i;
+	u8 i;
 
-	for (i = 0; i < es->count; i++) {
+	for (i = 0; i < (u8)es->count; i++) {
 		u16 off = i * es->fvw;
 
 		if (memcmp(&es->t[off], fv, es->fvw * sizeof(*fv)))
@@ -4464,7 +4464,7 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 	ice_declare_bitmap(ptgs_used, ICE_XLT1_CNT);
 	struct ice_prof_map *prof;
 	enum ice_status status;
-	u32 byte = 0;
+	u8 byte = 0;
 	u8 prof_id;
 
 	ice_zero_bitmap(ptgs_used, ICE_XLT1_CNT);
@@ -4513,7 +4513,7 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 
 	/* build list of ptgs */
 	while (bytes && prof->ptg_cnt < ICE_MAX_PTG_PER_PROFILE) {
-		u32 bit;
+		u8 bit;
 
 		if (!ptypes[byte]) {
 			bytes--;
@@ -4562,7 +4562,7 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 				}
 
 				/* nothing left in byte, then exit */
-				m = ~((1 << (bit + 1)) - 1);
+				m = ~(u8)((1 << (bit + 1)) - 1);
 				if (!(ptypes[byte] & m))
 					break;
 			}
@@ -5335,8 +5335,10 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 					      t->tcam[i].ptg, vsig, 0,
 					      t->tcam[i].attr.flags, vl_msk,
 					      dc_msk, nm_msk);
-		if (status)
+		if (status) {
+			ice_free(hw, p);
 			goto err_ice_add_prof_id_vsig;
+		}
 
 		/* log change */
 		LIST_ADD(&p->list_entry, chg);

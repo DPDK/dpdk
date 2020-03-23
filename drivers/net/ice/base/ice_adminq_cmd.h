@@ -682,7 +682,7 @@ struct ice_aqc_recipe_content {
 #define ICE_AQ_RECIPE_ID_S		0
 #define ICE_AQ_RECIPE_ID_M		(0x3F << ICE_AQ_RECIPE_ID_S)
 #define ICE_AQ_RECIPE_ID_IS_ROOT	BIT(7)
-#define ICE_AQ_SW_ID_LKUP_IDX		0
+#define	ICE_AQ_SW_ID_LKUP_IDX		0
 	u8 lkup_indx[5];
 #define ICE_AQ_RECIPE_LKUP_DATA_S	0
 #define ICE_AQ_RECIPE_LKUP_DATA_M	(0x3F << ICE_AQ_RECIPE_LKUP_DATA_S)
@@ -813,7 +813,7 @@ struct ice_sw_rule_lkup_rx_tx {
 #define ICE_SINGLE_ACT_OTHER_ACTS		0x3
 #define ICE_SINGLE_OTHER_ACT_IDENTIFIER_S	17
 #define ICE_SINGLE_OTHER_ACT_IDENTIFIER_M	\
-				(0x3 << \ ICE_SINGLE_OTHER_ACT_IDENTIFIER_S)
+				(0x3 << ICE_SINGLE_OTHER_ACT_IDENTIFIER_S)
 
 	/* Bit 17:18 - Defines other actions */
 	/* Other action = 0 - Mirror VSI */
@@ -2118,9 +2118,7 @@ struct ice_aqc_move_txqs {
 	__le32 addr_low;
 };
 
-/* This is the descriptor of each queue entry for the move Tx LAN Queues
- * command (0x0C32).
- */
+/* Per-queue data buffer for the Move Tx LAN Queues command/response */
 struct ice_aqc_move_txqs_elem {
 	__le16 txq_id;
 	u8 q_cgd;
@@ -2128,6 +2126,7 @@ struct ice_aqc_move_txqs_elem {
 	__le32 q_teid;
 };
 
+/* Indirect data buffer for the Move Tx LAN Queues command/response */
 struct ice_aqc_move_txqs_data {
 	__le32 src_teid;
 	__le32 dest_teid;

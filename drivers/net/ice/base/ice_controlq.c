@@ -624,18 +624,18 @@ init_ctrlq_free_sq:
  */
 enum ice_status ice_init_all_ctrlq(struct ice_hw *hw)
 {
-	enum ice_status ret_code;
+	enum ice_status status;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	/* Init FW admin queue */
-	ret_code = ice_init_ctrlq(hw, ICE_CTL_Q_ADMIN);
-	if (ret_code)
-		return ret_code;
+	status = ice_init_ctrlq(hw, ICE_CTL_Q_ADMIN);
+	if (status)
+		return status;
 
-	ret_code = ice_init_check_adminq(hw);
-	if (ret_code)
-		return ret_code;
+	status = ice_init_check_adminq(hw);
+	if (status)
+		return status;
 	/* Init Mailbox queue */
 	return ice_init_ctrlq(hw, ICE_CTL_Q_MAILBOX);
 }
@@ -832,7 +832,7 @@ static void ice_debug_cq(struct ice_hw *hw, void *desc, void *buf, u16 buf_len)
 	     flags & ICE_AQ_FLAG_RD)) {
 		ice_debug(hw, ICE_DBG_AQ_DESC_BUF, "Buffer:\n");
 		ice_debug_array(hw, ICE_DBG_AQ_DESC_BUF, 16, 1, (u8 *)buf,
-				min(buf_len, datalen));
+				MIN_T(u16, buf_len, datalen));
 	}
 }
 
@@ -1140,7 +1140,7 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	}
 	ice_memcpy(&e->desc, desc, sizeof(e->desc), ICE_DMA_TO_NONDMA);
 	datalen = LE16_TO_CPU(desc->datalen);
-	e->msg_len = min(datalen, e->buf_len);
+	e->msg_len = MIN_T(u16, datalen, e->buf_len);
 	if (e->msg_buf && e->msg_len)
 		ice_memcpy(e->msg_buf, cq->rq.r.rq_bi[desc_idx].va,
 			   e->msg_len, ICE_DMA_TO_NONDMA);
