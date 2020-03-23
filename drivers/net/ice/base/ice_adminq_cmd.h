@@ -1678,8 +1678,9 @@ struct ice_aqc_sff_eeprom {
  * NVM Shadow RAM Dump commands (direct 0x0707)
  */
 struct ice_aqc_nvm {
+#define ICE_AQC_NVM_MAX_OFFSET		0xFFFFFF
 	__le16 offset_low;
-	u8 offset_high;
+	u8 offset_high; /* For Write Activate offset_high is used as flags2 */
 	u8 cmd_flags;
 #define ICE_AQC_NVM_LAST_CMD		BIT(0)
 #define ICE_AQC_NVM_PCIR_REQ		BIT(0)	/* Used by NVM Write reply */

@@ -29,8 +29,7 @@ ice_aq_read_nvm(struct ice_hw *hw, u16 module_typeid, u32 offset, u16 length,
 
 	cmd = &desc.params.nvm;
 
-	/* In offset the highest byte must be zeroed. */
-	if (offset & 0xFF000000)
+	if (offset > ICE_AQC_NVM_MAX_OFFSET)
 		return ICE_ERR_PARAM;
 
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_nvm_read);
