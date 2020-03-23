@@ -50,6 +50,74 @@ ice_aq_read_nvm(struct ice_hw *hw, u16 module_typeid, u32 offset, u16 length,
 }
 
 /**
+ * ice_read_flat_nvm - Read portion of NVM by flat offset
+ * @hw: pointer to the HW struct
+ * @offset: offset from beginning of NVM
+ * @length: (in) number of bytes to read; (out) number of bytes actually read
+ * @data: buffer to return data in (sized to fit the specified length)
+ * @read_shadow_ram: if true, read from shadow RAM instead of NVM
+ *
+ * Reads a portion of the NVM, as a flat memory space. This function correctly
+ * breaks read requests across Shadow RAM sectors and ensures that no single
+ * read request exceeds the maximum 4Kb read for a single AdminQ command.
+ *
+ * Returns a status code on failure. Note that the data pointer may be
+ * partially updated if some reads succeed before a failure.
+ */
+enum ice_status
+ice_read_flat_nvm(struct ice_hw *hw, u32 offset, u32 *length, u8 *data,
+		  bool read_shadow_ram)
+{
+	enum ice_status status;
+	u32 inlen = *length;
+	u32 bytes_read = 0;
+	bool last_cmd;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
+	*length = 0;
+
+	/* Verify the length of the read if this is for the Shadow RAM */
+	if (read_shadow_ram && ((offset + inlen) > (hw->nvm.sr_words * 2u))) {
+		ice_debug(hw, ICE_DBG_NVM,
+			  "NVM error: requested data is beyond Shadow RAM limit\n");
+		return ICE_ERR_PARAM;
+	}
+
+	do {
+		u32 read_size, sector_offset;
+
+		/* ice_aq_read_nvm cannot read more than 4Kb at a time.
+		 * Additionally, a read from the Shadow RAM may not cross over
+		 * a sector boundary. Conveniently, the sector size is also
+		 * 4Kb.
+		 */
+		sector_offset = offset % ICE_AQ_MAX_BUF_LEN;
+		read_size = MIN_T(u32, ICE_AQ_MAX_BUF_LEN - sector_offset,
+				  inlen - bytes_read);
+
+		last_cmd = !(bytes_read + read_size < inlen);
+
+		/* ice_aq_read_nvm takes the length as a u16. Our read_size is
+		 * calculated using a u32, but the ICE_AQ_MAX_BUF_LEN maximum
+		 * size guarantees that it will fit within the 2 bytes.
+		 */
+		status = ice_aq_read_nvm(hw, ICE_AQC_NVM_START_POINT,
+					 offset, (u16)read_size,
+					 data + bytes_read, last_cmd,
+					 read_shadow_ram, NULL);
+		if (status)
+			break;
+
+		bytes_read += read_size;
+		offset += read_size;
+	} while (!last_cmd);
+
+	*length = bytes_read;
+	return status;
+}
+
+/**
  * ice_check_sr_access_params - verify params for Shadow RAM R/W operations.
  * @hw: pointer to the HW structure
  * @offset: offset in words from module start
@@ -144,55 +212,29 @@ ice_read_sr_word_aq(struct ice_hw *hw, u16 offset, u16 *data)
  * @words: (in) number of words to read; (out) number of words actually read
  * @data: words read from the Shadow RAM
  *
- * Reads 16 bit words (data buf) from the SR using the ice_read_sr_aq
- * method. Ownership of the NVM is taken before reading the buffer and later
- * released.
+ * Reads 16 bit words (data buf) from the Shadow RAM. Ownership of the NVM is
+ * taken before reading the buffer and later released.
  */
 static enum ice_status
 ice_read_sr_buf_aq(struct ice_hw *hw, u16 offset, u16 *words, u16 *data)
 {
+	u32 bytes = *words * 2, i;
 	enum ice_status status;
-	bool last_cmd = false;
-	u16 words_read = 0;
-	u16 i = 0;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
-	do {
-		u16 read_size, off_w;
+	/* ice_read_flat_nvm takes into account the 4Kb AdminQ and Shadow RAM
+	 * sector restrictions necessary when reading from the NVM.
+	 */
+	status = ice_read_flat_nvm(hw, offset * 2, &bytes, (u8 *)data, true);
 
-		/* Calculate number of bytes we should read in this step.
-		 * It's not allowed to read more than one page at a time or
-		 * to cross page boundaries.
-		 */
-		off_w = offset % ICE_SR_SECTOR_SIZE_IN_WORDS;
-		read_size = off_w ?
-			MIN_T(u16, *words,
-			      (ICE_SR_SECTOR_SIZE_IN_WORDS - off_w)) :
-			MIN_T(u16, (*words - words_read),
-			      ICE_SR_SECTOR_SIZE_IN_WORDS);
+	/* Report the number of words successfully read */
+	*words = bytes / 2;
 
-		/* Check if this is last command, if so set proper flag */
-		if ((words_read + read_size) >= *words)
-			last_cmd = true;
-
-		status = ice_read_sr_aq(hw, offset, read_size,
-					data + words_read, last_cmd);
-		if (status)
-			goto read_nvm_buf_aq_exit;
-
-		/* Increment counter for words already read and move offset to
-		 * new read location
-		 */
-		words_read += read_size;
-		offset += read_size;
-	} while (words_read < *words);
-
+	/* Byte swap the words up to the amount we actually read */
 	for (i = 0; i < *words; i++)
 		data[i] = LE16_TO_CPU(((_FORCE_ __le16 *)data)[i]);
 
-read_nvm_buf_aq_exit:
-	*words = words_read;
 	return status;
 }
 
