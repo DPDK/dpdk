@@ -882,7 +882,9 @@ struct mlx5_ifc_mkc_bits {
 
 	u8         translations_octword_size[0x20];
 
-	u8         reserved_at_1c0[0x1b];
+	u8         reserved_at_1c0[0x19];
+	u8		   relaxed_ordering_read[0x1];
+	u8		   reserved_at_1da[0x1];
 	u8         log_page_size[0x5];
 
 	u8         reserved_at_1e0[0x20];

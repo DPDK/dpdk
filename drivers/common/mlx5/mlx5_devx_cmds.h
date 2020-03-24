@@ -33,6 +33,7 @@ struct mlx5_devx_mkey_attr {
 	uint32_t pd;
 	uint32_t log_entity_size;
 	uint32_t pg_access:1;
+	uint32_t relaxed_ordering:1;
 	struct mlx5_klm *klm_array;
 	int klm_num;
 };

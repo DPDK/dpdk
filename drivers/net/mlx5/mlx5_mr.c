@@ -768,7 +768,8 @@ alloc_resources:
 	 * through mlx5_alloc_verbs_buf().
 	 */
 	mr->ibv_mr = mlx5_glue->reg_mr(sh->pd, (void *)data.start, len,
-				       IBV_ACCESS_LOCAL_WRITE);
+				       IBV_ACCESS_LOCAL_WRITE |
+					   IBV_ACCESS_RELAXED_ORDERING);
 	if (mr->ibv_mr == NULL) {
 		DEBUG("port %u fail to create a verbs MR for address (%p)",
 		      dev->data->port_id, (void *)addr);
@@ -1217,7 +1218,8 @@ mlx5_create_mr_ext(struct rte_eth_dev *dev, uintptr_t addr, size_t len,
 	if (mr == NULL)
 		return NULL;
 	mr->ibv_mr = mlx5_glue->reg_mr(priv->sh->pd, (void *)addr, len,
-				       IBV_ACCESS_LOCAL_WRITE);
+				       IBV_ACCESS_LOCAL_WRITE |
+					   IBV_ACCESS_RELAXED_ORDERING);
 	if (mr->ibv_mr == NULL) {
 		DRV_LOG(WARNING,
 			"port %u fail to create a verbs MR for address (%p)",

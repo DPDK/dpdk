@@ -98,6 +98,10 @@ struct mlx5dv_var { uint32_t page_id; uint32_t length; off_t mmap_off;
 			uint64_t comp_mask; };
 #endif
 
+#ifndef IBV_ACCESS_RELAXED_ORDERING
+#define IBV_ACCESS_RELAXED_ORDERING 0
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;

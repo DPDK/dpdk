@@ -3962,6 +3962,7 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 	mkey_attr.pg_access = 0;
 	mkey_attr.klm_array = NULL;
 	mkey_attr.klm_num = 0;
+	mkey_attr.relaxed_ordering = 1;
 	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);
 	if (!mem_mng->dm) {
 		mlx5_glue->devx_umem_dereg(mem_mng->umem);
