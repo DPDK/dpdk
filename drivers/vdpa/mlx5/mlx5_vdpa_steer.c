@@ -123,6 +123,8 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_virtq *virtq, int enable)
 	struct mlx5_vdpa_priv *priv = virtq->priv;
 	int ret = 0;
 
+	DRV_LOG(INFO, "Update virtq %d status %sable -> %sable.", virtq->index,
+		virtq->enable ? "en" : "dis", enable ? "en" : "dis");
 	if (virtq->enable == !!enable)
 		return 0;
 	virtq->enable = !!enable;

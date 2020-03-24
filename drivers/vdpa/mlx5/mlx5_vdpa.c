@@ -214,6 +214,7 @@ mlx5_vdpa_dev_close(int vid)
 	mlx5_vdpa_mem_dereg(priv);
 	priv->configured = 0;
 	priv->vid = 0;
+	DRV_LOG(INFO, "vDPA device %d was closed.", vid);
 	return ret;
 }
 
@@ -239,6 +240,7 @@ mlx5_vdpa_dev_config(int vid)
 		return -1;
 	}
 	priv->configured = 1;
+	DRV_LOG(INFO, "vDPA device %d was configured.", vid);
 	return 0;
 }
 
