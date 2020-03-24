@@ -132,8 +132,10 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		__m128i byte_cnt, invalid_mask;
 #endif
 
-		if (!(pos & 0x7) && pos + 8 < mcqe_n)
-			rte_prefetch0((void *)(cq + pos + 8));
+		for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
+			if (likely(pos + i < mcqe_n))
+				rte_prefetch0((void *)(cq + pos + i));
+
 		/* A.1 load mCQEs into a 128bit register. */
 		mcqe1 = _mm_loadu_si128((__m128i *)&mcq[pos % 8]);
 		mcqe2 = _mm_loadu_si128((__m128i *)&mcq[pos % 8 + 2]);

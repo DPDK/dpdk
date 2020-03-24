@@ -145,9 +145,9 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 				    -1UL << ((mcqe_n - pos) *
 					     sizeof(uint16_t) * 8) : 0);
 #endif
-
-		if (!(pos & 0x7) && pos + 8 < mcqe_n)
-			rte_prefetch0((void *)(cq + pos + 8));
+		for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
+			if (likely(pos + i < mcqe_n))
+				rte_prefetch0((void *)(cq + pos + i));
 		__asm__ volatile (
 		/* A.1 load mCQEs into a 128bit register. */
 		"ld1 {v16.16b - v17.16b}, [%[mcq]] \n\t"

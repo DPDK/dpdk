@@ -155,8 +155,9 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		const vector unsigned long shmax = {64, 64};
 #endif
 
-		if (!(pos & 0x7) && pos + 8 < mcqe_n)
-			rte_prefetch0((void *)(cq + pos + 8));
+		for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
+			if (likely(pos + i < mcqe_n))
+				rte_prefetch0((void *)(cq + pos + i));
 
 		/* A.1 load mCQEs into a 128bit register. */
 		mcqe1 = (vector unsigned char)vec_vsx_ld(0,
