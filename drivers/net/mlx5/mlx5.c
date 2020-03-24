@@ -1246,6 +1246,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	 */
 	mlx5_flow_list_flush(dev, &priv->flows, true);
 	mlx5_flow_meter_flush(dev, NULL);
+	/* Free the intermediate buffers for flow creation. */
+	mlx5_flow_free_intermediate(dev);
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
@@ -2768,6 +2770,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			err = ENOTSUP;
 			goto error;
 	}
+	/*
+	 * Allocate the buffer for flow creating, just once.
+	 * The allocation must be done before any flow creating.
+	 */
+	mlx5_flow_alloc_intermediate(eth_dev);
 	/* Query availibility of metadata reg_c's. */
 	err = mlx5_flow_discover_mreg_c(eth_dev);
 	if (err < 0) {

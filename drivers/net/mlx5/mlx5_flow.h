@@ -500,6 +500,8 @@ struct mlx5_flow_handle_dv {
 
 /** Device flow handle structure: used both for creating & destroying. */
 struct mlx5_flow_handle {
+	LIST_ENTRY(mlx5_flow_handle) next;
+	/**< Pointer to next device flow handle. */
 	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	uint64_t act_flags;
@@ -517,6 +519,18 @@ struct mlx5_flow_handle {
 };
 
 /*
+ * Size for Verbs device flow handle structure only. Do not use the DV only
+ * structure in Verbs. No DV flows attributes will be accessed.
+ * Macro offsetof() could also be used here.
+ */
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+#define MLX5_FLOW_HANDLE_VERBS_SIZE \
+	(sizeof(struct mlx5_flow_handle) - sizeof(struct mlx5_flow_handle_dv))
+#else
+#define MLX5_FLOW_HANDLE_VERBS_SIZE (sizeof(struct mlx5_flow_handle))
+#endif
+
+/*
  * Max number of actions per DV flow.
  * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
  * in rdma-core file providers/mlx5/verbs.c.
@@ -524,7 +538,7 @@ struct mlx5_flow_handle {
 #define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
 
 /** Device flow structure only for DV flow creation. */
-struct mlx5_flow_resource_dv {
+struct mlx5_flow_dv_workspace {
 	uint32_t group; /**< The group index. */
 	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
 	int actions_n; /**< number of actions. */
@@ -533,27 +547,79 @@ struct mlx5_flow_resource_dv {
 	/**< Holds the value that the packet is compared to. */
 };
 
+/*
+ * Maximal Verbs flow specifications & actions size.
+ * Some elements are mutually exclusive, but enough space should be allocated.
+ * Tunnel cases: 1. Max 2 Ethernet + IP(v6 len > v4 len) + TCP/UDP headers.
+ *               2. One tunnel header (exception: GRE + MPLS),
+ *                  SPEC length: GRE == tunnel.
+ * Actions: 1. 1 Mark OR Flag.
+ *          2. 1 Drop (if any).
+ *          3. No limitation for counters, but it makes no sense to support too
+ *             many counters in a single device flow.
+ */
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+#define MLX5_VERBS_MAX_SPEC_SIZE \
+		( \
+			(2 * (sizeof(struct ibv_flow_spec_eth) + \
+			      sizeof(struct ibv_flow_spec_ipv6) + \
+			      sizeof(struct ibv_flow_spec_tcp_udp)) + \
+			sizeof(struct ibv_flow_spec_gre) + \
+			sizeof(struct ibv_flow_spec_mpls)) \
+		)
+#else
+#define MLX5_VERBS_MAX_SPEC_SIZE \
+		( \
+			(2 * (sizeof(struct ibv_flow_spec_eth) + \
+			      sizeof(struct ibv_flow_spec_ipv6) + \
+			      sizeof(struct ibv_flow_spec_tcp_udp)) + \
+			sizeof(struct ibv_flow_spec_tunnel)) \
+		)
+#endif
+
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) || \
+	defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+#define MLX5_VERBS_MAX_ACT_SIZE \
+		( \
+			sizeof(struct ibv_flow_spec_action_tag) + \
+			sizeof(struct ibv_flow_spec_action_drop) + \
+			sizeof(struct ibv_flow_spec_counter_action) * 4 \
+		)
+#else
+#define MLX5_VERBS_MAX_ACT_SIZE \
+		( \
+			sizeof(struct ibv_flow_spec_action_tag) + \
+			sizeof(struct ibv_flow_spec_action_drop) \
+		)
+#endif
+
+#define MLX5_VERBS_MAX_SPEC_ACT_SIZE \
+		(MLX5_VERBS_MAX_SPEC_SIZE + MLX5_VERBS_MAX_ACT_SIZE)
+
 /** Device flow structure only for Verbs flow creation. */
-struct mlx5_flow_resource_verbs {
+struct mlx5_flow_verbs_workspace {
 	unsigned int size; /**< Size of the attribute. */
-	struct ibv_flow_attr *attr; /**< Pointer to the Specification buffer. */
-	uint8_t *specs; /**< Pointer to the specifications. */
+	struct ibv_flow_attr attr; /**< Verbs flow attribute buffer. */
+	uint8_t specs[MLX5_VERBS_MAX_SPEC_ACT_SIZE];
+	/**< Specifications & actions buffer of verbs flow. */
 };
+
+/** Maximal number of device sub-flows supported. */
+#define MLX5_NUM_MAX_DEV_FLOWS 32
 
 /** Device flow structure. */
 struct mlx5_flow {
-	LIST_ENTRY(mlx5_flow) next; /**< Pointer to next device flow. */
 	struct rte_flow *flow; /**< Pointer to the main flow. */
 	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
 	bool external; /**< true if the flow is created external to PMD. */
 	uint8_t ingress; /**< 1 if the flow is ingress. */
 	union {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		struct mlx5_flow_resource_dv dv;
+		struct mlx5_flow_dv_workspace dv;
 #endif
-		struct mlx5_flow_resource_verbs verbs;
+		struct mlx5_flow_verbs_workspace verbs;
 	};
-	struct mlx5_flow_handle handle;
+	struct mlx5_flow_handle *handle;
 };
 
 /* Flow meter state. */
@@ -667,8 +733,8 @@ struct rte_flow {
 	struct mlx5_flow_mreg_copy_resource *mreg_copy;
 	/**< pointer to metadata register copy table resource. */
 	struct mlx5_flow_meter *meter; /**< Holds flow meter. */
-	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
-	/**< Device flows that are part of the flow. */
+	LIST_HEAD(dev_handles, mlx5_flow_handle) dev_handles;
+	/**< Device flow handles that are part of the flow. */
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */
 	uint32_t hairpin_flow_id; /**< The flow id used for hairpin. */
 	uint32_t copy_applied:1; /**< The MARK copy Flow os applied. */
@@ -681,7 +747,8 @@ typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    bool external,
 				    struct rte_flow_error *error);
 typedef struct mlx5_flow *(*mlx5_flow_prepare_t)
-	(const struct rte_flow_attr *attr, const struct rte_flow_item items[],
+	(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
+	 const struct rte_flow_item items[],
 	 const struct rte_flow_action actions[], struct rte_flow_error *error);
 typedef int (*mlx5_flow_translate_t)(struct rte_eth_dev *dev,
 				     struct mlx5_flow *dev_flow,

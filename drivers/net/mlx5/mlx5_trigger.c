@@ -307,6 +307,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		mlx5_txq_stop(dev);
 		return -rte_errno;
 	}
+	/* Set started flag here for the following steps like control flow. */
 	dev->data->dev_started = 1;
 	ret = mlx5_rx_intr_vec_enable(dev);
 	if (ret) {

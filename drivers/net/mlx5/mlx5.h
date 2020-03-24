@@ -517,6 +517,8 @@ struct mlx5_priv {
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
 	struct mlx5_flows flows; /* RTE Flow rules. */
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
+	void *inter_flows; /* Intermediate resources for flow creation. */
+	int flow_idx; /* Intermediate device flow index. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
 	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */
@@ -728,6 +730,8 @@ int mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list);
 void mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list);
 int mlx5_flow_start_default(struct rte_eth_dev *dev);
 void mlx5_flow_stop_default(struct rte_eth_dev *dev);
+void mlx5_flow_alloc_intermediate(struct rte_eth_dev *dev);
+void mlx5_flow_free_intermediate(struct rte_eth_dev *dev);
 int mlx5_flow_verify(struct rte_eth_dev *dev);
 int mlx5_ctrl_flow_source_queue(struct rte_eth_dev *dev, uint32_t queue);
 int mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
