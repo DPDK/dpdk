@@ -124,7 +124,6 @@ enum i40e_flxpld_layer_idx {
 #define I40E_FLAG_FDIR                  (1ULL << 6)
 #define I40E_FLAG_VXLAN                 (1ULL << 7)
 #define I40E_FLAG_RSS_AQ_CAPABLE        (1ULL << 8)
-#define I40E_FLAG_VF_MAC_BY_PF          (1ULL << 9)
 #define I40E_FLAG_ALL (I40E_FLAG_RSS | \
 		       I40E_FLAG_DCB | \
 		       I40E_FLAG_VMDQ | \
@@ -133,8 +132,7 @@ enum i40e_flxpld_layer_idx {
 		       I40E_FLAG_HEADER_SPLIT_ENABLED | \
 		       I40E_FLAG_FDIR | \
 		       I40E_FLAG_VXLAN | \
-		       I40E_FLAG_RSS_AQ_CAPABLE | \
-		       I40E_FLAG_VF_MAC_BY_PF)
+		       I40E_FLAG_RSS_AQ_CAPABLE)
 
 #define I40E_RSS_OFFLOAD_ALL ( \
 	ETH_RSS_FRAG_IPV4 | \
