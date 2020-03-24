@@ -46,7 +46,7 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 	int retries = MLX5_VDPA_INTR_RETRIES;
 	int ret = -EAGAIN;
 
-	if (virtq->intr_handle.fd) {
+	if (virtq->intr_handle.fd != -1) {
 		while (retries-- && ret == -EAGAIN) {
 			ret = rte_intr_callback_unregister(&virtq->intr_handle,
 							mlx5_vdpa_virtq_handler,
@@ -59,7 +59,7 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
 			}
 		}
-		memset(&virtq->intr_handle, 0, sizeof(virtq->intr_handle));
+		virtq->intr_handle.fd = -1;
 	}
 	if (virtq->virtq) {
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
@@ -262,15 +262,25 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
 	rte_write32(virtq->index, priv->virtq_db_addr);
 	/* Setup doorbell mapping. */
 	virtq->intr_handle.fd = vq.kickfd;
-	virtq->intr_handle.type = RTE_INTR_HANDLE_EXT;
-	if (rte_intr_callback_register(&virtq->intr_handle,
-				       mlx5_vdpa_virtq_handler, virtq)) {
-		virtq->intr_handle.fd = 0;
-		DRV_LOG(ERR, "Failed to register virtq %d interrupt.", index);
-		goto error;
+	if (virtq->intr_handle.fd == -1) {
+		DRV_LOG(WARNING, "Virtq %d kickfd is invalid.", index);
+		if (!priv->direct_notifier) {
+			DRV_LOG(ERR, "Virtq %d cannot be notified.", index);
+			goto error;
+		}
 	} else {
-		DRV_LOG(DEBUG, "Register fd %d interrupt for virtq %d.",
-			virtq->intr_handle.fd, index);
+		virtq->intr_handle.type = RTE_INTR_HANDLE_EXT;
+		if (rte_intr_callback_register(&virtq->intr_handle,
+					       mlx5_vdpa_virtq_handler,
+					       virtq)) {
+			virtq->intr_handle.fd = -1;
+			DRV_LOG(ERR, "Failed to register virtq %d interrupt.",
+				index);
+			goto error;
+		} else {
+			DRV_LOG(DEBUG, "Register fd %d interrupt for virtq %d.",
+				virtq->intr_handle.fd, index);
+		}
 	}
 	return 0;
 error:
