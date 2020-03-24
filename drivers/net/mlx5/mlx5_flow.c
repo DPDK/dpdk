@@ -4328,7 +4328,11 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		if (ret)
 			goto error;
 	}
-	if (dev->data->dev_started) {
+	/*
+	 * If the flow is external (from application) OR device is started, then
+	 * the flow will be applied immediately.
+	 */
+	if (external || dev->data->dev_started) {
 		ret = flow_drv_apply(dev, flow, error);
 		if (ret < 0)
 			goto error;
@@ -4420,6 +4424,17 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	/*
+	 * If the device is not started yet, it is not allowed to created a
+	 * flow from application. PMD default flows and traffic control flows
+	 * are not affected.
+	 */
+	if (unlikely(!dev->data->dev_started)) {
+		rte_errno = ENODEV;
+		DRV_LOG(DEBUG, "port %u is not started when "
+			"inserting a flow", dev->data->port_id);
+		return NULL;
+	}
 	return flow_list_create(dev, &priv->flows,
 				attr, items, actions, true, error);
 }
