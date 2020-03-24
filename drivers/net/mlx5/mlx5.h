@@ -191,6 +191,7 @@ struct mlx5_dev_config {
 	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	unsigned int max_dump_files_num; /* Maximum dump files per queue. */
+	unsigned int log_hp_size; /* Single hairpin queue data size in total. */
 	int txqs_inline; /* Queue number threshold for inlining. */
 	int txq_inline_min; /* Minimal amount of data bytes to inline. */
 	int txq_inline_max; /* Max packet size for inlining with SEND. */

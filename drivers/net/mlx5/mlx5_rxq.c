@@ -1286,9 +1286,20 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	attr.hairpin = 1;
 	max_wq_data = priv->config.hca_attr.log_max_hairpin_wq_data_sz;
 	/* Jumbo frames > 9KB should be supported, and more packets. */
-	attr.wq_attr.log_hairpin_data_sz =
-			(max_wq_data < MLX5_HAIRPIN_JUMBO_LOG_SIZE) ?
-			max_wq_data : MLX5_HAIRPIN_JUMBO_LOG_SIZE;
+	if (priv->config.log_hp_size != (uint32_t)MLX5_ARG_UNSET) {
+		if (priv->config.log_hp_size > max_wq_data) {
+			DRV_LOG(ERR, "total data size %u power of 2 is "
+				"too large for hairpin",
+				priv->config.log_hp_size);
+			rte_errno = ERANGE;
+			return NULL;
+		}
+		attr.wq_attr.log_hairpin_data_sz = priv->config.log_hp_size;
+	} else {
+		attr.wq_attr.log_hairpin_data_sz =
+				(max_wq_data < MLX5_HAIRPIN_JUMBO_LOG_SIZE) ?
+				 max_wq_data : MLX5_HAIRPIN_JUMBO_LOG_SIZE;
+	}
 	/* Set the packets number to the maximum value for performance. */
 	attr.wq_attr.log_hairpin_num_packets =
 			attr.wq_attr.log_hairpin_data_sz -

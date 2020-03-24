@@ -150,6 +150,12 @@
 /* Configure timeout of LRO session (in microseconds). */
 #define MLX5_LRO_TIMEOUT_USEC "lro_timeout_usec"
 
+/*
+ * Device parameter to configure the total data buffer size for a single
+ * hairpin queue (logarithm value).
+ */
+#define MLX5_HP_BUF_SIZE "hp_buf_log_sz"
+
 #ifndef HAVE_IBV_MLX5_MOD_MPW
 #define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
 #define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
@@ -1591,6 +1597,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->lro.timeout = tmp;
 	} else if (strcmp(MLX5_CLASS_ARG_NAME, key) == 0) {
 		DRV_LOG(DEBUG, "class argument is %s.", val);
+	} else if (strcmp(MLX5_HP_BUF_SIZE, key) == 0) {
+		config->log_hp_size = tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -1643,6 +1651,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_MAX_DUMP_FILES_NUM,
 		MLX5_LRO_TIMEOUT_USEC,
 		MLX5_CLASS_ARG_NAME,
+		MLX5_HP_BUF_SIZE,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -3358,6 +3367,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		},
 		.dv_esw_en = 1,
 		.dv_flow_en = 1,
+		.log_hp_size = MLX5_ARG_UNSET,
 	};
 	/* Device specific configuration. */
 	switch (pci_dev->id.device_id) {

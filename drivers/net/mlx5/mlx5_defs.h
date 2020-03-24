@@ -175,7 +175,7 @@
 
 /* Hairpin TX/RX queue configuration parameters. */
 #define MLX5_HAIRPIN_QUEUE_STRIDE 6
-#define MLX5_HAIRPIN_JUMBO_LOG_SIZE (15 + 2)
+#define MLX5_HAIRPIN_JUMBO_LOG_SIZE (14 + 2)
 
 /* Definition of static_assert found in /usr/include/assert.h */
 #ifndef HAVE_STATIC_ASSERT
