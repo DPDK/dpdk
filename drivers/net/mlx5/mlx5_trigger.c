@@ -269,7 +269,6 @@ error:
 int
 mlx5_dev_start(struct rte_eth_dev *dev)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 	int fine_inline;
 
@@ -318,14 +317,19 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	mlx5_stats_init(dev);
 	ret = mlx5_traffic_enable(dev);
 	if (ret) {
-		DRV_LOG(DEBUG, "port %u failed to set defaults flows",
+		DRV_LOG(ERR, "port %u failed to set defaults flows",
 			dev->data->port_id);
 		goto error;
 	}
-	ret = mlx5_flow_start(dev, &priv->flows);
+	/*
+	 * In non-cached mode, it only needs to start the default mreg copy
+	 * action and no flow created by application exists anymore.
+	 * But it is worth wrapping the interface for further usage.
+	 */
+	ret = mlx5_flow_start_default(dev);
 	if (ret) {
-		DRV_LOG(DEBUG, "port %u failed to set flows",
-			dev->data->port_id);
+		DRV_LOG(DEBUG, "port %u failed to start default actions: %s",
+			dev->data->port_id, strerror(rte_errno));
 		goto error;
 	}
 	rte_wmb();
@@ -339,7 +343,7 @@ error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
 	/* Rollback. */
 	dev->data->dev_started = 0;
-	mlx5_flow_stop(dev, &priv->flows);
+	mlx5_flow_stop_default(dev);
 	mlx5_traffic_disable(dev);
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
@@ -369,8 +373,11 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	mlx5_mp_req_stop_rxtx(dev);
 	usleep(1000 * priv->rxqs_n);
 	DRV_LOG(DEBUG, "port %u stopping device", dev->data->port_id);
-	mlx5_flow_stop(dev, &priv->flows);
+	mlx5_flow_stop_default(dev);
+	/* Control flows for default traffic can be removed firstly. */
 	mlx5_traffic_disable(dev);
+	/* All RX queue flags will be cleared in the flush interface. */
+	mlx5_flow_list_flush(dev, &priv->flows, true);
 	mlx5_rx_intr_vec_disable(dev);
 	mlx5_dev_interrupt_handler_uninstall(dev);
 	mlx5_txq_stop(dev);
@@ -529,7 +536,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
-	mlx5_flow_list_flush(dev, &priv->ctrl_flows);
+	mlx5_flow_list_flush(dev, &priv->ctrl_flows, false);
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 }
@@ -546,7 +553,7 @@ mlx5_traffic_disable(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	mlx5_flow_list_flush(dev, &priv->ctrl_flows);
+	mlx5_flow_list_flush(dev, &priv->ctrl_flows, false);
 }
 
 /**

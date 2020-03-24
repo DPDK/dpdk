@@ -8,6 +8,7 @@
 #include <stdalign.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -4449,15 +4450,25 @@ flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
  *   Pointer to Ethernet device.
  * @param list
  *   Pointer to a TAILQ flow list.
+ * @param active
+ *   If flushing is called avtively.
  */
 void
-mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list)
+mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list,
+		     bool active)
 {
+	uint32_t num_flushed = 0;
+
 	while (!TAILQ_EMPTY(list)) {
 		struct rte_flow *flow;
 
 		flow = TAILQ_FIRST(list);
 		flow_list_destroy(dev, list, flow);
+		num_flushed++;
+	}
+	if (active) {
+		DRV_LOG(INFO, "port %u: %u flows flushed before stopping",
+			dev->data->port_id, num_flushed);
 	}
 }
 
@@ -4520,6 +4531,37 @@ error:
 	mlx5_flow_stop(dev, list);
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
+}
+
+/**
+ * Stop all default actions for flows.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param list
+ *   Pointer to a TAILQ flow list.
+ */
+void
+mlx5_flow_stop_default(struct rte_eth_dev *dev)
+{
+	flow_mreg_del_default_copy_action(dev);
+}
+
+/**
+ * Start all default actions for flows.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_start_default(struct rte_eth_dev *dev)
+{
+	struct rte_flow_error error;
+
+	/* Make sure default copy action (reg_c[0] -> reg_b) is created. */
+	return flow_mreg_add_default_copy_action(dev, &error);
 }
 
 /**
@@ -4737,7 +4779,7 @@ mlx5_flow_flush(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	mlx5_flow_list_flush(dev, &priv->flows);
+	mlx5_flow_list_flush(dev, &priv->flows, false);
 	return 0;
 }
 
@@ -5179,7 +5221,7 @@ flow_fdir_filter_flush(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	mlx5_flow_list_flush(dev, &priv->flows);
+	mlx5_flow_list_flush(dev, &priv->flows, false);
 }
 
 /**

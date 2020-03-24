@@ -712,7 +712,8 @@ struct rte_flow *mlx5_flow_create(struct rte_eth_dev *dev,
 				  struct rte_flow_error *error);
 int mlx5_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		      struct rte_flow_error *error);
-void mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list);
+void mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list,
+			  bool active);
 int mlx5_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error);
 int mlx5_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 		    const struct rte_flow_action *action, void *data,
@@ -725,6 +726,8 @@ int mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 			 void *arg);
 int mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list);
 void mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list);
+int mlx5_flow_start_default(struct rte_eth_dev *dev);
+void mlx5_flow_stop_default(struct rte_eth_dev *dev);
 int mlx5_flow_verify(struct rte_eth_dev *dev);
 int mlx5_ctrl_flow_source_queue(struct rte_eth_dev *dev, uint32_t queue);
 int mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,

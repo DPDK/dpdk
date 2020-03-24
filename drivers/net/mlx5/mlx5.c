@@ -1234,8 +1234,17 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	/* In case mlx5_dev_stop() has not been called. */
 	mlx5_dev_interrupt_handler_uninstall(dev);
 	mlx5_dev_interrupt_handler_devx_uninstall(dev);
+	/*
+	 * If default mreg copy action is removed at the stop stage,
+	 * the search will return none and nothing will be done anymore.
+	 */
+	mlx5_flow_stop_default(dev);
 	mlx5_traffic_disable(dev);
-	mlx5_flow_flush(dev, NULL);
+	/*
+	 * If all the flows are already flushed in the device stop stage,
+	 * then this will return directly without any action.
+	 */
+	mlx5_flow_list_flush(dev, &priv->flows, true);
 	mlx5_flow_meter_flush(dev, NULL);
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
