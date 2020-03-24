@@ -205,6 +205,19 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			elts[pos + 2]->hash.fdir.hi = flow_tag;
 			elts[pos + 3]->hash.fdir.hi = flow_tag;
 		}
+		if (rte_flow_dynf_metadata_avail()) {
+			const uint32_t meta = *RTE_FLOW_DYNF_METADATA(t_pkt);
+
+			/* Check if title packet has valid metadata. */
+			if (meta) {
+				MLX5_ASSERT(t_pkt->ol_flags &
+					    PKT_RX_DYNF_METADATA);
+				*RTE_FLOW_DYNF_METADATA(elts[pos]) = meta;
+				*RTE_FLOW_DYNF_METADATA(elts[pos + 1]) = meta;
+				*RTE_FLOW_DYNF_METADATA(elts[pos + 2]) = meta;
+				*RTE_FLOW_DYNF_METADATA(elts[pos + 3]) = meta;
+			}
+		}
 		pos += MLX5_VPMD_DESCS_PER_LOOP;
 		/* Move to next CQE and invalidate consumed CQEs. */
 		if (!(pos & 0x7) && pos < mcqe_n) {
