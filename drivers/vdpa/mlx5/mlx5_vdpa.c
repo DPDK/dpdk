@@ -133,6 +133,29 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 }
 
 static int
+mlx5_vdpa_direct_db_prepare(struct mlx5_vdpa_priv *priv)
+{
+	int ret;
+
+	if (priv->direct_notifier) {
+		ret = rte_vhost_host_notifier_ctrl(priv->vid, false);
+		if (ret != 0) {
+			DRV_LOG(INFO, "Direct HW notifier FD cannot be "
+				"destroyed for device %d: %d.", priv->vid, ret);
+			return -1;
+		}
+		priv->direct_notifier = 0;
+	}
+	ret = rte_vhost_host_notifier_ctrl(priv->vid, true);
+	if (ret != 0)
+		DRV_LOG(INFO, "Direct HW notifier FD cannot be configured for"
+			" device %d: %d.", priv->vid, ret);
+	else
+		priv->direct_notifier = 1;
+	return 0;
+}
+
+static int
 mlx5_vdpa_features_set(int vid)
 {
 	int did = rte_vhost_get_vdpa_device_id(vid);
@@ -209,12 +232,47 @@ mlx5_vdpa_dev_config(int vid)
 		return -1;
 	}
 	priv->vid = vid;
-	if (mlx5_vdpa_mem_register(priv) || mlx5_vdpa_virtqs_prepare(priv) ||
-	    mlx5_vdpa_steer_setup(priv) || mlx5_vdpa_cqe_event_setup(priv)) {
+	if (mlx5_vdpa_mem_register(priv) || mlx5_vdpa_direct_db_prepare(priv) ||
+	    mlx5_vdpa_virtqs_prepare(priv) || mlx5_vdpa_steer_setup(priv) ||
+	    mlx5_vdpa_cqe_event_setup(priv)) {
 		mlx5_vdpa_dev_close(vid);
 		return -1;
 	}
 	priv->configured = 1;
+	return 0;
+}
+
+static int
+mlx5_vdpa_get_device_fd(int vid)
+{
+	int did = rte_vhost_get_vdpa_device_id(vid);
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -EINVAL;
+	}
+	return priv->ctx->cmd_fd;
+}
+
+static int
+mlx5_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
+{
+	int did = rte_vhost_get_vdpa_device_id(vid);
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+
+	RTE_SET_USED(qid);
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -EINVAL;
+	}
+	if (!priv->var) {
+		DRV_LOG(ERR, "VAR was not created for device %d, is the device"
+			" configured?.", did);
+		return -EINVAL;
+	}
+	*offset = priv->var->mmap_off;
+	*size = priv->var->length;
 	return 0;
 }
 
@@ -228,8 +286,8 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.set_features = mlx5_vdpa_features_set,
 	.migration_done = NULL,
 	.get_vfio_group_fd = NULL,
-	.get_vfio_device_fd = NULL,
-	.get_notify_area = NULL,
+	.get_vfio_device_fd = mlx5_vdpa_get_device_fd,
+	.get_notify_area = mlx5_vdpa_get_notify_area,
 };
 
 static struct ibv_device *
@@ -518,14 +576,6 @@ mlx5_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 }
 
 static const struct rte_pci_id mlx5_vdpa_pci_id_map[] = {
-	{
-		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
-			       PCI_DEVICE_ID_MELLANOX_CONNECTX5BF)
-	},
-	{
-		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
-			       PCI_DEVICE_ID_MELLANOX_CONNECTX5BFVF)
-	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
 				PCI_DEVICE_ID_MELLANOX_CONNECTX6)
