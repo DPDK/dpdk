@@ -822,6 +822,12 @@ Below are some firmware configurations listed.
     IP_OVER_VXLAN_EN=1
     IP_OVER_VXLAN_PORT=<udp dport>
 
+- enable VXLAN-GPE tunnel flow matching::
+
+    FLEX_PARSER_PROFILE_ENABLE=0
+    or
+    FLEX_PARSER_PROFILE_ENABLE=2
+
 - enable IP-in-IP tunnel flow matching::
 
     FLEX_PARSER_PROFILE_ENABLE=0
@@ -837,6 +843,8 @@ Below are some firmware configurations listed.
 - enable Geneve flow matching::
 
    FLEX_PARSER_PROFILE_ENABLE=0
+   or
+   FLEX_PARSER_PROFILE_ENABLE=1
 
 - enable GTP flow matching::
 
@@ -933,15 +941,15 @@ thanks to these environment variables:
 Mellanox OFED/EN
 ^^^^^^^^^^^^^^^^
 
-- Mellanox OFED version: ** 4.5, 4.6** /
-  Mellanox EN version: **4.5, 4.6**
+- Mellanox OFED version: **4.5** and above /
+  Mellanox EN version: **4.5** and above
 - firmware version:
 
   - ConnectX-4: **12.21.1000** and above.
   - ConnectX-4 Lx: **14.21.1000** and above.
   - ConnectX-5: **16.21.1000** and above.
   - ConnectX-5 Ex: **16.21.1000** and above.
-  - ConnectX-6: **20.99.5374** and above.
+  - ConnectX-6: **20.27.0090** and above.
   - ConnectX-6 Dx: **22.27.0090** and above.
   - BlueField: **18.25.1010** and above.
 
