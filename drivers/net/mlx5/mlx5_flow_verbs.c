@@ -253,7 +253,8 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
  *   Size in bytes of the specification to copy.
  */
 static void
-flow_verbs_spec_add(struct mlx5_flow_verbs *verbs, void *src, unsigned int size)
+flow_verbs_spec_add(struct mlx5_flow_resource_verbs *verbs,
+		    void *src, unsigned int size)
 {
 	void *dst;
 
@@ -393,7 +394,7 @@ flow_verbs_translate_item_vlan(struct mlx5_flow *dev_flow,
 	else
 		flow_verbs_item_vlan_update(dev_flow->verbs.attr, &eth);
 	if (!tunnel)
-		dev_flow->verbs.vf_vlan.tag =
+		dev_flow->handle.vf_vlan.tag =
 			rte_be_to_cpu_16(spec->tci) & 0x0fff;
 }
 
@@ -743,7 +744,7 @@ flow_verbs_translate_item_gre(struct mlx5_flow *dev_flow,
 			      const struct rte_flow_item *item __rte_unused,
 			      uint64_t item_flags)
 {
-	struct mlx5_flow_verbs *verbs = &dev_flow->verbs;
+	struct mlx5_flow_resource_verbs *verbs = &dev_flow->verbs;
 #ifndef HAVE_IBV_DEVICE_MPLS_SUPPORT
 	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
 	struct ibv_flow_spec_tunnel tunnel = {
@@ -1418,7 +1419,7 @@ flow_verbs_prepare(const struct rte_flow_attr *attr __rte_unused,
 	dev_flow->verbs.attr = (void *)(dev_flow + 1);
 	dev_flow->verbs.specs = (void *)(dev_flow->verbs.attr + 1);
 	dev_flow->ingress = attr->ingress;
-	dev_flow->transfer = attr->transfer;
+	/* Need to set transfer attribute: not supported in Verbs mode. */
 	return dev_flow;
 }
 
@@ -1498,7 +1499,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 						  "action not supported");
 		}
 	}
-	dev_flow->actions = action_flags;
+	dev_flow->handle.act_flags = action_flags;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 
@@ -1600,7 +1601,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 						  "item not supported");
 		}
 	}
-	dev_flow->layers = item_flags;
+	dev_flow->handle.layers = item_flags;
 	dev_flow->verbs.attr->priority =
 		mlx5_flow_adjust_priority(dev, priority, subpriority);
 	dev_flow->verbs.attr->port = (uint8_t)priv->ibv_port;
@@ -1618,28 +1619,26 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 static void
 flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
-	struct mlx5_flow_verbs *verbs;
+	struct mlx5_flow_handle *dh;
 	struct mlx5_flow *dev_flow;
 
 	if (!flow)
 		return;
 	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
-		verbs = &dev_flow->verbs;
-		if (verbs->flow) {
-			claim_zero(mlx5_glue->destroy_flow(verbs->flow));
-			verbs->flow = NULL;
+		dh = &dev_flow->handle;
+		if (dh->ib_flow) {
+			claim_zero(mlx5_glue->destroy_flow(dh->ib_flow));
+			dh->ib_flow = NULL;
 		}
-		if (verbs->hrxq) {
-			if (dev_flow->actions & MLX5_FLOW_ACTION_DROP)
+		if (dh->hrxq) {
+			if (dev_flow->handle.act_flags & MLX5_FLOW_ACTION_DROP)
 				mlx5_hrxq_drop_release(dev);
 			else
-				mlx5_hrxq_release(dev, verbs->hrxq);
-			verbs->hrxq = NULL;
+				mlx5_hrxq_release(dev, dh->hrxq);
+			dh->hrxq = NULL;
 		}
-		if (dev_flow->verbs.vf_vlan.tag &&
-		    dev_flow->verbs.vf_vlan.created) {
-			mlx5_vlan_vmwa_release(dev, &dev_flow->verbs.vf_vlan);
-		}
+		if (dh->vf_vlan.tag && dh->vf_vlan.created)
+			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);
 	}
 }
 
@@ -1688,15 +1687,15 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_verbs *verbs;
+	struct mlx5_flow_handle *dh;
 	struct mlx5_flow *dev_flow;
 	int err;
 
 	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
-		verbs = &dev_flow->verbs;
-		if (dev_flow->actions & MLX5_FLOW_ACTION_DROP) {
-			verbs->hrxq = mlx5_hrxq_drop_new(dev);
-			if (!verbs->hrxq) {
+		dh = &dev_flow->handle;
+		if (dev_flow->handle.act_flags & MLX5_FLOW_ACTION_DROP) {
+			dh->hrxq = mlx5_hrxq_drop_new(dev);
+			if (!dh->hrxq) {
 				rte_flow_error_set
 					(error, errno,
 					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -1714,12 +1713,12 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					     flow->rss.queue_num);
 			if (!hrxq)
 				hrxq = mlx5_hrxq_new(dev, flow->rss.key,
-						     MLX5_RSS_HASH_KEY_LEN,
-						     dev_flow->hash_fields,
-						     (*flow->rss.queue),
-						     flow->rss.queue_num,
-						     !!(dev_flow->layers &
-						       MLX5_FLOW_LAYER_TUNNEL));
+						MLX5_RSS_HASH_KEY_LEN,
+						dev_flow->hash_fields,
+						(*flow->rss.queue),
+						flow->rss.queue_num,
+						!!(dev_flow->handle.layers &
+						MLX5_FLOW_LAYER_TUNNEL));
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,
@@ -1727,11 +1726,11 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get hash queue");
 				goto error;
 			}
-			verbs->hrxq = hrxq;
+			dh->hrxq = hrxq;
 		}
-		verbs->flow = mlx5_glue->create_flow(verbs->hrxq->qp,
-						     verbs->attr);
-		if (!verbs->flow) {
+		dh->ib_flow = mlx5_glue->create_flow(dh->hrxq->qp,
+						     dev_flow->verbs.attr);
+		if (!dh->ib_flow) {
 			rte_flow_error_set(error, errno,
 					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					   NULL,
@@ -1739,33 +1738,31 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			goto error;
 		}
 		if (priv->vmwa_context &&
-		    dev_flow->verbs.vf_vlan.tag &&
-		    !dev_flow->verbs.vf_vlan.created) {
+		    dev_flow->handle.vf_vlan.tag &&
+		    !dev_flow->handle.vf_vlan.created) {
 			/*
 			 * The rule contains the VLAN pattern.
 			 * For VF we are going to create VLAN
 			 * interface to make hypervisor set correct
 			 * e-Switch vport context.
 			 */
-			mlx5_vlan_vmwa_acquire(dev, &dev_flow->verbs.vf_vlan);
+			mlx5_vlan_vmwa_acquire(dev, &dev_flow->handle.vf_vlan);
 		}
 	}
 	return 0;
 error:
 	err = rte_errno; /* Save rte_errno before cleanup. */
 	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
-		verbs = &dev_flow->verbs;
-		if (verbs->hrxq) {
-			if (dev_flow->actions & MLX5_FLOW_ACTION_DROP)
+		dh = &dev_flow->handle;
+		if (dh->hrxq) {
+			if (dev_flow->handle.act_flags & MLX5_FLOW_ACTION_DROP)
 				mlx5_hrxq_drop_release(dev);
 			else
-				mlx5_hrxq_release(dev, verbs->hrxq);
-			verbs->hrxq = NULL;
+				mlx5_hrxq_release(dev, dh->hrxq);
+			dh->hrxq = NULL;
 		}
-		if (dev_flow->verbs.vf_vlan.tag &&
-		    dev_flow->verbs.vf_vlan.created) {
-			mlx5_vlan_vmwa_release(dev, &dev_flow->verbs.vf_vlan);
-		}
+		if (dh->vf_vlan.tag && dh->vf_vlan.created)
+			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);
 	}
 	rte_errno = err; /* Restore rte_errno. */
 	return -rte_errno;

@@ -464,61 +464,10 @@ struct mlx5_flow_tbl_data_entry {
 	/**< jump resource, at most one for each table created. */
 };
 
-/*
- * Max number of actions per DV flow.
- * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
- * In rdma-core file providers/mlx5/verbs.c
- */
-#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
-
-/* DV flows structure. */
-struct mlx5_flow_dv {
-	struct mlx5_hrxq *hrxq; /**< Hash Rx queues. */
-	/* Flow DV api: */
-	struct mlx5_flow_dv_matcher *matcher; /**< Cache to matcher. */
-	struct mlx5_flow_dv_match_params value;
-	/**< Holds the value that the packet is compared to. */
-	struct mlx5_flow_dv_encap_decap_resource *encap_decap;
-	/**< Pointer to encap/decap resource in cache. */
-	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
-	/**< Pointer to modify header resource in cache. */
-	struct ibv_flow *flow; /**< Installed flow. */
-	struct mlx5_flow_dv_jump_tbl_resource *jump;
-	/**< Pointer to the jump action resource. */
-	struct mlx5_flow_dv_port_id_action_resource *port_id_action;
-	/**< Pointer to port ID action resource. */
-	struct mlx5_vf_vlan vf_vlan;
-	/**< Structure for VF VLAN workaround. */
-	struct mlx5_flow_dv_push_vlan_action_resource *push_vlan_res;
-	/**< Pointer to push VLAN action resource in cache. */
-	struct mlx5_flow_dv_tag_resource *tag_resource;
-	/**< pointer to the tag action. */
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
-	/**< Action list. */
-#endif
-	int actions_n; /**< number of actions. */
-};
-
 /* Verbs specification header. */
 struct ibv_spec_header {
 	enum ibv_flow_spec_type type;
 	uint16_t size;
-};
-
-/** Handles information leading to a drop fate. */
-struct mlx5_flow_verbs {
-	LIST_ENTRY(mlx5_flow_verbs) next;
-	unsigned int size; /**< Size of the attribute. */
-	struct {
-		struct ibv_flow_attr *attr;
-		/**< Pointer to the Specification buffer. */
-		uint8_t *specs; /**< Pointer to the specifications. */
-	};
-	struct ibv_flow *flow; /**< Verbs flow pointer. */
-	struct mlx5_hrxq *hrxq; /**< Hash Rx queue object. */
-	struct mlx5_vf_vlan vf_vlan;
-	/**< Structure for VF VLAN workaround. */
 };
 
 struct mlx5_flow_rss {
@@ -529,29 +478,82 @@ struct mlx5_flow_rss {
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 };
 
-/** Device flow structure. */
-struct mlx5_flow {
-	LIST_ENTRY(mlx5_flow) next;
-	struct rte_flow *flow; /**< Pointer to the main flow. */
+/** Device flow handle structure for DV mode only. */
+struct mlx5_flow_handle_dv {
+	/* Flow DV api: */
+	struct mlx5_flow_dv_matcher *matcher; /**< Cache to matcher. */
+	struct mlx5_flow_dv_encap_decap_resource *encap_decap;
+	/**< Pointer to encap/decap resource in cache. */
+	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
+	/**< Pointer to modify header resource in cache. */
+	struct mlx5_flow_dv_jump_tbl_resource *jump;
+	/**< Pointer to the jump action resource. */
+	struct mlx5_flow_dv_port_id_action_resource *port_id_action;
+	/**< Pointer to port ID action resource. */
+	struct mlx5_vf_vlan vf_vlan;
+	/**< Structure for VF VLAN workaround. */
+	struct mlx5_flow_dv_push_vlan_action_resource *push_vlan_res;
+	/**< Pointer to push VLAN action resource in cache. */
+	struct mlx5_flow_dv_tag_resource *tag_resource;
+	/**< pointer to the tag action. */
+};
+
+/** Device flow handle structure: used both for creating & destroying. */
+struct mlx5_flow_handle {
 	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
-	uint64_t actions;
+	uint64_t act_flags;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
-	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
-	uint8_t ingress; /**< 1 if the flow is ingress. */
-	uint32_t group; /**< The group index. */
-	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
-	union {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		struct mlx5_flow_dv dv;
-#endif
-		struct mlx5_flow_verbs verbs;
-	};
+	void *ib_flow; /**< Verbs flow pointer. */
+	struct mlx5_hrxq *hrxq; /**< Hash Rx queue object. */
+	struct mlx5_vf_vlan vf_vlan; /**< Structure for VF VLAN workaround. */
 	union {
 		uint32_t qrss_id; /**< Uniqie Q/RSS suffix subflow tag. */
 		uint32_t mtr_flow_id; /**< Unique meter match flow id. */
 	};
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	struct mlx5_flow_handle_dv dvh;
+#endif
+};
+
+/*
+ * Max number of actions per DV flow.
+ * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
+ * in rdma-core file providers/mlx5/verbs.c.
+ */
+#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
+
+/** Device flow structure only for DV flow creation. */
+struct mlx5_flow_resource_dv {
+	uint32_t group; /**< The group index. */
+	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
+	int actions_n; /**< number of actions. */
+	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS]; /**< Action list. */
+	struct mlx5_flow_dv_match_params value;
+	/**< Holds the value that the packet is compared to. */
+};
+
+/** Device flow structure only for Verbs flow creation. */
+struct mlx5_flow_resource_verbs {
+	unsigned int size; /**< Size of the attribute. */
+	struct ibv_flow_attr *attr; /**< Pointer to the Specification buffer. */
+	uint8_t *specs; /**< Pointer to the specifications. */
+};
+
+/** Device flow structure. */
+struct mlx5_flow {
+	LIST_ENTRY(mlx5_flow) next; /**< Pointer to next device flow. */
+	struct rte_flow *flow; /**< Pointer to the main flow. */
+	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
 	bool external; /**< true if the flow is created external to PMD. */
+	uint8_t ingress; /**< 1 if the flow is ingress. */
+	union {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+		struct mlx5_flow_resource_dv dv;
+#endif
+		struct mlx5_flow_resource_verbs verbs;
+	};
+	struct mlx5_flow_handle handle;
 };
 
 /* Flow meter state. */

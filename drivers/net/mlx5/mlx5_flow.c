@@ -720,9 +720,9 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = dev_flow->flow;
-	const int mark = !!(dev_flow->actions &
+	const int mark = !!(dev_flow->handle.act_flags &
 			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
-	const int tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
+	const int tunnel = !!(dev_flow->handle.layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int i;
 
 	for (i = 0; i != flow->rss.queue_num; ++i) {
@@ -751,7 +751,7 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 			/* Increase the counter matching the flow. */
 			for (j = 0; j != MLX5_FLOW_TUNNEL; ++j) {
 				if ((tunnels_info[j].tunnel &
-				     dev_flow->layers) ==
+				     dev_flow->handle.layers) ==
 				    tunnels_info[j].tunnel) {
 					rxq_ctrl->flow_tunnels_n[j]++;
 					break;
@@ -793,9 +793,9 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = dev_flow->flow;
-	const int mark = !!(dev_flow->actions &
+	const int mark = !!(dev_flow->handle.act_flags &
 			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
-	const int tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
+	const int tunnel = !!(dev_flow->handle.layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int i;
 
 	MLX5_ASSERT(dev->data->dev_started);
@@ -820,7 +820,7 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 			/* Decrease the counter matching the flow. */
 			for (j = 0; j != MLX5_FLOW_TUNNEL; ++j) {
 				if ((tunnels_info[j].tunnel &
-				     dev_flow->layers) ==
+				     dev_flow->handle.layers) ==
 				    tunnels_info[j].tunnel) {
 					rxq_ctrl->flow_tunnels_n[j]--;
 					break;
@@ -2312,8 +2312,8 @@ flow_mreg_split_qrss_release(struct rte_eth_dev *dev,
 	struct mlx5_flow *dev_flow;
 
 	LIST_FOREACH(dev_flow, &flow->dev_flows, next)
-		if (dev_flow->qrss_id)
-			flow_qrss_free_id(dev, dev_flow->qrss_id);
+		if (dev_flow->handle.qrss_id)
+			flow_qrss_free_id(dev, dev_flow->handle.qrss_id);
 }
 
 static int
@@ -2696,18 +2696,22 @@ flow_get_prefix_layer_flags(struct mlx5_flow *dev_flow)
 {
 	uint64_t layers = 0;
 
-	/* If no decap actions, use the layers directly. */
-	if (!(dev_flow->actions & MLX5_FLOW_ACTION_DECAP))
-		return dev_flow->layers;
+	/*
+	 * Layers bits could be localization, but usually the compiler will
+	 * help to do the optimization work for source code.
+	 * If no decap actions, use the layers directly.
+	 */
+	if (!(dev_flow->handle.act_flags & MLX5_FLOW_ACTION_DECAP))
+		return dev_flow->handle.layers;
 	/* Convert L3 layers with decap action. */
-	if (dev_flow->layers & MLX5_FLOW_LAYER_INNER_L3_IPV4)
+	if (dev_flow->handle.layers & MLX5_FLOW_LAYER_INNER_L3_IPV4)
 		layers |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
-	else if (dev_flow->layers & MLX5_FLOW_LAYER_INNER_L3_IPV6)
+	else if (dev_flow->handle.layers & MLX5_FLOW_LAYER_INNER_L3_IPV6)
 		layers |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 	/* Convert L4 layers with decap action.  */
-	if (dev_flow->layers & MLX5_FLOW_LAYER_INNER_L4_TCP)
+	if (dev_flow->handle.layers & MLX5_FLOW_LAYER_INNER_L4_TCP)
 		layers |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
-	else if (dev_flow->layers & MLX5_FLOW_LAYER_INNER_L4_UDP)
+	else if (dev_flow->handle.layers & MLX5_FLOW_LAYER_INNER_L4_UDP)
 		layers |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
 	return layers;
 }
@@ -3453,7 +3457,7 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 	 * flow may need some user defined item layer flags.
 	 */
 	if (prefix_layers)
-		dev_flow->layers = prefix_layers;
+		dev_flow->handle.layers = prefix_layers;
 	if (sub_flow)
 		*sub_flow = dev_flow;
 	return flow_drv_translate(dev, dev_flow, attr, items, actions, error);
@@ -3968,8 +3972,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			 * reallocation becomes possible (for example, for
 			 * other flows in other threads).
 			 */
-			dev_flow->qrss_id = qrss_id;
-			qrss_id = 0;
+			dev_flow->handle.qrss_id = qrss_id;
 			ret = mlx5_flow_get_reg_id(dev, MLX5_COPY_MARK, 0,
 						   error);
 			if (ret < 0)
@@ -3984,6 +3987,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 					      external, error);
 		if (ret < 0)
 			goto exit;
+		/* qrss ID should be freed if failed. */
+		qrss_id = 0;
 		MLX5_ASSERT(dev_flow);
 	}
 
@@ -4080,7 +4085,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			ret = -rte_errno;
 			goto exit;
 		}
-		dev_flow->mtr_flow_id = mtr_tag_id;
+		dev_flow->handle.mtr_flow_id = mtr_tag_id;
 		/* Setting the sfx group atrr. */
 		sfx_attr.group = sfx_attr.transfer ?
 				(MLX5_FLOW_TABLE_LEVEL_SUFFIX - 1) :
