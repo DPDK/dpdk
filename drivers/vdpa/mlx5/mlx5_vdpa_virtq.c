@@ -105,10 +105,6 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 		claim_zero(munmap(priv->virtq_db_addr, priv->var->length));
 		priv->virtq_db_addr = NULL;
 	}
-	if (priv->var) {
-		mlx5_glue->dv_free_var(priv->var);
-		priv->var = NULL;
-	}
 	priv->features = 0;
 }
 
@@ -348,11 +344,6 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 
 	if (ret || mlx5_vdpa_features_validate(priv)) {
 		DRV_LOG(ERR, "Failed to configure negotiated features.");
-		return -1;
-	}
-	priv->var = mlx5_glue->dv_alloc_var(priv->ctx, 0);
-	if (!priv->var) {
-		DRV_LOG(ERR, "Failed to allocate VAR %u.\n", errno);
 		return -1;
 	}
 	/* Always map the entire page. */
