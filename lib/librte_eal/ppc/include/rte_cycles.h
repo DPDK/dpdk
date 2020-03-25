@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+#include <sys/platform/ppc.h>
+
 #include "generic/rte_cycles.h"
 
 #include <rte_byteorder.h>
@@ -24,32 +26,7 @@ extern "C" {
 static inline uint64_t
 rte_rdtsc(void)
 {
-	union {
-		uint64_t tsc_64;
-		RTE_STD_C11
-		struct {
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-			uint32_t hi_32;
-			uint32_t lo_32;
-#else
-			uint32_t lo_32;
-			uint32_t hi_32;
-#endif
-		};
-	} tsc;
-	uint32_t tmp;
-
-	asm volatile(
-			"0:\n"
-			"mftbu   %[hi32]\n"
-			"mftb    %[lo32]\n"
-			"mftbu   %[tmp]\n"
-			"cmpw    %[tmp],%[hi32]\n"
-			"bne     0b\n"
-			: [hi32] "=r"(tsc.hi_32), [lo32] "=r"(tsc.lo_32),
-			[tmp] "=r"(tmp)
-		    );
-	return tsc.tsc_64;
+	return __ppc_get_timebase();
 }
 
 static inline uint64_t
