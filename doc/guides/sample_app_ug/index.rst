@@ -40,6 +40,7 @@ Sample Applications User Guides
     timer
     packet_ordering
     vmdq_dcb_forwarding
+    vmdq_forwarding
     vhost
     vhost_blk
     vhost_crypto
