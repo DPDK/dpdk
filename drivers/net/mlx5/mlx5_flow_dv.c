@@ -702,8 +702,8 @@ flow_dv_convert_action_modify_tp
 		item.spec = &udp;
 		item.mask = &udp_mask;
 		field = modify_udp;
-	}
-	if (attr->tcp) {
+	} else {
+		MLX5_ASSERT(attr->tcp);
 		memset(&tcp, 0, sizeof(tcp));
 		memset(&tcp_mask, 0, sizeof(tcp_mask));
 		if (action->type == RTE_FLOW_ACTION_TYPE_SET_TP_SRC) {
@@ -773,8 +773,8 @@ flow_dv_convert_action_modify_ttl
 		item.spec = &ipv4;
 		item.mask = &ipv4_mask;
 		field = modify_ipv4;
-	}
-	if (attr->ipv6) {
+	} else {
+		MLX5_ASSERT(attr->ipv6);
 		memset(&ipv6, 0, sizeof(ipv6));
 		memset(&ipv6_mask, 0, sizeof(ipv6_mask));
 		ipv6.hdr.hop_limits = conf->ttl_value;
@@ -834,8 +834,8 @@ flow_dv_convert_action_modify_dec_ttl
 		item.spec = &ipv4;
 		item.mask = &ipv4_mask;
 		field = modify_ipv4;
-	}
-	if (attr->ipv6) {
+	} else {
+		MLX5_ASSERT(attr->ipv6);
 		memset(&ipv6, 0, sizeof(ipv6));
 		memset(&ipv6_mask, 0, sizeof(ipv6_mask));
 		ipv6.hdr.hop_limits = 0xFF;
