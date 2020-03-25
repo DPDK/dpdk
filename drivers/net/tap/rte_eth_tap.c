@@ -19,7 +19,6 @@
 #include <rte_ethdev.h>
 #include <rte_errno.h>
 
-#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -670,8 +669,6 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		tso = mbuf_in->ol_flags & PKT_TX_TCP_SEG;
 		if (tso) {
 			struct rte_gso_ctx *gso_ctx = &txq->gso_ctx;
-
-			assert(gso_ctx != NULL);
 
 			/* TCP segmentation implies TCP checksum offload */
 			mbuf_in->ol_flags |= PKT_TX_TCP_CKSUM;
