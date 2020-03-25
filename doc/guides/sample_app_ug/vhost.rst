@@ -201,3 +201,10 @@ Common Issues
 
   QEMU vhost net device start will fail if protocol feature is not negotiated.
   DPDK virtio-user pmd can be the replacement of QEMU.
+
+* Device start fails when enabling "builtin-net-driver" without memory
+  pre-allocation
+
+  The builtin example doesn't support dynamic memory allocation. When vhost
+  backend enables "builtin-net-driver", "--socket-mem" option should be
+  added at virtio-user pmd side as a startup item.
