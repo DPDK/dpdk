@@ -26,13 +26,13 @@ The Intel® 82599 10 Gigabit Ethernet Controller NIC also supports the splitting
 While the Intel® X710 or XL710 Ethernet Controller NICs support many configurations of VMDq pools of 4 or 8 queues each.
 And queues numbers for each VMDq pool can be changed by setting CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM
 in config/common_* file.
-The nb-pools parameter can be passed on the command line, after the EAL parameters:
+The nb-pools and enable-rss parameters can be passed on the command line, after the EAL parameters:
 
 .. code-block:: console
 
-    ./build/vmdq_app [EAL options] -- -p PORTMASK --nb-pools NP
+    ./build/vmdq_app [EAL options] -- -p PORTMASK --nb-pools NP --enable-rss
 
-where, NP can be 8, 16 or 32.
+where, NP can be 8, 16 or 32, rss is disabled by default.
 
 In Linux* user space, the application can display statistics with the number of packets received on each queue.
 To have the application display the statistics, send a SIGHUP signal to the running application process.

@@ -59,6 +59,7 @@ static uint32_t enabled_port_mask;
 /* number of pools (if user does not specify any, 8 by default */
 static uint32_t num_queues = 8;
 static uint32_t num_pools = 8;
+static uint8_t rss_enable;
 
 /* empty vmdq configuration structure. Filled in programatically */
 static const struct rte_eth_conf vmdq_conf_default = {
@@ -143,6 +144,13 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_pools)
 	(void)(rte_memcpy(eth_conf, &vmdq_conf_default, sizeof(*eth_conf)));
 	(void)(rte_memcpy(&eth_conf->rx_adv_conf.vmdq_rx_conf, &conf,
 		   sizeof(eth_conf->rx_adv_conf.vmdq_rx_conf)));
+	if (rss_enable) {
+		eth_conf->rxmode.mq_mode = ETH_MQ_RX_VMDQ_RSS;
+		eth_conf->rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP |
+							ETH_RSS_UDP |
+							ETH_RSS_TCP |
+							ETH_RSS_SCTP;
+	}
 	return 0;
 }
 
@@ -164,6 +172,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	uint16_t q;
 	uint16_t queues_per_pool;
 	uint32_t max_nb_pools;
+	uint64_t rss_hf_tmp;
 
 	/*
 	 * The max pool number from dev_info will be used to validate the pool
@@ -208,6 +217,17 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 		vmdq_queue_base, vmdq_pool_base);
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
+
+	rss_hf_tmp = port_conf.rx_adv_conf.rss_conf.rss_hf;
+	port_conf.rx_adv_conf.rss_conf.rss_hf &=
+		dev_info.flow_type_rss_offloads;
+	if (port_conf.rx_adv_conf.rss_conf.rss_hf != rss_hf_tmp) {
+		printf("Port %u modified RSS hash function based on hardware support,"
+			"requested:%#"PRIx64" configured:%#"PRIx64"\n",
+			port,
+			rss_hf_tmp,
+			port_conf.rx_adv_conf.rss_conf.rss_hf);
+	}
 
 	/*
 	 * Though in this example, we only receive packets from the first queue
@@ -363,7 +383,8 @@ static void
 vmdq_usage(const char *prgname)
 {
 	printf("%s [EAL options] -- -p PORTMASK]\n"
-	"  --nb-pools NP: number of pools\n",
+	"  --nb-pools NP: number of pools\n"
+	"  --enable-rss: enable RSS (disabled by default)\n",
 	       prgname);
 }
 
@@ -377,6 +398,7 @@ vmdq_parse_args(int argc, char **argv)
 	const char *prgname = argv[0];
 	static struct option long_option[] = {
 		{"nb-pools", required_argument, NULL, 0},
+		{"enable-rss", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -394,11 +416,18 @@ vmdq_parse_args(int argc, char **argv)
 			}
 			break;
 		case 0:
-			if (vmdq_parse_num_pools(optarg) == -1) {
-				printf("invalid number of pools\n");
-				vmdq_usage(prgname);
-				return -1;
+			if (!strcmp(long_option[option_index].name,
+			    "nb-pools")) {
+				if (vmdq_parse_num_pools(optarg) == -1) {
+					printf("invalid number of pools\n");
+					vmdq_usage(prgname);
+					return -1;
+				}
 			}
+
+			if (!strcmp(long_option[option_index].name,
+			    "enable-rss"))
+				rss_enable = 1;
 			break;
 
 		default:
