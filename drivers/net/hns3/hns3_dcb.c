@@ -580,7 +580,9 @@ hns3_dcb_pri_shaper_cfg(struct hns3_hw *hw)
 void
 hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 {
+	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint16_t rx_qnum_per_tc;
+	int i;
 
 	rx_qnum_per_tc = nb_rx_q / hw->num_tc;
 	rx_qnum_per_tc = RTE_MIN(hw->rss_size_max, rx_qnum_per_tc);
@@ -590,6 +592,19 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 		hw->alloc_rss_size = rx_qnum_per_tc;
 	}
 	hw->used_rx_queues = hw->num_tc * hw->alloc_rss_size;
+
+	/*
+	 * When rss size is changed, we need to update rss redirection table
+	 * maintained by driver. Besides, during the entire reset process, we
+	 * need to ensure that the rss table information are not overwritten
+	 * and configured directly to the hardware in the RESET_STAGE_RESTORE
+	 * stage of the reset process.
+	 */
+	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+		for (i = 0; i < HNS3_RSS_IND_TBL_SIZE; i++)
+			rss_cfg->rss_indirection_tbl[i] =
+							i % hw->alloc_rss_size;
+	}
 }
 
 void

@@ -111,4 +111,6 @@ int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw,
 				 uint64_t rss_hf);
 int hns3_set_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 			  const uint8_t *key);
+int hns3_restore_rss_filter(struct rte_eth_dev *dev);
+
 #endif /* _HNS3_RSS_H_ */

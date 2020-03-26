@@ -4258,6 +4258,12 @@ alloc_intr_vec_error:
 	return ret;
 }
 
+static void
+hns3_restore_filter(struct rte_eth_dev *dev)
+{
+	hns3_restore_rss_filter(dev);
+}
+
 static int
 hns3_dev_start(struct rte_eth_dev *dev)
 {
@@ -4288,6 +4294,8 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
 	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, dev);
+
+	hns3_restore_filter(dev);
 
 	hns3_info(hw, "hns3 dev start successful!");
 	return 0;

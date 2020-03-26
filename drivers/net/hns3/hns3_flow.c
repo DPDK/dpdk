@@ -1546,6 +1546,19 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 	return hns3_config_rss_filter(dev, &hw->rss_info, false);
 }
 
+/* Restore the rss filter */
+int
+hns3_restore_rss_filter(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+
+	if (hw->rss_info.conf.queue_num == 0)
+		return 0;
+
+	return hns3_config_rss_filter(dev, &hw->rss_info, true);
+}
+
 static int
 hns3_flow_parse_rss(struct rte_eth_dev *dev,
 		    const struct hns3_rss_conf *conf, bool add)

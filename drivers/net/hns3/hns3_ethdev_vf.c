@@ -1744,6 +1744,12 @@ vf_alloc_intr_vec_error:
 	return ret;
 }
 
+static void
+hns3vf_restore_filter(struct rte_eth_dev *dev)
+{
+	hns3_restore_rss_filter(dev);
+}
+
 static int
 hns3vf_dev_start(struct rte_eth_dev *dev)
 {
@@ -1772,6 +1778,8 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
 	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler, dev);
+
+	hns3vf_restore_filter(dev);
 
 	return ret;
 }
