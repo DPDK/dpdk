@@ -44,13 +44,33 @@
 
 #define SYNC_WAIT 0
 #define SYNC_START 1
+#define INVALID_OPAQUE -1
 
 #define INVALID_QUEUE_ID -1
+/* Increment for next code block in external HARQ memory */
+#define HARQ_INCR 32768
+/* Headroom for filler LLRs insertion in HARQ buffer */
+#define FILLER_HEADROOM 1024
+/* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
+#define N_ZC_1 66 /* N = 66 Zc for BG 1 */
+#define N_ZC_2 50 /* N = 50 Zc for BG 2 */
+#define K0_1_1 17 /* K0 fraction numerator for rv 1 and BG 1 */
+#define K0_1_2 13 /* K0 fraction numerator for rv 1 and BG 2 */
+#define K0_2_1 33 /* K0 fraction numerator for rv 2 and BG 1 */
+#define K0_2_2 25 /* K0 fraction numerator for rv 2 and BG 2 */
+#define K0_3_1 56 /* K0 fraction numerator for rv 3 and BG 1 */
+#define K0_3_2 43 /* K0 fraction numerator for rv 3 and BG 2 */
 
 static struct test_bbdev_vector test_vector;
 
 /* Switch between PMD and Interrupt for throughput TC */
 static bool intr_enabled;
+
+/* LLR arithmetic representation for numerical conversion */
+static int ldpc_llr_decimals;
+static int ldpc_llr_size;
+/* Keep track of the LDPC decoder device capability flag */
+static uint32_t ldpc_cap_flags;
 
 /* Represents tested active devices */
 static struct active_device {
@@ -293,7 +313,7 @@ check_dev_cap(const struct rte_bbdev_info *dev_info)
 				return TEST_FAILED;
 			}
 			if (intr_enabled && !(cap->capability_flags &
-					RTE_BBDEV_TURBO_ENC_INTERRUPTS)) {
+					RTE_BBDEV_LDPC_ENC_INTERRUPTS)) {
 				printf(
 					"Dequeue interrupts are not supported!\n");
 				return TEST_FAILED;
@@ -336,12 +356,19 @@ check_dev_cap(const struct rte_bbdev_info *dev_info)
 				return TEST_FAILED;
 			}
 			if (intr_enabled && !(cap->capability_flags &
-					RTE_BBDEV_TURBO_DEC_INTERRUPTS)) {
+					RTE_BBDEV_LDPC_DEC_INTERRUPTS)) {
 				printf(
 					"Dequeue interrupts are not supported!\n");
 				return TEST_FAILED;
 			}
-
+			if (intr_enabled && (test_vector.ldpc_dec.op_flags &
+				(RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE |
+				RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE |
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK
+					))) {
+				printf("Skip loop-back with interrupt\n");
+				return TEST_FAILED;
+			}
 			return TEST_SUCCESS;
 		}
 	}
@@ -377,7 +404,8 @@ create_mbuf_pool(struct op_data_entries *entries, uint8_t dev_id,
 	snprintf(pool_name, sizeof(pool_name), "%s_pool_%u", op_type_str,
 			dev_id);
 	return rte_pktmbuf_pool_create(pool_name, mbuf_pool_size, 0, 0,
-			RTE_MAX(max_seg_sz + RTE_PKTMBUF_HEADROOM,
+			RTE_MAX(max_seg_sz + RTE_PKTMBUF_HEADROOM
+					+ FILLER_HEADROOM,
 			(unsigned int)RTE_MBUF_DEFAULT_BUF_SIZE), socket_id);
 }
 
@@ -432,27 +460,33 @@ create_mempools(struct active_device *ad, int socket_id,
 		return TEST_SUCCESS;
 
 	/* Inputs */
-	mbuf_pool_size = optimal_mempool_size(ops_pool_size * in->nb_segments);
-	mp = create_mbuf_pool(in, ad->dev_id, socket_id, mbuf_pool_size, "in");
-	TEST_ASSERT_NOT_NULL(mp,
-			"ERROR Failed to create %u items input pktmbuf pool for dev %u on socket %u.",
-			mbuf_pool_size,
-			ad->dev_id,
-			socket_id);
-	ad->in_mbuf_pool = mp;
+	if (in->nb_segments > 0) {
+		mbuf_pool_size = optimal_mempool_size(ops_pool_size *
+				in->nb_segments);
+		mp = create_mbuf_pool(in, ad->dev_id, socket_id,
+				mbuf_pool_size, "in");
+		TEST_ASSERT_NOT_NULL(mp,
+				"ERROR Failed to create %u items input pktmbuf pool for dev %u on socket %u.",
+				mbuf_pool_size,
+				ad->dev_id,
+				socket_id);
+		ad->in_mbuf_pool = mp;
+	}
 
 	/* Hard outputs */
-	mbuf_pool_size = optimal_mempool_size(ops_pool_size *
-			hard_out->nb_segments);
-	mp = create_mbuf_pool(hard_out, ad->dev_id, socket_id, mbuf_pool_size,
-			"hard_out");
-	TEST_ASSERT_NOT_NULL(mp,
-			"ERROR Failed to create %u items hard output pktmbuf pool for dev %u on socket %u.",
-			mbuf_pool_size,
-			ad->dev_id,
-			socket_id);
-	ad->hard_out_mbuf_pool = mp;
-
+	if (hard_out->nb_segments > 0) {
+		mbuf_pool_size = optimal_mempool_size(ops_pool_size *
+				hard_out->nb_segments);
+		mp = create_mbuf_pool(hard_out, ad->dev_id, socket_id,
+				mbuf_pool_size,
+				"hard_out");
+		TEST_ASSERT_NOT_NULL(mp,
+				"ERROR Failed to create %u items hard output pktmbuf pool for dev %u on socket %u.",
+				mbuf_pool_size,
+				ad->dev_id,
+				socket_id);
+		ad->hard_out_mbuf_pool = mp;
+	}
 
 	/* Soft outputs */
 	if (soft_out->nb_segments > 0) {
@@ -901,6 +935,45 @@ limit_input_llr_val_range(struct rte_bbdev_op_data *input_ops,
 	}
 }
 
+/*
+ * We may have to insert filler bits
+ * when they are required by the HARQ assumption
+ */
+static void
+ldpc_add_filler(struct rte_bbdev_op_data *input_ops,
+		const uint16_t n, struct test_op_params *op_params)
+{
+	struct rte_bbdev_op_ldpc_dec dec = op_params->ref_dec_op->ldpc_dec;
+
+	if (input_ops == NULL)
+		return;
+	/* No need to add filler if not required by device */
+	if (!(ldpc_cap_flags &
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS))
+		return;
+	/* No need to add filler for loopback operation */
+	if (dec.op_flags & RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)
+		return;
+
+	uint16_t i, j, parity_offset;
+	for (i = 0; i < n; ++i) {
+		struct rte_mbuf *m = input_ops[i].data;
+		int8_t *llr = rte_pktmbuf_mtod_offset(m, int8_t *,
+				input_ops[i].offset);
+		parity_offset = (dec.basegraph == 1 ? 20 : 8)
+				* dec.z_c - dec.n_filler;
+		uint16_t new_hin_size = input_ops[i].length + dec.n_filler;
+		m->data_len = new_hin_size;
+		input_ops[i].length = new_hin_size;
+		for (j = new_hin_size - 1; j >= parity_offset + dec.n_filler;
+				j--)
+			llr[j] = llr[j - dec.n_filler];
+		uint16_t llr_max_pre_scaling = (1 << (ldpc_llr_size - 1)) - 1;
+		for (j = 0; j < dec.n_filler; j++)
+			llr[parity_offset + j] = llr_max_pre_scaling;
+	}
+}
+
 static void
 ldpc_input_llr_scaling(struct rte_bbdev_op_data *input_ops,
 		const uint16_t n, const int8_t llr_size,
@@ -923,7 +996,9 @@ ldpc_input_llr_scaling(struct rte_bbdev_op_data *input_ops,
 					++byte_idx) {
 
 				llr_tmp = llr[byte_idx];
-				if (llr_decimals == 2)
+				if (llr_decimals == 4)
+					llr_tmp *= 8;
+				else if (llr_decimals == 2)
 					llr_tmp *= 2;
 				else if (llr_decimals == 0)
 					llr_tmp /= 2;
@@ -991,12 +1066,24 @@ fill_queue_buffers(struct test_op_params *op_params,
 			capabilities->cap.turbo_dec.max_llr_modulus);
 
 	if (test_vector.op_type == RTE_BBDEV_OP_LDPC_DEC) {
-		ldpc_input_llr_scaling(*queue_ops[DATA_INPUT], n,
-			capabilities->cap.ldpc_dec.llr_size,
-			capabilities->cap.ldpc_dec.llr_decimals);
-		ldpc_input_llr_scaling(*queue_ops[DATA_HARQ_INPUT], n,
-				capabilities->cap.ldpc_dec.llr_size,
-				capabilities->cap.ldpc_dec.llr_decimals);
+		bool loopback = op_params->ref_dec_op->ldpc_dec.op_flags &
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK;
+		bool llr_comp = op_params->ref_dec_op->ldpc_dec.op_flags &
+				RTE_BBDEV_LDPC_LLR_COMPRESSION;
+		bool harq_comp = op_params->ref_dec_op->ldpc_dec.op_flags &
+				RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION;
+		ldpc_llr_decimals = capabilities->cap.ldpc_dec.llr_decimals;
+		ldpc_llr_size = capabilities->cap.ldpc_dec.llr_size;
+		ldpc_cap_flags = capabilities->cap.ldpc_dec.capability_flags;
+		if (!loopback && !llr_comp)
+			ldpc_input_llr_scaling(*queue_ops[DATA_INPUT], n,
+					ldpc_llr_size, ldpc_llr_decimals);
+		if (!loopback && !harq_comp)
+			ldpc_input_llr_scaling(*queue_ops[DATA_HARQ_INPUT], n,
+					ldpc_llr_size, ldpc_llr_decimals);
+		if (!loopback)
+			ldpc_add_filler(*queue_ops[DATA_HARQ_INPUT], n,
+					op_params);
 	}
 
 	return 0;
@@ -1159,17 +1246,21 @@ copy_reference_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 		ops[i]->ldpc_dec.op_flags = ldpc_dec->op_flags;
 		ops[i]->ldpc_dec.code_block_mode = ldpc_dec->code_block_mode;
 
-		ops[i]->ldpc_dec.hard_output = hard_outputs[start_idx + i];
-		ops[i]->ldpc_dec.input = inputs[start_idx + i];
+		if (hard_outputs != NULL)
+			ops[i]->ldpc_dec.hard_output =
+					hard_outputs[start_idx + i];
+		if (inputs != NULL)
+			ops[i]->ldpc_dec.input =
+					inputs[start_idx + i];
 		if (soft_outputs != NULL)
 			ops[i]->ldpc_dec.soft_output =
-				soft_outputs[start_idx + i];
+					soft_outputs[start_idx + i];
 		if (harq_inputs != NULL)
 			ops[i]->ldpc_dec.harq_combined_input =
 					harq_inputs[start_idx + i];
 		if (harq_outputs != NULL)
 			ops[i]->ldpc_dec.harq_combined_output =
-				harq_outputs[start_idx + i];
+					harq_outputs[start_idx + i];
 	}
 }
 
@@ -1211,7 +1302,22 @@ static int
 check_dec_status_and_ordering(struct rte_bbdev_dec_op *op,
 		unsigned int order_idx, const int expected_status)
 {
-	TEST_ASSERT(op->status == expected_status,
+	int status = op->status;
+	/* ignore parity mismatch false alarms for long iterations */
+	if (get_iter_max() >= 10) {
+		if (!(expected_status & (1 << RTE_BBDEV_SYNDROME_ERROR)) &&
+				(status & (1 << RTE_BBDEV_SYNDROME_ERROR))) {
+			printf("WARNING: Ignore Syndrome Check mismatch\n");
+			status -= (1 << RTE_BBDEV_SYNDROME_ERROR);
+		}
+		if ((expected_status & (1 << RTE_BBDEV_SYNDROME_ERROR)) &&
+				!(status & (1 << RTE_BBDEV_SYNDROME_ERROR))) {
+			printf("WARNING: Ignore Syndrome Check mismatch\n");
+			status += (1 << RTE_BBDEV_SYNDROME_ERROR);
+		}
+	}
+
+	TEST_ASSERT(status == expected_status,
 			"op_status (%d) != expected_status (%d)",
 			op->status, expected_status);
 
@@ -1230,9 +1336,10 @@ check_enc_status_and_ordering(struct rte_bbdev_enc_op *op,
 			"op_status (%d) != expected_status (%d)",
 			op->status, expected_status);
 
-	TEST_ASSERT((void *)(uintptr_t)order_idx == op->opaque_data,
-			"Ordering error, expected %p, got %p",
-			(void *)(uintptr_t)order_idx, op->opaque_data);
+	if (op->opaque_data != (void *)(uintptr_t)INVALID_OPAQUE)
+		TEST_ASSERT((void *)(uintptr_t)order_idx == op->opaque_data,
+				"Ordering error, expected %p, got %p",
+				(void *)(uintptr_t)order_idx, op->opaque_data);
 
 	return TEST_SUCCESS;
 }
@@ -1270,6 +1377,173 @@ validate_op_chain(struct rte_bbdev_op_data *op,
 	/* Validate total mbuf pkt length */
 	uint32_t pkt_len = rte_pktmbuf_pkt_len(op->data) - op->offset;
 	TEST_ASSERT(total_data_size == pkt_len,
+			"Length of data differ in original (%u) and filled (%u) op",
+			total_data_size, pkt_len);
+
+	return TEST_SUCCESS;
+}
+
+/*
+ * Compute K0 for a given configuration for HARQ output length computation
+ * As per definition in 3GPP 38.212 Table 5.4.2.1-2
+ */
+static inline uint16_t
+get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index)
+{
+	if (rv_index == 0)
+		return 0;
+	uint16_t n = (bg == 1 ? N_ZC_1 : N_ZC_2) * z_c;
+	if (n_cb == n) {
+		if (rv_index == 1)
+			return (bg == 1 ? K0_1_1 : K0_1_2) * z_c;
+		else if (rv_index == 2)
+			return (bg == 1 ? K0_2_1 : K0_2_2) * z_c;
+		else
+			return (bg == 1 ? K0_3_1 : K0_3_2) * z_c;
+	}
+	/* LBRM case - includes a division by N */
+	if (rv_index == 1)
+		return (((bg == 1 ? K0_1_1 : K0_1_2) * n_cb)
+				/ n) * z_c;
+	else if (rv_index == 2)
+		return (((bg == 1 ? K0_2_1 : K0_2_2) * n_cb)
+				/ n) * z_c;
+	else
+		return (((bg == 1 ? K0_3_1 : K0_3_2) * n_cb)
+				/ n) * z_c;
+}
+
+/* HARQ output length including the Filler bits */
+static inline uint16_t
+compute_harq_len(struct rte_bbdev_op_ldpc_dec *ops_ld)
+{
+	uint16_t k0 = 0;
+	uint8_t max_rv = (ops_ld->rv_index == 1) ? 3 : ops_ld->rv_index;
+	k0 = get_k0(ops_ld->n_cb, ops_ld->z_c, ops_ld->basegraph, max_rv);
+	/* Compute RM out size and number of rows */
+	uint16_t parity_offset = (ops_ld->basegraph == 1 ? 20 : 8)
+			* ops_ld->z_c - ops_ld->n_filler;
+	uint16_t deRmOutSize = RTE_MIN(
+			k0 + ops_ld->cb_params.e +
+			((k0 > parity_offset) ?
+					0 : ops_ld->n_filler),
+					ops_ld->n_cb);
+	uint16_t numRows = ((deRmOutSize + ops_ld->z_c - 1)
+			/ ops_ld->z_c);
+	uint16_t harq_output_len = numRows * ops_ld->z_c;
+	return harq_output_len;
+}
+
+static inline int
+validate_op_harq_chain(struct rte_bbdev_op_data *op,
+		struct op_data_entries *orig_op,
+		struct rte_bbdev_op_ldpc_dec *ops_ld)
+{
+	uint8_t i;
+	uint32_t j, jj, k;
+	struct rte_mbuf *m = op->data;
+	uint8_t nb_dst_segments = orig_op->nb_segments;
+	uint32_t total_data_size = 0;
+	int8_t *harq_orig, *harq_out, abs_harq_origin;
+	uint32_t byte_error = 0, cum_error = 0, error;
+	int16_t llr_max = (1 << (ldpc_llr_size - ldpc_llr_decimals)) - 1;
+	int16_t llr_max_pre_scaling = (1 << (ldpc_llr_size - 1)) - 1;
+	uint16_t parity_offset;
+
+	TEST_ASSERT(nb_dst_segments == m->nb_segs,
+			"Number of segments differ in original (%u) and filled (%u) op",
+			nb_dst_segments, m->nb_segs);
+
+	/* Validate each mbuf segment length */
+	for (i = 0; i < nb_dst_segments; ++i) {
+		/* Apply offset to the first mbuf segment */
+		uint16_t offset = (i == 0) ? op->offset : 0;
+		uint16_t data_len = rte_pktmbuf_data_len(m) - offset;
+		total_data_size += orig_op->segments[i].length;
+
+		TEST_ASSERT(orig_op->segments[i].length <
+				(uint32_t)(data_len + 64),
+				"Length of segment differ in original (%u) and filled (%u) op",
+				orig_op->segments[i].length, data_len);
+		harq_orig = (int8_t *) orig_op->segments[i].addr;
+		harq_out = rte_pktmbuf_mtod_offset(m, int8_t *, offset);
+
+		if (!(ldpc_cap_flags &
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS
+				) || (ops_ld->op_flags &
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)) {
+			data_len -= ops_ld->z_c;
+			parity_offset = data_len;
+		} else {
+			/* Compute RM out size and number of rows */
+			parity_offset = (ops_ld->basegraph == 1 ? 20 : 8)
+					* ops_ld->z_c - ops_ld->n_filler;
+			uint16_t deRmOutSize = compute_harq_len(ops_ld) -
+					ops_ld->n_filler;
+			if (data_len > deRmOutSize)
+				data_len = deRmOutSize;
+			if (data_len > orig_op->segments[i].length)
+				data_len = orig_op->segments[i].length;
+		}
+		/*
+		 * HARQ output can have minor differences
+		 * due to integer representation and related scaling
+		 */
+		for (j = 0, jj = 0; j < data_len; j++, jj++) {
+			if (j == parity_offset) {
+				/* Special Handling of the filler bits */
+				for (k = 0; k < ops_ld->n_filler; k++) {
+					if (harq_out[jj] !=
+							llr_max_pre_scaling) {
+						printf("HARQ Filler issue %d: %d %d\n",
+							jj, harq_out[jj],
+							llr_max);
+						byte_error++;
+					}
+					jj++;
+				}
+			}
+			if (!(ops_ld->op_flags &
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)) {
+				if (ldpc_llr_decimals > 1)
+					harq_out[jj] = (harq_out[jj] + 1)
+						>> (ldpc_llr_decimals - 1);
+				/* Saturated to S7 */
+				if (harq_orig[j] > llr_max)
+					harq_orig[j] = llr_max;
+				if (harq_orig[j] < -llr_max)
+					harq_orig[j] = -llr_max;
+			}
+			if (harq_orig[j] != harq_out[jj]) {
+				error = (harq_orig[j] > harq_out[jj]) ?
+						harq_orig[j] - harq_out[jj] :
+						harq_out[jj] - harq_orig[j];
+				abs_harq_origin = harq_orig[j] > 0 ?
+							harq_orig[j] :
+							-harq_orig[j];
+				/* Residual quantization error */
+				if ((error > 8 && (abs_harq_origin <
+						(llr_max - 16))) ||
+						(error > 16)) {
+					printf("HARQ mismatch %d: exp %d act %d => %d\n",
+							j, harq_orig[j],
+							harq_out[jj], error);
+					byte_error++;
+					cum_error += error;
+				}
+			}
+		}
+		m = m->next;
+	}
+
+	if (byte_error)
+		TEST_ASSERT(byte_error <= 1,
+				"HARQ output mismatch (%d) %d",
+				byte_error, cum_error);
+
+	/* Validate total mbuf pkt length */
+	uint32_t pkt_len = rte_pktmbuf_pkt_len(op->data) - op->offset;
+	TEST_ASSERT(total_data_size < pkt_len + 64,
 			"Length of data differ in original (%u) and filled (%u) op",
 			total_data_size, pkt_len);
 
@@ -1319,7 +1593,6 @@ validate_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
 	return TEST_SUCCESS;
 }
 
-
 static int
 validate_ldpc_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
 		struct rte_bbdev_dec_op *ref_op, const int vector_mask)
@@ -1351,8 +1624,15 @@ validate_ldpc_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
 			TEST_ASSERT(ops_td->iter_count <= ref_td->iter_count,
 					"Returned iter_count (%d) > expected iter_count (%d)",
 					ops_td->iter_count, ref_td->iter_count);
-		/* We can ignore data when the decoding failed to converge */
-		if ((ops[i]->status &  (1 << RTE_BBDEV_SYNDROME_ERROR)) == 0)
+		/*
+		 * We can ignore output data when the decoding failed to
+		 * converge or for loop-back cases
+		 */
+		if (!check_bit(ops[i]->ldpc_dec.op_flags,
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK
+				) && (
+				ops[i]->status & (1 << RTE_BBDEV_SYNDROME_ERROR
+						)) == 0)
 			TEST_ASSERT_SUCCESS(validate_op_chain(hard_output,
 					hard_data_orig),
 					"Hard output buffers (CB=%u) are not equal",
@@ -1365,12 +1645,18 @@ validate_ldpc_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
 					i);
 		if (ref_op->ldpc_dec.op_flags &
 				RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE) {
-			ldpc_input_llr_scaling(harq_output, 1, 8, 0);
-			TEST_ASSERT_SUCCESS(validate_op_chain(harq_output,
-					harq_data_orig),
+			TEST_ASSERT_SUCCESS(validate_op_harq_chain(harq_output,
+					harq_data_orig, ops_td),
 					"HARQ output buffers (CB=%u) are not equal",
 					i);
 		}
+		if (ref_op->ldpc_dec.op_flags &
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)
+			TEST_ASSERT_SUCCESS(validate_op_harq_chain(harq_output,
+					harq_data_orig, ops_td),
+					"HARQ output buffers (CB=%u) are not equal",
+					i);
+
 	}
 
 	return TEST_SUCCESS;
@@ -1709,6 +1995,105 @@ run_test_case(test_case_function *test_case_func)
 	return ret;
 }
 
+
+/* Push back the HARQ output from DDR to host */
+static void
+retrieve_harq_ddr(uint16_t dev_id, uint16_t queue_id,
+		struct rte_bbdev_dec_op **ops,
+		const uint16_t n)
+{
+	uint16_t j;
+	int save_status, ret;
+	uint32_t harq_offset = (uint32_t) queue_id * HARQ_INCR * 1024;
+	struct rte_bbdev_dec_op *ops_deq[MAX_BURST];
+	uint32_t flags = ops[0]->ldpc_dec.op_flags;
+	bool loopback = flags & RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK;
+	bool mem_out = flags & RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
+	bool hc_out = flags & RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
+	bool h_comp = flags & RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION;
+	for (j = 0; j < n; ++j) {
+		if ((loopback && mem_out) || hc_out) {
+			save_status = ops[j]->status;
+			ops[j]->ldpc_dec.op_flags =
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK +
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE;
+			if (h_comp)
+				ops[j]->ldpc_dec.op_flags +=
+					RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION;
+			ops[j]->ldpc_dec.harq_combined_input.offset =
+					harq_offset;
+			ops[j]->ldpc_dec.harq_combined_output.offset = 0;
+			harq_offset += HARQ_INCR;
+			if (!loopback)
+				ops[j]->ldpc_dec.harq_combined_input.length =
+				ops[j]->ldpc_dec.harq_combined_output.length;
+			rte_bbdev_enqueue_ldpc_dec_ops(dev_id, queue_id,
+					&ops[j], 1);
+			ret = 0;
+			while (ret == 0)
+				ret = rte_bbdev_dequeue_ldpc_dec_ops(
+						dev_id, queue_id,
+						&ops_deq[j], 1);
+			ops[j]->ldpc_dec.op_flags = flags;
+			ops[j]->status = save_status;
+		}
+	}
+}
+
+/*
+ * Push back the HARQ output from HW DDR to Host
+ * Preload HARQ memory input and adjust HARQ offset
+ */
+static void
+preload_harq_ddr(uint16_t dev_id, uint16_t queue_id,
+		struct rte_bbdev_dec_op **ops, const uint16_t n,
+		bool preload)
+{
+	uint16_t j;
+	int ret;
+	uint32_t harq_offset = (uint32_t) queue_id * HARQ_INCR * 1024;
+	struct rte_bbdev_op_data save_hc_in, save_hc_out;
+	struct rte_bbdev_dec_op *ops_deq[MAX_BURST];
+	uint32_t flags = ops[0]->ldpc_dec.op_flags;
+	bool mem_in = flags & RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE;
+	bool hc_in = flags & RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
+	bool mem_out = flags & RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
+	bool hc_out = flags & RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
+	bool h_comp = flags & RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION;
+	for (j = 0; j < n; ++j) {
+		if ((mem_in || hc_in) && preload) {
+			save_hc_in = ops[j]->ldpc_dec.harq_combined_input;
+			save_hc_out = ops[j]->ldpc_dec.harq_combined_output;
+			ops[j]->ldpc_dec.op_flags =
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK +
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
+			if (h_comp)
+				ops[j]->ldpc_dec.op_flags +=
+					RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION;
+			ops[j]->ldpc_dec.harq_combined_output.offset =
+					harq_offset;
+			ops[j]->ldpc_dec.harq_combined_input.offset = 0;
+			rte_bbdev_enqueue_ldpc_dec_ops(dev_id, queue_id,
+					&ops[j], 1);
+			ret = 0;
+			while (ret == 0)
+				ret = rte_bbdev_dequeue_ldpc_dec_ops(
+					dev_id, queue_id, &ops_deq[j], 1);
+			ops[j]->ldpc_dec.op_flags = flags;
+			ops[j]->ldpc_dec.harq_combined_input = save_hc_in;
+			ops[j]->ldpc_dec.harq_combined_output = save_hc_out;
+		}
+		/* Adjust HARQ offset when we reach external DDR */
+		if (mem_in || hc_in)
+			ops[j]->ldpc_dec.harq_combined_input.offset
+				= harq_offset;
+		if (mem_out || hc_out)
+			ops[j]->ldpc_dec.harq_combined_output.offset
+				= harq_offset;
+		harq_offset += HARQ_INCR;
+	}
+}
+
 static void
 dequeue_event_callback(uint16_t dev_id,
 		enum rte_bbdev_event_type event, void *cb_arg,
@@ -1744,13 +2129,22 @@ dequeue_event_callback(uint16_t dev_id,
 	burst_sz = rte_atomic16_read(&tp->burst_sz);
 	num_ops = tp->op_params->num_to_process;
 
-	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC ||
-			test_vector.op_type == RTE_BBDEV_OP_LDPC_DEC)
+	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
 		deq = rte_bbdev_dequeue_dec_ops(dev_id, queue_id,
 				&tp->dec_ops[
 					rte_atomic16_read(&tp->nb_dequeued)],
 				burst_sz);
-	else
+	else if (test_vector.op_type == RTE_BBDEV_OP_LDPC_DEC)
+		deq = rte_bbdev_dequeue_ldpc_dec_ops(dev_id, queue_id,
+				&tp->dec_ops[
+					rte_atomic16_read(&tp->nb_dequeued)],
+				burst_sz);
+	else if (test_vector.op_type == RTE_BBDEV_OP_LDPC_ENC)
+		deq = rte_bbdev_dequeue_ldpc_enc_ops(dev_id, queue_id,
+				&tp->enc_ops[
+					rte_atomic16_read(&tp->nb_dequeued)],
+				burst_sz);
+	else /*RTE_BBDEV_OP_TURBO_ENC*/
 		deq = rte_bbdev_dequeue_enc_ops(dev_id, queue_id,
 				&tp->enc_ops[
 					rte_atomic16_read(&tp->nb_dequeued)],
@@ -2127,6 +2521,12 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 	int i, j, ret;
 	struct rte_bbdev_info info;
 	uint16_t num_to_enq;
+	bool extDdr = check_bit(ldpc_cap_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE);
+	bool loopback = check_bit(ref_op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK);
+	bool hc_out = check_bit(ref_op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE);
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
 			"BURST_SIZE should be <= %u", MAX_BURST);
@@ -2164,13 +2564,18 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 
 	for (i = 0; i < TEST_REPETITIONS; ++i) {
 		for (j = 0; j < num_ops; ++j) {
-			mbuf_reset(ops_enq[j]->ldpc_dec.hard_output.data);
-			if (check_bit(ref_op->ldpc_dec.op_flags,
-					RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE))
+			if (!loopback)
+				mbuf_reset(
+				ops_enq[j]->ldpc_dec.hard_output.data);
+			if (hc_out || loopback)
 				mbuf_reset(
 				ops_enq[j]->ldpc_dec.harq_combined_output.data);
 		}
-
+		if (extDdr) {
+			bool preload = i == (TEST_REPETITIONS - 1);
+			preload_harq_ddr(tp->dev_id, queue_id, ops_enq,
+					num_ops, preload);
+		}
 		start_time = rte_rdtsc_precise();
 
 		for (enq = 0, deq = 0; enq < num_ops;) {
@@ -2200,6 +2605,10 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 	for (i = 0; i < num_ops; ++i) {
 		tp->iter_count = RTE_MAX(ops_enq[i]->ldpc_dec.iter_count,
 				tp->iter_count);
+	}
+	if (extDdr) {
+		/* Read loopback is not thread safe */
+		retrieve_harq_ddr(tp->dev_id, queue_id, ops_enq, num_ops);
 	}
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
@@ -2690,6 +3099,8 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 	uint16_t i, j, dequeued;
 	struct rte_bbdev_dec_op *ops_enq[MAX_BURST], *ops_deq[MAX_BURST];
 	uint64_t start_time = 0, last_time = 0;
+	bool extDdr = ldpc_cap_flags &
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
 
 	for (i = 0, dequeued = 0; dequeued < num_to_process; ++i) {
 		uint16_t enq = 0, deq = 0;
@@ -2702,6 +3113,15 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 		ret = rte_bbdev_dec_op_alloc_bulk(mempool, ops_enq, burst_sz);
 		TEST_ASSERT_SUCCESS(ret,
 				"rte_bbdev_dec_op_alloc_bulk() failed");
+
+		/* For latency tests we need to disable early termination */
+		if (check_bit(ref_op->ldpc_dec.op_flags,
+				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
+			ref_op->ldpc_dec.op_flags -=
+					RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
+		ref_op->ldpc_dec.iter_max = 6;
+		ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
+
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_ldpc_dec_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
@@ -2710,6 +3130,10 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 					bufs->harq_inputs,
 					bufs->harq_outputs,
 					ref_op);
+
+		if (extDdr)
+			preload_harq_ddr(dev_id, queue_id, ops_enq,
+					burst_sz, true);
 
 		/* Set counter to validate the ordering */
 		for (j = 0; j < burst_sz; ++j)
@@ -2737,6 +3161,9 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 		*min_time = RTE_MIN(*min_time, last_time);
 		*total_time += last_time;
 
+		if (extDdr)
+			retrieve_harq_ddr(dev_id, queue_id, ops_enq, burst_sz);
+
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
 			ret = validate_ldpc_dec_op(ops_deq, burst_sz, ref_op,
 					vector_mask);
@@ -2746,7 +3173,6 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 		rte_bbdev_dec_op_free_bulk(ops_enq, deq);
 		dequeued += deq;
 	}
-
 	return i;
 }
 
@@ -2838,7 +3264,6 @@ latency_test_ldpc_enc(struct rte_mempool *mempool,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_enc_op_alloc_bulk(mempool, ops_enq, burst_sz);
-
 		TEST_ASSERT_SUCCESS(ret,
 				"rte_bbdev_enc_op_alloc_bulk() failed");
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
@@ -3075,6 +3500,8 @@ offload_latency_test_ldpc_dec(struct rte_mempool *mempool,
 	uint64_t enq_start_time, deq_start_time;
 	uint64_t enq_sw_last_time, deq_last_time;
 	struct rte_bbdev_stats stats;
+	bool extDdr = ldpc_cap_flags &
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
 
 	for (i = 0, dequeued = 0; dequeued < num_to_process; ++i) {
 		uint16_t enq = 0, deq = 0;
@@ -3092,6 +3519,10 @@ offload_latency_test_ldpc_dec(struct rte_mempool *mempool,
 					bufs->harq_outputs,
 					ref_op);
 
+		if (extDdr)
+			preload_harq_ddr(dev_id, queue_id, ops_enq,
+					burst_sz, true);
+
 		/* Start time meas for enqueue function offload latency */
 		enq_start_time = rte_rdtsc_precise();
 		do {
@@ -3099,13 +3530,13 @@ offload_latency_test_ldpc_dec(struct rte_mempool *mempool,
 					&ops_enq[enq], burst_sz - enq);
 		} while (unlikely(burst_sz != enq));
 
+		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time;
 		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
 
-		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time -
-				stats.acc_offload_cycles;
+		enq_sw_last_time -= stats.acc_offload_cycles;
 		time_st->enq_sw_max_time = RTE_MAX(time_st->enq_sw_max_time,
 				enq_sw_last_time);
 		time_st->enq_sw_min_time = RTE_MIN(time_st->enq_sw_min_time,
@@ -3138,8 +3569,13 @@ offload_latency_test_ldpc_dec(struct rte_mempool *mempool,
 
 		/* Dequeue remaining operations if needed*/
 		while (burst_sz != deq)
-			deq += rte_bbdev_dequeue_dec_ops(dev_id, queue_id,
+			deq += rte_bbdev_dequeue_ldpc_dec_ops(dev_id, queue_id,
 					&ops_deq[deq], burst_sz - deq);
+
+		if (extDdr) {
+			/* Read loopback is not thread safe */
+			retrieve_harq_ddr(dev_id, queue_id, ops_enq, burst_sz);
+		}
 
 		rte_bbdev_dec_op_free_bulk(ops_enq, deq);
 		dequeued += deq;
@@ -3167,7 +3603,8 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_enc_op_alloc_bulk(mempool, ops_enq, burst_sz);
-		TEST_ASSERT_SUCCESS(ret, "rte_bbdev_op_alloc_bulk() failed");
+		TEST_ASSERT_SUCCESS(ret,
+				"rte_bbdev_enc_op_alloc_bulk() failed");
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_enc_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
@@ -3181,13 +3618,13 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 					&ops_enq[enq], burst_sz - enq);
 		} while (unlikely(burst_sz != enq));
 
+		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time;
+
 		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
-
-		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time -
-				stats.acc_offload_cycles;
+		enq_sw_last_time -= stats.acc_offload_cycles;
 		time_st->enq_sw_max_time = RTE_MAX(time_st->enq_sw_max_time,
 				enq_sw_last_time);
 		time_st->enq_sw_min_time = RTE_MIN(time_st->enq_sw_min_time,
@@ -3249,7 +3686,8 @@ offload_latency_test_ldpc_enc(struct rte_mempool *mempool,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_enc_op_alloc_bulk(mempool, ops_enq, burst_sz);
-		TEST_ASSERT_SUCCESS(ret, "rte_bbdev_op_alloc_bulk() failed");
+		TEST_ASSERT_SUCCESS(ret,
+				"rte_bbdev_enc_op_alloc_bulk() failed");
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_ldpc_enc_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
@@ -3263,13 +3701,13 @@ offload_latency_test_ldpc_enc(struct rte_mempool *mempool,
 					&ops_enq[enq], burst_sz - enq);
 		} while (unlikely(burst_sz != enq));
 
+		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time;
 		ret = get_bbdev_queue_stats(dev_id, queue_id, &stats);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to get stats for queue (%u) of device (%u)",
 				queue_id, dev_id);
 
-		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time -
-				stats.acc_offload_cycles;
+		enq_sw_last_time -= stats.acc_offload_cycles;
 		time_st->enq_sw_max_time = RTE_MAX(time_st->enq_sw_max_time,
 				enq_sw_last_time);
 		time_st->enq_sw_min_time = RTE_MIN(time_st->enq_sw_min_time,

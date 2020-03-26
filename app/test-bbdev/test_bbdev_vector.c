@@ -197,6 +197,9 @@ op_ldpc_decoder_flag_strtoul(char *token, uint32_t *op_flag_value)
 	else if (!strcmp(token,
 			"RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE"))
 		*op_flag_value = RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE;
+	else if (!strcmp(token,
+			"RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK"))
+		*op_flag_value = RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK;
 	else {
 		printf("The given value is not a LDPC decoder flag\n");
 		return -1;
@@ -943,15 +946,9 @@ check_ldpc_decoder_segments(struct test_bbdev_vector *vector)
 	unsigned char i;
 	struct rte_bbdev_op_ldpc_dec *ldpc_dec = &vector->ldpc_dec;
 
-	if (vector->entries[DATA_INPUT].nb_segments == 0)
-		return -1;
-
 	for (i = 0; i < vector->entries[DATA_INPUT].nb_segments; i++)
 		if (vector->entries[DATA_INPUT].segments[i].addr == NULL)
 			return -1;
-
-	if (vector->entries[DATA_HARD_OUTPUT].nb_segments == 0)
-		return -1;
 
 	for (i = 0; i < vector->entries[DATA_HARD_OUTPUT].nb_segments; i++)
 		if (vector->entries[DATA_HARD_OUTPUT].segments[i].addr == NULL)
