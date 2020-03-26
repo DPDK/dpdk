@@ -764,6 +764,7 @@ init_op_data_objs(struct rte_bbdev_op_data *bufs,
 {
 	int ret;
 	unsigned int i, j;
+	bool large_input = false;
 
 	for (i = 0; i < n; ++i) {
 		char *data;
@@ -774,24 +775,41 @@ init_op_data_objs(struct rte_bbdev_op_data *bufs,
 				op_type, n * ref_entries->nb_segments,
 				mbuf_pool->size);
 
-		TEST_ASSERT_SUCCESS(((seg->length + RTE_PKTMBUF_HEADROOM) >
-				(uint32_t)UINT16_MAX),
-				"Given data is bigger than allowed mbuf segment size");
-
+		if (seg->length > RTE_BBDEV_LDPC_E_MAX_MBUF) {
+			/*
+			 * Special case when DPDK mbuf cannot handle
+			 * the required input size
+			 */
+			printf("Warning: Larger input size than DPDK mbuf %d\n",
+					seg->length);
+			large_input = true;
+		}
 		bufs[i].data = m_head;
 		bufs[i].offset = 0;
 		bufs[i].length = 0;
 
 		if ((op_type == DATA_INPUT) || (op_type == DATA_HARQ_INPUT)) {
-			data = rte_pktmbuf_append(m_head, seg->length);
-			TEST_ASSERT_NOT_NULL(data,
+			if ((op_type == DATA_INPUT) && large_input) {
+				/* Allocate a fake overused mbuf */
+				data = rte_malloc(NULL, seg->length, 0);
+				memcpy(data, seg->addr, seg->length);
+				m_head->buf_addr = data;
+				m_head->buf_iova = rte_malloc_virt2iova(data);
+				m_head->data_off = 0;
+				m_head->data_len = seg->length;
+			} else {
+				data = rte_pktmbuf_append(m_head, seg->length);
+				TEST_ASSERT_NOT_NULL(data,
 					"Couldn't append %u bytes to mbuf from %d data type mbuf pool",
 					seg->length, op_type);
 
-			TEST_ASSERT(data == RTE_PTR_ALIGN(data, min_alignment),
+				TEST_ASSERT(data == RTE_PTR_ALIGN(
+						data, min_alignment),
 					"Data addr in mbuf (%p) is not aligned to device min alignment (%u)",
 					data, min_alignment);
-			rte_memcpy(data, seg->addr, seg->length);
+				rte_memcpy(data, seg->addr, seg->length);
+			}
+
 			bufs[i].length += seg->length;
 
 			for (j = 1; j < ref_entries->nb_segments; ++j) {

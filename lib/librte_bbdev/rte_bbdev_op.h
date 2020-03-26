@@ -35,7 +35,8 @@ extern "C" {
 #define RTE_BBDEV_LDPC_MAX_CB_SIZE (8448)
 /* Minimum size of Code Block */
 #define RTE_BBDEV_LDPC_MIN_CB_SIZE (40)
-
+/* Maximum E size we can manage with default mbuf */
+#define RTE_BBDEV_LDPC_E_MAX_MBUF (64000)
 /* Minimum size of Code Block (36.212, Table 5.1.3-3) */
 #define RTE_BBDEV_TURBO_MIN_CB_SIZE (40)
 /* Maximum size of circular buffer */

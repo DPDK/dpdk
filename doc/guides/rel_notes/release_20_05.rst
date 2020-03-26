@@ -62,6 +62,10 @@ New Features
 
   * Added support for matching on IPv4 Time To Live and IPv6 Hop Limit.
 
+* **Updated the turbo_sw bbdev PMD.**
+
+  Supported large size code blocks which does not fit in one mbuf segment.
+
 * **Added event mode to ipsec-secgw application.**
 
   Updated ipsec-secgw application to add event based packet processing. The worker
