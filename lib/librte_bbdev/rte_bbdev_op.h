@@ -712,8 +712,6 @@ struct rte_bbdev_op_cap_ldpc_dec {
 	int8_t llr_size;
 	/** LLR numbers of decimals bit for arithmetic representation */
 	int8_t llr_decimals;
-	/** Amount of memory for HARQ in external DDR in MB */
-	uint16_t harq_memory_size;
 	/** Num input code block buffers */
 	uint16_t num_buffers_src;
 	/** Num hard output code block buffers */

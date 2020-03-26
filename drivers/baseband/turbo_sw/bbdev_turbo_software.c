@@ -219,7 +219,6 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 					RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE,
 			.llr_size = 8,
 			.llr_decimals = 2,
-			.harq_memory_size = 0,
 			.num_buffers_src =
 					RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
 			.num_buffers_hard_out =
@@ -251,6 +250,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 	dev_info->default_queue_conf = default_queue_conf;
 	dev_info->capabilities = bbdev_capabilities;
 	dev_info->min_alignment = 64;
+	dev_info->harq_buffer_size = 0;
 
 	rte_bbdev_log_debug("got device info from %u\n", dev->data->dev_id);
 }

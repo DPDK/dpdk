@@ -307,6 +307,8 @@ struct rte_bbdev_driver_info {
 	bool queue_intr_supported;
 	/** Minimum alignment of buffers, in bytes */
 	uint16_t min_alignment;
+	/** HARQ memory available in kB */
+	uint32_t harq_buffer_size;
 	/** Default queue configuration used if none is supplied  */
 	struct rte_bbdev_queue_conf default_queue_conf;
 	/** Device operation capabilities */
