@@ -104,6 +104,9 @@ int
 qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
 			enum qat_service_type service);
 
+int
+qat_cq_get_fw_version(struct qat_qp *qp);
+
 /* Needed for weak function*/
 int
 qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
