@@ -1406,6 +1406,11 @@ flow_dv_validate_item_mark(struct rte_eth_dev *dev,
 					  "mark id exceeds the limit");
 	if (!mask)
 		mask = &nic_mask;
+	if (!mask->id)
+		return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
+					"mask cannot be zero");
+
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_mark),
@@ -1451,10 +1456,6 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 					  item->spec,
 					  "data cannot be empty");
-	if (!spec->data)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
-					  "data cannot be zero");
 	if (config->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 		if (!mlx5_flow_ext_mreg_supported(dev))
 			return rte_flow_error_set(error, ENOTSUP,
@@ -1474,6 +1475,11 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 	}
 	if (!mask)
 		mask = &rte_flow_item_meta_mask;
+	if (!mask->data)
+		return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
+					"mask cannot be zero");
+
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_meta),
@@ -1522,6 +1528,11 @@ flow_dv_validate_item_tag(struct rte_eth_dev *dev,
 					  "data cannot be empty");
 	if (!mask)
 		mask = &rte_flow_item_tag_mask;
+	if (!mask->data)
+		return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
+					"mask cannot be zero");
+
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_tag),

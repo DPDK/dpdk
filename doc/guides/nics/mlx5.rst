@@ -1275,6 +1275,19 @@ Supported hardware offloads
    |                       | |  ConnectX-5   | | ConnectX-5    |
    +-----------------------+-----------------+-----------------+
 
+Notes for metadata
+------------------
+
+MARK and META items are interrelated with datapath - they might move from/to
+the applications in mbuf fields. Hence, zero value for these items has the
+special meaning - it means "no metadata are provided", not zero values are
+treated by applications and PMD as valid ones.
+
+Moreover in the flow engine domain the value zero is acceptable to match and
+set, and we should allow to specify zero values as rte_flow parameters for the
+META and MARK items and actions. In the same time zero mask has no meaning and
+should be rejected on validation stage.
+
 Notes for testpmd
 -----------------
 
