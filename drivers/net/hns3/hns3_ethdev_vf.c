@@ -1150,6 +1150,13 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 	unsigned int tmp_mask;
+	int ret = 0;
+
+	if (rte_atomic16_read(&hw->reset.resetting)) {
+		hns3_err(hw, "vf set vlan offload failed during resetting, "
+			     "mask = 0x%x", mask);
+		return -EIO;
+	}
 
 	tmp_mask = (unsigned int)mask;
 	/* Vlan stripping setting */
@@ -1157,13 +1164,13 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		rte_spinlock_lock(&hw->lock);
 		/* Enable or disable VLAN stripping */
 		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-			hns3vf_en_hw_strip_rxvtag(hw, true);
+			ret = hns3vf_en_hw_strip_rxvtag(hw, true);
 		else
-			hns3vf_en_hw_strip_rxvtag(hw, false);
+			ret = hns3vf_en_hw_strip_rxvtag(hw, false);
 		rte_spinlock_unlock(&hw->lock);
 	}
 
-	return 0;
+	return ret;
 }
 
 static int
