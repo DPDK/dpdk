@@ -182,7 +182,7 @@ A good way of thinking about whether a patch should be split is to consider whet
 applied without dependencies as a backport.
 
 It is better to keep the related documentation changes in the same patch
-file as the code, rather than one big documentation patch at then end of a
+file as the code, rather than one big documentation patch at the end of a
 patchset. This makes it easier for future maintenance and development of the
 code.
 
