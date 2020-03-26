@@ -19,7 +19,7 @@
 #define MAX_VDPA_NAME_LEN 128
 
 enum vdpa_addr_type {
-	PCI_ADDR,
+	VDPA_ADDR_PCI,
 	VDPA_ADDR_MAX
 };
 

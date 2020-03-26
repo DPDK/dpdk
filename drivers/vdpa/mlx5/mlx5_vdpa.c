@@ -446,7 +446,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	priv->ctx = ctx;
 	priv->dev_addr.pci_addr = pci_dev->addr;
-	priv->dev_addr.type = PCI_ADDR;
+	priv->dev_addr.type = VDPA_ADDR_PCI;
 	priv->id = rte_vdpa_register_device(&priv->dev_addr, &mlx5_vdpa_ops);
 	if (priv->id < 0) {
 		DRV_LOG(ERR, "Failed to register vDPA device.");

@@ -331,7 +331,7 @@ static void cmd_create_vdpa_port_parsed(void *parsed_result,
 		cmdline_printf(cl, "Unable to parse the given bdf.\n");
 		return;
 	}
-	addr.type = PCI_ADDR;
+	addr.type = VDPA_ADDR_PCI;
 	did = rte_vdpa_find_device_id(&addr);
 	if (did < 0) {
 		cmdline_printf(cl, "Unable to find vdpa device id.\n");

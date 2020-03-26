@@ -27,7 +27,7 @@ is_same_vdpa_device(struct rte_vdpa_dev_addr *a,
 		return false;
 
 	switch (a->type) {
-	case PCI_ADDR:
+	case VDPA_ADDR_PCI:
 		if (a->pci_addr.domain != b->pci_addr.domain ||
 				a->pci_addr.bus != b->pci_addr.bus ||
 				a->pci_addr.devid != b->pci_addr.devid ||

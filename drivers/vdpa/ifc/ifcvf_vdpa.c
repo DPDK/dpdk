@@ -1177,7 +1177,7 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		(1ULL << VHOST_F_LOG_ALL);
 
 	internal->dev_addr.pci_addr = pci_dev->addr;
-	internal->dev_addr.type = PCI_ADDR;
+	internal->dev_addr.type = VDPA_ADDR_PCI;
 	list->internal = internal;
 
 	if (rte_kvargs_count(kvlist, IFCVF_SW_FALLBACK_LM)) {
