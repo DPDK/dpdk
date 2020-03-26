@@ -607,6 +607,7 @@ rte_bbdev_enqueue_ldpc_dec_ops(uint16_t dev_id, uint16_t queue_id,
  * @param ops
  *   Pointer array where operations will be dequeued to. Must have at least
  *   @p num_ops entries
+ *   ie. A pointer to a table of void * pointers (ops) that will be filled.
  * @param num_ops
  *   The maximum number of operations to dequeue.
  *
@@ -638,6 +639,7 @@ rte_bbdev_dequeue_enc_ops(uint16_t dev_id, uint16_t queue_id,
  * @param ops
  *   Pointer array where operations will be dequeued to. Must have at least
  *   @p num_ops entries
+ *   ie. A pointer to a table of void * pointers (ops) that will be filled.
  * @param num_ops
  *   The maximum number of operations to dequeue.
  *

@@ -31,8 +31,11 @@ extern "C" {
 #define RTE_BBDEV_TURBO_MAX_TB_SIZE (391656)
 /* Maximum size of Code Block (36.212, Table 5.1.3-3) */
 #define RTE_BBDEV_TURBO_MAX_CB_SIZE (6144)
-/* Maximum size of Code Block  */
+/* Maximum size of Code Block */
 #define RTE_BBDEV_LDPC_MAX_CB_SIZE (8448)
+/* Minimum size of Code Block */
+#define RTE_BBDEV_LDPC_MIN_CB_SIZE (40)
+
 /* Minimum size of Code Block (36.212, Table 5.1.3-3) */
 #define RTE_BBDEV_TURBO_MIN_CB_SIZE (40)
 /* Maximum size of circular buffer */
@@ -177,7 +180,12 @@ enum rte_bbdev_op_ldpcdec_flag_bitmasks {
 	/** Set if a device supports loop-back access to
 	 *  HARQ internal memory. Intended for troubleshooting.
 	 */
-	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK = (1ULL << 17)
+	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK = (1ULL << 17),
+	/** Set if a device includes LLR filler bits in the circular buffer
+	 *  for HARQ memory. If not set, it is assumed the filler bits are not
+	 *  in HARQ memory and handled directly by the LDPC decoder.
+	 */
+	RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS = (1ULL << 18)
 };
 
 /** Flags for LDPC encoder operation and capability structure */
