@@ -18,10 +18,6 @@
 #include <rte_hexdump.h>
 #include <rte_interrupts.h>
 
-#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
-#include <fpga_lte_fec.h>
-#endif
-
 #include "main.h"
 #include "test_bbdev_vector.h"
 
@@ -31,15 +27,16 @@
 #define TEST_REPETITIONS 1000
 
 #ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
-#define FPGA_PF_DRIVER_NAME ("intel_fpga_lte_fec_pf")
-#define FPGA_VF_DRIVER_NAME ("intel_fpga_lte_fec_vf")
-#define VF_UL_QUEUE_VALUE 4
-#define VF_DL_QUEUE_VALUE 4
-#define UL_BANDWIDTH 3
-#define DL_BANDWIDTH 3
-#define UL_LOAD_BALANCE 128
-#define DL_LOAD_BALANCE 128
-#define FLR_TIMEOUT 610
+#include <fpga_lte_fec.h>
+#define FPGA_LTE_PF_DRIVER_NAME ("intel_fpga_lte_fec_pf")
+#define FPGA_LTE_VF_DRIVER_NAME ("intel_fpga_lte_fec_vf")
+#define VF_UL_4G_QUEUE_VALUE 4
+#define VF_DL_4G_QUEUE_VALUE 4
+#define UL_4G_BANDWIDTH 3
+#define DL_4G_BANDWIDTH 3
+#define UL_4G_LOAD_BALANCE 128
+#define DL_4G_LOAD_BALANCE 128
+#define FLR_4G_TIMEOUT 610
 #endif
 
 #define OPS_CACHE_SIZE 256U
@@ -521,11 +518,11 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
  */
 #ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
 	if ((get_init_device() == true) &&
-		(!strcmp(info->drv.driver_name, FPGA_PF_DRIVER_NAME))) {
+		(!strcmp(info->drv.driver_name, FPGA_LTE_PF_DRIVER_NAME))) {
 		struct fpga_lte_fec_conf conf;
 		unsigned int i;
 
-		printf("Configure FPGA FEC Driver %s with default values\n",
+		printf("Configure FPGA LTE FEC Driver %s with default values\n",
 				info->drv.driver_name);
 
 		/* clear default configuration before initialization */
@@ -539,22 +536,22 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 
 		for (i = 0; i < FPGA_LTE_FEC_NUM_VFS; ++i) {
 			/* Number of UL queues per VF (fpga supports 8 VFs) */
-			conf.vf_ul_queues_number[i] = VF_UL_QUEUE_VALUE;
+			conf.vf_ul_queues_number[i] = VF_UL_4G_QUEUE_VALUE;
 			/* Number of DL queues per VF (fpga supports 8 VFs) */
-			conf.vf_dl_queues_number[i] = VF_DL_QUEUE_VALUE;
+			conf.vf_dl_queues_number[i] = VF_DL_4G_QUEUE_VALUE;
 		}
 
 		/* UL bandwidth. Needed for schedule algorithm */
-		conf.ul_bandwidth = UL_BANDWIDTH;
+		conf.ul_bandwidth = UL_4G_BANDWIDTH;
 		/* DL bandwidth */
-		conf.dl_bandwidth = DL_BANDWIDTH;
+		conf.dl_bandwidth = DL_4G_BANDWIDTH;
 
 		/* UL & DL load Balance Factor to 64 */
-		conf.ul_load_balance = UL_LOAD_BALANCE;
-		conf.dl_load_balance = DL_LOAD_BALANCE;
+		conf.ul_load_balance = UL_4G_LOAD_BALANCE;
+		conf.dl_load_balance = DL_4G_LOAD_BALANCE;
 
 		/**< FLR timeout value */
-		conf.flr_time_out = FLR_TIMEOUT;
+		conf.flr_time_out = FLR_4G_TIMEOUT;
 
 		/* setup FPGA PF with configuration information */
 		ret = fpga_lte_fec_configure(info->dev_name, &conf);
@@ -2856,11 +2853,6 @@ latency_test_ldpc_enc(struct rte_mempool *mempool,
 
 		start_time = rte_rdtsc_precise();
 
-		/*
-		 * printf("Latency Debug %d\n",
-		 * ops_enq[0]->ldpc_enc.cb_params.z_c); REMOVEME
-		 */
-
 		enq = rte_bbdev_enqueue_ldpc_enc_ops(dev_id, queue_id,
 				&ops_enq[enq], burst_sz);
 		TEST_ASSERT(enq == burst_sz,
@@ -2886,11 +2878,6 @@ latency_test_ldpc_enc(struct rte_mempool *mempool,
 			TEST_ASSERT_SUCCESS(ret, "Validation failed!");
 		}
 
-		/*
-		 * printf("Ready to free - deq %d num_to_process %d\n", FIXME
-		 *		deq, num_to_process);
-		 * printf("cache %d\n", ops_enq[0]->mempool->cache_size);
-		 */
 		rte_bbdev_enc_op_free_bulk(ops_enq, deq);
 		dequeued += deq;
 	}
