@@ -120,6 +120,8 @@ struct thread_params {
 	double ops_per_sec;
 	double mbps;
 	uint8_t iter_count;
+	double iter_average;
+	double bler;
 	rte_atomic16_t nb_dequeued;
 	rte_atomic16_t processing_status;
 	rte_atomic16_t burst_sz;
@@ -1207,6 +1209,312 @@ copy_reference_enc_op(struct rte_bbdev_enc_op **ops, unsigned int n,
 	}
 }
 
+
+/* Returns a random number drawn from a normal distribution
+ * with mean of 0 and variance of 1
+ * Marsaglia algorithm
+ */
+static double
+randn(int n)
+{
+	double S, Z, U1, U2, u, v, fac;
+
+	do {
+		U1 = (double)rand() / RAND_MAX;
+		U2 = (double)rand() / RAND_MAX;
+		u = 2. * U1 - 1.;
+		v = 2. * U2 - 1.;
+		S = u * u + v * v;
+	} while (S >= 1 || S == 0);
+	fac = sqrt(-2. * log(S) / S);
+	Z = (n % 2) ? u * fac : v * fac;
+	return Z;
+}
+
+static inline double
+maxstar(double A, double B)
+{
+	if (fabs(A - B) > 5)
+		return RTE_MAX(A, B);
+	else
+		return RTE_MAX(A, B) + log1p(exp(-fabs(A - B)));
+}
+
+/*
+ * Generate Qm LLRS for Qm==8
+ * Modulation, AWGN and LLR estimation from max log development
+ */
+static void
+gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
+{
+	int qm = 8;
+	int qam = 256;
+	int m, k;
+	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	/* 5.1.4 of TS38.211 */
+	const double symbols_I[256] = {
+			5, 5, 7, 7, 5, 5, 7, 7, 3, 3, 1, 1, 3, 3, 1, 1, 5,
+			5, 7, 7, 5, 5, 7, 7, 3, 3, 1, 1, 3, 3, 1, 1, 11,
+			11, 9, 9, 11, 11, 9, 9, 13, 13, 15, 15, 13, 13,
+			15, 15, 11, 11, 9, 9, 11, 11, 9, 9, 13, 13, 15,
+			15, 13, 13, 15, 15, 5, 5, 7, 7, 5, 5, 7, 7, 3, 3,
+			1, 1, 3, 3, 1, 1, 5, 5, 7, 7, 5, 5, 7, 7, 3, 3, 1,
+			1, 3, 3, 1, 1, 11, 11, 9, 9, 11, 11, 9, 9, 13, 13,
+			15, 15, 13, 13, 15, 15, 11, 11, 9, 9, 11, 11, 9, 9,
+			13, 13, 15, 15, 13, 13, 15, 15, -5, -5, -7, -7, -5,
+			-5, -7, -7, -3, -3, -1, -1, -3, -3, -1, -1, -5, -5,
+			-7, -7, -5, -5, -7, -7, -3, -3, -1, -1, -3, -3,
+			-1, -1, -11, -11, -9, -9, -11, -11, -9, -9, -13,
+			-13, -15, -15, -13, -13, -15, -15, -11, -11, -9,
+			-9, -11, -11, -9, -9, -13, -13, -15, -15, -13,
+			-13, -15, -15, -5, -5, -7, -7, -5, -5, -7, -7, -3,
+			-3, -1, -1, -3, -3, -1, -1, -5, -5, -7, -7, -5, -5,
+			-7, -7, -3, -3, -1, -1, -3, -3, -1, -1, -11, -11,
+			-9, -9, -11, -11, -9, -9, -13, -13, -15, -15, -13,
+			-13, -15, -15, -11, -11, -9, -9, -11, -11, -9, -9,
+			-13, -13, -15, -15, -13, -13, -15, -15};
+	const double symbols_Q[256] = {
+			5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1, 11,
+			9, 11, 9, 13, 15, 13, 15, 11, 9, 11, 9, 13, 15, 13,
+			15, 5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1,
+			11, 9, 11, 9, 13, 15, 13, 15, 11, 9, 11, 9, 13,
+			15, 13, 15, -5, -7, -5, -7, -3, -1, -3, -1, -5,
+			-7, -5, -7, -3, -1, -3, -1, -11, -9, -11, -9, -13,
+			-15, -13, -15, -11, -9, -11, -9, -13, -15, -13,
+			-15, -5, -7, -5, -7, -3, -1, -3, -1, -5, -7, -5,
+			-7, -3, -1, -3, -1, -11, -9, -11, -9, -13, -15,
+			-13, -15, -11, -9, -11, -9, -13, -15, -13, -15, 5,
+			7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1, 11,
+			9, 11, 9, 13, 15, 13, 15, 11, 9, 11, 9, 13, 15,
+			13, 15, 5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1,
+			3, 1, 11, 9, 11, 9, 13, 15, 13, 15, 11, 9, 11, 9,
+			13, 15, 13, 15, -5, -7, -5, -7, -3, -1, -3, -1,
+			-5, -7, -5, -7, -3, -1, -3, -1, -11, -9, -11, -9,
+			-13, -15, -13, -15, -11, -9, -11, -9, -13, -15,
+			-13, -15, -5, -7, -5, -7, -3, -1, -3, -1, -5, -7,
+			-5, -7, -3, -1, -3, -1, -11, -9, -11, -9, -13, -15,
+			-13, -15, -11, -9, -11, -9, -13, -15, -13, -15};
+	/* Average constellation point energy */
+	N0 *= 170.0;
+	for (k = 0; k < qm; k++)
+		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	/* 5.1.4 of TS38.211 */
+	I = (1 - 2 * b[0]) * (8 - (1 - 2 * b[2]) *
+			(4 - (1 - 2 * b[4]) * (2 - (1 - 2 * b[6]))));
+	Q = (1 - 2 * b[1]) * (8 - (1 - 2 * b[3]) *
+			(4 - (1 - 2 * b[5]) * (2 - (1 - 2 * b[7]))));
+	/* AWGN channel */
+	I += sqrt(N0 / 2) * randn(0);
+	Q += sqrt(N0 / 2) * randn(1);
+	/*
+	 * Calculate the log of the probability that each of
+	 * the constellation points was transmitted
+	 */
+	for (m = 0; m < qam; m++)
+		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
+				+ pow(Q - symbols_Q[m], 2.0)) / N0;
+	/* Calculate an LLR for each of the k_64QAM bits in the set */
+	for (k = 0; k < qm; k++) {
+		p0 = -999999;
+		p1 = -999999;
+		/* For each constellation point */
+		for (m = 0; m < qam; m++) {
+			if ((m >> (qm - k - 1)) & 1)
+				p1 = maxstar(p1, log_syml_prob[m]);
+			else
+				p0 = maxstar(p0, log_syml_prob[m]);
+		}
+		/* Calculate the LLR */
+		llr_ = p0 - p1;
+		llr_ *= (1 << ldpc_llr_decimals);
+		llr_ = round(llr_);
+		if (llr_ > llr_max)
+			llr_ = llr_max;
+		if (llr_ < -llr_max)
+			llr_ = -llr_max;
+		llrs[qm * i + k] = (int8_t) llr_;
+	}
+}
+
+
+/*
+ * Generate Qm LLRS for Qm==6
+ * Modulation, AWGN and LLR estimation from max log development
+ */
+static void
+gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
+{
+	int qm = 6;
+	int qam = 64;
+	int m, k;
+	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	/* 5.1.4 of TS38.211 */
+	const double symbols_I[64] = {
+			3, 3, 1, 1, 3, 3, 1, 1, 5, 5, 7, 7, 5, 5, 7, 7,
+			3, 3, 1, 1, 3, 3, 1, 1, 5, 5, 7, 7, 5, 5, 7, 7,
+			-3, -3, -1, -1, -3, -3, -1, -1, -5, -5, -7, -7,
+			-5, -5, -7, -7, -3, -3, -1, -1, -3, -3, -1, -1,
+			-5, -5, -7, -7, -5, -5, -7, -7};
+	const double symbols_Q[64] = {
+			3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7,
+			-3, -1, -3, -1, -5, -7, -5, -7, -3, -1, -3, -1,
+			-5, -7, -5, -7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1,
+			5, 7, 5, 7, -3, -1, -3, -1, -5, -7, -5, -7,
+			-3, -1, -3, -1, -5, -7, -5, -7};
+	/* Average constellation point energy */
+	N0 *= 42.0;
+	for (k = 0; k < qm; k++)
+		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	/* 5.1.4 of TS38.211 */
+	I = (1 - 2 * b[0])*(4 - (1 - 2 * b[2]) * (2 - (1 - 2 * b[4])));
+	Q = (1 - 2 * b[1])*(4 - (1 - 2 * b[3]) * (2 - (1 - 2 * b[5])));
+	/* AWGN channel */
+	I += sqrt(N0 / 2) * randn(0);
+	Q += sqrt(N0 / 2) * randn(1);
+	/*
+	 * Calculate the log of the probability that each of
+	 * the constellation points was transmitted
+	 */
+	for (m = 0; m < qam; m++)
+		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
+				+ pow(Q - symbols_Q[m], 2.0)) / N0;
+	/* Calculate an LLR for each of the k_64QAM bits in the set */
+	for (k = 0; k < qm; k++) {
+		p0 = -999999;
+		p1 = -999999;
+		/* For each constellation point */
+		for (m = 0; m < qam; m++) {
+			if ((m >> (qm - k - 1)) & 1)
+				p1 = maxstar(p1, log_syml_prob[m]);
+			else
+				p0 = maxstar(p0, log_syml_prob[m]);
+		}
+		/* Calculate the LLR */
+		llr_ = p0 - p1;
+		llr_ *= (1 << ldpc_llr_decimals);
+		llr_ = round(llr_);
+		if (llr_ > llr_max)
+			llr_ = llr_max;
+		if (llr_ < -llr_max)
+			llr_ = -llr_max;
+		llrs[qm * i + k] = (int8_t) llr_;
+	}
+}
+
+/*
+ * Generate Qm LLRS for Qm==4
+ * Modulation, AWGN and LLR estimation from max log development
+ */
+static void
+gen_qm4_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
+{
+	int qm = 4;
+	int qam = 16;
+	int m, k;
+	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	/* 5.1.4 of TS38.211 */
+	const double symbols_I[16] = {1, 1, 3, 3, 1, 1, 3, 3,
+			-1, -1, -3, -3, -1, -1, -3, -3};
+	const double symbols_Q[16] = {1, 3, 1, 3, -1, -3, -1, -3,
+			1, 3, 1, 3, -1, -3, -1, -3};
+	/* Average constellation point energy */
+	N0 *= 10.0;
+	for (k = 0; k < qm; k++)
+		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	/* 5.1.4 of TS38.211 */
+	I = (1 - 2 * b[0]) * (2 - (1 - 2 * b[2]));
+	Q = (1 - 2 * b[1]) * (2 - (1 - 2 * b[3]));
+	/* AWGN channel */
+	I += sqrt(N0 / 2) * randn(0);
+	Q += sqrt(N0 / 2) * randn(1);
+	/*
+	 * Calculate the log of the probability that each of
+	 * the constellation points was transmitted
+	 */
+	for (m = 0; m < qam; m++)
+		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
+				+ pow(Q - symbols_Q[m], 2.0)) / N0;
+	/* Calculate an LLR for each of the k_64QAM bits in the set */
+	for (k = 0; k < qm; k++) {
+		p0 = -999999;
+		p1 = -999999;
+		/* For each constellation point */
+		for (m = 0; m < qam; m++) {
+			if ((m >> (qm - k - 1)) & 1)
+				p1 = maxstar(p1, log_syml_prob[m]);
+			else
+				p0 = maxstar(p0, log_syml_prob[m]);
+		}
+		/* Calculate the LLR */
+		llr_ = p0 - p1;
+		llr_ *= (1 << ldpc_llr_decimals);
+		llr_ = round(llr_);
+		if (llr_ > llr_max)
+			llr_ = llr_max;
+		if (llr_ < -llr_max)
+			llr_ = -llr_max;
+		llrs[qm * i + k] = (int8_t) llr_;
+	}
+}
+
+static void
+gen_qm2_llr(int8_t *llrs, uint32_t j, double N0, double llr_max)
+{
+	double b, b1, n;
+	double coeff = 2.0 * sqrt(N0);
+
+	/* Ignore in vectors rare quasi null LLRs not to be saturated */
+	if (llrs[j] < 8 && llrs[j] > -8)
+		return;
+
+	/* Note don't change sign here */
+	n = randn(j % 2);
+	b1 = ((llrs[j] > 0 ? 2.0 : -2.0)
+			+ coeff * n) / N0;
+	b = b1 * (1 << ldpc_llr_decimals);
+	b = round(b);
+	if (b > llr_max)
+		b = llr_max;
+	if (b < -llr_max)
+		b = -llr_max;
+	llrs[j] = (int8_t) b;
+}
+
+/* Generate LLR for a given SNR */
+static void
+generate_llr_input(uint16_t n, struct rte_bbdev_op_data *inputs,
+		struct rte_bbdev_dec_op *ref_op)
+{
+	struct rte_mbuf *m;
+	uint16_t qm;
+	uint32_t i, j, e, range;
+	double N0, llr_max;
+
+	e = ref_op->ldpc_dec.cb_params.e;
+	qm = ref_op->ldpc_dec.q_m;
+	llr_max = (1 << (ldpc_llr_size - 1)) - 1;
+	range = e / qm;
+	N0 = 1.0 / pow(10.0, get_snr() / 10.0);
+
+	for (i = 0; i < n; ++i) {
+		m = inputs[i].data;
+		int8_t *llrs = rte_pktmbuf_mtod_offset(m, int8_t *, 0);
+		if (qm == 8) {
+			for (j = 0; j < range; ++j)
+				gen_qm8_llr(llrs, j, N0, llr_max);
+		} else if (qm == 6) {
+			for (j = 0; j < range; ++j)
+				gen_qm6_llr(llrs, j, N0, llr_max);
+		} else if (qm == 4) {
+			for (j = 0; j < range; ++j)
+				gen_qm4_llr(llrs, j, N0, llr_max);
+		} else {
+			for (j = 0; j < e; ++j)
+				gen_qm2_llr(llrs, j, N0, llr_max);
+		}
+	}
+}
+
 static void
 copy_reference_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 		unsigned int start_idx,
@@ -1591,6 +1899,30 @@ validate_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
 	}
 
 	return TEST_SUCCESS;
+}
+
+/* Check Number of code blocks errors */
+static int
+validate_ldpc_bler(struct rte_bbdev_dec_op **ops, const uint16_t n)
+{
+	unsigned int i;
+	struct op_data_entries *hard_data_orig =
+			&test_vector.entries[DATA_HARD_OUTPUT];
+	struct rte_bbdev_op_ldpc_dec *ops_td;
+	struct rte_bbdev_op_data *hard_output;
+	int errors = 0;
+	struct rte_mbuf *m;
+
+	for (i = 0; i < n; ++i) {
+		ops_td = &ops[i]->ldpc_dec;
+		hard_output = &ops_td->hard_output;
+		m = hard_output->data;
+		if (memcmp(rte_pktmbuf_mtod_offset(m, uint32_t *, 0),
+				hard_data_orig->segments[0].addr,
+				hard_data_orig->segments[0].length))
+			errors++;
+	}
+	return errors;
 }
 
 static int
@@ -2506,6 +2838,139 @@ throughput_pmd_lcore_dec(void *arg)
 }
 
 static int
+bler_pmd_lcore_ldpc_dec(void *arg)
+{
+	struct thread_params *tp = arg;
+	uint16_t enq, deq;
+	uint64_t total_time = 0, start_time;
+	const uint16_t queue_id = tp->queue_id;
+	const uint16_t burst_sz = tp->op_params->burst_sz;
+	const uint16_t num_ops = tp->op_params->num_to_process;
+	struct rte_bbdev_dec_op *ops_enq[num_ops];
+	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
+	struct test_buffers *bufs = NULL;
+	int i, j, ret;
+	float parity_bler = 0;
+	struct rte_bbdev_info info;
+	uint16_t num_to_enq;
+	bool extDdr = check_bit(ldpc_cap_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE);
+	bool loopback = check_bit(ref_op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK);
+	bool hc_out = check_bit(ref_op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE);
+
+	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
+			"BURST_SIZE should be <= %u", MAX_BURST);
+
+	rte_bbdev_info_get(tp->dev_id, &info);
+
+	TEST_ASSERT_SUCCESS((num_ops > info.drv.queue_size_lim),
+			"NUM_OPS cannot exceed %u for this device",
+			info.drv.queue_size_lim);
+
+	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
+
+	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
+		rte_pause();
+
+	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
+	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
+
+	/* For BLER tests we need to enable early termination */
+	if (!check_bit(ref_op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
+		ref_op->ldpc_dec.op_flags +=
+				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
+	ref_op->ldpc_dec.iter_max = get_iter_max();
+	ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
+
+	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
+		copy_reference_ldpc_dec_op(ops_enq, num_ops, 0, bufs->inputs,
+				bufs->hard_outputs, bufs->soft_outputs,
+				bufs->harq_inputs, bufs->harq_outputs, ref_op);
+	generate_llr_input(num_ops, bufs->inputs, ref_op);
+
+	/* Set counter to validate the ordering */
+	for (j = 0; j < num_ops; ++j)
+		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
+
+	for (i = 0; i < 1; ++i) { /* Could add more iterations */
+		for (j = 0; j < num_ops; ++j) {
+			if (!loopback)
+				mbuf_reset(
+				ops_enq[j]->ldpc_dec.hard_output.data);
+			if (hc_out || loopback)
+				mbuf_reset(
+				ops_enq[j]->ldpc_dec.harq_combined_output.data);
+		}
+		if (extDdr) {
+			bool preload = i == (TEST_REPETITIONS - 1);
+			preload_harq_ddr(tp->dev_id, queue_id, ops_enq,
+					num_ops, preload);
+		}
+		start_time = rte_rdtsc_precise();
+
+		for (enq = 0, deq = 0; enq < num_ops;) {
+			num_to_enq = burst_sz;
+
+			if (unlikely(num_ops - enq < num_to_enq))
+				num_to_enq = num_ops - enq;
+
+			enq += rte_bbdev_enqueue_ldpc_dec_ops(tp->dev_id,
+					queue_id, &ops_enq[enq], num_to_enq);
+
+			deq += rte_bbdev_dequeue_ldpc_dec_ops(tp->dev_id,
+					queue_id, &ops_deq[deq], enq - deq);
+		}
+
+		/* dequeue the remaining */
+		while (deq < enq) {
+			deq += rte_bbdev_dequeue_ldpc_dec_ops(tp->dev_id,
+					queue_id, &ops_deq[deq], enq - deq);
+		}
+
+		total_time += rte_rdtsc_precise() - start_time;
+	}
+
+	tp->iter_count = 0;
+	tp->iter_average = 0;
+	/* get the max of iter_count for all dequeued ops */
+	for (i = 0; i < num_ops; ++i) {
+		tp->iter_count = RTE_MAX(ops_enq[i]->ldpc_dec.iter_count,
+				tp->iter_count);
+		tp->iter_average += (double) ops_enq[i]->ldpc_dec.iter_count;
+		if (ops_enq[i]->status & (1 << RTE_BBDEV_SYNDROME_ERROR))
+			parity_bler += 1.0;
+	}
+
+	parity_bler /= num_ops; /* This one is based on SYND */
+	tp->iter_average /= num_ops;
+	tp->bler = (double) validate_ldpc_bler(ops_deq, num_ops) / num_ops;
+
+	if (test_vector.op_type != RTE_BBDEV_OP_NONE
+			&& tp->bler == 0
+			&& parity_bler == 0
+			&& !hc_out) {
+		ret = validate_ldpc_dec_op(ops_deq, num_ops, ref_op,
+				tp->op_params->vector_mask);
+		TEST_ASSERT_SUCCESS(ret, "Validation failed!");
+	}
+
+	rte_bbdev_dec_op_free_bulk(ops_enq, num_ops);
+
+	double tb_len_bits = calc_ldpc_dec_TB_size(ref_op);
+	tp->ops_per_sec = ((double)num_ops * 1) /
+			((double)total_time / (double)rte_get_tsc_hz());
+	tp->mbps = (((double)(num_ops * 1 * tb_len_bits)) /
+			1000000.0) / ((double)total_time /
+			(double)rte_get_tsc_hz());
+
+	return TEST_SUCCESS;
+}
+
+static int
 throughput_pmd_lcore_ldpc_dec(void *arg)
 {
 	struct thread_params *tp = arg;
@@ -2550,7 +3015,7 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 			RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
 		ref_op->ldpc_dec.op_flags -=
 				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
-	ref_op->ldpc_dec.iter_max = 6;
+	ref_op->ldpc_dec.iter_max = get_iter_max();
 	ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
@@ -2831,25 +3296,145 @@ print_enc_throughput(struct thread_params *t_params, unsigned int used_cores)
 		used_cores, total_mops, total_mbps);
 }
 
+/* Aggregate the performance results over the number of cores used */
 static void
 print_dec_throughput(struct thread_params *t_params, unsigned int used_cores)
 {
-	unsigned int iter = 0;
+	unsigned int core_idx = 0;
 	double total_mops = 0, total_mbps = 0;
 	uint8_t iter_count = 0;
 
-	for (iter = 0; iter < used_cores; iter++) {
+	for (core_idx = 0; core_idx < used_cores; core_idx++) {
 		printf(
 			"Throughput for core (%u): %.8lg Ops/s, %.8lg Mbps @ max %u iterations\n",
-			t_params[iter].lcore_id, t_params[iter].ops_per_sec,
-			t_params[iter].mbps, t_params[iter].iter_count);
-		total_mops += t_params[iter].ops_per_sec;
-		total_mbps += t_params[iter].mbps;
-		iter_count = RTE_MAX(iter_count, t_params[iter].iter_count);
+			t_params[core_idx].lcore_id,
+			t_params[core_idx].ops_per_sec,
+			t_params[core_idx].mbps,
+			t_params[core_idx].iter_count);
+		total_mops += t_params[core_idx].ops_per_sec;
+		total_mbps += t_params[core_idx].mbps;
+		iter_count = RTE_MAX(iter_count,
+				t_params[core_idx].iter_count);
 	}
 	printf(
 		"\nTotal throughput for %u cores: %.8lg MOPS, %.8lg Mbps @ max %u iterations\n",
 		used_cores, total_mops, total_mbps, iter_count);
+}
+
+/* Aggregate the performance results over the number of cores used */
+static void
+print_dec_bler(struct thread_params *t_params, unsigned int used_cores)
+{
+	unsigned int core_idx = 0;
+	double total_mbps = 0, total_bler = 0, total_iter = 0;
+	double snr = get_snr();
+
+	for (core_idx = 0; core_idx < used_cores; core_idx++) {
+		printf("Core%u BLER %.1f %% - Iters %.1f - Tp %.1f Mbps %s\n",
+				t_params[core_idx].lcore_id,
+				t_params[core_idx].bler * 100,
+				t_params[core_idx].iter_average,
+				t_params[core_idx].mbps,
+				get_vector_filename());
+		total_mbps += t_params[core_idx].mbps;
+		total_bler += t_params[core_idx].bler;
+		total_iter += t_params[core_idx].iter_average;
+	}
+	total_bler /= used_cores;
+	total_iter /= used_cores;
+
+	printf("SNR %.2f BLER %.1f %% - Iterations %.1f %d - Tp %.1f Mbps %s\n",
+			snr, total_bler * 100, total_iter, get_iter_max(),
+			total_mbps, get_vector_filename());
+}
+
+/*
+ * Test function that determines BLER wireless performance
+ */
+static int
+bler_test(struct active_device *ad,
+		struct test_op_params *op_params)
+{
+	int ret;
+	unsigned int lcore_id, used_cores = 0;
+	struct thread_params *t_params;
+	struct rte_bbdev_info info;
+	lcore_function_t *bler_function;
+	uint16_t num_lcores;
+	const char *op_type_str;
+
+	rte_bbdev_info_get(ad->dev_id, &info);
+
+	op_type_str = rte_bbdev_op_type_str(test_vector.op_type);
+	TEST_ASSERT_NOT_NULL(op_type_str, "Invalid op type: %u",
+			test_vector.op_type);
+
+	printf("+ ------------------------------------------------------- +\n");
+	printf("== test: bler\ndev: %s, nb_queues: %u, burst size: %u, num ops: %u, num_lcores: %u, op type: %s, itr mode: %s, GHz: %lg\n",
+			info.dev_name, ad->nb_queues, op_params->burst_sz,
+			op_params->num_to_process, op_params->num_lcores,
+			op_type_str,
+			intr_enabled ? "Interrupt mode" : "PMD mode",
+			(double)rte_get_tsc_hz() / 1000000000.0);
+
+	/* Set number of lcores */
+	num_lcores = (ad->nb_queues < (op_params->num_lcores))
+			? ad->nb_queues
+			: op_params->num_lcores;
+
+	/* Allocate memory for thread parameters structure */
+	t_params = rte_zmalloc(NULL, num_lcores * sizeof(struct thread_params),
+			RTE_CACHE_LINE_SIZE);
+	TEST_ASSERT_NOT_NULL(t_params, "Failed to alloc %zuB for t_params",
+			RTE_ALIGN(sizeof(struct thread_params) * num_lcores,
+				RTE_CACHE_LINE_SIZE));
+
+	if (test_vector.op_type == RTE_BBDEV_OP_LDPC_DEC)
+		bler_function = bler_pmd_lcore_ldpc_dec;
+	else
+		return TEST_SKIPPED;
+
+	rte_atomic16_set(&op_params->sync, SYNC_WAIT);
+
+	/* Master core is set at first entry */
+	t_params[0].dev_id = ad->dev_id;
+	t_params[0].lcore_id = rte_lcore_id();
+	t_params[0].op_params = op_params;
+	t_params[0].queue_id = ad->queue_ids[used_cores++];
+	t_params[0].iter_count = 0;
+
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		if (used_cores >= num_lcores)
+			break;
+
+		t_params[used_cores].dev_id = ad->dev_id;
+		t_params[used_cores].lcore_id = lcore_id;
+		t_params[used_cores].op_params = op_params;
+		t_params[used_cores].queue_id = ad->queue_ids[used_cores];
+		t_params[used_cores].iter_count = 0;
+
+		rte_eal_remote_launch(bler_function,
+				&t_params[used_cores++], lcore_id);
+	}
+
+	rte_atomic16_set(&op_params->sync, SYNC_START);
+	ret = bler_function(&t_params[0]);
+
+	/* Master core is always used */
+	for (used_cores = 1; used_cores < num_lcores; used_cores++)
+		ret |= rte_eal_wait_lcore(t_params[used_cores].lcore_id);
+
+	print_dec_bler(t_params, num_lcores);
+
+	/* Return if test failed */
+	if (ret) {
+		rte_free(t_params);
+		return ret;
+	}
+
+	/* Function to print something  here*/
+	rte_free(t_params);
+	return ret;
 }
 
 /*
@@ -3119,7 +3704,7 @@ latency_test_ldpc_dec(struct rte_mempool *mempool,
 				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE))
 			ref_op->ldpc_dec.op_flags -=
 					RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE;
-		ref_op->ldpc_dec.iter_max = 6;
+		ref_op->ldpc_dec.iter_max = get_iter_max();
 		ref_op->ldpc_dec.iter_count = ref_op->ldpc_dec.iter_max;
 
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
@@ -3977,6 +4562,12 @@ offload_latency_empty_q_test(struct active_device *ad,
 }
 
 static int
+bler_tc(void)
+{
+	return run_test_case(bler_test);
+}
+
+static int
 throughput_tc(void)
 {
 	return run_test_case(throughput_test);
@@ -4005,6 +4596,16 @@ interrupt_tc(void)
 {
 	return run_test_case(throughput_test);
 }
+
+static struct unit_test_suite bbdev_bler_testsuite = {
+	.suite_name = "BBdev BLER Tests",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown, bler_tc),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
 
 static struct unit_test_suite bbdev_throughput_testsuite = {
 	.suite_name = "BBdev Throughput Tests",
@@ -4057,6 +4658,7 @@ static struct unit_test_suite bbdev_interrupt_testsuite = {
 	}
 };
 
+REGISTER_TEST_COMMAND(bler, bbdev_bler_testsuite);
 REGISTER_TEST_COMMAND(throughput, bbdev_throughput_testsuite);
 REGISTER_TEST_COMMAND(validation, bbdev_validation_testsuite);
 REGISTER_TEST_COMMAND(latency, bbdev_latency_testsuite);

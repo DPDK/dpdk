@@ -29,6 +29,8 @@ static struct test_params {
 	unsigned int num_ops;
 	unsigned int burst_sz;
 	unsigned int num_lcores;
+	double snr;
+	unsigned int iter_max;
 	char test_vector_filename[PATH_MAX];
 	bool init_device;
 } test_params;
@@ -140,6 +142,18 @@ get_num_lcores(void)
 	return test_params.num_lcores;
 }
 
+double
+get_snr(void)
+{
+	return test_params.snr;
+}
+
+unsigned int
+get_iter_max(void)
+{
+	return test_params.iter_max;
+}
+
 bool
 get_init_device(void)
 {
@@ -180,12 +194,15 @@ parse_args(int argc, char **argv, struct test_params *tp)
 		{ "test-cases", 1, 0, 'c' },
 		{ "test-vector", 1, 0, 'v' },
 		{ "lcores", 1, 0, 'l' },
+		{ "snr", 1, 0, 's' },
+		{ "iter_max", 6, 0, 't' },
 		{ "init-device", 0, 0, 'i'},
 		{ "help", 0, 0, 'h' },
 		{ NULL,  0, 0, 0 }
 	};
+	tp->iter_max = DEFAULT_ITER;
 
-	while ((opt = getopt_long(argc, argv, "hin:b:c:v:l:", lgopts,
+	while ((opt = getopt_long(argc, argv, "hin:b:c:v:l:s:t:", lgopts,
 			&option_index)) != EOF)
 		switch (opt) {
 		case 'n':
@@ -236,6 +253,16 @@ parse_args(int argc, char **argv, struct test_params *tp)
 			snprintf(tp->test_vector_filename,
 					sizeof(tp->test_vector_filename),
 					"%s", optarg);
+			break;
+		case 's':
+			TEST_ASSERT(strlen(optarg) > 0,
+					"SNR is not provided");
+			tp->snr = strtod(optarg, NULL);
+			break;
+		case 't':
+			TEST_ASSERT(strlen(optarg) > 0,
+					"Iter_max is not provided");
+			tp->iter_max = strtol(optarg, NULL, 10);
 			break;
 		case 'l':
 			TEST_ASSERT(strlen(optarg) > 0,

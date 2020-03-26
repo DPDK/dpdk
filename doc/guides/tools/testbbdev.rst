@@ -47,6 +47,8 @@ The tool application has a number of command line options:
                        [-c TEST_CASE [TEST_CASE ...]]
                        [-v TEST_VECTOR [TEST_VECTOR...]] [-n NUM_OPS]
                        [-b BURST_SIZE [BURST_SIZE ...]] [-l NUM_LCORES]
+                       [-t MAX_ITERS [MAX_ITERS ...]]
+                       [-s SNR [SNR ...]]
 
 command-line Options
 ~~~~~~~~~~~~~~~~~~~~
@@ -106,6 +108,14 @@ The following are the command-line options:
  Specifies operations enqueue/dequeue burst size. If not specified burst_size is
  set to 32. Maximum is 512.
 
+``-t MAX_ITERS [MAX_ITERS ...], --iter_max MAX_ITERS [MAX_ITERS ...]``
+ Specifies LDPC decoder operations maximum number of iterations for throughput
+ and bler tests. If not specified iter_max is set to 6.
+
+``-s SNR [SNR ...], --snr SNR [SNR ...]``
+ Specifies for LDPC decoder operations the SNR in dB used when generating LLRs
+ for bler tests. If not specified snr is set to 0 dB.
+
 Test Cases
 ~~~~~~~~~~
 
@@ -148,6 +158,12 @@ There are 6 main test cases that can be executed using testbbdev tool:
     - Dequeued data is not validated against expected values stored in TV
     - Results are printed in million operations per second and million bits
       per second
+
+* BLER measurement [-c bler]
+    - Performs full operation of enqueue and dequeue
+    - Measures the achieved throughput on a subset or all available CPU cores
+    - Computed BLER (Block Error Rate, ratio of blocks not decoded at a given
+      SNR) in % based on the total number of operations.
 
 * Interrupt-mode Throughput [-c interrupt]
     - Similar to Throughput test case, but using interrupts. No polling.
