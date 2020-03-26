@@ -464,18 +464,23 @@ qat_sym_session_set_ext_hash_flags(struct qat_sym_session *session,
 }
 
 static void
-qat_sym_session_handle_mixed(struct qat_sym_session *session)
+qat_sym_session_handle_mixed(const struct rte_cryptodev *dev,
+		struct qat_sym_session *session)
 {
+	const struct qat_sym_dev_private *qat_private = dev->data->dev_private;
+	enum qat_device_gen min_dev_gen = (qat_private->internal_capabilities &
+			QAT_SYM_CAP_MIXED_CRYPTO) ? QAT_GEN2 : QAT_GEN3;
+
 	if (session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3 &&
 			session->qat_cipher_alg !=
 			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3) {
-		session->min_qat_dev_gen = QAT_GEN3;
+		session->min_qat_dev_gen = min_dev_gen;
 		qat_sym_session_set_ext_hash_flags(session,
 			1 << ICP_QAT_FW_AUTH_HDR_FLAG_ZUC_EIA3_BITPOS);
 	} else if (session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2 &&
 			session->qat_cipher_alg !=
 			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2) {
-		session->min_qat_dev_gen = QAT_GEN3;
+		session->min_qat_dev_gen = min_dev_gen;
 		qat_sym_session_set_ext_hash_flags(session,
 			1 << ICP_QAT_FW_AUTH_HDR_FLAG_SNOW3G_UIA2_BITPOS);
 	} else if ((session->aes_cmac ||
@@ -484,7 +489,7 @@ qat_sym_session_handle_mixed(struct qat_sym_session *session)
 			ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2 ||
 			session->qat_cipher_alg ==
 			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3)) {
-		session->min_qat_dev_gen = QAT_GEN3;
+		session->min_qat_dev_gen = min_dev_gen;
 		qat_sym_session_set_ext_hash_flags(session, 0);
 	}
 }
@@ -537,7 +542,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 			if (ret < 0)
 				return ret;
 			/* Special handling of mixed hash+cipher algorithms */
-			qat_sym_session_handle_mixed(session);
+			qat_sym_session_handle_mixed(dev, session);
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_HASH_CIPHER:
@@ -556,7 +561,7 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 			if (ret < 0)
 				return ret;
 			/* Special handling of mixed hash+cipher algorithms */
-			qat_sym_session_handle_mixed(session);
+			qat_sym_session_handle_mixed(dev, session);
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_TRNG_GET_RANDOM:

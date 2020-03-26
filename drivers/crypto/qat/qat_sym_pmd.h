@@ -15,6 +15,10 @@
 /** Intel(R) QAT Symmetric Crypto PMD driver name */
 #define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
 
+/* Internal capabilities */
+#define QAT_SYM_CAP_MIXED_CRYPTO	(1 << 0)
+#define QAT_SYM_CAP_VALID		(1 << 31)
+
 extern uint8_t cryptodev_qat_driver_id;
 
 /** private data structure for a QAT device.
@@ -29,6 +33,7 @@ struct qat_sym_dev_private {
 	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
 	/* QAT device symmetric crypto capabilities */
 	uint16_t min_enq_burst_threshold;
+	uint32_t internal_capabilities; /* see flags QAT_SYM_CAP_xxx */
 };
 
 int

@@ -14,6 +14,8 @@
 #include "qat_sym_session.h"
 #include "qat_sym_pmd.h"
 
+#define MIXED_CRYPTO_MIN_FW_VER 0x04090000
+
 uint8_t cryptodev_qat_driver_id;
 
 static const struct rte_cryptodev_capabilities qat_gen1_sym_capabilities[] = {
@@ -185,6 +187,31 @@ static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 				rte_mempool_virt2iova(cookie) +
 				offsetof(struct qat_sym_op_cookie,
 				qat_sgl_dst);
+	}
+
+	/* Get fw version from QAT (GEN2), skip if we've got it already */
+	if (qp->qat_dev_gen == QAT_GEN2 && !(qat_private->internal_capabilities
+			& QAT_SYM_CAP_VALID)) {
+		ret = qat_cq_get_fw_version(qp);
+
+		if (ret < 0) {
+			qat_sym_qp_release(dev, qp_id);
+			return ret;
+		}
+
+		if (ret != 0)
+			QAT_LOG(DEBUG, "QAT firmware version: %d.%d.%d",
+					(ret >> 24) & 0xff,
+					(ret >> 16) & 0xff,
+					(ret >> 8) & 0xff);
+		else
+			QAT_LOG(DEBUG, "unknown QAT firmware version");
+
+		/* set capabilities based on the fw version */
+		qat_private->internal_capabilities = QAT_SYM_CAP_VALID |
+				((ret >= MIXED_CRYPTO_MIN_FW_VER) ?
+						QAT_SYM_CAP_MIXED_CRYPTO : 0);
+		ret = 0;
 	}
 
 	return ret;
