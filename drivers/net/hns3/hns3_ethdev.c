@@ -2663,6 +2663,7 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 
 	hw->mac.media_type = cfg.media_type;
 	hw->rss_size_max = cfg.rss_size_max;
+	hw->rss_dis_flag = false;
 	hw->rx_buf_len = cfg.rx_buf_len;
 	memcpy(hw->mac.mac_addr, cfg.mac_addr, RTE_ETHER_ADDR_LEN);
 	hw->mac.phy_addr = cfg.phy_addr;

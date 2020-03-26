@@ -368,6 +368,7 @@ struct hns3_hw {
 
 	/* The configuration info of RSS */
 	struct hns3_rss_conf rss_info;
+	bool rss_dis_flag; /* disable rss flag. true: disable, false: enable */
 
 	uint8_t num_tc;             /* Total number of enabled TCs */
 	uint8_t hw_tc_map;

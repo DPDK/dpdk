@@ -1022,6 +1022,7 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 	int ret;
 
 	hw->mac.media_type = HNS3_MEDIA_TYPE_NONE;
+	hw->rss_dis_flag = false;
 
 	/* Get queue configuration from PF */
 	ret = hns3vf_get_queue_info(hw);

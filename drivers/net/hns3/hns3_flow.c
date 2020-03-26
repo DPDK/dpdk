@@ -1333,6 +1333,7 @@ hns3_disable_rss(struct hns3_hw *hw)
 
 	/* Disable RSS */
 	hw->rss_info.conf.types = 0;
+	hw->rss_dis_flag = true;
 
 	return 0;
 }

@@ -261,6 +261,9 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	uint8_t *key = rss_conf->rss_key;
 	int ret;
 
+	if (hw->rss_dis_flag)
+		return -EINVAL;
+
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_set_rss_tuple_by_rss_hf(hw, tuple, rss_hf);
 	if (ret)
