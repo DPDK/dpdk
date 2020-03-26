@@ -218,7 +218,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 					RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE |
 					RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE,
 			.llr_size = 8,
-			.llr_decimals = 2,
+			.llr_decimals = 4,
 			.num_buffers_src =
 					RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
 			.num_buffers_hard_out =
