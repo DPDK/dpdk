@@ -3,8 +3,21 @@
 
 eal_inc += include_directories('.', 'include')
 
-common_objs = []
-common_sources = files(
+if is_windows
+	sources += files(
+		'eal_common_bus.c',
+		'eal_common_class.c',
+		'eal_common_devargs.c',
+		'eal_common_errno.c',
+		'eal_common_launch.c',
+		'eal_common_lcore.c',
+		'eal_common_log.c',
+		'eal_common_options.c',
+		'eal_common_thread.c',
+		'rte_option.c',
+	)
+else # temporary bad indent
+sources += files(
 	'eal_common_bus.c',
 	'eal_common_cpuflags.c',
 	'eal_common_class.c',
@@ -37,8 +50,9 @@ common_sources = files(
 	'rte_option.c',
 	'rte_random.c',
 	'rte_reciprocal.c',
-	'rte_service.c'
+	'rte_service.c',
 )
+endif
 
 common_headers = files(
 	'include/rte_alarm.h',

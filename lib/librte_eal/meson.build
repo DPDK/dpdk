@@ -5,7 +5,7 @@
 # have a straight list of headers and source files.
 # Initially pull in common settings
 eal_inc = [global_inc]
-subdir('common') # defines common_sources, common_objs, etc.
+subdir('common')
 
 # Now do OS/exec-env specific settings, including building kernel modules
 # The <exec-env>/eal/meson.build file should define env_sources, etc.
@@ -25,7 +25,7 @@ endif
 if cc.has_header('getopt.h')
 	cflags += ['-DHAVE_GETOPT_H', '-DHAVE_GETOPT', '-DHAVE_GETOPT_LONG']
 endif
-sources += common_sources + env_sources
-objs = common_objs + env_objs
+sources += env_sources
+objs = env_objs
 headers = common_headers + env_headers
 includes += eal_inc
