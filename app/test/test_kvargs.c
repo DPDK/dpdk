@@ -230,8 +230,8 @@ static int test_invalid_kvargs(void)
 			rte_kvargs_free(kvlist);
 			goto fail;
 		}
-		return 0;
 	}
+	return 0;
 
  fail:
 	printf("while processing <%s>", *args);
