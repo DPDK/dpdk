@@ -41,16 +41,22 @@ struct ice_dcf_hw {
 
 	uint8_t *arq_buf;
 
+	uint16_t num_vfs;
+	uint16_t *vf_vsi_map;
+
 	struct virtchnl_version_info virtchnl_version;
 	struct virtchnl_vf_resource *vf_res; /* VF resource */
 	struct virtchnl_vsi_resource *vsi_res; /* LAN VSI */
 	uint16_t vsi_id;
+
+	struct rte_eth_dev *eth_dev;
 };
 
 int ice_dcf_execute_virtchnl_cmd(struct ice_dcf_hw *hw,
 				 struct dcf_virtchnl_cmd *cmd);
 int ice_dcf_send_aq_cmd(void *dcf_hw, struct ice_aq_desc *desc,
 			void *buf, uint16_t buf_size);
+int ice_dcf_handle_vsi_update_event(struct ice_dcf_hw *hw);
 int ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
 void ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
 

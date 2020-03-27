@@ -15,6 +15,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/common/iavf
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_ethdev -lrte_kvargs
 LDLIBS += -lrte_bus_pci -lrte_mempool -lrte_hash
 LDLIBS += -lrte_net -lrte_common_iavf
+LDLIBS += -lpthread
 
 EXPORT_MAP := rte_pmd_ice_version.map
 

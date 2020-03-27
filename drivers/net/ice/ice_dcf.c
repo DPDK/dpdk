@@ -270,6 +270,65 @@ ice_dcf_get_vf_resource(struct ice_dcf_hw *hw)
 }
 
 static int
+ice_dcf_get_vf_vsi_map(struct ice_dcf_hw *hw)
+{
+	struct virtchnl_dcf_vsi_map *vsi_map;
+	uint32_t valid_msg_len;
+	uint16_t len;
+	int err;
+
+	err = ice_dcf_send_cmd_req_no_irq(hw, VIRTCHNL_OP_DCF_GET_VSI_MAP,
+					  NULL, 0);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to send msg OP_DCF_GET_VSI_MAP");
+		return err;
+	}
+
+	err = ice_dcf_recv_cmd_rsp_no_irq(hw, VIRTCHNL_OP_DCF_GET_VSI_MAP,
+					  hw->arq_buf, ICE_DCF_AQ_BUF_SZ,
+					  &len);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to get response of OP_DCF_GET_VSI_MAP");
+		return err;
+	}
+
+	vsi_map = (struct virtchnl_dcf_vsi_map *)hw->arq_buf;
+	valid_msg_len = (vsi_map->num_vfs - 1) * sizeof(vsi_map->vf_vsi[0]) +
+			sizeof(*vsi_map);
+	if (len != valid_msg_len) {
+		PMD_DRV_LOG(ERR, "invalid vf vsi map response with length %u",
+			    len);
+		return -EINVAL;
+	}
+
+	if (hw->num_vfs != 0 && hw->num_vfs != vsi_map->num_vfs) {
+		PMD_DRV_LOG(ERR, "The number VSI map (%u) doesn't match the number of VFs (%u)",
+			    vsi_map->num_vfs, hw->num_vfs);
+		return -EINVAL;
+	}
+
+	len = vsi_map->num_vfs * sizeof(vsi_map->vf_vsi[0]);
+
+	if (!hw->vf_vsi_map) {
+		hw->vf_vsi_map = rte_zmalloc("vf_vsi_ctx", len, 0);
+		if (!hw->vf_vsi_map) {
+			PMD_DRV_LOG(ERR, "Failed to alloc memory for VSI context");
+			return -ENOMEM;
+		}
+
+		hw->num_vfs = vsi_map->num_vfs;
+	}
+
+	if (!memcmp(hw->vf_vsi_map, vsi_map->vf_vsi, len)) {
+		PMD_DRV_LOG(DEBUG, "VF VSI map doesn't change");
+		return 1;
+	}
+
+	rte_memcpy(hw->vf_vsi_map, vsi_map->vf_vsi, len);
+	return 0;
+}
+
+static int
 ice_dcf_mode_disable(struct ice_dcf_hw *hw)
 {
 	int err;
@@ -467,6 +526,28 @@ ret:
 }
 
 int
+ice_dcf_handle_vsi_update_event(struct ice_dcf_hw *hw)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(hw->eth_dev);
+	int err = 0;
+
+	rte_spinlock_lock(&hw->vc_cmd_send_lock);
+
+	rte_intr_disable(&pci_dev->intr_handle);
+	ice_dcf_disable_irq0(hw);
+
+	if (ice_dcf_get_vf_resource(hw) || ice_dcf_get_vf_vsi_map(hw))
+		err = -1;
+
+	rte_intr_enable(&pci_dev->intr_handle);
+	ice_dcf_enable_irq0(hw);
+
+	rte_spinlock_unlock(&hw->vc_cmd_send_lock);
+
+	return err;
+}
+
+int
 ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -533,6 +614,13 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 		goto err_alloc;
 	}
 
+	if (ice_dcf_get_vf_vsi_map(hw) < 0) {
+		PMD_INIT_LOG(ERR, "Failed to get VF VSI map");
+		ice_dcf_mode_disable(hw);
+		goto err_alloc;
+	}
+
+	hw->eth_dev = eth_dev;
 	rte_intr_callback_register(&pci_dev->intr_handle,
 				   ice_dcf_dev_interrupt_handler, hw);
 	rte_intr_enable(&pci_dev->intr_handle);
@@ -565,5 +653,6 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	iavf_shutdown_adminq(&hw->avf);
 
 	rte_free(hw->arq_buf);
+	rte_free(hw->vf_vsi_map);
 	rte_free(hw->vf_res);
 }

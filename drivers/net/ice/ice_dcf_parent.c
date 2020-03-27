@@ -3,15 +3,92 @@
  */
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <pthread.h>
 #include <unistd.h>
+
+#include <rte_spinlock.h>
 
 #include "ice_dcf_ethdev.h"
 
+#define ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL	100000 /* us */
+static rte_spinlock_t vsi_update_lock = RTE_SPINLOCK_INITIALIZER;
+
+static __rte_always_inline void
+ice_dcf_update_vsi_ctx(struct ice_hw *hw, uint16_t vsi_handle,
+		       uint16_t vsi_map)
+{
+	struct ice_vsi_ctx *vsi_ctx;
+
+	if (unlikely(vsi_handle >= ICE_MAX_VSI)) {
+		PMD_DRV_LOG(ERR, "Invalid vsi handle %u", vsi_handle);
+		return;
+	}
+
+	vsi_ctx = hw->vsi_ctx[vsi_handle];
+
+	if (vsi_map & VIRTCHNL_DCF_VF_VSI_VALID) {
+		if (!vsi_ctx) {
+			vsi_ctx = ice_malloc(hw, sizeof(*vsi_ctx));
+			if (!vsi_ctx) {
+				PMD_DRV_LOG(ERR, "No memory for vsi context %u",
+					    vsi_handle);
+				return;
+			}
+		}
+
+		vsi_ctx->vsi_num = (vsi_map & VIRTCHNL_DCF_VF_VSI_ID_M) >>
+					      VIRTCHNL_DCF_VF_VSI_ID_S;
+		hw->vsi_ctx[vsi_handle] = vsi_ctx;
+
+		PMD_DRV_LOG(DEBUG, "VF%u is assigned with vsi number %u",
+			    vsi_handle, vsi_ctx->vsi_num);
+	} else {
+		hw->vsi_ctx[vsi_handle] = NULL;
+
+		ice_free(hw, vsi_ctx);
+
+		PMD_DRV_LOG(NOTICE, "VF%u is disabled", vsi_handle);
+	}
+}
+
+static void
+ice_dcf_update_vf_vsi_map(struct ice_hw *hw, uint16_t num_vfs,
+			  uint16_t *vf_vsi_map)
+{
+	uint16_t vf_id;
+
+	for (vf_id = 0; vf_id < num_vfs; vf_id++)
+		ice_dcf_update_vsi_ctx(hw, vf_id, vf_vsi_map[vf_id]);
+}
+
+static void*
+ice_dcf_vsi_update_service_handler(void *param)
+{
+	struct ice_dcf_hw *hw = param;
+
+	usleep(ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL);
+
+	rte_spinlock_lock(&vsi_update_lock);
+
+	if (!ice_dcf_handle_vsi_update_event(hw)) {
+		struct ice_dcf_adapter *dcf_ad =
+			container_of(hw, struct ice_dcf_adapter, real_hw);
+
+		ice_dcf_update_vf_vsi_map(&dcf_ad->parent.hw,
+					  hw->num_vfs, hw->vf_vsi_map);
+	}
+
+	rte_spinlock_unlock(&vsi_update_lock);
+
+	return NULL;
+}
+
 void
-ice_dcf_handle_pf_event_msg(__rte_unused struct ice_dcf_hw *dcf_hw,
+ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 			    uint8_t *msg, uint16_t msglen)
 {
 	struct virtchnl_pf_event *pf_msg = (struct virtchnl_pf_event *)msg;
+	pthread_t thread;
 
 	if (msglen < sizeof(struct virtchnl_pf_event)) {
 		PMD_DRV_LOG(DEBUG, "Invalid event message length : %u", msglen);
@@ -21,12 +98,21 @@ ice_dcf_handle_pf_event_msg(__rte_unused struct ice_dcf_hw *dcf_hw,
 	switch (pf_msg->event) {
 	case VIRTCHNL_EVENT_RESET_IMPENDING:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
+		pthread_create(&thread, NULL,
+			       ice_dcf_vsi_update_service_handler, dcf_hw);
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
 		break;
 	case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event");
+		break;
+	case VIRTCHNL_EVENT_DCF_VSI_MAP_UPDATE:
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_DCF_VSI_MAP_UPDATE event : VF%u with VSI num %u",
+			    pf_msg->event_data.vf_vsi_map.vf_id,
+			    pf_msg->event_data.vf_vsi_map.vsi_id);
+		pthread_create(&thread, NULL,
+			       ice_dcf_vsi_update_service_handler, dcf_hw);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Unknown event received %u", pf_msg->event);
@@ -234,6 +320,8 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 		goto uninit_hw;
 	}
 	parent_adapter->active_pkg_type = ice_load_pkg_type(parent_hw);
+
+	ice_dcf_update_vf_vsi_map(parent_hw, hw->num_vfs, hw->vf_vsi_map);
 
 	mac = (const struct rte_ether_addr *)hw->avf.mac.addr;
 	if (rte_is_valid_assigned_ether_addr(mac))
