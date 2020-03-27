@@ -227,7 +227,7 @@ ice_dcf_get_vf_resource(struct ice_dcf_hw *hw)
 	int err, i;
 
 	caps = VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_RX_POLLING |
-	       VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
+	       VIRTCHNL_VF_CAP_ADV_LINK_SPEED | VIRTCHNL_VF_CAP_DCF |
 	       VF_BASE_MODE_OFFLOADS;
 
 	err = ice_dcf_send_cmd_req_no_irq(hw, VIRTCHNL_OP_GET_VF_RESOURCES,
@@ -260,6 +260,30 @@ ice_dcf_get_vf_resource(struct ice_dcf_hw *hw)
 
 	hw->vsi_id = hw->vsi_res->vsi_id;
 	PMD_DRV_LOG(DEBUG, "VSI ID is %u", hw->vsi_id);
+
+	return 0;
+}
+
+static int
+ice_dcf_mode_disable(struct ice_dcf_hw *hw)
+{
+	int err;
+
+	err = ice_dcf_send_cmd_req_no_irq(hw, VIRTCHNL_OP_DCF_DISABLE,
+					  NULL, 0);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to send msg OP_DCF_DISABLE");
+		return err;
+	}
+
+	err = ice_dcf_recv_cmd_rsp_no_irq(hw, VIRTCHNL_OP_DCF_DISABLE,
+					  hw->arq_buf, ICE_DCF_AQ_BUF_SZ, NULL);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to get response of OP_DCF_DISABLE %d",
+			    err);
+		return -1;
+	}
 
 	return 0;
 }
@@ -467,6 +491,7 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	rte_intr_callback_unregister(intr_handle,
 				     ice_dcf_dev_interrupt_handler, hw);
 
+	ice_dcf_mode_disable(hw);
 	iavf_shutdown_adminq(&hw->avf);
 
 	rte_free(hw->arq_buf);
