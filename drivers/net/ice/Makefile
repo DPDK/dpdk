@@ -87,6 +87,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_generic_flow.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_dcf.c
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_dcf_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_dcf_parent.c
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_ICE_PMD)-include := rte_pmd_ice.h

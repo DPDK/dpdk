@@ -5,6 +5,9 @@
 #ifndef _ICE_DCF_ETHDEV_H_
 #define _ICE_DCF_ETHDEV_H_
 
+#include "base/ice_common.h"
+#include "base/ice_adminq_cmd.h"
+
 #include "ice_ethdev.h"
 #include "ice_dcf.h"
 
@@ -15,10 +18,16 @@ struct ice_dcf_queue {
 };
 
 struct ice_dcf_adapter {
+	struct ice_adapter parent; /* Must be first */
+
 	struct ice_dcf_hw real_hw;
-	struct rte_ether_addr mac_addr;
 	struct ice_dcf_queue rxqs[ICE_DCF_MAX_RINGS];
 	struct ice_dcf_queue txqs[ICE_DCF_MAX_RINGS];
 };
+
+void ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
+				 uint8_t *msg, uint16_t msglen);
+int ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev);
+void ice_dcf_uninit_parent_adapter(struct rte_eth_dev *eth_dev);
 
 #endif /* _ICE_DCF_ETHDEV_H_ */

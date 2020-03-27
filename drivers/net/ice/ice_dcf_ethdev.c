@@ -145,8 +145,8 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 	dev->dev_ops = NULL;
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
-	dev->data->mac_addrs = NULL;
 
+	ice_dcf_uninit_parent_adapter(dev);
 	ice_dcf_uninit_hw(dev, &adapter->real_hw);
 }
 
@@ -225,13 +225,17 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
+	adapter->real_hw.vc_event_msg_cb = ice_dcf_handle_pf_event_msg;
 	if (ice_dcf_init_hw(eth_dev, &adapter->real_hw) != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init DCF hardware");
 		return -1;
 	}
 
-	rte_eth_random_addr(adapter->mac_addr.addr_bytes);
-	eth_dev->data->mac_addrs = &adapter->mac_addr;
+	if (ice_dcf_init_parent_adapter(eth_dev) != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init DCF parent adapter");
+		ice_dcf_uninit_hw(eth_dev, &adapter->real_hw);
+		return -1;
+	}
 
 	return 0;
 }

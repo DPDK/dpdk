@@ -124,8 +124,13 @@ ice_dcf_aq_cmd_handle(struct ice_dcf_hw *hw, struct iavf_arq_event_info *info)
 	}
 
 	v_op = rte_le_to_cpu_32(info->desc.cookie_high);
-	if (unlikely(v_op == VIRTCHNL_OP_EVENT))
+	if (v_op == VIRTCHNL_OP_EVENT) {
+		if (hw->vc_event_msg_cb != NULL)
+			hw->vc_event_msg_cb(hw,
+					    info->msg_buf,
+					    info->msg_len);
 		return;
+	}
 
 	v_ret = rte_le_to_cpu_32(info->desc.cookie_low);
 

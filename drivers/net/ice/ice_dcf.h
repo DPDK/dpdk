@@ -36,6 +36,9 @@ struct ice_dcf_hw {
 	rte_spinlock_t vc_cmd_send_lock;
 	rte_spinlock_t vc_cmd_queue_lock;
 	TAILQ_HEAD(, dcf_virtchnl_cmd) vc_cmd_queue;
+	void (*vc_event_msg_cb)(struct ice_dcf_hw *dcf_hw,
+				uint8_t *msg, uint16_t msglen);
+
 	uint8_t *arq_buf;
 
 	struct virtchnl_version_info virtchnl_version;
