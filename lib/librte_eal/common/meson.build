@@ -41,13 +41,6 @@ common_sources = files(
 	'rte_service.c'
 )
 
-# get architecture specific sources and objs
-eal_common_arch_sources = []
-eal_common_arch_objs = []
-subdir(join_paths('arch', arch_subdir))
-common_sources += eal_common_arch_sources
-common_objs += eal_common_arch_objs
-
 common_headers = files(
 	'include/rte_alarm.h',
 	'include/rte_branch_prediction.h',

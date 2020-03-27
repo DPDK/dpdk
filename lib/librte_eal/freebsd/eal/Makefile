@@ -7,7 +7,7 @@ LIB = librte_eal.a
 
 ARCH_DIR ?= $(RTE_ARCH)
 VPATH += $(RTE_SDK)/lib/librte_eal/common
-VPATH += $(RTE_SDK)/lib/librte_eal/common/arch/$(ARCH_DIR)
+VPATH += $(RTE_SDK)/lib/librte_eal/$(ARCH_DIR)
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -I$(SRCDIR)/include

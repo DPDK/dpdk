@@ -12,6 +12,8 @@ subdir('common') # defines common_sources, common_objs, etc.
 dpdk_conf.set('RTE_EXEC_ENV_' + exec_env.to_upper(), 1)
 subdir(exec_env + '/eal')
 
+subdir(arch_subdir)
+
 allow_experimental_apis = true
 deps += 'kvargs'
 if dpdk_conf.has('RTE_USE_LIBBSD')
@@ -23,7 +25,7 @@ endif
 if cc.has_header('getopt.h')
 	cflags += ['-DHAVE_GETOPT_H', '-DHAVE_GETOPT', '-DHAVE_GETOPT_LONG']
 endif
-sources = common_sources + env_sources
+sources += common_sources + env_sources
 objs = common_objs + env_objs
 headers = common_headers + env_headers
 includes = eal_inc

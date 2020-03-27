@@ -261,7 +261,7 @@ F: app/test/test_rand_perf.c
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
 M: Gavin Hu <gavin.hu@arm.com>
-F: lib/librte_eal/common/arch/arm/
+F: lib/librte_eal/arm/
 F: lib/librte_eal/common/include/arch/arm/
 
 ARM v8
@@ -281,7 +281,7 @@ F: drivers/net/virtio/virtio_rxtx_simple_neon.c
 
 IBM POWER (alpha)
 M: David Christensen <drc@linux.vnet.ibm.com>
-F: lib/librte_eal/common/arch/ppc_64/
+F: lib/librte_eal/ppc/
 F: lib/librte_eal/common/include/arch/ppc_64/
 F: drivers/net/i40e/i40e_rxtx_vec_altivec.c
 F: examples/l3fwd/*altivec.h
@@ -289,7 +289,7 @@ F: examples/l3fwd/*altivec.h
 Intel x86
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
-F: lib/librte_eal/common/arch/x86/
+F: lib/librte_eal/x86/
 F: lib/librte_eal/common/include/arch/x86/
 
 Linux EAL (with overlaps)

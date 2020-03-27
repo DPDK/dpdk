@@ -8,7 +8,7 @@ LIB = librte_eal.a
 ARCH_DIR ?= $(RTE_ARCH)
 
 EXPORT_MAP := ../../rte_eal_version.map
-VPATH += $(RTE_SDK)/lib/librte_eal/common/arch/$(ARCH_DIR)
+VPATH += $(RTE_SDK)/lib/librte_eal/$(ARCH_DIR)
 
 VPATH += $(RTE_SDK)/lib/librte_eal/common
 
