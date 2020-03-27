@@ -683,7 +683,8 @@ nitrox_sym_pmd_create(struct nitrox_device *ndev)
 	struct rte_cryptodev *cdev;
 
 	rte_pci_device_name(&ndev->pdev->addr, name, sizeof(name));
-	snprintf(name + strlen(name), RTE_CRYPTODEV_NAME_MAX_LEN, "_n5sym");
+	snprintf(name + strlen(name), RTE_CRYPTODEV_NAME_MAX_LEN - strlen(name),
+		 "_n5sym");
 	ndev->rte_sym_dev.driver = &nitrox_rte_sym_drv;
 	ndev->rte_sym_dev.numa_node = ndev->pdev->device.numa_node;
 	ndev->rte_sym_dev.devargs = NULL;
