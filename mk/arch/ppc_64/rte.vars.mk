@@ -2,6 +2,7 @@
 # Copyright (C) IBM Corporation 2014.
 
 ARCH  ?= powerpc
+ARCH_DIR := ppc
 CROSS ?=
 
 CPU_CFLAGS  ?= -m64

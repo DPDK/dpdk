@@ -234,7 +234,7 @@ if host_machine.cpu_family().startswith('x86')
 elif host_machine.cpu_family().startswith('arm') or host_machine.cpu_family().startswith('aarch')
 	arch_subdir = 'arm'
 elif host_machine.cpu_family().startswith('ppc')
-	arch_subdir = 'ppc_64'
+	arch_subdir = 'ppc'
 endif
 subdir(arch_subdir)
 dpdk_conf.set('RTE_COMPILE_TIME_CPUFLAGS', ','.join(compile_time_cpuflags))
