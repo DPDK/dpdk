@@ -18,7 +18,7 @@ EXECENV_CFLAGS  = -pthread
 endif
 
 # include in every library to build
-EXECENV_CFLAGS += -I$(RTE_SDK)/lib/librte_eal/freebsd/eal/include
+EXECENV_CFLAGS += -I$(RTE_SDK)/lib/librte_eal/freebsd/include
 
 EXECENV_LDFLAGS =
 EXECENV_LDLIBS  = -lexecinfo

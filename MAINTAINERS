@@ -203,8 +203,8 @@ F: lib/librte_eal/common/*malloc*
 F: lib/librte_eal/common/eal_common_fbarray.c
 F: lib/librte_eal/common/eal_common_mem*
 F: lib/librte_eal/common/eal_hugepages.h
-F: lib/librte_eal/linux/eal/eal_mem*
-F: lib/librte_eal/freebsd/eal/eal_mem*
+F: lib/librte_eal/linux/eal_mem*
+F: lib/librte_eal/freebsd/eal_mem*
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_external_mem.c
 F: app/test/test_func_reentrancy.c
@@ -289,8 +289,7 @@ M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_eal/x86/
 
 Linux EAL (with overlaps)
-F: lib/librte_eal/linux/Makefile
-F: lib/librte_eal/linux/eal/
+F: lib/librte_eal/linux/
 F: doc/guides/linux_gsg/
 
 Linux UIO
@@ -300,13 +299,12 @@ F: drivers/bus/pci/linux/*uio*
 
 Linux VFIO
 M: Anatoly Burakov <anatoly.burakov@intel.com>
-F: lib/librte_eal/linux/eal/*vfio*
+F: lib/librte_eal/linux/*vfio*
 F: drivers/bus/pci/linux/*vfio*
 
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>
-F: lib/librte_eal/freebsd/Makefile
-F: lib/librte_eal/freebsd/eal/
+F: lib/librte_eal/freebsd/
 F: doc/guides/freebsd_gsg/
 
 FreeBSD contigmem

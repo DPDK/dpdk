@@ -20,7 +20,7 @@ LDLIBS += -lpthread
 LDLIBS += -lgcc_s
 LDLIBS += -lrte_kvargs
 
-EXPORT_MAP := ../../rte_eal_version.map
+EXPORT_MAP := ../rte_eal_version.map
 
 # specific to freebsd exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) := eal.c

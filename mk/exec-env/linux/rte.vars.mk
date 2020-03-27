@@ -18,7 +18,7 @@ EXECENV_CFLAGS  = -pthread
 endif
 
 # include in every library to build
-EXECENV_CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linux/eal/include
+EXECENV_CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linux/include
 
 EXECENV_LDLIBS  =
 EXECENV_ASFLAGS =
