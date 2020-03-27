@@ -217,6 +217,7 @@ static int test_invalid_kvargs(void)
 		"foo=1,=2",        /* no key */
 		"foo=[1,2",        /* no closing bracket in value */
 		",=",              /* also test with a smiley */
+		"foo=[",           /* no value in list and no closing bracket */
 		NULL };
 	const char **args;
 	const char *valid_keys_list[] = { "foo", "check", NULL };
