@@ -27,11 +27,11 @@ GENERIC_INC += rte_vect.h rte_pause.h rte_io.h
 
 # defined in mk/arch/$(RTE_ARCH)/rte.vars.mk
 ARCH_DIR ?= $(RTE_ARCH)
-ARCH_INC := $(sort $(notdir $(wildcard $(RTE_SDK)/lib/librte_eal/common/include/arch/$(ARCH_DIR)/*.h)))
+ARCH_INC := $(sort $(notdir $(wildcard $(RTE_SDK)/lib/librte_eal/$(ARCH_DIR)/include/*.h)))
 
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include := $(addprefix include/,$(INC))
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include += \
-	$(addprefix include/arch/$(ARCH_DIR)/,$(ARCH_INC))
+	$(addprefix ../$(ARCH_DIR)/include/,$(ARCH_INC))
 SYMLINK-$(CONFIG_RTE_LIBRTE_EAL)-include/generic := \
 	$(addprefix include/generic/,$(GENERIC_INC))
 

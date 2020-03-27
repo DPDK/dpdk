@@ -28,4 +28,4 @@ endif
 sources += common_sources + env_sources
 objs = common_objs + env_objs
 headers = common_headers + env_headers
-includes = eal_inc
+includes += eal_inc

@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation.
 
-install_headers(
+includes += include_directories('.')
+
+arch_headers = files(
 	'rte_atomic_32.h',
 	'rte_atomic_64.h',
 	'rte_atomic.h',
@@ -26,4 +28,5 @@ install_headers(
 	'rte_rwlock.h',
 	'rte_spinlock.h',
 	'rte_vect.h',
-	subdir: get_option('include_subdir_arch'))
+)
+install_headers(arch_headers, subdir: get_option('include_subdir_arch'))

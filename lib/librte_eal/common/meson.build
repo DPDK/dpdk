@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-eal_inc += include_directories('.', 'include',
-		join_paths('include/arch', arch_subdir))
+eal_inc += include_directories('.', 'include')
 
 common_objs = []
 common_sources = files(
@@ -98,6 +97,3 @@ generic_headers = files(
 	'include/generic/rte_ticketlock.h',
 	'include/generic/rte_vect.h')
 install_headers(generic_headers, subdir: 'generic')
-
-# get and install the architecture specific headers
-subdir(join_paths('include/arch', arch_subdir))

@@ -21,7 +21,7 @@ CONFIG_RTE_USE_C11_MEM_MODEL=y
 
 # Accelarate rte_memcpy. Be sure to run unit test (memcpy_perf_autotest)
 # to determine the best threshold in code. Refer to notes in source file
-# (lib/librte_eal/common/include/arch/arm/rte_memcpy_64.h) for more info.
+# (lib/librte_eal/arm/include/rte_memcpy_64.h) for more info.
 CONFIG_RTE_ARCH_ARM64_MEMCPY=n
 #CONFIG_RTE_ARM64_MEMCPY_ALIGNED_THRESHOLD=2048
 #CONFIG_RTE_ARM64_MEMCPY_UNALIGNED_THRESHOLD=512

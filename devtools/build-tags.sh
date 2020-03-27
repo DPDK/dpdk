@@ -79,28 +79,26 @@ bsd_sources()
 
 arm_common()
 {
-	find_sources "lib/librte_eal/arm" '*.[chS]'
 	find_sources "$source_dirs" '*neon*.[chS]'
 }
 
 arm_32_sources()
 {
 	arm_common
-	find_sources "lib/librte_eal/common/include/arch/arm" '*.[chS]' \
+	find_sources "lib/librte_eal/arm" '*.[chS]' \
 					"$skip_64b_files"
 }
 
 arm_64_sources()
 {
 	arm_common
-	find_sources "lib/librte_eal/common/include/arch/arm" '*.[chS]' \
+	find_sources "lib/librte_eal/arm" '*.[chS]' \
 					 "$skip_32b_files"
 	find_sources "$source_dirs" '*arm64.[chS]'
 }
 
 x86_common()
 {
-	find_sources "lib/librte_eal/x86" '*.[chS]'
 	find_sources "examples/performance-thread/common/arch/x86" '*.[chS]'
 	find_sources "$source_dirs" '*_sse*.[chS]'
 	find_sources "$source_dirs" '*_avx*.[chS]'
@@ -110,21 +108,20 @@ x86_common()
 x86_32_sources()
 {
 	x86_common
-	find_sources "lib/librte_eal/common/include/arch/x86" '*.[chS]' \
+	find_sources "lib/librte_eal/x86" '*.[chS]' \
 					"$skip_64b_files"
 }
 
 x86_64_sources()
 {
 	x86_common
-	find_sources "lib/librte_eal/common/include/arch/x86" '*.[chS]' \
+	find_sources "lib/librte_eal/x86" '*.[chS]' \
 					"$skip_32b_files"
 }
 
 ppc_64_sources()
 {
 	find_sources "lib/librte_eal/ppc" '*.[chS]'
-	find_sources "lib/librte_eal/common/include/arch/ppc_64" '*.[chS]'
 	find_sources "$source_dirs" '*altivec*.[chS]'
 }
 

@@ -168,9 +168,8 @@ Environment Abstraction Layer
 T: git://dpdk.org/dpdk
 
 EAL API and common code
-F: lib/librte_eal/common/*
-F: lib/librte_eal/common/include/*
-F: lib/librte_eal/common/include/generic/
+F: lib/librte_eal/common/
+F: lib/librte_eal/common/include/
 F: lib/librte_eal/rte_eal_version.map
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_alarm.c
@@ -262,12 +261,11 @@ ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
 M: Gavin Hu <gavin.hu@arm.com>
 F: lib/librte_eal/arm/
-F: lib/librte_eal/common/include/arch/arm/
 
 ARM v8
 M: Jerin Jacob <jerinj@marvell.com>
 M: Gavin Hu <gavin.hu@arm.com>
-F: lib/librte_eal/common/include/arch/arm/*_64.h
+F: lib/librte_eal/arm/include/*_64.h
 F: lib/librte_net/net_crc_neon.h
 F: lib/librte_acl/acl_run_neon.*
 F: lib/librte_bpf/bpf_jit_arm64.c
@@ -282,7 +280,6 @@ F: drivers/net/virtio/virtio_rxtx_simple_neon.c
 IBM POWER (alpha)
 M: David Christensen <drc@linux.vnet.ibm.com>
 F: lib/librte_eal/ppc/
-F: lib/librte_eal/common/include/arch/ppc_64/
 F: drivers/net/i40e/i40e_rxtx_vec_altivec.c
 F: examples/l3fwd/*altivec.h
 
@@ -290,7 +287,6 @@ Intel x86
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_eal/x86/
-F: lib/librte_eal/common/include/arch/x86/
 
 Linux EAL (with overlaps)
 F: lib/librte_eal/linux/Makefile

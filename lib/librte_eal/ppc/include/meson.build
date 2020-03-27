@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
 
-install_headers(
+includes += include_directories('.')
+
+arch_headers = files(
 	'rte_atomic.h',
 	'rte_byteorder.h',
 	'rte_cpuflags.h',
@@ -13,4 +15,5 @@ install_headers(
 	'rte_rwlock.h',
 	'rte_spinlock.h',
 	'rte_vect.h',
-	subdir: get_option('include_subdir_arch'))
+)
+install_headers(arch_headers, subdir: get_option('include_subdir_arch'))
