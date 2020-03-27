@@ -13,8 +13,8 @@ sources = files(
 	'ice_hash.c'
 	)
 
-deps += ['hash']
-includes += include_directories('base')
+deps += ['hash', 'net', 'common_iavf']
+includes += include_directories('base', '../../common/iavf')
 
 if arch_subdir == 'x86'
 	sources += files('ice_rxtx_vec_sse.c')
@@ -34,5 +34,8 @@ if arch_subdir == 'x86'
 		objs += ice_avx2_lib.extract_objects('ice_rxtx_vec_avx2.c')
 	endif
 endif
+
+sources += files('ice_dcf.c',
+		 'ice_dcf_ethdev.c')
 
 install_headers('rte_pmd_ice.h')

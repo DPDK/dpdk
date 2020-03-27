@@ -82,6 +82,12 @@ New Features
   (enqueue/dequeue start; enqueue/dequeue finish). That allows user to inspect
   objects in the ring without removing them from it (aka MT safe peek).
 
+* **Updated the Intel ice driver.**
+
+  Updated the Intel ice driver with new features and improvements, including:
+
+  * Added support for DCF (Device Config Function) feature.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:

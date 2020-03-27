@@ -185,6 +185,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_I40E_PMD)       += -lrte_pmd_i40e
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IAVF_PMD)       += -lrte_pmd_iavf
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ICE_PMD)        += -lrte_pmd_ice
 IAVF-y := $(CONFIG_RTE_LIBRTE_IAVF_PMD)
+IAVF-y += $(CONFIG_RTE_LIBRTE_ICE_PMD)
 ifeq ($(findstring y,$(IAVF-y)),y)
 _LDLIBS-y += -lrte_common_iavf
 endif

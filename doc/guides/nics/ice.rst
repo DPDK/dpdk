@@ -240,6 +240,53 @@ report a MDD event and drop the packets.
 
 The APPs based on DPDK should avoid providing such packets.
 
+Device Config Function (DCF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This section demonstrates ICE DCF PMD, which shares the core module with ICE
+PMD and iAVF PMD.
+
+A DCF (Device Config Function) PMD bounds to the device's trusted VF with ID 0,
+it can act as a sole controlling entity to exercise advance functionality (such
+as switch, ACL) for the rest VFs.
+
+The DCF PMD needs to advertise and acquire DCF capability which allows DCF to
+send AdminQ commands that it would like to execute over to the PF and receive
+responses for the same from PF.
+
+.. _figure_ice_dcf:
+
+.. figure:: img/ice_dcf.*
+
+   DCF Communication flow.
+
+#. Create the VFs::
+
+      echo 4 > /sys/bus/pci/devices/0000\:18\:00.0/sriov_numvfs
+
+#. Enable the VF0 trust on::
+
+      ip link set dev enp24s0f0 vf 0 trust on
+
+#. Bind the VF0,  and run testpmd with 'cap=dcf' devarg::
+
+      testpmd -l 22-25 -n 4 -w 18:01.0,cap=dcf -- -i
+
+#. Monitor the VF2 interface network traffic::
+
+      tcpdump -e -nn -i enp24s1f2
+
+#. Create one flow to redirect the traffic to VF2 by DCF::
+
+      flow create 0 priority 0 ingress pattern eth / ipv4 src is 192.168.0.2 \
+      dst is 192.168.0.3 / end actions vf id 2 / end
+
+#. Send the packet, and it should be displayed on tcpdump::
+
+      sendp(Ether(src='3c:fd:fe:aa:bb:78', dst='00:00:00:01:02:03')/IP(src=' \
+      192.168.0.2', dst="192.168.0.3")/TCP(flags='S')/Raw(load='XXXXXXXXXX'), \
+      iface="enp24s0f0", count=10)
+
 Sample Application Notes
 ------------------------
 
