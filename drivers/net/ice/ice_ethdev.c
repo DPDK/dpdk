@@ -67,15 +67,8 @@ static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
 
-/* DDP package search path */
-#define ICE_PKG_FILE_DEFAULT "/lib/firmware/intel/ice/ddp/ice.pkg"
-#define ICE_PKG_FILE_UPDATES "/lib/firmware/updates/intel/ice/ddp/ice.pkg"
-#define ICE_PKG_FILE_SEARCH_PATH_DEFAULT "/lib/firmware/intel/ice/ddp/"
-#define ICE_PKG_FILE_SEARCH_PATH_UPDATES "/lib/firmware/updates/intel/ice/ddp/"
-
 #define ICE_OS_DEFAULT_PKG_NAME		"ICE OS Default Package"
 #define ICE_COMMS_PKG_NAME			"ICE COMMS Package"
-#define ICE_MAX_PKG_FILENAME_SIZE   256
 #define ICE_MAX_RES_DESC_NUM        1024
 
 int ice_logtype_init;
@@ -1833,7 +1826,7 @@ fail_dsn:
 	return 0;
 }
 
-static enum ice_pkg_type
+enum ice_pkg_type
 ice_load_pkg_type(struct ice_hw *hw)
 {
 	enum ice_pkg_type package_type;
