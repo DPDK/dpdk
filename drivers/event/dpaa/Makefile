@@ -20,7 +20,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa
 CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa/include/
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa
 CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
-CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/include
 
 LDLIBS += -lrte_pmd_dpaa_sec
 CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa_sec

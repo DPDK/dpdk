@@ -5,6 +5,8 @@
 # have a straight list of headers and source files.
 # Initially pull in common settings
 eal_inc = [global_inc]
+subdir('include')
+
 subdir('common')
 
 # Now do OS/exec-env specific settings, including building kernel modules
@@ -27,5 +29,5 @@ if cc.has_header('getopt.h')
 endif
 sources += env_sources
 objs = env_objs
-headers = common_headers + env_headers
+headers += env_headers
 includes += eal_inc

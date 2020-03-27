@@ -127,7 +127,7 @@ HPET timers do not work on the Osage customer reference platform
    work correctly, provided the BIOS supports HPET.
 
 **Driver/Module**:
-   ``lib/librte_eal/common/include/rte_cycles.h``
+   ``lib/librte_eal/include/rte_cycles.h``
 
 
 Not all variants of supported NIC types have been used in testing

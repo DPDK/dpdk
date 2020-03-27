@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2017 Intel Corporation
+
+includes += include_directories('.')
+
+headers += files(
+	'rte_alarm.h',
+	'rte_bitmap.h',
+	'rte_branch_prediction.h',
+	'rte_bus.h',
+	'rte_class.h',
+	'rte_common.h',
+	'rte_compat.h',
+	'rte_debug.h',
+	'rte_dev.h',
+	'rte_devargs.h',
+	'rte_eal.h',
+	'rte_eal_interrupts.h',
+	'rte_eal_memconfig.h',
+	'rte_errno.h',
+	'rte_fbarray.h',
+	'rte_hexdump.h',
+	'rte_hypervisor.h',
+	'rte_interrupts.h',
+	'rte_keepalive.h',
+	'rte_launch.h',
+	'rte_lcore.h',
+	'rte_log.h',
+	'rte_malloc.h',
+	'rte_memory.h',
+	'rte_memzone.h',
+	'rte_option.h',
+	'rte_pci_dev_feature_defs.h',
+	'rte_pci_dev_features.h',
+	'rte_per_lcore.h',
+	'rte_random.h',
+	'rte_reciprocal.h',
+	'rte_service.h',
+	'rte_service_component.h',
+	'rte_string_fns.h',
+	'rte_tailq.h',
+	'rte_time.h',
+	'rte_uuid.h',
+	'rte_version.h',
+	'rte_vfio.h',
+)
+
+# special case install the generic headers, since they go in a subdir
+generic_headers = files(
+	'generic/rte_atomic.h',
+	'generic/rte_byteorder.h',
+	'generic/rte_cpuflags.h',
+	'generic/rte_cycles.h',
+	'generic/rte_io.h',
+	'generic/rte_mcslock.h',
+	'generic/rte_memcpy.h',
+	'generic/rte_pause.h',
+	'generic/rte_prefetch.h',
+	'generic/rte_rwlock.h',
+	'generic/rte_spinlock.h',
+	'generic/rte_ticketlock.h',
+	'generic/rte_vect.h',
+)
+install_headers(generic_headers, subdir: 'generic')

@@ -10,7 +10,7 @@
 
 #include <rte_compat.h>
 #include <rte_service.h>
-#include "include/rte_service_component.h"
+#include <rte_service_component.h>
 
 #include <rte_eal.h>
 #include <rte_lcore.h>

@@ -203,7 +203,7 @@ if dlopen_ibverbs
 	dlopen_install_dir = [ eal_pmd_path + '-glue' ]
 	dlopen_includes = [global_inc]
 	dlopen_includes += include_directories(
-		'../../../lib/librte_eal/common/include/generic',
+		'../../../lib/librte_eal/include/generic',
 	)
 	shared_lib = shared_library(
 		dlopen_lib_name,

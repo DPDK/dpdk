@@ -17,8 +17,8 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/net/softnic \
                           @TOPDIR@/drivers/raw/dpaa2_cmdif \
                           @TOPDIR@/drivers/raw/dpaa2_qdma \
-                          @TOPDIR@/lib/librte_eal/common/include \
-                          @TOPDIR@/lib/librte_eal/common/include/generic \
+                          @TOPDIR@/lib/librte_eal/include \
+                          @TOPDIR@/lib/librte_eal/include/generic \
                           @TOPDIR@/lib/librte_acl \
                           @TOPDIR@/lib/librte_bbdev \
                           @TOPDIR@/lib/librte_bitratestats \

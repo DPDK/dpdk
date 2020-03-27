@@ -28,7 +28,7 @@ abi_version_file = files('ABI_VERSION')
 # able to be included in any file. We also store a global array of include dirs
 # for passing to pmdinfogen scripts
 global_inc = include_directories('.', 'config',
-	'lib/librte_eal/common/include',
+	'lib/librte_eal/include',
 	'lib/librte_eal/@0@/eal/include'.format(host_machine.system()),
 )
 subdir('config')

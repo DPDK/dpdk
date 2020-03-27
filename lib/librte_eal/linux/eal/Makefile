@@ -15,7 +15,7 @@ VPATH += $(RTE_SDK)/lib/librte_eal/common
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -I$(SRCDIR)/include
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common
-CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/include
 CFLAGS += $(WERROR_FLAGS) -O3
 
 LDLIBS += -ldl

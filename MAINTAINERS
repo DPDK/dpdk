@@ -142,8 +142,8 @@ F: .ci/
 
 ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
-F: lib/librte_eal/common/include/rte_compat.h
-F: lib/librte_eal/common/include/rte_function_versioning.h
+F: lib/librte_eal/include/rte_compat.h
+F: lib/librte_eal/include/rte_function_versioning.h
 F: doc/guides/rel_notes/deprecation.rst
 F: devtools/check-abi.sh
 F: devtools/check-abi-version.sh
@@ -169,7 +169,7 @@ T: git://dpdk.org/dpdk
 
 EAL API and common code
 F: lib/librte_eal/common/
-F: lib/librte_eal/common/include/
+F: lib/librte_eal/include/
 F: lib/librte_eal/rte_eal_version.map
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_alarm.c
@@ -196,9 +196,9 @@ F: app/test/test_version.c
 
 Memory Allocation
 M: Anatoly Burakov <anatoly.burakov@intel.com>
-F: lib/librte_eal/common/include/rte_fbarray.h
-F: lib/librte_eal/common/include/rte_mem*
-F: lib/librte_eal/common/include/rte_malloc.h
+F: lib/librte_eal/include/rte_fbarray.h
+F: lib/librte_eal/include/rte_mem*
+F: lib/librte_eal/include/rte_malloc.h
 F: lib/librte_eal/common/*malloc*
 F: lib/librte_eal/common/eal_common_fbarray.c
 F: lib/librte_eal/common/eal_common_mem*
@@ -214,7 +214,7 @@ F: app/test/test_memory.c
 F: app/test/test_memzone.c
 
 Keep alive
-F: lib/librte_eal/common/include/rte_keepalive.h
+F: lib/librte_eal/include/rte_keepalive.h
 F: lib/librte_eal/common/rte_keepalive.c
 F: examples/l2fwd-keepalive/
 F: doc/guides/sample_app_ug/keep_alive.rst
@@ -230,30 +230,30 @@ F: doc/guides/sample_app_ug/multi_process.rst
 
 Service Cores
 M: Harry van Haaren <harry.van.haaren@intel.com>
-F: lib/librte_eal/common/include/rte_service.h
-F: lib/librte_eal/common/include/rte_service_component.h
+F: lib/librte_eal/include/rte_service.h
+F: lib/librte_eal/include/rte_service_component.h
 F: lib/librte_eal/common/rte_service.c
 F: doc/guides/prog_guide/service_cores.rst
 F: app/test/test_service_cores.c
 
 Bitmap
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
-F: lib/librte_eal/common/include/rte_bitmap.h
+F: lib/librte_eal/include/rte_bitmap.h
 F: app/test/test_bitmap.c
 
 MCSlock - EXPERIMENTAL
 M: Phil Yang <phil.yang@arm.com>
-F: lib/librte_eal/common/include/generic/rte_mcslock.h
+F: lib/librte_eal/include/generic/rte_mcslock.h
 F: app/test/test_mcslock.c
 
 Ticketlock
 M: Joyce Kong <joyce.kong@arm.com>
-F: lib/librte_eal/common/include/generic/rte_ticketlock.h
+F: lib/librte_eal/include/generic/rte_ticketlock.h
 F: app/test/test_ticketlock.c
 
 Pseudo-random Number Generation
 M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
-F: lib/librte_eal/common/include/rte_random.h
+F: lib/librte_eal/include/rte_random.h
 F: lib/librte_eal/common/rte_random.c
 F: app/test/test_rand_perf.c
 

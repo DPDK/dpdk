@@ -21,7 +21,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa/base/qbman
 CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa
 CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 CFLAGS += -I$(RTE_SDK)/drivers/event/dpaa
-CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/include
 
 EXPORT_MAP := rte_pmd_dpaa_version.map
 

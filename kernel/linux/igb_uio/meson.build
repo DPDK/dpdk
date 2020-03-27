@@ -12,7 +12,7 @@ custom_target('igb_uio',
 		'M=' + meson.current_build_dir(),
 		'src=' + meson.current_source_dir(),
 		'EXTRA_CFLAGS=-I' + meson.current_source_dir() +
-			'/../../../lib/librte_eal/common/include',
+			'/../../../lib/librte_eal/include',
 		'modules'],
 	depends: mkfile,
 	install: true,
