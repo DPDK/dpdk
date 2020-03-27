@@ -88,7 +88,7 @@ tim_timer_arm_burst(const struct rte_event_timer_adapter *adptr,
 	}
 
 	if (flags & OTX2_TIM_ENA_STATS)
-		rte_atomic64_add(&tim_ring->arm_cnt, index);
+		__atomic_fetch_add(&tim_ring->arm_cnt, index, __ATOMIC_RELAXED);
 
 	return index;
 }
@@ -130,7 +130,8 @@ tim_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
 			break;
 	}
 	if (flags & OTX2_TIM_ENA_STATS)
-		rte_atomic64_add(&tim_ring->arm_cnt, set_timers);
+		__atomic_fetch_add(&tim_ring->arm_cnt, set_timers,
+				   __ATOMIC_RELAXED);
 
 	return set_timers;
 }

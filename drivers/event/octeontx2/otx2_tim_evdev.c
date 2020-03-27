@@ -526,7 +526,8 @@ otx2_tim_stats_get(const struct rte_event_timer_adapter *adapter,
 	uint64_t bkt_cyc = rte_rdtsc() - tim_ring->ring_start_cyc;
 
 
-	stats->evtim_exp_count = rte_atomic64_read(&tim_ring->arm_cnt);
+	stats->evtim_exp_count = __atomic_load_n(&tim_ring->arm_cnt,
+						 __ATOMIC_RELAXED);
 	stats->ev_enq_count = stats->evtim_exp_count;
 	stats->adapter_tick_count = rte_reciprocal_divide_u64(bkt_cyc,
 				&tim_ring->fast_div);
@@ -538,7 +539,7 @@ otx2_tim_stats_reset(const struct rte_event_timer_adapter *adapter)
 {
 	struct otx2_tim_ring *tim_ring = adapter->data->adapter_priv;
 
-	rte_atomic64_clear(&tim_ring->arm_cnt);
+	__atomic_store_n(&tim_ring->arm_cnt, 0, __ATOMIC_RELAXED);
 	return 0;
 }
 

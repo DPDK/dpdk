@@ -149,7 +149,7 @@ struct otx2_tim_ring {
 	struct otx2_tim_bkt *bkt;
 	struct rte_mempool *chunk_pool;
 	struct rte_reciprocal_u64 fast_div;
-	rte_atomic64_t arm_cnt;
+	uint64_t arm_cnt;
 	uint8_t prod_type_sp;
 	uint8_t enable_stats;
 	uint8_t disable_npa;
