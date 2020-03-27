@@ -397,6 +397,71 @@ ret:
 }
 
 int
+ice_dcf_send_aq_cmd(void *dcf_hw, struct ice_aq_desc *desc,
+		    void *buf, uint16_t buf_size)
+{
+	struct dcf_virtchnl_cmd desc_cmd, buff_cmd;
+	struct ice_dcf_hw *hw = dcf_hw;
+	int err = 0;
+	int i = 0;
+
+	if ((buf && !buf_size) || (!buf && buf_size) ||
+	    buf_size > ICE_DCF_AQ_BUF_SZ)
+		return -EINVAL;
+
+	desc_cmd.v_op = VIRTCHNL_OP_DCF_CMD_DESC;
+	desc_cmd.req_msglen = sizeof(*desc);
+	desc_cmd.req_msg = (uint8_t *)desc;
+	desc_cmd.rsp_buflen = sizeof(*desc);
+	desc_cmd.rsp_msgbuf = (uint8_t *)desc;
+
+	if (buf == NULL)
+		return ice_dcf_execute_virtchnl_cmd(hw, &desc_cmd);
+
+	desc->flags |= rte_cpu_to_le_16(ICE_AQ_FLAG_BUF);
+
+	buff_cmd.v_op = VIRTCHNL_OP_DCF_CMD_BUFF;
+	buff_cmd.req_msglen = buf_size;
+	buff_cmd.req_msg = buf;
+	buff_cmd.rsp_buflen = buf_size;
+	buff_cmd.rsp_msgbuf = buf;
+
+	rte_spinlock_lock(&hw->vc_cmd_send_lock);
+	ice_dcf_vc_cmd_set(hw, &desc_cmd);
+	ice_dcf_vc_cmd_set(hw, &buff_cmd);
+
+	if (ice_dcf_vc_cmd_send(hw, &desc_cmd) ||
+	    ice_dcf_vc_cmd_send(hw, &buff_cmd)) {
+		err = -1;
+		PMD_DRV_LOG(ERR, "fail to send OP_DCF_CMD_DESC/BUFF");
+		goto ret;
+	}
+
+	do {
+		if ((!desc_cmd.pending && !buff_cmd.pending) ||
+		    (!desc_cmd.pending && desc_cmd.v_ret != IAVF_SUCCESS) ||
+		    (!buff_cmd.pending && buff_cmd.v_ret != IAVF_SUCCESS))
+			break;
+
+		rte_delay_ms(ICE_DCF_ARQ_CHECK_TIME);
+	} while (i++ < ICE_DCF_ARQ_MAX_RETRIES);
+
+	if (desc_cmd.v_ret != IAVF_SUCCESS || buff_cmd.v_ret != IAVF_SUCCESS) {
+		err = -1;
+		PMD_DRV_LOG(ERR,
+			    "No response (%d times) or return failure (desc: %d / buff: %d)",
+			    i, desc_cmd.v_ret, buff_cmd.v_ret);
+	}
+
+ret:
+	ice_dcf_aq_cmd_clear(hw, &desc_cmd);
+	ice_dcf_aq_cmd_clear(hw, &buff_cmd);
+	rte_spinlock_unlock(&hw->vc_cmd_send_lock);
+
+	return err;
+}
+
+int
 ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);

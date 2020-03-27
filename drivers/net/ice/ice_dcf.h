@@ -11,6 +11,7 @@
 #include <iavf_adminq_cmd.h>
 #include <iavf_type.h>
 
+#include "base/ice_type.h"
 #include "ice_logs.h"
 
 struct dcf_virtchnl_cmd {
@@ -45,7 +46,8 @@ struct ice_dcf_hw {
 
 int ice_dcf_execute_virtchnl_cmd(struct ice_dcf_hw *hw,
 				 struct dcf_virtchnl_cmd *cmd);
-
+int ice_dcf_send_aq_cmd(void *dcf_hw, struct ice_aq_desc *desc,
+			void *buf, uint16_t buf_size);
 int ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
 void ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
 
