@@ -6,10 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_eal.a
 
 ARCH_DIR ?= $(RTE_ARCH)
-
-EXPORT_MAP := ../rte_eal_version.map
 VPATH += $(RTE_SDK)/lib/librte_eal/$(ARCH_DIR)
-
 VPATH += $(RTE_SDK)/lib/librte_eal/common
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
@@ -26,6 +23,8 @@ LDLIBS += -lrte_kvargs
 ifeq ($(CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES),y)
 LDLIBS += -lnuma
 endif
+
+EXPORT_MAP := ../rte_eal_version.map
 
 # specific to linux exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) := eal.c
