@@ -2519,7 +2519,8 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			tir_attr.transport_domain = priv->sh->td->id;
 		else
 			tir_attr.transport_domain = priv->sh->tdn;
-		memcpy(tir_attr.rx_hash_toeplitz_key, rss_key, rss_key_len);
+		memcpy(tir_attr.rx_hash_toeplitz_key, rss_key,
+		       MLX5_RSS_HASH_KEY_LEN);
 		tir_attr.indirect_table = ind_tbl->rqt->id;
 		if (dev->data->dev_conf.lpbk_mode)
 			tir_attr.self_lb_block =

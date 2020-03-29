@@ -183,7 +183,7 @@ struct mlx5_devx_tir_attr {
 	uint32_t rx_hash_fn:4;
 	uint32_t self_lb_block:2;
 	uint32_t transport_domain:24;
-	uint32_t rx_hash_toeplitz_key[10];
+	uint8_t rx_hash_toeplitz_key[MLX5_RSS_HASH_KEY_LEN];
 	struct mlx5_rx_hash_field_select rx_hash_field_selector_outer;
 	struct mlx5_rx_hash_field_select rx_hash_field_selector_inner;
 };
