@@ -5761,6 +5761,21 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
 		ice_set_bit(ICE_PROFID_MAC_IPV6_L2TPV3, bm);
 		return;
+	case ICE_SW_TUN_PROFID_IPV6_NAT_T:
+		ice_set_bit(ICE_PROFID_IPV6_NAT_T, bm);
+		return;
+	case ICE_SW_TUN_PROFID_IPV4_PFCP_NODE:
+		ice_set_bit(ICE_PROFID_IPV4_PFCP_NODE, bm);
+		return;
+	case ICE_SW_TUN_PROFID_IPV4_PFCP_SESSION:
+		ice_set_bit(ICE_PROFID_IPV4_PFCP_SESSION, bm);
+		return;
+	case ICE_SW_TUN_PROFID_IPV6_PFCP_NODE:
+		ice_set_bit(ICE_PROFID_IPV6_PFCP_NODE, bm);
+		return;
+	case ICE_SW_TUN_PROFID_IPV6_PFCP_SESSION:
+		ice_set_bit(ICE_PROFID_IPV6_PFCP_SESSION, bm);
+		return;
 	case ICE_SW_TUN_AND_NON_TUN:
 	default:
 		prof_type = ICE_PROF_ALL;
@@ -5783,6 +5798,11 @@ static bool ice_is_prof_rule(enum ice_sw_tunnel_type type)
 	case ICE_SW_TUN_PROFID_IPV6_ESP:
 	case ICE_SW_TUN_PROFID_IPV6_AH:
 	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
+	case ICE_SW_TUN_PROFID_IPV6_NAT_T:
+	case ICE_SW_TUN_PROFID_IPV4_PFCP_NODE:
+	case ICE_SW_TUN_PROFID_IPV4_PFCP_SESSION:
+	case ICE_SW_TUN_PROFID_IPV6_PFCP_NODE:
+	case ICE_SW_TUN_PROFID_IPV6_PFCP_SESSION:
 		return true;
 	default:
 		break;
