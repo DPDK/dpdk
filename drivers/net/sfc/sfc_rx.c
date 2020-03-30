@@ -720,7 +720,7 @@ retry:
 
 		port->promisc = B_FALSE;
 		sa->eth_dev->data->promiscuous = 0;
-		rc = sfc_set_rx_mode(sa);
+		rc = sfc_set_rx_mode_unchecked(sa);
 		if (rc != 0)
 			return rc;
 
@@ -734,7 +734,7 @@ retry:
 
 		port->allmulti = B_FALSE;
 		sa->eth_dev->data->all_multicast = 0;
-		rc = sfc_set_rx_mode(sa);
+		rc = sfc_set_rx_mode_unchecked(sa);
 		if (rc != 0)
 			return rc;
 

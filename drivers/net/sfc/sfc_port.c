@@ -239,7 +239,7 @@ sfc_port_start(struct sfc_adapter *sa)
 				B_TRUE : B_FALSE;
 		port->allmulti = (sa->eth_dev->data->all_multicast != 0) ?
 				 B_TRUE : B_FALSE;
-		rc = sfc_set_rx_mode(sa);
+		rc = sfc_set_rx_mode_unchecked(sa);
 		if (rc != 0)
 			goto fail_mac_filter_set;
 
@@ -485,16 +485,70 @@ sfc_port_detach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 }
 
+static boolean_t
+sfc_get_requested_all_ucast(struct sfc_port *port)
+{
+	return port->promisc;
+}
+
+static boolean_t
+sfc_get_requested_all_mcast(struct sfc_port *port)
+{
+	return port->promisc || port->allmulti;
+}
+
+int
+sfc_set_rx_mode_unchecked(struct sfc_adapter *sa)
+{
+	struct sfc_port *port = &sa->port;
+	boolean_t requested_all_ucast = sfc_get_requested_all_ucast(port);
+	boolean_t requested_all_mcast = sfc_get_requested_all_mcast(port);
+	int rc;
+
+	rc = efx_mac_filter_set(sa->nic, requested_all_ucast, B_TRUE,
+				requested_all_mcast, B_TRUE);
+	if (rc != 0)
+		return rc;
+
+	return 0;
+}
+
 int
 sfc_set_rx_mode(struct sfc_adapter *sa)
 {
 	struct sfc_port *port = &sa->port;
+	boolean_t old_all_ucast;
+	boolean_t old_all_mcast;
+	boolean_t requested_all_ucast = sfc_get_requested_all_ucast(port);
+	boolean_t requested_all_mcast = sfc_get_requested_all_mcast(port);
+	boolean_t actual_all_ucast;
+	boolean_t actual_all_mcast;
 	int rc;
 
-	rc = efx_mac_filter_set(sa->nic, port->promisc, B_TRUE,
-				port->promisc || port->allmulti, B_TRUE);
+	efx_mac_filter_get_all_ucast_mcast(sa->nic, &old_all_ucast,
+					   &old_all_mcast);
 
-	return rc;
+	rc = sfc_set_rx_mode_unchecked(sa);
+	if (rc != 0)
+		return rc;
+
+	efx_mac_filter_get_all_ucast_mcast(sa->nic, &actual_all_ucast,
+					   &actual_all_mcast);
+
+	if (actual_all_ucast != requested_all_ucast ||
+	    actual_all_mcast != requested_all_mcast) {
+		/*
+		 * MAC filter set succeeded but not all requested modes
+		 * were applied. The rollback is necessary to bring back the
+		 * consistent old state.
+		 */
+		(void)efx_mac_filter_set(sa->nic, old_all_ucast, B_TRUE,
+					 old_all_mcast, B_TRUE);
+
+		return EPERM;
+	}
+
+	return 0;
 }
 
 void

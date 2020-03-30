@@ -393,8 +393,16 @@ sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
 		} else if ((sa->state == SFC_ADAPTER_STARTED) &&
 			   ((rc = sfc_set_rx_mode(sa)) != 0)) {
 			*toggle = !(enabled);
-			sfc_warn(sa, "Failed to %s %s mode",
-				 ((enabled) ? "enable" : "disable"), desc);
+			sfc_warn(sa, "Failed to %s %s mode, rc = %d",
+				 ((enabled) ? "enable" : "disable"), desc, rc);
+
+			/*
+			 * For promiscuous and all-multicast filters a
+			 * permission failure should be reported as an
+			 * unsupported filter.
+			 */
+			if (rc == EPERM)
+				rc = ENOTSUP;
 		}
 	}
 
@@ -1060,12 +1068,12 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 		 * has no effect on received traffic, therefore
 		 * we also need to update unicast filters
 		 */
-		rc = sfc_set_rx_mode(sa);
+		rc = sfc_set_rx_mode_unchecked(sa);
 		if (rc != 0) {
 			sfc_err(sa, "cannot set filter (rc = %u)", rc);
 			/* Rollback the old address */
 			(void)efx_mac_addr_set(sa->nic, old_addr->addr_bytes);
-			(void)sfc_set_rx_mode(sa);
+			(void)sfc_set_rx_mode_unchecked(sa);
 		}
 	} else {
 		sfc_warn(sa, "cannot set MAC address with filters installed");
