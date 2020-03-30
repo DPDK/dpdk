@@ -1756,6 +1756,31 @@ fail1:
 
 }
 
+static			void
+ef10_filter_remove_all_existing_filters(
+	__in				efx_nic_t *enp)
+{
+	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
+	unsigned int i;
+
+	for (i = 0; i < table->eft_unicst_filter_count; i++) {
+		ef10_filter_delete_auto(enp,
+				table->eft_unicst_filter_indexes[i]);
+	}
+	table->eft_unicst_filter_count = 0;
+
+	for (i = 0; i < table->eft_mulcst_filter_count; i++) {
+		ef10_filter_delete_auto(enp,
+				table->eft_mulcst_filter_indexes[i]);
+	}
+	table->eft_mulcst_filter_count = 0;
+
+	for (i = 0; i < table->eft_encap_filter_count; i++) {
+		ef10_filter_delete_auto(enp,
+				table->eft_encap_filter_indexes[i]);
+	}
+	table->eft_encap_filter_count = 0;
+}
 
 /*
  * Reconfigure all filters.
@@ -1789,24 +1814,7 @@ ef10_filter_reconfigure(
 		 * filters must be removed (ignore errors in case the MC
 		 * has rebooted, which removes hardware filters).
 		 */
-		for (i = 0; i < table->eft_unicst_filter_count; i++) {
-			ef10_filter_delete_auto(enp,
-					table->eft_unicst_filter_indexes[i]);
-		}
-		table->eft_unicst_filter_count = 0;
-
-		for (i = 0; i < table->eft_mulcst_filter_count; i++) {
-			ef10_filter_delete_auto(enp,
-					table->eft_mulcst_filter_indexes[i]);
-		}
-		table->eft_mulcst_filter_count = 0;
-
-		for (i = 0; i < table->eft_encap_filter_count; i++) {
-			ef10_filter_delete_auto(enp,
-					table->eft_encap_filter_indexes[i]);
-		}
-		table->eft_encap_filter_count = 0;
-
+		ef10_filter_remove_all_existing_filters(enp);
 		return (0);
 	}
 
