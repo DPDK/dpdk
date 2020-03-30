@@ -1957,16 +1957,18 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 }
 
 static int vdpa_check_handler(__rte_unused const char *key,
-		const char *value, __rte_unused void *opaque)
+		const char *value, void *ret_val)
 {
-	if (strcmp(value, "1"))
-		return -1;
+	if (strcmp(value, "1") == 0)
+		*(int *)ret_val = 1;
+	else
+		*(int *)ret_val = 0;
 
 	return 0;
 }
 
 static int
-vdpa_mode_selected(struct rte_devargs *devargs)
+virtio_dev_devargs_parse(struct rte_devargs *devargs, int *vdpa)
 {
 	struct rte_kvargs *kvlist;
 	const char *key = "vdpa";
@@ -1982,12 +1984,16 @@ vdpa_mode_selected(struct rte_devargs *devargs)
 	if (!rte_kvargs_count(kvlist, key))
 		goto exit;
 
-	/* vdpa mode selected when there's a key-value pair: vdpa=1 */
-	if (rte_kvargs_process(kvlist, key,
-				vdpa_check_handler, NULL) < 0) {
-		goto exit;
+	if (vdpa) {
+		/* vdpa mode selected when there's a key-value pair:
+		 * vdpa=1
+		 */
+		ret = rte_kvargs_process(kvlist, key,
+				vdpa_check_handler, vdpa);
+		if (ret < 0)
+			goto exit;
 	}
-	ret = 1;
+
 
 exit:
 	rte_kvargs_free(kvlist);
@@ -1997,8 +2003,16 @@ exit:
 static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
+	int vdpa = 0;
+	int ret = 0;
+
+	ret = virtio_dev_devargs_parse(pci_dev->device.devargs, &vdpa);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "devargs parsing is failed");
+		return ret;
+	}
 	/* virtio pmd skips probe if device needs to work in vdpa mode */
-	if (vdpa_mode_selected(pci_dev->device.devargs))
+	if (vdpa == 1)
 		return 1;
 
 	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct virtio_hw),
