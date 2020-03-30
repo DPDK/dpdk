@@ -656,8 +656,7 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 			/* Attributes for GTP packet with Extension Header */
 			params->attr = ice_attr_gtpu_eh;
 			params->attr_cnt = ARRAY_SIZE(ice_attr_gtpu_eh);
-		} else if ((hdrs & ICE_FLOW_SEG_HDR_GTPU) ==
-			   ICE_FLOW_SEG_HDR_GTPU) {
+		} else if (hdrs & ICE_FLOW_SEG_HDR_GTPU_IP) {
 			src = (const ice_bitmap_t *)ice_ptypes_gtpu;
 			ice_and_bitmap(params->ptypes, params->ptypes,
 				       src, ICE_FLOW_PTYPE_MAX);
