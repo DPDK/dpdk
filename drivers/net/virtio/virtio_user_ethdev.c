@@ -450,6 +450,8 @@ static const char *valid_args[] = {
 	VIRTIO_USER_ARG_IN_ORDER,
 #define VIRTIO_USER_ARG_PACKED_VQ      "packed_vq"
 	VIRTIO_USER_ARG_PACKED_VQ,
+#define VIRTIO_USER_ARG_SPEED          "speed"
+	VIRTIO_USER_ARG_SPEED,
 	NULL
 };
 
@@ -782,4 +784,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_virtio_user,
 	"server=<0|1> "
 	"mrg_rxbuf=<0|1> "
 	"in_order=<0|1> "
-	"packed_vq=<0|1>");
+	"packed_vq=<0|1> "
+	"speed=<int>");
