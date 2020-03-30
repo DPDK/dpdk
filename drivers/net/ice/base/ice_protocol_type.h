@@ -46,6 +46,10 @@ enum ice_protocol_type {
 	ICE_NVGRE,
 	ICE_GTP,
 	ICE_PPPOE,
+	ICE_PFCP,
+	ICE_L2TPV3,
+	ICE_ESP,
+	ICE_AH,
 	ICE_PROTOCOL_LAST
 };
 
@@ -112,6 +116,7 @@ enum ice_prot_id {
 	ICE_PROT_VRRP_F		= 101,
 	ICE_PROT_OSPF		= 102,
 	ICE_PROT_PPPOE		= 103,
+	ICE_PROT_L2TPV3		= 104,
 	ICE_PROT_ATAOE_OF	= 114,
 	ICE_PROT_CTRL_OF	= 116,
 	ICE_PROT_LLDP_OF	= 117,
@@ -133,8 +138,11 @@ enum ice_prot_id {
 #define ICE_IPV6_IL_HW		41
 #define ICE_TCP_IL_HW		49
 #define ICE_UDP_ILOS_HW		53
+#define ICE_ESP_HW			88
+#define ICE_AH_HW			89
 #define ICE_SCTP_IL_HW		96
 #define ICE_PPPOE_HW		103
+#define ICE_L2TPV3_HW		104
 
 /* ICE_UDP_OF is used to identify all 3 tunnel types
  * VXLAN, GENEVE and VXLAN_GPE. To differentiate further
@@ -230,7 +238,6 @@ struct ice_udp_tnl_hdr {
 	__be32 vni;	/* only use lower 24-bits */
 };
 
-#pragma pack(1)
 struct ice_udp_gtp_hdr {
 	u8 flags;
 	u8 msg_type;
@@ -252,7 +259,33 @@ struct ice_pppoe_hdr {
 	__be16 length;
 	__be16 ppp_prot_id; /* control and data only */
 };
-#pragma pack()
+
+struct ice_pfcp_hdr {
+	u8 flags;
+	u8 msg_type;
+	__be16 length;
+	__be64 seid;
+	__be32 seq;
+	u8 spare;
+};
+
+struct ice_l2tpv3_sess_hdr {
+	__be32 session_id;
+	__be64 cookie;
+};
+
+struct ice_esp_hdr {
+	__be32 spi;
+	__be32 seq;
+};
+
+struct ice_ah_hdr {
+	u8 next_hdr;
+	u8 paylen;
+	__be16 rsrvd;
+	__be32 spi;
+	__be32 seq;
+};
 
 struct ice_nvgre {
 	__be16 flags;
@@ -272,6 +305,10 @@ union ice_prot_hdr {
 	struct ice_nvgre nvgre_hdr;
 	struct ice_udp_gtp_hdr gtp_hdr;
 	struct ice_pppoe_hdr pppoe_hdr;
+	struct ice_pfcp_hdr pfcp_hdr;
+	struct ice_l2tpv3_sess_hdr l2tpv3_sess_hdr;
+	struct ice_esp_hdr esp_hdr;
+	struct ice_ah_hdr ah_hdr;
 };
 
 /* This is mapping table entry that maps every word within a given protocol

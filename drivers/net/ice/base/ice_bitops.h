@@ -259,6 +259,37 @@ ice_xor_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 }
 
 /**
+ * ice_andnot_bitmap - bitwise ANDNOT 2 bitmaps and result in dst bitmap
+ * @dst: Destination bitmap that receive the result of the operation
+ * @bmp1: The first bitmap of ANDNOT operation
+ * @bmp2: The second bitmap to ANDNOT operation
+ * @size: Size of the bitmaps in bits
+ *
+ * This function performs a bitwise ANDNOT on two "source" bitmaps of the same
+ * size, and stores the result to "dst" bitmap. The "dst" bitmap must be of the
+ * same size as the "source" bitmaps to avoid buffer overflows.
+ */
+static inline void
+ice_andnot_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
+		  const ice_bitmap_t *bmp2, u16 size)
+{
+	ice_bitmap_t mask;
+	u16 i;
+
+	/* Handle all but last chunk*/
+	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
+		dst[i] = bmp1[i] & ~bmp2[i];
+
+	/* We want to only clear bits within the size. Furthermore, we also do
+	 * not want to modify destination bits which are beyond the specified
+	 * size. Use a bitmask to ensure that we only modify the bits that are
+	 * within the specified size.
+	 */
+	mask = LAST_CHUNK_MASK(size);
+	dst[i] = (dst[i] & ~mask) | ((bmp1[i] & ~bmp2[i]) & mask);
+}
+
+/**
  * ice_find_next_bit - Find the index of the next set bit of a bitmap
  * @bitmap: the bitmap to scan
  * @size: the size in bits of the bitmap

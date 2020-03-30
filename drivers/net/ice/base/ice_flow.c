@@ -22,6 +22,11 @@
 #define ICE_FLOW_FLD_SZ_GTP_TEID	4
 #define ICE_FLOW_FLD_SZ_GTP_QFI		2
 #define ICE_FLOW_FLD_SZ_PPPOE_SESS_ID   2
+#define ICE_FLOW_FLD_SZ_PFCP_SEID 8
+#define ICE_FLOW_FLD_SZ_L2TPV3_SESS_ID	4
+#define ICE_FLOW_FLD_SZ_ESP_SPI	4
+#define ICE_FLOW_FLD_SZ_AH_SPI	4
+#define ICE_FLOW_FLD_SZ_NAT_T_ESP_SPI	4
 
 /* Describe properties of a protocol header field */
 struct ice_flow_field_info {
@@ -143,6 +148,26 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* ICE_FLOW_FIELD_IDX_PPPOE_SESS_ID */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_PPPOE, 2,
 			  ICE_FLOW_FLD_SZ_PPPOE_SESS_ID),
+	/* PFCP */
+	/* ICE_FLOW_FIELD_IDX_PFCP_SEID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_PFCP_SESSION, 12,
+			  ICE_FLOW_FLD_SZ_PFCP_SEID),
+	/* L2TPV3 */
+	/* ICE_FLOW_FIELD_IDX_L2TPV3_SESS_ID */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_L2TPV3, 0,
+			  ICE_FLOW_FLD_SZ_L2TPV3_SESS_ID),
+	/* ESP */
+	/* ICE_FLOW_FIELD_IDX_ESP_SPI */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ESP, 0,
+			  ICE_FLOW_FLD_SZ_ESP_SPI),
+	/* AH */
+	/* ICE_FLOW_FIELD_IDX_AH_SPI */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_AH, 4,
+			  ICE_FLOW_FLD_SZ_AH_SPI),
+	/* NAT_T_ESP */
+	/* ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI */
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_NAT_T_ESP, 8,
+			  ICE_FLOW_FLD_SZ_NAT_T_ESP_SPI),
 };
 
 /* Bitmaps indicating relevant packet types for a particular protocol header
@@ -175,8 +200,8 @@ static const u32 ice_ptypes_macvlan_il[] = {
 /* Packet types for packets with an Outer/First/Single IPv4 header */
 static const u32 ice_ptypes_ipv4_ofos[] = {
 	0x1DC00000, 0x04000800, 0x00000000, 0x00000000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x0003000F, 0x000FC000, 0x03E0F800, 0x00000000,
+	0x00000000, 0x00000155, 0x00000000, 0x00000000,
+	0x0003000F, 0x000FC000, 0x83E0F800, 0x00000101,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -199,8 +224,8 @@ static const u32 ice_ptypes_ipv4_il[] = {
 /* Packet types for packets with an Outer/First/Single IPv6 header */
 static const u32 ice_ptypes_ipv6_ofos[] = {
 	0x00000000, 0x00000000, 0x77000000, 0x10002000,
-	0x00000000, 0x00000000, 0x00000000, 0x00000000,
-	0x00080F00, 0x03F00000, 0x7C1F0000, 0x00000000,
+	0x00000000, 0x000002AA, 0x00000000, 0x00000000,
+	0x00080F00, 0x03F00000, 0x7C1F0000, 0x00000206,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -238,7 +263,7 @@ static const u32 ice_ptypes_arp_of[] = {
 static const u32 ice_ptypes_udp_il[] = {
 	0x81000000, 0x20204040, 0x04000010, 0x80810102,
 	0x00000040, 0x00000000, 0x00000000, 0x00000000,
-	0x00000000, 0x00410000, 0x10842000, 0x00000000,
+	0x00000000, 0x00410000, 0x90842000, 0x00000007,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -435,6 +460,78 @@ static const u32 ice_ptypes_pppoe[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
+/* Packet types for packets with PFCP NODE header */
+static const u32 ice_ptypes_pfcp_node[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x80000000, 0x00000002,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
+/* Packet types for packets with PFCP SESSION header */
+static const u32 ice_ptypes_pfcp_session[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000005,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
+/* Packet types for l2tpv3 */
+static const u32 ice_ptypes_l2tpv3[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000300,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
+/* Packet types for esp */
+static const u32 ice_ptypes_esp[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000003, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
+/* Packet types for ah */
+static const u32 ice_ptypes_ah[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x0000000C, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
+/* Packet types for packets with NAT_T ESP header */
+static const u32 ice_ptypes_nat_t_esp[] = {
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000030, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
 /* Manage parameters and info. used during the creation of a flow profile */
 struct ice_flow_prof_params {
 	enum ice_block blk;
@@ -456,7 +553,10 @@ struct ice_flow_prof_params {
 
 #define ICE_FLOW_RSS_HDRS_INNER_MASK \
 	(ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_GTPC | \
-	 ICE_FLOW_SEG_HDR_GTPC_TEID | ICE_FLOW_SEG_HDR_GTPU)
+	ICE_FLOW_SEG_HDR_GTPC_TEID | ICE_FLOW_SEG_HDR_GTPU | \
+	ICE_FLOW_SEG_HDR_PFCP_SESSION | ICE_FLOW_SEG_HDR_L2TPV3 | \
+	ICE_FLOW_SEG_HDR_ESP | ICE_FLOW_SEG_HDR_AH | \
+	ICE_FLOW_SEG_HDR_NAT_T_ESP)
 
 #define ICE_FLOW_SEG_HDRS_L2_MASK	\
 	(ICE_FLOW_SEG_HDR_ETH | ICE_FLOW_SEG_HDR_VLAN)
@@ -660,6 +760,42 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 			src = (const ice_bitmap_t *)ice_ptypes_gtpu;
 			ice_and_bitmap(params->ptypes, params->ptypes,
 				       src, ICE_FLOW_PTYPE_MAX);
+		} else if (hdrs & ICE_FLOW_SEG_HDR_L2TPV3) {
+			src = (const ice_bitmap_t *)ice_ptypes_l2tpv3;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
+		} else if (hdrs & ICE_FLOW_SEG_HDR_ESP) {
+			src = (const ice_bitmap_t *)ice_ptypes_esp;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
+		} else if (hdrs & ICE_FLOW_SEG_HDR_AH) {
+			src = (const ice_bitmap_t *)ice_ptypes_ah;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
+		} else if (hdrs & ICE_FLOW_SEG_HDR_NAT_T_ESP) {
+			src = (const ice_bitmap_t *)ice_ptypes_nat_t_esp;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
+		}
+
+		if (hdrs & ICE_FLOW_SEG_HDR_PFCP) {
+			if (hdrs & ICE_FLOW_SEG_HDR_PFCP_NODE)
+				src =
+				(const ice_bitmap_t *)ice_ptypes_pfcp_node;
+			else
+				src =
+				(const ice_bitmap_t *)ice_ptypes_pfcp_session;
+
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
+		} else {
+			src = (const ice_bitmap_t *)ice_ptypes_pfcp_node;
+			ice_andnot_bitmap(params->ptypes, params->ptypes,
+					  src, ICE_FLOW_PTYPE_MAX);
+
+			src = (const ice_bitmap_t *)ice_ptypes_pfcp_session;
+			ice_andnot_bitmap(params->ptypes, params->ptypes,
+					  src, ICE_FLOW_PTYPE_MAX);
 		}
 	}
 
@@ -816,6 +952,21 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		break;
 	case ICE_FLOW_FIELD_IDX_PPPOE_SESS_ID:
 		prot_id = ICE_PROT_PPPOE;
+		break;
+	case ICE_FLOW_FIELD_IDX_PFCP_SEID:
+		prot_id = ICE_PROT_UDP_IL_OR_S;
+		break;
+	case ICE_FLOW_FIELD_IDX_L2TPV3_SESS_ID:
+		prot_id = ICE_PROT_L2TPV3;
+		break;
+	case ICE_FLOW_FIELD_IDX_ESP_SPI:
+		prot_id = ICE_PROT_ESP_F;
+		break;
+	case ICE_FLOW_FIELD_IDX_AH_SPI:
+		prot_id = ICE_PROT_ESP_2;
+		break;
+	case ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI:
+		prot_id = ICE_PROT_UDP_IL_OR_S;
 		break;
 	case ICE_FLOW_FIELD_IDX_ARP_SIP:
 	case ICE_FLOW_FIELD_IDX_ARP_DIP:
