@@ -1662,7 +1662,8 @@ virtio_configure_intr(struct rte_eth_dev *dev)
 
 	return 0;
 }
-
+#define SPEED_UNKNOWN    0xffffffff
+#define DUPLEX_UNKNOWN   0xff
 /* reset device and renegotiate features if needed */
 static int
 virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
@@ -1718,6 +1719,25 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
 
+	if (hw->speed == SPEED_UNKNOWN) {
+		if (vtpci_with_feature(hw, VIRTIO_NET_F_SPEED_DUPLEX)) {
+			config = &local_config;
+			vtpci_read_dev_config(hw,
+				offsetof(struct virtio_net_config, speed),
+				&config->speed, sizeof(config->speed));
+			vtpci_read_dev_config(hw,
+				offsetof(struct virtio_net_config, duplex),
+				&config->duplex, sizeof(config->duplex));
+			hw->speed = config->speed;
+			hw->duplex = config->duplex;
+		}
+	}
+	if (hw->speed == SPEED_UNKNOWN)
+		hw->speed = ETH_SPEED_NUM_10G;
+	if (hw->duplex == DUPLEX_UNKNOWN)
+		hw->duplex = ETH_LINK_FULL_DUPLEX;
+	PMD_INIT_LOG(DEBUG, "link speed = %d, duplex = %d",
+		hw->speed, hw->duplex);
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VQ)) {
 		config = &local_config;
 
@@ -1865,7 +1885,7 @@ int
 eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
-	uint32_t speed = ETH_SPEED_NUM_10G;
+	uint32_t speed = SPEED_UNKNOWN;
 	int ret;
 
 	if (sizeof(struct virtio_net_hdr_mrg_rxbuf) > RTE_PKTMBUF_HEADROOM) {
@@ -2450,7 +2470,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	struct virtio_hw *hw = dev->data->dev_private;
 
 	memset(&link, 0, sizeof(link));
-	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	link.link_duplex = hw->duplex;
 	link.link_speed  = hw->speed;
 	link.link_autoneg = ETH_LINK_AUTONEG;
 

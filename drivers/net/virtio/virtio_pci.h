@@ -141,6 +141,9 @@ struct virtnet_ctl;
  */
 #define VIRTIO_F_NOTIFICATION_DATA 38
 
+/* Device set linkspeed and duplex */
+#define VIRTIO_NET_F_SPEED_DUPLEX 63
+
 /* The Guest publishes the used index for which it expects an interrupt
  * at the end of the avail ring. Host should ignore the avail->flags field. */
 /* The Host publishes the avail index for which it expects a kick
@@ -260,6 +263,7 @@ struct virtio_hw {
 	uint8_t     mac_addr[RTE_ETHER_ADDR_LEN];
 	uint32_t    notify_off_multiplier;
 	uint32_t    speed;  /* link speed in MB */
+	uint8_t     duplex;
 	uint8_t     *isr;
 	uint16_t    *notify_base;
 	struct virtio_pci_common_cfg *common_cfg;
@@ -306,6 +310,18 @@ struct virtio_net_config {
 	uint16_t   status;
 	uint16_t   max_virtqueue_pairs;
 	uint16_t   mtu;
+	/*
+	 * speed, in units of 1Mb. All values 0 to INT_MAX are legal.
+	 * Any other value stands for unknown.
+	 */
+	uint32_t speed;
+	/*
+	 * 0x00 - half duplex
+	 * 0x01 - full duplex
+	 * Any other value stands for unknown.
+	 */
+	uint8_t duplex;
+
 } __rte_packed;
 
 /*
