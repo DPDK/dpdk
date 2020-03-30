@@ -699,7 +699,6 @@ F: doc/guides/nics/ipn3ke.rst
 F: doc/guides/nics/features/ipn3ke.ini
 
 Marvell mvpp2
-M: Tomasz Duszynski <tdu@semihalf.com>
 M: Liron Himi <lironh@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/common/mvep/
@@ -997,7 +996,6 @@ F: doc/guides/cryptodevs/kasumi.rst
 F: doc/guides/cryptodevs/features/kasumi.ini
 
 Marvell mvsam
-M: Tomasz Duszynski <tdu@semihalf.com>
 M: Michael Shamis <michaelsh@marvell.com>
 M: Liron Himi <lironh@marvell.com>
 F: drivers/crypto/mvsam/
