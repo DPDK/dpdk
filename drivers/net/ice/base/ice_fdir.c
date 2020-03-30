@@ -581,8 +581,7 @@ ice_free_fd_shrd_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr)
  */
 int ice_get_fdir_cnt_all(struct ice_hw *hw)
 {
-	return hw->func_caps.fd_fltr_guar +
-	       hw->func_caps.fd_fltr_best_effort;
+	return hw->func_caps.fd_fltr_guar + hw->func_caps.fd_fltr_best_effort;
 }
 
 /**

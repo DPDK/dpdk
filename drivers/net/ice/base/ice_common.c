@@ -1840,9 +1840,6 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 				  caps->msix_vector_first_id);
 			break;
 		case ICE_AQC_CAPS_FD:
-		{
-			u32 reg_val, val;
-
 			if (dev_p) {
 				dev_p->num_flow_director_fltr = number;
 				ice_debug(hw, ICE_DBG_INIT,
@@ -1851,6 +1848,7 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 					  dev_p->num_flow_director_fltr);
 			}
 			if (func_p) {
+				u32 reg_val, val;
 				if (hw->dcf_enabled)
 					break;
 				reg_val = rd32(hw, GLQF_FD_SIZE);
@@ -1869,7 +1867,6 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 					  prefix, func_p->fd_fltr_best_effort);
 			}
 			break;
-		}
 		case ICE_AQC_CAPS_MAX_MTU:
 			caps->max_mtu = number;
 			ice_debug(hw, ICE_DBG_INIT, "%s: max_mtu = %d\n",
