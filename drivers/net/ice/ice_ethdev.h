@@ -384,6 +384,7 @@ struct ice_pf {
 	bool offset_loaded;
 	bool adapter_stopped;
 	struct ice_flow_list flow_list;
+	rte_spinlock_t flow_ops_lock;
 	struct ice_parser_list rss_parser_list;
 	struct ice_parser_list perm_parser_list;
 	struct ice_parser_list dist_parser_list;

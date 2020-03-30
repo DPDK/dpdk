@@ -1395,6 +1395,7 @@ ice_flow_init(struct ice_adapter *ad)
 	TAILQ_INIT(&pf->rss_parser_list);
 	TAILQ_INIT(&pf->perm_parser_list);
 	TAILQ_INIT(&pf->dist_parser_list);
+	rte_spinlock_init(&pf->flow_ops_lock);
 
 	TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
 		if (engine->init == NULL) {
@@ -1862,19 +1863,24 @@ ice_flow_create(struct rte_eth_dev *dev,
 		return flow;
 	}
 
+	rte_spinlock_lock(&pf->flow_ops_lock);
+
 	ret = ice_flow_process_filter(dev, flow, attr, pattern, actions,
 			&engine, ice_parse_engine_create, error);
-	if (ret < 0)
-		goto free_flow;
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to create flow");
+		rte_free(flow);
+		flow = NULL;
+		goto out;
+	}
+
 	flow->engine = engine;
 	TAILQ_INSERT_TAIL(&pf->flow_list, flow, node);
 	PMD_DRV_LOG(INFO, "Succeeded to create (%d) flow", engine->type);
-	return flow;
 
-free_flow:
-	PMD_DRV_LOG(ERR, "Failed to create flow");
-	rte_free(flow);
-	return NULL;
+out:
+	rte_spinlock_unlock(&pf->flow_ops_lock);
+	return flow;
 }
 
 static int
@@ -1894,14 +1900,17 @@ ice_flow_destroy(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	ret = flow->engine->destroy(ad, flow, error);
+	rte_spinlock_lock(&pf->flow_ops_lock);
 
+	ret = flow->engine->destroy(ad, flow, error);
 	if (!ret) {
 		TAILQ_REMOVE(&pf->flow_list, flow, node);
 		rte_free(flow);
 	} else {
 		PMD_DRV_LOG(ERR, "Failed to destroy flow");
 	}
+
+	rte_spinlock_unlock(&pf->flow_ops_lock);
 
 	return ret;
 }
@@ -1937,6 +1946,7 @@ ice_flow_query(struct rte_eth_dev *dev,
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_flow_query_count *count = data;
+	struct ice_pf *pf = &ad->pf;
 
 	if (!flow || !flow->engine || !flow->engine->query_count) {
 		rte_flow_error_set(error, EINVAL,
@@ -1944,6 +1954,8 @@ ice_flow_query(struct rte_eth_dev *dev,
 				NULL, "Invalid flow");
 		return -rte_errno;
 	}
+
+	rte_spinlock_lock(&pf->flow_ops_lock);
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
@@ -1959,6 +1971,9 @@ ice_flow_query(struct rte_eth_dev *dev,
 					"action not supported");
 		}
 	}
+
+	rte_spinlock_unlock(&pf->flow_ops_lock);
+
 	return ret;
 }
 
@@ -1971,6 +1986,8 @@ ice_flow_redirect(struct ice_adapter *ad,
 	void *temp;
 	int ret;
 
+	rte_spinlock_lock(&pf->flow_ops_lock);
+
 	TAILQ_FOREACH_SAFE(p_flow, &pf->flow_list, node, temp) {
 		if (!p_flow->engine->redirect)
 			continue;
@@ -1980,6 +1997,8 @@ ice_flow_redirect(struct ice_adapter *ad,
 			return ret;
 		}
 	}
+
+	rte_spinlock_unlock(&pf->flow_ops_lock);
 
 	return 0;
 }
