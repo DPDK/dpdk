@@ -139,7 +139,7 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 
 static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
 
-static inline void
+static inline int
 mlx5_read_ib_stat(struct mlx5_priv *priv, const char *ctr_name, uint64_t *stat)
 {
 	FILE *file;
@@ -155,10 +155,11 @@ mlx5_read_ib_stat(struct mlx5_priv *priv, const char *ctr_name, uint64_t *stat)
 
 			fclose(file);
 			if (n == 1)
-				return;
+				return 0;
 		}
 	}
 	*stat = 0;
+	return 1;
 }
 
 /**
@@ -197,8 +198,14 @@ mlx5_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 	}
 	for (i = 0; i != xstats_ctrl->mlx5_stats_n; ++i) {
 		if (xstats_ctrl->info[i].ib) {
-			mlx5_read_ib_stat(priv, xstats_ctrl->info[i].ctr_name,
-					  &stats[i]);
+			ret = mlx5_read_ib_stat(priv,
+						xstats_ctrl->info[i].ctr_name,
+						&stats[i]);
+			/* return last xstats counter if fail to read. */
+			if (ret == 0)
+				xstats_ctrl->xstats[i] = stats[i];
+			else
+				stats[i] = xstats_ctrl->xstats[i];
 		} else {
 			stats[i] = (uint64_t)
 				et_stats->data[xstats_ctrl->dev_table_idx[i]];
@@ -304,6 +311,7 @@ mlx5_stats_init(struct rte_eth_dev *dev)
 			unsigned int idx = xstats_ctrl->mlx5_stats_n++;
 
 			xstats_ctrl->info[idx] = mlx5_counters_init[i];
+			xstats_ctrl->hw_stats[idx] = 0;
 		}
 	}
 	MLX5_ASSERT(xstats_ctrl->mlx5_stats_n <= MLX5_MAX_XSTATS);
@@ -314,6 +322,7 @@ mlx5_stats_init(struct rte_eth_dev *dev)
 		DRV_LOG(ERR, "port %u cannot read device counters: %s",
 			dev->data->port_id, strerror(rte_errno));
 	mlx5_read_ib_stat(priv, "out_of_buffer", &stats_ctrl->imissed_base);
+	stats_ctrl->imissed = 0;
 free:
 	rte_free(strings);
 }
@@ -356,7 +365,23 @@ mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 			return ret;
 		for (i = 0; i != mlx5_stats_n; ++i) {
 			stats[i].id = i;
-			stats[i].value = (counters[i] - xstats_ctrl->base[i]);
+			if (xstats_ctrl->info[i].ib) {
+				uint64_t wrap_n;
+				uint64_t hw_stat = xstats_ctrl->hw_stats[i];
+
+				stats[i].value = (counters[i] -
+						  xstats_ctrl->base[i]) &
+						  (uint64_t)UINT32_MAX;
+				wrap_n = hw_stat >> 32;
+				if (stats[i].value <
+					    (hw_stat & (uint64_t)UINT32_MAX))
+					wrap_n++;
+				stats[i].value |= (wrap_n) << 32;
+				xstats_ctrl->hw_stats[i] = stats[i].value;
+			} else {
+				stats[i].value =
+					(counters[i] - xstats_ctrl->base[i]);
+			}
 		}
 	}
 	return mlx5_stats_n;
@@ -378,9 +403,12 @@ int
 mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_stats_ctrl *stats_ctrl = &priv->stats_ctrl;
 	struct rte_eth_stats tmp;
 	unsigned int i;
 	unsigned int idx;
+	uint64_t wrap_n;
+	int ret;
 
 	memset(&tmp, 0, sizeof(tmp));
 	/* Add software counters. */
@@ -423,8 +451,18 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 #endif
 		tmp.oerrors += txq->stats.oerrors;
 	}
-	mlx5_read_ib_stat(priv, "out_of_buffer", &tmp.imissed);
-	tmp.imissed -= priv->stats_ctrl.imissed_base;
+	ret = mlx5_read_ib_stat(priv, "out_of_buffer", &tmp.imissed);
+	if (ret == 0) {
+		tmp.imissed = (tmp.imissed - stats_ctrl->imissed_base) &
+				 (uint64_t)UINT32_MAX;
+		wrap_n = stats_ctrl->imissed >> 32;
+		if (tmp.imissed < (stats_ctrl->imissed & (uint64_t)UINT32_MAX))
+			wrap_n++;
+		tmp.imissed |= (wrap_n) << 32;
+		stats_ctrl->imissed = tmp.imissed;
+	} else {
+		tmp.imissed = stats_ctrl->imissed;
+	}
 #ifndef MLX5_PMD_SOFT_COUNTERS
 	/* FIXME: retrieve and add hardware counters. */
 #endif
@@ -461,6 +499,7 @@ mlx5_stats_reset(struct rte_eth_dev *dev)
 		       sizeof(struct mlx5_txq_stats));
 	}
 	mlx5_read_ib_stat(priv, "out_of_buffer", &stats_ctrl->imissed_base);
+	stats_ctrl->imissed = 0;
 #ifndef MLX5_PMD_SOFT_COUNTERS
 	/* FIXME: reset hardware counters. */
 #endif
@@ -503,8 +542,10 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 			dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
-	for (i = 0; i != n; ++i)
+	for (i = 0; i != n; ++i) {
 		xstats_ctrl->base[i] = counters[i];
+		xstats_ctrl->hw_stats[i] = 0;
+	}
 
 	return 0;
 }

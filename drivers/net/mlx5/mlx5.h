@@ -112,12 +112,15 @@ struct mlx5_xstats_ctrl {
 	/* Index in the device counters table. */
 	uint16_t dev_table_idx[MLX5_MAX_XSTATS];
 	uint64_t base[MLX5_MAX_XSTATS];
+	uint64_t xstats[MLX5_MAX_XSTATS];
+	uint64_t hw_stats[MLX5_MAX_XSTATS];
 	struct mlx5_counter_ctrl info[MLX5_MAX_XSTATS];
 };
 
 struct mlx5_stats_ctrl {
 	/* Base for imissed counter. */
 	uint64_t imissed_base;
+	uint64_t imissed;
 };
 
 /* Flow list . */
