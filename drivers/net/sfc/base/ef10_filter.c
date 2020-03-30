@@ -1851,6 +1851,89 @@ fail1:
 	return (rc);
 }
 
+static	__checkReturn	efx_rc_t
+ef10_filter_insert_renew_mulcst_filters(
+	__in				efx_nic_t *enp,
+	__in				boolean_t mulcst,
+	__in				boolean_t all_mulcst,
+	__in				boolean_t brdcst,
+	__in_ecount(6*count)		uint8_t const *addrs,
+	__in				uint32_t count,
+	__in				efx_filter_flags_t filter_flags,
+	__in				boolean_t all_unicst_inserted,
+	__out				boolean_t *all_mulcst_inserted)
+{
+	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
+	efx_nic_cfg_t *encp = &enp->en_nic_cfg;
+	efx_rc_t rc;
+
+	*all_mulcst_inserted = B_FALSE;
+
+	if (all_mulcst == B_TRUE) {
+		efx_rc_t all_mulcst_rc;
+
+		/*
+		 * Insert the all multicast filter. If that fails, try to insert
+		 * all of our multicast filters (but without rollback on
+		 * failure).
+		 */
+		all_mulcst_rc = ef10_filter_insert_all_multicast(enp,
+							    filter_flags);
+		if (all_mulcst_rc == 0) {
+			*all_mulcst_inserted = B_TRUE;
+		} else {
+			rc = ef10_filter_insert_multicast_list(enp, B_TRUE,
+			    brdcst, addrs, count, filter_flags, B_FALSE);
+			if (rc != 0)
+				goto fail1;
+		}
+	} else {
+		/*
+		 * Insert filters for multicast addresses.
+		 * If any insertion fails, then rollback and try to insert the
+		 * all multicast filter instead.
+		 * If that also fails, try to insert all of the multicast
+		 * filters (but without rollback on failure).
+		 */
+		rc = ef10_filter_insert_multicast_list(enp, mulcst, brdcst,
+			    addrs, count, filter_flags, B_TRUE);
+		if (rc != 0) {
+			if ((table->eft_using_all_mulcst == B_FALSE) &&
+			    (encp->enc_bug26807_workaround == B_TRUE)) {
+				/*
+				 * Multicast filter chaining is on, so remove
+				 * old filters before inserting the multicast
+				 * all filter to avoid duplicate delivery caused
+				 * by packets matching multiple filters.
+				 */
+				ef10_filter_remove_old(enp);
+			}
+
+			rc = ef10_filter_insert_all_multicast(enp,
+							    filter_flags);
+			if (rc == 0) {
+				*all_mulcst_inserted = B_TRUE;
+			} else {
+				rc = ef10_filter_insert_multicast_list(enp,
+				    mulcst, brdcst,
+				    addrs, count, filter_flags, B_FALSE);
+				if (rc != 0)
+					goto fail2;
+			}
+		}
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE1(fail2, efx_rc_t, rc);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 /*
  * Reconfigure all filters.
  * If all_unicst and/or all mulcst filters cannot be applied then
@@ -1873,7 +1956,7 @@ ef10_filter_reconfigure(
 	efx_filter_flags_t filter_flags;
 	unsigned int i;
 	boolean_t all_unicst_inserted = B_FALSE;
-	efx_rc_t all_mulcst_rc = 0;
+	boolean_t all_mulcst_inserted = B_FALSE;
 	efx_rc_t rc;
 
 	if (table->eft_default_rxq == NULL) {
@@ -1944,53 +2027,13 @@ ef10_filter_reconfigure(
 	}
 
 	/* Insert or renew multicast filters */
-	if (all_mulcst == B_TRUE) {
-		/*
-		 * Insert the all multicast filter. If that fails, try to insert
-		 * all of our multicast filters (but without rollback on
-		 * failure).
-		 */
-		all_mulcst_rc = ef10_filter_insert_all_multicast(enp,
-							    filter_flags);
-		if (all_mulcst_rc != 0) {
-			rc = ef10_filter_insert_multicast_list(enp, B_TRUE,
-			    brdcst, addrs, count, filter_flags, B_FALSE);
-			if (rc != 0)
-				goto fail3;
-		}
-	} else {
-		/*
-		 * Insert filters for multicast addresses.
-		 * If any insertion fails, then rollback and try to insert the
-		 * all multicast filter instead.
-		 * If that also fails, try to insert all of the multicast
-		 * filters (but without rollback on failure).
-		 */
-		rc = ef10_filter_insert_multicast_list(enp, mulcst, brdcst,
-			    addrs, count, filter_flags, B_TRUE);
-		if (rc != 0) {
-			if ((table->eft_using_all_mulcst == B_FALSE) &&
-			    (encp->enc_bug26807_workaround == B_TRUE)) {
-				/*
-				 * Multicast filter chaining is on, so remove
-				 * old filters before inserting the multicast
-				 * all filter to avoid duplicate delivery caused
-				 * by packets matching multiple filters.
-				 */
-				ef10_filter_remove_old(enp);
-			}
-
-			rc = ef10_filter_insert_all_multicast(enp,
-							    filter_flags);
-			if (rc != 0) {
-				rc = ef10_filter_insert_multicast_list(enp,
-				    mulcst, brdcst,
-				    addrs, count, filter_flags, B_FALSE);
-				if (rc != 0)
-					goto fail4;
-			}
-		}
-	}
+	rc = ef10_filter_insert_renew_mulcst_filters(enp, mulcst, all_mulcst,
+						     brdcst, addrs, count,
+						     filter_flags,
+						     all_unicst_inserted,
+						     &all_mulcst_inserted);
+	if (rc != 0)
+		goto fail3;
 
 	if (encp->enc_tunnel_encapsulations_supported != 0) {
 		/* Try to insert filters for encapsulated packets. */
@@ -2004,14 +2047,12 @@ ef10_filter_reconfigure(
 
 	/* report if any optional flags were rejected */
 	if (((all_unicst != B_FALSE) && (all_unicst_inserted == B_FALSE)) ||
-	    ((all_mulcst != B_FALSE) && (all_mulcst_rc != 0))) {
+	    ((all_mulcst != B_FALSE) && (all_mulcst_inserted == B_FALSE))) {
 		rc = ENOTSUP;
 	}
 
 	return (rc);
 
-fail4:
-	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
