@@ -477,12 +477,17 @@ static int
 get_integer_arg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
+	uint64_t integer = 0;
 	if (!value || !extra_args)
 		return -EINVAL;
-
-	*(uint64_t *)extra_args = strtoull(value, NULL, 0);
-
-	return 0;
+	errno = 0;
+	integer = strtoull(value, NULL, 0);
+	/* extra_args keeps default value, it should be replaced
+	 * only in case of successful parsing of the 'value' arg
+	 */
+	if (errno == 0)
+		*(uint64_t *)extra_args = integer;
+	return -errno;
 }
 
 static struct rte_eth_dev *
