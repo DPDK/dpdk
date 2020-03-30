@@ -381,62 +381,11 @@ ice_set_dflt_val_fd_desc(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx)
 }
 
 /**
- * ice_fdir_get_prgm_desc - set a fdir descriptor from a fdir filter struct
- * @hw: pointer to the hardware structure
- * @input: filter
- * @fdesc: filter descriptor
- * @add: if add is true, this is an add operation, false implies delete
- */
-void
-ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,
-		       struct ice_fltr_desc *fdesc, bool add)
-{
-	struct ice_fd_fltr_desc_ctx fdir_fltr_ctx = { 0 };
-
-	/* set default context info */
-	ice_set_dflt_val_fd_desc(&fdir_fltr_ctx);
-
-	/* change sideband filtering values */
-	fdir_fltr_ctx.fdid = input->fltr_id;
-	if (input->dest_ctl == ICE_FLTR_PRGM_DESC_DEST_DROP_PKT) {
-		fdir_fltr_ctx.drop = ICE_FXD_FLTR_QW0_DROP_YES;
-		fdir_fltr_ctx.qindex = 0;
-	} else if (input->dest_ctl ==
-			ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_OTHER) {
-		fdir_fltr_ctx.drop = ICE_FXD_FLTR_QW0_DROP_NO;
-		fdir_fltr_ctx.qindex = 0;
-	} else {
-		if (input->dest_ctl ==
-		    ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QGROUP)
-			fdir_fltr_ctx.toq = input->q_region;
-		fdir_fltr_ctx.drop = ICE_FXD_FLTR_QW0_DROP_NO;
-		fdir_fltr_ctx.qindex = input->q_index;
-	}
-	fdir_fltr_ctx.cnt_ena = input->cnt_ena;
-	fdir_fltr_ctx.cnt_index = input->cnt_index;
-	fdir_fltr_ctx.fd_vsi = ice_get_hw_vsi_num(hw, input->dest_vsi);
-	fdir_fltr_ctx.evict_ena = ICE_FXD_FLTR_QW0_EVICT_ENA_FALSE;
-	if (input->dest_ctl == ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_OTHER)
-		fdir_fltr_ctx.toq_prio = 0;
-	else
-		fdir_fltr_ctx.toq_prio = 3;
-	fdir_fltr_ctx.pcmd = (add) ? ICE_FXD_FLTR_QW1_PCMD_ADD :
-		ICE_FXD_FLTR_QW1_PCMD_REMOVE;
-	fdir_fltr_ctx.swap = ICE_FXD_FLTR_QW1_SWAP_NOT_SET;
-	fdir_fltr_ctx.comp_q = ICE_FXD_FLTR_QW0_COMP_Q_ZERO;
-	fdir_fltr_ctx.comp_report = ICE_FXD_FLTR_QW0_COMP_REPORT_SW;
-	fdir_fltr_ctx.fdid_prio = input->fdid_prio;
-	fdir_fltr_ctx.desc_prof = 1;
-	fdir_fltr_ctx.desc_prof_prio = 3;
-	ice_set_fd_desc_val(&fdir_fltr_ctx, fdesc);
-}
-
-/**
  * ice_set_fd_desc_val
  * @ctx: pointer to fd filter descriptor context
  * @fdir_desc: populated with fd filter descriptor values
  */
-void
+static void
 ice_set_fd_desc_val(struct ice_fd_fltr_desc_ctx *ctx,
 		    struct ice_fltr_desc *fdir_desc)
 {
@@ -493,6 +442,50 @@ ice_set_fd_desc_val(struct ice_fd_fltr_desc_ctx *ctx,
 	qword |= ((u64)ctx->fdid << ICE_FXD_FLTR_QW1_FDID_S) &
 		 ICE_FXD_FLTR_QW1_FDID_M;
 	fdir_desc->dtype_cmd_vsi_fdid = CPU_TO_LE64(qword);
+}
+
+/**
+ * ice_fdir_get_prgm_desc - set a fdir descriptor from a fdir filter struct
+ * @hw: pointer to the hardware structure
+ * @input: filter
+ * @fdesc: filter descriptor
+ * @add: if add is true, this is an add operation, false implies delete
+ */
+void
+ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,
+		       struct ice_fltr_desc *fdesc, bool add)
+{
+	struct ice_fd_fltr_desc_ctx fdir_fltr_ctx = { 0 };
+
+	/* set default context info */
+	ice_set_dflt_val_fd_desc(&fdir_fltr_ctx);
+
+	/* change sideband filtering values */
+	fdir_fltr_ctx.fdid = input->fltr_id;
+	if (input->dest_ctl == ICE_FLTR_PRGM_DESC_DEST_DROP_PKT) {
+		fdir_fltr_ctx.drop = ICE_FXD_FLTR_QW0_DROP_YES;
+		fdir_fltr_ctx.qindex = 0;
+	} else {
+		if (input->dest_ctl ==
+		    ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QGROUP)
+			fdir_fltr_ctx.toq = input->q_region;
+		fdir_fltr_ctx.drop = ICE_FXD_FLTR_QW0_DROP_NO;
+		fdir_fltr_ctx.qindex = input->q_index;
+	}
+	fdir_fltr_ctx.cnt_ena = input->cnt_ena;
+	fdir_fltr_ctx.cnt_index = input->cnt_index;
+	fdir_fltr_ctx.fd_vsi = ice_get_hw_vsi_num(hw, input->dest_vsi);
+	fdir_fltr_ctx.evict_ena = ICE_FXD_FLTR_QW0_EVICT_ENA_FALSE;
+	fdir_fltr_ctx.toq_prio = 3;
+	fdir_fltr_ctx.pcmd = (add) ? ICE_FXD_FLTR_QW1_PCMD_ADD :
+		ICE_FXD_FLTR_QW1_PCMD_REMOVE;
+	fdir_fltr_ctx.swap = ICE_FXD_FLTR_QW1_SWAP_NOT_SET;
+	fdir_fltr_ctx.comp_q = ICE_FXD_FLTR_QW0_COMP_Q_ZERO;
+	fdir_fltr_ctx.comp_report = ICE_FXD_FLTR_QW0_COMP_REPORT_SW_FAIL;
+	fdir_fltr_ctx.fdid_prio = input->fdid_prio;
+	fdir_fltr_ctx.desc_prof = 1;
+	fdir_fltr_ctx.desc_prof_prio = 3;
+	ice_set_fd_desc_val(&fdir_fltr_ctx, fdesc);
 }
 
 /**

@@ -36,9 +36,6 @@ struct ice_fd_fltr_desc_ctx {
 
 enum ice_status ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id);
 enum ice_status ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id);
-void
-ice_set_fd_desc_val(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx,
-		    struct ice_fltr_desc *fdir_desc);
 void ice_set_dflt_val_fd_desc(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx);
 enum ice_status
 ice_alloc_fd_guar_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
