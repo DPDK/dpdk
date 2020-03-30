@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
+ * Copyright(c) 2019-2020 Xilinx, Inc.
+ * Copyright(c) 2014-2019 Solarflare Communications Inc.
+ *
  * Copyright 2006 Bob Jenkins
  *
  * Derived from public domain source, see
@@ -10,9 +13,6 @@
  *  These are functions for producing 32-bit hashes for hash table lookup...
  *  ...You can use this free for any purpose.  It's in the public domain.
  *  It has no warranty."
- *
- * Copyright (c) 2014-2018 Solarflare Communications Inc.
- * All rights reserved.
  */
 
 #include "efx.h"
