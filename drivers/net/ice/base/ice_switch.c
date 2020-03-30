@@ -3510,14 +3510,17 @@ ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
  * ice_add_mac_vlan - Add MAC and VLAN pair based filter rule
  * @hw: pointer to the hardware structure
  * @mv_list: list of MAC and VLAN filters
+ * @sw: pointer to switch info struct for which function add rule
+ * @lport: logic port number on which function add rule
  *
  * If the VSI on which the MAC-VLAN pair has to be added has Rx and Tx VLAN
  * pruning bits enabled, then it is the responsibility of the caller to make
  * sure to add a VLAN only filter on the same VSI. Packets belonging to that
  * VLAN won't be received on that VSI otherwise.
  */
-enum ice_status
-ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
+static enum ice_status
+ice_add_mac_vlan_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list,
+		      struct ice_switch_info *sw, u8 lport)
 {
 	struct ice_fltr_list_entry *mv_list_itr;
 	struct ice_sw_recipe *recp_list;
@@ -3525,7 +3528,7 @@ ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
 	if (!mv_list || !hw)
 		return ICE_ERR_PARAM;
 
-	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC_VLAN];
+	recp_list = &sw->recp_list[ICE_SW_LKUP_MAC_VLAN];
 	LIST_FOR_EACH_ENTRY(mv_list_itr, mv_list, ice_fltr_list_entry,
 			    list_entry) {
 		enum ice_sw_lkup_type l_type =
@@ -3535,13 +3538,29 @@ ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
 			return ICE_ERR_PARAM;
 		mv_list_itr->fltr_info.flag = ICE_FLTR_TX;
 		mv_list_itr->status =
-			ice_add_rule_internal(hw, recp_list,
-					      hw->port_info->lport,
+			ice_add_rule_internal(hw, recp_list, lport,
 					      mv_list_itr);
 		if (mv_list_itr->status)
 			return mv_list_itr->status;
 	}
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_add_mac_vlan - Add a MAC VLAN address based filter rule
+ * @hw: pointer to the hardware structure
+ * @mv_list: list of MAC VLAN addresses and forwarding information
+ *
+ * Function add MAC VLAN rule for logical port from HW struct
+ */
+enum ice_status
+ice_add_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
+{
+	if (!mv_list || !hw)
+		return ICE_ERR_PARAM;
+
+	return ice_add_mac_vlan_rule(hw, mv_list, hw->switch_info,
+				     hw->port_info->lport);
 }
 
 /**
@@ -3946,18 +3965,16 @@ ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 }
 
 /**
- * ice_remove_mac_vlan - Remove MAC VLAN based filter rule
+ * ice_remove_mac_vlan_rule - Remove MAC VLAN based filter rule
  * @hw: pointer to the hardware structure
  * @v_list: list of MAC VLAN entries and forwarding information
+ * @recp_list: list from which function remove MAC VLAN
  */
-enum ice_status
-ice_remove_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
+static enum ice_status
+ice_remove_mac_vlan_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list,
+			 struct ice_sw_recipe *recp_list)
 {
 	struct ice_fltr_list_entry *v_list_itr, *tmp;
-	struct ice_sw_recipe *recp_list;
-
-	if (!v_list || !hw)
-		return ICE_ERR_PARAM;
 
 	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC_VLAN];
 	LIST_FOR_EACH_ENTRY_SAFE(v_list_itr, tmp, v_list, ice_fltr_list_entry,
@@ -3973,6 +3990,23 @@ ice_remove_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 			return v_list_itr->status;
 	}
 	return ICE_SUCCESS;
+}
+
+/**
+ * ice_remove_mac_vlan - remove a MAC VLAN address based filter rule
+ * @hw: pointer to the hardware structure
+ * @mv_list: list of MAC VLAN and forwarding information
+ */
+enum ice_status
+ice_remove_mac_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *mv_list)
+{
+	struct ice_sw_recipe *recp_list;
+
+	if (!mv_list || !hw)
+		return ICE_ERR_PARAM;
+
+	recp_list = &hw->switch_info->recp_list[ICE_SW_LKUP_MAC_VLAN];
+	return ice_remove_mac_vlan_rule(hw, mv_list, recp_list);
 }
 
 /**
