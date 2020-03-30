@@ -259,6 +259,7 @@ struct virtio_hw {
 	uint16_t    port_id;
 	uint8_t     mac_addr[RTE_ETHER_ADDR_LEN];
 	uint32_t    notify_off_multiplier;
+	uint32_t    speed;  /* link speed in MB */
 	uint8_t     *isr;
 	uint16_t    *notify_base;
 	struct virtio_pci_common_cfg *common_cfg;

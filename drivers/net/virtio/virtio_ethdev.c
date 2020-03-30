@@ -45,6 +45,10 @@ static int virtio_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int virtio_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static int virtio_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static int virtio_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static uint32_t virtio_dev_speed_capa_get(uint32_t speed);
+static int virtio_dev_devargs_parse(struct rte_devargs *devargs,
+	int *vdpa,
+	uint32_t *speed);
 static int virtio_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int virtio_dev_link_update(struct rte_eth_dev *dev,
@@ -1861,6 +1865,7 @@ int
 eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
+	uint32_t speed = ETH_SPEED_NUM_10G;
 	int ret;
 
 	if (sizeof(struct virtio_net_hdr_mrg_rxbuf) > RTE_PKTMBUF_HEADROOM) {
@@ -1886,7 +1891,11 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 		return 0;
 	}
-
+	ret = virtio_dev_devargs_parse(eth_dev->device->devargs,
+		 NULL, &speed);
+	if (ret < 0)
+		return ret;
+	hw->speed = speed;
 	/*
 	 * Pass the information to the rte_eth_dev_close() that it should also
 	 * release the private port resources.
@@ -1956,6 +1965,7 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+
 static int vdpa_check_handler(__rte_unused const char *key,
 		const char *value, void *ret_val)
 {
@@ -1967,33 +1977,89 @@ static int vdpa_check_handler(__rte_unused const char *key,
 	return 0;
 }
 
+
+static uint32_t
+virtio_dev_speed_capa_get(uint32_t speed)
+{
+	switch (speed) {
+	case ETH_SPEED_NUM_10G:
+		return ETH_LINK_SPEED_10G;
+	case ETH_SPEED_NUM_20G:
+		return ETH_LINK_SPEED_20G;
+	case ETH_SPEED_NUM_25G:
+		return ETH_LINK_SPEED_25G;
+	case ETH_SPEED_NUM_40G:
+		return ETH_LINK_SPEED_40G;
+	case ETH_SPEED_NUM_50G:
+		return ETH_LINK_SPEED_50G;
+	case ETH_SPEED_NUM_56G:
+		return ETH_LINK_SPEED_56G;
+	case ETH_SPEED_NUM_100G:
+		return ETH_LINK_SPEED_100G;
+	default:
+		return 0;
+	}
+}
+
+
+#define VIRTIO_ARG_SPEED      "speed"
+#define VIRTIO_ARG_VDPA       "vdpa"
+
+
 static int
-virtio_dev_devargs_parse(struct rte_devargs *devargs, int *vdpa)
+link_speed_handler(const char *key __rte_unused,
+		const char *value, void *ret_val)
+{
+	uint32_t val;
+	if (!value || !ret_val)
+		return -EINVAL;
+	val = strtoul(value, NULL, 0);
+	/* validate input */
+	if (virtio_dev_speed_capa_get(val) == 0)
+		return -EINVAL;
+	*(uint32_t *)ret_val = val;
+
+	return 0;
+}
+
+
+static int
+virtio_dev_devargs_parse(struct rte_devargs *devargs, int *vdpa,
+	uint32_t *speed)
 {
 	struct rte_kvargs *kvlist;
-	const char *key = "vdpa";
 	int ret = 0;
 
 	if (devargs == NULL)
 		return 0;
 
 	kvlist = rte_kvargs_parse(devargs->args, NULL);
-	if (kvlist == NULL)
+	if (kvlist == NULL) {
+		PMD_INIT_LOG(ERR, "error when parsing param");
 		return 0;
-
-	if (!rte_kvargs_count(kvlist, key))
-		goto exit;
-
-	if (vdpa) {
+	}
+	if (vdpa && rte_kvargs_count(kvlist, VIRTIO_ARG_VDPA) == 1) {
 		/* vdpa mode selected when there's a key-value pair:
 		 * vdpa=1
 		 */
-		ret = rte_kvargs_process(kvlist, key,
+		ret = rte_kvargs_process(kvlist, VIRTIO_ARG_VDPA,
 				vdpa_check_handler, vdpa);
-		if (ret < 0)
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "Failed to parse %s",
+				VIRTIO_ARG_VDPA);
 			goto exit;
+		}
 	}
-
+	if (speed && rte_kvargs_count(kvlist, VIRTIO_ARG_SPEED) == 1) {
+		ret = rte_kvargs_process(kvlist,
+					VIRTIO_ARG_SPEED,
+					link_speed_handler, speed);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "Failed to parse %s",
+					VIRTIO_ARG_SPEED);
+			goto exit;
+		}
+	}
 
 exit:
 	rte_kvargs_free(kvlist);
@@ -2006,7 +2072,7 @@ static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int vdpa = 0;
 	int ret = 0;
 
-	ret = virtio_dev_devargs_parse(pci_dev->device.devargs, &vdpa);
+	ret = virtio_dev_devargs_parse(pci_dev->device.devargs, &vdpa, NULL);
 	if (ret < 0) {
 		PMD_INIT_LOG(ERR, "devargs parsing is failed");
 		return ret;
@@ -2385,8 +2451,8 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 
 	memset(&link, 0, sizeof(link));
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
-	link.link_speed  = ETH_SPEED_NUM_10G;
-	link.link_autoneg = ETH_LINK_FIXED;
+	link.link_speed  = hw->speed;
+	link.link_autoneg = ETH_LINK_AUTONEG;
 
 	if (!hw->started) {
 		link.link_status = ETH_LINK_DOWN;
@@ -2440,8 +2506,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	uint64_t tso_mask, host_features;
 	struct virtio_hw *hw = dev->data->dev_private;
-
-	dev_info->speed_capa = ETH_LINK_SPEED_10G; /* fake value */
+	dev_info->speed_capa = virtio_dev_speed_capa_get(hw->speed);
 
 	dev_info->max_rx_queues =
 		RTE_MIN(hw->max_queue_pairs, VIRTIO_MAX_RX_QUEUES);
