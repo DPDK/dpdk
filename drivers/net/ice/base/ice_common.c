@@ -2463,50 +2463,36 @@ enum ice_fec_mode ice_caps_to_fec_mode(u8 caps, u8 fec_options)
 	return ICE_FEC_NONE;
 }
 
-/**
- * ice_set_fc
- * @pi: port information structure
- * @aq_failures: pointer to status code, specific to ice_set_fc routine
- * @ena_auto_link_update: enable automatic link update
- *
- * Set the requested flow control mode.
- */
-enum ice_status
-ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
+static enum ice_status
+ice_cfg_phy_fc(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
+	       enum ice_fc_mode req_mode)
 {
-	struct ice_aqc_set_phy_cfg_data cfg = { 0 };
+	struct ice_aqc_get_phy_caps_data *pcaps = NULL;
 	struct ice_phy_cache_mode_data cache_data;
-	struct ice_aqc_get_phy_caps_data *pcaps;
-	enum ice_status status;
+	enum ice_status status = ICE_SUCCESS;
 	u8 pause_mask = 0x0;
-	struct ice_hw *hw;
 
-	if (!pi || !aq_failures)
-		return ICE_ERR_PARAM;
-
-	hw = pi->hw;
-	*aq_failures = ICE_SET_FC_AQ_FAIL_NONE;
-
-	/* Cache user FC request */
-	cache_data.data.curr_user_fc_req = pi->fc.req_mode;
-	ice_cache_phy_user_req(pi, cache_data, ICE_FC_MODE);
+	if (!pi || !cfg)
+		return ICE_ERR_BAD_PTR;
 
 	pcaps = (struct ice_aqc_get_phy_caps_data *)
-		ice_malloc(hw, sizeof(*pcaps));
+		ice_malloc(pi->hw, sizeof(*pcaps));
 	if (!pcaps)
 		return ICE_ERR_NO_MEMORY;
 
-	switch (pi->fc.req_mode) {
+	/* Cache user FC request */
+	cache_data.data.curr_user_fc_req = req_mode;
+	ice_cache_phy_user_req(pi, cache_data, ICE_FC_MODE);
+
+	switch (req_mode) {
 	case ICE_FC_AUTO:
 		/* Query the value of FC that both the NIC and attached media
 		 * can do.
 		 */
 		status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP,
 					     pcaps, NULL);
-		if (status) {
-			*aq_failures = ICE_SET_FC_AQ_FAIL_GET;
+		if (status)
 			goto out;
-		}
 
 		pause_mask |= pcaps->caps & ICE_AQC_PHY_EN_TX_LINK_PAUSE;
 		pause_mask |= pcaps->caps & ICE_AQC_PHY_EN_RX_LINK_PAUSE;
@@ -2525,8 +2511,45 @@ ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
 		break;
 	}
 
+	/* clear the old pause settings */
+	cfg->caps &= ~(ICE_AQC_PHY_EN_TX_LINK_PAUSE |
+		ICE_AQC_PHY_EN_RX_LINK_PAUSE);
+
+	/* set the new capabilities */
+	cfg->caps |= pause_mask;
+
+out:
+	ice_free(pi->hw, pcaps);
+	return status;
+}
+
+/**
+ * ice_set_fc
+ * @pi: port information structure
+ * @aq_failures: pointer to status code, specific to ice_set_fc routine
+ * @ena_auto_link_update: enable automatic link update
+ *
+ * Set the requested flow control mode.
+ */
+enum ice_status
+ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
+{
+	struct ice_aqc_set_phy_cfg_data  cfg = { 0 };
+	struct ice_aqc_get_phy_caps_data *pcaps;
+	enum ice_status status;
+	struct ice_hw *hw;
+
+	if (!pi || !aq_failures)
+		return ICE_ERR_BAD_PTR;
+
+	hw = pi->hw;
+
+	pcaps = (struct ice_aqc_get_phy_caps_data *)
+		ice_malloc(hw, sizeof(*pcaps));
+	if (!pcaps)
+		return ICE_ERR_NO_MEMORY;
+
 	/* Get the current PHY config */
-	ice_memset(pcaps, 0, sizeof(*pcaps), ICE_NONDMA_MEM);
 	status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_SW_CFG, pcaps,
 				     NULL);
 	if (status) {
@@ -2536,12 +2559,14 @@ ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
 
 	ice_copy_phy_caps_to_cfg(pi, pcaps, &cfg);
 
-	/* clear the old pause settings */
-	cfg.caps &= ~(ICE_AQC_PHY_EN_TX_LINK_PAUSE |
-		      ICE_AQC_PHY_EN_RX_LINK_PAUSE);
+	/* Configure the set phy data */
+	status = ice_cfg_phy_fc(pi, &cfg, pi->fc.req_mode);
+	if (status) {
+		if (status != ICE_ERR_BAD_PTR)
+			*aq_failures = ICE_SET_FC_AQ_FAIL_GET;
 
-	/* set the new capabilities */
-	cfg.caps |= pause_mask;
+		goto out;
+	}
 
 	/* If the capabilities have changed, then set the new config */
 	if (cfg.caps != pcaps->caps) {
