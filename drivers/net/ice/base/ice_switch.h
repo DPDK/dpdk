@@ -20,6 +20,28 @@
 #define ICE_PROFID_IPV6_AH		74
 #define ICE_PROFID_MAC_IPV6_L2TPV3	78
 
+#define DUMMY_ETH_HDR_LEN		16
+#define ICE_SW_RULE_RX_TX_ETH_HDR_SIZE \
+	(sizeof(struct ice_aqc_sw_rules_elem) - \
+	 sizeof(((struct ice_aqc_sw_rules_elem *)0)->pdata) + \
+	 sizeof(struct ice_sw_rule_lkup_rx_tx) + DUMMY_ETH_HDR_LEN - 1)
+#define ICE_SW_RULE_RX_TX_NO_HDR_SIZE \
+	(sizeof(struct ice_aqc_sw_rules_elem) - \
+	 sizeof(((struct ice_aqc_sw_rules_elem *)0)->pdata) + \
+	 sizeof(struct ice_sw_rule_lkup_rx_tx) - 1)
+#define ICE_SW_RULE_LG_ACT_SIZE(n) \
+	(sizeof(struct ice_aqc_sw_rules_elem) - \
+	 sizeof(((struct ice_aqc_sw_rules_elem *)0)->pdata) + \
+	 sizeof(struct ice_sw_rule_lg_act) - \
+	 sizeof(((struct ice_sw_rule_lg_act *)0)->act) + \
+	 ((n) * sizeof(((struct ice_sw_rule_lg_act *)0)->act)))
+#define ICE_SW_RULE_VSI_LIST_SIZE(n) \
+	(sizeof(struct ice_aqc_sw_rules_elem) - \
+	 sizeof(((struct ice_aqc_sw_rules_elem *)0)->pdata) + \
+	 sizeof(struct ice_sw_rule_vsi_list) - \
+	 sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi) + \
+	 ((n) * sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi)))
+
 /* Worst case buffer length for ice_aqc_opc_get_res_alloc */
 #define ICE_MAX_RES_TYPES 0x80
 #define ICE_AQ_GET_RES_ALLOC_BUF_LEN \
