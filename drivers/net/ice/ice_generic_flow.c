@@ -1961,3 +1961,25 @@ ice_flow_query(struct rte_eth_dev *dev,
 	}
 	return ret;
 }
+
+int
+ice_flow_redirect(struct ice_adapter *ad,
+		  struct ice_flow_redirect *rd)
+{
+	struct ice_pf *pf = &ad->pf;
+	struct rte_flow *p_flow;
+	void *temp;
+	int ret;
+
+	TAILQ_FOREACH_SAFE(p_flow, &pf->flow_list, node, temp) {
+		if (!p_flow->engine->redirect)
+			continue;
+		ret = p_flow->engine->redirect(ad, p_flow, rd);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to redirect flows");
+			return ret;
+		}
+	}
+
+	return 0;
+}

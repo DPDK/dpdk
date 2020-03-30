@@ -417,6 +417,20 @@ struct ice_pattern_match_item {
 	void *meta;
 };
 
+enum ice_flow_redirect_type {
+	ICE_FLOW_REDIRECT_VSI,
+};
+
+struct ice_flow_redirect {
+	enum ice_flow_redirect_type type;
+	union {
+		struct {
+			uint16_t vsi_handle;
+			uint16_t new_vsi_num;
+		};
+	};
+};
+
 typedef int (*engine_init_t)(struct ice_adapter *ad);
 typedef void (*engine_uninit_t)(struct ice_adapter *ad);
 typedef int (*engine_create_t)(struct ice_adapter *ad,
@@ -430,6 +444,9 @@ typedef int (*engine_query_t)(struct ice_adapter *ad,
 		struct rte_flow *flow,
 		struct rte_flow_query_count *count,
 		struct rte_flow_error *error);
+typedef int(*engine_redirect_t)(struct ice_adapter *ad,
+				struct rte_flow *flow,
+				struct ice_flow_redirect *redirect);
 typedef void (*engine_free_t) (struct rte_flow *flow);
 typedef int (*parse_pattern_action_t)(struct ice_adapter *ad,
 		struct ice_pattern_match_item *array,
@@ -447,6 +464,7 @@ struct ice_flow_engine {
 	engine_create_t create;
 	engine_destroy_t destroy;
 	engine_query_t query_count;
+	engine_redirect_t redirect;
 	engine_free_t free;
 	enum ice_flow_engine_type type;
 };
@@ -485,4 +503,7 @@ ice_search_pattern_match_item(const struct rte_flow_item pattern[],
 		struct ice_pattern_match_item *array,
 		uint32_t array_len,
 		struct rte_flow_error *error);
+int
+ice_flow_redirect(struct ice_adapter *ad,
+		  struct ice_flow_redirect *rd);
 #endif
