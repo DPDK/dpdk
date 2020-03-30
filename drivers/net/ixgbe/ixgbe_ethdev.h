@@ -358,7 +358,7 @@ struct ixgbe_l2_tn_info {
 	struct rte_hash                    *hash_handle;
 	bool e_tag_en; /* e-tag enabled */
 	bool e_tag_fwd_en; /* e-tag based forwarding enabled */
-	bool e_tag_ether_type; /* ether type for e-tag */
+	uint16_t e_tag_ether_type; /* ether type for e-tag */
 };
 
 struct rte_flow {
