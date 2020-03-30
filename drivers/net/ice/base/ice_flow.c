@@ -1161,10 +1161,8 @@ ice_flow_proc_segs(struct ice_hw *hw, struct ice_flow_prof_params *params)
 		return status;
 
 	switch (params->blk) {
+	case ICE_BLK_FD:
 	case ICE_BLK_RSS:
-		/* Only header information is provided for RSS configuration.
-		 * No further processing is needed.
-		 */
 		status = ICE_SUCCESS;
 		break;
 	case ICE_BLK_ACL:
@@ -1174,9 +1172,6 @@ ice_flow_proc_segs(struct ice_hw *hw, struct ice_flow_prof_params *params)
 		status = ice_flow_sel_acl_scen(hw, params);
 		if (status)
 			return status;
-		break;
-	case ICE_BLK_FD:
-		status = ICE_SUCCESS;
 		break;
 	case ICE_BLK_SW:
 	default:
@@ -2696,8 +2691,8 @@ ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 	e->priority = prio;
 
 	switch (blk) {
+	case ICE_BLK_FD:
 	case ICE_BLK_RSS:
-		/* RSS will add only one entry per VSI per profile */
 		break;
 	case ICE_BLK_ACL:
 		/* ACL will handle the entry management */
@@ -2710,8 +2705,6 @@ ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 		if (status)
 			goto out;
 
-		break;
-	case ICE_BLK_FD:
 		break;
 	case ICE_BLK_SW:
 	case ICE_BLK_PE:
