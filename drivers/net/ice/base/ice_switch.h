@@ -15,6 +15,11 @@
 #define ICE_FLTR_TX BIT(1)
 #define ICE_FLTR_TX_RX (ICE_FLTR_RX | ICE_FLTR_TX)
 
+/* Switch Profile IDs for Profile related switch rules */
+#define ICE_PROFID_IPV6_ESP		72
+#define ICE_PROFID_IPV6_AH		74
+#define ICE_PROFID_MAC_IPV6_L2TPV3	78
+
 /* Worst case buffer length for ice_aqc_opc_get_res_alloc */
 #define ICE_MAX_RES_TYPES 0x80
 #define ICE_AQ_GET_RES_ALLOC_BUF_LEN \

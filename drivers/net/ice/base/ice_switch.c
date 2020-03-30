@@ -5147,6 +5147,19 @@ ice_create_first_fit_recp_def(struct ice_hw *hw,
 
 	*recp_cnt = 0;
 
+	if (!lkup_exts->n_val_words) {
+		struct ice_recp_grp_entry *entry;
+
+		entry = (struct ice_recp_grp_entry *)
+			ice_malloc(hw, sizeof(*entry));
+		if (!entry)
+			return ICE_ERR_NO_MEMORY;
+		LIST_ADD(&entry->l_entry, rg_list);
+		grp = &entry->r_group;
+		(*recp_cnt)++;
+		grp->n_val_pairs = 0;
+	}
+
 	/* Walk through every word in the rule to check if it is not done. If so
 	 * then this word needs to be part of a new recipe.
 	 */
@@ -5679,6 +5692,9 @@ ice_get_fv(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 	u8 *prot_ids;
 	u16 i;
 
+	if (!lkups_cnt)
+		return ICE_SUCCESS;
+
 	prot_ids = (u8 *)ice_calloc(hw, lkups_cnt, sizeof(*prot_ids));
 	if (!prot_ids)
 		return ICE_ERR_NO_MEMORY;
@@ -5736,6 +5752,8 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 {
 	enum ice_prof_type prof_type;
 
+	ice_zero_bitmap(bm, ICE_MAX_NUM_PROFILES);
+
 	switch (rinfo->tun_type) {
 	case ICE_NON_TUN:
 		prof_type = ICE_PROF_NON_TUN;
@@ -5756,6 +5774,15 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 	case ICE_SW_TUN_PPPOE:
 		prof_type = ICE_PROF_TUN_PPPOE;
 		break;
+	case ICE_SW_TUN_PROFID_IPV6_ESP:
+		ice_set_bit(ICE_PROFID_IPV6_ESP, bm);
+		return;
+	case ICE_SW_TUN_PROFID_IPV6_AH:
+		ice_set_bit(ICE_PROFID_IPV6_AH, bm);
+		return;
+	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
+		ice_set_bit(ICE_PROFID_MAC_IPV6_L2TPV3, bm);
+		return;
 	case ICE_SW_TUN_AND_NON_TUN:
 	default:
 		prof_type = ICE_PROF_ALL;
@@ -5763,6 +5790,27 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 	}
 
 	ice_get_sw_fv_bitmap(hw, prof_type, bm);
+}
+
+/**
+ * ice_is_prof_rule - determine if rule type is a profile rule
+ * @type: the rule type
+ *
+ * if the rule type is a profile rule, that means that there no field value
+ * match required, in this case just a profile hit is required.
+ */
+static bool ice_is_prof_rule(enum ice_sw_tunnel_type type)
+{
+	switch (type) {
+	case ICE_SW_TUN_PROFID_IPV6_ESP:
+	case ICE_SW_TUN_PROFID_IPV6_AH:
+	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
 }
 
 /**
@@ -5790,7 +5838,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	bool match_tun = false;
 	u8 i;
 
-	if (!lkups_cnt)
+	if (!ice_is_prof_rule(rinfo->tun_type) && !lkups_cnt)
 		return ICE_ERR_PARAM;
 
 	lkup_exts = (struct ice_prot_lkup_ext *)
@@ -5863,6 +5911,26 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	status = ice_fill_fv_word_index(hw, &rm->fv_list, &rm->rg_list);
 	if (status)
 		goto err_unroll;
+
+	/* An empty FV list means to use all the profiles returned in the
+	 * profile bitmap
+	 */
+	if (LIST_EMPTY(&rm->fv_list)) {
+		u16 j;
+
+		for (j = 0; j < ICE_MAX_NUM_PROFILES; j++)
+			if (ice_is_bit_set(fv_bitmap, j)) {
+				struct ice_sw_fv_list_entry *fvl;
+
+				fvl = (struct ice_sw_fv_list_entry *)
+					ice_malloc(hw, sizeof(*fvl));
+				if (!fvl)
+					goto err_unroll;
+				fvl->fv_ptr = NULL;
+				fvl->profile_id = j;
+				LIST_ADD(&fvl->list_entry, &rm->fv_list);
+			}
+	}
 
 	/* get bitmap of all profiles the recipe will be associated with */
 	ice_zero_bitmap(profiles, ICE_MAX_NUM_PROFILES);
@@ -6453,6 +6521,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	struct ice_switch_info *sw;
 	enum ice_status status;
 	const u8 *pkt = NULL;
+	bool prof_rule;
 	u16 word_cnt;
 	u32 act = 0;
 	u8 q_rgn;
@@ -6463,7 +6532,8 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		ice_init_prof_result_bm(hw);
 	}
 
-	if (!lkups_cnt)
+	prof_rule = ice_is_prof_rule(rinfo->tun_type);
+	if (!prof_rule && !lkups_cnt)
 		return ICE_ERR_PARAM;
 
 	/* get # of words we need to match */
@@ -6476,8 +6546,14 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 			if (ptr[j] != 0)
 				word_cnt++;
 	}
-	if (!word_cnt || word_cnt > ICE_MAX_CHAIN_WORDS)
-		return ICE_ERR_PARAM;
+
+	if (prof_rule) {
+		if (word_cnt > ICE_MAX_CHAIN_WORDS)
+			return ICE_ERR_PARAM;
+	} else {
+		if (!word_cnt || word_cnt > ICE_MAX_CHAIN_WORDS)
+			return ICE_ERR_PARAM;
+	}
 
 	/* make sure that we can locate a dummy packet */
 	ice_find_dummy_packet(lkups, lkups_cnt, rinfo->tun_type, &pkt, &pkt_len,
@@ -6608,7 +6684,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	adv_fltr->lkups = (struct ice_adv_lkup_elem *)
 		ice_memdup(hw, lkups, lkups_cnt * sizeof(*lkups),
 			   ICE_NONDMA_TO_NONDMA);
-	if (!adv_fltr->lkups) {
+	if (!adv_fltr->lkups && !prof_rule) {
 		status = ICE_ERR_NO_MEMORY;
 		goto err_ice_add_adv_rule;
 	}

@@ -61,6 +61,9 @@ enum ice_sw_tunnel_type {
 			 */
 	ICE_SW_TUN_GTP,
 	ICE_SW_TUN_PPPOE,
+	ICE_SW_TUN_PROFID_IPV6_ESP,
+	ICE_SW_TUN_PROFID_IPV6_AH,
+	ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3,
 	ICE_ALL_TUNNELS /* All tunnel types including NVGRE */
 };
 
