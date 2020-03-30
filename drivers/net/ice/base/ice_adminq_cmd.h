@@ -976,8 +976,10 @@ struct ice_aqc_set_query_pfc_mode {
 struct ice_aqc_set_dcb_params {
 	u8 cmd_flags; /* unused in response */
 #define ICE_AQC_LINK_UP_DCB_CFG    BIT(0)
+#define ICE_AQC_PERSIST_DCB_CFG    BIT(1)
 	u8 valid_flags; /* unused in response */
 #define ICE_AQC_LINK_UP_DCB_CFG_VALID    BIT(0)
+#define ICE_AQC_PERSIST_DCB_CFG_VALID    BIT(1)
 	u8 rsvd[14];
 };
 
