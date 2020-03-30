@@ -307,8 +307,10 @@ typedef struct efx_port_s {
 	uint8_t			ep_mac_addr[6];
 	efx_link_mode_t		ep_link_mode;
 	boolean_t		ep_all_unicst;
+	boolean_t		ep_all_unicst_inserted;
 	boolean_t		ep_mulcst;
 	boolean_t		ep_all_mulcst;
+	boolean_t		ep_all_mulcst_inserted;
 	boolean_t		ep_brdcst;
 	unsigned int		ep_fcntl;
 	boolean_t		ep_fcntl_autoneg;

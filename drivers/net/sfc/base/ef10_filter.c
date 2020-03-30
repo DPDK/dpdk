@@ -1761,6 +1761,7 @@ ef10_filter_remove_all_existing_filters(
 	__in				efx_nic_t *enp)
 {
 	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
+	efx_port_t *epp = &(enp->en_port);
 	unsigned int i;
 
 	for (i = 0; i < table->eft_unicst_filter_count; i++) {
@@ -1780,6 +1781,9 @@ ef10_filter_remove_all_existing_filters(
 				table->eft_encap_filter_indexes[i]);
 	}
 	table->eft_encap_filter_count = 0;
+
+	epp->ep_all_unicst_inserted = B_FALSE;
+	epp->ep_all_mulcst_inserted = B_FALSE;
 }
 
 static			void
@@ -1812,6 +1816,7 @@ ef10_filter_insert_renew_unicst_filters(
 	__out				boolean_t *all_unicst_inserted)
 {
 	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
+	efx_port_t *epp = &(enp->en_port);
 	efx_rc_t rc;
 
 	/*
@@ -1839,6 +1844,7 @@ ef10_filter_insert_renew_unicst_filters(
 						    filter_flags);
 		if (all_unicst_rc == 0) {
 			*all_unicst_inserted = B_TRUE;
+			epp->ep_all_unicst_inserted = B_TRUE;
 		} else if (rc != 0)
 			goto fail1;
 	}
@@ -1865,6 +1871,7 @@ ef10_filter_insert_renew_mulcst_filters(
 {
 	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
 	efx_nic_cfg_t *encp = &enp->en_nic_cfg;
+	efx_port_t *epp = &(enp->en_port);
 	efx_rc_t rc;
 
 	*all_mulcst_inserted = B_FALSE;
@@ -1880,6 +1887,7 @@ ef10_filter_insert_renew_mulcst_filters(
 		all_mulcst_rc = ef10_filter_insert_all_multicast(enp,
 							    filter_flags);
 		if (all_mulcst_rc == 0) {
+			epp->ep_all_mulcst_inserted = B_TRUE;
 			*all_mulcst_inserted = B_TRUE;
 		} else {
 			rc = ef10_filter_insert_multicast_list(enp, B_TRUE,
@@ -1907,11 +1915,16 @@ ef10_filter_insert_renew_mulcst_filters(
 				 * by packets matching multiple filters.
 				 */
 				ef10_filter_remove_old(enp);
+				if (all_unicst_inserted == B_FALSE)
+					epp->ep_all_unicst_inserted = B_FALSE;
+				if (*all_mulcst_inserted == B_FALSE)
+					epp->ep_all_mulcst_inserted = B_FALSE;
 			}
 
 			rc = ef10_filter_insert_all_multicast(enp,
 							    filter_flags);
 			if (rc == 0) {
+				epp->ep_all_mulcst_inserted = B_TRUE;
 				*all_mulcst_inserted = B_TRUE;
 			} else {
 				rc = ef10_filter_insert_multicast_list(enp,
@@ -1952,6 +1965,7 @@ ef10_filter_reconfigure(
 	__in				uint32_t count)
 {
 	efx_nic_cfg_t *encp = &enp->en_nic_cfg;
+	efx_port_t *epp = &(enp->en_port);
 	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
 	efx_filter_flags_t filter_flags;
 	unsigned int i;
@@ -2024,6 +2038,10 @@ ef10_filter_reconfigure(
 		 * multicast filters.
 		 */
 		ef10_filter_remove_old(enp);
+		if (all_unicst_inserted == B_FALSE)
+			epp->ep_all_unicst_inserted = B_FALSE;
+
+		epp->ep_all_mulcst_inserted = B_FALSE;
 	}
 
 	/* Insert or renew multicast filters */
@@ -2044,6 +2062,10 @@ ef10_filter_reconfigure(
 
 	/* Remove old filters which were not renewed */
 	ef10_filter_remove_old(enp);
+	if (all_unicst_inserted == B_FALSE)
+		epp->ep_all_unicst_inserted = B_FALSE;
+	if (all_mulcst_inserted == B_FALSE)
+		epp->ep_all_mulcst_inserted = B_FALSE;
 
 	/* report if any optional flags were rejected */
 	if (((all_unicst != B_FALSE) && (all_unicst_inserted == B_FALSE)) ||

@@ -218,6 +218,21 @@ fail1:
 	return (rc);
 }
 
+					void
+efx_mac_filter_get_all_ucast_mcast(
+	__in				efx_nic_t *enp,
+	__out				boolean_t *all_unicst,
+	__out				boolean_t *all_mulcst)
+{
+	efx_port_t *epp = &(enp->en_port);
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
+
+	*all_unicst = epp->ep_all_unicst_inserted;
+	*all_mulcst = epp->ep_all_mulcst_inserted;
+}
+
 	__checkReturn			efx_rc_t
 efx_mac_drain(
 	__in				efx_nic_t *enp,

@@ -544,6 +544,12 @@ efx_mac_filter_set(
 	__in				boolean_t all_mulcst,
 	__in				boolean_t brdcst);
 
+extern					void
+efx_mac_filter_get_all_ucast_mcast(
+	__in				efx_nic_t *enp,
+	__out				boolean_t *all_unicst,
+	__out				boolean_t *all_mulcst);
+
 extern	__checkReturn	efx_rc_t
 efx_mac_multicast_list_set(
 	__in				efx_nic_t *enp,

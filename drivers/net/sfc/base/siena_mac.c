@@ -107,6 +107,7 @@ siena_mac_reconfigure(
 		rc = req.emr_rc;
 		goto fail1;
 	}
+	epp->ep_all_unicst_inserted = epp->ep_all_unicst;
 
 	/* Push multicast hash */
 
@@ -158,6 +159,7 @@ siena_mac_reconfigure(
 		rc = req.emr_rc;
 		goto fail2;
 	}
+	epp->ep_all_mulcst_inserted = epp->ep_all_mulcst;
 
 	return (0);
 
