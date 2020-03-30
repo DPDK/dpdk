@@ -1803,6 +1803,54 @@ ef10_filter_mark_old_filters(
 	}
 }
 
+static	__checkReturn	efx_rc_t
+ef10_filter_insert_renew_unicst_filters(
+	__in				efx_nic_t *enp,
+	__in_ecount(6)			uint8_t const *mac_addr,
+	__in				boolean_t all_unicst,
+	__in				efx_filter_flags_t filter_flags,
+	__out				boolean_t *all_unicst_inserted)
+{
+	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
+	efx_rc_t rc;
+
+	/*
+	 * Firmware does not perform chaining on unicast filters. As traffic is
+	 * therefore only delivered to the first matching filter, we should
+	 * always insert the specific filter for our MAC address, to try and
+	 * ensure we get that traffic.
+	 *
+	 * (If the filter for our MAC address has already been inserted by
+	 * another function, we won't receive traffic sent to us, even if we
+	 * insert a unicast mismatch filter. To prevent traffic stealing, this
+	 * therefore relies on the privilege model only allowing functions to
+	 * insert filters for their own MAC address unless explicitly given
+	 * additional privileges by the user. This also means that, even on a
+	 * privileged function, inserting a unicast mismatch filter may not
+	 * catch all traffic in multi PCI function scenarios.)
+	 */
+	table->eft_unicst_filter_count = 0;
+	rc = ef10_filter_insert_unicast(enp, mac_addr, filter_flags);
+	*all_unicst_inserted = B_FALSE;
+	if (all_unicst || (rc != 0)) {
+		efx_rc_t all_unicst_rc;
+
+		all_unicst_rc = ef10_filter_insert_all_unicast(enp,
+						    filter_flags);
+		if (all_unicst_rc == 0) {
+			*all_unicst_inserted = B_TRUE;
+		} else if (rc != 0)
+			goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 /*
  * Reconfigure all filters.
  * If all_unicst and/or all mulcst filters cannot be applied then
@@ -1824,7 +1872,7 @@ ef10_filter_reconfigure(
 	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
 	efx_filter_flags_t filter_flags;
 	unsigned int i;
-	efx_rc_t all_unicst_rc = 0;
+	boolean_t all_unicst_inserted = B_FALSE;
 	efx_rc_t all_mulcst_rc = 0;
 	efx_rc_t rc;
 
@@ -1847,31 +1895,12 @@ ef10_filter_reconfigure(
 	/* Mark old filters which may need to be removed */
 	ef10_filter_mark_old_filters(enp);
 
-	/*
-	 * Insert or renew unicast filters.
-	 *
-	 * Firmware does not perform chaining on unicast filters. As traffic is
-	 * therefore only delivered to the first matching filter, we should
-	 * always insert the specific filter for our MAC address, to try and
-	 * ensure we get that traffic.
-	 *
-	 * (If the filter for our MAC address has already been inserted by
-	 * another function, we won't receive traffic sent to us, even if we
-	 * insert a unicast mismatch filter. To prevent traffic stealing, this
-	 * therefore relies on the privilege model only allowing functions to
-	 * insert filters for their own MAC address unless explicitly given
-	 * additional privileges by the user. This also means that, even on a
-	 * priviliged function, inserting a unicast mismatch filter may not
-	 * catch all traffic in multi PCI function scenarios.)
-	 */
-	table->eft_unicst_filter_count = 0;
-	rc = ef10_filter_insert_unicast(enp, mac_addr, filter_flags);
-	if (all_unicst || (rc != 0)) {
-		all_unicst_rc = ef10_filter_insert_all_unicast(enp,
-						    filter_flags);
-		if ((rc != 0) && (all_unicst_rc != 0))
-			goto fail1;
-	}
+	/* Insert or renew unicast filters */
+	rc = ef10_filter_insert_renew_unicst_filters(enp, mac_addr, all_unicst,
+						     filter_flags,
+						     &all_unicst_inserted);
+	if (rc != 0)
+		goto fail1;
 
 	/*
 	 * WORKAROUND_BUG26807 controls firmware support for chained multicast
@@ -1974,7 +2003,7 @@ ef10_filter_reconfigure(
 	ef10_filter_remove_old(enp);
 
 	/* report if any optional flags were rejected */
-	if (((all_unicst != B_FALSE) && (all_unicst_rc != 0)) ||
+	if (((all_unicst != B_FALSE) && (all_unicst_inserted == B_FALSE)) ||
 	    ((all_mulcst != B_FALSE) && (all_mulcst_rc != 0))) {
 		rc = ENOTSUP;
 	}
