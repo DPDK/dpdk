@@ -2334,6 +2334,9 @@ ice_aq_set_phy_cfg(struct ice_hw *hw, struct ice_port_info *pi,
 
 	status = ice_aq_send_cmd(hw, &desc, cfg, sizeof(*cfg), cd);
 
+	if (hw->adminq.sq_last_status == ICE_AQ_RC_EMODE)
+		status = ICE_SUCCESS;
+
 	if (!status)
 		pi->phy.curr_user_phy_cfg = *cfg;
 
