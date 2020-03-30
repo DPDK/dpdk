@@ -1782,6 +1782,27 @@ ef10_filter_remove_all_existing_filters(
 	table->eft_encap_filter_count = 0;
 }
 
+static			void
+ef10_filter_mark_old_filters(
+	__in				efx_nic_t *enp)
+{
+	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
+	unsigned int i;
+
+	for (i = 0; i < table->eft_unicst_filter_count; i++) {
+		ef10_filter_set_entry_auto_old(table,
+					table->eft_unicst_filter_indexes[i]);
+	}
+	for (i = 0; i < table->eft_mulcst_filter_count; i++) {
+		ef10_filter_set_entry_auto_old(table,
+					table->eft_mulcst_filter_indexes[i]);
+	}
+	for (i = 0; i < table->eft_encap_filter_count; i++) {
+		ef10_filter_set_entry_auto_old(table,
+					table->eft_encap_filter_indexes[i]);
+	}
+}
+
 /*
  * Reconfigure all filters.
  * If all_unicst and/or all mulcst filters cannot be applied then
@@ -1824,18 +1845,7 @@ ef10_filter_reconfigure(
 		filter_flags = 0;
 
 	/* Mark old filters which may need to be removed */
-	for (i = 0; i < table->eft_unicst_filter_count; i++) {
-		ef10_filter_set_entry_auto_old(table,
-					table->eft_unicst_filter_indexes[i]);
-	}
-	for (i = 0; i < table->eft_mulcst_filter_count; i++) {
-		ef10_filter_set_entry_auto_old(table,
-					table->eft_mulcst_filter_indexes[i]);
-	}
-	for (i = 0; i < table->eft_encap_filter_count; i++) {
-		ef10_filter_set_entry_auto_old(table,
-					table->eft_encap_filter_indexes[i]);
-	}
+	ef10_filter_mark_old_filters(enp);
 
 	/*
 	 * Insert or renew unicast filters.
