@@ -496,9 +496,10 @@ nicvf_dev_reta_query(struct rte_eth_dev *dev,
 	int ret, i, j;
 
 	if (reta_size != NIC_MAX_RSS_IDR_TBL_SIZE) {
-		RTE_LOG(ERR, PMD, "The size of hash lookup table configured "
-			"(%d) doesn't match the number hardware can supported "
-			"(%d)", reta_size, NIC_MAX_RSS_IDR_TBL_SIZE);
+		PMD_DRV_LOG(ERR,
+			    "The size of hash lookup table configured "
+			    "(%u) doesn't match the number hardware can supported "
+			    "(%u)", reta_size, NIC_MAX_RSS_IDR_TBL_SIZE);
 		return -EINVAL;
 	}
 
@@ -526,9 +527,9 @@ nicvf_dev_reta_update(struct rte_eth_dev *dev,
 	int ret, i, j;
 
 	if (reta_size != NIC_MAX_RSS_IDR_TBL_SIZE) {
-		RTE_LOG(ERR, PMD, "The size of hash lookup table configured "
-			"(%d) doesn't match the number hardware can supported "
-			"(%d)", reta_size, NIC_MAX_RSS_IDR_TBL_SIZE);
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
+			"(%u) doesn't match the number hardware can supported "
+			"(%u)", reta_size, NIC_MAX_RSS_IDR_TBL_SIZE);
 		return -EINVAL;
 	}
 
@@ -569,8 +570,8 @@ nicvf_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	if (rss_conf->rss_key &&
 		rss_conf->rss_key_len != RSS_HASH_KEY_BYTE_SIZE) {
-		RTE_LOG(ERR, PMD, "Hash key size mismatch %d",
-				rss_conf->rss_key_len);
+		PMD_DRV_LOG(ERR, "Hash key size mismatch %u",
+			    rss_conf->rss_key_len);
 		return -EINVAL;
 	}
 
