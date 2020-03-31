@@ -331,6 +331,8 @@ struct otx2_eth_dev {
 	bool sdp_link; /* SDP flag */
 	/* Inline IPsec params */
 	uint16_t ipsec_in_max_spi;
+	uint8_t duplex;
+	uint32_t speed;
 } __rte_cache_aligned;
 
 struct otx2_eth_txq {
@@ -437,6 +439,7 @@ void otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 				     struct cgx_link_user_info *link);
 int otx2_nix_dev_set_link_up(struct rte_eth_dev *eth_dev);
 int otx2_nix_dev_set_link_down(struct rte_eth_dev *eth_dev);
+int otx2_apply_link_speed(struct rte_eth_dev *eth_dev);
 
 /* IRQ */
 int otx2_nix_register_irqs(struct rte_eth_dev *eth_dev);

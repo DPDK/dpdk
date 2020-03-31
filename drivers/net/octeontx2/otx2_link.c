@@ -72,6 +72,9 @@ otx2_eth_dev_link_status_update(struct otx2_dev *dev,
 	eth_link.link_autoneg = ETH_LINK_AUTONEG;
 	eth_link.link_duplex = link->full_duplex;
 
+	otx2_dev->speed = link->speed;
+	otx2_dev->duplex = link->full_duplex;
+
 	/* Print link info */
 	nix_link_status_print(eth_dev, &eth_link);
 
@@ -183,4 +186,79 @@ otx2_nix_dev_set_link_down(struct rte_eth_dev *eth_dev)
 		otx2_nix_tx_queue_stop(eth_dev, i);
 
 	return nix_dev_set_link_state(eth_dev, 0);
+}
+
+static int
+cgx_change_mode(struct otx2_eth_dev *dev, struct cgx_set_link_mode_args *cfg)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct cgx_set_link_mode_req *req;
+
+	req = otx2_mbox_alloc_msg_cgx_set_link_mode(mbox);
+	req->args.speed = cfg->speed;
+	req->args.duplex = cfg->duplex;
+	req->args.an = cfg->an;
+
+	return otx2_mbox_process(mbox);
+}
+
+#define SPEED_NONE 0
+static inline uint32_t
+nix_parse_link_speeds(struct otx2_eth_dev *dev, uint32_t link_speeds)
+{
+	uint32_t link_speed = SPEED_NONE;
+
+	/* 50G and 100G to be supported for board version C0 and above */
+	if (!otx2_dev_is_Ax(dev)) {
+		if (link_speeds & ETH_LINK_SPEED_100G)
+			link_speed = 100000;
+		if (link_speeds & ETH_LINK_SPEED_50G)
+			link_speed = 50000;
+	}
+	if (link_speeds & ETH_LINK_SPEED_40G)
+		link_speed = 40000;
+	if (link_speeds & ETH_LINK_SPEED_25G)
+		link_speed = 25000;
+	if (link_speeds & ETH_LINK_SPEED_20G)
+		link_speed = 20000;
+	if (link_speeds & ETH_LINK_SPEED_10G)
+		link_speed = 10000;
+	if (link_speeds & ETH_LINK_SPEED_5G)
+		link_speed = 5000;
+	if (link_speeds & ETH_LINK_SPEED_1G)
+		link_speed = 1000;
+
+	return link_speed;
+}
+
+static inline uint8_t
+nix_parse_eth_link_duplex(uint32_t link_speeds)
+{
+	if ((link_speeds & ETH_LINK_SPEED_10M_HD) ||
+			(link_speeds & ETH_LINK_SPEED_100M_HD))
+		return ETH_LINK_HALF_DUPLEX;
+	else
+		return ETH_LINK_FULL_DUPLEX;
+}
+
+int
+otx2_apply_link_speed(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct rte_eth_conf *conf = &eth_dev->data->dev_conf;
+	struct cgx_set_link_mode_args cfg;
+
+	/* If VF/SDP/LBK, link attributes cannot be changed */
+	if (otx2_dev_is_vf_or_sdp(dev) || otx2_dev_is_lbk(dev))
+		return 0;
+
+	memset(&cfg, 0, sizeof(struct cgx_set_link_mode_args));
+	cfg.speed = nix_parse_link_speeds(dev, conf->link_speeds);
+	if (cfg.speed != SPEED_NONE && cfg.speed != dev->speed) {
+		cfg.duplex = nix_parse_eth_link_duplex(conf->link_speeds);
+		cfg.an = (conf->link_speeds & ETH_LINK_SPEED_FIXED) == 0;
+
+		return cgx_change_mode(dev, &cfg);
+	}
+	return 0;
 }

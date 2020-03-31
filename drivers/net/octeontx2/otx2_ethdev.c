@@ -1598,11 +1598,6 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_configure;
 	}
 
-	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
-		otx2_err("Setting link speed/duplex not supported");
-		goto fail_configure;
-	}
-
 	if (conf->dcb_capability_en == 1) {
 		otx2_err("dcb enable is not supported");
 		goto fail_configure;
@@ -1782,6 +1777,13 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		rte_eth_random_addr((uint8_t *)ea);
 
 	rte_ether_format_addr(ea_fmt, RTE_ETHER_ADDR_FMT_SIZE, ea);
+
+	/* Apply new link configurations if changed */
+	rc = otx2_apply_link_speed(eth_dev);
+	if (rc) {
+		otx2_err("Failed to set link configuration");
+		goto uninstall_mc_list;
+	}
 
 	otx2_nix_dbg("Configured port%d mac=%s nb_rxq=%d nb_txq=%d"
 		" rx_offloads=0x%" PRIx64 " tx_offloads=0x%" PRIx64 ""
