@@ -69,6 +69,7 @@ struct l2fwd_resources {
 	uint8_t sched_type;
 	uint8_t mac_updating;
 	uint8_t rx_queue_per_lcore;
+	bool port_pairs;
 	uint16_t nb_rxd;
 	uint16_t nb_txd;
 	uint32_t enabled_port_mask;

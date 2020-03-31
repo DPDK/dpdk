@@ -66,6 +66,8 @@ where,
 
 *   --eventq-sched=SCHED_MODE: Event queue schedule mode, Ordered, Atomic or Parallel. Atomic by default.
 
+*   --config: Configure forwarding port pair mapping. Alternate port pairs by default.
+
 Sample usage commands are given below to run the application into different mode:
 
 Poll mode with 4 lcores, 16 ports and 8 RX queues per lcore and MAC address updating enabled,
