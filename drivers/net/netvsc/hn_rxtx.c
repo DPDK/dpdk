@@ -18,6 +18,7 @@
 #include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_atomic.h>
+#include <rte_bitmap.h>
 #include <rte_branch_prediction.h>
 #include <rte_ether.h>
 #include <rte_common.h>
@@ -83,7 +84,7 @@ struct hn_txdesc {
 	struct rte_mbuf *m;
 
 	uint16_t	queue_id;
-	uint16_t	chim_index;
+	uint32_t	chim_index;
 	uint32_t	chim_size;
 	uint32_t	data_size;
 	uint32_t	packets;
@@ -98,11 +99,13 @@ struct hn_txdesc {
 	 RNDIS_PKTINFO_SIZE(NDIS_LSO2_INFO_SIZE) +	\
 	 RNDIS_PKTINFO_SIZE(NDIS_TXCSUM_INFO_SIZE))
 
+#define HN_RNDIS_PKT_ALIGNED	RTE_ALIGN(HN_RNDIS_PKT_LEN, RTE_CACHE_LINE_SIZE)
+
 /* Minimum space required for a packet */
 #define HN_PKTSIZE_MIN(align) \
 	RTE_ALIGN(RTE_ETHER_MIN_LEN + HN_RNDIS_PKT_LEN, align)
 
-#define DEFAULT_TX_FREE_THRESH 32U
+#define DEFAULT_TX_FREE_THRESH 32
 
 static void
 hn_update_packet_stats(struct hn_stats *stats, const struct rte_mbuf *m)
@@ -150,63 +153,77 @@ hn_rndis_pktmsg_offset(uint32_t ofs)
 static void hn_txd_init(struct rte_mempool *mp __rte_unused,
 			void *opaque, void *obj, unsigned int idx)
 {
+	struct hn_tx_queue *txq = opaque;
 	struct hn_txdesc *txd = obj;
-	struct rte_eth_dev *dev = opaque;
-	struct rndis_packet_msg *pkt;
 
 	memset(txd, 0, sizeof(*txd));
-	txd->chim_index = idx;
 
-	pkt = rte_malloc_socket("RNDIS_TX", HN_RNDIS_PKT_LEN,
-				rte_align32pow2(HN_RNDIS_PKT_LEN),
-				dev->device->numa_node);
-	if (!pkt)
-		rte_exit(EXIT_FAILURE, "can not allocate RNDIS header");
-
-	txd->rndis_pkt = pkt;
+	txd->queue_id = txq->queue_id;
+	txd->chim_index = NVS_CHIM_IDX_INVALID;
+	txd->rndis_pkt = (struct rndis_packet_msg *)(char *)txq->tx_rndis
+		+ idx * HN_RNDIS_PKT_ALIGNED;
 }
 
-/*
- * Unlike Linux and FreeBSD, this driver uses a mempool
- * to limit outstanding transmits and reserve buffers
- */
 int
-hn_tx_pool_init(struct rte_eth_dev *dev)
+hn_chim_init(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
-	char name[RTE_MEMPOOL_NAMESIZE];
-	struct rte_mempool *mp;
+	uint32_t i, chim_bmp_size;
 
-	snprintf(name, sizeof(name),
-		 "hn_txd_%u", dev->data->port_id);
-
-	PMD_INIT_LOG(DEBUG, "create a TX send pool %s n=%u size=%zu socket=%d",
-		     name, hv->chim_cnt, sizeof(struct hn_txdesc),
-		     dev->device->numa_node);
-
-	mp = rte_mempool_create(name, hv->chim_cnt, sizeof(struct hn_txdesc),
-				HN_TXD_CACHE_SIZE, 0,
-				NULL, NULL,
-				hn_txd_init, dev,
-				dev->device->numa_node, 0);
-	if (!mp) {
-		PMD_DRV_LOG(ERR,
-			    "mempool %s create failed: %d", name, rte_errno);
-		return -rte_errno;
+	rte_spinlock_init(&hv->chim_lock);
+	chim_bmp_size = rte_bitmap_get_memory_footprint(hv->chim_cnt);
+	hv->chim_bmem = rte_zmalloc("hn_chim_bitmap", chim_bmp_size,
+				    RTE_CACHE_LINE_SIZE);
+	if (hv->chim_bmem == NULL) {
+		PMD_INIT_LOG(ERR, "failed to allocate bitmap size %u",
+			     chim_bmp_size);
+		return -1;
 	}
 
-	hv->tx_pool = mp;
+	hv->chim_bmap = rte_bitmap_init(hv->chim_cnt,
+					hv->chim_bmem, chim_bmp_size);
+	if (hv->chim_bmap == NULL) {
+		PMD_INIT_LOG(ERR, "failed to init chim bitmap");
+		return -1;
+	}
+
+	for (i = 0; i < hv->chim_cnt; i++)
+		rte_bitmap_set(hv->chim_bmap, i);
+
 	return 0;
 }
 
 void
-hn_tx_pool_uninit(struct rte_eth_dev *dev)
+hn_chim_uninit(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
 
-	if (hv->tx_pool) {
-		rte_mempool_free(hv->tx_pool);
-		hv->tx_pool = NULL;
+	rte_bitmap_free(hv->chim_bmap);
+	rte_free(hv->chim_bmem);
+	hv->chim_bmem = NULL;
+}
+
+static uint32_t hn_chim_alloc(struct hn_data *hv)
+{
+	uint32_t index = NVS_CHIM_IDX_INVALID;
+	uint64_t slab;
+
+	rte_spinlock_lock(&hv->chim_lock);
+	if (rte_bitmap_scan(hv->chim_bmap, &index, &slab))
+		rte_bitmap_clear(hv->chim_bmap, index);
+	rte_spinlock_unlock(&hv->chim_lock);
+
+	return index;
+}
+
+static void hn_chim_free(struct hn_data *hv, uint32_t chim_idx)
+{
+	if (chim_idx >= hv->chim_cnt) {
+		PMD_DRV_LOG(ERR, "Invalid chimney index %u", chim_idx);
+	} else {
+		rte_spinlock_lock(&hv->chim_lock);
+		rte_bitmap_set(hv->chim_bmap, chim_idx);
+		rte_spinlock_unlock(&hv->chim_lock);
 	}
 }
 
@@ -220,15 +237,16 @@ static void hn_reset_txagg(struct hn_tx_queue *txq)
 
 int
 hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
-		      uint16_t queue_idx, uint16_t nb_desc __rte_unused,
+		      uint16_t queue_idx, uint16_t nb_desc,
 		      unsigned int socket_id,
 		      const struct rte_eth_txconf *tx_conf)
 
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct hn_tx_queue *txq;
+	char name[RTE_MEMPOOL_NAMESIZE];
 	uint32_t tx_free_thresh;
-	int err;
+	int err = -ENOMEM;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -244,13 +262,41 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	tx_free_thresh = tx_conf->tx_free_thresh;
 	if (tx_free_thresh == 0)
-		tx_free_thresh = RTE_MIN(hv->chim_cnt / 4,
+		tx_free_thresh = RTE_MIN(nb_desc / 4,
 					 DEFAULT_TX_FREE_THRESH);
 
-	if (tx_free_thresh >= hv->chim_cnt - 3)
-		tx_free_thresh = hv->chim_cnt - 3;
+	if (tx_free_thresh + 3 >= nb_desc) {
+		PMD_INIT_LOG(ERR,
+			     "tx_free_thresh must be less than the number of TX entries minus 3(%u)."
+			     " (tx_free_thresh=%u port=%u queue=%u)\n",
+			     nb_desc - 3,
+			     tx_free_thresh, dev->data->port_id, queue_idx);
+		return -EINVAL;
+	}
 
 	txq->free_thresh = tx_free_thresh;
+
+	snprintf(name, sizeof(name),
+		 "hn_txd_%u_%u", dev->data->port_id, queue_idx);
+
+	PMD_INIT_LOG(DEBUG, "TX descriptor pool %s n=%u size=%zu",
+		     name, nb_desc, sizeof(struct hn_txdesc));
+
+	txq->tx_rndis = rte_calloc("hn_txq_rndis", nb_desc,
+				   HN_RNDIS_PKT_ALIGNED, RTE_CACHE_LINE_SIZE);
+	if (txq->tx_rndis == NULL)
+		goto error;
+
+	txq->txdesc_pool = rte_mempool_create(name, nb_desc,
+					      sizeof(struct hn_txdesc),
+					      0, 0, NULL, NULL,
+					      hn_txd_init, txq,
+					      dev->device->numa_node, 0);
+	if (txq->txdesc_pool == NULL) {
+		PMD_DRV_LOG(ERR,
+			    "mempool %s create failed: %d", name, rte_errno);
+		goto error;
+	}
 
 	txq->agg_szmax  = RTE_MIN(hv->chim_szmax, hv->rndis_agg_size);
 	txq->agg_pktmax = hv->rndis_agg_pkts;
@@ -260,31 +306,57 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	err = hn_vf_tx_queue_setup(dev, queue_idx, nb_desc,
 				     socket_id, tx_conf);
-	if (err) {
-		rte_free(txq);
-		return err;
+	if (err == 0) {
+		dev->data->tx_queues[queue_idx] = txq;
+		return 0;
 	}
 
-	dev->data->tx_queues[queue_idx] = txq;
-	return 0;
+error:
+	if (txq->txdesc_pool)
+		rte_mempool_free(txq->txdesc_pool);
+	rte_free(txq->tx_rndis);
+	rte_free(txq);
+	return err;
+}
+
+
+static struct hn_txdesc *hn_txd_get(struct hn_tx_queue *txq)
+{
+	struct hn_txdesc *txd;
+
+	if (rte_mempool_get(txq->txdesc_pool, (void **)&txd)) {
+		++txq->stats.ring_full;
+		PMD_TX_LOG(DEBUG, "tx pool exhausted!");
+		return NULL;
+	}
+
+	txd->m = NULL;
+	txd->packets = 0;
+	txd->data_size = 0;
+	txd->chim_size = 0;
+
+	return txd;
+}
+
+static void hn_txd_put(struct hn_tx_queue *txq, struct hn_txdesc *txd)
+{
+	rte_mempool_put(txq->txdesc_pool, txd);
 }
 
 void
 hn_dev_tx_queue_release(void *arg)
 {
 	struct hn_tx_queue *txq = arg;
-	struct hn_txdesc *txd;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (!txq)
 		return;
 
-	/* If any pending data is still present just drop it */
-	txd = txq->agg_txd;
-	if (txd)
-		rte_mempool_put(txq->hv->tx_pool, txd);
+	if (txq->txdesc_pool)
+		rte_mempool_free(txq->txdesc_pool);
 
+	rte_free(txq->tx_rndis);
 	rte_free(txq);
 }
 
@@ -292,6 +364,7 @@ static void
 hn_nvs_send_completed(struct rte_eth_dev *dev, uint16_t queue_id,
 		      unsigned long xactid, const struct hn_nvs_rndis_ack *ack)
 {
+	struct hn_data *hv = dev->data->dev_private;
 	struct hn_txdesc *txd = (struct hn_txdesc *)xactid;
 	struct hn_tx_queue *txq;
 
@@ -312,9 +385,11 @@ hn_nvs_send_completed(struct rte_eth_dev *dev, uint16_t queue_id,
 		++txq->stats.errors;
 	}
 
-	rte_pktmbuf_free(txd->m);
+	if (txd->chim_index != NVS_CHIM_IDX_INVALID)
+		hn_chim_free(hv, txd->chim_index);
 
-	rte_mempool_put(txq->hv->tx_pool, txd);
+	rte_pktmbuf_free(txd->m);
+	hn_txd_put(txq, txd);
 }
 
 /* Handle transmit completion events */
@@ -1036,28 +1111,15 @@ static int hn_flush_txagg(struct hn_tx_queue *txq, bool *need_sig)
 	return ret;
 }
 
-static struct hn_txdesc *hn_new_txd(struct hn_data *hv,
-				    struct hn_tx_queue *txq)
-{
-	struct hn_txdesc *txd;
-
-	if (rte_mempool_get(hv->tx_pool, (void **)&txd)) {
-		++txq->stats.ring_full;
-		PMD_TX_LOG(DEBUG, "tx pool exhausted!");
-		return NULL;
-	}
-
-	txd->m = NULL;
-	txd->queue_id = txq->queue_id;
-	txd->packets = 0;
-	txd->data_size = 0;
-	txd->chim_size = 0;
-
-	return txd;
-}
-
+/*
+ * Try and find a place in a send chimney buffer to put
+ * the small packet. If space is available, this routine
+ * returns a pointer of where to place the data.
+ * If no space, caller should try direct transmit.
+ */
 static void *
-hn_try_txagg(struct hn_data *hv, struct hn_tx_queue *txq, uint32_t pktsize)
+hn_try_txagg(struct hn_data *hv, struct hn_tx_queue *txq,
+	     struct hn_txdesc *txd, uint32_t pktsize)
 {
 	struct hn_txdesc *agg_txd = txq->agg_txd;
 	struct rndis_packet_msg *pkt;
@@ -1085,7 +1147,7 @@ hn_try_txagg(struct hn_data *hv, struct hn_tx_queue *txq, uint32_t pktsize)
 		}
 
 		chim = (uint8_t *)pkt + pkt->len;
-
+		txq->agg_prevpkt = chim;
 		txq->agg_pktleft--;
 		txq->agg_szleft -= pktsize;
 		if (txq->agg_szleft < HN_PKTSIZE_MIN(txq->agg_align)) {
@@ -1095,18 +1157,21 @@ hn_try_txagg(struct hn_data *hv, struct hn_tx_queue *txq, uint32_t pktsize)
 			 */
 			txq->agg_pktleft = 0;
 		}
-	} else {
-		agg_txd = hn_new_txd(hv, txq);
-		if (!agg_txd)
-			return NULL;
 
-		chim = (uint8_t *)hv->chim_res->addr
-			+ agg_txd->chim_index * hv->chim_szmax;
-
-		txq->agg_txd = agg_txd;
-		txq->agg_pktleft = txq->agg_pktmax - 1;
-		txq->agg_szleft = txq->agg_szmax - pktsize;
+		hn_txd_put(txq, txd);
+		return chim;
 	}
+
+	txd->chim_index = hn_chim_alloc(hv);
+	if (txd->chim_index == NVS_CHIM_IDX_INVALID)
+		return NULL;
+
+	chim = (uint8_t *)hv->chim_res->addr
+			+ txd->chim_index * hv->chim_szmax;
+
+	txq->agg_txd = txd;
+	txq->agg_pktleft = txq->agg_pktmax - 1;
+	txq->agg_szleft = txq->agg_szmax - pktsize;
 	txq->agg_prevpkt = chim;
 
 	return chim;
@@ -1329,13 +1394,18 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		return (*vf_dev->tx_pkt_burst)(sub_q, tx_pkts, nb_pkts);
 	}
 
-	if (rte_mempool_avail_count(hv->tx_pool) <= txq->free_thresh)
+	if (rte_mempool_avail_count(txq->txdesc_pool) <= txq->free_thresh)
 		hn_process_events(hv, txq->queue_id, 0);
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		struct rte_mbuf *m = tx_pkts[nb_tx];
 		uint32_t pkt_size = m->pkt_len + HN_RNDIS_PKT_LEN;
 		struct rndis_packet_msg *pkt;
+		struct hn_txdesc *txd;
+
+		txd = hn_txd_get(txq);
+		if (txd == NULL)
+			break;
 
 		/* For small packets aggregate them in chimney buffer */
 		if (m->pkt_len < HN_TXCOPY_THRESHOLD && pkt_size <= txq->agg_szmax) {
@@ -1346,7 +1416,8 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					goto fail;
 			}
 
-			pkt = hn_try_txagg(hv, txq, pkt_size);
+
+			pkt = hn_try_txagg(hv, txq, txd, pkt_size);
 			if (unlikely(!pkt))
 				break;
 
@@ -1360,21 +1431,13 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			    hn_flush_txagg(txq, &need_sig))
 				goto fail;
 		} else {
-			struct hn_txdesc *txd;
-
-			/* can send chimney data and large packet at once */
-			txd = txq->agg_txd;
-			if (txd) {
-				hn_reset_txagg(txq);
-			} else {
-				txd = hn_new_txd(hv, txq);
-				if (unlikely(!txd))
-					break;
-			}
+			/* Send any outstanding packets in buffer */
+			if (txq->agg_txd && hn_flush_txagg(txq, &need_sig))
+				goto fail;
 
 			pkt = txd->rndis_pkt;
 			txd->m = m;
-			txd->data_size += m->pkt_len;
+			txd->data_size = m->pkt_len;
 			++txd->packets;
 
 			hn_encap(pkt, queue_id, m);
@@ -1383,7 +1446,7 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			if (unlikely(ret != 0)) {
 				PMD_TX_LOG(NOTICE, "sg send failed: %d", ret);
 				++txq->stats.errors;
-				rte_mempool_put(hv->tx_pool, txd);
+				hn_txd_put(txq, txd);
 				goto fail;
 			}
 		}

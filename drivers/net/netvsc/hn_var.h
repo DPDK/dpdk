@@ -52,6 +52,8 @@ struct hn_tx_queue {
 	uint16_t	port_id;
 	uint16_t	queue_id;
 	uint32_t	free_thresh;
+	struct rte_mempool *txdesc_pool;
+	void		*tx_rndis;
 
 	/* Applied packet transmission aggregation limits. */
 	uint32_t	agg_szmax;
@@ -115,8 +117,10 @@ struct hn_data {
 	uint16_t	num_queues;
 	uint64_t	rss_offloads;
 
+	rte_spinlock_t	chim_lock;
 	struct rte_mem_resource *chim_res;	/* UIO resource for Tx */
-	struct rte_mempool *tx_pool;		/* Tx descriptors */
+	struct rte_bitmap *chim_bmap;		/* Send buffer map */
+	void		*chim_bmem;
 	uint32_t	chim_szmax;		/* Max size per buffer */
 	uint32_t	chim_cnt;		/* Max packets per buffer */
 
@@ -157,8 +161,8 @@ uint16_t hn_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 uint16_t hn_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		      uint16_t nb_pkts);
 
-int	hn_tx_pool_init(struct rte_eth_dev *dev);
-void	hn_tx_pool_uninit(struct rte_eth_dev *dev);
+int	hn_chim_init(struct rte_eth_dev *dev);
+void	hn_chim_uninit(struct rte_eth_dev *dev);
 int	hn_dev_link_update(struct rte_eth_dev *dev, int wait);
 int	hn_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			      uint16_t nb_desc, unsigned int socket_id,

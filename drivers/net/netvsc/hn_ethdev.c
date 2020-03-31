@@ -257,6 +257,9 @@ static int hn_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = hv->max_queues;
 	dev_info->max_tx_queues = hv->max_queues;
 
+	dev_info->tx_desc_lim.nb_min = 1;
+	dev_info->tx_desc_lim.nb_max = 4096;
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
@@ -982,7 +985,7 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	if  (err)
 		goto failed;
 
-	err = hn_tx_pool_init(eth_dev);
+	err = hn_chim_init(eth_dev);
 	if (err)
 		goto failed;
 
@@ -1018,7 +1021,7 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 failed:
 	PMD_INIT_LOG(NOTICE, "device init failed");
 
-	hn_tx_pool_uninit(eth_dev);
+	hn_chim_uninit(eth_dev);
 	hn_detach(hv);
 	return err;
 }
@@ -1042,7 +1045,7 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = NULL;
 
 	hn_detach(hv);
-	hn_tx_pool_uninit(eth_dev);
+	hn_chim_uninit(eth_dev);
 	rte_vmbus_chan_close(hv->primary->chan);
 	rte_free(hv->primary);
 	ret = rte_eth_dev_owner_delete(hv->owner.id);
