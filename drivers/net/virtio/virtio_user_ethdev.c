@@ -561,7 +561,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 		const char *name = rte_vdev_device_name(dev);
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
-			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			PMD_INIT_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
 

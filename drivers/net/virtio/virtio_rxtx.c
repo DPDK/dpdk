@@ -1085,7 +1085,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			RTE_MIN(vq->vq_nentries / 4, DEFAULT_TX_FREE_THRESH);
 
 	if (tx_free_thresh >= (vq->vq_nentries - 3)) {
-		RTE_LOG(ERR, PMD, "tx_free_thresh must be less than the "
+		PMD_DRV_LOG(ERR, "tx_free_thresh must be less than the "
 			"number of TX entries minus 3 (%u)."
 			" (tx_free_thresh=%u port=%u queue=%u)\n",
 			vq->vq_nentries - 3,
@@ -1133,7 +1133,7 @@ virtio_discard_rxbuf(struct virtqueue *vq, struct rte_mbuf *m)
 		error = virtqueue_enqueue_recv_refill(vq, &m, 1);
 
 	if (unlikely(error)) {
-		RTE_LOG(ERR, PMD, "cannot requeue discarded mbuf");
+		PMD_DRV_LOG(ERR, "cannot requeue discarded mbuf");
 		rte_pktmbuf_free(m);
 	}
 }
@@ -1145,7 +1145,7 @@ virtio_discard_rxbuf_inorder(struct virtqueue *vq, struct rte_mbuf *m)
 
 	error = virtqueue_enqueue_refill_inorder(vq, &m, 1);
 	if (unlikely(error)) {
-		RTE_LOG(ERR, PMD, "cannot requeue discarded mbuf");
+		PMD_DRV_LOG(ERR, "cannot requeue discarded mbuf");
 		rte_pktmbuf_free(m);
 	}
 }
