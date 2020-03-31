@@ -990,7 +990,7 @@ pmd_pfe_probe(struct rte_vdev_device *vdev)
 	if (rc < 0)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD, "Initializing pmd_pfe for %s Given gem-id %d\n",
+	PFE_PMD_LOG(INFO, "Initializing pmd_pfe for %s Given gem-id %d",
 		name, init_params.gem_id);
 
 	if (g_pfe) {
@@ -1118,7 +1118,7 @@ eth_init:
 	else
 		gem_id = init_params.gem_id;
 
-	RTE_LOG(INFO, PMD, "Init pmd_pfe for %s gem-id %d(given =%d)\n",
+	PFE_PMD_LOG(INFO, "Init pmd_pfe for %s gem-id %d(given =%d)",
 		name, gem_id, init_params.gem_id);
 
 	rc = pfe_eth_init(vdev, g_pfe, gem_id);
