@@ -1037,7 +1037,6 @@ static const enum index item_pppoes[] = {
 };
 
 static const enum index item_pppoe_proto_id[] = {
-	ITEM_PPPOE_PROTO_ID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2649,11 +2648,14 @@ static const struct token token_list[] = {
 					session_id)),
 	},
 	[ITEM_PPPOE_PROTO_ID] = {
-		.name = "proto_id",
+		.name = "pppoe_proto_id",
 		.help = "match PPPoE session protocol identifier",
 		.priv = PRIV_ITEM(PPPOE_PROTO_ID,
 				sizeof(struct rte_flow_item_pppoe_proto_id)),
-		.next = NEXT(item_pppoe_proto_id),
+		.next = NEXT(item_pppoe_proto_id, NEXT_ENTRY(UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_item_pppoe_proto_id, proto_id)),
 		.call = parse_vc,
 	},
 	[ITEM_HIGIG2] = {
