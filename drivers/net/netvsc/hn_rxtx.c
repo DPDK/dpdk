@@ -969,10 +969,6 @@ uint32_t hn_process_events(struct hn_data *hv, uint16_t queue_id,
 
 	rxq = queue_id == 0 ? hv->primary : dev->data->rx_queues[queue_id];
 
-	/* If no pending data then nothing to do */
-	if (rte_vmbus_chan_rx_empty(rxq->chan))
-		return 0;
-
 	/*
 	 * Since channel is shared between Rx and TX queue need to have a lock
 	 * since DPDK does not force same CPU to be used for Rx/Tx.
