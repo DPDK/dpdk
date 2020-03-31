@@ -1375,7 +1375,7 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct hn_data *hv = txq->hv;
 	struct rte_eth_dev *vf_dev;
 	bool need_sig = false;
-	uint16_t nb_tx;
+	uint16_t nb_tx, avail;
 	int ret;
 
 	if (unlikely(hv->closed))
@@ -1390,7 +1390,8 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		return (*vf_dev->tx_pkt_burst)(sub_q, tx_pkts, nb_pkts);
 	}
 
-	if (rte_mempool_avail_count(txq->txdesc_pool) <= txq->free_thresh)
+	avail = rte_mempool_avail_count(txq->txdesc_pool);
+	if (nb_pkts > avail || avail <= txq->free_thresh)
 		hn_process_events(hv, txq->queue_id, 0);
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
