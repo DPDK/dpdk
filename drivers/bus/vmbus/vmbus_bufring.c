@@ -54,10 +54,10 @@ void vmbus_br_setup(struct vmbus_br *br, void *buf, unsigned int blen)
  *   data have arrived.
  */
 static inline bool
-vmbus_txbr_need_signal(const struct vmbus_br *tbr, uint32_t old_windex)
+vmbus_txbr_need_signal(const struct vmbus_bufring *vbr, uint32_t old_windex)
 {
 	rte_smp_mb();
-	if (tbr->vbr->imask)
+	if (vbr->imask)
 		return false;
 
 	rte_smp_rmb();
@@ -66,7 +66,7 @@ vmbus_txbr_need_signal(const struct vmbus_br *tbr, uint32_t old_windex)
 	 * This is the only case we need to signal when the
 	 * ring transitions from being empty to non-empty.
 	 */
-	return old_windex == tbr->vbr->rindex;
+	return old_windex == vbr->rindex;
 }
 
 static inline uint32_t
@@ -163,7 +163,7 @@ vmbus_txbr_write(struct vmbus_br *tbr, const struct iovec iov[], int iovlen,
 		rte_pause();
 
 	/* If host had read all data before this, then need to signal */
-	*need_sig |= vmbus_txbr_need_signal(tbr, old_windex);
+	*need_sig |= vmbus_txbr_need_signal(vbr, old_windex);
 	return 0;
 }
 
