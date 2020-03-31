@@ -54,7 +54,7 @@ static int hn_nvs_req_send(struct hn_data *hv,
 }
 
 static int
-hn_nvs_execute(struct hn_data *hv,
+__hn_nvs_execute(struct hn_data *hv,
 	       void *req, uint32_t reqlen,
 	       void *resp, uint32_t resplen,
 	       uint32_t type)
@@ -62,6 +62,7 @@ hn_nvs_execute(struct hn_data *hv,
 	struct vmbus_channel *chan = hn_primary_chan(hv);
 	char buffer[NVS_RESPSIZE_MAX];
 	const struct hn_nvs_hdr *hdr;
+	uint64_t xactid;
 	uint32_t len;
 	int ret;
 
@@ -77,7 +78,7 @@ hn_nvs_execute(struct hn_data *hv,
 
  retry:
 	len = sizeof(buffer);
-	ret = rte_vmbus_chan_recv(chan, buffer, &len, NULL);
+	ret = rte_vmbus_chan_recv(chan, buffer, &len, &xactid);
 	if (ret == -EAGAIN) {
 		rte_delay_us(HN_CHAN_INTERVAL_US);
 		goto retry;
@@ -88,7 +89,20 @@ hn_nvs_execute(struct hn_data *hv,
 		return ret;
 	}
 
+	if (len < sizeof(*hdr)) {
+		PMD_DRV_LOG(ERR, "response missing NVS header");
+		return -EINVAL;
+	}
+
 	hdr = (struct hn_nvs_hdr *)buffer;
+
+	/* Silently drop received packets while waiting for response */
+	if (hdr->type == NVS_TYPE_RNDIS) {
+		hn_nvs_ack_rxbuf(chan, xactid);
+		--hv->rxbuf_outstanding;
+		goto retry;
+	}
+
 	if (hdr->type != type) {
 		PMD_DRV_LOG(ERR, "unexpected NVS resp %#x, expect %#x",
 			    hdr->type, type);
@@ -106,6 +120,29 @@ hn_nvs_execute(struct hn_data *hv,
 
 	/* All pass! */
 	return 0;
+}
+
+
+/*
+ * Execute one control command and get the response.
+ * Only one command can be active on a channel at once
+ * Unlike BSD, DPDK does not have an interrupt context
+ * so the polling is required to wait for response.
+ */
+static int
+hn_nvs_execute(struct hn_data *hv,
+	       void *req, uint32_t reqlen,
+	       void *resp, uint32_t resplen,
+	       uint32_t type)
+{
+	struct hn_rx_queue *rxq = hv->primary;
+	int ret;
+
+	rte_spinlock_lock(&rxq->ring_lock);
+	ret = __hn_nvs_execute(hv, req, reqlen, resp, resplen, type);
+	rte_spinlock_unlock(&rxq->ring_lock);
+
+	return ret;
 }
 
 static int
