@@ -167,6 +167,17 @@ hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
 		hn_vf_remove(hv);
 }
 
+static void
+hn_vf_merge_desc_lim(struct rte_eth_desc_lim *lim,
+		     const struct rte_eth_desc_lim *vf_lim)
+{
+	lim->nb_max = RTE_MIN(vf_lim->nb_max, lim->nb_max);
+	lim->nb_min = RTE_MAX(vf_lim->nb_min, lim->nb_min);
+	lim->nb_align = RTE_MAX(vf_lim->nb_align, lim->nb_align);
+	lim->nb_seg_max = RTE_MIN(vf_lim->nb_seg_max, lim->nb_seg_max);
+	lim->nb_mtu_seg_max = RTE_MIN(vf_lim->nb_seg_max, lim->nb_seg_max);
+}
+
 /*
  * Merge the info from the VF and synthetic path.
  * use the default config of the VF
@@ -196,11 +207,13 @@ static int hn_vf_info_merge(struct rte_eth_dev *vf_dev,
 				      info->max_tx_queues);
 	info->tx_offload_capa &= vf_info.tx_offload_capa;
 	info->tx_queue_offload_capa &= vf_info.tx_queue_offload_capa;
+	hn_vf_merge_desc_lim(&info->tx_desc_lim, &vf_info.tx_desc_lim);
 
 	info->min_rx_bufsize = RTE_MAX(vf_info.min_rx_bufsize,
 				       info->min_rx_bufsize);
 	info->max_rx_pktlen  = RTE_MAX(vf_info.max_rx_pktlen,
 				       info->max_rx_pktlen);
+	hn_vf_merge_desc_lim(&info->rx_desc_lim, &vf_info.rx_desc_lim);
 
 	return 0;
 }
