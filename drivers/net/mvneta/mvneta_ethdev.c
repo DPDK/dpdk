@@ -751,7 +751,7 @@ mvneta_stats_reset(struct rte_eth_dev *dev)
 
 	ret = mvneta_stats_get(dev, &priv->prev_stats);
 	if (unlikely(ret))
-		RTE_LOG(ERR, PMD, "Failed to reset port statistics");
+		MVNETA_LOG(ERR, "Failed to reset port statistics");
 
 	return ret;
 }
