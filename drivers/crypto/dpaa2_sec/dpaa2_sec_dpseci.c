@@ -3719,10 +3719,6 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 
 	PMD_INIT_FUNC_TRACE();
 	dpaa2_dev = container_of(dev, struct rte_dpaa2_device, device);
-	if (dpaa2_dev == NULL) {
-		DPAA2_SEC_ERR("DPAA2 SEC device not found");
-		return -1;
-	}
 	hw_id = dpaa2_dev->object_id;
 
 	cryptodev->driver_id = cryptodev_driver_id;
