@@ -139,8 +139,6 @@ struct hn_data {
 	uint8_t		rss_key[40];
 	uint16_t	rss_ind[128];
 
-	struct rte_ether_addr mac_addr;
-
 	struct rte_eth_dev_owner owner;
 	struct rte_intr_handle vf_intr;
 
