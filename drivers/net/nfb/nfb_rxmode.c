@@ -54,7 +54,8 @@ nfb_eth_promiscuous_get(struct rte_eth_dev *dev)
 	struct nc_rxmac_status status;
 	status.mac_filter = RXMAC_MAC_FILTER_PROMISCUOUS;
 
-	nc_rxmac_read_status(internals->rxmac[0], &status);
+	if (internals->max_rxmac > 0)
+		nc_rxmac_read_status(internals->rxmac[0], &status);
 
 	return (status.mac_filter == RXMAC_MAC_FILTER_PROMISCUOUS);
 }
@@ -102,7 +103,9 @@ nfb_eth_allmulticast_get(struct rte_eth_dev *dev)
 
 	struct nc_rxmac_status status;
 	status.mac_filter = RXMAC_MAC_FILTER_PROMISCUOUS;
-	nc_rxmac_read_status(internals->rxmac[0], &status);
+
+	if (internals->max_rxmac > 0)
+		nc_rxmac_read_status(internals->rxmac[0], &status);
 
 	return (status.mac_filter == RXMAC_MAC_FILTER_TABLE_BCAST_MCAST);
 }
