@@ -1062,7 +1062,13 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] = IPPROTO_NONE,
 	};
 
+	rte_memcpy(raw_pkt, &fdir_input->flow.l2_flow.dst,
+		sizeof(struct rte_ether_addr));
+	rte_memcpy(raw_pkt + sizeof(struct rte_ether_addr),
+		&fdir_input->flow.l2_flow.src,
+		sizeof(struct rte_ether_addr));
 	raw_pkt += 2 * sizeof(struct rte_ether_addr);
+
 	if (vlan && fdir_input->flow_ext.vlan_tci) {
 		rte_memcpy(raw_pkt, vlan_frame, sizeof(vlan_frame));
 		rte_memcpy(raw_pkt + sizeof(uint16_t),

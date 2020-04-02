@@ -82,6 +82,12 @@ New Features
   (enqueue/dequeue start; enqueue/dequeue finish). That allows user to inspect
   objects in the ring without removing them from it (aka MT safe peek).
 
+* **Updated Intel i40e driver.**
+
+  Updated i40e PMD with new features and improvements, including:
+
+  * Enable MAC address as FDIR input set for ipv4-other, ipv4-udp and ipv4-tcp.
+
 * **Updated the Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:

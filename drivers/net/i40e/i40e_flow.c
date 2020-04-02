@@ -2626,8 +2626,24 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			}
 
 			if (eth_spec && eth_mask) {
-				if (!rte_is_zero_ether_addr(&eth_mask->src) ||
-				    !rte_is_zero_ether_addr(&eth_mask->dst)) {
+				if (rte_is_broadcast_ether_addr(&eth_mask->dst) &&
+					rte_is_zero_ether_addr(&eth_mask->src)) {
+					filter->input.flow.l2_flow.dst =
+						eth_spec->dst;
+					input_set |= I40E_INSET_DMAC;
+				} else if (rte_is_zero_ether_addr(&eth_mask->dst) &&
+					rte_is_broadcast_ether_addr(&eth_mask->src)) {
+					filter->input.flow.l2_flow.src =
+						eth_spec->src;
+					input_set |= I40E_INSET_SMAC;
+				} else if (rte_is_broadcast_ether_addr(&eth_mask->dst) &&
+					rte_is_broadcast_ether_addr(&eth_mask->src)) {
+					filter->input.flow.l2_flow.dst =
+						eth_spec->dst;
+					filter->input.flow.l2_flow.src =
+						eth_spec->src;
+					input_set |= (I40E_INSET_DMAC | I40E_INSET_SMAC);
+				} else {
 					rte_flow_error_set(error, EINVAL,
 						      RTE_FLOW_ERROR_TYPE_ITEM,
 						      item,
@@ -2635,7 +2651,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					return -rte_errno;
 				}
 			}
-			if (eth_spec && eth_mask && eth_mask->type) {
+			if (eth_spec && eth_mask &&
+			next_type == RTE_FLOW_ITEM_TYPE_END) {
 				if (eth_mask->type != RTE_BE16(0xffff)) {
 					rte_flow_error_set(error, EINVAL,
 						      RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2750,21 +2767,33 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				    frag_off & RTE_IPV4_HDR_MF_FLAG)
 					pctype = I40E_FILTER_PCTYPE_FRAG_IPV4;
 
-				/* Get the filter info */
-				filter->input.flow.ip4_flow.proto =
-					ipv4_spec->hdr.next_proto_id;
-				filter->input.flow.ip4_flow.tos =
-					ipv4_spec->hdr.type_of_service;
-				filter->input.flow.ip4_flow.ttl =
-					ipv4_spec->hdr.time_to_live;
-				filter->input.flow.ip4_flow.src_ip =
-					ipv4_spec->hdr.src_addr;
-				filter->input.flow.ip4_flow.dst_ip =
-					ipv4_spec->hdr.dst_addr;
+				if (input_set & (I40E_INSET_DMAC | I40E_INSET_SMAC)) {
+					if (input_set & (I40E_INSET_IPV4_SRC |
+						I40E_INSET_IPV4_DST | I40E_INSET_IPV4_TOS |
+						I40E_INSET_IPV4_TTL | I40E_INSET_IPV4_PROTO)) {
+						rte_flow_error_set(error, EINVAL,
+							RTE_FLOW_ERROR_TYPE_ITEM,
+							item,
+							"L2 and L3 input set are exclusive.");
+						return -rte_errno;
+					}
+				} else {
+					/* Get the filter info */
+					filter->input.flow.ip4_flow.proto =
+						ipv4_spec->hdr.next_proto_id;
+					filter->input.flow.ip4_flow.tos =
+						ipv4_spec->hdr.type_of_service;
+					filter->input.flow.ip4_flow.ttl =
+						ipv4_spec->hdr.time_to_live;
+					filter->input.flow.ip4_flow.src_ip =
+						ipv4_spec->hdr.src_addr;
+					filter->input.flow.ip4_flow.dst_ip =
+						ipv4_spec->hdr.dst_addr;
 
-				filter->input.flow_ext.inner_ip = false;
-				filter->input.flow_ext.oip_type =
-					I40E_FDIR_IPTYPE_IPV4;
+					filter->input.flow_ext.inner_ip = false;
+					filter->input.flow_ext.oip_type =
+						I40E_FDIR_IPTYPE_IPV4;
+				}
 			} else if (!ipv4_spec && !ipv4_mask && !outer_ip) {
 				filter->input.flow_ext.inner_ip = true;
 				filter->input.flow_ext.iip_type =
@@ -2894,17 +2923,28 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				if (tcp_mask->hdr.dst_port == UINT16_MAX)
 					input_set |= I40E_INSET_DST_PORT;
 
-				/* Get filter info */
-				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
-					filter->input.flow.tcp4_flow.src_port =
-						tcp_spec->hdr.src_port;
-					filter->input.flow.tcp4_flow.dst_port =
-						tcp_spec->hdr.dst_port;
-				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
-					filter->input.flow.tcp6_flow.src_port =
-						tcp_spec->hdr.src_port;
-					filter->input.flow.tcp6_flow.dst_port =
-						tcp_spec->hdr.dst_port;
+				if (input_set & (I40E_INSET_DMAC | I40E_INSET_SMAC)) {
+					if (input_set &
+						(I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT)) {
+						rte_flow_error_set(error, EINVAL,
+							RTE_FLOW_ERROR_TYPE_ITEM,
+							item,
+							"L2 and L4 input set are exclusive.");
+						return -rte_errno;
+					}
+				} else {
+					/* Get filter info */
+					if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+						filter->input.flow.tcp4_flow.src_port =
+							tcp_spec->hdr.src_port;
+						filter->input.flow.tcp4_flow.dst_port =
+							tcp_spec->hdr.dst_port;
+					} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+						filter->input.flow.tcp6_flow.src_port =
+							tcp_spec->hdr.src_port;
+						filter->input.flow.tcp6_flow.dst_port =
+							tcp_spec->hdr.dst_port;
+					}
 				}
 			}
 
@@ -2938,17 +2978,28 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				if (udp_mask->hdr.dst_port == UINT16_MAX)
 					input_set |= I40E_INSET_DST_PORT;
 
-				/* Get filter info */
-				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
-					filter->input.flow.udp4_flow.src_port =
-						udp_spec->hdr.src_port;
-					filter->input.flow.udp4_flow.dst_port =
-						udp_spec->hdr.dst_port;
-				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
-					filter->input.flow.udp6_flow.src_port =
-						udp_spec->hdr.src_port;
-					filter->input.flow.udp6_flow.dst_port =
-						udp_spec->hdr.dst_port;
+				if (input_set & (I40E_INSET_DMAC | I40E_INSET_SMAC)) {
+					if (input_set &
+						(I40E_INSET_SRC_PORT | I40E_INSET_DST_PORT)) {
+						rte_flow_error_set(error, EINVAL,
+							RTE_FLOW_ERROR_TYPE_ITEM,
+							item,
+							"L2 and L4 input set are exclusive.");
+						return -rte_errno;
+					}
+				} else {
+					/* Get filter info */
+					if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+						filter->input.flow.udp4_flow.src_port =
+							udp_spec->hdr.src_port;
+						filter->input.flow.udp4_flow.dst_port =
+							udp_spec->hdr.dst_port;
+					} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+						filter->input.flow.udp6_flow.src_port =
+							udp_spec->hdr.src_port;
+						filter->input.flow.udp6_flow.dst_port =
+							udp_spec->hdr.dst_port;
+					}
 				}
 			}
 			filter->input.flow_ext.is_udp = true;
