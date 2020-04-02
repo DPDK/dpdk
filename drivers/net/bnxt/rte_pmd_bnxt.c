@@ -614,7 +614,8 @@ int rte_pmd_bnxt_get_vf_stats(uint16_t port,
 		return -ENOTSUP;
 	}
 
-	return bnxt_hwrm_func_qstats(bp, bp->pf.first_vf_id + vf_id, stats);
+	return bnxt_hwrm_func_qstats(bp, bp->pf.first_vf_id + vf_id, stats,
+				     NULL);
 }
 
 int rte_pmd_bnxt_reset_vf_stats(uint16_t port,

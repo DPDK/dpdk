@@ -148,6 +148,7 @@ New Features
   Updated Broadcom bnxt driver with new features and improvements, including:
 
   * Added support for host based flow table management
+  * Added PCI function stats to extended stats
 
 * **Added handling of mixed crypto algorithms in QAT PMD for GEN2.**
 

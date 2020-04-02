@@ -12,6 +12,7 @@
 struct bnxt;
 struct bnxt_filter_info;
 struct bnxt_cp_ring_info;
+struct hwrm_func_qstats_output;
 
 #define HWRM_SEQ_ID_INVALID -1U
 /* Convert Bit field location to value */
@@ -112,7 +113,8 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp);
 int bnxt_hwrm_func_reset(struct bnxt *bp);
 int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags);
 int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid,
-			  struct rte_eth_stats *stats);
+			  struct rte_eth_stats *stats,
+			  struct hwrm_func_qstats_output *func_qstats);
 int bnxt_hwrm_func_qstats_tx_drop(struct bnxt *bp, uint16_t fid,
 				  uint64_t *dropped);
 int bnxt_hwrm_func_clr_stats(struct bnxt *bp, uint16_t fid);

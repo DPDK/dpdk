@@ -2261,7 +2261,8 @@ int bnxt_hwrm_func_qstats_tx_drop(struct bnxt *bp, uint16_t fid,
 }
 
 int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid,
-			  struct rte_eth_stats *stats)
+			  struct rte_eth_stats *stats,
+			  struct hwrm_func_qstats_output *func_qstats)
 {
 	int rc = 0;
 	struct hwrm_func_qstats_input req = {.req_type = 0};
@@ -2274,6 +2275,12 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid,
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
+	if (func_qstats)
+		memcpy(func_qstats, resp,
+		       sizeof(struct hwrm_func_qstats_output));
+
+	if (!stats)
+		goto exit;
 
 	stats->ipackets = rte_le_to_cpu_64(resp->rx_ucast_pkts);
 	stats->ipackets += rte_le_to_cpu_64(resp->rx_mcast_pkts);
@@ -2293,6 +2300,7 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid,
 	stats->ierrors = rte_le_to_cpu_64(resp->rx_drop_pkts);
 	stats->oerrors = rte_le_to_cpu_64(resp->tx_discard_pkts);
 
+exit:
 	HWRM_UNLOCK();
 
 	return rc;

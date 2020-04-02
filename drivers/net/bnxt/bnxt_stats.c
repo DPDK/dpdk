@@ -547,7 +547,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 			return rc;
 	}
 
-	rc = bnxt_hwrm_func_qstats(bp, 0xffff, bnxt_stats);
+	rc = bnxt_hwrm_func_qstats(bp, 0xffff, bnxt_stats, NULL);
 	return rc;
 }
 
@@ -581,10 +581,10 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	unsigned int count, i;
-	uint64_t tx_drop_pkts;
 	unsigned int rx_port_stats_ext_cnt;
 	unsigned int tx_port_stats_ext_cnt;
 	unsigned int stat_size = sizeof(uint64_t);
+	struct hwrm_func_qstats_output func_qstats = {0};
 	unsigned int stat_count;
 	int rc;
 
@@ -597,8 +597,8 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 
 	memset(xstats, 0, sizeof(*xstats));
 
+	bnxt_hwrm_func_qstats(bp, 0xffff, NULL, &func_qstats);
 	bnxt_hwrm_port_qstats(bp);
-	bnxt_hwrm_func_qstats_tx_drop(bp, 0xffff, &tx_drop_pkts);
 	bnxt_hwrm_ext_port_qstats(bp);
 	rx_port_stats_ext_cnt = RTE_MIN(RTE_DIM(bnxt_rx_ext_stats_strings),
 					(bp->fw_rx_port_stats_ext_size /
@@ -608,7 +608,8 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 					 stat_size));
 
 	count = RTE_DIM(bnxt_rx_stats_strings) +
-		RTE_DIM(bnxt_tx_stats_strings) + 1/* For tx_drop_pkts */ +
+		RTE_DIM(bnxt_tx_stats_strings) +
+		RTE_DIM(bnxt_func_stats_strings) +
 		RTE_DIM(bnxt_rx_ext_stats_strings) +
 		RTE_DIM(bnxt_tx_ext_stats_strings);
 	stat_count = count;
@@ -635,10 +636,13 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		count++;
 	}
 
-	/* The Tx drop pkts aka the Anti spoof coounter */
-	xstats[count].id = count;
-	xstats[count].value = rte_le_to_cpu_64(tx_drop_pkts);
-	count++;
+	for (i = 0; i < RTE_DIM(bnxt_func_stats_strings); i++) {
+		xstats[count].id = count;
+		xstats[count].value =
+		rte_le_to_cpu_64(((uint64_t *)&func_qstats)[i]);
+		count++;
+	}
+
 
 	for (i = 0; i < rx_port_stats_ext_cnt; i++) {
 		uint64_t *rx_stats_ext = (uint64_t *)bp->hw_rx_port_stats_ext;
@@ -667,9 +671,9 @@ int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 				 struct rte_eth_xstat_name *xstats_names,
 				 __rte_unused unsigned int limit)
 {
-	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
-				RTE_DIM(bnxt_tx_stats_strings) + 1 +
+				RTE_DIM(bnxt_tx_stats_strings) +
+				RTE_DIM(bnxt_func_stats_strings) +
 				RTE_DIM(bnxt_rx_ext_stats_strings) +
 				RTE_DIM(bnxt_tx_ext_stats_strings);
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
@@ -697,10 +701,12 @@ int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 			count++;
 		}
 
-		strlcpy(xstats_names[count].name,
-			bnxt_func_stats_strings[4].name,
-			sizeof(xstats_names[count].name));
-		count++;
+		for (i = 0; i < RTE_DIM(bnxt_func_stats_strings); i++) {
+			strlcpy(xstats_names[count].name,
+				bnxt_func_stats_strings[i].name,
+				sizeof(xstats_names[count].name));
+			count++;
+		}
 
 		for (i = 0; i < RTE_DIM(bnxt_rx_ext_stats_strings); i++) {
 			strlcpy(xstats_names[count].name,
@@ -748,9 +754,9 @@ int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
 		uint64_t *values, unsigned int limit)
 {
-	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
-				RTE_DIM(bnxt_tx_stats_strings) + 1 +
+				RTE_DIM(bnxt_tx_stats_strings) +
+				RTE_DIM(bnxt_func_stats_strings) +
 				RTE_DIM(bnxt_rx_ext_stats_strings) +
 				RTE_DIM(bnxt_tx_ext_stats_strings);
 	struct bnxt *bp = dev->data->dev_private;
@@ -781,9 +787,9 @@ int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
 				struct rte_eth_xstat_name *xstats_names,
 				const uint64_t *ids, unsigned int limit)
 {
-	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
-				RTE_DIM(bnxt_tx_stats_strings) + 1 +
+				RTE_DIM(bnxt_tx_stats_strings) +
+				RTE_DIM(bnxt_func_stats_strings) +
 				RTE_DIM(bnxt_rx_ext_stats_strings) +
 				RTE_DIM(bnxt_tx_ext_stats_strings);
 	struct rte_eth_xstat_name xstats_names_copy[stat_cnt];
