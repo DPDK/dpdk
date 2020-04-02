@@ -8,7 +8,9 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 #include <sys/queue.h>
+#include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_memory.h>
@@ -372,7 +374,7 @@ test_multi_alloc_statistics(void)
 }
 
 static int
-test_realloc(void)
+test_realloc_socket(int socket)
 {
 	const char hello_str[] = "Hello, world!";
 	const unsigned size1 = 1024;
@@ -381,13 +383,15 @@ test_realloc(void)
 	const unsigned size4 = size3 + 1024;
 
 	/* test data is the same even if element is moved*/
-	char *ptr1 = rte_zmalloc(NULL, size1, RTE_CACHE_LINE_SIZE);
+	char *ptr1 = rte_zmalloc_socket(
+			NULL, size1, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr1){
 		printf("NULL pointer returned from rte_zmalloc\n");
 		return -1;
 	}
 	strlcpy(ptr1, hello_str, size1);
-	char *ptr2 = rte_realloc(ptr1, size2, RTE_CACHE_LINE_SIZE);
+	char *ptr2 = rte_realloc_socket(
+			ptr1, size2, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr2){
 		rte_free(ptr1);
 		printf("NULL pointer returned from rte_realloc\n");
@@ -411,7 +415,8 @@ test_realloc(void)
 	/* now allocate third element, free the second
 	 * and resize third. It should not move. (ptr1 is now invalid)
 	 */
-	char *ptr3 = rte_zmalloc(NULL, size3, RTE_CACHE_LINE_SIZE);
+	char *ptr3 = rte_zmalloc_socket(
+			NULL, size3, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr3){
 		printf("NULL pointer returned from rte_zmalloc\n");
 		rte_free(ptr2);
@@ -426,7 +431,8 @@ test_realloc(void)
 		}
 	rte_free(ptr2);
 	/* first resize to half the size of the freed block */
-	char *ptr4 = rte_realloc(ptr3, size4, RTE_CACHE_LINE_SIZE);
+	char *ptr4 = rte_realloc_socket(
+			ptr3, size4, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr4){
 		printf("NULL pointer returned from rte_realloc\n");
 		rte_free(ptr3);
@@ -438,7 +444,8 @@ test_realloc(void)
 		return -1;
 	}
 	/* now resize again to the full size of the freed block */
-	ptr4 = rte_realloc(ptr3, size3 + size2 + size1, RTE_CACHE_LINE_SIZE);
+	ptr4 = rte_realloc_socket(ptr3, size3 + size2 + size1,
+			RTE_CACHE_LINE_SIZE, socket);
 	if (ptr3 != ptr4){
 		printf("Unexpected - ptr4 != ptr3 on second resize\n");
 		rte_free(ptr4);
@@ -449,12 +456,14 @@ test_realloc(void)
 	/* now try a resize to a smaller size, see if it works */
 	const unsigned size5 = 1024;
 	const unsigned size6 = size5 / 2;
-	char *ptr5 = rte_malloc(NULL, size5, RTE_CACHE_LINE_SIZE);
+	char *ptr5 = rte_malloc_socket(
+			NULL, size5, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr5){
 		printf("NULL pointer returned from rte_malloc\n");
 		return -1;
 	}
-	char *ptr6 = rte_realloc(ptr5, size6, RTE_CACHE_LINE_SIZE);
+	char *ptr6 = rte_realloc_socket(
+			ptr5, size6, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr6){
 		printf("NULL pointer returned from rte_realloc\n");
 		rte_free(ptr5);
@@ -471,7 +480,7 @@ test_realloc(void)
 	const unsigned size7 = 1024;
 	const unsigned orig_align = RTE_CACHE_LINE_SIZE;
 	unsigned new_align = RTE_CACHE_LINE_SIZE * 2;
-	char *ptr7 = rte_malloc(NULL, size7, orig_align);
+	char *ptr7 = rte_malloc_socket(NULL, size7, orig_align, socket);
 	if (!ptr7){
 		printf("NULL pointer returned from rte_malloc\n");
 		return -1;
@@ -479,7 +488,7 @@ test_realloc(void)
 	/* calc an alignment we don't already have */
 	while(RTE_PTR_ALIGN(ptr7, new_align) == ptr7)
 		new_align *= 2;
-	char *ptr8 = rte_realloc(ptr7, size7, new_align);
+	char *ptr8 = rte_realloc_socket(ptr7, size7, new_align, socket);
 	if (!ptr8){
 		printf("NULL pointer returned from rte_realloc\n");
 		rte_free(ptr7);
@@ -497,18 +506,21 @@ test_realloc(void)
 	 */
 	unsigned size9 = 1024, size10 = 1024;
 	unsigned size11 = size9 + size10 + 256;
-	char *ptr9 = rte_malloc(NULL, size9, RTE_CACHE_LINE_SIZE);
+	char *ptr9 = rte_malloc_socket(
+			NULL, size9, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr9){
 		printf("NULL pointer returned from rte_malloc\n");
 		return -1;
 	}
-	char *ptr10 = rte_malloc(NULL, size10, RTE_CACHE_LINE_SIZE);
+	char *ptr10 = rte_malloc_socket(
+			NULL, size10, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr10){
 		printf("NULL pointer returned from rte_malloc\n");
 		return -1;
 	}
 	rte_free(ptr9);
-	char *ptr11 = rte_realloc(ptr10, size11, RTE_CACHE_LINE_SIZE);
+	char *ptr11 = rte_realloc_socket(
+			ptr10, size11, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr11){
 		printf("NULL pointer returned from rte_realloc\n");
 		rte_free(ptr10);
@@ -525,7 +537,8 @@ test_realloc(void)
 	 * We should get a malloc of the size requested*/
 	const size_t size12 = 1024;
 	size_t size12_check;
-	char *ptr12 = rte_realloc(NULL, size12, RTE_CACHE_LINE_SIZE);
+	char *ptr12 = rte_realloc_socket(
+			NULL, size12, RTE_CACHE_LINE_SIZE, socket);
 	if (!ptr12){
 		printf("NULL pointer returned from rte_realloc\n");
 		return -1;
@@ -537,8 +550,28 @@ test_realloc(void)
 	}
 	rte_free(ptr12);
 
+	/* do the same, but for regular memory */
+	ptr12 = rte_realloc(NULL, size12, RTE_CACHE_LINE_SIZE);
+	if (!ptr12) {
+		printf("NULL pointer returned from rte_realloc\n");
+		return -1;
+	}
+	if (rte_malloc_validate(ptr12, &size12_check) < 0 ||
+			size12_check != size12) {
+		rte_free(ptr12);
+		return -1;
+	}
+	rte_free(ptr12);
+
+	return 0;
+}
+
+static int
+test_realloc_numa(void)
+{
 	/* check realloc_socket part */
 	int32_t socket_count = 0, socket_allocated, socket;
+	void *ptr1, *ptr2;
 	int ret = -1;
 	size_t size = 1024;
 
@@ -577,7 +610,64 @@ test_realloc(void)
 	ret = 0;
 end:
 	rte_free(ptr1);
+	return ret;
+}
 
+static int
+test_realloc(void)
+{
+	const char *heap_name = "realloc_heap";
+	int realloc_heap_socket;
+	unsigned int mem_sz = 1U << 13; /* 8K */
+	unsigned int page_sz = sysconf(_SC_PAGESIZE);
+	void *mem;
+	int ret;
+
+	/* page size may be bigger than total mem size, so adjust */
+	mem_sz = RTE_MAX(mem_sz, page_sz);
+
+	/*
+	 * the realloc tests depend on specific layout of underlying memory, so
+	 * to prevent accidental failures to do fragmented main heap, we will
+	 * do all of our tests on an artificially created memory.
+	 */
+	if (rte_malloc_heap_create(heap_name) != 0) {
+		printf("Failed to create external heap\n");
+		ret = -1;
+		goto end;
+	}
+	realloc_heap_socket = rte_malloc_heap_get_socket(heap_name);
+
+	mem = mmap(NULL, mem_sz, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (mem == MAP_FAILED) {
+		printf("Failed to allocate memory for external heap\n");
+		ret = -1;
+		goto heap_destroy;
+	}
+
+	if (rte_malloc_heap_memory_add(
+			heap_name, mem, mem_sz, NULL, 0, page_sz) != 0) {
+		printf("Failed to add memory to external heap\n");
+		ret = -1;
+		goto mem_free;
+	}
+
+	/* run the socket-bound tests */
+	ret = test_realloc_socket(realloc_heap_socket);
+	if (ret != 0)
+		goto mem_remove;
+
+	/* now, run the NUMA node tests */
+	ret = test_realloc_numa();
+
+mem_remove:
+	rte_malloc_heap_memory_remove(heap_name, mem, mem_sz);
+mem_free:
+	munmap(mem, mem_sz);
+heap_destroy:
+	rte_malloc_heap_destroy(heap_name);
+end:
 	return ret;
 }
 
