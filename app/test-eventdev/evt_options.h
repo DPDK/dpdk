@@ -232,6 +232,22 @@ evt_dump_sched_type_list(struct evt_options *opt)
 	evt_dump_end;
 }
 
+static inline const char *
+evt_prod_id_to_name(enum evt_prod_type prod_type)
+{
+	switch (prod_type) {
+	default:
+	case EVT_PROD_TYPE_SYNT:
+		return "Synthetic producer lcores";
+	case EVT_PROD_TYPE_ETH_RX_ADPTR:
+		return "Ethdev Rx Adapter";
+	case EVT_PROD_TYPE_EVENT_TIMER_ADPTR:
+		return "Event timer adapter";
+	}
+
+	return "";
+}
+
 #define EVT_PROD_MAX_NAME_LEN 50
 static inline void
 evt_dump_producer_type(struct evt_options *opt)

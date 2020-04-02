@@ -111,6 +111,13 @@ pipeline_opt_check(struct evt_options *opt, uint64_t nb_queues)
 	 */
 	lcores = 2;
 
+	if (opt->prod_type != EVT_PROD_TYPE_ETH_RX_ADPTR) {
+		evt_err("Invalid producer type '%s' valid producer '%s'",
+			evt_prod_id_to_name(opt->prod_type),
+			evt_prod_id_to_name(EVT_PROD_TYPE_ETH_RX_ADPTR));
+		return -1;
+	}
+
 	if (!rte_eth_dev_count_avail()) {
 		evt_err("test needs minimum 1 ethernet dev");
 		return -1;

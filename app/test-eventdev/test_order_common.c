@@ -68,8 +68,10 @@ int
 order_opt_check(struct evt_options *opt)
 {
 	if (opt->prod_type != EVT_PROD_TYPE_SYNT) {
-		evt_err("Invalid producer type");
-		return -EINVAL;
+		evt_err("Invalid producer type '%s' valid producer '%s'",
+			evt_prod_id_to_name(opt->prod_type),
+			evt_prod_id_to_name(EVT_PROD_TYPE_SYNT));
+		return -1;
 	}
 
 	/* 1 producer + N workers + 1 master */
