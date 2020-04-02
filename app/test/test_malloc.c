@@ -828,11 +828,21 @@ test_malloc_bad_params(void)
 	if (bad_ptr != NULL)
 		goto err_return;
 
+	/* rte_realloc expected to return null with inappropriate size */
+	bad_ptr = rte_realloc(NULL, size, align);
+	if (bad_ptr != NULL)
+		goto err_return;
+
 	/* rte_malloc expected to return null with inappropriate alignment */
 	align = 17;
 	size = 1024;
 
 	bad_ptr = rte_malloc(type, size, align);
+	if (bad_ptr != NULL)
+		goto err_return;
+
+	/* rte_realloc expected to return null with inappropriate alignment */
+	bad_ptr = rte_realloc(NULL, size, align);
 	if (bad_ptr != NULL)
 		goto err_return;
 
