@@ -30,6 +30,10 @@
 #define IAVF_PROT_VXLAN             (1ULL << 19)
 #define IAVF_PROT_NVGRE             (1ULL << 20)
 #define IAVF_PROT_GTPU              (1ULL << 21)
+#define IAVF_PROT_ESP		    (1ULL << 22)
+#define IAVF_PROT_AH		    (1ULL << 23)
+#define IAVF_PROT_L2TPV3OIP	    (1ULL << 24)
+#define IAVF_PROT_PFCP		    (1ULL << 25)
 
 
 /* field */
@@ -50,6 +54,11 @@
 #define IAVF_NVGRE_TNI              (1ULL << 50)
 #define IAVF_GTPU_TEID              (1ULL << 49)
 #define IAVF_GTPU_QFI               (1ULL << 48)
+#define IAVF_ESP_SPI		    (1ULL << 47)
+#define IAVF_AH_SPI		    (1ULL << 46)
+#define IAVF_L2TPV3OIP_SESSION_ID   (1ULL << 45)
+#define IAVF_PFCP_S_FIELD	    (1ULL << 44)
+#define IAVF_PFCP_SEID		    (1ULL << 43)
 
 /* input set */
 
@@ -116,6 +125,16 @@
 	(IAVF_PROT_GTPU | IAVF_GTPU_TEID)
 #define IAVF_INSET_GTPU_QFI \
 	(IAVF_PROT_GTPU | IAVF_GTPU_QFI)
+#define IAVF_INSET_ESP_SPI \
+	(IAVF_PROT_ESP | IAVF_ESP_SPI)
+#define IAVF_INSET_AH_SPI \
+	(IAVF_PROT_AH | IAVF_AH_SPI)
+#define IAVF_INSET_L2TPV3OIP_SESSION_ID \
+	(IAVF_PROT_L2TPV3OIP | IAVF_L2TPV3OIP_SESSION_ID)
+#define IAVF_INSET_PFCP_S_FIELD \
+	(IAVF_PROT_PFCP | IAVF_PFCP_S_FIELD)
+#define IAVF_INSET_PFCP_SEID \
+	(IAVF_PROT_PFCP | IAVF_PFCP_S_FIELD | IAVF_PFCP_SEID)
 
 
 /* empty pattern */
@@ -164,11 +183,31 @@ extern enum rte_flow_item_type iavf_pattern_eth_vlan_ipv6_icmp6[];
 extern enum rte_flow_item_type iavf_pattern_eth_qinq_ipv6_icmp6[];
 
 /* GTPU */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv4[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_udp[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_tcp[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_icmp[];
+
+/* ESP */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_esp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_udp_esp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_esp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_esp[];
+
+/* AH */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_ah[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_ah[];
+
+/* L2TPV3 */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_l2tpv3[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_l2tpv3[];
+
+/* PFCP */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_pfcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_pfcp[];
 
 
 extern const struct rte_flow_ops iavf_flow_ops;
