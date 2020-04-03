@@ -1540,6 +1540,28 @@ nix_tm_alloc_resources(struct rte_eth_dev *eth_dev, bool xmit_enable)
 	return 0;
 }
 
+static int
+send_tm_reqval(struct otx2_mbox *mbox,
+	       struct nix_txschq_config *req,
+	       struct rte_tm_error *error)
+{
+	int rc;
+
+	if (!req->num_regs ||
+	    req->num_regs > MAX_REGS_PER_MBOX_MSG) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "invalid config";
+		return -EIO;
+	}
+
+	rc = otx2_mbox_process(mbox);
+	if (rc) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "unexpected fatal error";
+	}
+	return rc;
+}
+
 static uint16_t
 nix_tm_lvl2nix(struct otx2_eth_dev *dev, uint32_t lvl)
 {
@@ -1806,9 +1828,68 @@ otx2_nix_tm_node_delete(struct rte_eth_dev *eth_dev, uint32_t node_id,
 	return 0;
 }
 
+static int
+nix_tm_node_suspend_resume(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			   struct rte_tm_error *error, bool suspend)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct otx2_nix_tm_node *tm_node;
+	struct nix_txschq_config *req;
+	uint16_t flags;
+	int rc;
+
+	tm_node = nix_tm_node_search(dev, node_id, true);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	if (!(dev->tm_flags & NIX_TM_COMMITTED)) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "hierarchy doesn't exist";
+		return -EINVAL;
+	}
+
+	flags = tm_node->flags;
+	flags = suspend ? (flags & ~NIX_TM_NODE_ENABLED) :
+		(flags | NIX_TM_NODE_ENABLED);
+
+	if (tm_node->flags == flags)
+		return 0;
+
+	/* send mbox for state change */
+	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
+
+	req->lvl = tm_node->hw_lvl;
+	req->num_regs =	prepare_tm_sw_xoff(tm_node, suspend,
+					   req->reg, req->regval);
+	rc = send_tm_reqval(mbox, req, error);
+	if (!rc)
+		tm_node->flags = flags;
+	return rc;
+}
+
+static int
+otx2_nix_tm_node_suspend(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			 struct rte_tm_error *error)
+{
+	return nix_tm_node_suspend_resume(eth_dev, node_id, error, true);
+}
+
+static int
+otx2_nix_tm_node_resume(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			struct rte_tm_error *error)
+{
+	return nix_tm_node_suspend_resume(eth_dev, node_id, error, false);
+}
+
 const struct rte_tm_ops otx2_tm_ops = {
 	.node_add = otx2_nix_tm_node_add,
 	.node_delete = otx2_nix_tm_node_delete,
+	.node_suspend = otx2_nix_tm_node_suspend,
+	.node_resume = otx2_nix_tm_node_resume,
 };
 
 static int
