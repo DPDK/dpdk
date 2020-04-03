@@ -94,52 +94,50 @@ nix_tm_shaper_profile_search(struct otx2_eth_dev *dev, uint32_t shaper_id)
 }
 
 static inline uint64_t
-shaper_rate_to_nix(uint64_t cclk_hz, uint64_t cclk_ticks,
-		   uint64_t value, uint64_t *exponent_p,
+shaper_rate_to_nix(uint64_t value, uint64_t *exponent_p,
 		   uint64_t *mantissa_p, uint64_t *div_exp_p)
 {
 	uint64_t div_exp, exponent, mantissa;
 
 	/* Boundary checks */
-	if (value < MIN_SHAPER_RATE(cclk_hz, cclk_ticks) ||
-	    value > MAX_SHAPER_RATE(cclk_hz, cclk_ticks))
+	if (value < MIN_SHAPER_RATE ||
+	    value > MAX_SHAPER_RATE)
 		return 0;
 
-	if (value <= SHAPER_RATE(cclk_hz, cclk_ticks, 0, 0, 0)) {
+	if (value <= SHAPER_RATE(0, 0, 0)) {
 		/* Calculate rate div_exp and mantissa using
 		 * the following formula:
 		 *
-		 * value = (cclk_hz * (256 + mantissa)
-		 *              / ((cclk_ticks << div_exp) * 256)
+		 * value = (2E6 * (256 + mantissa)
+		 *              / ((1 << div_exp) * 256))
 		 */
 		div_exp = 0;
 		exponent = 0;
 		mantissa = MAX_RATE_MANTISSA;
 
-		while (value < (cclk_hz / (cclk_ticks << div_exp)))
+		while (value < (NIX_SHAPER_RATE_CONST / (1 << div_exp)))
 			div_exp += 1;
 
 		while (value <
-		       ((cclk_hz * (256 + mantissa)) /
-			((cclk_ticks << div_exp) * 256)))
+		       ((NIX_SHAPER_RATE_CONST * (256 + mantissa)) /
+			((1 << div_exp) * 256)))
 			mantissa -= 1;
 	} else {
 		/* Calculate rate exponent and mantissa using
 		 * the following formula:
 		 *
-		 * value = (cclk_hz * ((256 + mantissa) << exponent)
-		 *              / (cclk_ticks * 256)
+		 * value = (2E6 * ((256 + mantissa) << exponent)) / 256
 		 *
 		 */
 		div_exp = 0;
 		exponent = MAX_RATE_EXPONENT;
 		mantissa = MAX_RATE_MANTISSA;
 
-		while (value < (cclk_hz * (1 << exponent)) / cclk_ticks)
+		while (value < (NIX_SHAPER_RATE_CONST * (1 << exponent)))
 			exponent -= 1;
 
-		while (value < (cclk_hz * ((256 + mantissa) << exponent)) /
-		       (cclk_ticks * 256))
+		while (value < ((NIX_SHAPER_RATE_CONST *
+				((256 + mantissa) << exponent)) / 256))
 			mantissa -= 1;
 	}
 
@@ -155,20 +153,7 @@ shaper_rate_to_nix(uint64_t cclk_hz, uint64_t cclk_ticks,
 		*mantissa_p = mantissa;
 
 	/* Calculate real rate value */
-	return SHAPER_RATE(cclk_hz, cclk_ticks, exponent, mantissa, div_exp);
-}
-
-static inline uint64_t
-lx_shaper_rate_to_nix(uint64_t cclk_hz, uint32_t hw_lvl,
-		      uint64_t value, uint64_t *exponent,
-		      uint64_t *mantissa, uint64_t *div_exp)
-{
-	if (hw_lvl == NIX_TXSCH_LVL_TL1)
-		return shaper_rate_to_nix(cclk_hz, L1_TIME_WHEEL_CCLK_TICKS,
-					  value, exponent, mantissa, div_exp);
-	else
-		return shaper_rate_to_nix(cclk_hz, LX_TIME_WHEEL_CCLK_TICKS,
-					  value, exponent, mantissa, div_exp);
+	return SHAPER_RATE(exponent, mantissa, div_exp);
 }
 
 static inline uint64_t
@@ -207,328 +192,393 @@ shaper_burst_to_nix(uint64_t value, uint64_t *exponent_p,
 	return SHAPER_BURST(exponent, mantissa);
 }
 
-static int
-configure_shaper_cir_pir_reg(struct otx2_eth_dev *dev,
-			     struct otx2_nix_tm_node *tm_node,
-			     struct shaper_params *cir,
-			     struct shaper_params *pir)
+static void
+shaper_config_to_nix(struct otx2_nix_tm_shaper_profile *profile,
+		     struct shaper_params *cir,
+		     struct shaper_params *pir)
 {
-	uint32_t shaper_profile_id = RTE_TM_SHAPER_PROFILE_ID_NONE;
-	struct otx2_nix_tm_shaper_profile *shaper_profile = NULL;
-	struct rte_tm_shaper_params *param;
+	struct rte_tm_shaper_params *param = &profile->params;
 
-	shaper_profile_id = tm_node->params.shaper_profile_id;
+	if (!profile)
+		return;
 
-	shaper_profile = nix_tm_shaper_profile_search(dev, shaper_profile_id);
-	if (shaper_profile) {
-		param = &shaper_profile->profile;
-		/* Calculate CIR exponent and mantissa */
-		if (param->committed.rate)
-			cir->rate = lx_shaper_rate_to_nix(CCLK_HZ,
-							  tm_node->hw_lvl_id,
-							  param->committed.rate,
-							  &cir->exponent,
-							  &cir->mantissa,
-							  &cir->div_exp);
+	/* Calculate CIR exponent and mantissa */
+	if (param->committed.rate)
+		cir->rate = shaper_rate_to_nix(param->committed.rate,
+					       &cir->exponent,
+					       &cir->mantissa,
+					       &cir->div_exp);
 
-		/* Calculate PIR exponent and mantissa */
-		if (param->peak.rate)
-			pir->rate = lx_shaper_rate_to_nix(CCLK_HZ,
-							  tm_node->hw_lvl_id,
-							  param->peak.rate,
-							  &pir->exponent,
-							  &pir->mantissa,
-							  &pir->div_exp);
+	/* Calculate PIR exponent and mantissa */
+	if (param->peak.rate)
+		pir->rate = shaper_rate_to_nix(param->peak.rate,
+					       &pir->exponent,
+					       &pir->mantissa,
+					       &pir->div_exp);
 
-		/* Calculate CIR burst exponent and mantissa */
-		if (param->committed.size)
-			cir->burst = shaper_burst_to_nix(param->committed.size,
-							 &cir->burst_exponent,
-							 &cir->burst_mantissa);
+	/* Calculate CIR burst exponent and mantissa */
+	if (param->committed.size)
+		cir->burst = shaper_burst_to_nix(param->committed.size,
+						 &cir->burst_exponent,
+						 &cir->burst_mantissa);
 
-		/* Calculate PIR burst exponent and mantissa */
-		if (param->peak.size)
-			pir->burst = shaper_burst_to_nix(param->peak.size,
-							 &pir->burst_exponent,
-							 &pir->burst_mantissa);
+	/* Calculate PIR burst exponent and mantissa */
+	if (param->peak.size)
+		pir->burst = shaper_burst_to_nix(param->peak.size,
+						 &pir->burst_exponent,
+						 &pir->burst_mantissa);
+}
+
+static int
+populate_tm_tl1_default(struct otx2_eth_dev *dev, uint32_t schq)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_txschq_config *req;
+
+	/*
+	 * Default config for TL1.
+	 * For VF this is always ignored.
+	 */
+
+	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = NIX_TXSCH_LVL_TL1;
+
+	/* Set DWRR quantum */
+	req->reg[0] = NIX_AF_TL1X_SCHEDULE(schq);
+	req->regval[0] = TXSCH_TL1_DFLT_RR_QTM;
+	req->num_regs++;
+
+	req->reg[1] = NIX_AF_TL1X_TOPOLOGY(schq);
+	req->regval[1] = (TXSCH_TL1_DFLT_RR_PRIO << 1);
+	req->num_regs++;
+
+	req->reg[2] = NIX_AF_TL1X_CIR(schq);
+	req->regval[2] = 0;
+	req->num_regs++;
+
+	return otx2_mbox_process(mbox);
+}
+
+static uint8_t
+prepare_tm_sched_reg(struct otx2_eth_dev *dev,
+		     struct otx2_nix_tm_node *tm_node,
+		     volatile uint64_t *reg, volatile uint64_t *regval)
+{
+	uint64_t strict_prio = tm_node->priority;
+	uint32_t hw_lvl = tm_node->hw_lvl;
+	uint32_t schq = tm_node->hw_id;
+	uint64_t rr_quantum;
+	uint8_t k = 0;
+
+	rr_quantum = NIX_TM_WEIGHT_TO_RR_QUANTUM(tm_node->weight);
+
+	/* For children to root, strict prio is default if either
+	 * device root is TL2 or TL1 Static Priority is disabled.
+	 */
+	if (hw_lvl == NIX_TXSCH_LVL_TL2 &&
+	    (dev->otx2_tm_root_lvl == NIX_TXSCH_LVL_TL2 ||
+	     dev->tm_flags & NIX_TM_TL1_NO_SP))
+		strict_prio = TXSCH_TL1_DFLT_RR_PRIO;
+
+	otx2_tm_dbg("Schedule config node %s(%u) lvl %u id %u, "
+		     "prio 0x%" PRIx64 ", rr_quantum 0x%" PRIx64 " (%p)",
+		     nix_hwlvl2str(tm_node->hw_lvl), schq, tm_node->lvl,
+		     tm_node->id, strict_prio, rr_quantum, tm_node);
+
+	switch (hw_lvl) {
+	case NIX_TXSCH_LVL_SMQ:
+		reg[k] = NIX_AF_MDQX_SCHEDULE(schq);
+		regval[k] = (strict_prio << 24) | rr_quantum;
+		k++;
+
+		break;
+	case NIX_TXSCH_LVL_TL4:
+		reg[k] = NIX_AF_TL4X_SCHEDULE(schq);
+		regval[k] = (strict_prio << 24) | rr_quantum;
+		k++;
+
+		break;
+	case NIX_TXSCH_LVL_TL3:
+		reg[k] = NIX_AF_TL3X_SCHEDULE(schq);
+		regval[k] = (strict_prio << 24) | rr_quantum;
+		k++;
+
+		break;
+	case NIX_TXSCH_LVL_TL2:
+		reg[k] = NIX_AF_TL2X_SCHEDULE(schq);
+		regval[k] = (strict_prio << 24) | rr_quantum;
+		k++;
+
+		break;
+	case NIX_TXSCH_LVL_TL1:
+		reg[k] = NIX_AF_TL1X_SCHEDULE(schq);
+		regval[k] = rr_quantum;
+		k++;
+
+		break;
 	}
 
-	return 0;
+	return k;
 }
 
-static int
-send_tm_reqval(struct otx2_mbox *mbox, struct nix_txschq_config *req)
+static uint8_t
+prepare_tm_shaper_reg(struct otx2_nix_tm_node *tm_node,
+		      struct otx2_nix_tm_shaper_profile *profile,
+		      volatile uint64_t *reg, volatile uint64_t *regval)
 {
-	int rc;
-
-	if (req->num_regs > MAX_REGS_PER_MBOX_MSG)
-		return -ERANGE;
-
-	rc = otx2_mbox_process(mbox);
-	if (rc)
-		return rc;
-
-	req->num_regs = 0;
-	return 0;
-}
-
-static int
-populate_tm_registers(struct otx2_eth_dev *dev,
-		      struct otx2_nix_tm_node *tm_node)
-{
-	uint64_t strict_schedul_prio, rr_prio;
-	struct otx2_mbox *mbox = dev->mbox;
-	volatile uint64_t *reg, *regval;
-	uint64_t parent = 0, child = 0;
 	struct shaper_params cir, pir;
-	struct nix_txschq_config *req;
-	uint64_t rr_quantum;
-	uint32_t hw_lvl;
-	uint32_t schq;
-	int rc;
+	uint32_t schq = tm_node->hw_id;
+	uint8_t k = 0;
 
 	memset(&cir, 0, sizeof(cir));
 	memset(&pir, 0, sizeof(pir));
+	shaper_config_to_nix(profile, &cir, &pir);
 
-	/* Skip leaf nodes */
-	if (tm_node->hw_lvl_id == NIX_TXSCH_LVL_CNT)
-		return 0;
+	otx2_tm_dbg("Shaper config node %s(%u) lvl %u id %u, "
+		    "pir %" PRIu64 "(%" PRIu64 "B),"
+		     " cir %" PRIu64 "(%" PRIu64 "B) (%p)",
+		     nix_hwlvl2str(tm_node->hw_lvl), schq, tm_node->lvl,
+		     tm_node->id, pir.rate, pir.burst,
+		     cir.rate, cir.burst, tm_node);
+
+	switch (tm_node->hw_lvl) {
+	case NIX_TXSCH_LVL_SMQ:
+		/* Configure PIR, CIR */
+		reg[k] = NIX_AF_MDQX_PIR(schq);
+		regval[k] = (pir.rate && pir.burst) ?
+				(shaper2regval(&pir) | 1) : 0;
+		k++;
+
+		reg[k] = NIX_AF_MDQX_CIR(schq);
+		regval[k] = (cir.rate && cir.burst) ?
+				(shaper2regval(&cir) | 1) : 0;
+		k++;
+
+		/* Configure RED ALG */
+		reg[k] = NIX_AF_MDQX_SHAPE(schq);
+		regval[k] = ((uint64_t)tm_node->red_algo << 9);
+		k++;
+		break;
+	case NIX_TXSCH_LVL_TL4:
+		/* Configure PIR, CIR */
+		reg[k] = NIX_AF_TL4X_PIR(schq);
+		regval[k] = (pir.rate && pir.burst) ?
+				(shaper2regval(&pir) | 1) : 0;
+		k++;
+
+		reg[k] = NIX_AF_TL4X_CIR(schq);
+		regval[k] = (cir.rate && cir.burst) ?
+				(shaper2regval(&cir) | 1) : 0;
+		k++;
+
+		/* Configure RED algo */
+		reg[k] = NIX_AF_TL4X_SHAPE(schq);
+		regval[k] = ((uint64_t)tm_node->red_algo << 9);
+		k++;
+		break;
+	case NIX_TXSCH_LVL_TL3:
+		/* Configure PIR, CIR */
+		reg[k] = NIX_AF_TL3X_PIR(schq);
+		regval[k] = (pir.rate && pir.burst) ?
+				(shaper2regval(&pir) | 1) : 0;
+		k++;
+
+		reg[k] = NIX_AF_TL3X_CIR(schq);
+		regval[k] = (cir.rate && cir.burst) ?
+				(shaper2regval(&cir) | 1) : 0;
+		k++;
+
+		/* Configure RED algo */
+		reg[k] = NIX_AF_TL3X_SHAPE(schq);
+		regval[k] = ((uint64_t)tm_node->red_algo << 9);
+		k++;
+
+		break;
+	case NIX_TXSCH_LVL_TL2:
+		/* Configure PIR, CIR */
+		reg[k] = NIX_AF_TL2X_PIR(schq);
+		regval[k] = (pir.rate && pir.burst) ?
+				(shaper2regval(&pir) | 1) : 0;
+		k++;
+
+		reg[k] = NIX_AF_TL2X_CIR(schq);
+		regval[k] = (cir.rate && cir.burst) ?
+				(shaper2regval(&cir) | 1) : 0;
+		k++;
+
+		/* Configure RED algo */
+		reg[k] = NIX_AF_TL2X_SHAPE(schq);
+		regval[k] = ((uint64_t)tm_node->red_algo << 9);
+		k++;
+
+		break;
+	case NIX_TXSCH_LVL_TL1:
+		/* Configure CIR */
+		reg[k] = NIX_AF_TL1X_CIR(schq);
+		regval[k] = (cir.rate && cir.burst) ?
+				(shaper2regval(&cir) | 1) : 0;
+		k++;
+		break;
+	}
+
+	return k;
+}
+
+static int
+populate_tm_reg(struct otx2_eth_dev *dev,
+		struct otx2_nix_tm_node *tm_node)
+{
+	struct otx2_nix_tm_shaper_profile *profile;
+	uint64_t regval_mask[MAX_REGS_PER_MBOX_MSG];
+	uint64_t regval[MAX_REGS_PER_MBOX_MSG];
+	uint64_t reg[MAX_REGS_PER_MBOX_MSG];
+	struct otx2_mbox *mbox = dev->mbox;
+	uint64_t parent = 0, child = 0;
+	uint32_t hw_lvl, rr_prio, schq;
+	struct nix_txschq_config *req;
+	int rc = -EFAULT;
+	uint8_t k = 0;
+
+	memset(regval_mask, 0, sizeof(regval_mask));
+	profile = nix_tm_shaper_profile_search(dev,
+					tm_node->params.shaper_profile_id);
+	rr_prio = tm_node->rr_prio;
+	hw_lvl = tm_node->hw_lvl;
+	schq = tm_node->hw_id;
 
 	/* Root node will not have a parent node */
-	if (tm_node->hw_lvl_id == dev->otx2_tm_root_lvl)
+	if (hw_lvl == dev->otx2_tm_root_lvl)
 		parent = tm_node->parent_hw_id;
 	else
 		parent = tm_node->parent->hw_id;
 
 	/* Do we need this trigger to configure TL1 */
 	if (dev->otx2_tm_root_lvl == NIX_TXSCH_LVL_TL2 &&
-	    tm_node->hw_lvl_id == dev->otx2_tm_root_lvl) {
-		schq = parent;
-		/*
-		 * Default config for TL1.
-		 * For VF this is always ignored.
-		 */
-
-		req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
-		req->lvl = NIX_TXSCH_LVL_TL1;
-
-		/* Set DWRR quantum */
-		req->reg[0] = NIX_AF_TL1X_SCHEDULE(schq);
-		req->regval[0] = TXSCH_TL1_DFLT_RR_QTM;
-		req->num_regs++;
-
-		req->reg[1] = NIX_AF_TL1X_TOPOLOGY(schq);
-		req->regval[1] = (TXSCH_TL1_DFLT_RR_PRIO << 1);
-		req->num_regs++;
-
-		req->reg[2] = NIX_AF_TL1X_CIR(schq);
-		req->regval[2] = 0;
-		req->num_regs++;
-
-		rc = send_tm_reqval(mbox, req);
+	    hw_lvl == dev->otx2_tm_root_lvl) {
+		rc = populate_tm_tl1_default(dev, parent);
 		if (rc)
 			goto error;
 	}
 
-	if (tm_node->hw_lvl_id != NIX_TXSCH_LVL_SMQ)
+	if (hw_lvl != NIX_TXSCH_LVL_SMQ)
 		child = find_prio_anchor(dev, tm_node->id);
 
-	rr_prio = tm_node->rr_prio;
-	hw_lvl = tm_node->hw_lvl_id;
-	strict_schedul_prio = tm_node->priority;
-	schq = tm_node->hw_id;
-	rr_quantum = (tm_node->weight * NIX_TM_RR_QUANTUM_MAX) /
-		MAX_SCHED_WEIGHT;
+	/* Override default rr_prio when TL1
+	 * Static Priority is disabled
+	 */
+	if (hw_lvl == NIX_TXSCH_LVL_TL1 &&
+	    dev->tm_flags & NIX_TM_TL1_NO_SP) {
+		rr_prio = TXSCH_TL1_DFLT_RR_PRIO;
+		child = 0;
+	}
 
-	configure_shaper_cir_pir_reg(dev, tm_node, &cir, &pir);
+	otx2_tm_dbg("Topology config node %s(%u)->%s(%"PRIu64") lvl %u, id %u"
+		    " prio_anchor %"PRIu64" rr_prio %u (%p)",
+		    nix_hwlvl2str(hw_lvl), schq, nix_hwlvl2str(hw_lvl + 1),
+		    parent, tm_node->lvl, tm_node->id, child, rr_prio, tm_node);
 
-	otx2_tm_dbg("Configure node %p, lvl %u hw_lvl %u, id %u, hw_id %u,"
-		     "parent_hw_id %" PRIx64 ", pir %" PRIx64 ", cir %" PRIx64,
-		     tm_node, tm_node->level_id, hw_lvl,
-		     tm_node->id, schq, parent, pir.rate, cir.rate);
-
-	rc = -EFAULT;
-
+	/* Prepare Topology and Link config */
 	switch (hw_lvl) {
 	case NIX_TXSCH_LVL_SMQ:
-		req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
-		req->lvl = hw_lvl;
-		reg = req->reg;
-		regval = req->regval;
-		req->num_regs = 0;
 
 		/* Set xoff which will be cleared later */
-		*reg++ = NIX_AF_SMQX_CFG(schq);
-		*regval++ = BIT_ULL(50) | ((uint64_t)NIX_MAX_VTAG_INS << 36) |
-				(NIX_MAX_HW_FRS << 8) | NIX_MIN_HW_FRS;
-		req->num_regs++;
-		*reg++ = NIX_AF_MDQX_PARENT(schq);
-		*regval++ = parent << 16;
-		req->num_regs++;
-		*reg++ = NIX_AF_MDQX_SCHEDULE(schq);
-		*regval++ = (strict_schedul_prio << 24) | rr_quantum;
-		req->num_regs++;
-		if (pir.rate && pir.burst) {
-			*reg++ = NIX_AF_MDQX_PIR(schq);
-			*regval++ = shaper2regval(&pir) | 1;
-			req->num_regs++;
-		}
+		reg[k] = NIX_AF_SMQX_CFG(schq);
+		regval[k] = BIT_ULL(50);
+		regval_mask[k] = ~BIT_ULL(50);
+		k++;
 
-		if (cir.rate && cir.burst) {
-			*reg++ = NIX_AF_MDQX_CIR(schq);
-			*regval++ = shaper2regval(&cir) | 1;
-			req->num_regs++;
-		}
+		/* Parent and schedule conf */
+		reg[k] = NIX_AF_MDQX_PARENT(schq);
+		regval[k] = parent << 16;
+		k++;
 
-		rc = send_tm_reqval(mbox, req);
-		if (rc)
-			goto error;
 		break;
 	case NIX_TXSCH_LVL_TL4:
-		req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
-		req->lvl = hw_lvl;
-		req->num_regs = 0;
-		reg = req->reg;
-		regval = req->regval;
+		/* Parent and schedule conf */
+		reg[k] = NIX_AF_TL4X_PARENT(schq);
+		regval[k] = parent << 16;
+		k++;
 
-		*reg++ = NIX_AF_TL4X_PARENT(schq);
-		*regval++ = parent << 16;
-		req->num_regs++;
-		*reg++ = NIX_AF_TL4X_TOPOLOGY(schq);
-		*regval++ = (child << 32) | (rr_prio << 1);
-		req->num_regs++;
-		*reg++ = NIX_AF_TL4X_SCHEDULE(schq);
-		*regval++ = (strict_schedul_prio << 24) | rr_quantum;
-		req->num_regs++;
-		if (pir.rate && pir.burst) {
-			*reg++ = NIX_AF_TL4X_PIR(schq);
-			*regval++ = shaper2regval(&pir) | 1;
-			req->num_regs++;
-		}
-		if (cir.rate && cir.burst) {
-			*reg++ = NIX_AF_TL4X_CIR(schq);
-			*regval++ = shaper2regval(&cir) | 1;
-			req->num_regs++;
-		}
+		reg[k] = NIX_AF_TL4X_TOPOLOGY(schq);
+		regval[k] = (child << 32) | (rr_prio << 1);
+		k++;
+
 		/* Configure TL4 to send to SDP channel instead of CGX/LBK */
 		if (otx2_dev_is_sdp(dev)) {
-			*reg++ = NIX_AF_TL4X_SDP_LINK_CFG(schq);
-			*regval++ = BIT_ULL(12);
-			req->num_regs++;
+			reg[k] = NIX_AF_TL4X_SDP_LINK_CFG(schq);
+			regval[k] = BIT_ULL(12);
+			k++;
 		}
-
-		rc = send_tm_reqval(mbox, req);
-		if (rc)
-			goto error;
 		break;
 	case NIX_TXSCH_LVL_TL3:
-		req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
-		req->lvl = hw_lvl;
-		req->num_regs = 0;
-		reg = req->reg;
-		regval = req->regval;
+		/* Parent and schedule conf */
+		reg[k] = NIX_AF_TL3X_PARENT(schq);
+		regval[k] = parent << 16;
+		k++;
 
-		*reg++ = NIX_AF_TL3X_PARENT(schq);
-		*regval++ = parent << 16;
-		req->num_regs++;
-		*reg++ = NIX_AF_TL3X_TOPOLOGY(schq);
-		*regval++ = (child << 32) | (rr_prio << 1);
-		req->num_regs++;
-		*reg++ = NIX_AF_TL3X_SCHEDULE(schq);
-		*regval++ = (strict_schedul_prio << 24) | rr_quantum;
-		req->num_regs++;
+		reg[k] = NIX_AF_TL3X_TOPOLOGY(schq);
+		regval[k] = (child << 32) | (rr_prio << 1);
+		k++;
 
 		/* Link configuration */
 		if (!otx2_dev_is_sdp(dev) &&
 		    dev->link_cfg_lvl == NIX_TXSCH_LVL_TL3) {
-			*reg++ = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
+			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
 						nix_get_link(dev));
-			*regval++ = BIT_ULL(12) | nix_get_relchan(dev);
-			req->num_regs++;
+			regval[k] = BIT_ULL(12) | nix_get_relchan(dev);
+			k++;
 		}
 
-		if (pir.rate && pir.burst) {
-			*reg++ = NIX_AF_TL3X_PIR(schq);
-			*regval++ = shaper2regval(&pir) | 1;
-			req->num_regs++;
-		}
-		if (cir.rate && cir.burst) {
-			*reg++ = NIX_AF_TL3X_CIR(schq);
-			*regval++ = shaper2regval(&cir) | 1;
-			req->num_regs++;
-		}
-
-		rc = send_tm_reqval(mbox, req);
-		if (rc)
-			goto error;
 		break;
 	case NIX_TXSCH_LVL_TL2:
-		req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
-		req->lvl = hw_lvl;
-		req->num_regs = 0;
-		reg = req->reg;
-		regval = req->regval;
+		/* Parent and schedule conf */
+		reg[k] = NIX_AF_TL2X_PARENT(schq);
+		regval[k] = parent << 16;
+		k++;
 
-		*reg++ = NIX_AF_TL2X_PARENT(schq);
-		*regval++ = parent << 16;
-		req->num_regs++;
-		*reg++ = NIX_AF_TL2X_TOPOLOGY(schq);
-		*regval++ = (child << 32) | (rr_prio << 1);
-		req->num_regs++;
-		*reg++ = NIX_AF_TL2X_SCHEDULE(schq);
-		if (dev->otx2_tm_root_lvl == NIX_TXSCH_LVL_TL2)
-			*regval++ = (1 << 24) | rr_quantum;
-		else
-			*regval++ = (strict_schedul_prio << 24) | rr_quantum;
-		req->num_regs++;
+		reg[k] = NIX_AF_TL2X_TOPOLOGY(schq);
+		regval[k] = (child << 32) | (rr_prio << 1);
+		k++;
 
 		/* Link configuration */
 		if (!otx2_dev_is_sdp(dev) &&
 		    dev->link_cfg_lvl == NIX_TXSCH_LVL_TL2) {
-			*reg++ = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
+			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
 						nix_get_link(dev));
-			*regval++ = BIT_ULL(12) | nix_get_relchan(dev);
-			req->num_regs++;
-		}
-		if (pir.rate && pir.burst) {
-			*reg++ = NIX_AF_TL2X_PIR(schq);
-			*regval++ = shaper2regval(&pir) | 1;
-			req->num_regs++;
-		}
-		if (cir.rate && cir.burst) {
-			*reg++ = NIX_AF_TL2X_CIR(schq);
-			*regval++ = shaper2regval(&cir) | 1;
-			req->num_regs++;
+			regval[k] = BIT_ULL(12) | nix_get_relchan(dev);
+			k++;
 		}
 
-		rc = send_tm_reqval(mbox, req);
-		if (rc)
-			goto error;
 		break;
 	case NIX_TXSCH_LVL_TL1:
-		req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
-		req->lvl = hw_lvl;
-		req->num_regs = 0;
-		reg = req->reg;
-		regval = req->regval;
+		reg[k] = NIX_AF_TL1X_TOPOLOGY(schq);
+		regval[k] = (child << 32) | (rr_prio << 1 /*RR_PRIO*/);
+		k++;
 
-		*reg++ = NIX_AF_TL1X_SCHEDULE(schq);
-		*regval++ = rr_quantum;
-		req->num_regs++;
-		*reg++ = NIX_AF_TL1X_TOPOLOGY(schq);
-		*regval++ = (child << 32) | (rr_prio << 1 /*RR_PRIO*/);
-		req->num_regs++;
-		if (cir.rate && cir.burst) {
-			*reg++ = NIX_AF_TL1X_CIR(schq);
-			*regval++ = shaper2regval(&cir) | 1;
-			req->num_regs++;
-		}
-
-		rc = send_tm_reqval(mbox, req);
-		if (rc)
-			goto error;
 		break;
 	}
+
+	/* Prepare schedule config */
+	k += prepare_tm_sched_reg(dev, tm_node, &reg[k], &regval[k]);
+
+	/* Prepare shaping config */
+	k += prepare_tm_shaper_reg(tm_node, profile, &reg[k], &regval[k]);
+
+	if (!k)
+		return 0;
+
+	/* Copy and send config mbox */
+	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = hw_lvl;
+	req->num_regs = k;
+
+	otx2_mbox_memcpy(req->reg, reg, sizeof(uint64_t) * k);
+	otx2_mbox_memcpy(req->regval, regval, sizeof(uint64_t) * k);
+	otx2_mbox_memcpy(req->regval_mask, regval_mask, sizeof(uint64_t) * k);
+
+	rc = otx2_mbox_process(mbox);
+	if (rc)
+		goto error;
 
 	return 0;
 error:
@@ -541,13 +591,14 @@ static int
 nix_tm_txsch_reg_config(struct otx2_eth_dev *dev)
 {
 	struct otx2_nix_tm_node *tm_node;
-	uint32_t lvl;
+	uint32_t hw_lvl;
 	int rc = 0;
 
-	for (lvl = 0; lvl < (uint32_t)dev->otx2_tm_root_lvl + 1; lvl++) {
+	for (hw_lvl = 0; hw_lvl <= dev->otx2_tm_root_lvl; hw_lvl++) {
 		TAILQ_FOREACH(tm_node, &dev->node_list, node) {
-			if (tm_node->hw_lvl_id == lvl) {
-				rc = populate_tm_registers(dev, tm_node);
+			if (tm_node->hw_lvl == hw_lvl &&
+			    tm_node->hw_lvl != NIX_TXSCH_LVL_CNT) {
+				rc = populate_tm_reg(dev, tm_node);
 				if (rc)
 					goto exit;
 			}
@@ -637,8 +688,8 @@ nix_tm_update_parent_info(struct otx2_eth_dev *dev)
 static int
 nix_tm_node_add_to_list(struct otx2_eth_dev *dev, uint32_t node_id,
 			uint32_t parent_node_id, uint32_t priority,
-			uint32_t weight, uint16_t hw_lvl_id,
-			uint16_t level_id, bool user,
+			uint32_t weight, uint16_t hw_lvl,
+			uint16_t lvl, bool user,
 			struct rte_tm_node_params *params)
 {
 	struct otx2_nix_tm_shaper_profile *shaper_profile;
@@ -655,8 +706,8 @@ nix_tm_node_add_to_list(struct otx2_eth_dev *dev, uint32_t node_id,
 	if (!tm_node)
 		return -ENOMEM;
 
-	tm_node->level_id = level_id;
-	tm_node->hw_lvl_id = hw_lvl_id;
+	tm_node->lvl = lvl;
+	tm_node->hw_lvl = hw_lvl;
 
 	tm_node->id = node_id;
 	tm_node->priority = priority;
@@ -935,18 +986,18 @@ nix_tm_free_resources(struct otx2_eth_dev *dev, uint32_t flags_mask,
 			continue;
 
 		if (nix_tm_have_tl1_access(dev) &&
-		    tm_node->hw_lvl_id ==  NIX_TXSCH_LVL_TL1)
+		    tm_node->hw_lvl ==  NIX_TXSCH_LVL_TL1)
 			skip_node = true;
 
 		otx2_tm_dbg("Free hwres for node %u, hwlvl %u, hw_id %u (%p)",
-			    tm_node->id,  tm_node->hw_lvl_id,
+			    tm_node->id,  tm_node->hw_lvl,
 			    tm_node->hw_id, tm_node);
 		/* Free specific HW resource if requested */
 		if (!skip_node && flags_mask &&
 		    tm_node->flags & NIX_TM_NODE_HWRES) {
 			req = otx2_mbox_alloc_msg_nix_txsch_free(mbox);
 			req->flags = 0;
-			req->schq_lvl = tm_node->hw_lvl_id;
+			req->schq_lvl = tm_node->hw_lvl;
 			req->schq = tm_node->hw_id;
 			rc = otx2_mbox_process(mbox);
 			if (rc)
@@ -1010,17 +1061,17 @@ nix_tm_assign_id_to_node(struct otx2_eth_dev *dev,
 	uint32_t l_id, schq_index;
 
 	otx2_tm_dbg("Assign hw id for child node %u, lvl %u, hw_lvl %u (%p)",
-		    child->id, child->level_id, child->hw_lvl_id, child);
+		    child->id, child->lvl, child->hw_lvl, child);
 
 	child->flags |= NIX_TM_NODE_HWRES;
 
 	/* Process root nodes */
 	if (dev->otx2_tm_root_lvl == NIX_TXSCH_LVL_TL2 &&
-	    child->hw_lvl_id == dev->otx2_tm_root_lvl && !parent) {
+	    child->hw_lvl == dev->otx2_tm_root_lvl && !parent) {
 		int idx = 0;
 		uint32_t tschq_con_index;
 
-		l_id = child->hw_lvl_id;
+		l_id = child->hw_lvl;
 		tschq_con_index = dev->txschq_contig_index[l_id];
 		hw_id = dev->txschq_contig_list[l_id][tschq_con_index];
 		child->hw_id = hw_id;
@@ -1032,10 +1083,10 @@ nix_tm_assign_id_to_node(struct otx2_eth_dev *dev,
 		return 0;
 	}
 	if (dev->otx2_tm_root_lvl == NIX_TXSCH_LVL_TL1 &&
-	    child->hw_lvl_id == dev->otx2_tm_root_lvl && !parent) {
+	    child->hw_lvl == dev->otx2_tm_root_lvl && !parent) {
 		uint32_t tschq_con_index;
 
-		l_id = child->hw_lvl_id;
+		l_id = child->hw_lvl;
 		tschq_con_index = dev->txschq_index[l_id];
 		hw_id = dev->txschq_list[l_id][tschq_con_index];
 		child->hw_id = hw_id;
@@ -1044,7 +1095,7 @@ nix_tm_assign_id_to_node(struct otx2_eth_dev *dev,
 	}
 
 	/* Process children with parents */
-	l_id = child->hw_lvl_id;
+	l_id = child->hw_lvl;
 	schq_index = dev->txschq_index[l_id];
 	schq_con_index = dev->txschq_contig_index[l_id];
 
@@ -1069,8 +1120,8 @@ nix_tm_assign_hw_id(struct otx2_eth_dev *dev)
 
 	for (i = NIX_TXSCH_LVL_TL1; i > 0; i--) {
 		TAILQ_FOREACH(parent, &dev->node_list, node) {
-			child_hw_lvl = parent->hw_lvl_id - 1;
-			if (parent->hw_lvl_id != i)
+			child_hw_lvl = parent->hw_lvl - 1;
+			if (parent->hw_lvl != i)
 				continue;
 			TAILQ_FOREACH(child, &dev->node_list, node) {
 				if (!child->parent)
@@ -1087,7 +1138,7 @@ nix_tm_assign_hw_id(struct otx2_eth_dev *dev)
 			 * Explicitly assign id to parent node if it
 			 * doesn't have a parent
 			 */
-			if (parent->hw_lvl_id == dev->otx2_tm_root_lvl)
+			if (parent->hw_lvl == dev->otx2_tm_root_lvl)
 				nix_tm_assign_id_to_node(dev, parent, NULL);
 		}
 	}
@@ -1102,7 +1153,7 @@ nix_tm_count_req_schq(struct otx2_eth_dev *dev,
 	uint8_t contig_count;
 
 	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
-		if (lvl == tm_node->hw_lvl_id) {
+		if (lvl == tm_node->hw_lvl) {
 			req->schq[lvl - 1] += tm_node->rr_num;
 			if (tm_node->max_prio != UINT32_MAX) {
 				contig_count = tm_node->max_prio + 1;
@@ -1111,7 +1162,7 @@ nix_tm_count_req_schq(struct otx2_eth_dev *dev,
 		}
 		if (lvl == dev->otx2_tm_root_lvl &&
 		    dev->otx2_tm_root_lvl && lvl == NIX_TXSCH_LVL_TL2 &&
-		    tm_node->hw_lvl_id == dev->otx2_tm_root_lvl) {
+		    tm_node->hw_lvl == dev->otx2_tm_root_lvl) {
 			req->schq_contig[dev->otx2_tm_root_lvl]++;
 		}
 	}
@@ -1192,7 +1243,7 @@ nix_tm_alloc_resources(struct rte_eth_dev *eth_dev, bool xmit_enable)
 			continue;
 
 		/* Enable xmit on sq */
-		if (tm_node->level_id != OTX2_TM_LVL_QUEUE) {
+		if (tm_node->lvl != OTX2_TM_LVL_QUEUE) {
 			tm_node->flags |= NIX_TM_NODE_ENABLED;
 			continue;
 		}
@@ -1210,8 +1261,7 @@ nix_tm_alloc_resources(struct rte_eth_dev *eth_dev, bool xmit_enable)
 		txq = eth_dev->data->tx_queues[sq];
 
 		smq = tm_node->parent->hw_id;
-		rr_quantum = (tm_node->weight *
-			      NIX_TM_RR_QUANTUM_MAX) / MAX_SCHED_WEIGHT;
+		rr_quantum = NIX_TM_WEIGHT_TO_RR_QUANTUM(tm_node->weight);
 
 		rc = nix_tm_sw_xon(txq, smq, rr_quantum);
 		if (rc)
@@ -1332,6 +1382,7 @@ void otx2_nix_tm_conf_init(struct rte_eth_dev *eth_dev)
 
 int otx2_nix_tm_init_default(struct rte_eth_dev *eth_dev)
 {
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct otx2_eth_dev  *dev = otx2_eth_pmd_priv(eth_dev);
 	uint16_t sq_cnt = eth_dev->data->nb_tx_queues;
 	int rc;
@@ -1346,6 +1397,13 @@ int otx2_nix_tm_init_default(struct rte_eth_dev *eth_dev)
 	/* Clear shaper profiles */
 	nix_tm_clear_shaper_profiles(dev);
 	dev->tm_flags = NIX_TM_DEFAULT_TREE;
+
+	/* Disable TL1 Static Priority when VF's are enabled
+	 * as otherwise VF's TL2 reallocation will be needed
+	 * runtime to support a specific topology of PF.
+	 */
+	if (pci_dev->max_vfs)
+		dev->tm_flags |= NIX_TM_TL1_NO_SP;
 
 	rc = nix_tm_prepare_default_tree(eth_dev);
 	if (rc != 0)
@@ -1397,15 +1455,14 @@ otx2_nix_tm_get_leaf_data(struct otx2_eth_dev *dev, uint16_t sq,
 		tm_node = nix_tm_node_search(dev, sq, true);
 
 	/* Check if we found a valid leaf node */
-	if (!tm_node || tm_node->level_id != OTX2_TM_LVL_QUEUE ||
+	if (!tm_node || tm_node->lvl != OTX2_TM_LVL_QUEUE ||
 	    !tm_node->parent || tm_node->parent->hw_id == UINT32_MAX) {
 		return -EIO;
 	}
 
 	/* Get SMQ Id of leaf node's parent */
 	*smq = tm_node->parent->hw_id;
-	*rr_quantum = (tm_node->weight * NIX_TM_RR_QUANTUM_MAX)
-		/ MAX_SCHED_WEIGHT;
+	*rr_quantum = NIX_TM_WEIGHT_TO_RR_QUANTUM(tm_node->weight);
 
 	rc = nix_smq_xoff(dev, *smq, false);
 	if (rc)

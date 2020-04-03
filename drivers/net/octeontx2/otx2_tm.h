@@ -10,6 +10,7 @@
 #include <rte_tm_driver.h>
 
 #define NIX_TM_DEFAULT_TREE	BIT_ULL(0)
+#define NIX_TM_TL1_NO_SP	BIT_ULL(3)
 
 struct otx2_eth_dev;
 
@@ -27,16 +28,18 @@ struct otx2_nix_tm_node {
 	uint32_t hw_id;
 	uint32_t priority;
 	uint32_t weight;
-	uint16_t level_id;
-	uint16_t hw_lvl_id;
+	uint16_t lvl;
+	uint16_t hw_lvl;
 	uint32_t rr_prio;
 	uint32_t rr_num;
 	uint32_t max_prio;
 	uint32_t parent_hw_id;
-	uint32_t flags;
+	uint32_t flags:16;
 #define NIX_TM_NODE_HWRES	BIT_ULL(0)
 #define NIX_TM_NODE_ENABLED	BIT_ULL(1)
 #define NIX_TM_NODE_USER	BIT_ULL(2)
+	/* Shaper algorithm for RED state @NIX_REDALG_E */
+	uint32_t red_algo:2;
 	struct otx2_nix_tm_node *parent;
 	struct rte_tm_node_params params;
 };
@@ -45,7 +48,7 @@ struct otx2_nix_tm_shaper_profile {
 	TAILQ_ENTRY(otx2_nix_tm_shaper_profile) shaper;
 	uint32_t shaper_profile_id;
 	uint32_t reference_count;
-	struct rte_tm_shaper_params profile;
+	struct rte_tm_shaper_params params; /* Rate in bits/sec */
 };
 
 struct shaper_params {
@@ -63,6 +66,10 @@ TAILQ_HEAD(otx2_nix_tm_shaper_profile_list, otx2_nix_tm_shaper_profile);
 
 #define MAX_SCHED_WEIGHT ((uint8_t)~0)
 #define NIX_TM_RR_QUANTUM_MAX (BIT_ULL(24) - 1)
+#define NIX_TM_WEIGHT_TO_RR_QUANTUM(__weight)			\
+		((((__weight) & MAX_SCHED_WEIGHT) *             \
+		  NIX_TM_RR_QUANTUM_MAX) / MAX_SCHED_WEIGHT)
+
 
 /* DEFAULT_RR_WEIGHT * NIX_TM_RR_QUANTUM_MAX / MAX_SCHED_WEIGHT  */
 /* = NIX_MAX_HW_MTU */
@@ -73,52 +80,27 @@ TAILQ_HEAD(otx2_nix_tm_shaper_profile_list, otx2_nix_tm_shaper_profile);
 #define MAX_RATE_EXPONENT 0xf
 #define MAX_RATE_MANTISSA 0xff
 
-/** NIX rate limiter time-wheel resolution */
-#define L1_TIME_WHEEL_CCLK_TICKS 240
-#define LX_TIME_WHEEL_CCLK_TICKS 860
+#define NIX_SHAPER_RATE_CONST ((uint64_t)2E6)
 
-#define CCLK_HZ 1000000000
-
-/* NIX rate calculation
- *	CCLK = coprocessor-clock frequency in MHz
- *	CCLK_TICKS = rate limiter time-wheel resolution
- *
+/* NIX rate calculation in Bits/Sec
  *	PIR_ADD = ((256 + NIX_*_PIR[RATE_MANTISSA])
  *		<< NIX_*_PIR[RATE_EXPONENT]) / 256
- *	PIR = (CCLK / (CCLK_TICKS << NIX_*_PIR[RATE_DIVIDER_EXPONENT]))
- *		* PIR_ADD
+ *	PIR = (2E6 * PIR_ADD / (1 << NIX_*_PIR[RATE_DIVIDER_EXPONENT]))
  *
  *	CIR_ADD = ((256 + NIX_*_CIR[RATE_MANTISSA])
  *		<< NIX_*_CIR[RATE_EXPONENT]) / 256
- *	CIR = (CCLK / (CCLK_TICKS << NIX_*_CIR[RATE_DIVIDER_EXPONENT]))
- *		* CIR_ADD
+ *	CIR = (2E6 * CIR_ADD / (CCLK_TICKS << NIX_*_CIR[RATE_DIVIDER_EXPONENT]))
  */
-#define SHAPER_RATE(cclk_hz, cclk_ticks, \
-			exponent, mantissa, div_exp) \
-	(((uint64_t)(cclk_hz) * ((256 + (mantissa)) << (exponent))) \
-		/ (((cclk_ticks) << (div_exp)) * 256))
+#define SHAPER_RATE(exponent, mantissa, div_exp) \
+	((NIX_SHAPER_RATE_CONST * ((256 + (mantissa)) << (exponent)))\
+		/ (((1ull << (div_exp)) * 256)))
 
-#define L1_SHAPER_RATE(cclk_hz, exponent, mantissa, div_exp) \
-	SHAPER_RATE(cclk_hz, L1_TIME_WHEEL_CCLK_TICKS, \
-			exponent, mantissa, div_exp)
+/* 96xx rate limits in Bits/Sec */
+#define MIN_SHAPER_RATE \
+	SHAPER_RATE(0, 0, MAX_RATE_DIV_EXP)
 
-#define LX_SHAPER_RATE(cclk_hz, exponent, mantissa, div_exp) \
-	SHAPER_RATE(cclk_hz, LX_TIME_WHEEL_CCLK_TICKS, \
-			exponent, mantissa, div_exp)
-
-/* Shaper rate limits */
-#define MIN_SHAPER_RATE(cclk_hz, cclk_ticks) \
-	SHAPER_RATE(cclk_hz, cclk_ticks, 0, 0, MAX_RATE_DIV_EXP)
-
-#define MAX_SHAPER_RATE(cclk_hz, cclk_ticks) \
-	SHAPER_RATE(cclk_hz, cclk_ticks, MAX_RATE_EXPONENT, \
-			MAX_RATE_MANTISSA, 0)
-
-#define MIN_L1_SHAPER_RATE(cclk_hz) \
-	MIN_SHAPER_RATE(cclk_hz, L1_TIME_WHEEL_CCLK_TICKS)
-
-#define MAX_L1_SHAPER_RATE(cclk_hz) \
-	MAX_SHAPER_RATE(cclk_hz, L1_TIME_WHEEL_CCLK_TICKS)
+#define MAX_SHAPER_RATE \
+	SHAPER_RATE(MAX_RATE_EXPONENT, MAX_RATE_MANTISSA, 0)
 
 /** TM Shaper - low level operations */
 
@@ -149,5 +131,26 @@ TAILQ_HEAD(otx2_nix_tm_shaper_profile_list, otx2_nix_tm_shaper_profile);
 /* Default TL1 priority and Quantum from AF */
 #define TXSCH_TL1_DFLT_RR_QTM  ((1 << 24) - 1)
 #define TXSCH_TL1_DFLT_RR_PRIO 1
+
+static inline const char *
+nix_hwlvl2str(uint32_t hw_lvl)
+{
+	switch (hw_lvl) {
+	case NIX_TXSCH_LVL_MDQ:
+		return "SMQ/MDQ";
+	case NIX_TXSCH_LVL_TL4:
+		return "TL4";
+	case NIX_TXSCH_LVL_TL3:
+		return "TL3";
+	case NIX_TXSCH_LVL_TL2:
+		return "TL2";
+	case NIX_TXSCH_LVL_TL1:
+		return "TL1";
+	default:
+		break;
+	}
+
+	return "???";
+}
 
 #endif /* __OTX2_TM_H__ */
