@@ -1666,6 +1666,9 @@ otx2_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_offloads;
 	}
 
+	otx2_nix_err_intr_enb_dis(eth_dev, true);
+	otx2_nix_ras_intr_enb_dis(eth_dev, true);
+
 	if (dev->ptp_en &&
 	    dev->npc_flow.switch_header_type == OTX2_PRIV_FLAGS_HIGIG) {
 		otx2_err("Both PTP and switch header enabled");

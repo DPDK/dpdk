@@ -445,6 +445,8 @@ int oxt2_nix_register_cq_irqs(struct rte_eth_dev *eth_dev);
 void otx2_nix_unregister_irqs(struct rte_eth_dev *eth_dev);
 void oxt2_nix_unregister_queue_irqs(struct rte_eth_dev *eth_dev);
 void oxt2_nix_unregister_cq_irqs(struct rte_eth_dev *eth_dev);
+void otx2_nix_err_intr_enb_dis(struct rte_eth_dev *eth_dev, bool enb);
+void otx2_nix_ras_intr_enb_dis(struct rte_eth_dev *eth_dev, bool enb);
 
 int otx2_nix_rx_queue_intr_enable(struct rte_eth_dev *eth_dev,
 				  uint16_t rx_queue_id);

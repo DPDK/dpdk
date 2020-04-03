@@ -41,11 +41,11 @@ nix_lf_register_err_irq(struct rte_eth_dev *eth_dev)
 	vec = dev->nix_msixoff + NIX_LF_INT_VEC_ERR_INT;
 
 	/* Clear err interrupt */
-	otx2_write64(~0ull, dev->base + NIX_LF_ERR_INT_ENA_W1C);
+	otx2_nix_err_intr_enb_dis(eth_dev, false);
 	/* Set used interrupt vectors */
 	rc = otx2_register_irq(handle, nix_lf_err_irq, eth_dev, vec);
 	/* Enable all dev interrupt except for RQ_DISABLED */
-	otx2_write64(~BIT_ULL(11), dev->base + NIX_LF_ERR_INT_ENA_W1S);
+	otx2_nix_err_intr_enb_dis(eth_dev, true);
 
 	return rc;
 }
@@ -61,7 +61,7 @@ nix_lf_unregister_err_irq(struct rte_eth_dev *eth_dev)
 	vec = dev->nix_msixoff + NIX_LF_INT_VEC_ERR_INT;
 
 	/* Clear err interrupt */
-	otx2_write64(~0ull, dev->base + NIX_LF_ERR_INT_ENA_W1C);
+	otx2_nix_err_intr_enb_dis(eth_dev, false);
 	otx2_unregister_irq(handle, nix_lf_err_irq, eth_dev, vec);
 }
 
@@ -97,11 +97,11 @@ nix_lf_register_ras_irq(struct rte_eth_dev *eth_dev)
 	vec = dev->nix_msixoff + NIX_LF_INT_VEC_POISON;
 
 	/* Clear err interrupt */
-	otx2_write64(~0ull, dev->base + NIX_LF_RAS_ENA_W1C);
+	otx2_nix_ras_intr_enb_dis(eth_dev, false);
 	/* Set used interrupt vectors */
 	rc = otx2_register_irq(handle, nix_lf_ras_irq, eth_dev, vec);
 	/* Enable dev interrupt */
-	otx2_write64(~0ull, dev->base + NIX_LF_RAS_ENA_W1S);
+	otx2_nix_ras_intr_enb_dis(eth_dev, true);
 
 	return rc;
 }
@@ -117,7 +117,7 @@ nix_lf_unregister_ras_irq(struct rte_eth_dev *eth_dev)
 	vec = dev->nix_msixoff + NIX_LF_INT_VEC_POISON;
 
 	/* Clear err interrupt */
-	otx2_write64(~0ull, dev->base + NIX_LF_RAS_ENA_W1C);
+	otx2_nix_ras_intr_enb_dis(eth_dev, false);
 	otx2_unregister_irq(handle, nix_lf_ras_irq, eth_dev, vec);
 }
 
@@ -465,4 +465,27 @@ otx2_nix_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
 		     NIX_LF_CINTX_ENA_W1C(rx_queue_id));
 
 	return 0;
+}
+
+void
+otx2_nix_err_intr_enb_dis(struct rte_eth_dev *eth_dev, bool enb)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	/* Enable all nix lf error interrupts except for RQ_DISABLED */
+	if (enb)
+		otx2_write64(~BIT_ULL(11), dev->base + NIX_LF_ERR_INT_ENA_W1S);
+	else
+		otx2_write64(~0ull, dev->base + NIX_LF_ERR_INT_ENA_W1C);
+}
+
+void
+otx2_nix_ras_intr_enb_dis(struct rte_eth_dev *eth_dev, bool enb)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	if (enb)
+		otx2_write64(~0ull, dev->base + NIX_LF_RAS_ENA_W1S);
+	else
+		otx2_write64(~0ull, dev->base + NIX_LF_RAS_ENA_W1C);
 }
