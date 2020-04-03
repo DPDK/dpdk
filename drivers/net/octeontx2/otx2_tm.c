@@ -28,8 +28,8 @@ uint64_t shaper2regval(struct shaper_params *shaper)
 		(shaper->mantissa << 1);
 }
 
-static int
-nix_get_link(struct otx2_eth_dev *dev)
+int
+otx2_nix_get_link(struct otx2_eth_dev *dev)
 {
 	int link = 13 /* SDP */;
 	uint16_t lmac_chan;
@@ -574,7 +574,7 @@ populate_tm_reg(struct otx2_eth_dev *dev,
 		if (!otx2_dev_is_sdp(dev) &&
 		    dev->link_cfg_lvl == NIX_TXSCH_LVL_TL3) {
 			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
-						nix_get_link(dev));
+						otx2_nix_get_link(dev));
 			regval[k] = BIT_ULL(12) | nix_get_relchan(dev);
 			k++;
 		}
@@ -594,7 +594,7 @@ populate_tm_reg(struct otx2_eth_dev *dev,
 		if (!otx2_dev_is_sdp(dev) &&
 		    dev->link_cfg_lvl == NIX_TXSCH_LVL_TL2) {
 			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
-						nix_get_link(dev));
+						otx2_nix_get_link(dev));
 			regval[k] = BIT_ULL(12) | nix_get_relchan(dev);
 			k++;
 		}
@@ -990,6 +990,7 @@ nix_txq_flush_sq_spin(struct otx2_eth_txq *txq)
 
 	return 0;
 exit:
+	otx2_nix_tm_dump(dev);
 	return -EFAULT;
 }
 

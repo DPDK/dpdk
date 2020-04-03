@@ -464,6 +464,7 @@ int otx2_nix_dev_get_reg(struct rte_eth_dev *eth_dev,
 			 struct rte_dev_reg_info *regs);
 int otx2_nix_queues_ctx_dump(struct rte_eth_dev *eth_dev);
 void otx2_nix_cqe_dump(const struct nix_cqe_hdr_s *cq);
+void otx2_nix_tm_dump(struct otx2_eth_dev *dev);
 
 /* Stats */
 int otx2_nix_dev_stats_get(struct rte_eth_dev *eth_dev,

@@ -23,6 +23,7 @@ int otx2_nix_tm_get_leaf_data(struct otx2_eth_dev *dev, uint16_t sq,
 int otx2_nix_sq_flush_pre(void *_txq, bool dev_started);
 int otx2_nix_sq_flush_post(void *_txq);
 int otx2_nix_sq_enable(void *_txq);
+int otx2_nix_get_link(struct otx2_eth_dev *dev);
 int otx2_nix_sq_sqb_aura_fc(void *_txq, bool enable);
 
 struct otx2_nix_tm_node {

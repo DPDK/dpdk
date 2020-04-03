@@ -6,6 +6,7 @@
 
 #define nix_dump(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 #define NIX_REG_INFO(reg) {reg, #reg}
+#define NIX_REG_NAME_SZ 48
 
 struct nix_lf_reg_info {
 	uint32_t offset;
@@ -390,8 +391,13 @@ otx2_nix_queues_ctx_dump(struct rte_eth_dev *eth_dev)
 	int rc, q, rq = eth_dev->data->nb_rx_queues;
 	int sq = eth_dev->data->nb_tx_queues;
 	struct otx2_mbox *mbox = dev->mbox;
+	struct npa_aq_enq_rsp *npa_rsp;
+	struct npa_aq_enq_req *npa_aq;
+	struct otx2_npa_lf *npa_lf;
 	struct nix_aq_enq_rsp *rsp;
 	struct nix_aq_enq_req *aq;
+
+	npa_lf = otx2_npa_lf_obj_get();
 
 	for (q = 0; q < rq; q++) {
 		aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
@@ -438,6 +444,36 @@ otx2_nix_queues_ctx_dump(struct rte_eth_dev *eth_dev)
 		nix_dump("============== port=%d sq=%d ===============",
 			 eth_dev->data->port_id, q);
 		nix_lf_sq_dump(&rsp->sq);
+
+		if (!npa_lf) {
+			otx2_err("NPA LF doesn't exist");
+			continue;
+		}
+
+		/* Dump SQB Aura minimal info */
+		npa_aq = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+		npa_aq->aura_id = rsp->sq.sqb_aura;
+		npa_aq->ctype = NPA_AQ_CTYPE_AURA;
+		npa_aq->op = NPA_AQ_INSTOP_READ;
+
+		rc = otx2_mbox_process_msg(npa_lf->mbox, (void *)&npa_rsp);
+		if (rc) {
+			otx2_err("Failed to get sq's sqb_aura context");
+			continue;
+		}
+
+		nix_dump("\nSQB Aura W0: Pool addr\t\t0x%"PRIx64"",
+			 npa_rsp->aura.pool_addr);
+		nix_dump("SQB Aura W1: ena\t\t\t%d",
+			 npa_rsp->aura.ena);
+		nix_dump("SQB Aura W2: count\t\t%"PRIx64"",
+			 (uint64_t)npa_rsp->aura.count);
+		nix_dump("SQB Aura W3: limit\t\t%"PRIx64"",
+			 (uint64_t)npa_rsp->aura.limit);
+		nix_dump("SQB Aura W3: fc_ena\t\t%d",
+			 npa_rsp->aura.fc_ena);
+		nix_dump("SQB Aura W4: fc_addr\t\t0x%"PRIx64"\n",
+			 npa_rsp->aura.fc_addr);
 	}
 
 fail:
@@ -497,4 +533,279 @@ otx2_nix_cqe_dump(const struct nix_cqe_hdr_s *cq)
 
 	nix_dump("W5: vtag0_ptr \t%d\t\tvtag1_ptr \t%d\t\tflow_key_alg \t%d",
 		 rx->vtag0_ptr, rx->vtag1_ptr, rx->flow_key_alg);
+}
+
+static uint8_t
+prepare_nix_tm_reg_dump(uint16_t hw_lvl, uint16_t schq, uint16_t link,
+			uint64_t *reg, char regstr[][NIX_REG_NAME_SZ])
+{
+	uint8_t k = 0;
+
+	switch (hw_lvl) {
+	case NIX_TXSCH_LVL_SMQ:
+		reg[k] = NIX_AF_SMQX_CFG(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_SMQ[%u]_CFG", schq);
+
+		reg[k] = NIX_AF_MDQX_PARENT(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_MDQ[%u]_PARENT", schq);
+
+		reg[k] = NIX_AF_MDQX_SCHEDULE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_MDQ[%u]_SCHEDULE", schq);
+
+		reg[k] = NIX_AF_MDQX_PIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_MDQ[%u]_PIR", schq);
+
+		reg[k] = NIX_AF_MDQX_CIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_MDQ[%u]_CIR", schq);
+
+		reg[k] = NIX_AF_MDQX_SHAPE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_MDQ[%u]_SHAPE", schq);
+
+		reg[k] = NIX_AF_MDQX_SW_XOFF(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_MDQ[%u]_SW_XOFF", schq);
+		break;
+	case NIX_TXSCH_LVL_TL4:
+		reg[k] = NIX_AF_TL4X_PARENT(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL4[%u]_PARENT", schq);
+
+		reg[k] = NIX_AF_TL4X_TOPOLOGY(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL4[%u]_TOPOLOGY", schq);
+
+		reg[k] = NIX_AF_TL4X_SDP_LINK_CFG(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL4[%u]_SDP_LINK_CFG", schq);
+
+		reg[k] = NIX_AF_TL4X_SCHEDULE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL4[%u]_SCHEDULE", schq);
+
+		reg[k] = NIX_AF_TL4X_PIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL4[%u]_PIR", schq);
+
+		reg[k] = NIX_AF_TL4X_CIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL4[%u]_CIR", schq);
+
+		reg[k] = NIX_AF_TL4X_SHAPE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL4[%u]_SHAPE", schq);
+
+		reg[k] = NIX_AF_TL4X_SW_XOFF(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL4[%u]_SW_XOFF", schq);
+		break;
+	case NIX_TXSCH_LVL_TL3:
+		reg[k] = NIX_AF_TL3X_PARENT(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3[%u]_PARENT", schq);
+
+		reg[k] = NIX_AF_TL3X_TOPOLOGY(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3[%u]_TOPOLOGY", schq);
+
+		reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq, link);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3_TL2[%u]_LINK[%u]_CFG", schq, link);
+
+		reg[k] = NIX_AF_TL3X_SCHEDULE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3[%u]_SCHEDULE", schq);
+
+		reg[k] = NIX_AF_TL3X_PIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3[%u]_PIR", schq);
+
+		reg[k] = NIX_AF_TL3X_CIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3[%u]_CIR", schq);
+
+		reg[k] = NIX_AF_TL3X_SHAPE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3[%u]_SHAPE", schq);
+
+		reg[k] = NIX_AF_TL3X_SW_XOFF(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3[%u]_SW_XOFF", schq);
+		break;
+	case NIX_TXSCH_LVL_TL2:
+		reg[k] = NIX_AF_TL2X_PARENT(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL2[%u]_PARENT", schq);
+
+		reg[k] = NIX_AF_TL2X_TOPOLOGY(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL2[%u]_TOPOLOGY", schq);
+
+		reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq, link);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL3_TL2[%u]_LINK[%u]_CFG", schq, link);
+
+		reg[k] = NIX_AF_TL2X_SCHEDULE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL2[%u]_SCHEDULE", schq);
+
+		reg[k] = NIX_AF_TL2X_PIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL2[%u]_PIR", schq);
+
+		reg[k] = NIX_AF_TL2X_CIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL2[%u]_CIR", schq);
+
+		reg[k] = NIX_AF_TL2X_SHAPE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL2[%u]_SHAPE", schq);
+
+		reg[k] = NIX_AF_TL2X_SW_XOFF(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL2[%u]_SW_XOFF", schq);
+		break;
+	case NIX_TXSCH_LVL_TL1:
+
+		reg[k] = NIX_AF_TL1X_TOPOLOGY(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL1[%u]_TOPOLOGY", schq);
+
+		reg[k] = NIX_AF_TL1X_SCHEDULE(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL1[%u]_SCHEDULE", schq);
+
+		reg[k] = NIX_AF_TL1X_CIR(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL1[%u]_CIR", schq);
+
+		reg[k] = NIX_AF_TL1X_SW_XOFF(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL1[%u]_SW_XOFF", schq);
+
+		reg[k] = NIX_AF_TL1X_DROPPED_PACKETS(schq);
+		snprintf(regstr[k++], NIX_REG_NAME_SZ,
+			 "NIX_AF_TL1[%u]_DROPPED_PACKETS", schq);
+		break;
+	default:
+		break;
+	}
+
+	if (k > MAX_REGS_PER_MBOX_MSG) {
+		nix_dump("\t!!!NIX TM Registers request overflow!!!");
+		return 0;
+	}
+	return k;
+}
+
+/* Dump TM hierarchy and registers */
+void
+otx2_nix_tm_dump(struct otx2_eth_dev *dev)
+{
+	char regstr[MAX_REGS_PER_MBOX_MSG * 2][NIX_REG_NAME_SZ];
+	struct otx2_nix_tm_node *tm_node, *root_node, *parent;
+	uint64_t reg[MAX_REGS_PER_MBOX_MSG * 2];
+	struct nix_txschq_config *req;
+	const char *lvlstr, *parent_lvlstr;
+	struct nix_txschq_config *rsp;
+	uint32_t schq, parent_schq;
+	int hw_lvl, j, k, rc;
+
+	nix_dump("===TM hierarchy and registers dump of %s===",
+		 dev->eth_dev->data->name);
+
+	root_node = NULL;
+
+	for (hw_lvl = 0; hw_lvl <= NIX_TXSCH_LVL_CNT; hw_lvl++) {
+		TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+			if (tm_node->hw_lvl != hw_lvl)
+				continue;
+
+			parent = tm_node->parent;
+			if (hw_lvl == NIX_TXSCH_LVL_CNT) {
+				lvlstr = "SQ";
+				schq = tm_node->id;
+			} else {
+				lvlstr = nix_hwlvl2str(tm_node->hw_lvl);
+				schq = tm_node->hw_id;
+			}
+
+			if (parent) {
+				parent_schq = parent->hw_id;
+				parent_lvlstr =
+					nix_hwlvl2str(parent->hw_lvl);
+			} else if (tm_node->hw_lvl == NIX_TXSCH_LVL_TL1) {
+				parent_schq = otx2_nix_get_link(dev);
+				parent_lvlstr = "LINK";
+			} else {
+				parent_schq = tm_node->parent_hw_id;
+				parent_lvlstr =
+					nix_hwlvl2str(tm_node->hw_lvl + 1);
+			}
+
+			nix_dump("%s_%d->%s_%d", lvlstr, schq,
+				 parent_lvlstr, parent_schq);
+
+			if (!(tm_node->flags & NIX_TM_NODE_HWRES))
+				continue;
+
+			/* Need to dump TL1 when root is TL2 */
+			if (tm_node->hw_lvl == dev->otx2_tm_root_lvl)
+				root_node = tm_node;
+
+			/* Dump registers only when HWRES is present */
+			k = prepare_nix_tm_reg_dump(tm_node->hw_lvl, schq,
+						    otx2_nix_get_link(dev), reg,
+						    regstr);
+			if (!k)
+				continue;
+
+			req = otx2_mbox_alloc_msg_nix_txschq_cfg(dev->mbox);
+			req->read = 1;
+			req->lvl = tm_node->hw_lvl;
+			req->num_regs = k;
+			otx2_mbox_memcpy(req->reg, reg, sizeof(uint64_t) * k);
+			rc = otx2_mbox_process_msg(dev->mbox, (void **)&rsp);
+			if (!rc) {
+				for (j = 0; j < k; j++)
+					nix_dump("\t%s=0x%016"PRIx64,
+						 regstr[j], rsp->regval[j]);
+			} else {
+				nix_dump("\t!!!Failed to dump registers!!!");
+			}
+		}
+		nix_dump("\n");
+	}
+
+	/* Dump TL1 node data when root level is TL2 */
+	if (root_node && root_node->hw_lvl == NIX_TXSCH_LVL_TL2) {
+		k = prepare_nix_tm_reg_dump(NIX_TXSCH_LVL_TL1,
+					    root_node->parent_hw_id,
+					    otx2_nix_get_link(dev),
+					    reg, regstr);
+		if (!k)
+			return;
+
+
+		req = otx2_mbox_alloc_msg_nix_txschq_cfg(dev->mbox);
+		req->read = 1;
+		req->lvl = NIX_TXSCH_LVL_TL1;
+		req->num_regs = k;
+		otx2_mbox_memcpy(req->reg, reg, sizeof(uint64_t) * k);
+		rc = otx2_mbox_process_msg(dev->mbox, (void **)&rsp);
+		if (!rc) {
+			for (j = 0; j < k; j++)
+				nix_dump("\t%s=0x%016"PRIx64,
+					 regstr[j], rsp->regval[j]);
+		} else {
+			nix_dump("\t!!!Failed to dump registers!!!");
+		}
+	}
+
+	otx2_nix_queues_ctx_dump(dev->eth_dev);
 }
