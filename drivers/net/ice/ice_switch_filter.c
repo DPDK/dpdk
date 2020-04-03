@@ -29,6 +29,9 @@
 
 #define ICE_SW_INSET_ETHER ( \
 	ICE_INSET_DMAC | ICE_INSET_SMAC | ICE_INSET_ETHERTYPE)
+#define ICE_SW_INSET_MAC_VLAN ( \
+		ICE_INSET_DMAC | ICE_INSET_SMAC | ICE_INSET_ETHERTYPE | \
+		ICE_INSET_VLAN_OUTER)
 #define ICE_SW_INSET_MAC_IPV4 ( \
 	ICE_INSET_DMAC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_SRC | \
 	ICE_INSET_IPV4_PROTO | ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_TOS)
@@ -107,6 +110,8 @@ static struct
 ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 	{pattern_ethertype,
 			ICE_SW_INSET_ETHER, ICE_INSET_NONE},
+	{pattern_ethertype_vlan,
+			ICE_SW_INSET_MAC_VLAN, ICE_INSET_NONE},
 	{pattern_eth_ipv4,
 			ICE_SW_INSET_MAC_IPV4, ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp,
@@ -149,6 +154,8 @@ static struct
 ice_pattern_match_item ice_switch_pattern_dist_os[] = {
 	{pattern_ethertype,
 			ICE_SW_INSET_ETHER, ICE_INSET_NONE},
+	{pattern_ethertype_vlan,
+			ICE_SW_INSET_MAC_VLAN, ICE_INSET_NONE},
 	{pattern_eth_arp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv4,
@@ -179,6 +186,8 @@ ice_pattern_match_item ice_switch_pattern_dist_os[] = {
 
 static struct
 ice_pattern_match_item ice_switch_pattern_perm[] = {
+	{pattern_ethertype_vlan,
+			ICE_SW_INSET_MAC_VLAN, ICE_INSET_NONE},
 	{pattern_eth_ipv4,
 			ICE_SW_INSET_MAC_IPV4, ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp,
