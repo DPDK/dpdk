@@ -1421,6 +1421,78 @@ ice_switch_query(struct ice_adapter *ad __rte_unused,
 }
 
 static int
+ice_switch_redirect(struct ice_adapter *ad,
+		    struct rte_flow *flow,
+		    struct ice_flow_redirect *rd)
+{
+	struct ice_rule_query_data *rdata = flow->rule;
+	struct ice_adv_fltr_mgmt_list_entry *list_itr;
+	struct ice_adv_lkup_elem *lkups_dp = NULL;
+	struct LIST_HEAD_TYPE *list_head;
+	struct ice_adv_rule_info rinfo;
+	struct ice_hw *hw = &ad->hw;
+	struct ice_switch_info *sw;
+	uint16_t lkups_cnt;
+	int ret;
+
+	sw = hw->switch_info;
+	if (!sw->recp_list[rdata->rid].recp_created)
+		return -EINVAL;
+
+	if (rd->type != ICE_FLOW_REDIRECT_VSI)
+		return -ENOTSUP;
+
+	list_head = &sw->recp_list[rdata->rid].filt_rules;
+	LIST_FOR_EACH_ENTRY(list_itr, list_head, ice_adv_fltr_mgmt_list_entry,
+			    list_entry) {
+		rinfo = list_itr->rule_info;
+		if (rinfo.fltr_rule_id == rdata->rule_id &&
+		    rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI &&
+		    rinfo.sw_act.vsi_handle == rd->vsi_handle) {
+			lkups_cnt = list_itr->lkups_cnt;
+			lkups_dp = (struct ice_adv_lkup_elem *)
+				ice_memdup(hw, list_itr->lkups,
+					   sizeof(*list_itr->lkups) *
+					   lkups_cnt, ICE_NONDMA_TO_NONDMA);
+			if (!lkups_dp) {
+				PMD_DRV_LOG(ERR, "Failed to allocate memory.");
+				return -EINVAL;
+			}
+
+			break;
+		}
+	}
+
+	if (!lkups_dp)
+		return 0;
+
+	/* Remove the old rule */
+	ret = ice_rem_adv_rule(hw, list_itr->lkups,
+			       lkups_cnt, &rinfo);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to delete the old rule %d",
+			    rdata->rule_id);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Update VSI context */
+	hw->vsi_ctx[rd->vsi_handle]->vsi_num = rd->new_vsi_num;
+
+	/* Replay the rule */
+	ret = ice_add_adv_rule(hw, lkups_dp, lkups_cnt,
+			       &rinfo, rdata);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to replay the rule");
+		ret = -EINVAL;
+	}
+
+out:
+	ice_free(hw, lkups_dp);
+	return ret;
+}
+
+static int
 ice_switch_init(struct ice_adapter *ad)
 {
 	int ret = 0;
@@ -1465,6 +1537,7 @@ ice_flow_engine ice_switch_engine = {
 	.create = ice_switch_create,
 	.destroy = ice_switch_destroy,
 	.query_count = ice_switch_query,
+	.redirect = ice_switch_redirect,
 	.free = ice_switch_filter_rule_free,
 	.type = ICE_FLOW_ENGINE_SWITCH,
 };
