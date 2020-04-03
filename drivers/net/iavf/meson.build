@@ -10,6 +10,7 @@ sources = files(
 	'iavf_ethdev.c',
 	'iavf_rxtx.c',
 	'iavf_vchnl.c',
+	'iavf_generic_flow.c',
 )
 
 if arch_subdir == 'x86'

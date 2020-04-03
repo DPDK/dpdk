@@ -27,6 +27,7 @@
 
 #include "iavf.h"
 #include "iavf_rxtx.h"
+#include "iavf_generic_flow.h"
 
 static int iavf_dev_configure(struct rte_eth_dev *dev);
 static int iavf_dev_start(struct rte_eth_dev *dev);
@@ -68,6 +69,11 @@ static int iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					uint16_t queue_id);
 static int iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 					 uint16_t queue_id);
+static int iavf_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg);
+
 
 int iavf_logtype_init;
 int iavf_logtype_driver;
@@ -127,6 +133,7 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.mtu_set                    = iavf_dev_mtu_set,
 	.rx_queue_intr_enable       = iavf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable      = iavf_dev_rx_queue_intr_disable,
+	.filter_ctrl                = iavf_dev_filter_ctrl,
 };
 
 static int
@@ -1293,12 +1300,41 @@ iavf_dev_interrupt_handler(void *param)
 }
 
 static int
+iavf_dev_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg)
+{
+	int ret = 0;
+
+	if (!dev)
+		return -EINVAL;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &iavf_flow_ops;
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+			    filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+
+static int
 iavf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(eth_dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1368,6 +1404,12 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	/* configure and enable device interrupt */
 	iavf_enable_irq0(hw);
 
+	ret = iavf_flow_init(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to initialize flow");
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -1377,6 +1419,8 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	iavf_dev_stop(dev);
 	iavf_shutdown_adminq(hw);
@@ -1387,6 +1431,8 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(intr_handle,
 				     iavf_dev_interrupt_handler, dev);
 	iavf_disable_irq0(hw);
+
+	iavf_flow_uninit(adapter);
 }
 
 static int

@@ -97,6 +97,12 @@ New Features
 
   * Enable MAC address as FDIR input set for ipv4-other, ipv4-udp and ipv4-tcp.
 
+* **Updated the Intel iavf driver.**
+
+  Update the Intel iavf driver with new features and improvements, including:
+
+  * Added generic filter support.
+
 * **Updated the Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:

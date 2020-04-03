@@ -83,6 +83,12 @@ struct iavf_vsi {
 	struct virtchnl_eth_stats eth_stats_offset;
 };
 
+struct rte_flow;
+TAILQ_HEAD(iavf_flow_list, rte_flow);
+
+struct iavf_flow_parser_node;
+TAILQ_HEAD(iavf_parser_list, iavf_flow_parser_node);
+
 /* TODO: is that correct to assume the max number to be 16 ?*/
 #define IAVF_MAX_MSIX_VECTORS   16
 
@@ -117,6 +123,10 @@ struct iavf_info {
 	uint16_t msix_base; /* msix vector base from */
 	/* queue bitmask for each vector */
 	uint16_t rxq_map[IAVF_MAX_MSIX_VECTORS];
+	struct iavf_flow_list flow_list;
+	rte_spinlock_t flow_ops_lock;
+	struct iavf_parser_list rss_parser_list;
+	struct iavf_parser_list dist_parser_list;
 };
 
 #define IAVF_MAX_PKT_TYPE 1024
