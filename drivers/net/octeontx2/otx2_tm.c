@@ -2238,6 +2238,194 @@ otx2_nix_tm_hierarchy_commit(struct rte_eth_dev *eth_dev,
 }
 
 static int
+otx2_nix_tm_node_shaper_update(struct rte_eth_dev *eth_dev,
+			       uint32_t node_id,
+			       uint32_t profile_id,
+			       struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_shaper_profile *profile = NULL;
+	struct otx2_mbox *mbox = dev->mbox;
+	struct otx2_nix_tm_node *tm_node;
+	struct nix_txschq_config *req;
+	uint8_t k;
+	int rc;
+
+	tm_node = nix_tm_node_search(dev, node_id, true);
+	if (!tm_node || nix_tm_is_leaf(dev, tm_node->lvl)) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "invalid node";
+		return -EINVAL;
+	}
+
+	if (profile_id == tm_node->params.shaper_profile_id)
+		return 0;
+
+	if (profile_id != RTE_TM_SHAPER_PROFILE_ID_NONE) {
+		profile = nix_tm_shaper_profile_search(dev, profile_id);
+		if (!profile) {
+			error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+			error->message = "shaper profile ID not exist";
+			return -EINVAL;
+		}
+	}
+
+	tm_node->params.shaper_profile_id = profile_id;
+
+	/* Nothing to do if not yet committed */
+	if (!(dev->tm_flags & NIX_TM_COMMITTED))
+		return 0;
+
+	tm_node->flags &= ~NIX_TM_NODE_ENABLED;
+
+	/* Flush the specific node with SW_XOFF */
+	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = tm_node->hw_lvl;
+	k = prepare_tm_sw_xoff(tm_node, true, req->reg, req->regval);
+	req->num_regs = k;
+
+	rc = send_tm_reqval(mbox, req, error);
+	if (rc)
+		return rc;
+
+	/* Update the PIR/CIR and clear SW XOFF */
+	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = tm_node->hw_lvl;
+
+	k = prepare_tm_shaper_reg(tm_node, profile, req->reg, req->regval);
+
+	k += prepare_tm_sw_xoff(tm_node, false, &req->reg[k], &req->regval[k]);
+
+	req->num_regs = k;
+	rc = send_tm_reqval(mbox, req, error);
+	if (!rc)
+		tm_node->flags |= NIX_TM_NODE_ENABLED;
+	return rc;
+}
+
+static int
+otx2_nix_tm_node_parent_update(struct rte_eth_dev *eth_dev,
+			       uint32_t node_id, uint32_t new_parent_id,
+			       uint32_t priority, uint32_t weight,
+			       struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_node *tm_node, *sibling;
+	struct otx2_nix_tm_node *new_parent;
+	struct nix_txschq_config *req;
+	uint8_t k;
+	int rc;
+
+	if (!(dev->tm_flags & NIX_TM_COMMITTED)) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "hierarchy doesn't exist";
+		return -EINVAL;
+	}
+
+	tm_node = nix_tm_node_search(dev, node_id, true);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	/* Parent id valid only for non root nodes */
+	if (tm_node->hw_lvl != dev->otx2_tm_root_lvl) {
+		new_parent = nix_tm_node_search(dev, new_parent_id, true);
+		if (!new_parent) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_PARENT_NODE_ID;
+			error->message = "no such parent node";
+			return -EINVAL;
+		}
+
+		/* Current support is only for dynamic weight update */
+		if (tm_node->parent != new_parent ||
+		    tm_node->priority != priority) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_PARENT_NODE_ID;
+			error->message = "only weight update supported";
+			return -EINVAL;
+		}
+	}
+
+	/* Skip if no change */
+	if (tm_node->weight == weight)
+		return 0;
+
+	tm_node->weight = weight;
+
+	/* For leaf nodes, SQ CTX needs update */
+	if (nix_tm_is_leaf(dev, tm_node->lvl)) {
+		/* Update SQ quantum data on the fly */
+		rc = nix_sq_sched_data(dev, tm_node, true);
+		if (rc) {
+			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+			error->message = "sq sched data update failed";
+			return rc;
+		}
+	} else {
+		/* XOFF Parent node */
+		req = otx2_mbox_alloc_msg_nix_txschq_cfg(dev->mbox);
+		req->lvl = tm_node->parent->hw_lvl;
+		req->num_regs = prepare_tm_sw_xoff(tm_node->parent, true,
+						   req->reg, req->regval);
+		rc = send_tm_reqval(dev->mbox, req, error);
+		if (rc)
+			return rc;
+
+		/* XOFF this node and all other siblings */
+		req = otx2_mbox_alloc_msg_nix_txschq_cfg(dev->mbox);
+		req->lvl = tm_node->hw_lvl;
+
+		k = 0;
+		TAILQ_FOREACH(sibling, &dev->node_list, node) {
+			if (sibling->parent != tm_node->parent)
+				continue;
+			k += prepare_tm_sw_xoff(sibling, true, &req->reg[k],
+						&req->regval[k]);
+		}
+		req->num_regs = k;
+		rc = send_tm_reqval(dev->mbox, req, error);
+		if (rc)
+			return rc;
+
+		/* Update new weight for current node */
+		req = otx2_mbox_alloc_msg_nix_txschq_cfg(dev->mbox);
+		req->lvl = tm_node->hw_lvl;
+		req->num_regs = prepare_tm_sched_reg(dev, tm_node,
+						     req->reg, req->regval);
+		rc = send_tm_reqval(dev->mbox, req, error);
+		if (rc)
+			return rc;
+
+		/* XON this node and all other siblings */
+		req = otx2_mbox_alloc_msg_nix_txschq_cfg(dev->mbox);
+		req->lvl = tm_node->hw_lvl;
+
+		k = 0;
+		TAILQ_FOREACH(sibling, &dev->node_list, node) {
+			if (sibling->parent != tm_node->parent)
+				continue;
+			k += prepare_tm_sw_xoff(sibling, false, &req->reg[k],
+						&req->regval[k]);
+		}
+		req->num_regs = k;
+		rc = send_tm_reqval(dev->mbox, req, error);
+		if (rc)
+			return rc;
+
+		/* XON Parent node */
+		req = otx2_mbox_alloc_msg_nix_txschq_cfg(dev->mbox);
+		req->lvl = tm_node->parent->hw_lvl;
+		req->num_regs = prepare_tm_sw_xoff(tm_node->parent, false,
+						   req->reg, req->regval);
+		rc = send_tm_reqval(dev->mbox, req, error);
+		if (rc)
+			return rc;
+	}
+	return 0;
+}
+
+static int
 otx2_nix_tm_node_stats_read(struct rte_eth_dev *eth_dev, uint32_t node_id,
 			    struct rte_tm_node_stats *stats,
 			    uint64_t *stats_mask, int clear,
@@ -2334,6 +2522,8 @@ const struct rte_tm_ops otx2_tm_ops = {
 	.node_resume = otx2_nix_tm_node_resume,
 	.hierarchy_commit = otx2_nix_tm_hierarchy_commit,
 
+	.node_shaper_update = otx2_nix_tm_node_shaper_update,
+	.node_parent_update = otx2_nix_tm_node_parent_update,
 	.node_stats_read = otx2_nix_tm_node_stats_read,
 };
 
