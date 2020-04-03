@@ -1674,6 +1674,104 @@ validate_prio(struct otx2_eth_dev *dev, uint32_t lvl,
 }
 
 static int
+nix_xmit_disable(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint16_t sq_cnt = eth_dev->data->nb_tx_queues;
+	uint16_t sqb_cnt, head_off, tail_off;
+	struct otx2_nix_tm_node *tm_node;
+	struct otx2_eth_txq *txq;
+	uint64_t wdata, val;
+	int i, rc;
+
+	otx2_tm_dbg("Disabling xmit on %s", eth_dev->data->name);
+
+	/* Enable CGX RXTX to drain pkts */
+	if (!eth_dev->data->dev_started) {
+		otx2_mbox_alloc_msg_nix_lf_start_rx(dev->mbox);
+		rc = otx2_mbox_process(dev->mbox);
+		if (rc)
+			return rc;
+	}
+
+	/* XON all SMQ's */
+	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+		if (tm_node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+		if (!(tm_node->flags & NIX_TM_NODE_HWRES))
+			continue;
+
+		rc = nix_smq_xoff(dev, tm_node, false);
+		if (rc) {
+			otx2_err("Failed to enable smq %u, rc=%d",
+				 tm_node->hw_id, rc);
+			goto cleanup;
+		}
+	}
+
+	/* Flush all tx queues */
+	for (i = 0; i < sq_cnt; i++) {
+		txq = eth_dev->data->tx_queues[i];
+
+		rc = otx2_nix_sq_sqb_aura_fc(txq, false);
+		if (rc) {
+			otx2_err("Failed to disable sqb aura fc, rc=%d", rc);
+			goto cleanup;
+		}
+
+		/* Wait for sq entries to be flushed */
+		rc = nix_txq_flush_sq_spin(txq);
+		if (rc) {
+			otx2_err("Failed to drain sq, rc=%d\n", rc);
+			goto cleanup;
+		}
+	}
+
+	/* XOFF & Flush all SMQ's. HRM mandates
+	 * all SQ's empty before SMQ flush is issued.
+	 */
+	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+		if (tm_node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+		if (!(tm_node->flags & NIX_TM_NODE_HWRES))
+			continue;
+
+		rc = nix_smq_xoff(dev, tm_node, true);
+		if (rc) {
+			otx2_err("Failed to enable smq %u, rc=%d",
+				 tm_node->hw_id, rc);
+			goto cleanup;
+		}
+	}
+
+	/* Verify sanity of all tx queues */
+	for (i = 0; i < sq_cnt; i++) {
+		txq = eth_dev->data->tx_queues[i];
+
+		wdata = ((uint64_t)txq->sq << 32);
+		val = otx2_atomic64_add_nosync(wdata,
+			       (int64_t *)(dev->base + NIX_LF_SQ_OP_STATUS));
+
+		sqb_cnt = val & 0xFFFF;
+		head_off = (val >> 20) & 0x3F;
+		tail_off = (val >> 28) & 0x3F;
+
+		if (sqb_cnt > 1 || head_off != tail_off ||
+		    (*txq->fc_mem != txq->nb_sqb_bufs))
+			otx2_err("Failed to gracefully flush sq %u", txq->sq);
+	}
+
+cleanup:
+	/* restore cgx state */
+	if (!eth_dev->data->dev_started) {
+		otx2_mbox_alloc_msg_nix_lf_stop_rx(dev->mbox);
+		rc |= otx2_mbox_process(dev->mbox);
+	}
+
+	return rc;
+}
+
+static int
 otx2_nix_tm_node_add(struct rte_eth_dev *eth_dev, uint32_t node_id,
 		     uint32_t parent_node_id, uint32_t priority,
 		     uint32_t weight, uint32_t lvl,
@@ -1885,11 +1983,86 @@ otx2_nix_tm_node_resume(struct rte_eth_dev *eth_dev, uint32_t node_id,
 	return nix_tm_node_suspend_resume(eth_dev, node_id, error, false);
 }
 
+static int
+otx2_nix_tm_hierarchy_commit(struct rte_eth_dev *eth_dev,
+			     int clear_on_fail,
+			     struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_node *tm_node;
+	uint32_t leaf_cnt = 0;
+	int rc;
+
+	if (dev->tm_flags & NIX_TM_COMMITTED) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "hierarchy exists";
+		return -EINVAL;
+	}
+
+	/* Check if we have all the leaf nodes */
+	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+		if (tm_node->flags & NIX_TM_NODE_USER &&
+		    tm_node->id < dev->tm_leaf_cnt)
+			leaf_cnt++;
+	}
+
+	if (leaf_cnt != dev->tm_leaf_cnt) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "incomplete hierarchy";
+		return -EINVAL;
+	}
+
+	/*
+	 * Disable xmit will be enabled when
+	 * new topology is available.
+	 */
+	rc = nix_xmit_disable(eth_dev);
+	if (rc) {
+		otx2_err("failed to disable TX, rc=%d", rc);
+		return -EIO;
+	}
+
+	/* Delete default/ratelimit tree */
+	if (dev->tm_flags & (NIX_TM_DEFAULT_TREE)) {
+		rc = nix_tm_free_resources(dev, NIX_TM_NODE_USER, 0, false);
+		if (rc) {
+			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+			error->message = "failed to free default resources";
+			return rc;
+		}
+		dev->tm_flags &= ~(NIX_TM_DEFAULT_TREE);
+	}
+
+	/* Free up user alloc'ed resources */
+	rc = nix_tm_free_resources(dev, NIX_TM_NODE_USER,
+				   NIX_TM_NODE_USER, true);
+	if (rc) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "failed to free user resources";
+		return rc;
+	}
+
+	rc = nix_tm_alloc_resources(eth_dev, true);
+	if (rc) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "alloc resources failed";
+		/* TODO should we restore default config ? */
+		if (clear_on_fail)
+			nix_tm_free_resources(dev, 0, 0, false);
+		return rc;
+	}
+
+	error->type = RTE_TM_ERROR_TYPE_NONE;
+	dev->tm_flags |= NIX_TM_COMMITTED;
+	return 0;
+}
+
 const struct rte_tm_ops otx2_tm_ops = {
 	.node_add = otx2_nix_tm_node_add,
 	.node_delete = otx2_nix_tm_node_delete,
 	.node_suspend = otx2_nix_tm_node_suspend,
 	.node_resume = otx2_nix_tm_node_resume,
+	.hierarchy_commit = otx2_nix_tm_hierarchy_commit,
 };
 
 static int
