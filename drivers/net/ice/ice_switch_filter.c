@@ -150,7 +150,11 @@ ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
 	{pattern_eth_ipv6_esp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_udp_esp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_ah,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_udp_ah,
 			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_l2tp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
@@ -224,7 +228,11 @@ ice_pattern_match_item ice_switch_pattern_perm[] = {
 			ICE_SW_INSET_PERM_TUNNEL_IPV4_TCP, ICE_INSET_NONE},
 	{pattern_eth_ipv6_esp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_udp_esp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_ah,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_udp_ah,
 			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_l2tp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
@@ -364,6 +372,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	uint16_t tunnel_valid = 0;
 	uint16_t pppoe_valid = 0;
 	uint16_t ipv6_valiad = 0;
+	uint16_t udp_valiad = 0;
 
 
 	for (item = pattern; item->type !=
@@ -642,6 +651,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp_spec = item->spec;
 			udp_mask = item->mask;
+			udp_valiad = 1;
 			if (udp_spec && udp_mask) {
 				/* Check UDP mask and update input set*/
 				if (udp_mask->hdr.dgram_len ||
@@ -974,7 +984,9 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					   "Invalid esp item");
 				return -ENOTSUP;
 			}
-			if (ipv6_valiad)
+			if (ipv6_valiad && udp_valiad)
+				*tun_type = ICE_SW_TUN_PROFID_IPV6_NAT_T;
+			else if (ipv6_valiad)
 				*tun_type = ICE_SW_TUN_PROFID_IPV6_ESP;
 			break;
 
@@ -988,7 +1000,9 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					   "Invalid ah item");
 				return -ENOTSUP;
 			}
-			if (ipv6_valiad)
+			if (ipv6_valiad && udp_valiad)
+				*tun_type = ICE_SW_TUN_PROFID_IPV6_NAT_T;
+			else if (ipv6_valiad)
 				*tun_type = ICE_SW_TUN_PROFID_IPV6_AH;
 			break;
 
@@ -1237,6 +1251,7 @@ ice_is_profile_rule(enum ice_sw_tunnel_type tun_type)
 	case ICE_SW_TUN_PROFID_IPV6_ESP:
 	case ICE_SW_TUN_PROFID_IPV6_AH:
 	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
+	case ICE_SW_TUN_PROFID_IPV6_NAT_T:
 	case ICE_SW_TUN_PROFID_IPV4_PFCP_NODE:
 	case ICE_SW_TUN_PROFID_IPV4_PFCP_SESSION:
 	case ICE_SW_TUN_PROFID_IPV6_PFCP_NODE:

@@ -393,9 +393,11 @@ extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6_icmp6[];
 
 /* ESP */
 extern enum rte_flow_item_type pattern_eth_ipv6_esp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_esp[];
 
 /* AH */
 extern enum rte_flow_item_type pattern_eth_ipv6_ah[];
+extern enum rte_flow_item_type pattern_eth_ipv6_udp_ah[];
 
 /* L2TP */
 extern enum rte_flow_item_type pattern_eth_ipv6_l2tp[];
