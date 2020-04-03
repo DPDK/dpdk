@@ -1400,6 +1400,21 @@ enum rte_flow_item_type pattern_eth_ipv6_l2tp[] = {
 	RTE_FLOW_ITEM_TYPE_L2TPV3OIP,
 	RTE_FLOW_ITEM_TYPE_END,
 };
+enum rte_flow_item_type pattern_eth_ipv4_pfcp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_PFCP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+enum rte_flow_item_type pattern_eth_ipv6_pfcp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_PFCP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
 
 
 typedef struct ice_flow_engine * (*parse_engine_t)(struct ice_adapter *ad,

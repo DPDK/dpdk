@@ -154,6 +154,10 @@ ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_l2tp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_pfcp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_pfcp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
 };
 
 static struct
@@ -223,6 +227,10 @@ ice_pattern_match_item ice_switch_pattern_perm[] = {
 	{pattern_eth_ipv6_ah,
 			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_l2tp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_pfcp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_pfcp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
 };
 
@@ -350,6 +358,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	const struct rte_flow_item_esp *esp_spec, *esp_mask;
 	const struct rte_flow_item_ah *ah_spec, *ah_mask;
 	const struct rte_flow_item_l2tpv3oip *l2tp_spec, *l2tp_mask;
+	const struct rte_flow_item_pfcp *pfcp_spec, *pfcp_mask;
 	uint64_t input_set = ICE_INSET_NONE;
 	uint16_t j, t = 0;
 	uint16_t tunnel_valid = 0;
@@ -996,6 +1005,55 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			if (ipv6_valiad)
 				*tun_type = ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3;
 			break;
+		case RTE_FLOW_ITEM_TYPE_PFCP:
+			pfcp_spec = item->spec;
+			pfcp_mask = item->mask;
+			/* Check if PFCP item is used to describe protocol.
+			 * If yes, both spec and mask should be NULL.
+			 * If no, both spec and mask shouldn't be NULL.
+			 */
+			if ((!pfcp_spec && pfcp_mask) ||
+			    (pfcp_spec && !pfcp_mask)) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid PFCP item");
+				return -ENOTSUP;
+			}
+			if (pfcp_spec && pfcp_mask) {
+				/* Check pfcp mask and update input set */
+				if (pfcp_mask->msg_type ||
+					pfcp_mask->msg_len ||
+					pfcp_mask->seid) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid pfcp mask");
+					return -ENOTSUP;
+				}
+				if (pfcp_mask->s_field &&
+					pfcp_spec->s_field == 0x01 &&
+					ipv6_valiad)
+					*tun_type =
+					ICE_SW_TUN_PROFID_IPV6_PFCP_SESSION;
+				else if (pfcp_mask->s_field &&
+					pfcp_spec->s_field == 0x01)
+					*tun_type =
+					ICE_SW_TUN_PROFID_IPV4_PFCP_SESSION;
+				else if (pfcp_mask->s_field &&
+					!pfcp_spec->s_field &&
+					ipv6_valiad)
+					*tun_type =
+					ICE_SW_TUN_PROFID_IPV6_PFCP_NODE;
+				else if (pfcp_mask->s_field &&
+					!pfcp_spec->s_field)
+					*tun_type =
+					ICE_SW_TUN_PROFID_IPV4_PFCP_NODE;
+				else
+					return -ENOTSUP;
+			}
+			break;
+
 
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
@@ -1179,6 +1237,10 @@ ice_is_profile_rule(enum ice_sw_tunnel_type tun_type)
 	case ICE_SW_TUN_PROFID_IPV6_ESP:
 	case ICE_SW_TUN_PROFID_IPV6_AH:
 	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
+	case ICE_SW_TUN_PROFID_IPV4_PFCP_NODE:
+	case ICE_SW_TUN_PROFID_IPV4_PFCP_SESSION:
+	case ICE_SW_TUN_PROFID_IPV6_PFCP_NODE:
+	case ICE_SW_TUN_PROFID_IPV6_PFCP_SESSION:
 		return true;
 	default:
 		break;

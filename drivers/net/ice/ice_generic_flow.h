@@ -400,6 +400,10 @@ extern enum rte_flow_item_type pattern_eth_ipv6_ah[];
 /* L2TP */
 extern enum rte_flow_item_type pattern_eth_ipv6_l2tp[];
 
+/* PFCP */
+extern enum rte_flow_item_type pattern_eth_ipv4_pfcp[];
+extern enum rte_flow_item_type pattern_eth_ipv6_pfcp[];
+
 struct ice_adapter;
 
 extern const struct rte_flow_ops ice_flow_ops;
