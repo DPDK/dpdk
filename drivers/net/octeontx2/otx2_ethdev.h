@@ -304,6 +304,7 @@ struct otx2_eth_dev {
 	/* Contiguous queues */
 	uint16_t txschq_contig_list[NIX_TXSCH_LVL_CNT][MAX_TXSCHQ_PER_FUNC];
 	uint16_t otx2_tm_root_lvl;
+	uint16_t link_cfg_lvl;
 	uint16_t tm_flags;
 	uint16_t tm_leaf_cnt;
 	struct otx2_nix_tm_node_list node_list;

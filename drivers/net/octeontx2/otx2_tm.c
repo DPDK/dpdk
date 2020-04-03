@@ -437,6 +437,16 @@ populate_tm_registers(struct otx2_eth_dev *dev,
 		*reg++ = NIX_AF_TL3X_SCHEDULE(schq);
 		*regval++ = (strict_schedul_prio << 24) | rr_quantum;
 		req->num_regs++;
+
+		/* Link configuration */
+		if (!otx2_dev_is_sdp(dev) &&
+		    dev->link_cfg_lvl == NIX_TXSCH_LVL_TL3) {
+			*reg++ = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
+						nix_get_link(dev));
+			*regval++ = BIT_ULL(12) | nix_get_relchan(dev);
+			req->num_regs++;
+		}
+
 		if (pir.rate && pir.burst) {
 			*reg++ = NIX_AF_TL3X_PIR(schq);
 			*regval++ = shaper2regval(&pir) | 1;
@@ -471,7 +481,10 @@ populate_tm_registers(struct otx2_eth_dev *dev,
 		else
 			*regval++ = (strict_schedul_prio << 24) | rr_quantum;
 		req->num_regs++;
-		if (!otx2_dev_is_sdp(dev)) {
+
+		/* Link configuration */
+		if (!otx2_dev_is_sdp(dev) &&
+		    dev->link_cfg_lvl == NIX_TXSCH_LVL_TL2) {
 			*reg++ = NIX_AF_TL3_TL2X_LINKX_CFG(schq,
 						nix_get_link(dev));
 			*regval++ = BIT_ULL(12) | nix_get_relchan(dev);
@@ -1144,6 +1157,7 @@ nix_tm_send_txsch_alloc_msg(struct otx2_eth_dev *dev)
 		return rc;
 
 	nix_tm_copy_rsp_to_dev(dev, rsp);
+	dev->link_cfg_lvl = rsp->link_cfg_lvl;
 
 	nix_tm_assign_hw_id(dev);
 	return 0;
