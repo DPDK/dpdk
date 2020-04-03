@@ -200,6 +200,8 @@ ice_pattern_match_item ice_switch_pattern_dist_os[] = {
 
 static struct
 ice_pattern_match_item ice_switch_pattern_perm[] = {
+	{pattern_ethertype,
+			ICE_SW_INSET_ETHER, ICE_INSET_NONE},
 	{pattern_ethertype_vlan,
 			ICE_SW_INSET_MAC_VLAN, ICE_INSET_NONE},
 	{pattern_eth_ipv4,
@@ -226,6 +228,18 @@ ice_pattern_match_item ice_switch_pattern_perm[] = {
 			ICE_SW_INSET_PERM_TUNNEL_IPV4_UDP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_nvgre_eth_ipv4_tcp,
 			ICE_SW_INSET_PERM_TUNNEL_IPV4_TCP, ICE_INSET_NONE},
+	{pattern_eth_pppoed,
+			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoed,
+			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
+	{pattern_eth_pppoes,
+			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes,
+			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
+	{pattern_eth_pppoes_proto,
+			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_proto,
+			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
 	{pattern_eth_ipv6_esp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_udp_esp,
