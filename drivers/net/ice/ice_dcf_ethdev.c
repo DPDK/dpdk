@@ -115,8 +115,8 @@ ice_dcf_dev_allmulticast_disable(__rte_unused struct rte_eth_dev *dev)
 static int
 ice_dcf_dev_filter_ctrl(struct rte_eth_dev *dev,
 			enum rte_filter_type filter_type,
-			__rte_unused enum rte_filter_op filter_op,
-			__rte_unused void *arg)
+			enum rte_filter_op filter_op,
+			void *arg)
 {
 	int ret = 0;
 
@@ -124,6 +124,12 @@ ice_dcf_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &ice_flow_ops;
+		break;
+
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 			    filter_type);

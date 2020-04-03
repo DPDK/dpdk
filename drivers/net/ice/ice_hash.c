@@ -243,6 +243,9 @@ ice_hash_init(struct ice_adapter *ad)
 {
 	struct ice_flow_parser *parser = NULL;
 
+	if (ad->hw.dcf_enabled)
+		return 0;
+
 	if (ad->active_pkg_type == ICE_PKG_TYPE_OS_DEFAULT)
 		parser = &ice_hash_parser_os;
 	else if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
@@ -565,6 +568,9 @@ error:
 static void
 ice_hash_uninit(struct ice_adapter *ad)
 {
+	if (ad->hw.dcf_enabled)
+		return;
+
 	if (ad->active_pkg_type == ICE_PKG_TYPE_OS_DEFAULT)
 		ice_unregister_parser(&ice_hash_parser_os, ad);
 	else if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)

@@ -87,6 +87,7 @@ New Features
   Updated the Intel ice driver with new features and improvements, including:
 
   * Added support for DCF (Device Config Function) feature.
+  * Added switch filter support for intel DCF.
 
 * **Updated Marvell OCTEON TX2 ethdev driver.**
 

@@ -9,6 +9,7 @@
 #include <rte_spinlock.h>
 
 #include "ice_dcf_ethdev.h"
+#include "ice_generic_flow.h"
 
 #define ICE_DCF_VSI_UPDATE_SERVICE_INTERVAL	100000 /* us */
 static rte_spinlock_t vsi_update_lock = RTE_SPINLOCK_INITIALIZER;
@@ -321,6 +322,12 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 	}
 	parent_adapter->active_pkg_type = ice_load_pkg_type(parent_hw);
 
+	err = ice_flow_init(parent_adapter);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Failed to initialize flow");
+		goto uninit_hw;
+	}
+
 	ice_dcf_update_vf_vsi_map(parent_hw, hw->num_vfs, hw->vf_vsi_map);
 
 	mac = (const struct rte_ether_addr *)hw->avf.mac.addr;
@@ -347,5 +354,6 @@ ice_dcf_uninit_parent_adapter(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->mac_addrs = NULL;
 
+	ice_flow_uninit(parent_adapter);
 	ice_dcf_uninit_parent_hw(parent_hw);
 }

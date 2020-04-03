@@ -1061,6 +1061,9 @@ ice_fdir_init(struct ice_adapter *ad)
 	struct ice_flow_parser *parser;
 	int ret;
 
+	if (ad->hw.dcf_enabled)
+		return 0;
+
 	ret = ice_fdir_setup(pf);
 	if (ret)
 		return ret;
@@ -1080,6 +1083,9 @@ ice_fdir_uninit(struct ice_adapter *ad)
 {
 	struct ice_pf *pf = &ad->pf;
 	struct ice_flow_parser *parser;
+
+	if (ad->hw.dcf_enabled)
+		return;
 
 	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
 		parser = &ice_fdir_parser_comms;

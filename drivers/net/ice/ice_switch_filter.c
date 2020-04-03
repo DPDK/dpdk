@@ -913,6 +913,39 @@ out:
 	return 0;
 }
 
+static int
+ice_switch_parse_dcf_action(const struct rte_flow_action *actions,
+			    struct rte_flow_error *error,
+			    struct ice_adv_rule_info *rule_info)
+{
+	const struct rte_flow_action_vf *act_vf;
+	const struct rte_flow_action *action;
+	enum rte_flow_action_type action_type;
+
+	for (action = actions; action->type !=
+				RTE_FLOW_ACTION_TYPE_END; action++) {
+		action_type = action->type;
+		switch (action_type) {
+		case RTE_FLOW_ACTION_TYPE_VF:
+			rule_info->sw_act.fltr_act = ICE_FWD_TO_VSI;
+			act_vf = action->conf;
+			rule_info->sw_act.vsi_handle = act_vf->id;
+			break;
+		default:
+			rte_flow_error_set(error,
+					   EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions,
+					   "Invalid action type or queue number");
+			return -rte_errno;
+		}
+	}
+
+	rule_info->sw_act.src = rule_info->sw_act.vsi_handle;
+	rule_info->rx = 1;
+	rule_info->priority = 5;
+
+	return 0;
+}
 
 static int
 ice_switch_parse_action(struct ice_pf *pf,
@@ -1081,7 +1114,11 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		goto error;
 	}
 
-	ret = ice_switch_parse_action(pf, actions, error, &rule_info);
+	if (ad->hw.dcf_enabled)
+		ret = ice_switch_parse_dcf_action(actions, error, &rule_info);
+	else
+		ret = ice_switch_parse_action(pf, actions, error, &rule_info);
+
 	if (ret) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
