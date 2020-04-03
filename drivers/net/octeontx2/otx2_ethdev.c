@@ -2082,6 +2082,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.rx_descriptor_status     = otx2_nix_rx_descriptor_status,
 	.tx_descriptor_status     = otx2_nix_tx_descriptor_status,
 	.tx_done_cleanup          = otx2_nix_tx_done_cleanup,
+	.set_queue_rate_limit     = otx2_nix_tm_set_queue_rate_limit,
 	.pool_ops_supported       = otx2_nix_pool_ops_supported,
 	.filter_ctrl              = otx2_nix_dev_filter_ctrl,
 	.get_module_info          = otx2_nix_get_module_info,

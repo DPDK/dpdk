@@ -11,6 +11,7 @@
 
 #define NIX_TM_DEFAULT_TREE	BIT_ULL(0)
 #define NIX_TM_COMMITTED	BIT_ULL(1)
+#define NIX_TM_RATE_LIMIT_TREE	BIT_ULL(2)
 #define NIX_TM_TL1_NO_SP	BIT_ULL(3)
 
 struct otx2_eth_dev;
@@ -20,6 +21,8 @@ int otx2_nix_tm_init_default(struct rte_eth_dev *eth_dev);
 int otx2_nix_tm_fini(struct rte_eth_dev *eth_dev);
 int otx2_nix_tm_get_leaf_data(struct otx2_eth_dev *dev, uint16_t sq,
 			      uint32_t *rr_quantum, uint16_t *smq);
+int otx2_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
+				     uint16_t queue_idx, uint16_t tx_rate);
 int otx2_nix_sq_flush_pre(void *_txq, bool dev_started);
 int otx2_nix_sq_flush_post(void *_txq);
 int otx2_nix_sq_enable(void *_txq);

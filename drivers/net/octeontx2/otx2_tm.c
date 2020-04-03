@@ -2204,14 +2204,15 @@ otx2_nix_tm_hierarchy_commit(struct rte_eth_dev *eth_dev,
 	}
 
 	/* Delete default/ratelimit tree */
-	if (dev->tm_flags & (NIX_TM_DEFAULT_TREE)) {
+	if (dev->tm_flags & (NIX_TM_DEFAULT_TREE | NIX_TM_RATE_LIMIT_TREE)) {
 		rc = nix_tm_free_resources(dev, NIX_TM_NODE_USER, 0, false);
 		if (rc) {
 			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 			error->message = "failed to free default resources";
 			return rc;
 		}
-		dev->tm_flags &= ~(NIX_TM_DEFAULT_TREE);
+		dev->tm_flags &= ~(NIX_TM_DEFAULT_TREE |
+				   NIX_TM_RATE_LIMIT_TREE);
 	}
 
 	/* Free up user alloc'ed resources */
@@ -2671,6 +2672,242 @@ int otx2_nix_tm_init_default(struct rte_eth_dev *eth_dev)
 	dev->tm_leaf_cnt = sq_cnt;
 
 	return 0;
+}
+
+static int
+nix_tm_prepare_rate_limited_tree(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint32_t def = eth_dev->data->nb_tx_queues;
+	struct rte_tm_node_params params;
+	uint32_t leaf_parent, i, rc = 0;
+
+	memset(&params, 0, sizeof(params));
+
+	if (nix_tm_have_tl1_access(dev)) {
+		dev->otx2_tm_root_lvl = NIX_TXSCH_LVL_TL1;
+		rc = nix_tm_node_add_to_list(dev, def, RTE_TM_NODE_ID_NULL, 0,
+					DEFAULT_RR_WEIGHT,
+					NIX_TXSCH_LVL_TL1,
+					OTX2_TM_LVL_ROOT, false, &params);
+		if (rc)
+			goto error;
+		rc = nix_tm_node_add_to_list(dev, def + 1, def, 0,
+					DEFAULT_RR_WEIGHT,
+					NIX_TXSCH_LVL_TL2,
+					OTX2_TM_LVL_SCH1, false, &params);
+		if (rc)
+			goto error;
+		rc = nix_tm_node_add_to_list(dev, def + 2, def + 1, 0,
+					DEFAULT_RR_WEIGHT,
+					NIX_TXSCH_LVL_TL3,
+					OTX2_TM_LVL_SCH2, false, &params);
+		if (rc)
+			goto error;
+		rc = nix_tm_node_add_to_list(dev, def + 3, def + 2, 0,
+					DEFAULT_RR_WEIGHT,
+					NIX_TXSCH_LVL_TL4,
+					OTX2_TM_LVL_SCH3, false, &params);
+		if (rc)
+			goto error;
+		leaf_parent = def + 3;
+
+		/* Add per queue SMQ nodes */
+		for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+			rc = nix_tm_node_add_to_list(dev, leaf_parent + 1 + i,
+						leaf_parent,
+						0, DEFAULT_RR_WEIGHT,
+						NIX_TXSCH_LVL_SMQ,
+						OTX2_TM_LVL_SCH4,
+						false, &params);
+			if (rc)
+				goto error;
+		}
+
+		/* Add leaf nodes */
+		for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+			rc = nix_tm_node_add_to_list(dev, i,
+						     leaf_parent + 1 + i, 0,
+						     DEFAULT_RR_WEIGHT,
+						     NIX_TXSCH_LVL_CNT,
+						     OTX2_TM_LVL_QUEUE,
+						     false, &params);
+		if (rc)
+			goto error;
+		}
+
+		return 0;
+	}
+
+	dev->otx2_tm_root_lvl = NIX_TXSCH_LVL_TL2;
+	rc = nix_tm_node_add_to_list(dev, def, RTE_TM_NODE_ID_NULL, 0,
+				DEFAULT_RR_WEIGHT, NIX_TXSCH_LVL_TL2,
+				OTX2_TM_LVL_ROOT, false, &params);
+	if (rc)
+		goto error;
+	rc = nix_tm_node_add_to_list(dev, def + 1, def, 0,
+				DEFAULT_RR_WEIGHT, NIX_TXSCH_LVL_TL3,
+				OTX2_TM_LVL_SCH1, false, &params);
+	if (rc)
+		goto error;
+	rc = nix_tm_node_add_to_list(dev, def + 2, def + 1, 0,
+				     DEFAULT_RR_WEIGHT, NIX_TXSCH_LVL_TL4,
+				     OTX2_TM_LVL_SCH2, false, &params);
+	if (rc)
+		goto error;
+	leaf_parent = def + 2;
+
+	/* Add per queue SMQ nodes */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		rc = nix_tm_node_add_to_list(dev, leaf_parent + 1 + i,
+					     leaf_parent,
+					     0, DEFAULT_RR_WEIGHT,
+					     NIX_TXSCH_LVL_SMQ,
+					     OTX2_TM_LVL_SCH3,
+					     false, &params);
+		if (rc)
+			goto error;
+	}
+
+	/* Add leaf nodes */
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		rc = nix_tm_node_add_to_list(dev, i, leaf_parent + 1 + i, 0,
+					     DEFAULT_RR_WEIGHT,
+					     NIX_TXSCH_LVL_CNT,
+					     OTX2_TM_LVL_SCH4,
+					     false, &params);
+		if (rc)
+			break;
+	}
+error:
+	return rc;
+}
+
+static int
+otx2_nix_tm_rate_limit_mdq(struct rte_eth_dev *eth_dev,
+			   struct otx2_nix_tm_node *tm_node,
+			   uint64_t tx_rate)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_shaper_profile profile;
+	struct otx2_mbox *mbox = dev->mbox;
+	volatile uint64_t *reg, *regval;
+	struct nix_txschq_config *req;
+	uint16_t flags;
+	uint8_t k = 0;
+	int rc;
+
+	flags = tm_node->flags;
+
+	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = NIX_TXSCH_LVL_MDQ;
+	reg = req->reg;
+	regval = req->regval;
+
+	if (tx_rate == 0) {
+		k += prepare_tm_sw_xoff(tm_node, true, &reg[k], &regval[k]);
+		flags &= ~NIX_TM_NODE_ENABLED;
+		goto exit;
+	}
+
+	if (!(flags & NIX_TM_NODE_ENABLED)) {
+		k += prepare_tm_sw_xoff(tm_node, false, &reg[k], &regval[k]);
+		flags |= NIX_TM_NODE_ENABLED;
+	}
+
+	/* Use only PIR for rate limit */
+	memset(&profile, 0, sizeof(profile));
+	profile.params.peak.rate = tx_rate;
+	/* Minimum burst of ~4us Bytes of Tx */
+	profile.params.peak.size = RTE_MAX(NIX_MAX_HW_FRS,
+					   (4ull * tx_rate) / (1E6 * 8));
+	if (!dev->tm_rate_min || dev->tm_rate_min > tx_rate)
+		dev->tm_rate_min = tx_rate;
+
+	k += prepare_tm_shaper_reg(tm_node, &profile, &reg[k], &regval[k]);
+exit:
+	req->num_regs = k;
+	rc = otx2_mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	tm_node->flags = flags;
+	return 0;
+}
+
+int
+otx2_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
+				uint16_t queue_idx, uint16_t tx_rate_mbps)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint64_t tx_rate = tx_rate_mbps * (uint64_t)1E6;
+	struct otx2_nix_tm_node *tm_node;
+	int rc;
+
+	/* Check for supported revisions */
+	if (otx2_dev_is_95xx_Ax(dev) ||
+	    otx2_dev_is_96xx_Ax(dev))
+		return -EINVAL;
+
+	if (queue_idx >= eth_dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	if (!(dev->tm_flags & NIX_TM_DEFAULT_TREE) &&
+	    !(dev->tm_flags & NIX_TM_RATE_LIMIT_TREE))
+		goto error;
+
+	if ((dev->tm_flags & NIX_TM_DEFAULT_TREE) &&
+	    eth_dev->data->nb_tx_queues > 1) {
+		/* For TM topology change ethdev needs to be stopped */
+		if (eth_dev->data->dev_started)
+			return -EBUSY;
+
+		/*
+		 * Disable xmit will be enabled when
+		 * new topology is available.
+		 */
+		rc = nix_xmit_disable(eth_dev);
+		if (rc) {
+			otx2_err("failed to disable TX, rc=%d", rc);
+			return -EIO;
+		}
+
+		rc = nix_tm_free_resources(dev, 0, 0, false);
+		if (rc < 0) {
+			otx2_tm_dbg("failed to free default resources, rc %d",
+				   rc);
+			return -EIO;
+		}
+
+		rc = nix_tm_prepare_rate_limited_tree(eth_dev);
+		if (rc < 0) {
+			otx2_tm_dbg("failed to prepare tm tree, rc=%d", rc);
+			return rc;
+		}
+
+		rc = nix_tm_alloc_resources(eth_dev, true);
+		if (rc != 0) {
+			otx2_tm_dbg("failed to allocate tm tree, rc=%d", rc);
+			return rc;
+		}
+
+		dev->tm_flags &= ~NIX_TM_DEFAULT_TREE;
+		dev->tm_flags |= NIX_TM_RATE_LIMIT_TREE;
+	}
+
+	tm_node = nix_tm_node_search(dev, queue_idx, false);
+
+	/* check if we found a valid leaf node */
+	if (!tm_node ||
+	    !nix_tm_is_leaf(dev, tm_node->lvl) ||
+	    !tm_node->parent ||
+	    tm_node->parent->hw_id == UINT32_MAX)
+		return -EIO;
+
+	return otx2_nix_tm_rate_limit_mdq(eth_dev, tm_node->parent, tx_rate);
+error:
+	otx2_tm_dbg("Unsupported TM tree 0x%0x", dev->tm_flags);
+	return -EINVAL;
 }
 
 int
