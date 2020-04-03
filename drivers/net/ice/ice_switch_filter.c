@@ -1091,7 +1091,8 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	uint16_t lkups_num = 0;
 	const struct rte_flow_item *item = pattern;
 	uint16_t item_num = 0;
-	enum ice_sw_tunnel_type tun_type = ICE_NON_TUN;
+	enum ice_sw_tunnel_type tun_type =
+		ICE_SW_TUN_AND_NON_TUN;
 	struct ice_pattern_match_item *pattern_match_item = NULL;
 
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
