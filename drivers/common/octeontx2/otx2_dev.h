@@ -46,6 +46,15 @@
 	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x0) &&	\
 	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x0))
 
+#define otx2_dev_is_96xx_Cx(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x2) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x0))
+
+#define otx2_dev_is_96xx_C0(dev)				\
+	((RVU_PCI_REV_MAJOR(otx2_dev_revid(dev)) == 0x2) &&	\
+	 (RVU_PCI_REV_MINOR(otx2_dev_revid(dev)) == 0x0) &&	\
+	 (RVU_PCI_REV_MIDR_ID(otx2_dev_revid(dev)) == 0x0))
+
 struct otx2_dev;
 
 /* Link status callback */

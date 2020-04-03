@@ -307,6 +307,7 @@ struct otx2_eth_dev {
 	uint16_t link_cfg_lvl;
 	uint16_t tm_flags;
 	uint16_t tm_leaf_cnt;
+	uint64_t tm_rate_min;
 	struct otx2_nix_tm_node_list node_list;
 	struct otx2_nix_tm_shaper_profile_list shaper_profile_list;
 	struct otx2_rss_info rss_info;

@@ -59,8 +59,16 @@ static bool
 nix_tm_have_tl1_access(struct otx2_eth_dev *dev)
 {
 	bool is_lbk = otx2_dev_is_lbk(dev);
-	return otx2_dev_is_pf(dev) && !otx2_dev_is_Ax(dev) &&
-		!is_lbk && !dev->maxvf;
+	return otx2_dev_is_pf(dev) && !otx2_dev_is_Ax(dev) && !is_lbk;
+}
+
+static bool
+nix_tm_is_leaf(struct otx2_eth_dev *dev, int lvl)
+{
+	if (nix_tm_have_tl1_access(dev))
+		return (lvl == OTX2_TM_LVL_QUEUE);
+
+	return (lvl == OTX2_TM_LVL_SCH4);
 }
 
 static int
@@ -424,6 +432,48 @@ prepare_tm_shaper_reg(struct otx2_nix_tm_node *tm_node,
 	return k;
 }
 
+static uint8_t
+prepare_tm_sw_xoff(struct otx2_nix_tm_node *tm_node, bool enable,
+		   volatile uint64_t *reg, volatile uint64_t *regval)
+{
+	uint32_t hw_lvl = tm_node->hw_lvl;
+	uint32_t schq = tm_node->hw_id;
+	uint8_t k = 0;
+
+	otx2_tm_dbg("sw xoff config node %s(%u) lvl %u id %u, enable %u (%p)",
+		    nix_hwlvl2str(hw_lvl), schq, tm_node->lvl,
+		    tm_node->id, enable, tm_node);
+
+	regval[k] = enable;
+
+	switch (hw_lvl) {
+	case NIX_TXSCH_LVL_MDQ:
+		reg[k] = NIX_AF_MDQX_SW_XOFF(schq);
+		k++;
+		break;
+	case NIX_TXSCH_LVL_TL4:
+		reg[k] = NIX_AF_TL4X_SW_XOFF(schq);
+		k++;
+		break;
+	case NIX_TXSCH_LVL_TL3:
+		reg[k] = NIX_AF_TL3X_SW_XOFF(schq);
+		k++;
+		break;
+	case NIX_TXSCH_LVL_TL2:
+		reg[k] = NIX_AF_TL2X_SW_XOFF(schq);
+		k++;
+		break;
+	case NIX_TXSCH_LVL_TL1:
+		reg[k] = NIX_AF_TL1X_SW_XOFF(schq);
+		k++;
+		break;
+	default:
+		break;
+	}
+
+	return k;
+}
+
 static int
 populate_tm_reg(struct otx2_eth_dev *dev,
 		struct otx2_nix_tm_node *tm_node)
@@ -692,12 +742,13 @@ nix_tm_node_add_to_list(struct otx2_eth_dev *dev, uint32_t node_id,
 			uint16_t lvl, bool user,
 			struct rte_tm_node_params *params)
 {
-	struct otx2_nix_tm_shaper_profile *shaper_profile;
+	struct otx2_nix_tm_shaper_profile *profile;
 	struct otx2_nix_tm_node *tm_node, *parent_node;
-	uint32_t shaper_profile_id;
+	struct shaper_params cir, pir;
+	uint32_t profile_id;
 
-	shaper_profile_id = params->shaper_profile_id;
-	shaper_profile = nix_tm_shaper_profile_search(dev, shaper_profile_id);
+	profile_id = params->shaper_profile_id;
+	profile = nix_tm_shaper_profile_search(dev, profile_id);
 
 	parent_node = nix_tm_node_search(dev, parent_node_id, user);
 
@@ -708,6 +759,10 @@ nix_tm_node_add_to_list(struct otx2_eth_dev *dev, uint32_t node_id,
 
 	tm_node->lvl = lvl;
 	tm_node->hw_lvl = hw_lvl;
+
+	/* Maintain minimum weight */
+	if (!weight)
+		weight = 1;
 
 	tm_node->id = node_id;
 	tm_node->priority = priority;
@@ -720,10 +775,22 @@ nix_tm_node_add_to_list(struct otx2_eth_dev *dev, uint32_t node_id,
 		tm_node->flags = NIX_TM_NODE_USER;
 	rte_memcpy(&tm_node->params, params, sizeof(struct rte_tm_node_params));
 
-	if (shaper_profile)
-		shaper_profile->reference_count++;
+	if (profile)
+		profile->reference_count++;
+
+	memset(&cir, 0, sizeof(cir));
+	memset(&pir, 0, sizeof(pir));
+	shaper_config_to_nix(profile, &cir, &pir);
+
 	tm_node->parent = parent_node;
 	tm_node->parent_hw_id = UINT32_MAX;
+	/* C0 doesn't support STALL when both PIR & CIR are enabled */
+	if (lvl < OTX2_TM_LVL_QUEUE &&
+	    otx2_dev_is_96xx_Cx(dev) &&
+	    pir.rate && cir.rate)
+		tm_node->red_algo = NIX_REDALG_DISCARD;
+	else
+		tm_node->red_algo = NIX_REDALG_STD;
 
 	TAILQ_INSERT_TAIL(&dev->node_list, tm_node, node);
 
@@ -747,24 +814,67 @@ nix_tm_clear_shaper_profiles(struct otx2_eth_dev *dev)
 }
 
 static int
-nix_smq_xoff(struct otx2_eth_dev *dev, uint16_t smq, bool enable)
+nix_clear_path_xoff(struct otx2_eth_dev *dev,
+		    struct otx2_nix_tm_node *tm_node)
+{
+	struct nix_txschq_config *req;
+	struct otx2_nix_tm_node *p;
+	int rc;
+
+	/* Manipulating SW_XOFF not supported on Ax */
+	if (otx2_dev_is_Ax(dev))
+		return 0;
+
+	/* Enable nodes in path for flush to succeed */
+	if (!nix_tm_is_leaf(dev, tm_node->lvl))
+		p = tm_node;
+	else
+		p = tm_node->parent;
+	while (p) {
+		if (!(p->flags & NIX_TM_NODE_ENABLED) &&
+		    (p->flags & NIX_TM_NODE_HWRES)) {
+			req = otx2_mbox_alloc_msg_nix_txschq_cfg(dev->mbox);
+			req->lvl = p->hw_lvl;
+			req->num_regs = prepare_tm_sw_xoff(p, false, req->reg,
+							   req->regval);
+			rc = otx2_mbox_process(dev->mbox);
+			if (rc)
+				return rc;
+
+			p->flags |= NIX_TM_NODE_ENABLED;
+		}
+		p = p->parent;
+	}
+
+	return 0;
+}
+
+static int
+nix_smq_xoff(struct otx2_eth_dev *dev,
+	     struct otx2_nix_tm_node *tm_node,
+	     bool enable)
 {
 	struct otx2_mbox *mbox = dev->mbox;
 	struct nix_txschq_config *req;
+	uint16_t smq;
+	int rc;
+
+	smq = tm_node->hw_id;
+	otx2_tm_dbg("Setting SMQ %u XOFF/FLUSH to %s", smq,
+		    enable ? "enable" : "disable");
+
+	rc = nix_clear_path_xoff(dev, tm_node);
+	if (rc)
+		return rc;
 
 	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
 	req->lvl = NIX_TXSCH_LVL_SMQ;
 	req->num_regs = 1;
 
 	req->reg[0] = NIX_AF_SMQX_CFG(smq);
-	/* Unmodified fields */
-	req->regval[0] = ((uint64_t)NIX_MAX_VTAG_INS << 36) |
-				(NIX_MAX_HW_FRS << 8) | NIX_MIN_HW_FRS;
-
-	if (enable)
-		req->regval[0] |= BIT_ULL(50) | BIT_ULL(49);
-	else
-		req->regval[0] |= 0;
+	req->regval[0] = enable ? (BIT_ULL(50) | BIT_ULL(49)) : 0;
+	req->regval_mask[0] = enable ?
+				~(BIT_ULL(50) | BIT_ULL(49)) : ~BIT_ULL(50);
 
 	return otx2_mbox_process(mbox);
 }
@@ -779,6 +889,9 @@ otx2_nix_sq_sqb_aura_fc(void *__txq, bool enable)
 	struct otx2_mbox *mbox;
 	uint64_t aura_handle;
 	int rc;
+
+	otx2_tm_dbg("Setting SQ %u SQB aura FC to %s", txq->sq,
+		    enable ? "enable" : "disable");
 
 	lf = otx2_npa_lf_obj_get();
 	if (!lf)
@@ -824,22 +937,41 @@ otx2_nix_sq_sqb_aura_fc(void *__txq, bool enable)
 	return 0;
 }
 
-static void
+static int
 nix_txq_flush_sq_spin(struct otx2_eth_txq *txq)
 {
 	uint16_t sqb_cnt, head_off, tail_off;
 	struct otx2_eth_dev *dev = txq->dev;
+	uint64_t wdata, val, prev;
 	uint16_t sq = txq->sq;
-	uint64_t reg, val;
 	int64_t *regaddr;
+	uint64_t timeout;/* 10's of usec */
+
+	/* Wait for enough time based on shaper min rate */
+	timeout = (txq->qconf.nb_desc * NIX_MAX_HW_FRS * 8 * 1E5);
+	timeout = timeout / dev->tm_rate_min;
+	if (!timeout)
+		timeout = 10000;
+
+	wdata = ((uint64_t)sq << 32);
+	regaddr = (int64_t *)(dev->base + NIX_LF_SQ_OP_STATUS);
+	val = otx2_atomic64_add_nosync(wdata, regaddr);
+
+	/* Spin multiple iterations as "txq->fc_cache_pkts" can still
+	 * have space to send pkts even though fc_mem is disabled
+	 */
 
 	while (true) {
-		reg = ((uint64_t)sq << 32);
-		regaddr = (int64_t *)(dev->base + NIX_LF_SQ_OP_PKTS);
-		val = otx2_atomic64_add_nosync(reg, regaddr);
+		prev = val;
+		rte_delay_us(10);
+		val = otx2_atomic64_add_nosync(wdata, regaddr);
+		/* Continue on error */
+		if (val & BIT_ULL(63))
+			continue;
 
-		regaddr = (int64_t *)(dev->base + NIX_LF_SQ_OP_STATUS);
-		val = otx2_atomic64_add_nosync(reg, regaddr);
+		if (prev != val)
+			continue;
+
 		sqb_cnt = val & 0xFFFF;
 		head_off = (val >> 20) & 0x3F;
 		tail_off = (val >> 28) & 0x3F;
@@ -850,114 +982,219 @@ nix_txq_flush_sq_spin(struct otx2_eth_txq *txq)
 			break;
 		}
 
-		rte_pause();
+		/* Timeout */
+		if (!timeout)
+			goto exit;
+		timeout--;
 	}
+
+	return 0;
+exit:
+	return -EFAULT;
 }
 
-int
-otx2_nix_tm_sw_xoff(void *__txq, bool dev_started)
+/* Flush and disable tx queue and its parent SMQ */
+int otx2_nix_sq_flush_pre(void *_txq, bool dev_started)
 {
-	struct otx2_eth_txq *txq = __txq;
-	struct otx2_eth_dev *dev = txq->dev;
-	struct otx2_mbox *mbox = dev->mbox;
-	struct nix_aq_enq_req *req;
-	struct nix_aq_enq_rsp *rsp;
-	uint16_t smq;
+	struct otx2_nix_tm_node *tm_node, *sibling;
+	struct otx2_eth_txq *txq;
+	struct otx2_eth_dev *dev;
+	uint16_t sq;
+	bool user;
 	int rc;
 
-	/* Get smq from sq */
-	req = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
-	req->qidx = txq->sq;
-	req->ctype = NIX_AQ_CTYPE_SQ;
-	req->op = NIX_AQ_INSTOP_READ;
-	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
-	if (rc) {
-		otx2_err("Failed to get smq, rc=%d", rc);
-		return -EIO;
+	txq = _txq;
+	dev = txq->dev;
+	sq = txq->sq;
+
+	user = !!(dev->tm_flags & NIX_TM_COMMITTED);
+
+	/* Find the node for this SQ */
+	tm_node = nix_tm_node_search(dev, sq, user);
+	if (!tm_node || !(tm_node->flags & NIX_TM_NODE_ENABLED)) {
+		otx2_err("Invalid node/state for sq %u", sq);
+		return -EFAULT;
 	}
-
-	/* Check if sq is enabled */
-	if (!rsp->sq.ena)
-		return 0;
-
-	smq = rsp->sq.smq;
 
 	/* Enable CGX RXTX to drain pkts */
 	if (!dev_started) {
-		rc = otx2_cgx_rxtx_start(dev);
-		if (rc)
+		/* Though it enables both RX MCAM Entries and CGX Link
+		 * we assume all the rx queues are stopped way back.
+		 */
+		otx2_mbox_alloc_msg_nix_lf_start_rx(dev->mbox);
+		rc = otx2_mbox_process(dev->mbox);
+		if (rc) {
+			otx2_err("cgx start failed, rc=%d", rc);
 			return rc;
-	}
-
-	rc = otx2_nix_sq_sqb_aura_fc(txq, false);
-	if (rc < 0) {
-		otx2_err("Failed to disable sqb aura fc, rc=%d", rc);
-		goto cleanup;
+		}
 	}
 
 	/* Disable smq xoff for case it was enabled earlier */
-	rc = nix_smq_xoff(dev, smq, false);
+	rc = nix_smq_xoff(dev, tm_node->parent, false);
 	if (rc) {
-		otx2_err("Failed to enable smq for sq %u, rc=%d", txq->sq, rc);
-		goto cleanup;
-	}
-
-	/* Wait for sq entries to be flushed */
-	nix_txq_flush_sq_spin(txq);
-
-	/* Flush and enable smq xoff */
-	rc = nix_smq_xoff(dev, smq, true);
-	if (rc) {
-		otx2_err("Failed to disable smq for sq %u, rc=%d", txq->sq, rc);
+		otx2_err("Failed to enable smq %u, rc=%d",
+			 tm_node->parent->hw_id, rc);
 		return rc;
 	}
 
+	/* As per HRM, to disable an SQ, all other SQ's
+	 * that feed to same SMQ must be paused before SMQ flush.
+	 */
+	TAILQ_FOREACH(sibling, &dev->node_list, node) {
+		if (sibling->parent != tm_node->parent)
+			continue;
+		if (!(sibling->flags & NIX_TM_NODE_ENABLED))
+			continue;
+
+		sq = sibling->id;
+		txq = dev->eth_dev->data->tx_queues[sq];
+		if (!txq)
+			continue;
+
+		rc = otx2_nix_sq_sqb_aura_fc(txq, false);
+		if (rc) {
+			otx2_err("Failed to disable sqb aura fc, rc=%d", rc);
+			goto cleanup;
+		}
+
+		/* Wait for sq entries to be flushed */
+		rc = nix_txq_flush_sq_spin(txq);
+		if (rc) {
+			otx2_err("Failed to drain sq %u, rc=%d\n", txq->sq, rc);
+			return rc;
+		}
+	}
+
+	tm_node->flags &= ~NIX_TM_NODE_ENABLED;
+
+	/* Disable and flush */
+	rc = nix_smq_xoff(dev, tm_node->parent, true);
+	if (rc) {
+		otx2_err("Failed to disable smq %u, rc=%d",
+			 tm_node->parent->hw_id, rc);
+		goto cleanup;
+	}
 cleanup:
 	/* Restore cgx state */
-	if (!dev_started)
-		rc |= otx2_cgx_rxtx_stop(dev);
+	if (!dev_started) {
+		otx2_mbox_alloc_msg_nix_lf_stop_rx(dev->mbox);
+		rc |= otx2_mbox_process(dev->mbox);
+	}
 
 	return rc;
 }
 
-static int
-nix_tm_sw_xon(struct otx2_eth_txq *txq,
-	      uint16_t smq, uint32_t rr_quantum)
+int otx2_nix_sq_flush_post(void *_txq)
 {
-	struct otx2_eth_dev *dev = txq->dev;
-	struct otx2_mbox *mbox = dev->mbox;
-	struct nix_aq_enq_req *req;
+	struct otx2_nix_tm_node *tm_node, *sibling;
+	struct otx2_eth_txq *txq = _txq;
+	struct otx2_eth_txq *s_txq;
+	struct otx2_eth_dev *dev;
+	bool once = false;
+	uint16_t sq, s_sq;
+	bool user;
 	int rc;
 
-	otx2_tm_dbg("Enabling sq(%u)->smq(%u), rr_quantum %u",
-		    txq->sq, txq->sq, rr_quantum);
-	/* Set smq from sq */
+	dev = txq->dev;
+	sq = txq->sq;
+	user = !!(dev->tm_flags & NIX_TM_COMMITTED);
+
+	/* Find the node for this SQ */
+	tm_node = nix_tm_node_search(dev, sq, user);
+	if (!tm_node) {
+		otx2_err("Invalid node for sq %u", sq);
+		return -EFAULT;
+	}
+
+	/* Enable all the siblings back */
+	TAILQ_FOREACH(sibling, &dev->node_list, node) {
+		if (sibling->parent != tm_node->parent)
+			continue;
+
+		if (sibling->id == sq)
+			continue;
+
+		if (!(sibling->flags & NIX_TM_NODE_ENABLED))
+			continue;
+
+		s_sq = sibling->id;
+		s_txq = dev->eth_dev->data->tx_queues[s_sq];
+		if (!s_txq)
+			continue;
+
+		if (!once) {
+			/* Enable back if any SQ is still present */
+			rc = nix_smq_xoff(dev, tm_node->parent, false);
+			if (rc) {
+				otx2_err("Failed to enable smq %u, rc=%d",
+					 tm_node->parent->hw_id, rc);
+				return rc;
+			}
+			once = true;
+		}
+
+		rc = otx2_nix_sq_sqb_aura_fc(s_txq, true);
+		if (rc) {
+			otx2_err("Failed to enable sqb aura fc, rc=%d", rc);
+			return rc;
+		}
+	}
+
+	return 0;
+}
+
+static int
+nix_sq_sched_data(struct otx2_eth_dev *dev,
+		  struct otx2_nix_tm_node *tm_node,
+		  bool rr_quantum_only)
+{
+	struct rte_eth_dev *eth_dev = dev->eth_dev;
+	struct otx2_mbox *mbox = dev->mbox;
+	uint16_t sq = tm_node->id, smq;
+	struct nix_aq_enq_req *req;
+	uint64_t rr_quantum;
+	int rc;
+
+	smq = tm_node->parent->hw_id;
+	rr_quantum = NIX_TM_WEIGHT_TO_RR_QUANTUM(tm_node->weight);
+
+	if (rr_quantum_only)
+		otx2_tm_dbg("Update sq(%u) rr_quantum 0x%"PRIx64, sq, rr_quantum);
+	else
+		otx2_tm_dbg("Enabling sq(%u)->smq(%u), rr_quantum 0x%"PRIx64,
+			    sq, smq, rr_quantum);
+
+	if (sq > eth_dev->data->nb_tx_queues)
+		return -EFAULT;
+
 	req = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
-	req->qidx = txq->sq;
+	req->qidx = sq;
 	req->ctype = NIX_AQ_CTYPE_SQ;
 	req->op = NIX_AQ_INSTOP_WRITE;
-	req->sq.smq = smq;
+
+	/* smq update only when needed */
+	if (!rr_quantum_only) {
+		req->sq.smq = smq;
+		req->sq_mask.smq = ~req->sq_mask.smq;
+	}
 	req->sq.smq_rr_quantum = rr_quantum;
-	req->sq_mask.smq = ~req->sq_mask.smq;
 	req->sq_mask.smq_rr_quantum = ~req->sq_mask.smq_rr_quantum;
 
 	rc = otx2_mbox_process(mbox);
-	if (rc) {
+	if (rc)
 		otx2_err("Failed to set smq, rc=%d", rc);
-		return -EIO;
-	}
+	return rc;
+}
+
+int otx2_nix_sq_enable(void *_txq)
+{
+	struct otx2_eth_txq *txq = _txq;
+	int rc;
 
 	/* Enable sqb_aura fc */
 	rc = otx2_nix_sq_sqb_aura_fc(txq, true);
-	if (rc < 0) {
-		otx2_err("Failed to enable sqb aura fc, rc=%d", rc);
-		return rc;
-	}
-
-	/* Disable smq xoff */
-	rc = nix_smq_xoff(dev, smq, false);
 	if (rc) {
-		otx2_err("Failed to enable smq for sq %u", txq->sq);
+		otx2_err("Failed to enable sqb aura fc, rc=%d", rc);
 		return rc;
 	}
 
@@ -968,12 +1205,11 @@ static int
 nix_tm_free_resources(struct otx2_eth_dev *dev, uint32_t flags_mask,
 		      uint32_t flags, bool hw_only)
 {
-	struct otx2_nix_tm_shaper_profile *shaper_profile;
+	struct otx2_nix_tm_shaper_profile *profile;
 	struct otx2_nix_tm_node *tm_node, *next_node;
 	struct otx2_mbox *mbox = dev->mbox;
 	struct nix_txsch_free_req *req;
-	uint32_t shaper_profile_id;
-	bool skip_node = false;
+	uint32_t profile_id;
 	int rc = 0;
 
 	next_node = TAILQ_FIRST(&dev->node_list);
@@ -985,37 +1221,40 @@ nix_tm_free_resources(struct otx2_eth_dev *dev, uint32_t flags_mask,
 		if ((tm_node->flags & flags_mask) != flags)
 			continue;
 
-		if (nix_tm_have_tl1_access(dev) &&
-		    tm_node->hw_lvl ==  NIX_TXSCH_LVL_TL1)
-			skip_node = true;
-
-		otx2_tm_dbg("Free hwres for node %u, hwlvl %u, hw_id %u (%p)",
-			    tm_node->id,  tm_node->hw_lvl,
-			    tm_node->hw_id, tm_node);
-		/* Free specific HW resource if requested */
-		if (!skip_node && flags_mask &&
+		if (!nix_tm_is_leaf(dev, tm_node->lvl) &&
+		    tm_node->hw_lvl != NIX_TXSCH_LVL_TL1 &&
 		    tm_node->flags & NIX_TM_NODE_HWRES) {
+			/* Free specific HW resource */
+			otx2_tm_dbg("Free hwres %s(%u) lvl %u id %u (%p)",
+				    nix_hwlvl2str(tm_node->hw_lvl),
+				    tm_node->hw_id, tm_node->lvl,
+				    tm_node->id, tm_node);
+
+			rc = nix_clear_path_xoff(dev, tm_node);
+			if (rc)
+				return rc;
+
 			req = otx2_mbox_alloc_msg_nix_txsch_free(mbox);
 			req->flags = 0;
 			req->schq_lvl = tm_node->hw_lvl;
 			req->schq = tm_node->hw_id;
 			rc = otx2_mbox_process(mbox);
 			if (rc)
-				break;
-		} else {
-			skip_node = false;
+				return rc;
+			tm_node->flags &= ~NIX_TM_NODE_HWRES;
 		}
-		tm_node->flags &= ~NIX_TM_NODE_HWRES;
 
 		/* Leave software elements if needed */
 		if (hw_only)
 			continue;
 
-		shaper_profile_id = tm_node->params.shaper_profile_id;
-		shaper_profile =
-			nix_tm_shaper_profile_search(dev, shaper_profile_id);
-		if (shaper_profile)
-			shaper_profile->reference_count--;
+		otx2_tm_dbg("Free node lvl %u id %u (%p)",
+			    tm_node->lvl, tm_node->id, tm_node);
+
+		profile_id = tm_node->params.shaper_profile_id;
+		profile = nix_tm_shaper_profile_search(dev, profile_id);
+		if (profile)
+			profile->reference_count--;
 
 		TAILQ_REMOVE(&dev->node_list, tm_node, node);
 		rte_free(tm_node);
@@ -1060,8 +1299,8 @@ nix_tm_assign_id_to_node(struct otx2_eth_dev *dev,
 	uint32_t hw_id, schq_con_index, prio_offset;
 	uint32_t l_id, schq_index;
 
-	otx2_tm_dbg("Assign hw id for child node %u, lvl %u, hw_lvl %u (%p)",
-		    child->id, child->lvl, child->hw_lvl, child);
+	otx2_tm_dbg("Assign hw id for child node %s lvl %u id %u (%p)",
+		    nix_hwlvl2str(child->hw_lvl), child->lvl, child->id, child);
 
 	child->flags |= NIX_TM_NODE_HWRES;
 
@@ -1219,8 +1458,8 @@ nix_tm_alloc_resources(struct rte_eth_dev *eth_dev, bool xmit_enable)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct otx2_nix_tm_node *tm_node;
-	uint16_t sq, smq, rr_quantum;
 	struct otx2_eth_txq *txq;
+	uint16_t sq;
 	int rc;
 
 	nix_tm_update_parent_info(dev);
@@ -1237,42 +1476,68 @@ nix_tm_alloc_resources(struct rte_eth_dev *eth_dev, bool xmit_enable)
 		return rc;
 	}
 
+	/* Trigger MTU recalculate as SMQ needs MTU conf */
+	if (eth_dev->data->dev_started && eth_dev->data->nb_rx_queues) {
+		rc = otx2_nix_recalc_mtu(eth_dev);
+		if (rc) {
+			otx2_err("TM MTU update failed, rc=%d", rc);
+			return rc;
+		}
+	}
+
+	/* Mark all non-leaf's as enabled */
+	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+		if (!nix_tm_is_leaf(dev, tm_node->lvl))
+			tm_node->flags |= NIX_TM_NODE_ENABLED;
+	}
+
+	if (!xmit_enable)
+		return 0;
+
+	/* Update SQ Sched Data while SQ is idle */
+	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+		if (!nix_tm_is_leaf(dev, tm_node->lvl))
+			continue;
+
+		rc = nix_sq_sched_data(dev, tm_node, false);
+		if (rc) {
+			otx2_err("SQ %u sched update failed, rc=%d",
+				 tm_node->id, rc);
+			return rc;
+		}
+	}
+
+	/* Finally XON all SMQ's */
+	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+		if (tm_node->hw_lvl != NIX_TXSCH_LVL_SMQ)
+			continue;
+
+		rc = nix_smq_xoff(dev, tm_node, false);
+		if (rc) {
+			otx2_err("Failed to enable smq %u, rc=%d",
+				 tm_node->hw_id, rc);
+			return rc;
+		}
+	}
+
 	/* Enable xmit as all the topology is ready */
 	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
-		if (tm_node->flags & NIX_TM_NODE_ENABLED)
-			continue;
-
-		/* Enable xmit on sq */
-		if (tm_node->lvl != OTX2_TM_LVL_QUEUE) {
-			tm_node->flags |= NIX_TM_NODE_ENABLED;
-			continue;
-		}
-
-		/* Don't enable SMQ or mark as enable */
-		if (!xmit_enable)
+		if (!nix_tm_is_leaf(dev, tm_node->lvl))
 			continue;
 
 		sq = tm_node->id;
-		if (sq > eth_dev->data->nb_tx_queues) {
-			rc = -EFAULT;
-			break;
-		}
-
 		txq = eth_dev->data->tx_queues[sq];
 
-		smq = tm_node->parent->hw_id;
-		rr_quantum = NIX_TM_WEIGHT_TO_RR_QUANTUM(tm_node->weight);
-
-		rc = nix_tm_sw_xon(txq, smq, rr_quantum);
-		if (rc)
-			break;
+		rc = otx2_nix_sq_enable(txq);
+		if (rc) {
+			otx2_err("TM sw xon failed on SQ %u, rc=%d",
+				 tm_node->id, rc);
+			return rc;
+		}
 		tm_node->flags |= NIX_TM_NODE_ENABLED;
 	}
 
-	if (rc)
-		otx2_err("TM failed to enable xmit on sq %u, rc=%d", sq, rc);
-
-	return rc;
+	return 0;
 }
 
 static int
@@ -1282,7 +1547,7 @@ nix_tm_prepare_default_tree(struct rte_eth_dev *eth_dev)
 	uint32_t def = eth_dev->data->nb_tx_queues;
 	struct rte_tm_node_params params;
 	uint32_t leaf_parent, i;
-	int rc = 0;
+	int rc = 0, leaf_level;
 
 	/* Default params */
 	memset(&params, 0, sizeof(params));
@@ -1325,6 +1590,7 @@ nix_tm_prepare_default_tree(struct rte_eth_dev *eth_dev)
 			goto exit;
 
 		leaf_parent = def + 4;
+		leaf_level = OTX2_TM_LVL_QUEUE;
 	} else {
 		dev->otx2_tm_root_lvl = NIX_TXSCH_LVL_TL2;
 		rc = nix_tm_node_add_to_list(dev, def, RTE_TM_NODE_ID_NULL, 0,
@@ -1356,6 +1622,7 @@ nix_tm_prepare_default_tree(struct rte_eth_dev *eth_dev)
 			goto exit;
 
 		leaf_parent = def + 3;
+		leaf_level = OTX2_TM_LVL_SCH4;
 	}
 
 	/* Add leaf nodes */
@@ -1363,7 +1630,7 @@ nix_tm_prepare_default_tree(struct rte_eth_dev *eth_dev)
 		rc = nix_tm_node_add_to_list(dev, i, leaf_parent, 0,
 					     DEFAULT_RR_WEIGHT,
 					     NIX_TXSCH_LVL_CNT,
-					     OTX2_TM_LVL_QUEUE, false, &params);
+					     leaf_level, false, &params);
 		if (rc)
 			break;
 	}
@@ -1378,6 +1645,7 @@ void otx2_nix_tm_conf_init(struct rte_eth_dev *eth_dev)
 
 	TAILQ_INIT(&dev->node_list);
 	TAILQ_INIT(&dev->shaper_profile_list);
+	dev->tm_rate_min = 1E9; /* 1Gbps */
 }
 
 int otx2_nix_tm_init_default(struct rte_eth_dev *eth_dev)
@@ -1455,7 +1723,7 @@ otx2_nix_tm_get_leaf_data(struct otx2_eth_dev *dev, uint16_t sq,
 		tm_node = nix_tm_node_search(dev, sq, true);
 
 	/* Check if we found a valid leaf node */
-	if (!tm_node || tm_node->lvl != OTX2_TM_LVL_QUEUE ||
+	if (!tm_node || !nix_tm_is_leaf(dev, tm_node->lvl) ||
 	    !tm_node->parent || tm_node->parent->hw_id == UINT32_MAX) {
 		return -EIO;
 	}
@@ -1464,7 +1732,7 @@ otx2_nix_tm_get_leaf_data(struct otx2_eth_dev *dev, uint16_t sq,
 	*smq = tm_node->parent->hw_id;
 	*rr_quantum = NIX_TM_WEIGHT_TO_RR_QUANTUM(tm_node->weight);
 
-	rc = nix_smq_xoff(dev, *smq, false);
+	rc = nix_smq_xoff(dev, tm_node->parent, false);
 	if (rc)
 		return rc;
 	tm_node->flags |= NIX_TM_NODE_ENABLED;

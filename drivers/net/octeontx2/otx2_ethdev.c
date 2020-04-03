@@ -998,7 +998,7 @@ otx2_nix_tx_queue_release(void *_txq)
 	otx2_nix_dbg("Releasing txq %u", txq->sq);
 
 	/* Flush and disable tm */
-	otx2_nix_tm_sw_xoff(txq, eth_dev->data->dev_started);
+	otx2_nix_sq_flush_pre(txq, eth_dev->data->dev_started);
 
 	/* Free sqb's and disable sq */
 	nix_sq_uninit(txq);
@@ -1007,6 +1007,7 @@ otx2_nix_tx_queue_release(void *_txq)
 		rte_mempool_free(txq->sqb_pool);
 		txq->sqb_pool = NULL;
 	}
+	otx2_nix_sq_flush_post(txq);
 	rte_free(txq);
 }
 
