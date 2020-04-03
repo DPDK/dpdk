@@ -87,7 +87,11 @@
 	ICE_INSET_TUN_IPV4_TOS)
 #define ICE_SW_INSET_MAC_PPPOE  ( \
 	ICE_INSET_VLAN_OUTER | ICE_INSET_VLAN_INNER | \
-	ICE_INSET_DMAC | ICE_INSET_ETHERTYPE)
+	ICE_INSET_DMAC | ICE_INSET_ETHERTYPE | ICE_INSET_PPPOE_SESSION)
+#define ICE_SW_INSET_MAC_PPPOE_PROTO  ( \
+	ICE_INSET_VLAN_OUTER | ICE_INSET_VLAN_INNER | \
+	ICE_INSET_DMAC | ICE_INSET_ETHERTYPE | ICE_INSET_PPPOE_SESSION | \
+	ICE_INSET_PPPOE_PROTO)
 
 struct sw_meta {
 	struct ice_adv_lkup_elem *list;
@@ -135,6 +139,10 @@ ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
 	{pattern_eth_vlan_pppoes,
 			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
+	{pattern_eth_pppoes_proto,
+			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_proto,
+			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
 };
 
 static struct
@@ -316,12 +324,15 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	const struct rte_flow_item_vxlan *vxlan_spec, *vxlan_mask;
 	const struct rte_flow_item_vlan *vlan_spec, *vlan_mask;
 	const struct rte_flow_item_pppoe *pppoe_spec, *pppoe_mask;
+	const struct rte_flow_item_pppoe_proto_id *pppoe_proto_spec,
+				*pppoe_proto_mask;
 	uint8_t  ipv6_addr_mask[16] = {
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 	uint64_t input_set = ICE_INSET_NONE;
 	uint16_t j, t = 0;
 	uint16_t tunnel_valid = 0;
+	uint16_t pppoe_valid = 0;
 
 
 	for (item = pattern; item->type !=
@@ -885,14 +896,75 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			pppoe_mask = item->mask;
 			/* Check if PPPoE item is used to describe protocol.
 			 * If yes, both spec and mask should be NULL.
+			 * If no, both spec and mask shouldn't be NULL.
 			 */
-			if (pppoe_spec || pppoe_mask) {
+			if ((!pppoe_spec && pppoe_mask) ||
+				(pppoe_spec && !pppoe_mask)) {
 				rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Invalid pppoe item");
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"Invalid pppoe item");
 				return 0;
 			}
+			if (pppoe_spec && pppoe_mask) {
+				/* Check pppoe mask and update input set */
+				if (pppoe_mask->length ||
+					pppoe_mask->code ||
+					pppoe_mask->version_type) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid pppoe mask");
+					return 0;
+				}
+				list[t].type = ICE_PPPOE;
+				if (pppoe_mask->session_id == UINT16_MAX) {
+					list[t].h_u.pppoe_hdr.session_id =
+						pppoe_spec->session_id;
+					list[t].m_u.pppoe_hdr.session_id =
+						UINT16_MAX;
+					input_set |= ICE_INSET_PPPOE_SESSION;
+				}
+				t++;
+				pppoe_valid = 1;
+			} else if (!pppoe_spec && !pppoe_mask) {
+				list[t].type = ICE_PPPOE;
+			}
+
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID:
+			pppoe_proto_spec = item->spec;
+			pppoe_proto_mask = item->mask;
+			/* Check if PPPoE optional proto_id item
+			 * is used to describe protocol.
+			 * If yes, both spec and mask should be NULL.
+			 * If no, both spec and mask shouldn't be NULL.
+			 */
+			if ((!pppoe_proto_spec && pppoe_proto_mask) ||
+				(pppoe_proto_spec && !pppoe_proto_mask)) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"Invalid pppoe proto item");
+				return 0;
+			}
+			if (pppoe_proto_spec && pppoe_proto_mask) {
+				if (pppoe_valid)
+					t--;
+				list[t].type = ICE_PPPOE;
+				if (pppoe_proto_mask->proto_id == UINT16_MAX) {
+					list[t].h_u.pppoe_hdr.ppp_prot_id =
+						pppoe_proto_spec->proto_id;
+					list[t].m_u.pppoe_hdr.ppp_prot_id =
+						UINT16_MAX;
+					input_set |= ICE_INSET_PPPOE_PROTO;
+				}
+				t++;
+			} else if (!pppoe_proto_spec && !pppoe_proto_mask) {
+				list[t].type = ICE_PPPOE;
+			}
+
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_VOID:

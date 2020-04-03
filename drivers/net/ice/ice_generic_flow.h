@@ -30,6 +30,7 @@
 #define ICE_PROT_VXLAN             (1ULL << 19)
 #define ICE_PROT_NVGRE             (1ULL << 20)
 #define ICE_PROT_GTPU              (1ULL << 21)
+#define ICE_PROT_PPPOE_S           (1ULL << 22)
 
 /* field */
 
@@ -49,6 +50,8 @@
 #define ICE_NVGRE_TNI              (1ULL << 50)
 #define ICE_GTPU_TEID              (1ULL << 49)
 #define ICE_GTPU_QFI               (1ULL << 48)
+#define ICE_PPPOE_SESSION          (1ULL << 47)
+#define ICE_PPPOE_PROTO            (1ULL << 46)
 
 /* input set */
 
@@ -177,6 +180,10 @@
 	(ICE_PROT_GTPU | ICE_GTPU_TEID)
 #define ICE_INSET_GTPU_QFI \
 	(ICE_PROT_GTPU | ICE_GTPU_QFI)
+#define ICE_INSET_PPPOE_SESSION \
+	(ICE_PROT_PPPOE_S | ICE_PPPOE_SESSION)
+#define ICE_INSET_PPPOE_PROTO \
+	(ICE_PROT_PPPOE_S | ICE_PPPOE_PROTO)
 
 /* empty pattern */
 extern enum rte_flow_item_type pattern_empty[];
@@ -349,7 +356,9 @@ extern enum rte_flow_item_type pattern_eth_pppoed[];
 extern enum rte_flow_item_type pattern_eth_vlan_pppoed[];
 extern enum rte_flow_item_type pattern_eth_qinq_pppoed[];
 extern enum rte_flow_item_type pattern_eth_pppoes[];
+extern enum rte_flow_item_type pattern_eth_pppoes_proto[];
 extern enum rte_flow_item_type pattern_eth_vlan_pppoes[];
+extern enum rte_flow_item_type pattern_eth_vlan_pppoes_proto[];
 extern enum rte_flow_item_type pattern_eth_qinq_pppoes[];
 extern enum rte_flow_item_type pattern_eth_pppoes_ipv4[];
 extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv4[];
