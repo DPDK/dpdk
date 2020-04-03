@@ -19,6 +19,8 @@ ice_dcf_update_vsi_ctx(struct ice_hw *hw, uint16_t vsi_handle,
 		       uint16_t vsi_map)
 {
 	struct ice_vsi_ctx *vsi_ctx;
+	bool first_update = false;
+	uint16_t new_vsi_num;
 
 	if (unlikely(vsi_handle >= ICE_MAX_VSI)) {
 		PMD_DRV_LOG(ERR, "Invalid vsi handle %u", vsi_handle);
@@ -35,11 +37,25 @@ ice_dcf_update_vsi_ctx(struct ice_hw *hw, uint16_t vsi_handle,
 					    vsi_handle);
 				return;
 			}
+			hw->vsi_ctx[vsi_handle] = vsi_ctx;
+			first_update = true;
 		}
 
-		vsi_ctx->vsi_num = (vsi_map & VIRTCHNL_DCF_VF_VSI_ID_M) >>
-					      VIRTCHNL_DCF_VF_VSI_ID_S;
-		hw->vsi_ctx[vsi_handle] = vsi_ctx;
+		new_vsi_num = (vsi_map & VIRTCHNL_DCF_VF_VSI_ID_M) >>
+			VIRTCHNL_DCF_VF_VSI_ID_S;
+
+		/* Redirect rules if vsi mapping table changes. */
+		if (!first_update && vsi_ctx->vsi_num != new_vsi_num) {
+			struct ice_flow_redirect rd;
+
+			memset(&rd, 0, sizeof(struct ice_flow_redirect));
+			rd.type = ICE_FLOW_REDIRECT_VSI;
+			rd.vsi_handle = vsi_handle;
+			rd.new_vsi_num = new_vsi_num;
+			ice_flow_redirect((struct ice_adapter *)hw->back, &rd);
+		} else {
+			vsi_ctx->vsi_num = new_vsi_num;
+		}
 
 		PMD_DRV_LOG(DEBUG, "VF%u is assigned with vsi number %u",
 			    vsi_handle, vsi_ctx->vsi_num);
