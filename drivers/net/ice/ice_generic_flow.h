@@ -391,6 +391,15 @@ extern enum rte_flow_item_type pattern_eth_pppoes_ipv6_icmp6[];
 extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv6_icmp6[];
 extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6_icmp6[];
 
+/* ESP */
+extern enum rte_flow_item_type pattern_eth_ipv6_esp[];
+
+/* AH */
+extern enum rte_flow_item_type pattern_eth_ipv6_ah[];
+
+/* L2TP */
+extern enum rte_flow_item_type pattern_eth_ipv6_l2tp[];
+
 struct ice_adapter;
 
 extern const struct rte_flow_ops ice_flow_ops;

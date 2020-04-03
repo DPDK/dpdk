@@ -148,6 +148,12 @@ ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
 	{pattern_eth_vlan_pppoes_proto,
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
+	{pattern_eth_ipv6_esp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_ah,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_l2tp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
 };
 
 static struct
@@ -212,6 +218,12 @@ ice_pattern_match_item ice_switch_pattern_perm[] = {
 			ICE_SW_INSET_PERM_TUNNEL_IPV4_UDP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_nvgre_eth_ipv4_tcp,
 			ICE_SW_INSET_PERM_TUNNEL_IPV4_TCP, ICE_INSET_NONE},
+	{pattern_eth_ipv6_esp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_ah,
+			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv6_l2tp,
+			ICE_INSET_NONE, ICE_INSET_NONE},
 };
 
 static int
@@ -319,7 +331,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		struct rte_flow_error *error,
 		struct ice_adv_lkup_elem *list,
 		uint16_t *lkups_num,
-		enum ice_sw_tunnel_type tun_type)
+		enum ice_sw_tunnel_type *tun_type)
 {
 	const struct rte_flow_item *item = pattern;
 	enum rte_flow_item_type item_type;
@@ -335,10 +347,14 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	const struct rte_flow_item_pppoe *pppoe_spec, *pppoe_mask;
 	const struct rte_flow_item_pppoe_proto_id *pppoe_proto_spec,
 				*pppoe_proto_mask;
+	const struct rte_flow_item_esp *esp_spec, *esp_mask;
+	const struct rte_flow_item_ah *ah_spec, *ah_mask;
+	const struct rte_flow_item_l2tpv3oip *l2tp_spec, *l2tp_mask;
 	uint64_t input_set = ICE_INSET_NONE;
 	uint16_t j, t = 0;
 	uint16_t tunnel_valid = 0;
 	uint16_t pppoe_valid = 0;
+	uint16_t ipv6_valiad = 0;
 
 
 	for (item = pattern; item->type !=
@@ -504,6 +520,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			ipv6_spec = item->spec;
 			ipv6_mask = item->mask;
+			ipv6_valiad = 1;
 			if (ipv6_spec && ipv6_mask) {
 				if (ipv6_mask->hdr.payload_len) {
 					rte_flow_error_set(error, EINVAL,
@@ -642,7 +659,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						input_set |=
 						ICE_INSET_UDP_DST_PORT;
 				}
-				if (tun_type == ICE_SW_TUN_VXLAN &&
+				if (*tun_type == ICE_SW_TUN_VXLAN &&
 						tunnel_valid == 0)
 					list[t].type = ICE_UDP_OF;
 				else
@@ -938,6 +955,48 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			}
 			break;
 
+		case RTE_FLOW_ITEM_TYPE_ESP:
+			esp_spec = item->spec;
+			esp_mask = item->mask;
+			if (esp_spec || esp_mask) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid esp item");
+				return -ENOTSUP;
+			}
+			if (ipv6_valiad)
+				*tun_type = ICE_SW_TUN_PROFID_IPV6_ESP;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_AH:
+			ah_spec = item->spec;
+			ah_mask = item->mask;
+			if (ah_spec || ah_mask) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid ah item");
+				return -ENOTSUP;
+			}
+			if (ipv6_valiad)
+				*tun_type = ICE_SW_TUN_PROFID_IPV6_AH;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
+			l2tp_spec = item->spec;
+			l2tp_mask = item->mask;
+			if (l2tp_spec || l2tp_mask) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid l2tp item");
+				return -ENOTSUP;
+			}
+			if (ipv6_valiad)
+				*tun_type = ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3;
+			break;
+
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 
@@ -1113,6 +1172,21 @@ ice_switch_check_action(const struct rte_flow_action *actions,
 	return 0;
 }
 
+static bool
+ice_is_profile_rule(enum ice_sw_tunnel_type tun_type)
+{
+	switch (tun_type) {
+	case ICE_SW_TUN_PROFID_IPV6_ESP:
+	case ICE_SW_TUN_PROFID_IPV6_AH:
+	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
 static int
 ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		struct ice_pattern_match_item *array,
@@ -1168,8 +1242,6 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
-	rule_info.tun_type = tun_type;
-
 	sw_meta_ptr =
 		rte_zmalloc(NULL, sizeof(*sw_meta_ptr), 0);
 	if (!sw_meta_ptr) {
@@ -1189,14 +1261,17 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	}
 
 	inputset = ice_switch_inset_get
-		(pattern, error, list, &lkups_num, tun_type);
-	if (!inputset || (inputset & ~pattern_match_item->input_set_mask)) {
+		(pattern, error, list, &lkups_num, &tun_type);
+	if ((!inputset && !ice_is_profile_rule(tun_type)) ||
+		(inputset & ~pattern_match_item->input_set_mask)) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,
 				   "Invalid input set");
 		goto error;
 	}
+
+	rule_info.tun_type = tun_type;
 
 	ret = ice_switch_check_action(actions, error);
 	if (ret) {
