@@ -135,6 +135,8 @@ TAILQ_HEAD(otx2_nix_tm_shaper_profile_list, otx2_nix_tm_shaper_profile);
 #define TXSCH_TL1_DFLT_RR_QTM  ((1 << 24) - 1)
 #define TXSCH_TL1_DFLT_RR_PRIO 1
 
+#define TXSCH_TLX_SP_PRIO_MAX 10
+
 static inline const char *
 nix_hwlvl2str(uint32_t hw_lvl)
 {

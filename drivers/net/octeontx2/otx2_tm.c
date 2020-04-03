@@ -1540,6 +1540,277 @@ nix_tm_alloc_resources(struct rte_eth_dev *eth_dev, bool xmit_enable)
 	return 0;
 }
 
+static uint16_t
+nix_tm_lvl2nix(struct otx2_eth_dev *dev, uint32_t lvl)
+{
+	if (nix_tm_have_tl1_access(dev)) {
+		switch (lvl) {
+		case OTX2_TM_LVL_ROOT:
+			return NIX_TXSCH_LVL_TL1;
+		case OTX2_TM_LVL_SCH1:
+			return NIX_TXSCH_LVL_TL2;
+		case OTX2_TM_LVL_SCH2:
+			return NIX_TXSCH_LVL_TL3;
+		case OTX2_TM_LVL_SCH3:
+			return NIX_TXSCH_LVL_TL4;
+		case OTX2_TM_LVL_SCH4:
+			return NIX_TXSCH_LVL_SMQ;
+		default:
+			return NIX_TXSCH_LVL_CNT;
+		}
+	} else {
+		switch (lvl) {
+		case OTX2_TM_LVL_ROOT:
+			return NIX_TXSCH_LVL_TL2;
+		case OTX2_TM_LVL_SCH1:
+			return NIX_TXSCH_LVL_TL3;
+		case OTX2_TM_LVL_SCH2:
+			return NIX_TXSCH_LVL_TL4;
+		case OTX2_TM_LVL_SCH3:
+			return NIX_TXSCH_LVL_SMQ;
+		default:
+			return NIX_TXSCH_LVL_CNT;
+		}
+	}
+}
+
+static uint16_t
+nix_max_prio(struct otx2_eth_dev *dev, uint16_t hw_lvl)
+{
+	if (hw_lvl >= NIX_TXSCH_LVL_CNT)
+		return 0;
+
+	/* MDQ doesn't support SP */
+	if (hw_lvl == NIX_TXSCH_LVL_MDQ)
+		return 0;
+
+	/* PF's TL1 with VF's enabled doesn't support SP */
+	if (hw_lvl == NIX_TXSCH_LVL_TL1 &&
+	    (dev->otx2_tm_root_lvl == NIX_TXSCH_LVL_TL2 ||
+	     (dev->tm_flags & NIX_TM_TL1_NO_SP)))
+		return 0;
+
+	return TXSCH_TLX_SP_PRIO_MAX - 1;
+}
+
+
+static int
+validate_prio(struct otx2_eth_dev *dev, uint32_t lvl,
+	      uint32_t parent_id, uint32_t priority,
+	      struct rte_tm_error *error)
+{
+	uint8_t priorities[TXSCH_TLX_SP_PRIO_MAX];
+	struct otx2_nix_tm_node *tm_node;
+	uint32_t rr_num = 0;
+	int i;
+
+	/* Validate priority against max */
+	if (priority > nix_max_prio(dev, nix_tm_lvl2nix(dev, lvl - 1))) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "unsupported priority value";
+		return -EINVAL;
+	}
+
+	if (parent_id == RTE_TM_NODE_ID_NULL)
+		return 0;
+
+	memset(priorities, 0, TXSCH_TLX_SP_PRIO_MAX);
+	priorities[priority] = 1;
+
+	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+		if (!tm_node->parent)
+			continue;
+
+		if (!(tm_node->flags & NIX_TM_NODE_USER))
+			continue;
+
+		if (tm_node->parent->id != parent_id)
+			continue;
+
+		priorities[tm_node->priority]++;
+	}
+
+	for (i = 0; i < TXSCH_TLX_SP_PRIO_MAX; i++)
+		if (priorities[i] > 1)
+			rr_num++;
+
+	/* At max, one rr groups per parent */
+	if (rr_num > 1) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_PRIORITY;
+		error->message = "multiple DWRR node priority";
+		return -EINVAL;
+	}
+
+	/* Check for previous priority to avoid holes in priorities */
+	if (priority && !priorities[priority - 1]) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_PRIORITY;
+		error->message = "priority not in order";
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+otx2_nix_tm_node_add(struct rte_eth_dev *eth_dev, uint32_t node_id,
+		     uint32_t parent_node_id, uint32_t priority,
+		     uint32_t weight, uint32_t lvl,
+		     struct rte_tm_node_params *params,
+		     struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_node *parent_node;
+	int rc, clear_on_fail = 0;
+	uint32_t exp_next_lvl;
+	uint16_t hw_lvl;
+
+	/* we don't support dynamic updates */
+	if (dev->tm_flags & NIX_TM_COMMITTED) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "dynamic update not supported";
+		return -EIO;
+	}
+
+	/* Leaf nodes have to be same priority */
+	if (nix_tm_is_leaf(dev, lvl) && priority != 0) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "queue shapers must be priority 0";
+		return -EIO;
+	}
+
+	parent_node = nix_tm_node_search(dev, parent_node_id, true);
+
+	/* find the right level */
+	if (lvl == RTE_TM_NODE_LEVEL_ID_ANY) {
+		if (parent_node_id == RTE_TM_NODE_ID_NULL) {
+			lvl = OTX2_TM_LVL_ROOT;
+		} else if (parent_node) {
+			lvl = parent_node->lvl + 1;
+		} else {
+			/* Neigher proper parent nor proper level id given */
+			error->type = RTE_TM_ERROR_TYPE_NODE_PARENT_NODE_ID;
+			error->message = "invalid parent node id";
+			return -ERANGE;
+		}
+	}
+
+	/* Translate rte_tm level id's to nix hw level id's */
+	hw_lvl = nix_tm_lvl2nix(dev, lvl);
+	if (hw_lvl == NIX_TXSCH_LVL_CNT &&
+	    !nix_tm_is_leaf(dev, lvl)) {
+		error->type = RTE_TM_ERROR_TYPE_LEVEL_ID;
+		error->message = "invalid level id";
+		return -ERANGE;
+	}
+
+	if (node_id < dev->tm_leaf_cnt)
+		exp_next_lvl = NIX_TXSCH_LVL_SMQ;
+	else
+		exp_next_lvl = hw_lvl + 1;
+
+	/* Check if there is no parent node yet */
+	if (hw_lvl != dev->otx2_tm_root_lvl &&
+	    (!parent_node || parent_node->hw_lvl != exp_next_lvl)) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_PARENT_NODE_ID;
+		error->message = "invalid parent node id";
+		return -EINVAL;
+	}
+
+	/* Check if a node already exists */
+	if (nix_tm_node_search(dev, node_id, true)) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "node already exists";
+		return -EINVAL;
+	}
+
+	/* Check if shaper profile exists for non leaf node */
+	if (!nix_tm_is_leaf(dev, lvl) &&
+	    params->shaper_profile_id != RTE_TM_SHAPER_PROFILE_ID_NONE &&
+	    !nix_tm_shaper_profile_search(dev, params->shaper_profile_id)) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "invalid shaper profile";
+		return -EINVAL;
+	}
+
+	/* Check if there is second DWRR already in siblings or holes in prio */
+	if (validate_prio(dev, lvl, parent_node_id, priority, error))
+		return -EINVAL;
+
+	if (weight > MAX_SCHED_WEIGHT) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_WEIGHT;
+		error->message = "max weight exceeded";
+		return -EINVAL;
+	}
+
+	rc = nix_tm_node_add_to_list(dev, node_id, parent_node_id,
+				     priority, weight, hw_lvl,
+				     lvl, true, params);
+	if (rc) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		/* cleanup user added nodes */
+		if (clear_on_fail)
+			nix_tm_free_resources(dev, NIX_TM_NODE_USER,
+					      NIX_TM_NODE_USER, false);
+		error->message = "failed to add node";
+		return rc;
+	}
+	error->type = RTE_TM_ERROR_TYPE_NONE;
+	return 0;
+}
+
+static int
+otx2_nix_tm_node_delete(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_node *tm_node, *child_node;
+	struct otx2_nix_tm_shaper_profile *profile;
+	uint32_t profile_id;
+
+	/* we don't support dynamic updates yet */
+	if (dev->tm_flags & NIX_TM_COMMITTED) {
+		error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+		error->message = "hierarchy exists";
+		return -EIO;
+	}
+
+	if (node_id == RTE_TM_NODE_ID_NULL) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "invalid node id";
+		return -EINVAL;
+	}
+
+	tm_node = nix_tm_node_search(dev, node_id, true);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	/* Check for any existing children */
+	TAILQ_FOREACH(child_node, &dev->node_list, node) {
+		if (child_node->parent == tm_node) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+			error->message = "children exist";
+			return -EINVAL;
+		}
+	}
+
+	/* Remove shaper profile reference */
+	profile_id = tm_node->params.shaper_profile_id;
+	profile = nix_tm_shaper_profile_search(dev, profile_id);
+	profile->reference_count--;
+
+	TAILQ_REMOVE(&dev->node_list, tm_node, node);
+	rte_free(tm_node);
+	return 0;
+}
+
+const struct rte_tm_ops otx2_tm_ops = {
+	.node_add = otx2_nix_tm_node_add,
+	.node_delete = otx2_nix_tm_node_delete,
+};
+
 static int
 nix_tm_prepare_default_tree(struct rte_eth_dev *eth_dev)
 {
