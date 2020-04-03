@@ -1674,6 +1674,47 @@ validate_prio(struct otx2_eth_dev *dev, uint32_t lvl,
 }
 
 static int
+read_tm_reg(struct otx2_mbox *mbox, uint64_t reg,
+	    uint64_t *regval, uint32_t hw_lvl)
+{
+	volatile struct nix_txschq_config *req;
+	struct nix_txschq_config *rsp;
+	int rc;
+
+	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->read = 1;
+	req->lvl = hw_lvl;
+	req->reg[0] = reg;
+	req->num_regs = 1;
+
+	rc = otx2_mbox_process_msg(mbox, (void **)&rsp);
+	if (rc)
+		return rc;
+	*regval = rsp->regval[0];
+	return 0;
+}
+
+/* Search for min rate in topology */
+static void
+nix_tm_shaper_profile_update_min(struct otx2_eth_dev *dev)
+{
+	struct otx2_nix_tm_shaper_profile *profile;
+	uint64_t rate_min = 1E9; /* 1 Gbps */
+
+	TAILQ_FOREACH(profile, &dev->shaper_profile_list, shaper) {
+		if (profile->params.peak.rate &&
+		    profile->params.peak.rate < rate_min)
+			rate_min = profile->params.peak.rate;
+
+		if (profile->params.committed.rate &&
+		    profile->params.committed.rate < rate_min)
+			rate_min = profile->params.committed.rate;
+	}
+
+	dev->tm_rate_min = rate_min;
+}
+
+static int
 nix_xmit_disable(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
@@ -1769,6 +1810,145 @@ cleanup:
 	}
 
 	return rc;
+}
+
+static int
+otx2_nix_tm_node_type_get(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			  int *is_leaf, struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_node *tm_node;
+
+	if (is_leaf == NULL) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		return -EINVAL;
+	}
+
+	tm_node = nix_tm_node_search(dev, node_id, true);
+	if (node_id == RTE_TM_NODE_ID_NULL || !tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		return -EINVAL;
+	}
+	if (nix_tm_is_leaf(dev, tm_node->lvl))
+		*is_leaf = true;
+	else
+		*is_leaf = false;
+
+	return 0;
+}
+
+static int
+otx2_nix_tm_shaper_profile_add(struct rte_eth_dev *eth_dev,
+			       uint32_t profile_id,
+			       struct rte_tm_shaper_params *params,
+			       struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_shaper_profile *profile;
+
+	profile = nix_tm_shaper_profile_search(dev, profile_id);
+	if (profile) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "shaper profile ID exist";
+		return -EINVAL;
+	}
+
+	/* Committed rate and burst size can be enabled/disabled */
+	if (params->committed.size || params->committed.rate) {
+		if (params->committed.size < MIN_SHAPER_BURST ||
+		    params->committed.size > MAX_SHAPER_BURST) {
+			error->type =
+				RTE_TM_ERROR_TYPE_SHAPER_PROFILE_COMMITTED_SIZE;
+			return -EINVAL;
+		} else if (!shaper_rate_to_nix(params->committed.rate * 8,
+					       NULL, NULL, NULL)) {
+			error->type =
+				RTE_TM_ERROR_TYPE_SHAPER_PROFILE_COMMITTED_RATE;
+			error->message = "shaper committed rate invalid";
+			return -EINVAL;
+		}
+	}
+
+	/* Peak rate and burst size can be enabled/disabled */
+	if (params->peak.size || params->peak.rate) {
+		if (params->peak.size < MIN_SHAPER_BURST ||
+		    params->peak.size > MAX_SHAPER_BURST) {
+			error->type =
+				RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_SIZE;
+			return -EINVAL;
+		} else if (!shaper_rate_to_nix(params->peak.rate * 8,
+					       NULL, NULL, NULL)) {
+			error->type =
+				RTE_TM_ERROR_TYPE_SHAPER_PROFILE_COMMITTED_RATE;
+			error->message = "shaper peak rate invalid";
+			return -EINVAL;
+		}
+	}
+
+	profile = rte_zmalloc("otx2_nix_tm_shaper_profile",
+			      sizeof(struct otx2_nix_tm_shaper_profile), 0);
+	if (!profile)
+		return -ENOMEM;
+
+	profile->shaper_profile_id = profile_id;
+	rte_memcpy(&profile->params, params,
+		   sizeof(struct rte_tm_shaper_params));
+	TAILQ_INSERT_TAIL(&dev->shaper_profile_list, profile, shaper);
+
+	otx2_tm_dbg("Added TM shaper profile %u, "
+		    " pir %" PRIu64 " , pbs %" PRIu64 ", cir %" PRIu64
+		    ", cbs %" PRIu64 " , adj %u",
+		    profile_id,
+		    params->peak.rate * 8,
+		    params->peak.size,
+		    params->committed.rate * 8,
+		    params->committed.size,
+		    params->pkt_length_adjust);
+
+	/* Translate rate as bits per second */
+	profile->params.peak.rate = profile->params.peak.rate * 8;
+	profile->params.committed.rate = profile->params.committed.rate * 8;
+	/* Always use PIR for single rate shaping */
+	if (!params->peak.rate && params->committed.rate) {
+		profile->params.peak = profile->params.committed;
+		memset(&profile->params.committed, 0,
+		       sizeof(profile->params.committed));
+	}
+
+	/* update min rate */
+	nix_tm_shaper_profile_update_min(dev);
+	return 0;
+}
+
+static int
+otx2_nix_tm_shaper_profile_delete(struct rte_eth_dev *eth_dev,
+				  uint32_t profile_id,
+				  struct rte_tm_error *error)
+{
+	struct otx2_nix_tm_shaper_profile *profile;
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	profile = nix_tm_shaper_profile_search(dev, profile_id);
+
+	if (!profile) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "shaper profile ID not exist";
+		return -EINVAL;
+	}
+
+	if (profile->reference_count) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+		error->message = "shaper profile in use";
+		return -EINVAL;
+	}
+
+	otx2_tm_dbg("Removing TM shaper profile %u", profile_id);
+	TAILQ_REMOVE(&dev->shaper_profile_list, profile, shaper);
+	rte_free(profile);
+
+	/* update min rate */
+	nix_tm_shaper_profile_update_min(dev);
+	return 0;
 }
 
 static int
@@ -2057,12 +2237,104 @@ otx2_nix_tm_hierarchy_commit(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int
+otx2_nix_tm_node_stats_read(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			    struct rte_tm_node_stats *stats,
+			    uint64_t *stats_mask, int clear,
+			    struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_node *tm_node;
+	uint64_t reg, val;
+	int64_t *addr;
+	int rc = 0;
+
+	tm_node = nix_tm_node_search(dev, node_id, true);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	/* Stats support only for leaf node or TL1 root */
+	if (nix_tm_is_leaf(dev, tm_node->lvl)) {
+		reg = (((uint64_t)tm_node->id) << 32);
+
+		/* Packets */
+		addr = (int64_t *)(dev->base + NIX_LF_SQ_OP_PKTS);
+		val = otx2_atomic64_add_nosync(reg, addr);
+		if (val & OP_ERR)
+			val = 0;
+		stats->n_pkts = val - tm_node->last_pkts;
+
+		/* Bytes */
+		addr = (int64_t *)(dev->base + NIX_LF_SQ_OP_OCTS);
+		val = otx2_atomic64_add_nosync(reg, addr);
+		if (val & OP_ERR)
+			val = 0;
+		stats->n_bytes = val - tm_node->last_bytes;
+
+		if (clear) {
+			tm_node->last_pkts = stats->n_pkts;
+			tm_node->last_bytes = stats->n_bytes;
+		}
+
+		*stats_mask = RTE_TM_STATS_N_PKTS | RTE_TM_STATS_N_BYTES;
+
+	} else if (tm_node->hw_lvl == NIX_TXSCH_LVL_TL1) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "stats read error";
+
+		/* RED Drop packets */
+		reg = NIX_AF_TL1X_DROPPED_PACKETS(tm_node->hw_id);
+		rc = read_tm_reg(dev->mbox, reg, &val, NIX_TXSCH_LVL_TL1);
+		if (rc)
+			goto exit;
+		stats->leaf.n_pkts_dropped[RTE_COLOR_RED] =
+						val - tm_node->last_pkts;
+
+		/* RED Drop bytes */
+		reg = NIX_AF_TL1X_DROPPED_BYTES(tm_node->hw_id);
+		rc = read_tm_reg(dev->mbox, reg, &val, NIX_TXSCH_LVL_TL1);
+		if (rc)
+			goto exit;
+		stats->leaf.n_bytes_dropped[RTE_COLOR_RED] =
+						val - tm_node->last_bytes;
+
+		/* Clear stats */
+		if (clear) {
+			tm_node->last_pkts =
+				stats->leaf.n_pkts_dropped[RTE_COLOR_RED];
+			tm_node->last_bytes =
+				stats->leaf.n_bytes_dropped[RTE_COLOR_RED];
+		}
+
+		*stats_mask = RTE_TM_STATS_N_PKTS_RED_DROPPED |
+			RTE_TM_STATS_N_BYTES_RED_DROPPED;
+
+	} else {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "unsupported node";
+		rc = -EINVAL;
+	}
+
+exit:
+	return rc;
+}
+
 const struct rte_tm_ops otx2_tm_ops = {
+	.node_type_get = otx2_nix_tm_node_type_get,
+
+	.shaper_profile_add = otx2_nix_tm_shaper_profile_add,
+	.shaper_profile_delete = otx2_nix_tm_shaper_profile_delete,
+
 	.node_add = otx2_nix_tm_node_add,
 	.node_delete = otx2_nix_tm_node_delete,
 	.node_suspend = otx2_nix_tm_node_suspend,
 	.node_resume = otx2_nix_tm_node_resume,
 	.hierarchy_commit = otx2_nix_tm_hierarchy_commit,
+
+	.node_stats_read = otx2_nix_tm_node_stats_read,
 };
 
 static int

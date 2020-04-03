@@ -46,6 +46,10 @@ struct otx2_nix_tm_node {
 
 	struct otx2_nix_tm_node *parent;
 	struct rte_tm_node_params params;
+
+	/* Last stats */
+	uint64_t last_pkts;
+	uint64_t last_bytes;
 };
 
 struct otx2_nix_tm_shaper_profile {
