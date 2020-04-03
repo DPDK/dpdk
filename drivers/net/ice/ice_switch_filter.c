@@ -1074,6 +1074,46 @@ error:
 }
 
 static int
+ice_switch_check_action(const struct rte_flow_action *actions,
+			    struct rte_flow_error *error)
+{
+	const struct rte_flow_action *action;
+	enum rte_flow_action_type action_type;
+	uint16_t actions_num = 0;
+
+	for (action = actions; action->type !=
+				RTE_FLOW_ACTION_TYPE_END; action++) {
+		action_type = action->type;
+		switch (action_type) {
+		case RTE_FLOW_ACTION_TYPE_VF:
+		case RTE_FLOW_ACTION_TYPE_RSS:
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			actions_num++;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			continue;
+		default:
+			rte_flow_error_set(error,
+					   EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions,
+					   "Invalid action type");
+			return -rte_errno;
+		}
+	}
+
+	if (actions_num > 1) {
+		rte_flow_error_set(error,
+				   EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   actions,
+				   "Invalid action number");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
 ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		struct ice_pattern_match_item *array,
 		uint32_t array_len,
@@ -1155,6 +1195,14 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,
 				   "Invalid input set");
+		goto error;
+	}
+
+	ret = ice_switch_check_action(actions, error);
+	if (ret) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Invalid input action number");
 		goto error;
 	}
 
