@@ -196,6 +196,7 @@ struct otx2_eth_qconf {
 	void *mempool;
 	uint32_t socket_id;
 	uint16_t nb_desc;
+	uint8_t valid;
 };
 
 struct otx2_fc_info {
