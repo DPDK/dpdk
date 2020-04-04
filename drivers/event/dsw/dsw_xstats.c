@@ -84,16 +84,17 @@ dsw_xstats_port_get_queue_dequeued(struct dsw_evdev *dsw, uint8_t port_id,
 	return dsw->ports[port_id].queue_dequeued[queue_id];
 }
 
-DSW_GEN_PORT_ACCESS_FN(migrations)
+DSW_GEN_PORT_ACCESS_FN(emigrations)
+DSW_GEN_PORT_ACCESS_FN(immigrations)
 
 static uint64_t
 dsw_xstats_port_get_migration_latency(struct dsw_evdev *dsw, uint8_t port_id,
 				      uint8_t queue_id __rte_unused)
 {
-	uint64_t total_latency = dsw->ports[port_id].migration_latency;
-	uint64_t num_migrations = dsw->ports[port_id].migrations;
+	uint64_t total_latency = dsw->ports[port_id].emigration_latency;
+	uint64_t num_emigrations = dsw->ports[port_id].emigrations;
 
-	return num_migrations > 0 ? total_latency / num_migrations : 0;
+	return num_emigrations > 0 ? total_latency / num_emigrations : 0;
 }
 
 static uint64_t
@@ -109,6 +110,8 @@ dsw_xstats_port_get_event_proc_latency(struct dsw_evdev *dsw, uint8_t port_id,
 }
 
 DSW_GEN_PORT_ACCESS_FN(inflight_credits)
+
+DSW_GEN_PORT_ACCESS_FN(pending_releases)
 
 static uint64_t
 dsw_xstats_port_get_load(struct dsw_evdev *dsw, uint8_t port_id,
@@ -136,13 +139,17 @@ static struct dsw_xstats_port dsw_port_xstats[] = {
 	  false },
 	{ "port_%u_queue_%u_dequeued", dsw_xstats_port_get_queue_dequeued,
 	  true },
-	{ "port_%u_migrations", dsw_xstats_port_get_migrations,
+	{ "port_%u_emigrations", dsw_xstats_port_get_emigrations,
 	  false },
 	{ "port_%u_migration_latency", dsw_xstats_port_get_migration_latency,
+	  false },
+	{ "port_%u_immigrations", dsw_xstats_port_get_immigrations,
 	  false },
 	{ "port_%u_event_proc_latency", dsw_xstats_port_get_event_proc_latency,
 	  false },
 	{ "port_%u_inflight_credits", dsw_xstats_port_get_inflight_credits,
+	  false },
+	{ "port_%u_pending_releases", dsw_xstats_port_get_pending_releases,
 	  false },
 	{ "port_%u_load", dsw_xstats_port_get_load,
 	  false },

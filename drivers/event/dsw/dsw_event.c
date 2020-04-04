@@ -385,12 +385,12 @@ dsw_retrieve_port_loads(struct dsw_evdev *dsw, int16_t *port_loads,
 }
 
 static bool
-dsw_select_migration_target(struct dsw_evdev *dsw,
-			    struct dsw_port *source_port,
-			    struct dsw_queue_flow_burst *bursts,
-			    uint16_t num_bursts, int16_t *port_loads,
-			    int16_t max_load, struct dsw_queue_flow *target_qf,
-			    uint8_t *target_port_id)
+dsw_select_emigration_target(struct dsw_evdev *dsw,
+			     struct dsw_port *source_port,
+			     struct dsw_queue_flow_burst *bursts,
+			     uint16_t num_bursts, int16_t *port_loads,
+			     int16_t max_load, struct dsw_queue_flow *target_qf,
+			     uint8_t *target_port_id)
 {
 	uint16_t source_load = port_loads[source_port->id];
 	uint16_t i;
@@ -598,39 +598,39 @@ dsw_port_flush_paused_events(struct dsw_evdev *dsw,
 }
 
 static void
-dsw_port_migration_stats(struct dsw_port *port)
+dsw_port_emigration_stats(struct dsw_port *port)
 {
-	uint64_t migration_latency;
+	uint64_t emigration_latency;
 
-	migration_latency = (rte_get_timer_cycles() - port->migration_start);
-	port->migration_latency += migration_latency;
-	port->migrations++;
+	emigration_latency = (rte_get_timer_cycles() - port->emigration_start);
+	port->emigration_latency += emigration_latency;
+	port->emigrations++;
 }
 
 static void
-dsw_port_end_migration(struct dsw_evdev *dsw, struct dsw_port *port)
+dsw_port_end_emigration(struct dsw_evdev *dsw, struct dsw_port *port)
 {
-	uint8_t queue_id = port->migration_target_qf.queue_id;
-	uint16_t flow_hash = port->migration_target_qf.flow_hash;
+	uint8_t queue_id = port->emigration_target_qf.queue_id;
+	uint16_t flow_hash = port->emigration_target_qf.flow_hash;
 
 	port->migration_state = DSW_MIGRATION_STATE_IDLE;
 	port->seen_events_len = 0;
 
-	dsw_port_migration_stats(port);
+	dsw_port_emigration_stats(port);
 
 	if (dsw->queues[queue_id].schedule_type != RTE_SCHED_TYPE_PARALLEL) {
 		dsw_port_remove_paused_flow(port, queue_id, flow_hash);
 		dsw_port_flush_paused_events(dsw, port, queue_id, flow_hash);
 	}
 
-	DSW_LOG_DP_PORT(DEBUG, port->id, "Migration completed for queue_id "
+	DSW_LOG_DP_PORT(DEBUG, port->id, "Emigration completed for queue_id "
 			"%d flow_hash %d.\n", queue_id, flow_hash);
 }
 
 static void
-dsw_port_consider_migration(struct dsw_evdev *dsw,
-			    struct dsw_port *source_port,
-			    uint64_t now)
+dsw_port_consider_emigration(struct dsw_evdev *dsw,
+			     struct dsw_port *source_port,
+			     uint64_t now)
 {
 	bool any_port_below_limit;
 	struct dsw_queue_flow *seen_events = source_port->seen_events;
@@ -640,31 +640,31 @@ dsw_port_consider_migration(struct dsw_evdev *dsw,
 	int16_t source_port_load;
 	int16_t port_loads[dsw->num_ports];
 
-	if (now < source_port->next_migration)
+	if (now < source_port->next_emigration)
 		return;
 
 	if (dsw->num_ports == 1)
 		return;
 
-	DSW_LOG_DP_PORT(DEBUG, source_port->id, "Considering migration.\n");
+	DSW_LOG_DP_PORT(DEBUG, source_port->id, "Considering emigration.\n");
 
 	/* Randomize interval to avoid having all threads considering
-	 * migration at the same in point in time, which might lead to
-	 * all choosing the same target port.
+	 * emigration at the same in point in time, which might lead
+	 * to all choosing the same target port.
 	 */
-	source_port->next_migration = now +
+	source_port->next_emigration = now +
 		source_port->migration_interval / 2 +
 		rte_rand() % source_port->migration_interval;
 
 	if (source_port->migration_state != DSW_MIGRATION_STATE_IDLE) {
 		DSW_LOG_DP_PORT(DEBUG, source_port->id,
-				"Migration already in progress.\n");
+				"Emigration already in progress.\n");
 		return;
 	}
 
 	/* For simplicity, avoid migration in the unlikely case there
 	 * is still events to consume in the in_buffer (from the last
-	 * migration).
+	 * emigration).
 	 */
 	if (source_port->in_buffer_len > 0) {
 		DSW_LOG_DP_PORT(DEBUG, source_port->id, "There are still "
@@ -716,52 +716,56 @@ dsw_port_consider_migration(struct dsw_evdev *dsw,
 	}
 
 	/* The strategy is to first try to find a flow to move to a
-	 * port with low load (below the migration-attempt
+	 * port with low load (below the emigration-attempt
 	 * threshold). If that fails, we try to find a port which is
 	 * below the max threshold, and also less loaded than this
 	 * port is.
 	 */
-	if (!dsw_select_migration_target(dsw, source_port, bursts, num_bursts,
-					 port_loads,
-					 DSW_MIN_SOURCE_LOAD_FOR_MIGRATION,
-					 &source_port->migration_target_qf,
-					 &source_port->migration_target_port_id)
+	if (!dsw_select_emigration_target(dsw, source_port, bursts, num_bursts,
+				      port_loads,
+				      DSW_MIN_SOURCE_LOAD_FOR_MIGRATION,
+				      &source_port->emigration_target_qf,
+				      &source_port->emigration_target_port_id)
 	    &&
-	    !dsw_select_migration_target(dsw, source_port, bursts, num_bursts,
-					 port_loads,
-					 DSW_MAX_TARGET_LOAD_FOR_MIGRATION,
-					 &source_port->migration_target_qf,
-				       &source_port->migration_target_port_id))
+	    !dsw_select_emigration_target(dsw, source_port, bursts, num_bursts,
+				      port_loads,
+				      DSW_MAX_TARGET_LOAD_FOR_MIGRATION,
+				      &source_port->emigration_target_qf,
+				      &source_port->emigration_target_port_id))
 		return;
 
 	DSW_LOG_DP_PORT(DEBUG, source_port->id, "Migrating queue_id %d "
 			"flow_hash %d from port %d to port %d.\n",
-			source_port->migration_target_qf.queue_id,
-			source_port->migration_target_qf.flow_hash,
-			source_port->id, source_port->migration_target_port_id);
+			source_port->emigration_target_qf.queue_id,
+			source_port->emigration_target_qf.flow_hash,
+			source_port->id,
+			source_port->emigration_target_port_id);
 
 	/* We have a winner. */
 
 	source_port->migration_state = DSW_MIGRATION_STATE_PAUSING;
-	source_port->migration_start = rte_get_timer_cycles();
+	source_port->emigration_start = rte_get_timer_cycles();
 
 	/* No need to go through the whole pause procedure for
 	 * parallel queues, since atomic/ordered semantics need not to
 	 * be maintained.
 	 */
 
-	if (dsw->queues[source_port->migration_target_qf.queue_id].schedule_type
-	    == RTE_SCHED_TYPE_PARALLEL) {
-		uint8_t queue_id = source_port->migration_target_qf.queue_id;
-		uint16_t flow_hash = source_port->migration_target_qf.flow_hash;
-		uint8_t dest_port_id = source_port->migration_target_port_id;
+	if (dsw->queues[source_port->emigration_target_qf.queue_id].
+	    schedule_type == RTE_SCHED_TYPE_PARALLEL) {
+		uint8_t queue_id =
+			source_port->emigration_target_qf.queue_id;
+		uint16_t flow_hash =
+			source_port->emigration_target_qf.flow_hash;
+		uint8_t dest_port_id =
+			source_port->emigration_target_port_id;
 
 		/* Single byte-sized stores are always atomic. */
 		dsw->queues[queue_id].flow_to_port_map[flow_hash] =
 			dest_port_id;
 		rte_smp_wmb();
 
-		dsw_port_end_migration(dsw, source_port);
+		dsw_port_end_emigration(dsw, source_port);
 
 		return;
 	}
@@ -772,12 +776,12 @@ dsw_port_consider_migration(struct dsw_evdev *dsw,
 	dsw_port_flush_out_buffers(dsw, source_port);
 
 	dsw_port_add_paused_flow(source_port,
-				 source_port->migration_target_qf.queue_id,
-				 source_port->migration_target_qf.flow_hash);
+				 source_port->emigration_target_qf.queue_id,
+				 source_port->emigration_target_qf.flow_hash);
 
 	dsw_port_ctl_broadcast(dsw, source_port, DSW_CTL_PAUS_REQ,
-			       source_port->migration_target_qf.queue_id,
-			       source_port->migration_target_qf.flow_hash);
+			       source_port->emigration_target_qf.queue_id,
+			       source_port->emigration_target_qf.flow_hash);
 	source_port->cfm_cnt = 0;
 }
 
@@ -805,6 +809,9 @@ dsw_port_handle_unpause_flow(struct dsw_evdev *dsw, struct dsw_port *port,
 
 	rte_smp_rmb();
 
+	if (dsw_schedule(dsw, queue_id, paused_flow_hash) == port->id)
+		port->immigrations++;
+
 	dsw_port_ctl_enqueue(&dsw->ports[originating_port_id], &cfm);
 
 	dsw_port_flush_paused_events(dsw, port, queue_id, paused_flow_hash);
@@ -813,10 +820,10 @@ dsw_port_handle_unpause_flow(struct dsw_evdev *dsw, struct dsw_port *port,
 #define FORWARD_BURST_SIZE (32)
 
 static void
-dsw_port_forward_migrated_flow(struct dsw_port *source_port,
-			       struct rte_event_ring *dest_ring,
-			       uint8_t queue_id,
-			       uint16_t flow_hash)
+dsw_port_forward_emigrated_flow(struct dsw_port *source_port,
+				struct rte_event_ring *dest_ring,
+				uint8_t queue_id,
+				uint16_t flow_hash)
 {
 	uint16_t events_left;
 
@@ -865,9 +872,9 @@ static void
 dsw_port_move_migrating_flow(struct dsw_evdev *dsw,
 			     struct dsw_port *source_port)
 {
-	uint8_t queue_id = source_port->migration_target_qf.queue_id;
-	uint16_t flow_hash = source_port->migration_target_qf.flow_hash;
-	uint8_t dest_port_id = source_port->migration_target_port_id;
+	uint8_t queue_id = source_port->emigration_target_qf.queue_id;
+	uint16_t flow_hash = source_port->emigration_target_qf.flow_hash;
+	uint8_t dest_port_id = source_port->emigration_target_port_id;
 	struct dsw_port *dest_port = &dsw->ports[dest_port_id];
 
 	dsw_port_flush_out_buffers(dsw, source_port);
@@ -877,8 +884,8 @@ dsw_port_move_migrating_flow(struct dsw_evdev *dsw,
 	dsw->queues[queue_id].flow_to_port_map[flow_hash] =
 		dest_port_id;
 
-	dsw_port_forward_migrated_flow(source_port, dest_port->in_ring,
-				       queue_id, flow_hash);
+	dsw_port_forward_emigrated_flow(source_port, dest_port->in_ring,
+					queue_id, flow_hash);
 
 	/* Flow table update and migration destination port's enqueues
 	 * must be seen before the control message.
@@ -904,7 +911,7 @@ dsw_port_handle_confirm(struct dsw_evdev *dsw, struct dsw_port *port)
 			port->migration_state = DSW_MIGRATION_STATE_FORWARDING;
 			break;
 		case DSW_MIGRATION_STATE_UNPAUSING:
-			dsw_port_end_migration(dsw, port);
+			dsw_port_end_emigration(dsw, port);
 			break;
 		default:
 			RTE_ASSERT(0);
@@ -984,7 +991,7 @@ dsw_port_bg_process(struct dsw_evdev *dsw, struct dsw_port *port)
 
 		dsw_port_consider_load_update(port, now);
 
-		dsw_port_consider_migration(dsw, port, now);
+		dsw_port_consider_emigration(dsw, port, now);
 
 		port->ops_since_bg_task = 0;
 	}

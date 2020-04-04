@@ -162,17 +162,19 @@ struct dsw_port {
 	uint64_t total_busy_cycles;
 
 	/* For the ctl interface and flow migration mechanism. */
-	uint64_t next_migration;
+	uint64_t next_emigration;
 	uint64_t migration_interval;
 	enum dsw_migration_state migration_state;
 
-	uint64_t migration_start;
-	uint64_t migrations;
-	uint64_t migration_latency;
+	uint64_t emigration_start;
+	uint64_t emigrations;
+	uint64_t emigration_latency;
 
-	uint8_t migration_target_port_id;
-	struct dsw_queue_flow migration_target_qf;
+	uint8_t emigration_target_port_id;
+	struct dsw_queue_flow emigration_target_qf;
 	uint8_t cfm_cnt;
+
+	uint64_t immigrations;
 
 	uint16_t paused_flows_len;
 	struct dsw_queue_flow paused_flows[DSW_MAX_PAUSED_FLOWS];
@@ -187,11 +189,13 @@ struct dsw_port {
 	uint16_t seen_events_idx;
 	struct dsw_queue_flow seen_events[DSW_MAX_EVENTS_RECORDED];
 
+	uint64_t enqueue_calls;
 	uint64_t new_enqueued;
 	uint64_t forward_enqueued;
 	uint64_t release_enqueued;
 	uint64_t queue_enqueued[DSW_MAX_QUEUES];
 
+	uint64_t dequeue_calls;
 	uint64_t dequeued;
 	uint64_t queue_dequeued[DSW_MAX_QUEUES];
 
