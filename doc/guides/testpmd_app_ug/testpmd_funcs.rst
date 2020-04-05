@@ -539,6 +539,12 @@ Dumps the layout of all memory zones::
 
    testpmd> dump_memzone
 
+dump socket memory
+~~~~~~~~~~~~~~~~~~
+
+Dumps the memory usage of all sockets::
+
+   testpmd> dump_socket_mem
 
 dump struct size
 ~~~~~~~~~~~~~~~~
