@@ -2037,6 +2037,7 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.link_update              = otx2_nix_link_update,
 	.tx_queue_setup           = otx2_nix_tx_queue_setup,
 	.tx_queue_release         = otx2_nix_tx_queue_release,
+	.tm_ops_get               = otx2_nix_tm_ops_get,
 	.rx_queue_setup           = otx2_nix_rx_queue_setup,
 	.rx_queue_release         = otx2_nix_rx_queue_release,
 	.dev_start                = otx2_nix_dev_start,

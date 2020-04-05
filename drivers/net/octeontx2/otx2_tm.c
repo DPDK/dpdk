@@ -1834,7 +1834,217 @@ otx2_nix_tm_node_type_get(struct rte_eth_dev *eth_dev, uint32_t node_id,
 		*is_leaf = true;
 	else
 		*is_leaf = false;
+	return 0;
+}
 
+static int
+otx2_nix_tm_capa_get(struct rte_eth_dev *eth_dev,
+		     struct rte_tm_capabilities *cap,
+		     struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	int rc, max_nr_nodes = 0, i;
+	struct free_rsrcs_rsp *rsp;
+
+	memset(cap, 0, sizeof(*cap));
+
+	otx2_mbox_alloc_msg_free_rsrc_cnt(mbox);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "unexpected fatal error";
+		return rc;
+	}
+
+	for (i = 0; i < NIX_TXSCH_LVL_TL1; i++)
+		max_nr_nodes += rsp->schq[i];
+
+	cap->n_nodes_max = max_nr_nodes + dev->tm_leaf_cnt;
+	/* TL1 level is reserved for PF */
+	cap->n_levels_max = nix_tm_have_tl1_access(dev) ?
+				OTX2_TM_LVL_MAX : OTX2_TM_LVL_MAX - 1;
+	cap->non_leaf_nodes_identical = 1;
+	cap->leaf_nodes_identical = 1;
+
+	/* Shaper Capabilities */
+	cap->shaper_private_n_max = max_nr_nodes;
+	cap->shaper_n_max = max_nr_nodes;
+	cap->shaper_private_dual_rate_n_max = max_nr_nodes;
+	cap->shaper_private_rate_min = MIN_SHAPER_RATE / 8;
+	cap->shaper_private_rate_max = MAX_SHAPER_RATE / 8;
+	cap->shaper_pkt_length_adjust_min = 0;
+	cap->shaper_pkt_length_adjust_max = 0;
+
+	/* Schedule Capabilities */
+	cap->sched_n_children_max = rsp->schq[NIX_TXSCH_LVL_MDQ];
+	cap->sched_sp_n_priorities_max = TXSCH_TLX_SP_PRIO_MAX;
+	cap->sched_wfq_n_children_per_group_max = cap->sched_n_children_max;
+	cap->sched_wfq_n_groups_max = 1;
+	cap->sched_wfq_weight_max = MAX_SCHED_WEIGHT;
+
+	cap->dynamic_update_mask =
+		RTE_TM_UPDATE_NODE_PARENT_KEEP_LEVEL |
+		RTE_TM_UPDATE_NODE_SUSPEND_RESUME;
+	cap->stats_mask =
+		RTE_TM_STATS_N_PKTS |
+		RTE_TM_STATS_N_BYTES |
+		RTE_TM_STATS_N_PKTS_RED_DROPPED |
+		RTE_TM_STATS_N_BYTES_RED_DROPPED;
+
+	for (i = 0; i < RTE_COLORS; i++) {
+		cap->mark_vlan_dei_supported[i] = false;
+		cap->mark_ip_ecn_tcp_supported[i] = false;
+		cap->mark_ip_dscp_supported[i] = false;
+	}
+
+	return 0;
+}
+
+static int
+otx2_nix_tm_level_capa_get(struct rte_eth_dev *eth_dev, uint32_t lvl,
+				   struct rte_tm_level_capabilities *cap,
+				   struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct free_rsrcs_rsp *rsp;
+	uint16_t hw_lvl;
+	int rc;
+
+	memset(cap, 0, sizeof(*cap));
+
+	otx2_mbox_alloc_msg_free_rsrc_cnt(mbox);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "unexpected fatal error";
+		return rc;
+	}
+
+	hw_lvl = nix_tm_lvl2nix(dev, lvl);
+
+	if (nix_tm_is_leaf(dev, lvl)) {
+		/* Leaf */
+		cap->n_nodes_max = dev->tm_leaf_cnt;
+		cap->n_nodes_leaf_max = dev->tm_leaf_cnt;
+		cap->leaf_nodes_identical = 1;
+		cap->leaf.stats_mask =
+			RTE_TM_STATS_N_PKTS |
+			RTE_TM_STATS_N_BYTES;
+
+	} else if (lvl == OTX2_TM_LVL_ROOT) {
+		/* Root node, aka TL2(vf)/TL1(pf) */
+		cap->n_nodes_max = 1;
+		cap->n_nodes_nonleaf_max = 1;
+		cap->non_leaf_nodes_identical = 1;
+
+		cap->nonleaf.shaper_private_supported = true;
+		cap->nonleaf.shaper_private_dual_rate_supported =
+			nix_tm_have_tl1_access(dev) ? false : true;
+		cap->nonleaf.shaper_private_rate_min = MIN_SHAPER_RATE / 8;
+		cap->nonleaf.shaper_private_rate_max = MAX_SHAPER_RATE / 8;
+
+		cap->nonleaf.sched_n_children_max = rsp->schq[hw_lvl - 1];
+		cap->nonleaf.sched_sp_n_priorities_max =
+					nix_max_prio(dev, hw_lvl) + 1;
+		cap->nonleaf.sched_wfq_n_groups_max = 1;
+		cap->nonleaf.sched_wfq_weight_max = MAX_SCHED_WEIGHT;
+
+		if (nix_tm_have_tl1_access(dev))
+			cap->nonleaf.stats_mask =
+				RTE_TM_STATS_N_PKTS_RED_DROPPED |
+				RTE_TM_STATS_N_BYTES_RED_DROPPED;
+	} else if ((lvl < OTX2_TM_LVL_MAX) &&
+		   (hw_lvl < NIX_TXSCH_LVL_CNT)) {
+		/* TL2, TL3, TL4, MDQ */
+		cap->n_nodes_max = rsp->schq[hw_lvl];
+		cap->n_nodes_nonleaf_max = cap->n_nodes_max;
+		cap->non_leaf_nodes_identical = 1;
+
+		cap->nonleaf.shaper_private_supported = true;
+		cap->nonleaf.shaper_private_dual_rate_supported = true;
+		cap->nonleaf.shaper_private_rate_min = MIN_SHAPER_RATE / 8;
+		cap->nonleaf.shaper_private_rate_max = MAX_SHAPER_RATE / 8;
+
+		/* MDQ doesn't support Strict Priority */
+		if (hw_lvl == NIX_TXSCH_LVL_MDQ)
+			cap->nonleaf.sched_n_children_max = dev->tm_leaf_cnt;
+		else
+			cap->nonleaf.sched_n_children_max =
+				rsp->schq[hw_lvl - 1];
+		cap->nonleaf.sched_sp_n_priorities_max =
+			nix_max_prio(dev, hw_lvl) + 1;
+		cap->nonleaf.sched_wfq_n_groups_max = 1;
+		cap->nonleaf.sched_wfq_weight_max = MAX_SCHED_WEIGHT;
+	} else {
+		/* unsupported level */
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		return rc;
+	}
+	return 0;
+}
+
+static int
+otx2_nix_tm_node_capa_get(struct rte_eth_dev *eth_dev, uint32_t node_id,
+			  struct rte_tm_node_capabilities *cap,
+			  struct rte_tm_error *error)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_mbox *mbox = dev->mbox;
+	struct otx2_nix_tm_node *tm_node;
+	struct free_rsrcs_rsp *rsp;
+	int rc, hw_lvl, lvl;
+
+	memset(cap, 0, sizeof(*cap));
+
+	tm_node = nix_tm_node_search(dev, node_id, true);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	hw_lvl = tm_node->hw_lvl;
+	lvl = tm_node->lvl;
+
+	/* Leaf node */
+	if (nix_tm_is_leaf(dev, lvl)) {
+		cap->stats_mask = RTE_TM_STATS_N_PKTS |
+					RTE_TM_STATS_N_BYTES;
+		return 0;
+	}
+
+	otx2_mbox_alloc_msg_free_rsrc_cnt(mbox);
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "unexpected fatal error";
+		return rc;
+	}
+
+	/* Non Leaf Shaper */
+	cap->shaper_private_supported = true;
+	cap->shaper_private_dual_rate_supported =
+		(hw_lvl == NIX_TXSCH_LVL_TL1) ? false : true;
+	cap->shaper_private_rate_min = MIN_SHAPER_RATE / 8;
+	cap->shaper_private_rate_max = MAX_SHAPER_RATE / 8;
+
+	/* Non Leaf Scheduler */
+	if (hw_lvl == NIX_TXSCH_LVL_MDQ)
+		cap->nonleaf.sched_n_children_max = dev->tm_leaf_cnt;
+	else
+		cap->nonleaf.sched_n_children_max = rsp->schq[hw_lvl - 1];
+
+	cap->nonleaf.sched_sp_n_priorities_max = nix_max_prio(dev, hw_lvl) + 1;
+	cap->nonleaf.sched_wfq_n_children_per_group_max =
+		cap->nonleaf.sched_n_children_max;
+	cap->nonleaf.sched_wfq_n_groups_max = 1;
+	cap->nonleaf.sched_wfq_weight_max = MAX_SCHED_WEIGHT;
+
+	if (hw_lvl == NIX_TXSCH_LVL_TL1)
+		cap->stats_mask = RTE_TM_STATS_N_PKTS_RED_DROPPED |
+			RTE_TM_STATS_N_BYTES_RED_DROPPED;
 	return 0;
 }
 
@@ -2515,6 +2725,10 @@ exit:
 const struct rte_tm_ops otx2_tm_ops = {
 	.node_type_get = otx2_nix_tm_node_type_get,
 
+	.capabilities_get = otx2_nix_tm_capa_get,
+	.level_capabilities_get = otx2_nix_tm_level_capa_get,
+	.node_capabilities_get = otx2_nix_tm_node_capa_get,
+
 	.shaper_profile_add = otx2_nix_tm_shaper_profile_add,
 	.shaper_profile_delete = otx2_nix_tm_shaper_profile_delete,
 
@@ -2908,6 +3122,24 @@ otx2_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
 error:
 	otx2_tm_dbg("Unsupported TM tree 0x%0x", dev->tm_flags);
 	return -EINVAL;
+}
+
+int
+otx2_nix_tm_ops_get(struct rte_eth_dev *eth_dev, void *arg)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+
+	if (!arg)
+		return -EINVAL;
+
+	/* Check for supported revisions */
+	if (otx2_dev_is_95xx_Ax(dev) ||
+	    otx2_dev_is_96xx_Ax(dev))
+		return -EINVAL;
+
+	*(const void **)arg = &otx2_tm_ops;
+
+	return 0;
 }
 
 int

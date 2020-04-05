@@ -39,6 +39,7 @@ Features of the OCTEON TX2 Ethdev PMD are:
 - HW offloaded `ethdev Rx queue` to `eventdev event queue` packet injection
 - Support Rx interrupt
 - Inline IPsec processing support
+- :ref:`Traffic Management API <otx2_tmapi>`
 
 Prerequisites
 -------------
@@ -212,6 +213,24 @@ Runtime Config Options
    Above devarg parameters are configurable per device, user needs to pass the
    parameters to all the PCIe devices if application requires to configure on
    all the ethdev ports.
+
+.. _otx2_tmapi:
+
+Traffic Management API
+----------------------
+
+OCTEON TX2 PMD supports generic DPDK Traffic Management API which allows to
+configure the following features:
+
+#. Hierarchical scheduling
+#. Single rate - Two color, Two rate - Three color shaping
+
+Both DWRR and Static Priority(SP) hierarchial scheduling is supported.
+
+Every parent can have atmost 10 SP Children and unlimited DWRR children.
+
+Both PF & VF supports traffic management API with PF supporting 6 levels
+and VF supporting 5 levels of topology.
 
 Limitations
 -----------

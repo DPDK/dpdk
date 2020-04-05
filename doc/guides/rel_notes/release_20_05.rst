@@ -88,6 +88,14 @@ New Features
 
   * Added support for DCF (Device Config Function) feature.
 
+* **Updated Marvell OCTEON TX2 ethdev driver.**
+
+  Updated Marvell OCTEON TX2 ethdev driver with traffic manager support with
+  below features.
+
+  * Hierarchial Scheduling with DWRR and SP.
+  * Single rate - Two color, Two rate - Three color shaping.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:

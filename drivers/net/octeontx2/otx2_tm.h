@@ -19,6 +19,7 @@ struct otx2_eth_dev;
 void otx2_nix_tm_conf_init(struct rte_eth_dev *eth_dev);
 int otx2_nix_tm_init_default(struct rte_eth_dev *eth_dev);
 int otx2_nix_tm_fini(struct rte_eth_dev *eth_dev);
+int otx2_nix_tm_ops_get(struct rte_eth_dev *eth_dev, void *ops);
 int otx2_nix_tm_get_leaf_data(struct otx2_eth_dev *dev, uint16_t sq,
 			      uint32_t *rr_quantum, uint16_t *smq);
 int otx2_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
