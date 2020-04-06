@@ -90,7 +90,7 @@ struct mbox_msghdr {
 #define OTX2_MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __otx2_io sig;
-#define OTX2_MBOX_VERSION (0x0005)
+#define OTX2_MBOX_VERSION (0x0006)
 	/* Version of msg's structure for this ID */
 	uint16_t __otx2_io ver;
 	/* Offset of next msg within mailbox region */
@@ -341,6 +341,7 @@ struct npc_set_pkind {
 #define OTX2_PRIV_FLAGS_DEFAULT  BIT_ULL(0)
 #define OTX2_PRIV_FLAGS_EDSA     BIT_ULL(1)
 #define OTX2_PRIV_FLAGS_HIGIG    BIT_ULL(2)
+#define OTX2_PRIV_FLAGS_LEN_90B  BIT_ULL(3)
 #define OTX2_PRIV_FLAGS_CUSTOM   BIT_ULL(63)
 	uint64_t __otx2_io mode;
 #define PKIND_TX		BIT_ULL(0)
@@ -929,6 +930,7 @@ struct nix_rss_flowkey_cfg {
 #define FLOW_KEY_TYPE_INNR_UDP      BIT(15)
 #define FLOW_KEY_TYPE_INNR_SCTP     BIT(16)
 #define FLOW_KEY_TYPE_INNR_ETH_DMAC BIT(17)
+#define FLOW_KEY_TYPE_CH_LEN_90B	BIT(18)
 #define FLOW_KEY_TYPE_L4_DST BIT(28)
 #define FLOW_KEY_TYPE_L4_SRC BIT(29)
 #define FLOW_KEY_TYPE_L3_DST BIT(30)

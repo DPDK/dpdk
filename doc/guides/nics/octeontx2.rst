@@ -178,7 +178,7 @@ Runtime Config Options
 
    With the above configuration, higig2 will be enabled on that port and the
    traffic on this port should be higig2 traffic only. Supported switch header
-   types are "higig2" and "dsa".
+   types are "higig2", "dsa" and "chlen90b".
 
 - ``RSS tag as XOR`` (default ``0``)
 
