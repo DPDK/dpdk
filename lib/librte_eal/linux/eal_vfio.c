@@ -379,7 +379,7 @@ vfio_get_group_fd(struct vfio_config *vfio_cfg,
 	}
 
 	vfio_group_fd = vfio_open_group_fd(iommu_group_num);
-	if (vfio_group_fd < 0) {
+	if (vfio_group_fd <= 0) {
 		RTE_LOG(ERR, EAL, "Failed to open group %d\n", iommu_group_num);
 		return -1;
 	}
