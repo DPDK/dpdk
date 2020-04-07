@@ -3451,9 +3451,10 @@ nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
 probe_failed:
 	rte_free(port_name);
 	/* free ports private data if primary process */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		rte_free(eth_dev->data->dev_private);
-
+		eth_dev->data->dev_private = NULL;
+	}
 	rte_eth_dev_release_port(eth_dev);
 
 	return retval;
