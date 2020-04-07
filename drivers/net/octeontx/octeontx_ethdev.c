@@ -1454,6 +1454,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 
 free_mac_addrs:
 	rte_free(data->mac_addrs);
+	data->mac_addrs = NULL;
 err:
 	if (nic)
 		octeontx_port_close(nic);
