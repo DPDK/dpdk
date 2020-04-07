@@ -320,7 +320,7 @@ rte_log_register_type_and_pick_level(const char *name, uint32_t level_def)
 			continue;
 
 		if (opt_ll->pattern) {
-			if (fnmatch(opt_ll->pattern, name, 0))
+			if (fnmatch(opt_ll->pattern, name, 0) == 0)
 				level = opt_ll->level;
 		} else {
 			if (regexec(&opt_ll->re_match, name, 0, NULL, 0) == 0)
