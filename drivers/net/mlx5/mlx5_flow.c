@@ -5494,9 +5494,9 @@ mlx5_flow_destroy_policer_rules(struct rte_eth_dev *dev,
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   Pointer to allocated counter  on success, NULL otherwise.
+ *   Index to allocated counter  on success, 0 otherwise.
  */
-struct mlx5_flow_counter *
+uint32_t
 mlx5_counter_alloc(struct rte_eth_dev *dev)
 {
 	const struct mlx5_flow_driver_ops *fops;
@@ -5509,7 +5509,7 @@ mlx5_counter_alloc(struct rte_eth_dev *dev)
 	DRV_LOG(ERR,
 		"port %u counter allocate is not supported.",
 		 dev->data->port_id);
-	return NULL;
+	return 0;
 }
 
 /**
@@ -5518,10 +5518,10 @@ mlx5_counter_alloc(struct rte_eth_dev *dev)
  * @param[in] dev
  *   Pointer to Ethernet device structure.
  * @param[in] cnt
- *   Pointer to counter to be free.
+ *   Index to counter to be free.
  */
 void
-mlx5_counter_free(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt)
+mlx5_counter_free(struct rte_eth_dev *dev, uint32_t cnt)
 {
 	const struct mlx5_flow_driver_ops *fops;
 	struct rte_flow_attr attr = { .transfer = 0 };
@@ -5542,7 +5542,7 @@ mlx5_counter_free(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt)
  * @param[in] dev
  *   Pointer to Ethernet device structure.
  * @param[in] cnt
- *   Pointer to counter to query.
+ *   Index to counter to query.
  * @param[in] clear
  *   Set to clear counter statistics.
  * @param[out] pkts
@@ -5554,7 +5554,7 @@ mlx5_counter_free(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt)
  *   0 on success, a negative errno value otherwise.
  */
 int
-mlx5_counter_query(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt,
+mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 		   bool clear, uint64_t *pkts, uint64_t *bytes)
 {
 	const struct mlx5_flow_driver_ops *fops;

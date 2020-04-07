@@ -3892,7 +3892,7 @@ flow_dv_counter_alloc_fallback(struct rte_eth_dev *dev, uint32_t shared,
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
  * @param[in] counter
- *   Pointer to the counter handler.
+ *   Index to the counter handler.
  */
 static void
 flow_dv_counter_release_fallback(struct rte_eth_dev *dev __rte_unused,
@@ -4384,9 +4384,9 @@ flow_dv_counter_shared_search(struct mlx5_pools_container *cont, uint32_t id,
  *   Counter flow group.
  *
  * @return
- *   pointer to flow counter on success, NULL otherwise and rte_errno is set.
+ *   Index to flow counter on success, 0 otherwise and rte_errno is set.
  */
-static struct mlx5_flow_counter *
+static uint32_t
 flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 		      uint16_t group)
 {
@@ -4408,24 +4408,24 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 
 	if (!priv->config.devx) {
 		rte_errno = ENOTSUP;
-		return NULL;
+		return 0;
 	}
 	if (shared) {
 		cnt_free = flow_dv_counter_shared_search(cont, id, &pool);
 		if (cnt_free) {
 			if (cnt_free->ref_cnt + 1 == 0) {
 				rte_errno = E2BIG;
-				return NULL;
+				return 0;
 			}
 			cnt_free->ref_cnt++;
 			cnt_idx = pool->index * MLX5_COUNTERS_PER_POOL +
 				  (cnt_free - pool->counters_raw) + 1;
-			return (struct mlx5_flow_counter *)(uintptr_t)cnt_idx;
+			return cnt_idx;
 		}
 	}
 	if (priv->counter_fallback)
-		return (struct mlx5_flow_counter *)(uintptr_t)
-		       flow_dv_counter_alloc_fallback(dev, shared, id);
+		return flow_dv_counter_alloc_fallback(dev, shared, id);
+
 	/* Pools which has a free counters are in the start. */
 	TAILQ_FOREACH(pool, &cont->pool_list, next) {
 		/*
@@ -4446,7 +4446,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	if (!cnt_free) {
 		cont = flow_dv_counter_pool_prepare(dev, &cnt_free, batch);
 		if (!cont)
-			return NULL;
+			return 0;
 		pool = TAILQ_FIRST(&cont->pool_list);
 	}
 	cnt_free->batch = batch;
@@ -4466,13 +4466,13 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 					(dcs->obj, offset);
 		if (!cnt_free->action) {
 			rte_errno = errno;
-			return NULL;
+			return 0;
 		}
 	}
 	/* Update the counter reset values. */
 	if (_flow_dv_query_count(dev, cnt_free, &cnt_free->hits,
 				 &cnt_free->bytes))
-		return NULL;
+		return 0;
 	cnt_free->shared = shared;
 	cnt_free->ref_cnt = 1;
 	cnt_free->id = id;
@@ -4488,7 +4488,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	cnt_idx = MLX5_MAKE_CNT_IDX(pool->index,
 				    (cnt_free - pool->counters_raw));
 	cnt_idx += batch * MLX5_CNT_BATCH_OFFSET;
-	return (struct mlx5_flow_counter *)(uintptr_t)cnt_idx;
+	return cnt_idx;
 }
 
 /**
@@ -4497,11 +4497,10 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
  * @param[in] counter
- *   Pointer to the counter handler.
+ *   Index to the counter handler.
  */
 static void
-flow_dv_counter_release(struct rte_eth_dev *dev,
-			struct mlx5_flow_counter *counter)
+flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
@@ -4509,7 +4508,7 @@ flow_dv_counter_release(struct rte_eth_dev *dev,
 
 	if (!counter)
 		return;
-	cnt = flow_dv_counter_get_by_idx(dev, (uintptr_t)counter, &pool);
+	cnt = flow_dv_counter_get_by_idx(dev, counter, &pool);
 	if (priv->counter_fallback) {
 		flow_dv_counter_release_fallback(dev, cnt);
 		return;
@@ -7588,11 +7587,11 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 							count->shared,
 							count->id,
 							dev_flow->dv.group);
-			if (flow->counter == NULL)
+			if (!flow->counter)
 				goto cnt_err;
 			dev_flow->dv.actions[actions_n++] =
 				  (flow_dv_counter_get_by_idx(dev,
-				  (uintptr_t)flow->counter, NULL))->action;
+				  flow->counter, NULL))->action;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			break;
 cnt_err:
@@ -8465,7 +8464,7 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	__flow_dv_remove(dev, flow);
 	if (flow->counter) {
 		flow_dv_counter_release(dev, flow->counter);
-		flow->counter = NULL;
+		flow->counter = 0;
 	}
 	if (flow->meter) {
 		mlx5_flow_meter_detach(flow->meter);
@@ -8524,7 +8523,7 @@ flow_dv_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 		uint64_t pkts, bytes;
 		struct mlx5_flow_counter *cnt;
 
-		cnt = flow_dv_counter_get_by_idx(dev, (uintptr_t)flow->counter,
+		cnt = flow_dv_counter_get_by_idx(dev, flow->counter,
 						 NULL);
 		int err = _flow_dv_query_count(dev, cnt, &pkts,
 					       &bytes);
@@ -8793,7 +8792,7 @@ flow_dv_create_mtr_tbl(struct rte_eth_dev *dev,
 		if (!fm->policer_stats.cnt[i])
 			continue;
 		cnt = flow_dv_counter_get_by_idx(dev,
-		      (uintptr_t)fm->policer_stats.cnt[i], NULL);
+		      fm->policer_stats.cnt[i], NULL);
 		mtb->count_actns[i] = cnt->action;
 	}
 	/* Create drop action. */
@@ -9013,7 +9012,7 @@ error:
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
  * @param[in] cnt
- *   Pointer to the flow counter.
+ *   Index to the flow counter.
  * @param[in] clear
  *   Set to clear the counter statistics.
  * @param[out] pkts
@@ -9025,8 +9024,7 @@ error:
  *   0 on success, otherwise return -1.
  */
 static int
-flow_dv_counter_query(struct rte_eth_dev *dev,
-		      struct mlx5_flow_counter *counter, bool clear,
+flow_dv_counter_query(struct rte_eth_dev *dev, uint32_t counter, bool clear,
 		      uint64_t *pkts, uint64_t *bytes)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -9037,7 +9035,7 @@ flow_dv_counter_query(struct rte_eth_dev *dev,
 	if (!priv->config.devx)
 		return -1;
 
-	cnt = flow_dv_counter_get_by_idx(dev, (uintptr_t)counter, NULL);
+	cnt = flow_dv_counter_get_by_idx(dev, counter, NULL);
 	ret = _flow_dv_query_count(dev, cnt, &inn_pkts, &inn_bytes);
 	if (ret)
 		return -1;
@@ -9110,10 +9108,10 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 /*
  * Mutex-protected thunk to lock-free flow_dv_counter_alloc().
  */
-static struct mlx5_flow_counter *
+static uint32_t
 flow_dv_counter_allocate(struct rte_eth_dev *dev)
 {
-	struct mlx5_flow_counter *cnt;
+	uint32_t cnt;
 
 	flow_dv_shared_lock(dev);
 	cnt = flow_dv_counter_alloc(dev, 0, 0, 1);
@@ -9125,7 +9123,7 @@ flow_dv_counter_allocate(struct rte_eth_dev *dev)
  * Mutex-protected thunk to lock-free flow_dv_counter_release().
  */
 static void
-flow_dv_counter_free(struct rte_eth_dev *dev, struct mlx5_flow_counter *cnt)
+flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t cnt)
 {
 	flow_dv_shared_lock(dev);
 	flow_dv_counter_release(dev, cnt);

@@ -632,7 +632,7 @@ struct mlx5_flow {
 
 /* Meter policer statistics */
 struct mlx5_flow_policer_stats {
-	struct mlx5_flow_counter *cnt[RTE_COLORS + 1];
+	uint32_t cnt[RTE_COLORS + 1];
 	/**< Color counter, extra for drop. */
 	uint64_t stats_mask;
 	/**< Statistics mask for the colors. */
@@ -729,7 +729,7 @@ struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	enum mlx5_flow_drv_type drv_type; /**< Driver type. */
 	struct mlx5_flow_rss rss; /**< RSS context. */
-	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
+	uint32_t counter; /**< Holds flow counter. */
 	struct mlx5_flow_mreg_copy_resource *mreg_copy;
 	/**< pointer to metadata register copy table resource. */
 	struct mlx5_flow_meter *meter; /**< Holds flow meter. */
@@ -780,12 +780,12 @@ typedef int (*mlx5_flow_destroy_policer_rules_t)
 					(struct rte_eth_dev *dev,
 					 const struct mlx5_flow_meter *fm,
 					 const struct rte_flow_attr *attr);
-typedef struct mlx5_flow_counter * (*mlx5_flow_counter_alloc_t)
+typedef uint32_t (*mlx5_flow_counter_alloc_t)
 				   (struct rte_eth_dev *dev);
 typedef void (*mlx5_flow_counter_free_t)(struct rte_eth_dev *dev,
-					 struct mlx5_flow_counter *cnt);
+					 uint32_t cnt);
 typedef int (*mlx5_flow_counter_query_t)(struct rte_eth_dev *dev,
-					 struct mlx5_flow_counter *cnt,
+					 uint32_t cnt,
 					 bool clear, uint64_t *pkts,
 					 uint64_t *bytes);
 struct mlx5_flow_driver_ops {

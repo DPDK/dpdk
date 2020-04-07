@@ -145,9 +145,9 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
  *   Counter identifier.
  *
  * @return
- *   A pointer to the counter, NULL otherwise and rte_errno is set.
+ *   Index to the counter, 0 otherwise and rte_errno is set.
  */
-static struct mlx5_flow_counter *
+static uint32_t
 flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -166,9 +166,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 				cnt = &pool->counters_raw[i];
 				if (cnt->shared && cnt->id == id) {
 					cnt->ref_cnt++;
-					return (struct mlx5_flow_counter *)
-					       (uintptr_t)
-					       MLX5_MAKE_CNT_IDX(pool_idx, i);
+					return MLX5_MAKE_CNT_IDX(pool_idx, i);
 				}
 			}
 		}
@@ -191,7 +189,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 				     (n_valid + MLX5_CNT_CONTAINER_RESIZE);
 			pools = rte_zmalloc(__func__, size, 0);
 			if (!pools)
-				return NULL;
+				return 0;
 			if (n_valid) {
 				memcpy(pools, cont->pools,
 				       sizeof(struct mlx5_flow_counter_pool *) *
@@ -205,7 +203,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		size = sizeof(*pool) + sizeof(*cnt) * MLX5_COUNTERS_PER_POOL;
 		pool = rte_calloc(__func__, 1, size, 0);
 		if (!pool)
-			return NULL;
+			return 0;
 		for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 			cnt = &pool->counters_raw[i];
 			TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
@@ -225,12 +223,11 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	ret = flow_verbs_counter_create(dev, cnt);
 	if (!ret) {
 		TAILQ_REMOVE(&pool->counters, cnt, next);
-		return (struct mlx5_flow_counter *)(uintptr_t)
-		       MLX5_MAKE_CNT_IDX(pool_idx, (cnt - pool->counters_raw));
+		return MLX5_MAKE_CNT_IDX(pool_idx, (cnt - pool->counters_raw));
 	}
 	/* Some error occurred in Verbs library. */
 	rte_errno = -ret;
-	return NULL;
+	return 0;
 }
 
 /**
@@ -239,18 +236,17 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
  * @param[in] counter
- *   Pointer to the counter handler.
+ *   Index to the counter handler.
  */
 static void
-flow_verbs_counter_release(struct rte_eth_dev *dev,
-			   struct mlx5_flow_counter *counter)
+flow_verbs_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 {
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_flow_counter *cnt;
 
-	cnt = flow_verbs_counter_get_by_idx(dev, (uintptr_t)(void *)counter,
+	cnt = flow_verbs_counter_get_by_idx(dev, counter,
 					    &pool);
-	if (--counter->ref_cnt == 0) {
+	if (--cnt->ref_cnt == 0) {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 		claim_zero(mlx5_glue->destroy_counter_set(cnt->cs));
 		cnt->cs = NULL;
@@ -275,10 +271,9 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
 {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) || \
 	defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-	if (flow->counter && flow->counter->cs) {
+	if (flow->counter) {
 		struct mlx5_flow_counter *cnt = flow_verbs_counter_get_by_idx
-						(dev, (uintptr_t)(void *)
-						flow->counter, NULL);
+						(dev, flow->counter, NULL);
 		struct rte_flow_query_count *qc = data;
 		uint64_t counters[2] = {0, 0};
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
@@ -1082,8 +1077,7 @@ flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
 						  "cannot get counter"
 						  " context.");
 	}
-	cnt = flow_verbs_counter_get_by_idx(dev, (uintptr_t)(void *)
-					    flow->counter, NULL);
+	cnt = flow_verbs_counter_get_by_idx(dev, flow->counter, NULL);
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	counter.counter_set_handle = cnt->cs->handle;
 	flow_verbs_spec_add(&dev_flow->verbs, &counter, size);
@@ -1775,7 +1769,7 @@ flow_verbs_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	}
 	if (flow->counter) {
 		flow_verbs_counter_release(dev, flow->counter);
-		flow->counter = NULL;
+		flow->counter = 0;
 	}
 }
 
