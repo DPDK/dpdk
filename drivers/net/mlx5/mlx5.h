@@ -238,6 +238,15 @@ struct mlx5_drop {
 
 #define MLX5_COUNTERS_PER_POOL 512
 #define MLX5_MAX_PENDING_QUERIES 4
+#define MLX5_CNT_CONTAINER_RESIZE 64
+/*
+ * The pool index and offset of counter in the pool array makes up the
+ * counter index. In case the counter is from pool 0 and offset 0, it
+ * should plus 1 to avoid index 0, since 0 means invalid counter index
+ * currently.
+ */
+#define MLX5_MAKE_CNT_IDX(pi, offset) \
+	((pi) * MLX5_COUNTERS_PER_POOL + (offset) + 1)
 
 struct mlx5_flow_counter_pool;
 
