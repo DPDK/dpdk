@@ -14,7 +14,10 @@ rte_mbuf_set_platform_mempool_ops(const char *ops_name)
 {
 	const struct rte_memzone *mz;
 
-	if (strlen(ops_name) >= RTE_MEMPOOL_OPS_NAMESIZE)
+	size_t len = strnlen(ops_name, RTE_MEMPOOL_OPS_NAMESIZE);
+	if (len == 0)
+		return -EINVAL;
+	if (len == RTE_MEMPOOL_OPS_NAMESIZE)
 		return -ENAMETOOLONG;
 
 	mz = rte_memzone_lookup("mbuf_platform_pool_ops");
@@ -51,7 +54,10 @@ rte_mbuf_set_user_mempool_ops(const char *ops_name)
 {
 	const struct rte_memzone *mz;
 
-	if (strlen(ops_name) >= RTE_MEMPOOL_OPS_NAMESIZE)
+	size_t len = strnlen(ops_name, RTE_MEMPOOL_OPS_NAMESIZE);
+	if (len == 0)
+		return -EINVAL;
+	if (len == RTE_MEMPOOL_OPS_NAMESIZE)
 		return -ENAMETOOLONG;
 
 	mz = rte_memzone_lookup("mbuf_user_pool_ops");
