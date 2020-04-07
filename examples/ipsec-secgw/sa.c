@@ -77,6 +77,13 @@ const struct supported_cipher_algo cipher_algos[] = {
 		.key_len = 16
 	},
 	{
+		.keyword = "aes-192-cbc",
+		.algo = RTE_CRYPTO_CIPHER_AES_CBC,
+		.iv_len = 16,
+		.block_size = 16,
+		.key_len = 24
+	},
+	{
 		.keyword = "aes-256-cbc",
 		.algo = RTE_CRYPTO_CIPHER_AES_CBC,
 		.iv_len = 16,
@@ -128,6 +135,24 @@ const struct supported_aead_algo aead_algos[] = {
 		.iv_len = 8,
 		.block_size = 4,
 		.key_len = 20,
+		.digest_len = 16,
+		.aad_len = 8,
+	},
+	{
+		.keyword = "aes-192-gcm",
+		.algo = RTE_CRYPTO_AEAD_AES_GCM,
+		.iv_len = 8,
+		.block_size = 4,
+		.key_len = 28,
+		.digest_len = 16,
+		.aad_len = 8,
+	},
+	{
+		.keyword = "aes-256-gcm",
+		.algo = RTE_CRYPTO_AEAD_AES_GCM,
+		.iv_len = 8,
+		.block_size = 4,
+		.key_len = 36,
 		.digest_len = 16,
 		.aad_len = 8,
 	}
@@ -753,7 +778,8 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 	}
 
 	for (i = 0; i < RTE_DIM(aead_algos); i++) {
-		if (aead_algos[i].algo == sa->aead_algo) {
+		if (aead_algos[i].algo == sa->aead_algo &&
+				aead_algos[i].key_len-4 == sa->cipher_key_len) {
 			printf("%s ", aead_algos[i].keyword);
 			break;
 		}

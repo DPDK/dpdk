@@ -89,13 +89,17 @@ New Features
 
   Supported large size code blocks which does not fit in one mbuf segment.
 
-* **Added event mode to ipsec-secgw application.**
+* **Updated ipsec-secgw sample application with following features.**
 
-  Updated ipsec-secgw application to add event based packet processing. The worker
-  thread(s) would receive events and submit them back to the event device after
-  the processing. This way, multicore scaling and HW assisted scheduling is achieved
-  by making use of the event device capabilities. The event mode currently supports
-  only inline IPsec protocol offload.
+  * Updated ipsec-secgw application to add event based packet processing.
+    The worker thread(s) would receive events and submit them back to the
+    event device after the processing. This way, multicore scaling and HW
+    assisted scheduling is achieved by making use of the event device
+    capabilities. The event mode currently supports only inline IPsec
+    protocol offload.
+
+  * Updated ipsec-secgw application to support key sizes for AES-192-CBC,
+    AES-192-GCM, AES-256-GCM algorithms.
 
 
 Removed Items
