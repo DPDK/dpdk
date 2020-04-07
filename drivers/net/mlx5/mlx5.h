@@ -290,11 +290,12 @@ struct mlx5_flow_counter_pool {
 	union {
 		struct mlx5_devx_obj *min_dcs;
 		rte_atomic64_t a64_dcs;
+		int dcs_id; /* Fallback pool counter id range. */
 	};
 	/* The devx object of the minimum counter ID. */
 	rte_atomic64_t start_query_gen; /* Query start round. */
 	rte_atomic64_t end_query_gen; /* Query end round. */
-	uint32_t n_counters: 16; /* Number of devx allocated counters. */
+	uint32_t index; /* Pool index in container. */
 	rte_spinlock_t sl; /* The pool lock. */
 	struct mlx5_counter_stats_raw *raw;
 	struct mlx5_counter_stats_raw *raw_hw; /* The raw on HW working. */
