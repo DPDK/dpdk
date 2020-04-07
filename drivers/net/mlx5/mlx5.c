@@ -391,9 +391,11 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 					claim_zero
 					(mlx5_glue->destroy_flow_action
 					       (pool->counters_raw[j].action));
-				if (!batch && pool->counters_raw[j].dcs)
+				if (!batch && MLX5_GET_POOL_CNT_EXT
+				    (pool, j)->dcs)
 					claim_zero(mlx5_devx_cmd_destroy
-						  (pool->counters_raw[j].dcs));
+						  (MLX5_GET_POOL_CNT_EXT
+						  (pool, j)->dcs));
 			}
 			TAILQ_REMOVE(&sh->cmng.ccont[i].pool_list, pool,
 				     next);

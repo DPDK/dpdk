@@ -3847,7 +3847,7 @@ flow_dv_counter_alloc_fallback(struct rte_eth_dev *dev, uint32_t shared,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, 0, 0);
 	struct mlx5_flow_counter_pool *pool;
-	struct mlx5_flow_counter *cnt = NULL;
+	struct mlx5_flow_counter_ext *cnt_ext;
 	struct mlx5_devx_obj *dcs = NULL;
 	uint32_t offset;
 
@@ -3869,20 +3869,18 @@ flow_dv_counter_alloc_fallback(struct rte_eth_dev *dev, uint32_t shared,
 		pool = TAILQ_FIRST(&cont->pool_list);
 	}
 	offset = dcs->id % MLX5_COUNTERS_PER_POOL;
-	cnt = &pool->counters_raw[offset];
-	struct mlx5_flow_counter tmpl = {
-		.shared = shared,
-		.ref_cnt = 1,
-		.id = id,
-		.dcs = dcs,
-	};
-	tmpl.action = mlx5_glue->dv_create_flow_action_counter(dcs->obj, 0);
-	if (!tmpl.action) {
-		claim_zero(mlx5_devx_cmd_destroy(cnt->dcs));
+	cnt_ext = MLX5_GET_POOL_CNT_EXT(pool, offset);
+	cnt_ext->shared = shared;
+	cnt_ext->ref_cnt = 1;
+	cnt_ext->id = id;
+	cnt_ext->dcs = dcs;
+	pool->counters_raw[offset].action =
+	      mlx5_glue->dv_create_flow_action_counter(dcs->obj, 0);
+	if (!pool->counters_raw[offset].action) {
+		claim_zero(mlx5_devx_cmd_destroy(dcs));
 		rte_errno = errno;
 		return 0;
 	}
-	*cnt = tmpl;
 	return MLX5_MAKE_CNT_IDX(pool->index, offset);
 }
 
@@ -3892,20 +3890,16 @@ flow_dv_counter_alloc_fallback(struct rte_eth_dev *dev, uint32_t shared,
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
  * @param[in] counter
- *   Index to the counter handler.
+ *   Extend counter handler.
  */
 static void
 flow_dv_counter_release_fallback(struct rte_eth_dev *dev __rte_unused,
-				 struct mlx5_flow_counter *counter)
+				 struct mlx5_flow_counter_ext *counter)
 {
 	if (!counter)
 		return;
-	if (--counter->ref_cnt == 0) {
-		claim_zero(mlx5_glue->destroy_flow_action(counter->action));
-		claim_zero(mlx5_devx_cmd_destroy(counter->dcs));
-		counter->action = NULL;
-		counter->dcs = NULL;
-	}
+	claim_zero(mlx5_devx_cmd_destroy(counter->dcs));
+	counter->dcs = NULL;
 }
 
 /**
@@ -3925,30 +3919,11 @@ flow_dv_counter_release_fallback(struct rte_eth_dev *dev __rte_unused,
  */
 static inline int
 _flow_dv_query_count_fallback(struct rte_eth_dev *dev __rte_unused,
-		     struct mlx5_flow_counter *cnt, uint64_t *pkts,
+		     struct mlx5_flow_counter_ext *cnt, uint64_t *pkts,
 		     uint64_t *bytes)
 {
 	return mlx5_devx_cmd_flow_counter_query(cnt->dcs, 0, 0, pkts, bytes,
 						0, NULL, NULL, 0);
-}
-
-/**
- * Get a pool by a counter.
- *
- * @param[in] cnt
- *   Pointer to the counter.
- *
- * @return
- *   The counter pool.
- */
-static struct mlx5_flow_counter_pool *
-flow_dv_counter_pool_get(struct mlx5_flow_counter *cnt)
-{
-	if (!cnt->batch) {
-		cnt -= cnt->dcs->id % MLX5_COUNTERS_PER_POOL;
-		return (struct mlx5_flow_counter_pool *)cnt - 1;
-	}
-	return cnt->pool;
 }
 
 /**
@@ -4159,7 +4134,7 @@ flow_dv_container_resize(struct rte_eth_dev *dev, uint32_t batch)
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
  * @param[in] cnt
- *   Pointer to the flow counter.
+ *   Index to the flow counter.
  * @param[out] pkts
  *   The statistics value of packets.
  * @param[out] bytes
@@ -4169,17 +4144,23 @@ flow_dv_container_resize(struct rte_eth_dev *dev, uint32_t batch)
  *   0 on success, otherwise a negative errno value and rte_errno is set.
  */
 static inline int
-_flow_dv_query_count(struct rte_eth_dev *dev,
-		     struct mlx5_flow_counter *cnt, uint64_t *pkts,
+_flow_dv_query_count(struct rte_eth_dev *dev, uint32_t counter, uint64_t *pkts,
 		     uint64_t *bytes)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_counter_pool *pool =
-			flow_dv_counter_pool_get(cnt);
-	int offset = cnt - &pool->counters_raw[0];
+	struct mlx5_flow_counter_pool *pool = NULL;
+	struct mlx5_flow_counter *cnt;
+	struct mlx5_flow_counter_ext *cnt_ext = NULL;
+	int offset;
 
-	if (priv->counter_fallback)
-		return _flow_dv_query_count_fallback(dev, cnt, pkts, bytes);
+	cnt = flow_dv_counter_get_by_idx(dev, counter, &pool);
+	MLX5_ASSERT(pool);
+	if (counter < MLX5_CNT_BATCH_OFFSET) {
+		cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
+		if (priv->counter_fallback)
+			return _flow_dv_query_count_fallback(dev, cnt_ext,
+							     pkts, bytes);
+	}
 
 	rte_spinlock_lock(&pool->sl);
 	/*
@@ -4187,10 +4168,11 @@ _flow_dv_query_count(struct rte_eth_dev *dev,
 	 * current allocated in parallel to the host reading.
 	 * In this case the new counter values must be reported as 0.
 	 */
-	if (unlikely(!cnt->batch && cnt->dcs->id < pool->raw->min_dcs_id)) {
+	if (unlikely(cnt_ext && cnt_ext->dcs->id < pool->raw->min_dcs_id)) {
 		*pkts = 0;
 		*bytes = 0;
 	} else {
+		offset = cnt - &pool->counters_raw[0];
 		*pkts = rte_be_to_cpu_64(pool->raw->data[offset].hits);
 		*bytes = rte_be_to_cpu_64(pool->raw->data[offset].bytes);
 	}
@@ -4229,8 +4211,10 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		if (!cont)
 			return NULL;
 	}
-	size = sizeof(*pool) + MLX5_COUNTERS_PER_POOL *
-			sizeof(struct mlx5_flow_counter);
+	size = sizeof(*pool);
+	if (!batch)
+		size += MLX5_COUNTERS_PER_POOL *
+			sizeof(struct mlx5_flow_counter_ext);
 	pool = rte_calloc(__func__, 1, size, 0);
 	if (!pool) {
 		rte_errno = ENOMEM;
@@ -4307,9 +4291,10 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 			rte_atomic64_set(&pool->a64_dcs,
 					 (int64_t)(uintptr_t)dcs);
 		}
-		cnt = &pool->counters_raw[dcs->id % MLX5_COUNTERS_PER_POOL];
+		i = dcs->id % MLX5_COUNTERS_PER_POOL;
+		cnt = &pool->counters_raw[i];
 		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
-		cnt->dcs = dcs;
+		MLX5_GET_POOL_CNT_EXT(pool, i)->dcs = dcs;
 		*cnt_free = cnt;
 		return cont;
 	}
@@ -4328,7 +4313,6 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 	pool = TAILQ_FIRST(&cont->pool_list);
 	for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 		cnt = &pool->counters_raw[i];
-		cnt->pool = pool;
 		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
 	}
 	*cnt_free = &pool->counters_raw[0];
@@ -4346,13 +4330,13 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
  *   mlx5 flow counter pool in the container,
  *
  * @return
- *   NULL if not existed, otherwise pointer to the shared counter.
+ *   NULL if not existed, otherwise pointer to the shared extend counter.
  */
-static struct mlx5_flow_counter *
+static struct mlx5_flow_counter_ext *
 flow_dv_counter_shared_search(struct mlx5_pools_container *cont, uint32_t id,
 			      struct mlx5_flow_counter_pool **ppool)
 {
-	static struct mlx5_flow_counter *cnt;
+	static struct mlx5_flow_counter_ext *cnt;
 	struct mlx5_flow_counter_pool *pool;
 	uint32_t i;
 	uint32_t n_valid = rte_atomic16_read(&cont->n_valid);
@@ -4360,10 +4344,10 @@ flow_dv_counter_shared_search(struct mlx5_pools_container *cont, uint32_t id,
 	for (i = 0; i < n_valid; i++) {
 		pool = cont->pools[i];
 		for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
-			cnt = &pool->counters_raw[i];
+			cnt = MLX5_GET_POOL_CNT_EXT(pool, i);
 			if (cnt->ref_cnt && cnt->shared && cnt->id == id) {
 				if (ppool)
-					*ppool = pool;
+					*ppool = cont->pools[i];
 				return cnt;
 			}
 		}
@@ -4393,6 +4377,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter *cnt_free = NULL;
+	struct mlx5_flow_counter_ext *cnt_ext = NULL;
 	/*
 	 * Currently group 0 flow counter cannot be assigned to a flow if it is
 	 * not the first one in the batch counter allocation, so it is better
@@ -4411,15 +4396,16 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 		return 0;
 	}
 	if (shared) {
-		cnt_free = flow_dv_counter_shared_search(cont, id, &pool);
-		if (cnt_free) {
-			if (cnt_free->ref_cnt + 1 == 0) {
+		cnt_ext = flow_dv_counter_shared_search(cont, id, &pool);
+		if (cnt_ext) {
+			if (cnt_ext->ref_cnt + 1 == 0) {
 				rte_errno = E2BIG;
 				return 0;
 			}
-			cnt_free->ref_cnt++;
+			cnt_ext->ref_cnt++;
 			cnt_idx = pool->index * MLX5_COUNTERS_PER_POOL +
-				  (cnt_free - pool->counters_raw) + 1;
+				  (cnt_ext->dcs->id % MLX5_COUNTERS_PER_POOL)
+				  + 1;
 			return cnt_idx;
 		}
 	}
@@ -4449,7 +4435,8 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 			return 0;
 		pool = TAILQ_FIRST(&cont->pool_list);
 	}
-	cnt_free->batch = batch;
+	if (!batch)
+		cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt_free);
 	/* Create a DV counter action only in the first time usage. */
 	if (!cnt_free->action) {
 		uint16_t offset;
@@ -4460,7 +4447,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 			dcs = pool->min_dcs;
 		} else {
 			offset = 0;
-			dcs = cnt_free->dcs;
+			dcs = cnt_ext->dcs;
 		}
 		cnt_free->action = mlx5_glue->dv_create_flow_action_counter
 					(dcs->obj, offset);
@@ -4469,13 +4456,18 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 			return 0;
 		}
 	}
+	cnt_idx = MLX5_MAKE_CNT_IDX(pool->index,
+				    (cnt_free - pool->counters_raw));
+	cnt_idx += batch * MLX5_CNT_BATCH_OFFSET;
 	/* Update the counter reset values. */
-	if (_flow_dv_query_count(dev, cnt_free, &cnt_free->hits,
+	if (_flow_dv_query_count(dev, cnt_idx, &cnt_free->hits,
 				 &cnt_free->bytes))
 		return 0;
-	cnt_free->shared = shared;
-	cnt_free->ref_cnt = 1;
-	cnt_free->id = id;
+	if (cnt_ext) {
+		cnt_ext->shared = shared;
+		cnt_ext->ref_cnt = 1;
+		cnt_ext->id = id;
+	}
 	if (!priv->sh->cmng.query_thread_on)
 		/* Start the asynchronous batch query by the host thread. */
 		mlx5_set_query_alarm(priv->sh);
@@ -4485,9 +4477,6 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 		TAILQ_REMOVE(&cont->pool_list, pool, next);
 		TAILQ_INSERT_TAIL(&cont->pool_list, pool, next);
 	}
-	cnt_idx = MLX5_MAKE_CNT_IDX(pool->index,
-				    (cnt_free - pool->counters_raw));
-	cnt_idx += batch * MLX5_CNT_BATCH_OFFSET;
 	return cnt_idx;
 }
 
@@ -4503,27 +4492,33 @@ static void
 flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_counter_pool *pool;
+	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter *cnt;
+	struct mlx5_flow_counter_ext *cnt_ext = NULL;
 
 	if (!counter)
 		return;
 	cnt = flow_dv_counter_get_by_idx(dev, counter, &pool);
+	MLX5_ASSERT(pool);
+	if (counter < MLX5_CNT_BATCH_OFFSET)
+		cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
+	if (cnt_ext && --cnt_ext->ref_cnt)
+		return;
 	if (priv->counter_fallback) {
-		flow_dv_counter_release_fallback(dev, cnt);
+		claim_zero(mlx5_glue->destroy_flow_action(cnt->action));
+		flow_dv_counter_release_fallback(dev, cnt_ext);
+		cnt->action = NULL;
 		return;
 	}
-	if (--cnt->ref_cnt == 0) {
-		/* Put the counter in the end - the last updated one. */
-		TAILQ_INSERT_TAIL(&pool->counters, cnt, next);
-		/*
-		 * Counters released between query trigger and handler need
-		 * to wait the next round of query. Since the packets arrive
-		 * in the gap period will not be taken into account to the
-		 * old counter.
-		 */
-		cnt->query_gen = rte_atomic64_read(&pool->start_query_gen);
-	}
+	/* Put the counter in the end - the last updated one. */
+	TAILQ_INSERT_TAIL(&pool->counters, cnt, next);
+	/*
+	 * Counters released between query trigger and handler need
+	 * to wait the next round of query. Since the packets arrive
+	 * in the gap period will not be taken into account to the
+	 * old counter.
+	 */
+	cnt->query_gen = rte_atomic64_read(&pool->start_query_gen);
 }
 
 /**
@@ -8525,7 +8520,7 @@ flow_dv_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 		cnt = flow_dv_counter_get_by_idx(dev, flow->counter,
 						 NULL);
-		int err = _flow_dv_query_count(dev, cnt, &pkts,
+		int err = _flow_dv_query_count(dev, flow->counter, &pkts,
 					       &bytes);
 
 		if (err)
@@ -9035,10 +9030,10 @@ flow_dv_counter_query(struct rte_eth_dev *dev, uint32_t counter, bool clear,
 	if (!priv->config.devx)
 		return -1;
 
-	cnt = flow_dv_counter_get_by_idx(dev, counter, NULL);
-	ret = _flow_dv_query_count(dev, cnt, &inn_pkts, &inn_bytes);
+	ret = _flow_dv_query_count(dev, counter, &inn_pkts, &inn_bytes);
 	if (ret)
 		return -1;
+	cnt = flow_dv_counter_get_by_idx(dev, counter, NULL);
 	*pkts = inn_pkts - cnt->hits;
 	*bytes = inn_bytes - cnt->bytes;
 	if (clear) {

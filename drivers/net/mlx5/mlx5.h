@@ -247,6 +247,11 @@ struct mlx5_drop {
  */
 #define MLX5_MAKE_CNT_IDX(pi, offset) \
 	((pi) * MLX5_COUNTERS_PER_POOL + (offset) + 1)
+#define MLX5_CNT_TO_CNT_EXT(pool, cnt) (&((struct mlx5_flow_counter_ext *) \
+			    ((pool) + 1))[((cnt) - (pool)->counters_raw)])
+#define MLX5_GET_POOL_CNT_EXT(pool, offset) \
+			      (&((struct mlx5_flow_counter_ext *) \
+			      ((pool) + 1))[offset])
 
 struct mlx5_flow_counter_pool;
 
@@ -255,24 +260,10 @@ struct flow_counter_stats {
 	uint64_t bytes;
 };
 
-/* Counters information. */
+/* Generic counters information. */
 struct mlx5_flow_counter {
 	TAILQ_ENTRY(mlx5_flow_counter) next;
 	/**< Pointer to the next flow counter structure. */
-	uint32_t shared:1; /**< Share counter ID with other flow rules. */
-	uint32_t batch: 1;
-	/**< Whether the counter was allocated by batch command. */
-	uint32_t ref_cnt:30; /**< Reference counter. */
-	uint32_t id; /**< Counter ID. */
-	union {  /**< Holds the counters for the rule. */
-#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
-		struct ibv_counter_set *cs;
-#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-		struct ibv_counters *cs;
-#endif
-		struct mlx5_devx_obj *dcs; /**< Counter Devx object. */
-		struct mlx5_flow_counter_pool *pool; /**< The counter pool. */
-	};
 	union {
 		uint64_t hits; /**< Reset value of hits packets. */
 		int64_t query_gen; /**< Generation of the last release. */
@@ -281,9 +272,27 @@ struct mlx5_flow_counter {
 	void *action; /**< Pointer to the dv action. */
 };
 
+/* Extend counters information for none batch counters. */
+struct mlx5_flow_counter_ext {
+	uint32_t shared:1; /**< Share counter ID with other flow rules. */
+	uint32_t batch: 1;
+	/**< Whether the counter was allocated by batch command. */
+	uint32_t ref_cnt:30; /**< Reference counter. */
+	uint32_t id; /**< User counter ID. */
+	union {  /**< Holds the counters for the rule. */
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
+		struct ibv_counter_set *cs;
+#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+		struct ibv_counters *cs;
+#endif
+		struct mlx5_devx_obj *dcs; /**< Counter Devx object. */
+	};
+};
+
+
 TAILQ_HEAD(mlx5_counters, mlx5_flow_counter);
 
-/* Counter pool structure - query is in pool resolution. */
+/* Generic counter pool structure - query is in pool resolution. */
 struct mlx5_flow_counter_pool {
 	TAILQ_ENTRY(mlx5_flow_counter_pool) next;
 	struct mlx5_counters counters; /* Free counter list. */
@@ -299,7 +308,8 @@ struct mlx5_flow_counter_pool {
 	rte_spinlock_t sl; /* The pool lock. */
 	struct mlx5_counter_stats_raw *raw;
 	struct mlx5_counter_stats_raw *raw_hw; /* The raw on HW working. */
-	struct mlx5_flow_counter counters_raw[]; /* The pool counters memory. */
+	struct mlx5_flow_counter counters_raw[MLX5_COUNTERS_PER_POOL];
+	/* The pool counters memory. */
 };
 
 struct mlx5_counter_stats_raw;
