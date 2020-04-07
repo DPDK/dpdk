@@ -5655,6 +5655,13 @@ next_container:
 	dcs = (struct mlx5_devx_obj *)(uintptr_t)rte_atomic64_read
 							      (&pool->a64_dcs);
 	offset = batch ? 0 : dcs->id % MLX5_COUNTERS_PER_POOL;
+	/*
+	 * Identify the counters released between query trigger and query
+	 * handle more effiecntly. The counter released in this gap period
+	 * should wait for a new round of query as the new arrived packets
+	 * will not be taken into account.
+	 */
+	rte_atomic64_add(&pool->start_query_gen, 1);
 	ret = mlx5_devx_cmd_flow_counter_query(dcs, 0, MLX5_COUNTERS_PER_POOL -
 					       offset, NULL, NULL,
 					       pool->raw_hw->mem_mng->dm->id,
@@ -5663,6 +5670,7 @@ next_container:
 					       sh->devx_comp,
 					       (uint64_t)(uintptr_t)pool);
 	if (ret) {
+		rte_atomic64_sub(&pool->start_query_gen, 1);
 		DRV_LOG(ERR, "Failed to trigger asynchronous query for dcs ID"
 			" %d", pool->min_dcs->id);
 		pool->raw_hw = NULL;
@@ -5702,13 +5710,17 @@ mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,
 	struct mlx5_counter_stats_raw *raw_to_free;
 
 	if (unlikely(status)) {
+		rte_atomic64_sub(&pool->start_query_gen, 1);
 		raw_to_free = pool->raw_hw;
 	} else {
 		raw_to_free = pool->raw;
 		rte_spinlock_lock(&pool->sl);
 		pool->raw = pool->raw_hw;
 		rte_spinlock_unlock(&pool->sl);
-		rte_atomic64_add(&pool->query_gen, 1);
+		MLX5_ASSERT(rte_atomic64_read(&pool->end_query_gen) + 1 ==
+			    rte_atomic64_read(&pool->start_query_gen));
+		rte_atomic64_set(&pool->end_query_gen,
+				 rte_atomic64_read(&pool->start_query_gen));
 		/* Be sure the new raw counters data is updated in memory. */
 		rte_cio_wmb();
 	}

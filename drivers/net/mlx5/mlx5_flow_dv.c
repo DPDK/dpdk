@@ -4190,8 +4190,12 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	/*
 	 * The generation of the new allocated counters in this pool is 0, 2 in
 	 * the pool generation makes all the counters valid for allocation.
+	 * The start and end query generation protect the counters be released
+	 * between the query and update gap period will not be reallocated
+	 * without the last query finished and stats updated to the memory.
 	 */
-	rte_atomic64_set(&pool->query_gen, 0x2);
+	rte_atomic64_set(&pool->start_query_gen, 0x2);
+	rte_atomic64_set(&pool->end_query_gen, 0x2);
 	TAILQ_INIT(&pool->counters);
 	TAILQ_INSERT_HEAD(&cont->pool_list, pool, next);
 	cont->pools[n_valid] = pool;
@@ -4365,8 +4369,8 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 		 * updated too.
 		 */
 		cnt_free = TAILQ_FIRST(&pool->counters);
-		if (cnt_free && cnt_free->query_gen + 1 <
-		    rte_atomic64_read(&pool->query_gen))
+		if (cnt_free && cnt_free->query_gen <
+		    rte_atomic64_read(&pool->end_query_gen))
 			break;
 		cnt_free = NULL;
 	}
@@ -4441,7 +4445,13 @@ flow_dv_counter_release(struct rte_eth_dev *dev,
 
 		/* Put the counter in the end - the last updated one. */
 		TAILQ_INSERT_TAIL(&pool->counters, counter, next);
-		counter->query_gen = rte_atomic64_read(&pool->query_gen);
+		/*
+		 * Counters released between query trigger and handler need
+		 * to wait the next round of query. Since the packets arrive
+		 * in the gap period will not be taken into account to the
+		 * old counter.
+		 */
+		counter->query_gen = rte_atomic64_read(&pool->start_query_gen);
 	}
 }
 
