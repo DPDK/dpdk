@@ -6695,24 +6695,8 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	sw->recp_list[rid].adv_rule = true;
 	rule_head = &sw->recp_list[rid].filt_rules;
 
-	if (rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI) {
-		struct ice_fltr_info tmp_fltr;
-
-		ice_memset(&tmp_fltr, 0, sizeof(tmp_fltr), ICE_NONDMA_MEM);
-		tmp_fltr.fltr_rule_id =
-			LE16_TO_CPU(s_rule->pdata.lkup_tx_rx.index);
-		tmp_fltr.fltr_act = ICE_FWD_TO_VSI;
-		tmp_fltr.fwd_id.hw_vsi_id =
-			ice_get_hw_vsi_num(hw, vsi_handle);
-		tmp_fltr.vsi_handle = vsi_handle;
-		/* Update the previous switch rule of "forward to VSI" to
-		 * "fwd to VSI list"
-		 */
-		status = ice_update_pkt_fwd_rule(hw, &tmp_fltr);
-		if (status)
-			goto err_ice_add_adv_rule;
+	if (rinfo->sw_act.fltr_act == ICE_FWD_TO_VSI)
 		adv_fltr->vsi_count = 1;
-	}
 
 	/* Add rule entry to book keeping list */
 	LIST_ADD(&adv_fltr->list_entry, rule_head);
