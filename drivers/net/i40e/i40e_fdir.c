@@ -1695,8 +1695,8 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	struct i40e_fdir_filter check_filter; /* Check if the filter exists */
 	int ret = 0;
 
-	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_PERFECT) {
-		PMD_DRV_LOG(ERR, "FDIR is not enabled, please check the mode in fdir_conf.");
+	if (pf->fdir.fdir_vsi == NULL) {
+		PMD_DRV_LOG(ERR, "FDIR is not enabled");
 		return -ENOTSUP;
 	}
 
