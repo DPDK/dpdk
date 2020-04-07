@@ -4153,11 +4153,13 @@ _flow_dv_query_count(struct rte_eth_dev *dev,
  *   The devX counter handle.
  * @param[in] batch
  *   Whether the pool is for counter that was allocated by batch command.
+ * @param[in/out] cont_cur
+ *   Pointer to the container pointer, it will be update in pool resize.
  *
  * @return
- *   A new pool pointer on success, NULL otherwise and rte_errno is set.
+ *   The pool container pointer on success, NULL otherwise and rte_errno is set.
  */
-static struct mlx5_flow_counter_pool *
+static struct mlx5_pools_container *
 flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		    uint32_t batch)
 {
@@ -4191,12 +4193,12 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	 */
 	rte_atomic64_set(&pool->query_gen, 0x2);
 	TAILQ_INIT(&pool->counters);
-	TAILQ_INSERT_TAIL(&cont->pool_list, pool, next);
+	TAILQ_INSERT_HEAD(&cont->pool_list, pool, next);
 	cont->pools[n_valid] = pool;
 	/* Pool initialization must be updated before host thread access. */
 	rte_cio_wmb();
 	rte_atomic16_add(&cont->n_valid, 1);
-	return pool;
+	return cont;
 }
 
 /**
@@ -4210,33 +4212,35 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
  *   Whether the pool is for counter that was allocated by batch command.
  *
  * @return
- *   The free counter pool pointer and @p cnt_free is set on success,
+ *   The counter container pointer and @p cnt_free is set on success,
  *   NULL otherwise and rte_errno is set.
  */
-static struct mlx5_flow_counter_pool *
+static struct mlx5_pools_container *
 flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 			     struct mlx5_flow_counter **cnt_free,
 			     uint32_t batch)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_pools_container *cont;
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_devx_obj *dcs = NULL;
 	struct mlx5_flow_counter *cnt;
 	uint32_t i;
 
+	cont = MLX5_CNT_CONTAINER(priv->sh, batch, 0);
 	if (!batch) {
 		/* bulk_bitmap must be 0 for single counter allocation. */
 		dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0);
 		if (!dcs)
 			return NULL;
-		pool = flow_dv_find_pool_by_id
-			(MLX5_CNT_CONTAINER(priv->sh, batch, 0), dcs->id);
+		pool = flow_dv_find_pool_by_id(cont, dcs->id);
 		if (!pool) {
-			pool = flow_dv_pool_create(dev, dcs, batch);
-			if (!pool) {
+			cont = flow_dv_pool_create(dev, dcs, batch);
+			if (!cont) {
 				mlx5_devx_cmd_destroy(dcs);
 				return NULL;
 			}
+			pool = TAILQ_FIRST(&cont->pool_list);
 		} else if (dcs->id < pool->min_dcs->id) {
 			rte_atomic64_set(&pool->a64_dcs,
 					 (int64_t)(uintptr_t)dcs);
@@ -4245,7 +4249,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
 		cnt->dcs = dcs;
 		*cnt_free = cnt;
-		return pool;
+		return cont;
 	}
 	/* bulk_bitmap is in 128 counters units. */
 	if (priv->config.hca_attr.flow_counter_bulk_alloc_bitmap & 0x4)
@@ -4254,18 +4258,19 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 		rte_errno = ENODATA;
 		return NULL;
 	}
-	pool = flow_dv_pool_create(dev, dcs, batch);
-	if (!pool) {
+	cont = flow_dv_pool_create(dev, dcs, batch);
+	if (!cont) {
 		mlx5_devx_cmd_destroy(dcs);
 		return NULL;
 	}
+	pool = TAILQ_FIRST(&cont->pool_list);
 	for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 		cnt = &pool->counters_raw[i];
 		cnt->pool = pool;
 		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
 	}
 	*cnt_free = &pool->counters_raw[0];
-	return pool;
+	return cont;
 }
 
 /**
@@ -4366,9 +4371,10 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 		cnt_free = NULL;
 	}
 	if (!cnt_free) {
-		pool = flow_dv_counter_pool_prepare(dev, &cnt_free, batch);
-		if (!pool)
+		cont = flow_dv_counter_pool_prepare(dev, &cnt_free, batch);
+		if (!cont)
 			return NULL;
+		pool = TAILQ_FIRST(&cont->pool_list);
 	}
 	cnt_free->batch = batch;
 	/* Create a DV counter action only in the first time usage. */
