@@ -299,7 +299,6 @@ struct mlx5_flow_counter_pool {
 	union {
 		struct mlx5_devx_obj *min_dcs;
 		rte_atomic64_t a64_dcs;
-		int dcs_id; /* Fallback pool counter id range. */
 	};
 	/* The devx object of the minimum counter ID. */
 	rte_atomic64_t start_query_gen; /* Query start round. */
