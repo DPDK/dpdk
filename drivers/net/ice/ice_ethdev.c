@@ -2436,24 +2436,6 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static int
-ice_dev_configure(struct rte_eth_dev *dev)
-{
-	struct ice_adapter *ad =
-		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-
-	/* Initialize to TRUE. If any of Rx queues doesn't meet the
-	 * bulk allocation or vector Rx preconditions we will reset it.
-	 */
-	ad->rx_bulk_alloc_allowed = true;
-	ad->tx_simple_allowed = true;
-
-	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
-
-	return 0;
-}
-
 static int ice_init_rss(struct ice_pf *pf)
 {
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
@@ -2580,6 +2562,32 @@ static int ice_init_rss(struct ice_pf *pf)
 	if (ret)
 		PMD_DRV_LOG(ERR, "%s PPPoE/PPPoD_SessionID rss flow fail %d",
 				__func__, ret);
+
+	return 0;
+}
+
+static int
+ice_dev_configure(struct rte_eth_dev *dev)
+{
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	int ret;
+
+	/* Initialize to TRUE. If any of Rx queues doesn't meet the
+	 * bulk allocation or vector Rx preconditions we will reset it.
+	 */
+	ad->rx_bulk_alloc_allowed = true;
+	ad->tx_simple_allowed = true;
+
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
+	ret = ice_init_rss(pf);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to enable rss for PF");
+		return ret;
+	}
 
 	return 0;
 }
@@ -2785,12 +2793,6 @@ ice_dev_start(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, "fail to start Rx queue %u", nb_rxq);
 			goto rx_err;
 		}
-	}
-
-	ret = ice_init_rss(pf);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "Failed to enable rss for PF");
-		goto rx_err;
 	}
 
 	ice_set_rx_function(dev);
