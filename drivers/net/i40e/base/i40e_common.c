@@ -34,6 +34,7 @@ enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw)
 		case I40E_DEV_ID_10G_BASE_T_BC:
 		case I40E_DEV_ID_10G_B:
 		case I40E_DEV_ID_10G_SFP:
+		case I40E_DEV_ID_5G_BASE_T_BC:
 		case I40E_DEV_ID_20G_KR2:
 		case I40E_DEV_ID_20G_KR2_A:
 		case I40E_DEV_ID_25G_B:
@@ -6728,6 +6729,7 @@ enum i40e_status_code i40e_write_phy_register(struct i40e_hw *hw,
 	case I40E_DEV_ID_10G_BASE_T:
 	case I40E_DEV_ID_10G_BASE_T4:
 	case I40E_DEV_ID_10G_BASE_T_BC:
+	case I40E_DEV_ID_5G_BASE_T_BC:
 	case I40E_DEV_ID_10G_BASE_T_X722:
 	case I40E_DEV_ID_25G_B:
 	case I40E_DEV_ID_25G_SFP28:
@@ -6764,6 +6766,7 @@ enum i40e_status_code i40e_read_phy_register(struct i40e_hw *hw,
 		break;
 	case I40E_DEV_ID_10G_BASE_T:
 	case I40E_DEV_ID_10G_BASE_T4:
+	case I40E_DEV_ID_5G_BASE_T_BC:
 	case I40E_DEV_ID_10G_BASE_T_X722:
 	case I40E_DEV_ID_25G_B:
 	case I40E_DEV_ID_25G_SFP28:
@@ -7036,7 +7039,8 @@ enum i40e_status_code i40e_get_phy_lpi_status(struct i40e_hw *hw,
 	stat->rx_lpi_status = 0;
 	stat->tx_lpi_status = 0;
 
-	if (hw->device_id == I40E_DEV_ID_10G_BASE_T_BC &&
+	if ((hw->device_id == I40E_DEV_ID_10G_BASE_T_BC ||
+	     hw->device_id == I40E_DEV_ID_5G_BASE_T_BC) &&
 	    (hw->phy.link_info.link_speed == I40E_LINK_SPEED_2_5GB ||
 	     hw->phy.link_info.link_speed == I40E_LINK_SPEED_5GB)) {
 		ret = i40e_aq_get_phy_register(hw,
@@ -7081,7 +7085,8 @@ enum i40e_status_code i40e_get_lpi_counters(struct i40e_hw *hw,
 	/* only X710-T*L requires special handling of counters
 	 * for other devices we just read the MAC registers
 	 */
-	if (hw->device_id == I40E_DEV_ID_10G_BASE_T_BC &&
+	if ((hw->device_id == I40E_DEV_ID_10G_BASE_T_BC ||
+	     hw->device_id == I40E_DEV_ID_5G_BASE_T_BC) &&
 	    hw->phy.link_info.link_speed != I40E_LINK_SPEED_1GB) {
 		enum i40e_status_code retval;
 		u32 cmd_status = 0;
@@ -7123,7 +7128,8 @@ enum i40e_status_code i40e_get_lpi_duration(struct i40e_hw *hw,
 	enum i40e_status_code retval;
 	u32 cmd_status;
 
-	if (hw->device_id != I40E_DEV_ID_10G_BASE_T_BC)
+	if (hw->device_id != I40E_DEV_ID_10G_BASE_T_BC &&
+	    hw->device_id != I40E_DEV_ID_5G_BASE_T_BC)
 		return I40E_ERR_NOT_IMPLEMENTED;
 
 	retval = i40e_aq_run_phy_activity
