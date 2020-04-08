@@ -301,6 +301,8 @@ extern rte_atomic32_t ena_alloc_cnt;
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
+#define ENA_FFS(x) ffs(x)
+
 void ena_rss_key_fill(void *key, size_t size);
 
 #define ENA_RSS_FILL_KEY(key, size) ena_rss_key_fill(key, size)
