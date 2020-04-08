@@ -1426,7 +1426,8 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	if (unlikely(!count))
 		return 0;
 
-	in_use = rxq->next_to_use - rxq->next_to_clean;
+	in_use = ring_size - ena_com_free_q_entries(rxq->ena_com_io_sq) - 1;
+
 	ena_assert_msg(((in_use + count) < ring_size), "bad ring state\n");
 
 	/* get resources for incoming packets */
@@ -2145,8 +2146,9 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct ena_ring *rx_ring = (struct ena_ring *)(rx_queue);
 	unsigned int ring_size = rx_ring->ring_size;
 	unsigned int ring_mask = ring_size - 1;
+	unsigned int refill_required;
 	uint16_t next_to_clean = rx_ring->next_to_clean;
-	uint16_t desc_in_use = 0;
+	uint16_t descs_in_use;
 	struct rte_mbuf *mbuf;
 	uint16_t completed;
 	struct ena_com_rx_ctx ena_rx_ctx;
@@ -2159,9 +2161,9 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		return 0;
 	}
 
-	desc_in_use = rx_ring->next_to_use - next_to_clean;
-	if (unlikely(nb_pkts > desc_in_use))
-		nb_pkts = desc_in_use;
+	descs_in_use = ring_size -
+		ena_com_free_q_entries(rx_ring->ena_com_io_sq) - 1;
+	nb_pkts = RTE_MIN(descs_in_use, nb_pkts);
 
 	for (completed = 0; completed < nb_pkts; completed++) {
 		ena_rx_ctx.max_bufs = rx_ring->sgl_size;
@@ -2213,11 +2215,11 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rx_ring->rx_stats.cnt += completed;
 	rx_ring->next_to_clean = next_to_clean;
 
-	desc_in_use = desc_in_use - completed + 1;
+	refill_required = ena_com_free_q_entries(rx_ring->ena_com_io_sq);
 	/* Burst refill to save doorbells, memory barriers, const interval */
-	if (ring_size - desc_in_use > ENA_RING_DESCS_RATIO(ring_size)) {
+	if (refill_required > ENA_RING_DESCS_RATIO(ring_size)) {
 		ena_com_update_dev_comp_head(rx_ring->ena_com_io_cq);
-		ena_populate_rx_queue(rx_ring, ring_size - desc_in_use);
+		ena_populate_rx_queue(rx_ring, refill_required);
 	}
 
 	return completed;
@@ -2360,7 +2362,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ena_tx_buffer *tx_info;
 	struct ena_com_buf *ebuf;
 	uint16_t rc, req_id, total_tx_descs = 0;
-	uint16_t sent_idx = 0, empty_tx_reqs;
+	uint16_t sent_idx = 0;
 	uint16_t push_len = 0;
 	uint16_t delta = 0;
 	int nb_hw_desc;
@@ -2373,9 +2375,8 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		return 0;
 	}
 
-	empty_tx_reqs = ring_size - (next_to_use - next_to_clean);
-	if (nb_pkts > empty_tx_reqs)
-		nb_pkts = empty_tx_reqs;
+	nb_pkts = RTE_MIN(ena_com_free_q_entries(tx_ring->ena_com_io_sq),
+		nb_pkts);
 
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		mbuf = tx_pkts[sent_idx];
