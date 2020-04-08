@@ -184,15 +184,18 @@ extern rte_atomic32_t ena_alloc_cnt;
 
 #define ENA_MEM_ALLOC_COHERENT(dmadev, size, virt, phys, handle)	\
 	do {								\
-		const struct rte_memzone *mz;				\
-		char z_name[RTE_MEMZONE_NAMESIZE];			\
+		const struct rte_memzone *mz = NULL;			\
 		ENA_TOUCH(dmadev); ENA_TOUCH(handle);			\
-		snprintf(z_name, sizeof(z_name),			\
+		if (size > 0) {						\
+			char z_name[RTE_MEMZONE_NAMESIZE];		\
+			snprintf(z_name, sizeof(z_name),		\
 			 "ena_alloc_%d",				\
 			 rte_atomic32_add_return(&ena_alloc_cnt, 1));	\
-		mz = rte_memzone_reserve(z_name, size, SOCKET_ID_ANY,	\
-				RTE_MEMZONE_IOVA_CONTIG);		\
-		handle = mz;						\
+			mz = rte_memzone_reserve(z_name, size,		\
+					SOCKET_ID_ANY,			\
+					RTE_MEMZONE_IOVA_CONTIG);	\
+			handle = mz;					\
+		}							\
 		if (mz == NULL) {					\
 			virt = NULL;					\
 			phys = 0;					\
@@ -210,15 +213,17 @@ extern rte_atomic32_t ena_alloc_cnt;
 #define ENA_MEM_ALLOC_COHERENT_NODE(					\
 	dmadev, size, virt, phys, mem_handle, node, dev_node)		\
 	do {								\
-		const struct rte_memzone *mz;				\
-		char z_name[RTE_MEMZONE_NAMESIZE];			\
+		const struct rte_memzone *mz = NULL;			\
 		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			\
-		snprintf(z_name, sizeof(z_name),			\
+		if (size > 0) {						\
+			char z_name[RTE_MEMZONE_NAMESIZE];		\
+			snprintf(z_name, sizeof(z_name),		\
 			 "ena_alloc_%d",				\
-			 rte_atomic32_add_return(&ena_alloc_cnt, 1));	\
-		mz = rte_memzone_reserve(z_name, size, node,		\
+			 rte_atomic32_add_return(&ena_alloc_cnt, 1));   \
+			mz = rte_memzone_reserve(z_name, size, node,	\
 				RTE_MEMZONE_IOVA_CONTIG);		\
-		mem_handle = mz;					\
+			mem_handle = mz;				\
+		}							\
 		if (mz == NULL) {					\
 			virt = NULL;					\
 			phys = 0;					\
