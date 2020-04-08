@@ -304,6 +304,6 @@ struct mlx5_glue {
 			 size_t event_resp_len);
 };
 
-const struct mlx5_glue *mlx5_glue;
+extern const struct mlx5_glue *mlx5_glue;
 
 #endif /* MLX5_GLUE_H_ */
