@@ -82,6 +82,12 @@ New Features
   (enqueue/dequeue start; enqueue/dequeue finish). That allows user to inspect
   objects in the ring without removing them from it (aka MT safe peek).
 
+* **Updated Amazon ena driver.**
+
+  Updated ena PMD with new features and improvements, including:
+
+  * Added support for large LLQ (Low-latency queue) headers.
+
 * **Updated Intel i40e driver.**
 
   Updated i40e PMD with new features and improvements, including:

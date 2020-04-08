@@ -13,6 +13,7 @@
 #include <rte_errno.h>
 #include <rte_version.h>
 #include <rte_net.h>
+#include <rte_kvargs.h>
 
 #include "ena_ethdev.h"
 #include "ena_logs.h"
@@ -81,6 +82,9 @@ struct ena_stats {
 
 #define ENA_STAT_GLOBAL_ENTRY(stat) \
 	ENA_STAT_ENTRY(stat, dev)
+
+/* Device arguments */
+#define ENA_DEVARG_LARGE_LLQ_HDR "large_llq_hdr"
 
 /*
  * Each rte_memzone should have unique name.
@@ -231,6 +235,11 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 				const uint64_t *ids,
 				uint64_t *values,
 				unsigned int n);
+static int ena_process_bool_devarg(const char *key,
+				   const char *value,
+				   void *opaque);
+static int ena_parse_devargs(struct ena_adapter *adapter,
+			     struct rte_devargs *devargs);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -842,7 +851,8 @@ static int ena_check_valid_conf(struct ena_adapter *adapter)
 }
 
 static int
-ena_calc_io_queue_size(struct ena_calc_queue_size_ctx *ctx)
+ena_calc_io_queue_size(struct ena_calc_queue_size_ctx *ctx,
+		       bool use_large_llq_hdr)
 {
 	struct ena_admin_feature_llq_desc *llq = &ctx->get_feat_ctx->llq;
 	struct ena_com_dev *ena_dev = ctx->ena_dev;
@@ -894,6 +904,21 @@ ena_calc_io_queue_size(struct ena_calc_queue_size_ctx *ctx)
 	/* Round down to the nearest power of 2 */
 	max_rx_queue_size = rte_align32prevpow2(max_rx_queue_size);
 	max_tx_queue_size = rte_align32prevpow2(max_tx_queue_size);
+
+	if (use_large_llq_hdr) {
+		if ((llq->entry_size_ctrl_supported &
+		     ENA_ADMIN_LIST_ENTRY_SIZE_256B) &&
+		    (ena_dev->tx_mem_queue_type ==
+		     ENA_ADMIN_PLACEMENT_POLICY_DEV)) {
+			max_tx_queue_size /= 2;
+			PMD_INIT_LOG(INFO,
+				"Forcing large headers and decreasing maximum TX queue size to %d\n",
+				max_tx_queue_size);
+		} else {
+			PMD_INIT_LOG(ERR,
+				"Forcing large headers failed: LLQ is disabled or device does not support large headers\n");
+		}
+	}
 
 	if (unlikely(max_rx_queue_size == 0 || max_tx_queue_size == 0)) {
 		PMD_INIT_LOG(ERR, "Invalid queue size");
@@ -1594,14 +1619,25 @@ static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
 }
 
 static inline void
-set_default_llq_configurations(struct ena_llq_configurations *llq_config)
+set_default_llq_configurations(struct ena_llq_configurations *llq_config,
+			       struct ena_admin_feature_llq_desc *llq,
+			       bool use_large_llq_hdr)
 {
 	llq_config->llq_header_location = ENA_ADMIN_INLINE_HEADER;
-	llq_config->llq_ring_entry_size = ENA_ADMIN_LIST_ENTRY_SIZE_128B;
 	llq_config->llq_stride_ctrl = ENA_ADMIN_MULTIPLE_DESCS_PER_ENTRY;
 	llq_config->llq_num_decs_before_header =
 		ENA_ADMIN_LLQ_NUM_DESCS_BEFORE_HEADER_2;
-	llq_config->llq_ring_entry_size_value = 128;
+
+	if (use_large_llq_hdr &&
+	    (llq->entry_size_ctrl_supported & ENA_ADMIN_LIST_ENTRY_SIZE_256B)) {
+		llq_config->llq_ring_entry_size =
+			ENA_ADMIN_LIST_ENTRY_SIZE_256B;
+		llq_config->llq_ring_entry_size_value = 256;
+	} else {
+		llq_config->llq_ring_entry_size =
+			ENA_ADMIN_LIST_ENTRY_SIZE_128B;
+		llq_config->llq_ring_entry_size_value = 128;
+	}
 }
 
 static int
@@ -1740,6 +1776,12 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	snprintf(adapter->name, ENA_NAME_MAX_LEN, "ena_%d",
 		 adapter->id_number);
 
+	rc = ena_parse_devargs(adapter, pci_dev->device.devargs);
+	if (rc != 0) {
+		PMD_INIT_LOG(CRIT, "Failed to parse devargs\n");
+		goto err;
+	}
+
 	/* device specific initialization routine */
 	rc = ena_device_init(ena_dev, &get_feat_ctx, &wd_state);
 	if (rc) {
@@ -1748,7 +1790,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	}
 	adapter->wd_state = wd_state;
 
-	set_default_llq_configurations(&llq_config);
+	set_default_llq_configurations(&llq_config, &get_feat_ctx.llq,
+		adapter->use_large_llq_hdr);
 	rc = ena_set_queues_placement_policy(adapter, ena_dev,
 					     &get_feat_ctx.llq, &llq_config);
 	if (unlikely(rc)) {
@@ -1766,7 +1809,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	calc_queue_ctx.get_feat_ctx = &get_feat_ctx;
 
 	max_num_io_queues = ena_calc_max_io_queue_num(ena_dev, &get_feat_ctx);
-	rc = ena_calc_io_queue_size(&calc_queue_ctx);
+	rc = ena_calc_io_queue_size(&calc_queue_ctx,
+		adapter->use_large_llq_hdr);
 	if (unlikely((rc != 0) || (max_num_io_queues == 0))) {
 		rc = -EFAULT;
 		goto err_device_destroy;
@@ -2582,6 +2626,59 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 	return valid;
 }
 
+static int ena_process_bool_devarg(const char *key,
+				   const char *value,
+				   void *opaque)
+{
+	struct ena_adapter *adapter = opaque;
+	bool bool_value;
+
+	/* Parse the value. */
+	if (strcmp(value, "1") == 0) {
+		bool_value = true;
+	} else if (strcmp(value, "0") == 0) {
+		bool_value = false;
+	} else {
+		PMD_INIT_LOG(ERR,
+			"Invalid value: '%s' for key '%s'. Accepted: '0' or '1'\n",
+			value, key);
+		return -EINVAL;
+	}
+
+	/* Now, assign it to the proper adapter field. */
+	if (strcmp(key, ENA_DEVARG_LARGE_LLQ_HDR))
+		adapter->use_large_llq_hdr = bool_value;
+
+	return 0;
+}
+
+static int ena_parse_devargs(struct ena_adapter *adapter,
+			     struct rte_devargs *devargs)
+{
+	static const char * const allowed_args[] = {
+		ENA_DEVARG_LARGE_LLQ_HDR,
+	};
+	struct rte_kvargs *kvlist;
+	int rc;
+
+	if (devargs == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, allowed_args);
+	if (kvlist == NULL) {
+		PMD_INIT_LOG(ERR, "Invalid device arguments: %s\n",
+			devargs->args);
+		return -EINVAL;
+	}
+
+	rc = rte_kvargs_process(kvlist, ENA_DEVARG_LARGE_LLQ_HDR,
+		ena_process_bool_devarg, adapter);
+
+	rte_kvargs_free(kvlist);
+
+	return rc;
+}
+
 /*********************************************************************
  *  PMD configuration
  *********************************************************************/
@@ -2608,6 +2705,7 @@ static struct rte_pci_driver rte_ena_pmd = {
 RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(net_ena, ENA_DEVARG_LARGE_LLQ_HDR "=<0|1>");
 
 RTE_INIT(ena_init_log)
 {

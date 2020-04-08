@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright (c) 2015-2019 Amazon.com, Inc. or its affiliates.
+    Copyright (c) 2015-2020 Amazon.com, Inc. or its affiliates.
     All rights reserved.
 
 ENA Poll Mode Driver
@@ -94,6 +94,14 @@ Configuration information
 
    * **CONFIG_RTE_LIBRTE_ENA_COM_DEBUG** (default n): Enables or disables debug
      logging of low level tx/rx logic in ena_com(base) within the ENA PMD driver.
+
+**Runtime Configuration Parameters**
+
+   * **large_llq_hdr** (default 0)
+
+     Enables or disables usage of large LLQ headers. This option will have
+     effect only if the device also supports large LLQ headers. Otherwise, the
+     default value will be used.
 
 **ENA Configuration Parameters**
 

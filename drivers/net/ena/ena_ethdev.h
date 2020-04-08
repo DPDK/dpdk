@@ -200,6 +200,8 @@ struct ena_adapter {
 	bool trigger_reset;
 
 	bool wd_state;
+
+	bool use_large_llq_hdr;
 };
 
 #endif /* _ENA_ETHDEV_H_ */
