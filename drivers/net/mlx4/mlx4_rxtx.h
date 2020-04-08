@@ -124,7 +124,7 @@ struct txq {
 
 /* mlx4_rxq.c */
 
-uint8_t mlx4_rss_hash_key_default[MLX4_RSS_HASH_KEY_SIZE];
+extern uint8_t mlx4_rss_hash_key_default[MLX4_RSS_HASH_KEY_SIZE];
 int mlx4_rss_init(struct mlx4_priv *priv);
 void mlx4_rss_deinit(struct mlx4_priv *priv);
 struct mlx4_rss *mlx4_rss_get(struct mlx4_priv *priv, uint64_t fields,
