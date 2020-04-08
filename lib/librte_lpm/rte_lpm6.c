@@ -726,7 +726,8 @@ add_step(struct rte_lpm6 *lpm, struct rte_lpm6_tbl_entry *tbl,
 			tbl8_group_start = tbl8_gindex *
 					RTE_LPM6_TBL8_GROUP_NUM_ENTRIES;
 			memset(&lpm->tbl8[tbl8_group_start], 0,
-					  RTE_LPM6_TBL8_GROUP_NUM_ENTRIES);
+					RTE_LPM6_TBL8_GROUP_NUM_ENTRIES *
+					sizeof(struct rte_lpm6_tbl_entry));
 
 			/* init the new table's header:
 			 *   save the reference to the owner table
