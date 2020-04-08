@@ -307,6 +307,7 @@ void ena_rss_key_fill(void *key, size_t size);
 
 #define ENA_RSS_FILL_KEY(key, size) ena_rss_key_fill(key, size)
 
-#include "ena_includes.h"
+#define ENA_INTR_INITIAL_TX_INTERVAL_USECS_PLAT 0
 
+#include "ena_includes.h"
 #endif /* DPDK_ENA_COM_ENA_PLAT_DPDK_H_ */
