@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2015-2019 Amazon.com, Inc. or its affiliates.
+ * Copyright (c) 2015-2020 Amazon.com, Inc. or its affiliates.
  * All rights reserved.
  */
 
@@ -1030,6 +1030,19 @@ static int ena_com_get_feature(struct ena_com_dev *ena_dev,
 				      0,
 				      0,
 				      feature_ver);
+}
+
+static void ena_com_hash_key_fill_default_key(struct ena_com_dev *ena_dev)
+{
+	struct ena_admin_feature_rss_flow_hash_control *hash_key =
+		(ena_dev->rss).hash_key;
+
+	ENA_RSS_FILL_KEY(&hash_key->key, sizeof(hash_key->key));
+	/* The key is stored in the device in uint32_t array
+	 * as well as the API requires the key to be passed in this
+	 * format. Thus the size of our array should be divided by 4
+	 */
+	hash_key->keys_num = sizeof(hash_key->key) / sizeof(uint32_t);
 }
 
 static int ena_com_hash_key_allocate(struct ena_com_dev *ena_dev)
@@ -2405,15 +2418,16 @@ int ena_com_fill_hash_function(struct ena_com_dev *ena_dev,
 
 	switch (func) {
 	case ENA_ADMIN_TOEPLITZ:
-		if (key_len > sizeof(hash_key->key)) {
-			ena_trc_err("key len (%hu) is bigger than the max supported (%zu)\n",
-				    key_len, sizeof(hash_key->key));
-			return ENA_COM_INVAL;
+		if (key) {
+			if (key_len != sizeof(hash_key->key)) {
+				ena_trc_err("key len (%hu) doesn't equal the supported size (%zu)\n",
+					     key_len, sizeof(hash_key->key));
+				return ENA_COM_INVAL;
+			}
+			memcpy(hash_key->key, key, key_len);
+			rss->hash_init_val = init_val;
+			hash_key->keys_num = key_len / sizeof(u32);
 		}
-
-		memcpy(hash_key->key, key, key_len);
-		rss->hash_init_val = init_val;
-		hash_key->keys_num = key_len >> 2;
 		break;
 	case ENA_ADMIN_CRC32:
 		rss->hash_init_val = init_val;
@@ -2737,6 +2751,8 @@ int ena_com_rss_init(struct ena_com_dev *ena_dev, u16 indr_tbl_log_size)
 	rc = ena_com_hash_key_allocate(ena_dev);
 	if (unlikely(rc))
 		goto err_hash_key;
+
+	ena_com_hash_key_fill_default_key(ena_dev);
 
 	rc = ena_com_hash_ctrl_init(ena_dev);
 	if (unlikely(rc))

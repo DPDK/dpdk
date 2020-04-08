@@ -256,6 +256,23 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.reta_query           = ena_rss_reta_query,
 };
 
+void ena_rss_key_fill(void *key, size_t size)
+{
+	static bool key_generated;
+	static uint8_t default_key[ENA_HASH_KEY_SIZE];
+	size_t i;
+
+	RTE_ASSERT(size <= ENA_HASH_KEY_SIZE);
+
+	if (!key_generated) {
+		for (i = 0; i < ENA_HASH_KEY_SIZE; ++i)
+			default_key[i] = rte_rand() & 0xff;
+		key_generated = true;
+	}
+
+	rte_memcpy(key, default_key, size);
+}
+
 static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 				       struct ena_com_rx_ctx *ena_rx_ctx)
 {

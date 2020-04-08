@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2015-2019 Amazon.com, Inc. or its affiliates.
+ * Copyright (c) 2015-2020 Amazon.com, Inc. or its affiliates.
  * All rights reserved.
  */
 
@@ -53,6 +53,7 @@
 #define ENA_INTR_DELAY_NEW_VALUE_WEIGHT			4
 #define ENA_INTR_MODER_LEVEL_STRIDE			1
 #define ENA_INTR_BYTE_COUNT_NOT_SUPPORTED		0xFFFFFF
+#define ENA_HASH_KEY_SIZE				40
 
 #define ENA_HW_HINTS_NO_TIMEOUT				0xFFFF
 
