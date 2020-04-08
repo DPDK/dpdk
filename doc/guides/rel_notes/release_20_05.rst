@@ -87,6 +87,7 @@ New Features
   Updated ena PMD with new features and improvements, including:
 
   * Added support for large LLQ (Low-latency queue) headers.
+  * Added Tx drops as new extended driver statistic.
 
 * **Updated Intel i40e driver.**
 

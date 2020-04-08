@@ -134,13 +134,19 @@ struct ena_driver_stats {
 	rte_atomic64_t ierrors;
 	rte_atomic64_t oerrors;
 	rte_atomic64_t rx_nombuf;
-	rte_atomic64_t rx_drops;
+	u64 rx_drops;
 };
 
 struct ena_stats_dev {
 	u64 wd_expired;
 	u64 dev_start;
 	u64 dev_stop;
+	/*
+	 * Tx drops cannot be reported as the driver statistic, because DPDK
+	 * rte_eth_stats structure isn't providing appropriate field for that.
+	 * As a workaround it is being published as an extended statistic.
+	 */
+	u64 tx_drops;
 };
 
 struct ena_offloads {
