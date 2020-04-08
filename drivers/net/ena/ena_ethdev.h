@@ -30,6 +30,16 @@
 #define ENA_WD_TIMEOUT_SEC	3
 #define ENA_DEVICE_KALIVE_TIMEOUT (ENA_WD_TIMEOUT_SEC * rte_get_timer_hz())
 
+/* While processing submitted and completed descriptors (rx and tx path
+ * respectively) in a loop it is desired to:
+ *  - perform batch submissions while populating sumbissmion queue
+ *  - avoid blocking transmission of other packets during cleanup phase
+ * Hence the utilization ratio of 1/8 of a queue size or max value if the size
+ * of the ring is very big - like 8k Rx rings.
+ */
+#define ENA_REFILL_THRESH_DIVIDER      8
+#define ENA_REFILL_THRESH_PACKET       256
+
 struct ena_adapter;
 
 enum ena_ring_type {
