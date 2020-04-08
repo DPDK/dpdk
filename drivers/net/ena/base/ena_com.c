@@ -2063,7 +2063,7 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *dev, void *data)
 		timestamp = (u64)aenq_common->timestamp_low |
 			((u64)aenq_common->timestamp_high << 32);
 		ENA_TOUCH(timestamp); /* In case debug is disabled */
-		ena_trc_dbg("AENQ! Group[%x] Syndrom[%x] timestamp: [%"PRIu64"]\n",
+		ena_trc_dbg("AENQ! Group[%x] Syndrom[%x] timestamp: [%" ENA_PRIu64 "s]\n",
 			    aenq_common->group,
 			    aenq_common->syndrom,
 			    timestamp);
