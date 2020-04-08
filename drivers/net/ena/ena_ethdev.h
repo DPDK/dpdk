@@ -40,6 +40,9 @@
 #define ENA_REFILL_THRESH_DIVIDER      8
 #define ENA_REFILL_THRESH_PACKET       256
 
+#define ENA_IDX_NEXT_MASKED(idx, mask) (((idx) + 1) & (mask))
+#define ENA_IDX_ADD_MASKED(idx, n, mask) (((idx) + (n)) & (mask))
+
 struct ena_adapter;
 
 enum ena_ring_type {
@@ -109,6 +112,7 @@ struct ena_ring {
 	};
 	struct rte_mbuf **rx_refill_buffer;
 	unsigned int ring_size; /* number of tx/rx_buffer_info's entries */
+	unsigned int size_mask;
 
 	struct ena_com_io_cq *ena_com_io_cq;
 	struct ena_com_io_sq *ena_com_io_sq;
