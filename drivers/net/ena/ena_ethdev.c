@@ -89,7 +89,7 @@ struct ena_stats {
  * Each rte_memzone should have unique name.
  * To satisfy it, count number of allocation and add it to name.
  */
-uint32_t ena_alloc_cnt;
+rte_atomic32_t ena_alloc_cnt;
 
 static const struct ena_stats ena_stats_global_strings[] = {
 	ENA_STAT_GLOBAL_ENTRY(wd_expired),
