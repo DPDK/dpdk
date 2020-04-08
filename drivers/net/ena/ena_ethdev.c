@@ -188,6 +188,12 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			      uint16_t nb_desc, unsigned int socket_id,
 			      const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp);
+static inline void ena_init_rx_mbuf(struct rte_mbuf *mbuf, uint16_t len);
+static struct rte_mbuf *ena_rx_mbuf(struct ena_ring *rx_ring,
+				    struct ena_com_rx_buf_info *ena_bufs,
+				    uint32_t descs,
+				    uint16_t *next_to_clean,
+				    uint8_t offset);
 static uint16_t eth_ena_recv_pkts(void *rx_queue,
 				  struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count);
@@ -749,11 +755,13 @@ static void ena_rx_queue_release_bufs(struct ena_ring *ring)
 {
 	unsigned int i;
 
-	for (i = 0; i < ring->ring_size; ++i)
-		if (ring->rx_buffer_info[i]) {
-			rte_mbuf_raw_free(ring->rx_buffer_info[i]);
-			ring->rx_buffer_info[i] = NULL;
+	for (i = 0; i < ring->ring_size; ++i) {
+		struct ena_rx_buffer *rx_info = &ring->rx_buffer_info[i];
+		if (rx_info->mbuf) {
+			rte_mbuf_raw_free(rx_info->mbuf);
+			rx_info->mbuf = NULL;
 		}
+	}
 }
 
 static void ena_tx_queue_release_bufs(struct ena_ring *ring)
@@ -1365,8 +1373,8 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->mb_pool = mp;
 
 	rxq->rx_buffer_info = rte_zmalloc("rxq->buffer_info",
-					  sizeof(struct rte_mbuf *) * nb_desc,
-					  RTE_CACHE_LINE_SIZE);
+		sizeof(struct ena_rx_buffer) * nb_desc,
+		RTE_CACHE_LINE_SIZE);
 	if (!rxq->rx_buffer_info) {
 		PMD_DRV_LOG(ERR, "failed to alloc mem for rx buffer info\n");
 		return -ENOMEM;
@@ -1434,15 +1442,17 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 		uint16_t next_to_use_masked = next_to_use & ring_mask;
 		struct rte_mbuf *mbuf = mbufs[i];
 		struct ena_com_buf ebuf;
+		struct ena_rx_buffer *rx_info;
 
 		if (likely((i + 4) < count))
 			rte_prefetch0(mbufs[i + 4]);
 
 		req_id = rxq->empty_rx_reqs[next_to_use_masked];
 		rc = validate_rx_req_id(rxq, req_id);
-		if (unlikely(rc < 0))
+		if (unlikely(rc))
 			break;
-		rxq->rx_buffer_info[req_id] = mbuf;
+
+		rx_info = &rxq->rx_buffer_info[req_id];
 
 		/* prepare physical address for DMA transaction */
 		ebuf.paddr = mbuf->buf_iova + RTE_PKTMBUF_HEADROOM;
@@ -1452,9 +1462,9 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 						&ebuf, req_id);
 		if (unlikely(rc)) {
 			PMD_DRV_LOG(WARNING, "failed adding rx desc\n");
-			rxq->rx_buffer_info[req_id] = NULL;
 			break;
 		}
+		rx_info->mbuf = mbuf;
 		next_to_use++;
 	}
 
@@ -2052,6 +2062,83 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static inline void ena_init_rx_mbuf(struct rte_mbuf *mbuf, uint16_t len)
+{
+	mbuf->data_len = len;
+	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+	mbuf->refcnt = 1;
+	mbuf->next = NULL;
+}
+
+static struct rte_mbuf *ena_rx_mbuf(struct ena_ring *rx_ring,
+				    struct ena_com_rx_buf_info *ena_bufs,
+				    uint32_t descs,
+				    uint16_t *next_to_clean,
+				    uint8_t offset)
+{
+	struct rte_mbuf *mbuf;
+	struct rte_mbuf *mbuf_head;
+	struct ena_rx_buffer *rx_info;
+	unsigned int ring_mask = rx_ring->ring_size - 1;
+	uint16_t ntc, len, req_id, buf = 0;
+
+	if (unlikely(descs == 0))
+		return NULL;
+
+	ntc = *next_to_clean;
+
+	len = ena_bufs[buf].len;
+	req_id = ena_bufs[buf].req_id;
+	if (unlikely(validate_rx_req_id(rx_ring, req_id)))
+		return NULL;
+
+	rx_info = &rx_ring->rx_buffer_info[req_id];
+
+	mbuf = rx_info->mbuf;
+	RTE_ASSERT(mbuf != NULL);
+
+	ena_init_rx_mbuf(mbuf, len);
+
+	/* Fill the mbuf head with the data specific for 1st segment. */
+	mbuf_head = mbuf;
+	mbuf_head->nb_segs = descs;
+	mbuf_head->port = rx_ring->port_id;
+	mbuf_head->pkt_len = len;
+	mbuf_head->data_off += offset;
+
+	rx_info->mbuf = NULL;
+	rx_ring->empty_rx_reqs[ntc & ring_mask] = req_id;
+	++ntc;
+
+	while (--descs) {
+		++buf;
+		len = ena_bufs[buf].len;
+		req_id = ena_bufs[buf].req_id;
+		if (unlikely(validate_rx_req_id(rx_ring, req_id))) {
+			rte_mbuf_raw_free(mbuf_head);
+			return NULL;
+		}
+
+		rx_info = &rx_ring->rx_buffer_info[req_id];
+		RTE_ASSERT(rx_info->mbuf != NULL);
+
+		/* Create an mbuf chain. */
+		mbuf->next = rx_info->mbuf;
+		mbuf = mbuf->next;
+
+		ena_init_rx_mbuf(mbuf, len);
+		mbuf_head->pkt_len += len;
+
+		rx_info->mbuf = NULL;
+		rx_ring->empty_rx_reqs[ntc & ring_mask] = req_id;
+		++ntc;
+	}
+
+	*next_to_clean = ntc;
+
+	return mbuf_head;
+}
+
 static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts)
 {
@@ -2060,16 +2147,10 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	unsigned int ring_mask = ring_size - 1;
 	uint16_t next_to_clean = rx_ring->next_to_clean;
 	uint16_t desc_in_use = 0;
-	uint16_t req_id;
-	unsigned int recv_idx = 0;
-	struct rte_mbuf *mbuf = NULL;
-	struct rte_mbuf *mbuf_head = NULL;
-	struct rte_mbuf *mbuf_prev = NULL;
-	struct rte_mbuf **rx_buff_info = rx_ring->rx_buffer_info;
-	unsigned int completed;
-
+	struct rte_mbuf *mbuf;
+	uint16_t completed;
 	struct ena_com_rx_ctx ena_rx_ctx;
-	int rc = 0;
+	int i, rc = 0;
 
 	/* Check adapter state */
 	if (unlikely(rx_ring->adapter->state != ENA_ADAPTER_STATE_RUNNING)) {
@@ -2083,8 +2164,6 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		nb_pkts = desc_in_use;
 
 	for (completed = 0; completed < nb_pkts; completed++) {
-		int segments = 0;
-
 		ena_rx_ctx.max_bufs = rx_ring->sgl_size;
 		ena_rx_ctx.ena_bufs = rx_ring->ena_bufs;
 		ena_rx_ctx.descs = 0;
@@ -2102,63 +2181,36 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			return 0;
 		}
 
-		if (unlikely(ena_rx_ctx.descs == 0))
+		mbuf = ena_rx_mbuf(rx_ring,
+			ena_rx_ctx.ena_bufs,
+			ena_rx_ctx.descs,
+			&next_to_clean,
+			ena_rx_ctx.pkt_offset);
+		if (unlikely(mbuf == NULL)) {
+			for (i = 0; i < ena_rx_ctx.descs; ++i) {
+				rx_ring->empty_rx_reqs[next_to_clean & ring_mask] =
+					rx_ring->ena_bufs[i].req_id;
+				++next_to_clean;
+			}
 			break;
-
-		while (segments < ena_rx_ctx.descs) {
-			req_id = ena_rx_ctx.ena_bufs[segments].req_id;
-			rc = validate_rx_req_id(rx_ring, req_id);
-			if (unlikely(rc)) {
-				if (segments != 0)
-					rte_mbuf_raw_free(mbuf_head);
-				break;
-			}
-
-			mbuf = rx_buff_info[req_id];
-			rx_buff_info[req_id] = NULL;
-			mbuf->data_len = ena_rx_ctx.ena_bufs[segments].len;
-			mbuf->data_off = RTE_PKTMBUF_HEADROOM;
-			mbuf->refcnt = 1;
-			mbuf->next = NULL;
-			if (unlikely(segments == 0)) {
-				mbuf->nb_segs = ena_rx_ctx.descs;
-				mbuf->port = rx_ring->port_id;
-				mbuf->pkt_len = 0;
-				mbuf->data_off += ena_rx_ctx.pkt_offset;
-				mbuf_head = mbuf;
-			} else {
-				/* for multi-segment pkts create mbuf chain */
-				mbuf_prev->next = mbuf;
-			}
-			mbuf_head->pkt_len += mbuf->data_len;
-
-			mbuf_prev = mbuf;
-			rx_ring->empty_rx_reqs[next_to_clean & ring_mask] =
-				req_id;
-			segments++;
-			next_to_clean++;
 		}
-		if (unlikely(rc))
-			break;
 
 		/* fill mbuf attributes if any */
-		ena_rx_mbuf_prepare(mbuf_head, &ena_rx_ctx);
+		ena_rx_mbuf_prepare(mbuf, &ena_rx_ctx);
 
-		if (unlikely(mbuf_head->ol_flags &
+		if (unlikely(mbuf->ol_flags &
 				(PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD))) {
 			rte_atomic64_inc(&rx_ring->adapter->drv_stats->ierrors);
 			++rx_ring->rx_stats.bad_csum;
 		}
 
-		mbuf_head->hash.rss = ena_rx_ctx.hash;
+		mbuf->hash.rss = ena_rx_ctx.hash;
 
-		/* pass to DPDK application head mbuf */
-		rx_pkts[recv_idx] = mbuf_head;
-		recv_idx++;
-		rx_ring->rx_stats.bytes += mbuf_head->pkt_len;
+		rx_pkts[completed] = mbuf;
+		rx_ring->rx_stats.bytes += mbuf->pkt_len;
 	}
 
-	rx_ring->rx_stats.cnt += recv_idx;
+	rx_ring->rx_stats.cnt += completed;
 	rx_ring->next_to_clean = next_to_clean;
 
 	desc_in_use = desc_in_use - completed + 1;
@@ -2168,7 +2220,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		ena_populate_rx_queue(rx_ring, ring_size - desc_in_use);
 	}
 
-	return recv_idx;
+	return completed;
 }
 
 static uint16_t

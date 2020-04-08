@@ -44,6 +44,12 @@ struct ena_tx_buffer {
 	struct ena_com_buf bufs[ENA_PKT_MAX_BUFS];
 };
 
+/* Rx buffer holds only pointer to the mbuf - may be expanded in the future */
+struct ena_rx_buffer {
+	struct rte_mbuf *mbuf;
+	struct ena_com_buf ena_buf;
+};
+
 struct ena_calc_queue_size_ctx {
 	struct ena_com_dev_get_features_ctx *get_feat_ctx;
 	struct ena_com_dev *ena_dev;
@@ -89,7 +95,7 @@ struct ena_ring {
 
 	union {
 		struct ena_tx_buffer *tx_buffer_info; /* contex of tx packet */
-		struct rte_mbuf **rx_buffer_info; /* contex of rx packet */
+		struct ena_rx_buffer *rx_buffer_info; /* contex of rx packet */
 	};
 	struct rte_mbuf **rx_refill_buffer;
 	unsigned int ring_size; /* number of tx/rx_buffer_info's entries */
