@@ -73,7 +73,7 @@ static int ena_com_mem_addr_set(struct ena_com_dev *ena_dev,
 	}
 
 	ena_addr->mem_addr_low = lower_32_bits(addr);
-	ena_addr->mem_addr_high = upper_32_bits(addr);
+	ena_addr->mem_addr_high = (u16)upper_32_bits(addr);
 
 	return 0;
 }
