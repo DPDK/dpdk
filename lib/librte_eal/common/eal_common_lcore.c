@@ -31,8 +31,12 @@ int rte_lcore_index(int lcore_id)
 	if (unlikely(lcore_id >= RTE_MAX_LCORE))
 		return -1;
 
-	if (lcore_id < 0)
+	if (lcore_id < 0) {
+		if (rte_lcore_id() == LCORE_ID_ANY)
+			return -1;
+
 		lcore_id = (int)rte_lcore_id();
+	}
 
 	return lcore_config[lcore_id].core_index;
 }
@@ -42,8 +46,12 @@ int rte_lcore_to_cpu_id(int lcore_id)
 	if (unlikely(lcore_id >= RTE_MAX_LCORE))
 		return -1;
 
-	if (lcore_id < 0)
+	if (lcore_id < 0) {
+		if (rte_lcore_id() == LCORE_ID_ANY)
+			return -1;
+
 		lcore_id = (int)rte_lcore_id();
+	}
 
 	return lcore_config[lcore_id].core_id;
 }
