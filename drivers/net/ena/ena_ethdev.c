@@ -191,7 +191,8 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 static uint16_t eth_ena_recv_pkts(void *rx_queue,
 				  struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count);
-static void ena_init_rings(struct ena_adapter *adapter);
+static void ena_init_rings(struct ena_adapter *adapter,
+			   bool disable_meta_caching);
 static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int ena_start(struct rte_eth_dev *dev);
 static void ena_stop(struct rte_eth_dev *dev);
@@ -313,7 +314,8 @@ static inline void ena_rx_mbuf_prepare(struct rte_mbuf *mbuf,
 
 static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 				       struct ena_com_tx_ctx *ena_tx_ctx,
-				       uint64_t queue_offloads)
+				       uint64_t queue_offloads,
+				       bool disable_meta_caching)
 {
 	struct ena_com_tx_meta *ena_meta = &ena_tx_ctx->ena_meta;
 
@@ -363,6 +365,9 @@ static inline void ena_tx_mbuf_prepare(struct rte_mbuf *mbuf,
 		ena_meta->l3_hdr_len = mbuf->l3_len;
 		ena_meta->l3_hdr_offset = mbuf->l2_len;
 
+		ena_tx_ctx->meta_valid = true;
+	} else if (disable_meta_caching) {
+		memset(ena_meta, 0, sizeof(*ena_meta));
 		ena_tx_ctx->meta_valid = true;
 	} else {
 		ena_tx_ctx->meta_valid = false;
@@ -1726,8 +1731,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	const char *queue_type_str;
 	uint32_t max_num_io_queues;
 	int rc;
-
 	static int adapters_found;
+	bool disable_meta_caching;
 	bool wd_state;
 
 	eth_dev->dev_ops = &ena_dev_ops;
@@ -1818,8 +1823,16 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->max_rx_sgl_size = calc_queue_ctx.max_rx_sgl_size;
 	adapter->max_num_io_queues = max_num_io_queues;
 
+	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV) {
+		disable_meta_caching =
+			!!(get_feat_ctx.llq.accel_mode.u.get.supported_flags &
+			BIT(ENA_ADMIN_DISABLE_META_CACHING));
+	} else {
+		disable_meta_caching = false;
+	}
+
 	/* prepare ring structures */
-	ena_init_rings(adapter);
+	ena_init_rings(adapter, disable_meta_caching);
 
 	ena_config_debug_area(adapter);
 
@@ -1933,7 +1946,8 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void ena_init_rings(struct ena_adapter *adapter)
+static void ena_init_rings(struct ena_adapter *adapter,
+			   bool disable_meta_caching)
 {
 	size_t i;
 
@@ -1947,6 +1961,7 @@ static void ena_init_rings(struct ena_adapter *adapter)
 		ring->tx_mem_queue_type = adapter->ena_dev.tx_mem_queue_type;
 		ring->tx_max_header_size = adapter->ena_dev.tx_max_header_size;
 		ring->sgl_size = adapter->max_tx_sgl_size;
+		ring->disable_meta_caching = disable_meta_caching;
 	}
 
 	for (i = 0; i < adapter->max_num_io_queues; i++) {
@@ -2359,7 +2374,8 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		} /* there's no else as we take advantage of memset zeroing */
 
 		/* Set TX offloads flags, if applicable */
-		ena_tx_mbuf_prepare(mbuf, &ena_tx_ctx, tx_ring->offloads);
+		ena_tx_mbuf_prepare(mbuf, &ena_tx_ctx, tx_ring->offloads,
+			tx_ring->disable_meta_caching);
 
 		rte_prefetch0(tx_pkts[(sent_idx + 4) & ring_mask]);
 

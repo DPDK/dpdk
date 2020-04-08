@@ -113,6 +113,8 @@ struct ena_ring {
 	uint64_t offloads;
 	u16 sgl_size;
 
+	bool disable_meta_caching;
+
 	union {
 		struct ena_stats_rx rx_stats;
 		struct ena_stats_tx tx_stats;

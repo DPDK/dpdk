@@ -88,6 +88,7 @@ New Features
 
   * Added support for large LLQ (Low-latency queue) headers.
   * Added Tx drops as new extended driver statistic.
+  * Added support for accelerated LLQ mode.
 
 * **Updated Intel i40e driver.**
 
