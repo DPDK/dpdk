@@ -148,8 +148,10 @@ static int ena_com_close_bounce_buffer(struct ena_com_io_sq *io_sq)
 	if (pkt_ctrl->idx) {
 		rc = ena_com_write_bounce_buffer_to_dev(io_sq,
 							pkt_ctrl->curr_bounce_buf);
-		if (unlikely(rc))
+		if (unlikely(rc)) {
+			ena_trc_err("failed to write bounce buffer to device\n");
 			return rc;
+		}
 
 		pkt_ctrl->curr_bounce_buf =
 			ena_com_get_next_bounce_buffer(&io_sq->bounce_buf_ctrl);
@@ -179,8 +181,10 @@ static int ena_com_sq_update_llq_tail(struct ena_com_io_sq *io_sq)
 	if (!pkt_ctrl->descs_left_in_line) {
 		rc = ena_com_write_bounce_buffer_to_dev(io_sq,
 							pkt_ctrl->curr_bounce_buf);
-		if (unlikely(rc))
+		if (unlikely(rc)) {
+			ena_trc_err("failed to write bounce buffer to device\n");
 			return rc;
+		}
 
 		pkt_ctrl->curr_bounce_buf =
 			ena_com_get_next_bounce_buffer(&io_sq->bounce_buf_ctrl);
@@ -394,8 +398,10 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 	}
 
 	if (unlikely(io_sq->mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV
-		     && !buffer_to_push))
+		     && !buffer_to_push)) {
+		ena_trc_err("push header wasn't provided on LLQ mode\n");
 		return ENA_COM_INVAL;
+	}
 
 	rc = ena_com_write_header_to_bounce(io_sq, buffer_to_push, header_len);
 	if (unlikely(rc))
@@ -410,6 +416,8 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 	/* If the caller doesn't want to send packets */
 	if (unlikely(!num_bufs && !header_len)) {
 		rc = ena_com_close_bounce_buffer(io_sq);
+		if (rc)
+			ena_trc_err("failed to write buffers to LLQ\n");
 		*nb_hw_desc = io_sq->tail - start_tail;
 		return rc;
 	}
@@ -469,8 +477,10 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 		/* The first desc share the same desc as the header */
 		if (likely(i != 0)) {
 			rc = ena_com_sq_update_tail(io_sq);
-			if (unlikely(rc))
+			if (unlikely(rc)) {
+				ena_trc_err("failed to update sq tail\n");
 				return rc;
+			}
 
 			desc = get_sq_desc(io_sq);
 			if (unlikely(!desc))
@@ -499,10 +509,14 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 	desc->len_ctrl |= ENA_ETH_IO_TX_DESC_LAST_MASK;
 
 	rc = ena_com_sq_update_tail(io_sq);
-	if (unlikely(rc))
+	if (unlikely(rc)) {
+		ena_trc_err("failed to update sq tail of the last descriptor\n");
 		return rc;
+	}
 
 	rc = ena_com_close_bounce_buffer(io_sq);
+	if (rc)
+		ena_trc_err("failed when closing bounce buffer\n");
 
 	*nb_hw_desc = io_sq->tail - start_tail;
 	return rc;
