@@ -8,9 +8,9 @@
 
 #include "ena_plat.h"
 
-#define ENA_MAX_NUM_IO_QUEUES		128U
+#define ENA_MAX_NUM_IO_QUEUES 128U
 /* We need to queues for each IO (on for Tx and one for Rx) */
-#define ENA_TOTAL_NUM_QUEUES		(2 * (ENA_MAX_NUM_IO_QUEUES))
+#define ENA_TOTAL_NUM_QUEUES (2 * (ENA_MAX_NUM_IO_QUEUES))
 
 #define ENA_MAX_HANDLERS 256
 
@@ -33,9 +33,9 @@
 
 #define ENA_HASH_KEY_SIZE				40
 
-#define ENA_HW_HINTS_NO_TIMEOUT				0xFFFF
+#define ENA_HW_HINTS_NO_TIMEOUT 0xFFFF
 
-#define ENA_FEATURE_MAX_QUEUE_EXT_VER	1
+#define ENA_FEATURE_MAX_QUEUE_EXT_VER 1
 
 struct ena_llq_configurations {
 	enum ena_admin_llq_header_location llq_header_location;
