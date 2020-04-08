@@ -1099,16 +1099,15 @@ static int ena_create_io_queue(struct ena_ring *ring)
 		ena_qid = ENA_IO_TXQ_IDX(ring->id);
 		ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_TX;
 		ctx.mem_queue_type = ena_dev->tx_mem_queue_type;
-		ctx.queue_size = adapter->tx_ring_size;
 		for (i = 0; i < ring->ring_size; i++)
 			ring->empty_tx_reqs[i] = i;
 	} else {
 		ena_qid = ENA_IO_RXQ_IDX(ring->id);
 		ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_RX;
-		ctx.queue_size = adapter->rx_ring_size;
 		for (i = 0; i < ring->ring_size; i++)
 			ring->empty_rx_reqs[i] = i;
 	}
+	ctx.queue_size = ring->ring_size;
 	ctx.qid = ena_qid;
 	ctx.msix_vector = -1; /* interrupts not used */
 	ctx.numa_node = ring->numa_socket_id;
