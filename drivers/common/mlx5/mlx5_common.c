@@ -162,7 +162,7 @@ mlx5_translate_port_name(const char *port_name_in,
 	return;
 }
 
-#ifdef RTE_IBVERBS_LINK_DLOPEN
+#ifdef MLX5_GLUE
 
 /**
  * Suffix RTE_EAL_PMD_PATH with "-glue".
@@ -204,34 +204,10 @@ error:
 		" re-configure DPDK");
 	return NULL;
 }
-#endif
 
-/**
- * Initialization routine for run-time dependency on rdma-core.
- */
-RTE_INIT_PRIO(mlx5_glue_init, CLASS)
+static int
+mlx5_glue_dlopen(void)
 {
-	/* Initialize common log type. */
-	mlx5_common_logtype = rte_log_register("pmd.common.mlx5");
-	if (mlx5_common_logtype >= 0)
-		rte_log_set_level(mlx5_common_logtype, RTE_LOG_NOTICE);
-	/*
-	 * RDMAV_HUGEPAGES_SAFE tells ibv_fork_init() we intend to use
-	 * huge pages. Calling ibv_fork_init() during init allows
-	 * applications to use fork() safely for purposes other than
-	 * using this PMD, which is not supported in forked processes.
-	 */
-	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
-	/* Match the size of Rx completion entry to the size of a cacheline. */
-	if (RTE_CACHE_LINE_SIZE == 128)
-		setenv("MLX5_CQE_SIZE", "128", 0);
-	/*
-	 * MLX5_DEVICE_FATAL_CLEANUP tells ibv_destroy functions to
-	 * cleanup all the Verbs resources even when the device was removed.
-	 */
-	setenv("MLX5_DEVICE_FATAL_CLEANUP", "1", 1);
-	/* The glue initialization was done earlier by mlx5 common library. */
-#ifdef RTE_IBVERBS_LINK_DLOPEN
 	char glue_path[sizeof(RTE_EAL_PMD_PATH) - 1 + sizeof("-glue")];
 	void *handle = NULL;
 
@@ -303,7 +279,49 @@ RTE_INIT_PRIO(mlx5_glue_init, CLASS)
 		goto glue_error;
 	}
 	mlx5_glue = *sym;
-#endif /* RTE_IBVERBS_LINK_DLOPEN */
+	return 0;
+
+glue_error:
+	if (handle)
+		dlclose(handle);
+	return -1;
+}
+
+#endif
+
+RTE_INIT_PRIO(mlx5_log_init, LOG)
+{
+	mlx5_common_logtype = rte_log_register("pmd.common.mlx5");
+	if (mlx5_common_logtype >= 0)
+		rte_log_set_level(mlx5_common_logtype, RTE_LOG_NOTICE);
+}
+
+/**
+ * Initialization routine for run-time dependency on rdma-core.
+ */
+RTE_INIT_PRIO(mlx5_glue_init, CLASS)
+{
+	/*
+	 * RDMAV_HUGEPAGES_SAFE tells ibv_fork_init() we intend to use
+	 * huge pages. Calling ibv_fork_init() during init allows
+	 * applications to use fork() safely for purposes other than
+	 * using this PMD, which is not supported in forked processes.
+	 */
+	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
+	/* Match the size of Rx completion entry to the size of a cacheline. */
+	if (RTE_CACHE_LINE_SIZE == 128)
+		setenv("MLX5_CQE_SIZE", "128", 0);
+	/*
+	 * MLX5_DEVICE_FATAL_CLEANUP tells ibv_destroy functions to
+	 * cleanup all the Verbs resources even when the device was removed.
+	 */
+	setenv("MLX5_DEVICE_FATAL_CLEANUP", "1", 1);
+
+#ifdef MLX5_GLUE
+	if (mlx5_glue_dlopen() != 0)
+		goto glue_error;
+#endif
+
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	/* Glue structure must not contain any NULL pointers. */
 	{
@@ -321,11 +339,8 @@ RTE_INIT_PRIO(mlx5_glue_init, CLASS)
 	}
 	mlx5_glue->fork_init();
 	return;
+
 glue_error:
-#ifdef RTE_IBVERBS_LINK_DLOPEN
-	if (handle)
-		dlclose(handle);
-#endif
 	DRV_LOG(WARNING, "Cannot initialize MLX5 common due to missing"
 		" run-time dependency on rdma-core libraries (libibverbs,"
 		" libmlx5)");
