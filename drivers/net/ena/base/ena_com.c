@@ -532,11 +532,11 @@ static int ena_com_wait_and_process_admin_cq_polling(struct ena_comp_ctx *comp_c
 	timeout = ENA_GET_SYSTEM_TIMEOUT(admin_queue->completion_timeout);
 
 	while (1) {
-                ENA_SPINLOCK_LOCK(admin_queue->q_lock, flags);
-                ena_com_handle_admin_completion(admin_queue);
-                ENA_SPINLOCK_UNLOCK(admin_queue->q_lock, flags);
+		ENA_SPINLOCK_LOCK(admin_queue->q_lock, flags);
+		ena_com_handle_admin_completion(admin_queue);
+		ENA_SPINLOCK_UNLOCK(admin_queue->q_lock, flags);
 
-                if (comp_ctx->status != ENA_CMD_SUBMITTED)
+		if (comp_ctx->status != ENA_CMD_SUBMITTED)
 			break;
 
 		if (ENA_TIME_EXPIRE(timeout)) {
