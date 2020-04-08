@@ -169,6 +169,13 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 			   struct ena_com_dev_get_features_ctx *get_feat_ctx,
 			   bool *wd_state);
 static int ena_dev_configure(struct rte_eth_dev *dev);
+static void ena_tx_map_mbuf(struct ena_ring *tx_ring,
+	struct ena_tx_buffer *tx_info,
+	struct rte_mbuf *mbuf,
+	void **push_header,
+	uint16_t *header_len);
+static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf);
+static void ena_tx_cleanup(struct ena_ring *tx_ring);
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
 static uint16_t eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -2343,24 +2350,188 @@ static int ena_check_and_linearize_mbuf(struct ena_ring *tx_ring,
 	return rc;
 }
 
+static void ena_tx_map_mbuf(struct ena_ring *tx_ring,
+	struct ena_tx_buffer *tx_info,
+	struct rte_mbuf *mbuf,
+	void **push_header,
+	uint16_t *header_len)
+{
+	struct ena_com_buf *ena_buf;
+	uint16_t delta, seg_len, push_len;
+
+	delta = 0;
+	seg_len = mbuf->data_len;
+
+	tx_info->mbuf = mbuf;
+	ena_buf = tx_info->bufs;
+
+	if (tx_ring->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV) {
+		/*
+		 * Tx header might be (and will be in most cases) smaller than
+		 * tx_max_header_size. But it's not an issue to send more data
+		 * to the device, than actually needed if the mbuf size is
+		 * greater than tx_max_header_size.
+		 */
+		push_len = RTE_MIN(mbuf->pkt_len, tx_ring->tx_max_header_size);
+		*header_len = push_len;
+
+		if (likely(push_len <= seg_len)) {
+			/* If the push header is in the single segment, then
+			 * just point it to the 1st mbuf data.
+			 */
+			*push_header = rte_pktmbuf_mtod(mbuf, uint8_t *);
+		} else {
+			/* If the push header lays in the several segments, copy
+			 * it to the intermediate buffer.
+			 */
+			rte_pktmbuf_read(mbuf, 0, push_len,
+				tx_ring->push_buf_intermediate_buf);
+			*push_header = tx_ring->push_buf_intermediate_buf;
+			delta = push_len - seg_len;
+		}
+	} else {
+		*push_header = NULL;
+		*header_len = 0;
+		push_len = 0;
+	}
+
+	/* Process first segment taking into consideration pushed header */
+	if (seg_len > push_len) {
+		ena_buf->paddr = mbuf->buf_iova +
+				mbuf->data_off +
+				push_len;
+		ena_buf->len = seg_len - push_len;
+		ena_buf++;
+		tx_info->num_of_bufs++;
+	}
+
+	while ((mbuf = mbuf->next) != NULL) {
+		seg_len = mbuf->data_len;
+
+		/* Skip mbufs if whole data is pushed as a header */
+		if (unlikely(delta > seg_len)) {
+			delta -= seg_len;
+			continue;
+		}
+
+		ena_buf->paddr = mbuf->buf_iova + mbuf->data_off + delta;
+		ena_buf->len = seg_len - delta;
+		ena_buf++;
+		tx_info->num_of_bufs++;
+
+		delta = 0;
+	}
+}
+
+static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
+{
+	struct ena_tx_buffer *tx_info;
+	struct ena_com_tx_ctx ena_tx_ctx = { { 0 } };
+	uint16_t next_to_use;
+	uint16_t header_len;
+	uint16_t req_id;
+	void *push_header;
+	int nb_hw_desc;
+	int rc;
+
+	rc = ena_check_and_linearize_mbuf(tx_ring, mbuf);
+	if (unlikely(rc))
+		return rc;
+
+	next_to_use = tx_ring->next_to_use;
+
+	req_id = tx_ring->empty_tx_reqs[next_to_use];
+	tx_info = &tx_ring->tx_buffer_info[req_id];
+	tx_info->num_of_bufs = 0;
+
+	ena_tx_map_mbuf(tx_ring, tx_info, mbuf, &push_header, &header_len);
+
+	ena_tx_ctx.ena_bufs = tx_info->bufs;
+	ena_tx_ctx.push_header = push_header;
+	ena_tx_ctx.num_bufs = tx_info->num_of_bufs;
+	ena_tx_ctx.req_id = req_id;
+	ena_tx_ctx.header_len = header_len;
+
+	/* Set Tx offloads flags, if applicable */
+	ena_tx_mbuf_prepare(mbuf, &ena_tx_ctx, tx_ring->offloads,
+		tx_ring->disable_meta_caching);
+
+	if (unlikely(ena_com_is_doorbell_needed(tx_ring->ena_com_io_sq,
+			&ena_tx_ctx))) {
+		PMD_DRV_LOG(DEBUG,
+			"llq tx max burst size of queue %d achieved, writing doorbell to send burst\n",
+			tx_ring->id);
+		ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
+	}
+
+	/* prepare the packet's descriptors to dma engine */
+	rc = ena_com_prepare_tx(tx_ring->ena_com_io_sq,	&ena_tx_ctx,
+		&nb_hw_desc);
+	if (unlikely(rc)) {
+		++tx_ring->tx_stats.prepare_ctx_err;
+		return rc;
+	}
+
+	tx_info->tx_descs = nb_hw_desc;
+
+	tx_ring->tx_stats.cnt++;
+	tx_ring->tx_stats.bytes += mbuf->pkt_len;
+
+	tx_ring->next_to_use = ENA_IDX_NEXT_MASKED(next_to_use,
+		tx_ring->size_mask);
+
+	return 0;
+}
+
+static void ena_tx_cleanup(struct ena_ring *tx_ring)
+{
+	unsigned int cleanup_budget;
+	unsigned int total_tx_descs = 0;
+	uint16_t next_to_clean = tx_ring->next_to_clean;
+
+	cleanup_budget = RTE_MIN(tx_ring->ring_size / ENA_REFILL_THRESH_DIVIDER,
+		(unsigned int)ENA_REFILL_THRESH_PACKET);
+
+	while (likely(total_tx_descs < cleanup_budget)) {
+		struct rte_mbuf *mbuf;
+		struct ena_tx_buffer *tx_info;
+		uint16_t req_id;
+
+		if (ena_com_tx_comp_req_id_get(tx_ring->ena_com_io_cq, &req_id) != 0)
+			break;
+
+		if (unlikely(validate_tx_req_id(tx_ring, req_id) != 0))
+			break;
+
+		/* Get Tx info & store how many descs were processed  */
+		tx_info = &tx_ring->tx_buffer_info[req_id];
+
+		mbuf = tx_info->mbuf;
+		rte_pktmbuf_free(mbuf);
+
+		tx_info->mbuf = NULL;
+		tx_ring->empty_tx_reqs[next_to_clean] = req_id;
+
+		total_tx_descs += tx_info->tx_descs;
+
+		/* Put back descriptor to the ring for reuse */
+		next_to_clean = ENA_IDX_NEXT_MASKED(next_to_clean,
+			tx_ring->size_mask);
+	}
+
+	if (likely(total_tx_descs > 0)) {
+		/* acknowledge completion of sent packets */
+		tx_ring->next_to_clean = next_to_clean;
+		ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
+		ena_com_update_dev_comp_head(tx_ring->ena_com_io_cq);
+	}
+}
+
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts)
 {
 	struct ena_ring *tx_ring = (struct ena_ring *)(tx_queue);
-	uint16_t next_to_use = tx_ring->next_to_use;
-	uint16_t next_to_clean = tx_ring->next_to_clean;
-	struct rte_mbuf *mbuf;
-	uint16_t seg_len;
-	unsigned int cleanup_budget;
-	struct ena_com_tx_ctx ena_tx_ctx;
-	struct ena_tx_buffer *tx_info;
-	struct ena_com_buf *ebuf;
-	uint16_t rc, req_id, total_tx_descs = 0;
 	uint16_t sent_idx = 0;
-	uint16_t push_len = 0;
-	uint16_t delta = 0;
-	int nb_hw_desc;
-	uint32_t total_length;
 
 	/* Check adapter state */
 	if (unlikely(tx_ring->adapter->state != ENA_ADAPTER_STATE_RUNNING)) {
@@ -2373,115 +2544,13 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		nb_pkts);
 
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
-		mbuf = tx_pkts[sent_idx];
-		total_length = 0;
-
-		rc = ena_check_and_linearize_mbuf(tx_ring, mbuf);
-		if (unlikely(rc))
+		if (ena_xmit_mbuf(tx_ring, tx_pkts[sent_idx]))
 			break;
 
-		req_id = tx_ring->empty_tx_reqs[next_to_use];
-		tx_info = &tx_ring->tx_buffer_info[req_id];
-		tx_info->mbuf = mbuf;
-		tx_info->num_of_bufs = 0;
-		ebuf = tx_info->bufs;
-
-		/* Prepare TX context */
-		memset(&ena_tx_ctx, 0x0, sizeof(struct ena_com_tx_ctx));
-		memset(&ena_tx_ctx.ena_meta, 0x0,
-		       sizeof(struct ena_com_tx_meta));
-		ena_tx_ctx.ena_bufs = ebuf;
-		ena_tx_ctx.req_id = req_id;
-
-		delta = 0;
-		seg_len = mbuf->data_len;
-
-		if (tx_ring->tx_mem_queue_type ==
-				ENA_ADMIN_PLACEMENT_POLICY_DEV) {
-			push_len = RTE_MIN(mbuf->pkt_len,
-					   tx_ring->tx_max_header_size);
-			ena_tx_ctx.header_len = push_len;
-
-			if (likely(push_len <= seg_len)) {
-				/* If the push header is in the single segment,
-				 * then just point it to the 1st mbuf data.
-				 */
-				ena_tx_ctx.push_header =
-					rte_pktmbuf_mtod(mbuf, uint8_t *);
-			} else {
-				/* If the push header lays in the several
-				 * segments, copy it to the intermediate buffer.
-				 */
-				rte_pktmbuf_read(mbuf, 0, push_len,
-					tx_ring->push_buf_intermediate_buf);
-				ena_tx_ctx.push_header =
-					tx_ring->push_buf_intermediate_buf;
-				delta = push_len - seg_len;
-			}
-		} /* there's no else as we take advantage of memset zeroing */
-
-		/* Set TX offloads flags, if applicable */
-		ena_tx_mbuf_prepare(mbuf, &ena_tx_ctx, tx_ring->offloads,
-			tx_ring->disable_meta_caching);
-
-		rte_prefetch0(tx_pkts[ENA_IDX_ADD_MASKED(
-			sent_idx, 4, tx_ring->size_mask)]);
-
-		/* Process first segment taking into
-		 * consideration pushed header
-		 */
-		if (seg_len > push_len) {
-			ebuf->paddr = mbuf->buf_iova +
-				      mbuf->data_off +
-				      push_len;
-			ebuf->len = seg_len - push_len;
-			ebuf++;
-			tx_info->num_of_bufs++;
-		}
-		total_length += mbuf->data_len;
-
-		while ((mbuf = mbuf->next) != NULL) {
-			seg_len = mbuf->data_len;
-
-			/* Skip mbufs if whole data is pushed as a header */
-			if (unlikely(delta > seg_len)) {
-				delta -= seg_len;
-				continue;
-			}
-
-			ebuf->paddr = mbuf->buf_iova + mbuf->data_off + delta;
-			ebuf->len = seg_len - delta;
-			total_length += ebuf->len;
-			ebuf++;
-			tx_info->num_of_bufs++;
-
-			delta = 0;
-		}
-
-		ena_tx_ctx.num_bufs = tx_info->num_of_bufs;
-
-		if (ena_com_is_doorbell_needed(tx_ring->ena_com_io_sq,
-					       &ena_tx_ctx)) {
-			PMD_DRV_LOG(DEBUG, "llq tx max burst size of queue %d"
-				" achieved, writing doorbell to send burst\n",
-				tx_ring->id);
-			ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
-		}
-
-		/* prepare the packet's descriptors to dma engine */
-		rc = ena_com_prepare_tx(tx_ring->ena_com_io_sq,
-					&ena_tx_ctx, &nb_hw_desc);
-		if (unlikely(rc)) {
-			++tx_ring->tx_stats.prepare_ctx_err;
-			break;
-		}
-		tx_info->tx_descs = nb_hw_desc;
-
-		next_to_use = ENA_IDX_NEXT_MASKED(next_to_use,
-			tx_ring->size_mask);
-		tx_ring->tx_stats.cnt++;
-		tx_ring->tx_stats.bytes += total_length;
+		rte_prefetch0(tx_pkts[ENA_IDX_ADD_MASKED(sent_idx, 4,
+			tx_ring->size_mask)]);
 	}
+
 	tx_ring->tx_stats.available_desc =
 		ena_com_free_q_entries(tx_ring->ena_com_io_sq);
 
@@ -2490,46 +2559,12 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* ...let HW do its best :-) */
 		ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
 		tx_ring->tx_stats.doorbells++;
-		tx_ring->next_to_use = next_to_use;
 	}
 
-	/* Clear complete packets  */
-	while (ena_com_tx_comp_req_id_get(tx_ring->ena_com_io_cq, &req_id) >= 0) {
-		rc = validate_tx_req_id(tx_ring, req_id);
-		if (rc)
-			break;
+	ena_tx_cleanup(tx_ring);
 
-		/* Get Tx info & store how many descs were processed  */
-		tx_info = &tx_ring->tx_buffer_info[req_id];
-		total_tx_descs += tx_info->tx_descs;
-
-		/* Free whole mbuf chain  */
-		mbuf = tx_info->mbuf;
-		rte_pktmbuf_free(mbuf);
-		tx_info->mbuf = NULL;
-
-		/* Put back descriptor to the ring for reuse */
-		tx_ring->empty_tx_reqs[next_to_clean] = req_id;
-		next_to_clean = ENA_IDX_NEXT_MASKED(next_to_clean,
-			tx_ring->size_mask);
-		cleanup_budget =
-			RTE_MIN(tx_ring->ring_size / ENA_REFILL_THRESH_DIVIDER,
-			(unsigned int)ENA_REFILL_THRESH_PACKET);
-
-		/* If too many descs to clean, leave it for another run */
-		if (unlikely(total_tx_descs > cleanup_budget))
-			break;
-	}
 	tx_ring->tx_stats.available_desc =
 		ena_com_free_q_entries(tx_ring->ena_com_io_sq);
-
-	if (total_tx_descs > 0) {
-		/* acknowledge completion of sent packets */
-		tx_ring->next_to_clean = next_to_clean;
-		ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
-		ena_com_update_dev_comp_head(tx_ring->ena_com_io_cq);
-	}
-
 	tx_ring->tx_stats.tx_poll++;
 
 	return sent_idx;
