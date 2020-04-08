@@ -195,6 +195,8 @@ static struct rte_mbuf *ena_rx_mbuf(struct ena_ring *rx_ring,
 				    uint8_t offset);
 static uint16_t eth_ena_recv_pkts(void *rx_queue,
 				  struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+static int ena_add_single_rx_desc(struct ena_com_io_sq *io_sq,
+				  struct rte_mbuf *mbuf, uint16_t id);
 static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count);
 static void ena_init_rings(struct ena_adapter *adapter,
 			   bool disable_meta_caching);
@@ -1414,6 +1416,24 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int ena_add_single_rx_desc(struct ena_com_io_sq *io_sq,
+				  struct rte_mbuf *mbuf, uint16_t id)
+{
+	struct ena_com_buf ebuf;
+	int rc;
+
+	/* prepare physical address for DMA transaction */
+	ebuf.paddr = mbuf->buf_iova + RTE_PKTMBUF_HEADROOM;
+	ebuf.len = mbuf->buf_len - RTE_PKTMBUF_HEADROOM;
+
+	/* pass resource to device */
+	rc = ena_com_add_single_rx_desc(io_sq, &ebuf, id);
+	if (unlikely(rc != 0))
+		PMD_DRV_LOG(WARNING, "failed adding rx desc\n");
+
+	return rc;
+}
+
 static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 {
 	unsigned int i;
@@ -1441,7 +1461,6 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 
 	for (i = 0; i < count; i++) {
 		struct rte_mbuf *mbuf = mbufs[i];
-		struct ena_com_buf ebuf;
 		struct ena_rx_buffer *rx_info;
 
 		if (likely((i + 4) < count))
@@ -1454,16 +1473,10 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 
 		rx_info = &rxq->rx_buffer_info[req_id];
 
-		/* prepare physical address for DMA transaction */
-		ebuf.paddr = mbuf->buf_iova + RTE_PKTMBUF_HEADROOM;
-		ebuf.len = mbuf->buf_len - RTE_PKTMBUF_HEADROOM;
-		/* pass resource to device */
-		rc = ena_com_add_single_rx_desc(rxq->ena_com_io_sq,
-						&ebuf, req_id);
-		if (unlikely(rc)) {
-			PMD_DRV_LOG(WARNING, "failed adding rx desc\n");
+		rc = ena_add_single_rx_desc(rxq->ena_com_io_sq, mbuf, req_id);
+		if (unlikely(rc != 0))
 			break;
-		}
+
 		rx_info->mbuf = mbuf;
 		next_to_use = ENA_IDX_NEXT_MASKED(next_to_use, rxq->size_mask);
 	}
@@ -2079,6 +2092,7 @@ static struct rte_mbuf *ena_rx_mbuf(struct ena_ring *rx_ring,
 	struct rte_mbuf *mbuf;
 	struct rte_mbuf *mbuf_head;
 	struct ena_rx_buffer *rx_info;
+	int rc;
 	uint16_t ntc, len, req_id, buf = 0;
 
 	if (unlikely(descs == 0))
@@ -2121,13 +2135,44 @@ static struct rte_mbuf *ena_rx_mbuf(struct ena_ring *rx_ring,
 		rx_info = &rx_ring->rx_buffer_info[req_id];
 		RTE_ASSERT(rx_info->mbuf != NULL);
 
-		/* Create an mbuf chain. */
-		mbuf->next = rx_info->mbuf;
-		mbuf = mbuf->next;
+		if (unlikely(len == 0)) {
+			/*
+			 * Some devices can pass descriptor with the length 0.
+			 * To avoid confusion, the PMD is simply putting the
+			 * descriptor back, as it was never used. We'll avoid
+			 * mbuf allocation that way.
+			 */
+			rc = ena_add_single_rx_desc(rx_ring->ena_com_io_sq,
+				rx_info->mbuf, req_id);
+			if (unlikely(rc != 0)) {
+				/* Free the mbuf in case of an error. */
+				rte_mbuf_raw_free(rx_info->mbuf);
+			} else {
+				/*
+				 * If there was no error, just exit the loop as
+				 * 0 length descriptor is always the last one.
+				 */
+				break;
+			}
+		} else {
+			/* Create an mbuf chain. */
+			mbuf->next = rx_info->mbuf;
+			mbuf = mbuf->next;
 
-		ena_init_rx_mbuf(mbuf, len);
-		mbuf_head->pkt_len += len;
+			ena_init_rx_mbuf(mbuf, len);
+			mbuf_head->pkt_len += len;
+		}
 
+		/*
+		 * Mark the descriptor as depleted and perform necessary
+		 * cleanup.
+		 * This code will execute in two cases:
+		 *  1. Descriptor len was greater than 0 - normal situation.
+		 *  2. Descriptor len was 0 and we failed to add the descriptor
+		 *     to the device. In that situation, we should try to add
+		 *     the mbuf again in the populate routine and mark the
+		 *     descriptor as used up by the device.
+		 */
 		rx_info->mbuf = NULL;
 		rx_ring->empty_rx_reqs[ntc] = req_id;
 		ntc = ENA_IDX_NEXT_MASKED(ntc, rx_ring->size_mask);
