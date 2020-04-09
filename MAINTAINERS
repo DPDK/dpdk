@@ -1469,6 +1469,7 @@ F: app/test/Makefile
 F: app/test/autotest*
 F: app/test/commands.c
 F: app/test/get-coremask.sh
+F: app/test/has-hugepage.sh
 F: app/test/packet_burst_generator.c
 F: app/test/packet_burst_generator.h
 F: app/test/process.h

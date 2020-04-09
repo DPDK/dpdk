@@ -396,15 +396,7 @@ dpdk_test = executable('dpdk-test',
 	install_rpath: driver_install_path,
 	install: true)
 
-has_hugepage = true
-if is_linux
-	check_hugepage = run_command('cat',
-				     '/proc/sys/vm/nr_hugepages')
-	if (check_hugepage.returncode() != 0 or
-	    check_hugepage.stdout().strip() == '0')
-		has_hugepage = false
-	endif
-endif
+has_hugepage = run_command('has-hugepage.sh').stdout().strip() != '0'
 message('hugepage availability: @0@'.format(has_hugepage))
 
 # some perf tests (eg: memcpy perf autotest)take very long
