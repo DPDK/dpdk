@@ -22,8 +22,6 @@
 # define TEST_TRACE_FAILURE(_file, _line, _func)
 #endif
 
-#define RTE_TEST_TRACE_FAILURE TEST_TRACE_FAILURE
-
 #include <rte_test.h>
 
 #define TEST_ASSERT RTE_TEST_ASSERT
