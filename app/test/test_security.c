@@ -76,6 +76,19 @@
 #define MOCK_TEST_ASSERT_EQUAL(fail_counter, a, b, msg, ...)	\
 	MOCK_TEST_ASSERT(fail_counter, (a) == (b), msg, ##__VA_ARGS__)
 
+/**
+ * Verify not null condition inside mocked up function.
+ * Mockup function cannot return a test error, so the failure
+ * of assertion increases counter and print logs.
+ * The counter can be verified later to check if test case should fail.
+ *
+ * @param   fail_counter	fail counter
+ * @param   val	value expected not to be NULL
+ * @param   msg	printf style formatting string for custom message
+ */
+#define MOCK_TEST_ASSERT_NOT_NULL(fail_counter, val, msg, ...)	\
+	MOCK_TEST_ASSERT(fail_counter, (val) != NULL, msg, ##__VA_ARGS__)
+
 
 /**
  * Verify if parameter of the mocked up function matches expected value.
@@ -100,6 +113,15 @@
  */
 #define MOCK_TEST_ASSERT_POINTER_PARAMETER(data, parameter)	\
 	MOCK_TEST_ASSERT_PARAMETER(data, parameter, "%p")
+
+/**
+ * Wrap for MOCK_TEST_ASSERT_PARAMETER macro for uint64_t type parameters.
+ *
+ * @param   data	structure with expected values
+ * @param   parameter	name of the parameter (both field and parameter name)
+ */
+#define MOCK_TEST_ASSERT_U64_PARAMETER(data, parameter)	\
+	MOCK_TEST_ASSERT_PARAMETER(data, parameter, "%" PRIu64)
 
 /**
  * Verify number of calls of the mocked up function
@@ -382,6 +404,43 @@ mock_set_pkt_metadata(void *device,
 }
 
 /**
+ * get_userdata mockup
+ *
+ * Verified parameters: device, md.
+ * The userdata parameter works as an output parameter, so a passed address
+ * is verified not to be NULL and filled with userdata stored in structure.
+ */
+static struct mock_get_userdata_data {
+	void *device;
+	uint64_t md;
+	void *userdata;
+
+	int ret;
+
+	int called;
+	int failed;
+} mock_get_userdata_exp = {NULL, 0UL, NULL, 0, 0, 0};
+
+static int
+mock_get_userdata(void *device,
+		uint64_t md,
+		void **userdata)
+{
+	mock_get_userdata_exp.called++;
+
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_get_userdata_exp, device);
+	MOCK_TEST_ASSERT_U64_PARAMETER(mock_get_userdata_exp, md);
+
+	MOCK_TEST_ASSERT_NOT_NULL(mock_get_userdata_exp.failed,
+			userdata,
+			"Expecting parameter userdata not to be NULL but it's %p",
+			userdata);
+	*userdata = mock_get_userdata_exp.userdata;
+
+	return mock_get_userdata_exp.ret;
+}
+
+/**
  * empty_ops
  *
  * is an empty security operations set (all function pointers set to NULL)
@@ -400,6 +459,7 @@ struct rte_security_ops mock_ops = {
 	.session_stats_get = mock_session_stats_get,
 	.session_destroy = mock_session_destroy,
 	.set_pkt_metadata = mock_set_pkt_metadata,
+	.get_userdata = mock_get_userdata,
 };
 
 
@@ -495,6 +555,7 @@ ut_setup(void)
 	mock_session_stats_get_exp.called = 0;
 	mock_session_destroy_exp.called = 0;
 	mock_set_pkt_metadata_exp.called = 0;
+	mock_get_userdata_exp.called = 0;
 
 	mock_session_create_exp.failed = 0;
 	mock_session_update_exp.failed = 0;
@@ -502,6 +563,7 @@ ut_setup(void)
 	mock_session_stats_get_exp.failed = 0;
 	mock_session_destroy_exp.failed = 0;
 	mock_set_pkt_metadata_exp.failed = 0;
+	mock_get_userdata_exp.failed = 0;
 
 	return TEST_SUCCESS;
 }
@@ -1479,6 +1541,124 @@ test_set_pkt_metadata_success(void)
 
 
 /**
+ * rte_security_get_userdata tests
+ */
+
+/**
+ * Test execution of rte_security_get_userdata with NULL instance
+ */
+static int
+test_get_userdata_inv_context(void)
+{
+#ifdef RTE_DEBUG
+	uint64_t md = 0xDEADBEEF;
+
+	void *ret = rte_security_get_userdata(NULL, md);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_get_userdata,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_get_userdata_exp, 0);
+
+	return TEST_SUCCESS;
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
+/**
+ * Test execution of rte_security_get_userdata with invalid
+ * security operations structure (NULL)
+ */
+static int
+test_get_userdata_inv_context_ops(void)
+{
+#ifdef RTE_DEBUG
+	struct security_unittest_params *ut_params = &unittest_params;
+	uint64_t md = 0xDEADBEEF;
+	ut_params->ctx.ops = NULL;
+
+	void *ret = rte_security_get_userdata(&ut_params->ctx, md);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_get_userdata,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_get_userdata_exp, 0);
+
+	return TEST_SUCCESS;
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
+/**
+ * Test execution of rte_security_get_userdata with empty
+ * security operations
+ */
+static int
+test_get_userdata_inv_context_ops_fun(void)
+{
+#ifdef RTE_DEBUG
+	struct security_unittest_params *ut_params = &unittest_params;
+	uint64_t md = 0xDEADBEEF;
+	ut_params->ctx.ops = &empty_ops;
+
+	void *ret = rte_security_get_userdata(&ut_params->ctx, md);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_get_userdata,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_get_userdata_exp, 0);
+
+	return TEST_SUCCESS;
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
+/**
+ * Test execution of rte_security_get_userdata when get_userdata
+ * security operation fails
+ */
+static int
+test_get_userdata_ops_failure(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	uint64_t md = 0xDEADBEEF;
+	void *userdata = (void *)0x7E577E57;
+
+	mock_get_userdata_exp.device = NULL;
+	mock_get_userdata_exp.md = md;
+	mock_get_userdata_exp.userdata = userdata;
+	mock_get_userdata_exp.ret = -1;
+
+	void *ret = rte_security_get_userdata(&ut_params->ctx, md);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_get_userdata,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_get_userdata_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_get_userdata in successful execution path
+ */
+static int
+test_get_userdata_success(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	uint64_t md = 0xDEADBEEF;
+	void *userdata = (void *)0x7E577E57;
+
+	mock_get_userdata_exp.device = NULL;
+	mock_get_userdata_exp.md = md;
+	mock_get_userdata_exp.userdata = userdata;
+	mock_get_userdata_exp.ret = 0;
+
+	void *ret = rte_security_get_userdata(&ut_params->ctx, md);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_get_userdata,
+			ret, userdata, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_get_userdata_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -1567,6 +1747,17 @@ static struct unit_test_suite security_testsuite  = {
 				test_set_pkt_metadata_ops_failure),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_set_pkt_metadata_success),
+
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_get_userdata_inv_context),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_get_userdata_inv_context_ops),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_get_userdata_inv_context_ops_fun),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_get_userdata_ops_failure),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_get_userdata_success),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
