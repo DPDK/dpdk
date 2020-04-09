@@ -293,6 +293,36 @@ mock_session_get_size(void *device)
 }
 
 /**
+ * session_stats_get mockup
+ *
+ * Verified parameters: device, sess, stats.
+ */
+static struct mock_session_stats_get_data {
+	void *device;
+	struct rte_security_session *sess;
+	struct rte_security_stats *stats;
+
+	int ret;
+
+	int called;
+	int failed;
+} mock_session_stats_get_exp = {NULL, NULL, NULL, 0, 0, 0};
+
+static int
+mock_session_stats_get(void *device,
+		struct rte_security_session *sess,
+		struct rte_security_stats *stats)
+{
+	mock_session_stats_get_exp.called++;
+
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_stats_get_exp, device);
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_stats_get_exp, sess);
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_stats_get_exp, stats);
+
+	return mock_session_stats_get_exp.ret;
+}
+
+/**
  * session_destroy mockup
  *
  * Verified parameters: device, sess.
@@ -334,6 +364,7 @@ struct rte_security_ops mock_ops = {
 	.session_create = mock_session_create,
 	.session_update = mock_session_update,
 	.session_get_size = mock_session_get_size,
+	.session_stats_get = mock_session_stats_get,
 	.session_destroy = mock_session_destroy,
 };
 
@@ -427,11 +458,13 @@ ut_setup(void)
 	mock_session_create_exp.called = 0;
 	mock_session_update_exp.called = 0;
 	mock_session_get_size_exp.called = 0;
+	mock_session_stats_get_exp.called = 0;
 	mock_session_destroy_exp.called = 0;
 
 	mock_session_create_exp.failed = 0;
 	mock_session_update_exp.failed = 0;
 	mock_session_get_size_exp.failed = 0;
+	mock_session_stats_get_exp.failed = 0;
 	mock_session_destroy_exp.failed = 0;
 
 	return TEST_SUCCESS;
@@ -978,6 +1011,133 @@ test_session_get_size_success(void)
 
 
 /**
+ * rte_security_session_stats_get tests
+ */
+
+/**
+ * Test execution of rte_security_session_stats_get with NULL instance
+ */
+static int
+test_session_stats_get_inv_context(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_stats stats;
+
+	int ret = rte_security_session_stats_get(NULL, ut_params->sess, &stats);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_stats_get,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_stats_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_stats_get with invalid
+ * security operations structure (NULL)
+ */
+static int
+test_session_stats_get_inv_context_ops(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_stats stats;
+	ut_params->ctx.ops = NULL;
+
+	int ret = rte_security_session_stats_get(&ut_params->ctx,
+			ut_params->sess, &stats);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_stats_get,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_stats_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_stats_get with empty
+ * security operations
+ */
+static int
+test_session_stats_get_inv_context_ops_fun(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_stats stats;
+	ut_params->ctx.ops = &empty_ops;
+
+	int ret = rte_security_session_stats_get(&ut_params->ctx,
+			ut_params->sess, &stats);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_stats_get,
+			ret, -ENOTSUP, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_stats_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_stats_get with NULL stats parameter
+ */
+static int
+test_session_stats_get_inv_stats(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	int ret = rte_security_session_stats_get(&ut_params->ctx,
+			ut_params->sess, NULL);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_stats_get,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_stats_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_stats_get when session_stats_get
+ * security operation fails
+ */
+static int
+test_session_stats_get_ops_failure(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_stats stats;
+
+	mock_session_stats_get_exp.device = NULL;
+	mock_session_stats_get_exp.sess = ut_params->sess;
+	mock_session_stats_get_exp.stats = &stats;
+	mock_session_stats_get_exp.ret = -1;
+
+	int ret = rte_security_session_stats_get(&ut_params->ctx,
+			ut_params->sess, &stats);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_stats_get,
+			ret, -1, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_stats_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_stats_get in successful execution
+ * path
+ */
+static int
+test_session_stats_get_success(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_stats stats;
+
+	mock_session_stats_get_exp.device = NULL;
+	mock_session_stats_get_exp.sess = ut_params->sess;
+	mock_session_stats_get_exp.stats = &stats;
+	mock_session_stats_get_exp.ret = 0;
+
+	int ret = rte_security_session_stats_get(&ut_params->ctx,
+			ut_params->sess, &stats);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_stats_get,
+			ret, 0, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_stats_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -1027,6 +1187,19 @@ static struct unit_test_suite security_testsuite  = {
 				test_session_get_size_ops_failure),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_session_get_size_success),
+
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_stats_get_inv_context),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_stats_get_inv_context_ops),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_stats_get_inv_context_ops_fun),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_stats_get_inv_stats),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_stats_get_ops_failure),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_stats_get_success),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
