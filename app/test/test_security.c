@@ -239,6 +239,36 @@ mock_session_create(void *device,
 }
 
 /**
+ * session_update mockup
+ *
+ * Verified parameters: device, sess, conf.
+ */
+static struct mock_session_update_data {
+	void *device;
+	struct rte_security_session *sess;
+	struct rte_security_session_conf *conf;
+
+	int ret;
+
+	int called;
+	int failed;
+} mock_session_update_exp = {NULL, NULL, NULL, 0, 0, 0};
+
+static int
+mock_session_update(void *device,
+		struct rte_security_session *sess,
+		struct rte_security_session_conf *conf)
+{
+	mock_session_update_exp.called++;
+
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_update_exp, device);
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_update_exp, sess);
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_update_exp, conf);
+
+	return mock_session_update_exp.ret;
+}
+
+/**
  * session_destroy mockup
  *
  * Verified parameters: device, sess.
@@ -278,6 +308,7 @@ struct rte_security_ops empty_ops = { NULL };
  */
 struct rte_security_ops mock_ops = {
 	.session_create = mock_session_create,
+	.session_update = mock_session_update,
 	.session_destroy = mock_session_destroy,
 };
 
@@ -300,6 +331,7 @@ static struct security_testsuite_params {
 /**
  * struct security_unittest_params defines parameters initialized
  * for every test case. The parameters are initialized in ut_setup
+ * or ut_setup_with_session (depending on the testcase)
  * and released in ut_teardown.
  * The instance of this structure is stored in unittest_params variable.
  */
@@ -368,9 +400,11 @@ ut_setup(void)
 	ut_params->sess = NULL;
 
 	mock_session_create_exp.called = 0;
+	mock_session_update_exp.called = 0;
 	mock_session_destroy_exp.called = 0;
 
 	mock_session_create_exp.failed = 0;
+	mock_session_update_exp.failed = 0;
 	mock_session_destroy_exp.failed = 0;
 
 	return TEST_SUCCESS;
@@ -381,6 +415,7 @@ ut_setup(void)
  * created with rte_security_session_create and stored in test case parameters.
  * It's used both to release sessions created in test cases' bodies
  * which are assigned to ut_params->sess
+ * as well as sessions created in ut_setup_with_session.
  */
 static int
 destroy_session_with_check(void)
@@ -414,6 +449,46 @@ static void
 ut_teardown(void)
 {
 	destroy_session_with_check();
+}
+
+/**
+ * ut_setup_with_session initializes test case parameters by
+ * - calling standard ut_setup,
+ * - creating a session that can be used in test case.
+ */
+static int
+ut_setup_with_session(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct security_testsuite_params *ts_params = &testsuite_params;
+	struct rte_security_session *sess;
+
+	int ret = ut_setup();
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	mock_session_create_exp.device = NULL;
+	mock_session_create_exp.conf = &ut_params->conf;
+	mock_session_create_exp.mp = ts_params->session_mpool;
+	mock_session_create_exp.ret = 0;
+
+	sess = rte_security_session_create(&ut_params->ctx, &ut_params->conf,
+			ts_params->session_mpool);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_NOT_NULL(rte_security_session_create,
+			sess);
+	TEST_ASSERT_EQUAL(sess, mock_session_create_exp.sess,
+			"Expecting session_create to be called with %p sess"
+			" parameter, but it's called %p sess parameter",
+			sess, mock_session_create_exp.sess);
+	TEST_ASSERT_MOCK_CALLS(mock_session_create_exp, 1);
+
+	/*
+	 * Store created session in test case parameters, so it can be released
+	 * after test case in ut_teardown by destroy_session_with_check.
+	 */
+	ut_params->sess = sess;
+
+	return TEST_SUCCESS;
 }
 
 
@@ -643,6 +718,145 @@ test_session_create_success(void)
 
 
 /**
+ * rte_security_session_update tests
+ */
+
+/**
+ * Test execution of rte_security_session_update with NULL instance
+ */
+static int
+test_session_update_inv_context(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	int ret = rte_security_session_update(NULL, ut_params->sess,
+			&ut_params->conf);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_update,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_update_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_update with invalid
+ * security operations structure (NULL)
+ */
+static int
+test_session_update_inv_context_ops(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	ut_params->ctx.ops = NULL;
+
+	int ret = rte_security_session_update(&ut_params->ctx, ut_params->sess,
+			&ut_params->conf);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_update,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_update_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_update with empty
+ * security operations
+ */
+static int
+test_session_update_inv_context_ops_fun(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	ut_params->ctx.ops = &empty_ops;
+
+	int ret = rte_security_session_update(&ut_params->ctx, ut_params->sess,
+			&ut_params->conf);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_update,
+			ret, -ENOTSUP, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_update_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_update with NULL conf parameter
+ */
+static int
+test_session_update_inv_configuration(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	int ret = rte_security_session_update(&ut_params->ctx, ut_params->sess,
+			NULL);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_update,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_update_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_update with NULL sess parameter
+ */
+static int
+test_session_update_inv_session(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	int ret = rte_security_session_update(&ut_params->ctx, NULL,
+			&ut_params->conf);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_update,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_update_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_update when session_update
+ * security operation fails
+ */
+static int
+test_session_update_ops_failure(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	mock_session_update_exp.device = NULL;
+	mock_session_update_exp.sess = ut_params->sess;
+	mock_session_update_exp.conf = &ut_params->conf;
+	mock_session_update_exp.ret = -1;	/* Return failure status. */
+
+	int ret = rte_security_session_update(&ut_params->ctx, ut_params->sess,
+			&ut_params->conf);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_update,
+			ret, -1, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_update_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_update in successful execution path
+ */
+static int
+test_session_update_success(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	mock_session_update_exp.device = NULL;
+	mock_session_update_exp.sess = ut_params->sess;
+	mock_session_update_exp.conf = &ut_params->conf;
+	mock_session_update_exp.ret = 0;	/* Return success status. */
+
+	int ret = rte_security_session_update(&ut_params->ctx, ut_params->sess,
+			&ut_params->conf);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_update,
+			ret, 0, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_update_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -666,6 +880,21 @@ static struct unit_test_suite security_testsuite  = {
 				test_session_create_ops_failure),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_session_create_success),
+
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_update_inv_context),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_update_inv_context_ops),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_update_inv_context_ops_fun),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_update_inv_configuration),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_update_inv_session),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_update_ops_failure),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_update_success),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
