@@ -4279,8 +4279,15 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		buf->entries = 1;
 		buf->entry[0].pattern = (void *)(uintptr_t)items;
 	}
-	/* Reset device flow index to 0. */
-	priv->flow_idx = 0;
+	/*
+	 * Record the start index when there is a nested call. All sub-flows
+	 * need to be translated before another calling.
+	 * No need to use ping-pong buffer to save memory here.
+	 */
+	if (priv->flow_idx) {
+		MLX5_ASSERT(!priv->flow_nested_idx);
+		priv->flow_nested_idx = priv->flow_idx;
+	}
 	for (i = 0; i < buf->entries; ++i) {
 		/*
 		 * The splitter may create multiple dev_flows,
@@ -4340,23 +4347,27 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 	if (list)
 		TAILQ_INSERT_TAIL(list, flow, next);
 	flow_rxq_flags_set(dev, flow);
+	/* Nested flow creation index recovery. */
+	priv->flow_idx = priv->flow_nested_idx;
+	if (priv->flow_nested_idx)
+		priv->flow_nested_idx = 0;
 	return flow;
-error_before_flow:
-	if (hairpin_id)
-		mlx5_flow_id_release(priv->sh->flow_id_pool,
-				     hairpin_id);
-	return NULL;
 error:
 	MLX5_ASSERT(flow);
-	flow_mreg_del_copy_action(dev, flow);
 	ret = rte_errno; /* Save rte_errno before cleanup. */
-	if (flow->hairpin_flow_id)
-		mlx5_flow_id_release(priv->sh->flow_id_pool,
-				     flow->hairpin_flow_id);
-	MLX5_ASSERT(flow);
+	flow_mreg_del_copy_action(dev, flow);
 	flow_drv_destroy(dev, flow);
 	rte_free(flow);
 	rte_errno = ret; /* Restore rte_errno. */
+error_before_flow:
+	ret = rte_errno;
+	if (hairpin_id)
+		mlx5_flow_id_release(priv->sh->flow_id_pool,
+				     hairpin_id);
+	rte_errno = ret;
+	priv->flow_idx = priv->flow_nested_idx;
+	if (priv->flow_nested_idx)
+		priv->flow_nested_idx = 0;
 	return NULL;
 }
 
@@ -4606,6 +4617,9 @@ mlx5_flow_alloc_intermediate(struct rte_eth_dev *dev)
 	if (!priv->inter_flows)
 		priv->inter_flows = rte_calloc(__func__, MLX5_NUM_MAX_DEV_FLOWS,
 					       sizeof(struct mlx5_flow), 0);
+	/* Reset the index. */
+	priv->flow_idx = 0;
+	priv->flow_nested_idx = 0;
 }
 
 /**

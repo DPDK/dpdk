@@ -543,6 +543,7 @@ struct mlx5_priv {
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
 	void *inter_flows; /* Intermediate resources for flow creation. */
 	int flow_idx; /* Intermediate device flow index. */
+	int flow_nested_idx; /* Intermediate device flow index, nested. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
 	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */

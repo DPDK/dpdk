@@ -1810,7 +1810,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	int err;
 	int idx;
 
-	for (idx = priv->flow_idx - 1; idx >= 0; idx--) {
+	for (idx = priv->flow_idx - 1; idx >= priv->flow_nested_idx; idx--) {
 		dev_flow = &((struct mlx5_flow *)priv->inter_flows)[idx];
 		handle = dev_flow->handle;
 		if (handle->act_flags & MLX5_FLOW_ACTION_DROP) {

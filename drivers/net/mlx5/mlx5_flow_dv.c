@@ -8021,7 +8021,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	int err;
 	int idx;
 
-	for (idx = priv->flow_idx - 1; idx >= 0; idx--) {
+	for (idx = priv->flow_idx - 1; idx >= priv->flow_nested_idx; idx--) {
 		dev_flow = &((struct mlx5_flow *)priv->inter_flows)[idx];
 		dv = &dev_flow->dv;
 		dh = dev_flow->handle;
