@@ -349,6 +349,39 @@ mock_session_destroy(void *device, struct rte_security_session *sess)
 }
 
 /**
+ * set_pkt_metadata mockup
+ *
+ * Verified parameters: device, sess, m, params.
+ */
+static struct mock_set_pkt_metadata_data {
+	void *device;
+	struct rte_security_session *sess;
+	struct rte_mbuf *m;
+	void *params;
+
+	int ret;
+
+	int called;
+	int failed;
+} mock_set_pkt_metadata_exp = {NULL, NULL, NULL, NULL, 0, 0, 0};
+
+static int
+mock_set_pkt_metadata(void *device,
+		struct rte_security_session *sess,
+		struct rte_mbuf *m,
+		void *params)
+{
+	mock_set_pkt_metadata_exp.called++;
+
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_set_pkt_metadata_exp, device);
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_set_pkt_metadata_exp, sess);
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_set_pkt_metadata_exp, m);
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_set_pkt_metadata_exp, params);
+
+	return mock_set_pkt_metadata_exp.ret;
+}
+
+/**
  * empty_ops
  *
  * is an empty security operations set (all function pointers set to NULL)
@@ -366,6 +399,7 @@ struct rte_security_ops mock_ops = {
 	.session_get_size = mock_session_get_size,
 	.session_stats_get = mock_session_stats_get,
 	.session_destroy = mock_session_destroy,
+	.set_pkt_metadata = mock_set_pkt_metadata,
 };
 
 
@@ -460,12 +494,14 @@ ut_setup(void)
 	mock_session_get_size_exp.called = 0;
 	mock_session_stats_get_exp.called = 0;
 	mock_session_destroy_exp.called = 0;
+	mock_set_pkt_metadata_exp.called = 0;
 
 	mock_session_create_exp.failed = 0;
 	mock_session_update_exp.failed = 0;
 	mock_session_get_size_exp.failed = 0;
 	mock_session_stats_get_exp.failed = 0;
 	mock_session_destroy_exp.failed = 0;
+	mock_set_pkt_metadata_exp.failed = 0;
 
 	return TEST_SUCCESS;
 }
@@ -1291,6 +1327,158 @@ test_session_destroy_success(void)
 
 
 /**
+ * rte_security_set_pkt_metadata tests
+ */
+
+/**
+ * Test execution of rte_security_set_pkt_metadata with NULL instance
+ */
+static int
+test_set_pkt_metadata_inv_context(void)
+{
+#ifdef RTE_DEBUG
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_mbuf m;
+	int params;
+
+	int ret = rte_security_set_pkt_metadata(NULL, ut_params->sess, &m,
+			&params);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_set_pkt_metadata,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_set_pkt_metadata_exp, 0);
+
+	return TEST_SUCCESS;
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
+/**
+ * Test execution of rte_security_set_pkt_metadata with invalid
+ * security operations structure (NULL)
+ */
+static int
+test_set_pkt_metadata_inv_context_ops(void)
+{
+#ifdef RTE_DEBUG
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_mbuf m;
+	int params;
+	ut_params->ctx.ops = NULL;
+
+	int ret = rte_security_set_pkt_metadata(&ut_params->ctx,
+			ut_params->sess, &m, &params);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_set_pkt_metadata,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_set_pkt_metadata_exp, 0);
+
+	return TEST_SUCCESS;
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
+/**
+ * Test execution of rte_security_set_pkt_metadata with empty
+ * security operations
+ */
+static int
+test_set_pkt_metadata_inv_context_ops_fun(void)
+{
+#ifdef RTE_DEBUG
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_mbuf m;
+	int params;
+	ut_params->ctx.ops = &empty_ops;
+
+	int ret = rte_security_set_pkt_metadata(&ut_params->ctx,
+			ut_params->sess, &m, &params);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_set_pkt_metadata,
+			ret, -ENOTSUP, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_set_pkt_metadata_exp, 0);
+
+	return TEST_SUCCESS;
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
+/**
+ * Test execution of rte_security_set_pkt_metadata with NULL sess parameter
+ */
+static int
+test_set_pkt_metadata_inv_session(void)
+{
+#ifdef RTE_DEBUG
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_mbuf m;
+	int params;
+
+	int ret = rte_security_set_pkt_metadata(&ut_params->ctx, NULL,
+			&m, &params);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_set_pkt_metadata,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_set_pkt_metadata_exp, 0);
+
+	return TEST_SUCCESS;
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
+/**
+ * Test execution of rte_security_set_pkt_metadata when set_pkt_metadata
+ * security operation fails
+ */
+static int
+test_set_pkt_metadata_ops_failure(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_mbuf m;
+	int params;
+
+	mock_set_pkt_metadata_exp.device = NULL;
+	mock_set_pkt_metadata_exp.sess = ut_params->sess;
+	mock_set_pkt_metadata_exp.m = &m;
+	mock_set_pkt_metadata_exp.params = &params;
+	mock_set_pkt_metadata_exp.ret = -1;
+
+	int ret = rte_security_set_pkt_metadata(&ut_params->ctx,
+			ut_params->sess, &m, &params);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_set_pkt_metadata,
+			ret, -1, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_set_pkt_metadata_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_set_pkt_metadata in successful execution path
+ */
+static int
+test_set_pkt_metadata_success(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_mbuf m;
+	int params;
+
+	mock_set_pkt_metadata_exp.device = NULL;
+	mock_set_pkt_metadata_exp.sess = ut_params->sess;
+	mock_set_pkt_metadata_exp.m = &m;
+	mock_set_pkt_metadata_exp.params = &params;
+	mock_set_pkt_metadata_exp.ret = 0;
+
+	int ret = rte_security_set_pkt_metadata(&ut_params->ctx,
+			ut_params->sess, &m, &params);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_set_pkt_metadata,
+			ret, 0, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_set_pkt_metadata_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -1366,6 +1554,19 @@ static struct unit_test_suite security_testsuite  = {
 				test_session_destroy_ops_failure),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_session_destroy_success),
+
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_set_pkt_metadata_inv_context),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_set_pkt_metadata_inv_context_ops),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_set_pkt_metadata_inv_context_ops_fun),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_set_pkt_metadata_inv_session),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_set_pkt_metadata_ops_failure),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_set_pkt_metadata_success),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
