@@ -378,7 +378,7 @@ rte_security_session_create(struct rte_security_ctx *instance,
  * @param   conf	update configuration parameters
  * @return
  *  - On success returns 0
- *  - On failure return errno
+ *  - On failure returns a negative errno value.
  */
 __rte_experimental
 int
@@ -403,12 +403,14 @@ rte_security_session_get_size(struct rte_security_ctx *instance);
  * return it to its original mempool.
  *
  * @param   instance	security instance
- * @param   sess	security session to freed
+ * @param   sess	security session to be freed
  *
  * @return
  *  - 0 if successful.
- *  - -EINVAL if session is NULL.
+ *  - -EINVAL if session or context instance is NULL.
  *  - -EBUSY if not all device private data has been freed.
+ *  - -ENOTSUP if destroying private data is not supported.
+ *  - other negative values in case of freeing private data errors.
  */
 int
 rte_security_session_destroy(struct rte_security_ctx *instance,
