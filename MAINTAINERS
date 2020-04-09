@@ -412,6 +412,7 @@ M: Declan Doherty <declan.doherty@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_security/
 F: doc/guides/prog_guide/rte_security.rst
+F: app/test/test_security.c
 
 Compression API - EXPERIMENTAL
 M: Fiona Trahe <fiona.trahe@intel.com>
