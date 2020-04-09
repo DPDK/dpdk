@@ -269,6 +269,30 @@ mock_session_update(void *device,
 }
 
 /**
+ * session_get_size mockup
+ *
+ * Verified parameters: device.
+ */
+static struct mock_session_get_size_data {
+	void *device;
+
+	unsigned int ret;
+
+	int called;
+	int failed;
+} mock_session_get_size_exp = {NULL, 0U, 0, 0};
+
+static unsigned int
+mock_session_get_size(void *device)
+{
+	mock_session_get_size_exp.called++;
+
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_session_get_size_exp, device);
+
+	return mock_session_get_size_exp.ret;
+}
+
+/**
  * session_destroy mockup
  *
  * Verified parameters: device, sess.
@@ -309,6 +333,7 @@ struct rte_security_ops empty_ops = { NULL };
 struct rte_security_ops mock_ops = {
 	.session_create = mock_session_create,
 	.session_update = mock_session_update,
+	.session_get_size = mock_session_get_size,
 	.session_destroy = mock_session_destroy,
 };
 
@@ -401,10 +426,12 @@ ut_setup(void)
 
 	mock_session_create_exp.called = 0;
 	mock_session_update_exp.called = 0;
+	mock_session_get_size_exp.called = 0;
 	mock_session_destroy_exp.called = 0;
 
 	mock_session_create_exp.failed = 0;
 	mock_session_update_exp.failed = 0;
+	mock_session_get_size_exp.failed = 0;
 	mock_session_destroy_exp.failed = 0;
 
 	return TEST_SUCCESS;
@@ -857,6 +884,100 @@ test_session_update_success(void)
 
 
 /**
+ * rte_security_session_get_size tests
+ */
+
+/**
+ * Test execution of rte_security_session_get_size with NULL instance
+ */
+static int
+test_session_get_size_inv_context(void)
+{
+	unsigned int ret = rte_security_session_get_size(NULL);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_get_size,
+			ret, 0, "%u");
+	TEST_ASSERT_MOCK_CALLS(mock_session_get_size_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_get_size with invalid
+ * security operations structure (NULL)
+ */
+static int
+test_session_get_size_inv_context_ops(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	ut_params->ctx.ops = NULL;
+
+	unsigned int ret = rte_security_session_get_size(&ut_params->ctx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_get_size,
+			ret, 0, "%u");
+	TEST_ASSERT_MOCK_CALLS(mock_session_get_size_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_get_size with empty
+ * security operations
+ */
+static int
+test_session_get_size_inv_context_ops_fun(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	ut_params->ctx.ops = &empty_ops;
+
+	unsigned int ret = rte_security_session_get_size(&ut_params->ctx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_get_size,
+			ret, 0, "%u");
+	TEST_ASSERT_MOCK_CALLS(mock_session_get_size_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_get_size when session_get_size
+ * security operation fails
+ */
+static int
+test_session_get_size_ops_failure(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	mock_session_get_size_exp.device = NULL;
+	mock_session_get_size_exp.ret = 0;
+
+	unsigned int ret = rte_security_session_get_size(&ut_params->ctx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_get_size,
+			ret, 0, "%u");
+	TEST_ASSERT_MOCK_CALLS(mock_session_get_size_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_get_size in successful execution path
+ */
+static int
+test_session_get_size_success(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	mock_session_get_size_exp.device = NULL;
+	mock_session_get_size_exp.ret = 1024;
+
+	unsigned int ret = rte_security_session_get_size(&ut_params->ctx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_get_size,
+			ret, 1024U, "%u");
+	TEST_ASSERT_MOCK_CALLS(mock_session_get_size_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -895,6 +1016,17 @@ static struct unit_test_suite security_testsuite  = {
 				test_session_update_ops_failure),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_session_update_success),
+
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_get_size_inv_context),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_get_size_inv_context_ops),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_get_size_inv_context_ops_fun),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_get_size_ops_failure),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_get_size_success),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
