@@ -1786,6 +1786,497 @@ test_capabilities_get_success(void)
 
 
 /**
+ * rte_security_capability_get tests
+ */
+
+/**
+ * Test execution of rte_security_capability_get with NULL instance
+ */
+static int
+test_capability_get_inv_context(void)
+{
+	struct rte_security_capability_idx idx;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(NULL, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get with invalid
+ * security operations structure (NULL)
+ */
+static int
+test_capability_get_inv_context_ops(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx;
+	ut_params->ctx.ops = NULL;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get with empty
+ * security operations
+ */
+static int
+test_capability_get_inv_context_ops_fun(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx;
+	ut_params->ctx.ops = &empty_ops;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get with NULL idx parameter
+ */
+static int
+test_capability_get_inv_idx(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, NULL);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities_get
+ * security operation fails
+ */
+static int
+test_capability_get_ops_failure(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx;
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = NULL;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * is empty (contains only RTE_SECURITY_ACTION_TYPE_NONE ending entry)
+ */
+static int
+test_capability_get_empty_table(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx;
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * does not contain entry with matching action
+ */
+static int
+test_capability_get_no_matching_action(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * does not contain entry with matching protocol
+ */
+static int
+test_capability_get_no_matching_protocol(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_PDCP,
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when macsec protocol
+ * is searched and capabilities table contain proper entry.
+ * However macsec records search is not supported in rte_security.
+ */
+static int
+test_capability_get_no_support_for_macsec(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * does not contain entry with matching ipsec proto field
+ */
+static int
+test_capability_get_ipsec_mismatch_proto(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+		},
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+			.ipsec = {
+				.proto = RTE_SECURITY_IPSEC_SA_PROTO_AH,
+			},
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * does not contain entry with matching ipsec mode field
+ */
+static int
+test_capability_get_ipsec_mismatch_mode(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT,
+		},
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+			.ipsec = {
+				.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+				.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			},
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * does not contain entry with matching ipsec direction field
+ */
+static int
+test_capability_get_ipsec_mismatch_dir(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+		},
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+			.ipsec = {
+				.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+				.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+				.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			},
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * contains matching ipsec entry
+ */
+static int
+test_capability_get_ipsec_match(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+		},
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+			.ipsec = {
+				.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+				.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+				.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			},
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, &capabilities[1], "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * does not contain entry with matching pdcp domain field
+ */
+static int
+test_capability_get_pdcp_mismatch_domain(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_PDCP,
+		.pdcp = {
+			.domain = RTE_SECURITY_PDCP_MODE_CONTROL,
+		},
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_PDCP,
+			.pdcp = {
+				.domain = RTE_SECURITY_PDCP_MODE_DATA,
+			},
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * contains matching pdcp entry
+ */
+static int
+test_capability_get_pdcp_match(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_PDCP,
+		.pdcp = {
+			.domain = RTE_SECURITY_PDCP_MODE_CONTROL,
+		},
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_PDCP,
+			.pdcp = {
+				.domain = RTE_SECURITY_PDCP_MODE_CONTROL,
+			},
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, &capabilities[1], "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -1896,6 +2387,37 @@ static struct unit_test_suite security_testsuite  = {
 				test_capabilities_get_ops_failure),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_capabilities_get_success),
+
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_inv_context),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_inv_context_ops),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_inv_context_ops_fun),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_inv_idx),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_ops_failure),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_empty_table),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_no_matching_action),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_no_matching_protocol),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_no_support_for_macsec),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_ipsec_mismatch_proto),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_ipsec_mismatch_mode),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_ipsec_mismatch_dir),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_ipsec_match),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_pdcp_mismatch_domain),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_pdcp_match),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
