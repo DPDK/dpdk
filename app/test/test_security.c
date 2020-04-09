@@ -1138,6 +1138,159 @@ test_session_stats_get_success(void)
 
 
 /**
+ * rte_security_session_destroy tests
+ */
+
+/**
+ * Test execution of rte_security_session_destroy with NULL instance
+ */
+static int
+test_session_destroy_inv_context(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	int ret = rte_security_session_destroy(NULL, ut_params->sess);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_destroy,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 0);
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_destroy with invalid
+ * security operations structure (NULL)
+ */
+static int
+test_session_destroy_inv_context_ops(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	ut_params->ctx.ops = NULL;
+
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	int ret = rte_security_session_destroy(&ut_params->ctx,
+			ut_params->sess);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_destroy,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 0);
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_destroy with empty
+ * security operations
+ */
+static int
+test_session_destroy_inv_context_ops_fun(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	ut_params->ctx.ops = &empty_ops;
+
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	int ret = rte_security_session_destroy(&ut_params->ctx,
+			ut_params->sess);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_destroy,
+			ret, -ENOTSUP, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 0);
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_destroy with NULL sess parameter
+ */
+static int
+test_session_destroy_inv_session(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	int ret = rte_security_session_destroy(&ut_params->ctx, NULL);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_destroy,
+			ret, -EINVAL, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 0);
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_destroy when session_destroy
+ * security operation fails
+ */
+static int
+test_session_destroy_ops_failure(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	mock_session_destroy_exp.device = NULL;
+	mock_session_destroy_exp.sess = ut_params->sess;
+	mock_session_destroy_exp.ret = -1;
+
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	int ret = rte_security_session_destroy(&ut_params->ctx,
+			ut_params->sess);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_destroy,
+			ret, -1, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 1);
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_session_destroy in successful execution path
+ */
+static int
+test_session_destroy_success(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	mock_session_destroy_exp.device = NULL;
+	mock_session_destroy_exp.sess = ut_params->sess;
+	mock_session_destroy_exp.ret = 0;
+	TEST_ASSERT_MEMPOOL_USAGE(1);
+	TEST_ASSERT_SESSION_COUNT(1);
+
+	int ret = rte_security_session_destroy(&ut_params->ctx,
+			ut_params->sess);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_session_destroy,
+			ret, 0, "%d");
+	TEST_ASSERT_MOCK_CALLS(mock_session_destroy_exp, 1);
+	TEST_ASSERT_MEMPOOL_USAGE(0);
+	TEST_ASSERT_SESSION_COUNT(0);
+
+	/*
+	 * Remove session from test case parameters, so it won't be destroyed
+	 * during test case teardown.
+	 */
+	ut_params->sess = NULL;
+
+	return TEST_SUCCESS;
+}
+
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -1200,6 +1353,19 @@ static struct unit_test_suite security_testsuite  = {
 				test_session_stats_get_ops_failure),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_session_stats_get_success),
+
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_destroy_inv_context),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_destroy_inv_context_ops),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_destroy_inv_context_ops_fun),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_destroy_inv_session),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_destroy_ops_failure),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_session_destroy_success),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
