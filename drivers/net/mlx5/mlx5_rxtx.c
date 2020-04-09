@@ -1658,21 +1658,20 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int i = 0;
 	uint32_t rq_ci = rxq->rq_ci;
 	uint16_t consumed_strd = rxq->consumed_strd;
-	uint16_t headroom_sz = rxq->strd_headroom_en * RTE_PKTMBUF_HEADROOM;
 	struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[rq_ci & wq_mask];
 
 	while (i < pkts_n) {
 		struct rte_mbuf *pkt;
 		void *addr;
 		int ret;
-		unsigned int len;
+		uint32_t len;
 		uint16_t strd_cnt;
 		uint16_t strd_idx;
 		uint32_t offset;
 		uint32_t byte_cnt;
+		int32_t hdrm_overlap;
 		volatile struct mlx5_mini_cqe8 *mcqe = NULL;
 		uint32_t rss_hash_res = 0;
-		uint8_t lro_num_seg;
 
 		if (consumed_strd == strd_n) {
 			/* Replace WQE only if the buffer is still in use. */
@@ -1719,18 +1718,6 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		MLX5_ASSERT(strd_idx < strd_n);
 		MLX5_ASSERT(!((rte_be_to_cpu_16(cqe->wqe_id) ^ rq_ci) &
 			    wq_mask));
-		lro_num_seg = cqe->lro_num_seg;
-		/*
-		 * Currently configured to receive a packet per a stride. But if
-		 * MTU is adjusted through kernel interface, device could
-		 * consume multiple strides without raising an error. In this
-		 * case, the packet should be dropped because it is bigger than
-		 * the max_rx_pkt_len.
-		 */
-		if (unlikely(!lro_num_seg && strd_cnt > 1)) {
-			++rxq->stats.idropped;
-			continue;
-		}
 		pkt = rte_pktmbuf_alloc(rxq->mp);
 		if (unlikely(pkt == NULL)) {
 			++rxq->stats.rx_nombuf;
@@ -1742,12 +1729,16 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			len -= RTE_ETHER_CRC_LEN;
 		offset = strd_idx * strd_sz + strd_shift;
 		addr = RTE_PTR_ADD(mlx5_mprq_buf_addr(buf, strd_n), offset);
+		hdrm_overlap = len + RTE_PKTMBUF_HEADROOM - strd_cnt * strd_sz;
 		/*
 		 * Memcpy packets to the target mbuf if:
 		 * - The size of packet is smaller than mprq_max_memcpy_len.
 		 * - Out of buffer in the Mempool for Multi-Packet RQ.
+		 * - There is no space for a headroom and scatter is disabled.
 		 */
-		if (len <= rxq->mprq_max_memcpy_len || rxq->mprq_repl == NULL) {
+		if (len <= rxq->mprq_max_memcpy_len ||
+		    rxq->mprq_repl == NULL ||
+		    (hdrm_overlap > 0 && !rxq->strd_scatter_en)) {
 			/*
 			 * When memcpy'ing packet due to out-of-buffer, the
 			 * packet must be smaller than the target mbuf.
@@ -1769,7 +1760,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rte_atomic16_add_return(&buf->refcnt, 1);
 			MLX5_ASSERT((uint16_t)rte_atomic16_read(&buf->refcnt) <=
 				    strd_n + 1);
-			buf_addr = RTE_PTR_SUB(addr, headroom_sz);
+			buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
 			/*
 			 * MLX5 device doesn't use iova but it is necessary in a
 			 * case where the Rx packet is transmitted via a
@@ -1788,43 +1779,42 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			rte_pktmbuf_attach_extbuf(pkt, buf_addr, buf_iova,
 						  buf_len, shinfo);
 			/* Set mbuf head-room. */
-			pkt->data_off = headroom_sz;
+			SET_DATA_OFF(pkt, RTE_PKTMBUF_HEADROOM);
 			MLX5_ASSERT(pkt->ol_flags == EXT_ATTACHED_MBUF);
-			/*
-			 * Prevent potential overflow due to MTU change through
-			 * kernel interface.
-			 */
-			if (unlikely(rte_pktmbuf_tailroom(pkt) < len)) {
-				rte_pktmbuf_free_seg(pkt);
-				++rxq->stats.idropped;
-				continue;
-			}
+			MLX5_ASSERT(rte_pktmbuf_tailroom(pkt) <
+				len - (hdrm_overlap > 0 ? hdrm_overlap : 0));
 			DATA_LEN(pkt) = len;
 			/*
-			 * LRO packet may consume all the stride memory, in this
-			 * case packet head-room space is not guaranteed so must
-			 * to add an empty mbuf for the head-room.
+			 * Copy the last fragment of a packet (up to headroom
+			 * size bytes) in case there is a stride overlap with
+			 * a next packet's headroom. Allocate a separate mbuf
+			 * to store this fragment and link it. Scatter is on.
 			 */
-			if (!rxq->strd_headroom_en) {
-				struct rte_mbuf *headroom_mbuf =
-						rte_pktmbuf_alloc(rxq->mp);
+			if (hdrm_overlap > 0) {
+				MLX5_ASSERT(rxq->strd_scatter_en);
+				struct rte_mbuf *seg =
+					rte_pktmbuf_alloc(rxq->mp);
 
-				if (unlikely(headroom_mbuf == NULL)) {
+				if (unlikely(seg == NULL)) {
 					rte_pktmbuf_free_seg(pkt);
 					++rxq->stats.rx_nombuf;
 					break;
 				}
-				PORT(pkt) = rxq->port_id;
-				NEXT(headroom_mbuf) = pkt;
-				pkt = headroom_mbuf;
+				SET_DATA_OFF(seg, 0);
+				rte_memcpy(rte_pktmbuf_mtod(seg, void *),
+					RTE_PTR_ADD(addr, len - hdrm_overlap),
+					hdrm_overlap);
+				DATA_LEN(seg) = hdrm_overlap;
+				DATA_LEN(pkt) = len - hdrm_overlap;
+				NEXT(pkt) = seg;
 				NB_SEGS(pkt) = 2;
 			}
 		}
 		rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
-		if (lro_num_seg > 1) {
+		if (cqe->lro_num_seg > 1) {
 			mlx5_lro_update_hdr(addr, cqe, len);
 			pkt->ol_flags |= PKT_RX_LRO;
-			pkt->tso_segsz = strd_sz;
+			pkt->tso_segsz = len / cqe->lro_num_seg;
 		}
 		PKT_LEN(pkt) = len;
 		PORT(pkt) = rxq->port_id;
