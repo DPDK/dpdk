@@ -408,8 +408,7 @@ Run-time configuration
 
   A nonzero value enables configuring Multi-Packet Rx queues. Rx queue is
   configured as Multi-Packet RQ if the total number of Rx queues is
-  ``rxqs_min_mprq`` or more and Rx scatter isn't configured. Disabled by
-  default.
+  ``rxqs_min_mprq`` or more. Disabled by default.
 
   Multi-Packet Rx Queue (MPRQ a.k.a Striding RQ) can further save PCIe bandwidth
   by posting a single large buffer for multiple packets. Instead of posting a
@@ -433,6 +432,20 @@ Run-time configuration
   if ``mprq_en`` is set.
 
   The size of Rx queue should be bigger than the number of strides.
+
+- ``mprq_log_stride_size`` parameter [int]
+
+  Log 2 of the size of a stride for Multi-Packet Rx queue. Configuring a smaller
+  stride size can save some memory and reduce probability of a depletion of all
+  available strides due to unreleased packets by an application. If configured
+  value is not in the range of device capability, the default value will be set
+  with a warning message. The default value is 11 which is 2048 bytes per a
+  stride, valid only if ``mprq_en`` is set. With ``mprq_log_stride_size`` set
+  it is possible for a pcaket to span across multiple strides. This mode allows
+  support of jumbo frames (9K) with MPRQ. The memcopy of some packets (or part
+  of a packet if Rx scatter is configured) may be required in case there is no
+  space left for a head room at the end of a stride which incurs some
+  performance penalty.
 
 - ``mprq_max_memcpy_len`` parameter [int]
 

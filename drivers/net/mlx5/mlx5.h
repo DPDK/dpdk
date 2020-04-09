@@ -179,6 +179,7 @@ struct mlx5_dev_config {
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */
+		unsigned int stride_size_n; /* Size of a stride. */
 		unsigned int min_stride_size_n; /* Min size of a stride. */
 		unsigned int max_stride_size_n; /* Max size of a stride. */
 		unsigned int max_memcpy_len;

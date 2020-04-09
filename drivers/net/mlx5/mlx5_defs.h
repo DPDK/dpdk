@@ -143,6 +143,9 @@
 /* Log 2 of the default number of strides per WQE for Multi-Packet RQ. */
 #define MLX5_MPRQ_STRIDE_NUM_N 6U
 
+/* Log 2 of the default size of a stride per WQE for Multi-Packet RQ. */
+#define MLX5_MPRQ_STRIDE_SIZE_N 11U
+
 /* Two-byte shift is disabled for Multi-Packet RQ. */
 #define MLX5_MPRQ_TWO_BYTE_SHIFT 0
 
