@@ -441,6 +441,30 @@ mock_get_userdata(void *device,
 }
 
 /**
+ * capabilities_get mockup
+ *
+ * Verified parameters: device.
+ */
+static struct mock_capabilities_get_data {
+	void *device;
+
+	struct rte_security_capability *ret;
+
+	int called;
+	int failed;
+} mock_capabilities_get_exp = {NULL, NULL, 0, 0};
+
+static const struct rte_security_capability *
+mock_capabilities_get(void *device)
+{
+	mock_capabilities_get_exp.called++;
+
+	MOCK_TEST_ASSERT_POINTER_PARAMETER(mock_capabilities_get_exp, device);
+
+	return mock_capabilities_get_exp.ret;
+}
+
+/**
  * empty_ops
  *
  * is an empty security operations set (all function pointers set to NULL)
@@ -460,6 +484,7 @@ struct rte_security_ops mock_ops = {
 	.session_destroy = mock_session_destroy,
 	.set_pkt_metadata = mock_set_pkt_metadata,
 	.get_userdata = mock_get_userdata,
+	.capabilities_get = mock_capabilities_get,
 };
 
 
@@ -556,6 +581,7 @@ ut_setup(void)
 	mock_session_destroy_exp.called = 0;
 	mock_set_pkt_metadata_exp.called = 0;
 	mock_get_userdata_exp.called = 0;
+	mock_capabilities_get_exp.called = 0;
 
 	mock_session_create_exp.failed = 0;
 	mock_session_update_exp.failed = 0;
@@ -564,6 +590,7 @@ ut_setup(void)
 	mock_session_destroy_exp.failed = 0;
 	mock_set_pkt_metadata_exp.failed = 0;
 	mock_get_userdata_exp.failed = 0;
+	mock_capabilities_get_exp.failed = 0;
 
 	return TEST_SUCCESS;
 }
@@ -1659,6 +1686,106 @@ test_get_userdata_success(void)
 
 
 /**
+ * rte_security_capabilities_get tests
+ */
+
+/**
+ * Test execution of rte_security_capabilities_get with NULL instance
+ */
+static int
+test_capabilities_get_inv_context(void)
+{
+	const struct rte_security_capability *ret;
+	ret = rte_security_capabilities_get(NULL);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capabilities_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capabilities_get with invalid
+ * security operations structure (NULL)
+ */
+static int
+test_capabilities_get_inv_context_ops(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	ut_params->ctx.ops = NULL;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capabilities_get(&ut_params->ctx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capabilities_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capabilities_get with empty
+ * security operations
+ */
+static int
+test_capabilities_get_inv_context_ops_fun(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	ut_params->ctx.ops = &empty_ops;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capabilities_get(&ut_params->ctx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capabilities_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 0);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capabilities_get when capabilities_get
+ * security operation fails
+ */
+static int
+test_capabilities_get_ops_failure(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = NULL;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capabilities_get(&ut_params->ctx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capabilities_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capabilities_get in successful execution path
+ */
+static int
+test_capabilities_get_success(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability capabilities;
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = &capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capabilities_get(&ut_params->ctx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capabilities_get,
+			ret, &capabilities, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -1758,6 +1885,17 @@ static struct unit_test_suite security_testsuite  = {
 				test_get_userdata_ops_failure),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_get_userdata_success),
+
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capabilities_get_inv_context),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capabilities_get_inv_context_ops),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capabilities_get_inv_context_ops_fun),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capabilities_get_ops_failure),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capabilities_get_success),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
