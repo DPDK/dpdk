@@ -1734,22 +1734,52 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * Memcpy packets to the target mbuf if:
 		 * - The size of packet is smaller than mprq_max_memcpy_len.
 		 * - Out of buffer in the Mempool for Multi-Packet RQ.
-		 * - There is no space for a headroom and scatter is disabled.
+		 * - The packet's stride overlaps a headroom and scatter is off.
 		 */
 		if (len <= rxq->mprq_max_memcpy_len ||
 		    rxq->mprq_repl == NULL ||
 		    (hdrm_overlap > 0 && !rxq->strd_scatter_en)) {
-			/*
-			 * When memcpy'ing packet due to out-of-buffer, the
-			 * packet must be smaller than the target mbuf.
-			 */
-			if (unlikely(rte_pktmbuf_tailroom(pkt) < len)) {
+			if (likely(rte_pktmbuf_tailroom(pkt) >= len)) {
+				rte_memcpy(rte_pktmbuf_mtod(pkt, void *),
+					   addr, len);
+				DATA_LEN(pkt) = len;
+			} else if (rxq->strd_scatter_en) {
+				struct rte_mbuf *prev = pkt;
+				uint32_t seg_len =
+					RTE_MIN(rte_pktmbuf_tailroom(pkt), len);
+				uint32_t rem_len = len - seg_len;
+
+				rte_memcpy(rte_pktmbuf_mtod(pkt, void *),
+					   addr, seg_len);
+				DATA_LEN(pkt) = seg_len;
+				while (rem_len) {
+					struct rte_mbuf *next =
+						rte_pktmbuf_alloc(rxq->mp);
+
+					if (unlikely(next == NULL)) {
+						rte_pktmbuf_free(pkt);
+						++rxq->stats.rx_nombuf;
+						goto out;
+					}
+					NEXT(prev) = next;
+					SET_DATA_OFF(next, 0);
+					addr = RTE_PTR_ADD(addr, seg_len);
+					seg_len = RTE_MIN
+						(rte_pktmbuf_tailroom(next),
+						 rem_len);
+					rte_memcpy
+						(rte_pktmbuf_mtod(next, void *),
+						 addr, seg_len);
+					DATA_LEN(next) = seg_len;
+					rem_len -= seg_len;
+					prev = next;
+					++NB_SEGS(pkt);
+				}
+			} else {
 				rte_pktmbuf_free_seg(pkt);
 				++rxq->stats.idropped;
 				continue;
 			}
-			rte_memcpy(rte_pktmbuf_mtod(pkt, void *), addr, len);
-			DATA_LEN(pkt) = len;
 		} else {
 			rte_iova_t buf_iova;
 			struct rte_mbuf_ext_shared_info *shinfo;
@@ -1826,6 +1856,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		*(pkts++) = pkt;
 		++i;
 	}
+out:
 	/* Update the consumer indexes. */
 	rxq->consumed_strd = consumed_strd;
 	rte_cio_wmb();
