@@ -90,14 +90,16 @@ rte_security_session_destroy(struct rte_security_ctx *instance,
 			-ENOTSUP);
 	RTE_PTR_OR_ERR_RET(sess, -EINVAL);
 
+	ret = instance->ops->session_destroy(instance->device, sess);
+	if (ret != 0)
+		return ret;
+
+	rte_mempool_put(rte_mempool_from_obj(sess), (void *)sess);
+
 	if (instance->sess_cnt)
 		instance->sess_cnt--;
 
-	ret = instance->ops->session_destroy(instance->device, sess);
-	if (!ret)
-		rte_mempool_put(rte_mempool_from_obj(sess), (void *)sess);
-
-	return ret;
+	return 0;
 }
 
 int
