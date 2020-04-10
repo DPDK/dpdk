@@ -483,5 +483,6 @@ bool ice_is_vsi_valid(struct ice_hw *hw, u16 vsi_handle);
 
 enum ice_status ice_replay_vsi_all_fltr(struct ice_hw *hw, u16 vsi_handle);
 void ice_rm_all_sw_replay_rule_info(struct ice_hw *hw);
+bool ice_is_prof_rule(enum ice_sw_tunnel_type type);
 
 #endif /* _ICE_SWITCH_H_ */
