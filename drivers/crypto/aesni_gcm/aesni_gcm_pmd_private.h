@@ -20,7 +20,7 @@
 /**< AES-NI GCM PMD device name */
 
 /** AES-NI GCM PMD  LOGTYPE DRIVER */
-int aesni_gcm_logtype_driver;
+extern int aesni_gcm_logtype_driver;
 #define AESNI_GCM_LOG(level, fmt, ...) \
 	rte_log(RTE_LOG_ ## level, aesni_gcm_logtype_driver,	\
 			"%s() line %u: "fmt "\n", __func__, __LINE__,	\

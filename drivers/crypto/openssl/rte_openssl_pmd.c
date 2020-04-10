@@ -18,6 +18,7 @@
 
 #define DES_BLOCK_SIZE 8
 
+int openssl_logtype_driver;
 static uint8_t cryptodev_driver_id;
 
 #if (OPENSSL_VERSION_NUMBER < 0x10100000L)

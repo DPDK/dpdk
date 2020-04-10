@@ -16,7 +16,7 @@
 /**< Open SSL Crypto PMD device name */
 
 /** OPENSSL PMD LOGTYPE DRIVER */
-int openssl_logtype_driver;
+extern int openssl_logtype_driver;
 #define OPENSSL_LOG(level, fmt, ...)  \
 	rte_log(RTE_LOG_ ## level, openssl_logtype_driver,  \
 			"%s() line %u: " fmt "\n", __func__, __LINE__,  \

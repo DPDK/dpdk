@@ -7,6 +7,8 @@
 
 #include "zlib_pmd_private.h"
 
+int zlib_logtype_driver;
+
 /** Compute next mbuf in the list, assign data buffer and length,
  *  returns 0 if mbuf is NULL
  */

@@ -13,6 +13,8 @@
 
 #include "aesni_gcm_pmd_private.h"
 
+int aesni_gcm_logtype_driver;
+
 static uint8_t cryptodev_driver_id;
 
 /* setup session handlers */

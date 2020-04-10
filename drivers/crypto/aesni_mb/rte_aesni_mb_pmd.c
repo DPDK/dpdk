@@ -14,6 +14,8 @@
 
 #include "aesni_mb_pmd_private.h"
 
+int aesni_mb_logtype_driver;
+
 #define AES_CCM_DIGEST_MIN_LEN 4
 #define AES_CCM_DIGEST_MAX_LEN 16
 #define HMAC_MAX_BLOCK_SIZE 128
