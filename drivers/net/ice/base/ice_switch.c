@@ -5352,6 +5352,9 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		rm->n_grp_count++;
 	}
 
+	if (rm->n_grp_count > ICE_MAX_CHAIN_RECIPE)
+		return ICE_ERR_MAX_LIMIT;
+
 	tmp = (struct ice_aqc_recipe_data_elem *)ice_calloc(hw,
 							    ICE_MAX_NUM_RECIPES,
 							    sizeof(*tmp));
