@@ -93,6 +93,8 @@ struct hinic_txq_stats {
 	u64 off_errs;
 	u64 cpy_pkts;
 	u64 burst_pkts;
+	u64 sge_len0;
+	u64 mbuf_null;
 };
 
 struct hinic_tx_info {

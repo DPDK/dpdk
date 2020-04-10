@@ -225,6 +225,8 @@ static const struct hinic_xstats_name_off hinic_txq_stats_strings[] = {
 	{"copy_pkts", offsetof(struct hinic_txq_stats, cpy_pkts)},
 	{"rl_drop", offsetof(struct hinic_txq_stats, rl_drop)},
 	{"burst_pkts", offsetof(struct hinic_txq_stats, burst_pkts)},
+	{"sge_len0", offsetof(struct hinic_txq_stats, sge_len0)},
+	{"mbuf_null", offsetof(struct hinic_txq_stats, mbuf_null)},
 };
 
 #define HINIC_TXQ_XSTATS_NUM (sizeof(hinic_txq_stats_strings) / \
