@@ -772,6 +772,20 @@ static int hns3_config_action(struct hns3_hw *hw, struct hns3_fdir_rule *rule)
 	return hns3_fd_ad_config(hw, ad_data.ad_id, &ad_data);
 }
 
+static int hns3_fd_clear_all_rules(struct hns3_hw *hw, uint32_t rule_num)
+{
+	uint32_t i;
+	int ret;
+
+	for (i = 0; i < rule_num; i++) {
+		ret = hns3_fd_tcam_config(hw, true, i, NULL, false);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 int hns3_fdir_filter_init(struct hns3_adapter *hns)
 {
 	struct hns3_pf *pf = &hns->pf;
@@ -785,6 +799,13 @@ int hns3_fdir_filter_init(struct hns3_adapter *hns)
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
 	};
+	int ret;
+
+	ret = hns3_fd_clear_all_rules(&hns->hw, rule_num);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Clear all fd rules fail! ret = %d", ret);
+		return ret;
+	}
 
 	fdir_hash_params.socket_id = rte_socket_id();
 	TAILQ_INIT(&fdir_info->fdir_list);
