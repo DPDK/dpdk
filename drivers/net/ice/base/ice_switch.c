@@ -5012,6 +5012,8 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
 		if (lkup_exts->n_val_words == recp[i].lkup_exts.n_val_words) {
 			struct ice_fv_word *a = lkup_exts->fv_words;
 			struct ice_fv_word *b = recp[i].lkup_exts.fv_words;
+			u16 *c = recp[i].lkup_exts.field_mask;
+			u16 *d = lkup_exts->field_mask;
 			bool found = true;
 			u8 p, q;
 
@@ -5019,7 +5021,8 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts)
 				for (q = 0; q < recp[i].lkup_exts.n_val_words;
 				     q++) {
 					if (a[p].off == b[q].off &&
-					    a[p].prot_id == b[q].prot_id)
+					    a[p].prot_id == b[q].prot_id &&
+					    d[p] == c[q])
 						/* Found the "p"th word in the
 						 * given recipe
 						 */
