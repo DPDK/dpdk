@@ -204,6 +204,91 @@ rte_bitmap_init(uint32_t n_bits, uint8_t *mem, uint32_t mem_size)
 }
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Bitmap clear slab overhead bits.
+ *
+ * @param slabs
+ *   Slab array.
+ * @param slab_size
+ *   Number of 64-bit slabs in the slabs array.
+ * @param pos
+ *   The start bit position in the slabs to be cleared.
+ */
+__rte_experimental
+static inline void
+__rte_bitmap_clear_slab_overhead_bits(uint64_t *slabs, uint32_t slab_size,
+				      uint32_t pos)
+{
+	uint32_t i;
+	uint32_t index = pos / RTE_BITMAP_SLAB_BIT_SIZE;
+	uint32_t offset = pos & RTE_BITMAP_SLAB_BIT_MASK;
+
+	if (offset) {
+		for (i = offset; i < RTE_BITMAP_SLAB_BIT_SIZE; i++)
+			slabs[index] &= ~(1llu << i);
+		index++;
+	}
+	if (index < slab_size)
+		memset(&slabs[index], 0, sizeof(slabs[0]) *
+		       (slab_size - index));
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Bitmap initialization with all bits set
+ *
+ * @param n_bits
+ *   Number of pre-allocated bits in array2.
+ * @param mem
+ *   Base address of array1 and array2.
+ * @param mem_size
+ *   Minimum expected size of bitmap.
+ * @return
+ *   Handle to bitmap instance.
+ */
+__rte_experimental
+static inline struct rte_bitmap *
+rte_bitmap_init_with_all_set(uint32_t n_bits, uint8_t *mem, uint32_t mem_size)
+{
+	struct rte_bitmap *bmp;
+	uint32_t array1_byte_offset, array1_slabs;
+	uint32_t array2_byte_offset, array2_slabs;
+	uint32_t size;
+
+	/* Check input arguments */
+	if (!n_bits || !mem || (((uintptr_t) mem) & RTE_CACHE_LINE_MASK))
+		return NULL;
+
+	size = __rte_bitmap_get_memory_footprint(n_bits,
+		&array1_byte_offset, &array1_slabs,
+		&array2_byte_offset, &array2_slabs);
+	if (size < mem_size)
+		return NULL;
+
+	/* Setup bitmap */
+	bmp = (struct rte_bitmap *) mem;
+	bmp->array1 = (uint64_t *) &mem[array1_byte_offset];
+	bmp->array1_size = array1_slabs;
+	bmp->array2 = (uint64_t *) &mem[array2_byte_offset];
+	bmp->array2_size = array2_slabs;
+
+	__rte_bitmap_scan_init(bmp);
+
+	memset(bmp->array1, 0xff, bmp->array1_size * sizeof(bmp->array1[0]));
+	memset(bmp->array2, 0xff, bmp->array2_size * sizeof(bmp->array2[0]));
+	/* Clear overhead bits. */
+	__rte_bitmap_clear_slab_overhead_bits(bmp->array1, bmp->array1_size,
+			bmp->array2_size >> RTE_BITMAP_CL_SLAB_SIZE_LOG2);
+	__rte_bitmap_clear_slab_overhead_bits(bmp->array2, bmp->array2_size,
+			n_bits);
+	return bmp;
+}
+
+/**
  * Bitmap free
  *
  * @param bmp
