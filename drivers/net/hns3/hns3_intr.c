@@ -1001,7 +1001,9 @@ hns3_reset_post(struct hns3_adapter *hns)
 		hw->reset.attempts = 0;
 		hw->reset.stats.success_cnt++;
 		hw->reset.stage = RESET_STAGE_NONE;
+		rte_spinlock_lock(&hw->lock);
 		hw->reset.ops->start_service(hns);
+		rte_spinlock_unlock(&hw->lock);
 		gettimeofday(&tv, NULL);
 		timersub(&tv, &hw->reset.start_time, &tv_delta);
 		hns3_warn(hw, "%s reset done fail_cnt:%" PRIx64

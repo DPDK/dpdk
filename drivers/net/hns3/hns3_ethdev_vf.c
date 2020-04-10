@@ -1504,6 +1504,18 @@ hns3vf_init_hardware(struct hns3_adapter *hns)
 		goto err_init_hardware;
 	}
 
+	/*
+	 * In the initialization clearing the all hardware mapping relationship
+	 * configurations between queues and interrupt vectors is needed, so
+	 * some error caused by the residual configurations, such as the
+	 * unexpected interrupt, can be avoid.
+	 */
+	ret = hns3vf_init_ring_with_vector(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init ring intr vector: %d", ret);
+		goto err_init_hardware;
+	}
+
 	ret = hns3vf_set_alive(hw, true);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to VF send alive to PF: %d", ret);
@@ -1606,16 +1618,6 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 
 	hns3_set_default_rss_args(hw);
-
-	/*
-	 * In the initialization clearing the all hardware mapping relationship
-	 * configurations between queues and interrupt vectors is needed, so
-	 * some error caused by the residual configurations, such as the
-	 * unexpected interrupt, can be avoid.
-	 */
-	ret = hns3vf_init_ring_with_vector(hw);
-	if (ret)
-		goto err_get_config;
 
 	return 0;
 
@@ -1725,13 +1727,12 @@ hns3vf_dev_stop(struct rte_eth_dev *dev)
 	rte_spinlock_lock(&hw->lock);
 	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
 		hns3vf_do_stop(hns);
+		hns3vf_unmap_rx_interrupt(dev);
 		hns3_dev_release_mbufs(hns);
 		hw->adapter_state = HNS3_NIC_CONFIGURED;
 	}
 	rte_eal_alarm_cancel(hns3vf_service_handler, dev);
 	rte_spinlock_unlock(&hw->lock);
-
-	hns3vf_unmap_rx_interrupt(dev);
 }
 
 static void
@@ -1881,6 +1882,31 @@ vf_alloc_intr_vec_error:
 	return ret;
 }
 
+static int
+hns3vf_restore_rx_interrupt(struct hns3_hw *hw)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint16_t q_id;
+	int ret;
+
+	if (dev->data->dev_conf.intr_conf.rxq == 0)
+		return 0;
+
+	if (rte_intr_dp_is_en(intr_handle)) {
+		for (q_id = 0; q_id < hw->used_rx_queues; q_id++) {
+			ret = hns3vf_bind_ring_with_vector(hw,
+					intr_handle->intr_vec[q_id], true,
+					HNS3_RING_TYPE_RX, q_id);
+			if (ret)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+
 static void
 hns3vf_restore_filter(struct rte_eth_dev *dev)
 {
@@ -1906,17 +1932,28 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 		rte_spinlock_unlock(&hw->lock);
 		return ret;
 	}
+	ret = hns3vf_map_rx_interrupt(dev);
+	if (ret) {
+		hw->adapter_state = HNS3_NIC_CONFIGURED;
+		rte_spinlock_unlock(&hw->lock);
+		return ret;
+	}
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
 
-	ret = hns3vf_map_rx_interrupt(dev);
-	if (ret)
-		return ret;
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
 	rte_eal_alarm_set(HNS3VF_SERVICE_INTERVAL, hns3vf_service_handler, dev);
 
 	hns3vf_restore_filter(dev);
+
+	/* Enable interrupt of all rx queues before enabling queues */
+	hns3_dev_all_rx_queue_intr_enable(hw, true);
+	/*
+	 * When finished the initialization, enable queues to receive/transmit
+	 * packets.
+	 */
+	hns3_enable_all_queues(hw, true);
 
 	return ret;
 }
@@ -2069,8 +2106,17 @@ hns3vf_start_service(struct hns3_adapter *hns)
 	eth_dev = &rte_eth_devices[hw->data->port_id];
 	hns3_set_rxtx_function(eth_dev);
 	hns3_mp_req_start_rxtx(eth_dev);
-	if (hw->adapter_state == HNS3_NIC_STARTED)
+	if (hw->adapter_state == HNS3_NIC_STARTED) {
 		hns3vf_service_handler(eth_dev);
+
+		/* Enable interrupt of all rx queues before enabling queues */
+		hns3_dev_all_rx_queue_intr_enable(hw, true);
+		/*
+		 * When finished the initialization, enable queues to receive
+		 * and transmit packets.
+		 */
+		hns3_enable_all_queues(hw, true);
+	}
 
 	return 0;
 }
@@ -2139,6 +2185,10 @@ hns3vf_restore_conf(struct hns3_adapter *hns)
 		goto err_vlan_table;
 
 	ret = hns3vf_restore_vlan_conf(hns);
+	if (ret)
+		goto err_vlan_table;
+
+	ret = hns3vf_restore_rx_interrupt(hw);
 	if (ret)
 		goto err_vlan_table;
 
