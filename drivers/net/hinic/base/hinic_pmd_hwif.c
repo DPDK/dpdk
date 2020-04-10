@@ -450,8 +450,8 @@ static void hinic_parse_hwif_attr(struct hinic_hwdev *hwdev)
 	struct hinic_hwif *hwif = hwdev->hwif;
 
 	PMD_DRV_LOG(INFO, "Device %s hwif attribute:", hwdev->pcidev_hdl->name);
-	PMD_DRV_LOG(INFO, "func_idx:%u, p2p_idx:%u, pciintf_idx:%u, "
-		    "vf_in_pf:%u, ppf_idx:%u, global_vf_id:%u, func_type:%u",
+	PMD_DRV_LOG(INFO, "func_idx: %u, p2p_idx: %u, pciintf_idx: %u, "
+		    "vf_in_pf: %u, ppf_idx: %u, global_vf_id: %u, func_type: %u",
 		    hwif->attr.func_global_idx,
 		    hwif->attr.port_to_port_idx, hwif->attr.pci_intf_idx,
 		    hwif->attr.vf_in_pf, hwif->attr.ppf_idx,

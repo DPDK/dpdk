@@ -1610,8 +1610,7 @@ int hinic_set_link_status_follow(void *hwdev,
 		return 0;
 
 	if (status >= HINIC_LINK_FOLLOW_STATUS_MAX) {
-		PMD_DRV_LOG(ERR,
-			"Invalid link follow status: %d", status);
+		PMD_DRV_LOG(ERR, "Invalid link follow status: %d", status);
 		return -EINVAL;
 	}
 

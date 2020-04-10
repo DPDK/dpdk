@@ -470,7 +470,7 @@ hinic_pf_to_mgmt_sync(struct hinic_hwdev *hwdev,
 			       recv_msg->msg_len);
 			*out_size = recv_msg->msg_len;
 		} else {
-			PMD_DRV_LOG(ERR, "Mgmt rsp's msg len:%u overflow.",
+			PMD_DRV_LOG(ERR, "Mgmt rsp's msg len: %u overflow.",
 				recv_msg->msg_len);
 			err = -ERANGE;
 		}

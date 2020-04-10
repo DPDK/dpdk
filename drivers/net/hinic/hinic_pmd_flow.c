@@ -2285,8 +2285,7 @@ hinic_add_del_ethertype_filter(struct rte_eth_dev *dev,
 			case RTE_ETHER_TYPE_SLOW:
 				(void)hinic_clear_fdir_tcam(nic_dev->hwdev,
 								TCAM_PKT_LACP);
-				PMD_DRV_LOG(INFO,
-					"Del lacp tcam succeed");
+				PMD_DRV_LOG(INFO, "Del lacp tcam succeed");
 				break;
 			default:
 				break;
@@ -2935,7 +2934,7 @@ static int hinic_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		}
 		break;
 	default:
-		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+		PMD_DRV_LOG(WARNING, "Filter type (%d) is not supported",
 			filter_type);
 		ret = -EINVAL;
 		break;

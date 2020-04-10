@@ -477,7 +477,7 @@ static int hinic_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	/* alloc rx_cqe and prepare rq_wqe */
 	rc = hinic_setup_rx_resources(rxq);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Setup rxq[%d] rx_resources failed, dev_name:%s",
+		PMD_DRV_LOG(ERR, "Setup rxq[%d] rx_resources failed, dev_name: %s",
 			    queue_idx, dev->data->name);
 		goto setup_rx_res_err;
 	}
@@ -1014,7 +1014,7 @@ static int hinic_dev_start(struct rte_eth_dev *dev)
 	/* init txq and rxq context */
 	rc = hinic_init_qp_ctxts(nic_dev->hwdev);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Initialize qp context failed, dev_name:%s",
+		PMD_DRV_LOG(ERR, "Initialize qp context failed, dev_name: %s",
 			    name);
 		goto init_qp_fail;
 	}
@@ -1056,7 +1056,7 @@ static int hinic_dev_start(struct rte_eth_dev *dev)
 	/* open physical port and start packet receiving */
 	rc = hinic_set_port_enable(nic_dev->hwdev, true);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Enable physical port failed, dev_name:%s",
+		PMD_DRV_LOG(ERR, "Enable physical port failed, dev_name: %s",
 			    name);
 		goto en_port_fail;
 	}
@@ -1203,7 +1203,7 @@ static void hinic_dev_stop(struct rte_eth_dev *dev)
 
 	rc = hinic_set_vport_enable(nic_dev->hwdev, false);
 	if (rc)
-		PMD_DRV_LOG(WARNING, "Disable vport failed, error: %d, dev_name:%s, port_id:%d",
+		PMD_DRV_LOG(WARNING, "Disable vport failed, error: %d, dev_name: %s, port_id: %d",
 			  rc, name, port_id);
 
 	/* Clear recorded link status */

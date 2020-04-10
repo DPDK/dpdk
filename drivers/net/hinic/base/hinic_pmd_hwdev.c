@@ -298,7 +298,7 @@ void dma_pool_destroy(struct dma_pool *pool)
 		return;
 
 	if (rte_atomic32_read(&pool->inuse) != 0) {
-		PMD_DRV_LOG(ERR, "Leak memory, dma_pool:%s, inuse_count:%d",
+		PMD_DRV_LOG(ERR, "Leak memory, dma_pool: %s, inuse_count: %d",
 			    pool->name, rte_atomic32_read(&pool->inuse));
 	}
 
@@ -1068,7 +1068,7 @@ hinic_show_sw_watchdog_timeout_info(void *buf_in, u16 in_size,
 		watchdog_info->is_overflow, watchdog_info->stack_top,
 		watchdog_info->stack_bottom);
 
-	PMD_DRV_LOG(ERR, "Mgmt pc: 0x%08x, lr: 0x%08x, cpsr:0x%08x",
+	PMD_DRV_LOG(ERR, "Mgmt pc: 0x%08x, lr: 0x%08x, cpsr: 0x%08x",
 		watchdog_info->pc, watchdog_info->lr, watchdog_info->cpsr);
 
 	PMD_DRV_LOG(ERR, "Mgmt register info");
