@@ -34,6 +34,8 @@
 #define HINIC_MSG_HEADER_P2P_IDX_MASK				0xF
 #define HINIC_MSG_HEADER_MSG_ID_MASK				0x3FF
 
+#define HINIC_DEV_BUSY_ACTIVE_FW				0xFE
+
 #define HINIC_MSG_HEADER_GET(val, member)			\
 		(((val) >> HINIC_MSG_HEADER_##member##_SHIFT) & \
 		HINIC_MSG_HEADER_##member##_MASK)

@@ -440,9 +440,12 @@ static int hinic_set_cmdq_ctxts(struct hinic_hwdev *hwdev)
 					     cmdq_ctxt, in_size, NULL,
 					     NULL, 0);
 		if (err) {
-			if (err == HINIC_MBOX_PF_BUSY_ACTIVE_FW)
+			if (err == HINIC_MBOX_PF_BUSY_ACTIVE_FW ||
+				err == HINIC_DEV_BUSY_ACTIVE_FW) {
 				cmdqs->status |= HINIC_CMDQ_SET_FAIL;
-			PMD_DRV_LOG(ERR, "Set cmdq ctxt failed");
+				PMD_DRV_LOG(ERR, "PF or VF fw is hot active");
+			}
+			PMD_DRV_LOG(ERR, "Set cmdq ctxt failed, err: %d", err);
 			return -EFAULT;
 		}
 	}

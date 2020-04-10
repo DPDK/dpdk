@@ -248,6 +248,19 @@ static void free_msg_buf(struct hinic_msg_pf_to_mgmt *pf_to_mgmt)
 	free_recv_msg(&pf_to_mgmt->recv_msg_from_mgmt);
 }
 
+static int hinic_get_mgmt_channel_status(void *hwdev)
+{
+	struct hinic_hwif *hwif = ((struct hinic_hwdev *)hwdev)->hwif;
+	u32 val;
+
+	if (hinic_func_type((struct hinic_hwdev *)hwdev) == TYPE_VF)
+		return false;
+
+	val = hinic_hwif_read_reg(hwif, HINIC_ICPL_RESERVD_ADDR);
+
+	return HINIC_GET_MGMT_CHANNEL_STATUS(val, MGMT_CHANNEL_STATUS);
+}
+
 /**
  * send_msg_to_mgmt_async - send async message
  * @pf_to_mgmt: PF to MGMT channel
@@ -308,6 +321,14 @@ static int send_msg_to_mgmt_sync(struct hinic_msg_pf_to_mgmt *pf_to_mgmt,
 	struct hinic_api_cmd_chain *chain;
 	u64 header;
 	u16 cmd_size = mgmt_msg_len(msg_len);
+
+	/* If fw is hot active, return failed */
+	if (hinic_get_mgmt_channel_status(pf_to_mgmt->hwdev)) {
+		if (mod == HINIC_MOD_COMM || mod == HINIC_MOD_L2NIC)
+			return HINIC_DEV_BUSY_ACTIVE_FW;
+		else
+			return -EBUSY;
+	}
 
 	if (direction == HINIC_MSG_RESPONSE)
 		prepare_header(pf_to_mgmt, &header, msg_len, mod, ack_type,
@@ -449,7 +470,7 @@ hinic_pf_to_mgmt_sync(struct hinic_hwdev *hwdev,
 			       recv_msg->msg_len);
 			*out_size = recv_msg->msg_len;
 		} else {
-			PMD_DRV_LOG(ERR, "Mgmt rsp's msg len: %u overflow.",
+			PMD_DRV_LOG(ERR, "Mgmt rsp's msg len:%u overflow.",
 				recv_msg->msg_len);
 			err = -ERANGE;
 		}
@@ -462,19 +483,6 @@ unlock_sync_msg:
 	return err;
 }
 
-static int hinic_get_mgmt_channel_status(void *hwdev)
-{
-	struct hinic_hwif *hwif = ((struct hinic_hwdev *)hwdev)->hwif;
-	u32 val;
-
-	if (hinic_func_type((struct hinic_hwdev *)hwdev) == TYPE_VF)
-		return false;
-
-	val = hinic_hwif_read_reg(hwif, HINIC_ICPL_RESERVD_ADDR);
-
-	return HINIC_GET_MGMT_CHANNEL_STATUS(val, MGMT_CHANNEL_STATUS);
-}
-
 int hinic_msg_to_mgmt_sync(void *hwdev, enum hinic_mod_type mod, u8 cmd,
 			   void *buf_in, u16 in_size,
 			   void *buf_out, u16 *out_size, u32 timeout)
@@ -483,10 +491,6 @@ int hinic_msg_to_mgmt_sync(void *hwdev, enum hinic_mod_type mod, u8 cmd,
 
 	if (!hwdev || in_size > HINIC_MSG_TO_MGMT_MAX_LEN)
 		return -EINVAL;
-
-	/* If status is hot upgrading, don't send message to mgmt */
-	if (hinic_get_mgmt_channel_status(hwdev))
-		return -EPERM;
 
 	if (hinic_func_type(hwdev) == TYPE_VF) {
 		rc = hinic_mbox_to_pf(hwdev, mod, cmd, buf_in, in_size,

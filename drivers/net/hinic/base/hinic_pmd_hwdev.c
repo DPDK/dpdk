@@ -529,7 +529,7 @@ static int hinic_vf_rx_tx_flush(struct hinic_hwdev *hwdev)
 
 	err = hinic_reinit_cmdq_ctxts(hwdev);
 	if (err)
-		PMD_DRV_LOG(WARNING, "Reinit cmdq failed");
+		PMD_DRV_LOG(WARNING, "Reinit cmdq failed when vf flush");
 
 	return err;
 }
@@ -587,7 +587,7 @@ static int hinic_pf_rx_tx_flush(struct hinic_hwdev *hwdev)
 
 	err = hinic_reinit_cmdq_ctxts(hwdev);
 	if (err)
-		PMD_DRV_LOG(WARNING, "Reinit cmdq failed");
+		PMD_DRV_LOG(WARNING, "Reinit cmdq failed when pf flush");
 
 	return 0;
 }

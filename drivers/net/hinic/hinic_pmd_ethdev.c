@@ -1862,11 +1862,6 @@ static int hinic_flow_ctrl_get(struct rte_eth_dev *dev,
 	else
 		fc_conf->mode = RTE_FC_NONE;
 
-	PMD_DRV_LOG(INFO, "Get pause options, tx: %s, rx: %s, auto: %s\n",
-		nic_pause.tx_pause ? "on" : "off",
-		nic_pause.rx_pause ? "on" : "off",
-		nic_pause.auto_neg ? "on" : "off");
-
 	return 0;
 }
 
@@ -1900,7 +1895,7 @@ static int hinic_flow_ctrl_set(struct rte_eth_dev *dev,
 	nic_dev->nic_pause.rx_pause = nic_pause.rx_pause;
 	nic_dev->nic_pause.tx_pause = nic_pause.tx_pause;
 
-	PMD_DRV_LOG(INFO, "Get pause options, tx: %s, rx: %s, auto: %s\n",
+	PMD_DRV_LOG(INFO, "Set pause options, tx: %s, rx: %s, auto: %s\n",
 		nic_pause.tx_pause ? "on" : "off",
 		nic_pause.rx_pause ? "on" : "off",
 		nic_pause.auto_neg ? "on" : "off");
