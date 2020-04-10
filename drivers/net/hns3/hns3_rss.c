@@ -328,8 +328,10 @@ hns3_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_conf->rss_hf = rss_cfg->conf.types;
 
 	/* Get the RSS Key required by the user */
-	if (rss_conf->rss_key)
+	if (rss_conf->rss_key && rss_conf->rss_key_len >= HNS3_RSS_KEY_SIZE) {
 		memcpy(rss_conf->rss_key, rss_cfg->key, HNS3_RSS_KEY_SIZE);
+		rss_conf->rss_key_len = HNS3_RSS_KEY_SIZE;
+	}
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
