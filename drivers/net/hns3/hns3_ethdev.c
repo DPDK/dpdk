@@ -312,11 +312,9 @@ hns3_restore_vlan_table(struct hns3_adapter *hns)
 	uint16_t vlan_id;
 	int ret = 0;
 
-	if (pf->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_ENABLE) {
-		ret = hns3_vlan_pvid_configure(hns, pf->port_base_vlan_cfg.pvid,
-					       1);
-		return ret;
-	}
+	if (pf->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_ENABLE)
+		return hns3_vlan_pvid_configure(hns,
+						pf->port_base_vlan_cfg.pvid, 1);
 
 	LIST_FOREACH(vlan_entry, &pf->vlan_list, next) {
 		if (vlan_entry->hd_tbl_status) {
@@ -2238,12 +2236,10 @@ hns3_config_mtu(struct hns3_hw *hw, uint16_t mps)
 	}
 
 	ret = hns3_buffer_alloc(hw);
-	if (ret) {
+	if (ret)
 		hns3_err(hw, "Failed to allocate buffer, ret = %d", ret);
-		return ret;
-	}
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -2725,12 +2721,10 @@ hns3_get_configuration(struct hns3_hw *hw)
 	}
 
 	ret = hns3_get_board_configuration(hw);
-	if (ret) {
+	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to get board configuration: %d", ret);
-		return ret;
-	}
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -3664,7 +3658,6 @@ hns3_set_promisc_mode(struct hns3_hw *hw, bool en_uc_pmc, bool en_mc_pmc)
 	struct hns3_promisc_param param;
 	bool en_bc_pmc = true;
 	uint8_t vf_id;
-	int ret;
 
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
@@ -3674,11 +3667,7 @@ hns3_set_promisc_mode(struct hns3_hw *hw, bool en_uc_pmc, bool en_mc_pmc)
 	vf_id = 0;
 
 	hns3_promisc_param_init(&param, en_uc_pmc, en_mc_pmc, en_bc_pmc, vf_id);
-	ret = hns3_cmd_set_promisc_mode(hw, &param);
-	if (ret)
-		return ret;
-
-	return 0;
+	return hns3_cmd_set_promisc_mode(hw, &param);
 }
 
 static int

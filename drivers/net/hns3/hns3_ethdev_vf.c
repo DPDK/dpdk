@@ -283,10 +283,9 @@ hns3vf_add_mc_mac_addr(struct hns3_adapter *hns,
 				      mac_addr);
 		hns3_err(hw, "Failed to add mc mac addr(%s) for vf: %d",
 			 mac_str, ret);
-		return ret;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -306,10 +305,9 @@ hns3vf_remove_mc_mac_addr(struct hns3_adapter *hns,
 				      mac_addr);
 		hns3_err(hw, "Failed to remove mc mac addr(%s) for vf: %d",
 			 mac_str, ret);
-		return ret;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -550,13 +548,11 @@ hns3vf_bind_ring_with_vector(struct hns3_hw *hw, uint8_t vector_id,
 	op_str = mmap ? "Map" : "Unmap";
 	ret = hns3_send_mbx_msg(hw, code, 0, (uint8_t *)&bind_msg,
 				sizeof(bind_msg), false, NULL, 0);
-	if (ret) {
+	if (ret)
 		hns3_err(hw, "%s TQP %d fail, vector_id is %d, ret is %d.",
 			 op_str, queue_id, bind_msg.vector_id, ret);
-		return ret;
-	}
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -1675,12 +1671,10 @@ hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 		return ret;
 
 	ret = hns3_start_queues(hns, reset_queue);
-	if (ret) {
+	if (ret)
 		hns3_err(hw, "Failed to start queues: %d", ret);
-		return ret;
-	}
 
-	return 0;
+	return ret;
 }
 
 static int
