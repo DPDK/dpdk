@@ -2407,7 +2407,8 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_RX_OFFLOAD_QINQ_STRIP |
 				 DEV_RX_OFFLOAD_VLAN_FILTER |
 				 DEV_RX_OFFLOAD_VLAN_EXTEND |
-				 DEV_RX_OFFLOAD_JUMBO_FRAME);
+				 DEV_RX_OFFLOAD_JUMBO_FRAME |
+				 DEV_RX_OFFLOAD_RSS_HASH);
 	info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	info->tx_offload_capa = (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 				 DEV_TX_OFFLOAD_IPV4_CKSUM |
