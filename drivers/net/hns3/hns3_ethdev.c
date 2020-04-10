@@ -79,6 +79,11 @@ static int hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid,
 				    int on);
 static int hns3_update_speed_duplex(struct rte_eth_dev *eth_dev);
 
+static int hns3_add_mc_addr(struct hns3_hw *hw,
+			    struct rte_ether_addr *mac_addr);
+static int hns3_remove_mc_addr(struct hns3_hw *hw,
+			    struct rte_ether_addr *mac_addr);
+
 static void
 hns3_pf_disable_irq0(struct hns3_hw *hw)
 {
@@ -1408,6 +1413,53 @@ hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 }
 
 static int
+hns3_add_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+{
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_ether_addr *addr;
+	int ret;
+	int i;
+
+	for (i = 0; i < hw->mc_addrs_num; i++) {
+		addr = &hw->mc_addrs[i];
+		/* Check if there are duplicate addresses */
+		if (rte_is_same_ether_addr(addr, mac_addr)) {
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      addr);
+			hns3_err(hw, "failed to add mc mac addr, same addrs"
+				 "(%s) is added by the set_mc_mac_addr_list "
+				 "API", mac_str);
+			return -EINVAL;
+		}
+	}
+
+	ret = hns3_add_mc_addr(hw, mac_addr);
+	if (ret) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "failed to add mc mac addr(%s), ret = %d",
+			 mac_str, ret);
+	}
+	return ret;
+}
+
+static int
+hns3_remove_mc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
+{
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	ret = hns3_remove_mc_addr(hw, mac_addr);
+	if (ret) {
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				      mac_addr);
+		hns3_err(hw, "failed to remove mc mac addr(%s), ret = %d",
+			 mac_str, ret);
+	}
+	return ret;
+}
+
+static int
 hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		  uint32_t idx, __rte_unused uint32_t pool)
 {
@@ -1416,12 +1468,27 @@ hns3_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 	int ret;
 
 	rte_spinlock_lock(&hw->lock);
-	ret = hns3_add_uc_addr_common(hw, mac_addr);
+
+	/*
+	 * In hns3 network engine adding UC and MC mac address with different
+	 * commands with firmware. We need to determine whether the input
+	 * address is a UC or a MC address to call different commands.
+	 * By the way, it is recommended calling the API function named
+	 * rte_eth_dev_set_mc_addr_list to set the MC mac address, because
+	 * using the rte_eth_dev_mac_addr_add API function to set MC mac address
+	 * may affect the specifications of UC mac addresses.
+	 */
+	if (rte_is_multicast_ether_addr(mac_addr))
+		ret = hns3_add_mc_addr_common(hw, mac_addr);
+	else
+		ret = hns3_add_uc_addr_common(hw, mac_addr);
+
 	if (ret) {
 		rte_spinlock_unlock(&hw->lock);
 		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
-		hns3_err(hw, "Failed to add mac addr(%s): %d", mac_str, ret);
+		hns3_err(hw, "failed to add mac addr(%s), ret = %d", mac_str,
+			 ret);
 		return ret;
 	}
 
@@ -1443,7 +1510,7 @@ hns3_remove_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
 		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
-		hns3_err(hw, "Remove unicast mac addr err! addr(%s) invalid",
+		hns3_err(hw, "remove unicast mac addr err! addr(%s) invalid",
 			 mac_str);
 		return -EINVAL;
 	}
@@ -1470,16 +1537,18 @@ hns3_remove_mac_addr(struct rte_eth_dev *dev, uint32_t idx)
 	int ret;
 
 	rte_spinlock_lock(&hw->lock);
-	ret = hns3_remove_uc_addr_common(hw, mac_addr);
+
+	if (rte_is_multicast_ether_addr(mac_addr))
+		ret = hns3_remove_mc_addr_common(hw, mac_addr);
+	else
+		ret = hns3_remove_uc_addr_common(hw, mac_addr);
+	rte_spinlock_unlock(&hw->lock);
 	if (ret) {
-		rte_spinlock_unlock(&hw->lock);
 		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
-		hns3_err(hw, "Failed to remove mac addr(%s): %d", mac_str, ret);
-		return;
+		hns3_err(hw, "failed to remove mac addr(%s), ret = %d", mac_str,
+			 ret);
 	}
-
-	rte_spinlock_unlock(&hw->lock);
 }
 
 static int
@@ -1575,19 +1644,22 @@ hns3_configure_all_mac_addr(struct hns3_adapter *hns, bool del)
 
 	for (i = 0; i < HNS3_UC_MACADDR_NUM; i++) {
 		addr = &hw->data->mac_addrs[i];
-		if (!rte_is_valid_assigned_ether_addr(addr))
+		if (rte_is_zero_ether_addr(addr))
 			continue;
-		if (del)
-			ret = hns3_remove_uc_addr_common(hw, addr);
+		if (rte_is_multicast_ether_addr(addr))
+			ret = del ? hns3_remove_mc_addr(hw, addr) :
+			      hns3_add_mc_addr(hw, addr);
 		else
-			ret = hns3_add_uc_addr_common(hw, addr);
+			ret = del ? hns3_remove_uc_addr_common(hw, addr) :
+			      hns3_add_uc_addr_common(hw, addr);
+
 		if (ret) {
 			err = ret;
 			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 					      addr);
-			hns3_dbg(hw,
-				 "Failed to %s mac addr(%s). ret:%d i:%d",
-				 del ? "remove" : "restore", mac_str, ret, i);
+			hns3_err(hw, "failed to %s mac addr(%s) index:%d "
+				 "ret = %d.", del ? "remove" : "restore",
+				 mac_str, i, ret);
 		}
 	}
 	return err;
@@ -1634,7 +1706,7 @@ hns3_add_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	if (!rte_is_multicast_ether_addr(mac_addr)) {
 		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
-		hns3_err(hw, "Failed to add mc mac addr, addr(%s) invalid",
+		hns3_err(hw, "failed to add mc mac addr, addr(%s) invalid",
 			 mac_str);
 		return -EINVAL;
 	}
@@ -1663,7 +1735,7 @@ hns3_add_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 			hns3_err(hw, "mc mac vlan table is full");
 		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
-		hns3_err(hw, "Failed to add mc mac addr(%s): %d", mac_str, ret);
+		hns3_err(hw, "failed to add mc mac addr(%s): %d", mac_str, ret);
 	}
 
 	return ret;
@@ -1728,7 +1800,7 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 	uint32_t j;
 
 	if (nb_mc_addr > HNS3_MC_MACADDR_NUM) {
-		hns3_err(hw, "Failed to set mc mac addr, nb_mc_addr(%d) "
+		hns3_err(hw, "failed to set mc mac addr, nb_mc_addr(%d) "
 			 "invalid. valid range: 0~%d",
 			 nb_mc_addr, HNS3_MC_MACADDR_NUM);
 		return -EINVAL;
@@ -1741,7 +1813,7 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 					      addr);
 			hns3_err(hw,
-				 "Failed to set mc mac addr, addr(%s) invalid.",
+				 "failed to set mc mac addr, addr(%s) invalid.",
 				 mac_str);
 			return -EINVAL;
 		}
@@ -1752,8 +1824,26 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 				rte_ether_format_addr(mac_str,
 						      RTE_ETHER_ADDR_FMT_SIZE,
 						      addr);
-				hns3_err(hw, "Failed to set mc mac addr, "
+				hns3_err(hw, "failed to set mc mac addr, "
 					 "addrs invalid. two same addrs(%s).",
+					 mac_str);
+				return -EINVAL;
+			}
+		}
+
+		/*
+		 * Check if there are duplicate addresses between mac_addrs
+		 * and mc_addr_set
+		 */
+		for (j = 0; j < HNS3_UC_MACADDR_NUM; j++) {
+			if (rte_is_same_ether_addr(addr,
+						   &hw->data->mac_addrs[j])) {
+				rte_ether_format_addr(mac_str,
+						      RTE_ETHER_ADDR_FMT_SIZE,
+						      addr);
+				hns3_err(hw, "failed to set mc mac addr, "
+					 "addrs invalid. addrs(%s) has already "
+					 "configured in mac_addr add API",
 					 mac_str);
 				return -EINVAL;
 			}
@@ -3541,6 +3631,7 @@ hns3_get_mac_ethertype_cmd_status(uint16_t cmdq_resp, uint8_t resp_code)
 			     "add mac ethertype failed for undefined, code=%d.",
 			     resp_code);
 		return_status = -EIO;
+		break;
 	}
 
 	return return_status;
