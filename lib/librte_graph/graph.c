@@ -210,6 +210,54 @@ graph_node_fini(struct graph *graph)
 						       graph_node->node->name));
 }
 
+static struct rte_graph *
+graph_mem_fixup_node_ctx(struct rte_graph *graph)
+{
+	struct rte_node *node;
+	struct node *node_db;
+	rte_graph_off_t off;
+	rte_node_t count;
+	const char *name;
+
+	rte_graph_foreach_node(count, off, graph, node) {
+		if (node->parent_id == RTE_NODE_ID_INVALID) /* Static node */
+			name = node->name;
+		else /* Cloned node */
+			name = node->parent;
+
+		node_db = node_from_name(name);
+		if (node_db == NULL)
+			SET_ERR_JMP(ENOLINK, fail, "Node %s not found", name);
+		node->process = node_db->process;
+	}
+
+	return graph;
+fail:
+	return NULL;
+}
+
+static struct rte_graph *
+graph_mem_fixup_secondary(struct rte_graph *graph)
+{
+	if (graph == NULL || rte_eal_process_type() == RTE_PROC_PRIMARY)
+		return graph;
+
+	return graph_mem_fixup_node_ctx(graph);
+}
+
+struct rte_graph *
+rte_graph_lookup(const char *name)
+{
+	const struct rte_memzone *mz;
+	struct rte_graph *rc = NULL;
+
+	mz = rte_memzone_lookup(name);
+	if (mz)
+		rc = mz->addr;
+
+	return graph_mem_fixup_secondary(rc);
+}
+
 rte_graph_t
 rte_graph_create(const char *name, struct rte_graph_param *prm)
 {
@@ -340,6 +388,76 @@ done:
 	return rc;
 }
 
+rte_graph_t
+rte_graph_from_name(const char *name)
+{
+	struct graph *graph;
+
+	STAILQ_FOREACH(graph, &graph_list, next)
+		if (strncmp(graph->name, name, RTE_GRAPH_NAMESIZE) == 0)
+			return graph->id;
+
+	return RTE_GRAPH_ID_INVALID;
+}
+
+char *
+rte_graph_id_to_name(rte_graph_t id)
+{
+	struct graph *graph;
+
+	GRAPH_ID_CHECK(id);
+	STAILQ_FOREACH(graph, &graph_list, next)
+		if (graph->id == id)
+			return graph->name;
+
+fail:
+	return NULL;
+}
+
+struct rte_node *
+rte_graph_node_get(rte_graph_t gid, uint32_t nid)
+{
+	struct rte_node *node;
+	struct graph *graph;
+	rte_graph_off_t off;
+	rte_node_t count;
+
+	GRAPH_ID_CHECK(gid);
+	STAILQ_FOREACH(graph, &graph_list, next)
+		if (graph->id == gid) {
+			rte_graph_foreach_node(count, off, graph->graph,
+						node) {
+				if (node->id == nid)
+					return node;
+			}
+			break;
+		}
+fail:
+	return NULL;
+}
+
+struct rte_node *
+rte_graph_node_get_by_name(const char *graph_name, const char *node_name)
+{
+	struct rte_node *node;
+	struct graph *graph;
+	rte_graph_off_t off;
+	rte_node_t count;
+
+	STAILQ_FOREACH(graph, &graph_list, next)
+		if (!strncmp(graph->name, graph_name, RTE_GRAPH_NAMESIZE)) {
+			rte_graph_foreach_node(count, off, graph->graph,
+						node) {
+				if (!strncmp(node->name, node_name,
+					     RTE_NODE_NAMESIZE))
+					return node;
+			}
+			break;
+		}
+
+	return NULL;
+}
+
 void __rte_noinline
 __rte_node_stream_alloc(struct rte_graph *graph, struct rte_node *node)
 {
@@ -353,4 +471,17 @@ __rte_node_stream_alloc(struct rte_graph *graph, struct rte_node *node)
 	RTE_VERIFY(node->objs);
 	node->size = size;
 	node->realloc_count++;
+}
+
+rte_graph_t
+rte_graph_max_count(void)
+{
+	return graph_id;
+}
+
+RTE_INIT(rte_graph_init_log)
+{
+	rte_graph_logtype = rte_log_register("lib.graph");
+	if (rte_graph_logtype >= 0)
+		rte_log_set_level(rte_graph_logtype, RTE_LOG_INFO);
 }
