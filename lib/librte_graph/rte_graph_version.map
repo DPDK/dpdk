@@ -2,6 +2,7 @@ EXPERIMENTAL {
 	global:
 
 	__rte_node_register;
+	__rte_node_stream_alloc;
 
 	rte_node_clone;
 	rte_node_dump;

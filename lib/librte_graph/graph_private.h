@@ -12,6 +12,7 @@
 #include <rte_eal.h>
 
 #include "rte_graph.h"
+#include "rte_graph_worker.h"
 
 extern int rte_graph_logtype;
 
@@ -254,6 +255,69 @@ rte_node_t graph_nodes_count(struct graph *graph);
  */
 void graph_mark_nodes_as_not_visited(struct graph *graph);
 
+/* Fast path graph memory populate unctions */
+
+/**
+ * @internal
+ *
+ * Create fast-path memory for the graph and nodes.
+ *
+ * @param graph
+ *   Pointer to the internal graph object.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -ENOMEM: Not enough for graph and nodes.
+ *   - -EINVAL: Graph nodes not found.
+ */
+int graph_fp_mem_create(struct graph *graph);
+
+/**
+ * @internal
+ *
+ * Free fast-path memory used by graph and nodes.
+ *
+ * @param graph
+ *   Pointer to the internal graph object.
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Graph memzone related error.
+ */
+int graph_fp_mem_destroy(struct graph *graph);
+
+/* Lookup functions */
+/**
+ * @internal
+ *
+ * Get graph node object from node id.
+ *
+ * @param graph
+ *   Pointer to rte_graph object.
+ * @param id
+ *   Node Identifier.
+ *
+ * @return
+ *   Pointer to rte_node if identifier is valid else NULL.
+ */
+struct rte_node *graph_node_id_to_ptr(const struct rte_graph *graph,
+				      rte_node_t id);
+
+/**
+ * @internal
+ *
+ * Get graph node object from node name.
+ *
+ * @param graph
+ *   Pointer to rte_graph object.
+ * @param node_name
+ *   Pointer to character string holding the node name.
+ *
+ * @return
+ *   Pointer to rte_node if identifier is valid else NULL.
+ */
+struct rte_node *graph_node_name_to_ptr(const struct rte_graph *graph,
+					const char *node_name);
 
 /**
  * @internal
