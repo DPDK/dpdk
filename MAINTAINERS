@@ -1472,6 +1472,11 @@ F: examples/bpf/
 F: app/test/test_bpf.c
 F: doc/guides/prog_guide/bpf_lib.rst
 
+Graph - EXPERIMENTAL
+M: Jerin Jacob <jerinj@marvell.com>
+M: Kiran Kumar K <kirankumark@marvell.com>
+F: lib/librte_graph/
+
 
 Test Applications
 -----------------

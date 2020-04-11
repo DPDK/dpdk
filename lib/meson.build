@@ -32,7 +32,7 @@ libraries = [
 	# add pkt framework libs which use other libs from above
 	'port', 'table', 'pipeline',
 	# flow_classify lib depends on pkt framework table lib
-	'flow_classify', 'bpf', 'telemetry']
+	'flow_classify', 'bpf', 'graph', 'telemetry']
 
 if is_windows
 	libraries = ['kvargs','eal'] # only supported libraries for windows
