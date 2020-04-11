@@ -525,6 +525,37 @@ end:
 	return -rc;
 }
 
+static void
+graph_scan_dump(FILE *f, rte_graph_t id, bool all)
+{
+	struct graph *graph;
+
+	RTE_VERIFY(f);
+	GRAPH_ID_CHECK(id);
+
+	STAILQ_FOREACH(graph, &graph_list, next) {
+		if (all == true) {
+			graph_dump(f, graph);
+		} else if (graph->id == id) {
+			graph_dump(f, graph);
+			return;
+		}
+	}
+fail:
+	return;
+}
+
+void
+rte_graph_dump(FILE *f, rte_graph_t id)
+{
+	graph_scan_dump(f, id, false);
+}
+
+void
+rte_graph_list_dump(FILE *f)
+{
+	graph_scan_dump(f, 0, true);
+}
 
 rte_graph_t
 rte_graph_max_count(void)

@@ -319,6 +319,19 @@ struct rte_node *graph_node_id_to_ptr(const struct rte_graph *graph,
 struct rte_node *graph_node_name_to_ptr(const struct rte_graph *graph,
 					const char *node_name);
 
+/* Debug functions */
+/**
+ * @internal
+ *
+ * Dump internal graph object data.
+ *
+ * @param f
+ *   FILE pointer to dump the data.
+ * @param g
+ *   Pointer to the internal graph object.
+ */
+void graph_dump(FILE *f, struct graph *g);
+
 /**
  * @internal
  *
