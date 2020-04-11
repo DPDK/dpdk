@@ -6,6 +6,7 @@ EXPERIMENTAL {
 
 	rte_graph_create;
 	rte_graph_destroy;
+	rte_graph_export;
 	rte_graph_from_name;
 	rte_graph_id_to_name;
 	rte_graph_lookup;

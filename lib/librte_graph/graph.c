@@ -473,6 +473,59 @@ __rte_node_stream_alloc(struct rte_graph *graph, struct rte_node *node)
 	node->realloc_count++;
 }
 
+static int
+graph_to_dot(FILE *f, struct graph *graph)
+{
+	const char *src_edge_color = " [color=blue]\n";
+	const char *edge_color = "\n";
+	struct graph_node *graph_node;
+	char *node_name;
+	rte_edge_t i;
+	int rc;
+
+	rc = fprintf(f, "Digraph %s {\n\trankdir=LR;\n", graph->name);
+	if (rc < 0)
+		goto end;
+
+	STAILQ_FOREACH(graph_node, &graph->node_list, next) {
+		node_name = graph_node->node->name;
+		for (i = 0; i < graph_node->node->nb_edges; i++) {
+			rc = fprintf(f, "\t\"%s\"->\"%s\"%s", node_name,
+				     graph_node->adjacency_list[i]->node->name,
+				     graph_node->node->flags & RTE_NODE_SOURCE_F
+					     ? src_edge_color
+					     : edge_color);
+			if (rc < 0)
+				goto end;
+		}
+	}
+	rc = fprintf(f, "}\n");
+	if (rc < 0)
+		goto end;
+
+	return 0;
+end:
+	rte_errno = EBADF;
+	return -rte_errno;
+}
+
+int
+rte_graph_export(const char *name, FILE *f)
+{
+	struct graph *graph;
+	int rc = ENOENT;
+
+	STAILQ_FOREACH(graph, &graph_list, next) {
+		if (strncmp(graph->name, name, RTE_GRAPH_NAMESIZE) == 0) {
+			rc = graph_to_dot(f, graph);
+			goto end;
+		}
+	}
+end:
+	return -rc;
+}
+
+
 rte_graph_t
 rte_graph_max_count(void)
 {
