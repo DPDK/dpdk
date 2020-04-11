@@ -23,9 +23,13 @@
 #include <rte_cycles.h>
 #include <rte_eal.h>
 #include <rte_ethdev.h>
+#include <rte_graph_worker.h>
+#include <rte_launch.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_mempool.h>
+#include <rte_node_eth_api.h>
+#include <rte_node_ip4_api.h>
 #include <rte_per_lcore.h>
 #include <rte_string_fns.h>
 #include <rte_vect.h>
@@ -75,12 +79,17 @@ static uint32_t enabled_port_mask;
 struct lcore_rx_queue {
 	uint16_t port_id;
 	uint8_t queue_id;
+	char node_name[RTE_NODE_NAMESIZE];
 };
 
 /* Lcore conf */
 struct lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
+
+	struct rte_graph *graph;
+	char name[RTE_GRAPH_NAMESIZE];
+	rte_graph_t graph_id;
 } __rte_cache_aligned;
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
@@ -118,6 +127,25 @@ static struct rte_eth_conf port_conf = {
 };
 
 static struct rte_mempool *pktmbuf_pool[RTE_MAX_ETHPORTS][NB_SOCKETS];
+
+static struct rte_node_ethdev_config ethdev_conf[RTE_MAX_ETHPORTS];
+
+struct ipv4_l3fwd_lpm_route {
+	uint32_t ip;
+	uint8_t depth;
+	uint8_t if_out;
+};
+
+#define IPV4_L3FWD_LPM_NUM_ROUTES                                              \
+	(sizeof(ipv4_l3fwd_lpm_route_array) /                                  \
+	 sizeof(ipv4_l3fwd_lpm_route_array[0]))
+/* 198.18.0.0/16 are set aside for RFC2544 benchmarking. */
+static struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
+	{RTE_IPV4(198, 18, 0, 0), 24, 0}, {RTE_IPV4(198, 18, 1, 0), 24, 1},
+	{RTE_IPV4(198, 18, 2, 0), 24, 2}, {RTE_IPV4(198, 18, 3, 0), 24, 3},
+	{RTE_IPV4(198, 18, 4, 0), 24, 4}, {RTE_IPV4(198, 18, 5, 0), 24, 5},
+	{RTE_IPV4(198, 18, 6, 0), 24, 6}, {RTE_IPV4(198, 18, 7, 0), 24, 7},
+};
 
 static int
 check_lcore_params(void)
@@ -633,17 +661,89 @@ signal_handler(int signum)
 	}
 }
 
+static void
+print_stats(void)
+{
+	const char topLeft[] = {27, '[', '1', ';', '1', 'H', '\0'};
+	const char clr[] = {27, '[', '2', 'J', '\0'};
+	struct rte_graph_cluster_stats_param s_param;
+	struct rte_graph_cluster_stats *stats;
+	const char *pattern = "worker_*";
+
+	/* Prepare stats object */
+	memset(&s_param, 0, sizeof(s_param));
+	s_param.f = stdout;
+	s_param.socket_id = SOCKET_ID_ANY;
+	s_param.graph_patterns = &pattern;
+	s_param.nb_graph_patterns = 1;
+
+	stats = rte_graph_cluster_stats_create(&s_param);
+	if (stats == NULL)
+		rte_exit(EXIT_FAILURE, "Unable to create stats object\n");
+
+	while (!force_quit) {
+		/* Clear screen and move to top left */
+		printf("%s%s", clr, topLeft);
+		rte_graph_cluster_stats_get(stats, 0);
+		rte_delay_ms(1E3);
+	}
+
+	rte_graph_cluster_stats_destroy(stats);
+}
+
+/* Main processing loop */
+static int
+graph_main_loop(void *conf)
+{
+	struct lcore_conf *qconf;
+	struct rte_graph *graph;
+	uint32_t lcore_id;
+
+	RTE_SET_USED(conf);
+
+	lcore_id = rte_lcore_id();
+	qconf = &lcore_conf[lcore_id];
+	graph = qconf->graph;
+
+	if (!graph) {
+		RTE_LOG(INFO, L3FWD_GRAPH, "Lcore %u has nothing to do\n",
+			lcore_id);
+		return 0;
+	}
+
+	RTE_LOG(INFO, L3FWD_GRAPH,
+		"Entering main loop on lcore %u, graph %s(%p)\n", lcore_id,
+		qconf->name, graph);
+
+	while (likely(!force_quit))
+		rte_graph_walk(graph);
+
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
+	/* Rewrite data of src and dst ether addr */
+	uint8_t rewrite_data[2 * sizeof(struct rte_ether_addr)];
+	static const char * const default_patterns[] = {
+		"ip4*",
+		"ethdev_tx-*",
+		"pkt_drop",
+	};
 	uint8_t nb_rx_queue, queue, socketid;
+	struct rte_graph_param graph_conf;
 	struct rte_eth_dev_info dev_info;
+	uint32_t nb_ports, nb_conf = 0;
 	uint32_t n_tx_queue, nb_lcores;
 	struct rte_eth_txconf *txconf;
-	uint16_t queueid, portid;
+	uint16_t queueid, portid, i;
+	const char **node_patterns;
 	struct lcore_conf *qconf;
+	uint16_t nb_graphs = 0;
+	uint16_t nb_patterns;
+	uint8_t rewrite_len;
 	uint32_t lcore_id;
-	uint32_t nb_ports;
 	int ret;
 
 	/* Init EAL */
@@ -792,6 +892,18 @@ main(int argc, char **argv)
 			queueid++;
 		}
 
+		/* Setup ethdev node config */
+		ethdev_conf[nb_conf].port_id = portid;
+		ethdev_conf[nb_conf].num_rx_queues = nb_rx_queue;
+		ethdev_conf[nb_conf].num_tx_queues = n_tx_queue;
+		if (!per_port_pool)
+			ethdev_conf[nb_conf].mp = pktmbuf_pool[0];
+
+		else
+			ethdev_conf[nb_conf].mp = pktmbuf_pool[portid];
+		ethdev_conf[nb_conf].mp_count = NB_SOCKETS;
+
+		nb_conf++;
 		printf("\n");
 	}
 
@@ -835,10 +947,23 @@ main(int argc, char **argv)
 					 "port=%d\n",
 					 ret, portid);
 
+			/* Add this queue node to its graph */
+			snprintf(qconf->rx_queue_list[queue].node_name,
+				 RTE_NODE_NAMESIZE, "ethdev_rx-%u-%u", portid,
+				 queueid);
 		}
+
+		/* Alloc a graph to this lcore only if source exists  */
+		if (qconf->n_rx_queue)
+			nb_graphs++;
 	}
 
 	printf("\n");
+
+	/* Ethdev node config, skip rx queue mapping */
+	ret = rte_node_eth_config(ethdev_conf, nb_conf, nb_graphs);
+	if (ret)
+		rte_exit(EXIT_FAILURE, "rte_node_eth_config: err=%d\n", ret);
 
 	/* Start ports */
 	RTE_ETH_FOREACH_DEV(portid)
@@ -866,6 +991,125 @@ main(int argc, char **argv)
 	printf("\n");
 
 	check_all_ports_link_status(enabled_port_mask);
+
+	/* Graph Initialization */
+	nb_patterns = RTE_DIM(default_patterns);
+	node_patterns = malloc((MAX_RX_QUEUE_PER_LCORE + nb_patterns) *
+			       sizeof(*node_patterns));
+	if (!node_patterns)
+		return -ENOMEM;
+	memcpy(node_patterns, default_patterns,
+	       nb_patterns * sizeof(*node_patterns));
+
+	memset(&graph_conf, 0, sizeof(graph_conf));
+	graph_conf.node_patterns = node_patterns;
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		rte_graph_t graph_id;
+		rte_edge_t i;
+
+		if (rte_lcore_is_enabled(lcore_id) == 0)
+			continue;
+
+		qconf = &lcore_conf[lcore_id];
+
+		/* Skip graph creation if no source exists */
+		if (!qconf->n_rx_queue)
+			continue;
+
+		/* Add rx node patterns of this lcore */
+		for (i = 0; i < qconf->n_rx_queue; i++) {
+			graph_conf.node_patterns[nb_patterns + i] =
+				qconf->rx_queue_list[i].node_name;
+		}
+
+		graph_conf.nb_node_patterns = nb_patterns + i;
+		graph_conf.socket_id = rte_lcore_to_socket_id(lcore_id);
+
+		snprintf(qconf->name, sizeof(qconf->name), "worker_%u",
+			 lcore_id);
+
+		graph_id = rte_graph_create(qconf->name, &graph_conf);
+		if (graph_id == RTE_GRAPH_ID_INVALID)
+			rte_exit(EXIT_FAILURE,
+				 "rte_graph_create(): graph_id invalid"
+				 " for lcore %u\n", lcore_id);
+
+		qconf->graph_id = graph_id;
+		qconf->graph = rte_graph_lookup(qconf->name);
+		if (!qconf->graph)
+			rte_exit(EXIT_FAILURE,
+				 "rte_graph_lookup(): graph %s not found\n",
+				 qconf->name);
+	}
+
+	memset(&rewrite_data, 0, sizeof(rewrite_data));
+	rewrite_len = sizeof(rewrite_data);
+
+	/* Add route to ip4 graph infra */
+	for (i = 0; i < IPV4_L3FWD_LPM_NUM_ROUTES; i++) {
+		char route_str[INET6_ADDRSTRLEN * 4];
+		char abuf[INET6_ADDRSTRLEN];
+		struct in_addr in;
+		uint32_t dst_port;
+
+		/* Skip unused ports */
+		if ((1 << ipv4_l3fwd_lpm_route_array[i].if_out &
+		     enabled_port_mask) == 0)
+			continue;
+
+		dst_port = ipv4_l3fwd_lpm_route_array[i].if_out;
+
+		in.s_addr = htonl(ipv4_l3fwd_lpm_route_array[i].ip);
+		snprintf(route_str, sizeof(route_str), "%s / %d (%d)",
+			 inet_ntop(AF_INET, &in, abuf, sizeof(abuf)),
+			 ipv4_l3fwd_lpm_route_array[i].depth,
+			 ipv4_l3fwd_lpm_route_array[i].if_out);
+
+		/* Use route index 'i' as next hop id */
+		ret = rte_node_ip4_route_add(
+			ipv4_l3fwd_lpm_route_array[i].ip,
+			ipv4_l3fwd_lpm_route_array[i].depth, i,
+			RTE_NODE_IP4_LOOKUP_NEXT_REWRITE);
+
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Unable to add ip4 route %s to graph\n",
+				 route_str);
+
+		memcpy(rewrite_data, val_eth + dst_port, rewrite_len);
+
+		/* Add next hop rewrite data for id 'i' */
+		ret = rte_node_ip4_rewrite_add(i, rewrite_data,
+					       rewrite_len, dst_port);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Unable to add next hop %u for "
+				 "route %s\n", i, route_str);
+
+		RTE_LOG(INFO, L3FWD_GRAPH, "Added route %s, next_hop %u\n",
+			route_str, i);
+	}
+
+	/* Launch per-lcore init on every slave lcore */
+	rte_eal_mp_remote_launch(graph_main_loop, NULL, SKIP_MASTER);
+
+	/* Accumulate and print stats on master until exit */
+	if (rte_graph_has_stats_feature())
+		print_stats();
+
+	/* Wait for slave cores to exit */
+	ret = 0;
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		ret = rte_eal_wait_lcore(lcore_id);
+		/* Destroy graph */
+		if (ret < 0 || rte_graph_destroy(
+			rte_graph_from_name(lcore_conf[lcore_id].name))) {
+			ret = -1;
+			break;
+		}
+	}
+	free(node_patterns);
 
 	/* Stop ports */
 	RTE_ETH_FOREACH_DEV(portid) {
