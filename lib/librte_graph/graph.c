@@ -7,6 +7,7 @@
 #include "graph_private.h"
 
 static rte_spinlock_t graph_lock = RTE_SPINLOCK_INITIALIZER;
+int rte_graph_logtype;
 
 void
 graph_spinlock_lock(void)
