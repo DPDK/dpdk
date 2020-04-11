@@ -1,0 +1,534 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(C) 2020 Marvell International Ltd.
+ */
+
+#include <arpa/inet.h>
+#include <errno.h>
+#include <getopt.h>
+#include <inttypes.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/queue.h>
+#include <unistd.h>
+
+#include <rte_branch_prediction.h>
+#include <rte_common.h>
+#include <rte_eal.h>
+#include <rte_ethdev.h>
+#include <rte_log.h>
+#include <rte_mempool.h>
+#include <rte_per_lcore.h>
+#include <rte_string_fns.h>
+#include <rte_vect.h>
+
+#include <cmdline_parse.h>
+#include <cmdline_parse_etheraddr.h>
+
+/* Log type */
+#define RTE_LOGTYPE_L3FWD_GRAPH RTE_LOGTYPE_USER1
+
+/*
+ * Configurable number of RX/TX ring descriptors
+ */
+#define RTE_TEST_RX_DESC_DEFAULT 1024
+#define RTE_TEST_TX_DESC_DEFAULT 1024
+
+#define MAX_TX_QUEUE_PER_PORT RTE_MAX_ETHPORTS
+#define MAX_RX_QUEUE_PER_PORT 128
+
+#define MAX_RX_QUEUE_PER_LCORE 16
+
+#define MAX_LCORE_PARAMS 1024
+
+#define NB_SOCKETS 8
+
+/**< Ports set in promiscuous mode off by default. */
+static int promiscuous_on;
+
+static int numa_on = 1;	  /**< NUMA is enabled by default. */
+static int per_port_pool; /**< Use separate buffer pools per port; disabled */
+			  /**< by default */
+
+static volatile bool force_quit;
+
+/* Ethernet addresses of ports */
+static uint64_t dest_eth_addr[RTE_MAX_ETHPORTS];
+xmm_t val_eth[RTE_MAX_ETHPORTS];
+
+/* Mask of enabled ports */
+static uint32_t enabled_port_mask;
+
+struct lcore_rx_queue {
+	uint16_t port_id;
+	uint8_t queue_id;
+};
+
+/* Lcore conf */
+struct lcore_conf {
+	uint16_t n_rx_queue;
+	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
+} __rte_cache_aligned;
+
+static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
+
+struct lcore_params {
+	uint16_t port_id;
+	uint8_t queue_id;
+	uint8_t lcore_id;
+} __rte_cache_aligned;
+
+static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
+static struct lcore_params lcore_params_array_default[] = {
+	{0, 0, 2}, {0, 1, 2}, {0, 2, 2}, {1, 0, 2}, {1, 1, 2},
+	{1, 2, 2}, {2, 0, 2}, {3, 0, 3}, {3, 1, 3},
+};
+
+static struct lcore_params *lcore_params = lcore_params_array_default;
+static uint16_t nb_lcore_params = RTE_DIM(lcore_params_array_default);
+
+static struct rte_eth_conf port_conf = {
+	.rxmode = {
+		.mq_mode = ETH_MQ_RX_RSS,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
+		.split_hdr_size = 0,
+	},
+	.rx_adv_conf = {
+		.rss_conf = {
+				.rss_key = NULL,
+				.rss_hf = ETH_RSS_IP,
+		},
+	},
+	.txmode = {
+		.mq_mode = ETH_MQ_TX_NONE,
+	},
+};
+
+static int
+check_lcore_params(void)
+{
+	uint8_t queue, lcore;
+	int socketid;
+	uint16_t i;
+
+	for (i = 0; i < nb_lcore_params; ++i) {
+		queue = lcore_params[i].queue_id;
+		if (queue >= MAX_RX_QUEUE_PER_PORT) {
+			printf("Invalid queue number: %hhu\n", queue);
+			return -1;
+		}
+		lcore = lcore_params[i].lcore_id;
+		if (!rte_lcore_is_enabled(lcore)) {
+			printf("Error: lcore %hhu is not enabled in lcore mask\n",
+			       lcore);
+			return -1;
+		}
+
+		if (lcore == rte_get_master_lcore()) {
+			printf("Error: lcore %u is master lcore\n", lcore);
+			return -1;
+		}
+		socketid = rte_lcore_to_socket_id(lcore);
+		if ((socketid != 0) && (numa_on == 0)) {
+			printf("Warning: lcore %hhu is on socket %d with numa off\n",
+			       lcore, socketid);
+		}
+	}
+
+	return 0;
+}
+
+static int
+check_port_config(void)
+{
+	uint16_t portid;
+	uint16_t i;
+
+	for (i = 0; i < nb_lcore_params; ++i) {
+		portid = lcore_params[i].port_id;
+		if ((enabled_port_mask & (1 << portid)) == 0) {
+			printf("Port %u is not enabled in port mask\n", portid);
+			return -1;
+		}
+		if (!rte_eth_dev_is_valid_port(portid)) {
+			printf("Port %u is not present on the board\n", portid);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int
+init_lcore_rx_queues(void)
+{
+	uint16_t i, nb_rx_queue;
+	uint8_t lcore;
+
+	for (i = 0; i < nb_lcore_params; ++i) {
+		lcore = lcore_params[i].lcore_id;
+		nb_rx_queue = lcore_conf[lcore].n_rx_queue;
+		if (nb_rx_queue >= MAX_RX_QUEUE_PER_LCORE) {
+			printf("Error: too many queues (%u) for lcore: %u\n",
+			       (unsigned int)nb_rx_queue + 1,
+			       (unsigned int)lcore);
+			return -1;
+		}
+
+		lcore_conf[lcore].rx_queue_list[nb_rx_queue].port_id =
+			lcore_params[i].port_id;
+		lcore_conf[lcore].rx_queue_list[nb_rx_queue].queue_id =
+			lcore_params[i].queue_id;
+		lcore_conf[lcore].n_rx_queue++;
+	}
+
+	return 0;
+}
+
+/* Display usage */
+static void
+print_usage(const char *prgname)
+{
+	fprintf(stderr,
+		"%s [EAL options] --"
+		" -p PORTMASK"
+		" [-P]"
+		" --config (port,queue,lcore)[,(port,queue,lcore)]"
+		" [--eth-dest=X,MM:MM:MM:MM:MM:MM]"
+		" [--enable-jumbo [--max-pkt-len PKTLEN]]"
+		" [--no-numa]"
+		" [--per-port-pool]\n\n"
+
+		"  -p PORTMASK: Hexadecimal bitmask of ports to configure\n"
+		"  -P : Enable promiscuous mode\n"
+		"  --config (port,queue,lcore): Rx queue configuration\n"
+		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: Ethernet destination for "
+		"port X\n"
+		"  --enable-jumbo: Enable jumbo frames\n"
+		"  --max-pkt-len: Under the premise of enabling jumbo,\n"
+		"                 maximum packet length in decimal (64-9600)\n"
+		"  --no-numa: Disable numa awareness\n"
+		"  --per-port-pool: Use separate buffer pool per port\n\n",
+		prgname);
+}
+
+static int
+parse_max_pkt_len(const char *pktlen)
+{
+	unsigned long len;
+	char *end = NULL;
+
+	/* Parse decimal string */
+	len = strtoul(pktlen, &end, 10);
+	if ((pktlen[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+
+	if (len == 0)
+		return -1;
+
+	return len;
+}
+
+static int
+parse_portmask(const char *portmask)
+{
+	char *end = NULL;
+	unsigned long pm;
+
+	/* Parse hexadecimal string */
+	pm = strtoul(portmask, &end, 16);
+	if ((portmask[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+
+	if (pm == 0)
+		return -1;
+
+	return pm;
+}
+
+static int
+parse_config(const char *q_arg)
+{
+	enum fieldnames { FLD_PORT = 0, FLD_QUEUE, FLD_LCORE, _NUM_FLD };
+	unsigned long int_fld[_NUM_FLD];
+	const char *p, *p0 = q_arg;
+	char *str_fld[_NUM_FLD];
+	uint32_t size;
+	char s[256];
+	char *end;
+	int i;
+
+	nb_lcore_params = 0;
+
+	while ((p = strchr(p0, '(')) != NULL) {
+		++p;
+		p0 = strchr(p, ')');
+		if (p0 == NULL)
+			return -1;
+
+		size = p0 - p;
+		if (size >= sizeof(s))
+			return -1;
+
+		memcpy(s, p, size);
+		s[size] = '\0';
+		if (rte_strsplit(s, sizeof(s), str_fld, _NUM_FLD, ',') !=
+		    _NUM_FLD)
+			return -1;
+		for (i = 0; i < _NUM_FLD; i++) {
+			errno = 0;
+			int_fld[i] = strtoul(str_fld[i], &end, 0);
+			if (errno != 0 || end == str_fld[i])
+				return -1;
+		}
+
+		if (nb_lcore_params >= MAX_LCORE_PARAMS) {
+			printf("Exceeded max number of lcore params: %hu\n",
+			       nb_lcore_params);
+			return -1;
+		}
+
+		if (int_fld[FLD_PORT] >= RTE_MAX_ETHPORTS ||
+		    int_fld[FLD_LCORE] >= RTE_MAX_LCORE) {
+			printf("Invalid port/lcore id\n");
+			return -1;
+		}
+
+		lcore_params_array[nb_lcore_params].port_id =
+			(uint8_t)int_fld[FLD_PORT];
+		lcore_params_array[nb_lcore_params].queue_id =
+			(uint8_t)int_fld[FLD_QUEUE];
+		lcore_params_array[nb_lcore_params].lcore_id =
+			(uint8_t)int_fld[FLD_LCORE];
+		++nb_lcore_params;
+	}
+	lcore_params = lcore_params_array;
+
+	return 0;
+}
+
+static void
+parse_eth_dest(const char *optarg)
+{
+	uint8_t c, *dest, peer_addr[6];
+	uint16_t portid;
+	char *port_end;
+
+	errno = 0;
+	portid = strtoul(optarg, &port_end, 10);
+	if (errno != 0 || port_end == optarg || *port_end++ != ',')
+		rte_exit(EXIT_FAILURE, "Invalid eth-dest: %s", optarg);
+	if (portid >= RTE_MAX_ETHPORTS)
+		rte_exit(EXIT_FAILURE,
+			 "eth-dest: port %d >= RTE_MAX_ETHPORTS(%d)\n", portid,
+			 RTE_MAX_ETHPORTS);
+
+	if (cmdline_parse_etheraddr(NULL, port_end, &peer_addr,
+				    sizeof(peer_addr)) < 0)
+		rte_exit(EXIT_FAILURE, "Invalid ethernet address: %s\n",
+			 port_end);
+	dest = (uint8_t *)&dest_eth_addr[portid];
+	for (c = 0; c < 6; c++)
+		dest[c] = peer_addr[c];
+	*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
+}
+
+#define MAX_JUMBO_PKT_LEN  9600
+#define MEMPOOL_CACHE_SIZE 256
+
+static const char short_options[] = "p:" /* portmask */
+				    "P"	 /* promiscuous */
+	;
+
+#define CMD_LINE_OPT_CONFIG	   "config"
+#define CMD_LINE_OPT_ETH_DEST	   "eth-dest"
+#define CMD_LINE_OPT_NO_NUMA	   "no-numa"
+#define CMD_LINE_OPT_ENABLE_JUMBO  "enable-jumbo"
+#define CMD_LINE_OPT_PER_PORT_POOL "per-port-pool"
+enum {
+	/* Long options mapped to a short option */
+
+	/* First long only option value must be >= 256, so that we won't
+	 * conflict with short options
+	 */
+	CMD_LINE_OPT_MIN_NUM = 256,
+	CMD_LINE_OPT_CONFIG_NUM,
+	CMD_LINE_OPT_ETH_DEST_NUM,
+	CMD_LINE_OPT_NO_NUMA_NUM,
+	CMD_LINE_OPT_ENABLE_JUMBO_NUM,
+	CMD_LINE_OPT_PARSE_PER_PORT_POOL,
+};
+
+static const struct option lgopts[] = {
+	{CMD_LINE_OPT_CONFIG, 1, 0, CMD_LINE_OPT_CONFIG_NUM},
+	{CMD_LINE_OPT_ETH_DEST, 1, 0, CMD_LINE_OPT_ETH_DEST_NUM},
+	{CMD_LINE_OPT_NO_NUMA, 0, 0, CMD_LINE_OPT_NO_NUMA_NUM},
+	{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, CMD_LINE_OPT_ENABLE_JUMBO_NUM},
+	{CMD_LINE_OPT_PER_PORT_POOL, 0, 0, CMD_LINE_OPT_PARSE_PER_PORT_POOL},
+	{NULL, 0, 0, 0},
+};
+
+/*
+ * This expression is used to calculate the number of mbufs needed
+ * depending on user input, taking  into account memory for rx and
+ * tx hardware rings, cache per lcore and mtable per port per lcore.
+ * RTE_MAX is used to ensure that NB_MBUF never goes below a minimum
+ * value of 8192
+ */
+#define NB_MBUF(nports)                                                        \
+	RTE_MAX((nports * nb_rx_queue * nb_rxd +                               \
+		 nports * nb_lcores * RTE_GRAPH_BURST_SIZE +                   \
+		 nports * n_tx_queue * nb_txd +                                \
+		 nb_lcores * MEMPOOL_CACHE_SIZE), 8192u)
+
+/* Parse the argument given in the command line of the application */
+static int
+parse_args(int argc, char **argv)
+{
+	char *prgname = argv[0];
+	int option_index;
+	char **argvopt;
+	int opt, ret;
+
+	argvopt = argv;
+
+	/* Error or normal output strings. */
+	while ((opt = getopt_long(argc, argvopt, short_options, lgopts,
+				  &option_index)) != EOF) {
+
+		switch (opt) {
+		/* Portmask */
+		case 'p':
+			enabled_port_mask = parse_portmask(optarg);
+			if (enabled_port_mask == 0) {
+				fprintf(stderr, "Invalid portmask\n");
+				print_usage(prgname);
+				return -1;
+			}
+			break;
+
+		case 'P':
+			promiscuous_on = 1;
+			break;
+
+		/* Long options */
+		case CMD_LINE_OPT_CONFIG_NUM:
+			ret = parse_config(optarg);
+			if (ret) {
+				fprintf(stderr, "Invalid config\n");
+				print_usage(prgname);
+				return -1;
+			}
+			break;
+
+		case CMD_LINE_OPT_ETH_DEST_NUM:
+			parse_eth_dest(optarg);
+			break;
+
+		case CMD_LINE_OPT_NO_NUMA_NUM:
+			numa_on = 0;
+			break;
+
+		case CMD_LINE_OPT_ENABLE_JUMBO_NUM: {
+			const struct option lenopts = {"max-pkt-len",
+						       required_argument, 0, 0};
+
+			port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+			port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+
+			/*
+			 * if no max-pkt-len set, use the default
+			 * value RTE_ETHER_MAX_LEN.
+			 */
+			if (getopt_long(argc, argvopt, "", &lenopts,
+					&option_index) == 0) {
+				ret = parse_max_pkt_len(optarg);
+				if (ret < 64 || ret > MAX_JUMBO_PKT_LEN) {
+					fprintf(stderr, "Invalid maximum "
+							"packet length\n");
+					print_usage(prgname);
+					return -1;
+				}
+				port_conf.rxmode.max_rx_pkt_len = ret;
+			}
+			break;
+		}
+
+		case CMD_LINE_OPT_PARSE_PER_PORT_POOL:
+			printf("Per port buffer pool is enabled\n");
+			per_port_pool = 1;
+			break;
+
+		default:
+			print_usage(prgname);
+			return -1;
+		}
+	}
+
+	if (optind >= 0)
+		argv[optind - 1] = prgname;
+	ret = optind - 1;
+	optind = 1; /* Reset getopt lib */
+
+	return ret;
+}
+
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM) {
+		printf("\n\nSignal %d received, preparing to exit...\n",
+		       signum);
+		force_quit = true;
+	}
+}
+
+int
+main(int argc, char **argv)
+{
+	uint16_t portid;
+	int ret;
+
+	/* Init EAL */
+	ret = rte_eal_init(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Invalid EAL parameters\n");
+	argc -= ret;
+	argv += ret;
+
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
+
+	/* Pre-init dst MACs for all ports to 02:00:00:00:00:xx */
+	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
+		dest_eth_addr[portid] =
+			RTE_ETHER_LOCAL_ADMIN_ADDR + ((uint64_t)portid << 40);
+		*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
+	}
+
+	/* Parse application arguments (after the EAL ones) */
+	ret = parse_args(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Invalid L3FWD_GRAPH parameters\n");
+
+	if (check_lcore_params() < 0)
+		rte_exit(EXIT_FAILURE, "check_lcore_params() failed\n");
+
+	ret = init_lcore_rx_queues();
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "init_lcore_rx_queues() failed\n");
+
+	if (check_port_config() < 0)
+		rte_exit(EXIT_FAILURE, "check_port_config() failed\n");
+
+	printf("Bye...\n");
+
+	return ret;
+}

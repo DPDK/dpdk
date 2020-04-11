@@ -51,6 +51,9 @@ DIRS-$(CONFIG_RTE_LIBRTE_ACL) += l3fwd-acl
 ifeq ($(CONFIG_RTE_LIBRTE_LPM)$(CONFIG_RTE_LIBRTE_HASH),yy)
 DIRS-$(CONFIG_RTE_LIBRTE_POWER) += l3fwd-power
 endif
+ifeq ($(CONFIG_RTE_LIBRTE_GRAPH),y)
+DIRS-y += l3fwd-graph
+endif
 DIRS-y += link_status_interrupt
 DIRS-y += multi_process
 DIRS-y += ntb
