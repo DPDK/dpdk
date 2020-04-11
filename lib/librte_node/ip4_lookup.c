@@ -30,6 +30,8 @@ struct ip4_lookup_node_main {
 
 #if defined(RTE_MACHINE_CPUFLAG_NEON)
 #include "ip4_lookup_neon.h"
+#elif defined(RTE_ARCH_X86)
+#include "ip4_lookup_sse.h"
 #else
 
 static uint16_t
