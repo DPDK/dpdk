@@ -18,6 +18,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_GRAPH) += node.c
 SRCS-$(CONFIG_RTE_LIBRTE_GRAPH) += graph.c
 SRCS-$(CONFIG_RTE_LIBRTE_GRAPH) += graph_ops.c
 SRCS-$(CONFIG_RTE_LIBRTE_GRAPH) += graph_debug.c
+SRCS-$(CONFIG_RTE_LIBRTE_GRAPH) += graph_stats.c
 SRCS-$(CONFIG_RTE_LIBRTE_GRAPH) += graph_populate.c
 
 # install header files

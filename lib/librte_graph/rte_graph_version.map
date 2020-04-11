@@ -17,6 +17,11 @@ EXPERIMENTAL {
 	rte_graph_node_get_by_name;
 	rte_graph_obj_dump;
 
+	rte_graph_cluster_stats_create;
+	rte_graph_cluster_stats_destroy;
+	rte_graph_cluster_stats_get;
+	rte_graph_cluster_stats_reset;
+
 	rte_node_clone;
 	rte_node_dump;
 	rte_node_edge_count;
