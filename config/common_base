@@ -1095,6 +1095,11 @@ CONFIG_RTE_GRAPH_BURST_SIZE=256
 CONFIG_RTE_LIBRTE_GRAPH_STATS=y
 
 #
+# Compile librte_node
+#
+CONFIG_RTE_LIBRTE_NODE=y
+
+#
 # Compile the test application
 #
 CONFIG_RTE_APP_TEST=y

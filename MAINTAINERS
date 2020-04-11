@@ -1478,6 +1478,11 @@ M: Kiran Kumar K <kirankumark@marvell.com>
 F: lib/librte_graph/
 F: app/test/test_graph*
 
+Nodes - EXPERIMENTAL
+M: Nithin Dabilpuram <ndabilpuram@marvell.com>
+M: Pavan Nikhilesh <pbhagavatula@marvell.com>
+F: lib/librte_node/
+
 
 Test Applications
 -----------------

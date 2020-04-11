@@ -49,6 +49,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/librte_mempool \
                           @TOPDIR@/lib/librte_meter \
                           @TOPDIR@/lib/librte_metrics \
+                          @TOPDIR@/lib/librte_node \
                           @TOPDIR@/lib/librte_net \
                           @TOPDIR@/lib/librte_pci \
                           @TOPDIR@/lib/librte_pdump \

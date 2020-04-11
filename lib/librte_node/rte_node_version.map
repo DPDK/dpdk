@@ -1,0 +1,6 @@
+EXPERIMENTAL {
+	global:
+
+	rte_node_logtype;
+	local: *;
+};
