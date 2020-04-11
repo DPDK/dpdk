@@ -1,3 +1,7 @@
 EXPERIMENTAL {
+	global:
 
+	__rte_node_register;
+
+	local: *;
 };

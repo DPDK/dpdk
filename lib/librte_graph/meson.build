@@ -3,7 +3,7 @@
 
 name = 'graph'
 
-sources = files('graph.c')
+sources = files('node.c', 'graph.c')
 headers = files('rte_graph.h')
 
 deps += ['eal']

@@ -14,6 +14,7 @@ LDLIBS += -lrte_eal
 EXPORT_MAP := rte_graph_version.map
 
 # all source are stored in SRCS-y
+SRCS-$(CONFIG_RTE_LIBRTE_GRAPH) += node.c
 SRCS-$(CONFIG_RTE_LIBRTE_GRAPH) += graph.c
 
 # install header files
