@@ -4,6 +4,8 @@ EXPERIMENTAL {
 	__rte_node_register;
 	__rte_node_stream_alloc;
 
+	rte_graph_create;
+	rte_graph_destroy;
 	rte_node_clone;
 	rte_node_dump;
 	rte_node_edge_count;
