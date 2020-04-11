@@ -28,6 +28,10 @@ struct ip4_lookup_node_main {
 	struct rte_lpm *lpm_tbl[RTE_MAX_NUMA_NODES];
 };
 
+#if defined(RTE_MACHINE_CPUFLAG_NEON)
+#include "ip4_lookup_neon.h"
+#else
+
 static uint16_t
 ip4_lookup_node_process(struct rte_graph *graph, struct rte_node *node,
 			void **objs, uint16_t nb_objs)
@@ -100,6 +104,8 @@ ip4_lookup_node_process(struct rte_graph *graph, struct rte_node *node,
 
 	return nb_objs;
 }
+
+#endif
 
 static int
 ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
