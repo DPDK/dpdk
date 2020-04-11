@@ -3,5 +3,15 @@ EXPERIMENTAL {
 
 	__rte_node_register;
 
+	rte_node_clone;
+	rte_node_edge_count;
+	rte_node_edge_get;
+	rte_node_edge_shrink;
+	rte_node_edge_update;
+	rte_node_from_name;
+	rte_node_id_to_name;
+	rte_node_list_dump;
+	rte_node_max_count;
+
 	local: *;
 };

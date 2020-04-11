@@ -13,6 +13,16 @@
 
 #include "rte_graph.h"
 
+
+#define ID_CHECK(id, id_max)                                                   \
+	do {                                                                   \
+		if ((id) >= (id_max)) {                                        \
+			rte_errno = EINVAL;                                    \
+			goto fail;                                             \
+		}                                                              \
+	} while (0)
+
+
 /**
  * @internal
  *
