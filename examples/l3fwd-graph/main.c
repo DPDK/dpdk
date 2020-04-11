@@ -20,8 +20,10 @@
 
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
+#include <rte_cycles.h>
 #include <rte_eal.h>
 #include <rte_ethdev.h>
+#include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_mempool.h>
 #include <rte_per_lcore.h>
@@ -49,6 +51,10 @@
 
 #define NB_SOCKETS 8
 
+/* Static global variables used within this file. */
+static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
+static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
+
 /**< Ports set in promiscuous mode off by default. */
 static int promiscuous_on;
 
@@ -60,6 +66,7 @@ static volatile bool force_quit;
 
 /* Ethernet addresses of ports */
 static uint64_t dest_eth_addr[RTE_MAX_ETHPORTS];
+static struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 xmm_t val_eth[RTE_MAX_ETHPORTS];
 
 /* Mask of enabled ports */
@@ -109,6 +116,8 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},
 };
+
+static struct rte_mempool *pktmbuf_pool[RTE_MAX_ETHPORTS][NB_SOCKETS];
 
 static int
 check_lcore_params(void)
@@ -163,6 +172,27 @@ check_port_config(void)
 	}
 
 	return 0;
+}
+
+static uint8_t
+get_port_n_rx_queues(const uint16_t port)
+{
+	int queue = -1;
+	uint16_t i;
+
+	for (i = 0; i < nb_lcore_params; ++i) {
+		if (lcore_params[i].port_id == port) {
+			if (lcore_params[i].queue_id == queue + 1)
+				queue = lcore_params[i].queue_id;
+			else
+				rte_exit(EXIT_FAILURE,
+					 "Queue ids of the port %d must be"
+					 " in sequence and must start with 0\n",
+					 lcore_params[i].port_id);
+		}
+	}
+
+	return (uint8_t)(++queue);
 }
 
 static int
@@ -480,6 +510,120 @@ parse_args(int argc, char **argv)
 }
 
 static void
+print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
+{
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
+	printf("%s%s", name, buf);
+}
+
+static int
+init_mem(uint16_t portid, uint32_t nb_mbuf)
+{
+	uint32_t lcore_id;
+	int socketid;
+	char s[64];
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (rte_lcore_is_enabled(lcore_id) == 0)
+			continue;
+
+		if (numa_on)
+			socketid = rte_lcore_to_socket_id(lcore_id);
+		else
+			socketid = 0;
+
+		if (socketid >= NB_SOCKETS) {
+			rte_exit(EXIT_FAILURE,
+				 "Socket %d of lcore %u is out of range %d\n",
+				 socketid, lcore_id, NB_SOCKETS);
+		}
+
+		if (pktmbuf_pool[portid][socketid] == NULL) {
+			snprintf(s, sizeof(s), "mbuf_pool_%d:%d", portid,
+				 socketid);
+			/* Create a pool with priv size of a cacheline */
+			pktmbuf_pool[portid][socketid] =
+				rte_pktmbuf_pool_create(
+					s, nb_mbuf, MEMPOOL_CACHE_SIZE,
+					RTE_CACHE_LINE_SIZE,
+					RTE_MBUF_DEFAULT_BUF_SIZE, socketid);
+			if (pktmbuf_pool[portid][socketid] == NULL)
+				rte_exit(EXIT_FAILURE,
+					 "Cannot init mbuf pool on socket %d\n",
+					 socketid);
+			else
+				printf("Allocated mbuf pool on socket %d\n",
+				       socketid);
+		}
+	}
+
+	return 0;
+}
+
+/* Check the link status of all ports in up to 9s, and print them finally */
+static void
+check_all_ports_link_status(uint32_t port_mask)
+{
+#define CHECK_INTERVAL 100 /* 100ms */
+#define MAX_CHECK_TIME 90  /* 9s (90 * 100ms) in total */
+	uint8_t count, all_ports_up, print_flag = 0;
+	struct rte_eth_link link;
+	uint16_t portid;
+
+	printf("\nChecking link status");
+	fflush(stdout);
+	for (count = 0; count <= MAX_CHECK_TIME; count++) {
+		if (force_quit)
+			return;
+		all_ports_up = 1;
+		RTE_ETH_FOREACH_DEV(portid)
+		{
+			if (force_quit)
+				return;
+			if ((port_mask & (1 << portid)) == 0)
+				continue;
+			memset(&link, 0, sizeof(link));
+			rte_eth_link_get_nowait(portid, &link);
+			/* Print link status if flag set */
+			if (print_flag == 1) {
+				if (link.link_status)
+					printf("Port%d Link Up. Speed %u Mbps "
+					       "-%s\n",
+					       portid, link.link_speed,
+					       (link.link_duplex ==
+						ETH_LINK_FULL_DUPLEX)
+						       ? ("full-duplex")
+						       : ("half-duplex\n"));
+				else
+					printf("Port %d Link Down\n", portid);
+				continue;
+			}
+			/* Clear all_ports_up flag if any link down */
+			if (link.link_status == ETH_LINK_DOWN) {
+				all_ports_up = 0;
+				break;
+			}
+		}
+		/* After finally printing all link status, get out */
+		if (print_flag == 1)
+			break;
+
+		if (all_ports_up == 0) {
+			printf(".");
+			fflush(stdout);
+			rte_delay_ms(CHECK_INTERVAL);
+		}
+
+		/* Set the print_flag if all ports up or timeout */
+		if (all_ports_up == 1 || count == (MAX_CHECK_TIME - 1)) {
+			print_flag = 1;
+			printf("Done\n");
+		}
+	}
+}
+
+static void
 signal_handler(int signum)
 {
 	if (signum == SIGINT || signum == SIGTERM) {
@@ -492,7 +636,14 @@ signal_handler(int signum)
 int
 main(int argc, char **argv)
 {
-	uint16_t portid;
+	uint8_t nb_rx_queue, queue, socketid;
+	struct rte_eth_dev_info dev_info;
+	uint32_t n_tx_queue, nb_lcores;
+	struct rte_eth_txconf *txconf;
+	uint16_t queueid, portid;
+	struct lcore_conf *qconf;
+	uint32_t lcore_id;
+	uint32_t nb_ports;
 	int ret;
 
 	/* Init EAL */
@@ -528,6 +679,203 @@ main(int argc, char **argv)
 	if (check_port_config() < 0)
 		rte_exit(EXIT_FAILURE, "check_port_config() failed\n");
 
+	nb_ports = rte_eth_dev_count_avail();
+	nb_lcores = rte_lcore_count();
+
+	/* Initialize all ports */
+	RTE_ETH_FOREACH_DEV(portid)
+	{
+		struct rte_eth_conf local_port_conf = port_conf;
+
+		/* Skip ports that are not enabled */
+		if ((enabled_port_mask & (1 << portid)) == 0) {
+			printf("\nSkipping disabled port %d\n", portid);
+			continue;
+		}
+
+		/* Init port */
+		printf("Initializing port %d ... ", portid);
+		fflush(stdout);
+
+		nb_rx_queue = get_port_n_rx_queues(portid);
+		n_tx_queue = nb_lcores;
+		if (n_tx_queue > MAX_TX_QUEUE_PER_PORT)
+			n_tx_queue = MAX_TX_QUEUE_PER_PORT;
+		printf("Creating queues: nb_rxq=%d nb_txq=%u... ",
+		       nb_rx_queue, n_tx_queue);
+
+		rte_eth_dev_info_get(portid, &dev_info);
+		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			local_port_conf.txmode.offloads |=
+				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
+		local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
+			dev_info.flow_type_rss_offloads;
+		if (local_port_conf.rx_adv_conf.rss_conf.rss_hf !=
+		    port_conf.rx_adv_conf.rss_conf.rss_hf) {
+			printf("Port %u modified RSS hash function based on "
+			       "hardware support,"
+			       "requested:%#" PRIx64 " configured:%#" PRIx64
+			       "\n",
+			       portid, port_conf.rx_adv_conf.rss_conf.rss_hf,
+			       local_port_conf.rx_adv_conf.rss_conf.rss_hf);
+		}
+
+		ret = rte_eth_dev_configure(portid, nb_rx_queue,
+					    n_tx_queue, &local_port_conf);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Cannot configure device: err=%d, port=%d\n",
+				 ret, portid);
+
+		ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
+						       &nb_txd);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Cannot adjust number of descriptors: err=%d, "
+				 "port=%d\n",
+				 ret, portid);
+
+		rte_eth_macaddr_get(portid, &ports_eth_addr[portid]);
+		print_ethaddr(" Address:", &ports_eth_addr[portid]);
+		printf(", ");
+		print_ethaddr(
+			"Destination:",
+			(const struct rte_ether_addr *)&dest_eth_addr[portid]);
+		printf(", ");
+
+		/*
+		 * prepare src MACs for each port.
+		 */
+		rte_ether_addr_copy(
+			&ports_eth_addr[portid],
+			(struct rte_ether_addr *)(val_eth + portid) + 1);
+
+		/* Init memory */
+		if (!per_port_pool) {
+			/* portid = 0; this is *not* signifying the first port,
+			 * rather, it signifies that portid is ignored.
+			 */
+			ret = init_mem(0, NB_MBUF(nb_ports));
+		} else {
+			ret = init_mem(portid, NB_MBUF(1));
+		}
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "init_mem() failed\n");
+
+		/* Init one TX queue per couple (lcore,port) */
+		queueid = 0;
+		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+			if (rte_lcore_is_enabled(lcore_id) == 0)
+				continue;
+
+			qconf = &lcore_conf[lcore_id];
+
+			if (numa_on)
+				socketid = (uint8_t)rte_lcore_to_socket_id(
+					lcore_id);
+			else
+				socketid = 0;
+
+			printf("txq=%u,%d,%d ", lcore_id, queueid, socketid);
+			fflush(stdout);
+
+			txconf = &dev_info.default_txconf;
+			txconf->offloads = local_port_conf.txmode.offloads;
+			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
+						     socketid, txconf);
+			if (ret < 0)
+				rte_exit(EXIT_FAILURE,
+					 "rte_eth_tx_queue_setup: err=%d, "
+					 "port=%d\n",
+					 ret, portid);
+			queueid++;
+		}
+
+		printf("\n");
+	}
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (rte_lcore_is_enabled(lcore_id) == 0)
+			continue;
+		qconf = &lcore_conf[lcore_id];
+		printf("\nInitializing rx queues on lcore %u ... ", lcore_id);
+		fflush(stdout);
+		/* Init RX queues */
+		for (queue = 0; queue < qconf->n_rx_queue; ++queue) {
+			struct rte_eth_rxconf rxq_conf;
+
+			portid = qconf->rx_queue_list[queue].port_id;
+			queueid = qconf->rx_queue_list[queue].queue_id;
+
+			if (numa_on)
+				socketid = (uint8_t)rte_lcore_to_socket_id(
+					lcore_id);
+			else
+				socketid = 0;
+
+			printf("rxq=%d,%d,%d ", portid, queueid, socketid);
+			fflush(stdout);
+
+			rte_eth_dev_info_get(portid, &dev_info);
+			rxq_conf = dev_info.default_rxconf;
+			rxq_conf.offloads = port_conf.rxmode.offloads;
+			if (!per_port_pool)
+				ret = rte_eth_rx_queue_setup(
+					portid, queueid, nb_rxd, socketid,
+					&rxq_conf, pktmbuf_pool[0][socketid]);
+			else
+				ret = rte_eth_rx_queue_setup(
+					portid, queueid, nb_rxd, socketid,
+					&rxq_conf,
+					pktmbuf_pool[portid][socketid]);
+			if (ret < 0)
+				rte_exit(EXIT_FAILURE,
+					 "rte_eth_rx_queue_setup: err=%d, "
+					 "port=%d\n",
+					 ret, portid);
+
+		}
+	}
+
+	printf("\n");
+
+	/* Start ports */
+	RTE_ETH_FOREACH_DEV(portid)
+	{
+		if ((enabled_port_mask & (1 << portid)) == 0)
+			continue;
+
+		/* Start device */
+		ret = rte_eth_dev_start(portid);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "rte_eth_dev_start: err=%d, port=%d\n", ret,
+				 portid);
+
+		/*
+		 * If enabled, put device in promiscuous mode.
+		 * This allows IO forwarding mode to forward packets
+		 * to itself through 2 cross-connected  ports of the
+		 * target machine.
+		 */
+		if (promiscuous_on)
+			rte_eth_promiscuous_enable(portid);
+	}
+
+	printf("\n");
+
+	check_all_ports_link_status(enabled_port_mask);
+
+	/* Stop ports */
+	RTE_ETH_FOREACH_DEV(portid) {
+		if ((enabled_port_mask & (1 << portid)) == 0)
+			continue;
+		printf("Closing port %d...", portid);
+		rte_eth_dev_stop(portid);
+		rte_eth_dev_close(portid);
+		printf(" Done\n");
+	}
 	printf("Bye...\n");
 
 	return ret;
