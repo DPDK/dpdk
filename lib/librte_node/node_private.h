@@ -7,6 +7,7 @@
 
 #include <rte_common.h>
 #include <rte_log.h>
+#include <rte_mbuf.h>
 
 extern int rte_node_logtype;
 #define NODE_LOG(level, node_name, ...)                                        \
@@ -18,5 +19,61 @@ extern int rte_node_logtype;
 #define node_err(node_name, ...) NODE_LOG(ERR, node_name, __VA_ARGS__)
 #define node_info(node_name, ...) NODE_LOG(INFO, node_name, __VA_ARGS__)
 #define node_dbg(node_name, ...) NODE_LOG(DEBUG, node_name, __VA_ARGS__)
+
+/**
+ *
+ * Node mbuf private data to store next hop, ttl and checksum.
+ */
+struct node_mbuf_priv1 {
+	union {
+		/* IP4 rewrite */
+		struct {
+			uint16_t nh;
+			uint16_t ttl;
+			uint32_t cksum;
+		};
+
+		uint64_t u;
+	};
+};
+
+/**
+ * Node mbuf private area 2.
+ */
+struct node_mbuf_priv2 {
+	uint64_t priv_data;
+} __rte_cache_aligned;
+
+#define NODE_MBUF_PRIV2_SIZE sizeof(struct node_mbuf_priv2)
+
+/**
+ * Get mbuf_priv1 pointer from rte_mbuf.
+ *
+ * @param
+ *   Pointer to the rte_mbuf.
+ *
+ * @return
+ *   Pointer to the mbuf_priv1.
+ */
+static __rte_always_inline struct node_mbuf_priv1 *
+node_mbuf_priv1(struct rte_mbuf *m)
+{
+	return (struct node_mbuf_priv1 *)&m->udata64;
+}
+
+/**
+ * Get mbuf_priv2 pointer from rte_mbuf.
+ *
+ * @param
+ *   Pointer to the rte_mbuf.
+ *
+ * @return
+ *   Pointer to the mbuf_priv2.
+ */
+static __rte_always_inline struct node_mbuf_priv2 *
+node_mbuf_priv2(struct rte_mbuf *m)
+{
+	return (struct node_mbuf_priv2 *)rte_mbuf_to_priv(m);
+}
 
 #endif /* __NODE_PRIVATE_H__ */

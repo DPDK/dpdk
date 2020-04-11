@@ -1,6 +1,7 @@
 EXPERIMENTAL {
 	global:
 
+	rte_node_eth_config;
 	rte_node_logtype;
 	local: *;
 };
