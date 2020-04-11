@@ -51,6 +51,7 @@ test_sources = files('commands.c',
 	'test_fib6_perf.c',
 	'test_func_reentrancy.c',
 	'test_flow_classify.c',
+	'test_graph.c',
 	'test_hash.c',
 	'test_hash_functions.c',
 	'test_hash_multiwriter.c',
@@ -147,6 +148,7 @@ test_deps = ['acl',
 	'eventdev',
 	'fib',
 	'flow_classify',
+	'graph',
 	'hash',
 	'ipsec',
 	'latencystats',
@@ -376,6 +378,8 @@ endif
 
 # specify -D_GNU_SOURCE unconditionally
 cflags += '-D_GNU_SOURCE'
+# Strict-aliasing rules are violated by uint8_t[] to context size casts.
+cflags += '-fno-strict-aliasing'
 
 test_dep_objs = []
 if dpdk_conf.has('RTE_LIBRTE_COMPRESSDEV')

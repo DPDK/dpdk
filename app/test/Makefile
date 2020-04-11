@@ -228,6 +228,10 @@ SRCS-y += test_event_timer_adapter.c
 SRCS-y += test_event_crypto_adapter.c
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_GRAPH), y)
+SRCS-y += test_graph.c
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_RAWDEV),y)
 SRCS-y += test_rawdev.c
 endif
@@ -247,6 +251,8 @@ LDLIBS += -lrte_ipsec
 endif
 
 CFLAGS += -O3
+# Strict-aliasing rules are violated by uint8_t[] to context size casts.
+CFLAGS += -fno-strict-aliasing
 CFLAGS += $(WERROR_FLAGS)
 
 LDLIBS += -lm
