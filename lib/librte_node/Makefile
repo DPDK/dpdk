@@ -22,6 +22,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_NODE) += ethdev_rx.c
 SRCS-$(CONFIG_RTE_LIBRTE_NODE) += ethdev_tx.c
 SRCS-$(CONFIG_RTE_LIBRTE_NODE) += ethdev_ctrl.c
 SRCS-$(CONFIG_RTE_LIBRTE_NODE) += ip4_lookup.c
+SRCS-$(CONFIG_RTE_LIBRTE_NODE) += ip4_rewrite.c
 
 # install header files
 SYMLINK-$(CONFIG_RTE_LIBRTE_NODE)-include += rte_node_ip4_api.h
