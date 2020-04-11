@@ -230,6 +230,7 @@ endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_GRAPH), y)
 SRCS-y += test_graph.c
+SRCS-y += test_graph_perf.c
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_RAWDEV),y)
