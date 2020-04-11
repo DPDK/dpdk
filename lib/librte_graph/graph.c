@@ -473,6 +473,22 @@ __rte_node_stream_alloc(struct rte_graph *graph, struct rte_node *node)
 	node->realloc_count++;
 }
 
+void __rte_noinline
+__rte_node_stream_alloc_size(struct rte_graph *graph, struct rte_node *node,
+			     uint16_t req_size)
+{
+	uint16_t size = node->size;
+
+	RTE_VERIFY(size != UINT16_MAX);
+	/* Allocate double amount of size to avoid immediate realloc */
+	size = RTE_MIN(UINT16_MAX, RTE_MAX(RTE_GRAPH_BURST_SIZE, req_size * 2));
+	node->objs = rte_realloc_socket(node->objs, size * sizeof(void *),
+					RTE_CACHE_LINE_SIZE, graph->socket);
+	RTE_VERIFY(node->objs);
+	node->size = size;
+	node->realloc_count++;
+}
+
 static int
 graph_to_dot(FILE *f, struct graph *graph)
 {

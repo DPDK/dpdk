@@ -160,6 +160,7 @@ The public API headers are grouped by topics:
     [port_in_action]   (@ref rte_port_in_action.h)
     [table_action]     (@ref rte_table_action.h)
   * [graph]            (@ref rte_graph.h):
+    [graph_worker]     (@ref rte_graph_worker.h)
 
 - **basic**:
   [approx fraction]    (@ref rte_approx.h),

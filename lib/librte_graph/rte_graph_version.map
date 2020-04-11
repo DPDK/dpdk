@@ -3,6 +3,7 @@ EXPERIMENTAL {
 
 	__rte_node_register;
 	__rte_node_stream_alloc;
+	__rte_node_stream_alloc_size;
 
 	rte_graph_create;
 	rte_graph_destroy;
@@ -16,6 +17,7 @@ EXPERIMENTAL {
 	rte_graph_node_get;
 	rte_graph_node_get_by_name;
 	rte_graph_obj_dump;
+	rte_graph_walk;
 
 	rte_graph_cluster_stats_create;
 	rte_graph_cluster_stats_destroy;
@@ -28,10 +30,18 @@ EXPERIMENTAL {
 	rte_node_edge_get;
 	rte_node_edge_shrink;
 	rte_node_edge_update;
+	rte_node_enqueue;
+	rte_node_enqueue_x1;
+	rte_node_enqueue_x2;
+	rte_node_enqueue_x4;
+	rte_node_enqueue_next;
 	rte_node_from_name;
 	rte_node_id_to_name;
 	rte_node_list_dump;
 	rte_node_max_count;
+	rte_node_next_stream_get;
+	rte_node_next_stream_put;
+	rte_node_next_stream_move;
 
 	local: *;
 };
