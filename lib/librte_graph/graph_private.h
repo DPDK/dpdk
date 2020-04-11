@@ -82,4 +82,16 @@ void graph_spinlock_lock(void);
  */
 void graph_spinlock_unlock(void);
 
+/**
+ * @internal
+ *
+ * Dump internal node object data.
+ *
+ * @param f
+ *   FILE pointer to dump the info.
+ * @param g
+ *   Pointer to the internal node object.
+ */
+void node_dump(FILE *f, struct node *n);
+
 #endif /* _RTE_GRAPH_PRIVATE_H_ */

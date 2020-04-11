@@ -4,6 +4,7 @@ EXPERIMENTAL {
 	__rte_node_register;
 
 	rte_node_clone;
+	rte_node_dump;
 	rte_node_edge_count;
 	rte_node_edge_get;
 	rte_node_edge_shrink;

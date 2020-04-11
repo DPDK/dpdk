@@ -377,6 +377,38 @@ fail:
 	return rc;
 }
 
+static void
+node_scan_dump(FILE *f, rte_node_t id, bool all)
+{
+	struct node *node;
+
+	RTE_ASSERT(f != NULL);
+	NODE_ID_CHECK(id);
+
+	STAILQ_FOREACH(node, &node_list, next) {
+		if (all == true) {
+			node_dump(f, node);
+		} else if (node->id == id) {
+			node_dump(f, node);
+			return;
+		}
+	}
+fail:
+	return;
+}
+
+void
+rte_node_dump(FILE *f, rte_node_t id)
+{
+	node_scan_dump(f, id, false);
+}
+
+void
+rte_node_list_dump(FILE *f)
+{
+	node_scan_dump(f, 0, true);
+}
+
 rte_node_t
 rte_node_max_count(void)
 {
