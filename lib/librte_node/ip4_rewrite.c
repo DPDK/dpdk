@@ -256,6 +256,56 @@ ip4_rewrite_node_init(const struct rte_graph *graph, struct rte_node *node)
 	return 0;
 }
 
+int
+ip4_rewrite_set_next(uint16_t port_id, uint16_t next_index)
+{
+	if (ip4_rewrite_nm == NULL) {
+		ip4_rewrite_nm = rte_zmalloc(
+			"ip4_rewrite", sizeof(struct ip4_rewrite_node_main),
+			RTE_CACHE_LINE_SIZE);
+		if (ip4_rewrite_nm == NULL)
+			return -ENOMEM;
+	}
+	ip4_rewrite_nm->next_index[port_id] = next_index;
+
+	return 0;
+}
+
+int
+rte_node_ip4_rewrite_add(uint16_t next_hop, uint8_t *rewrite_data,
+			 uint8_t rewrite_len, uint16_t dst_port)
+{
+	struct ip4_rewrite_nh_header *nh;
+
+	if (next_hop >= RTE_GRAPH_IP4_REWRITE_MAX_NH)
+		return -EINVAL;
+
+	if (rewrite_len > RTE_GRAPH_IP4_REWRITE_MAX_LEN)
+		return -EINVAL;
+
+	if (ip4_rewrite_nm == NULL) {
+		ip4_rewrite_nm = rte_zmalloc(
+			"ip4_rewrite", sizeof(struct ip4_rewrite_node_main),
+			RTE_CACHE_LINE_SIZE);
+		if (ip4_rewrite_nm == NULL)
+			return -ENOMEM;
+	}
+
+	/* Check if dst port doesn't exist as edge */
+	if (!ip4_rewrite_nm->next_index[dst_port])
+		return -EINVAL;
+
+	/* Update next hop */
+	nh = &ip4_rewrite_nm->nh[next_hop];
+
+	memcpy(nh->rewrite_data, rewrite_data, rewrite_len);
+	nh->tx_node = ip4_rewrite_nm->next_index[dst_port];
+	nh->rewrite_len = rewrite_len;
+	nh->enabled = true;
+
+	return 0;
+}
+
 static struct rte_node_register ip4_rewrite_node = {
 	.process = ip4_rewrite_node_process,
 	.name = "ip4_rewrite",
@@ -266,5 +316,11 @@ static struct rte_node_register ip4_rewrite_node = {
 	},
 	.init = ip4_rewrite_node_init,
 };
+
+struct rte_node_register *
+ip4_rewrite_node_get(void)
+{
+	return &ip4_rewrite_node;
+}
 
 RTE_NODE_REGISTER(ip4_rewrite_node);

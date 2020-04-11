@@ -48,6 +48,28 @@ struct ip4_rewrite_node_main {
 	/**< Next index of each configured port. */
 };
 
+/**
+ * @internal
+ *
+ * Get the ipv4 rewrite node.
+ *
+ * @retrun
+ *   Pointer to the ipv4 rewrite node.
+ */
+struct rte_node_register *ip4_rewrite_node_get(void);
+
+/**
+ * @internal
+ *
+ * Set the Edge index of a given port_id.
+ *
+ * @param port_id
+ *   Ethernet port identifier.
+ * @param next_index
+ *   Edge index of the Given Tx node.
+ */
+int ip4_rewrite_set_next(uint16_t port_id, uint16_t next_index);
+
 #ifdef __cplusplus
 }
 #endif

@@ -28,6 +28,8 @@ struct ip4_lookup_node_main {
 	struct rte_lpm *lpm_tbl[RTE_MAX_NUMA_NODES];
 };
 
+static struct ip4_lookup_node_main ip4_lookup_nm;
+
 #if defined(RTE_MACHINE_CPUFLAG_NEON)
 #include "ip4_lookup_neon.h"
 #elif defined(RTE_ARCH_X86)
@@ -109,12 +111,89 @@ ip4_lookup_node_process(struct rte_graph *graph, struct rte_node *node,
 
 #endif
 
+int
+rte_node_ip4_route_add(uint32_t ip, uint8_t depth, uint16_t next_hop,
+		       enum rte_node_ip4_lookup_next next_node)
+{
+	char abuf[INET6_ADDRSTRLEN];
+	struct in_addr in;
+	uint8_t socket;
+	uint32_t val;
+	int ret;
+
+	in.s_addr = htonl(ip);
+	inet_ntop(AF_INET, &in, abuf, sizeof(abuf));
+	/* Embedded next node id into 24 bit next hop */
+	val = ((next_node << 16) | next_hop) & ((1ull << 24) - 1);
+	node_dbg("ip4_lookup", "LPM: Adding route %s / %d nh (0x%x)", abuf,
+		 depth, val);
+
+	for (socket = 0; socket < RTE_MAX_NUMA_NODES; socket++) {
+		if (!ip4_lookup_nm.lpm_tbl[socket])
+			continue;
+
+		ret = rte_lpm_add(ip4_lookup_nm.lpm_tbl[socket],
+				  ip, depth, val);
+		if (ret < 0) {
+			node_err("ip4_lookup",
+				 "Unable to add entry %s / %d nh (%x) to LPM table on sock %d, rc=%d\n",
+				 abuf, depth, val, socket, ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+setup_lpm(struct ip4_lookup_node_main *nm, int socket)
+{
+	struct rte_lpm_config config_ipv4;
+	char s[RTE_LPM_NAMESIZE];
+
+	/* One LPM table per socket */
+	if (nm->lpm_tbl[socket])
+		return 0;
+
+	/* create the LPM table */
+	config_ipv4.max_rules = IPV4_L3FWD_LPM_MAX_RULES;
+	config_ipv4.number_tbl8s = IPV4_L3FWD_LPM_NUMBER_TBL8S;
+	config_ipv4.flags = 0;
+	snprintf(s, sizeof(s), "IPV4_L3FWD_LPM_%d", socket);
+	nm->lpm_tbl[socket] = rte_lpm_create(s, socket, &config_ipv4);
+	if (nm->lpm_tbl[socket] == NULL)
+		return -rte_errno;
+
+	return 0;
+}
+
 static int
 ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
 {
+	struct rte_lpm **lpm_p = (struct rte_lpm **)&node->ctx;
+	uint16_t socket, lcore_id;
+	static uint8_t init_once;
+	int rc;
+
 	RTE_SET_USED(graph);
 	RTE_SET_USED(node);
 
+	if (!init_once) {
+		/* Setup LPM tables for all sockets */
+		RTE_LCORE_FOREACH(lcore_id)
+		{
+			socket = rte_lcore_to_socket_id(lcore_id);
+			rc = setup_lpm(&ip4_lookup_nm, socket);
+			if (rc) {
+				node_err("ip4_lookup",
+					 "Failed to setup lpm tbl for sock %u, rc=%d",
+					 socket, rc);
+				return rc;
+			}
+		}
+		init_once = 1;
+	}
+	*lpm_p = ip4_lookup_nm.lpm_tbl[graph->socket];
 	node_dbg("ip4_lookup", "Initialized ip4_lookup node");
 
 	return 0;

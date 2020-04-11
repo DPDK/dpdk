@@ -11,6 +11,7 @@
 
 #include "ethdev_rx_priv.h"
 #include "ethdev_tx_priv.h"
+#include "ip4_rewrite_priv.h"
 #include "node_private.h"
 
 static struct ethdev_ctrl {
@@ -21,14 +22,17 @@ int
 rte_node_eth_config(struct rte_node_ethdev_config *conf, uint16_t nb_confs,
 		    uint16_t nb_graphs)
 {
+	struct rte_node_register *ip4_rewrite_node;
 	struct ethdev_tx_node_main *tx_node_data;
 	uint16_t tx_q_used, rx_q_used, port_id;
 	struct rte_node_register *tx_node;
 	char name[RTE_NODE_NAMESIZE];
+	const char *next_nodes = name;
 	struct rte_mempool *mp;
+	int i, j, rc;
 	uint32_t id;
-	int i, j;
 
+	ip4_rewrite_node = ip4_rewrite_node_get();
 	tx_node_data = ethdev_tx_node_data_get();
 	tx_node = ethdev_tx_node_get();
 	for (i = 0; i < nb_confs; i++) {
@@ -92,6 +96,18 @@ rte_node_eth_config(struct rte_node_ethdev_config *conf, uint16_t nb_confs,
 
 		node_dbg("ethdev", "Tx node %s-%s: is at %u", tx_node->name,
 			 name, id);
+
+		/* Prepare the actual name of the cloned node */
+		snprintf(name, sizeof(name), "ethdev_tx-%u", port_id);
+
+		/* Add this tx port node as next to ip4_rewrite_node */
+		rte_node_edge_update(ip4_rewrite_node->id, RTE_EDGE_ID_INVALID,
+				     &next_nodes, 1);
+		/* Assuming edge id is the last one alloc'ed */
+		rc = ip4_rewrite_set_next(
+			port_id, rte_node_edge_count(ip4_rewrite_node->id) - 1);
+		if (rc < 0)
+			return rc;
 	}
 
 	ctrl.nb_graphs = nb_graphs;
