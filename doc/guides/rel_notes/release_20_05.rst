@@ -236,6 +236,14 @@ New Features
     that can be configured through ``rte_node_ip4_rewrite_add`` function.
   * Packet drop node: Frees the packets received to their respective mempool.
 
+* **Added new l3fwd-graph sample application.**
+
+  Added an example application ``l3fwd-graph``. It demonstrates the usage of graph
+  library and node library for packet processing. In addition to the library usage
+  demonstration, this application can use for performance comparison with existing
+  ``l3fwd`` (The static code without any nodes) with the modular ``l3fwd-graph``
+  approach.
+
 
 Removed Items
 -------------

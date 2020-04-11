@@ -54,6 +54,10 @@ examples are highlighted below.
   forwarding, or ``l3fwd`` application does forwarding based on Internet
   Protocol, IPv4 or IPv6 like a simple router.
 
+* :doc:`Network Layer 3 forwarding Graph<l3_forward_graph>`: The Network Layer3
+  forwarding Graph, or ``l3fwd_graph`` application does forwarding based on IPv4
+  like a simple router with DPDK Graph framework.
+
 * :doc:`Hardware packet copying<ioat>`: The Hardware packet copying,
   or ``ioatfwd`` application demonstrates how to use IOAT rawdev driver for
   copying packets between two threads.

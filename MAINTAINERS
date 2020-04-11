@@ -1480,6 +1480,7 @@ F: doc/guides/prog_guide/graph_lib.rst
 F: app/test/test_graph*
 M: Nithin Dabilpuram <ndabilpuram@marvell.com>
 F: examples/l3fwd-graph/
+F: doc/guides/sample_app_ug/l3_forward_graph.rst
 
 Nodes - EXPERIMENTAL
 M: Nithin Dabilpuram <ndabilpuram@marvell.com>
