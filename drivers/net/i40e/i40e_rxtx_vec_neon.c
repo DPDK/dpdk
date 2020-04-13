@@ -172,8 +172,8 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
 #define I40E_UINT16_BIT (CHAR_BIT * sizeof(uint16_t))
 
 static inline void
-desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts,
-		uint32_t *ptype_tbl)
+desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **__restrict rx_pkts,
+		uint32_t *__restrict ptype_tbl)
 {
 	int i;
 	uint8_t ptype;
@@ -194,8 +194,8 @@ desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts,
  *   numbers of DD bits
  */
 static inline uint16_t
-_recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
-		   uint16_t nb_pkts, uint8_t *split_packet)
+_recv_raw_pkts_vec(struct i40e_rx_queue *__restrict rxq, struct rte_mbuf
+	**__restrict rx_pkts, uint16_t nb_pkts, uint8_t *split_packet)
 {
 	volatile union i40e_rx_desc *rxdp;
 	struct i40e_rx_entry *sw_ring;
@@ -432,8 +432,8 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
  *   numbers of DD bits
  */
 uint16_t
-i40e_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
-		   uint16_t nb_pkts)
+i40e_recv_pkts_vec(void *__restrict rx_queue,
+		struct rte_mbuf **__restrict rx_pkts, uint16_t nb_pkts)
 {
 	return _recv_raw_pkts_vec(rx_queue, rx_pkts, nb_pkts, NULL);
 }
@@ -494,8 +494,8 @@ vtx1(volatile struct i40e_tx_desc *txdp,
 }
 
 static inline void
-vtx(volatile struct i40e_tx_desc *txdp,
-		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
+vtx(volatile struct i40e_tx_desc *txdp, struct rte_mbuf **pkt,
+		uint16_t nb_pkts,  uint64_t flags)
 {
 	int i;
 
@@ -504,8 +504,8 @@ vtx(volatile struct i40e_tx_desc *txdp,
 }
 
 uint16_t
-i40e_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
-			  uint16_t nb_pkts)
+i40e_xmit_fixed_burst_vec(void *__restrict tx_queue,
+	struct rte_mbuf **__restrict tx_pkts, uint16_t nb_pkts)
 {
 	struct i40e_tx_queue *txq = (struct i40e_tx_queue *)tx_queue;
 	volatile struct i40e_tx_desc *txdp;
