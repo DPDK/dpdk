@@ -240,6 +240,9 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, sc, "rte_intr_enable failed");
 	}
 
+	/* Configure the previously stored Multicast address list */
+	if (IS_VF(sc))
+		bnx2x_vfpf_set_mcast(sc, sc->mc_addrs, sc->mc_addrs_num);
 	bnx2x_dev_rxtx_init(dev);
 
 	bnx2x_print_device_info(sc);
@@ -265,7 +268,12 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 		/* stop the periodic callout */
 		bnx2x_periodic_stop(dev);
 	}
-
+	/* Remove the configured Multicast list
+	 * Sending NULL for the list of address and the
+	 * Number is set to 0 denoting DEL_CMD
+	 */
+	if (IS_VF(sc))
+		bnx2x_vfpf_set_mcast(sc, NULL, 0);
 	ret = bnx2x_nic_unload(sc, UNLOAD_NORMAL, FALSE);
 	if (ret) {
 		PMD_DRV_LOG(DEBUG, sc, "bnx2x_nic_unload failed (%d)", ret);
@@ -344,6 +352,30 @@ bnx2x_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	if (rte_eth_promiscuous_get(dev->data->port_id) == 1)
 		sc->rx_mode = BNX2X_RX_MODE_PROMISC;
 	bnx2x_set_rx_mode(sc);
+
+	return 0;
+}
+
+static int
+bnx2x_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+		struct rte_ether_addr *mc_addrs, uint32_t mc_addrs_num)
+{
+	struct bnx2x_softc *sc = dev->data->dev_private;
+	int err;
+	PMD_INIT_FUNC_TRACE(sc);
+	/* flush previous addresses */
+	err = bnx2x_vfpf_set_mcast(sc, NULL, 0);
+	if (err)
+		return err;
+	sc->mc_addrs_num = 0;
+
+	/* Add new ones */
+	err = bnx2x_vfpf_set_mcast(sc, mc_addrs, mc_addrs_num);
+	if (err)
+		return err;
+
+	sc->mc_addrs_num = mc_addrs_num;
+	memcpy(sc->mc_addrs, mc_addrs, mc_addrs_num * sizeof(*mc_addrs));
 
 	return 0;
 }
@@ -562,6 +594,7 @@ static const struct eth_dev_ops bnx2xvf_eth_dev_ops = {
 	.promiscuous_disable          = bnx2x_promisc_disable,
 	.allmulticast_enable          = bnx2x_dev_allmulticast_enable,
 	.allmulticast_disable         = bnx2x_dev_allmulticast_disable,
+	.set_mc_addr_list             = bnx2x_dev_set_mc_addr_list,
 	.link_update                  = bnx2xvf_dev_link_update,
 	.stats_get                    = bnx2x_dev_stats_get,
 	.xstats_get                   = bnx2x_dev_xstats_get,
