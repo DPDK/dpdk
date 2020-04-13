@@ -7517,7 +7517,9 @@ cnt_err:
 			action_flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-			flow_dev_get_vlan_info_from_items(items, &vlan);
+			if (!(action_flags &
+			      MLX5_FLOW_ACTION_OF_SET_VLAN_VID))
+				flow_dev_get_vlan_info_from_items(items, &vlan);
 			vlan.eth_proto = rte_be_to_cpu_16
 			     ((((const struct rte_flow_action_of_push_vlan *)
 						   actions->conf)->ethertype));
