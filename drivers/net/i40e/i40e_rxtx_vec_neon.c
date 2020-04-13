@@ -72,8 +72,9 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	rx_id = (uint16_t)((rxq->rxrearm_start == 0) ?
 			     (rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
 
+	rte_cio_wmb();
 	/* Update the tail pointer on the NIC */
-	I40E_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+	I40E_PCI_REG_WRITE_RELAXED(rxq->qrx_tail, rx_id);
 }
 
 static inline void
@@ -564,7 +565,8 @@ i40e_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	txq->tx_tail = tx_id;
 
-	I40E_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+	rte_cio_wmb();
+	I40E_PCI_REG_WRITE_RELAXED(txq->qtx_tail, tx_id);
 
 	return nb_pkts;
 }
