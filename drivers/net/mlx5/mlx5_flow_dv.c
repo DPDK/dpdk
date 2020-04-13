@@ -1833,7 +1833,7 @@ flow_dev_get_vlan_info_from_items(const struct rte_flow_item *items,
 static int
 flow_dv_validate_action_push_vlan(struct rte_eth_dev *dev,
 				  uint64_t action_flags,
-				  uint64_t item_flags __rte_unused,
+				  const struct rte_flow_item_vlan *vlan_m,
 				  const struct rte_flow_action *action,
 				  const struct rte_flow_attr *attr,
 				  struct rte_flow_error *error)
@@ -1867,6 +1867,32 @@ flow_dv_validate_action_push_vlan(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "push vlan action for VF representor "
 					  "not supported on NIC table");
+	if (vlan_m &&
+	    (vlan_m->tci & MLX5DV_FLOW_VLAN_PCP_MASK_BE) &&
+	    (vlan_m->tci & MLX5DV_FLOW_VLAN_PCP_MASK_BE) !=
+		MLX5DV_FLOW_VLAN_PCP_MASK_BE &&
+	    !(action_flags & MLX5_FLOW_ACTION_OF_SET_VLAN_PCP) &&
+	    !(mlx5_flow_find_action
+		(action + 1, RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP)))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "not full match mask on VLAN PCP and "
+					  "there is no of_set_vlan_pcp action, "
+					  "push VLAN action cannot figure out "
+					  "PCP value");
+	if (vlan_m &&
+	    (vlan_m->tci & MLX5DV_FLOW_VLAN_VID_MASK_BE) &&
+	    (vlan_m->tci & MLX5DV_FLOW_VLAN_VID_MASK_BE) !=
+		MLX5DV_FLOW_VLAN_VID_MASK_BE &&
+	    !(action_flags & MLX5_FLOW_ACTION_OF_SET_VLAN_VID) &&
+	    !(mlx5_flow_find_action
+		(action + 1, RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "not full match mask on VLAN VID and "
+					  "there is no of_set_vlan_vid action, "
+					  "push VLAN action cannot figure out "
+					  "VID value");
 	(void)attr;
 	return 0;
 }
@@ -4569,6 +4595,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *dev_conf = &priv->config;
 	uint16_t queue_index = 0xFFFF;
+	const struct rte_flow_item_vlan *vlan_m = NULL;
 
 	if (items == NULL)
 		return -1;
@@ -4626,6 +4653,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			} else {
 				ether_type = 0;
 			}
+			/* Store outer VLAN mask for of_push_vlan action. */
+			if (!tunnel)
+				vlan_m = items->mask;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			mlx5_flow_tunnel_ip_check(items, next_protocol,
@@ -4941,7 +4971,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 			ret = flow_dv_validate_action_push_vlan(dev,
 								action_flags,
-								item_flags,
+								vlan_m,
 								actions, attr,
 								error);
 			if (ret < 0)
