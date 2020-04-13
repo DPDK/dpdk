@@ -455,14 +455,8 @@ struct mlx5_ibv_shared {
 	uint32_t dv_regc0_mask; /* available bits of metatada reg_c[0]. */
 	uint32_t dv_refcnt; /* DV/DR data reference counter. */
 	void *fdb_domain; /* FDB Direct Rules name space handle. */
-	struct mlx5_flow_tbl_resource *fdb_mtr_sfx_tbl;
-	/* FDB meter suffix rules table. */
 	void *rx_domain; /* RX Direct Rules name space handle. */
-	struct mlx5_flow_tbl_resource *rx_mtr_sfx_tbl;
-	/* RX meter suffix rules table. */
 	void *tx_domain; /* TX Direct Rules name space handle. */
-	struct mlx5_flow_tbl_resource *tx_mtr_sfx_tbl;
-	/* TX meter suffix rules table. */
 	struct mlx5_hlist *flow_tbls;
 	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */

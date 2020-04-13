@@ -642,6 +642,8 @@ struct mlx5_flow_policer_stats {
 struct mlx5_meter_domain_info {
 	struct mlx5_flow_tbl_resource *tbl;
 	/**< Meter table. */
+	struct mlx5_flow_tbl_resource *sfx_tbl;
+	/**< Meter suffix table. */
 	void *any_matcher;
 	/**< Meter color not match default criteria. */
 	void *color_matcher;
