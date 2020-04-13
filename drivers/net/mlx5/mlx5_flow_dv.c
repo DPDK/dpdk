@@ -73,6 +73,10 @@ union flow_dv_attr {
 	uint32_t attr;
 };
 
+static int
+flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
+			     struct mlx5_flow_tbl_resource *tbl);
+
 /**
  * Initialize flow attributes structure according to flow items' types.
  *
@@ -2530,6 +2534,8 @@ flow_dv_jump_tbl_resource_register
 		DRV_LOG(DEBUG, "new jump table resource %p: refcnt %d++",
 			(void *)&tbl_data->jump, cnt);
 	} else {
+		/* old jump should not make the table ref++. */
+		flow_dv_tbl_resource_release(dev, &tbl_data->tbl);
 		MLX5_ASSERT(tbl_data->jump.action);
 		DRV_LOG(DEBUG, "existed jump table resource %p: refcnt %d++",
 			(void *)&tbl_data->jump, cnt);
