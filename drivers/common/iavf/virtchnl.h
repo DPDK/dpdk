@@ -133,6 +133,7 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DCF_CMD_BUFF = 40,
 	VIRTCHNL_OP_DCF_DISABLE = 41,
 	VIRTCHNL_OP_DCF_GET_VSI_MAP = 42,
+	VIRTCHNL_OP_DCF_GET_PKG_INFO = 43,
 };
 
 /* These macros are used to generate compilation errors if a structure/union
@@ -644,6 +645,27 @@ struct virtchnl_dcf_vsi_map {
 
 VIRTCHNL_CHECK_STRUCT_LEN(6, virtchnl_dcf_vsi_map);
 
+#define PKG_NAME_SIZE	32
+#define DSN_SIZE	8
+
+struct pkg_version {
+	u8 major;
+	u8 minor;
+	u8 update;
+	u8 draft;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(4, pkg_version);
+
+struct virtchnl_pkg_info {
+	struct pkg_version pkg_ver;
+	u32 track_id;
+	char pkg_name[PKG_NAME_SIZE];
+	u8 dsn[DSN_SIZE];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(48, virtchnl_pkg_info);
+
 /* VIRTCHNL_OP_EVENT
  * PF sends this message to inform the VF driver of events that may affect it.
  * No direct response is expected from the VF, though it may generate other
@@ -919,6 +941,8 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		/* The two opcodes are required by DCF without message buffer,
 		 * so the valid length keeps the default value 0.
 		 */
+		break;
+	case VIRTCHNL_OP_DCF_GET_PKG_INFO:
 		break;
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL_OP_EVENT:
