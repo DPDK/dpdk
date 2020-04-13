@@ -2216,11 +2216,27 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 			tx_start_bd->vlan_or_ethertype =
 			    rte_cpu_to_le_16(pkt_prod);
 		else {
+			/* when transmitting in a vf, start bd
+			 * must hold the ethertype for fw to enforce it
+			 */
 			struct rte_ether_hdr *eh =
 			    rte_pktmbuf_mtod(m0, struct rte_ether_hdr *);
 
-			tx_start_bd->vlan_or_ethertype =
-			    rte_cpu_to_le_16(rte_be_to_cpu_16(eh->ether_type));
+			/* Still need to consider inband vlan for enforced */
+			if (eh->ether_type ==
+					rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
+				struct rte_vlan_hdr *vh =
+					(struct rte_vlan_hdr *)(eh + 1);
+				tx_start_bd->bd_flags.as_bitfield |=
+					(X_ETH_INBAND_VLAN <<
+					ETH_TX_BD_FLAGS_VLAN_MODE_SHIFT);
+				tx_start_bd->vlan_or_ethertype =
+					rte_cpu_to_le_16(ntohs(vh->vlan_tci));
+			} else {
+				tx_start_bd->vlan_or_ethertype =
+					(rte_cpu_to_le_16
+					(rte_be_to_cpu_16(eh->ether_type)));
+			}
 		}
 	}
 
