@@ -134,6 +134,7 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DCF_DISABLE = 41,
 	VIRTCHNL_OP_DCF_GET_VSI_MAP = 42,
 	VIRTCHNL_OP_DCF_GET_PKG_INFO = 43,
+	VIRTCHNL_OP_GET_SUPPORTED_RXDIDS = 44,
 };
 
 /* These macros are used to generate compilation errors if a structure/union
@@ -249,6 +250,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vsi_resource);
 #define VIRTCHNL_VF_OFFLOAD_ADQ_V2		0X01000000
 #define VIRTCHNL_VF_OFFLOAD_USO			0X02000000
 #define VIRTCHNL_VF_CAP_DCF			0X40000000
+#define VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC	0X04000000
 	/* 0X80000000 is reserved */
 
 /* Define below the capability flags that are not offloads */
@@ -312,7 +314,9 @@ struct virtchnl_rxq_info {
 	u32 databuffer_size;
 	u32 max_pkt_size;
 	u8 crc_disable;
-	u8 pad1[3];
+	/* only used when VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC is supported */
+	u8 rxdid;
+	u8 pad1[2];
 	u64 dma_ring_addr;
 	enum virtchnl_rx_hsplit rx_split_pos; /* deprecated with AVF 1.0 */
 	u32 pad2;
@@ -666,6 +670,12 @@ struct virtchnl_pkg_info {
 
 VIRTCHNL_CHECK_STRUCT_LEN(48, virtchnl_pkg_info);
 
+struct virtchnl_supported_rxdids {
+	u64 supported_rxdids;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(8, virtchnl_supported_rxdids);
+
 /* VIRTCHNL_OP_EVENT
  * PF sends this message to inform the VF driver of events that may affect it.
  * No direct response is expected from the VF, though it may generate other
@@ -943,6 +953,8 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		 */
 		break;
 	case VIRTCHNL_OP_DCF_GET_PKG_INFO:
+		break;
+	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
 		break;
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL_OP_EVENT:
