@@ -135,6 +135,8 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DCF_GET_VSI_MAP = 42,
 	VIRTCHNL_OP_DCF_GET_PKG_INFO = 43,
 	VIRTCHNL_OP_GET_SUPPORTED_RXDIDS = 44,
+	VIRTCHNL_OP_ADD_RSS_CFG = 45,
+	VIRTCHNL_OP_DEL_RSS_CFG = 46,
 };
 
 /* These macros are used to generate compilation errors if a structure/union
@@ -251,6 +253,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vsi_resource);
 #define VIRTCHNL_VF_OFFLOAD_USO			0X02000000
 #define VIRTCHNL_VF_CAP_DCF			0X40000000
 #define VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC	0X04000000
+#define VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF		0X08000000
 	/* 0X80000000 is reserved */
 
 /* Define below the capability flags that are not offloads */
@@ -540,6 +543,14 @@ struct virtchnl_rss_hena {
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN(8, virtchnl_rss_hena);
+
+/* Type of RSS algorithm */
+enum virtchnl_rss_algorithm {
+	VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC	= 0,
+	VIRTCHNL_RSS_ALG_R_ASYMMETRIC		= 1,
+	VIRTCHNL_RSS_ALG_TOEPLITZ_SYMMETRIC	= 2,
+	VIRTCHNL_RSS_ALG_XOR_SYMMETRIC		= 3,
+};
 
 /* This is used by PF driver to enforce how many channels can be supported.
  * When ADQ_V2 capability is negotiated, it will allow 16 channels otherwise
@@ -926,6 +937,13 @@ struct virtchnl_proto_hdrs {
 
 VIRTCHNL_CHECK_STRUCT_LEN(2312, virtchnl_proto_hdrs);
 
+struct virtchnl_rss_cfg {
+	struct virtchnl_proto_hdrs proto_hdrs;	   /* protocol headers */
+	enum virtchnl_rss_algorithm rss_algorithm; /* rss algorithm type */
+	u8 reserved[128];                          /* reserve for future */
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(2444, virtchnl_rss_cfg);
 /**
  * virtchnl_vc_validate_vf_msg
  * @ver: Virtchnl version info
@@ -940,7 +958,7 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 			    u8 *msg, u16 msglen)
 {
 	bool err_msg_format = false;
-	int valid_len = 0;
+	u32 valid_len = 0;
 
 	/* Validate message length. */
 	switch (v_opcode) {
@@ -1111,6 +1129,10 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 	case VIRTCHNL_OP_DCF_GET_PKG_INFO:
 		break;
 	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
+		break;
+	case VIRTCHNL_OP_ADD_RSS_CFG:
+	case VIRTCHNL_OP_DEL_RSS_CFG:
+		valid_len = sizeof(struct virtchnl_rss_cfg);
 		break;
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL_OP_EVENT:
