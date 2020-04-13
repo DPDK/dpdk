@@ -358,7 +358,7 @@ otx2_nix_rss_config(struct rte_eth_dev *eth_dev)
 	int rc;
 
 	/* Skip further configuration if selected mode is not RSS */
-	if (eth_dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS)
+	if (eth_dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS || !qcnt)
 		return 0;
 
 	/* Update default RSS key and cfg */

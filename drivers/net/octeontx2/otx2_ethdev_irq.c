@@ -472,9 +472,12 @@ otx2_nix_err_intr_enb_dis(struct rte_eth_dev *eth_dev, bool enb)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 
-	/* Enable all nix lf error interrupts except for RQ_DISABLED */
+	/* Enable all nix lf error interrupts except
+	 * RQ_DISABLED and CQ_DISABLED.
+	 */
 	if (enb)
-		otx2_write64(~BIT_ULL(11), dev->base + NIX_LF_ERR_INT_ENA_W1S);
+		otx2_write64(~(BIT_ULL(11) | BIT_ULL(24)),
+			     dev->base + NIX_LF_ERR_INT_ENA_W1S);
 	else
 		otx2_write64(~0ull, dev->base + NIX_LF_ERR_INT_ENA_W1C);
 }
