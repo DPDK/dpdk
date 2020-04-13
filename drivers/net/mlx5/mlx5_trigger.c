@@ -11,6 +11,7 @@
 #include <rte_alarm.h>
 
 #include "mlx5.h"
+#include "mlx5_mr.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 #include "rte_pmd_mlx5.h"

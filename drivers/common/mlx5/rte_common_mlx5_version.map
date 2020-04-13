@@ -61,4 +61,18 @@ EXPERIMENTAL {
 	mlx5_mp_req_mr_create;
 	mlx5_mp_req_queue_state_modify;
 	mlx5_mp_req_verbs_cmd_fd;
+
+	mlx5_mr_btree_init;
+	mlx5_mr_btree_free;
+	mlx5_mr_btree_dump;
+	mlx5_mr_addr2mr_bh;
+	mlx5_mr_release_cache;
+	mlx5_mr_dump_cache;
+	mlx5_mr_rebuild_cache;
+	mlx5_mr_insert_cache;
+	mlx5_mr_lookup_cache;
+	mlx5_mr_lookup_list;
+	mlx5_create_mr_ext;
+	mlx5_mr_create_primary;
+	mlx5_mr_flush_local_cache;
 };

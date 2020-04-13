@@ -34,11 +34,11 @@
 #include <mlx5_glue.h>
 #include <mlx5_prm.h>
 #include <mlx5_common.h>
+#include <mlx5_common_mr.h>
 
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
 #include "mlx5.h"
-#include "mlx5_mr.h"
 #include "mlx5_autoconf.h"
 
 /* Support tunnel matching. */
@@ -598,8 +598,8 @@ mlx5_rx_addr2mr(struct mlx5_rxq_data *rxq, uintptr_t addr)
 	uint32_t lkey;
 
 	/* Linear search on MR cache array. */
-	lkey = mlx5_mr_lookup_cache(mr_ctrl->cache, &mr_ctrl->mru,
-				    MLX5_MR_CACHE_N, addr);
+	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
+				   MLX5_MR_CACHE_N, addr);
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	/* Take slower bottom-half (Binary Search) on miss. */
@@ -630,8 +630,8 @@ mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
 	if (unlikely(*mr_ctrl->dev_gen_ptr != mr_ctrl->cur_gen))
 		mlx5_mr_flush_local_cache(mr_ctrl);
 	/* Linear search on MR cache array. */
-	lkey = mlx5_mr_lookup_cache(mr_ctrl->cache, &mr_ctrl->mru,
-				    MLX5_MR_CACHE_N, addr);
+	lkey = mlx5_mr_lookup_lkey(mr_ctrl->cache, &mr_ctrl->mru,
+				   MLX5_MR_CACHE_N, addr);
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
 	/* Take slower bottom-half on miss. */

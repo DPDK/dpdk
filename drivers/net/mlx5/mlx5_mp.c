@@ -11,6 +11,7 @@
 #include <rte_string_fns.h>
 
 #include <mlx5_common_mp.h>
+#include <mlx5_common_mr.h>
 
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
@@ -25,7 +26,7 @@ mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		(const struct mlx5_mp_param *)mp_msg->param;
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
-	struct mlx5_mr_cache entry;
+	struct mr_cache_entry entry;
 	uint32_t lkey;
 	int ret;
 
@@ -40,7 +41,10 @@ mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	switch (param->type) {
 	case MLX5_MP_REQ_CREATE_MR:
 		mp_init_msg(&priv->mp_id, &mp_res, param->type);
-		lkey = mlx5_mr_create_primary(dev, &entry, param->args.addr);
+		lkey = mlx5_mr_create_primary(priv->sh->pd,
+					      &priv->sh->share_cache,
+					      &entry, param->args.addr,
+					      priv->config.mr_ext_memseg_en);
 		if (lkey == UINT32_MAX)
 			res->result = -rte_errno;
 		ret = rte_mp_reply(&mp_res, peer);

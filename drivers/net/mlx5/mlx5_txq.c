@@ -30,6 +30,7 @@
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_common.h>
+#include <mlx5_common_mr.h>
 
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
@@ -1289,7 +1290,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	/* Save pointer of global generation number to check memory event. */
-	tmpl->txq.mr_ctrl.dev_gen_ptr = &priv->sh->mr.dev_gen;
+	tmpl->txq.mr_ctrl.dev_gen_ptr = &priv->sh->share_cache.dev_gen;
 	MLX5_ASSERT(desc > MLX5_TX_COMP_THRESH);
 	tmpl->txq.offloads = conf->offloads |
 			     dev->data->dev_conf.txmode.offloads;

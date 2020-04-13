@@ -13,6 +13,8 @@
 
 #include "mlx5_autoconf.h"
 
+#include "mlx5_mr.h"
+
 /* HW checksum offload capabilities of vectorized Tx. */
 #define MLX5_VEC_TX_CKSUM_OFFLOAD_CAP \
 	(DEV_TX_OFFLOAD_IPV4_CKSUM | \

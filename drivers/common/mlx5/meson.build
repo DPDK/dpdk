@@ -55,6 +55,7 @@ sources = files(
 	'mlx5_common.c',
 	'mlx5_nl.c',
 	'mlx5_common_mp.c',
+	'mlx5_common_mr.c',
 )
 if not dlopen_ibverbs
 	sources += files('mlx5_glue.c')
