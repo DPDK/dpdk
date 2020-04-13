@@ -137,6 +137,9 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_GET_SUPPORTED_RXDIDS = 44,
 	VIRTCHNL_OP_ADD_RSS_CFG = 45,
 	VIRTCHNL_OP_DEL_RSS_CFG = 46,
+	VIRTCHNL_OP_ADD_FDIR_FILTER = 47,
+	VIRTCHNL_OP_DEL_FDIR_FILTER = 48,
+	VIRTCHNL_OP_QUERY_FDIR_FILTER = 49,
 };
 
 /* These macros are used to generate compilation errors if a structure/union
@@ -254,6 +257,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vsi_resource);
 #define VIRTCHNL_VF_CAP_DCF			0X40000000
 #define VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC	0X04000000
 #define VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF		0X08000000
+#define VIRTCHNL_VF_OFFLOAD_FDIR_PF		0X10000000
 	/* 0X80000000 is reserved */
 
 /* Define below the capability flags that are not offloads */
@@ -620,6 +624,11 @@ enum virtchnl_action {
 	/* action types */
 	VIRTCHNL_ACTION_DROP = 0,
 	VIRTCHNL_ACTION_TC_REDIRECT,
+	VIRTCHNL_ACTION_PASSTHRU,
+	VIRTCHNL_ACTION_QUEUE,
+	VIRTCHNL_ACTION_Q_REGION,
+	VIRTCHNL_ACTION_MARK,
+	VIRTCHNL_ACTION_COUNT,
 };
 
 enum virtchnl_flow_type {
@@ -944,6 +953,150 @@ struct virtchnl_rss_cfg {
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN(2444, virtchnl_rss_cfg);
+
+/* action configuration for FDIR */
+struct virtchnl_filter_action {
+	enum virtchnl_action type;
+	union {
+		/* used for queue and qgroup action */
+		struct {
+			u16 index;
+			u8 region;
+		} queue;
+		/* used for count action */
+		struct {
+			/* share counter ID with other flow rules */
+			u8 shared;
+			u32 id; /* counter ID */
+		} count;
+		/* used for mark action */
+		u32 mark_id;
+		u8 reserve[32];
+	} act_conf;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(36, virtchnl_filter_action);
+
+#define VIRTCHNL_MAX_NUM_ACTIONS  8
+
+struct virtchnl_filter_action_set {
+	/* action number must be less then VIRTCHNL_MAX_NUM_ACTIONS */
+	int count;
+	struct virtchnl_filter_action actions[VIRTCHNL_MAX_NUM_ACTIONS];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(292, virtchnl_filter_action_set);
+
+/* pattern and action for FDIR rule */
+struct virtchnl_fdir_rule {
+	struct virtchnl_proto_hdrs proto_hdrs;
+	struct virtchnl_filter_action_set action_set;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(2604, virtchnl_fdir_rule);
+
+/* query information to retrieve fdir rule counters.
+ * PF will fill out this structure to reset counter.
+ */
+struct virtchnl_fdir_query_info {
+	u32 match_packets_valid:1;
+	u32 match_bytes_valid:1;
+	u32 reserved:30;  /* Reserved, must be zero. */
+	u32 pad;
+	u64 matched_packets; /* Number of packets for this rule. */
+	u64 matched_bytes;   /* Number of bytes through this rule. */
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_fdir_query_info);
+
+/* Status returned to VF after VF requests FDIR commands
+ * VIRTCHNL_FDIR_SUCCESS
+ * VF FDIR related request is successfully done by PF
+ * The request can be OP_ADD/DEL/QUERY_FDIR_FILTER.
+ *
+ * VIRTCHNL_FDIR_FAILURE_RULE_NORESOURCE
+ * OP_ADD_FDIR_FILTER request is failed due to no Hardware resource.
+ *
+ * VIRTCHNL_FDIR_FAILURE_RULE_EXIST
+ * OP_ADD_FDIR_FILTER request is failed due to the rule is already existed.
+ *
+ * VIRTCHNL_FDIR_FAILURE_RULE_CONFLICT
+ * OP_ADD_FDIR_FILTER request is failed due to conflict with existing rule.
+ *
+ * VIRTCHNL_FDIR_FAILURE_RULE_NONEXIST
+ * OP_DEL_FDIR_FILTER request is failed due to this rule doesn't exist.
+ *
+ * VIRTCHNL_FDIR_FAILURE_RULE_INVALID
+ * OP_ADD_FDIR_FILTER request is failed due to parameters validation
+ * or HW doesn't support.
+ *
+ * VIRTCHNL_FDIR_FAILURE_RULE_TIMEOUT
+ * OP_ADD/DEL_FDIR_FILTER request is failed due to timing out
+ * for programming.
+ *
+ * VIRTCHNL_FDIR_FAILURE_QUERY_INVALID
+ * OP_QUERY_FDIR_FILTER request is failed due to parameters validation,
+ * for example, VF query counter of a rule who has no counter action.
+ */
+enum virtchnl_fdir_prgm_status {
+	VIRTCHNL_FDIR_SUCCESS = 0,
+	VIRTCHNL_FDIR_FAILURE_RULE_NORESOURCE,
+	VIRTCHNL_FDIR_FAILURE_RULE_EXIST,
+	VIRTCHNL_FDIR_FAILURE_RULE_CONFLICT,
+	VIRTCHNL_FDIR_FAILURE_RULE_NONEXIST,
+	VIRTCHNL_FDIR_FAILURE_RULE_INVALID,
+	VIRTCHNL_FDIR_FAILURE_RULE_TIMEOUT,
+	VIRTCHNL_FDIR_FAILURE_QUERY_INVALID,
+};
+
+/* VIRTCHNL_OP_ADD_FDIR_FILTER
+ * VF sends this request to PF by filling out vsi_id,
+ * validate_only and rule_cfg. PF will return flow_id
+ * if the request is successfully done and return add_status to VF.
+ */
+struct virtchnl_fdir_add {
+	u16 vsi_id;  /* INPUT */
+	/*
+	 * 1 for validating a fdir rule, 0 for creating a fdir rule.
+	 * Validate and create share one ops: VIRTCHNL_OP_ADD_FDIR_FILTER.
+	 */
+	u16 validate_only; /* INPUT */
+	u32 flow_id;       /* OUTPUT */
+	struct virtchnl_fdir_rule rule_cfg; /* INPUT */
+	enum virtchnl_fdir_prgm_status status; /* OUTPUT */
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(2616, virtchnl_fdir_add);
+
+/* VIRTCHNL_OP_DEL_FDIR_FILTER
+ * VF sends this request to PF by filling out vsi_id
+ * and flow_id. PF will return del_status to VF.
+ */
+struct virtchnl_fdir_del {
+	u16 vsi_id;  /* INPUT */
+	u16 pad;
+	u32 flow_id; /* INPUT */
+	enum virtchnl_fdir_prgm_status status; /* OUTPUT */
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(12, virtchnl_fdir_del);
+
+/* VIRTCHNL_OP_QUERY_FDIR_FILTER
+ * VF sends this request to PF by filling out vsi_id,
+ * flow_id and reset_counter. PF will return query_info
+ * and query_status to VF.
+ */
+struct virtchnl_fdir_query {
+	u16 vsi_id;   /* INPUT */
+	u16 pad1[3];
+	u32 flow_id;  /* INPUT */
+	u32 reset_counter:1; /* INPUT */
+	struct virtchnl_fdir_query_info query_info; /* OUTPUT */
+	enum virtchnl_fdir_prgm_status status;  /* OUTPUT */
+	u32 pad2;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(48, virtchnl_fdir_query);
 /**
  * virtchnl_vc_validate_vf_msg
  * @ver: Virtchnl version info
@@ -1133,6 +1286,15 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 	case VIRTCHNL_OP_ADD_RSS_CFG:
 	case VIRTCHNL_OP_DEL_RSS_CFG:
 		valid_len = sizeof(struct virtchnl_rss_cfg);
+		break;
+	case VIRTCHNL_OP_ADD_FDIR_FILTER:
+		valid_len = sizeof(struct virtchnl_fdir_add);
+		break;
+	case VIRTCHNL_OP_DEL_FDIR_FILTER:
+		valid_len = sizeof(struct virtchnl_fdir_del);
+		break;
+	case VIRTCHNL_OP_QUERY_FDIR_FILTER:
+		valid_len = sizeof(struct virtchnl_fdir_query);
 		break;
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL_OP_EVENT:
