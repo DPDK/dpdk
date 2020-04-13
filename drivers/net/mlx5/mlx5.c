@@ -38,6 +38,7 @@
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_common.h>
+#include <mlx5_common_mp.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
@@ -1722,7 +1723,8 @@ mlx5_init_once(void)
 		rte_rwlock_init(&sd->mem_event_rwlock);
 		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
 						mlx5_mr_mem_event_cb, NULL);
-		ret = mlx5_mp_init_primary();
+		ret = mlx5_mp_init_primary(MLX5_MP_NAME,
+					   mlx5_mp_primary_handle);
 		if (ret)
 			goto out;
 		sd->init_done = true;
@@ -1730,7 +1732,8 @@ mlx5_init_once(void)
 	case RTE_PROC_SECONDARY:
 		if (ld->init_done)
 			break;
-		ret = mlx5_mp_init_secondary();
+		ret = mlx5_mp_init_secondary(MLX5_MP_NAME,
+					     mlx5_mp_secondary_handle);
 		if (ret)
 			goto out;
 		++sd->secondary_cnt;
@@ -2205,6 +2208,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		struct mlx5_mp_id mp_id;
+
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (eth_dev == NULL) {
 			DRV_LOG(ERR, "can not attach rte ethdev");
@@ -2216,8 +2221,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = mlx5_proc_priv_init(eth_dev);
 		if (err)
 			return NULL;
+		mp_id.port_id = eth_dev->data->port_id;
+		strlcpy(mp_id.name, MLX5_MP_NAME, RTE_MP_MAX_NAME_LEN);
 		/* Receive command fd from primary process */
-		err = mlx5_mp_req_verbs_cmd_fd(eth_dev);
+		err = mlx5_mp_req_verbs_cmd_fd(&mp_id);
 		if (err < 0)
 			return NULL;
 		/* Remap UAR for Tx queues. */
@@ -2379,6 +2386,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->ibv_port = spawn->ibv_port;
 	priv->pci_dev = spawn->pci_dev;
 	priv->mtu = RTE_ETHER_MTU;
+	priv->mp_id.port_id = port_id;
+	strlcpy(priv->mp_id.name, MLX5_MP_NAME, RTE_MP_MAX_NAME_LEN);
 #ifndef RTE_ARCH_64
 	/* Initialize UAR access locks for 32bit implementations. */
 	rte_spinlock_init(&priv->uar_lock_cq);

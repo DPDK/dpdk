@@ -36,42 +36,12 @@
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
 #include <mlx5_nl.h>
+#include <mlx5_common_mp.h>
 
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
 #include "mlx5_mr.h"
 #include "mlx5_autoconf.h"
-
-/* Request types for IPC. */
-enum mlx5_mp_req_type {
-	MLX5_MP_REQ_VERBS_CMD_FD = 1,
-	MLX5_MP_REQ_CREATE_MR,
-	MLX5_MP_REQ_START_RXTX,
-	MLX5_MP_REQ_STOP_RXTX,
-	MLX5_MP_REQ_QUEUE_STATE_MODIFY,
-};
-
-struct mlx5_mp_arg_queue_state_modify {
-	uint8_t is_wq; /* Set if WQ. */
-	uint16_t queue_id; /* DPDK queue ID. */
-	enum ibv_wq_state state; /* WQ requested state. */
-};
-
-/* Pameters for IPC. */
-struct mlx5_mp_param {
-	enum mlx5_mp_req_type type;
-	int port_id;
-	int result;
-	RTE_STD_C11
-	union {
-		uintptr_t addr; /* MLX5_MP_REQ_CREATE_MR */
-		struct mlx5_mp_arg_queue_state_modify state_modify;
-		/* MLX5_MP_REQ_QUEUE_STATE_MODIFY */
-	} args;
-};
-
-/** Request timeout for IPC. */
-#define MLX5_MP_REQ_TIMEOUT_SEC 5
 
 /** Key string for IPC. */
 #define MLX5_MP_NAME "net_mlx5_mp"
@@ -577,6 +547,7 @@ struct mlx5_priv {
 #endif
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
+	struct mlx5_mp_id mp_id; /* ID of a multi-process process */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
@@ -777,16 +748,10 @@ int mlx5_flow_dev_dump(struct rte_eth_dev *dev, FILE *file,
 		       struct rte_flow_error *error);
 
 /* mlx5_mp.c */
+int mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer);
+int mlx5_mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer);
 void mlx5_mp_req_start_rxtx(struct rte_eth_dev *dev);
 void mlx5_mp_req_stop_rxtx(struct rte_eth_dev *dev);
-int mlx5_mp_req_mr_create(struct rte_eth_dev *dev, uintptr_t addr);
-int mlx5_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
-int mlx5_mp_req_queue_state_modify(struct rte_eth_dev *dev,
-				   struct mlx5_mp_arg_queue_state_modify *sm);
-int mlx5_mp_init_primary(void);
-void mlx5_mp_uninit_primary(void);
-int mlx5_mp_init_secondary(void);
-void mlx5_mp_uninit_secondary(void);
 
 /* mlx5_socket.c */
 

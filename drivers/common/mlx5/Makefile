@@ -17,6 +17,7 @@ endif
 SRCS-y += mlx5_devx_cmds.c
 SRCS-y += mlx5_common.c
 SRCS-y += mlx5_nl.c
+SRCS-y += mlx5_common_mp.c
 ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 INSTALL-y-lib += $(LIB_GLUE)
 endif

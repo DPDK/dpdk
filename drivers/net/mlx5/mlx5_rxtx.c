@@ -1000,6 +1000,7 @@ static int
 mlx5_queue_state_modify(struct rte_eth_dev *dev,
 			struct mlx5_mp_arg_queue_state_modify *sm)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret = 0;
 
 	switch (rte_eal_process_type()) {
@@ -1007,7 +1008,7 @@ mlx5_queue_state_modify(struct rte_eth_dev *dev,
 		ret = mlx5_queue_state_modify_primary(dev, sm);
 		break;
 	case RTE_PROC_SECONDARY:
-		ret = mlx5_mp_req_queue_state_modify(dev, sm);
+		ret = mlx5_mp_req_queue_state_modify(&priv->mp_id, sm);
 		break;
 	default:
 		break;

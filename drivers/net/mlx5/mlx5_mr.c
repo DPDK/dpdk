@@ -540,7 +540,7 @@ mlx5_mr_create_secondary(struct rte_eth_dev *dev, struct mlx5_mr_cache *entry,
 
 	DEBUG("port %u requesting MR creation for address (%p)",
 	      dev->data->port_id, (void *)addr);
-	ret = mlx5_mp_req_mr_create(dev, addr);
+	ret = mlx5_mp_req_mr_create(&priv->mp_id, addr);
 	if (ret) {
 		DEBUG("port %u fail to request MR creation for address (%p)",
 		      dev->data->port_id, (void *)addr);

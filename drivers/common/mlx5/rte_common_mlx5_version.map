@@ -48,4 +48,17 @@ DPDK_20.0.1 {
 	mlx5_nl_vlan_vmwa_delete;
 
 	mlx5_translate_port_name;
+
+};
+
+EXPERIMENTAL {
+        global:
+
+	mlx5_mp_init_primary;
+	mlx5_mp_uninit_primary;
+	mlx5_mp_init_secondary;
+	mlx5_mp_uninit_secondary;
+	mlx5_mp_req_mr_create;
+	mlx5_mp_req_queue_state_modify;
+	mlx5_mp_req_verbs_cmd_fd;
 };
