@@ -8,7 +8,6 @@ LIB = librte_bpf.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_net -lrte_eal
 LDLIBS += -lrte_mempool -lrte_ring
 LDLIBS += -lrte_mbuf -lrte_ethdev

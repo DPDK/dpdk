@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Cisco Systems, Inc.
 
-# Experimental APIs used: rte_intr_ack
-cflags += ['-DALLOW_EXPERIMENTAL_API']
 sources = files(
 	'base/vnic_cq.c',
 	'base/vnic_dev.c',

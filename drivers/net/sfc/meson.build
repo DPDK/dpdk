@@ -11,8 +11,6 @@ if arch_subdir != 'x86' or not dpdk_conf.get('RTE_ARCH_64')
 	reason = 'only supported on x86_64'
 endif
 
-allow_experimental_apis = true
-
 extra_flags = []
 
 # Strict-aliasing rules are violated by rte_eth_link to uint64_t casts

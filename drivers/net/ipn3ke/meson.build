@@ -19,8 +19,6 @@ if not dep.found()
 	subdir_done()
 endif
 
-allow_experimental_apis = true
-
 includes += include_directories('../../raw/ifpga')
 
 sources += files('ipn3ke_ethdev.c',

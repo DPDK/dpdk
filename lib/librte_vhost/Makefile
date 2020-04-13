@@ -8,7 +8,6 @@ LIB = librte_vhost.a
 
 EXPORT_MAP := rte_vhost_version.map
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 CFLAGS += -I vhost_user
 CFLAGS += -fno-strict-aliasing

@@ -9,7 +9,6 @@ LIB = librte_fib.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_rib
 
 EXPORT_MAP := rte_fib_version.map

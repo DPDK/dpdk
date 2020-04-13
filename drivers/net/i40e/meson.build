@@ -4,8 +4,7 @@
 cflags += ['-DPF_DRIVER',
 	'-DVF_DRIVER',
 	'-DINTEGRATED_VF',
-	'-DX722_A0_SUPPORT',
-	'-DALLOW_EXPERIMENTAL_API']
+	'-DX722_A0_SUPPORT']
 
 subdir('base')
 objs = [base_objs]

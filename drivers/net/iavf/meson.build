@@ -3,8 +3,6 @@
 
 cflags += ['-Wno-strict-aliasing']
 
-allow_experimental_apis = true
-
 includes += include_directories('../../common/iavf')
 deps += ['common_iavf']
 

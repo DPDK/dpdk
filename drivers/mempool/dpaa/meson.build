@@ -8,6 +8,3 @@ endif
 
 deps += ['bus_dpaa']
 sources = files('dpaa_mempool.c')
-
-# depends on dpaa bus which uses experimental API
-allow_experimental_apis = true

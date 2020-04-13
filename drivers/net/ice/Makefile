@@ -10,7 +10,6 @@ LIB = librte_pmd_ice.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_ethdev -lrte_kvargs
 LDLIBS += -lrte_bus_pci -lrte_mempool -lrte_hash

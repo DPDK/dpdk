@@ -15,10 +15,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/net/pfe/base/
 CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 
 EXPORT_MAP := rte_pmd_pfe_version.map
-# Driver uses below experimental APIs
-# rte_mem_iova2virt
-# rte_mem_virt2memseg
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # Interfaces with DPDK
 SRCS-$(CONFIG_RTE_LIBRTE_PFE_PMD) += pfe_ethdev.c

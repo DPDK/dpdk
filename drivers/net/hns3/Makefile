@@ -10,7 +10,6 @@ LIB = librte_pmd_hns3.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 # Experimantal APIs:
 # - rte_mp_action_register
 # - rte_mp_action_unregister

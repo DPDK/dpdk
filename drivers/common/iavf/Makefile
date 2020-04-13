@@ -8,7 +8,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_common_iavf.a
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -Wno-pointer-arith

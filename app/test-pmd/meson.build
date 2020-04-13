@@ -3,7 +3,6 @@
 
 # override default name to drop the hyphen
 name = 'testpmd'
-allow_experimental_apis = true
 cflags += '-Wno-deprecated-declarations'
 sources = files('cmdline.c',
 	'cmdline_flow.c',

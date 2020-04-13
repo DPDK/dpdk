@@ -36,7 +36,7 @@ if is_windows
 	libraries = ['kvargs','eal'] # only supported libraries for windows
 endif
 
-default_cflags = machine_args
+default_cflags = machine_args + ['-DALLOW_EXPERIMENTAL_API']
 if cc.has_argument('-Wno-format-truncation')
 	default_cflags += '-Wno-format-truncation'
 endif
@@ -47,7 +47,6 @@ foreach l:libraries
 	build = true
 	reason = '<unknown reason>' # set if build == false to explain why
 	name = l
-	allow_experimental_apis = false
 	use_function_versioning = false
 	sources = []
 	headers = []
@@ -98,9 +97,6 @@ foreach l:libraries
 			static_dep = shared_dep
 		else
 
-			if allow_experimental_apis
-				cflags += '-DALLOW_EXPERIMENTAL_API'
-			endif
 			if use_function_versioning
 				cflags += '-DRTE_USE_FUNCTION_VERSIONING'
 			endif

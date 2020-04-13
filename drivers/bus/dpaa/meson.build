@@ -19,8 +19,6 @@ sources = files('base/fman/fman.c',
 		'base/qbman/qman_driver.c',
 		'dpaa_bus.c')
 
-allow_experimental_apis = true
-
 if cc.has_argument('-Wno-cast-qual')
 	cflags += '-Wno-cast-qual'
 endif

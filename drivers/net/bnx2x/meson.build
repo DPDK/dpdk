@@ -5,7 +5,6 @@ dep = dependency('zlib', required: false)
 build = dep.found()
 reason = 'missing dependency, "zlib"'
 ext_deps += dep
-allow_experimental_apis = true
 cflags += '-DZLIB_CONST'
 sources = files('bnx2x.c',
 	'bnx2x_ethdev.c',

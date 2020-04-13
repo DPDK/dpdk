@@ -9,7 +9,6 @@ LIB = librte_compressdev.a
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_mempool -lrte_kvargs
 
 # library source files

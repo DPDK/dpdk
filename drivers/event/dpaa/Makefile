@@ -10,7 +10,6 @@ RTE_SDK_DPAA=$(RTE_SDK)/drivers/net/dpaa
 #
 LIB = librte_pmd_dpaa_event.a
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS := -I$(SRCDIR) $(CFLAGS)
 CFLAGS += -O3 $(WERROR_FLAGS)
 CFLAGS += -Wno-pointer-arith

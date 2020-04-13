@@ -9,7 +9,6 @@ LIB = librte_pmd_octeontx_zip.a
 # build flags
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -O3
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -I$(RTE_SDK)/drivers/compress/octeontx/include
 
 # external library include paths

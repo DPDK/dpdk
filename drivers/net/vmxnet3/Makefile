@@ -8,7 +8,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_vmxnet3_uio.a
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-allow_experimental_apis = true
 sources += files('virtio_ethdev.c',
 	'virtio_pci.c',
 	'virtio_rxtx.c',

@@ -15,7 +15,6 @@ LIB = librte_pmd_ipn3ke.a
 #  rte_eth_dev_destroy()
 #  rte_eth_switch_domain_free()
 #
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/bus/ifpga

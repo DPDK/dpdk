@@ -9,7 +9,6 @@ LIB = librte_rib.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_mempool
 
 EXPORT_MAP := rte_rib_version.map

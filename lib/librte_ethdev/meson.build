@@ -2,7 +2,6 @@
 # Copyright(c) 2017 Intel Corporation
 
 name = 'ethdev'
-allow_experimental_apis = true
 sources = files('ethdev_private.c',
 	'ethdev_profile.c',
 	'rte_class_eth.c',

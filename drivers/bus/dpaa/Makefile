@@ -9,7 +9,6 @@ RTE_BUS_DPAA=$(RTE_SDK)/drivers/bus/dpaa
 #
 LIB = librte_bus_dpaa.a
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS := -I$(SRCDIR) $(CFLAGS)
 CFLAGS += -O3 $(WERROR_FLAGS)
 CFLAGS += -Wno-pointer-arith

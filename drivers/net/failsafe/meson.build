@@ -11,8 +11,6 @@ else
 	cflags += '-DBSD'
 endif
 
-allow_experimental_apis = true
-
 sources = files('failsafe_args.c',
 	'failsafe.c',
 	'failsafe_eal.c',

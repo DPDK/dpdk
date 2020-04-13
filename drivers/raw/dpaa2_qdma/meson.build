@@ -6,6 +6,4 @@ reason = 'missing dependency, DPDK DPAA2 mempool driver'
 deps += ['rawdev', 'mempool_dpaa2', 'ring', 'kvargs']
 sources = files('dpaa2_qdma.c')
 
-allow_experimental_apis = true
-
 install_headers('rte_pmd_dpaa2_qdma.h')

@@ -10,7 +10,6 @@ ifeq ($(CONFIG_RTE_TEST_PMD),y)
 #
 APP = testpmd
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -Wno-deprecated-declarations

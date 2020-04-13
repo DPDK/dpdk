@@ -20,7 +20,7 @@ dpdk_driver_classes = ['common',
 disabled_drivers = run_command(list_dir_globs, get_option('disable_drivers'),
 		).stdout().split()
 
-default_cflags = machine_args
+default_cflags = machine_args + ['-DALLOW_EXPERIMENTAL_API']
 if cc.has_argument('-Wno-format-truncation')
 	default_cflags += '-Wno-format-truncation'
 endif
@@ -44,7 +44,6 @@ foreach class:dpdk_driver_classes
 		reason = '<unknown reason>' # set if build == false to explain
 		name = drv
 		fmt_name = ''
-		allow_experimental_apis = false
 		sources = []
 		objs = []
 		cflags = default_cflags
@@ -105,10 +104,6 @@ foreach class:dpdk_driver_classes
 			endif
 			dpdk_conf.set(config_flag_fmt.format(fmt_name.to_upper()),1)
 			lib_name = driver_name_fmt.format(fmt_name)
-
-			if allow_experimental_apis
-				cflags += '-DALLOW_EXPERIMENTAL_API'
-			endif
 
 			dpdk_extra_ldflags += pkgconfig_extra_libs
 

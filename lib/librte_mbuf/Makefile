@@ -7,7 +7,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_mbuf.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -lrte_eal -lrte_mempool
 

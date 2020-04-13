@@ -6,4 +6,3 @@ sources = files('cpt_fpm_tables.c',
 
 deps = ['kvargs', 'pci', 'cryptodev']
 includes += include_directories('../../crypto/octeontx')
-allow_experimental_apis = true

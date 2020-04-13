@@ -18,5 +18,3 @@ sources = files('nfpcore/nfp_cpp_pcie_ops.c',
 	'nfpcore/nfp_nsp_eth.c',
 	'nfpcore/nfp_hwinfo.c',
 	'nfp_net.c')
-
-allow_experimental_apis = true

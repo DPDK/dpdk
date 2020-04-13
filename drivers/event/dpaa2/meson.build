@@ -10,5 +10,4 @@ sources = files('dpaa2_hw_dpcon.c',
 		'dpaa2_eventdev.c',
 		'dpaa2_eventdev_selftest.c')
 
-allow_experimental_apis = true
 includes += include_directories('../../crypto/dpaa2_sec/')

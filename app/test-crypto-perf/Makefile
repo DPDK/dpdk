@@ -7,7 +7,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP = dpdk-test-crypto-perf
 
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 
 # all source are stored in SRCS-y

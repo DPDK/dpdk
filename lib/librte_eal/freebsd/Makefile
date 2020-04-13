@@ -9,7 +9,6 @@ ARCH_DIR ?= $(RTE_ARCH)
 VPATH += $(RTE_SDK)/lib/librte_eal/$(ARCH_DIR)
 VPATH += $(RTE_SDK)/lib/librte_eal/common
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -I$(SRCDIR)/include
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/include

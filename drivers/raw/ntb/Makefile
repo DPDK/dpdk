@@ -8,7 +8,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_rawdev_ntb.a
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool

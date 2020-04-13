@@ -24,9 +24,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa2
 # versioning export map
 EXPORT_MAP := rte_pmd_dpaa2_version.map
 
-# depends on fslmc bus which uses experimental API
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += base/dpaa2_hw_dpni.c
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += dpaa2_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += dpaa2_ethdev.c

@@ -19,9 +19,6 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
 # versioning export map
 EXPORT_MAP := rte_mempool_dpaa_version.map
 
-# depends on dpaa bus which uses experimental API
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA_MEMPOOL) += dpaa_mempool.c

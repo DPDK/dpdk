@@ -36,5 +36,4 @@ if dpdk_conf.has('RTE_BBDEV_SDK_AVX512')
 endif
 
 deps += ['bbdev', 'bus_vdev', 'ring']
-allow_experimental_apis = true
 sources = files('bbdev_turbo_software.c')

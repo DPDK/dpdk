@@ -8,7 +8,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_bus_ifpga.a
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal

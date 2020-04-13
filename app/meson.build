@@ -22,12 +22,11 @@ apps = [
 # for BSD only
 lib_execinfo = cc.find_library('execinfo', required: false)
 
-default_cflags = machine_args
+default_cflags = machine_args + ['-DALLOW_EXPERIMENTAL_API']
 
 foreach app:apps
 	build = true
 	name = app
-	allow_experimental_apis = false
 	sources = []
 	includes = []
 	cflags = default_cflags
@@ -52,10 +51,6 @@ foreach app:apps
 		link_libs = []
 		if get_option('default_library') == 'static'
 			link_libs = dpdk_static_libraries + dpdk_drivers
-		endif
-
-		if allow_experimental_apis
-			cflags += '-DALLOW_EXPERIMENTAL_API'
 		endif
 
 		executable('dpdk-' + name,

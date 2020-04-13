@@ -9,8 +9,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_caam_jr.a
 
 # build flags
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-
 CFLAGS += -D _GNU_SOURCE
 
 CFLAGS += -O3

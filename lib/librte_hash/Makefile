@@ -6,7 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_hash.a
 
-CFLAGS += -O3 -DALLOW_EXPERIMENTAL_API
+CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 LDLIBS += -lrte_eal -lrte_ring
 

@@ -10,6 +10,3 @@ headers = files('rte_crc_arm64.h',
 
 sources = files('rte_cuckoo_hash.c', 'rte_fbk_hash.c')
 deps += ['ring']
-
-# rte ring reset is not yet part of stable API
-allow_experimental_apis = true

@@ -49,7 +49,6 @@ if static_ibverbs
 	ext_deps += declare_dependency(link_args:ibv_ldflags.split())
 endif
 
-allow_experimental_apis = true
 deps += ['hash', 'pci', 'net', 'eal', 'kvargs']
 sources = files(
 	'mlx5_devx_cmds.c',

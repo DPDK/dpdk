@@ -9,7 +9,6 @@ LIB = librte_pmd_isal_comp.a
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # external library dependencies
 LDLIBS += -lisal

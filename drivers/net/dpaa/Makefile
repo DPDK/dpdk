@@ -25,9 +25,6 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_eal/include
 
 EXPORT_MAP := rte_pmd_dpaa_version.map
 
-# depends on dpaa bus which uses experimental API
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-
 # Interfaces with DPDK
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA_PMD) += dpaa_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA_PMD) += dpaa_rxtx.c

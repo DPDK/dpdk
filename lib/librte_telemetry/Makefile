@@ -8,7 +8,6 @@ LIB = librte_telemetry.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -lrte_eal -lrte_ethdev
 LDLIBS += -lrte_metrics

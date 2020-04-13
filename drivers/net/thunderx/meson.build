@@ -4,7 +4,6 @@
 subdir('base')
 objs = [base_objs]
 
-allow_experimental_apis = true
 sources = files('nicvf_rxtx.c',
 		'nicvf_ethdev.c',
 		'nicvf_svf.c'

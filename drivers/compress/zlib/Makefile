@@ -9,7 +9,6 @@ LIB = librte_pmd_zlib.a
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # versioning export map
 EXPORT_MAP := rte_pmd_zlib_version.map

@@ -7,7 +7,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_bbdev.a
 
 # build flags
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf

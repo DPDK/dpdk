@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-allow_experimental_apis = true
-
 install_headers('rte_bus_vmbus.h','rte_vmbus_reg.h')
 
 sources = files('vmbus_common.c',

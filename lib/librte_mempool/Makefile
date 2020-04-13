@@ -7,13 +7,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_mempool.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_ring
 
 EXPORT_MAP := rte_mempool_version.map
-
-# memseg walk is not yet part of stable API
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool.c

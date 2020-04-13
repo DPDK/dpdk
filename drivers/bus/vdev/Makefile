@@ -10,7 +10,6 @@ LIB = librte_bus_vdev.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # versioning export map
 EXPORT_MAP := rte_bus_vdev_version.map

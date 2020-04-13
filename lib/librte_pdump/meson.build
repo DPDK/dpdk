@@ -3,5 +3,4 @@
 
 sources = files('rte_pdump.c')
 headers = files('rte_pdump.h')
-allow_experimental_apis = true
 deps += ['ethdev']

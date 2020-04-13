@@ -842,12 +842,6 @@ sources
 
 The optional fields are:
 
-allow_experimental_apis
-	**Default Value = false**
-	Used to allow the library to make use of APIs marked as experimental.
-	Set to ``true`` if the C files in the library call any functions
-	marked as experimental in any included header files.
-
 build
 	**Default Value = true**
 	Used to optionally compile a library, based on its dependencies or
@@ -959,9 +953,6 @@ Meson Build File Contents - Drivers
 
 For drivers, the values are largely the same as for libraries. The variables
 supported are:
-
-allow_experimental_apis
-	As above.
 
 build
 	As above.

@@ -105,6 +105,7 @@ CFLAGS += -DRTE_USE_FUNCTION_VERSIONING
 ifeq ($(BUILDING_RTE_SDK),1)
 # building sdk
 CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 else
 # if we are building an external application, include SDK's lib and
 # includes too

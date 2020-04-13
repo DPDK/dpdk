@@ -8,7 +8,6 @@ if not is_linux
 endif
 
 fmt_name = 'mlx5_vdpa'
-allow_experimental_apis = true
 deps += ['hash', 'common_mlx5', 'vhost', 'pci', 'bus_pci', 'eal', 'sched']
 sources = files(
 	'mlx5_vdpa.c',

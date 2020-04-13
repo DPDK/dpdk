@@ -7,8 +7,6 @@ if not is_linux
 endif
 sources = files('vdev_netvsc.c')
 
-allow_experimental_apis = true
-
 cflags_options = [
         '-D_BSD_SOURCE',
         '-D_DEFAULT_SOURCE',

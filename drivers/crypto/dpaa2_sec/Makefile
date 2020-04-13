@@ -10,7 +10,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_dpaa2_sec.a
 
 # build flags
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

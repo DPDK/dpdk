@@ -8,7 +8,6 @@ if not is_linux
 	subdir_done()
 endif
 
-allow_experimental_apis = true
 deps += ['hash', 'common_mlx5']
 sources = files(
 	'mlx5.c',

@@ -9,7 +9,6 @@ LIB = librte_pmd_aesni_mb.a
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # versioning export map
 EXPORT_MAP := rte_pmd_aesni_mb_version.map

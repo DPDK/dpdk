@@ -22,5 +22,4 @@ else
 endif
 
 sources = files('rte_aesni_mb_pmd.c', 'rte_aesni_mb_pmd_ops.c')
-allow_experimental_apis = true
 deps += ['bus_vdev']

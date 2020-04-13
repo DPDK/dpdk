@@ -14,6 +14,4 @@ if cc.has_argument('-Wno-pointer-arith')
 	cflags += '-Wno-pointer-arith'
 endif
 
-allow_experimental_apis = true
-
 install_headers('rte_pmd_dpaa.h')

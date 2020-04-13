@@ -8,7 +8,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_eventdev.a
 
 # build flags
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUX),y)

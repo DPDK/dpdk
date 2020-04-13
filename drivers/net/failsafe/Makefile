@@ -27,7 +27,6 @@ endif
 # No exported include files
 
 # Basic CFLAGS:
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -std=gnu99 -Wextra
 CFLAGS += -O3
 CFLAGS += -I.

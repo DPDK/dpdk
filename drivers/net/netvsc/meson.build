@@ -6,5 +6,3 @@ reason = 'missing dependency, DPDK VMBus driver'
 sources = files('hn_ethdev.c', 'hn_rxtx.c', 'hn_rndis.c', 'hn_nvs.c', 'hn_vf.c')
 
 deps += ['bus_vmbus' ]
-
-allow_experimental_apis = true

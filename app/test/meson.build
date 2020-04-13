@@ -355,7 +355,6 @@ if dpdk_conf.has('RTE_LIBRTE_PDUMP')
 	test_deps += 'pdump'
 endif
 
-cflags = machine_args
 if cc.has_argument('-Wno-format-truncation')
     cflags += '-Wno-format-truncation'
 endif
@@ -393,7 +392,7 @@ dpdk_test = executable('dpdk-test',
 	test_sources,
 	link_whole: link_libs,
 	dependencies: test_dep_objs,
-	c_args: [cflags, '-DALLOW_EXPERIMENTAL_API'],
+	c_args: cflags,
 	install_rpath: driver_install_path,
 	install: true)
 

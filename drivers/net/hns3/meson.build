@@ -27,11 +27,4 @@ sources = files('hns3_cmd.c',
 	'hns3_stats.c',
 	'hns3_mp.c')
 
-allow_experimental_apis = true
-# Experimantal APIs:
-# - rte_mp_action_register
-# - rte_mp_action_unregister
-# - rte_mp_reply
-# - rte_mp_request_sync
-
 deps += ['hash']

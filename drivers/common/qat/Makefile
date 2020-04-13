@@ -16,7 +16,6 @@ CFLAGS += -I$(QAT_COMPRESS_DIR)
 
 
 ifeq ($(CONFIG_RTE_LIBRTE_COMPRESSDEV),y)
-	CFLAGS += -DALLOW_EXPERIMENTAL_API
 	LDLIBS += -lrte_compressdev
 	SRCS-y += qat_comp.c
 	SRCS-y += qat_comp_pmd.c

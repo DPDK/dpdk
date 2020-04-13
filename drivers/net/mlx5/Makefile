@@ -56,9 +56,6 @@ CFLAGS += -Wno-error=cast-qual
 
 EXPORT_MAP := rte_pmd_mlx5_version.map
 
-# memseg walk is not part of stable API
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-
 # DEBUG which is usually provided on the command-line may enable
 # CONFIG_RTE_LIBRTE_MLX5_DEBUG.
 ifeq ($(DEBUG),1)

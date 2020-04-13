@@ -11,7 +11,6 @@ subdir(exec_env)
 
 subdir(arch_subdir)
 
-allow_experimental_apis = true
 deps += 'kvargs'
 if dpdk_conf.has('RTE_USE_LIBBSD')
 	ext_deps += libbsd

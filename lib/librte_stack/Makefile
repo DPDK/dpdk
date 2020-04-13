@@ -7,7 +7,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_stack.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_stack_version.map

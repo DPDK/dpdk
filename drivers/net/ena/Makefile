@@ -12,8 +12,6 @@ CFLAGS += $(WERROR_FLAGS) -O2
 INCLUDES :=-I$(SRCDIR) -I$(SRCDIR)/base/ena_defs -I$(SRCDIR)/base
 
 EXPORT_MAP := rte_pmd_ena_version.map
-# rte_fbarray is not yet part of stable API
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 VPATH += $(SRCDIR)/base
 #

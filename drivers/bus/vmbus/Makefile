@@ -7,7 +7,6 @@ EXPORT_MAP := rte_bus_vmbus_version.map
 
 CFLAGS += -I$(SRCDIR)
 CFLAGS += -O3 $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 ifneq ($(CONFIG_RTE_EXEC_ENV_LINUX),)
 SYSTEM := linux

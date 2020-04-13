@@ -8,9 +8,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_ionic.a
 
-# Required to use rte_eth_dev_create and rte_eth_dev_destroy
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

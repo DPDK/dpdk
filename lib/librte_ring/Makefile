@@ -6,7 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_ring.a
 
-CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -DALLOW_EXPERIMENTAL_API
+CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 LDLIBS += -lrte_eal
 
 EXPORT_MAP := rte_ring_version.map

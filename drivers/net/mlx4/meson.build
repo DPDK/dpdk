@@ -50,7 +50,6 @@ if static_ibverbs
 	ext_deps += declare_dependency(link_args:ibv_ldflags.split())
 endif
 
-allow_experimental_apis = true
 sources = files(
 	'mlx4.c',
 	'mlx4_ethdev.c',

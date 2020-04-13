@@ -23,5 +23,3 @@ sources = files('ifpga_rawdev.c')
 includes += include_directories('base')
 includes += include_directories('../../net/ipn3ke')
 includes += include_directories('../../net/i40e')
-
-allow_experimental_apis = true

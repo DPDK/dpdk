@@ -3,8 +3,6 @@
 
 cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 
-allow_experimental_apis = true
-
 subdir('base')
 objs = [base_objs]
 

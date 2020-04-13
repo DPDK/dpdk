@@ -19,7 +19,6 @@ else
 
 endif
 
-allow_experimental_apis = true
 ext_deps += lib
 sources = files('rte_zuc_pmd.c', 'rte_zuc_pmd_ops.c')
 deps += ['bus_vdev']

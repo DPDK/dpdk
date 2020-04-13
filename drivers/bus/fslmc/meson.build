@@ -22,6 +22,4 @@ sources = files('fslmc_bus.c',
 		'qbman/qbman_portal.c',
 		'qbman/qbman_debug.c')
 
-allow_experimental_apis = true
-
 includes += include_directories('mc', 'qbman/include', 'portal')

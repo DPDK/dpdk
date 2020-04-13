@@ -9,7 +9,6 @@ APP = testfib
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # all source are stored in SRCS-y
 SRCS-y := main.c

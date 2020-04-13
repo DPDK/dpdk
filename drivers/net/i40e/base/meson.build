@@ -18,9 +18,6 @@ error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',
 		'-Wno-unused-parameter',
 ]
 c_args = cflags
-if allow_experimental_apis
-	c_args += '-DALLOW_EXPERIMENTAL_API'
-endif
 foreach flag: error_cflags
 	if cc.has_argument(flag)
 		c_args += flag
