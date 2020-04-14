@@ -1539,7 +1539,7 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 		}
 	}
 
-	if (dest_num == 0 || dest_num >= 2) {
+	if (dest_num >= 2) {
 		rte_flow_error_set(error, EINVAL,
 			   RTE_FLOW_ERROR_TYPE_ACTION, actions,
 			   "Unsupported action combination");
@@ -1559,6 +1559,18 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 			   "Too many count actions");
 		return -rte_errno;
 	}
+
+	if (dest_num + mark_num + counter_num == 0) {
+		rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ACTION, actions,
+			   "Empty action");
+		return -rte_errno;
+	}
+
+	/* set default action to PASSTHRU mode, in "mark/count only" case. */
+	if (dest_num == 0)
+		filter->input.dest_ctl =
+			ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_OTHER;
 
 	return 0;
 }
