@@ -8,20 +8,18 @@
 /**
  * This is header should contain any function/macro definition
  * which are not supported natively or named differently in the
- * Windows OS. Functions will be added in future releases.
+ * Windows OS. It must not include Windows-specific headers.
  */
+
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <windows.h>
-#include <basetsd.h>
-#include <pthread.h>
-#include <stdio.h>
-
-/* limits.h replacement */
-#include <stdlib.h>
+/* limits.h replacement, value as in <windows.h> */
 #ifndef PATH_MAX
 #define PATH_MAX _MAX_PATH
 #endif
@@ -31,8 +29,6 @@ extern "C" {
 /* strdup is deprecated in Microsoft libc and _strdup is preferred */
 #define strdup(str) _strdup(str)
 
-typedef SSIZE_T ssize_t;
-
 #define strtok_r(str, delim, saveptr) strtok_s(str, delim, saveptr)
 
 #define index(a, b)     strchr(a, b)
@@ -40,22 +36,14 @@ typedef SSIZE_T ssize_t;
 
 #define strncasecmp(s1, s2, count)        _strnicmp(s1, s2, count)
 
-/**
- * Create a thread.
- * This function is private to EAL.
- *
- * @param thread
- *   The location to store the thread id if successful.
- * @return
- *   0 for success, -1 if the thread is not created.
- */
-int eal_thread_create(pthread_t *thread);
+/* cpu_set macros implementation */
+#define RTE_CPU_AND(dst, src1, src2) CPU_AND(dst, src1, src2)
+#define RTE_CPU_OR(dst, src1, src2) CPU_OR(dst, src1, src2)
+#define RTE_CPU_FILL(set) CPU_FILL(set)
+#define RTE_CPU_NOT(dst, src) CPU_NOT(dst, src)
 
-/**
- * Create a map of processors and cores on the system.
- * This function is private to EAL.
- */
-void eal_create_cpu_map(void);
+/* as in <windows.h> */
+typedef long long ssize_t;
 
 #ifndef RTE_TOOLCHAIN_GCC
 static inline int
@@ -85,12 +73,6 @@ asprintf(char **buffer, const char *format, ...)
 	return ret;
 }
 #endif /* RTE_TOOLCHAIN_GCC */
-
-/* cpu_set macros implementation */
-#define RTE_CPU_AND(dst, src1, src2) CPU_AND(dst, src1, src2)
-#define RTE_CPU_OR(dst, src1, src2) CPU_OR(dst, src1, src2)
-#define RTE_CPU_FILL(set) CPU_FILL(set)
-#define RTE_CPU_NOT(dst, src) CPU_NOT(dst, src)
 
 #ifdef __cplusplus
 }

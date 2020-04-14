@@ -18,6 +18,8 @@
 #include <eal_options.h>
 #include <eal_private.h>
 
+#include "eal_windows.h"
+
  /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook;
 

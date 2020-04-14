@@ -5,6 +5,8 @@
 #ifndef _PTHREAD_H_
 #define _PTHREAD_H_
 
+#include <stdint.h>
+
 /**
  * This file is required to support the common code in eal_common_proc.c,
  * eal_common_thread.c and common\include\rte_per_lcore.h as Microsoft libc
