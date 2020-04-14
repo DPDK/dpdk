@@ -2038,6 +2038,26 @@ process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 	return retval;
 }
 
+static void
+copy_plaintext(struct rte_mbuf *m_src, struct rte_mbuf *m_dst,
+		struct rte_crypto_op *op)
+{
+	uint8_t *p_src, *p_dst;
+
+	p_src = rte_pktmbuf_mtod(m_src, uint8_t *);
+	p_dst = rte_pktmbuf_mtod(m_dst, uint8_t *);
+
+	/**
+	 * Copy the content between cipher offset and auth offset
+	 * for generating correct digest.
+	 */
+	if (op->sym->cipher.data.offset > op->sym->auth.data.offset)
+		memcpy(p_dst + op->sym->auth.data.offset,
+				p_src + op->sym->auth.data.offset,
+				op->sym->cipher.data.offset -
+				op->sym->auth.data.offset);
+}
+
 /** Process crypto operation for mbuf */
 static int
 process_op(struct openssl_qp *qp, struct rte_crypto_op *op,
@@ -2060,6 +2080,9 @@ process_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		break;
 	case OPENSSL_CHAIN_CIPHER_AUTH:
 		process_openssl_cipher_op(op, sess, msrc, mdst);
+		/* OOP */
+		if (msrc != mdst)
+			copy_plaintext(msrc, mdst, op);
 		process_openssl_auth_op(qp, op, sess, mdst, mdst);
 		break;
 	case OPENSSL_CHAIN_AUTH_CIPHER:
