@@ -1083,7 +1083,7 @@ iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	} else {
 		PMD_DRV_LOG(ERR, "Get statistics failed");
 	}
-	return -EIO;
+	return ret;
 }
 
 static int
