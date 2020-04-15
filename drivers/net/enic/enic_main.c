@@ -222,13 +222,12 @@ void enic_init_vnic_resources(struct enic *enic)
 			error_interrupt_enable,
 			error_interrupt_offset);
 
-		data_rq = &enic->rq[enic_rte_rq_idx_to_data_idx(index)];
+		data_rq = &enic->rq[enic_rte_rq_idx_to_data_idx(index, enic)];
 		if (data_rq->in_use)
 			vnic_rq_init(data_rq,
 				     cq_idx,
 				     error_interrupt_enable,
 				     error_interrupt_offset);
-
 		vnic_cq_init(&enic->cq[cq_idx],
 			0 /* flow_control_enable */,
 			1 /* color_enable */,
@@ -620,7 +619,7 @@ int enic_enable(struct enic *enic)
 			return err;
 		}
 		err = enic_alloc_rx_queue_mbufs(enic,
-			&enic->rq[enic_rte_rq_idx_to_data_idx(index)]);
+			&enic->rq[enic_rte_rq_idx_to_data_idx(index, enic)]);
 		if (err) {
 			/* release the allocated mbufs for the sop rq*/
 			enic_rxmbuf_queue_release(enic,
@@ -808,7 +807,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 {
 	int rc;
 	uint16_t sop_queue_idx = enic_rte_rq_idx_to_sop_idx(queue_idx);
-	uint16_t data_queue_idx = enic_rte_rq_idx_to_data_idx(queue_idx);
+	uint16_t data_queue_idx = enic_rte_rq_idx_to_data_idx(queue_idx, enic);
 	struct vnic_rq *rq_sop = &enic->rq[sop_queue_idx];
 	struct vnic_rq *rq_data = &enic->rq[data_queue_idx];
 	unsigned int mbuf_size, mbufs_per_pkt;
@@ -1475,7 +1474,7 @@ enic_reinit_rq(struct enic *enic, unsigned int rq_idx)
 	int rc = 0;
 
 	sop_rq = &enic->rq[enic_rte_rq_idx_to_sop_idx(rq_idx)];
-	data_rq = &enic->rq[enic_rte_rq_idx_to_data_idx(rq_idx)];
+	data_rq = &enic->rq[enic_rte_rq_idx_to_data_idx(rq_idx, enic)];
 	cq_idx = rq_idx;
 
 	vnic_cq_clean(&enic->cq[cq_idx]);
@@ -1498,8 +1497,8 @@ enic_reinit_rq(struct enic *enic, unsigned int rq_idx)
 	if (data_rq->in_use) {
 		vnic_rq_init_start(data_rq,
 				   enic_cq_rq(enic,
-				   enic_rte_rq_idx_to_data_idx(rq_idx)), 0,
-				   data_rq->ring.desc_count - 1, 1, 0);
+				   enic_rte_rq_idx_to_data_idx(rq_idx, enic)),
+				   0, data_rq->ring.desc_count - 1, 1, 0);
 	}
 
 	rc = enic_alloc_rx_queue_mbufs(enic, sop_rq);

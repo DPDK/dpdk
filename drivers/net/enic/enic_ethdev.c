@@ -940,7 +940,7 @@ static void enicpmd_dev_rxq_info_get(struct rte_eth_dev *dev,
 
 	ENICPMD_FUNC_TRACE();
 	sop_queue_idx = enic_rte_rq_idx_to_sop_idx(rx_queue_id);
-	data_queue_idx = enic_rte_rq_idx_to_data_idx(rx_queue_id);
+	data_queue_idx = enic_rte_rq_idx_to_data_idx(rx_queue_id, enic);
 	rq_sop = &enic->rq[sop_queue_idx];
 	rq_data = &enic->rq[data_queue_idx]; /* valid if data_queue_enable */
 	qinfo->mp = rq_sop->mp;
