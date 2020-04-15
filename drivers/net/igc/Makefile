@@ -13,12 +13,24 @@ CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal
 LDLIBS += -lrte_ethdev
 LDLIBS += -lrte_bus_pci
+LDLIBS += -lrte_mbuf
+LDLIBS += -lrte_mempool
 
 EXPORT_MAP := rte_pmd_igc_version.map
+
+VPATH += $(SRCDIR)/base
 
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_api.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_base.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_i225.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_mac.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_manage.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_nvm.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_osdep.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_phy.c
 SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_logs.c
 SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_ethdev.c
 
