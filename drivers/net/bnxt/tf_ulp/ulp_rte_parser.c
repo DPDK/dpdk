@@ -85,6 +85,8 @@ bnxt_ulp_rte_parser_hdr_parse(const struct rte_flow_item pattern[],
 		}
 		item++;
 	}
+	/* update the implied SVIF */
+	(void)ulp_rte_parser_svif_process(hdr_bitmap, hdr_field);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -132,9 +134,12 @@ static int32_t
 ulp_rte_parser_svif_set(struct ulp_rte_hdr_bitmap *hdr_bitmap,
 			struct ulp_rte_hdr_field *hdr_field,
 			enum rte_flow_item_type proto,
-			uint32_t svif,
-			uint32_t mask)
+			uint32_t dir,
+			uint16_t svif,
+			uint16_t mask)
 {
+	uint16_t port_id = svif;
+
 	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_SVIF)) {
 		BNXT_TF_DBG(ERR,
 			    "SVIF already set,"
@@ -142,19 +147,49 @@ ulp_rte_parser_svif_set(struct ulp_rte_hdr_bitmap *hdr_bitmap,
 		return BNXT_TF_RC_ERROR;
 	}
 
-	/* TBD: Check for any mapping errors for svif */
 	/* Update the hdr_bitmap with BNXT_ULP_HDR_PROTO_SVIF. */
 	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_SVIF);
 
-	if (proto != RTE_FLOW_ITEM_TYPE_PF) {
-		memcpy(hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec,
-		       &svif, sizeof(svif));
-		memcpy(hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].mask,
-		       &mask, sizeof(mask));
-		hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].size = sizeof(svif);
+	if (proto == RTE_FLOW_ITEM_TYPE_PORT_ID) {
+		/* perform the conversion from dpdk port to svif */
+		if (dir == ULP_DIR_EGRESS)
+			svif = bnxt_get_svif(port_id, true);
+		else
+			svif = bnxt_get_svif(port_id, false);
 	}
 
+	memcpy(hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec,
+	       &svif, sizeof(svif));
+	memcpy(hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].mask,
+	       &mask, sizeof(mask));
+	hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].size = sizeof(svif);
 	return BNXT_TF_RC_SUCCESS;
+}
+
+/* Function to handle the parsing of the RTE port id
+ */
+int32_t
+ulp_rte_parser_svif_process(struct ulp_rte_hdr_bitmap	*hdr_bitmap,
+			    struct ulp_rte_hdr_field	*hdr_field)
+{
+	uint16_t port_id = 0;
+	uint32_t dir = 0;
+	uint8_t	*buffer;
+	uint16_t svif_mask = 0xFFFF;
+
+	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_SVIF))
+		return BNXT_TF_RC_SUCCESS;
+
+	/* SVIF not set. So get the port id and direction */
+	buffer = hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec;
+	memcpy(&port_id, buffer, sizeof(port_id));
+	memcpy(&dir, buffer + sizeof(port_id), sizeof(dir));
+	memset(hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec, 0,
+	       RTE_PARSER_FLOW_HDR_FIELD_SIZE);
+
+	return ulp_rte_parser_svif_set(hdr_bitmap, hdr_field,
+				       RTE_FLOW_ITEM_TYPE_PORT_ID,
+				       dir, port_id, svif_mask);
 }
 
 /* Function to handle the parsing of RTE Flow item PF Header. */
@@ -165,8 +200,20 @@ ulp_rte_pf_hdr_handler(const struct rte_flow_item *item,
 		       uint32_t *field_idx __rte_unused,
 		       uint32_t *vlan_idx __rte_unused)
 {
+	uint16_t port_id = 0;
+	uint32_t dir = 0;
+	uint8_t	*buffer;
+	uint16_t svif_mask = 0xFFFF;
+
+	buffer = hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec;
+	memcpy(&port_id, buffer, sizeof(port_id));
+	memcpy(&dir, buffer + sizeof(port_id), sizeof(dir));
+	memset(hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec, 0,
+	       RTE_PARSER_FLOW_HDR_FIELD_SIZE);
+
 	return ulp_rte_parser_svif_set(hdr_bitmap, hdr_field,
-				       item->type, 0, 0);
+				       item->type,
+				       dir, port_id, svif_mask);
 }
 
 /* Function to handle the parsing of RTE Flow item VF Header. */
@@ -178,7 +225,7 @@ ulp_rte_vf_hdr_handler(const struct rte_flow_item *item,
 		       uint32_t *vlan_idx __rte_unused)
 {
 	const struct rte_flow_item_vf *vf_spec, *vf_mask;
-	uint32_t svif = 0, mask = 0;
+	uint16_t svif = 0, mask = 0;
 
 	vf_spec = item->spec;
 	vf_mask = item->mask;
@@ -188,12 +235,12 @@ ulp_rte_vf_hdr_handler(const struct rte_flow_item *item,
 	 * header fields.
 	 */
 	if (vf_spec)
-		svif = vf_spec->id;
+		svif = (uint16_t)vf_spec->id;
 	if (vf_mask)
-		mask = vf_mask->id;
+		mask = (uint16_t)vf_mask->id;
 
 	return ulp_rte_parser_svif_set(hdr_bitmap, hdr_field,
-				       item->type, svif, mask);
+				       item->type, 0, svif, mask);
 }
 
 /* Function to handle the parsing of RTE Flow item port id  Header. */
@@ -205,7 +252,9 @@ ulp_rte_port_id_hdr_handler(const struct rte_flow_item *item,
 			    uint32_t *vlan_idx __rte_unused)
 {
 	const struct rte_flow_item_port_id *port_spec, *port_mask;
-	uint32_t svif = 0, mask = 0;
+	uint16_t svif = 0, mask = 0;
+	uint32_t dir;
+	uint8_t	*buffer;
 
 	port_spec = item->spec;
 	port_mask = item->mask;
@@ -215,12 +264,15 @@ ulp_rte_port_id_hdr_handler(const struct rte_flow_item *item,
 	 * header fields.
 	 */
 	if (port_spec)
-		svif = port_spec->id;
+		svif = (uint16_t)port_spec->id;
 	if (port_mask)
-		mask = port_mask->id;
+		mask = (uint16_t)port_mask->id;
+
+	buffer = hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec;
+	memcpy(&dir, buffer + sizeof(uint16_t), sizeof(uint16_t));
 
 	return ulp_rte_parser_svif_set(hdr_bitmap, hdr_field,
-				       item->type, svif, mask);
+				       item->type, dir, svif, mask);
 }
 
 /* Function to handle the parsing of RTE Flow item phy port Header. */
@@ -244,7 +296,7 @@ ulp_rte_phy_port_hdr_handler(const struct rte_flow_item *item,
 		mask = port_mask->index;
 
 	return ulp_rte_parser_svif_set(hdr_bitmap, hdr_field,
-				       item->type, svif, mask);
+				       item->type, 0, svif, mask);
 }
 
 /* Function to handle the parsing of RTE Flow item Ethernet Header. */
@@ -1124,6 +1176,8 @@ ulp_rte_pf_act_handler(const struct rte_flow_action *action_item __rte_unused,
 	/* copy the PF of the current device into VNIC Property */
 	svif_buf = &act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_VNIC];
 	ulp_util_field_int_read(svif_buf, &svif);
+	svif = (uint32_t)bnxt_get_vnic_id(svif);
+	svif = htonl(svif);
 	vnic_buffer = &act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_VNIC];
 	ulp_util_field_int_write(vnic_buffer, svif);
 

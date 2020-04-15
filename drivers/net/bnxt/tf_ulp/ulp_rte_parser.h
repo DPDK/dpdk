@@ -20,6 +20,11 @@
 #define BNXT_ULP_ENCAP_IPV6_SIZE		8
 #define BNXT_ULP_ENCAP_UDP_SIZE			4
 
+/* Function to handle the parsing of the RTE port id. */
+int32_t
+ulp_rte_parser_svif_process(struct ulp_rte_hdr_bitmap	*hdr_bitmap,
+			    struct ulp_rte_hdr_field	*hdr_field);
+
 /*
  * Function to handle the parsing of RTE Flows and placing
  * the RTE flow items into the ulp structures.

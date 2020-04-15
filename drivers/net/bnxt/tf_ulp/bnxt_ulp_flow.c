@@ -72,14 +72,14 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 	struct ulp_rte_act_bitmap act_bitmap;
 	struct ulp_rte_act_prop act_prop;
 	enum ulp_direction_type dir = ULP_DIR_INGRESS;
-	uint32_t class_id, act_tmpl;
-	uint32_t app_priority;
-	int ret;
 	struct bnxt_ulp_context *ulp_ctx = NULL;
-	uint32_t vnic;
-	uint8_t svif;
+	uint32_t class_id, act_tmpl;
 	struct rte_flow *flow_id;
+	uint32_t app_priority;
 	uint32_t fid;
+	uint8_t	*buffer;
+	uint32_t vnic;
+	int ret;
 
 	if (bnxt_ulp_flow_validate_args(attr,
 					pattern, actions,
@@ -100,19 +100,15 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 	memset(&act_bitmap, 0, sizeof(act_bitmap));
 	memset(&act_prop, 0, sizeof(act_prop));
 
-	svif = bnxt_get_svif(dev->data->port_id, false);
-	BNXT_TF_DBG(ERR, "SVIF for port[%d][port]=0x%08x\n",
-		    dev->data->port_id, svif);
+	if (attr->egress)
+		dir = ULP_DIR_EGRESS;
 
-	hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].size = sizeof(svif);
-	hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec[0] = svif;
-	hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].mask[0] = -1;
-	ULP_BITMAP_SET(hdr_bitmap.bits, BNXT_ULP_HDR_BIT_SVIF);
+	/* copy the device port id and direction in svif for further process */
+	buffer = hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec;
+	rte_memcpy(buffer, &dev->data->port_id, sizeof(uint16_t));
+	rte_memcpy(buffer + sizeof(uint16_t), &dir, sizeof(uint32_t));
 
-	/*
-	 * VNIC is being pushed as 32bit and the pop will take care of
-	 * proper size
-	 */
+	/* Set the implicit vnic in the action property */
 	vnic = (uint32_t)bnxt_get_vnic_id(dev->data->port_id);
 	vnic = htonl(vnic);
 	rte_memcpy(&act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
@@ -131,9 +127,6 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 					    &act_prop);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
-
-	if (attr->egress)
-		dir = ULP_DIR_EGRESS;
 
 	ret = ulp_matcher_pattern_match(dir, &hdr_bitmap, hdr_field,
 					&act_bitmap, &class_id);
