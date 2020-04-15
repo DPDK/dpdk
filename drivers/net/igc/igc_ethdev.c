@@ -209,6 +209,10 @@ static int eth_igc_xstats_reset(struct rte_eth_dev *dev);
 static int
 eth_igc_queue_stats_mapping_set(struct rte_eth_dev *dev,
 	uint16_t queue_id, uint8_t stat_idx, uint8_t is_rx);
+static int
+eth_igc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
+static int
+eth_igc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 
 static const struct eth_dev_ops eth_igc_ops = {
 	.dev_configure		= eth_igc_configure,
@@ -253,6 +257,8 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.stats_reset		= eth_igc_xstats_reset,
 	.xstats_reset		= eth_igc_xstats_reset,
 	.queue_stats_mapping_set = eth_igc_queue_stats_mapping_set,
+	.rx_queue_intr_enable	= eth_igc_rx_queue_intr_enable,
+	.rx_queue_intr_disable	= eth_igc_rx_queue_intr_disable,
 };
 
 /*
@@ -617,6 +623,56 @@ eth_igc_stop(struct rte_eth_dev *dev)
 
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec != NULL) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
+}
+
+/*
+ * write interrupt vector allocation register
+ * @hw
+ *  board private structure
+ * @queue_index
+ *  queue index, valid 0,1,2,3
+ * @tx
+ *  tx:1, rx:0
+ * @msix_vector
+ *  msix-vector, valid 0,1,2,3,4
+ */
+static void
+igc_write_ivar(struct igc_hw *hw, uint8_t queue_index,
+		bool tx, uint8_t msix_vector)
+{
+	uint8_t offset = 0;
+	uint8_t reg_index = queue_index >> 1;
+	uint32_t val;
+
+	/*
+	 * IVAR(0)
+	 * bit31...24	bit23...16	bit15...8	bit7...0
+	 * TX1		RX1		TX0		RX0
+	 *
+	 * IVAR(1)
+	 * bit31...24	bit23...16	bit15...8	bit7...0
+	 * TX3		RX3		TX2		RX2
+	 */
+
+	if (tx)
+		offset = 8;
+
+	if (queue_index & 1)
+		offset += 16;
+
+	val = IGC_READ_REG_ARRAY(hw, IGC_IVAR0, reg_index);
+
+	/* clear bits */
+	val &= ~((uint32_t)0xFF << offset);
+
+	/* write vector and valid bit */
+	val |= (uint32_t)(msix_vector | IGC_IVAR_VALID) << offset;
+
+	IGC_WRITE_REG_ARRAY(hw, IGC_IVAR0, reg_index, val);
 }
 
 /* Sets up the hardware to generate MSI-X interrupts properly
@@ -631,20 +687,32 @@ igc_configure_msix_intr(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	uint32_t intr_mask;
+	uint32_t vec = IGC_MISC_VEC_ID;
+	uint32_t base = IGC_MISC_VEC_ID;
+	uint32_t misc_shift = 0;
+	int i;
 
 	/* won't configure msix register if no mapping is done
 	 * between intr vector and event fd
 	 */
-	if (!rte_intr_dp_is_en(intr_handle) ||
-		!dev->data->dev_conf.intr_conf.lsc)
+	if (!rte_intr_dp_is_en(intr_handle))
 		return;
+
+	if (rte_intr_allow_others(intr_handle)) {
+		base = IGC_RX_VEC_START;
+		vec = base;
+		misc_shift = 1;
+	}
 
 	/* turn on MSI-X capability first */
 	IGC_WRITE_REG(hw, IGC_GPIE, IGC_GPIE_MSIX_MODE |
 				IGC_GPIE_PBA | IGC_GPIE_EIAME |
 				IGC_GPIE_NSICR);
+	intr_mask = RTE_LEN2MASK(intr_handle->nb_efd, uint32_t) <<
+		misc_shift;
 
-	intr_mask = (1u << IGC_MSIX_OTHER_INTR_VEC);
+	if (dev->data->dev_conf.intr_conf.lsc)
+		intr_mask |= (1u << IGC_MSIX_OTHER_INTR_VEC);
 
 	/* enable msix auto-clear */
 	igc_read_reg_check_set_bits(hw, IGC_EIAC, intr_mask);
@@ -655,6 +723,13 @@ igc_configure_msix_intr(struct rte_eth_dev *dev)
 
 	/* enable auto-mask */
 	igc_read_reg_check_set_bits(hw, IGC_EIAM, intr_mask);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		igc_write_ivar(hw, i, 0, vec);
+		intr_handle->intr_vec[i] = vec;
+		if (vec < base + intr_handle->nb_efd - 1)
+			vec++;
+	}
 
 	IGC_WRITE_FLUSH(hw);
 }
@@ -676,6 +751,29 @@ igc_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on)
 		intr->mask |= IGC_ICR_LSC;
 	else
 		intr->mask &= ~IGC_ICR_LSC;
+}
+
+/*
+ * It enables the interrupt.
+ * It will be called once only during nic initialized.
+ */
+static void
+igc_rxq_interrupt_setup(struct rte_eth_dev *dev)
+{
+	uint32_t mask;
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int misc_shift = rte_intr_allow_others(intr_handle) ? 1 : 0;
+
+	/* won't configure msix register if no mapping is done
+	 * between intr vector and event fd
+	 */
+	if (!rte_intr_dp_is_en(intr_handle))
+		return;
+
+	mask = RTE_LEN2MASK(intr_handle->nb_efd, uint32_t) << misc_shift;
+	IGC_WRITE_REG(hw, IGC_EIMS, mask);
 }
 
 /*
@@ -798,7 +896,26 @@ eth_igc_start(struct rte_eth_dev *dev)
 	}
 	adapter->stopped = 0;
 
-	/* confiugre msix for rx interrupt */
+	/* check and configure queue intr-vector mapping */
+	if (rte_intr_cap_multiple(intr_handle) &&
+		dev->data->dev_conf.intr_conf.rxq) {
+		uint32_t intr_vector = dev->data->nb_rx_queues;
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec = rte_zmalloc("intr_vec",
+			dev->data->nb_rx_queues * sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			PMD_DRV_LOG(ERR,
+				"Failed to allocate %d rx_queues intr_vec",
+				dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+
+	/* configure msix for rx interrupt */
 	igc_configure_msix_intr(dev);
 
 	igc_tx_init(dev);
@@ -893,6 +1010,11 @@ eth_igc_start(struct rte_eth_dev *dev)
 
 	rte_eal_alarm_set(IGC_ALARM_INTERVAL,
 			igc_update_queue_stats_handler, dev);
+
+	/* check if rxq interrupt is enabled */
+	if (dev->data->dev_conf.intr_conf.rxq &&
+			rte_intr_dp_is_en(intr_handle))
+		igc_rxq_interrupt_setup(dev);
 
 	/* resume enabled intr since hw reset */
 	igc_intr_other_enable(dev);
@@ -1164,6 +1286,7 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 		igc->txq_stats_map[i] = -1;
 		igc->rxq_stats_map[i] = -1;
 	}
+
 	return 0;
 
 err_late:
@@ -1899,6 +2022,46 @@ eth_igc_queue_stats_mapping_set(struct rte_eth_dev *dev,
 		igc->rxq_stats_map[queue_id] = stat_idx;
 	else
 		igc->txq_stats_map[queue_id] = stat_idx;
+
+	return 0;
+}
+
+static int
+eth_igc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint32_t vec = IGC_MISC_VEC_ID;
+
+	if (rte_intr_allow_others(intr_handle))
+		vec = IGC_RX_VEC_START;
+
+	uint32_t mask = 1u << (queue_id + vec);
+
+	IGC_WRITE_REG(hw, IGC_EIMC, mask);
+	IGC_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int
+eth_igc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint32_t vec = IGC_MISC_VEC_ID;
+
+	if (rte_intr_allow_others(intr_handle))
+		vec = IGC_RX_VEC_START;
+
+	uint32_t mask = 1u << (queue_id + vec);
+
+	IGC_WRITE_REG(hw, IGC_EIMS, mask);
+	IGC_WRITE_FLUSH(hw);
+
+	rte_intr_enable(intr_handle);
 
 	return 0;
 }
