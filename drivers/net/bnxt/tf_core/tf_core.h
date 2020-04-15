@@ -344,4 +344,129 @@ int tf_attach_session(struct tf *tfp,
  */
 int tf_close_session(struct tf *tfp);
 
+/**
+ * @page  ident Identity Management
+ *
+ * @ref tf_alloc_identifier
+ *
+ * @ref tf_free_identifier
+ */
+enum tf_identifier_type {
+	/** The L2 Context is returned from the L2 Ctxt TCAM lookup
+	 *  and can be used in WC TCAM or EM keys to virtualize further
+	 *  lookups.
+	 */
+	TF_IDENT_TYPE_L2_CTXT,
+	/** The WC profile func is returned from the L2 Ctxt TCAM lookup
+	 *  to enable virtualization of the profile TCAM.
+	 */
+	TF_IDENT_TYPE_PROF_FUNC,
+	/** The WC profile ID is included in the WC lookup key
+	 *  to enable virtualization of the WC TCAM hardware.
+	 */
+	TF_IDENT_TYPE_WC_PROF,
+	/** The EM profile ID is included in the EM lookup key
+	 *  to enable virtualization of the EM hardware. (not required for Brd4
+	 *  as it has table scope)
+	 */
+	TF_IDENT_TYPE_EM_PROF,
+	/** The L2 func is included in the ILT result and from recycling to
+	 *  enable virtualization of further lookups.
+	 */
+	TF_IDENT_TYPE_L2_FUNC
+};
+
+/**
+ * TCAM table type
+ */
+enum tf_tcam_tbl_type {
+	TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	TF_TCAM_TBL_TYPE_PROF_TCAM,
+	TF_TCAM_TBL_TYPE_WC_TCAM,
+	TF_TCAM_TBL_TYPE_SP_TCAM,
+	TF_TCAM_TBL_TYPE_CT_RULE_TCAM,
+	TF_TCAM_TBL_TYPE_VEB_TCAM,
+	TF_TCAM_TBL_TYPE_MAX
+
+};
+
+/**
+ * Enumeration of TruFlow table types. A table type is used to identify a
+ * resource object.
+ *
+ * NOTE: The table type TF_TBL_TYPE_EXT is unique in that it is
+ * the only table type that is connected with a table scope.
+ */
+enum tf_tbl_type {
+	/** Wh+/Brd2 Action Record */
+	TF_TBL_TYPE_FULL_ACT_RECORD,
+	/** Multicast Groups */
+	TF_TBL_TYPE_MCAST_GROUPS,
+	/** Action Encap 8 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_8B,
+	/** Action Encap 16 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_16B,
+	/** Action Encap 64 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_32B,
+	/** Action Encap 64 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_64B,
+	/** Action Source Properties SMAC */
+	TF_TBL_TYPE_ACT_SP_SMAC,
+	/** Action Source Properties SMAC IPv4 */
+	TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
+	/** Action Source Properties SMAC IPv6 */
+	TF_TBL_TYPE_ACT_SP_SMAC_IPV6,
+	/** Action Statistics 64 Bits */
+	TF_TBL_TYPE_ACT_STATS_64,
+	/** Action Modify L4 Src Port */
+	TF_TBL_TYPE_ACT_MODIFY_SPORT,
+	/** Action Modify L4 Dest Port */
+	TF_TBL_TYPE_ACT_MODIFY_DPORT,
+	/** Action Modify IPv4 Source */
+	TF_TBL_TYPE_ACT_MODIFY_IPV4_SRC,
+	/** Action _Modify L4 Dest Port */
+	TF_TBL_TYPE_ACT_MODIFY_IPV4_DEST,
+	/** Action Modify IPv6 Source */
+	TF_TBL_TYPE_ACT_MODIFY_IPV6_SRC,
+	/** Action Modify IPv6 Destination */
+	TF_TBL_TYPE_ACT_MODIFY_IPV6_DEST,
+
+	/* HW */
+
+	/** Meter Profiles */
+	TF_TBL_TYPE_METER_PROF,
+	/** Meter Instance */
+	TF_TBL_TYPE_METER_INST,
+	/** Mirror Config */
+	TF_TBL_TYPE_MIRROR_CONFIG,
+	/** UPAR */
+	TF_TBL_TYPE_UPAR,
+	/** Brd4 Epoch 0 table */
+	TF_TBL_TYPE_EPOCH0,
+	/** Brd4 Epoch 1 table  */
+	TF_TBL_TYPE_EPOCH1,
+	/** Brd4 Metadata  */
+	TF_TBL_TYPE_METADATA,
+	/** Brd4 CT State  */
+	TF_TBL_TYPE_CT_STATE,
+	/** Brd4 Range Profile  */
+	TF_TBL_TYPE_RANGE_PROF,
+	/** Brd4 Range Entry  */
+	TF_TBL_TYPE_RANGE_ENTRY,
+	/** Brd4 LAG Entry  */
+	TF_TBL_TYPE_LAG,
+	/** Brd4 only VNIC/SVIF Table */
+	TF_TBL_TYPE_VNIC_SVIF,
+
+	/* External */
+
+	/** External table type - initially 1 poolsize entries.
+	 * All External table types are associated with a table
+	 * scope. Internal types are not.
+	 */
+	TF_TBL_TYPE_EXT,
+	/** Future - external pool of size0 entries */
+	TF_TBL_TYPE_EXT_0,
+	TF_TBL_TYPE_MAX
+};
 #endif /* _TF_CORE_H_ */

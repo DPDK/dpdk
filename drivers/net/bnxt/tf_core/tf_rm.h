@@ -107,6 +107,54 @@ struct tf_rm_sram_alloc {
 };
 
 /**
+ * Resource Manager arrays for a single direction
+ */
+struct tf_rm_resc {
+	/** array of HW resource entries */
+	struct tf_rm_entry hw_entry[TF_RESC_TYPE_HW_MAX];
+	/** array of SRAM resource entries */
+	struct tf_rm_entry sram_entry[TF_RESC_TYPE_SRAM_MAX];
+};
+
+/**
+ * Resource Manager Database
+ */
+struct tf_rm_db {
+	struct tf_rm_resc rx;
+	struct tf_rm_resc tx;
+};
+
+/**
+ * Helper function converting direction to text string
+ */
+const char
+*tf_dir_2_str(enum tf_dir dir);
+
+/**
+ * Helper function converting identifier to text string
+ */
+const char
+*tf_ident_2_str(enum tf_identifier_type id_type);
+
+/**
+ * Helper function converting tcam type to text string
+ */
+const char
+*tf_tcam_tbl_2_str(enum tf_tcam_tbl_type tcam_type);
+
+/**
+ * Helper function used to convert HW HCAPI resource type to a string.
+ */
+const char
+*tf_hcapi_hw_2_str(enum tf_resource_type_hw hw_type);
+
+/**
+ * Helper function used to convert SRAM HCAPI resource type to a string.
+ */
+const char
+*tf_hcapi_sram_2_str(enum tf_resource_type_sram sram_type);
+
+/**
  * Initializes the Resource Manager and the associated database
  * entries for HW and SRAM resources. Must be called before any other
  * Resource Manager functions.
@@ -143,4 +191,131 @@ int tf_rm_allocate_validate(struct tf *tfp);
  *   - (-ENOTEMPTY) if resources are not cleaned up before close
  */
 int tf_rm_close(struct tf *tfp);
+
+#if (TF_SHADOW == 1)
+/**
+ * Initializes Shadow DB of configuration elements
+ *
+ * [in] tfs
+ *   Pointer to TF Session
+ *
+ * Returns:
+ *  0  - Success
+ */
+int tf_rm_shadow_db_init(struct tf_session *tfs);
+#endif /* TF_SHADOW */
+
+/**
+ * Perform a Session Pool lookup using the Tcam table type.
+ *
+ * Function will print error msg if tcam type is unsupported or lookup
+ * failed.
+ *
+ * [in] tfs
+ *   Pointer to TF Session
+ *
+ * [in] type
+ *   Type of the object
+ *
+ * [in] dir
+ *    Receive or transmit direction
+ *
+ * [in/out]  session_pool
+ *   Session pool
+ *
+ * Returns:
+ *  0           - Success will set the **pool
+ *  -EOPNOTSUPP - Type is not supported
+ */
+int
+tf_rm_lookup_tcam_type_pool(struct tf_session *tfs,
+			    enum tf_dir dir,
+			    enum tf_tcam_tbl_type type,
+			    struct bitalloc **pool);
+
+/**
+ * Perform a Session Pool lookup using the Table type.
+ *
+ * Function will print error msg if table type is unsupported or
+ * lookup failed.
+ *
+ * [in] tfs
+ *   Pointer to TF Session
+ *
+ * [in] type
+ *   Type of the object
+ *
+ * [in] dir
+ *    Receive or transmit direction
+ *
+ * [in/out]  session_pool
+ *   Session pool
+ *
+ * Returns:
+ *  0           - Success will set the **pool
+ *  -EOPNOTSUPP - Type is not supported
+ */
+int
+tf_rm_lookup_tbl_type_pool(struct tf_session *tfs,
+			   enum tf_dir dir,
+			   enum tf_tbl_type type,
+			   struct bitalloc **pool);
+
+/**
+ * Converts the TF Table Type to internal HCAPI_TYPE
+ *
+ * [in] type
+ *   Type to be converted
+ *
+ * [in/out] hcapi_type
+ *   Converted type
+ *
+ * Returns:
+ *  0           - Success will set the *hcapi_type
+ *  -EOPNOTSUPP - Type is not supported
+ */
+int
+tf_rm_convert_tbl_type(enum tf_tbl_type type,
+		       uint32_t *hcapi_type);
+
+/**
+ * TF RM Convert of index methods.
+ */
+enum tf_rm_convert_type {
+	/** Adds the base of the Session Pool to the index */
+	TF_RM_CONVERT_ADD_BASE,
+	/** Removes the Session Pool base from the index */
+	TF_RM_CONVERT_RM_BASE
+};
+
+/**
+ * Provides conversion of the Table Type index in relation to the
+ * Session Pool base.
+ *
+ * [in] tfs
+ *   Pointer to TF Session
+ *
+ * [in] dir
+ *    Receive or transmit direction
+ *
+ * [in] type
+ *   Type of the object
+ *
+ * [in] c_type
+ *   Type of conversion to perform
+ *
+ * [in] index
+ *   Index to be converted
+ *
+ * [in/out]  convert_index
+ *   Pointer to the converted index
+ */
+int
+tf_rm_convert_index(struct tf_session *tfs,
+		    enum tf_dir dir,
+		    enum tf_tbl_type type,
+		    enum tf_rm_convert_type c_type,
+		    uint32_t index,
+		    uint32_t *convert_index);
+
 #endif /* TF_RM_H_ */

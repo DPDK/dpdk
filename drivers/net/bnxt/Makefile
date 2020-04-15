@@ -51,6 +51,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_core.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/bitalloc.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_msg.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/rand.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_rm.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tfp.c
 
 #

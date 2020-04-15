@@ -14,6 +14,35 @@
 #include "bnxt.h"
 #include "rand.h"
 
+static inline uint32_t SWAP_WORDS32(uint32_t val32)
+{
+	return (((val32 & 0x0000ffff) << 16) |
+		((val32 & 0xffff0000) >> 16));
+}
+
+static void tf_seeds_init(struct tf_session *session)
+{
+	int i;
+	uint32_t r;
+
+	/* Initialize the lfsr */
+	rand_init();
+
+	/* RX and TX use the same seed values */
+	session->lkup_lkup3_init_cfg[TF_DIR_RX] =
+		session->lkup_lkup3_init_cfg[TF_DIR_TX] =
+						SWAP_WORDS32(rand32());
+
+	for (i = 0; i < TF_LKUP_SEED_MEM_SIZE / 2; i++) {
+		r = SWAP_WORDS32(rand32());
+		session->lkup_em_seed_mem[TF_DIR_RX][i * 2] = r;
+		session->lkup_em_seed_mem[TF_DIR_TX][i * 2] = r;
+		r = SWAP_WORDS32(rand32());
+		session->lkup_em_seed_mem[TF_DIR_RX][i * 2 + 1] = (r & 0x1);
+		session->lkup_em_seed_mem[TF_DIR_TX][i * 2 + 1] = (r & 0x1);
+	}
+}
+
 int
 tf_open_session(struct tf                    *tfp,
 		struct tf_open_session_parms *parms)
@@ -103,6 +132,7 @@ tf_open_session(struct tf                    *tfp,
 
 	/* Initialize Session */
 	session->device_type = parms->device_type;
+	tf_rm_init(tfp);
 
 	/* Construct the Session ID */
 	session->session_id.internal.domain = domain;
@@ -118,6 +148,16 @@ tf_open_session(struct tf                    *tfp,
 			    rc);
 		goto cleanup_close;
 	}
+
+	/* Adjust the Session with what firmware allowed us to get */
+	rc = tf_rm_allocate_validate(tfp);
+	if (rc) {
+		/* Log error */
+		goto cleanup_close;
+	}
+
+	/* Setup hash seeds */
+	tf_seeds_init(session);
 
 	session->ref_count++;
 
@@ -188,6 +228,12 @@ tf_close_session(struct tf *tfp)
 		return -EINVAL;
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	/* Cleanup if we're last user of the session */
+	if (tfs->ref_count == 1) {
+		/* Cleanup any outstanding resources */
+		rc_close = tf_rm_close(tfp);
+	}
 
 	if (tfs->session_id.id != TF_SESSION_ID_INVALID) {
 		rc = tf_msg_session_close(tfp);
