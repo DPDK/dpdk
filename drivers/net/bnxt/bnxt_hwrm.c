@@ -257,6 +257,89 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 
 #define HWRM_UNLOCK()		rte_spinlock_unlock(&bp->hwrm_lock)
 
+int bnxt_hwrm_tf_message_direct(struct bnxt *bp,
+				bool use_kong_mb,
+				uint16_t msg_type,
+				void *msg,
+				uint32_t msg_len,
+				void *resp_msg,
+				uint32_t resp_len)
+{
+	int rc = 0;
+	bool mailbox = BNXT_USE_CHIMP_MB;
+	struct input *req = msg;
+	struct output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (use_kong_mb)
+		mailbox = BNXT_USE_KONG(bp);
+
+	HWRM_PREP(req, msg_type, mailbox);
+
+	rc = bnxt_hwrm_send_message(bp, req, msg_len, mailbox);
+
+	HWRM_CHECK_RESULT();
+
+	if (resp_msg)
+		memcpy(resp_msg, resp, resp_len);
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_tf_message_tunneled(struct bnxt *bp,
+				  bool use_kong_mb,
+				  uint16_t tf_type,
+				  uint16_t tf_subtype,
+				  uint32_t *tf_response_code,
+				  void *msg,
+				  uint32_t msg_len,
+				  void *response,
+				  uint32_t response_len)
+{
+	int rc = 0;
+	struct hwrm_cfa_tflib_input req = { .req_type = 0 };
+	struct hwrm_cfa_tflib_output *resp = bp->hwrm_cmd_resp_addr;
+	bool mailbox = BNXT_USE_CHIMP_MB;
+
+	if (msg_len > sizeof(req.tf_req))
+		return -ENOMEM;
+
+	if (use_kong_mb)
+		mailbox = BNXT_USE_KONG(bp);
+
+	HWRM_PREP(&req, HWRM_TF, mailbox);
+	/* Build request using the user supplied request payload.
+	 * TLV request size is checked at build time against HWRM
+	 * request max size, thus no checking required.
+	 */
+	req.tf_type = tf_type;
+	req.tf_subtype = tf_subtype;
+	memcpy(req.tf_req, msg, msg_len);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), mailbox);
+	HWRM_CHECK_RESULT();
+
+	/* Copy the resp to user provided response buffer */
+	if (response != NULL)
+		/* Post process response data. We need to copy only
+		 * the 'payload' as the HWRM data structure really is
+		 * HWRM header + msg header + payload and the TFLIB
+		 * only provided a payload place holder.
+		 */
+		if (response_len != 0) {
+			memcpy(response,
+			       resp->tf_resp,
+			       response_len);
+		}
+
+	/* Extract the internal tflib response code */
+	*tf_response_code = resp->tf_resp_code;
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int rc = 0;
