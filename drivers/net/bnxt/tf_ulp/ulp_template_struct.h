@@ -181,6 +181,8 @@ struct bnxt_ulp_mapper_class_tbl_info {
 
 	uint8_t		mark_enable;
 	enum bnxt_ulp_regfile_index	regfile_wr_idx;
+
+	enum bnxt_ulp_cache_tbl_id cache_tbl_id;
 };
 
 struct bnxt_ulp_mapper_act_tbl_info {
@@ -226,6 +228,10 @@ struct bnxt_ulp_def_ident_info {
 	enum tf_dir direction;
 	enum tf_identifier_type ident_type;
 	enum bnxt_ulp_def_regfile_index def_regfile_index;
+};
+
+struct bnxt_ulp_cache_tbl_params {
+	uint16_t num_entries;
 };
 
 /*
@@ -296,4 +302,11 @@ extern uint32_t ulp_act_prop_map_table[];
  * be initialized and where to store them.
  */
 extern struct bnxt_ulp_def_ident_info ulp_def_ident_tbl[];
+
+/*
+ * The ulp_cache_tbl_parms table provides the sizes of the cache tables the
+ * mapper must dynamically allocate during initialization.
+ */
+extern struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[];
+
 #endif /* _ULP_TEMPLATE_STRUCT_H_ */

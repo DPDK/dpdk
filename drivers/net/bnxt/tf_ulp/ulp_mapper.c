@@ -66,6 +66,16 @@ ulp_mapper_def_regfile_write(struct bnxt_ulp_mapper_data *mapper_data,
 	return 0;
 }
 
+/* Retrieve the cache initialization parameters for the tbl_idx */
+static struct bnxt_ulp_cache_tbl_params *
+ulp_mapper_cache_tbl_params_get(uint32_t tbl_idx)
+{
+	if (tbl_idx >= BNXT_ULP_CACHE_TBL_MAX_SZ)
+		return NULL;
+
+	return &ulp_cache_tbl_params[tbl_idx];
+}
+
 /*
  * Get the size of the action property for a given index.
  *
@@ -256,6 +266,126 @@ ulp_mapper_ident_fields_get(struct bnxt_ulp_mapper_class_tbl_info *tbl,
 	return &ulp_ident_list[idx];
 }
 
+static struct bnxt_ulp_mapper_cache_entry *
+ulp_mapper_cache_entry_get(struct bnxt_ulp_context *ulp,
+			   enum bnxt_ulp_cache_tbl_id id,
+			   uint16_t key)
+{
+	struct bnxt_ulp_mapper_data *mapper_data;
+
+	mapper_data = bnxt_ulp_cntxt_ptr2_mapper_data_get(ulp);
+	if (!mapper_data || !mapper_data->cache_tbl[id]) {
+		BNXT_TF_DBG(ERR, "Unable to acquire the cache tbl (%d)\n", id);
+		return NULL;
+	}
+
+	return &mapper_data->cache_tbl[id][key];
+}
+
+/*
+ * Concatenates the tbl_type and tbl_id into a 32bit value for storing in the
+ * resource_type.  This is done to conserve memory since both the tbl_type and
+ * tbl_id are 16bit.
+ */
+static inline void
+ulp_mapper_cache_res_type_set(struct ulp_flow_db_res_params *res,
+			      uint16_t tbl_type,
+			      uint16_t tbl_id)
+{
+	res->resource_type =
+		((uint32_t)tbl_id << ULP_MAPPER_CACHE_RES_TBL_ID_SHFT) |
+		((uint32_t)tbl_type << ULP_MAPPER_CACHE_RES_TBL_TYPE_SHFT);
+}
+
+/* Extracts the tbl_type and tbl_id from the 32bit resource type. */
+static inline void
+ulp_mapper_cache_res_type_get(struct ulp_flow_db_res_params *res,
+			      uint16_t *tbl_type,
+			      uint16_t *tbl_id)
+{
+	*tbl_type = (uint16_t)((res->resource_type >>
+				ULP_MAPPER_CACHE_RES_TBL_TYPE_SHFT) &
+			       ULP_MAPPER_CACHE_RES_TBL_MASK);
+	*tbl_id = (uint16_t)((res->resource_type >>
+			      ULP_MAPPER_CACHE_RES_TBL_ID_SHFT) &
+			     ULP_MAPPER_CACHE_RES_TBL_MASK);
+}
+
+static int32_t
+ulp_mapper_cache_entry_free(struct bnxt_ulp_context *ulp,
+			   struct tf *tfp,
+			   struct ulp_flow_db_res_params *res)
+{
+	struct bnxt_ulp_mapper_cache_entry *cache_entry;
+	struct tf_free_identifier_parms ident_parms;
+	struct tf_free_tcam_entry_parms tcam_parms;
+	uint16_t table_id, table_type;
+	int32_t rc, trc, i;
+
+	/*
+	 * The table id, used for cache, and table_type, used for tcam, are
+	 * both encoded within the resource.  We must first extract them to
+	 * formulate the args for tf calls.
+	 */
+	ulp_mapper_cache_res_type_get(res, &table_type, &table_id);
+
+	cache_entry = ulp_mapper_cache_entry_get(ulp, table_id,
+						 (uint16_t)res->resource_hndl);
+	if (!cache_entry || !cache_entry->ref_count) {
+		BNXT_TF_DBG(ERR, "Cache entry (%d:%d) not valid on free.\n",
+			    table_id, (uint16_t)res->resource_hndl);
+		return -EINVAL;
+	}
+
+	/*
+	 * See if we need to delete the entry.  The tcam and identifiers are all
+	 * tracked by the cached entries reference count.  All are deleted when
+	 * the reference count hit zero.
+	 */
+	cache_entry->ref_count--;
+	if (cache_entry->ref_count)
+		return 0;
+
+	/*
+	 * Need to delete the tcam entry and the allocated identifiers.
+	 * In the event of a failure, need to try to delete the remaining
+	 * resources before returning error.
+	 */
+	tcam_parms.dir = res->direction;
+	tcam_parms.tcam_tbl_type = table_type;
+	tcam_parms.idx = cache_entry->tcam_idx;
+	rc = tf_free_tcam_entry(tfp, &tcam_parms);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Failed to free tcam [%d][%s][0x%04x] rc=%d\n",
+			    table_type,
+			    (res->direction == TF_DIR_RX) ? "RX" : "TX",
+			    tcam_parms.idx, rc);
+
+	/*
+	 * Free the identifiers associated with the tcam entry.  Entries with
+	 * negative one are considered uninitialized.
+	 */
+	for (i = 0; i < BNXT_ULP_CACHE_TBL_IDENT_MAX_NUM; i++) {
+		if (cache_entry->idents[i] == ULP_IDENTS_INVALID)
+			continue;
+
+		ident_parms.dir = res->direction;
+		ident_parms.ident_type = cache_entry->ident_types[i];
+		ident_parms.id = cache_entry->idents[i];
+		trc = tf_free_identifier(tfp, &ident_parms);
+		if (trc) {
+			BNXT_TF_DBG(ERR, "Failed to free identifier "
+				    "[%d][%s][0x%04x] rc=%d\n",
+				    ident_parms.ident_type,
+				    (res->direction == TF_DIR_RX) ? "RX" : "TX",
+				    ident_parms.id, trc);
+			rc = trc;
+		}
+	}
+
+	return rc;
+}
+
 static inline int32_t
 ulp_mapper_tcam_entry_free(struct bnxt_ulp_context *ulp  __rte_unused,
 			   struct tf *tfp,
@@ -337,10 +467,16 @@ ulp_mapper_mark_free(struct bnxt_ulp_context *ulp,
 				    0);
 }
 
+/*
+ * Process the identifier instruction and either store it in the flow database
+ * or return it in the val (if not NULL) on success.  If val is NULL, the
+ * identifier is to be stored in the flow database.
+ */
 static int32_t
 ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 			 struct bnxt_ulp_mapper_class_tbl_info *tbl,
-			 struct bnxt_ulp_mapper_ident_info *ident)
+			 struct bnxt_ulp_mapper_ident_info *ident,
+			 uint16_t *val)
 {
 	struct ulp_flow_db_res_params	fid_parms;
 	uint64_t id = 0;
@@ -378,22 +514,26 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* Link the resource to the flow in the flow db */
-	memset(&fid_parms, 0, sizeof(fid_parms));
-	fid_parms.direction		= tbl->direction;
-	fid_parms.resource_func	= ident->resource_func;
-	fid_parms.resource_type	= ident->ident_type;
-	fid_parms.resource_hndl	= iparms.id;
-	fid_parms.critical_resource	= 0;
+	if (!val) {
+		memset(&fid_parms, 0, sizeof(fid_parms));
+		fid_parms.direction		= tbl->direction;
+		fid_parms.resource_func	= ident->resource_func;
+		fid_parms.resource_type	= ident->ident_type;
+		fid_parms.resource_hndl	= iparms.id;
+		fid_parms.critical_resource	= 0;
 
-	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-				      parms->tbl_idx,
-				      parms->fid,
-				      &fid_parms);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to link resource to flow rc = %d\n",
-			    rc);
-		/* Need to free the identifier, so goto error */
-		goto error;
+		rc = ulp_flow_db_resource_add(parms->ulp_ctx,
+					      parms->tbl_idx,
+					      parms->fid,
+					      &fid_parms);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Failed to link res to flow rc = %d\n",
+				    rc);
+			/* Need to free the identifier, so goto error */
+			goto error;
+		}
+	} else {
+		*val = iparms.id;
 	}
 
 	return 0;
@@ -848,6 +988,12 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	uint32_t hit = 0;
 	uint16_t tmplen = 0;
 
+	/* Skip this if was handled by the cache. */
+	if (parms->tcam_tbl_opc == BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_SKIP) {
+		parms->tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
+		return 0;
+	}
+
 	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get truflow pointer\n");
@@ -930,15 +1076,22 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		struct bnxt_ulp_mapper_ident_info *idents;
 		uint32_t num_dflds, num_idents;
 
-		/* Alloc identifiers */
-		idents = ulp_mapper_ident_fields_get(tbl, &num_idents);
+		/*
+		 * Since the cache entry is responsible for allocating
+		 * identifiers when in use, allocate the identifiers only
+		 * during normal processing.
+		 */
+		if (parms->tcam_tbl_opc ==
+		    BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL) {
+			idents = ulp_mapper_ident_fields_get(tbl, &num_idents);
 
-		for (i = 0; i < num_idents; i++) {
-			rc = ulp_mapper_ident_process(parms, tbl, &idents[i]);
-
-			/* Already logged the error, just return */
-			if (rc)
-				goto error;
+			for (i = 0; i < num_idents; i++) {
+				rc = ulp_mapper_ident_process(parms, tbl,
+							      &idents[i], NULL);
+				/* Already logged the error, just return */
+				if (rc)
+					goto error;
+			}
 		}
 
 		/* Create the result data blob */
@@ -986,32 +1139,57 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 				    sparms.idx);
 			goto error;
 		}
+
+		/* Update cache with TCAM index if the was cache allocated. */
+		if (parms->tcam_tbl_opc ==
+		    BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_ALLOC) {
+			if (!parms->cache_ptr) {
+				BNXT_TF_DBG(ERR, "Unable to update cache");
+				rc = -EINVAL;
+				goto error;
+			}
+			parms->cache_ptr->tcam_idx = aparms.idx;
+		}
+
 	} else {
 		BNXT_TF_DBG(ERR, "Not supporting search before alloc now\n");
 		rc = -EINVAL;
 		goto error;
 	}
 
-	/* Link the resource to the flow in the flow db */
-	fid_parms.direction = tbl->direction;
-	fid_parms.resource_func	= tbl->resource_func;
-	fid_parms.resource_type	= tbl->table_type;
-	fid_parms.critical_resource = tbl->critical_resource;
-	fid_parms.resource_hndl	= aparms.idx;
-
-	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
-				      parms->tbl_idx,
-				      parms->fid,
-				      &fid_parms);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to link resource to flow rc = %d\n",
-			    rc);
-		/* Need to free the identifier, so goto error */
-		goto error;
+	/*
+	 * Only link the entry to the flow db in the event that cache was not
+	 * used.
+	 */
+	if (parms->tcam_tbl_opc == BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL) {
+		fid_parms.direction = tbl->direction;
+		fid_parms.resource_func	= tbl->resource_func;
+		fid_parms.resource_type	= tbl->table_type;
+		fid_parms.critical_resource = tbl->critical_resource;
+		fid_parms.resource_hndl	= aparms.idx;
+		rc = ulp_flow_db_resource_add(parms->ulp_ctx,
+					      parms->tbl_idx,
+					      parms->fid,
+					      &fid_parms);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Failed to link resource to flow rc = %d\n",
+				    rc);
+			/* Need to free the identifier, so goto error */
+			goto error;
+		}
+	} else {
+		/*
+		 * Reset the tcam table opcode to normal in case the next tcam
+		 * entry does not use cache.
+		 */
+		parms->tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
+		parms->cache_ptr = NULL;
 	}
 
 	return 0;
 error:
+	parms->tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
 	free_parms.dir			= tbl->direction;
 	free_parms.tcam_tbl_type	= tbl->table_type;
 	free_parms.idx			= aparms.idx;
@@ -1324,6 +1502,153 @@ error:
 	return rc;
 }
 
+static int32_t
+ulp_mapper_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
+			     struct bnxt_ulp_mapper_class_tbl_info *tbl)
+{
+	struct bnxt_ulp_mapper_class_key_field_info *kflds;
+	struct bnxt_ulp_mapper_cache_entry *cache_entry;
+	struct bnxt_ulp_mapper_ident_info *idents;
+	uint32_t i, num_kflds = 0, num_idents = 0;
+	struct ulp_flow_db_res_params fid_parms;
+	struct tf_free_identifier_parms fparms;
+	uint16_t tmplen, tmp_ident;
+	struct ulp_blob key;
+	uint8_t *cache_key;
+	uint64_t regval;
+	uint16_t *ckey;
+	int32_t rc;
+
+	/* Get the key fields list and build the key. */
+	kflds = ulp_mapper_key_fields_get(tbl, &num_kflds);
+	if (!kflds || !num_kflds) {
+		BNXT_TF_DBG(ERR, "Failed to get key fields\n");
+		return -EINVAL;
+	}
+	if (!ulp_blob_init(&key, tbl->key_bit_size, parms->order)) {
+		BNXT_TF_DBG(ERR, "Failed to alloc blob\n");
+		return -EINVAL;
+	}
+	for (i = 0; i < num_kflds; i++) {
+		/* Setup the key */
+		rc = ulp_mapper_keymask_field_process(parms, tbl->direction,
+						      &kflds[i],
+						      &key, 1, "Cache Key");
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Failed to create key for Cache rc=%d\n",
+				    rc);
+			return -EINVAL;
+		}
+	}
+
+	/*
+	 * Perform the lookup in the cache table with constructed key.  The
+	 * cache_key is a byte array of tmplen, it needs to be converted to a
+	 * index for the cache table.
+	 */
+	cache_key = ulp_blob_data_get(&key, &tmplen);
+	ckey = (uint16_t *)cache_key;
+	cache_entry = ulp_mapper_cache_entry_get(parms->ulp_ctx,
+						 tbl->cache_tbl_id,
+						 *ckey);
+
+	/*
+	 * Get the identifier list for processing by both the hit and miss
+	 * processing.
+	 */
+	idents = ulp_mapper_ident_fields_get(tbl, &num_idents);
+
+	if (!cache_entry->ref_count) {
+		/* Initialize the cache entry */
+		cache_entry->tcam_idx = 0;
+		cache_entry->ref_count = 0;
+		for (i = 0; i < BNXT_ULP_CACHE_TBL_IDENT_MAX_NUM; i++)
+			cache_entry->idents[i] = ULP_IDENTS_INVALID;
+
+		/* Need to allocate identifiers for storing in the cache. */
+		for (i = 0; i < num_idents; i++) {
+			/*
+			 * Since we are using the cache, the identifier does not
+			 * get added to the flow db.  Pass in the pointer to the
+			 * tmp_ident.
+			 */
+			rc = ulp_mapper_ident_process(parms, tbl,
+						      &idents[i], &tmp_ident);
+			if (rc)
+				goto error;
+
+			cache_entry->ident_types[i] = idents[i].ident_type;
+			cache_entry->idents[i] = tmp_ident;
+		}
+
+		/* Tell the TCAM processor to alloc an entry */
+		parms->tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_ALLOC;
+		/* Store the cache key for use by the tcam process code */
+		parms->cache_ptr = cache_entry;
+	} else {
+		/* Cache hit, get values from result. */
+		for (i = 0; i < num_idents; i++) {
+			regval = (uint64_t)cache_entry->idents[i];
+			if (!ulp_regfile_write(parms->regfile,
+					       idents[i].regfile_wr_idx,
+					       tfp_cpu_to_be_64(regval))) {
+				BNXT_TF_DBG(ERR,
+					    "Failed to write to regfile\n");
+				return -EINVAL;
+			}
+		}
+		/*
+		 * The cached entry is being used, so let the tcam processing
+		 * know not to process this table.
+		 */
+		parms->tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_SKIP;
+	}
+
+	/* Made through the cache processing, increment the reference count. */
+	cache_entry->ref_count++;
+
+	/* Link the cache to the flow db. */
+	memset(&fid_parms, 0, sizeof(fid_parms));
+	fid_parms.direction = tbl->direction;
+	fid_parms.resource_func	= tbl->resource_func;
+
+	/*
+	 * Cache resource type is composed of both table_type and cache_tbl_id
+	 * need to set it appropriately via setter.
+	 */
+	ulp_mapper_cache_res_type_set(&fid_parms,
+				      tbl->table_type,
+				      tbl->cache_tbl_id);
+	fid_parms.resource_hndl	= (uint64_t)*ckey;
+	fid_parms.critical_resource = tbl->critical_resource;
+	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
+				      parms->tbl_idx,
+				      parms->fid,
+				      &fid_parms);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Failed to add cache to flow db.\n");
+
+	return rc;
+error:
+	/*
+	 * This error handling only gets called when the idents are being
+	 * allocated for the cache on misses.  Using the num_idents that was
+	 * previously set.
+	 */
+	for (i = 0; i < num_idents; i++) {
+		if (cache_entry->idents[i] == ULP_IDENTS_INVALID)
+			continue;
+
+		fparms.dir = tbl->direction;
+		fparms.ident_type = idents[i].ident_type;
+		fparms.id = cache_entry->idents[i];
+		tf_free_identifier(parms->tfp, &fparms);
+	}
+
+	return rc;
+}
+
 /*
  * Function to process the action template. Iterate through the list
  * action info templates and process it.
@@ -1378,6 +1703,9 @@ ulp_mapper_class_tbls_process(struct bnxt_ulp_mapper_parms *parms)
 		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
 			rc = ulp_mapper_index_tbl_process(parms, tbl);
 			break;
+		case BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE:
+			rc = ulp_mapper_cache_tbl_process(parms, tbl);
+			break;
 		default:
 			BNXT_TF_DBG(ERR, "Unexpected class resource %d\n",
 				    tbl->resource_func);
@@ -1413,6 +1741,9 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 	}
 
 	switch (res->resource_func) {
+	case BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE:
+		rc = ulp_mapper_cache_entry_free(ulp, tfp, res);
+		break;
 	case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
 		rc = ulp_mapper_tcam_entry_free(ulp, tfp, res);
 		break;
@@ -1530,6 +1861,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.hdr_field = cparms->hdr_field;
 	parms.tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
 	parms.ulp_ctx = ulp_ctx;
+	parms.tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;
 
 	/* Get the device id from the ulp context */
 	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &parms.dev_id)) {
@@ -1586,6 +1918,14 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
+	rc = ulp_regfile_write(parms.regfile,
+			       BNXT_ULP_REGFILE_INDEX_CLASS_TID,
+			       tfp_cpu_to_be_64((uint64_t)parms.class_tid));
+	if (!rc) {
+		BNXT_TF_DBG(ERR, "Unable to write template ID to regfile\n");
+		return -EINVAL;
+	}
+
 	/* Allocate a Flow ID for attaching all resources for the flow to.
 	 * Once allocated, all errors have to walk the list of resources and
 	 * free each of them.
@@ -1631,13 +1971,14 @@ flow_error:
 int32_t
 ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)
 {
+	struct bnxt_ulp_cache_tbl_params *tbl;
 	struct tf_alloc_identifier_parms iparms;
 	struct bnxt_ulp_mapper_data *data;
 	struct bnxt_ulp_def_ident_info *dflt_ids;
 	uint32_t i, num_dflt_ids, reg_idx;
 	uint64_t regval;
 	struct tf *tfp;
-	int32_t rc;
+	int32_t rc, csize;
 
 	if (!ulp_ctx)
 		return -EINVAL;
@@ -1677,13 +2018,34 @@ ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)
 		reg_idx = dflt_ids[i].def_regfile_index;
 		/* All regfile entries are stored as 64bit big-endian values. */
 		regval = tfp_cpu_to_be_64((uint64_t)iparms.id);
-		if (ulp_mapper_def_regfile_write(data,
-						 iparms.dir,
-						 reg_idx,
-						 regval)) {
+		rc = ulp_mapper_def_regfile_write(data, iparms.dir,
+						 reg_idx, regval);
+		if (rc) {
 			BNXT_TF_DBG(ERR, "Failed to write to default "
 				    "regfile.\n");
 			goto error;
+		}
+	}
+
+	/* Allocate the ulp cache tables. */
+	for (i = 0; i < BNXT_ULP_CACHE_TBL_MAX_SZ; i++) {
+		tbl = ulp_mapper_cache_tbl_params_get(i);
+		if (!tbl) {
+			BNXT_TF_DBG(ERR, "Failed to get cache table parms (%d)",
+				    i);
+			goto error;
+		}
+		if (tbl->num_entries != 0) {
+			csize = sizeof(struct bnxt_ulp_mapper_cache_entry) *
+				tbl->num_entries;
+			data->cache_tbl[i] = rte_zmalloc("ulp mapper cache tbl",
+							 csize, 0);
+			if (!data->cache_tbl[i]) {
+				BNXT_TF_DBG(ERR, "Failed to allocate Cache "
+					    "table %d.\n", i);
+				rc = -ENOMEM;
+				goto error;
+			}
 		}
 	}
 
@@ -1750,6 +2112,12 @@ ulp_mapper_deinit(struct bnxt_ulp_context *ulp_ctx)
 	}
 
 free_mapper_data:
+	/* Free the ulp cache tables */
+	for (i = 0; i < BNXT_ULP_CACHE_TBL_MAX_SZ; i++) {
+		rte_free(data->cache_tbl[i]);
+		data->cache_tbl[i] = NULL;
+	}
+
 	rte_free(data);
 	/* Reset the data pointer within the ulp_ctx. */
 	bnxt_ulp_cntxt_ptr2_mapper_data_set(ulp_ctx, NULL);

@@ -16,6 +16,31 @@
 #include "ulp_utils.h"
 
 #define ULP_SZ_BITS2BYTES(x) (((x) + 7) / 8)
+#define ULP_IDENTS_INVALID ((uint16_t)0xffff)
+#define ULP_MAPPER_CACHE_RES_TBL_ID_SHFT 16
+#define ULP_MAPPER_CACHE_RES_TBL_TYPE_SHFT 0
+#define ULP_MAPPER_CACHE_RES_TBL_MASK ((uint32_t)0x0000ffff)
+
+/*
+ * The cache table opcode is used to convey informat from the cache handler
+ * to the tcam handler.  The opcodes do the following:
+ * NORMAL - tcam should process all instructions as normal
+ * SKIP - tcam is using the cached entry and doesn't need to process the
+ *	instruction.
+ * ALLOC - tcam needs to allocate the tcam index and store in the cache entry
+ */
+enum bnxt_ulp_cache_table_opc {
+	BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL,
+	BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_SKIP,
+	BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_ALLOC
+};
+
+struct bnxt_ulp_mapper_cache_entry {
+	uint32_t ref_count;
+	uint16_t tcam_idx;
+	uint16_t idents[BNXT_ULP_CACHE_TBL_IDENT_MAX_NUM];
+	uint8_t ident_types[BNXT_ULP_CACHE_TBL_IDENT_MAX_NUM];
+};
 
 struct bnxt_ulp_mapper_def_id_entry {
 	enum tf_identifier_type ident_type;
@@ -25,6 +50,8 @@ struct bnxt_ulp_mapper_def_id_entry {
 struct bnxt_ulp_mapper_data {
 	struct bnxt_ulp_mapper_def_id_entry
 		dflt_ids[TF_DIR_MAX][BNXT_ULP_DEF_IDENT_INFO_TBL_MAX_SZ];
+	struct bnxt_ulp_mapper_cache_entry
+		*cache_tbl[BNXT_ULP_CACHE_TBL_MAX_SZ];
 };
 
 /* Internal Structure for passing the arguments around */
@@ -47,6 +74,8 @@ struct bnxt_ulp_mapper_parms {
 	uint32_t				fid;
 	enum bnxt_ulp_flow_db_tables		tbl_idx;
 	struct bnxt_ulp_mapper_data		*mapper_data;
+	enum bnxt_ulp_cache_table_opc		tcam_tbl_opc;
+	struct bnxt_ulp_mapper_cache_entry	*cache_ptr;
 };
 
 struct bnxt_ulp_mapper_create_parms {
