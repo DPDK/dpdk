@@ -15,6 +15,8 @@
 #include "bnxt_ulp.h"
 #include "ulp_utils.h"
 
+#define ULP_SZ_BITS2BYTES(x) (((x) + 7) / 8)
+
 /* Internal Structure for passing the arguments around */
 struct bnxt_ulp_mapper_parms {
 	uint32_t				dev_id;

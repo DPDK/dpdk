@@ -6,13 +6,70 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
+#include "bnxt.h"
 #include "bnxt_ulp.h"
 #include "tf_ext_flow_handle.h"
 #include "ulp_mark_mgr.h"
 #include "bnxt_tf_common.h"
-#include "../bnxt.h"
 #include "ulp_template_db.h"
 #include "ulp_template_struct.h"
+
+static inline uint32_t
+ulp_mark_db_idx_get(bool is_gfid, uint32_t fid, struct bnxt_ulp_mark_tbl *mtbl)
+{
+	uint32_t idx = 0, hashtype = 0;
+
+	if (is_gfid) {
+		TF_GET_HASH_TYPE_FROM_GFID(fid, hashtype);
+		TF_GET_HASH_INDEX_FROM_GFID(fid, idx);
+
+		/* Need to truncate anything beyond supported flows */
+		idx &= mtbl->gfid_mask;
+
+		if (hashtype)
+			idx |= mtbl->gfid_type_bit;
+	} else {
+		idx = fid;
+	}
+
+	return idx;
+}
+
+static int32_t
+ulp_mark_db_mark_set(struct bnxt_ulp_context *ctxt,
+		     bool is_gfid,
+		     uint32_t fid,
+		     uint32_t mark)
+{
+	struct		bnxt_ulp_mark_tbl *mtbl;
+	uint32_t	idx = 0;
+
+	if (!ctxt) {
+		BNXT_TF_DBG(ERR, "Invalid ulp context\n");
+		return -EINVAL;
+	}
+
+	mtbl = bnxt_ulp_cntxt_ptr2_mark_db_get(ctxt);
+	if (!mtbl) {
+		BNXT_TF_DBG(ERR, "Unable to get Mark DB\n");
+		return -EINVAL;
+	}
+
+	idx = ulp_mark_db_idx_get(is_gfid, fid, mtbl);
+
+	if (is_gfid) {
+		BNXT_TF_DBG(ERR, "Set GFID[0x%0x] = 0x%0x\n", idx, mark);
+
+		mtbl->gfid_tbl[idx].mark_id = mark;
+		mtbl->gfid_tbl[idx].valid = true;
+	} else {
+		/* For the LFID, the FID is used as the index */
+		mtbl->lfid_tbl[fid].mark_id = mark;
+		mtbl->lfid_tbl[fid].valid = true;
+	}
+
+	return 0;
+}
 
 /*
  * Allocate and Initialize all Mark Manager resources for this ulp context.
@@ -116,4 +173,25 @@ ulp_mark_db_deinit(struct bnxt_ulp_context *ctxt)
 	}
 
 	return 0;
+}
+
+/*
+ * Adds a Mark to the Mark Manager
+ *
+ * ctxt [in] The ulp context for the mark manager
+ *
+ * is_gfid [in] The type of fid (GFID or LFID)
+ *
+ * fid [in] The flow id that is returned by HW in BD
+ *
+ * mark [in] The mark to be associated with the FID
+ *
+ */
+int32_t
+ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
+		     bool is_gfid,
+		     uint32_t gfid,
+		     uint32_t mark)
+{
+	return ulp_mark_db_mark_set(ctxt, is_gfid, gfid, mark);
 }
