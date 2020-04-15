@@ -143,6 +143,12 @@ New Features
   Added the new ``igc`` net driver for Intel Foxville I225 devices. See the
   :doc:`../nics/igc` NIC guide for more details on this new driver.
 
+* **Updated Broadcom bnxt driver.**
+
+  Updated Broadcom bnxt driver with new features and improvements, including:
+
+  * Added support for host based flow table management
+
 * **Added handling of mixed crypto algorithms in QAT PMD for GEN2.**
 
   Enabled handling of mixed algorithms in encrypted digest hash-cipher
