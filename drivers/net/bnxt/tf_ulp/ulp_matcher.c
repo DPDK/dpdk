@@ -67,11 +67,8 @@ ulp_matcher_hdr_fields_normalize(struct ulp_rte_hdr_bitmap *hdr1,
  * the pattern masks against the flow templates.
  */
 int32_t
-ulp_matcher_pattern_match(enum ulp_direction_type   dir,
-			  struct ulp_rte_hdr_bitmap *hdr_bitmap,
-			  struct ulp_rte_hdr_field  *hdr_field,
-			  struct ulp_rte_act_bitmap *act_bitmap,
-			  uint32_t		    *class_id)
+ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
+			  uint32_t *class_id)
 {
 	struct bnxt_ulp_header_match_info	*sel_hdr_match;
 	uint32_t				hdr_num, idx, jdx;
@@ -80,9 +77,12 @@ ulp_matcher_pattern_match(enum ulp_direction_type   dir,
 	uint32_t				start_idx;
 	struct ulp_rte_hdr_field		*m_field;
 	struct bnxt_ulp_matcher_field_info	*sf;
+	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
+	struct ulp_rte_act_bitmap *act_bitmap = &params->act_bitmap;
+	struct ulp_rte_hdr_field *hdr_field = params->hdr_field;
 
 	/* Select the ingress or egress template to match against */
-	if (dir == ULP_DIR_INGRESS) {
+	if (params->dir == ULP_DIR_INGRESS) {
 		sel_hdr_match = ulp_ingress_hdr_match_list;
 		hdr_num = BNXT_ULP_INGRESS_HDR_MATCH_SZ;
 	} else {
@@ -156,15 +156,15 @@ ulp_matcher_pattern_match(enum ulp_direction_type   dir,
  * the action against the flow templates.
  */
 int32_t
-ulp_matcher_action_match(enum ulp_direction_type		dir,
-			 struct ulp_rte_act_bitmap		*act_bitmap,
-			 uint32_t				*act_id)
+ulp_matcher_action_match(struct ulp_rte_parser_params *params,
+			 uint32_t *act_id)
 {
 	struct bnxt_ulp_action_match_info	*sel_act_match;
 	uint32_t				act_num, idx;
+	struct ulp_rte_act_bitmap *act_bitmap = &params->act_bitmap;
 
 	/* Select the ingress or egress template to match against */
-	if (dir == ULP_DIR_INGRESS) {
+	if (params->dir == ULP_DIR_INGRESS) {
 		sel_act_match = ulp_ingress_act_match_list;
 		act_num = BNXT_ULP_INGRESS_ACT_MATCH_SZ;
 	} else {

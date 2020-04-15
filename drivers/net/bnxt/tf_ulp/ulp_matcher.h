@@ -17,19 +17,15 @@
  * the pattern masks against the flow templates.
  */
 int32_t
-ulp_matcher_pattern_match(enum ulp_direction_type	    dir,
-			  struct ulp_rte_hdr_bitmap	   *hdr_bitmap,
-			  struct ulp_rte_hdr_field	   *hdr_field,
-			  struct ulp_rte_act_bitmap	   *act_bitmap,
-			  uint32_t			   *class_id);
+ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
+			  uint32_t *class_id);
 
 /*
  * Function to handle the matching of RTE Flows and validating
  * the action against the flow templates.
  */
 int32_t
-ulp_matcher_action_match(enum ulp_direction_type	dir,
-			 struct ulp_rte_act_bitmap	*act_bitmap,
-			 uint32_t			*act_id);
+ulp_matcher_action_match(struct ulp_rte_parser_params *params,
+			 uint32_t *act_id);
 
 #endif /* ULP_MATCHER_H_ */

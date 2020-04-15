@@ -67,11 +67,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 		     const struct rte_flow_action	actions[],
 		     struct rte_flow_error		*error)
 {
-	struct ulp_rte_hdr_bitmap hdr_bitmap;
-	struct ulp_rte_hdr_field hdr_field[BNXT_ULP_PROTO_HDR_MAX];
-	struct ulp_rte_act_bitmap act_bitmap;
-	struct ulp_rte_act_prop act_prop;
-	enum ulp_direction_type dir = ULP_DIR_INGRESS;
+	struct ulp_rte_parser_params params;
 	struct bnxt_ulp_context *ulp_ctx = NULL;
 	uint32_t class_id, act_tmpl;
 	struct rte_flow *flow_id;
@@ -94,47 +90,38 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 		return NULL;
 	}
 
-	/* clear the header bitmap and field structure */
-	memset(&hdr_bitmap, 0, sizeof(struct ulp_rte_hdr_bitmap));
-	memset(hdr_field, 0, sizeof(hdr_field));
-	memset(&act_bitmap, 0, sizeof(act_bitmap));
-	memset(&act_prop, 0, sizeof(act_prop));
+	/* Initialize the parser params */
+	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
 
 	if (attr->egress)
-		dir = ULP_DIR_EGRESS;
+		params.dir = ULP_DIR_EGRESS;
 
-	/* copy the device port id and direction in svif for further process */
-	buffer = hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec;
+	/* copy the device port id and direction for further processing */
+	buffer = params.hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec;
 	rte_memcpy(buffer, &dev->data->port_id, sizeof(uint16_t));
-	rte_memcpy(buffer + sizeof(uint16_t), &dir, sizeof(uint32_t));
 
 	/* Set the implicit vnic in the action property */
 	vnic = (uint32_t)bnxt_get_vnic_id(dev->data->port_id);
 	vnic = htonl(vnic);
-	rte_memcpy(&act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
+	rte_memcpy(&params.act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
 		   &vnic, BNXT_ULP_ACT_PROP_SZ_VNIC);
 
 	/* Parse the rte flow pattern */
-	ret = bnxt_ulp_rte_parser_hdr_parse(pattern,
-					    &hdr_bitmap,
-					    hdr_field);
+	ret = bnxt_ulp_rte_parser_hdr_parse(pattern, &params);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
 	/* Parse the rte flow action */
-	ret = bnxt_ulp_rte_parser_act_parse(actions,
-					    &act_bitmap,
-					    &act_prop);
+	ret = bnxt_ulp_rte_parser_act_parse(actions, &params);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
-	ret = ulp_matcher_pattern_match(dir, &hdr_bitmap, hdr_field,
-					&act_bitmap, &class_id);
+	ret = ulp_matcher_pattern_match(&params, &class_id);
 
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
-	ret = ulp_matcher_action_match(dir, &act_bitmap, &act_tmpl);
+	ret = ulp_matcher_action_match(&params, &act_tmpl);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
@@ -142,10 +129,10 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 	/* call the ulp mapper to create the flow in the hardware */
 	ret = ulp_mapper_flow_create(ulp_ctx,
 				     app_priority,
-				     &hdr_bitmap,
-				     hdr_field,
-				     &act_bitmap,
-				     &act_prop,
+				     &params.hdr_bitmap,
+				     params.hdr_field,
+				     &params.act_bitmap,
+				     &params.act_prop,
 				     class_id,
 				     act_tmpl,
 				     &fid);
@@ -168,11 +155,7 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev __rte_unused,
 		       const struct rte_flow_action actions[],
 		       struct rte_flow_error *error)
 {
-	struct ulp_rte_hdr_bitmap hdr_bitmap;
-	struct ulp_rte_hdr_field hdr_field[BNXT_ULP_PROTO_HDR_MAX];
-	struct ulp_rte_act_bitmap act_bitmap;
-	struct ulp_rte_act_prop act_prop;
-	enum ulp_direction_type dir = ULP_DIR_INGRESS;
+	struct ulp_rte_parser_params		params;
 	uint32_t class_id, act_tmpl;
 	int ret;
 
@@ -183,36 +166,28 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev __rte_unused,
 		return -EINVAL;
 	}
 
-	/* clear the header bitmap and field structure */
-	memset(&hdr_bitmap, 0, sizeof(struct ulp_rte_hdr_bitmap));
-	memset(hdr_field, 0, sizeof(hdr_field));
-	memset(&act_bitmap, 0, sizeof(act_bitmap));
-	memset(&act_prop, 0, sizeof(act_prop));
+	/* Initialize the parser params */
+	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
+
+	if (attr->egress)
+		params.dir = ULP_DIR_EGRESS;
 
 	/* Parse the rte flow pattern */
-	ret = bnxt_ulp_rte_parser_hdr_parse(pattern,
-					    &hdr_bitmap,
-					    hdr_field);
+	ret = bnxt_ulp_rte_parser_hdr_parse(pattern, &params);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
 	/* Parse the rte flow action */
-	ret = bnxt_ulp_rte_parser_act_parse(actions,
-					    &act_bitmap,
-					    &act_prop);
+	ret = bnxt_ulp_rte_parser_act_parse(actions, &params);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
-	if (attr->egress)
-		dir = ULP_DIR_EGRESS;
-
-	ret = ulp_matcher_pattern_match(dir, &hdr_bitmap, hdr_field,
-					&act_bitmap, &class_id);
+	ret = ulp_matcher_pattern_match(&params, &class_id);
 
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
-	ret = ulp_matcher_action_match(dir, &act_bitmap, &act_tmpl);
+	ret = ulp_matcher_action_match(&params, &act_tmpl);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 

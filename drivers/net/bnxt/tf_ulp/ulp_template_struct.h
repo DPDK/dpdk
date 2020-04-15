@@ -41,15 +41,32 @@ struct ulp_rte_hdr_field {
 	uint32_t	size;
 };
 
+struct ulp_rte_act_bitmap {
+	uint64_t	bits;
+};
+
+/* Structure to hold the action property details. */
+struct ulp_rte_act_prop {
+	uint8_t	act_details[BNXT_ULP_ACT_PROP_IDX_LAST];
+};
+
+/* Structure to be used for passing all the parser functions */
+struct ulp_rte_parser_params {
+	struct ulp_rte_hdr_bitmap	hdr_bitmap;
+	struct ulp_rte_hdr_field	hdr_field[BNXT_ULP_PROTO_HDR_MAX];
+	uint32_t			field_idx;
+	uint32_t			vlan_idx;
+	struct ulp_rte_act_bitmap	act_bitmap;
+	struct ulp_rte_act_prop		act_prop;
+	uint32_t			dir;
+};
+
 /* Flow Parser Header Information Structure */
 struct bnxt_ulp_rte_hdr_info {
 	enum bnxt_ulp_hdr_type					hdr_type;
 	/* Flow Parser Protocol Header Function Prototype */
 	int (*proto_hdr_func)(const struct rte_flow_item	*item_list,
-			      struct ulp_rte_hdr_bitmap		*hdr_bitmap,
-			      struct ulp_rte_hdr_field		*hdr_field,
-			      uint32_t				*field_idx,
-			      uint32_t				*vlan_idx);
+			      struct ulp_rte_parser_params	*params);
 };
 
 /* Flow Parser Header Information Structure Array defined in template source*/
@@ -60,26 +77,13 @@ struct bnxt_ulp_matcher_field_info {
 	enum bnxt_ulp_fmf_spec	spec_opcode;
 };
 
-struct ulp_rte_act_bitmap {
-	uint64_t	bits;
-};
-
-/*
- * Structure to hold the action property details.
- * It is a array of 128 bytes.
- */
-struct ulp_rte_act_prop {
-	uint8_t	act_details[BNXT_ULP_ACT_PROP_IDX_LAST];
-};
-
 /* Flow Parser Action Information Structure */
 struct bnxt_ulp_rte_act_info {
 	enum bnxt_ulp_act_type					act_type;
 	/* Flow Parser Protocol Action Function Prototype */
 	int32_t (*proto_act_func)
-		(const struct rte_flow_action			*action_item,
-		struct ulp_rte_act_bitmap			*act_bitmap,
-		struct ulp_rte_act_prop				*act_prop);
+		(const struct rte_flow_action	*action_item,
+		 struct ulp_rte_parser_params	*params);
 };
 
 /* Flow Parser Action Information Structure Array defined in template source*/
