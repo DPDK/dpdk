@@ -167,8 +167,73 @@ parse_error:
 	return NULL;
 }
 
+/* Function to validate the rte flow. */
+static int
+bnxt_ulp_flow_validate(struct rte_eth_dev *dev __rte_unused,
+		       const struct rte_flow_attr *attr,
+		       const struct rte_flow_item pattern[],
+		       const struct rte_flow_action actions[],
+		       struct rte_flow_error *error)
+{
+	struct ulp_rte_hdr_bitmap hdr_bitmap;
+	struct ulp_rte_hdr_field hdr_field[BNXT_ULP_PROTO_HDR_MAX];
+	struct ulp_rte_act_bitmap act_bitmap;
+	struct ulp_rte_act_prop act_prop;
+	enum ulp_direction_type dir = ULP_DIR_INGRESS;
+	uint32_t class_id, act_tmpl;
+	int ret;
+
+	if (bnxt_ulp_flow_validate_args(attr,
+					pattern, actions,
+					error) == BNXT_TF_RC_ERROR) {
+		BNXT_TF_DBG(ERR, "Invalid arguments being passed\n");
+		return -EINVAL;
+	}
+
+	/* clear the header bitmap and field structure */
+	memset(&hdr_bitmap, 0, sizeof(struct ulp_rte_hdr_bitmap));
+	memset(hdr_field, 0, sizeof(hdr_field));
+	memset(&act_bitmap, 0, sizeof(act_bitmap));
+	memset(&act_prop, 0, sizeof(act_prop));
+
+	/* Parse the rte flow pattern */
+	ret = bnxt_ulp_rte_parser_hdr_parse(pattern,
+					    &hdr_bitmap,
+					    hdr_field);
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	/* Parse the rte flow action */
+	ret = bnxt_ulp_rte_parser_act_parse(actions,
+					    &act_bitmap,
+					    &act_prop);
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	if (attr->egress)
+		dir = ULP_DIR_EGRESS;
+
+	ret = ulp_matcher_pattern_match(dir, &hdr_bitmap, hdr_field,
+					&act_bitmap, &class_id);
+
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	ret = ulp_matcher_action_match(dir, &act_bitmap, &act_tmpl);
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	/* all good return success */
+	return ret;
+
+parse_error:
+	rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to validate flow.");
+	return -EINVAL;
+}
+
 const struct rte_flow_ops bnxt_ulp_rte_flow_ops = {
-	.validate = NULL,
+	.validate = bnxt_ulp_flow_validate,
 	.create = bnxt_ulp_flow_create,
 	.destroy = NULL,
 	.flush = NULL,
