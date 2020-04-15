@@ -12,6 +12,14 @@
 #include "ulp_template_db.h"
 #include "ulp_template_struct.h"
 
+/* defines to be used in the tunnel header parsing */
+#define BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS	2
+#define BNXT_ULP_ENCAP_IPV4_ID_PROTO		6
+#define BNXT_ULP_ENCAP_IPV4_DEST_IP		4
+#define BNXT_ULP_ENCAP_IPV4_SIZE		12
+#define BNXT_ULP_ENCAP_IPV6_SIZE		8
+#define BNXT_ULP_ENCAP_UDP_SIZE			4
+
 /*
  * Function to handle the parsing of RTE Flows and placing
  * the RTE flow items into the ulp structures.
@@ -20,6 +28,15 @@ int32_t
 bnxt_ulp_rte_parser_hdr_parse(const struct rte_flow_item pattern[],
 			      struct ulp_rte_hdr_bitmap *hdr_bitmap,
 			      struct ulp_rte_hdr_field  *hdr_field);
+
+/*
+ * Function to handle the parsing of RTE Flows and placing
+ * the RTE flow actions into the ulp structures.
+ */
+int32_t
+bnxt_ulp_rte_parser_act_parse(const struct rte_flow_action	actions[],
+			      struct ulp_rte_act_bitmap		*act_bitmap,
+			      struct ulp_rte_act_prop		*act_prop);
 
 /* Function to handle the parsing of RTE Flow item PF Header. */
 int32_t
@@ -45,7 +62,7 @@ ulp_rte_port_id_hdr_handler(const struct rte_flow_item	*item,
 			    uint32_t			*field_idx,
 			    uint32_t			*vlan_idx);
 
-/* Function to handle the parsing of RTE Flow item port id Header. */
+/* Function to handle the parsing of RTE Flow item port Header. */
 int32_t
 ulp_rte_phy_port_hdr_handler(const struct rte_flow_item	*item,
 			     struct ulp_rte_hdr_bitmap	*hdr_bitmap,
@@ -116,5 +133,71 @@ ulp_rte_void_hdr_handler(const struct rte_flow_item	*item,
 			 struct ulp_rte_hdr_field	*hdr_field,
 			 uint32_t			*field_idx,
 			 uint32_t			*vlan_idx);
+
+/* Function to handle the parsing of RTE Flow action void Header. */
+int32_t
+ulp_rte_void_act_handler(const struct rte_flow_action	*action_item,
+			 struct ulp_rte_act_bitmap	*act,
+			 struct ulp_rte_act_prop	*act_prop);
+
+/* Function to handle the parsing of RTE Flow action RSS Header. */
+int32_t
+ulp_rte_rss_act_handler(const struct rte_flow_action	*action_item,
+			struct ulp_rte_act_bitmap	*act,
+			struct ulp_rte_act_prop	*act_prop);
+
+/* Function to handle the parsing of RTE Flow action Mark Header. */
+int32_t
+ulp_rte_mark_act_handler(const struct rte_flow_action	*action_item,
+			 struct ulp_rte_act_bitmap	*act,
+			 struct ulp_rte_act_prop	*act_prop);
+
+/* Function to handle the parsing of RTE Flow action vxlan_encap Header. */
+int32_t
+ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action	*action_item,
+				struct ulp_rte_act_bitmap	*act,
+				struct ulp_rte_act_prop		*act_prop);
+
+/* Function to handle the parsing of RTE Flow action vxlan_encap Header. */
+int32_t
+ulp_rte_vxlan_decap_act_handler(const struct rte_flow_action	*action_item,
+				struct ulp_rte_act_bitmap	*act,
+				struct ulp_rte_act_prop		*act_prop);
+
+/* Function to handle the parsing of RTE Flow action drop Header. */
+int32_t
+ulp_rte_drop_act_handler(const struct rte_flow_action	*action_item,
+			 struct ulp_rte_act_bitmap	*act,
+			 struct ulp_rte_act_prop	*act_prop);
+
+/* Function to handle the parsing of RTE Flow action count. */
+int32_t
+ulp_rte_count_act_handler(const struct rte_flow_action	*action_item,
+			  struct ulp_rte_act_bitmap	*act,
+			  struct ulp_rte_act_prop	*act_prop);
+
+/* Function to handle the parsing of RTE Flow action PF. */
+int32_t
+ulp_rte_pf_act_handler(const struct rte_flow_action	*action_item,
+		       struct ulp_rte_act_bitmap	*act,
+		       struct ulp_rte_act_prop		*act_prop);
+
+/* Function to handle the parsing of RTE Flow action VF. */
+int32_t
+ulp_rte_vf_act_handler(const struct rte_flow_action	*action_item,
+		       struct ulp_rte_act_bitmap	*act,
+		       struct ulp_rte_act_prop		*act_prop);
+
+/* Function to handle the parsing of RTE Flow action port_id. */
+int32_t
+ulp_rte_port_id_act_handler(const struct rte_flow_action	*act_item,
+			    struct ulp_rte_act_bitmap		*act,
+			    struct ulp_rte_act_prop		*act_p);
+
+/* Function to handle the parsing of RTE Flow action phy_port. */
+int32_t
+ulp_rte_phy_port_act_handler(const struct rte_flow_action	*action_item,
+			     struct ulp_rte_act_bitmap		*act,
+			     struct ulp_rte_act_prop		*act_prop);
 
 #endif /* _ULP_RTE_PARSER_H_ */

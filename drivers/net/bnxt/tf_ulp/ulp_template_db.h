@@ -74,6 +74,13 @@ enum bnxt_ulp_hdr_bit {
 	BNXT_ULP_HDR_BIT_LAST                = 0x0000000000200000
 };
 
+enum bnxt_ulp_act_type {
+	BNXT_ULP_ACT_TYPE_NOT_SUPPORTED = 0,
+	BNXT_ULP_ACT_TYPE_SUPPORTED = 1,
+	BNXT_ULP_ACT_TYPE_END = 2,
+	BNXT_ULP_ACT_TYPE_LAST = 3
+};
+
 enum bnxt_ulp_byte_order {
 	BNXT_ULP_BYTE_ORDER_BE,
 	BNXT_ULP_BYTE_ORDER_LE,

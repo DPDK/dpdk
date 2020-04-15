@@ -31,6 +31,13 @@ enum bnxt_tf_rc {
 	BNXT_TF_RC_SUCCESS	= 0
 };
 
+/* eth IPv4 Type */
+enum bnxt_ulp_eth_ip_type {
+	BNXT_ULP_ETH_IPV4 = 4,
+	BNXT_ULP_ETH_IPV6 = 5,
+	BNXT_ULP_MAX_ETH_IP_TYPE = 0
+};
+
 /* ulp direction Type */
 enum ulp_direction_type {
 	ULP_DIR_INGRESS,

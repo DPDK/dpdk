@@ -72,6 +72,19 @@ struct ulp_rte_act_prop {
 	uint8_t	act_details[BNXT_ULP_ACT_PROP_IDX_LAST];
 };
 
+/* Flow Parser Action Information Structure */
+struct bnxt_ulp_rte_act_info {
+	enum bnxt_ulp_act_type					act_type;
+	/* Flow Parser Protocol Action Function Prototype */
+	int32_t (*proto_act_func)
+		(const struct rte_flow_action			*action_item,
+		struct ulp_rte_act_bitmap			*act_bitmap,
+		struct ulp_rte_act_prop				*act_prop);
+};
+
+/* Flow Parser Action Information Structure Array defined in template source*/
+extern struct bnxt_ulp_rte_act_info	ulp_act_info[];
+
 /* Flow Matcher structures */
 struct bnxt_ulp_header_match_info {
 	struct ulp_rte_hdr_bitmap		hdr_bitmap;

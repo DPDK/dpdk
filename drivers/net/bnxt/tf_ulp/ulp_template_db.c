@@ -96,6 +96,205 @@ uint32_t ulp_act_prop_map_table[] = {
 		BNXT_ULP_ACT_PROP_SZ_LAST
 };
 
+struct bnxt_ulp_rte_act_info ulp_act_info[] = {
+	[RTE_FLOW_ACTION_TYPE_END] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_END,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_VOID] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_void_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_PASSTHRU] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_JUMP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_MARK] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_mark_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_FLAG] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_QUEUE] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_DROP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_drop_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_COUNT] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_count_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_RSS] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_rss_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_PF] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_pf_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_VF] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_vf_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_PHY_PORT] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_phy_port_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_PORT_ID] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_port_id_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_METER] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SECURITY] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_SET_MPLS_TTL] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_DEC_MPLS_TTL] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_SET_NW_TTL] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_DEC_NW_TTL] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_OUT] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_COPY_TTL_IN] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_POP_MPLS] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_OF_PUSH_MPLS] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_vxlan_encap_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_VXLAN_DECAP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_vxlan_decap_act_handler
+	},
+	[RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_NVGRE_DECAP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_RAW_ENCAP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_RAW_DECAP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_DST] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_IPV6_DST] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_TP_SRC] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_TP_DST] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_MAC_SWAP] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_DEC_TTL] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_TTL] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_MAC_SRC] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_SET_MAC_DST] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_INC_TCP_ACK] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	},
+	[RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK] = {
+		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
+		.proto_act_func          = NULL
+	}
+};
+
 struct bnxt_ulp_device_params ulp_device_params[] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
 		.global_fid_enable       = BNXT_ULP_SYM_YES,
