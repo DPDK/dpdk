@@ -236,6 +236,20 @@ enum {
 	FMOP_SET_OVLAN,
 	/* Decap when vlan_strip is off */
 	FMOP_DECAP_NOSTRIP,
+	/* Decap and strip VLAN */
+	FMOP_DECAP_STRIP,
+	/* Remove outer VLAN */
+	FMOP_POP_VLAN,
+	/* Set Egress port */
+	FMOP_SET_EGPORT,
+	/* Steer to an RQ without entering EMIT state */
+	FMOP_RQ_STEER_ONLY,
+	/* Set VLAN when replicating encapped packets */
+	FMOP_SET_ENCAP_VLAN,
+	/* Enter EMIT state */
+	FMOP_EMIT,
+	/* Enter MODIFY state */
+	FMOP_MODIFY,
 	FMOP_OP_MAX,
 };
 
@@ -260,12 +274,16 @@ struct fm_action_op {
 			uint8_t template_len;
 		} __rte_packed encap;
 		struct {
-			uint32_t rq_index;
+			uint16_t rq_index;
+			uint16_t rq_count;
 			uint64_t vnic_handle;
 		} __rte_packed rq_steer;
 		struct {
 			uint16_t vlan;
 		} __rte_packed ovlan;
+		struct {
+			uint16_t vlan;
+		} __rte_packed set_encap_vlan;
 		struct {
 			uint16_t mark;
 		} __rte_packed mark;
@@ -278,6 +296,9 @@ struct fm_action_op {
 		struct {
 			uint64_t handle;
 		} __rte_packed exact;
+		struct {
+			uint32_t egport;
+		} __rte_packed set_egport;
 	} __rte_packed;
 } __rte_packed;
 
