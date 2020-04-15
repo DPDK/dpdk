@@ -53,6 +53,15 @@ struct bnxt_ulp_flow_db {
 	struct bnxt_ulp_flow_tbl	flow_tbl[BNXT_ULP_FLOW_TABLE_MAX];
 };
 
+/* flow db resource params to add resources */
+struct ulp_flow_db_res_params {
+	enum tf_dir			direction;
+	enum bnxt_ulp_resource_func	resource_func;
+	uint64_t			resource_hndl;
+	uint32_t			resource_type;
+	uint32_t			critical_resource;
+};
+
 /*
  * Initialize the flow database. Memory is allocated in this
  * call and assigned to the flow database.
@@ -73,5 +82,21 @@ int32_t	ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt);
  * Returns 0 on success.
  */
 int32_t	ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt);
+
+/*
+ * Allocate the flow database entry.
+ * The params->critical_resource has to be set to 0 to allocate a new resource.
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [in] The index to the flow entry
+ * params [in] The contents to be copied into resource
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t	ulp_flow_db_resource_add(struct bnxt_ulp_context	*ulp_ctxt,
+				 enum bnxt_ulp_flow_db_tables	tbl_idx,
+				 uint32_t			fid,
+				 struct ulp_flow_db_res_params	*params);
 
 #endif /* _ULP_FLOW_DB_H_ */
