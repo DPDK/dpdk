@@ -8,10 +8,10 @@
 #include <intel-ipsec-mb.h>
 
 #define CRYPTODEV_NAME_ZUC_PMD		crypto_zuc
-/**< KASUMI PMD device name */
+/**< ZUC PMD device name */
 
 /** ZUC PMD LOGTYPE DRIVER */
-int zuc_logtype_driver;
+extern int zuc_logtype_driver;
 #define ZUC_LOG(level, fmt, ...)  \
 	rte_log(RTE_LOG_ ## level, zuc_logtype_driver,  \
 			"%s()... line %u: " fmt "\n", __func__, __LINE__,  \

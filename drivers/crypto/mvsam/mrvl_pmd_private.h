@@ -13,7 +13,7 @@
 /**< Marvell PMD device name */
 
 /** MRVL PMD LOGTYPE DRIVER */
-int mrvl_logtype_driver;
+extern int mrvl_logtype_driver;
 
 #define MRVL_LOG(level, fmt, ...) \
 	rte_log(RTE_LOG_ ## level, mrvl_logtype_driver, \

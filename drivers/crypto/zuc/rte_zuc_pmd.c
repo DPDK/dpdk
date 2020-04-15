@@ -14,6 +14,7 @@
 #define ZUC_MAX_BURST 16
 #define BYTE_LEN 8
 
+int zuc_logtype_driver;
 static uint8_t cryptodev_driver_id;
 
 /** Get xform chain order. */

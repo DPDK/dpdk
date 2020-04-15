@@ -11,7 +11,7 @@
 /**< SNOW 3G PMD device name */
 
 /** SNOW 3G PMD LOGTYPE DRIVER */
-int snow3g_logtype_driver;
+extern int snow3g_logtype_driver;
 
 #define SNOW3G_LOG(level, fmt, ...)  \
 	rte_log(RTE_LOG_ ## level, snow3g_logtype_driver,  \

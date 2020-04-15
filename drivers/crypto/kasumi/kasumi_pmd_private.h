@@ -11,7 +11,7 @@
 /**< KASUMI PMD device name */
 
 /** KASUMI PMD LOGTYPE DRIVER */
-int kasumi_logtype_driver;
+extern int kasumi_logtype_driver;
 
 #define KASUMI_LOG(level, fmt, ...)  \
 	rte_log(RTE_LOG_ ## level, kasumi_logtype_driver,  \

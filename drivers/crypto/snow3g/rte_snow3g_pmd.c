@@ -16,6 +16,7 @@
 #define SNOW3G_MAX_BURST 8
 #define BYTE_LEN 8
 
+int snow3g_logtype_driver;
 static uint8_t cryptodev_driver_id;
 
 /** Get xform chain order. */

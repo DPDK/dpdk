@@ -19,6 +19,7 @@
 #define MRVL_PMD_MAX_NB_SESS_ARG		("max_nb_sessions")
 #define MRVL_PMD_DEFAULT_MAX_NB_SESSIONS	2048
 
+int mrvl_logtype_driver;
 static uint8_t cryptodev_driver_id;
 
 struct mrvl_pmd_init_params {
