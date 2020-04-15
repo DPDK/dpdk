@@ -594,7 +594,7 @@ struct bnxt {
 
 	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];
 
-	uint16_t			hwrm_cmd_seq;
+	uint16_t			chimp_cmd_seq;
 	uint16_t			kong_cmd_seq;
 	void				*hwrm_cmd_resp_addr;
 	rte_iova_t			hwrm_cmd_resp_dma_addr;
