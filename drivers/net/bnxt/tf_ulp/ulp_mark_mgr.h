@@ -55,6 +55,24 @@ int32_t
 ulp_mark_db_deinit(struct bnxt_ulp_context *ctxt);
 
 /*
+ * Get a Mark from the Mark Manager
+ *
+ * ctxt [in] The ulp context for the mark manager
+ *
+ * is_gfid [in] The type of fid (GFID or LFID)
+ *
+ * fid [in] The flow id that is returned by HW in BD
+ *
+ * mark [out] The mark that is associated with the FID
+ *
+ */
+int32_t
+ulp_mark_db_mark_get(struct bnxt_ulp_context *ctxt,
+		     bool is_gfid,
+		     uint32_t fid,
+		     uint32_t *mark);
+
+/*
  * Adds a Mark to the Mark Manager
  *
  * ctxt [in] The ulp context for the mark manager

@@ -58,7 +58,7 @@ ulp_mark_db_mark_set(struct bnxt_ulp_context *ctxt,
 	idx = ulp_mark_db_idx_get(is_gfid, fid, mtbl);
 
 	if (is_gfid) {
-		BNXT_TF_DBG(ERR, "Set GFID[0x%0x] = 0x%0x\n", idx, mark);
+		BNXT_TF_DBG(DEBUG, "Set GFID[0x%0x] = 0x%0x\n", idx, mark);
 
 		mtbl->gfid_tbl[idx].mark_id = mark;
 		mtbl->gfid_tbl[idx].valid = true;
@@ -170,6 +170,59 @@ ulp_mark_db_deinit(struct bnxt_ulp_context *ctxt)
 
 		/* Safe to ignore on deinit */
 		(void)bnxt_ulp_cntxt_ptr2_mark_db_set(ctxt, NULL);
+	}
+
+	return 0;
+}
+
+/*
+ * Get a Mark from the Mark Manager
+ *
+ * ctxt [in] The ulp context for the mark manager
+ *
+ * is_gfid [in] The type of fid (GFID or LFID)
+ *
+ * fid [in] The flow id that is returned by HW in BD
+ *
+ * mark [out] The mark that is associated with the FID
+ *
+ */
+int32_t
+ulp_mark_db_mark_get(struct bnxt_ulp_context *ctxt,
+		     bool is_gfid,
+		     uint32_t fid,
+		     uint32_t *mark)
+{
+	struct bnxt_ulp_mark_tbl *mtbl;
+	uint32_t idx = 0;
+
+	if (!ctxt || !mark)
+		return -EINVAL;
+
+	mtbl = bnxt_ulp_cntxt_ptr2_mark_db_get(ctxt);
+	if (!mtbl) {
+		BNXT_TF_DBG(ERR, "Unable to get Mark Table\n");
+		return -EINVAL;
+	}
+
+	idx = ulp_mark_db_idx_get(is_gfid, fid, mtbl);
+
+	if (is_gfid) {
+		if (!mtbl->gfid_tbl[idx].valid)
+			return -EINVAL;
+
+		BNXT_TF_DBG(DEBUG, "Get GFID[0x%0x] = 0x%0x\n",
+			    idx, mtbl->gfid_tbl[idx].mark_id);
+
+		*mark = mtbl->gfid_tbl[idx].mark_id;
+	} else {
+		if (!mtbl->gfid_tbl[idx].valid)
+			return -EINVAL;
+
+		BNXT_TF_DBG(DEBUG, "Get LFID[0x%0x] = 0x%0x\n",
+			    idx, mtbl->lfid_tbl[idx].mark_id);
+
+		*mark = mtbl->lfid_tbl[idx].mark_id;
 	}
 
 	return 0;
