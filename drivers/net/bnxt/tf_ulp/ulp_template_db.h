@@ -12,6 +12,7 @@
 #define ULP_TEMPLATE_DB_H_
 
 #define BNXT_ULP_MAX_NUM_DEVICES 4
+#define BNXT_ULP_LOG2_MAX_NUM_DEV 2
 
 enum bnxt_ulp_action_bit {
 	BNXT_ULP_ACTION_BIT_MARK             = 0x0000000000000001,
@@ -125,6 +126,12 @@ enum bnxt_ulp_result_opc {
 	BNXT_ULP_RESULT_OPC_SET_TO_ACT_PROP_SZ = 2,
 	BNXT_ULP_RESULT_OPC_SET_TO_REGFILE = 3,
 	BNXT_ULP_RESULT_OPC_LAST = 4
+};
+
+enum bnxt_ulp_search_before_alloc {
+	BNXT_ULP_SEARCH_BEFORE_ALLOC_NO = 0,
+	BNXT_ULP_SEARCH_BEFORE_ALLOC_YES = 1,
+	BNXT_ULP_SEARCH_BEFORE_ALLOC_LAST = 2
 };
 
 enum bnxt_ulp_spec_opc {

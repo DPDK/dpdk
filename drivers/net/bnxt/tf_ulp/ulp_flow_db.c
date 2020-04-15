@@ -303,6 +303,43 @@ int32_t	ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt)
 }
 
 /*
+ * Allocate the flow database entry
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [out] The index to the flow entry
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context		*ulp_ctxt,
+			      enum bnxt_ulp_flow_db_tables	tbl_idx,
+			      uint32_t				*fid)
+{
+	struct bnxt_ulp_flow_db		*flow_db;
+	struct bnxt_ulp_flow_tbl	*flow_tbl;
+
+	*fid = 0; /* Initialize fid to invalid value */
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	flow_tbl = &flow_db->flow_tbl[tbl_idx];
+	/* check for max flows */
+	if (flow_tbl->num_flows <= flow_tbl->head_index) {
+		BNXT_TF_DBG(ERR, "Flow database has reached max flows\n");
+		return -ENOMEM;
+	}
+	*fid = flow_tbl->flow_tbl_stack[flow_tbl->head_index];
+	flow_tbl->head_index++;
+	ulp_flow_db_active_flow_set(flow_tbl, *fid, 1);
+
+	/* all good, return success */
+	return 0;
+}
+
+/*
  * Allocate the flow database entry.
  * The params->critical_resource has to be set to 0 to allocate a new resource.
  *

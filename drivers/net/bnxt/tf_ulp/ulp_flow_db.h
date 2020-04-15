@@ -84,6 +84,19 @@ int32_t	ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt);
 int32_t	ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt);
 
 /*
+ * Allocate the flow database entry
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [out] The index to the flow entry
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context		*ulp_ctxt,
+			      enum bnxt_ulp_flow_db_tables	tbl_idx,
+			      uint32_t				*fid);
+
+/*
  * Allocate the flow database entry.
  * The params->critical_resource has to be set to 0 to allocate a new resource.
  *

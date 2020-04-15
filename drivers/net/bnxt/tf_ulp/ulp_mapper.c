@@ -16,12 +16,6 @@
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 
-int32_t
-ulp_mapper_action_tbls_process(struct bnxt_ulp_mapper_parms *parms);
-
-int32_t
-ulp_mapper_class_tbls_process(struct bnxt_ulp_mapper_parms *parms);
-
 /*
  * Get the size of the action property for a given index.
  *
@@ -38,7 +32,76 @@ ulp_mapper_act_prop_size_get(uint32_t idx)
 }
 
 /*
- * Get the list of result fields that implement the flow action
+ * Get the list of result fields that implement the flow action.
+ * Gets a device dependent list of tables that implement the action template id.
+ *
+ * dev_id [in] The device id of the forwarding element
+ *
+ * tid [in] The action template id that matches the flow
+ *
+ * num_tbls [out] The number of action tables in the returned array
+ *
+ * Returns An array of action tables to implement the flow, or NULL on error.
+ */
+static struct bnxt_ulp_mapper_act_tbl_info *
+ulp_mapper_action_tbl_list_get(uint32_t dev_id,
+			       uint32_t tid,
+			       uint32_t *num_tbls)
+{
+	uint32_t	idx;
+	uint32_t	tidx;
+
+	if (!num_tbls) {
+		BNXT_TF_DBG(ERR, "Invalid arguments\n");
+		return NULL;
+	}
+
+	/* template shift and device mask */
+	tidx = ULP_DEVICE_PARAMS_INDEX(tid, dev_id);
+
+	/* NOTE: Need to have something from template compiler to help validate
+	 * range of dev_id and act_tid
+	 */
+	idx		= ulp_act_tmpl_list[tidx].start_tbl_idx;
+	*num_tbls	= ulp_act_tmpl_list[tidx].num_tbls;
+
+	return &ulp_act_tbl_list[idx];
+}
+
+/** Get a list of classifier tables that implement the flow
+ * Gets a device dependent list of tables that implement the class template id
+ *
+ * dev_id [in] The device id of the forwarding element
+ *
+ * tid [in] The template id that matches the flow
+ *
+ * num_tbls [out] The number of classifier tables in the returned array
+ *
+ * returns An array of classifier tables to implement the flow, or NULL on
+ * error
+ */
+static struct bnxt_ulp_mapper_class_tbl_info *
+ulp_mapper_class_tbl_list_get(uint32_t dev_id,
+			      uint32_t tid,
+			      uint32_t *num_tbls)
+{
+	uint32_t idx;
+	uint32_t tidx = ULP_DEVICE_PARAMS_INDEX(tid, dev_id);
+
+	if (!num_tbls)
+		return NULL;
+
+	/* NOTE: Need to have something from template compiler to help validate
+	 * range of dev_id and tid
+	 */
+	idx		= ulp_class_tmpl_list[tidx].start_tbl_idx;
+	*num_tbls	= ulp_class_tmpl_list[tidx].num_tbls;
+
+	return &ulp_class_tbl_list[idx];
+}
+
+/*
+ * Get the list of key fields that implement the flow.
  *
  * ctxt [in] The ulp context
  *
@@ -46,7 +109,7 @@ ulp_mapper_act_prop_size_get(uint32_t idx)
  *
  * num_flds [out] The number of key fields in the returned array
  *
- * returns array of Key fields, or NULL on error
+ * Returns array of Key fields, or NULL on error.
  */
 static struct bnxt_ulp_mapper_class_key_field_info *
 ulp_mapper_key_fields_get(struct bnxt_ulp_mapper_class_tbl_info *tbl,
@@ -1158,7 +1221,7 @@ error:
  * Function to process the action template. Iterate through the list
  * action info templates and process it.
  */
-int32_t
+static int32_t
 ulp_mapper_action_tbls_process(struct bnxt_ulp_mapper_parms *parms)
 {
 	uint32_t	i;
@@ -1180,7 +1243,7 @@ ulp_mapper_action_tbls_process(struct bnxt_ulp_mapper_parms *parms)
 }
 
 /* Create the classifier table entries for a flow. */
-int32_t
+static int32_t
 ulp_mapper_class_tbls_process(struct bnxt_ulp_mapper_parms *parms)
 {
 	uint32_t	i;
@@ -1334,4 +1397,117 @@ ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid)
 	return ulp_mapper_resources_free(ulp_ctx,
 					 fid,
 					 BNXT_ULP_REGULAR_FLOW_TABLE);
+}
+
+/* Function to handle the mapping of the Flow to be compatible
+ * with the underlying hardware.
+ */
+int32_t
+ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
+		       uint32_t app_priority __rte_unused,
+		       struct ulp_rte_hdr_bitmap *hdr_bitmap __rte_unused,
+		       struct ulp_rte_hdr_field *hdr_field,
+		       struct ulp_rte_act_bitmap *act_bitmap,
+		       struct ulp_rte_act_prop *act_prop,
+		       uint32_t class_tid,
+		       uint32_t act_tid,
+		       uint32_t *flow_id)
+{
+	struct ulp_regfile		regfile;
+	struct bnxt_ulp_mapper_parms	parms;
+	struct bnxt_ulp_device_params	*device_params;
+	int32_t				rc, trc;
+
+	/* Initialize the parms structure */
+	memset(&parms, 0, sizeof(parms));
+	parms.act_prop = act_prop;
+	parms.act_bitmap = act_bitmap;
+	parms.regfile = &regfile;
+	parms.hdr_field = hdr_field;
+	parms.tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	parms.ulp_ctx = ulp_ctx;
+
+	/* Get the device id from the ulp context */
+	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &parms.dev_id)) {
+		BNXT_TF_DBG(ERR, "Invalid ulp context\n");
+		return -EINVAL;
+	}
+
+	/* Get the action table entry from device id and act context id */
+	parms.act_tid = act_tid;
+	parms.atbls = ulp_mapper_action_tbl_list_get(parms.dev_id,
+						     parms.act_tid,
+						     &parms.num_atbls);
+	if (!parms.atbls || !parms.num_atbls) {
+		BNXT_TF_DBG(ERR, "No action tables for %d:%d\n",
+			    parms.dev_id, parms.act_tid);
+		return -EINVAL;
+	}
+
+	/* Get the class table entry from device id and act context id */
+	parms.class_tid = class_tid;
+	parms.ctbls = ulp_mapper_class_tbl_list_get(parms.dev_id,
+						    parms.class_tid,
+						    &parms.num_ctbls);
+	if (!parms.ctbls || !parms.num_ctbls) {
+		BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
+			    parms.dev_id, parms.class_tid);
+		return -EINVAL;
+	}
+
+	/* Get the byte order for the further processing from device params */
+	device_params = bnxt_ulp_device_params_get(parms.dev_id);
+	if (!device_params) {
+		BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
+			    parms.dev_id, parms.class_tid);
+		return -EINVAL;
+	}
+	parms.order = device_params->byte_order;
+	parms.encap_byte_swap = device_params->encap_byte_swap;
+
+	/* initialize the registry file for further processing */
+	if (!ulp_regfile_init(parms.regfile)) {
+		BNXT_TF_DBG(ERR, "regfile initialization failed.\n");
+		return -EINVAL;
+	}
+
+	/* Allocate a Flow ID for attaching all resources for the flow to.
+	 * Once allocated, all errors have to walk the list of resources and
+	 * free each of them.
+	 */
+	rc = ulp_flow_db_fid_alloc(ulp_ctx,
+				   BNXT_ULP_REGULAR_FLOW_TABLE,
+				   &parms.fid);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
+		return rc;
+	}
+
+	/* Process the action template list from the selected action table*/
+	rc = ulp_mapper_action_tbls_process(&parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "action tables failed creation for %d:%d\n",
+			    parms.dev_id, parms.act_tid);
+		goto flow_error;
+	}
+
+	/* All good. Now process the class template */
+	rc = ulp_mapper_class_tbls_process(&parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "class tables failed creation for %d:%d\n",
+			    parms.dev_id, parms.class_tid);
+		goto flow_error;
+	}
+
+	*flow_id = parms.fid;
+
+	return rc;
+
+flow_error:
+	/* Free all resources that were allocated during flow creation */
+	trc = ulp_mapper_flow_destroy(ulp_ctx, parms.fid);
+	if (trc)
+		BNXT_TF_DBG(ERR, "Failed to free all resources rc=%d\n", trc);
+
+	return rc;
 }

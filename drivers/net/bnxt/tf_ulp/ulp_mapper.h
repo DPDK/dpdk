@@ -38,6 +38,21 @@ struct bnxt_ulp_mapper_parms {
 	enum bnxt_ulp_flow_db_tables		tbl_idx;
 };
 
+/*
+ * Function to handle the mapping of the Flow to be compatible
+ * with the underlying hardware.
+ */
+int32_t
+ulp_mapper_flow_create(struct bnxt_ulp_context	*ulp_ctx,
+		       uint32_t		app_priority,
+		       struct ulp_rte_hdr_bitmap  *hdr_bitmap,
+		       struct ulp_rte_hdr_field *hdr_field,
+		       struct ulp_rte_act_bitmap *act,
+		       struct ulp_rte_act_prop *act_prop,
+		       uint32_t		class_tid,
+		       uint32_t		act_tid,
+		       uint32_t		*flow_id);
+
 /* Function that frees all resources associated with the flow. */
 int32_t
 ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid);

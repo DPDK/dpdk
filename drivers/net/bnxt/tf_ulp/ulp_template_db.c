@@ -110,6 +110,74 @@ struct bnxt_ulp_device_params ulp_device_params[] = {
 	}
 };
 
+struct bnxt_ulp_mapper_tbl_list_info ulp_class_tmpl_list[] = {
+	[((0 << BNXT_ULP_LOG2_MAX_NUM_DEV) | BNXT_ULP_DEVICE_ID_WH_PLUS)] = {
+	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.num_tbls = 3,
+	.start_tbl_idx = 0
+	}
+};
+
+struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.table_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.direction = TF_DIR_RX,
+	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 0,
+	.blob_key_bit_size = 167,
+	.key_bit_size = 167,
+	.key_num_fields = 13,
+	.result_start_idx = 0,
+	.result_bit_size = 64,
+	.result_num_fields = 13,
+	.ident_start_idx = 0,
+	.ident_nums = 1,
+	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.critical_resource = 0,
+	.regfile_wr_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
+	.table_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.direction = TF_DIR_RX,
+	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 13,
+	.blob_key_bit_size = 81,
+	.key_bit_size = 81,
+	.key_num_fields = 42,
+	.result_start_idx = 13,
+	.result_bit_size = 38,
+	.result_num_fields = 8,
+	.ident_start_idx = 1,
+	.ident_nums = 1,
+	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.critical_resource = 0,
+	.regfile_wr_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
+	.table_type = TF_MEM_EXTERNAL,
+	.direction = TF_DIR_RX,
+	.priority = BNXT_ULP_PRIORITY_NOT_USED,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.key_start_idx = 55,
+	.blob_key_bit_size = 448,
+	.key_bit_size = 197,
+	.key_num_fields = 11,
+	.result_start_idx = 21,
+	.result_bit_size = 64,
+	.result_num_fields = 9,
+	.ident_start_idx = 2,
+	.ident_nums = 0,
+	.mark_enable = BNXT_ULP_MARK_ENABLE_YES,
+	.critical_resource = 1,
+	.regfile_wr_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
+	}
+};
+
 struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 	{
 	.field_bit_size = 12,
@@ -935,6 +1003,28 @@ struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	.regfile_wr_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
 	.ident_bit_size = 8,
 	.ident_bit_pos = 2
+	}
+};
+
+struct bnxt_ulp_mapper_tbl_list_info ulp_act_tmpl_list[] = {
+	[((0 << BNXT_ULP_LOG2_MAX_NUM_DEV) | BNXT_ULP_DEVICE_ID_WH_PLUS)] = {
+	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.num_tbls = 1,
+	.start_tbl_idx = 0
+	}
+};
+
+struct bnxt_ulp_mapper_act_tbl_info ulp_act_tbl_list[] = {
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+	.table_type = TF_TBL_TYPE_EXT,
+	.direction = TF_DIR_RX,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.result_start_idx = 0,
+	.result_bit_size = 128,
+	.result_num_fields = 26,
+	.encap_num_fields = 0,
+	.regfile_wr_idx = BNXT_ULP_REGFILE_INDEX_ACTION_PTR_MAIN
 	}
 };
 

@@ -17,6 +17,10 @@
 #include "rte_flow.h"
 #include "tf_core.h"
 
+struct ulp_rte_hdr_bitmap {
+	uint64_t	bits;
+};
+
 /* Structure to store the protocol fields */
 #define RTE_PARSER_FLOW_HDR_FIELD_SIZE		16
 struct ulp_rte_hdr_field {
@@ -49,6 +53,13 @@ struct bnxt_ulp_device_params {
 	uint32_t			gfid_entry_size;
 	uint64_t			num_flows;
 	uint32_t			num_resources_per_flow;
+};
+
+/* Flow Mapper */
+struct bnxt_ulp_mapper_tbl_list_info {
+	uint32_t	device_name;
+	uint32_t	start_tbl_idx;
+	uint32_t	num_tbls;
 };
 
 struct bnxt_ulp_mapper_class_tbl_info {
@@ -132,7 +143,25 @@ struct bnxt_ulp_mapper_ident_info {
 extern struct bnxt_ulp_device_params ulp_device_params[];
 
 /*
- * The ulp_data_field_list provides the instructions for creating an action
+ * The ulp_class_tmpl_list and ulp_act_tmpl_list are indexed by the dev_id
+ * and template id (either class or action) returned by the matcher.
+ * The result provides the start index and number of entries in the connected
+ * ulp_class_tbl_list/ulp_act_tbl_list.
+ */
+extern struct bnxt_ulp_mapper_tbl_list_info	ulp_class_tmpl_list[];
+extern struct bnxt_ulp_mapper_tbl_list_info	ulp_act_tmpl_list[];
+
+/*
+ * The ulp_class_tbl_list and ulp_act_tbl_list are indexed based on the results
+ * of the template lists.  Each entry describes the high level details of the
+ * table entry to include the start index and number of instructions in the
+ * field lists.
+ */
+extern struct bnxt_ulp_mapper_class_tbl_info	ulp_class_tbl_list[];
+extern struct bnxt_ulp_mapper_act_tbl_info	ulp_act_tbl_list[];
+
+/*
+ * The ulp_class_result_field_list provides the instructions for creating result
  * records such as tcam/em results.
  */
 extern struct bnxt_ulp_mapper_result_field_info	ulp_class_result_field_list[];
