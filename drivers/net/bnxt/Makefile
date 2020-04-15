@@ -43,6 +43,14 @@ ifeq ($(CONFIG_RTE_ARCH_X86), y)
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_rxtx_vec_sse.c
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_BNXT_PMD), y)
+CFLAGS += -I$(SRCDIR) -I$(SRCDIR)/tf_core
+endif
+
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_core.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_msg.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tfp.c
+
 #
 # Export include files
 #

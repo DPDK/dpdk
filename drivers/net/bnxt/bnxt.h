@@ -21,6 +21,8 @@
 #include "bnxt_cpr.h"
 #include "bnxt_util.h"
 
+#include "tf_core.h"
+
 /* Vendor ID */
 #define PCI_VENDOR_ID_BROADCOM		0x14E4
 
@@ -679,6 +681,8 @@ struct bnxt {
 /* TCAM and EM should be 16-bit only. Other modes not supported. */
 #define BNXT_FLOW_ID_MASK	0x0000ffff
 	struct bnxt_mark_info	*mark_table;
+
+	struct tf               tfp;
 };
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
