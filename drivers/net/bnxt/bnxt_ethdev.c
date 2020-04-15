@@ -3288,6 +3288,7 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 		    enum rte_filter_type filter_type,
 		    enum rte_filter_op filter_op, void *arg)
 {
+	struct bnxt *bp = dev->data->dev_private;
 	int ret = 0;
 
 	ret = is_bnxt_in_error(dev->data->dev_private);
@@ -3311,7 +3312,10 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
 			return -EINVAL;
-		*(const void **)arg = &bnxt_flow_ops;
+		if (bp->truflow)
+			*(const void **)arg = &bnxt_ulp_rte_flow_ops;
+		else
+			*(const void **)arg = &bnxt_flow_ops;
 		break;
 	default:
 		PMD_DRV_LOG(ERR,
