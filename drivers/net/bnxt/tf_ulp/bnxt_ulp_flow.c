@@ -69,7 +69,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 {
 	struct bnxt_ulp_mapper_create_parms mapper_cparms = { 0 };
 	struct ulp_rte_parser_params params;
-	struct bnxt_ulp_context *ulp_ctx = NULL;
+	struct bnxt_ulp_context *ulp_ctx;
 	uint32_t class_id, act_tmpl;
 	struct rte_flow *flow_id;
 	uint32_t fid;
@@ -90,6 +90,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 
 	/* Initialize the parser params */
 	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
+	params.ulp_ctx = ulp_ctx;
 
 	if (attr->egress)
 		params.dir = ULP_DIR_EGRESS;
@@ -142,7 +143,7 @@ parse_error:
 
 /* Function to validate the rte flow. */
 static int
-bnxt_ulp_flow_validate(struct rte_eth_dev *dev __rte_unused,
+bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 		       const struct rte_flow_attr *attr,
 		       const struct rte_flow_item pattern[],
 		       const struct rte_flow_action actions[],
@@ -151,6 +152,7 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev __rte_unused,
 	struct ulp_rte_parser_params		params;
 	uint32_t class_id, act_tmpl;
 	int ret;
+	struct bnxt_ulp_context *ulp_ctx;
 
 	if (bnxt_ulp_flow_validate_args(attr,
 					pattern, actions,
@@ -159,8 +161,15 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev __rte_unused,
 		return -EINVAL;
 	}
 
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
+	if (!ulp_ctx) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		return -EINVAL;
+	}
+
 	/* Initialize the parser params */
 	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
+	params.ulp_ctx = ulp_ctx;
 
 	if (attr->egress)
 		params.dir = ULP_DIR_EGRESS;

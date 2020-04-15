@@ -20,6 +20,7 @@
 #include "ulp_mark_mgr.h"
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
+#include "ulp_port_db.h"
 
 /* Linked list of all TF sessions. */
 STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
@@ -454,6 +455,13 @@ bnxt_ulp_init(struct bnxt *bp)
 		if (rc) {
 			BNXT_TF_DBG(ERR,
 				    "Failed to attach the ulp context\n");
+			return rc;
+		}
+		/* update the port database */
+		rc = ulp_port_db_dev_port_intf_update(&bp->ulp_ctx, bp);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Failed to update port database\n");
 		}
 		return rc;
 	}
@@ -462,6 +470,20 @@ bnxt_ulp_init(struct bnxt *bp)
 	rc = ulp_ctx_init(bp, session);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to create the ulp context\n");
+		goto jump_to_error;
+	}
+
+	/* create the port database */
+	rc = ulp_port_db_init(&bp->ulp_ctx);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to create the port database\n");
+		goto jump_to_error;
+	}
+
+	/* update the port database */
+	rc = ulp_port_db_dev_port_intf_update(&bp->ulp_ctx, bp);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to update port database\n");
 		goto jump_to_error;
 	}
 
@@ -538,6 +560,9 @@ bnxt_ulp_deinit(struct bnxt *bp)
 
 	/* cleanup the ulp mapper */
 	ulp_mapper_deinit(&bp->ulp_ctx);
+
+	/* Delete the Port database */
+	ulp_port_db_deinit(&bp->ulp_ctx);
 
 	/* Delete the ulp context and tf session */
 	ulp_ctx_detach(bp, session);
@@ -722,4 +747,26 @@ bnxt_ulp_cntxt_ptr2_mapper_data_get(struct bnxt_ulp_context *ulp_ctx)
 	}
 
 	return ulp_ctx->cfg_data->mapper_data;
+}
+
+/* Function to set the port database to the ulp context. */
+int32_t
+bnxt_ulp_cntxt_ptr2_port_db_set(struct bnxt_ulp_context	*ulp_ctx,
+				struct bnxt_ulp_port_db	*port_db)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->port_db = port_db;
+	return 0;
+}
+
+/* Function to get the port database from the ulp context. */
+struct bnxt_ulp_port_db *
+bnxt_ulp_cntxt_ptr2_port_db_get(struct bnxt_ulp_context	*ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return NULL;
+
+	return ulp_ctx->cfg_data->port_db;
 }

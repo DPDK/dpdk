@@ -10,6 +10,7 @@
 #include "ulp_rte_parser.h"
 #include "ulp_utils.h"
 #include "tfp.h"
+#include "ulp_port_db.h"
 
 /* Utility function to skip the void items. */
 static inline int32_t
@@ -161,6 +162,8 @@ ulp_rte_parser_svif_set(struct ulp_rte_parser_params *params,
 	uint16_t port_id = svif;
 	uint32_t dir = 0;
 	struct ulp_rte_hdr_field *hdr_field;
+	uint32_t ifindex;
+	int32_t rc;
 
 	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_SVIF)) {
 		BNXT_TF_DBG(ERR,
@@ -175,10 +178,15 @@ ulp_rte_parser_svif_set(struct ulp_rte_parser_params *params,
 		dir = ULP_UTIL_CHF_IDX_RD(params,
 					  BNXT_ULP_CHF_IDX_DIRECTION);
 		/* perform the conversion from dpdk port to bnxt svif */
-		if (dir == ULP_DIR_EGRESS)
-			svif = bnxt_get_svif(port_id, true);
-		else
-			svif = bnxt_get_svif(port_id, false);
+		rc = ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx, port_id,
+						       &ifindex);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Invalid port id\n");
+			return BNXT_TF_RC_ERROR;
+		}
+		ulp_port_db_svif_get(params->ulp_ctx, ifindex, dir, &svif);
+		svif = rte_cpu_to_be_16(svif);
 	}
 	hdr_field = &params->hdr_field[BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX];
 	memcpy(hdr_field->spec, &svif, sizeof(svif));

@@ -66,6 +66,7 @@ struct ulp_rte_parser_params {
 	struct ulp_rte_act_bitmap	act_bitmap;
 	struct ulp_rte_act_prop		act_prop;
 	uint32_t			dir;
+	struct bnxt_ulp_context		*ulp_ctx;
 };
 
 /* Flow Parser Header Information Structure */

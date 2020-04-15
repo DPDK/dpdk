@@ -41,6 +41,7 @@ sources = files('bnxt_cpr.c',
 	'tf_ulp/ulp_matcher.c',
 	'tf_ulp/ulp_rte_parser.c',
 	'tf_ulp/bnxt_ulp_flow.c',
+	'tf_ulp/ulp_port_db.c',
 
 	'rte_pmd_bnxt.c')
 
