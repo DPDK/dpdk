@@ -6,7 +6,8 @@ objs = [base_objs]
 
 sources = files(
 	'igc_logs.c',
-	'igc_ethdev.c'
+	'igc_ethdev.c',
+	'igc_txrx.c'
 )
 
 includes += include_directories('base')

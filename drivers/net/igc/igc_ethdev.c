@@ -12,7 +12,7 @@
 #include <rte_malloc.h>
 
 #include "igc_logs.h"
-#include "igc_ethdev.h"
+#include "igc_txrx.h"
 
 #define IGC_INTEL_VENDOR_ID		0x8086
 
@@ -45,6 +45,23 @@
 /* MSI-X other interrupt vector */
 #define IGC_MSIX_OTHER_INTR_VEC		0
 
+/* External VLAN Enable bit mask */
+#define IGC_CTRL_EXT_EXT_VLAN		(1u << 26)
+
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = IGC_MAX_RXD,
+	.nb_min = IGC_MIN_RXD,
+	.nb_align = IGC_RXD_ALIGN,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = IGC_MAX_TXD,
+	.nb_min = IGC_MIN_TXD,
+	.nb_align = IGC_TXD_ALIGN,
+	.nb_seg_max = IGC_TX_MAX_SEG,
+	.nb_mtu_seg_max = IGC_TX_MAX_MTU_SEG,
+};
+
 static const struct rte_pci_id pci_id_igc_map[] = {
 	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_LM) },
 	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_V)  },
@@ -69,17 +86,18 @@ static int eth_igc_infos_get(struct rte_eth_dev *dev,
 			struct rte_eth_dev_info *dev_info);
 static int eth_igc_led_on(struct rte_eth_dev *dev);
 static int eth_igc_led_off(struct rte_eth_dev *dev);
-static void eth_igc_tx_queue_release(void *txq);
-static void eth_igc_rx_queue_release(void *rxq);
-static int
-eth_igc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
-		uint16_t nb_rx_desc, unsigned int socket_id,
-		const struct rte_eth_rxconf *rx_conf,
-		struct rte_mempool *mb_pool);
-static int
-eth_igc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
-		uint16_t nb_desc, unsigned int socket_id,
-		const struct rte_eth_txconf *tx_conf);
+static const uint32_t *eth_igc_supported_ptypes_get(struct rte_eth_dev *dev);
+static int eth_igc_rar_set(struct rte_eth_dev *dev,
+		struct rte_ether_addr *mac_addr, uint32_t index, uint32_t pool);
+static void eth_igc_rar_clear(struct rte_eth_dev *dev, uint32_t index);
+static int eth_igc_default_mac_addr_set(struct rte_eth_dev *dev,
+			struct rte_ether_addr *addr);
+static int eth_igc_set_mc_addr_list(struct rte_eth_dev *dev,
+			 struct rte_ether_addr *mc_addr_set,
+			 uint32_t nb_mc_addr);
+static int eth_igc_allmulticast_enable(struct rte_eth_dev *dev);
+static int eth_igc_allmulticast_disable(struct rte_eth_dev *dev);
+static int eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static const struct eth_dev_ops eth_igc_ops = {
 	.dev_configure		= eth_igc_configure,
@@ -92,16 +110,30 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.dev_set_link_down	= eth_igc_set_link_down,
 	.promiscuous_enable	= eth_igc_promiscuous_enable,
 	.promiscuous_disable	= eth_igc_promiscuous_disable,
-
+	.allmulticast_enable	= eth_igc_allmulticast_enable,
+	.allmulticast_disable	= eth_igc_allmulticast_disable,
 	.fw_version_get		= eth_igc_fw_version_get,
 	.dev_infos_get		= eth_igc_infos_get,
 	.dev_led_on		= eth_igc_led_on,
 	.dev_led_off		= eth_igc_led_off,
+	.dev_supported_ptypes_get = eth_igc_supported_ptypes_get,
+	.mtu_set		= eth_igc_mtu_set,
+	.mac_addr_add		= eth_igc_rar_set,
+	.mac_addr_remove	= eth_igc_rar_clear,
+	.mac_addr_set		= eth_igc_default_mac_addr_set,
+	.set_mc_addr_list	= eth_igc_set_mc_addr_list,
 
 	.rx_queue_setup		= eth_igc_rx_queue_setup,
 	.rx_queue_release	= eth_igc_rx_queue_release,
+	.rx_queue_count		= eth_igc_rx_queue_count,
+	.rx_descriptor_done	= eth_igc_rx_descriptor_done,
+	.rx_descriptor_status	= eth_igc_rx_descriptor_status,
+	.tx_descriptor_status	= eth_igc_tx_descriptor_status,
 	.tx_queue_setup		= eth_igc_tx_queue_setup,
 	.tx_queue_release	= eth_igc_tx_queue_release,
+	.tx_done_cleanup	= eth_igc_tx_done_cleanup,
+	.rxq_info_get		= eth_igc_rxq_info_get,
+	.txq_info_get		= eth_igc_txq_info_get,
 };
 
 /*
@@ -367,6 +399,32 @@ eth_igc_interrupt_handler(void *param)
 }
 
 /*
+ * rx,tx enable/disable
+ */
+static void
+eth_igc_rxtx_control(struct rte_eth_dev *dev, bool enable)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t tctl, rctl;
+
+	tctl = IGC_READ_REG(hw, IGC_TCTL);
+	rctl = IGC_READ_REG(hw, IGC_RCTL);
+
+	if (enable) {
+		/* enable Tx/Rx */
+		tctl |= IGC_TCTL_EN;
+		rctl |= IGC_RCTL_EN;
+	} else {
+		/* disable Tx/Rx */
+		tctl &= ~IGC_TCTL_EN;
+		rctl &= ~IGC_RCTL_EN;
+	}
+	IGC_WRITE_REG(hw, IGC_TCTL, tctl);
+	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+	IGC_WRITE_FLUSH(hw);
+}
+
+/*
  *  This routine disables all traffic on the adapter by issuing a
  *  global reset on the MAC.
  */
@@ -380,6 +438,9 @@ eth_igc_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 
 	adapter->stopped = 1;
+
+	/* disable receive and transmit */
+	eth_igc_rxtx_control(dev, false);
 
 	/* disable all MSI-X interrupts */
 	IGC_WRITE_REG(hw, IGC_EIMC, 0x1f);
@@ -404,6 +465,8 @@ eth_igc_stop(struct rte_eth_dev *dev)
 
 	/* Power down the phy. Needed to make the link go Down */
 	eth_igc_set_link_down(dev);
+
+	igc_dev_clear_queues(dev);
 
 	/* clear the recorded link status */
 	memset(&link, 0, sizeof(link));
@@ -570,8 +633,7 @@ eth_igc_start(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t *speeds;
-	int num_speeds;
-	bool autoneg;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -602,6 +664,16 @@ eth_igc_start(struct rte_eth_dev *dev)
 	/* confiugre msix for rx interrupt */
 	igc_configure_msix_intr(dev);
 
+	igc_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
+	ret = igc_rx_init(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Unable to initialize RX hardware");
+		igc_dev_clear_queues(dev);
+		return ret;
+	}
+
 	igc_clear_hw_cntrs_base_generic(hw);
 
 	/* Setup link speed and duplex */
@@ -610,8 +682,8 @@ eth_igc_start(struct rte_eth_dev *dev)
 		hw->phy.autoneg_advertised = IGC_ALL_SPEED_DUPLEX_2500;
 		hw->mac.autoneg = 1;
 	} else {
-		num_speeds = 0;
-		autoneg = (*speeds & ETH_LINK_SPEED_FIXED) == 0;
+		int num_speeds = 0;
+		bool autoneg = (*speeds & ETH_LINK_SPEED_FIXED) == 0;
 
 		/* Reset */
 		hw->phy.autoneg_advertised = 0;
@@ -685,6 +757,7 @@ eth_igc_start(struct rte_eth_dev *dev)
 	/* resume enabled intr since hw reset */
 	igc_intr_other_enable(dev);
 
+	eth_igc_rxtx_control(dev, true);
 	eth_igc_link_update(dev, 0);
 
 	return 0;
@@ -692,6 +765,7 @@ eth_igc_start(struct rte_eth_dev *dev)
 error_invalid_config:
 	PMD_DRV_LOG(ERR, "Invalid advertised speeds (%u) for port %u",
 		     dev->data->dev_conf.link_speeds, dev->data->port_id);
+	igc_dev_clear_queues(dev);
 	return -EINVAL;
 }
 
@@ -749,6 +823,27 @@ igc_reset_swfw_lock(struct igc_hw *hw)
 	return IGC_SUCCESS;
 }
 
+/*
+ * free all rx/tx queues.
+ */
+static void
+igc_dev_free_queues(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		eth_igc_rx_queue_release(dev->data->rx_queues[i]);
+		dev->data->rx_queues[i] = NULL;
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		eth_igc_tx_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
+	}
+	dev->data->nb_tx_queues = 0;
+}
+
 static void
 eth_igc_close(struct rte_eth_dev *dev)
 {
@@ -776,6 +871,7 @@ eth_igc_close(struct rte_eth_dev *dev)
 
 	igc_phy_hw_reset(hw);
 	igc_hw_control_release(hw);
+	igc_dev_free_queues(dev);
 
 	/* Reset any pending lock */
 	igc_reset_swfw_lock(hw);
@@ -959,16 +1055,55 @@ eth_igc_reset(struct rte_eth_dev *dev)
 static int
 eth_igc_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
-	RTE_SET_USED(dev);
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t rctl;
+
+	rctl = IGC_READ_REG(hw, IGC_RCTL);
+	rctl |= (IGC_RCTL_UPE | IGC_RCTL_MPE);
+	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
 	return 0;
 }
 
 static int
 eth_igc_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
-	RTE_SET_USED(dev);
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t rctl;
+
+	rctl = IGC_READ_REG(hw, IGC_RCTL);
+	rctl &= (~IGC_RCTL_UPE);
+	if (dev->data->all_multicast == 1)
+		rctl |= IGC_RCTL_MPE;
+	else
+		rctl &= (~IGC_RCTL_MPE);
+	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+	return 0;
+}
+
+static int
+eth_igc_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t rctl;
+
+	rctl = IGC_READ_REG(hw, IGC_RCTL);
+	rctl |= IGC_RCTL_MPE;
+	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+	return 0;
+}
+
+static int
+eth_igc_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t rctl;
+
+	if (dev->data->promiscuous == 1)
+		return 0;	/* must remain in all_multicast mode */
+
+	rctl = IGC_READ_REG(hw, IGC_RCTL);
+	rctl &= (~IGC_RCTL_MPE);
+	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
 	return 0;
 }
 
@@ -1018,9 +1153,39 @@ eth_igc_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
 	dev_info->max_rx_pktlen = MAX_RX_JUMBO_FRAME_SIZE;
 	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
+	dev_info->rx_offload_capa = IGC_RX_OFFLOAD_ALL;
+	dev_info->tx_offload_capa = IGC_TX_OFFLOAD_ALL;
+
 	dev_info->max_rx_queues = IGC_QUEUE_PAIRS_NUM;
 	dev_info->max_tx_queues = IGC_QUEUE_PAIRS_NUM;
 	dev_info->max_vmdq_pools = 0;
+
+	dev_info->hash_key_size = IGC_HKEY_MAX_INDEX * sizeof(uint32_t);
+	dev_info->reta_size = ETH_RSS_RETA_SIZE_128;
+	dev_info->flow_type_rss_offloads = IGC_RSS_OFFLOAD_ALL;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = IGC_DEFAULT_RX_PTHRESH,
+			.hthresh = IGC_DEFAULT_RX_HTHRESH,
+			.wthresh = IGC_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = IGC_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+		.offloads = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = IGC_DEFAULT_TX_PTHRESH,
+			.hthresh = IGC_DEFAULT_TX_HTHRESH,
+			.wthresh = IGC_DEFAULT_TX_WTHRESH,
+		},
+		.offloads = 0,
+	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
 
 	dev_info->speed_capa = ETH_LINK_SPEED_10M_HD | ETH_LINK_SPEED_10M |
 			ETH_LINK_SPEED_100M_HD | ETH_LINK_SPEED_100M |
@@ -1047,44 +1212,115 @@ eth_igc_led_off(struct rte_eth_dev *dev)
 	return igc_led_off(hw) == IGC_SUCCESS ? 0 : -ENOTSUP;
 }
 
-static int
-eth_igc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
-		uint16_t nb_rx_desc, unsigned int socket_id,
-		const struct rte_eth_rxconf *rx_conf,
-		struct rte_mempool *mb_pool)
+static const uint32_t *
+eth_igc_supported_ptypes_get(__rte_unused struct rte_eth_dev *dev)
 {
-	PMD_INIT_FUNC_TRACE();
-	RTE_SET_USED(dev);
-	RTE_SET_USED(rx_queue_id);
-	RTE_SET_USED(nb_rx_desc);
-	RTE_SET_USED(socket_id);
-	RTE_SET_USED(rx_conf);
-	RTE_SET_USED(mb_pool);
+	static const uint32_t ptypes[] = {
+		/* refers to rx_desc_pkt_info_to_pkt_type() */
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_TUNNEL_IP,
+		RTE_PTYPE_INNER_L3_IPV6,
+		RTE_PTYPE_INNER_L3_IPV6_EXT,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	return ptypes;
+}
+
+static int
+eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t frame_size = mtu + IGC_ETH_OVERHEAD;
+	uint32_t rctl;
+
+	/* if extend vlan has been enabled */
+	if (IGC_READ_REG(hw, IGC_CTRL_EXT) & IGC_CTRL_EXT_EXT_VLAN)
+		frame_size += VLAN_TAG_SIZE;
+
+	/* check that mtu is within the allowed range */
+	if (mtu < RTE_ETHER_MIN_MTU ||
+		frame_size > MAX_RX_JUMBO_FRAME_SIZE)
+		return -EINVAL;
+
+	/*
+	 * refuse mtu that requires the support of scattered packets when
+	 * this feature has not been enabled before.
+	 */
+	if (!dev->data->scattered_rx &&
+	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)
+		return -EINVAL;
+
+	rctl = IGC_READ_REG(hw, IGC_RCTL);
+
+	/* switch to jumbo mode if needed */
+	if (mtu > RTE_ETHER_MTU) {
+		dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
+		rctl |= IGC_RCTL_LPE;
+	} else {
+		dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+		rctl &= ~IGC_RCTL_LPE;
+	}
+	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+
+	IGC_WRITE_REG(hw, IGC_RLPML,
+			dev->data->dev_conf.rxmode.max_rx_pkt_len);
+
 	return 0;
 }
 
 static int
-eth_igc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
-		uint16_t nb_desc, unsigned int socket_id,
-		const struct rte_eth_txconf *tx_conf)
+eth_igc_rar_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+		uint32_t index, uint32_t pool)
 {
-	PMD_INIT_FUNC_TRACE();
-	RTE_SET_USED(dev);
-	RTE_SET_USED(queue_idx);
-	RTE_SET_USED(nb_desc);
-	RTE_SET_USED(socket_id);
-	RTE_SET_USED(tx_conf);
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+
+	igc_rar_set(hw, mac_addr->addr_bytes, index);
+	RTE_SET_USED(pool);
 	return 0;
 }
 
-static void eth_igc_tx_queue_release(void *txq)
+static void
+eth_igc_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 {
-	RTE_SET_USED(txq);
+	uint8_t addr[RTE_ETHER_ADDR_LEN];
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+
+	memset(addr, 0, sizeof(addr));
+	igc_rar_set(hw, addr, index);
 }
 
-static void eth_igc_rx_queue_release(void *rxq)
+static int
+eth_igc_default_mac_addr_set(struct rte_eth_dev *dev,
+			struct rte_ether_addr *addr)
 {
-	RTE_SET_USED(rxq);
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	igc_rar_set(hw, addr->addr_bytes, 0);
+	return 0;
+}
+
+static int
+eth_igc_set_mc_addr_list(struct rte_eth_dev *dev,
+			 struct rte_ether_addr *mc_addr_set,
+			 uint32_t nb_mc_addr)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	igc_update_mc_addr_list(hw, (u8 *)mc_addr_set, nb_mc_addr);
+	return 0;
 }
 
 static int

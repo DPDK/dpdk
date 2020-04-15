@@ -18,10 +18,72 @@ extern "C" {
 
 #define IGC_QUEUE_PAIRS_NUM		4
 
+#define IGC_HKEY_MAX_INDEX		10
+#define IGC_RSS_RDT_SIZD		128
+
+/*
+ * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
+ * multiple of 128 bytes. So we align TDBA/RDBA on 128 byte boundary.
+ * This will also optimize cache line size effect.
+ * H/W supports up to cache line size 128.
+ */
+#define IGC_ALIGN			128
+
+#define IGC_TX_DESCRIPTOR_MULTIPLE	8
+#define IGC_RX_DESCRIPTOR_MULTIPLE	8
+
+#define IGC_RXD_ALIGN	((uint16_t)(IGC_ALIGN / \
+		sizeof(union igc_adv_rx_desc)))
+#define IGC_TXD_ALIGN	((uint16_t)(IGC_ALIGN / \
+		sizeof(union igc_adv_tx_desc)))
+#define IGC_MIN_TXD	IGC_TX_DESCRIPTOR_MULTIPLE
+#define IGC_MAX_TXD	((uint16_t)(0x80000 / sizeof(union igc_adv_tx_desc)))
+#define IGC_MIN_RXD	IGC_RX_DESCRIPTOR_MULTIPLE
+#define IGC_MAX_RXD	((uint16_t)(0x80000 / sizeof(union igc_adv_rx_desc)))
+
+#define IGC_TX_MAX_SEG		UINT8_MAX
+#define IGC_TX_MAX_MTU_SEG	UINT8_MAX
+
+#define IGC_RX_OFFLOAD_ALL	(    \
+	DEV_RX_OFFLOAD_IPV4_CKSUM  | \
+	DEV_RX_OFFLOAD_UDP_CKSUM   | \
+	DEV_RX_OFFLOAD_TCP_CKSUM   | \
+	DEV_RX_OFFLOAD_SCTP_CKSUM  | \
+	DEV_RX_OFFLOAD_JUMBO_FRAME | \
+	DEV_RX_OFFLOAD_KEEP_CRC    | \
+	DEV_RX_OFFLOAD_SCATTER)
+
+#define IGC_TX_OFFLOAD_ALL	(    \
+	DEV_TX_OFFLOAD_VLAN_INSERT | \
+	DEV_TX_OFFLOAD_IPV4_CKSUM  | \
+	DEV_TX_OFFLOAD_UDP_CKSUM   | \
+	DEV_TX_OFFLOAD_TCP_CKSUM   | \
+	DEV_TX_OFFLOAD_SCTP_CKSUM  | \
+	DEV_TX_OFFLOAD_TCP_TSO     | \
+	DEV_TX_OFFLOAD_UDP_TSO	   | \
+	DEV_TX_OFFLOAD_MULTI_SEGS)
+
+#define IGC_RSS_OFFLOAD_ALL	(    \
+	ETH_RSS_IPV4               | \
+	ETH_RSS_NONFRAG_IPV4_TCP   | \
+	ETH_RSS_NONFRAG_IPV4_UDP   | \
+	ETH_RSS_IPV6               | \
+	ETH_RSS_NONFRAG_IPV6_TCP   | \
+	ETH_RSS_NONFRAG_IPV6_UDP   | \
+	ETH_RSS_IPV6_EX            | \
+	ETH_RSS_IPV6_TCP_EX        | \
+	ETH_RSS_IPV6_UDP_EX)
+
 /* structure for interrupt relative data */
 struct igc_interrupt {
 	uint32_t flags;
 	uint32_t mask;
+};
+
+/* Union of RSS redirect table register */
+union igc_rss_reta_reg {
+	uint32_t dword;
+	uint8_t  bytes[4];
 };
 
 /*
