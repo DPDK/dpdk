@@ -92,3 +92,28 @@ mem_error:
 
 	return -ENOMEM;
 }
+
+/*
+ * Release all resources in the Mark Manager for this ulp context
+ *
+ * ctxt [in] The ulp context for the mark manager
+ *
+ */
+int32_t
+ulp_mark_db_deinit(struct bnxt_ulp_context *ctxt)
+{
+	struct bnxt_ulp_mark_tbl *mtbl;
+
+	mtbl = bnxt_ulp_cntxt_ptr2_mark_db_get(ctxt);
+
+	if (mtbl) {
+		rte_free(mtbl->gfid_tbl);
+		rte_free(mtbl->lfid_tbl);
+		rte_free(mtbl);
+
+		/* Safe to ignore on deinit */
+		(void)bnxt_ulp_cntxt_ptr2_mark_db_set(ctxt, NULL);
+	}
+
+	return 0;
+}

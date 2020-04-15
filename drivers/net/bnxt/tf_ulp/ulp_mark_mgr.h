@@ -46,4 +46,12 @@ struct bnxt_ulp_mark_tbl {
 int32_t
 ulp_mark_db_init(struct bnxt_ulp_context *ctxt);
 
+/*
+ * Release all resources in the Mark Manager for this ulp context
+ *
+ * ctxt [in] The ulp context for the mark manager
+ */
+int32_t
+ulp_mark_db_deinit(struct bnxt_ulp_context *ctxt);
+
 #endif /* _ULP_MARK_MGR_H_ */

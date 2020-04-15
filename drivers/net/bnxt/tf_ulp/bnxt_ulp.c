@@ -28,6 +28,27 @@ STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
 static pthread_mutex_t bnxt_ulp_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
+ * Allow the deletion of context only for the bnxt device that
+ * created the session
+ * TBD - The implementation of the function should change to
+ * using the reference count once tf_session_attach functionality
+ * is fixed.
+ */
+bool
+ulp_ctx_deinit_allowed(void *ptr)
+{
+	struct bnxt *bp = (struct bnxt *)ptr;
+
+	if (!bp)
+		return 0;
+
+	if (&bp->tfp == bp->ulp_ctx.g_tfp)
+		return 1;
+
+	return 0;
+}
+
+/*
  * Initialize an ULP session.
  * An ULP session will contain all the resources needed to support rte flow
  * offloads. A session is initialized as part of rte_eth_device start.
@@ -65,6 +86,22 @@ ulp_ctx_session_open(struct bnxt *bp,
 	session->session_opened = 1;
 	session->g_tfp = &bp->tfp;
 	return rc;
+}
+
+/*
+ * Close the ULP session.
+ * It takes the ulp context pointer.
+ */
+static void
+ulp_ctx_session_close(struct bnxt *bp,
+		      struct bnxt_ulp_session_state *session)
+{
+	/* close the session in the hardware */
+	if (session->session_opened)
+		tf_close_session(&bp->tfp);
+	session->session_opened = 0;
+	session->g_tfp = NULL;
+	bp->ulp_ctx.g_tfp = NULL;
 }
 
 static void
@@ -138,6 +175,41 @@ ulp_eem_tbl_scope_init(struct bnxt *bp)
 	return 0;
 }
 
+/* Free Extended Exact Match host memory */
+static int32_t
+ulp_eem_tbl_scope_deinit(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
+{
+	struct tf_free_tbl_scope_parms	params = {0};
+	struct tf			*tfp;
+	int32_t				rc = 0;
+
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	/* Free the resources for the last device */
+	if (!ulp_ctx_deinit_allowed(bp))
+		return rc;
+
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	if (!tfp) {
+		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
+		return -EINVAL;
+	}
+
+	rc = bnxt_ulp_cntxt_tbl_scope_id_get(ulp_ctx, &params.tbl_scope_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get the table scope id\n");
+		return -EINVAL;
+	}
+
+	rc = tf_free_tbl_scope(tfp, &params);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to free table scope\n");
+		return -EINVAL;
+	}
+	return rc;
+}
+
 /* The function to free and deinit the ulp context data. */
 static int32_t
 ulp_ctx_deinit(struct bnxt *bp,
@@ -147,6 +219,9 @@ ulp_ctx_deinit(struct bnxt *bp,
 		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
 		return -EINVAL;
 	}
+
+	/* close the tf session */
+	ulp_ctx_session_close(bp, session);
 
 	/* Free the contents */
 	if (session->cfg_data) {
@@ -208,6 +283,36 @@ ulp_ctx_attach(struct bnxt_ulp_context *ulp_ctx,
 
 	/* TBD call TF_session_attach. */
 	ulp_ctx->g_tfp = session->g_tfp;
+	return 0;
+}
+
+static int32_t
+ulp_ctx_detach(struct bnxt *bp,
+	       struct bnxt_ulp_session_state *session)
+{
+	struct bnxt_ulp_context *ulp_ctx;
+
+	if (!bp || !session) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	ulp_ctx = &bp->ulp_ctx;
+
+	if (!ulp_ctx->cfg_data)
+		return 0;
+
+	/* TBD call TF_session_detach */
+
+	/* Increment the ulp context data reference count usage. */
+	if (ulp_ctx->cfg_data->ref_cnt >= 1) {
+		ulp_ctx->cfg_data->ref_cnt--;
+		if (ulp_ctx_deinit_allowed(bp))
+			ulp_ctx_deinit(bp, session);
+		ulp_ctx->cfg_data = NULL;
+		ulp_ctx->g_tfp = NULL;
+		return 0;
+	}
+	BNXT_TF_DBG(ERR, "context deatach on invalid data\n");
 	return 0;
 }
 
@@ -297,6 +402,26 @@ ulp_session_init(struct bnxt *bp,
 }
 
 /*
+ * When a device is closed, remove it's associated session from the global
+ * session list.
+ */
+static void
+ulp_session_deinit(struct bnxt_ulp_session_state *session)
+{
+	if (!session)
+		return;
+
+	if (!session->cfg_data) {
+		pthread_mutex_lock(&bnxt_ulp_global_mutex);
+		STAILQ_REMOVE(&bnxt_ulp_session_list, session,
+			      bnxt_ulp_session_state, next);
+		pthread_mutex_destroy(&session->bnxt_ulp_mutex);
+		rte_free(session);
+		pthread_mutex_unlock(&bnxt_ulp_global_mutex);
+	}
+}
+
+/*
  * When a port is initialized by dpdk. This functions is called
  * and this function initializes the ULP context and rest of the
  * infrastructure associated with it.
@@ -363,12 +488,52 @@ bnxt_ulp_init(struct bnxt *bp)
 	return rc;
 
 jump_to_error:
+	bnxt_ulp_deinit(bp);
 	return -ENOMEM;
 }
 
 /* Below are the access functions to access internal data of ulp context. */
 
-/* Function to set the Mark DB into the context. */
+/*
+ * When a port is deinit'ed by dpdk. This function is called
+ * and this function clears the ULP context and rest of the
+ * infrastructure associated with it.
+ */
+void
+bnxt_ulp_deinit(struct bnxt *bp)
+{
+	struct bnxt_ulp_session_state	*session;
+	struct rte_pci_device		*pci_dev;
+	struct rte_pci_addr		*pci_addr;
+
+	/* Get the session first */
+	pci_dev = RTE_DEV_TO_PCI(bp->eth_dev->device);
+	pci_addr = &pci_dev->addr;
+	pthread_mutex_lock(&bnxt_ulp_global_mutex);
+	session = ulp_get_session(pci_addr);
+	pthread_mutex_unlock(&bnxt_ulp_global_mutex);
+
+	/* session not found then just exit */
+	if (!session)
+		return;
+
+	/* cleanup the eem table scope */
+	ulp_eem_tbl_scope_deinit(bp, &bp->ulp_ctx);
+
+	/* cleanup the flow database */
+	ulp_flow_db_deinit(&bp->ulp_ctx);
+
+	/* Delete the Mark database */
+	ulp_mark_db_deinit(&bp->ulp_ctx);
+
+	/* Delete the ulp context and tf session */
+	ulp_ctx_detach(bp, session);
+
+	/* Finally delete the bnxt session*/
+	ulp_session_deinit(session);
+}
+
+/* Function to set the Mark DB into the context */
 int32_t
 bnxt_ulp_cntxt_ptr2_mark_db_set(struct bnxt_ulp_context *ulp_ctx,
 				struct bnxt_ulp_mark_tbl *mark_tbl)

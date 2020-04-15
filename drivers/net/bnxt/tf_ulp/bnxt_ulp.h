@@ -47,6 +47,16 @@ struct rte_tf_flow {
 	uint32_t	flow_id;
 };
 
+/*
+ * Allow the deletion of context only for the bnxt device that
+ * created the session
+ * TBD - The implementation of the function should change to
+ * using the reference count once tf_session_attach functionality
+ * is fixed.
+ */
+bool
+ulp_ctx_deinit_allowed(void *bp);
+
 /* Function to set the device id of the hardware. */
 int32_t
 bnxt_ulp_cntxt_dev_id_set(struct bnxt_ulp_context *ulp_ctx, uint32_t dev_id);
