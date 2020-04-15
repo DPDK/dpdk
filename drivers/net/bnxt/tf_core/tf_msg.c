@@ -94,6 +94,19 @@
 } while (0)
 
 /**
+ * This is the MAX data we can transport across regular HWRM
+ */
+#define TF_PCI_BUF_SIZE_MAX 88
+
+/**
+ * If data bigger than TF_PCI_BUF_SIZE_MAX then use DMA method
+ */
+struct tf_msg_dma_buf {
+	void *va_addr;
+	uint64_t pa_addr;
+};
+
+/**
  * Sends session open request to TF Firmware
  */
 int

@@ -284,3 +284,159 @@ tf_close_session(struct tf *tfp)
 
 	return rc_close;
 }
+
+/** allocate identifier resource
+ *
+ * Returns success or failure code.
+ */
+int tf_alloc_identifier(struct tf *tfp,
+			struct tf_alloc_identifier_parms *parms)
+{
+	struct bitalloc *session_pool;
+	struct tf_session *tfs;
+	int id;
+	int rc;
+
+	if (parms == NULL || tfp == NULL)
+		return -EINVAL;
+
+	if (tfp->session == NULL || tfp->session->core_data == NULL) {
+		PMD_DRV_LOG(ERR, "%s: session error\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	switch (parms->ident_type) {
+	case TF_IDENT_TYPE_L2_CTXT:
+		TF_RM_GET_POOLS(tfs, parms->dir, &session_pool,
+				TF_L2_CTXT_REMAP_POOL_NAME,
+				rc);
+		break;
+	case TF_IDENT_TYPE_PROF_FUNC:
+		TF_RM_GET_POOLS(tfs, parms->dir, &session_pool,
+				TF_PROF_FUNC_POOL_NAME,
+				rc);
+		break;
+	case TF_IDENT_TYPE_EM_PROF:
+		TF_RM_GET_POOLS(tfs, parms->dir, &session_pool,
+				TF_EM_PROF_ID_POOL_NAME,
+				rc);
+		break;
+	case TF_IDENT_TYPE_WC_PROF:
+		TF_RM_GET_POOLS(tfs, parms->dir, &session_pool,
+				TF_WC_TCAM_PROF_ID_POOL_NAME,
+				rc);
+		break;
+	case TF_IDENT_TYPE_L2_FUNC:
+		PMD_DRV_LOG(ERR, "%s: unsupported %s\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_ident_2_str(parms->ident_type));
+		rc = -EOPNOTSUPP;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "%s: %s\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_ident_2_str(parms->ident_type));
+		rc = -EINVAL;
+		break;
+	}
+
+	if (rc) {
+		PMD_DRV_LOG(ERR, "%s: identifier pool %s failure\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_ident_2_str(parms->ident_type));
+		return rc;
+	}
+
+	id = ba_alloc(session_pool);
+
+	if (id == BA_FAIL) {
+		PMD_DRV_LOG(ERR, "%s: %s: No resource available\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_ident_2_str(parms->ident_type));
+		return -ENOMEM;
+	}
+	parms->id = id;
+	return 0;
+}
+
+/** free identifier resource
+ *
+ * Returns success or failure code.
+ */
+int tf_free_identifier(struct tf *tfp,
+		       struct tf_free_identifier_parms *parms)
+{
+	struct bitalloc *session_pool;
+	int rc;
+	int ba_rc;
+	struct tf_session *tfs;
+
+	if (parms == NULL || tfp == NULL)
+		return -EINVAL;
+
+	if (tfp->session == NULL || tfp->session->core_data == NULL) {
+		PMD_DRV_LOG(ERR, "%s: Session error\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	switch (parms->ident_type) {
+	case TF_IDENT_TYPE_L2_CTXT:
+		TF_RM_GET_POOLS(tfs, parms->dir, &session_pool,
+				TF_L2_CTXT_REMAP_POOL_NAME,
+				rc);
+		break;
+	case TF_IDENT_TYPE_PROF_FUNC:
+		TF_RM_GET_POOLS(tfs, parms->dir, &session_pool,
+				TF_PROF_FUNC_POOL_NAME,
+				rc);
+		break;
+	case TF_IDENT_TYPE_EM_PROF:
+		TF_RM_GET_POOLS(tfs, parms->dir, &session_pool,
+				TF_EM_PROF_ID_POOL_NAME,
+				rc);
+		break;
+	case TF_IDENT_TYPE_WC_PROF:
+		TF_RM_GET_POOLS(tfs, parms->dir, &session_pool,
+				TF_WC_TCAM_PROF_ID_POOL_NAME,
+				rc);
+		break;
+	case TF_IDENT_TYPE_L2_FUNC:
+		PMD_DRV_LOG(ERR, "%s: unsupported %s\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_ident_2_str(parms->ident_type));
+		rc = -EOPNOTSUPP;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "%s: invalid %s\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_ident_2_str(parms->ident_type));
+		rc = -EINVAL;
+		break;
+	}
+	if (rc) {
+		PMD_DRV_LOG(ERR, "%s: %s Identifier pool access failed\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_ident_2_str(parms->ident_type));
+		return rc;
+	}
+
+	ba_rc = ba_inuse(session_pool, (int)parms->id);
+
+	if (ba_rc == BA_FAIL || ba_rc == BA_ENTRY_FREE) {
+		PMD_DRV_LOG(ERR, "%s: %s: Entry %d already free",
+			    tf_dir_2_str(parms->dir),
+			    tf_ident_2_str(parms->ident_type),
+			    parms->id);
+		return -EINVAL;
+	}
+
+	ba_free(session_pool, (int)parms->id);
+
+	return 0;
+}

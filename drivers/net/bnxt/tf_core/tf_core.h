@@ -402,6 +402,61 @@ enum tf_identifier_type {
 	TF_IDENT_TYPE_L2_FUNC
 };
 
+/** tf_alloc_identifier parameter definition
+ */
+struct tf_alloc_identifier_parms {
+	/**
+	 * [in]	 receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Identifier type
+	 */
+	enum tf_identifier_type ident_type;
+	/**
+	 * [out] Identifier allocated
+	 */
+	uint16_t id;
+};
+
+/** tf_free_identifier parameter definition
+ */
+struct tf_free_identifier_parms {
+	/**
+	 * [in]	 receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Identifier type
+	 */
+	enum tf_identifier_type ident_type;
+	/**
+	 * [in] ID to free
+	 */
+	uint16_t id;
+};
+
+/** allocate identifier resource
+ *
+ * TruFlow core will allocate a free id from the per identifier resource type
+ * pool reserved for the session during tf_open().  No firmware is involved.
+ *
+ * Returns success or failure code.
+ */
+int tf_alloc_identifier(struct tf *tfp,
+			struct tf_alloc_identifier_parms *parms);
+
+/** free identifier resource
+ *
+ * TruFlow core will return an id back to the per identifier resource type pool
+ * reserved for the session.  No firmware is involved.  During tf_close, the
+ * complete pool is returned to the firmware.
+ *
+ * Returns success or failure code.
+ */
+int tf_free_identifier(struct tf *tfp,
+		       struct tf_free_identifier_parms *parms);
+
 /**
  * TCAM table type
  */
