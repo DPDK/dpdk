@@ -64,6 +64,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_template_db.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_utils.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_mapper.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_matcher.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_rte_parser.c
 
 #
 # Export include files

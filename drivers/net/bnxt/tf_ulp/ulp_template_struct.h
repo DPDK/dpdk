@@ -17,6 +17,18 @@
 #include "rte_flow.h"
 #include "tf_core.h"
 
+/* Number of fields for each protocol */
+#define BNXT_ULP_PROTO_HDR_SVIF_NUM	1
+#define BNXT_ULP_PROTO_HDR_ETH_NUM	3
+#define BNXT_ULP_PROTO_HDR_S_VLAN_NUM	3
+#define BNXT_ULP_PROTO_HDR_VLAN_NUM	6
+#define BNXT_ULP_PROTO_HDR_IPV4_NUM	10
+#define BNXT_ULP_PROTO_HDR_IPV6_NUM	6
+#define BNXT_ULP_PROTO_HDR_UDP_NUM	4
+#define BNXT_ULP_PROTO_HDR_TCP_NUM	9
+#define BNXT_ULP_PROTO_HDR_VXLAN_NUM	4
+#define BNXT_ULP_PROTO_HDR_MAX		128
+
 struct ulp_rte_hdr_bitmap {
 	uint64_t	bits;
 };
@@ -28,6 +40,20 @@ struct ulp_rte_hdr_field {
 	uint8_t		mask[RTE_PARSER_FLOW_HDR_FIELD_SIZE];
 	uint32_t	size;
 };
+
+/* Flow Parser Header Information Structure */
+struct bnxt_ulp_rte_hdr_info {
+	enum bnxt_ulp_hdr_type					hdr_type;
+	/* Flow Parser Protocol Header Function Prototype */
+	int (*proto_hdr_func)(const struct rte_flow_item	*item_list,
+			      struct ulp_rte_hdr_bitmap		*hdr_bitmap,
+			      struct ulp_rte_hdr_field		*hdr_field,
+			      uint32_t				*field_idx,
+			      uint32_t				*vlan_idx);
+};
+
+/* Flow Parser Header Information Structure Array defined in template source*/
+extern struct bnxt_ulp_rte_hdr_info	ulp_hdr_info[];
 
 struct bnxt_ulp_matcher_field_info {
 	enum bnxt_ulp_fmf_mask	mask_opcode;

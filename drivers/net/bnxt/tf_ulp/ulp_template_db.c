@@ -11,6 +11,7 @@
 #include "ulp_template_db.h"
 #include "ulp_template_field_db.h"
 #include "ulp_template_struct.h"
+#include "ulp_rte_parser.h"
 
 uint32_t ulp_act_prop_map_table[] = {
 	[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN_SZ] =
@@ -107,6 +108,201 @@ struct bnxt_ulp_device_params ulp_device_params[] = {
 		.gfid_entry_size         = 4,
 		.num_flows               = 32768,
 		.num_resources_per_flow  = 8
+	}
+};
+
+struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
+	[RTE_FLOW_ITEM_TYPE_END] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_END,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_VOID] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_void_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_INVERT] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ANY] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_PF] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_pf_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_VF] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_vf_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_PHY_PORT] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_phy_port_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_PORT_ID] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_port_id_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_RAW] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ETH] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_eth_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_VLAN] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_vlan_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_IPV4] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_ipv4_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_IPV6] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_ipv6_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_ICMP] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_UDP] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_udp_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_TCP] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_tcp_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_SCTP] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_SUPPORTED,
+		.proto_hdr_func          = ulp_rte_vxlan_hdr_handler
+	},
+	[RTE_FLOW_ITEM_TYPE_E_TAG] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_NVGRE] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_MPLS] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_GRE] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_FUZZY] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_GTP] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_GTPC] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_GTPU] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ESP] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_GENEVE] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_VXLAN_GPE] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_IPV6_EXT] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ICMP6] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ICMP6_ND_NA] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_SLA_ETH] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_TLA_ETH] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_MARK] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_META] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_GRE_KEY] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_GTP_PSC] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_PPPOES] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_PPPOED] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_PPPOE_PROTO_ID] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_NSH] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_IGMP] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_AH] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
+	},
+	[RTE_FLOW_ITEM_TYPE_HIGIG2] = {
+		.hdr_type                = BNXT_ULP_HDR_TYPE_NOT_SUPPORTED,
+		.proto_hdr_func          = NULL
 	}
 };
 

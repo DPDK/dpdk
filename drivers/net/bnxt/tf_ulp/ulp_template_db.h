@@ -115,6 +115,13 @@ enum bnxt_ulp_hdr_field {
 	BNXT_ULP_HDR_FIELD_LAST = 4
 };
 
+enum bnxt_ulp_hdr_type {
+	BNXT_ULP_HDR_TYPE_NOT_SUPPORTED = 0,
+	BNXT_ULP_HDR_TYPE_SUPPORTED = 1,
+	BNXT_ULP_HDR_TYPE_END = 2,
+	BNXT_ULP_HDR_TYPE_LAST = 3
+};
+
 enum bnxt_ulp_mask_opc {
 	BNXT_ULP_MASK_OPC_SET_TO_CONSTANT = 0,
 	BNXT_ULP_MASK_OPC_SET_TO_HDR_FIELD = 1,
