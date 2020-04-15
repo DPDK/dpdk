@@ -150,3 +150,39 @@ ulp_matcher_pattern_match(enum ulp_direction_type   dir,
 	*class_id = 0;
 	return BNXT_TF_RC_ERROR;
 }
+
+/*
+ * Function to handle the matching of RTE Flows and validating
+ * the action against the flow templates.
+ */
+int32_t
+ulp_matcher_action_match(enum ulp_direction_type		dir,
+			 struct ulp_rte_act_bitmap		*act_bitmap,
+			 uint32_t				*act_id)
+{
+	struct bnxt_ulp_action_match_info	*sel_act_match;
+	uint32_t				act_num, idx;
+
+	/* Select the ingress or egress template to match against */
+	if (dir == ULP_DIR_INGRESS) {
+		sel_act_match = ulp_ingress_act_match_list;
+		act_num = BNXT_ULP_INGRESS_ACT_MATCH_SZ;
+	} else {
+		sel_act_match = ulp_egress_act_match_list;
+		act_num = BNXT_ULP_EGRESS_ACT_MATCH_SZ;
+	}
+
+	/* Loop through the list of action templates to find the match */
+	for (idx = 0; idx < act_num; idx++, sel_act_match++) {
+		if (!ULP_BITSET_CMP(&sel_act_match->act_bitmap,
+				    act_bitmap)) {
+			*act_id = sel_act_match->act_tmpl_id;
+			BNXT_TF_DBG(DEBUG, "Found matching act template %u\n",
+				    *act_id);
+			return BNXT_TF_RC_SUCCESS;
+		}
+	}
+	BNXT_TF_DBG(DEBUG, "Did not find any matching action template\n");
+	*act_id = 0;
+	return BNXT_TF_RC_ERROR;
+}

@@ -62,6 +62,16 @@ extern struct bnxt_ulp_header_match_info  ulp_egress_hdr_match_list[];
 /* Flow field match Information Structure Array defined in template source*/
 extern struct bnxt_ulp_matcher_field_info	ulp_field_match[];
 
+/* Flow Matcher Action structures */
+struct bnxt_ulp_action_match_info {
+	struct ulp_rte_act_bitmap		act_bitmap;
+	uint32_t				act_tmpl_id;
+};
+
+/* Flow Matcher templates Structure Array defined in template source */
+extern struct bnxt_ulp_action_match_info  ulp_ingress_act_match_list[];
+extern struct bnxt_ulp_action_match_info  ulp_egress_act_match_list[];
+
 /* Device specific parameters */
 struct bnxt_ulp_device_params {
 	uint8_t				description[16];

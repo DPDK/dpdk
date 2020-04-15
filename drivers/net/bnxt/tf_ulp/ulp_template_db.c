@@ -1121,6 +1121,18 @@ struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	}
 };
 
+struct bnxt_ulp_action_match_info ulp_ingress_act_match_list[] = {
+	{
+	.act_bitmap = { .bits =
+		BNXT_ULP_ACTION_BIT_MARK |
+		BNXT_ULP_ACTION_BIT_RSS },
+	.act_tmpl_id = 0
+	}
+};
+
+struct bnxt_ulp_action_match_info ulp_egress_act_match_list[] = {
+};
+
 struct bnxt_ulp_mapper_tbl_list_info ulp_act_tmpl_list[] = {
 	[((0 << BNXT_ULP_LOG2_MAX_NUM_DEV) | BNXT_ULP_DEVICE_ID_WH_PLUS)] = {
 	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
