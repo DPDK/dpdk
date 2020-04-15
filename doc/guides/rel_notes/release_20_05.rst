@@ -78,6 +78,10 @@ New Features
 
   * Added support for matching on IPv4 Time To Live and IPv6 Hop Limit.
 
+* **Updated the AESNI MB crypto PMD.**
+
+  * Updated the AESNI MB PMD with AES-256 DOCSIS algorithm.
+
 * **Added handling of mixed crypto algorithms in QAT PMD for GEN2.**
 
   Enabled handling of mixed algorithms in encrypted digest hash-cipher
