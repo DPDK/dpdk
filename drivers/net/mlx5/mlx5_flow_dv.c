@@ -8699,11 +8699,9 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 		claim_zero(mlx5_glue->dv_destroy_flow_matcher
 			  (mtd->egress.any_matcher));
 	if (mtd->egress.tbl)
-		claim_zero(flow_dv_tbl_resource_release(dev,
-							mtd->egress.tbl));
+		flow_dv_tbl_resource_release(dev, mtd->egress.tbl);
 	if (mtd->egress.sfx_tbl)
-		claim_zero(flow_dv_tbl_resource_release(dev,
-							mtd->egress.sfx_tbl));
+		flow_dv_tbl_resource_release(dev, mtd->egress.sfx_tbl);
 	if (mtd->ingress.color_matcher)
 		claim_zero(mlx5_glue->dv_destroy_flow_matcher
 			  (mtd->ingress.color_matcher));
@@ -8711,11 +8709,9 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 		claim_zero(mlx5_glue->dv_destroy_flow_matcher
 			  (mtd->ingress.any_matcher));
 	if (mtd->ingress.tbl)
-		claim_zero(flow_dv_tbl_resource_release(dev,
-							mtd->ingress.tbl));
+		flow_dv_tbl_resource_release(dev, mtd->ingress.tbl);
 	if (mtd->ingress.sfx_tbl)
-		claim_zero(flow_dv_tbl_resource_release(dev,
-							mtd->ingress.sfx_tbl));
+		flow_dv_tbl_resource_release(dev, mtd->ingress.sfx_tbl);
 	if (mtd->transfer.color_matcher)
 		claim_zero(mlx5_glue->dv_destroy_flow_matcher
 			  (mtd->transfer.color_matcher));
@@ -8723,11 +8719,9 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 		claim_zero(mlx5_glue->dv_destroy_flow_matcher
 			  (mtd->transfer.any_matcher));
 	if (mtd->transfer.tbl)
-		claim_zero(flow_dv_tbl_resource_release(dev,
-							mtd->transfer.tbl));
+		flow_dv_tbl_resource_release(dev, mtd->transfer.tbl);
 	if (mtd->transfer.sfx_tbl)
-		claim_zero(flow_dv_tbl_resource_release(dev,
-							mtd->transfer.sfx_tbl));
+		flow_dv_tbl_resource_release(dev, mtd->transfer.sfx_tbl);
 	if (mtd->drop_actn)
 		claim_zero(mlx5_glue->destroy_flow_action(mtd->drop_actn));
 	rte_free(mtd);
