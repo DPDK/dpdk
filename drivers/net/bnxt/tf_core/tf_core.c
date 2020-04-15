@@ -7,8 +7,10 @@
 
 #include "tf_core.h"
 #include "tf_session.h"
+#include "tf_rm.h"
 #include "tf_msg.h"
 #include "tfp.h"
+#include "bitalloc.h"
 #include "bnxt.h"
 
 int
@@ -141,5 +143,83 @@ tf_open_session(struct tf                    *tfp,
 	return rc;
 
  cleanup_close:
+	tf_close_session(tfp);
 	return -EINVAL;
+}
+
+int
+tf_attach_session(struct tf *tfp __rte_unused,
+		  struct tf_attach_session_parms *parms __rte_unused)
+{
+#if (TF_SHARED == 1)
+	int rc;
+
+	if (tfp == NULL)
+		return -EINVAL;
+
+	/* - Open the shared memory for the attach_chan_name
+	 * - Point to the shared session for this Device instance
+	 * - Check that session is valid
+	 * - Attach to the firmware so it can record there is more
+	 *   than one client of the session.
+	 */
+
+	if (tfp->session) {
+		if (tfp->session->session_id.id != TF_SESSION_ID_INVALID) {
+			rc = tf_msg_session_attach(tfp,
+						   parms->ctrl_chan_name,
+						   parms->session_id);
+		}
+	}
+#endif /* TF_SHARED */
+	return -1;
+}
+
+int
+tf_close_session(struct tf *tfp)
+{
+	int rc;
+	int rc_close = 0;
+	struct tf_session *tfs;
+	union tf_session_id session_id;
+
+	if (tfp == NULL || tfp->session == NULL)
+		return -EINVAL;
+
+	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	if (tfs->session_id.id != TF_SESSION_ID_INVALID) {
+		rc = tf_msg_session_close(tfp);
+		if (rc) {
+			/* Log error */
+			PMD_DRV_LOG(ERR,
+				    "Message send failed, rc:%d\n",
+				    rc);
+		}
+
+		/* Update the ref_count */
+		tfs->ref_count--;
+	}
+
+	session_id = tfs->session_id;
+
+	/* Final cleanup as we're last user of the session */
+	if (tfs->ref_count == 0) {
+		tfp_free(tfp->session->core_data);
+		tfp_free(tfp->session);
+		tfp->session = NULL;
+	}
+
+	PMD_DRV_LOG(INFO,
+		    "Session closed, session_id:%d\n",
+		    session_id.id);
+
+	PMD_DRV_LOG(INFO,
+		    "domain:%d, bus:%d, device:%d, fw_session_id:%d\n",
+		    session_id.internal.domain,
+		    session_id.internal.bus,
+		    session_id.internal.device,
+		    session_id.internal.fw_session_id);
+
+	return rc_close;
 }

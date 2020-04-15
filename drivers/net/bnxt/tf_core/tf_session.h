@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "bitalloc.h"
 #include "tf_core.h"
 #include "tf_rm.h"
 

@@ -30,6 +30,34 @@ int tf_msg_session_open(struct tf *tfp,
 			uint8_t *fw_session_id);
 
 /**
+ * Sends session close request to Firmware
+ *
+ * [in] session
+ *   Pointer to session handle
+ *
+ * [in] fw_session_id
+ *   Pointer to the fw_session_id that is assigned to the session at
+ *   time of session open
+ *
+ * Returns:
+ *
+ */
+int tf_msg_session_attach(struct tf *tfp,
+			  char *ctrl_channel_name,
+			  uint8_t tf_fw_session_id);
+
+/**
+ * Sends session close request to Firmware
+ *
+ * [in] session
+ *   Pointer to session handle
+ *
+ * Returns:
+ *
+ */
+int tf_msg_session_close(struct tf *tfp);
+
+/**
  * Sends session query config request to TF Firmware
  */
 int tf_msg_session_qcfg(struct tf *tfp);
@@ -41,4 +69,18 @@ int tf_msg_session_hw_resc_qcaps(struct tf *tfp,
 				 enum tf_dir dir,
 				 struct tf_rm_hw_query *hw_query);
 
+/**
+ * Sends session HW resource allocation request to TF Firmware
+ */
+int tf_msg_session_hw_resc_alloc(struct tf *tfp,
+				 enum tf_dir dir,
+				 struct tf_rm_hw_alloc *hw_alloc,
+				 struct tf_rm_entry *hw_entry);
+
+/**
+ * Sends session HW resource free request to TF Firmware
+ */
+int tf_msg_session_hw_resc_free(struct tf *tfp,
+				enum tf_dir dir,
+				struct tf_rm_entry *hw_entry);
 #endif  /* _TF_MSG_H_ */

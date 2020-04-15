@@ -6,11 +6,6 @@
 #ifndef _TF_RESOURCES_H_
 #define _TF_RESOURCES_H_
 
-/*
- * Hardware specific MAX values
- * NOTE: Should really come from the chip_cfg.h in some MAX form or HCAPI
- */
-
 /** HW Resource types
  */
 enum tf_resource_type_hw {
@@ -42,5 +37,24 @@ enum tf_resource_type_hw {
 	TF_RESC_TYPE_HW_RANGE_ENTRY,
 	TF_RESC_TYPE_HW_LAG_ENTRY,
 	TF_RESC_TYPE_HW_MAX
+};
+
+/** HW Resource types
+ */
+enum tf_resource_type_sram {
+	TF_RESC_TYPE_SRAM_FULL_ACTION,
+	TF_RESC_TYPE_SRAM_MCG,
+	TF_RESC_TYPE_SRAM_ENCAP_8B,
+	TF_RESC_TYPE_SRAM_ENCAP_16B,
+	TF_RESC_TYPE_SRAM_ENCAP_64B,
+	TF_RESC_TYPE_SRAM_SP_SMAC,
+	TF_RESC_TYPE_SRAM_SP_SMAC_IPV4,
+	TF_RESC_TYPE_SRAM_SP_SMAC_IPV6,
+	TF_RESC_TYPE_SRAM_COUNTER_64B,
+	TF_RESC_TYPE_SRAM_NAT_SPORT,
+	TF_RESC_TYPE_SRAM_NAT_DPORT,
+	TF_RESC_TYPE_SRAM_NAT_S_IPV4,
+	TF_RESC_TYPE_SRAM_NAT_D_IPV4,
+	TF_RESC_TYPE_SRAM_MAX
 };
 #endif /* _TF_RESOURCES_H_ */
