@@ -331,6 +331,10 @@ int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context		*ulp_ctxt,
 		BNXT_TF_DBG(ERR, "Flow database has reached max flows\n");
 		return -ENOMEM;
 	}
+	if (flow_tbl->tail_index <= (flow_tbl->head_index + 1)) {
+		BNXT_TF_DBG(ERR, "Flow database has reached max resources\n");
+		return -ENOMEM;
+	}
 	*fid = flow_tbl->flow_tbl_stack[flow_tbl->head_index];
 	flow_tbl->head_index++;
 	ulp_flow_db_active_flow_set(flow_tbl, *fid, 1);
@@ -385,7 +389,7 @@ int32_t	ulp_flow_db_resource_add(struct bnxt_ulp_context	*ulp_ctxt,
 	}
 
 	/* check for max resource */
-	if ((flow_tbl->num_flows + 1) >= flow_tbl->tail_index) {
+	if ((flow_tbl->head_index + 1) >= flow_tbl->tail_index) {
 		BNXT_TF_DBG(ERR, "Flow db has reached max resources\n");
 		return -ENOMEM;
 	}
