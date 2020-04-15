@@ -51,6 +51,8 @@ enum bnxt_ulp_flow_db_tables {
 /* Structure for the flow database resource information. */
 struct bnxt_ulp_flow_db {
 	struct bnxt_ulp_flow_tbl	flow_tbl[BNXT_ULP_FLOW_TABLE_MAX];
+	uint16_t			*func_id_tbl;
+	uint32_t			func_id_tbl_size;
 };
 
 /* flow db resource params to add resources */
@@ -88,13 +90,15 @@ int32_t	ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt);
  *
  * ulp_ctxt [in] Ptr to ulp_context
  * tbl_idx [in] Specify it is regular or default flow
+ * func_id [in] The function id of the device.Valid only for regular flows.
  * fid [out] The index to the flow entry
  *
  * returns 0 on success and negative on failure.
  */
-int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context		*ulp_ctxt,
-			      enum bnxt_ulp_flow_db_tables	tbl_idx,
-			      uint32_t				*fid);
+int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context *ulp_ctxt,
+			      enum bnxt_ulp_flow_db_tables tbl_idx,
+			      uint16_t func_id,
+			      uint32_t *fid);
 
 /*
  * Allocate the flow database entry.
@@ -169,5 +173,41 @@ int32_t	ulp_flow_db_resource_get(struct bnxt_ulp_context	*ulp_ctxt,
  */
 int32_t	ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
 				uint32_t		idx);
+
+/*
+ * Flush all flows in the flow database that belong to a device function.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * tbl_idx [in] The index to table
+ *
+ * returns 0 on success or negative number on failure
+ */
+int32_t
+ulp_flow_db_function_flow_flush(struct bnxt_ulp_context *ulp_ctx,
+				uint16_t func_id);
+
+/*
+ * Flush all flows in the flow database that are associated with the session.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ *
+ * returns 0 on success or negative number on failure
+ */
+int32_t
+ulp_flow_db_session_flow_flush(struct bnxt_ulp_context *ulp_ctx);
+
+/*
+ * Check that flow id matches the function id or not
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * flow_db [in] Ptr to flow table
+ * func_id [in] The func_id to be set, for reset pass zero.
+ *
+ * returns true on success or false on failure
+ */
+bool
+ulp_flow_db_validate_flow_func(struct bnxt_ulp_context *ulp_ctx,
+			       uint32_t flow_id,
+			       uint32_t func_id);
 
 #endif /* _ULP_FLOW_DB_H_ */

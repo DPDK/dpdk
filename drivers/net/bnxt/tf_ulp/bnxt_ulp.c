@@ -659,10 +659,8 @@ int32_t
 bnxt_ulp_cntxt_ptr2_flow_db_set(struct bnxt_ulp_context	*ulp_ctx,
 				struct bnxt_ulp_flow_db	*flow_db)
 {
-	if (!ulp_ctx || !ulp_ctx->cfg_data) {
-		BNXT_TF_DBG(ERR, "Invalid ulp context data\n");
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
 		return -EINVAL;
-	}
 
 	ulp_ctx->cfg_data->flow_db = flow_db;
 	return 0;
@@ -672,10 +670,8 @@ bnxt_ulp_cntxt_ptr2_flow_db_set(struct bnxt_ulp_context	*ulp_ctx,
 struct bnxt_ulp_flow_db	*
 bnxt_ulp_cntxt_ptr2_flow_db_get(struct bnxt_ulp_context	*ulp_ctx)
 {
-	if (!ulp_ctx || !ulp_ctx->cfg_data) {
-		BNXT_TF_DBG(ERR, "Invalid ulp context data\n");
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
 		return NULL;
-	}
 
 	return ulp_ctx->cfg_data->flow_db;
 }

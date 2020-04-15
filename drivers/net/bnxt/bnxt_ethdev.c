@@ -4905,6 +4905,18 @@ bnxt_get_vnic_id(uint16_t port)
 	return vnic->fw_vnic_id;
 }
 
+uint16_t
+bnxt_get_fw_func_id(uint16_t port)
+{
+	struct rte_eth_dev *eth_dev;
+	struct bnxt *bp;
+
+	eth_dev = &rte_eth_devices[port];
+	bp = eth_dev->data->dev_private;
+
+	return bp->fw_fid;
+}
+
 static int bnxt_init_fw(struct bnxt *bp)
 {
 	uint16_t mtu;

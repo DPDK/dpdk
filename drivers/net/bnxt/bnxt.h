@@ -755,6 +755,7 @@ void bnxt_ulp_deinit(struct bnxt *bp);
 
 uint16_t bnxt_get_vnic_id(uint16_t port);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif);
+uint16_t bnxt_get_fw_func_id(uint16_t port);
 
 void bnxt_cancel_fc_thread(struct bnxt *bp);
 void bnxt_flow_cnt_alarm_cb(void *arg);

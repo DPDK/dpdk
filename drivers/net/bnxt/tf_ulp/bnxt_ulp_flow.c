@@ -125,6 +125,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	mapper_cparms.act_prop = &params.act_prop;
 	mapper_cparms.class_tid = class_id;
 	mapper_cparms.act_tid = act_tmpl;
+	mapper_cparms.func_id = bnxt_get_fw_func_id(dev->data->port_id);
 
 	/* call the ulp mapper to create the flow in the hardware */
 	ret = ulp_mapper_flow_create(ulp_ctx,
@@ -202,7 +203,8 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct bnxt_ulp_context *ulp_ctx;
-	uint32_t fid;
+	uint32_t flow_id;
+	uint16_t func_id;
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
@@ -213,9 +215,19 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	fid = (uint32_t)(uintptr_t)flow;
+	flow_id = (uint32_t)(uintptr_t)flow;
+	func_id = bnxt_get_fw_func_id(dev->data->port_id);
 
-	ret = ulp_mapper_flow_destroy(ulp_ctx, fid);
+	if (ulp_flow_db_validate_flow_func(ulp_ctx, flow_id, func_id) ==
+	    false) {
+		BNXT_TF_DBG(ERR, "Incorrect device params\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to destroy flow.");
+		return -EINVAL;
+	}
+
+	ret = ulp_mapper_flow_destroy(ulp_ctx, flow_id);
 	if (ret)
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -230,8 +242,9 @@ bnxt_ulp_flow_flush(struct rte_eth_dev *eth_dev,
 		    struct rte_flow_error *error)
 {
 	struct bnxt_ulp_context *ulp_ctx;
-	int32_t ret;
+	int32_t ret = 0;
 	struct bnxt *bp;
+	uint16_t func_id;
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (!ulp_ctx) {
@@ -244,10 +257,12 @@ bnxt_ulp_flow_flush(struct rte_eth_dev *eth_dev,
 	bp = eth_dev->data->dev_private;
 
 	/* Free the resources for the last device */
-	if (!ulp_ctx_deinit_allowed(bp))
-		return 0;
-
-	ret = ulp_flow_db_flush_flows(ulp_ctx, BNXT_ULP_REGULAR_FLOW_TABLE);
+	if (ulp_ctx_deinit_allowed(bp)) {
+		ret = ulp_flow_db_session_flow_flush(ulp_ctx);
+	} else if (bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctx)) {
+		func_id = bnxt_get_fw_func_id(eth_dev->data->port_id);
+		ret = ulp_flow_db_function_flow_flush(ulp_ctx, func_id);
+	}
 	if (ret)
 		rte_flow_error_set(error, ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,

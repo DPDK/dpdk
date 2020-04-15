@@ -210,6 +210,27 @@ ulp_flow_db_dealloc_resource(struct bnxt_ulp_flow_db *flow_db,
 }
 
 /*
+ * Helper function to add function id to the flow table
+ *
+ * flow_db [in] Ptr to flow table
+ * flow_id [in] The flow id of the flow
+ * func_id [in] The func_id to be set, for reset pass zero
+ *
+ * returns none
+ */
+static void
+ulp_flow_db_func_id_set(struct bnxt_ulp_flow_db *flow_db,
+			uint32_t flow_id,
+			uint32_t func_id)
+{
+	/* set the function id in the function table */
+	if (flow_id < flow_db->func_id_tbl_size)
+		flow_db->func_id_tbl[flow_id] = func_id;
+	else /* This should never happen */
+		BNXT_TF_DBG(ERR, "Invalid flow id, flowdb corrupt\n");
+}
+
+/*
  * Initialize the flow database. Memory is allocated in this
  * call and assigned to the flow database.
  *
@@ -241,7 +262,7 @@ int32_t	ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 	if (!flow_db) {
 		BNXT_TF_DBG(ERR,
 			    "Failed to allocate memory for flow table ptr\n");
-		goto error_free;
+		return -ENOMEM;
 	}
 
 	/* Attach the flow database to the ulp context. */
@@ -265,6 +286,17 @@ int32_t	ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 	if (ulp_flow_db_alloc_resource(flow_db, BNXT_ULP_DEFAULT_FLOW_TABLE))
 		goto error_free;
 
+	/* add 1 since we are not using index 0 for flow id */
+	flow_db->func_id_tbl_size = dparms->num_flows + 1;
+	/* Allocate the function Id table */
+	flow_db->func_id_tbl = rte_zmalloc("bnxt_ulp_flow_db_func_id_table",
+					   flow_db->func_id_tbl_size *
+					   sizeof(uint16_t), 0);
+	if (!flow_db->func_id_tbl) {
+		BNXT_TF_DBG(ERR,
+			    "Failed to allocate mem for flow table func id\n");
+		goto error_free;
+	}
 	/* All good so return. */
 	return 0;
 error_free:
@@ -297,6 +329,7 @@ int32_t	ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt)
 	/* Free up all the memory. */
 	ulp_flow_db_dealloc_resource(flow_db, BNXT_ULP_REGULAR_FLOW_TABLE);
 	ulp_flow_db_dealloc_resource(flow_db, BNXT_ULP_DEFAULT_FLOW_TABLE);
+	rte_free(flow_db->func_id_tbl);
 	rte_free(flow_db);
 
 	return 0;
@@ -311,12 +344,13 @@ int32_t	ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt)
  *
  * returns 0 on success and negative on failure.
  */
-int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context		*ulp_ctxt,
-			      enum bnxt_ulp_flow_db_tables	tbl_idx,
-			      uint32_t				*fid)
+int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context *ulp_ctxt,
+			      enum bnxt_ulp_flow_db_tables tbl_idx,
+			      uint16_t func_id,
+			      uint32_t *fid)
 {
-	struct bnxt_ulp_flow_db		*flow_db;
-	struct bnxt_ulp_flow_tbl	*flow_tbl;
+	struct bnxt_ulp_flow_db *flow_db;
+	struct bnxt_ulp_flow_tbl *flow_tbl;
 
 	*fid = 0; /* Initialize fid to invalid value */
 	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
@@ -338,6 +372,10 @@ int32_t ulp_flow_db_fid_alloc(struct bnxt_ulp_context		*ulp_ctxt,
 	*fid = flow_tbl->flow_tbl_stack[flow_tbl->head_index];
 	flow_tbl->head_index++;
 	ulp_flow_db_active_flow_set(flow_tbl, *fid, 1);
+
+	/* The function id update is only valid for regular flow table */
+	if (tbl_idx == BNXT_ULP_REGULAR_FLOW_TABLE)
+		ulp_flow_db_func_id_set(flow_db, *fid, func_id);
 
 	/* all good, return success */
 	return 0;
@@ -555,6 +593,8 @@ int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
 	}
 	flow_tbl->flow_tbl_stack[flow_tbl->head_index] = fid;
 	ulp_flow_db_active_flow_set(flow_tbl, fid, 0);
+	if (tbl_idx == BNXT_ULP_REGULAR_FLOW_TABLE)
+		ulp_flow_db_func_id_set(flow_db, fid, 0);
 
 	/* all good, return success */
 	return 0;
@@ -636,19 +676,29 @@ ulp_flow_db_next_entry_get(struct bnxt_ulp_flow_tbl	*flowtbl,
 			   uint32_t			*fid)
 {
 	uint32_t	lfid = *fid;
-	uint32_t	idx;
+	uint32_t	idx, s_idx, mod_fid;
 	uint64_t	bs;
 
 	do {
+		/* increment the flow id to find the next valid flow id */
 		lfid++;
 		if (lfid >= flowtbl->num_flows)
 			return -ENOENT;
 		idx = lfid / ULP_INDEX_BITMAP_SIZE;
+		mod_fid = lfid % ULP_INDEX_BITMAP_SIZE;
+		s_idx = idx;
 		while (!(bs = flowtbl->active_flow_tbl[idx])) {
 			idx++;
 			if ((idx * ULP_INDEX_BITMAP_SIZE) >= flowtbl->num_flows)
 				return -ENOENT;
 		}
+		/*
+		 * remove the previous bits in the bitset bs to find the
+		 * next non zero bit in the bitset. This needs to be done
+		 * only if the idx is same as he one you started.
+		 */
+		if (s_idx == idx)
+			bs &= (-1UL >> mod_fid);
 		lfid = (idx * ULP_INDEX_BITMAP_SIZE) + __builtin_clzl(bs);
 		if (*fid >= lfid) {
 			BNXT_TF_DBG(ERR, "Flow Database is corrupt\n");
@@ -688,7 +738,90 @@ int32_t	ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
 	}
 	flow_tbl = &flow_db->flow_tbl[idx];
 	while (!ulp_flow_db_next_entry_get(flow_tbl, &fid))
-		(void)ulp_mapper_resources_free(ulp_ctx, fid, idx);
+		ulp_mapper_resources_free(ulp_ctx, fid, idx);
 
 	return 0;
+}
+
+/*
+ * Flush all flows in the flow database that belong to a device function.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * tbl_idx [in] The index to table
+ *
+ * returns 0 on success or negative number on failure
+ */
+int32_t
+ulp_flow_db_function_flow_flush(struct bnxt_ulp_context *ulp_ctx,
+				uint16_t func_id)
+{
+	uint32_t flow_id = 0;
+	struct bnxt_ulp_flow_db *flow_db;
+	struct bnxt_ulp_flow_tbl *flow_tbl;
+
+	if (!ulp_ctx || !func_id) {
+		BNXT_TF_DBG(ERR, "Invalid Argument\n");
+		return -EINVAL;
+	}
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctx);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Flow database not found\n");
+		return -EINVAL;
+	}
+	flow_tbl = &flow_db->flow_tbl[BNXT_ULP_REGULAR_FLOW_TABLE];
+	while (!ulp_flow_db_next_entry_get(flow_tbl, &flow_id)) {
+		if (flow_db->func_id_tbl[flow_id] == func_id)
+			ulp_mapper_resources_free(ulp_ctx, flow_id,
+						  BNXT_ULP_REGULAR_FLOW_TABLE);
+	}
+
+	return 0;
+}
+
+/*
+ * Flush all flows in the flow database that are associated with the session.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ *
+ * returns 0 on success or negative number on failure
+ */
+int32_t
+ulp_flow_db_session_flow_flush(struct bnxt_ulp_context *ulp_ctx)
+{
+	/*
+	 * TBD: Tf core implementation of FW session flush shall change this
+	 * implementation.
+	 */
+	return ulp_flow_db_flush_flows(ulp_ctx, BNXT_ULP_REGULAR_FLOW_TABLE);
+}
+
+/*
+ * Check that flow id matches the function id or not
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * flow_db [in] Ptr to flow table
+ * func_id [in] The func_id to be set, for reset pass zero.
+ *
+ * returns true on success or false on failure
+ */
+bool
+ulp_flow_db_validate_flow_func(struct bnxt_ulp_context *ulp_ctx,
+			       uint32_t flow_id,
+			       uint32_t func_id)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctx);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Flow database not found\n");
+		return false;
+	}
+
+	/* set the function id in the function table */
+	if (flow_id < flow_db->func_id_tbl_size && func_id &&
+	    flow_db->func_id_tbl[flow_id] == func_id)
+		return true;
+
+	return false;
 }

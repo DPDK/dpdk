@@ -46,6 +46,7 @@ struct bnxt_ulp_mapper_create_parms {
 	struct ulp_rte_act_prop		*act_prop;
 	uint32_t			class_tid;
 	uint32_t			act_tid;
+	uint16_t			func_id;
 };
 
 /*

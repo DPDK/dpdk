@@ -461,7 +461,6 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 	default:
 		return -EINVAL;
 	}
-
 	return 0;
 }
 
@@ -1481,6 +1480,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	 */
 	rc = ulp_flow_db_fid_alloc(ulp_ctx,
 				   BNXT_ULP_REGULAR_FLOW_TABLE,
+				   cparms->func_id,
 				   &parms.fid);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
