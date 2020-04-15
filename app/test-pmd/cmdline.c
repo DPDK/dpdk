@@ -2338,8 +2338,10 @@ cmd_config_rss_parsed(void *parsed_result,
 				i, -diag, strerror(-diag));
 		}
 	}
-	if (all_updated && !use_default)
+	if (all_updated && !use_default) {
 		rss_hf = rss_conf.rss_hf;
+		printf("rss_hf %#"PRIx64"\n", rss_hf);
+	}
 }
 
 cmdline_parse_token_string_t cmd_config_rss_port =

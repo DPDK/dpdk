@@ -108,6 +108,8 @@ const struct rss_type_info rss_type_table[] = {
 	{ "l3-dst-only", ETH_RSS_L3_DST_ONLY },
 	{ "l4-src-only", ETH_RSS_L4_SRC_ONLY },
 	{ "l4-dst-only", ETH_RSS_L4_DST_ONLY },
+	{ "esp", ETH_RSS_ESP },
+	{ "ah", ETH_RSS_AH },
 	{ NULL, 0 },
 };
 
