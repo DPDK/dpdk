@@ -1411,26 +1411,23 @@ ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid)
  */
 int32_t
 ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
-		       uint32_t app_priority __rte_unused,
-		       struct ulp_rte_hdr_bitmap *hdr_bitmap __rte_unused,
-		       struct ulp_rte_hdr_field *hdr_field,
-		       struct ulp_rte_act_bitmap *act_bitmap,
-		       struct ulp_rte_act_prop *act_prop,
-		       uint32_t class_tid,
-		       uint32_t act_tid,
-		       uint32_t *flow_id)
+		       struct bnxt_ulp_mapper_create_parms *cparms,
+		       uint32_t *flowid)
 {
-	struct ulp_regfile		regfile;
-	struct bnxt_ulp_mapper_parms	parms;
-	struct bnxt_ulp_device_params	*device_params;
-	int32_t				rc, trc;
+	struct bnxt_ulp_device_params *device_params;
+	struct bnxt_ulp_mapper_parms parms;
+	struct ulp_regfile regfile;
+	int32_t	 rc, trc;
+
+	if (!ulp_ctx || !cparms)
+		return -EINVAL;
 
 	/* Initialize the parms structure */
 	memset(&parms, 0, sizeof(parms));
-	parms.act_prop = act_prop;
-	parms.act_bitmap = act_bitmap;
+	parms.act_prop = cparms->act_prop;
+	parms.act_bitmap = cparms->act;
 	parms.regfile = &regfile;
-	parms.hdr_field = hdr_field;
+	parms.hdr_field = cparms->hdr_field;
 	parms.tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
 	parms.ulp_ctx = ulp_ctx;
 
@@ -1441,7 +1438,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	/* Get the action table entry from device id and act context id */
-	parms.act_tid = act_tid;
+	parms.act_tid = cparms->act_tid;
 	parms.atbls = ulp_mapper_action_tbl_list_get(parms.dev_id,
 						     parms.act_tid,
 						     &parms.num_atbls);
@@ -1452,7 +1449,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	/* Get the class table entry from device id and act context id */
-	parms.class_tid = class_tid;
+	parms.class_tid = cparms->class_tid;
 	parms.ctbls = ulp_mapper_class_tbl_list_get(parms.dev_id,
 						    parms.class_tid,
 						    &parms.num_ctbls);
@@ -1506,7 +1503,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 		goto flow_error;
 	}
 
-	*flow_id = parms.fid;
+	*flowid = parms.fid;
 
 	return rc;
 

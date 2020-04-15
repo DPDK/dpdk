@@ -67,11 +67,11 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 		     const struct rte_flow_action	actions[],
 		     struct rte_flow_error		*error)
 {
+	struct bnxt_ulp_mapper_create_parms mapper_cparms = { 0 };
 	struct ulp_rte_parser_params params;
 	struct bnxt_ulp_context *ulp_ctx = NULL;
 	uint32_t class_id, act_tmpl;
 	struct rte_flow *flow_id;
-	uint32_t app_priority;
 	uint32_t fid;
 	uint8_t	*buffer;
 	uint32_t vnic;
@@ -125,16 +125,17 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
-	app_priority = attr->priority;
+	mapper_cparms.app_priority = attr->priority;
+	mapper_cparms.hdr_bitmap = &params.hdr_bitmap;
+	mapper_cparms.hdr_field = params.hdr_field;
+	mapper_cparms.act = &params.act_bitmap;
+	mapper_cparms.act_prop = &params.act_prop;
+	mapper_cparms.class_tid = class_id;
+	mapper_cparms.act_tid = act_tmpl;
+
 	/* call the ulp mapper to create the flow in the hardware */
 	ret = ulp_mapper_flow_create(ulp_ctx,
-				     app_priority,
-				     &params.hdr_bitmap,
-				     params.hdr_field,
-				     &params.act_bitmap,
-				     &params.act_prop,
-				     class_id,
-				     act_tmpl,
+				     &mapper_cparms,
 				     &fid);
 	if (!ret) {
 		flow_id = (struct rte_flow *)((uintptr_t)fid);
