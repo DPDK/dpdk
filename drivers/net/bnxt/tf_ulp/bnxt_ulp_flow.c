@@ -262,11 +262,42 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/* Function to destroy the rte flows. */
+static int32_t
+bnxt_ulp_flow_flush(struct rte_eth_dev *eth_dev,
+		    struct rte_flow_error *error)
+{
+	struct bnxt_ulp_context *ulp_ctx;
+	int32_t ret;
+	struct bnxt *bp;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
+	if (!ulp_ctx) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to flush flow.");
+		return -EINVAL;
+	}
+	bp = eth_dev->data->dev_private;
+
+	/* Free the resources for the last device */
+	if (!ulp_ctx_deinit_allowed(bp))
+		return 0;
+
+	ret = ulp_flow_db_flush_flows(ulp_ctx, BNXT_ULP_REGULAR_FLOW_TABLE);
+	if (ret)
+		rte_flow_error_set(error, ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to flush flow.");
+	return ret;
+}
+
 const struct rte_flow_ops bnxt_ulp_rte_flow_ops = {
 	.validate = bnxt_ulp_flow_validate,
 	.create = bnxt_ulp_flow_create,
 	.destroy = bnxt_ulp_flow_destroy,
-	.flush = NULL,
+	.flush = bnxt_ulp_flow_flush,
 	.query = NULL,
 	.isolate = NULL
 };

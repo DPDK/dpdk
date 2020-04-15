@@ -517,6 +517,9 @@ bnxt_ulp_deinit(struct bnxt *bp)
 	if (!session)
 		return;
 
+	/* clean up regular flows */
+	ulp_flow_db_flush_flows(&bp->ulp_ctx, BNXT_ULP_REGULAR_FLOW_TABLE);
+
 	/* cleanup the eem table scope */
 	ulp_eem_tbl_scope_deinit(bp, &bp->ulp_ctx);
 

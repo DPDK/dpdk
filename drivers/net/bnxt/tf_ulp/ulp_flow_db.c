@@ -555,3 +555,72 @@ int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
 	/* all good, return success */
 	return 0;
 }
+
+/** Get the flow database entry iteratively
+ *
+ * flow_tbl [in] Ptr to flow table
+ * fid [in/out] The index to the flow entry
+ *
+ * returns 0 on success and negative on failure.
+ */
+static int32_t
+ulp_flow_db_next_entry_get(struct bnxt_ulp_flow_tbl	*flowtbl,
+			   uint32_t			*fid)
+{
+	uint32_t	lfid = *fid;
+	uint32_t	idx;
+	uint64_t	bs;
+
+	do {
+		lfid++;
+		if (lfid >= flowtbl->num_flows)
+			return -ENOENT;
+		idx = lfid / ULP_INDEX_BITMAP_SIZE;
+		while (!(bs = flowtbl->active_flow_tbl[idx])) {
+			idx++;
+			if ((idx * ULP_INDEX_BITMAP_SIZE) >= flowtbl->num_flows)
+				return -ENOENT;
+		}
+		lfid = (idx * ULP_INDEX_BITMAP_SIZE) + __builtin_clzl(bs);
+		if (*fid >= lfid) {
+			BNXT_TF_DBG(ERR, "Flow Database is corrupt\n");
+			return -ENOENT;
+		}
+	} while (!ulp_flow_db_active_flow_is_set(flowtbl, lfid));
+
+	/* all good, return success */
+	*fid = lfid;
+	return 0;
+}
+
+/*
+ * Flush all flows in the flow database.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * tbl_idx [in] The index to table
+ *
+ * returns 0 on success or negative number on failure
+ */
+int32_t	ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
+				uint32_t		idx)
+{
+	uint32_t			fid = 0;
+	struct bnxt_ulp_flow_db		*flow_db;
+	struct bnxt_ulp_flow_tbl	*flow_tbl;
+
+	if (!ulp_ctx) {
+		BNXT_TF_DBG(ERR, "Invalid Argument\n");
+		return -EINVAL;
+	}
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctx);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Flow database not found\n");
+		return -EINVAL;
+	}
+	flow_tbl = &flow_db->flow_tbl[idx];
+	while (!ulp_flow_db_next_entry_get(flow_tbl, &fid))
+		(void)ulp_mapper_resources_free(ulp_ctx, fid, idx);
+
+	return 0;
+}

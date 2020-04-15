@@ -142,4 +142,15 @@ int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
 			     enum bnxt_ulp_flow_db_tables	tbl_idx,
 			     uint32_t				fid);
 
+/*
+ * Flush all flows in the flow database.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * tbl_idx [in] The index to table
+ *
+ * returns 0 on success or negative number on failure
+ */
+int32_t	ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
+				uint32_t		idx);
+
 #endif /* _ULP_FLOW_DB_H_ */
