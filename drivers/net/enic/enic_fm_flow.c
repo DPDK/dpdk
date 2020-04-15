@@ -1086,11 +1086,10 @@ enic_fm_copy_action(struct enic_flowman *fm,
 {
 	enum {
 		FATE = 1 << 0,
-		MARK = 1 << 1,
+		DECAP = 1 << 1,
 		PASSTHRU = 1 << 2,
 		COUNT = 1 << 3,
 		ENCAP = 1 << 4,
-		DECAP = 1 << 5,
 	};
 	struct fm_tcam_match_entry *fmt;
 	struct fm_action_op fm_op;
@@ -1141,9 +1140,6 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			const struct rte_flow_action_mark *mark =
 				actions->conf;
 
-			if (overlap & MARK)
-				goto unsupported;
-			overlap |= MARK;
 			if (mark->id >= ENIC_MAGIC_FILTER_ID - 1)
 				return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1157,9 +1153,6 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_FLAG: {
-			if (overlap & MARK)
-				goto unsupported;
-			overlap |= MARK;
 			/* ENIC_MAGIC_FILTER_ID is reserved for flagging */
 			memset(&fm_op, 0, sizeof(fm_op));
 			fm_op.fa_op = FMOP_MARK;
