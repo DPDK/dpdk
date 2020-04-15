@@ -699,6 +699,13 @@ F: drivers/net/ice/
 F: doc/guides/nics/ice.rst
 F: doc/guides/nics/features/ice.ini
 
+Intel igc
+M: Alvin Zhang <alvinx.zhang@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
+F: drivers/net/igc/
+F: doc/guides/nics/igc.rst
+F: doc/guides/nics/features/igc.ini
+
 Intel ipn3ke
 M: Rosen Xu <rosen.xu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel

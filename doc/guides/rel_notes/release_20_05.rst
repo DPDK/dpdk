@@ -135,6 +135,11 @@ New Features
 
   * Added support for intel-ipsec-mb version 0.54.
 
+* **Added a new driver for Intel Foxville I225 devices.**
+
+  Added the new ``igc`` net driver for Intel Foxville I225 devices. See the
+  :doc:`../nics/igc` NIC guide for more details on this new driver.
+
 * **Added handling of mixed crypto algorithms in QAT PMD for GEN2.**
 
   Enabled handling of mixed algorithms in encrypted digest hash-cipher

@@ -32,6 +32,7 @@ Network Interface Controller Drivers
     i40e
     ice
     igb
+    igc
     ionic
     ipn3ke
     ixgbe
