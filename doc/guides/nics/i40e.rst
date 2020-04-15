@@ -44,6 +44,7 @@ Features of the i40e PMD are:
 - Queue region configuration
 - Virtual Function Port Representors
 - Malicious Device Drive event catch and notify
+- Generic flow API
 
 Prerequisites
 -------------
@@ -568,6 +569,42 @@ details please refer to :doc:`../testpmd_app_ug/index`.
    testpmd> set port (port_id) queue-region UP (value) region_id (value)
    testpmd> set port (port_id) queue-region flush (on|off)
    testpmd> show port (port_id) queue-region
+
+Generic flow API
+~~~~~~~~~~~~~~~~~~~
+
+- ``RSS Flow``
+
+  RSS Flow supports to set hash input set, hash function, enable hash
+  and configure queue region.
+  For example:
+  Configure queue region as queue 0, 1, 2, 3.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern end actions rss types end \
+      queues 0 1 2 3 end / end
+
+  Enable hash and set input set for ipv4-tcp.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end \
+      actions rss types ipv4-tcp l3-src-only end queues end / end
+
+  Set symmetric hash enable for flow type ipv4-tcp.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end \
+      actions rss types ipv4-tcp end queues end func symmetric_toeplitz / end
+
+  Set hash function as simple xor.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern end actions rss types end \
+      queues end func simple_xor / end
 
 Limitations or Known issues
 ---------------------------

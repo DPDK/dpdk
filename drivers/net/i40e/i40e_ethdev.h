@@ -192,6 +192,9 @@ enum i40e_flxpld_layer_idx {
 #define I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_MASK  \
 	I40E_MASK(0xFFFF, I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT)
 
+#define I40E_RSS_TYPE_NONE           0ULL
+#define I40E_RSS_TYPE_INVALID        1ULL
+
 #define I40E_INSET_NONE            0x00000000000000000ULL
 
 /* bit0 ~ bit 7 */
@@ -754,6 +757,11 @@ struct i40e_queue_regions {
 	struct i40e_queue_region_info region[I40E_REGION_MAX_INDEX + 1];
 };
 
+struct i40e_rss_pattern_info {
+	uint8_t action_flag;
+	uint64_t types;
+};
+
 /* Tunnel filter number HW supports */
 #define I40E_MAX_TUNNEL_FILTER_NUM 400
 
@@ -973,6 +981,15 @@ struct i40e_rte_flow_rss_conf {
 		     I40E_VFQF_HKEY_MAX_INDEX : I40E_PFQF_HKEY_MAX_INDEX + 1) *
 		    sizeof(uint32_t)]; /* Hash key. */
 	uint16_t queue[I40E_MAX_Q_PER_TC]; /**< Queues indices to use. */
+	bool valid; /* Check if it's valid */
+};
+
+TAILQ_HEAD(i40e_rss_conf_list, i40e_rss_filter);
+
+/* RSS filter list structure */
+struct i40e_rss_filter {
+	TAILQ_ENTRY(i40e_rss_filter) next;
+	struct i40e_rte_flow_rss_conf rss_filter_info;
 };
 
 struct i40e_vf_msg_cfg {
@@ -1043,7 +1060,8 @@ struct i40e_pf {
 	struct i40e_fdir_info fdir; /* flow director info */
 	struct i40e_ethertype_rule ethertype; /* Ethertype filter rule */
 	struct i40e_tunnel_rule tunnel; /* Tunnel filter rule */
-	struct i40e_rte_flow_rss_conf rss_info; /* rss info */
+	struct i40e_rte_flow_rss_conf rss_info; /* RSS info */
+	struct i40e_rss_conf_list rss_config_list; /* RSS rule list */
 	struct i40e_queue_regions queue_region; /* queue region info */
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
 	struct i40e_mirror_rule_list mirror_list;
@@ -1343,8 +1361,6 @@ int i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len);
 int i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size);
 int i40e_rss_conf_init(struct i40e_rte_flow_rss_conf *out,
 		       const struct rte_flow_action_rss *in);
-int i40e_action_rss_same(const struct rte_flow_action_rss *comp,
-			 const struct rte_flow_action_rss *with);
 int i40e_config_rss_filter(struct i40e_pf *pf,
 		struct i40e_rte_flow_rss_conf *conf, bool add);
 int i40e_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params);

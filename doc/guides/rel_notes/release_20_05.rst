@@ -96,6 +96,8 @@ New Features
   Updated i40e PMD with new features and improvements, including:
 
   * Enable MAC address as FDIR input set for ipv4-other, ipv4-udp and ipv4-tcp.
+  * Added support for RSS using L3/L4 source/destination only.
+  * Added support for setting hash function in rte flow.
 
 * **Updated the Intel iavf driver.**
 
