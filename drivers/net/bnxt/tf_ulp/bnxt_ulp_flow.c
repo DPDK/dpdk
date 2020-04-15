@@ -232,10 +232,40 @@ parse_error:
 	return -EINVAL;
 }
 
+/* Function to destroy the rte flow. */
+static int
+bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
+		      struct rte_flow *flow,
+		      struct rte_flow_error *error)
+{
+	int ret = 0;
+	struct bnxt_ulp_context *ulp_ctx;
+	uint32_t fid;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
+	if (!ulp_ctx) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to destroy flow.");
+		return -EINVAL;
+	}
+
+	fid = (uint32_t)(uintptr_t)flow;
+
+	ret = ulp_mapper_flow_destroy(ulp_ctx, fid);
+	if (ret)
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to destroy flow.");
+
+	return ret;
+}
+
 const struct rte_flow_ops bnxt_ulp_rte_flow_ops = {
 	.validate = bnxt_ulp_flow_validate,
 	.create = bnxt_ulp_flow_create,
-	.destroy = NULL,
+	.destroy = bnxt_ulp_flow_destroy,
 	.flush = NULL,
 	.query = NULL,
 	.isolate = NULL
