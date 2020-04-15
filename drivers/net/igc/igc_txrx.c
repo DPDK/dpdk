@@ -836,7 +836,7 @@ static uint8_t default_rss_key[40] = {
 	0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
 };
 
-static void
+void
 igc_rss_disable(struct rte_eth_dev *dev)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
@@ -915,6 +915,137 @@ igc_rss_configure(struct rte_eth_dev *dev)
 	if (rss_conf.rss_key == NULL)
 		rss_conf.rss_key = default_rss_key;
 	igc_hw_rss_hash_set(hw, &rss_conf);
+}
+
+int
+igc_del_rss_filter(struct rte_eth_dev *dev)
+{
+	struct igc_rss_filter *rss_filter = IGC_DEV_PRIVATE_RSS_FILTER(dev);
+
+	if (rss_filter->enable) {
+		/* recover default RSS configuration */
+		igc_rss_configure(dev);
+
+		/* disable RSS logic and clear filter data */
+		igc_rss_disable(dev);
+		memset(rss_filter, 0, sizeof(*rss_filter));
+		return 0;
+	}
+	PMD_DRV_LOG(ERR, "filter not exist!");
+	return -ENOENT;
+}
+
+/* Initiate the filter structure by the structure of rte_flow_action_rss */
+void
+igc_rss_conf_set(struct igc_rss_filter *out,
+		const struct rte_flow_action_rss *rss)
+{
+	out->conf.func = rss->func;
+	out->conf.level = rss->level;
+	out->conf.types = rss->types;
+
+	if (rss->key_len == sizeof(out->key)) {
+		memcpy(out->key, rss->key, rss->key_len);
+		out->conf.key = out->key;
+		out->conf.key_len = rss->key_len;
+	} else {
+		out->conf.key = NULL;
+		out->conf.key_len = 0;
+	}
+
+	if (rss->queue_num <= IGC_RSS_RDT_SIZD) {
+		memcpy(out->queue, rss->queue,
+			sizeof(*out->queue) * rss->queue_num);
+		out->conf.queue = out->queue;
+		out->conf.queue_num = rss->queue_num;
+	} else {
+		out->conf.queue = NULL;
+		out->conf.queue_num = 0;
+	}
+}
+
+int
+igc_add_rss_filter(struct rte_eth_dev *dev, struct igc_rss_filter *rss)
+{
+	struct rte_eth_rss_conf rss_conf = {
+		.rss_key = rss->conf.key_len ?
+			(void *)(uintptr_t)rss->conf.key : NULL,
+		.rss_key_len = rss->conf.key_len,
+		.rss_hf = rss->conf.types,
+	};
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_rss_filter *rss_filter = IGC_DEV_PRIVATE_RSS_FILTER(dev);
+	uint32_t i, j;
+
+	/* check RSS type is valid */
+	if ((rss_conf.rss_hf & IGC_RSS_OFFLOAD_ALL) == 0) {
+		PMD_DRV_LOG(ERR,
+			"RSS type(0x%" PRIx64 ") error!, only 0x%" PRIx64
+			" been supported", rss_conf.rss_hf,
+			(uint64_t)IGC_RSS_OFFLOAD_ALL);
+		return -EINVAL;
+	}
+
+	/* check queue count is not zero */
+	if (!rss->conf.queue_num) {
+		PMD_DRV_LOG(ERR, "Queue number should not be 0!");
+		return -EINVAL;
+	}
+
+	/* check queue id is valid */
+	for (i = 0; i < rss->conf.queue_num; i++)
+		if (rss->conf.queue[i] >= dev->data->nb_rx_queues) {
+			PMD_DRV_LOG(ERR, "Queue id %u is invalid!",
+					rss->conf.queue[i]);
+			return -EINVAL;
+		}
+
+	/* only support one filter */
+	if (rss_filter->enable) {
+		PMD_DRV_LOG(ERR, "Only support one RSS filter!");
+		return -ENOTSUP;
+	}
+	rss_filter->enable = 1;
+
+	igc_rss_conf_set(rss_filter, &rss->conf);
+
+	/* Fill in redirection table. */
+	for (i = 0, j = 0; i < IGC_RSS_RDT_SIZD; i++, j++) {
+		union igc_rss_reta_reg reta;
+		uint16_t q_idx, reta_idx;
+
+		if (j == rss->conf.queue_num)
+			j = 0;
+		q_idx = rss->conf.queue[j];
+		reta_idx = i % sizeof(reta);
+		reta.bytes[reta_idx] = q_idx;
+		if (reta_idx == sizeof(reta) - 1)
+			IGC_WRITE_REG_LE_VALUE(hw,
+				IGC_RETA(i / sizeof(reta)), reta.dword);
+	}
+
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = default_rss_key;
+	igc_hw_rss_hash_set(hw, &rss_conf);
+	return 0;
+}
+
+void
+igc_clear_rss_filter(struct rte_eth_dev *dev)
+{
+	struct igc_rss_filter *rss_filter = IGC_DEV_PRIVATE_RSS_FILTER(dev);
+
+	if (!rss_filter->enable) {
+		PMD_DRV_LOG(WARNING, "RSS filter not enabled!");
+		return;
+	}
+
+	/* recover default RSS configuration */
+	igc_rss_configure(dev);
+
+	/* disable RSS logic and clear filter data */
+	igc_rss_disable(dev);
+	memset(rss_filter, 0, sizeof(*rss_filter));
 }
 
 static int

@@ -75,3 +75,47 @@ outer VLAN to 0x9100:
    testpmd> vlan set strip off 0
    testpmd> vlan set extend on 0
    testpmd> vlan set outer tpid 0x9100 0
+
+
+Flow Director
+~~~~~~~~~~~~~
+
+The Flow Director works in receive mode to identify specific flows or sets of flows and route
+them to specific queues.
+
+The Flow Director filters includes the following types:
+
+- ether-type filter
+- 2-tuple filter(destination L4 protocol and destination L4 port)
+- TCP SYN filter
+- RSS filter
+
+Start ``testpmd``:
+
+.. code-block:: console
+
+   ./testpmd -l 4-8 -- i --rxq=4 --txq=4 --pkt-filter-mode=perfect --disable-rss
+
+Add a rule to direct packet whose ``ether-type=0x801`` to queue 1:
+
+.. code-block:: console
+
+   testpmd> flow create 0 ingress pattern eth type is 0x801 / end actions queue index 1 / end
+
+Add a rule to direct packet whose ``ip-protocol=0x6(TCP), tcp_port=0x80`` to queue 1:
+
+.. code-block:: console
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 proto is 6 / tcp dst is 0x80 / end actions queue index 1 / end
+
+Add a rule to direct packet whose ``ip-protocol=0x6(TCP), SYN flag is set`` to queue 1:
+
+.. code-block:: console
+
+   testpmd> flow validate 0 ingress pattern tcp flags spec 0x02 flags mask 0x02 / end actions queue index 1 / end
+
+Add a rule to enable ipv4-udp RSS:
+
+.. code-block:: console
+
+   testpmd> flow create 0 ingress pattern end actions rss types ipv4-udp end / end

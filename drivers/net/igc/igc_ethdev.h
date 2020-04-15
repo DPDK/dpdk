@@ -90,6 +90,19 @@ extern "C" {
 	ETH_RSS_IPV6_TCP_EX        | \
 	ETH_RSS_IPV6_UDP_EX)
 
+#define IGC_MAX_ETQF_FILTERS		3	/* etqf(3) is used for 1588 */
+#define IGC_ETQF_FILTER_1588		3
+#define IGC_ETQF_QUEUE_SHIFT		16
+#define IGC_ETQF_QUEUE_MASK		(7u << IGC_ETQF_QUEUE_SHIFT)
+
+#define IGC_MAX_NTUPLE_FILTERS		8
+#define IGC_NTUPLE_MAX_PRI		7
+
+#define IGC_SYN_FILTER_ENABLE		0x01	/* syn filter enable field */
+#define IGC_SYN_FILTER_QUEUE_SHIFT	1	/* syn filter queue field */
+#define IGC_SYN_FILTER_QUEUE	0x0000000E	/* syn filter queue field */
+#define IGC_RFCTL_SYNQFP	0x00080000	/* SYNQFP in RFCTL register */
+
 /* structure for interrupt relative data */
 struct igc_interrupt {
 	uint32_t flags;
@@ -125,6 +138,79 @@ struct igc_vfta {
 	uint32_t vfta[IGC_VFTA_SIZE];
 };
 
+/* ethertype filter structure */
+struct igc_ethertype_filter {
+	uint16_t ether_type;
+	uint16_t queue;
+};
+
+/* Structure of ntuple filter info. */
+struct igc_ntuple_info {
+	uint16_t dst_port;
+	uint8_t proto;		/* l4 protocol. */
+
+	/*
+	 * the packet matched above 2tuple and contain any set bit will hit
+	 * this filter.
+	 */
+	uint8_t tcp_flags;
+
+	/*
+	 * seven levels (001b-111b), 111b is highest, used when more than one
+	 * filter matches.
+	 */
+	uint8_t priority;
+	uint8_t dst_port_mask:1, /* if mask is 1b, do compare dst port. */
+		proto_mask:1;    /* if mask is 1b, do compare protocol. */
+};
+
+/* Structure of n-tuple filter */
+struct igc_ntuple_filter {
+	RTE_STD_C11
+	union {
+		uint64_t hash_val;
+		struct igc_ntuple_info tuple_info;
+	};
+
+	uint8_t queue;
+};
+
+/* Structure of TCP SYN filter */
+struct igc_syn_filter {
+	uint8_t queue;
+
+	uint8_t hig_pri:1,	/* 1 - higher priority than other filters, */
+				/* 0 - lower priority. */
+		enable:1;	/* 1-enable; 0-disable */
+};
+
+/* Structure to store RTE flow RSS configure. */
+struct igc_rss_filter {
+	struct rte_flow_action_rss conf; /* RSS parameters. */
+	uint8_t key[IGC_HKEY_MAX_INDEX * sizeof(uint32_t)]; /* Hash key. */
+	uint16_t queue[IGC_RSS_RDT_SIZD];/* Queues indices to use. */
+	uint8_t enable;	/* 1-enabled, 0-disabled */
+};
+
+/* Feature filter types */
+enum igc_filter_type {
+	IGC_FILTER_TYPE_ETHERTYPE,
+	IGC_FILTER_TYPE_NTUPLE,
+	IGC_FILTER_TYPE_SYN,
+	IGC_FILTER_TYPE_HASH
+};
+
+/* Structure to store flow */
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) node;
+	enum igc_filter_type filter_type;
+	RTE_STD_C11
+	char filter[0];		/* filter data */
+};
+
+/* Flow list header */
+TAILQ_HEAD(igc_flow_list, rte_flow);
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -138,6 +224,12 @@ struct igc_adapter {
 	struct igc_interrupt	intr;
 	struct igc_vfta	shadow_vfta;
 	bool		stopped;
+
+	struct igc_ethertype_filter ethertype_filters[IGC_MAX_ETQF_FILTERS];
+	struct igc_ntuple_filter ntuple_filters[IGC_MAX_NTUPLE_FILTERS];
+	struct igc_syn_filter syn_filter;
+	struct igc_rss_filter rss_filter;
+	struct igc_flow_list flow_list;
 };
 
 #define IGC_DEV_PRIVATE(_dev)	((_dev)->data->dev_private)
@@ -156,6 +248,12 @@ struct igc_adapter {
 
 #define IGC_DEV_PRIVATE_VFTA(_dev) \
 	(&((struct igc_adapter *)(_dev)->data->dev_private)->shadow_vfta)
+
+#define IGC_DEV_PRIVATE_RSS_FILTER(_dev) \
+	(&((struct igc_adapter *)(_dev)->data->dev_private)->rss_filter)
+
+#define IGC_DEV_PRIVATE_FLOW_LIST(_dev) \
+	(&((struct igc_adapter *)(_dev)->data->dev_private)->flow_list)
 
 static inline void
 igc_read_reg_check_set_bits(struct igc_hw *hw, uint32_t reg, uint32_t bits)

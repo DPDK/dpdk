@@ -34,5 +34,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_phy.c
 SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_logs.c
 SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_txrx.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_filter.c
+SRCS-$(CONFIG_RTE_LIBRTE_IGC_PMD) += igc_flow.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

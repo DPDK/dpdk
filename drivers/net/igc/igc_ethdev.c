@@ -15,6 +15,8 @@
 
 #include "igc_logs.h"
 #include "igc_txrx.h"
+#include "igc_filter.h"
+#include "igc_flow.h"
 
 #define IGC_INTEL_VENDOR_ID		0x8086
 
@@ -299,6 +301,7 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.vlan_offload_set	= eth_igc_vlan_offload_set,
 	.vlan_tpid_set		= eth_igc_vlan_tpid_set,
 	.vlan_strip_queue_set	= eth_igc_vlan_strip_queue_set,
+	.filter_ctrl		= eth_igc_filter_ctrl,
 };
 
 /*
@@ -1181,6 +1184,9 @@ eth_igc_close(struct rte_eth_dev *dev)
 	if (!adapter->stopped)
 		eth_igc_stop(dev);
 
+	igc_flow_flush(dev, NULL);
+	igc_clear_all_filter(dev);
+
 	igc_intr_other_disable(dev);
 	do {
 		int ret = rte_intr_callback_unregister(intr_handle,
@@ -1348,6 +1354,8 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 		igc->rxq_stats_map[i] = -1;
 	}
 
+	igc_flow_init(dev);
+	igc_clear_all_filter(dev);
 	return 0;
 
 err_late:
