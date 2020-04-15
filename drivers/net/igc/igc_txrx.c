@@ -847,7 +847,7 @@ igc_rss_disable(struct rte_eth_dev *dev)
 	IGC_WRITE_REG(hw, IGC_MRQC, mrqc);
 }
 
-static void
+void
 igc_hw_rss_hash_set(struct igc_hw *hw, struct rte_eth_rss_conf *rss_conf)
 {
 	uint32_t *hash_key = (uint32_t *)rss_conf->rss_key;

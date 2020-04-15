@@ -217,6 +217,16 @@ static int
 eth_igc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
 static int
 eth_igc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
+static int eth_igc_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size);
+static int eth_igc_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size);
+static int eth_igc_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf);
+static int eth_igc_rss_hash_conf_get(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf);
 
 static const struct eth_dev_ops eth_igc_ops = {
 	.dev_configure		= eth_igc_configure,
@@ -265,6 +275,10 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.rx_queue_intr_disable	= eth_igc_rx_queue_intr_disable,
 	.flow_ctrl_get		= eth_igc_flow_ctrl_get,
 	.flow_ctrl_set		= eth_igc_flow_ctrl_set,
+	.reta_update		= eth_igc_rss_reta_update,
+	.reta_query		= eth_igc_rss_reta_query,
+	.rss_hash_update	= eth_igc_rss_hash_update,
+	.rss_hash_conf_get	= eth_igc_rss_hash_conf_get,
 };
 
 /*
@@ -2185,6 +2199,163 @@ eth_igc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	PMD_DRV_LOG(ERR, "igc_setup_link_generic = 0x%x", err);
 	return -EIO;
+}
+
+static int
+eth_igc_rss_reta_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint16_t i;
+
+	if (reta_size != ETH_RSS_RETA_SIZE_128) {
+		PMD_DRV_LOG(ERR,
+			"The size of RSS redirection table configured(%d) doesn't match the number hardware can supported(%d)",
+			reta_size, ETH_RSS_RETA_SIZE_128);
+		return -EINVAL;
+	}
+
+	/* set redirection table */
+	for (i = 0; i < ETH_RSS_RETA_SIZE_128; i += IGC_RSS_RDT_REG_SIZE) {
+		union igc_rss_reta_reg reta, reg;
+		uint16_t idx, shift;
+		uint8_t j, mask;
+
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+				IGC_RSS_RDT_REG_SIZE_MASK);
+
+		/* if no need to update the register */
+		if (!mask)
+			continue;
+
+		/* check mask whether need to read the register value first */
+		if (mask == IGC_RSS_RDT_REG_SIZE_MASK)
+			reg.dword = 0;
+		else
+			reg.dword = IGC_READ_REG_LE_VALUE(hw,
+					IGC_RETA(i / IGC_RSS_RDT_REG_SIZE));
+
+		/* update the register */
+		for (j = 0; j < IGC_RSS_RDT_REG_SIZE; j++) {
+			if (mask & (1u << j))
+				reta.bytes[j] =
+					(uint8_t)reta_conf[idx].reta[shift + j];
+			else
+				reta.bytes[j] = reg.bytes[j];
+		}
+		IGC_WRITE_REG_LE_VALUE(hw,
+			IGC_RETA(i / IGC_RSS_RDT_REG_SIZE), reta.dword);
+	}
+
+	return 0;
+}
+
+static int
+eth_igc_rss_reta_query(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint16_t i;
+
+	if (reta_size != ETH_RSS_RETA_SIZE_128) {
+		PMD_DRV_LOG(ERR,
+			"The size of RSS redirection table configured(%d) doesn't match the number hardware can supported(%d)",
+			reta_size, ETH_RSS_RETA_SIZE_128);
+		return -EINVAL;
+	}
+
+	/* read redirection table */
+	for (i = 0; i < ETH_RSS_RETA_SIZE_128; i += IGC_RSS_RDT_REG_SIZE) {
+		union igc_rss_reta_reg reta;
+		uint16_t idx, shift;
+		uint8_t j, mask;
+
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		mask = (uint8_t)((reta_conf[idx].mask >> shift) &
+				IGC_RSS_RDT_REG_SIZE_MASK);
+
+		/* if no need to read register */
+		if (!mask)
+			continue;
+
+		/* read register and get the queue index */
+		reta.dword = IGC_READ_REG_LE_VALUE(hw,
+				IGC_RETA(i / IGC_RSS_RDT_REG_SIZE));
+		for (j = 0; j < IGC_RSS_RDT_REG_SIZE; j++) {
+			if (mask & (1u << j))
+				reta_conf[idx].reta[shift + j] = reta.bytes[j];
+		}
+	}
+
+	return 0;
+}
+
+static int
+eth_igc_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	igc_hw_rss_hash_set(hw, rss_conf);
+	return 0;
+}
+
+static int
+eth_igc_rss_hash_conf_get(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t *hash_key = (uint32_t *)rss_conf->rss_key;
+	uint32_t mrqc;
+	uint64_t rss_hf;
+
+	if (hash_key != NULL) {
+		int i;
+
+		/* if not enough space for store hash key */
+		if (rss_conf->rss_key_len != IGC_HKEY_SIZE) {
+			PMD_DRV_LOG(ERR,
+				"RSS hash key size %u in parameter doesn't match the hardware hash key size %u",
+				rss_conf->rss_key_len, IGC_HKEY_SIZE);
+			return -EINVAL;
+		}
+
+		/* read RSS key from register */
+		for (i = 0; i < IGC_HKEY_MAX_INDEX; i++)
+			hash_key[i] = IGC_READ_REG_LE_VALUE(hw, IGC_RSSRK(i));
+	}
+
+	/* get RSS functions configured in MRQC register */
+	mrqc = IGC_READ_REG(hw, IGC_MRQC);
+	if ((mrqc & IGC_MRQC_ENABLE_RSS_4Q) == 0)
+		return 0;
+
+	rss_hf = 0;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV4)
+		rss_hf |= ETH_RSS_IPV4;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV4_TCP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6)
+		rss_hf |= ETH_RSS_IPV6;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_EX)
+		rss_hf |= ETH_RSS_IPV6_EX;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_TCP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_TCP_EX)
+		rss_hf |= ETH_RSS_IPV6_TCP_EX;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV4_UDP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_UDP)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_UDP_EX)
+		rss_hf |= ETH_RSS_IPV6_UDP_EX;
+
+	rss_conf->rss_hf |= rss_hf;
+	return 0;
 }
 
 static int

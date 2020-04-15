@@ -38,6 +38,8 @@ int eth_igc_tx_done_cleanup(void *txqueue, uint32_t free_cnt);
 
 int igc_rx_init(struct rte_eth_dev *dev);
 void igc_tx_init(struct rte_eth_dev *dev);
+void
+igc_hw_rss_hash_set(struct igc_hw *hw, struct rte_eth_rss_conf *rss_conf);
 void eth_igc_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
 void eth_igc_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
