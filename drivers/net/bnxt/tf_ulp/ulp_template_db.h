@@ -27,6 +27,18 @@ enum bnxt_ulp_device_id {
 	BNXT_ULP_DEVICE_ID_LAST
 };
 
+enum bnxt_ulp_fmf_mask {
+	BNXT_ULP_FMF_MASK_IGNORE,
+	BNXT_ULP_FMF_MASK_ANY,
+	BNXT_ULP_FMF_MASK_EXACT,
+	BNXT_ULP_FMF_MASK_WILDCARD,
+	BNXT_ULP_FMF_MASK_LAST
+};
+
+enum bnxt_ulp_regfile_index {
+	BNXT_ULP_REGFILE_INDEX_LAST
+};
+
 enum bnxt_ulp_sym {
 	BNXT_ULP_SYM_LITTLE_ENDIAN = 1,
 	BNXT_ULP_SYM_YES = 1
