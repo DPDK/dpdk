@@ -509,7 +509,8 @@ https://downloadcenter.intel.com/download/27587.
 PPPoE package is released, and it can be downloaded from
 https://downloadcenter.intel.com/download/28040.
 
-ESP-AH package is not released yet.
+ESP-AH package is released, and it can be downloaded from
+https://downloadcenter.intel.com/download/29446.
 
 Load a profile which supports GTP and store backup profile:
 

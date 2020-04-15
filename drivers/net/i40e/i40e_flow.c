@@ -4507,11 +4507,15 @@ i40e_flow_parse_rss_pattern(__rte_unused struct rte_eth_dev *dev,
 		{ pattern_fdir_ipv4_tcp, ETH_RSS_NONFRAG_IPV4_TCP },
 		{ pattern_fdir_ipv4_udp, ETH_RSS_NONFRAG_IPV4_UDP },
 		{ pattern_fdir_ipv4_sctp, ETH_RSS_NONFRAG_IPV4_SCTP },
+		{ pattern_fdir_ipv4_esp, ETH_RSS_ESP },
+		{ pattern_fdir_ipv4_udp_esp, ETH_RSS_ESP },
 		{ pattern_fdir_ipv6,
 			ETH_RSS_FRAG_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER },
 		{ pattern_fdir_ipv6_tcp, ETH_RSS_NONFRAG_IPV6_TCP },
 		{ pattern_fdir_ipv6_udp, ETH_RSS_NONFRAG_IPV6_UDP },
 		{ pattern_fdir_ipv6_sctp, ETH_RSS_NONFRAG_IPV6_SCTP },
+		{ pattern_fdir_ipv6_esp, ETH_RSS_ESP },
+		{ pattern_fdir_ipv6_udp_esp, ETH_RSS_ESP },
 	};
 
 	p_info->types = I40E_RSS_TYPE_INVALID;
