@@ -4708,6 +4708,21 @@ bnxt_get_svif(uint16_t port_id, bool func_svif)
 	return func_svif ? bp->func_svif : bp->port_svif;
 }
 
+uint16_t
+bnxt_get_vnic_id(uint16_t port)
+{
+	struct rte_eth_dev *eth_dev;
+	struct bnxt_vnic_info *vnic;
+	struct bnxt *bp;
+
+	eth_dev = &rte_eth_devices[port];
+	bp = eth_dev->data->dev_private;
+
+	vnic = BNXT_GET_DEFAULT_VNIC(bp);
+
+	return vnic->fw_vnic_id;
+}
+
 static int bnxt_init_fw(struct bnxt *bp)
 {
 	uint16_t mtu;

@@ -727,6 +727,7 @@ extern int bnxt_logtype_driver;
 #define PMD_DRV_LOG(level, fmt, args...) \
 	  PMD_DRV_LOG_RAW(level, fmt, ## args)
 
+uint16_t bnxt_get_vnic_id(uint16_t port);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif);
 
 #endif
