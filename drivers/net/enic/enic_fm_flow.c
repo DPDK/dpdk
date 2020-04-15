@@ -1174,8 +1174,8 @@ enic_fm_copy_action(struct enic_flowman *fm,
 				actions->conf;
 
 			/*
-			 * If other fate kind is set, fail.  Multiple
-			 * queue actions are ok.
+			 * If fate other than QUEUE or RSS, fail. Multiple
+			 * rss and queue actions are ok.
 			 */
 			if ((overlap & FATE) && first_rq)
 				goto unsupported;
@@ -1185,6 +1185,7 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			fm_op.fa_op = FMOP_RQ_STEER;
 			fm_op.rq_steer.rq_index =
 				enic_rte_rq_idx_to_sop_idx(queue->index);
+			fm_op.rq_steer.rq_count = 1;
 			fm_op.rq_steer.vnic_handle = vnic_h;
 			ret = enic_fm_append_action_op(fm, &fm_op, error);
 			if (ret)
@@ -1219,27 +1220,44 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			uint16_t i;
 
 			/*
-			 * Hardware does not support general RSS actions, but
-			 * we can still support the dummy one that is used to
-			 * "receive normally".
+			 * If fate other than QUEUE or RSS, fail. Multiple
+			 * rss and queue actions are ok.
+			 */
+			if ((overlap & FATE) && first_rq)
+				goto unsupported;
+			first_rq = false;
+			overlap |= FATE;
+
+			/*
+			 * Hardware only supports RSS actions on outer level
+			 * with default type and function. Queues must be
+			 * sequential.
 			 */
 			allow = rss->func == RTE_ETH_HASH_FUNCTION_DEFAULT &&
-				rss->level == 0 &&
-				(rss->types == 0 ||
-				 rss->types == enic->rss_hf) &&
-				rss->queue_num == enic->rq_count &&
-				rss->key_len == 0;
-			/* Identity queue map is ok */
-			for (i = 0; i < rss->queue_num; i++)
-				allow = allow && (i == rss->queue[i]);
+				rss->level == 0 && (rss->types == 0 ||
+				rss->types == enic->rss_hf) &&
+				rss->queue_num <= enic->rq_count &&
+				rss->queue[rss->queue_num - 1] < enic->rq_count;
+
+
+			/* Identity queue map needs to be sequential */
+			for (i = 1; i < rss->queue_num; i++)
+				allow = allow && (rss->queue[i] ==
+					rss->queue[i - 1] + 1);
 			if (!allow)
 				goto unsupported;
-			if (overlap & FATE)
-				goto unsupported;
-			/* Need MARK or FLAG */
-			if (!(overlap & MARK))
-				goto unsupported;
-			overlap |= FATE;
+
+			memset(&fm_op, 0, sizeof(fm_op));
+			fm_op.fa_op = FMOP_RQ_STEER;
+			fm_op.rq_steer.rq_index =
+				enic_rte_rq_idx_to_sop_idx(rss->queue[0]);
+			fm_op.rq_steer.rq_count = rss->queue_num;
+			fm_op.rq_steer.vnic_handle = vnic_h;
+			ret = enic_fm_append_action_op(fm, &fm_op, error);
+			if (ret)
+				return ret;
+			ENICPMD_LOG(DEBUG, "create QUEUE action rq: %u",
+				    fm_op.rq_steer.rq_index);
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_PORT_ID: {

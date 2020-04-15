@@ -459,6 +459,10 @@ PKT_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
     packets and then receive them normally. These require 1400 series VIC adapters
     and latest firmware.
   - RAW items are limited to matching UDP tunnel headers like VXLAN.
+  - For 1400 VICs, all flows using the RSS action on a port use same hash
+    configuration. The RETA is ignored. The queues used in the RSS group must be
+    sequential. There is a performance hit if the number of queues is not a power of 2.
+    Only level 0 (outer header) RSS is allowed.
 
 - **Statistics**
 
