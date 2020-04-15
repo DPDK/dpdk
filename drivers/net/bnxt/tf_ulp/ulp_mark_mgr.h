@@ -72,4 +72,22 @@ ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
 		     uint32_t gfid,
 		     uint32_t mark);
 
+/*
+ * Removes a Mark from the Mark Manager
+ *
+ * ctxt [in] The ulp context for the mark manager
+ *
+ * is_gfid [in] The type of fid (GFID or LFID)
+ *
+ * fid [in] The flow id that is returned by HW in BD
+ *
+ * mark [in] The mark to be associated with the FID
+ *
+ */
+int32_t
+ulp_mark_db_mark_del(struct bnxt_ulp_context *ctxt,
+		     bool is_gfid,
+		     uint32_t gfid,
+		     uint32_t mark);
+
 #endif /* _ULP_MARK_MGR_H_ */

@@ -135,7 +135,7 @@ ulp_mark_db_init(struct bnxt_ulp_context *ctxt)
 		    mark_tbl->gfid_max,
 		    mark_tbl->gfid_mask);
 
-	/* Add the mart tbl to the ulp context. */
+	/* Add the mark tbl to the ulp context. */
 	bnxt_ulp_cntxt_ptr2_mark_db_set(ctxt, mark_tbl);
 
 	return 0;
@@ -194,4 +194,25 @@ ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
 		     uint32_t mark)
 {
 	return ulp_mark_db_mark_set(ctxt, is_gfid, gfid, mark);
+}
+
+/*
+ * Removes a Mark from the Mark Manager
+ *
+ * ctxt [in] The ulp context for the mark manager
+ *
+ * is_gfid [in] The type of fid (GFID or LFID)
+ *
+ * fid [in] The flow id that is returned by HW in BD
+ *
+ * mark [in] The mark to be associated with the FID
+ *
+ */
+int32_t
+ulp_mark_db_mark_del(struct bnxt_ulp_context *ctxt,
+		     bool is_gfid,
+		     uint32_t gfid,
+		     uint32_t mark  __rte_unused)
+{
+	return ulp_mark_db_mark_set(ctxt, is_gfid, gfid, ULP_MARK_INVALID);
 }

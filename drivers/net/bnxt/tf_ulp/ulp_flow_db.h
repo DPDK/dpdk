@@ -99,4 +99,34 @@ int32_t	ulp_flow_db_resource_add(struct bnxt_ulp_context	*ulp_ctxt,
 				 uint32_t			fid,
 				 struct ulp_flow_db_res_params	*params);
 
+/*
+ * Free the flow database entry.
+ * The params->critical_resource has to be set to 1 to free the first resource.
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [in] The index to the flow entry
+ * params [in/out] The contents to be copied into params.
+ * Only the critical_resource needs to be set by the caller.
+ *
+ * Returns 0 on success and negative on failure.
+ */
+int32_t	ulp_flow_db_resource_del(struct bnxt_ulp_context	*ulp_ctxt,
+				 enum bnxt_ulp_flow_db_tables	tbl_idx,
+				 uint32_t			fid,
+				 struct ulp_flow_db_res_params	*params);
+
+/*
+ * Free the flow database entry
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [in] The index to the flow entry
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
+			     enum bnxt_ulp_flow_db_tables	tbl_idx,
+			     uint32_t				fid);
+
 #endif /* _ULP_FLOW_DB_H_ */

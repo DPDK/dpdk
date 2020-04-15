@@ -23,6 +23,32 @@
 #define ULP_FLOW_DB_RES_NXT_RESET(dst)	((dst) &= ~(ULP_FLOW_DB_RES_NXT_MASK))
 
 /*
+ * Helper function to set the bit in the active flow table
+ * No validation is done in this function.
+ *
+ * flow_tbl [in] Ptr to flow table
+ * idx [in] The index to bit to be set or reset.
+ * flag [in] 1 to set and 0 to reset.
+ *
+ * returns none
+ */
+static void
+ulp_flow_db_active_flow_set(struct bnxt_ulp_flow_tbl	*flow_tbl,
+			    uint32_t			idx,
+			    uint32_t			flag)
+{
+	uint32_t		active_index;
+
+	active_index = idx / ULP_INDEX_BITMAP_SIZE;
+	if (flag)
+		ULP_INDEX_BITMAP_SET(flow_tbl->active_flow_tbl[active_index],
+				     idx);
+	else
+		ULP_INDEX_BITMAP_RESET(flow_tbl->active_flow_tbl[active_index],
+				       idx);
+}
+
+/*
  * Helper function to allocate the flow table and initialize
  *  is set.No validation being done in this function.
  *
@@ -67,6 +93,35 @@ ulp_flow_db_res_params_to_info(struct ulp_fdb_resource_info   *resource_info,
 
 	} else {
 		resource_info->resource_em_handle = params->resource_hndl;
+	}
+}
+
+/*
+ * Helper function to copy the resource params to resource info
+ *  No validation being done in this function.
+ *
+ * resource_info [in] Ptr to resource information
+ * params [out] The output params to the caller
+ *
+ * returns none
+ */
+static void
+ulp_flow_db_res_info_to_params(struct ulp_fdb_resource_info   *resource_info,
+			       struct ulp_flow_db_res_params  *params)
+{
+	memset(params, 0, sizeof(struct ulp_flow_db_res_params));
+	params->direction = ((resource_info->nxt_resource_idx &
+				 ULP_FLOW_DB_RES_DIR_MASK) >>
+				 ULP_FLOW_DB_RES_DIR_BIT);
+	params->resource_func = ((resource_info->nxt_resource_idx &
+				 ULP_FLOW_DB_RES_FUNC_MASK) >>
+				 ULP_FLOW_DB_RES_FUNC_BITS);
+
+	if (params->resource_func != BNXT_ULP_RESOURCE_FUNC_EM_TABLE) {
+		params->resource_hndl = resource_info->resource_hndl;
+		params->resource_type = resource_info->resource_type;
+	} else {
+		params->resource_hndl = resource_info->resource_em_handle;
 	}
 }
 
@@ -122,7 +177,7 @@ ulp_flow_db_alloc_resource(struct bnxt_ulp_flow_db *flow_db,
 }
 
 /*
- * Helper function to de allocate the flow table.
+ * Helper function to deallocate the flow table.
  *
  * flow_db [in] Ptr to flow database structure
  * tbl_idx [in] The index to table creation.
@@ -317,6 +372,148 @@ int32_t	ulp_flow_db_resource_add(struct bnxt_ulp_context	*ulp_ctxt,
 		/* critical resource. Just update the fid resource */
 		ulp_flow_db_res_params_to_info(fid_resource, params);
 	}
+
+	/* all good, return success */
+	return 0;
+}
+
+/*
+ * Free the flow database entry.
+ * The params->critical_resource has to be set to 1 to free the first resource.
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [in] The index to the flow entry
+ * params [in/out] The contents to be copied into params.
+ * Onlythe critical_resource needs to be set by the caller.
+ *
+ * Returns 0 on success and negative on failure.
+ */
+int32_t	ulp_flow_db_resource_del(struct bnxt_ulp_context	*ulp_ctxt,
+				 enum bnxt_ulp_flow_db_tables	tbl_idx,
+				 uint32_t			fid,
+				 struct ulp_flow_db_res_params	*params)
+{
+	struct bnxt_ulp_flow_db		*flow_db;
+	struct bnxt_ulp_flow_tbl	*flow_tbl;
+	struct ulp_fdb_resource_info	*nxt_resource, *fid_resource;
+	uint32_t			nxt_idx = 0;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	if (tbl_idx >= BNXT_ULP_FLOW_TABLE_MAX) {
+		BNXT_TF_DBG(ERR, "Invalid table index\n");
+		return -EINVAL;
+	}
+	flow_tbl = &flow_db->flow_tbl[tbl_idx];
+
+	/* check for max flows */
+	if (fid >= flow_tbl->num_flows || !fid) {
+		BNXT_TF_DBG(ERR, "Invalid flow index\n");
+		return -EINVAL;
+	}
+
+	/* check if the flow is active or not */
+	if (!ulp_flow_db_active_flow_is_set(flow_tbl, fid)) {
+		BNXT_TF_DBG(ERR, "flow does not exist\n");
+		return -EINVAL;
+	}
+
+	fid_resource = &flow_tbl->flow_resources[fid];
+	if (!params->critical_resource) {
+		/* Not the critical resource so free the resource */
+		ULP_FLOW_DB_RES_NXT_SET(nxt_idx,
+					fid_resource->nxt_resource_idx);
+		if (!nxt_idx) {
+			/* reached end of resources */
+			return -ENOENT;
+		}
+		nxt_resource = &flow_tbl->flow_resources[nxt_idx];
+
+		/* connect the fid resource to the next resource */
+		ULP_FLOW_DB_RES_NXT_RESET(fid_resource->nxt_resource_idx);
+		ULP_FLOW_DB_RES_NXT_SET(fid_resource->nxt_resource_idx,
+					nxt_resource->nxt_resource_idx);
+
+		/* update the contents to be given to caller */
+		ulp_flow_db_res_info_to_params(nxt_resource, params);
+
+		/* Delete the nxt_resource */
+		memset(nxt_resource, 0, sizeof(struct ulp_fdb_resource_info));
+
+		/* add it to the free list */
+		flow_tbl->tail_index++;
+		if (flow_tbl->tail_index >= flow_tbl->num_resources) {
+			BNXT_TF_DBG(ERR, "FlowDB:Tail reached max\n");
+			return -ENOENT;
+		}
+		flow_tbl->flow_tbl_stack[flow_tbl->tail_index] = nxt_idx;
+
+	} else {
+		/* Critical resource. copy the contents and exit */
+		ulp_flow_db_res_info_to_params(fid_resource, params);
+		ULP_FLOW_DB_RES_NXT_SET(nxt_idx,
+					fid_resource->nxt_resource_idx);
+		memset(fid_resource, 0, sizeof(struct ulp_fdb_resource_info));
+		ULP_FLOW_DB_RES_NXT_SET(fid_resource->nxt_resource_idx,
+					nxt_idx);
+	}
+
+	/* all good, return success */
+	return 0;
+}
+
+/*
+ * Free the flow database entry
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [in] The index to the flow entry
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
+			     enum bnxt_ulp_flow_db_tables	tbl_idx,
+			     uint32_t				fid)
+{
+	struct bnxt_ulp_flow_db		*flow_db;
+	struct bnxt_ulp_flow_tbl	*flow_tbl;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	if (tbl_idx >= BNXT_ULP_FLOW_TABLE_MAX) {
+		BNXT_TF_DBG(ERR, "Invalid table index\n");
+		return -EINVAL;
+	}
+
+	flow_tbl = &flow_db->flow_tbl[tbl_idx];
+
+	/* check for limits of fid */
+	if (fid >= flow_tbl->num_flows || !fid) {
+		BNXT_TF_DBG(ERR, "Invalid flow index\n");
+		return -EINVAL;
+	}
+
+	/* check if the flow is active or not */
+	if (!ulp_flow_db_active_flow_is_set(flow_tbl, fid)) {
+		BNXT_TF_DBG(ERR, "flow does not exist\n");
+		return -EINVAL;
+	}
+	flow_tbl->head_index--;
+	if (!flow_tbl->head_index) {
+		BNXT_TF_DBG(ERR, "FlowDB: Head Ptr is zero\n");
+		return -ENOENT;
+	}
+	flow_tbl->flow_tbl_stack[flow_tbl->head_index] = fid;
+	ulp_flow_db_active_flow_set(flow_tbl, fid, 0);
 
 	/* all good, return success */
 	return 0;
