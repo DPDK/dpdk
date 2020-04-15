@@ -50,9 +50,16 @@
 /* External VLAN Enable bit mask */
 #define IGC_CTRL_EXT_EXT_VLAN		(1u << 26)
 
+/* Speed select */
+#define IGC_CTRL_SPEED_MASK		(7u << 8)
+#define IGC_CTRL_SPEED_2500		(6u << 8)
+
 /* External VLAN Ether Type bit mask and shift */
 #define IGC_VET_EXT			0xFFFF0000
 #define IGC_VET_EXT_SHIFT		16
+
+/* Force EEE Auto-negotiation */
+#define IGC_EEER_EEE_FRC_AN		(1u << 28)
 
 /* Per Queue Good Packets Received Count */
 #define IGC_PQGPRC(idx)		(0x10010 + 0x100 * (idx))
@@ -635,6 +642,9 @@ eth_igc_stop(struct rte_eth_dev *dev)
 	/* disable all wake up */
 	IGC_WRITE_REG(hw, IGC_WUC, 0);
 
+	/* disable checking EEE operation in MAC loopback mode */
+	igc_read_reg_check_clear_bits(hw, IGC_EEER, IGC_EEER_EEE_FRC_AN);
+
 	/* Set bit for Go Link disconnect */
 	igc_read_reg_check_set_bits(hw, IGC_82580_PHY_POWER_MGMT,
 			IGC_82580_PM_GO_LINKD);
@@ -1059,6 +1069,19 @@ eth_igc_start(struct rte_eth_dev *dev)
 
 	eth_igc_rxtx_control(dev, true);
 	eth_igc_link_update(dev, 0);
+
+	/* configure MAC-loopback mode */
+	if (dev->data->dev_conf.lpbk_mode == 1) {
+		uint32_t reg_val;
+
+		reg_val = IGC_READ_REG(hw, IGC_CTRL);
+		reg_val &= ~IGC_CTRL_SPEED_MASK;
+		reg_val |= IGC_CTRL_SLU | IGC_CTRL_FRCSPD |
+			IGC_CTRL_FRCDPX | IGC_CTRL_FD | IGC_CTRL_SPEED_2500;
+		IGC_WRITE_REG(hw, IGC_CTRL, reg_val);
+
+		igc_read_reg_check_set_bits(hw, IGC_EEER, IGC_EEER_EEE_FRC_AN);
+	}
 
 	return 0;
 

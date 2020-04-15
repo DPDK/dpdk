@@ -1142,6 +1142,9 @@ igc_rx_init(struct rte_eth_dev *dev)
 			IGC_RCTL_DPF |
 			(hw->mac.mc_filter_type << IGC_RCTL_MO_SHIFT);
 
+	if (dev->data->dev_conf.lpbk_mode == 1)
+		rctl |= IGC_RCTL_LBM_MAC;
+
 	rctl &= ~(IGC_RCTL_HSEL_MSK | IGC_RCTL_CFIEN | IGC_RCTL_CFI |
 			IGC_RCTL_PSP | IGC_RCTL_PMCF);
 
