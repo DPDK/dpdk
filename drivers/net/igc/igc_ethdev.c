@@ -5,11 +5,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <rte_string_fns.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
 #include <rte_malloc.h>
+#include <rte_alarm.h>
 
 #include "igc_logs.h"
 #include "igc_txrx.h"
@@ -48,6 +50,28 @@
 /* External VLAN Enable bit mask */
 #define IGC_CTRL_EXT_EXT_VLAN		(1u << 26)
 
+/* Per Queue Good Packets Received Count */
+#define IGC_PQGPRC(idx)		(0x10010 + 0x100 * (idx))
+/* Per Queue Good Octets Received Count */
+#define IGC_PQGORC(idx)		(0x10018 + 0x100 * (idx))
+/* Per Queue Good Octets Transmitted Count */
+#define IGC_PQGOTC(idx)		(0x10034 + 0x100 * (idx))
+/* Per Queue Multicast Packets Received Count */
+#define IGC_PQMPRC(idx)		(0x10038 + 0x100 * (idx))
+/* Transmit Queue Drop Packet Count */
+#define IGC_TQDPC(idx)		(0xe030 + 0x40 * (idx))
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+#define U32_0_IN_U64		0	/* lower bytes of u64 */
+#define U32_1_IN_U64		1	/* higher bytes of u64 */
+#else
+#define U32_0_IN_U64		1
+#define U32_1_IN_U64		0
+#endif
+
+#define IGC_ALARM_INTERVAL	8000000u
+/* us, about 13.6s some per-queue registers will wrap around back to 0. */
+
 static const struct rte_eth_desc_lim rx_desc_lim = {
 	.nb_max = IGC_MAX_RXD,
 	.nb_min = IGC_MIN_RXD,
@@ -69,6 +93,76 @@ static const struct rte_pci_id pci_id_igc_map[] = {
 	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_K)  },
 	{ .vendor_id = 0, /* sentinel */ },
 };
+
+/* store statistics names and its offset in stats structure */
+struct rte_igc_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct rte_igc_xstats_name_off rte_igc_stats_strings[] = {
+	{"rx_crc_errors", offsetof(struct igc_hw_stats, crcerrs)},
+	{"rx_align_errors", offsetof(struct igc_hw_stats, algnerrc)},
+	{"rx_errors", offsetof(struct igc_hw_stats, rxerrc)},
+	{"rx_missed_packets", offsetof(struct igc_hw_stats, mpc)},
+	{"tx_single_collision_packets", offsetof(struct igc_hw_stats, scc)},
+	{"tx_multiple_collision_packets", offsetof(struct igc_hw_stats, mcc)},
+	{"tx_excessive_collision_packets", offsetof(struct igc_hw_stats,
+		ecol)},
+	{"tx_late_collisions", offsetof(struct igc_hw_stats, latecol)},
+	{"tx_total_collisions", offsetof(struct igc_hw_stats, colc)},
+	{"tx_deferred_packets", offsetof(struct igc_hw_stats, dc)},
+	{"tx_no_carrier_sense_packets", offsetof(struct igc_hw_stats, tncrs)},
+	{"tx_discarded_packets", offsetof(struct igc_hw_stats, htdpmc)},
+	{"rx_length_errors", offsetof(struct igc_hw_stats, rlec)},
+	{"rx_xon_packets", offsetof(struct igc_hw_stats, xonrxc)},
+	{"tx_xon_packets", offsetof(struct igc_hw_stats, xontxc)},
+	{"rx_xoff_packets", offsetof(struct igc_hw_stats, xoffrxc)},
+	{"tx_xoff_packets", offsetof(struct igc_hw_stats, xofftxc)},
+	{"rx_flow_control_unsupported_packets", offsetof(struct igc_hw_stats,
+		fcruc)},
+	{"rx_size_64_packets", offsetof(struct igc_hw_stats, prc64)},
+	{"rx_size_65_to_127_packets", offsetof(struct igc_hw_stats, prc127)},
+	{"rx_size_128_to_255_packets", offsetof(struct igc_hw_stats, prc255)},
+	{"rx_size_256_to_511_packets", offsetof(struct igc_hw_stats, prc511)},
+	{"rx_size_512_to_1023_packets", offsetof(struct igc_hw_stats,
+		prc1023)},
+	{"rx_size_1024_to_max_packets", offsetof(struct igc_hw_stats,
+		prc1522)},
+	{"rx_broadcast_packets", offsetof(struct igc_hw_stats, bprc)},
+	{"rx_multicast_packets", offsetof(struct igc_hw_stats, mprc)},
+	{"rx_undersize_errors", offsetof(struct igc_hw_stats, ruc)},
+	{"rx_fragment_errors", offsetof(struct igc_hw_stats, rfc)},
+	{"rx_oversize_errors", offsetof(struct igc_hw_stats, roc)},
+	{"rx_jabber_errors", offsetof(struct igc_hw_stats, rjc)},
+	{"rx_no_buffers", offsetof(struct igc_hw_stats, rnbc)},
+	{"rx_management_packets", offsetof(struct igc_hw_stats, mgprc)},
+	{"rx_management_dropped", offsetof(struct igc_hw_stats, mgpdc)},
+	{"tx_management_packets", offsetof(struct igc_hw_stats, mgptc)},
+	{"rx_total_packets", offsetof(struct igc_hw_stats, tpr)},
+	{"tx_total_packets", offsetof(struct igc_hw_stats, tpt)},
+	{"rx_total_bytes", offsetof(struct igc_hw_stats, tor)},
+	{"tx_total_bytes", offsetof(struct igc_hw_stats, tot)},
+	{"tx_size_64_packets", offsetof(struct igc_hw_stats, ptc64)},
+	{"tx_size_65_to_127_packets", offsetof(struct igc_hw_stats, ptc127)},
+	{"tx_size_128_to_255_packets", offsetof(struct igc_hw_stats, ptc255)},
+	{"tx_size_256_to_511_packets", offsetof(struct igc_hw_stats, ptc511)},
+	{"tx_size_512_to_1023_packets", offsetof(struct igc_hw_stats,
+		ptc1023)},
+	{"tx_size_1023_to_max_packets", offsetof(struct igc_hw_stats,
+		ptc1522)},
+	{"tx_multicast_packets", offsetof(struct igc_hw_stats, mptc)},
+	{"tx_broadcast_packets", offsetof(struct igc_hw_stats, bptc)},
+	{"tx_tso_packets", offsetof(struct igc_hw_stats, tsctc)},
+	{"rx_sent_to_host_packets", offsetof(struct igc_hw_stats, rpthc)},
+	{"tx_sent_by_host_packets", offsetof(struct igc_hw_stats, hgptc)},
+	{"interrupt_assert_count", offsetof(struct igc_hw_stats, iac)},
+	{"rx_descriptor_lower_threshold",
+		offsetof(struct igc_hw_stats, icrxdmtc)},
+};
+
+#define IGC_NB_XSTATS (sizeof(rte_igc_stats_strings) / \
+		sizeof(rte_igc_stats_strings[0]))
 
 static int eth_igc_configure(struct rte_eth_dev *dev);
 static int eth_igc_link_update(struct rte_eth_dev *dev, int wait_to_complete);
@@ -98,6 +192,23 @@ static int eth_igc_set_mc_addr_list(struct rte_eth_dev *dev,
 static int eth_igc_allmulticast_enable(struct rte_eth_dev *dev);
 static int eth_igc_allmulticast_disable(struct rte_eth_dev *dev);
 static int eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+static int eth_igc_stats_get(struct rte_eth_dev *dev,
+			struct rte_eth_stats *rte_stats);
+static int eth_igc_xstats_get(struct rte_eth_dev *dev,
+			struct rte_eth_xstat *xstats, unsigned int n);
+static int eth_igc_xstats_get_by_id(struct rte_eth_dev *dev,
+				const uint64_t *ids,
+				uint64_t *values, unsigned int n);
+static int eth_igc_xstats_get_names(struct rte_eth_dev *dev,
+				struct rte_eth_xstat_name *xstats_names,
+				unsigned int size);
+static int eth_igc_xstats_get_names_by_id(struct rte_eth_dev *dev,
+		struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+		unsigned int limit);
+static int eth_igc_xstats_reset(struct rte_eth_dev *dev);
+static int
+eth_igc_queue_stats_mapping_set(struct rte_eth_dev *dev,
+	uint16_t queue_id, uint8_t stat_idx, uint8_t is_rx);
 
 static const struct eth_dev_ops eth_igc_ops = {
 	.dev_configure		= eth_igc_configure,
@@ -134,6 +245,14 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.tx_done_cleanup	= eth_igc_tx_done_cleanup,
 	.rxq_info_get		= eth_igc_rxq_info_get,
 	.txq_info_get		= eth_igc_txq_info_get,
+	.stats_get		= eth_igc_stats_get,
+	.xstats_get		= eth_igc_xstats_get,
+	.xstats_get_by_id	= eth_igc_xstats_get_by_id,
+	.xstats_get_names_by_id	= eth_igc_xstats_get_names_by_id,
+	.xstats_get_names	= eth_igc_xstats_get_names,
+	.stats_reset		= eth_igc_xstats_reset,
+	.xstats_reset		= eth_igc_xstats_reset,
+	.queue_stats_mapping_set = eth_igc_queue_stats_mapping_set,
 };
 
 /*
@@ -398,6 +517,22 @@ eth_igc_interrupt_handler(void *param)
 	eth_igc_interrupt_action(dev);
 }
 
+static void igc_read_queue_stats_register(struct rte_eth_dev *dev);
+
+/*
+ * Update the queue status every IGC_ALARM_INTERVAL time.
+ * @param
+ *  The address of parameter (struct rte_eth_dev *) registered before.
+ */
+static void
+igc_update_queue_stats_handler(void *param)
+{
+	struct rte_eth_dev *dev = param;
+	igc_read_queue_stats_register(dev);
+	rte_eal_alarm_set(IGC_ALARM_INTERVAL,
+			igc_update_queue_stats_handler, dev);
+}
+
 /*
  * rx,tx enable/disable
  */
@@ -450,6 +585,8 @@ eth_igc_stop(struct rte_eth_dev *dev)
 	IGC_WRITE_REG(hw, IGC_EICR, 0x1f);
 
 	igc_intr_other_disable(dev);
+
+	rte_eal_alarm_cancel(igc_update_queue_stats_handler, dev);
 
 	/* disable intr eventfd mapping */
 	rte_intr_disable(intr_handle);
@@ -754,6 +891,9 @@ eth_igc_start(struct rte_eth_dev *dev)
 	/* enable uio/vfio intr/eventfd mapping */
 	rte_intr_enable(intr_handle);
 
+	rte_eal_alarm_set(IGC_ALARM_INTERVAL,
+			igc_update_queue_stats_handler, dev);
+
 	/* resume enabled intr since hw reset */
 	igc_intr_other_enable(dev);
 
@@ -894,7 +1034,7 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	int error = 0;
+	int i, error = 0;
 
 	PMD_INIT_FUNC_TRACE();
 	dev->dev_ops = &eth_igc_ops;
@@ -1019,6 +1159,11 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 	/* enable support intr */
 	igc_intr_other_enable(dev);
 
+	/* initiate queue status */
+	for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
+		igc->txq_stats_map[i] = -1;
+		igc->rxq_stats_map[i] = -1;
+	}
 	return 0;
 
 err_late:
@@ -1320,6 +1465,441 @@ eth_igc_set_mc_addr_list(struct rte_eth_dev *dev,
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	igc_update_mc_addr_list(hw, (u8 *)mc_addr_set, nb_mc_addr);
+	return 0;
+}
+
+/*
+ * Read hardware registers
+ */
+static void
+igc_read_stats_registers(struct igc_hw *hw, struct igc_hw_stats *stats)
+{
+	int pause_frames;
+
+	uint64_t old_gprc  = stats->gprc;
+	uint64_t old_gptc  = stats->gptc;
+	uint64_t old_tpr   = stats->tpr;
+	uint64_t old_tpt   = stats->tpt;
+	uint64_t old_rpthc = stats->rpthc;
+	uint64_t old_hgptc = stats->hgptc;
+
+	stats->crcerrs += IGC_READ_REG(hw, IGC_CRCERRS);
+	stats->algnerrc += IGC_READ_REG(hw, IGC_ALGNERRC);
+	stats->rxerrc += IGC_READ_REG(hw, IGC_RXERRC);
+	stats->mpc += IGC_READ_REG(hw, IGC_MPC);
+	stats->scc += IGC_READ_REG(hw, IGC_SCC);
+	stats->ecol += IGC_READ_REG(hw, IGC_ECOL);
+
+	stats->mcc += IGC_READ_REG(hw, IGC_MCC);
+	stats->latecol += IGC_READ_REG(hw, IGC_LATECOL);
+	stats->colc += IGC_READ_REG(hw, IGC_COLC);
+
+	stats->dc += IGC_READ_REG(hw, IGC_DC);
+	stats->tncrs += IGC_READ_REG(hw, IGC_TNCRS);
+	stats->htdpmc += IGC_READ_REG(hw, IGC_HTDPMC);
+	stats->rlec += IGC_READ_REG(hw, IGC_RLEC);
+	stats->xonrxc += IGC_READ_REG(hw, IGC_XONRXC);
+	stats->xontxc += IGC_READ_REG(hw, IGC_XONTXC);
+
+	/*
+	 * For watchdog management we need to know if we have been
+	 * paused during the last interval, so capture that here.
+	 */
+	pause_frames = IGC_READ_REG(hw, IGC_XOFFRXC);
+	stats->xoffrxc += pause_frames;
+	stats->xofftxc += IGC_READ_REG(hw, IGC_XOFFTXC);
+	stats->fcruc += IGC_READ_REG(hw, IGC_FCRUC);
+	stats->prc64 += IGC_READ_REG(hw, IGC_PRC64);
+	stats->prc127 += IGC_READ_REG(hw, IGC_PRC127);
+	stats->prc255 += IGC_READ_REG(hw, IGC_PRC255);
+	stats->prc511 += IGC_READ_REG(hw, IGC_PRC511);
+	stats->prc1023 += IGC_READ_REG(hw, IGC_PRC1023);
+	stats->prc1522 += IGC_READ_REG(hw, IGC_PRC1522);
+	stats->gprc += IGC_READ_REG(hw, IGC_GPRC);
+	stats->bprc += IGC_READ_REG(hw, IGC_BPRC);
+	stats->mprc += IGC_READ_REG(hw, IGC_MPRC);
+	stats->gptc += IGC_READ_REG(hw, IGC_GPTC);
+
+	/* For the 64-bit byte counters the low dword must be read first. */
+	/* Both registers clear on the read of the high dword */
+
+	/* Workaround CRC bytes included in size, take away 4 bytes/packet */
+	stats->gorc += IGC_READ_REG(hw, IGC_GORCL);
+	stats->gorc += ((uint64_t)IGC_READ_REG(hw, IGC_GORCH) << 32);
+	stats->gorc -= (stats->gprc - old_gprc) * RTE_ETHER_CRC_LEN;
+	stats->gotc += IGC_READ_REG(hw, IGC_GOTCL);
+	stats->gotc += ((uint64_t)IGC_READ_REG(hw, IGC_GOTCH) << 32);
+	stats->gotc -= (stats->gptc - old_gptc) * RTE_ETHER_CRC_LEN;
+
+	stats->rnbc += IGC_READ_REG(hw, IGC_RNBC);
+	stats->ruc += IGC_READ_REG(hw, IGC_RUC);
+	stats->rfc += IGC_READ_REG(hw, IGC_RFC);
+	stats->roc += IGC_READ_REG(hw, IGC_ROC);
+	stats->rjc += IGC_READ_REG(hw, IGC_RJC);
+
+	stats->mgprc += IGC_READ_REG(hw, IGC_MGTPRC);
+	stats->mgpdc += IGC_READ_REG(hw, IGC_MGTPDC);
+	stats->mgptc += IGC_READ_REG(hw, IGC_MGTPTC);
+	stats->b2ospc += IGC_READ_REG(hw, IGC_B2OSPC);
+	stats->b2ogprc += IGC_READ_REG(hw, IGC_B2OGPRC);
+	stats->o2bgptc += IGC_READ_REG(hw, IGC_O2BGPTC);
+	stats->o2bspc += IGC_READ_REG(hw, IGC_O2BSPC);
+
+	stats->tpr += IGC_READ_REG(hw, IGC_TPR);
+	stats->tpt += IGC_READ_REG(hw, IGC_TPT);
+
+	stats->tor += IGC_READ_REG(hw, IGC_TORL);
+	stats->tor += ((uint64_t)IGC_READ_REG(hw, IGC_TORH) << 32);
+	stats->tor -= (stats->tpr - old_tpr) * RTE_ETHER_CRC_LEN;
+	stats->tot += IGC_READ_REG(hw, IGC_TOTL);
+	stats->tot += ((uint64_t)IGC_READ_REG(hw, IGC_TOTH) << 32);
+	stats->tot -= (stats->tpt - old_tpt) * RTE_ETHER_CRC_LEN;
+
+	stats->ptc64 += IGC_READ_REG(hw, IGC_PTC64);
+	stats->ptc127 += IGC_READ_REG(hw, IGC_PTC127);
+	stats->ptc255 += IGC_READ_REG(hw, IGC_PTC255);
+	stats->ptc511 += IGC_READ_REG(hw, IGC_PTC511);
+	stats->ptc1023 += IGC_READ_REG(hw, IGC_PTC1023);
+	stats->ptc1522 += IGC_READ_REG(hw, IGC_PTC1522);
+	stats->mptc += IGC_READ_REG(hw, IGC_MPTC);
+	stats->bptc += IGC_READ_REG(hw, IGC_BPTC);
+	stats->tsctc += IGC_READ_REG(hw, IGC_TSCTC);
+
+	stats->iac += IGC_READ_REG(hw, IGC_IAC);
+	stats->rpthc += IGC_READ_REG(hw, IGC_RPTHC);
+	stats->hgptc += IGC_READ_REG(hw, IGC_HGPTC);
+	stats->icrxdmtc += IGC_READ_REG(hw, IGC_ICRXDMTC);
+
+	/* Host to Card Statistics */
+	stats->hgorc += IGC_READ_REG(hw, IGC_HGORCL);
+	stats->hgorc += ((uint64_t)IGC_READ_REG(hw, IGC_HGORCH) << 32);
+	stats->hgorc -= (stats->rpthc - old_rpthc) * RTE_ETHER_CRC_LEN;
+	stats->hgotc += IGC_READ_REG(hw, IGC_HGOTCL);
+	stats->hgotc += ((uint64_t)IGC_READ_REG(hw, IGC_HGOTCH) << 32);
+	stats->hgotc -= (stats->hgptc - old_hgptc) * RTE_ETHER_CRC_LEN;
+	stats->lenerrs += IGC_READ_REG(hw, IGC_LENERRS);
+}
+
+/*
+ * Write 0 to all queue status registers
+ */
+static void
+igc_reset_queue_stats_register(struct igc_hw *hw)
+{
+	int i;
+
+	for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
+		IGC_WRITE_REG(hw, IGC_PQGPRC(i), 0);
+		IGC_WRITE_REG(hw, IGC_PQGPTC(i), 0);
+		IGC_WRITE_REG(hw, IGC_PQGORC(i), 0);
+		IGC_WRITE_REG(hw, IGC_PQGOTC(i), 0);
+		IGC_WRITE_REG(hw, IGC_PQMPRC(i), 0);
+		IGC_WRITE_REG(hw, IGC_RQDPC(i), 0);
+		IGC_WRITE_REG(hw, IGC_TQDPC(i), 0);
+	}
+}
+
+/*
+ * Read all hardware queue status registers
+ */
+static void
+igc_read_queue_stats_register(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_hw_queue_stats *queue_stats =
+				IGC_DEV_PRIVATE_QUEUE_STATS(dev);
+	int i;
+
+	/*
+	 * This register is not cleared on read. Furthermore, the register wraps
+	 * around back to 0x00000000 on the next increment when reaching a value
+	 * of 0xFFFFFFFF and then continues normal count operation.
+	 */
+	for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
+		union {
+			u64 ddword;
+			u32 dword[2];
+		} value;
+		u32 tmp;
+
+		/*
+		 * Read the register first, if the value is smaller than that
+		 * previous read, that mean the register has been overflowed,
+		 * then we add the high 4 bytes by 1 and replace the low 4
+		 * bytes by the new value.
+		 */
+		tmp = IGC_READ_REG(hw, IGC_PQGPRC(i));
+		value.ddword = queue_stats->pqgprc[i];
+		if (value.dword[U32_0_IN_U64] > tmp)
+			value.dword[U32_1_IN_U64]++;
+		value.dword[U32_0_IN_U64] = tmp;
+		queue_stats->pqgprc[i] = value.ddword;
+
+		tmp = IGC_READ_REG(hw, IGC_PQGPTC(i));
+		value.ddword = queue_stats->pqgptc[i];
+		if (value.dword[U32_0_IN_U64] > tmp)
+			value.dword[U32_1_IN_U64]++;
+		value.dword[U32_0_IN_U64] = tmp;
+		queue_stats->pqgptc[i] = value.ddword;
+
+		tmp = IGC_READ_REG(hw, IGC_PQGORC(i));
+		value.ddword = queue_stats->pqgorc[i];
+		if (value.dword[U32_0_IN_U64] > tmp)
+			value.dword[U32_1_IN_U64]++;
+		value.dword[U32_0_IN_U64] = tmp;
+		queue_stats->pqgorc[i] = value.ddword;
+
+		tmp = IGC_READ_REG(hw, IGC_PQGOTC(i));
+		value.ddword = queue_stats->pqgotc[i];
+		if (value.dword[U32_0_IN_U64] > tmp)
+			value.dword[U32_1_IN_U64]++;
+		value.dword[U32_0_IN_U64] = tmp;
+		queue_stats->pqgotc[i] = value.ddword;
+
+		tmp = IGC_READ_REG(hw, IGC_PQMPRC(i));
+		value.ddword = queue_stats->pqmprc[i];
+		if (value.dword[U32_0_IN_U64] > tmp)
+			value.dword[U32_1_IN_U64]++;
+		value.dword[U32_0_IN_U64] = tmp;
+		queue_stats->pqmprc[i] = value.ddword;
+
+		tmp = IGC_READ_REG(hw, IGC_RQDPC(i));
+		value.ddword = queue_stats->rqdpc[i];
+		if (value.dword[U32_0_IN_U64] > tmp)
+			value.dword[U32_1_IN_U64]++;
+		value.dword[U32_0_IN_U64] = tmp;
+		queue_stats->rqdpc[i] = value.ddword;
+
+		tmp = IGC_READ_REG(hw, IGC_TQDPC(i));
+		value.ddword = queue_stats->tqdpc[i];
+		if (value.dword[U32_0_IN_U64] > tmp)
+			value.dword[U32_1_IN_U64]++;
+		value.dword[U32_0_IN_U64] = tmp;
+		queue_stats->tqdpc[i] = value.ddword;
+	}
+}
+
+static int
+eth_igc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+{
+	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_hw_stats *stats = IGC_DEV_PRIVATE_STATS(dev);
+	struct igc_hw_queue_stats *queue_stats =
+			IGC_DEV_PRIVATE_QUEUE_STATS(dev);
+	int i;
+
+	/*
+	 * Cancel status handler since it will read the queue status registers
+	 */
+	rte_eal_alarm_cancel(igc_update_queue_stats_handler, dev);
+
+	/* Read status register */
+	igc_read_queue_stats_register(dev);
+	igc_read_stats_registers(hw, stats);
+
+	if (rte_stats == NULL) {
+		/* Restart queue status handler */
+		rte_eal_alarm_set(IGC_ALARM_INTERVAL,
+				igc_update_queue_stats_handler, dev);
+		return -EINVAL;
+	}
+
+	/* Rx Errors */
+	rte_stats->imissed = stats->mpc;
+	rte_stats->ierrors = stats->crcerrs +
+			stats->rlec + stats->ruc + stats->roc +
+			stats->rxerrc + stats->algnerrc;
+
+	/* Tx Errors */
+	rte_stats->oerrors = stats->ecol + stats->latecol;
+
+	rte_stats->ipackets = stats->gprc;
+	rte_stats->opackets = stats->gptc;
+	rte_stats->ibytes   = stats->gorc;
+	rte_stats->obytes   = stats->gotc;
+
+	/* Get per-queue statuses */
+	for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
+		/* GET TX queue statuses */
+		int map_id = igc->txq_stats_map[i];
+		if (map_id >= 0) {
+			rte_stats->q_opackets[map_id] += queue_stats->pqgptc[i];
+			rte_stats->q_obytes[map_id] += queue_stats->pqgotc[i];
+		}
+		/* Get RX queue statuses */
+		map_id = igc->rxq_stats_map[i];
+		if (map_id >= 0) {
+			rte_stats->q_ipackets[map_id] += queue_stats->pqgprc[i];
+			rte_stats->q_ibytes[map_id] += queue_stats->pqgorc[i];
+			rte_stats->q_errors[map_id] += queue_stats->rqdpc[i];
+		}
+	}
+
+	/* Restart queue status handler */
+	rte_eal_alarm_set(IGC_ALARM_INTERVAL,
+			igc_update_queue_stats_handler, dev);
+	return 0;
+}
+
+static int
+eth_igc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+		   unsigned int n)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_hw_stats *hw_stats =
+			IGC_DEV_PRIVATE_STATS(dev);
+	unsigned int i;
+
+	igc_read_stats_registers(hw, hw_stats);
+
+	if (n < IGC_NB_XSTATS)
+		return IGC_NB_XSTATS;
+
+	/* If this is a reset xstats is NULL, and we have cleared the
+	 * registers by reading them.
+	 */
+	if (!xstats)
+		return 0;
+
+	/* Extended stats */
+	for (i = 0; i < IGC_NB_XSTATS; i++) {
+		xstats[i].id = i;
+		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
+			rte_igc_stats_strings[i].offset);
+	}
+
+	return IGC_NB_XSTATS;
+}
+
+static int
+eth_igc_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_hw_stats *hw_stats = IGC_DEV_PRIVATE_STATS(dev);
+	struct igc_hw_queue_stats *queue_stats =
+			IGC_DEV_PRIVATE_QUEUE_STATS(dev);
+
+	/* Cancel queue status handler for avoid conflict */
+	rte_eal_alarm_cancel(igc_update_queue_stats_handler, dev);
+
+	/* HW registers are cleared on read */
+	igc_reset_queue_stats_register(hw);
+	igc_read_stats_registers(hw, hw_stats);
+
+	/* Reset software totals */
+	memset(hw_stats, 0, sizeof(*hw_stats));
+	memset(queue_stats, 0, sizeof(*queue_stats));
+
+	/* Restart the queue status handler */
+	rte_eal_alarm_set(IGC_ALARM_INTERVAL, igc_update_queue_stats_handler,
+			dev);
+
+	return 0;
+}
+
+static int
+eth_igc_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned int size)
+{
+	unsigned int i;
+
+	if (xstats_names == NULL)
+		return IGC_NB_XSTATS;
+
+	if (size < IGC_NB_XSTATS) {
+		PMD_DRV_LOG(ERR, "not enough buffers!");
+		return IGC_NB_XSTATS;
+	}
+
+	for (i = 0; i < IGC_NB_XSTATS; i++)
+		strlcpy(xstats_names[i].name, rte_igc_stats_strings[i].name,
+			sizeof(xstats_names[i].name));
+
+	return IGC_NB_XSTATS;
+}
+
+static int
+eth_igc_xstats_get_names_by_id(struct rte_eth_dev *dev,
+		struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+		unsigned int limit)
+{
+	unsigned int i;
+
+	if (!ids)
+		return eth_igc_xstats_get_names(dev, xstats_names, limit);
+
+	for (i = 0; i < limit; i++) {
+		if (ids[i] >= IGC_NB_XSTATS) {
+			PMD_DRV_LOG(ERR, "id value isn't valid");
+			return -EINVAL;
+		}
+		strlcpy(xstats_names[i].name,
+			rte_igc_stats_strings[ids[i]].name,
+			sizeof(xstats_names[i].name));
+	}
+	return limit;
+}
+
+static int
+eth_igc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+		uint64_t *values, unsigned int n)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_hw_stats *hw_stats = IGC_DEV_PRIVATE_STATS(dev);
+	unsigned int i;
+
+	igc_read_stats_registers(hw, hw_stats);
+
+	if (!ids) {
+		if (n < IGC_NB_XSTATS)
+			return IGC_NB_XSTATS;
+
+		/* If this is a reset xstats is NULL, and we have cleared the
+		 * registers by reading them.
+		 */
+		if (!values)
+			return 0;
+
+		/* Extended stats */
+		for (i = 0; i < IGC_NB_XSTATS; i++)
+			values[i] = *(uint64_t *)(((char *)hw_stats) +
+					rte_igc_stats_strings[i].offset);
+
+		return IGC_NB_XSTATS;
+
+	} else {
+		for (i = 0; i < n; i++) {
+			if (ids[i] >= IGC_NB_XSTATS) {
+				PMD_DRV_LOG(ERR, "id value isn't valid");
+				return -EINVAL;
+			}
+			values[i] = *(uint64_t *)(((char *)hw_stats) +
+					rte_igc_stats_strings[ids[i]].offset);
+		}
+		return n;
+	}
+}
+
+static int
+eth_igc_queue_stats_mapping_set(struct rte_eth_dev *dev,
+		uint16_t queue_id, uint8_t stat_idx, uint8_t is_rx)
+{
+	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
+
+	/* check queue id is valid */
+	if (queue_id >= IGC_QUEUE_PAIRS_NUM) {
+		PMD_DRV_LOG(ERR, "queue id(%u) error, max is %u",
+			queue_id, IGC_QUEUE_PAIRS_NUM - 1);
+		return -EINVAL;
+	}
+
+	/* store the mapping status id */
+	if (is_rx)
+		igc->rxq_stats_map[queue_id] = stat_idx;
+	else
+		igc->txq_stats_map[queue_id] = stat_idx;
+
 	return 0;
 }
 

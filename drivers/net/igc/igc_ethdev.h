@@ -86,11 +86,34 @@ union igc_rss_reta_reg {
 	uint8_t  bytes[4];
 };
 
+/* Structure to per-queue statics */
+struct igc_hw_queue_stats {
+	u64	pqgprc[IGC_QUEUE_PAIRS_NUM];
+	/* per queue good packets received count */
+	u64	pqgptc[IGC_QUEUE_PAIRS_NUM];
+	/* per queue good packets transmitted count */
+	u64	pqgorc[IGC_QUEUE_PAIRS_NUM];
+	/* per queue good octets received count */
+	u64	pqgotc[IGC_QUEUE_PAIRS_NUM];
+	/* per queue good octets transmitted count */
+	u64	pqmprc[IGC_QUEUE_PAIRS_NUM];
+	/* per queue multicast packets received count */
+	u64	rqdpc[IGC_QUEUE_PAIRS_NUM];
+	/* per receive queue drop packet count */
+	u64	tqdpc[IGC_QUEUE_PAIRS_NUM];
+	/* per transmit queue drop packet count */
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
 struct igc_adapter {
 	struct igc_hw		hw;
+	struct igc_hw_stats	stats;
+	struct igc_hw_queue_stats queue_stats;
+	int16_t txq_stats_map[IGC_QUEUE_PAIRS_NUM];
+	int16_t rxq_stats_map[IGC_QUEUE_PAIRS_NUM];
+
 	struct igc_interrupt	intr;
 	bool		stopped;
 };
@@ -99,6 +122,12 @@ struct igc_adapter {
 
 #define IGC_DEV_PRIVATE_HW(_dev) \
 	(&((struct igc_adapter *)(_dev)->data->dev_private)->hw)
+
+#define IGC_DEV_PRIVATE_STATS(_dev) \
+	(&((struct igc_adapter *)(_dev)->data->dev_private)->stats)
+
+#define IGC_DEV_PRIVATE_QUEUE_STATS(_dev) \
+	(&((struct igc_adapter *)(_dev)->data->dev_private)->queue_stats)
 
 #define IGC_DEV_PRIVATE_INTR(_dev) \
 	(&((struct igc_adapter *)(_dev)->data->dev_private)->intr)
