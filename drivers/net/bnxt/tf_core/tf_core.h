@@ -30,6 +30,32 @@ enum tf_dir {
 	TF_DIR_MAX
 };
 
+/**
+ * External pool size
+ *
+ * Defines a single pool of external action records of
+ * fixed size.  Currently, this is an index.
+ */
+#define TF_EXT_POOL_ENTRY_SZ_BYTES 1
+
+/**
+ *  External pool entry count
+ *
+ *  Defines the number of entries in the external action pool
+ */
+#define TF_EXT_POOL_ENTRY_CNT (1 * 1024)
+
+/**
+ * Number of external pools
+ */
+#define TF_EXT_POOL_CNT_MAX 1
+
+/**
+ * External pool Id
+ */
+#define TF_EXT_POOL_0      0 /**< matches TF_TBL_TYPE_EXT   */
+#define TF_EXT_POOL_1      1 /**< matches TF_TBL_TYPE_EXT_0 */
+
 /********** BEGIN API FUNCTION PROTOTYPES/PARAMETERS **********/
 
 /**

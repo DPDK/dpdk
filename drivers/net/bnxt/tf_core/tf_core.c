@@ -149,6 +149,20 @@ tf_open_session(struct tf                    *tfp,
 		goto cleanup_close;
 	}
 
+	/* Shadow DB configuration */
+	if (parms->shadow_copy) {
+		/* Ignore shadow_copy setting */
+		session->shadow_copy = 0;/* parms->shadow_copy; */
+#if (TF_SHADOW == 1)
+		rc = tf_rm_shadow_db_init(tfs);
+		if (rc)
+			PMD_DRV_LOG(ERR,
+				    "Shadow DB Initialization failed\n, rc:%d",
+				    rc);
+		/* Add additional processing */
+#endif /* TF_SHADOW */
+	}
+
 	/* Adjust the Session with what firmware allowed us to get */
 	rc = tf_rm_allocate_validate(tfp);
 	if (rc) {

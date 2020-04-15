@@ -12,6 +12,7 @@
 #include "bitalloc.h"
 #include "tf_core.h"
 #include "tf_rm.h"
+#include "tf_tbl.h"
 
 /** Session defines
  */
@@ -285,6 +286,15 @@ struct tf_session {
 
 	/** Lookup3 init values */
 	uint32_t lkup_lkup3_init_cfg[TF_DIR_MAX];
+
+	/** Table scope array */
+	struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
+
+	/** Each external pool is associated with a single table scope
+	 *  For each external pool store the associated table scope in
+	 *  this data structure
+	 */
+	uint32_t ext_pool_2_scope[TF_DIR_MAX][TF_EXT_POOL_CNT_MAX];
 };
 
 #endif /* _TF_SESSION_H_ */
