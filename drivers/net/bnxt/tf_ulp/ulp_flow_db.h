@@ -143,6 +143,23 @@ int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
 			     uint32_t				fid);
 
 /*
+ *Get the flow database entry details
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [in] The index to the flow entry
+ * nxt_idx [in/out] the index to the next entry
+ * params [out] The contents to be copied into params.
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t	ulp_flow_db_resource_get(struct bnxt_ulp_context	*ulp_ctxt,
+				 enum bnxt_ulp_flow_db_tables	tbl_idx,
+				 uint32_t			fid,
+				 uint32_t			*nxt_idx,
+				 struct ulp_flow_db_res_params	*params);
+
+/*
  * Flush all flows in the flow database.
  *
  * ulp_ctxt [in] Ptr to ulp context

@@ -560,7 +560,71 @@ int32_t	ulp_flow_db_fid_free(struct bnxt_ulp_context		*ulp_ctxt,
 	return 0;
 }
 
-/** Get the flow database entry iteratively
+/*
+ * Get the flow database entry details
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * tbl_idx [in] Specify it is regular or default flow
+ * fid [in] The index to the flow entry
+ * nxt_idx [in/out] the index to the next entry
+ * params [out] The contents to be copied into params.
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t	ulp_flow_db_resource_get(struct bnxt_ulp_context	*ulp_ctxt,
+				 enum bnxt_ulp_flow_db_tables	tbl_idx,
+				 uint32_t			fid,
+				 uint32_t			*nxt_idx,
+				 struct ulp_flow_db_res_params	*params)
+{
+	struct bnxt_ulp_flow_db		*flow_db;
+	struct bnxt_ulp_flow_tbl	*flow_tbl;
+	struct ulp_fdb_resource_info	*nxt_resource, *fid_resource;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	if (tbl_idx >= BNXT_ULP_FLOW_TABLE_MAX) {
+		BNXT_TF_DBG(ERR, "Invalid table index\n");
+		return -EINVAL;
+	}
+
+	flow_tbl = &flow_db->flow_tbl[tbl_idx];
+
+	/* check for limits of fid */
+	if (fid >= flow_tbl->num_flows || !fid) {
+		BNXT_TF_DBG(ERR, "Invalid flow index\n");
+		return -EINVAL;
+	}
+
+	/* check if the flow is active or not */
+	if (!ulp_flow_db_active_flow_is_set(flow_tbl, fid)) {
+		BNXT_TF_DBG(ERR, "flow does not exist\n");
+		return -EINVAL;
+	}
+
+	if (!*nxt_idx) {
+		fid_resource = &flow_tbl->flow_resources[fid];
+		ulp_flow_db_res_info_to_params(fid_resource, params);
+		ULP_FLOW_DB_RES_NXT_SET(*nxt_idx,
+					fid_resource->nxt_resource_idx);
+	} else {
+		nxt_resource = &flow_tbl->flow_resources[*nxt_idx];
+		ulp_flow_db_res_info_to_params(nxt_resource, params);
+		*nxt_idx = 0;
+		ULP_FLOW_DB_RES_NXT_SET(*nxt_idx,
+					nxt_resource->nxt_resource_idx);
+	}
+
+	/* all good, return success */
+	return 0;
+}
+
+/*
+ * Get the flow database entry iteratively
  *
  * flow_tbl [in] Ptr to flow table
  * fid [in/out] The index to the flow entry
