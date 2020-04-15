@@ -12,6 +12,7 @@
 #include "tfp.h"
 #include "bitalloc.h"
 #include "bnxt.h"
+#include "rand.h"
 
 int
 tf_open_session(struct tf                    *tfp,

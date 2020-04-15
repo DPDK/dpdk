@@ -478,3 +478,347 @@ tf_msg_session_hw_resc_free(struct tf *tfp,
 
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
+
+/**
+ * Sends session HW resource flush request to TF Firmware
+ */
+int
+tf_msg_session_hw_resc_flush(struct tf *tfp,
+			     enum tf_dir dir,
+			     struct tf_rm_entry *hw_entry)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_session_hw_resc_free_input req = { 0 };
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_L2_CTXT_TCAM, req,
+			  l2_ctx_tcam_entries);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_PROF_FUNC, req,
+			  prof_func);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_PROF_TCAM, req,
+			  prof_tcam_entries);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_EM_PROF_ID, req,
+			  em_prof_id);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_EM_REC, req,
+			  em_record_entries);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_WC_TCAM_PROF_ID, req,
+			  wc_tcam_prof_id);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_WC_TCAM, req,
+			  wc_tcam_entries);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_METER_PROF, req,
+			  meter_profiles);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_METER_INST, req,
+			  meter_inst);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_MIRROR, req,
+			  mirrors);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_UPAR, req,
+			  upar);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_SP_TCAM, req,
+			  sp_tcam_entries);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_L2_FUNC, req,
+			  l2_func);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_FKB, req,
+			  flex_key_templ);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_TBL_SCOPE, req,
+			  tbl_scope);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_EPOCH0, req,
+			  epoch0_entries);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_EPOCH1, req,
+			  epoch1_entries);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_METADATA, req,
+			  metadata);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_CT_STATE, req,
+			  ct_state);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_RANGE_PROF, req,
+			  range_prof);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_RANGE_ENTRY, req,
+			  range_entries);
+	TF_HW_FREE_TO_REQ(hw_entry, TF_RESC_TYPE_HW_LAG_ENTRY, req,
+			  lag_tbl_entries);
+
+	MSG_PREP_NO_RESP(parms,
+			 TF_KONG_MB,
+			 TF_TYPE_TRUFLOW,
+			 HWRM_TFT_SESSION_HW_RESC_FLUSH,
+			 req);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+/**
+ * Sends session SRAM resource query capability request to TF Firmware
+ */
+int
+tf_msg_session_sram_resc_qcaps(struct tf *tfp __rte_unused,
+			       enum tf_dir dir,
+			       struct tf_rm_sram_query *query __rte_unused)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_session_sram_resc_qcaps_input req = { 0 };
+	struct tf_session_sram_resc_qcaps_output resp = { 0 };
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+
+	MSG_PREP(parms,
+		 TF_KONG_MB,
+		 HWRM_TF,
+		 HWRM_TFT_SESSION_SRAM_RESC_QCAPS,
+		 req,
+		 resp);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	/* Process the response */
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_FULL_ACTION, resp,
+			      full_action);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_MCG, resp,
+			      mcg);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_ENCAP_8B, resp,
+			      encap_8b);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_ENCAP_16B, resp,
+			      encap_16b);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_ENCAP_64B, resp,
+			      encap_64b);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_SP_SMAC, resp,
+			      sp_smac);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_SP_SMAC_IPV4, resp,
+			      sp_smac_ipv4);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_SP_SMAC_IPV6, resp,
+			      sp_smac_ipv6);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_COUNTER_64B, resp,
+			      counter_64b);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_NAT_SPORT, resp,
+			      nat_sport);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_NAT_DPORT, resp,
+			      nat_dport);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_NAT_S_IPV4, resp,
+			      nat_s_ipv4);
+	TF_SRAM_RESP_TO_QUERY(query, TF_RESC_TYPE_SRAM_NAT_D_IPV4, resp,
+			      nat_d_ipv4);
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+/**
+ * Sends session SRAM resource allocation request to TF Firmware
+ */
+int
+tf_msg_session_sram_resc_alloc(struct tf *tfp __rte_unused,
+			       enum tf_dir dir,
+			       struct tf_rm_sram_alloc *sram_alloc __rte_unused,
+			       struct tf_rm_entry *sram_entry __rte_unused)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_session_sram_resc_alloc_input req = { 0 };
+	struct tf_session_sram_resc_alloc_output resp;
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+
+	memset(&resp, 0, sizeof(resp));
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_FULL_ACTION, req,
+			     full_action);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_MCG, req,
+			     mcg);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_ENCAP_8B, req,
+			     encap_8b);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_ENCAP_16B, req,
+			     encap_16b);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_ENCAP_64B, req,
+			     encap_64b);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_SP_SMAC, req,
+			     sp_smac);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_SP_SMAC_IPV4,
+			     req, sp_smac_ipv4);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_SP_SMAC_IPV6,
+			     req, sp_smac_ipv6);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_COUNTER_64B,
+			     req, counter_64b);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_NAT_SPORT, req,
+			     nat_sport);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_NAT_DPORT, req,
+			     nat_dport);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_NAT_S_IPV4, req,
+			     nat_s_ipv4);
+	TF_SRAM_ALLOC_TO_REQ(sram_alloc, TF_RESC_TYPE_SRAM_NAT_D_IPV4, req,
+			     nat_d_ipv4);
+
+	MSG_PREP(parms,
+		 TF_KONG_MB,
+		 HWRM_TF,
+		 HWRM_TFT_SESSION_SRAM_RESC_ALLOC,
+		 req,
+		 resp);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	/* Process the response */
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_FULL_ACTION,
+			      resp, full_action);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_MCG, resp,
+			      mcg);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_8B, resp,
+			      encap_8b);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_16B, resp,
+			      encap_16b);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_64B, resp,
+			      encap_64b);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC, resp,
+			      sp_smac);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC_IPV4,
+			      resp, sp_smac_ipv4);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC_IPV6,
+			      resp, sp_smac_ipv6);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_COUNTER_64B, resp,
+			      counter_64b);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_NAT_SPORT, resp,
+			      nat_sport);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_NAT_DPORT, resp,
+			      nat_dport);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_NAT_S_IPV4, resp,
+			      nat_s_ipv4);
+	TF_SRAM_RESP_TO_ALLOC(sram_entry, TF_RESC_TYPE_SRAM_NAT_D_IPV4, resp,
+			      nat_d_ipv4);
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+/**
+ * Sends session SRAM resource free request to TF Firmware
+ */
+int
+tf_msg_session_sram_resc_free(struct tf *tfp __rte_unused,
+			      enum tf_dir dir,
+			      struct tf_rm_entry *sram_entry __rte_unused)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_session_sram_resc_free_input req = { 0 };
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_FULL_ACTION, req,
+			    full_action);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_MCG, req,
+			    mcg);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_8B, req,
+			    encap_8b);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_16B, req,
+			    encap_16b);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_64B, req,
+			    encap_64b);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC, req,
+			    sp_smac);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC_IPV4, req,
+			    sp_smac_ipv4);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC_IPV6, req,
+			    sp_smac_ipv6);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_COUNTER_64B, req,
+			    counter_64b);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_NAT_SPORT, req,
+			    nat_sport);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_NAT_DPORT, req,
+			    nat_dport);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_NAT_S_IPV4, req,
+			    nat_s_ipv4);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_NAT_D_IPV4, req,
+			    nat_d_ipv4);
+
+	MSG_PREP_NO_RESP(parms,
+			 TF_KONG_MB,
+			 HWRM_TF,
+			 HWRM_TFT_SESSION_SRAM_RESC_FREE,
+			 req);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+/**
+ * Sends session SRAM resource flush request to TF Firmware
+ */
+int
+tf_msg_session_sram_resc_flush(struct tf *tfp,
+			       enum tf_dir dir,
+			       struct tf_rm_entry *sram_entry)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_session_sram_resc_free_input req = { 0 };
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_FULL_ACTION, req,
+			    full_action);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_MCG, req,
+			    mcg);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_8B, req,
+			    encap_8b);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_16B, req,
+			    encap_16b);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_ENCAP_64B, req,
+			    encap_64b);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC, req,
+			    sp_smac);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC_IPV4, req,
+			    sp_smac_ipv4);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_SP_SMAC_IPV6, req,
+			    sp_smac_ipv6);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_COUNTER_64B, req,
+			    counter_64b);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_NAT_SPORT, req,
+			    nat_sport);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_NAT_DPORT, req,
+			    nat_dport);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_NAT_S_IPV4, req,
+			    nat_s_ipv4);
+	TF_SRAM_FREE_TO_REQ(sram_entry, TF_RESC_TYPE_SRAM_NAT_D_IPV4, req,
+			    nat_d_ipv4);
+
+	MSG_PREP_NO_RESP(parms,
+			 TF_KONG_MB,
+			 TF_TYPE_TRUFLOW,
+			 HWRM_TFT_SESSION_SRAM_RESC_FLUSH,
+			 req);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}

@@ -83,4 +83,41 @@ int tf_msg_session_hw_resc_alloc(struct tf *tfp,
 int tf_msg_session_hw_resc_free(struct tf *tfp,
 				enum tf_dir dir,
 				struct tf_rm_entry *hw_entry);
+
+/**
+ * Sends session HW resource flush request to TF Firmware
+ */
+int tf_msg_session_hw_resc_flush(struct tf *tfp,
+				 enum tf_dir dir,
+				 struct tf_rm_entry *hw_entry);
+
+/**
+ * Sends session SRAM resource query capability request to TF Firmware
+ */
+int tf_msg_session_sram_resc_qcaps(struct tf *tfp,
+				   enum tf_dir dir,
+				   struct tf_rm_sram_query *sram_query);
+
+/**
+ * Sends session SRAM resource allocation request to TF Firmware
+ */
+int tf_msg_session_sram_resc_alloc(struct tf *tfp,
+				   enum tf_dir dir,
+				   struct tf_rm_sram_alloc *sram_alloc,
+				   struct tf_rm_entry *sram_entry);
+
+/**
+ * Sends session SRAM resource free request to TF Firmware
+ */
+int tf_msg_session_sram_resc_free(struct tf *tfp,
+				  enum tf_dir dir,
+				  struct tf_rm_entry *sram_entry);
+
+/**
+ * Sends session SRAM resource flush request to TF Firmware
+ */
+int tf_msg_session_sram_resc_flush(struct tf *tfp,
+				   enum tf_dir dir,
+				   struct tf_rm_entry *sram_entry);
+
 #endif  /* _TF_MSG_H_ */
