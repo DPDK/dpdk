@@ -870,46 +870,36 @@ enic_fm_append_action_op(struct enic_flowman *fm,
 	return 0;
 }
 
-/* Steer operations need to appear before other ops */
+/* NIC requires that 1st steer appear before decap.
+ * Correct example: steer, decap, steer, steer, ...
+ */
 static void
 enic_fm_reorder_action_op(struct enic_flowman *fm)
 {
-	struct fm_action_op *dst, *dst_head, *src, *src_head;
+	struct fm_action_op *op, *steer, *decap;
+	struct fm_action_op tmp_op;
 
 	ENICPMD_FUNC_TRACE();
-	/* Move steer ops to the front. */
-	src = fm->action.fma_action_ops;
-	src_head = src;
-	dst = fm->action_tmp.fma_action_ops;
-	dst_head = dst;
-	/* Copy steer ops to tmp */
-	while (src->fa_op != FMOP_END) {
-		if (src->fa_op == FMOP_RQ_STEER) {
-			ENICPMD_LOG(DEBUG, "move op: %ld -> dst %ld",
-				    (long)(src - src_head),
-				    (long)(dst - dst_head));
-			*dst = *src;
-			dst++;
-		}
-		src++;
+	/* Find 1st steer and decap */
+	op = fm->action.fma_action_ops;
+	steer = NULL;
+	decap = NULL;
+	while (op->fa_op != FMOP_END) {
+		if (!decap && op->fa_op == FMOP_DECAP_NOSTRIP)
+			decap = op;
+		else if (!steer && op->fa_op == FMOP_RQ_STEER)
+			steer = op;
+		op++;
 	}
-	/* Then append non-steer ops */
-	src = src_head;
-	while (src->fa_op != FMOP_END) {
-		if (src->fa_op != FMOP_RQ_STEER) {
-			ENICPMD_LOG(DEBUG, "move op: %ld -> dst %ld",
-				    (long)(src - src_head),
-				    (long)(dst - dst_head));
-			*dst = *src;
-			dst++;
-		}
-		src++;
+	/* If decap is before steer, swap */
+	if (steer && decap && decap < steer) {
+		op = fm->action.fma_action_ops;
+		ENICPMD_LOG(DEBUG, "swap decap %ld <-> steer %ld",
+			    (long)(decap - op), (long)(steer - op));
+		tmp_op = *decap;
+		*decap = *steer;
+		*steer = tmp_op;
 	}
-	/* Copy END */
-	*dst = *src;
-	/* Finally replace the original action with the reordered one */
-	memcpy(fm->action.fma_action_ops, fm->action_tmp.fma_action_ops,
-	       sizeof(fm->action.fma_action_ops));
 }
 
 /* VXLAN decap is done via flowman compound action */
@@ -1100,6 +1090,7 @@ enic_fm_copy_action(struct enic_flowman *fm,
 		PASSTHRU = 1 << 2,
 		COUNT = 1 << 3,
 		ENCAP = 1 << 4,
+		DECAP = 1 << 5,
 	};
 	struct fm_tcam_match_entry *fmt;
 	struct fm_action_op fm_op;
@@ -1282,6 +1273,10 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP: {
+			if (overlap & DECAP)
+				goto unsupported;
+			overlap |= DECAP;
+
 			ret = enic_fm_copy_vxlan_decap(fm, fmt, actions,
 				error);
 			if (ret != 0)
