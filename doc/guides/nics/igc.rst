@@ -40,3 +40,38 @@ Foxville LM (I225 LM): Client 2.5G LAN vPro Corporate
 Foxville V (I225 V): Client 2.5G LAN Consumer
 Foxville I (I225 I): Client 2.5G Industrial Temp
 Foxville V (I225 K): Client 2.5G LAN Consumer
+
+
+Sample Application Notes
+------------------------
+
+Vlan filter
+~~~~~~~~~~~
+
+VLAN stripping off only works with inner vlan.
+Only the outer VLAN TPID can be set to a vlan other than 0x8100.
+
+If extend VLAN is enabled:
+
+- The VLAN header in a packet that carries a single VLAN header is treated as the external VLAN.
+
+- Foxville expects that any transmitted packet to have at least the external VLAN added by the
+  software. For those packets where an external VLAN is not present, any offload that relates to
+  inner fields to the EtherType might not be provided.
+
+- If VLAN TX-OFFLOAD is enabled and the packet does not contain an external VLAN, the packet is
+  dropped, and if configured, the queue from which the packet was sent is disabled.
+
+To start ``testpmd``, add vlan 10 to port, set vlan stripping off on, set extend on, set TPID of
+outer VLAN to 0x9100:
+
+.. code-block:: console
+
+   ./app/testpmd -l 4-8 -- -i
+   ...
+
+   testpmd> vlan set filter on 0
+   testpmd> rx_vlan add 10 0
+   testpmd> vlan set strip off 0
+   testpmd> vlan set extend on 0
+   testpmd> vlan set outer tpid 0x9100 0

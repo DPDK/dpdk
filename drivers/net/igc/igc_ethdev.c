@@ -50,6 +50,10 @@
 /* External VLAN Enable bit mask */
 #define IGC_CTRL_EXT_EXT_VLAN		(1u << 26)
 
+/* External VLAN Ether Type bit mask and shift */
+#define IGC_VET_EXT			0xFFFF0000
+#define IGC_VET_EXT_SHIFT		16
+
 /* Per Queue Good Packets Received Count */
 #define IGC_PQGPRC(idx)		(0x10010 + 0x100 * (idx))
 /* Per Queue Good Octets Received Count */
@@ -227,6 +231,11 @@ static int eth_igc_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf);
 static int eth_igc_rss_hash_conf_get(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf);
+static int
+eth_igc_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
+static int eth_igc_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int eth_igc_vlan_tpid_set(struct rte_eth_dev *dev,
+		      enum rte_vlan_type vlan_type, uint16_t tpid);
 
 static const struct eth_dev_ops eth_igc_ops = {
 	.dev_configure		= eth_igc_configure,
@@ -279,6 +288,10 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.reta_query		= eth_igc_rss_reta_query,
 	.rss_hash_update	= eth_igc_rss_hash_update,
 	.rss_hash_conf_get	= eth_igc_rss_hash_conf_get,
+	.vlan_filter_set	= eth_igc_vlan_filter_set,
+	.vlan_offload_set	= eth_igc_vlan_offload_set,
+	.vlan_tpid_set		= eth_igc_vlan_tpid_set,
+	.vlan_strip_queue_set	= eth_igc_vlan_strip_queue_set,
 };
 
 /*
@@ -950,6 +963,11 @@ eth_igc_start(struct rte_eth_dev *dev)
 
 	igc_clear_hw_cntrs_base_generic(hw);
 
+	/* VLAN Offload Settings */
+	eth_igc_vlan_offload_set(dev,
+		ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
+		ETH_VLAN_EXTEND_MASK);
+
 	/* Setup link speed and duplex */
 	speeds = &dev->data->dev_conf.link_speeds;
 	if (*speeds == ETH_LINK_SPEED_AUTONEG) {
@@ -1443,6 +1461,7 @@ eth_igc_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
 	dev_info->rx_offload_capa = IGC_RX_OFFLOAD_ALL;
 	dev_info->tx_offload_capa = IGC_TX_OFFLOAD_ALL;
+	dev_info->rx_queue_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
 
 	dev_info->max_rx_queues = IGC_QUEUE_PAIRS_NUM;
 	dev_info->max_tx_queues = IGC_QUEUE_PAIRS_NUM;
@@ -2356,6 +2375,192 @@ eth_igc_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	rss_conf->rss_hf |= rss_hf;
 	return 0;
+}
+
+static int
+eth_igc_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_vfta *shadow_vfta = IGC_DEV_PRIVATE_VFTA(dev);
+	uint32_t vfta;
+	uint32_t vid_idx;
+	uint32_t vid_bit;
+
+	vid_idx = (vlan_id >> IGC_VFTA_ENTRY_SHIFT) & IGC_VFTA_ENTRY_MASK;
+	vid_bit = 1u << (vlan_id & IGC_VFTA_ENTRY_BIT_SHIFT_MASK);
+	vfta = shadow_vfta->vfta[vid_idx];
+	if (on)
+		vfta |= vid_bit;
+	else
+		vfta &= ~vid_bit;
+	IGC_WRITE_REG_ARRAY(hw, IGC_VFTA, vid_idx, vfta);
+
+	/* update local VFTA copy */
+	shadow_vfta->vfta[vid_idx] = vfta;
+
+	return 0;
+}
+
+static void
+igc_vlan_hw_filter_disable(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	igc_read_reg_check_clear_bits(hw, IGC_RCTL,
+			IGC_RCTL_CFIEN | IGC_RCTL_VFE);
+}
+
+static void
+igc_vlan_hw_filter_enable(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_vfta *shadow_vfta = IGC_DEV_PRIVATE_VFTA(dev);
+	uint32_t reg_val;
+	int i;
+
+	/* Filter Table Enable, CFI not used for packet acceptance */
+	reg_val = IGC_READ_REG(hw, IGC_RCTL);
+	reg_val &= ~IGC_RCTL_CFIEN;
+	reg_val |= IGC_RCTL_VFE;
+	IGC_WRITE_REG(hw, IGC_RCTL, reg_val);
+
+	/* restore VFTA table */
+	for (i = 0; i < IGC_VFTA_SIZE; i++)
+		IGC_WRITE_REG_ARRAY(hw, IGC_VFTA, i, shadow_vfta->vfta[i]);
+}
+
+static void
+igc_vlan_hw_strip_disable(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+
+	igc_read_reg_check_clear_bits(hw, IGC_CTRL, IGC_CTRL_VME);
+}
+
+static void
+igc_vlan_hw_strip_enable(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+
+	igc_read_reg_check_set_bits(hw, IGC_CTRL, IGC_CTRL_VME);
+}
+
+static int
+igc_vlan_hw_extend_disable(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t ctrl_ext;
+
+	ctrl_ext = IGC_READ_REG(hw, IGC_CTRL_EXT);
+
+	/* if extend vlan hasn't been enabled */
+	if ((ctrl_ext & IGC_CTRL_EXT_EXT_VLAN) == 0)
+		return 0;
+
+	if ((dev->data->dev_conf.rxmode.offloads &
+			DEV_RX_OFFLOAD_JUMBO_FRAME) == 0)
+		goto write_ext_vlan;
+
+	/* Update maximum packet length */
+	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <
+		RTE_ETHER_MIN_MTU + VLAN_TAG_SIZE) {
+		PMD_DRV_LOG(ERR, "Maximum packet length %u error, min is %u",
+			dev->data->dev_conf.rxmode.max_rx_pkt_len,
+			VLAN_TAG_SIZE + RTE_ETHER_MIN_MTU);
+		return -EINVAL;
+	}
+	dev->data->dev_conf.rxmode.max_rx_pkt_len -= VLAN_TAG_SIZE;
+	IGC_WRITE_REG(hw, IGC_RLPML,
+		dev->data->dev_conf.rxmode.max_rx_pkt_len);
+
+write_ext_vlan:
+	IGC_WRITE_REG(hw, IGC_CTRL_EXT, ctrl_ext & ~IGC_CTRL_EXT_EXT_VLAN);
+	return 0;
+}
+
+static int
+igc_vlan_hw_extend_enable(struct rte_eth_dev *dev)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t ctrl_ext;
+
+	ctrl_ext = IGC_READ_REG(hw, IGC_CTRL_EXT);
+
+	/* if extend vlan has been enabled */
+	if (ctrl_ext & IGC_CTRL_EXT_EXT_VLAN)
+		return 0;
+
+	if ((dev->data->dev_conf.rxmode.offloads &
+			DEV_RX_OFFLOAD_JUMBO_FRAME) == 0)
+		goto write_ext_vlan;
+
+	/* Update maximum packet length */
+	if (dev->data->dev_conf.rxmode.max_rx_pkt_len >
+		MAX_RX_JUMBO_FRAME_SIZE - VLAN_TAG_SIZE) {
+		PMD_DRV_LOG(ERR, "Maximum packet length %u error, max is %u",
+			dev->data->dev_conf.rxmode.max_rx_pkt_len +
+			VLAN_TAG_SIZE, MAX_RX_JUMBO_FRAME_SIZE);
+		return -EINVAL;
+	}
+	dev->data->dev_conf.rxmode.max_rx_pkt_len += VLAN_TAG_SIZE;
+	IGC_WRITE_REG(hw, IGC_RLPML,
+		dev->data->dev_conf.rxmode.max_rx_pkt_len);
+
+write_ext_vlan:
+	IGC_WRITE_REG(hw, IGC_CTRL_EXT, ctrl_ext | IGC_CTRL_EXT_EXT_VLAN);
+	return 0;
+}
+
+static int
+eth_igc_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct rte_eth_rxmode *rxmode;
+
+	rxmode = &dev->data->dev_conf.rxmode;
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			igc_vlan_hw_strip_enable(dev);
+		else
+			igc_vlan_hw_strip_disable(dev);
+	}
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+			igc_vlan_hw_filter_enable(dev);
+		else
+			igc_vlan_hw_filter_disable(dev);
+	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK) {
+		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
+			return igc_vlan_hw_extend_enable(dev);
+		else
+			return igc_vlan_hw_extend_disable(dev);
+	}
+
+	return 0;
+}
+
+static int
+eth_igc_vlan_tpid_set(struct rte_eth_dev *dev,
+		      enum rte_vlan_type vlan_type,
+		      uint16_t tpid)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t reg_val;
+
+	/* only outer TPID of double VLAN can be configured*/
+	if (vlan_type == ETH_VLAN_TYPE_OUTER) {
+		reg_val = IGC_READ_REG(hw, IGC_VET);
+		reg_val = (reg_val & (~IGC_VET_EXT)) |
+			((uint32_t)tpid << IGC_VET_EXT_SHIFT);
+		IGC_WRITE_REG(hw, IGC_VET, reg_val);
+
+		return 0;
+	}
+
+	/* all other TPID values are read-only*/
+	PMD_DRV_LOG(ERR, "Not supported");
+	return -ENOTSUP;
 }
 
 static int

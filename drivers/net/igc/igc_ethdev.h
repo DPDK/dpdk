@@ -17,6 +17,10 @@ extern "C" {
 #endif
 
 #define IGC_RSS_RDT_SIZD		128
+
+/* VLAN filter table size */
+#define IGC_VFTA_SIZE			128
+
 #define IGC_QUEUE_PAIRS_NUM		4
 
 #define IGC_HKEY_MAX_INDEX		10
@@ -54,6 +58,9 @@ extern "C" {
 #define IGC_TX_MAX_MTU_SEG	UINT8_MAX
 
 #define IGC_RX_OFFLOAD_ALL	(    \
+	DEV_RX_OFFLOAD_VLAN_STRIP  | \
+	DEV_RX_OFFLOAD_VLAN_FILTER | \
+	DEV_RX_OFFLOAD_VLAN_EXTEND | \
 	DEV_RX_OFFLOAD_IPV4_CKSUM  | \
 	DEV_RX_OFFLOAD_UDP_CKSUM   | \
 	DEV_RX_OFFLOAD_TCP_CKSUM   | \
@@ -113,6 +120,11 @@ struct igc_hw_queue_stats {
 	/* per transmit queue drop packet count */
 };
 
+/* local vfta copy */
+struct igc_vfta {
+	uint32_t vfta[IGC_VFTA_SIZE];
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -124,6 +136,7 @@ struct igc_adapter {
 	int16_t rxq_stats_map[IGC_QUEUE_PAIRS_NUM];
 
 	struct igc_interrupt	intr;
+	struct igc_vfta	shadow_vfta;
 	bool		stopped;
 };
 
@@ -140,6 +153,9 @@ struct igc_adapter {
 
 #define IGC_DEV_PRIVATE_INTR(_dev) \
 	(&((struct igc_adapter *)(_dev)->data->dev_private)->intr)
+
+#define IGC_DEV_PRIVATE_VFTA(_dev) \
+	(&((struct igc_adapter *)(_dev)->data->dev_private)->shadow_vfta)
 
 static inline void
 igc_read_reg_check_set_bits(struct igc_hw *hw, uint32_t reg, uint32_t bits)

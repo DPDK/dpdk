@@ -44,7 +44,8 @@ void eth_igc_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
 void eth_igc_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
-
+void eth_igc_vlan_strip_queue_set(struct rte_eth_dev *dev,
+			uint16_t rx_queue_id, int on);
 #ifdef __cplusplus
 }
 #endif

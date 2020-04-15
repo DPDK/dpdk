@@ -1162,6 +1162,16 @@ igc_rx_init(struct rte_eth_dev *dev)
 		IGC_WRITE_REG(hw, IGC_RDH(rxq->reg_idx), 0);
 		IGC_WRITE_REG(hw, IGC_RDT(rxq->reg_idx),
 				rxq->nb_rx_desc - 1);
+
+		/* strip queue vlan offload */
+		if (rxq->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
+			uint32_t dvmolr;
+			dvmolr = IGC_READ_REG(hw, IGC_DVMOLR(rxq->queue_id));
+
+			/* If vlan been stripped off, the CRC is meaningless. */
+			dvmolr |= IGC_DVMOLR_STRVLAN | IGC_DVMOLR_STRCRC;
+			IGC_WRITE_REG(hw, IGC_DVMOLR(rxq->reg_idx), dvmolr);
+		}
 	}
 
 	return 0;
@@ -2106,4 +2116,32 @@ eth_igc_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
 	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
 	qinfo->conf.offloads = txq->offloads;
+}
+
+void
+eth_igc_vlan_strip_queue_set(struct rte_eth_dev *dev,
+			uint16_t rx_queue_id, int on)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct igc_rx_queue *rxq = dev->data->rx_queues[rx_queue_id];
+	uint32_t reg_val;
+
+	if (rx_queue_id >= IGC_QUEUE_PAIRS_NUM) {
+		PMD_DRV_LOG(ERR, "Queue index(%u) illegal, max is %u",
+			rx_queue_id, IGC_QUEUE_PAIRS_NUM - 1);
+		return;
+	}
+
+	reg_val = IGC_READ_REG(hw, IGC_DVMOLR(rx_queue_id));
+	if (on) {
+		/* If vlan been stripped off, the CRC is meaningless. */
+		reg_val |= IGC_DVMOLR_STRVLAN | IGC_DVMOLR_STRCRC;
+		rxq->offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	} else {
+		reg_val &= ~(IGC_DVMOLR_STRVLAN | IGC_DVMOLR_HIDVLAN |
+				IGC_DVMOLR_STRCRC);
+		rxq->offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
+	}
+
+	IGC_WRITE_REG(hw, IGC_DVMOLR(rx_queue_id), reg_val);
 }
