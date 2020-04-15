@@ -12,6 +12,7 @@
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 #include <rte_alarm.h>
+#include <rte_kvargs.h>
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
@@ -125,6 +126,18 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 				     DEV_RX_OFFLOAD_TCP_LRO | \
 				     DEV_RX_OFFLOAD_SCATTER | \
 				     DEV_RX_OFFLOAD_RSS_HASH)
+
+#define BNXT_DEVARG_TRUFLOW	"host-based-truflow"
+static const char *const bnxt_dev_args[] = {
+	BNXT_DEVARG_TRUFLOW,
+	NULL
+};
+
+/*
+ * truflow == false to disable the feature
+ * truflow == true to enable the feature
+ */
+#define	BNXT_DEVARG_TRUFLOW_INVALID(truflow)	((truflow) > 1)
 
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
@@ -4854,6 +4867,63 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 }
 
 static int
+bnxt_parse_devarg_truflow(__rte_unused const char *key,
+			  const char *value, void *opaque_arg)
+{
+	struct bnxt *bp = opaque_arg;
+	unsigned long truflow;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to truflow devargs.\n");
+		return -EINVAL;
+	}
+
+	truflow = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (truflow == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to truflow devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_TRUFLOW_INVALID(truflow)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to truflow devargs.\n");
+		return -EINVAL;
+	}
+
+	bp->truflow = truflow;
+	if (bp->truflow)
+		PMD_DRV_LOG(INFO, "Host-based truflow feature enabled.\n");
+
+	return 0;
+}
+
+static void
+bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, bnxt_dev_args);
+	if (kvlist == NULL)
+		return;
+
+	/*
+	 * Handler for "truflow" devarg.
+	 * Invoked as for ex: "-w 0000:00:0d.0,host-based-truflow=1”
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_TRUFLOW,
+			   bnxt_parse_devarg_truflow, bp);
+
+	rte_kvargs_free(kvlist);
+}
+
+static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -4878,6 +4948,9 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	bp = eth_dev->data->dev_private;
+
+	/* Parse dev arguments passed on when starting the DPDK application. */
+	bnxt_parse_dev_args(bp, pci_dev->device.devargs);
 
 	bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
 

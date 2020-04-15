@@ -685,7 +685,9 @@ struct bnxt {
 #define	BNXT_SVIF_INVALID	0xFFFF
 	uint16_t		func_svif;
 	uint16_t		port_svif;
-	struct tf               tfp;
+
+	struct tf		tfp;
+	uint8_t			truflow;
 };
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
