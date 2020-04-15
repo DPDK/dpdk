@@ -357,7 +357,7 @@ error:
 	(void)tf_free_identifier(tfp, &free_parms);
 
 	BNXT_TF_DBG(ERR, "Ident process failed for %s:%s\n",
-		    ident->name,
+		    ident->description,
 		    (tbl->direction == TF_DIR_RX) ? "RX" : "TX");
 	return rc;
 }
@@ -405,7 +405,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_RESULT_OPC_SET_TO_ACT_PROP_SZ:
+	case BNXT_ULP_RESULT_OPC_SET_TO_ENCAP_ACT_PROP_SZ:
 		if (!ulp_operand_read(fld->result_operand,
 				      (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);

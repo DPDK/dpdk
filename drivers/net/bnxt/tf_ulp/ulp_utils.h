@@ -16,7 +16,7 @@
 #define ULP_BITMAP_SET(bitmap, val)	((bitmap) |= (val))
 #define ULP_BITMAP_RESET(bitmap, val)	((bitmap) &= ~(val))
 #define ULP_BITMAP_ISSET(bitmap, val)	((bitmap) & (val))
-#define ULP_BITSET_CMP(b1, b2)  memcmp(&(b1)->bits, \
+#define ULP_BITMAP_CMP(b1, b2)  memcmp(&(b1)->bits, \
 				&(b2)->bits, sizeof((b1)->bits))
 /*
  * Macros for bitmap sets and gets
@@ -50,6 +50,12 @@
 /* Macro to convert bits to bytes with no round off*/
 #define ULP_BITS_2_BYTE_NR(bits_x)	((bits_x) / 8)
 
+/* Macros to read the computed fields */
+#define ULP_UTIL_CHF_IDX_RD(params, idx) \
+	rte_be_to_cpu_32((params)->comp_fld[(idx)])
+
+#define ULP_UTIL_CHF_IDX_WR(params, idx, val)	\
+	((params)->comp_fld[(idx)] = rte_cpu_to_be_32((val)))
 /*
  * Making the blob statically sized to 128 bytes for now.
  * The blob must be initialized with ulp_blob_init prior to using.
@@ -275,5 +281,14 @@ ulp_encap_buffer_copy(uint8_t *dst,
  * size [in] The size of the buffer
  */
 int32_t ulp_buffer_is_empty(const uint8_t *buf, uint32_t size);
+
+/* Function to check if bitmap is zero.Return 1 on success */
+uint32_t ulp_bitmap_is_zero(uint8_t *bitmap, int32_t size);
+
+/* Function to check if bitmap is ones. Return 1 on success */
+uint32_t ulp_bitmap_is_ones(uint8_t *bitmap, int32_t size);
+
+/* Function to check if bitmap is not zero. Return 1 on success */
+uint32_t ulp_bitmap_notzero(uint8_t *bitmap, int32_t size);
 
 #endif /* _ULP_UTILS_H_ */

@@ -6,40 +6,32 @@
 #include "ulp_matcher.h"
 #include "ulp_utils.h"
 
-/* Utility function to check if bitmap is zero */
-static inline
-int ulp_field_mask_is_zero(uint8_t *bitmap, uint32_t size)
+/* Utility function to calculate the class matcher hash */
+static uint32_t
+ulp_matcher_class_hash_calculate(uint64_t hi_sig, uint64_t lo_sig)
 {
-	while (size-- > 0) {
-		if (*bitmap != 0)
-			return 0;
-		bitmap++;
-	}
-	return 1;
+	uint64_t hash;
+
+	hi_sig |= ((hi_sig % BNXT_ULP_CLASS_HID_HIGH_PRIME) <<
+		   BNXT_ULP_CLASS_HID_SHFTL);
+	lo_sig |= ((lo_sig % BNXT_ULP_CLASS_HID_LOW_PRIME) <<
+		   (BNXT_ULP_CLASS_HID_SHFTL + 2));
+	hash = hi_sig ^ lo_sig;
+	hash = (hash >> BNXT_ULP_CLASS_HID_SHFTR) & BNXT_ULP_CLASS_HID_MASK;
+	return (uint32_t)hash;
 }
 
-/* Utility function to check if bitmap is all ones */
-static inline int
-ulp_field_mask_is_ones(uint8_t *bitmap, uint32_t size)
+/* Utility function to calculate the action matcher hash */
+static uint32_t
+ulp_matcher_action_hash_calculate(uint64_t hi_sig)
 {
-	while (size-- > 0) {
-		if (*bitmap != 0xFF)
-			return 0;
-		bitmap++;
-	}
-	return 1;
-}
+	uint64_t hash;
 
-/* Utility function to check if bitmap is non zero */
-static inline int
-ulp_field_mask_notzero(uint8_t *bitmap, uint32_t size)
-{
-	while (size-- > 0) {
-		if (*bitmap != 0)
-			return 1;
-		bitmap++;
-	}
-	return 0;
+	hi_sig |= ((hi_sig % BNXT_ULP_ACT_HID_HIGH_PRIME) <<
+		   BNXT_ULP_ACT_HID_SHFTL);
+	hash = hi_sig;
+	hash = (hash >> BNXT_ULP_ACT_HID_SHFTR) & BNXT_ULP_ACT_HID_MASK;
+	return (uint32_t)hash;
 }
 
 /* Utility function to mask the computed and internal proto headers. */
@@ -56,10 +48,6 @@ ulp_matcher_hdr_fields_normalize(struct ulp_rte_hdr_bitmap *hdr1,
 	ULP_BITMAP_RESET(hdr2->bits, BNXT_ULP_HDR_BIT_OI_VLAN);
 	ULP_BITMAP_RESET(hdr2->bits, BNXT_ULP_HDR_BIT_IO_VLAN);
 	ULP_BITMAP_RESET(hdr2->bits, BNXT_ULP_HDR_BIT_II_VLAN);
-	ULP_BITMAP_RESET(hdr2->bits, BNXT_ULP_HDR_BIT_O_L3);
-	ULP_BITMAP_RESET(hdr2->bits, BNXT_ULP_HDR_BIT_O_L4);
-	ULP_BITMAP_RESET(hdr2->bits, BNXT_ULP_HDR_BIT_I_L3);
-	ULP_BITMAP_RESET(hdr2->bits, BNXT_ULP_HDR_BIT_I_L4);
 }
 
 /*
@@ -70,82 +58,55 @@ int32_t
 ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 			  uint32_t *class_id)
 {
-	struct bnxt_ulp_header_match_info	*sel_hdr_match;
-	uint32_t				hdr_num, idx, jdx;
-	uint32_t				match = 0;
-	struct ulp_rte_hdr_bitmap		hdr_bitmap_masked;
-	uint32_t				start_idx;
-	struct ulp_rte_hdr_field		*m_field;
-	struct bnxt_ulp_matcher_field_info	*sf;
-	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
-	struct ulp_rte_act_bitmap *act_bitmap = &params->act_bitmap;
-	struct ulp_rte_hdr_field *hdr_field = params->hdr_field;
-
-	/* Select the ingress or egress template to match against */
-	if (params->dir == ULP_DIR_INGRESS) {
-		sel_hdr_match = ulp_ingress_hdr_match_list;
-		hdr_num = BNXT_ULP_INGRESS_HDR_MATCH_SZ;
-	} else {
-		sel_hdr_match = ulp_egress_hdr_match_list;
-		hdr_num = BNXT_ULP_EGRESS_HDR_MATCH_SZ;
-	}
+	struct ulp_rte_hdr_bitmap hdr_bitmap_masked;
+	struct bnxt_ulp_class_match_info *class_match;
+	uint32_t class_hid;
+	uint8_t vf_to_vf;
+	uint16_t tmpl_id;
 
 	/* Remove the hdr bit maps that are internal or computed */
-	ulp_matcher_hdr_fields_normalize(hdr_bitmap, &hdr_bitmap_masked);
+	ulp_matcher_hdr_fields_normalize(&params->hdr_bitmap,
+					 &hdr_bitmap_masked);
 
-	/* Loop through the list of class templates to find the match */
-	for (idx = 0; idx < hdr_num; idx++, sel_hdr_match++) {
-		if (ULP_BITSET_CMP(&sel_hdr_match->hdr_bitmap,
-				   &hdr_bitmap_masked)) {
-			/* no match found */
-			BNXT_TF_DBG(DEBUG, "Pattern Match failed template=%d\n",
-				    idx);
-			continue;
-		}
-		match = ULP_BITMAP_ISSET(act_bitmap->bits,
-					 BNXT_ULP_ACTION_BIT_VNIC);
-		if (match != sel_hdr_match->act_vnic) {
-			/* no match found */
-			BNXT_TF_DBG(DEBUG, "Vnic Match failed template=%d\n",
-				    idx);
-			continue;
-		} else {
-			match = 1;
-		}
-
-		/* Found a matching hdr bitmap, match the fields next */
-		start_idx = sel_hdr_match->start_idx;
-		for (jdx = 0; jdx < sel_hdr_match->num_entries; jdx++) {
-			m_field = &hdr_field[jdx + BNXT_ULP_HDR_FIELD_LAST - 1];
-			sf = &ulp_field_match[start_idx + jdx];
-			switch (sf->mask_opcode) {
-			case BNXT_ULP_FMF_MASK_ANY:
-				match &= ulp_field_mask_is_zero(m_field->mask,
-								m_field->size);
-				break;
-			case BNXT_ULP_FMF_MASK_EXACT:
-				match &= ulp_field_mask_is_ones(m_field->mask,
-								m_field->size);
-				break;
-			case BNXT_ULP_FMF_MASK_WILDCARD:
-				match &= ulp_field_mask_notzero(m_field->mask,
-								m_field->size);
-				break;
-			case BNXT_ULP_FMF_MASK_IGNORE:
-			default:
-				break;
-			}
-			if (!match)
-				break;
-		}
-		if (match) {
-			BNXT_TF_DBG(DEBUG,
-				    "Found matching pattern template %d\n",
-				    sel_hdr_match->class_tmpl_id);
-			*class_id = sel_hdr_match->class_tmpl_id;
-			return BNXT_TF_RC_SUCCESS;
-		}
+	/* determine vf to vf flow */
+	if (params->dir == ULP_DIR_EGRESS &&
+	    ULP_BITMAP_ISSET(params->act_bitmap.bits,
+			     BNXT_ULP_ACTION_BIT_VNIC)) {
+		vf_to_vf = 1;
+	} else {
+		vf_to_vf = 0;
 	}
+
+	/* calculate the hash of the given flow */
+	class_hid = ulp_matcher_class_hash_calculate(hdr_bitmap_masked.bits,
+						     params->fld_bitmap.bits);
+
+	/* validate the calculate hash values */
+	if (class_hid >= BNXT_ULP_CLASS_SIG_TBL_MAX_SZ)
+		goto error;
+	tmpl_id = ulp_class_sig_tbl[class_hid];
+	if (!tmpl_id)
+		goto error;
+
+	class_match = &ulp_class_match_list[tmpl_id];
+	if (ULP_BITMAP_CMP(&hdr_bitmap_masked, &class_match->hdr_sig)) {
+		BNXT_TF_DBG(DEBUG, "Proto Header does not match\n");
+		goto error;
+	}
+	if (ULP_BITMAP_CMP(&params->fld_bitmap, &class_match->field_sig)) {
+		BNXT_TF_DBG(DEBUG, "Field signature does not match\n");
+		goto error;
+	}
+	if (vf_to_vf != class_match->act_vnic) {
+		BNXT_TF_DBG(DEBUG, "Vnic Match failed\n");
+		goto error;
+	}
+	BNXT_TF_DBG(DEBUG, "Found matching pattern template %d\n",
+		    class_match->class_tid);
+	*class_id = class_match->class_tid;
+	return BNXT_TF_RC_SUCCESS;
+
+error:
 	BNXT_TF_DBG(DEBUG, "Did not find any matching template\n");
 	*class_id = 0;
 	return BNXT_TF_RC_ERROR;
@@ -159,29 +120,30 @@ int32_t
 ulp_matcher_action_match(struct ulp_rte_parser_params *params,
 			 uint32_t *act_id)
 {
-	struct bnxt_ulp_action_match_info	*sel_act_match;
-	uint32_t				act_num, idx;
-	struct ulp_rte_act_bitmap *act_bitmap = &params->act_bitmap;
+	uint32_t act_hid;
+	uint16_t tmpl_id;
+	struct bnxt_ulp_act_match_info *act_match;
 
-	/* Select the ingress or egress template to match against */
-	if (params->dir == ULP_DIR_INGRESS) {
-		sel_act_match = ulp_ingress_act_match_list;
-		act_num = BNXT_ULP_INGRESS_ACT_MATCH_SZ;
-	} else {
-		sel_act_match = ulp_egress_act_match_list;
-		act_num = BNXT_ULP_EGRESS_ACT_MATCH_SZ;
-	}
+	/* calculate the hash of the given flow action */
+	act_hid = ulp_matcher_action_hash_calculate(params->act_bitmap.bits);
 
-	/* Loop through the list of action templates to find the match */
-	for (idx = 0; idx < act_num; idx++, sel_act_match++) {
-		if (!ULP_BITSET_CMP(&sel_act_match->act_bitmap,
-				    act_bitmap)) {
-			*act_id = sel_act_match->act_tmpl_id;
-			BNXT_TF_DBG(DEBUG, "Found matching act template %u\n",
-				    *act_id);
-			return BNXT_TF_RC_SUCCESS;
-		}
+	/* validate the calculate hash values */
+	if (act_hid >= BNXT_ULP_ACT_SIG_TBL_MAX_SZ)
+		goto error;
+	tmpl_id = ulp_act_sig_tbl[act_hid];
+	if (!tmpl_id)
+		goto error;
+
+	act_match = &ulp_act_match_list[tmpl_id];
+	if (ULP_BITMAP_CMP(&params->act_bitmap, &act_match->act_sig)) {
+		BNXT_TF_DBG(DEBUG, "Action Header does not match\n");
+		goto error;
 	}
+	*act_id = act_match->act_tid;
+	BNXT_TF_DBG(DEBUG, "Found matching action template %u\n", *act_id);
+	return BNXT_TF_RC_SUCCESS;
+
+error:
 	BNXT_TF_DBG(DEBUG, "Did not find any matching action template\n");
 	*act_id = 0;
 	return BNXT_TF_RC_ERROR;

@@ -28,8 +28,13 @@
 #define BNXT_ULP_PROTO_HDR_TCP_NUM	9
 #define BNXT_ULP_PROTO_HDR_VXLAN_NUM	4
 #define BNXT_ULP_PROTO_HDR_MAX		128
+#define BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX	0
 
 struct ulp_rte_hdr_bitmap {
+	uint64_t	bits;
+};
+
+struct ulp_rte_field_bitmap {
 	uint64_t	bits;
 };
 
@@ -53,7 +58,9 @@ struct ulp_rte_act_prop {
 /* Structure to be used for passing all the parser functions */
 struct ulp_rte_parser_params {
 	struct ulp_rte_hdr_bitmap	hdr_bitmap;
+	struct ulp_rte_field_bitmap	fld_bitmap;
 	struct ulp_rte_hdr_field	hdr_field[BNXT_ULP_PROTO_HDR_MAX];
+	uint32_t			comp_fld[BNXT_ULP_CHF_IDX_LAST];
 	uint32_t			field_idx;
 	uint32_t			vlan_idx;
 	struct ulp_rte_act_bitmap	act_bitmap;
@@ -71,11 +78,6 @@ struct bnxt_ulp_rte_hdr_info {
 
 /* Flow Parser Header Information Structure Array defined in template source*/
 extern struct bnxt_ulp_rte_hdr_info	ulp_hdr_info[];
-
-struct bnxt_ulp_matcher_field_info {
-	enum bnxt_ulp_fmf_mask	mask_opcode;
-	enum bnxt_ulp_fmf_spec	spec_opcode;
-};
 
 /* Flow Parser Action Information Structure */
 struct bnxt_ulp_rte_act_info {
@@ -98,12 +100,22 @@ struct bnxt_ulp_header_match_info {
 	uint32_t				act_vnic;
 };
 
-/* Flow Matcher templates Structure Array defined in template source*/
-extern struct bnxt_ulp_header_match_info  ulp_ingress_hdr_match_list[];
-extern struct bnxt_ulp_header_match_info  ulp_egress_hdr_match_list[];
+struct ulp_rte_bitmap {
+	uint64_t	bits;
+};
 
-/* Flow field match Information Structure Array defined in template source*/
-extern struct bnxt_ulp_matcher_field_info	ulp_field_match[];
+struct bnxt_ulp_class_match_info {
+	struct ulp_rte_bitmap	hdr_sig;
+	struct ulp_rte_bitmap	field_sig;
+	uint32_t		class_hid;
+	uint32_t		class_tid;
+	uint8_t			act_vnic;
+	uint8_t			wc_pri;
+};
+
+/* Flow Matcher templates Structure for class entries */
+extern uint16_t ulp_class_sig_tbl[];
+extern struct bnxt_ulp_class_match_info ulp_class_match_list[];
 
 /* Flow Matcher Action structures */
 struct bnxt_ulp_action_match_info {
@@ -111,9 +123,15 @@ struct bnxt_ulp_action_match_info {
 	uint32_t				act_tmpl_id;
 };
 
-/* Flow Matcher templates Structure Array defined in template source */
-extern struct bnxt_ulp_action_match_info  ulp_ingress_act_match_list[];
-extern struct bnxt_ulp_action_match_info  ulp_egress_act_match_list[];
+struct bnxt_ulp_act_match_info {
+	struct ulp_rte_bitmap	act_sig;
+	uint32_t		act_hid;
+	uint32_t		act_tid;
+};
+
+/* Flow Matcher templates Structure for action entries */
+extern	uint16_t ulp_act_sig_tbl[];
+extern struct bnxt_ulp_act_match_info ulp_act_match_list[];
 
 /* Device specific parameters */
 struct bnxt_ulp_device_params {
@@ -179,7 +197,7 @@ struct bnxt_ulp_mapper_act_tbl_info {
 };
 
 struct bnxt_ulp_mapper_class_key_field_info {
-	uint8_t			name[64];
+	uint8_t			description[64];
 	enum bnxt_ulp_mask_opc	mask_opcode;
 	enum bnxt_ulp_spec_opc	spec_opcode;
 	uint16_t		field_bit_size;
@@ -188,14 +206,14 @@ struct bnxt_ulp_mapper_class_key_field_info {
 };
 
 struct bnxt_ulp_mapper_result_field_info {
-	uint8_t				name[64];
+	uint8_t				description[64];
 	enum bnxt_ulp_result_opc	result_opcode;
 	uint16_t			field_bit_size;
 	uint8_t				result_operand[16];
 };
 
 struct bnxt_ulp_mapper_ident_info {
-	uint8_t		name[64];
+	uint8_t		description[64];
 	uint32_t	resource_func;
 
 	uint16_t	ident_type;

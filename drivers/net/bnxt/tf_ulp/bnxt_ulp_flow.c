@@ -61,11 +61,11 @@ bnxt_ulp_flow_validate_args(const struct rte_flow_attr *attr,
 
 /* Function to create the rte flow. */
 static struct rte_flow *
-bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
-		     const struct rte_flow_attr		*attr,
-		     const struct rte_flow_item		pattern[],
-		     const struct rte_flow_action	actions[],
-		     struct rte_flow_error		*error)
+bnxt_ulp_flow_create(struct rte_eth_dev *dev,
+		     const struct rte_flow_attr *attr,
+		     const struct rte_flow_item pattern[],
+		     const struct rte_flow_action actions[],
+		     struct rte_flow_error *error)
 {
 	struct bnxt_ulp_mapper_create_parms mapper_cparms = { 0 };
 	struct ulp_rte_parser_params params;
@@ -73,8 +73,6 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 	uint32_t class_id, act_tmpl;
 	struct rte_flow *flow_id;
 	uint32_t fid;
-	uint8_t	*buffer;
-	uint32_t vnic;
 	int ret;
 
 	if (bnxt_ulp_flow_validate_args(attr,
@@ -97,14 +95,9 @@ bnxt_ulp_flow_create(struct rte_eth_dev			*dev,
 		params.dir = ULP_DIR_EGRESS;
 
 	/* copy the device port id and direction for further processing */
-	buffer = params.hdr_field[BNXT_ULP_HDR_FIELD_SVIF_INDEX].spec;
-	rte_memcpy(buffer, &dev->data->port_id, sizeof(uint16_t));
-
-	/* Set the implicit vnic in the action property */
-	vnic = (uint32_t)bnxt_get_vnic_id(dev->data->port_id);
-	vnic = htonl(vnic);
-	rte_memcpy(&params.act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
-		   &vnic, BNXT_ULP_ACT_PROP_SZ_VNIC);
+	ULP_UTIL_CHF_IDX_WR(&params, BNXT_ULP_CHF_IDX_INCOMING_IF,
+			    dev->data->port_id);
+	ULP_UTIL_CHF_IDX_WR(&params, BNXT_ULP_CHF_IDX_DIRECTION, params.dir);
 
 	/* Parse the rte flow pattern */
 	ret = bnxt_ulp_rte_parser_hdr_parse(pattern, &params);

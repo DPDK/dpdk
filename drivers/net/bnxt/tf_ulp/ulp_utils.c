@@ -519,3 +519,36 @@ int32_t ulp_buffer_is_empty(const uint8_t *buf, uint32_t size)
 {
 	return buf[0] == 0 && !memcmp(buf, buf + 1, size - 1);
 }
+
+/* Function to check if bitmap is zero.Return 1 on success */
+uint32_t ulp_bitmap_is_zero(uint8_t *bitmap, int32_t size)
+{
+	while (size-- > 0) {
+		if (*bitmap != 0)
+			return 0;
+		bitmap++;
+	}
+	return 1;
+}
+
+/* Function to check if bitmap is ones. Return 1 on success */
+uint32_t ulp_bitmap_is_ones(uint8_t *bitmap, int32_t size)
+{
+	while (size-- > 0) {
+		if (*bitmap != 0xFF)
+			return 0;
+		bitmap++;
+	}
+	return 1;
+}
+
+/* Function to check if bitmap is not zero. Return 1 on success */
+uint32_t ulp_bitmap_notzero(uint8_t *bitmap, int32_t size)
+{
+	while (size-- > 0) {
+		if (*bitmap != 0)
+			return 1;
+		bitmap++;
+	}
+	return 0;
+}
