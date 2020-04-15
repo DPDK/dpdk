@@ -442,10 +442,10 @@ dsw_select_emigration_target(struct dsw_evdev *dsw,
 			    uint8_t *targets_len)
 {
 	int16_t source_port_load = port_loads[source_port_id];
-	struct dsw_queue_flow *candidate_qf;
-	uint8_t candidate_port_id;
+	struct dsw_queue_flow *candidate_qf = NULL;
+	uint8_t candidate_port_id = 0;
 	int16_t candidate_weight = -1;
-	int16_t candidate_flow_load;
+	int16_t candidate_flow_load = -1;
 	uint16_t i;
 
 	if (source_port_load < DSW_MIN_SOURCE_LOAD_FOR_MIGRATION)
