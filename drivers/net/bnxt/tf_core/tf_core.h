@@ -472,6 +472,233 @@ enum tf_tcam_tbl_type {
 };
 
 /**
+ * @page tcam TCAM Access
+ *
+ * @ref tf_alloc_tcam_entry
+ *
+ * @ref tf_set_tcam_entry
+ *
+ * @ref tf_get_tcam_entry
+ *
+ * @ref tf_free_tcam_entry
+ */
+
+/** tf_alloc_tcam_entry parameter definition
+ */
+struct tf_alloc_tcam_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
+	 */
+	enum tf_tcam_tbl_type tcam_tbl_type;
+	/**
+	 * [in] Enable search for matching entry
+	 */
+	uint8_t search_enable;
+	/**
+	 * [in] Key data to match on (if search)
+	 */
+	uint8_t *key;
+	/**
+	 * [in] key size in bits (if search)
+	 */
+	uint16_t key_sz_in_bits;
+	/**
+	 * [in] Mask data to match on (if search)
+	 */
+	uint8_t *mask;
+	/**
+	 * [in] Priority of entry requested (definition TBD)
+	 */
+	uint32_t priority;
+	/**
+	 * [out] If search, set if matching entry found
+	 */
+	uint8_t hit;
+	/**
+	 * [out] Current refcnt after allocation
+	 */
+	uint16_t ref_cnt;
+	/**
+	 * [out] Idx allocated
+	 *
+	 */
+	uint16_t idx;
+};
+
+/** allocate TCAM entry
+ *
+ * Allocate a TCAM entry - one of these types:
+ *
+ * L2 Context
+ * Profile TCAM
+ * WC TCAM
+ * VEB TCAM
+ *
+ * This function allocates a TCAM table record.	 This function
+ * will attempt to allocate a TCAM table entry from the session
+ * owned TCAM entries or search a shadow copy of the TCAM table for a
+ * matching entry if search is enabled.	 Key, mask and result must match for
+ * hit to be set.  Only TruFlow core data is accessed.
+ * A hash table to entry mapping is maintained for search purposes.  If
+ * search is not enabled, the first available free entry is returned based
+ * on priority and alloc_cnt is set to 1.  If search is enabled and a matching
+ * entry to entry_data is found, hit is set to TRUE and alloc_cnt is set to 1.
+ * RefCnt is also returned.
+ *
+ * Also returns success or failure code.
+ */
+int tf_alloc_tcam_entry(struct tf *tfp,
+			struct tf_alloc_tcam_entry_parms *parms);
+
+/** tf_set_tcam_entry parameter definition
+ */
+struct	tf_set_tcam_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
+	 */
+	enum tf_tcam_tbl_type tcam_tbl_type;
+	/**
+	 * [in] base index of the entry to program
+	 */
+	uint16_t idx;
+	/**
+	 * [in] struct containing key
+	 */
+	uint8_t *key;
+	/**
+	 * [in] struct containing mask fields
+	 */
+	uint8_t *mask;
+	/**
+	 * [in] key size in bits (if search)
+	 */
+	uint16_t key_sz_in_bits;
+	/**
+	 * [in] struct containing result
+	 */
+	uint8_t *result;
+	/**
+	 * [in] struct containing result size in bits
+	 */
+	uint16_t result_sz_in_bits;
+};
+
+/** set TCAM entry
+ *
+ * Program a TCAM table entry for a TruFlow session.
+ *
+ * If the entry has not been allocated, an error will be returned.
+ *
+ * Returns success or failure code.
+ */
+int tf_set_tcam_entry(struct tf	*tfp,
+		      struct tf_set_tcam_entry_parms *parms);
+
+/** tf_get_tcam_entry parameter definition
+ */
+struct tf_get_tcam_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
+	 */
+	enum tf_tcam_tbl_type  tcam_tbl_type;
+	/**
+	 * [in] index of the entry to get
+	 */
+	uint16_t idx;
+	/**
+	 * [out] struct containing key
+	 */
+	uint8_t *key;
+	/**
+	 * [out] struct containing mask fields
+	 */
+	uint8_t *mask;
+	/**
+	 * [out] key size in bits
+	 */
+	uint16_t key_sz_in_bits;
+	/**
+	 * [out] struct containing result
+	 */
+	uint8_t *result;
+	/**
+	 * [out] struct containing result size in bits
+	 */
+	uint16_t result_sz_in_bits;
+};
+
+/** get TCAM entry
+ *
+ * Program a TCAM table entry for a TruFlow session.
+ *
+ * If the entry has not been allocated, an error will be returned.
+ *
+ * Returns success or failure code.
+ */
+int tf_get_tcam_entry(struct tf *tfp,
+		      struct tf_get_tcam_entry_parms *parms);
+
+/** tf_free_tcam_entry parameter definition
+ */
+struct tf_free_tcam_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
+	 */
+	enum tf_tcam_tbl_type tcam_tbl_type;
+	/**
+	 * [in] Index to free
+	 */
+	uint16_t idx;
+	/**
+	 * [out] reference count after free
+	 */
+	uint16_t ref_cnt;
+};
+
+/** free TCAM entry
+ *
+ * Free TCAM entry.
+ *
+ * Firmware checks to ensure the TCAM entries are owned by the TruFlow
+ * session.  TCAM entry will be invalidated.  All-ones mask.
+ * writes to hw.
+ *
+ * WCTCAM profile id of 0 must be used to invalidate an entry.
+ *
+ * Returns success or failure code.
+ */
+int tf_free_tcam_entry(struct tf *tfp,
+		       struct tf_free_tcam_entry_parms *parms);
+
+/**
+ * @page table Table Access
+ *
+ * @ref tf_alloc_tbl_entry
+ *
+ * @ref tf_free_tbl_entry
+ *
+ * @ref tf_set_tbl_entry
+ *
+ * @ref tf_get_tbl_entry
+ */
+
+/**
  * Enumeration of TruFlow table types. A table type is used to identify a
  * resource object.
  *

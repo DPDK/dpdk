@@ -106,6 +106,39 @@ struct tf_msg_dma_buf {
 	uint64_t pa_addr;
 };
 
+static int
+tf_tcam_tbl_2_hwrm(enum tf_tcam_tbl_type tcam_type,
+		   uint32_t *hwrm_type)
+{
+	int rc = 0;
+
+	switch (tcam_type) {
+	case TF_TCAM_TBL_TYPE_L2_CTXT_TCAM:
+		*hwrm_type = TF_DEV_DATA_TYPE_TF_L2_CTX_ENTRY;
+		break;
+	case TF_TCAM_TBL_TYPE_PROF_TCAM:
+		*hwrm_type = TF_DEV_DATA_TYPE_TF_PROF_TCAM_ENTRY;
+		break;
+	case TF_TCAM_TBL_TYPE_WC_TCAM:
+		*hwrm_type = TF_DEV_DATA_TYPE_TF_WC_ENTRY;
+		break;
+	case TF_TCAM_TBL_TYPE_VEB_TCAM:
+		rc = -EOPNOTSUPP;
+		break;
+	case TF_TCAM_TBL_TYPE_SP_TCAM:
+		rc = -EOPNOTSUPP;
+		break;
+	case TF_TCAM_TBL_TYPE_CT_RULE_TCAM:
+		rc = -EOPNOTSUPP;
+		break;
+	default:
+		rc = -EOPNOTSUPP;
+		break;
+	}
+
+	return rc;
+}
+
 /**
  * Sends session open request to TF Firmware
  */
@@ -834,4 +867,130 @@ tf_msg_session_sram_resc_flush(struct tf *tfp,
 		return rc;
 
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+#define TF_BYTES_PER_SLICE(tfp) 12
+#define NUM_SLICES(tfp, bytes) \
+	(((bytes) + TF_BYTES_PER_SLICE(tfp) - 1) / TF_BYTES_PER_SLICE(tfp))
+
+static int
+tf_msg_get_dma_buf(struct tf_msg_dma_buf *buf, int size)
+{
+	struct tfp_calloc_parms alloc_parms;
+	int rc;
+
+	/* Allocate session */
+	alloc_parms.nitems = 1;
+	alloc_parms.size = size;
+	alloc_parms.alignment = 0;
+	rc = tfp_calloc(&alloc_parms);
+	if (rc) {
+		/* Log error */
+		PMD_DRV_LOG(ERR,
+			    "Failed to allocate tcam dma entry, rc:%d\n",
+			    rc);
+		return -ENOMEM;
+	}
+
+	buf->pa_addr = (uintptr_t)alloc_parms.mem_pa;
+	buf->va_addr = alloc_parms.mem_va;
+
+	return 0;
+}
+
+int
+tf_msg_tcam_entry_set(struct tf *tfp,
+		      struct tf_set_tcam_entry_parms *parms)
+{
+	int rc;
+	struct tfp_send_msg_parms mparms = { 0 };
+	struct hwrm_tf_tcam_set_input req = { 0 };
+	struct hwrm_tf_tcam_set_output resp = { 0 };
+	uint16_t key_bytes =
+		TF_BITS2BYTES_WORD_ALIGN(parms->key_sz_in_bits);
+	uint16_t result_bytes =
+		TF_BITS2BYTES_WORD_ALIGN(parms->result_sz_in_bits);
+	struct tf_msg_dma_buf buf = { 0 };
+	uint8_t *data = NULL;
+	int data_size = 0;
+
+	rc = tf_tcam_tbl_2_hwrm(parms->tcam_tbl_type, &req.type);
+	if (rc != 0)
+		return rc;
+
+	req.idx = tfp_cpu_to_le_16(parms->idx);
+	if (parms->dir == TF_DIR_TX)
+		req.flags |= HWRM_TF_TCAM_SET_INPUT_FLAGS_DIR_TX;
+
+	req.key_size = key_bytes;
+	req.mask_offset = key_bytes;
+	/* Result follows after key and mask, thus multiply by 2 */
+	req.result_offset = 2 * key_bytes;
+	req.result_size = result_bytes;
+	data_size = 2 * req.key_size + req.result_size;
+
+	if (data_size <= TF_PCI_BUF_SIZE_MAX) {
+		/* use pci buffer */
+		data = &req.dev_data[0];
+	} else {
+		/* use dma buffer */
+		req.flags |= HWRM_TF_TCAM_SET_INPUT_FLAGS_DMA;
+		rc = tf_msg_get_dma_buf(&buf, data_size);
+		if (rc != 0)
+			return rc;
+		data = buf.va_addr;
+		memcpy(&req.dev_data[0], &buf.pa_addr, sizeof(buf.pa_addr));
+	}
+
+	memcpy(&data[0], parms->key, key_bytes);
+	memcpy(&data[key_bytes], parms->mask, key_bytes);
+	memcpy(&data[req.result_offset], parms->result, result_bytes);
+
+	mparms.tf_type = HWRM_TF_TCAM_SET;
+	mparms.req_data = (uint32_t *)&req;
+	mparms.req_size = sizeof(req);
+	mparms.resp_data = (uint32_t *)&resp;
+	mparms.resp_size = sizeof(resp);
+	mparms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &mparms);
+	if (rc)
+		return rc;
+
+	if (buf.va_addr != NULL)
+		tfp_free(buf.va_addr);
+
+	return rc;
+}
+
+int
+tf_msg_tcam_entry_free(struct tf *tfp,
+		       struct tf_free_tcam_entry_parms *in_parms)
+{
+	int rc;
+	struct hwrm_tf_tcam_free_input req =  { 0 };
+	struct hwrm_tf_tcam_free_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+
+	/* Populate the request */
+	rc = tf_tcam_tbl_2_hwrm(in_parms->tcam_tbl_type, &req.type);
+	if (rc != 0)
+		return rc;
+
+	req.count = 1;
+	req.idx_list[0] = tfp_cpu_to_le_16(in_parms->idx);
+	if (in_parms->dir == TF_DIR_TX)
+		req.flags |= HWRM_TF_TCAM_FREE_INPUT_FLAGS_DIR_TX;
+
+	parms.tf_type = HWRM_TF_TCAM_FREE;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+	return rc;
 }

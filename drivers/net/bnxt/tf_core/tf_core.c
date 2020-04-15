@@ -440,3 +440,166 @@ int tf_free_identifier(struct tf *tfp,
 
 	return 0;
 }
+
+int
+tf_alloc_tcam_entry(struct tf *tfp,
+		    struct tf_alloc_tcam_entry_parms *parms)
+{
+	int rc;
+	int index;
+	struct tf_session *tfs;
+	struct bitalloc *session_pool;
+
+	if (parms == NULL || tfp == NULL)
+		return -EINVAL;
+
+	if (tfp->session == NULL || tfp->session->core_data == NULL) {
+		PMD_DRV_LOG(ERR, "%s: session error\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	rc = tf_rm_lookup_tcam_type_pool(tfs,
+					 parms->dir,
+					 parms->tcam_tbl_type,
+					 &session_pool);
+	/* Error logging handled by tf_rm_lookup_tcam_type_pool */
+	if (rc)
+		return rc;
+
+	index = ba_alloc(session_pool);
+	if (index == BA_FAIL) {
+		PMD_DRV_LOG(ERR, "%s: %s: No resource available\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_tcam_tbl_2_str(parms->tcam_tbl_type));
+		return -ENOMEM;
+	}
+
+	parms->idx = index;
+	return 0;
+}
+
+int
+tf_set_tcam_entry(struct tf *tfp,
+		  struct tf_set_tcam_entry_parms *parms)
+{
+	int rc;
+	int id;
+	struct tf_session *tfs;
+	struct bitalloc *session_pool;
+
+	if (tfp == NULL || parms == NULL) {
+		PMD_DRV_LOG(ERR, "Invalid parameters\n");
+		return -EINVAL;
+	}
+
+	if (tfp->session == NULL || tfp->session->core_data == NULL) {
+		PMD_DRV_LOG(ERR,
+			    "%s, Session info invalid\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	/*
+	 * Each tcam send msg function should check for key sizes range
+	 */
+
+	rc = tf_rm_lookup_tcam_type_pool(tfs,
+					 parms->dir,
+					 parms->tcam_tbl_type,
+					 &session_pool);
+	/* Error logging handled by tf_rm_lookup_tcam_type_pool */
+	if (rc)
+		return rc;
+
+
+	/* Verify that the entry has been previously allocated */
+	id = ba_inuse(session_pool, parms->idx);
+	if (id != 1) {
+		PMD_DRV_LOG(ERR,
+		   "%s: %s: Invalid or not allocated index, idx:%d\n",
+		   tf_dir_2_str(parms->dir),
+		   tf_tcam_tbl_2_str(parms->tcam_tbl_type),
+		   parms->idx);
+		return -EINVAL;
+	}
+
+	rc = tf_msg_tcam_entry_set(tfp, parms);
+
+	return rc;
+}
+
+int
+tf_get_tcam_entry(struct tf *tfp __rte_unused,
+		  struct tf_get_tcam_entry_parms *parms __rte_unused)
+{
+	int rc = -EOPNOTSUPP;
+
+	if (tfp == NULL || parms == NULL) {
+		PMD_DRV_LOG(ERR, "Invalid parameters\n");
+		return -EINVAL;
+	}
+
+	if (tfp->session == NULL || tfp->session->core_data == NULL) {
+		PMD_DRV_LOG(ERR,
+			    "%s, Session info invalid\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
+int
+tf_free_tcam_entry(struct tf *tfp,
+		   struct tf_free_tcam_entry_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct bitalloc *session_pool;
+
+	if (parms == NULL || tfp == NULL)
+		return -EINVAL;
+
+	if (tfp->session == NULL || tfp->session->core_data == NULL) {
+		PMD_DRV_LOG(ERR, "%s: Session error\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	rc = tf_rm_lookup_tcam_type_pool(tfs,
+					 parms->dir,
+					 parms->tcam_tbl_type,
+					 &session_pool);
+	/* Error logging handled by tf_rm_lookup_tcam_type_pool */
+	if (rc)
+		return rc;
+
+	rc = ba_inuse(session_pool, (int)parms->idx);
+	if (rc == BA_FAIL || rc == BA_ENTRY_FREE) {
+		PMD_DRV_LOG(ERR, "%s: %s: Entry %d already free",
+			    tf_dir_2_str(parms->dir),
+			    tf_tcam_tbl_2_str(parms->tcam_tbl_type),
+			    parms->idx);
+		return -EINVAL;
+	}
+
+	ba_free(session_pool, (int)parms->idx);
+
+	rc = tf_msg_tcam_entry_free(tfp, parms);
+	if (rc) {
+		/* Log error */
+		PMD_DRV_LOG(ERR, "%s: %s: Entry %d free failed",
+			    tf_dir_2_str(parms->dir),
+			    tf_tcam_tbl_2_str(parms->tcam_tbl_type),
+			    parms->idx);
+	}
+
+	return rc;
+}

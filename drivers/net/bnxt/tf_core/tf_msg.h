@@ -120,4 +120,34 @@ int tf_msg_session_sram_resc_flush(struct tf *tfp,
 				   enum tf_dir dir,
 				   struct tf_rm_entry *sram_entry);
 
+/**
+ * Sends tcam entry 'set' to the Firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] parms
+ *   Pointer to set parameters
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int tf_msg_tcam_entry_set(struct tf *tfp,
+			  struct tf_set_tcam_entry_parms *parms);
+
+/**
+ * Sends tcam entry 'free' to the Firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] parms
+ *   Pointer to free parameters
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int tf_msg_tcam_entry_free(struct tf *tfp,
+			   struct tf_free_tcam_entry_parms *parms);
+
 #endif  /* _TF_MSG_H_ */
