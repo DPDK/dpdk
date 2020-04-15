@@ -895,6 +895,27 @@ typedef struct tf_session_sram_resc_flush_input {
 } tf_session_sram_resc_flush_input_t, *ptf_session_sram_resc_flush_input_t;
 BUILD_BUG_ON(sizeof(tf_session_sram_resc_flush_input_t) <= TF_MAX_REQ_SIZE);
 
+/* Input params for table type set */
+typedef struct tf_tbl_type_set_input {
+	/* Session Id */
+	uint32_t			 fw_session_id;
+	/* flags */
+	uint16_t			 flags;
+	/* When set to 0, indicates the get apply to RX */
+#define TF_TBL_TYPE_SET_INPUT_FLAGS_DIR_RX			(0x0)
+	/* When set to 1, indicates the get apply to TX */
+#define TF_TBL_TYPE_SET_INPUT_FLAGS_DIR_TX			(0x1)
+	/* Type of the object to set */
+	uint32_t			 type;
+	/* Size of the data to set in bytes */
+	uint16_t			 size;
+	/* Data to set */
+	uint8_t			  data[TF_BULK_SEND];
+	/* Index to set */
+	uint32_t			 index;
+} tf_tbl_type_set_input_t, *ptf_tbl_type_set_input_t;
+BUILD_BUG_ON(sizeof(tf_tbl_type_set_input_t) <= TF_MAX_REQ_SIZE);
+
 /* Input params for table type get */
 typedef struct tf_tbl_type_get_input {
 	/* Session Id */

@@ -458,6 +458,134 @@ int tf_free_identifier(struct tf *tfp,
 		       struct tf_free_identifier_parms *parms);
 
 /**
+ * @page dram_table DRAM Table Scope Interface
+ *
+ * @ref tf_alloc_tbl_scope
+ *
+ * @ref tf_free_tbl_scope
+ *
+ * If we allocate the EEM memory from the core, we need to store it in
+ * the shared session data structure to make sure it can be freed later.
+ * (for example if the PF goes away)
+ *
+ * Current thought is that memory is allocated within core.
+ */
+
+
+/** tf_alloc_tbl_scope_parms definition
+ */
+struct tf_alloc_tbl_scope_parms {
+	/**
+	 * [in] All Maximum key size required.
+	 */
+	uint16_t rx_max_key_sz_in_bits;
+	/**
+	 * [in] Maximum Action size required (includes inlined items)
+	 */
+	uint16_t rx_max_action_entry_sz_in_bits;
+	/**
+	 * [in] Memory size in Megabytes
+	 * Total memory size allocated by user to be divided
+	 * up for actions, hash, counters.  Only inline external actions.
+	 * Use this variable or the number of flows, do not set both.
+	 */
+	uint32_t rx_mem_size_in_mb;
+	/**
+	 * [in] Number of flows * 1000. If set, rx_mem_size_in_mb must equal 0.
+	 */
+	uint32_t rx_num_flows_in_k;
+	/**
+	 * [in] SR2 only receive table access interface id
+	 */
+	uint32_t rx_tbl_if_id;
+	/**
+	 * [in] All Maximum key size required.
+	 */
+	uint16_t tx_max_key_sz_in_bits;
+	/**
+	 * [in] Maximum Action size required (includes inlined items)
+	 */
+	uint16_t tx_max_action_entry_sz_in_bits;
+	/**
+	 * [in] Memory size in Megabytes
+	 * Total memory size allocated by user to be divided
+	 * up for actions, hash, counters.  Only inline external actions.
+	 */
+	uint32_t tx_mem_size_in_mb;
+	/**
+	 * [in] Number of flows * 1000
+	 */
+	uint32_t tx_num_flows_in_k;
+	/**
+	 * [in] SR2 only receive table access interface id
+	 */
+	uint32_t tx_tbl_if_id;
+	/**
+	 * [out] table scope identifier
+	 */
+	uint32_t tbl_scope_id;
+};
+
+struct tf_free_tbl_scope_parms {
+	/**
+	 * [in] table scope identifier
+	 */
+	uint32_t tbl_scope_id;
+};
+
+/**
+ * allocate a table scope
+ *
+ * On SR2 Firmware will allocate a scope ID.  On other devices, the scope
+ * is a software construct to identify an EEM table.  This function will
+ * divide the hash memory/buckets and records according to the device
+ * device constraints based upon calculations using either the number of flows
+ * requested or the size of memory indicated.  Other parameters passed in
+ * determine the configuration (maximum key size, maximum external action record
+ * size.
+ *
+ * This API will allocate the table region in
+ * DRAM, program the PTU page table entries, and program the number of static
+ * buckets (if SR2) in the RX and TX CFAs.  Buckets are assumed to start at
+ * 0 in the EM memory for the scope.  Upon successful completion of this API,
+ * hash tables are fully initialized and ready for entries to be inserted.
+ *
+ * A single API is used to allocate a common table scope identifier in both
+ * receive and transmit CFA. The scope identifier is common due to nature of
+ * connection tracking sending notifications between RX and TX direction.
+ *
+ * The receive and transmit table access identifiers specify which rings will
+ * be used to initialize table DRAM.  The application must ensure mutual
+ * exclusivity of ring usage for table scope allocation and any table update
+ * operations.
+ *
+ * The hash table buckets, EM keys, and EM lookup results are stored in the
+ * memory allocated based on the rx_em_hash_mb/tx_em_hash_mb parameters.  The
+ * hash table buckets are stored at the beginning of that memory.
+ *
+ * NOTES:  No EM internal setup is done here. On chip EM records are managed
+ * internally by TruFlow core.
+ *
+ * Returns success or failure code.
+ */
+int tf_alloc_tbl_scope(struct tf *tfp,
+		       struct tf_alloc_tbl_scope_parms *parms);
+
+
+/**
+ * free a table scope
+ *
+ * Firmware checks that the table scope ID is owned by the TruFlow
+ * session, verifies that no references to this table scope remains
+ * (SR2 ILT) or Profile TCAM entries for either CFA (RX/TX) direction,
+ * then frees the table scope ID.
+ *
+ * Returns success or failure code.
+ */
+int tf_free_tbl_scope(struct tf *tfp,
+		      struct tf_free_tbl_scope_parms *parms);
+
+/**
  * TCAM table type
  */
 enum tf_tcam_tbl_type {

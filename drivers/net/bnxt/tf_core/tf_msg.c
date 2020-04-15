@@ -869,6 +869,87 @@ tf_msg_session_sram_resc_flush(struct tf *tfp,
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
 
+int
+tf_msg_set_tbl_entry(struct tf *tfp,
+		     enum tf_dir dir,
+		     enum tf_tbl_type type,
+		     uint16_t size,
+		     uint8_t *data,
+		     uint32_t index)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_tbl_type_set_input req = { 0 };
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+	req.type = tfp_cpu_to_le_32(type);
+	req.size = tfp_cpu_to_le_16(size);
+	req.index = tfp_cpu_to_le_32(index);
+
+	tfp_memcpy(&req.data,
+		   data,
+		   size);
+
+	MSG_PREP_NO_RESP(parms,
+			 TF_KONG_MB,
+			 HWRM_TF,
+			 HWRM_TFT_TBL_TYPE_SET,
+			 req);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+int
+tf_msg_get_tbl_entry(struct tf *tfp,
+		     enum tf_dir dir,
+		     enum tf_tbl_type type,
+		     uint16_t size,
+		     uint8_t *data,
+		     uint32_t index)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_tbl_type_get_input req = { 0 };
+	struct tf_tbl_type_get_output resp = { 0 };
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+	req.type = tfp_cpu_to_le_32(type);
+	req.index = tfp_cpu_to_le_32(index);
+
+	MSG_PREP(parms,
+		 TF_KONG_MB,
+		 HWRM_TF,
+		 HWRM_TFT_TBL_TYPE_GET,
+		 req,
+		 resp);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	/* Verify that we got enough buffer to return the requested data */
+	if (resp.size < size)
+		return -EINVAL;
+
+	tfp_memcpy(data,
+		   &resp.data,
+		   resp.size);
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
 #define TF_BYTES_PER_SLICE(tfp) 12
 #define NUM_SLICES(tfp, bytes) \
 	(((bytes) + TF_BYTES_PER_SLICE(tfp) - 1) / TF_BYTES_PER_SLICE(tfp))

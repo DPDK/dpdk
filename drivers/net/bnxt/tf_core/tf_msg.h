@@ -6,6 +6,7 @@
 #ifndef _TF_MSG_H_
 #define _TF_MSG_H_
 
+#include "tf_tbl.h"
 #include "tf_rm.h"
 
 struct tf;
@@ -149,5 +150,67 @@ int tf_msg_tcam_entry_set(struct tf *tfp,
  */
 int tf_msg_tcam_entry_free(struct tf *tfp,
 			   struct tf_free_tcam_entry_parms *parms);
+
+/**
+ * Sends Set message of a Table Type element to the firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] dir
+ *   Direction location of the element to set
+ *
+ * [in] type
+ *   Type of the object to set
+ *
+ * [in] size
+ *   Size of the data to set
+ *
+ * [in] data
+ *   Data to set
+ *
+ * [in] index
+ *   Index to set
+ *
+ * Returns:
+ *   0 - Success
+ */
+int tf_msg_set_tbl_entry(struct tf *tfp,
+			 enum tf_dir dir,
+			 enum tf_tbl_type type,
+			 uint16_t size,
+			 uint8_t *data,
+			 uint32_t index);
+
+/**
+ * Sends get message of a Table Type element to the firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] dir
+ *   Direction location of the element to get
+ *
+ * [in] type
+ *   Type of the object to get
+ *
+ * [in] size
+ *   Size of the data read
+ *
+ * [in] data
+ *   Data read
+ *
+ * [in] index
+ *   Index to get
+ *
+ * Returns:
+ *   0 - Success
+ */
+int tf_msg_get_tbl_entry(struct tf *tfp,
+			 enum tf_dir dir,
+			 enum tf_tbl_type type,
+			 uint16_t size,
+			 uint8_t *data,
+			 uint32_t index);
 
 #endif  /* _TF_MSG_H_ */

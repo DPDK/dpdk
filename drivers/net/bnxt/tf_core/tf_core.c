@@ -7,6 +7,7 @@
 
 #include "tf_core.h"
 #include "tf_session.h"
+#include "tf_tbl.h"
 #include "tf_rm.h"
 #include "tf_msg.h"
 #include "tfp.h"
@@ -172,6 +173,9 @@ tf_open_session(struct tf                    *tfp,
 
 	/* Setup hash seeds */
 	tf_seeds_init(session);
+
+	/* Initialize external pool data structures */
+	tf_init_tbl_pool(session);
 
 	session->ref_count++;
 
