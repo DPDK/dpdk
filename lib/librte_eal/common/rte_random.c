@@ -198,7 +198,7 @@ __rte_random_initial_seed(void)
 		return (uint64_t)rdseed_low | ((uint64_t)rdseed_high << 32);
 #endif
 	/* second fallback: seed using rdtsc */
-	return rte_get_timer_cycles();
+	return rte_get_tsc_cycles();
 }
 
 RTE_INIT(rte_rand_init)
