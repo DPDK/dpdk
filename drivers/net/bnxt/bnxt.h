@@ -22,6 +22,7 @@
 #include "bnxt_util.h"
 
 #include "tf_core.h"
+#include "bnxt_ulp.h"
 
 /* Vendor ID */
 #define PCI_VENDOR_ID_BROADCOM		0x14E4
@@ -687,6 +688,7 @@ struct bnxt {
 	uint16_t		port_svif;
 
 	struct tf		tfp;
+	struct bnxt_ulp_context	ulp_ctx;
 	uint8_t			truflow;
 };
 
@@ -728,6 +730,9 @@ extern int bnxt_logtype_driver;
 
 #define PMD_DRV_LOG(level, fmt, args...) \
 	  PMD_DRV_LOG_RAW(level, fmt, ## args)
+
+int32_t bnxt_ulp_init(struct bnxt *bp);
+void bnxt_ulp_deinit(struct bnxt *bp);
 
 uint16_t bnxt_get_vnic_id(uint16_t port);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif);

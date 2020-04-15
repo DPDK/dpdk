@@ -44,7 +44,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_rxtx_vec_sse.c
 endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_BNXT_PMD), y)
-CFLAGS += -I$(SRCDIR) -I$(SRCDIR)/tf_core
+CFLAGS += -I$(SRCDIR) -I$(SRCDIR)/tf_core -I$(SRCDIR)/tf_ulp
 endif
 
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_core.c
@@ -57,6 +57,10 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_rm.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_tbl.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tfp.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/bnxt_ulp.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_mark_mgr.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_flow_db.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_template_db.c
 #
 # Export include files
 #
