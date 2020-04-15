@@ -122,6 +122,46 @@ int tf_msg_session_sram_resc_flush(struct tf *tfp,
 				   struct tf_rm_entry *sram_entry);
 
 /**
+ * Sends EM mem register request to Firmware
+ */
+int tf_msg_em_mem_rgtr(struct tf *tfp,
+		       int           page_lvl,
+		       int           page_size,
+		       uint64_t      dma_addr,
+		       uint16_t     *ctx_id);
+
+/**
+ * Sends EM mem unregister request to Firmware
+ */
+int tf_msg_em_mem_unrgtr(struct tf *tfp,
+			 uint16_t     *ctx_id);
+
+/**
+ * Sends EM qcaps request to Firmware
+ */
+int tf_msg_em_qcaps(struct tf *tfp,
+		    int dir,
+		    struct tf_em_caps *em_caps);
+
+/**
+ * Sends EM config request to Firmware
+ */
+int tf_msg_em_cfg(struct tf *tfp,
+		  uint32_t      num_entries,
+		  uint16_t      key0_ctx_id,
+		  uint16_t      key1_ctx_id,
+		  uint16_t      record_ctx_id,
+		  uint16_t      efc_ctx_id,
+		  int           dir);
+
+/**
+ * Sends EM operation request to Firmware
+ */
+int tf_msg_em_op(struct tf *tfp,
+		 int        dir,
+		 uint16_t   op);
+
+/**
  * Sends tcam entry 'set' to the Firmware.
  *
  * [in] tfp

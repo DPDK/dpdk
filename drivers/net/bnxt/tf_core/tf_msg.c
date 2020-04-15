@@ -869,6 +869,177 @@ tf_msg_session_sram_resc_flush(struct tf *tfp,
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
 
+/**
+ * Sends EM mem register request to Firmware
+ */
+int tf_msg_em_mem_rgtr(struct tf *tfp,
+		       int           page_lvl,
+		       int           page_size,
+		       uint64_t      dma_addr,
+		       uint16_t     *ctx_id)
+{
+	int rc;
+	struct hwrm_tf_ctxt_mem_rgtr_input req = { 0 };
+	struct hwrm_tf_ctxt_mem_rgtr_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+
+	req.page_level = page_lvl;
+	req.page_size = page_size;
+	req.page_dir = tfp_cpu_to_le_64(dma_addr);
+
+	parms.tf_type = HWRM_TF_CTXT_MEM_RGTR;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+	if (rc)
+		return rc;
+
+	*ctx_id = tfp_le_to_cpu_16(resp.ctx_id);
+
+	return rc;
+}
+
+/**
+ * Sends EM mem unregister request to Firmware
+ */
+int tf_msg_em_mem_unrgtr(struct tf *tfp,
+			 uint16_t  *ctx_id)
+{
+	int rc;
+	struct hwrm_tf_ctxt_mem_unrgtr_input req = {0};
+	struct hwrm_tf_ctxt_mem_unrgtr_output resp = {0};
+	struct tfp_send_msg_parms parms = { 0 };
+
+	req.ctx_id = tfp_cpu_to_le_32(*ctx_id);
+
+	parms.tf_type = HWRM_TF_CTXT_MEM_UNRGTR;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+	return rc;
+}
+
+/**
+ * Sends EM qcaps request to Firmware
+ */
+int tf_msg_em_qcaps(struct tf *tfp,
+		    int dir,
+		    struct tf_em_caps *em_caps)
+{
+	int rc;
+	struct hwrm_tf_ext_em_qcaps_input  req = {0};
+	struct hwrm_tf_ext_em_qcaps_output resp = { 0 };
+	uint32_t             flags;
+	struct tfp_send_msg_parms parms = { 0 };
+
+	flags = (dir == TF_DIR_TX ? HWRM_TF_EXT_EM_QCAPS_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_EXT_EM_QCAPS_INPUT_FLAGS_DIR_RX);
+	req.flags = tfp_cpu_to_le_32(flags);
+
+	parms.tf_type = HWRM_TF_EXT_EM_QCAPS;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+	if (rc)
+		return rc;
+
+	em_caps->supported = tfp_le_to_cpu_32(resp.supported);
+	em_caps->max_entries_supported =
+		tfp_le_to_cpu_32(resp.max_entries_supported);
+	em_caps->key_entry_size = tfp_le_to_cpu_16(resp.key_entry_size);
+	em_caps->record_entry_size =
+		tfp_le_to_cpu_16(resp.record_entry_size);
+	em_caps->efc_entry_size = tfp_le_to_cpu_16(resp.efc_entry_size);
+
+	return rc;
+}
+
+/**
+ * Sends EM config request to Firmware
+ */
+int tf_msg_em_cfg(struct tf *tfp,
+		  uint32_t   num_entries,
+		  uint16_t   key0_ctx_id,
+		  uint16_t   key1_ctx_id,
+		  uint16_t   record_ctx_id,
+		  uint16_t   efc_ctx_id,
+		  int        dir)
+{
+	int rc;
+	struct hwrm_tf_ext_em_cfg_input  req = {0};
+	struct hwrm_tf_ext_em_cfg_output resp = {0};
+	uint32_t flags;
+	struct tfp_send_msg_parms parms = { 0 };
+
+	flags = (dir == TF_DIR_TX ? HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_RX);
+	flags |= HWRM_TF_EXT_EM_QCAPS_INPUT_FLAGS_PREFERRED_OFFLOAD;
+
+	req.flags = tfp_cpu_to_le_32(flags);
+	req.num_entries = tfp_cpu_to_le_32(num_entries);
+
+	req.key0_ctx_id = tfp_cpu_to_le_16(key0_ctx_id);
+	req.key1_ctx_id = tfp_cpu_to_le_16(key1_ctx_id);
+	req.record_ctx_id = tfp_cpu_to_le_16(record_ctx_id);
+	req.efc_ctx_id = tfp_cpu_to_le_16(efc_ctx_id);
+
+	parms.tf_type = HWRM_TF_EXT_EM_CFG;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+	return rc;
+}
+
+/**
+ * Sends EM operation request to Firmware
+ */
+int tf_msg_em_op(struct tf *tfp,
+		 int        dir,
+		 uint16_t   op)
+{
+	int rc;
+	struct hwrm_tf_ext_em_op_input  req = {0};
+	struct hwrm_tf_ext_em_op_output resp = {0};
+	uint32_t flags;
+	struct tfp_send_msg_parms parms = { 0 };
+
+	flags = (dir == TF_DIR_TX ? HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_EXT_EM_CFG_INPUT_FLAGS_DIR_RX);
+	req.flags = tfp_cpu_to_le_32(flags);
+	req.op = tfp_cpu_to_le_16(op);
+
+	parms.tf_type = HWRM_TF_EXT_EM_OP;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+	return rc;
+}
+
 int
 tf_msg_set_tbl_entry(struct tf *tfp,
 		     enum tf_dir dir,

@@ -8,6 +8,7 @@
 #include "tf_core.h"
 #include "tf_session.h"
 #include "tf_tbl.h"
+#include "tf_em.h"
 #include "tf_rm.h"
 #include "tf_msg.h"
 #include "tfp.h"
@@ -287,6 +288,55 @@ tf_close_session(struct tf *tfp)
 		    session_id.internal.fw_session_id);
 
 	return rc_close;
+}
+
+/** insert EM hash entry API
+ *
+ *    returns:
+ *    0       - Success
+ *    -EINVAL - Error
+ */
+int tf_insert_em_entry(struct tf *tfp,
+		       struct tf_insert_em_entry_parms *parms)
+{
+	struct tf_tbl_scope_cb     *tbl_scope_cb;
+
+	if (tfp == NULL || parms == NULL)
+		return -EINVAL;
+
+	tbl_scope_cb =
+		tbl_scope_cb_find((struct tf_session *)tfp->session->core_data,
+				  parms->tbl_scope_id);
+	if (tbl_scope_cb == NULL)
+		return -EINVAL;
+
+	/* Process the EM entry per Table Scope type */
+	return tf_insert_eem_entry((struct tf_session *)tfp->session->core_data,
+				   tbl_scope_cb,
+				   parms);
+}
+
+/** Delete EM hash entry API
+ *
+ *    returns:
+ *    0       - Success
+ *    -EINVAL - Error
+ */
+int tf_delete_em_entry(struct tf *tfp,
+		       struct tf_delete_em_entry_parms *parms)
+{
+	struct tf_tbl_scope_cb     *tbl_scope_cb;
+
+	if (tfp == NULL || parms == NULL)
+		return -EINVAL;
+
+	tbl_scope_cb =
+		tbl_scope_cb_find((struct tf_session *)tfp->session->core_data,
+				  parms->tbl_scope_id);
+	if (tbl_scope_cb == NULL)
+		return -EINVAL;
+
+	return tf_delete_eem_entry(tfp, parms);
 }
 
 /** allocate identifier resource

@@ -21,6 +21,10 @@
 
 /********** BEGIN Truflow Core DEFINITIONS **********/
 
+
+#define TF_KILOBYTE  1024
+#define TF_MEGABYTE  (1024 * 1024)
+
 /**
  * direction
  */
@@ -29,6 +33,27 @@ enum tf_dir {
 	TF_DIR_TX,  /**< Transmit */
 	TF_DIR_MAX
 };
+
+/**
+ * memory choice
+ */
+enum tf_mem {
+	TF_MEM_INTERNAL, /**< Internal */
+	TF_MEM_EXTERNAL, /**< External */
+	TF_MEM_MAX
+};
+
+/**
+ * The size of the external action record (Wh+/Brd2)
+ *
+ * Currently set to 512.
+ *
+ * AR (16B) + encap (256B) + stats_ptrs (8) + resvd (8)
+ * + stats (16) = 304 aligned on a 16B boundary
+ *
+ * Theoretically, the size should be smaller. ~304B
+ */
+#define TF_ACTION_RECORD_SZ 512
 
 /**
  * External pool size
@@ -55,6 +80,23 @@ enum tf_dir {
  */
 #define TF_EXT_POOL_0      0 /**< matches TF_TBL_TYPE_EXT   */
 #define TF_EXT_POOL_1      1 /**< matches TF_TBL_TYPE_EXT_0 */
+
+/** EEM record AR helper
+ *
+ * Helpers to handle the Action Record Pointer in the EEM Record Entry.
+ *
+ * Convert absolute offset to action record pointer in EEM record entry
+ * Convert action record pointer in EEM record entry to absolute offset
+ */
+#define TF_ACT_REC_OFFSET_2_PTR(offset) ((offset) >> 4)
+#define TF_ACT_REC_PTR_2_OFFSET(offset) ((offset) << 4)
+
+#define TF_ACT_REC_INDEX_2_OFFSET(idx) ((idx) << 9)
+
+/*
+ * Helper Macros
+ */
+#define TF_BITS_2_BYTES(num_bits) (((num_bits) + 7) / 8)
 
 /********** BEGIN API FUNCTION PROTOTYPES/PARAMETERS **********/
 
@@ -495,7 +537,7 @@ struct tf_alloc_tbl_scope_parms {
 	 */
 	uint32_t rx_num_flows_in_k;
 	/**
-	 * [in] SR2 only receive table access interface id
+	 * [in] Brd4 only receive table access interface id
 	 */
 	uint32_t rx_tbl_if_id;
 	/**
@@ -517,7 +559,7 @@ struct tf_alloc_tbl_scope_parms {
 	 */
 	uint32_t tx_num_flows_in_k;
 	/**
-	 * [in] SR2 only receive table access interface id
+	 * [in] Brd4 only receive table access interface id
 	 */
 	uint32_t tx_tbl_if_id;
 	/**
@@ -536,7 +578,7 @@ struct tf_free_tbl_scope_parms {
 /**
  * allocate a table scope
  *
- * On SR2 Firmware will allocate a scope ID.  On other devices, the scope
+ * On Brd4 Firmware will allocate a scope ID.  On other devices, the scope
  * is a software construct to identify an EEM table.  This function will
  * divide the hash memory/buckets and records according to the device
  * device constraints based upon calculations using either the number of flows
@@ -546,7 +588,7 @@ struct tf_free_tbl_scope_parms {
  *
  * This API will allocate the table region in
  * DRAM, program the PTU page table entries, and program the number of static
- * buckets (if SR2) in the RX and TX CFAs.  Buckets are assumed to start at
+ * buckets (if Brd4) in the RX and TX CFAs.  Buckets are assumed to start at
  * 0 in the EM memory for the scope.  Upon successful completion of this API,
  * hash tables are fully initialized and ready for entries to be inserted.
  *
@@ -563,7 +605,7 @@ struct tf_free_tbl_scope_parms {
  * memory allocated based on the rx_em_hash_mb/tx_em_hash_mb parameters.  The
  * hash table buckets are stored at the beginning of that memory.
  *
- * NOTES:  No EM internal setup is done here. On chip EM records are managed
+ * NOTE:  No EM internal setup is done here. On chip EM records are managed
  * internally by TruFlow core.
  *
  * Returns success or failure code.
@@ -577,7 +619,7 @@ int tf_alloc_tbl_scope(struct tf *tfp,
  *
  * Firmware checks that the table scope ID is owned by the TruFlow
  * session, verifies that no references to this table scope remains
- * (SR2 ILT) or Profile TCAM entries for either CFA (RX/TX) direction,
+ * (Brd4 ILT) or Profile TCAM entries for either CFA (RX/TX) direction,
  * then frees the table scope ID.
  *
  * Returns success or failure code.
@@ -905,4 +947,430 @@ enum tf_tbl_type {
 	TF_TBL_TYPE_EXT_0,
 	TF_TBL_TYPE_MAX
 };
+
+/** tf_alloc_tbl_entry parameter definition
+ */
+struct tf_alloc_tbl_entry_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of the allocation
+	 */
+	enum tf_tbl_type type;
+	/**
+	 * [in] Enable search for matching entry. If the table type is
+	 * internal the shadow copy will be searched before
+	 * alloc. Session must be configured with shadow copy enabled.
+	 */
+	uint8_t search_enable;
+	/**
+	 * [in] Result data to search for (if search_enable)
+	 */
+	uint8_t *result;
+	/**
+	 * [in] Result data size in bytes (if search_enable)
+	 */
+	uint16_t result_sz_in_bytes;
+	/**
+	 * [out] If search_enable, set if matching entry found
+	 */
+	uint8_t hit;
+	/**
+	 * [out] Current ref count after allocation (if search_enable)
+	 */
+	uint16_t ref_cnt;
+	/**
+	 * [out] Idx of allocated entry or found entry (if search_enable)
+	 */
+	uint32_t idx;
+};
+
+/** allocate index table entries
+ *
+ * Internal types:
+ *
+ * Allocate an on chip index table entry or search for a matching
+ * entry of the indicated type for this TruFlow session.
+ *
+ * Allocates an index table record. This function will attempt to
+ * allocate an entry or search an index table for a matching entry if
+ * search is enabled (only the shadow copy of the table is accessed).
+ *
+ * If search is not enabled, the first available free entry is
+ * returned. If search is enabled and a matching entry to entry_data
+ * is found hit is set to TRUE and success is returned.
+ *
+ * External types:
+ *
+ * These are used to allocate inlined action record memory.
+ *
+ * Allocates an external index table action record.
+ *
+ * NOTE:
+ * Implementation of the internals of this function will be a stack with push
+ * and pop.
+ *
+ * Returns success or failure code.
+ */
+int tf_alloc_tbl_entry(struct tf *tfp,
+		       struct tf_alloc_tbl_entry_parms *parms);
+
+/** tf_free_tbl_entry parameter definition
+ */
+struct tf_free_tbl_entry_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of the allocation type
+	 */
+	enum tf_tbl_type type;
+	/**
+	 * [in] Index to free
+	 */
+	uint32_t idx;
+	/**
+	 * [out] Reference count after free, only valid if session has been
+	 * created with shadow_copy.
+	 */
+	uint16_t ref_cnt;
+};
+
+/** free index table entry
+ *
+ * Used to free a previously allocated table entry.
+ *
+ * Internal types:
+ *
+ * If session has shadow_copy enabled the shadow DB is searched and if
+ * found the element ref_cnt is decremented. If ref_cnt goes to
+ * zero then the element is returned to the session pool.
+ *
+ * If the session does not have a shadow DB the element is free'ed and
+ * given back to the session pool.
+ *
+ * External types:
+ *
+ * Free's an external index table action record.
+ *
+ * NOTE:
+ * Implementation of the internals of this function will be a stack with push
+ * and pop.
+ *
+ * Returns success or failure code.
+ */
+int tf_free_tbl_entry(struct tf *tfp,
+		      struct tf_free_tbl_entry_parms *parms);
+
+/** tf_set_tbl_entry parameter definition
+ */
+struct tf_set_tbl_entry_parms {
+	/**
+	 * [in] Table scope identifier
+	 *
+	 */
+	uint32_t tbl_scope_id;
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of object to set
+	 */
+	enum tf_tbl_type type;
+	/**
+	 * [in] Entry data
+	 */
+	uint8_t *data;
+	/**
+	 * [in] Entry size
+	 */
+	uint16_t data_sz_in_bytes;
+	/**
+	 * [in] Entry index to write to
+	 */
+	uint32_t idx;
+};
+
+/** set index table entry
+ *
+ * Used to insert an application programmed index table entry into a
+ * previous allocated table location.  A shadow copy of the table
+ * is maintained (if enabled) (only for internal objects)
+ *
+ * Returns success or failure code.
+ */
+int tf_set_tbl_entry(struct tf *tfp,
+		     struct tf_set_tbl_entry_parms *parms);
+
+/** tf_get_tbl_entry parameter definition
+ */
+struct tf_get_tbl_entry_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of object to get
+	 */
+	enum tf_tbl_type type;
+	/**
+	 * [out] Entry data
+	 */
+	uint8_t *data;
+	/**
+	 * [out] Entry size
+	 */
+	uint16_t data_sz_in_bytes;
+	/**
+	 * [in] Entry index to read
+	 */
+	uint32_t idx;
+};
+
+/** get index table entry
+ *
+ * Used to retrieve a previous set index table entry.
+ *
+ * Reads and compares with the shadow table copy (if enabled) (only
+ * for internal objects).
+ *
+ * Returns success or failure code. Failure will be returned if the
+ * provided data buffer is too small for the data type requested.
+ */
+int tf_get_tbl_entry(struct tf *tfp,
+		     struct tf_get_tbl_entry_parms *parms);
+
+/**
+ * @page exact_match Exact Match Table
+ *
+ * @ref tf_insert_em_entry
+ *
+ * @ref tf_delete_em_entry
+ *
+ * @ref tf_search_em_entry
+ *
+ */
+/** tf_insert_em_entry parameter definition
+ */
+struct tf_insert_em_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] internal or external
+	 */
+	enum tf_mem mem;
+	/**
+	 * [in] ID of table scope to use (external only)
+	 */
+	uint32_t tbl_scope_id;
+	/**
+	 * [in] ID of table interface to use (Brd4 only)
+	 */
+	uint32_t tbl_if_id;
+	/**
+	 * [in] ptr to structure containing key fields
+	 */
+	uint8_t *key;
+	/**
+	 * [in] key bit length
+	 */
+	uint16_t key_sz_in_bits;
+	/**
+	 * [in] ptr to structure containing result field
+	 */
+	uint8_t *em_record;
+	/**
+	 * [out] result size in bits
+	 */
+	uint16_t em_record_sz_in_bits;
+	/**
+	 * [in] duplicate check flag
+	 */
+	uint8_t	dup_check;
+	/**
+	 * [out] Flow handle value for the inserted entry.  This is encoded
+	 * as the entries[4]:bucket[2]:hashId[1]:hash[14]
+	 */
+	uint64_t flow_handle;
+	/**
+	 * [out] Flow id is returned as null (internal)
+	 * Flow id is the GFID value for the inserted entry (external)
+	 * This is the value written to the BD and useful information for mark.
+	 */
+	uint64_t flow_id;
+};
+/**
+ * tf_delete_em_entry parameter definition
+ */
+struct tf_delete_em_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] internal or external
+	 */
+	enum tf_mem mem;
+	/**
+	 * [in] ID of table scope to use (external only)
+	 */
+	uint32_t tbl_scope_id;
+	/**
+	 * [in] ID of table interface to use (Brd4 only)
+	 */
+	uint32_t tbl_if_id;
+	/**
+	 * [in] epoch group IDs of entry to delete
+	 * 2 element array with 2 ids. (Brd4 only)
+	 */
+	uint16_t *epochs;
+	/**
+	 * [in] structure containing flow delete handle information
+	 */
+	uint64_t flow_handle;
+};
+/**
+ * tf_search_em_entry parameter definition
+ */
+struct tf_search_em_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] internal or external
+	 */
+	enum tf_mem mem;
+	/**
+	 * [in] ID of table scope to use (external only)
+	 */
+	uint32_t tbl_scope_id;
+	/**
+	 * [in] ID of table interface to use (Brd4 only)
+	 */
+	uint32_t tbl_if_id;
+	/**
+	 * [in] ptr to structure containing key fields
+	 */
+	uint8_t *key;
+	/**
+	 * [in] key bit length
+	 */
+	uint16_t key_sz_in_bits;
+	/**
+	 * [in/out] ptr to structure containing EM record fields
+	 */
+	uint8_t *em_record;
+	/**
+	 * [out] result size in bits
+	 */
+	uint16_t em_record_sz_in_bits;
+	/**
+	 * [in] epoch group IDs of entry to lookup
+	 * 2 element array with 2 ids. (Brd4 only)
+	 */
+	uint16_t *epochs;
+	/**
+	 * [in] ptr to structure containing flow delete handle
+	 */
+	uint64_t flow_handle;
+};
+
+/** insert em hash entry in internal table memory
+ *
+ * Internal:
+ *
+ * This API inserts an exact match entry into internal EM table memory
+ * of the specified direction.
+ *
+ * Note: The EM record is managed within the TruFlow core and not the
+ * application.
+ *
+ * Shadow copy of internal record table an association with hash and 1,2, or 4
+ * associated buckets
+ *
+ * External:
+ * This API inserts an exact match entry into DRAM EM table memory of the
+ * specified direction and table scope.
+ *
+ * When inserting an entry into an exact match table, the TruFlow library may
+ * need to allocate a dynamic bucket for the entry (Brd4 only).
+ *
+ * The insertion of duplicate entries in an EM table is not permitted.	If a
+ * TruFlow application can guarantee that it will never insert duplicates, it
+ * can disable duplicate checking by passing a zero value in the  dup_check
+ * parameter to this API.  This will optimize performance. Otherwise, the
+ * TruFlow library will enforce protection against inserting duplicate entries.
+ *
+ * Flow handle is defined in this document:
+ *
+ * https://docs.google.com
+ * /document/d/1NESu7RpTN3jwxbokaPfYORQyChYRmJgs40wMIRe8_-Q/edit
+ *
+ * Returns success or busy code.
+ *
+ */
+int tf_insert_em_entry(struct tf *tfp,
+		       struct tf_insert_em_entry_parms *parms);
+
+/** delete em hash entry table memory
+ *
+ * Internal:
+ *
+ * This API deletes an exact match entry from internal EM table memory of the
+ * specified direction. If a valid flow ptr is passed in then that takes
+ * precedence over the pointer to the complete key passed in.
+ *
+ *
+ * External:
+ *
+ * This API deletes an exact match entry from EM table memory of the specified
+ * direction and table scope. If a valid flow handle is passed in then that
+ * takes precedence over the pointer to the complete key passed in.
+ *
+ * The TruFlow library may release a dynamic bucket when an entry is deleted.
+ *
+ *
+ * Returns success or not found code
+ *
+ *
+ */
+int tf_delete_em_entry(struct tf *tfp,
+		       struct tf_delete_em_entry_parms *parms);
+
+/** search em hash entry table memory
+ *
+ * Internal:
+
+ * This API looks up an EM entry in table memory with the specified EM
+ * key or flow (flow takes precedence) and direction.
+ *
+ * The status will be one of: success or entry not found.  If the lookup
+ * succeeds, a pointer to the matching entry and the result record associated
+ * with the matching entry will be provided.
+ *
+ * If flow_handle is set, search shadow copy.
+ *
+ * Otherwise, query the fw with key to get result.
+ *
+ * External:
+ *
+ * This API looks up an EM entry in table memory with the specified EM
+ * key or flow_handle (flow takes precedence), direction and table scope.
+ *
+ * The status will be one of: success or entry not found.  If the lookup
+ * succeeds, a pointer to the matching entry and the result record associated
+ * with the matching entry will be provided.
+ *
+ * Returns success or not found code
+ *
+ */
+int tf_search_em_entry(struct tf *tfp,
+		       struct tf_search_em_entry_parms *parms);
 #endif /* _TF_CORE_H_ */
