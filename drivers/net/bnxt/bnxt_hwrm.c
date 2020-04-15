@@ -3010,6 +3010,8 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint16_t flags;
 	int rc = 0;
+	bp->func_svif = BNXT_SVIF_INVALID;
+	uint16_t svif_info;
 
 	HWRM_PREP(&req, HWRM_FUNC_QCFG, BNXT_USE_CHIMP_MB);
 	req.fid = rte_cpu_to_le_16(0xffff);
@@ -3020,6 +3022,12 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 
 	/* Hard Coded.. 0xfff VLAN ID mask */
 	bp->vlan = rte_le_to_cpu_16(resp->vlan) & 0xfff;
+
+	svif_info = rte_le_to_cpu_16(resp->svif_info);
+	if (svif_info & HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_VALID)
+		bp->func_svif =	svif_info &
+				     HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_MASK;
+
 	flags = rte_le_to_cpu_16(resp->flags);
 	if (BNXT_PF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_HOST))
 		bp->flags |= BNXT_FLAG_MULTI_HOST;
@@ -3054,6 +3062,32 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	HWRM_UNLOCK();
 
 	return rc;
+}
+
+int bnxt_hwrm_port_mac_qcfg(struct bnxt *bp)
+{
+	struct hwrm_port_mac_qcfg_input req = {0};
+	struct hwrm_port_mac_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint16_t port_svif_info;
+	int rc;
+
+	bp->port_svif = BNXT_SVIF_INVALID;
+
+	HWRM_PREP(&req, HWRM_PORT_MAC_QCFG, BNXT_USE_CHIMP_MB);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	port_svif_info = rte_le_to_cpu_16(resp->port_svif_info);
+	if (port_svif_info &
+	    HWRM_PORT_MAC_QCFG_OUTPUT_PORT_SVIF_INFO_PORT_SVIF_VALID)
+		bp->port_svif = port_svif_info &
+			HWRM_PORT_MAC_QCFG_OUTPUT_PORT_SVIF_INFO_PORT_SVIF_MASK;
+
+	HWRM_UNLOCK();
+
+	return 0;
 }
 
 static void copy_func_cfg_to_qcaps(struct hwrm_func_cfg_input *fcfg,

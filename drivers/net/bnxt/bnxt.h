@@ -682,6 +682,9 @@ struct bnxt {
 #define BNXT_FLOW_ID_MASK	0x0000ffff
 	struct bnxt_mark_info	*mark_table;
 
+#define	BNXT_SVIF_INVALID	0xFFFF
+	uint16_t		func_svif;
+	uint16_t		port_svif;
 	struct tf               tfp;
 };
 
@@ -723,4 +726,7 @@ extern int bnxt_logtype_driver;
 
 #define PMD_DRV_LOG(level, fmt, args...) \
 	  PMD_DRV_LOG_RAW(level, fmt, ## args)
+
+uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif);
+
 #endif
