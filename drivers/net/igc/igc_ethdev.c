@@ -213,6 +213,10 @@ static int
 eth_igc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 static int
 eth_igc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+static int
+eth_igc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
+static int
+eth_igc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
 
 static const struct eth_dev_ops eth_igc_ops = {
 	.dev_configure		= eth_igc_configure,
@@ -259,6 +263,8 @@ static const struct eth_dev_ops eth_igc_ops = {
 	.queue_stats_mapping_set = eth_igc_queue_stats_mapping_set,
 	.rx_queue_intr_enable	= eth_igc_rx_queue_intr_enable,
 	.rx_queue_intr_disable	= eth_igc_rx_queue_intr_disable,
+	.flow_ctrl_get		= eth_igc_flow_ctrl_get,
+	.flow_ctrl_set		= eth_igc_flow_ctrl_set,
 };
 
 /*
@@ -2064,6 +2070,121 @@ eth_igc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	rte_intr_enable(intr_handle);
 
 	return 0;
+}
+
+static int
+eth_igc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t ctrl;
+	int tx_pause;
+	int rx_pause;
+
+	fc_conf->pause_time = hw->fc.pause_time;
+	fc_conf->high_water = hw->fc.high_water;
+	fc_conf->low_water = hw->fc.low_water;
+	fc_conf->send_xon = hw->fc.send_xon;
+	fc_conf->autoneg = hw->mac.autoneg;
+
+	/*
+	 * Return rx_pause and tx_pause status according to actual setting of
+	 * the TFCE and RFCE bits in the CTRL register.
+	 */
+	ctrl = IGC_READ_REG(hw, IGC_CTRL);
+	if (ctrl & IGC_CTRL_TFCE)
+		tx_pause = 1;
+	else
+		tx_pause = 0;
+
+	if (ctrl & IGC_CTRL_RFCE)
+		rx_pause = 1;
+	else
+		rx_pause = 0;
+
+	if (rx_pause && tx_pause)
+		fc_conf->mode = RTE_FC_FULL;
+	else if (rx_pause)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else if (tx_pause)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+	else
+		fc_conf->mode = RTE_FC_NONE;
+
+	return 0;
+}
+
+static int
+eth_igc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	uint32_t rx_buf_size;
+	uint32_t max_high_water;
+	uint32_t rctl;
+	int err;
+
+	if (fc_conf->autoneg != hw->mac.autoneg)
+		return -ENOTSUP;
+
+	rx_buf_size = igc_get_rx_buffer_size(hw);
+	PMD_DRV_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
+
+	/* At least reserve one Ethernet frame for watermark */
+	max_high_water = rx_buf_size - RTE_ETHER_MAX_LEN;
+	if (fc_conf->high_water > max_high_water ||
+		fc_conf->high_water < fc_conf->low_water) {
+		PMD_DRV_LOG(ERR,
+			"Incorrect high(%u)/low(%u) water value, max is %u",
+			fc_conf->high_water, fc_conf->low_water,
+			max_high_water);
+		return -EINVAL;
+	}
+
+	switch (fc_conf->mode) {
+	case RTE_FC_NONE:
+		hw->fc.requested_mode = igc_fc_none;
+		break;
+	case RTE_FC_RX_PAUSE:
+		hw->fc.requested_mode = igc_fc_rx_pause;
+		break;
+	case RTE_FC_TX_PAUSE:
+		hw->fc.requested_mode = igc_fc_tx_pause;
+		break;
+	case RTE_FC_FULL:
+		hw->fc.requested_mode = igc_fc_full;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported fc mode: %u", fc_conf->mode);
+		return -EINVAL;
+	}
+
+	hw->fc.pause_time     = fc_conf->pause_time;
+	hw->fc.high_water     = fc_conf->high_water;
+	hw->fc.low_water      = fc_conf->low_water;
+	hw->fc.send_xon	      = fc_conf->send_xon;
+
+	err = igc_setup_link_generic(hw);
+	if (err == IGC_SUCCESS) {
+		/**
+		 * check if we want to forward MAC frames - driver doesn't have
+		 * native capability to do that, so we'll write the registers
+		 * ourselves
+		 **/
+		rctl = IGC_READ_REG(hw, IGC_RCTL);
+
+		/* set or clear MFLCN.PMCF bit depending on configuration */
+		if (fc_conf->mac_ctrl_frame_fwd != 0)
+			rctl |= IGC_RCTL_PMCF;
+		else
+			rctl &= ~IGC_RCTL_PMCF;
+
+		IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+		IGC_WRITE_FLUSH(hw);
+
+		return 0;
+	}
+
+	PMD_DRV_LOG(ERR, "igc_setup_link_generic = 0x%x", err);
+	return -EIO;
 }
 
 static int
