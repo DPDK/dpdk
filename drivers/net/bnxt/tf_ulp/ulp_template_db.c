@@ -798,6 +798,121 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 	}
 };
 
+struct bnxt_ulp_header_match_info ulp_ingress_hdr_match_list[] = {
+	{
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP },
+	.start_idx = 0,
+	.num_entries = 24,
+	.class_tmpl_id = 0,
+	.act_vnic = 0
+	}
+};
+
+struct bnxt_ulp_header_match_info ulp_egress_hdr_match_list[] = {
+};
+
+struct bnxt_ulp_matcher_field_info ulp_field_match[] = {
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_EXACT,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_EXACT,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_ANY,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_ANY,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_EXACT,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_EXACT,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_EXACT,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_EXACT,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	},
+	{
+	.mask_opcode = BNXT_ULP_FMF_MASK_IGNORE,
+	.spec_opcode = BNXT_ULP_FMF_SPEC_IGNORE
+	}
+};
+
 struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 	{
 	.field_bit_size = 10,

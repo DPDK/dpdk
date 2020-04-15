@@ -25,6 +25,18 @@
 #define	BNXT_ULP_TX_NUM_FLOWS			32
 #define	BNXT_ULP_TX_TBL_IF_ID			0
 
+enum bnxt_tf_rc {
+	BNXT_TF_RC_PARSE_ERR	= -2,
+	BNXT_TF_RC_ERROR	= -1,
+	BNXT_TF_RC_SUCCESS	= 0
+};
+
+/* ulp direction Type */
+enum ulp_direction_type {
+	ULP_DIR_INGRESS,
+	ULP_DIR_EGRESS,
+};
+
 struct bnxt_ulp_mark_tbl *
 bnxt_ulp_cntxt_ptr2_mark_db_get(struct bnxt_ulp_context *ulp_ctx);
 

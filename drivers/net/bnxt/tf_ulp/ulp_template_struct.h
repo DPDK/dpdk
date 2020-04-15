@@ -29,6 +29,11 @@ struct ulp_rte_hdr_field {
 	uint32_t	size;
 };
 
+struct bnxt_ulp_matcher_field_info {
+	enum bnxt_ulp_fmf_mask	mask_opcode;
+	enum bnxt_ulp_fmf_spec	spec_opcode;
+};
+
 struct ulp_rte_act_bitmap {
 	uint64_t	bits;
 };
@@ -40,6 +45,22 @@ struct ulp_rte_act_bitmap {
 struct ulp_rte_act_prop {
 	uint8_t	act_details[BNXT_ULP_ACT_PROP_IDX_LAST];
 };
+
+/* Flow Matcher structures */
+struct bnxt_ulp_header_match_info {
+	struct ulp_rte_hdr_bitmap		hdr_bitmap;
+	uint32_t				start_idx;
+	uint32_t				num_entries;
+	uint32_t				class_tmpl_id;
+	uint32_t				act_vnic;
+};
+
+/* Flow Matcher templates Structure Array defined in template source*/
+extern struct bnxt_ulp_header_match_info  ulp_ingress_hdr_match_list[];
+extern struct bnxt_ulp_header_match_info  ulp_egress_hdr_match_list[];
+
+/* Flow field match Information Structure Array defined in template source*/
+extern struct bnxt_ulp_matcher_field_info	ulp_field_match[];
 
 /* Device specific parameters */
 struct bnxt_ulp_device_params {
