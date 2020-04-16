@@ -2450,10 +2450,6 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	tap_devices_count--;
 	rte_eth_dev_release_port(eth_dev);
 
-	if (internals->ka_fd != -1) {
-		close(internals->ka_fd);
-		internals->ka_fd = -1;
-	}
 	return 0;
 }
 
