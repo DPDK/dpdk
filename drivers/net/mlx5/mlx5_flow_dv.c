@@ -8102,8 +8102,9 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			if (dv->transfer) {
 				dv->actions[n++] = priv->sh->esw_drop_action;
 			} else {
-				dh->hrxq = mlx5_hrxq_drop_new(dev);
-				if (!dh->hrxq) {
+				struct mlx5_hrxq *drop_hrxq;
+				drop_hrxq = mlx5_hrxq_drop_new(dev);
+				if (!drop_hrxq) {
 					rte_flow_error_set
 						(error, errno,
 						 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8111,28 +8112,31 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						 "cannot get drop hash queue");
 					goto error;
 				}
-				dv->actions[n++] = dh->hrxq->action;
+				dv->actions[n++] = drop_hrxq->action;
 			}
 		} else if (dh->act_flags &
 			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
 			struct mlx5_hrxq *hrxq;
+			uint32_t hrxq_idx;
 
 			MLX5_ASSERT(flow->rss.queue);
-			hrxq = mlx5_hrxq_get(dev, flow->rss.key,
-					     MLX5_RSS_HASH_KEY_LEN,
-					     dev_flow->hash_fields,
-					     (*flow->rss.queue),
-					     flow->rss.queue_num);
-			if (!hrxq) {
-				hrxq = mlx5_hrxq_new
-					(dev, flow->rss.key,
-					 MLX5_RSS_HASH_KEY_LEN,
-					 dev_flow->hash_fields,
-					 (*flow->rss.queue),
-					 flow->rss.queue_num,
-					 !!(dh->layers &
-					    MLX5_FLOW_LAYER_TUNNEL));
+			hrxq_idx = mlx5_hrxq_get(dev, flow->rss.key,
+						 MLX5_RSS_HASH_KEY_LEN,
+						 dev_flow->hash_fields,
+						 (*flow->rss.queue),
+						 flow->rss.queue_num);
+			if (!hrxq_idx) {
+				hrxq_idx = mlx5_hrxq_new
+						(dev, flow->rss.key,
+						MLX5_RSS_HASH_KEY_LEN,
+						dev_flow->hash_fields,
+						(*flow->rss.queue),
+						flow->rss.queue_num,
+						!!(dh->layers &
+						MLX5_FLOW_LAYER_TUNNEL));
 			}
+			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+					      hrxq_idx);
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,
@@ -8140,8 +8144,8 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get hash queue");
 				goto error;
 			}
-			dh->hrxq = hrxq;
-			dv->actions[n++] = dh->hrxq->action;
+			dh->hrxq = hrxq_idx;
+			dv->actions[n++] = hrxq->action;
 		}
 		dh->ib_flow =
 			mlx5_glue->dv_create_flow(dv_h->matcher->matcher_object,
@@ -8174,7 +8178,7 @@ error:
 				mlx5_hrxq_drop_release(dev);
 			else
 				mlx5_hrxq_release(dev, dh->hrxq);
-			dh->hrxq = NULL;
+			dh->hrxq = 0;
 		}
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);
@@ -8438,7 +8442,7 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 				mlx5_hrxq_drop_release(dev);
 			else
 				mlx5_hrxq_release(dev, dh->hrxq);
-			dh->hrxq = NULL;
+			dh->hrxq = 0;
 		}
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);

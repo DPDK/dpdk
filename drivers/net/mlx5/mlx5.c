@@ -254,6 +254,17 @@ static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.free = rte_free,
 		.type = "mlx5_jump_ipool",
 	},
+	{
+		.size = (sizeof(struct mlx5_hrxq) + MLX5_RSS_HASH_KEY_LEN),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 0,
+		.release_mem_en = 1,
+		.malloc = rte_malloc_socket,
+		.free = rte_free,
+		.type = "mlx5_hrxq_ipool",
+	},
 };
 
 
@@ -1392,16 +1403,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		close(priv->nl_socket_rdma);
 	if (priv->vmwa_context)
 		mlx5_vlan_vmwa_exit(priv->vmwa_context);
-	if (priv->sh) {
-		/*
-		 * Free the shared context in last turn, because the cleanup
-		 * routines above may use some shared fields, like
-		 * mlx5_nl_mac_addr_flush() uses ibdev_path for retrieveing
-		 * ifindex if Netlink fails.
-		 */
-		mlx5_free_shared_ibctx(priv->sh);
-		priv->sh = NULL;
-	}
 	ret = mlx5_hrxq_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some hash Rx queue still remain",
@@ -1430,6 +1431,16 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some flows still remain",
 			dev->data->port_id);
+	if (priv->sh) {
+		/*
+		 * Free the shared context in last turn, because the cleanup
+		 * routines above may use some shared fields, like
+		 * mlx5_nl_mac_addr_flush() uses ibdev_path for retrieveing
+		 * ifindex if Netlink fails.
+		 */
+		mlx5_free_shared_ibctx(priv->sh);
+		priv->sh = NULL;
+	}
 	if (priv->domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
 		unsigned int c = 0;
 		uint16_t port_id;

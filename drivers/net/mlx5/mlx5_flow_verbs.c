@@ -1753,7 +1753,7 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 				mlx5_hrxq_drop_release(dev);
 			else
 				mlx5_hrxq_release(dev, handle->hrxq);
-			handle->hrxq = NULL;
+			handle->hrxq = 0;
 		}
 		if (handle->vf_vlan.tag && handle->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &handle->vf_vlan);
@@ -1807,6 +1807,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_handle *handle;
 	struct mlx5_flow *dev_flow;
+	struct mlx5_hrxq *hrxq;
 	int err;
 	int idx;
 
@@ -1814,8 +1815,8 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		dev_flow = &((struct mlx5_flow *)priv->inter_flows)[idx];
 		handle = dev_flow->handle;
 		if (handle->act_flags & MLX5_FLOW_ACTION_DROP) {
-			handle->hrxq = mlx5_hrxq_drop_new(dev);
-			if (!handle->hrxq) {
+			hrxq = mlx5_hrxq_drop_new(dev);
+			if (!hrxq) {
 				rte_flow_error_set
 					(error, errno,
 					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -1823,22 +1824,24 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				goto error;
 			}
 		} else {
-			struct mlx5_hrxq *hrxq;
+			uint32_t hrxq_idx;
 
 			MLX5_ASSERT(flow->rss.queue);
-			hrxq = mlx5_hrxq_get(dev, flow->rss.key,
+			hrxq_idx = mlx5_hrxq_get(dev, flow->rss.key,
 					     MLX5_RSS_HASH_KEY_LEN,
 					     dev_flow->hash_fields,
 					     (*flow->rss.queue),
 					     flow->rss.queue_num);
-			if (!hrxq)
-				hrxq = mlx5_hrxq_new(dev, flow->rss.key,
+			if (!hrxq_idx)
+				hrxq_idx = mlx5_hrxq_new(dev, flow->rss.key,
 						MLX5_RSS_HASH_KEY_LEN,
 						dev_flow->hash_fields,
 						(*flow->rss.queue),
 						flow->rss.queue_num,
 						!!(handle->layers &
 						MLX5_FLOW_LAYER_TUNNEL));
+			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+					 hrxq_idx);
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,
@@ -1846,9 +1849,10 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get hash queue");
 				goto error;
 			}
-			handle->hrxq = hrxq;
+			handle->hrxq = hrxq_idx;
 		}
-		handle->ib_flow = mlx5_glue->create_flow(handle->hrxq->qp,
+		MLX5_ASSERT(hrxq);
+		handle->ib_flow = mlx5_glue->create_flow(hrxq->qp,
 						     &dev_flow->verbs.attr);
 		if (!handle->ib_flow) {
 			rte_flow_error_set(error, errno,
@@ -1877,7 +1881,7 @@ error:
 				mlx5_hrxq_drop_release(dev);
 			else
 				mlx5_hrxq_release(dev, handle->hrxq);
-			handle->hrxq = NULL;
+			handle->hrxq = 0;
 		}
 		if (handle->vf_vlan.tag && handle->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &handle->vf_vlan);

@@ -509,7 +509,7 @@ struct mlx5_flow_handle {
 	uint64_t act_flags;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	void *ib_flow; /**< Verbs flow pointer. */
-	struct mlx5_hrxq *hrxq; /**< Hash Rx queue object. */
+	uint32_t hrxq; /**< Hash Rx queue object index. */
 	struct mlx5_vf_vlan vf_vlan; /**< Structure for VF VLAN workaround. */
 	union {
 		uint32_t qrss_id; /**< Uniqie Q/RSS suffix subflow tag. */

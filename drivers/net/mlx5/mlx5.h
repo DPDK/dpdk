@@ -50,6 +50,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_TAG, /* Pool for tag resource. */
 	MLX5_IPOOL_PORT_ID, /* Pool for port id resource. */
 	MLX5_IPOOL_JUMP, /* Pool for jump resource. */
+	MLX5_IPOOL_HRXQ, /* Pool for hrxq resource. */
 	MLX5_IPOOL_MAX,
 };
 
@@ -513,7 +514,7 @@ struct mlx5_priv {
 	int flow_nested_idx; /* Intermediate device flow index, nested. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
-	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */
+	uint32_t hrxqs; /* Verbs Hash Rx queues. */
 	LIST_HEAD(txq, mlx5_txq_ctrl) txqsctrl; /* DPDK Tx queues. */
 	LIST_HEAD(txqobj, mlx5_txq_obj) txqsobj; /* Verbs/DevX Tx queues. */
 	/* Indirection tables. */

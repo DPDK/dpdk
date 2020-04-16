@@ -2389,9 +2389,9 @@ mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
  *   Tunnel type.
  *
  * @return
- *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
+ *   The Verbs/DevX object initialised index, 0 otherwise and rte_errno is set.
  */
-struct mlx5_hrxq *
+uint32_t
 mlx5_hrxq_new(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
@@ -2400,6 +2400,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
+	uint32_t hrxq_idx = 0;
 	struct ibv_qp *qp = NULL;
 	struct mlx5_ind_table_obj *ind_tbl;
 	int err;
@@ -2419,7 +2420,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	}
 	if (!ind_tbl) {
 		rte_errno = ENOMEM;
-		return NULL;
+		return 0;
 	}
 	if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV) {
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
@@ -2560,7 +2561,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			goto error;
 		}
 	}
-	hrxq = rte_calloc(__func__, 1, sizeof(*hrxq) + rss_key_len, 0);
+	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
 	if (!hrxq)
 		goto error;
 	hrxq->ind_table = ind_tbl;
@@ -2589,8 +2590,9 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	hrxq->hash_fields = hash_fields;
 	memcpy(hrxq->rss_key, rss_key, rss_key_len);
 	rte_atomic32_inc(&hrxq->refcnt);
-	LIST_INSERT_HEAD(&priv->hrxqs, hrxq, next);
-	return hrxq;
+	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs, hrxq_idx,
+		     hrxq, next);
+	return hrxq_idx;
 error:
 	err = rte_errno; /* Save rte_errno before cleanup. */
 	mlx5_ind_table_obj_release(dev, ind_tbl);
@@ -2599,7 +2601,7 @@ error:
 	else if (tir)
 		claim_zero(mlx5_devx_cmd_destroy(tir));
 	rte_errno = err; /* Restore rte_errno. */
-	return NULL;
+	return 0;
 }
 
 /**
@@ -2616,9 +2618,9 @@ error:
  *   Number of queues.
  *
  * @return
- *   An hash Rx queue on success.
+ *   An hash Rx queue index on success.
  */
-struct mlx5_hrxq *
+uint32_t
 mlx5_hrxq_get(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
@@ -2626,9 +2628,11 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
+	uint32_t idx;
 
 	queues_n = hash_fields ? queues_n : 1;
-	LIST_FOREACH(hrxq, &priv->hrxqs, next) {
+	ILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_HRXQ], priv->hrxqs, idx,
+		      hrxq, next) {
 		struct mlx5_ind_table_obj *ind_tbl;
 
 		if (hrxq->rss_key_len != rss_key_len)
@@ -2645,9 +2649,9 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 			continue;
 		}
 		rte_atomic32_inc(&hrxq->refcnt);
-		return hrxq;
+		return idx;
 	}
-	return NULL;
+	return 0;
 }
 
 /**
@@ -2656,14 +2660,20 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
  * @param dev
  *   Pointer to Ethernet device.
  * @param hrxq
- *   Pointer to Hash Rx queue to release.
+ *   Index to Hash Rx queue to release.
  *
  * @return
  *   1 while a reference on it exists, 0 when freed.
  */
 int
-mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
+mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hrxq_idx)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq;
+
+	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
+	if (!hrxq)
+		return 0;
 	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		mlx5_glue->destroy_flow_action(hrxq->action);
@@ -2673,8 +2683,9 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 		else /* hrxq->ind_table->type == MLX5_IND_TBL_TYPE_DEVX */
 			claim_zero(mlx5_devx_cmd_destroy(hrxq->tir));
 		mlx5_ind_table_obj_release(dev, hrxq->ind_table);
-		LIST_REMOVE(hrxq, next);
-		rte_free(hrxq);
+		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs,
+			     hrxq_idx, hrxq, next);
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
 		return 0;
 	}
 	claim_nonzero(mlx5_ind_table_obj_release(dev, hrxq->ind_table));
@@ -2695,9 +2706,11 @@ mlx5_hrxq_verify(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
+	uint32_t idx;
 	int ret = 0;
 
-	LIST_FOREACH(hrxq, &priv->hrxqs, next) {
+	ILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_HRXQ], priv->hrxqs, idx,
+		      hrxq, next) {
 		DRV_LOG(DEBUG,
 			"port %u hash Rx queue %p still referenced",
 			dev->data->port_id, (void *)hrxq);

@@ -231,7 +231,7 @@ struct mlx5_ind_table_obj {
 
 /* Hash Rx queue. */
 struct mlx5_hrxq {
-	LIST_ENTRY(mlx5_hrxq) next; /* Pointer to the next element. */
+	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
 	RTE_STD_C11
@@ -406,16 +406,16 @@ int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
 int mlx5_ind_table_obj_verify(struct rte_eth_dev *dev);
-struct mlx5_hrxq *mlx5_hrxq_new(struct rte_eth_dev *dev,
-				const uint8_t *rss_key, uint32_t rss_key_len,
-				uint64_t hash_fields,
-				const uint16_t *queues, uint32_t queues_n,
-				int tunnel __rte_unused);
-struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
-				const uint8_t *rss_key, uint32_t rss_key_len,
-				uint64_t hash_fields,
-				const uint16_t *queues, uint32_t queues_n);
-int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
+uint32_t mlx5_hrxq_new(struct rte_eth_dev *dev,
+		       const uint8_t *rss_key, uint32_t rss_key_len,
+		       uint64_t hash_fields,
+		       const uint16_t *queues, uint32_t queues_n,
+		       int tunnel __rte_unused);
+uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
+		       const uint8_t *rss_key, uint32_t rss_key_len,
+		       uint64_t hash_fields,
+		       const uint16_t *queues, uint32_t queues_n);
+int mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hxrq_idx);
 int mlx5_hrxq_verify(struct rte_eth_dev *dev);
 enum mlx5_rxq_type mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
