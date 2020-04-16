@@ -941,21 +941,19 @@ flow_verbs_translate_action_drop
  * the input is valid and that there is space to insert the requested action
  * into the flow.
  *
- * @param[in] dev_flow
- *   Pointer to mlx5_flow.
+ * @param[in] rss_desc
+ *   Pointer to mlx5_flow_rss_desc.
  * @param[in] action
  *   Action configuration.
  */
 static void
-flow_verbs_translate_action_queue(struct mlx5_flow *dev_flow,
+flow_verbs_translate_action_queue(struct mlx5_flow_rss_desc *rss_desc,
 				  const struct rte_flow_action *action)
 {
 	const struct rte_flow_action_queue *queue = action->conf;
-	struct rte_flow *flow = dev_flow->flow;
 
-	if (flow->rss.queue)
-		(*flow->rss.queue)[0] = queue->index;
-	flow->rss.queue_num = 1;
+	rss_desc->queue[0] = queue->index;
+	rss_desc->queue_num = 1;
 }
 
 /**
@@ -963,28 +961,23 @@ flow_verbs_translate_action_queue(struct mlx5_flow *dev_flow,
  * the input is valid and that there is space to insert the requested action
  * into the flow.
  *
+ * @param[in] rss_desc
+ *   Pointer to mlx5_flow_rss_desc.
  * @param[in] action
  *   Action configuration.
- * @param[in, out] action_flags
- *   Pointer to the detected actions.
- * @param[in] dev_flow
- *   Pointer to mlx5_flow.
  */
 static void
-flow_verbs_translate_action_rss(struct mlx5_flow *dev_flow,
+flow_verbs_translate_action_rss(struct mlx5_flow_rss_desc *rss_desc,
 				const struct rte_flow_action *action)
 {
 	const struct rte_flow_action_rss *rss = action->conf;
 	const uint8_t *rss_key;
-	struct rte_flow *flow = dev_flow->flow;
 
-	if (flow->rss.queue)
-		memcpy((*flow->rss.queue), rss->queue,
-		       rss->queue_num * sizeof(uint16_t));
-	flow->rss.queue_num = rss->queue_num;
+	memcpy(rss_desc->queue, rss->queue, rss->queue_num * sizeof(uint16_t));
+	rss_desc->queue_num = rss->queue_num;
 	/* NULL RSS key indicates default RSS key. */
 	rss_key = !rss->key ? rss_hash_default_key : rss->key;
-	memcpy(flow->rss.key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+	memcpy(rss_desc->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 	/*
 	 * rss->level and rss.types should be set in advance when expanding
 	 * items for RSS.
@@ -1577,6 +1570,9 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	uint64_t priority = attr->priority;
 	uint32_t subpriority = 0;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
+					      priv->rss_desc)
+					      [!!priv->flow_nested_idx];
 
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
@@ -1602,12 +1598,12 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			dev_flow->handle->fate_action = MLX5_FLOW_FATE_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			flow_verbs_translate_action_queue(dev_flow, actions);
+			flow_verbs_translate_action_queue(rss_desc, actions);
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
-			flow_verbs_translate_action_rss(dev_flow, actions);
+			flow_verbs_translate_action_rss(rss_desc, actions);
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
@@ -1655,7 +1651,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			subpriority = MLX5_PRIORITY_MAP_L3;
 			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
-					(dev_flow, tunnel,
+					(rss_desc, tunnel,
 					 MLX5_IPV4_LAYER_TYPES,
 					 MLX5_IPV4_IBV_RX_HASH);
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
@@ -1667,7 +1663,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			subpriority = MLX5_PRIORITY_MAP_L3;
 			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
-					(dev_flow, tunnel,
+					(rss_desc, tunnel,
 					 MLX5_IPV6_LAYER_TYPES,
 					 MLX5_IPV6_IBV_RX_HASH);
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
@@ -1679,7 +1675,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			subpriority = MLX5_PRIORITY_MAP_L4;
 			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
-					(dev_flow, tunnel, ETH_RSS_TCP,
+					(rss_desc, tunnel, ETH_RSS_TCP,
 					 (IBV_RX_HASH_SRC_PORT_TCP |
 					  IBV_RX_HASH_DST_PORT_TCP));
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
@@ -1691,7 +1687,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			subpriority = MLX5_PRIORITY_MAP_L4;
 			dev_flow->hash_fields |=
 				mlx5_flow_hashfields_adjust
-					(dev_flow, tunnel, ETH_RSS_UDP,
+					(rss_desc, tunnel, ETH_RSS_UDP,
 					 (IBV_RX_HASH_SRC_PORT_UDP |
 					  IBV_RX_HASH_DST_PORT_UDP));
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
@@ -1848,19 +1844,22 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			}
 		} else {
 			uint32_t hrxq_idx;
+			struct mlx5_flow_rss_desc *rss_desc =
+				&((struct mlx5_flow_rss_desc *)priv->rss_desc)
+				[!!priv->flow_nested_idx];
 
-			MLX5_ASSERT(flow->rss.queue);
-			hrxq_idx = mlx5_hrxq_get(dev, flow->rss.key,
+			MLX5_ASSERT(rss_desc->queue_num);
+			hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
 					     MLX5_RSS_HASH_KEY_LEN,
 					     dev_flow->hash_fields,
-					     (*flow->rss.queue),
-					     flow->rss.queue_num);
+					     rss_desc->queue,
+					     rss_desc->queue_num);
 			if (!hrxq_idx)
-				hrxq_idx = mlx5_hrxq_new(dev, flow->rss.key,
+				hrxq_idx = mlx5_hrxq_new(dev, rss_desc->key,
 						MLX5_RSS_HASH_KEY_LEN,
 						dev_flow->hash_fields,
-						(*flow->rss.queue),
-						flow->rss.queue_num,
+						rss_desc->queue,
+						rss_desc->queue_num,
 						!!(handle->layers &
 						MLX5_FLOW_LAYER_TUNNEL));
 			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],

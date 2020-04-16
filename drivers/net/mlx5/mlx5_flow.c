@@ -658,13 +658,12 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
  *   The hash fields that should be used.
  */
 uint64_t
-mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow,
+mlx5_flow_hashfields_adjust(struct mlx5_flow_rss_desc *rss_desc,
 			    int tunnel __rte_unused, uint64_t layer_types,
 			    uint64_t hash_fields)
 {
-	struct rte_flow *flow = dev_flow->flow;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	int rss_request_inner = flow->rss.level >= 2;
+	int rss_request_inner = rss_desc->level >= 2;
 
 	/* Check RSS hash level for tunnel. */
 	if (tunnel && rss_request_inner)
@@ -673,7 +672,7 @@ mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow,
 		return 0;
 #endif
 	/* Check if requested layer matches RSS hash fields. */
-	if (!(flow->rss.types & layer_types))
+	if (!(rss_desc->types & layer_types))
 		return 0;
 	return hash_fields;
 }
@@ -712,22 +711,27 @@ flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
- * @param[in] flow
- *   Pointer to flow structure.
  * @param[in] dev_handle
  *   Pointer to device flow handle structure.
  */
 static void
-flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow,
+flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 		       struct mlx5_flow_handle *dev_handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const int mark = dev_handle->mark;
 	const int tunnel = !!(dev_handle->layers & MLX5_FLOW_LAYER_TUNNEL);
+	struct mlx5_hrxq *hrxq;
 	unsigned int i;
 
-	for (i = 0; i != flow->rss.queue_num; ++i) {
-		int idx = (*flow->rss.queue)[i];
+	if (dev_handle->fate_action != MLX5_FLOW_FATE_QUEUE)
+		return;
+	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+			      dev_handle->rix_hrxq);
+	if (!hrxq)
+		return;
+	for (i = 0; i != hrxq->ind_table->queues_n; ++i) {
+		int idx = hrxq->ind_table->queues[i];
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of((*priv->rxqs)[idx],
 				     struct mlx5_rxq_ctrl, rxq);
@@ -780,7 +784,7 @@ flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dev_handle, next)
-		flow_drv_rxq_flags_set(dev, flow, dev_handle);
+		flow_drv_rxq_flags_set(dev, dev_handle);
 }
 
 /**
@@ -789,23 +793,28 @@ flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param[in] flow
- *   Pointer to flow structure.
  * @param[in] dev_handle
  *   Pointer to the device flow handle structure.
  */
 static void
-flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow,
+flow_drv_rxq_flags_trim(struct rte_eth_dev *dev,
 			struct mlx5_flow_handle *dev_handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const int mark = dev_handle->mark;
 	const int tunnel = !!(dev_handle->layers & MLX5_FLOW_LAYER_TUNNEL);
+	struct mlx5_hrxq *hrxq;
 	unsigned int i;
 
+	if (dev_handle->fate_action != MLX5_FLOW_FATE_QUEUE)
+		return;
+	hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
+			      dev_handle->rix_hrxq);
+	if (!hrxq)
+		return;
 	MLX5_ASSERT(dev->data->dev_started);
-	for (i = 0; i != flow->rss.queue_num; ++i) {
-		int idx = (*flow->rss.queue)[i];
+	for (i = 0; i != hrxq->ind_table->queues_n; ++i) {
+		int idx = hrxq->ind_table->queues[i];
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of((*priv->rxqs)[idx],
 				     struct mlx5_rxq_ctrl, rxq);
@@ -854,7 +863,7 @@ flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dev_handle, next)
-		flow_drv_rxq_flags_trim(dev, flow, dev_handle);
+		flow_drv_rxq_flags_trim(dev, dev_handle);
 }
 
 /**
@@ -4239,9 +4248,10 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		uint8_t buffer[2048];
 	} items_tx;
 	struct rte_flow_expand_rss *buf = &expand_buffer.buf;
+	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
+					      priv->rss_desc)[!!priv->flow_idx];
 	const struct rte_flow_action *p_actions_rx = actions;
 	uint32_t i;
-	uint32_t flow_size;
 	int hairpin_flow = 0;
 	uint32_t hairpin_id = 0;
 	struct rte_flow_attr attr_tx = { .priority = 0 };
@@ -4261,14 +4271,7 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 				   &hairpin_id);
 		p_actions_rx = actions_rx.actions;
 	}
-	flow_size = sizeof(struct rte_flow);
-	rss = flow_get_rss_action(p_actions_rx);
-	if (rss)
-		flow_size += RTE_ALIGN_CEIL(rss->queue_num * sizeof(uint16_t),
-					    sizeof(void *));
-	else
-		flow_size += RTE_ALIGN_CEIL(sizeof(uint16_t), sizeof(void *));
-	flow = rte_calloc(__func__, 1, flow_size, 0);
+	flow = rte_calloc(__func__, 1, sizeof(struct rte_flow), 0);
 	if (!flow) {
 		rte_errno = ENOMEM;
 		goto error_before_flow;
@@ -4278,15 +4281,16 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		flow->hairpin_flow_id = hairpin_id;
 	MLX5_ASSERT(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
 		    flow->drv_type < MLX5_FLOW_TYPE_MAX);
-	flow->rss.queue = (void *)(flow + 1);
+	memset(rss_desc, 0, sizeof(*rss_desc));
+	rss = flow_get_rss_action(p_actions_rx);
 	if (rss) {
 		/*
 		 * The following information is required by
 		 * mlx5_flow_hashfields_adjust() in advance.
 		 */
-		flow->rss.level = rss->level;
+		rss_desc->level = rss->level;
 		/* RSS type 0 indicates default RSS type (ETH_RSS_IP). */
-		flow->rss.types = !rss->types ? ETH_RSS_IP : rss->types;
+		rss_desc->types = !rss->types ? ETH_RSS_IP : rss->types;
 	}
 	flow->dev_handles = 0;
 	if (rss && rss->types) {
@@ -4650,9 +4654,19 @@ mlx5_flow_alloc_intermediate(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (!priv->inter_flows)
-		priv->inter_flows = rte_calloc(__func__, MLX5_NUM_MAX_DEV_FLOWS,
-					       sizeof(struct mlx5_flow), 0);
+	if (!priv->inter_flows) {
+		priv->inter_flows = rte_calloc(__func__, 1,
+				    MLX5_NUM_MAX_DEV_FLOWS *
+				    sizeof(struct mlx5_flow) +
+				    (sizeof(struct mlx5_flow_rss_desc) +
+				    sizeof(uint16_t) * UINT16_MAX) * 2, 0);
+		if (!priv->inter_flows) {
+			DRV_LOG(ERR, "can't allocate intermediate memory.");
+			return;
+		}
+	}
+	priv->rss_desc = &((struct mlx5_flow *)priv->inter_flows)
+			 [MLX5_NUM_MAX_DEV_FLOWS];
 	/* Reset the index. */
 	priv->flow_idx = 0;
 	priv->flow_nested_idx = 0;

@@ -7279,18 +7279,20 @@ flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev,
  *
  * @param[in] dev_flow
  *   Pointer to the mlx5_flow.
+ * @param[in] rss_desc
+ *   Pointer to the mlx5_flow_rss_desc.
  */
 static void
-flow_dv_hashfields_set(struct mlx5_flow *dev_flow)
+flow_dv_hashfields_set(struct mlx5_flow *dev_flow,
+		       struct mlx5_flow_rss_desc *rss_desc)
 {
-	struct rte_flow *flow = dev_flow->flow;
 	uint64_t items = dev_flow->handle->layers;
 	int rss_inner = 0;
-	uint64_t rss_types = rte_eth_rss_hf_refine(flow->rss.types);
+	uint64_t rss_types = rte_eth_rss_hf_refine(rss_desc->types);
 
 	dev_flow->hash_fields = 0;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	if (flow->rss.level >= 2) {
+	if (rss_desc->level >= 2) {
 		dev_flow->hash_fields |= IBV_RX_HASH_INNER;
 		rss_inner = 1;
 	}
@@ -7375,6 +7377,9 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 	struct mlx5_dev_config *dev_conf = &priv->config;
 	struct rte_flow *flow = dev_flow->flow;
 	struct mlx5_flow_handle *handle = dev_flow->handle;
+	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
+					      priv->rss_desc)
+					      [!!priv->flow_nested_idx];
 	uint64_t item_flags = 0;
 	uint64_t last_item = 0;
 	uint64_t action_flags = 0;
@@ -7529,23 +7534,20 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			dev_flow->handle->fate_action = MLX5_FLOW_FATE_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			MLX5_ASSERT(flow->rss.queue);
 			queue = actions->conf;
-			flow->rss.queue_num = 1;
-			(*flow->rss.queue)[0] = queue->index;
+			rss_desc->queue_num = 1;
+			rss_desc->queue[0] = queue->index;
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
-			MLX5_ASSERT(flow->rss.queue);
 			rss = actions->conf;
-			if (flow->rss.queue)
-				memcpy((*flow->rss.queue), rss->queue,
-				       rss->queue_num * sizeof(uint16_t));
-			flow->rss.queue_num = rss->queue_num;
+			memcpy(rss_desc->queue, rss->queue,
+			       rss->queue_num * sizeof(uint16_t));
+			rss_desc->queue_num = rss->queue_num;
 			/* NULL RSS key indicates default RSS key. */
 			rss_key = !rss->key ? rss_hash_default_key : rss->key;
-			memcpy(flow->rss.key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+			memcpy(rss_desc->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
 			/*
 			 * rss->level and rss.types should be set in advance
 			 * when expanding items for RSS.
@@ -7955,7 +7957,7 @@ cnt_err:
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			flow_dv_translate_item_gre(match_mask, match_value,
 						   items, tunnel);
-			matcher.priority = flow->rss.level >= 2 ?
+			matcher.priority = rss_desc->level >= 2 ?
 				    MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_LAYER_GRE;
 			break;
@@ -7967,14 +7969,14 @@ cnt_err:
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			flow_dv_translate_item_nvgre(match_mask, match_value,
 						     items, tunnel);
-			matcher.priority = flow->rss.level >= 2 ?
+			matcher.priority = rss_desc->level >= 2 ?
 				    MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			flow_dv_translate_item_vxlan(match_mask, match_value,
 						     items, tunnel);
-			matcher.priority = flow->rss.level >= 2 ?
+			matcher.priority = rss_desc->level >= 2 ?
 				    MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_LAYER_VXLAN;
 			break;
@@ -7982,21 +7984,21 @@ cnt_err:
 			flow_dv_translate_item_vxlan_gpe(match_mask,
 							 match_value, items,
 							 tunnel);
-			matcher.priority = flow->rss.level >= 2 ?
+			matcher.priority = rss_desc->level >= 2 ?
 				    MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 			flow_dv_translate_item_geneve(match_mask, match_value,
 						      items, tunnel);
-			matcher.priority = flow->rss.level >= 2 ?
+			matcher.priority = rss_desc->level >= 2 ?
 				    MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_LAYER_GENEVE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			flow_dv_translate_item_mpls(match_mask, match_value,
 						    items, last_item, tunnel);
-			matcher.priority = flow->rss.level >= 2 ?
+			matcher.priority = rss_desc->level >= 2 ?
 				    MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_LAYER_MPLS;
 			break;
@@ -8039,7 +8041,7 @@ cnt_err:
 		case RTE_FLOW_ITEM_TYPE_GTP:
 			flow_dv_translate_item_gtp(match_mask, match_value,
 						   items, tunnel);
-			matcher.priority = flow->rss.level >= 2 ?
+			matcher.priority = rss_desc->level >= 2 ?
 				    MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_LAYER_GTP;
 			break;
@@ -8071,7 +8073,7 @@ cnt_err:
 	 */
 	handle->layers |= item_flags;
 	if (action_flags & MLX5_FLOW_ACTION_RSS)
-		flow_dv_hashfields_set(dev_flow);
+		flow_dv_hashfields_set(dev_flow, rss_desc);
 	/* Register matcher. */
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);
@@ -8146,20 +8148,23 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE) {
 			struct mlx5_hrxq *hrxq;
 			uint32_t hrxq_idx;
+			struct mlx5_flow_rss_desc *rss_desc =
+				&((struct mlx5_flow_rss_desc *)priv->rss_desc)
+				[!!priv->flow_nested_idx];
 
-			MLX5_ASSERT(flow->rss.queue);
-			hrxq_idx = mlx5_hrxq_get(dev, flow->rss.key,
+			MLX5_ASSERT(rss_desc->queue_num);
+			hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
 						 MLX5_RSS_HASH_KEY_LEN,
 						 dev_flow->hash_fields,
-						 (*flow->rss.queue),
-						 flow->rss.queue_num);
+						 rss_desc->queue,
+						 rss_desc->queue_num);
 			if (!hrxq_idx) {
 				hrxq_idx = mlx5_hrxq_new
-						(dev, flow->rss.key,
+						(dev, rss_desc->key,
 						MLX5_RSS_HASH_KEY_LEN,
 						dev_flow->hash_fields,
-						(*flow->rss.queue),
-						flow->rss.queue_num,
+						rss_desc->queue,
+						rss_desc->queue_num,
 						!!(dh->layers &
 						MLX5_FLOW_LAYER_TUNNEL));
 			}

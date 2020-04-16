@@ -515,6 +515,7 @@ struct mlx5_priv {
 	struct mlx5_flows flows; /* RTE Flow rules. */
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
 	void *inter_flows; /* Intermediate resources for flow creation. */
+	void *rss_desc; /* Intermediate rss description resources. */
 	int flow_idx; /* Intermediate device flow index. */
 	int flow_nested_idx; /* Intermediate device flow index, nested. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */

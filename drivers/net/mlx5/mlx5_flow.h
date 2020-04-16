@@ -483,13 +483,15 @@ struct ibv_spec_header {
 	uint16_t size;
 };
 
-struct mlx5_flow_rss {
+/* RSS description. */
+struct mlx5_flow_rss_desc {
 	uint32_t level;
 	uint32_t queue_num; /**< Number of entries in @p queue. */
 	uint64_t types; /**< Specific RSS hash types (see ETH_RSS_*). */
-	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
+	uint16_t queue[]; /**< Destination queues to redirect traffic to. */
 };
+
 
 /** Device flow handle structure for DV mode only. */
 struct mlx5_flow_handle_dv {
@@ -762,7 +764,6 @@ struct mlx5_fdir_flow {
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	enum mlx5_flow_drv_type drv_type; /**< Driver type. */
-	struct mlx5_flow_rss rss; /**< RSS context. */
 	uint32_t counter; /**< Holds flow counter. */
 	uint32_t rix_mreg_copy;
 	/**< Index to metadata register copy table resource. */
@@ -855,8 +856,8 @@ uint32_t mlx5_flow_id_release(struct mlx5_flow_id_pool *pool,
 int mlx5_flow_group_to_table(const struct rte_flow_attr *attributes,
 			     bool external, uint32_t group, bool fdb_def_rule,
 			     uint32_t *table, struct rte_flow_error *error);
-uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow, int tunnel,
-				     uint64_t layer_types,
+uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow_rss_desc *rss_desc,
+				     int tunnel, uint64_t layer_types,
 				     uint64_t hash_fields);
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);
