@@ -744,7 +744,8 @@ aesni_gcm_create(const char *name,
 			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO;
+			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO |
+			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 
 	/* Check CPU for support for AES instruction set */
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES))

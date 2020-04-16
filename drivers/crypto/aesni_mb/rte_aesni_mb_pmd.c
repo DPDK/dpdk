@@ -1621,7 +1621,8 @@ cryptodev_aesni_mb_create(const char *name,
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO;
+			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO |
+			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 
 	/* Check CPU for support for AES instruction set */
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES))

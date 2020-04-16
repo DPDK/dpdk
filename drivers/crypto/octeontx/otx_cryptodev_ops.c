@@ -967,7 +967,8 @@ otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 				RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 				RTE_CRYPTODEV_FF_IN_PLACE_SGL |
 				RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
-				RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT;
+				RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
+				RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 		break;
 	default:
 		/* Feature not supported. Abort */

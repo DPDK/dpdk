@@ -792,7 +792,8 @@ cryptodev_armv8_crypto_create(const char *name,
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_CPU_NEON |
-			RTE_CRYPTODEV_FF_CPU_ARM_CE;
+			RTE_CRYPTODEV_FF_CPU_ARM_CE |
+			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 
 	internals = dev->data->dev_private;
 

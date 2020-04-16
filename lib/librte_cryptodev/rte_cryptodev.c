@@ -497,6 +497,8 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "SYM_CPU_CRYPTO";
 	case RTE_CRYPTODEV_FF_ASYM_SESSIONLESS:
 		return "ASYM_SESSIONLESS";
+	case RTE_CRYPTODEV_FF_SYM_SESSIONLESS:
+		return "SYM_SESSIONLESS";
 	default:
 		return NULL;
 	}

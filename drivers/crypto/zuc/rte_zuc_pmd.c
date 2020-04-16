@@ -469,7 +469,8 @@ cryptodev_zuc_create(const char *name,
 	}
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 
 	mb_mgr = alloc_mb_mgr(0);
 	if (mb_mgr == NULL)

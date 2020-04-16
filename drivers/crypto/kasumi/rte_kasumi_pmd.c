@@ -550,7 +550,8 @@ cryptodev_kasumi_create(const char *name,
 	dev->enqueue_burst = kasumi_pmd_enqueue_burst;
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 
 	mgr = alloc_mb_mgr(0);
 	if (mgr == NULL)
