@@ -2671,9 +2671,11 @@ flow_dv_push_vlan_action_resource_register
 	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_push_vlan_action_resource *cache_resource;
 	struct mlx5dv_dr_domain *domain;
+	uint32_t idx = 0;
 
 	/* Lookup a matching resource from cache. */
-	LIST_FOREACH(cache_resource, &sh->push_vlan_action_list, next) {
+	ILIST_FOREACH(sh->ipool[MLX5_IPOOL_PUSH_VLAN],
+		      sh->push_vlan_action_list, idx, cache_resource, next) {
 		if (resource->vlan_tag == cache_resource->vlan_tag &&
 		    resource->ft_type == cache_resource->ft_type) {
 			DRV_LOG(DEBUG, "push-VLAN action resource resource %p: "
@@ -2681,12 +2683,14 @@ flow_dv_push_vlan_action_resource_register
 				(void *)cache_resource,
 				rte_atomic32_read(&cache_resource->refcnt));
 			rte_atomic32_inc(&cache_resource->refcnt);
-			dev_flow->handle->dvh.push_vlan_res = cache_resource;
+			dev_flow->handle->dvh.push_vlan_res = idx;
+			dev_flow->dv.push_vlan_res = cache_resource;
 			return 0;
 		}
 	}
 	/* Register new push_vlan action resource. */
-	cache_resource = rte_calloc(__func__, 1, sizeof(*cache_resource), 0);
+	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PUSH_VLAN],
+				       &dev_flow->handle->dvh.push_vlan_res);
 	if (!cache_resource)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -2709,8 +2713,11 @@ flow_dv_push_vlan_action_resource_register
 	}
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
-	LIST_INSERT_HEAD(&sh->push_vlan_action_list, cache_resource, next);
-	dev_flow->handle->dvh.push_vlan_res = cache_resource;
+	ILIST_INSERT(sh->ipool[MLX5_IPOOL_PUSH_VLAN],
+		     &sh->push_vlan_action_list,
+		     dev_flow->handle->dvh.push_vlan_res,
+		     cache_resource, next);
+	dev_flow->dv.push_vlan_res = cache_resource;
 	DRV_LOG(DEBUG, "new push vlan action resource %p: refcnt %d++",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
@@ -3162,6 +3169,7 @@ flow_dv_create_action_push_vlan(struct rte_eth_dev *dev,
 {
 	struct mlx5_flow_dv_push_vlan_action_resource res;
 
+	memset(&res, 0, sizeof(res));
 	res.vlan_tag =
 		rte_cpu_to_be_32(((uint32_t)vlan->eth_proto) << 16 |
 				 vlan->vlan_tci);
@@ -7573,7 +7581,7 @@ cnt_err:
 					    (dev, attr, &vlan, dev_flow, error))
 				return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
-					handle->dvh.push_vlan_res->action;
+					dev_flow->dv.push_vlan_res->action;
 			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
@@ -8334,6 +8342,8 @@ flow_dv_port_id_action_resource_release(struct mlx5_flow_handle *handle)
 /**
  * Release push vlan action resource.
  *
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param handle
  *   Pointer to mlx5_flow_handle.
  *
@@ -8341,11 +8351,17 @@ flow_dv_port_id_action_resource_release(struct mlx5_flow_handle *handle)
  *   1 while a reference on it exists, 0 when freed.
  */
 static int
-flow_dv_push_vlan_action_resource_release(struct mlx5_flow_handle *handle)
+flow_dv_push_vlan_action_resource_release(struct rte_eth_dev *dev,
+					  struct mlx5_flow_handle *handle)
 {
-	struct mlx5_flow_dv_push_vlan_action_resource *cache_resource =
-						handle->dvh.push_vlan_res;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t idx = handle->dvh.push_vlan_res;
+	struct mlx5_flow_dv_push_vlan_action_resource *cache_resource;
 
+	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_PUSH_VLAN],
+					idx);
+	if (!cache_resource)
+		return 0;
 	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "push VLAN action resource %p: refcnt %d--",
 		(void *)cache_resource,
@@ -8353,8 +8369,10 @@ flow_dv_push_vlan_action_resource_release(struct mlx5_flow_handle *handle)
 	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
 		claim_zero(mlx5_glue->destroy_flow_action
 				(cache_resource->action));
-		LIST_REMOVE(cache_resource, next);
-		rte_free(cache_resource);
+		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_PUSH_VLAN],
+			     &priv->sh->push_vlan_action_list, idx,
+			     cache_resource, next);
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_PUSH_VLAN], idx);
 		DRV_LOG(DEBUG, "push vlan action resource %p: removed",
 			(void *)cache_resource);
 		return 0;
@@ -8434,7 +8452,8 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		if (dev_handle->dvh.port_id_action)
 			flow_dv_port_id_action_resource_release(dev_handle);
 		if (dev_handle->dvh.push_vlan_res)
-			flow_dv_push_vlan_action_resource_release(dev_handle);
+			flow_dv_push_vlan_action_resource_release(dev,
+								  dev_handle);
 		if (dev_handle->dvh.tag_resource)
 			flow_dv_tag_release(dev,
 					    dev_handle->dvh.tag_resource);
