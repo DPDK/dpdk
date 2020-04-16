@@ -93,7 +93,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		uint64_t feat_flags = dev_info.feature_flags;
 		uint64_t oop_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT;
 
-		if (t->feature_mask && BLOCKCIPHER_TEST_FEATURE_OOP) {
+		if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
 			if (!(feat_flags & oop_flag)) {
 				printf("Device doesn't support out-of-place "
 					"scatter-gather in input mbuf. "
