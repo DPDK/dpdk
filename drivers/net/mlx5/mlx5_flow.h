@@ -494,44 +494,39 @@ struct mlx5_flow_rss {
 struct mlx5_flow_handle_dv {
 	/* Flow DV api: */
 	struct mlx5_flow_dv_matcher *matcher; /**< Cache to matcher. */
-	uint32_t encap_decap;
-	/**< Index to encap/decap resource in cache. */
 	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
 	/**< Pointer to modify header resource in cache. */
-	struct mlx5_vf_vlan vf_vlan;
-	/**< Structure for VF VLAN workaround. */
-	uint32_t push_vlan_res;
+	uint32_t rix_encap_decap;
+	/**< Index to encap/decap resource in cache. */
+	uint32_t rix_push_vlan;
 	/**< Index to push VLAN action resource in cache. */
-	uint32_t tag_resource;
+	uint32_t rix_tag;
 	/**< Index to the tag action. */
-};
+} __rte_packed;
 
 /** Device flow handle structure: used both for creating & destroying. */
 struct mlx5_flow_handle {
 	SILIST_ENTRY(uint32_t)next;
+	struct mlx5_vf_vlan vf_vlan; /**< Structure for VF VLAN workaround. */
 	/**< Index to next device flow handle. */
 	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	void *ib_flow; /**< Verbs flow pointer. */
-	struct mlx5_vf_vlan vf_vlan; /**< Structure for VF VLAN workaround. */
-	union {
-		uint32_t qrss_id; /**< Uniqie Q/RSS suffix subflow tag. */
-		uint32_t mtr_flow_id; /**< Unique meter match flow id. */
-	};
+	uint32_t split_flow_id:28; /**< Sub flow unique match flow id. */
 	uint32_t mark:1; /**< Metadate rxq mark flag. */
 	uint32_t fate_action:3; /**< Fate action type. */
 	union {
-		uint32_t hrxq; /**< Hash Rx queue object index. */
-		uint32_t jump; /**< Index to the jump action resource. */
-		uint32_t port_id_action;
+		uint32_t rix_hrxq; /**< Hash Rx queue object index. */
+		uint32_t rix_jump; /**< Index to the jump action resource. */
+		uint32_t rix_port_id_action;
 		/**< Index to port ID action resource. */
-		uint32_t fate_idx;
+		uint32_t rix_fate;
 		/**< Generic value indicates the fate action. */
 	};
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_flow_handle_dv dvh;
 #endif
-};
+} __rte_packed;
 
 /*
  * Size for Verbs device flow handle structure only. Do not use the DV only

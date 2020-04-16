@@ -1760,14 +1760,14 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			handle->ib_flow = NULL;
 		}
 		/* hrxq is union, don't touch it only the flag is set. */
-		if (handle->hrxq) {
+		if (handle->rix_hrxq) {
 			if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
 				mlx5_hrxq_drop_release(dev);
-				handle->hrxq = 0;
+				handle->rix_hrxq = 0;
 			} else if (handle->fate_action ==
 				   MLX5_FLOW_FATE_QUEUE) {
-				mlx5_hrxq_release(dev, handle->hrxq);
-				handle->hrxq = 0;
+				mlx5_hrxq_release(dev, handle->rix_hrxq);
+				handle->rix_hrxq = 0;
 			}
 		}
 		if (handle->vf_vlan.tag && handle->vf_vlan.created)
@@ -1872,7 +1872,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get hash queue");
 				goto error;
 			}
-			handle->hrxq = hrxq_idx;
+			handle->rix_hrxq = hrxq_idx;
 		}
 		MLX5_ASSERT(hrxq);
 		handle->ib_flow = mlx5_glue->create_flow(hrxq->qp,
@@ -1901,14 +1901,14 @@ error:
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       dev_handles, handle, next) {
 		/* hrxq is union, don't touch it only the flag is set. */
-		if (handle->hrxq) {
+		if (handle->rix_hrxq) {
 			if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
 				mlx5_hrxq_drop_release(dev);
-				handle->hrxq = 0;
+				handle->rix_hrxq = 0;
 			} else if (handle->fate_action ==
 				   MLX5_FLOW_FATE_QUEUE) {
-				mlx5_hrxq_release(dev, handle->hrxq);
-				handle->hrxq = 0;
+				mlx5_hrxq_release(dev, handle->rix_hrxq);
+				handle->rix_hrxq = 0;
 			}
 		}
 		if (handle->vf_vlan.tag && handle->vf_vlan.created)

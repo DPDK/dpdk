@@ -2490,14 +2490,14 @@ flow_dv_encap_decap_resource_register
 				(void *)cache_resource,
 				rte_atomic32_read(&cache_resource->refcnt));
 			rte_atomic32_inc(&cache_resource->refcnt);
-			dev_flow->handle->dvh.encap_decap = idx;
+			dev_flow->handle->dvh.rix_encap_decap = idx;
 			dev_flow->dv.encap_decap = cache_resource;
 			return 0;
 		}
 	}
 	/* Register new encap/decap resource. */
 	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_DECAP_ENCAP],
-				       &dev_flow->handle->dvh.encap_decap);
+				       &dev_flow->handle->dvh.rix_encap_decap);
 	if (!cache_resource)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -2518,7 +2518,8 @@ flow_dv_encap_decap_resource_register
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
 	ILIST_INSERT(sh->ipool[MLX5_IPOOL_DECAP_ENCAP], &sh->encaps_decaps,
-		     dev_flow->handle->dvh.encap_decap, cache_resource, next);
+		     dev_flow->handle->dvh.rix_encap_decap, cache_resource,
+		     next);
 	dev_flow->dv.encap_decap = cache_resource;
 	DRV_LOG(DEBUG, "new encap/decap resource %p: refcnt %d++",
 		(void *)cache_resource,
@@ -2572,7 +2573,7 @@ flow_dv_jump_tbl_resource_register
 			(void *)&tbl_data->jump, cnt);
 	}
 	rte_atomic32_inc(&tbl_data->jump.refcnt);
-	dev_flow->handle->jump = tbl_data->idx;
+	dev_flow->handle->rix_jump = tbl_data->idx;
 	dev_flow->dv.jump = &tbl_data->jump;
 	return 0;
 }
@@ -2613,14 +2614,14 @@ flow_dv_port_id_action_resource_register
 				(void *)cache_resource,
 				rte_atomic32_read(&cache_resource->refcnt));
 			rte_atomic32_inc(&cache_resource->refcnt);
-			dev_flow->handle->port_id_action = idx;
+			dev_flow->handle->rix_port_id_action = idx;
 			dev_flow->dv.port_id_action = cache_resource;
 			return 0;
 		}
 	}
 	/* Register new port id action resource. */
 	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PORT_ID],
-				       &dev_flow->handle->port_id_action);
+				       &dev_flow->handle->rix_port_id_action);
 	if (!cache_resource)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -2643,7 +2644,8 @@ flow_dv_port_id_action_resource_register
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
 	ILIST_INSERT(sh->ipool[MLX5_IPOOL_PORT_ID], &sh->port_id_action_list,
-		     dev_flow->handle->port_id_action, cache_resource, next);
+		     dev_flow->handle->rix_port_id_action, cache_resource,
+		     next);
 	dev_flow->dv.port_id_action = cache_resource;
 	DRV_LOG(DEBUG, "new port id action resource %p: refcnt %d++",
 		(void *)cache_resource,
@@ -2689,14 +2691,14 @@ flow_dv_push_vlan_action_resource_register
 				(void *)cache_resource,
 				rte_atomic32_read(&cache_resource->refcnt));
 			rte_atomic32_inc(&cache_resource->refcnt);
-			dev_flow->handle->dvh.push_vlan_res = idx;
+			dev_flow->handle->dvh.rix_push_vlan = idx;
 			dev_flow->dv.push_vlan_res = cache_resource;
 			return 0;
 		}
 	}
 	/* Register new push_vlan action resource. */
 	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_PUSH_VLAN],
-				       &dev_flow->handle->dvh.push_vlan_res);
+				       &dev_flow->handle->dvh.rix_push_vlan);
 	if (!cache_resource)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -2721,7 +2723,7 @@ flow_dv_push_vlan_action_resource_register
 	rte_atomic32_inc(&cache_resource->refcnt);
 	ILIST_INSERT(sh->ipool[MLX5_IPOOL_PUSH_VLAN],
 		     &sh->push_vlan_action_list,
-		     dev_flow->handle->dvh.push_vlan_res,
+		     dev_flow->handle->dvh.rix_push_vlan,
 		     cache_resource, next);
 	dev_flow->dv.push_vlan_res = cache_resource;
 	DRV_LOG(DEBUG, "new push vlan action resource %p: refcnt %d++",
@@ -7103,7 +7105,7 @@ flow_dv_tag_resource_register
 		cache_resource = container_of
 			(entry, struct mlx5_flow_dv_tag_resource, entry);
 		rte_atomic32_inc(&cache_resource->refcnt);
-		dev_flow->handle->dvh.tag_resource = cache_resource->idx;
+		dev_flow->handle->dvh.rix_tag = cache_resource->idx;
 		dev_flow->dv.tag_resource = cache_resource;
 		DRV_LOG(DEBUG, "cached tag resource %p: refcnt now %d++",
 			(void *)cache_resource,
@@ -7112,7 +7114,7 @@ flow_dv_tag_resource_register
 	}
 	/* Register new resource. */
 	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_TAG],
-				       &dev_flow->handle->dvh.tag_resource);
+				       &dev_flow->handle->dvh.rix_tag);
 	if (!cache_resource)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -7441,7 +7443,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			if (flow_dv_port_id_action_resource_register
 			    (dev, &port_id_resource, dev_flow, error))
 				return -rte_errno;
-			MLX5_ASSERT(!handle->port_id_action);
+			MLX5_ASSERT(!handle->rix_port_id_action);
 			dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.port_id_action->action;
 			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
@@ -7468,7 +7470,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			 * right now. So the pointer to the tag resource must be
 			 * zero before the register process.
 			 */
-			MLX5_ASSERT(!handle->dvh.tag_resource);
+			MLX5_ASSERT(!handle->dvh.rix_tag);
 			if (flow_dv_tag_resource_register(dev, tag_be,
 							  dev_flow, error))
 				return -rte_errno;
@@ -7497,7 +7499,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			tag_be = mlx5_flow_mark_set
 			      (((const struct rte_flow_action_mark *)
 			       (actions->conf))->id);
-			MLX5_ASSERT(!handle->dvh.tag_resource);
+			MLX5_ASSERT(!handle->dvh.rix_tag);
 			if (flow_dv_tag_resource_register(dev, tag_be,
 							  dev_flow, error))
 				return -rte_errno;
@@ -8127,7 +8129,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				 * the special index to hrxq to mark the queue
 				 * has been allocated.
 				 */
-				dh->hrxq = UINT32_MAX;
+				dh->rix_hrxq = UINT32_MAX;
 				dv->actions[n++] = drop_hrxq->action;
 			}
 		} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE) {
@@ -8159,7 +8161,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get hash queue");
 				goto error;
 			}
-			dh->hrxq = hrxq_idx;
+			dh->rix_hrxq = hrxq_idx;
 			dv->actions[n++] = hrxq->action;
 		}
 		dh->ib_flow =
@@ -8190,13 +8192,13 @@ error:
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dh, next) {
 		/* hrxq is union, don't clear it if the flag is not set. */
-		if (dh->hrxq) {
+		if (dh->rix_hrxq) {
 			if (dh->fate_action == MLX5_FLOW_FATE_DROP) {
 				mlx5_hrxq_drop_release(dev);
-				dh->hrxq = 0;
+				dh->rix_hrxq = 0;
 			} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE) {
-				mlx5_hrxq_release(dev, dh->hrxq);
-				dh->hrxq = 0;
+				mlx5_hrxq_release(dev, dh->rix_hrxq);
+				dh->rix_hrxq = 0;
 			}
 		}
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
@@ -8257,7 +8259,7 @@ flow_dv_encap_decap_resource_release(struct rte_eth_dev *dev,
 				     struct mlx5_flow_handle *handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t idx = handle->dvh.encap_decap;
+	uint32_t idx = handle->dvh.rix_encap_decap;
 	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
 
 	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_DECAP_ENCAP],
@@ -8302,7 +8304,7 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 	struct mlx5_flow_tbl_data_entry *tbl_data;
 
 	tbl_data = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_JUMP],
-			     handle->jump);
+			     handle->rix_jump);
 	if (!tbl_data)
 		return 0;
 	cache_resource = &tbl_data->jump;
@@ -8370,7 +8372,7 @@ flow_dv_port_id_action_resource_release(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_port_id_action_resource *cache_resource;
-	uint32_t idx = handle->port_id_action;
+	uint32_t idx = handle->rix_port_id_action;
 
 	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_PORT_ID],
 					idx);
@@ -8410,7 +8412,7 @@ flow_dv_push_vlan_action_resource_release(struct rte_eth_dev *dev,
 					  struct mlx5_flow_handle *handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t idx = handle->dvh.push_vlan_res;
+	uint32_t idx = handle->dvh.rix_push_vlan;
 	struct mlx5_flow_dv_push_vlan_action_resource *cache_resource;
 
 	cache_resource = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_PUSH_VLAN],
@@ -8447,19 +8449,19 @@ static void
 flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 			       struct mlx5_flow_handle *handle)
 {
-	if (!handle->fate_idx)
+	if (!handle->rix_fate)
 		return;
 	if (handle->fate_action == MLX5_FLOW_FATE_DROP)
 		mlx5_hrxq_drop_release(dev);
 	else if (handle->fate_action == MLX5_FLOW_FATE_QUEUE)
-		mlx5_hrxq_release(dev, handle->hrxq);
+		mlx5_hrxq_release(dev, handle->rix_hrxq);
 	else if (handle->fate_action == MLX5_FLOW_FATE_JUMP)
 		flow_dv_jump_tbl_resource_release(dev, handle);
 	else if (handle->fate_action == MLX5_FLOW_FATE_PORT_ID)
 		flow_dv_port_id_action_resource_release(dev, handle);
 	else
 		DRV_LOG(DEBUG, "Incorrect fate action:%d", handle->fate_action);
-	handle->fate_idx = 0;
+	handle->rix_fate = 0;
 }
 
 /**
@@ -8535,16 +8537,16 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		flow->dev_handles = dev_handle->next.next;
 		if (dev_handle->dvh.matcher)
 			flow_dv_matcher_release(dev, dev_handle);
-		if (dev_handle->dvh.encap_decap)
+		if (dev_handle->dvh.rix_encap_decap)
 			flow_dv_encap_decap_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.modify_hdr)
 			flow_dv_modify_hdr_resource_release(dev_handle);
-		if (dev_handle->dvh.push_vlan_res)
+		if (dev_handle->dvh.rix_push_vlan)
 			flow_dv_push_vlan_action_resource_release(dev,
 								  dev_handle);
-		if (dev_handle->dvh.tag_resource)
+		if (dev_handle->dvh.rix_tag)
 			flow_dv_tag_release(dev,
-					    dev_handle->dvh.tag_resource);
+					    dev_handle->dvh.rix_tag);
 		flow_dv_fate_resource_release(dev, dev_handle);
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW],
 			   tmp_idx);

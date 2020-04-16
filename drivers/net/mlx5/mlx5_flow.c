@@ -2323,8 +2323,8 @@ flow_mreg_split_qrss_release(struct rte_eth_dev *dev,
 
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dev_handle, next)
-		if (dev_handle->qrss_id)
-			flow_qrss_free_id(dev, dev_handle->qrss_id);
+		if (dev_handle->split_flow_id)
+			flow_qrss_free_id(dev, dev_handle->split_flow_id);
 }
 
 static int
@@ -3988,7 +3988,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			 * reallocation becomes possible (for example, for
 			 * other flows in other threads).
 			 */
-			dev_flow->handle->qrss_id = qrss_id;
+			dev_flow->handle->split_flow_id = qrss_id;
 			ret = mlx5_flow_get_reg_id(dev, MLX5_COPY_MARK, 0,
 						   error);
 			if (ret < 0)
@@ -4101,7 +4101,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			ret = -rte_errno;
 			goto exit;
 		}
-		dev_flow->handle->mtr_flow_id = mtr_tag_id;
+		dev_flow->handle->split_flow_id = mtr_tag_id;
 		/* Setting the sfx group atrr. */
 		sfx_attr.group = sfx_attr.transfer ?
 				(MLX5_FLOW_TABLE_LEVEL_SUFFIX - 1) :
