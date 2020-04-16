@@ -56,6 +56,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_MCP, /* Pool for metadata resource. */
 	MLX5_IPOOL_HRXQ, /* Pool for hrxq resource. */
 	MLX5_IPOOL_MLX5_FLOW, /* Pool for mlx5 flow handle. */
+	MLX5_IPOOL_RTE_FLOW, /* Pool for rte_flow. */
 	MLX5_IPOOL_MAX,
 };
 
@@ -108,9 +109,6 @@ struct mlx5_stats_ctrl {
 	uint64_t imissed_base;
 	uint64_t imissed;
 };
-
-/* Flow list . */
-TAILQ_HEAD(mlx5_flows, rte_flow);
 
 /* Default PMD specific parameter value. */
 #define MLX5_ARG_UNSET (-1)
@@ -512,8 +510,8 @@ struct mlx5_priv {
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
-	struct mlx5_flows flows; /* RTE Flow rules. */
-	struct mlx5_flows ctrl_flows; /* Control flow rules. */
+	uint32_t flows; /* RTE Flow rules. */
+	uint32_t ctrl_flows; /* Control flow rules. */
 	void *inter_flows; /* Intermediate resources for flow creation. */
 	void *rss_desc; /* Intermediate rss description resources. */
 	int flow_idx; /* Intermediate device flow index. */
@@ -715,8 +713,7 @@ struct rte_flow *mlx5_flow_create(struct rte_eth_dev *dev,
 				  struct rte_flow_error *error);
 int mlx5_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		      struct rte_flow_error *error);
-void mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list,
-			  bool active);
+void mlx5_flow_list_flush(struct rte_eth_dev *dev, uint32_t *list, bool active);
 int mlx5_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error);
 int mlx5_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 		    const struct rte_flow_action *action, void *data,
@@ -727,8 +724,8 @@ int mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 			 enum rte_filter_type filter_type,
 			 enum rte_filter_op filter_op,
 			 void *arg);
-int mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list);
-void mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list);
+int mlx5_flow_start(struct rte_eth_dev *dev, uint32_t *list);
+void mlx5_flow_stop(struct rte_eth_dev *dev, uint32_t *list);
 int mlx5_flow_start_default(struct rte_eth_dev *dev);
 void mlx5_flow_stop_default(struct rte_eth_dev *dev);
 void mlx5_flow_alloc_intermediate(struct rte_eth_dev *dev);

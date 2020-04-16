@@ -461,7 +461,7 @@ struct mlx5_flow_mreg_copy_resource {
 	uint32_t refcnt; /* Reference counter. */
 	uint32_t appcnt; /* Apply/Remove counter. */
 	uint32_t idx;
-	struct rte_flow *flow; /* Built flow for copy. */
+	uint32_t rix_flow; /* Built flow for copy. */
 };
 
 /* Table data structure of the hash organization. */
@@ -757,12 +757,12 @@ struct mlx5_flow_meter_profile {
 struct mlx5_fdir_flow {
 	LIST_ENTRY(mlx5_fdir_flow) next; /* Pointer to the next element. */
 	struct mlx5_fdir *fdir; /* Pointer to fdir. */
-	struct rte_flow *flow; /* Pointer to flow. */
+	uint32_t rix_flow; /* Index to flow. */
 };
 
 /* Flow structure. */
 struct rte_flow {
-	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
+	ILIST_ENTRY(uint32_t)next; /**< Index to the next flow structure. */
 	enum mlx5_flow_drv_type drv_type; /**< Driver type. */
 	uint32_t counter; /**< Holds flow counter. */
 	uint32_t rix_mreg_copy;

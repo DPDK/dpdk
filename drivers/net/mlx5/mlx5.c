@@ -300,6 +300,15 @@ static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.free = rte_free,
 		.type = "mlx5_flow_handle_ipool",
 	},
+	{
+		.size = sizeof(struct rte_flow),
+		.trunk_size = 4096,
+		.need_lock = 1,
+		.release_mem_en = 1,
+		.malloc = rte_malloc_socket,
+		.free = rte_free,
+		.type = "rte_flow_ipool",
+	},
 };
 
 
@@ -2885,8 +2894,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 				      mlx5_ifindex(eth_dev),
 				      eth_dev->data->mac_addrs,
 				      MLX5_MAX_MAC_ADDRESSES);
-	TAILQ_INIT(&priv->flows);
-	TAILQ_INIT(&priv->ctrl_flows);
+	priv->flows = 0;
+	priv->ctrl_flows = 0;
 	TAILQ_INIT(&priv->flow_meters);
 	TAILQ_INIT(&priv->flow_meter_profiles);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
