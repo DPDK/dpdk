@@ -12,6 +12,10 @@
 #include <limits.h>
 #include <errno.h>
 
+#include <rte_spinlock.h>
+#include <rte_memory.h>
+#include <rte_bitmap.h>
+
 #include <mlx5_common.h>
 
 #include "mlx5_defs.h"
@@ -59,6 +63,60 @@ extern int mlx5_logtype;
 	(((from) >= (to)) ? \
 	 (((val) & (from)) / ((from) / (to))) : \
 	 (((val) & (from)) * ((to) / (from))))
+
+/*
+ * The indexed memory entry index is made up of trunk index and offset of
+ * the entry in the trunk. Since the entry index is 32 bits, in case user
+ * prefers to have small trunks, user can change the macro below to a big
+ * number which helps the pool contains more trunks with lots of entries
+ * allocated.
+ */
+#define TRUNK_IDX_BITS 16
+#define TRUNK_MAX_IDX ((1 << TRUNK_IDX_BITS) - 1)
+#define TRUNK_INVALID TRUNK_MAX_IDX
+#define MLX5_IPOOL_DEFAULT_TRUNK_SIZE (1 << (28 - TRUNK_IDX_BITS))
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+#define POOL_DEBUG 1
+#endif
+
+struct mlx5_indexed_pool_config {
+	uint32_t size; /* Pool entry size. */
+	uint32_t trunk_size;
+	/* Trunk entry number. Must be power of 2. */
+	uint32_t need_lock;
+	/* Lock is needed for multiple thread usage. */
+	const char *type; /* Memory allocate type name. */
+	void *(*malloc)(const char *type, size_t size, unsigned int align,
+			int socket);
+	/* User defined memory allocator. */
+	void (*free)(void *addr); /* User defined memory release. */
+};
+
+struct mlx5_indexed_trunk {
+	uint32_t idx; /* Trunk id. */
+	uint32_t prev; /* Previous free trunk in free list. */
+	uint32_t next; /* Next free trunk in free list. */
+	uint32_t free; /* Free entries available */
+	struct rte_bitmap *bmp;
+	uint8_t data[] __rte_cache_min_aligned; /* Entry data start. */
+};
+
+struct mlx5_indexed_pool {
+	struct mlx5_indexed_pool_config cfg; /* Indexed pool configuration. */
+	rte_spinlock_t lock; /* Pool lock for multiple thread usage. */
+	uint32_t n_trunk_valid; /* Trunks allocated. */
+	uint32_t n_trunk; /* Trunk pointer array size. */
+	/* Dim of trunk pointer array. */
+	struct mlx5_indexed_trunk **trunks;
+	uint32_t free_list; /* Index to first free trunk. */
+#ifdef POOL_DEBUG
+	uint32_t n_entry;
+	uint32_t trunk_new;
+	uint32_t trunk_avail;
+	uint32_t trunk_empty;
+	uint32_t trunk_free;
+#endif
+};
 
 /**
  * Return logarithm of the nearest power of two above input value.
@@ -182,5 +240,176 @@ void mlx5_hlist_remove(struct mlx5_hlist *h __rte_unused,
  */
 void mlx5_hlist_destroy(struct mlx5_hlist *h,
 			mlx5_hlist_destroy_callback_fn cb, void *ctx);
+
+/**
+ * This function allocates non-initialized memory entry from pool.
+ * In NUMA systems, the memory entry allocated resides on the same
+ * NUMA socket as the core that calls this function.
+ *
+ * Memory entry is allocated from memory trunk, no alignment.
+ *
+ * @param pool
+ *   Pointer to indexed memory entry pool.
+ *   No initialization required.
+ * @param[out] idx
+ *   Pointer to memory to save allocated index.
+ *   Memory index always positive value.
+ * @return
+ *   - Pointer to the allocated memory entry.
+ *   - NULL on error. Not enough memory, or invalid arguments.
+ */
+void *mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx);
+
+/**
+ * This function allocates zero initialized memory entry from pool.
+ * In NUMA systems, the memory entry allocated resides on the same
+ * NUMA socket as the core that calls this function.
+ *
+ * Memory entry is allocated from memory trunk, no alignment.
+ *
+ * @param pool
+ *   Pointer to indexed memory pool.
+ *   No initialization required.
+ * @param[out] idx
+ *   Pointer to memory to save allocated index.
+ *   Memory index always positive value.
+ * @return
+ *   - Pointer to the allocated memory entry .
+ *   - NULL on error. Not enough memory, or invalid arguments.
+ */
+void *mlx5_ipool_zmalloc(struct mlx5_indexed_pool *pool, uint32_t *idx);
+
+/**
+ * This function frees indexed memory entry to pool.
+ * Caller has to make sure that the index is allocated from same pool.
+ *
+ * @param pool
+ *   Pointer to indexed memory pool.
+ * @param idx
+ *   Allocated memory entry index.
+ */
+void mlx5_ipool_free(struct mlx5_indexed_pool *pool, uint32_t idx);
+
+/**
+ * This function returns pointer of indexed memory entry from index.
+ * Caller has to make sure that the index is valid, and allocated
+ * from same pool.
+ *
+ * @param pool
+ *   Pointer to indexed memory pool.
+ * @param idx
+ *   Allocated memory index.
+ * @return
+ *   - Pointer to indexed memory entry.
+ */
+void *mlx5_ipool_get(struct mlx5_indexed_pool *pool, uint32_t idx);
+
+/**
+ * This function creates indexed memory pool.
+ * Caller has to configure the configuration accordingly.
+ *
+ * @param pool
+ *   Pointer to indexed memory pool.
+ * @param cfg
+ *   Allocated memory index.
+ */
+struct mlx5_indexed_pool *
+mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg);
+
+/**
+ * This function releases all resources of pool.
+ * Caller has to make sure that all indexes and memories allocated
+ * from this pool not referenced anymore.
+ *
+ * @param pool
+ *   Pointer to indexed memory pool.
+ * @return
+ *   - non-zero value on error.
+ *   - 0 on success.
+ */
+int mlx5_ipool_destroy(struct mlx5_indexed_pool *pool);
+
+/**
+ * This function dumps debug info of pool.
+ *
+ * @param pool
+ *   Pointer to indexed memory pool.
+ */
+void mlx5_ipool_dump(struct mlx5_indexed_pool *pool);
+
+/*
+ * Macros for linked list based on indexed memory.
+ * Example data structure:
+ * struct Foo {
+ *	ILIST_ENTRY(uint16_t) next;
+ *	...
+ * }
+ *
+ */
+#define ILIST_ENTRY(type)						\
+struct {								\
+	type prev; /* Index of previous element. */			\
+	type next; /* Index of next element. */				\
+}
+
+#define ILIST_INSERT(pool, head, idx, elem, field)			\
+	do {								\
+		typeof(elem) peer;					\
+		MLX5_ASSERT((elem) && (idx));				\
+		(elem)->field.next = *(head);				\
+		(elem)->field.prev = 0;					\
+		if (*(head)) {						\
+			(peer) = mlx5_ipool_get(pool, *(head));		\
+			if (peer)					\
+				(peer)->field.prev = (idx);		\
+		}							\
+		*(head) = (idx);					\
+	} while (0)
+
+#define ILIST_REMOVE(pool, head, idx, elem, field)			\
+	do {								\
+		typeof(elem) peer;					\
+		MLX5_ASSERT(elem);					\
+		MLX5_ASSERT(head);					\
+		if ((elem)->field.prev) {				\
+			(peer) = mlx5_ipool_get				\
+				 (pool, (elem)->field.prev);		\
+			if (peer)					\
+				(peer)->field.next = (elem)->field.next;\
+		}							\
+		if ((elem)->field.next) {				\
+			(peer) = mlx5_ipool_get				\
+				 (pool, (elem)->field.next);		\
+			if (peer)					\
+				(peer)->field.prev = (elem)->field.prev;\
+		}							\
+		if (*(head) == (idx))					\
+			*(head) = (elem)->field.next;			\
+	} while (0)
+
+#define ILIST_FOREACH(pool, head, idx, elem, field)			\
+	for ((idx) = (head), (elem) =					\
+	     (idx) ? mlx5_ipool_get(pool, (idx)) : NULL; (elem);	\
+	     idx = (elem)->field.next, (elem) =				\
+	     (idx) ? mlx5_ipool_get(pool, idx) : NULL)
+
+/* Single index list. */
+#define SILIST_ENTRY(type)						\
+struct {								\
+	type next; /* Index of next element. */				\
+}
+
+#define SILIST_INSERT(head, idx, elem, field)				\
+	do {								\
+		MLX5_ASSERT((elem) && (idx));				\
+		(elem)->field.next = *(head);				\
+		*(head) = (idx);					\
+	} while (0)
+
+#define SILIST_FOREACH(pool, head, idx, elem, field)			\
+	for ((idx) = (head), (elem) =					\
+	     (idx) ? mlx5_ipool_get(pool, (idx)) : NULL; (elem);	\
+	     idx = (elem)->field.next, (elem) =				\
+	     (idx) ? mlx5_ipool_get(pool, idx) : NULL)
 
 #endif /* RTE_PMD_MLX5_UTILS_H_ */
