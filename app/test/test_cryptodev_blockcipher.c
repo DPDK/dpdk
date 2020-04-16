@@ -168,6 +168,20 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		nb_segs = 3;
 	}
 
+	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
+		uint64_t oop_flags = RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
+			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
+			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
+			RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT;
+		if (!(feat_flags & oop_flags)) {
+			printf("Device doesn't support out-of-place operations."
+				"Test Skipped.\n");
+			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+				"SKIPPED");
+			return 0;
+		}
+	}
+
 	if (tdata->cipher_key.len)
 		memcpy(cipher_key, tdata->cipher_key.data,
 			tdata->cipher_key.len);
