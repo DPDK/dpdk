@@ -254,7 +254,14 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 			pool->cfg.free(trunk_tmp);
 		pool->n_trunk += n_grow;
 	}
-	idx = pool->n_trunk_valid;
+	if (!pool->cfg.release_mem_en) {
+		idx = pool->n_trunk_valid;
+	} else {
+		/* Find the first available slot in trunk list */
+		for (idx = 0; idx < pool->n_trunk; idx++)
+			if (pool->trunks[idx] == NULL)
+				break;
+	}
 	trunk_size += sizeof(*trunk);
 	data_size = mlx5_trunk_size_get(pool, idx);
 	bmp_size = rte_bitmap_get_memory_footprint(data_size);
@@ -356,7 +363,8 @@ mlx5_ipool_free(struct mlx5_indexed_pool *pool, uint32_t idx)
 	idx -= 1;
 	mlx5_ipool_lock(pool);
 	trunk_idx = mlx5_trunk_idx_get(pool, idx);
-	if (trunk_idx >= pool->n_trunk_valid)
+	if ((!pool->cfg.release_mem_en && trunk_idx >= pool->n_trunk_valid) ||
+	    (pool->cfg.release_mem_en && trunk_idx >= pool->n_trunk))
 		goto out;
 	trunk = pool->trunks[trunk_idx];
 	if (!trunk)
@@ -367,7 +375,27 @@ mlx5_ipool_free(struct mlx5_indexed_pool *pool, uint32_t idx)
 		goto out;
 	rte_bitmap_set(trunk->bmp, entry_idx);
 	trunk->free++;
-	if (trunk->free == 1) {
+	if (pool->cfg.release_mem_en && trunk->free == mlx5_trunk_size_get
+	   (pool, trunk->idx)) {
+		if (pool->free_list == trunk->idx)
+			pool->free_list = trunk->next;
+		if (trunk->next != TRUNK_INVALID)
+			pool->trunks[trunk->next]->prev = trunk->prev;
+		if (trunk->prev != TRUNK_INVALID)
+			pool->trunks[trunk->prev]->next = trunk->next;
+		pool->cfg.free(trunk);
+		pool->trunks[trunk_idx] = NULL;
+		pool->n_trunk_valid--;
+#ifdef POOL_DEBUG
+		pool->trunk_avail--;
+		pool->trunk_free++;
+#endif
+		if (pool->n_trunk_valid == 0) {
+			pool->cfg.free(pool->trunks);
+			pool->trunks = NULL;
+			pool->n_trunk = 0;
+		}
+	} else if (trunk->free == 1) {
 		/* Put into free trunk list head. */
 		MLX5_ASSERT(pool->free_list != trunk->idx);
 		trunk->next = pool->free_list;
@@ -400,7 +428,8 @@ mlx5_ipool_get(struct mlx5_indexed_pool *pool, uint32_t idx)
 	idx -= 1;
 	mlx5_ipool_lock(pool);
 	trunk_idx = mlx5_trunk_idx_get(pool, idx);
-	if (trunk_idx >= pool->n_trunk_valid)
+	if ((!pool->cfg.release_mem_en && trunk_idx >= pool->n_trunk_valid) ||
+	    (pool->cfg.release_mem_en && trunk_idx >= pool->n_trunk))
 		goto out;
 	trunk = pool->trunks[trunk_idx];
 	if (!trunk)
