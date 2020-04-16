@@ -364,7 +364,7 @@ struct mlx5_flow_dv_matcher {
 
 /* Encap/decap resource structure. */
 struct mlx5_flow_dv_encap_decap_resource {
-	LIST_ENTRY(mlx5_flow_dv_encap_decap_resource) next;
+	ILIST_ENTRY(uint32_t)next;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
 	void *verbs_action;
@@ -482,8 +482,8 @@ struct mlx5_flow_rss {
 struct mlx5_flow_handle_dv {
 	/* Flow DV api: */
 	struct mlx5_flow_dv_matcher *matcher; /**< Cache to matcher. */
-	struct mlx5_flow_dv_encap_decap_resource *encap_decap;
-	/**< Pointer to encap/decap resource in cache. */
+	uint32_t encap_decap;
+	/**< Index to encap/decap resource in cache. */
 	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
 	/**< Pointer to modify header resource in cache. */
 	struct mlx5_flow_dv_jump_tbl_resource *jump;
@@ -543,6 +543,8 @@ struct mlx5_flow_dv_workspace {
 	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
 	int actions_n; /**< number of actions. */
 	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS]; /**< Action list. */
+	struct mlx5_flow_dv_encap_decap_resource *encap_decap;
+	/**< Pointer to encap/decap resource in cache. */
 	struct mlx5_flow_dv_match_params value;
 	/**< Holds the value that the packet is compared to. */
 };

@@ -198,6 +198,21 @@ struct mlx5_dev_spawn_data {
 static LIST_HEAD(, mlx5_ibv_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
+	{
+		.size = sizeof(struct mlx5_flow_dv_encap_decap_resource),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 0,
+		.release_mem_en = 1,
+		.malloc = rte_malloc_socket,
+		.free = rte_free,
+		.type = "mlx5_encap_decap_ipool",
+	},
+};
+
+
 #define MLX5_FLOW_MIN_ID_POOL_SIZE 512
 #define MLX5_ID_GENERATION_ARRAY_FACTOR 16
 
@@ -417,6 +432,36 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 }
 
 /**
+ * Initialize the flow resources' indexed mempool.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object.
+ */
+static void
+mlx5_flow_ipool_create(struct mlx5_ibv_shared *sh)
+{
+	uint8_t i;
+
+	for (i = 0; i < MLX5_IPOOL_MAX; ++i)
+		sh->ipool[i] = mlx5_ipool_create(&mlx5_ipool_cfg[i]);
+}
+
+/**
+ * Release the flow resources' indexed mempool.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object.
+ */
+static void
+mlx5_flow_ipool_destroy(struct mlx5_ibv_shared *sh)
+{
+	uint8_t i;
+
+	for (i = 0; i < MLX5_IPOOL_MAX; ++i)
+		mlx5_ipool_destroy(sh->ipool[i]);
+}
+
+/**
  * Extract pdn of PD object using DV API.
  *
  * @param[in] pd
@@ -631,6 +676,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 		goto error;
 	}
 	mlx5_flow_counters_mng_init(sh);
+	mlx5_flow_ipool_create(sh);
 	/* Add device to memory callback list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
 	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
@@ -703,6 +749,7 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 	 *  Only primary process handles async device events.
 	 **/
 	mlx5_flow_counters_mng_close(sh);
+	mlx5_flow_ipool_destroy(sh);
 	MLX5_ASSERT(!sh->intr_cnt);
 	if (sh->intr_cnt)
 		mlx5_intr_callback_unregister

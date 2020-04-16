@@ -43,6 +43,12 @@
 #include "mlx5_utils.h"
 #include "mlx5_autoconf.h"
 
+
+enum mlx5_ipool_index {
+	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
+	MLX5_IPOOL_MAX,
+};
+
 /** Key string for IPC. */
 #define MLX5_MP_NAME "net_mlx5_mp"
 
@@ -423,7 +429,7 @@ struct mlx5_ibv_shared {
 	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
 	void *pop_vlan_action; /* Pointer to DR pop VLAN action. */
-	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
+	uint32_t encaps_decaps; /* Encap/decap action indexed memory list. */
 	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
 	struct mlx5_hlist *tag_table;
 	LIST_HEAD(port_id_action_list, mlx5_flow_dv_port_id_action_resource)
@@ -431,6 +437,8 @@ struct mlx5_ibv_shared {
 	LIST_HEAD(push_vlan_action_list, mlx5_flow_dv_push_vlan_action_resource)
 		push_vlan_action_list; /* List of push VLAN actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
+	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
+	/* Memory Pool for mlx5 flow resources. */
 	/* Shared interrupt handler section. */
 	pthread_mutex_t intr_mutex; /* Interrupt config mutex. */
 	uint32_t intr_cnt; /* Interrupt handler reference counter. */
