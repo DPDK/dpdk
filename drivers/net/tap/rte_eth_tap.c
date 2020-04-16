@@ -18,6 +18,7 @@
 #include <rte_string_fns.h>
 #include <rte_ethdev.h>
 #include <rte_errno.h>
+#include <rte_cycles.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1599,13 +1600,12 @@ static int
 tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	int ret;
 
 	/* In any case, disable interrupt if the conf is no longer there. */
 	if (!dev->data->dev_conf.intr_conf.lsc) {
 		if (pmd->intr_handle.fd != -1) {
-			tap_nl_final(pmd->intr_handle.fd);
-			rte_intr_callback_unregister(&pmd->intr_handle,
-				tap_dev_intr_handler, dev);
+			goto clean;
 		}
 		return 0;
 	}
@@ -1616,9 +1616,26 @@ tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set)
 		return rte_intr_callback_register(
 			&pmd->intr_handle, tap_dev_intr_handler, dev);
 	}
+
+clean:
+	do {
+		ret = rte_intr_callback_unregister(&pmd->intr_handle,
+			tap_dev_intr_handler, dev);
+		if (ret >= 0) {
+			break;
+		} else if (ret == -EAGAIN) {
+			rte_delay_ms(100);
+		} else {
+			TAP_LOG(ERR, "intr callback unregister failed: %d",
+				     ret);
+			break;
+		}
+	} while (true);
+
 	tap_nl_final(pmd->intr_handle.fd);
-	return rte_intr_callback_unregister(&pmd->intr_handle,
-					    tap_dev_intr_handler, dev);
+	pmd->intr_handle.fd = -1;
+
+	return 0;
 }
 
 static int
