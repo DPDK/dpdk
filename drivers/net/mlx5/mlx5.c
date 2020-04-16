@@ -257,6 +257,17 @@ static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 	},
 #endif
 	{
+		.size = sizeof(struct mlx5_flow_meter),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 0,
+		.release_mem_en = 1,
+		.malloc = rte_malloc_socket,
+		.free = rte_free,
+		.type = "mlx5_meter_ipool",
+	},
+	{
 		.size = (sizeof(struct mlx5_hrxq) + MLX5_RSS_HASH_KEY_LEN),
 		.trunk_size = 64,
 		.grow_trunk = 3,

@@ -631,6 +631,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 			};
 	int ret;
 	unsigned int i;
+	uint32_t idx = 0;
 
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
@@ -647,12 +648,12 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
 					  NULL, "Meter profile id not valid.");
 	/* Allocate the flow meter memory. */
-	fm = rte_calloc(__func__, 1,
-			sizeof(struct mlx5_flow_meter), RTE_CACHE_LINE_SIZE);
+	fm = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_MTR], &idx);
 	if (fm == NULL)
 		return -rte_mtr_error_set(error, ENOMEM,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "Memory alloc failed for meter.");
+	fm->idx = idx;
 	/* Fill the flow meter parameters. */
 	fm->meter_id = meter_id;
 	fm->profile = fmp;
@@ -683,7 +684,7 @@ error:
 	for (i = 0; i < RTE_DIM(fm->policer_stats.cnt); i++)
 		if (fm->policer_stats.cnt[i])
 			mlx5_counter_free(dev, fm->policer_stats.cnt[i]);
-	rte_free(fm);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR], idx);
 	return -rte_mtr_error_set(error, -ret,
 				  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
 				  NULL, "Failed to create devx meter.");
@@ -746,7 +747,7 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 	/* Free meter flow table */
 	mlx5_flow_destroy_policer_rules(dev, fm, &attr);
 	mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
-	rte_free(fm);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR], fm->idx);
 	return 0;
 }
 
@@ -1274,7 +1275,7 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 		/* Free meter flow table. */
 		mlx5_flow_destroy_policer_rules(dev, fm, &attr);
 		mlx5_flow_destroy_mtr_tbls(dev, fm->mfts);
-		rte_free(fm);
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MTR], fm->idx);
 	}
 	TAILQ_FOREACH_SAFE(fmp, fmps, next, tmp) {
 		/* Check unused. */

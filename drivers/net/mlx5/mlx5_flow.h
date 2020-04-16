@@ -703,6 +703,7 @@ struct mlx5_meter_domains_infos {
 struct mlx5_flow_meter {
 	TAILQ_ENTRY(mlx5_flow_meter) next;
 	/**< Pointer to the next flow meter structure. */
+	uint32_t idx; /* Index to meter object. */
 	uint32_t meter_id;
 	/**< Meter id. */
 	struct rte_mtr_params params;
