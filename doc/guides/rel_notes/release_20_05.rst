@@ -90,6 +90,11 @@ New Features
   when running on GEN2 QAT hardware with particular firmware versions
   (GEN3 support was added in DPDK 20.02).
 
+* **Added plain SHA-1,224,256,384,512 support to QAT PMD.**
+
+  Added support for plain SHA-1, SHA-224, SHA-256, SHA-384 and SHA-512 hashes
+  to QAT PMD.
+
 * **Added QAT intermediate buffer too small handling in QAT compression PMD.**
 
   Added a special way of buffer handling when internal QAT intermediate buffer

@@ -67,6 +67,7 @@ struct qat_sym_session {
 	enum icp_qat_hw_cipher_mode qat_mode;
 	enum icp_qat_hw_auth_algo qat_hash_alg;
 	enum icp_qat_hw_auth_op auth_op;
+	enum icp_qat_hw_auth_mode auth_mode;
 	void *bpi_ctx;
 	struct qat_sym_cd cd;
 	uint8_t *cd_cur_ptr;

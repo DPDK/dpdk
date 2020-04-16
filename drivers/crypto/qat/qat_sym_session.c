@@ -19,6 +19,41 @@
 #include "qat_sym_session.h"
 #include "qat_sym_pmd.h"
 
+/* SHA1 - 20 bytes - Initialiser state can be found in FIPS stds 180-2 */
+static const uint8_t sha1InitialState[] = {
+	0x67, 0x45, 0x23, 0x01, 0xef, 0xcd, 0xab, 0x89, 0x98, 0xba,
+	0xdc, 0xfe, 0x10, 0x32, 0x54, 0x76, 0xc3, 0xd2, 0xe1, 0xf0};
+
+/* SHA 224 - 32 bytes - Initialiser state can be found in FIPS stds 180-2 */
+static const uint8_t sha224InitialState[] = {
+	0xc1, 0x05, 0x9e, 0xd8, 0x36, 0x7c, 0xd5, 0x07, 0x30, 0x70, 0xdd,
+	0x17, 0xf7, 0x0e, 0x59, 0x39, 0xff, 0xc0, 0x0b, 0x31, 0x68, 0x58,
+	0x15, 0x11, 0x64, 0xf9, 0x8f, 0xa7, 0xbe, 0xfa, 0x4f, 0xa4};
+
+/* SHA 256 - 32 bytes - Initialiser state can be found in FIPS stds 180-2 */
+static const uint8_t sha256InitialState[] = {
+	0x6a, 0x09, 0xe6, 0x67, 0xbb, 0x67, 0xae, 0x85, 0x3c, 0x6e, 0xf3,
+	0x72, 0xa5, 0x4f, 0xf5, 0x3a, 0x51, 0x0e, 0x52, 0x7f, 0x9b, 0x05,
+	0x68, 0x8c, 0x1f, 0x83, 0xd9, 0xab, 0x5b, 0xe0, 0xcd, 0x19};
+
+/* SHA 384 - 64 bytes - Initialiser state can be found in FIPS stds 180-2 */
+static const uint8_t sha384InitialState[] = {
+	0xcb, 0xbb, 0x9d, 0x5d, 0xc1, 0x05, 0x9e, 0xd8, 0x62, 0x9a, 0x29,
+	0x2a, 0x36, 0x7c, 0xd5, 0x07, 0x91, 0x59, 0x01, 0x5a, 0x30, 0x70,
+	0xdd, 0x17, 0x15, 0x2f, 0xec, 0xd8, 0xf7, 0x0e, 0x59, 0x39, 0x67,
+	0x33, 0x26, 0x67, 0xff, 0xc0, 0x0b, 0x31, 0x8e, 0xb4, 0x4a, 0x87,
+	0x68, 0x58, 0x15, 0x11, 0xdb, 0x0c, 0x2e, 0x0d, 0x64, 0xf9, 0x8f,
+	0xa7, 0x47, 0xb5, 0x48, 0x1d, 0xbe, 0xfa, 0x4f, 0xa4};
+
+/* SHA 512 - 64 bytes - Initialiser state can be found in FIPS stds 180-2 */
+static const uint8_t sha512InitialState[] = {
+	0x6a, 0x09, 0xe6, 0x67, 0xf3, 0xbc, 0xc9, 0x08, 0xbb, 0x67, 0xae,
+	0x85, 0x84, 0xca, 0xa7, 0x3b, 0x3c, 0x6e, 0xf3, 0x72, 0xfe, 0x94,
+	0xf8, 0x2b, 0xa5, 0x4f, 0xf5, 0x3a, 0x5f, 0x1d, 0x36, 0xf1, 0x51,
+	0x0e, 0x52, 0x7f, 0xad, 0xe6, 0x82, 0xd1, 0x9b, 0x05, 0x68, 0x8c,
+	0x2b, 0x3e, 0x6c, 0x1f, 0x1f, 0x83, 0xd9, 0xab, 0xfb, 0x41, 0xbd,
+	0x6b, 0x5b, 0xe0, 0xcd, 0x19, 0x13, 0x7e, 0x21, 0x79};
+
 /** Frees a context previously created
  *  Depends on openssl libcrypto
  */
@@ -665,8 +700,29 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 
 	session->auth_iv.offset = auth_xform->iv.offset;
 	session->auth_iv.length = auth_xform->iv.length;
+	session->auth_mode = ICP_QAT_HW_AUTH_MODE1;
 
 	switch (auth_xform->algo) {
+	case RTE_CRYPTO_AUTH_SHA1:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA1;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA224:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA224;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA256:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA256;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA384:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA384;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA512:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA512;
+		session->auth_mode = ICP_QAT_HW_AUTH_MODE0;
+		break;
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SHA1;
 		break;
@@ -722,11 +778,6 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		}
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3;
 		break;
-	case RTE_CRYPTO_AUTH_SHA1:
-	case RTE_CRYPTO_AUTH_SHA256:
-	case RTE_CRYPTO_AUTH_SHA512:
-	case RTE_CRYPTO_AUTH_SHA224:
-	case RTE_CRYPTO_AUTH_SHA384:
 	case RTE_CRYPTO_AUTH_MD5:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 		QAT_LOG(ERR, "Crypto: Unsupported hash alg %u",
@@ -810,6 +861,8 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 	 */
 	session->cipher_iv.offset = xform->aead.iv.offset;
 	session->cipher_iv.length = xform->aead.iv.length;
+
+	session->auth_mode = ICP_QAT_HW_AUTH_MODE1;
 
 	switch (aead_xform->algo) {
 	case RTE_CRYPTO_AEAD_AES_GCM:
@@ -1661,10 +1714,11 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 	hash = (struct icp_qat_hw_auth_setup *)cdesc->cd_cur_ptr;
 	hash->auth_config.reserved = 0;
 	hash->auth_config.config =
-			ICP_QAT_HW_AUTH_CONFIG_BUILD(ICP_QAT_HW_AUTH_MODE1,
+			ICP_QAT_HW_AUTH_CONFIG_BUILD(cdesc->auth_mode,
 				cdesc->qat_hash_alg, digestsize);
 
-	if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2
+	if (cdesc->auth_mode == ICP_QAT_HW_AUTH_MODE0
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_KASUMI_F9
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC
@@ -1687,6 +1741,15 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 	 */
 	switch (cdesc->qat_hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
+		if (cdesc->auth_mode == ICP_QAT_HW_AUTH_MODE0) {
+			/* Plain SHA-1 */
+			rte_memcpy(cdesc->cd_cur_ptr, sha1InitialState,
+					sizeof(sha1InitialState));
+			state1_size = qat_hash_get_state1_size(
+					cdesc->qat_hash_alg);
+			break;
+		}
+		/* SHA-1 HMAC */
 		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA1, authkey,
 			authkeylen, cdesc->cd_cur_ptr, &state1_size,
 			cdesc->aes_cmac)) {
@@ -1696,6 +1759,15 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 		state2_size = RTE_ALIGN_CEIL(ICP_QAT_HW_SHA1_STATE2_SZ, 8);
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA224:
+		if (cdesc->auth_mode == ICP_QAT_HW_AUTH_MODE0) {
+			/* Plain SHA-224 */
+			rte_memcpy(cdesc->cd_cur_ptr, sha224InitialState,
+					sizeof(sha224InitialState));
+			state1_size = qat_hash_get_state1_size(
+					cdesc->qat_hash_alg);
+			break;
+		}
+		/* SHA-224 HMAC */
 		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA224, authkey,
 			authkeylen, cdesc->cd_cur_ptr, &state1_size,
 			cdesc->aes_cmac)) {
@@ -1705,6 +1777,15 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 		state2_size = ICP_QAT_HW_SHA224_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA256:
+		if (cdesc->auth_mode == ICP_QAT_HW_AUTH_MODE0) {
+			/* Plain SHA-256 */
+			rte_memcpy(cdesc->cd_cur_ptr, sha256InitialState,
+					sizeof(sha256InitialState));
+			state1_size = qat_hash_get_state1_size(
+					cdesc->qat_hash_alg);
+			break;
+		}
+		/* SHA-256 HMAC */
 		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA256, authkey,
 			authkeylen, cdesc->cd_cur_ptr,	&state1_size,
 			cdesc->aes_cmac)) {
@@ -1714,6 +1795,15 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 		state2_size = ICP_QAT_HW_SHA256_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA384:
+		if (cdesc->auth_mode == ICP_QAT_HW_AUTH_MODE0) {
+			/* Plain SHA-384 */
+			rte_memcpy(cdesc->cd_cur_ptr, sha384InitialState,
+					sizeof(sha384InitialState));
+			state1_size = qat_hash_get_state1_size(
+					cdesc->qat_hash_alg);
+			break;
+		}
+		/* SHA-384 HMAC */
 		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA384, authkey,
 			authkeylen, cdesc->cd_cur_ptr, &state1_size,
 			cdesc->aes_cmac)) {
@@ -1723,6 +1813,15 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 		state2_size = ICP_QAT_HW_SHA384_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
+		if (cdesc->auth_mode == ICP_QAT_HW_AUTH_MODE0) {
+			/* Plain SHA-512 */
+			rte_memcpy(cdesc->cd_cur_ptr, sha512InitialState,
+					sizeof(sha512InitialState));
+			state1_size = qat_hash_get_state1_size(
+					cdesc->qat_hash_alg);
+			break;
+		}
+		/* SHA-512 HMAC */
 		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA512, authkey,
 			authkeylen, cdesc->cd_cur_ptr,	&state1_size,
 			cdesc->aes_cmac)) {
