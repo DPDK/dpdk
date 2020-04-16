@@ -1183,6 +1183,28 @@ ipsec_poll_mode_worker(void)
 	}
 }
 
+int
+check_flow_params(uint16_t fdir_portid, uint8_t fdir_qid)
+{
+	uint16_t i;
+	uint16_t portid;
+	uint8_t queueid;
+
+	for (i = 0; i < nb_lcore_params; ++i) {
+		portid = lcore_params_array[i].port_id;
+		if (portid == fdir_portid) {
+			queueid = lcore_params_array[i].queue_id;
+			if (queueid == fdir_qid)
+				break;
+		}
+
+		if (i == nb_lcore_params - 1)
+			return -1;
+	}
+
+	return 1;
+}
+
 static int32_t
 check_poll_mode_params(struct eh_conf *eh_conf)
 {

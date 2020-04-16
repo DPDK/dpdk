@@ -144,6 +144,8 @@ struct ipsec_sa {
 	};
 	enum rte_security_ipsec_sa_direction direction;
 	uint16_t portid;
+	uint8_t fdir_qid;
+	uint8_t fdir_flag;
 
 #define MAX_RTE_FLOW_PATTERN (4)
 #define MAX_RTE_FLOW_ACTIONS (3)
@@ -408,5 +410,10 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa,
 int
 create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 		struct rte_ipsec_session *ips);
+int
+check_flow_params(uint16_t fdir_portid, uint8_t fdir_qid);
+
+int
+create_ipsec_esp_flow(struct ipsec_sa *sa);
 
 #endif /* __IPSEC_H__ */

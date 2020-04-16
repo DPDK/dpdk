@@ -506,6 +506,7 @@ The SA rule syntax is shown as follows:
 
     sa <dir> <spi> <cipher_algo> <cipher_key> <auth_algo> <auth_key>
     <mode> <src_ip> <dst_ip> <action_type> <port_id> <fallback>
+    <flow-direction> <port_id> <queue_id>
 
 where each options means:
 
@@ -702,6 +703,18 @@ where each options means:
 
    * *fallback lookaside-none*
 
+``<flow-direction>``
+
+ * Option for redirecting a specific inbound ipsec flow of a port to a specific
+   queue of that port.
+
+ * Optional: Yes.
+
+ * Available options:
+
+   * *port_id*: Port ID of the NIC for which the SA is configured.
+   * *queue_id*: Queue ID to which traffic should be redirected.
+
 Example SA rules:
 
 .. code-block:: console
@@ -730,6 +743,9 @@ Example SA rules:
     aead_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
     mode ipv4-tunnel src 172.16.2.5 dst 172.16.1.5 \
     type inline-crypto-offload port_id 0
+
+    sa in 117 cipher_algo null auth_algo null mode ipv4-tunnel src 172.16.2.7 \
+    dst 172.16.1.7 flow-direction 0 2
 
 Routing rule syntax
 ^^^^^^^^^^^^^^^^^^^

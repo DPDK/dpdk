@@ -105,6 +105,9 @@ New Features
   * Updated ipsec-secgw application to support key sizes for AES-192-CBC,
     AES-192-GCM, AES-256-GCM algorithms.
 
+  * Added IPsec inbound load-distribution support for ipsec-secgw application
+    using NIC load distribution feature(Flow Director).
+
 
 Removed Items
 -------------
