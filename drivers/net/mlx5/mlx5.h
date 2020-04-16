@@ -47,6 +47,7 @@
 enum mlx5_ipool_index {
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
 	MLX5_IPOOL_PUSH_VLAN, /* Pool for push vlan resource. */
+	MLX5_IPOOL_TAG, /* Pool for tag resource. */
 	MLX5_IPOOL_MAX,
 };
 

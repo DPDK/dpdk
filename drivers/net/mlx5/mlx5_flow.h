@@ -383,6 +383,7 @@ struct mlx5_flow_dv_tag_resource {
 	void *action;
 	/**< Verbs tag action object. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
+	uint32_t idx; /**< Index for the index memory pool. */
 };
 
 /*
@@ -494,8 +495,8 @@ struct mlx5_flow_handle_dv {
 	/**< Structure for VF VLAN workaround. */
 	uint32_t push_vlan_res;
 	/**< Index to push VLAN action resource in cache. */
-	struct mlx5_flow_dv_tag_resource *tag_resource;
-	/**< pointer to the tag action. */
+	uint32_t tag_resource;
+	/**< Index to the tag action. */
 };
 
 /** Device flow handle structure: used both for creating & destroying. */
@@ -547,6 +548,8 @@ struct mlx5_flow_dv_workspace {
 	/**< Pointer to encap/decap resource in cache. */
 	struct mlx5_flow_dv_push_vlan_action_resource *push_vlan_res;
 	/**< Pointer to push VLAN action resource in cache. */
+	struct mlx5_flow_dv_tag_resource *tag_resource;
+	/**< pointer to the tag action. */
 	struct mlx5_flow_dv_match_params value;
 	/**< Holds the value that the packet is compared to. */
 };

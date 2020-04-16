@@ -7092,14 +7092,16 @@ flow_dv_tag_resource_register
 		cache_resource = container_of
 			(entry, struct mlx5_flow_dv_tag_resource, entry);
 		rte_atomic32_inc(&cache_resource->refcnt);
-		dev_flow->handle->dvh.tag_resource = cache_resource;
+		dev_flow->handle->dvh.tag_resource = cache_resource->idx;
+		dev_flow->dv.tag_resource = cache_resource;
 		DRV_LOG(DEBUG, "cached tag resource %p: refcnt now %d++",
 			(void *)cache_resource,
 			rte_atomic32_read(&cache_resource->refcnt));
 		return 0;
 	}
 	/* Register new resource. */
-	cache_resource = rte_calloc(__func__, 1, sizeof(*cache_resource), 0);
+	cache_resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_TAG],
+				       &dev_flow->handle->dvh.tag_resource);
 	if (!cache_resource)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -7121,7 +7123,7 @@ flow_dv_tag_resource_register
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot insert tag");
 	}
-	dev_flow->handle->dvh.tag_resource = cache_resource;
+	dev_flow->dv.tag_resource = cache_resource;
 	DRV_LOG(DEBUG, "new tag resource %p: refcnt now %d++",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
@@ -7133,20 +7135,23 @@ flow_dv_tag_resource_register
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param flow
- *   Pointer to mlx5_flow.
+ * @param tag_idx
+ *   Tag index.
  *
  * @return
  *   1 while a reference on it exists, 0 when freed.
  */
 static int
 flow_dv_tag_release(struct rte_eth_dev *dev,
-		    struct mlx5_flow_dv_tag_resource *tag)
+		    uint32_t tag_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_flow_dv_tag_resource *tag;
 
-	MLX5_ASSERT(tag);
+	tag = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_TAG], tag_idx);
+	if (!tag)
+		return 0;
 	DRV_LOG(DEBUG, "port %u tag %p: refcnt %d--",
 		dev->data->port_id, (void *)tag,
 		rte_atomic32_read(&tag->refcnt));
@@ -7155,7 +7160,7 @@ flow_dv_tag_release(struct rte_eth_dev *dev,
 		mlx5_hlist_remove(sh->tag_table, &tag->entry);
 		DRV_LOG(DEBUG, "port %u tag %p: removed",
 			dev->data->port_id, (void *)tag);
-		rte_free(tag);
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_TAG], tag_idx);
 		return 0;
 	}
 	return 1;
@@ -7452,8 +7457,9 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			if (flow_dv_tag_resource_register(dev, tag_be,
 							  dev_flow, error))
 				return -rte_errno;
+			MLX5_ASSERT(dev_flow->dv.tag_resource);
 			dev_flow->dv.actions[actions_n++] =
-					handle->dvh.tag_resource->action;
+					dev_flow->dv.tag_resource->action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			action_flags |= MLX5_FLOW_ACTION_MARK;
@@ -7479,8 +7485,9 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			if (flow_dv_tag_resource_register(dev, tag_be,
 							  dev_flow, error))
 				return -rte_errno;
+			MLX5_ASSERT(dev_flow->dv.tag_resource);
 			dev_flow->dv.actions[actions_n++] =
-					handle->dvh.tag_resource->action;
+					dev_flow->dv.tag_resource->action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_META:
 			if (flow_dv_convert_action_set_meta
