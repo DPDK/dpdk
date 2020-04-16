@@ -1735,7 +1735,6 @@ test_blockcipher(enum blockcipher_test_type test_type)
 		ts_params->op_mpool,
 		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
-		gbl_driver_id,
 		test_type);
 
 	if (status == -ENOTSUP)

@@ -70,7 +70,6 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	struct rte_mempool *sess_mpool,
 	struct rte_mempool *sess_priv_mpool,
 	uint8_t dev_id,
-	int driver_id,
 	char *test_msg)
 {
 	struct rte_mbuf *ibuf = NULL;
@@ -89,43 +88,12 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	uint8_t cipher_key[tdata->cipher_key.len];
 	uint8_t auth_key[tdata->auth_key.len];
 	uint32_t buf_len = tdata->ciphertext.len;
-	uint32_t digest_len = 0;
+	uint32_t digest_len = tdata->digest.len;
 	char *buf_p = NULL;
 	uint8_t src_pattern = 0xa5;
 	uint8_t dst_pattern = 0xb6;
 	uint8_t tmp_src_buf[MBUF_SIZE];
 	uint8_t tmp_dst_buf[MBUF_SIZE];
-
-	int openssl_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
-	int ccp_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD));
-	int scheduler_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
-	int armv8_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
-	int aesni_mb_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
-	int qat_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
-	int dpaa2_sec_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
-	int dpaa_sec_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
-	int caam_jr_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD));
-	int mrvl_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_MVSAM_PMD));
-	int virtio_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
-	int octeontx_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
-	int octeontx2_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
-	int null_pmd = rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_NULL_PMD));
-	int nitrox_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_NITROX_PMD));
 
 	int nb_segs = 1;
 	uint32_t nb_iterates = 0;
@@ -188,31 +156,6 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	if (tdata->auth_key.len)
 		memcpy(auth_key, tdata->auth_key.data,
 			tdata->auth_key.len);
-
-	if (driver_id == dpaa2_sec_pmd ||
-			driver_id == dpaa_sec_pmd ||
-			driver_id == caam_jr_pmd ||
-			driver_id == qat_pmd ||
-			driver_id == openssl_pmd ||
-			driver_id == armv8_pmd ||
-			driver_id == mrvl_pmd ||
-			driver_id == ccp_pmd ||
-			driver_id == virtio_pmd ||
-			driver_id == octeontx_pmd ||
-			driver_id == octeontx2_pmd ||
-			driver_id == null_pmd ||
-			driver_id == nitrox_pmd) { /* Fall through */
-		digest_len = tdata->digest.len;
-	} else if (driver_id == aesni_mb_pmd ||
-			driver_id == scheduler_pmd) {
-		digest_len = tdata->digest.truncated_len;
-	} else {
-		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
-			"line %u FAILED: %s",
-			__LINE__, "Unsupported PMD type");
-		status = TEST_FAILED;
-		goto error_exit;
-	}
 
 	/* Check if PMD is capable of performing that test */
 	if (verify_algo_support(t, dev_id, digest_len) < 0) {
@@ -766,46 +709,13 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	struct rte_mempool *sess_mpool,
 	struct rte_mempool *sess_priv_mpool,
 	uint8_t dev_id,
-	int driver_id,
 	enum blockcipher_test_type test_type)
 {
 	int status, overall_status = TEST_SUCCESS;
 	uint32_t i, test_index = 0;
 	char test_msg[BLOCKCIPHER_TEST_MSG_LEN + 1];
 	uint32_t n_test_cases = 0;
-	uint32_t target_pmd_mask = 0;
 	const struct blockcipher_test_case *tcs = NULL;
-
-	int openssl_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
-	int ccp_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD));
-	int dpaa2_sec_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
-	int dpaa_sec_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
-	int caam_jr_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD));
-	int scheduler_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
-	int armv8_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
-	int aesni_mb_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
-	int qat_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
-	int mrvl_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_MVSAM_PMD));
-	int virtio_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
-	int octeontx_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
-	int octeontx2_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
-	int null_pmd = rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_NULL_PMD));
-	int nitrox_pmd = rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_NITROX_PMD));
 
 	switch (test_type) {
 	case BLKCIPHER_AES_CHAIN_TYPE:
@@ -852,47 +762,11 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		break;
 	}
 
-	if (driver_id == aesni_mb_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB;
-	else if (driver_id == qat_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT;
-	else if (driver_id == openssl_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL;
-	else if (driver_id == armv8_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8;
-	else if (driver_id == scheduler_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER;
-	else if (driver_id == dpaa2_sec_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC;
-	else if (driver_id == ccp_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_CCP;
-	else if (driver_id == dpaa_sec_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC;
-	else if (driver_id == caam_jr_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_CAAM_JR;
-	else if (driver_id == mrvl_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MVSAM;
-	else if (driver_id == virtio_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO;
-	else if (driver_id == octeontx_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX;
-	else if (driver_id == octeontx2_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2;
-	else if (driver_id == null_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL;
-	else if (driver_id == nitrox_pmd)
-		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NITROX;
-	else
-		return -ENOTSUP; /* Unrecognized cryptodev type */
-
 	for (i = 0; i < n_test_cases; i++) {
 		const struct blockcipher_test_case *tc = &tcs[i];
 
-		if (!(tc->pmd_mask & target_pmd_mask))
-			continue;
-
 		status = test_blockcipher_one_case(tc, mbuf_pool, op_mpool,
-			sess_mpool, sess_priv_mpool, dev_id, driver_id,
+			sess_mpool, sess_priv_mpool, dev_id,
 			test_msg);
 
 		printf("  %u) TestCase %s %s\n", test_index ++,
