@@ -460,6 +460,7 @@ struct mlx5_flow_mreg_copy_resource {
 	/* List entry for device flows. */
 	uint32_t refcnt; /* Reference counter. */
 	uint32_t appcnt; /* Apply/Remove counter. */
+	uint32_t idx;
 	struct rte_flow *flow; /* Built flow for copy. */
 };
 
@@ -756,8 +757,8 @@ struct rte_flow {
 	enum mlx5_flow_drv_type drv_type; /**< Driver type. */
 	struct mlx5_flow_rss rss; /**< RSS context. */
 	uint32_t counter; /**< Holds flow counter. */
-	struct mlx5_flow_mreg_copy_resource *mreg_copy;
-	/**< pointer to metadata register copy table resource. */
+	uint32_t rix_mreg_copy;
+	/**< Index to metadata register copy table resource. */
 	uint16_t meter; /**< Holds flow meter id. */
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */

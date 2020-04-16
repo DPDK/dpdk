@@ -53,6 +53,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_JUMP, /* Pool for jump resource. */
 #endif
 	MLX5_IPOOL_MTR, /* Pool for meter resource. */
+	MLX5_IPOOL_MCP, /* Pool for metadata resource. */
 	MLX5_IPOOL_HRXQ, /* Pool for hrxq resource. */
 	MLX5_IPOOL_MLX5_FLOW, /* Pool for mlx5 flow handle. */
 	MLX5_IPOOL_MAX,

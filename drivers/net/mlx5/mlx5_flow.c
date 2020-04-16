@@ -2962,6 +2962,7 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 		[3] = { .type = RTE_FLOW_ACTION_TYPE_END, },
 	};
 	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	uint32_t idx = 0;
 	int ret;
 
 	/* Fill the register fileds in the flow. */
@@ -3030,11 +3031,12 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 		};
 	}
 	/* Build a new entry. */
-	mcp_res = rte_zmalloc(__func__, sizeof(*mcp_res), 0);
+	mcp_res = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_MCP], &idx);
 	if (!mcp_res) {
 		rte_errno = ENOMEM;
 		return NULL;
 	}
+	mcp_res->idx = idx;
 	/*
 	 * The copy Flows are not included in any list. There
 	 * ones are referenced from other Flows and can not
@@ -3056,7 +3058,7 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 error:
 	if (mcp_res->flow)
 		flow_list_destroy(dev, NULL, mcp_res->flow);
-	rte_free(mcp_res);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], mcp_res->idx);
 	return NULL;
 }
 
@@ -3072,9 +3074,13 @@ static void
 flow_mreg_del_copy_action(struct rte_eth_dev *dev,
 			  struct rte_flow *flow)
 {
-	struct mlx5_flow_mreg_copy_resource *mcp_res = flow->mreg_copy;
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (!flow->rix_mreg_copy)
+		return;
+	mcp_res = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MCP],
+				 flow->rix_mreg_copy);
 	if (!mcp_res || !priv->mreg_cp_tbl)
 		return;
 	if (flow->copy_applied) {
@@ -3093,8 +3099,8 @@ flow_mreg_del_copy_action(struct rte_eth_dev *dev,
 	MLX5_ASSERT(mcp_res->flow);
 	flow_list_destroy(dev, NULL, mcp_res->flow);
 	mlx5_hlist_remove(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
-	rte_free(mcp_res);
-	flow->mreg_copy = NULL;
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], mcp_res->idx);
+	flow->rix_mreg_copy = 0;
 }
 
 /**
@@ -3112,10 +3118,15 @@ static int
 flow_mreg_start_copy_action(struct rte_eth_dev *dev,
 			    struct rte_flow *flow)
 {
-	struct mlx5_flow_mreg_copy_resource *mcp_res = flow->mreg_copy;
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (!mcp_res || flow->copy_applied)
+	if (!flow->rix_mreg_copy || flow->copy_applied)
+		return 0;
+	mcp_res = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MCP],
+				 flow->rix_mreg_copy);
+	if (!mcp_res)
 		return 0;
 	if (!mcp_res->appcnt) {
 		ret = flow_drv_apply(dev, mcp_res->flow, NULL);
@@ -3139,9 +3150,14 @@ static void
 flow_mreg_stop_copy_action(struct rte_eth_dev *dev,
 			   struct rte_flow *flow)
 {
-	struct mlx5_flow_mreg_copy_resource *mcp_res = flow->mreg_copy;
+	struct mlx5_flow_mreg_copy_resource *mcp_res;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (!mcp_res || !flow->copy_applied)
+	if (!flow->rix_mreg_copy || !flow->copy_applied)
+		return;
+	mcp_res = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MCP],
+				 flow->rix_mreg_copy);
+	if (!mcp_res)
 		return;
 	MLX5_ASSERT(mcp_res->appcnt);
 	--mcp_res->appcnt;
@@ -3172,7 +3188,7 @@ flow_mreg_del_default_copy_action(struct rte_eth_dev *dev)
 	MLX5_ASSERT(mcp_res->flow);
 	flow_list_destroy(dev, NULL, mcp_res->flow);
 	mlx5_hlist_remove(priv->mreg_cp_tbl, &mcp_res->hlist_ent);
-	rte_free(mcp_res);
+	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MCP], mcp_res->idx);
 }
 
 /**
@@ -3264,7 +3280,7 @@ flow_mreg_update_copy_table(struct rte_eth_dev *dev,
 				(dev, MLX5_FLOW_MARK_DEFAULT, error);
 			if (!mcp_res)
 				return -rte_errno;
-			flow->mreg_copy = mcp_res;
+			flow->rix_mreg_copy = mcp_res->idx;
 			if (dev->data->dev_started) {
 				mcp_res->appcnt++;
 				flow->copy_applied = 1;
@@ -3277,7 +3293,7 @@ flow_mreg_update_copy_table(struct rte_eth_dev *dev,
 				flow_mreg_add_copy_action(dev, mark->id, error);
 			if (!mcp_res)
 				return -rte_errno;
-			flow->mreg_copy = mcp_res;
+			flow->rix_mreg_copy = mcp_res->idx;
 			if (dev->data->dev_started) {
 				mcp_res->appcnt++;
 				flow->copy_applied = 1;
