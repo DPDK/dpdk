@@ -133,7 +133,7 @@ sso_rxq_disable(struct otx2_eth_dev *dev, uint16_t qid)
 	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
 	aq->qidx = qid;
 	aq->ctype = NIX_AQ_CTYPE_CQ;
-	aq->op = NIX_AQ_INSTOP_INIT;
+	aq->op = NIX_AQ_INSTOP_WRITE;
 
 	aq->cq.ena = 1;
 	aq->cq.caching = 1;
@@ -144,7 +144,7 @@ sso_rxq_disable(struct otx2_eth_dev *dev, uint16_t qid)
 
 	rc = otx2_mbox_process(mbox);
 	if (rc < 0) {
-		otx2_err("Failed to init cq context");
+		otx2_err("Failed to enable cq context");
 		goto fail;
 	}
 
