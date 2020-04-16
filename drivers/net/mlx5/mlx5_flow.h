@@ -420,7 +420,7 @@ struct mlx5_flow_dv_jump_tbl_resource {
 
 /* Port ID resource structure. */
 struct mlx5_flow_dv_port_id_action_resource {
-	LIST_ENTRY(mlx5_flow_dv_port_id_action_resource) next;
+	ILIST_ENTRY(uint32_t)next;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
 	void *action;
@@ -489,7 +489,7 @@ struct mlx5_flow_handle_dv {
 	/**< Pointer to modify header resource in cache. */
 	struct mlx5_flow_dv_jump_tbl_resource *jump;
 	/**< Pointer to the jump action resource. */
-	struct mlx5_flow_dv_port_id_action_resource *port_id_action;
+	uint32_t port_id_action;
 	/**< Pointer to port ID action resource. */
 	struct mlx5_vf_vlan vf_vlan;
 	/**< Structure for VF VLAN workaround. */
@@ -549,6 +549,8 @@ struct mlx5_flow_dv_workspace {
 	struct mlx5_flow_dv_push_vlan_action_resource *push_vlan_res;
 	/**< Pointer to push VLAN action resource in cache. */
 	struct mlx5_flow_dv_tag_resource *tag_resource;
+	struct mlx5_flow_dv_port_id_action_resource *port_id_action;
+	/**< Pointer to port ID action resource. */
 	/**< pointer to the tag action. */
 	struct mlx5_flow_dv_match_params value;
 	/**< Holds the value that the packet is compared to. */

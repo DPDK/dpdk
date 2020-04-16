@@ -48,6 +48,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
 	MLX5_IPOOL_PUSH_VLAN, /* Pool for push vlan resource. */
 	MLX5_IPOOL_TAG, /* Pool for tag resource. */
+	MLX5_IPOOL_PORT_ID, /* Pool for port id resource. */
 	MLX5_IPOOL_MAX,
 };
 
@@ -434,8 +435,7 @@ struct mlx5_ibv_shared {
 	uint32_t encaps_decaps; /* Encap/decap action indexed memory list. */
 	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
 	struct mlx5_hlist *tag_table;
-	LIST_HEAD(port_id_action_list, mlx5_flow_dv_port_id_action_resource)
-		port_id_action_list; /* List of port ID actions. */
+	uint32_t port_id_action_list; /* List of port ID actions. */
 	uint32_t push_vlan_action_list; /* List of push VLAN actions. */
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
