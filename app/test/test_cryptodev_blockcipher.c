@@ -131,9 +131,18 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	uint32_t nb_iterates = 0;
 
 	rte_cryptodev_info_get(dev_id, &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
 
+	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS) {
+		if (!(feat_flags & RTE_CRYPTODEV_FF_SYM_SESSIONLESS)) {
+			printf("Device doesn't support sesionless operations "
+				"Test Skipped.\n");
+			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+				"SKIPPED");
+			return 0;
+		}
+	}
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SG) {
-		uint64_t feat_flags = dev_info.feature_flags;
 		uint64_t oop_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT;
 
 		if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
