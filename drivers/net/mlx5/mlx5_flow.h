@@ -488,10 +488,6 @@ struct mlx5_flow_handle_dv {
 	/**< Index to encap/decap resource in cache. */
 	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
 	/**< Pointer to modify header resource in cache. */
-	uint32_t jump;
-	/**< Index to the jump action resource. */
-	uint32_t port_id_action;
-	/**< Index to port ID action resource. */
 	struct mlx5_vf_vlan vf_vlan;
 	/**< Structure for VF VLAN workaround. */
 	uint32_t push_vlan_res;
@@ -509,11 +505,16 @@ struct mlx5_flow_handle {
 	uint64_t act_flags;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	void *ib_flow; /**< Verbs flow pointer. */
-	uint32_t hrxq; /**< Hash Rx queue object index. */
 	struct mlx5_vf_vlan vf_vlan; /**< Structure for VF VLAN workaround. */
 	union {
 		uint32_t qrss_id; /**< Uniqie Q/RSS suffix subflow tag. */
 		uint32_t mtr_flow_id; /**< Unique meter match flow id. */
+	};
+	union {
+		uint32_t hrxq; /**< Hash Rx queue object index. */
+		uint32_t jump; /**< Index to the jump action resource. */
+		uint32_t port_id_action;
+		/**< Index to port ID action resource. */
 	};
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_flow_handle_dv dvh;

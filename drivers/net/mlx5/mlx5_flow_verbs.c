@@ -1754,12 +1754,17 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			claim_zero(mlx5_glue->destroy_flow(handle->ib_flow));
 			handle->ib_flow = NULL;
 		}
+		/* hrxq is union, don't touch it only the flag is set. */
 		if (handle->hrxq) {
-			if (handle->act_flags & MLX5_FLOW_ACTION_DROP)
+			if (handle->act_flags & MLX5_FLOW_ACTION_DROP) {
 				mlx5_hrxq_drop_release(dev);
-			else
+				handle->hrxq = 0;
+			} else if (handle->act_flags &
+				  (MLX5_FLOW_ACTION_QUEUE |
+				  MLX5_FLOW_ACTION_RSS)) {
 				mlx5_hrxq_release(dev, handle->hrxq);
-			handle->hrxq = 0;
+				handle->hrxq = 0;
+			}
 		}
 		if (handle->vf_vlan.tag && handle->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &handle->vf_vlan);
@@ -1891,12 +1896,17 @@ error:
 	err = rte_errno; /* Save rte_errno before cleanup. */
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       dev_handles, handle, next) {
+		/* hrxq is union, don't touch it only the flag is set. */
 		if (handle->hrxq) {
-			if (handle->act_flags & MLX5_FLOW_ACTION_DROP)
+			if (handle->act_flags & MLX5_FLOW_ACTION_DROP) {
 				mlx5_hrxq_drop_release(dev);
-			else
+				handle->hrxq = 0;
+			} else if (handle->act_flags &
+				  (MLX5_FLOW_ACTION_QUEUE |
+				  MLX5_FLOW_ACTION_RSS)) {
 				mlx5_hrxq_release(dev, handle->hrxq);
-			handle->hrxq = 0;
+				handle->hrxq = 0;
+			}
 		}
 		if (handle->vf_vlan.tag && handle->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &handle->vf_vlan);
