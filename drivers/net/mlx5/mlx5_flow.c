@@ -722,8 +722,7 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow,
 		       struct mlx5_flow_handle *dev_handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const int mark = !!(dev_handle->act_flags &
-			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
+	const int mark = dev_handle->mark;
 	const int tunnel = !!(dev_handle->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int i;
 
@@ -800,8 +799,7 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow,
 			struct mlx5_flow_handle *dev_handle)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const int mark = !!(dev_handle->act_flags &
-			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
+	const int mark = dev_handle->mark;
 	const int tunnel = !!(dev_handle->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int i;
 
@@ -2718,7 +2716,7 @@ flow_get_prefix_layer_flags(struct mlx5_flow *dev_flow)
 	 * help to do the optimization work for source code.
 	 * If no decap actions, use the layers directly.
 	 */
-	if (!(dev_flow->handle->act_flags & MLX5_FLOW_ACTION_DECAP))
+	if (!(dev_flow->act_flags & MLX5_FLOW_ACTION_DECAP))
 		return dev_flow->handle->layers;
 	/* Convert L3 layers with decap action. */
 	if (dev_flow->handle->layers & MLX5_FLOW_LAYER_INNER_L3_IPV4)

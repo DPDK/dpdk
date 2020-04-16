@@ -7445,9 +7445,11 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.port_id_action->action;
 			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
+			dev_flow->handle->fate_action = MLX5_FLOW_FATE_PORT_ID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
+			dev_flow->handle->mark = 1;
 			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 				struct rte_flow_action_mark mark = {
 					.id = MLX5_FLOW_MARK_DEFAULT,
@@ -7476,6 +7478,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			action_flags |= MLX5_FLOW_ACTION_MARK;
+			dev_flow->handle->mark = 1;
 			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
 				const struct rte_flow_action_mark *mark =
 					(const struct rte_flow_action_mark *)
@@ -7520,6 +7523,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			action_flags |= MLX5_FLOW_ACTION_DROP;
+			dev_flow->handle->fate_action = MLX5_FLOW_FATE_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			MLX5_ASSERT(flow->rss.queue);
@@ -7527,6 +7531,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			flow->rss.queue_num = 1;
 			(*flow->rss.queue)[0] = queue->index;
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			MLX5_ASSERT(flow->rss.queue);
@@ -7543,6 +7548,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			 * when expanding items for RSS.
 			 */
 			action_flags |= MLX5_FLOW_ACTION_RSS;
+			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			if (!dev_conf->devx) {
@@ -7702,6 +7708,7 @@ cnt_err:
 			dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.jump->action;
 			action_flags |= MLX5_FLOW_ACTION_JUMP;
+			dev_flow->handle->fate_action = MLX5_FLOW_FATE_JUMP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
@@ -7844,7 +7851,7 @@ cnt_err:
 			modify_action_position = actions_n++;
 	}
 	dev_flow->dv.actions_n = actions_n;
-	handle->act_flags = action_flags;
+	dev_flow->act_flags = action_flags;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int item_type = items->type;
@@ -8100,7 +8107,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		dh = dev_flow->handle;
 		dv_h = &dh->dvh;
 		n = dv->actions_n;
-		if (dh->act_flags & MLX5_FLOW_ACTION_DROP) {
+		if (dh->fate_action == MLX5_FLOW_FATE_DROP) {
 			if (dv->transfer) {
 				dv->actions[n++] = priv->sh->esw_drop_action;
 			} else {
@@ -8123,8 +8130,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				dh->hrxq = UINT32_MAX;
 				dv->actions[n++] = drop_hrxq->action;
 			}
-		} else if (dh->act_flags &
-			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
+		} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE) {
 			struct mlx5_hrxq *hrxq;
 			uint32_t hrxq_idx;
 
@@ -8185,12 +8191,10 @@ error:
 		       handle_idx, dh, next) {
 		/* hrxq is union, don't clear it if the flag is not set. */
 		if (dh->hrxq) {
-			if (dh->act_flags & MLX5_FLOW_ACTION_DROP) {
+			if (dh->fate_action == MLX5_FLOW_FATE_DROP) {
 				mlx5_hrxq_drop_release(dev);
 				dh->hrxq = 0;
-			} else if (dh->act_flags &
-				  (MLX5_FLOW_ACTION_QUEUE |
-				  MLX5_FLOW_ACTION_RSS)) {
+			} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE) {
 				mlx5_hrxq_release(dev, dh->hrxq);
 				dh->hrxq = 0;
 			}
@@ -8432,6 +8436,33 @@ flow_dv_push_vlan_action_resource_release(struct rte_eth_dev *dev,
 }
 
 /**
+ * Release the fate resource.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param handle
+ *   Pointer to mlx5_flow_handle.
+ */
+static void
+flow_dv_fate_resource_release(struct rte_eth_dev *dev,
+			       struct mlx5_flow_handle *handle)
+{
+	if (!handle->fate_idx)
+		return;
+	if (handle->fate_action == MLX5_FLOW_FATE_DROP)
+		mlx5_hrxq_drop_release(dev);
+	else if (handle->fate_action == MLX5_FLOW_FATE_QUEUE)
+		mlx5_hrxq_release(dev, handle->hrxq);
+	else if (handle->fate_action == MLX5_FLOW_FATE_JUMP)
+		flow_dv_jump_tbl_resource_release(dev, handle);
+	else if (handle->fate_action == MLX5_FLOW_FATE_PORT_ID)
+		flow_dv_port_id_action_resource_release(dev, handle);
+	else
+		DRV_LOG(DEBUG, "Incorrect fate action:%d", handle->fate_action);
+	handle->fate_idx = 0;
+}
+
+/**
  * Remove the flow from the NIC but keeps it in memory.
  * Lock free, (mutex should be acquired by caller).
  *
@@ -8459,18 +8490,9 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			claim_zero(mlx5_glue->dv_destroy_flow(dh->ib_flow));
 			dh->ib_flow = NULL;
 		}
-		/* hrxq is union, don't touch it only the flag is set. */
-		if (dh->hrxq) {
-			if (dh->act_flags & MLX5_FLOW_ACTION_DROP) {
-				mlx5_hrxq_drop_release(dev);
-				dh->hrxq = 0;
-			} else if (dh->act_flags &
-				  (MLX5_FLOW_ACTION_QUEUE |
-				  MLX5_FLOW_ACTION_RSS)) {
-				mlx5_hrxq_release(dev, dh->hrxq);
-				dh->hrxq = 0;
-			}
-		}
+		if (dh->fate_action == MLX5_FLOW_FATE_DROP ||
+		    dh->fate_action == MLX5_FLOW_FATE_QUEUE)
+			flow_dv_fate_resource_release(dev, dh);
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);
 		handle_idx = dh->next.next;
@@ -8517,17 +8539,13 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 			flow_dv_encap_decap_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.modify_hdr)
 			flow_dv_modify_hdr_resource_release(dev_handle);
-		if (dev_handle->act_flags & MLX5_FLOW_ACTION_JUMP)
-			flow_dv_jump_tbl_resource_release(dev, dev_handle);
-		if (dev_handle->act_flags & MLX5_FLOW_ACTION_PORT_ID)
-			flow_dv_port_id_action_resource_release(dev,
-								dev_handle);
 		if (dev_handle->dvh.push_vlan_res)
 			flow_dv_push_vlan_action_resource_release(dev,
 								  dev_handle);
 		if (dev_handle->dvh.tag_resource)
 			flow_dv_tag_release(dev,
 					    dev_handle->dvh.tag_resource);
+		flow_dv_fate_resource_release(dev, dev_handle);
 		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW],
 			   tmp_idx);
 	}

@@ -1589,22 +1589,27 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			flow_verbs_translate_action_flag(dev_flow, actions);
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
+			dev_flow->handle->mark = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			flow_verbs_translate_action_mark(dev_flow, actions);
 			action_flags |= MLX5_FLOW_ACTION_MARK;
+			dev_flow->handle->mark = 1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			flow_verbs_translate_action_drop(dev_flow, actions);
 			action_flags |= MLX5_FLOW_ACTION_DROP;
+			dev_flow->handle->fate_action = MLX5_FLOW_FATE_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			flow_verbs_translate_action_queue(dev_flow, actions);
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			flow_verbs_translate_action_rss(dev_flow, actions);
 			action_flags |= MLX5_FLOW_ACTION_RSS;
+			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			ret = flow_verbs_translate_action_count(dev_flow,
@@ -1621,7 +1626,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 						  "action not supported");
 		}
 	}
-	dev_flow->handle->act_flags = action_flags;
+	dev_flow->act_flags = action_flags;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 
@@ -1756,12 +1761,11 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 		}
 		/* hrxq is union, don't touch it only the flag is set. */
 		if (handle->hrxq) {
-			if (handle->act_flags & MLX5_FLOW_ACTION_DROP) {
+			if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
 				mlx5_hrxq_drop_release(dev);
 				handle->hrxq = 0;
-			} else if (handle->act_flags &
-				  (MLX5_FLOW_ACTION_QUEUE |
-				  MLX5_FLOW_ACTION_RSS)) {
+			} else if (handle->fate_action ==
+				   MLX5_FLOW_FATE_QUEUE) {
 				mlx5_hrxq_release(dev, handle->hrxq);
 				handle->hrxq = 0;
 			}
@@ -1833,7 +1837,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	for (idx = priv->flow_idx - 1; idx >= priv->flow_nested_idx; idx--) {
 		dev_flow = &((struct mlx5_flow *)priv->inter_flows)[idx];
 		handle = dev_flow->handle;
-		if (handle->act_flags & MLX5_FLOW_ACTION_DROP) {
+		if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
 			hrxq = mlx5_hrxq_drop_new(dev);
 			if (!hrxq) {
 				rte_flow_error_set
@@ -1898,12 +1902,11 @@ error:
 		       dev_handles, handle, next) {
 		/* hrxq is union, don't touch it only the flag is set. */
 		if (handle->hrxq) {
-			if (handle->act_flags & MLX5_FLOW_ACTION_DROP) {
+			if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
 				mlx5_hrxq_drop_release(dev);
 				handle->hrxq = 0;
-			} else if (handle->act_flags &
-				  (MLX5_FLOW_ACTION_QUEUE |
-				  MLX5_FLOW_ACTION_RSS)) {
+			} else if (handle->fate_action ==
+				   MLX5_FLOW_FATE_QUEUE) {
 				mlx5_hrxq_release(dev, handle->hrxq);
 				handle->hrxq = 0;
 			}

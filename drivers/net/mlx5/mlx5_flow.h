@@ -339,6 +339,16 @@ enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MAX,
 };
 
+/* Fate action type. */
+enum mlx5_flow_fate_type {
+	MLX5_FLOW_FATE_NONE, /* Egress flow. */
+	MLX5_FLOW_FATE_QUEUE,
+	MLX5_FLOW_FATE_JUMP,
+	MLX5_FLOW_FATE_PORT_ID,
+	MLX5_FLOW_FATE_DROP,
+	MLX5_FLOW_FATE_MAX,
+};
+
 /* Matcher PRM representation */
 struct mlx5_flow_dv_match_params {
 	size_t size;
@@ -502,19 +512,21 @@ struct mlx5_flow_handle {
 	/**< Index to next device flow handle. */
 	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
-	uint64_t act_flags;
-	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	void *ib_flow; /**< Verbs flow pointer. */
 	struct mlx5_vf_vlan vf_vlan; /**< Structure for VF VLAN workaround. */
 	union {
 		uint32_t qrss_id; /**< Uniqie Q/RSS suffix subflow tag. */
 		uint32_t mtr_flow_id; /**< Unique meter match flow id. */
 	};
+	uint32_t mark:1; /**< Metadate rxq mark flag. */
+	uint32_t fate_action:3; /**< Fate action type. */
 	union {
 		uint32_t hrxq; /**< Hash Rx queue object index. */
 		uint32_t jump; /**< Index to the jump action resource. */
 		uint32_t port_id_action;
 		/**< Index to port ID action resource. */
+		uint32_t fate_idx;
+		/**< Generic value indicates the fate action. */
 	};
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_flow_handle_dv dvh;
@@ -624,6 +636,8 @@ struct mlx5_flow_verbs_workspace {
 struct mlx5_flow {
 	struct rte_flow *flow; /**< Pointer to the main flow. */
 	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
+	uint64_t act_flags;
+	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	bool external; /**< true if the flow is created external to PMD. */
 	uint8_t ingress; /**< 1 if the flow is ingress. */
 	union {
