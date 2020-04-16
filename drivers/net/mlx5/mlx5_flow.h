@@ -757,7 +757,7 @@ struct rte_flow {
 	uint32_t counter; /**< Holds flow counter. */
 	struct mlx5_flow_mreg_copy_resource *mreg_copy;
 	/**< pointer to metadata register copy table resource. */
-	struct mlx5_flow_meter *meter; /**< Holds flow meter. */
+	uint16_t meter; /**< Holds flow meter id. */
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */

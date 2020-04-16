@@ -7430,6 +7430,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		struct mlx5_flow_dv_port_id_action_resource port_id_resource;
 		int action_type = actions->type;
 		const struct rte_flow_action *found_action = NULL;
+		struct mlx5_flow_meter *fm = NULL;
 
 		switch (action_type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -7806,10 +7807,21 @@ cnt_err:
 		case RTE_FLOW_ACTION_TYPE_METER:
 			mtr = actions->conf;
 			if (!flow->meter) {
-				flow->meter = mlx5_flow_meter_attach(priv,
-							mtr->mtr_id, attr,
-							error);
-				if (!flow->meter)
+				fm = mlx5_flow_meter_attach(priv, mtr->mtr_id,
+							    attr, error);
+				if (!fm)
+					return rte_flow_error_set(error,
+						rte_errno,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"meter not found "
+						"or invalid parameters");
+				flow->meter = fm->meter_id;
+			}
+			/* Set the meter action. */
+			if (!fm) {
+				fm = mlx5_flow_meter_find(priv, flow->meter);
+				if (!fm)
 					return rte_flow_error_set(error,
 						rte_errno,
 						RTE_FLOW_ERROR_TYPE_ACTION,
@@ -7817,9 +7829,8 @@ cnt_err:
 						"meter not found "
 						"or invalid parameters");
 			}
-			/* Set the meter action. */
 			dev_flow->dv.actions[actions_n++] =
-				flow->meter->mfts->meter_action;
+				fm->mfts->meter_action;
 			action_flags |= MLX5_FLOW_ACTION_METER;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
@@ -8524,8 +8535,12 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		flow->counter = 0;
 	}
 	if (flow->meter) {
-		mlx5_flow_meter_detach(flow->meter);
-		flow->meter = NULL;
+		struct mlx5_flow_meter *fm;
+
+		fm  = mlx5_flow_meter_find(priv, flow->meter);
+		if (fm)
+			mlx5_flow_meter_detach(fm);
+		flow->meter = 0;
 	}
 	while (flow->dev_handles) {
 		uint32_t tmp_idx = flow->dev_handles;
