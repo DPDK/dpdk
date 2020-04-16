@@ -38338,4 +38338,288 @@ struct hwrm_port_ts_query_output {
 	uint8_t		valid;
 } __rte_packed;
 
+/**************************
+ * hwrm_cfa_counter_qcaps *
+ **************************/
+
+
+/* hwrm_cfa_counter_qcaps_input (size:128b/16B) */
+struct hwrm_cfa_counter_qcaps_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+} __rte_packed;
+
+/* hwrm_cfa_counter_qcaps_output (size:576b/72B) */
+struct hwrm_cfa_counter_qcaps_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint32_t	flags;
+	/* Enumeration denoting the supported CFA counter format. */
+	#define HWRM_CFA_COUNTER_QCAPS_OUTPUT_FLAGS_COUNTER_FORMAT \
+		UINT32_C(0x1)
+	/* CFA counter types are not supported. */
+	#define HWRM_CFA_COUNTER_QCAPS_OUTPUT_FLAGS_COUNTER_FORMAT_NONE \
+		UINT32_C(0x0)
+	/* 64-bit packet counters followed by 64-bit byte counters format. */
+	#define HWRM_CFA_COUNTER_QCAPS_OUTPUT_FLAGS_COUNTER_FORMAT_64_BIT \
+		UINT32_C(0x1)
+	#define HWRM_CFA_COUNTER_QCAPS_OUTPUT_FLAGS_COUNTER_FORMAT_LAST \
+		HWRM_CFA_COUNTER_QCAPS_OUTPUT_FLAGS_COUNTER_FORMAT_64_BIT
+	uint32_t	unused_0;
+	/* Minimum guaranteed number of flow counters supported for this function, in RX direction. */
+	uint32_t	min_rx_fc;
+	/* Maximum non-guaranteed number of flow counters supported for this function, in RX direction. */
+	uint32_t	max_rx_fc;
+	/* Minimum guaranteed number of flow counters supported for this function, in TX direction. */
+	uint32_t	min_tx_fc;
+	/* Maximum non-guaranteed number of flow counters supported for this function, in TX direction. */
+	uint32_t	max_tx_fc;
+	/* Minimum guaranteed number of extension flow counters supported for this function, in RX direction. */
+	uint32_t	min_rx_efc;
+	/* Maximum non-guaranteed number of extension flow counters supported for this function, in RX direction. */
+	uint32_t	max_rx_efc;
+	/* Minimum guaranteed number of extension flow counters supported for this function, in TX direction. */
+	uint32_t	min_tx_efc;
+	/* Maximum non-guaranteed number of extension flow counters supported for this function, in TX direction. */
+	uint32_t	max_tx_efc;
+	/* Minimum guaranteed number of meter drop counters supported for this function, in RX direction. */
+	uint32_t	min_rx_mdc;
+	/* Maximum non-guaranteed number of meter drop counters supported for this function, in RX direction. */
+	uint32_t	max_rx_mdc;
+	/* Minimum guaranteed number of meter drop counters supported for this function, in TX direction. */
+	uint32_t	min_tx_mdc;
+	/* Maximum non-guaranteed number of meter drop counters supported for this function, in TX direction. */
+	uint32_t	max_tx_mdc;
+	/* Maximum guaranteed number of flow counters which can be used during flow alloc. */
+	uint32_t	max_flow_alloc_fc;
+	uint8_t	unused_1[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/************************
+ * hwrm_cfa_counter_cfg *
+ ************************/
+
+
+/* hwrm_cfa_counter_cfg_input (size:256b/32B) */
+struct hwrm_cfa_counter_cfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint16_t	flags;
+	/* Enumeration denoting the configuration mode. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_CFG_MODE \
+		UINT32_C(0x1)
+	/* Disable the configuration mode. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_CFG_MODE_DISABLE \
+		UINT32_C(0x0)
+	/* Enable the configuration mode. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_CFG_MODE_ENABLE \
+		UINT32_C(0x1)
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_CFG_MODE_LAST \
+		HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_CFG_MODE_ENABLE
+	/* Enumeration denoting the RX, TX type of the resource. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_PATH \
+		UINT32_C(0x2)
+	/* Tx path. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_PATH_TX \
+		(UINT32_C(0x0) << 1)
+	/* Rx path. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_PATH_RX \
+		(UINT32_C(0x1) << 1)
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_PATH_LAST \
+		HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_PATH_RX
+	/* Enumeration denoting the data transfer mode. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_DATA_TRANSFER_MODE_MASK \
+		UINT32_C(0xc)
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_DATA_TRANSFER_MODE_SFT       2
+	/* Push mode. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_DATA_TRANSFER_MODE_PUSH \
+		(UINT32_C(0x0) << 2)
+	/* Pull mode. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_DATA_TRANSFER_MODE_PULL \
+		(UINT32_C(0x1) << 2)
+	/* Pull on async update. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_DATA_TRANSFER_MODE_PULL_ASYNC \
+		(UINT32_C(0x2) << 2)
+	#define HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_DATA_TRANSFER_MODE_LAST \
+		HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_DATA_TRANSFER_MODE_PULL_ASYNC
+	uint16_t	counter_type;
+	/* Flow counters. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_COUNTER_TYPE_FC  UINT32_C(0x0)
+	/* Extended flow counters. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_COUNTER_TYPE_EFC UINT32_C(0x1)
+	/* Meter drop counters. */
+	#define HWRM_CFA_COUNTER_CFG_INPUT_COUNTER_TYPE_MDC UINT32_C(0x2)
+	#define HWRM_CFA_COUNTER_CFG_INPUT_COUNTER_TYPE_LAST \
+		HWRM_CFA_COUNTER_CFG_INPUT_COUNTER_TYPE_MDC
+	/* Ctx memory handle to be used for the counter. */
+	uint16_t	ctx_id;
+	/* Counter update cadence hint (only in Push mode). */
+	uint16_t	update_tmr_ms;
+	/* Total number of entries. */
+	uint32_t	num_entries;
+	uint32_t	unused_0;
+} __rte_packed;
+
+/* hwrm_cfa_counter_cfg_output (size:128b/16B) */
+struct hwrm_cfa_counter_cfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/***************************
+ * hwrm_cfa_counter_qstats *
+ ***************************/
+
+
+/* hwrm_cfa_counter_qstats_input (size:320b/40B) */
+struct hwrm_cfa_counter_qstats_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint16_t	flags;
+	/* Enumeration denoting the RX, TX type of the resource. */
+	#define HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH     UINT32_C(0x1)
+	/* Tx path. */
+	#define HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH_TX    UINT32_C(0x0)
+	/* Rx path. */
+	#define HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH_RX    UINT32_C(0x1)
+	#define HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH_LAST \
+		HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH_RX
+	uint16_t	counter_type;
+	uint16_t	input_flow_ctx_id;
+	uint16_t	num_entries;
+	uint16_t	delta_time_ms;
+	uint16_t	meter_instance_id;
+	uint16_t	mdc_ctx_id;
+	uint8_t	unused_0[2];
+	uint64_t	expected_count;
+} __rte_packed;
+
+/* hwrm_cfa_counter_qstats_output (size:128b/16B) */
+struct hwrm_cfa_counter_qstats_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */

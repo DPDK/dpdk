@@ -128,8 +128,10 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 				     DEV_RX_OFFLOAD_RSS_HASH)
 
 #define BNXT_DEVARG_TRUFLOW	"host-based-truflow"
+#define BNXT_DEVARG_FLOW_XSTAT	"flow-xstat"
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_TRUFLOW,
+	BNXT_DEVARG_FLOW_XSTAT,
 	NULL
 };
 
@@ -138,6 +140,12 @@ static const char *const bnxt_dev_args[] = {
  * truflow == true to enable the feature
  */
 #define	BNXT_DEVARG_TRUFLOW_INVALID(truflow)	((truflow) > 1)
+
+/*
+ * flow_xstat == false to disable the feature
+ * flow_xstat == true to enable the feature
+ */
+#define	BNXT_DEVARG_FLOW_XSTAT_INVALID(flow_xstat)	((flow_xstat) > 1)
 
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
@@ -330,6 +338,154 @@ static int bnxt_setup_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 err_out:
 	PMD_DRV_LOG(ERR, "HWRM vnic %d cfg failure rc: %x\n",
 		    vnic_id, rc);
+	return rc;
+}
+
+static int bnxt_register_fc_ctx_mem(struct bnxt *bp)
+{
+	int rc = 0;
+
+	rc = bnxt_hwrm_ctx_rgtr(bp, bp->rx_fc_in_tbl.dma,
+				&bp->rx_fc_in_tbl.ctx_id);
+	if (rc)
+		return rc;
+
+	PMD_DRV_LOG(DEBUG,
+		    "rx_fc_in_tbl.va = %p rx_fc_in_tbl.dma = %p"
+		    " rx_fc_in_tbl.ctx_id = %d\n",
+		    bp->rx_fc_in_tbl.va,
+		    (void *)((uintptr_t)bp->rx_fc_in_tbl.dma),
+		    bp->rx_fc_in_tbl.ctx_id);
+
+	rc = bnxt_hwrm_ctx_rgtr(bp, bp->rx_fc_out_tbl.dma,
+				&bp->rx_fc_out_tbl.ctx_id);
+	if (rc)
+		return rc;
+
+	PMD_DRV_LOG(DEBUG,
+		    "rx_fc_out_tbl.va = %p rx_fc_out_tbl.dma = %p"
+		    " rx_fc_out_tbl.ctx_id = %d\n",
+		    bp->rx_fc_out_tbl.va,
+		    (void *)((uintptr_t)bp->rx_fc_out_tbl.dma),
+		    bp->rx_fc_out_tbl.ctx_id);
+
+	rc = bnxt_hwrm_ctx_rgtr(bp, bp->tx_fc_in_tbl.dma,
+				&bp->tx_fc_in_tbl.ctx_id);
+	if (rc)
+		return rc;
+
+	PMD_DRV_LOG(DEBUG,
+		    "tx_fc_in_tbl.va = %p tx_fc_in_tbl.dma = %p"
+		    " tx_fc_in_tbl.ctx_id = %d\n",
+		    bp->tx_fc_in_tbl.va,
+		    (void *)((uintptr_t)bp->tx_fc_in_tbl.dma),
+		    bp->tx_fc_in_tbl.ctx_id);
+
+	rc = bnxt_hwrm_ctx_rgtr(bp, bp->tx_fc_out_tbl.dma,
+				&bp->tx_fc_out_tbl.ctx_id);
+	if (rc)
+		return rc;
+
+	PMD_DRV_LOG(DEBUG,
+		    "tx_fc_out_tbl.va = %p tx_fc_out_tbl.dma = %p"
+		    " tx_fc_out_tbl.ctx_id = %d\n",
+		    bp->tx_fc_out_tbl.va,
+		    (void *)((uintptr_t)bp->tx_fc_out_tbl.dma),
+		    bp->tx_fc_out_tbl.ctx_id);
+
+	memset(bp->rx_fc_out_tbl.va, 0, bp->rx_fc_out_tbl.size);
+	rc = bnxt_hwrm_cfa_counter_cfg(bp, BNXT_DIR_RX,
+				       CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC,
+				       bp->rx_fc_out_tbl.ctx_id,
+				       bp->max_fc,
+				       true);
+	if (rc)
+		return rc;
+
+	memset(bp->tx_fc_out_tbl.va, 0, bp->tx_fc_out_tbl.size);
+	rc = bnxt_hwrm_cfa_counter_cfg(bp, BNXT_DIR_TX,
+				       CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC,
+				       bp->tx_fc_out_tbl.ctx_id,
+				       bp->max_fc,
+				       true);
+
+	return rc;
+}
+
+static int bnxt_alloc_ctx_mem_buf(char *type, size_t size,
+				  struct bnxt_ctx_mem_buf_info *ctx)
+{
+	if (!ctx)
+		return -EINVAL;
+
+	ctx->va = rte_zmalloc(type, size, 0);
+	if (ctx->va == NULL)
+		return -ENOMEM;
+	rte_mem_lock_page(ctx->va);
+	ctx->size = size;
+	ctx->dma = rte_mem_virt2iova(ctx->va);
+	if (ctx->dma == RTE_BAD_IOVA)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static int bnxt_init_fc_ctx_mem(struct bnxt *bp)
+{
+	struct rte_pci_device *pdev = bp->pdev;
+	char type[RTE_MEMZONE_NAMESIZE];
+	uint16_t max_fc;
+	int rc = 0;
+
+	max_fc = bp->max_fc;
+
+	sprintf(type, "bnxt_rx_fc_in_" PCI_PRI_FMT, pdev->addr.domain,
+		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
+	/* 4 bytes for each counter-id */
+	rc = bnxt_alloc_ctx_mem_buf(type, max_fc * 4, &bp->rx_fc_in_tbl);
+	if (rc)
+		return rc;
+
+	sprintf(type, "bnxt_rx_fc_out_" PCI_PRI_FMT, pdev->addr.domain,
+		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
+	/* 16 bytes for each counter - 8 bytes pkt_count, 8 bytes byte_count */
+	rc = bnxt_alloc_ctx_mem_buf(type, max_fc * 16, &bp->rx_fc_out_tbl);
+	if (rc)
+		return rc;
+
+	sprintf(type, "bnxt_tx_fc_in_" PCI_PRI_FMT, pdev->addr.domain,
+		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
+	/* 4 bytes for each counter-id */
+	rc = bnxt_alloc_ctx_mem_buf(type, max_fc * 4, &bp->tx_fc_in_tbl);
+	if (rc)
+		return rc;
+
+	sprintf(type, "bnxt_tx_fc_out_" PCI_PRI_FMT, pdev->addr.domain,
+		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
+	/* 16 bytes for each counter - 8 bytes pkt_count, 8 bytes byte_count */
+	rc = bnxt_alloc_ctx_mem_buf(type, max_fc * 16, &bp->tx_fc_out_tbl);
+	if (rc)
+		return rc;
+
+	rc = bnxt_register_fc_ctx_mem(bp);
+
+	return rc;
+}
+
+static int bnxt_init_ctx_mem(struct bnxt *bp)
+{
+	int rc = 0;
+
+	if (!(bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS) ||
+	    !(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp)))
+		return 0;
+
+	rc = bnxt_hwrm_cfa_counter_qcaps(bp, &bp->max_fc);
+	if (rc)
+		return rc;
+
+	rc = bnxt_init_fc_ctx_mem(bp);
+
 	return rc;
 }
 
@@ -1005,6 +1161,7 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	/* cancel the recovery handler before remove dev */
 	rte_eal_alarm_cancel(bnxt_dev_reset_and_resume, (void *)bp);
 	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);
+	bnxt_cancel_fc_thread(bp);
 
 	if (eth_dev->data->dev_started)
 		bnxt_dev_stop_op(eth_dev);
@@ -4871,6 +5028,12 @@ static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 	if (rc)
 		return rc;
 
+	rc = bnxt_init_ctx_mem(bp);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Failed to init adv_flow_counters\n");
+		return rc;
+	}
+
 	rc = bnxt_init_locks(bp);
 	if (rc)
 		return rc;
@@ -4913,6 +5076,41 @@ bnxt_parse_devarg_truflow(__rte_unused const char *key,
 	return 0;
 }
 
+static int
+bnxt_parse_devarg_flow_xstat(__rte_unused const char *key,
+			     const char *value, void *opaque_arg)
+{
+	struct bnxt *bp = opaque_arg;
+	unsigned long flow_xstat;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to flow_xstat devarg.\n");
+		return -EINVAL;
+	}
+
+	flow_xstat = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (flow_xstat == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to flow_xstat devarg.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_FLOW_XSTAT_INVALID(flow_xstat)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to flow_xstat devarg.\n");
+		return -EINVAL;
+	}
+
+	bp->flow_xstat = flow_xstat;
+	if (bp->flow_xstat)
+		PMD_DRV_LOG(INFO, "flow_xstat feature enabled.\n");
+
+	return 0;
+}
+
 static void
 bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 {
@@ -4931,6 +5129,13 @@ bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 	 */
 	rte_kvargs_process(kvlist, BNXT_DEVARG_TRUFLOW,
 			   bnxt_parse_devarg_truflow, bp);
+
+	/*
+	 * Handler for "flow_xstat" devarg.
+	 * Invoked as for ex: "-w 0000:00:0d.0,flow_xstat=1”
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_FLOW_XSTAT,
+			   bnxt_parse_devarg_flow_xstat, bp);
 
 	rte_kvargs_free(kvlist);
 }
@@ -5016,6 +5221,66 @@ error_free:
 	return rc;
 }
 
+
+static void bnxt_free_ctx_mem_buf(struct bnxt_ctx_mem_buf_info *ctx)
+{
+	if (!ctx)
+		return;
+
+	if (ctx->va)
+		rte_free(ctx->va);
+
+	ctx->va = NULL;
+	ctx->dma = RTE_BAD_IOVA;
+	ctx->ctx_id = BNXT_CTX_VAL_INVAL;
+}
+
+static void bnxt_unregister_fc_ctx_mem(struct bnxt *bp)
+{
+	bnxt_hwrm_cfa_counter_cfg(bp, BNXT_DIR_RX,
+				  CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC,
+				  bp->rx_fc_out_tbl.ctx_id,
+				  bp->max_fc,
+				  false);
+
+	bnxt_hwrm_cfa_counter_cfg(bp, BNXT_DIR_TX,
+				  CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC,
+				  bp->tx_fc_out_tbl.ctx_id,
+				  bp->max_fc,
+				  false);
+
+	if (bp->rx_fc_in_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
+		bnxt_hwrm_ctx_unrgtr(bp, bp->rx_fc_in_tbl.ctx_id);
+	bp->rx_fc_in_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
+
+	if (bp->rx_fc_out_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
+		bnxt_hwrm_ctx_unrgtr(bp, bp->rx_fc_out_tbl.ctx_id);
+	bp->rx_fc_out_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
+
+	if (bp->tx_fc_in_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
+		bnxt_hwrm_ctx_unrgtr(bp, bp->tx_fc_in_tbl.ctx_id);
+	bp->tx_fc_in_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
+
+	if (bp->tx_fc_out_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
+		bnxt_hwrm_ctx_unrgtr(bp, bp->tx_fc_out_tbl.ctx_id);
+	bp->tx_fc_out_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
+}
+
+static void bnxt_uninit_fc_ctx_mem(struct bnxt *bp)
+{
+	bnxt_unregister_fc_ctx_mem(bp);
+
+	bnxt_free_ctx_mem_buf(&bp->rx_fc_in_tbl);
+	bnxt_free_ctx_mem_buf(&bp->rx_fc_out_tbl);
+	bnxt_free_ctx_mem_buf(&bp->tx_fc_in_tbl);
+	bnxt_free_ctx_mem_buf(&bp->tx_fc_out_tbl);
+}
+
+static void bnxt_uninit_ctx_mem(struct bnxt *bp)
+{
+	bnxt_uninit_fc_ctx_mem(bp);
+}
+
 static void
 bnxt_uninit_locks(struct bnxt *bp)
 {
@@ -5042,6 +5307,8 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 			bp->recovery_info = NULL;
 		}
 	}
+
+	bnxt_uninit_ctx_mem(bp);
 
 	bnxt_uninit_locks(bp);
 	rte_free(bp->ptp_cfg);

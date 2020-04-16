@@ -10,6 +10,8 @@
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_tailq.h>
+#include <rte_alarm.h>
+#include <rte_cycles.h>
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
@@ -1627,6 +1629,51 @@ bnxt_match_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 	return 0;
 }
 
+static void
+bnxt_setup_flow_counter(struct bnxt *bp)
+{
+	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
+	    !(bp->flags & BNXT_FLAG_FC_THREAD)) {
+		rte_eal_alarm_set(US_PER_S * BNXT_FC_TIMER,
+				  bnxt_flow_cnt_alarm_cb,
+				  (void *)bp);
+		bp->flags |= BNXT_FLAG_FC_THREAD;
+	}
+}
+
+void bnxt_flow_cnt_alarm_cb(void *arg)
+{
+	int rc = 0;
+	struct bnxt *bp = arg;
+
+	if (!bp->rx_fc_out_tbl.va) {
+		PMD_DRV_LOG(ERR, "bp->rx_fc_out_tbl.va is NULL?\n");
+		bnxt_cancel_fc_thread(bp);
+		return;
+	}
+
+	if (!bp->flow_count) {
+		bnxt_cancel_fc_thread(bp);
+		return;
+	}
+
+	if (!bp->eth_dev->data->dev_started) {
+		bnxt_cancel_fc_thread(bp);
+		return;
+	}
+
+	rc = bnxt_flow_stats_req(bp);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Flow stat alarm not rescheduled.\n");
+		return;
+	}
+
+	rte_eal_alarm_set(US_PER_S * BNXT_FC_TIMER,
+			  bnxt_flow_cnt_alarm_cb,
+			  (void *)bp);
+}
+
+
 static struct rte_flow *
 bnxt_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr,
@@ -1783,7 +1830,9 @@ done:
 			bp->mark_table[flow_id].valid = true;
 			bp->mark_table[flow_id].mark_id = filter->mark;
 		}
+		bp->flow_count++;
 		bnxt_release_flow_lock(bp);
+		bnxt_setup_flow_counter(bp);
 		return flow;
 	}
 
@@ -1903,6 +1952,7 @@ done:
 		bnxt_free_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);
+		bp->flow_count--;
 
 		/* If this was the last flow associated with this vnic,
 		 * switch the queue back to RSS pool.
@@ -1955,6 +2005,12 @@ bnxt_flow_destroy(struct rte_eth_dev *dev,
 	return ret;
 }
 
+void bnxt_cancel_fc_thread(struct bnxt *bp)
+{
+	bp->flags &= ~BNXT_FLAG_FC_THREAD;
+	rte_eal_alarm_cancel(bnxt_flow_cnt_alarm_cb, (void *)bp);
+}
+
 static int
 bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
@@ -1981,6 +2037,8 @@ bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 				break;
 		}
 	}
+
+	bnxt_cancel_fc_thread(bp);
 	bnxt_release_flow_lock(bp);
 
 	return ret;

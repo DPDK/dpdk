@@ -744,6 +744,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	} else {
 		bp->max_vnics = 1;
 	}
+	PMD_DRV_LOG(DEBUG, "Max l2_cntxts is %d vnics is %d\n",
+		    bp->max_l2_ctx, bp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 	if (BNXT_PF(bp)) {
 		bp->pf.total_vnics = rte_le_to_cpu_16(resp->max_vnics);
@@ -1169,9 +1171,16 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 		PMD_DRV_LOG(DEBUG, "FW supports Trusted VFs\n");
 	if (dev_caps_cfg &
 	    HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_CFA_ADV_FLOW_MGNT_SUPPORTED) {
-		bp->flags |= BNXT_FLAG_ADV_FLOW_MGMT;
+		bp->fw_cap |= BNXT_FW_CAP_ADV_FLOW_MGMT;
 		PMD_DRV_LOG(DEBUG, "FW supports advanced flow management\n");
 	}
+
+	if (dev_caps_cfg &
+	    HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_ADV_FLOW_COUNTERS_SUPPORTED) {
+		PMD_DRV_LOG(DEBUG, "FW supports advanced flow counters\n");
+		bp->fw_cap |= BNXT_FW_CAP_ADV_FLOW_COUNTERS;
+	}
+
 
 error:
 	HWRM_UNLOCK();
@@ -5216,7 +5225,7 @@ int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp)
 	uint32_t flags = 0;
 	int rc = 0;
 
-	if (!(bp->flags & BNXT_FLAG_ADV_FLOW_MGMT))
+	if (!(bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT))
 		return rc;
 
 	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
@@ -5238,4 +5247,160 @@ int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp)
 	}
 
 	return rc;
+}
+
+int bnxt_hwrm_cfa_counter_qcaps(struct bnxt *bp, uint16_t *max_fc)
+{
+	int rc = 0;
+
+	struct hwrm_cfa_counter_qcaps_input req = {0};
+	struct hwrm_cfa_counter_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_COUNTER_QCAPS, BNXT_USE_KONG(bp));
+	req.target_id = rte_cpu_to_le_16(bp->fw_fid);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+
+	HWRM_CHECK_RESULT();
+	if (max_fc)
+		*max_fc = rte_le_to_cpu_16(resp->max_rx_fc);
+	HWRM_UNLOCK();
+
+	PMD_DRV_LOG(DEBUG, "max_fc = %d\n", *max_fc);
+	return 0;
+}
+
+int bnxt_hwrm_ctx_rgtr(struct bnxt *bp, rte_iova_t dma_addr, uint16_t *ctx_id)
+{
+	int rc = 0;
+	struct hwrm_cfa_ctx_mem_rgtr_input req = {.req_type = 0 };
+	struct hwrm_cfa_ctx_mem_rgtr_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_CTX_MEM_RGTR, BNXT_USE_KONG(bp));
+
+	req.page_level = HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_LEVEL_LVL_0;
+	req.page_size = HWRM_CFA_CTX_MEM_RGTR_INPUT_PAGE_SIZE_2M;
+	req.page_dir = rte_cpu_to_le_64(dma_addr);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+
+	HWRM_CHECK_RESULT();
+	if (ctx_id) {
+		*ctx_id  = rte_le_to_cpu_16(resp->ctx_id);
+		PMD_DRV_LOG(DEBUG, "ctx_id = %d\n", *ctx_id);
+	}
+	HWRM_UNLOCK();
+
+	return 0;
+}
+
+int bnxt_hwrm_ctx_unrgtr(struct bnxt *bp, uint16_t ctx_id)
+{
+	int rc = 0;
+	struct hwrm_cfa_ctx_mem_unrgtr_input req = {.req_type = 0 };
+	struct hwrm_cfa_ctx_mem_unrgtr_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_CTX_MEM_UNRGTR, BNXT_USE_KONG(bp));
+
+	req.ctx_id = rte_cpu_to_le_16(ctx_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_cfa_counter_cfg(struct bnxt *bp, enum bnxt_flow_dir dir,
+			      uint16_t cntr, uint16_t ctx_id,
+			      uint32_t num_entries, bool enable)
+{
+	struct hwrm_cfa_counter_cfg_input req = {0};
+	struct hwrm_cfa_counter_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint16_t flags = 0;
+	int rc;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_COUNTER_CFG, BNXT_USE_KONG(bp));
+
+	req.target_id = rte_cpu_to_le_16(bp->fw_fid);
+	req.counter_type = rte_cpu_to_le_16(cntr);
+	flags = enable ? HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_CFG_MODE_ENABLE :
+		HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_CFG_MODE_DISABLE;
+	flags |= HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_DATA_TRANSFER_MODE_PULL;
+	if (dir == BNXT_DIR_RX)
+		flags |=  HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_PATH_RX;
+	else if (dir == BNXT_DIR_TX)
+		flags |=  HWRM_CFA_COUNTER_CFG_INPUT_FLAGS_PATH_TX;
+	req.flags = rte_cpu_to_le_16(flags);
+	req.ctx_id =  rte_cpu_to_le_16(ctx_id);
+	req.num_entries = rte_cpu_to_le_32(num_entries);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return 0;
+}
+
+int bnxt_hwrm_cfa_counter_qstats(struct bnxt *bp,
+				 enum bnxt_flow_dir dir,
+				 uint16_t cntr,
+				 uint16_t num_entries)
+{
+	struct hwrm_cfa_counter_qstats_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_cfa_counter_qstats_input req = {0};
+	uint16_t flow_ctx_id = 0;
+	uint16_t flags = 0;
+	int rc = 0;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	if (dir == BNXT_DIR_RX) {
+		flow_ctx_id = bp->rx_fc_in_tbl.ctx_id;
+		flags = HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH_RX;
+	} else if (dir == BNXT_DIR_TX) {
+		flow_ctx_id = bp->tx_fc_in_tbl.ctx_id;
+		flags = HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH_TX;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_COUNTER_QSTATS, BNXT_USE_KONG(bp));
+	req.target_id = rte_cpu_to_le_16(bp->fw_fid);
+	req.counter_type = rte_cpu_to_le_16(cntr);
+	req.input_flow_ctx_id = rte_cpu_to_le_16(flow_ctx_id);
+	req.num_entries = rte_cpu_to_le_16(num_entries);
+	req.flags = rte_cpu_to_le_16(flags);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_KONG(bp));
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return 0;
 }

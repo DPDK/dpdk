@@ -10,10 +10,12 @@
 
 #include "bnxt.h"
 #include "bnxt_cpr.h"
+#include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_rxq.h"
 #include "bnxt_stats.h"
 #include "bnxt_txq.h"
+#include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 
 static const struct bnxt_xstats_name_off bnxt_rx_stats_strings[] = {
@@ -611,7 +613,9 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		RTE_DIM(bnxt_tx_stats_strings) +
 		RTE_DIM(bnxt_func_stats_strings) +
 		RTE_DIM(bnxt_rx_ext_stats_strings) +
-		RTE_DIM(bnxt_tx_ext_stats_strings);
+		RTE_DIM(bnxt_tx_ext_stats_strings) +
+		bnxt_flow_stats_cnt(bp);
+
 	stat_count = count;
 
 	if (n < count)
@@ -660,24 +664,77 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		xstats[count].value = rte_le_to_cpu_64
 					(*(uint64_t *)((char *)tx_stats_ext +
 					 bnxt_tx_ext_stats_strings[i].offset));
-
 		count++;
+	}
+
+	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
+	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
+	    bp->flow_xstat) {
+		int j;
+
+		i = 0;
+		for (j = 0; j < bp->max_vnics; j++) {
+			struct bnxt_filter_info *filter;
+			struct bnxt_vnic_info *vnic;
+			struct rte_flow *flow;
+
+			vnic = &bp->vnic_info[j];
+			if (vnic && vnic->fw_vnic_id == INVALID_VNIC_ID)
+				continue;
+
+			if (STAILQ_EMPTY(&vnic->flow_list))
+				continue;
+
+			STAILQ_FOREACH(flow, &vnic->flow_list, next) {
+				if (!flow || !flow->filter)
+					continue;
+
+				filter = flow->filter;
+				xstats[count].id = count;
+				xstats[count].value =
+					filter->hw_stats.bytes;
+				count++;
+				xstats[count].id = count;
+				xstats[count].value =
+					filter->hw_stats.packets;
+				count++;
+				if (++i > bp->max_l2_ctx)
+					break;
+			}
+			if (i > bp->max_l2_ctx)
+				break;
+		}
 	}
 
 	return stat_count;
 }
 
-int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
-				 struct rte_eth_xstat_name *xstats_names,
-				 __rte_unused unsigned int limit)
+int bnxt_flow_stats_cnt(struct bnxt *bp)
 {
+	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
+	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
+	    bp->flow_xstat) {
+		struct bnxt_xstats_name_off flow_bytes[bp->max_l2_ctx];
+		struct bnxt_xstats_name_off flow_pkts[bp->max_l2_ctx];
+
+		return RTE_DIM(flow_bytes) + RTE_DIM(flow_pkts);
+	}
+
+	return 0;
+}
+
+int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
+		struct rte_eth_xstat_name *xstats_names,
+		__rte_unused unsigned int limit)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
 				RTE_DIM(bnxt_tx_stats_strings) +
 				RTE_DIM(bnxt_func_stats_strings) +
 				RTE_DIM(bnxt_rx_ext_stats_strings) +
-				RTE_DIM(bnxt_tx_ext_stats_strings);
-	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
-	unsigned int i, count;
+				RTE_DIM(bnxt_tx_ext_stats_strings) +
+				bnxt_flow_stats_cnt(bp);
+	unsigned int i, count = 0;
 	int rc;
 
 	rc = is_bnxt_in_error(bp);
@@ -724,7 +781,26 @@ int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 			count++;
 		}
 
+		if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
+		    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
+		    bp->flow_xstat) {
+			for (i = 0; i < bp->max_l2_ctx; i++) {
+				char buf[RTE_ETH_XSTATS_NAME_SIZE];
+
+				sprintf(buf, "flow_%d_bytes", i);
+				strlcpy(xstats_names[count].name, buf,
+					sizeof(xstats_names[count].name));
+				count++;
+
+				sprintf(buf, "flow_%d_packets", i);
+				strlcpy(xstats_names[count].name, buf,
+					sizeof(xstats_names[count].name));
+
+				count++;
+			}
+		}
 	}
+
 	return stat_cnt;
 }
 
@@ -754,12 +830,13 @@ int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
 		uint64_t *values, unsigned int limit)
 {
+	struct bnxt *bp = dev->data->dev_private;
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
 				RTE_DIM(bnxt_tx_stats_strings) +
 				RTE_DIM(bnxt_func_stats_strings) +
 				RTE_DIM(bnxt_rx_ext_stats_strings) +
-				RTE_DIM(bnxt_tx_ext_stats_strings);
-	struct bnxt *bp = dev->data->dev_private;
+				RTE_DIM(bnxt_tx_ext_stats_strings) +
+				bnxt_flow_stats_cnt(bp);
 	struct rte_eth_xstat xstats[stat_cnt];
 	uint64_t values_copy[stat_cnt];
 	uint16_t i;
@@ -787,13 +864,14 @@ int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
 				struct rte_eth_xstat_name *xstats_names,
 				const uint64_t *ids, unsigned int limit)
 {
+	struct bnxt *bp = dev->data->dev_private;
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
 				RTE_DIM(bnxt_tx_stats_strings) +
 				RTE_DIM(bnxt_func_stats_strings) +
 				RTE_DIM(bnxt_rx_ext_stats_strings) +
-				RTE_DIM(bnxt_tx_ext_stats_strings);
+				RTE_DIM(bnxt_tx_ext_stats_strings) +
+				bnxt_flow_stats_cnt(bp);
 	struct rte_eth_xstat_name xstats_names_copy[stat_cnt];
-	struct bnxt *bp = dev->data->dev_private;
 	uint16_t i;
 	int rc;
 
@@ -816,4 +894,136 @@ int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
 				xstats_names_copy[ids[i]].name);
 	}
 	return stat_cnt;
+}
+
+/* Update the input context memory with the flow counter IDs
+ * of the flows that we are interested in.
+ * Also, update the output tables with the current local values
+ * since that is what will be used by FW to accumulate
+ */
+static void bnxt_update_fc_pre_qstat(uint32_t *in_tbl,
+				     uint64_t *out_tbl,
+				     struct bnxt_filter_info *filter,
+				     uint32_t *ptbl_cnt)
+{
+	uint32_t in_tbl_cnt = *ptbl_cnt;
+
+	in_tbl[in_tbl_cnt] = filter->flow_id;
+	out_tbl[2 * in_tbl_cnt] = filter->hw_stats.packets;
+	out_tbl[2 * in_tbl_cnt + 1] = filter->hw_stats.bytes;
+	in_tbl_cnt++;
+	*ptbl_cnt = in_tbl_cnt;
+}
+
+/* Post issuing counter_qstats cmd, update the driver's local stat
+ * entries with the values DMA-ed by FW in the output table
+ */
+static void bnxt_update_fc_post_qstat(struct bnxt_filter_info *filter,
+				      uint64_t *out_tbl,
+				      uint32_t out_tbl_idx)
+{
+	filter->hw_stats.packets = out_tbl[2 * out_tbl_idx];
+	filter->hw_stats.bytes = out_tbl[(2 * out_tbl_idx) + 1];
+}
+
+static int bnxt_update_fc_tbl(struct bnxt *bp, uint16_t ctr,
+			      struct bnxt_filter_info *en_tbl[],
+			      uint16_t in_flow_cnt)
+{
+	uint32_t *in_rx_tbl;
+	uint64_t *out_rx_tbl;
+	uint32_t in_rx_tbl_cnt = 0;
+	uint32_t out_rx_tbl_cnt = 0;
+	int i, rc = 0;
+
+	in_rx_tbl = (uint32_t *)bp->rx_fc_in_tbl.va;
+	out_rx_tbl = (uint64_t *)bp->rx_fc_out_tbl.va;
+
+	for (i = 0; i < in_flow_cnt; i++) {
+		if (!en_tbl[i])
+			continue;
+
+		/* Currently only ingress/Rx flows are supported anyway. */
+		bnxt_update_fc_pre_qstat(in_rx_tbl, out_rx_tbl,
+					 en_tbl[i], &in_rx_tbl_cnt);
+	}
+
+	/* Currently only ingress/Rx flows are supported */
+	if (in_rx_tbl_cnt) {
+		rc = bnxt_hwrm_cfa_counter_qstats(bp, BNXT_DIR_RX, ctr,
+						  in_rx_tbl_cnt);
+		if (rc)
+			return rc;
+	}
+
+	for (i = 0; i < in_flow_cnt; i++) {
+		if (!en_tbl[i])
+			continue;
+
+		/* Currently only ingress/Rx flows are supported */
+		bnxt_update_fc_post_qstat(en_tbl[i], out_rx_tbl,
+					  out_rx_tbl_cnt);
+		out_rx_tbl_cnt++;
+	}
+
+	return rc;
+}
+
+/* Walks through the list which has all the flows
+ * requesting for explicit flow counters.
+ */
+int bnxt_flow_stats_req(struct bnxt *bp)
+{
+	int i;
+	int rc = 0;
+	struct rte_flow *flow;
+	uint16_t in_flow_tbl_cnt = 0;
+	struct bnxt_vnic_info *vnic = NULL;
+	struct bnxt_filter_info *valid_en_tbl[bp->max_fc];
+	uint16_t counter_type = CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC;
+
+	bnxt_acquire_flow_lock(bp);
+	for (i = 0; i < bp->max_vnics; i++) {
+		vnic = &bp->vnic_info[i];
+		if (vnic && vnic->fw_vnic_id == INVALID_VNIC_ID)
+			continue;
+
+		if (STAILQ_EMPTY(&vnic->flow_list))
+			continue;
+
+		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
+			if (!flow || !flow->filter)
+				continue;
+
+			valid_en_tbl[in_flow_tbl_cnt++] = flow->filter;
+			if (in_flow_tbl_cnt >= bp->max_fc) {
+				rc = bnxt_update_fc_tbl(bp, counter_type,
+							valid_en_tbl,
+							in_flow_tbl_cnt);
+				if (rc)
+					goto err;
+				in_flow_tbl_cnt = 0;
+				continue;
+			}
+		}
+	}
+
+	if (!in_flow_tbl_cnt)
+		goto out;
+
+	rc = bnxt_update_fc_tbl(bp, counter_type, valid_en_tbl,
+				in_flow_tbl_cnt);
+	if (!rc) {
+		bnxt_release_flow_lock(bp);
+		return 0;
+	}
+
+err:
+	/* If cmd fails once, no need of
+	 * invoking again every second
+	 */
+	bnxt_release_flow_lock(bp);
+	bnxt_cancel_fc_thread(bp);
+out:
+	return rc;
 }

@@ -433,6 +433,13 @@ struct bnxt_ctx_mem_info {
 	struct bnxt_ctx_pg_info *tqm_mem[BNXT_MAX_TC_Q];
 };
 
+struct bnxt_ctx_mem_buf_info {
+	void		*va;
+	rte_iova_t	dma;
+	uint16_t	ctx_id;
+	size_t		size;
+};
+
 /* Maximum Firmware Reset bail out value in milliseconds */
 #define BNXT_MAX_FW_RESET_TIMEOUT	6000
 /* Minimum time required for the firmware readiness in milliseconds */
@@ -530,7 +537,7 @@ struct bnxt {
 #define BNXT_FLAG_NEW_RM			BIT(20)
 #define BNXT_FLAG_NPAR_PF			BIT(21)
 #define BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS		BIT(22)
-#define BNXT_FLAG_ADV_FLOW_MGMT			BIT(23)
+#define BNXT_FLAG_FC_THREAD			BIT(23)
 #define BNXT_FLAG_RX_VECTOR_PKT_MODE		BIT(24)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
@@ -550,6 +557,8 @@ struct bnxt {
 #define BNXT_FW_CAP_IF_CHANGE		BIT(1)
 #define BNXT_FW_CAP_ERROR_RECOVERY	BIT(2)
 #define BNXT_FW_CAP_ERR_RECOVER_RELOAD	BIT(3)
+#define BNXT_FW_CAP_ADV_FLOW_MGMT	BIT(5)
+#define BNXT_FW_CAP_ADV_FLOW_COUNTERS	BIT(6)
 
 	uint32_t		flow_flags;
 #define BNXT_FLOW_FLAG_L2_HDR_SRC_FILTER_EN	BIT(0)
@@ -690,7 +699,16 @@ struct bnxt {
 	struct tf		tfp;
 	struct bnxt_ulp_context	ulp_ctx;
 	uint8_t			truflow;
+	uint16_t                max_fc;
+	struct bnxt_ctx_mem_buf_info rx_fc_in_tbl;
+	struct bnxt_ctx_mem_buf_info rx_fc_out_tbl;
+	struct bnxt_ctx_mem_buf_info tx_fc_in_tbl;
+	struct bnxt_ctx_mem_buf_info tx_fc_out_tbl;
+	uint16_t		flow_count;
+	uint8_t			flow_xstat;
 };
+
+#define BNXT_FC_TIMER	1 /* Timer freq in Sec Flow Counters */
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
 int bnxt_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete,
@@ -738,4 +756,8 @@ void bnxt_ulp_deinit(struct bnxt *bp);
 uint16_t bnxt_get_vnic_id(uint16_t port);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif);
 
+void bnxt_cancel_fc_thread(struct bnxt *bp);
+void bnxt_flow_cnt_alarm_cb(void *arg);
+int bnxt_flow_stats_req(struct bnxt *bp);
+int bnxt_flow_stats_cnt(struct bnxt *bp);
 #endif

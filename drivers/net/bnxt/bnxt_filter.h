@@ -25,6 +25,11 @@ struct bnxt;
 #define BNXT_FLOW_PARSE_INNER_FLAG		BIT(6)
 #define BNXT_FLOW_MARK_FLAG			BIT(7)
 
+struct bnxt_flow_stats {
+	uint64_t	packets;
+	uint64_t	bytes;
+};
+
 struct bnxt_filter_info {
 	STAILQ_ENTRY(bnxt_filter_info)	next;
 	uint32_t		flow_id;
@@ -84,6 +89,7 @@ struct bnxt_filter_info {
 	 */
 	struct			bnxt_vnic_info *vnic;
 	uint32_t		mark;
+	struct bnxt_flow_stats	hw_stats;
 };
 
 struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp);

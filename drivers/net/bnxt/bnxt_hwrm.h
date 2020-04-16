@@ -88,6 +88,18 @@ int bnxt_hwrm_tf_message_direct(struct bnxt *bp,
 				void *resp_msg,
 				uint32_t resp_len);
 
+#define CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC \
+	HWRM_CFA_COUNTER_CFG_INPUT_COUNTER_TYPE_FC
+
+enum bnxt_flow_dir {
+	BNXT_DIR_RX = 0,
+	BNXT_DIR_TX,
+	BNXT_DIR_LOOPBACK,
+	BNXT_DIR_MAX
+};
+
+#define BNXT_CTX_VAL_INVAL	0xFFFF
+
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 				   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,
@@ -248,4 +260,14 @@ int bnxt_hwrm_fw_reset(struct bnxt *bp);
 int bnxt_hwrm_port_ts_query(struct bnxt *bp, uint8_t path,
 			    uint64_t *timestamp);
 int bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(struct bnxt *bp);
+int bnxt_hwrm_cfa_counter_qcaps(struct bnxt *bp, uint16_t *max_fc);
+int bnxt_hwrm_ctx_rgtr(struct bnxt *bp, rte_iova_t dma_addr, uint16_t *ctx_id);
+int bnxt_hwrm_ctx_unrgtr(struct bnxt *bp, uint16_t ctx_id);
+int bnxt_hwrm_cfa_counter_cfg(struct bnxt *bp, enum bnxt_flow_dir dir,
+			      uint16_t cntr, uint16_t ctx_id,
+			      uint32_t num_entries, bool enable);
+int bnxt_hwrm_cfa_counter_qstats(struct bnxt *bp,
+				 enum bnxt_flow_dir dir,
+				 uint16_t cntr,
+				 uint16_t num_entries);
 #endif
