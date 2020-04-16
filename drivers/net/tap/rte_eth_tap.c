@@ -520,7 +520,7 @@ tap_tx_l3_cksum(char *packet, uint64_t ol_flags, unsigned int l2_len,
 	}
 }
 
-static inline void
+static inline int
 tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 			struct rte_mbuf **pmbufs,
 			uint16_t *num_packets, unsigned long *num_tx_bytes)
@@ -587,7 +587,7 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 			seg_len = rte_pktmbuf_data_len(mbuf);
 			l234_hlen = mbuf->l2_len + mbuf->l3_len + mbuf->l4_len;
 			if (seg_len < l234_hlen)
-				break;
+				return -1;
 
 			/* To change checksums, work on a * copy of l2, l3
 			 * headers + l4 pseudo header
@@ -633,10 +633,12 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 		/* copy the tx frame data */
 		n = writev(process_private->txq_fds[txq->queue_id], iovecs, j);
 		if (n <= 0)
-			break;
+			return -1;
+
 		(*num_packets)++;
 		(*num_tx_bytes) += rte_pktmbuf_pkt_len(mbuf);
 	}
+	return 0;
 }
 
 /* Callback to handle sending packets from the tap interface
@@ -662,8 +664,8 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		uint16_t num_mbufs = 0;
 		uint16_t tso_segsz = 0;
 		int ret;
+		int num_tso_mbufs;
 		uint16_t hdrs_len;
-		int j;
 		uint64_t tso;
 
 		tso = mbuf_in->ol_flags & PKT_TX_TCP_SEG;
@@ -683,43 +685,51 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				break;
 			}
 			gso_ctx->gso_size = tso_segsz;
-			ret = rte_gso_segment(mbuf_in, /* packet to segment */
+			/* 'mbuf_in' packet to segment */
+			num_tso_mbufs = rte_gso_segment(mbuf_in,
 				gso_ctx, /* gso control block */
 				(struct rte_mbuf **)&gso_mbufs, /* out mbufs */
 				RTE_DIM(gso_mbufs)); /* max tso mbufs */
 
 			/* ret contains the number of new created mbufs */
-			if (ret < 0)
+			if (num_tso_mbufs < 0)
 				break;
 
 			mbuf = gso_mbufs;
-			num_mbufs = ret;
+			num_mbufs = num_tso_mbufs;
 		} else {
 			/* stats.errs will be incremented */
 			if (rte_pktmbuf_pkt_len(mbuf_in) > max_size)
 				break;
 
 			/* ret 0 indicates no new mbufs were created */
-			ret = 0;
+			num_tso_mbufs = 0;
 			mbuf = &mbuf_in;
 			num_mbufs = 1;
 		}
 
-		tap_write_mbufs(txq, num_mbufs, mbuf,
+		ret = tap_write_mbufs(txq, num_mbufs, mbuf,
 				&num_packets, &num_tx_bytes);
+		if (ret == -1) {
+			txq->stats.errs++;
+			/* free tso mbufs */
+			if (num_tso_mbufs > 0)
+				rte_pktmbuf_free_bulk(mbuf, num_tso_mbufs);
+			break;
+		}
 		num_tx++;
 		/* free original mbuf */
 		rte_pktmbuf_free(mbuf_in);
 		/* free tso mbufs */
-		for (j = 0; j < ret; j++)
-			rte_pktmbuf_free(mbuf[j]);
+		if (num_tso_mbufs > 0)
+			rte_pktmbuf_free_bulk(mbuf, num_tso_mbufs);
 	}
 
 	txq->stats.opackets += num_packets;
 	txq->stats.errs += nb_pkts - num_tx;
 	txq->stats.obytes += num_tx_bytes;
 
-	return num_packets;
+	return num_tx;
 }
 
 static const char *
