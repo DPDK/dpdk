@@ -45,12 +45,15 @@
 
 
 enum mlx5_ipool_index {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
 	MLX5_IPOOL_PUSH_VLAN, /* Pool for push vlan resource. */
 	MLX5_IPOOL_TAG, /* Pool for tag resource. */
 	MLX5_IPOOL_PORT_ID, /* Pool for port id resource. */
 	MLX5_IPOOL_JUMP, /* Pool for jump resource. */
+#endif
 	MLX5_IPOOL_HRXQ, /* Pool for hrxq resource. */
+	MLX5_IPOOL_MLX5_FLOW, /* Pool for mlx5 flow handle. */
 	MLX5_IPOOL_MAX,
 };
 

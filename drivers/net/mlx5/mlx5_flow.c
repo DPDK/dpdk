@@ -775,9 +775,12 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow,
 static void
 flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t handle_idx;
 	struct mlx5_flow_handle *dev_handle;
 
-	LIST_FOREACH(dev_handle, &flow->dev_handles, next)
+	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
+		       handle_idx, dev_handle, next)
 		flow_drv_rxq_flags_set(dev, flow, dev_handle);
 }
 
@@ -847,9 +850,12 @@ flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow,
 static void
 flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t handle_idx;
 	struct mlx5_flow_handle *dev_handle;
 
-	LIST_FOREACH(dev_handle, &flow->dev_handles, next)
+	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
+		       handle_idx, dev_handle, next)
 		flow_drv_rxq_flags_trim(dev, flow, dev_handle);
 }
 
@@ -2313,9 +2319,12 @@ static void
 flow_mreg_split_qrss_release(struct rte_eth_dev *dev,
 			     struct rte_flow *flow)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t handle_idx;
 	struct mlx5_flow_handle *dev_handle;
 
-	LIST_FOREACH(dev_handle, &flow->dev_handles, next)
+	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
+		       handle_idx, dev_handle, next)
 		if (dev_handle->qrss_id)
 			flow_qrss_free_id(dev, dev_handle->qrss_id);
 }
@@ -3459,7 +3468,8 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 	dev_flow->flow = flow;
 	dev_flow->external = external;
 	/* Subflow object was created, we must include one in the list. */
-	LIST_INSERT_HEAD(&flow->dev_handles, dev_flow->handle, next);
+	SILIST_INSERT(&flow->dev_handles, dev_flow->handle_idx,
+		      dev_flow->handle, next);
 	/*
 	 * If dev_flow is as one of the suffix flow, some actions in suffix
 	 * flow may need some user defined item layer flags.
@@ -4264,7 +4274,7 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		/* RSS type 0 indicates default RSS type (ETH_RSS_IP). */
 		flow->rss.types = !rss->types ? ETH_RSS_IP : rss->types;
 	}
-	LIST_INIT(&flow->dev_handles);
+	flow->dev_handles = 0;
 	if (rss && rss->types) {
 		unsigned int graph_root;
 
@@ -4312,7 +4322,8 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 			goto error;
 		dev_flow->flow = flow;
 		dev_flow->external = 0;
-		LIST_INSERT_HEAD(&flow->dev_handles, dev_flow->handle, next);
+		SILIST_INSERT(&flow->dev_handles, dev_flow->handle_idx,
+			      dev_flow->handle, next);
 		ret = flow_drv_translate(dev, dev_flow, &attr_tx,
 					 items_tx.items,
 					 actions_hairpin_tx.actions, error);

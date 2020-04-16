@@ -502,8 +502,8 @@ struct mlx5_flow_handle_dv {
 
 /** Device flow handle structure: used both for creating & destroying. */
 struct mlx5_flow_handle {
-	LIST_ENTRY(mlx5_flow_handle) next;
-	/**< Pointer to next device flow handle. */
+	SILIST_ENTRY(uint32_t)next;
+	/**< Index to next device flow handle. */
 	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	uint64_t act_flags;
@@ -632,6 +632,7 @@ struct mlx5_flow {
 		struct mlx5_flow_verbs_workspace verbs;
 	};
 	struct mlx5_flow_handle *handle;
+	uint32_t handle_idx; /* Index of the mlx5 flow handle memory. */
 };
 
 /* Flow meter state. */
@@ -747,7 +748,7 @@ struct rte_flow {
 	struct mlx5_flow_mreg_copy_resource *mreg_copy;
 	/**< pointer to metadata register copy table resource. */
 	struct mlx5_flow_meter *meter; /**< Holds flow meter. */
-	LIST_HEAD(dev_handles, mlx5_flow_handle) dev_handles;
+	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */
 	uint32_t hairpin_flow_id; /**< The flow id used for hairpin. */

@@ -5333,7 +5333,7 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 		const struct rte_flow_action actions[] __rte_unused,
 		struct rte_flow_error *error)
 {
-	size_t size = sizeof(struct mlx5_flow_handle);
+	uint32_t handle_idx = 0;
 	struct mlx5_flow *dev_flow;
 	struct mlx5_flow_handle *dev_handle;
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5345,7 +5345,8 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 				   "not free temporary device flow");
 		return NULL;
 	}
-	dev_handle = rte_calloc(__func__, 1, size, 0);
+	dev_handle = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW],
+				   &handle_idx);
 	if (!dev_handle) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -5355,6 +5356,7 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 	/* No multi-thread supporting. */
 	dev_flow = &((struct mlx5_flow *)priv->inter_flows)[priv->flow_idx++];
 	dev_flow->handle = dev_handle;
+	dev_flow->handle_idx = handle_idx;
 	dev_flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param);
 	/*
 	 * The matching value needs to be cleared to 0 before using. In the
@@ -8088,6 +8090,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct mlx5_flow_handle_dv *dv_h;
 	struct mlx5_flow *dev_flow;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t handle_idx;
 	int n;
 	int err;
 	int idx;
@@ -8172,7 +8175,8 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	return 0;
 error:
 	err = rte_errno; /* Save rte_errno before cleanup. */
-	LIST_FOREACH(dh, &flow->dev_handles, next) {
+	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
+		       handle_idx, dh, next) {
 		if (dh->hrxq) {
 			if (dh->act_flags & MLX5_FLOW_ACTION_DROP)
 				mlx5_hrxq_drop_release(dev);
@@ -8429,10 +8433,17 @@ static void
 __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct mlx5_flow_handle *dh;
+	uint32_t handle_idx;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (!flow)
 		return;
-	LIST_FOREACH(dh, &flow->dev_handles, next) {
+	handle_idx = flow->dev_handles;
+	while (handle_idx) {
+		dh = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW],
+				    handle_idx);
+		if (!dh)
+			return;
 		if (dh->ib_flow) {
 			claim_zero(mlx5_glue->dv_destroy_flow(dh->ib_flow));
 			dh->ib_flow = NULL;
@@ -8446,6 +8457,7 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 		}
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);
+		handle_idx = dh->next.next;
 	}
 }
 
@@ -8462,6 +8474,7 @@ static void
 __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct mlx5_flow_handle *dev_handle;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (!flow)
 		return;
@@ -8474,9 +8487,14 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		mlx5_flow_meter_detach(flow->meter);
 		flow->meter = NULL;
 	}
-	while (!LIST_EMPTY(&flow->dev_handles)) {
-		dev_handle = LIST_FIRST(&flow->dev_handles);
-		LIST_REMOVE(dev_handle, next);
+	while (flow->dev_handles) {
+		uint32_t tmp_idx = flow->dev_handles;
+
+		dev_handle = mlx5_ipool_get(priv->sh->ipool
+					    [MLX5_IPOOL_MLX5_FLOW], tmp_idx);
+		if (!dev_handle)
+			return;
+		flow->dev_handles = dev_handle->next.next;
 		if (dev_handle->dvh.matcher)
 			flow_dv_matcher_release(dev, dev_handle);
 		if (dev_handle->dvh.encap_decap)
@@ -8494,7 +8512,8 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		if (dev_handle->dvh.tag_resource)
 			flow_dv_tag_release(dev,
 					    dev_handle->dvh.tag_resource);
-		rte_free(dev_handle);
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW],
+			   tmp_idx);
 	}
 }
 

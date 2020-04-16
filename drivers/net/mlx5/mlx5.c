@@ -199,6 +199,7 @@ static LIST_HEAD(, mlx5_ibv_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	{
 		.size = sizeof(struct mlx5_flow_dv_encap_decap_resource),
 		.trunk_size = 64,
@@ -254,6 +255,7 @@ static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.free = rte_free,
 		.type = "mlx5_jump_ipool",
 	},
+#endif
 	{
 		.size = (sizeof(struct mlx5_hrxq) + MLX5_RSS_HASH_KEY_LEN),
 		.trunk_size = 64,
@@ -264,6 +266,17 @@ static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.malloc = rte_malloc_socket,
 		.free = rte_free,
 		.type = "mlx5_hrxq_ipool",
+	},
+	{
+		.size = sizeof(struct mlx5_flow_handle),
+		.trunk_size = 64,
+		.grow_trunk = 3,
+		.grow_shift = 2,
+		.need_lock = 0,
+		.release_mem_en = 1,
+		.malloc = rte_malloc_socket,
+		.free = rte_free,
+		.type = "mlx5_flow_handle_ipool",
 	},
 };
 
@@ -491,12 +504,25 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
  *
  * @param[in] sh
  *   Pointer to mlx5_ibv_shared object.
+ * @param[in] sh
+ *   Pointer to user dev config.
  */
 static void
-mlx5_flow_ipool_create(struct mlx5_ibv_shared *sh)
+mlx5_flow_ipool_create(struct mlx5_ibv_shared *sh,
+		       const struct mlx5_dev_config *config __rte_unused)
 {
 	uint8_t i;
 
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	/*
+	 * While DV is supported, user chooses the verbs mode,
+	 * the mlx5 flow handle size is different with the
+	 * MLX5_FLOW_HANDLE_VERBS_SIZE.
+	 */
+	if (!config->dv_flow_en)
+		mlx5_ipool_cfg[MLX5_IPOOL_MLX5_FLOW].size =
+					MLX5_FLOW_HANDLE_VERBS_SIZE;
+#endif
 	for (i = 0; i < MLX5_IPOOL_MAX; ++i)
 		sh->ipool[i] = mlx5_ipool_create(&mlx5_ipool_cfg[i]);
 }
@@ -731,7 +757,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 		goto error;
 	}
 	mlx5_flow_counters_mng_init(sh);
-	mlx5_flow_ipool_create(sh);
+	mlx5_flow_ipool_create(sh, config);
 	/* Add device to memory callback list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
 	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
