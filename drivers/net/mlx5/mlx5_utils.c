@@ -132,16 +132,69 @@ mlx5_ipool_unlock(struct mlx5_indexed_pool *pool)
 		rte_spinlock_unlock(&pool->lock);
 }
 
+static inline uint32_t
+mlx5_trunk_idx_get(struct mlx5_indexed_pool *pool, uint32_t entry_idx)
+{
+	struct mlx5_indexed_pool_config *cfg = &pool->cfg;
+	uint32_t trunk_idx = 0;
+	uint32_t i;
+
+	if (!cfg->grow_trunk)
+		return entry_idx / cfg->trunk_size;
+	if (entry_idx >= pool->grow_tbl[cfg->grow_trunk - 1]) {
+		trunk_idx = (entry_idx - pool->grow_tbl[cfg->grow_trunk - 1]) /
+			    (cfg->trunk_size << (cfg->grow_shift *
+			    cfg->grow_trunk)) + cfg->grow_trunk;
+	} else {
+		for (i = 0; i < cfg->grow_trunk; i++) {
+			if (entry_idx < pool->grow_tbl[i])
+				break;
+		}
+		trunk_idx = i;
+	}
+	return trunk_idx;
+}
+
+static inline uint32_t
+mlx5_trunk_size_get(struct mlx5_indexed_pool *pool, uint32_t trunk_idx)
+{
+	struct mlx5_indexed_pool_config *cfg = &pool->cfg;
+
+	return cfg->trunk_size << (cfg->grow_shift *
+	       (trunk_idx > cfg->grow_trunk ? cfg->grow_trunk : trunk_idx));
+}
+
+static inline uint32_t
+mlx5_trunk_idx_offset_get(struct mlx5_indexed_pool *pool, uint32_t trunk_idx)
+{
+	struct mlx5_indexed_pool_config *cfg = &pool->cfg;
+	uint32_t offset = 0;
+
+	if (!trunk_idx)
+		return 0;
+	if (!cfg->grow_trunk)
+		return cfg->trunk_size * trunk_idx;
+	if (trunk_idx < cfg->grow_trunk)
+		offset = pool->grow_tbl[trunk_idx - 1];
+	else
+		offset = pool->grow_tbl[cfg->grow_trunk - 1] +
+			 (cfg->trunk_size << (cfg->grow_shift *
+			 cfg->grow_trunk)) * (trunk_idx - cfg->grow_trunk);
+	return offset;
+}
+
 struct mlx5_indexed_pool *
 mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 {
 	struct mlx5_indexed_pool *pool;
+	uint32_t i;
 
 	if (!cfg || !cfg->size || (!cfg->malloc ^ !cfg->free) ||
 	    (cfg->trunk_size && ((cfg->trunk_size & (cfg->trunk_size - 1)) ||
 	    ((__builtin_ffs(cfg->trunk_size) + TRUNK_IDX_BITS) > 32))))
 		return NULL;
-	pool = rte_zmalloc("mlx5_ipool", sizeof(*pool), RTE_CACHE_LINE_SIZE);
+	pool = rte_zmalloc("mlx5_ipool", sizeof(*pool) + cfg->grow_trunk *
+				sizeof(pool->grow_tbl[0]), RTE_CACHE_LINE_SIZE);
 	if (!pool)
 		return NULL;
 	pool->cfg = *cfg;
@@ -154,6 +207,15 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 	pool->free_list = TRUNK_INVALID;
 	if (pool->cfg.need_lock)
 		rte_spinlock_init(&pool->lock);
+	/*
+	 * Initialize the dynamic grow trunk size lookup table to have a quick
+	 * lookup for the trunk entry index offset.
+	 */
+	for (i = 0; i < cfg->grow_trunk; i++) {
+		pool->grow_tbl[i] = cfg->trunk_size << (cfg->grow_shift * i);
+		if (i > 0)
+			pool->grow_tbl[i] += pool->grow_tbl[i - 1];
+	}
 	return pool;
 }
 
@@ -164,6 +226,7 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	struct mlx5_indexed_trunk **trunk_tmp;
 	struct mlx5_indexed_trunk **p;
 	size_t trunk_size = 0;
+	size_t data_size;
 	size_t bmp_size;
 	uint32_t idx;
 
@@ -193,23 +256,23 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	}
 	idx = pool->n_trunk_valid;
 	trunk_size += sizeof(*trunk);
-	bmp_size = rte_bitmap_get_memory_footprint(pool->cfg.trunk_size);
-	trunk_size += pool->cfg.trunk_size * pool->cfg.size + bmp_size;
+	data_size = mlx5_trunk_size_get(pool, idx);
+	bmp_size = rte_bitmap_get_memory_footprint(data_size);
+	trunk_size += data_size * pool->cfg.size + bmp_size;
 	trunk = pool->cfg.malloc(pool->cfg.type, trunk_size,
 				 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!trunk)
 		return -ENOMEM;
 	pool->trunks[idx] = trunk;
 	trunk->idx = idx;
-	trunk->free = pool->cfg.trunk_size;
+	trunk->free = data_size;
 	trunk->prev = TRUNK_INVALID;
 	trunk->next = TRUNK_INVALID;
 	MLX5_ASSERT(pool->free_list == TRUNK_INVALID);
 	pool->free_list = idx;
 	/* Mark all entries as available. */
-	trunk->bmp = rte_bitmap_init_with_all_set(pool->cfg.trunk_size,
-		     &trunk->data[pool->cfg.trunk_size  * pool->cfg.size],
-		     bmp_size);
+	trunk->bmp = rte_bitmap_init_with_all_set(data_size,
+		     &trunk->data[data_size * pool->cfg.size], bmp_size);
 	pool->n_trunk_valid++;
 #ifdef POOL_DEBUG
 	pool->trunk_new++;
@@ -244,10 +307,10 @@ mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 	MLX5_ASSERT(slab);
 	iidx += __builtin_ctzll(slab);
 	MLX5_ASSERT(iidx != UINT32_MAX);
-	MLX5_ASSERT(iidx < pool->cfg.trunk_size);
+	MLX5_ASSERT(iidx < mlx5_trunk_size_get(pool, trunk->idx));
 	rte_bitmap_clear(trunk->bmp, iidx);
 	p = &trunk->data[iidx * pool->cfg.size];
-	iidx += trunk->idx * pool->cfg.trunk_size;
+	iidx += mlx5_trunk_idx_offset_get(pool, trunk->idx);
 	iidx += 1; /* non-zero index. */
 	trunk->free--;
 #ifdef POOL_DEBUG
@@ -286,19 +349,23 @@ mlx5_ipool_free(struct mlx5_indexed_pool *pool, uint32_t idx)
 {
 	struct mlx5_indexed_trunk *trunk;
 	uint32_t trunk_idx;
+	uint32_t entry_idx;
 
 	if (!idx)
 		return;
 	idx -= 1;
 	mlx5_ipool_lock(pool);
-	trunk_idx = idx / pool->cfg.trunk_size;
+	trunk_idx = mlx5_trunk_idx_get(pool, idx);
 	if (trunk_idx >= pool->n_trunk_valid)
 		goto out;
 	trunk = pool->trunks[trunk_idx];
-	if (!trunk || trunk_idx != trunk->idx ||
-	    rte_bitmap_get(trunk->bmp, idx % pool->cfg.trunk_size))
+	if (!trunk)
 		goto out;
-	rte_bitmap_set(trunk->bmp, idx % pool->cfg.trunk_size);
+	entry_idx = idx - mlx5_trunk_idx_offset_get(pool, trunk->idx);
+	if (trunk_idx != trunk->idx ||
+	    rte_bitmap_get(trunk->bmp, entry_idx))
+		goto out;
+	rte_bitmap_set(trunk->bmp, entry_idx);
 	trunk->free++;
 	if (trunk->free == 1) {
 		/* Put into free trunk list head. */
@@ -326,19 +393,23 @@ mlx5_ipool_get(struct mlx5_indexed_pool *pool, uint32_t idx)
 	struct mlx5_indexed_trunk *trunk;
 	void *p = NULL;
 	uint32_t trunk_idx;
+	uint32_t entry_idx;
 
 	if (!idx)
 		return NULL;
 	idx -= 1;
 	mlx5_ipool_lock(pool);
-	trunk_idx = idx / pool->cfg.trunk_size;
+	trunk_idx = mlx5_trunk_idx_get(pool, idx);
 	if (trunk_idx >= pool->n_trunk_valid)
 		goto out;
 	trunk = pool->trunks[trunk_idx];
-	if (!trunk || trunk_idx != trunk->idx ||
-	    rte_bitmap_get(trunk->bmp, idx % pool->cfg.trunk_size))
+	if (!trunk)
 		goto out;
-	p = &trunk->data[(idx % pool->cfg.trunk_size) * pool->cfg.size];
+	entry_idx = idx - mlx5_trunk_idx_offset_get(pool, trunk->idx);
+	if (trunk_idx != trunk->idx ||
+	    rte_bitmap_get(trunk->bmp, entry_idx))
+		goto out;
+	p = &trunk->data[entry_idx * pool->cfg.size];
 out:
 	mlx5_ipool_unlock(pool);
 	return p;

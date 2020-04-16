@@ -81,9 +81,25 @@ extern int mlx5_logtype;
 
 struct mlx5_indexed_pool_config {
 	uint32_t size; /* Pool entry size. */
-	uint32_t trunk_size;
-	/* Trunk entry number. Must be power of 2. */
-	uint32_t need_lock;
+	uint32_t trunk_size:22;
+	/*
+	 * Trunk entry number. Must be power of 2. It can be increased
+	 * if trunk_grow enable. The trunk entry number increases with
+	 * left shift grow_shift. Trunks with index are after grow_trunk
+	 * will keep the entry number same with the last grow trunk.
+	 */
+	uint32_t grow_trunk:4;
+	/*
+	 * Trunks with entry number increase in the pool. Set it to 0
+	 * to make the pool works as trunk entry fixed pool. It works
+	 * only if grow_shift is not 0.
+	 */
+	uint32_t grow_shift:4;
+	/*
+	 * Trunk entry number increase shift value, stop after grow_trunk.
+	 * It works only if grow_trunk is not 0.
+	 */
+	uint32_t need_lock:1;
 	/* Lock is needed for multiple thread usage. */
 	const char *type; /* Memory allocate type name. */
 	void *(*malloc)(const char *type, size_t size, unsigned int align,
@@ -116,6 +132,7 @@ struct mlx5_indexed_pool {
 	uint32_t trunk_empty;
 	uint32_t trunk_free;
 #endif
+	uint32_t grow_tbl[]; /* Save the index offset for the grow trunks. */
 };
 
 /**
