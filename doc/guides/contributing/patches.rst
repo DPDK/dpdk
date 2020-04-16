@@ -513,6 +513,8 @@ in a single subfolder called "__builds" created in the current directory.
 Setting ``DPDK_BUILD_TEST_DIR`` to an absolute directory path e.g. ``/tmp`` is also supported.
 
 
+.. _integrated_abi_check:
+
 Checking ABI compatibility
 --------------------------
 

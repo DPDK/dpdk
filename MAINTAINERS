@@ -150,7 +150,6 @@ F: devtools/gen-abi.sh
 F: devtools/libabigail.abignore
 F: devtools/update-abi.sh
 F: devtools/update_version_map_abi.py
-F: devtools/validate-abi.sh
 F: buildtools/check-symbols.sh
 F: buildtools/map-list-symbol.sh
 F: drivers/*/*/*.map
