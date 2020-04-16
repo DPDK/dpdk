@@ -764,7 +764,8 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 			goto error;
 		}
 	}
-	sh->flow_id_pool = mlx5_flow_id_pool_alloc(UINT32_MAX);
+	sh->flow_id_pool = mlx5_flow_id_pool_alloc
+					((1 << HAIRPIN_FLOW_ID_BITS) - 1);
 	if (!sh->flow_id_pool) {
 		DRV_LOG(ERR, "can't create flow id pool");
 		err = ENOMEM;

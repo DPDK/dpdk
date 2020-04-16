@@ -760,20 +760,23 @@ struct mlx5_fdir_flow {
 	uint32_t rix_flow; /* Index to flow. */
 };
 
+#define HAIRPIN_FLOW_ID_BITS 28
+
 /* Flow structure. */
 struct rte_flow {
 	ILIST_ENTRY(uint32_t)next; /**< Index to the next flow structure. */
-	enum mlx5_flow_drv_type drv_type; /**< Driver type. */
-	uint32_t counter; /**< Holds flow counter. */
-	uint32_t rix_mreg_copy;
-	/**< Index to metadata register copy table resource. */
-	uint16_t meter; /**< Holds flow meter id. */
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
+	uint32_t drv_type:2; /**< Driver type. */
 	uint32_t fdir:1; /**< Identifier of associated FDIR if any. */
-	uint32_t hairpin_flow_id; /**< The flow id used for hairpin. */
+	uint32_t hairpin_flow_id:HAIRPIN_FLOW_ID_BITS;
+	/**< The flow id used for hairpin. */
 	uint32_t copy_applied:1; /**< The MARK copy Flow os applied. */
-};
+	uint32_t rix_mreg_copy;
+	/**< Index to metadata register copy table resource. */
+	uint32_t counter; /**< Holds flow counter. */
+	uint16_t meter; /**< Holds flow meter id. */
+} __rte_packed;
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
