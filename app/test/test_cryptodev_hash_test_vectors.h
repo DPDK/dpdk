@@ -9,11 +9,6 @@
 #include <intel-ipsec-mb.h>
 #endif
 
-#if !defined(IMB_VERSION_NUM)
-#define IMB_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
-#define IMB_VERSION_NUM IMB_VERSION(0, 49, 0)
-#endif
-
 static const uint8_t plaintext_hash[] = {
 	"What a lousy earth! He wondered how many people "
 	"were destitute that same night even in his own "
@@ -462,9 +457,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
@@ -475,9 +468,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
@@ -542,9 +533,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
@@ -555,9 +544,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
@@ -598,9 +585,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
@@ -611,9 +596,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
@@ -656,9 +639,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
@@ -669,9 +650,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
@@ -714,9 +693,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -726,9 +703,7 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
-#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX |
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX2
 	},
