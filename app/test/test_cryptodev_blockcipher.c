@@ -21,6 +21,49 @@
 #include "test_cryptodev_hash_test_vectors.h"
 
 static int
+verify_algo_support(const struct blockcipher_test_case *t,
+		const uint8_t dev_id, const uint32_t digest_len)
+{
+	int ret = 0;
+	const struct blockcipher_test_data *tdata = t->test_data;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	const struct rte_cryptodev_symmetric_capability *capability;
+
+	if (t->op_mask & BLOCKCIPHER_TEST_OP_CIPHER) {
+		cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		cap_idx.algo.cipher = tdata->crypto_algo;
+		capability = rte_cryptodev_sym_capability_get(dev_id, &cap_idx);
+		if (capability == NULL)
+			return -1;
+
+		if (cap_idx.algo.cipher != RTE_CRYPTO_CIPHER_NULL)
+			ret = rte_cryptodev_sym_capability_check_cipher(capability,
+							tdata->cipher_key.len,
+							tdata->iv.len);
+		if (ret != 0)
+			return -1;
+	}
+
+	if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH) {
+		cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+		cap_idx.algo.auth = tdata->auth_algo;
+		capability = rte_cryptodev_sym_capability_get(dev_id, &cap_idx);
+		if (capability == NULL)
+			return -1;
+
+		if (cap_idx.algo.auth != RTE_CRYPTO_AUTH_NULL)
+			ret = rte_cryptodev_sym_capability_check_auth(capability,
+							tdata->auth_key.len,
+							digest_len,
+							0);
+		if (ret != 0)
+			return -1;
+	}
+
+	return 0;
+}
+
+static int
 test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
@@ -98,6 +141,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 				printf("Device doesn't support out-of-place "
 					"scatter-gather in input mbuf. "
 					"Test Skipped.\n");
+				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+					"SKIPPED");
 				return 0;
 			}
 		} else {
@@ -105,6 +150,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 				printf("Device doesn't support in-place "
 					"scatter-gather mbufs. "
 					"Test Skipped.\n");
+				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+					"SKIPPED");
 				return 0;
 			}
 		}
@@ -142,6 +189,15 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			__LINE__, "Unsupported PMD type");
 		status = TEST_FAILED;
 		goto error_exit;
+	}
+
+	/* Check if PMD is capable of performing that test */
+	if (verify_algo_support(t, dev_id, digest_len) < 0) {
+		RTE_LOG(DEBUG, USER1,
+			"Device does not support this algorithm."
+			"Test Skipped.\n");
+		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "SKIPPED");
+		return 0;
 	}
 
 	/* preparing data */
