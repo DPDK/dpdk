@@ -33,6 +33,8 @@ EXPERIMENTAL {
 	global:
 
 	rte_hash_free_key_with_position;
+	rte_hash_lookup_with_hash_bulk;
+	rte_hash_lookup_with_hash_bulk_data;
 	rte_hash_max_key_id;
 
 };
