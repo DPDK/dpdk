@@ -751,6 +751,13 @@ struct mlx5_flow_meter_profile {
 	uint32_t ref_cnt; /**< Use count. */
 };
 
+/* Fdir flow structure */
+struct mlx5_fdir_flow {
+	LIST_ENTRY(mlx5_fdir_flow) next; /* Pointer to the next element. */
+	struct mlx5_fdir *fdir; /* Pointer to fdir. */
+	struct rte_flow *flow; /* Pointer to flow. */
+};
+
 /* Flow structure. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
@@ -762,7 +769,7 @@ struct rte_flow {
 	uint16_t meter; /**< Holds flow meter id. */
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
-	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */
+	uint32_t fdir:1; /**< Identifier of associated FDIR if any. */
 	uint32_t hairpin_flow_id; /**< The flow id used for hairpin. */
 	uint32_t copy_applied:1; /**< The MARK copy Flow os applied. */
 };

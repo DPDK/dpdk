@@ -556,6 +556,7 @@ struct mlx5_priv {
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
 	struct mlx5_mp_id mp_id; /* ID of a multi-process process */
+	LIST_HEAD(fdir, mlx5_fdir_flow) fdir_flows; /* fdir flows. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

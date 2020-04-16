@@ -4491,6 +4491,7 @@ flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		  struct rte_flow *flow)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_fdir_flow *priv_fdir_flow = NULL;
 
 	/*
 	 * Update RX queue flags only if port is started, otherwise it is
@@ -4505,7 +4506,17 @@ flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 	if (list)
 		TAILQ_REMOVE(list, flow, next);
 	flow_mreg_del_copy_action(dev, flow);
-	rte_free(flow->fdir);
+	if (flow->fdir) {
+		LIST_FOREACH(priv_fdir_flow, &priv->fdir_flows, next) {
+			if (priv_fdir_flow->flow == flow)
+				break;
+		}
+		if (priv_fdir_flow) {
+			LIST_REMOVE(priv_fdir_flow, next);
+			rte_free(priv_fdir_flow->fdir);
+			rte_free(priv_fdir_flow);
+		}
+	}
 	rte_free(flow);
 }
 
@@ -5189,12 +5200,14 @@ flow_fdir_filter_lookup(struct rte_eth_dev *dev, struct mlx5_fdir *fdir_flow)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = NULL;
+	struct mlx5_fdir_flow *priv_fdir_flow = NULL;
 
 	MLX5_ASSERT(fdir_flow);
-	TAILQ_FOREACH(flow, &priv->flows, next) {
-		if (flow->fdir && !flow_fdir_cmp(flow->fdir, fdir_flow)) {
+	LIST_FOREACH(priv_fdir_flow, &priv->fdir_flows, next) {
+		if (!flow_fdir_cmp(priv_fdir_flow->fdir, fdir_flow)) {
 			DRV_LOG(DEBUG, "port %u found FDIR flow %p",
 				dev->data->port_id, (void *)flow);
+			flow = priv_fdir_flow->flow;
 			break;
 		}
 	}
@@ -5219,6 +5232,7 @@ flow_fdir_filter_add(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_fdir *fdir_flow;
 	struct rte_flow *flow;
+	struct mlx5_fdir_flow *priv_fdir_flow = NULL;
 	int ret;
 
 	fdir_flow = rte_zmalloc(__func__, sizeof(*fdir_flow), 0);
@@ -5234,17 +5248,26 @@ flow_fdir_filter_add(struct rte_eth_dev *dev,
 		rte_errno = EEXIST;
 		goto error;
 	}
+	priv_fdir_flow = rte_zmalloc(__func__, sizeof(struct mlx5_fdir_flow),
+				     0);
+	if (!priv_fdir_flow) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
 	flow = flow_list_create(dev, &priv->flows, &fdir_flow->attr,
 				fdir_flow->items, fdir_flow->actions, true,
 				NULL);
 	if (!flow)
 		goto error;
-	MLX5_ASSERT(!flow->fdir);
-	flow->fdir = fdir_flow;
+	flow->fdir = 1;
+	priv_fdir_flow->fdir = fdir_flow;
+	priv_fdir_flow->flow = flow;
+	LIST_INSERT_HEAD(&priv->fdir_flows, priv_fdir_flow, next);
 	DRV_LOG(DEBUG, "port %u created FDIR flow %p",
 		dev->data->port_id, (void *)flow);
 	return 0;
 error:
+	rte_free(priv_fdir_flow);
 	rte_free(fdir_flow);
 	return -rte_errno;
 }
@@ -5269,17 +5292,26 @@ flow_fdir_filter_delete(struct rte_eth_dev *dev,
 	struct mlx5_fdir fdir_flow = {
 		.attr.group = 0,
 	};
+	struct mlx5_fdir_flow *priv_fdir_flow = NULL;
 	int ret;
 
 	ret = flow_fdir_filter_convert(dev, fdir_filter, &fdir_flow);
 	if (ret)
 		return -rte_errno;
-	flow = flow_fdir_filter_lookup(dev, &fdir_flow);
-	if (!flow) {
-		rte_errno = ENOENT;
-		return -rte_errno;
+	LIST_FOREACH(priv_fdir_flow, &priv->fdir_flows, next) {
+		/* Find the fdir in priv list */
+		if (!flow_fdir_cmp(priv_fdir_flow->fdir, &fdir_flow))
+			break;
 	}
+	if (!priv_fdir_flow)
+		return 0;
+	LIST_REMOVE(priv_fdir_flow, next);
+	flow = priv_fdir_flow->flow;
+	/* Fdir resource will be releasd after flow destroy. */
+	flow->fdir = 0;
 	flow_list_destroy(dev, &priv->flows, flow);
+	rte_free(priv_fdir_flow->fdir);
+	rte_free(priv_fdir_flow);
 	DRV_LOG(DEBUG, "port %u deleted FDIR flow %p",
 		dev->data->port_id, (void *)flow);
 	return 0;
@@ -5318,8 +5350,16 @@ static void
 flow_fdir_filter_flush(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_fdir_flow *priv_fdir_flow = NULL;
 
-	mlx5_flow_list_flush(dev, &priv->flows, false);
+	while (!LIST_EMPTY(&priv->fdir_flows)) {
+		priv_fdir_flow = LIST_FIRST(&priv->fdir_flows);
+		LIST_REMOVE(priv_fdir_flow, next);
+		priv_fdir_flow->flow->fdir = 0;
+		flow_list_destroy(dev, &priv->flows, priv_fdir_flow->flow);
+		rte_free(priv_fdir_flow->fdir);
+		rte_free(priv_fdir_flow);
+	}
 }
 
 /**
