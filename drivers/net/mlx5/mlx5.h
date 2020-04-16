@@ -49,6 +49,7 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_PUSH_VLAN, /* Pool for push vlan resource. */
 	MLX5_IPOOL_TAG, /* Pool for tag resource. */
 	MLX5_IPOOL_PORT_ID, /* Pool for port id resource. */
+	MLX5_IPOOL_JUMP, /* Pool for jump resource. */
 	MLX5_IPOOL_MAX,
 };
 

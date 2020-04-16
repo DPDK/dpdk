@@ -2572,7 +2572,8 @@ flow_dv_jump_tbl_resource_register
 			(void *)&tbl_data->jump, cnt);
 	}
 	rte_atomic32_inc(&tbl_data->jump.refcnt);
-	dev_flow->handle->dvh.jump = &tbl_data->jump;
+	dev_flow->handle->dvh.jump = tbl_data->idx;
+	dev_flow->dv.jump = &tbl_data->jump;
 	return 0;
 }
 
@@ -6875,6 +6876,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 	struct mlx5_hlist_entry *pos = mlx5_hlist_lookup(sh->flow_tbls,
 							 table_key.v64);
 	struct mlx5_flow_tbl_data_entry *tbl_data;
+	uint32_t idx = 0;
 	int ret;
 	void *domain;
 
@@ -6885,7 +6887,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		rte_atomic32_inc(&tbl->refcnt);
 		return tbl;
 	}
-	tbl_data = rte_zmalloc(NULL, sizeof(*tbl_data), 0);
+	tbl_data = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_JUMP], &idx);
 	if (!tbl_data) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -6893,6 +6895,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 				   "cannot allocate flow table data entry");
 		return NULL;
 	}
+	tbl_data->idx = idx;
 	tbl = &tbl_data->tbl;
 	pos = &tbl_data->entry;
 	if (transfer)
@@ -6906,7 +6909,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "cannot create flow table object");
-		rte_free(tbl_data);
+		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], idx);
 		return NULL;
 	}
 	/*
@@ -6923,7 +6926,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "cannot insert flow table data entry");
 		mlx5_glue->dr_destroy_flow_tbl(tbl->obj);
-		rte_free(tbl_data);
+		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], idx);
 	}
 	rte_atomic32_inc(&tbl->refcnt);
 	return tbl;
@@ -6958,7 +6961,8 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 		tbl->obj = NULL;
 		/* remove the entry from the hash list and free memory. */
 		mlx5_hlist_remove(sh->flow_tbls, pos);
-		rte_free(tbl_data);
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_JUMP],
+				tbl_data->idx);
 		return 0;
 	}
 	return 1;
@@ -7695,7 +7699,7 @@ cnt_err:
 						 "cannot create jump action.");
 			}
 			dev_flow->dv.actions[actions_n++] =
-					handle->dvh.jump->action;
+					dev_flow->dv.jump->action;
 			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
@@ -8270,12 +8274,15 @@ static int
 flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 				  struct mlx5_flow_handle *handle)
 {
-	struct mlx5_flow_dv_jump_tbl_resource *cache_resource =
-							handle->dvh.jump;
-	struct mlx5_flow_tbl_data_entry *tbl_data =
-			container_of(cache_resource,
-				     struct mlx5_flow_tbl_data_entry, jump);
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_dv_jump_tbl_resource *cache_resource;
+	struct mlx5_flow_tbl_data_entry *tbl_data;
 
+	tbl_data = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_JUMP],
+			     handle->dvh.jump);
+	if (!tbl_data)
+		return 0;
+	cache_resource = &tbl_data->jump;
 	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "jump table resource %p: refcnt %d--",
 		(void *)cache_resource,
