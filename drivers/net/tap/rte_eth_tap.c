@@ -1823,6 +1823,8 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	pmd->dev = dev;
 	strlcpy(pmd->name, tap_name, sizeof(pmd->name));
 	pmd->type = type;
+	pmd->ka_fd = -1;
+	pmd->nlsk_fd = -1;
 
 	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (pmd->ioctl_sock == -1) {
@@ -1853,7 +1855,6 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	dev->intr_handle = &pmd->intr_handle;
 
 	/* Presetup the fds to -1 as being not valid */
-	pmd->ka_fd = -1;
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
 		process_private->rxq_fds[i] = -1;
 		process_private->txq_fds[i] = -1;
@@ -1993,7 +1994,11 @@ error_remote:
 	tap_flow_implicit_flush(pmd, NULL);
 
 error_exit:
-	if (pmd->ioctl_sock > 0)
+	if (pmd->nlsk_fd != -1)
+		close(pmd->nlsk_fd);
+	if (pmd->ka_fd != -1)
+		close(pmd->ka_fd);
+	if (pmd->ioctl_sock != -1)
 		close(pmd->ioctl_sock);
 	/* mac_addrs must not be freed alone because part of dev_private */
 	dev->data->mac_addrs = NULL;
