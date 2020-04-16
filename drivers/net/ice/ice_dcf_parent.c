@@ -226,12 +226,34 @@ ice_dcf_request_pkg_name(struct ice_hw *hw, char *pkg_name)
 {
 	struct ice_dcf_adapter *dcf_adapter =
 			container_of(hw, struct ice_dcf_adapter, parent.hw);
+	struct virtchnl_pkg_info pkg_info;
+	struct dcf_virtchnl_cmd vc_cmd;
+	uint64_t dsn;
 
-	/* TODO: check with DSN firstly by iAVF */
-	PMD_INIT_LOG(DEBUG,
-		     "DCF VSI_ID = %u",
-		     dcf_adapter->real_hw.vsi_id);
+	vc_cmd.v_op = VIRTCHNL_OP_DCF_GET_PKG_INFO;
+	vc_cmd.req_msglen = 0;
+	vc_cmd.req_msg = NULL;
+	vc_cmd.rsp_buflen = sizeof(pkg_info);
+	vc_cmd.rsp_msgbuf = (uint8_t *)&pkg_info;
 
+	if (ice_dcf_execute_virtchnl_cmd(&dcf_adapter->real_hw, &vc_cmd))
+		goto pkg_file_direct;
+
+	rte_memcpy(&dsn, pkg_info.dsn, sizeof(dsn));
+
+	snprintf(pkg_name, ICE_MAX_PKG_FILENAME_SIZE,
+		 ICE_PKG_FILE_SEARCH_PATH_UPDATES "ice-%016llX.pkg",
+		 (unsigned long long)dsn);
+	if (!access(pkg_name, 0))
+		return 0;
+
+	snprintf(pkg_name, ICE_MAX_PKG_FILENAME_SIZE,
+		 ICE_PKG_FILE_SEARCH_PATH_DEFAULT "ice-%016llX.pkg",
+		 (unsigned long long)dsn);
+	if (!access(pkg_name, 0))
+		return 0;
+
+pkg_file_direct:
 	snprintf(pkg_name,
 		 ICE_MAX_PKG_FILENAME_SIZE, "%s", ICE_PKG_FILE_UPDATES);
 	if (!access(pkg_name, 0))
