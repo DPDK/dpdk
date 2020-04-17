@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include <rte_cycles.h>
 #include <rte_malloc.h>
@@ -30,6 +31,7 @@
  * due to the compress block headers
  */
 #define COMPRESS_BUF_SIZE_RATIO 1.3
+#define COMPRESS_BUF_SIZE_RATIO_DISABLED 1.0
 #define COMPRESS_BUF_SIZE_RATIO_OVERFLOW 0.2
 #define NUM_LARGE_MBUFS 16
 #define SMALL_SEG_SIZE 256
@@ -49,8 +51,26 @@
 
 #define MAX_MBUF_SEGMENT_SIZE 65535
 #define MAX_DATA_MBUF_SIZE (MAX_MBUF_SEGMENT_SIZE - RTE_PKTMBUF_HEADROOM)
-#define NUM_BIG_MBUFS 4
-#define BIG_DATA_TEST_SIZE (MAX_DATA_MBUF_SIZE * NUM_BIG_MBUFS / 2)
+#define NUM_BIG_MBUFS (512 + 1)
+#define BIG_DATA_TEST_SIZE (MAX_DATA_MBUF_SIZE * 2)
+
+/* constants for "im buffer" tests start here */
+
+/* number of mbufs lower than number of inflight ops */
+#define IM_BUF_NUM_MBUFS 3
+/* above threshold (QAT_FALLBACK_THLD) and below max mbuf size */
+#define IM_BUF_DATA_TEST_SIZE_LB 59600
+/* data size smaller than the queue capacity */
+#define IM_BUF_DATA_TEST_SIZE_SGL (MAX_DATA_MBUF_SIZE * IM_BUF_NUM_MBUFS)
+/* number of mbufs bigger than number of inflight ops */
+#define IM_BUF_NUM_MBUFS_OVER (NUM_MAX_INFLIGHT_OPS + 1)
+/* data size bigger than the queue capacity */
+#define IM_BUF_DATA_TEST_SIZE_OVER (MAX_DATA_MBUF_SIZE * IM_BUF_NUM_MBUFS_OVER)
+/* number of mid-size mbufs */
+#define IM_BUF_NUM_MBUFS_MID ((NUM_MAX_INFLIGHT_OPS / 3) + 1)
+/* capacity of mid-size mbufs */
+#define IM_BUF_DATA_TEST_SIZE_MID (MAX_DATA_MBUF_SIZE * IM_BUF_NUM_MBUFS_MID)
+
 
 const char *
 huffman_type_strings[] = {
@@ -76,6 +96,11 @@ enum varied_buff {
 enum overflow_test {
 	OVERFLOW_DISABLED,
 	OVERFLOW_ENABLED
+};
+
+enum ratio_switch {
+	RATIO_DISABLED,
+	RATIO_ENABLED
 };
 
 enum operation_type {
@@ -123,6 +148,7 @@ struct test_data_params {
 	const struct rte_memzone *uncompbuf_memzone;
 	/* overflow test activation */
 	enum overflow_test overflow;
+	enum ratio_switch ratio;
 };
 
 struct test_private_arrays {
@@ -140,6 +166,7 @@ struct test_private_arrays {
 };
 
 static struct comp_testsuite_params testsuite_params = { 0 };
+
 
 static void
 testsuite_teardown(void)
@@ -315,6 +342,8 @@ test_compressdev_invalid_configuration(void)
 		.max_nb_streams = 1
 	};
 	struct rte_compressdev_info dev_info;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
 
 	/* Invalid configuration with 0 queue pairs */
 	memcpy(&invalid_config, &valid_config,
@@ -691,7 +720,7 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 
 	if (data_ptr != NULL) {
 		/* Copy characters without NULL terminator */
-		strncpy(buf_ptr, data_ptr, data_size);
+		memcpy(buf_ptr, data_ptr, data_size);
 		data_ptr += data_size;
 	}
 	remaining_data -= data_size;
@@ -731,7 +760,7 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 		}
 		if (data_ptr != NULL) {
 			/* Copy characters without NULL terminator */
-			strncpy(buf_ptr, data_ptr, data_size);
+			memcpy(buf_ptr, data_ptr, data_size);
 			data_ptr += data_size;
 		}
 		remaining_data -= data_size;
@@ -760,17 +789,20 @@ test_run_enqueue_dequeue(struct rte_comp_op **ops,
 {
 	uint16_t num_enqd, num_deqd, num_total_deqd;
 	unsigned int deqd_retries = 0;
+	int res = 0;
 
 	/* Enqueue and dequeue all operations */
 	num_enqd = rte_compressdev_enqueue_burst(0, 0, ops, num_bufs);
 	if (num_enqd < num_bufs) {
 		RTE_LOG(ERR, USER1,
 			"Some operations could not be enqueued\n");
-		return -1;
+		res = -1;
 	}
 
+	/* dequeue ops even on error (same number of ops as was enqueued) */
+
 	num_total_deqd = 0;
-	do {
+	while (num_total_deqd < num_enqd) {
 		/*
 		 * If retrying a dequeue call, wait for 10 ms to allow
 		 * enough time to the driver to process the operations
@@ -783,7 +815,8 @@ test_run_enqueue_dequeue(struct rte_comp_op **ops,
 			if (deqd_retries == MAX_DEQD_RETRIES) {
 				RTE_LOG(ERR, USER1,
 					"Not all operations could be dequeued\n");
-				return -1;
+				res = -1;
+				break;
 			}
 			usleep(DEQUEUE_WAIT_TIME);
 		}
@@ -792,9 +825,9 @@ test_run_enqueue_dequeue(struct rte_comp_op **ops,
 		num_total_deqd += num_deqd;
 		deqd_retries++;
 
-	} while (num_total_deqd < num_enqd);
+	}
 
-	return 0;
+	return res;
 }
 
 /**
@@ -956,7 +989,9 @@ test_mbufs_calculate_data_size(
 	/* local variables: */
 	uint32_t data_size;
 	struct priv_op_data *priv_data;
-	float ratio;
+	float ratio_val;
+	enum ratio_switch ratio = test_data->ratio;
+
 	uint8_t not_zlib_compr; /* true if zlib isn't current compression dev */
 	enum overflow_test overflow = test_data->overflow;
 
@@ -973,13 +1008,16 @@ test_mbufs_calculate_data_size(
 			not_zlib_compr = (test_data->zlib_dir == ZLIB_DECOMPRESS
 				|| test_data->zlib_dir == ZLIB_NONE);
 
-			ratio = (not_zlib_compr &&
+			ratio_val = (ratio == RATIO_ENABLED) ?
+					COMPRESS_BUF_SIZE_RATIO :
+					COMPRESS_BUF_SIZE_RATIO_DISABLED;
+
+			ratio_val = (not_zlib_compr &&
 				(overflow == OVERFLOW_ENABLED)) ?
 				COMPRESS_BUF_SIZE_RATIO_OVERFLOW :
-				COMPRESS_BUF_SIZE_RATIO;
+				ratio_val;
 
-			data_size = strlen(test_bufs[i]) * ratio;
-
+			data_size = strlen(test_bufs[i]) * ratio_val;
 		} else {
 			priv_data = (struct priv_op_data *)
 					(ops_processed[i] + 1);
@@ -1085,6 +1123,9 @@ test_setup_output_bufs(
 	} else {
 		for (i = 0; i < num_bufs; i++) {
 
+			enum rte_comp_huffman comp_huffman =
+			ts_params->def_comp_xform->compress.deflate.huffman;
+
 			/* data size calculation */
 			data_size = test_mbufs_calculate_data_size(
 					op_type,
@@ -1093,6 +1134,11 @@ test_setup_output_bufs(
 					int_data,
 					test_data,
 					i);
+
+			if (comp_huffman != RTE_COMP_HUFFMAN_DYNAMIC) {
+				if (op_type == OPERATION_DECOMPRESSION)
+					data_size *= COMPRESS_BUF_SIZE_RATIO;
+			}
 
 			/* data allocation */
 			if (buff_type == SGL_BOTH || buff_type == LB_TO_SGL) {
@@ -1191,6 +1237,11 @@ test_deflate_comp_run(const struct interim_data_params *int_data,
 		ops[i]->src.offset = 0;
 		ops[i]->src.length = rte_pktmbuf_pkt_len(uncomp_bufs[i]);
 		ops[i]->dst.offset = 0;
+
+		RTE_LOG(DEBUG, USER1,
+				"Uncompressed buffer length = %u compressed buffer length = %u",
+				rte_pktmbuf_pkt_len(uncomp_bufs[i]),
+				rte_pktmbuf_pkt_len(comp_bufs[i]));
 
 		if (operation_type == RTE_COMP_OP_STATELESS) {
 			ops[i]->flush_flag = RTE_COMP_FLUSH_FINAL;
@@ -1313,6 +1364,7 @@ exit:
 	if (ret_status < 0)
 		for (i = 0; i < num_bufs; i++) {
 			rte_comp_op_free(ops[i]);
+			ops[i] = NULL;
 			ops_processed[i] = NULL;
 		}
 
@@ -1431,7 +1483,7 @@ test_deflate_comp_finalize(const struct interim_data_params *int_data,
 			}
 
 			RTE_LOG(ERR, USER1,
-				"Some operations were not successful\n");
+				"Comp: Some operations were not successful\n");
 			return -1;
 		}
 		priv_data = (struct priv_op_data *)(ops_processed[i] + 1);
@@ -1490,6 +1542,7 @@ test_deflate_decomp_run(const struct interim_data_params *int_data,
 
 	/* from test_priv_data: */
 	struct rte_mbuf **uncomp_bufs = test_priv_data->uncomp_bufs;
+	struct rte_mbuf **comp_bufs = test_priv_data->comp_bufs;
 	struct rte_comp_op **ops = test_priv_data->ops;
 	struct rte_comp_op **ops_processed = test_priv_data->ops_processed;
 	void **priv_xforms = test_priv_data->priv_xforms;
@@ -1510,7 +1563,7 @@ test_deflate_decomp_run(const struct interim_data_params *int_data,
 
 	/* Source buffer is the compressed data from the previous operations */
 	for (i = 0; i < num_bufs; i++) {
-		ops[i]->m_src = ops_processed[i]->m_dst;
+		ops[i]->m_src = comp_bufs[i];
 		ops[i]->m_dst = uncomp_bufs[i];
 		ops[i]->src.offset = 0;
 		/*
@@ -1740,6 +1793,10 @@ test_deflate_decomp_finalize(const struct interim_data_params *int_data,
 				RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE
 			    || ops_processed[i]->status ==
 				RTE_COMP_OP_STATUS_SUCCESS)) {
+
+			RTE_LOG(DEBUG, USER1,
+					".............RECOVERABLE\n");
+
 			/* collect the output into all_decomp_data */
 			const void *ptr = rte_pktmbuf_read(
 					ops_processed[i]->m_dst,
@@ -1777,7 +1834,6 @@ test_deflate_decomp_finalize(const struct interim_data_params *int_data,
 				ops[i]->src.length -=
 						ops_processed[i]->consumed;
 				/* repeat the operation */
-				//goto next_step;
 				return 2;
 			} else {
 				/* Compare the original stream with the */
@@ -1808,7 +1864,8 @@ test_deflate_decomp_finalize(const struct interim_data_params *int_data,
 		} else if (ops_processed[i]->status !=
 			   RTE_COMP_OP_STATUS_SUCCESS) {
 			RTE_LOG(ERR, USER1,
-				"Some operations were not successful\n");
+					"Decomp: Some operations were not successful, status = %u\n",
+					ops_processed[i]->status);
 			return -1;
 		}
 		priv_data = (struct priv_op_data *)(ops_processed[i] + 1);
@@ -1986,7 +2043,6 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 			"Compress device does not support DEFLATE\n");
 		return -1;
 	}
-	//test_objects_init(&test_priv_data, num_bufs);
 
 	/* Prepare the source mbufs with the data */
 	ret = test_setup_com_bufs(int_data, test_data, &test_priv_data);
@@ -1994,6 +2050,8 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		ret_status = -1;
 		goto exit;
 	}
+
+	RTE_LOG(DEBUG, USER1, "<<< COMPRESSION >>>\n");
 
 /* COMPRESSION  */
 
@@ -2030,6 +2088,8 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	}
 
 /* DECOMPRESSION  */
+
+	RTE_LOG(DEBUG, USER1, "<<< DECOMPRESSION >>>\n");
 
 	/* Prepare output (destination) mbufs for decompressed data */
 	ret = test_setup_output_bufs(
@@ -2096,7 +2156,6 @@ exit:
 			priv_xforms[i] = NULL;
 		}
 	}
-
 	for (i = 0; i < num_bufs; i++) {
 		rte_pktmbuf_free(uncomp_bufs[i]);
 		rte_pktmbuf_free(comp_bufs[i]);
@@ -2152,7 +2211,8 @@ test_compressdev_deflate_stateless_fixed(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 0,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -2223,7 +2283,8 @@ test_compressdev_deflate_stateless_dynamic(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 0,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -2278,7 +2339,8 @@ test_compressdev_deflate_stateless_multi_op(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 0,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	/* Compress with compressdev, decompress with Zlib */
@@ -2332,7 +2394,8 @@ test_compressdev_deflate_stateless_multi_level(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 0,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -2422,7 +2485,8 @@ test_compressdev_deflate_stateless_multi_xform(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 0,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	/* Compress with compressdev, decompress with Zlib */
@@ -2471,7 +2535,8 @@ test_compressdev_deflate_stateless_sgl(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 0,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -2582,7 +2647,8 @@ test_compressdev_deflate_stateless_checksum(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 0,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	/* Check if driver supports crc32 checksum and test */
@@ -2700,7 +2766,8 @@ test_compressdev_out_of_space_buffer(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 1,  /* run out-of-space test */
 		.big_data = 0,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
@@ -2742,7 +2809,7 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 	struct comp_testsuite_params *ts_params = &testsuite_params;
 	uint16_t i = 0;
 	int ret;
-	int j;
+	unsigned int j;
 	const struct rte_compressdev_capabilities *capab;
 	char *test_buffer = NULL;
 
@@ -2778,7 +2845,8 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 1,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
 	};
 
 	ts_params->def_comp_xform->compress.deflate.huffman =
@@ -2788,7 +2856,7 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 	srand(BIG_DATA_TEST_SIZE);
 	for (j = 0; j < BIG_DATA_TEST_SIZE - 1; ++j)
 		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
-	test_buffer[BIG_DATA_TEST_SIZE-1] = 0;
+	test_buffer[BIG_DATA_TEST_SIZE - 1] = 0;
 
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
@@ -2843,7 +2911,8 @@ test_compressdev_deflate_stateful_decomp(void)
 		.big_data = 0,
 		.decompress_output_block_size = 2000,
 		.decompress_steps_max = 4,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	/* Compress with Zlib, decompress with compressdev */
@@ -2926,7 +2995,8 @@ test_compressdev_deflate_stateful_decomp_checksum(void)
 		.big_data = 0,
 		.decompress_output_block_size = 2000,
 		.decompress_steps_max = 4,
-		.overflow = OVERFLOW_DISABLED
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	/* Check if driver supports crc32 checksum and test */
@@ -3139,7 +3209,8 @@ test_compressdev_deflate_stateless_fixed_oos_recoverable(void)
 		.zlib_dir = ZLIB_DECOMPRESS,
 		.out_of_space = 0,
 		.big_data = 0,
-		.overflow = OVERFLOW_ENABLED
+		.overflow = OVERFLOW_ENABLED,
+		.ratio = RATIO_ENABLED
 	};
 
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
@@ -3176,6 +3247,938 @@ exit:
 	return ret;
 }
 
+static int
+test_compressdev_deflate_im_buffers_LB_1op(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_LB, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for 'im buffer' test\n");
+		return TEST_FAILED;
+	}
+
+	struct interim_data_params int_data = {
+		(const char * const *)&test_buffer,
+		1,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+				/* must be LB to SGL,
+				 * input LB buffer reaches its maximum,
+				 * if ratio 1.3 than another mbuf must be
+				 * created and attached
+				 */
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_LB);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_LB - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_LB_2ops_first(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[2];
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_LB, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for 'im buffer' test\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = test_buffer;
+	test_buffers[1] = compress_test_bufs[0];
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		2,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_LB);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_LB - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_LB_2ops_second(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[2];
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_LB, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for 'im buffer' test\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = compress_test_bufs[0];
+	test_buffers[1] = test_buffer;
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		2,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_LB);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_LB - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_LB_3ops(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[3];
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_LB, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for 'im buffer' test\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = compress_test_bufs[0];
+	test_buffers[1] = test_buffer;
+	test_buffers[2] = compress_test_bufs[1];
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		3,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_LB);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_LB - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_LB_4ops(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[4];
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_LB, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for 'im buffer' test\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = compress_test_bufs[0];
+	test_buffers[1] = test_buffer;
+	test_buffers[2] = compress_test_bufs[1];
+	test_buffers[3] = test_buffer;
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		4,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = LB_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_LB);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_LB - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+
+static int
+test_compressdev_deflate_im_buffers_SGL_1op(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_SGL, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	struct interim_data_params int_data = {
+		(const char * const *)&test_buffer,
+		1,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_SGL);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_SGL - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_SGL_2ops_first(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[2];
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_SGL, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = test_buffer;
+	test_buffers[1] = compress_test_bufs[0];
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		2,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_SGL);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_SGL - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_SGL_2ops_second(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[2];
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_SGL, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = compress_test_bufs[0];
+	test_buffers[1] = test_buffer;
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		2,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_SGL);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_SGL - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_SGL_3ops(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[3];
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_SGL, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = compress_test_bufs[0];
+	test_buffers[1] = test_buffer;
+	test_buffers[2] = compress_test_bufs[1];
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		3,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_SGL);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_SGL - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+
+static int
+test_compressdev_deflate_im_buffers_SGL_4ops(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[4];
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_SGL, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = compress_test_bufs[0];
+	test_buffers[1] = test_buffer;
+	test_buffers[2] = compress_test_bufs[1];
+	test_buffers[3] = test_buffer;
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		4,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_SGL);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_SGL - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_SGL_over_1op(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_OVER, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	struct interim_data_params int_data = {
+		(const char * const *)&test_buffer,
+		1,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_OVER);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_OVER - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_SUCCESS;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+
+	return ret;
+}
+
+
+static int
+test_compressdev_deflate_im_buffers_SGL_over_2ops_first(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[2];
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_OVER, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = test_buffer;
+	test_buffers[1] = compress_test_bufs[0];
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		2,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_OVER);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_OVER - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_SUCCESS;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
+static int
+test_compressdev_deflate_im_buffers_SGL_over_2ops_second(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	int j;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+	const char *test_buffers[2];
+
+	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, IM_BUF_DATA_TEST_SIZE_OVER, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	test_buffers[0] = compress_test_bufs[0];
+	test_buffers[1] = test_buffer;
+
+	struct interim_data_params int_data = {
+		(const char * const *)test_buffers,
+		2,
+		&i,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		.compress_state = RTE_COMP_OP_STATELESS,
+		.decompress_state = RTE_COMP_OP_STATELESS,
+		.buff_type = SGL_BOTH,
+		.zlib_dir = ZLIB_NONE,
+		.out_of_space = 0,
+		.big_data = 1,
+		.overflow = OVERFLOW_DISABLED,
+		.ratio = RATIO_DISABLED
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(IM_BUF_DATA_TEST_SIZE_OVER);
+	for (j = 0; j < IM_BUF_DATA_TEST_SIZE_OVER - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	/* Compress with compressdev, decompress with compressdev */
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_SUCCESS;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+			RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
 static struct unit_test_suite compressdev_testsuite  = {
 	.suite_name = "compressdev unit test suite",
 	.setup = testsuite_setup,
@@ -3208,7 +4211,55 @@ static struct unit_test_suite compressdev_testsuite  = {
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_external_mbufs),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
-		test_compressdev_deflate_stateless_fixed_oos_recoverable),
+		      test_compressdev_deflate_stateless_fixed_oos_recoverable),
+
+		/* Positive test cases for IM buffer handling verification */
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_LB_1op),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_LB_2ops_first),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_LB_2ops_second),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_LB_3ops),
+
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_LB_4ops),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_SGL_1op),
+
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_SGL_2ops_first),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_SGL_2ops_second),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_SGL_3ops),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_SGL_4ops),
+
+		/* Negative test cases for IM buffer handling verification */
+
+		/* For this test huge mempool is necessary.
+		 * It tests one case:
+		 * only one op containing big amount of data, so that
+		 * number of requested descriptors higher than number
+		 * of available descriptors (128)
+		 */
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_im_buffers_SGL_over_1op),
+
+		/* For this test huge mempool is necessary.
+		 * 2 ops. First op contains big amount of data:
+		 * number of requested descriptors higher than number
+		 * of available descriptors (128), the second op is
+		 * relatively small. In this case both ops are rejected
+		 */
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+		       test_compressdev_deflate_im_buffers_SGL_over_2ops_first),
+
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+		      test_compressdev_deflate_im_buffers_SGL_over_2ops_second),
+
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
