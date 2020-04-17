@@ -698,6 +698,7 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 			internals->current_primary_port = internals->slaves[0].port_id;
 		else
 			internals->primary_port = 0;
+		mac_address_slaves_update(bonded_eth_dev);
 	}
 
 	if (internals->active_slave_count < 1) {

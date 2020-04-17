@@ -1533,7 +1533,7 @@ mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev)
 			if (internals->slaves[i].port_id ==
 					internals->current_primary_port) {
 				if (rte_eth_dev_default_mac_addr_set(
-						internals->primary_port,
+						internals->current_primary_port,
 						bonded_eth_dev->data->mac_addrs)) {
 					RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
 							internals->current_primary_port);
@@ -2873,6 +2873,7 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 						internals->active_slaves[0]);
 			else
 				internals->current_primary_port = internals->primary_port;
+			mac_address_slaves_update(bonded_eth_dev);
 		}
 	}
 
