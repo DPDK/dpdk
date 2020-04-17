@@ -79,30 +79,30 @@ struct tf_tbl_scope_cb {
 /** Hardware Page sizes supported for EEM: 4K, 8K, 64K, 256K, 1M, 2M, 4M, 1G.
  * Round-down other page sizes to the lower hardware page size supported.
  */
-#define PAGE_SHIFT 22 /** 2M */
+#define BNXT_PAGE_SHIFT 22 /** 2M */
 
-#if (PAGE_SHIFT < 12)				/** < 4K >> 4K */
+#if (BNXT_PAGE_SHIFT < 12)				/** < 4K >> 4K */
 #define TF_EM_PAGE_SHIFT 12
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_4K
-#elif (PAGE_SHIFT <= 13)			/** 4K, 8K */
+#elif (BNXT_PAGE_SHIFT <= 13)			/** 4K, 8K */
 #define TF_EM_PAGE_SHIFT 13
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_8K
-#elif (PAGE_SHIFT < 16)				/** 16K, 32K >> 8K */
+#elif (BNXT_PAGE_SHIFT < 16)				/** 16K, 32K >> 8K */
 #define TF_EM_PAGE_SHIFT 15
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_32K
-#elif (PAGE_SHIFT <= 17)			/** 64K, 128K >> 64K */
+#elif (BNXT_PAGE_SHIFT <= 17)			/** 64K, 128K >> 64K */
 #define TF_EM_PAGE_SHIFT 16
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_64K
-#elif (PAGE_SHIFT <= 19)			/** 256K, 512K >> 256K */
+#elif (BNXT_PAGE_SHIFT <= 19)			/** 256K, 512K >> 256K */
 #define TF_EM_PAGE_SHIFT 18
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_256K
-#elif (PAGE_SHIFT <= 21)			/** 1M */
+#elif (BNXT_PAGE_SHIFT <= 21)			/** 1M */
 #define TF_EM_PAGE_SHIFT 20
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_1M
-#elif (PAGE_SHIFT <= 22)			/** 2M, 4M */
+#elif (BNXT_PAGE_SHIFT <= 22)			/** 2M, 4M */
 #define TF_EM_PAGE_SHIFT 21
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_2M
-#elif (PAGE_SHIFT <= 29)			/** 8M ... 512M >> 4M */
+#elif (BNXT_PAGE_SHIFT <= 29)			/** 8M ... 512M >> 4M */
 #define TF_EM_PAGE_SHIFT 22
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_4M
 #else						/** >= 1G >> 1G */
