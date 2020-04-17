@@ -1921,19 +1921,22 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->rxq.sges_n = sges_n;
 		max_lro_size = max_rx_pkt_len;
 	}
-	if (mprq_en && !mlx5_rxq_mprq_enabled(&tmpl->rxq))
+	if (config->mprq.enabled && !mlx5_rxq_mprq_enabled(&tmpl->rxq))
 		DRV_LOG(WARNING,
-			"port %u MPRQ is requested but cannot be enabled"
-			" (requested: packet size = %u, desc = %u,"
-			" stride_sz = %u, stride_num = %u,"
-			" supported: min_stride_sz = %u, max_stride_sz = %u).",
-			dev->data->port_id, non_scatter_min_mbuf_size, desc,
+			"port %u MPRQ is requested but cannot be enabled\n"
+			" (requested: pkt_sz = %u, desc_num = %u,"
+			" rxq_num = %u, stride_sz = %u, stride_num = %u\n"
+			"  supported: min_rxqs_num = %u,"
+			" min_stride_sz = %u, max_stride_sz = %u).",
+			dev->data->port_id, non_scatter_min_mbuf_size,
+			desc, priv->rxqs_n,
 			config->mprq.stride_size_n ?
 				(1U << config->mprq.stride_size_n) :
 				(1U << mprq_stride_size),
 			config->mprq.stride_num_n ?
 				(1U << config->mprq.stride_num_n) :
 				(1U << mprq_stride_nums),
+			config->mprq.min_rxqs_num,
 			(1U << config->mprq.min_stride_size_n),
 			(1U << config->mprq.max_stride_size_n));
 	DRV_LOG(DEBUG, "port %u maximum number of segments per packet: %u",
