@@ -23,22 +23,36 @@ const char *pmd_bond_init_valid_arguments[] = {
 };
 
 static inline int
+bond_pci_addr_cmp(const struct rte_device *dev, const void *_pci_addr)
+{
+	const struct rte_pci_device *pdev = RTE_DEV_TO_PCI_CONST(dev);
+	const struct rte_pci_addr *paddr = _pci_addr;
+
+	return rte_pci_addr_cmp(&pdev->addr, paddr);
+}
+
+static inline int
 find_port_id_by_pci_addr(const struct rte_pci_addr *pci_addr)
 {
-	struct rte_pci_device *pci_dev;
-	struct rte_pci_addr *eth_pci_addr;
+	struct rte_bus *pci_bus;
+	struct rte_device *dev;
 	unsigned i;
 
-	RTE_ETH_FOREACH_DEV(i) {
-		pci_dev = RTE_ETH_DEV_TO_PCI(&rte_eth_devices[i]);
-		eth_pci_addr = &pci_dev->addr;
-
-		if (pci_addr->bus == eth_pci_addr->bus &&
-			pci_addr->devid == eth_pci_addr->devid &&
-			pci_addr->domain == eth_pci_addr->domain &&
-			pci_addr->function == eth_pci_addr->function)
-			return i;
+	pci_bus = rte_bus_find_by_name("pci");
+	if (pci_bus == NULL) {
+		RTE_BOND_LOG(ERR, "No PCI bus found");
+		return -1;
 	}
+
+	dev = pci_bus->find_device(NULL, bond_pci_addr_cmp, pci_addr);
+	if (dev == NULL) {
+		RTE_BOND_LOG(ERR, "unable to find PCI device");
+		return -1;
+	}
+
+	RTE_ETH_FOREACH_DEV(i)
+		if (rte_eth_devices[i].device == dev)
+			return i;
 	return -1;
 }
 
@@ -57,15 +71,6 @@ find_port_id_by_dev_name(const char *name)
 	return -1;
 }
 
-static inline int
-bond_pci_addr_cmp(const struct rte_device *dev, const void *_pci_addr)
-{
-	const struct rte_pci_device *pdev = RTE_DEV_TO_PCI_CONST(dev);
-	const struct rte_pci_addr *paddr = _pci_addr;
-
-	return rte_pci_addr_cmp(&pdev->addr, paddr);
-}
-
 /**
  * Parses a port identifier string to a port id by pci address, then by name,
  * and finally port id.
@@ -74,23 +79,10 @@ static inline int
 parse_port_id(const char *port_str)
 {
 	struct rte_pci_addr dev_addr;
-	struct rte_bus *pci_bus;
-	struct rte_device *dev;
 	int port_id;
 
-	pci_bus = rte_bus_find_by_name("pci");
-	if (pci_bus == NULL) {
-		RTE_BOND_LOG(ERR, "unable to find PCI bus\n");
-		return -1;
-	}
-
 	/* try parsing as pci address, physical devices */
-	if (pci_bus->parse(port_str, &dev_addr) == 0) {
-		dev = pci_bus->find_device(NULL, bond_pci_addr_cmp, &dev_addr);
-		if (dev == NULL) {
-			RTE_BOND_LOG(ERR, "unable to find PCI device");
-			return -1;
-		}
+	if (rte_pci_addr_parse(port_str, &dev_addr) == 0) {
 		port_id = find_port_id_by_pci_addr(&dev_addr);
 		if (port_id < 0)
 			return -1;
