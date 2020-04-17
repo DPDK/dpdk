@@ -101,7 +101,9 @@ l3fwd_event_port_setup_generic(void)
 		rte_panic("No space is available\n");
 
 	memset(&def_p_conf, 0, sizeof(struct rte_event_port_conf));
-	rte_event_port_default_conf_get(event_d_id, 0, &def_p_conf);
+	ret = rte_event_port_default_conf_get(event_d_id, 0, &def_p_conf);
+	if (ret < 0)
+		rte_panic("Error to get default configuration of event port\n");
 
 	if (def_p_conf.new_event_threshold < event_p_conf.new_event_threshold)
 		event_p_conf.new_event_threshold =
@@ -161,7 +163,10 @@ l3fwd_event_queue_setup_generic(uint32_t event_queue_cfg)
 	if (!evt_rsrc->evq.event_q_id)
 		rte_panic("Memory allocation failure\n");
 
-	rte_event_queue_default_conf_get(event_d_id, 0, &def_q_conf);
+	ret = rte_event_queue_default_conf_get(event_d_id, 0, &def_q_conf);
+	if (ret < 0)
+		rte_panic("Error to get default config of event queue\n");
+
 	if (def_q_conf.nb_atomic_flows < event_q_conf.nb_atomic_flows)
 		event_q_conf.nb_atomic_flows = def_q_conf.nb_atomic_flows;
 

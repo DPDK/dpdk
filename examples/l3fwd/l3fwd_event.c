@@ -70,7 +70,11 @@ l3fwd_eth_dev_port_setup(struct rte_eth_conf *port_conf)
 		printf("Creating queues: nb_rxq=%d nb_txq=1...\n",
 		       evt_rsrc->eth_rx_queues);
 
-		rte_eth_dev_info_get(port_id, &dev_info);
+		ret = rte_eth_dev_info_get(port_id, &dev_info);
+		if (ret != 0)
+			rte_panic("Error during getting device (port %u) info:"
+				  "%s\n", port_id, strerror(-ret));
+
 		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 			local_port_conf.txmode.offloads |=
 						DEV_TX_OFFLOAD_MBUF_FAST_FREE;

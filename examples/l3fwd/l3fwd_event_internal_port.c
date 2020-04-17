@@ -99,7 +99,10 @@ l3fwd_event_port_setup_internal_port(void)
 	if (!evt_rsrc->evp.event_p_id)
 		rte_panic("Failed to allocate memory for Event Ports\n");
 
-	rte_event_port_default_conf_get(event_d_id, 0, &def_p_conf);
+	ret = rte_event_port_default_conf_get(event_d_id, 0, &def_p_conf);
+	if (ret < 0)
+		rte_panic("Error to get default configuration of event port\n");
+
 	if (def_p_conf.new_event_threshold < event_p_conf.new_event_threshold)
 		event_p_conf.new_event_threshold =
 						def_p_conf.new_event_threshold;
@@ -150,7 +153,10 @@ l3fwd_event_queue_setup_internal_port(uint32_t event_queue_cfg)
 	uint8_t event_q_id = 0;
 	int32_t ret;
 
-	rte_event_queue_default_conf_get(event_d_id, event_q_id, &def_q_conf);
+	ret = rte_event_queue_default_conf_get(event_d_id, event_q_id,
+					       &def_q_conf);
+	if (ret < 0)
+		rte_panic("Error to get default config of event queue\n");
 
 	if (def_q_conf.nb_atomic_flows < event_q_conf.nb_atomic_flows)
 		event_q_conf.nb_atomic_flows = def_q_conf.nb_atomic_flows;
