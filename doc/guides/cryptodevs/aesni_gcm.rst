@@ -42,8 +42,8 @@ Installation
 To build DPDK with the AESNI_GCM_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v0.53, which
-can be downloaded in `<https://github.com/01org/intel-ipsec-mb/archive/v0.53.zip>`_.
+The latest version of the library supported by this PMD is v0.54, which
+can be downloaded in `<https://github.com/01org/intel-ipsec-mb/archive/v0.54.zip>`_.
 
 .. code-block:: console
 
@@ -71,7 +71,7 @@ and the external crypto libraries supported by them:
    17.02 - 17.05  ISA-L Crypto v2.18
    17.08 - 18.02  Multi-buffer library 0.46 - 0.48
    18.05 - 19.02  Multi-buffer library 0.49 - 0.52
-   19.05+         Multi-buffer library 0.52 - 0.53
+   19.05+         Multi-buffer library 0.52 - 0.54
    =============  ================================
 
 

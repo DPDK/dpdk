@@ -80,8 +80,13 @@ New Features
 
 * **Updated the AESNI MB crypto PMD.**
 
+  * Added support for intel-ipsec-mb version 0.54.
   * Updated the AESNI MB PMD with AES-256 DOCSIS algorithm.
   * Added support for synchronous Crypto burst API.
+
+* **Updated the AESNI GCM crypto PMD.**
+
+  * Added support for intel-ipsec-mb version 0.54.
 
 * **Added handling of mixed crypto algorithms in QAT PMD for GEN2.**
 
