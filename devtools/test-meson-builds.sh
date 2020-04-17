@@ -74,7 +74,12 @@ config () # <dir> <builddir> <meson options>
 		return
 	fi
 	options=
-	options="$options --werror -Dexamples=all"
+	options="$options --werror"
+	if echo $* | grep -qw -- '--default-library=shared' ; then
+		options="$options -Dexamples=all"
+	else
+		options="$options -Dexamples=l3fwd" # save disk space
+	fi
 	options="$options --buildtype=debugoptimized"
 	for option in $DPDK_MESON_OPTIONS ; do
 		options="$options -D$option"

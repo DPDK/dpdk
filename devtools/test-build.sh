@@ -257,6 +257,7 @@ for conf in $configs ; do
 	echo "================== Build examples for $conf"
 	export RTE_SDK=$(readlink -f $dir)/install/share/dpdk
 	ln -sTf $(pwd)/lib $RTE_SDK/lib # workaround for vm_power_manager
+	grep -q 'SHARED_LIB=n' $dir/.config || # skip examples with static libs
 	${MAKE} -j$J -sC examples \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
 		O=$(readlink -f $dir)/examples
