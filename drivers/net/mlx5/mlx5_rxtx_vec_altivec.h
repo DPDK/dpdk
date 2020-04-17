@@ -264,17 +264,22 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			elts[pos + 2]->hash.fdir.hi = flow_tag;
 			elts[pos + 3]->hash.fdir.hi = flow_tag;
 		}
-		if (rte_flow_dynf_metadata_avail()) {
-			const uint32_t meta = *RTE_FLOW_DYNF_METADATA(t_pkt);
+		if (!!rxq->flow_meta_mask) {
+			int32_t offs = rxq->flow_meta_offset;
+			const uint32_t meta =
+				*RTE_MBUF_DYNFIELD(t_pkt, offs, uint32_t *);
 
 			/* Check if title packet has valid metadata. */
 			if (meta) {
-				MLX5_ASSERT(t_pkt->ol_flags &
-					    PKT_RX_DYNF_METADATA);
-				*RTE_FLOW_DYNF_METADATA(elts[pos]) = meta;
-				*RTE_FLOW_DYNF_METADATA(elts[pos + 1]) = meta;
-				*RTE_FLOW_DYNF_METADATA(elts[pos + 2]) = meta;
-				*RTE_FLOW_DYNF_METADATA(elts[pos + 3]) = meta;
+				MLX5_ASSERT(t_pkt->ol_flags & offs);
+				*RTE_MBUF_DYNFIELD(elts[pos], offs,
+							uint32_t *) = meta;
+				*RTE_MBUF_DYNFIELD(elts[pos + 1], offs,
+							uint32_t *) = meta;
+				*RTE_MBUF_DYNFIELD(elts[pos + 2], offs,
+							uint32_t *) = meta;
+				*RTE_MBUF_DYNFIELD(elts[pos + 3], offs,
+							uint32_t *) = meta;
 			}
 		}
 
@@ -1023,9 +1028,9 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			pkts[pos + 3]->timestamp =
 				rte_be_to_cpu_64(cq[pos + p3].timestamp);
 		}
-		if (rte_flow_dynf_metadata_avail()) {
-			uint64_t flag = rte_flow_dynf_metadata_mask;
-			int offs = rte_flow_dynf_metadata_offs;
+		if (!!rxq->flow_meta_mask) {
+			uint64_t flag = rxq->flow_meta_mask;
+			int32_t offs = rxq->flow_meta_offset;
 			uint32_t metadata;
 
 			/* This code is subject for futher optimization. */

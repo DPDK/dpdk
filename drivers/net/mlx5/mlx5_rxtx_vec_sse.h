@@ -192,17 +192,22 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			elts[pos + 2]->hash.fdir.hi = flow_tag;
 			elts[pos + 3]->hash.fdir.hi = flow_tag;
 		}
-		if (rte_flow_dynf_metadata_avail()) {
-			const uint32_t meta = *RTE_FLOW_DYNF_METADATA(t_pkt);
+		if (rxq->dynf_meta) {
+			int32_t offs = rxq->flow_meta_offset;
+			const uint32_t meta =
+				*RTE_MBUF_DYNFIELD(t_pkt, offs, uint32_t *);
 
 			/* Check if title packet has valid metadata. */
 			if (meta) {
-				MLX5_ASSERT(t_pkt->ol_flags &
-					    PKT_RX_DYNF_METADATA);
-				*RTE_FLOW_DYNF_METADATA(elts[pos]) = meta;
-				*RTE_FLOW_DYNF_METADATA(elts[pos + 1]) = meta;
-				*RTE_FLOW_DYNF_METADATA(elts[pos + 2]) = meta;
-				*RTE_FLOW_DYNF_METADATA(elts[pos + 3]) = meta;
+				MLX5_ASSERT(t_pkt->ol_flags & offs);
+				*RTE_MBUF_DYNFIELD(elts[pos], offs,
+							uint32_t *) = meta;
+				*RTE_MBUF_DYNFIELD(elts[pos + 1], offs,
+							uint32_t *) = meta;
+				*RTE_MBUF_DYNFIELD(elts[pos + 2], offs,
+							uint32_t *) = meta;
+				*RTE_MBUF_DYNFIELD(elts[pos + 3], offs,
+							uint32_t *) = meta;
 			}
 		}
 		pos += MLX5_VPMD_DESCS_PER_LOOP;
@@ -654,24 +659,26 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			pkts[pos + 3]->timestamp =
 				rte_be_to_cpu_64(cq[pos + p3].timestamp);
 		}
-		if (rte_flow_dynf_metadata_avail()) {
+		if (rxq->dynf_meta) {
 			/* This code is subject for futher optimization. */
-			*RTE_FLOW_DYNF_METADATA(pkts[pos]) =
+			int32_t offs = rxq->flow_meta_offset;
+
+			*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *) =
 				cq[pos].flow_table_metadata;
-			*RTE_FLOW_DYNF_METADATA(pkts[pos + 1]) =
+			*RTE_MBUF_DYNFIELD(pkts[pos + 1], offs, uint32_t *) =
 				cq[pos + p1].flow_table_metadata;
-			*RTE_FLOW_DYNF_METADATA(pkts[pos + 2]) =
+			*RTE_MBUF_DYNFIELD(pkts[pos + 2], offs, uint32_t *) =
 				cq[pos + p2].flow_table_metadata;
-			*RTE_FLOW_DYNF_METADATA(pkts[pos + 3]) =
+			*RTE_MBUF_DYNFIELD(pkts[pos + 3], offs, uint32_t *) =
 				cq[pos + p3].flow_table_metadata;
-			if (*RTE_FLOW_DYNF_METADATA(pkts[pos]))
-				pkts[pos]->ol_flags |= PKT_RX_DYNF_METADATA;
-			if (*RTE_FLOW_DYNF_METADATA(pkts[pos + 1]))
-				pkts[pos + 1]->ol_flags |= PKT_RX_DYNF_METADATA;
-			if (*RTE_FLOW_DYNF_METADATA(pkts[pos + 2]))
-				pkts[pos + 2]->ol_flags |= PKT_RX_DYNF_METADATA;
-			if (*RTE_FLOW_DYNF_METADATA(pkts[pos + 3]))
-				pkts[pos + 3]->ol_flags |= PKT_RX_DYNF_METADATA;
+			if (*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *))
+				pkts[pos]->ol_flags |= rxq->flow_meta_mask;
+			if (*RTE_MBUF_DYNFIELD(pkts[pos + 1], offs, uint32_t *))
+				pkts[pos + 1]->ol_flags |= rxq->flow_meta_mask;
+			if (*RTE_MBUF_DYNFIELD(pkts[pos + 2], offs, uint32_t *))
+				pkts[pos + 2]->ol_flags |= rxq->flow_meta_mask;
+			if (*RTE_MBUF_DYNFIELD(pkts[pos + 3], offs, uint32_t *))
+				pkts[pos + 3]->ol_flags |= rxq->flow_meta_mask;
 		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Add up received bytes count. */

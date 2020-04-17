@@ -323,6 +323,8 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id);
 		goto error;
 	}
+	/* Set a mask and offset of dynamic metadata flows into Rx queues*/
+	mlx5_flow_rxq_dynf_metadata_set(dev);
 	/*
 	 * In non-cached mode, it only needs to start the default mreg copy
 	 * action and no flow created by application exists anymore.

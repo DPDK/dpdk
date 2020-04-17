@@ -753,6 +753,7 @@ int mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 		       bool clear, uint64_t *pkts, uint64_t *bytes);
 int mlx5_flow_dev_dump(struct rte_eth_dev *dev, FILE *file,
 		       struct rte_flow_error *error);
+void mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev);
 
 /* mlx5_mp.c */
 int mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer);

@@ -1339,9 +1339,10 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 			pkt->hash.fdir.hi = mlx5_flow_mark_get(mark);
 		}
 	}
-	if (rte_flow_dynf_metadata_avail() && cqe->flow_table_metadata) {
-		pkt->ol_flags |= PKT_RX_DYNF_METADATA;
-		*RTE_FLOW_DYNF_METADATA(pkt) = cqe->flow_table_metadata;
+	if (rxq->dynf_meta && cqe->flow_table_metadata) {
+		pkt->ol_flags |= rxq->flow_meta_mask;
+		*RTE_MBUF_DYNFIELD(pkt, rxq->flow_meta_offset, uint32_t *) =
+			cqe->flow_table_metadata;
 	}
 	if (rxq->csum)
 		pkt->ol_flags |= rxq_cq_to_ol_flags(cqe);

@@ -19,7 +19,7 @@
 #include "rte_flow.h"
 
 /* Mbuf dynamic field name for metadata. */
-int rte_flow_dynf_metadata_offs = -1;
+int32_t rte_flow_dynf_metadata_offs = -1;
 
 /* Mbuf dynamic field flag bit number for metadata. */
 uint64_t rte_flow_dynf_metadata_mask;

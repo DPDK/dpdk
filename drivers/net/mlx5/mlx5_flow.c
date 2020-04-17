@@ -894,6 +894,35 @@ flow_rxq_flags_clear(struct rte_eth_dev *dev)
 	}
 }
 
+/**
+ * Set the Rx queue dynamic metadata (mask and offset) for a flow
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ */
+void
+mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *data;
+	unsigned int i;
+
+	for (i = 0; i != priv->rxqs_n; ++i) {
+		if (!(*priv->rxqs)[i])
+			continue;
+		data = (*priv->rxqs)[i];
+		if (!rte_flow_dynf_metadata_avail()) {
+			data->dynf_meta = 0;
+			data->flow_meta_mask = 0;
+			data->flow_meta_offset = -1;
+		} else {
+			data->dynf_meta = 1;
+			data->flow_meta_mask = rte_flow_dynf_metadata_mask;
+			data->flow_meta_offset = rte_flow_dynf_metadata_offs;
+		}
+	}
+}
+
 /*
  * return a pointer to the desired action in the list of actions.
  *

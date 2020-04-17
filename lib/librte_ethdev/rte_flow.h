@@ -2653,7 +2653,7 @@ struct rte_flow_action_set_dscp {
 };
 
 /* Mbuf dynamic field offset for metadata. */
-extern int rte_flow_dynf_metadata_offs;
+extern int32_t rte_flow_dynf_metadata_offs;
 
 /* Mbuf dynamic field flag mask for metadata. */
 extern uint64_t rte_flow_dynf_metadata_mask;
