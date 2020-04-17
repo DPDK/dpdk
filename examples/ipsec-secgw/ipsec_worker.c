@@ -112,12 +112,7 @@ check_sp(struct sp_ctx *sp, const uint8_t *nlp, uint32_t *sa_idx)
 	rte_acl_classify((struct rte_acl_ctx *)sp, &nlp, &res, 1,
 			DEFAULT_MAX_CATEGORIES);
 
-	if (unlikely(res == 0)) {
-		/* No match */
-		return 0;
-	}
-
-	if (res == DISCARD)
+	if (unlikely(res == DISCARD))
 		return 0;
 	else if (res == BYPASS) {
 		*sa_idx = -1;
