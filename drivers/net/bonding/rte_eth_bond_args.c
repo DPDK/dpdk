@@ -108,9 +108,8 @@ parse_port_id(const char *port_str)
 		}
 	}
 
-	if (port_id < 0 || port_id > RTE_MAX_ETHPORTS) {
-		RTE_BOND_LOG(ERR, "Slave port specified (%s) outside expected range",
-				port_str);
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		RTE_BOND_LOG(ERR, "Specified port (%s) is invalid", port_str);
 		return -1;
 	}
 	return port_id;
