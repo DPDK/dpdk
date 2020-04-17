@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <rte_common.h>
+
 #include "oob_monitor.h"
 
 void branch_monitor_exit(void)
