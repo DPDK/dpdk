@@ -802,6 +802,8 @@ struct rte_cryptodev_ops aesni_mb_pmd_ops = {
 		.queue_pair_setup	= aesni_mb_pmd_qp_setup,
 		.queue_pair_release	= aesni_mb_pmd_qp_release,
 
+		.sym_cpu_process	= aesni_mb_cpu_crypto_process_bulk,
+
 		.sym_session_get_size	= aesni_mb_pmd_sym_session_get_size,
 		.sym_session_configure	= aesni_mb_pmd_sym_session_configure,
 		.sym_session_clear	= aesni_mb_pmd_sym_session_clear

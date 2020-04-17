@@ -12,6 +12,9 @@ support for utilizing Intel multi buffer library, see the white paper
 
 The AES-NI MB PMD has current only been tested on Fedora 21 64-bit with gcc.
 
+The AES-NI MB PMD supports synchronous mode of operation with
+``rte_cryptodev_sym_cpu_crypto_process`` function call.
+
 Features
 --------
 

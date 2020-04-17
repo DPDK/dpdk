@@ -275,6 +275,9 @@ aesni_mb_set_session_parameters(const MB_MGR *mb_mgr,
 /** device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_aesni_mb_pmd_ops;
 
-
+extern uint32_t
+aesni_mb_cpu_crypto_process_bulk(struct rte_cryptodev *dev,
+	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs sofs,
+	struct rte_crypto_sym_vec *vec);
 
 #endif /* _AESNI_MB_PMD_PRIVATE_H_ */

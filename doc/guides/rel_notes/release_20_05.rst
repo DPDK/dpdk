@@ -81,6 +81,7 @@ New Features
 * **Updated the AESNI MB crypto PMD.**
 
   * Updated the AESNI MB PMD with AES-256 DOCSIS algorithm.
+  * Added support for synchronous Crypto burst API.
 
 * **Added handling of mixed crypto algorithms in QAT PMD for GEN2.**
 
