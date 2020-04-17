@@ -43,6 +43,36 @@ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t nr_vring)
 	return (is_tx ^ (idx & 1)) == 0 && idx < nr_vring;
 }
 
+static inline void
+do_data_copy_enqueue(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	struct batch_copy_elem *elem = vq->batch_copy_elems;
+	uint16_t count = vq->batch_copy_nb_elems;
+	int i;
+
+	for (i = 0; i < count; i++) {
+		rte_memcpy(elem[i].dst, elem[i].src, elem[i].len);
+		vhost_log_cache_write_iova(dev, vq, elem[i].log_addr,
+					   elem[i].len);
+		PRINT_PACKET(dev, (uintptr_t)elem[i].dst, elem[i].len, 0);
+	}
+
+	vq->batch_copy_nb_elems = 0;
+}
+
+static inline void
+do_data_copy_dequeue(struct vhost_virtqueue *vq)
+{
+	struct batch_copy_elem *elem = vq->batch_copy_elems;
+	uint16_t count = vq->batch_copy_nb_elems;
+	int i;
+
+	for (i = 0; i < count; i++)
+		rte_memcpy(elem[i].dst, elem[i].src, elem[i].len);
+
+	vq->batch_copy_nb_elems = 0;
+}
+
 static __rte_always_inline void
 do_flush_shadow_used_ring_split(struct virtio_net *dev,
 			struct vhost_virtqueue *vq,
@@ -186,6 +216,11 @@ vhost_flush_enqueue_batch_packed(struct virtio_net *dev,
 	uint16_t i;
 	uint16_t flags;
 
+	if (vq->shadow_used_idx) {
+		do_data_copy_enqueue(dev, vq);
+		vhost_flush_enqueue_shadow_packed(dev, vq);
+	}
+
 	flags = PACKED_DESC_ENQUEUE_USED_FLAG(vq->used_wrap_counter);
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
@@ -323,36 +358,6 @@ vhost_shadow_dequeue_single_packed_inorder(struct vhost_virtqueue *vq,
 	}
 
 	vq_inc_last_used_packed(vq, count);
-}
-
-static inline void
-do_data_copy_enqueue(struct virtio_net *dev, struct vhost_virtqueue *vq)
-{
-	struct batch_copy_elem *elem = vq->batch_copy_elems;
-	uint16_t count = vq->batch_copy_nb_elems;
-	int i;
-
-	for (i = 0; i < count; i++) {
-		rte_memcpy(elem[i].dst, elem[i].src, elem[i].len);
-		vhost_log_cache_write_iova(dev, vq, elem[i].log_addr,
-					   elem[i].len);
-		PRINT_PACKET(dev, (uintptr_t)elem[i].dst, elem[i].len, 0);
-	}
-
-	vq->batch_copy_nb_elems = 0;
-}
-
-static inline void
-do_data_copy_dequeue(struct vhost_virtqueue *vq)
-{
-	struct batch_copy_elem *elem = vq->batch_copy_elems;
-	uint16_t count = vq->batch_copy_nb_elems;
-	int i;
-
-	for (i = 0; i < count; i++)
-		rte_memcpy(elem[i].dst, elem[i].src, elem[i].len);
-
-	vq->batch_copy_nb_elems = 0;
 }
 
 static __rte_always_inline void
