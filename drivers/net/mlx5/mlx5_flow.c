@@ -4687,6 +4687,7 @@ void
 mlx5_flow_stop_default(struct rte_eth_dev *dev)
 {
 	flow_mreg_del_default_copy_action(dev);
+	flow_rxq_flags_clear(dev);
 }
 
 /**
