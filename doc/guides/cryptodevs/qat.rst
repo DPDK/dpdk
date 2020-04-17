@@ -260,8 +260,11 @@ allocated while for GEN1 devices, 12 buffers are allocated, plus 1472 bytes over
 .. Note::
 
 	If the compressed output of a Deflate operation using Dynamic Huffman
-        Encoding is too big to fit in an intermediate buffer, then the
-	operation will fall back to fixed compression rather than failing the operation.
+	Encoding is too big to fit in an intermediate buffer, then the
+	operation will be split into smaller operations and their results will
+	be merged afterwards.
+	This is not possible if any checksum calculation was requested - in such
+	case the code falls back to fixed compression.
 	To avoid this less performant case, applications should configure
 	the intermediate buffer size to be larger than the expected input data size
 	(compressed output size is usually unknown, so the only option is to make

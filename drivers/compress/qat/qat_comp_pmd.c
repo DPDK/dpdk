@@ -146,6 +146,9 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		struct qat_comp_op_cookie *cookie =
 				qp->op_cookies[i];
 
+		cookie->qp = qp;
+		cookie->cookie_index = i;
+
 		cookie->qat_sgl_src_d = rte_zmalloc_socket(NULL,
 					sizeof(struct qat_sgl) +
 					sizeof(struct qat_flat_buf) *
@@ -561,20 +564,6 @@ qat_comp_dev_info_get(struct rte_compressdev *dev,
 }
 
 static uint16_t
-qat_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
-		uint16_t nb_ops)
-{
-	return qat_enqueue_op_burst(qp, (void **)ops, nb_ops);
-}
-
-static uint16_t
-qat_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
-			      uint16_t nb_ops)
-{
-	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
-}
-
-static uint16_t
 qat_comp_pmd_enq_deq_dummy_op_burst(void *qp __rte_unused,
 				    struct rte_comp_op **ops __rte_unused,
 				    uint16_t nb_ops __rte_unused)
@@ -603,7 +592,7 @@ static struct rte_compressdev_ops compress_qat_dummy_ops = {
 };
 
 static uint16_t
-qat_comp_pmd_dequeue_frst_op_burst(void *qp, struct rte_comp_op **ops,
+qat_comp_pmd_dequeue_first_op_burst(void *qp, struct rte_comp_op **ops,
 				   uint16_t nb_ops)
 {
 	uint16_t ret = qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
@@ -623,7 +612,8 @@ qat_comp_pmd_dequeue_frst_op_burst(void *qp, struct rte_comp_op **ops,
 
 		} else {
 			tmp_qp->qat_dev->comp_dev->compressdev->dequeue_burst =
-					qat_comp_pmd_dequeue_op_burst;
+					(compressdev_dequeue_pkt_burst_t)
+					qat_dequeue_op_burst;
 		}
 	}
 	return ret;
@@ -698,8 +688,9 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 
 	compressdev->dev_ops = &compress_qat_ops;
 
-	compressdev->enqueue_burst = qat_comp_pmd_enqueue_op_burst;
-	compressdev->dequeue_burst = qat_comp_pmd_dequeue_frst_op_burst;
+	compressdev->enqueue_burst = (compressdev_enqueue_pkt_burst_t)
+			qat_enqueue_comp_op_burst;
+	compressdev->dequeue_burst = qat_comp_pmd_dequeue_first_op_burst;
 
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 

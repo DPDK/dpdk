@@ -90,6 +90,9 @@ uint16_t
 qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops);
 
 uint16_t
+qat_enqueue_comp_op_burst(void *qp, void **ops, uint16_t nb_ops);
+
+uint16_t
 qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops);
 
 int

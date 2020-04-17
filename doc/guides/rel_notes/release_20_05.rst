@@ -90,6 +90,16 @@ New Features
   when running on GEN2 QAT hardware with particular firmware versions
   (GEN3 support was added in DPDK 20.02).
 
+* **Added QAT intermediate buffer too small handling in QAT compression PMD.**
+
+  Added a special way of buffer handling when internal QAT intermediate buffer
+  is too small for Huffman dynamic compression operation. Instead of falling
+  back to fixed compression, the operation is now split into multiple smaller
+  dynamic compression requests (possible to execute on QAT) and their results
+  are then combined and copied into the output buffer. This is not possible if
+  any checksum calculation was requested - in such case the code falls back to
+  fixed compression as before.
+
 * **Updated the turbo_sw bbdev PMD.**
 
   Supported large size code blocks which does not fit in one mbuf segment.

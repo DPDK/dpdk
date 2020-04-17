@@ -42,9 +42,6 @@ Limitations
   from the RX queue must be done from one thread, but enqueues and dequeues may be done
   in different threads.)
 * No BSD support as BSD QAT kernel driver not available.
-* When using Deflate dynamic huffman encoding for compression, the input size (op.src.length)
-  must be < CONFIG_RTE_PMD_QAT_COMP_IM_BUFFER_SIZE from the config file,
-  see :ref:`building_qat_config` for more details.
 * Stateful compression is not supported.
 
 

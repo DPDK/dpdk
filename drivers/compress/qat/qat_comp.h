@@ -11,6 +11,7 @@
 #include <rte_compressdev_pmd.h>
 
 #include "qat_common.h"
+#include "qat_qp.h"
 #include "icp_qat_hw.h"
 #include "icp_qat_fw_comp.h"
 #include "icp_qat_fw_la.h"
@@ -22,7 +23,7 @@
 #define ERR_CODE_QAT_COMP_WRONG_FW -99
 
 /* fallback to fixed compression threshold */
-#define QAT_FALLBACK_THLD ((uint32_t)(RTE_PMD_QAT_COMP_IM_BUFFER_SIZE / 1.1))
+#define QAT_FALLBACK_THLD ((uint32_t)(RTE_PMD_QAT_COMP_IM_BUFFER_SIZE / 1.3))
 
 #define QAT_MIN_OUT_BUF_SIZE 46
 
@@ -63,6 +64,24 @@ struct qat_comp_op_cookie {
 	uint16_t dst_nb_elems;
 	struct qat_sgl *qat_sgl_src_d;
 	struct qat_sgl *qat_sgl_dst_d;
+	struct qat_qp *qp;
+	uint32_t cookie_index;
+
+	/* QAT IM buffer too small handling: */
+	uint8_t split_op;
+	uint8_t nb_children;
+
+	/* used by the parent only */
+	uint8_t nb_child_responses;
+	uint32_t total_consumed;
+	uint32_t total_produced;
+	const struct rte_memzone **dst_memzones;
+	struct rte_mbuf *dst_data;
+	uint32_t dst_data_offset;
+
+	/* used by the child only */
+	struct qat_comp_op_cookie *parent_cookie;
+	void *dest_buffer;
 };
 
 struct qat_comp_xform {
@@ -85,6 +104,14 @@ struct qat_comp_stream {
 int
 qat_comp_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
 		       enum qat_device_gen qat_dev_gen __rte_unused);
+
+int
+qat_comp_build_multiple_requests(void *in_op, struct qat_qp *qp,
+				 uint32_t parent_tail, int nb_descr);
+
+void
+qat_comp_free_split_op_memzones(struct qat_comp_op_cookie *cookie,
+				unsigned int nb_children);
 
 int
 qat_comp_process_response(void **op, uint8_t *resp, void *op_cookie,
