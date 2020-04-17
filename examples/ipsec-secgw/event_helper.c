@@ -100,12 +100,15 @@ static inline bool
 eh_dev_has_rx_internal_port(uint8_t eventdev_id)
 {
 	bool flag = true;
-	int j;
+	int j, ret;
 
 	RTE_ETH_FOREACH_DEV(j) {
 		uint32_t caps = 0;
 
-		rte_event_eth_rx_adapter_caps_get(eventdev_id, j, &caps);
+		ret = rte_event_eth_rx_adapter_caps_get(eventdev_id, j, &caps);
+		if (ret < 0)
+			return false;
+
 		if (!(caps & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT))
 			flag = false;
 	}
@@ -116,12 +119,15 @@ static inline bool
 eh_dev_has_tx_internal_port(uint8_t eventdev_id)
 {
 	bool flag = true;
-	int j;
+	int j, ret;
 
 	RTE_ETH_FOREACH_DEV(j) {
 		uint32_t caps = 0;
 
-		rte_event_eth_tx_adapter_caps_get(eventdev_id, j, &caps);
+		ret = rte_event_eth_tx_adapter_caps_get(eventdev_id, j, &caps);
+		if (ret < 0)
+			return false;
+
 		if (!(caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT))
 			flag = false;
 	}
@@ -323,6 +329,7 @@ eh_set_default_conf_rx_adapter(struct eventmode_conf *em_conf)
 	int nb_eth_dev;
 	int adapter_id;
 	int conn_id;
+	int ret;
 	int i;
 
 	/* Create one adapter with eth queues mapped to event queue(s) */
@@ -385,7 +392,12 @@ eh_set_default_conf_rx_adapter(struct eventmode_conf *em_conf)
 		conn->ethdev_rx_qid = -1;
 
 		/* Get Rx adapter capabilities */
-		rte_event_eth_rx_adapter_caps_get(eventdev_id, i, &caps);
+		ret = rte_event_eth_rx_adapter_caps_get(eventdev_id, i, &caps);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to get event device %d eth rx adapter"
+				   " capabilities for port %d", eventdev_id, i);
+			return ret;
+		}
 		if (!(caps & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT))
 			rx_internal_port = false;
 
@@ -420,6 +432,7 @@ eh_set_default_conf_tx_adapter(struct eventmode_conf *em_conf)
 	int adapter_id;
 	int nb_eth_dev;
 	int conn_id;
+	int ret;
 	int i;
 
 	/*
@@ -479,7 +492,12 @@ eh_set_default_conf_tx_adapter(struct eventmode_conf *em_conf)
 		conn->ethdev_tx_qid = -1;
 
 		/* Get Tx adapter capabilities */
-		rte_event_eth_tx_adapter_caps_get(eventdev_id, i, &caps);
+		ret = rte_event_eth_tx_adapter_caps_get(eventdev_id, i, &caps);
+		if (ret < 0) {
+			EH_LOG_ERR("Failed to get event device %d eth tx adapter"
+				   " capabilities for port %d", eventdev_id, i);
+			return ret;
+		}
 		if (!(caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT))
 			tx_internal_port = false;
 
