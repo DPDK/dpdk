@@ -71,7 +71,7 @@ tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 		struct rx_queue *rxq = pmd->dev->data->rx_queues[i];
 
 		/* Skip queues that cannot request interrupts. */
-		if (!rxq || process_private->rxq_fds[i] <= 0) {
+		if (!rxq || process_private->rxq_fds[i] == -1) {
 			/* Use invalid intr_vec[] index to disable entry. */
 			intr_handle->intr_vec[i] =
 				RTE_INTR_VEC_RXTX_OFFSET +
