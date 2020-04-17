@@ -4524,9 +4524,12 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 	 * are not affected.
 	 */
 	if (unlikely(!dev->data->dev_started)) {
-		rte_errno = ENODEV;
 		DRV_LOG(DEBUG, "port %u is not started when "
 			"inserting a flow", dev->data->port_id);
+		rte_flow_error_set(error, ENODEV,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "port not started");
 		return NULL;
 	}
 	return (void *)(uintptr_t)flow_list_create(dev, &priv->flows,
