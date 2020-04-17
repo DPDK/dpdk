@@ -4257,6 +4257,11 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	if (wait_to_complete == 0 || dev->data->dev_conf.intr_conf.lsc != 0)
 		wait = 0;
 
+/* BSD has no interrupt mechanism, so force NIC status synchronization. */
+#ifdef RTE_EXEC_ENV_FREEBSD
+	wait = 1;
+#endif
+
 	if (vf)
 		diag = ixgbevf_check_link(hw, &link_speed, &link_up, wait);
 	else
