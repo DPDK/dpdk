@@ -382,25 +382,6 @@ vhost_shadow_enqueue_single_packed(struct virtio_net *dev,
 	}
 }
 
-static __rte_always_inline void
-vhost_flush_dequeue_packed(struct virtio_net *dev,
-			   struct vhost_virtqueue *vq)
-{
-	int shadow_count;
-	if (!vq->shadow_used_idx)
-		return;
-
-	shadow_count = vq->last_used_idx - vq->shadow_last_used_idx;
-	if (shadow_count <= 0)
-		shadow_count += vq->size;
-
-	if ((uint32_t)shadow_count >= (vq->size - MAX_PKT_BURST)) {
-		do_data_copy_dequeue(vq);
-		vhost_flush_dequeue_shadow_packed(dev, vq);
-		vhost_vring_call_packed(dev, vq);
-	}
-}
-
 /* avoid write operation when necessary, to lessen cache issues */
 #define ASSIGN_UNLESS_EQUAL(var, val) do {	\
 	if ((var) != (val))			\
@@ -2133,20 +2114,6 @@ virtio_dev_tx_packed_zmbuf(struct virtio_net *dev,
 	return pkt_idx;
 }
 
-static __rte_always_inline bool
-next_desc_is_avail(const struct vhost_virtqueue *vq)
-{
-	bool wrap_counter = vq->avail_wrap_counter;
-	uint16_t next_used_idx = vq->last_used_idx + 1;
-
-	if (next_used_idx >= vq->size) {
-		next_used_idx -= vq->size;
-		wrap_counter ^= 1;
-	}
-
-	return desc_is_avail(&vq->desc_packed[next_used_idx], wrap_counter);
-}
-
 static __rte_noinline uint16_t
 virtio_dev_tx_packed(struct virtio_net *dev,
 		     struct vhost_virtqueue *vq,
@@ -2163,7 +2130,6 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 		if (remained >= PACKED_BATCH_SIZE) {
 			if (!virtio_dev_tx_batch_packed(dev, vq, mbuf_pool,
 							&pkts[pkt_idx])) {
-				vhost_flush_dequeue_packed(dev, vq);
 				pkt_idx += PACKED_BATCH_SIZE;
 				remained -= PACKED_BATCH_SIZE;
 				continue;
@@ -2173,7 +2139,6 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 		if (virtio_dev_tx_single_packed(dev, vq, mbuf_pool,
 						&pkts[pkt_idx]))
 			break;
-		vhost_flush_dequeue_packed(dev, vq);
 		pkt_idx++;
 		remained--;
 
@@ -2182,15 +2147,8 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 	if (vq->shadow_used_idx) {
 		do_data_copy_dequeue(vq);
 
-		if (remained && !next_desc_is_avail(vq)) {
-			/*
-			 * The guest may be waiting to TX some buffers to
-			 * enqueue more to avoid bufferfloat, so we try to
-			 * reduce latency here.
-			 */
-			vhost_flush_dequeue_shadow_packed(dev, vq);
-			vhost_vring_call_packed(dev, vq);
-		}
+		vhost_flush_dequeue_shadow_packed(dev, vq);
+		vhost_vring_call_packed(dev, vq);
 	}
 
 	return pkt_idx;
