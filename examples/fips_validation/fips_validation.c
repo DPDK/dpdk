@@ -144,6 +144,24 @@ fips_test_parse_header(void)
 				ret = parse_test_tdes_init();
 				if (ret < 0)
 					return 0;
+			} else if (strstr(info.vec[i], "PERMUTATION")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_TDES;
+				ret = parse_test_tdes_init();
+				if (ret < 0)
+					return 0;
+			} else if (strstr(info.vec[i], "VARIABLE")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_TDES;
+				ret = parse_test_tdes_init();
+				if (ret < 0)
+					return 0;
+			} else if (strstr(info.vec[i], "SUBSTITUTION")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_TDES;
+				ret = parse_test_tdes_init();
+				if (ret < 0)
+					return 0;
 			} else if (strstr(info.vec[i], "SHA-")) {
 				algo_parsed = 1;
 				info.algo = FIPS_TEST_ALGO_SHA;
