@@ -7,7 +7,9 @@
 #define _RTE_VECT_PPC_64_H_
 
 #include <altivec.h>
+
 #include "generic/rte_vect.h"
+#include "rte_common.h"
 
 #ifdef __cplusplus
 extern "C" {
