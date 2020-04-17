@@ -222,6 +222,12 @@ struct bnxt_ulp_mapper_ident_info {
 	enum bnxt_ulp_regfile_index	regfile_wr_idx;
 };
 
+struct bnxt_ulp_def_ident_info {
+	enum tf_dir direction;
+	enum tf_identifier_type ident_type;
+	enum bnxt_ulp_def_regfile_index def_regfile_index;
+};
+
 /*
  * Flow Mapper Static Data Externs:
  * Access to the below static data should be done through access functions and
@@ -285,4 +291,9 @@ extern struct bnxt_ulp_mapper_ident_info	ulp_ident_list[];
  */
 extern uint32_t ulp_act_prop_map_table[];
 
+/*
+ * The ulp_def_ident_tbl provides the list of default identifiers that need to
+ * be initialized and where to store them.
+ */
+extern struct bnxt_ulp_def_ident_info ulp_def_ident_tbl[];
 #endif /* _ULP_TEMPLATE_STRUCT_H_ */

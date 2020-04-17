@@ -110,7 +110,6 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 		goto parse_error;
 
 	ret = ulp_matcher_pattern_match(&params, &class_id);
-
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
@@ -126,11 +125,10 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	mapper_cparms.class_tid = class_id;
 	mapper_cparms.act_tid = act_tmpl;
 	mapper_cparms.func_id = bnxt_get_fw_func_id(dev->data->port_id);
+	mapper_cparms.dir = params.dir;
 
-	/* call the ulp mapper to create the flow in the hardware */
-	ret = ulp_mapper_flow_create(ulp_ctx,
-				     &mapper_cparms,
-				     &fid);
+	/* Call the ulp mapper to create the flow in the hardware. */
+	ret = ulp_mapper_flow_create(ulp_ctx, &mapper_cparms, &fid);
 	if (!ret) {
 		flow_id = (struct rte_flow *)((uintptr_t)fid);
 		return flow_id;

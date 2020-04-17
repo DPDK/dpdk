@@ -19,6 +19,7 @@
 #include "ulp_template_struct.h"
 #include "ulp_mark_mgr.h"
 #include "ulp_flow_db.h"
+#include "ulp_mapper.h"
 
 /* Linked list of all TF sessions. */
 STAILQ_HEAD(, bnxt_ulp_session_state) bnxt_ulp_session_list =
@@ -485,6 +486,12 @@ bnxt_ulp_init(struct bnxt *bp)
 		goto jump_to_error;
 	}
 
+	rc = ulp_mapper_init(&bp->ulp_ctx);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to initialize ulp mapper\n");
+		goto jump_to_error;
+	}
+
 	return rc;
 
 jump_to_error:
@@ -528,6 +535,9 @@ bnxt_ulp_deinit(struct bnxt *bp)
 
 	/* Delete the Mark database */
 	ulp_mark_db_deinit(&bp->ulp_ctx);
+
+	/* cleanup the ulp mapper */
+	ulp_mapper_deinit(&bp->ulp_ctx);
 
 	/* Delete the ulp context and tf session */
 	ulp_ctx_detach(bp, session);
@@ -688,4 +698,28 @@ bnxt_ulp_eth_dev_ptr2_cntxt_get(struct rte_eth_dev	*dev)
 		return NULL;
 	}
 	return &bp->ulp_ctx;
+}
+
+int32_t
+bnxt_ulp_cntxt_ptr2_mapper_data_set(struct bnxt_ulp_context *ulp_ctx,
+				    void *mapper_data)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data) {
+		BNXT_TF_DBG(ERR, "Invalid ulp context data\n");
+		return -EINVAL;
+	}
+
+	ulp_ctx->cfg_data->mapper_data = mapper_data;
+	return 0;
+}
+
+void *
+bnxt_ulp_cntxt_ptr2_mapper_data_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data) {
+		BNXT_TF_DBG(ERR, "Invalid ulp context data\n");
+		return NULL;
+	}
+
+	return ulp_ctx->cfg_data->mapper_data;
 }

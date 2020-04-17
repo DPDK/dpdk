@@ -297,6 +297,15 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 	}
 };
 
+struct bnxt_ulp_def_ident_info ulp_def_ident_tbl[] = {
+	[0] = {
+		.ident_type              = TF_IDENT_TYPE_PROF_FUNC,
+		.def_regfile_index       =
+			BNXT_ULP_DEF_REGFILE_INDEX_DEF_PROF_FUNC_ID,
+		.direction               = TF_DIR_RX
+	}
+};
+
 struct bnxt_ulp_device_params ulp_device_params[] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
 		.global_fid_enable       = BNXT_ULP_SYM_YES,
@@ -577,7 +586,7 @@ struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
 	.result_bit_size = 64,
 	.result_num_fields = 13,
 	.ident_start_idx = 0,
-	.ident_nums = 2,
+	.ident_nums = 1,
 	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
 	.critical_resource = 0,
 	.regfile_wr_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
@@ -595,7 +604,7 @@ struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
 	.result_start_idx = 13,
 	.result_bit_size = 38,
 	.result_num_fields = 8,
-	.ident_start_idx = 2,
+	.ident_start_idx = 1,
 	.ident_nums = 1,
 	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
 	.critical_resource = 0,
@@ -614,6 +623,7 @@ struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
 	.result_start_idx = 21,
 	.result_bit_size = 64,
 	.result_num_fields = 9,
+	.ident_start_idx = 2,
 	.ident_nums = 0,
 	.mark_enable = BNXT_ULP_MARK_ENABLE_YES,
 	.critical_resource = 1,
@@ -1088,9 +1098,10 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 	.mask_opcode = BNXT_ULP_MASK_OPC_SET_TO_CONSTANT,
 	.mask_operand = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-	.spec_opcode = BNXT_ULP_SPEC_OPC_SET_TO_REGFILE,
-	.spec_operand = {(BNXT_ULP_REGFILE_INDEX_PROF_FUNC_ID_0 >> 8) & 0xff,
-		BNXT_ULP_REGFILE_INDEX_PROF_FUNC_ID_0 & 0xff,
+	.spec_opcode = BNXT_ULP_SPEC_OPC_SET_TO_DEF_REGFILE,
+	.spec_operand = {
+		(BNXT_ULP_DEF_REGFILE_INDEX_DEF_PROF_FUNC_ID >> 8) & 0xff,
+		BNXT_ULP_DEF_REGFILE_INDEX_DEF_PROF_FUNC_ID & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -1256,9 +1267,10 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 	},
 	{
 	.field_bit_size = 7,
-	.result_opcode = BNXT_ULP_RESULT_OPC_SET_TO_REGFILE,
-	.result_operand = {(BNXT_ULP_REGFILE_INDEX_PROF_FUNC_ID_0 >> 8) & 0xff,
-		BNXT_ULP_REGFILE_INDEX_PROF_FUNC_ID_0 & 0xff,
+	.result_opcode = BNXT_ULP_RESULT_OPC_SET_TO_DEF_REGFILE,
+	.result_operand = {
+		(BNXT_ULP_DEF_REGFILE_INDEX_DEF_PROF_FUNC_ID >> 8) & 0xff,
+		BNXT_ULP_DEF_REGFILE_INDEX_DEF_PROF_FUNC_ID & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -1441,13 +1453,6 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 };
 
 struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_PROF_FUNC,
-	.regfile_wr_idx = BNXT_ULP_REGFILE_INDEX_PROF_FUNC_ID_0,
-	.ident_bit_size = 7,
-	.ident_bit_pos = 47
-	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
 	.ident_type = TF_IDENT_TYPE_L2_CTXT,

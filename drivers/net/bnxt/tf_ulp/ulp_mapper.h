@@ -6,16 +6,26 @@
 #ifndef _ULP_MAPPER_H_
 #define _ULP_MAPPER_H_
 
-#include <tf_core.h>
 #include <rte_log.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
+#include "tf_core.h"
 #include "ulp_template_db.h"
 #include "ulp_template_struct.h"
 #include "bnxt_ulp.h"
 #include "ulp_utils.h"
 
 #define ULP_SZ_BITS2BYTES(x) (((x) + 7) / 8)
+
+struct bnxt_ulp_mapper_def_id_entry {
+	enum tf_identifier_type ident_type;
+	uint64_t ident;
+};
+
+struct bnxt_ulp_mapper_data {
+	struct bnxt_ulp_mapper_def_id_entry
+		dflt_ids[TF_DIR_MAX][BNXT_ULP_DEF_IDENT_INFO_TBL_MAX_SZ];
+};
 
 /* Internal Structure for passing the arguments around */
 struct bnxt_ulp_mapper_parms {
@@ -36,6 +46,7 @@ struct bnxt_ulp_mapper_parms {
 	uint8_t					encap_byte_swap;
 	uint32_t				fid;
 	enum bnxt_ulp_flow_db_tables		tbl_idx;
+	struct bnxt_ulp_mapper_data		*mapper_data;
 };
 
 struct bnxt_ulp_mapper_create_parms {
@@ -47,7 +58,16 @@ struct bnxt_ulp_mapper_create_parms {
 	uint32_t			class_tid;
 	uint32_t			act_tid;
 	uint16_t			func_id;
+	enum ulp_direction_type		dir;
 };
+
+/* Function to initialize any dynamic mapper data. */
+int32_t
+ulp_mapper_init(struct bnxt_ulp_context	*ulp_ctx);
+
+/* Function to release all dynamic mapper data. */
+void
+ulp_mapper_deinit(struct bnxt_ulp_context *ulp_ctx);
 
 /*
  * Function to handle the mapping of the Flow to be compatible

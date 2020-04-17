@@ -18,6 +18,7 @@ struct bnxt_ulp_data {
 	uint32_t			dev_id; /* Hardware device id */
 	uint32_t			ref_cnt;
 	struct bnxt_ulp_flow_db		*flow_db;
+	void				*mapper_data;
 };
 
 struct bnxt_ulp_context {
@@ -106,5 +107,14 @@ bnxt_ulp_cntxt_ptr2_flow_db_get(struct bnxt_ulp_context	*ulp_ctx);
 /* Function to get the ulp context from eth device. */
 struct bnxt_ulp_context	*
 bnxt_ulp_eth_dev_ptr2_cntxt_get(struct rte_eth_dev *dev);
+
+/* Function to add the ulp mapper data to the ulp context */
+int32_t
+bnxt_ulp_cntxt_ptr2_mapper_data_set(struct bnxt_ulp_context *ulp_ctx,
+				    void *mapper_data);
+
+/* Function to get the ulp mapper data from the ulp context */
+void *
+bnxt_ulp_cntxt_ptr2_mapper_data_get(struct bnxt_ulp_context *ulp_ctx);
 
 #endif /* _BNXT_ULP_H_ */
