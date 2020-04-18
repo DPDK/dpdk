@@ -223,9 +223,119 @@ struct __rte_packed fpga_ring_ctrl_reg {
 struct fpga_5gnr_fec_device {
 	/** Base address of MMIO registers (BAR0) */
 	void *mmio_base;
+	/** Base address of memory for sw rings */
+	void *sw_rings;
+	/** Physical address of sw_rings */
+	rte_iova_t sw_rings_phys;
+	/** Number of bytes available for each queue in device. */
+	uint32_t sw_ring_size;
+	/** Max number of entries available for each queue in device */
+	uint32_t sw_ring_max_depth;
+	/** Base address of response tail pointer buffer */
+	uint32_t *tail_ptrs;
+	/** Physical address of tail pointers */
+	rte_iova_t tail_ptr_phys;
+	/** Queues flush completion flag */
+	uint64_t *flush_queue_status;
+	/* Bitmap capturing which Queues are bound to the PF/VF */
+	uint64_t q_bound_bit_map;
+	/* Bitmap capturing which Queues have already been assigned */
+	uint64_t q_assigned_bit_map;
 	/** True if this is a PF FPGA FEC device */
 	bool pf_device;
 };
+
+/* Structure associated with each queue. */
+struct __rte_cache_aligned fpga_queue {
+	struct fpga_ring_ctrl_reg ring_ctrl_reg;  /* Ring Control Register */
+	union fpga_dma_desc *ring_addr;  /* Virtual address of software ring */
+	uint64_t *ring_head_addr;  /* Virtual address of completion_head */
+	uint64_t shadow_completion_head; /* Shadow completion head value */
+	uint16_t head_free_desc;  /* Ring head */
+	uint16_t tail;  /* Ring tail */
+	/* Mask used to wrap enqueued descriptors on the sw ring */
+	uint32_t sw_ring_wrap_mask;
+	uint32_t irq_enable;  /* Enable ops dequeue interrupts if set to 1 */
+	uint8_t q_idx;  /* Queue index */
+	struct fpga_5gnr_fec_device *d;
+	/* MMIO register of shadow_tail used to enqueue descriptors */
+	void *shadow_tail_addr;
+};
+
+/* Write to 16 bit MMIO register address */
+static inline void
+mmio_write_16(void *addr, uint16_t value)
+{
+	*((volatile uint16_t *)(addr)) = rte_cpu_to_le_16(value);
+}
+
+/* Write to 32 bit MMIO register address */
+static inline void
+mmio_write_32(void *addr, uint32_t value)
+{
+	*((volatile uint32_t *)(addr)) = rte_cpu_to_le_32(value);
+}
+
+/* Write to 64 bit MMIO register address */
+static inline void
+mmio_write_64(void *addr, uint64_t value)
+{
+	*((volatile uint64_t *)(addr)) = rte_cpu_to_le_64(value);
+}
+
+/* Write a 8 bit register of a FPGA 5GNR FEC device */
+static inline void
+fpga_reg_write_8(void *mmio_base, uint32_t offset, uint8_t payload)
+{
+	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
+	*((volatile uint8_t *)(reg_addr)) = payload;
+}
+
+/* Write a 16 bit register of a FPGA 5GNR FEC device */
+static inline void
+fpga_reg_write_16(void *mmio_base, uint32_t offset, uint16_t payload)
+{
+	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
+	mmio_write_16(reg_addr, payload);
+}
+
+/* Write a 32 bit register of a FPGA 5GNR FEC device */
+static inline void
+fpga_reg_write_32(void *mmio_base, uint32_t offset, uint32_t payload)
+{
+	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
+	mmio_write_32(reg_addr, payload);
+}
+
+/* Write a 64 bit register of a FPGA 5GNR FEC device */
+static inline void
+fpga_reg_write_64(void *mmio_base, uint32_t offset, uint64_t payload)
+{
+	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
+	mmio_write_64(reg_addr, payload);
+}
+
+/* Write a ring control register of a FPGA 5GNR FEC device */
+static inline void
+fpga_ring_reg_write(void *mmio_base, uint32_t offset,
+		struct fpga_ring_ctrl_reg payload)
+{
+	fpga_reg_write_64(mmio_base, offset, payload.ring_base_addr);
+	fpga_reg_write_64(mmio_base, offset + FPGA_5GNR_FEC_RING_HEAD_ADDR,
+			payload.ring_head_addr);
+	fpga_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_SIZE,
+			payload.ring_size);
+	fpga_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_HEAD_POINT,
+			payload.head_point);
+	fpga_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_FLUSH_QUEUE_EN,
+			payload.flush_queue_en);
+	fpga_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_SHADOW_TAIL,
+			payload.shadow_tail);
+	fpga_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_MISC,
+			payload.misc);
+	fpga_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_ENABLE,
+			payload.enable);
+}
 
 /* Read a register of FPGA 5GNR FEC device */
 static inline uint32_t
