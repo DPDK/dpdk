@@ -10,6 +10,7 @@ doc/guides/cryptodevs/overview_aead_table.txt
 doc/guides/cryptodevs/overview_asym_table.txt
 doc/guides/compressdevs/overview_feature_table.txt
 doc/guides/vdpadevs/overview_feature_table.txt
+doc/guides/bbdevs/overview_feature_table.txt
 
 # ignore generated ctags/cscope files
 cscope.out.po
