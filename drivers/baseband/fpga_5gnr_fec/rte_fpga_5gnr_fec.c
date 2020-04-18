@@ -324,6 +324,7 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE |
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE |
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK |
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS,
 			.llr_size = 6,
 			.llr_decimals = 2,
@@ -1055,6 +1056,140 @@ validate_dec_op(struct rte_bbdev_dec_op *op __rte_unused)
 #endif
 
 static inline int
+fpga_harq_write_loopback(struct fpga_5gnr_fec_device *fpga_dev,
+		struct rte_mbuf *harq_input, uint16_t harq_in_length,
+		uint32_t harq_in_offset, uint32_t harq_out_offset)
+{
+	uint32_t out_offset = harq_out_offset;
+	uint32_t in_offset = harq_in_offset;
+	uint32_t left_length = harq_in_length;
+	uint32_t reg_32, increment = 0;
+	uint64_t *input = NULL;
+	uint32_t last_transaction = left_length
+			% FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+	uint64_t last_word;
+
+	if (last_transaction > 0)
+		left_length -= last_transaction;
+
+	/*
+	 * Get HARQ buffer size for each VF/PF: When 0x00, there is no
+	 * available DDR space for the corresponding VF/PF.
+	 */
+	reg_32 = fpga_reg_read_32(fpga_dev->mmio_base,
+			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
+	if (reg_32 < harq_in_length) {
+		left_length = reg_32;
+		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
+	}
+
+	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_input,
+			uint8_t *, in_offset);
+
+	while (left_length > 0) {
+		if (fpga_reg_read_8(fpga_dev->mmio_base,
+				FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
+			fpga_reg_write_32(fpga_dev->mmio_base,
+					FPGA_5GNR_FEC_DDR4_WR_ADDR_REGS,
+					out_offset);
+			fpga_reg_write_64(fpga_dev->mmio_base,
+					FPGA_5GNR_FEC_DDR4_WR_DATA_REGS,
+					input[increment]);
+			left_length -= FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+			out_offset += FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+			increment++;
+			fpga_reg_write_8(fpga_dev->mmio_base,
+					FPGA_5GNR_FEC_DDR4_WR_DONE_REGS, 1);
+		}
+	}
+	while (last_transaction > 0) {
+		if (fpga_reg_read_8(fpga_dev->mmio_base,
+				FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
+			fpga_reg_write_32(fpga_dev->mmio_base,
+					FPGA_5GNR_FEC_DDR4_WR_ADDR_REGS,
+					out_offset);
+			last_word = input[increment];
+			last_word &= (uint64_t)(1 << (last_transaction * 4))
+					- 1;
+			fpga_reg_write_64(fpga_dev->mmio_base,
+					FPGA_5GNR_FEC_DDR4_WR_DATA_REGS,
+					last_word);
+			fpga_reg_write_8(fpga_dev->mmio_base,
+					FPGA_5GNR_FEC_DDR4_WR_DONE_REGS, 1);
+			last_transaction = 0;
+		}
+	}
+	return 1;
+}
+
+static inline int
+fpga_harq_read_loopback(struct fpga_5gnr_fec_device *fpga_dev,
+		struct rte_mbuf *harq_output, uint16_t harq_in_length,
+		uint32_t harq_in_offset, uint32_t harq_out_offset)
+{
+	uint32_t left_length, in_offset = harq_in_offset;
+	uint64_t reg;
+	uint32_t increment = 0;
+	uint64_t *input = NULL;
+	uint32_t last_transaction = harq_in_length
+			% FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+
+	if (last_transaction > 0)
+		harq_in_length += (8 - last_transaction);
+
+	reg = fpga_reg_read_32(fpga_dev->mmio_base,
+			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
+	if (reg < harq_in_length) {
+		harq_in_length = reg;
+		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
+	}
+
+	if (!mbuf_append(harq_output, harq_output, harq_in_length)) {
+		rte_bbdev_log(ERR, "HARQ output buffer warning %d %d\n",
+				harq_output->buf_len -
+				rte_pktmbuf_headroom(harq_output),
+				harq_in_length);
+		harq_in_length = harq_output->buf_len -
+				rte_pktmbuf_headroom(harq_output);
+		if (!mbuf_append(harq_output, harq_output, harq_in_length)) {
+			rte_bbdev_log(ERR, "HARQ output buffer issue %d %d\n",
+					harq_output->buf_len, harq_in_length);
+			return -1;
+		}
+	}
+	left_length = harq_in_length;
+
+	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_output,
+			uint8_t *, harq_out_offset);
+
+	while (left_length > 0) {
+		fpga_reg_write_32(fpga_dev->mmio_base,
+			FPGA_5GNR_FEC_DDR4_RD_ADDR_REGS, in_offset);
+		fpga_reg_write_8(fpga_dev->mmio_base,
+				FPGA_5GNR_FEC_DDR4_RD_DONE_REGS, 1);
+		reg = fpga_reg_read_8(fpga_dev->mmio_base,
+			FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
+		while (reg != 1) {
+			reg = fpga_reg_read_8(fpga_dev->mmio_base,
+				FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
+			if (reg == FPGA_DDR_OVERFLOW) {
+				rte_bbdev_log(ERR,
+						"Read address is overflow!\n");
+				return -1;
+			}
+		}
+		input[increment] = fpga_reg_read_64(fpga_dev->mmio_base,
+			FPGA_5GNR_FEC_DDR4_RD_DATA_REGS);
+		left_length -= FPGA_5GNR_FEC_DDR_RD_DATA_LEN_IN_BYTES;
+		in_offset += FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+		increment++;
+		fpga_reg_write_8(fpga_dev->mmio_base,
+				FPGA_5GNR_FEC_DDR4_RD_DONE_REGS, 0);
+	}
+	return 1;
+}
+
+static inline int
 enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
 		uint16_t desc_offset)
 {
@@ -1181,6 +1316,42 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 	/* Setup DMA Descriptor */
 	ring_offset = ((q->tail + desc_offset) & q->sw_ring_wrap_mask);
 	desc = q->ring_addr + ring_offset;
+
+	if (check_bit(dec->op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)) {
+		struct rte_mbuf *harq_in = dec->harq_combined_input.data;
+		struct rte_mbuf *harq_out = dec->harq_combined_output.data;
+		harq_in_length = dec->harq_combined_input.length;
+		uint32_t harq_in_offset = dec->harq_combined_input.offset;
+		uint32_t harq_out_offset = dec->harq_combined_output.offset;
+
+		if (check_bit(dec->op_flags,
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE
+				)) {
+			ret = fpga_harq_write_loopback(q->d, harq_in,
+					harq_in_length, harq_in_offset,
+					harq_out_offset);
+		} else if (check_bit(dec->op_flags,
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE
+				)) {
+			ret = fpga_harq_read_loopback(q->d, harq_out,
+				harq_in_length, harq_in_offset,
+				harq_out_offset);
+			dec->harq_combined_output.length = harq_in_length;
+		} else {
+			rte_bbdev_log(ERR, "OP flag Err!");
+			ret = -1;
+		}
+		/* Set descriptor for dequeue */
+		desc->dec_req.done = 1;
+		desc->dec_req.error = 0;
+		desc->dec_req.op_addr = op;
+		desc->dec_req.cbs_in_op = 1;
+		/* Mark this dummy descriptor to be dropped by HW */
+		desc->dec_req.desc_idx = (ring_offset + 1)
+				& q->sw_ring_wrap_mask;
+		return ret; /* Error or number of CB */
+	}
 
 	if (m_in == NULL || m_out == NULL) {
 		rte_bbdev_log(ERR, "Invalid mbuf pointer");

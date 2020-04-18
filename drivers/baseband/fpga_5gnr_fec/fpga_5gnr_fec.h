@@ -366,6 +366,8 @@ fpga_reg_read_16(void *mmio_base, uint32_t offset)
 	return rte_le_to_cpu_16(ret);
 }
 
+#endif
+
 /* Read a register of FPGA 5GNR FEC device */
 static inline uint8_t
 fpga_reg_read_8(void *mmio_base, uint32_t offset)
@@ -382,7 +384,5 @@ fpga_reg_read_64(void *mmio_base, uint32_t offset)
 	uint64_t ret = *((volatile uint64_t *)(reg_addr));
 	return rte_le_to_cpu_64(ret);
 }
-
-#endif
 
 #endif /* _FPGA_5GNR_FEC_H_ */
