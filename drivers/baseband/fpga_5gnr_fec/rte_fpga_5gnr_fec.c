@@ -519,6 +519,54 @@ check_bit(uint32_t bitmap, uint32_t bitmask)
 	return bitmap & bitmask;
 }
 
+/* Print an error if a descriptor error has occurred.
+ *  Return 0 on success, 1 on failure
+ */
+static inline int
+check_desc_error(uint32_t error_code) {
+	switch (error_code) {
+	case DESC_ERR_NO_ERR:
+		return 0;
+	case DESC_ERR_K_P_OUT_OF_RANGE:
+		rte_bbdev_log(ERR, "Encode block size K' is out of range");
+		break;
+	case DESC_ERR_Z_C_NOT_LEGAL:
+		rte_bbdev_log(ERR, "Zc is illegal");
+		break;
+	case DESC_ERR_DESC_OFFSET_ERR:
+		rte_bbdev_log(ERR,
+				"Queue offset does not meet the expectation in the FPGA"
+				);
+		break;
+	case DESC_ERR_DESC_READ_FAIL:
+		rte_bbdev_log(ERR, "Unsuccessful completion for descriptor read");
+		break;
+	case DESC_ERR_DESC_READ_TIMEOUT:
+		rte_bbdev_log(ERR, "Descriptor read time-out");
+		break;
+	case DESC_ERR_DESC_READ_TLP_POISONED:
+		rte_bbdev_log(ERR, "Descriptor read TLP poisoned");
+		break;
+	case DESC_ERR_CB_READ_FAIL:
+		rte_bbdev_log(ERR, "Unsuccessful completion for code block");
+		break;
+	case DESC_ERR_CB_READ_TIMEOUT:
+		rte_bbdev_log(ERR, "Code block read time-out");
+		break;
+	case DESC_ERR_CB_READ_TLP_POISONED:
+		rte_bbdev_log(ERR, "Code block read TLP poisoned");
+		break;
+	case DESC_ERR_HBSTORE_ERR:
+		rte_bbdev_log(ERR, "Hbstroe exceeds HARQ buffer size.");
+		break;
+	default:
+		rte_bbdev_log(ERR, "Descriptor error unknown error code %u",
+				error_code);
+		break;
+	}
+	return 1;
+}
+
 /* Compute value of k0.
  * Based on 3GPP 38.212 Table 5.4.2.1-2
  * Starting position of different redundancy versions, k0
@@ -982,11 +1030,11 @@ fpga_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 
 static inline int
 dequeue_ldpc_enc_one_op_cb(struct fpga_queue *q,
-		struct rte_bbdev_enc_op **op __rte_unused,
+		struct rte_bbdev_enc_op **op,
 		uint16_t desc_offset)
 {
 	union fpga_dma_desc *desc;
-
+	int desc_error;
 	/* Set current desc */
 	desc = q->ring_addr + ((q->head_free_desc + desc_offset)
 			& q->sw_ring_wrap_mask);
@@ -1000,6 +1048,11 @@ dequeue_ldpc_enc_one_op_cb(struct fpga_queue *q,
 
 	rte_bbdev_log_debug("DMA response desc %p", desc);
 
+	*op = desc->enc_req.op_addr;
+	/* Check the descriptor error field, return 1 on error */
+	desc_error = check_desc_error(desc->enc_req.error);
+	(*op)->status = desc_error << RTE_BBDEV_DATA_ERROR;
+
 	return 1;
 }
 
@@ -1009,7 +1062,7 @@ dequeue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 		uint16_t desc_offset)
 {
 	union fpga_dma_desc *desc;
-
+	int desc_error;
 	/* Set descriptor */
 	desc = q->ring_addr + ((q->head_free_desc + desc_offset)
 			& q->sw_ring_wrap_mask);
@@ -1036,6 +1089,9 @@ dequeue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 		(*op)->status = 1 << RTE_BBDEV_CRC_ERROR;
 	/* et_pass = 0 when decoder fails */
 	(*op)->status |= !(desc->dec_req.et_pass) << RTE_BBDEV_SYNDROME_ERROR;
+	/* Check the descriptor error field, return 1 on error */
+	desc_error = check_desc_error(desc->dec_req.error);
+	(*op)->status |= desc_error << RTE_BBDEV_DATA_ERROR;
 	return 1;
 }
 
