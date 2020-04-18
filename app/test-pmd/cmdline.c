@@ -1922,18 +1922,13 @@ cmd_config_rx_tx_parsed(void *parsed_result,
 		nb_txq = res->value;
 	}
 	else if (!strcmp(res->name, "rxd")) {
-		if (res->value <= 0 || res->value > RTE_TEST_RX_DESC_MAX) {
-			printf("rxd %d invalid - must be > 0 && <= %d\n",
-					res->value, RTE_TEST_RX_DESC_MAX);
+		if (check_nb_rxd(res->value) != 0)
 			return;
-		}
 		nb_rxd = res->value;
 	} else if (!strcmp(res->name, "txd")) {
-		if (res->value <= 0 || res->value > RTE_TEST_TX_DESC_MAX) {
-			printf("txd %d invalid - must be > 0 && <= %d\n",
-					res->value, RTE_TEST_TX_DESC_MAX);
+		if (check_nb_txd(res->value) != 0)
 			return;
-		}
+
 		nb_txd = res->value;
 	} else {
 		printf("Unknown parameter\n");
