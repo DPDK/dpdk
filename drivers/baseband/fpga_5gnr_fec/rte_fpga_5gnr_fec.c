@@ -325,6 +325,7 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE |
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK |
+				RTE_BBDEV_LDPC_DEC_INTERRUPTS |
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS,
 			.llr_size = 6,
 			.llr_decimals = 2,
@@ -636,14 +637,152 @@ fpga_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
 	return 0;
 }
 
+static inline uint16_t
+get_queue_id(struct rte_bbdev_data *data, uint8_t q_idx)
+{
+	uint16_t queue_id;
+
+	for (queue_id = 0; queue_id < data->num_queues; ++queue_id) {
+		struct fpga_queue *q = data->queues[queue_id].queue_private;
+		if (q != NULL && q->q_idx == q_idx)
+			return queue_id;
+	}
+
+	return -1;
+}
+
+/* Interrupt handler triggered by FPGA dev for handling specific interrupt */
+static void
+fpga_dev_interrupt_handler(void *cb_arg)
+{
+	struct rte_bbdev *dev = cb_arg;
+	struct fpga_5gnr_fec_device *fpga_dev = dev->data->dev_private;
+	struct fpga_queue *q;
+	uint64_t ring_head;
+	uint64_t q_idx;
+	uint16_t queue_id;
+	uint8_t i;
+
+	/* Scan queue assigned to this device */
+	for (i = 0; i < FPGA_TOTAL_NUM_QUEUES; ++i) {
+		q_idx = 1ULL << i;
+		if (fpga_dev->q_bound_bit_map & q_idx) {
+			queue_id = get_queue_id(dev->data, i);
+			if (queue_id == (uint16_t) -1)
+				continue;
+
+			/* Check if completion head was changed */
+			q = dev->data->queues[queue_id].queue_private;
+			ring_head = *q->ring_head_addr;
+			if (q->shadow_completion_head != ring_head &&
+				q->irq_enable == 1) {
+				q->shadow_completion_head = ring_head;
+				rte_bbdev_pmd_callback_process(
+						dev,
+						RTE_BBDEV_EVENT_DEQUEUE,
+						&queue_id);
+			}
+		}
+	}
+}
+
+static int
+fpga_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
+{
+	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
+
+	if (!rte_intr_cap_multiple(dev->intr_handle))
+		return -ENOTSUP;
+
+	q->irq_enable = 1;
+
+	return 0;
+}
+
+static int
+fpga_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
+{
+	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
+	q->irq_enable = 0;
+
+	return 0;
+}
+
+static int
+fpga_intr_enable(struct rte_bbdev *dev)
+{
+	int ret;
+	uint8_t i;
+
+	if (!rte_intr_cap_multiple(dev->intr_handle)) {
+		rte_bbdev_log(ERR, "Multiple intr vector is not supported by FPGA (%s)",
+				dev->data->name);
+		return -ENOTSUP;
+	}
+
+	/* Create event file descriptors for each of 64 queue. Event fds will be
+	 * mapped to FPGA IRQs in rte_intr_enable(). This is a 1:1 mapping where
+	 * the IRQ number is a direct translation to the queue number.
+	 *
+	 * 63 (FPGA_NUM_INTR_VEC) event fds are created as rte_intr_enable()
+	 * mapped the first IRQ to already created interrupt event file
+	 * descriptor (intr_handle->fd).
+	 */
+	if (rte_intr_efd_enable(dev->intr_handle, FPGA_NUM_INTR_VEC)) {
+		rte_bbdev_log(ERR, "Failed to create fds for %u queues",
+				dev->data->num_queues);
+		return -1;
+	}
+
+	/* TODO Each event file descriptor is overwritten by interrupt event
+	 * file descriptor. That descriptor is added to epoll observed list.
+	 * It ensures that callback function assigned to that descriptor will
+	 * invoked when any FPGA queue issues interrupt.
+	 */
+	for (i = 0; i < FPGA_NUM_INTR_VEC; ++i)
+		dev->intr_handle->efds[i] = dev->intr_handle->fd;
+
+	if (!dev->intr_handle->intr_vec) {
+		dev->intr_handle->intr_vec = rte_zmalloc("intr_vec",
+				dev->data->num_queues * sizeof(int), 0);
+		if (!dev->intr_handle->intr_vec) {
+			rte_bbdev_log(ERR, "Failed to allocate %u vectors",
+					dev->data->num_queues);
+			return -ENOMEM;
+		}
+	}
+
+	ret = rte_intr_enable(dev->intr_handle);
+	if (ret < 0) {
+		rte_bbdev_log(ERR,
+				"Couldn't enable interrupts for device: %s",
+				dev->data->name);
+		return ret;
+	}
+
+	ret = rte_intr_callback_register(dev->intr_handle,
+			fpga_dev_interrupt_handler, dev);
+	if (ret < 0) {
+		rte_bbdev_log(ERR,
+				"Couldn't register interrupt callback for device: %s",
+				dev->data->name);
+		return ret;
+	}
+
+	return 0;
+}
+
 static const struct rte_bbdev_ops fpga_ops = {
 	.setup_queues = fpga_setup_queues,
+	.intr_enable = fpga_intr_enable,
 	.close = fpga_dev_close,
 	.info_get = fpga_dev_info_get,
 	.queue_setup = fpga_queue_setup,
 	.queue_stop = fpga_queue_stop,
 	.queue_start = fpga_queue_start,
 	.queue_release = fpga_queue_release,
+	.queue_intr_enable = fpga_queue_intr_enable,
+	.queue_intr_disable = fpga_queue_intr_disable
 };
 
 static inline void
