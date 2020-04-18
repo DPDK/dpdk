@@ -22,4 +22,7 @@ LIBABIVER := 1
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC) += rte_fpga_5gnr_fec.c
 
+# export include files
+SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC)-include += rte_pmd_fpga_5gnr_fec.h
+
 include $(RTE_SDK)/mk/rte.lib.mk

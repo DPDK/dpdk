@@ -21,6 +21,7 @@
 #include <rte_bbdev_pmd.h>
 
 #include "fpga_5gnr_fec.h"
+#include "rte_pmd_fpga_5gnr_fec.h"
 
 /* 5GNR SW PMD logging ID */
 static int fpga_5gnr_fec_logtype;
@@ -1626,6 +1627,201 @@ fpga_5gnr_fec_remove(struct rte_pci_device *pci_dev)
 
 	rte_bbdev_log_debug("Destroyed bbdev = %u", dev_id);
 
+	return 0;
+}
+
+static inline void
+set_default_fpga_conf(struct fpga_5gnr_fec_conf *def_conf)
+{
+	/* clear default configuration before initialization */
+	memset(def_conf, 0, sizeof(struct fpga_5gnr_fec_conf));
+	/* Set pf mode to true */
+	def_conf->pf_mode_en = true;
+
+	/* Set ratio between UL and DL to 1:1 (unit of weight is 3 CBs) */
+	def_conf->ul_bandwidth = 3;
+	def_conf->dl_bandwidth = 3;
+
+	/* Set Load Balance Factor to 64 */
+	def_conf->dl_load_balance = 64;
+	def_conf->ul_load_balance = 64;
+}
+
+/* Initial configuration of FPGA 5GNR FEC device */
+int
+fpga_5gnr_fec_configure(const char *dev_name,
+		const struct fpga_5gnr_fec_conf *conf)
+{
+	uint32_t payload_32, address;
+	uint16_t payload_16;
+	uint8_t payload_8;
+	uint16_t q_id, vf_id, total_q_id, total_ul_q_id, total_dl_q_id;
+	struct rte_bbdev *bbdev = rte_bbdev_get_named_dev(dev_name);
+	struct fpga_5gnr_fec_conf def_conf;
+
+	if (bbdev == NULL) {
+		rte_bbdev_log(ERR,
+				"Invalid dev_name (%s), or device is not yet initialised",
+				dev_name);
+		return -ENODEV;
+	}
+
+	struct fpga_5gnr_fec_device *d = bbdev->data->dev_private;
+
+	if (conf == NULL) {
+		rte_bbdev_log(ERR,
+				"FPGA Configuration was not provided. Default configuration will be loaded.");
+		set_default_fpga_conf(&def_conf);
+		conf = &def_conf;
+	}
+
+	/*
+	 * Configure UL:DL ratio.
+	 * [7:0]: UL weight
+	 * [15:8]: DL weight
+	 */
+	payload_16 = (conf->dl_bandwidth << 8) | conf->ul_bandwidth;
+	address = FPGA_5GNR_FEC_CONFIGURATION;
+	fpga_reg_write_16(d->mmio_base, address, payload_16);
+
+	/* Clear all queues registers */
+	payload_32 = FPGA_INVALID_HW_QUEUE_ID;
+	for (q_id = 0; q_id < FPGA_TOTAL_NUM_QUEUES; ++q_id) {
+		address = (q_id << 2) + FPGA_5GNR_FEC_QUEUE_MAP;
+		fpga_reg_write_32(d->mmio_base, address, payload_32);
+	}
+
+	/*
+	 * If PF mode is enabled allocate all queues for PF only.
+	 *
+	 * For VF mode each VF can have different number of UL and DL queues.
+	 * Total number of queues to configure cannot exceed FPGA
+	 * capabilities - 64 queues - 32 queues for UL and 32 queues for DL.
+	 * Queues mapping is done according to configuration:
+	 *
+	 * UL queues:
+	 * |                Q_ID              | VF_ID |
+	 * |                 0                |   0   |
+	 * |                ...               |   0   |
+	 * | conf->vf_dl_queues_number[0] - 1 |   0   |
+	 * | conf->vf_dl_queues_number[0]     |   1   |
+	 * |                ...               |   1   |
+	 * | conf->vf_dl_queues_number[1] - 1 |   1   |
+	 * |                ...               |  ...  |
+	 * | conf->vf_dl_queues_number[7] - 1 |   7   |
+	 *
+	 * DL queues:
+	 * |                Q_ID              | VF_ID |
+	 * |                 32               |   0   |
+	 * |                ...               |   0   |
+	 * | conf->vf_ul_queues_number[0] - 1 |   0   |
+	 * | conf->vf_ul_queues_number[0]     |   1   |
+	 * |                ...               |   1   |
+	 * | conf->vf_ul_queues_number[1] - 1 |   1   |
+	 * |                ...               |  ...  |
+	 * | conf->vf_ul_queues_number[7] - 1 |   7   |
+	 *
+	 * Example of configuration:
+	 * conf->vf_ul_queues_number[0] = 4;  -> 4 UL queues for VF0
+	 * conf->vf_dl_queues_number[0] = 4;  -> 4 DL queues for VF0
+	 * conf->vf_ul_queues_number[1] = 2;  -> 2 UL queues for VF1
+	 * conf->vf_dl_queues_number[1] = 2;  -> 2 DL queues for VF1
+	 *
+	 * UL:
+	 * | Q_ID | VF_ID |
+	 * |   0  |   0   |
+	 * |   1  |   0   |
+	 * |   2  |   0   |
+	 * |   3  |   0   |
+	 * |   4  |   1   |
+	 * |   5  |   1   |
+	 *
+	 * DL:
+	 * | Q_ID | VF_ID |
+	 * |  32  |   0   |
+	 * |  33  |   0   |
+	 * |  34  |   0   |
+	 * |  35  |   0   |
+	 * |  36  |   1   |
+	 * |  37  |   1   |
+	 */
+	if (conf->pf_mode_en) {
+		payload_32 = 0x1;
+		for (q_id = 0; q_id < FPGA_TOTAL_NUM_QUEUES; ++q_id) {
+			address = (q_id << 2) + FPGA_5GNR_FEC_QUEUE_MAP;
+			fpga_reg_write_32(d->mmio_base, address, payload_32);
+		}
+	} else {
+		/* Calculate total number of UL and DL queues to configure */
+		total_ul_q_id = total_dl_q_id = 0;
+		for (vf_id = 0; vf_id < FPGA_5GNR_FEC_NUM_VFS; ++vf_id) {
+			total_ul_q_id += conf->vf_ul_queues_number[vf_id];
+			total_dl_q_id += conf->vf_dl_queues_number[vf_id];
+		}
+		total_q_id = total_dl_q_id + total_ul_q_id;
+		/*
+		 * Check if total number of queues to configure does not exceed
+		 * FPGA capabilities (64 queues - 32 UL and 32 DL queues)
+		 */
+		if ((total_ul_q_id > FPGA_NUM_UL_QUEUES) ||
+			(total_dl_q_id > FPGA_NUM_DL_QUEUES) ||
+			(total_q_id > FPGA_TOTAL_NUM_QUEUES)) {
+			rte_bbdev_log(ERR,
+					"FPGA Configuration failed. Too many queues to configure: UL_Q %u, DL_Q %u, FPGA_Q %u",
+					total_ul_q_id, total_dl_q_id,
+					FPGA_TOTAL_NUM_QUEUES);
+			return -EINVAL;
+		}
+		total_ul_q_id = 0;
+		for (vf_id = 0; vf_id < FPGA_5GNR_FEC_NUM_VFS; ++vf_id) {
+			for (q_id = 0; q_id < conf->vf_ul_queues_number[vf_id];
+					++q_id, ++total_ul_q_id) {
+				address = (total_ul_q_id << 2) +
+						FPGA_5GNR_FEC_QUEUE_MAP;
+				payload_32 = ((0x80 + vf_id) << 16) | 0x1;
+				fpga_reg_write_32(d->mmio_base, address,
+						payload_32);
+			}
+		}
+		total_dl_q_id = 0;
+		for (vf_id = 0; vf_id < FPGA_5GNR_FEC_NUM_VFS; ++vf_id) {
+			for (q_id = 0; q_id < conf->vf_dl_queues_number[vf_id];
+					++q_id, ++total_dl_q_id) {
+				address = ((total_dl_q_id + FPGA_NUM_UL_QUEUES)
+						<< 2) + FPGA_5GNR_FEC_QUEUE_MAP;
+				payload_32 = ((0x80 + vf_id) << 16) | 0x1;
+				fpga_reg_write_32(d->mmio_base, address,
+						payload_32);
+			}
+		}
+	}
+
+	/* Setting Load Balance Factor */
+	payload_16 = (conf->dl_load_balance << 8) | (conf->ul_load_balance);
+	address = FPGA_5GNR_FEC_LOAD_BALANCE_FACTOR;
+	fpga_reg_write_16(d->mmio_base, address, payload_16);
+
+	/* Setting length of ring descriptor entry */
+	payload_16 = FPGA_RING_DESC_ENTRY_LENGTH;
+	address = FPGA_5GNR_FEC_RING_DESC_LEN;
+	fpga_reg_write_16(d->mmio_base, address, payload_16);
+
+	/* Setting FLR timeout value */
+	payload_16 = conf->flr_time_out;
+	address = FPGA_5GNR_FEC_FLR_TIME_OUT;
+	fpga_reg_write_16(d->mmio_base, address, payload_16);
+
+	/* Queue PF/VF mapping table is ready */
+	payload_8 = 0x1;
+	address = FPGA_5GNR_FEC_QUEUE_PF_VF_MAP_DONE;
+	fpga_reg_write_8(d->mmio_base, address, payload_8);
+
+	rte_bbdev_log_debug("PF FPGA 5GNR FEC configuration complete for %s",
+			dev_name);
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	print_static_reg_debug_info(d->mmio_base);
+#endif
 	return 0;
 }
 

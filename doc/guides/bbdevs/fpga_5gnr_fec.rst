@@ -166,6 +166,129 @@ name is different:
   echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_numvfs
 
 
+Configure the VFs through PF
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The PCI virtual functions must be configured before working or getting assigned
+to VMs/Containers. The configuration involves allocating the number of hardware
+queues, priorities, load balance, bandwidth and other settings necessary for the
+device to perform FEC functions.
+
+This configuration needs to be executed at least once after reboot or PCI FLR and can
+be achieved by using the function ``fpga_5gnr_fec_configure()``, which sets up the
+parameters defined in ``fpga_5gnr_fec_conf`` structure:
+
+.. code-block:: c
+
+  struct fpga_5gnr_fec_conf {
+      bool pf_mode_en;
+      uint8_t vf_ul_queues_number[FPGA_5GNR_FEC_NUM_VFS];
+      uint8_t vf_dl_queues_number[FPGA_5GNR_FEC_NUM_VFS];
+      uint8_t ul_bandwidth;
+      uint8_t dl_bandwidth;
+      uint8_t ul_load_balance;
+      uint8_t dl_load_balance;
+      uint16_t flr_time_out;
+  };
+
+- ``pf_mode_en``: identifies whether only PF is to be used, or the VFs. PF and
+  VFs are mutually exclusive and cannot run simultaneously.
+  Set to 1 for PF mode enabled.
+  If PF mode is enabled all queues available in the device are assigned
+  exclusively to PF and 0 queues given to VFs.
+
+- ``vf_*l_queues_number``: defines the hardware queue mapping for every VF.
+
+- ``*l_bandwidth``: in case of congestion on PCIe interface. The device
+  allocates different bandwidth to UL and DL. The weight is configured by this
+  setting. The unit of weight is 3 code blocks. For example, if the code block
+  cbps (code block per second) ratio between UL and DL is 12:1, then the
+  configuration value should be set to 36:3. The schedule algorithm is based
+  on code block regardless the length of each block.
+
+- ``*l_load_balance``: hardware queues are load-balanced in a round-robin
+  fashion. Queues get filled first-in first-out until they reach a pre-defined
+  watermark level, if exceeded, they won't get assigned new code blocks..
+  This watermark is defined by this setting.
+
+  If all hardware queues exceeds the watermark, no code blocks will be
+  streamed in from UL/DL code block FIFO.
+
+- ``flr_time_out``: specifies how many 16.384us to be FLR time out. The
+  time_out = flr_time_out x 16.384us. For instance, if you want to set 10ms for
+  the FLR time out then set this setting to 0x262=610.
+
+
+An example configuration code calling the function ``fpga_5gnr_fec_configure()`` is shown
+below:
+
+.. code-block:: c
+
+  struct fpga_5gnr_fec_conf conf;
+  unsigned int i;
+
+  memset(&conf, 0, sizeof(struct fpga_5gnr_fec_conf));
+  conf.pf_mode_en = 1;
+
+  for (i = 0; i < FPGA_5GNR_FEC_NUM_VFS; ++i) {
+      conf.vf_ul_queues_number[i] = 4;
+      conf.vf_dl_queues_number[i] = 4;
+  }
+  conf.ul_bandwidth = 12;
+  conf.dl_bandwidth = 5;
+  conf.dl_load_balance = 64;
+  conf.ul_load_balance = 64;
+
+  /* setup FPGA PF */
+  ret = fpga_5gnr_fec_configure(info->dev_name, &conf);
+  TEST_ASSERT_SUCCESS(ret,
+      "Failed to configure 4G FPGA PF for bbdev %s",
+      info->dev_name);
+
+
+Test Application
+----------------
+
+BBDEV provides a test application, ``test-bbdev.py`` and range of test data for testing
+the functionality of FPGA 5GNR FEC encode and decode, depending on the device's
+capabilities. The test application is located under app->test-bbdev folder and has the
+following options:
+
+.. code-block:: console
+
+  "-p", "--testapp-path": specifies path to the bbdev test app.
+  "-e", "--eal-params"	: EAL arguments which are passed to the test app.
+  "-t", "--timeout"	: Timeout in seconds (default=300).
+  "-c", "--test-cases"	: Defines test cases to run. Run all if not specified.
+  "-v", "--test-vector"	: Test vector path (default=dpdk_path+/app/test-bbdev/test_vectors/bbdev_null.data).
+  "-n", "--num-ops"	: Number of operations to process on device (default=32).
+  "-b", "--burst-size"	: Operations enqueue/dequeue burst size (default=32).
+  "-l", "--num-lcores"	: Number of lcores to run (default=16).
+  "-i", "--init-device" : Initialise PF device with default values.
+
+
+To execute the test application tool using simple decode or encode data,
+type one of the following:
+
+.. code-block:: console
+
+  ./test-bbdev.py -c validation -n 64 -b 1 -v ./ldpc_dec_default.data
+  ./test-bbdev.py -c validation -n 64 -b 1 -v ./ldpc_enc_default.data
+
+
+The test application ``test-bbdev.py``, supports the ability to configure the PF device with
+a default set of values, if the "-i" or "- -init-device" option is included. The default values
+are defined in test_bbdev_perf.c as:
+
+- VF_UL_QUEUE_VALUE 4
+- VF_DL_QUEUE_VALUE 4
+- UL_BANDWIDTH 3
+- DL_BANDWIDTH 3
+- UL_LOAD_BALANCE 128
+- DL_LOAD_BALANCE 128
+- FLR_TIMEOUT 610
+
+
 Test Vectors
 ~~~~~~~~~~~~
 

@@ -1,3 +1,10 @@
 DPDK_20.0 {
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	fpga_5gnr_fec_configure;
+
+};

@@ -39,6 +39,19 @@
 #define FLR_4G_TIMEOUT 610
 #endif
 
+#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC
+#include <rte_pmd_fpga_5gnr_fec.h>
+#define FPGA_5GNR_PF_DRIVER_NAME ("intel_fpga_5gnr_fec_pf")
+#define FPGA_5GNR_VF_DRIVER_NAME ("intel_fpga_5gnr_fec_vf")
+#define VF_UL_5G_QUEUE_VALUE 4
+#define VF_DL_5G_QUEUE_VALUE 4
+#define UL_5G_BANDWIDTH 3
+#define DL_5G_BANDWIDTH 3
+#define UL_5G_LOAD_BALANCE 128
+#define DL_5G_LOAD_BALANCE 128
+#define FLR_5G_TIMEOUT 610
+#endif
+
 #define OPS_CACHE_SIZE 256U
 #define OPS_POOL_SIZE_MIN 511U /* 0.5K per queue */
 
@@ -593,6 +606,50 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 		ret = fpga_lte_fec_configure(info->dev_name, &conf);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to configure 4G FPGA PF for bbdev %s",
+				info->dev_name);
+	}
+#endif
+#ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC
+	if ((get_init_device() == true) &&
+		(!strcmp(info->drv.driver_name, FPGA_5GNR_PF_DRIVER_NAME))) {
+		struct fpga_5gnr_fec_conf conf;
+		unsigned int i;
+
+		printf("Configure FPGA 5GNR FEC Driver %s with default values\n",
+				info->drv.driver_name);
+
+		/* clear default configuration before initialization */
+		memset(&conf, 0, sizeof(struct fpga_5gnr_fec_conf));
+
+		/* Set PF mode :
+		 * true if PF is used for data plane
+		 * false for VFs
+		 */
+		conf.pf_mode_en = true;
+
+		for (i = 0; i < FPGA_5GNR_FEC_NUM_VFS; ++i) {
+			/* Number of UL queues per VF (fpga supports 8 VFs) */
+			conf.vf_ul_queues_number[i] = VF_UL_5G_QUEUE_VALUE;
+			/* Number of DL queues per VF (fpga supports 8 VFs) */
+			conf.vf_dl_queues_number[i] = VF_DL_5G_QUEUE_VALUE;
+		}
+
+		/* UL bandwidth. Needed for schedule algorithm */
+		conf.ul_bandwidth = UL_5G_BANDWIDTH;
+		/* DL bandwidth */
+		conf.dl_bandwidth = DL_5G_BANDWIDTH;
+
+		/* UL & DL load Balance Factor to 64 */
+		conf.ul_load_balance = UL_5G_LOAD_BALANCE;
+		conf.dl_load_balance = DL_5G_LOAD_BALANCE;
+
+		/**< FLR timeout value */
+		conf.flr_time_out = FLR_5G_TIMEOUT;
+
+		/* setup FPGA PF with configuration information */
+		ret = fpga_5gnr_fec_configure(info->dev_name, &conf);
+		TEST_ASSERT_SUCCESS(ret,
+				"Failed to configure 5G FPGA PF for bbdev %s",
 				info->dev_name);
 	}
 #endif

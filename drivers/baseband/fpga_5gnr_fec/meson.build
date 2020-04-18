@@ -4,3 +4,5 @@
 deps += ['bbdev', 'bus_vdev', 'ring', 'pci', 'bus_pci']
 
 sources = files('rte_fpga_5gnr_fec.c')
+
+install_headers('rte_pmd_fpga_5gnr_fec.h')
