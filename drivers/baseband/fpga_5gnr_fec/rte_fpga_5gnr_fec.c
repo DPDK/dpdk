@@ -25,6 +25,161 @@
 /* 5GNR SW PMD logging ID */
 static int fpga_5gnr_fec_logtype;
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+
+/* Read Ring Control Register of FPGA 5GNR FEC device */
+static inline void
+print_ring_reg_debug_info(void *mmio_base, uint32_t offset)
+{
+	rte_bbdev_log_debug(
+		"FPGA MMIO base address @ %p | Ring Control Register @ offset = 0x%08"
+		PRIx32, mmio_base, offset);
+	rte_bbdev_log_debug(
+		"RING_BASE_ADDR = 0x%016"PRIx64,
+		fpga_reg_read_64(mmio_base, offset));
+	rte_bbdev_log_debug(
+		"RING_HEAD_ADDR = 0x%016"PRIx64,
+		fpga_reg_read_64(mmio_base, offset +
+				FPGA_5GNR_FEC_RING_HEAD_ADDR));
+	rte_bbdev_log_debug(
+		"RING_SIZE = 0x%04"PRIx16,
+		fpga_reg_read_16(mmio_base, offset +
+				FPGA_5GNR_FEC_RING_SIZE));
+	rte_bbdev_log_debug(
+		"RING_MISC = 0x%02"PRIx8,
+		fpga_reg_read_8(mmio_base, offset +
+				FPGA_5GNR_FEC_RING_MISC));
+	rte_bbdev_log_debug(
+		"RING_ENABLE = 0x%02"PRIx8,
+		fpga_reg_read_8(mmio_base, offset +
+				FPGA_5GNR_FEC_RING_ENABLE));
+	rte_bbdev_log_debug(
+		"RING_FLUSH_QUEUE_EN = 0x%02"PRIx8,
+		fpga_reg_read_8(mmio_base, offset +
+				FPGA_5GNR_FEC_RING_FLUSH_QUEUE_EN));
+	rte_bbdev_log_debug(
+		"RING_SHADOW_TAIL = 0x%04"PRIx16,
+		fpga_reg_read_16(mmio_base, offset +
+				FPGA_5GNR_FEC_RING_SHADOW_TAIL));
+	rte_bbdev_log_debug(
+		"RING_HEAD_POINT = 0x%04"PRIx16,
+		fpga_reg_read_16(mmio_base, offset +
+				FPGA_5GNR_FEC_RING_HEAD_POINT));
+}
+
+/* Read Static Register of FPGA 5GNR FEC device */
+static inline void
+print_static_reg_debug_info(void *mmio_base)
+{
+	uint16_t config = fpga_reg_read_16(mmio_base,
+			FPGA_5GNR_FEC_CONFIGURATION);
+	uint8_t qmap_done = fpga_reg_read_8(mmio_base,
+			FPGA_5GNR_FEC_QUEUE_PF_VF_MAP_DONE);
+	uint16_t lb_factor = fpga_reg_read_16(mmio_base,
+			FPGA_5GNR_FEC_LOAD_BALANCE_FACTOR);
+	uint16_t ring_desc_len = fpga_reg_read_16(mmio_base,
+			FPGA_5GNR_FEC_RING_DESC_LEN);
+	uint16_t flr_time_out = fpga_reg_read_16(mmio_base,
+			FPGA_5GNR_FEC_FLR_TIME_OUT);
+
+	rte_bbdev_log_debug("UL.DL Weights = %u.%u",
+			((uint8_t)config), ((uint8_t)(config >> 8)));
+	rte_bbdev_log_debug("UL.DL Load Balance = %u.%u",
+			((uint8_t)lb_factor), ((uint8_t)(lb_factor >> 8)));
+	rte_bbdev_log_debug("Queue-PF/VF Mapping Table = %s",
+			(qmap_done > 0) ? "READY" : "NOT-READY");
+	rte_bbdev_log_debug("Ring Descriptor Size = %u bytes",
+			ring_desc_len*FPGA_RING_DESC_LEN_UNIT_BYTES);
+	rte_bbdev_log_debug("FLR Timeout = %f usec",
+			(float)flr_time_out*FPGA_FLR_TIMEOUT_UNIT);
+}
+
+/* Print decode DMA Descriptor of FPGA 5GNR Decoder device */
+static void
+print_dma_dec_desc_debug_info(union fpga_dma_desc *desc)
+{
+	rte_bbdev_log_debug("DMA response desc %p\n"
+		"\t-- done(%"PRIu32") | iter(%"PRIu32") | et_pass(%"PRIu32")"
+		" | crcb_pass (%"PRIu32") | error(%"PRIu32")\n"
+		"\t-- qm_idx(%"PRIu32") | max_iter(%"PRIu32") | "
+		"bg_idx (%"PRIu32") | harqin_en(%"PRIu32") | zc(%"PRIu32")\n"
+		"\t-- hbstroe_offset(%"PRIu32") | num_null (%"PRIu32") "
+		"| irq_en(%"PRIu32")\n"
+		"\t-- ncb(%"PRIu32") | desc_idx (%"PRIu32") | "
+		"drop_crc24b(%"PRIu32") | RV (%"PRIu32")\n"
+		"\t-- crc24b_ind(%"PRIu32") | et_dis (%"PRIu32")\n"
+		"\t-- harq_input_length(%"PRIu32") | rm_e(%"PRIu32")\n"
+		"\t-- cbs_in_op(%"PRIu32") | in_add (0x%08"PRIx32"%08"PRIx32")"
+		"| out_add (0x%08"PRIx32"%08"PRIx32")",
+		desc,
+		(uint32_t)desc->dec_req.done,
+		(uint32_t)desc->dec_req.iter,
+		(uint32_t)desc->dec_req.et_pass,
+		(uint32_t)desc->dec_req.crcb_pass,
+		(uint32_t)desc->dec_req.error,
+		(uint32_t)desc->dec_req.qm_idx,
+		(uint32_t)desc->dec_req.max_iter,
+		(uint32_t)desc->dec_req.bg_idx,
+		(uint32_t)desc->dec_req.harqin_en,
+		(uint32_t)desc->dec_req.zc,
+		(uint32_t)desc->dec_req.hbstroe_offset,
+		(uint32_t)desc->dec_req.num_null,
+		(uint32_t)desc->dec_req.irq_en,
+		(uint32_t)desc->dec_req.ncb,
+		(uint32_t)desc->dec_req.desc_idx,
+		(uint32_t)desc->dec_req.drop_crc24b,
+		(uint32_t)desc->dec_req.rv,
+		(uint32_t)desc->dec_req.crc24b_ind,
+		(uint32_t)desc->dec_req.et_dis,
+		(uint32_t)desc->dec_req.harq_input_length,
+		(uint32_t)desc->dec_req.rm_e,
+		(uint32_t)desc->dec_req.cbs_in_op,
+		(uint32_t)desc->dec_req.in_addr_hi,
+		(uint32_t)desc->dec_req.in_addr_lw,
+		(uint32_t)desc->dec_req.out_addr_hi,
+		(uint32_t)desc->dec_req.out_addr_lw);
+	uint32_t *word = (uint32_t *) desc;
+	rte_bbdev_log_debug("%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
+			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n",
+			word[0], word[1], word[2], word[3],
+			word[4], word[5], word[6], word[7]);
+}
+
+/* Print decode DMA Descriptor of FPGA 5GNR encoder device */
+static void
+print_dma_enc_desc_debug_info(union fpga_dma_desc *desc)
+{
+	rte_bbdev_log_debug("DMA response desc %p\n"
+			"%"PRIu32" %"PRIu32"\n"
+			"K' %"PRIu32" E %"PRIu32" desc %"PRIu32" Z %"PRIu32"\n"
+			"BG %"PRIu32" Qm %"PRIu32" CRC %"PRIu32" IRQ %"PRIu32"\n"
+			"k0 %"PRIu32" Ncb %"PRIu32" F %"PRIu32"\n",
+			desc,
+			(uint32_t)desc->enc_req.done,
+			(uint32_t)desc->enc_req.error,
+
+			(uint32_t)desc->enc_req.k_,
+			(uint32_t)desc->enc_req.rm_e,
+			(uint32_t)desc->enc_req.desc_idx,
+			(uint32_t)desc->enc_req.zc,
+
+			(uint32_t)desc->enc_req.bg_idx,
+			(uint32_t)desc->enc_req.qm_idx,
+			(uint32_t)desc->enc_req.crc_en,
+			(uint32_t)desc->enc_req.irq_en,
+
+			(uint32_t)desc->enc_req.k0,
+			(uint32_t)desc->enc_req.ncb,
+			(uint32_t)desc->enc_req.num_null);
+	uint32_t *word = (uint32_t *) desc;
+	rte_bbdev_log_debug("%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
+			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n",
+			word[0], word[1], word[2], word[3],
+			word[4], word[5], word[6], word[7]);
+}
+
+#endif
+
 static int
 fpga_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 {
@@ -360,6 +515,10 @@ fpga_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	rte_bbdev_log_debug("BBDEV queue[%d] set up for FPGA queue[%d]",
 			queue_id, q_idx);
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Read FPGA Ring Control Registers after configuration*/
+	print_ring_reg_debug_info(d->mmio_base, ring_offset);
+#endif
 	return 0;
 }
 
@@ -484,6 +643,7 @@ static const struct rte_bbdev_ops fpga_ops = {
 	.queue_start = fpga_queue_start,
 	.queue_release = fpga_queue_release,
 };
+
 static inline void
 fpga_dma_enqueue(struct fpga_queue *q, uint16_t num_desc,
 		struct rte_bbdev_stats *queue_stats)
@@ -728,6 +888,96 @@ fpga_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 	return 0;
 }
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+/* Validates LDPC encoder parameters */
+static int
+validate_enc_op(struct rte_bbdev_enc_op *op __rte_unused)
+{
+	struct rte_bbdev_op_ldpc_enc *ldpc_enc = &op->ldpc_enc;
+	struct rte_bbdev_op_enc_ldpc_cb_params *cb = NULL;
+	struct rte_bbdev_op_enc_ldpc_tb_params *tb = NULL;
+
+
+	if (ldpc_enc->input.length >
+			RTE_BBDEV_LDPC_MAX_CB_SIZE >> 3) {
+		rte_bbdev_log(ERR, "CB size (%u) is too big, max: %d",
+				ldpc_enc->input.length,
+				RTE_BBDEV_LDPC_MAX_CB_SIZE);
+		return -1;
+	}
+
+	if (op->mempool == NULL) {
+		rte_bbdev_log(ERR, "Invalid mempool pointer");
+		return -1;
+	}
+	if (ldpc_enc->input.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid input pointer");
+		return -1;
+	}
+	if (ldpc_enc->output.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid output pointer");
+		return -1;
+	}
+	if ((ldpc_enc->basegraph > 2) || (ldpc_enc->basegraph == 0)) {
+		rte_bbdev_log(ERR,
+				"basegraph (%u) is out of range 1 <= value <= 2",
+				ldpc_enc->basegraph);
+		return -1;
+	}
+	if (ldpc_enc->code_block_mode > 1) {
+		rte_bbdev_log(ERR,
+				"code_block_mode (%u) is out of range 0:Tb 1:CB",
+				ldpc_enc->code_block_mode);
+		return -1;
+	}
+
+	if (ldpc_enc->code_block_mode == 0) {
+		tb = &ldpc_enc->tb_params;
+		if (tb->c == 0) {
+			rte_bbdev_log(ERR,
+					"c (%u) is out of range 1 <= value <= %u",
+					tb->c, RTE_BBDEV_LDPC_MAX_CODE_BLOCKS);
+			return -1;
+		}
+		if (tb->cab > tb->c) {
+			rte_bbdev_log(ERR,
+					"cab (%u) is greater than c (%u)",
+					tb->cab, tb->c);
+			return -1;
+		}
+		if ((tb->ea < RTE_BBDEV_LDPC_MIN_CB_SIZE)
+				&& tb->r < tb->cab) {
+			rte_bbdev_log(ERR,
+					"ea (%u) is less than %u or it is not even",
+					tb->ea, RTE_BBDEV_LDPC_MIN_CB_SIZE);
+			return -1;
+		}
+		if ((tb->eb < RTE_BBDEV_LDPC_MIN_CB_SIZE)
+				&& tb->c > tb->cab) {
+			rte_bbdev_log(ERR,
+					"eb (%u) is less than %u",
+					tb->eb, RTE_BBDEV_LDPC_MIN_CB_SIZE);
+			return -1;
+		}
+		if (tb->r > (tb->c - 1)) {
+			rte_bbdev_log(ERR,
+					"r (%u) is greater than c - 1 (%u)",
+					tb->r, tb->c - 1);
+			return -1;
+		}
+	} else {
+		cb = &ldpc_enc->cb_params;
+		if (cb->e < RTE_BBDEV_LDPC_MIN_CB_SIZE) {
+			rte_bbdev_log(ERR,
+					"e (%u) is less than %u or it is not even",
+					cb->e, RTE_BBDEV_LDPC_MIN_CB_SIZE);
+			return -1;
+		}
+	}
+	return 0;
+}
+#endif
+
 static inline char *
 mbuf_append(struct rte_mbuf *m_head, struct rte_mbuf *m, uint16_t len)
 {
@@ -739,6 +989,69 @@ mbuf_append(struct rte_mbuf *m_head, struct rte_mbuf *m, uint16_t len)
 	m_head->pkt_len  = (m_head->pkt_len + len);
 	return tail;
 }
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+/* Validates LDPC decoder parameters */
+static int
+validate_dec_op(struct rte_bbdev_dec_op *op __rte_unused)
+{
+	struct rte_bbdev_op_ldpc_dec *ldpc_dec = &op->ldpc_dec;
+	struct rte_bbdev_op_dec_ldpc_cb_params *cb = NULL;
+	struct rte_bbdev_op_dec_ldpc_tb_params *tb = NULL;
+
+	if (op->mempool == NULL) {
+		rte_bbdev_log(ERR, "Invalid mempool pointer");
+		return -1;
+	}
+	if (ldpc_dec->rv_index > 3) {
+		rte_bbdev_log(ERR,
+				"rv_index (%u) is out of range 0 <= value <= 3",
+				ldpc_dec->rv_index);
+		return -1;
+	}
+
+	if (ldpc_dec->iter_max == 0) {
+		rte_bbdev_log(ERR,
+				"iter_max (%u) is equal to 0",
+				ldpc_dec->iter_max);
+		return -1;
+	}
+
+	if (ldpc_dec->code_block_mode > 1) {
+		rte_bbdev_log(ERR,
+				"code_block_mode (%u) is out of range 0 <= value <= 1",
+				ldpc_dec->code_block_mode);
+		return -1;
+	}
+
+	if (ldpc_dec->code_block_mode == 0) {
+		tb = &ldpc_dec->tb_params;
+		if (tb->c < 1) {
+			rte_bbdev_log(ERR,
+					"c (%u) is out of range 1 <= value <= %u",
+					tb->c, RTE_BBDEV_LDPC_MAX_CODE_BLOCKS);
+			return -1;
+		}
+		if (tb->cab > tb->c) {
+			rte_bbdev_log(ERR,
+					"cab (%u) is greater than c (%u)",
+					tb->cab, tb->c);
+			return -1;
+		}
+	} else {
+		cb = &ldpc_dec->cb_params;
+		if (cb->e < RTE_BBDEV_LDPC_MIN_CB_SIZE) {
+			rte_bbdev_log(ERR,
+					"e (%u) is out of range %u <= value <= %u",
+					cb->e, RTE_BBDEV_LDPC_MIN_CB_SIZE,
+					RTE_BBDEV_LDPC_MAX_CB_SIZE);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+#endif
 
 static inline int
 enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
@@ -757,6 +1070,15 @@ enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
 	uint16_t total_left = enc->input.length;
 	uint16_t ring_offset;
 	uint16_t K, k_;
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	/* FIXME */
+	if (validate_enc_op(op) == -1) {
+		rte_bbdev_log(ERR, "LDPC encoder validation failed");
+		return -EINVAL;
+	}
+#endif
 
 	/* Clear op status */
 	op->status = 0;
@@ -819,6 +1141,9 @@ enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
 		return -1;
 	}
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	print_dma_enc_desc_debug_info(desc);
+#endif
 	return 1;
 }
 
@@ -840,6 +1165,14 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 	uint16_t in_offset = dec->input.offset;
 	uint16_t out_offset = dec->hard_output.offset;
 	uint32_t harq_offset = 0;
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+		/* Validate op structure */
+		if (validate_dec_op(op) == -1) {
+			rte_bbdev_log(ERR, "LDPC decoder validation failed");
+			return -EINVAL;
+		}
+#endif
 
 	/* Clear op status */
 	op->status = 0;
@@ -911,6 +1244,10 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 				seg_total_left, in_length);
 		return -1;
 	}
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	print_dma_dec_desc_debug_info(desc);
+#endif
 
 	return 1;
 }
@@ -1048,6 +1385,10 @@ dequeue_ldpc_enc_one_op_cb(struct fpga_queue *q,
 
 	rte_bbdev_log_debug("DMA response desc %p", desc);
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	print_dma_enc_desc_debug_info(desc);
+#endif
+
 	*op = desc->enc_req.op_addr;
 	/* Check the descriptor error field, return 1 on error */
 	desc_error = check_desc_error(desc->enc_req.error);
@@ -1073,6 +1414,10 @@ dequeue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 
 	/* make sure the response is read atomically */
 	rte_smp_rmb();
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	print_dma_dec_desc_debug_info(desc);
+#endif
 
 	*op = desc->dec_req.op_addr;
 
@@ -1229,6 +1574,17 @@ fpga_5gnr_fec_probe(struct rte_pci_driver *pci_drv,
 	rte_bbdev_log_debug("bbdev id = %u [%s]",
 			bbdev->data->dev_id, dev_name);
 
+	struct fpga_5gnr_fec_device *d = bbdev->data->dev_private;
+	uint32_t version_id = fpga_reg_read_32(d->mmio_base,
+			FPGA_5GNR_FEC_VERSION_ID);
+	rte_bbdev_log(INFO, "FEC FPGA RTL v%u.%u",
+		((uint16_t)(version_id >> 16)), ((uint16_t)version_id));
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	if (!strcmp(bbdev->device->driver->name,
+			RTE_STR(FPGA_5GNR_FEC_PF_DRIVER_NAME)))
+		print_static_reg_debug_info(d->mmio_base);
+#endif
 	return 0;
 }
 

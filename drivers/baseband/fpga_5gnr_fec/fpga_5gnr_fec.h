@@ -355,4 +355,34 @@ fpga_reg_read_32(void *mmio_base, uint32_t offset)
 	return rte_le_to_cpu_32(ret);
 }
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+
+/* Read a register of FPGA 5GNR FEC device */
+static inline uint16_t
+fpga_reg_read_16(void *mmio_base, uint32_t offset)
+{
+	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
+	uint16_t ret = *((volatile uint16_t *)(reg_addr));
+	return rte_le_to_cpu_16(ret);
+}
+
+/* Read a register of FPGA 5GNR FEC device */
+static inline uint8_t
+fpga_reg_read_8(void *mmio_base, uint32_t offset)
+{
+	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
+	return *((volatile uint8_t *)(reg_addr));
+}
+
+/* Read a register of FPGA 5GNR FEC device */
+static inline uint64_t
+fpga_reg_read_64(void *mmio_base, uint32_t offset)
+{
+	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
+	uint64_t ret = *((volatile uint64_t *)(reg_addr));
+	return rte_le_to_cpu_64(ret);
+}
+
+#endif
+
 #endif /* _FPGA_5GNR_FEC_H_ */
