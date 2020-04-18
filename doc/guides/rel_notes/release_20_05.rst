@@ -104,6 +104,12 @@ New Features
 
   Supported large size code blocks which does not fit in one mbuf segment.
 
+* **Added Intel FPGA_5GNR_FEC bbdev PMD.**
+
+  Added a new ``fpga_5gnr_fec`` bbdev driver for the Intel\ |reg| FPGA PAC
+  (Programmable  Acceleration Card) N3000.  See the
+  :doc:`../bbdevs/fpga_5gnr_fec` BBDEV guide for more details on this new driver.
+
 * **Updated ipsec-secgw sample application with following features.**
 
   * Updated ipsec-secgw application to add event based packet processing.

@@ -11,3 +11,4 @@ Baseband Device Drivers
     null
     turbo_sw
     fpga_lte_fec
+    fpga_5gnr_fec
