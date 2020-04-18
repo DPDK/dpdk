@@ -53,6 +53,15 @@
 #define FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES 8
 #define FPGA_5GNR_FEC_DDR_RD_DATA_LEN_IN_BYTES 8
 
+/* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
+#define N_ZC_1 66 /* N = 66 Zc for BG 1 */
+#define N_ZC_2 50 /* N = 50 Zc for BG 2 */
+#define K0_1_1 17 /* K0 fraction numerator for rv 1 and BG 1 */
+#define K0_1_2 13 /* K0 fraction numerator for rv 1 and BG 2 */
+#define K0_2_1 33 /* K0 fraction numerator for rv 2 and BG 1 */
+#define K0_2_2 25 /* K0 fraction numerator for rv 2 and BG 2 */
+#define K0_3_1 56 /* K0 fraction numerator for rv 3 and BG 1 */
+#define K0_3_2 43 /* K0 fraction numerator for rv 3 and BG 2 */
 
 /* FPGA 5GNR FEC Register mapping on BAR0 */
 enum {

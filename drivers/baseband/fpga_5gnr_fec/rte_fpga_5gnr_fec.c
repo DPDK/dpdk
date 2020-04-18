@@ -13,6 +13,9 @@
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_byteorder.h>
+#ifdef RTE_BBDEV_OFFLOAD_COST
+#include <rte_cycles.h>
+#endif
 
 #include <rte_bbdev.h>
 #include <rte_bbdev_pmd.h>
@@ -141,6 +144,40 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 	uint32_t q_id = 0;
 
 	static const struct rte_bbdev_op_cap bbdev_capabilities[] = {
+		{
+			.type   = RTE_BBDEV_OP_LDPC_ENC,
+			.cap.ldpc_enc = {
+				.capability_flags =
+						RTE_BBDEV_LDPC_RATE_MATCH |
+						RTE_BBDEV_LDPC_ENC_INTERRUPTS |
+						RTE_BBDEV_LDPC_CRC_24B_ATTACH,
+				.num_buffers_src =
+						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+				.num_buffers_dst =
+						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+			}
+		},
+		{
+		.type   = RTE_BBDEV_OP_LDPC_DEC,
+		.cap.ldpc_dec = {
+			.capability_flags =
+				RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK |
+				RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP |
+				RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE |
+				RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE |
+				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE |
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE |
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS,
+			.llr_size = 6,
+			.llr_decimals = 2,
+			.num_buffers_src =
+					RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+			.num_buffers_hard_out =
+					RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+			.num_buffers_soft_out = 0,
+		}
+		},
 		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
 	};
 
@@ -447,6 +484,625 @@ static const struct rte_bbdev_ops fpga_ops = {
 	.queue_start = fpga_queue_start,
 	.queue_release = fpga_queue_release,
 };
+static inline void
+fpga_dma_enqueue(struct fpga_queue *q, uint16_t num_desc,
+		struct rte_bbdev_stats *queue_stats)
+{
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	uint64_t start_time = 0;
+	queue_stats->acc_offload_cycles = 0;
+#else
+	RTE_SET_USED(queue_stats);
+#endif
+
+	/* Update tail and shadow_tail register */
+	q->tail = (q->tail + num_desc) & q->sw_ring_wrap_mask;
+
+	rte_wmb();
+
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	/* Start time measurement for enqueue function offload. */
+	start_time = rte_rdtsc_precise();
+#endif
+	mmio_write_16(q->shadow_tail_addr, q->tail);
+
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	rte_wmb();
+	queue_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
+#endif
+}
+
+/* Read flag value 0/1/ from bitmap */
+static inline bool
+check_bit(uint32_t bitmap, uint32_t bitmask)
+{
+	return bitmap & bitmask;
+}
+
+/* Compute value of k0.
+ * Based on 3GPP 38.212 Table 5.4.2.1-2
+ * Starting position of different redundancy versions, k0
+ */
+static inline uint16_t
+get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index)
+{
+	if (rv_index == 0)
+		return 0;
+	uint16_t n = (bg == 1 ? N_ZC_1 : N_ZC_2) * z_c;
+	if (n_cb == n) {
+		if (rv_index == 1)
+			return (bg == 1 ? K0_1_1 : K0_1_2) * z_c;
+		else if (rv_index == 2)
+			return (bg == 1 ? K0_2_1 : K0_2_2) * z_c;
+		else
+			return (bg == 1 ? K0_3_1 : K0_3_2) * z_c;
+	}
+	/* LBRM case - includes a division by N */
+	if (rv_index == 1)
+		return (((bg == 1 ? K0_1_1 : K0_1_2) * n_cb)
+				/ n) * z_c;
+	else if (rv_index == 2)
+		return (((bg == 1 ? K0_2_1 : K0_2_2) * n_cb)
+				/ n) * z_c;
+	else
+		return (((bg == 1 ? K0_3_1 : K0_3_2) * n_cb)
+				/ n) * z_c;
+}
+
+/**
+ * Set DMA descriptor for encode operation (1 Code Block)
+ *
+ * @param op
+ *   Pointer to a single encode operation.
+ * @param desc
+ *   Pointer to DMA descriptor.
+ * @param input
+ *   Pointer to pointer to input data which will be decoded.
+ * @param e
+ *   E value (length of output in bits).
+ * @param ncb
+ *   Ncb value (size of the soft buffer).
+ * @param out_length
+ *   Length of output buffer
+ * @param in_offset
+ *   Input offset in rte_mbuf structure. It is used for calculating the point
+ *   where data is starting.
+ * @param out_offset
+ *   Output offset in rte_mbuf structure. It is used for calculating the point
+ *   where hard output data will be stored.
+ * @param cbs_in_op
+ *   Number of CBs contained in one operation.
+ */
+static inline int
+fpga_dma_desc_te_fill(struct rte_bbdev_enc_op *op,
+		struct fpga_dma_enc_desc *desc, struct rte_mbuf *input,
+		struct rte_mbuf *output, uint16_t k_,  uint16_t e,
+		uint32_t in_offset, uint32_t out_offset, uint16_t desc_offset,
+		uint8_t cbs_in_op)
+{
+	/* reset */
+	desc->done = 0;
+	desc->error = 0;
+	desc->k_ = k_;
+	desc->rm_e = e;
+	desc->desc_idx = desc_offset;
+	desc->zc = op->ldpc_enc.z_c;
+	desc->bg_idx = op->ldpc_enc.basegraph - 1;
+	desc->qm_idx = op->ldpc_enc.q_m / 2;
+	desc->crc_en = check_bit(op->ldpc_enc.op_flags,
+			RTE_BBDEV_LDPC_CRC_24B_ATTACH);
+	desc->irq_en = 0;
+	desc->k0 = get_k0(op->ldpc_enc.n_cb, op->ldpc_enc.z_c,
+			op->ldpc_enc.basegraph, op->ldpc_enc.rv_index);
+	desc->ncb = op->ldpc_enc.n_cb;
+	desc->num_null = op->ldpc_enc.n_filler;
+	/* Set inbound data buffer address */
+	desc->in_addr_hi = (uint32_t)(
+			rte_pktmbuf_mtophys_offset(input, in_offset) >> 32);
+	desc->in_addr_lw = (uint32_t)(
+			rte_pktmbuf_mtophys_offset(input, in_offset));
+
+	desc->out_addr_hi = (uint32_t)(
+			rte_pktmbuf_mtophys_offset(output, out_offset) >> 32);
+	desc->out_addr_lw = (uint32_t)(
+			rte_pktmbuf_mtophys_offset(output, out_offset));
+	/* Save software context needed for dequeue */
+	desc->op_addr = op;
+	/* Set total number of CBs in an op */
+	desc->cbs_in_op = cbs_in_op;
+	return 0;
+}
+
+/**
+ * Set DMA descriptor for decode operation (1 Code Block)
+ *
+ * @param op
+ *   Pointer to a single encode operation.
+ * @param desc
+ *   Pointer to DMA descriptor.
+ * @param input
+ *   Pointer to pointer to input data which will be decoded.
+ * @param in_offset
+ *   Input offset in rte_mbuf structure. It is used for calculating the point
+ *   where data is starting.
+ * @param out_offset
+ *   Output offset in rte_mbuf structure. It is used for calculating the point
+ *   where hard output data will be stored.
+ * @param cbs_in_op
+ *   Number of CBs contained in one operation.
+ */
+static inline int
+fpga_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
+		struct fpga_dma_dec_desc *desc,
+		struct rte_mbuf *input,	struct rte_mbuf *output,
+		uint16_t harq_in_length,
+		uint32_t in_offset, uint32_t out_offset,
+		uint32_t harq_offset,
+		uint16_t desc_offset,
+		uint8_t cbs_in_op)
+{
+	/* reset */
+	desc->done = 0;
+	desc->error = 0;
+	/* Set inbound data buffer address */
+	desc->in_addr_hi = (uint32_t)(
+			rte_pktmbuf_mtophys_offset(input, in_offset) >> 32);
+	desc->in_addr_lw = (uint32_t)(
+			rte_pktmbuf_mtophys_offset(input, in_offset));
+	desc->rm_e = op->ldpc_dec.cb_params.e;
+	desc->harq_input_length = harq_in_length;
+	desc->et_dis = !check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE);
+	desc->rv = op->ldpc_dec.rv_index;
+	desc->crc24b_ind = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK);
+	desc->drop_crc24b = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP);
+	desc->desc_idx = desc_offset;
+	desc->ncb = op->ldpc_dec.n_cb;
+	desc->num_null = op->ldpc_dec.n_filler;
+	desc->hbstroe_offset = harq_offset >> 10;
+	desc->zc = op->ldpc_dec.z_c;
+	desc->harqin_en = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE);
+	desc->bg_idx = op->ldpc_dec.basegraph - 1;
+	desc->max_iter = op->ldpc_dec.iter_max;
+	desc->qm_idx = op->ldpc_dec.q_m / 2;
+	desc->out_addr_hi = (uint32_t)(
+			rte_pktmbuf_mtophys_offset(output, out_offset) >> 32);
+	desc->out_addr_lw = (uint32_t)(
+			rte_pktmbuf_mtophys_offset(output, out_offset));
+	/* Save software context needed for dequeue */
+	desc->op_addr = op;
+	/* Set total number of CBs in an op */
+	desc->cbs_in_op = cbs_in_op;
+
+	return 0;
+}
+
+static inline char *
+mbuf_append(struct rte_mbuf *m_head, struct rte_mbuf *m, uint16_t len)
+{
+	if (unlikely(len > rte_pktmbuf_tailroom(m)))
+		return NULL;
+
+	char *tail = (char *)m->buf_addr + m->data_off + m->data_len;
+	m->data_len = (uint16_t)(m->data_len + len);
+	m_head->pkt_len  = (m_head->pkt_len + len);
+	return tail;
+}
+
+static inline int
+enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
+		uint16_t desc_offset)
+{
+	union fpga_dma_desc *desc;
+	int ret;
+	uint8_t c, crc24_bits = 0;
+	struct rte_bbdev_op_ldpc_enc *enc = &op->ldpc_enc;
+	uint16_t in_offset = enc->input.offset;
+	uint16_t out_offset = enc->output.offset;
+	struct rte_mbuf *m_in = enc->input.data;
+	struct rte_mbuf *m_out = enc->output.data;
+	struct rte_mbuf *m_out_head = enc->output.data;
+	uint32_t in_length, out_length, e;
+	uint16_t total_left = enc->input.length;
+	uint16_t ring_offset;
+	uint16_t K, k_;
+
+	/* Clear op status */
+	op->status = 0;
+
+	if (m_in == NULL || m_out == NULL) {
+		rte_bbdev_log(ERR, "Invalid mbuf pointer");
+		op->status = 1 << RTE_BBDEV_DATA_ERROR;
+		return -EINVAL;
+	}
+
+	if (enc->op_flags & RTE_BBDEV_LDPC_CRC_24B_ATTACH)
+		crc24_bits = 24;
+
+	if (enc->code_block_mode == 0) {
+		/* For Transport Block mode */
+		/* FIXME */
+		c = enc->tb_params.c;
+		e = enc->tb_params.ea;
+	} else { /* For Code Block mode */
+		c = 1;
+		e = enc->cb_params.e;
+	}
+
+	/* Update total_left */
+	K = (enc->basegraph == 1 ? 22 : 10) * enc->z_c;
+	k_ = K - enc->n_filler;
+	in_length = (k_ - crc24_bits) >> 3;
+	out_length = (e + 7) >> 3;
+
+	total_left = rte_pktmbuf_data_len(m_in) - in_offset;
+
+	/* Update offsets */
+	if (total_left != in_length) {
+		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
+		rte_bbdev_log(ERR,
+				"Mismatch between mbuf length and included CBs sizes %d",
+				total_left);
+	}
+
+	mbuf_append(m_out_head, m_out, out_length);
+
+	/* Offset into the ring */
+	ring_offset = ((q->tail + desc_offset) & q->sw_ring_wrap_mask);
+	/* Setup DMA Descriptor */
+	desc = q->ring_addr + ring_offset;
+
+	ret = fpga_dma_desc_te_fill(op, &desc->enc_req, m_in, m_out,
+			k_, e, in_offset, out_offset, ring_offset, c);
+	if (unlikely(ret < 0))
+		return ret;
+
+	/* Update lengths */
+	total_left -= in_length;
+	op->ldpc_enc.output.length += out_length;
+
+	if (total_left > 0) {
+		rte_bbdev_log(ERR,
+			"Mismatch between mbuf length and included CB sizes: mbuf len %u, cb len %u",
+				total_left, in_length);
+		return -1;
+	}
+
+	return 1;
+}
+
+static inline int
+enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
+		uint16_t desc_offset)
+{
+	union fpga_dma_desc *desc;
+	int ret;
+	uint16_t ring_offset;
+	uint8_t c;
+	uint16_t e, in_length, out_length, k0, l, seg_total_left, sys_cols;
+	uint16_t K, parity_offset, harq_in_length = 0, harq_out_length = 0;
+	uint16_t crc24_overlap = 0;
+	struct rte_bbdev_op_ldpc_dec *dec = &op->ldpc_dec;
+	struct rte_mbuf *m_in = dec->input.data;
+	struct rte_mbuf *m_out = dec->hard_output.data;
+	struct rte_mbuf *m_out_head = dec->hard_output.data;
+	uint16_t in_offset = dec->input.offset;
+	uint16_t out_offset = dec->hard_output.offset;
+	uint32_t harq_offset = 0;
+
+	/* Clear op status */
+	op->status = 0;
+
+	/* Setup DMA Descriptor */
+	ring_offset = ((q->tail + desc_offset) & q->sw_ring_wrap_mask);
+	desc = q->ring_addr + ring_offset;
+
+	if (m_in == NULL || m_out == NULL) {
+		rte_bbdev_log(ERR, "Invalid mbuf pointer");
+		op->status = 1 << RTE_BBDEV_DATA_ERROR;
+		return -1;
+	}
+
+	c = 1;
+	e = dec->cb_params.e;
+
+	if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP))
+		crc24_overlap = 24;
+
+	sys_cols = (dec->basegraph == 1) ? 22 : 10;
+	K = sys_cols * dec->z_c;
+	parity_offset = K - 2 * dec->z_c;
+
+	out_length = ((K - crc24_overlap - dec->n_filler) >> 3);
+	in_length = e;
+	seg_total_left = dec->input.length;
+
+	if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE)) {
+		harq_in_length = RTE_MIN(dec->harq_combined_input.length,
+				(uint32_t)dec->n_cb);
+	}
+
+	if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
+		k0 = get_k0(dec->n_cb, dec->z_c,
+				dec->basegraph, dec->rv_index);
+		if (k0 > parity_offset)
+			l = k0 + e;
+		else
+			l = k0 + e + dec->n_filler;
+		harq_out_length = RTE_MIN(RTE_MAX(harq_in_length, l),
+				dec->n_cb - dec->n_filler);
+		dec->harq_combined_output.length = harq_out_length;
+	}
+
+	mbuf_append(m_out_head, m_out, out_length);
+	if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE))
+		harq_offset = dec->harq_combined_input.offset;
+	else if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE))
+		harq_offset = dec->harq_combined_output.offset;
+
+	if ((harq_offset & 0x3FF) > 0) {
+		rte_bbdev_log(ERR, "Invalid HARQ offset %d", harq_offset);
+		op->status = 1 << RTE_BBDEV_DATA_ERROR;
+		return -1;
+	}
+
+	ret = fpga_dma_desc_ld_fill(op, &desc->dec_req, m_in, m_out,
+		harq_in_length, in_offset, out_offset, harq_offset,
+		ring_offset, c);
+	if (unlikely(ret < 0))
+		return ret;
+	/* Update lengths */
+	seg_total_left -= in_length;
+	op->ldpc_dec.hard_output.length += out_length;
+	if (seg_total_left > 0) {
+		rte_bbdev_log(ERR,
+				"Mismatch between mbuf length and included CB sizes: mbuf len %u, cb len %u",
+				seg_total_left, in_length);
+		return -1;
+	}
+
+	return 1;
+}
+
+static uint16_t
+fpga_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_enc_op **ops, uint16_t num)
+{
+	uint16_t i, total_enqueued_cbs = 0;
+	int32_t avail;
+	int enqueued_cbs;
+	struct fpga_queue *q = q_data->queue_private;
+	union fpga_dma_desc *desc;
+
+	/* Check if queue is not full */
+	if (unlikely(((q->tail + 1) & q->sw_ring_wrap_mask) ==
+			q->head_free_desc))
+		return 0;
+
+	/* Calculates available space */
+	avail = (q->head_free_desc > q->tail) ?
+		q->head_free_desc - q->tail - 1 :
+		q->ring_ctrl_reg.ring_size + q->head_free_desc - q->tail - 1;
+
+	for (i = 0; i < num; ++i) {
+
+		/* Check if there is available space for further
+		 * processing
+		 */
+		if (unlikely(avail - 1 < 0))
+			break;
+		avail -= 1;
+		enqueued_cbs = enqueue_ldpc_enc_one_op_cb(q, ops[i],
+				total_enqueued_cbs);
+
+		if (enqueued_cbs < 0)
+			break;
+
+		total_enqueued_cbs += enqueued_cbs;
+
+		rte_bbdev_log_debug("enqueuing enc ops [%d/%d] | head %d | tail %d",
+				total_enqueued_cbs, num,
+				q->head_free_desc, q->tail);
+	}
+
+	/* Set interrupt bit for last CB in enqueued ops. FPGA issues interrupt
+	 * only when all previous CBs were already processed.
+	 */
+	desc = q->ring_addr + ((q->tail + total_enqueued_cbs - 1)
+			& q->sw_ring_wrap_mask);
+	desc->enc_req.irq_en = q->irq_enable;
+
+	fpga_dma_enqueue(q, total_enqueued_cbs, &q_data->queue_stats);
+
+	/* Update stats */
+	q_data->queue_stats.enqueued_count += i;
+	q_data->queue_stats.enqueue_err_count += num - i;
+
+	return i;
+}
+
+static uint16_t
+fpga_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_dec_op **ops, uint16_t num)
+{
+	uint16_t i, total_enqueued_cbs = 0;
+	int32_t avail;
+	int enqueued_cbs;
+	struct fpga_queue *q = q_data->queue_private;
+	union fpga_dma_desc *desc;
+
+	/* Check if queue is not full */
+	if (unlikely(((q->tail + 1) & q->sw_ring_wrap_mask) ==
+			q->head_free_desc))
+		return 0;
+
+	/* Calculates available space */
+	avail = (q->head_free_desc > q->tail) ?
+		q->head_free_desc - q->tail - 1 :
+		q->ring_ctrl_reg.ring_size + q->head_free_desc - q->tail - 1;
+
+	for (i = 0; i < num; ++i) {
+
+		/* Check if there is available space for further
+		 * processing
+		 */
+		if (unlikely(avail - 1 < 0))
+			break;
+		avail -= 1;
+		enqueued_cbs = enqueue_ldpc_dec_one_op_cb(q, ops[i],
+				total_enqueued_cbs);
+
+		if (enqueued_cbs < 0)
+			break;
+
+		total_enqueued_cbs += enqueued_cbs;
+
+		rte_bbdev_log_debug("enqueuing dec ops [%d/%d] | head %d | tail %d",
+				total_enqueued_cbs, num,
+				q->head_free_desc, q->tail);
+	}
+
+	/* Update stats */
+	q_data->queue_stats.enqueued_count += i;
+	q_data->queue_stats.enqueue_err_count += num - i;
+
+	/* Set interrupt bit for last CB in enqueued ops. FPGA issues interrupt
+	 * only when all previous CBs were already processed.
+	 */
+	desc = q->ring_addr + ((q->tail + total_enqueued_cbs - 1)
+			& q->sw_ring_wrap_mask);
+	desc->enc_req.irq_en = q->irq_enable;
+	fpga_dma_enqueue(q, total_enqueued_cbs, &q_data->queue_stats);
+	return i;
+}
+
+
+static inline int
+dequeue_ldpc_enc_one_op_cb(struct fpga_queue *q,
+		struct rte_bbdev_enc_op **op __rte_unused,
+		uint16_t desc_offset)
+{
+	union fpga_dma_desc *desc;
+
+	/* Set current desc */
+	desc = q->ring_addr + ((q->head_free_desc + desc_offset)
+			& q->sw_ring_wrap_mask);
+
+	/*check if done */
+	if (desc->enc_req.done == 0)
+		return -1;
+
+	/* make sure the response is read atomically */
+	rte_smp_rmb();
+
+	rte_bbdev_log_debug("DMA response desc %p", desc);
+
+	return 1;
+}
+
+
+static inline int
+dequeue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
+		uint16_t desc_offset)
+{
+	union fpga_dma_desc *desc;
+
+	/* Set descriptor */
+	desc = q->ring_addr + ((q->head_free_desc + desc_offset)
+			& q->sw_ring_wrap_mask);
+
+	/* Verify done bit is set */
+	if (desc->dec_req.done == 0)
+		return -1;
+
+	/* make sure the response is read atomically */
+	rte_smp_rmb();
+
+	*op = desc->dec_req.op_addr;
+
+	if (check_bit((*op)->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)) {
+		(*op)->status = 0;
+		return 1;
+	}
+
+	/* FPGA reports iterations based on round-up minus 1 */
+	(*op)->ldpc_dec.iter_count = desc->dec_req.iter + 1;
+	/* CRC Check criteria */
+	if (desc->dec_req.crc24b_ind && !(desc->dec_req.crcb_pass))
+		(*op)->status = 1 << RTE_BBDEV_CRC_ERROR;
+	/* et_pass = 0 when decoder fails */
+	(*op)->status |= !(desc->dec_req.et_pass) << RTE_BBDEV_SYNDROME_ERROR;
+	return 1;
+}
+
+static uint16_t
+fpga_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_enc_op **ops, uint16_t num)
+{
+	struct fpga_queue *q = q_data->queue_private;
+	uint32_t avail = (q->tail - q->head_free_desc) & q->sw_ring_wrap_mask;
+	uint16_t i;
+	uint16_t dequeued_cbs = 0;
+	int ret;
+
+	for (i = 0; (i < num) && (dequeued_cbs < avail); ++i) {
+		ret = dequeue_ldpc_enc_one_op_cb(q, &ops[i], dequeued_cbs);
+
+		if (ret < 0)
+			break;
+
+		dequeued_cbs += ret;
+
+		rte_bbdev_log_debug("dequeuing enc ops [%d/%d] | head %d | tail %d",
+				dequeued_cbs, num, q->head_free_desc, q->tail);
+	}
+
+	/* Update head */
+	q->head_free_desc = (q->head_free_desc + dequeued_cbs) &
+			q->sw_ring_wrap_mask;
+
+	/* Update stats */
+	q_data->queue_stats.dequeued_count += i;
+
+	return i;
+}
+
+static uint16_t
+fpga_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_dec_op **ops, uint16_t num)
+{
+	struct fpga_queue *q = q_data->queue_private;
+	uint32_t avail = (q->tail - q->head_free_desc) & q->sw_ring_wrap_mask;
+	uint16_t i;
+	uint16_t dequeued_cbs = 0;
+	int ret;
+
+	for (i = 0; (i < num) && (dequeued_cbs < avail); ++i) {
+		ret = dequeue_ldpc_dec_one_op_cb(q, &ops[i], dequeued_cbs);
+
+		if (ret < 0)
+			break;
+
+		dequeued_cbs += ret;
+
+		rte_bbdev_log_debug("dequeuing dec ops [%d/%d] | head %d | tail %d",
+				dequeued_cbs, num, q->head_free_desc, q->tail);
+	}
+
+	/* Update head */
+	q->head_free_desc = (q->head_free_desc + dequeued_cbs) &
+			q->sw_ring_wrap_mask;
+
+	/* Update stats */
+	q_data->queue_stats.dequeued_count += i;
+
+	return i;
+}
+
 
 /* Initialization Function */
 static void
@@ -455,6 +1111,10 @@ fpga_5gnr_fec_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 
 	dev->dev_ops = &fpga_ops;
+	dev->enqueue_ldpc_enc_ops = fpga_enqueue_ldpc_enc;
+	dev->enqueue_ldpc_dec_ops = fpga_enqueue_ldpc_dec;
+	dev->dequeue_ldpc_enc_ops = fpga_dequeue_ldpc_enc;
+	dev->dequeue_ldpc_dec_ops = fpga_dequeue_ldpc_dec;
 
 	((struct fpga_5gnr_fec_device *) dev->data->dev_private)->pf_device =
 			!strcmp(drv->driver.name,

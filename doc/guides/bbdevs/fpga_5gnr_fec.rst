@@ -13,12 +13,32 @@ Features
 
 FPGA 5GNR FEC PMD supports the following features:
 
+- LDPC Encode in the DL
+- LDPC Decode in the UL
 - 8 VFs per PF (physical device)
 - Maximum of 32 UL queues per VF
 - Maximum of 32 DL queues per VF
 - PCIe Gen-3 x8 Interface
 - MSI-X
 - SR-IOV
+
+FPGA 5GNR FEC PMD supports the following BBDEV capabilities:
+
+* For the LDPC encode operation:
+   - ``RTE_BBDEV_LDPC_CRC_24B_ATTACH`` :  set to attach CRC24B to CB(s)
+   - ``RTE_BBDEV_LDPC_RATE_MATCH`` :  if set then do not do Rate Match bypass
+
+* For the LDPC decode operation:
+   - ``RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK`` :  check CRC24B from CB(s)
+   - ``RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE`` :  disable early termination
+   - ``RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP`` :  drops CRC24B bits appended while decoding
+   - ``RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE`` :  provides an input for HARQ combining
+   - ``RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE`` :  provides an input for HARQ combining
+   - ``RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE`` :  HARQ memory input is internal
+   - ``RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE`` :  HARQ memory output is internal
+   - ``RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK`` :  loopback data to/from HARQ memory
+   - ``RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS`` :  HARQ memory includes the fillers bits
+
 
 Limitations
 -----------
@@ -144,3 +164,11 @@ name is different:
 .. code-block:: console
 
   echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_numvfs
+
+
+Test Vectors
+~~~~~~~~~~~~
+
+In addition to the simple LDPC decoder and LDPC encoder tests, bbdev also provides
+a range of additional tests under the test_vectors folder, which may be useful. The results
+of these tests will depend on the FPGA 5GNR FEC capabilities.
