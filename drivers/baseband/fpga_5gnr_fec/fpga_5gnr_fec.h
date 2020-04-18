@@ -227,4 +227,13 @@ struct fpga_5gnr_fec_device {
 	bool pf_device;
 };
 
+/* Read a register of FPGA 5GNR FEC device */
+static inline uint32_t
+fpga_reg_read_32(void *mmio_base, uint32_t offset)
+{
+	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
+	uint32_t ret = *((volatile uint32_t *)(reg_addr));
+	return rte_le_to_cpu_32(ret);
+}
+
 #endif /* _FPGA_5GNR_FEC_H_ */

@@ -28,8 +28,61 @@ fpga_dev_close(struct rte_bbdev *dev __rte_unused)
 	return 0;
 }
 
+static void
+fpga_dev_info_get(struct rte_bbdev *dev,
+		struct rte_bbdev_driver_info *dev_info)
+{
+	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
+	uint32_t q_id = 0;
+
+	static const struct rte_bbdev_op_cap bbdev_capabilities[] = {
+		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
+	};
+
+	/* Check the HARQ DDR size available */
+	uint8_t timeout_counter = 0;
+	uint32_t harq_buf_ready = fpga_reg_read_32(d->mmio_base,
+			FPGA_5GNR_FEC_HARQ_BUF_SIZE_RDY_REGS);
+	while (harq_buf_ready != 1) {
+		usleep(FPGA_TIMEOUT_CHECK_INTERVAL);
+		timeout_counter++;
+		harq_buf_ready = fpga_reg_read_32(d->mmio_base,
+				FPGA_5GNR_FEC_HARQ_BUF_SIZE_RDY_REGS);
+		if (timeout_counter > FPGA_HARQ_RDY_TIMEOUT) {
+			rte_bbdev_log(ERR, "HARQ Buffer not ready %d",
+					harq_buf_ready);
+			harq_buf_ready = 1;
+		}
+	}
+	uint32_t harq_buf_size = fpga_reg_read_32(d->mmio_base,
+			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
+
+	static struct rte_bbdev_queue_conf default_queue_conf;
+	default_queue_conf.socket = dev->data->socket_id;
+	default_queue_conf.queue_size = FPGA_RING_MAX_SIZE;
+
+	dev_info->driver_name = dev->device->driver->name;
+	dev_info->queue_size_lim = FPGA_RING_MAX_SIZE;
+	dev_info->hardware_accelerated = true;
+	dev_info->min_alignment = 64;
+	dev_info->harq_buffer_size = (harq_buf_size >> 10) + 1;
+	dev_info->default_queue_conf = default_queue_conf;
+	dev_info->capabilities = bbdev_capabilities;
+	dev_info->cpu_flag_reqs = NULL;
+
+	/* Calculates number of queues assigned to device */
+	dev_info->max_num_queues = 0;
+	for (q_id = 0; q_id < FPGA_TOTAL_NUM_QUEUES; ++q_id) {
+		uint32_t hw_q_id = fpga_reg_read_32(d->mmio_base,
+				FPGA_5GNR_FEC_QUEUE_MAP + (q_id << 2));
+		if (hw_q_id != FPGA_INVALID_HW_QUEUE_ID)
+			dev_info->max_num_queues++;
+	}
+}
+
 static const struct rte_bbdev_ops fpga_ops = {
 	.close = fpga_dev_close,
+	.info_get = fpga_dev_info_get,
 };
 
 /* Initialization Function */
