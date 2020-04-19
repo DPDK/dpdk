@@ -146,18 +146,18 @@ typedef int (*rte_bbdev_queue_intr_disable_t)(struct rte_bbdev *dev,
  * fields are for non-vital operations
  */
 struct rte_bbdev_ops {
-	/**< Allocate and configure device memory. Optional. */
+	/** Allocate and configure device memory. Optional. */
 	rte_bbdev_setup_queues_t setup_queues;
-	/**< Configure interrupts. Optional. */
+	/** Configure interrupts. Optional. */
 	rte_bbdev_intr_enable_t intr_enable;
-	/**< Start device. Optional. */
+	/** Start device. Optional. */
 	rte_bbdev_start_t start;
-	/**< Stop device. Optional. */
+	/** Stop device. Optional. */
 	rte_bbdev_stop_t stop;
-	/**< Close device. Optional. */
+	/** Close device. Optional. */
 	rte_bbdev_close_t close;
 
-	/**< Get device info. Required. */
+	/** Get device info. Required. */
 	rte_bbdev_info_get_t info_get;
 	/** Get device statistics. Optional. */
 	rte_bbdev_stats_get_t stats_get;
@@ -170,7 +170,7 @@ struct rte_bbdev_ops {
 	rte_bbdev_queue_release_t queue_release;
 	/** Start a queue. Optional. */
 	rte_bbdev_queue_start_t queue_start;
-	/**< Stop a queue pair. Optional. */
+	/** Stop a queue pair. Optional. */
 	rte_bbdev_queue_stop_t queue_stop;
 
 	/** Enable queue interrupt. Optional */

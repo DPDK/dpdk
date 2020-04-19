@@ -442,21 +442,21 @@ TAILQ_HEAD(rte_bbdev_cb_list, rte_bbdev_callback);
  * these fields, but should only write to the *_ops fields.
  */
 struct __rte_cache_aligned rte_bbdev {
-	/**< Enqueue encode function */
+	/** Enqueue encode function */
 	rte_bbdev_enqueue_enc_ops_t enqueue_enc_ops;
-	/**< Enqueue decode function */
+	/** Enqueue decode function */
 	rte_bbdev_enqueue_dec_ops_t enqueue_dec_ops;
-	/**< Dequeue encode function */
+	/** Dequeue encode function */
 	rte_bbdev_dequeue_enc_ops_t dequeue_enc_ops;
-	/**< Dequeue decode function */
+	/** Dequeue decode function */
 	rte_bbdev_dequeue_dec_ops_t dequeue_dec_ops;
-	/**< Enqueue encode function */
+	/** Enqueue encode function */
 	rte_bbdev_enqueue_enc_ops_t enqueue_ldpc_enc_ops;
-	/**< Enqueue decode function */
+	/** Enqueue decode function */
 	rte_bbdev_enqueue_dec_ops_t enqueue_ldpc_dec_ops;
-	/**< Dequeue encode function */
+	/** Dequeue encode function */
 	rte_bbdev_dequeue_enc_ops_t dequeue_ldpc_enc_ops;
-	/**< Dequeue decode function */
+	/** Dequeue decode function */
 	rte_bbdev_dequeue_dec_ops_t dequeue_ldpc_dec_ops;
 	const struct rte_bbdev_ops *dev_ops;  /**< Functions exported by PMD */
 	struct rte_bbdev_data *data;  /**< Pointer to device data */

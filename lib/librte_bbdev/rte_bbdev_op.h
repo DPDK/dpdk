@@ -398,12 +398,12 @@ struct rte_bbdev_op_turbo_dec {
 	 */
 	uint8_t num_maps;
 
-	/**< [0 - TB : 1 - CB] */
+	/** [0 - TB : 1 - CB] */
 	uint8_t code_block_mode;
 	union {
-		/**< Struct which stores Code Block specific parameters */
+		/** Struct which stores Code Block specific parameters */
 		struct rte_bbdev_op_dec_turbo_cb_params cb_params;
-		/**< Struct which stores Transport Block specific parameters */
+		/** Struct which stores Transport Block specific parameters */
 		struct rte_bbdev_op_dec_turbo_tb_params tb_params;
 	};
 };
@@ -554,7 +554,7 @@ struct rte_bbdev_op_enc_turbo_tb_params {
 	 * the Turbo operation when r >= C-, [K:3*Kpi]
 	 */
 	uint16_t ncb_pos;
-	/**< The index of the first CB in the inbound mbuf data, default is 0 */
+	/** The index of the first CB in the inbound mbuf data, default is 0 */
 	uint8_t r;
 };
 
@@ -751,11 +751,11 @@ enum {
 
 /** Structure specifying a single encode operation */
 struct rte_bbdev_enc_op {
-	/**< Status of operation that was performed */
+	/** Status of operation that was performed */
 	int status;
-	/**< Mempool which op instance is in */
+	/** Mempool which op instance is in */
 	struct rte_mempool *mempool;
-	/**< Opaque pointer for user data */
+	/** Opaque pointer for user data */
 	void *opaque_data;
 	union {
 		/** Contains turbo decoder specific parameters */
@@ -792,7 +792,7 @@ struct rte_bbdev_op_cap {
 	} cap;  /**< Operation-type specific capabilities */
 };
 
-/**< @internal Private data structure stored with operation pool. */
+/** @internal Private data structure stored with operation pool. */
 struct rte_bbdev_op_pool_private {
 	enum rte_bbdev_op_type type;  /**< Type of operations in a pool */
 };
