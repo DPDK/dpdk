@@ -18,11 +18,6 @@ if not dpdk_conf.get('RTE_ARCH_64')
 	extra_flags += ['-Wno-int-to-pointer-cast', '-Wno-pointer-to-int-cast']
 endif
 
-# for clang 32-bit compiles we need libatomic for 64-bit atomic ops
-if cc.get_id() == 'clang' and dpdk_conf.get('RTE_ARCH_64') == false
-	ext_deps += cc.find_library('atomic')
-endif
-
 foreach flag: extra_flags
 	if cc.has_argument(flag)
 		cflags += flag
