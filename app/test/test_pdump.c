@@ -57,8 +57,7 @@ run_pdump_client_tests(void)
 	if (ret < 0)
 		return -1;
 	mp->flags = 0x0000;
-	ring_client = rte_ring_create("SR0", RING_SIZE, rte_socket_id(),
-				      RING_F_SP_ENQ | RING_F_SC_DEQ);
+	ring_client = rte_ring_create("SR0", RING_SIZE, rte_socket_id(), 0);
 	if (ring_client == NULL) {
 		printf("rte_ring_create SR0 failed");
 		return -1;
@@ -70,9 +69,6 @@ run_pdump_client_tests(void)
 		return -1;
 	}
 	rte_eth_dev_probing_finish(eth_dev);
-
-	ring_client->prod.single = 0;
-	ring_client->cons.single = 0;
 
 	printf("\n***** flags = RTE_PDUMP_FLAG_TX *****\n");
 

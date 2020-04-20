@@ -380,7 +380,7 @@ pdump_validate_ring_mp(struct rte_ring *ring, struct rte_mempool *mp)
 		rte_errno = EINVAL;
 		return -1;
 	}
-	if (ring->prod.single || ring->cons.single) {
+	if (rte_ring_is_prod_single(ring) || rte_ring_is_cons_single(ring)) {
 		PDUMP_LOG(ERR, "ring with either SP or SC settings"
 		" is not valid for pdump, should have MP and MC settings\n");
 		rte_errno = EINVAL;

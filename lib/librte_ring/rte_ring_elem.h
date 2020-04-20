@@ -20,21 +20,7 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/queue.h>
-#include <errno.h>
-#include <rte_common.h>
-#include <rte_config.h>
-#include <rte_memory.h>
-#include <rte_lcore.h>
-#include <rte_atomic.h>
-#include <rte_branch_prediction.h>
-#include <rte_memzone.h>
-#include <rte_pause.h>
-
-#include "rte_ring.h"
+#include <rte_ring_core.h>
 
 /**
  * @warning
@@ -510,7 +496,7 @@ rte_ring_mp_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_FIXED, __IS_MP, free_space);
+			RTE_RING_QUEUE_FIXED, RTE_RING_SYNC_MT, free_space);
 }
 
 /**
@@ -539,7 +525,7 @@ rte_ring_sp_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_FIXED, __IS_SP, free_space);
+			RTE_RING_QUEUE_FIXED, RTE_RING_SYNC_ST, free_space);
 }
 
 /**
@@ -570,7 +556,7 @@ rte_ring_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_FIXED, r->prod.single, free_space);
+			RTE_RING_QUEUE_FIXED, r->prod.sync_type, free_space);
 }
 
 /**
@@ -675,7 +661,7 @@ rte_ring_mc_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue_elem(r, obj_table, esize, n,
-				RTE_RING_QUEUE_FIXED, __IS_MC, available);
+				RTE_RING_QUEUE_FIXED, RTE_RING_SYNC_MT, available);
 }
 
 /**
@@ -703,7 +689,7 @@ rte_ring_sc_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_FIXED, __IS_SC, available);
+			RTE_RING_QUEUE_FIXED, RTE_RING_SYNC_ST, available);
 }
 
 /**
@@ -734,7 +720,7 @@ rte_ring_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_FIXED, r->cons.single, available);
+			RTE_RING_QUEUE_FIXED, r->cons.sync_type, available);
 }
 
 /**
@@ -842,7 +828,7 @@ rte_ring_mp_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_VARIABLE, __IS_MP, free_space);
+			RTE_RING_QUEUE_VARIABLE, RTE_RING_SYNC_MT, free_space);
 }
 
 /**
@@ -871,7 +857,7 @@ rte_ring_sp_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_VARIABLE, __IS_SP, free_space);
+			RTE_RING_QUEUE_VARIABLE, RTE_RING_SYNC_ST, free_space);
 }
 
 /**
@@ -902,7 +888,7 @@ rte_ring_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_VARIABLE, r->prod.single, free_space);
+			RTE_RING_QUEUE_VARIABLE, r->prod.sync_type, free_space);
 }
 
 /**
@@ -934,7 +920,7 @@ rte_ring_mc_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_VARIABLE, __IS_MC, available);
+			RTE_RING_QUEUE_VARIABLE, RTE_RING_SYNC_MT, available);
 }
 
 /**
@@ -963,7 +949,7 @@ rte_ring_sc_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_VARIABLE, __IS_SC, available);
+			RTE_RING_QUEUE_VARIABLE, RTE_RING_SYNC_ST, available);
 }
 
 /**
@@ -995,8 +981,10 @@ rte_ring_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 {
 	return __rte_ring_do_dequeue_elem(r, obj_table, esize, n,
 				RTE_RING_QUEUE_VARIABLE,
-				r->cons.single, available);
+				r->cons.sync_type, available);
 }
+
+#include <rte_ring.h>
 
 #ifdef __cplusplus
 }

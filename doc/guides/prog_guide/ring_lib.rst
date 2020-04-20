@@ -349,6 +349,31 @@ even if only the first term of subtraction has overflowed:
     uint32_t entries = (prod_tail - cons_head);
     uint32_t free_entries = (mask + cons_tail -prod_head);
 
+Producer/consumer synchronization modes
+---------------------------------------
+
+rte_ring supports different synchronization modes for producers and consumers.
+These modes can be specified at ring creation/init time via ``flags``
+parameter.
+That should help users to configure ring in the most suitable way for his
+specific usage scenarios.
+Currently supported modes:
+
+MP/MC (default one)
+~~~~~~~~~~~~~~~~~~~
+
+Multi-producer (/multi-consumer) mode. This is a default enqueue (/dequeue)
+mode for the ring. In this mode multiple threads can enqueue (/dequeue)
+objects to (/from) the ring. For 'classic' DPDK deployments (with one thread
+per core) this is usually the most suitable and fastest synchronization mode.
+As a well known limitation - it can perform quite pure on some overcommitted
+scenarios.
+
+SP/SC
+~~~~~
+Single-producer (/single-consumer) mode. In this mode only one thread at a time
+is allowed to enqueue (/dequeue) objects to (/from) the ring.
+
 References
 ----------
 

@@ -36,91 +36,7 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
-#include <stdint.h>
-#include <sys/queue.h>
-#include <errno.h>
-#include <rte_common.h>
-#include <rte_config.h>
-#include <rte_memory.h>
-#include <rte_lcore.h>
-#include <rte_atomic.h>
-#include <rte_branch_prediction.h>
-#include <rte_memzone.h>
-#include <rte_pause.h>
-
-#define RTE_TAILQ_RING_NAME "RTE_RING"
-
-enum rte_ring_queue_behavior {
-	RTE_RING_QUEUE_FIXED = 0, /* Enq/Deq a fixed number of items from a ring */
-	RTE_RING_QUEUE_VARIABLE   /* Enq/Deq as many items as possible from ring */
-};
-
-#define RTE_RING_MZ_PREFIX "RG_"
-/** The maximum length of a ring name. */
-#define RTE_RING_NAMESIZE (RTE_MEMZONE_NAMESIZE - \
-			   sizeof(RTE_RING_MZ_PREFIX) + 1)
-
-/* structure to hold a pair of head/tail values and other metadata */
-struct rte_ring_headtail {
-	volatile uint32_t head;  /**< Prod/consumer head. */
-	volatile uint32_t tail;  /**< Prod/consumer tail. */
-	uint32_t single;         /**< True if single prod/cons */
-};
-
-/**
- * An RTE ring structure.
- *
- * The producer and the consumer have a head and a tail index. The particularity
- * of these index is that they are not between 0 and size(ring). These indexes
- * are between 0 and 2^32, and we mask their value when we access the ring[]
- * field. Thanks to this assumption, we can do subtractions between 2 index
- * values in a modulo-32bit base: that's why the overflow of the indexes is not
- * a problem.
- */
-struct rte_ring {
-	/*
-	 * Note: this field kept the RTE_MEMZONE_NAMESIZE size due to ABI
-	 * compatibility requirements, it could be changed to RTE_RING_NAMESIZE
-	 * next time the ABI changes
-	 */
-	char name[RTE_MEMZONE_NAMESIZE] __rte_cache_aligned; /**< Name of the ring. */
-	int flags;               /**< Flags supplied at creation. */
-	const struct rte_memzone *memzone;
-			/**< Memzone, if any, containing the rte_ring */
-	uint32_t size;           /**< Size of ring. */
-	uint32_t mask;           /**< Mask (size-1) of ring. */
-	uint32_t capacity;       /**< Usable size of ring */
-
-	char pad0 __rte_cache_aligned; /**< empty cache line */
-
-	/** Ring producer status. */
-	struct rte_ring_headtail prod __rte_cache_aligned;
-	char pad1 __rte_cache_aligned; /**< empty cache line */
-
-	/** Ring consumer status. */
-	struct rte_ring_headtail cons __rte_cache_aligned;
-	char pad2 __rte_cache_aligned; /**< empty cache line */
-};
-
-#define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
-#define RING_F_SC_DEQ 0x0002 /**< The default dequeue is "single-consumer". */
-/**
- * Ring is to hold exactly requested number of entries.
- * Without this flag set, the ring size requested must be a power of 2, and the
- * usable space will be that size - 1. With the flag, the requested size will
- * be rounded up to the next power of two, but the usable space will be exactly
- * that requested. Worst case, if a power-of-2 size is requested, half the
- * ring space will be wasted.
- */
-#define RING_F_EXACT_SZ 0x0004
-#define RTE_RING_SZ_MASK  (0x7fffffffU) /**< Ring size mask */
-
-/* @internal defines for passing to the enqueue dequeue worker functions */
-#define __IS_SP 1
-#define __IS_MP 0
-#define __IS_SC 1
-#define __IS_MC 0
+#include <rte_ring_core.h>
 
 /**
  * Calculate the memory size needed for a ring
@@ -420,7 +336,7 @@ rte_ring_mp_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue(r, obj_table, n, RTE_RING_QUEUE_FIXED,
-			__IS_MP, free_space);
+			RTE_RING_SYNC_MT, free_space);
 }
 
 /**
@@ -443,8 +359,12 @@ rte_ring_sp_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue(r, obj_table, n, RTE_RING_QUEUE_FIXED,
-			__IS_SP, free_space);
+			RTE_RING_SYNC_ST, free_space);
 }
+
+#ifdef ALLOW_EXPERIMENTAL_API
+#include <rte_ring_elem.h>
+#endif
 
 /**
  * Enqueue several objects on a ring.
@@ -470,7 +390,7 @@ rte_ring_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 		      unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue(r, obj_table, n, RTE_RING_QUEUE_FIXED,
-			r->prod.single, free_space);
+			r->prod.sync_type, free_space);
 }
 
 /**
@@ -554,7 +474,7 @@ rte_ring_mc_dequeue_bulk(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_FIXED,
-			__IS_MC, available);
+			RTE_RING_SYNC_MT, available);
 }
 
 /**
@@ -578,7 +498,7 @@ rte_ring_sc_dequeue_bulk(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_FIXED,
-			__IS_SC, available);
+			RTE_RING_SYNC_ST, available);
 }
 
 /**
@@ -605,7 +525,7 @@ rte_ring_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned int n,
 		unsigned int *available)
 {
 	return __rte_ring_do_dequeue(r, obj_table, n, RTE_RING_QUEUE_FIXED,
-				r->cons.single, available);
+				r->cons.sync_type, available);
 }
 
 /**
@@ -778,6 +698,62 @@ rte_ring_get_capacity(const struct rte_ring *r)
 }
 
 /**
+ * Return sync type used by producer in the ring.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @return
+ *   Producer sync type value.
+ */
+static inline enum rte_ring_sync_type
+rte_ring_get_prod_sync_type(const struct rte_ring *r)
+{
+	return r->prod.sync_type;
+}
+
+/**
+ * Check is the ring for single producer.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @return
+ *   true if ring is SP, zero otherwise.
+ */
+static inline int
+rte_ring_is_prod_single(const struct rte_ring *r)
+{
+	return (rte_ring_get_prod_sync_type(r) == RTE_RING_SYNC_ST);
+}
+
+/**
+ * Return sync type used by consumer in the ring.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @return
+ *   Consumer sync type value.
+ */
+static inline enum rte_ring_sync_type
+rte_ring_get_cons_sync_type(const struct rte_ring *r)
+{
+	return r->cons.sync_type;
+}
+
+/**
+ * Check is the ring for single consumer.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @return
+ *   true if ring is SC, zero otherwise.
+ */
+static inline int
+rte_ring_is_cons_single(const struct rte_ring *r)
+{
+	return (rte_ring_get_cons_sync_type(r) == RTE_RING_SYNC_ST);
+}
+
+/**
  * Dump the status of all rings on the console
  *
  * @param f
@@ -820,7 +796,7 @@ rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue(r, obj_table, n,
-			RTE_RING_QUEUE_VARIABLE, __IS_MP, free_space);
+			RTE_RING_QUEUE_VARIABLE, RTE_RING_SYNC_MT, free_space);
 }
 
 /**
@@ -843,7 +819,7 @@ rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue(r, obj_table, n,
-			RTE_RING_QUEUE_VARIABLE, __IS_SP, free_space);
+			RTE_RING_QUEUE_VARIABLE, RTE_RING_SYNC_ST, free_space);
 }
 
 /**
@@ -870,7 +846,7 @@ rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 		      unsigned int n, unsigned int *free_space)
 {
 	return __rte_ring_do_enqueue(r, obj_table, n, RTE_RING_QUEUE_VARIABLE,
-			r->prod.single, free_space);
+			r->prod.sync_type, free_space);
 }
 
 /**
@@ -898,7 +874,7 @@ rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue(r, obj_table, n,
-			RTE_RING_QUEUE_VARIABLE, __IS_MC, available);
+			RTE_RING_QUEUE_VARIABLE, RTE_RING_SYNC_MT, available);
 }
 
 /**
@@ -923,7 +899,7 @@ rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
 {
 	return __rte_ring_do_dequeue(r, obj_table, n,
-			RTE_RING_QUEUE_VARIABLE, __IS_SC, available);
+			RTE_RING_QUEUE_VARIABLE, RTE_RING_SYNC_ST, available);
 }
 
 /**
@@ -951,7 +927,7 @@ rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table,
 {
 	return __rte_ring_do_dequeue(r, obj_table, n,
 				RTE_RING_QUEUE_VARIABLE,
-				r->cons.single, available);
+				r->cons.sync_type, available);
 }
 
 #ifdef __cplusplus

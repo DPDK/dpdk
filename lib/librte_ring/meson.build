@@ -3,6 +3,7 @@
 
 sources = files('rte_ring.c')
 headers = files('rte_ring.h',
+		'rte_ring_core.h',
 		'rte_ring_elem.h',
 		'rte_ring_c11_mem.h',
 		'rte_ring_generic.h')

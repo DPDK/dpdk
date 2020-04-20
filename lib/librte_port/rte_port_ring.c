@@ -44,8 +44,8 @@ rte_port_ring_reader_create_internal(void *params, int socket_id,
 	/* Check input parameters */
 	if ((conf == NULL) ||
 		(conf->ring == NULL) ||
-		(conf->ring->cons.single && is_multi) ||
-		(!(conf->ring->cons.single) && !is_multi)) {
+		(rte_ring_is_cons_single(conf->ring) && is_multi) ||
+		(!rte_ring_is_cons_single(conf->ring) && !is_multi)) {
 		RTE_LOG(ERR, PORT, "%s: Invalid Parameters\n", __func__);
 		return NULL;
 	}
@@ -171,8 +171,8 @@ rte_port_ring_writer_create_internal(void *params, int socket_id,
 	/* Check input parameters */
 	if ((conf == NULL) ||
 		(conf->ring == NULL) ||
-		(conf->ring->prod.single && is_multi) ||
-		(!(conf->ring->prod.single) && !is_multi) ||
+		(rte_ring_is_prod_single(conf->ring) && is_multi) ||
+		(!rte_ring_is_prod_single(conf->ring) && !is_multi) ||
 		(conf->tx_burst_sz > RTE_PORT_IN_BURST_SIZE_MAX)) {
 		RTE_LOG(ERR, PORT, "%s: Invalid Parameters\n", __func__);
 		return NULL;
@@ -440,8 +440,8 @@ rte_port_ring_writer_nodrop_create_internal(void *params, int socket_id,
 	/* Check input parameters */
 	if ((conf == NULL) ||
 		(conf->ring == NULL) ||
-		(conf->ring->prod.single && is_multi) ||
-		(!(conf->ring->prod.single) && !is_multi) ||
+		(rte_ring_is_prod_single(conf->ring) && is_multi) ||
+		(!rte_ring_is_prod_single(conf->ring) && !is_multi) ||
 		(conf->tx_burst_sz > RTE_PORT_IN_BURST_SIZE_MAX)) {
 		RTE_LOG(ERR, PORT, "%s: Invalid Parameters\n", __func__);
 		return NULL;

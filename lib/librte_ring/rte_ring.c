@@ -106,8 +106,10 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 	if (ret < 0 || ret >= (int)sizeof(r->name))
 		return -ENAMETOOLONG;
 	r->flags = flags;
-	r->prod.single = (flags & RING_F_SP_ENQ) ? __IS_SP : __IS_MP;
-	r->cons.single = (flags & RING_F_SC_DEQ) ? __IS_SC : __IS_MC;
+	r->prod.sync_type = (flags & RING_F_SP_ENQ) ?
+		RTE_RING_SYNC_ST : RTE_RING_SYNC_MT;
+	r->cons.sync_type = (flags & RING_F_SC_DEQ) ?
+		RTE_RING_SYNC_ST : RTE_RING_SYNC_MT;
 
 	if (flags & RING_F_EXACT_SZ) {
 		r->size = rte_align32pow2(count + 1);
