@@ -414,9 +414,15 @@ uint16_t iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
 uint16_t iavf_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 				 uint16_t nb_pkts);
+uint16_t iavf_recv_pkts_vec_avx2_flex_rxd(void *rx_queue,
+					  struct rte_mbuf **rx_pkts,
+					  uint16_t nb_pkts);
 uint16_t iavf_recv_scattered_pkts_vec_avx2(void *rx_queue,
 					   struct rte_mbuf **rx_pkts,
 					   uint16_t nb_pkts);
+uint16_t iavf_recv_scattered_pkts_vec_avx2_flex_rxd(void *rx_queue,
+						    struct rte_mbuf **rx_pkts,
+						    uint16_t nb_pkts);
 uint16_t iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			    uint16_t nb_pkts);
 uint16_t iavf_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,

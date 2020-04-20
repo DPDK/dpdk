@@ -2087,16 +2087,28 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 				    "Using %sVector Scattered Rx (port %d).",
 				    use_avx2 ? "avx2 " : "",
 				    dev->data->port_id);
-			dev->rx_pkt_burst = use_avx2 ?
-					    iavf_recv_scattered_pkts_vec_avx2 :
-					    iavf_recv_scattered_pkts_vec;
+			if (vf->vf_res->vf_cap_flags &
+				VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
+				dev->rx_pkt_burst = use_avx2 ?
+					iavf_recv_scattered_pkts_vec_avx2_flex_rxd :
+					iavf_recv_scattered_pkts_vec;
+			else
+				dev->rx_pkt_burst = use_avx2 ?
+					iavf_recv_scattered_pkts_vec_avx2 :
+					iavf_recv_scattered_pkts_vec;
 		} else {
 			PMD_DRV_LOG(DEBUG, "Using %sVector Rx (port %d).",
 				    use_avx2 ? "avx2 " : "",
 				    dev->data->port_id);
-			dev->rx_pkt_burst = use_avx2 ?
-					    iavf_recv_pkts_vec_avx2 :
-					    iavf_recv_pkts_vec;
+			if (vf->vf_res->vf_cap_flags &
+				VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
+				dev->rx_pkt_burst = use_avx2 ?
+					iavf_recv_pkts_vec_avx2_flex_rxd :
+					iavf_recv_pkts_vec;
+			else
+				dev->rx_pkt_burst = use_avx2 ?
+					iavf_recv_pkts_vec_avx2 :
+					iavf_recv_pkts_vec;
 		}
 
 		return;
