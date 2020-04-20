@@ -371,6 +371,8 @@ struct rte_ipv6_hdr {
 #define RTE_IPV6_HDR_ECN_MASK	(0x03 << RTE_IPV6_HDR_TC_SHIFT)
 #define RTE_IPV6_HDR_ECN_CE	RTE_IPV6_HDR_ECN_MASK
 
+#define RTE_IPV6_MIN_MTU 1280 /**< Minimum MTU for IPv6, see RFC 8200. */
+
 /**
  * Process the pseudo-header checksum of an IPv6 header.
  *
