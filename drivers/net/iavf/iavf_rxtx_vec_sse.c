@@ -654,7 +654,7 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 	/* mask to shuffle from desc. to mbuf */
 	const __m128i shuf_msk = _mm_set_epi8
 			(0xFF, 0xFF,
-			 0xFF, 0xFF,  /* rss not supported */
+			 0xFF, 0xFF,  /* rss hash parsed separately */
 			 11, 10,      /* octet 10~11, 16 bits vlan_macip */
 			 5, 4,        /* octet 4~5, 16 bits data_len */
 			 0xFF, 0xFF,  /* skip high 16 bits pkt_len, zero out */
@@ -745,7 +745,7 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 	     pos += IAVF_VPMD_DESCS_PER_LOOP,
 	     rxdp += IAVF_VPMD_DESCS_PER_LOOP) {
 		__m128i descs[IAVF_VPMD_DESCS_PER_LOOP];
-		__m128i pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
+		__m128i pkt_mb0, pkt_mb1, pkt_mb2, pkt_mb3;
 		__m128i staterr, sterr_tmp1, sterr_tmp2;
 		/* 2 64 bit or 4 32 bit mbuf pointers in one XMM reg. */
 		__m128i mbp1;
@@ -791,8 +791,12 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		rte_compiler_barrier();
 
 		/* D.1 pkt 3,4 convert format from desc to pktmbuf */
-		pkt_mb4 = _mm_shuffle_epi8(descs[3], shuf_msk);
-		pkt_mb3 = _mm_shuffle_epi8(descs[2], shuf_msk);
+		pkt_mb3 = _mm_shuffle_epi8(descs[3], shuf_msk);
+		pkt_mb2 = _mm_shuffle_epi8(descs[2], shuf_msk);
+
+		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
+		pkt_mb1 = _mm_shuffle_epi8(descs[1], shuf_msk);
+		pkt_mb0 = _mm_shuffle_epi8(descs[0], shuf_msk);
 
 		/* C.1 4=>2 filter staterr info only */
 		sterr_tmp2 = _mm_unpackhi_epi32(descs[3], descs[2]);
@@ -802,12 +806,68 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		flex_desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
-		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);
 		pkt_mb3 = _mm_add_epi16(pkt_mb3, crc_adjust);
+		pkt_mb2 = _mm_add_epi16(pkt_mb2, crc_adjust);
 
-		/* D.1 pkt 1,2 convert format from desc to pktmbuf */
-		pkt_mb2 = _mm_shuffle_epi8(descs[1], shuf_msk);
-		pkt_mb1 = _mm_shuffle_epi8(descs[0], shuf_msk);
+		/* D.2 pkt 1,2 set in_port/nb_seg and remove crc */
+		pkt_mb1 = _mm_add_epi16(pkt_mb1, crc_adjust);
+		pkt_mb0 = _mm_add_epi16(pkt_mb0, crc_adjust);
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+		/**
+		 * needs to load 2nd 16B of each desc for RSS hash parsing,
+		 * will cause performance drop to get into this context.
+		 */
+		if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
+				DEV_RX_OFFLOAD_RSS_HASH) {
+			/* load bottom half of every 32B desc */
+			const __m128i raw_desc_bh3 =
+				_mm_load_si128
+					((void *)(&rxdp[3].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh2 =
+				_mm_load_si128
+					((void *)(&rxdp[2].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh1 =
+				_mm_load_si128
+					((void *)(&rxdp[1].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh0 =
+				_mm_load_si128
+					((void *)(&rxdp[0].wb.status_error1));
+
+			/**
+			 * to shift the 32b RSS hash value to the
+			 * highest 32b of each 128b before mask
+			 */
+			__m128i rss_hash3 =
+				_mm_slli_epi64(raw_desc_bh3, 32);
+			__m128i rss_hash2 =
+				_mm_slli_epi64(raw_desc_bh2, 32);
+			__m128i rss_hash1 =
+				_mm_slli_epi64(raw_desc_bh1, 32);
+			__m128i rss_hash0 =
+				_mm_slli_epi64(raw_desc_bh0, 32);
+
+			__m128i rss_hash_msk =
+				_mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
+
+			rss_hash3 = _mm_and_si128
+					(rss_hash3, rss_hash_msk);
+			rss_hash2 = _mm_and_si128
+					(rss_hash2, rss_hash_msk);
+			rss_hash1 = _mm_and_si128
+					(rss_hash1, rss_hash_msk);
+			rss_hash0 = _mm_and_si128
+					(rss_hash0, rss_hash_msk);
+
+			pkt_mb3 = _mm_or_si128(pkt_mb3, rss_hash3);
+			pkt_mb2 = _mm_or_si128(pkt_mb2, rss_hash2);
+			pkt_mb1 = _mm_or_si128(pkt_mb1, rss_hash1);
+			pkt_mb0 = _mm_or_si128(pkt_mb0, rss_hash0);
+		} /* if() on RSS hash parsing */
+#endif
 
 		/* C.2 get 4 pkts staterr value  */
 		staterr = _mm_unpacklo_epi32(sterr_tmp1, sterr_tmp2);
@@ -815,14 +875,10 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		/* D.3 copy final 3,4 data to rx_pkts */
 		_mm_storeu_si128
 			((void *)&rx_pkts[pos + 3]->rx_descriptor_fields1,
-			 pkt_mb4);
+			 pkt_mb3);
 		_mm_storeu_si128
 			((void *)&rx_pkts[pos + 2]->rx_descriptor_fields1,
-			 pkt_mb3);
-
-		/* D.2 pkt 1,2 set in_port/nb_seg and remove crc */
-		pkt_mb2 = _mm_add_epi16(pkt_mb2, crc_adjust);
-		pkt_mb1 = _mm_add_epi16(pkt_mb1, crc_adjust);
+			 pkt_mb2);
 
 		/* C* extract and record EOP bit */
 		if (split_packet) {
@@ -846,9 +902,9 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		/* D.3 copy final 1,2 data to rx_pkts */
 		_mm_storeu_si128
 			((void *)&rx_pkts[pos + 1]->rx_descriptor_fields1,
-			 pkt_mb2);
+			 pkt_mb1);
 		_mm_storeu_si128((void *)&rx_pkts[pos]->rx_descriptor_fields1,
-				 pkt_mb1);
+				 pkt_mb0);
 		flex_desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		/* C.4 calc available number of desc */
 		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
