@@ -695,7 +695,7 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 		_mm256_set_epi8
 			(/* first descriptor */
 			 0xFF, 0xFF,
-			 0xFF, 0xFF,    /* rss not supported */
+			 0xFF, 0xFF,    /* rss hash parsed separately */
 			 11, 10,	/* octet 10~11, 16 bits vlan_macip */
 			 5, 4,		/* octet 4~5, 16 bits data_len */
 			 0xFF, 0xFF,	/* skip hi 16 bits pkt_len, zero out */
@@ -704,7 +704,7 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 			 0xFF, 0xFF,	/*pkt_type set as unknown */
 			 /* second descriptor */
 			 0xFF, 0xFF,
-			 0xFF, 0xFF,    /* rss not supported */
+			 0xFF, 0xFF,    /* rss hash parsed separately */
 			 11, 10,	/* octet 10~11, 16 bits vlan_macip */
 			 5, 4,		/* octet 4~5, 16 bits data_len */
 			 0xFF, 0xFF,	/* skip hi 16 bits pkt_len, zero out */
@@ -990,6 +990,96 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 			rx_pkts[i + 7]->hash.fdir.hi =
 				_mm256_extract_epi32(fdir_id0_7, 4);
 		} /* if() on fdir_enabled */
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+		/**
+		 * needs to load 2nd 16B of each desc for RSS hash parsing,
+		 * will cause performance drop to get into this context.
+		 */
+		if (rxq->vsi->adapter->eth_dev->data->dev_conf.rxmode.offloads &
+				DEV_RX_OFFLOAD_RSS_HASH) {
+			/* load bottom half of every 32B desc */
+			const __m128i raw_desc_bh7 =
+				_mm_load_si128
+					((void *)(&rxdp[7].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh6 =
+				_mm_load_si128
+					((void *)(&rxdp[6].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh5 =
+				_mm_load_si128
+					((void *)(&rxdp[5].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh4 =
+				_mm_load_si128
+					((void *)(&rxdp[4].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh3 =
+				_mm_load_si128
+					((void *)(&rxdp[3].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh2 =
+				_mm_load_si128
+					((void *)(&rxdp[2].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh1 =
+				_mm_load_si128
+					((void *)(&rxdp[1].wb.status_error1));
+			rte_compiler_barrier();
+			const __m128i raw_desc_bh0 =
+				_mm_load_si128
+					((void *)(&rxdp[0].wb.status_error1));
+
+			__m256i raw_desc_bh6_7 =
+				_mm256_inserti128_si256
+					(_mm256_castsi128_si256(raw_desc_bh6),
+					raw_desc_bh7, 1);
+			__m256i raw_desc_bh4_5 =
+				_mm256_inserti128_si256
+					(_mm256_castsi128_si256(raw_desc_bh4),
+					raw_desc_bh5, 1);
+			__m256i raw_desc_bh2_3 =
+				_mm256_inserti128_si256
+					(_mm256_castsi128_si256(raw_desc_bh2),
+					raw_desc_bh3, 1);
+			__m256i raw_desc_bh0_1 =
+				_mm256_inserti128_si256
+					(_mm256_castsi128_si256(raw_desc_bh0),
+					raw_desc_bh1, 1);
+
+			/**
+			 * to shift the 32b RSS hash value to the
+			 * highest 32b of each 128b before mask
+			 */
+			__m256i rss_hash6_7 =
+				_mm256_slli_epi64(raw_desc_bh6_7, 32);
+			__m256i rss_hash4_5 =
+				_mm256_slli_epi64(raw_desc_bh4_5, 32);
+			__m256i rss_hash2_3 =
+				_mm256_slli_epi64(raw_desc_bh2_3, 32);
+			__m256i rss_hash0_1 =
+				_mm256_slli_epi64(raw_desc_bh0_1, 32);
+
+			__m256i rss_hash_msk =
+				_mm256_set_epi32(0xFFFFFFFF, 0, 0, 0,
+						 0xFFFFFFFF, 0, 0, 0);
+
+			rss_hash6_7 = _mm256_and_si256
+					(rss_hash6_7, rss_hash_msk);
+			rss_hash4_5 = _mm256_and_si256
+					(rss_hash4_5, rss_hash_msk);
+			rss_hash2_3 = _mm256_and_si256
+					(rss_hash2_3, rss_hash_msk);
+			rss_hash0_1 = _mm256_and_si256
+					(rss_hash0_1, rss_hash_msk);
+
+			mb6_7 = _mm256_or_si256(mb6_7, rss_hash6_7);
+			mb4_5 = _mm256_or_si256(mb4_5, rss_hash4_5);
+			mb2_3 = _mm256_or_si256(mb2_3, rss_hash2_3);
+			mb0_1 = _mm256_or_si256(mb0_1, rss_hash0_1);
+		} /* if() on RSS hash parsing */
+#endif
 
 		/**
 		 * At this point, we have the 8 sets of flags in the low 16-bits
