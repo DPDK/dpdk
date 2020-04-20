@@ -8,6 +8,7 @@
 #include <rte_memcpy.h>
 #include <rte_mempool.h>
 #include <rte_debug.h>
+#include <rte_ether.h>
 
 #include "ip_frag_common.h"
 
@@ -75,6 +76,15 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	uint32_t more_in_segs;
 	uint16_t fragment_offset, flag_offset, frag_size;
 	uint16_t frag_bytes_remaining;
+
+	/*
+	 * Formal parameter checking.
+	 */
+	if (unlikely(pkt_in == NULL) || unlikely(pkts_out == NULL) ||
+	    unlikely(nb_pkts_out == 0) ||
+	    unlikely(pool_direct == NULL) || unlikely(pool_indirect == NULL) ||
+	    unlikely(mtu_size < RTE_ETHER_MIN_MTU))
+		return -EINVAL;
 
 	/*
 	 * Ensure the IP payload length of all fragments is aligned to a
