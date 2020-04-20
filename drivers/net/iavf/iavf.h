@@ -144,6 +144,7 @@ struct iavf_adapter {
 	bool tx_vec_allowed;
 	const uint32_t *ptype_tbl;
 	bool stopped;
+	uint16_t fdir_ref_cnt;
 };
 
 /* IAVF_DEV_PRIVATE_TO */

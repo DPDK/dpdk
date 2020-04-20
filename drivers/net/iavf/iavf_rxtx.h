@@ -104,6 +104,7 @@ struct iavf_rx_queue {
 
 	uint16_t port_id;        /* device port ID */
 	uint8_t crc_len;        /* 0 if CRC stripped, 4 otherwise */
+	uint8_t fdir_enabled;   /* 0 if FDIR disabled, 1 when enabled */
 	uint16_t queue_id;      /* Rx queue index */
 	uint16_t rx_buf_len;    /* The packet buffer size */
 	uint16_t rx_hdr_len;    /* The header buffer size */
@@ -489,6 +490,35 @@ void iavf_dump_tx_descriptor(const struct iavf_tx_queue *txq,
 	printf("Queue %d %s %d: QW0: 0x%016"PRIx64" QW1: 0x%016"PRIx64"\n",
 	       txq->queue_id, name, tx_id, tx_desc->buffer_addr,
 	       tx_desc->cmd_type_offset_bsz);
+}
+
+#define FDIR_PROC_ENABLE_PER_QUEUE(ad, on) do { \
+	int i; \
+	for (i = 0; i < (ad)->eth_dev->data->nb_rx_queues; i++) { \
+		struct iavf_rx_queue *rxq = (ad)->eth_dev->data->rx_queues[i]; \
+		if (!rxq) \
+			continue; \
+		rxq->fdir_enabled = on; \
+	} \
+	PMD_DRV_LOG(DEBUG, "FDIR processing on RX set to %d", on); \
+} while (0)
+
+/* Enable/disable flow director Rx processing in data path. */
+static inline
+void iavf_fdir_rx_proc_enable(struct iavf_adapter *ad, bool on)
+{
+	if (on) {
+		/* enable flow director processing */
+		if (ad->fdir_ref_cnt++ == 0)
+			FDIR_PROC_ENABLE_PER_QUEUE(ad, on);
+	} else {
+		if (ad->fdir_ref_cnt >= 1) {
+			ad->fdir_ref_cnt--;
+
+			if (ad->fdir_ref_cnt == 0)
+				FDIR_PROC_ENABLE_PER_QUEUE(ad, on);
+		}
+	}
 }
 
 #ifdef RTE_LIBRTE_IAVF_DEBUG_DUMP_DESC
