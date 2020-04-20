@@ -203,7 +203,8 @@ test_fail:
  * Random number of elements are enqueued and dequeued.
  */
 static int
-test_ring_burst_bulk_tests1(unsigned int api_type)
+test_ring_burst_bulk_tests1(unsigned int api_type, unsigned int create_flags,
+	const char *tname)
 {
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
@@ -213,12 +214,11 @@ test_ring_burst_bulk_tests1(unsigned int api_type)
 	const unsigned int rsz = RING_SIZE - 1;
 
 	for (i = 0; i < RTE_DIM(esize); i++) {
-		test_ring_print_test_string("Test standard ring", api_type,
-						esize[i]);
+		test_ring_print_test_string(tname, api_type, esize[i]);
 
 		/* Create the ring */
 		r = test_ring_create("test_ring_burst_bulk_tests", esize[i],
-					RING_SIZE, SOCKET_ID_ANY, 0);
+					RING_SIZE, SOCKET_ID_ANY, create_flags);
 
 		/* alloc dummy object pointers */
 		src = test_ring_calloc(RING_SIZE * 2, esize[i]);
@@ -294,7 +294,8 @@ fail:
  * dequeued data.
  */
 static int
-test_ring_burst_bulk_tests2(unsigned int api_type)
+test_ring_burst_bulk_tests2(unsigned int api_type, unsigned int create_flags,
+	const char *tname)
 {
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
@@ -302,12 +303,11 @@ test_ring_burst_bulk_tests2(unsigned int api_type)
 	unsigned int i;
 
 	for (i = 0; i < RTE_DIM(esize); i++) {
-		test_ring_print_test_string("Test standard ring", api_type,
-						esize[i]);
+		test_ring_print_test_string(tname, api_type, esize[i]);
 
 		/* Create the ring */
 		r = test_ring_create("test_ring_burst_bulk_tests", esize[i],
-					RING_SIZE, SOCKET_ID_ANY, 0);
+					RING_SIZE, SOCKET_ID_ANY, create_flags);
 
 		/* alloc dummy object pointers */
 		src = test_ring_calloc(RING_SIZE * 2, esize[i]);
@@ -390,7 +390,8 @@ fail:
  * Enqueue and dequeue to cover the entire ring length.
  */
 static int
-test_ring_burst_bulk_tests3(unsigned int api_type)
+test_ring_burst_bulk_tests3(unsigned int api_type, unsigned int create_flags,
+	const char *tname)
 {
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
@@ -398,12 +399,11 @@ test_ring_burst_bulk_tests3(unsigned int api_type)
 	unsigned int i, j;
 
 	for (i = 0; i < RTE_DIM(esize); i++) {
-		test_ring_print_test_string("Test standard ring", api_type,
-						esize[i]);
+		test_ring_print_test_string(tname, api_type, esize[i]);
 
 		/* Create the ring */
 		r = test_ring_create("test_ring_burst_bulk_tests", esize[i],
-					RING_SIZE, SOCKET_ID_ANY, 0);
+					RING_SIZE, SOCKET_ID_ANY, create_flags);
 
 		/* alloc dummy object pointers */
 		src = test_ring_calloc(RING_SIZE * 2, esize[i]);
@@ -465,7 +465,8 @@ fail:
  * Enqueue till the ring is full and dequeue till the ring becomes empty.
  */
 static int
-test_ring_burst_bulk_tests4(unsigned int api_type)
+test_ring_burst_bulk_tests4(unsigned int api_type, unsigned int create_flags,
+	const char *tname)
 {
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
@@ -474,12 +475,11 @@ test_ring_burst_bulk_tests4(unsigned int api_type)
 	unsigned int num_elems;
 
 	for (i = 0; i < RTE_DIM(esize); i++) {
-		test_ring_print_test_string("Test standard ring", api_type,
-						esize[i]);
+		test_ring_print_test_string(tname, api_type, esize[i]);
 
 		/* Create the ring */
 		r = test_ring_create("test_ring_burst_bulk_tests", esize[i],
-					RING_SIZE, SOCKET_ID_ANY, 0);
+					RING_SIZE, SOCKET_ID_ANY, create_flags);
 
 		/* alloc dummy object pointers */
 		src = test_ring_calloc(RING_SIZE * 2, esize[i]);
@@ -815,7 +815,23 @@ test_fail:
 static int
 test_ring(void)
 {
+	int32_t rc;
 	unsigned int i, j;
+	const char *tname;
+
+	static const struct {
+		uint32_t create_flags;
+		const char *name;
+	} test_sync_modes[] = {
+		{
+			RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ,
+			"Test MT_RTS ring",
+		},
+		{
+			RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ,
+			"Test MT_HTS ring",
+		},
+	};
 
 	/* Negative test cases */
 	if (test_ring_negative_tests() < 0)
@@ -832,29 +848,66 @@ test_ring(void)
 	 * The test cases are split into smaller test cases to
 	 * help clang compile faster.
 	 */
+	tname = "Test standard ring";
+
 	for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST; j <<= 1)
 		for (i = TEST_RING_THREAD_DEF;
 					i <= TEST_RING_THREAD_MPMC; i <<= 1)
-			if (test_ring_burst_bulk_tests1(i | j) < 0)
+			if (test_ring_burst_bulk_tests1(i | j, 0, tname) < 0)
 				goto test_fail;
 
 	for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST; j <<= 1)
 		for (i = TEST_RING_THREAD_DEF;
 					i <= TEST_RING_THREAD_MPMC; i <<= 1)
-			if (test_ring_burst_bulk_tests2(i | j) < 0)
+			if (test_ring_burst_bulk_tests2(i | j, 0, tname) < 0)
 				goto test_fail;
 
 	for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST; j <<= 1)
 		for (i = TEST_RING_THREAD_DEF;
 					i <= TEST_RING_THREAD_MPMC; i <<= 1)
-			if (test_ring_burst_bulk_tests3(i | j) < 0)
+			if (test_ring_burst_bulk_tests3(i | j, 0, tname) < 0)
 				goto test_fail;
 
 	for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST; j <<= 1)
 		for (i = TEST_RING_THREAD_DEF;
 					i <= TEST_RING_THREAD_MPMC; i <<= 1)
-			if (test_ring_burst_bulk_tests4(i | j) < 0)
+			if (test_ring_burst_bulk_tests4(i | j, 0, tname) < 0)
 				goto test_fail;
+
+	/* Burst and bulk operations with MT_RTS and MT_HTS sync modes */
+	for (i = 0; i != RTE_DIM(test_sync_modes); i++) {
+		for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST;
+				j <<= 1) {
+
+			rc = test_ring_burst_bulk_tests1(
+				TEST_RING_THREAD_DEF | j,
+				test_sync_modes[i].create_flags,
+				test_sync_modes[i].name);
+			if (rc < 0)
+				goto test_fail;
+
+			rc = test_ring_burst_bulk_tests2(
+				TEST_RING_THREAD_DEF | j,
+				test_sync_modes[i].create_flags,
+				test_sync_modes[i].name);
+			if (rc < 0)
+				goto test_fail;
+
+			rc = test_ring_burst_bulk_tests3(
+				TEST_RING_THREAD_DEF | j,
+				test_sync_modes[i].create_flags,
+				test_sync_modes[i].name);
+			if (rc < 0)
+				goto test_fail;
+
+			rc = test_ring_burst_bulk_tests3(
+				TEST_RING_THREAD_DEF | j,
+				test_sync_modes[i].create_flags,
+				test_sync_modes[i].name);
+			if (rc < 0)
+				goto test_fail;
+		}
+	}
 
 	/* dump the ring status */
 	rte_ring_list_dump(stdout);
