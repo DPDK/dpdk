@@ -760,6 +760,61 @@ static const u8 dummy_ipv6_nat_pkt[] = {
 
 };
 
+static const struct ice_dummy_pkt_offsets dummy_ipv4_l2tpv3_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_L2TPV3,		34 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv4_l2tpv3_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x20, /* ICE_IPV4_IL 14 */
+	0x00, 0x00, 0x40, 0x00,
+	0x40, 0x73, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_L2TPV3 34 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
+static const struct ice_dummy_pkt_offsets dummy_ipv6_l2tpv3_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV6_OFOS,	14 },
+	{ ICE_L2TPV3,		54 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv6_l2tpv3_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x86, 0xDD,
+
+	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_IL 14 */
+	0x00, 0x0c, 0x73, 0x40,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_L2TPV3 54 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
 /* this is a recipe to profile association bitmap */
 static ice_declare_bitmap(recipe_to_profile[ICE_MAX_NUM_RECIPES],
 			  ICE_MAX_NUM_PROFILES);
@@ -5949,6 +6004,7 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		ice_set_bit(ICE_PROFID_IPV6_AH, bm);
 		return;
 	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
+	case ICE_SW_TUN_IPV6_L2TPV3:
 		ice_set_bit(ICE_PROFID_MAC_IPV6_L2TPV3, bm);
 		return;
 	case ICE_SW_TUN_PROFID_IPV6_NAT_T:
@@ -5969,6 +6025,9 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		return;
 	case ICE_SW_TUN_IPV4_NAT_T:
 		ice_set_bit(ICE_PROFID_IPV4_NAT_T, bm);
+		return;
+	case ICE_SW_TUN_IPV4_L2TPV3:
+		ice_set_bit(ICE_PROFID_MAC_IPV4_L2TPV3, bm);
 		return;
 	case ICE_SW_TUN_AND_NON_TUN:
 	default:
@@ -6308,6 +6367,20 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		return;
 	}
 
+	if (tun_type == ICE_SW_TUN_IPV4_L2TPV3) {
+		*pkt = dummy_ipv4_l2tpv3_pkt;
+		*pkt_len = sizeof(dummy_ipv4_l2tpv3_pkt);
+		*offsets = dummy_ipv4_l2tpv3_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_L2TPV3) {
+		*pkt = dummy_ipv6_l2tpv3_pkt;
+		*pkt_len = sizeof(dummy_ipv6_l2tpv3_pkt);
+		*offsets = dummy_ipv6_l2tpv3_packet_offsets;
+		return;
+	}
+
 	if (tun_type == ICE_SW_TUN_GTP) {
 		*pkt = dummy_udp_gtp_packet;
 		*pkt_len = sizeof(dummy_udp_gtp_packet);
@@ -6505,6 +6578,9 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			break;
 		case ICE_AH:
 			len = sizeof(struct ice_ah_hdr);
+			break;
+		case ICE_L2TPV3:
+			len = sizeof(struct ice_l2tpv3_sess_hdr);
 			break;
 		default:
 			return ICE_ERR_PARAM;
