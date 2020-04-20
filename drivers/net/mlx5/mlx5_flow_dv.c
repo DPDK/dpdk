@@ -3707,9 +3707,9 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Meter not found");
-	if (fm->ref_cnt && (!(fm->attr.transfer == attr->transfer ||
-	      (!fm->attr.ingress && !attr->ingress && attr->egress) ||
-	      (!fm->attr.egress && !attr->egress && attr->ingress))))
+	if (fm->ref_cnt && (!(fm->transfer == attr->transfer ||
+	      (!fm->ingress && !attr->ingress && attr->egress) ||
+	      (!fm->egress && !attr->egress && attr->ingress))))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Flow attributes are either invalid "
@@ -9010,7 +9010,7 @@ flow_dv_create_policer_forward_rule(struct mlx5_flow_meter *fm,
 				       rte_col_2_mlx5_col(i), UINT8_MAX);
 		if (mtb->count_actns[i])
 			actions[j++] = mtb->count_actns[i];
-		if (fm->params.action[i] == MTR_POLICER_ACTION_DROP)
+		if (fm->action[i] == MTR_POLICER_ACTION_DROP)
 			actions[j++] = mtb->drop_actn;
 		else
 			actions[j++] = dtb->jump_actn;

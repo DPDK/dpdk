@@ -709,12 +709,41 @@ struct mlx5_flow_meter {
 	uint32_t idx; /* Index to meter object. */
 	uint32_t meter_id;
 	/**< Meter id. */
-	struct rte_mtr_params params;
-	/**< Meter rule parameters. */
 	struct mlx5_flow_meter_profile *profile;
 	/**< Meter profile parameters. */
-	struct rte_flow_attr attr;
-	/**< Flow attributes. */
+
+	/** Policer actions (per meter output color). */
+	enum rte_mtr_policer_action action[RTE_COLORS];
+
+	/** Set of stats counters to be enabled.
+	 * @see enum rte_mtr_stats_type
+	 */
+	uint64_t stats_mask;
+
+	/**< Rule applies to ingress traffic. */
+	uint32_t ingress:1;
+
+	/**< Rule applies to egress traffic. */
+	uint32_t egress:1;
+	/**
+	 * Instead of simply matching the properties of traffic as it would
+	 * appear on a given DPDK port ID, enabling this attribute transfers
+	 * a flow rule to the lowest possible level of any device endpoints
+	 * found in the pattern.
+	 *
+	 * When supported, this effectively enables an application to
+	 * re-route traffic not necessarily intended for it (e.g. coming
+	 * from or addressed to different physical ports, VFs or
+	 * applications) at the device level.
+	 *
+	 * It complements the behavior of some pattern items such as
+	 * RTE_FLOW_ITEM_TYPE_PHY_PORT and is meaningless without them.
+	 *
+	 * When transferring flow rules, ingress and egress attributes keep
+	 * their original meaning, as if processing traffic emitted or
+	 * received by the application.
+	 */
+	uint32_t transfer:1;
 	struct mlx5_meter_domains_infos *mfts;
 	/**< Flow table created for this meter. */
 	struct mlx5_flow_policer_stats policer_stats;
