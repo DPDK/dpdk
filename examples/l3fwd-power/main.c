@@ -2065,15 +2065,17 @@ static int check_ptype(uint16_t portid)
 static int
 init_power_library(void)
 {
-	int ret = 0, lcore_id;
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (rte_lcore_is_enabled(lcore_id)) {
-			/* init power management library */
-			ret = rte_power_init(lcore_id);
-			if (ret)
-				RTE_LOG(ERR, POWER,
+	unsigned int lcore_id;
+	int ret = 0;
+
+	RTE_LCORE_FOREACH(lcore_id) {
+		/* init power management library */
+		ret = rte_power_init(lcore_id);
+		if (ret) {
+			RTE_LOG(ERR, POWER,
 				"Library initialization failed on core %u\n",
 				lcore_id);
+			return ret;
 		}
 	}
 	return ret;
@@ -2224,8 +2226,8 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
 
-	if (init_power_library())
-		RTE_LOG(ERR, L3FWD_POWER, "init_power_library failed\n");
+	if (app_mode != APP_MODE_TELEMETRY && init_power_library())
+		rte_exit(EXIT_FAILURE, "init_power_library failed\n");
 
 	if (update_lcore_params() < 0)
 		rte_exit(EXIT_FAILURE, "update_lcore_params failed\n");
