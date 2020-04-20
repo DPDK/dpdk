@@ -422,41 +422,10 @@ static int is_done(void)
 static void
 signal_exit_now(int sigtype)
 {
-	unsigned lcore_id;
-	unsigned int portid;
-	int ret;
 
-	if (sigtype == SIGINT) {
-		if (app_mode == APP_MODE_EMPTY_POLL ||
-				app_mode == APP_MODE_TELEMETRY)
-			quit_signal = true;
+	if (sigtype == SIGINT)
+		quit_signal = true;
 
-
-		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-			if (rte_lcore_is_enabled(lcore_id) == 0)
-				continue;
-
-			/* init power management library */
-			ret = rte_power_exit(lcore_id);
-			if (ret)
-				rte_exit(EXIT_FAILURE, "Power management "
-					"library de-initialization failed on "
-							"core%u\n", lcore_id);
-		}
-
-		if (app_mode != APP_MODE_EMPTY_POLL) {
-			RTE_ETH_FOREACH_DEV(portid) {
-				if ((enabled_port_mask & (1 << portid)) == 0)
-					continue;
-
-				rte_eth_dev_stop(portid);
-				rte_eth_dev_close(portid);
-			}
-		}
-	}
-
-	if (app_mode != APP_MODE_EMPTY_POLL)
-		rte_exit(EXIT_SUCCESS, "User forced exit\n");
 }
 
 /*  Freqency scale down timer callback */
@@ -1196,7 +1165,7 @@ main_loop(__rte_unused void *dummy)
 	else
 		RTE_LOG(INFO, L3FWD_POWER, "RX interrupt won't enable.\n");
 
-	while (1) {
+	while (!is_done()) {
 		stats[lcore_id].nb_iteration_looped++;
 
 		cur_tsc = rte_rdtsc();
@@ -1343,6 +1312,8 @@ start_rx:
 			stats[lcore_id].sleep_time += lcore_idle_hint;
 		}
 	}
+
+	return 0;
 }
 
 static int
@@ -2080,6 +2051,26 @@ init_power_library(void)
 	}
 	return ret;
 }
+
+static int
+deinit_power_library(void)
+{
+	unsigned int lcore_id;
+	int ret = 0;
+
+	RTE_LCORE_FOREACH(lcore_id) {
+		/* deinit power management library */
+		ret = rte_power_exit(lcore_id);
+		if (ret) {
+			RTE_LOG(ERR, POWER,
+				"Library deinitialization failed on core %u\n",
+				lcore_id);
+			return ret;
+		}
+	}
+	return ret;
+}
+
 static void
 update_telemetry(__rte_unused struct rte_timer *tim,
 		__rte_unused void *arg)
@@ -2530,8 +2521,23 @@ main(int argc, char **argv)
 			return -1;
 	}
 
+	RTE_ETH_FOREACH_DEV(portid)
+	{
+		if ((enabled_port_mask & (1 << portid)) == 0)
+			continue;
+
+		rte_eth_dev_stop(portid);
+		rte_eth_dev_close(portid);
+	}
+
 	if (app_mode == APP_MODE_EMPTY_POLL)
 		rte_power_empty_poll_stat_free();
+
+	if (app_mode != APP_MODE_TELEMETRY && deinit_power_library())
+		rte_exit(EXIT_FAILURE, "deinit_power_library failed\n");
+
+	if (rte_eal_cleanup() < 0)
+		RTE_LOG(ERR, L3FWD_POWER, "EAL cleanup failed\n");
 
 	return 0;
 }
