@@ -2091,7 +2091,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 				VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
 				dev->rx_pkt_burst = use_avx2 ?
 					iavf_recv_scattered_pkts_vec_avx2_flex_rxd :
-					iavf_recv_scattered_pkts_vec;
+					iavf_recv_scattered_pkts_vec_flex_rxd;
 			else
 				dev->rx_pkt_burst = use_avx2 ?
 					iavf_recv_scattered_pkts_vec_avx2 :
@@ -2104,7 +2104,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 				VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
 				dev->rx_pkt_burst = use_avx2 ?
 					iavf_recv_pkts_vec_avx2_flex_rxd :
-					iavf_recv_pkts_vec;
+					iavf_recv_pkts_vec_flex_rxd;
 			else
 				dev->rx_pkt_burst = use_avx2 ?
 					iavf_recv_pkts_vec_avx2 :
