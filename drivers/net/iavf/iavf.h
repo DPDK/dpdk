@@ -67,6 +67,9 @@
 #define IAVF_48_BIT_WIDTH (CHAR_BIT * 6)
 #define IAVF_48_BIT_MASK  RTE_LEN2MASK(IAVF_48_BIT_WIDTH, uint64_t)
 
+#define IAVF_RX_DESC_EXT_STATUS_FLEXBH_MASK  0x03
+#define IAVF_RX_DESC_EXT_STATUS_FLEXBH_FD_ID 0x01
+
 struct iavf_adapter;
 struct iavf_rx_queue;
 struct iavf_tx_queue;

@@ -756,6 +756,10 @@ iavf_rxd_to_pkt_flags(uint64_t qword)
 					IAVF_RX_DESC_FLTSTAT_RSS_HASH) ==
 			IAVF_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
 
+	/* Check if FDIR Match */
+	flags |= (qword & (1 << IAVF_RX_DESC_STATUS_FLM_SHIFT) ?
+				PKT_RX_FDIR : 0);
+
 	if (likely((error_bits & IAVF_RX_ERR_BITS) == 0)) {
 		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
 		return flags;
@@ -776,7 +780,31 @@ iavf_rxd_to_pkt_flags(uint64_t qword)
 	return flags;
 }
 
+static inline uint64_t
+iavf_rxd_build_fdir(volatile union iavf_rx_desc *rxdp, struct rte_mbuf *mb)
+{
+	uint64_t flags = 0;
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	uint16_t flexbh;
+
+	flexbh = (rte_le_to_cpu_32(rxdp->wb.qword2.ext_status) >>
+		IAVF_RX_DESC_EXT_STATUS_FLEXBH_SHIFT) &
+		IAVF_RX_DESC_EXT_STATUS_FLEXBH_MASK;
+
+	if (flexbh == IAVF_RX_DESC_EXT_STATUS_FLEXBH_FD_ID) {
+		mb->hash.fdir.hi =
+			rte_le_to_cpu_32(rxdp->wb.qword3.hi_dword.fd_id);
+		flags |= PKT_RX_FDIR_ID;
+	}
+#else
+	mb->hash.fdir.hi =
+		rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.fd_id);
+	flags |= PKT_RX_FDIR_ID;
+#endif
+	return flags;
+}
+
+
 /* Translate the rx flex descriptor status to pkt flags */
 static inline void
 iavf_rxd_to_pkt_fields(struct rte_mbuf *mb,
@@ -784,6 +812,7 @@ iavf_rxd_to_pkt_fields(struct rte_mbuf *mb,
 {
 	volatile struct iavf_32b_rx_flex_desc_comms_ovs *desc =
 			(volatile struct iavf_32b_rx_flex_desc_comms_ovs *)rxdp;
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	uint16_t stat_err;
 
 	stat_err = rte_le_to_cpu_16(desc->status_error0);
@@ -791,8 +820,13 @@ iavf_rxd_to_pkt_fields(struct rte_mbuf *mb,
 		mb->ol_flags |= PKT_RX_RSS_HASH;
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
-}
 #endif
+
+	if (desc->flow_id != 0xFFFFFFFF) {
+		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
+	}
+}
 
 #define IAVF_RX_FLEX_ERR0_BITS	\
 	((1 << IAVF_RX_FLEX_DESC_STATUS0_HBO_S) |	\
@@ -951,6 +985,9 @@ iavf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
+		if (pkt_flags & PKT_RX_FDIR)
+			pkt_flags |= iavf_rxd_build_fdir(&rxd, rxm);
+
 		rxm->ol_flags |= pkt_flags;
 
 		rx_pkts[nb_rx++] = rxm;
@@ -1047,9 +1084,7 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 		rxm->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		iavf_flex_rxd_to_vlan_tci(rxm, &rxd);
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		iavf_rxd_to_pkt_fields(rxm, &rxd);
-#endif
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 		rxm->ol_flags |= pkt_flags;
 
@@ -1191,9 +1226,7 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		first_seg->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd);
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		iavf_rxd_to_pkt_fields(first_seg, &rxd);
-#endif
 		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
 
 		first_seg->ol_flags |= pkt_flags;
@@ -1353,6 +1386,9 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			first_seg->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 
+		if (pkt_flags & PKT_RX_FDIR)
+			pkt_flags |= iavf_rxd_build_fdir(&rxd, first_seg);
+
 		first_seg->ol_flags |= pkt_flags;
 
 		/* Prefetch data of first segment, if configured to do so. */
@@ -1428,9 +1464,7 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
 			mb->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j]);
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 			iavf_rxd_to_pkt_fields(mb, &rxdp[j]);
-#endif
 			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
 
@@ -1520,6 +1554,9 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
 			if (pkt_flags & PKT_RX_RSS_HASH)
 				mb->hash.rss = rte_le_to_cpu_32(
 					rxdp[j].wb.qword0.hi_dword.rss);
+
+			if (pkt_flags & PKT_RX_FDIR)
+				pkt_flags |= iavf_rxd_build_fdir(&rxdp[j], mb);
 
 			mb->ol_flags |= pkt_flags;
 		}
