@@ -95,6 +95,24 @@
 	ICE_INSET_VLAN_OUTER | ICE_INSET_VLAN_INNER | \
 	ICE_INSET_DMAC | ICE_INSET_ETHERTYPE | ICE_INSET_PPPOE_SESSION | \
 	ICE_INSET_PPPOE_PROTO)
+#define ICE_SW_INSET_MAC_IPV4_ESP ( \
+	ICE_SW_INSET_MAC_IPV4 | ICE_INSET_ESP_SPI)
+#define ICE_SW_INSET_MAC_IPV6_ESP ( \
+	ICE_SW_INSET_MAC_IPV6 | ICE_INSET_ESP_SPI)
+#define ICE_SW_INSET_MAC_IPV4_AH ( \
+	ICE_SW_INSET_MAC_IPV4 | ICE_INSET_AH_SPI)
+#define ICE_SW_INSET_MAC_IPV6_AH ( \
+	ICE_SW_INSET_MAC_IPV6 | ICE_INSET_AH_SPI)
+#define ICE_SW_INSET_MAC_IPV4_L2TP ( \
+	ICE_SW_INSET_MAC_IPV4 | ICE_INSET_L2TPV3OIP_SESSION_ID)
+#define ICE_SW_INSET_MAC_IPV6_L2TP ( \
+	ICE_SW_INSET_MAC_IPV6 | ICE_INSET_L2TPV3OIP_SESSION_ID)
+#define ICE_SW_INSET_MAC_IPV4_PFCP ( \
+	ICE_SW_INSET_MAC_IPV4 | \
+	ICE_INSET_PFCP_S_FIELD | ICE_INSET_PFCP_SEID)
+#define ICE_SW_INSET_MAC_IPV6_PFCP ( \
+	ICE_SW_INSET_MAC_IPV6 | \
+	ICE_INSET_PFCP_S_FIELD | ICE_INSET_PFCP_SEID)
 
 struct sw_meta {
 	struct ice_adv_lkup_elem *list;
@@ -148,16 +166,24 @@ ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
 	{pattern_eth_vlan_pppoes_proto,
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
+	{pattern_eth_ipv4_esp,
+			ICE_SW_INSET_MAC_IPV4_ESP, ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_esp,
+			ICE_SW_INSET_MAC_IPV4_ESP, ICE_INSET_NONE},
 	{pattern_eth_ipv6_esp,
-			ICE_INSET_NONE, ICE_INSET_NONE},
+			ICE_SW_INSET_MAC_IPV6_ESP, ICE_INSET_NONE},
 	{pattern_eth_ipv6_udp_esp,
-			ICE_INSET_NONE, ICE_INSET_NONE},
+			ICE_SW_INSET_MAC_IPV6_ESP, ICE_INSET_NONE},
+	{pattern_eth_ipv4_ah,
+			ICE_SW_INSET_MAC_IPV4_AH, ICE_INSET_NONE},
 	{pattern_eth_ipv6_ah,
-			ICE_INSET_NONE, ICE_INSET_NONE},
+			ICE_SW_INSET_MAC_IPV6_AH, ICE_INSET_NONE},
 	{pattern_eth_ipv6_udp_ah,
 			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_l2tp,
+			ICE_SW_INSET_MAC_IPV4_L2TP, ICE_INSET_NONE},
 	{pattern_eth_ipv6_l2tp,
-			ICE_INSET_NONE, ICE_INSET_NONE},
+			ICE_SW_INSET_MAC_IPV6_L2TP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_pfcp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_pfcp,
@@ -240,16 +266,24 @@ ice_pattern_match_item ice_switch_pattern_perm[] = {
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
 	{pattern_eth_vlan_pppoes_proto,
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
+	{pattern_eth_ipv4_esp,
+			ICE_SW_INSET_MAC_IPV4_ESP, ICE_INSET_NONE},
+	{pattern_eth_ipv4_udp_esp,
+			ICE_SW_INSET_MAC_IPV4_ESP, ICE_INSET_NONE},
 	{pattern_eth_ipv6_esp,
-			ICE_INSET_NONE, ICE_INSET_NONE},
+			ICE_SW_INSET_MAC_IPV6_ESP, ICE_INSET_NONE},
 	{pattern_eth_ipv6_udp_esp,
-			ICE_INSET_NONE, ICE_INSET_NONE},
+			ICE_SW_INSET_MAC_IPV6_ESP, ICE_INSET_NONE},
+	{pattern_eth_ipv4_ah,
+			ICE_SW_INSET_MAC_IPV4_AH, ICE_INSET_NONE},
 	{pattern_eth_ipv6_ah,
-			ICE_INSET_NONE, ICE_INSET_NONE},
+			ICE_SW_INSET_MAC_IPV6_AH, ICE_INSET_NONE},
 	{pattern_eth_ipv6_udp_ah,
 			ICE_INSET_NONE, ICE_INSET_NONE},
+	{pattern_eth_ipv4_l2tp,
+			ICE_SW_INSET_MAC_IPV4_L2TP, ICE_INSET_NONE},
 	{pattern_eth_ipv6_l2tp,
-			ICE_INSET_NONE, ICE_INSET_NONE},
+			ICE_SW_INSET_MAC_IPV6_L2TP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_pfcp,
 			ICE_INSET_NONE, ICE_INSET_NONE},
 	{pattern_eth_ipv6_pfcp,
@@ -383,11 +417,12 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	const struct rte_flow_item_pfcp *pfcp_spec, *pfcp_mask;
 	uint64_t input_set = ICE_INSET_NONE;
 	uint16_t j, t = 0;
-	uint16_t tunnel_valid = 0;
-	uint16_t pppoe_valid = 0;
-	uint16_t ipv6_valiad = 0;
-	uint16_t udp_valiad = 0;
-
+	bool profile_rule = 0;
+	bool tunnel_valid = 0;
+	bool pppoe_valid = 0;
+	bool ipv6_valiad = 0;
+	bool ipv4_valiad = 0;
+	bool udp_valiad = 0;
 
 	for (item = pattern; item->type !=
 			RTE_FLOW_ITEM_TYPE_END; item++) {
@@ -470,6 +505,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ipv4_spec = item->spec;
 			ipv4_mask = item->mask;
+			ipv4_valiad = 1;
 			if (ipv4_spec && ipv4_mask) {
 				/* Check IPv4 mask and update input set */
 				if (ipv4_mask->hdr.version_ihl ||
@@ -991,48 +1027,151 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_ESP:
 			esp_spec = item->spec;
 			esp_mask = item->mask;
-			if (esp_spec || esp_mask) {
+			if ((esp_spec && !esp_mask) ||
+				(!esp_spec && esp_mask)) {
 				rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
 					   "Invalid esp item");
-				return -ENOTSUP;
+				return 0;
 			}
-			if (ipv6_valiad && udp_valiad)
-				*tun_type = ICE_SW_TUN_PROFID_IPV6_NAT_T;
-			else if (ipv6_valiad)
-				*tun_type = ICE_SW_TUN_PROFID_IPV6_ESP;
+			/* Check esp mask and update input set */
+			if (esp_mask && esp_mask->hdr.seq) {
+				rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid esp mask");
+				return 0;
+			}
+
+			if (!esp_spec && !esp_mask && !input_set) {
+				profile_rule = 1;
+				if (ipv6_valiad && udp_valiad)
+					*tun_type =
+					ICE_SW_TUN_PROFID_IPV6_NAT_T;
+				else if (ipv6_valiad)
+					*tun_type = ICE_SW_TUN_PROFID_IPV6_ESP;
+				else if (ipv4_valiad)
+					return 0;
+			} else if (esp_spec && esp_mask &&
+						esp_mask->hdr.spi){
+				if (udp_valiad)
+					list[t].type = ICE_NAT_T;
+				else
+					list[t].type = ICE_ESP;
+				list[t].h_u.esp_hdr.spi =
+					esp_spec->hdr.spi;
+				list[t].m_u.esp_hdr.spi =
+					esp_mask->hdr.spi;
+				input_set |= ICE_INSET_ESP_SPI;
+				t++;
+			}
+
+			if (!profile_rule) {
+				if (ipv6_valiad && udp_valiad)
+					*tun_type = ICE_SW_TUN_IPV6_NAT_T;
+				else if (ipv4_valiad && udp_valiad)
+					*tun_type = ICE_SW_TUN_IPV4_NAT_T;
+				else if (ipv6_valiad)
+					*tun_type = ICE_SW_TUN_IPV6_ESP;
+				else if (ipv4_valiad)
+					*tun_type = ICE_SW_TUN_IPV4_ESP;
+			}
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_AH:
 			ah_spec = item->spec;
 			ah_mask = item->mask;
-			if (ah_spec || ah_mask) {
+			if ((ah_spec && !ah_mask) ||
+				(!ah_spec && ah_mask)) {
 				rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
 					   "Invalid ah item");
-				return -ENOTSUP;
+				return 0;
 			}
-			if (ipv6_valiad && udp_valiad)
-				*tun_type = ICE_SW_TUN_PROFID_IPV6_NAT_T;
-			else if (ipv6_valiad)
-				*tun_type = ICE_SW_TUN_PROFID_IPV6_AH;
+			/* Check ah mask and update input set */
+			if (ah_mask &&
+				(ah_mask->next_hdr ||
+				ah_mask->payload_len ||
+				ah_mask->seq_num ||
+				ah_mask->reserved)) {
+				rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Invalid ah mask");
+				return 0;
+			}
+
+			if (!ah_spec && !ah_mask && !input_set) {
+				profile_rule = 1;
+				if (ipv6_valiad && udp_valiad)
+					*tun_type =
+					ICE_SW_TUN_PROFID_IPV6_NAT_T;
+				else if (ipv6_valiad)
+					*tun_type = ICE_SW_TUN_PROFID_IPV6_AH;
+				else if (ipv4_valiad)
+					return 0;
+			} else if (ah_spec && ah_mask &&
+						ah_mask->spi){
+				list[t].type = ICE_AH;
+				list[t].h_u.ah_hdr.spi =
+					ah_spec->spi;
+				list[t].m_u.ah_hdr.spi =
+					ah_mask->spi;
+				input_set |= ICE_INSET_AH_SPI;
+				t++;
+			}
+
+			if (!profile_rule) {
+				if (udp_valiad)
+					return 0;
+				else if (ipv6_valiad)
+					*tun_type = ICE_SW_TUN_IPV6_AH;
+				else if (ipv4_valiad)
+					*tun_type = ICE_SW_TUN_IPV4_AH;
+			}
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_L2TPV3OIP:
 			l2tp_spec = item->spec;
 			l2tp_mask = item->mask;
-			if (l2tp_spec || l2tp_mask) {
+			if ((l2tp_spec && !l2tp_mask) ||
+				(!l2tp_spec && l2tp_mask)) {
 				rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
 					   "Invalid l2tp item");
-				return -ENOTSUP;
+				return 0;
 			}
-			if (ipv6_valiad)
-				*tun_type = ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3;
+
+			if (!l2tp_spec && !l2tp_mask && !input_set) {
+				if (ipv6_valiad)
+					*tun_type =
+					ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3;
+				else if (ipv4_valiad)
+					return 0;
+			} else if (l2tp_spec && l2tp_mask &&
+						l2tp_mask->session_id){
+				list[t].type = ICE_L2TPV3;
+				list[t].h_u.l2tpv3_sess_hdr.session_id =
+					l2tp_spec->session_id;
+				list[t].m_u.l2tpv3_sess_hdr.session_id =
+					l2tp_mask->session_id;
+				input_set |= ICE_INSET_L2TPV3OIP_SESSION_ID;
+				t++;
+			}
+
+			if (!profile_rule) {
+				if (ipv6_valiad)
+					*tun_type =
+					ICE_SW_TUN_IPV6_L2TPV3;
+				else if (ipv4_valiad)
+					*tun_type =
+					ICE_SW_TUN_IPV4_L2TPV3;
+			}
 			break;
+
 		case RTE_FLOW_ITEM_TYPE_PFCP:
 			pfcp_spec = item->spec;
 			pfcp_mask = item->mask;
@@ -1081,7 +1220,6 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					return -ENOTSUP;
 			}
 			break;
-
 
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;

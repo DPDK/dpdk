@@ -31,6 +31,10 @@
 #define ICE_PROT_NVGRE             (1ULL << 20)
 #define ICE_PROT_GTPU              (1ULL << 21)
 #define ICE_PROT_PPPOE_S           (1ULL << 22)
+#define ICE_PROT_ESP               (1ULL << 23)
+#define ICE_PROT_AH                (1ULL << 24)
+#define ICE_PROT_L2TPV3OIP         (1ULL << 25)
+#define ICE_PROT_PFCP              (1ULL << 26)
 
 /* field */
 
@@ -52,6 +56,11 @@
 #define ICE_GTPU_QFI               (1ULL << 48)
 #define ICE_PPPOE_SESSION          (1ULL << 47)
 #define ICE_PPPOE_PROTO            (1ULL << 46)
+#define ICE_ESP_SPI                (1ULL << 45)
+#define ICE_AH_SPI                 (1ULL << 44)
+#define ICE_L2TPV3OIP_SESSION_ID   (1ULL << 43)
+#define ICE_PFCP_SEID              (1ULL << 42)
+#define ICE_PFCP_S_FIELD           (1ULL << 41)
 
 /* input set */
 
@@ -184,6 +193,16 @@
 	(ICE_PROT_PPPOE_S | ICE_PPPOE_SESSION)
 #define ICE_INSET_PPPOE_PROTO \
 	(ICE_PROT_PPPOE_S | ICE_PPPOE_PROTO)
+#define ICE_INSET_ESP_SPI \
+	(ICE_PROT_ESP | ICE_ESP_SPI)
+#define ICE_INSET_AH_SPI \
+	(ICE_PROT_AH | ICE_AH_SPI)
+#define ICE_INSET_L2TPV3OIP_SESSION_ID \
+	(ICE_PROT_L2TPV3OIP | ICE_L2TPV3OIP_SESSION_ID)
+#define ICE_INSET_PFCP_S_FIELD \
+	(ICE_PROT_PFCP | ICE_PFCP_S_FIELD)
+#define ICE_INSET_PFCP_SEID \
+	(ICE_PROT_PFCP | ICE_PFCP_S_FIELD | ICE_PFCP_SEID)
 
 /* empty pattern */
 extern enum rte_flow_item_type pattern_empty[];
@@ -392,14 +411,18 @@ extern enum rte_flow_item_type pattern_eth_vlan_pppoes_ipv6_icmp6[];
 extern enum rte_flow_item_type pattern_eth_qinq_pppoes_ipv6_icmp6[];
 
 /* ESP */
+extern enum rte_flow_item_type pattern_eth_ipv4_esp[];
+extern enum rte_flow_item_type pattern_eth_ipv4_udp_esp[];
 extern enum rte_flow_item_type pattern_eth_ipv6_esp[];
 extern enum rte_flow_item_type pattern_eth_ipv6_udp_esp[];
 
 /* AH */
+extern enum rte_flow_item_type pattern_eth_ipv4_ah[];
 extern enum rte_flow_item_type pattern_eth_ipv6_ah[];
 extern enum rte_flow_item_type pattern_eth_ipv6_udp_ah[];
 
 /* L2TP */
+extern enum rte_flow_item_type pattern_eth_ipv4_l2tp[];
 extern enum rte_flow_item_type pattern_eth_ipv6_l2tp[];
 
 /* PFCP */
