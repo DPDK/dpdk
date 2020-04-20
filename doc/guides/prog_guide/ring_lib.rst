@@ -405,6 +405,45 @@ update and helps to improve ring enqueue/dequeue behavior in overcommitted
 scenarios. Another advantage of fully serialized producer/consumer -
 it provides the ability to implement MT safe peek API for rte_ring.
 
+Ring Peek API
+-------------
+
+For ring with serialized producer/consumer (HTS sync mode) it is possible
+to split public enqueue/dequeue API into two phases:
+
+*   enqueue/dequeue start
+
+*   enqueue/dequeue finish
+
+That allows user to inspect objects in the ring without removing them
+from it (aka MT safe peek) and reserve space for the objects in the ring
+before actual enqueue.
+Note that this API is available only for two sync modes:
+
+*   Single Producer/Single Consumer (SP/SC)
+
+*   Multi-producer/Multi-consumer with Head/Tail Sync (HTS)
+
+It is a user responsibility to create/init ring with appropriate sync modes
+selected. As an example of usage:
+
+.. code-block:: c
+
+    /* read 1 elem from the ring: */
+    uint32_t n = rte_ring_dequeue_bulk_start(ring, &obj, 1, NULL);
+    if (n != 0) {
+        /* examine object */
+        if (object_examine(obj) == KEEP)
+            /* decided to keep it in the ring. */
+            rte_ring_dequeue_finish(ring, 0);
+        else
+            /* decided to remove it from the ring. */
+            rte_ring_dequeue_finish(ring, n);
+    }
+
+Note that between ``_start_`` and ``_finish_`` none other thread can proceed
+with enqueue(/dequeue) operation till ``_finish_`` completes.
+
 References
 ----------
 

@@ -25,6 +25,9 @@
  * - Multi- or single-producer enqueue.
  * - Bulk dequeue.
  * - Bulk enqueue.
+ * - Ability to select different sync modes for producer/consumer.
+ * - Dequeue start/finish (depending on consumer sync modes).
+ * - Enqueue start/finish (depending on producer sync mode).
  *
  * Note: the ring implementation is not preemptible. Refer to Programmer's
  * guide/Environment Abstraction Layer/Multiple pthread/Known Issues/rte_ring

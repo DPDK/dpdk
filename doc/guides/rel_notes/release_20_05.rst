@@ -56,12 +56,21 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
-* **New synchronization modes for rte_ring.**
+* **Added new API for rte_ring.**
+
+  * New synchronization modes for rte_ring.
 
   Introduced new optional MT synchronization modes for rte_ring:
   Relaxed Tail Sync (RTS) mode and Head/Tail Sync (HTS) mode.
   With these mode selected, rte_ring shows significant improvements for
   average enqueue/dequeue times on overcommitted systems.
+
+  * Added peek style API for rte_ring.
+
+  For rings with producer/consumer in RTE_RING_SYNC_ST, RTE_RING_SYNC_MT_HTS
+  mode, provide an ability to split enqueue/dequeue operation into two phases
+  (enqueue/dequeue start; enqueue/dequeue finish). That allows user to inspect
+  objects in the ring without removing them from it (aka MT safe peek).
 
 * **Updated Mellanox mlx5 driver.**
 

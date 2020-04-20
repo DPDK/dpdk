@@ -1089,6 +1089,10 @@ rte_ring_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 	return 0;
 }
 
+#ifdef ALLOW_EXPERIMENTAL_API
+#include <rte_ring_peek.h>
+#endif
+
 #include <rte_ring.h>
 
 #ifdef __cplusplus
