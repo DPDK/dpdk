@@ -1245,6 +1245,14 @@ iavf_init_vf(struct rte_eth_dev *dev)
 			goto err_rss;
 		}
 	}
+
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
+		if (iavf_get_supported_rxdid(adapter) != 0) {
+			PMD_INIT_LOG(ERR, "failed to do get supported rxdid");
+			goto err_rss;
+		}
+	}
+
 	return 0;
 err_rss:
 	rte_free(vf->rss_key);

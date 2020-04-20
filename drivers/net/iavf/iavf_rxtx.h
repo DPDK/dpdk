@@ -60,8 +60,10 @@
 /* HW desc structure, both 16-byte and 32-byte types are supported */
 #ifdef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 #define iavf_rx_desc iavf_16byte_rx_desc
+#define iavf_rx_flex_desc iavf_16b_rx_flex_desc
 #else
 #define iavf_rx_desc iavf_32byte_rx_desc
+#define iavf_rx_flex_desc iavf_32b_rx_flex_desc
 #endif
 
 struct iavf_rxq_ops {
@@ -87,6 +89,7 @@ struct iavf_rx_queue {
 	struct rte_mbuf *pkt_first_seg; /* first segment of current packet */
 	struct rte_mbuf *pkt_last_seg;  /* last segment of current packet */
 	struct rte_mbuf fake_mbuf;      /* dummy mbuf */
+	uint8_t rxdid;
 
 	/* used for VPMD */
 	uint16_t rxrearm_nb;       /* number of remaining to be re-armed */
@@ -379,9 +382,15 @@ void iavf_dev_tx_queue_release(void *txq);
 void iavf_stop_queues(struct rte_eth_dev *dev);
 uint16_t iavf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		       uint16_t nb_pkts);
+uint16_t iavf_recv_pkts_flex_rxd(void *rx_queue,
+				 struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts);
 uint16_t iavf_recv_scattered_pkts(void *rx_queue,
 				 struct rte_mbuf **rx_pkts,
 				 uint16_t nb_pkts);
+uint16_t iavf_recv_scattered_pkts_flex_rxd(void *rx_queue,
+					   struct rte_mbuf **rx_pkts,
+					   uint16_t nb_pkts);
 uint16_t iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts);
 uint16_t iavf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,

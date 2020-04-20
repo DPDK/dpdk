@@ -88,6 +88,7 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 		break;
 	case VIRTCHNL_OP_VERSION:
 	case VIRTCHNL_OP_GET_VF_RESOURCES:
+	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
 		/* for init virtchnl ops, need to poll the response */
 		do {
 			ret = iavf_read_msg_from_pf(adapter, args->out_size,
@@ -338,7 +339,8 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 	 * add advanced/optional offload capabilities
 	 */
 
-	caps = IAVF_BASIC_OFFLOAD_CAPS | VIRTCHNL_VF_CAP_ADV_LINK_SPEED;
+	caps = IAVF_BASIC_OFFLOAD_CAPS | VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
+		VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);
@@ -371,6 +373,32 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 	vf->vsi.vsi_id = vf->vsi_res->vsi_id;
 	vf->vsi.nb_qps = vf->vsi_res->num_queue_pairs;
 	vf->vsi.adapter = adapter;
+
+	return 0;
+}
+
+int
+iavf_get_supported_rxdid(struct iavf_adapter *adapter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct iavf_cmd_info args;
+	int ret;
+
+	args.ops = VIRTCHNL_OP_GET_SUPPORTED_RXDIDS;
+	args.in_args = NULL;
+	args.in_args_size = 0;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	ret = iavf_execute_vf_cmd(adapter, &args);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_GET_SUPPORTED_RXDIDS");
+		return ret;
+	}
+
+	vf->supported_rxdid =
+		((struct virtchnl_supported_rxdids *)args.out_buffer)->supported_rxdids;
 
 	return 0;
 }
@@ -567,6 +595,31 @@ iavf_configure_queues(struct iavf_adapter *adapter)
 			vc_qp->rxq.ring_len = rxq[i]->nb_rx_desc;
 			vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;
 			vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+			if (vf->vf_res->vf_cap_flags &
+			    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
+			    vf->supported_rxdid & BIT(IAVF_RXDID_COMMS_OVS_1)) {
+				vc_qp->rxq.rxdid = IAVF_RXDID_COMMS_OVS_1;
+				PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
+					    "Queue[%d]", vc_qp->rxq.rxdid, i);
+			} else {
+				vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_1;
+				PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
+					    "Queue[%d]", vc_qp->rxq.rxdid, i);
+			}
+#else
+			if (vf->vf_res->vf_cap_flags &
+			    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
+			    vf->supported_rxdid & BIT(IAVF_RXDID_LEGACY_0)) {
+				vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_0;
+				PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
+					    "Queue[%d]", vc_qp->rxq.rxdid, i);
+			} else {
+				PMD_DRV_LOG(ERR, "RXDID == 0 is not supported");
+				return -1;
+			}
+#endif
 		}
 	}
 

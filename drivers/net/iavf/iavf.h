@@ -103,6 +103,7 @@ struct iavf_info {
 	struct virtchnl_version_info virtchnl_version;
 	struct virtchnl_vf_resource *vf_res; /* VF resource */
 	struct virtchnl_vsi_resource *vsi_res; /* LAN VSI */
+	uint64_t supported_rxdid;
 
 	volatile enum virtchnl_ops pend_cmd; /* pending command not finished */
 	uint32_t cmd_retval; /* return value of the cmd response from PF */
@@ -235,6 +236,7 @@ int iavf_disable_queues(struct iavf_adapter *adapter);
 int iavf_configure_rss_lut(struct iavf_adapter *adapter);
 int iavf_configure_rss_key(struct iavf_adapter *adapter);
 int iavf_configure_queues(struct iavf_adapter *adapter);
+int iavf_get_supported_rxdid(struct iavf_adapter *adapter);
 int iavf_config_irq_map(struct iavf_adapter *adapter);
 void iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add);
 int iavf_dev_link_update(struct rte_eth_dev *dev,

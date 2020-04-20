@@ -346,6 +346,14 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return -ENOMEM;
 	}
 
+	if (vf->vf_res->vf_cap_flags &
+	    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
+	    vf->supported_rxdid & BIT(IAVF_RXDID_COMMS_OVS_1)) {
+		rxq->rxdid = IAVF_RXDID_COMMS_OVS_1;
+	} else {
+		rxq->rxdid = IAVF_RXDID_LEGACY_1;
+	}
+
 	rxq->mp = mp;
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_free_thresh;
@@ -720,6 +728,20 @@ iavf_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union iavf_rx_desc *rxdp)
 	}
 }
 
+static inline void
+iavf_flex_rxd_to_vlan_tci(struct rte_mbuf *mb,
+			  volatile union iavf_rx_flex_desc *rxdp)
+{
+	if (rte_le_to_cpu_64(rxdp->wb.status_error0) &
+		(1 << IAVF_RX_FLEX_DESC_STATUS0_L2TAG1P_S)) {
+		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->vlan_tci =
+			rte_le_to_cpu_16(rxdp->wb.l2tag1);
+	} else {
+		mb->vlan_tci = 0;
+	}
+}
+
 /* Translate the rx descriptor status and error fields to pkt flags */
 static inline uint64_t
 iavf_rxd_to_pkt_flags(uint64_t qword)
@@ -752,6 +774,87 @@ iavf_rxd_to_pkt_flags(uint64_t qword)
 	/* TODO: Oversize error bit is not processed here */
 
 	return flags;
+}
+
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+/* Translate the rx flex descriptor status to pkt flags */
+static inline void
+iavf_rxd_to_pkt_fields(struct rte_mbuf *mb,
+		       volatile union iavf_rx_flex_desc *rxdp)
+{
+	volatile struct iavf_32b_rx_flex_desc_comms_ovs *desc =
+			(volatile struct iavf_32b_rx_flex_desc_comms_ovs *)rxdp;
+	uint16_t stat_err;
+
+	stat_err = rte_le_to_cpu_16(desc->status_error0);
+	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
+}
+#endif
+
+#define IAVF_RX_FLEX_ERR0_BITS	\
+	((1 << IAVF_RX_FLEX_DESC_STATUS0_HBO_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_IPE_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_L4E_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EUDPE_S) |	\
+	 (1 << IAVF_RX_FLEX_DESC_STATUS0_RXE_S))
+
+/* Rx L3/L4 checksum */
+static inline uint64_t
+iavf_flex_rxd_error_to_pkt_flags(uint16_t stat_err0)
+{
+	uint64_t flags = 0;
+
+	/* check if HW has decoded the packet and checksum */
+	if (unlikely(!(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_L3L4P_S))))
+		return 0;
+
+	if (likely(!(stat_err0 & IAVF_RX_FLEX_ERR0_BITS))) {
+		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
+		return flags;
+	}
+
+	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_IPE_S)))
+		flags |= PKT_RX_IP_CKSUM_BAD;
+	else
+		flags |= PKT_RX_IP_CKSUM_GOOD;
+
+	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_L4E_S)))
+		flags |= PKT_RX_L4_CKSUM_BAD;
+	else
+		flags |= PKT_RX_L4_CKSUM_GOOD;
+
+	if (unlikely(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S)))
+		flags |= PKT_RX_EIP_CKSUM_BAD;
+
+	return flags;
+}
+
+/* If the number of free RX descriptors is greater than the RX free
+ * threshold of the queue, advance the Receive Descriptor Tail (RDT)
+ * register. Update the RDT with the value of the last processed RX
+ * descriptor minus 1, to guarantee that the RDT register is never
+ * equal to the RDH register, which creates a "full" ring situation
+ * from the hardware point of view.
+ */
+static inline void
+iavf_update_rx_tail(struct iavf_rx_queue *rxq, uint16_t nb_hold, uint16_t rx_id)
+{
+	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
+
+	if (nb_hold > rxq->rx_free_thresh) {
+		PMD_RX_LOG(DEBUG,
+			   "port_id=%u queue_id=%u rx_tail=%u nb_hold=%u",
+			   rxq->port_id, rxq->queue_id, rx_id, nb_hold);
+		rx_id = (uint16_t)((rx_id == 0) ?
+			(rxq->nb_rx_desc - 1) : (rx_id - 1));
+		IAVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		nb_hold = 0;
+	}
+	rxq->nb_rx_hold = nb_hold;
 }
 
 /* implement recv_pkts */
@@ -854,23 +957,260 @@ iavf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	}
 	rxq->rx_tail = rx_id;
 
-	/* If the number of free RX descriptors is greater than the RX free
-	 * threshold of the queue, advance the receive tail register of queue.
-	 * Update that register with the value of the last processed RX
-	 * descriptor minus 1.
-	 */
-	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
-	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			   "nb_hold=%u nb_rx=%u",
-			   rxq->port_id, rxq->queue_id,
-			   rx_id, nb_hold, nb_rx);
-		rx_id = (uint16_t)((rx_id == 0) ?
-			(rxq->nb_rx_desc - 1) : (rx_id - 1));
-		IAVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
-		nb_hold = 0;
+	iavf_update_rx_tail(rxq, nb_hold, rx_id);
+
+	return nb_rx;
+}
+
+/* implement recv_pkts for flexible Rx descriptor */
+uint16_t
+iavf_recv_pkts_flex_rxd(void *rx_queue,
+			struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	volatile union iavf_rx_desc *rx_ring;
+	volatile union iavf_rx_flex_desc *rxdp;
+	struct iavf_rx_queue *rxq;
+	union iavf_rx_flex_desc rxd;
+	struct rte_mbuf *rxe;
+	struct rte_eth_dev *dev;
+	struct rte_mbuf *rxm;
+	struct rte_mbuf *nmb;
+	uint16_t nb_rx;
+	uint16_t rx_stat_err0;
+	uint16_t rx_packet_len;
+	uint16_t rx_id, nb_hold;
+	uint64_t dma_addr;
+	uint64_t pkt_flags;
+	const uint32_t *ptype_tbl;
+
+	nb_rx = 0;
+	nb_hold = 0;
+	rxq = rx_queue;
+	rx_id = rxq->rx_tail;
+	rx_ring = rxq->rx_ring;
+	ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+
+	while (nb_rx < nb_pkts) {
+		rxdp = (volatile union iavf_rx_flex_desc *)&rx_ring[rx_id];
+		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
+
+		/* Check the DD bit first */
+		if (!(rx_stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_DD_S)))
+			break;
+		IAVF_DUMP_RX_DESC(rxq, rxdp, rx_id);
+
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(!nmb)) {
+			dev = &rte_eth_devices[rxq->port_id];
+			dev->data->rx_mbuf_alloc_failed++;
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u", rxq->port_id, rxq->queue_id);
+			break;
+		}
+
+		rxd = *rxdp;
+		nb_hold++;
+		rxe = rxq->sw_ring[rx_id];
+		rx_id++;
+		if (unlikely(rx_id == rxq->nb_rx_desc))
+			rx_id = 0;
+
+		/* Prefetch next mbuf */
+		rte_prefetch0(rxq->sw_ring[rx_id]);
+
+		/* When next RX descriptor is on a cache line boundary,
+		 * prefetch the next 4 RX descriptors and next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_prefetch0(&rx_ring[rx_id]);
+			rte_prefetch0(rxq->sw_ring[rx_id]);
+		}
+		rxm = rxe;
+		rxe = nmb;
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+		rxdp->read.hdr_addr = 0;
+		rxdp->read.pkt_addr = dma_addr;
+
+		rx_packet_len = (rte_le_to_cpu_16(rxd.wb.pkt_len) &
+				IAVF_RX_FLX_DESC_PKT_LEN_M) - rxq->crc_len;
+
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_prefetch0(RTE_PTR_ADD(rxm->buf_addr, RTE_PKTMBUF_HEADROOM));
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+		rxm->pkt_len = rx_packet_len;
+		rxm->data_len = rx_packet_len;
+		rxm->port = rxq->port_id;
+		rxm->ol_flags = 0;
+		rxm->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
+			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
+		iavf_flex_rxd_to_vlan_tci(rxm, &rxd);
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+		iavf_rxd_to_pkt_fields(rxm, &rxd);
+#endif
+		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
+		rxm->ol_flags |= pkt_flags;
+
+		rx_pkts[nb_rx++] = rxm;
 	}
-	rxq->nb_rx_hold = nb_hold;
+	rxq->rx_tail = rx_id;
+
+	iavf_update_rx_tail(rxq, nb_hold, rx_id);
+
+	return nb_rx;
+}
+
+/* implement recv_scattered_pkts for flexible Rx descriptor */
+uint16_t
+iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
+				  uint16_t nb_pkts)
+{
+	struct iavf_rx_queue *rxq = rx_queue;
+	union iavf_rx_flex_desc rxd;
+	struct rte_mbuf *rxe;
+	struct rte_mbuf *first_seg = rxq->pkt_first_seg;
+	struct rte_mbuf *last_seg = rxq->pkt_last_seg;
+	struct rte_mbuf *nmb, *rxm;
+	uint16_t rx_id = rxq->rx_tail;
+	uint16_t nb_rx = 0, nb_hold = 0, rx_packet_len;
+	struct rte_eth_dev *dev;
+	uint16_t rx_stat_err0;
+	uint64_t dma_addr;
+	uint64_t pkt_flags;
+
+	volatile union iavf_rx_desc *rx_ring = rxq->rx_ring;
+	volatile union iavf_rx_flex_desc *rxdp;
+	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+
+	while (nb_rx < nb_pkts) {
+		rxdp = (volatile union iavf_rx_flex_desc *)&rx_ring[rx_id];
+		rx_stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
+
+		/* Check the DD bit */
+		if (!(rx_stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_DD_S)))
+			break;
+		IAVF_DUMP_RX_DESC(rxq, rxdp, rx_id);
+
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(!nmb)) {
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
+				   "queue_id=%u", rxq->port_id, rxq->queue_id);
+			dev = &rte_eth_devices[rxq->port_id];
+			dev->data->rx_mbuf_alloc_failed++;
+			break;
+		}
+
+		rxd = *rxdp;
+		nb_hold++;
+		rxe = rxq->sw_ring[rx_id];
+		rx_id++;
+		if (rx_id == rxq->nb_rx_desc)
+			rx_id = 0;
+
+		/* Prefetch next mbuf */
+		rte_prefetch0(rxq->sw_ring[rx_id]);
+
+		/* When next RX descriptor is on a cache line boundary,
+		 * prefetch the next 4 RX descriptors and next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_prefetch0(&rx_ring[rx_id]);
+			rte_prefetch0(rxq->sw_ring[rx_id]);
+		}
+
+		rxm = rxe;
+		rxe = nmb;
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+
+		/* Set data buffer address and data length of the mbuf */
+		rxdp->read.hdr_addr = 0;
+		rxdp->read.pkt_addr = dma_addr;
+		rx_packet_len = rte_le_to_cpu_16(rxd.wb.pkt_len) &
+				IAVF_RX_FLX_DESC_PKT_LEN_M;
+		rxm->data_len = rx_packet_len;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+
+		/* If this is the first buffer of the received packet, set the
+		 * pointer to the first mbuf of the packet and initialize its
+		 * context. Otherwise, update the total length and the number
+		 * of segments of the current scattered packet, and update the
+		 * pointer to the last mbuf of the current packet.
+		 */
+		if (!first_seg) {
+			first_seg = rxm;
+			first_seg->nb_segs = 1;
+			first_seg->pkt_len = rx_packet_len;
+		} else {
+			first_seg->pkt_len =
+				(uint16_t)(first_seg->pkt_len +
+						rx_packet_len);
+			first_seg->nb_segs++;
+			last_seg->next = rxm;
+		}
+
+		/* If this is not the last buffer of the received packet,
+		 * update the pointer to the last mbuf of the current scattered
+		 * packet and continue to parse the RX ring.
+		 */
+		if (!(rx_stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_EOF_S))) {
+			last_seg = rxm;
+			continue;
+		}
+
+		/* This is the last buffer of the received packet. If the CRC
+		 * is not stripped by the hardware:
+		 *  - Subtract the CRC length from the total packet length.
+		 *  - If the last buffer only contains the whole CRC or a part
+		 *  of it, free the mbuf associated to the last buffer. If part
+		 *  of the CRC is also contained in the previous mbuf, subtract
+		 *  the length of that CRC part from the data length of the
+		 *  previous mbuf.
+		 */
+		rxm->next = NULL;
+		if (unlikely(rxq->crc_len > 0)) {
+			first_seg->pkt_len -= RTE_ETHER_CRC_LEN;
+			if (rx_packet_len <= RTE_ETHER_CRC_LEN) {
+				rte_pktmbuf_free_seg(rxm);
+				first_seg->nb_segs--;
+				last_seg->data_len =
+					(uint16_t)(last_seg->data_len -
+					(RTE_ETHER_CRC_LEN - rx_packet_len));
+				last_seg->next = NULL;
+			} else {
+				rxm->data_len = (uint16_t)(rx_packet_len -
+							RTE_ETHER_CRC_LEN);
+			}
+		}
+
+		first_seg->port = rxq->port_id;
+		first_seg->ol_flags = 0;
+		first_seg->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
+			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
+		iavf_flex_rxd_to_vlan_tci(first_seg, &rxd);
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+		iavf_rxd_to_pkt_fields(first_seg, &rxd);
+#endif
+		pkt_flags = iavf_flex_rxd_error_to_pkt_flags(rx_stat_err0);
+
+		first_seg->ol_flags |= pkt_flags;
+
+		/* Prefetch data of first segment, if configured to do so. */
+		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
+					  first_seg->data_off));
+		rx_pkts[nb_rx++] = first_seg;
+		first_seg = NULL;
+	}
+
+	/* Record index of the next RX descriptor to probe. */
+	rxq->rx_tail = rx_id;
+	rxq->pkt_first_seg = first_seg;
+	rxq->pkt_last_seg = last_seg;
+
+	iavf_update_rx_tail(rxq, nb_hold, rx_id);
 
 	return nb_rx;
 }
@@ -1027,30 +1367,90 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rxq->pkt_first_seg = first_seg;
 	rxq->pkt_last_seg = last_seg;
 
-	/* If the number of free RX descriptors is greater than the RX free
-	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
-	 * register. Update the RDT with the value of the last processed RX
-	 * descriptor minus 1, to guarantee that the RDT register is never
-	 * equal to the RDH register, which creates a "full" ring situtation
-	 * from the hardware point of view.
-	 */
-	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
-	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port_id=%u queue_id=%u rx_tail=%u "
-			   "nb_hold=%u nb_rx=%u",
-			   rxq->port_id, rxq->queue_id,
-			   rx_id, nb_hold, nb_rx);
-		rx_id = (uint16_t)(rx_id == 0 ?
-			(rxq->nb_rx_desc - 1) : (rx_id - 1));
-		IAVF_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
-		nb_hold = 0;
-	}
-	rxq->nb_rx_hold = nb_hold;
+	iavf_update_rx_tail(rxq, nb_hold, rx_id);
 
 	return nb_rx;
 }
 
 #define IAVF_LOOK_AHEAD 8
+static inline int
+iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq)
+{
+	volatile union iavf_rx_flex_desc *rxdp;
+	struct rte_mbuf **rxep;
+	struct rte_mbuf *mb;
+	uint16_t stat_err0;
+	uint16_t pkt_len;
+	int32_t s[IAVF_LOOK_AHEAD], nb_dd;
+	int32_t i, j, nb_rx = 0;
+	uint64_t pkt_flags;
+	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+
+	rxdp = (volatile union iavf_rx_flex_desc *)&rxq->rx_ring[rxq->rx_tail];
+	rxep = &rxq->sw_ring[rxq->rx_tail];
+
+	stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
+
+	/* Make sure there is at least 1 packet to receive */
+	if (!(stat_err0 & (1 << IAVF_RX_FLEX_DESC_STATUS0_DD_S)))
+		return 0;
+
+	/* Scan LOOK_AHEAD descriptors at a time to determine which
+	 * descriptors reference packets that are ready to be received.
+	 */
+	for (i = 0; i < IAVF_RX_MAX_BURST; i += IAVF_LOOK_AHEAD,
+	     rxdp += IAVF_LOOK_AHEAD, rxep += IAVF_LOOK_AHEAD) {
+		/* Read desc statuses backwards to avoid race condition */
+		for (j = IAVF_LOOK_AHEAD - 1; j >= 0; j--)
+			s[j] = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
+
+		rte_smp_rmb();
+
+		/* Compute how many status bits were set */
+		for (j = 0, nb_dd = 0; j < IAVF_LOOK_AHEAD; j++)
+			nb_dd += s[j] & (1 << IAVF_RX_FLEX_DESC_STATUS0_DD_S);
+
+		nb_rx += nb_dd;
+
+		/* Translate descriptor info to mbuf parameters */
+		for (j = 0; j < nb_dd; j++) {
+			IAVF_DUMP_RX_DESC(rxq, &rxdp[j],
+					  rxq->rx_tail +
+					  i * IAVF_LOOK_AHEAD + j);
+
+			mb = rxep[j];
+			pkt_len = (rte_le_to_cpu_16(rxdp[j].wb.pkt_len) &
+				IAVF_RX_FLX_DESC_PKT_LEN_M) - rxq->crc_len;
+			mb->data_len = pkt_len;
+			mb->pkt_len = pkt_len;
+			mb->ol_flags = 0;
+
+			mb->packet_type = ptype_tbl[IAVF_RX_FLEX_DESC_PTYPE_M &
+				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
+			iavf_flex_rxd_to_vlan_tci(mb, &rxdp[j]);
+#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+			iavf_rxd_to_pkt_fields(mb, &rxdp[j]);
+#endif
+			stat_err0 = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
+			pkt_flags = iavf_flex_rxd_error_to_pkt_flags(stat_err0);
+
+			mb->ol_flags |= pkt_flags;
+		}
+
+		for (j = 0; j < IAVF_LOOK_AHEAD; j++)
+			rxq->rx_stage[i + j] = rxep[j];
+
+		if (nb_dd != IAVF_LOOK_AHEAD)
+			break;
+	}
+
+	/* Clear software ring entries */
+	for (i = 0; i < nb_rx; i++)
+		rxq->sw_ring[rxq->rx_tail + i] = NULL;
+
+	return nb_rx;
+}
+
 static inline int
 iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq)
 {
@@ -1219,7 +1619,10 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (rxq->rx_nb_avail)
 		return iavf_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
 
-	nb_rx = (uint16_t)iavf_rx_scan_hw_ring(rxq);
+	if (rxq->rxdid == IAVF_RXDID_COMMS_OVS_1)
+		nb_rx = (uint16_t)iavf_rx_scan_hw_ring_flex_rxd(rxq);
+	else
+		nb_rx = (uint16_t)iavf_rx_scan_hw_ring(rxq);
 	rxq->rx_next_avail = 0;
 	rxq->rx_nb_avail = nb_rx;
 	rxq->rx_tail = (uint16_t)(rxq->rx_tail + nb_rx);
@@ -1663,6 +2066,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 #ifdef RTE_ARCH_X86
 	struct iavf_rx_queue *rxq;
 	int i;
@@ -1702,7 +2106,10 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	if (dev->data->scattered_rx) {
 		PMD_DRV_LOG(DEBUG, "Using a Scattered Rx callback (port=%d).",
 			    dev->data->port_id);
-		dev->rx_pkt_burst = iavf_recv_scattered_pkts;
+		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
+			dev->rx_pkt_burst = iavf_recv_scattered_pkts_flex_rxd;
+		else
+			dev->rx_pkt_burst = iavf_recv_scattered_pkts;
 	} else if (adapter->rx_bulk_alloc_allowed) {
 		PMD_DRV_LOG(DEBUG, "Using bulk Rx callback (port=%d).",
 			    dev->data->port_id);
@@ -1710,7 +2117,10 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	} else {
 		PMD_DRV_LOG(DEBUG, "Using Basic Rx callback (port=%d).",
 			    dev->data->port_id);
-		dev->rx_pkt_burst = iavf_recv_pkts;
+		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC)
+			dev->rx_pkt_burst = iavf_recv_pkts_flex_rxd;
+		else
+			dev->rx_pkt_burst = iavf_recv_pkts;
 	}
 }
 
@@ -1797,6 +2207,7 @@ iavf_dev_rxq_count(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	rxq = dev->data->rx_queues[queue_id];
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
+
 	while ((desc < rxq->nb_rx_desc) &&
 	       ((rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
 		 IAVF_RXD_QW1_STATUS_MASK) >> IAVF_RXD_QW1_STATUS_SHIFT) &
