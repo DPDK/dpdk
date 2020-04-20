@@ -416,4 +416,7 @@ check_flow_params(uint16_t fdir_portid, uint8_t fdir_qid);
 int
 create_ipsec_esp_flow(struct ipsec_sa *sa);
 
+uint32_t
+get_nb_crypto_sessions(void);
+
 #endif /* __IPSEC_H__ */

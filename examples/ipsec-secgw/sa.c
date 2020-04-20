@@ -160,6 +160,7 @@ const struct supported_aead_algo aead_algos[] = {
 
 #define SA_INIT_NB	128
 
+static uint32_t nb_crypto_sessions;
 struct ipsec_sa *sa_out;
 uint32_t nb_sa_out;
 static uint32_t sa_out_sz;
@@ -712,6 +713,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			}
 
 			rule->fallback_sessions = 1;
+			nb_crypto_sessions++;
 			fallback_p = 1;
 			continue;
 		}
@@ -795,6 +797,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 		ips->type = RTE_SECURITY_ACTION_TYPE_NONE;
 	}
 
+	nb_crypto_sessions++;
 	*ri = *ri + 1;
 }
 
@@ -1623,4 +1626,10 @@ sa_sort_arr(void)
 {
 	qsort(sa_in, nb_sa_in, sizeof(struct ipsec_sa), sa_cmp);
 	qsort(sa_out, nb_sa_out, sizeof(struct ipsec_sa), sa_cmp);
+}
+
+uint32_t
+get_nb_crypto_sessions(void)
+{
+	return nb_crypto_sessions;
 }
