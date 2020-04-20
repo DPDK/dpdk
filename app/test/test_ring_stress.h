@@ -33,3 +33,4 @@ struct test {
 };
 
 extern const struct test test_ring_mpmc_stress;
+extern const struct test test_ring_rts_stress;
