@@ -49,7 +49,7 @@
 static void
 usage(char* progname)
 {
-	printf("usage: %s "
+	printf("usage: %s [EAL options] -- "
 #ifdef RTE_LIBRTE_CMDLINE
 	       "[--interactive|-i] "
 	       "[--cmdline-file=FILENAME] "

@@ -12,7 +12,7 @@
 #include <rte_lcore.h>
 #include <rte_ip.h>
 
-#define	PRINT_USAGE_START	"%s [EAL options]\n"
+#define	PRINT_USAGE_START	"%s [EAL options] --\n"
 
 #define	RTE_LOGTYPE_TESTACL	RTE_LOGTYPE_USER1
 

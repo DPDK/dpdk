@@ -151,7 +151,7 @@ static uint8_t multiple_core_capture;
 static void
 pdump_usage(const char *prgname)
 {
-	printf("usage: %s [EAL options]"
+	printf("usage: %s [EAL options] --"
 			" --["CMD_LINE_OPT_MULTI"]\n"
 			" --"CMD_LINE_OPT_PDUMP" "
 			"'(port=<port id> | device_id=<pci id or vdev name>),"
