@@ -81,6 +81,9 @@ ssize_t rte_ring_get_memsize_elem(unsigned int esize, unsigned int count);
  *      - RING_F_MP_RTS_ENQ: If this flag is set, the default behavior when
  *        using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
  *        is "multi-producer RTS mode".
+ *      - RING_F_MP_HTS_ENQ: If this flag is set, the default behavior when
+ *        using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
+ *        is "multi-producer HTS mode".
  *     If none of these flags is set, then default "multi-producer"
  *     behavior is selected.
  *   - One of mutually exclusive flags that define consumer behavior:
@@ -90,6 +93,9 @@ ssize_t rte_ring_get_memsize_elem(unsigned int esize, unsigned int count);
  *      - RING_F_MC_RTS_DEQ: If this flag is set, the default behavior when
  *        using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
  *        is "multi-consumer RTS mode".
+ *      - RING_F_MC_HTS_DEQ: If this flag is set, the default behavior when
+ *        using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
+ *        is "multi-consumer HTS mode".
  *     If none of these flags is set, then default "multi-consumer"
  *     behavior is selected.
  * @return
@@ -541,6 +547,7 @@ rte_ring_sp_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 }
 
 #ifdef ALLOW_EXPERIMENTAL_API
+#include <rte_ring_hts.h>
 #include <rte_ring_rts.h>
 #endif
 
@@ -584,6 +591,9 @@ rte_ring_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 #ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mp_rts_enqueue_bulk_elem(r, obj_table, esize, n,
+			free_space);
+	case RTE_RING_SYNC_MT_HTS:
+		return rte_ring_mp_hts_enqueue_bulk_elem(r, obj_table, esize, n,
 			free_space);
 #endif
 	}
@@ -765,6 +775,9 @@ rte_ring_dequeue_bulk_elem(struct rte_ring *r, void *obj_table,
 #ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mc_rts_dequeue_bulk_elem(r, obj_table, esize,
+			n, available);
+	case RTE_RING_SYNC_MT_HTS:
+		return rte_ring_mc_hts_dequeue_bulk_elem(r, obj_table, esize,
 			n, available);
 #endif
 	}
@@ -951,6 +964,9 @@ rte_ring_enqueue_burst_elem(struct rte_ring *r, const void *obj_table,
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mp_rts_enqueue_burst_elem(r, obj_table, esize,
 			n, free_space);
+	case RTE_RING_SYNC_MT_HTS:
+		return rte_ring_mp_hts_enqueue_burst_elem(r, obj_table, esize,
+			n, free_space);
 #endif
 	}
 
@@ -1059,6 +1075,9 @@ rte_ring_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 #ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mc_rts_dequeue_burst_elem(r, obj_table, esize,
+			n, available);
+	case RTE_RING_SYNC_MT_HTS:
+		return rte_ring_mc_hts_dequeue_burst_elem(r, obj_table, esize,
 			n, available);
 #endif
 	}

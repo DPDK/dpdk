@@ -390,6 +390,21 @@ one for head update, second for tail update.
 In comparison the original MP/MC algorithm requires one 32-bit CAS
 for head update and waiting/spinning on tail value.
 
+MP_HTS/MC_HTS
+~~~~~~~~~~~~~
+
+Multi-producer (/multi-consumer) with Head/Tail Sync (HTS) mode.
+In that mode enqueue/dequeue operation is fully serialized:
+at any given moment only one enqueue/dequeue operation can proceed.
+This is achieved by allowing a thread to proceed with changing ``head.value``
+only when ``head.value == tail.value``.
+Both head and tail values are updated atomically (as one 64-bit value).
+To achieve that 64-bit CAS is used by head update routine.
+That technique also avoids the Lock-Waiter-Preemption (LWP) problem on tail
+update and helps to improve ring enqueue/dequeue behavior in overcommitted
+scenarios. Another advantage of fully serialized producer/consumer -
+it provides the ability to implement MT safe peek API for rte_ring.
+
 References
 ----------
 

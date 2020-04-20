@@ -89,9 +89,11 @@ static void
 reset_headtail(void *p)
 {
 	struct rte_ring_headtail *ht;
+	struct rte_ring_hts_headtail *ht_hts;
 	struct rte_ring_rts_headtail *ht_rts;
 
 	ht = p;
+	ht_hts = p;
 	ht_rts = p;
 
 	switch (ht->sync_type) {
@@ -103,6 +105,9 @@ reset_headtail(void *p)
 	case RTE_RING_SYNC_MT_RTS:
 		ht_rts->head.raw = 0;
 		ht_rts->tail.raw = 0;
+		break;
+	case RTE_RING_SYNC_MT_HTS:
+		ht_hts->ht.raw = 0;
 		break;
 	default:
 		/* unknown sync mode */
@@ -127,9 +132,9 @@ get_sync_type(uint32_t flags, enum rte_ring_sync_type *prod_st,
 	enum rte_ring_sync_type *cons_st)
 {
 	static const uint32_t prod_st_flags =
-		(RING_F_SP_ENQ | RING_F_MP_RTS_ENQ);
+		(RING_F_SP_ENQ | RING_F_MP_RTS_ENQ | RING_F_MP_HTS_ENQ);
 	static const uint32_t cons_st_flags =
-		(RING_F_SC_DEQ | RING_F_MC_RTS_DEQ);
+		(RING_F_SC_DEQ | RING_F_MC_RTS_DEQ | RING_F_MC_HTS_DEQ);
 
 	switch (flags & prod_st_flags) {
 	case 0:
@@ -140,6 +145,9 @@ get_sync_type(uint32_t flags, enum rte_ring_sync_type *prod_st,
 		break;
 	case RING_F_MP_RTS_ENQ:
 		*prod_st = RTE_RING_SYNC_MT_RTS;
+		break;
+	case RING_F_MP_HTS_ENQ:
+		*prod_st = RTE_RING_SYNC_MT_HTS;
 		break;
 	default:
 		return -EINVAL;
@@ -154,6 +162,9 @@ get_sync_type(uint32_t flags, enum rte_ring_sync_type *prod_st,
 		break;
 	case RING_F_MC_RTS_DEQ:
 		*cons_st = RTE_RING_SYNC_MT_RTS;
+		break;
+	case RING_F_MC_HTS_DEQ:
+		*cons_st = RTE_RING_SYNC_MT_HTS;
 		break;
 	default:
 		return -EINVAL;
@@ -175,6 +186,11 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 			  RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, prod) &
 			  RTE_CACHE_LINE_MASK) != 0);
+
+	RTE_BUILD_BUG_ON(offsetof(struct rte_ring_headtail, sync_type) !=
+		offsetof(struct rte_ring_hts_headtail, sync_type));
+	RTE_BUILD_BUG_ON(offsetof(struct rte_ring_headtail, tail) !=
+		offsetof(struct rte_ring_hts_headtail, ht.pos.tail));
 
 	RTE_BUILD_BUG_ON(offsetof(struct rte_ring_headtail, sync_type) !=
 		offsetof(struct rte_ring_rts_headtail, sync_type));

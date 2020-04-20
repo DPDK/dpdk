@@ -59,6 +59,7 @@ enum rte_ring_sync_type {
 	RTE_RING_SYNC_ST,     /**< single thread only */
 #ifdef ALLOW_EXPERIMENTAL_API
 	RTE_RING_SYNC_MT_RTS, /**< multi-thread relaxed tail sync */
+	RTE_RING_SYNC_MT_HTS, /**< multi-thread head/tail sync */
 #endif
 };
 
@@ -95,6 +96,20 @@ struct rte_ring_rts_headtail {
 	volatile union __rte_ring_rts_poscnt head;
 };
 
+union __rte_ring_hts_pos {
+	/** raw 8B value to read/write *head* and *tail* as one atomic op */
+	uint64_t raw __rte_aligned(8);
+	struct {
+		uint32_t head; /**< head position */
+		uint32_t tail; /**< tail position */
+	} pos;
+};
+
+struct rte_ring_hts_headtail {
+	volatile union __rte_ring_hts_pos ht;
+	enum rte_ring_sync_type sync_type;  /**< sync type of prod/cons */
+};
+
 /**
  * An RTE ring structure.
  *
@@ -126,6 +141,7 @@ struct rte_ring {
 	RTE_STD_C11
 	union {
 		struct rte_ring_headtail prod;
+		struct rte_ring_hts_headtail hts_prod;
 		struct rte_ring_rts_headtail rts_prod;
 	}  __rte_cache_aligned;
 
@@ -135,6 +151,7 @@ struct rte_ring {
 	RTE_STD_C11
 	union {
 		struct rte_ring_headtail cons;
+		struct rte_ring_hts_headtail hts_cons;
 		struct rte_ring_rts_headtail rts_cons;
 	}  __rte_cache_aligned;
 
@@ -156,6 +173,9 @@ struct rte_ring {
 
 #define RING_F_MP_RTS_ENQ 0x0008 /**< The default enqueue is "MP RTS". */
 #define RING_F_MC_RTS_DEQ 0x0010 /**< The default dequeue is "MC RTS". */
+
+#define RING_F_MP_HTS_ENQ 0x0020 /**< The default enqueue is "MP HTS". */
+#define RING_F_MC_HTS_DEQ 0x0040 /**< The default dequeue is "MC HTS". */
 
 #ifdef __cplusplus
 }

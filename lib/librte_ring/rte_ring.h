@@ -86,6 +86,9 @@ ssize_t rte_ring_get_memsize(unsigned count);
  *      - RING_F_MP_RTS_ENQ: If this flag is set, the default behavior when
  *        using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
  *        is "multi-producer RTS mode".
+ *      - RING_F_MP_HTS_ENQ: If this flag is set, the default behavior when
+ *        using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
+ *        is "multi-producer HTS mode".
  *     If none of these flags is set, then default "multi-producer"
  *     behavior is selected.
  *   - One of mutually exclusive flags that define consumer behavior:
@@ -95,6 +98,9 @@ ssize_t rte_ring_get_memsize(unsigned count);
  *      - RING_F_MC_RTS_DEQ: If this flag is set, the default behavior when
  *        using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
  *        is "multi-consumer RTS mode".
+ *      - RING_F_MC_HTS_DEQ: If this flag is set, the default behavior when
+ *        using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
+ *        is "multi-consumer HTS mode".
  *     If none of these flags is set, then default "multi-consumer"
  *     behavior is selected.
  * @return
@@ -133,6 +139,9 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
  *      - RING_F_MP_RTS_ENQ: If this flag is set, the default behavior when
  *        using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
  *        is "multi-producer RTS mode".
+ *      - RING_F_MP_HTS_ENQ: If this flag is set, the default behavior when
+ *        using ``rte_ring_enqueue()`` or ``rte_ring_enqueue_bulk()``
+ *        is "multi-producer HTS mode".
  *     If none of these flags is set, then default "multi-producer"
  *     behavior is selected.
  *   - One of mutually exclusive flags that define consumer behavior:
@@ -142,6 +151,9 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
  *      - RING_F_MC_RTS_DEQ: If this flag is set, the default behavior when
  *        using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
  *        is "multi-consumer RTS mode".
+ *      - RING_F_MC_HTS_DEQ: If this flag is set, the default behavior when
+ *        using ``rte_ring_dequeue()`` or ``rte_ring_dequeue_bulk()``
+ *        is "multi-consumer HTS mode".
  *     If none of these flags is set, then default "multi-consumer"
  *     behavior is selected.
  * @return
@@ -422,6 +434,9 @@ rte_ring_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mp_rts_enqueue_bulk(r, obj_table, n,
 			free_space);
+	case RTE_RING_SYNC_MT_HTS:
+		return rte_ring_mp_hts_enqueue_bulk(r, obj_table, n,
+			free_space);
 #endif
 	}
 
@@ -569,6 +584,8 @@ rte_ring_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned int n,
 #ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mc_rts_dequeue_bulk(r, obj_table, n, available);
+	case RTE_RING_SYNC_MT_HTS:
+		return rte_ring_mc_hts_dequeue_bulk(r, obj_table, n, available);
 #endif
 	}
 
@@ -903,6 +920,9 @@ rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mp_rts_enqueue_burst(r, obj_table, n,
 			free_space);
+	case RTE_RING_SYNC_MT_HTS:
+		return rte_ring_mp_hts_enqueue_burst(r, obj_table, n,
+			free_space);
 #endif
 	}
 
@@ -995,6 +1015,9 @@ rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table,
 #ifdef ALLOW_EXPERIMENTAL_API
 	case RTE_RING_SYNC_MT_RTS:
 		return rte_ring_mc_rts_dequeue_burst(r, obj_table, n,
+			available);
+	case RTE_RING_SYNC_MT_HTS:
+		return rte_ring_mc_hts_dequeue_burst(r, obj_table, n,
 			available);
 #endif
 	}
