@@ -157,6 +157,206 @@ union iavf_tx_offload {
 	};
 };
 
+/* Rx Flex Descriptors
+ * These descriptors are used instead of the legacy version descriptors
+ */
+union iavf_16b_rx_flex_desc {
+	struct {
+		__le64 pkt_addr; /* Packet buffer address */
+		__le64 hdr_addr; /* Header buffer address */
+				 /* bit 0 of hdr_addr is DD bit */
+	} read;
+	struct {
+		/* Qword 0 */
+		u8 rxdid; /* descriptor builder profile ID */
+		u8 mir_id_umb_cast; /* mirror=[5:0], umb=[7:6] */
+		__le16 ptype_flex_flags0; /* ptype=[9:0], ff0=[15:10] */
+		__le16 pkt_len; /* [15:14] are reserved */
+		__le16 hdr_len_sph_flex_flags1; /* header=[10:0] */
+						/* sph=[11:11] */
+						/* ff1/ext=[15:12] */
+
+		/* Qword 1 */
+		__le16 status_error0;
+		__le16 l2tag1;
+		__le16 flex_meta0;
+		__le16 flex_meta1;
+	} wb; /* writeback */
+};
+
+union iavf_32b_rx_flex_desc {
+	struct {
+		__le64 pkt_addr; /* Packet buffer address */
+		__le64 hdr_addr; /* Header buffer address */
+				 /* bit 0 of hdr_addr is DD bit */
+		__le64 rsvd1;
+		__le64 rsvd2;
+	} read;
+	struct {
+		/* Qword 0 */
+		u8 rxdid; /* descriptor builder profile ID */
+		u8 mir_id_umb_cast; /* mirror=[5:0], umb=[7:6] */
+		__le16 ptype_flex_flags0; /* ptype=[9:0], ff0=[15:10] */
+		__le16 pkt_len; /* [15:14] are reserved */
+		__le16 hdr_len_sph_flex_flags1; /* header=[10:0] */
+						/* sph=[11:11] */
+						/* ff1/ext=[15:12] */
+
+		/* Qword 1 */
+		__le16 status_error0;
+		__le16 l2tag1;
+		__le16 flex_meta0;
+		__le16 flex_meta1;
+
+		/* Qword 2 */
+		__le16 status_error1;
+		u8 flex_flags2;
+		u8 time_stamp_low;
+		__le16 l2tag2_1st;
+		__le16 l2tag2_2nd;
+
+		/* Qword 3 */
+		__le16 flex_meta2;
+		__le16 flex_meta3;
+		union {
+			struct {
+				__le16 flex_meta4;
+				__le16 flex_meta5;
+			} flex;
+			__le32 ts_high;
+		} flex_ts;
+	} wb; /* writeback */
+};
+
+/* Rx Flex Descriptor
+ * RxDID Profile ID 16-21
+ * Flex-field 0: RSS hash lower 16-bits
+ * Flex-field 1: RSS hash upper 16-bits
+ * Flex-field 2: Flow ID lower 16-bits
+ * Flex-field 3: Flow ID upper 16-bits
+ * Flex-field 4: AUX0
+ * Flex-field 5: AUX1
+ */
+struct iavf_32b_rx_flex_desc_comms {
+	/* Qword 0 */
+	u8 rxdid;
+	u8 mir_id_umb_cast;
+	__le16 ptype_flexi_flags0;
+	__le16 pkt_len;
+	__le16 hdr_len_sph_flex_flags1;
+
+	/* Qword 1 */
+	__le16 status_error0;
+	__le16 l2tag1;
+	__le32 rss_hash;
+
+	/* Qword 2 */
+	__le16 status_error1;
+	u8 flexi_flags2;
+	u8 ts_low;
+	__le16 l2tag2_1st;
+	__le16 l2tag2_2nd;
+
+	/* Qword 3 */
+	__le32 flow_id;
+	union {
+		struct {
+			__le16 aux0;
+			__le16 aux1;
+		} flex;
+		__le32 ts_high;
+	} flex_ts;
+};
+
+/* Rx Flex Descriptor
+ * RxDID Profile ID 22-23 (swap Hash and FlowID)
+ * Flex-field 0: Flow ID lower 16-bits
+ * Flex-field 1: Flow ID upper 16-bits
+ * Flex-field 2: RSS hash lower 16-bits
+ * Flex-field 3: RSS hash upper 16-bits
+ * Flex-field 4: AUX0
+ * Flex-field 5: AUX1
+ */
+struct iavf_32b_rx_flex_desc_comms_ovs {
+	/* Qword 0 */
+	u8 rxdid;
+	u8 mir_id_umb_cast;
+	__le16 ptype_flexi_flags0;
+	__le16 pkt_len;
+	__le16 hdr_len_sph_flex_flags1;
+
+	/* Qword 1 */
+	__le16 status_error0;
+	__le16 l2tag1;
+	__le32 flow_id;
+
+	/* Qword 2 */
+	__le16 status_error1;
+	u8 flexi_flags2;
+	u8 ts_low;
+	__le16 l2tag2_1st;
+	__le16 l2tag2_2nd;
+
+	/* Qword 3 */
+	__le32 rss_hash;
+	union {
+		struct {
+			__le16 aux0;
+			__le16 aux1;
+		} flex;
+		__le32 ts_high;
+	} flex_ts;
+};
+
+/* Receive Flex Descriptor profile IDs: There are a total
+ * of 64 profiles where profile IDs 0/1 are for legacy; and
+ * profiles 2-63 are flex profiles that can be programmed
+ * with a specific metadata (profile 7 reserved for HW)
+ */
+enum iavf_rxdid {
+	IAVF_RXDID_LEGACY_0		= 0,
+	IAVF_RXDID_LEGACY_1		= 1,
+	IAVF_RXDID_FLEX_NIC		= 2,
+	IAVF_RXDID_FLEX_NIC_2		= 6,
+	IAVF_RXDID_HW			= 7,
+	IAVF_RXDID_COMMS_GENERIC	= 16,
+	IAVF_RXDID_COMMS_AUX_VLAN	= 17,
+	IAVF_RXDID_COMMS_AUX_IPV4	= 18,
+	IAVF_RXDID_COMMS_AUX_IPV6	= 19,
+	IAVF_RXDID_COMMS_AUX_IPV6_FLOW	= 20,
+	IAVF_RXDID_COMMS_AUX_TCP	= 21,
+	IAVF_RXDID_COMMS_OVS_1		= 22,
+	IAVF_RXDID_COMMS_OVS_2		= 23,
+	IAVF_RXDID_LAST			= 63,
+};
+
+enum iavf_rx_flex_desc_status_error_0_bits {
+	/* Note: These are predefined bit offsets */
+	IAVF_RX_FLEX_DESC_STATUS0_DD_S = 0,
+	IAVF_RX_FLEX_DESC_STATUS0_EOF_S,
+	IAVF_RX_FLEX_DESC_STATUS0_HBO_S,
+	IAVF_RX_FLEX_DESC_STATUS0_L3L4P_S,
+	IAVF_RX_FLEX_DESC_STATUS0_XSUM_IPE_S,
+	IAVF_RX_FLEX_DESC_STATUS0_XSUM_L4E_S,
+	IAVF_RX_FLEX_DESC_STATUS0_XSUM_EIPE_S,
+	IAVF_RX_FLEX_DESC_STATUS0_XSUM_EUDPE_S,
+	IAVF_RX_FLEX_DESC_STATUS0_LPBK_S,
+	IAVF_RX_FLEX_DESC_STATUS0_IPV6EXADD_S,
+	IAVF_RX_FLEX_DESC_STATUS0_RXE_S,
+	IAVF_RX_FLEX_DESC_STATUS0_CRCP_S,
+	IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S,
+	IAVF_RX_FLEX_DESC_STATUS0_L2TAG1P_S,
+	IAVF_RX_FLEX_DESC_STATUS0_XTRMD0_VALID_S,
+	IAVF_RX_FLEX_DESC_STATUS0_XTRMD1_VALID_S,
+	IAVF_RX_FLEX_DESC_STATUS0_LAST /* this entry must be last!!! */
+};
+
+/* for iavf_32b_rx_flex_desc.ptype_flex_flags0 member */
+#define IAVF_RX_FLEX_DESC_PTYPE_M	(0x3FF) /* 10-bits */
+
+/* for iavf_32b_rx_flex_desc.pkt_len member */
+#define IAVF_RX_FLX_DESC_PKT_LEN_M	(0x3FFF) /* 14-bits */
+
 int iavf_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
