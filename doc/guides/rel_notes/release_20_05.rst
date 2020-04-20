@@ -56,6 +56,13 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **New synchronization modes for rte_ring.**
+
+  Introduced new optional MT synchronization mode for rte_ring:
+  Relaxed Tail Sync (RTS). With this mode selected, rte_ring shows
+  significant improvements for average enqueue/dequeue times on
+  overcommitted systems.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:

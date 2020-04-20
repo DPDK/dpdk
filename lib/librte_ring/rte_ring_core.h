@@ -57,6 +57,9 @@ enum rte_ring_queue_behavior {
 enum rte_ring_sync_type {
 	RTE_RING_SYNC_MT,     /**< multi-thread safe (default mode) */
 	RTE_RING_SYNC_ST,     /**< single thread only */
+#ifdef ALLOW_EXPERIMENTAL_API
+	RTE_RING_SYNC_MT_RTS, /**< multi-thread relaxed tail sync */
+#endif
 };
 
 /**
@@ -74,6 +77,22 @@ struct rte_ring_headtail {
 		/** deprecated -  True if single prod/cons */
 		uint32_t single;
 	};
+};
+
+union __rte_ring_rts_poscnt {
+	/** raw 8B value to read/write *cnt* and *pos* as one atomic op */
+	uint64_t raw __rte_aligned(8);
+	struct {
+		uint32_t cnt; /**< head/tail reference counter */
+		uint32_t pos; /**< head/tail position */
+	} val;
+};
+
+struct rte_ring_rts_headtail {
+	volatile union __rte_ring_rts_poscnt tail;
+	enum rte_ring_sync_type sync_type;  /**< sync type of prod/cons */
+	uint32_t htd_max;   /**< max allowed distance between head/tail */
+	volatile union __rte_ring_rts_poscnt head;
 };
 
 /**
@@ -104,11 +123,21 @@ struct rte_ring {
 	char pad0 __rte_cache_aligned; /**< empty cache line */
 
 	/** Ring producer status. */
-	struct rte_ring_headtail prod __rte_cache_aligned;
+	RTE_STD_C11
+	union {
+		struct rte_ring_headtail prod;
+		struct rte_ring_rts_headtail rts_prod;
+	}  __rte_cache_aligned;
+
 	char pad1 __rte_cache_aligned; /**< empty cache line */
 
 	/** Ring consumer status. */
-	struct rte_ring_headtail cons __rte_cache_aligned;
+	RTE_STD_C11
+	union {
+		struct rte_ring_headtail cons;
+		struct rte_ring_rts_headtail rts_cons;
+	}  __rte_cache_aligned;
+
 	char pad2 __rte_cache_aligned; /**< empty cache line */
 };
 
@@ -124,6 +153,9 @@ struct rte_ring {
  */
 #define RING_F_EXACT_SZ 0x0004
 #define RTE_RING_SZ_MASK  (0x7fffffffU) /**< Ring size mask */
+
+#define RING_F_MP_RTS_ENQ 0x0008 /**< The default enqueue is "MP RTS". */
+#define RING_F_MC_RTS_DEQ 0x0010 /**< The default dequeue is "MC RTS". */
 
 #ifdef __cplusplus
 }

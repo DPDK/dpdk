@@ -19,6 +19,8 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_RING)-include := rte_ring.h \
 					rte_ring_core.h \
 					rte_ring_elem.h \
 					rte_ring_generic.h \
-					rte_ring_c11_mem.h
+					rte_ring_c11_mem.h \
+					rte_ring_rts.h \
+					rte_ring_rts_c11_mem.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

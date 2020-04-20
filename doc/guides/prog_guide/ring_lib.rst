@@ -374,6 +374,22 @@ SP/SC
 Single-producer (/single-consumer) mode. In this mode only one thread at a time
 is allowed to enqueue (/dequeue) objects to (/from) the ring.
 
+MP_RTS/MC_RTS
+~~~~~~~~~~~~~
+
+Multi-producer (/multi-consumer) with Relaxed Tail Sync (RTS) mode.
+The main difference from the original MP/MC algorithm is that
+tail value is increased not by every thread that finished enqueue/dequeue,
+but only by the last one.
+That allows threads to avoid spinning on ring tail value,
+leaving actual tail value change to the last thread at a given instance.
+That technique helps to avoid the Lock-Waiter-Preemption (LWP) problem on tail
+update and improves average enqueue/dequeue times on overcommitted systems.
+To achieve that RTS requires 2 64-bit CAS for each enqueue(/dequeue) operation:
+one for head update, second for tail update.
+In comparison the original MP/MC algorithm requires one 32-bit CAS
+for head update and waiting/spinning on tail value.
+
 References
 ----------
 

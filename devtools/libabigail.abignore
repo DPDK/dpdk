@@ -11,3 +11,10 @@
         type_kind = enum
         name = rte_crypto_asym_xform_type
         changed_enumerators = RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
+; Ignore updates of ring prod/cons
+[suppress_type]
+        type_kind = struct
+        name = rte_ring
+[suppress_type]
+        type_kind = struct
+        name = rte_event_ring
