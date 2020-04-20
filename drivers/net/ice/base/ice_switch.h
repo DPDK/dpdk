@@ -18,6 +18,7 @@
 /* Switch Profile IDs for Profile related switch rules */
 #define ICE_PROFID_IPV6_ESP		72
 #define ICE_PROFID_IPV6_AH		74
+#define ICE_PROFID_IPV4_NAT_T		75
 #define ICE_PROFID_IPV6_NAT_T		76
 #define ICE_PROFID_MAC_IPV6_L2TPV3	78
 #define ICE_PROFID_IPV4_PFCP_NODE	79

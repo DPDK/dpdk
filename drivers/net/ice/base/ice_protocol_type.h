@@ -50,6 +50,7 @@ enum ice_protocol_type {
 	ICE_L2TPV3,
 	ICE_ESP,
 	ICE_AH,
+	ICE_NAT_T,
 	ICE_PROTOCOL_LAST
 };
 
@@ -65,6 +66,12 @@ enum ice_sw_tunnel_type {
 			 */
 	ICE_SW_TUN_GTP,
 	ICE_SW_TUN_PPPOE,
+	ICE_SW_TUN_IPV4_ESP,
+	ICE_SW_TUN_IPV6_ESP,
+	ICE_SW_TUN_IPV4_AH,
+	ICE_SW_TUN_IPV6_AH,
+	ICE_SW_TUN_IPV4_NAT_T,
+	ICE_SW_TUN_IPV6_NAT_T,
 	ICE_SW_TUN_PROFID_IPV6_ESP,
 	ICE_SW_TUN_PROFID_IPV6_AH,
 	ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3,
@@ -287,6 +294,10 @@ struct ice_ah_hdr {
 	__be32 seq;
 };
 
+struct ice_nat_t_hdr {
+	struct ice_esp_hdr esp;
+};
+
 struct ice_nvgre {
 	__be16 flags;
 	__be16 protocol;
@@ -309,6 +320,7 @@ union ice_prot_hdr {
 	struct ice_l2tpv3_sess_hdr l2tpv3_sess_hdr;
 	struct ice_esp_hdr esp_hdr;
 	struct ice_ah_hdr ah_hdr;
+	struct ice_nat_t_hdr nat_t_hdr;
 };
 
 /* This is mapping table entry that maps every word within a given protocol

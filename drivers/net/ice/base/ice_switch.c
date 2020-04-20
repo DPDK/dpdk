@@ -590,6 +590,176 @@ static const u8 dummy_pppoe_ipv6_packet[] = {
 	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
 };
 
+static const struct ice_dummy_pkt_offsets dummy_ipv4_esp_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_ESP,			34 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv4_esp_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x1c, /* ICE_IPV4_IL 14 */
+	0x00, 0x00, 0x40, 0x00,
+	0x40, 0x32, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_ESP 34 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
+static const struct ice_dummy_pkt_offsets dummy_ipv6_esp_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV6_OFOS,	14 },
+	{ ICE_ESP,			54 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv6_esp_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x86, 0xDD,
+
+	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 14 */
+	0x00, 0x08, 0x32, 0x00, /* Next header ESP */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_ESP 54 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
+static const struct ice_dummy_pkt_offsets dummy_ipv4_ah_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_AH,			34 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv4_ah_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x20, /* ICE_IPV4_IL 14 */
+	0x00, 0x00, 0x40, 0x00,
+	0x40, 0x33, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_AH 34 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
+static const struct ice_dummy_pkt_offsets dummy_ipv6_ah_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV6_OFOS,	14 },
+	{ ICE_AH,			54 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv6_ah_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x86, 0xDD,
+
+	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 14 */
+	0x00, 0x0c, 0x33, 0x00, /* Next header AH */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_AH 54 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
+static const struct ice_dummy_pkt_offsets dummy_ipv4_nat_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV4_OFOS,	14 },
+	{ ICE_UDP_ILOS,		34 },
+	{ ICE_NAT_T,		42 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv4_nat_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x08, 0x00,
+
+	0x45, 0x00, 0x00, 0x24, /* ICE_IPV4_IL 14 */
+	0x00, 0x00, 0x40, 0x00,
+	0x40, 0x11, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x11, 0x94, /* ICE_NAT_T 34 */
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
+static const struct ice_dummy_pkt_offsets dummy_ipv6_nat_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_IPV6_OFOS,	14 },
+	{ ICE_UDP_ILOS,		54 },
+	{ ICE_NAT_T,		62 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_ipv6_nat_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x86, 0xDD,
+
+	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 14 */
+	0x00, 0x10, 0x11, 0x00, /* Next header NAT_T */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x11, 0x94, /* ICE_NAT_T 54 */
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+
+};
+
 /* this is a recipe to profile association bitmap */
 static ice_declare_bitmap(recipe_to_profile[ICE_MAX_NUM_RECIPES],
 			  ICE_MAX_NUM_PROFILES);
@@ -4947,6 +5117,11 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[ICE_PROTOCOL_LAST] = {
 	{ ICE_NVGRE,		{ 0, 2, 4, 6 } },
 	{ ICE_GTP,		{ 8, 10, 12, 14, 16, 18, 20 } },
 	{ ICE_PPPOE,		{ 0, 2, 4, 6 } },
+	{ ICE_PFCP,		{ 8, 10, 12, 14, 16, 18, 20, 22 } },
+	{ ICE_L2TPV3,		{ 0, 2, 4, 6, 8, 10 } },
+	{ ICE_ESP,		{ 0, 2, 4, 6 } },
+	{ ICE_AH,		{ 0, 2, 4, 6, 8, 10 } },
+	{ ICE_NAT_T,		{ 8, 10, 12, 14 } },
 };
 
 /* The following table describes preferred grouping of recipes.
@@ -4974,6 +5149,11 @@ static const struct ice_protocol_entry ice_prot_id_tbl[ICE_PROTOCOL_LAST] = {
 	{ ICE_NVGRE,		ICE_GRE_OF_HW },
 	{ ICE_GTP,		ICE_UDP_OF_HW },
 	{ ICE_PPPOE,		ICE_PPPOE_HW },
+	{ ICE_PFCP,		ICE_UDP_ILOS_HW },
+	{ ICE_L2TPV3,		ICE_L2TPV3_HW },
+	{ ICE_ESP,		ICE_ESP_HW },
+	{ ICE_AH,		ICE_AH_HW },
+	{ ICE_NAT_T,		ICE_UDP_ILOS_HW },
 };
 
 /**
@@ -5772,6 +5952,7 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		ice_set_bit(ICE_PROFID_MAC_IPV6_L2TPV3, bm);
 		return;
 	case ICE_SW_TUN_PROFID_IPV6_NAT_T:
+	case ICE_SW_TUN_IPV6_NAT_T:
 		ice_set_bit(ICE_PROFID_IPV6_NAT_T, bm);
 		return;
 	case ICE_SW_TUN_PROFID_IPV4_PFCP_NODE:
@@ -5785,6 +5966,9 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		return;
 	case ICE_SW_TUN_PROFID_IPV6_PFCP_SESSION:
 		ice_set_bit(ICE_PROFID_IPV6_PFCP_SESSION, bm);
+		return;
+	case ICE_SW_TUN_IPV4_NAT_T:
+		ice_set_bit(ICE_PROFID_IPV4_NAT_T, bm);
 		return;
 	case ICE_SW_TUN_AND_NON_TUN:
 	default:
@@ -6082,6 +6266,48 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			ipv6 = true;
 	}
 
+	if (tun_type == ICE_SW_TUN_IPV4_ESP) {
+		*pkt = dummy_ipv4_esp_pkt;
+		*pkt_len = sizeof(dummy_ipv4_esp_pkt);
+		*offsets = dummy_ipv4_esp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_ESP) {
+		*pkt = dummy_ipv6_esp_pkt;
+		*pkt_len = sizeof(dummy_ipv6_esp_pkt);
+		*offsets = dummy_ipv6_esp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV4_AH) {
+		*pkt = dummy_ipv4_ah_pkt;
+		*pkt_len = sizeof(dummy_ipv4_ah_pkt);
+		*offsets = dummy_ipv4_ah_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_AH) {
+		*pkt = dummy_ipv6_ah_pkt;
+		*pkt_len = sizeof(dummy_ipv6_ah_pkt);
+		*offsets = dummy_ipv6_ah_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV4_NAT_T) {
+		*pkt = dummy_ipv4_nat_pkt;
+		*pkt_len = sizeof(dummy_ipv4_nat_pkt);
+		*offsets = dummy_ipv4_nat_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_IPV6_NAT_T) {
+		*pkt = dummy_ipv6_nat_pkt;
+		*pkt_len = sizeof(dummy_ipv6_nat_pkt);
+		*offsets = dummy_ipv6_nat_packet_offsets;
+		return;
+	}
+
 	if (tun_type == ICE_SW_TUN_GTP) {
 		*pkt = dummy_udp_gtp_packet;
 		*pkt_len = sizeof(dummy_udp_gtp_packet);
@@ -6270,6 +6496,15 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			break;
 		case ICE_PPPOE:
 			len = sizeof(struct ice_pppoe_hdr);
+			break;
+		case ICE_ESP:
+			len = sizeof(struct ice_esp_hdr);
+			break;
+		case ICE_NAT_T:
+			len = sizeof(struct ice_nat_t_hdr);
+			break;
+		case ICE_AH:
+			len = sizeof(struct ice_ah_hdr);
 			break;
 		default:
 			return ICE_ERR_PARAM;
