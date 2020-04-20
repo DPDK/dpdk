@@ -78,6 +78,7 @@ SRCS-y += test_rand_perf.c
 
 SRCS-y += test_ring.c
 SRCS-y += test_ring_mpmc_stress.c
+SRCS-y += test_ring_hts_stress.c
 SRCS-y += test_ring_perf.c
 SRCS-y += test_ring_rts_stress.c
 SRCS-y += test_ring_stress.c
