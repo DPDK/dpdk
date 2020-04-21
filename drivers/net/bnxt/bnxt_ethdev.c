@@ -155,6 +155,7 @@ static int bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev);
 static void bnxt_cancel_fw_health_check(struct bnxt *bp);
 static int bnxt_restore_vlan_filters(struct bnxt *bp);
 static void bnxt_dev_recover(void *arg);
+static void bnxt_free_error_recovery_info(struct bnxt *bp);
 
 int is_bnxt_in_error(struct bnxt *bp)
 {
@@ -4967,6 +4968,89 @@ bnxt_get_fw_func_id(uint16_t port)
 	return bp->fw_fid;
 }
 
+static void bnxt_alloc_error_recovery_info(struct bnxt *bp)
+{
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+
+	if (info) {
+		if (!(bp->fw_cap & BNXT_FW_CAP_HCOMM_FW_STATUS))
+			memset(info, 0, sizeof(*info));
+		return;
+	}
+
+	if (!(bp->fw_cap & BNXT_FW_CAP_ERROR_RECOVERY))
+		return;
+
+	info = rte_zmalloc("bnxt_hwrm_error_recovery_qcfg",
+			   sizeof(*info), 0);
+	if (!info)
+		bp->fw_cap &= ~BNXT_FW_CAP_ERROR_RECOVERY;
+
+	bp->recovery_info = info;
+}
+
+static void bnxt_check_fw_status(struct bnxt *bp)
+{
+	uint32_t fw_status;
+
+	if (!(bp->recovery_info &&
+	      (bp->fw_cap & BNXT_FW_CAP_HCOMM_FW_STATUS)))
+		return;
+
+	fw_status = bnxt_read_fw_status_reg(bp, BNXT_FW_STATUS_REG);
+	if (fw_status != BNXT_FW_STATUS_HEALTHY)
+		PMD_DRV_LOG(ERR, "Firmware not responding, status: %#x\n",
+			    fw_status);
+}
+
+static int bnxt_map_hcomm_fw_status_reg(struct bnxt *bp)
+{
+	struct bnxt_error_recovery_info *info = bp->recovery_info;
+	uint32_t status_loc;
+	uint32_t sig_ver;
+
+	rte_write32(HCOMM_STATUS_STRUCT_LOC, (uint8_t *)bp->bar0 +
+		    BNXT_GRCPF_REG_WINDOW_BASE_OUT + 4);
+	sig_ver = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				   BNXT_GRCP_WINDOW_2_BASE +
+				   offsetof(struct hcomm_status,
+					    sig_ver)));
+	/* If the signature is absent, then FW does not support this feature */
+	if ((sig_ver & HCOMM_STATUS_SIGNATURE_MASK) !=
+	    HCOMM_STATUS_SIGNATURE_VAL)
+		return 0;
+
+	if (!info) {
+		info = rte_zmalloc("bnxt_hwrm_error_recovery_qcfg",
+				   sizeof(*info), 0);
+		if (!info)
+			return -ENOMEM;
+		bp->recovery_info = info;
+	} else {
+		memset(info, 0, sizeof(*info));
+	}
+
+	status_loc = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
+				      BNXT_GRCP_WINDOW_2_BASE +
+				      offsetof(struct hcomm_status,
+					       fw_status_loc)));
+
+	/* Only pre-map the FW health status GRC register */
+	if (BNXT_FW_STATUS_REG_TYPE(status_loc) != BNXT_FW_STATUS_REG_TYPE_GRC)
+		return 0;
+
+	info->status_regs[BNXT_FW_STATUS_REG] = status_loc;
+	info->mapped_status_regs[BNXT_FW_STATUS_REG] =
+		BNXT_GRCP_WINDOW_2_BASE + (status_loc & BNXT_GRCP_OFFSET_MASK);
+
+	rte_write32((status_loc & BNXT_GRCP_BASE_MASK), (uint8_t *)bp->bar0 +
+		    BNXT_GRCPF_REG_WINDOW_BASE_OUT + 4);
+
+	bp->fw_cap |= BNXT_FW_CAP_HCOMM_FW_STATUS;
+
+	return 0;
+}
+
 static int bnxt_init_fw(struct bnxt *bp)
 {
 	uint16_t mtu;
@@ -4974,9 +5058,15 @@ static int bnxt_init_fw(struct bnxt *bp)
 
 	bp->fw_cap = 0;
 
-	rc = bnxt_hwrm_ver_get(bp, DFLT_HWRM_CMD_TIMEOUT);
+	rc = bnxt_map_hcomm_fw_status_reg(bp);
 	if (rc)
 		return rc;
+
+	rc = bnxt_hwrm_ver_get(bp, DFLT_HWRM_CMD_TIMEOUT);
+	if (rc) {
+		bnxt_check_fw_status(bp);
+		return rc;
+	}
 
 	rc = bnxt_hwrm_func_reset(bp);
 	if (rc)
@@ -5008,6 +5098,7 @@ static int bnxt_init_fw(struct bnxt *bp)
 	if (rc)
 		return rc;
 
+	bnxt_alloc_error_recovery_info(bp);
 	/* Get the adapter error recovery support info */
 	rc = bnxt_hwrm_error_recovery_qcfg(bp);
 	if (rc)
@@ -5344,6 +5435,14 @@ static void bnxt_uninit_ctx_mem(struct bnxt *bp)
 }
 
 static void
+bnxt_free_error_recovery_info(struct bnxt *bp)
+{
+	rte_free(bp->recovery_info);
+	bp->recovery_info = NULL;
+	bp->fw_cap &= ~BNXT_FW_CAP_ERROR_RECOVERY;
+}
+
+static void
 bnxt_uninit_locks(struct bnxt *bp)
 {
 	pthread_mutex_destroy(&bp->flow_lock);
@@ -5363,11 +5462,7 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 	bnxt_free_ctx_mem(bp);
 	if (!reconfig_dev) {
 		bnxt_free_hwrm_resources(bp);
-
-		if (bp->recovery_info != NULL) {
-			rte_free(bp->recovery_info);
-			bp->recovery_info = NULL;
-		}
+		bnxt_free_error_recovery_info(bp);
 	}
 
 	bnxt_uninit_ctx_mem(bp);

@@ -38622,4 +38622,53 @@ struct hwrm_cfa_counter_qstats_output {
 	uint8_t	valid;
 } __rte_packed;
 
+/*
+ * This structure is fixed at the beginning of the ChiMP SRAM (GRC
+ * offset: 0x31001F0). Host software is expected to read from this
+ * location for a defined signature. If it exists, the software can
+ * assume the presence of this structure and the validity of the
+ * FW_STATUS location in the next field.
+ */
+/* hcomm_status (size:64b/8B) */
+struct hcomm_status {
+	uint32_t	sig_ver;
+	/*
+	 * This field defines the version of the structure. The latest
+	 * version value is 1.
+	 */
+	#define HCOMM_STATUS_VER_MASK		UINT32_C(0xff)
+	#define HCOMM_STATUS_VER_SFT		0
+	#define HCOMM_STATUS_VER_LATEST		UINT32_C(0x1)
+	#define HCOMM_STATUS_VER_LAST		HCOMM_STATUS_VER_LATEST
+	/*
+	 * This field is to store the signature value to indicate the
+	 * presence of the structure.
+	 */
+	#define HCOMM_STATUS_SIGNATURE_MASK	UINT32_C(0xffffff00)
+	#define HCOMM_STATUS_SIGNATURE_SFT	8
+	#define HCOMM_STATUS_SIGNATURE_VAL	(UINT32_C(0x484353) << 8)
+	#define HCOMM_STATUS_SIGNATURE_LAST	HCOMM_STATUS_SIGNATURE_VAL
+	uint32_t	fw_status_loc;
+	#define HCOMM_STATUS_TRUE_ADDR_SPACE_MASK	UINT32_C(0x3)
+	#define HCOMM_STATUS_TRUE_ADDR_SPACE_SFT	0
+	/* PCIE configuration space */
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_PCIE_CFG	UINT32_C(0x0)
+	/* GRC space */
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_GRC	UINT32_C(0x1)
+	/* BAR0 space */
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR0	UINT32_C(0x2)
+	/* BAR1 space */
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR1	UINT32_C(0x3)
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_LAST	\
+		HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR1
+	/*
+	 * This offset where the fw_status register is located. The value
+	 * is generally 4-byte aligned.
+	 */
+	#define HCOMM_STATUS_TRUE_OFFSET_MASK		UINT32_C(0xfffffffc)
+	#define HCOMM_STATUS_TRUE_OFFSET_SFT		2
+} __rte_packed;
+/* This is the GRC offset where the hcomm_status struct resides. */
+#define HCOMM_STATUS_STRUCT_LOC		0x31001F0UL
+
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */

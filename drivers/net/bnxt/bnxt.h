@@ -507,6 +507,10 @@ struct bnxt_mark_info {
 #define BNXT_GRCP_WINDOW_2_BASE		0x2000
 #define BNXT_GRCP_WINDOW_3_BASE		0x3000
 
+#define BNXT_GRCP_BASE_MASK		0xfffff000
+#define BNXT_GRCP_OFFSET_MASK		0x00000ffc
+
+#define BNXT_FW_STATUS_HEALTHY		0x8000
 #define BNXT_FW_STATUS_SHUTDOWN		0x100000
 
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
@@ -564,6 +568,7 @@ struct bnxt {
 #define BNXT_FW_CAP_ERR_RECOVER_RELOAD	BIT(3)
 #define BNXT_FW_CAP_ADV_FLOW_MGMT	BIT(5)
 #define BNXT_FW_CAP_ADV_FLOW_COUNTERS	BIT(6)
+#define BNXT_FW_CAP_HCOMM_FW_STATUS	BIT(7)
 
 	uint32_t		flow_flags;
 #define BNXT_FLOW_FLAG_L2_HDR_SRC_FILTER_EN	BIT(0)

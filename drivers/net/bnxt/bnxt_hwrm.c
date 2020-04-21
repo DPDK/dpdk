@@ -5076,16 +5076,6 @@ int bnxt_hwrm_error_recovery_qcfg(struct bnxt *bp)
 	if (!(bp->fw_cap & BNXT_FW_CAP_ERROR_RECOVERY))
 		return 0;
 
-	if (!info) {
-		info = rte_zmalloc("bnxt_hwrm_error_recovery_qcfg",
-				   sizeof(*info), 0);
-		bp->recovery_info = info;
-		if (info == NULL)
-			return -ENOMEM;
-	} else {
-		memset(info, 0, sizeof(*info));
-	}
-
 	HWRM_PREP(&req, HWRM_ERROR_RECOVERY_QCFG, BNXT_USE_CHIMP_MB);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
