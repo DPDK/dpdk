@@ -9,7 +9,6 @@
 #define HNS3_MAC_CMD_NUM		21
 #define HNS3_RD_FIRST_STATS_NUM		2
 #define HNS3_RD_OTHER_STATS_NUM		4
-#define HNS3_VALUES_BYTES		8
 
 /* TQP stats */
 struct hns3_tqp_stats {
@@ -137,7 +136,7 @@ int hns3_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats);
 int hns3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			unsigned int n);
 int hns3_dev_xstats_reset(struct rte_eth_dev *dev);
-int hns3_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+int hns3_dev_xstats_get_names(struct rte_eth_dev *dev,
 			      struct rte_eth_xstat_name *xstats_names,
 			      __rte_unused unsigned int size);
 int hns3_dev_xstats_get_by_id(struct rte_eth_dev *dev,
