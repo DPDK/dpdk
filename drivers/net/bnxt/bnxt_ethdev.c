@@ -1113,10 +1113,10 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	return 0;
 
 error:
-	bnxt_hwrm_if_change(bp, false);
 	bnxt_shutdown_nic(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
+	bnxt_hwrm_if_change(bp, false);
 	eth_dev->data->dev_started = 0;
 	return rc;
 }
