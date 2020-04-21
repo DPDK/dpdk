@@ -97,6 +97,7 @@ struct iavf_fdir_conf {
 	struct virtchnl_fdir_del del_fltr;
 	uint64_t input_set;
 	uint32_t flow_id;
+	uint32_t mark_flag;
 };
 
 struct iavf_fdir_info {

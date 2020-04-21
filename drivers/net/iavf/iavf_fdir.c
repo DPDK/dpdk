@@ -18,6 +18,7 @@
 #include "iavf.h"
 #include "iavf_generic_flow.h"
 #include "virtchnl.h"
+#include "iavf_rxtx.h"
 
 #define IAVF_FDIR_MAX_QREGION_SIZE 128
 
@@ -170,6 +171,9 @@ iavf_fdir_create(struct iavf_adapter *ad,
 		goto free_entry;
 	}
 
+	if (filter->mark_flag == 1)
+		iavf_fdir_rx_proc_enable(ad, 1);
+
 	rte_memcpy(rule, filter, sizeof(*rule));
 	flow->rule = rule;
 
@@ -197,6 +201,9 @@ iavf_fdir_destroy(struct iavf_adapter *ad,
 				"Failed to delete filter rule.");
 		return -rte_errno;
 	}
+
+	if (filter->mark_flag == 1)
+		iavf_fdir_rx_proc_enable(ad, 0);
 
 	flow->rule = NULL;
 	rte_free(filter);
@@ -296,7 +303,9 @@ iavf_fdir_parse_action(struct iavf_adapter *ad,
 			struct iavf_fdir_conf *filter)
 {
 	const struct rte_flow_action_queue *act_q;
+	const struct rte_flow_action_mark *mark_spec = NULL;
 	uint32_t dest_num = 0;
+	uint32_t mark_num = 0;
 	int ret;
 
 	int number = 0;
@@ -362,6 +371,19 @@ iavf_fdir_parse_action(struct iavf_adapter *ad,
 			filter->add_fltr.rule_cfg.action_set.count = ++number;
 			break;
 
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			mark_num++;
+
+			filter->mark_flag = 1;
+			mark_spec = actions->conf;
+			filter_action = &filter->add_fltr.rule_cfg.action_set.actions[number];
+
+			filter_action->type = VIRTCHNL_ACTION_MARK;
+			filter_action->act_conf.mark_id = mark_spec->id;
+
+			filter->add_fltr.rule_cfg.action_set.count = ++number;
+			break;
+
 		default:
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, actions,
@@ -377,11 +399,32 @@ iavf_fdir_parse_action(struct iavf_adapter *ad,
 		return -rte_errno;
 	}
 
-	if (dest_num == 0 || dest_num >= 2) {
+	if (dest_num >= 2) {
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION, actions,
 			"Unsupported action combination");
 		return -rte_errno;
+	}
+
+	if (mark_num >= 2) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION, actions,
+			"Too many mark actions");
+		return -rte_errno;
+	}
+
+	if (dest_num + mark_num == 0) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION, actions,
+			"Empty action");
+		return -rte_errno;
+	}
+
+	/* Mark only is equal to mark + passthru. */
+	if (dest_num == 0) {
+		filter_action = &filter->add_fltr.rule_cfg.action_set.actions[number];
+		filter_action->type = VIRTCHNL_ACTION_PASSTHRU;
+		filter->add_fltr.rule_cfg.action_set.count = ++number;
 	}
 
 	return 0;
