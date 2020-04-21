@@ -101,6 +101,12 @@ struct rte_flow_ops {
 		(struct rte_eth_dev *dev,
 		 FILE *file,
 		 struct rte_flow_error *error);
+	/** See rte_flow_get_aged_flows() */
+	int (*get_aged_flows)
+		(struct rte_eth_dev *dev,
+		 void **context,
+		 uint32_t nb_contexts,
+		 struct rte_flow_error *err);
 };
 
 /**

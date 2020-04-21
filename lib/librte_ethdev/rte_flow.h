@@ -2081,6 +2081,16 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_set_dscp.
 	 */
 	RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP,
+
+	/**
+	 * Report as aged flow if timeout passed without any matching on the
+	 * flow.
+	 *
+	 * See struct rte_flow_action_age.
+	 * See function rte_flow_get_aged_flows
+	 * see enum RTE_ETH_EVENT_FLOW_AGED
+	 */
+	RTE_FLOW_ACTION_TYPE_AGE,
 };
 
 /**
@@ -2122,6 +2132,25 @@ struct rte_flow_action_queue {
 	uint16_t index; /**< Queue index to use. */
 };
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_AGE
+ *
+ * Report flow as aged-out if timeout passed without any matching
+ * on the flow. RTE_ETH_EVENT_FLOW_AGED event is triggered when a
+ * port detects new aged-out flows.
+ *
+ * The flow context and the flow handle will be reported by the
+ * rte_flow_get_aged_flows API.
+ */
+struct rte_flow_action_age {
+	uint32_t timeout:24; /**< Time in seconds. */
+	uint32_t reserved:8; /**< Reserved, must be zero. */
+	void *context;
+		/**< The user flow context, NULL means the rte_flow pointer. */
+};
 
 /**
  * @warning
@@ -3253,6 +3282,39 @@ rte_flow_conv(enum rte_flow_conv_op op,
 	      size_t size,
 	      const void *src,
 	      struct rte_flow_error *error);
+
+/**
+ * Get aged-out flows of a given port.
+ *
+ * RTE_ETH_EVENT_FLOW_AGED event will be triggered when at least one new aged
+ * out flow was detected after the last call to rte_flow_get_aged_flows.
+ * This function can be called to get the aged flows usynchronously from the
+ * event callback or synchronously regardless the event.
+ * This is not safe to call rte_flow_get_aged_flows function with other flow
+ * functions from multiple threads simultaneously.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param[in, out] contexts
+ *   The address of an array of pointers to the aged-out flows contexts.
+ * @param[in] nb_contexts
+ *   The length of context array pointers.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   if nb_contexts is 0, return the amount of all aged contexts.
+ *   if nb_contexts is not 0 , return the amount of aged flows reported
+ *   in the context array, otherwise negative errno value.
+ *
+ * @see rte_flow_action_age
+ * @see RTE_ETH_EVENT_FLOW_AGED
+ */
+__rte_experimental
+int
+rte_flow_get_aged_flows(uint16_t port_id, void **contexts,
+			uint32_t nb_contexts, struct rte_flow_error *error);
 
 #ifdef __cplusplus
 }

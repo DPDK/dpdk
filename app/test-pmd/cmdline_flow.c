@@ -343,6 +343,8 @@ enum index {
 	ACTION_SET_IPV4_DSCP_VALUE,
 	ACTION_SET_IPV6_DSCP,
 	ACTION_SET_IPV6_DSCP_VALUE,
+	ACTION_AGE,
+	ACTION_AGE_TIMEOUT,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -1145,6 +1147,7 @@ static const enum index next_action[] = {
 	ACTION_SET_META,
 	ACTION_SET_IPV4_DSCP,
 	ACTION_SET_IPV6_DSCP,
+	ACTION_AGE,
 	ZERO,
 };
 
@@ -1366,6 +1369,13 @@ static const enum index action_set_ipv4_dscp[] = {
 
 static const enum index action_set_ipv6_dscp[] = {
 	ACTION_SET_IPV6_DSCP_VALUE,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_age[] = {
+	ACTION_AGE,
+	ACTION_AGE_TIMEOUT,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -3692,6 +3702,22 @@ static const struct token token_list[] = {
 		.next = NEXT(action_set_ipv6_dscp, NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY
 			     (struct rte_flow_action_set_dscp, dscp)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_AGE] = {
+		.name = "age",
+		.help = "set a specific metadata header",
+		.next = NEXT(action_age),
+		.priv = PRIV_ACTION(AGE,
+			sizeof(struct rte_flow_action_age)),
+		.call = parse_vc,
+	},
+	[ACTION_AGE_TIMEOUT] = {
+		.name = "timeout",
+		.help = "flow age timeout value",
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_action_age,
+					   timeout, 24)),
+		.next = NEXT(action_age, NEXT_ENTRY(UNSIGNED)),
 		.call = parse_vc_conf,
 	},
 };

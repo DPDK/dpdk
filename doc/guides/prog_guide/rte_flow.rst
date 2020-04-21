@@ -2616,6 +2616,28 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
    | ``dscp``  | DSCP in low 6 bits, rest ignore |
    +-----------+---------------------------------+
 
+Action: ``AGE``
+^^^^^^^^^^^^^^^
+
+Set ageing timeout configuration to a flow.
+
+Event RTE_ETH_EVENT_FLOW_AGED will be reported if
+timeout passed without any matching on the flow.
+
+.. _table_rte_flow_action_age:
+
+.. table:: AGE
+
+   +--------------+---------------------------------+
+   | Field        | Value                           |
+   +==============+=================================+
+   | ``timeout``  | 24 bits timeout value           |
+   +--------------+---------------------------------+
+   | ``reserved`` | 8 bits reserved, must be zero   |
+   +--------------+---------------------------------+
+   | ``context``  | user input flow context         |
+   +--------------+---------------------------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

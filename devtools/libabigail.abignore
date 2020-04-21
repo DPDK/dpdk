@@ -18,3 +18,9 @@
 [suppress_type]
         type_kind = struct
         name = rte_event_ring
+; Ignore ethdev event enum update because new event cannot be
+; received if not registered
+[suppress_type]
+        type_kind = enum
+        name = rte_eth_event_type
+        changed_enumerators = RTE_ETH_EVENT_MAX
