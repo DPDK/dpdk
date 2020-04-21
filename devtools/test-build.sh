@@ -262,6 +262,7 @@ for conf in $configs ; do
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
 		O=$(readlink -f $dir)/examples
 	unset RTE_TARGET
+	grep -q 'SHARED_LIB=n' $dir/.config || # skip ABI check with static libs
 	if [ -n "$DPDK_ABI_REF_VERSION" ]; then
 		abirefdir=${DPDK_ABI_REF_DIR:-reference}/$DPDK_ABI_REF_VERSION
 		if [ ! -d $abirefdir/$conf ]; then
