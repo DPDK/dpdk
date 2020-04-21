@@ -1092,6 +1092,7 @@ vfio_get_default_container_fd(void)
 	struct rte_mp_reply mp_reply = {0};
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
+	int container_fd;
 
 	if (default_vfio_cfg->vfio_enabled)
 		return default_vfio_cfg->vfio_container_fd;
@@ -1114,8 +1115,9 @@ vfio_get_default_container_fd(void)
 		mp_rep = &mp_reply.msgs[0];
 		p = (struct vfio_mp_param *)mp_rep->param;
 		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
+			container_fd = mp_rep->fds[0];
 			free(mp_reply.msgs);
-			return mp_rep->fds[0];
+			return container_fd;
 		}
 	}
 
