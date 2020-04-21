@@ -1108,6 +1108,8 @@ flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
  *   Pointer to the list of actions.
  * @param[in] external
  *   This flow rule is created by request external to PMD.
+ * @param[in] hairpin
+ *   Number of hairpin TX actions, 0 means classic flow.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -1120,6 +1122,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		    const struct rte_flow_item items[],
 		    const struct rte_flow_action actions[],
 		    bool external __rte_unused,
+		    int hairpin __rte_unused,
 		    struct rte_flow_error *error)
 {
 	int ret;

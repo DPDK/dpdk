@@ -434,6 +434,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		/* Fetch variable byte size mask from the array. */
 		mask = flow_dv_fetch_field((const uint8_t *)item->mask +
 					   field->offset, field->size);
+		MLX5_ASSERT(mask);
 		if (!mask) {
 			++field;
 			continue;
@@ -4490,7 +4491,9 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
  *   Pointer to error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   - 0 on success and non root table.
+ *   - 1 on success and root table.
+ *   - a negative errno value otherwise and rte_errno is set.
  */
 static int
 flow_dv_validate_attributes(struct rte_eth_dev *dev,
@@ -4500,6 +4503,7 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t priority_max = priv->config.flow_prio - 1;
+	int ret = 0;
 
 #ifndef HAVE_MLX5DV_DR
 	if (attributes->group)
@@ -4508,14 +4512,15 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 					  NULL,
 					  "groups are not supported");
 #else
-	uint32_t table;
-	int ret;
+	uint32_t table = 0;
 
 	ret = mlx5_flow_group_to_table(attributes, external,
 				       attributes->group, !!priv->fdb_def_rule,
 				       &table, error);
 	if (ret)
 		return ret;
+	if (!table)
+		ret = MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
 #endif
 	if (attributes->priority != MLX5_FLOW_PRIO_RSVD &&
 	    attributes->priority >= priority_max)
@@ -4545,7 +4550,7 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 					  "must specify exactly one of "
 					  "ingress or egress");
-	return 0;
+	return ret;
 }
 
 /**
@@ -4561,6 +4566,8 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
  *   Pointer to the list of actions.
  * @param[in] external
  *   This flow rule is created by request external to PMD.
+ * @param[in] hairpin
+ *   Number of hairpin TX actions, 0 means classic flow.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -4571,7 +4578,7 @@ static int
 flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
-		 bool external, struct rte_flow_error *error)
+		 bool external, int hairpin, struct rte_flow_error *error)
 {
 	int ret;
 	uint64_t action_flags = 0;
@@ -4618,12 +4625,15 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	struct mlx5_dev_config *dev_conf = &priv->config;
 	uint16_t queue_index = 0xFFFF;
 	const struct rte_flow_item_vlan *vlan_m = NULL;
+	int16_t rw_act_num = 0;
+	uint64_t is_root;
 
 	if (items == NULL)
 		return -1;
 	ret = flow_dv_validate_attributes(dev, attr, external, error);
 	if (ret < 0)
 		return ret;
+	is_root = (uint64_t)ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int type = items->type;
@@ -4900,6 +4910,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				action_flags |= MLX5_FLOW_ACTION_FLAG;
 				++actions_n;
 			}
+			rw_act_num += MLX5_ACT_NUM_SET_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			ret = flow_dv_validate_action_mark(dev, actions,
@@ -4918,6 +4929,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				action_flags |= MLX5_FLOW_ACTION_MARK;
 				++actions_n;
 			}
+			rw_act_num += MLX5_ACT_NUM_SET_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_META:
 			ret = flow_dv_validate_action_set_meta(dev, actions,
@@ -4929,6 +4941,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
 				++actions_n;
 			action_flags |= MLX5_FLOW_ACTION_SET_META;
+			rw_act_num += MLX5_ACT_NUM_SET_META;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TAG:
 			ret = flow_dv_validate_action_set_tag(dev, actions,
@@ -4940,6 +4953,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
 				++actions_n;
 			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
+			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			ret = mlx5_flow_validate_action_drop(action_flags,
@@ -5017,6 +5031,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			/* Count VID with push_vlan command. */
 			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
+			rw_act_num += MLX5_ACT_NUM_MDF_VID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
@@ -5078,8 +5093,15 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_SET_MAC_SRC ?
 						MLX5_FLOW_ACTION_SET_MAC_SRC :
 						MLX5_FLOW_ACTION_SET_MAC_DST;
+			/*
+			 * Even if the source and destination MAC addresses have
+			 * overlap in the header with 4B alignment, the convert
+			 * function will handle them separately and 4 SW actions
+			 * will be created. And 2 actions will be added each
+			 * time no matter how many bytes of address will be set.
+			 */
+			rw_act_num += MLX5_ACT_NUM_MDF_MAC;
 			break;
-
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
 			ret = flow_dv_validate_action_modify_ipv4(action_flags,
@@ -5095,6 +5117,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC ?
 						MLX5_FLOW_ACTION_SET_IPV4_SRC :
 						MLX5_FLOW_ACTION_SET_IPV4_DST;
+			rw_act_num += MLX5_ACT_NUM_MDF_IPV4;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
@@ -5117,6 +5140,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC ?
 						MLX5_FLOW_ACTION_SET_IPV6_SRC :
 						MLX5_FLOW_ACTION_SET_IPV6_DST;
+			rw_act_num += MLX5_ACT_NUM_MDF_IPV6;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
@@ -5133,6 +5157,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_SET_TP_SRC ?
 						MLX5_FLOW_ACTION_SET_TP_SRC :
 						MLX5_FLOW_ACTION_SET_TP_DST;
+			rw_act_num += MLX5_ACT_NUM_MDF_PORT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
 		case RTE_FLOW_ACTION_TYPE_SET_TTL:
@@ -5149,6 +5174,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_SET_TTL ?
 						MLX5_FLOW_ACTION_SET_TTL :
 						MLX5_FLOW_ACTION_DEC_TTL;
+			rw_act_num += MLX5_ACT_NUM_MDF_TTL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			ret = flow_dv_validate_action_jump(actions,
@@ -5176,6 +5202,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ ?
 						MLX5_FLOW_ACTION_INC_TCP_SEQ :
 						MLX5_FLOW_ACTION_DEC_TCP_SEQ;
+			rw_act_num += MLX5_ACT_NUM_MDF_TCPSEQ;
 			break;
 		case RTE_FLOW_ACTION_TYPE_INC_TCP_ACK:
 		case RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK:
@@ -5193,10 +5220,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_INC_TCP_ACK ?
 						MLX5_FLOW_ACTION_INC_TCP_ACK :
 						MLX5_FLOW_ACTION_DEC_TCP_ACK;
+			rw_act_num += MLX5_ACT_NUM_MDF_TCPACK;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_MARK:
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_TAG:
-		case MLX5_RTE_FLOW_ACTION_TYPE_MARK:
 		case MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG:
+			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_METER:
 			ret = mlx5_flow_validate_action_meter(dev,
@@ -5207,6 +5237,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_METER;
 			++actions_n;
+			/* Meter action will add one more TAG action. */
+			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
 			ret = flow_dv_validate_action_modify_ipv4_dscp
@@ -5220,6 +5252,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
 				++actions_n;
 			action_flags |= MLX5_FLOW_ACTION_SET_IPV4_DSCP;
+			rw_act_num += MLX5_ACT_NUM_SET_DSCP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
 			ret = flow_dv_validate_action_modify_ipv6_dscp
@@ -5233,6 +5266,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (!(action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS))
 				++actions_n;
 			action_flags |= MLX5_FLOW_ACTION_SET_IPV6_DSCP;
+			rw_act_num += MLX5_ACT_NUM_SET_DSCP;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -5304,6 +5338,21 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "encap is not supported"
 						  " for ingress traffic");
+	}
+	/* Hairpin flow will add one more TAG action. */
+	if (hairpin > 0)
+		rw_act_num += MLX5_ACT_NUM_SET_TAG;
+	/* extra metadata enabled: one more TAG action will be add. */
+	if (dev_conf->dv_flow_en &&
+	    dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+	    mlx5_flow_ext_mreg_supported(dev))
+		rw_act_num += MLX5_ACT_NUM_SET_TAG;
+	if ((uint32_t)rw_act_num >=
+			flow_dv_modify_hdr_action_max(dev, is_root)) {
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "too many header modify"
+					  " actions to support");
 	}
 	return 0;
 }

@@ -332,6 +332,23 @@ enum mlx5_feature_name {
 #define MLX5_ENCAPSULATION_DECISION_SIZE (sizeof(struct rte_flow_item_eth) + \
 					  sizeof(struct rte_flow_item_ipv4))
 
+/* Software header modify action numbers of a flow. */
+#define MLX5_ACT_NUM_MDF_IPV4		1
+#define MLX5_ACT_NUM_MDF_IPV6		4
+#define MLX5_ACT_NUM_MDF_MAC		2
+#define MLX5_ACT_NUM_MDF_VID		1
+#define MLX5_ACT_NUM_MDF_PORT		2
+#define MLX5_ACT_NUM_MDF_TTL		1
+#define MLX5_ACT_NUM_DEC_TTL		MLX5_ACT_NUM_MDF_TTL
+#define MLX5_ACT_NUM_MDF_TCPSEQ		1
+#define MLX5_ACT_NUM_MDF_TCPACK		1
+#define MLX5_ACT_NUM_SET_REG		1
+#define MLX5_ACT_NUM_SET_TAG		1
+#define MLX5_ACT_NUM_CPY_MREG		MLX5_ACT_NUM_SET_TAG
+#define MLX5_ACT_NUM_SET_MARK		MLX5_ACT_NUM_SET_TAG
+#define MLX5_ACT_NUM_SET_META		MLX5_ACT_NUM_SET_TAG
+#define MLX5_ACT_NUM_SET_DSCP		1
+
 enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MIN,
 	MLX5_FLOW_TYPE_DV,
@@ -812,6 +829,7 @@ typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_item items[],
 				    const struct rte_flow_action actions[],
 				    bool external,
+				    int hairpin,
 				    struct rte_flow_error *error);
 typedef struct mlx5_flow *(*mlx5_flow_prepare_t)
 	(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
