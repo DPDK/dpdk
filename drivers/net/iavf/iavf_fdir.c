@@ -92,6 +92,9 @@
 	IAVF_INSET_IPV6_SRC | IAVF_INSET_IPV6_DST | \
 	IAVF_INSET_ESP_SPI)
 
+#define IAVF_FDIR_INSET_PFCP (\
+	IAVF_INSET_PFCP_S_FIELD)
+
 static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_ethertype,		IAVF_FDIR_INSET_ETH,			IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4,			IAVF_FDIR_INSET_ETH_IPV4,		IAVF_INSET_NONE},
@@ -112,6 +115,8 @@ static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_eth_ipv6_ah,		IAVF_FDIR_INSET_AH,			IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4_udp_esp,		IAVF_FDIR_INSET_IPV4_NATT_ESP,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv6_udp_esp,		IAVF_FDIR_INSET_IPV6_NATT_ESP,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_pfcp,		IAVF_FDIR_INSET_PFCP,			IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv6_pfcp,		IAVF_FDIR_INSET_PFCP,			IAVF_INSET_NONE},
 };
 
 static struct iavf_flow_parser iavf_fdir_parser;
@@ -402,6 +407,7 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 	const struct rte_flow_item_l2tpv3oip *l2tpv3oip_spec, *l2tpv3oip_mask;
 	const struct rte_flow_item_esp *esp_spec, *esp_mask;
 	const struct rte_flow_item_ah *ah_spec, *ah_mask;
+	const struct rte_flow_item_pfcp *pfcp_spec, *pfcp_mask;
 	uint64_t input_set = IAVF_INSET_NONE;
 
 	enum rte_flow_item_type next_type;
@@ -813,6 +819,27 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 
 				rte_memcpy(hdr->buffer, ah_spec,
 					sizeof(*ah_spec));
+			}
+
+			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_PFCP:
+			pfcp_spec = item->spec;
+			pfcp_mask = item->mask;
+
+			hdr = &filter->add_fltr.rule_cfg.proto_hdrs.proto_hdr[layer];
+
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, PFCP);
+
+			if (pfcp_spec && pfcp_mask) {
+				if (pfcp_mask->s_field == UINT8_MAX) {
+					input_set |= IAVF_INSET_PFCP_S_FIELD;
+					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, PFCP, S_FIELD);
+				}
+
+				rte_memcpy(hdr->buffer, pfcp_spec,
+					sizeof(*pfcp_spec));
 			}
 
 			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
