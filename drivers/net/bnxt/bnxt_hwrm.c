@@ -3094,6 +3094,9 @@ int bnxt_hwrm_port_mac_qcfg(struct bnxt *bp)
 
 	bp->port_svif = BNXT_SVIF_INVALID;
 
+	if (!BNXT_PF(bp))
+		return 0;
+
 	HWRM_PREP(&req, HWRM_PORT_MAC_QCFG, BNXT_USE_CHIMP_MB);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
