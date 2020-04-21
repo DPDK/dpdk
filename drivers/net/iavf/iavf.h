@@ -92,6 +92,17 @@ TAILQ_HEAD(iavf_flow_list, rte_flow);
 struct iavf_flow_parser_node;
 TAILQ_HEAD(iavf_parser_list, iavf_flow_parser_node);
 
+struct iavf_fdir_conf {
+	struct virtchnl_fdir_add add_fltr;
+	struct virtchnl_fdir_del del_fltr;
+	uint64_t input_set;
+	uint32_t flow_id;
+};
+
+struct iavf_fdir_info {
+	struct iavf_fdir_conf conf;
+};
+
 /* TODO: is that correct to assume the max number to be 16 ?*/
 #define IAVF_MAX_MSIX_VECTORS   16
 
@@ -131,6 +142,8 @@ struct iavf_info {
 	rte_spinlock_t flow_ops_lock;
 	struct iavf_parser_list rss_parser_list;
 	struct iavf_parser_list dist_parser_list;
+
+	struct iavf_fdir_info fdir; /* flow director info */
 };
 
 #define IAVF_MAX_PKT_TYPE 1024
@@ -252,4 +265,8 @@ int iavf_config_promisc(struct iavf_adapter *adapter, bool enable_unicast,
 int iavf_add_del_eth_addr(struct iavf_adapter *adapter,
 			 struct rte_ether_addr *addr, bool add);
 int iavf_add_del_vlan(struct iavf_adapter *adapter, uint16_t vlanid, bool add);
+int iavf_fdir_add(struct iavf_adapter *adapter, struct iavf_fdir_conf *filter);
+int iavf_fdir_del(struct iavf_adapter *adapter, struct iavf_fdir_conf *filter);
+int iavf_fdir_check(struct iavf_adapter *adapter,
+		struct iavf_fdir_conf *filter);
 #endif /* _IAVF_ETHDEV_H_ */

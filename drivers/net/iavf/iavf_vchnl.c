@@ -340,7 +340,8 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 	 */
 
 	caps = IAVF_BASIC_OFFLOAD_CAPS | VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
-		VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC;
+		VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC |
+		VIRTCHNL_VF_OFFLOAD_FDIR_PF;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);
@@ -854,4 +855,155 @@ iavf_add_del_vlan(struct iavf_adapter *adapter, uint16_t vlanid, bool add)
 			    add ? "OP_ADD_VLAN" :  "OP_DEL_VLAN");
 
 	return err;
+}
+
+int
+iavf_fdir_add(struct iavf_adapter *adapter,
+	struct iavf_fdir_conf *filter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_fdir_add *fdir_ret;
+
+	struct iavf_cmd_info args;
+	int err;
+
+	filter->add_fltr.vsi_id = vf->vsi_res->vsi_id;
+	filter->add_fltr.validate_only = 0;
+
+	args.ops = VIRTCHNL_OP_ADD_FDIR_FILTER;
+	args.in_args = (uint8_t *)(&filter->add_fltr);
+	args.in_args_size = sizeof(*(&filter->add_fltr));
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to execute command OP_ADD_FDIR_FILTER");
+		return err;
+	}
+
+	fdir_ret = (struct virtchnl_fdir_add *)args.out_buffer;
+	filter->flow_id = fdir_ret->flow_id;
+
+	if (fdir_ret->status == VIRTCHNL_FDIR_SUCCESS) {
+		PMD_DRV_LOG(INFO,
+			"Succeed in adding rule request by PF");
+	} else if (fdir_ret->status == VIRTCHNL_FDIR_FAILURE_RULE_NORESOURCE) {
+		PMD_DRV_LOG(ERR,
+			"Failed to add rule request due to no hw resource");
+		return -1;
+	} else if (fdir_ret->status == VIRTCHNL_FDIR_FAILURE_RULE_EXIST) {
+		PMD_DRV_LOG(ERR,
+			"Failed to add rule request due to the rule is already existed");
+		return -1;
+	} else if (fdir_ret->status == VIRTCHNL_FDIR_FAILURE_RULE_CONFLICT) {
+		PMD_DRV_LOG(ERR,
+			"Failed to add rule request due to the rule is conflict with existing rule");
+		return -1;
+	} else if (fdir_ret->status == VIRTCHNL_FDIR_FAILURE_RULE_INVALID) {
+		PMD_DRV_LOG(ERR,
+			"Failed to add rule request due to the hw doesn't support");
+		return -1;
+	} else if (fdir_ret->status == VIRTCHNL_FDIR_FAILURE_RULE_TIMEOUT) {
+		PMD_DRV_LOG(ERR,
+			"Failed to add rule request due to time out for programming");
+		return -1;
+	} else {
+		PMD_DRV_LOG(ERR,
+			"Failed to add rule request due to other reasons");
+		return -1;
+	}
+
+	return 0;
+};
+
+int
+iavf_fdir_del(struct iavf_adapter *adapter,
+	struct iavf_fdir_conf *filter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_fdir_del *fdir_ret;
+
+	struct iavf_cmd_info args;
+	int err;
+
+	filter->del_fltr.vsi_id = vf->vsi_res->vsi_id;
+	filter->del_fltr.flow_id = filter->flow_id;
+
+	args.ops = VIRTCHNL_OP_DEL_FDIR_FILTER;
+	args.in_args = (uint8_t *)(&filter->del_fltr);
+	args.in_args_size = sizeof(filter->del_fltr);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to execute command OP_DEL_FDIR_FILTER");
+		return err;
+	}
+
+	fdir_ret = (struct virtchnl_fdir_del *)args.out_buffer;
+
+	if (fdir_ret->status == VIRTCHNL_FDIR_SUCCESS) {
+		PMD_DRV_LOG(INFO,
+			"Succeed in deleting rule request by PF");
+	} else if (fdir_ret->status == VIRTCHNL_FDIR_FAILURE_RULE_NONEXIST) {
+		PMD_DRV_LOG(ERR,
+			"Failed to delete rule request due to this rule doesn't exist");
+		return -1;
+	} else if (fdir_ret->status == VIRTCHNL_FDIR_FAILURE_RULE_TIMEOUT) {
+		PMD_DRV_LOG(ERR,
+			"Failed to delete rule request due to time out for programming");
+		return -1;
+	} else {
+		PMD_DRV_LOG(ERR,
+			"Failed to delete rule request due to other reasons");
+		return -1;
+	}
+
+	return 0;
+};
+
+int
+iavf_fdir_check(struct iavf_adapter *adapter,
+		struct iavf_fdir_conf *filter)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct virtchnl_fdir_add *fdir_ret;
+
+	struct iavf_cmd_info args;
+	int err;
+
+	filter->add_fltr.vsi_id = vf->vsi_res->vsi_id;
+	filter->add_fltr.validate_only = 1;
+
+	args.ops = VIRTCHNL_OP_ADD_FDIR_FILTER;
+	args.in_args = (uint8_t *)(&filter->add_fltr);
+	args.in_args_size = sizeof(*(&filter->add_fltr));
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to check flow direcotor rule");
+		return err;
+	}
+
+	fdir_ret = (struct virtchnl_fdir_add *)args.out_buffer;
+
+	if (fdir_ret->status == VIRTCHNL_FDIR_SUCCESS) {
+		PMD_DRV_LOG(INFO,
+			"Succeed in checking rule request by PF");
+	} else if (fdir_ret->status == VIRTCHNL_FDIR_FAILURE_RULE_INVALID) {
+		PMD_DRV_LOG(ERR,
+			"Failed to check rule request due to parameters validation"
+			" or HW doesn't support");
+		return -1;
+	} else {
+		PMD_DRV_LOG(ERR,
+			"Failed to check rule request due to other reasons");
+		return -1;
+	}
+
+	return 0;
 }

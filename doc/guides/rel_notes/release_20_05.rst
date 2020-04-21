@@ -104,6 +104,7 @@ New Features
   Update the Intel iavf driver with new features and improvements, including:
 
   * Added generic filter support.
+  * Added advanced iavf with FDIR capability.
 
 * **Updated the Intel ice driver.**
 
