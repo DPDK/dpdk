@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+#include <rte_common.h>
+
 #define FNM_NOMATCH 1
 
 /**

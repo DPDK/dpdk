@@ -17,6 +17,7 @@ extern "C" {
 #endif
 
 #include <windows.h>
+#include <rte_common.h>
 
 #define PTHREAD_BARRIER_SERIAL_THREAD TRUE
 
