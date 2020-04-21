@@ -73,7 +73,7 @@ int
 stack_pop(struct stack *st, uint32_t *x)
 {
 	if (stack_is_empty(st))
-		return -ENODATA;
+		return -ENOENT;
 
 	*x = st->items[st->top];
 	st->top--;
