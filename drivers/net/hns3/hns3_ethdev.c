@@ -2508,9 +2508,18 @@ hns3_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
+	uint32_t version = hw->fw_version;
 	int ret;
 
-	ret = snprintf(fw_version, fw_size, "0x%08x", hw->fw_version);
+	ret = snprintf(fw_version, fw_size, "%lu.%lu.%lu.%lu",
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE3_M,
+				      HNS3_FW_VERSION_BYTE3_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE2_M,
+				      HNS3_FW_VERSION_BYTE2_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE1_M,
+				      HNS3_FW_VERSION_BYTE1_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE0_M,
+				      HNS3_FW_VERSION_BYTE0_S));
 	ret += 1; /* add the size of '\0' */
 	if (fw_size < (uint32_t)ret)
 		return ret;

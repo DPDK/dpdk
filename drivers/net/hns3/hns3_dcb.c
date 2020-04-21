@@ -787,6 +787,7 @@ hns3_dcb_pri_dwrr_cfg(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_pf *pf = &hns->pf;
+	uint32_t version;
 	int ret;
 
 	if (pf->tx_sch_mode != HNS3_FLAG_TC_BASE_SCH_MODE)
@@ -801,8 +802,17 @@ hns3_dcb_pri_dwrr_cfg(struct hns3_hw *hw)
 
 	ret = hns3_dcb_ets_tc_dwrr_cfg(hw);
 	if (ret == -EOPNOTSUPP) {
-		hns3_warn(hw, "fw %08x does't support ets tc weight cmd",
-			  hw->fw_version);
+		version = hw->fw_version;
+		hns3_warn(hw,
+			  "fw %lu.%lu.%lu.%lu doesn't support ets tc weight cmd",
+			  hns3_get_field(version, HNS3_FW_VERSION_BYTE3_M,
+					 HNS3_FW_VERSION_BYTE3_S),
+			  hns3_get_field(version, HNS3_FW_VERSION_BYTE2_M,
+					 HNS3_FW_VERSION_BYTE2_S),
+			  hns3_get_field(version, HNS3_FW_VERSION_BYTE1_M,
+					 HNS3_FW_VERSION_BYTE1_S),
+			  hns3_get_field(version, HNS3_FW_VERSION_BYTE0_M,
+					 HNS3_FW_VERSION_BYTE0_S));
 		ret = 0;
 	}
 

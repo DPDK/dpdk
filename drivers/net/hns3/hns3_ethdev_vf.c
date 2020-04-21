@@ -1764,6 +1764,31 @@ hns3vf_dev_close(struct rte_eth_dev *eth_dev)
 }
 
 static int
+hns3vf_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version,
+		      size_t fw_size)
+{
+	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	uint32_t version = hw->fw_version;
+	int ret;
+
+	ret = snprintf(fw_version, fw_size, "%lu.%lu.%lu.%lu",
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE3_M,
+				      HNS3_FW_VERSION_BYTE3_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE2_M,
+				      HNS3_FW_VERSION_BYTE2_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE1_M,
+				      HNS3_FW_VERSION_BYTE1_S),
+		       hns3_get_field(version, HNS3_FW_VERSION_BYTE0_M,
+				      HNS3_FW_VERSION_BYTE0_S));
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (uint32_t)ret)
+		return ret;
+	else
+		return 0;
+}
+
+static int
 hns3vf_dev_link_update(struct rte_eth_dev *eth_dev,
 		       __rte_unused int wait_to_complete)
 {
@@ -2347,6 +2372,7 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.xstats_get_by_id   = hns3_dev_xstats_get_by_id,
 	.xstats_get_names_by_id = hns3_dev_xstats_get_names_by_id,
 	.dev_infos_get      = hns3vf_dev_infos_get,
+	.fw_version_get     = hns3vf_fw_version_get,
 	.rx_queue_setup     = hns3_rx_queue_setup,
 	.tx_queue_setup     = hns3_tx_queue_setup,
 	.rx_queue_release   = hns3_dev_rx_queue_release,

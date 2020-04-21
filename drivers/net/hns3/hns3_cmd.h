@@ -253,6 +253,14 @@ struct hns3_rx_priv_buff_cmd {
 	uint8_t rsv[6];
 };
 
+#define HNS3_FW_VERSION_BYTE3_S		24
+#define HNS3_FW_VERSION_BYTE3_M		GENMASK(31, 24)
+#define HNS3_FW_VERSION_BYTE2_S		16
+#define HNS3_FW_VERSION_BYTE2_M		GENMASK(23, 16)
+#define HNS3_FW_VERSION_BYTE1_S		8
+#define HNS3_FW_VERSION_BYTE1_M		GENMASK(15, 8)
+#define HNS3_FW_VERSION_BYTE0_S		0
+#define HNS3_FW_VERSION_BYTE0_M		GENMASK(7, 0)
 struct hns3_query_version_cmd {
 	uint32_t firmware;
 	uint32_t firmware_rsv[5];
