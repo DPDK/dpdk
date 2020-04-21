@@ -1065,7 +1065,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	}
 
 	do {
-		rc = bnxt_hwrm_if_change(bp, 1);
+		rc = bnxt_hwrm_if_change(bp, true);
 		if (rc == 0 || rc != -EAGAIN)
 			break;
 
@@ -1113,7 +1113,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	return 0;
 
 error:
-	bnxt_hwrm_if_change(bp, 0);
+	bnxt_hwrm_if_change(bp, false);
 	bnxt_shutdown_nic(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
@@ -1190,7 +1190,7 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	/* Process any remaining notifications in default completion queue */
 	bnxt_int_handler(eth_dev);
 	bnxt_shutdown_nic(bp);
-	bnxt_hwrm_if_change(bp, 0);
+	bnxt_hwrm_if_change(bp, false);
 
 	rte_free(bp->mark_table);
 	bp->mark_table = NULL;
