@@ -667,6 +667,40 @@ static int bnxt_shutdown_nic(struct bnxt *bp)
  * Device configuration and status function
  */
 
+static uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
+{
+	uint32_t link_speed = bp->link_info.support_speeds;
+	uint32_t speed_capa = 0;
+
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB)
+		speed_capa |= ETH_LINK_SPEED_100M;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100MBHD)
+		speed_capa |= ETH_LINK_SPEED_100M_HD;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_1GB)
+		speed_capa |= ETH_LINK_SPEED_1G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_2_5GB)
+		speed_capa |= ETH_LINK_SPEED_2_5G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_10GB)
+		speed_capa |= ETH_LINK_SPEED_10G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_20GB)
+		speed_capa |= ETH_LINK_SPEED_20G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_25GB)
+		speed_capa |= ETH_LINK_SPEED_25G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_40GB)
+		speed_capa |= ETH_LINK_SPEED_40G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_50GB)
+		speed_capa |= ETH_LINK_SPEED_50G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100GB)
+		speed_capa |= ETH_LINK_SPEED_100G;
+
+	if (bp->link_info.auto_mode == HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE)
+		speed_capa |= ETH_LINK_SPEED_FIXED;
+	else
+		speed_capa |= ETH_LINK_SPEED_AUTONEG;
+
+	return speed_capa;
+}
+
 static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 				struct rte_eth_dev_info *dev_info)
 {
@@ -709,6 +743,8 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
 	dev_info->tx_offload_capa = BNXT_DEV_TX_OFFLOAD_SUPPORT;
 	dev_info->flow_type_rss_offloads = BNXT_ETH_RSS_SUPPORT;
+
+	dev_info->speed_capa = bnxt_get_speed_capabilities(bp);
 
 	/* *INDENT-OFF* */
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
