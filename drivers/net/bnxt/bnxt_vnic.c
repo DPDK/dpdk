@@ -136,7 +136,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 
 	max_vnics = bp->max_vnics;
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
-		 "bnxt_%04x:%02x:%02x:%02x_vnicattr", pdev->addr.domain,
+		 "bnxt_" PCI_PRI_FMT "_vnicattr", pdev->addr.domain,
 		 pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
 	mz = rte_memzone_lookup(mz_name);

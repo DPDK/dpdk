@@ -196,7 +196,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	total_alloc_len += tpa_info_len;
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
-		 "bnxt_%04x:%02x:%02x:%02x-%04x_%s", pdev->addr.domain,
+		 "bnxt_" PCI_PRI_FMT "-%04x_%s", pdev->addr.domain,
 		 pdev->addr.bus, pdev->addr.devid, pdev->addr.function, qidx,
 		 suffix);
 	mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
