@@ -2082,6 +2082,11 @@ static int bnxt_vlan_filter_set_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
+	if (!eth_dev->data->dev_started) {
+		PMD_DRV_LOG(ERR, "port must be started before setting vlan\n");
+		return -EINVAL;
+	}
+
 	/* These operations apply to ALL existing MAC/VLAN filters */
 	if (on)
 		return bnxt_add_vlan_filter(bp, vlan_id);
