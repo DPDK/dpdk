@@ -67,6 +67,14 @@
 	IAVF_INSET_IPV6_TC | IAVF_INSET_IPV6_HOP_LIMIT | \
 	IAVF_INSET_SCTP_SRC_PORT | IAVF_INSET_SCTP_DST_PORT)
 
+#define IAVF_FDIR_INSET_GTPU (\
+	IAVF_INSET_IPV4_SRC | IAVF_INSET_IPV4_DST | \
+	IAVF_INSET_GTPU_TEID)
+
+#define IAVF_FDIR_INSET_GTPU_EH (\
+	IAVF_INSET_IPV4_SRC | IAVF_INSET_IPV4_DST | \
+	IAVF_INSET_GTPU_TEID | IAVF_INSET_GTPU_QFI)
+
 static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_ethertype,		IAVF_FDIR_INSET_ETH,			IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv4,			IAVF_FDIR_INSET_ETH_IPV4,		IAVF_INSET_NONE},
@@ -77,6 +85,8 @@ static struct iavf_pattern_match_item iavf_fdir_pattern[] = {
 	{iavf_pattern_eth_ipv6_udp,		IAVF_FDIR_INSET_ETH_IPV6_UDP,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv6_tcp,		IAVF_FDIR_INSET_ETH_IPV6_TCP,		IAVF_INSET_NONE},
 	{iavf_pattern_eth_ipv6_sctp,		IAVF_FDIR_INSET_ETH_IPV6_SCTP,		IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu,		IAVF_FDIR_INSET_GTPU,			IAVF_INSET_NONE},
+	{iavf_pattern_eth_ipv4_gtpu_eh,		IAVF_FDIR_INSET_GTPU_EH,		IAVF_INSET_NONE},
 };
 
 static struct iavf_flow_parser iavf_fdir_parser;
@@ -362,6 +372,8 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 	const struct rte_flow_item_udp *udp_spec, *udp_mask;
 	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
 	const struct rte_flow_item_sctp *sctp_spec, *sctp_mask;
+	const struct rte_flow_item_gtp *gtp_spec, *gtp_mask;
+	const struct rte_flow_item_gtp_psc *gtp_psc_spec, *gtp_psc_mask;
 	uint64_t input_set = IAVF_INSET_NONE;
 
 	enum rte_flow_item_type next_type;
@@ -659,6 +671,57 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 					rte_memcpy(hdr->buffer,
 						&sctp_spec->hdr,
 						sizeof(sctp_spec->hdr));
+			}
+
+			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_GTPU:
+			gtp_spec = item->spec;
+			gtp_mask = item->mask;
+
+			hdr = &filter->add_fltr.rule_cfg.proto_hdrs.proto_hdr[layer];
+
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, GTPU_IP);
+
+			if (gtp_spec && gtp_mask) {
+				if (gtp_mask->v_pt_rsv_flags ||
+					gtp_mask->msg_type ||
+					gtp_mask->msg_len) {
+					rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item, "Invalid GTP mask");
+					return -rte_errno;
+				}
+
+				if (gtp_mask->teid == UINT32_MAX) {
+					input_set |= IAVF_INSET_GTPU_TEID;
+					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, GTPU_IP, TEID);
+				}
+
+				rte_memcpy(hdr->buffer,
+					gtp_spec, sizeof(*gtp_spec));
+			}
+
+			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+			gtp_psc_spec = item->spec;
+			gtp_psc_mask = item->mask;
+
+			hdr = &filter->add_fltr.rule_cfg.proto_hdrs.proto_hdr[layer];
+
+			VIRTCHNL_SET_PROTO_HDR_TYPE(hdr, GTPU_EH);
+
+			if (gtp_psc_spec && gtp_psc_mask) {
+				if (gtp_psc_mask->qfi == UINT8_MAX) {
+					input_set |= IAVF_INSET_GTPU_QFI;
+					VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, GTPU_EH, QFI);
+				}
+
+				rte_memcpy(hdr->buffer, gtp_psc_spec,
+					sizeof(*gtp_psc_spec));
 			}
 
 			filter->add_fltr.rule_cfg.proto_hdrs.count = ++layer;
