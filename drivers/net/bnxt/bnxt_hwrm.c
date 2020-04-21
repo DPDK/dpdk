@@ -221,6 +221,8 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 			rc = -EINVAL; \
 		else if (rc == HWRM_ERR_CODE_CMD_NOT_SUPPORTED) \
 			rc = -ENOTSUP; \
+		else if (rc == HWRM_ERR_CODE_HOT_RESET_PROGRESS) \
+			rc = -EAGAIN; \
 		else if (rc > 0) \
 			rc = -EIO; \
 		return rc; \
@@ -249,6 +251,8 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 			rc = -EINVAL; \
 		else if (rc == HWRM_ERR_CODE_CMD_NOT_SUPPORTED) \
 			rc = -ENOTSUP; \
+		else if (rc == HWRM_ERR_CODE_HOT_RESET_PROGRESS) \
+			rc = -EAGAIN; \
 		else if (rc > 0) \
 			rc = -EIO; \
 		return rc; \

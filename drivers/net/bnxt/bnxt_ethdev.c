@@ -1051,7 +1051,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
 	int vlan_mask = 0;
-	int rc;
+	int rc, retry_cnt = BNXT_IF_CHANGE_RETRY_COUNT;
 
 	if (!eth_dev->data->nb_tx_queues || !eth_dev->data->nb_rx_queues) {
 		PMD_DRV_LOG(ERR, "Queues are not configured yet!\n");
@@ -1064,14 +1064,23 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 			bp->rx_cp_nr_rings, RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	}
 
-	rc = bnxt_hwrm_if_change(bp, 1);
-	if (!rc) {
-		if (bp->flags & BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE) {
-			rc = bnxt_handle_if_change_status(bp);
-			if (rc)
-				return rc;
-		}
+	do {
+		rc = bnxt_hwrm_if_change(bp, 1);
+		if (rc == 0 || rc != -EAGAIN)
+			break;
+
+		rte_delay_ms(BNXT_IF_CHANGE_RETRY_INTERVAL);
+	} while (retry_cnt--);
+
+	if (rc)
+		return rc;
+
+	if (bp->flags & BNXT_FLAG_IF_CHANGE_HOT_FW_RESET_DONE) {
+		rc = bnxt_handle_if_change_status(bp);
+		if (rc)
+			return rc;
 	}
+
 	bnxt_enable_int(bp);
 
 	rc = bnxt_init_chip(bp);
