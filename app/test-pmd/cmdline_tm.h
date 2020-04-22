@@ -19,6 +19,7 @@ extern cmdline_parse_inst_t cmd_add_port_tm_node_wred_profile;
 extern cmdline_parse_inst_t cmd_del_port_tm_node_wred_profile;
 extern cmdline_parse_inst_t cmd_set_port_tm_node_shaper_profile;
 extern cmdline_parse_inst_t cmd_add_port_tm_nonleaf_node;
+extern cmdline_parse_inst_t cmd_add_port_tm_nonleaf_node_pmode;
 extern cmdline_parse_inst_t cmd_add_port_tm_leaf_node;
 extern cmdline_parse_inst_t cmd_del_port_tm_node;
 extern cmdline_parse_inst_t cmd_set_port_tm_node_parent;

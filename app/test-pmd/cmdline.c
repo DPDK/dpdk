@@ -1198,7 +1198,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"add port tm node shaper profile (port_id) (shaper_profile_id)"
 			" (cmit_tb_rate) (cmit_tb_size) (peak_tb_rate) (peak_tb_size)"
-			" (packet_length_adjust)\n"
+			" (packet_length_adjust) (packet_mode)\n"
 			"       Add port tm node private shaper profile.\n\n"
 
 			"del port tm node shaper profile (port_id) (shaper_profile_id)\n"
@@ -1229,6 +1229,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" (n_sp_priorities) (stats_mask) (n_shared_shapers)"
 			" [(shared_shaper_id_0) (shared_shaper_id_1)...]\n"
 			"       Add port tm nonleaf node.\n\n"
+
+			"add port tm nonleaf node pktmode (port_id) (node_id) (parent_node_id)"
+			" (priority) (weight) (level_id) (shaper_profile_id)"
+			" (n_sp_priorities) (stats_mask) (n_shared_shapers)"
+			" [(shared_shaper_id_0) (shared_shaper_id_1)...]\n"
+			"       Add port tm nonleaf node with pkt mode enabled.\n\n"
 
 			"add port tm leaf node (port_id) (node_id) (parent_node_id)"
 			" (priority) (weight) (level_id) (shaper_profile_id)"
@@ -19748,6 +19754,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_del_port_tm_node_wred_profile,
 	(cmdline_parse_inst_t *)&cmd_set_port_tm_node_shaper_profile,
 	(cmdline_parse_inst_t *)&cmd_add_port_tm_nonleaf_node,
+	(cmdline_parse_inst_t *)&cmd_add_port_tm_nonleaf_node_pmode,
 	(cmdline_parse_inst_t *)&cmd_add_port_tm_leaf_node,
 	(cmdline_parse_inst_t *)&cmd_del_port_tm_node,
 	(cmdline_parse_inst_t *)&cmd_set_port_tm_node_parent,
