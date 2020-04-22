@@ -163,6 +163,19 @@ Debugging options
     By default, trace output will created at ``home`` directory and parameter
     must be specified once only.
 
+*   ``--trace-bufsz=<val>``
+
+    Specify maximum size of allocated memory for trace output for each thread.
+    Valid unit can be either ``B`` or ``K`` or ``M`` for ``Bytes``, ``KBytes``
+    and ``MBytes`` respectively. For example:
+
+    Configuring ``2MB`` as a maximum size for trace output file::
+
+        --trace-bufsz=2M
+
+    By default, size of trace output file is ``1MB`` and parameter
+    must be specified once only.
+
 Other options
 ~~~~~~~~~~~~~
 

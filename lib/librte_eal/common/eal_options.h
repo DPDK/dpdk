@@ -37,6 +37,8 @@ enum {
 	OPT_TRACE_NUM,
 #define OPT_TRACE_DIR         "trace-dir"
 	OPT_TRACE_DIR_NUM,
+#define OPT_TRACE_BUF_SIZE    "trace-bufsz"
+	OPT_TRACE_BUF_SIZE_NUM,
 #define OPT_MASTER_LCORE      "master-lcore"
 	OPT_MASTER_LCORE_NUM,
 #define OPT_MBUF_POOL_OPS_NAME "mbuf-pool-ops-name"

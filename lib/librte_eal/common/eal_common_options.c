@@ -70,6 +70,7 @@ eal_long_options[] = {
 	{OPT_LOG_LEVEL,         1, NULL, OPT_LOG_LEVEL_NUM        },
 	{OPT_TRACE,             1, NULL, OPT_TRACE_NUM            },
 	{OPT_TRACE_DIR,         1, NULL, OPT_TRACE_DIR_NUM        },
+	{OPT_TRACE_BUF_SIZE,    1, NULL, OPT_TRACE_BUF_SIZE_NUM   },
 	{OPT_MASTER_LCORE,      1, NULL, OPT_MASTER_LCORE_NUM     },
 	{OPT_MBUF_POOL_OPS_NAME, 1, NULL, OPT_MBUF_POOL_OPS_NAME_NUM},
 	{OPT_NO_HPET,           0, NULL, OPT_NO_HPET_NUM          },
@@ -1440,6 +1441,15 @@ eal_parse_common_option(int opt, const char *optarg,
 		break;
 	}
 
+	case OPT_TRACE_BUF_SIZE_NUM: {
+		if (eal_trace_bufsz_args_save(optarg) < 0) {
+			RTE_LOG(ERR, EAL, "invalid parameters for --"
+				OPT_TRACE_BUF_SIZE "\n");
+			return -1;
+		}
+		break;
+	}
+
 	case OPT_LCORES_NUM:
 		if (eal_parse_lcores(optarg) < 0) {
 			RTE_LOG(ERR, EAL, "invalid parameter for --"
@@ -1723,6 +1733,13 @@ eal_common_usage(void)
 	       "                      Specify trace directory for trace output.\n"
 	       "                      By default, trace output will created at\n"
 	       "                      $HOME directory and parameter must be\n"
+	       "                      specified once only.\n"
+	       "  --"OPT_TRACE_BUF_SIZE"=<int>\n"
+	       "                      Specify maximum size of allocated memory\n"
+	       "                      for trace output for each thread. Valid\n"
+	       "                      unit can be either 'B|K|M' for 'Bytes',\n"
+	       "                      'KBytes' and 'MBytes' respectively.\n"
+	       "                      Default is 1MB and parameter must be\n"
 	       "                      specified once only.\n"
 	       "  -v                  Display version information on startup\n"
 	       "  -h, --help          This help\n"

@@ -99,6 +99,7 @@ struct trace_point_head *trace_list_head_get(void);
 const char *trace_mode_to_string(enum rte_trace_mode mode);
 const char *trace_area_to_string(enum trace_area_e area);
 int trace_args_apply(const char *arg);
+void trace_bufsz_args_apply(void);
 bool trace_has_duplicate_entry(void);
 void trace_uuid_generate(void);
 int trace_metadata_create(void);
@@ -113,5 +114,6 @@ void eal_trace_fini(void);
 int eal_trace_args_save(const char *optarg);
 void eal_trace_args_free(void);
 int eal_trace_dir_args_save(const char *optarg);
+int eal_trace_bufsz_args_save(const char *optarg);
 
 #endif /* __EAL_TRACE_H */
