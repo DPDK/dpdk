@@ -152,6 +152,17 @@ Debugging options
 
     Can be specified multiple times up to 32 times.
 
+*   ``--trace-dir=<directory path>``
+
+    Specify trace directory for trace output. For example:
+
+    Configuring ``/tmp/`` as a trace output directory::
+
+        --trace-dir=/tmp
+
+    By default, trace output will created at ``home`` directory and parameter
+    must be specified once only.
+
 Other options
 ~~~~~~~~~~~~~
 

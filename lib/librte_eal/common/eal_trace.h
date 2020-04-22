@@ -112,5 +112,6 @@ int eal_trace_init(void);
 void eal_trace_fini(void);
 int eal_trace_args_save(const char *optarg);
 void eal_trace_args_free(void);
+int eal_trace_dir_args_save(const char *optarg);
 
 #endif /* __EAL_TRACE_H */
