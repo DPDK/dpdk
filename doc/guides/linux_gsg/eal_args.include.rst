@@ -176,6 +176,18 @@ Debugging options
     By default, size of trace output file is ``1MB`` and parameter
     must be specified once only.
 
+*   ``--trace-mode=<o[verwrite] | d[iscard] >``
+
+    Specify the mode of update of trace output file. Either update on a file
+    can be wrapped or discarded when file size reaches its maximum limit.
+    For example:
+
+    To ``discard`` update on trace output file::
+
+        --trace-mode=d or --trace-mode=discard
+
+    Default mode is ``overwrite`` and parameter must be specified once only.
+
 Other options
 ~~~~~~~~~~~~~
 

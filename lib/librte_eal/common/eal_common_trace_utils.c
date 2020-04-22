@@ -224,6 +224,46 @@ trace_bufsz_args_apply(void)
 }
 
 int
+eal_trace_mode_args_save(const char *optarg)
+{
+	struct trace *trace = trace_obj_get();
+	size_t len = strlen(optarg);
+	unsigned long tmp;
+	char *pattern;
+
+	if (optarg == NULL) {
+		trace_err("no optarg is passed");
+		return -EINVAL;
+	}
+
+	if (len == 0) {
+		trace_err("value is not provided with option");
+		return -EINVAL;
+	}
+
+	pattern = (char *)calloc(1, len + 2);
+	if (pattern == NULL) {
+		trace_err("fail to allocate memory");
+		return -ENOMEM;
+	}
+
+	sprintf(pattern, "%s*", optarg);
+
+	if (fnmatch(pattern, "overwrite", 0) == 0)
+		tmp = RTE_TRACE_MODE_OVERWRITE;
+	else if (fnmatch(pattern, "discard", 0) == 0)
+		tmp = RTE_TRACE_MODE_DISCARD;
+	else {
+		free(pattern);
+		return -EINVAL;
+	}
+
+	trace->mode = tmp;
+	free(pattern);
+	return 0;
+}
+
+int
 eal_trace_dir_args_save(char const *optarg)
 {
 	struct trace *trace = trace_obj_get();
