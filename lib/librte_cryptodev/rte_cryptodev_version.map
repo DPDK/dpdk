@@ -78,4 +78,22 @@ EXPERIMENTAL {
 	rte_cryptodev_sym_session_set_user_data;
 	rte_crypto_asym_op_strings;
 	rte_crypto_asym_xform_strings;
+
+	# added in 20.05
+	__rte_cryptodev_trace_configure;
+	__rte_cryptodev_trace_start;
+	__rte_cryptodev_trace_stop;
+	__rte_cryptodev_trace_close;
+	__rte_cryptodev_trace_queue_pair_setup;
+	__rte_cryptodev_trace_sym_session_pool_create;
+	__rte_cryptodev_trace_sym_session_create;
+	__rte_cryptodev_trace_asym_session_create;
+	__rte_cryptodev_trace_sym_session_free;
+	__rte_cryptodev_trace_asym_session_free;
+	__rte_cryptodev_trace_sym_session_init;
+	__rte_cryptodev_trace_asym_session_init;
+	__rte_cryptodev_trace_sym_session_clear;
+	__rte_cryptodev_trace_asym_session_clear;
+	__rte_cryptodev_trace_dequeue_burst;
+	__rte_cryptodev_trace_enqueue_burst;
 };
