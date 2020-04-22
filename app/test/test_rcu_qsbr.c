@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2018 Arm Limited
+ * Copyright (c) 2019-2020 Arm Limited
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <rte_pause.h>
 #include <rte_rcu_qsbr.h>
 #include <rte_hash.h>
@@ -15,11 +16,22 @@
 #include "test.h"
 
 /* Check condition and return an error if true. */
-#define TEST_RCU_QSBR_RETURN_IF_ERROR(cond, str, ...) do { \
+#define TEST_RCU_QSBR_RETURN_IF_ERROR(cond, str, ...) \
+do { \
 	if (cond) { \
 		printf("ERROR file %s, line %d: " str "\n", __FILE__, \
 			__LINE__, ##__VA_ARGS__); \
 		return -1; \
+	} \
+} while (0)
+
+/* Check condition and go to label if true. */
+#define TEST_RCU_QSBR_GOTO_IF_ERROR(label, cond, str, ...) \
+do { \
+	if (cond) { \
+		printf("ERROR file %s, line %d: " str "\n", __FILE__, \
+			__LINE__, ##__VA_ARGS__); \
+		goto label; \
 	} \
 } while (0)
 
@@ -34,6 +46,7 @@ static uint32_t *keys;
 #define COUNTER_VALUE 4096
 static uint32_t *hash_data[RTE_MAX_LCORE][TOTAL_ENTRY];
 static uint8_t writer_done;
+static uint8_t cb_failed;
 
 static struct rte_rcu_qsbr *t[RTE_MAX_LCORE];
 static struct rte_hash *h[RTE_MAX_LCORE];
@@ -585,6 +598,330 @@ test_rcu_qsbr_thread_offline(void)
 	return 0;
 }
 
+static void
+test_rcu_qsbr_free_resource1(void *p, void *e, unsigned int n)
+{
+	if (p != NULL || e != NULL || n != 1) {
+		printf("%s: Test failed\n", __func__);
+		cb_failed = 1;
+	}
+}
+
+static void
+test_rcu_qsbr_free_resource2(void *p, void *e, unsigned int n)
+{
+	if (p != NULL || e == NULL || n != 1) {
+		printf("%s: Test failed\n", __func__);
+		cb_failed = 1;
+	}
+}
+
+/*
+ * rte_rcu_qsbr_dq_create: create a queue used to store the data structure
+ * elements that can be freed later. This queue is referred to as 'defer queue'.
+ */
+static int
+test_rcu_qsbr_dq_create(void)
+{
+	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
+	struct rte_rcu_qsbr_dq_parameters params;
+	struct rte_rcu_qsbr_dq *dq;
+
+	printf("\nTest rte_rcu_qsbr_dq_create()\n");
+
+	/* Pass invalid parameters */
+	dq = rte_rcu_qsbr_dq_create(NULL);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq != NULL), "dq create invalid params");
+
+	memset(&params, 0, sizeof(struct rte_rcu_qsbr_dq_parameters));
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq != NULL), "dq create invalid params");
+
+	snprintf(rcu_dq_name, sizeof(rcu_dq_name), "TEST_RCU");
+	params.name = rcu_dq_name;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq != NULL), "dq create invalid params");
+
+	params.free_fn = test_rcu_qsbr_free_resource1;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq != NULL), "dq create invalid params");
+
+	rte_rcu_qsbr_init(t[0], RTE_MAX_LCORE);
+	params.v = t[0];
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq != NULL), "dq create invalid params");
+
+	params.size = 1;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq != NULL), "dq create invalid params");
+
+	params.esize = 3;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq != NULL), "dq create invalid params");
+
+	params.trigger_reclaim_limit = 0;
+	params.max_reclaim_size = 0;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq != NULL), "dq create invalid params");
+
+	/* Pass all valid parameters */
+	params.esize = 16;
+	params.trigger_reclaim_limit = 0;
+	params.max_reclaim_size = params.size;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq == NULL), "dq create valid params");
+	rte_rcu_qsbr_dq_delete(dq);
+
+	params.esize = 16;
+	params.flags = RTE_RCU_QSBR_DQ_MT_UNSAFE;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq == NULL), "dq create valid params");
+	rte_rcu_qsbr_dq_delete(dq);
+
+	return 0;
+}
+
+/*
+ * rte_rcu_qsbr_dq_enqueue: enqueue one resource to the defer queue,
+ * to be freed later after at least one grace period is over.
+ */
+static int
+test_rcu_qsbr_dq_enqueue(void)
+{
+	int ret;
+	uint64_t r;
+	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
+	struct rte_rcu_qsbr_dq_parameters params;
+	struct rte_rcu_qsbr_dq *dq;
+
+	printf("\nTest rte_rcu_qsbr_dq_enqueue()\n");
+
+	/* Create a queue with simple parameters */
+	memset(&params, 0, sizeof(struct rte_rcu_qsbr_dq_parameters));
+	snprintf(rcu_dq_name, sizeof(rcu_dq_name), "TEST_RCU");
+	params.name = rcu_dq_name;
+	params.free_fn = test_rcu_qsbr_free_resource1;
+	rte_rcu_qsbr_init(t[0], RTE_MAX_LCORE);
+	params.v = t[0];
+	params.size = 1;
+	params.esize = 16;
+	params.trigger_reclaim_limit = 0;
+	params.max_reclaim_size = params.size;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq == NULL), "dq create valid params");
+
+	/* Pass invalid parameters */
+	ret = rte_rcu_qsbr_dq_enqueue(NULL, NULL);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret == 0), "dq enqueue invalid params");
+
+	ret = rte_rcu_qsbr_dq_enqueue(dq, NULL);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret == 0), "dq enqueue invalid params");
+
+	ret = rte_rcu_qsbr_dq_enqueue(NULL, &r);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret == 0), "dq enqueue invalid params");
+
+	ret = rte_rcu_qsbr_dq_delete(dq);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret == 1), "dq delete valid params");
+
+	return 0;
+}
+
+/*
+ * rte_rcu_qsbr_dq_reclaim: Reclaim resources from the defer queue.
+ */
+static int
+test_rcu_qsbr_dq_reclaim(void)
+{
+	int ret;
+	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
+	struct rte_rcu_qsbr_dq_parameters params;
+	struct rte_rcu_qsbr_dq *dq;
+
+	printf("\nTest rte_rcu_qsbr_dq_reclaim()\n");
+
+	/* Pass invalid parameters */
+	ret = rte_rcu_qsbr_dq_reclaim(NULL, 10, NULL, NULL, NULL);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret != 1), "dq reclaim invalid params");
+
+	/* Pass invalid parameters */
+	memset(&params, 0, sizeof(struct rte_rcu_qsbr_dq_parameters));
+	snprintf(rcu_dq_name, sizeof(rcu_dq_name), "TEST_RCU");
+	params.name = rcu_dq_name;
+	params.free_fn = test_rcu_qsbr_free_resource1;
+	rte_rcu_qsbr_init(t[0], RTE_MAX_LCORE);
+	params.v = t[0];
+	params.size = 1;
+	params.esize = 3;
+	params.trigger_reclaim_limit = 0;
+	params.max_reclaim_size = params.size;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	ret = rte_rcu_qsbr_dq_reclaim(dq, 0, NULL, NULL, NULL);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret != 1), "dq reclaim invalid params");
+
+	return 0;
+}
+
+/*
+ * rte_rcu_qsbr_dq_delete: Delete a defer queue.
+ */
+static int
+test_rcu_qsbr_dq_delete(void)
+{
+	int ret;
+	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
+	struct rte_rcu_qsbr_dq_parameters params;
+	struct rte_rcu_qsbr_dq *dq;
+
+	printf("\nTest rte_rcu_qsbr_dq_delete()\n");
+
+	/* Pass invalid parameters */
+	ret = rte_rcu_qsbr_dq_delete(NULL);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret != 0), "dq delete invalid params");
+
+	memset(&params, 0, sizeof(struct rte_rcu_qsbr_dq_parameters));
+	snprintf(rcu_dq_name, sizeof(rcu_dq_name), "TEST_RCU");
+	params.name = rcu_dq_name;
+	params.free_fn = test_rcu_qsbr_free_resource1;
+	rte_rcu_qsbr_init(t[0], RTE_MAX_LCORE);
+	params.v = t[0];
+	params.size = 1;
+	params.esize = 16;
+	params.trigger_reclaim_limit = 0;
+	params.max_reclaim_size = params.size;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq == NULL), "dq create valid params");
+	ret = rte_rcu_qsbr_dq_delete(dq);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret != 0), "dq delete valid params");
+
+	return 0;
+}
+
+/*
+ * rte_rcu_qsbr_dq_enqueue: enqueue one resource to the defer queue,
+ * to be freed later after at least one grace period is over.
+ */
+static int
+test_rcu_qsbr_dq_functional(int32_t size, int32_t esize, uint32_t flags)
+{
+	int i, j, ret;
+	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
+	struct rte_rcu_qsbr_dq_parameters params;
+	struct rte_rcu_qsbr_dq *dq;
+	uint64_t *e;
+	uint64_t sc = 200;
+	int max_entries;
+
+	printf("\nTest rte_rcu_qsbr_dq_xxx functional tests()\n");
+	printf("Size = %d, esize = %d, flags = 0x%x\n", size, esize, flags);
+
+	e = (uint64_t *)rte_zmalloc(NULL, esize, RTE_CACHE_LINE_SIZE);
+	if (e == NULL)
+		return 0;
+	cb_failed = 0;
+
+	/* Initialize the RCU variable. No threads are registered */
+	rte_rcu_qsbr_init(t[0], RTE_MAX_LCORE);
+
+	/* Create a queue with simple parameters */
+	memset(&params, 0, sizeof(struct rte_rcu_qsbr_dq_parameters));
+	snprintf(rcu_dq_name, sizeof(rcu_dq_name), "TEST_RCU");
+	params.name = rcu_dq_name;
+	params.flags = flags;
+	params.free_fn = test_rcu_qsbr_free_resource2;
+	params.v = t[0];
+	params.size = size;
+	params.esize = esize;
+	params.trigger_reclaim_limit = size >> 3;
+	params.max_reclaim_size = (size >> 4)?(size >> 4):1;
+	dq = rte_rcu_qsbr_dq_create(&params);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((dq == NULL), "dq create valid params");
+
+	/* Given the size calculate the maximum number of entries
+	 * that can be stored on the defer queue (look at the logic used
+	 * in capacity calculation of rte_ring).
+	 */
+	max_entries = rte_align32pow2(size + 1) - 1;
+	printf("max_entries = %d\n", max_entries);
+
+	/* Enqueue few counters starting with the value 'sc' */
+	/* The queue size will be rounded up to 2. The enqueue API also
+	 * reclaims if the queue size is above certain limit. Since, there
+	 * are no threads registered, reclamation succeeds. Hence, it should
+	 * be possible to enqueue more than the provided queue size.
+	 */
+	for (i = 0; i < 10; i++) {
+		ret = rte_rcu_qsbr_dq_enqueue(dq, e);
+		TEST_RCU_QSBR_GOTO_IF_ERROR(end, (ret != 0),
+			"dq enqueue functional, i = %d", i);
+		for (j = 0; j < esize/8; j++)
+			e[j] = sc++;
+	}
+
+	/* Validate that call back function did not return any error */
+	TEST_RCU_QSBR_GOTO_IF_ERROR(end, (cb_failed == 1), "CB failed");
+
+	/* Register a thread on the RCU QSBR variable. Reclamation will not
+	 * succeed. It should not be possible to enqueue more than the size
+	 * number of resources.
+	 */
+	rte_rcu_qsbr_thread_register(t[0], 1);
+	rte_rcu_qsbr_thread_online(t[0], 1);
+
+	for (i = 0; i < max_entries; i++) {
+		ret = rte_rcu_qsbr_dq_enqueue(dq, e);
+		TEST_RCU_QSBR_GOTO_IF_ERROR(end, (ret != 0),
+			"dq enqueue functional, max_entries = %d, i = %d",
+			max_entries, i);
+		for (j = 0; j < esize/8; j++)
+			e[j] = sc++;
+	}
+
+	/* Enqueue fails as queue is full */
+	ret = rte_rcu_qsbr_dq_enqueue(dq, e);
+	TEST_RCU_QSBR_GOTO_IF_ERROR(end, (ret == 0), "defer queue is not full");
+
+	/* Delete should fail as there are elements in defer queue which
+	 * cannot be reclaimed.
+	 */
+	ret = rte_rcu_qsbr_dq_delete(dq);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret == 0), "dq delete valid params");
+
+	/* Report quiescent state, enqueue should succeed */
+	rte_rcu_qsbr_quiescent(t[0], 1);
+	for (i = 0; i < max_entries; i++) {
+		ret = rte_rcu_qsbr_dq_enqueue(dq, e);
+		TEST_RCU_QSBR_GOTO_IF_ERROR(end, (ret != 0),
+			"dq enqueue functional");
+		for (j = 0; j < esize/8; j++)
+			e[j] = sc++;
+	}
+
+	/* Validate that call back function did not return any error */
+	TEST_RCU_QSBR_GOTO_IF_ERROR(end, (cb_failed == 1), "CB failed");
+
+	/* Queue is full */
+	ret = rte_rcu_qsbr_dq_enqueue(dq, e);
+	TEST_RCU_QSBR_GOTO_IF_ERROR(end, (ret == 0), "defer queue is not full");
+
+	/* Report quiescent state, delete should succeed */
+	rte_rcu_qsbr_quiescent(t[0], 1);
+	ret = rte_rcu_qsbr_dq_delete(dq);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret != 0), "dq delete valid params");
+
+	rte_free(e);
+
+	/* Validate that call back function did not return any error */
+	TEST_RCU_QSBR_RETURN_IF_ERROR((cb_failed == 1), "CB failed");
+
+	return 0;
+
+end:
+	rte_free(e);
+	ret = rte_rcu_qsbr_dq_delete(dq);
+	TEST_RCU_QSBR_RETURN_IF_ERROR((ret != 0), "dq delete valid params");
+	return -1;
+}
+
 /*
  * rte_rcu_qsbr_dump: Dump status of a single QS variable to a file
  */
@@ -1028,12 +1365,36 @@ test_rcu_qsbr_main(void)
 	if (test_rcu_qsbr_thread_offline() < 0)
 		goto test_fail;
 
+	if (test_rcu_qsbr_dq_create() < 0)
+		goto test_fail;
+
+	if (test_rcu_qsbr_dq_reclaim() < 0)
+		goto test_fail;
+
+	if (test_rcu_qsbr_dq_delete() < 0)
+		goto test_fail;
+
+	if (test_rcu_qsbr_dq_enqueue() < 0)
+		goto test_fail;
+
 	printf("\nFunctional tests\n");
 
 	if (test_rcu_qsbr_sw_sv_3qs() < 0)
 		goto test_fail;
 
 	if (test_rcu_qsbr_mw_mv_mqs() < 0)
+		goto test_fail;
+
+	if (test_rcu_qsbr_dq_functional(1, 8, 0) < 0)
+		goto test_fail;
+
+	if (test_rcu_qsbr_dq_functional(2, 8, RTE_RCU_QSBR_DQ_MT_UNSAFE) < 0)
+		goto test_fail;
+
+	if (test_rcu_qsbr_dq_functional(303, 16, 0) < 0)
+		goto test_fail;
+
+	if (test_rcu_qsbr_dq_functional(7, 128, RTE_RCU_QSBR_DQ_MT_UNSAFE) < 0)
 		goto test_fail;
 
 	free_rcu();
