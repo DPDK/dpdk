@@ -93,3 +93,45 @@ DPDK_20.0 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	# added in 20.05
+	__rte_eventdev_trace_configure;
+	__rte_eventdev_trace_queue_setup;
+	__rte_eventdev_trace_port_setup;
+	__rte_eventdev_trace_port_link;
+	__rte_eventdev_trace_port_unlink;
+	__rte_eventdev_trace_start;
+	__rte_eventdev_trace_stop;
+	__rte_eventdev_trace_close;
+	__rte_eventdev_trace_deq_burst;
+	__rte_eventdev_trace_enq_burst;
+	__rte_eventdev_trace_eth_rx_adapter_create;
+	__rte_eventdev_trace_eth_rx_adapter_free;
+	__rte_eventdev_trace_eth_rx_adapter_queue_add;
+	__rte_eventdev_trace_eth_rx_adapter_queue_del;
+	__rte_eventdev_trace_eth_rx_adapter_start;
+	__rte_eventdev_trace_eth_rx_adapter_stop;
+	__rte_eventdev_trace_eth_tx_adapter_create;
+	__rte_eventdev_trace_eth_tx_adapter_free;
+	__rte_eventdev_trace_eth_tx_adapter_queue_add;
+	__rte_eventdev_trace_eth_tx_adapter_queue_del;
+	__rte_eventdev_trace_eth_tx_adapter_start;
+	__rte_eventdev_trace_eth_tx_adapter_stop;
+	__rte_eventdev_trace_eth_tx_adapter_enqueue;
+	__rte_eventdev_trace_timer_adapter_create;
+	__rte_eventdev_trace_timer_adapter_start;
+	__rte_eventdev_trace_timer_adapter_stop;
+	__rte_eventdev_trace_timer_adapter_free;
+	__rte_eventdev_trace_timer_arm_burst;
+	__rte_eventdev_trace_timer_arm_tmo_tick_burst;
+	__rte_eventdev_trace_timer_cancel_burst;
+	__rte_eventdev_trace_crypto_adapter_create;
+	__rte_eventdev_trace_crypto_adapter_free;
+	__rte_eventdev_trace_crypto_adapter_queue_pair_add;
+	__rte_eventdev_trace_crypto_adapter_queue_pair_del;
+	__rte_eventdev_trace_crypto_adapter_start;
+	__rte_eventdev_trace_crypto_adapter_stop;
+};

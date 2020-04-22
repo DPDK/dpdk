@@ -215,6 +215,8 @@ extern "C" {
 #include <rte_memory.h>
 #include <rte_errno.h>
 
+#include "rte_eventdev_trace_fp.h"
+
 struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
 struct rte_event;
 
@@ -1343,6 +1345,7 @@ __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 		return 0;
 	}
 #endif
+	rte_eventdev_trace_enq_burst(dev_id, port_id, ev, nb_events, fn);
 	/*
 	 * Allow zero cost non burst mode routine invocation if application
 	 * requests nb_events as const one
@@ -1620,7 +1623,7 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
 		return 0;
 	}
 #endif
-
+	rte_eventdev_trace_deq_burst(dev_id, port_id, ev, nb_events);
 	/*
 	 * Allow zero cost non burst mode routine invocation if application
 	 * requests nb_events as const one

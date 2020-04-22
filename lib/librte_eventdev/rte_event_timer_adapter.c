@@ -22,6 +22,7 @@
 
 #include "rte_eventdev.h"
 #include "rte_eventdev_pmd.h"
+#include "rte_eventdev_trace.h"
 #include "rte_event_timer_adapter.h"
 #include "rte_event_timer_adapter_pmd.h"
 
@@ -228,6 +229,8 @@ rte_event_timer_adapter_create_ext(
 
 	adapter->allocated = 1;
 
+	rte_eventdev_trace_timer_adapter_create(adapter_id, adapter, conf,
+		conf_cb);
 	return adapter;
 
 free_memzone:
@@ -272,7 +275,7 @@ rte_event_timer_adapter_start(const struct rte_event_timer_adapter *adapter)
 		return ret;
 
 	adapter->data->started = 1;
-
+	rte_eventdev_trace_timer_adapter_start(adapter);
 	return 0;
 }
 
@@ -295,7 +298,7 @@ rte_event_timer_adapter_stop(const struct rte_event_timer_adapter *adapter)
 		return ret;
 
 	adapter->data->started = 0;
-
+	rte_eventdev_trace_timer_adapter_stop(adapter);
 	return 0;
 }
 
@@ -379,6 +382,7 @@ rte_event_timer_adapter_free(struct rte_event_timer_adapter *adapter)
 	adapter->data = NULL;
 	adapter->allocated = 0;
 
+	rte_eventdev_trace_timer_adapter_free(adapter);
 	return 0;
 }
 

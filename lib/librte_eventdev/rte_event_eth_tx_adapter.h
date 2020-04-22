@@ -369,6 +369,8 @@ rte_event_eth_tx_adapter_enqueue(uint8_t dev_id,
 		return 0;
 	}
 #endif
+	rte_eventdev_trace_eth_tx_adapter_enqueue(dev_id, port_id, ev,
+		nb_events, flags);
 	if (flags)
 		return dev->txa_enqueue_same_dest(dev->data->ports[port_id],
 						  ev, nb_events);

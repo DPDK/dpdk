@@ -20,6 +20,7 @@
 
 #include "rte_eventdev.h"
 #include "rte_eventdev_pmd.h"
+#include "rte_eventdev_trace.h"
 #include "rte_event_eth_rx_adapter.h"
 
 #define BATCH_SIZE		32
@@ -1998,6 +1999,8 @@ rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 	event_eth_rx_adapter[id] = rx_adapter;
 	if (conf_cb == rxa_default_conf_cb)
 		rx_adapter->default_cb_arg = 1;
+	rte_eventdev_trace_eth_rx_adapter_create(id, dev_id, conf_cb,
+		conf_arg);
 	return 0;
 }
 
@@ -2047,6 +2050,7 @@ rte_event_eth_rx_adapter_free(uint8_t id)
 	rte_free(rx_adapter);
 	event_eth_rx_adapter[id] = NULL;
 
+	rte_eventdev_trace_eth_rx_adapter_free(id);
 	return 0;
 }
 
@@ -2142,6 +2146,8 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 		rte_spinlock_unlock(&rx_adapter->rx_lock);
 	}
 
+	rte_eventdev_trace_eth_rx_adapter_queue_add(id, eth_dev_id,
+		rx_queue_id, queue_conf, ret);
 	if (ret)
 		return ret;
 
@@ -2263,18 +2269,22 @@ unlock_ret:
 				rxa_sw_adapter_queue_count(rx_adapter));
 	}
 
+	rte_eventdev_trace_eth_rx_adapter_queue_del(id, eth_dev_id,
+		rx_queue_id, ret);
 	return ret;
 }
 
 int
 rte_event_eth_rx_adapter_start(uint8_t id)
 {
+	rte_eventdev_trace_eth_rx_adapter_start(id);
 	return rxa_ctrl(id, 1);
 }
 
 int
 rte_event_eth_rx_adapter_stop(uint8_t id)
 {
+	rte_eventdev_trace_eth_rx_adapter_stop(id);
 	return rxa_ctrl(id, 0);
 }
 

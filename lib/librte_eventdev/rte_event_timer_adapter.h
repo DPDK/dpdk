@@ -115,6 +115,7 @@ extern "C" {
 #include <rte_memory.h>
 
 #include "rte_eventdev.h"
+#include "rte_eventdev_trace_fp.h"
 
 /**
  * Timer adapter clock source
@@ -579,6 +580,8 @@ rte_event_timer_arm_burst(const struct rte_event_timer_adapter *adapter,
 	ADAPTER_VALID_OR_ERR_RET(adapter, -EINVAL);
 	FUNC_PTR_OR_ERR_RET(adapter->arm_burst, -EINVAL);
 #endif
+	rte_eventdev_trace_timer_arm_burst(adapter, (void **)evtims,
+		nb_evtims);
 	return adapter->arm_burst(adapter, evtims, nb_evtims);
 }
 
@@ -622,6 +625,8 @@ rte_event_timer_arm_tmo_tick_burst(
 	ADAPTER_VALID_OR_ERR_RET(adapter, -EINVAL);
 	FUNC_PTR_OR_ERR_RET(adapter->arm_tmo_tick_burst, -EINVAL);
 #endif
+	rte_eventdev_trace_timer_arm_tmo_tick_burst(adapter, timeout_ticks,
+		(void **)evtims, nb_evtims);
 	return adapter->arm_tmo_tick_burst(adapter, evtims, timeout_ticks,
 					   nb_evtims);
 }
@@ -655,6 +660,8 @@ rte_event_timer_cancel_burst(const struct rte_event_timer_adapter *adapter,
 	ADAPTER_VALID_OR_ERR_RET(adapter, -EINVAL);
 	FUNC_PTR_OR_ERR_RET(adapter->cancel_burst, -EINVAL);
 #endif
+	rte_eventdev_trace_timer_cancel_burst(adapter, (void **)evtims,
+		nb_evtims);
 	return adapter->cancel_burst(adapter, evtims, nb_evtims);
 }
 

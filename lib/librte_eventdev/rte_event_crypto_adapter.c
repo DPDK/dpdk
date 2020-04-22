@@ -16,6 +16,7 @@
 
 #include "rte_eventdev.h"
 #include "rte_eventdev_pmd.h"
+#include "rte_eventdev_trace.h"
 #include "rte_event_crypto_adapter.h"
 
 #define BATCH_SIZE 32
@@ -267,6 +268,8 @@ rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 
 	event_crypto_adapter[id] = adapter;
 
+	rte_eventdev_trace_crypto_adapter_create(id, dev_id, adapter, conf_arg,
+		mode);
 	return 0;
 }
 
@@ -314,6 +317,7 @@ rte_event_crypto_adapter_free(uint8_t id)
 		return -EBUSY;
 	}
 
+	rte_eventdev_trace_crypto_adapter_free(id, adapter);
 	if (adapter->default_cb_arg)
 		rte_free(adapter->conf_arg);
 	rte_free(adapter->cdevs);
@@ -874,6 +878,8 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 		rte_service_component_runstate_set(adapter->service_id, 1);
 	}
 
+	rte_eventdev_trace_crypto_adapter_queue_pair_add(id, cdev_id, event,
+		queue_pair_id);
 	return 0;
 }
 
@@ -959,6 +965,8 @@ rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
 				adapter->nb_qps);
 	}
 
+	rte_eventdev_trace_crypto_adapter_queue_pair_del(id, cdev_id,
+		queue_pair_id, ret);
 	return ret;
 }
 
@@ -1014,12 +1022,14 @@ rte_event_crypto_adapter_start(uint8_t id)
 	if (adapter == NULL)
 		return -EINVAL;
 
+	rte_eventdev_trace_crypto_adapter_start(id, adapter);
 	return eca_adapter_ctrl(id, 1);
 }
 
 int
 rte_event_crypto_adapter_stop(uint8_t id)
 {
+	rte_eventdev_trace_crypto_adapter_stop(id);
 	return eca_adapter_ctrl(id, 0);
 }
 
