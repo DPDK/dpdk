@@ -718,8 +718,15 @@ rte_rcu_qsbr_check(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 	RTE_ASSERT(v != NULL);
 
 	/* Check if all the readers have already acknowledged this token */
-	if (likely(t <= v->acked_token))
+	if (likely(t <= v->acked_token)) {
+		__RTE_RCU_DP_LOG(DEBUG,
+			"%s: check: token = %"PRIu64", wait = %d",
+			__func__, t, wait);
+		__RTE_RCU_DP_LOG(DEBUG,
+			"%s: status: least acked token = %"PRIu64"",
+			__func__, v->acked_token);
 		return 1;
+	}
 
 	if (likely(v->num_threads == v->max_threads))
 		return __rte_rcu_qsbr_check_all(v, t, wait);
