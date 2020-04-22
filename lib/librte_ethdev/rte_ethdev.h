@@ -512,8 +512,13 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_GENEVE             (1ULL << 20)
 #define ETH_RSS_NVGRE              (1ULL << 21)
 #define ETH_RSS_GTPU               (1ULL << 23)
+#define ETH_RSS_ETH                (1ULL << 24)
+#define ETH_RSS_S_VLAN             (1ULL << 25)
+#define ETH_RSS_C_VLAN             (1ULL << 26)
 #define ETH_RSS_ESP                (1ULL << 27)
 #define ETH_RSS_AH                 (1ULL << 28)
+#define ETH_RSS_L2TPV3             (1ULL << 29)
+#define ETH_RSS_PFCP               (1ULL << 30)
 
 
 /*
@@ -529,6 +534,8 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_L3_DST_ONLY        (1ULL << 62)
 #define ETH_RSS_L4_SRC_ONLY        (1ULL << 61)
 #define ETH_RSS_L4_DST_ONLY        (1ULL << 60)
+#define ETH_RSS_L2_SRC_ONLY        (1ULL << 59)
+#define ETH_RSS_L2_DST_ONLY        (1ULL << 58)
 
 /**
  * For input set change of hash filter, if SRC_ONLY and DST_ONLY of
@@ -579,6 +586,10 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 	ETH_RSS_VXLAN  | \
 	ETH_RSS_GENEVE | \
 	ETH_RSS_NVGRE)
+
+#define ETH_RSS_VLAN ( \
+	ETH_RSS_S_VLAN  | \
+	ETH_RSS_C_VLAN)
 
 /**< Mask of valid RSS hash protocols */
 #define ETH_RSS_PROTO_MASK ( \
