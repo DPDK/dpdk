@@ -45,7 +45,7 @@ ice_dcf_update_vsi_ctx(struct ice_hw *hw, uint16_t vsi_handle,
 			VIRTCHNL_DCF_VF_VSI_ID_S;
 
 		/* Redirect rules if vsi mapping table changes. */
-		if (!first_update && vsi_ctx->vsi_num != new_vsi_num) {
+		if (!first_update) {
 			struct ice_flow_redirect rd;
 
 			memset(&rd, 0, sizeof(struct ice_flow_redirect));
