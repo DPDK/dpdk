@@ -343,7 +343,9 @@ EXPERIMENTAL {
 	per_lcore_trace_point_sz;
 	rte_log_can_log;
 	rte_thread_getname;
+	rte_trace_dump;
 	rte_trace_is_enabled;
+	rte_trace_metadata_dump;
 	rte_trace_mode_get;
 	rte_trace_mode_set;
 	rte_trace_pattern;

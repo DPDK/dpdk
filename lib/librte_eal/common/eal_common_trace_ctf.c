@@ -419,3 +419,70 @@ trace_metadata_destroy(void)
 	}
 }
 
+static void
+meta_fix_freq(struct trace *trace, char *meta)
+{
+	char *str;
+	int rc;
+
+	str = RTE_PTR_ADD(meta, trace->ctf_meta_offset_freq);
+	rc = sprintf(str, "%20"PRIu64"", rte_get_timer_hz());
+	str[rc] = ';';
+}
+
+static void
+meta_fix_freq_offset(struct trace *trace, char *meta)
+{
+	uint64_t uptime_tickes_floor, uptime_ticks, freq, uptime_sec;
+	uint64_t offset, offset_s;
+	char *str;
+	int rc;
+
+	uptime_ticks = trace->uptime_ticks &
+			((1ULL << __RTE_TRACE_EVENT_HEADER_ID_SHIFT) - 1);
+	freq = rte_get_tsc_hz();
+	uptime_tickes_floor = RTE_ALIGN_MUL_FLOOR(uptime_ticks, freq);
+
+	uptime_sec = uptime_tickes_floor / freq;
+	offset_s = trace->epoch_sec - uptime_sec;
+
+	offset = uptime_ticks - uptime_tickes_floor;
+	offset += trace->epoch_nsec * (freq / NSEC_PER_SEC);
+
+	str = RTE_PTR_ADD(meta, trace->ctf_meta_offset_freq_off_s);
+	rc = sprintf(str, "%20"PRIu64"", offset_s);
+	str[rc] = ';';
+	str = RTE_PTR_ADD(meta, trace->ctf_meta_offset_freq_off);
+	rc = sprintf(str, "%20"PRIu64"", offset);
+	str[rc] = ';';
+}
+
+static void
+meta_fixup(struct trace *trace, char *meta)
+{
+	meta_fix_freq(trace, meta);
+	meta_fix_freq_offset(trace, meta);
+}
+
+int
+rte_trace_metadata_dump(FILE *f)
+{
+	struct trace *trace = trace_obj_get();
+	char *ctf_meta = trace->ctf_meta;
+	int rc;
+
+	if (!rte_trace_is_enabled())
+		return 0;
+
+	if (ctf_meta == NULL)
+		return -EINVAL;
+
+	if (!__atomic_load_n(&trace->ctf_fixup_done, __ATOMIC_SEQ_CST) &&
+				rte_get_timer_hz()) {
+		meta_fixup(trace, ctf_meta);
+		__atomic_store_n(&trace->ctf_fixup_done, 1, __ATOMIC_SEQ_CST);
+	}
+
+	rc = fprintf(f, "%s", ctf_meta);
+	return rc < 0 ? rc : 0;
+}

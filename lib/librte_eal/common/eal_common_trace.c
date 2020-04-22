@@ -232,6 +232,63 @@ rte_trace_point_lookup(const char *name)
 	return NULL;
 }
 
+static void
+trace_point_dump(FILE *f, struct trace_point *tp)
+{
+	rte_trace_point_t *handle = tp->handle;
+
+	fprintf(f, "\tid %d, %s, size is %d, %s\n",
+		trace_id_get(handle), tp->name,
+		(uint16_t)(*handle & __RTE_TRACE_FIELD_SIZE_MASK),
+		rte_trace_point_is_enabled(handle) ? "enabled" : "disabled");
+}
+
+static void
+trace_lcore_mem_dump(FILE *f)
+{
+	struct trace *trace = trace_obj_get();
+	struct __rte_trace_header *header;
+	uint32_t count;
+
+	if (trace->nb_trace_mem_list == 0)
+		return;
+
+	rte_spinlock_lock(&trace->lock);
+	fprintf(f, "nb_trace_mem_list = %d\n", trace->nb_trace_mem_list);
+	fprintf(f, "\nTrace mem info\n--------------\n");
+	for (count = 0; count < trace->nb_trace_mem_list; count++) {
+		header = trace->lcore_meta[count].mem;
+		fprintf(f, "\tid %d, mem=%p, area=%s, lcore_id=%d, name=%s\n",
+		count, header,
+		trace_area_to_string(trace->lcore_meta[count].area),
+		header->stream_header.lcore_id,
+		header->stream_header.thread_name);
+	}
+	rte_spinlock_unlock(&trace->lock);
+}
+
+void
+rte_trace_dump(FILE *f)
+{
+	struct trace_point_head *tp_list = trace_list_head_get();
+	struct trace *trace = trace_obj_get();
+	struct trace_point *tp;
+
+	fprintf(f, "\nGlobal info\n-----------\n");
+	fprintf(f, "status = %s\n",
+		rte_trace_is_enabled() ? "enabled" : "disabled");
+	fprintf(f, "mode = %s\n",
+		trace_mode_to_string(rte_trace_mode_get()));
+	fprintf(f, "dir = %s\n", trace->dir);
+	fprintf(f, "buffer len = %d\n", trace->buff_len);
+	fprintf(f, "number of trace points = %d\n", trace->nb_trace_points);
+
+	trace_lcore_mem_dump(f);
+	fprintf(f, "\nTrace point info\n----------------\n");
+	STAILQ_FOREACH(tp, tp_list, next)
+		trace_point_dump(f, tp);
+}
+
 void
 __rte_trace_mem_per_thread_alloc(void)
 {
