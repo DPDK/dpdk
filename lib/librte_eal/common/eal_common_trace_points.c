@@ -31,6 +31,10 @@ RTE_TRACE_POINT_DEFINE(rte_eal_trace_mem_malloc);
 RTE_TRACE_POINT_DEFINE(rte_eal_trace_mem_realloc);
 RTE_TRACE_POINT_DEFINE(rte_eal_trace_mem_free);
 
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_memzone_reserve);
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_memzone_lookup);
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_memzone_free);
+
 RTE_INIT(eal_trace_init)
 {
 	RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_void,
@@ -79,4 +83,11 @@ RTE_INIT(eal_trace_init)
 		lib.eal.mem.realloc);
 	RTE_TRACE_POINT_REGISTER(rte_eal_trace_mem_free,
 		lib.eal.mem.free);
+
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_memzone_reserve,
+		lib.eal.memzone.reserve);
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_memzone_lookup,
+		lib.eal.memzone.lookup);
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_memzone_free,
+		lib.eal.memzone.free);
 }
