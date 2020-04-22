@@ -281,6 +281,24 @@ int __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
 #include <rte_trace_point_provider.h>
 #endif
 
+#ifndef __DOXYGEN__
+
+#define rte_trace_point_emit_u64(in) __rte_trace_point_emit(in, uint64_t)
+#define rte_trace_point_emit_i64(in) __rte_trace_point_emit(in, int64_t)
+#define rte_trace_point_emit_u32(in) __rte_trace_point_emit(in, uint32_t)
+#define rte_trace_point_emit_i32(in) __rte_trace_point_emit(in, int32_t)
+#define rte_trace_point_emit_u16(in) __rte_trace_point_emit(in, uint16_t)
+#define rte_trace_point_emit_i16(in) __rte_trace_point_emit(in, int16_t)
+#define rte_trace_point_emit_u8(in) __rte_trace_point_emit(in, uint8_t)
+#define rte_trace_point_emit_i8(in) __rte_trace_point_emit(in, int8_t)
+#define rte_trace_point_emit_int(in) __rte_trace_point_emit(in, int32_t)
+#define rte_trace_point_emit_long(in) __rte_trace_point_emit(in, long)
+#define rte_trace_point_emit_float(in) __rte_trace_point_emit(in, float)
+#define rte_trace_point_emit_double(in) __rte_trace_point_emit(in, double)
+#define rte_trace_point_emit_ptr(in) __rte_trace_point_emit(in, uintptr_t)
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif
