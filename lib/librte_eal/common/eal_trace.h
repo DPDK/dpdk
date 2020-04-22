@@ -5,6 +5,7 @@
 #ifndef __EAL_TRACE_H
 #define __EAL_TRACE_H
 
+#include <rte_cycles.h>
 #include <rte_spinlock.h>
 #include <rte_trace.h>
 #include <rte_trace_point.h>
@@ -37,6 +38,9 @@ struct trace {
 	rte_uuid_t uuid;
 	uint32_t buff_len;
 	uint32_t nb_trace_points;
+	uint64_t epoch_sec;
+	uint64_t epoch_nsec;
+	uint64_t uptime_ticks;
 	rte_spinlock_t lock;
 };
 
@@ -59,6 +63,7 @@ struct trace_point_head *trace_list_head_get(void);
 bool trace_has_duplicate_entry(void);
 void trace_uuid_generate(void);
 int trace_mkdir(void);
+int trace_epoch_time_save(void);
 
 /* EAL interface */
 int eal_trace_init(void);

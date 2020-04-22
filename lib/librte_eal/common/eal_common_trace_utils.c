@@ -98,6 +98,28 @@ fail:
 	return -rte_errno;
 }
 
+int
+trace_epoch_time_save(void)
+{
+	struct trace *trace = trace_obj_get();
+	struct timespec epoch = { 0, 0 };
+	uint64_t avg, start, end;
+
+	start = rte_get_tsc_cycles();
+	if (clock_gettime(CLOCK_REALTIME, &epoch) < 0) {
+		trace_err("failed to get the epoch time");
+		return -1;
+	}
+	end = rte_get_tsc_cycles();
+	avg = (start + end) >> 1;
+
+	trace->epoch_sec = (uint64_t) epoch.tv_sec;
+	trace->epoch_nsec = (uint64_t) epoch.tv_nsec;
+	trace->uptime_ticks = avg;
+
+	return 0;
+}
+
 static int
 trace_dir_default_path_get(char *dir_path)
 {

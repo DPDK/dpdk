@@ -61,6 +61,9 @@ eal_trace_init(void)
 	if (trace_mkdir())
 		goto fail;
 
+	/* Save current epoch timestamp for future use */
+	if (trace_epoch_time_save() < 0)
+		goto fail;
 
 	rte_trace_mode_set(trace.mode);
 
