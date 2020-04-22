@@ -4,18 +4,14 @@ DPDK_20.0 {
 	rte_mempool_audit;
 	rte_mempool_avail_count;
 	rte_mempool_cache_create;
-	rte_mempool_cache_flush;
 	rte_mempool_cache_free;
 	rte_mempool_calc_obj_size;
 	rte_mempool_check_cookies;
 	rte_mempool_contig_blocks_check_cookies;
 	rte_mempool_create;
 	rte_mempool_create_empty;
-	rte_mempool_default_cache;
 	rte_mempool_dump;
 	rte_mempool_free;
-	rte_mempool_generic_get;
-	rte_mempool_generic_put;
 	rte_mempool_in_use_count;
 	rte_mempool_list_dump;
 	rte_mempool_lookup;
