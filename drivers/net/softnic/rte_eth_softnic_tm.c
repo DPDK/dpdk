@@ -447,6 +447,8 @@ static const struct rte_tm_capabilities tm_cap = {
 	.shaper_private_dual_rate_n_max = 0,
 	.shaper_private_rate_min = 1,
 	.shaper_private_rate_max = UINT32_MAX,
+	.shaper_private_packet_mode_supported = 0,
+	.shaper_private_byte_mode_supported = 1,
 
 	.shaper_shared_n_max = UINT32_MAX,
 	.shaper_shared_n_nodes_per_shaper_max = UINT32_MAX,
@@ -454,6 +456,8 @@ static const struct rte_tm_capabilities tm_cap = {
 	.shaper_shared_dual_rate_n_max = 0,
 	.shaper_shared_rate_min = 1,
 	.shaper_shared_rate_max = UINT32_MAX,
+	.shaper_shared_packet_mode_supported = 0,
+	.shaper_shared_byte_mode_supported = 1,
 
 	.shaper_pkt_length_adjust_min = RTE_TM_ETH_FRAMING_OVERHEAD_FCS,
 	.shaper_pkt_length_adjust_max = RTE_TM_ETH_FRAMING_OVERHEAD_FCS,
@@ -463,6 +467,8 @@ static const struct rte_tm_capabilities tm_cap = {
 	.sched_wfq_n_children_per_group_max = UINT32_MAX,
 	.sched_wfq_n_groups_max = 1,
 	.sched_wfq_weight_max = UINT32_MAX,
+	.sched_wfq_packet_mode_supported = 0,
+	.sched_wfq_byte_mode_supported = 1,
 
 	.cman_wred_packet_mode_supported = WRED_SUPPORTED,
 	.cman_wred_byte_mode_supported = 0,
@@ -548,13 +554,19 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 1,
 			.shaper_private_rate_max = UINT32_MAX,
+			.shaper_private_packet_mode_supported = 0,
+			.shaper_private_byte_mode_supported = 1,
 			.shaper_shared_n_max = 0,
+			.shaper_shared_packet_mode_supported = 0,
+			.shaper_shared_byte_mode_supported = 0,
 
 			.sched_n_children_max = UINT32_MAX,
 			.sched_sp_n_priorities_max = 1,
 			.sched_wfq_n_children_per_group_max = UINT32_MAX,
 			.sched_wfq_n_groups_max = 1,
 			.sched_wfq_weight_max = 1,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 1,
 
 			.stats_mask = STATS_MASK_DEFAULT,
 		} },
@@ -572,7 +584,11 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 1,
 			.shaper_private_rate_max = UINT32_MAX,
+			.shaper_private_packet_mode_supported = 0,
+			.shaper_private_byte_mode_supported = 1,
 			.shaper_shared_n_max = 0,
+			.shaper_shared_packet_mode_supported = 0,
+			.shaper_shared_byte_mode_supported = 0,
 
 			.sched_n_children_max = UINT32_MAX,
 			.sched_sp_n_priorities_max = 1,
@@ -580,9 +596,14 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.sched_wfq_n_groups_max = 1,
 #ifdef RTE_SCHED_SUBPORT_TC_OV
 			.sched_wfq_weight_max = UINT32_MAX,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 1,
 #else
 			.sched_wfq_weight_max = 1,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 1,
 #endif
+
 			.stats_mask = STATS_MASK_DEFAULT,
 		} },
 	},
@@ -599,7 +620,11 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 1,
 			.shaper_private_rate_max = UINT32_MAX,
+			.shaper_private_packet_mode_supported = 0,
+			.shaper_private_byte_mode_supported = 1,
 			.shaper_shared_n_max = 0,
+			.shaper_shared_packet_mode_supported = 0,
+			.shaper_shared_byte_mode_supported = 0,
 
 			.sched_n_children_max =
 				RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE,
@@ -608,6 +633,8 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.sched_wfq_n_children_per_group_max = 1,
 			.sched_wfq_n_groups_max = 0,
 			.sched_wfq_weight_max = 1,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 0,
 
 			.stats_mask = STATS_MASK_DEFAULT,
 		} },
@@ -625,7 +652,11 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 1,
 			.shaper_private_rate_max = UINT32_MAX,
+			.shaper_private_packet_mode_supported = 0,
+			.shaper_private_byte_mode_supported = 1,
 			.shaper_shared_n_max = 1,
+			.shaper_shared_packet_mode_supported = 0,
+			.shaper_shared_byte_mode_supported = 1,
 
 			.sched_n_children_max =
 				RTE_SCHED_BE_QUEUES_PER_PIPE,
@@ -634,6 +665,8 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 				RTE_SCHED_BE_QUEUES_PER_PIPE,
 			.sched_wfq_n_groups_max = 1,
 			.sched_wfq_weight_max = UINT32_MAX,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 1,
 
 			.stats_mask = STATS_MASK_DEFAULT,
 		} },
@@ -651,7 +684,11 @@ static const struct rte_tm_level_capabilities tm_level_cap[] = {
 			.shaper_private_dual_rate_supported = 0,
 			.shaper_private_rate_min = 0,
 			.shaper_private_rate_max = 0,
+			.shaper_private_packet_mode_supported = 0,
+			.shaper_private_byte_mode_supported = 0,
 			.shaper_shared_n_max = 0,
+			.shaper_shared_packet_mode_supported = 0,
+			.shaper_shared_byte_mode_supported = 0,
 
 			.cman_head_drop_supported = 0,
 			.cman_wred_packet_mode_supported = WRED_SUPPORTED,
@@ -736,7 +773,11 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_dual_rate_supported = 0,
 		.shaper_private_rate_min = 1,
 		.shaper_private_rate_max = UINT32_MAX,
+		.shaper_private_packet_mode_supported = 0,
+		.shaper_private_byte_mode_supported = 1,
 		.shaper_shared_n_max = 0,
+		.shaper_shared_packet_mode_supported = 0,
+		.shaper_shared_byte_mode_supported = 0,
 
 		{.nonleaf = {
 			.sched_n_children_max = UINT32_MAX,
@@ -744,6 +785,8 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 			.sched_wfq_n_children_per_group_max = UINT32_MAX,
 			.sched_wfq_n_groups_max = 1,
 			.sched_wfq_weight_max = 1,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 1,
 		} },
 
 		.stats_mask = STATS_MASK_DEFAULT,
@@ -754,7 +797,11 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_dual_rate_supported = 0,
 		.shaper_private_rate_min = 1,
 		.shaper_private_rate_max = UINT32_MAX,
+		.shaper_private_packet_mode_supported = 0,
+		.shaper_private_byte_mode_supported = 1,
 		.shaper_shared_n_max = 0,
+		.shaper_shared_packet_mode_supported = 0,
+		.shaper_shared_byte_mode_supported = 0,
 
 		{.nonleaf = {
 			.sched_n_children_max = UINT32_MAX,
@@ -762,6 +809,8 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 			.sched_wfq_n_children_per_group_max = UINT32_MAX,
 			.sched_wfq_n_groups_max = 1,
 			.sched_wfq_weight_max = UINT32_MAX,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 1,
 		} },
 
 		.stats_mask = STATS_MASK_DEFAULT,
@@ -772,7 +821,11 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_dual_rate_supported = 0,
 		.shaper_private_rate_min = 1,
 		.shaper_private_rate_max = UINT32_MAX,
+		.shaper_private_packet_mode_supported = 0,
+		.shaper_private_byte_mode_supported = 1,
 		.shaper_shared_n_max = 0,
+		.shaper_shared_packet_mode_supported = 0,
+		.shaper_shared_byte_mode_supported = 0,
 
 		{.nonleaf = {
 			.sched_n_children_max =
@@ -782,6 +835,8 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 			.sched_wfq_n_children_per_group_max = 1,
 			.sched_wfq_n_groups_max = 0,
 			.sched_wfq_weight_max = 1,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 0,
 		} },
 
 		.stats_mask = STATS_MASK_DEFAULT,
@@ -792,7 +847,11 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_dual_rate_supported = 0,
 		.shaper_private_rate_min = 1,
 		.shaper_private_rate_max = UINT32_MAX,
+		.shaper_private_packet_mode_supported = 0,
+		.shaper_private_byte_mode_supported = 1,
 		.shaper_shared_n_max = 1,
+		.shaper_shared_packet_mode_supported = 0,
+		.shaper_shared_byte_mode_supported = 1,
 
 		{.nonleaf = {
 			.sched_n_children_max =
@@ -802,6 +861,8 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 				RTE_SCHED_BE_QUEUES_PER_PIPE,
 			.sched_wfq_n_groups_max = 1,
 			.sched_wfq_weight_max = UINT32_MAX,
+			.sched_wfq_packet_mode_supported = 0,
+			.sched_wfq_byte_mode_supported = 1,
 		} },
 
 		.stats_mask = STATS_MASK_DEFAULT,
@@ -812,7 +873,11 @@ static const struct rte_tm_node_capabilities tm_node_cap[] = {
 		.shaper_private_dual_rate_supported = 0,
 		.shaper_private_rate_min = 0,
 		.shaper_private_rate_max = 0,
+		.shaper_private_packet_mode_supported = 0,
+		.shaper_private_byte_mode_supported = 0,
 		.shaper_shared_n_max = 0,
+		.shaper_shared_packet_mode_supported = 0,
+		.shaper_shared_byte_mode_supported = 0,
 
 
 		{.leaf = {
@@ -947,6 +1012,13 @@ shaper_profile_check(struct rte_eth_dev *dev,
 			NULL,
 			rte_strerror(EINVAL));
 
+	/* Packet mode is not supported. */
+	if (profile->packet_mode != 0)
+		return -rte_tm_error_set(error,
+			EINVAL,
+			RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PACKET_MODE,
+			NULL,
+			rte_strerror(EINVAL));
 	return 0;
 }
 
