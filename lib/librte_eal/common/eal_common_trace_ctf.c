@@ -215,11 +215,130 @@ meta_stream_emit(char **meta, int *offset)
 	return meta_copy(meta, offset, str, rc);
 }
 
+static void
+string_fixed_replace(char *input, const char *search, const char *replace)
+{
+	char *found;
+	size_t len;
+
+	found = strstr(input, search);
+	if (found == NULL)
+		return;
+
+	if (strlen(found) != strlen(search))
+		return;
+
+	len = strlen(replace);
+	memcpy(found, replace, len);
+	found[len] = '\0';
+}
+
+static void
+ctf_fixup_align(char *str)
+{
+	string_fixed_replace(str, "align", "_align");
+}
+
+static void
+ctf_fixup_arrow_deref(char *str)
+{
+	const char *replace = "_";
+	const char *search = "->";
+	char *found;
+	size_t len;
+
+	found = strstr(str, search);
+	if (found == NULL)
+		return;
+
+	do {
+		memcpy(found, replace, strlen(replace));
+		len = strlen(found + 2);
+		memcpy(found + 1, found + 2, len);
+		found[len + 1] = '\0';
+		found = strstr(str, search);
+	} while (found != NULL);
+}
+
+static void
+ctf_fixup_dot_deref(char *str)
+{
+	const char *replace = "_";
+	const char *search = ".";
+	char *found;
+	size_t len;
+
+	found = strstr(str, search);
+	if (found == NULL)
+		return;
+
+	len = strlen(replace);
+	do {
+		memcpy(found, replace, len);
+		found = strstr(str, search);
+	} while (found != NULL);
+}
+
+static void
+ctf_fixup_event(char *str)
+{
+	string_fixed_replace(str, "event", "_event");
+}
+
+static int
+ctf_fixup_keyword(char *str)
+{
+	char dup_str[TRACE_CTF_FIELD_SIZE];
+	char input[TRACE_CTF_FIELD_SIZE];
+	const char *delim = ";";
+	char *from;
+	int len;
+
+	if (str == NULL)
+		return 0;
+
+	len = strlen(str);
+	if (len >= TRACE_CTF_FIELD_SIZE) {
+		trace_err("ctf_field reached its maximum limit");
+		return -EMSGSIZE;
+	}
+
+	/* Create duplicate string */
+	strcpy(dup_str, str);
+
+	len = 0;
+	from = strtok(dup_str, delim);
+	while (from != NULL) {
+		strcpy(input, from);
+		ctf_fixup_align(input);
+		ctf_fixup_dot_deref(input);
+		ctf_fixup_arrow_deref(input);
+		ctf_fixup_event(input);
+
+		strcpy(&input[strlen(input)], delim);
+		if ((len + strlen(input)) >= TRACE_CTF_FIELD_SIZE) {
+			trace_err("ctf_field reached its maximum limit");
+			return -EMSGSIZE;
+		}
+
+		strcpy(str + len, input);
+		len += strlen(input);
+		from = strtok(NULL, delim);
+	}
+
+	return 0;
+}
+
 static int
 meta_event_emit(char **meta, int *offset, struct trace_point *tp)
 {
 	char *str = NULL;
 	int rc;
+
+	/* Fixup ctf field string in case it using reserved ctf keywords */
+	rc = ctf_fixup_keyword(tp->ctf_field);
+	if (rc)
+		return rc;
 
 	rc = metadata_printf(&str,
 		"event {\n"
