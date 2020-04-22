@@ -241,6 +241,23 @@ void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
 int rte_thread_setname(pthread_t id, const char *name);
 
 /**
+ * Get thread name.
+ *
+ * @note It fails with glibc < 2.12.
+ *
+ * @param id
+ *   Thread id.
+ * @param name
+ *   Thread name to set.
+ * @param len
+ *   Thread name buffer length.
+ * @return
+ *   On success, return 0; otherwise return a negative value.
+ */
+__rte_experimental
+int rte_thread_getname(pthread_t id, char *name, size_t len);
+
+/**
  * Create a control thread.
  *
  * Wrapper to pthread_create(), pthread_setname_np() and

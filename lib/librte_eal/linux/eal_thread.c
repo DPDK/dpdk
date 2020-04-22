@@ -186,3 +186,18 @@ int rte_thread_setname(pthread_t id, const char *name)
 	RTE_SET_USED(name);
 	return -ret;
 }
+
+int rte_thread_getname(pthread_t id, char *name, size_t len)
+{
+	int ret = ENOSYS;
+#if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 12)
+	ret = pthread_getname_np(id, name, len);
+#endif
+#endif
+	RTE_SET_USED(id);
+	RTE_SET_USED(name);
+	RTE_SET_USED(len);
+	return -ret;
+
+}

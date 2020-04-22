@@ -175,3 +175,12 @@ int rte_thread_setname(pthread_t id, const char *name)
 	pthread_set_name_np(id, name);
 	return 0;
 }
+
+int rte_thread_getname(pthread_t id, char *name, size_t len)
+{
+	RTE_SET_USED(id);
+	RTE_SET_USED(name);
+	RTE_SET_USED(len);
+
+	return -ENOTSUP;
+}
