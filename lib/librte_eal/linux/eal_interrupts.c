@@ -34,6 +34,7 @@
 #include <rte_spinlock.h>
 #include <rte_pause.h>
 #include <rte_vfio.h>
+#include <rte_eal_trace.h>
 
 #include "eal_private.h"
 #include "eal_vfio.h"
@@ -539,8 +540,9 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	 */
 	if (wake_thread)
 		if (write(intr_pipe.writefd, "1", 1) < 0)
-			return -EPIPE;
+			ret = -EPIPE;
 
+	rte_eal_trace_intr_callback_register(intr_handle, cb, cb_arg, ret);
 	return ret;
 }
 
@@ -656,63 +658,76 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		ret = -EPIPE;
 	}
 
+	rte_eal_trace_intr_callback_unregister(intr_handle, cb_fn, cb_arg,
+		ret);
 	return ret;
 }
 
 int
 rte_intr_enable(const struct rte_intr_handle *intr_handle)
 {
-	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
-		return 0;
+	int rc = 0;
 
-	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
-		return -1;
+	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+		rc = 0;
+		goto out;
+	}
+
+	if (!intr_handle || intr_handle->fd < 0 ||
+			intr_handle->uio_cfg_fd < 0) {
+		rc = -1;
+		goto out;
+	}
 
 	switch (intr_handle->type){
 	/* write to the uio fd to enable the interrupt */
 	case RTE_INTR_HANDLE_UIO:
 		if (uio_intr_enable(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 	case RTE_INTR_HANDLE_UIO_INTX:
 		if (uio_intx_intr_enable(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
-		return -1;
+		rc = -1;
+		break;
 #ifdef VFIO_PRESENT
 	case RTE_INTR_HANDLE_VFIO_MSIX:
 		if (vfio_enable_msix(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 	case RTE_INTR_HANDLE_VFIO_MSI:
 		if (vfio_enable_msi(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 	case RTE_INTR_HANDLE_VFIO_LEGACY:
 		if (vfio_enable_intx(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 #ifdef HAVE_VFIO_DEV_REQ_INTERFACE
 	case RTE_INTR_HANDLE_VFIO_REQ:
 		if (vfio_enable_req(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 #endif
 #endif
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
-		return -1;
+		rc = -1;
+		break;
 	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
 			"Unknown handle type of fd %d\n",
 					intr_handle->fd);
-		return -1;
+		rc = -1;
+		break;
 	}
-
-	return 0;
+out:
+	rte_eal_trace_intr_enable(intr_handle, rc);
+	return rc;
 }
 
 /**
@@ -778,57 +793,68 @@ rte_intr_ack(const struct rte_intr_handle *intr_handle)
 int
 rte_intr_disable(const struct rte_intr_handle *intr_handle)
 {
-	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
-		return 0;
+	int rc = 0;
 
-	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
-		return -1;
+	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+		rc = 0;
+		goto out;
+	}
+
+	if (!intr_handle || intr_handle->fd < 0 ||
+					intr_handle->uio_cfg_fd < 0) {
+		rc = -1;
+		goto out;
+	}
 
 	switch (intr_handle->type){
 	/* write to the uio fd to disable the interrupt */
 	case RTE_INTR_HANDLE_UIO:
 		if (uio_intr_disable(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 	case RTE_INTR_HANDLE_UIO_INTX:
 		if (uio_intx_intr_disable(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
-		return -1;
+		rc = -1;
+		break;
 #ifdef VFIO_PRESENT
 	case RTE_INTR_HANDLE_VFIO_MSIX:
 		if (vfio_disable_msix(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 	case RTE_INTR_HANDLE_VFIO_MSI:
 		if (vfio_disable_msi(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 	case RTE_INTR_HANDLE_VFIO_LEGACY:
 		if (vfio_disable_intx(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 #ifdef HAVE_VFIO_DEV_REQ_INTERFACE
 	case RTE_INTR_HANDLE_VFIO_REQ:
 		if (vfio_disable_req(intr_handle))
-			return -1;
+			rc = -1;
 		break;
 #endif
 #endif
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
-		return -1;
+		rc = -1;
+		break;
 	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
 			"Unknown handle type of fd %d\n",
 					intr_handle->fd);
-		return -1;
+		rc = -1;
+		break;
 	}
-
-	return 0;
+out:
+	rte_eal_trace_intr_disable(intr_handle, rc);
+	return rc;
 }
 
 static int

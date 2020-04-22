@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 #include <rte_alarm.h>
+#include <rte_interrupts.h>
 #include <rte_trace_point.h>
 
 /* Generic */
@@ -220,6 +221,54 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(unsigned int lcore_id, const char *cpuset),
 	rte_trace_point_emit_u32(lcore_id);
 	rte_trace_point_emit_string(cpuset);
+)
+
+/* Interrupt */
+RTE_TRACE_POINT(
+	rte_eal_trace_intr_callback_register,
+	RTE_TRACE_POINT_ARGS(const struct rte_intr_handle *handle,
+		rte_intr_callback_fn cb, void *cb_arg, int rc),
+	rte_trace_point_emit_int(rc);
+	rte_trace_point_emit_int(handle->vfio_dev_fd);
+	rte_trace_point_emit_int(handle->fd);
+	rte_trace_point_emit_int(handle->type);
+	rte_trace_point_emit_u32(handle->max_intr);
+	rte_trace_point_emit_u32(handle->nb_efd);
+	rte_trace_point_emit_ptr(cb);
+	rte_trace_point_emit_ptr(cb_arg);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_intr_callback_unregister,
+	RTE_TRACE_POINT_ARGS(const struct rte_intr_handle *handle,
+		rte_intr_callback_fn cb, void *cb_arg, int rc),
+	rte_trace_point_emit_int(rc);
+	rte_trace_point_emit_int(handle->vfio_dev_fd);
+	rte_trace_point_emit_int(handle->fd);
+	rte_trace_point_emit_int(handle->type);
+	rte_trace_point_emit_u32(handle->max_intr);
+	rte_trace_point_emit_u32(handle->nb_efd);
+	rte_trace_point_emit_ptr(cb);
+	rte_trace_point_emit_ptr(cb_arg);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_intr_enable,
+	RTE_TRACE_POINT_ARGS(const struct rte_intr_handle *handle, int rc),
+	rte_trace_point_emit_int(rc);
+	rte_trace_point_emit_int(handle->vfio_dev_fd);
+	rte_trace_point_emit_int(handle->fd);
+	rte_trace_point_emit_int(handle->type);
+	rte_trace_point_emit_u32(handle->max_intr);
+	rte_trace_point_emit_u32(handle->nb_efd);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_intr_disable,
+	RTE_TRACE_POINT_ARGS(const struct rte_intr_handle *handle, int rc),
+	rte_trace_point_emit_int(rc);
+	rte_trace_point_emit_int(handle->vfio_dev_fd);
+	rte_trace_point_emit_int(handle->fd);
+	rte_trace_point_emit_int(handle->type);
+	rte_trace_point_emit_u32(handle->max_intr);
+	rte_trace_point_emit_u32(handle->nb_efd);
 )
 
 #ifdef __cplusplus

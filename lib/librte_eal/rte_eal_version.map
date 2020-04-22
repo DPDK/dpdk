@@ -355,6 +355,10 @@ EXPERIMENTAL {
 	__rte_eal_trace_generic_u64;
 	__rte_eal_trace_generic_u8;
 	__rte_eal_trace_generic_void;
+	__rte_eal_trace_intr_callback_register;
+	__rte_eal_trace_intr_callback_unregister;
+	__rte_eal_trace_intr_enable;
+	__rte_eal_trace_intr_disable;
 	__rte_eal_trace_mem_free;
 	__rte_eal_trace_mem_malloc;
 	__rte_eal_trace_mem_realloc;

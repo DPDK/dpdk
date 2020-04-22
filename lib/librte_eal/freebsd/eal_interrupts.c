@@ -13,6 +13,7 @@
 #include <rte_spinlock.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
+#include <rte_eal_trace.h>
 
 #include "eal_private.h"
 #include "eal_alarm_private.h"
@@ -85,7 +86,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 {
 	struct rte_intr_callback *callback;
 	struct rte_intr_source *src;
-	int ret, add_event = 0;
+	int ret = 0, add_event = 0;
 
 	/* first do parameter checking */
 	if (intr_handle == NULL || intr_handle->fd < 0 || cb == NULL) {
@@ -182,6 +183,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 			goto fail;
 		}
 	}
+	rte_eal_trace_intr_callback_register(intr_handle, cb, cb_arg, ret);
 	rte_spinlock_unlock(&intr_lock);
 
 	return 0;
@@ -196,6 +198,7 @@ fail:
 		}
 	}
 	free(callback);
+	rte_eal_trace_intr_callback_register(intr_handle, cb, cb_arg, ret);
 	rte_spinlock_unlock(&intr_lock);
 	return ret;
 }
@@ -335,6 +338,8 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		}
 	}
 out:
+	rte_eal_trace_intr_callback_unregister(intr_handle, cb_fn, cb_arg,
+		ret);
 	rte_spinlock_unlock(&intr_lock);
 
 	return ret;
@@ -343,55 +348,78 @@ out:
 int
 rte_intr_enable(const struct rte_intr_handle *intr_handle)
 {
-	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
-		return 0;
+	int rc = 0;
 
-	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
-		return -1;
+	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+		rc = 0;
+		goto out;
+	}
+
+	if (!intr_handle || intr_handle->fd < 0 ||
+				intr_handle->uio_cfg_fd < 0) {
+		rc = -1;
+		goto out;
+	}
 
 	switch (intr_handle->type) {
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
-		return -1;
+		rc = -1;
+		break;
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
-		return -1;
+		rc = -1;
+		break;
 	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
 			"Unknown handle type of fd %d\n",
 					intr_handle->fd);
-		return -1;
+		rc = -1;
+		break;
 	}
 
-	return 0;
+out:
+	rte_eal_trace_intr_enable(intr_handle, rc);
+	return rc;
 }
 
 int
 rte_intr_disable(const struct rte_intr_handle *intr_handle)
 {
-	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
-		return 0;
+	int rc = 0;
 
-	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
-		return -1;
+	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+		rc = 0;
+		goto out;
+	}
+
+	if (!intr_handle || intr_handle->fd < 0 ||
+				intr_handle->uio_cfg_fd < 0) {
+		rc = -1;
+		goto out;
+	}
 
 	switch (intr_handle->type) {
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
-		return -1;
+		rc = -1;
+		break;
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
-		return -1;
+		rc = -1;
+		break;
 	/* unknown handle type */
 	default:
 		RTE_LOG(ERR, EAL,
 			"Unknown handle type of fd %d\n",
 					intr_handle->fd);
-		return -1;
+		rc = -1;
+		break;
 	}
-
-	return 0;
+out:
+	rte_eal_trace_intr_disable(intr_handle, rc);
+	return rc;
 }
 
 int
