@@ -20,6 +20,8 @@
 #include <rte_per_lcore.h>
 #include <rte_eal.h>
 #include <rte_lcore.h>
+#include <rte_trace.h>
+#include <rte_trace_point.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"
@@ -123,6 +125,8 @@ eal_thread_loop(__rte_unused void *arg)
 
 	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
 		lcore_id, (uintptr_t)thread_id, cpuset, ret == 0 ? "" : "...");
+
+	__rte_trace_mem_per_thread_alloc();
 
 	/* read on our pipe to get commands */
 	while (1) {

@@ -15,6 +15,7 @@
 #include <rte_lcore.h>
 #include <rte_memory.h>
 #include <rte_log.h>
+#include <rte_trace_point.h>
 
 #include "eal_internal_cfg.h"
 #include "eal_private.h"
@@ -165,7 +166,7 @@ static void *rte_thread_init(void *arg)
 		pthread_barrier_destroy(&params->configured);
 		free(params);
 	}
-
+	__rte_trace_mem_per_thread_alloc();
 	return start_routine(routine_arg);
 }
 

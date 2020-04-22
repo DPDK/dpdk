@@ -58,6 +58,7 @@
 #include "eal_filesystem.h"
 #include "eal_hugepages.h"
 #include "eal_memcfg.h"
+#include "eal_trace.h"
 #include "eal_options.h"
 #include "eal_vfio.h"
 #include "hotplug_mp.h"
@@ -1012,6 +1013,12 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	if (eal_trace_init() < 0) {
+		rte_eal_init_alert("Cannot init trace");
+		rte_errno = EFAULT;
+		return -1;
+	}
+
 	if (eal_option_device_parse()) {
 		rte_errno = ENODEV;
 		rte_atomic32_clear(&run_once);
@@ -1327,6 +1334,8 @@ rte_eal_cleanup(void)
 		rte_memseg_walk(mark_freeable, NULL);
 	rte_service_finalize();
 	rte_mp_channel_cleanup();
+	rte_trace_save();
+	eal_trace_fini();
 	eal_cleanup_config(&internal_config);
 	return 0;
 }
