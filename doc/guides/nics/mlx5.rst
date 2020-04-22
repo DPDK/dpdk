@@ -99,6 +99,7 @@ Features
 - Support for multiple rte_flow groups.
 - Per packet no-inline hint flag to disable packet data copying into Tx descriptors.
 - Hardware LRO.
+- Hairpin.
 
 Limitations
 -----------
@@ -785,6 +786,21 @@ Run-time configuration
   the input ``lro_timeout_usec`` value.
   If this parameter is not specified, by default PMD will set
   the smallest value supported by HW.
+
+- ``hp_buf_log_sz`` parameter [int]
+
+  The total data buffer size of a hairpin queue (logarithmic form), in bytes.
+  PMD will set the data buffer size to 2 ** ``hp_buf_log_sz``, both for RX & TX.
+  The capacity of the value is specified by the firmware and the initialization
+  will get a failure if it is out of scope.
+  The range of the value is from 11 to 19 right now, and the supported frame
+  size of a single packet for hairpin is from 512B to 128KB. It might change if
+  different firmware release is being used. By using a small value, it could
+  reduce memory consumption but not work with a large frame. If the value is
+  too large, the memory consumption will be high and some potential performance
+  degradation will be introduced.
+  By default, the PMD will set this value to 16, which means that 9KB jumbo
+  frames will be supported.
 
 .. _mlx5_firmware_config:
 

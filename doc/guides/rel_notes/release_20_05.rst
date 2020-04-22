@@ -139,6 +139,7 @@ New Features
 
   * Added support for matching on IPv4 Time To Live and IPv6 Hop Limit.
   * Added support for creating Relaxed Ordering Memory Regions.
+  * Added support for configuring Hairpin queue data buffer size.
   * Added support for jumbo frame size (9K MTU) in Multi-Packet RQ mode.
   * Optimized the memory consumption of flow.
   * Added support for flow aging based on hardware counter.
