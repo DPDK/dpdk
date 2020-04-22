@@ -160,12 +160,16 @@ i40e_tm_capabilities_get(struct rte_eth_dev *dev,
 	cap->shaper_private_rate_min = 0;
 	/* 40Gbps -> 5GBps */
 	cap->shaper_private_rate_max = 5000000000ull;
+	cap->shaper_private_packet_mode_supported = 0;
+	cap->shaper_private_byte_mode_supported = 1;
 	cap->shaper_shared_n_max = 0;
 	cap->shaper_shared_n_nodes_per_shaper_max = 0;
 	cap->shaper_shared_n_shapers_per_node_max = 0;
 	cap->shaper_shared_dual_rate_n_max = 0;
 	cap->shaper_shared_rate_min = 0;
 	cap->shaper_shared_rate_max = 0;
+	cap->shaper_shared_packet_mode_supported = 0;
+	cap->shaper_shared_byte_mode_supported = 0;
 	cap->sched_n_children_max = hw->func_caps.num_tx_qp;
 	/**
 	 * HW supports SP. But no plan to support it now.
@@ -179,6 +183,8 @@ i40e_tm_capabilities_get(struct rte_eth_dev *dev,
 	 * So, all the nodes should have the same weight.
 	 */
 	cap->sched_wfq_weight_max = 1;
+	cap->sched_wfq_packet_mode_supported = 0;
+	cap->sched_wfq_byte_mode_supported = 0;
 	cap->cman_head_drop_supported = 0;
 	cap->dynamic_update_mask = 0;
 	cap->shaper_pkt_length_adjust_min = RTE_TM_ETH_FRAMING_OVERHEAD;
@@ -754,7 +760,11 @@ i40e_level_capabilities_get(struct rte_eth_dev *dev,
 		cap->nonleaf.shaper_private_rate_min = 0;
 		/* 40Gbps -> 5GBps */
 		cap->nonleaf.shaper_private_rate_max = 5000000000ull;
+		cap->nonleaf.shaper_private_packet_mode_supported = 0;
+		cap->nonleaf.shaper_private_byte_mode_supported = 1;
 		cap->nonleaf.shaper_shared_n_max = 0;
+		cap->nonleaf.shaper_shared_packet_mode_supported = 0;
+		cap->nonleaf.shaper_shared_byte_mode_supported = 0;
 		if (level_id == I40E_TM_NODE_TYPE_PORT)
 			cap->nonleaf.sched_n_children_max =
 				I40E_MAX_TRAFFIC_CLASS;
@@ -765,6 +775,8 @@ i40e_level_capabilities_get(struct rte_eth_dev *dev,
 		cap->nonleaf.sched_wfq_n_children_per_group_max = 0;
 		cap->nonleaf.sched_wfq_n_groups_max = 0;
 		cap->nonleaf.sched_wfq_weight_max = 1;
+		cap->nonleaf.sched_wfq_packet_mode_supported = 0;
+		cap->nonleaf.sched_wfq_byte_mode_supported = 0;
 		cap->nonleaf.stats_mask = 0;
 
 		return 0;
@@ -776,7 +788,11 @@ i40e_level_capabilities_get(struct rte_eth_dev *dev,
 	cap->leaf.shaper_private_rate_min = 0;
 	/* 40Gbps -> 5GBps */
 	cap->leaf.shaper_private_rate_max = 5000000000ull;
+	cap->leaf.shaper_private_packet_mode_supported = 0;
+	cap->leaf.shaper_private_byte_mode_supported = 1;
 	cap->leaf.shaper_shared_n_max = 0;
+	cap->leaf.shaper_shared_packet_mode_supported = 0;
+	cap->leaf.shaper_shared_byte_mode_supported = 0;
 	cap->leaf.cman_head_drop_supported = false;
 	cap->leaf.cman_wred_context_private_supported = true;
 	cap->leaf.cman_wred_context_shared_n_max = 0;
@@ -817,7 +833,11 @@ i40e_node_capabilities_get(struct rte_eth_dev *dev,
 	cap->shaper_private_rate_min = 0;
 	/* 40Gbps -> 5GBps */
 	cap->shaper_private_rate_max = 5000000000ull;
+	cap->shaper_private_packet_mode_supported = 0;
+	cap->shaper_private_byte_mode_supported = 1;
 	cap->shaper_shared_n_max = 0;
+	cap->shaper_shared_packet_mode_supported = 0;
+	cap->shaper_shared_byte_mode_supported = 0;
 
 	if (node_type == I40E_TM_NODE_TYPE_QUEUE) {
 		cap->leaf.cman_head_drop_supported = false;
@@ -834,6 +854,8 @@ i40e_node_capabilities_get(struct rte_eth_dev *dev,
 		cap->nonleaf.sched_wfq_n_children_per_group_max = 0;
 		cap->nonleaf.sched_wfq_n_groups_max = 0;
 		cap->nonleaf.sched_wfq_weight_max = 1;
+		cap->nonleaf.sched_wfq_packet_mode_supported = 0;
+		cap->nonleaf.sched_wfq_byte_mode_supported = 0;
 	}
 
 	cap->stats_mask = 0;

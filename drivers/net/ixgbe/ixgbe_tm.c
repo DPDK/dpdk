@@ -168,12 +168,16 @@ ixgbe_tm_capabilities_get(struct rte_eth_dev *dev,
 	cap->shaper_private_rate_min = 0;
 	/* 10Gbps -> 1.25GBps */
 	cap->shaper_private_rate_max = 1250000000ull;
+	cap->shaper_private_packet_mode_supported = 0;
+	cap->shaper_private_byte_mode_supported = 1;
 	cap->shaper_shared_n_max = 0;
 	cap->shaper_shared_n_nodes_per_shaper_max = 0;
 	cap->shaper_shared_n_shapers_per_node_max = 0;
 	cap->shaper_shared_dual_rate_n_max = 0;
 	cap->shaper_shared_rate_min = 0;
 	cap->shaper_shared_rate_max = 0;
+	cap->shaper_shared_packet_mode_supported = 0;
+	cap->shaper_shared_byte_mode_supported = 0;
 	cap->sched_n_children_max = hw->mac.max_tx_queues;
 	/**
 	 * HW supports SP. But no plan to support it now.
@@ -182,6 +186,8 @@ ixgbe_tm_capabilities_get(struct rte_eth_dev *dev,
 	cap->sched_sp_n_priorities_max = 1;
 	cap->sched_wfq_n_children_per_group_max = 0;
 	cap->sched_wfq_n_groups_max = 0;
+	cap->sched_wfq_packet_mode_supported = 0;
+	cap->sched_wfq_byte_mode_supported = 0;
 	/**
 	 * SW only supports fair round robin now.
 	 * So, all the nodes should have the same weight.
@@ -875,7 +881,11 @@ ixgbe_level_capabilities_get(struct rte_eth_dev *dev,
 		cap->nonleaf.shaper_private_rate_min = 0;
 		/* 10Gbps -> 1.25GBps */
 		cap->nonleaf.shaper_private_rate_max = 1250000000ull;
+		cap->nonleaf.shaper_private_packet_mode_supported = 0;
+		cap->nonleaf.shaper_private_byte_mode_supported = 1;
 		cap->nonleaf.shaper_shared_n_max = 0;
+		cap->nonleaf.shaper_shared_packet_mode_supported = 0;
+		cap->nonleaf.shaper_shared_byte_mode_supported = 0;
 		if (level_id == IXGBE_TM_NODE_TYPE_PORT)
 			cap->nonleaf.sched_n_children_max =
 				IXGBE_DCB_MAX_TRAFFIC_CLASS;
@@ -886,6 +896,8 @@ ixgbe_level_capabilities_get(struct rte_eth_dev *dev,
 		cap->nonleaf.sched_wfq_n_children_per_group_max = 0;
 		cap->nonleaf.sched_wfq_n_groups_max = 0;
 		cap->nonleaf.sched_wfq_weight_max = 1;
+		cap->nonleaf.sched_wfq_packet_mode_supported = 0;
+		cap->nonleaf.sched_wfq_byte_mode_supported = 0;
 		cap->nonleaf.stats_mask = 0;
 
 		return 0;
@@ -897,7 +909,11 @@ ixgbe_level_capabilities_get(struct rte_eth_dev *dev,
 	cap->leaf.shaper_private_rate_min = 0;
 	/* 10Gbps -> 1.25GBps */
 	cap->leaf.shaper_private_rate_max = 1250000000ull;
+	cap->leaf.shaper_private_packet_mode_supported = 0;
+	cap->leaf.shaper_private_byte_mode_supported = 1;
 	cap->leaf.shaper_shared_n_max = 0;
+	cap->leaf.shaper_shared_packet_mode_supported = 0;
+	cap->leaf.shaper_shared_byte_mode_supported = 0;
 	cap->leaf.cman_head_drop_supported = false;
 	cap->leaf.cman_wred_context_private_supported = true;
 	cap->leaf.cman_wred_context_shared_n_max = 0;
@@ -938,7 +954,11 @@ ixgbe_node_capabilities_get(struct rte_eth_dev *dev,
 	cap->shaper_private_rate_min = 0;
 	/* 10Gbps -> 1.25GBps */
 	cap->shaper_private_rate_max = 1250000000ull;
+	cap->shaper_private_packet_mode_supported = 0;
+	cap->shaper_private_byte_mode_supported = 1;
 	cap->shaper_shared_n_max = 0;
+	cap->shaper_shared_packet_mode_supported = 0;
+	cap->shaper_shared_byte_mode_supported = 0;
 
 	if (node_type == IXGBE_TM_NODE_TYPE_QUEUE) {
 		cap->leaf.cman_head_drop_supported = false;
@@ -955,6 +975,8 @@ ixgbe_node_capabilities_get(struct rte_eth_dev *dev,
 		cap->nonleaf.sched_wfq_n_children_per_group_max = 0;
 		cap->nonleaf.sched_wfq_n_groups_max = 0;
 		cap->nonleaf.sched_wfq_weight_max = 1;
+		cap->nonleaf.sched_wfq_packet_mode_supported = 0;
+		cap->nonleaf.sched_wfq_byte_mode_supported = 0;
 	}
 
 	cap->stats_mask = 0;

@@ -193,12 +193,16 @@ mrvl_capabilities_get(struct rte_eth_dev *dev,
 	cap->shaper_private_n_max = cap->shaper_n_max;
 	cap->shaper_private_rate_min = MRVL_RATE_MIN;
 	cap->shaper_private_rate_max = priv->rate_max;
+	cap->shaper_private_packet_mode_supported = 0;
+	cap->shaper_private_byte_mode_supported = 1;
 
 	cap->sched_n_children_max = dev->data->nb_tx_queues;
 	cap->sched_sp_n_priorities_max = dev->data->nb_tx_queues;
 	cap->sched_wfq_n_children_per_group_max = dev->data->nb_tx_queues;
 	cap->sched_wfq_n_groups_max = 1;
 	cap->sched_wfq_weight_max = MRVL_WEIGHT_MAX;
+	cap->sched_wfq_packet_mode_supported = 0;
+	cap->sched_wfq_byte_mode_supported = 1;
 
 	cap->dynamic_update_mask = RTE_TM_UPDATE_NODE_SUSPEND_RESUME |
 				   RTE_TM_UPDATE_NODE_STATS;
@@ -244,6 +248,8 @@ mrvl_level_capabilities_get(struct rte_eth_dev *dev,
 		cap->nonleaf.shaper_private_supported = 1;
 		cap->nonleaf.shaper_private_rate_min = MRVL_RATE_MIN;
 		cap->nonleaf.shaper_private_rate_max = priv->rate_max;
+		cap->nonleaf.shaper_private_packet_mode_supported = 0;
+		cap->nonleaf.shaper_private_byte_mode_supported = 1;
 
 		cap->nonleaf.sched_n_children_max = dev->data->nb_tx_queues;
 		cap->nonleaf.sched_sp_n_priorities_max = 1;
@@ -251,6 +257,8 @@ mrvl_level_capabilities_get(struct rte_eth_dev *dev,
 			dev->data->nb_tx_queues;
 		cap->nonleaf.sched_wfq_n_groups_max = 1;
 		cap->nonleaf.sched_wfq_weight_max = MRVL_WEIGHT_MAX;
+		cap->nonleaf.sched_wfq_packet_mode_supported = 0;
+		cap->nonleaf.sched_wfq_byte_mode_supported = 1;
 		cap->nonleaf.stats_mask = RTE_TM_STATS_N_PKTS |
 					  RTE_TM_STATS_N_BYTES;
 	} else { /* level_id == MRVL_NODE_QUEUE */
@@ -261,6 +269,8 @@ mrvl_level_capabilities_get(struct rte_eth_dev *dev,
 		cap->leaf.shaper_private_supported = 1;
 		cap->leaf.shaper_private_rate_min = MRVL_RATE_MIN;
 		cap->leaf.shaper_private_rate_max = priv->rate_max;
+		cap->leaf.shaper_private_packet_mode_supported = 0;
+		cap->leaf.shaper_private_byte_mode_supported = 1;
 		cap->leaf.stats_mask = RTE_TM_STATS_N_PKTS;
 	}
 
@@ -300,6 +310,8 @@ mrvl_node_capabilities_get(struct rte_eth_dev *dev, uint32_t node_id,
 	cap->shaper_private_supported = 1;
 	cap->shaper_private_rate_min = MRVL_RATE_MIN;
 	cap->shaper_private_rate_max = priv->rate_max;
+	cap->shaper_private_packet_mode_supported = 0;
+	cap->shaper_private_byte_mode_supported = 1;
 
 	if (node->type == MRVL_NODE_PORT) {
 		cap->nonleaf.sched_n_children_max = dev->data->nb_tx_queues;
@@ -308,6 +320,8 @@ mrvl_node_capabilities_get(struct rte_eth_dev *dev, uint32_t node_id,
 			dev->data->nb_tx_queues;
 		cap->nonleaf.sched_wfq_n_groups_max = 1;
 		cap->nonleaf.sched_wfq_weight_max = MRVL_WEIGHT_MAX;
+		cap->nonleaf.sched_wfq_packet_mode_supported = 0;
+		cap->nonleaf.sched_wfq_byte_mode_supported = 1;
 		cap->stats_mask = RTE_TM_STATS_N_PKTS | RTE_TM_STATS_N_BYTES;
 	} else {
 		cap->stats_mask = RTE_TM_STATS_N_PKTS;
