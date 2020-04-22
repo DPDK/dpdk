@@ -19,5 +19,6 @@ SRCS-y := main.c
 include $(RTE_SDK)/examples/performance-thread/common/common.mk
 
 CFLAGS += -O3 -g $(USER_FLAGS) $(INCLUDES) $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 include $(RTE_SDK)/mk/rte.extapp.mk

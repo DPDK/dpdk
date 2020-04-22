@@ -20,6 +20,7 @@ include $(RTE_SDK)/examples/performance-thread/common/common.mk
 
 CFLAGS += -g -O3 $(USER_FLAGS) $(INCLUDES)
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDFLAGS += -lpthread
 

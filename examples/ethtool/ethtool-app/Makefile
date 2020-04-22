@@ -18,6 +18,7 @@ SRCS-y := main.c ethapp.c
 
 CFLAGS += -O3 -pthread -I$(SRCDIR)/../lib
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -L$(subst ethtool-app,lib,$(RTE_OUTPUT))/lib
 LDLIBS += -lrte_ethtool

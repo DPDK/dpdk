@@ -8,6 +8,7 @@
 
 name = 'efd_node'
 
+allow_experimental_apis = true
 deps += ['hash']
 sources += files('node.c')
 includes += include_directories('../shared')

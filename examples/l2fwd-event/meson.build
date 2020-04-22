@@ -7,6 +7,7 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
+allow_experimental_apis = true
 deps += 'eventdev'
 sources = files(
 	'main.c',

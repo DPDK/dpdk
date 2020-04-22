@@ -28,6 +28,7 @@ endif
 
 CFLAGS += -O3 -I$(RTE_SDK)/lib/librte_power/
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -lvirt
 

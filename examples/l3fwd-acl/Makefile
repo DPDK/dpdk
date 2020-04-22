@@ -51,6 +51,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603

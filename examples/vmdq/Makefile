@@ -50,6 +50,7 @@ RTE_TARGET ?= $(notdir $(abspath $(dir $(firstword $(wildcard $(RTE_SDK)/*/.conf
 include $(RTE_SDK)/mk/rte.vars.mk
 
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 EXTRA_CFLAGS += -O3
 

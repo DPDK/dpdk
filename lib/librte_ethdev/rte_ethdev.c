@@ -39,6 +39,7 @@
 #include <rte_class.h>
 #include <rte_ether.h>
 
+#include "rte_ethdev_trace.h"
 #include "rte_ethdev.h"
 #include "rte_ethdev_driver.h"
 #include "ethdev_profile.h"
@@ -1470,6 +1471,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		goto reset_queues;
 	}
 
+	rte_ethdev_trace_configure(port_id, nb_rx_q, nb_tx_q, dev_conf, 0);
 	return 0;
 reset_queues:
 	rte_eth_dev_rx_queue_config(dev, 0);
@@ -1477,6 +1479,7 @@ reset_queues:
 rollback:
 	memcpy(&dev->data->dev_conf, &orig_conf, sizeof(dev->data->dev_conf));
 
+	rte_ethdev_trace_configure(port_id, nb_rx_q, nb_tx_q, dev_conf, ret);
 	return ret;
 }
 
@@ -1647,6 +1650,8 @@ rte_eth_dev_start(uint16_t port_id)
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->link_update, -ENOTSUP);
 		(*dev->dev_ops->link_update)(dev, 0);
 	}
+
+	rte_ethdev_trace_start(port_id);
 	return 0;
 }
 
@@ -1669,6 +1674,7 @@ rte_eth_dev_stop(uint16_t port_id)
 
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_stop)(dev);
+	rte_ethdev_trace_stop(port_id);
 }
 
 int
@@ -1709,6 +1715,7 @@ rte_eth_dev_close(uint16_t port_id)
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_close)(dev);
 
+	rte_ethdev_trace_close(port_id);
 	/* check behaviour flag - temporary for PMD migration */
 	if ((dev->data->dev_flags & RTE_ETH_DEV_CLOSE_REMOVE) != 0) {
 		/* new behaviour: send event + reset state + free all data */
@@ -1918,6 +1925,8 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 			dev->data->min_rx_buf_size = mbp_buf_size;
 	}
 
+	rte_ethdev_trace_rxq_setup(port_id, rx_queue_id, nb_rx_desc, mp,
+		rx_conf, ret);
 	return eth_err(port_id, ret);
 }
 
@@ -2088,6 +2097,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 		return -EINVAL;
 	}
 
+	rte_ethdev_trace_txq_setup(port_id, tx_queue_id, nb_tx_desc, tx_conf);
 	return eth_err(port_id, (*dev->dev_ops->tx_queue_setup)(dev,
 		       tx_queue_id, nb_tx_desc, socket_id, &local_conf));
 }

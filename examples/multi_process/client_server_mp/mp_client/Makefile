@@ -16,5 +16,6 @@ SRCS-y := client.c
 
 CFLAGS += $(WERROR_FLAGS) -O3
 CFLAGS += -I$(SRCDIR)/../shared
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 include $(RTE_SDK)/mk/rte.extapp.mk

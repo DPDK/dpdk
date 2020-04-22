@@ -53,6 +53,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 CFLAGS += -I$(SRCDIR)
 CFLAGS += -O3 $(USER_FLAGS)
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 include $(RTE_SDK)/mk/rte.extapp.mk
 endif

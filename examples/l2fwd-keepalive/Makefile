@@ -53,6 +53,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDFLAGS += -lrt
 
 include $(RTE_SDK)/mk/rte.extapp.mk

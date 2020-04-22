@@ -25,6 +25,7 @@ if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
 	deps += ['pmd_ixgbe']
 endif
 
+allow_experimental_apis = true
 sources = files(
 	'channel_manager.c', 'channel_monitor.c', 'main.c', 'parse.c', 'power_manager.c', 'vm_power_cli.c'
 )

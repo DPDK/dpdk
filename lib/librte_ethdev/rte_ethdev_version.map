@@ -230,4 +230,14 @@ EXPERIMENTAL {
 
 	# added in 20.02
 	rte_flow_dev_dump;
+
+	# added in 20.05
+	__rte_ethdev_trace_configure;
+	__rte_ethdev_trace_rxq_setup;
+	__rte_ethdev_trace_txq_setup;
+	__rte_ethdev_trace_start;
+	__rte_ethdev_trace_stop;
+	__rte_ethdev_trace_close;
+	__rte_ethdev_trace_rx_burst;
+	__rte_ethdev_trace_tx_burst;
 };

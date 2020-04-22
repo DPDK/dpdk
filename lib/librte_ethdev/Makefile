@@ -22,6 +22,7 @@ SRCS-y += rte_flow.c
 SRCS-y += rte_tm.c
 SRCS-y += rte_mtr.c
 SRCS-y += ethdev_profile.c
+SRCS-y += ethdev_trace_points.c
 
 #
 # Export include files
@@ -30,6 +31,8 @@ SYMLINK-y-include += rte_ethdev.h
 SYMLINK-y-include += rte_ethdev_driver.h
 SYMLINK-y-include += rte_ethdev_core.h
 SYMLINK-y-include += rte_ethdev_pci.h
+SYMLINK-y-include += rte_ethdev_trace.h
+SYMLINK-y-include += rte_ethdev_trace_fp.h
 SYMLINK-y-include += rte_ethdev_vdev.h
 SYMLINK-y-include += rte_eth_ctrl.h
 SYMLINK-y-include += rte_dev_info.h

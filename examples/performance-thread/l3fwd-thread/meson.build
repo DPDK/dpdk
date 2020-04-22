@@ -8,6 +8,7 @@
 
 build = dpdk_conf.has('RTE_ARCH_X86_64')
 deps += ['timer', 'lpm']
+allow_experimental_apis = true
 
 # get the performance thread (pt) architecture subdir
 if dpdk_conf.has('RTE_ARCH_ARM64')

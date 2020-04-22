@@ -18,5 +18,6 @@ SRCS-y := main.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 include $(RTE_SDK)/mk/rte.extapp.mk

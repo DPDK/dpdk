@@ -9,6 +9,7 @@
 # require the power library
 build = dpdk_conf.has('RTE_LIBRTE_POWER')
 
+allow_experimental_apis = true
 deps += ['distributor', 'power']
 sources = files(
 	'main.c'

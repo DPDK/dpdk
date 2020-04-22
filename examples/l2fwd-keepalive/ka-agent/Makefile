@@ -17,5 +17,6 @@ APP = ka-agent
 SRCS-y := main.c
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)/../
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDFLAGS += -lrt
 include $(RTE_SDK)/mk/rte.extapp.mk
