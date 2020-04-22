@@ -6,10 +6,15 @@
 #define __EAL_TRACE_H
 
 #include <rte_cycles.h>
+#include <rte_log.h>
+#include <rte_malloc.h>
 #include <rte_spinlock.h>
 #include <rte_trace.h>
 #include <rte_trace_point.h>
 #include <rte_uuid.h>
+
+#include "eal_private.h"
+#include "eal_thread.h"
 
 #define trace_err(fmt, args...) \
 	RTE_LOG(ERR, EAL, "%s():%u " fmt "\n", __func__, __LINE__, ## args)
@@ -21,12 +26,24 @@
 #define TRACE_DIR_STR_LEN (sizeof("YYYY-mm-dd-AM-HH-MM-SS") + TRACE_PREFIX_LEN)
 #define TRACE_CTF_FIELD_SIZE 384
 #define TRACE_POINT_NAME_SIZE 64
+#define TRACE_CTF_MAGIC 0xC1FC1FC1
+
 
 struct trace_point {
 	STAILQ_ENTRY(trace_point) next;
 	rte_trace_point_t *handle;
 	char name[TRACE_POINT_NAME_SIZE];
 	char ctf_field[TRACE_CTF_FIELD_SIZE];
+};
+
+enum trace_area_e {
+	TRACE_AREA_HEAP,
+	TRACE_AREA_HUGEPAGE,
+};
+
+struct thread_mem_meta {
+	void *mem;
+	enum trace_area_e area;
 };
 
 struct trace {
@@ -38,6 +55,8 @@ struct trace {
 	rte_uuid_t uuid;
 	uint32_t buff_len;
 	uint32_t nb_trace_points;
+	uint32_t nb_trace_mem_list;
+	struct thread_mem_meta *lcore_meta;
 	uint64_t epoch_sec;
 	uint64_t epoch_nsec;
 	uint64_t uptime_ticks;
@@ -57,6 +76,12 @@ trace_id_get(rte_trace_point_t *trace)
 		__RTE_TRACE_FIELD_ID_SHIFT;
 }
 
+static inline size_t
+trace_mem_sz(uint32_t len)
+{
+	return len + sizeof(struct __rte_trace_header);
+}
+
 /* Trace object functions */
 struct trace *trace_obj_get(void);
 
@@ -65,12 +90,15 @@ STAILQ_HEAD(trace_point_head, trace_point);
 struct trace_point_head *trace_list_head_get(void);
 
 /* Util functions */
+const char *trace_mode_to_string(enum rte_trace_mode mode);
+const char *trace_area_to_string(enum trace_area_e area);
 bool trace_has_duplicate_entry(void);
 void trace_uuid_generate(void);
 int trace_metadata_create(void);
 void trace_metadata_destroy(void);
 int trace_mkdir(void);
 int trace_epoch_time_save(void);
+void trace_mem_per_thread_free(void);
 
 /* EAL interface */
 int eal_trace_init(void);

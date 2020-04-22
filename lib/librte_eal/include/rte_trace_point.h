@@ -230,6 +230,15 @@ __rte_trace_point_fp_is_enabled(void)
 /**
  * @internal
  *
+ * Allocate trace memory buffer per thread.
+ *
+ */
+__rte_experimental
+void __rte_trace_mem_per_thread_alloc(void);
+
+/**
+ * @internal
+ *
  * Helper function to register a dynamic tracepoint.
  * Use RTE_TRACE_POINT_REGISTER macro for tracepoint registration.
  *

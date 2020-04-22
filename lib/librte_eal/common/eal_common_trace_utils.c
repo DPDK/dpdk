@@ -14,6 +14,26 @@
 #include "eal_filesystem.h"
 #include "eal_trace.h"
 
+const char *
+trace_mode_to_string(enum rte_trace_mode mode)
+{
+	switch (mode) {
+	case RTE_TRACE_MODE_OVERWRITE: return "overwrite";
+	case RTE_TRACE_MODE_DISCARD: return "discard";
+	default: return "unknown";
+	}
+}
+
+const char *
+trace_area_to_string(enum trace_area_e area)
+{
+	switch (area) {
+	case TRACE_AREA_HEAP: return "heap";
+	case TRACE_AREA_HUGEPAGE: return "hugepage";
+	default: return "unknown";
+	}
+}
+
 static bool
 trace_entry_compare(const char *name)
 {

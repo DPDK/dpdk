@@ -16,6 +16,7 @@
 #include "eal_trace.h"
 
 RTE_DEFINE_PER_LCORE(volatile int, trace_point_sz);
+RTE_DEFINE_PER_LCORE(void *, trace_mem);
 static RTE_DEFINE_PER_LCORE(char, ctf_field[TRACE_CTF_FIELD_SIZE]);
 static RTE_DEFINE_PER_LCORE(int, ctf_count);
 
@@ -37,6 +38,9 @@ trace_list_head_get(void)
 int
 eal_trace_init(void)
 {
+	/* Trace memory should start with 8B aligned for natural alignment */
+	RTE_BUILD_BUG_ON((offsetof(struct __rte_trace_header, mem) % 8) != 0);
+
 	/* One of the trace point registration failed */
 	if (trace.register_errno) {
 		rte_errno = trace.register_errno;
@@ -85,6 +89,7 @@ eal_trace_fini(void)
 {
 	if (!rte_trace_is_enabled())
 		return;
+	trace_mem_per_thread_free();
 	trace_metadata_destroy();
 }
 
@@ -225,6 +230,95 @@ rte_trace_point_lookup(const char *name)
 			return tp->handle;
 
 	return NULL;
+}
+
+void
+__rte_trace_mem_per_thread_alloc(void)
+{
+	struct trace *trace = trace_obj_get();
+	struct __rte_trace_header *header;
+	uint32_t count;
+
+	if (!rte_trace_is_enabled())
+		return;
+
+	if (RTE_PER_LCORE(trace_mem))
+		return;
+
+	rte_spinlock_lock(&trace->lock);
+
+	count = trace->nb_trace_mem_list;
+
+	/* Allocate room for storing the thread trace mem meta */
+	trace->lcore_meta = realloc(trace->lcore_meta,
+		sizeof(trace->lcore_meta[0]) * (count + 1));
+
+	/* Provide dummy space for fast path to consume */
+	if (trace->lcore_meta == NULL) {
+		trace_crit("trace mem meta memory realloc failed");
+		header = NULL;
+		goto fail;
+	}
+
+	/* First attempt from huge page */
+	header = rte_malloc(NULL, trace_mem_sz(trace->buff_len), 8);
+	if (header) {
+		trace->lcore_meta[count].area = TRACE_AREA_HUGEPAGE;
+		goto found;
+	}
+
+	/* Second attempt from heap */
+	header = malloc(trace_mem_sz(trace->buff_len));
+	if (header == NULL) {
+		trace_crit("trace mem malloc attempt failed");
+		header = NULL;
+		goto fail;
+
+	}
+
+	/* Second attempt from heap is success */
+	trace->lcore_meta[count].area = TRACE_AREA_HEAP;
+
+	/* Initialize the trace header */
+found:
+	header->offset = 0;
+	header->len = trace->buff_len;
+	header->stream_header.magic = TRACE_CTF_MAGIC;
+	rte_uuid_copy(header->stream_header.uuid, trace->uuid);
+	header->stream_header.lcore_id = rte_lcore_id();
+
+	/* Store the thread name */
+	char *name = header->stream_header.thread_name;
+	memset(name, 0, __RTE_TRACE_EMIT_STRING_LEN_MAX);
+	rte_thread_getname(pthread_self(), name,
+		__RTE_TRACE_EMIT_STRING_LEN_MAX);
+
+	trace->lcore_meta[count].mem = header;
+	trace->nb_trace_mem_list++;
+fail:
+	RTE_PER_LCORE(trace_mem) = header;
+	rte_spinlock_unlock(&trace->lock);
+}
+
+void
+trace_mem_per_thread_free(void)
+{
+	struct trace *trace = trace_obj_get();
+	uint32_t count;
+	void *mem;
+
+	if (!rte_trace_is_enabled())
+		return;
+
+	rte_spinlock_lock(&trace->lock);
+	for (count = 0; count < trace->nb_trace_mem_list; count++) {
+		mem = trace->lcore_meta[count].mem;
+		if (trace->lcore_meta[count].area == TRACE_AREA_HUGEPAGE)
+			rte_free(mem);
+		else if (trace->lcore_meta[count].area == TRACE_AREA_HEAP)
+			free(mem);
+	}
+	rte_spinlock_unlock(&trace->lock);
 }
 
 int
