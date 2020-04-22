@@ -362,6 +362,8 @@ EXPERIMENTAL {
 	__rte_eal_trace_memzone_free;
 	__rte_eal_trace_memzone_lookup;
 	__rte_eal_trace_memzone_reserve;
+	__rte_eal_trace_thread_lcore_ready;
+	__rte_eal_trace_thread_remote_launch;
 	__rte_trace_mem_per_thread_alloc;
 	__rte_trace_point_emit_field;
 	__rte_trace_point_register;

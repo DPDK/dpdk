@@ -35,6 +35,9 @@ RTE_TRACE_POINT_DEFINE(rte_eal_trace_memzone_reserve);
 RTE_TRACE_POINT_DEFINE(rte_eal_trace_memzone_lookup);
 RTE_TRACE_POINT_DEFINE(rte_eal_trace_memzone_free);
 
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_thread_remote_launch);
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_thread_lcore_ready);
+
 RTE_INIT(eal_trace_init)
 {
 	RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_void,
@@ -90,4 +93,9 @@ RTE_INIT(eal_trace_init)
 		lib.eal.memzone.lookup);
 	RTE_TRACE_POINT_REGISTER(rte_eal_trace_memzone_free,
 		lib.eal.memzone.free);
+
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_thread_remote_launch,
+		lib.eal.thread.remote.launch);
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_thread_lcore_ready,
+		lib.eal.thread.lcore.ready);
 }

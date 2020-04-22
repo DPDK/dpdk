@@ -20,8 +20,7 @@
 #include <rte_per_lcore.h>
 #include <rte_eal.h>
 #include <rte_lcore.h>
-#include <rte_trace.h>
-#include <rte_trace_point.h>
+#include <rte_eal_trace.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"
@@ -42,9 +41,10 @@ rte_eal_remote_launch(int (*f)(void *), void *arg, unsigned slave_id)
 	char c = 0;
 	int m2s = lcore_config[slave_id].pipe_master2slave[1];
 	int s2m = lcore_config[slave_id].pipe_slave2master[0];
+	int rc = -EBUSY;
 
 	if (lcore_config[slave_id].state != WAIT)
-		return -EBUSY;
+		goto finish;
 
 	lcore_config[slave_id].f = f;
 	lcore_config[slave_id].arg = arg;
@@ -64,7 +64,10 @@ rte_eal_remote_launch(int (*f)(void *), void *arg, unsigned slave_id)
 	if (n <= 0)
 		rte_panic("cannot read on configuration pipe\n");
 
-	return 0;
+	rc = 0;
+finish:
+	rte_eal_trace_thread_remote_launch(f, arg, slave_id, rc);
+	return rc;
 }
 
 /* set affinity for current EAL thread */
@@ -127,6 +130,7 @@ eal_thread_loop(__rte_unused void *arg)
 		lcore_id, (uintptr_t)thread_id, cpuset, ret == 0 ? "" : "...");
 
 	__rte_trace_mem_per_thread_alloc();
+	rte_eal_trace_thread_lcore_ready(lcore_id, cpuset);
 
 	/* read on our pipe to get commands */
 	while (1) {

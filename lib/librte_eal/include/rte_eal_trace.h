@@ -205,6 +205,23 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_int(rc);
 )
 
+/* Thread */
+RTE_TRACE_POINT(
+	rte_eal_trace_thread_remote_launch,
+	RTE_TRACE_POINT_ARGS(int (*f)(void *), void *arg,
+		unsigned int slave_id, int rc),
+	rte_trace_point_emit_ptr(f);
+	rte_trace_point_emit_ptr(arg);
+	rte_trace_point_emit_u32(slave_id);
+	rte_trace_point_emit_int(rc);
+)
+RTE_TRACE_POINT(
+	rte_eal_trace_thread_lcore_ready,
+	RTE_TRACE_POINT_ARGS(unsigned int lcore_id, const char *cpuset),
+	rte_trace_point_emit_u32(lcore_id);
+	rte_trace_point_emit_string(cpuset);
+)
+
 #ifdef __cplusplus
 }
 #endif
