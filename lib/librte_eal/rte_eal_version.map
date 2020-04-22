@@ -354,4 +354,5 @@ EXPERIMENTAL {
 	rte_trace_point_is_enabled;
 	rte_trace_point_lookup;
 	rte_trace_regexp;
+	rte_trace_save;
 };

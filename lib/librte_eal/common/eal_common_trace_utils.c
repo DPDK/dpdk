@@ -213,3 +213,83 @@ trace_mkdir(void)
 	return 0;
 }
 
+static int
+trace_meta_save(struct trace *trace)
+{
+	char file_name[PATH_MAX];
+	FILE *f;
+	int rc;
+
+	rc = snprintf(file_name, PATH_MAX, "%s/metadata", trace->dir);
+	if (rc < 0)
+		return rc;
+
+	f = fopen(file_name, "w");
+	if (f == NULL)
+		return -errno;
+
+	rc = rte_trace_metadata_dump(f);
+
+	if (fclose(f))
+		rc = -errno;
+
+	return rc;
+}
+
+
+static inline int
+trace_file_sz(struct __rte_trace_header *hdr)
+{
+	return sizeof(struct __rte_trace_stream_header) + hdr->offset;
+}
+
+static int
+trace_mem_save(struct trace *trace, struct __rte_trace_header *hdr,
+		uint32_t cnt)
+{
+	char file_name[PATH_MAX];
+	FILE *f;
+	int rc;
+
+	rc = snprintf(file_name, PATH_MAX, "%s/channel0_%d", trace->dir, cnt);
+	if (rc < 0)
+		return rc;
+
+	f = fopen(file_name, "w");
+	if (f == NULL)
+		return -errno;
+
+	rc = fwrite(&hdr->stream_header, trace_file_sz(hdr), 1, f);
+	rc = (rc == 1) ?  0 : -EACCES;
+
+	if (fclose(f))
+		rc = -errno;
+
+	return rc;
+}
+
+int
+rte_trace_save(void)
+{
+	struct trace *trace = trace_obj_get();
+	struct __rte_trace_header *header;
+	uint32_t count;
+	int rc = 0;
+
+	if (trace->nb_trace_mem_list == 0)
+		return rc;
+
+	rc = trace_meta_save(trace);
+	if (rc)
+		return rc;
+
+	rte_spinlock_lock(&trace->lock);
+	for (count = 0; count < trace->nb_trace_mem_list; count++) {
+		header = trace->lcore_meta[count].mem;
+		rc =  trace_mem_save(trace, header, count);
+		if (rc)
+			break;
+	}
+	rte_spinlock_unlock(&trace->lock);
+	return rc;
+}
