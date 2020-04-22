@@ -49,6 +49,7 @@ struct otx2_nix_tm_node {
 #define NIX_TM_NODE_RED_DISCARD BIT_ULL(3)
 	/* Shaper algorithm for RED state @NIX_REDALG_E */
 	uint32_t red_algo:2;
+	uint32_t pkt_mode:1;
 
 	struct otx2_nix_tm_node *parent;
 	struct rte_tm_node_params params;
@@ -114,6 +115,10 @@ TAILQ_HEAD(otx2_nix_tm_shaper_profile_list, otx2_nix_tm_shaper_profile);
 
 #define MAX_SHAPER_RATE \
 	SHAPER_RATE(MAX_RATE_EXPONENT, MAX_RATE_MANTISSA, 0)
+
+/* Min is limited so that NIX_AF_SMQX_CFG[MINLEN]+ADJUST is not -ve */
+#define NIX_LENGTH_ADJUST_MIN ((int)-NIX_MIN_HW_FRS + 1)
+#define NIX_LENGTH_ADJUST_MAX 255
 
 /** TM Shaper - low level operations */
 

@@ -360,18 +360,25 @@ prepare_tm_shaper_reg(struct otx2_nix_tm_node *tm_node,
 {
 	struct shaper_params cir, pir;
 	uint32_t schq = tm_node->hw_id;
+	uint64_t adjust = 0;
 	uint8_t k = 0;
 
 	memset(&cir, 0, sizeof(cir));
 	memset(&pir, 0, sizeof(pir));
 	shaper_config_to_nix(profile, &cir, &pir);
 
-	otx2_tm_dbg("Shaper config node %s(%u) lvl %u id %u, "
-		    "pir %" PRIu64 "(%" PRIu64 "B),"
-		     " cir %" PRIu64 "(%" PRIu64 "B) (%p)",
-		     nix_hwlvl2str(tm_node->hw_lvl), schq, tm_node->lvl,
-		     tm_node->id, pir.rate, pir.burst,
-		     cir.rate, cir.burst, tm_node);
+	/* Packet length adjust */
+	if (tm_node->pkt_mode)
+		adjust = 1;
+	else if (profile)
+		adjust = profile->params.pkt_length_adjust & 0x1FF;
+
+	otx2_tm_dbg("Shaper config node %s(%u) lvl %u id %u, pir %" PRIu64
+		    "(%" PRIu64 "B), cir %" PRIu64 "(%" PRIu64 "B)"
+		    "adjust 0x%" PRIx64 "(pktmode %u) (%p)",
+		    nix_hwlvl2str(tm_node->hw_lvl), schq, tm_node->lvl,
+		    tm_node->id, pir.rate, pir.burst, cir.rate, cir.burst,
+		    adjust, tm_node->pkt_mode, tm_node);
 
 	switch (tm_node->hw_lvl) {
 	case NIX_TXSCH_LVL_SMQ:
@@ -388,7 +395,9 @@ prepare_tm_shaper_reg(struct otx2_nix_tm_node *tm_node,
 
 		/* Configure RED ALG */
 		reg[k] = NIX_AF_MDQX_SHAPE(schq);
-		regval[k] = ((uint64_t)tm_node->red_algo << 9);
+		regval[k] = (adjust |
+			     (uint64_t)tm_node->red_algo << 9 |
+			     (uint64_t)tm_node->pkt_mode << 24);
 		k++;
 		break;
 	case NIX_TXSCH_LVL_TL4:
@@ -405,7 +414,9 @@ prepare_tm_shaper_reg(struct otx2_nix_tm_node *tm_node,
 
 		/* Configure RED algo */
 		reg[k] = NIX_AF_TL4X_SHAPE(schq);
-		regval[k] = ((uint64_t)tm_node->red_algo << 9);
+		regval[k] = (adjust |
+			     (uint64_t)tm_node->red_algo << 9 |
+			     (uint64_t)tm_node->pkt_mode << 24);
 		k++;
 		break;
 	case NIX_TXSCH_LVL_TL3:
@@ -422,7 +433,9 @@ prepare_tm_shaper_reg(struct otx2_nix_tm_node *tm_node,
 
 		/* Configure RED algo */
 		reg[k] = NIX_AF_TL3X_SHAPE(schq);
-		regval[k] = ((uint64_t)tm_node->red_algo << 9);
+		regval[k] = (adjust |
+			     (uint64_t)tm_node->red_algo << 9 |
+			     (uint64_t)tm_node->pkt_mode << 24);
 		k++;
 
 		break;
@@ -440,7 +453,9 @@ prepare_tm_shaper_reg(struct otx2_nix_tm_node *tm_node,
 
 		/* Configure RED algo */
 		reg[k] = NIX_AF_TL2X_SHAPE(schq);
-		regval[k] = ((uint64_t)tm_node->red_algo << 9);
+		regval[k] = (adjust |
+			     (uint64_t)tm_node->red_algo << 9 |
+			     (uint64_t)tm_node->pkt_mode << 24);
 		k++;
 
 		break;
@@ -449,6 +464,12 @@ prepare_tm_shaper_reg(struct otx2_nix_tm_node *tm_node,
 		reg[k] = NIX_AF_TL1X_CIR(schq);
 		regval[k] = (cir.rate && cir.burst) ?
 				(shaper2regval(&cir) | 1) : 0;
+		k++;
+
+		/* Configure length disable and adjust */
+		reg[k] = NIX_AF_TL1X_SHAPE(schq);
+		regval[k] = (adjust |
+			     (uint64_t)tm_node->pkt_mode << 24);
 		k++;
 		break;
 	}
@@ -799,6 +820,15 @@ nix_tm_node_add_to_list(struct otx2_eth_dev *dev, uint32_t node_id,
 	tm_node->flags = 0;
 	if (user)
 		tm_node->flags = NIX_TM_NODE_USER;
+
+	/* Packet mode */
+	if (!nix_tm_is_leaf(dev, lvl) &&
+	    ((profile && profile->params.packet_mode) ||
+	     (params->nonleaf.wfq_weight_mode &&
+	      params->nonleaf.n_sp_priorities &&
+	      !params->nonleaf.wfq_weight_mode[0])))
+		tm_node->pkt_mode = 1;
+
 	rte_memcpy(&tm_node->params, params, sizeof(struct rte_tm_node_params));
 
 	if (profile)
@@ -1889,8 +1919,10 @@ otx2_nix_tm_capa_get(struct rte_eth_dev *eth_dev,
 	cap->shaper_private_dual_rate_n_max = max_nr_nodes;
 	cap->shaper_private_rate_min = MIN_SHAPER_RATE / 8;
 	cap->shaper_private_rate_max = MAX_SHAPER_RATE / 8;
-	cap->shaper_pkt_length_adjust_min = 0;
-	cap->shaper_pkt_length_adjust_max = 0;
+	cap->shaper_private_packet_mode_supported = 1;
+	cap->shaper_private_byte_mode_supported = 1;
+	cap->shaper_pkt_length_adjust_min = NIX_LENGTH_ADJUST_MIN;
+	cap->shaper_pkt_length_adjust_max = NIX_LENGTH_ADJUST_MAX;
 
 	/* Schedule Capabilities */
 	cap->sched_n_children_max = rsp->schq[NIX_TXSCH_LVL_MDQ];
@@ -1898,6 +1930,8 @@ otx2_nix_tm_capa_get(struct rte_eth_dev *eth_dev,
 	cap->sched_wfq_n_children_per_group_max = cap->sched_n_children_max;
 	cap->sched_wfq_n_groups_max = 1;
 	cap->sched_wfq_weight_max = MAX_SCHED_WEIGHT;
+	cap->sched_wfq_packet_mode_supported = 1;
+	cap->sched_wfq_byte_mode_supported = 1;
 
 	cap->dynamic_update_mask =
 		RTE_TM_UPDATE_NODE_PARENT_KEEP_LEVEL |
@@ -1960,12 +1994,16 @@ otx2_nix_tm_level_capa_get(struct rte_eth_dev *eth_dev, uint32_t lvl,
 			nix_tm_have_tl1_access(dev) ? false : true;
 		cap->nonleaf.shaper_private_rate_min = MIN_SHAPER_RATE / 8;
 		cap->nonleaf.shaper_private_rate_max = MAX_SHAPER_RATE / 8;
+		cap->nonleaf.shaper_private_packet_mode_supported = 1;
+		cap->nonleaf.shaper_private_byte_mode_supported = 1;
 
 		cap->nonleaf.sched_n_children_max = rsp->schq[hw_lvl - 1];
 		cap->nonleaf.sched_sp_n_priorities_max =
 					nix_max_prio(dev, hw_lvl) + 1;
 		cap->nonleaf.sched_wfq_n_groups_max = 1;
 		cap->nonleaf.sched_wfq_weight_max = MAX_SCHED_WEIGHT;
+		cap->nonleaf.sched_wfq_packet_mode_supported = 1;
+		cap->nonleaf.sched_wfq_byte_mode_supported = 1;
 
 		if (nix_tm_have_tl1_access(dev))
 			cap->nonleaf.stats_mask =
@@ -1982,6 +2020,8 @@ otx2_nix_tm_level_capa_get(struct rte_eth_dev *eth_dev, uint32_t lvl,
 		cap->nonleaf.shaper_private_dual_rate_supported = true;
 		cap->nonleaf.shaper_private_rate_min = MIN_SHAPER_RATE / 8;
 		cap->nonleaf.shaper_private_rate_max = MAX_SHAPER_RATE / 8;
+		cap->nonleaf.shaper_private_packet_mode_supported = 1;
+		cap->nonleaf.shaper_private_byte_mode_supported = 1;
 
 		/* MDQ doesn't support Strict Priority */
 		if (hw_lvl == NIX_TXSCH_LVL_MDQ)
@@ -1993,6 +2033,8 @@ otx2_nix_tm_level_capa_get(struct rte_eth_dev *eth_dev, uint32_t lvl,
 			nix_max_prio(dev, hw_lvl) + 1;
 		cap->nonleaf.sched_wfq_n_groups_max = 1;
 		cap->nonleaf.sched_wfq_weight_max = MAX_SCHED_WEIGHT;
+		cap->nonleaf.sched_wfq_packet_mode_supported = 1;
+		cap->nonleaf.sched_wfq_byte_mode_supported = 1;
 	} else {
 		/* unsupported level */
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
@@ -2045,6 +2087,8 @@ otx2_nix_tm_node_capa_get(struct rte_eth_dev *eth_dev, uint32_t node_id,
 		(hw_lvl == NIX_TXSCH_LVL_TL1) ? false : true;
 	cap->shaper_private_rate_min = MIN_SHAPER_RATE / 8;
 	cap->shaper_private_rate_max = MAX_SHAPER_RATE / 8;
+	cap->shaper_private_packet_mode_supported = 1;
+	cap->shaper_private_byte_mode_supported = 1;
 
 	/* Non Leaf Scheduler */
 	if (hw_lvl == NIX_TXSCH_LVL_MDQ)
@@ -2057,6 +2101,8 @@ otx2_nix_tm_node_capa_get(struct rte_eth_dev *eth_dev, uint32_t node_id,
 		cap->nonleaf.sched_n_children_max;
 	cap->nonleaf.sched_wfq_n_groups_max = 1;
 	cap->nonleaf.sched_wfq_weight_max = MAX_SCHED_WEIGHT;
+	cap->nonleaf.sched_wfq_packet_mode_supported = 1;
+	cap->nonleaf.sched_wfq_byte_mode_supported = 1;
 
 	if (hw_lvl == NIX_TXSCH_LVL_TL1)
 		cap->stats_mask = RTE_TM_STATS_N_PKTS_RED_DROPPED |
@@ -2112,6 +2158,13 @@ otx2_nix_tm_shaper_profile_add(struct rte_eth_dev *eth_dev,
 		}
 	}
 
+	if (params->pkt_length_adjust < NIX_LENGTH_ADJUST_MIN ||
+	    params->pkt_length_adjust > NIX_LENGTH_ADJUST_MAX) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PKT_ADJUST_LEN;
+		error->message = "length adjust invalid";
+		return -EINVAL;
+	}
+
 	profile = rte_zmalloc("otx2_nix_tm_shaper_profile",
 			      sizeof(struct otx2_nix_tm_shaper_profile), 0);
 	if (!profile)
@@ -2124,13 +2177,14 @@ otx2_nix_tm_shaper_profile_add(struct rte_eth_dev *eth_dev,
 
 	otx2_tm_dbg("Added TM shaper profile %u, "
 		    " pir %" PRIu64 " , pbs %" PRIu64 ", cir %" PRIu64
-		    ", cbs %" PRIu64 " , adj %u",
+		    ", cbs %" PRIu64 " , adj %u, pkt mode %d",
 		    profile_id,
 		    params->peak.rate * 8,
 		    params->peak.size,
 		    params->committed.rate * 8,
 		    params->committed.size,
-		    params->pkt_length_adjust);
+		    params->pkt_length_adjust,
+		    params->packet_mode);
 
 	/* Translate rate as bits per second */
 	profile->params.peak.rate = profile->params.peak.rate * 8;
@@ -2186,9 +2240,11 @@ otx2_nix_tm_node_add(struct rte_eth_dev *eth_dev, uint32_t node_id,
 		     struct rte_tm_error *error)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_shaper_profile *profile = NULL;
 	struct otx2_nix_tm_node *parent_node;
-	int rc, clear_on_fail = 0;
-	uint32_t exp_next_lvl;
+	int rc, pkt_mode, clear_on_fail = 0;
+	uint32_t exp_next_lvl, i;
+	uint32_t profile_id;
 	uint16_t hw_lvl;
 
 	/* we don't support dynamic updates */
@@ -2250,13 +2306,45 @@ otx2_nix_tm_node_add(struct rte_eth_dev *eth_dev, uint32_t node_id,
 		return -EINVAL;
 	}
 
-	/* Check if shaper profile exists for non leaf node */
-	if (!nix_tm_is_leaf(dev, lvl) &&
-	    params->shaper_profile_id != RTE_TM_SHAPER_PROFILE_ID_NONE &&
-	    !nix_tm_shaper_profile_search(dev, params->shaper_profile_id)) {
-		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
-		error->message = "invalid shaper profile";
-		return -EINVAL;
+	if (!nix_tm_is_leaf(dev, lvl)) {
+		/* Check if shaper profile exists for non leaf node */
+		profile_id = params->shaper_profile_id;
+		profile = nix_tm_shaper_profile_search(dev, profile_id);
+		if (profile_id != RTE_TM_SHAPER_PROFILE_ID_NONE && !profile) {
+			error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+			error->message = "invalid shaper profile";
+			return -EINVAL;
+		}
+
+		/* Minimum static priority count is 1 */
+		if (!params->nonleaf.n_sp_priorities ||
+		    params->nonleaf.n_sp_priorities > TXSCH_TLX_SP_PRIO_MAX) {
+			error->type =
+				RTE_TM_ERROR_TYPE_NODE_PARAMS_N_SP_PRIORITIES;
+			error->message = "invalid sp priorities";
+			return -EINVAL;
+		}
+
+		pkt_mode = 0;
+		/* Validate weight mode */
+		for (i = 0; i < params->nonleaf.n_sp_priorities &&
+		     params->nonleaf.wfq_weight_mode; i++) {
+			pkt_mode = !params->nonleaf.wfq_weight_mode[i];
+			if (pkt_mode == !params->nonleaf.wfq_weight_mode[0])
+				continue;
+
+			error->type =
+				RTE_TM_ERROR_TYPE_NODE_PARAMS_WFQ_WEIGHT_MODE;
+			error->message = "unsupported weight mode";
+			return -EINVAL;
+		}
+
+		if (profile && params->nonleaf.n_sp_priorities &&
+		    pkt_mode != profile->params.packet_mode) {
+			error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+			error->message = "shaper wfq packet mode mismatch";
+			return -EINVAL;
+		}
 	}
 
 	/* Check if there is second DWRR already in siblings or holes in prio */
@@ -2496,6 +2584,12 @@ otx2_nix_tm_node_shaper_update(struct rte_eth_dev *eth_dev,
 			error->message = "shaper profile ID not exist";
 			return -EINVAL;
 		}
+	}
+
+	if (profile && profile->params.packet_mode != tm_node->pkt_mode) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "shaper profile pkt mode mismatch";
+		return -EINVAL;
 	}
 
 	tm_node->params.shaper_profile_id = profile_id;
