@@ -8,6 +8,10 @@ EXPERIMENTAL {
 	rte_rcu_qsbr_synchronize;
 	rte_rcu_qsbr_thread_register;
 	rte_rcu_qsbr_thread_unregister;
+	rte_rcu_qsbr_dq_create;
+	rte_rcu_qsbr_dq_enqueue;
+	rte_rcu_qsbr_dq_reclaim;
+	rte_rcu_qsbr_dq_delete;
 
 	local: *;
 };
