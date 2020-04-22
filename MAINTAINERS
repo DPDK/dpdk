@@ -194,6 +194,12 @@ F: app/test/test_string_fns.c
 F: app/test/test_tailq.c
 F: app/test/test_version.c
 
+Trace - EXPERIMENTAL
+M: Jerin Jacob <jerinj@marvell.com>
+M: Sunil Kumar Kori <skori@marvell.com>
+F: lib/librte_eal/include/rte_trace*.h
+F: lib/librte_eal/common/eal_common_trace*.c
+
 Memory Allocation
 M: Anatoly Burakov <anatoly.burakov@intel.com>
 F: lib/librte_eal/include/rte_fbarray.h

@@ -174,7 +174,9 @@ The public API headers are grouped by topics:
   [hexdump]            (@ref rte_hexdump.h),
   [debug]              (@ref rte_debug.h),
   [log]                (@ref rte_log.h),
-  [errno]              (@ref rte_errno.h)
+  [errno]              (@ref rte_errno.h),
+  [trace]              (@ref rte_trace.h),
+  [trace_point]        (@ref rte_trace_point.h)
 
 - **misc**:
   [EAL config]         (@ref rte_eal.h),
