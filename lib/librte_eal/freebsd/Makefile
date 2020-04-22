@@ -60,6 +60,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_proc.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_fbarray.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_uuid.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_trace.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_common_trace_utils.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += rte_malloc.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += hotplug_mp.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += malloc_elem.c

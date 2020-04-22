@@ -22,6 +22,62 @@ static RTE_DEFINE_PER_LCORE(int, ctf_count);
 static struct trace_point_head tp_list = STAILQ_HEAD_INITIALIZER(tp_list);
 static struct trace trace;
 
+struct trace *
+trace_obj_get(void)
+{
+	return &trace;
+}
+
+struct trace_point_head *
+trace_list_head_get(void)
+{
+	return &tp_list;
+}
+
+int
+eal_trace_init(void)
+{
+	/* One of the trace point registration failed */
+	if (trace.register_errno) {
+		rte_errno = trace.register_errno;
+		goto fail;
+	}
+
+	if (!rte_trace_is_enabled())
+		return 0;
+
+	rte_spinlock_init(&trace.lock);
+
+	/* Is duplicate trace name registered */
+	if (trace_has_duplicate_entry())
+		goto fail;
+
+	/* Generate UUID ver 4 with total size of events and number of
+	 * events
+	 */
+	trace_uuid_generate();
+
+	/* Create trace directory */
+	if (trace_mkdir())
+		goto fail;
+
+
+	rte_trace_mode_set(trace.mode);
+
+	return 0;
+
+fail:
+	trace_err("failed to initialize trace [%s]", rte_strerror(rte_errno));
+	return -rte_errno;
+}
+
+void
+eal_trace_fini(void)
+{
+	if (!rte_trace_is_enabled())
+		return;
+}
+
 bool
 rte_trace_is_enabled(void)
 {
