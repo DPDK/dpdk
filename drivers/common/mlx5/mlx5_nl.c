@@ -1557,7 +1557,7 @@ mlx5_nl_enable_roce_get(int nlsk_fd, int family_id, const char *pci_addr,
 	struct genlmsghdr *genl;
 	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
-	int cur_en;
+	int cur_en = 0;
 	uint8_t buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
 		    NLMSG_ALIGN(sizeof(struct genlmsghdr)) +
 		    NLMSG_ALIGN(sizeof(struct nlattr)) * 4 +
