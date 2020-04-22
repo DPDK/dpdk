@@ -190,3 +190,62 @@ However, when ``CONFIG_RTE_LIBRTE_RCU_DEBUG`` is enabled, these APIs aid
 in debugging issues. One can mark the access to shared data structures on the
 reader side using these APIs. The ``rte_rcu_qsbr_quiescent()`` will check if
 all the locks are unlocked.
+
+Resource reclamation framework for DPDK
+---------------------------------------
+
+Lock-free algorithms place additional burden of resource reclamation on
+the application. When a writer deletes an entry from a data structure, the writer:
+
+#. Has to start the grace period
+#. Has to store a reference to the deleted resources in a FIFO
+#. Should check if the readers have completed a grace period and free the resources.
+
+There are several APIs provided to help with this process. The writer
+can create a FIFO to store the references to deleted resources using ``rte_rcu_qsbr_dq_create()``.
+The resources can be enqueued to this FIFO using ``rte_rcu_qsbr_dq_enqueue()``.
+If the FIFO is full, ``rte_rcu_qsbr_dq_enqueue`` will reclaim the resources before enqueuing. It will also reclaim resources on regular basis to keep the FIFO from growing too large. If the writer runs out of resources, the writer can call ``rte_rcu_qsbr_dq_reclaim`` API to reclaim resources. ``rte_rcu_qsbr_dq_delete`` is provided to reclaim any remaining resources and free the FIFO while shutting down.
+
+However, if this resource reclamation process were to be integrated in lock-free data structure libraries, it
+hides this complexity from the application and makes it easier for the application to adopt lock-free algorithms. The following paragraphs discuss how the reclamation process can be integrated in DPDK libraries.
+
+In any DPDK application, the resource reclamation process using QSBR can be split into 4 parts:
+
+#. Initialization
+#. Quiescent State Reporting
+#. Reclaiming Resources
+#. Shutdown
+
+The design proposed here assigns different parts of this process to client libraries and applications. The term 'client library' refers to lock-free data structure libraries such at rte_hash, rte_lpm etc. in DPDK or similar libraries outside of DPDK. The term 'application' refers to the packet processing application that makes use of DPDK such as L3 Forwarding example application, OVS, VPP etc..
+
+The application has to handle 'Initialization' and 'Quiescent State Reporting'. So,
+
+* the application has to create the RCU variable and register the reader threads to report their quiescent state.
+* the application has to register the same RCU variable with the client library.
+* reader threads in the application have to report the quiescent state. This allows for the application to control the length of the critical section/how frequently the application wants to report the quiescent state.
+
+The client library will handle 'Reclaiming Resources' part of the process. The
+client libraries will make use of the writer thread context to execute the memory
+reclamation algorithm. So,
+
+* client library should provide an API to register a RCU variable that it will use. It should call ``rte_rcu_qsbr_dq_create()`` to create the FIFO to store the references to deleted entries.
+* client library should use ``rte_rcu_qsbr_dq_enqueue`` to enqueue the deleted resources on the FIFO and start the grace period.
+* if the library runs out of resources while adding entries, it should call ``rte_rcu_qsbr_dq_reclaim`` to reclaim the resources and try the resource allocation again.
+
+The 'Shutdown' process needs to be shared between the application and the
+client library.
+
+* the application should make sure that the reader threads are not using the shared data structure, unregister the reader threads from the QSBR variable before calling the client library's shutdown function.
+
+* client library should call ``rte_rcu_qsbr_dq_delete`` to reclaim any remaining resources and free the FIFO.
+
+Integrating the resource reclamation with client libraries removes the burden from
+the application and makes it easy to use lock-free algorithms.
+
+This design has several advantages over currently known methods.
+
+#. Application does not need a dedicated thread to reclaim resources. Memory
+   reclamation happens as part of the writer thread with little impact on
+   performance.
+#. The client library has better control over the resources. For example: the client
+   library can attempt to reclaim when it has run out of resources.
