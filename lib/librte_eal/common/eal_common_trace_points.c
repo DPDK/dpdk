@@ -26,6 +26,11 @@ RTE_TRACE_POINT_DEFINE(rte_eal_trace_generic_func);
 RTE_TRACE_POINT_DEFINE(rte_eal_trace_alarm_set);
 RTE_TRACE_POINT_DEFINE(rte_eal_trace_alarm_cancel);
 
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_mem_zmalloc);
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_mem_malloc);
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_mem_realloc);
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_mem_free);
+
 RTE_INIT(eal_trace_init)
 {
 	RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_void,
@@ -65,4 +70,13 @@ RTE_INIT(eal_trace_init)
 		lib.eal.alarm.set);
 	RTE_TRACE_POINT_REGISTER(rte_eal_trace_alarm_cancel,
 		lib.eal.alarm.cancel);
+
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_mem_zmalloc,
+		lib.eal.mem.zmalloc);
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_mem_malloc,
+		lib.eal.mem.malloc);
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_mem_realloc,
+		lib.eal.mem.realloc);
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_mem_free,
+		lib.eal.mem.free);
 }

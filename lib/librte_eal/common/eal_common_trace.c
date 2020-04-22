@@ -318,7 +318,7 @@ __rte_trace_mem_per_thread_alloc(void)
 	}
 
 	/* First attempt from huge page */
-	header = rte_malloc(NULL, trace_mem_sz(trace->buff_len), 8);
+	header = eal_malloc_no_trace(NULL, trace_mem_sz(trace->buff_len), 8);
 	if (header) {
 		trace->lcore_meta[count].area = TRACE_AREA_HUGEPAGE;
 		goto found;
@@ -371,7 +371,7 @@ trace_mem_per_thread_free(void)
 	for (count = 0; count < trace->nb_trace_mem_list; count++) {
 		mem = trace->lcore_meta[count].mem;
 		if (trace->lcore_meta[count].area == TRACE_AREA_HUGEPAGE)
-			rte_free(mem);
+			eal_free_no_trace(mem);
 		else if (trace->lcore_meta[count].area == TRACE_AREA_HEAP)
 			free(mem);
 	}

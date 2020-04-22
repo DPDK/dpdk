@@ -136,6 +136,45 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_int(count);
 )
 
+/* Memory */
+RTE_TRACE_POINT(
+	rte_eal_trace_mem_zmalloc,
+	RTE_TRACE_POINT_ARGS(const char *type, size_t size, unsigned int align,
+		int socket, void *ptr),
+	rte_trace_point_emit_string(type);
+	rte_trace_point_emit_long(size);
+	rte_trace_point_emit_u32(align);
+	rte_trace_point_emit_int(socket);
+	rte_trace_point_emit_ptr(ptr);
+)
+
+RTE_TRACE_POINT(
+	rte_eal_trace_mem_malloc,
+	RTE_TRACE_POINT_ARGS(const char *type, size_t size, unsigned int align,
+		int socket, void *ptr),
+	rte_trace_point_emit_string(type);
+	rte_trace_point_emit_long(size);
+	rte_trace_point_emit_u32(align);
+	rte_trace_point_emit_int(socket);
+	rte_trace_point_emit_ptr(ptr);
+)
+
+RTE_TRACE_POINT(
+	rte_eal_trace_mem_realloc,
+	RTE_TRACE_POINT_ARGS(size_t size, unsigned int align, int socket,
+		void *ptr),
+	rte_trace_point_emit_long(size);
+	rte_trace_point_emit_u32(align);
+	rte_trace_point_emit_int(socket);
+	rte_trace_point_emit_ptr(ptr);
+)
+
+RTE_TRACE_POINT(
+	rte_eal_trace_mem_free,
+	RTE_TRACE_POINT_ARGS(void *ptr),
+	rte_trace_point_emit_ptr(ptr);
+)
+
 #ifdef __cplusplus
 }
 #endif

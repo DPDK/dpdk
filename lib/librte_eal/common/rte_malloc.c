@@ -20,6 +20,7 @@
 #include <rte_lcore.h>
 #include <rte_common.h>
 #include <rte_spinlock.h>
+#include <rte_eal_trace.h>
 
 #include <rte_malloc.h>
 #include "malloc_elem.h"
@@ -30,20 +31,35 @@
 
 
 /* Free the memory space back to heap */
-void rte_free(void *addr)
+static void
+mem_free(void *addr, const bool trace_ena)
 {
+	if (trace_ena)
+		rte_eal_trace_mem_free(addr);
+
 	if (addr == NULL) return;
 	if (malloc_heap_free(malloc_elem_from_data(addr)) < 0)
 		RTE_LOG(ERR, EAL, "Error: Invalid memory\n");
 }
 
-/*
- * Allocate memory on specified heap.
- */
-void *
-rte_malloc_socket(const char *type, size_t size, unsigned int align,
-		int socket_arg)
+void
+rte_free(void *addr)
 {
+	return mem_free(addr, true);
+}
+
+void
+eal_free_no_trace(void *addr)
+{
+	return mem_free(addr, false);
+}
+
+static void *
+malloc_socket(const char *type, size_t size, unsigned int align,
+		int socket_arg, const bool trace_ena)
+{
+	void *ptr;
+
 	/* return NULL if size is 0 or alignment is not power-of-2 */
 	if (size == 0 || (align && !rte_is_power_of_2(align)))
 		return NULL;
@@ -57,8 +73,28 @@ rte_malloc_socket(const char *type, size_t size, unsigned int align,
 				!rte_eal_has_hugepages())
 		socket_arg = SOCKET_ID_ANY;
 
-	return malloc_heap_alloc(type, size, socket_arg, 0,
+	ptr = malloc_heap_alloc(type, size, socket_arg, 0,
 			align == 0 ? 1 : align, 0, false);
+
+	if (trace_ena)
+		rte_eal_trace_mem_malloc(type, size, align, socket_arg, ptr);
+	return ptr;
+}
+
+/*
+ * Allocate memory on specified heap.
+ */
+void *
+rte_malloc_socket(const char *type, size_t size, unsigned int align,
+		int socket_arg)
+{
+	return malloc_socket(type, size, align, socket_arg, true);
+}
+
+void *
+eal_malloc_no_trace(const char *type, size_t size, unsigned int align)
+{
+	return malloc_socket(type, size, align, SOCKET_ID_ANY, false);
 }
 
 /*
@@ -87,6 +123,8 @@ rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket)
 	if (ptr != NULL)
 		memset(ptr, 0, size);
 #endif
+
+	rte_eal_trace_mem_zmalloc(type, size, align, socket, ptr);
 	return ptr;
 }
 
@@ -140,8 +178,10 @@ rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket)
 	if ((socket == SOCKET_ID_ANY ||
 	     (unsigned int)socket == elem->heap->socket_id) &&
 			RTE_PTR_ALIGN(ptr, align) == ptr &&
-			malloc_heap_resize(elem, size) == 0)
+			malloc_heap_resize(elem, size) == 0) {
+		rte_eal_trace_mem_realloc(size, align, socket, ptr);
 		return ptr;
+	}
 
 	/* either requested socket id doesn't match, alignment is off
 	 * or we have no room to expand,
@@ -155,6 +195,7 @@ rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket)
 	rte_memcpy(new_ptr, ptr, old_size < size ? old_size : size);
 	rte_free(ptr);
 
+	rte_eal_trace_mem_realloc(size, align, socket, new_ptr);
 	return new_ptr;
 }
 

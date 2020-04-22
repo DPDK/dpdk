@@ -355,6 +355,10 @@ EXPERIMENTAL {
 	__rte_eal_trace_generic_u64;
 	__rte_eal_trace_generic_u8;
 	__rte_eal_trace_generic_void;
+	__rte_eal_trace_mem_free;
+	__rte_eal_trace_mem_malloc;
+	__rte_eal_trace_mem_realloc;
+	__rte_eal_trace_mem_zmalloc;
 	__rte_trace_mem_per_thread_alloc;
 	__rte_trace_point_emit_field;
 	__rte_trace_point_register;
