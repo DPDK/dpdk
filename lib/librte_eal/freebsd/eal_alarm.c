@@ -17,6 +17,7 @@
 #include <rte_errno.h>
 #include <rte_interrupts.h>
 #include <rte_spinlock.h>
+#include <rte_eal_trace.h>
 
 #include "eal_private.h"
 #include "eal_alarm_private.h"
@@ -223,6 +224,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 
 	rte_spinlock_unlock(&alarm_list_lk);
 
+	rte_eal_trace_alarm_set(us, cb_fn, cb_arg, ret);
 	return ret;
 }
 
@@ -310,5 +312,6 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 
 	rte_spinlock_unlock(&alarm_list_lk);
 
+	rte_eal_trace_alarm_cancel(cb_fn, cb_arg, count);
 	return count;
 }

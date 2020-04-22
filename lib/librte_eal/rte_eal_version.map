@@ -337,6 +337,8 @@ EXPERIMENTAL {
 	rte_thread_is_intr;
 
 	# added in 20.05
+	__rte_eal_trace_alarm_cancel;
+	__rte_eal_trace_alarm_set;
 	__rte_eal_trace_generic_double;
 	__rte_eal_trace_generic_float;
 	__rte_eal_trace_generic_func;

@@ -23,6 +23,9 @@ RTE_TRACE_POINT_DEFINE(rte_eal_trace_generic_ptr);
 RTE_TRACE_POINT_DEFINE(rte_eal_trace_generic_str);
 RTE_TRACE_POINT_DEFINE(rte_eal_trace_generic_func);
 
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_alarm_set);
+RTE_TRACE_POINT_DEFINE(rte_eal_trace_alarm_cancel);
+
 RTE_INIT(eal_trace_init)
 {
 	RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_void,
@@ -57,4 +60,9 @@ RTE_INIT(eal_trace_init)
 		lib.eal.generic.string);
 	RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_func,
 		lib.eal.generic.func);
+
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_alarm_set,
+		lib.eal.alarm.set);
+	RTE_TRACE_POINT_REGISTER(rte_eal_trace_alarm_cancel,
+		lib.eal.alarm.cancel);
 }
