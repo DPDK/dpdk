@@ -57,9 +57,13 @@ eal_trace_init(void)
 	 */
 	trace_uuid_generate();
 
+	/* Generate CTF TDSL metadata */
+	if (trace_metadata_create() < 0)
+		goto fail;
+
 	/* Create trace directory */
 	if (trace_mkdir())
-		goto fail;
+		goto free_meta;
 
 	/* Save current epoch timestamp for future use */
 	if (trace_epoch_time_save() < 0)
@@ -69,6 +73,8 @@ eal_trace_init(void)
 
 	return 0;
 
+free_meta:
+	trace_metadata_destroy();
 fail:
 	trace_err("failed to initialize trace [%s]", rte_strerror(rte_errno));
 	return -rte_errno;
@@ -79,6 +85,7 @@ eal_trace_fini(void)
 {
 	if (!rte_trace_is_enabled())
 		return;
+	trace_metadata_destroy();
 }
 
 bool

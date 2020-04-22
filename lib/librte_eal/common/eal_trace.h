@@ -41,6 +41,11 @@ struct trace {
 	uint64_t epoch_sec;
 	uint64_t epoch_nsec;
 	uint64_t uptime_ticks;
+	char *ctf_meta;
+	uint32_t ctf_meta_offset_freq;
+	uint32_t ctf_meta_offset_freq_off_s;
+	uint32_t ctf_meta_offset_freq_off;
+	uint16_t ctf_fixup_done;
 	rte_spinlock_t lock;
 };
 
@@ -62,6 +67,8 @@ struct trace_point_head *trace_list_head_get(void);
 /* Util functions */
 bool trace_has_duplicate_entry(void);
 void trace_uuid_generate(void);
+int trace_metadata_create(void);
+void trace_metadata_destroy(void);
 int trace_mkdir(void);
 int trace_epoch_time_save(void);
 
