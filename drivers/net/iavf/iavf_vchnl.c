@@ -335,13 +335,10 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 	args.out_buffer = vf->aq_resp;
 	args.out_size = IAVF_AQ_BUF_SZ;
 
-	/* TODO: basic offload capabilities, need to
-	 * add advanced/optional offload capabilities
-	 */
-
 	caps = IAVF_BASIC_OFFLOAD_CAPS | VIRTCHNL_VF_CAP_ADV_LINK_SPEED |
 		VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC |
-		VIRTCHNL_VF_OFFLOAD_FDIR_PF;
+		VIRTCHNL_VF_OFFLOAD_FDIR_PF |
+		VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);
@@ -1006,4 +1003,30 @@ iavf_fdir_check(struct iavf_adapter *adapter,
 	}
 
 	return 0;
+}
+
+int
+iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
+		     struct virtchnl_rss_cfg *rss_cfg, bool add)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct iavf_cmd_info args;
+	int err;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = add ? VIRTCHNL_OP_ADD_RSS_CFG :
+		VIRTCHNL_OP_DEL_RSS_CFG;
+	args.in_args = (u8 *)rss_cfg;
+	args.in_args_size = sizeof(*rss_cfg);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+
+	err = iavf_execute_vf_cmd(adapter, &args);
+	if (err)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of %s",
+			    add ? "OP_ADD_RSS_CFG" :
+			    "OP_DEL_RSS_INPUT_CFG");
+
+	return err;
 }

@@ -270,4 +270,6 @@ int iavf_fdir_add(struct iavf_adapter *adapter, struct iavf_fdir_conf *filter);
 int iavf_fdir_del(struct iavf_adapter *adapter, struct iavf_fdir_conf *filter);
 int iavf_fdir_check(struct iavf_adapter *adapter,
 		struct iavf_fdir_conf *filter);
+int iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
+			 struct virtchnl_rss_cfg *rss_cfg, bool add);
 #endif /* _IAVF_ETHDEV_H_ */

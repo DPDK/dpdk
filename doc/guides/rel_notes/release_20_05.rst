@@ -116,6 +116,7 @@ New Features
 
   * Added generic filter support.
   * Added advanced iavf with FDIR capability.
+  * Added advanced RSS configuration for VFs.
 
 * **Updated the Intel ice driver.**
 

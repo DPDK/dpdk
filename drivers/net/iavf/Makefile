@@ -25,6 +25,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_vchnl.c
 SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_generic_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_fdir.c
+SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_hash.c
 ifeq ($(CONFIG_RTE_ARCH_X86), y)
 SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_rxtx_vec_sse.c
 endif
