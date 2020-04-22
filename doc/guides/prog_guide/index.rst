@@ -12,6 +12,7 @@ Programmer's Guide
     overview
     env_abstraction_layer
     service_cores
+    trace_lib
     rcu_lib
     ring_lib
     stack_lib

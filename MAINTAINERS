@@ -200,6 +200,7 @@ M: Sunil Kumar Kori <skori@marvell.com>
 F: lib/librte_eal/include/rte_trace*.h
 F: lib/librte_eal/common/eal_common_trace*.c
 F: lib/librte_eal/common/eal_trace.h
+F: doc/guides/prog_guide/trace_lib.rst
 F: app/test/test_trace*
 
 Memory Allocation
