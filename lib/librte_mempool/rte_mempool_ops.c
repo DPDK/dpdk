@@ -11,6 +11,8 @@
 #include <rte_errno.h>
 #include <rte_dev.h>
 
+#include "rte_mempool_trace.h"
+
 /* indirect jump table to support external memory pools. */
 struct rte_mempool_ops_table rte_mempool_ops_table = {
 	.sl =  RTE_SPINLOCK_INITIALIZER,
@@ -74,6 +76,7 @@ rte_mempool_ops_alloc(struct rte_mempool *mp)
 {
 	struct rte_mempool_ops *ops;
 
+	rte_mempool_trace_ops_alloc(mp);
 	ops = rte_mempool_get_ops(mp->ops_index);
 	return ops->alloc(mp);
 }
@@ -84,6 +87,7 @@ rte_mempool_ops_free(struct rte_mempool *mp)
 {
 	struct rte_mempool_ops *ops;
 
+	rte_mempool_trace_ops_free(mp);
 	ops = rte_mempool_get_ops(mp->ops_index);
 	if (ops->free == NULL)
 		return;
@@ -130,6 +134,8 @@ rte_mempool_ops_populate(struct rte_mempool *mp, unsigned int max_objs,
 
 	ops = rte_mempool_get_ops(mp->ops_index);
 
+	rte_mempool_trace_ops_populate(mp, max_objs, vaddr, iova, len, obj_cb,
+		obj_cb_arg);
 	if (ops->populate == NULL)
 		return rte_mempool_op_populate_default(mp, max_objs, vaddr,
 						       iova, len, obj_cb,
@@ -178,5 +184,6 @@ rte_mempool_set_ops_byname(struct rte_mempool *mp, const char *name,
 
 	mp->ops_index = i;
 	mp->pool_config = pool_config;
+	rte_mempool_trace_set_ops_byname(mp, name, pool_config);
 	return 0;
 }

@@ -33,6 +33,7 @@
 #include <rte_tailq.h>
 
 #include "rte_mempool.h"
+#include "rte_mempool_trace.h"
 
 TAILQ_HEAD(rte_mempool_list, rte_tailq_entry);
 
@@ -377,6 +378,7 @@ rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	if (ret == 0)
 		ret = -EINVAL;
 
+	rte_mempool_trace_populate_iova(mp, vaddr, iova, len, free_cb, opaque);
 	return ret;
 }
 
@@ -444,6 +446,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	if (cnt == 0)
 		return -EINVAL;
 
+	rte_mempool_trace_populate_virt(mp, addr, len, pg_sz, free_cb, opaque);
 	return cnt;
 
  fail:
@@ -473,6 +476,7 @@ rte_mempool_get_page_size(struct rte_mempool *mp, size_t *pg_sz)
 	else
 		*pg_sz = getpagesize();
 
+	rte_mempool_trace_get_page_size(mp, *pg_sz);
 	return 0;
 }
 
@@ -611,6 +615,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 		}
 	}
 
+	rte_mempool_trace_populate_default(mp);
 	return mp->size;
 
  fail:
@@ -701,6 +706,7 @@ rte_mempool_populate_anon(struct rte_mempool *mp)
 		goto fail;
 	}
 
+	rte_mempool_trace_populate_anon(mp);
 	return mp->populated_size;
 
  fail:
@@ -732,6 +738,7 @@ rte_mempool_free(struct rte_mempool *mp)
 	}
 	rte_mcfg_tailq_write_unlock();
 
+	rte_mempool_trace_free(mp);
 	rte_mempool_free_memchunks(mp);
 	rte_mempool_ops_free(mp);
 	rte_memzone_free(mp->mz);
@@ -770,6 +777,7 @@ rte_mempool_cache_create(uint32_t size, int socket_id)
 
 	mempool_cache_init(cache, size);
 
+	rte_mempool_trace_cache_create(size, socket_id, cache);
 	return cache;
 }
 
@@ -781,6 +789,7 @@ rte_mempool_cache_create(uint32_t size, int socket_id)
 void
 rte_mempool_cache_free(struct rte_mempool_cache *cache)
 {
+	rte_mempool_trace_cache_free(cache);
 	rte_free(cache);
 }
 
@@ -911,6 +920,8 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	rte_mcfg_tailq_write_unlock();
 	rte_mcfg_mempool_write_unlock();
 
+	rte_mempool_trace_create_empty(name, n, elt_size, cache_size,
+		private_data_size, flags, mp);
 	return mp;
 
 exit_unlock:
@@ -963,6 +974,9 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	if (obj_init)
 		rte_mempool_obj_iter(mp, obj_init, obj_init_arg);
 
+	rte_mempool_trace_create(name, n, elt_size, cache_size,
+		private_data_size, mp_init, mp_init_arg, obj_init,
+		obj_init_arg, flags, mp);
 	return mp;
 
  fail:
