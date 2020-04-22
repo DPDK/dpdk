@@ -227,6 +227,32 @@ __rte_trace_point_fp_is_enabled(void)
 #endif
 }
 
+/**
+ * @internal
+ *
+ * Helper function to register a dynamic tracepoint.
+ * Use RTE_TRACE_POINT_REGISTER macro for tracepoint registration.
+ *
+ * @param trace
+ *   The tracepoint object created using RTE_TRACE_POINT_DEFINE.
+ * @param name
+ *   The name of the tracepoint object.
+ * @param register_fn
+ *   Trace registration function.
+ * @return
+ *   - 0: Successfully registered the tracepoint.
+ *   - <0: Failure to register the tracepoint.
+ */
+__rte_experimental
+int __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
+	void (*register_fn)(void));
+
+#ifdef RTE_TRACE_POINT_REGISTER_SELECT
+#include <rte_trace_point_register.h>
+#else
+#include <rte_trace_point_provider.h>
+#endif
+
 #ifdef __cplusplus
 }
 #endif

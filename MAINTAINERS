@@ -199,6 +199,7 @@ M: Jerin Jacob <jerinj@marvell.com>
 M: Sunil Kumar Kori <skori@marvell.com>
 F: lib/librte_eal/include/rte_trace*.h
 F: lib/librte_eal/common/eal_common_trace*.c
+F: lib/librte_eal/common/eal_trace.h
 
 Memory Allocation
 M: Anatoly Burakov <anatoly.burakov@intel.com>

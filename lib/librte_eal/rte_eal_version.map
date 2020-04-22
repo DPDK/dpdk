@@ -337,6 +337,8 @@ EXPERIMENTAL {
 	rte_thread_is_intr;
 
 	# added in 20.05
+	__rte_trace_point_register;
+	per_lcore_trace_point_sz;
 	rte_log_can_log;
 	rte_thread_getname;
 };
