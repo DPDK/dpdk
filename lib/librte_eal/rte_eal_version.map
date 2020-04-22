@@ -341,4 +341,13 @@ EXPERIMENTAL {
 	per_lcore_trace_point_sz;
 	rte_log_can_log;
 	rte_thread_getname;
+	rte_trace_is_enabled;
+	rte_trace_mode_get;
+	rte_trace_mode_set;
+	rte_trace_pattern;
+	rte_trace_point_disable;
+	rte_trace_point_enable;
+	rte_trace_point_is_enabled;
+	rte_trace_point_lookup;
+	rte_trace_regexp;
 };

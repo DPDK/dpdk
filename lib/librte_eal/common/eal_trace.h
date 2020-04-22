@@ -26,8 +26,18 @@ struct trace_point {
 
 struct trace {
 	int register_errno;
+	bool status;
+	enum rte_trace_mode mode;
 	uint32_t nb_trace_points;
 };
+
+/* Helper functions */
+static inline uint16_t
+trace_id_get(rte_trace_point_t *trace)
+{
+	return (*trace & __RTE_TRACE_FIELD_ID_MASK) >>
+		__RTE_TRACE_FIELD_ID_SHIFT;
+}
 
 /* Trace point list functions */
 STAILQ_HEAD(trace_point_head, trace_point);
