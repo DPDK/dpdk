@@ -44,6 +44,7 @@ sources += files(
 	'eal_common_timer.c',
 	'eal_common_trace.c',
 	'eal_common_trace_ctf.c',
+	'eal_common_trace_points.c',
 	'eal_common_trace_utils.c',
 	'eal_common_uuid.c',
 	'hotplug_mp.c',

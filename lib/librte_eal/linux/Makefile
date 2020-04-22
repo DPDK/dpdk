@@ -68,6 +68,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_fbarray.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_uuid.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_trace.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_trace_ctf.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_trace_points.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_trace_utils.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += rte_malloc.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += hotplug_mp.c
