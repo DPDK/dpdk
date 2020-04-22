@@ -33,6 +33,8 @@ enum {
 	OPT_LCORES_NUM,
 #define OPT_LOG_LEVEL         "log-level"
 	OPT_LOG_LEVEL_NUM,
+#define OPT_TRACE             "trace"
+	OPT_TRACE_NUM,
 #define OPT_MASTER_LCORE      "master-lcore"
 	OPT_MASTER_LCORE_NUM,
 #define OPT_MBUF_POOL_OPS_NAME "mbuf-pool-ops-name"

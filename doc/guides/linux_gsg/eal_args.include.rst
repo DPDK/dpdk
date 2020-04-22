@@ -136,6 +136,22 @@ Debugging options
 
     Can be specified multiple times.
 
+*   ``--trace=<regex-match>``
+
+    Enable trace based on regular expression trace name. By default, the trace is
+    disabled. User must specify this option to enable trace.
+    For example:
+
+    Global trace configuration for EAL only::
+
+        --trace=eal
+
+    Global trace configuration for ALL the components::
+
+        --trace=.*
+
+    Can be specified multiple times up to 32 times.
+
 Other options
 ~~~~~~~~~~~~~
 

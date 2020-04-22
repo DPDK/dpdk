@@ -27,7 +27,7 @@
 #define TRACE_CTF_FIELD_SIZE 384
 #define TRACE_POINT_NAME_SIZE 64
 #define TRACE_CTF_MAGIC 0xC1FC1FC1
-
+#define TRACE_MAX_ARGS	32
 
 struct trace_point {
 	STAILQ_ENTRY(trace_point) next;
@@ -46,6 +46,11 @@ struct thread_mem_meta {
 	enum trace_area_e area;
 };
 
+struct trace_args {
+	uint8_t nb_args;
+	char *args[TRACE_MAX_ARGS];
+};
+
 struct trace {
 	char dir[PATH_MAX];
 	int dir_offset;
@@ -54,6 +59,7 @@ struct trace {
 	enum rte_trace_mode mode;
 	rte_uuid_t uuid;
 	uint32_t buff_len;
+	struct trace_args args;
 	uint32_t nb_trace_points;
 	uint32_t nb_trace_mem_list;
 	struct thread_mem_meta *lcore_meta;
@@ -92,6 +98,7 @@ struct trace_point_head *trace_list_head_get(void);
 /* Util functions */
 const char *trace_mode_to_string(enum rte_trace_mode mode);
 const char *trace_area_to_string(enum trace_area_e area);
+int trace_args_apply(const char *arg);
 bool trace_has_duplicate_entry(void);
 void trace_uuid_generate(void);
 int trace_metadata_create(void);
@@ -103,5 +110,7 @@ void trace_mem_per_thread_free(void);
 /* EAL interface */
 int eal_trace_init(void);
 void eal_trace_fini(void);
+int eal_trace_args_save(const char *optarg);
+void eal_trace_args_free(void);
 
 #endif /* __EAL_TRACE_H */
