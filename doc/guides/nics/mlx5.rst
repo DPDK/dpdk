@@ -1317,6 +1317,19 @@ set, and we should allow to specify zero values as rte_flow parameters for the
 META and MARK items and actions. In the same time zero mask has no meaning and
 should be rejected on validation stage.
 
+Notes for rte_flow
+------------------
+
+Flows are not cached in the driver.
+When stopping a device port, all the flows created on this port from the
+application will be flushed automatically in the background.
+After stopping the device port, all flows on this port become invalid and
+not represented in the system.
+All references to these flows held by the application should be discarded
+directly but neither destroyed nor flushed.
+
+The application should re-create the flows as required after the port restart.
+
 Notes for testpmd
 -----------------
 

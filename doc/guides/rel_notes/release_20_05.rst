@@ -141,6 +141,7 @@ New Features
   * Added support for creating Relaxed Ordering Memory Regions.
   * Added support for configuring Hairpin queue data buffer size.
   * Added support for jumbo frame size (9K MTU) in Multi-Packet RQ mode.
+  * Removed flow rules caching for memory saving and compliance with ethdev API.
   * Optimized the memory consumption of flow.
   * Added support for flow aging based on hardware counter.
 
