@@ -155,6 +155,7 @@ SRCS-y += test_version.c
 SRCS-y += test_func_reentrancy.c
 SRCS-y += test_trace.c
 SRCS-y += test_trace_register.c
+SRCS-y += test_trace_perf.c
 SRCS-y += test_service_cores.c
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)

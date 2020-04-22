@@ -129,6 +129,7 @@ test_sources = files('commands.c',
 	'test_ticketlock.c',
 	'test_trace.c',
 	'test_trace_register.c',
+	'test_trace_perf.c',
 	'test_version.c',
 	'virtual_pmd.c'
 )
@@ -283,6 +284,7 @@ perf_test_names = [
         'rand_perf_autotest',
         'hash_readwrite_perf_autotest',
         'hash_readwrite_lf_perf_autotest',
+        'trace_perf_autotest',
 ]
 
 driver_test_names = [
