@@ -239,6 +239,25 @@ void __rte_trace_mem_per_thread_alloc(void);
 /**
  * @internal
  *
+ * Helper function to emit field.
+ *
+ * @param sz
+ *   The tracepoint size.
+ * @param field
+ *   The name of the trace event.
+ * @param type
+ *   The datatype of the trace event as string.
+ * @return
+ *   - 0: Success.
+ *   - <0: Failure.
+ */
+__rte_experimental
+void __rte_trace_point_emit_field(size_t sz, const char *field,
+	const char *type);
+
+/**
+ * @internal
+ *
  * Helper function to register a dynamic tracepoint.
  * Use RTE_TRACE_POINT_REGISTER macro for tracepoint registration.
  *
