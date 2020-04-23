@@ -63,6 +63,11 @@ extern "C" {
 		__GNUC_PATCHLEVEL__)
 #endif
 
+/**
+ * Force alignment
+ */
+#define __rte_aligned(a) __attribute__((__aligned__(a)))
+
 #ifdef RTE_ARCH_STRICT_ALIGN
 typedef uint64_t unaligned_uint64_t __rte_aligned(1);
 typedef uint32_t unaligned_uint32_t __rte_aligned(1);
@@ -72,11 +77,6 @@ typedef uint64_t unaligned_uint64_t;
 typedef uint32_t unaligned_uint32_t;
 typedef uint16_t unaligned_uint16_t;
 #endif
-
-/**
- * Force alignment
- */
-#define __rte_aligned(a) __attribute__((__aligned__(a)))
 
 /**
  * Force a structure to be packed
