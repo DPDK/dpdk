@@ -2173,6 +2173,8 @@ static int bnxt_free_one_vnic(struct bnxt *bp, uint16_t vnic_id)
 	rte_free(vnic->fw_grp_ids);
 	vnic->fw_grp_ids = NULL;
 
+	vnic->rx_queue_cnt = 0;
+
 	return 0;
 }
 
