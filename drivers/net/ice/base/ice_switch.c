@@ -2163,6 +2163,13 @@ static void ice_fill_sw_info(struct ice_hw *hw, struct ice_fltr_info *fi)
 {
 	fi->lb_en = false;
 	fi->lan_en = false;
+
+	if ((fi->flag & ICE_FLTR_RX) &&
+	    (fi->fltr_act == ICE_FWD_TO_VSI ||
+	     fi->fltr_act == ICE_FWD_TO_VSI_LIST) &&
+	    fi->lkup_type == ICE_SW_LKUP_LAST)
+		fi->lan_en = true;
+
 	if ((fi->flag & ICE_FLTR_TX) &&
 	    (fi->fltr_act == ICE_FWD_TO_VSI ||
 	     fi->fltr_act == ICE_FWD_TO_VSI_LIST ||
@@ -6771,6 +6778,7 @@ ice_adv_add_update_vsi_list(struct ice_hw *hw,
 			return status;
 
 		ice_memset(&tmp_fltr, 0, sizeof(tmp_fltr), ICE_NONDMA_MEM);
+		tmp_fltr.flag = m_entry->rule_info.sw_act.flag;
 		tmp_fltr.fltr_rule_id = cur_fltr->fltr_rule_id;
 		tmp_fltr.fltr_act = ICE_FWD_TO_VSI_LIST;
 		tmp_fltr.fwd_id.vsi_list_id = vsi_list_id;
@@ -6933,7 +6941,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	s_rule = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw, rule_buf_sz);
 	if (!s_rule)
 		return ICE_ERR_NO_MEMORY;
-	act |= ICE_SINGLE_ACT_LB_ENABLE | ICE_SINGLE_ACT_LAN_ENABLE;
+	act |= ICE_SINGLE_ACT_LAN_ENABLE;
 	switch (rinfo->sw_act.fltr_act) {
 	case ICE_FWD_TO_VSI:
 		act |= (rinfo->sw_act.fwd_id.hw_vsi_id <<
@@ -7098,6 +7106,7 @@ ice_adv_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 			return status;
 
 		ice_memset(&tmp_fltr, 0, sizeof(tmp_fltr), ICE_NONDMA_MEM);
+		tmp_fltr.flag = fm_list->rule_info.sw_act.flag;
 		tmp_fltr.fltr_rule_id = fm_list->rule_info.fltr_rule_id;
 		fm_list->rule_info.sw_act.fltr_act = ICE_FWD_TO_VSI;
 		tmp_fltr.fltr_act = ICE_FWD_TO_VSI;

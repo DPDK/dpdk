@@ -1267,6 +1267,7 @@ ice_switch_parse_dcf_action(const struct rte_flow_action *actions,
 	}
 
 	rule_info->sw_act.src = rule_info->sw_act.vsi_handle;
+	rule_info->sw_act.flag = ICE_FLTR_RX;
 	rule_info->rx = 1;
 	rule_info->priority = 5;
 
