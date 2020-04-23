@@ -2145,11 +2145,10 @@ vhost_user_send_rarp(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	 * Set the flag to inject a RARP broadcast packet at
 	 * rte_vhost_dequeue_burst().
 	 *
-	 * rte_smp_wmb() is for making sure the mac is copied
-	 * before the flag is set.
+	 * __ATOMIC_RELEASE ordering is for making sure the mac is
+	 * copied before the flag is set.
 	 */
-	rte_smp_wmb();
-	rte_atomic16_set(&dev->broadcast_rarp, 1);
+	__atomic_store_n(&dev->broadcast_rarp, 1, __ATOMIC_RELEASE);
 	did = dev->vdpa_dev_id;
 	vdpa_dev = rte_vdpa_get_device(did);
 	if (vdpa_dev && vdpa_dev->ops->migration_done)

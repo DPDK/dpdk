@@ -350,7 +350,7 @@ struct virtio_net {
 	uint32_t		flags;
 	uint16_t		vhost_hlen;
 	/* to tell if we need broadcast rarp packet */
-	rte_atomic16_t		broadcast_rarp;
+	int16_t			broadcast_rarp;
 	uint32_t		nr_vring;
 	int			dequeue_zero_copy;
 	int			extbuf;

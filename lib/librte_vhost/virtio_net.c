@@ -2166,6 +2166,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	struct virtio_net *dev;
 	struct rte_mbuf *rarp_mbuf = NULL;
 	struct vhost_virtqueue *vq;
+	int16_t success = 1;
 
 	dev = get_device(vid);
 	if (!dev)
@@ -2212,16 +2213,17 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	 *
 	 * broadcast_rarp shares a cacheline in the virtio_net structure
 	 * with some fields that are accessed during enqueue and
-	 * rte_atomic16_cmpset() causes a write if using cmpxchg. This could
-	 * result in false sharing between enqueue and dequeue.
+	 * __atomic_compare_exchange_n causes a write if performed compare
+	 * and exchange. This could result in false sharing between enqueue
+	 * and dequeue.
 	 *
 	 * Prevent unnecessary false sharing by reading broadcast_rarp first
-	 * and only performing cmpset if the read indicates it is likely to
-	 * be set.
+	 * and only performing compare and exchange if the read indicates it
+	 * is likely to be set.
 	 */
-	if (unlikely(rte_atomic16_read(&dev->broadcast_rarp) &&
-			rte_atomic16_cmpset((volatile uint16_t *)
-				&dev->broadcast_rarp.cnt, 1, 0))) {
+	if (unlikely(__atomic_load_n(&dev->broadcast_rarp, __ATOMIC_ACQUIRE) &&
+			__atomic_compare_exchange_n(&dev->broadcast_rarp,
+			&success, 0, 0, __ATOMIC_RELEASE, __ATOMIC_RELAXED))) {
 
 		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
 		if (rarp_mbuf == NULL) {
