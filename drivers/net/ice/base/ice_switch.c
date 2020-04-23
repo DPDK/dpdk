@@ -6742,6 +6742,13 @@ ice_adv_add_update_vsi_list(struct ice_hw *hw,
 	     cur_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI_LIST))
 		return ICE_ERR_NOT_IMPL;
 
+	/* Workaround fix for unexpected rule deletion by kernel PF
+	 * during VF reset.
+	 */
+	if (new_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI &&
+	    cur_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI)
+		return ICE_ERR_NOT_IMPL;
+
 	if (m_entry->vsi_count < 2 && !m_entry->vsi_list_info) {
 		 /* Only one entry existed in the mapping and it was not already
 		  * a part of a VSI list. So, create a VSI list with the old and
