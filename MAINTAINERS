@@ -1261,10 +1261,9 @@ M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_ipsec/
 M: Bernard Iremonger <bernard.iremonger@intel.com>
-F: app/test/test_ipsec.c
+F: app/test/test_ipsec*
 F: doc/guides/prog_guide/ipsec_lib.rst
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
-F: app/test/test_ipsec_sad.c
 F: app/test-sad/
 
 Flow Classify - EXPERIMENTAL
