@@ -2476,13 +2476,6 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 		if (BNXT_HAS_RING_GRPS(bp))
 			bp->grp_info[queue_index].rx_fw_ring_id =
 							INVALID_HW_RING_ID;
-		memset(rxr->rx_desc_ring, 0,
-		       rxr->rx_ring_struct->ring_size *
-		       sizeof(*rxr->rx_desc_ring));
-		memset(rxr->rx_buf_ring, 0,
-		       rxr->rx_ring_struct->ring_size *
-		       sizeof(*rxr->rx_buf_ring));
-		rxr->rx_prod = 0;
 	}
 	ring = rxr->ag_ring_struct;
 	if (ring->fw_ring_id != INVALID_HW_RING_ID) {
@@ -2490,11 +2483,6 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 				    BNXT_CHIP_THOR(bp) ?
 				    HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG :
 				    HWRM_RING_FREE_INPUT_RING_TYPE_RX);
-		ring->fw_ring_id = INVALID_HW_RING_ID;
-		memset(rxr->ag_buf_ring, 0,
-		       rxr->ag_ring_struct->ring_size *
-		       sizeof(*rxr->ag_buf_ring));
-		rxr->ag_prod = 0;
 		if (BNXT_HAS_RING_GRPS(bp))
 			bp->grp_info[queue_index].ag_fw_ring_id =
 							INVALID_HW_RING_ID;
