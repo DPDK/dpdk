@@ -1474,7 +1474,6 @@ test_set_pkt_metadata_inv_context_ops(void)
 static int
 test_set_pkt_metadata_inv_context_ops_fun(void)
 {
-#ifdef RTE_DEBUG
 	struct security_unittest_params *ut_params = &unittest_params;
 	struct rte_mbuf m;
 	int params;
@@ -1487,9 +1486,6 @@ test_set_pkt_metadata_inv_context_ops_fun(void)
 	TEST_ASSERT_MOCK_CALLS(mock_set_pkt_metadata_exp, 0);
 
 	return TEST_SUCCESS;
-#else
-	return TEST_SKIPPED;
-#endif
 }
 
 /**
@@ -1621,7 +1617,6 @@ test_get_userdata_inv_context_ops(void)
 static int
 test_get_userdata_inv_context_ops_fun(void)
 {
-#ifdef RTE_DEBUG
 	struct security_unittest_params *ut_params = &unittest_params;
 	uint64_t md = 0xDEADBEEF;
 	ut_params->ctx.ops = &empty_ops;
@@ -1632,9 +1627,6 @@ test_get_userdata_inv_context_ops_fun(void)
 	TEST_ASSERT_MOCK_CALLS(mock_get_userdata_exp, 0);
 
 	return TEST_SUCCESS;
-#else
-	return TEST_SKIPPED;
-#endif
 }
 
 /**
