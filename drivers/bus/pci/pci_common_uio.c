@@ -70,6 +70,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 				}
 				return -1;
 			}
+			dev->mem_resource[i].addr = mapaddr;
 		}
 		return 0;
 	}
