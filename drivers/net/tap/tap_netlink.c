@@ -101,26 +101,17 @@ tap_nl_final(int nlsk_fd)
 int
 tap_nl_send(int nlsk_fd, struct nlmsghdr *nh)
 {
-	/* man 7 netlink EXAMPLE */
-	struct sockaddr_nl sa = {
-		.nl_family = AF_NETLINK,
-	};
-	struct iovec iov = {
-		.iov_base = nh,
-		.iov_len = nh->nlmsg_len,
-	};
-	struct msghdr msg = {
-		.msg_name = &sa,
-		.msg_namelen = sizeof(sa),
-		.msg_iov = &iov,
-		.msg_iovlen = 1,
-	};
 	int send_bytes;
 
 	nh->nlmsg_pid = 0; /* communication with the kernel uses pid 0 */
 	nh->nlmsg_seq = (uint32_t)rte_rand();
-	send_bytes = sendmsg(nlsk_fd, &msg, 0);
+
+retry:
+	send_bytes = send(nlsk_fd, nh, nh->nlmsg_len, 0);
 	if (send_bytes < 0) {
+		if (errno == EINTR)
+			goto retry;
+
 		TAP_LOG(ERR, "Failed to send netlink message: %s (%d)",
 			strerror(errno), errno);
 		return -1;
@@ -161,30 +152,22 @@ tap_nl_recv_ack(int nlsk_fd)
 int
 tap_nl_recv(int nlsk_fd, int (*cb)(struct nlmsghdr *, void *arg), void *arg)
 {
-	/* man 7 netlink EXAMPLE */
-	struct sockaddr_nl sa;
 	char buf[BUF_SIZE];
-	struct iovec iov = {
-		.iov_base = buf,
-		.iov_len = sizeof(buf),
-	};
-	struct msghdr msg = {
-		.msg_name = &sa,
-		.msg_namelen = sizeof(sa),
-		.msg_iov = &iov,
-		/* One message at a time */
-		.msg_iovlen = 1,
-	};
 	int multipart = 0;
 	int ret = 0;
 
 	do {
 		struct nlmsghdr *nh;
-		int recv_bytes = 0;
+		int recv_bytes;
 
-		recv_bytes = recvmsg(nlsk_fd, &msg, 0);
-		if (recv_bytes < 0)
+retry:
+		recv_bytes = recv(nlsk_fd, buf, sizeof(buf), 0);
+		if (recv_bytes < 0) {
+			if (errno == EINTR)
+				goto retry;
 			return -1;
+		}
+
 		for (nh = (struct nlmsghdr *)buf;
 		     NLMSG_OK(nh, (unsigned int)recv_bytes);
 		     nh = NLMSG_NEXT(nh, recv_bytes)) {
