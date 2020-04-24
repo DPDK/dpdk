@@ -687,6 +687,9 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		return -1;
 	}
 
+	if (madvise(ms->addr, ms->len, MADV_DONTDUMP) != 0)
+		RTE_LOG(DEBUG, EAL, "madvise failed: %s\n", strerror(errno));
+
 	exit_early = false;
 
 	/* if we're using anonymous hugepages, nothing to be done */
