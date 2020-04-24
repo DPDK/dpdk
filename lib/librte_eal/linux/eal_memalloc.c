@@ -680,7 +680,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	/* erase page data */
 	memset(ms->addr, 0, ms->len);
 
-	if (mmap(ms->addr, ms->len, PROT_READ,
+	if (mmap(ms->addr, ms->len, PROT_NONE,
 			MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0) ==
 				MAP_FAILED) {
 		RTE_LOG(DEBUG, EAL, "couldn't unmap page\n");
