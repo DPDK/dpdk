@@ -9,10 +9,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include <rte_malloc.h>
 #include <tap_netlink.h>
 #include <rte_random.h>
+
 #include "tap_log.h"
 
 /* Must be quite large to support dumping a huge list of QDISC or filters. */
@@ -43,6 +45,9 @@ tap_nl_init(uint32_t nl_groups)
 		.nl_family = AF_NETLINK,
 		.nl_groups = nl_groups,
 	};
+#ifdef NETLINK_EXT_ACK
+	int one = 1;
+#endif
 
 	fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
 	if (fd < 0) {
@@ -59,6 +64,12 @@ tap_nl_init(uint32_t nl_groups)
 		close(fd);
 		return -1;
 	}
+
+#ifdef NETLINK_EXT_ACK
+	/* Ask for extended ACK response. on older kernel will ignore request. */
+	setsockopt(fd, SOL_NETLINK, NETLINK_EXT_ACK, &one, sizeof(one));
+#endif
+
 	if (bind(fd, (struct sockaddr *)&local, sizeof(local)) < 0) {
 		TAP_LOG(ERR, "Unable to bind to the netlink socket");
 		close(fd);
@@ -119,6 +130,74 @@ retry:
 	return send_bytes;
 }
 
+#ifdef NETLINK_EXT_ACK
+static const struct nlattr *
+tap_nl_attr_first(const struct nlmsghdr *nh, size_t offset)
+{
+	return (const struct nlattr *)((const char *)nh + NLMSG_SPACE(offset));
+}
+
+static const struct nlattr *
+tap_nl_attr_next(const struct nlattr *attr)
+{
+	return (const struct nlattr *)((const char *)attr
+				       + NLMSG_ALIGN(attr->nla_len));
+}
+
+static bool
+tap_nl_attr_ok(const struct nlattr *attr, int len)
+{
+	if (len < (int)sizeof(struct nlattr))
+		return false; /* missing header */
+	if (attr->nla_len < sizeof(struct nlattr))
+		return false; /* attribute length should include itself */
+	if ((int)attr->nla_len  > len)
+		return false; /* attribute is truncated */
+	return true;
+}
+
+
+/* Decode extended errors from kernel */
+static void
+tap_nl_dump_ext_ack(const struct nlmsghdr *nh, const struct nlmsgerr *err)
+{
+	const struct nlattr *attr;
+	const char *tail = (const char *)nh + NLMSG_ALIGN(nh->nlmsg_len);
+	size_t hlen = sizeof(*err);
+
+	/* no TLVs, no extended response */
+	if (!(nh->nlmsg_flags & NLM_F_ACK_TLVS))
+		return;
+
+	if (!(nh->nlmsg_flags & NLM_F_CAPPED))
+		hlen += err->msg.nlmsg_len - NLMSG_HDRLEN;
+
+	for (attr = tap_nl_attr_first(nh, hlen);
+	     tap_nl_attr_ok(attr, tail - (const char *)attr);
+	     attr = tap_nl_attr_next(attr)) {
+		uint16_t type = attr->nla_type & NLA_TYPE_MASK;
+
+		if (type == NLMSGERR_ATTR_MSG) {
+			const char *msg = (const char *)attr
+				+ NLMSG_ALIGN(sizeof(*attr));
+
+			if (err->error)
+				TAP_LOG(ERR, "%s", msg);
+			else
+
+				TAP_LOG(WARNING, "%s", msg);
+			break;
+		}
+	}
+}
+#else
+/*
+ * External ACK support was added in Linux kernel 4.17
+ * on older kernels, just ignore that part of message
+ */
+#define tap_nl_dump_ext_ack(nh, err) do { } while (0)
+#endif
+
 /**
  * Check that the kernel sends an appropriate ACK in response
  * to an tap_nl_send().
@@ -174,6 +253,7 @@ retry:
 			if (nh->nlmsg_type == NLMSG_ERROR) {
 				struct nlmsgerr *err_data = NLMSG_DATA(nh);
 
+				tap_nl_dump_ext_ack(nh, err_data);
 				if (err_data->error < 0) {
 					errno = -err_data->error;
 					return -1;
