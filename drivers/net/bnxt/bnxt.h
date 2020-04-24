@@ -653,10 +653,10 @@ struct bnxt {
 #define MAX_STINGRAY_RINGS		128U
 /* For sake of symmetry, max Tx rings == max Rx rings, one stat ctx for each */
 #define BNXT_MAX_RX_RINGS(bp) \
-	(BNXT_STINGRAY(bp) ? RTE_MIN(RTE_MIN(bp->max_rx_rings, \
+	(BNXT_STINGRAY(bp) ? RTE_MIN(RTE_MIN(bp->max_rx_rings / 2U, \
 					     MAX_STINGRAY_RINGS), \
 				     bp->max_stat_ctx / 2U) : \
-				RTE_MIN(bp->max_rx_rings, \
+				RTE_MIN(bp->max_rx_rings / 2U, \
 					bp->max_stat_ctx / 2U))
 #define BNXT_MAX_TX_RINGS(bp) \
 	(RTE_MIN((bp)->max_tx_rings, BNXT_MAX_RX_RINGS(bp)))
