@@ -119,10 +119,7 @@ struct rte_ipsec_sa {
 	 * place from other frequently accesed data.
 	 */
 	union {
-		union {
-			rte_atomic64_t atom;
-			uint64_t raw;
-		} outb;
+		uint64_t outb;
 		struct {
 			uint32_t rdidx; /* read index */
 			uint32_t wridx; /* write index */

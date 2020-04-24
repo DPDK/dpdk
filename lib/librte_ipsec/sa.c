@@ -283,7 +283,7 @@ esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 {
 	uint8_t algo_type;
 
-	sa->sqn.outb.raw = 1;
+	sa->sqn.outb = 1;
 
 	algo_type = sa->algo_type;
 
