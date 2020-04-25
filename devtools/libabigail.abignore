@@ -3,6 +3,11 @@
 [suppress_variable]
         symbol_version = EXPERIMENTAL
 
+[suppress_function]
+        symbol_version = INTERNAL
+[suppress_variable]
+        symbol_version = INTERNAL
+
 ; Explicit ignore for driver-only ABI
 [suppress_type]
         name = rte_cryptodev_ops
