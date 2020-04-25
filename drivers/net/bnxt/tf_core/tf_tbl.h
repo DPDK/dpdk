@@ -72,8 +72,8 @@ struct tf_tbl_scope_cb {
 	int index;
 	struct tf_em_ctx_mem_info  em_ctx_info[TF_DIR_MAX];
 	struct tf_em_caps          em_caps[TF_DIR_MAX];
-	struct stack               ext_pool[TF_DIR_MAX][TF_EXT_POOL_CNT_MAX];
-	uint32_t              *ext_pool_mem[TF_DIR_MAX][TF_EXT_POOL_CNT_MAX];
+	struct stack               ext_act_pool[TF_DIR_MAX];
+	uint32_t                  *ext_act_pool_mem[TF_DIR_MAX];
 };
 
 /** Hardware Page sizes supported for EEM: 4K, 8K, 64K, 256K, 1M, 2M, 4M, 1G.

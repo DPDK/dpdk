@@ -175,9 +175,6 @@ tf_open_session(struct tf                    *tfp,
 	/* Setup hash seeds */
 	tf_seeds_init(session);
 
-	/* Initialize external pool data structures */
-	tf_init_tbl_pool(session);
-
 	session->ref_count++;
 
 	/* Return session ID */

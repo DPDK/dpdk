@@ -701,6 +701,21 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 		}
 	}
 
+	if (parms->rx_num_flows_in_k != 0 &&
+	    (parms->rx_max_key_sz_in_bits / 8 == 0)) {
+		PMD_DRV_LOG(ERR,
+			    "EEM: Rx key size required: %u\n",
+			    (parms->rx_max_key_sz_in_bits));
+		return -EINVAL;
+	}
+
+	if (parms->tx_num_flows_in_k != 0 &&
+	    (parms->tx_max_key_sz_in_bits / 8 == 0)) {
+		PMD_DRV_LOG(ERR,
+			    "EEM: Tx key size required: %u\n",
+			    (parms->tx_max_key_sz_in_bits));
+		return -EINVAL;
+	}
 	/* Rx */
 	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[KEY0_TABLE].num_entries =
 		parms->rx_num_flows_in_k * TF_KILOBYTE;
@@ -715,7 +730,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[RECORD_TABLE].num_entries =
 		parms->rx_num_flows_in_k * TF_KILOBYTE;
 	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[RECORD_TABLE].entry_size =
-		parms->tx_max_action_entry_sz_in_bits / 8;
+		parms->rx_max_action_entry_sz_in_bits / 8;
 
 	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[EFC_TABLE].num_entries =
 		0;
@@ -954,14 +969,10 @@ tf_free_tbl_entry_shadow(struct tf_session *tfs,
 /**
  * Create External Tbl pool of memory indexes.
  *
- * [in] session
- *   Pointer to session
  * [in] dir
  *   direction
  * [in] tbl_scope_cb
  *   pointer to the table scope
- * [in] tbl_scope_id
- *   id of the table scope
  * [in] num_entries
  *   number of entries to write
  * [in] entry_sz_bytes
@@ -973,18 +984,16 @@ tf_free_tbl_entry_shadow(struct tf_session *tfs,
  *          - Failure, entry not allocated, out of resources
  */
 static int
-tf_create_tbl_pool_external(struct tf_session *session,
-			    enum tf_dir dir,
+tf_create_tbl_pool_external(enum tf_dir dir,
 			    struct tf_tbl_scope_cb *tbl_scope_cb,
-			    uint32_t table_scope_id,
 			    uint32_t num_entries,
 			    uint32_t entry_sz_bytes)
-
 {
 	struct tfp_calloc_parms parms;
-	uint32_t i, j;
+	uint32_t i;
+	int32_t j;
 	int rc = 0;
-	struct stack *pool = &tbl_scope_cb->ext_pool[dir][TF_EXT_POOL_0];
+	struct stack *pool = &tbl_scope_cb->ext_act_pool[dir];
 
 	parms.nitems = num_entries;
 	parms.size = sizeof(uint32_t);
@@ -1009,18 +1018,23 @@ tf_create_tbl_pool_external(struct tf_session *session,
 	/* Save the  malloced memory address so that it can
 	 * be freed when the table scope is freed.
 	 */
-	tbl_scope_cb->ext_pool_mem[dir][TF_EXT_POOL_0] =
-		(uint32_t *)parms.mem_va;
+	tbl_scope_cb->ext_act_pool_mem[dir] = (uint32_t *)parms.mem_va;
 
-	/* Fill pool with indexes
+	/* Fill pool with indexes in reverse
 	 */
-	j = num_entries * entry_sz_bytes - 1;
+	j = (num_entries - 1) * entry_sz_bytes;
 
 	for (i = 0; i < num_entries; i++) {
 		rc = stack_push(pool, j);
 		if (rc != 0) {
-			PMD_DRV_LOG(ERR, "%d TBL: stack failure %s\n",
-				    dir, strerror(-rc));
+			PMD_DRV_LOG(ERR, "%s TBL: stack failure %s\n",
+				    tf_dir_2_str(dir), strerror(-rc));
+			goto cleanup;
+		}
+
+		if (j < 0) {
+			PMD_DRV_LOG(ERR, "%d TBL: invalid offset (%d)\n",
+				    dir, j);
 			goto cleanup;
 		}
 		j -= entry_sz_bytes;
@@ -1032,10 +1046,6 @@ tf_create_tbl_pool_external(struct tf_session *session,
 			    dir, strerror(-rc));
 		goto cleanup;
 	}
-	/* Set the table scope associated with the pool
-	 */
-	session->ext_pool_2_scope[dir][TF_EXT_POOL_0] = table_scope_id;
-
 	return 0;
 cleanup:
 	tfp_free((void *)parms.mem_va);
@@ -1045,8 +1055,6 @@ cleanup:
 /**
  * Destroy External Tbl pool of memory indexes.
  *
- * [in] session
- *   Pointer to session
  * [in] dir
  *   direction
  * [in] tbl_scope_cb
@@ -1054,18 +1062,13 @@ cleanup:
  *
  */
 static void
-tf_destroy_tbl_pool_external(struct tf_session *session,
-			    enum tf_dir dir,
-			    struct tf_tbl_scope_cb *tbl_scope_cb)
+tf_destroy_tbl_pool_external(enum tf_dir dir,
+			     struct tf_tbl_scope_cb *tbl_scope_cb)
 {
-	uint32_t *ext_pool_mem =
-		tbl_scope_cb->ext_pool_mem[dir][TF_EXT_POOL_0];
+	uint32_t *ext_act_pool_mem =
+		tbl_scope_cb->ext_act_pool_mem[dir];
 
-	tfp_free(ext_pool_mem);
-
-	/* Set the table scope associated with the pool
-	 */
-	session->ext_pool_2_scope[dir][TF_EXT_POOL_0] = TF_TBL_SCOPE_INVALID;
+	tfp_free(ext_act_pool_mem);
 }
 
 /**
@@ -1088,7 +1091,6 @@ tf_alloc_tbl_entry_pool_external(struct tf *tfp,
 	int rc;
 	uint32_t index;
 	struct tf_session *tfs;
-	uint32_t tbl_scope_id;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 	struct stack *pool;
 
@@ -1107,26 +1109,17 @@ tf_alloc_tbl_entry_pool_external(struct tf *tfp,
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
-	if (parms->type != TF_TBL_TYPE_EXT) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Type not supported, type:%d\n",
-			    parms->dir,
-			    parms->type);
-		return -EOPNOTSUPP;
-	}
-
 	/* Get the pool info from the table scope
 	 */
-	tbl_scope_id = tfs->ext_pool_2_scope[parms->dir][TF_EXT_POOL_0];
-	tbl_scope_cb = tbl_scope_cb_find(tfs, tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find(tfs, parms->tbl_scope_id);
 
 	if (tbl_scope_cb == NULL) {
 		PMD_DRV_LOG(ERR,
-			    "dir:%d, table scope not allocated\n",
-			    parms->dir);
+					"%s, table scope not allocated\n",
+					tf_dir_2_str(parms->dir));
 		return -EINVAL;
 	}
-	pool = &tbl_scope_cb->ext_pool[parms->dir][TF_EXT_POOL_0];
+	pool = &tbl_scope_cb->ext_act_pool[parms->dir];
 
 	/* Allocate an element
 	 */
@@ -1246,12 +1239,11 @@ tf_alloc_tbl_entry_pool_internal(struct tf *tfp,
  */
 static int
 tf_free_tbl_entry_pool_external(struct tf *tfp,
-		       struct tf_free_tbl_entry_parms *parms)
+				struct tf_free_tbl_entry_parms *parms)
 {
 	int rc = 0;
 	struct tf_session *tfs;
 	uint32_t index;
-	uint32_t tbl_scope_id;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 	struct stack *pool;
 
@@ -1270,26 +1262,17 @@ tf_free_tbl_entry_pool_external(struct tf *tfp,
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
-	if (parms->type != TF_TBL_TYPE_EXT) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Type not supported, type:%d\n",
-			    parms->dir,
-			    parms->type);
-		return -EOPNOTSUPP;
-	}
-
 	/* Get the pool info from the table scope
 	 */
-	tbl_scope_id = tfs->ext_pool_2_scope[parms->dir][TF_EXT_POOL_0];
-	tbl_scope_cb = tbl_scope_cb_find(tfs, tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find(tfs, parms->tbl_scope_id);
 
 	if (tbl_scope_cb == NULL) {
 		PMD_DRV_LOG(ERR,
-			    "dir:%d, table scope error\n",
+			    "dir:%d, Session info invalid\n",
 			    parms->dir);
 		return -EINVAL;
 	}
-	pool = &tbl_scope_cb->ext_pool[parms->dir][TF_EXT_POOL_0];
+	pool = &tbl_scope_cb->ext_act_pool[parms->dir];
 
 	index = parms->idx;
 
@@ -1390,18 +1373,6 @@ tf_free_tbl_entry_pool_internal(struct tf *tfp,
 	return rc;
 }
 
-/* API defined in tf_tbl.h */
-void
-tf_init_tbl_pool(struct tf_session *session)
-{
-	enum tf_dir dir;
-
-	for (dir = 0; dir < TF_DIR_MAX; dir++) {
-		session->ext_pool_2_scope[dir][TF_EXT_POOL_0] =
-			TF_TBL_SCOPE_INVALID;
-	}
-}
-
 /* API defined in tf_em.h */
 struct tf_tbl_scope_cb *
 tbl_scope_cb_find(struct tf_session *session,
@@ -1447,8 +1418,7 @@ tf_free_eem_tbl_scope_cb(struct tf *tfp,
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
 		/* Free associated external pools
 		 */
-		tf_destroy_tbl_pool_external(session,
-					     dir,
+		tf_destroy_tbl_pool_external(dir,
 					     tbl_scope_cb);
 		tf_msg_em_op(tfp,
 			     dir,
@@ -1551,12 +1521,10 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 		 * Initially, this is a single fixed size pool for all external
 		 * actions related to a single table scope.
 		 */
-		rc = tf_create_tbl_pool_external(session,
-						 dir,
-						 tbl_scope_cb,
-						 index,
-						 TF_EXT_POOL_ENTRY_CNT,
-						 TF_EXT_POOL_ENTRY_SZ_BYTES);
+		rc = tf_create_tbl_pool_external(dir,
+					    tbl_scope_cb,
+					    em_tables[RECORD_TABLE].num_entries,
+					    em_tables[RECORD_TABLE].entry_size);
 		if (rc) {
 			PMD_DRV_LOG(ERR,
 				    "%d TBL: Unable to allocate idx pools %s\n",
@@ -1600,13 +1568,12 @@ tf_set_tbl_entry(struct tf *tfp,
 
 	if (parms->type == TF_TBL_TYPE_EXT) {
 		void *base_addr;
-		uint32_t offset = TF_ACT_REC_INDEX_2_OFFSET(parms->idx);
+		uint32_t offset = parms->idx;
 		uint32_t tbl_scope_id;
 
 		session = (struct tf_session *)(tfp->session->core_data);
 
-		tbl_scope_id =
-			session->ext_pool_2_scope[parms->dir][TF_EXT_POOL_0];
+		tbl_scope_id = parms->tbl_scope_id;
 
 		if (tbl_scope_id == TF_TBL_SCOPE_INVALID)  {
 			PMD_DRV_LOG(ERR,
@@ -1618,7 +1585,6 @@ tf_set_tbl_entry(struct tf *tfp,
 		/* Get the table scope control block associated with the
 		 * external pool
 		 */
-
 		tbl_scope_cb = tbl_scope_cb_find(session, tbl_scope_id);
 
 		if (tbl_scope_cb == NULL)

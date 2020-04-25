@@ -3104,7 +3104,6 @@ tf_rm_lookup_tbl_type_pool(struct tf_session *tfs,
 		break;
 	/* No bitalloc pools for these types */
 	case TF_TBL_TYPE_EXT:
-	case TF_TBL_TYPE_EXT_0:
 	default:
 		break;
 	}
@@ -3211,7 +3210,6 @@ tf_rm_convert_tbl_type(enum tf_tbl_type type,
 	case TF_TBL_TYPE_ACT_MODIFY_IPV6_SRC:
 	case TF_TBL_TYPE_VNIC_SVIF:
 	case TF_TBL_TYPE_EXT:   /* No pools for this type */
-	case TF_TBL_TYPE_EXT_0: /* No pools for this type */
 	default:
 		*hcapi_type = -1;
 		rc = -EOPNOTSUPP;
@@ -3277,7 +3275,6 @@ tf_rm_convert_index(struct tf_session *tfs,
 	/* Not yet supported */
 	case TF_TBL_TYPE_VNIC_SVIF:
 	case TF_TBL_TYPE_EXT:   /* No pools for this type */
-	case TF_TBL_TYPE_EXT_0: /* No pools for this type */
 	default:
 		return -EOPNOTSUPP;
 	}

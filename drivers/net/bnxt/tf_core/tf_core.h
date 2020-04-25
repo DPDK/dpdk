@@ -83,15 +83,13 @@ enum tf_mem {
 
 /** EEM record AR helper
  *
- * Helpers to handle the Action Record Pointer in the EEM Record Entry.
+ * Helper to handle the Action Record Pointer in the EEM Record Entry.
  *
  * Convert absolute offset to action record pointer in EEM record entry
  * Convert action record pointer in EEM record entry to absolute offset
  */
 #define TF_ACT_REC_OFFSET_2_PTR(offset) ((offset) >> 4)
 #define TF_ACT_REC_PTR_2_OFFSET(offset) ((offset) << 4)
-
-#define TF_ACT_REC_INDEX_2_OFFSET(idx) ((idx) << 9)
 
 /*
  * Helper Macros
@@ -943,8 +941,6 @@ enum tf_tbl_type {
 	 * scope. Internal types are not.
 	 */
 	TF_TBL_TYPE_EXT,
-	/** Future - external pool of size0 entries */
-	TF_TBL_TYPE_EXT_0,
 	TF_TBL_TYPE_MAX
 };
 
@@ -959,6 +955,10 @@ struct tf_alloc_tbl_entry_parms {
 	 * [in] Type of the allocation
 	 */
 	enum tf_tbl_type type;
+	/**
+	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
+	 */
+	uint32_t tbl_scope_id;
 	/**
 	 * [in] Enable search for matching entry. If the table type is
 	 * internal the shadow copy will be searched before
@@ -1029,6 +1029,10 @@ struct tf_free_tbl_entry_parms {
 	 */
 	enum tf_tbl_type type;
 	/**
+	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
+	 */
+	uint32_t tbl_scope_id;
+	/**
 	 * [in] Index to free
 	 */
 	uint32_t idx;
@@ -1070,7 +1074,6 @@ int tf_free_tbl_entry(struct tf *tfp,
 struct tf_set_tbl_entry_parms {
 	/**
 	 * [in] Table scope identifier
-	 *
 	 */
 	uint32_t tbl_scope_id;
 	/**
