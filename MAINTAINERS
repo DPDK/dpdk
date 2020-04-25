@@ -153,7 +153,7 @@ F: devtools/libabigail.abignore
 F: devtools/update-abi.sh
 F: devtools/update_version_map_abi.py
 F: devtools/validate-abi.sh
-F: buildtools/check-experimental-syms.sh
+F: buildtools/check-symbols.sh
 F: buildtools/map-list-symbol.sh
 
 Driver information

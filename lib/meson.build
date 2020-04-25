@@ -109,15 +109,15 @@ foreach l:libraries
 			version_map = '@0@/@1@/rte_@2@_version.map'.format(
 					meson.current_source_dir(), dir_name, name)
 
-			is_experimental = run_command(is_experimental_cmd,
-					files(version_map)).returncode()
+			is_stable = run_command(is_stable_cmd,
+					files(version_map)).returncode() == 0
 
-			if is_experimental != 0
-				lib_version = experimental_abi_version
-				so_version = experimental_so_version
-			else
+			if is_stable
 				lib_version = abi_version
 				so_version = stable_so_version
+			else
+				lib_version = experimental_abi_version
+				so_version = experimental_so_version
 			endif
 
 			# first build static lib
@@ -160,14 +160,14 @@ foreach l:libraries
 			lk_deps = [version_map, def_file]
 			if not is_windows
 				# on unix systems check the output of the
-				# experimental syms script, using it as a
+				# check-symbols.sh script, using it as a
 				# dependency of the .so build
-				lk_deps += custom_target(name + '.exp_chk',
-					command: [check_experimental_syms,
+				lk_deps += custom_target(name + '.sym_chk',
+					command: [check_symbols,
 						version_map, '@INPUT@'],
 					capture: true,
 					input: static_lib,
-					output: name + '.exp_chk')
+					output: name + '.sym_chk')
 			endif
 
 			shared_lib = shared_library(libname,

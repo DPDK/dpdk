@@ -131,15 +131,15 @@ foreach class:dpdk_driver_classes
 					meson.current_source_dir(),
 					drv_path, lib_name)
 
-			is_experimental = run_command(is_experimental_cmd,
-				files(version_map)).returncode()
+			is_stable = run_command(is_stable_cmd,
+				files(version_map)).returncode() == 0
 
-			if is_experimental != 0
-				lib_version = experimental_abi_version
-				so_version = experimental_so_version
-			else
+			if is_stable
 				lib_version = abi_version
 				so_version = stable_so_version
+			else
+				lib_version = experimental_abi_version
+				so_version = experimental_so_version
 			endif
 
 			# now build the static driver
@@ -168,14 +168,14 @@ foreach class:dpdk_driver_classes
 			else
 				lk_args = ['-Wl,--version-script=' + version_map]
 				# on unix systems check the output of the
-				# experimental syms script, using it as a
+				# check-symbols.sh script, using it as a
 				# dependency of the .so build
-				lk_deps += custom_target(lib_name + '.exp_chk',
-					command: [check_experimental_syms,
+				lk_deps += custom_target(lib_name + '.sym_chk',
+					command: [check_symbols,
 						version_map, '@INPUT@'],
 					capture: true,
 					input: static_lib,
-					output: lib_name + '.exp_chk')
+					output: lib_name + '.sym_chk')
 			endif
 
 			shared_lib = shared_library(lib_name,

@@ -6,7 +6,7 @@ subdir('pmdinfogen')
 pkgconf = find_program('pkg-config', 'pkgconf', required: false)
 pmdinfo = find_program('gen-pmdinfo-cfile.sh')
 list_dir_globs = find_program('list-dir-globs.py')
-check_experimental_syms = find_program('check-experimental-syms.sh')
+check_symbols = find_program('check-symbols.sh')
 ldflags_ibverbs_static = find_program('options-ibverbs-static.sh')
 
 # set up map-to-def script using python, either built-in or external
@@ -20,4 +20,4 @@ map_to_def_cmd = py3 + files('map_to_def.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
 
 # stable ABI always starts with "DPDK_"
-is_experimental_cmd = [find_program('grep', 'findstr'), '^DPDK_']
+is_stable_cmd = [find_program('grep', 'findstr'), '^DPDK_']

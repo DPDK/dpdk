@@ -54,4 +54,35 @@ do
 	}
 done
 
+for SYM in `$LIST_SYMBOL -S INTERNAL $MAPFILE |cut -d ' ' -f 3`
+do
+	if grep -q "\.text.*[[:space:]]$SYM$" $DUMPFILE &&
+		! grep -q "\.text\.internal.*[[:space:]]$SYM$" $DUMPFILE
+	then
+		cat >&2 <<- END_OF_MESSAGE
+		$SYM is not flagged as internal
+		but is listed in version map
+		Please add __rte_internal to the definition of $SYM
+		END_OF_MESSAGE
+		ret=1
+	fi
+done
+
+# Filter out symbols suffixed with a . for icc
+for SYM in `awk '{
+	if ($2 != "l" && $4 == ".text.internal" && !($NF ~ /\.$/)) {
+		print $NF
+	}
+}' $DUMPFILE`
+do
+	$LIST_SYMBOL -S INTERNAL -s $SYM -q $MAPFILE || {
+		cat >&2 <<- END_OF_MESSAGE
+		$SYM is flagged as internal
+		but is not listed in version map
+		Please add $SYM to the version map
+		END_OF_MESSAGE
+		ret=1
+	}
+done
+
 exit $ret
