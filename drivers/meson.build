@@ -20,7 +20,10 @@ dpdk_driver_classes = ['common',
 disabled_drivers = run_command(list_dir_globs, get_option('disable_drivers'),
 		).stdout().split()
 
-default_cflags = machine_args + ['-DALLOW_EXPERIMENTAL_API']
+default_cflags = machine_args
+default_cflags += ['-DALLOW_EXPERIMENTAL_API']
+default_cflags += ['-DALLOW_INTERNAL_API']
+
 if cc.has_argument('-Wno-format-truncation')
 	default_cflags += '-Wno-format-truncation'
 endif
