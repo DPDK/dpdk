@@ -394,6 +394,9 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 			ecore_mcp_get_mfw_ver(ECORE_LEADING_HWFN(edev), ptt,
 					      &dev_info->mfw_rev, NULL);
 
+			ecore_mcp_get_mbi_ver(ECORE_LEADING_HWFN(edev), ptt,
+					      &dev_info->mbi_version);
+
 			ecore_mcp_get_flash_size(ECORE_LEADING_HWFN(edev), ptt,
 						 &dev_info->flash_size);
 

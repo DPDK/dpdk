@@ -2245,6 +2245,43 @@ enum _ecore_status_t ecore_mcp_get_mfw_ver(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
+int ecore_mcp_get_mbi_ver(struct ecore_hwfn *p_hwfn,
+			  struct ecore_ptt *p_ptt, u32 *p_mbi_ver)
+{
+	u32 nvm_cfg_addr, nvm_cfg1_offset, mbi_ver_addr;
+
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && !ecore_mcp_is_init(p_hwfn)) {
+		DP_INFO(p_hwfn, "Emulation: Can't get MBI version\n");
+		return -EOPNOTSUPP;
+	}
+#endif
+
+	if (IS_VF(p_hwfn->p_dev))
+		return -EINVAL;
+
+	/* Read the address of the nvm_cfg */
+	nvm_cfg_addr = ecore_rd(p_hwfn, p_ptt, MISC_REG_GEN_PURP_CR0);
+	if (!nvm_cfg_addr) {
+		DP_NOTICE(p_hwfn, false, "Shared memory not initialized\n");
+		return -EINVAL;
+	}
+
+	/* Read the offset of nvm_cfg1 */
+	nvm_cfg1_offset = ecore_rd(p_hwfn, p_ptt, nvm_cfg_addr + 4);
+
+	mbi_ver_addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
+	    offsetof(struct nvm_cfg1, glob) + offsetof(struct nvm_cfg1_glob,
+						       mbi_version);
+	*p_mbi_ver =
+	    ecore_rd(p_hwfn, p_ptt,
+		     mbi_ver_addr) & (NVM_CFG1_GLOB_MBI_VERSION_0_MASK |
+				      NVM_CFG1_GLOB_MBI_VERSION_1_MASK |
+				      NVM_CFG1_GLOB_MBI_VERSION_2_MASK);
+
+	return 0;
+}
+
 enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
 					      u32 *p_media_type)

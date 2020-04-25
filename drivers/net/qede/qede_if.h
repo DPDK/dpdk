@@ -45,6 +45,15 @@ struct qed_dev_info {
 
 	bool smart_an;
 
+	/* MBI version */
+	uint32_t mbi_version;
+#define QED_MBI_VERSION_0_MASK          0x000000FF
+#define QED_MBI_VERSION_0_OFFSET        0
+#define QED_MBI_VERSION_1_MASK          0x0000FF00
+#define QED_MBI_VERSION_1_OFFSET        8
+#define QED_MBI_VERSION_2_MASK          0x00FF0000
+#define QED_MBI_VERSION_2_OFFSET        16
+
 	/* Out param for qede */
 	bool vxlan_enable;
 	bool gre_enable;

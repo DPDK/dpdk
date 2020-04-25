@@ -232,6 +232,58 @@ static const struct rte_qede_xstats_name_off qede_rxq_xstats_strings[] = {
 		offsetof(struct qede_rx_queue, rx_alloc_errors)}
 };
 
+/* Get FW version string based on fw_size */
+static int
+qede_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size)
+{
+	struct qede_dev *qdev = dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
+	struct qed_dev_info *info = &qdev->dev_info.common;
+	static char ver_str[QEDE_PMD_DRV_VER_STR_SIZE];
+	size_t size;
+
+	if (fw_ver == NULL)
+		return 0;
+
+	if (IS_PF(edev))
+		snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%s",
+			 QEDE_PMD_FW_VERSION);
+	else
+		snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%d.%d.%d.%d",
+			 info->fw_major, info->fw_minor,
+			 info->fw_rev, info->fw_eng);
+	size = strlen(ver_str);
+	if (size + 1 <= fw_size) /* Add 1 byte for "\0" */
+		strlcpy(fw_ver, ver_str, fw_size);
+	else
+		return (size + 1);
+
+	snprintf(ver_str + size, (QEDE_PMD_DRV_VER_STR_SIZE - size),
+		 " MFW: %d.%d.%d.%d",
+		 GET_MFW_FIELD(info->mfw_rev, QED_MFW_VERSION_3),
+		 GET_MFW_FIELD(info->mfw_rev, QED_MFW_VERSION_2),
+		 GET_MFW_FIELD(info->mfw_rev, QED_MFW_VERSION_1),
+		 GET_MFW_FIELD(info->mfw_rev, QED_MFW_VERSION_0));
+	size = strlen(ver_str);
+	if (size + 1 <= fw_size)
+		strlcpy(fw_ver, ver_str, fw_size);
+
+	if (fw_size <= 32)
+		goto out;
+
+	snprintf(ver_str + size, (QEDE_PMD_DRV_VER_STR_SIZE - size),
+		 " MBI: %d.%d.%d",
+		 GET_MFW_FIELD(info->mbi_version, QED_MBI_VERSION_2),
+		 GET_MFW_FIELD(info->mbi_version, QED_MBI_VERSION_1),
+		 GET_MFW_FIELD(info->mbi_version, QED_MBI_VERSION_0));
+	size = strlen(ver_str);
+	if (size + 1 <= fw_size)
+		strlcpy(fw_ver, ver_str, fw_size);
+
+out:
+	return 0;
+}
+
 static void qede_interrupt_action(struct ecore_hwfn *p_hwfn)
 {
 	ecore_int_sp_dpc((osal_int_ptr_t)(p_hwfn));
@@ -310,47 +362,27 @@ qede_alloc_etherdev(struct qede_dev *qdev, struct qed_dev_eth_info *info)
 	qdev->ops = qed_ops;
 }
 
-static void qede_print_adapter_info(struct qede_dev *qdev)
+static void qede_print_adapter_info(struct rte_eth_dev *dev)
 {
+	struct qede_dev *qdev = dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
-	struct qed_dev_info *info = &qdev->dev_info.common;
 	static char ver_str[QEDE_PMD_DRV_VER_STR_SIZE];
 
 	DP_INFO(edev, "**************************************************\n");
-	DP_INFO(edev, " DPDK version\t\t\t: %s\n", rte_version());
-	DP_INFO(edev, " Chip details\t\t\t: %s %c%d\n",
+	DP_INFO(edev, " %-20s: %s\n", "DPDK version", rte_version());
+	DP_INFO(edev, " %-20s: %s %c%d\n", "Chip details",
 		  ECORE_IS_BB(edev) ? "BB" : "AH",
 		  'A' + edev->chip_rev,
 		  (int)edev->chip_metal);
 	snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%s",
 		 QEDE_PMD_DRV_VERSION);
-	DP_INFO(edev, " Driver version\t\t\t: %s\n", ver_str);
-
+	DP_INFO(edev, " %-20s: %s\n", "Driver version", ver_str);
 	snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%s",
 		 QEDE_PMD_BASE_VERSION);
-	DP_INFO(edev, " Base version\t\t\t: %s\n", ver_str);
-
-	if (!IS_VF(edev))
-		snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%s",
-			 QEDE_PMD_FW_VERSION);
-	else
-		snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%d.%d.%d.%d",
-			 info->fw_major, info->fw_minor,
-			 info->fw_rev, info->fw_eng);
-	DP_INFO(edev, " Firmware version\t\t\t: %s\n", ver_str);
-
-	snprintf(ver_str, MCP_DRV_VER_STR_SIZE,
-		 "%d.%d.%d.%d",
-		 (info->mfw_rev & QED_MFW_VERSION_3_MASK) >>
-		 QED_MFW_VERSION_3_OFFSET,
-		 (info->mfw_rev & QED_MFW_VERSION_2_MASK) >>
-		 QED_MFW_VERSION_2_OFFSET,
-		 (info->mfw_rev & QED_MFW_VERSION_1_MASK) >>
-		 QED_MFW_VERSION_1_OFFSET,
-		 (info->mfw_rev & QED_MFW_VERSION_0_MASK) >>
-		 QED_MFW_VERSION_0_OFFSET);
-	DP_INFO(edev, " Management Firmware version\t: %s\n", ver_str);
-	DP_INFO(edev, " Firmware file\t\t\t: %s\n", qede_fw_file);
+	DP_INFO(edev, " %-20s: %s\n", "Base version", ver_str);
+	qede_fw_version_get(dev, ver_str, sizeof(ver_str));
+	DP_INFO(edev, " %-20s: %s\n", "Firmware version", ver_str);
+	DP_INFO(edev, " %-20s: %s\n", "Firmware file", qede_fw_file);
 	DP_INFO(edev, "**************************************************\n");
 }
 
@@ -2392,6 +2424,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.filter_ctrl = qede_dev_filter_ctrl,
 	.udp_tunnel_port_add = qede_udp_dst_port_add,
 	.udp_tunnel_port_del = qede_udp_dst_port_del,
+	.fw_version_get = qede_fw_version_get,
 };
 
 static const struct eth_dev_ops qede_eth_vf_dev_ops = {
@@ -2432,6 +2465,7 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.mac_addr_add = qede_mac_addr_add,
 	.mac_addr_remove = qede_mac_addr_remove,
 	.mac_addr_set = qede_mac_addr_set,
+	.fw_version_get = qede_fw_version_get,
 };
 
 static void qede_update_pf_params(struct ecore_dev *edev)
@@ -2578,7 +2612,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	qede_alloc_etherdev(adapter, &dev_info);
 
 	if (do_once) {
-		qede_print_adapter_info(adapter);
+		qede_print_adapter_info(eth_dev);
 		do_once = false;
 	}
 
@@ -2686,7 +2720,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 err:
 	if (do_once) {
-		qede_print_adapter_info(adapter);
+		qede_print_adapter_info(eth_dev);
 		do_once = false;
 	}
 	return rc;
