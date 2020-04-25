@@ -152,6 +152,7 @@ int tf_msg_em_cfg(struct tf *tfp,
 		  uint16_t      key1_ctx_id,
 		  uint16_t      record_ctx_id,
 		  uint16_t      efc_ctx_id,
+		  uint8_t       flush_interval,
 		  int           dir);
 
 /**

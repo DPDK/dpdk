@@ -561,6 +561,12 @@ struct tf_alloc_tbl_scope_parms {
 	 */
 	uint32_t tx_tbl_if_id;
 	/**
+	 * [in] Flush pending HW cached flows every 1/10th of value
+	 * set in seconds, both idle and active flows are flushed
+	 * from the HW cache. If set to 0, this feature will be disabled.
+	 */
+	uint8_t hw_flow_cache_flush_timer;
+	/**
 	 * [out] table scope identifier
 	 */
 	uint32_t tbl_scope_id;

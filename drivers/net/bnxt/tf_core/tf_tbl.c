@@ -1500,6 +1500,7 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 				   em_tables[KEY1_TABLE].ctx_id,
 				   em_tables[RECORD_TABLE].ctx_id,
 				   em_tables[EFC_TABLE].ctx_id,
+				   parms->hw_flow_cache_flush_timer,
 				   dir);
 		if (rc) {
 			PMD_DRV_LOG(ERR,

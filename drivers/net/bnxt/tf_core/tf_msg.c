@@ -978,6 +978,7 @@ int tf_msg_em_cfg(struct tf *tfp,
 		  uint16_t   key1_ctx_id,
 		  uint16_t   record_ctx_id,
 		  uint16_t   efc_ctx_id,
+		  uint8_t    flush_interval,
 		  int        dir)
 {
 	int rc;
@@ -992,6 +993,8 @@ int tf_msg_em_cfg(struct tf *tfp,
 
 	req.flags = tfp_cpu_to_le_32(flags);
 	req.num_entries = tfp_cpu_to_le_32(num_entries);
+
+	req.flush_interval = flush_interval;
 
 	req.key0_ctx_id = tfp_cpu_to_le_16(key0_ctx_id);
 	req.key1_ctx_id = tfp_cpu_to_le_16(key1_ctx_id);

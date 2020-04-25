@@ -121,6 +121,12 @@ bnxt_init_tbl_scope_parms(struct bnxt *bp,
 	else
 		dparms = bnxt_ulp_device_params_get(dev_id);
 
+	/*
+	 * Set the flush timer for EEM entries. The value is in 100ms intervals,
+	 * so 100 is 10s.
+	 */
+	params->hw_flow_cache_flush_timer = 100;
+
 	if (!dparms) {
 		params->rx_max_key_sz_in_bits = BNXT_ULP_DFLT_RX_MAX_KEY;
 		params->rx_max_action_entry_sz_in_bits =
