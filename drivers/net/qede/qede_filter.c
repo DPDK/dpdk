@@ -1486,10 +1486,32 @@ qede_flow_destroy(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
+static int
+qede_flow_flush(struct rte_eth_dev *eth_dev,
+		struct rte_flow_error *error)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct qede_arfs_entry *tmp = NULL;
+	int rc = 0;
+
+	while (!SLIST_EMPTY(&qdev->arfs_info.arfs_list_head)) {
+		tmp = SLIST_FIRST(&qdev->arfs_info.arfs_list_head);
+
+		rc = qede_config_arfs_filter(eth_dev, tmp, false);
+		if (rc < 0)
+			rte_flow_error_set(error, rc,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Failed to flush flow filter");
+	}
+
+	return rc;
+}
+
 const struct rte_flow_ops qede_flow_ops = {
 	.validate = qede_flow_validate,
 	.create = qede_flow_create,
 	.destroy = qede_flow_destroy,
+	.flush = qede_flow_flush,
 };
 
 int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
