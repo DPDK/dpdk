@@ -7867,11 +7867,12 @@ cnt_err:
 						NULL,
 						"meter not found "
 						"or invalid parameters");
-				flow->meter = fm->meter_id;
+				flow->meter = fm->idx;
 			}
 			/* Set the meter action. */
 			if (!fm) {
-				fm = mlx5_flow_meter_find(priv, flow->meter);
+				fm = mlx5_ipool_get(priv->sh->ipool
+						[MLX5_IPOOL_MTR], flow->meter);
 				if (!fm)
 					return rte_flow_error_set(error,
 						rte_errno,
@@ -8591,7 +8592,8 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	if (flow->meter) {
 		struct mlx5_flow_meter *fm;
 
-		fm  = mlx5_flow_meter_find(priv, flow->meter);
+		fm = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_MTR],
+				    flow->meter);
 		if (fm)
 			mlx5_flow_meter_detach(fm);
 		flow->meter = 0;
