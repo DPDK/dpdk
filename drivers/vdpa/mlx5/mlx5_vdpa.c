@@ -121,13 +121,11 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 		DRV_LOG(ERR, "Invalid device id: %d.", did);
 		return -EINVAL;
 	}
-	if (!priv->configured || vring >= RTE_MIN((int)priv->nr_virtqs,
-	    (int)priv->caps.max_num_virtio_queues * 2) ||
-	    !priv->virtqs[vring].virtq) {
-		DRV_LOG(ERR, "Invalid or unconfigured vring id: %d.", vring);
-		return -EINVAL;
+	if (vring >= (int)priv->caps.max_num_virtio_queues * 2) {
+		DRV_LOG(ERR, "Too big vring id: %d.", vring);
+		return -E2BIG;
 	}
-	return mlx5_vdpa_virtq_enable(&priv->virtqs[vring], state);
+	return mlx5_vdpa_virtq_enable(priv, vring, state);
 }
 
 static int
@@ -206,7 +204,7 @@ mlx5_vdpa_dev_close(int vid)
 	if (priv->configured)
 		ret |= mlx5_vdpa_lm_log(priv);
 	mlx5_vdpa_cqe_event_unset(priv);
-	ret |= mlx5_vdpa_steer_unset(priv);
+	mlx5_vdpa_steer_unset(priv);
 	mlx5_vdpa_virtqs_release(priv);
 	mlx5_vdpa_event_qp_global_release(priv);
 	mlx5_vdpa_mem_dereg(priv);

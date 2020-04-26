@@ -59,9 +59,11 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
 			}
 		}
+		virtq->intr_handle.fd = -1;
 	}
 	if (virtq->virtq)
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
+	virtq->virtq = NULL;
 	for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
 		if (virtq->umems[i].obj)
 			claim_zero(mlx5_glue->devx_umem_dereg
@@ -69,10 +71,9 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 		if (virtq->umems[i].buf)
 			rte_free(virtq->umems[i].buf);
 	}
+	memset(&virtq->umems, 0, sizeof(virtq->umems));
 	if (virtq->eqp.fw_qp)
 		mlx5_vdpa_event_qp_destroy(&virtq->eqp);
-	memset(virtq, 0, sizeof(*virtq));
-	virtq->intr_handle.fd = -1;
 	return 0;
 }
 
@@ -81,8 +82,10 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 {
 	int i;
 
-	for (i = 0; i < priv->nr_virtqs; i++)
+	for (i = 0; i < priv->nr_virtqs; i++) {
 		mlx5_vdpa_virtq_unset(&priv->virtqs[i]);
+		priv->virtqs[i].enable = 0;
+	}
 	if (priv->tis) {
 		claim_zero(mlx5_devx_cmd_destroy(priv->tis));
 		priv->tis = NULL;
@@ -272,10 +275,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 		goto error;
 	if (mlx5_vdpa_virtq_modify(virtq, 1))
 		goto error;
-	virtq->enable = 1;
 	virtq->priv = priv;
-	/* Be sure notifications are not missed during configuration. */
-	claim_zero(rte_vhost_enable_guest_notification(priv->vid, index, 1));
 	rte_write32(virtq->index, priv->virtq_db_addr);
 	/* Setup doorbell mapping. */
 	virtq->intr_handle.fd = vq.kickfd;
@@ -402,11 +402,56 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 		goto error;
 	}
 	priv->nr_virtqs = nr_vring;
-	for (i = 0; i < nr_vring; i++)
+	for (i = 0; i < nr_vring; i++) {
+		claim_zero(rte_vhost_enable_guest_notification(priv->vid, i,
+							       1));
 		if (mlx5_vdpa_virtq_setup(priv, i))
 			goto error;
+	}
 	return 0;
 error:
 	mlx5_vdpa_virtqs_release(priv);
 	return -1;
+}
+
+int
+mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
+{
+	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
+	int ret;
+
+	DRV_LOG(INFO, "Update virtq %d status %sable -> %sable.", index,
+		virtq->enable ? "en" : "dis", enable ? "en" : "dis");
+	if (virtq->enable == !!enable)
+		return 0;
+	if (!priv->configured) {
+		virtq->enable = !!enable;
+		return 0;
+	}
+	if (enable) {
+		/* Configuration might have been updated - reconfigure virtq. */
+		if (virtq->virtq) {
+			ret = mlx5_vdpa_virtq_stop(priv, index);
+			if (ret)
+				DRV_LOG(WARNING, "Failed to stop virtq %d.",
+					index);
+			mlx5_vdpa_virtq_unset(virtq);
+		}
+		ret = mlx5_vdpa_virtq_setup(priv, index);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to setup virtq %d.", index);
+			return ret;
+			/* The only case virtq can stay invalid. */
+		}
+	}
+	virtq->enable = !!enable;
+	if (is_virtq_recvq(virtq->index, priv->nr_virtqs)) {
+		/* Need to add received virtq to the RQT table of the TIRs. */
+		ret = mlx5_vdpa_steer_update(priv);
+		if (ret) {
+			virtq->enable = !enable;
+			return ret;
+		}
+	}
+	return 0;
 }
