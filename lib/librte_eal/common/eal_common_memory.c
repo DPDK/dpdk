@@ -42,7 +42,7 @@ static uint64_t system_page_sz;
 
 #ifdef RTE_EXEC_ENV_LINUX
 #define RTE_DONTDUMP MADV_DONTDUMP
-#elif RTE_EXEC_ENV_FREEBSD
+#elif defined RTE_EXEC_ENV_FREEBSD
 #define RTE_DONTDUMP MADV_NOCORE
 #else
 #error "madvise doesn't support this OS"
