@@ -76,13 +76,13 @@ is_virtq_recvq(int virtq_index, int nr_vring)
 static int
 mlx5_vdpa_rqt_prepare(struct mlx5_vdpa_priv *priv)
 {
-	struct mlx5_vdpa_virtq *virtq;
+	int i;
 	uint32_t rqt_n = RTE_MIN(MLX5_VDPA_DEFAULT_RQT_SIZE,
 				 1 << priv->log_max_rqt_size);
 	struct mlx5_devx_rqt_attr *attr = rte_zmalloc(__func__, sizeof(*attr)
 						      + rqt_n *
 						      sizeof(uint32_t), 0);
-	uint32_t i = 0, j;
+	uint32_t k = 0, j;
 	int ret = 0;
 
 	if (!attr) {
@@ -90,15 +90,15 @@ mlx5_vdpa_rqt_prepare(struct mlx5_vdpa_priv *priv)
 		rte_errno = ENOMEM;
 		return -ENOMEM;
 	}
-	SLIST_FOREACH(virtq, &priv->virtq_list, next) {
-		if (is_virtq_recvq(virtq->index, priv->nr_virtqs) &&
-		    virtq->enable) {
-			attr->rq_list[i] = virtq->virtq->id;
-			i++;
+	for (i = 0; i < priv->nr_virtqs; i++) {
+		if (is_virtq_recvq(i, priv->nr_virtqs) &&
+		    priv->virtqs[i].enable) {
+			attr->rq_list[k] = priv->virtqs[i].virtq->id;
+			k++;
 		}
 	}
-	for (j = 0; i != rqt_n; ++i, ++j)
-		attr->rq_list[i] = attr->rq_list[j];
+	for (j = 0; k != rqt_n; ++k, ++j)
+		attr->rq_list[k] = attr->rq_list[j];
 	attr->rq_type = MLX5_INLINE_Q_TYPE_VIRTQ;
 	attr->rqt_max_size = rqt_n;
 	attr->rqt_actual_size = rqt_n;

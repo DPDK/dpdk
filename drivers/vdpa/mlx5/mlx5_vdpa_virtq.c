@@ -59,12 +59,9 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
 			}
 		}
-		virtq->intr_handle.fd = -1;
 	}
-	if (virtq->virtq) {
+	if (virtq->virtq)
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
-		virtq->virtq = NULL;
-	}
 	for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
 		if (virtq->umems[i].obj)
 			claim_zero(mlx5_glue->devx_umem_dereg
@@ -72,27 +69,20 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 		if (virtq->umems[i].buf)
 			rte_free(virtq->umems[i].buf);
 	}
-	memset(&virtq->umems, 0, sizeof(virtq->umems));
 	if (virtq->eqp.fw_qp)
 		mlx5_vdpa_event_qp_destroy(&virtq->eqp);
+	memset(virtq, 0, sizeof(*virtq));
+	virtq->intr_handle.fd = -1;
 	return 0;
 }
 
 void
 mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 {
-	struct mlx5_vdpa_virtq *entry;
-	struct mlx5_vdpa_virtq *next;
+	int i;
 
-	entry = SLIST_FIRST(&priv->virtq_list);
-	while (entry) {
-		next = SLIST_NEXT(entry, next);
-		mlx5_vdpa_virtq_unset(entry);
-		SLIST_REMOVE(&priv->virtq_list, entry, mlx5_vdpa_virtq, next);
-		rte_free(entry);
-		entry = next;
-	}
-	SLIST_INIT(&priv->virtq_list);
+	for (i = 0; i < priv->nr_virtqs; i++)
+		mlx5_vdpa_virtq_unset(&priv->virtqs[i]);
 	if (priv->tis) {
 		claim_zero(mlx5_devx_cmd_destroy(priv->tis));
 		priv->tis = NULL;
@@ -106,6 +96,7 @@ mlx5_vdpa_virtqs_release(struct mlx5_vdpa_priv *priv)
 		priv->virtq_db_addr = NULL;
 	}
 	priv->features = 0;
+	priv->nr_virtqs = 0;
 }
 
 int
@@ -140,9 +131,9 @@ mlx5_vdpa_hva_to_gpa(struct rte_vhost_memory *mem, uint64_t hva)
 }
 
 static int
-mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv,
-		      struct mlx5_vdpa_virtq *virtq, int index)
+mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 {
+	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
 	struct rte_vhost_vring vq;
 	struct mlx5_devx_virtq_attr attr = {0};
 	uint64_t gpa;
@@ -347,13 +338,18 @@ int
 mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 {
 	struct mlx5_devx_tis_attr tis_attr = {0};
-	struct mlx5_vdpa_virtq *virtq;
 	uint32_t i;
 	uint16_t nr_vring = rte_vhost_get_vring_num(priv->vid);
 	int ret = rte_vhost_get_negotiated_features(priv->vid, &priv->features);
 
 	if (ret || mlx5_vdpa_features_validate(priv)) {
 		DRV_LOG(ERR, "Failed to configure negotiated features.");
+		return -1;
+	}
+	if (nr_vring > priv->caps.max_num_virtio_queues * 2) {
+		DRV_LOG(ERR, "Do not support more than %d virtqs(%d).",
+			(int)priv->caps.max_num_virtio_queues * 2,
+			(int)nr_vring);
 		return -1;
 	}
 	/* Always map the entire page. */
@@ -379,16 +375,10 @@ mlx5_vdpa_virtqs_prepare(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(ERR, "Failed to create TIS.");
 		goto error;
 	}
-	for (i = 0; i < nr_vring; i++) {
-		virtq = rte_zmalloc(__func__, sizeof(*virtq), 0);
-		if (!virtq || mlx5_vdpa_virtq_setup(priv, virtq, i)) {
-			if (virtq)
-				rte_free(virtq);
-			goto error;
-		}
-		SLIST_INSERT_HEAD(&priv->virtq_list, virtq, next);
-	}
 	priv->nr_virtqs = nr_vring;
+	for (i = 0; i < nr_vring; i++)
+		if (mlx5_vdpa_virtq_setup(priv, i))
+			goto error;
 	return 0;
 error:
 	mlx5_vdpa_virtqs_release(priv);
