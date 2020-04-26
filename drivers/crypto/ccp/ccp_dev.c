@@ -760,7 +760,7 @@ ccp_probe_device(const char *dirname, uint16_t domain,
 	return 0;
 fail:
 	CCP_LOG_ERR("CCP Device probe failed");
-	if (uio_fd > 0)
+	if (uio_fd >= 0)
 		close(uio_fd);
 	if (ccp_dev)
 		rte_free(ccp_dev);
