@@ -34,7 +34,9 @@
 #include "eal_options.h"
 #include "eal_filesystem.h"
 #include "eal_private.h"
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include "eal_trace.h"
+#endif
 
 #define BITS_PER_HEX 4
 #define LCORE_OPT_LST 1
@@ -1424,6 +1426,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		break;
 	}
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 	case OPT_TRACE_NUM: {
 		if (eal_trace_args_save(optarg) < 0) {
 			RTE_LOG(ERR, EAL, "invalid parameters for --"
@@ -1459,6 +1462,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		}
 		break;
 	}
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 	case OPT_LCORES_NUM:
 		if (eal_parse_lcores(optarg) < 0) {
@@ -1735,6 +1739,7 @@ eal_common_usage(void)
 	       "  --"OPT_LOG_LEVEL"=<int>   Set global log level\n"
 	       "  --"OPT_LOG_LEVEL"=<type-match>:<int>\n"
 	       "                      Set specific log level\n"
+#ifndef RTE_EXEC_ENV_WINDOWS
 	       "  --"OPT_TRACE"=<regex-match>\n"
 	       "                      Enable trace based on regular expression trace name.\n"
 	       "                      By default, the trace is disabled.\n"
@@ -1758,6 +1763,7 @@ eal_common_usage(void)
 	       "                      reaches its maximum limit.\n"
 	       "                      Default mode is 'overwrite' and parameter\n"
 	       "                      must be specified once only.\n"
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 	       "  -v                  Display version information on startup\n"
 	       "  -h, --help          This help\n"
 	       "  --"OPT_IN_MEMORY"   Operate entirely in memory. This will\n"
