@@ -112,6 +112,32 @@ mlx5_vdpa_virtq_modify(struct mlx5_vdpa_virtq *virtq, int state)
 	return mlx5_devx_cmd_modify_virtq(virtq->virtq, &attr);
 }
 
+int
+mlx5_vdpa_virtq_stop(struct mlx5_vdpa_priv *priv, int index)
+{
+	struct mlx5_devx_virtq_attr attr = {0};
+	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
+	int ret = mlx5_vdpa_virtq_modify(virtq, 0);
+
+	if (ret)
+		return -1;
+	if (mlx5_devx_cmd_query_virtq(virtq->virtq, &attr)) {
+		DRV_LOG(ERR, "Failed to query virtq %d.", index);
+		return -1;
+	}
+	DRV_LOG(INFO, "Query vid %d vring %d: hw_available_idx=%d, "
+		"hw_used_index=%d", priv->vid, index,
+		attr.hw_available_index, attr.hw_used_index);
+	ret = rte_vhost_set_vring_base(priv->vid, index,
+				       attr.hw_available_index,
+				       attr.hw_used_index);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to set virtq %d base.", index);
+		return -1;
+	}
+	return 0;
+}
+
 static uint64_t
 mlx5_vdpa_hva_to_gpa(struct rte_vhost_memory *mem, uint64_t hva)
 {

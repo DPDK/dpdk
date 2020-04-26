@@ -91,7 +91,6 @@ err:
 int
 mlx5_vdpa_lm_log(struct mlx5_vdpa_priv *priv)
 {
-	struct mlx5_devx_virtq_attr attr = {0};
 	uint64_t features;
 	int ret = rte_vhost_get_negotiated_features(priv->vid, &features);
 	int i;
@@ -103,21 +102,9 @@ mlx5_vdpa_lm_log(struct mlx5_vdpa_priv *priv)
 	if (!RTE_VHOST_NEED_LOG(features))
 		return 0;
 	for (i = 0; i < priv->nr_virtqs; ++i) {
-		ret = mlx5_vdpa_virtq_modify(&priv->virtqs[i], 0);
-		if (ret)
-			return -1;
-		if (mlx5_devx_cmd_query_virtq(priv->virtqs[i].virtq, &attr)) {
-			DRV_LOG(ERR, "Failed to query virtq %d.", i);
-			return -1;
-		}
-		DRV_LOG(INFO, "Query vid %d vring %d: hw_available_idx=%d, "
-			"hw_used_index=%d", priv->vid, i,
-			attr.hw_available_index, attr.hw_used_index);
-		ret = rte_vhost_set_vring_base(priv->vid, i,
-					       attr.hw_available_index,
-					       attr.hw_used_index);
+		ret = mlx5_vdpa_virtq_stop(priv, i);
 		if (ret) {
-			DRV_LOG(ERR, "Failed to set virtq %d base.", i);
+			DRV_LOG(ERR, "Failed to stop virtq %d.", i);
 			return -1;
 		}
 		rte_vhost_log_used_vring(priv->vid, i, 0,

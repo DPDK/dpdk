@@ -308,4 +308,17 @@ int mlx5_vdpa_lm_log(struct mlx5_vdpa_priv *priv);
  */
 int mlx5_vdpa_virtq_modify(struct mlx5_vdpa_virtq *virtq, int state);
 
+/**
+ * Stop virtq before destroying it.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ * @param[in] index
+ *   The virtq index.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int mlx5_vdpa_virtq_stop(struct mlx5_vdpa_priv *priv, int index);
+
 #endif /* RTE_PMD_MLX5_VDPA_H_ */
