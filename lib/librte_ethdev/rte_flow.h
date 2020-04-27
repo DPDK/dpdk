@@ -1534,7 +1534,7 @@ struct rte_flow_item_pfcp {
 #ifndef __cplusplus
 static const struct rte_flow_item_pfcp rte_flow_item_pfcp_mask = {
 	.s_field = 0x01,
-	.seid = RTE_BE64(0xffffffffffffffff),
+	.seid = RTE_BE64(UINT64_C(0xffffffffffffffff)),
 };
 #endif
 
