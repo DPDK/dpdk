@@ -1373,14 +1373,17 @@ rte_event_pmd_allocate(const char *name, int socket_id)
 
 		eventdev->data = eventdev_data;
 
-		strlcpy(eventdev->data->name, name, RTE_EVENTDEV_NAME_MAX_LEN);
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 
-		eventdev->data->dev_id = dev_id;
-		eventdev->data->socket_id = socket_id;
-		eventdev->data->dev_started = 0;
+			strlcpy(eventdev->data->name, name,
+				RTE_EVENTDEV_NAME_MAX_LEN);
+
+			eventdev->data->dev_id = dev_id;
+			eventdev->data->socket_id = socket_id;
+			eventdev->data->dev_started = 0;
+		}
 
 		eventdev->attached = RTE_EVENTDEV_ATTACHED;
-
 		eventdev_globals.nb_devs++;
 	}
 
