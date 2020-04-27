@@ -264,14 +264,15 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			elts[pos + 2]->hash.fdir.hi = flow_tag;
 			elts[pos + 3]->hash.fdir.hi = flow_tag;
 		}
-		if (!!rxq->flow_meta_mask) {
+		if (rxq->dynf_meta) {
 			int32_t offs = rxq->flow_meta_offset;
 			const uint32_t meta =
 				*RTE_MBUF_DYNFIELD(t_pkt, offs, uint32_t *);
 
 			/* Check if title packet has valid metadata. */
 			if (meta) {
-				MLX5_ASSERT(t_pkt->ol_flags & offs);
+				MLX5_ASSERT(t_pkt->ol_flags &
+					    rxq->flow_meta_mask);
 				*RTE_MBUF_DYNFIELD(elts[pos], offs,
 							uint32_t *) = meta;
 				*RTE_MBUF_DYNFIELD(elts[pos + 1], offs,
@@ -1028,7 +1029,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			pkts[pos + 3]->timestamp =
 				rte_be_to_cpu_64(cq[pos + p3].timestamp);
 		}
-		if (!!rxq->flow_meta_mask) {
+		if (rxq->dynf_meta) {
 			uint64_t flag = rxq->flow_meta_mask;
 			int32_t offs = rxq->flow_meta_offset;
 			uint32_t metadata;

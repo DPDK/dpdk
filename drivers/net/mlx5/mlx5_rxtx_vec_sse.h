@@ -199,7 +199,8 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 
 			/* Check if title packet has valid metadata. */
 			if (meta) {
-				MLX5_ASSERT(t_pkt->ol_flags & offs);
+				MLX5_ASSERT(t_pkt->ol_flags &
+					    rxq->flow_meta_mask);
 				*RTE_MBUF_DYNFIELD(elts[pos], offs,
 							uint32_t *) = meta;
 				*RTE_MBUF_DYNFIELD(elts[pos + 1], offs,
