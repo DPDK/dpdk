@@ -68,6 +68,8 @@ __rte_ring_do_enqueue_start(struct rte_ring *r, uint32_t n,
 		n =  __rte_ring_hts_move_prod_head(r, n, behavior,
 			&head, &free);
 		break;
+	case RTE_RING_SYNC_MT:
+	case RTE_RING_SYNC_MT_RTS:
 	default:
 		/* unsupported mode, shouldn't be here */
 		RTE_ASSERT(0);
@@ -217,6 +219,8 @@ rte_ring_enqueue_elem_finish(struct rte_ring *r, const void *obj_table,
 			__rte_ring_enqueue_elems(r, tail, obj_table, esize, n);
 		__rte_ring_hts_set_head_tail(&r->hts_prod, tail, n, 1);
 		break;
+	case RTE_RING_SYNC_MT:
+	case RTE_RING_SYNC_MT_RTS:
 	default:
 		/* unsupported mode, shouldn't be here */
 		RTE_ASSERT(0);
@@ -263,6 +267,8 @@ __rte_ring_do_dequeue_start(struct rte_ring *r, void *obj_table,
 		n =  __rte_ring_hts_move_cons_head(r, n, behavior,
 			&head, &avail);
 		break;
+	case RTE_RING_SYNC_MT:
+	case RTE_RING_SYNC_MT_RTS:
 	default:
 		/* unsupported mode, shouldn't be here */
 		RTE_ASSERT(0);
@@ -414,6 +420,8 @@ rte_ring_dequeue_elem_finish(struct rte_ring *r, unsigned int n)
 		n = __rte_ring_hts_get_tail(&r->hts_cons, &tail, n);
 		__rte_ring_hts_set_head_tail(&r->hts_cons, tail, n, 0);
 		break;
+	case RTE_RING_SYNC_MT:
+	case RTE_RING_SYNC_MT_RTS:
 	default:
 		/* unsupported mode, shouldn't be here */
 		RTE_ASSERT(0);
