@@ -566,7 +566,7 @@ F: doc/guides/nics/ena.rst
 F: doc/guides/nics/features/ena.ini
 
 AMD axgbe
-M: Ravi Kumar <ravi1.kumar@amd.com>
+M: Somalapuram Amaranath <asomalap@amd.com>
 F: drivers/net/axgbe/
 F: doc/guides/nics/axgbe.rst
 F: doc/guides/nics/features/axgbe.ini
@@ -953,7 +953,7 @@ T: git://dpdk.org/next/dpdk-next-crypto
 F: doc/guides/cryptodevs/features/default.ini
 
 AMD CCP Crypto
-M: Ravi Kumar <ravi1.kumar@amd.com>
+M: Somalapuram Amaranath <asomalap@amd.com>
 F: drivers/crypto/ccp/
 F: doc/guides/cryptodevs/ccp.rst
 F: doc/guides/cryptodevs/features/ccp.ini
