@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <rte_common.h>
+#include <rte_bitops.h>
 #include <rte_byteorder.h>
 #include <rte_memzone.h>
 #include <rte_memcpy.h>
@@ -115,38 +116,6 @@ extern int hinic_logtype;
 #define HINIC_MEM_ALLOC_ALIGN_MIN	8
 
 #define HINIC_PAGE_SIZE_DPDK	6
-
-static inline int hinic_test_bit(int nr, volatile unsigned long *addr)
-{
-	int res;
-
-	res = ((*addr) & (1UL << nr)) != 0;
-	return res;
-}
-
-static inline void hinic_set_bit(unsigned int nr, volatile unsigned long *addr)
-{
-	__sync_fetch_and_or(addr, (1UL << nr));
-}
-
-static inline void hinic_clear_bit(int nr, volatile unsigned long *addr)
-{
-	__sync_fetch_and_and(addr, ~(1UL << nr));
-}
-
-static inline int hinic_test_and_clear_bit(int nr, volatile unsigned long *addr)
-{
-	unsigned long mask = (1UL << nr);
-
-	return __sync_fetch_and_and(addr, ~mask) & mask;
-}
-
-static inline int hinic_test_and_set_bit(int nr, volatile unsigned long *addr)
-{
-	unsigned long mask = (1UL << nr);
-
-	return __sync_fetch_and_or(addr, mask) & mask;
-}
 
 void *dma_zalloc_coherent(void *dev, size_t size, dma_addr_t *dma_handle,
 			  unsigned int socket_id);

@@ -329,7 +329,7 @@ struct hinic_nic_dev {
 	unsigned int flags;
 	struct nic_service_cap nic_cap;
 	u32 rx_mode_status;	/* promisc or allmulticast */
-	unsigned long dev_status;
+	u32 dev_status;
 
 	char proc_dev_name[HINIC_DEV_NAME_LEN];
 	/* PF0->COS4, PF1->COS5, PF2->COS6, PF3->COS7,

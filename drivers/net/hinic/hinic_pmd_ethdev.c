@@ -271,7 +271,7 @@ static void hinic_dev_interrupt_handler(void *param)
 	struct rte_eth_dev *dev = param;
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
-	if (!hinic_test_bit(HINIC_DEV_INTR_EN, &nic_dev->dev_status)) {
+	if (!rte_bit_relaxed_get32(HINIC_DEV_INTR_EN, &nic_dev->dev_status)) {
 		PMD_DRV_LOG(WARNING, "Device's interrupt is disabled, ignore interrupt event, dev_name: %s, port_id: %d",
 			    nic_dev->proc_dev_name, dev->data->port_id);
 		return;
@@ -1067,7 +1067,7 @@ static int hinic_dev_start(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.intr_conf.lsc != 0)
 		(void)hinic_link_update(dev, 0);
 
-	hinic_set_bit(HINIC_DEV_START, &nic_dev->dev_status);
+	rte_bit_relaxed_set32(HINIC_DEV_START, &nic_dev->dev_status);
 
 	return 0;
 
@@ -1192,7 +1192,8 @@ static void hinic_dev_stop(struct rte_eth_dev *dev)
 	name = dev->data->name;
 	port_id = dev->data->port_id;
 
-	if (!hinic_test_and_clear_bit(HINIC_DEV_START, &nic_dev->dev_status)) {
+	if (!rte_bit_relaxed_test_and_clear32(HINIC_DEV_START,
+					      &nic_dev->dev_status)) {
 		PMD_DRV_LOG(INFO, "Device %s already stopped", name);
 		return;
 	}
@@ -1237,7 +1238,7 @@ static void hinic_disable_interrupt(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	int ret, retries = 0;
 
-	hinic_clear_bit(HINIC_DEV_INTR_EN, &nic_dev->dev_status);
+	rte_bit_relaxed_clear32(HINIC_DEV_INTR_EN, &nic_dev->dev_status);
 
 	/* disable msix interrupt in hardware */
 	hinic_set_msix_state(nic_dev->hwdev, 0, HINIC_MSIX_DISABLE);
@@ -2926,7 +2927,8 @@ static void hinic_dev_close(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
-	if (hinic_test_and_set_bit(HINIC_DEV_CLOSE, &nic_dev->dev_status)) {
+	if (rte_bit_relaxed_test_and_set32(HINIC_DEV_CLOSE,
+					   &nic_dev->dev_status)) {
 		PMD_DRV_LOG(WARNING, "Device %s already closed",
 			    dev->data->name);
 		return;
@@ -3126,7 +3128,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 			    eth_dev->data->name);
 		goto enable_intr_fail;
 	}
-	hinic_set_bit(HINIC_DEV_INTR_EN, &nic_dev->dev_status);
+	rte_bit_relaxed_set32(HINIC_DEV_INTR_EN, &nic_dev->dev_status);
 
 	/* initialize filter info */
 	filter_info = &nic_dev->filter;
@@ -3141,7 +3143,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 	TAILQ_INIT(&nic_dev->filter_fdir_rule_list);
 	TAILQ_INIT(&nic_dev->hinic_flow_list);
 
-	hinic_set_bit(HINIC_DEV_INIT, &nic_dev->dev_status);
+	rte_bit_relaxed_set32(HINIC_DEV_INIT, &nic_dev->dev_status);
 	PMD_DRV_LOG(INFO, "Initialize %s in primary successfully",
 		    eth_dev->data->name);
 
@@ -3197,7 +3199,7 @@ static int hinic_dev_uninit(struct rte_eth_dev *dev)
 	struct hinic_nic_dev *nic_dev;
 
 	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
-	hinic_clear_bit(HINIC_DEV_INIT, &nic_dev->dev_status);
+	rte_bit_relaxed_clear32(HINIC_DEV_INIT, &nic_dev->dev_status);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
