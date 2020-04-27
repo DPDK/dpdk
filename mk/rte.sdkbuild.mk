@@ -28,6 +28,11 @@ CLEANDIRS = $(addsuffix _clean,$(ROOTDIRS-y) $(ROOTDIRS-n) $(ROOTDIRS-))
 .PHONY: build
 build: $(ROOTDIRS-y)
 	@echo "Build complete [$(RTE_TARGET)]"
+	@echo "==== NOTE ===="
+	@echo "It is recommended to build DPDK using 'meson' and 'ninja'"
+	@echo "See https://doc.dpdk.org/guides/linux_gsg/build_dpdk.html for instructions"
+	@echo "Building DPDK with 'make' will be deprecated in a future release"
+	@echo "=============="
 
 .PHONY: clean
 clean: $(CLEANDIRS)
