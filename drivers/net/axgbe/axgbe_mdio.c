@@ -916,7 +916,7 @@ static int __axgbe_phy_config_aneg(struct axgbe_port *pdata)
 {
 	int ret;
 
-	axgbe_set_bit(AXGBE_LINK_INIT, &pdata->dev_state);
+	rte_bit_relaxed_set32(AXGBE_LINK_INIT, &pdata->dev_state);
 	pdata->link_check = rte_get_timer_cycles();
 
 	ret = pdata->phy_if.phy_impl.an_config(pdata);
@@ -981,9 +981,9 @@ static int axgbe_phy_config_aneg(struct axgbe_port *pdata)
 
 	ret = __axgbe_phy_config_aneg(pdata);
 	if (ret)
-		axgbe_set_bit(AXGBE_LINK_ERR, &pdata->dev_state);
+		rte_bit_relaxed_set32(AXGBE_LINK_ERR, &pdata->dev_state);
 	else
-		axgbe_clear_bit(AXGBE_LINK_ERR, &pdata->dev_state);
+		rte_bit_relaxed_clear32(AXGBE_LINK_ERR, &pdata->dev_state);
 
 	pthread_mutex_unlock(&pdata->an_mutex);
 
@@ -1072,7 +1072,7 @@ static void axgbe_phy_status(struct axgbe_port *pdata)
 	unsigned int reg = 0;
 	unsigned long autoneg_start_time;
 
-	if (axgbe_test_bit(AXGBE_LINK_ERR, &pdata->dev_state)) {
+	if (rte_bit_relaxed_get32(AXGBE_LINK_ERR, &pdata->dev_state)) {
 		pdata->phy.link = 0;
 		goto adjust_link;
 	}
@@ -1116,10 +1116,11 @@ static void axgbe_phy_status(struct axgbe_port *pdata)
 			}
 		}
 		axgbe_phy_status_result(pdata);
-		if (axgbe_test_bit(AXGBE_LINK_INIT, &pdata->dev_state))
-			axgbe_clear_bit(AXGBE_LINK_INIT, &pdata->dev_state);
+		if (rte_bit_relaxed_get32(AXGBE_LINK_INIT, &pdata->dev_state))
+			rte_bit_relaxed_clear32(AXGBE_LINK_INIT,
+						&pdata->dev_state);
 	} else {
-		if (axgbe_test_bit(AXGBE_LINK_INIT, &pdata->dev_state)) {
+		if (rte_bit_relaxed_get32(AXGBE_LINK_INIT, &pdata->dev_state)) {
 			axgbe_check_link_timeout(pdata);
 
 			if (link_aneg)

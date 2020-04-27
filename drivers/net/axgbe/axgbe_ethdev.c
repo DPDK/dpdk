@@ -343,8 +343,8 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 	axgbe_dev_enable_tx(dev);
 	axgbe_dev_enable_rx(dev);
 
-	axgbe_clear_bit(AXGBE_STOPPED, &pdata->dev_state);
-	axgbe_clear_bit(AXGBE_DOWN, &pdata->dev_state);
+	rte_bit_relaxed_clear32(AXGBE_STOPPED, &pdata->dev_state);
+	rte_bit_relaxed_clear32(AXGBE_DOWN, &pdata->dev_state);
 	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
 				max_pkt_len > pdata->rx_buf_size)
 		dev_data->scattered_rx = 1;
@@ -368,17 +368,17 @@ axgbe_dev_stop(struct rte_eth_dev *dev)
 
 	rte_intr_disable(&pdata->pci_dev->intr_handle);
 
-	if (axgbe_test_bit(AXGBE_STOPPED, &pdata->dev_state))
+	if (rte_bit_relaxed_get32(AXGBE_STOPPED, &pdata->dev_state))
 		return;
 
-	axgbe_set_bit(AXGBE_STOPPED, &pdata->dev_state);
+	rte_bit_relaxed_set32(AXGBE_STOPPED, &pdata->dev_state);
 	axgbe_dev_disable_tx(dev);
 	axgbe_dev_disable_rx(dev);
 
 	pdata->phy_if.phy_stop(pdata);
 	pdata->hw_if.exit(pdata);
 	memset(&dev->data->dev_link, 0, sizeof(struct rte_eth_link));
-	axgbe_set_bit(AXGBE_DOWN, &pdata->dev_state);
+	rte_bit_relaxed_set32(AXGBE_DOWN, &pdata->dev_state);
 }
 
 /* Clear all resources like TX/RX queues. */
@@ -1644,8 +1644,8 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 	pdata = eth_dev->data->dev_private;
 	/* initial state */
-	axgbe_set_bit(AXGBE_DOWN, &pdata->dev_state);
-	axgbe_set_bit(AXGBE_STOPPED, &pdata->dev_state);
+	rte_bit_relaxed_set32(AXGBE_DOWN, &pdata->dev_state);
+	rte_bit_relaxed_set32(AXGBE_STOPPED, &pdata->dev_state);
 	pdata->eth_dev = eth_dev;
 
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);

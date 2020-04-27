@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <pthread.h>
 
+#include <rte_bitops.h>
 #include <rte_byteorder.h>
 #include <rte_memory.h>
 #include <rte_malloc.h>
@@ -1699,34 +1700,6 @@ do {									\
 
 #define time_after_eq(a, b)     ((long)((a) - (b)) >= 0)
 #define time_before_eq(a, b)	time_after_eq(b, a)
-
-/*---bitmap support apis---*/
-static inline int axgbe_test_bit(int nr, volatile unsigned long *addr)
-{
-	int res;
-
-	rte_mb();
-	res = ((*addr) & (1UL << nr)) != 0;
-	rte_mb();
-	return res;
-}
-
-static inline void axgbe_set_bit(unsigned int nr, volatile unsigned long *addr)
-{
-	__sync_fetch_and_or(addr, (1UL << nr));
-}
-
-static inline void axgbe_clear_bit(int nr, volatile unsigned long *addr)
-{
-	__sync_fetch_and_and(addr, ~(1UL << nr));
-}
-
-static inline int axgbe_test_and_clear_bit(int nr, volatile unsigned long *addr)
-{
-	unsigned long mask = (1UL << nr);
-
-	return __sync_fetch_and_and(addr, ~mask) & mask;
-}
 
 static inline unsigned long msecs_to_timer_cycles(unsigned int m)
 {

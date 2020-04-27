@@ -522,7 +522,7 @@ struct axgbe_port {
 	unsigned int xpcs_window_mask;
 
 	/* Flags representing axgbe_state */
-	unsigned long dev_state;
+	uint32_t dev_state;
 
 	struct axgbe_hw_if hw_if;
 	struct axgbe_phy_if phy_if;
