@@ -249,6 +249,7 @@ F: app/test/test_service_cores.c
 Bitops
 M: Joyce Kong <joyce.kong@arm.com>
 F: lib/librte_eal/include/rte_bitops.h
+F: app/test/test_bitops.c
 
 Bitmap
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
