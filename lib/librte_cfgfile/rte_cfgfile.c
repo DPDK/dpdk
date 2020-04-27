@@ -272,6 +272,10 @@ rte_cfgfile_create(int flags)
 	int i;
 	struct rte_cfgfile *cfg;
 
+	/* future proof flags usage */
+	if (flags & ~(CFG_FLAG_GLOBAL_SECTION | CFG_FLAG_EMPTY_VALUES))
+		return NULL;
+
 	cfg = malloc(sizeof(*cfg));
 
 	if (cfg == NULL)
