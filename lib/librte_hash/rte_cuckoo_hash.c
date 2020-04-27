@@ -32,6 +32,14 @@
 #include "rte_hash.h"
 #include "rte_cuckoo_hash.h"
 
+/* Mask of all flags supported by this version */
+#define RTE_HASH_EXTRA_FLAGS_MASK (RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT | \
+				   RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD | \
+				   RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY | \
+				   RTE_HASH_EXTRA_FLAGS_EXT_TABLE |	\
+				   RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL | \
+				   RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF)
+
 #define FOR_EACH_BUCKET(CURRENT_BKT, START_BUCKET)                            \
 	for (CURRENT_BKT = START_BUCKET;                                      \
 		CURRENT_BKT != NULL;                                          \
@@ -161,6 +169,12 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			(params->key_len == 0)) {
 		rte_errno = EINVAL;
 		RTE_LOG(ERR, HASH, "rte_hash_create has invalid parameters\n");
+		return NULL;
+	}
+
+	if (params->extra_flag & ~RTE_HASH_EXTRA_FLAGS_MASK) {
+		rte_errno = EINVAL;
+		RTE_LOG(ERR, HASH, "rte_hash_create: unsupported extra flags\n");
 		return NULL;
 	}
 
