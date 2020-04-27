@@ -268,12 +268,12 @@ F: app/test/test_rand_perf.c
 
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
-M: Gavin Hu <gavin.hu@arm.com>
+M: Ruifeng Wang <ruifeng.wang@arm.com>
 F: lib/librte_eal/arm/
 
 ARM v8
 M: Jerin Jacob <jerinj@marvell.com>
-M: Gavin Hu <gavin.hu@arm.com>
+M: Ruifeng Wang <ruifeng.wang@arm.com>
 F: lib/librte_eal/arm/include/*_64.h
 F: lib/librte_net/net_crc_neon.h
 F: lib/librte_acl/acl_run_neon.*
