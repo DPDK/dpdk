@@ -59,6 +59,11 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 	unsigned int sz;
 	int ret;
 
+	if (flags & ~(RTE_STACK_F_LF)) {
+		STACK_LOG_ERR("Unsupported stack flags %#x\n", flags);
+		return NULL;
+	}
+
 #ifdef RTE_ARCH_64
 	RTE_BUILD_BUG_ON(sizeof(struct rte_stack_lf_head) != 16);
 #else
