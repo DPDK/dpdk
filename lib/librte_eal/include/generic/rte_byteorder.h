@@ -93,9 +93,9 @@
 #define RTE_BE16(v) (rte_be16_t)(RTE_STATIC_BSWAP16(v))
 #define RTE_BE32(v) (rte_be32_t)(RTE_STATIC_BSWAP32(v))
 #define RTE_BE64(v) (rte_be64_t)(RTE_STATIC_BSWAP64(v))
-#define RTE_LE16(v) (rte_be16_t)(v)
-#define RTE_LE32(v) (rte_be32_t)(v)
-#define RTE_LE64(v) (rte_be64_t)(v)
+#define RTE_LE16(v) (rte_le16_t)(v)
+#define RTE_LE32(v) (rte_le32_t)(v)
+#define RTE_LE64(v) (rte_le64_t)(v)
 #else
 #error Unsupported endianness.
 #endif
