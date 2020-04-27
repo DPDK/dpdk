@@ -1380,7 +1380,7 @@ tap_flow_create(struct rte_eth_dev *dev,
 			NULL, "priority value too big");
 		goto fail;
 	}
-	flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
+	flow = rte_zmalloc(__func__, sizeof(struct rte_flow), 0);
 	if (!flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "cannot allocate memory for rte_flow");
@@ -1416,7 +1416,7 @@ tap_flow_create(struct rte_eth_dev *dev,
 	 * to the local pmd->if_index.
 	 */
 	if (pmd->remote_if_index) {
-		remote_flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
+		remote_flow = rte_zmalloc(__func__, sizeof(struct rte_flow), 0);
 		if (!remote_flow) {
 			rte_flow_error_set(
 				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1693,7 +1693,7 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 		}
 	};
 
-	remote_flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
+	remote_flow = rte_zmalloc(__func__, sizeof(struct rte_flow), 0);
 	if (!remote_flow) {
 		TAP_LOG(ERR, "Cannot allocate memory for rte_flow");
 		goto fail;
@@ -1896,7 +1896,7 @@ static int rss_enable(struct pmd_internals *pmd,
 			return -ENOTSUP;
 		}
 
-		rss_flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
+		rss_flow = rte_zmalloc(__func__, sizeof(struct rte_flow), 0);
 		if (!rss_flow) {
 			TAP_LOG(ERR,
 				"Cannot allocate memory for rte_flow");
