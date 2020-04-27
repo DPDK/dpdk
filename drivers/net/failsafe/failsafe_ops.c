@@ -380,7 +380,7 @@ fs_rx_queue_release(void *queue)
 	rxq = queue;
 	dev = &rte_eth_devices[rxq->priv->data->port_id];
 	fs_lock(dev, 0);
-	if (rxq->event_fd > 0)
+	if (rxq->event_fd >= 0)
 		close(rxq->event_fd);
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		if (ETH(sdev)->data->rx_queues != NULL &&

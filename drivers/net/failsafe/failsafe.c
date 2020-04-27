@@ -190,6 +190,7 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 	}
 	priv = PRIV(dev);
 	priv->data = dev->data;
+	priv->rxp = FS_RX_PROXY_INIT;
 	dev->dev_ops = &failsafe_ops;
 	dev->data->mac_addrs = &PRIV(dev)->mac_addrs[0];
 	dev->data->dev_link = eth_link;

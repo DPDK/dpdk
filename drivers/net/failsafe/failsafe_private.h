@@ -58,6 +58,14 @@ struct rx_proxy {
 	enum rxp_service_state sstate;
 };
 
+#define FS_RX_PROXY_INIT (struct rx_proxy){ \
+	.efd = -1, \
+	.evec = NULL, \
+	.sid = 0, \
+	.scid = 0, \
+	.sstate = SS_NO_SERVICE, \
+}
+
 struct rxq {
 	struct fs_priv *priv;
 	uint16_t qid;

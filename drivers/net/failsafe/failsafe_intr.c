@@ -393,7 +393,7 @@ fs_rx_event_proxy_uninstall(struct fs_priv *priv)
 		free(priv->rxp.evec);
 		priv->rxp.evec = NULL;
 	}
-	if (priv->rxp.efd > 0) {
+	if (priv->rxp.efd >= 0) {
 		close(priv->rxp.efd);
 		priv->rxp.efd = -1;
 	}
