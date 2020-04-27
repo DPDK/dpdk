@@ -359,8 +359,6 @@ softnic_thread_pipeline_enable(struct pmd_internals *softnic,
 
 	/* Send request and wait for response */
 	rsp = thread_msg_send_recv(softnic, thread_id, req);
-	if (rsp == NULL)
-		return -1;
 
 	/* Read response */
 	status = rsp->status;
@@ -444,8 +442,6 @@ softnic_thread_pipeline_disable(struct pmd_internals *softnic,
 
 	/* Send request and wait for response */
 	rsp = thread_msg_send_recv(softnic, thread_id, req);
-	if (rsp == NULL)
-		return -1;
 
 	/* Read response */
 	status = rsp->status;
