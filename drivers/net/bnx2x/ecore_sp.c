@@ -161,7 +161,7 @@ static inline void ecore_exe_queue_reset_pending(struct bnx2x_softc *sc,
  */
 static int ecore_exe_queue_step(struct bnx2x_softc *sc,
 				struct ecore_exe_queue_obj *o,
-				unsigned long *ramrod_flags)
+				uint32_t *ramrod_flags)
 {
 	struct ecore_exeq_elem *elem, spacer;
 	int cur_len = 0, rc;
@@ -282,7 +282,7 @@ static void ecore_raw_set_pending(struct ecore_raw_obj *o)
  *
  */
 static int ecore_state_wait(struct bnx2x_softc *sc, int state,
-			    unsigned long *pstate)
+			    uint32_t *pstate)
 {
 	/* can take a while if any port is running */
 	int cnt = 5000;
@@ -396,9 +396,9 @@ static void __ecore_vlan_mac_h_exec_pending(struct bnx2x_softc *sc,
 					    struct ecore_vlan_mac_obj *o)
 {
 	int rc;
-	unsigned long ramrod_flags = o->saved_ramrod_flags;
+	uint32_t ramrod_flags = o->saved_ramrod_flags;
 
-	ECORE_MSG(sc, "vlan_mac_lock execute pending command with ramrod flags %lu",
+	ECORE_MSG(sc, "vlan_mac_lock execute pending command with ramrod flags %u",
 		  ramrod_flags);
 	o->head_exe_request = FALSE;
 	o->saved_ramrod_flags = 0;
@@ -425,11 +425,11 @@ static void __ecore_vlan_mac_h_exec_pending(struct bnx2x_softc *sc,
  */
 static void __ecore_vlan_mac_h_pend(struct bnx2x_softc *sc __rte_unused,
 				    struct ecore_vlan_mac_obj *o,
-				    unsigned long ramrod_flags)
+				    uint32_t ramrod_flags)
 {
 	o->head_exe_request = TRUE;
 	o->saved_ramrod_flags = ramrod_flags;
-	ECORE_MSG(sc, "Placing pending execution with ramrod flags %lu",
+	ECORE_MSG(sc, "Placing pending execution with ramrod flags %u",
 		  ramrod_flags);
 }
 
@@ -804,7 +804,7 @@ static void ecore_set_one_mac_e2(struct bnx2x_softc *sc,
 	int rule_cnt = rule_idx + 1, cmd = elem->cmd_data.vlan_mac.cmd;
 	union eth_classify_rule_cmd *rule_entry = &data->rules[rule_idx];
 	bool add = (cmd == ECORE_VLAN_MAC_ADD) ? TRUE : FALSE;
-	unsigned long *vlan_mac_flags = &elem->cmd_data.vlan_mac.vlan_mac_flags;
+	uint32_t *vlan_mac_flags = &elem->cmd_data.vlan_mac.vlan_mac_flags;
 	uint8_t *mac = elem->cmd_data.vlan_mac.u.mac.mac;
 
 	/* Set LLH CAM entry: currently only iSCSI and ETH macs are
@@ -1326,7 +1326,7 @@ static int ecore_wait_vlan_mac(struct bnx2x_softc *sc,
 
 static int __ecore_vlan_mac_execute_step(struct bnx2x_softc *sc,
 					 struct ecore_vlan_mac_obj *o,
-					 unsigned long *ramrod_flags)
+					 uint32_t *ramrod_flags)
 {
 	int rc = ECORE_SUCCESS;
 
@@ -1362,7 +1362,7 @@ static int __ecore_vlan_mac_execute_step(struct bnx2x_softc *sc,
 static int ecore_complete_vlan_mac(struct bnx2x_softc *sc,
 				   struct ecore_vlan_mac_obj *o,
 				   union event_ring_elem *cqe,
-				   unsigned long *ramrod_flags)
+				   uint32_t *ramrod_flags)
 {
 	struct ecore_raw_obj *r = &o->raw;
 	int rc;
@@ -1518,7 +1518,7 @@ static int ecore_vlan_mac_get_registry_elem(struct bnx2x_softc *sc,
 static int ecore_execute_vlan_mac(struct bnx2x_softc *sc,
 				  union ecore_qable_obj *qo,
 				  ecore_list_t * exe_chunk,
-				  unsigned long *ramrod_flags)
+				  uint32_t *ramrod_flags)
 {
 	struct ecore_exeq_elem *elem;
 	struct ecore_vlan_mac_obj *o = &qo->vlan_mac, *cam_obj;
@@ -1678,7 +1678,7 @@ int ecore_config_vlan_mac(struct bnx2x_softc *sc,
 {
 	int rc = ECORE_SUCCESS;
 	struct ecore_vlan_mac_obj *o = p->vlan_mac_obj;
-	unsigned long *ramrod_flags = &p->ramrod_flags;
+	uint32_t *ramrod_flags = &p->ramrod_flags;
 	int cont = ECORE_TEST_BIT(RAMROD_CONT, ramrod_flags);
 	struct ecore_raw_obj *raw = &o->raw;
 
@@ -1758,8 +1758,8 @@ int ecore_config_vlan_mac(struct bnx2x_softc *sc,
  */
 static int ecore_vlan_mac_del_all(struct bnx2x_softc *sc,
 				  struct ecore_vlan_mac_obj *o,
-				  unsigned long *vlan_mac_flags,
-				  unsigned long *ramrod_flags)
+				  uint32_t *vlan_mac_flags,
+				  uint32_t *ramrod_flags)
 {
 	struct ecore_vlan_mac_registry_elem *pos = NULL;
 	int rc = 0, read_lock;
@@ -1836,7 +1836,7 @@ static void ecore_init_raw_obj(struct ecore_raw_obj *raw, uint8_t cl_id,
 			       uint32_t cid, uint8_t func_id,
 			       void *rdata,
 			       ecore_dma_addr_t rdata_mapping, int state,
-			       unsigned long *pstate, ecore_obj_type type)
+			       uint32_t *pstate, ecore_obj_type type)
 {
 	raw->func_id = func_id;
 	raw->cid = cid;
@@ -1856,7 +1856,7 @@ static void ecore_init_vlan_mac_common(struct ecore_vlan_mac_obj *o,
 				       uint8_t cl_id, uint32_t cid,
 				       uint8_t func_id, void *rdata,
 				       ecore_dma_addr_t rdata_mapping,
-				       int state, unsigned long *pstate,
+				       int state, uint32_t *pstate,
 				       ecore_obj_type type,
 				       struct ecore_credit_pool_obj
 				       *macs_pool, struct ecore_credit_pool_obj
@@ -1883,7 +1883,7 @@ void ecore_init_mac_obj(struct bnx2x_softc *sc,
 			struct ecore_vlan_mac_obj *mac_obj,
 			uint8_t cl_id, uint32_t cid, uint8_t func_id,
 			void *rdata, ecore_dma_addr_t rdata_mapping, int state,
-			unsigned long *pstate, ecore_obj_type type,
+			uint32_t *pstate, ecore_obj_type type,
 			struct ecore_credit_pool_obj *macs_pool)
 {
 	union ecore_qable_obj *qable_obj = (union ecore_qable_obj *)mac_obj;
@@ -2034,8 +2034,8 @@ static void ecore_rx_mode_set_rdata_hdr_e2(uint32_t cid, struct eth_classify_hea
 	hdr->rule_cnt = rule_cnt;
 }
 
-static void ecore_rx_mode_set_cmd_state_e2(unsigned long *accept_flags, struct eth_filter_rules_cmd
-					   *cmd, int clear_accept_all)
+static void ecore_rx_mode_set_cmd_state_e2(uint32_t *accept_flags,
+			struct eth_filter_rules_cmd *cmd, int clear_accept_all)
 {
 	uint16_t state;
 
@@ -2157,7 +2157,7 @@ static int ecore_set_rx_mode_e2(struct bnx2x_softc *sc,
 	ecore_rx_mode_set_rdata_hdr_e2(p->cid, &data->header, rule_idx);
 
 	    ECORE_MSG
-	    (sc, "About to configure %d rules, rx_accept_flags 0x%lx, tx_accept_flags 0x%lx",
+	    (sc, "About to configure %d rules, rx_accept_flags 0x%x, tx_accept_flags 0x%x",
 	     data->header.rule_cnt, p->rx_accept_flags, p->tx_accept_flags);
 
 	/* No need for an explicit memory barrier here as long we would
@@ -3132,7 +3132,7 @@ void ecore_init_mcast_obj(struct bnx2x_softc *sc,
 			  uint8_t mcast_cl_id, uint32_t mcast_cid,
 			  uint8_t func_id, uint8_t engine_id, void *rdata,
 			  ecore_dma_addr_t rdata_mapping, int state,
-			  unsigned long *pstate, ecore_obj_type type)
+			  uint32_t *pstate, ecore_obj_type type)
 {
 	ECORE_MEMSET(mcast_obj, 0, sizeof(*mcast_obj));
 
@@ -3598,7 +3598,7 @@ void ecore_init_rss_config_obj(struct bnx2x_softc *sc __rte_unused,
 			       uint8_t cl_id, uint32_t cid, uint8_t func_id,
 			       uint8_t engine_id,
 			       void *rdata, ecore_dma_addr_t rdata_mapping,
-			       int state, unsigned long *pstate,
+			       int state, uint32_t *pstate,
 			       ecore_obj_type type)
 {
 	ecore_init_raw_obj(&rss_obj->raw, cl_id, cid, func_id, rdata,
@@ -3627,7 +3627,7 @@ int ecore_queue_state_change(struct bnx2x_softc *sc,
 {
 	struct ecore_queue_sp_obj *o = params->q_obj;
 	int rc, pending_bit;
-	unsigned long *pending = &o->pending;
+	uint32_t *pending = &o->pending;
 
 	/* Check that the requested transition is legal */
 	rc = o->check_transition(sc, o, params);
@@ -3638,9 +3638,9 @@ int ecore_queue_state_change(struct bnx2x_softc *sc,
 	}
 
 	/* Set "pending" bit */
-	ECORE_MSG(sc, "pending bit was=%lx", o->pending);
+	ECORE_MSG(sc, "pending bit was=%x", o->pending);
 	pending_bit = o->set_pending(o, params);
-	ECORE_MSG(sc, "pending bit now=%lx", o->pending);
+	ECORE_MSG(sc, "pending bit now=%x", o->pending);
 
 	/* Don't send a command if only driver cleanup was requested */
 	if (ECORE_TEST_BIT(RAMROD_DRV_CLR_ONLY, &params->ramrod_flags))
@@ -3704,11 +3704,11 @@ static int ecore_queue_comp_cmd(struct bnx2x_softc *sc __rte_unused,
 				struct ecore_queue_sp_obj *o,
 				enum ecore_queue_cmd cmd)
 {
-	unsigned long cur_pending = o->pending;
+	uint32_t cur_pending = o->pending;
 
 	if (!ECORE_TEST_AND_CLEAR_BIT(cmd, &cur_pending)) {
 		PMD_DRV_LOG(ERR, sc,
-			    "Bad MC reply %d for queue %d in state %d pending 0x%lx, next_state %d",
+			    "Bad MC reply %d for queue %d in state %d pending 0x%x, next_state %d",
 			    cmd, o->cids[ECORE_PRIMARY_CID_INDEX], o->state,
 			    cur_pending, o->next_state);
 		return ECORE_INVAL;
@@ -3762,7 +3762,7 @@ static void ecore_q_fill_init_general_data(struct bnx2x_softc *sc __rte_unused,
 					   struct ecore_queue_sp_obj *o,
 					   struct ecore_general_setup_params
 					   *params, struct client_init_general_data
-					   *gen_data, unsigned long *flags)
+					   *gen_data, uint32_t *flags)
 {
 	gen_data->client_id = o->cl_id;
 
@@ -3794,7 +3794,7 @@ static void ecore_q_fill_init_general_data(struct bnx2x_softc *sc __rte_unused,
 
 static void ecore_q_fill_init_tx_data(struct ecore_txq_setup_params *params,
 				      struct client_init_tx_data *tx_data,
-				      unsigned long *flags)
+				      uint32_t *flags)
 {
 	tx_data->enforce_security_flg =
 	    ECORE_TEST_BIT(ECORE_Q_FLG_TX_SEC, flags);
@@ -3840,7 +3840,7 @@ static void ecore_q_fill_init_pause_data(struct rxq_pause_params *params,
 
 static void ecore_q_fill_init_rx_data(struct ecore_rxq_setup_params *params,
 				      struct client_init_rx_data *rx_data,
-				      unsigned long *flags)
+				      uint32_t *flags)
 {
 	rx_data->tpa_en = ECORE_TEST_BIT(ECORE_Q_FLG_TPA, flags) *
 	    CLIENT_INIT_RX_DATA_TPA_EN_IPV4;
@@ -4421,7 +4421,7 @@ static int ecore_queue_chk_transition(struct bnx2x_softc *sc __rte_unused,
 	 * the previous one.
 	 */
 	if (o->pending) {
-		PMD_DRV_LOG(ERR, sc, "Blocking transition since pending was %lx",
+		PMD_DRV_LOG(ERR, sc, "Blocking transition since pending was %x",
 			    o->pending);
 		return ECORE_BUSY;
 	}
@@ -4630,7 +4630,7 @@ void ecore_init_queue_obj(struct bnx2x_softc *sc,
 			  struct ecore_queue_sp_obj *obj,
 			  uint8_t cl_id, uint32_t * cids, uint8_t cid_cnt,
 			  uint8_t func_id, void *rdata,
-			  ecore_dma_addr_t rdata_mapping, unsigned long type)
+			  ecore_dma_addr_t rdata_mapping, uint32_t type)
 {
 	ECORE_MEMSET(obj, 0, sizeof(*obj));
 
@@ -4699,11 +4699,11 @@ ecore_func_state_change_comp(struct bnx2x_softc *sc __rte_unused,
 			     struct ecore_func_sp_obj *o,
 			     enum ecore_func_cmd cmd)
 {
-	unsigned long cur_pending = o->pending;
+	uint32_t cur_pending = o->pending;
 
 	if (!ECORE_TEST_AND_CLEAR_BIT(cmd, &cur_pending)) {
 		PMD_DRV_LOG(ERR, sc,
-			    "Bad MC reply %d for func %d in state %d pending 0x%lx, next_state %d",
+			    "Bad MC reply %d for func %d in state %d pending 0x%x, next_state %d",
 			    cmd, ECORE_FUNC_ID(sc), o->state, cur_pending,
 			    o->next_state);
 		return ECORE_INVAL;
@@ -5311,7 +5311,7 @@ int ecore_func_state_change(struct bnx2x_softc *sc,
 	struct ecore_func_sp_obj *o = params->f_obj;
 	int rc, cnt = 300;
 	enum ecore_func_cmd cmd = params->cmd;
-	unsigned long *pending = &o->pending;
+	uint32_t *pending = &o->pending;
 
 	ECORE_MUTEX_LOCK(&o->one_pending_mutex);
 

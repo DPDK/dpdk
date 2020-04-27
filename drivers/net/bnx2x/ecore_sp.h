@@ -14,6 +14,7 @@
 #ifndef ECORE_SP_H
 #define ECORE_SP_H
 
+#include <rte_bitops.h>
 #include <rte_byteorder.h>
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
@@ -73,10 +74,11 @@ typedef rte_spinlock_t ECORE_MUTEX_SPIN;
 #define ECORE_SET_BIT_NA(bit, var)         (*var |= (1 << bit))
 #define ECORE_CLEAR_BIT_NA(bit, var)       (*var &= ~(1 << bit))
 
-#define ECORE_TEST_BIT(bit, var)           bnx2x_test_bit(bit, var)
-#define ECORE_SET_BIT(bit, var)            bnx2x_set_bit(bit, var)
-#define ECORE_CLEAR_BIT(bit, var)          bnx2x_clear_bit(bit, var)
-#define ECORE_TEST_AND_CLEAR_BIT(bit, var) bnx2x_test_and_clear_bit(bit, var)
+#define ECORE_TEST_BIT(bit, var)           rte_bit_relaxed_get32(bit, var)
+#define ECORE_SET_BIT(bit, var)            rte_bit_relaxed_set32(bit, var)
+#define ECORE_CLEAR_BIT(bit, var)          rte_bit_relaxed_clear32(bit, var)
+#define ECORE_TEST_AND_CLEAR_BIT(bit, var) \
+	rte_bit_relaxed_test_and_clear32(bit, var)
 
 #define atomic_load_acq_int                (int)*
 #define atomic_store_rel_int(a, v)         (*a = v)
@@ -485,7 +487,7 @@ struct ecore_raw_obj {
 
 	/* Ramrod state params */
 	int		state;   /* "ramrod is pending" state bit */
-	unsigned long	*pstate; /* pointer to state buffer */
+	uint32_t	*pstate; /* pointer to state buffer */
 
 	ecore_obj_type	obj_type;
 
@@ -538,7 +540,7 @@ struct ecore_vlan_mac_data {
 	/* used to contain the data related vlan_mac_flags bits from
 	 * ramrod parameters.
 	 */
-	unsigned long vlan_mac_flags;
+	uint32_t vlan_mac_flags;
 
 	/* Needed for MOVE command */
 	struct ecore_vlan_mac_obj *target_obj;
@@ -589,7 +591,7 @@ typedef int (*exe_q_optimize)(struct bnx2x_softc *sc,
 typedef int (*exe_q_execute)(struct bnx2x_softc *sc,
 			     union ecore_qable_obj *o,
 			     ecore_list_t *exe_chunk,
-			     unsigned long *ramrod_flags);
+			     uint32_t *ramrod_flags);
 typedef struct ecore_exeq_elem *
 			(*exe_q_get)(struct ecore_exe_queue_obj *o,
 				     struct ecore_exeq_elem *elem);
@@ -659,7 +661,7 @@ struct ecore_vlan_mac_registry_elem {
 	int			cam_offset;
 
 	/* Needed for DEL and RESTORE flows */
-	unsigned long		vlan_mac_flags;
+	uint32_t		vlan_mac_flags;
 
 	union ecore_classification_ramrod_data u;
 };
@@ -688,7 +690,7 @@ struct ecore_vlan_mac_ramrod_params {
 	struct ecore_vlan_mac_obj *vlan_mac_obj;
 
 	/* General command flags: COMP_WAIT, etc. */
-	unsigned long ramrod_flags;
+	uint32_t ramrod_flags;
 
 	/* Command specific configuration request */
 	struct ecore_vlan_mac_data user_req;
@@ -706,7 +708,7 @@ struct ecore_vlan_mac_obj {
 	 */
 	uint8_t		head_reader; /* Num. of readers accessing head list */
 	bool		head_exe_request; /* Pending execution request. */
-	unsigned long	saved_ramrod_flags; /* Ramrods of pending execution */
+	uint32_t	saved_ramrod_flags; /* Ramrods of pending execution */
 
 	/* Execution queue interface instance */
 	struct ecore_exe_queue_obj	exe_queue;
@@ -801,8 +803,8 @@ struct ecore_vlan_mac_obj {
 	 */
 	int (*delete_all)(struct bnx2x_softc *sc,
 			  struct ecore_vlan_mac_obj *o,
-			  unsigned long *vlan_mac_flags,
-			  unsigned long *ramrod_flags);
+			  uint32_t *vlan_mac_flags,
+			  uint32_t *ramrod_flags);
 
 	/**
 	 * Reconfigures the next MAC/VLAN/VLAN-MAC element from the previously
@@ -842,7 +844,7 @@ struct ecore_vlan_mac_obj {
 	 */
 	int (*complete)(struct bnx2x_softc *sc, struct ecore_vlan_mac_obj *o,
 			union event_ring_elem *cqe,
-			unsigned long *ramrod_flags);
+			uint32_t *ramrod_flags);
 
 	/**
 	 * Wait for completion of all commands. Don't schedule new ones,
@@ -883,13 +885,13 @@ enum {
 
 struct ecore_rx_mode_ramrod_params {
 	struct ecore_rx_mode_obj *rx_mode_obj;
-	unsigned long *pstate;
+	uint32_t *pstate;
 	int state;
 	uint8_t cl_id;
 	uint32_t cid;
 	uint8_t func_id;
-	unsigned long ramrod_flags;
-	unsigned long rx_mode_flags;
+	uint32_t ramrod_flags;
+	uint32_t rx_mode_flags;
 
 	/* rdata is either a pointer to eth_filter_rules_ramrod_data(e2) or to
 	 * a tstorm_eth_mac_filter_config (e1x).
@@ -898,10 +900,10 @@ struct ecore_rx_mode_ramrod_params {
 	ecore_dma_addr_t rdata_mapping;
 
 	/* Rx mode settings */
-	unsigned long rx_accept_flags;
+	uint32_t rx_accept_flags;
 
 	/* internal switching settings */
-	unsigned long tx_accept_flags;
+	uint32_t tx_accept_flags;
 };
 
 struct ecore_rx_mode_obj {
@@ -928,7 +930,7 @@ struct ecore_mcast_ramrod_params {
 	struct ecore_mcast_obj *mcast_obj;
 
 	/* Relevant options are RAMROD_COMP_WAIT and RAMROD_DRV_CLR_ONLY */
-	unsigned long ramrod_flags;
+	uint32_t ramrod_flags;
 
 	ecore_list_t mcast_list; /* list of struct ecore_mcast_list_elem */
 	/** TODO:
@@ -1144,22 +1146,22 @@ struct ecore_config_rss_params {
 	struct ecore_rss_config_obj *rss_obj;
 
 	/* may have RAMROD_COMP_WAIT set only */
-	unsigned long	ramrod_flags;
+	uint32_t ramrod_flags;
 
 	/* ECORE_RSS_X bits */
-	unsigned long	rss_flags;
+	uint32_t rss_flags;
 
 	/* Number hash bits to take into an account */
-	uint8_t		rss_result_mask;
+	uint8_t	 rss_result_mask;
 
 	/* Indirection table */
-	uint8_t		ind_table[T_ETH_INDIRECTION_TABLE_SIZE];
+	uint8_t	 ind_table[T_ETH_INDIRECTION_TABLE_SIZE];
 
 	/* RSS hash values */
-	uint32_t		rss_key[10];
+	uint32_t rss_key[10];
 
 	/* valid only if ECORE_RSS_UPDATE_TOE is set */
-	uint16_t		toe_rss_bitmap;
+	uint16_t toe_rss_bitmap;
 };
 
 struct ecore_rss_config_obj {
@@ -1290,17 +1292,17 @@ enum ecore_q_type {
 
 struct ecore_queue_init_params {
 	struct {
-		unsigned long	flags;
-		uint16_t		hc_rate;
-		uint8_t		fw_sb_id;
-		uint8_t		sb_cq_index;
+		uint32_t flags;
+		uint16_t hc_rate;
+		uint8_t	 fw_sb_id;
+		uint8_t	 sb_cq_index;
 	} tx;
 
 	struct {
-		unsigned long	flags;
-		uint16_t		hc_rate;
-		uint8_t		fw_sb_id;
-		uint8_t		sb_cq_index;
+		uint32_t flags;
+		uint16_t hc_rate;
+		uint8_t	 fw_sb_id;
+		uint8_t	 sb_cq_index;
 	} rx;
 
 	/* CID context in the host memory */
@@ -1321,10 +1323,10 @@ struct ecore_queue_cfc_del_params {
 };
 
 struct ecore_queue_update_params {
-	unsigned long	update_flags; /* ECORE_Q_UPDATE_XX bits */
-	uint16_t		def_vlan;
-	uint16_t		silent_removal_value;
-	uint16_t		silent_removal_mask;
+	uint32_t	update_flags; /* ECORE_Q_UPDATE_XX bits */
+	uint16_t	def_vlan;
+	uint16_t	silent_removal_value;
+	uint16_t	silent_removal_mask;
 /* index within the tx_only cids of this queue object */
 	uint8_t		cid_index;
 };
@@ -1422,13 +1424,13 @@ struct ecore_queue_setup_params {
 	struct ecore_txq_setup_params txq_params;
 	struct ecore_rxq_setup_params rxq_params;
 	struct rxq_pause_params pause_params;
-	unsigned long flags;
+	uint32_t flags;
 };
 
 struct ecore_queue_setup_tx_only_params {
 	struct ecore_general_setup_params	gen_params;
 	struct ecore_txq_setup_params		txq_params;
-	unsigned long				flags;
+	uint32_t				flags;
 	/* index within the tx_only cids of this queue object */
 	uint8_t					cid_index;
 };
@@ -1440,7 +1442,7 @@ struct ecore_queue_state_params {
 	enum ecore_queue_cmd cmd;
 
 	/* may have RAMROD_COMP_WAIT set only */
-	unsigned long ramrod_flags;
+	uint32_t ramrod_flags;
 
 	/* Params according to the current command */
 	union {
@@ -1478,14 +1480,14 @@ struct ecore_queue_sp_obj {
 	enum ecore_q_state state, next_state;
 
 	/* bits from enum ecore_q_type */
-	unsigned long	type;
+	uint32_t	type;
 
 	/* ECORE_Q_CMD_XX bits. This object implements "one
 	 * pending" paradigm but for debug and tracing purposes it's
 	 * more convenient to have different bits for different
 	 * commands.
 	 */
-	unsigned long	pending;
+	uint32_t	pending;
 
 	/* Buffer to use as a ramrod data and its mapping */
 	void		*rdata;
@@ -1653,7 +1655,7 @@ struct ecore_func_start_params {
 };
 
 struct ecore_func_switch_update_params {
-	unsigned long changes; /* ECORE_F_UPDATE_XX bits */
+	uint32_t changes; /* ECORE_F_UPDATE_XX bits */
 	uint16_t vlan;
 	uint16_t vlan_eth_type;
 	uint8_t vlan_force_prio;
@@ -1704,7 +1706,7 @@ struct ecore_func_state_params {
 	enum ecore_func_cmd cmd;
 
 	/* may have RAMROD_COMP_WAIT set only */
-	unsigned long	ramrod_flags;
+	uint32_t ramrod_flags;
 
 	/* Params according to the current command */
 	union {
@@ -1753,7 +1755,7 @@ struct ecore_func_sp_obj {
 	 * more convenient to have different bits for different
 	 * commands.
 	 */
-	unsigned long		pending;
+	uint32_t		pending;
 
 	/* Buffer to use as a ramrod data and its mapping */
 	void			*rdata;
@@ -1821,7 +1823,7 @@ enum ecore_func_state ecore_func_get_state(struct bnx2x_softc *sc,
 void ecore_init_queue_obj(struct bnx2x_softc *sc,
 			  struct ecore_queue_sp_obj *obj, uint8_t cl_id, uint32_t *cids,
 			  uint8_t cid_cnt, uint8_t func_id, void *rdata,
-			  ecore_dma_addr_t rdata_mapping, unsigned long type);
+			  ecore_dma_addr_t rdata_mapping, uint32_t type);
 
 int ecore_queue_state_change(struct bnx2x_softc *sc,
 			     struct ecore_queue_state_params *params);
@@ -1834,7 +1836,7 @@ void ecore_init_mac_obj(struct bnx2x_softc *sc,
 			struct ecore_vlan_mac_obj *mac_obj,
 			uint8_t cl_id, uint32_t cid, uint8_t func_id, void *rdata,
 			ecore_dma_addr_t rdata_mapping, int state,
-			unsigned long *pstate, ecore_obj_type type,
+			uint32_t *pstate, ecore_obj_type type,
 			struct ecore_credit_pool_obj *macs_pool);
 
 void ecore_init_vlan_obj(struct bnx2x_softc *sc,
@@ -1842,7 +1844,7 @@ void ecore_init_vlan_obj(struct bnx2x_softc *sc,
 			 uint8_t cl_id, uint32_t cid, uint8_t func_id,
 			 void *rdata,
 			 ecore_dma_addr_t rdata_mapping, int state,
-			 unsigned long *pstate, ecore_obj_type type,
+			 uint32_t *pstate, ecore_obj_type type,
 			 struct ecore_credit_pool_obj *vlans_pool);
 
 void ecore_init_vlan_mac_obj(struct bnx2x_softc *sc,
@@ -1850,7 +1852,7 @@ void ecore_init_vlan_mac_obj(struct bnx2x_softc *sc,
 			     uint8_t cl_id, uint32_t cid, uint8_t func_id,
 			     void *rdata,
 			     ecore_dma_addr_t rdata_mapping, int state,
-			     unsigned long *pstate, ecore_obj_type type,
+			     uint32_t *pstate, ecore_obj_type type,
 			     struct ecore_credit_pool_obj *macs_pool,
 			     struct ecore_credit_pool_obj *vlans_pool);
 
@@ -1859,7 +1861,7 @@ void ecore_init_vxlan_fltr_obj(struct bnx2x_softc *sc,
 			       uint8_t cl_id, uint32_t cid, uint8_t func_id,
 			       void *rdata,
 			       ecore_dma_addr_t rdata_mapping, int state,
-			       unsigned long *pstate, ecore_obj_type type,
+			       uint32_t *pstate, ecore_obj_type type,
 			       struct ecore_credit_pool_obj *macs_pool,
 			       struct ecore_credit_pool_obj *vlans_pool);
 
@@ -1901,7 +1903,7 @@ void ecore_init_mcast_obj(struct bnx2x_softc *sc,
 			  struct ecore_mcast_obj *mcast_obj,
 			  uint8_t mcast_cl_id, uint32_t mcast_cid, uint8_t func_id,
 			  uint8_t engine_id, void *rdata, ecore_dma_addr_t rdata_mapping,
-			  int state, unsigned long *pstate,
+			  int state, uint32_t *pstate,
 			  ecore_obj_type type);
 
 /**
@@ -1943,7 +1945,7 @@ void ecore_init_rss_config_obj(struct bnx2x_softc *sc,
 			       struct ecore_rss_config_obj *rss_obj,
 			       uint8_t cl_id, uint32_t cid, uint8_t func_id, uint8_t engine_id,
 			       void *rdata, ecore_dma_addr_t rdata_mapping,
-			       int state, unsigned long *pstate,
+			       int state, uint32_t *pstate,
 			       ecore_obj_type type);
 
 /**

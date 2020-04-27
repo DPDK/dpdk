@@ -1000,8 +1000,8 @@ struct bnx2x_sp_objs {
  * link parameters twice.
  */
 struct bnx2x_link_report_data {
-	uint16_t      line_speed;        /* Effective line speed */
-	unsigned long link_report_flags; /* BNX2X_LINK_REPORT_XXX flags */
+	uint16_t line_speed;        /* Effective line speed */
+	uint32_t link_report_flags; /* BNX2X_LINK_REPORT_XXX flags */
 };
 
 enum {
@@ -1232,7 +1232,7 @@ struct bnx2x_softc {
 	/* slow path */
 	struct bnx2x_dma      sp_dma;
 	struct bnx2x_slowpath *sp;
-	unsigned long       sp_state;
+	uint32_t	    sp_state;
 
 	/* slow path queue */
 	struct bnx2x_dma spq_dma;
@@ -1816,10 +1816,6 @@ static const uint32_t dmae_reg_go_c[] = {
 #define PCI_PM_D0    1
 #define PCI_PM_D3hot 2
 
-int  bnx2x_test_bit(int nr, volatile unsigned long * addr);
-void bnx2x_set_bit(unsigned int nr, volatile unsigned long * addr);
-void bnx2x_clear_bit(int nr, volatile unsigned long * addr);
-int  bnx2x_test_and_clear_bit(int nr, volatile unsigned long * addr);
 int  bnx2x_cmpxchg(volatile int *addr, int old, int new);
 
 int bnx2x_dma_alloc(struct bnx2x_softc *sc, size_t size,
