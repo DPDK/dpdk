@@ -166,6 +166,7 @@ The public API headers are grouped by topics:
     [ip4_node]         (@ref rte_node_ip4_api.h)
 
 - **basic**:
+  [bitops]             (@ref rte_bitops.h),
   [approx fraction]    (@ref rte_approx.h),
   [random]             (@ref rte_random.h),
   [config file]        (@ref rte_cfgfile.h),

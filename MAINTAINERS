@@ -246,6 +246,10 @@ F: lib/librte_eal/common/rte_service.c
 F: doc/guides/prog_guide/service_cores.rst
 F: app/test/test_service_cores.c
 
+Bitops
+M: Joyce Kong <joyce.kong@arm.com>
+F: lib/librte_eal/include/rte_bitops.h
+
 Bitmap
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/librte_eal/include/rte_bitmap.h
