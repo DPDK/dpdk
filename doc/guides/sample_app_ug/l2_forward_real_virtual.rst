@@ -91,7 +91,10 @@ The application requires a number of command line options:
 
 .. code-block:: console
 
-    ./build/l2fwd [EAL options] -- -p PORTMASK [-q NQ] --[no-]mac-updating
+    ./build/l2fwd [EAL options] -- -p PORTMASK
+                                   [-q NQ]
+                                   --[no-]mac-updating
+                                   [--portmap="(port, port)[,(port, port)]"]
 
 where,
 
@@ -99,7 +102,9 @@ where,
 
 *   q NQ: A number of queues (=ports) per lcore (default is 1)
 
-*   --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default).
+*   --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)
+
+*   --portmap="(port,port)[,(port,port)]": Determines forwarding ports mapping.
 
 To run the application in linux environment with 4 lcores, 16 ports and 8 RX queues per lcore and MAC address
 updating enabled, issue the command:
@@ -107,6 +112,14 @@ updating enabled, issue the command:
 .. code-block:: console
 
     $ ./build/l2fwd -l 0-3 -n 4 -- -q 8 -p ffff
+
+To run the application in linux environment with 4 lcores, 4 ports, 8 RX queues
+per lcore, to forward RX traffic of ports 0 & 1 on ports 2 & 3 respectively and
+vice versa, issue the command:
+
+.. code-block:: console
+
+    $ ./build/l2fwd -l 0-3 -n 4 -- -q 8 -p f --portmap="(0,2)(1,3)"
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.
