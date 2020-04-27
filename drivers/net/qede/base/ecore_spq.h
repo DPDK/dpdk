@@ -121,17 +121,17 @@ struct ecore_spq {
 #define SPQ_RING_SIZE		\
 	(CORE_SPQE_PAGE_SIZE_BYTES / sizeof(struct slow_path_element))
 /* BITS_PER_LONG */
-#define SPQ_COMP_BMAP_SIZE	(SPQ_RING_SIZE / (sizeof(unsigned long) * 8))
-	unsigned long			p_comp_bitmap[SPQ_COMP_BMAP_SIZE];
-	u8				comp_bitmap_idx;
+#define SPQ_COMP_BMAP_SIZE	(SPQ_RING_SIZE / (sizeof(u32) * 8))
+	u32			p_comp_bitmap[SPQ_COMP_BMAP_SIZE];
+	u8			comp_bitmap_idx;
 #define SPQ_COMP_BMAP_SET_BIT(p_spq, idx)				\
 	(OSAL_SET_BIT(((idx) % SPQ_RING_SIZE), (p_spq)->p_comp_bitmap))
 
 #define SPQ_COMP_BMAP_CLEAR_BIT(p_spq, idx)				\
 	(OSAL_CLEAR_BIT(((idx) % SPQ_RING_SIZE), (p_spq)->p_comp_bitmap))
 
-#define SPQ_COMP_BMAP_TEST_BIT(p_spq, idx)	\
-	(OSAL_TEST_BIT(((idx) % SPQ_RING_SIZE), (p_spq)->p_comp_bitmap))
+#define SPQ_COMP_BMAP_GET_BIT(p_spq, idx)	\
+	(OSAL_GET_BIT(((idx) % SPQ_RING_SIZE), (p_spq)->p_comp_bitmap))
 
 	/* Statistics */
 	u32				unlimited_pending_count;

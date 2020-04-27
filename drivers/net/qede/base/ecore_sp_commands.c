@@ -335,16 +335,16 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 	p_ramrod->dont_log_ramrods = 0;
 	p_ramrod->log_type_mask = OSAL_CPU_TO_LE16(0x8f);
 
-	if (OSAL_TEST_BIT(ECORE_MF_OVLAN_CLSS, &p_hwfn->p_dev->mf_bits))
+	if (OSAL_GET_BIT(ECORE_MF_OVLAN_CLSS, &p_hwfn->p_dev->mf_bits))
 		p_ramrod->mf_mode = MF_OVLAN;
 	else
 		p_ramrod->mf_mode = MF_NPAR;
 
 	p_ramrod->outer_tag_config.outer_tag.tci =
 		OSAL_CPU_TO_LE16(p_hwfn->hw_info.ovlan);
-	if (OSAL_TEST_BIT(ECORE_MF_8021Q_TAGGING, &p_hwfn->p_dev->mf_bits)) {
+	if (OSAL_GET_BIT(ECORE_MF_8021Q_TAGGING, &p_hwfn->p_dev->mf_bits)) {
 		p_ramrod->outer_tag_config.outer_tag.tpid = ETH_P_8021Q;
-	} else if (OSAL_TEST_BIT(ECORE_MF_8021AD_TAGGING,
+	} else if (OSAL_GET_BIT(ECORE_MF_8021AD_TAGGING,
 		 &p_hwfn->p_dev->mf_bits)) {
 		p_ramrod->outer_tag_config.outer_tag.tpid = ETH_P_8021AD;
 		p_ramrod->outer_tag_config.enable_stag_pri_change = 1;
@@ -357,7 +357,7 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 	/* enable_stag_pri_change should be set if port is in BD mode or,
 	 * UFP with Host Control mode.
 	 */
-	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits)) {
+	if (OSAL_GET_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits)) {
 		if (p_hwfn->ufp_info.pri_type == ECORE_UFP_PRI_OS)
 			p_ramrod->outer_tag_config.enable_stag_pri_change = 1;
 		else
@@ -378,7 +378,7 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 	ecore_tunn_set_pf_start_params(p_hwfn, p_tunn,
 				       &p_ramrod->tunnel_config);
 
-	if (OSAL_TEST_BIT(ECORE_MF_INTER_PF_SWITCH,
+	if (OSAL_GET_BIT(ECORE_MF_INTER_PF_SWITCH,
 			  &p_hwfn->p_dev->mf_bits))
 		p_ramrod->allow_npar_tx_switching = allow_npar_tx_switch;
 
@@ -638,7 +638,7 @@ enum _ecore_status_t ecore_sp_heartbeat_ramrod(struct ecore_hwfn *p_hwfn)
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
+	if (OSAL_GET_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
 		p_ent->ramrod.pf_update.mf_vlan |=
 			OSAL_CPU_TO_LE16(((u16)p_hwfn->ufp_info.tc << 13));
 

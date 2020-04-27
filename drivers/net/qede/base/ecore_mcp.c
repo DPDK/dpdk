@@ -1732,7 +1732,7 @@ static void ecore_mcp_update_stag(struct ecore_hwfn *p_hwfn,
 	p_hwfn->mcp_info->func_info.ovlan = (u16)shmem_info.ovlan_stag &
 						 FUNC_MF_CFG_OV_STAG_MASK;
 	p_hwfn->hw_info.ovlan = p_hwfn->mcp_info->func_info.ovlan;
-	if (OSAL_TEST_BIT(ECORE_MF_OVLAN_CLSS, &p_hwfn->p_dev->mf_bits)) {
+	if (OSAL_GET_BIT(ECORE_MF_OVLAN_CLSS, &p_hwfn->p_dev->mf_bits)) {
 		if (p_hwfn->hw_info.ovlan != ECORE_MCP_VLAN_UNSET) {
 			ecore_wr(p_hwfn, p_ptt, NIG_REG_LLH_FUNC_TAG_VALUE,
 				 p_hwfn->hw_info.ovlan);
@@ -2026,7 +2026,7 @@ ecore_mcp_read_ufp_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 	struct public_func shmem_info;
 	u32 port_cfg, val;
 
-	if (!OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
+	if (!OSAL_GET_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
 		return;
 
 	OSAL_MEMSET(&p_hwfn->ufp_info, 0, sizeof(p_hwfn->ufp_info));

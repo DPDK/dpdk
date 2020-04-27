@@ -212,7 +212,7 @@ enum _ecore_status_t ecore_db_recovery_del(struct ecore_dev *p_dev,
 
 static OSAL_INLINE bool ecore_is_mf_ufp(struct ecore_hwfn *p_hwfn)
 {
-	return !!OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits);
+	return !!OSAL_GET_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits);
 }
 
 #endif

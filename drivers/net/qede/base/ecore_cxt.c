@@ -154,7 +154,7 @@ struct ecore_ilt_client_cfg {
 struct ecore_cid_acquired_map {
 	u32 start_cid;
 	u32 max_count;
-	unsigned long *cid_map;
+	u32 *cid_map;
 };
 
 struct ecore_src_t2 {
@@ -1991,7 +1991,7 @@ static bool ecore_cxt_test_cid_acquired(struct ecore_hwfn *p_hwfn,
 	}
 
 	rel_cid = cid - (*pp_map)->start_cid;
-	if (!OSAL_TEST_BIT(rel_cid, (*pp_map)->cid_map)) {
+	if (!OSAL_GET_BIT(rel_cid, (*pp_map)->cid_map)) {
 		DP_NOTICE(p_hwfn, true,
 			  "CID %d [vifd %02x] not acquired", cid, vfid);
 		goto fail;
@@ -2102,7 +2102,7 @@ enum _ecore_status_t ecore_cxt_set_pf_params(struct ecore_hwfn *p_hwfn)
 
 		count = p_params->num_arfs_filters;
 
-		if (!OSAL_TEST_BIT(ECORE_MF_DISABLE_ARFS,
+		if (!OSAL_GET_BIT(ECORE_MF_DISABLE_ARFS,
 				   &p_hwfn->p_dev->mf_bits))
 			p_hwfn->p_cxt_mngr->arfs_count = count;
 

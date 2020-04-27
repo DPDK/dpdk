@@ -148,7 +148,7 @@ ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 	p_data->arr[type].update = UPDATE_DCB_DSCP;
 
 	/* Do not add valn tag 0 when DCB is enabled and port is in UFP mode */
-	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
+	if (OSAL_GET_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
 		p_data->arr[type].dont_add_vlan0 = true;
 
 	/* QM reconf data */
@@ -156,8 +156,8 @@ ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 		p_hwfn->hw_info.offload_tc = tc;
 
 	/* Configure dcbx vlan priority in doorbell block for roce EDPM */
-	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits) &&
-	    (type == DCBX_PROTOCOL_ROCE)) {
+	if (OSAL_GET_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits) &&
+	    type == DCBX_PROTOCOL_ROCE) {
 		ecore_wr(p_hwfn, p_ptt, DORQ_REG_TAG1_OVRD_MODE, 1);
 		ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_PCP, prio << 1);
 	}
@@ -293,7 +293,7 @@ ecore_dcbx_process_tlv(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	}
 
 	/* If Eth TLV is not detected, use UFP TC as default TC */
-	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC,
+	if (OSAL_GET_BIT(ECORE_MF_UFP_SPECIFIC,
 			  &p_hwfn->p_dev->mf_bits) && !eth_tlv)
 		p_data->arr[DCBX_PROTOCOL_ETH].tc = p_hwfn->ufp_info.tc;
 

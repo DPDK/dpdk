@@ -29,7 +29,7 @@
 
 struct ecore_l2_info {
 	u32 queues;
-	unsigned long **pp_qid_usage;
+	u32 **pp_qid_usage;
 
 	/* The lock is meant to synchronize access to the qid usage */
 	osal_mutex_t lock;
@@ -38,7 +38,7 @@ struct ecore_l2_info {
 enum _ecore_status_t ecore_l2_alloc(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_l2_info *p_l2_info;
-	unsigned long **pp_qids;
+	u32 **pp_qids;
 	u32 i;
 
 	if (!ECORE_IS_L2_PERSONALITY(p_hwfn))
@@ -2116,7 +2116,7 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 			       struct ecore_ptt *p_ptt,
 			       struct ecore_arfs_config_params *p_cfg_params)
 {
-	if (OSAL_TEST_BIT(ECORE_MF_DISABLE_ARFS, &p_hwfn->p_dev->mf_bits))
+	if (OSAL_GET_BIT(ECORE_MF_DISABLE_ARFS, &p_hwfn->p_dev->mf_bits))
 		return;
 
 	if (p_cfg_params->mode != ECORE_FILTER_CONFIG_MODE_DISABLE) {

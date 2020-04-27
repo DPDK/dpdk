@@ -977,7 +977,7 @@ enum _ecore_status_t ecore_spq_completion(struct ecore_hwfn *p_hwfn,
 			 * for the first successive completed entries.
 			 */
 			SPQ_COMP_BMAP_SET_BIT(p_spq, echo);
-			while (SPQ_COMP_BMAP_TEST_BIT(p_spq,
+			while (SPQ_COMP_BMAP_GET_BIT(p_spq,
 						      p_spq->comp_bitmap_idx)) {
 				SPQ_COMP_BMAP_CLEAR_BIT(p_spq,
 							p_spq->comp_bitmap_idx);

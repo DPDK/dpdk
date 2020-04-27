@@ -422,8 +422,8 @@ struct ecore_hw_info {
 	u8 max_chains_per_vf;
 
 	u32 port_mode;
-	u32	hw_mode;
-	unsigned long device_capabilities;
+	u32 hw_mode;
+	u32 device_capabilities;
 
 	/* Default DCBX mode */
 	u8 dcbx_mode;
@@ -807,7 +807,7 @@ struct ecore_dev {
 
 	u8				path_id;
 
-	unsigned long			mf_bits;
+	u32				mf_bits;
 	enum ecore_mf_mode		mf_mode;
 #define IS_MF_DEFAULT(_p_hwfn)	\
 	(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_DEFAULT)

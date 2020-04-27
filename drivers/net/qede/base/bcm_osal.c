@@ -46,26 +46,6 @@ u32 qede_osal_log2(u32 val)
 	return log;
 }
 
-inline void qede_set_bit(u32 nr, unsigned long *addr)
-{
-	__sync_fetch_and_or(addr, (1UL << nr));
-}
-
-inline void qede_clr_bit(u32 nr, unsigned long *addr)
-{
-	__sync_fetch_and_and(addr, ~(1UL << nr));
-}
-
-inline bool qede_test_bit(u32 nr, unsigned long *addr)
-{
-	bool res;
-
-	rte_mb();
-	res = ((*addr) & (1UL << nr)) != 0;
-	rte_mb();
-	return res;
-}
-
 static inline u32 qede_ffb(unsigned long word)
 {
 	unsigned long first_bit;
@@ -95,7 +75,7 @@ static inline u32 qede_ffz(unsigned long word)
 	return first_zero ? (first_zero - 1) : OSAL_BITS_PER_UL;
 }
 
-inline u32 qede_find_first_zero_bit(unsigned long *addr, u32 limit)
+inline u32 qede_find_first_zero_bit(u32 *addr, u32 limit)
 {
 	u32 i;
 	u32 nwords = 0;

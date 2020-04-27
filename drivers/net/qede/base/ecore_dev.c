@@ -805,7 +805,7 @@ static enum _ecore_status_t ecore_llh_hw_init_pf(struct ecore_hwfn *p_hwfn,
 		ecore_wr(p_hwfn, p_ptt, addr, p_hwfn->rel_pf_id);
 	}
 
-	if (OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits) &&
+	if (OSAL_GET_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits) &&
 	    !ECORE_IS_FCOE_PERSONALITY(p_hwfn)) {
 		rc = ecore_llh_add_mac_filter(p_dev, 0,
 					      p_hwfn->hw_info.hw_mac_addr);
@@ -1044,7 +1044,7 @@ ecore_llh_add_filter(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	filter_details.enable = 1;
 	filter_details.value = ((u64)high << 32) | low;
 	filter_details.hdr_sel =
-		OSAL_TEST_BIT(ECORE_MF_OVLAN_CLSS, &p_hwfn->p_dev->mf_bits) ?
+		OSAL_GET_BIT(ECORE_MF_OVLAN_CLSS, &p_hwfn->p_dev->mf_bits) ?
 		1 : /* inner/encapsulated header */
 		0;  /* outer/tunnel header */
 	filter_details.protocol_type = filter_prot_type;
@@ -1083,7 +1083,7 @@ enum _ecore_status_t ecore_llh_add_mac_filter(struct ecore_dev *p_dev, u8 ppfid,
 	if (p_ptt == OSAL_NULL)
 		return ECORE_AGAIN;
 
-	if (!OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits))
+	if (!OSAL_GET_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits))
 		goto out;
 
 	OSAL_MEM_ZERO(&filter, sizeof(filter));
@@ -1220,7 +1220,7 @@ ecore_llh_add_protocol_filter(struct ecore_dev *p_dev, u8 ppfid,
 	if (p_ptt == OSAL_NULL)
 		return ECORE_AGAIN;
 
-	if (!OSAL_TEST_BIT(ECORE_MF_LLH_PROTO_CLSS, &p_dev->mf_bits))
+	if (!OSAL_GET_BIT(ECORE_MF_LLH_PROTO_CLSS, &p_dev->mf_bits))
 		goto out;
 
 	rc = ecore_llh_protocol_filter_stringify(p_dev, type,
@@ -1287,7 +1287,7 @@ void ecore_llh_remove_mac_filter(struct ecore_dev *p_dev, u8 ppfid,
 	if (p_ptt == OSAL_NULL)
 		return;
 
-	if (!OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits))
+	if (!OSAL_GET_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits))
 		goto out;
 
 	OSAL_MEM_ZERO(&filter, sizeof(filter));
@@ -1342,7 +1342,7 @@ void ecore_llh_remove_protocol_filter(struct ecore_dev *p_dev, u8 ppfid,
 	if (p_ptt == OSAL_NULL)
 		return;
 
-	if (!OSAL_TEST_BIT(ECORE_MF_LLH_PROTO_CLSS, &p_dev->mf_bits))
+	if (!OSAL_GET_BIT(ECORE_MF_LLH_PROTO_CLSS, &p_dev->mf_bits))
 		goto out;
 
 	rc = ecore_llh_protocol_filter_stringify(p_dev, type,
@@ -1396,8 +1396,8 @@ void ecore_llh_clear_ppfid_filters(struct ecore_dev *p_dev, u8 ppfid)
 	if (p_ptt == OSAL_NULL)
 		return;
 
-	if (!OSAL_TEST_BIT(ECORE_MF_LLH_PROTO_CLSS, &p_dev->mf_bits) &&
-	    !OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits))
+	if (!OSAL_GET_BIT(ECORE_MF_LLH_PROTO_CLSS, &p_dev->mf_bits) &&
+	    !OSAL_GET_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits))
 		goto out;
 
 	rc = ecore_abs_ppfid(p_dev, ppfid, &abs_ppfid);
@@ -1423,8 +1423,8 @@ void ecore_llh_clear_all_filters(struct ecore_dev *p_dev)
 {
 	u8 ppfid;
 
-	if (!OSAL_TEST_BIT(ECORE_MF_LLH_PROTO_CLSS, &p_dev->mf_bits) &&
-	    !OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits))
+	if (!OSAL_GET_BIT(ECORE_MF_LLH_PROTO_CLSS, &p_dev->mf_bits) &&
+	    !OSAL_GET_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits))
 		return;
 
 	for (ppfid = 0; ppfid < p_dev->p_llh_info->num_ppfid; ppfid++)
@@ -2674,7 +2674,7 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 		return ECORE_INVAL;
 	}
 
-	if (OSAL_TEST_BIT(ECORE_MF_OVLAN_CLSS, &p_hwfn->p_dev->mf_bits))
+	if (OSAL_GET_BIT(ECORE_MF_OVLAN_CLSS, &p_hwfn->p_dev->mf_bits))
 		hw_mode |= 1 << MODE_MF_SD;
 	else
 		hw_mode |= 1 << MODE_MF_SI;
@@ -3382,7 +3382,7 @@ static enum _ecore_status_t ecore_hw_init_port(struct ecore_hwfn *p_hwfn,
 		 * The ppfid should be set in the vector, except in BB which has
 		 * a bug in the LLH where the ppfid is actually engine based.
 		 */
-		if (OSAL_TEST_BIT(ECORE_MF_NEED_DEF_PF, &p_dev->mf_bits)) {
+		if (OSAL_GET_BIT(ECORE_MF_NEED_DEF_PF, &p_dev->mf_bits)) {
 			u8 pf_id = p_hwfn->rel_pf_id;
 
 			if (!ECORE_IS_BB(p_dev))
@@ -3715,11 +3715,11 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		if (rc != ECORE_SUCCESS)
 			return rc;
 
-		if (IS_PF(p_dev) && (OSAL_TEST_BIT(ECORE_MF_8021Q_TAGGING,
+		if (IS_PF(p_dev) && (OSAL_GET_BIT(ECORE_MF_8021Q_TAGGING,
 						   &p_dev->mf_bits) ||
-				     OSAL_TEST_BIT(ECORE_MF_8021AD_TAGGING,
+				     OSAL_GET_BIT(ECORE_MF_8021AD_TAGGING,
 						   &p_dev->mf_bits))) {
-			if (OSAL_TEST_BIT(ECORE_MF_8021Q_TAGGING,
+			if (OSAL_GET_BIT(ECORE_MF_8021Q_TAGGING,
 					  &p_dev->mf_bits))
 				ether_type = ETHER_TYPE_VLAN;
 			else
@@ -4119,7 +4119,7 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 		OSAL_MSLEEP(1);
 
 		if (IS_LEAD_HWFN(p_hwfn) &&
-		    OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits) &&
+		    OSAL_GET_BIT(ECORE_MF_LLH_MAC_CLSS, &p_dev->mf_bits) &&
 		    !ECORE_IS_FCOE_PERSONALITY(p_hwfn))
 			ecore_llh_remove_mac_filter(p_dev, 0,
 						   p_hwfn->hw_info.hw_mac_addr);
@@ -5113,7 +5113,7 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 			p_hwfn->p_dev->mf_bits |= 1 << ECORE_MF_NEED_DEF_PF;
 		break;
 	}
-	DP_INFO(p_hwfn, "Multi function mode is 0x%lx\n",
+	DP_INFO(p_hwfn, "Multi function mode is 0x%x\n",
 		p_hwfn->p_dev->mf_bits);
 
 	if (ECORE_IS_CMT(p_hwfn->p_dev))
@@ -6218,7 +6218,7 @@ enum _ecore_status_t
 ecore_llh_set_function_as_default(struct ecore_hwfn *p_hwfn,
 				  struct ecore_ptt *p_ptt)
 {
-	if (OSAL_TEST_BIT(ECORE_MF_NEED_DEF_PF, &p_hwfn->p_dev->mf_bits)) {
+	if (OSAL_GET_BIT(ECORE_MF_NEED_DEF_PF, &p_hwfn->p_dev->mf_bits)) {
 		ecore_wr(p_hwfn, p_ptt,
 			 NIG_REG_LLH_TAGMAC_DEF_PF_VECTOR,
 			 1 << p_hwfn->abs_pf_id / 2);
@@ -6795,5 +6795,5 @@ void ecore_set_fw_mac_addr(__le16 *fw_msb,
 
 bool ecore_is_mf_fip_special(struct ecore_dev *p_dev)
 {
-	return !!OSAL_TEST_BIT(ECORE_MF_FIP_SPECIAL, &p_dev->mf_bits);
+	return !!OSAL_GET_BIT(ECORE_MF_FIP_SPECIAL, &p_dev->mf_bits);
 }
