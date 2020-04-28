@@ -15,9 +15,7 @@
 ef10_evb_init(
 	__in		efx_nic_t *enp)
 {
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
-		enp->en_family == EFX_FAMILY_MEDFORD ||
-		enp->en_family == EFX_FAMILY_MEDFORD2);
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 
 	return (0);
 }
@@ -26,9 +24,7 @@ ef10_evb_init(
 ef10_evb_fini(
 	__in		efx_nic_t *enp)
 {
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
-		enp->en_family == EFX_FAMILY_MEDFORD ||
-		enp->en_family == EFX_FAMILY_MEDFORD2);
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 }
 
 	__checkReturn	efx_rc_t

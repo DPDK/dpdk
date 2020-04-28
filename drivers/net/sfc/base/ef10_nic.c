@@ -2288,9 +2288,7 @@ ef10_nic_init(
 	efx_rc_t rc;
 	boolean_t alloc_vadaptor = B_TRUE;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
-	    enp->en_family == EFX_FAMILY_MEDFORD ||
-	    enp->en_family == EFX_FAMILY_MEDFORD2);
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 
 	/* Enable reporting of some events (e.g. link change) */
 	if ((rc = efx_mcdi_log_ctrl(enp)) != 0)
