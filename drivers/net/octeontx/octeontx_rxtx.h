@@ -486,12 +486,19 @@ T(noff_ol3ol4csum_l3l4csum_mseg,	1, 1, 1, 1,	14,		       \
 
 /* RX offload macros */
 #define VLAN_FLTR_F     OCCTX_RX_VLAN_FLTR_F
+#define CSUM_F		OCCTX_RX_OFFLOAD_CSUM_F
 #define MULT_RX_F       OCCTX_RX_MULTI_SEG_F
-/* [VLAN_FLTR][MULTI_SEG] */
+
+/* [VLAN_FLTR] [CSUM_F] [MULTI_SEG] */
 #define OCCTX_RX_FASTPATH_MODES						       \
-R(no_offload,				0, 0,  OCCTX_RX_OFFLOAD_NONE)	       \
-R(mseg,					0, 1,  MULT_RX_F)		       \
-R(vlan,					1, 0,  VLAN_FLTR_F)		       \
-R(vlan_mseg,				1, 1,  VLAN_FLTR_F | MULT_RX_F)
+R(no_offload,				0, 0, 0,  OCCTX_RX_OFFLOAD_NONE)       \
+R(mseg,					0, 0, 1,  MULT_RX_F)		       \
+R(csum,					0, 1, 0,  CSUM_F)		       \
+R(csum_mseg,				0, 1, 1,  CSUM_F | MULT_RX_F)	       \
+R(vlan,					1, 0, 0,  VLAN_FLTR_F)		       \
+R(vlan_mseg,				1, 0, 1,  VLAN_FLTR_F | MULT_RX_F)     \
+R(vlan_csum,				1, 1, 0,  VLAN_FLTR_F | CSUM_F)	       \
+R(vlan_csum_mseg,			1, 1, 1,  CSUM_F | VLAN_FLTR_F |       \
+					MULT_RX_F)
 
  #endif /* __OCTEONTX_RXTX_H__ */

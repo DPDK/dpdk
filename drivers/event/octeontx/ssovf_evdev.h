@@ -157,6 +157,7 @@ struct ssows {
 	uint8_t *getwork;
 	uint8_t *grps[SSO_MAX_VHGRP];
 	uint8_t port;
+	void *lookup_mem;
 } __rte_cache_aligned;
 
 static inline struct ssovf_evdev *
@@ -182,5 +183,6 @@ int ssovf_info(struct ssovf_info *info);
 void *ssovf_bar(enum ssovf_type, uint8_t id, uint8_t bar);
 int test_eventdev_octeontx(void);
 void ssovf_fastpath_fns_set(struct rte_eventdev *dev);
+void *octeontx_fastpath_lookup_mem_get(void);
 
 #endif /* __SSOVF_EVDEV_H__ */

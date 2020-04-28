@@ -10,6 +10,34 @@
 #include "ssovf_evdev.h"
 #include "octeontx_rxtx.h"
 
+/* Alignment */
+#define OCCTX_ALIGN  128
+
+/* Fastpath lookup */
+#define OCCTX_FASTPATH_LOOKUP_MEM	"octeontx_fastpath_lookup_mem"
+
+/* WQE's ERRCODE + ERRLEV (11 bits) */
+#define ERRCODE_ERRLEN_WIDTH		11
+#define ERR_ARRAY_SZ			((BIT(ERRCODE_ERRLEN_WIDTH)) *\
+					sizeof(uint32_t))
+
+#define LOOKUP_ARRAY_SZ			(ERR_ARRAY_SZ)
+
+#define OCCTX_EC_IP4_NOT		0x41
+#define OCCTX_EC_IP4_CSUM		0x42
+#define OCCTX_EC_L4_CSUM		0x62
+
+enum OCCTX_ERRLEV_E {
+	OCCTX_ERRLEV_RE = 0,
+	OCCTX_ERRLEV_LA = 1,
+	OCCTX_ERRLEV_LB = 2,
+	OCCTX_ERRLEV_LC = 3,
+	OCCTX_ERRLEV_LD = 4,
+	OCCTX_ERRLEV_LE = 5,
+	OCCTX_ERRLEV_LF = 6,
+	OCCTX_ERRLEV_LG = 7,
+};
+
 enum {
 	SSO_SYNC_ORDERED,
 	SSO_SYNC_ATOMIC,
@@ -18,6 +46,14 @@ enum {
 };
 
 /* SSO Operations */
+
+static __rte_always_inline uint32_t
+ssovf_octeontx_rx_olflags_get(const void * const lookup_mem, const uint64_t in)
+{
+	const uint32_t * const ol_flags = (const uint32_t *)lookup_mem;
+
+	return ol_flags[(in & 0x7ff)];
+}
 
 static __rte_always_inline void
 ssovf_octeontx_wqe_xtract_mseg(octtx_wqe_t *wqe,
@@ -55,7 +91,7 @@ ssovf_octeontx_wqe_xtract_mseg(octtx_wqe_t *wqe,
 
 static __rte_always_inline struct rte_mbuf *
 ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_info,
-			  const uint16_t flag)
+			  const uint16_t flag, const void *lookup_mem)
 {
 	struct rte_mbuf *mbuf;
 	octtx_wqe_t *wqe = (octtx_wqe_t *)(uintptr_t)work;
@@ -68,6 +104,10 @@ ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_info,
 	mbuf->data_off = RTE_PTR_DIFF(wqe->s.w3.addr, mbuf->buf_addr);
 	mbuf->ol_flags = 0;
 	mbuf->pkt_len = wqe->s.w1.len;
+
+	if (!!(flag & OCCTX_RX_OFFLOAD_CSUM_F))
+		mbuf->ol_flags = ssovf_octeontx_rx_olflags_get(lookup_mem,
+							       wqe->w[2]);
 
 	if (!!(flag & OCCTX_RX_MULTI_SEG_F)) {
 		mbuf->nb_segs = wqe->s.w0.bufs;
@@ -134,7 +174,7 @@ ssows_get_work(struct ssows *ws, struct rte_event *ev, const uint16_t flag)
 
 	if (get_work1 && ev->event_type == RTE_EVENT_TYPE_ETHDEV) {
 		ev->mbuf = ssovf_octeontx_wqe_to_pkt(get_work1,
-				(ev->event >> 20) & 0x7F, flag);
+				(ev->event >> 20) & 0x7F, flag, ws->lookup_mem);
 	} else if (unlikely((get_work0 & 0xFFFFFFFF) == 0xFFFFFFFF)) {
 		ssovf_octeontx_wqe_free(get_work1);
 		return 0;

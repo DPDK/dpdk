@@ -91,7 +91,7 @@ ssows_release_event(struct ssows *ws)
 		ssows_swtag_untag(ws);
 }
 
-#define R(name, f1, f0, flags)						     \
+#define R(name, f2, f1, f0, flags)					     \
 static uint16_t __rte_noinline	__rte_hot				     \
 ssows_deq_ ##name(void *port, struct rte_event *ev, uint64_t timeout_ticks)  \
 {									     \
@@ -238,7 +238,8 @@ ssows_flush_events(struct ssows *ws, uint8_t queue_id,
 			ev.mbuf = ssovf_octeontx_wqe_to_pkt(get_work1,
 					(ev.event >> 20) & 0x7F,
 					OCCTX_RX_OFFLOAD_NONE |
-					OCCTX_RX_MULTI_SEG_F);
+					OCCTX_RX_MULTI_SEG_F,
+					ws->lookup_mem);
 		else
 			ev.u64 = get_work1;
 
@@ -340,16 +341,16 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 
 	dev->txa_enqueue = ssow_txa_enqueue
 		[!!(edev->tx_offload_flags & OCCTX_TX_OFFLOAD_MBUF_NOFF_F)]
-		[0]
-		[0]
+		[!!(edev->tx_offload_flags & OCCTX_TX_OFFLOAD_OL3_OL4_CSUM_F)]
+		[!!(edev->tx_offload_flags & OCCTX_TX_OFFLOAD_L3_L4_CSUM_F)]
 		[!!(edev->tx_offload_flags & OCCTX_TX_MULTI_SEG_F)];
 
 	dev->txa_enqueue_same_dest = dev->txa_enqueue;
 
 	/* Assigning dequeue func pointers */
-	const event_dequeue_t ssow_deq[2][2] = {
-#define R(name, f1, f0, flags)					\
-	[f1][f0] =  ssows_deq_ ##name,
+	const event_dequeue_t ssow_deq[2][2][2] = {
+#define R(name, f2, f1, f0, flags)					\
+	[f2][f1][f0] =  ssows_deq_ ##name,
 
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
@@ -357,11 +358,12 @@ SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 
 	dev->dequeue = ssow_deq
 		[!!(edev->rx_offload_flags & OCCTX_RX_VLAN_FLTR_F)]
+		[!!(edev->rx_offload_flags & OCCTX_RX_OFFLOAD_CSUM_F)]
 		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
 
-	const event_dequeue_burst_t ssow_deq_burst[2][2] = {
-#define R(name, f1, f0, flags)						\
-	[f1][f0] =  ssows_deq_burst_ ##name,
+	const event_dequeue_burst_t ssow_deq_burst[2][2][2] = {
+#define R(name, f2, f1, f0, flags)					\
+	[f2][f1][f0] =  ssows_deq_burst_ ##name,
 
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
@@ -369,12 +371,13 @@ SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 
 	dev->dequeue_burst = ssow_deq_burst
 		[!!(edev->rx_offload_flags & OCCTX_RX_VLAN_FLTR_F)]
+		[!!(edev->rx_offload_flags & OCCTX_RX_OFFLOAD_CSUM_F)]
 		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
 
 	if (edev->is_timeout_deq) {
-		const event_dequeue_t ssow_deq_timeout[2][2] = {
-#define R(name, f1, f0, flags)						\
-	[f1][f0] =  ssows_deq_timeout_ ##name,
+		const event_dequeue_t ssow_deq_timeout[2][2][2] = {
+#define R(name, f2, f1, f0, flags)					\
+	[f2][f1][f0] =  ssows_deq_timeout_ ##name,
 
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
@@ -382,11 +385,12 @@ SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 
 	dev->dequeue = ssow_deq_timeout
 		[!!(edev->rx_offload_flags & OCCTX_RX_VLAN_FLTR_F)]
+		[!!(edev->rx_offload_flags & OCCTX_RX_OFFLOAD_CSUM_F)]
 		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
 
-	const event_dequeue_burst_t ssow_deq_timeout_burst[2][2] = {
-#define R(name, f1, f0, flags)						\
-	[f1][f0] =  ssows_deq_timeout_burst_ ##name,
+	const event_dequeue_burst_t ssow_deq_timeout_burst[2][2][2] = {
+#define R(name, f2, f1, f0, flags)					\
+	[f2][f1][f0] =  ssows_deq_timeout_burst_ ##name,
 
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
@@ -394,6 +398,97 @@ SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 
 	dev->dequeue_burst = ssow_deq_timeout_burst
 		[!!(edev->rx_offload_flags & OCCTX_RX_VLAN_FLTR_F)]
+		[!!(edev->rx_offload_flags & OCCTX_RX_OFFLOAD_CSUM_F)]
 		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
 	}
+}
+
+static void
+octeontx_create_rx_ol_flags_array(void *mem)
+{
+	uint16_t idx, errcode, errlev;
+	uint32_t val, *ol_flags;
+
+	/* Skip ptype array memory */
+	ol_flags = (uint32_t *)mem;
+
+	for (idx = 0; idx < BIT(ERRCODE_ERRLEN_WIDTH); idx++) {
+		errcode = idx & 0xff;
+		errlev = (idx & 0x700) >> 8;
+
+		val = PKT_RX_IP_CKSUM_UNKNOWN;
+		val |= PKT_RX_L4_CKSUM_UNKNOWN;
+		val |= PKT_RX_OUTER_L4_CKSUM_UNKNOWN;
+
+		switch (errlev) {
+		case OCCTX_ERRLEV_RE:
+			if (errcode) {
+				val |= PKT_RX_IP_CKSUM_BAD;
+				val |= PKT_RX_L4_CKSUM_BAD;
+			} else {
+				val |= PKT_RX_IP_CKSUM_GOOD;
+				val |= PKT_RX_L4_CKSUM_GOOD;
+			}
+			break;
+		case OCCTX_ERRLEV_LC:
+			if (errcode == OCCTX_EC_IP4_CSUM) {
+				val |= PKT_RX_IP_CKSUM_BAD;
+				val |= PKT_RX_EIP_CKSUM_BAD;
+			} else {
+				val |= PKT_RX_IP_CKSUM_GOOD;
+			}
+			break;
+		case OCCTX_ERRLEV_LD:
+			/* Check if parsed packet is neither IPv4 or IPV6 */
+			if (errcode == OCCTX_EC_IP4_NOT)
+				break;
+			val |= PKT_RX_IP_CKSUM_GOOD;
+			if (errcode == OCCTX_EC_L4_CSUM)
+				val |= PKT_RX_OUTER_L4_CKSUM_BAD;
+			else
+				val |= PKT_RX_L4_CKSUM_GOOD;
+			break;
+		case OCCTX_ERRLEV_LE:
+			if (errcode == OCCTX_EC_IP4_CSUM)
+				val |= PKT_RX_IP_CKSUM_BAD;
+			else
+				val |= PKT_RX_IP_CKSUM_GOOD;
+			break;
+		case OCCTX_ERRLEV_LF:
+			/* Check if parsed packet is neither IPv4 or IPV6 */
+			if (errcode == OCCTX_EC_IP4_NOT)
+				break;
+			val |= PKT_RX_IP_CKSUM_GOOD;
+			if (errcode == OCCTX_EC_L4_CSUM)
+				val |= PKT_RX_L4_CKSUM_BAD;
+			else
+				val |= PKT_RX_L4_CKSUM_GOOD;
+			break;
+		}
+
+		ol_flags[idx] = val;
+	}
+}
+
+void *
+octeontx_fastpath_lookup_mem_get(void)
+{
+	const char name[] = OCCTX_FASTPATH_LOOKUP_MEM;
+	const struct rte_memzone *mz;
+	void *mem;
+
+	mz = rte_memzone_lookup(name);
+	if (mz != NULL)
+		return mz->addr;
+
+	/* Request for the first time */
+	mz = rte_memzone_reserve_aligned(name, LOOKUP_ARRAY_SZ,
+					 SOCKET_ID_ANY, 0, OCCTX_ALIGN);
+	if (mz != NULL) {
+		mem = mz->addr;
+		/* Form the rx ol_flags based on errcode */
+		octeontx_create_rx_ol_flags_array(mem);
+		return mem;
+	}
+	return NULL;
 }

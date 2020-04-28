@@ -272,6 +272,7 @@ ssovf_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	reg_off |= 1 << 16; /* Wait */
 	ws->getwork = ws->base + reg_off;
 	ws->port = port_id;
+	ws->lookup_mem = octeontx_fastpath_lookup_mem_get();
 
 	for (q = 0; q < edev->nb_event_queues; q++) {
 		ws->grps[q] = ssovf_bar(OCTEONTX_SSO_GROUP, q, 2);
