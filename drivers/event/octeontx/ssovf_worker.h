@@ -78,6 +78,15 @@ ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_info,
 		mbuf->data_len = mbuf->pkt_len;
 	}
 
+	if (!!(flag & OCCTX_RX_VLAN_FLTR_F)) {
+		if (likely(wqe->s.w2.vv)) {
+			mbuf->ol_flags |= PKT_RX_VLAN;
+			mbuf->vlan_tci =
+				ntohs(*((uint16_t *)((char *)mbuf->buf_addr +
+					mbuf->data_off + wqe->s.w4.vlptr + 2)));
+		}
+	}
+
 	mbuf->port = rte_octeontx_pchan_map[port_info >> 4][port_info & 0xF];
 	rte_mbuf_refcnt_set(mbuf, 1);
 

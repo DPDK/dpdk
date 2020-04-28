@@ -91,7 +91,7 @@ ssows_release_event(struct ssows *ws)
 		ssows_swtag_untag(ws);
 }
 
-#define R(name, f0, flags)						     \
+#define R(name, f1, f0, flags)						     \
 static uint16_t __rte_noinline	__rte_hot				     \
 ssows_deq_ ##name(void *port, struct rte_event *ev, uint64_t timeout_ticks)  \
 {									     \
@@ -347,49 +347,53 @@ SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
 	dev->txa_enqueue_same_dest = dev->txa_enqueue;
 
 	/* Assigning dequeue func pointers */
-	const event_dequeue_t ssow_deq[2] = {
-#define R(name, f0, flags)					\
-	[f0] =  ssows_deq_ ##name,
+	const event_dequeue_t ssow_deq[2][2] = {
+#define R(name, f1, f0, flags)					\
+	[f1][f0] =  ssows_deq_ ##name,
 
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
 	};
 
 	dev->dequeue = ssow_deq
+		[!!(edev->rx_offload_flags & OCCTX_RX_VLAN_FLTR_F)]
 		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
 
-	const event_dequeue_burst_t ssow_deq_burst[2] = {
-#define R(name, f0, flags)						\
-	[f0] =  ssows_deq_burst_ ##name,
+	const event_dequeue_burst_t ssow_deq_burst[2][2] = {
+#define R(name, f1, f0, flags)						\
+	[f1][f0] =  ssows_deq_burst_ ##name,
 
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
 	};
 
 	dev->dequeue_burst = ssow_deq_burst
+		[!!(edev->rx_offload_flags & OCCTX_RX_VLAN_FLTR_F)]
 		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
 
 	if (edev->is_timeout_deq) {
-		const event_dequeue_t ssow_deq_timeout[2] = {
-#define R(name, f0, flags)						\
-	[f0] =  ssows_deq_timeout_ ##name,
+		const event_dequeue_t ssow_deq_timeout[2][2] = {
+#define R(name, f1, f0, flags)						\
+	[f1][f0] =  ssows_deq_timeout_ ##name,
 
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
 		};
 
-		dev->dequeue = ssow_deq_timeout
-			[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
+	dev->dequeue = ssow_deq_timeout
+		[!!(edev->rx_offload_flags & OCCTX_RX_VLAN_FLTR_F)]
+		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
 
-	const event_dequeue_burst_t ssow_deq_timeout_burst[2] = {
-#define R(name, f0, flags)						\
-	[f0] =  ssows_deq_timeout_burst_ ##name,
+	const event_dequeue_burst_t ssow_deq_timeout_burst[2][2] = {
+#define R(name, f1, f0, flags)						\
+	[f1][f0] =  ssows_deq_timeout_burst_ ##name,
 
 SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
 #undef R
 		};
 
-		dev->dequeue_burst = ssow_deq_timeout_burst
-			[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
+	dev->dequeue_burst = ssow_deq_timeout_burst
+		[!!(edev->rx_offload_flags & OCCTX_RX_VLAN_FLTR_F)]
+		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
 	}
 }
