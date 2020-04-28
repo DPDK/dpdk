@@ -105,7 +105,7 @@ struct mlx5_indexed_trunk {
 	uint32_t next; /* Next free trunk in free list. */
 	uint32_t free; /* Free entries available */
 	struct rte_bitmap *bmp;
-	uint8_t data[] __rte_cache_min_aligned; /* Entry data start. */
+	uint8_t data[] __rte_cache_aligned; /* Entry data start. */
 };
 
 struct mlx5_indexed_pool {

@@ -265,7 +265,9 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	trunk_size += sizeof(*trunk);
 	data_size = mlx5_trunk_size_get(pool, idx);
 	bmp_size = rte_bitmap_get_memory_footprint(data_size);
-	trunk_size += data_size * pool->cfg.size + bmp_size;
+	/* rte_bitmap requires memory cacheline aligned. */
+	trunk_size += RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size);
+	trunk_size += bmp_size;
 	trunk = pool->cfg.malloc(pool->cfg.type, trunk_size,
 				 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!trunk)
@@ -278,8 +280,10 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	MLX5_ASSERT(pool->free_list == TRUNK_INVALID);
 	pool->free_list = idx;
 	/* Mark all entries as available. */
-	trunk->bmp = rte_bitmap_init_with_all_set(data_size,
-		     &trunk->data[data_size * pool->cfg.size], bmp_size);
+	trunk->bmp = rte_bitmap_init_with_all_set(data_size, &trunk->data
+		     [RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size)],
+		     bmp_size);
+	MLX5_ASSERT(trunk->bmp);
 	pool->n_trunk_valid++;
 #ifdef POOL_DEBUG
 	pool->trunk_new++;
