@@ -1110,6 +1110,8 @@ print_stats(__rte_unused void *arg)
 			dev_ll = dev_ll->next;
 		}
 		printf("\n================================================\n");
+
+		fflush(stdout);
 	}
 
 	return NULL;

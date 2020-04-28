@@ -329,6 +329,9 @@ show_stats_cb(__rte_unused void *param)
 	}
 
 	printf("\n====================================================\n");
+
+	fflush(stdout);
+
 	rte_eal_alarm_set(timer_period * US_PER_S, show_stats_cb, NULL);
 }
 

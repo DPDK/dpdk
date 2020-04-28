@@ -158,6 +158,8 @@ print_stats(void)
 						kni_stats[i].tx_dropped);
 	}
 	printf("======  ==============  ============  ============  ============  ============\n");
+
+	fflush(stdout);
 }
 
 /* Custom handling of signals to handle stats and kni processing */

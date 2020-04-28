@@ -160,6 +160,8 @@ print_stats(__rte_unused struct rte_timer *ptr_timer,
 		   total_packets_rx,
 		   total_packets_dropped);
 	printf("\n====================================================\n");
+
+	fflush(stdout);
 }
 
 static void

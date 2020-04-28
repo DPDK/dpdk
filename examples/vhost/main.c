@@ -1334,6 +1334,8 @@ print_stats(__rte_unused void *arg)
 		}
 
 		printf("===================================================\n");
+
+		fflush(stdout);
 	}
 
 	return NULL;

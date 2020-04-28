@@ -659,6 +659,8 @@ print_stats(struct stats_lcore_params *stats_lcore)
 		print_lcore_stats(stats_lcore->lconf[l_id].lcore_stats, l_id);
 	}
 
+	fflush(stdout);
+
 	free(xstats);
 	free(xstats_names);
 }

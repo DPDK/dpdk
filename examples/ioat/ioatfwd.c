@@ -294,6 +294,8 @@ print_stats(char *prgname)
 		printf("\n");
 		print_total_stats(&delta_ts);
 
+		fflush(stdout);
+
 		ts.total_packets_tx += delta_ts.total_packets_tx;
 		ts.total_packets_rx += delta_ts.total_packets_rx;
 		ts.total_packets_dropped += delta_ts.total_packets_dropped;

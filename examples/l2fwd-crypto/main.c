@@ -334,6 +334,8 @@ print_stats(void)
 		   total_packets_dropped,
 		   total_packets_errors);
 	printf("\n====================================================\n");
+
+	fflush(stdout);
 }
 
 static int
