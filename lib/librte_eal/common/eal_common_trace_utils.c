@@ -245,22 +245,19 @@ int
 eal_trace_dir_args_save(char const *val)
 {
 	struct trace *trace = trace_obj_get();
-	uint32_t size = sizeof(trace->dir);
-	char *dir_path = NULL;
+	char *dir_path;
 	int rc;
 
-	if (strlen(val) >= size) {
+	if (strlen(val) >= sizeof(trace->dir) - 1) {
 		trace_err("input string is too big");
 		return -ENAMETOOLONG;
 	}
 
-	dir_path = (char *)calloc(1, size);
-	if (dir_path == NULL) {
-		trace_err("fail to allocate memory");
+	if (asprintf(&dir_path, "%s/", val) == -1) {
+		trace_err("failed to copy directory: %s", strerror(errno));
 		return -ENOMEM;
 	}
 
-	sprintf(dir_path, "%s/", val);
 	rc = trace_dir_update(dir_path);
 
 	free(dir_path);
