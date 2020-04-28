@@ -1431,6 +1431,7 @@ iavf_dev_close(struct rte_eth_dev *dev)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	iavf_dev_stop(dev);
+	iavf_flow_flush(dev, NULL);
 	iavf_shutdown_adminq(hw);
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);

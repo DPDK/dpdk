@@ -306,6 +306,8 @@ struct iavf_flow_parser_node {
 void iavf_register_flow_engine(struct iavf_flow_engine *engine);
 int iavf_flow_init(struct iavf_adapter *ad);
 void iavf_flow_uninit(struct iavf_adapter *ad);
+int iavf_flow_flush(struct rte_eth_dev *dev,
+		struct rte_flow_error *error);
 int iavf_register_parser(struct iavf_flow_parser *parser,
 			 struct iavf_adapter *ad);
 void iavf_unregister_parser(struct iavf_flow_parser *parser,

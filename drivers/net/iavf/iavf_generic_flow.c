@@ -34,8 +34,6 @@ static struct rte_flow *iavf_flow_create(struct rte_eth_dev *dev,
 static int iavf_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow *flow,
 		struct rte_flow_error *error);
-static int iavf_flow_flush(struct rte_eth_dev *dev,
-		struct rte_flow_error *error);
 static int iavf_flow_query(struct rte_eth_dev *dev,
 		struct rte_flow *flow,
 		const struct rte_flow_action *actions,
@@ -966,7 +964,7 @@ iavf_flow_destroy(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static int
+int
 iavf_flow_flush(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
