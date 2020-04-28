@@ -113,6 +113,25 @@ enum rte_cpu_flag_t {
 	/* (EAX 80000007h) EDX features */
 	RTE_CPUFLAG_INVTSC,                 /**< INVTSC */
 
+	RTE_CPUFLAG_AVX512DQ,               /**< AVX512 Doubleword and Quadword */
+	RTE_CPUFLAG_AVX512IFMA,             /**< AVX512 Integer Fused Multiply-Add */
+	RTE_CPUFLAG_AVX512CD,               /**< AVX512 Conflict Detection*/
+	RTE_CPUFLAG_AVX512BW,               /**< AVX512 Byte and Word */
+	RTE_CPUFLAG_AVX512VL,               /**< AVX512 Vector Length */
+	RTE_CPUFLAG_AVX512VBMI,             /**< AVX512 Vector Bit Manipulation */
+	RTE_CPUFLAG_AVX512VBMI2,            /**< AVX512 Vector Bit Manipulation 2 */
+	RTE_CPUFLAG_GFNI,                   /**< Galois Field New Instructions */
+	RTE_CPUFLAG_VAES,                   /**< Vector AES */
+	RTE_CPUFLAG_VPCLMULQDQ,             /**< Vector Carry-less Multiply */
+	RTE_CPUFLAG_AVX512VNNI,
+	/**< AVX512 Vector Neural Network Instructions */
+	RTE_CPUFLAG_AVX512BITALG,           /**< AVX512 Bit Algorithms */
+	RTE_CPUFLAG_AVX512VPOPCNTDQ,        /**< AVX512 Vector Popcount */
+	RTE_CPUFLAG_CLDEMOTE,               /**< Cache Line Demote */
+	RTE_CPUFLAG_MOVDIRI,                /**< Direct Store Instructions */
+	RTE_CPUFLAG_MOVDIR64B,              /**< Direct Store Instructions 64B */
+	RTE_CPUFLAG_AVX512VP2INTERSECT,     /**< AVX512 Two Register Intersection */
+
 	/* The last item */
 	RTE_CPUFLAG_NUMFLAGS,               /**< This should always be the last! */
 };

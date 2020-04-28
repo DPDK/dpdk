@@ -35,3 +35,8 @@
         type_kind = enum
         name = rte_eth_event_type
         changed_enumerators = RTE_ETH_EVENT_MAX
+; Ignore this enum update as new flags remain unknown to applications
+[suppress_type]
+	type_kind = enum
+	name = rte_cpu_flag_t
+	changed_enumerators = RTE_CPUFLAG_NUMFLAGS
