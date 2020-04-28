@@ -237,7 +237,7 @@ Display the RSS hash functions and RSS hash key of a port::
 clear port
 ~~~~~~~~~~
 
-Clear the port statistics for a given port or for all ports::
+Clear the port statistics and forward engine statistics for a given port or for all ports::
 
    testpmd> clear port (info|stats|xstats|fdir|stat_qmap) (port_id|all)
 
