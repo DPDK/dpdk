@@ -27,7 +27,7 @@ ef10_evb_fini(
 	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 }
 
-	__checkReturn	efx_rc_t
+static	__checkReturn	efx_rc_t
 efx_mcdi_vswitch_alloc(
 	__in		efx_nic_t *enp,
 	__in		efx_vport_id_t vport_id,
@@ -94,7 +94,7 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn	efx_rc_t
+static	__checkReturn	efx_rc_t
 efx_mcdi_vswitch_free(
 	__in		efx_nic_t *enp)
 {
@@ -125,7 +125,7 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn	efx_rc_t
+static	__checkReturn	efx_rc_t
 efx_mcdi_vport_alloc(
 	__in		efx_nic_t *enp,
 	__in		efx_vport_type_t vport_type,
@@ -188,7 +188,7 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn	efx_rc_t
+static	__checkReturn	efx_rc_t
 efx_mcdi_vport_free(
 	__in		efx_nic_t *enp,
 	__in		efx_vport_id_t vport_id)
@@ -219,7 +219,7 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn			efx_rc_t
+static	__checkReturn			efx_rc_t
 efx_mcdi_vport_mac_addr_add(
 	__in				efx_nic_t *enp,
 	__in				efx_vport_id_t vport_id,
@@ -254,7 +254,7 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn			efx_rc_t
+static	__checkReturn			efx_rc_t
 efx_mcdi_vport_mac_addr_del(
 	__in				efx_nic_t *enp,
 	__in				efx_vport_id_t vport_id,
@@ -289,7 +289,7 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn	efx_rc_t
+static	__checkReturn	efx_rc_t
 efx_mcdi_port_assign(
 	__in		efx_nic_t *enp,
 	__in		efx_vport_id_t vport_id,
@@ -326,7 +326,7 @@ fail1:
 	return (rc);
 }
 
-	__checkReturn				efx_rc_t
+static	__checkReturn				efx_rc_t
 efx_mcdi_vport_reconfigure(
 	__in					efx_nic_t *enp,
 	__in					efx_vport_id_t vport_id,
