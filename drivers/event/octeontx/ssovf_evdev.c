@@ -138,42 +138,6 @@ ssovf_mbox_timeout_ticks(uint64_t ns, uint64_t *tmo_ticks)
 }
 
 static void
-ssovf_fastpath_fns_set(struct rte_eventdev *dev)
-{
-	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
-
-	dev->enqueue       = ssows_enq;
-	dev->enqueue_burst = ssows_enq_burst;
-	dev->enqueue_new_burst = ssows_enq_new_burst;
-	dev->enqueue_forward_burst = ssows_enq_fwd_burst;
-
-	if (!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)) {
-		dev->dequeue       = ssows_deq_mseg;
-		dev->dequeue_burst = ssows_deq_burst_mseg;
-
-		if (edev->is_timeout_deq) {
-			dev->dequeue       = ssows_deq_timeout_mseg;
-			dev->dequeue_burst = ssows_deq_timeout_burst_mseg;
-		}
-	} else {
-		dev->dequeue       = ssows_deq;
-		dev->dequeue_burst = ssows_deq_burst;
-
-		if (edev->is_timeout_deq) {
-			dev->dequeue       = ssows_deq_timeout;
-			dev->dequeue_burst = ssows_deq_timeout_burst;
-		}
-	}
-
-	if (!!(edev->tx_offload_flags & OCCTX_TX_MULTI_SEG_F))
-		dev->txa_enqueue = sso_event_tx_adapter_enqueue_mseg;
-	else
-		dev->txa_enqueue = sso_event_tx_adapter_enqueue;
-
-	dev->txa_enqueue_same_dest = dev->txa_enqueue;
-}
-
-static void
 ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 {
 	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);

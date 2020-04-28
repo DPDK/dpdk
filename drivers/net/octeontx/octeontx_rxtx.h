@@ -484,4 +484,11 @@ T(noff_ol3ol4csum_l3l4csum_mseg,	1, 1, 1, 1,	14,		       \
 					NOFF_F | OL3OL4CSUM_F | L3L4CSUM_F |   \
 					MULT_F)
 
+/* RX offload macros */
+#define MULT_RX_F       OCCTX_RX_MULTI_SEG_F
+/* [MULTI_SEG] */
+#define OCCTX_RX_FASTPATH_MODES						\
+R(no_offload,				0,  OCCTX_RX_OFFLOAD_NONE)	\
+R(mseg,					1,  MULT_RX_F)		\
+
  #endif /* __OCTEONTX_RXTX_H__ */

@@ -14,6 +14,9 @@
 
 #include "octeontx_rxtx.h"
 
+#define SSO_RX_ADPTR_ENQ_FASTPATH_FUNC	OCCTX_RX_FASTPATH_MODES
+#define SSO_TX_ADPTR_ENQ_FASTPATH_FUNC	OCCTX_TX_FASTPATH_MODES
+
 #define EVENTDEV_NAME_OCTEONTX_PMD event_octeontx
 
 #define SSOVF_LOG(level, fmt, args...) \
@@ -171,32 +174,13 @@ uint16_t ssows_enq_new_burst(void *port,
 		const struct rte_event ev[], uint16_t nb_events);
 uint16_t ssows_enq_fwd_burst(void *port,
 		const struct rte_event ev[], uint16_t nb_events);
-uint16_t ssows_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks);
-uint16_t ssows_deq_burst(void *port, struct rte_event ev[],
-		uint16_t nb_events, uint64_t timeout_ticks);
-uint16_t ssows_deq_timeout(void *port, struct rte_event *ev,
-		uint64_t timeout_ticks);
-uint16_t ssows_deq_timeout_burst(void *port, struct rte_event ev[],
-		uint16_t nb_events, uint64_t timeout_ticks);
-uint16_t ssows_deq_mseg(void *port, struct rte_event *ev,
-			uint64_t timeout_ticks);
-uint16_t ssows_deq_burst_mseg(void *port, struct rte_event ev[],
-		uint16_t nb_events, uint64_t timeout_ticks);
-uint16_t ssows_deq_timeout_mseg(void *port, struct rte_event *ev,
-		uint64_t timeout_ticks);
-uint16_t ssows_deq_timeout_burst_mseg(void *port, struct rte_event ev[],
-		uint16_t nb_events, uint64_t timeout_ticks);
-
 typedef void (*ssows_handle_event_t)(void *arg, struct rte_event ev);
 void ssows_flush_events(struct ssows *ws, uint8_t queue_id,
 		ssows_handle_event_t fn, void *arg);
 void ssows_reset(struct ssows *ws);
-uint16_t sso_event_tx_adapter_enqueue(void *port,
-		struct rte_event ev[], uint16_t nb_events);
-uint16_t sso_event_tx_adapter_enqueue_mseg(void *port,
-		struct rte_event ev[], uint16_t nb_events);
 int ssovf_info(struct ssovf_info *info);
 void *ssovf_bar(enum ssovf_type, uint8_t id, uint8_t bar);
 int test_eventdev_octeontx(void);
+void ssovf_fastpath_fns_set(struct rte_eventdev *dev);
 
 #endif /* __SSOVF_EVDEV_H__ */

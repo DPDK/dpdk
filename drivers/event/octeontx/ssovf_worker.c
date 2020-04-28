@@ -91,112 +91,62 @@ ssows_release_event(struct ssows *ws)
 		ssows_swtag_untag(ws);
 }
 
-__rte_always_inline uint16_t __rte_hot
-ssows_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
-{
-	struct ssows *ws = port;
-
-	RTE_SET_USED(timeout_ticks);
-
-	if (ws->swtag_req) {
-		ws->swtag_req = 0;
-		ssows_swtag_wait(ws);
-		return 1;
-	} else {
-		return ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE);
-	}
+#define R(name, f0, flags)						     \
+static uint16_t __rte_noinline	__rte_hot				     \
+ssows_deq_ ##name(void *port, struct rte_event *ev, uint64_t timeout_ticks)  \
+{									     \
+	struct ssows *ws = port;					     \
+									     \
+	RTE_SET_USED(timeout_ticks);					     \
+									     \
+	if (ws->swtag_req) {						     \
+		ws->swtag_req = 0;					     \
+		ssows_swtag_wait(ws);					     \
+		return 1;						     \
+	} else {							     \
+		return ssows_get_work(ws, ev, flags);		             \
+	}								     \
+}									     \
+									     \
+static uint16_t __rte_hot						     \
+ssows_deq_burst_ ##name(void *port, struct rte_event ev[],		     \
+			 uint16_t nb_events, uint64_t timeout_ticks)	     \
+{									     \
+	RTE_SET_USED(nb_events);					     \
+									     \
+	return ssows_deq_ ##name(port, ev, timeout_ticks);		     \
+}									     \
+									     \
+static uint16_t __rte_hot						     \
+ssows_deq_timeout_ ##name(void *port, struct rte_event *ev,		     \
+			  uint64_t timeout_ticks)			     \
+{									     \
+	struct ssows *ws = port;					     \
+	uint64_t iter;							     \
+	uint16_t ret = 1;						     \
+									     \
+	if (ws->swtag_req) {						     \
+		ws->swtag_req = 0;					     \
+		ssows_swtag_wait(ws);					     \
+	} else {							     \
+		ret = ssows_get_work(ws, ev, flags);			     \
+		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)   \
+			ret = ssows_get_work(ws, ev, flags);		     \
+	}								     \
+	return ret;							     \
+}									     \
+									     \
+static uint16_t __rte_hot						     \
+ssows_deq_timeout_burst_ ##name(void *port, struct rte_event ev[],	     \
+				uint16_t nb_events, uint64_t timeout_ticks)  \
+{									     \
+	RTE_SET_USED(nb_events);					     \
+									     \
+	return ssows_deq_timeout_ ##name(port, ev, timeout_ticks);	     \
 }
 
-__rte_always_inline uint16_t __rte_hot
-ssows_deq_timeout(void *port, struct rte_event *ev, uint64_t timeout_ticks)
-{
-	struct ssows *ws = port;
-	uint64_t iter;
-	uint16_t ret = 1;
-
-	if (ws->swtag_req) {
-		ws->swtag_req = 0;
-		ssows_swtag_wait(ws);
-	} else {
-		ret = ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE);
-		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)
-			ret = ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE);
-	}
-	return ret;
-}
-
-uint16_t __rte_hot
-ssows_deq_burst(void *port, struct rte_event ev[], uint16_t nb_events,
-		uint64_t timeout_ticks)
-{
-	RTE_SET_USED(nb_events);
-
-	return ssows_deq(port, ev, timeout_ticks);
-}
-
-uint16_t __rte_hot
-ssows_deq_timeout_burst(void *port, struct rte_event ev[], uint16_t nb_events,
-			uint64_t timeout_ticks)
-{
-	RTE_SET_USED(nb_events);
-
-	return ssows_deq_timeout(port, ev, timeout_ticks);
-}
-
-__rte_always_inline uint16_t __rte_hot
-ssows_deq_mseg(void *port, struct rte_event *ev, uint64_t timeout_ticks)
-{
-	struct ssows *ws = port;
-
-	RTE_SET_USED(timeout_ticks);
-
-	if (ws->swtag_req) {
-		ws->swtag_req = 0;
-		ssows_swtag_wait(ws);
-		return 1;
-	} else {
-		return ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE |
-				      OCCTX_RX_MULTI_SEG_F);
-	}
-}
-
-__rte_always_inline uint16_t __rte_hot
-ssows_deq_timeout_mseg(void *port, struct rte_event *ev, uint64_t timeout_ticks)
-{
-	struct ssows *ws = port;
-	uint64_t iter;
-	uint16_t ret = 1;
-
-	if (ws->swtag_req) {
-		ws->swtag_req = 0;
-		ssows_swtag_wait(ws);
-	} else {
-		ret = ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE |
-				     OCCTX_RX_MULTI_SEG_F);
-		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)
-			ret = ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE |
-					     OCCTX_RX_MULTI_SEG_F);
-	}
-	return ret;
-}
-
-uint16_t __rte_hot
-ssows_deq_burst_mseg(void *port, struct rte_event ev[], uint16_t nb_events,
-		uint64_t timeout_ticks)
-{
-	RTE_SET_USED(nb_events);
-
-	return ssows_deq_mseg(port, ev, timeout_ticks);
-}
-
-uint16_t __rte_hot
-ssows_deq_timeout_burst_mseg(void *port, struct rte_event ev[],
-			     uint16_t nb_events, uint64_t timeout_ticks)
-{
-	RTE_SET_USED(nb_events);
-
-	return ssows_deq_timeout_mseg(port, ev, timeout_ticks);
-}
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
 
 __rte_always_inline uint16_t __rte_hot
 ssows_enq(void *port, const struct rte_event *ev)
@@ -321,7 +271,8 @@ ssows_reset(struct ssows *ws)
 
 static __rte_always_inline uint16_t
 __sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
-			       uint16_t nb_events, const uint16_t flag)
+			       uint16_t nb_events, uint64_t *cmd,
+			       const uint16_t flag)
 {
 	uint16_t port_id;
 	uint16_t queue_id;
@@ -329,9 +280,7 @@ __sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
 	struct rte_eth_dev *ethdev;
 	struct ssows *ws = port;
 	struct octeontx_txq *txq;
-	uint64_t cmd[4];
 
-	RTE_SET_USED(nb_events);
 	switch (ev->sched_type) {
 	case SSO_SYNC_ORDERED:
 		ssows_swtag_norm(ws, ev->event, SSO_SYNC_ATOMIC);
@@ -355,22 +304,92 @@ __sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
 	ethdev = &rte_eth_devices[port_id];
 	txq = ethdev->data->tx_queues[queue_id];
 
-	return __octeontx_xmit_pkts(txq, &m, 1, cmd, flag);
+	return __octeontx_xmit_pkts(txq, &m, nb_events, cmd, flag);
 }
 
-uint16_t
-sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
-			     uint16_t nb_events)
-{
-	return __sso_event_tx_adapter_enqueue(port, ev, nb_events,
-					      OCCTX_TX_OFFLOAD_NONE);
+#define T(name, f3, f2, f1, f0, sz, flags)				     \
+static uint16_t __rte_noinline	__rte_hot				     \
+sso_event_tx_adapter_enqueue_ ## name(void *port, struct rte_event ev[],     \
+				  uint16_t nb_events)			     \
+{									     \
+	uint64_t cmd[sz];						     \
+	return __sso_event_tx_adapter_enqueue(port, ev, nb_events, cmd,	     \
+					      flags);			     \
 }
 
-uint16_t
-sso_event_tx_adapter_enqueue_mseg(void *port, struct rte_event ev[],
-				  uint16_t nb_events)
+SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+#undef T
+
+void
+ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 {
-	return __sso_event_tx_adapter_enqueue(port, ev, nb_events,
-					      OCCTX_TX_OFFLOAD_NONE |
-					      OCCTX_TX_MULTI_SEG_F);
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+
+	dev->enqueue       = ssows_enq;
+	dev->enqueue_burst = ssows_enq_burst;
+	dev->enqueue_new_burst = ssows_enq_new_burst;
+	dev->enqueue_forward_burst = ssows_enq_fwd_burst;
+
+	const event_tx_adapter_enqueue ssow_txa_enqueue[2][2][2][2] = {
+#define T(name, f3, f2, f1, f0, sz, flags)				\
+	[f3][f2][f1][f0] =  sso_event_tx_adapter_enqueue_ ##name,
+
+SSO_TX_ADPTR_ENQ_FASTPATH_FUNC
+#undef T
+	};
+
+	dev->txa_enqueue = ssow_txa_enqueue
+		[!!(edev->tx_offload_flags & OCCTX_TX_OFFLOAD_MBUF_NOFF_F)]
+		[0]
+		[0]
+		[!!(edev->tx_offload_flags & OCCTX_TX_MULTI_SEG_F)];
+
+	dev->txa_enqueue_same_dest = dev->txa_enqueue;
+
+	/* Assigning dequeue func pointers */
+	const event_dequeue_t ssow_deq[2] = {
+#define R(name, f0, flags)					\
+	[f0] =  ssows_deq_ ##name,
+
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	dev->dequeue = ssow_deq
+		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
+
+	const event_dequeue_burst_t ssow_deq_burst[2] = {
+#define R(name, f0, flags)						\
+	[f0] =  ssows_deq_burst_ ##name,
+
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+	};
+
+	dev->dequeue_burst = ssow_deq_burst
+		[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
+
+	if (edev->is_timeout_deq) {
+		const event_dequeue_t ssow_deq_timeout[2] = {
+#define R(name, f0, flags)						\
+	[f0] =  ssows_deq_timeout_ ##name,
+
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+		};
+
+		dev->dequeue = ssow_deq_timeout
+			[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
+
+	const event_dequeue_burst_t ssow_deq_timeout_burst[2] = {
+#define R(name, f0, flags)						\
+	[f0] =  ssows_deq_timeout_burst_ ##name,
+
+SSO_RX_ADPTR_ENQ_FASTPATH_FUNC
+#undef R
+		};
+
+		dev->dequeue_burst = ssow_deq_timeout_burst
+			[!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)];
+	}
 }
