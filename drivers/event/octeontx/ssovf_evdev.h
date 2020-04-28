@@ -12,6 +12,8 @@
 #include <octeontx_mbox.h>
 #include <octeontx_ethdev.h>
 
+#include "octeontx_rxtx.h"
+
 #define EVENTDEV_NAME_OCTEONTX_PMD event_octeontx
 
 #define SSOVF_LOG(level, fmt, args...) \
@@ -132,6 +134,7 @@ enum ssovf_type {
 };
 
 struct ssovf_evdev {
+	OFFLOAD_FLAGS; /*Sequence should not be changed */
 	uint8_t max_event_queues;
 	uint8_t max_event_ports;
 	uint8_t is_timeout_deq;
@@ -175,12 +178,22 @@ uint16_t ssows_deq_timeout(void *port, struct rte_event *ev,
 		uint64_t timeout_ticks);
 uint16_t ssows_deq_timeout_burst(void *port, struct rte_event ev[],
 		uint16_t nb_events, uint64_t timeout_ticks);
+uint16_t ssows_deq_mseg(void *port, struct rte_event *ev,
+			uint64_t timeout_ticks);
+uint16_t ssows_deq_burst_mseg(void *port, struct rte_event ev[],
+		uint16_t nb_events, uint64_t timeout_ticks);
+uint16_t ssows_deq_timeout_mseg(void *port, struct rte_event *ev,
+		uint64_t timeout_ticks);
+uint16_t ssows_deq_timeout_burst_mseg(void *port, struct rte_event ev[],
+		uint16_t nb_events, uint64_t timeout_ticks);
 
 typedef void (*ssows_handle_event_t)(void *arg, struct rte_event ev);
 void ssows_flush_events(struct ssows *ws, uint8_t queue_id,
 		ssows_handle_event_t fn, void *arg);
 void ssows_reset(struct ssows *ws);
 uint16_t sso_event_tx_adapter_enqueue(void *port,
+		struct rte_event ev[], uint16_t nb_events);
+uint16_t sso_event_tx_adapter_enqueue_mseg(void *port,
 		struct rte_event ev[], uint16_t nb_events);
 int ssovf_info(struct ssovf_info *info);
 void *ssovf_bar(enum ssovf_type, uint8_t id, uint8_t bar);

@@ -103,7 +103,7 @@ ssows_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 		ssows_swtag_wait(ws);
 		return 1;
 	} else {
-		return ssows_get_work(ws, ev);
+		return ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE);
 	}
 }
 
@@ -118,9 +118,9 @@ ssows_deq_timeout(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 		ws->swtag_req = 0;
 		ssows_swtag_wait(ws);
 	} else {
-		ret = ssows_get_work(ws, ev);
+		ret = ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE);
 		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)
-			ret = ssows_get_work(ws, ev);
+			ret = ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE);
 	}
 	return ret;
 }
@@ -141,6 +141,61 @@ ssows_deq_timeout_burst(void *port, struct rte_event ev[], uint16_t nb_events,
 	RTE_SET_USED(nb_events);
 
 	return ssows_deq_timeout(port, ev, timeout_ticks);
+}
+
+__rte_always_inline uint16_t __rte_hot
+ssows_deq_mseg(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+{
+	struct ssows *ws = port;
+
+	RTE_SET_USED(timeout_ticks);
+
+	if (ws->swtag_req) {
+		ws->swtag_req = 0;
+		ssows_swtag_wait(ws);
+		return 1;
+	} else {
+		return ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE |
+				      OCCTX_RX_MULTI_SEG_F);
+	}
+}
+
+__rte_always_inline uint16_t __rte_hot
+ssows_deq_timeout_mseg(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+{
+	struct ssows *ws = port;
+	uint64_t iter;
+	uint16_t ret = 1;
+
+	if (ws->swtag_req) {
+		ws->swtag_req = 0;
+		ssows_swtag_wait(ws);
+	} else {
+		ret = ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE |
+				     OCCTX_RX_MULTI_SEG_F);
+		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)
+			ret = ssows_get_work(ws, ev, OCCTX_RX_OFFLOAD_NONE |
+					     OCCTX_RX_MULTI_SEG_F);
+	}
+	return ret;
+}
+
+uint16_t __rte_hot
+ssows_deq_burst_mseg(void *port, struct rte_event ev[], uint16_t nb_events,
+		uint64_t timeout_ticks)
+{
+	RTE_SET_USED(nb_events);
+
+	return ssows_deq_mseg(port, ev, timeout_ticks);
+}
+
+uint16_t __rte_hot
+ssows_deq_timeout_burst_mseg(void *port, struct rte_event ev[],
+			     uint16_t nb_events, uint64_t timeout_ticks)
+{
+	RTE_SET_USED(nb_events);
+
+	return ssows_deq_timeout_mseg(port, ev, timeout_ticks);
 }
 
 __rte_always_inline uint16_t __rte_hot
@@ -231,7 +286,9 @@ ssows_flush_events(struct ssows *ws, uint8_t queue_id,
 		ev.event = sched_type_queue | (get_work0 & 0xffffffff);
 		if (get_work1 && ev.event_type == RTE_EVENT_TYPE_ETHDEV)
 			ev.mbuf = ssovf_octeontx_wqe_to_pkt(get_work1,
-					(ev.event >> 20) & 0x7F);
+					(ev.event >> 20) & 0x7F,
+					OCCTX_RX_OFFLOAD_NONE |
+					OCCTX_RX_MULTI_SEG_F);
 		else
 			ev.u64 = get_work1;
 
@@ -262,9 +319,9 @@ ssows_reset(struct ssows *ws)
 	}
 }
 
-uint16_t
-sso_event_tx_adapter_enqueue(void *port,
-		struct rte_event ev[], uint16_t nb_events)
+static __rte_always_inline uint16_t
+__sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
+			       uint16_t nb_events, const uint16_t flag)
 {
 	uint16_t port_id;
 	uint16_t queue_id;
@@ -298,5 +355,22 @@ sso_event_tx_adapter_enqueue(void *port,
 	ethdev = &rte_eth_devices[port_id];
 	txq = ethdev->data->tx_queues[queue_id];
 
-	return __octeontx_xmit_pkts(txq, &m, 1, cmd, OCCTX_TX_OFFLOAD_NONE);
+	return __octeontx_xmit_pkts(txq, &m, 1, cmd, flag);
+}
+
+uint16_t
+sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
+			     uint16_t nb_events)
+{
+	return __sso_event_tx_adapter_enqueue(port, ev, nb_events,
+					      OCCTX_TX_OFFLOAD_NONE);
+}
+
+uint16_t
+sso_event_tx_adapter_enqueue_mseg(void *port, struct rte_event ev[],
+				  uint16_t nb_events)
+{
+	return __sso_event_tx_adapter_enqueue(port, ev, nb_events,
+					      OCCTX_TX_OFFLOAD_NONE |
+					      OCCTX_TX_MULTI_SEG_F);
 }

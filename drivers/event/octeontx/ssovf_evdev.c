@@ -146,15 +146,31 @@ ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 	dev->enqueue_burst = ssows_enq_burst;
 	dev->enqueue_new_burst = ssows_enq_new_burst;
 	dev->enqueue_forward_burst = ssows_enq_fwd_burst;
-	dev->dequeue       = ssows_deq;
-	dev->dequeue_burst = ssows_deq_burst;
-	dev->txa_enqueue = sso_event_tx_adapter_enqueue;
-	dev->txa_enqueue_same_dest = dev->txa_enqueue;
 
-	if (edev->is_timeout_deq) {
-		dev->dequeue       = ssows_deq_timeout;
-		dev->dequeue_burst = ssows_deq_timeout_burst;
+	if (!!(edev->rx_offload_flags & OCCTX_RX_MULTI_SEG_F)) {
+		dev->dequeue       = ssows_deq_mseg;
+		dev->dequeue_burst = ssows_deq_burst_mseg;
+
+		if (edev->is_timeout_deq) {
+			dev->dequeue       = ssows_deq_timeout_mseg;
+			dev->dequeue_burst = ssows_deq_timeout_burst_mseg;
+		}
+	} else {
+		dev->dequeue       = ssows_deq;
+		dev->dequeue_burst = ssows_deq_burst;
+
+		if (edev->is_timeout_deq) {
+			dev->dequeue       = ssows_deq_timeout;
+			dev->dequeue_burst = ssows_deq_timeout_burst;
+		}
 	}
+
+	if (!!(edev->tx_offload_flags & OCCTX_TX_MULTI_SEG_F))
+		dev->txa_enqueue = sso_event_tx_adapter_enqueue_mseg;
+	else
+		dev->txa_enqueue = sso_event_tx_adapter_enqueue;
+
+	dev->txa_enqueue_same_dest = dev->txa_enqueue;
 }
 
 static void
@@ -411,6 +427,7 @@ ssovf_eth_rx_adapter_queue_add(const struct rte_eventdev *dev,
 {
 	int ret = 0;
 	const struct octeontx_nic *nic = eth_dev->data->dev_private;
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
 	pki_mod_qos_t pki_qos;
 	RTE_SET_USED(dev);
 
@@ -447,6 +464,8 @@ ssovf_eth_rx_adapter_queue_add(const struct rte_eventdev *dev,
 		ssovf_log_err("failed to modify QOS, port=%d, q=%d",
 				nic->port_id, queue_conf->ev.queue_id);
 
+	edev->rx_offload_flags = nic->rx_offload_flags;
+	edev->tx_offload_flags = nic->tx_offload_flags;
 	return ret;
 }
 
