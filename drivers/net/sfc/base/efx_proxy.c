@@ -23,7 +23,7 @@ static const efx_proxy_ops_t	__efx_proxy_dummy_ops = {
 };
 #endif /* EFSYS_OPT_SIENA */
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 static const efx_proxy_ops_t			__efx_proxy_ef10_ops = {
 	ef10_proxy_auth_init,			/* epo_init */
 	ef10_proxy_auth_fini,			/* epo_fini */
@@ -35,7 +35,7 @@ static const efx_proxy_ops_t			__efx_proxy_ef10_ops = {
 	ef10_proxy_auth_exec_cmd,		/* epo_exec_cmd */
 	ef10_proxy_auth_get_privilege_mask,	/* epo_get_privilege_mask */
 };
-#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif /* EFX_OPTS_EF10() */
 
 	__checkReturn	efx_rc_t
 efx_proxy_auth_init(
