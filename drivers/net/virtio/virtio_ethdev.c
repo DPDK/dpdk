@@ -1523,9 +1523,12 @@ set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 	if (vtpci_packed_queue(hw)) {
 		PMD_INIT_LOG(INFO,
 			"virtio: using packed ring %s Tx path on port %u",
-			hw->use_inorder_tx ? "inorder" : "standard",
+			hw->use_vec_tx ? "vectorized" : "standard",
 			eth_dev->data->port_id);
-		eth_dev->tx_pkt_burst = virtio_xmit_pkts_packed;
+		if (hw->use_vec_tx)
+			eth_dev->tx_pkt_burst = virtio_xmit_pkts_packed_vec;
+		else
+			eth_dev->tx_pkt_burst = virtio_xmit_pkts_packed;
 	} else {
 		if (hw->use_inorder_tx) {
 			PMD_INIT_LOG(INFO, "virtio: using inorder Tx path on port %u",
@@ -1539,7 +1542,13 @@ set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 	}
 
 	if (vtpci_packed_queue(hw)) {
-		if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+		if (hw->use_vec_rx) {
+			PMD_INIT_LOG(INFO,
+				"virtio: using packed ring vectorized Rx path on port %u",
+				eth_dev->data->port_id);
+			eth_dev->rx_pkt_burst =
+				&virtio_recv_pkts_packed_vec;
+		} else if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
 			PMD_INIT_LOG(INFO,
 				"virtio: using packed ring mergeable buffer Rx path on port %u",
 				eth_dev->data->port_id);
@@ -1952,8 +1961,17 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_virtio_init;
 
 	if (vectorized) {
-		if (!vtpci_packed_queue(hw))
+		if (!vtpci_packed_queue(hw)) {
 			hw->use_vec_rx = 1;
+		} else {
+#if !defined(CC_AVX512_SUPPORT)
+			PMD_DRV_LOG(INFO,
+				"building environment do not support packed ring vectorized");
+#else
+			hw->use_vec_rx = 1;
+			hw->use_vec_tx = 1;
+#endif
+		}
 	}
 
 	hw->opened = true;
@@ -2288,31 +2306,66 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return -EBUSY;
 		}
 
-	if (vtpci_with_feature(hw, VIRTIO_F_IN_ORDER)) {
-		hw->use_inorder_tx = 1;
-		hw->use_inorder_rx = 1;
-		hw->use_vec_rx = 0;
-	}
-
 	if (vtpci_packed_queue(hw)) {
+#if defined(RTE_ARCH_X86_64) && defined(CC_AVX512_SUPPORT)
+		if ((hw->use_vec_rx || hw->use_vec_tx) &&
+		    (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) ||
+		     !vtpci_with_feature(hw, VIRTIO_F_IN_ORDER) ||
+		     !vtpci_with_feature(hw, VIRTIO_F_VERSION_1))) {
+			PMD_DRV_LOG(INFO,
+				"disabled packed ring vectorized path for requirements not met");
+			hw->use_vec_rx = 0;
+			hw->use_vec_tx = 0;
+		}
+#else
 		hw->use_vec_rx = 0;
-		hw->use_inorder_rx = 0;
-	}
-
-#if defined RTE_ARCH_ARM64 || defined RTE_ARCH_ARM
-	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON)) {
-		hw->use_vec_rx = 0;
-	}
+		hw->use_vec_tx = 0;
 #endif
-	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
-		hw->use_vec_rx = 0;
-	}
 
-	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
-			   DEV_RX_OFFLOAD_TCP_CKSUM |
-			   DEV_RX_OFFLOAD_TCP_LRO |
-			   DEV_RX_OFFLOAD_VLAN_STRIP))
-		hw->use_vec_rx = 0;
+		if (hw->use_vec_rx) {
+			if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+				PMD_DRV_LOG(INFO,
+					"disabled packed ring vectorized rx for mrg_rxbuf enabled");
+				hw->use_vec_rx = 0;
+			}
+
+			if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO) {
+				PMD_DRV_LOG(INFO,
+					"disabled packed ring vectorized rx for TCP_LRO enabled");
+				hw->use_vec_rx = 0;
+			}
+		}
+	} else {
+		if (vtpci_with_feature(hw, VIRTIO_F_IN_ORDER)) {
+			hw->use_inorder_tx = 1;
+			hw->use_inorder_rx = 1;
+			hw->use_vec_rx = 0;
+		}
+
+		if (hw->use_vec_rx) {
+#if defined RTE_ARCH_ARM64 || defined RTE_ARCH_ARM
+			if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON)) {
+				PMD_DRV_LOG(INFO,
+					"disabled split ring vectorized path for requirement not met");
+				hw->use_vec_rx = 0;
+			}
+#endif
+			if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+				PMD_DRV_LOG(INFO,
+					"disabled split ring vectorized rx for mrg_rxbuf enabled");
+				hw->use_vec_rx = 0;
+			}
+
+			if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
+					   DEV_RX_OFFLOAD_TCP_CKSUM |
+					   DEV_RX_OFFLOAD_TCP_LRO |
+					   DEV_RX_OFFLOAD_VLAN_STRIP)) {
+				PMD_DRV_LOG(INFO,
+					"disabled split ring vectorized rx for offloading enabled");
+				hw->use_vec_rx = 0;
+			}
+		}
+	}
 
 	return 0;
 }
