@@ -438,6 +438,27 @@ mlx5_flow_id_release(struct mlx5_flow_id_pool *pool, uint32_t id)
 }
 
 /**
+ * Initialize the shared aging list information per port.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object.
+ */
+static void
+mlx5_flow_aging_init(struct mlx5_ibv_shared *sh)
+{
+	uint32_t i;
+	struct mlx5_age_info *age_info;
+
+	for (i = 0; i < sh->max_port; i++) {
+		age_info = &sh->port[i].age_info;
+		age_info->flags = 0;
+		TAILQ_INIT(&age_info->aged_counters);
+		rte_spinlock_init(&age_info->aged_sl);
+		MLX5_AGE_SET(age_info, MLX5_AGE_TRIGGER);
+	}
+}
+
+/**
  * Initialize the counters management structure.
  *
  * @param[in] sh
@@ -446,11 +467,14 @@ mlx5_flow_id_release(struct mlx5_flow_id_pool *pool, uint32_t id)
 static void
 mlx5_flow_counters_mng_init(struct mlx5_ibv_shared *sh)
 {
-	uint8_t i;
+	uint8_t i, age;
 
+	sh->cmng.age = 0;
 	TAILQ_INIT(&sh->cmng.flow_counters);
-	for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i)
-		TAILQ_INIT(&sh->cmng.ccont[i].pool_list);
+	for (age = 0; age < RTE_DIM(sh->cmng.ccont[0]); ++age) {
+		for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i)
+			TAILQ_INIT(&sh->cmng.ccont[i][age].pool_list);
+	}
 }
 
 /**
@@ -480,7 +504,7 @@ static void
 mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 {
 	struct mlx5_counter_stats_mem_mng *mng;
-	uint8_t i;
+	uint8_t i, age = 0;
 	int j;
 	int retries = 1024;
 
@@ -491,36 +515,42 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 			break;
 		rte_pause();
 	}
-	for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i) {
-		struct mlx5_flow_counter_pool *pool;
-		uint32_t batch = !!(i % 2);
 
-		if (!sh->cmng.ccont[i].pools)
-			continue;
-		pool = TAILQ_FIRST(&sh->cmng.ccont[i].pool_list);
-		while (pool) {
-			if (batch) {
-				if (pool->min_dcs)
-					claim_zero
-					(mlx5_devx_cmd_destroy(pool->min_dcs));
+	for (age = 0; age < RTE_DIM(sh->cmng.ccont[0]); ++age) {
+		for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i) {
+			struct mlx5_flow_counter_pool *pool;
+			uint32_t batch = !!(i % 2);
+
+			if (!sh->cmng.ccont[i][age].pools)
+				continue;
+			pool = TAILQ_FIRST(&sh->cmng.ccont[i][age].pool_list);
+			while (pool) {
+				if (batch) {
+					if (pool->min_dcs)
+						claim_zero
+						(mlx5_devx_cmd_destroy
+						(pool->min_dcs));
+				}
+				for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j) {
+					if (MLX5_POOL_GET_CNT(pool, j)->action)
+						claim_zero
+						(mlx5_glue->destroy_flow_action
+						 (MLX5_POOL_GET_CNT
+						  (pool, j)->action));
+					if (!batch && MLX5_GET_POOL_CNT_EXT
+					    (pool, j)->dcs)
+						claim_zero(mlx5_devx_cmd_destroy
+							  (MLX5_GET_POOL_CNT_EXT
+							  (pool, j)->dcs));
+				}
+				TAILQ_REMOVE(&sh->cmng.ccont[i][age].pool_list,
+					pool, next);
+				rte_free(pool);
+				pool = TAILQ_FIRST
+					(&sh->cmng.ccont[i][age].pool_list);
 			}
-			for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j) {
-				if (MLX5_POOL_GET_CNT(pool, j)->action)
-					claim_zero
-					(mlx5_glue->destroy_flow_action
-					 (MLX5_POOL_GET_CNT(pool, j)->action));
-				if (!batch && MLX5_GET_POOL_CNT_EXT
-				    (pool, j)->dcs)
-					claim_zero(mlx5_devx_cmd_destroy
-						  (MLX5_GET_POOL_CNT_EXT
-						  (pool, j)->dcs));
-			}
-			TAILQ_REMOVE(&sh->cmng.ccont[i].pool_list, pool,
-				     next);
-			rte_free(pool);
-			pool = TAILQ_FIRST(&sh->cmng.ccont[i].pool_list);
+			rte_free(sh->cmng.ccont[i][age].pools);
 		}
-		rte_free(sh->cmng.ccont[i].pools);
 	}
 	mng = LIST_FIRST(&sh->cmng.mem_mngs);
 	while (mng) {
@@ -788,6 +818,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 		err = rte_errno;
 		goto error;
 	}
+	mlx5_flow_aging_init(sh);
 	mlx5_flow_counters_mng_init(sh);
 	mlx5_flow_ipool_create(sh, config);
 	/* Add device to memory callback list. */

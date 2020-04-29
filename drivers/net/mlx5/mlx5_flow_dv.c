@@ -24,6 +24,7 @@
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
+#include <rte_cycles.h>
 #include <rte_ip.h>
 #include <rte_gre.h>
 #include <rte_vxlan.h>
@@ -3717,6 +3718,50 @@ mlx5_flow_validate_action_meter(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate the age action.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the age action.
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_age(uint64_t action_flags,
+			    const struct rte_flow_action *action,
+			    struct rte_eth_dev *dev,
+			    struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_age *age = action->conf;
+
+	if (!priv->config.devx || priv->counter_fallback)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "age action not supported");
+	if (!(action->conf))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "configuration cannot be null");
+	if (age->timeout >= UINT16_MAX / 2 / 10)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Max age time: 3275 seconds");
+	if (action_flags & MLX5_FLOW_ACTION_AGE)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "Duplicate age ctions set");
+	return 0;
+}
+
+/**
  * Validate the modify-header IPv4 DSCP actions.
  *
  * @param[in] action_flags
@@ -3893,14 +3938,16 @@ flow_dv_counter_get_by_idx(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_pools_container *cont;
 	struct mlx5_flow_counter_pool *pool;
-	uint32_t batch = 0;
+	uint32_t batch = 0, age = 0;
 
 	idx--;
+	age = MLX_CNT_IS_AGE(idx);
+	idx = age ? idx - MLX5_CNT_AGE_OFFSET : idx;
 	if (idx >= MLX5_CNT_BATCH_OFFSET) {
 		idx -= MLX5_CNT_BATCH_OFFSET;
 		batch = 1;
 	}
-	cont = MLX5_CNT_CONTAINER(priv->sh, batch, 0);
+	cont = MLX5_CNT_CONTAINER(priv->sh, batch, 0, age);
 	MLX5_ASSERT(idx / MLX5_COUNTERS_PER_POOL < cont->n);
 	pool = cont->pools[idx / MLX5_COUNTERS_PER_POOL];
 	MLX5_ASSERT(pool);
@@ -4020,18 +4067,21 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
  *   Pointer to the Ethernet device structure.
  * @param[in] batch
  *   Whether the pool is for counter that was allocated by batch command.
+ * @param[in] age
+ *   Whether the pool is for Aging counter.
  *
  * @return
  *   The new container pointer on success, otherwise NULL and rte_errno is set.
  */
 static struct mlx5_pools_container *
-flow_dv_container_resize(struct rte_eth_dev *dev, uint32_t batch)
+flow_dv_container_resize(struct rte_eth_dev *dev,
+				uint32_t batch, uint32_t age)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_pools_container *cont =
-			MLX5_CNT_CONTAINER(priv->sh, batch, 0);
+			MLX5_CNT_CONTAINER(priv->sh, batch, 0, age);
 	struct mlx5_pools_container *new_cont =
-			MLX5_CNT_CONTAINER_UNUSED(priv->sh, batch, 0);
+			MLX5_CNT_CONTAINER_UNUSED(priv->sh, batch, 0, age);
 	struct mlx5_counter_stats_mem_mng *mem_mng = NULL;
 	uint32_t resize = cont->n + MLX5_CNT_CONTAINER_RESIZE;
 	uint32_t mem_size = sizeof(struct mlx5_flow_counter_pool *) * resize;
@@ -4039,7 +4089,7 @@ flow_dv_container_resize(struct rte_eth_dev *dev, uint32_t batch)
 
 	/* Fallback mode has no background thread. Skip the check. */
 	if (!priv->counter_fallback &&
-	    cont != MLX5_CNT_CONTAINER(priv->sh, batch, 1)) {
+	    cont != MLX5_CNT_CONTAINER(priv->sh, batch, 1, age)) {
 		/* The last resize still hasn't detected by the host thread. */
 		rte_errno = EAGAIN;
 		return NULL;
@@ -4082,7 +4132,7 @@ flow_dv_container_resize(struct rte_eth_dev *dev, uint32_t batch)
 	new_cont->init_mem_mng = mem_mng;
 	rte_cio_wmb();
 	 /* Flip the master container. */
-	priv->sh->cmng.mhi[batch] ^= (uint8_t)1;
+	priv->sh->cmng.mhi[batch][age] ^= (uint8_t)1;
 	return new_cont;
 }
 
@@ -4114,7 +4164,7 @@ _flow_dv_query_count(struct rte_eth_dev *dev, uint32_t counter, uint64_t *pkts,
 	cnt = flow_dv_counter_get_by_idx(dev, counter, &pool);
 	MLX5_ASSERT(pool);
 	if (counter < MLX5_CNT_BATCH_OFFSET) {
-		cnt_ext = MLX5_CNT_TO_CNT_EXT(cnt);
+		cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
 		if (priv->counter_fallback)
 			return mlx5_devx_cmd_flow_counter_query(cnt_ext->dcs, 0,
 					0, pkts, bytes, 0, NULL, NULL, 0);
@@ -4147,6 +4197,8 @@ _flow_dv_query_count(struct rte_eth_dev *dev, uint32_t counter, uint64_t *pkts,
  *   The devX counter handle.
  * @param[in] batch
  *   Whether the pool is for counter that was allocated by batch command.
+ * @param[in] age
+ *   Whether the pool is for counter that was allocated for aging.
  * @param[in/out] cont_cur
  *   Pointer to the container pointer, it will be update in pool resize.
  *
@@ -4155,24 +4207,23 @@ _flow_dv_query_count(struct rte_eth_dev *dev, uint32_t counter, uint64_t *pkts,
  */
 static struct mlx5_pools_container *
 flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
-		    uint32_t batch)
+		    uint32_t batch, uint32_t age)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch,
-							       0);
+							       0, age);
 	int16_t n_valid = rte_atomic16_read(&cont->n_valid);
-	uint32_t size;
+	uint32_t size = sizeof(*pool);
 
 	if (cont->n == n_valid) {
-		cont = flow_dv_container_resize(dev, batch);
+		cont = flow_dv_container_resize(dev, batch, age);
 		if (!cont)
 			return NULL;
 	}
-	size = sizeof(*pool);
 	size += MLX5_COUNTERS_PER_POOL * CNT_SIZE;
-	if (!batch)
-		size += MLX5_COUNTERS_PER_POOL * CNTEXT_SIZE;
+	size += (batch ? 0 : MLX5_COUNTERS_PER_POOL * CNTEXT_SIZE);
+	size += (!age ? 0 : MLX5_COUNTERS_PER_POOL * AGE_SIZE);
 	pool = rte_calloc(__func__, 1, size, 0);
 	if (!pool) {
 		rte_errno = ENOMEM;
@@ -4184,8 +4235,8 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 						     MLX5_CNT_CONTAINER_RESIZE;
 	pool->raw_hw = NULL;
 	pool->type = 0;
-	if (!batch)
-		pool->type |= CNT_POOL_TYPE_EXT;
+	pool->type |= (batch ? 0 :  CNT_POOL_TYPE_EXT);
+	pool->type |= (!age ? 0 :  CNT_POOL_TYPE_AGE);
 	rte_spinlock_init(&pool->sl);
 	/*
 	 * The generation of the new allocated counters in this pool is 0, 2 in
@@ -4213,6 +4264,39 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 }
 
 /**
+ * Update the minimum dcs-id for aged or no-aged counter pool.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] pool
+ *   Current counter pool.
+ * @param[in] batch
+ *   Whether the pool is for counter that was allocated by batch command.
+ * @param[in] age
+ *   Whether the counter is for aging.
+ */
+static void
+flow_dv_counter_update_min_dcs(struct rte_eth_dev *dev,
+			struct mlx5_flow_counter_pool *pool,
+			uint32_t batch, uint32_t age)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_counter_pool *other;
+	struct mlx5_pools_container *cont;
+
+	cont = MLX5_CNT_CONTAINER(priv->sh, batch, 0, (age ^ 0x1));
+	other = flow_dv_find_pool_by_id(cont, pool->min_dcs->id);
+	if (!other)
+		return;
+	if (pool->min_dcs->id < other->min_dcs->id) {
+		rte_atomic64_set(&other->a64_dcs,
+			rte_atomic64_read(&pool->a64_dcs));
+	} else {
+		rte_atomic64_set(&pool->a64_dcs,
+			rte_atomic64_read(&other->a64_dcs));
+	}
+}
+/**
  * Prepare a new counter and/or a new counter pool.
  *
  * @param[in] dev
@@ -4221,6 +4305,8 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
  *   Where to put the pointer of a new counter.
  * @param[in] batch
  *   Whether the pool is for counter that was allocated by batch command.
+ * @param[in] age
+ *   Whether the pool is for counter that was allocated for aging.
  *
  * @return
  *   The counter container pointer and @p cnt_free is set on success,
@@ -4229,7 +4315,7 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 static struct mlx5_pools_container *
 flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 			     struct mlx5_flow_counter **cnt_free,
-			     uint32_t batch)
+			     uint32_t batch, uint32_t age)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_pools_container *cont;
@@ -4238,7 +4324,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 	struct mlx5_flow_counter *cnt;
 	uint32_t i;
 
-	cont = MLX5_CNT_CONTAINER(priv->sh, batch, 0);
+	cont = MLX5_CNT_CONTAINER(priv->sh, batch, 0, age);
 	if (!batch) {
 		/* bulk_bitmap must be 0 for single counter allocation. */
 		dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0);
@@ -4246,7 +4332,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 			return NULL;
 		pool = flow_dv_find_pool_by_id(cont, dcs->id);
 		if (!pool) {
-			cont = flow_dv_pool_create(dev, dcs, batch);
+			cont = flow_dv_pool_create(dev, dcs, batch, age);
 			if (!cont) {
 				mlx5_devx_cmd_destroy(dcs);
 				return NULL;
@@ -4256,6 +4342,8 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 			rte_atomic64_set(&pool->a64_dcs,
 					 (int64_t)(uintptr_t)dcs);
 		}
+		flow_dv_counter_update_min_dcs(dev,
+						pool, batch, age);
 		i = dcs->id % MLX5_COUNTERS_PER_POOL;
 		cnt = MLX5_POOL_GET_CNT(pool, i);
 		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
@@ -4270,7 +4358,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 		rte_errno = ENODATA;
 		return NULL;
 	}
-	cont = flow_dv_pool_create(dev, dcs, batch);
+	cont = flow_dv_pool_create(dev, dcs, batch, age);
 	if (!cont) {
 		mlx5_devx_cmd_destroy(dcs);
 		return NULL;
@@ -4331,13 +4419,15 @@ flow_dv_counter_shared_search(struct mlx5_pools_container *cont, uint32_t id,
  *   Counter identifier.
  * @param[in] group
  *   Counter flow group.
+ * @param[in] age
+ *   Whether the counter was allocated for aging.
  *
  * @return
  *   Index to flow counter on success, 0 otherwise and rte_errno is set.
  */
 static uint32_t
 flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
-		      uint16_t group)
+		      uint16_t group, uint32_t age)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter_pool *pool = NULL;
@@ -4353,7 +4443,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	 */
 	uint32_t batch = (group && !shared && !priv->counter_fallback) ? 1 : 0;
 	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, batch,
-							       0);
+							       0, age);
 	uint32_t cnt_idx;
 
 	if (!priv->config.devx) {
@@ -4392,13 +4482,13 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 		cnt_free = NULL;
 	}
 	if (!cnt_free) {
-		cont = flow_dv_counter_pool_prepare(dev, &cnt_free, batch);
+		cont = flow_dv_counter_pool_prepare(dev, &cnt_free, batch, age);
 		if (!cont)
 			return 0;
 		pool = TAILQ_FIRST(&cont->pool_list);
 	}
 	if (!batch)
-		cnt_ext = MLX5_CNT_TO_CNT_EXT(cnt_free);
+		cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt_free);
 	/* Create a DV counter action only in the first time usage. */
 	if (!cnt_free->action) {
 		uint16_t offset;
@@ -4421,6 +4511,7 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	cnt_idx = MLX5_MAKE_CNT_IDX(pool->index,
 				MLX5_CNT_ARRAY_IDX(pool, cnt_free));
 	cnt_idx += batch * MLX5_CNT_BATCH_OFFSET;
+	cnt_idx += age * MLX5_CNT_AGE_OFFSET;
 	/* Update the counter reset values. */
 	if (_flow_dv_query_count(dev, cnt_idx, &cnt_free->hits,
 				 &cnt_free->bytes))
@@ -4443,6 +4534,64 @@ flow_dv_counter_alloc(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 }
 
 /**
+ * Get age param from counter index.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] counter
+ *   Index to the counter handler.
+ *
+ * @return
+ *   The aging parameter specified for the counter index.
+ */
+static struct mlx5_age_param*
+flow_dv_counter_idx_get_age(struct rte_eth_dev *dev,
+				uint32_t counter)
+{
+	struct mlx5_flow_counter *cnt;
+	struct mlx5_flow_counter_pool *pool = NULL;
+
+	flow_dv_counter_get_by_idx(dev, counter, &pool);
+	counter = (counter - 1) % MLX5_COUNTERS_PER_POOL;
+	cnt = MLX5_POOL_GET_CNT(pool, counter);
+	return MLX5_CNT_TO_AGE(cnt);
+}
+
+/**
+ * Remove a flow counter from aged counter list.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] counter
+ *   Index to the counter handler.
+ * @param[in] cnt
+ *   Pointer to the counter handler.
+ */
+static void
+flow_dv_counter_remove_from_age(struct rte_eth_dev *dev,
+				uint32_t counter, struct mlx5_flow_counter *cnt)
+{
+	struct mlx5_age_info *age_info;
+	struct mlx5_age_param *age_param;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	age_info = GET_PORT_AGE_INFO(priv);
+	age_param = flow_dv_counter_idx_get_age(dev, counter);
+	if (rte_atomic16_cmpset((volatile uint16_t *)
+			&age_param->state,
+			AGE_CANDIDATE, AGE_FREE)
+			!= AGE_CANDIDATE) {
+		/**
+		 * We need the lock even it is age timeout,
+		 * since counter may still in process.
+		 */
+		rte_spinlock_lock(&age_info->aged_sl);
+		TAILQ_REMOVE(&age_info->aged_counters, cnt, next);
+		rte_spinlock_unlock(&age_info->aged_sl);
+	}
+	rte_atomic16_set(&age_param->state, AGE_FREE);
+}
+/**
  * Release a flow counter.
  *
  * @param[in] dev
@@ -4462,10 +4611,12 @@ flow_dv_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 	cnt = flow_dv_counter_get_by_idx(dev, counter, &pool);
 	MLX5_ASSERT(pool);
 	if (counter < MLX5_CNT_BATCH_OFFSET) {
-		cnt_ext = MLX5_CNT_TO_CNT_EXT(cnt);
+		cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
 		if (cnt_ext && --cnt_ext->ref_cnt)
 			return;
 	}
+	if (IS_AGE_POOL(pool))
+		flow_dv_counter_remove_from_age(dev, counter, cnt);
 	/* Put the counter in the end - the last updated one. */
 	TAILQ_INSERT_TAIL(&pool->counters, cnt, next);
 	/*
@@ -5239,6 +5390,15 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			/* Meter action will add one more TAG action. */
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
+			break;
+		case RTE_FLOW_ACTION_TYPE_AGE:
+			ret = flow_dv_validate_action_age(action_flags,
+							  actions, dev,
+							  error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_AGE;
+			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
 			ret = flow_dv_validate_action_modify_ipv4_dscp
@@ -7279,6 +7439,53 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 }
 
 /**
+ * Create a counter with aging configuration.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[out] count
+ *   Pointer to the counter action configuration.
+ * @param[in] age
+ *   Pointer to the aging action configuration.
+ *
+ * @return
+ *   Index to flow counter on success, 0 otherwise.
+ */
+static uint32_t
+flow_dv_translate_create_counter(struct rte_eth_dev *dev,
+				struct mlx5_flow *dev_flow,
+				const struct rte_flow_action_count *count,
+				const struct rte_flow_action_age *age)
+{
+	uint32_t counter;
+	struct mlx5_age_param *age_param;
+
+	counter = flow_dv_counter_alloc(dev,
+				count ? count->shared : 0,
+				count ? count->id : 0,
+				dev_flow->dv.group, !!age);
+	if (!counter || age == NULL)
+		return counter;
+	age_param  = flow_dv_counter_idx_get_age(dev, counter);
+	/*
+	 * The counter age accuracy may have a bit delay. Have 3/4
+	 * second bias on the timeount in order to let it age in time.
+	 */
+	age_param->context = age->context ? age->context :
+		(void *)(uintptr_t)(dev_flow->flow_idx);
+	/*
+	 * The counter age accuracy may have a bit delay. Have 3/4
+	 * second bias on the timeount in order to let it age in time.
+	 */
+	age_param->timeout = age->timeout * 10 - MLX5_AGING_TIME_DELAY;
+	/* Set expire time in unit of 0.1 sec. */
+	age_param->port_id = dev->data->port_id;
+	age_param->expire = age_param->timeout +
+			rte_rdtsc() / (rte_get_tsc_hz() / 10);
+	rte_atomic16_set(&age_param->state, AGE_CANDIDATE);
+	return counter;
+}
+/**
  * Add Tx queue matcher
  *
  * @param[in] dev
@@ -7447,6 +7654,8 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			    (MLX5_MAX_MODIFY_NUM + 1)];
 	} mhdr_dummy;
 	struct mlx5_flow_dv_modify_hdr_resource *mhdr_res = &mhdr_dummy.res;
+	const struct rte_flow_action_count *count = NULL;
+	const struct rte_flow_action_age *age = NULL;
 	union flow_dv_attr flow_attr = { .attr = 0 };
 	uint32_t tag_be;
 	union mlx5_flow_tbl_key tbl_key;
@@ -7475,7 +7684,6 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		const struct rte_flow_action_queue *queue;
 		const struct rte_flow_action_rss *rss;
 		const struct rte_flow_action *action = actions;
-		const struct rte_flow_action_count *count = action->conf;
 		const uint8_t *rss_key;
 		const struct rte_flow_action_jump *jump_data;
 		const struct rte_flow_action_meter *mtr;
@@ -7604,36 +7812,21 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			dev_flow->handle->fate_action = MLX5_FLOW_FATE_QUEUE;
 			break;
+		case RTE_FLOW_ACTION_TYPE_AGE:
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			if (!dev_conf->devx) {
-				rte_errno = ENOTSUP;
-				goto cnt_err;
-			}
-			flow->counter = flow_dv_counter_alloc(dev,
-							count->shared,
-							count->id,
-							dev_flow->dv.group);
-			if (!flow->counter)
-				goto cnt_err;
-			dev_flow->dv.actions[actions_n++] =
-				  (flow_dv_counter_get_by_idx(dev,
-				  flow->counter, NULL))->action;
-			action_flags |= MLX5_FLOW_ACTION_COUNT;
-			break;
-cnt_err:
-			if (rte_errno == ENOTSUP)
 				return rte_flow_error_set
 					      (error, ENOTSUP,
 					       RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					       NULL,
 					       "count action not supported");
+			}
+			/* Save information first, will apply later. */
+			if (actions->type == RTE_FLOW_ACTION_TYPE_COUNT)
+				count = action->conf;
 			else
-				return rte_flow_error_set
-						(error, rte_errno,
-						 RTE_FLOW_ERROR_TYPE_ACTION,
-						 action,
-						 "cannot create counter"
-						  " object.");
+				age = action->conf;
+			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			dev_flow->dv.actions[actions_n++] =
@@ -7906,6 +8099,22 @@ cnt_err:
 					return -rte_errno;
 				dev_flow->dv.actions[modify_action_position] =
 					handle->dvh.modify_hdr->verbs_action;
+			}
+			if (action_flags & MLX5_FLOW_ACTION_COUNT) {
+				flow->counter =
+					flow_dv_translate_create_counter(dev,
+						dev_flow, count, age);
+
+				if (!flow->counter)
+					return rte_flow_error_set
+						(error, rte_errno,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						NULL,
+						"cannot create counter"
+						" object.");
+				dev_flow->dv.actions[actions_n++] =
+					  (flow_dv_counter_get_by_idx(dev,
+					  flow->counter, NULL))->action;
 			}
 			break;
 		default:
@@ -9168,6 +9377,60 @@ flow_dv_counter_query(struct rte_eth_dev *dev, uint32_t counter, bool clear,
 	return 0;
 }
 
+/**
+ * Get aged-out flows.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] context
+ *   The address of an array of pointers to the aged-out flows contexts.
+ * @param[in] nb_contexts
+ *   The length of context array pointers.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   how many contexts get in success, otherwise negative errno value.
+ *   if nb_contexts is 0, return the amount of all aged contexts.
+ *   if nb_contexts is not 0 , return the amount of aged flows reported
+ *   in the context array.
+ * @note: only stub for now
+ */
+static int
+flow_get_aged_flows(struct rte_eth_dev *dev,
+		    void **context,
+		    uint32_t nb_contexts,
+		    struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_age_info *age_info;
+	struct mlx5_age_param *age_param;
+	struct mlx5_flow_counter *counter;
+	int nb_flows = 0;
+
+	if (nb_contexts && !context)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "Should assign at least one flow or"
+					  " context to get if nb_contexts != 0");
+	age_info = GET_PORT_AGE_INFO(priv);
+	rte_spinlock_lock(&age_info->aged_sl);
+	TAILQ_FOREACH(counter, &age_info->aged_counters, next) {
+		nb_flows++;
+		if (nb_contexts) {
+			age_param = MLX5_CNT_TO_AGE(counter);
+			context[nb_flows - 1] = age_param->context;
+			if (!(--nb_contexts))
+				break;
+		}
+	}
+	rte_spinlock_unlock(&age_info->aged_sl);
+	MLX5_AGE_SET(age_info, MLX5_AGE_TRIGGER);
+	return nb_flows;
+}
+
 /*
  * Mutex-protected thunk to lock-free  __flow_dv_translate().
  */
@@ -9234,7 +9497,7 @@ flow_dv_counter_allocate(struct rte_eth_dev *dev)
 	uint32_t cnt;
 
 	flow_dv_shared_lock(dev);
-	cnt = flow_dv_counter_alloc(dev, 0, 0, 1);
+	cnt = flow_dv_counter_alloc(dev, 0, 0, 1, 0);
 	flow_dv_shared_unlock(dev);
 	return cnt;
 }
@@ -9265,6 +9528,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.counter_alloc = flow_dv_counter_allocate,
 	.counter_free = flow_dv_counter_free,
 	.counter_query = flow_dv_counter_query,
+	.get_aged_flows = flow_get_aged_flows,
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */

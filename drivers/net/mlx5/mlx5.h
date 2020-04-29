@@ -222,13 +222,22 @@ struct mlx5_drop {
 #define MLX5_COUNTERS_PER_POOL 512
 #define MLX5_MAX_PENDING_QUERIES 4
 #define MLX5_CNT_CONTAINER_RESIZE 64
+#define MLX5_CNT_AGE_OFFSET 0x80000000
 #define CNT_SIZE (sizeof(struct mlx5_flow_counter))
 #define CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
+#define AGE_SIZE (sizeof(struct mlx5_age_param))
+#define MLX5_AGING_TIME_DELAY	7
 
 #define CNT_POOL_TYPE_EXT	(1 << 0)
+#define CNT_POOL_TYPE_AGE	(1 << 1)
 #define IS_EXT_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_EXT)
+#define IS_AGE_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_AGE)
+#define MLX_CNT_IS_AGE(counter) ((counter) & MLX5_CNT_AGE_OFFSET ? 1 : 0)
+
 #define MLX5_CNT_LEN(pool) \
-	(CNT_SIZE + (IS_EXT_POOL(pool) ? CNTEXT_SIZE : 0))
+	(CNT_SIZE + \
+	(IS_AGE_POOL(pool) ? AGE_SIZE : 0) + \
+	(IS_EXT_POOL(pool) ? CNTEXT_SIZE : 0))
 #define MLX5_POOL_GET_CNT(pool, index) \
 	((struct mlx5_flow_counter *) \
 	((uint8_t *)((pool) + 1) + (index) * (MLX5_CNT_LEN(pool))))
@@ -243,12 +252,32 @@ struct mlx5_drop {
  */
 #define MLX5_MAKE_CNT_IDX(pi, offset) \
 	((pi) * MLX5_COUNTERS_PER_POOL + (offset) + 1)
-#define MLX5_CNT_TO_CNT_EXT(cnt) \
-	((struct mlx5_flow_counter_ext *)((cnt) + 1))
+#define MLX5_CNT_TO_CNT_EXT(pool, cnt) \
+	((struct mlx5_flow_counter_ext *)\
+	((uint8_t *)((cnt) + 1) + \
+	(IS_AGE_POOL(pool) ? AGE_SIZE : 0)))
 #define MLX5_GET_POOL_CNT_EXT(pool, offset) \
-	MLX5_CNT_TO_CNT_EXT(MLX5_POOL_GET_CNT((pool), (offset)))
+	MLX5_CNT_TO_CNT_EXT(pool, MLX5_POOL_GET_CNT((pool), (offset)))
+#define MLX5_CNT_TO_AGE(cnt) \
+	((struct mlx5_age_param *)((cnt) + 1))
 
 struct mlx5_flow_counter_pool;
+
+/*age status*/
+enum {
+	AGE_FREE, /* Initialized state. */
+	AGE_CANDIDATE, /* Counter assigned to flows. */
+	AGE_TMOUT, /* Timeout, wait for rte_flow_get_aged_flows and destroy. */
+};
+
+/* Counter age parameter. */
+struct mlx5_age_param {
+	rte_atomic16_t state; /**< Age state. */
+	uint16_t port_id; /**< Port id of the counter. */
+	uint32_t timeout:15; /**< Age timeout in unit of 0.1sec. */
+	uint32_t expire:16; /**< Expire time(0.1sec) in the future. */
+	void *context; /**< Flow counter age context. */
+};
 
 struct flow_counter_stats {
 	uint64_t hits;
@@ -299,7 +328,7 @@ struct mlx5_flow_counter_pool {
 	rte_atomic64_t start_query_gen; /* Query start round. */
 	rte_atomic64_t end_query_gen; /* Query end round. */
 	uint32_t index; /* Pool index in container. */
-	uint32_t type: 2; /* Memory type behind the counter array. */
+	uint8_t type; /* Memory type behind the counter array. */
 	rte_spinlock_t sl; /* The pool lock. */
 	struct mlx5_counter_stats_raw *raw;
 	struct mlx5_counter_stats_raw *raw_hw; /* The raw on HW working. */
@@ -337,18 +366,33 @@ struct mlx5_pools_container {
 
 /* Counter global management structure. */
 struct mlx5_flow_counter_mng {
-	uint8_t mhi[2]; /* master \ host container index. */
-	struct mlx5_pools_container ccont[2 * 2];
-	/* 2 containers for single and for batch for double-buffer. */
+	uint8_t mhi[2][2]; /* master \ host and age \ no age container index. */
+	struct mlx5_pools_container ccont[2 * 2][2];
+	/* master \ host and age \ no age pools container. */
 	struct mlx5_counters flow_counters; /* Legacy flow counter list. */
 	uint8_t pending_queries;
 	uint8_t batch;
 	uint16_t pool_index;
+	uint8_t age;
 	uint8_t query_thread_on;
 	LIST_HEAD(mem_mngs, mlx5_counter_stats_mem_mng) mem_mngs;
 	LIST_HEAD(stat_raws, mlx5_counter_stats_raw) free_stat_raws;
 };
+#define MLX5_AGE_EVENT_NEW		1
+#define MLX5_AGE_TRIGGER		2
+#define MLX5_AGE_SET(age_info, BIT) \
+	((age_info)->flags |= (1 << (BIT)))
+#define MLX5_AGE_GET(age_info, BIT) \
+	((age_info)->flags & (1 << (BIT)))
+#define GET_PORT_AGE_INFO(priv) \
+	(&((priv)->sh->port[(priv)->ibv_port - 1].age_info))
 
+/* Aging information for per port. */
+struct mlx5_age_info {
+	uint8_t flags; /*Indicate if is new event or need be trigered*/
+	struct mlx5_counters aged_counters; /* Aged flow counter list. */
+	rte_spinlock_t aged_sl; /* Aged flow counter list lock. */
+};
 /* Per port data of shared IB device. */
 struct mlx5_ibv_shared_port {
 	uint32_t ih_port_id;
@@ -360,6 +404,8 @@ struct mlx5_ibv_shared_port {
 	 * RTE_MAX_ETHPORTS it means there is no subhandler
 	 * installed for specified IB port index.
 	 */
+	struct mlx5_age_info age_info;
+	/* Aging information for per port. */
 };
 
 /* Table key of the hash organization. */
@@ -765,6 +811,8 @@ int mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 int mlx5_flow_dev_dump(struct rte_eth_dev *dev, FILE *file,
 		       struct rte_flow_error *error);
 void mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev);
+int mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
+			uint32_t nb_contexts, struct rte_flow_error *error);
 
 /* mlx5_mp.c */
 int mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer);

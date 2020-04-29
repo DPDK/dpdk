@@ -56,7 +56,8 @@ flow_verbs_counter_get_by_idx(struct rte_eth_dev *dev,
 			      struct mlx5_flow_counter_pool **ppool)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, 0, 0);
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, 0, 0,
+									0);
 	struct mlx5_flow_counter_pool *pool;
 
 	idx--;
@@ -151,7 +152,8 @@ static uint32_t
 flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, 0, 0);
+	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(priv->sh, 0, 0,
+									0);
 	struct mlx5_flow_counter_pool *pool = NULL;
 	struct mlx5_flow_counter_ext *cnt_ext = NULL;
 	struct mlx5_flow_counter *cnt = NULL;
@@ -251,7 +253,7 @@ flow_verbs_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 
 	cnt = flow_verbs_counter_get_by_idx(dev, counter,
 					    &pool);
-	cnt_ext = MLX5_CNT_TO_CNT_EXT(cnt);
+	cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
 	if (--cnt_ext->ref_cnt == 0) {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 		claim_zero(mlx5_glue->destroy_counter_set(cnt_ext->cs));
@@ -282,7 +284,7 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
 		struct mlx5_flow_counter *cnt = flow_verbs_counter_get_by_idx
 						(dev, flow->counter, &pool);
 		struct mlx5_flow_counter_ext *cnt_ext = MLX5_CNT_TO_CNT_EXT
-						(cnt);
+						(pool, cnt);
 		struct rte_flow_query_count *qc = data;
 		uint64_t counters[2] = {0, 0};
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
@@ -1083,12 +1085,12 @@ flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
 	}
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	cnt = flow_verbs_counter_get_by_idx(dev, flow->counter, &pool);
-	cnt_ext = MLX5_CNT_TO_CNT_EXT(cnt);
+	cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
 	counter.counter_set_handle = cnt_ext->cs->handle;
 	flow_verbs_spec_add(&dev_flow->verbs, &counter, size);
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	cnt = flow_verbs_counter_get_by_idx(dev, flow->counter, &pool);
-	cnt_ext = MLX5_CNT_TO_CNT_EXT(cnt);
+	cnt_ext = MLX5_CNT_TO_CNT_EXT(pool, cnt);
 	counter.counters = cnt_ext->cs;
 	flow_verbs_spec_add(&dev_flow->verbs, &counter, size);
 #endif

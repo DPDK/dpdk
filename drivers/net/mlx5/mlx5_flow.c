@@ -24,6 +24,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
 #include <rte_flow.h>
+#include <rte_cycles.h>
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
 #include <rte_ip.h>
@@ -242,6 +243,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.isolate = mlx5_flow_isolate,
 	.query = mlx5_flow_query,
 	.dev_dump = mlx5_flow_dev_dump,
+	.get_aged_flows = mlx5_flow_get_aged_flows,
 };
 
 /* Convert FDIR request to Generic flow. */
@@ -2531,6 +2533,8 @@ flow_drv_validate(struct rte_eth_dev *dev,
  *   Pointer to the list of items.
  * @param[in] actions
  *   Pointer to the list of actions.
+ * @param[in] flow_idx
+ *   This memory pool index to the flow.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -2543,14 +2547,19 @@ flow_drv_prepare(struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
+		 uint32_t flow_idx,
 		 struct rte_flow_error *error)
 {
 	const struct mlx5_flow_driver_ops *fops;
 	enum mlx5_flow_drv_type type = flow->drv_type;
+	struct mlx5_flow *mlx5_flow = NULL;
 
 	MLX5_ASSERT(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
 	fops = flow_get_drv_ops(type);
-	return fops->prepare(dev, attr, items, actions, error);
+	mlx5_flow = fops->prepare(dev, attr, items, actions, error);
+	if (mlx5_flow)
+		mlx5_flow->flow_idx = flow_idx;
+	return mlx5_flow;
 }
 
 /**
@@ -3498,6 +3507,8 @@ flow_hairpin_split(struct rte_eth_dev *dev,
  *   Associated actions (list terminated by the END action).
  * @param[in] external
  *   This flow rule is created by request external to PMD.
+ * @param[in] flow_idx
+ *   This memory pool index to the flow.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -3511,11 +3522,13 @@ flow_create_split_inner(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item items[],
 			const struct rte_flow_action actions[],
-			bool external, struct rte_flow_error *error)
+			bool external, uint32_t flow_idx,
+			struct rte_flow_error *error)
 {
 	struct mlx5_flow *dev_flow;
 
-	dev_flow = flow_drv_prepare(dev, flow, attr, items, actions, error);
+	dev_flow = flow_drv_prepare(dev, flow, attr, items, actions,
+		flow_idx, error);
 	if (!dev_flow)
 		return -rte_errno;
 	dev_flow->flow = flow;
@@ -3876,6 +3889,8 @@ flow_mreg_tx_copy_prep(struct rte_eth_dev *dev,
  *   Associated actions (list terminated by the END action).
  * @param[in] external
  *   This flow rule is created by request external to PMD.
+ * @param[in] flow_idx
+ *   This memory pool index to the flow.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -3888,7 +3903,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 			   const struct rte_flow_attr *attr,
 			   const struct rte_flow_item items[],
 			   const struct rte_flow_action actions[],
-			   bool external, struct rte_flow_error *error)
+			   bool external, uint32_t flow_idx,
+			   struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *config = &priv->config;
@@ -3908,7 +3924,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	    !mlx5_flow_ext_mreg_supported(dev))
 		return flow_create_split_inner(dev, flow, NULL, prefix_layers,
 					       attr, items, actions, external,
-					       error);
+					       flow_idx, error);
 	actions_n = flow_parse_metadata_split_actions_info(actions, &qrss,
 							   &encap_idx);
 	if (qrss) {
@@ -3992,7 +4008,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 	/* Add the unmodified original or prefix subflow. */
 	ret = flow_create_split_inner(dev, flow, &dev_flow, prefix_layers, attr,
 				      items, ext_actions ? ext_actions :
-				      actions, external, error);
+				      actions, external, flow_idx, error);
 	if (ret < 0)
 		goto exit;
 	MLX5_ASSERT(dev_flow);
@@ -4055,7 +4071,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		ret = flow_create_split_inner(dev, flow, &dev_flow, layers,
 					      &q_attr, mtr_sfx ? items :
 					      q_items, q_actions,
-					      external, error);
+					      external, flow_idx, error);
 		if (ret < 0)
 			goto exit;
 		/* qrss ID should be freed if failed. */
@@ -4096,6 +4112,8 @@ exit:
  *   Associated actions (list terminated by the END action).
  * @param[in] external
  *   This flow rule is created by request external to PMD.
+ * @param[in] flow_idx
+ *   This memory pool index to the flow.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -4107,7 +4125,8 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			   const struct rte_flow_attr *attr,
 			   const struct rte_flow_item items[],
 			   const struct rte_flow_action actions[],
-			   bool external, struct rte_flow_error *error)
+			   bool external, uint32_t flow_idx,
+			   struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_action *sfx_actions = NULL;
@@ -4151,7 +4170,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		/* Add the prefix subflow. */
 		ret = flow_create_split_inner(dev, flow, &dev_flow, 0, attr,
 					      items, pre_actions, external,
-					      error);
+					      flow_idx, error);
 		if (ret) {
 			ret = -rte_errno;
 			goto exit;
@@ -4168,7 +4187,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 					 0, &sfx_attr,
 					 sfx_items ? sfx_items : items,
 					 sfx_actions ? sfx_actions : actions,
-					 external, error);
+					 external, flow_idx, error);
 exit:
 	if (sfx_actions)
 		rte_free(sfx_actions);
@@ -4205,6 +4224,8 @@ exit:
  *   Associated actions (list terminated by the END action).
  * @param[in] external
  *   This flow rule is created by request external to PMD.
+ * @param[in] flow_idx
+ *   This memory pool index to the flow.
  * @param[out] error
  *   Perform verbose error reporting if not NULL.
  * @return
@@ -4216,12 +4237,13 @@ flow_create_split_outer(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item items[],
 			const struct rte_flow_action actions[],
-			bool external, struct rte_flow_error *error)
+			bool external, uint32_t flow_idx,
+			struct rte_flow_error *error)
 {
 	int ret;
 
 	ret = flow_create_split_meter(dev, flow, attr, items,
-					 actions, external, error);
+					 actions, external, flow_idx, error);
 	MLX5_ASSERT(ret <= 0);
 	return ret;
 }
@@ -4356,7 +4378,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		 */
 		ret = flow_create_split_outer(dev, flow, attr,
 					      buf->entry[i].pattern,
-					      p_actions_rx, external,
+					      p_actions_rx, external, idx,
 					      error);
 		if (ret < 0)
 			goto error;
@@ -4367,7 +4389,8 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		attr_tx.ingress = 0;
 		attr_tx.egress = 1;
 		dev_flow = flow_drv_prepare(dev, flow, &attr_tx, items_tx.items,
-					    actions_hairpin_tx.actions, error);
+					 actions_hairpin_tx.actions,
+					 idx, error);
 		if (!dev_flow)
 			goto error;
 		dev_flow->flow = flow;
@@ -5748,6 +5771,31 @@ mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 #define MLX5_POOL_QUERY_FREQ_US 1000000
 
 /**
+ * Get number of all validate pools.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object.
+ *
+ * @return
+ *   The number of all validate pools.
+ */
+static uint32_t
+mlx5_get_all_valid_pool_count(struct mlx5_ibv_shared *sh)
+{
+	uint8_t age, i;
+	uint32_t pools_n = 0;
+	struct mlx5_pools_container *cont;
+
+	for (age = 0; age < RTE_DIM(sh->cmng.ccont[0]); ++age) {
+		for (i = 0; i < 2 ; ++i) {
+			cont = MLX5_CNT_CONTAINER(sh, i, 0, age);
+			pools_n += rte_atomic16_read(&cont->n_valid);
+		}
+	}
+	return pools_n;
+}
+
+/**
  * Set the periodic procedure for triggering asynchronous batch queries for all
  * the counter pools.
  *
@@ -5757,12 +5805,9 @@ mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 void
 mlx5_set_query_alarm(struct mlx5_ibv_shared *sh)
 {
-	struct mlx5_pools_container *cont = MLX5_CNT_CONTAINER(sh, 0, 0);
-	uint32_t pools_n = rte_atomic16_read(&cont->n_valid);
-	uint32_t us;
+	uint32_t pools_n, us;
 
-	cont = MLX5_CNT_CONTAINER(sh, 1, 0);
-	pools_n += rte_atomic16_read(&cont->n_valid);
+	pools_n = mlx5_get_all_valid_pool_count(sh);
 	us = MLX5_POOL_QUERY_FREQ_US / pools_n;
 	DRV_LOG(DEBUG, "Set alarm for %u pools each %u us", pools_n, us);
 	if (rte_eal_alarm_set(us, mlx5_flow_query_alarm, sh)) {
@@ -5788,6 +5833,7 @@ mlx5_flow_query_alarm(void *arg)
 	uint16_t offset;
 	int ret;
 	uint8_t batch = sh->cmng.batch;
+	uint8_t age = sh->cmng.age;
 	uint16_t pool_index = sh->cmng.pool_index;
 	struct mlx5_pools_container *cont;
 	struct mlx5_pools_container *mcont;
@@ -5796,8 +5842,8 @@ mlx5_flow_query_alarm(void *arg)
 	if (sh->cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
 		goto set_alarm;
 next_container:
-	cont = MLX5_CNT_CONTAINER(sh, batch, 1);
-	mcont = MLX5_CNT_CONTAINER(sh, batch, 0);
+	cont = MLX5_CNT_CONTAINER(sh, batch, 1, age);
+	mcont = MLX5_CNT_CONTAINER(sh, batch, 0, age);
 	/* Check if resize was done and need to flip a container. */
 	if (cont != mcont) {
 		if (cont->pools) {
@@ -5807,15 +5853,22 @@ next_container:
 		}
 		rte_cio_wmb();
 		 /* Flip the host container. */
-		sh->cmng.mhi[batch] ^= (uint8_t)2;
+		sh->cmng.mhi[batch][age] ^= (uint8_t)2;
 		cont = mcont;
 	}
 	if (!cont->pools) {
 		/* 2 empty containers case is unexpected. */
-		if (unlikely(batch != sh->cmng.batch))
+		if (unlikely(batch != sh->cmng.batch) &&
+			unlikely(age != sh->cmng.age)) {
 			goto set_alarm;
+		}
 		batch ^= 0x1;
 		pool_index = 0;
+		if (batch == 0 && pool_index == 0) {
+			age ^= 0x1;
+			sh->cmng.batch = batch;
+			sh->cmng.age = age;
+		}
 		goto next_container;
 	}
 	pool = cont->pools[pool_index];
@@ -5858,11 +5911,78 @@ next_container:
 	if (pool_index >= rte_atomic16_read(&cont->n_valid)) {
 		batch ^= 0x1;
 		pool_index = 0;
+		if (batch == 0 && pool_index == 0)
+			age ^= 0x1;
 	}
 set_alarm:
 	sh->cmng.batch = batch;
 	sh->cmng.pool_index = pool_index;
+	sh->cmng.age = age;
 	mlx5_set_query_alarm(sh);
+}
+
+/**
+ * Check and callback event for new aged flow in the counter pool
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object.
+ * @param[in] pool
+ *   Pointer to Current counter pool.
+ */
+static void
+mlx5_flow_aging_check(struct mlx5_ibv_shared *sh,
+		   struct mlx5_flow_counter_pool *pool)
+{
+	struct mlx5_priv *priv;
+	struct mlx5_flow_counter *cnt;
+	struct mlx5_age_info *age_info;
+	struct mlx5_age_param *age_param;
+	struct mlx5_counter_stats_raw *cur = pool->raw_hw;
+	struct mlx5_counter_stats_raw *prev = pool->raw;
+	uint16_t curr = rte_rdtsc() / (rte_get_tsc_hz() / 10);
+	uint32_t i;
+
+	for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
+		cnt = MLX5_POOL_GET_CNT(pool, i);
+		age_param = MLX5_CNT_TO_AGE(cnt);
+		if (rte_atomic16_read(&age_param->state) != AGE_CANDIDATE)
+			continue;
+		if (cur->data[i].hits != prev->data[i].hits) {
+			age_param->expire = curr + age_param->timeout;
+			continue;
+		}
+		if ((uint16_t)(curr - age_param->expire) >= (UINT16_MAX / 2))
+			continue;
+		/**
+		 * Hold the lock first, or if between the
+		 * state AGE_TMOUT and tailq operation the
+		 * release happened, the release procedure
+		 * may delete a non-existent tailq node.
+		 */
+		priv = rte_eth_devices[age_param->port_id].data->dev_private;
+		age_info = GET_PORT_AGE_INFO(priv);
+		rte_spinlock_lock(&age_info->aged_sl);
+		/* If the cpmset fails, release happens. */
+		if (rte_atomic16_cmpset((volatile uint16_t *)
+					&age_param->state,
+					AGE_CANDIDATE,
+					AGE_TMOUT) ==
+					AGE_CANDIDATE) {
+			TAILQ_INSERT_TAIL(&age_info->aged_counters, cnt, next);
+			MLX5_AGE_SET(age_info, MLX5_AGE_EVENT_NEW);
+		}
+		rte_spinlock_unlock(&age_info->aged_sl);
+	}
+	for (i = 0; i < sh->max_port; i++) {
+		age_info = &sh->port[i].age_info;
+		if (!MLX5_AGE_GET(age_info, MLX5_AGE_EVENT_NEW))
+			continue;
+		if (MLX5_AGE_GET(age_info, MLX5_AGE_TRIGGER))
+			_rte_eth_dev_callback_process
+				(&rte_eth_devices[sh->port[i].devx_ih_port_id],
+				RTE_ETH_EVENT_FLOW_AGED, NULL);
+		age_info->flags = 0;
+	}
 }
 
 /**
@@ -5889,6 +6009,8 @@ mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,
 		raw_to_free = pool->raw_hw;
 	} else {
 		raw_to_free = pool->raw;
+		if (IS_AGE_POOL(pool))
+			mlx5_flow_aging_check(sh, pool);
 		rte_spinlock_lock(&pool->sl);
 		pool->raw = pool->raw_hw;
 		rte_spinlock_unlock(&pool->sl);
@@ -6039,4 +6161,41 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev,
 
 	return mlx5_devx_cmd_flow_dump(sh->fdb_domain, sh->rx_domain,
 				       sh->tx_domain, file);
+}
+
+/**
+ * Get aged-out flows.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] context
+ *   The address of an array of pointers to the aged-out flows contexts.
+ * @param[in] nb_countexts
+ *   The length of context array pointers.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   how many contexts get in success, otherwise negative errno value.
+ *   if nb_contexts is 0, return the amount of all aged contexts.
+ *   if nb_contexts is not 0 , return the amount of aged flows reported
+ *   in the context array.
+ */
+int
+mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
+			uint32_t nb_contexts, struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	struct rte_flow_attr attr = { .transfer = 0 };
+
+	if (flow_get_drv_type(dev, &attr) == MLX5_FLOW_TYPE_DV) {
+		fops = flow_get_drv_ops(MLX5_FLOW_TYPE_DV);
+		return fops->get_aged_flows(dev, contexts, nb_contexts,
+						    error);
+	}
+	DRV_LOG(ERR,
+		"port %u get aged flows is not supported.",
+		 dev->data->port_id);
+	return -ENOTSUP;
 }

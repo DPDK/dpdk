@@ -199,6 +199,7 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_METER (1ull << 31)
 #define MLX5_FLOW_ACTION_SET_IPV4_DSCP (1ull << 32)
 #define MLX5_FLOW_ACTION_SET_IPV6_DSCP (1ull << 33)
+#define MLX5_FLOW_ACTION_AGE (1ull << 34)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
@@ -652,6 +653,7 @@ struct mlx5_flow_verbs_workspace {
 /** Device flow structure. */
 struct mlx5_flow {
 	struct rte_flow *flow; /**< Pointer to the main flow. */
+	uint32_t flow_idx; /**< The memory pool index to the main flow. */
 	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
 	uint64_t act_flags;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
@@ -875,6 +877,11 @@ typedef int (*mlx5_flow_counter_query_t)(struct rte_eth_dev *dev,
 					 uint32_t cnt,
 					 bool clear, uint64_t *pkts,
 					 uint64_t *bytes);
+typedef int (*mlx5_flow_get_aged_flows_t)
+					(struct rte_eth_dev *dev,
+					 void **context,
+					 uint32_t nb_contexts,
+					 struct rte_flow_error *error);
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
@@ -890,13 +897,14 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_counter_alloc_t counter_alloc;
 	mlx5_flow_counter_free_t counter_free;
 	mlx5_flow_counter_query_t counter_query;
+	mlx5_flow_get_aged_flows_t get_aged_flows;
 };
 
 
-#define MLX5_CNT_CONTAINER(sh, batch, thread) (&(sh)->cmng.ccont \
-	[(((sh)->cmng.mhi[batch] >> (thread)) & 0x1) * 2 + (batch)])
-#define MLX5_CNT_CONTAINER_UNUSED(sh, batch, thread) (&(sh)->cmng.ccont \
-	[(~((sh)->cmng.mhi[batch] >> (thread)) & 0x1) * 2 + (batch)])
+#define MLX5_CNT_CONTAINER(sh, batch, thread, age) (&(sh)->cmng.ccont \
+	[(((sh)->cmng.mhi[batch][age] >> (thread)) & 0x1) * 2 + (batch)][age])
+#define MLX5_CNT_CONTAINER_UNUSED(sh, batch, thread, age) (&(sh)->cmng.ccont \
+	[(~((sh)->cmng.mhi[batch][age] >> (thread)) & 0x1) * 2 + (batch)][age])
 
 /* mlx5_flow.c */
 

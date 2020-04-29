@@ -141,6 +141,7 @@ New Features
   * Added support for creating Relaxed Ordering Memory Regions.
   * Added support for jumbo frame size (9K MTU) in Multi-Packet RQ mode.
   * Optimized the memory consumption of flow.
+  * Added support for flow aging based on hardware counter.
 
 * **Updated the AESNI MB crypto PMD.**
 
