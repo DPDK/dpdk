@@ -222,6 +222,19 @@ struct mlx5_drop {
 #define MLX5_COUNTERS_PER_POOL 512
 #define MLX5_MAX_PENDING_QUERIES 4
 #define MLX5_CNT_CONTAINER_RESIZE 64
+#define CNT_SIZE (sizeof(struct mlx5_flow_counter))
+#define CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
+
+#define CNT_POOL_TYPE_EXT	(1 << 0)
+#define IS_EXT_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_EXT)
+#define MLX5_CNT_LEN(pool) \
+	(CNT_SIZE + (IS_EXT_POOL(pool) ? CNTEXT_SIZE : 0))
+#define MLX5_POOL_GET_CNT(pool, index) \
+	((struct mlx5_flow_counter *) \
+	((uint8_t *)((pool) + 1) + (index) * (MLX5_CNT_LEN(pool))))
+#define MLX5_CNT_ARRAY_IDX(pool, cnt) \
+	((int)(((uint8_t *)(cnt) - (uint8_t *)((pool) + 1)) / \
+	MLX5_CNT_LEN(pool)))
 /*
  * The pool index and offset of counter in the pool array makes up the
  * counter index. In case the counter is from pool 0 and offset 0, it
@@ -230,11 +243,10 @@ struct mlx5_drop {
  */
 #define MLX5_MAKE_CNT_IDX(pi, offset) \
 	((pi) * MLX5_COUNTERS_PER_POOL + (offset) + 1)
-#define MLX5_CNT_TO_CNT_EXT(pool, cnt) (&((struct mlx5_flow_counter_ext *) \
-			    ((pool) + 1))[((cnt) - (pool)->counters_raw)])
+#define MLX5_CNT_TO_CNT_EXT(cnt) \
+	((struct mlx5_flow_counter_ext *)((cnt) + 1))
 #define MLX5_GET_POOL_CNT_EXT(pool, offset) \
-			      (&((struct mlx5_flow_counter_ext *) \
-			      ((pool) + 1))[offset])
+	MLX5_CNT_TO_CNT_EXT(MLX5_POOL_GET_CNT((pool), (offset)))
 
 struct mlx5_flow_counter_pool;
 
@@ -287,11 +299,10 @@ struct mlx5_flow_counter_pool {
 	rte_atomic64_t start_query_gen; /* Query start round. */
 	rte_atomic64_t end_query_gen; /* Query end round. */
 	uint32_t index; /* Pool index in container. */
+	uint32_t type: 2; /* Memory type behind the counter array. */
 	rte_spinlock_t sl; /* The pool lock. */
 	struct mlx5_counter_stats_raw *raw;
 	struct mlx5_counter_stats_raw *raw_hw; /* The raw on HW working. */
-	struct mlx5_flow_counter counters_raw[MLX5_COUNTERS_PER_POOL];
-	/* The pool counters memory. */
 };
 
 struct mlx5_counter_stats_raw;

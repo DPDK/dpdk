@@ -505,10 +505,10 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 					(mlx5_devx_cmd_destroy(pool->min_dcs));
 			}
 			for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j) {
-				if (pool->counters_raw[j].action)
+				if (MLX5_POOL_GET_CNT(pool, j)->action)
 					claim_zero
 					(mlx5_glue->destroy_flow_action
-					       (pool->counters_raw[j].action));
+					 (MLX5_POOL_GET_CNT(pool, j)->action));
 				if (!batch && MLX5_GET_POOL_CNT_EXT
 				    (pool, j)->dcs)
 					claim_zero(mlx5_devx_cmd_destroy
