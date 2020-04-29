@@ -713,7 +713,8 @@ hns3vf_init_ring_with_vector(struct hns3_hw *hw)
 	 * Rx interrupt.
 	 */
 	vec = hw->num_msi - 1; /* vector 0 for misc interrupt, not for queue */
-	hw->intr_tqps_num = vec - 1; /* the last interrupt is reserved */
+	/* vec - 1: the last interrupt is reserved */
+	hw->intr_tqps_num = vec > hw->tqps_num ? hw->tqps_num : vec - 1;
 	for (i = 0; i < hw->intr_tqps_num; i++) {
 		/*
 		 * Set gap limiter and rate limiter configuration of queue's
@@ -1473,7 +1474,7 @@ hns3_query_vf_resource(struct hns3_hw *hw)
 		return -EINVAL;
 	}
 
-	hw->num_msi = (num_msi > hw->tqps_num + 1) ? hw->tqps_num + 1 : num_msi;
+	hw->num_msi = num_msi;
 
 	return 0;
 }

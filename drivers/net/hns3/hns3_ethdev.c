@@ -2236,7 +2236,8 @@ hns3_init_ring_with_vector(struct hns3_hw *hw)
 	 * Rx interrupt.
 	 */
 	vec = hw->num_msi - 1; /* vector 0 for misc interrupt, not for queue */
-	hw->intr_tqps_num = vec - 1; /* the last interrupt is reserved */
+	/* vec - 1: the last interrupt is reserved */
+	hw->intr_tqps_num = vec > hw->tqps_num ? hw->tqps_num : vec - 1;
 	for (i = 0; i < hw->intr_tqps_num; i++) {
 		/*
 		 * Set gap limiter and rate limiter configuration of queue's
@@ -2625,7 +2626,6 @@ hns3_query_pf_resource(struct hns3_hw *hw)
 	struct hns3_pf *pf = &hns->pf;
 	struct hns3_pf_res_cmd *req;
 	struct hns3_cmd_desc desc;
-	uint16_t num_msi;
 	int ret;
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_QUERY_PF_RSRC, true);
@@ -2657,9 +2657,9 @@ hns3_query_pf_resource(struct hns3_hw *hw)
 
 	pf->dv_buf_size = roundup(pf->dv_buf_size, HNS3_BUF_SIZE_UNIT);
 
-	num_msi = hns3_get_field(rte_le_to_cpu_16(req->pf_intr_vector_number),
-				 HNS3_VEC_NUM_M, HNS3_VEC_NUM_S);
-	hw->num_msi = (num_msi > hw->tqps_num + 1) ? hw->tqps_num + 1 : num_msi;
+	hw->num_msi =
+	    hns3_get_field(rte_le_to_cpu_16(req->pf_intr_vector_number),
+			   HNS3_VEC_NUM_M, HNS3_VEC_NUM_S);
 
 	return 0;
 }
