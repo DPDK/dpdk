@@ -3640,21 +3640,18 @@ flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
  * @return
  *   Max number of modify header actions device can support.
  */
-static unsigned int
-flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev, uint64_t flags)
+static inline unsigned int
+flow_dv_modify_hdr_action_max(struct rte_eth_dev *dev __rte_unused,
+			      uint64_t flags)
 {
 	/*
-	 * There's no way to directly query the max cap. Although it has to be
-	 * acquried by iterative trial, it is a safe assumption that more
-	 * actions are supported by FW if extensive metadata register is
-	 * supported. (Only in the root table)
+	 * There's no way to directly query the max capacity from FW.
+	 * The maximal value on root table should be assumed to be supported.
 	 */
 	if (!(flags & MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL))
 		return MLX5_MAX_MODIFY_NUM;
 	else
-		return mlx5_flow_ext_mreg_supported(dev) ?
-					MLX5_ROOT_TBL_MODIFY_NUM :
-					MLX5_ROOT_TBL_MODIFY_NUM_NO_MREG;
+		return MLX5_ROOT_TBL_MODIFY_NUM;
 }
 
 /**
@@ -5347,7 +5344,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	    dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
 	    mlx5_flow_ext_mreg_supported(dev))
 		rw_act_num += MLX5_ACT_NUM_SET_TAG;
-	if ((uint32_t)rw_act_num >=
+	if ((uint32_t)rw_act_num >
 			flow_dv_modify_hdr_action_max(dev, is_root)) {
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION,

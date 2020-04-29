@@ -415,14 +415,16 @@ struct mlx5_flow_dv_tag_resource {
 
 /*
  * Number of modification commands.
- * If extensive metadata registers are supported, the maximal actions amount is
- * 16 and 8 otherwise on root table. The validation could also be done in the
- * lower driver layer.
- * On non-root table, there is no limitation, but 32 is enough right now.
+ * The maximal actions amount in FW is some constant, and it is 16 in the
+ * latest releases. In some old releases, it will be limited to 8.
+ * Since there is no interface to query the capacity, the maximal value should
+ * be used to allow PMD to create the flow. The validation will be done in the
+ * lower driver layer or FW. A failure will be returned if exceeds the maximal
+ * supported actions number on the root table.
+ * On non-root tables, there is no limitation, but 32 is enough right now.
  */
 #define MLX5_MAX_MODIFY_NUM			32
 #define MLX5_ROOT_TBL_MODIFY_NUM		16
-#define MLX5_ROOT_TBL_MODIFY_NUM_NO_MREG	8
 
 /* Modify resource structure */
 struct mlx5_flow_dv_modify_hdr_resource {
