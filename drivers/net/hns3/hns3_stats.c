@@ -527,6 +527,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		if (ret) {
 			hns3_err(hw, "Failed to reset RX No.%d queue stat: %d",
 				 i, ret);
+			return ret;
 		}
 
 		hns3_cmd_setup_basic_desc(&desc_reset, HNS3_OPC_QUERY_TX_STATUS,
@@ -537,6 +538,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		if (ret) {
 			hns3_err(hw, "Failed to reset TX No.%d queue stat: %d",
 				 i, ret);
+			return ret;
 		}
 	}
 
@@ -571,7 +573,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static void
+static int
 hns3_mac_stats_reset(__rte_unused struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
@@ -580,10 +582,14 @@ hns3_mac_stats_reset(__rte_unused struct rte_eth_dev *dev)
 	int ret;
 
 	ret = hns3_query_update_mac_stats(dev);
-	if (ret)
+	if (ret) {
 		hns3_err(hw, "Clear Mac stats fail : %d", ret);
+		return ret;
+	}
 
 	memset(mac_stats, 0, sizeof(struct hns3_mac_stats));
+
+	return 0;
 }
 
 /* This function calculates the number of xstats based on the current config */
@@ -979,9 +985,13 @@ hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_pf *pf = &hns->pf;
+	int ret;
 
 	/* Clear tqp stats */
-	(void)hns3_stats_reset(dev);
+	ret = hns3_stats_reset(dev);
+	if (ret)
+		return ret;
+
 	/* Clear reset stats */
 	memset(&hns->hw.reset.stats, 0, sizeof(struct hns3_reset_stats));
 
@@ -989,7 +999,10 @@ hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 		return 0;
 
 	/* HW registers are cleared on read */
-	hns3_mac_stats_reset(dev);
+	ret = hns3_mac_stats_reset(dev);
+	if (ret)
+		return ret;
+
 	/* Clear error stats */
 	memset(&pf->abn_int_stats, 0, sizeof(struct hns3_err_msix_intr_stats));
 
