@@ -4912,6 +4912,8 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	if (!priv->reta_idx_n || !priv->rxqs_n) {
 		return 0;
 	}
+	if (!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG))
+		action_rss.types = 0;
 	for (i = 0; i != priv->reta_idx_n; ++i)
 		queue[i] = (*priv->reta_idx)[i];
 	flow_idx = flow_list_create(dev, &priv->ctrl_flows,
