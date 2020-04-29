@@ -2064,8 +2064,8 @@ hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
 			err = ret;
 			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 					      addr);
-			hns3_dbg(hw, "%s mc mac addr: %s failed",
-				 del ? "Remove" : "Restore", mac_str);
+			hns3_dbg(hw, "%s mc mac addr: %s failed for pf: ret = %d",
+				 del ? "Remove" : "Restore", mac_str, ret);
 		}
 	}
 	return err;

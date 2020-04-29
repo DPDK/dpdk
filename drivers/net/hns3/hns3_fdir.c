@@ -945,12 +945,12 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 					  false);
 		if (ret)
 			hns3_err(hw, "Failed to delete fdir: %d src_ip:%x "
-				 "dst_ip:%x src_port:%d dst_port:%d",
+				 "dst_ip:%x src_port:%d dst_port:%d ret = %d",
 				 rule->location,
 				 rule->key_conf.spec.src_ip[IP_ADDR_KEY_ID],
 				 rule->key_conf.spec.dst_ip[IP_ADDR_KEY_ID],
 				 rule->key_conf.spec.src_port,
-				 rule->key_conf.spec.dst_port);
+				 rule->key_conf.spec.dst_port, ret);
 		else
 			hns3_remove_fdir_filter(hw, fdir_info, &rule->key_conf);
 
@@ -986,12 +986,12 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 	rte_spinlock_unlock(&fdir_info->flows_lock);
 	if (ret) {
 		hns3_err(hw, "Failed to config fdir: %d src_ip:%x dst_ip:%x "
-			 "src_port:%d dst_port:%d",
+			 "src_port:%d dst_port:%d ret = %d",
 			 rule->location,
 			 rule->key_conf.spec.src_ip[IP_ADDR_KEY_ID],
 			 rule->key_conf.spec.dst_ip[IP_ADDR_KEY_ID],
 			 rule->key_conf.spec.src_port,
-			 rule->key_conf.spec.dst_port);
+			 rule->key_conf.spec.dst_port, ret);
 		(void)hns3_remove_fdir_filter(hw, fdir_info, &rule->key_conf);
 	}
 
@@ -1023,7 +1023,7 @@ int hns3_clear_all_fdir_filter(struct hns3_adapter *hns)
 	}
 
 	if (ret) {
-		hns3_err(hw, "Fail to delete FDIR filter!");
+		hns3_err(hw, "Fail to delete FDIR filter, ret = %d", ret);
 		ret = -EIO;
 	}
 	return ret;
@@ -1050,7 +1050,7 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 	}
 
 	if (err) {
-		hns3_err(hw, "Fail to restore FDIR filter!");
+		hns3_err(hw, "Fail to restore FDIR filter, ret = %d", ret);
 		return -EIO;
 	}
 	return 0;

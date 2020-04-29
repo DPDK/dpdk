@@ -768,13 +768,16 @@ hns3_dcb_pri_tc_base_dwrr_cfg(struct hns3_hw *hw)
 
 		ret = hns3_dcb_pri_weight_cfg(hw, i, dwrr);
 		if (ret) {
-			hns3_err(hw, "fail to send priority weight cmd: %d", i);
+			hns3_err(hw,
+			       "fail to send priority weight cmd: %d, ret = %d",
+			       i, ret);
 			return ret;
 		}
 
 		ret = hns3_dcb_qs_weight_cfg(hw, i, BW_MAX_PERCENT);
 		if (ret) {
-			hns3_err(hw, "fail to send qs_weight cmd: %d", i);
+			hns3_err(hw, "fail to send qs_weight cmd: %d, ret = %d",
+				 i, ret);
 			return ret;
 		}
 	}
