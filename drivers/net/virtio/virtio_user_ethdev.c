@@ -528,6 +528,7 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	hw->use_msix = 1;
 	hw->modern   = 0;
 	hw->use_vec_rx = 0;
+	hw->use_vec_tx = 0;
 	hw->use_inorder_rx = 0;
 	hw->use_inorder_tx = 0;
 	hw->virtio_user_dev = dev;
@@ -739,8 +740,19 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 		goto end;
 	}
 
-	if (vectorized)
-		hw->use_vec_rx = 1;
+	if (vectorized) {
+		if (packed_vq) {
+#if defined(CC_AVX512_SUPPORT)
+			hw->use_vec_rx = 1;
+			hw->use_vec_tx = 1;
+#else
+			PMD_INIT_LOG(INFO,
+				"building environment do not support packed ring vectorized");
+#endif
+		} else {
+			hw->use_vec_rx = 1;
+		}
+	}
 
 	rte_eth_dev_probing_finish(eth_dev);
 	ret = 0;

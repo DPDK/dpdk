@@ -504,6 +504,7 @@ are shown in below table:
    Packed virtqueue non-meregable path          virtio_recv_pkts_packed           virtio_xmit_pkts_packed
    Packed virtqueue in-order mergeable path     virtio_recv_mergeable_pkts_packed virtio_xmit_pkts_packed
    Packed virtqueue in-order non-mergeable path virtio_recv_pkts_packed           virtio_xmit_pkts_packed
+   Packed virtqueue vectorized Rx path          virtio_recv_pkts_packed_vec       virtio_xmit_pkts_packed
    ============================================ ================================= ========================
 
 Virtio paths Support Status from Release to Release
@@ -521,20 +522,21 @@ All virtio paths support status are shown in below table:
 
 .. table:: Virtio Paths and Releases
 
-   ============================================ ============= ============= =============
-                  Virtio paths                  16.11 ~ 18.05 18.08 ~ 18.11 19.02 ~ 19.11
-   ============================================ ============= ============= =============
-   Split virtqueue mergeable path                     Y             Y             Y
-   Split virtqueue non-mergeable path                 Y             Y             Y
-   Split virtqueue vectorized Rx path                 Y             Y             Y
-   Split virtqueue simple Tx path                     Y             N             N
-   Split virtqueue in-order mergeable path                          Y             Y
-   Split virtqueue in-order non-mergeable path                      Y             Y
-   Packed virtqueue mergeable path                                                Y
-   Packed virtqueue non-mergeable path                                            Y
-   Packed virtqueue in-order mergeable path                                       Y
-   Packed virtqueue in-order non-mergeable path                                   Y
-   ============================================ ============= ============= =============
+   ============================================ ============= ============= ============= =======
+                  Virtio paths                  16.11 ~ 18.05 18.08 ~ 18.11 19.02 ~ 19.11 20.05 ~
+   ============================================ ============= ============= ============= =======
+   Split virtqueue mergeable path                     Y             Y             Y          Y
+   Split virtqueue non-mergeable path                 Y             Y             Y          Y
+   Split virtqueue vectorized Rx path                 Y             Y             Y          Y
+   Split virtqueue simple Tx path                     Y             N             N          N
+   Split virtqueue in-order mergeable path                          Y             Y          Y
+   Split virtqueue in-order non-mergeable path                      Y             Y          Y
+   Packed virtqueue mergeable path                                                Y          Y
+   Packed virtqueue non-mergeable path                                            Y          Y
+   Packed virtqueue in-order mergeable path                                       Y          Y
+   Packed virtqueue in-order non-mergeable path                                   Y          Y
+   Packed virtqueue vectorized Rx path                                                       Y
+   ============================================ ============= ============= ============= =======
 
 QEMU Support Status
 ~~~~~~~~~~~~~~~~~~~
