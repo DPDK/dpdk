@@ -2666,7 +2666,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				if (next_type == RTE_FLOW_ITEM_TYPE_VLAN ||
 				    ether_type == RTE_ETHER_TYPE_IPV4 ||
 				    ether_type == RTE_ETHER_TYPE_IPV6 ||
-				    ether_type == RTE_ETHER_TYPE_ARP ||
 				    ether_type == outer_tpid) {
 					rte_flow_error_set(error, EINVAL,
 						     RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2711,7 +2710,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 				if (ether_type == RTE_ETHER_TYPE_IPV4 ||
 				    ether_type == RTE_ETHER_TYPE_IPV6 ||
-				    ether_type == RTE_ETHER_TYPE_ARP ||
 				    ether_type == outer_tpid) {
 					rte_flow_error_set(error, EINVAL,
 						     RTE_FLOW_ERROR_TYPE_ITEM,
