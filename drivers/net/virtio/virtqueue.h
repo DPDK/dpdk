@@ -18,6 +18,8 @@
 
 struct rte_mbuf;
 
+#define DEFAULT_RX_FREE_THRESH 32
+
 /*
  * Per virtio_ring.h in Linux.
  *     For virtio_pci on SMP, we don't need to order with respect to MMIO

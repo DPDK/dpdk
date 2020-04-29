@@ -936,6 +936,7 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
 	struct virtnet_rx *rxvq;
+	uint16_t rx_free_thresh;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -943,6 +944,28 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(ERR, "Rx deferred start is not supported");
 		return -EINVAL;
 	}
+
+	rx_free_thresh = rx_conf->rx_free_thresh;
+	if (rx_free_thresh == 0)
+		rx_free_thresh =
+			RTE_MIN(vq->vq_nentries / 4, DEFAULT_RX_FREE_THRESH);
+
+	if (rx_free_thresh & 0x3) {
+		RTE_LOG(ERR, PMD, "rx_free_thresh must be multiples of four."
+			" (rx_free_thresh=%u port=%u queue=%u)\n",
+			rx_free_thresh, dev->data->port_id, queue_idx);
+		return -EINVAL;
+	}
+
+	if (rx_free_thresh >= vq->vq_nentries) {
+		RTE_LOG(ERR, PMD, "rx_free_thresh must be less than the "
+			"number of RX entries (%u)."
+			" (rx_free_thresh=%u port=%u queue=%u)\n",
+			vq->vq_nentries,
+			rx_free_thresh, dev->data->port_id, queue_idx);
+		return -EINVAL;
+	}
+	vq->vq_free_thresh = rx_free_thresh;
 
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
