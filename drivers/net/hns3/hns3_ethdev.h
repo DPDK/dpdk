@@ -26,6 +26,10 @@
 #define HNS3_DEV_ID_100G_VF			0xA22E
 #define HNS3_DEV_ID_100G_RDMA_PFC_VF		0xA22F
 
+/* PCI Config offsets */
+#define HNS3_PCI_REVISION_ID			0x08
+#define HNS3_PCI_REVISION_ID_LEN		1
+
 #define HNS3_UC_MACADDR_NUM		128
 #define HNS3_VF_UC_MACADDR_NUM		48
 #define HNS3_MC_MACADDR_NUM		128
@@ -343,6 +347,7 @@ struct hns3_reset_data {
 struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
+	uint8_t revision;           /* PCI revision, low byte of class word */
 	struct hns3_cmq cmq;
 	struct hns3_mbx_resp_status mbx_resp; /* mailbox response */
 	struct hns3_mbx_arq_ring arq;         /* mailbox async rx queue */

@@ -5326,9 +5326,21 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	uint16_t device_id = pci_dev->id.device_id;
+	uint8_t revision;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* Get PCI revision id */
+	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
+				  HNS3_PCI_REVISION_ID);
+	if (ret != HNS3_PCI_REVISION_ID_LEN) {
+		PMD_INIT_LOG(ERR, "Failed to read pci revision id, ret = %d",
+			     ret);
+		return -EIO;
+	}
+	hw->revision = revision;
+
 	eth_dev->process_private = (struct hns3_process_private *)
 	    rte_zmalloc_socket("hns3_filter_list",
 			       sizeof(struct hns3_process_private),
