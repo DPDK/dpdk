@@ -989,6 +989,7 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 	struct rte_mbuf *m;
 	uint16_t desc_idx;
 	int error, nbufs, i;
+	bool in_order = vtpci_with_feature(hw, VIRTIO_F_IN_ORDER);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1018,7 +1019,7 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 			virtio_rxq_rearm_vec(rxvq);
 			nbufs += RTE_VIRTIO_VPMD_RX_REARM_THRESH;
 		}
-	} else if (hw->use_inorder_rx) {
+	} else if (!vtpci_packed_queue(vq->hw) && in_order) {
 		if ((!virtqueue_full(vq))) {
 			uint16_t free_cnt = vq->vq_free_cnt;
 			struct rte_mbuf *pkts[free_cnt];
@@ -1133,7 +1134,7 @@ virtio_dev_tx_queue_setup_finish(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (!vtpci_packed_queue(hw)) {
-		if (hw->use_inorder_tx)
+		if (vtpci_with_feature(hw, VIRTIO_F_IN_ORDER))
 			vq->vq_split.ring.desc[vq->vq_nentries - 1].next = 0;
 	}
 
@@ -2046,7 +2047,7 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct virtio_hw *hw = vq->hw;
 	uint16_t hdr_size = hw->vtnet_hdr_size;
 	uint16_t nb_tx = 0;
-	bool in_order = hw->use_inorder_tx;
+	bool in_order = vtpci_with_feature(hw, VIRTIO_F_IN_ORDER);
 
 	if (unlikely(hw->started == 0 && tx_pkts != hw->inject_pkts))
 		return nb_tx;
