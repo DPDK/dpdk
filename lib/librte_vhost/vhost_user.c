@@ -965,6 +965,12 @@ add_guest_pages(struct virtio_net *dev, struct rte_vhost_mem_region *reg,
 		reg_size -= size;
 	}
 
+	/* sort guest page array if over binary search threshold */
+	if (dev->nr_guest_pages >= VHOST_BINARY_SEARCH_THRESH) {
+		qsort((void *)dev->guest_pages, dev->nr_guest_pages,
+			sizeof(struct guest_page), guest_page_addrcmp);
+	}
+
 	return 0;
 }
 

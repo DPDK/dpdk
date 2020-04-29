@@ -546,20 +546,48 @@ extern int vhost_data_log_level;
 #define MAX_VHOST_DEVICE	1024
 extern struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 
+#define VHOST_BINARY_SEARCH_THRESH 256
+
+static __rte_always_inline int guest_page_addrcmp(const void *p1,
+						const void *p2)
+{
+	const struct guest_page *page1 = (const struct guest_page *)p1;
+	const struct guest_page *page2 = (const struct guest_page *)p2;
+
+	if (page1->guest_phys_addr > page2->guest_phys_addr)
+		return 1;
+	if (page1->guest_phys_addr < page2->guest_phys_addr)
+		return -1;
+
+	return 0;
+}
+
 /* Convert guest physical address to host physical address */
 static __rte_always_inline rte_iova_t
 gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
 {
 	uint32_t i;
 	struct guest_page *page;
+	struct guest_page key;
 
-	for (i = 0; i < dev->nr_guest_pages; i++) {
-		page = &dev->guest_pages[i];
+	if (dev->nr_guest_pages >= VHOST_BINARY_SEARCH_THRESH) {
+		key.guest_phys_addr = gpa;
+		page = bsearch(&key, dev->guest_pages, dev->nr_guest_pages,
+			       sizeof(struct guest_page), guest_page_addrcmp);
+		if (page) {
+			if (gpa + size < page->guest_phys_addr + page->size)
+				return gpa - page->guest_phys_addr +
+					page->host_phys_addr;
+		}
+	} else {
+		for (i = 0; i < dev->nr_guest_pages; i++) {
+			page = &dev->guest_pages[i];
 
-		if (gpa >= page->guest_phys_addr &&
-		    gpa + size < page->guest_phys_addr + page->size) {
-			return gpa - page->guest_phys_addr +
-			       page->host_phys_addr;
+			if (gpa >= page->guest_phys_addr &&
+			    gpa + size < page->guest_phys_addr +
+			    page->size)
+				return gpa - page->guest_phys_addr +
+				       page->host_phys_addr;
 		}
 	}
 
