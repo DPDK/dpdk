@@ -1059,6 +1059,13 @@ hns3_dev_configure_vlan(struct rte_eth_dev *dev)
 		return ret;
 	}
 
+	/*
+	 * If pvid config is not set in rte_eth_conf, driver needn't to set
+	 * VLAN pvid related configuration to hardware.
+	 */
+	if (txmode->pvid == 0 && txmode->hw_vlan_insert_pvid == 0)
+		return 0;
+
 	/* Apply pvid setting */
 	ret = hns3_vlan_pvid_set(dev, txmode->pvid,
 				 txmode->hw_vlan_insert_pvid);
