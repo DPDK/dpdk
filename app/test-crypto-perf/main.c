@@ -582,7 +582,8 @@ main(int argc, char **argv)
 		goto err;
 	}
 
-	if (!opts.silent)
+	if (!opts.silent && opts.test != CPERF_TEST_TYPE_THROUGHPUT &&
+			opts.test != CPERF_TEST_TYPE_LATENCY)
 		show_test_vector(t_vec);
 
 	total_nb_qps = nb_cryptodevs * opts.nb_qps;
