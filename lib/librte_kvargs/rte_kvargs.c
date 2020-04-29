@@ -50,7 +50,7 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 			/* Find the end of the list. */
 			while (str[strlen(str) - 1] != ']') {
 				/* Restore the comma erased by strtok_r(). */
-				if (ctx1[0] == '\0')
+				if (ctx1 == NULL || ctx1[0] == '\0')
 					return -1; /* no closing bracket */
 				str[strlen(str)] = ',';
 				/* Parse until next comma. */
