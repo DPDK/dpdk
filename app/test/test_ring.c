@@ -58,6 +58,181 @@
 
 static const int esize[] = {-1, 4, 8, 16, 20};
 
+static const struct {
+	const char *desc;
+	uint32_t api_type;
+	uint32_t create_flags;
+	struct {
+		unsigned int (*flegacy)(struct rte_ring *r,
+			void * const *obj_table, unsigned int n,
+			unsigned int *free_space);
+		unsigned int (*felem)(struct rte_ring *r, const void *obj_table,
+			unsigned int esize, unsigned int n,
+			unsigned int *free_space);
+	} enq;
+	struct {
+		unsigned int (*flegacy)(struct rte_ring *r,
+			void **obj_table, unsigned int n,
+			unsigned int *available);
+		unsigned int (*felem)(struct rte_ring *r, void *obj_table,
+			unsigned int esize, unsigned int n,
+			unsigned int *available);
+	} deq;
+} test_enqdeq_impl[] = {
+	{
+		.desc = "MP/MC sync mode",
+		.api_type = TEST_RING_ELEM_BULK | TEST_RING_THREAD_DEF,
+		.create_flags = 0,
+		.enq = {
+			.flegacy = rte_ring_enqueue_bulk,
+			.felem = rte_ring_enqueue_bulk_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_dequeue_bulk,
+			.felem = rte_ring_dequeue_bulk_elem,
+		},
+	},
+	{
+		.desc = "SP/SC sync mode",
+		.api_type = TEST_RING_ELEM_BULK | TEST_RING_THREAD_SPSC,
+		.create_flags = RING_F_SP_ENQ | RING_F_SC_DEQ,
+		.enq = {
+			.flegacy = rte_ring_sp_enqueue_bulk,
+			.felem = rte_ring_sp_enqueue_bulk_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_sc_dequeue_bulk,
+			.felem = rte_ring_sc_dequeue_bulk_elem,
+		},
+	},
+	{
+		.desc = "MP/MC sync mode",
+		.api_type = TEST_RING_ELEM_BULK | TEST_RING_THREAD_MPMC,
+		.create_flags = 0,
+		.enq = {
+			.flegacy = rte_ring_mp_enqueue_bulk,
+			.felem = rte_ring_mp_enqueue_bulk_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_mc_dequeue_bulk,
+			.felem = rte_ring_mc_dequeue_bulk_elem,
+		},
+	},
+	{
+		.desc = "MP_RTS/MC_RTS sync mode",
+		.api_type = TEST_RING_ELEM_BULK | TEST_RING_THREAD_DEF,
+		.create_flags = RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ,
+		.enq = {
+			.flegacy = rte_ring_enqueue_bulk,
+			.felem = rte_ring_enqueue_bulk_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_dequeue_bulk,
+			.felem = rte_ring_dequeue_bulk_elem,
+		},
+	},
+	{
+		.desc = "MP_HTS/MC_HTS sync mode",
+		.api_type = TEST_RING_ELEM_BULK | TEST_RING_THREAD_DEF,
+		.create_flags = RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ,
+		.enq = {
+			.flegacy = rte_ring_enqueue_bulk,
+			.felem = rte_ring_enqueue_bulk_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_dequeue_bulk,
+			.felem = rte_ring_dequeue_bulk_elem,
+		},
+	},
+	{
+		.desc = "MP/MC sync mode",
+		.api_type = TEST_RING_ELEM_BURST | TEST_RING_THREAD_DEF,
+		.create_flags = 0,
+		.enq = {
+			.flegacy = rte_ring_enqueue_burst,
+			.felem = rte_ring_enqueue_burst_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_dequeue_burst,
+			.felem = rte_ring_dequeue_burst_elem,
+		},
+	},
+	{
+		.desc = "SP/SC sync mode",
+		.api_type = TEST_RING_ELEM_BURST | TEST_RING_THREAD_SPSC,
+		.create_flags = RING_F_SP_ENQ | RING_F_SC_DEQ,
+		.enq = {
+			.flegacy = rte_ring_sp_enqueue_burst,
+			.felem = rte_ring_sp_enqueue_burst_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_sc_dequeue_burst,
+			.felem = rte_ring_sc_dequeue_burst_elem,
+		},
+	},
+	{
+		.desc = "MP/MC sync mode",
+		.api_type = TEST_RING_ELEM_BURST | TEST_RING_THREAD_MPMC,
+		.create_flags = 0,
+		.enq = {
+			.flegacy = rte_ring_mp_enqueue_burst,
+			.felem = rte_ring_mp_enqueue_burst_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_mc_dequeue_burst,
+			.felem = rte_ring_mc_dequeue_burst_elem,
+		},
+	},
+	{
+		.desc = "MP_RTS/MC_RTS sync mode",
+		.api_type = TEST_RING_ELEM_BURST | TEST_RING_THREAD_DEF,
+		.create_flags = RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ,
+		.enq = {
+			.flegacy = rte_ring_enqueue_burst,
+			.felem = rte_ring_enqueue_burst_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_dequeue_burst,
+			.felem = rte_ring_dequeue_burst_elem,
+		},
+	},
+	{
+		.desc = "MP_HTS/MC_HTS sync mode",
+		.api_type = TEST_RING_ELEM_BURST | TEST_RING_THREAD_DEF,
+		.create_flags = RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ,
+		.enq = {
+			.flegacy = rte_ring_enqueue_burst,
+			.felem = rte_ring_enqueue_burst_elem,
+		},
+		.deq = {
+			.flegacy = rte_ring_dequeue_burst,
+			.felem = rte_ring_dequeue_burst_elem,
+		},
+	},
+};
+
+static unsigned int
+test_ring_enq_impl(struct rte_ring *r, void **obj, int esize, unsigned int n,
+	unsigned int test_idx)
+{
+	if (esize == -1)
+		return test_enqdeq_impl[test_idx].enq.flegacy(r, obj, n, NULL);
+	else
+		return test_enqdeq_impl[test_idx].enq.felem(r, obj, esize, n,
+			NULL);
+}
+
+static unsigned int
+test_ring_deq_impl(struct rte_ring *r, void **obj, int esize, unsigned int n,
+	unsigned int test_idx)
+{
+	if (esize == -1)
+		return test_enqdeq_impl[test_idx].deq.flegacy(r, obj, n, NULL);
+	else
+		return test_enqdeq_impl[test_idx].deq.felem(r, obj, esize, n,
+			NULL);
+}
+
 static void**
 test_ring_inc_ptr(void **obj, int esize, unsigned int n)
 {
@@ -203,8 +378,7 @@ test_fail:
  * Random number of elements are enqueued and dequeued.
  */
 static int
-test_ring_burst_bulk_tests1(unsigned int api_type, unsigned int create_flags,
-	const char *tname)
+test_ring_burst_bulk_tests1(unsigned int test_idx)
 {
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
@@ -214,11 +388,13 @@ test_ring_burst_bulk_tests1(unsigned int api_type, unsigned int create_flags,
 	const unsigned int rsz = RING_SIZE - 1;
 
 	for (i = 0; i < RTE_DIM(esize); i++) {
-		test_ring_print_test_string(tname, api_type, esize[i]);
+		test_ring_print_test_string(test_enqdeq_impl[test_idx].desc,
+			test_enqdeq_impl[test_idx].api_type, esize[i]);
 
 		/* Create the ring */
 		r = test_ring_create("test_ring_burst_bulk_tests", esize[i],
-					RING_SIZE, SOCKET_ID_ANY, create_flags);
+				RING_SIZE, SOCKET_ID_ANY,
+				test_enqdeq_impl[test_idx].create_flags);
 
 		/* alloc dummy object pointers */
 		src = test_ring_calloc(RING_SIZE * 2, esize[i]);
@@ -240,17 +416,17 @@ test_ring_burst_bulk_tests1(unsigned int api_type, unsigned int create_flags,
 			rand = RTE_MAX(rte_rand() % RING_SIZE, 1UL);
 			printf("%s: iteration %u, random shift: %u;\n",
 			    __func__, i, rand);
-			ret = test_ring_enqueue(r, cur_src, esize[i], rand,
-							api_type);
+			ret = test_ring_enq_impl(r, cur_src, esize[i], rand,
+							test_idx);
 			TEST_RING_VERIFY(ret != 0);
 
-			ret = test_ring_dequeue(r, cur_dst, esize[i], rand,
-							api_type);
+			ret = test_ring_deq_impl(r, cur_dst, esize[i], rand,
+							test_idx);
 			TEST_RING_VERIFY(ret == rand);
 
 			/* fill the ring */
-			ret = test_ring_enqueue(r, cur_src, esize[i], rsz,
-							api_type);
+			ret = test_ring_enq_impl(r, cur_src, esize[i], rsz,
+							test_idx);
 			TEST_RING_VERIFY(ret != 0);
 
 			TEST_RING_VERIFY(rte_ring_free_count(r) == 0);
@@ -259,8 +435,8 @@ test_ring_burst_bulk_tests1(unsigned int api_type, unsigned int create_flags,
 			TEST_RING_VERIFY(rte_ring_empty(r) == 0);
 
 			/* empty the ring */
-			ret = test_ring_dequeue(r, cur_dst, esize[i], rsz,
-							api_type);
+			ret = test_ring_deq_impl(r, cur_dst, esize[i], rsz,
+							test_idx);
 			TEST_RING_VERIFY(ret == (int)rsz);
 			TEST_RING_VERIFY(rsz == rte_ring_free_count(r));
 			TEST_RING_VERIFY(rte_ring_count(r) == 0);
@@ -294,8 +470,7 @@ fail:
  * dequeued data.
  */
 static int
-test_ring_burst_bulk_tests2(unsigned int api_type, unsigned int create_flags,
-	const char *tname)
+test_ring_burst_bulk_tests2(unsigned int test_idx)
 {
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
@@ -303,11 +478,13 @@ test_ring_burst_bulk_tests2(unsigned int api_type, unsigned int create_flags,
 	unsigned int i;
 
 	for (i = 0; i < RTE_DIM(esize); i++) {
-		test_ring_print_test_string(tname, api_type, esize[i]);
+		test_ring_print_test_string(test_enqdeq_impl[test_idx].desc,
+			test_enqdeq_impl[test_idx].api_type, esize[i]);
 
 		/* Create the ring */
 		r = test_ring_create("test_ring_burst_bulk_tests", esize[i],
-					RING_SIZE, SOCKET_ID_ANY, create_flags);
+				RING_SIZE, SOCKET_ID_ANY,
+				test_enqdeq_impl[test_idx].create_flags);
 
 		/* alloc dummy object pointers */
 		src = test_ring_calloc(RING_SIZE * 2, esize[i]);
@@ -323,39 +500,39 @@ test_ring_burst_bulk_tests2(unsigned int api_type, unsigned int create_flags,
 		cur_dst = dst;
 
 		printf("enqueue 1 obj\n");
-		ret = test_ring_enqueue(r, cur_src, esize[i], 1, api_type);
+		ret = test_ring_enq_impl(r, cur_src, esize[i], 1, test_idx);
 		if (ret != 1)
 			goto fail;
 		cur_src = test_ring_inc_ptr(cur_src, esize[i], 1);
 
 		printf("enqueue 2 objs\n");
-		ret = test_ring_enqueue(r, cur_src, esize[i], 2, api_type);
+		ret = test_ring_enq_impl(r, cur_src, esize[i], 2, test_idx);
 		if (ret != 2)
 			goto fail;
 		cur_src = test_ring_inc_ptr(cur_src, esize[i], 2);
 
 		printf("enqueue MAX_BULK objs\n");
-		ret = test_ring_enqueue(r, cur_src, esize[i], MAX_BULK,
-						api_type);
+		ret = test_ring_enq_impl(r, cur_src, esize[i], MAX_BULK,
+						test_idx);
 		if (ret != MAX_BULK)
 			goto fail;
 		cur_src = test_ring_inc_ptr(cur_src, esize[i], MAX_BULK);
 
 		printf("dequeue 1 obj\n");
-		ret = test_ring_dequeue(r, cur_dst, esize[i], 1, api_type);
+		ret = test_ring_deq_impl(r, cur_dst, esize[i], 1, test_idx);
 		if (ret != 1)
 			goto fail;
 		cur_dst = test_ring_inc_ptr(cur_dst, esize[i], 1);
 
 		printf("dequeue 2 objs\n");
-		ret = test_ring_dequeue(r, cur_dst, esize[i], 2, api_type);
+		ret = test_ring_deq_impl(r, cur_dst, esize[i], 2, test_idx);
 		if (ret != 2)
 			goto fail;
 		cur_dst = test_ring_inc_ptr(cur_dst, esize[i], 2);
 
 		printf("dequeue MAX_BULK objs\n");
-		ret = test_ring_dequeue(r, cur_dst, esize[i], MAX_BULK,
-						api_type);
+		ret = test_ring_deq_impl(r, cur_dst, esize[i], MAX_BULK,
+						test_idx);
 		if (ret != MAX_BULK)
 			goto fail;
 		cur_dst = test_ring_inc_ptr(cur_dst, esize[i], MAX_BULK);
@@ -390,8 +567,7 @@ fail:
  * Enqueue and dequeue to cover the entire ring length.
  */
 static int
-test_ring_burst_bulk_tests3(unsigned int api_type, unsigned int create_flags,
-	const char *tname)
+test_ring_burst_bulk_tests3(unsigned int test_idx)
 {
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
@@ -399,11 +575,13 @@ test_ring_burst_bulk_tests3(unsigned int api_type, unsigned int create_flags,
 	unsigned int i, j;
 
 	for (i = 0; i < RTE_DIM(esize); i++) {
-		test_ring_print_test_string(tname, api_type, esize[i]);
+		test_ring_print_test_string(test_enqdeq_impl[test_idx].desc,
+			test_enqdeq_impl[test_idx].api_type, esize[i]);
 
 		/* Create the ring */
 		r = test_ring_create("test_ring_burst_bulk_tests", esize[i],
-					RING_SIZE, SOCKET_ID_ANY, create_flags);
+				RING_SIZE, SOCKET_ID_ANY,
+				test_enqdeq_impl[test_idx].create_flags);
 
 		/* alloc dummy object pointers */
 		src = test_ring_calloc(RING_SIZE * 2, esize[i]);
@@ -420,15 +598,15 @@ test_ring_burst_bulk_tests3(unsigned int api_type, unsigned int create_flags,
 
 		printf("fill and empty the ring\n");
 		for (j = 0; j < RING_SIZE / MAX_BULK; j++) {
-			ret = test_ring_enqueue(r, cur_src, esize[i], MAX_BULK,
-							api_type);
+			ret = test_ring_enq_impl(r, cur_src, esize[i], MAX_BULK,
+							test_idx);
 			if (ret != MAX_BULK)
 				goto fail;
 			cur_src = test_ring_inc_ptr(cur_src, esize[i],
 								MAX_BULK);
 
-			ret = test_ring_dequeue(r, cur_dst, esize[i], MAX_BULK,
-							api_type);
+			ret = test_ring_deq_impl(r, cur_dst, esize[i], MAX_BULK,
+							test_idx);
 			if (ret != MAX_BULK)
 				goto fail;
 			cur_dst = test_ring_inc_ptr(cur_dst, esize[i],
@@ -465,21 +643,24 @@ fail:
  * Enqueue till the ring is full and dequeue till the ring becomes empty.
  */
 static int
-test_ring_burst_bulk_tests4(unsigned int api_type, unsigned int create_flags,
-	const char *tname)
+test_ring_burst_bulk_tests4(unsigned int test_idx)
 {
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
 	int ret;
 	unsigned int i, j;
-	unsigned int num_elems;
+	unsigned int api_type, num_elems;
+
+	api_type = test_enqdeq_impl[test_idx].api_type;
 
 	for (i = 0; i < RTE_DIM(esize); i++) {
-		test_ring_print_test_string(tname, api_type, esize[i]);
+		test_ring_print_test_string(test_enqdeq_impl[test_idx].desc,
+			test_enqdeq_impl[test_idx].api_type, esize[i]);
 
 		/* Create the ring */
 		r = test_ring_create("test_ring_burst_bulk_tests", esize[i],
-					RING_SIZE, SOCKET_ID_ANY, create_flags);
+				RING_SIZE, SOCKET_ID_ANY,
+				test_enqdeq_impl[test_idx].create_flags);
 
 		/* alloc dummy object pointers */
 		src = test_ring_calloc(RING_SIZE * 2, esize[i]);
@@ -496,8 +677,8 @@ test_ring_burst_bulk_tests4(unsigned int api_type, unsigned int create_flags,
 
 		printf("Test enqueue without enough memory space\n");
 		for (j = 0; j < (RING_SIZE/MAX_BULK - 1); j++) {
-			ret = test_ring_enqueue(r, cur_src, esize[i], MAX_BULK,
-							api_type);
+			ret = test_ring_enq_impl(r, cur_src, esize[i], MAX_BULK,
+							test_idx);
 			if (ret != MAX_BULK)
 				goto fail;
 			cur_src = test_ring_inc_ptr(cur_src, esize[i],
@@ -505,7 +686,7 @@ test_ring_burst_bulk_tests4(unsigned int api_type, unsigned int create_flags,
 		}
 
 		printf("Enqueue 2 objects, free entries = MAX_BULK - 2\n");
-		ret = test_ring_enqueue(r, cur_src, esize[i], 2, api_type);
+		ret = test_ring_enq_impl(r, cur_src, esize[i], 2, test_idx);
 		if (ret != 2)
 			goto fail;
 		cur_src = test_ring_inc_ptr(cur_src, esize[i], 2);
@@ -517,8 +698,8 @@ test_ring_burst_bulk_tests4(unsigned int api_type, unsigned int create_flags,
 		else
 			num_elems = MAX_BULK;
 		/* Always one free entry left */
-		ret = test_ring_enqueue(r, cur_src, esize[i], num_elems,
-						api_type);
+		ret = test_ring_enq_impl(r, cur_src, esize[i], num_elems,
+						test_idx);
 		if (ret != MAX_BULK - 3)
 			goto fail;
 		cur_src = test_ring_inc_ptr(cur_src, esize[i], MAX_BULK - 3);
@@ -528,15 +709,15 @@ test_ring_burst_bulk_tests4(unsigned int api_type, unsigned int create_flags,
 			goto fail;
 
 		printf("Test enqueue for a full entry\n");
-		ret = test_ring_enqueue(r, cur_src, esize[i], MAX_BULK,
-						api_type);
+		ret = test_ring_enq_impl(r, cur_src, esize[i], MAX_BULK,
+						test_idx);
 		if (ret != 0)
 			goto fail;
 
 		printf("Test dequeue without enough objects\n");
 		for (j = 0; j < RING_SIZE / MAX_BULK - 1; j++) {
-			ret = test_ring_dequeue(r, cur_dst, esize[i], MAX_BULK,
-							api_type);
+			ret = test_ring_deq_impl(r, cur_dst, esize[i], MAX_BULK,
+							test_idx);
 			if (ret != MAX_BULK)
 				goto fail;
 			cur_dst = test_ring_inc_ptr(cur_dst, esize[i],
@@ -544,7 +725,7 @@ test_ring_burst_bulk_tests4(unsigned int api_type, unsigned int create_flags,
 		}
 
 		/* Available memory space for the exact MAX_BULK entries */
-		ret = test_ring_dequeue(r, cur_dst, esize[i], 2, api_type);
+		ret = test_ring_deq_impl(r, cur_dst, esize[i], 2, test_idx);
 		if (ret != 2)
 			goto fail;
 		cur_dst = test_ring_inc_ptr(cur_dst, esize[i], 2);
@@ -554,8 +735,8 @@ test_ring_burst_bulk_tests4(unsigned int api_type, unsigned int create_flags,
 			num_elems = MAX_BULK - 3;
 		else
 			num_elems = MAX_BULK;
-		ret = test_ring_dequeue(r, cur_dst, esize[i], num_elems,
-						api_type);
+		ret = test_ring_deq_impl(r, cur_dst, esize[i], num_elems,
+						test_idx);
 		if (ret != MAX_BULK - 3)
 			goto fail;
 		cur_dst = test_ring_inc_ptr(cur_dst, esize[i], MAX_BULK - 3);
@@ -816,22 +997,7 @@ static int
 test_ring(void)
 {
 	int32_t rc;
-	unsigned int i, j;
-	const char *tname;
-
-	static const struct {
-		uint32_t create_flags;
-		const char *name;
-	} test_sync_modes[] = {
-		{
-			RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ,
-			"Test MT_RTS ring",
-		},
-		{
-			RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ,
-			"Test MT_HTS ring",
-		},
-	};
+	unsigned int i;
 
 	/* Negative test cases */
 	if (test_ring_negative_tests() < 0)
@@ -848,65 +1014,24 @@ test_ring(void)
 	 * The test cases are split into smaller test cases to
 	 * help clang compile faster.
 	 */
-	tname = "Test standard ring";
+	for (i = 0; i != RTE_DIM(test_enqdeq_impl); i++) {
 
-	for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST; j <<= 1)
-		for (i = TEST_RING_THREAD_DEF;
-					i <= TEST_RING_THREAD_MPMC; i <<= 1)
-			if (test_ring_burst_bulk_tests1(i | j, 0, tname) < 0)
-				goto test_fail;
 
-	for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST; j <<= 1)
-		for (i = TEST_RING_THREAD_DEF;
-					i <= TEST_RING_THREAD_MPMC; i <<= 1)
-			if (test_ring_burst_bulk_tests2(i | j, 0, tname) < 0)
-				goto test_fail;
+		rc = test_ring_burst_bulk_tests1(i);
+		if (rc < 0)
+			goto test_fail;
 
-	for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST; j <<= 1)
-		for (i = TEST_RING_THREAD_DEF;
-					i <= TEST_RING_THREAD_MPMC; i <<= 1)
-			if (test_ring_burst_bulk_tests3(i | j, 0, tname) < 0)
-				goto test_fail;
+		rc = test_ring_burst_bulk_tests2(i);
+		if (rc < 0)
+			goto test_fail;
 
-	for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST; j <<= 1)
-		for (i = TEST_RING_THREAD_DEF;
-					i <= TEST_RING_THREAD_MPMC; i <<= 1)
-			if (test_ring_burst_bulk_tests4(i | j, 0, tname) < 0)
-				goto test_fail;
+		rc = test_ring_burst_bulk_tests3(i);
+		if (rc < 0)
+			goto test_fail;
 
-	/* Burst and bulk operations with MT_RTS and MT_HTS sync modes */
-	for (i = 0; i != RTE_DIM(test_sync_modes); i++) {
-		for (j = TEST_RING_ELEM_BULK; j <= TEST_RING_ELEM_BURST;
-				j <<= 1) {
-
-			rc = test_ring_burst_bulk_tests1(
-				TEST_RING_THREAD_DEF | j,
-				test_sync_modes[i].create_flags,
-				test_sync_modes[i].name);
-			if (rc < 0)
-				goto test_fail;
-
-			rc = test_ring_burst_bulk_tests2(
-				TEST_RING_THREAD_DEF | j,
-				test_sync_modes[i].create_flags,
-				test_sync_modes[i].name);
-			if (rc < 0)
-				goto test_fail;
-
-			rc = test_ring_burst_bulk_tests3(
-				TEST_RING_THREAD_DEF | j,
-				test_sync_modes[i].create_flags,
-				test_sync_modes[i].name);
-			if (rc < 0)
-				goto test_fail;
-
-			rc = test_ring_burst_bulk_tests3(
-				TEST_RING_THREAD_DEF | j,
-				test_sync_modes[i].create_flags,
-				test_sync_modes[i].name);
-			if (rc < 0)
-				goto test_fail;
-		}
+		rc = test_ring_burst_bulk_tests4(i);
+		if (rc < 0)
+			goto test_fail;
 	}
 
 	/* dump the ring status */
