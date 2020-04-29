@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2020 Marvell International Ltd.
  */
-#define RTE_TRACE_POINT_REGISTER_SELECT
+
+#include <rte_trace_point_register.h>
 
 #include "test_trace.h"
 

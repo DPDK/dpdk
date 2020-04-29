@@ -2,7 +2,7 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
-#define RTE_TRACE_POINT_REGISTER_SELECT
+#include <rte_trace_point_register.h>
 
 #include <rte_eal_trace.h>
 
