@@ -505,6 +505,7 @@ are shown in below table:
    Packed virtqueue in-order mergeable path     virtio_recv_mergeable_pkts_packed virtio_xmit_pkts_packed
    Packed virtqueue in-order non-mergeable path virtio_recv_pkts_packed           virtio_xmit_pkts_packed
    Packed virtqueue vectorized Rx path          virtio_recv_pkts_packed_vec       virtio_xmit_pkts_packed
+   Packed virtqueue vectorized Tx path          virtio_recv_pkts_packed           virtio_xmit_pkts_packed_vec
    ============================================ ================================= ========================
 
 Virtio paths Support Status from Release to Release
@@ -536,6 +537,7 @@ All virtio paths support status are shown in below table:
    Packed virtqueue in-order mergeable path                                       Y          Y
    Packed virtqueue in-order non-mergeable path                                   Y          Y
    Packed virtqueue vectorized Rx path                                                       Y
+   Packed virtqueue vectorized Tx path                                                       Y
    ============================================ ============= ============= ============= =======
 
 QEMU Support Status

@@ -2039,4 +2039,12 @@ virtio_recv_pkts_packed_vec(void *rx_queue __rte_unused,
 {
 	return 0;
 }
+
+uint16_t
+virtio_xmit_pkts_packed_vec(void *tx_queue __rte_unused,
+			    struct rte_mbuf **tx_pkts __rte_unused,
+			    uint16_t nb_pkts __rte_unused)
+{
+	return 0;
+}
 #endif /* ifndef CC_AVX512_SUPPORT */
