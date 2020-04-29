@@ -26,6 +26,7 @@ static struct rte_pci_driver ioat_pmd_drv;
 #define IOAT_DEVICE_ID_BDX7	0x6f27
 #define IOAT_DEVICE_ID_BDXE	0x6f2E
 #define IOAT_DEVICE_ID_BDXF	0x6f2F
+#define IOAT_DEVICE_ID_ICX	0x0b00
 
 #define IOAT_PMD_LOG(level, fmt, args...) rte_log(RTE_LOG_ ## level, \
 	ioat_pmd_logtype, "%s(): " fmt "\n", __func__, ##args)
@@ -371,6 +372,7 @@ static const struct rte_pci_id pci_id_ioat_map[] = {
 	{ RTE_PCI_DEVICE(IOAT_VENDOR_ID, IOAT_DEVICE_ID_BDX7) },
 	{ RTE_PCI_DEVICE(IOAT_VENDOR_ID, IOAT_DEVICE_ID_BDXE) },
 	{ RTE_PCI_DEVICE(IOAT_VENDOR_ID, IOAT_DEVICE_ID_BDXF) },
+	{ RTE_PCI_DEVICE(IOAT_VENDOR_ID, IOAT_DEVICE_ID_ICX) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
