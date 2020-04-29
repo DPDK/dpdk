@@ -435,7 +435,6 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		/* Fetch variable byte size mask from the array. */
 		mask = flow_dv_fetch_field((const uint8_t *)item->mask +
 					   field->offset, field->size);
-		MLX5_ASSERT(mask);
 		if (!mask) {
 			++field;
 			continue;
