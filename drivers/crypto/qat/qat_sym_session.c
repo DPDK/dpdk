@@ -1664,7 +1664,7 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 		(struct icp_qat_fw_la_auth_req_params *)
 		((char *)&req_tmpl->serv_specif_rqpars +
 		ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
-	uint16_t state1_size = 0, state2_size = 0;
+	uint16_t state1_size = 0, state2_size = 0, cd_extra_size = 0;
 	uint16_t hash_offset, cd_size;
 	uint32_t *aad_len = NULL;
 	uint32_t wordIndex  = 0;
@@ -1886,7 +1886,7 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 		memcpy(cipherconfig->key, authkey, authkeylen);
 		memset(cipherconfig->key + authkeylen,
 				0, ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ);
-		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
+		cd_extra_size += sizeof(struct icp_qat_hw_cipher_config) +
 				authkeylen + ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ;
 		auth_param->hash_state_sz = ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ >> 3;
 		break;
@@ -1902,8 +1902,7 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 			+ ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ);
 
 		memcpy(cdesc->cd_cur_ptr + state1_size, authkey, authkeylen);
-		cdesc->cd_cur_ptr += state1_size + state2_size
-			+ ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ;
+		cd_extra_size += ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ;
 		auth_param->hash_state_sz = ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ >> 3;
 		cdesc->min_qat_dev_gen = QAT_GEN2;
 
@@ -1989,7 +1988,7 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 			 RTE_ALIGN_CEIL(hash_cd_ctrl->inner_state1_sz, 8))
 					>> 3);
 
-	cdesc->cd_cur_ptr += state1_size + state2_size;
+	cdesc->cd_cur_ptr += state1_size + state2_size + cd_extra_size;
 	cd_size = cdesc->cd_cur_ptr-(uint8_t *)&cdesc->cd;
 
 	cd_pars->u.s.content_desc_addr = cdesc->cd_paddr;
