@@ -1708,6 +1708,12 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
+	txq->over_length_pkt_cnt = 0;
+	txq->exceed_limit_bd_pkt_cnt = 0;
+	txq->exceed_limit_bd_reassem_fail = 0;
+	txq->unsupported_tunnel_pkt_cnt = 0;
+	txq->queue_full_cnt = 0;
+	txq->pkt_padding_fail_cnt = 0;
 	rte_spinlock_lock(&hw->lock);
 	dev->data->tx_queues[idx] = txq;
 	rte_spinlock_unlock(&hw->lock);
@@ -2347,8 +2353,10 @@ hns3_parse_cksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
 	if (m->ol_flags & PKT_TX_TUNNEL_MASK) {
 		(void)rte_net_get_ptype(m, hdr_lens, RTE_PTYPE_ALL_MASK);
 		if (hns3_parse_tunneling_params(txq, tx_desc_id, m->ol_flags,
-						hdr_lens))
+						hdr_lens)) {
+			txq->unsupported_tunnel_pkt_cnt++;
 			return -EINVAL;
+		}
 	}
 	/* Enable checksum offloading */
 	if (m->ol_flags & HNS3_TX_CKSUM_OFFLOAD_MASK)
@@ -2371,13 +2379,18 @@ hns3_check_non_tso_pkt(uint16_t nb_buf, struct rte_mbuf **m_seg,
 	 * If packet length is greater than HNS3_MAX_FRAME_LEN
 	 * driver support, the packet will be ignored.
 	 */
-	if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) > HNS3_MAX_FRAME_LEN))
+	if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) > HNS3_MAX_FRAME_LEN)) {
+		txq->over_length_pkt_cnt++;
 		return -EINVAL;
+	}
 
 	if (unlikely(nb_buf > HNS3_MAX_NON_TSO_BD_PER_PKT)) {
+		txq->exceed_limit_bd_pkt_cnt++;
 		ret = hns3_reassemble_tx_pkts(txq, tx_pkt, &new_pkt);
-		if (ret)
+		if (ret) {
+			txq->exceed_limit_bd_reassem_fail++;
 			return ret;
+		}
 		*m_seg = new_pkt;
 	}
 
@@ -2415,6 +2428,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		nb_buf = tx_pkt->nb_segs;
 
 		if (nb_buf > txq->tx_bd_ready) {
+			txq->queue_full_cnt++;
 			if (nb_tx == 0)
 				return 0;
 
@@ -2432,8 +2446,10 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			add_len = HNS3_MIN_PKT_SIZE -
 					 rte_pktmbuf_pkt_len(tx_pkt);
 			appended = rte_pktmbuf_append(tx_pkt, add_len);
-			if (appended == NULL)
+			if (appended == NULL) {
+				txq->pkt_padding_fail_cnt++;
 				break;
+			}
 
 			memset(appended, 0, add_len);
 		}
