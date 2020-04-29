@@ -5285,10 +5285,7 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
 			/* If for "i"th recipe the found was never set to false
 			 * then it means we found our match
 			 */
-			if (ice_is_prof_rule(tun_type) &&
-			    tun_type == recp[i].tun_type && found)
-				return i; /* Return the recipe ID */
-			else if (!ice_is_prof_rule(tun_type) && found)
+			if (tun_type == recp[i].tun_type && found)
 				return i; /* Return the recipe ID */
 		}
 	}
@@ -6005,9 +6002,11 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		prof_type = ICE_PROF_TUN_PPPOE;
 		break;
 	case ICE_SW_TUN_PROFID_IPV6_ESP:
+	case ICE_SW_TUN_IPV6_ESP:
 		ice_set_bit(ICE_PROFID_IPV6_ESP, bm);
 		return;
 	case ICE_SW_TUN_PROFID_IPV6_AH:
+	case ICE_SW_TUN_IPV6_AH:
 		ice_set_bit(ICE_PROFID_IPV6_AH, bm);
 		return;
 	case ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3:
@@ -6035,6 +6034,12 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		return;
 	case ICE_SW_TUN_IPV4_L2TPV3:
 		ice_set_bit(ICE_PROFID_MAC_IPV4_L2TPV3, bm);
+		return;
+	case ICE_SW_TUN_IPV4_ESP:
+		ice_set_bit(ICE_PROFID_IPV4_ESP, bm);
+		return;
+	case ICE_SW_TUN_IPV4_AH:
+		ice_set_bit(ICE_PROFID_IPV4_AH, bm);
 		return;
 	case ICE_SW_TUN_AND_NON_TUN:
 	default:

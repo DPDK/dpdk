@@ -16,7 +16,9 @@
 #define ICE_FLTR_TX_RX (ICE_FLTR_RX | ICE_FLTR_TX)
 
 /* Switch Profile IDs for Profile related switch rules */
+#define ICE_PROFID_IPV4_ESP		71
 #define ICE_PROFID_IPV6_ESP		72
+#define ICE_PROFID_IPV4_AH		73
 #define ICE_PROFID_IPV6_AH		74
 #define ICE_PROFID_IPV4_NAT_T		75
 #define ICE_PROFID_IPV6_NAT_T		76
