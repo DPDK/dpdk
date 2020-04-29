@@ -253,7 +253,8 @@ struct virtio_hw {
 	uint8_t	    vlan_strip;
 	uint8_t	    use_msix;
 	uint8_t     modern;
-	uint8_t     use_simple_rx;
+	uint8_t     use_vec_rx;
+	uint8_t     use_vec_tx;
 	uint8_t     use_inorder_rx;
 	uint8_t     use_inorder_tx;
 	uint8_t     weak_barriers;

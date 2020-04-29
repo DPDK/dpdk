@@ -48,7 +48,8 @@ static int virtio_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static uint32_t virtio_dev_speed_capa_get(uint32_t speed);
 static int virtio_dev_devargs_parse(struct rte_devargs *devargs,
 	int *vdpa,
-	uint32_t *speed);
+	uint32_t *speed,
+	int *vectorized);
 static int virtio_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int virtio_dev_link_update(struct rte_eth_dev *dev,
@@ -1551,8 +1552,8 @@ set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 			eth_dev->rx_pkt_burst = &virtio_recv_pkts_packed;
 		}
 	} else {
-		if (hw->use_simple_rx) {
-			PMD_INIT_LOG(INFO, "virtio: using simple Rx path on port %u",
+		if (hw->use_vec_rx) {
+			PMD_INIT_LOG(INFO, "virtio: using vectorized Rx path on port %u",
 				eth_dev->data->port_id);
 			eth_dev->rx_pkt_burst = virtio_recv_pkts_vec;
 		} else if (hw->use_inorder_rx) {
@@ -1886,6 +1887,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	uint32_t speed = SPEED_UNKNOWN;
+	int vectorized = 0;
 	int ret;
 
 	if (sizeof(struct virtio_net_hdr_mrg_rxbuf) > RTE_PKTMBUF_HEADROOM) {
@@ -1912,7 +1914,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 	ret = virtio_dev_devargs_parse(eth_dev->device->devargs,
-		 NULL, &speed);
+		 NULL, &speed, &vectorized);
 	if (ret < 0)
 		return ret;
 	hw->speed = speed;
@@ -1948,6 +1950,11 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	ret = virtio_init_device(eth_dev, VIRTIO_PMD_DEFAULT_GUEST_FEATURES);
 	if (ret < 0)
 		goto err_virtio_init;
+
+	if (vectorized) {
+		if (!vtpci_packed_queue(hw))
+			hw->use_vec_rx = 1;
+	}
 
 	hw->opened = true;
 
@@ -2021,9 +2028,20 @@ virtio_dev_speed_capa_get(uint32_t speed)
 	}
 }
 
+static int vectorized_check_handler(__rte_unused const char *key,
+		const char *value, void *ret_val)
+{
+	if (strcmp(value, "1") == 0)
+		*(int *)ret_val = 1;
+	else
+		*(int *)ret_val = 0;
+
+	return 0;
+}
 
 #define VIRTIO_ARG_SPEED      "speed"
 #define VIRTIO_ARG_VDPA       "vdpa"
+#define VIRTIO_ARG_VECTORIZED "vectorized"
 
 
 static int
@@ -2045,7 +2063,7 @@ link_speed_handler(const char *key __rte_unused,
 
 static int
 virtio_dev_devargs_parse(struct rte_devargs *devargs, int *vdpa,
-	uint32_t *speed)
+	uint32_t *speed, int *vectorized)
 {
 	struct rte_kvargs *kvlist;
 	int ret = 0;
@@ -2081,6 +2099,18 @@ virtio_dev_devargs_parse(struct rte_devargs *devargs, int *vdpa,
 		}
 	}
 
+	if (vectorized &&
+		rte_kvargs_count(kvlist, VIRTIO_ARG_VECTORIZED) == 1) {
+		ret = rte_kvargs_process(kvlist,
+				VIRTIO_ARG_VECTORIZED,
+				vectorized_check_handler, vectorized);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "Failed to parse %s",
+					VIRTIO_ARG_VECTORIZED);
+			goto exit;
+		}
+	}
+
 exit:
 	rte_kvargs_free(kvlist);
 	return ret;
@@ -2092,7 +2122,8 @@ static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int vdpa = 0;
 	int ret = 0;
 
-	ret = virtio_dev_devargs_parse(pci_dev->device.devargs, &vdpa, NULL);
+	ret = virtio_dev_devargs_parse(pci_dev->device.devargs, &vdpa, NULL,
+		NULL);
 	if (ret < 0) {
 		PMD_INIT_LOG(ERR, "devargs parsing is failed");
 		return ret;
@@ -2257,33 +2288,31 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return -EBUSY;
 		}
 
-	hw->use_simple_rx = 1;
-
 	if (vtpci_with_feature(hw, VIRTIO_F_IN_ORDER)) {
 		hw->use_inorder_tx = 1;
 		hw->use_inorder_rx = 1;
-		hw->use_simple_rx = 0;
+		hw->use_vec_rx = 0;
 	}
 
 	if (vtpci_packed_queue(hw)) {
-		hw->use_simple_rx = 0;
+		hw->use_vec_rx = 0;
 		hw->use_inorder_rx = 0;
 	}
 
 #if defined RTE_ARCH_ARM64 || defined RTE_ARCH_ARM
 	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON)) {
-		hw->use_simple_rx = 0;
+		hw->use_vec_rx = 0;
 	}
 #endif
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
-		 hw->use_simple_rx = 0;
+		hw->use_vec_rx = 0;
 	}
 
 	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
 			   DEV_RX_OFFLOAD_TCP_CKSUM |
 			   DEV_RX_OFFLOAD_TCP_LRO |
 			   DEV_RX_OFFLOAD_VLAN_STRIP))
-		hw->use_simple_rx = 0;
+		hw->use_vec_rx = 0;
 
 	return 0;
 }

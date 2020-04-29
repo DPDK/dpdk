@@ -32,7 +32,8 @@ virtqueue_detach_unused(struct virtqueue *vq)
 	end = (vq->vq_avail_idx + vq->vq_free_cnt) & (vq->vq_nentries - 1);
 
 	for (idx = 0; idx < vq->vq_nentries; idx++) {
-		if (hw->use_simple_rx && type == VTNET_RQ) {
+		if (hw->use_vec_rx && !vtpci_packed_queue(hw) &&
+		    type == VTNET_RQ) {
 			if (start <= end && idx >= start && idx < end)
 				continue;
 			if (start > end && (idx >= start || idx < end))
@@ -97,7 +98,7 @@ virtqueue_rxvq_flush_split(struct virtqueue *vq)
 	for (i = 0; i < nb_used; i++) {
 		used_idx = vq->vq_used_cons_idx & (vq->vq_nentries - 1);
 		uep = &vq->vq_split.ring.used->ring[used_idx];
-		if (hw->use_simple_rx) {
+		if (hw->use_vec_rx) {
 			desc_idx = used_idx;
 			rte_pktmbuf_free(vq->sw_ring[desc_idx]);
 			vq->vq_free_cnt++;
@@ -121,7 +122,7 @@ virtqueue_rxvq_flush_split(struct virtqueue *vq)
 		vq->vq_used_cons_idx++;
 	}
 
-	if (hw->use_simple_rx) {
+	if (hw->use_vec_rx) {
 		while (vq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {
 			virtio_rxq_rearm_vec(rxq);
 			if (virtqueue_kick_prepare(vq))

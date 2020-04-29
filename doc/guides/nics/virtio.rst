@@ -363,6 +363,13 @@ Below devargs are supported by the PCI virtio driver:
     rte_eth_link_get_nowait function.
     (Default: 10000 (10G))
 
+#.  ``vectorized``:
+
+    It is used to specify whether virtio device prefers to use vectorized path.
+    Afterwards, dependencies of vectorized path will be checked in path
+    election.
+    (Default: 0 (disabled))
+
 Below devargs are supported by the virtio-user vdev:
 
 #.  ``path``:

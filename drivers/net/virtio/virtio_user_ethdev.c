@@ -525,7 +525,7 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	 */
 	hw->use_msix = 1;
 	hw->modern   = 0;
-	hw->use_simple_rx = 0;
+	hw->use_vec_rx = 0;
 	hw->use_inorder_rx = 0;
 	hw->use_inorder_tx = 0;
 	hw->virtio_user_dev = dev;

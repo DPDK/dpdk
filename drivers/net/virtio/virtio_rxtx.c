@@ -996,7 +996,7 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 	/* Allocate blank mbufs for the each rx descriptor */
 	nbufs = 0;
 
-	if (hw->use_simple_rx) {
+	if (hw->use_vec_rx && !vtpci_packed_queue(hw)) {
 		for (desc_idx = 0; desc_idx < vq->vq_nentries;
 		     desc_idx++) {
 			vq->vq_split.ring.avail->ring[desc_idx] = desc_idx;
@@ -1014,7 +1014,7 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 			&rxvq->fake_mbuf;
 	}
 
-	if (hw->use_simple_rx) {
+	if (hw->use_vec_rx && !vtpci_packed_queue(hw)) {
 		while (vq->vq_free_cnt >= RTE_VIRTIO_VPMD_RX_REARM_THRESH) {
 			virtio_rxq_rearm_vec(rxvq);
 			nbufs += RTE_VIRTIO_VPMD_RX_REARM_THRESH;
