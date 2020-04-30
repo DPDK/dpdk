@@ -51,7 +51,7 @@ Start the VM
         -drive file=os.img,if=none,id=disk \
         -device ide-hd,drive=disk,bootindex=0 \
         -chardev socket,id=char0,reconnect=1,path=/tmp/vhost.socket \
-        -device vhost-user-blk-pci,ring_packed=1,chardev=char0,num-queues=1 \
+        -device vhost-user-blk-pci,packed=on,chardev=char0,num-queues=1 \
         ...
 
 .. note::
@@ -59,5 +59,7 @@ Start the VM
     Qemu v4.0 or newer version is required.
     reconnect=1 means live recovery support that qemu can reconnect vhost_blk
     after we restart vhost_blk example.
-    ring_packed=1 means the device support packed ring but need the guest kernel
-    version >= 5.0
+    packed=on means the device support packed ring but need the guest kernel
+    version >= 5.0.
+    Now Qemu commit 9bb73502321d46f4d320fa17aa38201445783fc4 both support the
+    vhost-blk reconnect and packed ring.
