@@ -339,6 +339,10 @@ endif
 if dpdk_conf.has('RTE_LIBRTE_SKELETON_EVENTDEV_PMD')
 	test_deps += 'pmd_skeleton_event'
 endif
+if dpdk_conf.has('RTE_LIBRTE_TELEMETRY')
+	test_sources += 'test_telemetry_json.c'
+	fast_tests += [['telemetry_json_autotest', true]]
+endif
 
 # The following linkages of drivers are required because
 # they are used via a driver-specific API.

@@ -141,6 +141,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm_perf.c
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm6.c
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm6_perf.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += test_telemetry_json.c
+
 SRCS-y += test_debug.c
 SRCS-y += test_errno.c
 SRCS-y += test_tailq.c
