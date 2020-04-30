@@ -28,3 +28,7 @@ headers = files('rte_ethdev.h',
 	'rte_tm_driver.h')
 
 deps += ['net', 'kvargs', 'meter']
+
+if dpdk_conf.has('RTE_LIBRTE_TELEMETRY')
+	deps += ['telemetry']
+endif

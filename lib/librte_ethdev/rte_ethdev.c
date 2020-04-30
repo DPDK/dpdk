@@ -38,6 +38,9 @@
 #include <rte_kvargs.h>
 #include <rte_class.h>
 #include <rte_ether.h>
+#ifdef RTE_LIBRTE_TELEMETRY
+#include <rte_telemetry.h>
+#endif
 
 #include "rte_ethdev_trace.h"
 #include "rte_ethdev.h"
@@ -5199,9 +5202,113 @@ parse_cleanup:
 	return result;
 }
 
+#ifdef RTE_LIBRTE_TELEMETRY
+static int
+handle_port_list(const char *cmd __rte_unused,
+		const char *params __rte_unused,
+		struct rte_tel_data *d)
+{
+	int port_id;
+
+	rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+	RTE_ETH_FOREACH_DEV(port_id)
+		rte_tel_data_add_array_int(d, port_id);
+	return 0;
+}
+
+static int
+handle_port_xstats(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	struct rte_eth_xstat *eth_xstats;
+	struct rte_eth_xstat_name *xstat_names;
+	int port_id, num_xstats;
+	int i, ret;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	port_id = atoi(params);
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -1;
+
+	num_xstats = rte_eth_xstats_get(port_id, NULL, 0);
+	if (num_xstats < 0)
+		return -1;
+
+	/* use one malloc for both names and stats */
+	eth_xstats = malloc((sizeof(struct rte_eth_xstat) +
+			sizeof(struct rte_eth_xstat_name)) * num_xstats);
+	if (eth_xstats == NULL)
+		return -1;
+	xstat_names = (void *)&eth_xstats[num_xstats];
+
+	ret = rte_eth_xstats_get_names(port_id, xstat_names, num_xstats);
+	if (ret < 0 || ret > num_xstats) {
+		free(eth_xstats);
+		return -1;
+	}
+
+	ret = rte_eth_xstats_get(port_id, eth_xstats, num_xstats);
+	if (ret < 0 || ret > num_xstats) {
+		free(eth_xstats);
+		return -1;
+	}
+
+	rte_tel_data_start_dict(d);
+	for (i = 0; i < num_xstats; i++)
+		rte_tel_data_add_dict_u64(d, xstat_names[i].name,
+				eth_xstats[i].value);
+	return 0;
+}
+
+static int
+handle_port_link_status(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	static const char *status_str = "status";
+	int ret, port_id;
+	struct rte_eth_link link;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	port_id = atoi(params);
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -1;
+
+	ret = rte_eth_link_get(port_id, &link);
+	if (ret < 0)
+		return -1;
+
+	rte_tel_data_start_dict(d);
+	if (!link.link_status) {
+		rte_tel_data_add_dict_string(d, status_str, "DOWN");
+		return 0;
+	}
+	rte_tel_data_add_dict_string(d, status_str, "UP");
+	rte_tel_data_add_dict_u64(d, "speed", link.link_speed);
+	rte_tel_data_add_dict_string(d, "duplex",
+			(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+				"full-duplex" : "half-duplex");
+	return 0;
+}
+#endif
+
 RTE_INIT(ethdev_init_log)
 {
 	rte_eth_dev_logtype = rte_log_register("lib.ethdev");
 	if (rte_eth_dev_logtype >= 0)
 		rte_log_set_level(rte_eth_dev_logtype, RTE_LOG_INFO);
+#ifdef RTE_LIBRTE_TELEMETRY
+	rte_telemetry_register_cmd("/ethdev/list", handle_port_list,
+			"Returns list of available ethdev ports. Takes no parameters");
+	rte_telemetry_register_cmd("/ethdev/xstats", handle_port_xstats,
+			"Returns the extended stats for a port. Parameters: int port_id");
+	rte_telemetry_register_cmd("/ethdev/link_status",
+			handle_port_link_status,
+			"Returns the link status for a port. Parameters: int port_id");
+#endif
 }

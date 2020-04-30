@@ -24,6 +24,10 @@ SRCS-y += rte_mtr.c
 SRCS-y += ethdev_profile.c
 SRCS-y += ethdev_trace_points.c
 
+ifeq ($(CONFIG_RTE_LIBRTE_TELEMETRY),y)
+LDLIBS += -lrte_telemetry
+endif
+
 #
 # Export include files
 #
