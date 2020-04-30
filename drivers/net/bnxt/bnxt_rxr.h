@@ -238,5 +238,7 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 #define BNXT_CFA_META_FMT_SHFT			4
 #define BNXT_CFA_META_FMT_EM_EEM_SHFT		1
 #define BNXT_CFA_META_FMT_EEM			3
+#define BNXT_CFA_META_EEM_TCAM_SHIFT		31
+#define BNXT_CFA_META_EM_TEST(x) ((x) >> BNXT_CFA_META_EEM_TCAM_SHIFT)
 
 #endif
