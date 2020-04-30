@@ -376,13 +376,14 @@ static int hn_rss_hash_update(struct rte_eth_dev *dev,
 
 	hn_rss_hash_init(hv, rss_conf);
 
-	err = hn_rndis_conf_rss(hv, 0);
-	if (err) {
-		PMD_DRV_LOG(NOTICE,
-			    "rss reconfig failed (RSS disabled)");
-		return err;
+	if (rss_conf->rss_hf != 0) {
+		err = hn_rndis_conf_rss(hv, 0);
+		if (err) {
+			PMD_DRV_LOG(NOTICE,
+				    "rss reconfig failed (RSS disabled)");
+			return err;
+		}
 	}
-
 
 	return hn_vf_rss_hash_update(dev, rss_conf);
 }
@@ -595,11 +596,13 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 			return err;
 		}
 
-		err = hn_rndis_conf_rss(hv, 0);
-		if (err) {
-			PMD_DRV_LOG(NOTICE,
-				    "initial RSS config failed");
-			return err;
+		if (rss_conf->rss_hf != 0) {
+			err = hn_rndis_conf_rss(hv, 0);
+			if (err) {
+				PMD_DRV_LOG(NOTICE,
+					    "initial RSS config failed");
+				return err;
+			}
 		}
 	}
 
