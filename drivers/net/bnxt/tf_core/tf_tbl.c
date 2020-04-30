@@ -539,7 +539,7 @@ tf_em_ctx_reg(struct tf *tfp,
 {
 	struct tf_em_ctx_mem_info *ctxp = &tbl_scope_cb->em_ctx_info[dir];
 	struct tf_em_table *tbl;
-	int rc;
+	int rc = 0;
 	int i;
 
 	for (i = KEY0_TABLE; i < MAX_TABLE; i++) {
