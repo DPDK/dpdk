@@ -11,6 +11,10 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal
 
+ifeq ($(CONFIG_RTE_LIBRTE_TELEMETRY),y)
+LDLIBS += -lrte_telemetry
+endif
+
 # library source files
 SRCS-y += rte_rawdev.c
 
