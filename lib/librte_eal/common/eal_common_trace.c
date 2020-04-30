@@ -21,7 +21,7 @@ static RTE_DEFINE_PER_LCORE(char, ctf_field[TRACE_CTF_FIELD_SIZE]);
 static RTE_DEFINE_PER_LCORE(int, ctf_count);
 
 static struct trace_point_head tp_list = STAILQ_HEAD_INITIALIZER(tp_list);
-static struct trace trace;
+static struct trace trace = { .args = STAILQ_HEAD_INITIALIZER(trace.args), };
 
 struct trace *
 trace_obj_get(void)
@@ -38,7 +38,7 @@ trace_list_head_get(void)
 int
 eal_trace_init(void)
 {
-	uint8_t i;
+	struct trace_arg *arg;
 
 	/* Trace memory should start with 8B aligned for natural alignment */
 	RTE_BUILD_BUG_ON((offsetof(struct __rte_trace_header, mem) % 8) != 0);
@@ -49,7 +49,7 @@ eal_trace_init(void)
 		goto fail;
 	}
 
-	if (trace.args.nb_args)
+	if (!STAILQ_EMPTY(&trace.args))
 		trace.status = true;
 
 	if (!rte_trace_is_enabled())
@@ -82,8 +82,8 @@ eal_trace_init(void)
 		goto fail;
 
 	/* Apply global configurations */
-	for (i = 0; i < trace.args.nb_args; i++)
-		trace_args_apply(trace.args.args[i]);
+	STAILQ_FOREACH(arg, &trace.args, next)
+		trace_args_apply(arg->val);
 
 	rte_trace_mode_set(trace.mode);
 

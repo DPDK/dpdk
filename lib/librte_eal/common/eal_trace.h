@@ -46,9 +46,9 @@ struct thread_mem_meta {
 	enum trace_area_e area;
 };
 
-struct trace_args {
-	uint8_t nb_args;
-	char *args[TRACE_MAX_ARGS];
+struct trace_arg {
+	STAILQ_ENTRY(trace_arg) next;
+	char *val;
 };
 
 struct trace {
@@ -59,7 +59,7 @@ struct trace {
 	enum rte_trace_mode mode;
 	rte_uuid_t uuid;
 	uint32_t buff_len;
-	struct trace_args args;
+	STAILQ_HEAD(, trace_arg) args;
 	uint32_t nb_trace_points;
 	uint32_t nb_trace_mem_list;
 	struct thread_mem_meta *lcore_meta;

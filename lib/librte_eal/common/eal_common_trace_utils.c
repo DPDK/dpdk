@@ -138,25 +138,21 @@ int
 eal_trace_args_save(const char *val)
 {
 	struct trace *trace = trace_obj_get();
-	char *trace_args;
-	uint8_t nb_args;
+	struct trace_arg *arg = malloc(sizeof(*arg));
 
-	nb_args = trace->args.nb_args;
-
-	if (nb_args >= TRACE_MAX_ARGS) {
-		trace_err("ignoring trace %s as limit exceeds", val);
-		return 0;
-	}
-
-	trace_args = calloc(1, (strlen(val) + 1));
-	if (trace_args == NULL) {
-		trace_err("fail to allocate memory for %s", val);
+	if (arg == NULL) {
+		trace_err("failed to allocate memory for %s", val);
 		return -ENOMEM;
 	}
 
-	memcpy(trace_args, val, strlen(val));
-	trace->args.args[nb_args++] = trace_args;
-	trace->args.nb_args = nb_args;
+	arg->val = strdup(val);
+	if (arg->val == NULL) {
+		trace_err("failed to allocate memory for %s", val);
+		free(arg);
+		return -ENOMEM;
+	}
+
+	STAILQ_INSERT_TAIL(&trace->args, arg, next);
 	return 0;
 }
 
@@ -164,13 +160,13 @@ void
 eal_trace_args_free(void)
 {
 	struct trace *trace = trace_obj_get();
-	int i;
+	struct trace_arg *arg;
 
-	for (i = 0; i < trace->args.nb_args; i++) {
-		if (trace->args.args[i]) {
-			free((void *)trace->args.args[i]);
-			trace->args.args[i] = NULL;
-		}
+	while (!STAILQ_EMPTY(&trace->args)) {
+		arg = STAILQ_FIRST(&trace->args);
+		STAILQ_REMOVE_HEAD(&trace->args, next);
+		free(arg->val);
+		free(arg);
 	}
 }
 
