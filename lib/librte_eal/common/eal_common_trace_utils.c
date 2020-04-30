@@ -199,11 +199,6 @@ eal_trace_bufsz_args_save(char const *val)
 	struct trace *trace = trace_obj_get();
 	uint64_t bufsz;
 
-	if (val == NULL) {
-		trace_err("no optarg is passed");
-		return -EINVAL;
-	}
-
 	bufsz = rte_str_to_size(val);
 	if (bufsz == 0) {
 		trace_err("buffer size cannot be zero");
@@ -230,11 +225,6 @@ eal_trace_mode_args_save(const char *val)
 	size_t len = strlen(val);
 	unsigned long tmp;
 	char *pattern;
-
-	if (val == NULL) {
-		trace_err("no optarg is passed");
-		return -EINVAL;
-	}
 
 	if (len == 0) {
 		trace_err("value is not provided with option");
@@ -270,11 +260,6 @@ eal_trace_dir_args_save(char const *val)
 	uint32_t size = sizeof(trace->dir);
 	char *dir_path = NULL;
 	int rc;
-
-	if (val == NULL) {
-		trace_err("no optarg is passed");
-		return -EINVAL;
-	}
 
 	if (strlen(val) >= size) {
 		trace_err("input string is too big");
