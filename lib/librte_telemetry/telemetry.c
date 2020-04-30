@@ -14,6 +14,7 @@
 #include <rte_common.h>
 #include <rte_spinlock.h>
 #include <rte_version.h>
+#include <rte_option.h>
 
 #include "rte_telemetry.h"
 #include "telemetry_json.h"
@@ -340,7 +341,7 @@ error:
 	return -1;
 }
 
-static int __rte_unused /* will be used in future commit */
+static int
 telemetry_legacy_init(const char *runtime_dir)
 {
 	pthread_t t_old;
@@ -396,7 +397,7 @@ telemetry_v2_init(const char *runtime_dir)
 }
 
 int32_t
-rte_telemetry_new_init(void)
+rte_telemetry_init(void)
 {
 	const char *error_str;
 	if (telemetry_v2_init(rte_eal_get_runtime_dir()) != 0) {
@@ -404,5 +405,20 @@ rte_telemetry_new_init(void)
 		printf("Error initialising telemetry - %s", error_str);
 		return -1;
 	}
+	if (telemetry_legacy_init(rte_eal_get_runtime_dir()) != 0) {
+		error_str = telemetry_log_error;
+		printf("No telemetry legacy support- %s", error_str);
+	}
 	return 0;
+}
+
+static struct rte_option option = {
+	.name = "telemetry",
+	.usage = "Enable telemetry backend",
+	.cb = &rte_telemetry_init,
+	.enabled = 0
+};
+
+RTE_INIT(telemetry_register_op) {
+	rte_option_register(&option);
 }

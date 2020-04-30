@@ -15,14 +15,10 @@ CFLAGS += -pthread
 
 LDLIBS += -lrte_eal
 LDLIBS += -lpthread
-LDLIBS += -ljansson
 
 EXPORT_MAP := rte_telemetry_version.map
 
 # library source files
-SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) := rte_telemetry.c
-SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += rte_telemetry_parser.c
-SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += rte_telemetry_parser_test.c
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += telemetry.c
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += telemetry_data.c
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += telemetry_legacy.c

@@ -3,16 +3,7 @@
 
 includes = [global_inc]
 
-sources = files('rte_telemetry.c', 'rte_telemetry_parser.c', 'rte_telemetry_parser_test.c',
-	'telemetry.c', 'telemetry_data.c', 'telemetry_legacy.c')
-headers = files('rte_telemetry.h', 'rte_telemetry_internal.h', 'rte_telemetry_parser.h')
+sources = files('telemetry.c', 'telemetry_data.c', 'telemetry_legacy.c')
+headers = files('rte_telemetry.h')
 includes += include_directories('../librte_metrics')
-
-jansson = dependency('jansson', required: false)
-if jansson.found()
-	ext_deps += jansson
-	dpdk_app_link_libraries += ['telemetry']
-else
-	build = false
-	reason = 'missing dependency "jansson"'
-endif
+dpdk_app_link_libraries += ['telemetry']

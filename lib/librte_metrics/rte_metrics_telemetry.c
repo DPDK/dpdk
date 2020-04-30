@@ -7,7 +7,6 @@
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
 #ifdef RTE_LIBRTE_TELEMETRY
-#include <rte_telemetry_internal.h>
 #include <rte_telemetry_legacy.h>
 #endif
 
@@ -529,14 +528,6 @@ handle_ports_stats_values_by_name(const char *cmd __rte_unused,
 RTE_INIT(metrics_ctor)
 {
 #ifdef RTE_LIBRTE_TELEMETRY
-	static const struct metrics_functions fns = {
-		.reg_all_ethdev = rte_metrics_tel_reg_all_ethdev,
-		.encode_json_format = rte_metrics_tel_encode_json_format,
-		.get_port_stats_ids = rte_metrics_tel_get_port_stats_ids,
-		.get_ports_stats_json = rte_metrics_tel_get_ports_stats_json,
-		.extract_data = rte_metrics_tel_extract_data
-	};
-	rte_telemetry_set_metrics_fns(&fns); /* assign them to telemetry lib */
 	rte_telemetry_legacy_register("ports_all_stat_values", DATA_NOT_REQ,
 			handle_ports_all_stats_values);
 	rte_telemetry_legacy_register("global_stat_values", DATA_NOT_REQ,
