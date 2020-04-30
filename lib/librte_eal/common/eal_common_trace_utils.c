@@ -173,19 +173,11 @@ eal_trace_args_free(void)
 int
 trace_args_apply(const char *arg)
 {
-	char *str;
-
-	str = strdup(arg);
-	if (str == NULL)
-		return -1;
-
-	if (rte_trace_regexp(str, true) < 0) {
-		trace_err("cannot enable trace for %s", str);
-		free(str);
+	if (rte_trace_regexp(arg, true) < 0) {
+		trace_err("cannot enable trace for %s", arg);
 		return -1;
 	}
 
-	free(str);
 	return 0;
 }
 
