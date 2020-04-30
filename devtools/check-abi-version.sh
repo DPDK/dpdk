@@ -4,7 +4,7 @@
 
 # Check whether library symbols have correct
 # version (provided ABI number or provided ABI
-# number + 1 or EXPERIMENTAL).
+# number + 1 or EXPERIMENTAL or INTERNAL).
 # Args:
 #   $1: path of the library .so file
 #   $2: ABI major version number to check
@@ -12,7 +12,7 @@
 
 if [ -z "$1" ]; then
     echo "Script checks whether library symbols have"
-    echo "correct version (ABI_VER/ABI_VER+1/EXPERIMENTAL)"
+    echo "correct version (ABI_VER/ABI_VER+1/EXPERIMENTAL/INTERNAL)"
     echo "Usage:"
     echo "  $0 SO_FILE_PATH [ABI_VER]"
     exit 1
@@ -41,11 +41,11 @@ for SYM in $(echo "${OBJ_DUMP_OUTPUT}" | awk '{print $(NF-1) "-" $NF}')
 do
     version=$(echo $SYM | cut -d'-' -f 1)
     symbol=$(echo $SYM | cut -d'-' -f 2)
-    case $version in (*"$ABIVER"*|*"$NEXT_ABIVER"*|"EXPERIMENTAL")
+    case $version in (*"$ABIVER"*|*"$NEXT_ABIVER"*|"EXPERIMENTAL"|"INTERNAL")
         ;;
     (*)
         echo "Warning: symbol $symbol ($version) should be annotated " \
-             "as ABI version $ABIVER / $NEXT_ABIVER, or EXPERIMENTAL."
+             "as ABI version $ABIVER / $NEXT_ABIVER, EXPERIMENTAL, or INTERNAL."
         ret=1
     ;;
     esac
