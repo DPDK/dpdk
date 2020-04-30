@@ -12,6 +12,7 @@ EXPERIMENTAL {
 	rte_tel_data_string;
 	rte_telemetry_cleanup;
 	rte_telemetry_init;
+	rte_telemetry_legacy_register;
 	rte_telemetry_new_init;
 	rte_telemetry_parse;
 	rte_telemetry_register_cmd;

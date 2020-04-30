@@ -8,6 +8,7 @@
 #include <rte_string_fns.h>
 #ifdef RTE_LIBRTE_TELEMETRY
 #include <rte_telemetry_internal.h>
+#include <rte_telemetry_legacy.h>
 #endif
 
 #include "rte_metrics.h"
@@ -419,6 +420,112 @@ rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data)
 	return 0;
 }
 
+static int
+rte_metrics_tel_initial_metrics_setup(void)
+{
+	int ret;
+	rte_metrics_init(rte_socket_id());
+
+	if (!tel_met_data.metrics_register_done) {
+		ret = rte_metrics_tel_reg_all_ethdev(
+			&tel_met_data.metrics_register_done,
+			tel_met_data.reg_index);
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}
+
+static int
+handle_ports_all_stats_values(const char *cmd __rte_unused,
+		const char *params __rte_unused,
+		char *buffer, int buf_len)
+{
+	struct telemetry_encode_param ep;
+	int ret, used = 0;
+	char *json_buffer = NULL;
+
+	ret = rte_metrics_tel_initial_metrics_setup();
+	if (ret < 0)
+		return ret;
+
+	memset(&ep, 0, sizeof(ep));
+	ret = rte_metrics_tel_get_port_stats_ids(&ep);
+	if (ret < 0)
+		return ret;
+
+	ret = rte_metrics_tel_get_ports_stats_json(&ep, tel_met_data.reg_index,
+			&json_buffer);
+	if (ret < 0)
+		return ret;
+
+	used += strlcpy(buffer, json_buffer, buf_len);
+	return used;
+}
+
+static int
+handle_global_stats_values(const char *cmd __rte_unused,
+		const char *params __rte_unused,
+		char *buffer, int buf_len)
+{
+	char *json_buffer = NULL;
+	struct telemetry_encode_param ep = { .type = GLOBAL_STATS };
+	int ret, used = 0;
+
+	ret = rte_metrics_tel_initial_metrics_setup();
+	if (ret < 0)
+		return ret;
+
+	ret = rte_metrics_tel_encode_json_format(&ep, &json_buffer);
+	if (ret < 0) {
+		METRICS_LOG_ERR("JSON encode function failed");
+		return ret;
+	}
+	used += strlcpy(buffer, json_buffer, buf_len);
+	return used;
+}
+
+static int
+handle_ports_stats_values_by_name(const char *cmd __rte_unused,
+		const char *params,
+		char *buffer, int buf_len)
+{
+	char *json_buffer = NULL;
+	struct telemetry_encode_param ep;
+	int ret, used = 0;
+	json_t *data;
+	json_error_t error;
+
+	ret = rte_metrics_tel_initial_metrics_setup();
+	if (ret < 0)
+		return ret;
+
+	data = json_loads(params, 0, &error);
+	if (!data) {
+		METRICS_LOG_WARN("Could not load JSON object from data passed in : %s",
+				error.text);
+		return -EPERM;
+	} else if (!json_is_object(data)) {
+		METRICS_LOG_WARN("JSON Request data is not a JSON object");
+		json_decref(data);
+		return -EINVAL;
+	}
+
+	ret = rte_metrics_tel_extract_data(&ep, data);
+	if (ret < 0) {
+		METRICS_LOG_ERR("Extract data function failed");
+		return ret;
+	}
+
+	ret = rte_metrics_tel_encode_json_format(&ep, &json_buffer);
+	if (ret < 0) {
+		METRICS_LOG_ERR("JSON encode function failed");
+		return ret;
+	}
+	used += strlcpy(buffer, json_buffer, buf_len);
+	return used;
+}
+
 RTE_INIT(metrics_ctor)
 {
 #ifdef RTE_LIBRTE_TELEMETRY
@@ -430,6 +537,12 @@ RTE_INIT(metrics_ctor)
 		.extract_data = rte_metrics_tel_extract_data
 	};
 	rte_telemetry_set_metrics_fns(&fns); /* assign them to telemetry lib */
+	rte_telemetry_legacy_register("ports_all_stat_values", DATA_NOT_REQ,
+			handle_ports_all_stats_values);
+	rte_telemetry_legacy_register("global_stat_values", DATA_NOT_REQ,
+			handle_global_stats_values);
+	rte_telemetry_legacy_register("ports_stats_values_by_name", DATA_REQ,
+			handle_ports_stats_values_by_name);
 #endif
 	metrics_log_level = rte_log_register("lib.metrics");
 	if (metrics_log_level >= 0)

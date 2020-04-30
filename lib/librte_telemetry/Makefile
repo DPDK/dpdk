@@ -25,6 +25,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += rte_telemetry_parser.c
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += rte_telemetry_parser_test.c
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += telemetry.c
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += telemetry_data.c
+SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += telemetry_legacy.c
 
 # export include files
 SYMLINK-$(CONFIG_RTE_LIBRTE_TELEMETRY)-include := rte_telemetry.h
