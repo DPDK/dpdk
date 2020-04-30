@@ -503,6 +503,9 @@ rte_telemetry_init(void)
 		return -EPERM;
 	}
 
+	if (rte_telemetry_new_init() != 0)
+		return -1;
+
 	return 0;
 }
 

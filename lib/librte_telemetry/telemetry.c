@@ -1,0 +1,326 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2020 Intel Corporation
+ */
+
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <dlfcn.h>
+
+/* we won't link against libbsd, so just always use DPDKs-specific strlcpy */
+#undef RTE_USE_LIBBSD
+#include <rte_string_fns.h>
+#include <rte_common.h>
+#include <rte_spinlock.h>
+#include <rte_version.h>
+
+#include "rte_telemetry.h"
+#include "telemetry_json.h"
+#include "telemetry_data.h"
+
+#define MAX_CMD_LEN 56
+#define MAX_HELP_LEN 64
+#define MAX_OUTPUT_LEN (1024 * 16)
+
+static void *
+client_handler(void *socket);
+
+struct cmd_callback {
+	char cmd[MAX_CMD_LEN];
+	telemetry_cb fn;
+	char help[MAX_HELP_LEN];
+};
+
+struct socket {
+	int sock;
+	char path[sizeof(((struct sockaddr_un *)0)->sun_path)];
+	handler fn;
+};
+static struct socket v2_socket; /* socket for v2 telemetry */
+static char telemetry_log_error[1024]; /* Will contain error on init failure */
+/* list of command callbacks, with one command registered by default */
+static struct cmd_callback callbacks[TELEMETRY_MAX_CALLBACKS];
+static int num_callbacks; /* How many commands are registered */
+/* Used when accessing or modifying list of command callbacks */
+static rte_spinlock_t callback_sl = RTE_SPINLOCK_INITIALIZER;
+
+int
+rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
+{
+	int i = 0;
+
+	if (strlen(cmd) >= MAX_CMD_LEN || fn == NULL || cmd[0] != '/'
+			|| strlen(help) >= MAX_HELP_LEN)
+		return -EINVAL;
+	if (num_callbacks >= TELEMETRY_MAX_CALLBACKS)
+		return -ENOENT;
+
+	rte_spinlock_lock(&callback_sl);
+	while (i < num_callbacks && strcmp(cmd, callbacks[i].cmd) > 0)
+		i++;
+	if (i != num_callbacks)
+		/* Move elements to keep the list alphabetical */
+		memmove(callbacks + i + 1, callbacks + i,
+			sizeof(struct cmd_callback) * (num_callbacks - i));
+
+	strlcpy(callbacks[i].cmd, cmd, MAX_CMD_LEN);
+	callbacks[i].fn = fn;
+	strlcpy(callbacks[i].help, help, MAX_HELP_LEN);
+	num_callbacks++;
+	rte_spinlock_unlock(&callback_sl);
+
+	return 0;
+}
+
+static void
+output_json(const char *cmd, const struct rte_tel_data *d, int s)
+{
+	char out_buf[MAX_OUTPUT_LEN];
+
+	char *cb_data_buf;
+	size_t buf_len, prefix_used, used = 0;
+	unsigned int i;
+
+	RTE_BUILD_BUG_ON(sizeof(out_buf) < MAX_CMD_LEN +
+			RTE_TEL_MAX_SINGLE_STRING_LEN + 10);
+	switch (d->type) {
+	case RTE_TEL_NULL:
+		used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":null}",
+				MAX_CMD_LEN, cmd ? cmd : "none");
+		break;
+	case RTE_TEL_STRING:
+		used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":\"%.*s\"}",
+				MAX_CMD_LEN, cmd,
+				RTE_TEL_MAX_SINGLE_STRING_LEN, d->data.str);
+		break;
+	case RTE_TEL_DICT:
+		prefix_used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":",
+				MAX_CMD_LEN, cmd);
+		cb_data_buf = &out_buf[prefix_used];
+		buf_len = sizeof(out_buf) - prefix_used - 1; /* space for '}' */
+
+		used = rte_tel_json_empty_obj(cb_data_buf, buf_len, 0);
+		for (i = 0; i < d->data_len; i++) {
+			const struct tel_dict_entry *v = &d->data.dict[i];
+			switch (v->type) {
+			case RTE_TEL_STRING_VAL:
+				used = rte_tel_json_add_obj_str(cb_data_buf,
+						buf_len, used,
+						v->name, v->value.sval);
+				break;
+			case RTE_TEL_INT_VAL:
+				used = rte_tel_json_add_obj_int(cb_data_buf,
+						buf_len, used,
+						v->name, v->value.ival);
+				break;
+			case RTE_TEL_U64_VAL:
+				used = rte_tel_json_add_obj_u64(cb_data_buf,
+						buf_len, used,
+						v->name, v->value.u64val);
+				break;
+			}
+		}
+		used += prefix_used;
+		used += strlcat(out_buf + used, "}", sizeof(out_buf) - used);
+		break;
+	case RTE_TEL_ARRAY_STRING:
+	case RTE_TEL_ARRAY_INT:
+	case RTE_TEL_ARRAY_U64:
+		prefix_used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":",
+				MAX_CMD_LEN, cmd);
+		cb_data_buf = &out_buf[prefix_used];
+		buf_len = sizeof(out_buf) - prefix_used - 1; /* space for '}' */
+
+		used = rte_tel_json_empty_array(cb_data_buf, buf_len, 0);
+		for (i = 0; i < d->data_len; i++)
+			if (d->type == RTE_TEL_ARRAY_STRING)
+				used = rte_tel_json_add_array_string(
+						cb_data_buf,
+						buf_len, used,
+						d->data.array[i].sval);
+			else if (d->type == RTE_TEL_ARRAY_INT)
+				used = rte_tel_json_add_array_int(cb_data_buf,
+						buf_len, used,
+						d->data.array[i].ival);
+			else if (d->type == RTE_TEL_ARRAY_U64)
+				used = rte_tel_json_add_array_u64(cb_data_buf,
+						buf_len, used,
+						d->data.array[i].u64val);
+		used += prefix_used;
+		used += strlcat(out_buf + used, "}", sizeof(out_buf) - used);
+		break;
+	}
+	if (write(s, out_buf, used) < 0)
+		perror("Error writing to socket");
+}
+
+static void
+perform_command(telemetry_cb fn, const char *cmd, const char *param, int s)
+{
+	struct rte_tel_data data;
+
+	int ret = fn(cmd, param, &data);
+	if (ret < 0) {
+		char out_buf[MAX_CMD_LEN + 10];
+		int used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":null}",
+				MAX_CMD_LEN, cmd ? cmd : "none");
+		if (write(s, out_buf, used) < 0)
+			perror("Error writing to socket");
+		return;
+	}
+	output_json(cmd, &data, s);
+}
+
+static int
+unknown_command(const char *cmd __rte_unused, const char *params __rte_unused,
+		struct rte_tel_data *d)
+{
+	return d->type = RTE_TEL_NULL;
+}
+
+static void *
+client_handler(void *sock_id)
+{
+	int s = (int)(uintptr_t)sock_id;
+	char buffer[1024];
+	char info_str[1024];
+	snprintf(info_str, sizeof(info_str),
+			"{\"version\":\"%s\",\"pid\":%d,\"max_output_len\":%d}",
+			rte_version(), getpid(), MAX_OUTPUT_LEN);
+	if (write(s, info_str, strlen(info_str)) < 0) {
+		close(s);
+		return NULL;
+	}
+
+	/* receive data is not null terminated */
+	int bytes = read(s, buffer, sizeof(buffer) - 1);
+	while (bytes > 0) {
+		buffer[bytes] = 0;
+		const char *cmd = strtok(buffer, ",");
+		const char *param = strtok(NULL, ",");
+		telemetry_cb fn = unknown_command;
+		int i;
+
+		if (cmd && strlen(cmd) < MAX_CMD_LEN) {
+			rte_spinlock_lock(&callback_sl);
+			for (i = 0; i < num_callbacks; i++)
+				if (strcmp(cmd, callbacks[i].cmd) == 0) {
+					fn = callbacks[i].fn;
+					break;
+				}
+			rte_spinlock_unlock(&callback_sl);
+		}
+		perform_command(fn, cmd, param, s);
+
+		bytes = read(s, buffer, sizeof(buffer) - 1);
+	}
+	close(s);
+	return NULL;
+}
+
+static void *
+socket_listener(void *socket)
+{
+	while (1) {
+		pthread_t th;
+		struct socket *s = (struct socket *)socket;
+		int s_accepted = accept(s->sock, NULL, NULL);
+		if (s_accepted < 0) {
+			snprintf(telemetry_log_error,
+					sizeof(telemetry_log_error),
+					"Error with accept, telemetry thread quitting\n");
+			return NULL;
+		}
+		pthread_create(&th, NULL, s->fn, (void *)(uintptr_t)s_accepted);
+		pthread_detach(th);
+	}
+	return NULL;
+}
+
+static inline char *
+get_socket_path(const char *runtime_dir, const int version)
+{
+	static char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s/dpdk_telemetry.v%d",
+			strlen(runtime_dir) ? runtime_dir : "/tmp", version);
+	return path;
+}
+
+static void
+unlink_sockets(void)
+{
+	if (v2_socket.path[0])
+		unlink(v2_socket.path);
+}
+
+static int
+create_socket(char *path)
+{
+	int sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+	if (sock < 0) {
+		snprintf(telemetry_log_error, sizeof(telemetry_log_error),
+				"Error with socket creation, %s",
+				strerror(errno));
+		return -1;
+	}
+
+	struct sockaddr_un sun = {.sun_family = AF_UNIX};
+	strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
+	unlink(sun.sun_path);
+	if (bind(sock, (void *) &sun, sizeof(sun)) < 0) {
+		snprintf(telemetry_log_error, sizeof(telemetry_log_error),
+				"Error binding socket: %s",
+				strerror(errno));
+		sun.sun_path[0] = 0;
+		goto error;
+	}
+
+	if (listen(sock, 1) < 0) {
+		snprintf(telemetry_log_error, sizeof(telemetry_log_error),
+				"Error calling listen for socket: %s",
+				strerror(errno));
+		goto error;
+	}
+
+	return sock;
+
+error:
+	close(sock);
+	unlink_sockets();
+	return -1;
+}
+
+static int
+telemetry_v2_init(const char *runtime_dir)
+{
+	pthread_t t_new;
+
+	v2_socket.fn = client_handler;
+	if (strlcpy(v2_socket.path, get_socket_path(runtime_dir, 2),
+			sizeof(v2_socket.path)) >= sizeof(v2_socket.path)) {
+		snprintf(telemetry_log_error, sizeof(telemetry_log_error),
+				"Error with socket binding, path too long");
+		return -1;
+	}
+
+	v2_socket.sock = create_socket(v2_socket.path);
+	if (v2_socket.sock < 0)
+		return -1;
+	pthread_create(&t_new, NULL, socket_listener, &v2_socket);
+	atexit(unlink_sockets);
+
+	return 0;
+}
+
+int32_t
+rte_telemetry_new_init(void)
+{
+	const char *error_str;
+	if (telemetry_v2_init(rte_eal_get_runtime_dir()) != 0) {
+		error_str = telemetry_log_error;
+		printf("Error initialising telemetry - %s", error_str);
+		return -1;
+	}
+	return 0;
+}
