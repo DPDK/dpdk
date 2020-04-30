@@ -73,6 +73,51 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
 	return 0;
 }
 
+static int
+list_commands(const char *cmd __rte_unused, const char *params __rte_unused,
+		struct rte_tel_data *d)
+{
+	int i;
+
+	rte_tel_data_start_array(d, RTE_TEL_STRING_VAL);
+	for (i = 0; i < num_callbacks; i++)
+		rte_tel_data_add_array_string(d, callbacks[i].cmd);
+	return 0;
+}
+
+static int
+json_info(const char *cmd __rte_unused, const char *params __rte_unused,
+		struct rte_tel_data *d)
+{
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_string(d, "version", rte_version());
+	rte_tel_data_add_dict_int(d, "pid", getpid());
+	rte_tel_data_add_dict_int(d, "max_output_len", MAX_OUTPUT_LEN);
+	return 0;
+}
+
+static int
+command_help(const char *cmd __rte_unused, const char *params,
+		struct rte_tel_data *d)
+{
+	int i;
+
+	if (!params)
+		return -1;
+	rte_tel_data_start_dict(d);
+	rte_spinlock_lock(&callback_sl);
+	for (i = 0; i < num_callbacks; i++)
+		if (strcmp(params, callbacks[i].cmd) == 0) {
+			rte_tel_data_add_dict_string(d, params,
+					callbacks[i].help);
+			break;
+		}
+	rte_spinlock_unlock(&callback_sl);
+	if (i == num_callbacks)
+		return -1;
+	return 0;
+}
+
 static void
 output_json(const char *cmd, const struct rte_tel_data *d, int s)
 {
@@ -296,6 +341,12 @@ telemetry_v2_init(const char *runtime_dir)
 {
 	pthread_t t_new;
 
+	rte_telemetry_register_cmd("/", list_commands,
+			"Returns list of available commands, Takes no parameters");
+	rte_telemetry_register_cmd("/info", json_info,
+			"Returns DPDK Telemetry information. Takes no parameters");
+	rte_telemetry_register_cmd("/help", command_help,
+			"Returns help text for a command. Parameters: string command");
 	v2_socket.fn = client_handler;
 	if (strlcpy(v2_socket.path, get_socket_path(runtime_dir, 2),
 			sizeof(v2_socket.path)) >= sizeof(v2_socket.path)) {
