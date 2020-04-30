@@ -135,7 +135,7 @@ fail:
 }
 
 int
-eal_trace_args_save(const char *optarg)
+eal_trace_args_save(const char *val)
 {
 	struct trace *trace = trace_obj_get();
 	char *trace_args;
@@ -144,17 +144,17 @@ eal_trace_args_save(const char *optarg)
 	nb_args = trace->args.nb_args;
 
 	if (nb_args >= TRACE_MAX_ARGS) {
-		trace_err("ignoring trace %s as limit exceeds", optarg);
+		trace_err("ignoring trace %s as limit exceeds", val);
 		return 0;
 	}
 
-	trace_args = calloc(1, (strlen(optarg) + 1));
+	trace_args = calloc(1, (strlen(val) + 1));
 	if (trace_args == NULL) {
-		trace_err("fail to allocate memory for %s", optarg);
+		trace_err("fail to allocate memory for %s", val);
 		return -ENOMEM;
 	}
 
-	memcpy(trace_args, optarg, strlen(optarg));
+	memcpy(trace_args, val, strlen(val));
 	trace->args.args[nb_args++] = trace_args;
 	trace->args.nb_args = nb_args;
 	return 0;
@@ -194,17 +194,17 @@ trace_args_apply(const char *arg)
 }
 
 int
-eal_trace_bufsz_args_save(char const *optarg)
+eal_trace_bufsz_args_save(char const *val)
 {
 	struct trace *trace = trace_obj_get();
 	uint64_t bufsz;
 
-	if (optarg == NULL) {
+	if (val == NULL) {
 		trace_err("no optarg is passed");
 		return -EINVAL;
 	}
 
-	bufsz = rte_str_to_size(optarg);
+	bufsz = rte_str_to_size(val);
 	if (bufsz == 0) {
 		trace_err("buffer size cannot be zero");
 		return -EINVAL;
@@ -224,14 +224,14 @@ trace_bufsz_args_apply(void)
 }
 
 int
-eal_trace_mode_args_save(const char *optarg)
+eal_trace_mode_args_save(const char *val)
 {
 	struct trace *trace = trace_obj_get();
-	size_t len = strlen(optarg);
+	size_t len = strlen(val);
 	unsigned long tmp;
 	char *pattern;
 
-	if (optarg == NULL) {
+	if (val == NULL) {
 		trace_err("no optarg is passed");
 		return -EINVAL;
 	}
@@ -247,7 +247,7 @@ eal_trace_mode_args_save(const char *optarg)
 		return -ENOMEM;
 	}
 
-	sprintf(pattern, "%s*", optarg);
+	sprintf(pattern, "%s*", val);
 
 	if (fnmatch(pattern, "overwrite", 0) == 0)
 		tmp = RTE_TRACE_MODE_OVERWRITE;
@@ -264,19 +264,19 @@ eal_trace_mode_args_save(const char *optarg)
 }
 
 int
-eal_trace_dir_args_save(char const *optarg)
+eal_trace_dir_args_save(char const *val)
 {
 	struct trace *trace = trace_obj_get();
 	uint32_t size = sizeof(trace->dir);
 	char *dir_path = NULL;
 	int rc;
 
-	if (optarg == NULL) {
+	if (val == NULL) {
 		trace_err("no optarg is passed");
 		return -EINVAL;
 	}
 
-	if (strlen(optarg) >= size) {
+	if (strlen(val) >= size) {
 		trace_err("input string is too big");
 		return -ENAMETOOLONG;
 	}
@@ -287,7 +287,7 @@ eal_trace_dir_args_save(char const *optarg)
 		return -ENOMEM;
 	}
 
-	sprintf(dir_path, "%s/", optarg);
+	sprintf(dir_path, "%s/", val);
 	rc = trace_dir_update(dir_path);
 
 	free(dir_path);

@@ -111,10 +111,10 @@ void trace_mem_per_thread_free(void);
 /* EAL interface */
 int eal_trace_init(void);
 void eal_trace_fini(void);
-int eal_trace_args_save(const char *optarg);
+int eal_trace_args_save(const char *val);
 void eal_trace_args_free(void);
-int eal_trace_dir_args_save(const char *optarg);
-int eal_trace_mode_args_save(const char *optarg);
-int eal_trace_bufsz_args_save(const char *optarg);
+int eal_trace_dir_args_save(const char *val);
+int eal_trace_mode_args_save(const char *val);
+int eal_trace_bufsz_args_save(const char *val);
 
 #endif /* __EAL_TRACE_H */
