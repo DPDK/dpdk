@@ -165,7 +165,7 @@ vmbus_uio_map_resource_by_index(struct rte_vmbus_device *dev, int idx,
 	dev->resource[idx].addr = mapaddr;
 	vmbus_map_addr = RTE_PTR_ADD(mapaddr, size);
 
-	/* Record result of sucessful mapping for use by secondary */
+	/* Record result of successful mapping for use by secondary */
 	maps[idx].addr = mapaddr;
 	maps[idx].size = size;
 
