@@ -37,7 +37,7 @@
 #define NVS_RNDIS_MTYPE_CTRL		1
 
 /*
- * NVS message transacion status codes.
+ * NVS message transaction status codes.
  */
 #define NVS_STATUS_OK		1
 #define NVS_STATUS_FAILED		2

@@ -72,7 +72,7 @@ static const struct hn_xstats_name_off hn_stat_strings[] = {
 
 /* The default RSS key.
  * This value is the same as MLX5 so that flows will be
- * received on same path for both VF ans synthetic NIC.
+ * received on same path for both VF and synthetic NIC.
  */
 static const uint8_t rss_default_key[NDIS_HASH_KEYSIZE_TOEPLITZ] = {
 	0x2c, 0xc6, 0x81, 0xd1,	0x5b, 0xdb, 0xf4, 0xf7,
