@@ -977,13 +977,11 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 	uint16_t avail_head;
 
-	avail_head = *((volatile uint16_t *)&vq->avail->idx);
-
 	/*
 	 * The ordering between avail index and
 	 * desc reads needs to be enforced.
 	 */
-	rte_smp_rmb();
+	avail_head = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE);
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
@@ -1698,16 +1696,14 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		}
 	}
 
-	free_entries = *((volatile uint16_t *)&vq->avail->idx) -
-			vq->last_avail_idx;
-	if (free_entries == 0)
-		return 0;
-
 	/*
 	 * The ordering between avail index and
 	 * desc reads needs to be enforced.
 	 */
-	rte_smp_rmb();
+	free_entries = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE) -
+			vq->last_avail_idx;
+	if (free_entries == 0)
+		return 0;
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 

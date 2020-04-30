@@ -505,8 +505,24 @@ void vq_ring_free_inorder(struct virtqueue *vq, uint16_t desc_idx,
 static inline void
 vq_update_avail_idx(struct virtqueue *vq)
 {
-	virtio_wmb(vq->hw->weak_barriers);
-	vq->vq_split.ring.avail->idx = vq->vq_avail_idx;
+	if (vq->hw->weak_barriers) {
+	/* x86 prefers to using rte_smp_wmb over __atomic_store_n as
+	 * it reports a slightly better perf, which comes from the
+	 * saved branch by the compiler.
+	 * The if and else branches are identical with the smp and
+	 * cio barriers both defined as compiler barriers on x86.
+	 */
+#ifdef RTE_ARCH_X86_64
+		rte_smp_wmb();
+		vq->vq_split.ring.avail->idx = vq->vq_avail_idx;
+#else
+		__atomic_store_n(&vq->vq_split.ring.avail->idx,
+				 vq->vq_avail_idx, __ATOMIC_RELEASE);
+#endif
+	} else {
+		rte_cio_wmb();
+		vq->vq_split.ring.avail->idx = vq->vq_avail_idx;
+	}
 }
 
 static inline void
