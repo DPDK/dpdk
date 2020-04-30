@@ -98,7 +98,7 @@ struct hn_rx_bufinfo {
 struct hn_data {
 	struct rte_vmbus_device *vmbus;
 	struct hn_rx_queue *primary;
-	rte_spinlock_t  vf_lock;
+	rte_rwlock_t    vf_lock;
 	uint16_t	port_id;
 	uint16_t	vf_port;
 
@@ -188,14 +188,14 @@ hn_vf_attached(const struct hn_data *hv)
 	return hv->vf_port != HN_INVALID_PORT;
 }
 
-/* Get VF device for existing netvsc device */
+/*
+ * Get VF device for existing netvsc device
+ * Assumes vf_lock is held.
+ */
 static inline struct rte_eth_dev *
 hn_get_vf_dev(const struct hn_data *hv)
 {
 	uint16_t vf_port = hv->vf_port;
-
-	/* make sure vf_port is loaded */
-	rte_smp_rmb();
 
 	if (vf_port == HN_INVALID_PORT)
 		return NULL;
