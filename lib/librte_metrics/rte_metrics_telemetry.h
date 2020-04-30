@@ -21,18 +21,12 @@ enum rte_telemetry_stats_type {
 
 struct telemetry_encode_param {
 	enum rte_telemetry_stats_type type;
-	union {
-		struct port_param {
-			int num_metric_ids;
-			uint32_t metric_ids[RTE_METRICS_MAX_METRICS];
-			int num_port_ids;
-			uint32_t port_ids[RTE_MAX_ETHPORTS];
-		} pp;
-		struct global_param {
-			int num_metric_ids;
-			uint32_t metric_ids[RTE_METRICS_MAX_METRICS];
-		} gp;
-	};
+	struct port_param {
+		int num_metric_ids;
+		uint32_t metric_ids[RTE_METRICS_MAX_METRICS];
+		int num_port_ids;
+		uint32_t port_ids[RTE_MAX_ETHPORTS];
+	} pp;
 };
 
 struct telemetry_metrics_data {

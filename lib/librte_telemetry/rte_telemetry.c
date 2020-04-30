@@ -145,11 +145,6 @@ rte_telemetry_send_global_stats_values(struct telemetry_encode_param *ep,
 		return -1;
 	}
 
-	if (ep->gp.num_metric_ids < 0) {
-		TELEMETRY_LOG_ERR("Invalid num_metric_ids, must be positive");
-		goto einval_fail;
-	}
-
 	ret = rte_metrics_tel_encode_json_format(ep, &json_buffer);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("JSON encode function failed");
@@ -166,12 +161,6 @@ rte_telemetry_send_global_stats_values(struct telemetry_encode_param *ep,
 	}
 
 	return 0;
-
-einval_fail:
-	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
-	if (ret < 0)
-		TELEMETRY_LOG_ERR("Could not send error");
-	return -1;
 }
 
 int32_t

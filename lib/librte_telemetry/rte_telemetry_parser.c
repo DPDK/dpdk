@@ -225,9 +225,8 @@ rte_telemetry_command_global_stat_values(struct telemetry_impl *telemetry,
 	 int action, json_t *data)
 {
 	int ret;
-	struct telemetry_encode_param ep;
+	struct telemetry_encode_param ep = { .type = GLOBAL_STATS };
 
-	memset(&ep, 0, sizeof(ep));
 	if (telemetry == NULL) {
 		TELEMETRY_LOG_ERR("Invalid telemetry argument");
 		return -1;
@@ -244,15 +243,6 @@ rte_telemetry_command_global_stat_values(struct telemetry_impl *telemetry,
 	if (json_is_object(data)) {
 		TELEMETRY_LOG_WARN("Invalid data provided for this command");
 		ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
-		if (ret < 0)
-			TELEMETRY_LOG_ERR("Could not send error");
-		return -1;
-	}
-
-	ret = rte_metrics_tel_get_global_stats(&ep);
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Could not get global stat values");
-		ret = rte_telemetry_send_error_response(telemetry, ret);
 		if (ret < 0)
 			TELEMETRY_LOG_ERR("Could not send error");
 		return -1;

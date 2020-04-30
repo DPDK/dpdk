@@ -24,31 +24,11 @@ int metrics_log_level;
 	METRICS_LOG(WARNING, fmt, ## args)
 
 static int32_t
-rte_metrics_tel_is_port_active(int port_id)
-{
-	int ret;
-
-	ret = rte_eth_find_next(port_id);
-	if (ret == port_id)
-		return 1;
-
-	METRICS_LOG_ERR("port_id: %d is invalid, not active",
-		port_id);
-
-	return 0;
-}
-
-static int32_t
 rte_metrics_tel_reg_port_ethdev_to_metrics(uint16_t port_id)
 {
-	int ret, num_xstats, ret_val, i;
-	struct rte_eth_xstat *eth_xstats = NULL;
-	struct rte_eth_xstat_name *eth_xstats_names = NULL;
-
-	if (!rte_eth_dev_is_valid_port(port_id)) {
-		METRICS_LOG_ERR("port_id: %d is invalid", port_id);
-		return -EINVAL;
-	}
+	int ret,  num_xstats, i;
+	struct rte_eth_xstat_name *eth_xstats_names;
+	const char **xstats_names;
 
 	num_xstats = rte_eth_xstats_get(port_id, NULL, 0);
 	if (num_xstats < 0) {
@@ -57,53 +37,33 @@ rte_metrics_tel_reg_port_ethdev_to_metrics(uint16_t port_id)
 		return -EPERM;
 	}
 
-	eth_xstats = malloc(sizeof(struct rte_eth_xstat) * num_xstats);
-	if (eth_xstats == NULL) {
-		METRICS_LOG_ERR("Failed to malloc memory for xstats");
-		return -ENOMEM;
-	}
-
-	ret = rte_eth_xstats_get(port_id, eth_xstats, num_xstats);
-	const char *xstats_names[num_xstats];
+	xstats_names = malloc(sizeof(*xstats_names) * num_xstats);
 	eth_xstats_names = malloc(sizeof(struct rte_eth_xstat_name)
 			* num_xstats);
-	if (ret < 0 || ret > num_xstats) {
-		METRICS_LOG_ERR("rte_eth_xstats_get(%u) len%i failed: %d",
-				port_id, num_xstats, ret);
-		ret_val = -EPERM;
-		goto free_xstats;
-	}
-
-	if (eth_xstats_names == NULL) {
+	if (eth_xstats_names == NULL || xstats_names == NULL) {
 		METRICS_LOG_ERR("Failed to malloc memory for xstats_names");
-		ret_val = -ENOMEM;
+		ret = -ENOMEM;
 		goto free_xstats;
 	}
 
-	ret = rte_eth_xstats_get_names(port_id, eth_xstats_names, num_xstats);
-	if (ret < 0 || ret > num_xstats) {
-		METRICS_LOG_ERR("rte_eth_xstats_get_names(%u) len%i failed: %d",
-				port_id, num_xstats, ret);
-		ret_val = -EPERM;
+	if (rte_eth_xstats_get_names(port_id,
+			eth_xstats_names, num_xstats) != num_xstats) {
+		METRICS_LOG_ERR("rte_eth_xstats_get_names(%u) len %d failed",
+				port_id, num_xstats);
+		ret = -EPERM;
 		goto free_xstats;
 	}
 
 	for (i = 0; i < num_xstats; i++)
-		xstats_names[i] = eth_xstats_names[eth_xstats[i].id].name;
-
-	ret_val = rte_metrics_reg_names(xstats_names, num_xstats);
-	if (ret_val < 0) {
+		xstats_names[i] = eth_xstats_names[i].name;
+	ret = rte_metrics_reg_names(xstats_names, num_xstats);
+	if (ret < 0)
 		METRICS_LOG_ERR("rte_metrics_reg_names failed - metrics may already be registered");
-		ret_val = -1;
-		goto free_xstats;
-	}
-
-	goto free_xstats;
 
 free_xstats:
-	free(eth_xstats);
 	free(eth_xstats_names);
-	return ret_val;
+	free(xstats_names);
+	return ret;
 }
 
 int32_t
@@ -113,20 +73,18 @@ rte_metrics_tel_reg_all_ethdev(int *metrics_register_done, int *reg_index_list)
 		const void *dev_ops;
 		int reg_index;
 	} drv_idx[RTE_MAX_ETHPORTS] = { {0} };
-	int nb_drv_idx = 0;
-	uint16_t pid;
-	int ret;
+	int ret, nb_drv_idx = 0;
+	uint16_t d;
 
-	RTE_ETH_FOREACH_DEV(pid) {
+	RTE_ETH_FOREACH_DEV(d) {
 		int i;
 		/* Different device types have different numbers of stats, so
 		 * first check if the stats for this type of device have
 		 * already been registered
 		 */
 		for (i = 0; i < nb_drv_idx; i++) {
-			if (rte_eth_devices[pid].dev_ops ==
-					drv_idx[i].dev_ops) {
-				reg_index_list[pid] = drv_idx[i].reg_index;
+			if (rte_eth_devices[d].dev_ops == drv_idx[i].dev_ops) {
+				reg_index_list[d] = drv_idx[i].reg_index;
 				break;
 			}
 		}
@@ -134,17 +92,16 @@ rte_metrics_tel_reg_all_ethdev(int *metrics_register_done, int *reg_index_list)
 			continue; /* we found a match, go to next port */
 
 		/* No match, register a new set of xstats for this port */
-		ret = rte_metrics_tel_reg_port_ethdev_to_metrics(pid);
+		ret = rte_metrics_tel_reg_port_ethdev_to_metrics(d);
 		if (ret < 0) {
-			METRICS_LOG_ERR("Failed to register ethdev metrics");
-			return -1;
+			METRICS_LOG_ERR("Failed to register ethdev to metrics");
+			return ret;
 		}
-		reg_index_list[pid] = ret;
-		drv_idx[nb_drv_idx].dev_ops = rte_eth_devices[pid].dev_ops;
+		reg_index_list[d] = ret;
+		drv_idx[nb_drv_idx].dev_ops = rte_eth_devices[d].dev_ops;
 		drv_idx[nb_drv_idx].reg_index = ret;
 		nb_drv_idx++;
 	}
-
 	*metrics_register_done = 1;
 	return 0;
 }
@@ -155,28 +112,17 @@ rte_metrics_tel_update_metrics_ethdev(uint16_t port_id, int reg_start_index)
 	int ret, num_xstats, i;
 	struct rte_eth_xstat *eth_xstats;
 
-	if (!rte_eth_dev_is_valid_port(port_id)) {
-		METRICS_LOG_ERR("port_id: %d is invalid", port_id);
-		return -EINVAL;
-	}
-
-	ret = rte_metrics_tel_is_port_active(port_id);
-	if (ret < 1)
-		return -EINVAL;
-
 	num_xstats = rte_eth_xstats_get(port_id, NULL, 0);
 	if (num_xstats < 0) {
 		METRICS_LOG_ERR("rte_eth_xstats_get(%u) failed: %d", port_id,
 				num_xstats);
 		return -EPERM;
 	}
-
 	eth_xstats = malloc(sizeof(struct rte_eth_xstat) * num_xstats);
 	if (eth_xstats == NULL) {
 		METRICS_LOG_ERR("Failed to malloc memory for xstats");
 		return -ENOMEM;
 	}
-
 	ret = rte_eth_xstats_get(port_id, eth_xstats, num_xstats);
 	if (ret < 0 || ret > num_xstats) {
 		free(eth_xstats);
@@ -188,223 +134,96 @@ rte_metrics_tel_update_metrics_ethdev(uint16_t port_id, int reg_start_index)
 	uint64_t xstats_values[num_xstats];
 	for (i = 0; i < num_xstats; i++)
 		xstats_values[i] = eth_xstats[i].value;
-
-	ret = rte_metrics_update_values(port_id, reg_start_index, xstats_values,
-			num_xstats);
-	if (ret < 0) {
+	if (rte_metrics_update_values(port_id, reg_start_index, xstats_values,
+			num_xstats) < 0) {
 		METRICS_LOG_ERR("Could not update metrics values");
 		free(eth_xstats);
 		return -EPERM;
 	}
-
 	free(eth_xstats);
 	return 0;
 }
 
-static int
-rte_metrics_tel_get_metrics(uint32_t port_id, struct rte_metric_value
-	*metrics, struct rte_metric_name *names, int num_metrics)
-{
-	int ret, num_values;
-
-	if (num_metrics < 0) {
-		METRICS_LOG_ERR("Invalid metrics count");
-		return -EINVAL;
-	} else if (num_metrics == 0) {
-		METRICS_LOG_ERR("No metrics to display (none have been registered)");
-		return -EPERM;
-	}
-
-	if (metrics == NULL) {
-		METRICS_LOG_ERR("Metrics must be initialised.");
-		return -EINVAL;
-	}
-
-	if (names == NULL) {
-		METRICS_LOG_ERR("Names must be initialised.");
-		return -EINVAL;
-	}
-
-	ret = rte_metrics_get_names(names, num_metrics);
-	if (ret < 0 || ret > num_metrics) {
-		METRICS_LOG_ERR("Cannot get metrics names");
-		return -EPERM;
-	}
-
-	num_values = rte_metrics_get_values(port_id, NULL, 0);
-	ret = rte_metrics_get_values(port_id, metrics, num_values);
-	if (ret < 0 || ret > num_values) {
-		METRICS_LOG_ERR("Cannot get metrics values");
-		return -EPERM;
-	}
-
-	return 0;
-}
-
 static int32_t
-rte_metrics_tel_json_format_stat(json_t *stats, const char *metric_name,
-	uint64_t metric_value)
-{
-	int ret;
-	json_t *stat = json_object();
-
-	if (stat == NULL) {
-		METRICS_LOG_ERR("Could not create stat JSON object");
-		return -EPERM;
-	}
-
-	ret = json_object_set_new(stat, "name", json_string(metric_name));
-	if (ret < 0) {
-		METRICS_LOG_ERR("Stat Name field cannot be set");
-		return -EPERM;
-	}
-
-	ret = json_object_set_new(stat, "value", json_integer(metric_value));
-	if (ret < 0) {
-		METRICS_LOG_ERR("Stat Value field cannot be set");
-		return -EPERM;
-	}
-
-	ret = json_array_append_new(stats, stat);
-	if (ret < 0) {
-		METRICS_LOG_ERR("Stat cannot be added to stats json array");
-		return -EPERM;
-	}
-
-	return 0;
-}
-
-static int32_t
-rte_metrics_tel_json_format_port(uint32_t port_id, json_t *ports,
+rte_metrics_tel_format_port(uint32_t pid, json_t *ports,
 	uint32_t *metric_ids, int num_metric_ids)
 {
-	struct rte_metric_value *metrics = 0;
-	struct rte_metric_name *names = 0;
-	int num_metrics, ret;
+	struct rte_metric_value *metrics = NULL;
+	struct rte_metric_name *names = NULL;
+	int num_metrics, i, ret = -EPERM; /* most error cases return EPERM */
 	json_t *port, *stats;
-	int i;
 
 	num_metrics = rte_metrics_get_names(NULL, 0);
 	if (num_metrics < 0) {
 		METRICS_LOG_ERR("Cannot get metrics count");
-		goto einval_fail;
+		return -EINVAL;
 	} else if (num_metrics == 0) {
 		METRICS_LOG_ERR("No metrics to display (none have been registered)");
-		goto eperm_fail;
+		return -EPERM;
 	}
 
 	metrics = malloc(sizeof(struct rte_metric_value) * num_metrics);
 	names = malloc(sizeof(struct rte_metric_name) * num_metrics);
 	if (metrics == NULL || names == NULL) {
 		METRICS_LOG_ERR("Cannot allocate memory");
-		free(metrics);
-		free(names);
 		return -ENOMEM;
 	}
 
-	ret  = rte_metrics_tel_get_metrics(port_id, metrics, names,
-			num_metrics);
-	if (ret < 0) {
-		free(metrics);
-		free(names);
-		METRICS_LOG_ERR("rte_metrics_tel_get_metrics failed");
-		return ret;
+	if (rte_metrics_get_names(names, num_metrics) != num_metrics ||
+			rte_metrics_get_values(pid, metrics, num_metrics)
+				!= num_metrics) {
+		METRICS_LOG_ERR("Error getting metrics");
+		goto fail;
 	}
 
-	port = json_object();
 	stats = json_array();
-	if (port == NULL || stats == NULL) {
-		METRICS_LOG_ERR("Could not create port/stats JSON objects");
-		goto eperm_fail;
+	if (stats == NULL) {
+		METRICS_LOG_ERR("Could not create stats JSON object");
+		goto fail;
 	}
 
-	ret = json_object_set_new(port, "port", json_integer(port_id));
-	if (ret < 0) {
-		METRICS_LOG_ERR("Port field cannot be set");
-		goto eperm_fail;
-	}
-
-	for (i = 0; i < num_metric_ids; i++) {
-		int metric_id = metric_ids[i];
-		int metric_index = -1;
-		int metric_name_key = -1;
+	for (i = 0; i < num_metrics; i++) {
 		int32_t j;
-		uint64_t metric_value;
-
-		if (metric_id >= num_metrics) {
-			METRICS_LOG_ERR("Metric_id: %d is not valid",
-					metric_id);
-			goto einval_fail;
-		}
-
-		for (j = 0; j < num_metrics; j++) {
-			if (metrics[j].key == metric_id) {
-				metric_name_key = metrics[j].key;
-				metric_index = j;
+		for (j = 0; j < num_metric_ids; j++)
+			if (metrics[i].key == metric_ids[j])
 				break;
-			}
-		}
 
-		const char *metric_name = names[metric_name_key].name;
-		metric_value = metrics[metric_index].value;
+		if (num_metric_ids > 0 && j == num_metric_ids)
+			continue; /* can't find this id */
 
-		if (metric_name_key < 0 || metric_index < 0) {
-			METRICS_LOG_ERR("Could not get metric name/index");
-			goto eperm_fail;
-		}
-
-		ret = rte_metrics_tel_json_format_stat(stats, metric_name,
-				metric_value);
-		if (ret < 0) {
+		json_t *stat = json_pack("{s,s,s,I}",
+				"name", names[metrics[i].key].name,
+				"value", metrics[i].value);
+		if (stat == NULL || json_array_append_new(stats, stat) < 0) {
 			METRICS_LOG_ERR("Format stat with id: %u failed",
-					metric_id);
-			free(metrics);
-			free(names);
-			return ret;
+					metrics[i].key);
+			goto fail;
 		}
 	}
 
-	if (json_array_size(stats) == 0)
-		ret = json_object_set_new(port, "stats", json_null());
-	else
-		ret = json_object_set_new(port, "stats", stats);
-
-	if (ret < 0) {
-		METRICS_LOG_ERR("Stats object cannot be set");
-		goto eperm_fail;
-	}
-
-	ret = json_array_append_new(ports, port);
-	if (ret < 0) {
-		METRICS_LOG_ERR("Port object cannot be added to ports array");
-		goto eperm_fail;
+	port = json_pack("{s,i,s,o}", "port", pid, "stats",
+			json_array_size(stats) ? stats : json_null());
+	if (port == NULL || json_array_append_new(ports, port) < 0) {
+		METRICS_LOG_ERR("Error creating port and adding to ports");
+		goto fail;
 	}
 
 	free(metrics);
 	free(names);
 	return 0;
 
-eperm_fail:
+fail:
 	free(metrics);
 	free(names);
-	return -EPERM;
-
-einval_fail:
-	free(metrics);
-	free(names);
-	return -EINVAL;
+	return ret;
 }
 
 int32_t
 rte_metrics_tel_encode_json_format(struct telemetry_encode_param *ep,
 		char **json_buffer)
 {
-	int ret;
 	json_t *root, *ports;
-	int i;
-	uint32_t port_id;
-	int num_port_ids;
-	int num_metric_ids;
+	int ret, i;
 
 	ports = json_array();
 	if (ports == NULL) {
@@ -413,28 +232,15 @@ rte_metrics_tel_encode_json_format(struct telemetry_encode_param *ep,
 	}
 
 	if (ep->type == PORT_STATS) {
-		num_port_ids = ep->pp.num_port_ids;
-		num_metric_ids = ep->pp.num_metric_ids;
-
-		if (num_port_ids <= 0 || num_metric_ids <= 0) {
-			METRICS_LOG_ERR("Please provide port and metric ids to query");
+		if (ep->pp.num_port_ids <= 0) {
+			METRICS_LOG_ERR("Please provide port/metric ids");
 			return -EINVAL;
 		}
 
-		for (i = 0; i < num_port_ids; i++) {
-			port_id = ep->pp.port_ids[i];
-			if (!rte_eth_dev_is_valid_port(port_id)) {
-				METRICS_LOG_ERR("Port: %d invalid",
-						port_id);
-				return -EINVAL;
-			}
-		}
-
-		for (i = 0; i < num_port_ids; i++) {
-			port_id = ep->pp.port_ids[i];
-			ret = rte_metrics_tel_json_format_port(port_id,
+		for (i = 0; i < ep->pp.num_port_ids; i++) {
+			ret = rte_metrics_tel_format_port(ep->pp.port_ids[i],
 					ports, &ep->pp.metric_ids[0],
-					num_metric_ids);
+					ep->pp.num_metric_ids);
 			if (ret < 0) {
 				METRICS_LOG_ERR("Format port in JSON failed");
 				return ret;
@@ -442,75 +248,26 @@ rte_metrics_tel_encode_json_format(struct telemetry_encode_param *ep,
 		}
 	} else if (ep->type == GLOBAL_STATS) {
 		/* Request Global Metrics */
-		ret = rte_metrics_tel_json_format_port(RTE_METRICS_GLOBAL,
-				ports, &ep->gp.metric_ids[0],
-				ep->gp.num_metric_ids);
+		ret = rte_metrics_tel_format_port(RTE_METRICS_GLOBAL,
+				ports, NULL, 0);
 		if (ret < 0) {
-			METRICS_LOG_ERR(" Request Global Metrics Failed");
+			METRICS_LOG_ERR("Request Global Metrics Failed");
 			return ret;
 		}
 	} else {
-		METRICS_LOG_ERR(" Invalid metrics type in encode params");
+		METRICS_LOG_ERR("Invalid metrics type in encode params");
 		return -EINVAL;
 	}
 
-	root = json_object();
+	root = json_pack("{s,s,s,o}", "status_code", "Status OK: 200",
+			"data", ports);
 	if (root == NULL) {
-		METRICS_LOG_ERR("Could not create root JSON object");
-		return -EPERM;
-	}
-
-	ret = json_object_set_new(root, "status_code",
-		json_string("Status OK: 200"));
-	if (ret < 0) {
-		METRICS_LOG_ERR("Status code field cannot be set");
-		return -EPERM;
-	}
-
-	ret = json_object_set_new(root, "data", ports);
-	if (ret < 0) {
-		METRICS_LOG_ERR("Data field cannot be set");
+		METRICS_LOG_ERR("Root, Status or data field cannot be set");
 		return -EPERM;
 	}
 
 	*json_buffer = json_dumps(root, JSON_INDENT(2));
 	json_decref(root);
-	return 0;
-}
-
-int32_t
-rte_metrics_tel_get_global_stats(struct telemetry_encode_param *ep)
-{
-	int num_metrics, ret, i;
-	struct rte_metric_value *values;
-
-	num_metrics = rte_metrics_get_values(RTE_METRICS_GLOBAL, NULL, 0);
-	if (num_metrics < 0) {
-		METRICS_LOG_ERR("Cannot get metrics count");
-		return -EINVAL;
-	} else if (num_metrics == 0) {
-		METRICS_LOG_ERR("No metrics to display (none have been registered)");
-		return -EPERM;
-	}
-
-	values = malloc(sizeof(struct rte_metric_value) * num_metrics);
-	if (values == NULL) {
-		METRICS_LOG_ERR("Cannot allocate memory");
-		return -ENOMEM;
-	}
-
-	ret = rte_metrics_get_values(RTE_METRICS_GLOBAL, values, num_metrics);
-	if (ret < 0) {
-		METRICS_LOG_ERR("Could not get stat values");
-		free(values);
-		return -EINVAL;
-	}
-	for (i = 0; i < num_metrics; i++)
-		ep->gp.metric_ids[i] = values[i].key;
-
-	ep->gp.num_metric_ids = num_metrics;
-	ep->type = GLOBAL_STATS;
-	free(values);
 	return 0;
 }
 
@@ -547,24 +304,7 @@ rte_metrics_tel_get_ports_stats_json(struct telemetry_encode_param *ep,
 int32_t
 rte_metrics_tel_get_port_stats_ids(struct telemetry_encode_param *ep)
 {
-	int ret, num_metrics, i, p;
-	struct rte_metric_value *values;
-	uint64_t num_port_ids = 0;
-
-	num_metrics = rte_metrics_get_values(0, NULL, 0);
-	if (num_metrics < 0) {
-		METRICS_LOG_ERR("Cannot get metrics count");
-		return -EINVAL;
-	} else if (num_metrics == 0) {
-		METRICS_LOG_ERR("No metrics to display (none have been registered)");
-		return -EPERM;
-	}
-
-	values = malloc(sizeof(struct rte_metric_value) * num_metrics);
-	if (values == NULL) {
-		METRICS_LOG_ERR("Cannot allocate memory");
-		return -ENOMEM;
-	}
+	int p, num_port_ids = 0;
 
 	RTE_ETH_FOREACH_DEV(p) {
 		ep->pp.port_ids[num_port_ids] = p;
@@ -573,51 +313,26 @@ rte_metrics_tel_get_port_stats_ids(struct telemetry_encode_param *ep)
 
 	if (!num_port_ids) {
 		METRICS_LOG_ERR("No active ports");
-		goto fail;
+		return -EINVAL;
 	}
-
-	ret = rte_metrics_get_values(ep->pp.port_ids[0], values, num_metrics);
-	if (ret < 0) {
-		METRICS_LOG_ERR("Could not get stat values");
-		goto fail;
-	}
-	for (i = 0; i < num_metrics; i++)
-		ep->pp.metric_ids[i] = values[i].key;
 
 	ep->pp.num_port_ids = num_port_ids;
-	ep->pp.num_metric_ids = num_metrics;
+	ep->pp.num_metric_ids = 0;
 	ep->type = PORT_STATS;
 	return 0;
-
-fail:
-	free(values);
-	return -EINVAL;
 }
 
 static int32_t
 rte_metrics_tel_stat_names_to_ids(const char * const *stat_names,
-	uint32_t *stat_ids, uint64_t num_stat_names)
+	uint32_t *stat_ids, int num_stat_names)
 {
 	struct rte_metric_name *names;
-	int ret, num_metrics;
-	uint32_t i, k;
-
-	if (stat_names == NULL) {
-		METRICS_LOG_WARN("Invalid stat_names argument");
-		return -EINVAL;
-	}
-
-	if (num_stat_names <= 0) {
-		METRICS_LOG_WARN("Invalid num_stat_names argument");
-		return -EINVAL;
-	}
+	int num_metrics;
+	int i, j, nb_stat_ids = 0;
 
 	num_metrics = rte_metrics_get_names(NULL, 0);
-	if (num_metrics < 0) {
-		METRICS_LOG_ERR("Cannot get metrics count");
-		return -EPERM;
-	} else if (num_metrics == 0) {
-		METRICS_LOG_WARN("No metrics have been registered");
+	if (num_metrics <= 0) {
+		METRICS_LOG_ERR("Error getting metrics count - no metrics may be registered");
 		return -EPERM;
 	}
 
@@ -627,29 +342,25 @@ rte_metrics_tel_stat_names_to_ids(const char * const *stat_names,
 		return -ENOMEM;
 	}
 
-	ret = rte_metrics_get_names(names, num_metrics);
-	if (ret < 0 || ret > num_metrics) {
+	if (rte_metrics_get_names(names, num_metrics) != num_metrics) {
 		METRICS_LOG_ERR("Cannot get metrics names");
 		free(names);
 		return -EPERM;
 	}
 
-	k = 0;
-	for (i = 0; i < (uint32_t)num_stat_names; i++) {
-		uint32_t j;
-		for (j = 0; j < (uint32_t)num_metrics; j++) {
+	for (i = 0; i < num_stat_names; i++) {
+		for (j = 0; j < num_metrics; j++) {
 			if (strcmp(stat_names[i], names[j].name) == 0) {
-				stat_ids[k] = j;
-				k++;
+				stat_ids[nb_stat_ids++] = j;
 				break;
 			}
 		}
-	}
-
-	if (k != num_stat_names) {
-		METRICS_LOG_WARN("Invalid stat names provided");
-		free(names);
-		return -EINVAL;
+		if (j == num_metrics) {
+			METRICS_LOG_WARN("Invalid stat name %s\n",
+					stat_names[i]);
+			free(names);
+			return -EINVAL;
+		}
 	}
 
 	free(names);
@@ -670,14 +381,9 @@ rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data)
 	memset(ep, 0, sizeof(*ep));
 	ep->pp.num_port_ids = json_array_size(port_ids_json);
 	ep->pp.num_metric_ids = num_stat_names;
-	if (!json_is_object(data)) {
+	if (!json_is_object(data) || !json_is_array(port_ids_json) ||
+			!json_is_array(stat_names_json)) {
 		METRICS_LOG_WARN("Invalid data provided for this command");
-		return -EINVAL;
-	}
-
-	if (!json_is_array(port_ids_json) ||
-		 !json_is_array(stat_names_json)) {
-		METRICS_LOG_WARN("Invalid input data array(s)");
 		return -EINVAL;
 	}
 
@@ -687,11 +393,9 @@ rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data)
 			return -EINVAL;
 		}
 		ep->pp.port_ids[index] = json_integer_value(value);
-		ret = rte_metrics_tel_is_port_active(ep->pp.port_ids[index]);
-		if (ret < 1)
+		if (rte_eth_dev_is_valid_port(ep->pp.port_ids[index]) < 1)
 			return -EINVAL;
 	}
-
 	json_array_foreach(stat_names_json, index, value) {
 		if (!json_is_string(value)) {
 			METRICS_LOG_WARN("Stat Name given is not a string");
