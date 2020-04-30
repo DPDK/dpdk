@@ -93,6 +93,8 @@ eal_long_options[] = {
 	{OPT_LEGACY_MEM,        0, NULL, OPT_LEGACY_MEM_NUM       },
 	{OPT_SINGLE_FILE_SEGMENTS, 0, NULL, OPT_SINGLE_FILE_SEGMENTS_NUM},
 	{OPT_MATCH_ALLOCATIONS, 0, NULL, OPT_MATCH_ALLOCATIONS_NUM},
+	{OPT_TELEMETRY,         0, NULL, OPT_TELEMETRY_NUM        },
+	{OPT_NO_TELEMETRY,      0, NULL, OPT_NO_TELEMETRY_NUM     },
 	{0,                     0, NULL, 0                        }
 };
 
@@ -1501,6 +1503,11 @@ eal_parse_common_option(int opt, const char *optarg,
 			return -1;
 		}
 		break;
+	case OPT_TELEMETRY_NUM:
+		break;
+	case OPT_NO_TELEMETRY_NUM:
+		conf->no_telemetry = 1;
+		break;
 
 	/* don't know what to do, leave this to caller */
 	default:
@@ -1769,6 +1776,8 @@ eal_common_usage(void)
 	       "  --"OPT_IN_MEMORY"   Operate entirely in memory. This will\n"
 	       "                      disable secondary process support\n"
 	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
+	       "  --"OPT_TELEMETRY"   Enable telemetry support (on by default)\n"
+	       "  --"OPT_NO_TELEMETRY"   Disable telemetry support\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_HUGE_UNLINK"       Unlink hugepage files after init\n"
 	       "  --"OPT_NO_HUGE"           Use malloc instead of hugetlbfs\n"

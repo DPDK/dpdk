@@ -12,11 +12,7 @@ if not dpdk_conf.has('RTE_LIBRTE_POWER')
 endif
 
 allow_experimental_apis = true
-deps += ['power', 'timer', 'lpm', 'hash', 'metrics']
+deps += ['power', 'timer', 'lpm', 'hash', 'metrics', 'telemetry']
 sources = files(
 	'main.c', 'perf_core.c'
 )
-
-if dpdk_conf.has('RTE_LIBRTE_TELEMETRY')
-	deps += ['telemetry']
-endif

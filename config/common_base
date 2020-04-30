@@ -929,7 +929,7 @@ CONFIG_RTE_LIBRTE_BITRATE=y
 CONFIG_RTE_LIBRTE_LATENCY_STATS=y
 
 #
-# Compile librte_telemetry
+# Compile librte_telemetry legacy support
 #
 CONFIG_RTE_LIBRTE_TELEMETRY=n
 

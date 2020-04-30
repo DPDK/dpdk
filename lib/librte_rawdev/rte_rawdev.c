@@ -29,9 +29,7 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_errno.h>
-#ifdef RTE_LIBRTE_TELEMETRY
 #include <rte_telemetry.h>
-#endif
 
 #include "rte_rawdev.h"
 #include "rte_rawdev_pmd.h"
@@ -547,7 +545,6 @@ rte_rawdev_pmd_release(struct rte_rawdev *rawdev)
 	return 0;
 }
 
-#ifdef RTE_LIBRTE_TELEMETRY
 static int
 handle_dev_list(const char *cmd __rte_unused,
 		const char *params __rte_unused,
@@ -615,17 +612,14 @@ handle_dev_xstats(const char *cmd __rte_unused,
 	free(rawdev_xstats);
 	return 0;
 }
-#endif
 
 RTE_INIT(librawdev_init_log)
 {
 	librawdev_logtype = rte_log_register("lib.rawdev");
 	if (librawdev_logtype >= 0)
 		rte_log_set_level(librawdev_logtype, RTE_LOG_INFO);
-#ifdef RTE_LIBRTE_TELEMETRY
 	rte_telemetry_register_cmd("/rawdev/list", handle_dev_list,
 			"Returns list of available rawdev ports. Takes no parameters");
 	rte_telemetry_register_cmd("/rawdev/xstats", handle_dev_xstats,
 			"Returns the xstats for a rawdev port. Parameters: int port_id");
-#endif
 }

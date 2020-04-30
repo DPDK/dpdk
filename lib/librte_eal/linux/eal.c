@@ -51,6 +51,7 @@
 #include <malloc_heap.h>
 #include <rte_vfio.h>
 #include <rte_option.h>
+#include <rte_telemetry.h>
 
 #include "eal_private.h"
 #include "eal_thread.h"
@@ -1297,6 +1298,14 @@ rte_eal_init(int argc, char **argv)
 	if (!internal_config.no_shconf && eal_clean_runtime_dir() < 0) {
 		rte_eal_init_alert("Cannot clear runtime directory\n");
 		return -1;
+	}
+	if (!internal_config.no_telemetry) {
+		const char *error_str;
+		if (rte_telemetry_init(rte_eal_get_runtime_dir(),
+				&error_str) != 0) {
+			rte_eal_init_alert(error_str);
+			return -1;
+		}
 	}
 
 	eal_mcfg_complete();

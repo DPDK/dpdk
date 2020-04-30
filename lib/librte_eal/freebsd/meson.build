@@ -18,4 +18,4 @@ sources += files(
 	'eal_timer.c',
 )
 
-deps += ['kvargs']
+deps += ['kvargs', 'telemetry']

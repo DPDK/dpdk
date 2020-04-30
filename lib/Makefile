@@ -4,8 +4,9 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-$(CONFIG_RTE_LIBRTE_KVARGS) += librte_kvargs
+DIRS-y += librte_telemetry
 DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
-DEPDIRS-librte_eal := librte_kvargs
+DEPDIRS-librte_eal := librte_kvargs librte_telemetry
 DIRS-$(CONFIG_RTE_LIBRTE_PCI) += librte_pci
 DEPDIRS-librte_pci := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
@@ -22,8 +23,6 @@ DIRS-$(CONFIG_RTE_LIBRTE_CFGFILE) += librte_cfgfile
 DEPDIRS-librte_cfgfile := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
 DEPDIRS-librte_cmdline := librte_eal librte_net
-DIRS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += librte_telemetry
-DEPDIRS-librte_telemetry := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ethdev
 DEPDIRS-librte_ethdev := librte_net librte_eal librte_mempool librte_ring
 DEPDIRS-librte_ethdev += librte_mbuf

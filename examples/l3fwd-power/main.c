@@ -46,9 +46,7 @@
 #include <rte_spinlock.h>
 #include <rte_power_empty_poll.h>
 #include <rte_metrics.h>
-#ifdef RTE_LIBRTE_TELEMETRY
 #include <rte_telemetry.h>
-#endif
 
 #include "perf_core.h"
 #include "main.h"
@@ -2116,7 +2114,7 @@ update_telemetry(__rte_unused struct rte_timer *tim,
 	if (ret < 0)
 		RTE_LOG(WARNING, POWER, "failed to update metrcis\n");
 }
-#ifdef RTE_LIBRTE_TELEMETRY
+
 static int
 handle_app_stats(const char *cmd __rte_unused,
 		const char *params __rte_unused,
@@ -2132,7 +2130,7 @@ handle_app_stats(const char *cmd __rte_unused,
 				values[i]);
 	return 0;
 }
-#endif
+
 static void
 telemetry_setup_timer(void)
 {
@@ -2532,11 +2530,9 @@ main(int argc, char **argv)
 			rte_spinlock_init(&stats[lcore_id].telemetry_lock);
 		}
 		rte_timer_init(&telemetry_timer);
-#ifdef RTE_LIBRTE_TELEMETRY
 		rte_telemetry_register_cmd("/l3fwd-power/stats",
 				handle_app_stats,
 				"Returns global power stats. Parameters: None");
-#endif
 		rte_eal_mp_remote_launch(main_telemetry_loop, NULL,
 						SKIP_MASTER);
 	}

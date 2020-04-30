@@ -38,9 +38,7 @@
 #include <rte_kvargs.h>
 #include <rte_class.h>
 #include <rte_ether.h>
-#ifdef RTE_LIBRTE_TELEMETRY
 #include <rte_telemetry.h>
-#endif
 
 #include "rte_ethdev_trace.h"
 #include "rte_ethdev.h"
@@ -5202,7 +5200,6 @@ parse_cleanup:
 	return result;
 }
 
-#ifdef RTE_LIBRTE_TELEMETRY
 static int
 handle_port_list(const char *cmd __rte_unused,
 		const char *params __rte_unused,
@@ -5295,14 +5292,12 @@ handle_port_link_status(const char *cmd __rte_unused,
 				"full-duplex" : "half-duplex");
 	return 0;
 }
-#endif
 
 RTE_INIT(ethdev_init_log)
 {
 	rte_eth_dev_logtype = rte_log_register("lib.ethdev");
 	if (rte_eth_dev_logtype >= 0)
 		rte_log_set_level(rte_eth_dev_logtype, RTE_LOG_INFO);
-#ifdef RTE_LIBRTE_TELEMETRY
 	rte_telemetry_register_cmd("/ethdev/list", handle_port_list,
 			"Returns list of available ethdev ports. Takes no parameters");
 	rte_telemetry_register_cmd("/ethdev/xstats", handle_port_xstats,
@@ -5310,5 +5305,4 @@ RTE_INIT(ethdev_init_log)
 	rte_telemetry_register_cmd("/ethdev/link_status",
 			handle_port_link_status,
 			"Returns the link status for a port. Parameters: int port_id");
-#endif
 }

@@ -11,7 +11,7 @@ LIB = librte_ethdev.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_net -lrte_eal -lrte_mempool -lrte_ring
-LDLIBS += -lrte_mbuf -lrte_kvargs -lrte_meter
+LDLIBS += -lrte_mbuf -lrte_kvargs -lrte_meter -lrte_telemetry
 
 EXPORT_MAP := rte_ethdev_version.map
 
@@ -23,10 +23,6 @@ SRCS-y += rte_tm.c
 SRCS-y += rte_mtr.c
 SRCS-y += ethdev_profile.c
 SRCS-y += ethdev_trace_points.c
-
-ifeq ($(CONFIG_RTE_LIBRTE_TELEMETRY),y)
-LDLIBS += -lrte_telemetry
-endif
 
 #
 # Export include files

@@ -60,16 +60,12 @@ else
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
-LDLIBS += -lm
+LDLIBS += -lm -lrte_telemetry
 
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_main.o += -Wno-return-type
-endif
-
-ifeq ($(CONFIG_RTE_LIBRTE_TELEMETRY),y)
-LDLIBS += -lrte_telemetry
 endif
 
 include $(RTE_SDK)/mk/rte.extapp.mk

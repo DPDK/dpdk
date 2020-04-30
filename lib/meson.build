@@ -10,8 +10,8 @@
 # core libs which are widely reused, so their deps are kept to a minimum.
 libraries = [
 	'kvargs', # eal depends on kvargs
+	'telemetry', # basic info querying
 	'eal', # everything depends on eal
-	'telemetry',
 	'ring',
 	'rcu', # rcu depends on ring
 	'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci', # core
