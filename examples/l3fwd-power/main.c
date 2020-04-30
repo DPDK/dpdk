@@ -46,6 +46,9 @@
 #include <rte_spinlock.h>
 #include <rte_power_empty_poll.h>
 #include <rte_metrics.h>
+#ifdef RTE_LIBRTE_TELEMETRY
+#include <rte_telemetry.h>
+#endif
 
 #include "perf_core.h"
 #include "main.h"
@@ -131,7 +134,7 @@
 #define EMPTY_POLL_MED_THRESHOLD 350000UL
 #define EMPTY_POLL_HGH_THRESHOLD 580000UL
 
-
+#define NUM_TELSTATS RTE_DIM(telstats_strings)
 
 static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
@@ -2072,14 +2075,11 @@ deinit_power_library(void)
 }
 
 static void
-update_telemetry(__rte_unused struct rte_timer *tim,
-		__rte_unused void *arg)
+get_current_stat_values(uint64_t *values)
 {
 	unsigned int lcore_id = rte_lcore_id();
 	struct lcore_conf *qconf;
 	uint64_t app_eps = 0, app_fps = 0, app_br = 0;
-	uint64_t values[3] = {0};
-	int ret;
 	uint64_t count = 0;
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
@@ -2098,17 +2098,41 @@ update_telemetry(__rte_unused struct rte_timer *tim,
 		values[0] = app_eps/count;
 		values[1] = app_fps/count;
 		values[2] = app_br/count;
-	} else {
-		values[0] = 0;
-		values[1] = 0;
-		values[2] = 0;
-	}
+	} else
+		memset(values, 0, sizeof(uint64_t) * NUM_TELSTATS);
 
+}
+
+static void
+update_telemetry(__rte_unused struct rte_timer *tim,
+		__rte_unused void *arg)
+{
+	int ret;
+	uint64_t values[NUM_TELSTATS] = {0};
+
+	get_current_stat_values(values);
 	ret = rte_metrics_update_values(RTE_METRICS_GLOBAL, telstats_index,
 					values, RTE_DIM(values));
 	if (ret < 0)
 		RTE_LOG(WARNING, POWER, "failed to update metrcis\n");
 }
+#ifdef RTE_LIBRTE_TELEMETRY
+static int
+handle_app_stats(const char *cmd __rte_unused,
+		const char *params __rte_unused,
+		struct rte_tel_data *d)
+{
+	uint64_t values[NUM_TELSTATS] = {0};
+	uint32_t i;
+
+	rte_tel_data_start_dict(d);
+	get_current_stat_values(values);
+	for (i = 0; i < NUM_TELSTATS; i++)
+		rte_tel_data_add_dict_u64(d, telstats_strings[i].name,
+				values[i]);
+	return 0;
+}
+#endif
 static void
 telemetry_setup_timer(void)
 {
@@ -2196,8 +2220,7 @@ main(int argc, char **argv)
 	uint32_t dev_rxq_num, dev_txq_num;
 	uint8_t nb_rx_queue, queue, socketid;
 	uint16_t portid;
-	uint8_t num_telstats = RTE_DIM(telstats_strings);
-	const char *ptr_strings[num_telstats];
+	const char *ptr_strings[NUM_TELSTATS];
 
 	/* catch SIGINT and restore cpufreq governor to ondemand */
 	signal(SIGINT, signal_exit_now);
@@ -2496,10 +2519,10 @@ main(int argc, char **argv)
 		/* Init metrics library */
 		rte_metrics_init(rte_socket_id());
 		/** Register stats with metrics library */
-		for (i = 0; i < num_telstats; i++)
+		for (i = 0; i < NUM_TELSTATS; i++)
 			ptr_strings[i] = telstats_strings[i].name;
 
-		ret = rte_metrics_reg_names(ptr_strings, num_telstats);
+		ret = rte_metrics_reg_names(ptr_strings, NUM_TELSTATS);
 		if (ret >= 0)
 			telstats_index = ret;
 		else
@@ -2509,6 +2532,11 @@ main(int argc, char **argv)
 			rte_spinlock_init(&stats[lcore_id].telemetry_lock);
 		}
 		rte_timer_init(&telemetry_timer);
+#ifdef RTE_LIBRTE_TELEMETRY
+		rte_telemetry_register_cmd("/l3fwd-power/stats",
+				handle_app_stats,
+				"Returns global power stats. Parameters: None");
+#endif
 		rte_eal_mp_remote_launch(main_telemetry_loop, NULL,
 						SKIP_MASTER);
 	}

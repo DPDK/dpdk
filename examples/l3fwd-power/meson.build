@@ -16,3 +16,7 @@ deps += ['power', 'timer', 'lpm', 'hash', 'metrics']
 sources = files(
 	'main.c', 'perf_core.c'
 )
+
+if dpdk_conf.has('RTE_LIBRTE_TELEMETRY')
+	deps += ['telemetry']
+endif
