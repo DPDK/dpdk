@@ -6,6 +6,9 @@
 
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
+#ifdef RTE_LIBRTE_TELEMETRY
+#include <rte_telemetry_internal.h>
+#endif
 
 #include "rte_metrics.h"
 #include "rte_metrics_telemetry.h"
@@ -76,6 +79,7 @@ rte_metrics_tel_reg_all_ethdev(int *metrics_register_done, int *reg_index_list)
 	int ret, nb_drv_idx = 0;
 	uint16_t d;
 
+	rte_metrics_init(rte_socket_id());
 	RTE_ETH_FOREACH_DEV(d) {
 		int i;
 		/* Different device types have different numbers of stats, so
@@ -417,6 +421,16 @@ rte_metrics_tel_extract_data(struct telemetry_encode_param *ep, json_t *data)
 
 RTE_INIT(metrics_ctor)
 {
+#ifdef RTE_LIBRTE_TELEMETRY
+	static const struct metrics_functions fns = {
+		.reg_all_ethdev = rte_metrics_tel_reg_all_ethdev,
+		.encode_json_format = rte_metrics_tel_encode_json_format,
+		.get_port_stats_ids = rte_metrics_tel_get_port_stats_ids,
+		.get_ports_stats_json = rte_metrics_tel_get_ports_stats_json,
+		.extract_data = rte_metrics_tel_extract_data
+	};
+	rte_telemetry_set_metrics_fns(&fns); /* assign them to telemetry lib */
+#endif
 	metrics_log_level = rte_log_register("lib.metrics");
 	if (metrics_log_level >= 0)
 		rte_log_set_level(metrics_log_level, RTE_LOG_ERR);

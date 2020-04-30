@@ -9,5 +9,6 @@ if jansson.found()
 	ext_deps += jansson
 	sources += files('rte_metrics_telemetry.c')
 	headers = files('rte_metrics_telemetry.h')
-	deps += ['ethdev']
+	deps += ['ethdev', 'telemetry']
+	includes += include_directories('../librte_telemetry')
 endif

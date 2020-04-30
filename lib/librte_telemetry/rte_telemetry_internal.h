@@ -10,6 +10,36 @@
 #ifndef _RTE_TELEMETRY_INTERNAL_H_
 #define _RTE_TELEMETRY_INTERNAL_H_
 
+/* function types for the functions coming from metrics library */
+typedef int32_t (*metrics_tel_reg_all_ethdev_t)(int *metrics_register_done,
+		int *reg_index_list);
+
+typedef int32_t (*metrics_tel_encode_json_format_t)(
+		struct telemetry_encode_param *ep, char **json_buffer);
+
+typedef int32_t (*metrics_tel_get_port_stats_ids_t)(
+		struct telemetry_encode_param *ep);
+
+typedef int32_t (*metrics_tel_get_ports_stats_json_t)(
+		struct telemetry_encode_param *ep,
+		int *reg_index, char **json_buffer);
+
+typedef int32_t (*metrics_tel_extract_data_t)(struct telemetry_encode_param *ep,
+		json_t *data);
+
+struct metrics_functions {
+	metrics_tel_reg_all_ethdev_t reg_all_ethdev;
+	metrics_tel_encode_json_format_t encode_json_format;
+	metrics_tel_get_port_stats_ids_t get_port_stats_ids;
+	metrics_tel_get_ports_stats_json_t get_ports_stats_json;
+	metrics_tel_extract_data_t extract_data;
+};
+extern const struct metrics_functions *metrics_fns;
+
+/* API for use by metrics libraries to provide the functions to use */
+__rte_experimental
+void rte_telemetry_set_metrics_fns(const struct metrics_functions *fns);
+
 /* Logging Macros */
 extern int telemetry_log_level;
 

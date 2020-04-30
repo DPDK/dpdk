@@ -10,10 +10,10 @@
 #include <jansson.h>
 
 #include <rte_eal.h>
-#include <rte_ethdev.h>
 #include <rte_metrics.h>
 #include <rte_option.h>
 #include <rte_string_fns.h>
+#include <rte_lcore.h>
 
 #include "rte_telemetry.h"
 #include "rte_telemetry_internal.h"
@@ -42,6 +42,15 @@ struct json_data {
 	char *stat_name;
 	int stat_value;
 };
+
+/* global array of functions pointers to metrics library */
+const struct metrics_functions *metrics_fns;
+
+void
+rte_telemetry_set_metrics_fns(const struct metrics_functions *fns)
+{
+	metrics_fns = fns;
+}
 
 static void
 rte_telemetry_get_runtime_dir(char *socket_path, size_t size)
@@ -145,7 +154,7 @@ rte_telemetry_send_global_stats_values(struct telemetry_encode_param *ep,
 		return -1;
 	}
 
-	ret = rte_metrics_tel_encode_json_format(ep, &json_buffer);
+	ret = metrics_fns->encode_json_format(ep, &json_buffer);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("JSON encode function failed");
 		ret = rte_telemetry_send_error_response(telemetry, ret);
@@ -190,7 +199,7 @@ rte_telemetry_send_ports_stats_values(struct telemetry_encode_param *ep,
 		goto einval_fail;
 	}
 
-	ret = rte_metrics_tel_get_ports_stats_json(ep, telemetry->reg_index,
+	ret = metrics_fns->get_ports_stats_json(ep, telemetry->reg_index,
 			&json_buffer);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("Function for get_ports_stats_json"
@@ -222,8 +231,7 @@ rte_telemetry_initial_accept(struct telemetry_impl *telemetry)
 	int ret;
 	int selftest = 0;
 
-	ret = rte_metrics_tel_reg_all_ethdev(
-			&telemetry->metrics_register_done,
+	ret = metrics_fns->reg_all_ethdev(&telemetry->metrics_register_done,
 			telemetry->reg_index);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("Failed to register ethdev metrics");
@@ -467,7 +475,6 @@ rte_telemetry_init(void)
 	}
 
 	static_telemetry->socket_id = rte_socket_id();
-	rte_metrics_init(static_telemetry->socket_id);
 
 	ret = pthread_attr_init(&attr);
 	if (ret != 0) {

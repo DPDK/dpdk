@@ -8,9 +8,9 @@ LIB = librte_telemetry.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+CFLAGS += -I$(RTE_SDK)/lib/librte_metrics/
 
-LDLIBS += -lrte_eal -lrte_ethdev
-LDLIBS += -lrte_metrics
+LDLIBS += -lrte_eal
 LDLIBS += -lpthread
 LDLIBS += -ljansson
 

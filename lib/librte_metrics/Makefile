@@ -18,9 +18,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_TELEMETRY),y)
 SRCS-y += rte_metrics_telemetry.c
 SYMLINK-$(CONFIG_RTE_LIBRTE_METRICS)-include += rte_metrics_telemetry.h
 
-LDLIBS += -lrte_ethdev
+LDLIBS += -lrte_ethdev -lrte_telemetry
 LDLIBS += -ljansson
 
+CFLAGS += -I$(RTE_SDK)/lib/librte_telemetry/
 endif
 
 # Install header file

@@ -22,6 +22,8 @@ DIRS-$(CONFIG_RTE_LIBRTE_CFGFILE) += librte_cfgfile
 DEPDIRS-librte_cfgfile := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
 DEPDIRS-librte_cmdline := librte_eal librte_net
+DIRS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += librte_telemetry
+DEPDIRS-librte_telemetry := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ethdev
 DEPDIRS-librte_ethdev := librte_net librte_eal librte_mempool librte_ring
 DEPDIRS-librte_ethdev += librte_mbuf
@@ -72,6 +74,9 @@ DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += librte_jobstats
 DEPDIRS-librte_jobstats := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_METRICS) += librte_metrics
 DEPDIRS-librte_metrics := librte_eal librte_ethdev
+ifeq ($(CONFIG_RTE_LIBRTE_TELEMETRY),y)
+DEPDIRS-librte_metrics += librte_telemetry
+endif
 DIRS-$(CONFIG_RTE_LIBRTE_BITRATE) += librte_bitratestats
 DEPDIRS-librte_bitratestats := librte_eal librte_metrics librte_ethdev
 DIRS-$(CONFIG_RTE_LIBRTE_LATENCY_STATS) += librte_latencystats
@@ -114,8 +119,6 @@ DEPDIRS-librte_bpf := librte_eal librte_mempool librte_mbuf librte_ethdev
 DIRS-$(CONFIG_RTE_LIBRTE_IPSEC) += librte_ipsec
 DEPDIRS-librte_ipsec := librte_eal librte_mbuf librte_cryptodev librte_security \
 			librte_net librte_hash
-DIRS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += librte_telemetry
-DEPDIRS-librte_telemetry := librte_eal librte_metrics librte_ethdev
 DIRS-$(CONFIG_RTE_LIBRTE_RCU) += librte_rcu
 DEPDIRS-librte_rcu := librte_eal librte_ring
 

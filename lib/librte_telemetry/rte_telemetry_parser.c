@@ -10,7 +10,6 @@
 
 #include <rte_metrics.h>
 #include <rte_common.h>
-#include <rte_ethdev.h>
 #include <rte_metrics_telemetry.h>
 
 #include "rte_telemetry_internal.h"
@@ -202,7 +201,7 @@ rte_telemetry_command_ports_all_stat_values(struct telemetry_impl *telemetry,
 		return -1;
 	}
 
-	ret = rte_metrics_tel_get_port_stats_ids(&ep);
+	ret = metrics_fns->get_port_stats_ids(&ep);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("Could not get ports stat values");
 		ret = rte_telemetry_send_error_response(telemetry, ret);
@@ -276,7 +275,7 @@ rte_telemetry_command_ports_stats_values_by_name(struct telemetry_impl
 		return -1;
 	}
 
-	ret = rte_metrics_tel_extract_data(&ep, data);
+	ret = metrics_fns->extract_data(&ep, data);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("Extracting JSON data failed");
 		ret = rte_telemetry_send_error_response(telemetry, ret);

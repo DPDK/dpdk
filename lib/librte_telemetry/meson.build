@@ -3,7 +3,7 @@
 
 sources = files('rte_telemetry.c', 'rte_telemetry_parser.c', 'rte_telemetry_parser_test.c')
 headers = files('rte_telemetry.h', 'rte_telemetry_internal.h', 'rte_telemetry_parser.h')
-deps += ['metrics', 'ethdev']
+includes += include_directories('../librte_metrics')
 
 jansson = dependency('jansson', required: false)
 if jansson.found()
