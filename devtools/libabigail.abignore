@@ -8,6 +8,12 @@
 [suppress_variable]
         symbol_version = INTERNAL
 
+; Ignore ABI 20.0.1 replaced with ABI 21
+[suppress_function]
+        symbol_version = DPDK_20.0.1
+[suppress_variable]
+        symbol_version = DPDK_20.0.1
+
 ; Explicit ignore for driver-only ABI
 [suppress_type]
         name = rte_cryptodev_ops

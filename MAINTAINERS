@@ -83,10 +83,6 @@ M: Marko Kovacevic <marko.kovacevic@intel.com>
 F: README
 F: doc/
 
-ABI Policy
-M: Ray Kinsella <mdr@ashroe.eu>
-F: doc/guides/contributing/abi_*.rst
-
 Developers and Maintainers Tools
 M: Thomas Monjalon <thomas@monjalon.net>
 F: MAINTAINERS
@@ -140,10 +136,12 @@ M: Michael Santana <maicolgabriel@hotmail.com>
 F: .travis.yml
 F: .ci/
 
-ABI versioning
+ABI Policy & Versioning
+M: Ray Kinsella <mdr@ashroe.eu>
 M: Neil Horman <nhorman@tuxdriver.com>
 F: lib/librte_eal/include/rte_compat.h
 F: lib/librte_eal/include/rte_function_versioning.h
+F: doc/guides/contributing/abi_*.rst
 F: doc/guides/rel_notes/deprecation.rst
 F: devtools/check-abi.sh
 F: devtools/check-abi-version.sh
@@ -155,6 +153,8 @@ F: devtools/update_version_map_abi.py
 F: devtools/validate-abi.sh
 F: buildtools/check-symbols.sh
 F: buildtools/map-list-symbol.sh
+F: drivers/*/*/*.map
+F: lib/*/*.map
 
 Driver information
 M: Neil Horman <nhorman@tuxdriver.com>

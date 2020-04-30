@@ -34,7 +34,7 @@ DPDK_20.0 {
 	local: *;
 };
 
-DPDK_20.0.1 {
+DPDK_21 {
 	global:
 
 	otx2_eth_dev_is_sec_capable;

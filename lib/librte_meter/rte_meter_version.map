@@ -13,7 +13,7 @@ DPDK_20.0 {
 	local: *;
 };
 
-DPDK_20.0.1 {
+DPDK_21 {
 	global:
 
 	rte_meter_trtcm_rfc4115_color_aware_check;
