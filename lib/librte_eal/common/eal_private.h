@@ -410,34 +410,6 @@ int
 dev_sigbus_handler_unregister(void);
 
 /**
- * Check if the option is registered.
- *
- * @param option
- *  The option to be parsed.
- *
- * @return
- *  0 on success
- * @return
- *  -1 on fail
- */
-int
-rte_option_parse(const char *opt);
-
-/**
- * Iterate through the registered options and execute the associated
- * callback if enabled.
- */
-void
-rte_option_init(void);
-
-/**
- * Iterate through the registered options and show the associated
- * usage string.
- */
-void
-rte_option_usage(void);
-
-/**
  * Get OS-specific EAL mapping base address.
  */
 uint64_t

@@ -14,7 +14,6 @@ if is_windows
 		'eal_common_log.c',
 		'eal_common_options.c',
 		'eal_common_thread.c',
-		'rte_option.c',
 	)
 	subdir_done()
 endif
@@ -53,7 +52,6 @@ sources += files(
 	'malloc_mp.c',
 	'rte_keepalive.c',
 	'rte_malloc.c',
-	'rte_option.c',
 	'rte_random.c',
 	'rte_reciprocal.c',
 	'rte_service.c',

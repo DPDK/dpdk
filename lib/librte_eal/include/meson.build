@@ -30,7 +30,6 @@ headers += files(
 	'rte_malloc.h',
 	'rte_memory.h',
 	'rte_memzone.h',
-	'rte_option.h',
 	'rte_pci_dev_feature_defs.h',
 	'rte_pci_dev_features.h',
 	'rte_per_lcore.h',

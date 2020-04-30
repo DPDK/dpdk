@@ -303,7 +303,6 @@ EXPERIMENTAL {
 	rte_memseg_get_fd_offset;
 	rte_memseg_get_fd_offset_thread_unsafe;
 	rte_memseg_get_fd_thread_unsafe;
-	rte_option_register;
 
 	# added in 19.02
 	rte_extmem_attach;
