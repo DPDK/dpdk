@@ -93,7 +93,7 @@ virtqueue_rxvq_flush_split(struct virtqueue *vq)
 	uint16_t used_idx, desc_idx;
 	uint16_t nb_used, i;
 
-	nb_used = VIRTQUEUE_NUSED(vq);
+	nb_used = virtqueue_nused(vq);
 
 	for (i = 0; i < nb_used; i++) {
 		used_idx = vq->vq_used_cons_idx & (vq->vq_nentries - 1);

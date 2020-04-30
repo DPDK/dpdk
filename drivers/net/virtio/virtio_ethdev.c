@@ -290,13 +290,10 @@ virtio_send_command_split(struct virtnet_ctl *cvq,
 
 	virtqueue_notify(vq);
 
-	rte_rmb();
-	while (VIRTQUEUE_NUSED(vq) == 0) {
-		rte_rmb();
+	while (virtqueue_nused(vq) == 0)
 		usleep(100);
-	}
 
-	while (VIRTQUEUE_NUSED(vq)) {
+	while (virtqueue_nused(vq)) {
 		uint32_t idx, desc_idx, used_idx;
 		struct vring_used_elem *uep;
 

@@ -45,7 +45,7 @@ virtio_dev_rx_queue_done(void *rxq, uint16_t offset)
 	struct virtnet_rx *rxvq = rxq;
 	struct virtqueue *vq = rxvq->vq;
 
-	return VIRTQUEUE_NUSED(vq) >= offset;
+	return virtqueue_nused(vq) >= offset;
 }
 
 void
@@ -968,9 +968,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (unlikely(hw->started == 0))
 		return nb_rx;
 
-	nb_used = VIRTQUEUE_NUSED(vq);
-
-	virtio_rmb(hw->weak_barriers);
+	nb_used = virtqueue_nused(vq);
 
 	num = likely(nb_used <= nb_pkts) ? nb_used : nb_pkts;
 	if (unlikely(num > VIRTIO_MBUF_BURST_SZ))
@@ -1183,11 +1181,9 @@ virtio_recv_pkts_inorder(void *rx_queue,
 	if (unlikely(hw->started == 0))
 		return nb_rx;
 
-	nb_used = VIRTQUEUE_NUSED(vq);
+	nb_used = virtqueue_nused(vq);
 	nb_used = RTE_MIN(nb_used, nb_pkts);
 	nb_used = RTE_MIN(nb_used, VIRTIO_MBUF_BURST_SZ);
-
-	virtio_rmb(hw->weak_barriers);
 
 	PMD_RX_LOG(DEBUG, "used:%d", nb_used);
 
@@ -1277,8 +1273,7 @@ virtio_recv_pkts_inorder(void *rx_queue,
 		uint16_t rcv_cnt = RTE_MIN((uint16_t)seg_res,
 					VIRTIO_MBUF_BURST_SZ);
 
-		if (likely(VIRTQUEUE_NUSED(vq) >= rcv_cnt)) {
-			virtio_rmb(hw->weak_barriers);
+		if (likely(virtqueue_nused(vq) >= rcv_cnt)) {
 			num = virtqueue_dequeue_rx_inorder(vq, rcv_pkts, len,
 							   rcv_cnt);
 			uint16_t extra_idx = 0;
@@ -1369,9 +1364,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 	if (unlikely(hw->started == 0))
 		return nb_rx;
 
-	nb_used = VIRTQUEUE_NUSED(vq);
-
-	virtio_rmb(hw->weak_barriers);
+	nb_used = virtqueue_nused(vq);
 
 	PMD_RX_LOG(DEBUG, "used:%d", nb_used);
 
@@ -1459,8 +1452,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		uint16_t rcv_cnt = RTE_MIN((uint16_t)seg_res,
 					VIRTIO_MBUF_BURST_SZ);
 
-		if (likely(VIRTQUEUE_NUSED(vq) >= rcv_cnt)) {
-			virtio_rmb(hw->weak_barriers);
+		if (likely(virtqueue_nused(vq) >= rcv_cnt)) {
 			num = virtqueue_dequeue_burst_rx(vq, rcv_pkts, len,
 							   rcv_cnt);
 			uint16_t extra_idx = 0;
@@ -1833,9 +1825,9 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		return nb_pkts;
 
 	PMD_TX_LOG(DEBUG, "%d packets to xmit", nb_pkts);
-	nb_used = VIRTQUEUE_NUSED(vq);
 
-	virtio_rmb(hw->weak_barriers);
+	nb_used = virtqueue_nused(vq);
+
 	if (likely(nb_used > vq->vq_nentries - vq->vq_free_thresh))
 		virtio_xmit_cleanup(vq, nb_used);
 
@@ -1867,8 +1859,8 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Positive value indicates it need free vring descriptors */
 		if (unlikely(need > 0)) {
-			nb_used = VIRTQUEUE_NUSED(vq);
-			virtio_rmb(hw->weak_barriers);
+			nb_used = virtqueue_nused(vq);
+
 			need = RTE_MIN(need, (int)nb_used);
 
 			virtio_xmit_cleanup(vq, need);
@@ -1905,11 +1897,9 @@ static __rte_always_inline int
 virtio_xmit_try_cleanup_inorder(struct virtqueue *vq, uint16_t need)
 {
 	uint16_t nb_used, nb_clean, nb_descs;
-	struct virtio_hw *hw = vq->hw;
 
 	nb_descs = vq->vq_free_cnt + need;
-	nb_used = VIRTQUEUE_NUSED(vq);
-	virtio_rmb(hw->weak_barriers);
+	nb_used = virtqueue_nused(vq);
 	nb_clean = RTE_MIN(need, (int)nb_used);
 
 	virtio_xmit_cleanup_inorder(vq, nb_clean);
@@ -1938,9 +1928,8 @@ virtio_xmit_pkts_inorder(void *tx_queue,
 
 	VIRTQUEUE_DUMP(vq);
 	PMD_TX_LOG(DEBUG, "%d packets to xmit", nb_pkts);
-	nb_used = VIRTQUEUE_NUSED(vq);
+	nb_used = virtqueue_nused(vq);
 
-	virtio_rmb(hw->weak_barriers);
 	if (likely(nb_used > vq->vq_nentries - vq->vq_free_thresh))
 		virtio_xmit_cleanup_inorder(vq, nb_used);
 

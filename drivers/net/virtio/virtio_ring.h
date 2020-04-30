@@ -59,7 +59,7 @@ struct vring_used_elem {
 
 struct vring_used {
 	uint16_t flags;
-	volatile uint16_t idx;
+	uint16_t idx;
 	struct vring_used_elem ring[0];
 };
 

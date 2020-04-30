@@ -85,7 +85,7 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	if (unlikely(nb_pkts < RTE_VIRTIO_DESC_PER_LOOP))
 		return 0;
 
-	nb_used = VIRTQUEUE_NUSED(vq);
+	nb_used = virtqueue_nused(vq);
 
 	rte_compiler_barrier();
 

@@ -730,8 +730,10 @@ virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx)
 	struct vring *vring = &dev->vrings[queue_idx];
 
 	/* Consume avail ring, using used ring idx as first one */
-	while (vring->used->idx != vring->avail->idx) {
-		avail_idx = (vring->used->idx) & (vring->num - 1);
+	while (__atomic_load_n(&vring->used->idx, __ATOMIC_RELAXED)
+	       != vring->avail->idx) {
+		avail_idx = __atomic_load_n(&vring->used->idx, __ATOMIC_RELAXED)
+			    & (vring->num - 1);
 		desc_idx = vring->avail->ring[avail_idx];
 
 		n_descs = virtio_user_handle_ctrl_msg(dev, vring, desc_idx);
@@ -741,6 +743,6 @@ virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx)
 		uep->id = desc_idx;
 		uep->len = n_descs;
 
-		vring->used->idx++;
+		__atomic_add_fetch(&vring->used->idx, 1, __ATOMIC_RELAXED);
 	}
 }

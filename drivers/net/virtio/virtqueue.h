@@ -469,8 +469,33 @@ virtio_get_queue_type(struct virtio_hw *hw, uint16_t vtpci_queue_idx)
 		return VTNET_TQ;
 }
 
-#define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_split.ring.used->idx - \
-					(vq)->vq_used_cons_idx))
+/* virtqueue_nused has load-acquire or rte_cio_rmb insed */
+static inline uint16_t
+virtqueue_nused(const struct virtqueue *vq)
+{
+	uint16_t idx;
+
+	if (vq->hw->weak_barriers) {
+	/**
+	 * x86 prefers to using rte_smp_rmb over __atomic_load_n as it
+	 * reports a slightly better perf, which comes from the saved
+	 * branch by the compiler.
+	 * The if and else branches are identical with the smp and cio
+	 * barriers both defined as compiler barriers on x86.
+	 */
+#ifdef RTE_ARCH_X86_64
+		idx = vq->vq_split.ring.used->idx;
+		rte_smp_rmb();
+#else
+		idx = __atomic_load_n(&(vq)->vq_split.ring.used->idx,
+				__ATOMIC_ACQUIRE);
+#endif
+	} else {
+		idx = vq->vq_split.ring.used->idx;
+		rte_cio_rmb();
+	}
+	return idx - vq->vq_used_cons_idx;
+}
 
 void vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx);
 void vq_ring_free_chain_packed(struct virtqueue *vq, uint16_t used_idx);
@@ -539,7 +564,8 @@ virtqueue_notify(struct virtqueue *vq)
 #ifdef RTE_LIBRTE_VIRTIO_DEBUG_DUMP
 #define VIRTQUEUE_DUMP(vq) do { \
 	uint16_t used_idx, nused; \
-	used_idx = (vq)->vq_split.ring.used->idx; \
+	used_idx = __atomic_load_n(&(vq)->vq_split.ring.used->idx, \
+				   __ATOMIC_RELAXED); \
 	nused = (uint16_t)(used_idx - (vq)->vq_used_cons_idx); \
 	if (vtpci_packed_queue((vq)->hw)) { \
 		PMD_INIT_LOG(DEBUG, \
@@ -554,9 +580,9 @@ virtqueue_notify(struct virtqueue *vq)
 	  "VQ: - size=%d; free=%d; used=%d; desc_head_idx=%d;" \
 	  " avail.idx=%d; used_cons_idx=%d; used.idx=%d;" \
 	  " avail.flags=0x%x; used.flags=0x%x", \
-	  (vq)->vq_nentries, (vq)->vq_free_cnt, nused, \
-	  (vq)->vq_desc_head_idx, (vq)->vq_split.ring.avail->idx, \
-	  (vq)->vq_used_cons_idx, (vq)->vq_split.ring.used->idx, \
+	  (vq)->vq_nentries, (vq)->vq_free_cnt, nused, (vq)->vq_desc_head_idx, \
+	  (vq)->vq_split.ring.avail->idx, (vq)->vq_used_cons_idx, \
+	  __atomic_load_n(&(vq)->vq_split.ring.used->idx, __ATOMIC_RELAXED), \
 	  (vq)->vq_split.ring.avail->flags, (vq)->vq_split.ring.used->flags); \
 } while (0)
 #else

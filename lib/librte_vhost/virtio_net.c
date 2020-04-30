@@ -107,11 +107,10 @@ flush_shadow_used_ring_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	}
 	vq->last_used_idx += vq->shadow_used_idx;
 
-	rte_smp_wmb();
-
 	vhost_log_cache_sync(dev, vq);
 
-	*(volatile uint16_t *)&vq->used->idx += vq->shadow_used_idx;
+	__atomic_add_fetch(&vq->used->idx, vq->shadow_used_idx,
+			   __ATOMIC_RELEASE);
 	vq->shadow_used_idx = 0;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 		sizeof(vq->used->idx));
