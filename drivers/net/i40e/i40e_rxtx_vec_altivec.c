@@ -13,7 +13,7 @@
 #include "i40e_rxtx.h"
 #include "i40e_rxtx_vec_common.h"
 
-#include <altivec.h>
+#include <rte_altivec.h>
 
 #pragma GCC diagnostic ignored "-Wcast-qual"
 

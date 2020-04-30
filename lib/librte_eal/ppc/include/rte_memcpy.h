@@ -8,8 +8,8 @@
 
 #include <stdint.h>
 #include <string.h>
-/*To include altivec.h, GCC version must  >= 4.8 */
-#include <altivec.h>
+
+#include "rte_altivec.h"
 
 #ifdef __cplusplus
 extern "C" {

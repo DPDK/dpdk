@@ -6,7 +6,7 @@
 #ifndef _RTE_VECT_PPC_64_H_
 #define _RTE_VECT_PPC_64_H_
 
-#include <altivec.h>
+#include "rte_altivec.h"
 
 #include "generic/rte_vect.h"
 #include "rte_common.h"

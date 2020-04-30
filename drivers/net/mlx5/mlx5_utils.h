@@ -21,16 +21,6 @@
 #include "mlx5_defs.h"
 
 
-/*
- * Compilation workaround for PPC64 when AltiVec is fully enabled, e.g. std=c11.
- * Otherwise there would be a type conflict between stdbool and altivec.
- */
-#if defined(__PPC64__) && !defined(__APPLE_ALTIVEC__)
-#undef bool
-/* redefine as in stdbool.h */
-#define bool _Bool
-#endif
-
 /* Convert a bit number to the corresponding 64-bit mask */
 #define MLX5_BITSHIFT(v) (UINT64_C(1) << (v))
 

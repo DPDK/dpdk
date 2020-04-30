@@ -4,6 +4,7 @@
 includes += include_directories('.')
 
 arch_headers = files(
+	'rte_altivec.h',
 	'rte_atomic.h',
 	'rte_byteorder.h',
 	'rte_cpuflags.h',
