@@ -130,6 +130,44 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 	return err;
 }
 
+static uint32_t
+iavf_convert_link_speed(enum virtchnl_link_speed virt_link_speed)
+{
+	uint32_t speed;
+
+	switch (virt_link_speed) {
+	case VIRTCHNL_LINK_SPEED_100MB:
+		speed = 100;
+		break;
+	case VIRTCHNL_LINK_SPEED_1GB:
+		speed = 1000;
+		break;
+	case VIRTCHNL_LINK_SPEED_10GB:
+		speed = 10000;
+		break;
+	case VIRTCHNL_LINK_SPEED_40GB:
+		speed = 40000;
+		break;
+	case VIRTCHNL_LINK_SPEED_20GB:
+		speed = 20000;
+		break;
+	case VIRTCHNL_LINK_SPEED_25GB:
+		speed = 25000;
+		break;
+	case VIRTCHNL_LINK_SPEED_2_5GB:
+		speed = 2500;
+		break;
+	case VIRTCHNL_LINK_SPEED_5GB:
+		speed = 5000;
+		break;
+	default:
+		speed = 0;
+		break;
+	}
+
+	return speed;
+}
+
 static void
 iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 			uint16_t msglen)
@@ -151,7 +189,14 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
 		vf->link_up = pf_msg->event_data.link_event.link_status;
-		vf->link_speed = pf_msg->event_data.link_event_adv.link_speed;
+		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_ADV_LINK_SPEED) {
+			vf->link_speed =
+				pf_msg->event_data.link_event_adv.link_speed;
+		} else {
+			enum virtchnl_link_speed speed;
+			speed = pf_msg->event_data.link_event.link_speed;
+			vf->link_speed = iavf_convert_link_speed(speed);
+		}
 		iavf_dev_link_update(dev, 0);
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
 					      NULL);
