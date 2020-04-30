@@ -199,6 +199,7 @@ bool rte_vmbus_chan_rx_empty(const struct vmbus_channel *channel)
 {
 	const struct vmbus_br *br = &channel->rxbr;
 
+	rte_smp_rmb();
 	return br->vbr->rindex == br->vbr->windex;
 }
 
