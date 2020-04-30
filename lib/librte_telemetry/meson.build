@@ -4,7 +4,7 @@
 includes = [global_inc]
 
 sources = files('rte_telemetry.c', 'rte_telemetry_parser.c', 'rte_telemetry_parser_test.c',
-	'telemetry.c')
+	'telemetry.c', 'telemetry_data.c')
 headers = files('rte_telemetry.h', 'rte_telemetry_internal.h', 'rte_telemetry_parser.h')
 includes += include_directories('../librte_metrics')
 

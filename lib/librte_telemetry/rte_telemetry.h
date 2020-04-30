@@ -47,6 +47,148 @@ enum rte_tel_value_type {
 };
 
 /**
+ * Start an array of the specified type for returning from a callback
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param type
+ *   The type of the array of data
+ * @return
+ *   0 on success, negative errno on error
+ */
+__rte_experimental
+int
+rte_tel_data_start_array(struct rte_tel_data *d, enum rte_tel_value_type type);
+
+/**
+ * Start a dictionary of values for returning from a callback
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @return
+ *   0 on success, negative errno on error
+ */
+__rte_experimental
+int
+rte_tel_data_start_dict(struct rte_tel_data *d);
+
+/**
+ * Set a string for returning from a callback
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param str
+ *   The string to be returned in the data structure
+ * @return
+ *   0 on success, negative errno on error, E2BIG on string truncation
+ */
+__rte_experimental
+int
+rte_tel_data_string(struct rte_tel_data *d, const char *str);
+
+/**
+ * Add a string to an array.
+ * The array must have been started by rte_tel_data_start_array() with
+ * RTE_TEL_STRING_VAL as the type parameter.
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param str
+ *   The string to be returned in the array
+ * @return
+ *   0 on success, negative errno on error, E2BIG on string truncation
+ */
+__rte_experimental
+int
+rte_tel_data_add_array_string(struct rte_tel_data *d, const char *str);
+
+/**
+ * Add an int to an array.
+ * The array must have been started by rte_tel_data_start_array() with
+ * RTE_TEL_INT_VAL as the type parameter.
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param x
+ *   The number to be returned in the array
+ * @return
+ *   0 on success, negative errno on error
+ */
+__rte_experimental
+int
+rte_tel_data_add_array_int(struct rte_tel_data *d, int x);
+
+/**
+ * Add a uint64_t to an array.
+ * The array must have been started by rte_tel_data_start_array() with
+ * RTE_TEL_U64_VAL as the type parameter.
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param x
+ *   The number to be returned in the array
+ * @return
+ *   0 on success, negative errno on error
+ */
+__rte_experimental
+int
+rte_tel_data_add_array_u64(struct rte_tel_data *d, uint64_t x);
+
+/**
+ * Add a string value to a dictionary.
+ * The dict must have been started by rte_tel_data_start_dict().
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param name
+ *   The name the value is to be stored under in the dict
+ * @param val
+ *   The string to be stored in the dict
+ * @return
+ *   0 on success, negative errno on error, E2BIG on string truncation of
+ *   either name or value.
+ */
+__rte_experimental
+int
+rte_tel_data_add_dict_string(struct rte_tel_data *d, const char *name,
+		const char *val);
+
+/**
+ * Add an int value to a dictionary.
+ * The dict must have been started by rte_tel_data_start_dict().
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param name
+ *   The name the value is to be stored under in the dict
+ * @param val
+ *   The number to be stored in the dict
+ * @return
+ *   0 on success, negative errno on error, E2BIG on string truncation of name.
+ */
+__rte_experimental
+int
+rte_tel_data_add_dict_int(struct rte_tel_data *d, const char *name, int val);
+
+/**
+ * Add a uint64_t value to a dictionary.
+ * The dict must have been started by rte_tel_data_start_dict().
+ *
+ * @param d
+ *   The data structure passed to the callback
+ * @param name
+ *   The name the value is to be stored under in the dict
+ * @param val
+ *   The number to be stored in the dict
+ * @return
+ *   0 on success, negative errno on error, E2BIG on string truncation of name.
+ */
+__rte_experimental
+int
+rte_tel_data_add_dict_u64(struct rte_tel_data *d,
+		const char *name, uint64_t val);
+
+/**
  * This telemetry callback is used when registering a telemetry command.
  * It handles getting and formatting information to be returned to telemetry
  * when requested.
