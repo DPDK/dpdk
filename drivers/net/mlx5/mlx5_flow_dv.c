@@ -1965,7 +1965,7 @@ flow_dv_validate_action_set_vlan_vid(uint64_t item_flags,
 	const struct rte_flow_action *action = actions;
 	const struct rte_flow_action_of_set_vlan_vid *conf = action->conf;
 
-	if (conf->vlan_vid > RTE_BE16(0xFFE))
+	if (rte_be_to_cpu_16(conf->vlan_vid) > 0xFFE)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "VLAN VID value is too big");
