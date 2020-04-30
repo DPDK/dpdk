@@ -321,7 +321,7 @@ struct bnxt_ulp_def_ident_info ulp_def_ident_tbl[] = {
 	}
 };
 
-struct bnxt_ulp_device_params ulp_device_params[] = {
+struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
 		.global_fid_enable       = BNXT_ULP_SYM_YES,
 		.byte_order              = (enum bnxt_ulp_byte_order)
