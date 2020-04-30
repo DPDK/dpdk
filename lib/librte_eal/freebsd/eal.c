@@ -717,6 +717,9 @@ rte_eal_init(int argc, char **argv)
 
 	eal_reset_internal_config(&internal_config);
 
+	/* clone argv to report out later in telemetry */
+	eal_save_args(argc, argv);
+
 	/* set log level as early as possible */
 	eal_log_level_parse(argc, argv);
 

@@ -984,6 +984,9 @@ rte_eal_init(int argc, char **argv)
 	/* set log level as early as possible */
 	eal_log_level_parse(argc, argv);
 
+	/* clone argv to report out later in telemetry */
+	eal_save_args(argc, argv);
+
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");
 		rte_errno = ENOTSUP;
