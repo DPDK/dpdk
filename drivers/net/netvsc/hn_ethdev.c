@@ -575,7 +575,7 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 				 dev->data->nb_tx_queues);
 
 	for (i = 0; i < NDIS_HASH_INDCNT; i++)
-		hv->rss_ind[i] = i % hv->num_queues;
+		hv->rss_ind[i] = i % dev->data->nb_rx_queues;
 
 	hn_rss_hash_init(hv, rss_conf);
 
