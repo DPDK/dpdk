@@ -1372,24 +1372,28 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct hn_data *hv = txq->hv;
 	struct rte_eth_dev *vf_dev;
 	bool need_sig = false;
-	uint16_t nb_tx, avail;
+	uint16_t nb_tx, tx_thresh;
 	int ret;
 
 	if (unlikely(hv->closed))
 		return 0;
 
+	/*
+	 * Always check for events on the primary channel
+	 * because that is where hotplug notifications occur.
+	 */
+	tx_thresh = RTE_MAX(txq->free_thresh, nb_pkts);
+	if (txq->queue_id == 0 ||
+	    rte_mempool_avail_count(txq->txdesc_pool) < tx_thresh)
+		hn_process_events(hv, txq->queue_id, 0);
+
 	/* Transmit over VF if present and up */
 	vf_dev = hn_get_vf_dev(hv);
-
 	if (vf_dev && vf_dev->data->dev_started) {
 		void *sub_q = vf_dev->data->tx_queues[queue_id];
 
 		return (*vf_dev->tx_pkt_burst)(sub_q, tx_pkts, nb_pkts);
 	}
-
-	avail = rte_mempool_avail_count(txq->txdesc_pool);
-	if (nb_pkts > avail || avail <= txq->free_thresh)
-		hn_process_events(hv, txq->queue_id, 0);
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		struct rte_mbuf *m = tx_pkts[nb_tx];
@@ -1487,10 +1491,7 @@ hn_recv_pkts(void *prxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (unlikely(hv->closed))
 		return 0;
 
-	/* Receive from VF if present and up */
-	vf_dev = hn_get_vf_dev(hv);
-
-	/* Check for new completions */
+	/* Check for new completions (and hotplug) */
 	if (likely(rte_ring_count(rxq->rx_ring) < nb_pkts))
 		hn_process_events(hv, rxq->queue_id, 0);
 
@@ -1499,6 +1500,7 @@ hn_recv_pkts(void *prxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					   (void **)rx_pkts, nb_pkts, NULL);
 
 	/* If VF is available, check that as well */
+	vf_dev = hn_get_vf_dev(hv);
 	if (vf_dev && vf_dev->data->dev_started)
 		nb_rcv += hn_recv_vf(vf_dev->data->port_id, rxq,
 				     rx_pkts + nb_rcv, nb_pkts - nb_rcv);
