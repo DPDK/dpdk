@@ -56,6 +56,7 @@ Programmer's Guide
     packet_framework
     vhost_lib
     metrics_lib
+    telemetry_lib
     bpf_lib
     ipsec_lib
     graph_lib

@@ -215,6 +215,21 @@ New Features
   * Added IPsec inbound load-distribution support for ipsec-secgw application
     using NIC load distribution feature(Flow Director).
 
+* **Updated Telemetry Library.**
+
+  The updated Telemetry library has many improvements on the original version
+  to make it more accessible and scalable:
+
+  * It enables DPDK libraries and applications provide their own specific
+    telemetry information, rather than being limited to what could be reported
+    through the metrics library.
+
+  * It is no longer dependent on the external Jansson library, which allows
+    Telemetry be enabled by default.
+
+  * The socket handling has been simplified making it easier for clients to
+    connect and retrieve information.
+
 * **Added rte_graph library.**
 
   Graph architecture abstracts the data processing functions as a ``node`` and

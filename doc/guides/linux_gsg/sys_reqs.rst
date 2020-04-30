@@ -95,8 +95,6 @@ For libraries the additional dependencies include:
 
 *   libarchive: for some unit tests using tar to get their resources.
 
-*   jansson: to compile and use the telemetry library.
-
 *   libelf: to compile and use the bpf library.
 
 For poll-mode drivers, the additional dependencies for each driver can be

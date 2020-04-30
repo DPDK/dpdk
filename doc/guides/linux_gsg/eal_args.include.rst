@@ -202,3 +202,11 @@ Other options
 *   ``mbuf-pool-ops-name``:
 
     Pool ops name for mbuf to use.
+
+*    ``--telemetry``:
+
+    Enable telemetry (enabled by default).
+
+*    ``--no-telemetry``:
+
+    Disable telemetry.
