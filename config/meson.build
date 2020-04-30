@@ -237,13 +237,6 @@ dpdk_conf.set('RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', true)
 
 
 compile_time_cpuflags = []
-if host_machine.cpu_family().startswith('x86')
-	arch_subdir = 'x86'
-elif host_machine.cpu_family().startswith('arm') or host_machine.cpu_family().startswith('aarch')
-	arch_subdir = 'arm'
-elif host_machine.cpu_family().startswith('ppc')
-	arch_subdir = 'ppc'
-endif
 subdir(arch_subdir)
 dpdk_conf.set('RTE_COMPILE_TIME_CPUFLAGS', ','.join(compile_time_cpuflags))
 

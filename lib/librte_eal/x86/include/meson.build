@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-includes += include_directories('.')
-
 arch_headers = files(
 	'rte_atomic_32.h',
 	'rte_atomic_64.h',

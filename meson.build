@@ -25,12 +25,21 @@ dpdk_libs_disabled = []
 dpdk_drvs_disabled = []
 abi_version_file = files('ABI_VERSION')
 
+if host_machine.cpu_family().startswith('x86')
+	arch_subdir = 'x86'
+elif host_machine.cpu_family().startswith('arm') or host_machine.cpu_family().startswith('aarch')
+	arch_subdir = 'arm'
+elif host_machine.cpu_family().startswith('ppc')
+	arch_subdir = 'ppc'
+endif
+
 # configure the build, and make sure configs here and in config folder are
 # able to be included in any file. We also store a global array of include dirs
 # for passing to pmdinfogen scripts
 global_inc = include_directories('.', 'config',
 	'lib/librte_eal/include',
 	'lib/librte_eal/@0@/include'.format(host_machine.system()),
+	'lib/librte_eal/@0@/include'.format(arch_subdir),
 )
 subdir('config')
 
