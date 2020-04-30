@@ -49,93 +49,6 @@ rte_telemetry_get_runtime_dir(char *socket_path, size_t size)
 	snprintf(socket_path, size, "%s/telemetry", rte_eal_get_runtime_dir());
 }
 
-int32_t
-rte_telemetry_is_port_active(int port_id)
-{
-	int ret;
-
-	ret = rte_eth_find_next(port_id);
-	if (ret == port_id)
-		return 1;
-
-	TELEMETRY_LOG_ERR("port_id: %d is invalid, not active",
-		port_id);
-
-	return 0;
-}
-
-static int32_t
-rte_telemetry_update_metrics_ethdev(struct telemetry_impl *telemetry,
-	uint16_t port_id, int reg_start_index)
-{
-	int ret, num_xstats, i;
-	struct rte_eth_xstat *eth_xstats;
-
-	if (!rte_eth_dev_is_valid_port(port_id)) {
-		TELEMETRY_LOG_ERR("port_id: %d is invalid", port_id);
-		ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
-		if (ret < 0)
-			TELEMETRY_LOG_ERR("Could not send error");
-		return -1;
-	}
-
-	ret = rte_telemetry_is_port_active(port_id);
-	if (ret < 1) {
-		ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
-		if (ret < 0)
-			TELEMETRY_LOG_ERR("Could not send error");
-		return -1;
-	}
-
-	num_xstats = rte_eth_xstats_get(port_id, NULL, 0);
-	if (num_xstats < 0) {
-		TELEMETRY_LOG_ERR("rte_eth_xstats_get(%u) failed: %d", port_id,
-				num_xstats);
-		ret = rte_telemetry_send_error_response(telemetry, -EPERM);
-		if (ret < 0)
-			TELEMETRY_LOG_ERR("Could not send error");
-		return -1;
-	}
-
-	eth_xstats = malloc(sizeof(struct rte_eth_xstat) * num_xstats);
-	if (eth_xstats == NULL) {
-		TELEMETRY_LOG_ERR("Failed to malloc memory for xstats");
-		ret = rte_telemetry_send_error_response(telemetry, -ENOMEM);
-		if (ret < 0)
-			TELEMETRY_LOG_ERR("Could not send error");
-		return -1;
-	}
-
-	ret = rte_eth_xstats_get(port_id, eth_xstats, num_xstats);
-	if (ret < 0 || ret > num_xstats) {
-		free(eth_xstats);
-		TELEMETRY_LOG_ERR("rte_eth_xstats_get(%u) len%i failed: %d",
-				port_id, num_xstats, ret);
-		ret = rte_telemetry_send_error_response(telemetry, -EPERM);
-		if (ret < 0)
-			TELEMETRY_LOG_ERR("Could not send error");
-		return -1;
-	}
-
-	uint64_t xstats_values[num_xstats];
-	for (i = 0; i < num_xstats; i++)
-		xstats_values[i] = eth_xstats[i].value;
-
-	ret = rte_metrics_update_values(port_id, reg_start_index, xstats_values,
-			num_xstats);
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Could not update metrics values");
-		ret = rte_telemetry_send_error_response(telemetry, -EPERM);
-		if (ret < 0)
-			TELEMETRY_LOG_ERR("Could not send error");
-		free(eth_xstats);
-		return -1;
-	}
-
-	free(eth_xstats);
-	return 0;
-}
-
 static int32_t
 rte_telemetry_write_to_socket(struct telemetry_impl *telemetry,
 	const char *json_string)
@@ -220,328 +133,6 @@ rte_telemetry_send_error_response(struct telemetry_impl *telemetry,
 	return 0;
 }
 
-static int
-rte_telemetry_get_metrics(struct telemetry_impl *telemetry, uint32_t port_id,
-	struct rte_metric_value *metrics, struct rte_metric_name *names,
-	int num_metrics)
-{
-	int ret, num_values;
-
-	if (num_metrics < 0) {
-		TELEMETRY_LOG_ERR("Invalid metrics count");
-		goto einval_fail;
-	} else if (num_metrics == 0) {
-		TELEMETRY_LOG_ERR("No metrics to display (none have been registered)");
-		goto eperm_fail;
-	}
-
-	if (metrics == NULL) {
-		TELEMETRY_LOG_ERR("Metrics must be initialised.");
-		goto einval_fail;
-	}
-
-	if (names == NULL) {
-		TELEMETRY_LOG_ERR("Names must be initialised.");
-		goto einval_fail;
-	}
-
-	ret = rte_metrics_get_names(names, num_metrics);
-	if (ret < 0 || ret > num_metrics) {
-		TELEMETRY_LOG_ERR("Cannot get metrics names");
-		goto eperm_fail;
-	}
-
-	num_values = rte_metrics_get_values(port_id, NULL, 0);
-	ret = rte_metrics_get_values(port_id, metrics, num_values);
-	if (ret < 0 || ret > num_values) {
-		TELEMETRY_LOG_ERR("Cannot get metrics values");
-		goto eperm_fail;
-	}
-
-	return 0;
-
-eperm_fail:
-	ret = rte_telemetry_send_error_response(telemetry, -EPERM);
-	if (ret < 0)
-		TELEMETRY_LOG_ERR("Could not send error");
-	return -1;
-
-einval_fail:
-	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
-	if (ret < 0)
-		TELEMETRY_LOG_ERR("Could not send error");
-	return -1;
-
-}
-
-static int32_t
-rte_telemetry_json_format_stat(struct telemetry_impl *telemetry, json_t *stats,
-	const char *metric_name, uint64_t metric_value)
-{
-	int ret;
-	json_t *stat = json_object();
-
-	if (stat == NULL) {
-		TELEMETRY_LOG_ERR("Could not create stat JSON object");
-		goto eperm_fail;
-	}
-
-	ret = json_object_set_new(stat, "name", json_string(metric_name));
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Stat Name field cannot be set");
-		goto eperm_fail;
-	}
-
-	ret = json_object_set_new(stat, "value", json_integer(metric_value));
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Stat Value field cannot be set");
-		goto eperm_fail;
-	}
-
-	ret = json_array_append_new(stats, stat);
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Stat cannot be added to stats json array");
-		goto eperm_fail;
-	}
-
-	return 0;
-
-eperm_fail:
-	ret = rte_telemetry_send_error_response(telemetry, -EPERM);
-	if (ret < 0)
-		TELEMETRY_LOG_ERR("Could not send error");
-	return -1;
-
-}
-
-static int32_t
-rte_telemetry_json_format_port(struct telemetry_impl *telemetry,
-	uint32_t port_id, json_t *ports, uint32_t *metric_ids,
-	int num_metric_ids)
-{
-	struct rte_metric_value *metrics = 0;
-	struct rte_metric_name *names = 0;
-	int num_metrics, ret, err_ret;
-	json_t *port, *stats;
-	int i;
-
-	num_metrics = rte_metrics_get_names(NULL, 0);
-	if (num_metrics < 0) {
-		TELEMETRY_LOG_ERR("Cannot get metrics count");
-		goto einval_fail;
-	} else if (num_metrics == 0) {
-		TELEMETRY_LOG_ERR("No metrics to display (none have been registered)");
-		goto eperm_fail;
-	}
-
-	metrics = malloc(sizeof(struct rte_metric_value) * num_metrics);
-	names = malloc(sizeof(struct rte_metric_name) * num_metrics);
-	if (metrics == NULL || names == NULL) {
-		TELEMETRY_LOG_ERR("Cannot allocate memory");
-		free(metrics);
-		free(names);
-
-		err_ret = rte_telemetry_send_error_response(telemetry, -ENOMEM);
-		if (err_ret < 0)
-			TELEMETRY_LOG_ERR("Could not send error");
-		return -1;
-	}
-
-	ret  = rte_telemetry_get_metrics(telemetry, port_id, metrics, names,
-		num_metrics);
-	if (ret < 0) {
-		free(metrics);
-		free(names);
-		TELEMETRY_LOG_ERR("rte_telemetry_get_metrics failed");
-		return -1;
-	}
-
-	port = json_object();
-	stats = json_array();
-	if (port == NULL || stats == NULL) {
-		TELEMETRY_LOG_ERR("Could not create port/stats JSON objects");
-		goto eperm_fail;
-	}
-
-	ret = json_object_set_new(port, "port", json_integer(port_id));
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Port field cannot be set");
-		goto eperm_fail;
-	}
-
-	for (i = 0; i < num_metric_ids; i++) {
-		int metric_id = metric_ids[i];
-		int metric_index = -1;
-		int metric_name_key = -1;
-		int32_t j;
-		uint64_t metric_value;
-
-		if (metric_id >= num_metrics) {
-			TELEMETRY_LOG_ERR("Metric_id: %d is not valid",
-					metric_id);
-			goto einval_fail;
-		}
-
-		for (j = 0; j < num_metrics; j++) {
-			if (metrics[j].key == metric_id) {
-				metric_name_key = metrics[j].key;
-				metric_index = j;
-				break;
-			}
-		}
-
-		const char *metric_name = names[metric_name_key].name;
-		metric_value = metrics[metric_index].value;
-
-		if (metric_name_key < 0 || metric_index < 0) {
-			TELEMETRY_LOG_ERR("Could not get metric name/index");
-			goto eperm_fail;
-		}
-
-		ret = rte_telemetry_json_format_stat(telemetry, stats,
-			metric_name, metric_value);
-		if (ret < 0) {
-			TELEMETRY_LOG_ERR("Format stat with id: %u failed",
-					metric_id);
-			free(metrics);
-			free(names);
-			return -1;
-		}
-	}
-
-	if (json_array_size(stats) == 0)
-		ret = json_object_set_new(port, "stats", json_null());
-	else
-		ret = json_object_set_new(port, "stats", stats);
-
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Stats object cannot be set");
-		goto eperm_fail;
-	}
-
-	ret = json_array_append_new(ports, port);
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Port object cannot be added to ports array");
-		goto eperm_fail;
-	}
-
-	free(metrics);
-	free(names);
-	return 0;
-
-eperm_fail:
-	free(metrics);
-	free(names);
-	ret = rte_telemetry_send_error_response(telemetry, -EPERM);
-	if (ret < 0)
-		TELEMETRY_LOG_ERR("Could not send error");
-	return -1;
-
-einval_fail:
-	free(metrics);
-	free(names);
-	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
-	if (ret < 0)
-		TELEMETRY_LOG_ERR("Could not send error");
-	return -1;
-}
-
-static int32_t
-rte_telemetry_encode_json_format(struct telemetry_impl *telemetry,
-	struct telemetry_encode_param *ep, char **json_buffer)
-{
-	int ret;
-	json_t *root, *ports;
-	int i;
-	uint32_t port_id;
-	int num_port_ids;
-	int num_metric_ids;
-
-	ports = json_array();
-	if (ports == NULL) {
-		TELEMETRY_LOG_ERR("Could not create ports JSON array");
-		goto eperm_fail;
-	}
-
-	if (ep->type == PORT_STATS) {
-		num_port_ids = ep->pp.num_port_ids;
-		num_metric_ids = ep->pp.num_metric_ids;
-
-		if (num_port_ids <= 0 || num_metric_ids <= 0) {
-			TELEMETRY_LOG_ERR("Please provide port and metric ids to query");
-			goto einval_fail;
-		}
-
-		for (i = 0; i < num_port_ids; i++) {
-			port_id = ep->pp.port_ids[i];
-			if (!rte_eth_dev_is_valid_port(port_id)) {
-				TELEMETRY_LOG_ERR("Port: %d invalid",
-							port_id);
-				goto einval_fail;
-			}
-		}
-
-		for (i = 0; i < num_port_ids; i++) {
-			port_id = ep->pp.port_ids[i];
-			ret = rte_telemetry_json_format_port(telemetry,
-					port_id, ports, &ep->pp.metric_ids[0],
-					num_metric_ids);
-			if (ret < 0) {
-				TELEMETRY_LOG_ERR("Format port in JSON failed");
-				return -1;
-			}
-		}
-	} else if (ep->type == GLOBAL_STATS) {
-		/* Request Global Metrics */
-		ret = rte_telemetry_json_format_port(telemetry,
-				RTE_METRICS_GLOBAL,
-				ports, &ep->gp.metric_ids[0],
-				ep->gp.num_metric_ids);
-		if (ret < 0) {
-			TELEMETRY_LOG_ERR(" Request Global Metrics Failed");
-			return -1;
-		}
-	} else {
-		TELEMETRY_LOG_ERR(" Invalid metrics type in encode params");
-		goto einval_fail;
-	}
-
-	root = json_object();
-	if (root == NULL) {
-		TELEMETRY_LOG_ERR("Could not create root JSON object");
-		goto eperm_fail;
-	}
-
-	ret = json_object_set_new(root, "status_code",
-		json_string("Status OK: 200"));
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Status code field cannot be set");
-		goto eperm_fail;
-	}
-
-	ret = json_object_set_new(root, "data", ports);
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Data field cannot be set");
-		goto eperm_fail;
-	}
-
-	*json_buffer = json_dumps(root, JSON_INDENT(2));
-	json_decref(root);
-	return 0;
-
-eperm_fail:
-	ret = rte_telemetry_send_error_response(telemetry, -EPERM);
-	if (ret < 0)
-		TELEMETRY_LOG_ERR("Could not send error");
-	return -1;
-
-einval_fail:
-	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
-	if (ret < 0)
-		TELEMETRY_LOG_ERR("Could not send error");
-	return -1;
-}
-
 int32_t
 rte_telemetry_send_global_stats_values(struct telemetry_encode_param *ep,
 	struct telemetry_impl *telemetry)
@@ -559,10 +150,12 @@ rte_telemetry_send_global_stats_values(struct telemetry_encode_param *ep,
 		goto einval_fail;
 	}
 
-	ret = rte_telemetry_encode_json_format(telemetry, ep,
-		&json_buffer);
+	ret = rte_metrics_tel_encode_json_format(ep, &json_buffer);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("JSON encode function failed");
+		ret = rte_telemetry_send_error_response(telemetry, ret);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
 		return -1;
 	}
 
@@ -587,8 +180,6 @@ rte_telemetry_send_ports_stats_values(struct telemetry_encode_param *ep,
 {
 	int ret;
 	char *json_buffer = NULL;
-	uint32_t port_id;
-	int i;
 
 	if (telemetry == NULL) {
 		TELEMETRY_LOG_ERR("Invalid telemetry argument");
@@ -610,24 +201,14 @@ rte_telemetry_send_ports_stats_values(struct telemetry_encode_param *ep,
 		goto einval_fail;
 	}
 
-	for (i = 0; i < ep->pp.num_port_ids; i++) {
-		port_id = ep->pp.port_ids[i];
-		if (!rte_eth_dev_is_valid_port(port_id)) {
-			TELEMETRY_LOG_ERR("Port: %d invalid", port_id);
-			goto einval_fail;
-		}
-
-		ret = rte_telemetry_update_metrics_ethdev(telemetry,
-				port_id, telemetry->reg_index[i]);
-		if (ret < 0) {
-			TELEMETRY_LOG_ERR("Failed to update ethdev metrics");
-			return -1;
-		}
-	}
-
-	ret = rte_telemetry_encode_json_format(telemetry, ep, &json_buffer);
+	ret = rte_metrics_tel_get_ports_stats_json(ep, telemetry->reg_index,
+			&json_buffer);
 	if (ret < 0) {
-		TELEMETRY_LOG_ERR("JSON encode function failed");
+		TELEMETRY_LOG_ERR("Function for get_ports_stats_json"
+				" failed");
+		ret = rte_telemetry_send_error_response(telemetry, ret);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
 		return -1;
 	}
 
@@ -646,114 +227,23 @@ einval_fail:
 	return -1;
 }
 
-
-static int32_t
-rte_telemetry_reg_ethdev_to_metrics(uint16_t port_id)
-{
-	int ret, num_xstats, ret_val, i;
-	struct rte_eth_xstat *eth_xstats = NULL;
-	struct rte_eth_xstat_name *eth_xstats_names = NULL;
-
-	if (!rte_eth_dev_is_valid_port(port_id)) {
-		TELEMETRY_LOG_ERR("port_id: %d is invalid", port_id);
-		return -EINVAL;
-	}
-
-	num_xstats = rte_eth_xstats_get(port_id, NULL, 0);
-	if (num_xstats < 0) {
-		TELEMETRY_LOG_ERR("rte_eth_xstats_get(%u) failed: %d",
-				port_id, num_xstats);
-		return -EPERM;
-	}
-
-	eth_xstats = malloc(sizeof(struct rte_eth_xstat) * num_xstats);
-	if (eth_xstats == NULL) {
-		TELEMETRY_LOG_ERR("Failed to malloc memory for xstats");
-		return -ENOMEM;
-	}
-
-	ret = rte_eth_xstats_get(port_id, eth_xstats, num_xstats);
-	const char *xstats_names[num_xstats];
-	eth_xstats_names = malloc(sizeof(struct rte_eth_xstat_name) * num_xstats);
-	if (ret < 0 || ret > num_xstats) {
-		TELEMETRY_LOG_ERR("rte_eth_xstats_get(%u) len%i failed: %d",
-				port_id, num_xstats, ret);
-		ret_val = -EPERM;
-		goto free_xstats;
-	}
-
-	if (eth_xstats_names == NULL) {
-		TELEMETRY_LOG_ERR("Failed to malloc memory for xstats_names");
-		ret_val = -ENOMEM;
-		goto free_xstats;
-	}
-
-	ret = rte_eth_xstats_get_names(port_id, eth_xstats_names, num_xstats);
-	if (ret < 0 || ret > num_xstats) {
-		TELEMETRY_LOG_ERR("rte_eth_xstats_get_names(%u) len%i failed: %d",
-				port_id, num_xstats, ret);
-		ret_val = -EPERM;
-		goto free_xstats;
-	}
-
-	for (i = 0; i < num_xstats; i++)
-		xstats_names[i] = eth_xstats_names[eth_xstats[i].id].name;
-
-	ret_val = rte_metrics_reg_names(xstats_names, num_xstats);
-	if (ret_val < 0) {
-		TELEMETRY_LOG_ERR("rte_metrics_reg_names failed - metrics may already be registered");
-		ret_val = -1;
-		goto free_xstats;
-	}
-
-	goto free_xstats;
-
-free_xstats:
-	free(eth_xstats);
-	free(eth_xstats_names);
-	return ret_val;
-}
-
 static int32_t
 rte_telemetry_initial_accept(struct telemetry_impl *telemetry)
 {
-	struct driver_index {
-		const void *dev_ops;
-		int reg_index;
-	} drv_idx[RTE_MAX_ETHPORTS] = { {0} };
-	int nb_drv_idx = 0;
-	uint16_t pid;
 	int ret;
 	int selftest = 0;
 
-	RTE_ETH_FOREACH_DEV(pid) {
-		int i;
-		/* Different device types have different numbers of stats, so
-		 * first check if the stats for this type of device have
-		 * already been registered
-		 */
-		for (i = 0; i < nb_drv_idx; i++) {
-			if (rte_eth_devices[pid].dev_ops == drv_idx[i].dev_ops) {
-				telemetry->reg_index[pid] = drv_idx[i].reg_index;
-				break;
-			}
-		}
-		if (i < nb_drv_idx)
-			continue; /* we found a match, go to next port */
-
-		/* No match, register a new set of xstats for this port */
-		ret = rte_telemetry_reg_ethdev_to_metrics(pid);
-		if (ret < 0) {
-			TELEMETRY_LOG_ERR("Failed to register ethdev metrics");
-			return -1;
-		}
-		telemetry->reg_index[pid] = ret;
-		drv_idx[nb_drv_idx].dev_ops = rte_eth_devices[pid].dev_ops;
-		drv_idx[nb_drv_idx].reg_index = ret;
-		nb_drv_idx++;
+	ret = rte_metrics_tel_reg_all_ethdev(
+			&telemetry->metrics_register_done,
+			telemetry->reg_index);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Failed to register ethdev metrics");
+		ret = rte_telemetry_send_error_response(telemetry, ret);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
+		return -1;
 	}
 
-	telemetry->metrics_register_done = 1;
 	if (selftest) {
 		ret = rte_telemetry_socket_messaging_testing(telemetry->reg_index[0],
 				telemetry->server_fd);

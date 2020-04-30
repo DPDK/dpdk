@@ -32,6 +32,7 @@ extern "C" {
 
 /** Maximum length of metric name (including null-terminator) */
 #define RTE_METRICS_MAX_NAME_LEN 64
+#define RTE_METRICS_MAX_METRICS 256
 
 /**
  * Global metric special id.
@@ -42,7 +43,6 @@ extern "C" {
  * port (i.e. device), are updated.
  */
 #define RTE_METRICS_GLOBAL -1
-
 
 /**
  * A name-key lookup for metrics.
@@ -70,7 +70,6 @@ struct rte_metric_value {
 	/** Value for metric */
 	uint64_t value;
 };
-
 
 /**
  * Initializes metric module. This function must be called from

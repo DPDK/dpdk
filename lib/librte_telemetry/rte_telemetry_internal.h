@@ -4,6 +4,8 @@
 
 #include <rte_log.h>
 #include <rte_tailq.h>
+#include <rte_metrics.h>
+#include <rte_metrics_telemetry.h>
 
 #ifndef _RTE_TELEMETRY_INTERNAL_H_
 #define _RTE_TELEMETRY_INTERNAL_H_
@@ -50,28 +52,6 @@ enum rte_telemetry_parser_actions {
 	ACTION_DELETE = 2
 };
 
-enum rte_telemetry_stats_type {
-	PORT_STATS = 0,
-	GLOBAL_STATS = 1
-};
-
-/* @internal */
-struct telemetry_encode_param {
-	enum rte_telemetry_stats_type type;
-	union {
-		struct port_param {
-			int num_metric_ids;
-			uint32_t metric_ids[MAX_METRICS];
-			int num_port_ids;
-			uint32_t port_ids[RTE_MAX_ETHPORTS];
-		} pp;
-		struct global_param {
-			int num_metric_ids;
-			uint32_t metric_ids[MAX_METRICS];
-		} gp;
-	};
-};
-
 int32_t
 rte_telemetry_parse_client_message(struct telemetry_impl *telemetry, char *buf);
 
@@ -86,14 +66,6 @@ rte_telemetry_register_client(struct telemetry_impl *telemetry,
 int32_t
 rte_telemetry_unregister_client(struct telemetry_impl *telemetry,
 	const char *client_path);
-
-/**
- * This is a wrapper for the ethdev api rte_eth_find_next().
- * If rte_eth_find_next() returns the same port id that we passed it,
- * then we know that that port is active.
- */
-int32_t
-rte_telemetry_is_port_active(int port_id);
 
 int32_t
 rte_telemetry_send_ports_stats_values(struct telemetry_encode_param *ep,

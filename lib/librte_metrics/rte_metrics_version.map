@@ -16,4 +16,11 @@ EXPERIMENTAL {
 	global:
 
 	rte_metrics_deinit;
+	rte_metrics_tel_encode_json_format;
+	rte_metrics_tel_reg_all_ethdev;
+	rte_metrics_tel_get_global_stats;
+	rte_metrics_tel_get_port_stats_ids;
+	rte_metrics_tel_get_ports_stats_json;
+	rte_metrics_tel_extract_data;
+
 };
