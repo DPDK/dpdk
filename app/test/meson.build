@@ -65,8 +65,6 @@ test_sources = files('commands.c',
 	'test_ipsec_sad.c',
 	'test_kni.c',
 	'test_kvargs.c',
-	'test_link_bonding.c',
-	'test_link_bonding_rssconf.c',
 	'test_logs.c',
 	'test_lpm.c',
 	'test_lpm6.c',
@@ -138,6 +136,8 @@ test_sources = files('commands.c',
 )
 
 test_deps = ['acl',
+	'bus_pci',
+	'bus_vdev',
 	'bitratestats',
 	'bpf',
 	'cfgfile',
@@ -310,8 +310,6 @@ driver_test_names = [
         'cryptodev_sw_zuc_autotest',
         'eventdev_selftest_octeontx',
         'eventdev_selftest_sw',
-        'link_bonding_autotest',
-        'link_bonding_rssconf_autotest',
         'rawdev_autotest',
 ]
 
@@ -348,6 +346,8 @@ endif
 # they are used via a driver-specific API.
 if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
 	test_deps += 'pmd_bond'
+	test_sources += ['test_link_bonding.c', 'test_link_bonding_rssconf.c']
+	driver_test_names += ['link_bonding_autotest', 'link_bonding_rssconf_autotest']
 endif
 if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
 	test_deps += 'pmd_ring'
