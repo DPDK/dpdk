@@ -46,6 +46,7 @@ struct otx2_nix_tm_node {
 #define NIX_TM_NODE_HWRES	BIT_ULL(0)
 #define NIX_TM_NODE_ENABLED	BIT_ULL(1)
 #define NIX_TM_NODE_USER	BIT_ULL(2)
+#define NIX_TM_NODE_RED_DISCARD BIT_ULL(3)
 	/* Shaper algorithm for RED state @NIX_REDALG_E */
 	uint32_t red_algo:2;
 

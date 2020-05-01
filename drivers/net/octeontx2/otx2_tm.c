@@ -237,6 +237,30 @@ shaper_config_to_nix(struct otx2_nix_tm_shaper_profile *profile,
 						 &pir->burst_mantissa);
 }
 
+static void
+shaper_default_red_algo(struct otx2_eth_dev *dev,
+			struct otx2_nix_tm_node *tm_node,
+			struct otx2_nix_tm_shaper_profile *profile)
+{
+	struct shaper_params cir, pir;
+
+	/* C0 doesn't support STALL when both PIR & CIR are enabled */
+	if (profile && otx2_dev_is_96xx_Cx(dev)) {
+		memset(&cir, 0, sizeof(cir));
+		memset(&pir, 0, sizeof(pir));
+		shaper_config_to_nix(profile, &cir, &pir);
+
+		if (pir.rate && cir.rate) {
+			tm_node->red_algo = NIX_REDALG_DISCARD;
+			tm_node->flags |= NIX_TM_NODE_RED_DISCARD;
+			return;
+		}
+	}
+
+	tm_node->red_algo = NIX_REDALG_STD;
+	tm_node->flags &= ~NIX_TM_NODE_RED_DISCARD;
+}
+
 static int
 populate_tm_tl1_default(struct otx2_eth_dev *dev, uint32_t schq)
 {
@@ -744,7 +768,6 @@ nix_tm_node_add_to_list(struct otx2_eth_dev *dev, uint32_t node_id,
 {
 	struct otx2_nix_tm_shaper_profile *profile;
 	struct otx2_nix_tm_node *tm_node, *parent_node;
-	struct shaper_params cir, pir;
 	uint32_t profile_id;
 
 	profile_id = params->shaper_profile_id;
@@ -778,19 +801,9 @@ nix_tm_node_add_to_list(struct otx2_eth_dev *dev, uint32_t node_id,
 	if (profile)
 		profile->reference_count++;
 
-	memset(&cir, 0, sizeof(cir));
-	memset(&pir, 0, sizeof(pir));
-	shaper_config_to_nix(profile, &cir, &pir);
-
 	tm_node->parent = parent_node;
 	tm_node->parent_hw_id = UINT32_MAX;
-	/* C0 doesn't support STALL when both PIR & CIR are enabled */
-	if (lvl < OTX2_TM_LVL_QUEUE &&
-	    otx2_dev_is_96xx_Cx(dev) &&
-	    pir.rate && cir.rate)
-		tm_node->red_algo = NIX_REDALG_DISCARD;
-	else
-		tm_node->red_algo = NIX_REDALG_STD;
+	shaper_default_red_algo(dev, tm_node, profile);
 
 	TAILQ_INSERT_TAIL(&dev->node_list, tm_node, node);
 
@@ -2499,6 +2512,8 @@ otx2_nix_tm_node_shaper_update(struct rte_eth_dev *eth_dev,
 	rc = send_tm_reqval(mbox, req, error);
 	if (rc)
 		return rc;
+
+	shaper_default_red_algo(dev, tm_node, profile);
 
 	/* Update the PIR/CIR and clear SW XOFF */
 	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
