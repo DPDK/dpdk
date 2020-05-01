@@ -23,7 +23,7 @@
 
 #define FLOW_CLASSIFY_MAX_RULE_NUM 100
 #define MAX_PKT_BURST              32
-#define NB_SOCKETS                 1
+#define NB_SOCKETS                 4
 #define MEMPOOL_CACHE_SIZE         256
 #define MBUF_SIZE                  512
 #define NB_MBUF                    512
