@@ -279,7 +279,7 @@ octeontx_start_domain(void)
 }
 
 static int
-octeontx_check_mbox_version(struct mbox_intf_ver app_intf_ver,
+octeontx_check_mbox_version(struct mbox_intf_ver *app_intf_ver,
 			    struct mbox_intf_ver *intf_ver)
 {
 	struct mbox_intf_ver kernel_intf_ver = {0};
@@ -290,8 +290,9 @@ octeontx_check_mbox_version(struct mbox_intf_ver app_intf_ver,
 	hdr.coproc = NO_COPROC;
 	hdr.msg = RM_INTERFACE_VERSION;
 
-	result = octeontx_mbox_send(&hdr, &app_intf_ver, sizeof(app_intf_ver),
-			&kernel_intf_ver, sizeof(kernel_intf_ver));
+	result = octeontx_mbox_send(&hdr, app_intf_ver,
+				    sizeof(struct mbox_intf_ver),
+				    &kernel_intf_ver, sizeof(kernel_intf_ver));
 	if (result != sizeof(kernel_intf_ver)) {
 		mbox_log_err("Could not send interface version. Err=%d. FuncErr=%d\n",
 			     result, hdr.res_code);
@@ -301,9 +302,9 @@ octeontx_check_mbox_version(struct mbox_intf_ver app_intf_ver,
 	if (intf_ver)
 		*intf_ver = kernel_intf_ver;
 
-	if (app_intf_ver.platform != kernel_intf_ver.platform ||
-			app_intf_ver.major != kernel_intf_ver.major ||
-			app_intf_ver.minor != kernel_intf_ver.minor)
+	if (app_intf_ver->platform != kernel_intf_ver.platform ||
+			app_intf_ver->major != kernel_intf_ver.major ||
+			app_intf_ver->minor != kernel_intf_ver.minor)
 		result = -EINVAL;
 
 	return result;
@@ -312,7 +313,7 @@ octeontx_check_mbox_version(struct mbox_intf_ver app_intf_ver,
 int
 octeontx_mbox_init(void)
 {
-	const struct mbox_intf_ver MBOX_INTERFACE_VERSION = {
+	struct mbox_intf_ver MBOX_INTERFACE_VERSION = {
 		.platform = 0x01,
 		.major = 0x01,
 		.minor = 0x03
@@ -330,7 +331,7 @@ octeontx_mbox_init(void)
 		return ret;
 	}
 
-	ret = octeontx_check_mbox_version(MBOX_INTERFACE_VERSION,
+	ret = octeontx_check_mbox_version(&MBOX_INTERFACE_VERSION,
 					  &rm_intf_ver);
 	if (ret < 0) {
 		mbox_log_err("MBOX version: Kernel(%d.%d.%d) != DPDK(%d.%d.%d)",
