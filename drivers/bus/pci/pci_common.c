@@ -42,14 +42,15 @@ const char *rte_pci_get_sysfs_path(void)
 	return path;
 }
 
-static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
+static struct rte_devargs *
+pci_devargs_lookup(const struct rte_pci_addr *pci_addr)
 {
 	struct rte_devargs *devargs;
 	struct rte_pci_addr addr;
 
 	RTE_EAL_DEVARGS_FOREACH("pci", devargs) {
 		devargs->bus->parse(devargs->name, &addr);
-		if (!rte_pci_addr_cmp(&dev->addr, &addr))
+		if (!rte_pci_addr_cmp(pci_addr, &addr))
 			return devargs;
 	}
 	return NULL;
@@ -63,7 +64,7 @@ pci_name_set(struct rte_pci_device *dev)
 	/* Each device has its internal, canonical name set. */
 	rte_pci_device_name(&dev->addr,
 			dev->name, sizeof(dev->name));
-	devargs = pci_devargs_lookup(dev);
+	devargs = pci_devargs_lookup(&dev->addr);
 	dev->device.devargs = devargs;
 	/* In blacklist mode, if the device is not blacklisted, no
 	 * rte_devargs exists for it.
@@ -297,23 +298,12 @@ pci_probe(void)
 {
 	struct rte_pci_device *dev = NULL;
 	size_t probed = 0, failed = 0;
-	struct rte_devargs *devargs;
-	int probe_all = 0;
 	int ret = 0;
-
-	if (rte_pci_bus.bus.conf.scan_mode != RTE_BUS_SCAN_WHITELIST)
-		probe_all = 1;
 
 	FOREACH_DEVICE_ON_PCIBUS(dev) {
 		probed++;
 
-		devargs = dev->device.devargs;
-		/* probe all or only whitelisted devices */
-		if (probe_all)
-			ret = pci_probe_all_drivers(dev);
-		else if (devargs != NULL &&
-			devargs->policy == RTE_DEV_WHITELISTED)
-			ret = pci_probe_all_drivers(dev);
+		ret = pci_probe_all_drivers(dev);
 		if (ret < 0) {
 			if (ret != -EEXIST) {
 				RTE_LOG(ERR, EAL, "Requested device "
@@ -593,10 +583,10 @@ pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 	return -1;
 }
 
-static bool
-pci_ignore_device(const struct rte_pci_device *dev)
+bool
+rte_pci_ignore_device(const struct rte_pci_addr *pci_addr)
 {
-	struct rte_devargs *devargs = dev->device.devargs;
+	struct rte_devargs *devargs = pci_devargs_lookup(pci_addr);
 
 	switch (rte_pci_bus.bus.conf.scan_mode) {
 	case RTE_BUS_SCAN_WHITELIST:
@@ -631,8 +621,7 @@ rte_pci_get_iommu_class(void)
 		if (iommu_no_va == -1)
 			iommu_no_va = pci_device_iommu_support_va(dev)
 					? 0 : 1;
-		if (pci_ignore_device(dev))
-			continue;
+
 		if (dev->kdrv == RTE_KDRV_UNKNOWN ||
 		    dev->kdrv == RTE_KDRV_NONE)
 			continue;

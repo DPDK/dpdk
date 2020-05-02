@@ -33,6 +33,17 @@ void
 pci_name_set(struct rte_pci_device *dev);
 
 /**
+ * Validate whether a device with given PCI address should be ignored or not.
+ *
+ * @param pci_addr
+ *	PCI address of device to be validated
+ * @return
+ *	true: if device is to be ignored,
+ *	false: if device is to be scanned,
+ */
+bool rte_pci_ignore_device(const struct rte_pci_addr *pci_addr);
+
+/**
  * Add a PCI device to the PCI Bus (append to PCI Device list). This function
  * also updates the bus references of the PCI Device (and the generic device
  * object embedded within.

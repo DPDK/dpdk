@@ -338,6 +338,7 @@ rte_pci_scan(void)
 			.match_buf_len = sizeof(matches),
 			.matches = &matches[0],
 	};
+	struct rte_pci_addr pci_addr;
 
 	/* for debug purposes, PCI can be disabled */
 	if (!rte_eal_has_pci())
@@ -357,9 +358,18 @@ rte_pci_scan(void)
 			goto error;
 		}
 
-		for (i = 0; i < conf_io.num_matches; i++)
+		for (i = 0; i < conf_io.num_matches; i++) {
+			pci_addr.domain = matches[i].pc_sel.pc_domain;
+			pci_addr.bus = matches[i].pc_sel.pc_bus;
+			pci_addr.devid = matches[i].pc_sel.pc_dev;
+			pci_addr.function = matches[i].pc_sel.pc_func;
+
+			if (rte_pci_ignore_device(&pci_addr))
+				continue;
+
 			if (pci_scan_one(fd, &matches[i]) < 0)
 				goto error;
+		}
 
 		dev_count += conf_io.num_matches;
 	} while(conf_io.status == PCI_GETCONF_MORE_DEVS);
