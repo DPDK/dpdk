@@ -905,6 +905,11 @@ so-called layer 2.5 pattern items such as ``RTE_FLOW_ITEM_TYPE_VLAN``. In
 the latter case, ``type`` refers to that of the outer header, with the inner
 EtherType/TPID provided by the subsequent pattern item. This is the same
 order as on the wire.
+If the ``type`` field contains a TPID value, then only tagged packets with the
+specified TPID will match the pattern.
+Otherwise, only untagged packets will match the pattern.
+If the ``ETH`` item is the only item in the pattern, and the ``type`` field is
+not specified, then both tagged and untagged packets will match the pattern.
 
 - ``dst``: destination MAC.
 - ``src``: source MAC.
@@ -919,6 +924,8 @@ Matches an 802.1Q/ad VLAN tag.
 The corresponding standard outer EtherType (TPID) values are
 ``RTE_ETHER_TYPE_VLAN`` or ``RTE_ETHER_TYPE_QINQ``. It can be overridden by the
 preceding pattern item.
+If a ``VLAN`` item is present in the pattern, then only tagged packets will
+match the pattern.
 
 - ``tci``: tag control information.
 - ``inner_type``: inner EtherType or TPID.

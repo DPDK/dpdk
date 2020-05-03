@@ -710,6 +710,12 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
  * the latter case, @p type refers to that of the outer header, with the
  * inner EtherType/TPID provided by the subsequent pattern item. This is the
  * same order as on the wire.
+ * If the @p type field contains a TPID value, then only tagged packets with the
+ * specified TPID will match the pattern.
+ * Otherwise, only untagged packets will match the pattern.
+ * If the @p ETH item is the only item in the pattern, and the @p type field
+ * is not specified, then both tagged and untagged packets will match the
+ * pattern.
  */
 struct rte_flow_item_eth {
 	struct rte_ether_addr dst; /**< Destination MAC. */
@@ -734,6 +740,8 @@ static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
  * The corresponding standard outer EtherType (TPID) values are
  * RTE_ETHER_TYPE_VLAN or RTE_ETHER_TYPE_QINQ. It can be overridden by
  * the preceding pattern item.
+ * If a @p VLAN item is present in the pattern, then only tagged packets will
+ * match the pattern.
  */
 struct rte_flow_item_vlan {
 	rte_be16_t tci; /**< Tag control information. */
