@@ -5635,6 +5635,8 @@ flow_dv_set_match_ip_version(uint32_t group,
 		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version,
 			 ip_version);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, ip_version);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ethertype, 0);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ethertype, 0);
 }
 
 /**
@@ -5651,7 +5653,8 @@ flow_dv_set_match_ip_version(uint32_t group,
  */
 static void
 flow_dv_translate_item_eth(void *matcher, void *key,
-			   const struct rte_flow_item *item, int inner)
+			   const struct rte_flow_item *item, int inner,
+			   uint32_t group)
 {
 	const struct rte_flow_item_eth *eth_m = item->mask;
 	const struct rte_flow_item_eth *eth_v = item->spec;
@@ -5706,11 +5709,22 @@ flow_dv_translate_item_eth(void *matcher, void *key,
 	 * HW supports match on one Ethertype, the Ethertype following the last
 	 * VLAN tag of the packet (see PRM).
 	 * Set match on ethertype only if ETH header is not followed by VLAN.
+	 * HW is optimized for IPv4/IPv6. In such cases, avoid setting
+	 * ethertype, and use ip_version field instead.
 	 */
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ethertype,
-		 rte_be_to_cpu_16(eth_m->type));
-	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v, ethertype);
-	*(uint16_t *)(l24_v) = eth_m->type & eth_v->type;
+	if (eth_v->type == RTE_BE16(RTE_ETHER_TYPE_IPV4) &&
+	    eth_m->type == 0xFFFF) {
+		flow_dv_set_match_ip_version(group, headers_v, headers_m, 4);
+	} else if (eth_v->type == RTE_BE16(RTE_ETHER_TYPE_IPV6) &&
+		   eth_m->type == 0xFFFF) {
+		flow_dv_set_match_ip_version(group, headers_v, headers_m, 6);
+	} else {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ethertype,
+			 rte_be_to_cpu_16(eth_m->type));
+		l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v,
+				     ethertype);
+		*(uint16_t *)(l24_v) = eth_m->type & eth_v->type;
+	}
 }
 
 /**
@@ -5731,7 +5745,7 @@ static void
 flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
 			    void *matcher, void *key,
 			    const struct rte_flow_item *item,
-			    int inner)
+			    int inner, uint32_t group)
 {
 	const struct rte_flow_item_vlan *vlan_m = item->mask;
 	const struct rte_flow_item_vlan *vlan_v = item->spec;
@@ -5769,10 +5783,23 @@ flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, first_cfi, tci_v >> 12);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, first_prio, tci_m >> 13);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, first_prio, tci_v >> 13);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ethertype,
-		 rte_be_to_cpu_16(vlan_m->inner_type));
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ethertype,
-		 rte_be_to_cpu_16(vlan_m->inner_type & vlan_v->inner_type));
+	/*
+	 * HW is optimized for IPv4/IPv6. In such cases, avoid setting
+	 * ethertype, and use ip_version field instead.
+	 */
+	if (vlan_v->inner_type == RTE_BE16(RTE_ETHER_TYPE_IPV4) &&
+	    vlan_m->inner_type == 0xFFFF) {
+		flow_dv_set_match_ip_version(group, headers_v, headers_m, 4);
+	} else if (vlan_v->inner_type == RTE_BE16(RTE_ETHER_TYPE_IPV6) &&
+		   vlan_m->inner_type == 0xFFFF) {
+		flow_dv_set_match_ip_version(group, headers_v, headers_m, 6);
+	} else {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ethertype,
+			 rte_be_to_cpu_16(vlan_m->inner_type));
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ethertype,
+			 rte_be_to_cpu_16(vlan_m->inner_type &
+					  vlan_v->inner_type));
+	}
 }
 
 /**
@@ -8155,7 +8182,8 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			flow_dv_translate_item_eth(match_mask, match_value,
-						   items, tunnel);
+						   items, tunnel,
+						   dev_flow->dv.group);
 			matcher.priority = MLX5_PRIORITY_MAP_L2;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
 					     MLX5_FLOW_LAYER_OUTER_L2;
@@ -8163,7 +8191,8 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			flow_dv_translate_item_vlan(dev_flow,
 						    match_mask, match_value,
-						    items, tunnel);
+						    items, tunnel,
+						    dev_flow->dv.group);
 			matcher.priority = MLX5_PRIORITY_MAP_L2;
 			last_item = tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
 					      MLX5_FLOW_LAYER_INNER_VLAN) :
