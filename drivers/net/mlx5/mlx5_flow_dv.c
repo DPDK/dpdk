@@ -5612,6 +5612,32 @@ flow_dv_check_valid_spec(void *match_mask, void *match_value)
 #endif
 
 /**
+ * Add match of ip_version.
+ *
+ * @param[in] group
+ *   Flow group.
+ * @param[in] headers_v
+ *   Values header pointer.
+ * @param[in] headers_m
+ *   Masks header pointer.
+ * @param[in] ip_version
+ *   The IP version to set.
+ */
+static inline void
+flow_dv_set_match_ip_version(uint32_t group,
+			     void *headers_v,
+			     void *headers_m,
+			     uint8_t ip_version)
+{
+	if (group == 0)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version,
+			 ip_version);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, ip_version);
+}
+
+/**
  * Add Ethernet item to matcher and to the value.
  *
  * @param[in, out] matcher
@@ -5797,11 +5823,7 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 					 outer_headers);
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	}
-	if (group == 0)
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
-	else
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0x4);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, 4);
+	flow_dv_set_match_ip_version(group, headers_v, headers_m, 4);
 	/*
 	 * On outer header (which must contains L2), or inner header with L2,
 	 * set cvlan_tag mask bit to mark this packet as untagged.
@@ -5899,11 +5921,7 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 					 outer_headers);
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	}
-	if (group == 0)
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
-	else
-		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0x6);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, 6);
+	flow_dv_set_match_ip_version(group, headers_v, headers_m, 6);
 	/*
 	 * On outer header (which must contains L2), or inner header with L2,
 	 * set cvlan_tag mask bit to mark this packet as untagged.
