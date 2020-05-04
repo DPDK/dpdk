@@ -158,10 +158,10 @@ __rte_experimental
 bool rte_log_can_log(uint32_t logtype, uint32_t loglevel);
 
 /**
- * Set the log level for a given type based on shell pattern.
+ * Set the log level for a given type based on globbing pattern.
  *
  * @param pattern
- *   The match pattern identifying the log type.
+ *   The globbing pattern identifying the log type.
  * @param level
  *   The level to be set.
  * @return

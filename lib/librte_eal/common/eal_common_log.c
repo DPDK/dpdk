@@ -29,7 +29,7 @@ struct rte_eal_opt_loglevel {
 	TAILQ_ENTRY(rte_eal_opt_loglevel) next;
 	/** Compiled regular expression obtained from the option */
 	regex_t re_match;
-	/** Glob match string option */
+	/** Globbing pattern option */
 	char *pattern;
 	/** Log level value obtained from the option */
 	uint32_t level;
@@ -207,7 +207,7 @@ int rte_log_save_regexp(const char *regex, int tmp)
 	return rte_log_save_level(tmp, regex, NULL);
 }
 
-/* set log level based on glob (file match) pattern */
+/* set log level based on globbing pattern */
 int
 rte_log_set_level_pattern(const char *pattern, uint32_t level)
 {

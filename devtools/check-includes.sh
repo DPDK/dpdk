@@ -23,7 +23,7 @@
 # PEDANTIC_CFLAGS, PEDANTIC_CXXFLAGS and PEDANTIC_CPPFLAGS provide strict
 # C/C++ compilation flags.
 #
-# IGNORE contains a list of shell patterns matching files (relative to the
+# IGNORE contains a list of globbing patterns matching files (relative to the
 # include directory) to avoid. It is set by default to known DPDK headers
 # which must not be included on their own.
 #
