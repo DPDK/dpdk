@@ -10,12 +10,18 @@
 #include <string.h>
 
 #include "rte_altivec.h"
+#include "rte_common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "generic/rte_memcpy.h"
+
+#if (GCC_VERSION >= 90000 && GCC_VERSION < 90400)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
 
 static inline void
 rte_mov16(uint8_t *dst, const uint8_t *src)
@@ -191,6 +197,10 @@ rte_memcpy_func(void *dst, const void *src, size_t n)
 			(const uint8_t *)src - 16 + n);
 	return ret;
 }
+
+#if (GCC_VERSION >= 90000 && GCC_VERSION < 90400)
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef __cplusplus
 }
