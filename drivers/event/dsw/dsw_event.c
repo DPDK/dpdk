@@ -821,6 +821,9 @@ dsw_port_consider_emigration(struct dsw_evdev *dsw,
 	if (dsw->num_ports == 1)
 		return;
 
+	if (seen_events_len < DSW_MAX_EVENTS_RECORDED)
+		return;
+
 	DSW_LOG_DP_PORT(DEBUG, source_port->id, "Considering emigration.\n");
 
 	/* Randomize interval to avoid having all threads considering
