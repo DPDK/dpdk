@@ -38,11 +38,6 @@ typedef enum tf_subtype {
 /* u32_t	tlv_resp_value[170]; */
 #define TF_MAX_RESP_SIZE 680
 
-#define __BUILD_BUG_ON(condition, line) \
-	char p##line[(condition) ? 1 : -1]
-#define _BUILD_BUG_ON(condition, line) __BUILD_BUG_ON(condition, line)
-#define BUILD_BUG_ON(condition) _BUILD_BUG_ON(condition, __LINE__)
-
 /* Use this to allocate/free any kind of
  * indexes over HWRM and fill the parms pointer
  */
@@ -98,7 +93,6 @@ typedef struct tf_session_attach_input {
 	/* Session Name */
 	char				 session_name[TF_SESSION_NAME_MAX];
 } tf_session_attach_input_t, *ptf_session_attach_input_t;
-BUILD_BUG_ON(sizeof(tf_session_attach_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Input params for session resource HW qcaps */
 typedef struct tf_session_hw_resc_qcaps_input {
@@ -111,7 +105,6 @@ typedef struct tf_session_hw_resc_qcaps_input {
 	/* When set to 1, indicates the query apply to TX */
 #define TF_SESSION_HW_RESC_QCAPS_INPUT_FLAGS_DIR_TX	  (0x1)
 } tf_session_hw_resc_qcaps_input_t, *ptf_session_hw_resc_qcaps_input_t;
-BUILD_BUG_ON(sizeof(tf_session_hw_resc_qcaps_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Output params for session resource HW qcaps */
 typedef struct tf_session_hw_resc_qcaps_output {
@@ -216,7 +209,6 @@ typedef struct tf_session_hw_resc_qcaps_output {
 	/* Maximum non-guaranteed number of LAG table entries */
 	uint16_t			 lag_tbl_entries_max;
 } tf_session_hw_resc_qcaps_output_t, *ptf_session_hw_resc_qcaps_output_t;
-BUILD_BUG_ON(sizeof(tf_session_hw_resc_qcaps_output_t) <= TF_MAX_RESP_SIZE);
 
 /* Input params for session resource HW alloc */
 typedef struct tf_session_hw_resc_alloc_input {
@@ -275,7 +267,6 @@ typedef struct tf_session_hw_resc_alloc_input {
 	/* Number of LAG table entries to be allocated */
 	uint16_t			 num_lag_tbl_entries;
 } tf_session_hw_resc_alloc_input_t, *ptf_session_hw_resc_alloc_input_t;
-BUILD_BUG_ON(sizeof(tf_session_hw_resc_alloc_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Output params for session resource HW alloc */
 typedef struct tf_session_hw_resc_alloc_output {
@@ -368,7 +359,6 @@ typedef struct tf_session_hw_resc_alloc_output {
 	/* Number of LAG table entries allocated */
 	uint16_t			 lag_tbl_entries_stride;
 } tf_session_hw_resc_alloc_output_t, *ptf_session_hw_resc_alloc_output_t;
-BUILD_BUG_ON(sizeof(tf_session_hw_resc_alloc_output_t) <= TF_MAX_RESP_SIZE);
 
 /* Input params for session resource HW free */
 typedef struct tf_session_hw_resc_free_input {
@@ -471,7 +461,6 @@ typedef struct tf_session_hw_resc_free_input {
 	/* Number of LAG table entries allocated */
 	uint16_t			 lag_tbl_entries_stride;
 } tf_session_hw_resc_free_input_t, *ptf_session_hw_resc_free_input_t;
-BUILD_BUG_ON(sizeof(tf_session_hw_resc_free_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Input params for session resource HW flush */
 typedef struct tf_session_hw_resc_flush_input {
@@ -574,7 +563,6 @@ typedef struct tf_session_hw_resc_flush_input {
 	/* Number of LAG table entries allocated */
 	uint16_t			 lag_tbl_entries_stride;
 } tf_session_hw_resc_flush_input_t, *ptf_session_hw_resc_flush_input_t;
-BUILD_BUG_ON(sizeof(tf_session_hw_resc_flush_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Input params for session resource SRAM qcaps */
 typedef struct tf_session_sram_resc_qcaps_input {
@@ -587,7 +575,6 @@ typedef struct tf_session_sram_resc_qcaps_input {
 	/* When set to 1, indicates the query apply to TX */
 #define TF_SESSION_SRAM_RESC_QCAPS_INPUT_FLAGS_DIR_TX	  (0x1)
 } tf_session_sram_resc_qcaps_input_t, *ptf_session_sram_resc_qcaps_input_t;
-BUILD_BUG_ON(sizeof(tf_session_sram_resc_qcaps_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Output params for session resource SRAM qcaps */
 typedef struct tf_session_sram_resc_qcaps_output {
@@ -654,7 +641,6 @@ typedef struct tf_session_sram_resc_qcaps_output {
 	/* Maximum non-guaranteed number of NAT D_IPV4 */
 	uint16_t			 nat_d_ipv4_max;
 } tf_session_sram_resc_qcaps_output_t, *ptf_session_sram_resc_qcaps_output_t;
-BUILD_BUG_ON(sizeof(tf_session_sram_resc_qcaps_output_t) <= TF_MAX_RESP_SIZE);
 
 /* Input params for session resource SRAM alloc */
 typedef struct tf_session_sram_resc_alloc_input {
@@ -695,7 +681,6 @@ typedef struct tf_session_sram_resc_alloc_input {
 	/* Number of NAT destination IPV4 addresses to be allocated */
 	uint16_t			 num_nat_d_ipv4;
 } tf_session_sram_resc_alloc_input_t, *ptf_session_sram_resc_alloc_input_t;
-BUILD_BUG_ON(sizeof(tf_session_sram_resc_alloc_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Output params for session resource SRAM alloc */
 typedef struct tf_session_sram_resc_alloc_output {
@@ -757,7 +742,6 @@ typedef struct tf_session_sram_resc_alloc_output {
 	/* Number of NAT destination IPV4 addresses allocated */
 	uint16_t			 nat_d_ipv4_stride;
 } tf_session_sram_resc_alloc_output_t, *ptf_session_sram_resc_alloc_output_t;
-BUILD_BUG_ON(sizeof(tf_session_sram_resc_alloc_output_t) <= TF_MAX_RESP_SIZE);
 
 /* Input params for session resource SRAM free */
 typedef struct tf_session_sram_resc_free_input {
@@ -825,7 +809,6 @@ typedef struct tf_session_sram_resc_free_input {
 	/* Number of NAT destination IPV4 addresses allocated */
 	uint16_t			 nat_d_ipv4_stride;
 } tf_session_sram_resc_free_input_t, *ptf_session_sram_resc_free_input_t;
-BUILD_BUG_ON(sizeof(tf_session_sram_resc_free_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Input params for session resource SRAM flush */
 typedef struct tf_session_sram_resc_flush_input {
@@ -893,7 +876,6 @@ typedef struct tf_session_sram_resc_flush_input {
 	/* Number of NAT destination IPV4 addresses allocated */
 	uint16_t			 nat_d_ipv4_stride;
 } tf_session_sram_resc_flush_input_t, *ptf_session_sram_resc_flush_input_t;
-BUILD_BUG_ON(sizeof(tf_session_sram_resc_flush_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Input params for table type set */
 typedef struct tf_tbl_type_set_input {
@@ -914,7 +896,6 @@ typedef struct tf_tbl_type_set_input {
 	/* Index to set */
 	uint32_t			 index;
 } tf_tbl_type_set_input_t, *ptf_tbl_type_set_input_t;
-BUILD_BUG_ON(sizeof(tf_tbl_type_set_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Input params for table type get */
 typedef struct tf_tbl_type_get_input {
@@ -931,7 +912,6 @@ typedef struct tf_tbl_type_get_input {
 	/* Index to get */
 	uint32_t			 index;
 } tf_tbl_type_get_input_t, *ptf_tbl_type_get_input_t;
-BUILD_BUG_ON(sizeof(tf_tbl_type_get_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Output params for table type get */
 typedef struct tf_tbl_type_get_output {
@@ -940,7 +920,6 @@ typedef struct tf_tbl_type_get_output {
 	/* Data read */
 	uint8_t			  data[TF_BULK_RECV];
 } tf_tbl_type_get_output_t, *ptf_tbl_type_get_output_t;
-BUILD_BUG_ON(sizeof(tf_tbl_type_get_output_t) <= TF_MAX_RESP_SIZE);
 
 /* Input params for EM internal rule insert */
 typedef struct tf_em_internal_insert_input {
@@ -963,7 +942,6 @@ typedef struct tf_em_internal_insert_input {
 	/* number of bits in em_key */
 	uint16_t			 em_key_bitlen;
 } tf_em_internal_insert_input_t, *ptf_em_internal_insert_input_t;
-BUILD_BUG_ON(sizeof(tf_em_internal_insert_input_t) <= TF_MAX_REQ_SIZE);
 
 /* Output params for EM internal rule insert */
 typedef struct tf_em_internal_insert_output {
@@ -972,7 +950,6 @@ typedef struct tf_em_internal_insert_output {
 	/* EM record offset 0~3 */
 	uint8_t			  rptr_entry;
 } tf_em_internal_insert_output_t, *ptf_em_internal_insert_output_t;
-BUILD_BUG_ON(sizeof(tf_em_internal_insert_output_t) <= TF_MAX_RESP_SIZE);
 
 /* Input params for EM INTERNAL rule delete */
 typedef struct tf_em_internal_delete_input {
@@ -991,6 +968,5 @@ typedef struct tf_em_internal_delete_input {
 	/* number of bits in em_key */
 	uint16_t			 em_key_bitlen;
 } tf_em_internal_delete_input_t, *ptf_em_internal_delete_input_t;
-BUILD_BUG_ON(sizeof(tf_em_internal_delete_input_t) <= TF_MAX_REQ_SIZE);
 
 #endif /* _HWRM_TF_H_ */
