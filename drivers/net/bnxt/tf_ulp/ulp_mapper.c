@@ -459,18 +459,9 @@ static inline int32_t
 ulp_mapper_mark_free(struct bnxt_ulp_context *ulp,
 		     struct ulp_flow_db_res_params *res)
 {
-	uint32_t flag;
-	uint32_t fid;
-	uint32_t gfid;
-
-	fid	  = (uint32_t)res->resource_hndl;
-	TF_GET_FLAG_FROM_FLOW_ID(fid, flag);
-	TF_GET_GFID_FROM_FLOW_ID(fid, gfid);
-
 	return ulp_mark_db_mark_del(ulp,
-				    (flag == TF_GFID_TABLE_EXTERNAL),
-				    gfid,
-				    0);
+				    res->resource_type,
+				    res->resource_hndl);
 }
 
 /*
@@ -1318,10 +1309,9 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		mark = tfp_be_to_cpu_32(val);
 
 		TF_GET_GFID_FROM_FLOW_ID(iparms.flow_id, gfid);
-		TF_GET_FLAG_FROM_FLOW_ID(iparms.flow_id, flag);
-
+		flag = BNXT_ULP_MARK_GLOBAL_HW_FID;
 		rc = ulp_mark_db_mark_add(parms->ulp_ctx,
-					  (flag == TF_GFID_TABLE_EXTERNAL),
+					  flag,
 					  gfid,
 					  mark);
 		if (rc) {
@@ -1336,8 +1326,8 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		memset(&fid_parms, 0, sizeof(fid_parms));
 		fid_parms.direction	= tbl->direction;
 		fid_parms.resource_func	= BNXT_ULP_RESOURCE_FUNC_HW_FID;
-		fid_parms.resource_type	= tbl->table_type;
-		fid_parms.resource_hndl	= iparms.flow_id;
+		fid_parms.resource_type	= flag;
+		fid_parms.resource_hndl	= gfid;
 		fid_parms.critical_resource = 0;
 
 		rc = ulp_flow_db_resource_add(parms->ulp_ctx,

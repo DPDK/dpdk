@@ -8,23 +8,27 @@
 
 #include "bnxt_ulp.h"
 
-#define ULP_MARK_INVALID (0)
+#define BNXT_ULP_MARK_VALID   0x1
+#define BNXT_ULP_MARK_GLOBAL_HW_FID 0x4
+#define BNXT_ULP_MARK_LOCAL_HW_FID 0x8
+
 struct bnxt_lfid_mark_info {
 	uint16_t	mark_id;
-	bool		valid;
+	uint16_t	flags;
 };
 
 struct bnxt_gfid_mark_info {
 	uint32_t	mark_id;
-	bool		valid;
+	uint16_t	flags;
 };
 
 struct bnxt_ulp_mark_tbl {
 	struct bnxt_lfid_mark_info	*lfid_tbl;
 	struct bnxt_gfid_mark_info	*gfid_tbl;
+	uint32_t			lfid_num_entries;
+	uint32_t			gfid_num_entries;
 	uint32_t			gfid_mask;
 	uint32_t			gfid_type_bit;
-	uint32_t			gfid_max;
 };
 
 /*
@@ -77,7 +81,7 @@ ulp_mark_db_mark_get(struct bnxt_ulp_context *ctxt,
  *
  * ctxt [in] The ulp context for the mark manager
  *
- * is_gfid [in] The type of fid (GFID or LFID)
+ * mark_flag [in] mark flags.
  *
  * fid [in] The flow id that is returned by HW in BD
  *
@@ -86,7 +90,7 @@ ulp_mark_db_mark_get(struct bnxt_ulp_context *ctxt,
  */
 int32_t
 ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
-		     bool is_gfid,
+		     uint32_t mark_flag,
 		     uint32_t gfid,
 		     uint32_t mark);
 
@@ -95,17 +99,14 @@ ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
  *
  * ctxt [in] The ulp context for the mark manager
  *
- * is_gfid [in] The type of fid (GFID or LFID)
+ * mark_flag [in] mark flags
  *
  * fid [in] The flow id that is returned by HW in BD
- *
- * mark [in] The mark to be associated with the FID
  *
  */
 int32_t
 ulp_mark_db_mark_del(struct bnxt_ulp_context *ctxt,
-		     bool is_gfid,
-		     uint32_t gfid,
-		     uint32_t mark);
+		     uint32_t mark_flag,
+		     uint32_t gfid);
 
 #endif /* _ULP_MARK_MGR_H_ */
