@@ -305,7 +305,7 @@ mlx5_vdpa_get_ib_device_match(struct rte_pci_addr *addr)
 		DRV_LOG(DEBUG, "Checking device \"%s\"..", ibv_list[n]->name);
 		if (mlx5_dev_to_pci_addr(ibv_list[n]->ibdev_path, &pci_addr))
 			continue;
-		if (memcmp(addr, &pci_addr, sizeof(pci_addr)))
+		if (rte_pci_addr_cmp(addr, &pci_addr))
 			continue;
 		ibv_match = ibv_list[n];
 		break;
