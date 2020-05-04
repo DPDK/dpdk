@@ -31,6 +31,7 @@
 #include <rte_string_fns.h>
 #include <rte_spinlock.h>
 #include <rte_tailq.h>
+#include <rte_function_versioning.h>
 
 #include "rte_mempool.h"
 #include "rte_mempool_trace.h"
@@ -303,12 +304,17 @@ mempool_ops_alloc_once(struct rte_mempool *mp)
 	return 0;
 }
 
+__vsym int
+rte_mempool_populate_iova_v21(struct rte_mempool *mp, char *vaddr,
+	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque);
+
 /* Add objects in the pool, using a physically contiguous memory
  * zone. Return the number of objects added, or a negative value
  * on error.
  */
-static int
-__rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
+__vsym int
+rte_mempool_populate_iova_v21(struct rte_mempool *mp, char *vaddr,
 	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque)
 {
@@ -359,6 +365,8 @@ __rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 
 	STAILQ_INSERT_TAIL(&mp->mem_list, memhdr, next);
 	mp->nb_mem_chunks++;
+
+	rte_mempool_trace_populate_iova(mp, vaddr, iova, len, free_cb, opaque);
 	return i;
 
 fail:
@@ -366,21 +374,34 @@ fail:
 	return ret;
 }
 
-int
-rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
+BIND_DEFAULT_SYMBOL(rte_mempool_populate_iova, _v21, 21);
+MAP_STATIC_SYMBOL(
+	int rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
+				rte_iova_t iova, size_t len,
+				rte_mempool_memchunk_free_cb_t *free_cb,
+				void *opaque),
+	rte_mempool_populate_iova_v21);
+
+__vsym int
+rte_mempool_populate_iova_v20(struct rte_mempool *mp, char *vaddr,
+	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque);
+
+__vsym int
+rte_mempool_populate_iova_v20(struct rte_mempool *mp, char *vaddr,
 	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque)
 {
 	int ret;
 
-	ret = __rte_mempool_populate_iova(mp, vaddr, iova, len, free_cb,
+	ret = rte_mempool_populate_iova_v21(mp, vaddr, iova, len, free_cb,
 					opaque);
 	if (ret == 0)
 		ret = -EINVAL;
 
-	rte_mempool_trace_populate_iova(mp, vaddr, iova, len, free_cb, opaque);
 	return ret;
 }
+VERSION_SYMBOL(rte_mempool_populate_iova, _v20, 20.0);
 
 static rte_iova_t
 get_iova(void *addr)
@@ -395,11 +416,16 @@ get_iova(void *addr)
 	return ms->iova + RTE_PTR_DIFF(addr, ms->addr);
 }
 
+__vsym int
+rte_mempool_populate_virt_v21(struct rte_mempool *mp, char *addr,
+	size_t len, size_t pg_sz, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque);
+
 /* Populate the mempool with a virtual area. Return the number of
  * objects added, or a negative value on error.
  */
-int
-rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
+__vsym int
+rte_mempool_populate_virt_v21(struct rte_mempool *mp, char *addr,
 	size_t len, size_t pg_sz, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque)
 {
@@ -432,7 +458,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 				break;
 		}
 
-		ret = __rte_mempool_populate_iova(mp, addr + off, iova,
+		ret = rte_mempool_populate_iova_v21(mp, addr + off, iova,
 			phys_len, free_cb, opaque);
 		if (ret == 0)
 			continue;
@@ -443,9 +469,6 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		cnt += ret;
 	}
 
-	if (cnt == 0)
-		return -EINVAL;
-
 	rte_mempool_trace_populate_virt(mp, addr, len, pg_sz, free_cb, opaque);
 	return cnt;
 
@@ -453,6 +476,35 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	rte_mempool_free_memchunks(mp);
 	return ret;
 }
+BIND_DEFAULT_SYMBOL(rte_mempool_populate_virt, _v21, 21);
+MAP_STATIC_SYMBOL(
+	int rte_mempool_populate_virt(struct rte_mempool *mp,
+				char *addr, size_t len, size_t pg_sz,
+				rte_mempool_memchunk_free_cb_t *free_cb,
+				void *opaque),
+	rte_mempool_populate_virt_v21);
+
+__vsym int
+rte_mempool_populate_virt_v20(struct rte_mempool *mp, char *addr,
+	size_t len, size_t pg_sz, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque);
+
+__vsym int
+rte_mempool_populate_virt_v20(struct rte_mempool *mp, char *addr,
+	size_t len, size_t pg_sz, rte_mempool_memchunk_free_cb_t *free_cb,
+	void *opaque)
+{
+	int ret;
+
+	ret = rte_mempool_populate_virt_v21(mp, addr, len, pg_sz,
+						free_cb, opaque);
+
+	if (ret == 0)
+		ret = -EINVAL;
+
+	return ret;
+}
+VERSION_SYMBOL(rte_mempool_populate_virt, _v20, 20.0);
 
 /* Get the minimal page size used in a mempool before populating it. */
 int
@@ -609,6 +661,8 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 				mz->len, pg_sz,
 				rte_mempool_memchunk_mz_free,
 				(void *)(uintptr_t)mz);
+		if (ret == 0) /* should not happen */
+			ret = -ENOBUFS;
 		if (ret < 0) {
 			rte_memzone_free(mz);
 			goto fail;
@@ -701,6 +755,8 @@ rte_mempool_populate_anon(struct rte_mempool *mp)
 
 	ret = rte_mempool_populate_virt(mp, addr, size, getpagesize(),
 		rte_mempool_memchunk_anon_free, addr);
+	if (ret == 0) /* should not happen */
+		ret = -ENOBUFS;
 	if (ret < 0) {
 		rte_errno = -ret;
 		goto fail;

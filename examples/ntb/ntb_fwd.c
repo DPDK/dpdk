@@ -1319,7 +1319,7 @@ ntb_mbuf_pool_create(uint16_t mbuf_seg_size, uint32_t nb_mbuf,
 					mz->len - ntb_info.ntb_hdr_size,
 					ntb_mempool_mz_free,
 					(void *)(uintptr_t)mz);
-		if (ret < 0) {
+		if (ret <= 0) {
 			rte_memzone_free(mz);
 			rte_mempool_free(mp);
 			return NULL;

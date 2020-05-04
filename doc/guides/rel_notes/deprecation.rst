@@ -65,11 +65,6 @@ Deprecation Notices
   structure would be made internal (or removed if all dependencies are cleared)
   in future releases.
 
-* mempool: starting from v20.05, the API of rte_mempool_populate_iova()
-  and rte_mempool_populate_virt() will change to return 0 instead
-  of -EINVAL when there is not enough room to store one object. The ABI
-  will be preserved until 20.11.
-
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,

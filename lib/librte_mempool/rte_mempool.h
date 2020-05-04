@@ -1112,9 +1112,12 @@ rte_mempool_free(struct rte_mempool *mp);
  * @param opaque
  *   An opaque argument passed to free_cb.
  * @return
- *   The number of objects added on success.
+ *   The number of objects added on success (strictly positive).
  *   On error, the chunk is not added in the memory list of the
- *   mempool and a negative errno is returned.
+ *   mempool the following code is returned:
+ *     (0): not enough room in chunk for one object.
+ *     (-ENOSPC): mempool is already populated.
+ *     (-ENOMEM): allocation failure.
  */
 int rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
@@ -1139,9 +1142,12 @@ int rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
  * @param opaque
  *   An opaque argument passed to free_cb.
  * @return
- *   The number of objects added on success.
+ *   The number of objects added on success (strictly positive).
  *   On error, the chunk is not added in the memory list of the
- *   mempool and a negative errno is returned.
+ *   mempool the following code is returned:
+ *     (0): not enough room in chunk for one object.
+ *     (-ENOSPC): mempool is already populated.
+ *     (-ENOMEM): allocation failure.
  */
 int
 rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,

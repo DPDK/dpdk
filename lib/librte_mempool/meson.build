@@ -9,6 +9,8 @@ foreach flag: extra_flags
 	endif
 endforeach
 
+use_function_versioning = true
+
 sources = files('rte_mempool.c', 'rte_mempool_ops.c',
 		'rte_mempool_ops_default.c', 'mempool_trace_points.c')
 headers = files('rte_mempool.h', 'rte_mempool_trace.h',

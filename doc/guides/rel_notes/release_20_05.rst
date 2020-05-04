@@ -241,6 +241,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* mempool: The API of ``rte_mempool_populate_iova()`` and
+  ``rte_mempool_populate_virt()`` changed to return 0 instead of -EINVAL
+  when there is not enough room to store one object.
+
 
 ABI Changes
 -----------
