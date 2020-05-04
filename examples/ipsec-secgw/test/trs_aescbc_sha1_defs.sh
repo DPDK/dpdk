@@ -3,9 +3,9 @@
 
 . ${DIR}/trs_aescbc_sha1_common_defs.sh
 
-SGW_CMD_XPRM='-w 300 -l'
+SGW_CMD_XPRM="${DPDK_VARS} ${DPDK_MODE} ${SGW_CMD_XPRM}"
 
-config_remote_xfrm()
+config_remote_xfrm_44()
 {
 	ssh ${REMOTE_HOST} ip xfrm policy flush
 	ssh ${REMOTE_HOST} ip xfrm state flush
@@ -22,13 +22,13 @@ tmpl proto esp mode transport reqid 2
 
 	ssh ${REMOTE_HOST} ip xfrm state add \
 src ${REMOTE_IPV4} dst ${LOCAL_IPV4} \
-proto esp spi 7 reqid 1 mode transport replay-window 64 \
+proto esp spi 7 reqid 1 mode transport replay-window 64 ${XFRM_ESN} \
 auth sha1 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef \
 enc aes 0xdeadbeefdeadbeefdeadbeefdeadbeef
 
 	ssh ${REMOTE_HOST} ip xfrm state add \
 src ${LOCAL_IPV4} dst ${REMOTE_IPV4} \
-proto esp spi 7 reqid 2 mode transport replay-window 64 \
+proto esp spi 7 reqid 2 mode transport replay-window 64 ${XFRM_ESN} \
 auth sha1 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef \
 enc aes 0xdeadbeefdeadbeefdeadbeefdeadbeef
 
@@ -36,9 +36,10 @@ enc aes 0xdeadbeefdeadbeefdeadbeefdeadbeef
 	ssh ${REMOTE_HOST} ip xfrm state list
 }
 
-config6_remote_xfrm()
+config_remote_xfrm_66()
 {
-	config_remote_xfrm
+	ssh ${REMOTE_HOST} ip xfrm policy flush
+	ssh ${REMOTE_HOST} ip xfrm state flush
 
 	ssh ${REMOTE_HOST} ip xfrm policy add \
 src ${REMOTE_IPV6} dst ${LOCAL_IPV6} \
@@ -53,13 +54,13 @@ tmpl proto esp mode transport reqid 4
 
 	ssh ${REMOTE_HOST} ip xfrm state add \
 src ${REMOTE_IPV6} dst ${LOCAL_IPV6} \
-proto esp spi 9 reqid 3 mode transport replay-window 64 \
+proto esp spi 9 reqid 3 mode transport replay-window 64 ${XFRM_ESN} \
 auth sha1 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef \
 enc aes 0xdeadbeefdeadbeefdeadbeefdeadbeef
 
 	ssh ${REMOTE_HOST} ip xfrm state add \
 src ${LOCAL_IPV6} dst ${REMOTE_IPV6} \
-proto esp spi 9 reqid 4 mode transport replay-window 64 \
+proto esp spi 9 reqid 4 mode transport replay-window 64 ${XFRM_ESN} \
 auth sha1 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef \
 enc aes 0xdeadbeefdeadbeefdeadbeefdeadbeef
 

@@ -870,10 +870,12 @@ Also the user can optionally setup:
 *   ``CRYPTO_DEV``: crypto device to be used ('-w <pci-id>'). If none specified
     appropriate vdevs will be created by the script
 
-*   ``MULTI_SEG_TEST``: ipsec-secgw option to enable reassembly support and
-    specify size of reassembly table (e.g.
-    ``MULTI_SEG_TEST='--reassemble 128'``). This option must be set for
-    fallback session tests.
+Scripts can be used for multiple test scenarios. To check all available
+options run:
+
+.. code-block:: console
+
+    /bin/bash run_test.sh -h
 
 Note that most of the tests require the appropriate crypto PMD/device to be
 available.
@@ -917,17 +919,40 @@ SUT OS(TAP)--(plain)-->(TAP)psec-secgw(NIC1)--(IPsec)-->(NIC1)DUT OS
 
 It then tries to perform some data transfer using the scheme described above.
 
-usage
+Usage
 ~~~~~
 
-In the ipsec-secgw/test directory
+In the ipsec-secgw/test directory run
 
-to run one test for IPv4 or IPv6
+/bin/bash run_test.sh <options> <ipsec_mode>
 
-/bin/bash linux_test(4|6).sh <ipsec_mode>
+Available options:
 
-to run all tests for IPv4 or IPv6
+*   ``-4`` Perform tests with use of IPv4. One or both [-46] options needs to be
+    selected.
 
-/bin/bash run_test.sh -4|-6
+*   ``-6`` Perform tests with use of IPv6. One or both [-46] options needs to be
+    selected.
 
-For the list of available modes please refer to run_test.sh.
+*   ``-m`` Add IPSec tunnel mixed IP version tests - outer IP version different
+    than inner. Inner IP version will match selected option [-46].
+
+*   ``-i`` Run tests in inline mode. Regular tests will not be invoked.
+
+*   ``-f`` Run tests for fallback mechanism. Regular tests will not be invoked.
+
+*   ``-l`` Run tests in legacy mode only. It cannot be used with options [-fsc].
+    On default library mode is used.
+
+*   ``-s`` Run all tests with reassembly support. On default only tests for
+    fallback mechanism use reassembly support.
+
+*   ``-c`` Run tests with use of cpu-crypto. For inline tests it will not be
+    applied. On default lookaside-none is used.
+
+*   ``-p`` Perform packet validation tests. Option [-46] is not required.
+
+*   ``-h`` Show usage.
+
+If <ipsec_mode> is specified, only tests for that mode will be invoked. For the
+list of available modes please refer to run_test.sh.
