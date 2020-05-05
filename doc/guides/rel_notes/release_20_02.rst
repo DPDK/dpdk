@@ -298,6 +298,8 @@ API Changes
 * No change in this release.
 
 
+.. _20_02_abi_changes:
+
 ABI Changes
 -----------
 
@@ -314,6 +316,16 @@ ABI Changes
    =========================================================
 
 * No change, kept ABI v20. DPDK 20.02 is compatible with DPDK 19.11.
+
+* The soname for each stable ABI version should be just the ABI version major
+  number without the minor number. Unfortunately both major and minor were used
+  in the v19.11 release, causing version v20.x releases to be incompatible with
+  ABI v20.0.
+
+  The `commit f26c2b39b271 <https://git.dpdk.org/dpdk/commit/?id=f26c2b39b271>`_
+  fixed the issue by switching from 2-part to 3-part ABI version numbers so that
+  we can keep v20.0 as soname and using the final digits to identify the DPDK
+  20.x releases which are ABI compatible.
 
 
 Tested Platforms

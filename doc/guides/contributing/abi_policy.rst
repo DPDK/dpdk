@@ -39,7 +39,8 @@ General Guidelines
    releases, over a number of release cycles. This change begins with
    maintaining ABI stability through one year of DPDK releases starting from
    DPDK 19.11. This policy will be reviewed in 2020, with intention of
-   lengthening the stability period.
+   lengthening the stability period. Additional implementation detail can be
+   found in the :ref:`release notes <20_02_abi_changes>`.
 
 What is an ABI?
 ~~~~~~~~~~~~~~~
