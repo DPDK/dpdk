@@ -87,6 +87,13 @@ Deprecation Notices
   Existing ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
   APIs can be used as replacement.
 
+* traffic manager: All traffic manager API's in ``rte_tm.h`` were mistakenly made
+  ABI stable in the v19.11 release. The TM maintainer and other contributors have
+  agreed to keep the TM APIs as experimental in expectation of additional spec
+  improvements. Therefore, all APIs in ``rte_tm.h`` will be marked back as
+  experimental in v20.11 DPDK release. For more details, please see `the thread
+  <https://mails.dpdk.org/archives/dev/2020-April/164970.html>`_.
+
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,
   ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal
