@@ -301,12 +301,6 @@ signal_handler(int signum)
 
 		rte_eal_mp_wait_lcore();
 
-		RTE_ETH_FOREACH_DEV(portid) {
-			rte_eth_dev_close(portid);
-		}
-
-		rte_event_dev_stop(0);
-		rte_event_dev_close(0);
 	}
 	if (signum == SIGTSTP)
 		rte_event_dev_dump(0, stdout);
@@ -468,6 +462,15 @@ main(int argc, char **argv)
 		}
 
 	}
+
+	RTE_ETH_FOREACH_DEV(portid) {
+		rte_eth_dev_close(portid);
+	}
+
+	rte_event_dev_stop(0);
+	rte_event_dev_close(0);
+
+	rte_eal_cleanup();
 
 	return 0;
 }
