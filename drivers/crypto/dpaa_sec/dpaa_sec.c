@@ -3410,7 +3410,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 init_error:
 	DPAA_SEC_ERR("driver %s: create failed\n", cryptodev->data->name);
 
-	dpaa_sec_uninit(cryptodev);
+	rte_free(cryptodev->security_ctx);
 	return -EFAULT;
 }
 
@@ -3467,7 +3467,7 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		retval = rte_dpaa_portal_init((void *)1);
 		if (retval) {
 			DPAA_SEC_ERR("Unable to initialize portal");
-			return retval;
+			goto out;
 		}
 	}
 
@@ -3476,13 +3476,15 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 	if (retval == 0)
 		return 0;
 
+	retval = -ENXIO;
+out:
 	/* In case of error, cleanup is done */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(cryptodev->data->dev_private);
 
 	rte_cryptodev_pmd_release_device(cryptodev);
 
-	return -ENXIO;
+	return retval;
 }
 
 static int
