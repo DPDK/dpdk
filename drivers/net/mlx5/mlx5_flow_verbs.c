@@ -1539,6 +1539,7 @@ flow_verbs_prepare(struct rte_eth_dev *dev,
 	dev_flow->verbs.size = 0;
 	dev_flow->verbs.attr.num_of_specs = 0;
 	dev_flow->ingress = attr->ingress;
+	dev_flow->hash_fields = 0;
 	/* Need to set transfer attribute: not supported in Verbs mode. */
 	return dev_flow;
 }
