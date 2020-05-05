@@ -219,6 +219,13 @@ dpaa_sec_init_tx(struct qman_fq *fq)
 	return ret;
 }
 
+static inline int is_aead(dpaa_sec_session *ses)
+{
+	return ((ses->cipher_alg == 0) &&
+		(ses->auth_alg == 0) &&
+		(ses->aead_alg != 0));
+}
+
 static inline int is_encode(dpaa_sec_session *ses)
 {
 	return ses->dir == DIR_ENC;
@@ -2040,7 +2047,6 @@ dpaa_sec_cipher_init(struct rte_cryptodev *dev __rte_unused,
 	default:
 		DPAA_SEC_ERR("Crypto: Undefined Cipher specified %u",
 			      xform->cipher.algo);
-		rte_free(session->cipher_key.data);
 		return -1;
 	}
 	session->dir = (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
@@ -2108,7 +2114,6 @@ dpaa_sec_auth_init(struct rte_cryptodev *dev __rte_unused,
 	default:
 		DPAA_SEC_ERR("Crypto: Unsupported Auth specified %u",
 			      xform->auth.algo);
-		rte_free(session->auth_key.data);
 		return -1;
 	}
 
@@ -2151,7 +2156,6 @@ dpaa_sec_chain_init(struct rte_cryptodev *dev __rte_unused,
 					     RTE_CACHE_LINE_SIZE);
 	if (session->auth_key.data == NULL && auth_xform->key.length > 0) {
 		DPAA_SEC_ERR("No Memory for auth key");
-		rte_free(session->cipher_key.data);
 		return -ENOMEM;
 	}
 	session->auth_key.length = auth_xform->key.length;
@@ -2191,7 +2195,7 @@ dpaa_sec_chain_init(struct rte_cryptodev *dev __rte_unused,
 	default:
 		DPAA_SEC_ERR("Crypto: Unsupported Auth specified %u",
 			      auth_xform->algo);
-		goto error_out;
+		return -1;
 	}
 
 	session->cipher_alg = cipher_xform->algo;
@@ -2212,16 +2216,11 @@ dpaa_sec_chain_init(struct rte_cryptodev *dev __rte_unused,
 	default:
 		DPAA_SEC_ERR("Crypto: Undefined Cipher specified %u",
 			      cipher_xform->algo);
-		goto error_out;
+		return -1;
 	}
 	session->dir = (cipher_xform->op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
 				DIR_ENC : DIR_DEC;
 	return 0;
-
-error_out:
-	rte_free(session->cipher_key.data);
-	rte_free(session->auth_key.data);
-	return -1;
 }
 
 static int
@@ -2253,7 +2252,6 @@ dpaa_sec_aead_init(struct rte_cryptodev *dev __rte_unused,
 		break;
 	default:
 		DPAA_SEC_ERR("unsupported AEAD alg %d", session->aead_alg);
-		rte_free(session->aead_key.data);
 		return -ENOMEM;
 	}
 
@@ -2321,6 +2319,18 @@ dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess)
 		DPAA_SEC_ERR("Unable to init sec queue");
 
 	return ret;
+}
+
+static inline void
+free_session_data(dpaa_sec_session *s)
+{
+	if (is_aead(s))
+		rte_free(s->aead_key.data);
+	else {
+		rte_free(s->auth_key.data);
+		rte_free(s->cipher_key.data);
+	}
+	memset(s, 0, sizeof(dpaa_sec_session));
 }
 
 static int
@@ -2415,10 +2425,7 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 	return 0;
 
 err1:
-	rte_free(session->cipher_key.data);
-	rte_free(session->auth_key.data);
-	memset(session, 0, sizeof(dpaa_sec_session));
-
+	free_session_data(session);
 	return -EINVAL;
 }
 
@@ -2467,9 +2474,7 @@ free_session_memory(struct rte_cryptodev *dev, dpaa_sec_session *s)
 		s->inq[i] = NULL;
 		s->qp[i] = NULL;
 	}
-	rte_free(s->cipher_key.data);
-	rte_free(s->auth_key.data);
-	memset(s, 0, sizeof(dpaa_sec_session));
+	free_session_data(s);
 	rte_mempool_put(sess_mp, (void *)s);
 }
 
@@ -2836,9 +2841,7 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 
 	return 0;
 out:
-	rte_free(session->auth_key.data);
-	rte_free(session->cipher_key.data);
-	memset(session, 0, sizeof(dpaa_sec_session));
+	free_session_data(session);
 	return -1;
 }
 
