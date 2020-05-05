@@ -623,6 +623,11 @@ failsafe_eth_new_event_callback(uint16_t port_id,
 	FOREACH_SUBDEV_STATE(sdev, i, fs_dev, DEV_PARSED) {
 		if (sdev->state >= DEV_PROBED)
 			continue;
+		if (dev->device == NULL) {
+			WARN("Trying to probe malformed device %s.\n",
+			     sdev->devargs.name);
+			continue;
+		}
 		if (strcmp(sdev->devargs.name, dev->device->name) != 0)
 			continue;
 		rte_eth_dev_owner_set(port_id, &PRIV(fs_dev)->my_owner);
