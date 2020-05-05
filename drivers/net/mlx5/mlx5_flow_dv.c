@@ -1640,6 +1640,79 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate VLAN item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[in] dev
+ *   Ethernet device flow is being created on.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_vlan(const struct rte_flow_item *item,
+			   uint64_t item_flags,
+			   struct rte_eth_dev *dev,
+			   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_vlan *mask = item->mask;
+	const struct rte_flow_item_vlan nic_mask = {
+		.tci = RTE_BE16(UINT16_MAX),
+		.inner_type = RTE_BE16(UINT16_MAX),
+	};
+	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	int ret;
+	const uint64_t l34m = tunnel ? (MLX5_FLOW_LAYER_INNER_L3 |
+					MLX5_FLOW_LAYER_INNER_L4) :
+				       (MLX5_FLOW_LAYER_OUTER_L3 |
+					MLX5_FLOW_LAYER_OUTER_L4);
+	const uint64_t vlanm = tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
+					MLX5_FLOW_LAYER_OUTER_VLAN;
+
+	if (item_flags & vlanm)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple VLAN layers not supported");
+	else if ((item_flags & l34m) != 0)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "VLAN cannot follow L3/L4 layer");
+	if (!mask)
+		mask = &rte_flow_item_vlan_mask;
+	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+					(const uint8_t *)&nic_mask,
+					sizeof(struct rte_flow_item_vlan),
+					error);
+	if (ret)
+		return ret;
+	if (!tunnel && mask->tci != RTE_BE16(0x0fff)) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+
+		if (priv->vmwa_context) {
+			/*
+			 * Non-NULL context means we have a virtual machine
+			 * and SR-IOV enabled, we have to create VLAN interface
+			 * to make hypervisor to setup E-Switch vport
+			 * context correctly. We avoid creating the multiple
+			 * VLAN interfaces, so we cannot support VLAN tag mask.
+			 */
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "VLAN tag mask is not"
+						  " supported in virtual"
+						  " environment");
+		}
+	}
+	return 0;
+}
+
+/**
  * Validate GTP item.
  *
  * @param[in] dev
@@ -4818,8 +4891,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			ret = mlx5_flow_validate_item_vlan(items, item_flags,
-							   dev, error);
+			ret = flow_dv_validate_item_vlan(items, item_flags,
+							 dev, error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
@@ -5754,10 +5827,6 @@ flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
 	uint16_t tci_m;
 	uint16_t tci_v;
 
-	if (!vlan_v)
-		return;
-	if (!vlan_m)
-		vlan_m = &rte_flow_item_vlan_mask;
 	if (inner) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
@@ -5770,13 +5839,22 @@ flow_dv_translate_item_vlan(struct mlx5_flow *dev_flow,
 		 * This is workaround, masks are not supported,
 		 * and pre-validated.
 		 */
-		dev_flow->handle->vf_vlan.tag =
-			rte_be_to_cpu_16(vlan_v->tci) & 0x0fff;
+		if (vlan_v)
+			dev_flow->handle->vf_vlan.tag =
+					rte_be_to_cpu_16(vlan_v->tci) & 0x0fff;
 	}
-	tci_m = rte_be_to_cpu_16(vlan_m->tci);
-	tci_v = rte_be_to_cpu_16(vlan_m->tci & vlan_v->tci);
+	/*
+	 * When VLAN item exists in flow, mark packet as tagged,
+	 * even if TCI is not specified.
+	 */
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, cvlan_tag, 1);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, cvlan_tag, 1);
+	if (!vlan_v)
+		return;
+	if (!vlan_m)
+		vlan_m = &rte_flow_item_vlan_mask;
+	tci_m = rte_be_to_cpu_16(vlan_m->tci);
+	tci_v = rte_be_to_cpu_16(vlan_m->tci & vlan_v->tci);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, first_vid, tci_m);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, first_vid, tci_v);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, first_cfi, tci_m >> 12);

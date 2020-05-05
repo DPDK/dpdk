@@ -146,6 +146,7 @@ New Features
   * Removed flow rules caching for memory saving and compliance with ethdev API.
   * Optimized the memory consumption of flow.
   * Added support for flow aging based on hardware counter.
+  * Added support for flow pattern with wildcard VLAN item (without VID value).
 
 * **Added Chacha20-Poly1305 algorithm to Cryptodev API.**
 

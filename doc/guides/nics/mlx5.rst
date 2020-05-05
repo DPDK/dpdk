@@ -127,6 +127,24 @@ Limitations
 
   Will match any ipv4 packet (VLAN included).
 
+- When using DV flow engine (``dv_flow_en`` = 1), flow pattern without VLAN item
+  will match untagged packets only.
+  The flow rule::
+
+        flow create 0 ingress pattern eth / ipv4 / end ...
+
+  Will match untagged packets only.
+  The flow rule::
+
+        flow create 0 ingress pattern eth / vlan / ipv4 / end ...
+
+  Will match tagged packets only, with any VLAN ID value.
+  The flow rule::
+
+        flow create 0 ingress pattern eth / vlan vid is 3 / ipv4 / end ...
+
+  Will only match tagged packets with VLAN ID 3.
+
 - VLAN pop offload command:
 
   - Flow rules having a VLAN pop offload command as one of their actions and
