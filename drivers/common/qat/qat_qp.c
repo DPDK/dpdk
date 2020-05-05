@@ -831,7 +831,7 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	uint32_t head;
 	uint32_t op_resp_counter = 0, fw_resp_counter = 0;
 	uint8_t *resp_msg;
-	int nb_fw_responses = 0;
+	int nb_fw_responses;
 
 	rx_queue = &(tmp_qp->rx_q);
 	head = rx_queue->head;
@@ -840,24 +840,20 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			op_resp_counter != nb_ops) {
 
-		nb_fw_responses = 0;
-		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC) {
-			qat_sym_process_response(ops, resp_msg);
-			nb_fw_responses = 1;
-		} else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION)
+		nb_fw_responses = 1;
 
+		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
+			qat_sym_process_response(ops, resp_msg);
+		else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION)
 			nb_fw_responses = qat_comp_process_response(
 				ops, resp_msg,
 				tmp_qp->op_cookies[head >> rx_queue->trailz],
 				&tmp_qp->stats.dequeue_err_count);
-
-		else if (tmp_qp->service_type == QAT_SERVICE_ASYMMETRIC) {
 #ifdef BUILD_QAT_ASYM
+		else if (tmp_qp->service_type == QAT_SERVICE_ASYMMETRIC)
 			qat_asym_process_response(ops, resp_msg,
 				tmp_qp->op_cookies[head >> rx_queue->trailz]);
-			nb_fw_responses = 1;
 #endif
-		}
 
 		head = adf_modulo(head + rx_queue->msg_size,
 				  rx_queue->modulo_mask);
@@ -879,18 +875,17 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 		  * finished with all firmware responses.
 		  */
 		fw_resp_counter += nb_fw_responses;
+
+		rx_queue->nb_processed_responses++;
 	}
 
-	if (fw_resp_counter > 0) {
-		rx_queue->head = head;
-		tmp_qp->dequeued += fw_resp_counter;
-		tmp_qp->stats.dequeued_count += fw_resp_counter;
-		rx_queue->nb_processed_responses += fw_resp_counter;
+	tmp_qp->dequeued += fw_resp_counter;
+	tmp_qp->stats.dequeued_count += fw_resp_counter;
 
-		if (rx_queue->nb_processed_responses >
-				QAT_CSR_HEAD_WRITE_THRESH)
-			rxq_free_desc(tmp_qp, rx_queue);
-	}
+	rx_queue->head = head;
+	if (rx_queue->nb_processed_responses > QAT_CSR_HEAD_WRITE_THRESH)
+		rxq_free_desc(tmp_qp, rx_queue);
+
 	QAT_DP_LOG(DEBUG, "Dequeue burst return: %u, QAT responses: %u",
 			op_resp_counter, fw_resp_counter);
 
