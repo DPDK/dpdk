@@ -67,6 +67,7 @@ enum index {
 	DUMP,
 	QUERY,
 	LIST,
+	AGED,
 	ISOLATE,
 
 	/* Destroy arguments. */
@@ -77,6 +78,9 @@ enum index {
 
 	/* List arguments. */
 	LIST_GROUP,
+
+	/* Destroy aged flow arguments. */
+	AGED_DESTROY,
 
 	/* Validate/create arguments. */
 	GROUP,
@@ -664,6 +668,9 @@ struct buffer {
 		struct {
 			int set;
 		} isolate; /**< Isolated mode arguments. */
+		struct {
+			int destroy;
+		} aged; /**< Aged arguments. */
 	} args; /**< Command arguments. */
 };
 
@@ -715,6 +722,12 @@ static const enum index next_dump_attr[] = {
 
 static const enum index next_list_attr[] = {
 	LIST_GROUP,
+	END,
+	ZERO,
+};
+
+static const enum index next_aged_attr[] = {
+	AGED_DESTROY,
 	END,
 	ZERO,
 };
@@ -1466,6 +1479,9 @@ static int parse_action(struct context *, const struct token *,
 static int parse_list(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
+static int parse_aged(struct context *, const struct token *,
+		      const char *, unsigned int,
+		      void *, unsigned int);
 static int parse_isolate(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -1649,6 +1665,7 @@ static const struct token token_list[] = {
 			      FLUSH,
 			      DUMP,
 			      LIST,
+			      AGED,
 			      QUERY,
 			      ISOLATE)),
 		.call = parse_init,
@@ -1708,6 +1725,13 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_list,
 	},
+	[AGED] = {
+		.name = "aged",
+		.help = "list and destroy aged flows",
+		.next = NEXT(next_aged_attr, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_aged,
+	},
 	[ISOLATE] = {
 		.name = "isolate",
 		.help = "restrict ingress traffic to the defined flow rules",
@@ -1740,6 +1764,12 @@ static const struct token token_list[] = {
 		.next = NEXT(next_list_attr, NEXT_ENTRY(GROUP_ID)),
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer, args.list.group)),
 		.call = parse_list,
+	},
+	[AGED_DESTROY] = {
+		.name = "destroy",
+		.help = "specify aged flows need be destroyed",
+		.call = parse_aged,
+		.comp = comp_none,
 	},
 	/* Validate/create attributes. */
 	[GROUP] = {
@@ -5367,6 +5397,35 @@ parse_list(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse tokens for list all aged flows command. */
+static int
+parse_aged(struct context *ctx, const struct token *token,
+	   const char *str, unsigned int len,
+	   void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != AGED)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+	}
+	if (ctx->curr == AGED_DESTROY)
+		out->args.aged.destroy = 1;
+	return len;
+}
+
 /** Parse tokens for isolate command. */
 static int
 parse_isolate(struct context *ctx, const struct token *token,
@@ -6366,6 +6425,9 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case ISOLATE:
 		port_flow_isolate(in->port, in->args.isolate.set);
+		break;
+	case AGED:
+		port_flow_aged(in->port, in->args.aged.destroy);
 		break;
 	default:
 		break;

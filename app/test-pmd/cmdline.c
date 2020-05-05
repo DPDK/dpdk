@@ -1125,6 +1125,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Restrict ingress traffic to the defined"
 			" flow rules\n\n"
 
+			"flow aged {port_id} [destroy]\n"
+			"    List and destroy aged flows"
+			" flow rules\n\n"
+
 			"set vxlan ip-version (ipv4|ipv6) vni (vni) udp-src"
 			" (udp-src) udp-dst (udp-dst) ip-src (ip-src) ip-dst"
 			" (ip-dst) eth-src (eth-src) eth-dst (eth-dst)\n"
