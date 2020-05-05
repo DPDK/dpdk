@@ -533,6 +533,7 @@ bnx2x_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->rx_desc_lim.nb_max = MAX_RX_AVAIL;
 	dev_info->rx_desc_lim.nb_min = MIN_RX_SIZE_NONTPA;
+	dev_info->rx_desc_lim.nb_mtu_seg_max = 1;
 	dev_info->tx_desc_lim.nb_max = MAX_TX_AVAIL;
 
 	return 0;

@@ -108,6 +108,23 @@ Driver compilation and testing
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
 
+Jumbo: Limitation
+-----------------
+
+Rx descriptor limit for number of segments per MTU is set to 1.
+PMD doesn't support Jumbo Rx scatter gather. Some applciations can
+adjust mbuf_size based on this param and max_pkt_len.
+
+For others, PMD detects the condition where Rx packet length cannot
+be held by configured mbuf size and logs the message.
+
+Example output:
+
+   .. code-block:: console
+
+      [...]
+      [bnx2x_recv_pkts:397(04:00.0:dpdk-port-0)] mbuf size 2048 is not enough to hold Rx packet length more than 2046
+
 SR-IOV: Prerequisites and sample Application Notes
 --------------------------------------------------
 
