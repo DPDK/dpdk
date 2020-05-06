@@ -860,7 +860,7 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 
 		resp_msg = (uint8_t *)rx_queue->base_addr + head;
 
-		if (ops != NULL && nb_fw_responses) {
+		if (nb_fw_responses) {
 			/* only move on to next op if one was ready to return
 			 * to API
 			 */
