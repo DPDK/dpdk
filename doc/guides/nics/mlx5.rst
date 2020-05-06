@@ -180,6 +180,7 @@ Limitations
 
 - Match on GTP tunnel header item supports the following fields only:
 
+     - v_pt_rsv_flags: E flag, S flag, PN flag
      - msg_type
      - teid
 

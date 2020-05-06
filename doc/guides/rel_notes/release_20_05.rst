@@ -147,6 +147,7 @@ New Features
   * Optimized the memory consumption of flow.
   * Added support for flow aging based on hardware counter.
   * Added support for flow pattern with wildcard VLAN item (without VID value).
+  * Updated support for matching on GTP header, added match on GTP flags.
 
 * **Added Chacha20-Poly1305 algorithm to Cryptodev API.**
 

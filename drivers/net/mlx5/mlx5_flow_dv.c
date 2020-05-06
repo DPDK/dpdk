@@ -1639,6 +1639,18 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/*
+ * GTP flags are contained in 1 byte of the format:
+ * -------------------------------------------
+ * | bit   | 0 - 2   | 3  | 4   | 5 | 6 | 7  |
+ * |-----------------------------------------|
+ * | value | Version | PT | Res | E | S | PN |
+ * -------------------------------------------
+ *
+ * Matching is supported only for GTP flags E, S, PN.
+ */
+#define MLX5_GTP_FLAGS_MASK	0x07
+
 /**
  * Validate VLAN item.
  *
@@ -1734,8 +1746,10 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
 			  struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_gtp *spec = item->spec;
 	const struct rte_flow_item_gtp *mask = item->mask;
 	const struct rte_flow_item_gtp nic_mask = {
+		.v_pt_rsv_flags = MLX5_GTP_FLAGS_MASK,
 		.msg_type = 0xff,
 		.teid = RTE_BE32(0xffffffff),
 	};
@@ -1755,6 +1769,11 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
 					  "no outer UDP layer found");
 	if (!mask)
 		mask = &rte_flow_item_gtp_mask;
+	if (spec && spec->v_pt_rsv_flags & ~MLX5_GTP_FLAGS_MASK)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "Match is supported for GTP"
+					  " flags only");
 	return mlx5_flow_item_acceptable
 		(item, (const uint8_t *)mask,
 		 (const uint8_t *)&nic_mask,
@@ -7125,6 +7144,10 @@ flow_dv_translate_item_gtp(void *matcher, void *key,
 		return;
 	if (!gtp_m)
 		gtp_m = &rte_flow_item_gtp_mask;
+	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_msg_flags,
+		 gtp_m->v_pt_rsv_flags);
+	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_flags,
+		 gtp_v->v_pt_rsv_flags & gtp_m->v_pt_rsv_flags);
 	MLX5_SET(fte_match_set_misc3, misc3_m, gtpu_msg_type, gtp_m->msg_type);
 	MLX5_SET(fte_match_set_misc3, misc3_v, gtpu_msg_type,
 		 gtp_v->msg_type & gtp_m->msg_type);
