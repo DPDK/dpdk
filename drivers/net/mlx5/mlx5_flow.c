@@ -442,6 +442,10 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		 */
 		if (skip_mtr_reg && config->flow_mreg_c
 		    [id + start_reg - REG_C_0] >= priv->mtr_color_reg) {
+			if (id >= (REG_C_7 - start_reg))
+				return rte_flow_error_set(error, EINVAL,
+						       RTE_FLOW_ERROR_TYPE_ITEM,
+							NULL, "invalid tag id");
 			if (config->flow_mreg_c
 			    [id + 1 + start_reg - REG_C_0] != REG_NONE)
 				return config->flow_mreg_c
