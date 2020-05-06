@@ -360,7 +360,7 @@ rte_service_runner_do_callback(struct rte_service_spec_impl *s,
 /* Expects the service 's' is valid. */
 static int32_t
 service_run(uint32_t i, struct core_state *cs, uint64_t service_mask,
-	    struct rte_service_spec_impl *s)
+	    struct rte_service_spec_impl *s, uint32_t serialize_mt_unsafe)
 {
 	if (!s)
 		return -EINVAL;
@@ -374,7 +374,7 @@ service_run(uint32_t i, struct core_state *cs, uint64_t service_mask,
 
 	cs->service_active_on_lcore[i] = 1;
 
-	if (service_mt_safe(s) == 0) {
+	if ((service_mt_safe(s) == 0) && (serialize_mt_unsafe == 1)) {
 		if (!rte_atomic32_cmpset((uint32_t *)&s->execute_lock, 0, 1))
 			return -EBUSY;
 
@@ -412,24 +412,14 @@ rte_service_run_iter_on_app_lcore(uint32_t id, uint32_t serialize_mt_unsafe)
 
 	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 
-	/* Atomically add this core to the mapped cores first, then examine if
-	 * we can run the service. This avoids a race condition between
-	 * checking the value, and atomically adding to the mapped count.
+	/* Increment num_mapped_cores to reflect that this core is
+	 * now mapped capable of running the service.
 	 */
-	if (serialize_mt_unsafe)
-		rte_atomic32_inc(&s->num_mapped_cores);
+	rte_atomic32_inc(&s->num_mapped_cores);
 
-	if (service_mt_safe(s) == 0 &&
-			rte_atomic32_read(&s->num_mapped_cores) > 1) {
-		if (serialize_mt_unsafe)
-			rte_atomic32_dec(&s->num_mapped_cores);
-		return -EBUSY;
-	}
+	int ret = service_run(id, cs, UINT64_MAX, s, serialize_mt_unsafe);
 
-	int ret = service_run(id, cs, UINT64_MAX, s);
-
-	if (serialize_mt_unsafe)
-		rte_atomic32_dec(&s->num_mapped_cores);
+	rte_atomic32_dec(&s->num_mapped_cores);
 
 	return ret;
 }
@@ -449,7 +439,7 @@ rte_service_runner_func(void *arg)
 			if (!service_valid(i))
 				continue;
 			/* return value ignored as no change to code flow */
-			service_run(i, cs, service_mask, service_get(i));
+			service_run(i, cs, service_mask, service_get(i), 1);
 		}
 
 		cs->loops++;
