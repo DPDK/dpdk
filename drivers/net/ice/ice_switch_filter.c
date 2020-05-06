@@ -1297,6 +1297,8 @@ ice_switch_parse_action(struct ice_pf *pf,
 		switch (action_type) {
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			act_qgrop = action->conf;
+			if (act_qgrop->queue_num <= 1)
+				goto error;
 			rule_info->sw_act.fltr_act =
 				ICE_FWD_TO_QGRP;
 			rule_info->sw_act.fwd_id.q_id =
