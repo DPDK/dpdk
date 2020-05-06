@@ -200,7 +200,7 @@ private, is safe), but it also requires modifying the code as follows
 Note also that, being a public function, the header file prototype must also be
 changed, as must all the call sites, to reflect the new ABI footprint.  We will
 maintain previous ABI versions that are accessible only to previously compiled
-binaries
+binaries.
 
 The addition of a parameter to the function is ABI breaking as the function is
 public, and existing application may use it in its current form. However, the
@@ -266,12 +266,12 @@ This file needs to be modified as follows
 
    } DPDK_20;
 
-The addition of the new block tells the linker that a new version node is
-available (DPDK_21), which contains the symbol rte_acl_create, and inherits
+The addition of the new block tells the linker that a new version node
+``DPDK_21`` is available, which contains the symbol rte_acl_create, and inherits
 the symbols from the DPDK_20 node. This list is directly translated into a
-list of exported symbols when DPDK is compiled as a shared library
+list of exported symbols when DPDK is compiled as a shared library.
 
-Next, we need to specify in the code which function map to the rte_acl_create
+Next, we need to specify in the code which function maps to the rte_acl_create
 symbol at which versions.  First, at the site of the initial symbol definition,
 we need to update the function so that it is uniquely named, and not in conflict
 with the public symbol name
@@ -288,24 +288,29 @@ with the public symbol name
         ...
 
 Note that the base name of the symbol was kept intact, as this is conducive to
-the macros used for versioning symbols and we have annotated the function as an
-implementation of versioned symbol.  That is our next step, mapping this new
-symbol name to the initial symbol name at version node 20.  Immediately after
-the function, we add this line of code
+the macros used for versioning symbols and we have annotated the function as
+``__vsym``, an implementation of a versioned symbol . That is our next step,
+mapping this new symbol name to the initial symbol name at version node 20.
+Immediately after the function, we add the VERSION_SYMBOL macro.
 
 .. code-block:: c
 
+   #include <rte_function_versioning.h>
+
+   ...
    VERSION_SYMBOL(rte_acl_create, _v20, 20);
 
 Remembering to also add the rte_function_versioning.h header to the requisite c
-file where these changes are being made. The above macro instructs the linker to
+file where these changes are being made. The macro instructs the linker to
 create a new symbol ``rte_acl_create@DPDK_20``, which matches the symbol created
 in older builds, but now points to the above newly named function. We have now
 mapped the original rte_acl_create symbol to the original function (but with a
 new name).
 
-Next, we need to create the 21 version of the symbol. We create a new function
-name, with a different suffix, and implement it appropriately
+Please see the section :ref:`Enabling versioning macros
+<enabling_versioning_macros>` to enable this macro in the meson/ninja build.
+Next, we need to create the new ``v21`` version of the symbol. We create a new
+function name, with the ``v21`` suffix, and implement it appropriately.
 
 .. code-block:: c
 
@@ -320,35 +325,58 @@ name, with a different suffix, and implement it appropriately
    }
 
 This code serves as our new API call. Its the same as our old call, but adds the
-new parameter in place. Next we need to map this function to the symbol
-``rte_acl_create@DPDK_21``. To do this, we modify the public prototype of the
-call in the header file, adding the macro there to inform all including
-applications, that on re-link, the default rte_acl_create symbol should point to
-this function. Note that we could do this by simply naming the function above
-rte_acl_create, and the linker would chose the most recent version tag to apply
-in the version script, but we can also do this in the header file
+new parameter in place. Next we need to map this function to the new default
+symbol ``rte_acl_create@DPDK_21``. To do this, immediately after the function,
+we add the BIND_DEFAULT_SYMBOL macro.
+
+.. code-block:: c
+
+   #include <rte_function_versioning.h>
+
+   ...
+   BIND_DEFAULT_SYMBOL(rte_acl_create, _v21, 21);
+
+The macro instructs the linker to create the new default symbol
+``rte_acl_create@DPDK_21``, which points to the above newly named function.
+
+We finally modify the prototype of the call in the public header file,
+such that it contains both versions of the symbol and the public API.
 
 .. code-block:: c
 
    struct rte_acl_ctx *
-   -rte_acl_create(const struct rte_acl_param *param);
-   +rte_acl_create_v21(const struct rte_acl_param *param, int debug);
-   +BIND_DEFAULT_SYMBOL(rte_acl_create, _v21, 21);
+   rte_acl_create(const struct rte_acl_param *param);
 
-The BIND_DEFAULT_SYMBOL macro explicitly tells applications that include this
-header, to link to the rte_acl_create_v21 function and apply the DPDK_21
-version node to it.  This method is more explicit and flexible than just
-re-implementing the exact symbol name, and allows for other features (such as
-linking to the old symbol version by default, when the new ABI is to be opt-in
-for a period.
+   struct rte_acl_ctx * __vsym
+   rte_acl_create_v20(const struct rte_acl_param *param);
 
-One last thing we need to do.  Note that we've taken what was a public symbol,
-and duplicated it into two uniquely and differently named symbols.  We've then
-mapped each of those back to the public symbol ``rte_acl_create`` with different
-version tags.  This only applies to dynamic linking, as static linking has no
-notion of versioning.  That leaves this code in a position of no longer having a
-symbol simply named ``rte_acl_create`` and a static build will fail on that
-missing symbol.
+   struct rte_acl_ctx * __vsym
+   rte_acl_create_v21(const struct rte_acl_param *param, int debug);
+
+
+And that's it, on the next shared library rebuild, there will be two versions of
+rte_acl_create, an old DPDK_20 version, used by previously built applications,
+and a new DPDK_21 version, used by future built applications.
+
+.. note::
+
+   **Before you leave**, please take care reviewing the sections on
+   :ref:`mapping static symbols <mapping_static_symbols>`,
+   :ref:`enabling versioning macros <enabling_versioning_macros>`,
+   and :ref:`ABI deprecation <abi_deprecation>`.
+
+
+.. _mapping_static_symbols:
+
+Mapping static symbols
+______________________
+
+Now we've taken what was a public symbol, and duplicated it into two uniquely
+and differently named symbols. We've then mapped each of those back to the
+public symbol ``rte_acl_create`` with different version tags. This only applies
+to dynamic linking, as static linking has no notion of versioning. That leaves
+this code in a position of no longer having a symbol simply named
+``rte_acl_create`` and a static build will fail on that missing symbol.
 
 To correct this, we can simply map a function of our choosing back to the public
 symbol in the static build with the ``MAP_STATIC_SYMBOL`` macro.  Generally the
@@ -369,15 +397,31 @@ defined, we add this
 That tells the compiler that, when building a static library, any calls to the
 symbol ``rte_acl_create`` should be linked to ``rte_acl_create_v21``
 
-That's it, on the next shared library rebuild, there will be two versions of
-rte_acl_create, an old DPDK_20 version, used by previously built applications,
-and a new DPDK_21 version, used by future built applications.
 
+.. _enabling_versioning_macros:
+
+Enabling versioning macros
+__________________________
+
+Finally, we need to indicate to the :doc:`meson/ninja build system
+<../prog_guide/build-sdk-meson>` to enable versioning macros when building the
+library or driver. In the libraries or driver where we have added symbol
+versioning, in the ``meson.build`` file we add the following
+
+.. code-block::
+
+   use_function_versioning = true
+
+at the start of the head of the file. This will indicate to the tool-chain to
+enable the function version macros when building. There is no corresponding
+directive required for the ``make`` build system.
+
+.. _abi_deprecation:
 
 Deprecating part of a public API
 ________________________________
 
-Lets assume that you've done the above update, and in preparation for the next
+Lets assume that you've done the above updates, and in preparation for the next
 major ABI version you decide you would like to retire the old version of the
 function. After having gone through the ABI deprecation announcement process,
 removal is easy. Start by removing the symbol from the requisite version map
@@ -421,8 +465,8 @@ Next remove the corresponding versioned export.
 
 
 Note that the internal function definition could also be removed, but its used
-in our example by the newer version v21, so we leave it in place and declare it
-as static. This is a coding style choice.
+in our example by the newer version ``v21``, so we leave it in place and declare
+it as static. This is a coding style choice.
 
 .. _deprecating_entire_abi:
 
