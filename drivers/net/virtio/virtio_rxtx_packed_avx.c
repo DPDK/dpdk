@@ -365,7 +365,12 @@ virtqueue_dequeue_batch_packed_vec(struct virtnet_rx *rxvq,
 		return -1;
 
 	/* only care avail/used bits */
+#if defined(RTE_ARCH_I686)
+	__m512i v_mask = _mm512_set4_epi64(PACKED_FLAGS_MASK, 0x0,
+					   PACKED_FLAGS_MASK, 0x0);
+#else
 	__m512i v_mask = _mm512_maskz_set1_epi64(0xaa, PACKED_FLAGS_MASK);
+#endif
 	desc_addr = &vq->vq_packed.ring.desc[id];
 
 	__m512i v_desc = _mm512_loadu_si512(desc_addr);
@@ -373,7 +378,12 @@ virtqueue_dequeue_batch_packed_vec(struct virtnet_rx *rxvq,
 
 	__m512i v_used_flag = _mm512_setzero_si512();
 	if (vq->vq_packed.used_wrap_counter)
+#if defined(RTE_ARCH_I686)
+		v_used_flag = _mm512_set4_epi64(PACKED_FLAGS_MASK, 0x0,
+						PACKED_FLAGS_MASK, 0x0);
+#else
 		v_used_flag = _mm512_maskz_set1_epi64(0xaa, PACKED_FLAGS_MASK);
+#endif
 
 	/* Check all descs are used */
 	desc_stats = _mm512_cmpneq_epu64_mask(v_flag, v_used_flag);
