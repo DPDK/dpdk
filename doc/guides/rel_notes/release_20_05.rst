@@ -93,6 +93,8 @@ New Features
   * Added new query: ``rte_flow_get_aged_flows`` to get the aged-out flows
     contexts from the port.
 
+* **ethdev: Added a new value to link speed for 200Gbps**
+
 * **Updated Amazon ena driver.**
 
   Updated ena PMD with new features and improvements, including:
