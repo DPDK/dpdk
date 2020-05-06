@@ -1223,8 +1223,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			rc = create_ipsec_esp_flow(sa);
 			if (rc != 0)
 				RTE_LOG(ERR, IPSEC_ESP,
-					"create_ipsec_esp_flow() failed %s\n",
-					strerror(rc));
+					"create_ipsec_esp_flow() failed\n");
 		}
 		print_one_sa_rule(sa, inbound);
 	}
