@@ -379,7 +379,11 @@ iterate:
 		cipher_xform->cipher.key.data = cipher_key;
 		cipher_xform->cipher.key.length = tdata->cipher_key.len;
 		cipher_xform->cipher.iv.offset = IV_OFFSET;
-		cipher_xform->cipher.iv.length = tdata->iv.len;
+
+		if (tdata->crypto_algo == RTE_CRYPTO_CIPHER_NULL)
+			cipher_xform->cipher.iv.length = 0;
+		else
+			cipher_xform->cipher.iv.length = tdata->iv.len;
 
 		sym_op->cipher.data.offset = tdata->cipher_offset;
 		sym_op->cipher.data.length = tdata->ciphertext.len -
