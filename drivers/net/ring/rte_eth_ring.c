@@ -246,6 +246,7 @@ static const struct eth_dev_ops ops = {
 
 static int
 do_eth_dev_ring_create(const char *name,
+		struct rte_vdev_device *vdev,
 		struct rte_ring * const rx_queues[],
 		const unsigned int nb_rx_queues,
 		struct rte_ring *const tx_queues[],
@@ -291,11 +292,14 @@ do_eth_dev_ring_create(const char *name,
 	}
 
 	/* now put it all together
+	 * - store EAL device in eth_dev,
 	 * - store queue data in internals,
 	 * - store numa_node info in eth_dev_data
 	 * - point eth_dev_data to internals
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
+
+	eth_dev->device = &vdev->device;
 
 	data = eth_dev->data;
 	data->rx_queues = rx_queues_local;
@@ -408,7 +412,9 @@ rte_eth_from_ring(struct rte_ring *r)
 }
 
 static int
-eth_dev_ring_create(const char *name, const unsigned int numa_node,
+eth_dev_ring_create(const char *name,
+		struct rte_vdev_device *vdev,
+		const unsigned int numa_node,
 		enum dev_action action, struct rte_eth_dev **eth_dev)
 {
 	/* rx and tx are so-called from point of view of first port.
@@ -438,7 +444,7 @@ eth_dev_ring_create(const char *name, const unsigned int numa_node,
 			return -1;
 	}
 
-	if (do_eth_dev_ring_create(name, rxtx, num_rings, rxtx, num_rings,
+	if (do_eth_dev_ring_create(name, vdev, rxtx, num_rings, rxtx, num_rings,
 		numa_node, action, eth_dev) < 0)
 		return -1;
 
@@ -560,12 +566,12 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 	PMD_LOG(INFO, "Initializing pmd_ring for %s", name);
 
 	if (params == NULL || params[0] == '\0') {
-		ret = eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE,
+		ret = eth_dev_ring_create(name, dev, rte_socket_id(), DEV_CREATE,
 				&eth_dev);
 		if (ret == -1) {
 			PMD_LOG(INFO,
 				"Attach to pmd_ring for %s", name);
-			ret = eth_dev_ring_create(name, rte_socket_id(),
+			ret = eth_dev_ring_create(name, dev, rte_socket_id(),
 						  DEV_ATTACH, &eth_dev);
 		}
 	} else {
@@ -574,18 +580,15 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 		if (!kvlist) {
 			PMD_LOG(INFO,
 				"Ignoring unsupported parameters when creatingrings-backed ethernet device");
-			ret = eth_dev_ring_create(name, rte_socket_id(),
+			ret = eth_dev_ring_create(name, dev, rte_socket_id(),
 						  DEV_CREATE, &eth_dev);
 			if (ret == -1) {
 				PMD_LOG(INFO,
 					"Attach to pmd_ring for %s",
 					name);
-				ret = eth_dev_ring_create(name, rte_socket_id(),
+				ret = eth_dev_ring_create(name, dev, rte_socket_id(),
 							  DEV_ATTACH, &eth_dev);
 			}
-
-			if (eth_dev)
-				eth_dev->device = &dev->device;
 
 			return ret;
 		}
@@ -597,7 +600,7 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 			if (ret < 0)
 				goto out_free;
 
-			ret = do_eth_dev_ring_create(name,
+			ret = do_eth_dev_ring_create(name, dev,
 				internal_args->rx_queues,
 				internal_args->nb_rx_queues,
 				internal_args->tx_queues,
@@ -627,6 +630,7 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 
 			for (info->count = 0; info->count < info->total; info->count++) {
 				ret = eth_dev_ring_create(info->list[info->count].name,
+							  dev,
 							  info->list[info->count].node,
 							  info->list[info->count].action,
 							  &eth_dev);
@@ -635,7 +639,7 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 					PMD_LOG(INFO,
 						"Attach to pmd_ring for %s",
 						name);
-					ret = eth_dev_ring_create(name,
+					ret = eth_dev_ring_create(name, dev,
 							info->list[info->count].node,
 							DEV_ATTACH,
 							&eth_dev);
@@ -643,9 +647,6 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 			}
 		}
 	}
-
-	if (eth_dev)
-		eth_dev->device = &dev->device;
 
 out_free:
 	rte_kvargs_free(kvlist);
