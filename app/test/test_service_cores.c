@@ -789,8 +789,19 @@ service_app_lcore_poll_impl(const int mt_safe)
 				"MT Unsafe: App core1 didn't return -EBUSY");
 	}
 
-	unregister_all();
+	/* Performance test: call in a loop, and measure tsc() */
+	const uint32_t perf_iters = (1 << 12);
+	uint64_t start = rte_rdtsc();
+	uint32_t i;
+	for (i = 0; i < perf_iters; i++) {
+		int err = service_run_on_app_core_func(&id);
+		TEST_ASSERT_EQUAL(0, err, "perf test: returned run failure");
+	}
+	uint64_t end = rte_rdtsc();
+	printf("perf test for %s: %0.1f cycles per call\n", mt_safe ?
+		"MT Safe" : "MT Unsafe", (end - start)/(float)perf_iters);
 
+	unregister_all();
 	return TEST_SUCCESS;
 }
 
