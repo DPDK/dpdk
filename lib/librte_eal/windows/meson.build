@@ -8,5 +8,6 @@ sources += files(
 	'eal_debug.c',
 	'eal_lcore.c',
 	'eal_thread.c',
+	'fnmatch.c',
 	'getopt.c',
 )

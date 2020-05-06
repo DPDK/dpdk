@@ -18,6 +18,13 @@ extern "C" {
 
 #define FNM_NOMATCH 1
 
+#define FNM_NOESCAPE 0x01
+#define FNM_PATHNAME 0x02
+#define FNM_PERIOD 0x04
+#define FNM_LEADING_DIR 0x08
+#define FNM_CASEFOLD 0x10
+#define FNM_PREFIX_DIRS 0x20
+
 /**
  * This function is used for searhing a given string source
  * with the given regular expression pattern.
@@ -34,14 +41,7 @@ extern "C" {
  * @return
  *	if the pattern is found then return 0 or else FNM_NOMATCH
  */
-static inline int fnmatch(__rte_unused const char *pattern,
-		__rte_unused const char *string,
-		__rte_unused int flags)
-{
-	/* TODO */
-	/* This is a stub, not the expected result */
-	return FNM_NOMATCH;
-}
+int fnmatch(const char *pattern, const char *string, int flags);
 
 #ifdef __cplusplus
 }
