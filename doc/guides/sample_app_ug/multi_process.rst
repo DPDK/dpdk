@@ -209,7 +209,7 @@ How the Application Works
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The initialization calls in both the primary and secondary instances are the same for the most part,
-calling the rte_eal_init(), 1 G and 10 G driver initialization and then rte_pci_probe() functions.
+calling the rte_eal_init(), 1 G and 10 G driver initialization and then probing devices.
 Thereafter, the initialization done depends on whether the process is configured as a primary or secondary instance.
 
 In the primary instance, a memory pool is created for the packet mbufs and the network ports to be used are initialized -

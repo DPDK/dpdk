@@ -88,9 +88,6 @@ To fully understand this code, it is recommended to study the chapters that rela
 
 .. code-block:: c
 
-    if (rte_pci_probe() < 0)
-        rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
-
     /*
      * Each logical core is assigned a dedicated TX queue on each port.
      */
@@ -114,10 +111,6 @@ To fully understand this code, it is recommended to study the chapters that rela
 
         rte_eth_dev_info_get((uint8_t) portid, &dev_info);
     }
-
-Observe that:
-
-*   rte_pci_probe()  parses the devices on the PCI bus and initializes recognized devices.
 
 The next step is to configure the RX and TX queues.
 For each port, there is only one RX queue (only one lcore is able to poll a given port).

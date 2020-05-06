@@ -292,8 +292,8 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
  * all registered drivers that have a matching entry in its id_table
  * for discovered devices.
  */
-int
-rte_pci_probe(void)
+static int
+pci_probe(void)
 {
 	struct rte_pci_device *dev = NULL;
 	size_t probed = 0, failed = 0;
@@ -679,7 +679,7 @@ rte_pci_get_iommu_class(void)
 struct rte_pci_bus rte_pci_bus = {
 	.bus = {
 		.scan = rte_pci_scan,
-		.probe = rte_pci_probe,
+		.probe = pci_probe,
 		.find_device = pci_find_device,
 		.plug = pci_plug,
 		.unplug = pci_unplug,

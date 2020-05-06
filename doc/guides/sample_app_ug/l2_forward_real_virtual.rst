@@ -194,9 +194,6 @@ in the *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
 
 .. code-block:: c
 
-    if (rte_pci_probe() < 0)
-        rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
-
     /* reset l2fwd_dst_ports */
 
     for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
@@ -225,12 +222,6 @@ in the *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
 
         rte_eth_dev_info_get((uint8_t) portid, &dev_info);
     }
-
-Observe that:
-
-*   rte_igb_pmd_init_all() simultaneously registers the driver as a PCI driver and as an Ethernet* Poll Mode Driver.
-
-*   rte_pci_probe() parses the devices on the PCI bus and initializes recognized devices.
 
 The next step is to configure the RX and TX queues.
 For each port, there is only one RX queue (only one lcore is able to poll a given port).

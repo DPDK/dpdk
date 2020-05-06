@@ -18,16 +18,6 @@ struct rte_pci_device;
 extern struct rte_pci_bus rte_pci_bus;
 
 /**
- * Probe the PCI bus
- *
- * @return
- *   - 0 on success.
- *   - !0 on error.
- */
-int
-rte_pci_probe(void);
-
-/**
  * Scan the content of the PCI bus, and the devices in the devices
  * list
  *
