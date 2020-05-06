@@ -4644,7 +4644,7 @@ static void bnxt_free_ctx_mem(struct bnxt *bp)
 	rte_memzone_free(bp->ctx->vnic_mem.ring_mem.pg_tbl_mz);
 	rte_memzone_free(bp->ctx->stat_mem.ring_mem.pg_tbl_mz);
 
-	for (i = 0; i < BNXT_MAX_Q; i++) {
+	for (i = 0; i < bp->ctx->tqm_fp_rings_count + 1; i++) {
 		if (bp->ctx->tqm_mem[i])
 			rte_memzone_free(bp->ctx->tqm_mem[i]->ring_mem.mz);
 	}
@@ -4725,9 +4725,8 @@ int bnxt_alloc_ctx_mem(struct bnxt *bp)
 	entries = bnxt_roundup(entries, ctx->tqm_entries_multiple);
 	entries = clamp_t(uint32_t, entries, ctx->tqm_min_entries_per_ring,
 			  ctx->tqm_max_entries_per_ring);
-	for (i = 0, ena = 0; i < BNXT_MAX_Q; i++) {
+	for (i = 0, ena = 0; i < ctx->tqm_fp_rings_count + 1; i++) {
 		ctx_pg = ctx->tqm_mem[i];
-		/* use min tqm entries for now. */
 		ctx_pg->entries = entries;
 		mem_size = ctx->tqm_entry_size * ctx_pg->entries;
 		rc = bnxt_alloc_ctx_mem_blk(bp, ctx_pg, mem_size, "tqm_mem", i);

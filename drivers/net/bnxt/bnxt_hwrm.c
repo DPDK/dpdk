@@ -4694,7 +4694,7 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	struct bnxt_ctx_pg_info *ctx_pg;
 	struct bnxt_ctx_mem_info *ctx;
 	int total_alloc_len;
-	int rc, i;
+	int rc, i, tqm_rings;
 
 	if (!BNXT_CHIP_THOR(bp) ||
 	    bp->hwrm_spec_code < HWRM_VERSION_1_9_2 ||
@@ -4714,17 +4714,6 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 		goto ctx_err;
 	}
 
-	ctx_pg = rte_malloc("bnxt_ctx_pg_mem",
-			    sizeof(*ctx_pg) * BNXT_MAX_Q,
-			    RTE_CACHE_LINE_SIZE);
-	if (!ctx_pg) {
-		rc = -ENOMEM;
-		goto ctx_err;
-	}
-	for (i = 0; i < BNXT_MAX_Q; i++, ctx_pg++)
-		ctx->tqm_mem[i] = ctx_pg;
-
-	bp->ctx = ctx;
 	ctx->qp_max_entries = rte_le_to_cpu_32(resp->qp_max_entries);
 	ctx->qp_min_qp1_entries =
 		rte_le_to_cpu_16(resp->qp_min_qp1_entries);
@@ -4760,6 +4749,24 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	ctx->mrav_entry_size = rte_le_to_cpu_16(resp->mrav_entry_size);
 	ctx->tim_entry_size = rte_le_to_cpu_16(resp->tim_entry_size);
 	ctx->tim_max_entries = rte_le_to_cpu_32(resp->tim_max_entries);
+	ctx->tqm_fp_rings_count = resp->tqm_fp_rings_count;
+
+	if (!ctx->tqm_fp_rings_count)
+		ctx->tqm_fp_rings_count = bp->max_q;
+
+	tqm_rings = ctx->tqm_fp_rings_count + 1;
+
+	ctx_pg = rte_malloc("bnxt_ctx_pg_mem",
+			    sizeof(*ctx_pg) * tqm_rings,
+			    RTE_CACHE_LINE_SIZE);
+	if (!ctx_pg) {
+		rc = -ENOMEM;
+		goto ctx_err;
+	}
+	for (i = 0; i < tqm_rings; i++, ctx_pg++)
+		ctx->tqm_mem[i] = ctx_pg;
+
+	bp->ctx = ctx;
 ctx_err:
 	HWRM_UNLOCK();
 	return rc;

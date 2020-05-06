@@ -362,7 +362,6 @@ struct bnxt_coal {
 #define BNXT_MAX_TC    8
 #define BNXT_MAX_QUEUE 8
 #define BNXT_MAX_TC_Q  (BNXT_MAX_TC + 1)
-#define BNXT_MAX_Q     (bp->max_q + 1)
 #define BNXT_PAGE_SHFT 12
 #define BNXT_PAGE_SIZE (1 << BNXT_PAGE_SHFT)
 #define MAX_CTX_PAGES  (BNXT_PAGE_SIZE / 8)
@@ -421,6 +420,7 @@ struct bnxt_ctx_mem_info {
 	uint16_t        tim_entry_size;
 	uint32_t        tim_max_entries;
 	uint8_t         tqm_entries_multiple;
+	uint8_t         tqm_fp_rings_count;
 
 	uint32_t        flags;
 #define BNXT_CTX_FLAG_INITED    0x01
