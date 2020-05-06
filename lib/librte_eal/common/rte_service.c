@@ -541,24 +541,11 @@ rte_service_start_with_defaults(void)
 }
 
 static int32_t
-service_update(struct rte_service_spec *service, uint32_t lcore,
-		uint32_t *set, uint32_t *enabled)
+service_update(uint32_t sid, uint32_t lcore, uint32_t *set, uint32_t *enabled)
 {
-	uint32_t i;
-	int32_t sid = -1;
-
-	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
-		if ((struct rte_service_spec *)&rte_services[i] == service &&
-				service_valid(i)) {
-			sid = i;
-			break;
-		}
-	}
-
-	if (sid == -1 || lcore >= RTE_MAX_LCORE)
-		return -EINVAL;
-
-	if (!lcore_states[lcore].is_service_core)
+	/* validate ID, or return error value */
+	if (sid >= RTE_SERVICE_NUM_MAX || !service_valid(sid) ||
+	    lcore >= RTE_MAX_LCORE || !lcore_states[lcore].is_service_core)
 		return -EINVAL;
 
 	uint64_t sid_mask = UINT64_C(1) << sid;
@@ -587,19 +574,15 @@ service_update(struct rte_service_spec *service, uint32_t lcore,
 int32_t
 rte_service_map_lcore_set(uint32_t id, uint32_t lcore, uint32_t enabled)
 {
-	struct rte_service_spec_impl *s;
-	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 	uint32_t on = enabled > 0;
-	return service_update(&s->spec, lcore, &on, 0);
+	return service_update(id, lcore, &on, 0);
 }
 
 int32_t
 rte_service_map_lcore_get(uint32_t id, uint32_t lcore)
 {
-	struct rte_service_spec_impl *s;
-	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 	uint32_t enabled;
-	int ret = service_update(&s->spec, lcore, 0, &enabled);
+	int ret = service_update(id, lcore, 0, &enabled);
 	if (ret == 0)
 		return enabled;
 	return ret;
