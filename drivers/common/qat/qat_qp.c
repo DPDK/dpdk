@@ -818,7 +818,7 @@ qat_enqueue_comp_op_burst(void *qp, void **ops, uint16_t nb_ops)
 kick_tail:
 	queue->tail = tail;
 	tmp_qp->enqueued += total_descriptors_built;
-	tmp_qp->stats.enqueued_count += total_descriptors_built;
+	tmp_qp->stats.enqueued_count += nb_ops_sent;
 	txq_write_tail(tmp_qp, queue);
 	return nb_ops_sent;
 }
@@ -880,7 +880,7 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	}
 
 	tmp_qp->dequeued += fw_resp_counter;
-	tmp_qp->stats.dequeued_count += fw_resp_counter;
+	tmp_qp->stats.dequeued_count += op_resp_counter;
 
 	rx_queue->head = head;
 	if (rx_queue->nb_processed_responses > QAT_CSR_HEAD_WRITE_THRESH)
