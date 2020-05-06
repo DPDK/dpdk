@@ -66,6 +66,13 @@ New Features
   Added tracepoints in ``EAL``, ``ethdev``, ``cryptodev``, ``eventdev`` and
   ``mempool`` libraries for important functions.
 
+* **Added APIs for RCU defer queue.**
+
+  Added APIs to create and delete defer queue. Additional APIs are provided
+  to enqueue a deleted resource and reclaim the resource in the future.
+  These APIs help the application use lock-free data structures with
+  less effort.
+
 * **Added new API for rte_ring.**
 
   * New synchronization modes for rte_ring.
