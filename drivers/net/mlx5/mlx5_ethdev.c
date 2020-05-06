@@ -86,6 +86,7 @@ struct ethtool_link_settings {
 	uint32_t link_mode_masks[];
 };
 
+/* The kernel values can be found in /include/uapi/linux/ethtool.h */
 #define ETHTOOL_GLINKSETTINGS 0x0000004c
 #define ETHTOOL_LINK_MODE_1000baseT_Full_BIT 5
 #define ETHTOOL_LINK_MODE_Autoneg_BIT 6
@@ -118,6 +119,13 @@ struct ethtool_link_settings {
 #define ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT 37
 #define ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT 38
 #define ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT 39
+#endif
+#ifndef HAVE_ETHTOOL_LINK_MODE_200G
+#define ETHTOOL_LINK_MODE_200000baseKR4_Full_BIT 62
+#define ETHTOOL_LINK_MODE_200000baseSR4_Full_BIT 63
+#define ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT 0 /* 64 - 64 */
+#define ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT 1 /* 65 - 64 */
+#define ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT 2 /* 66 - 64 */
 #endif
 
 /**
@@ -537,7 +545,8 @@ mlx5_set_default_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->default_txportconf.ring_size = 256;
 	info->default_rxportconf.burst_size = MLX5_RX_DEFAULT_BURST;
 	info->default_txportconf.burst_size = MLX5_TX_DEFAULT_BURST;
-	if (priv->link_speed_capa & ETH_LINK_SPEED_100G) {
+	if ((priv->link_speed_capa & ETH_LINK_SPEED_200G) |
+		(priv->link_speed_capa & ETH_LINK_SPEED_100G)) {
 		info->default_rxportconf.nb_queues = 16;
 		info->default_txportconf.nb_queues = 16;
 		if (dev->data->nb_rx_queues > 2 ||
@@ -1028,6 +1037,17 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT) |
 		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT)))
 		priv->link_speed_capa |= ETH_LINK_SPEED_100G;
+	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_200000baseKR4_Full_BIT) |
+		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_200000baseSR4_Full_BIT)))
+		priv->link_speed_capa |= ETH_LINK_SPEED_200G;
+
+	sc = ecmd->link_mode_masks[2] |
+		((uint64_t)ecmd->link_mode_masks[3] << 32);
+	if (sc & (MLX5_BITSHIFT(ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT) |
+		  MLX5_BITSHIFT(
+			ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT) |
+		  MLX5_BITSHIFT(ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT)))
+		priv->link_speed_capa |= ETH_LINK_SPEED_200G;
 	dev_link.link_duplex = ((ecmd->duplex == DUPLEX_HALF) ?
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
