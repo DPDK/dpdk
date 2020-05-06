@@ -680,6 +680,28 @@ flow_verbs_translate_item_udp(struct mlx5_flow *dev_flow,
 		udp.val.src_port &= udp.mask.src_port;
 		udp.val.dst_port &= udp.mask.dst_port;
 	}
+	item++;
+	while (item->type == RTE_FLOW_ITEM_TYPE_VOID)
+		item++;
+	if (!(udp.val.dst_port & udp.mask.dst_port)) {
+		switch ((item)->type) {
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			udp.val.dst_port = htons(MLX5_UDP_PORT_VXLAN);
+			udp.mask.dst_port = 0xffff;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+			udp.val.dst_port = htons(MLX5_UDP_PORT_VXLAN_GPE);
+			udp.mask.dst_port = 0xffff;
+			break;
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+			udp.val.dst_port = htons(MLX5_UDP_PORT_MPLS);
+			udp.mask.dst_port = 0xffff;
+			break;
+		default:
+			break;
+		}
+	}
+
 	flow_verbs_spec_add(&dev_flow->verbs, &udp, size);
 }
 
