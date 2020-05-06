@@ -1231,7 +1231,7 @@ dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
 	DSW_LOG_DP_PORT(DEBUG, source_port->id, "%d non-release events "
 			"accepted.\n", num_non_release);
 
-	return num_non_release;
+	return (num_non_release + num_release);
 }
 
 uint16_t
