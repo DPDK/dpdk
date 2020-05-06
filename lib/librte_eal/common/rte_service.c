@@ -50,6 +50,10 @@ struct rte_service_spec_impl {
 	uint8_t internal_flags;
 
 	/* per service statistics */
+	/* Indicates how many cores the service is mapped to run on.
+	 * It does not indicate the number of cores the service is running
+	 * on currently.
+	 */
 	rte_atomic32_t num_mapped_cores;
 	uint64_t calls;
 	uint64_t cycles_spent;
@@ -370,12 +374,7 @@ service_run(uint32_t i, struct core_state *cs, uint64_t service_mask,
 
 	cs->service_active_on_lcore[i] = 1;
 
-	/* check do we need cmpset, if MT safe or <= 1 core
-	 * mapped, atomic ops are not required.
-	 */
-	const int use_atomics = (service_mt_safe(s) == 0) &&
-				(rte_atomic32_read(&s->num_mapped_cores) > 1);
-	if (use_atomics) {
+	if (service_mt_safe(s) == 0) {
 		if (!rte_atomic32_cmpset((uint32_t *)&s->execute_lock, 0, 1))
 			return -EBUSY;
 
