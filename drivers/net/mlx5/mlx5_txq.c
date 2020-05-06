@@ -298,9 +298,9 @@ mlx5_tx_queue_release(void *dpdk_txq)
 	priv = txq_ctrl->priv;
 	for (i = 0; (i != priv->txqs_n); ++i)
 		if ((*priv->txqs)[i] == txq) {
-			mlx5_txq_release(ETH_DEV(priv), i);
 			DRV_LOG(DEBUG, "port %u removing Tx queue %u from list",
 				PORT_ID(priv), txq->idx);
+			mlx5_txq_release(ETH_DEV(priv), i);
 			break;
 		}
 }
