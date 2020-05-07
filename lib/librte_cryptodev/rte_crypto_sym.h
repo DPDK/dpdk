@@ -409,6 +409,8 @@ enum rte_crypto_aead_algorithm {
 	/**< AES algorithm in CCM mode. */
 	RTE_CRYPTO_AEAD_AES_GCM,
 	/**< AES algorithm in GCM mode. */
+	RTE_CRYPTO_AEAD_CHACHA20_POLY1305,
+	/**< Chacha20 cipher with poly1305 authenticator */
 	RTE_CRYPTO_AEAD_LIST_END
 };
 
@@ -452,6 +454,11 @@ struct rte_crypto_aead_xform {
 		 * be allocated, even though the length field will
 		 * have a value less than this.
 		 *
+		 * - For Chacha20-Poly1305 it is 96-bit nonce.
+		 * PMD sets initial counter for Poly1305 key generation
+		 * part to 0 and for Chacha20 encryption to 1 as per
+		 * rfc8439 2.8. AEAD construction.
+		 *
 		 * For optimum performance, the data pointed to SHOULD
 		 * be 8-byte aligned.
 		 */
@@ -468,6 +475,8 @@ struct rte_crypto_aead_xform {
 		 *
 		 * - For CCM mode, this is the length of the nonce,
 		 * which can be in the range 7 to 13 inclusive.
+		 *
+		 * - For Chacha20-Poly1305 this field is always 12.
 		 */
 	} iv;	/**< Initialisation vector parameters */
 

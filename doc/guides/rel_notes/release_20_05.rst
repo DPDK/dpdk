@@ -145,6 +145,10 @@ New Features
   * Optimized the memory consumption of flow.
   * Added support for flow aging based on hardware counter.
 
+* **Added Chacha20-Poly1305 algorithm to Cryptodev API.**
+
+  Chacha20-Poly1305 AEAD algorithm can now be supported in Cryptodev.
+
 * **Updated the AESNI MB crypto PMD.**
 
   * Added support for intel-ipsec-mb version 0.54.
