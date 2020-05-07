@@ -241,6 +241,9 @@ heap_alloc(struct malloc_heap *heap, const char *type __rte_unused, size_t size,
 	size = RTE_CACHE_LINE_ROUNDUP(size);
 	align = RTE_CACHE_LINE_ROUNDUP(align);
 
+	/* roundup might cause an overflow */
+	if (size == 0)
+		return NULL;
 	elem = find_suitable_element(heap, size, flags, align, bound, contig);
 	if (elem != NULL) {
 		elem = malloc_elem_alloc(elem, size, align, bound, contig);

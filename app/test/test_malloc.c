@@ -846,6 +846,18 @@ test_malloc_bad_params(void)
 	if (bad_ptr != NULL)
 		goto err_return;
 
+	/* rte_malloc expected to return null with size will cause overflow */
+	align = RTE_CACHE_LINE_SIZE;
+	size = (size_t)-8;
+
+	bad_ptr = rte_malloc(type, size, align);
+	if (bad_ptr != NULL)
+		goto err_return;
+
+	bad_ptr = rte_realloc(NULL, size, align);
+	if (bad_ptr != NULL)
+		goto err_return;
+
 	return 0;
 
 err_return:
