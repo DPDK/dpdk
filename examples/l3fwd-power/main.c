@@ -1969,7 +1969,7 @@ check_all_ports_link_status(uint32_t port_mask)
 						"Mbps - %s\n", (uint8_t)portid,
 						(unsigned)link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-					("full-duplex") : ("half-duplex\n"));
+					("full-duplex") : ("half-duplex"));
 				else
 					printf("Port %d Link Down\n",
 						(uint8_t)portid);

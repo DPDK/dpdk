@@ -164,7 +164,7 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 		printf(" Link Up - speed %u Mbps - %s\n",
 			(uint32_t) link.link_speed,
 			(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-			("full-duplex") : ("half-duplex\n"));
+			("full-duplex") : ("half-duplex"));
 	} else {
 		printf(" Link Down\n");
 	}
