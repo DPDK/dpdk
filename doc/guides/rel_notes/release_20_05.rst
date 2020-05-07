@@ -289,6 +289,11 @@ New Features
   ``l3fwd`` (The static code without any nodes) with the modular ``l3fwd-graph``
   approach.
 
+* **Updated testpmd application.**
+
+  * Added a new cmdline option ``--rx-mq-mode`` which can be used to test PMD's
+    behaviour on handling Rx mq mode.
+
 
 Removed Items
 -------------

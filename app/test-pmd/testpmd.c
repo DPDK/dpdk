@@ -484,6 +484,11 @@ uint8_t bitrate_enabled;
 struct gro_status gro_ports[RTE_MAX_ETHPORTS];
 uint8_t gro_flush_cycles = GRO_DEFAULT_FLUSH_CYCLES;
 
+/*
+ * hexadecimal bitmask of RX mq mode can be enabled.
+ */
+enum rte_eth_rx_mq_mode rx_mq_mode = ETH_MQ_RX_VMDQ_DCB_RSS;
+
 /* Forward function declarations */
 static void setup_attached_port(portid_t pi);
 static void map_port_queue_stats_mapping_registers(portid_t pi,
@@ -3339,7 +3344,9 @@ init_port_config(void)
 
 		if (port->dcb_flag == 0) {
 			if( port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0)
-				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+				port->dev_conf.rxmode.mq_mode =
+					(enum rte_eth_rx_mq_mode)
+						(rx_mq_mode & ETH_MQ_RX_RSS);
 			else
 				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
 		}
@@ -3440,7 +3447,9 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 		}
 
 		/* set DCB mode of RX and TX of multiple queues */
-		eth_conf->rxmode.mq_mode = ETH_MQ_RX_VMDQ_DCB;
+		eth_conf->rxmode.mq_mode =
+				(enum rte_eth_rx_mq_mode)
+					(rx_mq_mode & ETH_MQ_RX_VMDQ_DCB);
 		eth_conf->txmode.mq_mode = ETH_MQ_TX_VMDQ_DCB;
 	} else {
 		struct rte_eth_dcb_rx_conf *rx_conf =
@@ -3460,7 +3469,9 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 			tx_conf->dcb_tc[i] = i % num_tcs;
 		}
 
-		eth_conf->rxmode.mq_mode = ETH_MQ_RX_DCB_RSS;
+		eth_conf->rxmode.mq_mode =
+				(enum rte_eth_rx_mq_mode)
+					(rx_mq_mode & ETH_MQ_RX_DCB_RSS);
 		eth_conf->rx_adv_conf.rss_conf = rss_conf;
 		eth_conf->txmode.mq_mode = ETH_MQ_TX_DCB;
 	}

@@ -212,6 +212,8 @@ usage(char* progname)
 	printf("  --noisy-lkup-num-writes=N: do N random reads and writes per packet\n");
 	printf("  --no-iova-contig: mempool memory can be IOVA non contiguous. "
 	       "valid only with --mp-alloc=anon\n");
+	printf("  --rx-mq-mode=0xX: hexadecimal bitmask of RX mq mode can be "
+	       "enabled\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -672,6 +674,7 @@ launch_args_parse(int argc, char** argv)
 		{ "noisy-lkup-num-reads",	1, 0, 0 },
 		{ "noisy-lkup-num-reads-writes", 1, 0, 0 },
 		{ "no-iova-contig",             0, 0, 0 },
+		{ "rx-mq-mode",                 1, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1365,6 +1368,17 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "no-iova-contig"))
 				mempool_flags = MEMPOOL_F_NO_IOVA_CONTIG;
+
+			if (!strcmp(lgopts[opt_idx].name, "rx-mq-mode")) {
+				char *end = NULL;
+				n = strtoul(optarg, &end, 16);
+				if (n >= 0 && n <= ETH_MQ_RX_VMDQ_DCB_RSS)
+					rx_mq_mode = (enum rte_eth_rx_mq_mode)n;
+				else
+					rte_exit(EXIT_FAILURE,
+						 "rx-mq-mode must be >= 0 and <= %d\n",
+						 ETH_MQ_RX_VMDQ_DCB_RSS);
+			}
 			break;
 		case 'h':
 			usage(argv[0]);

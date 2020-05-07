@@ -481,3 +481,10 @@ The command line options are:
 
     Enable to create mempool which is not IOVA contiguous. Valid only with --mp-alloc=anon.
     The default value is 0.
+
+*   ``--rx-mq-mode``
+
+    Set the hexadecimal bitmask of RX multi queue mode which can be enabled.
+    The default value is 0x7::
+
+       ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_DCB_FLAG | ETH_MQ_RX_VMDQ_FLAG
