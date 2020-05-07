@@ -1035,10 +1035,8 @@ igc_clear_rss_filter(struct rte_eth_dev *dev)
 {
 	struct igc_rss_filter *rss_filter = IGC_DEV_PRIVATE_RSS_FILTER(dev);
 
-	if (!rss_filter->enable) {
-		PMD_DRV_LOG(WARNING, "RSS filter not enabled!");
+	if (!rss_filter->enable)
 		return;
-	}
 
 	/* recover default RSS configuration */
 	igc_rss_configure(dev);
