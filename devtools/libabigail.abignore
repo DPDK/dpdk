@@ -40,3 +40,11 @@
 	type_kind = enum
 	name = rte_cpu_flag_t
 	changed_enumerators = RTE_CPUFLAG_NUMFLAGS
+; Ignore Cryptodev AEAD xform enum and AEAD xform strings change
+; due to addition of Chacha20-Poly1305
+[suppress_type]
+        type_kind = enum
+        name = rte_crypto_aead_algorithm
+        changed_enumerators = RTE_CRYPTO_AEAD_LIST_END
+[suppress_variable]
+        name = rte_crypto_aead_algorithm_strings

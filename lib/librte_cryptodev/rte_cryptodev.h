@@ -219,6 +219,14 @@ struct rte_cryptodev_asym_capability_idx {
  *   - Return NULL if the capability not exist.
  */
 const struct rte_cryptodev_symmetric_capability *
+rte_cryptodev_sym_capability_get_v20(uint8_t dev_id,
+		const struct rte_cryptodev_sym_capability_idx *idx);
+
+const struct rte_cryptodev_symmetric_capability *
+rte_cryptodev_sym_capability_get_v21(uint8_t dev_id,
+		const struct rte_cryptodev_sym_capability_idx *idx);
+
+const struct rte_cryptodev_symmetric_capability *
 rte_cryptodev_sym_capability_get(uint8_t dev_id,
 		const struct rte_cryptodev_sym_capability_idx *idx);
 
@@ -764,9 +772,33 @@ rte_cryptodev_stats_reset(uint8_t dev_id);
  * the last valid element has it's op field set to
  * RTE_CRYPTO_OP_TYPE_UNDEFINED.
  */
-extern void
+
+void
 rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info);
 
+/* An extra element RTE_CRYPTO_AEAD_CHACHA20_POLY1305 is added
+ * to enum rte_crypto_aead_algorithm, also changing the value of
+ *  RTE_CRYPTO_AEAD_LIST_END. To maintain ABI compatibility with applications
+ * which linked against earlier versions, preventing them, for example, from
+ * picking up the new value and using it to index into an array sized too small
+ * for it, it is necessary to have two versions of rte_cryptodev_info_get()
+ * The latest version just returns directly the capabilities retrieved from
+ * the device. The compatible version inspects the capabilities retrieved
+ * from the device, but only returns them directly if the new value
+ * is not included. If the new value is included, it allocates space
+ * for a copy of the device capabilities, trims the new value from this
+ * and returns this copy. It only needs to do this once per device.
+ * For the corner case of a corner case when the alloc may fail,
+ * an empty capability list is returned, as there is no mechanism to return
+ * an error and adding such a mechanism would itself be an ABI breakage.
+ * The compatible version can be removed after the next major ABI release.
+ */
+
+void
+rte_cryptodev_info_get_v20(uint8_t dev_id, struct rte_cryptodev_info *dev_info);
+
+void
+rte_cryptodev_info_get_v21(uint8_t dev_id, struct rte_cryptodev_info *dev_info);
 
 /**
  * Register a callback function for specific device id.
