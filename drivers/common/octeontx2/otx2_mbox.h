@@ -90,7 +90,7 @@ struct mbox_msghdr {
 #define OTX2_MBOX_RSP_SIG (0xbeef)
 	/* Signature, for validating corrupted msgs */
 	uint16_t __otx2_io sig;
-#define OTX2_MBOX_VERSION (0x0006)
+#define OTX2_MBOX_VERSION (0x0007)
 	/* Version of msg's structure for this ID */
 	uint16_t __otx2_io ver;
 	/* Offset of next msg within mailbox region */
@@ -150,6 +150,8 @@ M(CGX_SET_PHY_MOD_TYPE, 0x216, cgx_set_phy_mod_type, cgx_phy_mod_type,	\
 M(CGX_FEC_STATS,	0x217, cgx_fec_stats, msg_req, cgx_fec_stats_rsp) \
 M(CGX_SET_LINK_MODE,	0x218, cgx_set_link_mode, cgx_set_link_mode_req,\
 			       cgx_set_link_mode_rsp)			\
+M(CGX_GET_PHY_FEC_STATS, 0x219, cgx_get_phy_fec_stats, msg_req, msg_rsp) \
+M(CGX_STATS_RST,	0x21A, cgx_stats_rst, msg_req, msg_rsp)		\
 /* NPA mbox IDs (range 0x400 - 0x5FF) */				\
 M(NPA_LF_ALLOC,		0x400, npa_lf_alloc, npa_lf_alloc_req,		\
 				npa_lf_alloc_rsp)			\
@@ -352,9 +354,20 @@ struct npc_set_pkind {
 
 /* Structure for requesting resource provisioning.
  * 'modify' flag to be used when either requesting more
- * or detach partial of a certain resource type.
+ * or to detach partial of a certain resource type.
  * Rest of the fields specify how many of what type to
  * be attached.
+ * To request LFs from two blocks of same type this mailbox
+ * can be sent twice as below:
+ *      struct rsrc_attach *attach;
+ *       .. Allocate memory for message ..
+ *       attach->cptlfs = 3; <3 LFs from CPT0>
+ *       .. Send message ..
+ *       .. Allocate memory for message ..
+ *       attach->modify = 1;
+ *       attach->cpt_blkaddr = BLKADDR_CPT1;
+ *       attach->cptlfs = 2; <2 LFs from CPT1>
+ *       .. Send message ..
  */
 struct rsrc_attach_req {
 	struct mbox_msghdr hdr;
@@ -365,6 +378,11 @@ struct rsrc_attach_req {
 	uint16_t __otx2_io ssow;
 	uint16_t __otx2_io timlfs;
 	uint16_t __otx2_io cptlfs;
+	uint16_t __otx2_io reelfs;
+	/* BLKADDR_CPT0/BLKADDR_CPT1 or 0 for BLKADDR_CPT0 */
+	int __otx2_io cpt_blkaddr;
+	/* BLKADDR_REE0/BLKADDR_REE1 or 0 for BLKADDR_REE0 */
+	int __otx2_io ree_blkaddr;
 };
 
 /* Structure for relinquishing resources.
@@ -381,6 +399,7 @@ struct rsrc_detach_req {
 	uint8_t __otx2_io ssow:1;
 	uint8_t __otx2_io timlfs:1;
 	uint8_t __otx2_io cptlfs:1;
+	uint8_t __otx2_io reelfs:1;
 };
 
 /* NIX Transmit schedulers */
@@ -405,6 +424,11 @@ struct free_rsrcs_rsp {
 	uint16_t __otx2_io cpt;
 	uint8_t __otx2_io npa;
 	uint8_t __otx2_io nix;
+	uint16_t  __otx2_io schq_nix1[NIX_TXSCH_LVL_CNT];
+	uint8_t  __otx2_io nix1;
+	uint8_t  __otx2_io cpt1;
+	uint8_t  __otx2_io ree0;
+	uint8_t  __otx2_io ree1;
 };
 
 #define MSIX_VECTOR_INVALID	0xFFFF
@@ -422,6 +446,13 @@ struct msix_offset_rsp {
 	uint16_t __otx2_io ssow_msixoff[MAX_RVU_BLKLF_CNT];
 	uint16_t __otx2_io timlf_msixoff[MAX_RVU_BLKLF_CNT];
 	uint16_t __otx2_io cptlf_msixoff[MAX_RVU_BLKLF_CNT];
+	uint8_t __otx2_io cpt1_lfs;
+	uint8_t __otx2_io ree0_lfs;
+	uint8_t __otx2_io ree1_lfs;
+	uint16_t __otx2_io cpt1_lf_msixoff[MAX_RVU_BLKLF_CNT];
+	uint16_t __otx2_io ree0_lf_msixoff[MAX_RVU_BLKLF_CNT];
+	uint16_t __otx2_io ree1_lf_msixoff[MAX_RVU_BLKLF_CNT];
+
 };
 
 /* CGX mbox message formats */
@@ -732,6 +763,9 @@ struct nix_lf_alloc_rsp {
 	uint16_t __otx2_io cints; /* NIX_AF_CONST2::CINTS */
 	uint16_t __otx2_io qints; /* NIX_AF_CONST2::QINTS */
 	uint8_t __otx2_io hw_rx_tstamp_en; /*set if rx timestamping enabled */
+	uint8_t __otx2_io cgx_links;  /* No. of CGX links present in HW */
+	uint8_t __otx2_io lbk_links;  /* No. of LBK links present in HW */
+	uint8_t __otx2_io sdp_links;  /* No. of SDP links present in HW */
 };
 
 struct nix_lf_free_req {
@@ -1393,6 +1427,7 @@ enum header_fields {
 	NPC_DPORT_TCP,
 	NPC_SPORT_UDP,
 	NPC_DPORT_UDP,
+	NPC_FDSA_VAL,
 	NPC_HEADER_FIELDS_MAX,
 };
 
