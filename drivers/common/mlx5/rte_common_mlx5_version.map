@@ -1,7 +1,11 @@
-DPDK_21 {
+INTERNAL {
 	global:
 
 	mlx5_class_get;
+
+	mlx5_create_mr_ext;
+
+	mlx5_dev_to_pci_addr;
 
 	mlx5_devx_cmd_create_cq;
 	mlx5_devx_cmd_create_qp;
@@ -27,7 +31,26 @@ DPDK_21 {
 	mlx5_devx_cmd_query_virtq;
 	mlx5_devx_get_out_command_status;
 
-	mlx5_dev_to_pci_addr;
+	mlx5_mp_init_primary;
+	mlx5_mp_uninit_primary;
+	mlx5_mp_init_secondary;
+	mlx5_mp_uninit_secondary;
+	mlx5_mp_req_mr_create;
+	mlx5_mp_req_queue_state_modify;
+	mlx5_mp_req_verbs_cmd_fd;
+
+	mlx5_mr_btree_init;
+	mlx5_mr_btree_free;
+	mlx5_mr_btree_dump;
+	mlx5_mr_addr2mr_bh;
+	mlx5_mr_release_cache;
+	mlx5_mr_dump_cache;
+	mlx5_mr_rebuild_cache;
+	mlx5_mr_insert_cache;
+	mlx5_mr_lookup_cache;
+	mlx5_mr_lookup_list;
+	mlx5_mr_create_primary;
+	mlx5_mr_flush_local_cache;
 
 	mlx5_nl_allmulti;
 	mlx5_nl_devlink_family_id_get;
@@ -48,31 +71,5 @@ DPDK_21 {
 	mlx5_nl_vlan_vmwa_delete;
 
 	mlx5_translate_port_name;
-
 };
 
-EXPERIMENTAL {
-        global:
-
-	mlx5_mp_init_primary;
-	mlx5_mp_uninit_primary;
-	mlx5_mp_init_secondary;
-	mlx5_mp_uninit_secondary;
-	mlx5_mp_req_mr_create;
-	mlx5_mp_req_queue_state_modify;
-	mlx5_mp_req_verbs_cmd_fd;
-
-	mlx5_mr_btree_init;
-	mlx5_mr_btree_free;
-	mlx5_mr_btree_dump;
-	mlx5_mr_addr2mr_bh;
-	mlx5_mr_release_cache;
-	mlx5_mr_dump_cache;
-	mlx5_mr_rebuild_cache;
-	mlx5_mr_insert_cache;
-	mlx5_mr_lookup_cache;
-	mlx5_mr_lookup_list;
-	mlx5_create_mr_ext;
-	mlx5_mr_create_primary;
-	mlx5_mr_flush_local_cache;
-};

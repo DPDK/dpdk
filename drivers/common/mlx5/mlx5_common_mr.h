@@ -115,42 +115,42 @@ mlx5_mr_lookup_lkey(struct mr_cache_entry *lkp_tbl, uint16_t *cached_idx,
 	return UINT32_MAX;
 }
 
-__rte_experimental
+__rte_internal
 int mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket);
-__rte_experimental
+__rte_internal
 void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);
-__rte_experimental
+__rte_internal
 void mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused);
-__rte_experimental
+__rte_internal
 uint32_t mlx5_mr_addr2mr_bh(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
 			    struct mlx5_mr_share_cache *share_cache,
 			    struct mlx5_mr_ctrl *mr_ctrl,
 			    uintptr_t addr, unsigned int mr_ext_memseg_en);
-__rte_experimental
+__rte_internal
 void mlx5_mr_release_cache(struct mlx5_mr_share_cache *mr_cache);
-__rte_experimental
+__rte_internal
 void mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused);
-__rte_experimental
+__rte_internal
 void mlx5_mr_rebuild_cache(struct mlx5_mr_share_cache *share_cache);
-__rte_experimental
+__rte_internal
 void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
-__rte_experimental
+__rte_internal
 int
 mlx5_mr_insert_cache(struct mlx5_mr_share_cache *share_cache,
 		     struct mlx5_mr *mr);
-__rte_experimental
+__rte_internal
 uint32_t
 mlx5_mr_lookup_cache(struct mlx5_mr_share_cache *share_cache,
 		     struct mr_cache_entry *entry, uintptr_t addr);
-__rte_experimental
+__rte_internal
 struct mlx5_mr *
 mlx5_mr_lookup_list(struct mlx5_mr_share_cache *share_cache,
 		    struct mr_cache_entry *entry, uintptr_t addr);
-__rte_experimental
+__rte_internal
 struct mlx5_mr *
 mlx5_create_mr_ext(struct ibv_pd *pd, uintptr_t addr, size_t len,
 		   int socket_id);
-__rte_experimental
+__rte_internal
 uint32_t
 mlx5_mr_create_primary(struct ibv_pd *pd,
 		       struct mlx5_mr_share_cache *share_cache,

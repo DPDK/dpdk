@@ -300,52 +300,75 @@ struct mlx5_devx_qp_attr {
 
 /* mlx5_devx_cmds.c */
 
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx,
 						       uint32_t bulk_sz);
+__rte_internal
 int mlx5_devx_cmd_destroy(struct mlx5_devx_obj *obj);
+__rte_internal
 int mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
 				     int clear, uint32_t n_counters,
 				     uint64_t *pkts, uint64_t *bytes,
 				     uint32_t mkey, void *addr,
 				     struct mlx5dv_devx_cmd_comp *cmd_comp,
 				     uint64_t async_id);
+__rte_internal
 int mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
 				 struct mlx5_hca_attr *attr);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_mkey_create(struct ibv_context *ctx,
 					      struct mlx5_devx_mkey_attr *attr);
+__rte_internal
 int mlx5_devx_get_out_command_status(void *out);
+__rte_internal
 int mlx5_devx_cmd_qp_query_tis_td(struct ibv_qp *qp, uint32_t tis_num,
 				  uint32_t *tis_td);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_rq(struct ibv_context *ctx,
 				       struct mlx5_devx_create_rq_attr *rq_attr,
 				       int socket);
+__rte_internal
 int mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 			    struct mlx5_devx_modify_rq_attr *rq_attr);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_tir(struct ibv_context *ctx,
 					   struct mlx5_devx_tir_attr *tir_attr);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_rqt(struct ibv_context *ctx,
 					   struct mlx5_devx_rqt_attr *rqt_attr);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_sq(struct ibv_context *ctx,
 				      struct mlx5_devx_create_sq_attr *sq_attr);
+__rte_internal
 int mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
 			    struct mlx5_devx_modify_sq_attr *sq_attr);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_tis(struct ibv_context *ctx,
 					   struct mlx5_devx_tis_attr *tis_attr);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_td(struct ibv_context *ctx);
+__rte_internal
 int mlx5_devx_cmd_flow_dump(void *fdb_domain, void *rx_domain, void *tx_domain,
 			    FILE *file);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_cq(struct ibv_context *ctx,
 					      struct mlx5_devx_cq_attr *attr);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_virtq(struct ibv_context *ctx,
 					     struct mlx5_devx_virtq_attr *attr);
+__rte_internal
 int mlx5_devx_cmd_modify_virtq(struct mlx5_devx_obj *virtq_obj,
 			       struct mlx5_devx_virtq_attr *attr);
+__rte_internal
 int mlx5_devx_cmd_query_virtq(struct mlx5_devx_obj *virtq_obj,
 			      struct mlx5_devx_virtq_attr *attr);
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_qp(struct ibv_context *ctx,
 					      struct mlx5_devx_qp_attr *attr);
+__rte_internal
 int mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp,
 				  uint32_t qp_st_mod_op, uint32_t remote_qp_id);
+__rte_internal
 int mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 			     struct mlx5_devx_rqt_attr *rqt_attr);
 

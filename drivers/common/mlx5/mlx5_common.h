@@ -196,6 +196,7 @@ check_cqe(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
 	return MLX5_CQE_STATUS_SW_OWN;
 }
 
+__rte_internal
 int mlx5_dev_to_pci_addr(const char *dev_path, struct rte_pci_addr *pci_addr);
 
 #define MLX5_CLASS_ARG_NAME "class"
@@ -206,7 +207,9 @@ enum mlx5_class {
 	MLX5_CLASS_INVALID,
 };
 
+__rte_internal
 enum mlx5_class mlx5_class_get(struct rte_devargs *devargs);
+__rte_internal
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 

@@ -79,20 +79,20 @@ mp_init_msg(struct mlx5_mp_id *mp_id, struct rte_mp_msg *msg,
 	param->port_id = mp_id->port_id;
 }
 
-__rte_experimental
+__rte_internal
 int mlx5_mp_init_primary(const char *name, const rte_mp_t primary_action);
-__rte_experimental
+__rte_internal
 void mlx5_mp_uninit_primary(const char *name);
-__rte_experimental
+__rte_internal
 int mlx5_mp_init_secondary(const char *name, const rte_mp_t secondary_action);
-__rte_experimental
+__rte_internal
 void mlx5_mp_uninit_secondary(const char *name);
-__rte_experimental
+__rte_internal
 int mlx5_mp_req_mr_create(struct mlx5_mp_id *mp_id, uintptr_t addr);
-__rte_experimental
+__rte_internal
 int mlx5_mp_req_queue_state_modify(struct mlx5_mp_id *mp_id,
 				   struct mlx5_mp_arg_queue_state_modify *sm);
-__rte_experimental
+__rte_internal
 int mlx5_mp_req_verbs_cmd_fd(struct mlx5_mp_id *mp_id);
 
 #endif /* RTE_PMD_MLX5_COMMON_MP_H_ */
