@@ -824,17 +824,24 @@ power_freq_scaleup_heuristic(unsigned lcore_id,
 static int
 sleep_until_rx_interrupt(int num)
 {
+	/*
+	 * we want to track when we are woken up by traffic so that we can go
+	 * back to sleep again without log spamming.
+	 */
+	static bool timeout;
 	struct rte_epoll_event event[num];
 	int n, i;
 	uint16_t port_id;
 	uint8_t queue_id;
 	void *data;
 
-	RTE_LOG(INFO, L3FWD_POWER,
-		"lcore %u sleeps until interrupt triggers\n",
-		rte_lcore_id());
+	if (!timeout) {
+		RTE_LOG(INFO, L3FWD_POWER,
+				"lcore %u sleeps until interrupt triggers\n",
+				rte_lcore_id());
+	}
 
-	n = rte_epoll_wait(RTE_EPOLL_PER_THREAD, event, num, -1);
+	n = rte_epoll_wait(RTE_EPOLL_PER_THREAD, event, num, 10);
 	for (i = 0; i < n; i++) {
 		data = event[i].epdata.data;
 		port_id = ((uintptr_t)data) >> CHAR_BIT;
@@ -845,6 +852,7 @@ sleep_until_rx_interrupt(int num)
 			" port %d queue %d\n",
 			rte_lcore_id(), port_id, queue_id);
 	}
+	timeout = n == 0;
 
 	return 0;
 }
@@ -1307,7 +1315,8 @@ start_rx:
 					/**
 					 * start receiving packets immediately
 					 */
-					goto start_rx;
+					if (likely(!is_done()))
+						goto start_rx;
 				}
 			}
 			stats[lcore_id].sleep_time += lcore_idle_hint;
