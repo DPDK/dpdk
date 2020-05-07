@@ -2404,10 +2404,11 @@ bnxt_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 	uint8_t fw_major = (bp->fw_ver >> 24) & 0xff;
 	uint8_t fw_minor = (bp->fw_ver >> 16) & 0xff;
 	uint8_t fw_updt = (bp->fw_ver >> 8) & 0xff;
+	uint8_t fw_rsvd = bp->fw_ver & 0xff;
 	int ret;
 
-	ret = snprintf(fw_version, fw_size, "%d.%d.%d",
-			fw_major, fw_minor, fw_updt);
+	ret = snprintf(fw_version, fw_size, "%d.%d.%d.%d",
+			fw_major, fw_minor, fw_updt, fw_rsvd);
 
 	ret += 1; /* add the size of '\0' */
 	if (fw_size < (uint32_t)ret)
