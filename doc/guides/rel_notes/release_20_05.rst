@@ -195,6 +195,12 @@ New Features
   Added support for plain SHA-1, SHA-224, SHA-256, SHA-384 and SHA-512 hashes
   to QAT PMD.
 
+* **Added AES-GCM/GMAC J0 support to QAT PMD.**
+
+  Added support for AES-GCM/GMAC J0 to Intel QuickAssist Technology PMD. User can
+  use this feature by passing zero length IV in appropriate xform. For more
+  info please refer to rte_crypto_sym.h J0 comments.
+
 * **Added QAT intermediate buffer too small handling in QAT compression PMD.**
 
   Added a special way of buffer handling when internal QAT intermediate buffer
