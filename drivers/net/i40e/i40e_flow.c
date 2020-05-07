@@ -4510,6 +4510,7 @@ i40e_flow_parse_rss_pattern(__rte_unused struct rte_eth_dev *dev,
 		{ pattern_fdir_ipv6_tcp, ETH_RSS_NONFRAG_IPV6_TCP },
 		{ pattern_fdir_ipv6_udp, ETH_RSS_NONFRAG_IPV6_UDP },
 		{ pattern_fdir_ipv6_sctp, ETH_RSS_NONFRAG_IPV6_SCTP },
+		{ pattern_ethertype, ETH_RSS_L2_PAYLOAD },
 		{ pattern_fdir_ipv6_esp, ETH_RSS_ESP },
 		{ pattern_fdir_ipv6_udp_esp, ETH_RSS_ESP },
 	};
@@ -4543,8 +4544,7 @@ i40e_flow_parse_rss_pattern(__rte_unused struct rte_eth_dev *dev,
 		if (i40e_match_pattern(i40e_rss_pctype_patterns[i].item_array,
 					items)) {
 			p_info->types = i40e_rss_pctype_patterns[i].type;
-			rte_free(items);
-			return 0;
+			break;
 		}
 	}
 
@@ -4579,11 +4579,9 @@ i40e_flow_parse_rss_pattern(__rte_unused struct rte_eth_dev *dev,
 			}
 			break;
 		default:
-			rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item,
-					"Not support range");
-			return -rte_errno;
+			p_info->action_flag = 0;
+			memset(info, 0, sizeof(struct i40e_queue_regions));
+			return 0;
 		}
 	}
 
@@ -4639,7 +4637,7 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	if (p_info.action_flag) {
+	if (p_info.action_flag && rss->queue_num) {
 		for (n = 0; n < 64; n++) {
 			if (rss->types & (hf_bit << n)) {
 				conf_info->region[0].hw_flowtype[0] = n;
