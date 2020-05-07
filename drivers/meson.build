@@ -62,17 +62,14 @@ foreach class:dpdk_driver_classes
 		ext_deps = []
 		pkgconfig_extra_libs = []
 
-		# pull in driver directory which should assign to each of the above
-		subdir(drv_path)
+		if disabled_drivers.contains(drv_path)
+			build = false
+			reason = 'Explicitly disabled via build config'
+		else
+			# pull in driver directory which should update all the local variables
+			subdir(drv_path)
+		endif
 
-		# skip disabled drivers. For meson 0.49 change this to use
-		# "in" keyword
-		foreach disable_path: disabled_drivers
-			if drv_path == disable_path
-				build = false
-				reason = 'Explicitly disabled via build config'
-			endif
-		endforeach
 		if build
 			# get dependency objs from strings
 			shared_deps = ext_deps
