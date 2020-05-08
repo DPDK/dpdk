@@ -669,7 +669,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 						DPNI_CP_CONGESTION_GROUP,
 						DPNI_QUEUE_RX,
 						dpaa2_q->tc_index,
-						flow_id, &taildrop);
+						dpaa2_q->cgid, &taildrop);
 		} else {
 			/*enabling per rx queue congestion control */
 			taildrop.threshold = CONG_THRESHOLD_RX_BYTES_Q;
@@ -696,7 +696,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
 					DPNI_CP_CONGESTION_GROUP, DPNI_QUEUE_RX,
 					dpaa2_q->tc_index,
-					flow_id, &taildrop);
+					dpaa2_q->cgid, &taildrop);
 		} else {
 			ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
 					DPNI_CP_QUEUE, DPNI_QUEUE_RX,
