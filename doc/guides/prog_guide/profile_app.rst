@@ -57,11 +57,16 @@ For more derails refer to the
 `ARM64 specific PMU events enumeration <http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.100095_0002_04_en/way1382543438508.html>`_.
 
 
-High-resolution cycle counter
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Low-resolution generic counter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The default ``cntvct_el0`` based ``rte_rdtsc()`` provides a portable means to
-get a wall clock counter in user space. Typically it runs at <= 100MHz.
+get a wall clock counter in user space. Typically it runs at a lower clock frequency than the CPU clock frequency.
+Cycles counted using this method should be scaled to CPU clock frequency.
+
+
+High-resolution cycle counter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The alternative method to enable ``rte_rdtsc()`` for a high resolution wall
 clock counter is through the ARMv8 PMU subsystem. The PMU cycle counter runs
