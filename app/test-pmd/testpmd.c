@@ -1960,11 +1960,14 @@ fwd_stats_display(void)
 	       "%s\n",
 	       acc_stats_border, acc_stats_border);
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
+#define CYC_PER_MHZ 1E6
 	if (total_recv > 0)
 		printf("\n  CPU cycles/packet=%u (total cycles="
-		       "%"PRIu64" / total RX packets=%"PRIu64")\n",
+		       "%"PRIu64" / total RX packets=%"PRIu64") at %"PRIu64
+		       " MHz Clock\n",
 		       (unsigned int)(fwd_cycles / total_recv),
-		       fwd_cycles, total_recv);
+		       fwd_cycles, total_recv,
+		       (uint64_t)(rte_get_tsc_hz() / CYC_PER_MHZ));
 #endif
 }
 
