@@ -290,9 +290,15 @@ eth_null_rx(void *queue __rte_unused,
 #define NSEC_PER_SEC	1e9
 
 static inline void
-calculate_timestamp(struct timeval *ts) {
+calculate_timestamp(const struct rte_mbuf *mbuf, struct timeval *ts) {
 	uint64_t cycles;
 	struct timeval cur_time;
+
+	if (mbuf->ol_flags & PKT_RX_TIMESTAMP) {
+		/* TODO: convert mbuf->timestamp into nanoseconds instead.
+                 * See rte_eth_read_clock().
+                 */
+	}
 
 	cycles = rte_get_timer_cycles() - start_cycles;
 	cur_time.tv_sec = cycles / hz;
@@ -339,7 +345,7 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			caplen = sizeof(temp_data);
 		}
 
-		calculate_timestamp(&header.ts);
+		calculate_timestamp(mbuf, &header.ts);
 		header.len = len;
 		header.caplen = caplen;
 		/* rte_pktmbuf_read() returns a pointer to the data directly
