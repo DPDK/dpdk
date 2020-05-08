@@ -866,14 +866,18 @@ iavf_flow_process_filter(struct rte_eth_dev *dev,
 
 	*engine = iavf_parse_engine(ad, flow, &vf->rss_parser_list, pattern,
 				    actions, error);
-	if (*engine != NULL)
+	if (*engine)
 		return 0;
 
 	*engine = iavf_parse_engine(ad, flow, &vf->dist_parser_list, pattern,
 				    actions, error);
 
-	if (*engine == NULL)
-		return -EINVAL;
+	if (!*engine) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to create parser engine.");
+		return -rte_errno;
+	}
 
 	return 0;
 }

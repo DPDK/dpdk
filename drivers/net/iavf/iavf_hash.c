@@ -1133,7 +1133,11 @@ iavf_hash_create(__rte_unused struct iavf_adapter *ad,
 		flow->rule = rss_cfg;
 	} else {
 		PMD_DRV_LOG(ERR, "fail to add RSS configure");
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to add rss rule.");
 		rte_free(rss_cfg);
+		return -rte_errno;
 	}
 
 	rte_free(meta);
@@ -1152,9 +1156,13 @@ iavf_hash_destroy(__rte_unused struct iavf_adapter *ad,
 	rss_cfg = (struct virtchnl_rss_cfg *)flow->rule;
 
 	ret = iavf_add_del_rss_cfg(ad, rss_cfg, false);
-	if (ret)
+	if (ret) {
 		PMD_DRV_LOG(ERR, "fail to del RSS configure");
-
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to delete rss rule.");
+		return -rte_errno;
+	}
 	return ret;
 }
 
