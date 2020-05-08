@@ -27,19 +27,20 @@ int qbman_fq_query_state(struct qbman_swp *s, uint32_t fqid,
 			 struct qbman_fq_query_np_rslt *r)
 {
 	struct qbman_fq_query_desc *p;
+	struct qbman_fq_query_np_rslt *var;
 
 	p = (struct qbman_fq_query_desc *)qbman_swp_mc_start(s);
 	if (!p)
 		return -EBUSY;
 
 	p->fqid = fqid;
-	*r = *(struct qbman_fq_query_np_rslt *)qbman_swp_mc_complete(s, p,
-						QBMAN_FQ_QUERY_NP);
-	if (!r) {
+	var = qbman_swp_mc_complete(s, p, QBMAN_FQ_QUERY_NP);
+	if (!var) {
 		pr_err("qbman: Query FQID %d NP fields failed, no response\n",
 		       fqid);
 		return -EIO;
 	}
+	*r = *var;
 
 	/* Decode the outcome */
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_FQ_QUERY_NP);
