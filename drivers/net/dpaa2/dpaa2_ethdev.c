@@ -553,9 +553,6 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
 
-	/* update the current status */
-	dpaa2_dev_link_update(dev, 0);
-
 	return 0;
 }
 
@@ -1757,6 +1754,7 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	/* changing tx burst function to start enqueues */
 	dev->tx_pkt_burst = dpaa2_dev_tx;
 	dev->data->dev_link.link_status = state.up;
+	dev->data->dev_link.link_speed = state.rate;
 
 	if (state.up)
 		DPAA2_PMD_INFO("Port %d Link is Up", dev->data->port_id);
