@@ -70,7 +70,9 @@ dpaa2_cmdif_enqueue_bufs(struct rte_rawdev *dev,
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
-			DPAA2_CMDIF_ERR("Failure in affining portal\n");
+			DPAA2_CMDIF_ERR(
+				"Failed to allocate IO portal, tid: %d\n",
+				rte_gettid());
 			return 0;
 		}
 	}
@@ -133,7 +135,9 @@ dpaa2_cmdif_dequeue_bufs(struct rte_rawdev *dev,
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
-			DPAA2_CMDIF_ERR("Failure in affining portal\n");
+			DPAA2_CMDIF_ERR(
+				"Failed to allocate IO portal, tid: %d\n",
+				rte_gettid());
 			return 0;
 		}
 	}

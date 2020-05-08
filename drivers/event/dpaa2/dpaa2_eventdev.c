@@ -74,7 +74,9 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 		/* Affine current thread context to a qman portal */
 		ret = dpaa2_affine_qbman_swp();
 		if (ret < 0) {
-			DPAA2_EVENTDEV_ERR("Failure in affining portal");
+			DPAA2_EVENTDEV_ERR(
+				"Failed to allocate IO portal, tid: %d\n",
+				rte_gettid());
 			return 0;
 		}
 	}
@@ -273,7 +275,9 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 		/* Affine current thread context to a qman portal */
 		ret = dpaa2_affine_qbman_swp();
 		if (ret < 0) {
-			DPAA2_EVENTDEV_ERR("Failure in affining portal");
+			DPAA2_EVENTDEV_ERR(
+				"Failed to allocate IO portal, tid: %d\n",
+				rte_gettid());
 			return 0;
 		}
 	}

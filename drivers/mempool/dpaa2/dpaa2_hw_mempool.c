@@ -69,7 +69,9 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
-			DPAA2_MEMPOOL_ERR("Failure in affining portal");
+			DPAA2_MEMPOOL_ERR(
+				"Failed to allocate IO portal, tid: %d\n",
+				rte_gettid());
 			goto err1;
 		}
 	}
@@ -198,7 +200,9 @@ rte_dpaa2_mbuf_release(struct rte_mempool *pool __rte_unused,
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret != 0) {
-			DPAA2_MEMPOOL_ERR("Failed to allocate IO portal");
+			DPAA2_MEMPOOL_ERR(
+				"Failed to allocate IO portal, tid: %d\n",
+				rte_gettid());
 			return;
 		}
 	}
@@ -317,7 +321,9 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret != 0) {
-			DPAA2_MEMPOOL_ERR("Failed to allocate IO portal");
+			DPAA2_MEMPOOL_ERR(
+				"Failed to allocate IO portal, tid: %d\n",
+				rte_gettid());
 			return ret;
 		}
 	}
