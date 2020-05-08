@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2020 NXP
  */
 
 #include <sys/queue.h>
@@ -99,6 +99,7 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	case RTE_FLOW_ITEM_TYPE_IPV4:
 	{
 		const struct rte_flow_item_ipv4 *spec;
+
 		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_IP;
 		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_IP_PROTO;
 		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
@@ -113,10 +114,31 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	}
 	break;
 
+	case RTE_FLOW_ITEM_TYPE_UDP:
+	{
+		const struct rte_flow_item_udp *spec;
+		uint16_t udp_dst_port;
+
+		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_UDP;
+		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_UDP_PORT_DST;
+		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
+		kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FULL_FIELD;
+		kg_cfg.num_extracts = 1;
+
+		spec = (const struct rte_flow_item_udp *)pattern[0]->spec;
+		udp_dst_port = rte_constant_bswap16(spec->hdr.dst_port);
+		memcpy((void *)key_iova, (const void *)&udp_dst_port,
+							sizeof(rte_be16_t));
+		memcpy(mask_iova, pattern[0]->mask, sizeof(uint16_t));
+		key_size = sizeof(uint16_t);
+	}
+	break;
+
 	case RTE_FLOW_ITEM_TYPE_ETH:
 	{
 		const struct rte_flow_item_eth *spec;
 		uint16_t eth_type;
+
 		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_ETH;
 		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_ETH_TYPE;
 		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
