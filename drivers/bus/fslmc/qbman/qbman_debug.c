@@ -20,7 +20,7 @@ struct qbman_fq_query_desc {
 	uint8_t verb;
 	uint8_t reserved[3];
 	uint32_t fqid;
-	uint8_t reserved2[57];
+	uint8_t reserved2[56];
 };
 
 int qbman_fq_query_state(struct qbman_swp *s, uint32_t fqid,
