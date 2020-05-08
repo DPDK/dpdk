@@ -275,6 +275,15 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_vmdq_pools = ETH_16_POOLS;
 	dev_info->flow_type_rss_offloads = DPAA2_RSS_OFFLOAD_ALL;
 
+	dev_info->default_rxportconf.burst_size = dpaa2_dqrr_size;
+	/* same is rx size for best perf */
+	dev_info->default_txportconf.burst_size = dpaa2_dqrr_size;
+
+	dev_info->default_rxportconf.nb_queues = 1;
+	dev_info->default_txportconf.nb_queues = 1;
+	dev_info->default_txportconf.ring_size = CONG_ENTER_TX_THRESHOLD;
+	dev_info->default_rxportconf.ring_size = DPAA2_RX_DEFAULT_NBDESC;
+
 	return 0;
 }
 

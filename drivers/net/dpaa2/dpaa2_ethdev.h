@@ -24,6 +24,8 @@
 #define MAX_TX_QUEUES		16
 #define MAX_DPNI		8
 
+#define DPAA2_RX_DEFAULT_NBDESC 512
+
 /*default tc to be used for ,congestion, distribution etc configuration. */
 #define DPAA2_DEF_TC		0
 
