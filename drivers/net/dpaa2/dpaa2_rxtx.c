@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2020 NXP
  *
  */
 
@@ -324,8 +324,8 @@ static inline struct rte_mbuf *__rte_hot
 eth_fd_to_mbuf(const struct qbman_fd *fd,
 	       int port_id)
 {
-	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(
-		DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)),
+	void *iova_addr = DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(iova_addr,
 		     rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
 
 	/* need to repopulated some of the fields,
@@ -350,8 +350,7 @@ eth_fd_to_mbuf(const struct qbman_fd *fd,
 		dpaa2_dev_rx_parse_new(mbuf, fd);
 	else
 		mbuf->packet_type = dpaa2_dev_rx_parse(mbuf,
-			(void *)((size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
-			 + DPAA2_FD_PTA_SIZE));
+			(void *)((size_t)iova_addr + DPAA2_FD_PTA_SIZE));
 
 	DPAA2_PMD_DP_DEBUG("to mbuf - mbuf =%p, mbuf->buf_addr =%p, off = %d,"
 		"fd_off=%d fd =%" PRIx64 ", meta = %d  bpid =%d, len=%d\n",
@@ -518,7 +517,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	int ret, num_rx = 0, pull_size;
 	uint8_t pending, status;
 	struct qbman_swp *swp;
-	const struct qbman_fd *fd, *next_fd;
+	const struct qbman_fd *fd;
 	struct qbman_pull_desc pulldesc;
 	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
@@ -617,12 +616,15 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 		fd = qbman_result_DQ_fd(dq_storage);
 
+#ifndef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
 		if (dpaa2_svr_family != SVR_LX2160A) {
-			next_fd = qbman_result_DQ_fd(dq_storage + 1);
+			const struct qbman_fd *next_fd =
+				qbman_result_DQ_fd(dq_storage + 1);
 			/* Prefetch Annotation address for the parse results */
-			rte_prefetch0((void *)(size_t)(DPAA2_GET_FD_ADDR(
-				      next_fd) + DPAA2_FD_PTA_SIZE + 16));
+			rte_prefetch0(DPAA2_IOVA_TO_VADDR((DPAA2_GET_FD_ADDR(
+				next_fd) + DPAA2_FD_PTA_SIZE + 16)));
 		}
+#endif
 
 		if (unlikely(DPAA2_FD_GET_FORMAT(fd) == qbman_fd_sg))
 			bufs[num_rx] = eth_sg_fd_to_mbuf(fd, eth_data->port_id);
@@ -753,7 +755,7 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	int ret, num_rx = 0, next_pull = nb_pkts, num_pulled;
 	uint8_t pending, status;
 	struct qbman_swp *swp;
-	const struct qbman_fd *fd, *next_fd;
+	const struct qbman_fd *fd;
 	struct qbman_pull_desc pulldesc;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
 
@@ -819,11 +821,19 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			}
 			fd = qbman_result_DQ_fd(dq_storage);
 
-			next_fd = qbman_result_DQ_fd(dq_storage + 1);
-			/* Prefetch Annotation address for the parse results */
-			rte_prefetch0(
-				(void *)(size_t)(DPAA2_GET_FD_ADDR(next_fd)
-					+ DPAA2_FD_PTA_SIZE + 16));
+#ifndef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
+			if (dpaa2_svr_family != SVR_LX2160A) {
+				const struct qbman_fd *next_fd =
+					qbman_result_DQ_fd(dq_storage + 1);
+
+				/* Prefetch Annotation address for the parse
+				 * results.
+				 */
+				rte_prefetch0((DPAA2_IOVA_TO_VADDR(
+					DPAA2_GET_FD_ADDR(next_fd) +
+					DPAA2_FD_PTA_SIZE + 16)));
+			}
+#endif
 
 			if (unlikely(DPAA2_FD_GET_FORMAT(fd) == qbman_fd_sg))
 				bufs[num_rx] = eth_sg_fd_to_mbuf(fd,

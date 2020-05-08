@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2020 NXP
  *
  */
 
@@ -395,8 +395,8 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 #else	/* RTE_LIBRTE_DPAA2_USE_PHYS_IOVA */
 
 #define DPAA2_MBUF_VADDR_TO_IOVA(mbuf) ((mbuf)->buf_addr)
-#define DPAA2_VADDR_TO_IOVA(_vaddr) (_vaddr)
-#define DPAA2_IOVA_TO_VADDR(_iova) (_iova)
+#define DPAA2_VADDR_TO_IOVA(_vaddr) (phys_addr_t)(_vaddr)
+#define DPAA2_IOVA_TO_VADDR(_iova) (void *)(_iova)
 #define DPAA2_MODIFY_IOVA_TO_VADDR(_mem, _type)
 
 #endif /* RTE_LIBRTE_DPAA2_USE_PHYS_IOVA */
