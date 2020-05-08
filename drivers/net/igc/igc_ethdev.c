@@ -2266,6 +2266,8 @@ eth_igc_rss_reta_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	RTE_BUILD_BUG_ON(ETH_RSS_RETA_SIZE_128 % IGC_RSS_RDT_REG_SIZE);
+
 	/* set redirection table */
 	for (i = 0; i < ETH_RSS_RETA_SIZE_128; i += IGC_RSS_RDT_REG_SIZE) {
 		union igc_rss_reta_reg reta, reg;
@@ -2278,7 +2280,8 @@ eth_igc_rss_reta_update(struct rte_eth_dev *dev,
 				IGC_RSS_RDT_REG_SIZE_MASK);
 
 		/* if no need to update the register */
-		if (!mask)
+		if (!mask ||
+		    shift > (RTE_RETA_GROUP_SIZE - IGC_RSS_RDT_REG_SIZE))
 			continue;
 
 		/* check mask whether need to read the register value first */
@@ -2289,6 +2292,7 @@ eth_igc_rss_reta_update(struct rte_eth_dev *dev,
 					IGC_RETA(i / IGC_RSS_RDT_REG_SIZE));
 
 		/* update the register */
+		RTE_BUILD_BUG_ON(sizeof(reta.bytes) != IGC_RSS_RDT_REG_SIZE);
 		for (j = 0; j < IGC_RSS_RDT_REG_SIZE; j++) {
 			if (mask & (1u << j))
 				reta.bytes[j] =
@@ -2318,6 +2322,8 @@ eth_igc_rss_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	RTE_BUILD_BUG_ON(ETH_RSS_RETA_SIZE_128 % IGC_RSS_RDT_REG_SIZE);
+
 	/* read redirection table */
 	for (i = 0; i < ETH_RSS_RETA_SIZE_128; i += IGC_RSS_RDT_REG_SIZE) {
 		union igc_rss_reta_reg reta;
@@ -2330,10 +2336,12 @@ eth_igc_rss_reta_query(struct rte_eth_dev *dev,
 				IGC_RSS_RDT_REG_SIZE_MASK);
 
 		/* if no need to read register */
-		if (!mask)
+		if (!mask ||
+		    shift > (RTE_RETA_GROUP_SIZE - IGC_RSS_RDT_REG_SIZE))
 			continue;
 
 		/* read register and get the queue index */
+		RTE_BUILD_BUG_ON(sizeof(reta.bytes) != IGC_RSS_RDT_REG_SIZE);
 		reta.dword = IGC_READ_REG_LE_VALUE(hw,
 				IGC_RETA(i / IGC_RSS_RDT_REG_SIZE));
 		for (j = 0; j < IGC_RSS_RDT_REG_SIZE; j++) {
