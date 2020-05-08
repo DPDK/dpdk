@@ -16891,8 +16891,10 @@ cmd_ddp_get_list_parsed(
 #ifdef RTE_LIBRTE_I40E_PMD
 	size = PROFILE_INFO_SIZE * MAX_PROFILE_NUM + 4;
 	p_list = (struct rte_pmd_i40e_profile_list *)malloc(size);
-	if (!p_list)
+	if (!p_list) {
 		printf("%s: Failed to malloc buffer\n", __func__);
+		return;
+	}
 
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_get_ddp_list(res->port_id,
