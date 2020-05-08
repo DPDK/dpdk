@@ -284,6 +284,13 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txportconf.ring_size = CONG_ENTER_TX_THRESHOLD;
 	dev_info->default_rxportconf.ring_size = DPAA2_RX_DEFAULT_NBDESC;
 
+	if (dpaa2_svr_family == SVR_LX2160A) {
+		dev_info->speed_capa |= ETH_LINK_SPEED_25G |
+				ETH_LINK_SPEED_40G |
+				ETH_LINK_SPEED_50G |
+				ETH_LINK_SPEED_100G;
+	}
+
 	return 0;
 }
 
