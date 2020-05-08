@@ -891,8 +891,6 @@ dpaa2_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct qbman_fq_query_np_rslt state;
 	uint32_t frame_cnt = 0;
 
-	PMD_INIT_FUNC_TRACE();
-
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
@@ -908,7 +906,7 @@ dpaa2_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	if (qbman_fq_query_state(swp, dpaa2_q->fqid, &state) == 0) {
 		frame_cnt = qbman_fq_state_frame_count(&state);
-		DPAA2_PMD_DEBUG("RX frame count for q(%d) is %u",
+		DPAA2_PMD_DP_DEBUG("RX frame count for q(%d) is %u",
 				rx_queue_id, frame_cnt);
 	}
 	return frame_cnt;
