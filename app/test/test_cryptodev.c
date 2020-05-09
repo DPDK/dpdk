@@ -8484,13 +8484,15 @@ test_authenticated_encryption_sessionless(
 	uint8_t *ciphertext, *auth_tag;
 	uint16_t plaintext_pad_len;
 	uint8_t key[tdata->key.len + 1];
+	struct rte_cryptodev_info dev_info;
 
-	/* This test is for AESNI MB and AESNI GCM PMDs only */
-	if ((gbl_driver_id != rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD))) &&
-			(gbl_driver_id != rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD))))
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYM_SESSIONLESS)) {
+		printf("Device doesn't support Sessionless ops.\n");
 		return -ENOTSUP;
+	}
 
 	/* not supported with CPU crypto */
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
@@ -8584,13 +8586,15 @@ test_authenticated_decryption_sessionless(
 	int retval;
 	uint8_t *plaintext;
 	uint8_t key[tdata->key.len + 1];
+	struct rte_cryptodev_info dev_info;
 
-	/* This test is for AESNI MB and AESNI GCM PMDs only */
-	if ((gbl_driver_id != rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD))) &&
-			(gbl_driver_id != rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD))))
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYM_SESSIONLESS)) {
+		printf("Device doesn't support Sessionless ops.\n");
 		return -ENOTSUP;
+	}
 
 	/* not supported with CPU crypto */
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
