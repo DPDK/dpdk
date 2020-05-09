@@ -1529,8 +1529,9 @@ static void hinic_deinit_mac_addr(struct rte_eth_dev *eth_dev)
 
 static int hinic_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	int ret = 0;
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	uint32_t frame_size;
+	int ret = 0;
 
 	PMD_DRV_LOG(INFO, "Set port mtu, port_id: %d, mtu: %d, max_pkt_len: %d",
 			dev->data->port_id, mtu, HINIC_MTU_TO_PKTLEN(mtu));
@@ -1548,7 +1549,15 @@ static int hinic_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	/* update max frame size */
-	dev->data->dev_conf.rxmode.max_rx_pkt_len = HINIC_MTU_TO_PKTLEN(mtu);
+	frame_size = HINIC_MTU_TO_PKTLEN(mtu);
+	if (frame_size > RTE_ETHER_MAX_LEN)
+		dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
+		dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 	nic_dev->mtu_size = mtu;
 
 	return ret;
