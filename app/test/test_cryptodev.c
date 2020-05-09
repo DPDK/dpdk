@@ -5212,6 +5212,19 @@ test_zuc_auth_cipher(const struct wireless_test_data *tdata,
 		printf("Device doesn't support digest encrypted.\n");
 		return -ENOTSUP;
 	}
+	if (op_mode == IN_PLACE) {
+		if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+			printf("Device doesn't support in-place scatter-gather "
+					"in both input and output mbufs.\n");
+			return -ENOTSUP;
+		}
+	} else {
+		if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
+			printf("Device doesn't support out-of-place scatter-gather "
+					"in both input and output mbufs.\n");
+			return -ENOTSUP;
+		}
+	}
 
 	/* Create ZUC session */
 	retval = create_wireless_algo_auth_cipher_session(
