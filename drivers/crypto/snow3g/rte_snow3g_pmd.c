@@ -563,6 +563,7 @@ cryptodev_snow3g_create(const char *name,
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA |
 			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 
 	mgr = alloc_mb_mgr(0);

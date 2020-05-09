@@ -456,6 +456,8 @@ rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 /**< Support symmetric cpu-crypto processing */
 #define RTE_CRYPTODEV_FF_SYM_SESSIONLESS		(1ULL << 22)
 /**< Support symmetric session-less operations */
+#define RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA		(1ULL << 23)
+/**< Support operations on data which is not byte aligned */
 
 
 /**

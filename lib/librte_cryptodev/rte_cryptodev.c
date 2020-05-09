@@ -500,6 +500,8 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "ASYM_SESSIONLESS";
 	case RTE_CRYPTODEV_FF_SYM_SESSIONLESS:
 		return "SYM_SESSIONLESS";
+	case RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA:
+		return "NON_BYTE_ALIGNED_DATA";
 	default:
 		return NULL;
 	}
