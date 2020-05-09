@@ -7719,6 +7719,34 @@ test_PDCP_PROTO_SGL_oop_128B_32B(void)
 			pdcp_test_data_in_len[i]+4,
 			128, 32);
 }
+
+static int
+test_PDCP_PROTO_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+	int status;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SECURITY))
+		return -ENOTSUP;
+
+	status = test_PDCP_PROTO_cplane_encap_all();
+	status += test_PDCP_PROTO_cplane_decap_all();
+	status += test_PDCP_PROTO_uplane_encap_all();
+	status += test_PDCP_PROTO_uplane_decap_all();
+	status += test_PDCP_PROTO_SGL_in_place_32B();
+	status += test_PDCP_PROTO_SGL_oop_32B_128B();
+	status += test_PDCP_PROTO_SGL_oop_32B_40B();
+	status += test_PDCP_PROTO_SGL_oop_128B_32B();
+
+	if (status)
+		return TEST_FAILED;
+	else
+		return TEST_SUCCESS;
+}
 #endif
 
 static int
@@ -12379,6 +12407,10 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_verify_auth_aes_cmac_cipher_null_test_case_1),
 
+#ifdef RTE_LIBRTE_SECURITY
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_PDCP_PROTO_all),
+#endif
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
