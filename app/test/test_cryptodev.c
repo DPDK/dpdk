@@ -2461,12 +2461,16 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
 	uint8_t *plaintext;
+	struct rte_cryptodev_info dev_info;
 
-	/* QAT PMD supports byte-aligned data only */
-	if ((tdata->validAuthLenInBits.len % 8 != 0) &&
-			(gbl_driver_id == rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD))))
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
+			((tdata->validAuthLenInBits.len % 8) != 0)) {
+		printf("Device doesn't support NON-Byte Aligned Data.\n");
 		return -ENOTSUP;
+	}
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -2535,12 +2539,16 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
 	uint8_t *plaintext;
+	struct rte_cryptodev_info dev_info;
 
-	/* QAT PMD supports byte-aligned data only */
-	if ((tdata->validAuthLenInBits.len % 8 != 0) &&
-			(gbl_driver_id == rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD))))
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
+			((tdata->validAuthLenInBits.len % 8) != 0)) {
+		printf("Device doesn't support NON-Byte Aligned Data.\n");
 		return -ENOTSUP;
+	}
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3639,11 +3647,16 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	uint32_t plaintext_pad_len;
 	uint8_t extra_offset = 4;
 	uint8_t *expected_ciphertext_shifted;
+	struct rte_cryptodev_info dev_info;
 
-	/* QAT PMD supports byte-aligned data only */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)))
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
+			((tdata->validDataLenInBits.len % 8) != 0)) {
+		printf("Device doesn't support NON-Byte Aligned Data.\n");
 		return -ENOTSUP;
+	}
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
@@ -3897,7 +3910,18 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 	unsigned int plaintext_pad_len;
 	unsigned int plaintext_len;
 
+	struct rte_cryptodev_info dev_info;
 	struct rte_cryptodev_sym_capability_idx cap_idx;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
+			((tdata->validAuthLenInBits.len % 8 != 0) ||
+			(tdata->validDataLenInBits.len % 8 != 0))) {
+		printf("Device doesn't support NON-Byte Aligned Data.\n");
+		return -ENOTSUP;
+	}
 
 	/* Check if device supports ZUC EEA3 */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -5086,12 +5110,16 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 	uint8_t *plaintext;
 
 	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_cryptodev_info dev_info;
 
-	/* QAT PMD supports byte-aligned data only */
-	if ((tdata->validAuthLenInBits.len % 8 != 0) &&
-			(gbl_driver_id == rte_cryptodev_driver_id_get(
-				RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD))))
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA) &&
+			(tdata->validAuthLenInBits.len % 8 != 0)) {
+		printf("Device doesn't support NON-Byte Aligned Data.\n");
 		return -ENOTSUP;
+	}
 
 	/* Check if device supports ZUC EIA3 */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -6032,11 +6060,6 @@ test_zuc_hash_generate_test_case_6(void)
 static int
 test_zuc_hash_generate_test_case_7(void)
 {
-	/* This test is not for SW ZUC PMD */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_ZUC_PMD)))
-		return -ENOTSUP;
-
 	return test_zuc_authentication(&zuc_test_case_auth_2080b);
 }
 
@@ -6061,11 +6084,6 @@ test_zuc_cipher_auth_test_case_2(void)
 static int
 test_zuc_auth_cipher_test_case_1(void)
 {
-	/* This test is not for SW ZUC PMD */
-	if (gbl_driver_id == rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_ZUC_PMD)))
-		return -ENOTSUP;
-
 	return test_zuc_auth_cipher(
 		&zuc_auth_cipher_test_case_1, IN_PLACE, 0);
 }
