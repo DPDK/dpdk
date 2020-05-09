@@ -830,17 +830,13 @@ static int
 test_queue_pair_descriptor_setup(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	struct rte_cryptodev_info dev_info;
 	struct rte_cryptodev_qp_conf qp_conf = {
 		.nb_descriptors = MAX_NUM_OPS_INFLIGHT
 	};
-
 	uint16_t qp_id;
 
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
-
-	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
 			&ts_params->conf),
