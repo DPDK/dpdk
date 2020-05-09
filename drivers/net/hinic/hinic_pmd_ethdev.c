@@ -2812,8 +2812,12 @@ static int hinic_nic_dev_create(struct rte_eth_dev *eth_dev)
 	}
 
 	/* get nic capability */
-	if (!hinic_support_nic(nic_dev->hwdev, &nic_dev->nic_cap))
+	if (!hinic_support_nic(nic_dev->hwdev, &nic_dev->nic_cap)) {
+		PMD_DRV_LOG(ERR, "Hw doesn't support nic, dev_name: %s",
+			    eth_dev->data->name);
+		rc = -EINVAL;
 		goto nic_check_fail;
+	}
 
 	/* init root cla and function table */
 	rc = hinic_init_nicio(nic_dev->hwdev);
