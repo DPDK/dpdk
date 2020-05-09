@@ -99,6 +99,7 @@ struct hinic_hw_fdir_mask {
 	uint16_t tunnel_flag;
 	uint16_t tunnel_inner_src_port_mask;
 	uint16_t tunnel_inner_dst_port_mask;
+	uint16_t dst_ipv6_mask;
 };
 
 /* Flow Director attribute */
@@ -111,6 +112,7 @@ struct hinic_atr_input {
 	uint16_t tunnel_flag;
 	uint16_t tunnel_inner_src_port;
 	uint16_t tunnel_inner_dst_port;
+	uint8_t  dst_ipv6[16];
 };
 
 enum hinic_fdir_mode {
@@ -191,9 +193,60 @@ struct tag_tcam_key_mem {
 #endif
 };
 
+struct tag_tcam_key_ipv6_mem {
+#if (RTE_BYTE_ORDER == RTE_BIG_ENDIAN)
+		u32 rsvd0:16;
+		u32 ipv6_flag:1;
+		u32 protocol:7;
+		u32 function_id:8;
+
+		u32 dst_port:16;
+		u32 ipv6_key0:16;
+
+		u32 ipv6_key1:16;
+		u32 ipv6_key2:16;
+
+		u32 ipv6_key3:16;
+		u32 ipv6_key4:16;
+
+		u32 ipv6_key5:16;
+		u32 ipv6_key6:16;
+
+		u32 ipv6_key7:16;
+		u32 rsvd2:16;
+#else
+		u32 function_id:8;
+		u32 protocol:7;
+		u32 ipv6_flag:1;
+		u32 rsvd0:16;
+
+		u32 ipv6_key0:16;
+		u32 dst_port:16;
+
+		u32 ipv6_key2:16;
+		u32 ipv6_key1:16;
+
+		u32 ipv6_key4:16;
+		u32 ipv6_key3:16;
+
+		u32 ipv6_key6:16;
+		u32 ipv6_key5:16;
+
+		u32 rsvd2:16;
+		u32 ipv6_key7:16;
+#endif
+};
+
 struct tag_tcam_key {
-	struct tag_tcam_key_mem key_info;
-	struct tag_tcam_key_mem key_mask;
+	union {
+		struct tag_tcam_key_mem key_info;
+		struct tag_tcam_key_ipv6_mem key_info_ipv6;
+	};
+
+	union {
+		struct tag_tcam_key_mem key_mask;
+		struct tag_tcam_key_ipv6_mem key_mask_ipv6;
+	};
 };
 
 struct hinic_fdir_rule {

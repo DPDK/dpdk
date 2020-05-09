@@ -49,6 +49,7 @@
 #define IP_HEADER_PROTOCOL_TYPE_TCP     6
 #define IP_HEADER_PROTOCOL_TYPE_UDP     17
 #define IP_HEADER_PROTOCOL_TYPE_ICMP    1
+#define IP_HEADER_PROTOCOL_TYPE_ICMPV6  58
 
 #define FDIR_TCAM_NORMAL_PACKET         0
 #define FDIR_TCAM_TUNNEL_PACKET         1
@@ -61,6 +62,9 @@
 #define TCAM_PKT_VRRP		2
 #define TCAM_PKT_BGP_DPORT	3
 #define TCAM_PKT_LACP		4
+
+#define TCAM_DIP_IPV4_TYPE	0
+#define TCAM_DIP_IPV6_TYPE	1
 
 #define BGP_DPORT_ID		179
 #define IPPROTO_VRRP		112
@@ -836,7 +840,8 @@ static int hinic_normal_item_check_ether(const struct rte_flow_item **ip_item,
 		}
 		/* Check if the next not void item is IPv4 */
 		item = next_no_void_pattern(pattern, item);
-		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4) {
+		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+			item->type != RTE_FLOW_ITEM_TYPE_IPV6) {
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
 				"Not supported by fdir filter,support mac,ipv4");
@@ -855,7 +860,10 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 {
 	const struct rte_flow_item_ipv4 *ipv4_spec;
 	const struct rte_flow_item_ipv4 *ipv4_mask;
+	const struct rte_flow_item_ipv6 *ipv6_spec;
+	const struct rte_flow_item_ipv6 *ipv6_mask;
 	const struct rte_flow_item *item = *in_out_item;
+	int i;
 
 	/* Get the IPv4 info */
 	if (item->type == RTE_FLOW_ITEM_TYPE_IPV4) {
@@ -921,6 +929,76 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 				"Not supported by fdir filter, support tcp, udp, end");
 			return -rte_errno;
 		}
+	} else if (item->type == RTE_FLOW_ITEM_TYPE_IPV6) {
+		/* Not supported last point for range */
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				item, "Not supported last point for range");
+			return -rte_errno;
+		}
+
+		if (!item->mask) {
+			memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Invalid fdir filter mask");
+			return -rte_errno;
+		}
+
+		ipv6_mask = (const struct rte_flow_item_ipv6 *)item->mask;
+
+		/* Only support dst addresses,  others should be masked */
+		if (ipv6_mask->hdr.vtc_flow ||
+		    ipv6_mask->hdr.payload_len ||
+		    ipv6_mask->hdr.proto ||
+		    ipv6_mask->hdr.hop_limits) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Not supported by fdir filter, support dst ipv6");
+			return -rte_errno;
+		}
+
+		/* check ipv6 src addr mask, ipv6 src addr is 16 bytes */
+		for (i = 0; i < 16; i++) {
+			if (ipv6_mask->hdr.src_addr[i] == UINT8_MAX) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM, item,
+					"Not supported by fdir filter, do not support src ipv6");
+				return -rte_errno;
+			}
+		}
+
+		if (!item->spec) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Not supported by fdir filter, ipv6 spec is NULL");
+			return -rte_errno;
+		}
+
+		for (i = 0; i < 16; i++) {
+			if (ipv6_mask->hdr.dst_addr[i] == UINT8_MAX)
+				rule->mask.dst_ipv6_mask |= 1 << i;
+		}
+
+		ipv6_spec = (const struct rte_flow_item_ipv6 *)item->spec;
+		rte_memcpy(rule->hinic_fdir.dst_ipv6,
+			   ipv6_spec->hdr.dst_addr, 16);
+
+		/*
+		 * Check if the next not void item is TCP or UDP or ICMP.
+		 */
+		item = next_no_void_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_ICMP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_ICMP6){
+			memset(rule, 0, sizeof(struct hinic_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Not supported by fdir filter, support tcp, udp, icmp");
+			return -rte_errno;
+		}
 	}
 
 	*in_out_item = item;
@@ -937,7 +1015,7 @@ static int hinic_normal_item_check_l4(const struct rte_flow_item **in_out_item,
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by normal fdir filter,not support l4");
+			item, "Not supported by normal fdir filter, not support l4");
 		return -rte_errno;
 	}
 
@@ -954,7 +1032,7 @@ static int hinic_normal_item_check_end(const struct rte_flow_item *item,
 		memset(rule, 0, sizeof(struct hinic_fdir_rule));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by fdir filter,support end");
+			item, "Not supported by fdir filter, support end");
 		return -rte_errno;
 	}
 
@@ -967,9 +1045,9 @@ static int hinic_check_normal_item_ele(const struct rte_flow_item *item,
 					struct rte_flow_error *error)
 {
 	if (hinic_normal_item_check_ether(&item, pattern, error) ||
-		hinic_normal_item_check_ip(&item, pattern, rule, error) ||
-		hinic_normal_item_check_l4(&item, pattern, rule, error) ||
-		hinic_normal_item_check_end(item, rule, error))
+	    hinic_normal_item_check_ip(&item, pattern, rule, error) ||
+	    hinic_normal_item_check_l4(&item, pattern, rule, error) ||
+	    hinic_normal_item_check_end(item, rule, error))
 		return -rte_errno;
 
 	return 0;
@@ -991,6 +1069,10 @@ hinic_tcam_normal_item_check_l4(const struct rte_flow_item **in_out_item,
 		rule->mode = HINIC_FDIR_MODE_TCAM;
 		rule->mask.proto_mask = UINT16_MAX;
 		rule->hinic_fdir.proto = IP_HEADER_PROTOCOL_TYPE_ICMP;
+	} else if (item->type == RTE_FLOW_ITEM_TYPE_ICMP6) {
+		rule->mode = HINIC_FDIR_MODE_TCAM;
+		rule->mask.proto_mask = UINT16_MAX;
+		rule->hinic_fdir.proto = IP_HEADER_PROTOCOL_TYPE_ICMPV6;
 	} else if (item->type == RTE_FLOW_ITEM_TYPE_ANY) {
 		rule->mode = HINIC_FDIR_MODE_TCAM;
 	} else if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
@@ -2378,7 +2460,7 @@ static inline int hinic_add_del_fdir_filter(struct rte_eth_dev *dev,
 						false, fdir_info.fdir_key, true,
 						fdir_info.fdir_flag);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Del fdir filter ailed, flag: 0x%x, qid: 0x%x, key: 0x%x",
+			PMD_DRV_LOG(ERR, "Del fdir filter failed, flag: 0x%x, qid: 0x%x, key: 0x%x",
 				fdir_info.fdir_flag, fdir_info.qid,
 				fdir_info.fdir_key);
 			return -ENOENT;
@@ -2420,10 +2502,9 @@ static void tcam_key_calculate(struct tag_tcam_key *tcam_key,
 		TCAM_FLOW_KEY_SIZE);
 }
 
-static int hinic_fdir_tcam_info_init(struct rte_eth_dev *dev,
-				struct hinic_fdir_rule *rule,
-				struct tag_tcam_key *tcam_key,
-				struct tag_tcam_cfg_rule *fdir_tcam_rule)
+static int hinic_fdir_tcam_ipv4_init(struct rte_eth_dev *dev,
+				     struct hinic_fdir_rule *rule,
+				     struct tag_tcam_key *tcam_key)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
@@ -2502,8 +2583,106 @@ static int hinic_fdir_tcam_info_init(struct rte_eth_dev *dev,
 	}
 
 	tcam_key->key_mask.function_id = UINT16_MAX;
+	tcam_key->key_info.function_id =
+		hinic_global_func_id(nic_dev->hwdev) & 0x7fff;
 
-	tcam_key->key_info.function_id = hinic_global_func_id(nic_dev->hwdev);
+	return 0;
+}
+
+static int hinic_fdir_tcam_ipv6_init(struct rte_eth_dev *dev,
+				     struct hinic_fdir_rule *rule,
+				     struct tag_tcam_key *tcam_key)
+{
+	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+
+	switch (rule->mask.dst_ipv6_mask) {
+	case UINT16_MAX:
+		tcam_key->key_info_ipv6.ipv6_key0 =
+			((rule->hinic_fdir.dst_ipv6[0] << 8) & 0xff00) |
+			rule->hinic_fdir.dst_ipv6[1];
+		tcam_key->key_info_ipv6.ipv6_key1 =
+			((rule->hinic_fdir.dst_ipv6[2] << 8) & 0xff00) |
+			rule->hinic_fdir.dst_ipv6[3];
+		tcam_key->key_info_ipv6.ipv6_key2 =
+			((rule->hinic_fdir.dst_ipv6[4] << 8) & 0xff00) |
+			rule->hinic_fdir.dst_ipv6[5];
+		tcam_key->key_info_ipv6.ipv6_key3 =
+			((rule->hinic_fdir.dst_ipv6[6] << 8) & 0xff00) |
+			rule->hinic_fdir.dst_ipv6[7];
+		tcam_key->key_info_ipv6.ipv6_key4 =
+			((rule->hinic_fdir.dst_ipv6[8] << 8) & 0xff00) |
+			rule->hinic_fdir.dst_ipv6[9];
+		tcam_key->key_info_ipv6.ipv6_key5 =
+			((rule->hinic_fdir.dst_ipv6[10] << 8) & 0xff00) |
+			rule->hinic_fdir.dst_ipv6[11];
+		tcam_key->key_info_ipv6.ipv6_key6 =
+			((rule->hinic_fdir.dst_ipv6[12] << 8) & 0xff00) |
+			rule->hinic_fdir.dst_ipv6[13];
+		tcam_key->key_info_ipv6.ipv6_key7 =
+			((rule->hinic_fdir.dst_ipv6[14] << 8) & 0xff00) |
+			rule->hinic_fdir.dst_ipv6[15];
+		tcam_key->key_mask_ipv6.ipv6_key0 = UINT16_MAX;
+		tcam_key->key_mask_ipv6.ipv6_key1 = UINT16_MAX;
+		tcam_key->key_mask_ipv6.ipv6_key2 = UINT16_MAX;
+		tcam_key->key_mask_ipv6.ipv6_key3 = UINT16_MAX;
+		tcam_key->key_mask_ipv6.ipv6_key4 = UINT16_MAX;
+		tcam_key->key_mask_ipv6.ipv6_key5 = UINT16_MAX;
+		tcam_key->key_mask_ipv6.ipv6_key6 = UINT16_MAX;
+		tcam_key->key_mask_ipv6.ipv6_key7 = UINT16_MAX;
+		break;
+
+	case 0:
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "invalid dst_ipv6 mask");
+		return -EINVAL;
+	}
+
+	if (rule->mask.dst_port_mask > 0) {
+		tcam_key->key_info_ipv6.dst_port = rule->hinic_fdir.dst_port;
+		tcam_key->key_mask_ipv6.dst_port = rule->mask.dst_port_mask;
+	}
+
+	switch (rule->mask.proto_mask) {
+	case UINT16_MAX:
+		tcam_key->key_info_ipv6.protocol =
+			(rule->hinic_fdir.proto) & 0x7F;
+		tcam_key->key_mask_ipv6.protocol = 0x7F;
+		break;
+
+	case 0:
+		break;
+
+	default:
+		PMD_DRV_LOG(ERR, "invalid tunnel flag mask");
+		return -EINVAL;
+	}
+
+	tcam_key->key_info_ipv6.ipv6_flag = 1;
+	tcam_key->key_mask_ipv6.ipv6_flag = 1;
+
+	tcam_key->key_mask_ipv6.function_id = UINT8_MAX;
+	tcam_key->key_info_ipv6.function_id =
+			(u8)hinic_global_func_id(nic_dev->hwdev);
+
+	return 0;
+}
+
+static int hinic_fdir_tcam_info_init(struct rte_eth_dev *dev,
+				     struct hinic_fdir_rule *rule,
+				     struct tag_tcam_key *tcam_key,
+				     struct tag_tcam_cfg_rule *fdir_tcam_rule)
+{
+	int ret = -1;
+
+	if (rule->mask.dst_ipv4_mask == UINT32_MAX)
+		ret = hinic_fdir_tcam_ipv4_init(dev, rule, tcam_key);
+	else if (rule->mask.dst_ipv6_mask == UINT16_MAX)
+		ret = hinic_fdir_tcam_ipv6_init(dev, rule, tcam_key);
+
+	if (ret < 0)
+		return ret;
 
 	fdir_tcam_rule->data.qid = rule->queue;
 
@@ -2695,7 +2874,7 @@ static int hinic_add_del_tcam_fdir_filter(struct rte_eth_dev *dev,
 
 	ret = hinic_fdir_tcam_info_init(dev, rule, &tcam_key, &fdir_tcam_rule);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "Init hiovs fdir info failed!");
+		PMD_DRV_LOG(ERR, "Init hinic fdir info failed!");
 		return ret;
 	}
 
@@ -2711,7 +2890,7 @@ static int hinic_add_del_tcam_fdir_filter(struct rte_eth_dev *dev,
 	}
 
 	if (add) {
-		tcam_filter = rte_zmalloc("hiovs_5tuple_filter",
+		tcam_filter = rte_zmalloc("hinic_5tuple_filter",
 				sizeof(struct hinic_tcam_filter), 0);
 		if (tcam_filter == NULL)
 			return -ENOMEM;
@@ -2728,7 +2907,7 @@ static int hinic_add_del_tcam_fdir_filter(struct rte_eth_dev *dev,
 		rule->tcam_index = fdir_tcam_rule.index;
 
 	} else {
-		PMD_DRV_LOG(ERR, "Begin to hiovs_del_tcam_filter");
+		PMD_DRV_LOG(INFO, "begin to hinic_del_tcam_filter");
 		ret = hinic_del_tcam_filter(dev, tcam_filter);
 		if (ret < 0)
 			return ret;
