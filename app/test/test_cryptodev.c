@@ -767,27 +767,19 @@ test_device_configure_invalid_queue_pair_ids(void)
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint16_t orig_nb_qps = ts_params->conf.nb_queue_pairs;
 
-	/* This test is for QAT and NITROX PMDs only */
-	if (gbl_driver_id != rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)) &&
-	    gbl_driver_id != rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_NITROX_PMD)))
-		return -ENOTSUP;
-
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
 
-	/* valid - one queue pairs */
-	ts_params->conf.nb_queue_pairs = 1;
+	/* valid - max value queue pairs */
+	ts_params->conf.nb_queue_pairs = orig_nb_qps;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
 			&ts_params->conf),
 			"Failed to configure cryptodev: dev_id %u, qp_id %u",
 			ts_params->valid_devs[0], ts_params->conf.nb_queue_pairs);
 
-
-	/* valid - max value queue pairs */
-	ts_params->conf.nb_queue_pairs = orig_nb_qps;
+	/* valid - one queue pairs */
+	ts_params->conf.nb_queue_pairs = 1;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
 			&ts_params->conf),
@@ -845,14 +837,8 @@ test_queue_pair_descriptor_setup(void)
 
 	uint16_t qp_id;
 
-	/* This test is for QAT PMD only */
-	if (gbl_driver_id != rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)))
-		return -ENOTSUP;
-
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
-
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
@@ -11800,9 +11786,9 @@ static struct unit_test_suite cryptodev_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_dev_id),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_device_configure_invalid_queue_pair_ids),
-		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_queue_pair_descriptor_setup),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_device_configure_invalid_queue_pair_ids),
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_multi_session),
