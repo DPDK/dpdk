@@ -107,17 +107,11 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 	int ret = 0;
-	enum mlx5_rxq_obj_type obj_type = MLX5_RXQ_OBJ_TYPE_IBV;
-	struct mlx5_rxq_data *rxq = NULL;
+	enum mlx5_rxq_obj_type obj_type =
+			priv->config.dv_flow_en && priv->config.devx &&
+			priv->config.dest_tir ?
+			MLX5_RXQ_OBJ_TYPE_DEVX_RQ : MLX5_RXQ_OBJ_TYPE_IBV;
 
-	for (i = 0; i < priv->rxqs_n; ++i) {
-		rxq = (*priv->rxqs)[i];
-
-		if (rxq && rxq->lro) {
-			obj_type =  MLX5_RXQ_OBJ_TYPE_DEVX_RQ;
-			break;
-		}
-	}
 	/* Allocate/reuse/resize mempool for Multi-Packet RQ. */
 	if (mlx5_mprq_alloc_mp(dev)) {
 		/* Should not release Rx queues but return immediately. */
