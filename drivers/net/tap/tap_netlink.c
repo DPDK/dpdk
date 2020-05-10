@@ -17,6 +17,11 @@
 
 #include "tap_log.h"
 
+/* Compatibility with glibc < 2.24 */
+#ifndef SOL_NETLINK
+#define SOL_NETLINK     270
+#endif
+
 /* Must be quite large to support dumping a huge list of QDISC or filters. */
 #define BUF_SIZE (32 * 1024) /* Size of the buffer to receive kernel messages */
 #define SNDBUF_SIZE 32768 /* Send buffer size for the netlink socket */
