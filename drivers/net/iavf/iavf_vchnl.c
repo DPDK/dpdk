@@ -638,32 +638,32 @@ iavf_configure_queues(struct iavf_adapter *adapter)
 			vc_qp->rxq.ring_len = rxq[i]->nb_rx_desc;
 			vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;
 			vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
+		}
 
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
-			if (vf->vf_res->vf_cap_flags &
-			    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
-			    vf->supported_rxdid & BIT(IAVF_RXDID_COMMS_OVS_1)) {
-				vc_qp->rxq.rxdid = IAVF_RXDID_COMMS_OVS_1;
-				PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
-					    "Queue[%d]", vc_qp->rxq.rxdid, i);
-			} else {
-				vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_1;
-				PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
-					    "Queue[%d]", vc_qp->rxq.rxdid, i);
-			}
-#else
-			if (vf->vf_res->vf_cap_flags &
-			    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
-			    vf->supported_rxdid & BIT(IAVF_RXDID_LEGACY_0)) {
-				vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_0;
-				PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
-					    "Queue[%d]", vc_qp->rxq.rxdid, i);
-			} else {
-				PMD_DRV_LOG(ERR, "RXDID == 0 is not supported");
-				return -1;
-			}
-#endif
+		if (vf->vf_res->vf_cap_flags &
+			VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
+			vf->supported_rxdid & BIT(IAVF_RXDID_COMMS_OVS_1)) {
+			vc_qp->rxq.rxdid = IAVF_RXDID_COMMS_OVS_1;
+			PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
+					"Queue[%d]", vc_qp->rxq.rxdid, i);
+		} else {
+			vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_1;
+			PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
+					"Queue[%d]", vc_qp->rxq.rxdid, i);
 		}
+#else
+		if (vf->vf_res->vf_cap_flags &
+			VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
+			vf->supported_rxdid & BIT(IAVF_RXDID_LEGACY_0)) {
+			vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_0;
+			PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
+					"Queue[%d]", vc_qp->rxq.rxdid, i);
+		} else {
+			PMD_DRV_LOG(ERR, "RXDID == 0 is not supported");
+			return -1;
+		}
+#endif
 	}
 
 	memset(&args, 0, sizeof(args));
