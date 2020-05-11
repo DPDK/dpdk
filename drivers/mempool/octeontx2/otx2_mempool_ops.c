@@ -637,10 +637,10 @@ static int
 otx2_npa_alloc(struct rte_mempool *mp)
 {
 	uint32_t block_size, block_count;
+	uint64_t aura_handle = 0;
 	struct otx2_npa_lf *lf;
 	struct npa_aura_s aura;
 	struct npa_pool_s pool;
-	uint64_t aura_handle;
 	size_t padding;
 	int rc;
 
