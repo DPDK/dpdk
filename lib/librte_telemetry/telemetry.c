@@ -275,8 +275,8 @@ socket_listener(void *socket)
 		int s_accepted = accept(s->sock, NULL, NULL);
 		if (s_accepted < 0) {
 			snprintf(telemetry_log_error,
-					sizeof(telemetry_log_error),
-					"Error with accept, telemetry thread quitting\n");
+				sizeof(telemetry_log_error),
+				"Error with accept, telemetry thread quitting");
 			return NULL;
 		}
 		pthread_create(&th, NULL, s->fn, (void *)(uintptr_t)s_accepted);
@@ -400,12 +400,12 @@ rte_telemetry_init(const char *runtime_dir, const char **err_str)
 {
 	if (telemetry_v2_init(runtime_dir) != 0) {
 		*err_str = telemetry_log_error;
-		printf("Error initialising telemetry - %s", *err_str);
+		printf("Error initialising telemetry - %s\n", *err_str);
 		return -1;
 	}
 	if (telemetry_legacy_init(runtime_dir) != 0) {
 		*err_str = telemetry_log_error;
-		printf("No telemetry legacy support- %s", *err_str);
+		printf("No telemetry legacy support - %s\n", *err_str);
 	}
 	return 0;
 }
