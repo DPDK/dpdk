@@ -162,6 +162,14 @@ New Features
     improving performance significantly, when using
     intel-ipsec-mb version 0.54
 
+* **Updated the SNOW3G crypto PMD.**
+
+  * Added support for intel-ipsec-mb version 0.54.
+
+* **Updated the KASUMI crypto PMD.**
+
+  * Added support for intel-ipsec-mb version 0.54.
+
 * **Added a new driver for Intel Foxville I225 devices.**
 
   Added the new ``igc`` net driver for Intel Foxville I225 devices. See the
