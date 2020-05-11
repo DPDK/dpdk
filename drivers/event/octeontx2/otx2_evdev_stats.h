@@ -67,7 +67,7 @@ otx2_sso_xstats_get(const struct rte_eventdev *event_dev,
 
 	switch (mode) {
 	case RTE_EVENT_DEV_XSTATS_DEVICE:
-		break;
+		return 0;
 	case RTE_EVENT_DEV_XSTATS_PORT:
 		if (queue_port_id >= (signed int)dev->nb_event_ports)
 			goto invalid_value;
