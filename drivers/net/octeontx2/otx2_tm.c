@@ -555,10 +555,13 @@ populate_tm_reg(struct otx2_eth_dev *dev,
 	switch (hw_lvl) {
 	case NIX_TXSCH_LVL_SMQ:
 
-		/* Set xoff which will be cleared later */
+		/* Set xoff which will be cleared later and minimum length
+		 * which will be used for zero padding if packet length is
+		 * smaller
+		 */
 		reg[k] = NIX_AF_SMQX_CFG(schq);
-		regval[k] = BIT_ULL(50);
-		regval_mask[k] = ~BIT_ULL(50);
+		regval[k] = BIT_ULL(50) | NIX_MIN_HW_FRS;
+		regval_mask[k] = ~(BIT_ULL(50) | 0x7f);
 		k++;
 
 		/* Parent and schedule conf */
