@@ -543,6 +543,8 @@ parse_lookup(FILE *f, int af)
 
 	while (fgets(line, sizeof(line), f) != NULL) {
 		s = strtok(line, " \t\n");
+		if (s == NULL)
+			return -EINVAL;
 		ret = inet_pton(af, s, &tbl[i]);
 		if (ret != 1)
 			return -EINVAL;
