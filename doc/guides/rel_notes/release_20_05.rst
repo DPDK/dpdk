@@ -229,6 +229,16 @@ New Features
   (Programmable  Acceleration Card) N3000.  See the
   :doc:`../bbdevs/fpga_5gnr_fec` BBDEV guide for more details on this new driver.
 
+* **Updated the DSW event device.**
+
+  Updated the DSW PMD with new features and improvements, including:
+
+  * Improved flow migration mechanism, allowing faster and more
+    accurate load balancing.
+  * Improved behavior on high-core count systems.
+  * Reduced latency in low-load situations.
+  * Extended DSW xstats with migration- and load-related statistics.
+
 * **Updated ipsec-secgw sample application with following features.**
 
   * Updated ipsec-secgw application to add event based packet processing.
