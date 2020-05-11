@@ -958,7 +958,6 @@ iavf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rte_prefetch0(rxq->sw_ring[rx_id]);
 		}
 		rxm = rxe;
-		rxe = nmb;
 		dma_addr =
 			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
 		rxdp->read.hdr_addr = 0;
@@ -1064,7 +1063,6 @@ iavf_recv_pkts_flex_rxd(void *rx_queue,
 			rte_prefetch0(rxq->sw_ring[rx_id]);
 		}
 		rxm = rxe;
-		rxe = nmb;
 		dma_addr =
 			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
 		rxdp->read.hdr_addr = 0;
@@ -1157,7 +1155,6 @@ iavf_recv_scattered_pkts_flex_rxd(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		rxm = rxe;
-		rxe = nmb;
 		dma_addr =
 			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
 
@@ -1311,7 +1308,6 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		rxm = rxe;
-		rxe = nmb;
 		dma_addr =
 			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
 
