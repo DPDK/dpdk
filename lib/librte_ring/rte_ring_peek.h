@@ -74,6 +74,7 @@ __rte_ring_do_enqueue_start(struct rte_ring *r, uint32_t n,
 		/* unsupported mode, shouldn't be here */
 		RTE_ASSERT(0);
 		n = 0;
+		free = 0;
 	}
 
 	if (free_space != NULL)
@@ -273,6 +274,7 @@ __rte_ring_do_dequeue_start(struct rte_ring *r, void *obj_table,
 		/* unsupported mode, shouldn't be here */
 		RTE_ASSERT(0);
 		n = 0;
+		avail = 0;
 	}
 
 	if (n != 0)
