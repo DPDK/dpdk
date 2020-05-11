@@ -5,8 +5,7 @@ subdirs = ['igb_uio', 'kni']
 
 # if we are cross-compiling we need kernel_dir specified
 if get_option('kernel_dir') == '' and meson.is_cross_build()
-	warning('Need "kernel_dir" option for kmod compilation when cross-compiling')
-	subdir_done()
+	error('Need "kernel_dir" option for kmod compilation when cross-compiling')
 endif
 
 kernel_dir = get_option('kernel_dir')
@@ -20,8 +19,7 @@ endif
 make_returncode = run_command('make', '-sC', kernel_dir + '/build',
 		'kernelversion').returncode()
 if make_returncode != 0
-	warning('Cannot compile kernel modules as requested - are kernel headers installed?')
-	subdir_done()
+	error('Cannot compile kernel modules as requested - are kernel headers installed?')
 endif
 
 # DO ACTUAL MODULE BUILDING
