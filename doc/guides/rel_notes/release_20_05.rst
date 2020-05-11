@@ -155,6 +155,13 @@ New Features
 
   * Added support for intel-ipsec-mb version 0.54.
 
+* **Updated the ZUC crypto PMD.**
+
+  * Added support for intel-ipsec-mb version 0.54.
+  * Updated the PMD to support Multi-buffer ZUC-EIA3,
+    improving performance significantly, when using
+    intel-ipsec-mb version 0.54
+
 * **Added a new driver for Intel Foxville I225 devices.**
 
   Added the new ``igc`` net driver for Intel Foxville I225 devices. See the

@@ -237,12 +237,13 @@ process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 		struct zuc_session **sessions,
 		uint8_t num_ops)
 {
-	unsigned i;
+	unsigned int i;
 	uint8_t processed_ops = 0;
-	uint8_t *src;
-	uint32_t *dst;
-	uint32_t length_in_bits;
-	uint8_t *iv;
+	uint8_t *src[ZUC_MAX_BURST];
+	uint32_t *dst[ZUC_MAX_BURST];
+	uint32_t length_in_bits[ZUC_MAX_BURST];
+	uint8_t *iv[ZUC_MAX_BURST];
+	const void *hash_keys[ZUC_MAX_BURST];
 	struct zuc_session *sess;
 
 	for (i = 0; i < num_ops; i++) {
@@ -255,32 +256,41 @@ process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 
 		sess = sessions[i];
 
-		length_in_bits = ops[i]->sym->auth.data.length;
+		length_in_bits[i] = ops[i]->sym->auth.data.length;
 
-		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
+		src[i] = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->auth.data.offset >> 3);
-		iv = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
+		iv[i] = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
 				sess->auth_iv_offset);
 
-		if (sess->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-			dst = (uint32_t *)qp->temp_digest;
+		hash_keys[i] = sess->pKey_hash;
+		if (sess->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY)
+			dst[i] = (uint32_t *)qp->temp_digest;
+		else
+			dst[i] = (uint32_t *)ops[i]->sym->auth.digest.data;
 
-			IMB_ZUC_EIA3_1_BUFFER(qp->mb_mgr, sess->pKey_hash,
-					iv, src,
-					length_in_bits,	dst);
-			/* Verify digest. */
-			if (memcmp(dst, ops[i]->sym->auth.digest.data,
-					ZUC_DIGEST_LENGTH) != 0)
-				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-		} else  {
-			dst = (uint32_t *)ops[i]->sym->auth.digest.data;
-
-			IMB_ZUC_EIA3_1_BUFFER(qp->mb_mgr, sess->pKey_hash,
-					iv, src,
-					length_in_bits, dst);
-		}
+#if IMB_VERSION_NUM < IMB_VERSION(0, 53, 3)
+		IMB_ZUC_EIA3_1_BUFFER(qp->mb_mgr, hash_keys[i],
+				iv[i], src[i], length_in_bits[i], dst[i]);
+#endif
 		processed_ops++;
 	}
+
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 53, 3)
+	IMB_ZUC_EIA3_N_BUFFER(qp->mb_mgr, (const void **)hash_keys,
+			(const void * const *)iv, (const void * const *)src,
+			length_in_bits, dst, processed_ops);
+#endif
+
+	/*
+	 * If tag needs to be verified, compare generated tag
+	 * with attached tag
+	 */
+	for (i = 0; i < processed_ops; i++)
+		if (sessions[i]->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY)
+			if (memcmp(dst[i], ops[i]->sym->auth.digest.data,
+					ZUC_DIGEST_LENGTH) != 0)
+				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
 	return processed_ops;
 }
