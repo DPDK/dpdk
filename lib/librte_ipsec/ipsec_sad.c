@@ -104,6 +104,8 @@ add_specific(struct rte_ipsec_sad *sad, const void *key,
 	ret = rte_hash_lookup_with_hash(sad->hash[RTE_IPSEC_SAD_SPI_ONLY], key,
 		rte_hash_crc(key, sad->keysize[RTE_IPSEC_SAD_SPI_ONLY],
 		sad->init_val));
+	if (ret < 0)
+		return ret;
 	if (key_type == RTE_IPSEC_SAD_SPI_DIP)
 		sad->cnt_arr[ret].cnt_dip += notexist;
 	else
