@@ -16,6 +16,8 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include <unistd.h>
+
 #include <rte_vect.h>
 #include <rte_byteorder.h>
 
@@ -251,7 +253,7 @@
 #define MLX5_MAX_LOG_RQ_SEGS 5u
 
 /* The alignment needed for WQ buffer. */
-#define MLX5_WQE_BUF_ALIGNMENT 512
+#define MLX5_WQE_BUF_ALIGNMENT sysconf(_SC_PAGESIZE)
 
 /* Completion mode. */
 enum mlx5_completion_mode {
