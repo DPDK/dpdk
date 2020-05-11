@@ -1965,8 +1965,10 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 			PMD_DRV_LOG(INFO,
 				"building environment do not support packed ring vectorized");
 #else
-			hw->use_vec_rx = 1;
-			hw->use_vec_tx = 1;
+			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F)) {
+				hw->use_vec_rx = 1;
+				hw->use_vec_tx = 1;
+			}
 #endif
 		}
 	}

@@ -11,8 +11,14 @@ deps += ['kvargs', 'bus_pci']
 if arch_subdir == 'x86'
 	if not machine_args.contains('-mno-avx512f')
 		if cc.has_argument('-mavx512f') and cc.has_argument('-mavx512vl') and cc.has_argument('-mavx512bw')
-			cflags += ['-mavx512f', '-mavx512bw', '-mavx512vl']
 			cflags += ['-DCC_AVX512_SUPPORT']
+			virtio_avx512_lib = static_library('virtio_avx512_lib',
+					      'virtio_rxtx_packed_avx.c',
+					      dependencies: [static_rte_ethdev,
+						static_rte_kvargs, static_rte_bus_pci],
+					      include_directories: includes,
+					      c_args: [cflags, '-mavx512f', '-mavx512bw', '-mavx512vl'])
+			objs += virtio_avx512_lib.extract_objects('virtio_rxtx_packed_avx.c')
 			if (toolchain == 'gcc' and cc.version().version_compare('>=8.3.0'))
 				cflags += '-DVHOST_GCC_UNROLL_PRAGMA'
 			elif (toolchain == 'clang' and cc.version().version_compare('>=3.7.0'))
@@ -20,7 +26,6 @@ if arch_subdir == 'x86'
 			elif (toolchain == 'icc' and cc.version().version_compare('>=16.0.0'))
 				cflags += '-DVHOST_ICC_UNROLL_PRAGMA'
 			endif
-			sources += files('virtio_rxtx_packed_avx.c')
 		endif
 	endif
 	sources += files('virtio_rxtx_simple_sse.c')
