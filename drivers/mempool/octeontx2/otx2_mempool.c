@@ -191,6 +191,7 @@ otx2_parse_aura_size(struct rte_devargs *devargs)
 		goto exit;
 
 	rte_kvargs_process(kvlist, OTX2_MAX_POOLS, &parse_max_pools, &aura_sz);
+	otx2_parse_common_devargs(kvlist);
 	rte_kvargs_free(kvlist);
 exit:
 	return aura_sz;
@@ -452,4 +453,5 @@ RTE_PMD_REGISTER_PCI(mempool_octeontx2, pci_npa);
 RTE_PMD_REGISTER_PCI_TABLE(mempool_octeontx2, pci_npa_map);
 RTE_PMD_REGISTER_KMOD_DEP(mempool_octeontx2, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(mempool_octeontx2,
-			      OTX2_MAX_POOLS "=<128-1048576>");
+			      OTX2_MAX_POOLS "=<128-1048576>"
+			      OTX2_NPA_LOCK_MASK "=<1-65535>");

@@ -61,6 +61,16 @@ Runtime Config Options
    provide ``max_pools`` parameter to the first PCIe device probed by the given
    application.
 
+- ``Lock NPA contexts in NDC``
+
+   Lock NPA aura and pool contexts in NDC cache.
+   The device args take hexadecimal bitmask where each bit represent the
+   corresponding aura/pool id.
+
+   For example::
+
+      -w 0002:02:00.0,npa_lock_mask=0xf
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 

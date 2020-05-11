@@ -163,6 +163,7 @@ otx2_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx2_eth_dev *dev)
 			   &parse_switch_header_type, &switch_header_type);
 	rte_kvargs_process(kvlist, OTX2_RSS_TAG_AS_XOR,
 			   &parse_flag, &rss_tag_as_xor);
+	otx2_parse_common_devargs(kvlist);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -188,4 +189,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_octeontx2,
 			      OTX2_FLOW_PREALLOC_SIZE "=<1-32>"
 			      OTX2_FLOW_MAX_PRIORITY "=<1-32>"
 			      OTX2_SWITCH_HEADER_TYPE "=<higig2|dsa|chlen90b>"
-			      OTX2_RSS_TAG_AS_XOR "=1");
+			      OTX2_RSS_TAG_AS_XOR "=1"
+			      OTX2_NPA_LOCK_MASK "=<1-65535>");

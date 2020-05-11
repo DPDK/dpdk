@@ -148,6 +148,16 @@ Runtime Config Options
 
     -w 0002:0e:00.0,tim_ring_ctl=[2-1023-1-0]
 
+- ``Lock NPA contexts in NDC``
+
+   Lock NPA aura and pool contexts in NDC cache.
+   The device args take hexadecimal bitmask where each bit represent the
+   corresponding aura/pool id.
+
+   For example::
+
+      -w 0002:0e:00.0,npa_lock_mask=0xf
+
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 

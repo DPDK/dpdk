@@ -169,6 +169,40 @@ int otx2_npa_lf_obj_ref(void)
 	return cnt ? 0 : -EINVAL;
 }
 
+static int
+parse_npa_lock_mask(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint64_t val;
+
+	val = strtoull(value, NULL, 16);
+
+	*(uint64_t *)extra_args = val;
+
+	return 0;
+}
+
+/*
+ * @internal
+ * Parse common device arguments
+ */
+void otx2_parse_common_devargs(struct rte_kvargs *kvlist)
+{
+
+	struct otx2_idev_cfg *idev;
+	uint64_t npa_lock_mask = 0;
+
+	idev = otx2_intra_dev_get_cfg();
+
+	if (idev == NULL)
+		return;
+
+	rte_kvargs_process(kvlist, OTX2_NPA_LOCK_MASK,
+			&parse_npa_lock_mask, &npa_lock_mask);
+
+	idev->npa_lock_mask = npa_lock_mask;
+}
+
 /**
  * @internal
  */

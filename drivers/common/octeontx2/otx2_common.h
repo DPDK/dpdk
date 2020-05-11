@@ -8,6 +8,7 @@
 #include <rte_atomic.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
+#include <rte_kvargs.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_io.h>
@@ -49,6 +50,8 @@
 	 (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
 #endif
 
+#define OTX2_NPA_LOCK_MASK "npa_lock_mask"
+
 /* Intra device related functions */
 struct otx2_npa_lf;
 struct otx2_idev_cfg {
@@ -60,6 +63,7 @@ struct otx2_idev_cfg {
 		rte_atomic16_t npa_refcnt;
 		uint16_t npa_refcnt_u16;
 	};
+	uint64_t npa_lock_mask;
 };
 
 __rte_internal
@@ -78,6 +82,8 @@ __rte_internal
 int otx2_npa_lf_active(void *dev);
 __rte_internal
 int otx2_npa_lf_obj_ref(void);
+__rte_internal
+void otx2_parse_common_devargs(struct rte_kvargs *kvlist);
 
 /* Log */
 extern int otx2_logtype_base;

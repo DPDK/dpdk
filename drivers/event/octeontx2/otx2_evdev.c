@@ -1659,7 +1659,7 @@ sso_parse_devargs(struct otx2_sso_evdev *dev, struct rte_devargs *devargs)
 			   &single_ws);
 	rte_kvargs_process(kvlist, OTX2_SSO_GGRP_QOS, &parse_sso_kvargs_dict,
 			   dev);
-
+	otx2_parse_common_devargs(kvlist);
 	dev->dual_ws = !single_ws;
 	rte_kvargs_free(kvlist);
 }
@@ -1821,4 +1821,5 @@ RTE_PMD_REGISTER_KMOD_DEP(event_octeontx2, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(event_octeontx2, OTX2_SSO_XAE_CNT "=<int>"
 			      OTX2_SSO_SINGLE_WS "=1"
 			      OTX2_SSO_GGRP_QOS "=<string>"
-			      OTX2_SSO_SELFTEST "=1");
+			      OTX2_SSO_SELFTEST "=1"
+			      OTX2_NPA_LOCK_MASK "=<1-65535>");

@@ -32,6 +32,7 @@ INTERNAL {
 	otx2_npa_lf_obj_ref;
 	otx2_npa_pf_func_get;
 	otx2_npa_set_defaults;
+	otx2_parse_common_devargs;
 	otx2_register_irq;
 	otx2_sec_idev_cfg_init;
 	otx2_sec_idev_tx_cpt_qp_add;

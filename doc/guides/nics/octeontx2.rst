@@ -195,6 +195,7 @@ Runtime Config Options
    Setting this flag to 1 to select the legacy mode.
 
    For example to select the legacy mode(RSS tag adder as XOR)::
+
       -w 0002:02:00.0,tag_as_xor=1
 
 - ``Max SPI for inbound inline IPsec`` (default ``1``)
@@ -203,6 +204,7 @@ Runtime Config Options
    ``ipsec_in_max_spi`` ``devargs`` parameter.
 
    For example::
+
       -w 0002:02:00.0,ipsec_in_max_spi=128
 
    With the above configuration, application can enable inline IPsec processing
@@ -213,6 +215,16 @@ Runtime Config Options
    Above devarg parameters are configurable per device, user needs to pass the
    parameters to all the PCIe devices if application requires to configure on
    all the ethdev ports.
+
+- ``Lock NPA contexts in NDC``
+
+   Lock NPA aura and pool contexts in NDC cache.
+   The device args take hexadecimal bitmask where each bit represent the
+   corresponding aura/pool id.
+
+   For example::
+
+      -w 0002:02:00.0,npa_lock_mask=0xf
 
 .. _otx2_tmapi:
 
