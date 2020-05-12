@@ -82,8 +82,16 @@ register_client(const char *cmd __rte_unused, const char *params,
 	int fd;
 	struct sockaddr_un addrs;
 
+	if (!strchr(params, ':')) {
+		fprintf(stderr, "Invalid data\n");
+		return -1;
+	}
 	strlcpy(data, strchr(params, ':'), sizeof(data));
 	memcpy(data, &data[strlen(":\"")], strlen(data));
+	if (!strchr(data, '\"')) {
+		fprintf(stderr, "Invalid client data\n");
+		return -1;
+	}
 	*strchr(data, '\"') = 0;
 
 	fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
@@ -178,6 +186,8 @@ parse_client_request(char *buffer, int buf_len, int s)
 		if (!strchr(data_ptr, '{'))
 			data_sep = data_ptr[strlen(callbacks[i].data)];
 		else {
+			if (!strchr(data_ptr, '}'))
+				return -EINVAL;
 			char *data_end = strchr(data_ptr, '}');
 			data = data_ptr + strlen(DATA_REQ_LABEL);
 			data_sep = data_end[1];
