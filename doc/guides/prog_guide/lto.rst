@@ -31,7 +31,7 @@ the whole DPDK by setting:
 
 .. code-block:: console
 
-    CONFIG_ENABLE_LTO=y
+    CONFIG_RTE_ENABLE_LTO=y
 
 in config file.
 
