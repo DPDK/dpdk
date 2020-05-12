@@ -891,36 +891,6 @@ test_queue_pair_descriptor_setup(void)
 				ts_params->valid_devs[0]);
 	}
 
-	/* invalid number of descriptors - max supported + 2 */
-	qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT + 2;
-
-	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs; qp_id++) {
-		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
-				ts_params->valid_devs[0], qp_id, &qp_conf,
-				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
-				"Unexpectedly passed test for "
-				"rte_cryptodev_queue_pair_setup:"
-				"num_inflights %u on qp %u on cryptodev %u",
-				qp_conf.nb_descriptors, qp_id,
-				ts_params->valid_devs[0]);
-	}
-
-	/* invalid number of descriptors - max value of parameter */
-	qp_conf.nb_descriptors = UINT32_MAX-1;
-
-	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs; qp_id++) {
-		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
-				ts_params->valid_devs[0], qp_id, &qp_conf,
-				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
-				"Unexpectedly passed test for "
-				"rte_cryptodev_queue_pair_setup:"
-				"num_inflights %u on qp %u on cryptodev %u",
-				qp_conf.nb_descriptors, qp_id,
-				ts_params->valid_devs[0]);
-	}
-
 	qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT;
 
 	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs; qp_id++) {
@@ -930,21 +900,6 @@ test_queue_pair_descriptor_setup(void)
 						ts_params->valid_devs[0])),
 				"Failed test for"
 				" rte_cryptodev_queue_pair_setup:"
-				"num_inflights %u on qp %u on cryptodev %u",
-				qp_conf.nb_descriptors, qp_id,
-				ts_params->valid_devs[0]);
-	}
-
-	/* invalid number of descriptors - max supported + 1 */
-	qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT + 1;
-
-	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs; qp_id++) {
-		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
-				ts_params->valid_devs[0], qp_id, &qp_conf,
-				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
-				"Unexpectedly passed test for "
-				"rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
 				qp_conf.nb_descriptors, qp_id,
 				ts_params->valid_devs[0]);
