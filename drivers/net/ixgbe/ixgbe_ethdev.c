@@ -2543,6 +2543,8 @@ ixgbe_flow_ctrl_enable(struct rte_eth_dev *dev, struct ixgbe_hw *hw)
 	int err;
 	uint32_t mflcn;
 
+	ixgbe_setup_fc(hw);
+
 	err = ixgbe_fc_enable(hw);
 
 	/* Not negotiated is not an error case */
