@@ -770,7 +770,8 @@ alloc_resources:
 	 */
 	mr->ibv_mr = mlx5_glue->reg_mr(pd, (void *)data.start, len,
 				       IBV_ACCESS_LOCAL_WRITE |
-					   IBV_ACCESS_RELAXED_ORDERING);
+				       (haswell_broadwell_cpu ? 0 :
+				       IBV_ACCESS_RELAXED_ORDERING));
 	if (mr->ibv_mr == NULL) {
 		DEBUG("Fail to create a verbs MR for address (%p)",
 		      (void *)addr);
@@ -1045,7 +1046,8 @@ mlx5_create_mr_ext(struct ibv_pd *pd, uintptr_t addr, size_t len, int socket_id)
 		return NULL;
 	mr->ibv_mr = mlx5_glue->reg_mr(pd, (void *)addr, len,
 				       IBV_ACCESS_LOCAL_WRITE |
-					   IBV_ACCESS_RELAXED_ORDERING);
+				       (haswell_broadwell_cpu ? 0 :
+				       IBV_ACCESS_RELAXED_ORDERING));
 	if (mr->ibv_mr == NULL) {
 		DRV_LOG(WARNING,
 			"Fail to create a verbs MR for address (%p)",
