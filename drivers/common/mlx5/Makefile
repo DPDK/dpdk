@@ -68,6 +68,11 @@ mlx5_autoconf.h.new: FORCE
 mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
+		HAVE_IBV_RELAXED_ORDERING \
+		infiniband/verbs.h \
+		enum IBV_ACCESS_RELAXED_ORDERING \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT \
 		infiniband/mlx5dv.h \
 		enum MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX \

@@ -98,7 +98,7 @@ struct mlx5dv_var { uint32_t page_id; uint32_t length; off_t mmap_off;
 			uint64_t comp_mask; };
 #endif
 
-#ifndef IBV_ACCESS_RELAXED_ORDERING
+#ifndef HAVE_IBV_RELAXED_ORDERING
 #define IBV_ACCESS_RELAXED_ORDERING 0
 #endif
 
