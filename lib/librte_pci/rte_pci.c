@@ -72,9 +72,9 @@ pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr)
 
 	errno = 0;
 	val = strtoul(in, &end, 16);
-	if (errno != 0 || end[0] != ':' || val > UINT16_MAX)
+	if (errno != 0 || end[0] != ':' || val > UINT32_MAX)
 		return -EINVAL;
-	dev_addr->domain = (uint16_t)val;
+	dev_addr->domain = (uint32_t)val;
 	in = end + 1;
 	in = get_u8_pciaddr_field(in, &dev_addr->bus, ':');
 	if (in == NULL)
