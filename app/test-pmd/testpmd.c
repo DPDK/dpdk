@@ -3460,6 +3460,8 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 		struct rte_eth_dcb_tx_conf *tx_conf =
 				&eth_conf->tx_adv_conf.dcb_tx_conf;
 
+		memset(&rss_conf, 0, sizeof(struct rte_eth_rss_conf));
+
 		rc = rte_eth_dev_rss_hash_conf_get(pid, &rss_conf);
 		if (rc != 0)
 			return rc;
