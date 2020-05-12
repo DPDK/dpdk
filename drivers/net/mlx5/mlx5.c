@@ -467,13 +467,13 @@ mlx5_flow_aging_init(struct mlx5_ibv_shared *sh)
 static void
 mlx5_flow_counters_mng_init(struct mlx5_ibv_shared *sh)
 {
-	uint8_t i, age;
+	int i;
 
-	sh->cmng.age = 0;
+	memset(&sh->cmng, 0, sizeof(sh->cmng));
 	TAILQ_INIT(&sh->cmng.flow_counters);
-	for (age = 0; age < RTE_DIM(sh->cmng.ccont[0]); ++age) {
-		for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i)
-			TAILQ_INIT(&sh->cmng.ccont[i][age].pool_list);
+	for (i = 0; i < MLX5_CCONT_TYPE_MAX; ++i) {
+		TAILQ_INIT(&sh->cmng.ccont[i].pool_list);
+		rte_spinlock_init(&sh->cmng.ccont[i].resize_sl);
 	}
 }
 
@@ -504,7 +504,7 @@ static void
 mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 {
 	struct mlx5_counter_stats_mem_mng *mng;
-	uint8_t i, age = 0;
+	int i;
 	int j;
 	int retries = 1024;
 
@@ -515,42 +515,34 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
 			break;
 		rte_pause();
 	}
+	for (i = 0; i < MLX5_CCONT_TYPE_MAX; ++i) {
+		struct mlx5_flow_counter_pool *pool;
+		uint32_t batch = !!(i > 1);
 
-	for (age = 0; age < RTE_DIM(sh->cmng.ccont[0]); ++age) {
-		for (i = 0; i < RTE_DIM(sh->cmng.ccont); ++i) {
-			struct mlx5_flow_counter_pool *pool;
-			uint32_t batch = !!(i % 2);
-
-			if (!sh->cmng.ccont[i][age].pools)
-				continue;
-			pool = TAILQ_FIRST(&sh->cmng.ccont[i][age].pool_list);
-			while (pool) {
-				if (batch) {
-					if (pool->min_dcs)
-						claim_zero
-						(mlx5_devx_cmd_destroy
-						(pool->min_dcs));
-				}
-				for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j) {
-					if (MLX5_POOL_GET_CNT(pool, j)->action)
-						claim_zero
-						(mlx5_glue->destroy_flow_action
-						 (MLX5_POOL_GET_CNT
-						  (pool, j)->action));
-					if (!batch && MLX5_GET_POOL_CNT_EXT
-					    (pool, j)->dcs)
-						claim_zero(mlx5_devx_cmd_destroy
-							  (MLX5_GET_POOL_CNT_EXT
-							  (pool, j)->dcs));
-				}
-				TAILQ_REMOVE(&sh->cmng.ccont[i][age].pool_list,
-					pool, next);
-				rte_free(pool);
-				pool = TAILQ_FIRST
-					(&sh->cmng.ccont[i][age].pool_list);
+		if (!sh->cmng.ccont[i].pools)
+			continue;
+		pool = TAILQ_FIRST(&sh->cmng.ccont[i].pool_list);
+		while (pool) {
+			if (batch && pool->min_dcs)
+				claim_zero(mlx5_devx_cmd_destroy
+							       (pool->min_dcs));
+			for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j) {
+				if (MLX5_POOL_GET_CNT(pool, j)->action)
+					claim_zero
+					 (mlx5_glue->destroy_flow_action
+					  (MLX5_POOL_GET_CNT
+					  (pool, j)->action));
+				if (!batch && MLX5_GET_POOL_CNT_EXT
+				    (pool, j)->dcs)
+					claim_zero(mlx5_devx_cmd_destroy
+						   (MLX5_GET_POOL_CNT_EXT
+						    (pool, j)->dcs));
 			}
-			rte_free(sh->cmng.ccont[i][age].pools);
+			TAILQ_REMOVE(&sh->cmng.ccont[i].pool_list, pool, next);
+			rte_free(pool);
+			pool = TAILQ_FIRST(&sh->cmng.ccont[i].pool_list);
 		}
+		rte_free(sh->cmng.ccont[i].pools);
 	}
 	mng = LIST_FIRST(&sh->cmng.mem_mngs);
 	while (mng) {

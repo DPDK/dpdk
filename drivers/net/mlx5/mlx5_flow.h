@@ -900,12 +900,6 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_get_aged_flows_t get_aged_flows;
 };
 
-
-#define MLX5_CNT_CONTAINER(sh, batch, thread, age) (&(sh)->cmng.ccont \
-	[(((sh)->cmng.mhi[batch][age] >> (thread)) & 0x1) * 2 + (batch)][age])
-#define MLX5_CNT_CONTAINER_UNUSED(sh, batch, thread, age) (&(sh)->cmng.ccont \
-	[(~((sh)->cmng.mhi[batch][age] >> (thread)) & 0x1) * 2 + (batch)][age])
-
 /* mlx5_flow.c */
 
 struct mlx5_flow_id_pool *mlx5_flow_id_pool_alloc(uint32_t max_id);

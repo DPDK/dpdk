@@ -227,13 +227,11 @@ struct mlx5_drop {
 #define CNTEXT_SIZE (sizeof(struct mlx5_flow_counter_ext))
 #define AGE_SIZE (sizeof(struct mlx5_age_param))
 #define MLX5_AGING_TIME_DELAY	7
-
 #define CNT_POOL_TYPE_EXT	(1 << 0)
 #define CNT_POOL_TYPE_AGE	(1 << 1)
 #define IS_EXT_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_EXT)
 #define IS_AGE_POOL(pool) (((pool)->type) & CNT_POOL_TYPE_AGE)
 #define MLX_CNT_IS_AGE(counter) ((counter) & MLX5_CNT_AGE_OFFSET ? 1 : 0)
-
 #define MLX5_CNT_LEN(pool) \
 	(CNT_SIZE + \
 	(IS_AGE_POOL(pool) ? AGE_SIZE : 0) + \
@@ -268,6 +266,17 @@ enum {
 	AGE_FREE, /* Initialized state. */
 	AGE_CANDIDATE, /* Counter assigned to flows. */
 	AGE_TMOUT, /* Timeout, wait for rte_flow_get_aged_flows and destroy. */
+};
+
+#define MLX5_CNT_CONTAINER(sh, batch, age) (&(sh)->cmng.ccont \
+					    [(batch) * 2 + (age)])
+
+enum {
+	MLX5_CCONT_TYPE_SINGLE,
+	MLX5_CCONT_TYPE_SINGLE_FOR_AGE,
+	MLX5_CCONT_TYPE_BATCH,
+	MLX5_CCONT_TYPE_BATCH_FOR_AGE,
+	MLX5_CCONT_TYPE_MAX,
 };
 
 /* Counter age parameter. */
@@ -313,7 +322,6 @@ struct mlx5_flow_counter_ext {
 	};
 };
 
-
 TAILQ_HEAD(mlx5_counters, mlx5_flow_counter);
 
 /* Generic counter pool structure - query is in pool resolution. */
@@ -358,17 +366,16 @@ TAILQ_HEAD(mlx5_counter_pools, mlx5_flow_counter_pool);
 struct mlx5_pools_container {
 	rte_atomic16_t n_valid; /* Number of valid pools. */
 	uint16_t n; /* Number of pools. */
+	rte_spinlock_t resize_sl; /* The resize lock. */
 	struct mlx5_counter_pools pool_list; /* Counter pool list. */
 	struct mlx5_flow_counter_pool **pools; /* Counter pool array. */
-	struct mlx5_counter_stats_mem_mng *init_mem_mng;
+	struct mlx5_counter_stats_mem_mng *mem_mng;
 	/* Hold the memory management for the next allocated pools raws. */
 };
 
 /* Counter global management structure. */
 struct mlx5_flow_counter_mng {
-	uint8_t mhi[2][2]; /* master \ host and age \ no age container index. */
-	struct mlx5_pools_container ccont[2 * 2][2];
-	/* master \ host and age \ no age pools container. */
+	struct mlx5_pools_container ccont[MLX5_CCONT_TYPE_MAX];
 	struct mlx5_counters flow_counters; /* Legacy flow counter list. */
 	uint8_t pending_queries;
 	uint8_t batch;
@@ -378,6 +385,7 @@ struct mlx5_flow_counter_mng {
 	LIST_HEAD(mem_mngs, mlx5_counter_stats_mem_mng) mem_mngs;
 	LIST_HEAD(stat_raws, mlx5_counter_stats_raw) free_stat_raws;
 };
+
 #define MLX5_AGE_EVENT_NEW		1
 #define MLX5_AGE_TRIGGER		2
 #define MLX5_AGE_SET(age_info, BIT) \
@@ -393,6 +401,7 @@ struct mlx5_age_info {
 	struct mlx5_counters aged_counters; /* Aged flow counter list. */
 	rte_spinlock_t aged_sl; /* Aged flow counter list lock. */
 };
+
 /* Per port data of shared IB device. */
 struct mlx5_ibv_shared_port {
 	uint32_t ih_port_id;

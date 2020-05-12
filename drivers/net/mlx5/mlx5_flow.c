@@ -5801,16 +5801,11 @@ mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
 static uint32_t
 mlx5_get_all_valid_pool_count(struct mlx5_ibv_shared *sh)
 {
-	uint8_t age, i;
+	int i;
 	uint32_t pools_n = 0;
-	struct mlx5_pools_container *cont;
 
-	for (age = 0; age < RTE_DIM(sh->cmng.ccont[0]); ++age) {
-		for (i = 0; i < 2 ; ++i) {
-			cont = MLX5_CNT_CONTAINER(sh, i, 0, age);
-			pools_n += rte_atomic16_read(&cont->n_valid);
-		}
-	}
+	for (i = 0; i < MLX5_CCONT_TYPE_MAX; ++i)
+		pools_n += rte_atomic16_read(&sh->cmng.ccont[i].n_valid);
 	return pools_n;
 }
 
@@ -5855,32 +5850,19 @@ mlx5_flow_query_alarm(void *arg)
 	uint8_t age = sh->cmng.age;
 	uint16_t pool_index = sh->cmng.pool_index;
 	struct mlx5_pools_container *cont;
-	struct mlx5_pools_container *mcont;
 	struct mlx5_flow_counter_pool *pool;
+	int cont_loop = MLX5_CCONT_TYPE_MAX;
 
 	if (sh->cmng.pending_queries >= MLX5_MAX_PENDING_QUERIES)
 		goto set_alarm;
 next_container:
-	cont = MLX5_CNT_CONTAINER(sh, batch, 1, age);
-	mcont = MLX5_CNT_CONTAINER(sh, batch, 0, age);
-	/* Check if resize was done and need to flip a container. */
-	if (cont != mcont) {
-		if (cont->pools) {
-			/* Clean the old container. */
-			rte_free(cont->pools);
-			memset(cont, 0, sizeof(*cont));
-		}
-		rte_cio_wmb();
-		 /* Flip the host container. */
-		sh->cmng.mhi[batch][age] ^= (uint8_t)2;
-		cont = mcont;
-	}
+	cont = MLX5_CNT_CONTAINER(sh, batch, age);
+	rte_spinlock_lock(&cont->resize_sl);
 	if (!cont->pools) {
-		/* 2 empty containers case is unexpected. */
-		if (unlikely(batch != sh->cmng.batch) &&
-			unlikely(age != sh->cmng.age)) {
+		rte_spinlock_unlock(&cont->resize_sl);
+		/* Check if all the containers are empty. */
+		if (unlikely(--cont_loop == 0))
 			goto set_alarm;
-		}
 		batch ^= 0x1;
 		pool_index = 0;
 		if (batch == 0 && pool_index == 0) {
@@ -5891,6 +5873,7 @@ next_container:
 		goto next_container;
 	}
 	pool = cont->pools[pool_index];
+	rte_spinlock_unlock(&cont->resize_sl);
 	if (pool->raw_hw)
 		/* There is a pool query in progress. */
 		goto set_alarm;
