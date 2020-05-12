@@ -341,7 +341,7 @@ error:
 }
 
 static int
-telemetry_legacy_init(const char *runtime_dir)
+telemetry_legacy_init(const char *runtime_dir, rte_cpuset_t *cpuset)
 {
 	pthread_t t_old;
 
@@ -363,12 +363,13 @@ telemetry_legacy_init(const char *runtime_dir)
 	if (v1_socket.sock < 0)
 		return -1;
 	pthread_create(&t_old, NULL, socket_listener, &v1_socket);
+	pthread_setaffinity_np(t_old, sizeof(*cpuset), cpuset);
 
 	return 0;
 }
 
 static int
-telemetry_v2_init(const char *runtime_dir)
+telemetry_v2_init(const char *runtime_dir, rte_cpuset_t *cpuset)
 {
 	pthread_t t_new;
 
@@ -390,20 +391,22 @@ telemetry_v2_init(const char *runtime_dir)
 	if (v2_socket.sock < 0)
 		return -1;
 	pthread_create(&t_new, NULL, socket_listener, &v2_socket);
+	pthread_setaffinity_np(t_new, sizeof(*cpuset), cpuset);
 	atexit(unlink_sockets);
 
 	return 0;
 }
 
 int32_t
-rte_telemetry_init(const char *runtime_dir, const char **err_str)
+rte_telemetry_init(const char *runtime_dir, rte_cpuset_t *cpuset,
+		const char **err_str)
 {
-	if (telemetry_v2_init(runtime_dir) != 0) {
+	if (telemetry_v2_init(runtime_dir, cpuset) != 0) {
 		*err_str = telemetry_log_error;
 		printf("Error initialising telemetry - %s\n", *err_str);
 		return -1;
 	}
-	if (telemetry_legacy_init(runtime_dir) != 0) {
+	if (telemetry_legacy_init(runtime_dir, cpuset) != 0) {
 		*err_str = telemetry_log_error;
 		printf("No telemetry legacy support - %s\n", *err_str);
 	}
