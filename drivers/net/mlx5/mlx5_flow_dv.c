@@ -4100,8 +4100,8 @@ flow_dv_find_pool_by_id(struct mlx5_pools_container *cont, int id)
 static struct mlx5_counter_stats_mem_mng *
 flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 {
-	struct mlx5_ibv_shared *sh = ((struct mlx5_priv *)
-					(dev->data->dev_private))->sh;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_devx_mkey_attr mkey_attr;
 	struct mlx5_counter_stats_mem_mng *mem_mng;
 	volatile struct flow_counter_stats *raw_data;
@@ -4133,7 +4133,9 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 	mkey_attr.pg_access = 0;
 	mkey_attr.klm_array = NULL;
 	mkey_attr.klm_num = 0;
-	mkey_attr.relaxed_ordering = 1;
+	if (priv->config.hca_attr.relaxed_ordering_write &&
+		priv->config.hca_attr.relaxed_ordering_read)
+		mkey_attr.relaxed_ordering = 1;
 	mem_mng->dm = mlx5_devx_cmd_mkey_create(sh->ctx, &mkey_attr);
 	if (!mem_mng->dm) {
 		mlx5_glue->devx_umem_dereg(mem_mng->umem);
