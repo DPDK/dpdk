@@ -100,6 +100,7 @@ register_client(const char *cmd __rte_unused, const char *params,
 
 	if (connect(fd, (struct sockaddr *)&addrs, sizeof(addrs)) == -1) {
 		perror("\nClient connection error\n");
+		close(fd);
 		return -1;
 	}
 	pthread_create(&th, NULL, &legacy_client_handler,
