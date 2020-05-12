@@ -217,7 +217,7 @@ legacy_client_handler(void *sock_id)
 	int ret;
 	char buffer_recv[BUF_SIZE];
 	/* receive data is not null terminated */
-	int bytes = read(s, buffer_recv, sizeof(buffer_recv));
+	int bytes = read(s, buffer_recv, sizeof(buffer_recv) - 1);
 
 	while (bytes > 0) {
 		buffer_recv[bytes] = 0;
@@ -234,7 +234,7 @@ legacy_client_handler(void *sock_id)
 			if (ret < 0)
 				printf("\nCould not send error response\n");
 		}
-		bytes = read(s, buffer_recv, sizeof(buffer_recv));
+		bytes = read(s, buffer_recv, sizeof(buffer_recv) - 1);
 	}
 	close(s);
 	return NULL;
