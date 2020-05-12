@@ -95,6 +95,10 @@ register_client(const char *cmd __rte_unused, const char *params,
 	*strchr(data, '\"') = 0;
 
 	fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+	if (fd < 0) {
+		perror("Failed to open socket");
+		return -1;
+	}
 	addrs.sun_family = AF_UNIX;
 	strlcpy(addrs.sun_path, data, sizeof(addrs.sun_path));
 
