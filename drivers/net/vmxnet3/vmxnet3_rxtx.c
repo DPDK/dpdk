@@ -950,13 +950,17 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			RTE_ASSERT(rxd->btype == VMXNET3_RXD_BTYPE_BODY);
 
-			if (rxm->data_len) {
+			if (likely(start && rxm->data_len > 0)) {
 				start->pkt_len += rxm->data_len;
 				start->nb_segs++;
 
 				rxq->last_seg->next = rxm;
 				rxq->last_seg = rxm;
 			} else {
+				PMD_RX_LOG(ERR, "Error received empty or out of order frame.");
+				rxq->stats.drop_total++;
+				rxq->stats.drop_err++;
+
 				rte_pktmbuf_free_seg(rxm);
 			}
 		}
