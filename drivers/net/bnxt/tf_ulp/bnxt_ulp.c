@@ -44,7 +44,7 @@ ulp_ctx_deinit_allowed(void *ptr)
 	if (!bp)
 		return 0;
 
-	if (&bp->tfp == bp->ulp_ctx.g_tfp)
+	if (&bp->tfp == bp->ulp_ctx->g_tfp)
 		return 1;
 
 	return 0;
@@ -103,7 +103,7 @@ ulp_ctx_session_close(struct bnxt *bp,
 		tf_close_session(&bp->tfp);
 	session->session_opened = 0;
 	session->g_tfp = NULL;
-	bp->ulp_ctx.g_tfp = NULL;
+	bp->ulp_ctx->g_tfp = NULL;
 }
 
 static void
@@ -114,7 +114,7 @@ bnxt_init_tbl_scope_parms(struct bnxt *bp,
 	uint32_t dev_id;
 	int rc;
 
-	rc = bnxt_ulp_cntxt_dev_id_get(&bp->ulp_ctx, &dev_id);
+	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &dev_id);
 	if (rc)
 		/* TBD: For now, just use default. */
 		dparms = 0;
@@ -174,7 +174,7 @@ ulp_eem_tbl_scope_init(struct bnxt *bp)
 		return rc;
 	}
 
-	rc = bnxt_ulp_cntxt_tbl_scope_id_set(&bp->ulp_ctx, params.tbl_scope_id);
+	rc = bnxt_ulp_cntxt_tbl_scope_id_set(bp->ulp_ctx, params.tbl_scope_id);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to set table scope id\n");
 		return rc;
@@ -234,7 +234,7 @@ ulp_ctx_deinit(struct bnxt *bp,
 	/* Free the contents */
 	if (session->cfg_data) {
 		rte_free(session->cfg_data);
-		bp->ulp_ctx.cfg_data = NULL;
+		bp->ulp_ctx->cfg_data = NULL;
 		session->cfg_data = NULL;
 	}
 	return 0;
@@ -262,7 +262,7 @@ ulp_ctx_init(struct bnxt *bp,
 	}
 
 	/* Increment the ulp context data reference count usage. */
-	bp->ulp_ctx.cfg_data = ulp_data;
+	bp->ulp_ctx->cfg_data = ulp_data;
 	session->cfg_data = ulp_data;
 	ulp_data->ref_cnt++;
 
@@ -272,7 +272,7 @@ ulp_ctx_init(struct bnxt *bp,
 		(void)ulp_ctx_deinit(bp, session);
 		return rc;
 	}
-	bnxt_ulp_cntxt_tfp_set(&bp->ulp_ctx, session->g_tfp);
+	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, session->g_tfp);
 	return rc;
 }
 
@@ -304,7 +304,7 @@ ulp_ctx_detach(struct bnxt *bp,
 		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
 		return -EINVAL;
 	}
-	ulp_ctx = &bp->ulp_ctx;
+	ulp_ctx = bp->ulp_ctx;
 
 	if (!ulp_ctx->cfg_data)
 		return 0;
@@ -441,6 +441,11 @@ bnxt_ulp_init(struct bnxt *bp)
 	bool init;
 	int rc;
 
+	if (bp->ulp_ctx) {
+		BNXT_TF_DBG(ERR, "ulp ctx already allocated\n");
+		return -EINVAL;
+	}
+
 	/*
 	 * Multiple uplink ports can be associated with a single vswitch.
 	 * Make sure only the port that is started first will initialize
@@ -452,22 +457,35 @@ bnxt_ulp_init(struct bnxt *bp)
 		return -EINVAL;
 	}
 
+	bp->ulp_ctx = rte_zmalloc("bnxt_ulp_ctx",
+				  sizeof(struct bnxt_ulp_context), 0);
+	if (!bp->ulp_ctx) {
+		BNXT_TF_DBG(ERR, "Failed to allocate ulp ctx\n");
+		ulp_session_deinit(session);
+		return -ENOMEM;
+	}
+
 	/*
 	 * If ULP is already initialized for a specific domain then simply
 	 * assign the ulp context to this rte_eth_dev.
 	 */
 	if (init) {
-		rc = ulp_ctx_attach(&bp->ulp_ctx, session);
+		rc = ulp_ctx_attach(bp->ulp_ctx, session);
 		if (rc) {
 			BNXT_TF_DBG(ERR,
 				    "Failed to attach the ulp context\n");
+			ulp_session_deinit(session);
+			rte_free(bp->ulp_ctx);
 			return rc;
 		}
 		/* update the port database */
-		rc = ulp_port_db_dev_port_intf_update(&bp->ulp_ctx, bp);
+		rc = ulp_port_db_dev_port_intf_update(bp->ulp_ctx, bp);
 		if (rc) {
 			BNXT_TF_DBG(ERR,
 				    "Failed to update port database\n");
+			ulp_ctx_detach(bp, session);
+			ulp_session_deinit(session);
+			rte_free(bp->ulp_ctx);
 		}
 		return rc;
 	}
@@ -480,28 +498,28 @@ bnxt_ulp_init(struct bnxt *bp)
 	}
 
 	/* create the port database */
-	rc = ulp_port_db_init(&bp->ulp_ctx);
+	rc = ulp_port_db_init(bp->ulp_ctx);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to create the port database\n");
 		goto jump_to_error;
 	}
 
 	/* update the port database */
-	rc = ulp_port_db_dev_port_intf_update(&bp->ulp_ctx, bp);
+	rc = ulp_port_db_dev_port_intf_update(bp->ulp_ctx, bp);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to update port database\n");
 		goto jump_to_error;
 	}
 
 	/* Create the Mark database. */
-	rc = ulp_mark_db_init(&bp->ulp_ctx);
+	rc = ulp_mark_db_init(bp->ulp_ctx);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to create the mark database\n");
 		goto jump_to_error;
 	}
 
 	/* Create the flow database. */
-	rc = ulp_flow_db_init(&bp->ulp_ctx);
+	rc = ulp_flow_db_init(bp->ulp_ctx);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to create the flow database\n");
 		goto jump_to_error;
@@ -514,7 +532,7 @@ bnxt_ulp_init(struct bnxt *bp)
 		goto jump_to_error;
 	}
 
-	rc = ulp_mapper_init(&bp->ulp_ctx);
+	rc = ulp_mapper_init(bp->ulp_ctx);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to initialize ulp mapper\n");
 		goto jump_to_error;
@@ -553,28 +571,30 @@ bnxt_ulp_deinit(struct bnxt *bp)
 		return;
 
 	/* clean up regular flows */
-	ulp_flow_db_flush_flows(&bp->ulp_ctx, BNXT_ULP_REGULAR_FLOW_TABLE);
+	ulp_flow_db_flush_flows(bp->ulp_ctx, BNXT_ULP_REGULAR_FLOW_TABLE);
 
 	/* cleanup the eem table scope */
-	ulp_eem_tbl_scope_deinit(bp, &bp->ulp_ctx);
+	ulp_eem_tbl_scope_deinit(bp, bp->ulp_ctx);
 
 	/* cleanup the flow database */
-	ulp_flow_db_deinit(&bp->ulp_ctx);
+	ulp_flow_db_deinit(bp->ulp_ctx);
 
 	/* Delete the Mark database */
-	ulp_mark_db_deinit(&bp->ulp_ctx);
+	ulp_mark_db_deinit(bp->ulp_ctx);
 
 	/* cleanup the ulp mapper */
-	ulp_mapper_deinit(&bp->ulp_ctx);
+	ulp_mapper_deinit(bp->ulp_ctx);
 
 	/* Delete the Port database */
-	ulp_port_db_deinit(&bp->ulp_ctx);
+	ulp_port_db_deinit(bp->ulp_ctx);
 
 	/* Delete the ulp context and tf session */
 	ulp_ctx_detach(bp, session);
 
 	/* Finally delete the bnxt session*/
 	ulp_session_deinit(session);
+
+	rte_free(bp->ulp_ctx);
 }
 
 /* Function to set the Mark DB into the context */
@@ -728,7 +748,7 @@ bnxt_ulp_eth_dev_ptr2_cntxt_get(struct rte_eth_dev	*dev)
 		BNXT_TF_DBG(ERR, "Bnxt private data is not initialized\n");
 		return NULL;
 	}
-	return &bp->ulp_ctx;
+	return bp->ulp_ctx;
 }
 
 int32_t

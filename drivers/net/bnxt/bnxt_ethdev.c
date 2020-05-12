@@ -1095,7 +1095,7 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_RSS_HASH |
 		DEV_RX_OFFLOAD_VLAN_FILTER)) &&
-	    !bp->truflow) {
+	    !BNXT_TRUFLOW_EN(bp)) {
 		PMD_DRV_LOG(INFO, "Using vector mode receive for port %d\n",
 			    eth_dev->data->port_id);
 		bp->flags |= BNXT_FLAG_RX_VECTOR_PKT_MODE;
@@ -1221,7 +1221,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	bnxt_schedule_fw_health_check(bp);
 	pthread_mutex_unlock(&bp->def_cp_lock);
 
-	if (bp->truflow)
+	if (BNXT_TRUFLOW_EN(bp))
 		bnxt_ulp_init(bp);
 
 	return 0;
@@ -1267,7 +1267,7 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
-	if (bp->truflow)
+	if (BNXT_TRUFLOW_EN(bp))
 		bnxt_ulp_deinit(bp);
 
 	eth_dev->data->dev_started = 0;
@@ -3647,7 +3647,7 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
 			return -EINVAL;
-		if (bp->truflow)
+		if (BNXT_TRUFLOW_EN(bp))
 			*(const void **)arg = &bnxt_ulp_rte_flow_ops;
 		else
 			*(const void **)arg = &bnxt_flow_ops;
@@ -5350,8 +5350,8 @@ bnxt_parse_devarg_truflow(__rte_unused const char *key,
 		return -EINVAL;
 	}
 
-	bp->truflow = truflow;
-	if (bp->truflow)
+	bp->flags |= BNXT_FLAG_TRUFLOW_EN;
+	if (BNXT_TRUFLOW_EN(bp))
 		PMD_DRV_LOG(INFO, "Host-based truflow feature enabled.\n");
 
 	return 0;
