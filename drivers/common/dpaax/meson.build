@@ -6,7 +6,9 @@ if not is_linux
 	reason = 'only supported on linux'
 endif
 
-sources = files('dpaax_iova_table.c', 'dpaa_of.c')
+sources = files('dpaax_iova_table.c', 'dpaa_of.c', 'caamflib.c')
+
+includes += include_directories('caamflib')
 
 cflags += ['-D_GNU_SOURCE']
 if cc.has_argument('-Wno-cast-qual')

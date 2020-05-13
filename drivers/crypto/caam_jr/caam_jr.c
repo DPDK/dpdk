@@ -37,8 +37,6 @@
 static uint8_t cryptodev_driver_id;
 int caam_jr_logtype;
 
-enum rta_sec_era rta_sec_era;
-
 /* Lists the states possible for the SEC user space driver. */
 enum sec_driver_state_e {
 	SEC_DRIVER_STATE_IDLE,		/* Driver not initialized */

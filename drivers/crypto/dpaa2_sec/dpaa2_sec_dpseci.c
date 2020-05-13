@@ -56,8 +56,6 @@
 #define SEC_FLC_DHR_OUTBOUND	-114
 #define SEC_FLC_DHR_INBOUND	0
 
-enum rta_sec_era rta_sec_era = RTA_SEC_ERA_8;
-
 static uint8_t cryptodev_driver_id;
 
 int dpaa2_logtype_sec;
@@ -3870,6 +3868,8 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 
 	if (dpaa2_svr_family == SVR_LX2160A)
 		rta_set_sec_era(RTA_SEC_ERA_10);
+	else
+		rta_set_sec_era(RTA_SEC_ERA_8);
 
 	DPAA2_SEC_INFO("2-SEC ERA is %d", rta_get_sec_era());
 

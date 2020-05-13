@@ -21,3 +21,7 @@ DPDK_20.0 {
 
 	local: *;
 };
+
+INTERNAL {
+	rta_sec_era;
+};
