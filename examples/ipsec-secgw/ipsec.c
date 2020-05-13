@@ -500,7 +500,7 @@ enqueue_cop_burst(struct cdev_qp *cqp)
 			cqp->id, cqp->qp, ret, len);
 			/* drop packets that we fail to enqueue */
 			for (i = ret; i < len; i++)
-				rte_pktmbuf_free(cqp->buf[i]->sym->m_src);
+				free_pkts(&cqp->buf[i]->sym->m_src, 1);
 	}
 	cqp->in_flight += ret;
 	cqp->len = 0;
@@ -528,7 +528,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 
 	for (i = 0; i < nb_pkts; i++) {
 		if (unlikely(sas[i] == NULL)) {
-			rte_pktmbuf_free(pkts[i]);
+			free_pkts(&pkts[i], 1);
 			continue;
 		}
 
@@ -549,7 +549,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 
 			if ((unlikely(ips->security.ses == NULL)) &&
 				create_lookaside_session(ipsec_ctx, sa, ips)) {
-				rte_pktmbuf_free(pkts[i]);
+				free_pkts(&pkts[i], 1);
 				continue;
 			}
 
@@ -563,7 +563,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 		case RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO:
 			RTE_LOG(ERR, IPSEC, "CPU crypto is not supported by the"
 					" legacy mode.");
-			rte_pktmbuf_free(pkts[i]);
+			free_pkts(&pkts[i], 1);
 			continue;
 
 		case RTE_SECURITY_ACTION_TYPE_NONE:
@@ -575,7 +575,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 
 			if ((unlikely(ips->crypto.ses == NULL)) &&
 				create_lookaside_session(ipsec_ctx, sa, ips)) {
-				rte_pktmbuf_free(pkts[i]);
+				free_pkts(&pkts[i], 1);
 				continue;
 			}
 
@@ -584,7 +584,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 
 			ret = xform_func(pkts[i], sa, &priv->cop);
 			if (unlikely(ret)) {
-				rte_pktmbuf_free(pkts[i]);
+				free_pkts(&pkts[i], 1);
 				continue;
 			}
 			break;
@@ -608,7 +608,7 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 
 			ret = xform_func(pkts[i], sa, &priv->cop);
 			if (unlikely(ret)) {
-				rte_pktmbuf_free(pkts[i]);
+				free_pkts(&pkts[i], 1);
 				continue;
 			}
 
@@ -643,7 +643,7 @@ ipsec_inline_dequeue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 		sa = priv->sa;
 		ret = xform_func(pkt, sa, &priv->cop);
 		if (unlikely(ret)) {
-			rte_pktmbuf_free(pkt);
+			free_pkts(&pkt, 1);
 			continue;
 		}
 		pkts[nb_pkts++] = pkt;
@@ -690,13 +690,13 @@ ipsec_dequeue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 				RTE_SECURITY_ACTION_TYPE_NONE) {
 				ret = xform_func(pkt, sa, cops[j]);
 				if (unlikely(ret)) {
-					rte_pktmbuf_free(pkt);
+					free_pkts(&pkt, 1);
 					continue;
 				}
 			} else if (ipsec_get_action_type(sa) ==
 				RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
 				if (cops[j]->status) {
-					rte_pktmbuf_free(pkt);
+					free_pkts(&pkt, 1);
 					continue;
 				}
 			}

@@ -6,6 +6,10 @@
 
 #include <stdbool.h>
 
+#ifndef STATS_INTERVAL
+#define STATS_INTERVAL 0
+#endif
+
 #define NB_SOCKETS 4
 
 #define MAX_PKT_BURST 32
@@ -69,6 +73,19 @@ struct ethaddr_info {
 	uint64_t src, dst;
 };
 
+#if (STATS_INTERVAL > 0)
+struct ipsec_core_statistics {
+	uint64_t tx;
+	uint64_t rx;
+	uint64_t rx_call;
+	uint64_t tx_call;
+	uint64_t dropped;
+	uint64_t burst_rx;
+} __rte_cache_aligned;
+
+struct ipsec_core_statistics core_statistics[RTE_MAX_LCORE];
+#endif /* STATS_INTERVAL */
+
 extern struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS];
 
 /* Port mask to identify the unprotected ports */
@@ -83,6 +100,55 @@ static inline uint8_t
 is_unprotected_port(uint16_t port_id)
 {
 	return unprotected_port_mask & (1 << port_id);
+}
+
+static inline void
+core_stats_update_rx(int n)
+{
+#if (STATS_INTERVAL > 0)
+	int lcore_id = rte_lcore_id();
+	core_statistics[lcore_id].rx += n;
+	core_statistics[lcore_id].rx_call++;
+	if (n == MAX_PKT_BURST)
+		core_statistics[lcore_id].burst_rx += n;
+#else
+	RTE_SET_USED(n);
+#endif /* STATS_INTERVAL */
+}
+
+static inline void
+core_stats_update_tx(int n)
+{
+#if (STATS_INTERVAL > 0)
+	int lcore_id = rte_lcore_id();
+	core_statistics[lcore_id].tx += n;
+	core_statistics[lcore_id].tx_call++;
+#else
+	RTE_SET_USED(n);
+#endif /* STATS_INTERVAL */
+}
+
+static inline void
+core_stats_update_drop(int n)
+{
+#if (STATS_INTERVAL > 0)
+	int lcore_id = rte_lcore_id();
+	core_statistics[lcore_id].dropped += n;
+#else
+	RTE_SET_USED(n);
+#endif /* STATS_INTERVAL */
+}
+
+/* helper routine to free bulk of packets */
+static inline void
+free_pkts(struct rte_mbuf *mb[], uint32_t n)
+{
+	uint32_t i;
+
+	for (i = 0; i != n; i++)
+		rte_pktmbuf_free(mb[i]);
+
+	core_stats_update_drop(n);
 }
 
 #endif /* _IPSEC_SECGW_H_ */

@@ -12,21 +12,12 @@
 #include <rte_mbuf.h>
 
 #include "ipsec.h"
+#include "ipsec-secgw.h"
 
 #define SATP_OUT_IPV4(t)	\
 	((((t) & RTE_IPSEC_SATP_MODE_MASK) == RTE_IPSEC_SATP_MODE_TRANS && \
 	(((t) & RTE_IPSEC_SATP_IPV_MASK) == RTE_IPSEC_SATP_IPV4)) || \
 	((t) & RTE_IPSEC_SATP_MODE_MASK) == RTE_IPSEC_SATP_MODE_TUNLV4)
-
-/* helper routine to free bulk of packets */
-static inline void
-free_pkts(struct rte_mbuf *mb[], uint32_t n)
-{
-	uint32_t i;
-
-	for (i = 0; i != n; i++)
-		rte_pktmbuf_free(mb[i]);
-}
 
 /* helper routine to free bulk of crypto-ops and related packets */
 static inline void
