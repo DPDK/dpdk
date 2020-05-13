@@ -94,6 +94,7 @@ struct otx2_dev {
 	OTX2_DEV;
 };
 
+__rte_internal
 int otx2_dev_priv_init(struct rte_pci_device *pci_dev, void *otx2_dev);
 
 /* Common dev init and fini routines */
@@ -116,7 +117,9 @@ otx2_dev_init(struct rte_pci_device *pci_dev, void *otx2_dev)
 	return otx2_dev_priv_init(pci_dev, otx2_dev);
 }
 
+__rte_internal
 void otx2_dev_fini(struct rte_pci_device *pci_dev, void *otx2_dev);
+__rte_internal
 int otx2_dev_active_vfs(void *otx2_dev);
 
 #define RVU_PFVF_PF_SHIFT	10

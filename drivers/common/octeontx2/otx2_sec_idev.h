@@ -22,16 +22,22 @@ struct otx2_sec_idev_cfg {
 	rte_spinlock_t tx_cpt_lock;
 };
 
+__rte_internal
 uint8_t otx2_eth_dev_is_sec_capable(struct rte_eth_dev *eth_dev);
 
+__rte_internal
 int otx2_sec_idev_cfg_init(int port_id);
 
+__rte_internal
 int otx2_sec_idev_tx_cpt_qp_add(uint16_t port_id, struct otx2_cpt_qp *qp);
 
+__rte_internal
 int otx2_sec_idev_tx_cpt_qp_remove(struct otx2_cpt_qp *qp);
 
+__rte_internal
 int otx2_sec_idev_tx_cpt_qp_put(struct otx2_cpt_qp *qp);
 
+__rte_internal
 int otx2_sec_idev_tx_cpt_qp_get(uint16_t port_id, struct otx2_cpt_qp **qp);
 
 #endif /* _OTX2_SEC_IDEV_H_ */

@@ -16,10 +16,13 @@ typedef struct {
 	uint64_t bits[MAX_VFPF_DWORD_BITS];
 } otx2_intr_t;
 
+__rte_internal
 int otx2_register_irq(struct rte_intr_handle *intr_handle,
 		      rte_intr_callback_fn cb, void *data, unsigned int vec);
+__rte_internal
 void otx2_unregister_irq(struct rte_intr_handle *intr_handle,
 			 rte_intr_callback_fn cb, void *data, unsigned int vec);
+__rte_internal
 int otx2_disable_irqs(struct rte_intr_handle *intr_handle);
 
 #endif /* _OTX2_IRQ_H_ */

@@ -48,3 +48,7 @@
         changed_enumerators = RTE_CRYPTO_AEAD_LIST_END
 [suppress_variable]
         name = rte_crypto_aead_algorithm_strings
+
+; Ignore moving OCTEONTX2 stable functions to INTERNAL tag
+[suppress_file]
+	file_name_regexp = ^librte_common_octeontx2\.

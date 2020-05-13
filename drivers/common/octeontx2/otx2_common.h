@@ -62,13 +62,21 @@ struct otx2_idev_cfg {
 	};
 };
 
+__rte_internal
 struct otx2_idev_cfg *otx2_intra_dev_get_cfg(void);
+__rte_internal
 void otx2_sso_pf_func_set(uint16_t sso_pf_func);
+__rte_internal
 uint16_t otx2_sso_pf_func_get(void);
+__rte_internal
 uint16_t otx2_npa_pf_func_get(void);
+__rte_internal
 struct otx2_npa_lf *otx2_npa_lf_obj_get(void);
+__rte_internal
 void otx2_npa_set_defaults(struct otx2_idev_cfg *idev);
+__rte_internal
 int otx2_npa_lf_active(void *dev);
+__rte_internal
 int otx2_npa_lf_obj_ref(void);
 
 /* Log */

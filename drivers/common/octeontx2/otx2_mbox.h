@@ -1617,19 +1617,25 @@ struct tim_enable_rsp {
 	uint32_t __otx2_io currentbucket;
 };
 
+__rte_internal
 const char *otx2_mbox_id2name(uint16_t id);
 int otx2_mbox_id2size(uint16_t id);
 void otx2_mbox_reset(struct otx2_mbox *mbox, int devid);
 int otx2_mbox_init(struct otx2_mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
 		   int direction, int ndevsi, uint64_t intr_offset);
 void otx2_mbox_fini(struct otx2_mbox *mbox);
+__rte_internal
 void otx2_mbox_msg_send(struct otx2_mbox *mbox, int devid);
+__rte_internal
 int otx2_mbox_wait_for_rsp(struct otx2_mbox *mbox, int devid);
 int otx2_mbox_wait_for_rsp_tmo(struct otx2_mbox *mbox, int devid, uint32_t tmo);
+__rte_internal
 int otx2_mbox_get_rsp(struct otx2_mbox *mbox, int devid, void **msg);
+__rte_internal
 int otx2_mbox_get_rsp_tmo(struct otx2_mbox *mbox, int devid, void **msg,
 			  uint32_t tmo);
 int otx2_mbox_get_availmem(struct otx2_mbox *mbox, int devid);
+__rte_internal
 struct mbox_msghdr *otx2_mbox_alloc_msg_rsp(struct otx2_mbox *mbox, int devid,
 					    int size, int size_rsp);
 
