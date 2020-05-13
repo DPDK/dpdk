@@ -2643,7 +2643,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					filter->input.flow.l2_flow.src =
 						eth_spec->src;
 					input_set |= (I40E_INSET_DMAC | I40E_INSET_SMAC);
-				} else {
+				} else if (!rte_is_zero_ether_addr(&eth_mask->src) ||
+					   !rte_is_zero_ether_addr(&eth_mask->dst)) {
 					rte_flow_error_set(error, EINVAL,
 						      RTE_FLOW_ERROR_TYPE_ITEM,
 						      item,
