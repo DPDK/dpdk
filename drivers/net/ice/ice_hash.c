@@ -95,7 +95,7 @@ struct rss_type_match_hdr hint_7 = {
 struct rss_type_match_hdr hint_8 = {
 	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_SCTP, ETH_RSS_NONFRAG_IPV6_SCTP};
 struct rss_type_match_hdr hint_9 = {
-	ICE_FLOW_SEG_HDR_GTPU_IP,	ETH_RSS_IPV4};
+	ICE_FLOW_SEG_HDR_GTPU_EH, ETH_RSS_IPV4};
 struct rss_type_match_hdr hint_10 = {
 	ICE_FLOW_SEG_HDR_PPPOE,	ETH_RSS_IPV4};
 struct rss_type_match_hdr hint_11 = {
@@ -104,6 +104,10 @@ struct rss_type_match_hdr hint_12 = {
 	ICE_FLOW_SEG_HDR_PPPOE,	ETH_RSS_NONFRAG_IPV4_TCP};
 struct rss_type_match_hdr hint_13 = {
 	ICE_FLOW_SEG_HDR_PPPOE,	ETH_RSS_NONFRAG_IPV4_SCTP};
+struct rss_type_match_hdr hint_14 = {
+	ICE_FLOW_SEG_HDR_GTPU_EH, ETH_RSS_NONFRAG_IPV4_UDP};
+struct rss_type_match_hdr hint_15 = {
+	ICE_FLOW_SEG_HDR_GTPU_EH, ETH_RSS_NONFRAG_IPV4_TCP};
 
 /* Supported pattern for os default package. */
 static struct ice_pattern_match_item ice_hash_pattern_list_os[] = {
@@ -130,8 +134,8 @@ static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
 	{pattern_eth_ipv6_sctp,		    ICE_INSET_NONE,  &hint_8},
 	{pattern_empty,			    ICE_INSET_NONE,  &hint_0},
 	{pattern_eth_ipv4_gtpu_eh_ipv4,	    ICE_INSET_NONE,  &hint_9},
-	{pattern_eth_ipv4_gtpu_eh_ipv4_udp, ICE_INSET_NONE,  &hint_9},
-	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp, ICE_INSET_NONE,  &hint_9},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_udp, ICE_INSET_NONE,  &hint_14},
+	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp, ICE_INSET_NONE,  &hint_15},
 	{pattern_eth_pppoes_ipv4,	    ICE_INSET_NONE,  &hint_10},
 	{pattern_eth_pppoes_ipv4_udp,	    ICE_INSET_NONE,  &hint_11},
 	{pattern_eth_pppoes_ipv4_tcp,	    ICE_INSET_NONE,  &hint_12},
