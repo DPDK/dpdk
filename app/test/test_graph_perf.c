@@ -76,6 +76,8 @@ test_node_ctx_init(const struct rte_graph *graph, struct rte_node *node)
 	RTE_SET_USED(graph);
 
 	mz = rte_memzone_lookup(TEST_GRAPH_PERF_MZ);
+	if (mz == NULL)
+		return -ENOMEM;
 	graph_data = mz->addr;
 	node_data = graph_get_node_data(graph_data, nid);
 	node->ctx[0] = node->nb_edges;
@@ -570,6 +572,7 @@ graph_init(const char *gname, uint8_t nb_srcs, uint8_t nb_sinks,
 	}
 	graph_data->graph_id = graph_id;
 
+	free(node_map);
 	for (i = 0; i < graph_data->nb_nodes; i++)
 		free(node_patterns[i]);
 	free(snk_nodes);
@@ -578,6 +581,7 @@ graph_init(const char *gname, uint8_t nb_srcs, uint8_t nb_sinks,
 	return 0;
 
 pattern_name_free:
+	free(node_map);
 	for (i = 0; i < graph_data->nb_nodes; i++)
 		free(node_patterns[i]);
 snk_free:
@@ -677,6 +681,8 @@ measure_perf(void)
 	struct test_graph_perf *graph_data;
 
 	mz = rte_memzone_lookup(TEST_GRAPH_PERF_MZ);
+	if (mz == NULL)
+		return -ENOMEM;
 	graph_data = mz->addr;
 
 	return measure_perf_get(graph_data->graph_id);
