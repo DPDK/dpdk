@@ -206,7 +206,9 @@ npa_lf_aura_op_range_set(uint64_t aura_handle, uint64_t start_iova,
 }
 
 /* NPA LF */
+__rte_internal
 int otx2_npa_lf_init(struct rte_pci_device *pci_dev, void *otx2_dev);
+__rte_internal
 int otx2_npa_lf_fini(void);
 
 /* IRQ */

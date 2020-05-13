@@ -1,8 +1,10 @@
 DPDK_20.0 {
+	local: *;
+};
+
+INTERNAL {
 	global:
 
 	otx2_npa_lf_fini;
 	otx2_npa_lf_init;
-
-	local: *;
 };

@@ -52,3 +52,5 @@
 ; Ignore moving OCTEONTX2 stable functions to INTERNAL tag
 [suppress_file]
 	file_name_regexp = ^librte_common_octeontx2\.
+[suppress_file]
+	file_name_regexp = ^librte_mempool_octeontx2\.
