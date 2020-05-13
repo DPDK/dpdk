@@ -84,6 +84,10 @@ pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr)
 
 	errno = 0;
 	val = strtoul(in, &end, 16);
+	/* Empty string is not an error for strtoul, but the check
+	 *   end[0] != ':'
+	 * will detect the issue.
+	 */
 	if (errno != 0 || end[0] != ':' || val > UINT32_MAX)
 		return -EINVAL;
 	dev_addr->domain = (uint32_t)val;
