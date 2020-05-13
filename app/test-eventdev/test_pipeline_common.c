@@ -392,12 +392,16 @@ pipeline_event_tx_adapter_setup(struct evt_options *opt,
 		if (!(cap & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT)) {
 			uint32_t service_id = -1U;
 
-			rte_event_eth_tx_adapter_service_id_get(consm,
-					&service_id);
+			ret = rte_event_eth_tx_adapter_service_id_get(consm,
+								   &service_id);
+			if (ret != -ESRCH && ret != 0) {
+				evt_err("Failed to get Tx adptr service ID");
+				return ret;
+			}
 			ret = evt_service_setup(service_id);
 			if (ret) {
 				evt_err("Failed to setup service core"
-						" for Tx adapter\n");
+						" for Tx adapter");
 				return ret;
 			}
 		}
