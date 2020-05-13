@@ -35,6 +35,12 @@ get_u8_pciaddr_field(const char *in, void *_u8, char dlm)
 	if (*in == '\0')
 		return NULL;
 
+	/* PCI field starting with spaces is forbidden.
+	 * Negative wrap-around is not reported as an error by strtoul.
+	 */
+	if (*in == ' ' || *in == '-')
+		return NULL;
+
 	errno = 0;
 	val = strtoul(in, &end, 16);
 	if (errno != 0 || end[0] != dlm || val > UINT8_MAX) {
@@ -69,6 +75,12 @@ pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr)
 	const char *in = input;
 	unsigned long val;
 	char *end;
+
+	/* PCI id starting with spaces is forbidden.
+	 * Negative wrap-around is not reported as an error by strtoul.
+	 */
+	if (*in == ' ' || *in == '-')
+		return -EINVAL;
 
 	errno = 0;
 	val = strtoul(in, &end, 16);
