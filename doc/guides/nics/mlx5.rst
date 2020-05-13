@@ -163,8 +163,6 @@ Limitations
 - Flows with a VXLAN Network Identifier equal (or ends to be equal)
   to 0 are not supported.
 
-- VXLAN TSO and checksum offloads are not supported on VM.
-
 - L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
 
 - Match on Geneve header supports the following fields only:
