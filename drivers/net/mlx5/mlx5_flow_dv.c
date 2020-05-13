@@ -1881,6 +1881,9 @@ flow_dev_get_vlan_info_from_items(const struct rte_flow_item *items,
 		const struct rte_flow_item_vlan *vlan_m = items->mask;
 		const struct rte_flow_item_vlan *vlan_v = items->spec;
 
+		/* If VLAN item in pattern doesn't contain data, return here. */
+		if (!vlan_v)
+			return;
 		if (!vlan_m)
 			vlan_m = &nic_mask;
 		/* Only full match values are accepted */
