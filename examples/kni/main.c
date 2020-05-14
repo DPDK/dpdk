@@ -774,9 +774,11 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 {
 	int ret;
 	uint16_t nb_rxd = NB_RXD;
+	uint16_t nb_txd = NB_TXD;
 	struct rte_eth_conf conf;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_rxconf rxq_conf;
+	struct rte_eth_txconf txq_conf;
 
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		RTE_LOG(ERR, APP, "Invalid port id %d\n", port_id);
@@ -804,7 +806,7 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 		return ret;
 	}
 
-	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rxd, NULL);
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rxd, &nb_txd);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Could not adjust number of descriptors "
 				"for port%u (%d)\n", (unsigned int)port_id,
@@ -825,6 +827,16 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 		rte_eth_dev_socket_id(port_id), &rxq_conf, pktmbuf_pool);
 	if (ret < 0) {
 		RTE_LOG(ERR, APP, "Fail to setup Rx queue of port %d\n",
+				port_id);
+		return ret;
+	}
+
+	txq_conf = dev_info.default_txconf;
+	txq_conf.offloads = conf.txmode.offloads;
+	ret = rte_eth_tx_queue_setup(port_id, 0, nb_txd,
+		rte_eth_dev_socket_id(port_id), &txq_conf);
+	if (ret < 0) {
+		RTE_LOG(ERR, APP, "Fail to setup Tx queue of port %d\n",
 				port_id);
 		return ret;
 	}
