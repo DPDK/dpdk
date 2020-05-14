@@ -2072,7 +2072,7 @@ static struct rte_security_ops caam_jr_security_ops = {
 static void
 close_job_ring(struct sec_job_ring_t *job_ring)
 {
-	if (job_ring->irq_fd) {
+	if (job_ring->irq_fd != -1) {
 		/* Producer index is frozen. If consumer index is not equal
 		 * with producer index, then we have descs to flush.
 		 */
@@ -2081,7 +2081,7 @@ close_job_ring(struct sec_job_ring_t *job_ring)
 
 		/* free the uio job ring */
 		free_job_ring(job_ring->irq_fd);
-		job_ring->irq_fd = 0;
+		job_ring->irq_fd = -1;
 		caam_jr_dma_free(job_ring->input_ring);
 		caam_jr_dma_free(job_ring->output_ring);
 		g_job_rings_no--;
@@ -2185,7 +2185,7 @@ caam_jr_dev_uninit(struct rte_cryptodev *dev)
  *
  */
 static void *
-init_job_ring(void *reg_base_addr, uint32_t irq_id)
+init_job_ring(void *reg_base_addr, int irq_id)
 {
 	struct sec_job_ring_t *job_ring = NULL;
 	int i, ret = 0;
@@ -2195,7 +2195,7 @@ init_job_ring(void *reg_base_addr, uint32_t irq_id)
 	int irq_coalescing_count = 0;
 
 	for (i = 0; i < MAX_SEC_JOB_RINGS; i++) {
-		if (g_job_rings[i].irq_fd == 0) {
+		if (g_job_rings[i].irq_fd == -1) {
 			job_ring = &g_job_rings[i];
 			g_job_rings_no++;
 			break;
@@ -2448,6 +2448,15 @@ cryptodev_caam_jr_remove(struct rte_vdev_device *vdev)
 	return rte_cryptodev_pmd_destroy(cryptodev);
 }
 
+static void
+sec_job_rings_init(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_SEC_JOB_RINGS; i++)
+		g_job_rings[i].irq_fd = -1;
+}
+
 static struct rte_vdev_driver cryptodev_caam_jr_drv = {
 	.probe = cryptodev_caam_jr_probe,
 	.remove = cryptodev_caam_jr_remove
@@ -2461,6 +2470,12 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_CAAM_JR_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(caam_jr_crypto_drv, cryptodev_caam_jr_drv.driver,
 		cryptodev_driver_id);
+
+RTE_INIT(caam_jr_init)
+{
+	sec_uio_job_rings_init();
+	sec_job_rings_init();
+}
 
 RTE_INIT(caam_jr_init_log)
 {

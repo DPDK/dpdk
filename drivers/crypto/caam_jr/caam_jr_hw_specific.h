@@ -360,7 +360,7 @@ struct sec_job_ring_t {
 				 * bitwise operations.
 				 */
 
-	uint32_t irq_fd;	/* The file descriptor used for polling from
+	int irq_fd;		/* The file descriptor used for polling from
 				 * user space for interrupts notifications
 				 */
 	uint32_t jr_mode;	/* Model used by SEC Driver to receive

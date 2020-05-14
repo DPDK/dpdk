@@ -145,7 +145,7 @@ file_read_first_line(const char root[], const char subdir[],
 		 "%s/%s/%s", root, subdir, filename);
 
 	fd = open(absolute_file_name, O_RDONLY);
-	SEC_ASSERT(fd > 0, fd, "Error opening file %s",
+	SEC_ASSERT(fd >= 0, fd, "Error opening file %s",
 			absolute_file_name);
 
 	/* read UIO device name from first line in file */
@@ -179,7 +179,7 @@ file_read_first_line(const char root[], const char subdir[],
  *         kernel driver as well. No special return values are used.
  */
 static int
-sec_uio_send_command(uint32_t uio_fd, int32_t uio_command)
+sec_uio_send_command(int uio_fd, int32_t uio_command)
 {
 	int ret;
 
@@ -202,7 +202,7 @@ sec_uio_send_command(uint32_t uio_fd, int32_t uio_command)
  * @retval -1 value for error
  */
 uint32_t
-caam_jr_enable_irqs(uint32_t uio_fd)
+caam_jr_enable_irqs(int uio_fd)
 {
 	int ret;
 
@@ -233,7 +233,7 @@ caam_jr_enable_irqs(uint32_t uio_fd)
  *
  */
 uint32_t
-caam_jr_disable_irqs(uint32_t uio_fd)
+caam_jr_disable_irqs(int uio_fd)
 {
 	int ret;
 
@@ -322,12 +322,12 @@ uio_map_registers(int uio_device_fd, int uio_device_id,
 }
 
 void
-free_job_ring(uint32_t uio_fd)
+free_job_ring(int uio_fd)
 {
 	struct uio_job_ring *job_ring = NULL;
 	int i;
 
-	if (!uio_fd)
+	if (uio_fd == -1)
 		return;
 
 	for (i = 0; i < MAX_SEC_JOB_RINGS; i++) {
@@ -347,7 +347,7 @@ free_job_ring(uint32_t uio_fd)
 			job_ring->jr_id, job_ring->uio_fd);
 	close(job_ring->uio_fd);
 	g_uio_jr_num--;
-	job_ring->uio_fd = 0;
+	job_ring->uio_fd = -1;
 	if (job_ring->register_base_addr == NULL)
 		return;
 
@@ -370,7 +370,7 @@ uio_job_ring *config_job_ring(void)
 	int i;
 
 	for (i = 0; i < MAX_SEC_JOB_RINGS; i++) {
-		if (g_uio_job_ring[i].uio_fd == 0) {
+		if (g_uio_job_ring[i].uio_fd == -1) {
 			job_ring = &g_uio_job_ring[i];
 			g_uio_jr_num++;
 			break;
@@ -389,7 +389,7 @@ uio_job_ring *config_job_ring(void)
 
 	/* Open device file */
 	job_ring->uio_fd = open(uio_device_file_name, O_RDWR);
-	SEC_ASSERT(job_ring->uio_fd > 0, NULL,
+	SEC_ASSERT(job_ring->uio_fd >= 0, NULL,
 		"Failed to open UIO device file for job ring %d",
 		job_ring->jr_id);
 
@@ -488,12 +488,22 @@ sec_cleanup(void)
 		/* I need to close the fd after shutdown UIO commands need to be
 		 * sent using the fd
 		 */
-		if (job_ring->uio_fd != 0) {
+		if (job_ring->uio_fd != -1) {
 			CAAM_JR_INFO(
 			"Closed device file for job ring %d , fd = %d",
 			job_ring->jr_id, job_ring->uio_fd);
 			close(job_ring->uio_fd);
+			job_ring->uio_fd = -1;
 		}
 	}
 	return 0;
+}
+
+void
+sec_uio_job_rings_init(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_SEC_JOB_RINGS; i++)
+		g_uio_job_ring[i].uio_fd = -1;
 }

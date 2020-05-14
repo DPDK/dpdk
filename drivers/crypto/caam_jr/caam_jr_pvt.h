@@ -216,7 +216,7 @@ calc_chksum(void *buffer, int len)
 }
 struct uio_job_ring {
 	uint32_t jr_id;
-	uint32_t uio_fd;
+	int uio_fd;
 	void *register_base_addr;
 	int map_size;
 	int uio_minor_number;
@@ -224,8 +224,9 @@ struct uio_job_ring {
 
 int sec_cleanup(void);
 int sec_configure(void);
+void sec_uio_job_rings_init(void);
 struct uio_job_ring *config_job_ring(void);
-void free_job_ring(uint32_t uio_fd);
+void free_job_ring(int uio_fd);
 
 /* For Dma memory allocation of specified length and alignment */
 static inline void *
@@ -279,7 +280,7 @@ static inline rte_iova_t caam_jr_dma_vtop(void *ptr)
  * @retval 0 for success
  * @retval -1 value for error
  */
-uint32_t caam_jr_enable_irqs(uint32_t uio_fd);
+uint32_t caam_jr_enable_irqs(int uio_fd);
 
 /** @brief Request to SEC kernel driver to disable interrupts for descriptor
  *  finished processing
@@ -292,6 +293,6 @@ uint32_t caam_jr_enable_irqs(uint32_t uio_fd);
  * @retval -1 value for error
  *
  */
-uint32_t caam_jr_disable_irqs(uint32_t uio_fd);
+uint32_t caam_jr_disable_irqs(int uio_fd);
 
 #endif
