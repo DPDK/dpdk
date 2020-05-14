@@ -81,6 +81,11 @@ ifeq ($(shell test $(GCC_VERSION) -lt 47 && echo 1), 1)
 WERROR_FLAGS += -Wno-uninitialized
 endif
 
+ifeq ($(shell test $(GCC_VERSION) -ge 100 && echo 1), 1)
+# FIXME: Bugzilla 396
+WERROR_FLAGS += -Wno-zero-length-bounds
+endif
+
 HOST_WERROR_FLAGS := $(WERROR_FLAGS)
 
 ifeq ($(shell test $(HOST_GCC_VERSION) -gt 70 && echo 1), 1)

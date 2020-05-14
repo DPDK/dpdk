@@ -208,6 +208,10 @@ warning_flags = [
 	'-Wno-packed-not-aligned',
 	'-Wno-missing-field-initializers'
 ]
+if cc.get_id() == 'gcc' and cc.version().version_compare('>=10.0')
+# FIXME: Bugzilla 396
+	warning_flags += '-Wno-zero-length-bounds'
+endif
 if not dpdk_conf.get('RTE_ARCH_64')
 # for 32-bit, don't warn about casting a 32-bit pointer to 64-bit int - it's fine!!
 	warning_flags += '-Wno-pointer-to-int-cast'
