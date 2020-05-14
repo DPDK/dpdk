@@ -1217,7 +1217,8 @@ void hinic_free_all_tx_resources(struct rte_eth_dev *eth_dev)
 				HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
 
 	for (q_id = 0; q_id < nic_dev->num_sq; q_id++) {
-		eth_dev->data->tx_queues[q_id] = NULL;
+		if (eth_dev->data->tx_queues != NULL)
+			eth_dev->data->tx_queues[q_id] = NULL;
 
 		if (nic_dev->txqs[q_id] == NULL)
 			continue;
