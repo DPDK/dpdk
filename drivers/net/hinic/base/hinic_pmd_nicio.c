@@ -369,7 +369,6 @@ static int init_rq_ctxts(struct hinic_nic_io *nic_io)
 					     HINIC_MOD_L2NIC,
 					     HINIC_UCODE_CMD_MDY_QUEUE_CONTEXT,
 					     cmd_buf, &out_param, 0);
-
 		if ((err) || out_param != 0) {
 			PMD_DRV_LOG(ERR, "Failed to set RQ ctxts");
 			err = -EFAULT;

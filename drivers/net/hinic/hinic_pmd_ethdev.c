@@ -354,7 +354,7 @@ static int hinic_dev_configure(struct rte_eth_dev *dev)
 		return err;
 	}
 
-	/*clear fdir filter flag in function table*/
+	/* clear fdir filter flag in function table */
 	hinic_free_fdir_filter(nic_dev);
 
 	return HINIC_OK;
@@ -440,7 +440,7 @@ static int hinic_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	}
 	nic_dev->rxqs[queue_idx] = rxq;
 
-	/* alloc rx sq hw wqepage*/
+	/* alloc rx sq hw wqe page */
 	rc = hinic_create_rq(hwdev, queue_idx, rq_depth, socket_id);
 	if (rc) {
 		PMD_DRV_LOG(ERR, "Create rxq[%d] failed, dev_name: %s, rq_depth: %d",
@@ -2035,12 +2035,12 @@ static int hinic_rss_conf_get(struct rte_eth_dev *dev,
 }
 
 /**
- * DPDK callback to update the RETA indirection table.
+ * DPDK callback to update the RSS redirection table.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
  * @param reta_conf
- *   Pointer to RETA configuration structure array.
+ *   Pointer to RSS reta configuration data.
  * @param reta_size
  *   Size of the RETA table.
  *
@@ -2102,14 +2102,13 @@ disable_rss:
 	return HINIC_ERROR;
 }
 
-
 /**
- * DPDK callback to get the RETA indirection table.
+ * DPDK callback to get the RSS indirection table.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
  * @param reta_conf
- *   Pointer to RETA configuration structure array.
+ *   Pointer to RSS reta configuration data.
  * @param reta_size
  *   Size of the RETA table.
  *
@@ -2309,8 +2308,7 @@ static int hinic_dev_xstats_get_names(struct rte_eth_dev *dev,
 	for (i = 0; i < HINIC_VPORT_XSTATS_NUM; i++) {
 		snprintf(xstats_names[count].name,
 			 sizeof(xstats_names[count].name),
-			 "%s",
-			 hinic_vport_stats_strings[i].name);
+			 "%s", hinic_vport_stats_strings[i].name);
 		count++;
 	}
 
@@ -2321,13 +2319,13 @@ static int hinic_dev_xstats_get_names(struct rte_eth_dev *dev,
 	for (i = 0; i < HINIC_PHYPORT_XSTATS_NUM; i++) {
 		snprintf(xstats_names[count].name,
 			 sizeof(xstats_names[count].name),
-			 "%s",
-			 hinic_phyport_stats_strings[i].name);
+			 "%s", hinic_phyport_stats_strings[i].name);
 		count++;
 	}
 
 	return count;
 }
+
 /**
  *  DPDK callback to set mac address
  *
@@ -2492,19 +2490,19 @@ allmulti:
 }
 
 /**
- * DPDK callback to manage filter operations
+ * DPDK callback to manage filter control operations
  *
  * @param dev
  *   Pointer to Ethernet device structure.
  * @param filter_type
- *   Filter type.
+ *   Filter type, which just supports generic type.
  * @param filter_op
- *   Operation to perform.
+ *   Filter operation to perform.
  * @param arg
  *   Pointer to operation-specific structure.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative error value otherwise.
  */
 static int hinic_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,

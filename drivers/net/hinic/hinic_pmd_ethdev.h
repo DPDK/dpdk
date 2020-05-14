@@ -53,11 +53,13 @@ struct hinic_5tuple_filter_info {
 	 * used when more than one filter matches.
 	 */
 	uint8_t priority;
-	uint8_t dst_ip_mask:1, /* if mask is 1b, do not compare dst ip. */
-		src_ip_mask:1, /* if mask is 1b, do not compare src ip. */
-		dst_port_mask:1, /* if mask is 1b, do not compare dst port. */
-		src_port_mask:1, /* if mask is 1b, do not compare src port. */
-		proto_mask:1; /* if mask is 1b, do not compare protocol. */
+
+	/* if mask is 1b, do not compare the response bit domain */
+	uint8_t dst_ip_mask:1,
+		src_ip_mask:1,
+		dst_port_mask:1,
+		src_port_mask:1,
+		proto_mask:1;
 };
 
 /* 5tuple filter structure */

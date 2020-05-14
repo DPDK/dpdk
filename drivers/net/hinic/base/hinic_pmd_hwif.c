@@ -99,7 +99,7 @@ void hinic_set_pf_status(struct hinic_hwif *hwif, enum hinic_pf_status status)
 	u32 addr  = HINIC_CSR_FUNC_ATTR5_ADDR;
 
 	if (hwif->attr.func_type == TYPE_VF) {
-		PMD_DRV_LOG(ERR, "VF doesn't support set attr5");
+		PMD_DRV_LOG(INFO, "VF doesn't support to set attr5");
 		return;
 	}
 
