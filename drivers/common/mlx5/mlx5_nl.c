@@ -330,10 +330,10 @@ mlx5_nl_recv(int nlsk_fd, uint32_t sn, int (*cb)(struct nlmsghdr *, void *arg),
 	     void *arg)
 {
 	struct sockaddr_nl sa;
-	char buf[MLX5_RECV_BUF_SIZE];
+	void *buf = malloc(MLX5_RECV_BUF_SIZE);
 	struct iovec iov = {
 		.iov_base = buf,
-		.iov_len = sizeof(buf),
+		.iov_len = MLX5_RECV_BUF_SIZE,
 	};
 	struct msghdr msg = {
 		.msg_name = &sa,
@@ -345,6 +345,10 @@ mlx5_nl_recv(int nlsk_fd, uint32_t sn, int (*cb)(struct nlmsghdr *, void *arg),
 	int multipart = 0;
 	int ret = 0;
 
+	if (!buf) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
 	do {
 		struct nlmsghdr *nh;
 		int recv_bytes = 0;
@@ -353,7 +357,8 @@ mlx5_nl_recv(int nlsk_fd, uint32_t sn, int (*cb)(struct nlmsghdr *, void *arg),
 			recv_bytes = recvmsg(nlsk_fd, &msg, 0);
 			if (recv_bytes == -1) {
 				rte_errno = errno;
-				return -rte_errno;
+				ret = -rte_errno;
+				goto exit;
 			}
 			nh = (struct nlmsghdr *)buf;
 		} while (nh->nlmsg_seq != sn);
@@ -365,24 +370,30 @@ mlx5_nl_recv(int nlsk_fd, uint32_t sn, int (*cb)(struct nlmsghdr *, void *arg),
 
 				if (err_data->error < 0) {
 					rte_errno = -err_data->error;
-					return -rte_errno;
+					ret = -rte_errno;
+					goto exit;
 				}
 				/* Ack message. */
-				return 0;
+				ret = 0;
+				goto exit;
 			}
 			/* Multi-part msgs and their trailing DONE message. */
 			if (nh->nlmsg_flags & NLM_F_MULTI) {
-				if (nh->nlmsg_type == NLMSG_DONE)
-					return 0;
+				if (nh->nlmsg_type == NLMSG_DONE) {
+					ret =  0;
+					goto exit;
+				}
 				multipart = 1;
 			}
 			if (cb) {
 				ret = cb(nh, arg);
 				if (ret < 0)
-					return ret;
+					goto exit;
 			}
 		}
 	} while (multipart);
+exit:
+	free(buf);
 	return ret;
 }
 
