@@ -1144,6 +1144,9 @@ static int qede_dev_start(struct rte_eth_dev *eth_dev)
 	if (qede_activate_vport(eth_dev, true))
 		goto err;
 
+	/* Bring-up the link */
+	qede_dev_set_link_state(eth_dev, true);
+
 	/* Update link status */
 	qede_link_update(eth_dev, 0);
 
@@ -1165,6 +1168,12 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 
 	PMD_INIT_FUNC_TRACE(edev);
+
+	/* Bring the link down */
+	qede_dev_set_link_state(eth_dev, false);
+
+	/* Update link status */
+	qede_link_update(eth_dev, 0);
 
 	/* Disable vport */
 	if (qede_activate_vport(eth_dev, false))
@@ -1550,8 +1559,6 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	eth_dev->data->nb_rx_queues = 0;
 	eth_dev->data->nb_tx_queues = 0;
 
-	/* Bring the link down */
-	qede_dev_set_link_state(eth_dev, false);
 	qdev->ops->common->slowpath_stop(edev);
 	qdev->ops->common->remove(edev);
 	rte_intr_disable(&pci_dev->intr_handle);
@@ -2671,9 +2678,6 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	}
 
 	eth_dev->dev_ops = (is_vf) ? &qede_eth_vf_dev_ops : &qede_eth_dev_ops;
-
-	/* Bring-up the link */
-	qede_dev_set_link_state(eth_dev, true);
 
 	adapter->num_tx_queues = 0;
 	adapter->num_rx_queues = 0;
