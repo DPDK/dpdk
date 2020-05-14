@@ -313,6 +313,8 @@ static inline struct rte_mbuf *hinic_copy_tx_mbuf(struct hinic_nic_dev *nic_dev,
 		mbuf = mbuf->next;
 	}
 
+	dst_mbuf->pkt_len = dst_mbuf->data_len;
+
 	return dst_mbuf;
 }
 
