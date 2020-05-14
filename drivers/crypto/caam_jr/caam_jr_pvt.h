@@ -280,7 +280,7 @@ static inline rte_iova_t caam_jr_dma_vtop(void *ptr)
  * @retval 0 for success
  * @retval -1 value for error
  */
-uint32_t caam_jr_enable_irqs(int uio_fd);
+int caam_jr_enable_irqs(int uio_fd);
 
 /** @brief Request to SEC kernel driver to disable interrupts for descriptor
  *  finished processing
@@ -293,6 +293,6 @@ uint32_t caam_jr_enable_irqs(int uio_fd);
  * @retval -1 value for error
  *
  */
-uint32_t caam_jr_disable_irqs(int uio_fd);
+int caam_jr_disable_irqs(int uio_fd);
 
 #endif

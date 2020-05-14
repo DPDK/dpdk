@@ -201,7 +201,7 @@ sec_uio_send_command(int uio_fd, int32_t uio_command)
  * @retval 0 for success
  * @retval -1 value for error
  */
-uint32_t
+int
 caam_jr_enable_irqs(int uio_fd)
 {
 	int ret;
@@ -232,7 +232,7 @@ caam_jr_enable_irqs(int uio_fd)
  * @retval -1 value for error
  *
  */
-uint32_t
+int
 caam_jr_disable_irqs(int uio_fd)
 {
 	int ret;
