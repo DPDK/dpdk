@@ -13179,6 +13179,9 @@ i40e_rss_config_hash_function(struct i40e_pf *pf,
 				break;
 		}
 
+		if (i == UINT64_BIT)
+			return -EINVAL;
+
 		for (j = I40E_FILTER_PCTYPE_INVALID + 1;
 		     j < I40E_FILTER_PCTYPE_MAX; j++) {
 			if (pf->adapter->pctypes_tbl[i] & (1ULL << j))
@@ -13310,6 +13313,9 @@ i40e_rss_clear_hash_function(struct i40e_pf *pf,
 			if (mask0 & (1UL << i))
 				break;
 		}
+
+		if (i == UINT64_BIT)
+			return -EINVAL;
 
 		for (j = I40E_FILTER_PCTYPE_INVALID + 1;
 		     j < I40E_FILTER_PCTYPE_MAX; j++) {
