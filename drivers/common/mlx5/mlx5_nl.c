@@ -671,7 +671,10 @@ mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
 
 	ret = mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 1);
 	if (!ret) {
-		MLX5_ASSERT((size_t)(index) < sizeof(mac_own) * CHAR_BIT);
+		MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
+		if (index >= MLX5_MAX_MAC_ADDRESSES)
+			return -EINVAL;
+
 		BITFIELD_SET(mac_own, index);
 	}
 	if (ret == -EEXIST)
@@ -700,7 +703,10 @@ int
 mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx, uint64_t *mac_own,
 			struct rte_ether_addr *mac, uint32_t index)
 {
-	MLX5_ASSERT((size_t)(index) < sizeof(mac_own) * CHAR_BIT);
+	MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
+	if (index >= MLX5_MAX_MAC_ADDRESSES)
+		return -EINVAL;
+
 	BITFIELD_RESET(mac_own, index);
 	return mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 0);
 }
@@ -769,10 +775,12 @@ mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
 {
 	int i;
 
+	if (n <= 0 || n >= MLX5_MAX_MAC_ADDRESSES)
+		return;
+
 	for (i = n - 1; i >= 0; --i) {
 		struct rte_ether_addr *m = &mac_addrs[i];
 
-		MLX5_ASSERT((size_t)(i) < sizeof(mac_own) * CHAR_BIT);
 		if (BITFIELD_ISSET(mac_own, i))
 			mlx5_nl_mac_addr_remove(nlsk_fd, iface_idx, mac_own, m,
 						i);
