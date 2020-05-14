@@ -2075,16 +2075,16 @@ static int hinic_rss_indirtbl_update(struct rte_eth_dev *dev,
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		shift = i % RTE_RETA_GROUP_SIZE;
+
+		if (reta_conf[idx].reta[shift] >= nic_dev->num_rq) {
+			PMD_DRV_LOG(ERR, "Invalid reta entry, indirtbl[%d]: %d "
+				"exceeds the maximum rxq num: %d", i,
+				reta_conf[idx].reta[shift], nic_dev->num_rq);
+			return -EINVAL;
+		}
+
 		if (reta_conf[idx].mask & (1ULL << shift))
 			indirtbl[i] = reta_conf[idx].reta[shift];
-	}
-
-	for (i = 0 ; i < reta_size; i++) {
-		if (indirtbl[i] >= nic_dev->num_rq) {
-			PMD_DRV_LOG(ERR, "Invalid reta entry, index: %d, num_rq: %d",
-				    i, nic_dev->num_rq);
-			goto disable_rss;
-		}
 	}
 
 	err = hinic_rss_set_indir_tbl(nic_dev->hwdev, tmpl_idx, indirtbl);
