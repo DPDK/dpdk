@@ -160,6 +160,11 @@ The requirements for changing the ABI are:
      ``experimental``, as described in the section on :ref:`Experimental APIs
      and Libraries <experimental_apis>`.
 
+   - In situations in which an ``experimental`` symbol has been stable for some
+     time. When promoting the symbol to become part of the next ABI version, the
+     maintainer may choose to provide an alias to the ``experimental`` tag, so
+     as not to break consuming applications.
+
 #. If a newly proposed API functionally replaces an existing one, when the new
    API becomes non-experimental, then the old one is marked with
    ``__rte_deprecated``.
@@ -317,6 +322,11 @@ For removing the experimental tag associated with an API, deprecation notice is
 not required. Though, an API should remain in experimental state for at least
 one release. Thereafter, the normal process of posting patch for review to
 mailing list can be followed.
+
+After the experimental tag has been formally removed, a tree/sub-tree maintainer
+may choose to offer an alias to the experimental tag so as not to break
+applications using the symbol. The alias is then dropped at the declaration of
+next major ABI version.
 
 Libraries
 ~~~~~~~~~

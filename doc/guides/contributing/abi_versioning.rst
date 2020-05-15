@@ -156,6 +156,11 @@ The macros exported are:
   ``be`` to signal that it is being used as an implementation of a particular
   version of symbol ``b``.
 
+* ``VERSION_SYMBOL_EXPERIMENTAL(b, e)``: Creates a symbol version table entry
+  binding versioned symbol ``b@EXPERIMENTAL`` to the internal function ``be``.
+  The macro is used when a symbol matures to become part of the stable ABI, to
+  provide an alias to experimental for some time.
+
 .. _example_abi_macro_usage:
 
 Examples of ABI Macro use
@@ -415,6 +420,157 @@ versioning, in the ``meson.build`` file we add the following
 at the start of the head of the file. This will indicate to the tool-chain to
 enable the function version macros when building. There is no corresponding
 directive required for the ``make`` build system.
+
+
+.. _aliasing_experimental_symbols:
+
+Aliasing experimental symbols
+_____________________________
+
+In situations in which an ``experimental`` symbol has been stable for some time,
+and it becomes a candidate for promotion to the stable ABI. At this time, when
+promoting the symbol, maintainer may choose to provide an alias to the
+``experimental`` symbol version, so as not to break consuming applications.
+
+The process to provide an alias to ``experimental`` is similar to that, of
+:ref:`symbol versioning <example_abi_macro_usage>` described above.
+Assume we have an experimental function ``rte_acl_create`` as follows:
+
+.. code-block:: c
+
+   #include <rte_compat.h>
+
+   /*
+    * Create an acl context object for apps to
+    * manipulate
+    */
+   __rte_experimental
+   struct rte_acl_ctx *
+   rte_acl_create(const struct rte_acl_param *param)
+   {
+   ...
+   }
+
+In the map file, experimental symbols are listed as part of the ``EXPERIMENTAL``
+version node.
+
+.. code-block:: none
+
+   DPDK_20 {
+        global:
+        ...
+
+        local: *;
+   };
+
+   EXPERIMENTAL {
+        global:
+
+        rte_acl_create;
+   };
+
+When we promote the symbol to the stable ABI, we simply strip the
+``__rte_experimental`` annotation from the function and move the symbol from the
+``EXPERIMENTAL`` node, to the node of the next major ABI version as follow.
+
+.. code-block:: c
+
+   /*
+    * Create an acl context object for apps to
+    * manipulate
+    */
+   struct rte_acl_ctx *
+   rte_acl_create(const struct rte_acl_param *param)
+   {
+          ...
+   }
+
+We then update the map file, adding the symbol ``rte_acl_create``
+to the ``DPDK_21`` version node.
+
+.. code-block:: none
+
+   DPDK_20 {
+        global:
+        ...
+
+        local: *;
+   };
+
+   DPDK_21 {
+        global:
+
+        rte_acl_create;
+   } DPDK_20;
+
+
+Although there are strictly no guarantees or commitments associated with
+:ref:`experimental symbols <experimental_apis>`, a maintainer may wish to offer
+an alias to experimental. The process to add an alias to experimental,
+is similar to the symbol versioning process. Assuming we have an experimental
+symbol as before, we now add the symbol to both the ``EXPERIMENTAL``
+and ``DPDK_21`` version nodes.
+
+.. code-block:: c
+
+   #include <rte_compat.h>;
+   #include <rte_function_versioning.h>
+
+   /*
+    * Create an acl context object for apps to
+    * manipulate
+    */
+   struct rte_acl_ctx *
+   rte_acl_create(const struct rte_acl_param *param)
+   {
+   ...
+   }
+
+   __rte_experimental
+   struct rte_acl_ctx *
+   rte_acl_create_e(const struct rte_acl_param *param)
+   {
+      return rte_acl_create(param);
+   }
+   VERSION_SYMBOL_EXPERIMENTAL(rte_acl_create, _e);
+
+   struct rte_acl_ctx *
+   rte_acl_create_v21(const struct rte_acl_param *param)
+   {
+      return rte_acl_create(param);
+   }
+   BIND_DEFAULT_SYMBOL(rte_acl_create, _v21, 21);
+
+In the map file, we map the symbol to both the ``EXPERIMENTAL``
+and ``DPDK_21`` version nodes.
+
+.. code-block:: none
+
+   DPDK_20 {
+        global:
+        ...
+
+        local: *;
+   };
+
+   DPDK_21 {
+        global:
+
+        rte_acl_create;
+   } DPDK_20;
+
+   EXPERIMENTAL {
+        global:
+
+        rte_acl_create;
+   };
+
+.. note::
+
+   Please note, similar to :ref:`symbol versioning <example_abi_macro_usage>`,
+   when aliasing to experimental you will also need to take care of
+   :ref:`mapping static symbols <mapping_static_symbols>`.
+
 
 .. _abi_deprecation:
 
