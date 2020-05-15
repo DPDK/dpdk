@@ -36,6 +36,7 @@ struct dpaa_memseg_list rte_dpaa_memsegs
 	= TAILQ_HEAD_INITIALIZER(rte_dpaa_memsegs);
 
 struct dpaa_bp_info *rte_dpaa_bpid_info;
+int dpaa_logtype_mempool;
 
 static int
 dpaa_mbuf_create_pool(struct rte_mempool *mp)
@@ -356,3 +357,10 @@ static const struct rte_mempool_ops dpaa_mpool_ops = {
 };
 
 MEMPOOL_REGISTER_OPS(dpaa_mpool_ops);
+
+RTE_INIT(dpaa_mp_init_log)
+{
+	dpaa_logtype_mempool = rte_log_register("mempool.dpaa");
+	if (dpaa_logtype_mempool >= 0)
+		rte_log_set_level(dpaa_logtype_mempool, RTE_LOG_NOTICE);
+}

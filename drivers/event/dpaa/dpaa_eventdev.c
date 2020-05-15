@@ -46,6 +46,7 @@
  * Eventqueue = Channel Instance
  * 1 Eventdev can have N Eventqueue
  */
+int dpaa_logtype_eventdev;
 
 #define DISABLE_INTR_MODE "disable_intr"
 
@@ -1068,3 +1069,9 @@ static struct rte_vdev_driver vdev_eventdev_dpaa_pmd = {
 RTE_PMD_REGISTER_VDEV(EVENTDEV_NAME_DPAA_PMD, vdev_eventdev_dpaa_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(EVENTDEV_NAME_DPAA_PMD,
 		DISABLE_INTR_MODE "=<int>");
+RTE_INIT(dpaa_event_init_log)
+{
+	dpaa_logtype_eventdev = rte_log_register("pmd.event.dpaa");
+	if (dpaa_logtype_eventdev >= 0)
+		rte_log_set_level(dpaa_logtype_eventdev, RTE_LOG_NOTICE);
+}

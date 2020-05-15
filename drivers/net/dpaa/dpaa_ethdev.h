@@ -185,4 +185,26 @@ dpaa_rx_cb_atomic(void *event,
 		  const struct qm_dqrr_entry *dqrr,
 		  void **bufs);
 
+/* PMD related logs */
+extern int dpaa_logtype_pmd;
+
+#define DPAA_PMD_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, dpaa_logtype_pmd, "%s(): " fmt "\n", \
+		__func__, ##args)
+
+#define PMD_INIT_FUNC_TRACE() DPAA_PMD_LOG(DEBUG, " >>")
+
+#define DPAA_PMD_DEBUG(fmt, args...) \
+	DPAA_PMD_LOG(DEBUG, fmt, ## args)
+#define DPAA_PMD_ERR(fmt, args...) \
+	DPAA_PMD_LOG(ERR, fmt, ## args)
+#define DPAA_PMD_INFO(fmt, args...) \
+	DPAA_PMD_LOG(INFO, fmt, ## args)
+#define DPAA_PMD_WARN(fmt, args...) \
+	DPAA_PMD_LOG(WARNING, fmt, ## args)
+
+/* DP Logs, toggled out at compile time if level lower than current level */
+#define DPAA_DP_LOG(level, fmt, args...) \
+	RTE_LOG_DP(level, PMD, fmt, ## args)
+
 #endif

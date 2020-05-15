@@ -14,9 +14,6 @@ INTERNAL {
 	bman_thread_irq;
 	dpaa_get_qm_channel_caam;
 	dpaa_get_qm_channel_pool;
-	dpaa_logtype_eventdev;
-	dpaa_logtype_mempool;
-	dpaa_logtype_pmd;
 	dpaa_netcfg;
 	dpaa_svr_family;
 	fman_dealloc_bufs_mask_hi;

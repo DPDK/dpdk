@@ -76,4 +76,20 @@ struct dpaa_eventdev {
 	uint32_t nb_event_port_enqueue_depth;
 	uint32_t event_dev_cfg;
 };
+
+#define DPAA_EVENTDEV_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, dpaa_logtype_eventdev, "%s(): " fmt "\n", \
+		__func__, ##args)
+
+#define EVENTDEV_INIT_FUNC_TRACE() DPAA_EVENTDEV_LOG(DEBUG, " >>")
+
+#define DPAA_EVENTDEV_DEBUG(fmt, args...) \
+	DPAA_EVENTDEV_LOG(DEBUG, fmt, ## args)
+#define DPAA_EVENTDEV_ERR(fmt, args...) \
+	DPAA_EVENTDEV_LOG(ERR, fmt, ## args)
+#define DPAA_EVENTDEV_INFO(fmt, args...) \
+	DPAA_EVENTDEV_LOG(INFO, fmt, ## args)
+#define DPAA_EVENTDEV_WARN(fmt, args...) \
+	DPAA_EVENTDEV_LOG(WARNING, fmt, ## args)
+
 #endif /* __DPAA_EVENTDEV_H__ */
