@@ -282,6 +282,7 @@ __sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
 	struct ssows *ws = port;
 	struct octeontx_txq *txq;
 
+	RTE_SET_USED(nb_events);
 	switch (ev->sched_type) {
 	case SSO_SYNC_ORDERED:
 		ssows_swtag_norm(ws, ev->event, SSO_SYNC_ATOMIC);
@@ -305,7 +306,7 @@ __sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
 	ethdev = &rte_eth_devices[port_id];
 	txq = ethdev->data->tx_queues[queue_id];
 
-	return __octeontx_xmit_pkts(txq, &m, nb_events, cmd, flag);
+	return __octeontx_xmit_pkts(txq, &m, 1, cmd, flag);
 }
 
 #define T(name, f3, f2, f1, f0, sz, flags)				     \
