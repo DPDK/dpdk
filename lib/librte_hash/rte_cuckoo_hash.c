@@ -939,8 +939,8 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	uint32_t prim_bucket_idx, sec_bucket_idx;
 	struct rte_hash_bucket *prim_bkt, *sec_bkt, *cur_bkt;
 	struct rte_hash_key *new_k, *keys = h->key_store;
+	uint32_t ext_bkt_id = 0;
 	uint32_t slot_id;
-	uint32_t ext_bkt_id;
 	int ret;
 	unsigned n_slots;
 	unsigned lcore_id;
@@ -1095,7 +1095,8 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	 * extendable bucket. We first get a free bucket from ring.
 	 */
 	if (rte_ring_sc_dequeue_elem(h->free_ext_bkts, &ext_bkt_id,
-						sizeof(uint32_t)) != 0) {
+						sizeof(uint32_t)) != 0 ||
+					ext_bkt_id == 0) {
 		ret = -ENOSPC;
 		goto failure;
 	}
