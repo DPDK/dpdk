@@ -67,3 +67,11 @@
         file_name_regexp = ^librte_bus_fslmc\.
 [suppress_file]
         file_name_regexp = ^librte_bus_dpaa\.
+[suppress_variable]
+        name = rte_dpaa_bpid_info
+[suppress_variable]
+        name = rte_dpaa_memsegs
+[suppress_variable]
+        name = rte_dpaa2_bpid_info
+[suppress_function]
+        name = rte_dpaa2_mbuf_alloc_bulk
