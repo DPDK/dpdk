@@ -593,11 +593,13 @@ qede_alloc_mem_sb(struct qede_dev *qdev, struct ecore_sb_info *sb_info,
 
 int qede_alloc_fp_resc(struct qede_dev *qdev)
 {
-	struct ecore_dev *edev = &qdev->edev;
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct qede_fastpath *fp;
 	uint32_t num_sbs;
 	uint16_t sb_idx;
 	int i;
+
+	PMD_INIT_FUNC_TRACE(edev);
 
 	if (IS_VF(edev))
 		ecore_vf_get_num_sbs(ECORE_LEADING_HWFN(edev), &num_sbs);

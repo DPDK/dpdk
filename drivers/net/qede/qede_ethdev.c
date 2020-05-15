@@ -1273,6 +1273,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
+	uint8_t num_rxqs;
+	uint8_t num_txqs;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE(edev);
@@ -1305,12 +1307,17 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (qede_check_fdir_support(eth_dev))
 		return -ENOTSUP;
 
-	qede_dealloc_fp_resc(eth_dev);
-	qdev->num_tx_queues = eth_dev->data->nb_tx_queues * edev->num_hwfns;
-	qdev->num_rx_queues = eth_dev->data->nb_rx_queues * edev->num_hwfns;
-
-	if (qede_alloc_fp_resc(qdev))
-		return -ENOMEM;
+	/* Allocate/reallocate fastpath resources only for new queue config */
+	num_txqs = eth_dev->data->nb_tx_queues * edev->num_hwfns;
+	num_rxqs = eth_dev->data->nb_rx_queues * edev->num_hwfns;
+	if (qdev->num_tx_queues != num_txqs ||
+	    qdev->num_rx_queues != num_rxqs) {
+		qede_dealloc_fp_resc(eth_dev);
+		qdev->num_tx_queues = num_txqs;
+		qdev->num_rx_queues = num_rxqs;
+		if (qede_alloc_fp_resc(qdev))
+			return -ENOMEM;
+	}
 
 	/* If jumbo enabled adjust MTU */
 	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
