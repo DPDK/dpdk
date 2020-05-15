@@ -4467,15 +4467,15 @@ static struct mlx5_flow_counter_ext *
 flow_dv_counter_shared_search(struct mlx5_pools_container *cont, uint32_t id,
 			      struct mlx5_flow_counter_pool **ppool)
 {
-	static struct mlx5_flow_counter_ext *cnt;
+	struct mlx5_flow_counter_ext *cnt;
 	struct mlx5_flow_counter_pool *pool;
-	uint32_t i;
+	uint32_t i, j;
 	uint32_t n_valid = rte_atomic16_read(&cont->n_valid);
 
 	for (i = 0; i < n_valid; i++) {
 		pool = cont->pools[i];
-		for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
-			cnt = MLX5_GET_POOL_CNT_EXT(pool, i);
+		for (j = 0; j < MLX5_COUNTERS_PER_POOL; ++j) {
+			cnt = MLX5_GET_POOL_CNT_EXT(pool, j);
 			if (cnt->ref_cnt && cnt->shared && cnt->id == id) {
 				if (ppool)
 					*ppool = cont->pools[i];
