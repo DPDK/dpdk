@@ -191,6 +191,11 @@ static uint16_t  bnxt_rss_hash_tbl_size(const struct bnxt *bp)
 	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_THOR;
 }
 
+static void bnxt_free_link_info(struct bnxt *bp)
+{
+	rte_free(bp->link_info);
+}
+
 static void bnxt_free_leds_info(struct bnxt *bp)
 {
 	rte_free(bp->leds);
@@ -231,6 +236,16 @@ static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;
+}
+
+static int bnxt_alloc_link_info(struct bnxt *bp)
+{
+	bp->link_info =
+		rte_zmalloc("bnxt_link_info", sizeof(struct bnxt_link_info), 0);
+	if (bp->link_info == NULL)
+		return -ENOMEM;
+
+	return 0;
 }
 
 static int bnxt_alloc_leds_info(struct bnxt *bp)
@@ -709,7 +724,7 @@ skip_cosq_cfg:
 		goto err_free;
 	}
 
-	if (!bp->link_info.link_up) {
+	if (!bp->link_info->link_up) {
 		rc = bnxt_set_hwrm_link_config(bp, true);
 		if (rc) {
 			PMD_DRV_LOG(ERR,
@@ -751,7 +766,7 @@ static int bnxt_shutdown_nic(struct bnxt *bp)
 
 static uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 {
-	uint32_t link_speed = bp->link_info.support_speeds;
+	uint32_t link_speed = bp->link_info->support_speeds;
 	uint32_t speed_capa = 0;
 
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB)
@@ -777,7 +792,8 @@ static uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_200GB)
 		speed_capa |= ETH_LINK_SPEED_200G;
 
-	if (bp->link_info.auto_mode == HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE)
+	if (bp->link_info->auto_mode ==
+	    HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE)
 		speed_capa |= ETH_LINK_SPEED_FIXED;
 	else
 		speed_capa |= ETH_LINK_SPEED_AUTONEG;
@@ -1210,7 +1226,7 @@ static int bnxt_dev_set_link_up_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc = 0;
 
-	if (!bp->link_info.link_up)
+	if (!bp->link_info->link_up)
 		rc = bnxt_set_hwrm_link_config(bp, true);
 	if (!rc)
 		eth_dev->data->dev_link.link_status = 1;
@@ -1225,7 +1241,7 @@ static int bnxt_dev_set_link_down_op(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_link.link_status = 0;
 	bnxt_set_hwrm_link_config(bp, false);
-	bp->link_info.link_up = 0;
+	bp->link_info->link_up = 0;
 
 	return 0;
 }
@@ -1302,6 +1318,7 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 
 	bnxt_free_leds_info(bp);
 	bnxt_free_cos_queues(bp);
+	bnxt_free_link_info(bp);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
@@ -1867,9 +1884,9 @@ static int bnxt_flow_ctrl_get_op(struct rte_eth_dev *dev,
 		return rc;
 
 	memset(fc_conf, 0, sizeof(*fc_conf));
-	if (bp->link_info.auto_pause)
+	if (bp->link_info->auto_pause)
 		fc_conf->autoneg = 1;
-	switch (bp->link_info.pause) {
+	switch (bp->link_info->pause) {
 	case 0:
 		fc_conf->mode = RTE_FC_NONE;
 		break;
@@ -1904,40 +1921,40 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 
 	switch (fc_conf->mode) {
 	case RTE_FC_NONE:
-		bp->link_info.auto_pause = 0;
-		bp->link_info.force_pause = 0;
+		bp->link_info->auto_pause = 0;
+		bp->link_info->force_pause = 0;
 		break;
 	case RTE_FC_RX_PAUSE:
 		if (fc_conf->autoneg) {
-			bp->link_info.auto_pause =
+			bp->link_info->auto_pause =
 					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_RX;
-			bp->link_info.force_pause = 0;
+			bp->link_info->force_pause = 0;
 		} else {
-			bp->link_info.auto_pause = 0;
-			bp->link_info.force_pause =
+			bp->link_info->auto_pause = 0;
+			bp->link_info->force_pause =
 					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_RX;
 		}
 		break;
 	case RTE_FC_TX_PAUSE:
 		if (fc_conf->autoneg) {
-			bp->link_info.auto_pause =
+			bp->link_info->auto_pause =
 					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX;
-			bp->link_info.force_pause = 0;
+			bp->link_info->force_pause = 0;
 		} else {
-			bp->link_info.auto_pause = 0;
-			bp->link_info.force_pause =
+			bp->link_info->auto_pause = 0;
+			bp->link_info->force_pause =
 					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_TX;
 		}
 		break;
 	case RTE_FC_FULL:
 		if (fc_conf->autoneg) {
-			bp->link_info.auto_pause =
+			bp->link_info->auto_pause =
 					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_TX |
 					HWRM_PORT_PHY_CFG_INPUT_AUTO_PAUSE_RX;
-			bp->link_info.force_pause = 0;
+			bp->link_info->force_pause = 0;
 		} else {
-			bp->link_info.auto_pause = 0;
-			bp->link_info.force_pause =
+			bp->link_info->auto_pause = 0;
+			bp->link_info->force_pause =
 					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_TX |
 					HWRM_PORT_PHY_CFG_INPUT_FORCE_PAUSE_RX;
 		}
@@ -4229,7 +4246,7 @@ static void bnxt_write_fw_reset_reg(struct bnxt *bp, uint32_t index)
 static void bnxt_dev_cleanup(struct bnxt *bp)
 {
 	bnxt_set_hwrm_link_config(bp, false);
-	bp->link_info.link_up = 0;
+	bp->link_info->link_up = 0;
 	if (bp->eth_dev->data->dev_started)
 		bnxt_dev_stop_op(bp->eth_dev);
 
@@ -5439,6 +5456,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 			    "Failed to initialize board rc: %x\n", rc);
 		return rc;
 	}
+
+	rc = bnxt_alloc_link_info(bp);
+	if (rc)
+		goto error_free;
 
 	rc = bnxt_alloc_hwrm_resources(bp);
 	if (rc) {

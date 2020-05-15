@@ -1223,7 +1223,7 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 
 	if (conf->link_up) {
 		/* Setting Fixed Speed. But AutoNeg is ON, So disable it */
-		if (bp->link_info.auto_mode && conf->link_speed) {
+		if (bp->link_info->auto_mode && conf->link_speed) {
 			req.auto_mode = HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_NONE;
 			PMD_DRV_LOG(DEBUG, "Disabling AutoNeg\n");
 		}
@@ -2821,8 +2821,8 @@ bnxt_parse_eth_link_speed_mask(struct bnxt *bp, uint32_t link_speed)
 	uint16_t ret = 0;
 
 	if (link_speed == ETH_LINK_SPEED_AUTONEG) {
-		if (bp->link_info.support_speeds)
-			return bp->link_info.support_speeds;
+		if (bp->link_info->support_speeds)
+			return bp->link_info->support_speeds;
 		link_speed = BNXT_SUPPORTED_SPEEDS;
 	}
 
@@ -2919,7 +2919,7 @@ static uint16_t bnxt_parse_hw_link_duplex(uint16_t hw_link_duplex)
 int bnxt_get_hwrm_link_config(struct bnxt *bp, struct rte_eth_link *link)
 {
 	int rc = 0;
-	struct bnxt_link_info *link_info = &bp->link_info;
+	struct bnxt_link_info *link_info = bp->link_info;
 
 	rc = bnxt_hwrm_port_phy_qcfg(bp, link_info);
 	if (rc) {
@@ -2981,19 +2981,19 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	 */
 	if (autoneg == 1 &&
 	    !(!BNXT_CHIP_THOR(bp) &&
-	      (bp->link_info.auto_link_speed ||
-	       bp->link_info.force_link_speed))) {
+	      (bp->link_info->auto_link_speed ||
+	       bp->link_info->force_link_speed))) {
 		link_req.phy_flags |=
 				HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESTART_AUTONEG;
 		link_req.auto_link_speed_mask =
 			bnxt_parse_eth_link_speed_mask(bp,
 						       dev_conf->link_speeds);
 	} else {
-		if (bp->link_info.phy_type ==
+		if (bp->link_info->phy_type ==
 		    HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASET ||
-		    bp->link_info.phy_type ==
+		    bp->link_info->phy_type ==
 		    HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_BASETE ||
-		    bp->link_info.media_type ==
+		    bp->link_info->media_type ==
 		    HWRM_PORT_PHY_QCFG_OUTPUT_MEDIA_TYPE_TP) {
 			PMD_DRV_LOG(ERR, "10GBase-T devices must autoneg\n");
 			return -EINVAL;
@@ -3003,14 +3003,14 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		/* If user wants a particular speed try that first. */
 		if (speed)
 			link_req.link_speed = speed;
-		else if (bp->link_info.force_link_speed)
-			link_req.link_speed = bp->link_info.force_link_speed;
+		else if (bp->link_info->force_link_speed)
+			link_req.link_speed = bp->link_info->force_link_speed;
 		else
-			link_req.link_speed = bp->link_info.auto_link_speed;
+			link_req.link_speed = bp->link_info->auto_link_speed;
 	}
 	link_req.duplex = bnxt_parse_eth_link_duplex(dev_conf->link_speeds);
-	link_req.auto_pause = bp->link_info.auto_pause;
-	link_req.force_pause = bp->link_info.force_pause;
+	link_req.auto_pause = bp->link_info->auto_pause;
+	link_req.force_pause = bp->link_info->force_pause;
 
 port_phy_cfg:
 	rc = bnxt_hwrm_port_phy_cfg(bp, &link_req);

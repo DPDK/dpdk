@@ -648,7 +648,7 @@ struct bnxt {
 	/* default HWRM request timeout value */
 	uint32_t			hwrm_cmd_timeout;
 
-	struct bnxt_link_info	link_info;
+	struct bnxt_link_info		*link_info;
 	struct bnxt_cos_queue_info	*rx_cos_queue;
 	struct bnxt_cos_queue_info	*tx_cos_queue;
 	uint8_t			tx_cosq_id[BNXT_COS_QUEUE_COUNT];
