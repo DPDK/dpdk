@@ -5,6 +5,8 @@
 #ifndef __FSL_DPDMAI_H
 #define __FSL_DPDMAI_H
 
+#include <rte_compat.h>
+
 struct fsl_mc_io;
 
 /* Data Path DMA Interface API
@@ -23,11 +25,13 @@ struct fsl_mc_io;
  */
 #define DPDMAI_ALL_QUEUES	(uint8_t)(-1)
 
+__rte_internal
 int dpdmai_open(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		int dpdmai_id,
 		uint16_t *token);
 
+__rte_internal
 int dpdmai_close(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint16_t token);
@@ -54,10 +58,12 @@ int dpdmai_destroy(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint32_t object_id);
 
+__rte_internal
 int dpdmai_enable(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint16_t token);
 
+__rte_internal
 int dpdmai_disable(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint16_t token);
@@ -82,6 +88,7 @@ struct dpdmai_attr {
 	uint8_t num_of_queues;
 };
 
+__rte_internal
 int dpdmai_get_attributes(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
 			  uint16_t token,
@@ -148,6 +155,7 @@ struct dpdmai_rx_queue_cfg {
 
 };
 
+__rte_internal
 int dpdmai_set_rx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -168,6 +176,7 @@ struct dpdmai_rx_queue_attr {
 	uint32_t fqid;
 };
 
+__rte_internal
 int dpdmai_get_rx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -184,6 +193,7 @@ struct dpdmai_tx_queue_attr {
 	uint32_t fqid;
 };
 
+__rte_internal
 int dpdmai_get_tx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,

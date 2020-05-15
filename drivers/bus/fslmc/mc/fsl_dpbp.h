@@ -7,6 +7,8 @@
 #ifndef __FSL_DPBP_H
 #define __FSL_DPBP_H
 
+#include <rte_compat.h>
+
 /*
  * Data Path Buffer Pool API
  * Contains initialization APIs and runtime control APIs for DPBP
@@ -14,6 +16,7 @@
 
 struct fsl_mc_io;
 
+__rte_internal
 int dpbp_open(struct fsl_mc_io *mc_io,
 	      uint32_t cmd_flags,
 	      int dpbp_id,
@@ -42,10 +45,12 @@ int dpbp_destroy(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint32_t obj_id);
 
+__rte_internal
 int dpbp_enable(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		uint16_t token);
 
+__rte_internal
 int dpbp_disable(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint16_t token);
@@ -55,6 +60,7 @@ int dpbp_is_enabled(struct fsl_mc_io *mc_io,
 		    uint16_t token,
 		    int *en);
 
+__rte_internal
 int dpbp_reset(struct fsl_mc_io *mc_io,
 	       uint32_t cmd_flags,
 	       uint16_t token);
@@ -70,6 +76,7 @@ struct dpbp_attr {
 	uint16_t bpid;
 };
 
+__rte_internal
 int dpbp_get_attributes(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -88,6 +95,7 @@ int dpbp_get_api_version(struct fsl_mc_io *mc_io,
 			 uint16_t *major_ver,
 			 uint16_t *minor_ver);
 
+__rte_internal
 int dpbp_get_num_free_bufs(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t token,

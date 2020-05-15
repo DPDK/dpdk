@@ -63,3 +63,5 @@
 ; Ignore moving DPAAx stable functions to INTERNAL
 [suppress_file]
         file_name_regexp = ^librte_common_dpaax\.
+[suppress_file]
+        file_name_regexp = ^librte_bus_fslmc\.
