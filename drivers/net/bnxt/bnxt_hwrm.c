@@ -731,7 +731,12 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	}
 
 	bp->fw_fid = rte_le_to_cpu_32(resp->fid);
-	memcpy(bp->dflt_mac_addr, &resp->mac_address, RTE_ETHER_ADDR_LEN);
+	if (!bnxt_check_zero_bytes(resp->mac_address, RTE_ETHER_ADDR_LEN)) {
+		bp->flags |= BNXT_FLAG_DFLT_MAC_SET;
+		memcpy(bp->mac_addr, &resp->mac_address, RTE_ETHER_ADDR_LEN);
+	} else {
+		bp->flags &= ~BNXT_FLAG_DFLT_MAC_SET;
+	}
 	bp->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
 	bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
 	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
@@ -5027,7 +5032,6 @@ int bnxt_hwrm_set_mac(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
-	memcpy(bp->dflt_mac_addr, bp->mac_addr, RTE_ETHER_ADDR_LEN);
 	HWRM_UNLOCK();
 
 	return rc;

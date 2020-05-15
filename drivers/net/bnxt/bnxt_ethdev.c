@@ -4980,7 +4980,7 @@ static int bnxt_setup_mac_addr(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
-	if (bnxt_check_zero_bytes(bp->dflt_mac_addr, RTE_ETHER_ADDR_LEN)) {
+	if (!BNXT_HAS_DFLT_MAC_SET(bp)) {
 		if (BNXT_PF(bp))
 			return -EINVAL;
 
@@ -4993,14 +4993,11 @@ static int bnxt_setup_mac_addr(struct rte_eth_dev *eth_dev)
 			    bp->mac_addr[3], bp->mac_addr[4], bp->mac_addr[5]);
 
 		rc = bnxt_hwrm_set_mac(bp);
-		if (!rc)
-			memcpy(&bp->eth_dev->data->mac_addrs[0], bp->mac_addr,
-			       RTE_ETHER_ADDR_LEN);
-		return rc;
+		if (rc)
+			return rc;
 	}
 
 	/* Copy the permanent MAC from the FUNC_QCAPS response */
-	memcpy(bp->mac_addr, bp->dflt_mac_addr, RTE_ETHER_ADDR_LEN);
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, RTE_ETHER_ADDR_LEN);
 
 	return rc;
@@ -5011,7 +5008,7 @@ static int bnxt_restore_dflt_mac(struct bnxt *bp)
 	int rc = 0;
 
 	/* MAC is already configured in FW */
-	if (!bnxt_check_zero_bytes(bp->dflt_mac_addr, RTE_ETHER_ADDR_LEN))
+	if (BNXT_HAS_DFLT_MAC_SET(bp))
 		return 0;
 
 	/* Restore the old MAC configured */
