@@ -750,8 +750,9 @@ vhost_blk_bdev_construct(const char *bdev_name,
 	if (!bdev)
 		return NULL;
 
-	strncpy(bdev->name, bdev_name, sizeof(bdev->name));
-	strncpy(bdev->product_name, bdev_serial, sizeof(bdev->product_name));
+	snprintf(bdev->name, sizeof(bdev->name), "%s", bdev_name);
+	snprintf(bdev->product_name, sizeof(bdev->product_name), "%s",
+		 bdev_serial);
 	bdev->blocklen = blk_size;
 	bdev->blockcnt = blk_cnt;
 	bdev->write_cache = wce_enable;
