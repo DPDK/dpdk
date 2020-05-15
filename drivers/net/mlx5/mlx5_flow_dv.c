@@ -7834,10 +7834,10 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				return -rte_errno;
 			memset(&port_id_resource, 0, sizeof(port_id_resource));
 			port_id_resource.port_id = port_id;
+			MLX5_ASSERT(!handle->rix_port_id_action);
 			if (flow_dv_port_id_action_resource_register
 			    (dev, &port_id_resource, dev_flow, error))
 				return -rte_errno;
-			MLX5_ASSERT(!handle->rix_port_id_action);
 			dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.port_id_action->action;
 			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
