@@ -201,11 +201,12 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 			cont->n += MLX5_CNT_CONTAINER_RESIZE;
 		}
 		/* Allocate memory for new pool*/
-		size = sizeof(*pool) + sizeof(*cnt_ext) *
+		size = sizeof(*pool) + (sizeof(*cnt_ext) + sizeof(*cnt)) *
 		       MLX5_COUNTERS_PER_POOL;
 		pool = rte_calloc(__func__, 1, size, 0);
 		if (!pool)
 			return 0;
+		pool->type |= CNT_POOL_TYPE_EXT;
 		for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 			cnt = MLX5_POOL_GET_CNT(pool, i);
 			TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
