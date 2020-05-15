@@ -2174,7 +2174,7 @@ mlx5_get_dbr(struct rte_eth_dev *dev, struct mlx5_devx_dbr_page **dbr_page)
 	/* Find the first clear bit. */
 	MLX5_ASSERT(i < MLX5_DBR_BITMAP_SIZE);
 	j = rte_bsf64(~page->dbr_bitmap[i]);
-	page->dbr_bitmap[i] |= (1 << j);
+	page->dbr_bitmap[i] |= (UINT64_C(1) << j);
 	page->dbr_count++;
 	*dbr_page = page;
 	return (((i * 64) + j) * sizeof(uint64_t));
@@ -2219,7 +2219,7 @@ mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id, uint64_t offset)
 		int i = offset / 64;
 		int j = offset % 64;
 
-		page->dbr_bitmap[i] &= ~(1 << j);
+		page->dbr_bitmap[i] &= ~(UINT64_C(1) << j);
 	}
 	return ret;
 }
