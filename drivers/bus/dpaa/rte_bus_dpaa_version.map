@@ -1,4 +1,8 @@
 DPDK_20.0 {
+	local: *;
+};
+
+INTERNAL {
 	global:
 
 	bman_acquire;
@@ -13,7 +17,6 @@ DPDK_20.0 {
 	dpaa_logtype_pmd;
 	dpaa_netcfg;
 	dpaa_svr_family;
-	fman_ccsr_map_fd;
 	fman_dealloc_bufs_mask_hi;
 	fman_dealloc_bufs_mask_lo;
 	fman_if_add_mac_addr;
@@ -87,10 +90,7 @@ DPDK_20.0 {
 	qman_volatile_dequeue;
 	rte_dpaa_driver_register;
 	rte_dpaa_driver_unregister;
-	rte_dpaa_mem_ptov;
 	rte_dpaa_portal_fq_close;
 	rte_dpaa_portal_fq_init;
 	rte_dpaa_portal_init;
-
-	local: *;
 };

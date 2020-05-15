@@ -58,6 +58,7 @@ int bman_allocate_raw_portal(struct dpaa_raw_portal *portal);
 int bman_free_raw_portal(struct dpaa_raw_portal *portal);
 
 /* Obtain thread-local UIO file-descriptors */
+__rte_internal
 int qman_thread_fd(void);
 int bman_thread_fd(void);
 
@@ -66,10 +67,14 @@ int bman_thread_fd(void);
  * processing is complete. As such, it is essential to call this before going
  * into another blocking read/select/poll.
  */
+__rte_internal
 void qman_thread_irq(void);
-void bman_thread_irq(void);
-void qman_fq_portal_thread_irq(struct qman_portal *qp);
 
+__rte_internal
+void bman_thread_irq(void);
+__rte_internal
+void qman_fq_portal_thread_irq(struct qman_portal *qp);
+__rte_internal
 void qman_clear_irq(void);
 
 /* Global setup */
@@ -77,6 +82,7 @@ int qman_global_init(void);
 int bman_global_init(void);
 
 /* Direct portal create and destroy */
+__rte_internal
 struct qman_portal *fsl_qman_fq_portal_create(int *fd);
 int fsl_qman_fq_portal_destroy(struct qman_portal *qp);
 int fsl_qman_fq_portal_init(struct qman_portal *qp);

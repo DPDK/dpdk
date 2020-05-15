@@ -158,6 +158,7 @@ rte_dpaa_mem_vtop(void *vaddr)
  *   A pointer to a rte_dpaa_driver structure describing the driver
  *   to be registered.
  */
+__rte_internal
 void rte_dpaa_driver_register(struct rte_dpaa_driver *driver);
 
 /**
@@ -167,6 +168,7 @@ void rte_dpaa_driver_register(struct rte_dpaa_driver *driver);
  *	A pointer to a rte_dpaa_driver structure describing the driver
  *	to be unregistered.
  */
+__rte_internal
 void rte_dpaa_driver_unregister(struct rte_dpaa_driver *driver);
 
 /**
@@ -178,10 +180,13 @@ void rte_dpaa_driver_unregister(struct rte_dpaa_driver *driver);
  * @return
  *	0 in case of success, error otherwise
  */
+__rte_internal
 int rte_dpaa_portal_init(void *arg);
 
+__rte_internal
 int rte_dpaa_portal_fq_init(void *arg, struct qman_fq *fq);
 
+__rte_internal
 int rte_dpaa_portal_fq_close(struct qman_fq *fq);
 
 /**

@@ -7,6 +7,8 @@
 #ifndef __FSL_FMAN_H
 #define __FSL_FMAN_H
 
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -43,18 +45,23 @@ struct fm_status_t {
 } __rte_packed;
 
 /* Set MAC address for a particular interface */
+__rte_internal
 int fman_if_add_mac_addr(struct fman_if *p, uint8_t *eth, uint8_t addr_num);
 
 /* Remove a MAC address for a particular interface */
+__rte_internal
 void fman_if_clear_mac_addr(struct fman_if *p, uint8_t addr_num);
 
 /* Get the FMAN statistics */
+__rte_internal
 void fman_if_stats_get(struct fman_if *p, struct rte_eth_stats *stats);
 
 /* Reset the FMAN statistics */
+__rte_internal
 void fman_if_stats_reset(struct fman_if *p);
 
 /* Get all of the FMAN statistics */
+__rte_internal
 void fman_if_stats_get_all(struct fman_if *p, uint64_t *value, int n);
 
 /* Set ignore pause option for a specific interface */
@@ -64,32 +71,43 @@ void fman_if_set_rx_ignore_pause_frames(struct fman_if *p, bool enable);
 void fman_if_conf_max_frame_len(struct fman_if *p, unsigned int max_frame_len);
 
 /* Enable/disable Rx promiscuous mode on specified interface */
+__rte_internal
 void fman_if_promiscuous_enable(struct fman_if *p);
+__rte_internal
 void fman_if_promiscuous_disable(struct fman_if *p);
 
 /* Enable/disable Rx on specific interfaces */
+__rte_internal
 void fman_if_enable_rx(struct fman_if *p);
+__rte_internal
 void fman_if_disable_rx(struct fman_if *p);
 
 /* Enable/disable loopback on specific interfaces */
+__rte_internal
 void fman_if_loopback_enable(struct fman_if *p);
+__rte_internal
 void fman_if_loopback_disable(struct fman_if *p);
 
 /* Set buffer pool on specific interface */
+__rte_internal
 void fman_if_set_bp(struct fman_if *fm_if, unsigned int num, int bpid,
 		    size_t bufsize);
 
 /* Get Flow Control threshold parameters on specific interface */
+__rte_internal
 int fman_if_get_fc_threshold(struct fman_if *fm_if);
 
 /* Enable and Set Flow Control threshold parameters on specific interface */
+__rte_internal
 int fman_if_set_fc_threshold(struct fman_if *fm_if,
 			u32 high_water, u32 low_water, u32 bpid);
 
 /* Get Flow Control pause quanta on specific interface */
+__rte_internal
 int fman_if_get_fc_quanta(struct fman_if *fm_if);
 
 /* Set Flow Control pause quanta on specific interface */
+__rte_internal
 int fman_if_set_fc_quanta(struct fman_if *fm_if, u16 pause_quanta);
 
 /* Set default error fqid on specific interface */
@@ -99,35 +117,44 @@ void fman_if_set_err_fqid(struct fman_if *fm_if, uint32_t err_fqid);
 int fman_if_get_ic_params(struct fman_if *fm_if, struct fman_if_ic_params *icp);
 
 /* Set IC transfer params */
+__rte_internal
 int fman_if_set_ic_params(struct fman_if *fm_if,
 			  const struct fman_if_ic_params *icp);
 
 /* Get interface fd->offset value */
+__rte_internal
 int fman_if_get_fdoff(struct fman_if *fm_if);
 
 /* Set interface fd->offset value */
+__rte_internal
 void fman_if_set_fdoff(struct fman_if *fm_if, uint32_t fd_offset);
 
 /* Get interface SG enable status value */
+__rte_internal
 int fman_if_get_sg_enable(struct fman_if *fm_if);
 
 /* Set interface SG support mode */
+__rte_internal
 void fman_if_set_sg(struct fman_if *fm_if, int enable);
 
 /* Get interface Max Frame length (MTU) */
 uint16_t fman_if_get_maxfrm(struct fman_if *fm_if);
 
 /* Set interface  Max Frame length (MTU) */
+__rte_internal
 void fman_if_set_maxfrm(struct fman_if *fm_if, uint16_t max_frm);
 
 /* Set interface next invoked action for dequeue operation */
 void fman_if_set_dnia(struct fman_if *fm_if, uint32_t nia);
 
 /* discard error packets on rx */
+__rte_internal
 void fman_if_discard_rx_errors(struct fman_if *fm_if);
 
+__rte_internal
 void fman_if_set_mcast_filter_table(struct fman_if *p);
 
+__rte_internal
 void fman_if_reset_mcast_filter_table(struct fman_if *p);
 
 int fman_if_add_hash_mac_addr(struct fman_if *p, uint8_t *eth);
