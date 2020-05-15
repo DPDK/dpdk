@@ -259,7 +259,7 @@ struct vhost_device_ops {
 
 	/**
 	 * This callback gets called each time a guest gets notified
-	 * about waiting packets. This is the interrupt handling trough
+	 * about waiting packets. This is the interrupt handling through
 	 * the eventfd_write(callfd), which can be used for counting these
 	 * "slow" syscalls.
 	 */
