@@ -28,12 +28,6 @@
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
 
-/* List of all the memseg information locally maintained in dpaa2 driver. This
- * is to optimize the PA_to_VA searches until a better mechanism (algo) is
- * available.
- */
-struct dpaa2_memseg_list rte_dpaa2_memsegs
-	= TAILQ_HEAD_INITIALIZER(rte_dpaa2_memsegs);
 
 TAILQ_HEAD(dpbp_dev_list, dpaa2_dpbp_dev);
 static struct dpbp_dev_list dpbp_dev_list

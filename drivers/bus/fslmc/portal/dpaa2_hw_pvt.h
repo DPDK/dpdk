@@ -325,9 +325,6 @@ struct dpaa2_memseg {
 	size_t len;
 };
 
-TAILQ_HEAD(dpaa2_memseg_list, dpaa2_memseg);
-extern struct dpaa2_memseg_list rte_dpaa2_memsegs;
-
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
 extern uint8_t dpaa2_virt_mode;
 static void *dpaa2_mem_ptov(phys_addr_t paddr) __rte_unused;

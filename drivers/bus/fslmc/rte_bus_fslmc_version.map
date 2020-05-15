@@ -106,7 +106,6 @@ INTERNAL {
 	rte_dpaa2_free_dpci_dev;
 	rte_dpaa2_intr_disable;
 	rte_dpaa2_intr_enable;
-	rte_dpaa2_memsegs;
 	rte_fslmc_driver_register;
 	rte_fslmc_driver_unregister;
 	rte_fslmc_get_device_count;

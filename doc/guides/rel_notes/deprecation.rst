@@ -59,12 +59,6 @@ Deprecation Notices
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
 
-* dpaa2: removal of ``rte_dpaa2_memsegs`` structure which has been replaced
-  by a pa-va search library. This structure was earlier being used for holding
-  memory segments used by dpaa2 driver for faster pa->va translation. This
-  structure would be made internal (or removed if all dependencies are cleared)
-  in future releases.
-
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,
