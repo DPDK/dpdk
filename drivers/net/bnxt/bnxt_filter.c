@@ -55,7 +55,7 @@ struct bnxt_filter_info *bnxt_alloc_vf_filter(struct bnxt *bp, uint16_t vf)
 	}
 
 	filter->fw_l2_filter_id = UINT64_MAX;
-	STAILQ_INSERT_TAIL(&bp->pf.vf_info[vf].filter, filter, next);
+	STAILQ_INSERT_TAIL(&bp->pf->vf_info[vf].filter, filter, next);
 	return filter;
 }
 
@@ -95,8 +95,8 @@ void bnxt_free_all_filters(struct bnxt *bp)
 		STAILQ_INIT(&vnic->filter);
 	}
 
-	for (i = 0; i < bp->pf.max_vfs; i++) {
-		STAILQ_FOREACH(filter, &bp->pf.vf_info[i].filter, next) {
+	for (i = 0; i < bp->pf->max_vfs; i++) {
+		STAILQ_FOREACH(filter, &bp->pf->vf_info[i].filter, next) {
 			bnxt_hwrm_clear_l2_filter(bp, filter);
 		}
 	}
@@ -144,10 +144,10 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 	rte_free(bp->filter_info);
 	bp->filter_info = NULL;
 
-	for (i = 0; i < bp->pf.max_vfs; i++) {
-		STAILQ_FOREACH(filter, &bp->pf.vf_info[i].filter, next) {
+	for (i = 0; i < bp->pf->max_vfs; i++) {
+		STAILQ_FOREACH(filter, &bp->pf->vf_info[i].filter, next) {
 			rte_free(filter);
-			STAILQ_REMOVE(&bp->pf.vf_info[i].filter, filter,
+			STAILQ_REMOVE(&bp->pf->vf_info[i].filter, filter,
 				      bnxt_filter_info, next);
 		}
 	}

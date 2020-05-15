@@ -191,6 +191,11 @@ static uint16_t  bnxt_rss_hash_tbl_size(const struct bnxt *bp)
 	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_THOR;
 }
 
+static void bnxt_free_pf_info(struct bnxt *bp)
+{
+	rte_free(bp->pf);
+}
+
 static void bnxt_free_link_info(struct bnxt *bp)
 {
 	rte_free(bp->link_info);
@@ -236,6 +241,15 @@ static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;
+}
+
+static int bnxt_alloc_pf_info(struct bnxt *bp)
+{
+	bp->pf = rte_zmalloc("bnxt_pf_info", sizeof(struct bnxt_pf_info), 0);
+	if (bp->pf == NULL)
+		return -ENOMEM;
+
+	return 0;
 }
 
 static int bnxt_alloc_link_info(struct bnxt *bp)
@@ -1319,6 +1333,7 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	bnxt_free_leds_info(bp);
 	bnxt_free_cos_queues(bp);
 	bnxt_free_link_info(bp);
+	bnxt_free_pf_info(bp);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
@@ -1329,8 +1344,8 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
 	bp->rx_mem_zone = NULL;
 
-	rte_free(bp->pf.vf_info);
-	bp->pf.vf_info = NULL;
+	rte_free(bp->pf->vf_info);
+	bp->pf->vf_info = NULL;
 
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;
@@ -3751,7 +3766,7 @@ static int bnxt_get_tx_ts(struct bnxt *bp, uint64_t *ts)
 static int bnxt_get_rx_ts(struct bnxt *bp, uint64_t *ts)
 {
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
-	struct bnxt_pf_info *pf = &bp->pf;
+	struct bnxt_pf_info *pf = bp->pf;
 	uint16_t port_id;
 	uint32_t fifo;
 
@@ -5013,7 +5028,7 @@ static void bnxt_config_vf_req_fwd(struct bnxt *bp)
 #define ALLOW_FUNC(x)	\
 	{ \
 		uint32_t arg = (x); \
-		bp->pf.vf_req_fwd[((arg) >> 5)] &= \
+		bp->pf->vf_req_fwd[((arg) >> 5)] &= \
 		~rte_cpu_to_le_32(1 << ((arg) & 0x1f)); \
 	}
 
@@ -5021,11 +5036,11 @@ static void bnxt_config_vf_req_fwd(struct bnxt *bp)
 	if (((bp->fw_ver >= ((20 << 24) | (6 << 16) | (100 << 8))) &&
 	     (bp->fw_ver < ((20 << 24) | (7 << 16)))) ||
 	    ((bp->fw_ver >= ((20 << 24) | (8 << 16))))) {
-		memset(bp->pf.vf_req_fwd, 0xff, sizeof(bp->pf.vf_req_fwd));
+		memset(bp->pf->vf_req_fwd, 0xff, sizeof(bp->pf->vf_req_fwd));
 	} else {
 		PMD_DRV_LOG(WARNING,
 			    "Firmware too old for VF mailbox functionality\n");
-		memset(bp->pf.vf_req_fwd, 0, sizeof(bp->pf.vf_req_fwd));
+		memset(bp->pf->vf_req_fwd, 0, sizeof(bp->pf->vf_req_fwd));
 	}
 
 	/*
@@ -5456,6 +5471,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 			    "Failed to initialize board rc: %x\n", rc);
 		return rc;
 	}
+
+	rc = bnxt_alloc_pf_info(bp);
+	if (rc)
+		goto error_free;
 
 	rc = bnxt_alloc_link_info(bp);
 	if (rc)

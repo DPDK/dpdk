@@ -219,11 +219,12 @@ struct bnxt_child_vf_info {
 
 struct bnxt_pf_info {
 #define BNXT_FIRST_PF_FID	1
-#define BNXT_MAX_VFS(bp)	(bp->pf.max_vfs)
-#define BNXT_TOTAL_VFS(bp)	((bp)->pf.total_vfs)
+#define BNXT_MAX_VFS(bp)	((bp)->pf->max_vfs)
+#define BNXT_TOTAL_VFS(bp)	((bp)->pf->total_vfs)
 #define BNXT_FIRST_VF_FID	128
 #define BNXT_PF_RINGS_USED(bp)	bnxt_get_num_queues(bp)
-#define BNXT_PF_RINGS_AVAIL(bp)	(bp->pf.max_cp_rings - BNXT_PF_RINGS_USED(bp))
+#define BNXT_PF_RINGS_AVAIL(bp)	((bp)->pf->max_cp_rings - \
+				 BNXT_PF_RINGS_USED(bp))
 	uint16_t		port_id;
 	uint16_t		first_vf_id;
 	uint16_t		active_vfs;
@@ -689,7 +690,7 @@ struct bnxt {
 #define BNXT_OUTER_TPID_BD_MASK	0xffff0000
 #define BNXT_OUTER_TPID_BD_SHFT	16
 	uint32_t		outer_tpid_bd;
-	struct bnxt_pf_info	pf;
+	struct bnxt_pf_info	*pf;
 	uint8_t			vxlan_port_cnt;
 	uint8_t			geneve_port_cnt;
 	uint16_t		vxlan_port;
