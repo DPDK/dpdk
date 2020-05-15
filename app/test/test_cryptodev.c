@@ -8750,8 +8750,6 @@ test_stats(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_stats stats;
-	struct rte_cryptodev *dev;
-	cryptodev_stats_get_t temp_pfn;
 
 	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return -ENOTSUP;
@@ -8769,19 +8767,16 @@ test_stats(void)
 			&cap_idx) == NULL)
 		return -ENOTSUP;
 
+	if (rte_cryptodev_stats_get(ts_params->valid_devs[0], &stats)
+			== -ENOTSUP)
+		return -ENOTSUP;
+
 	rte_cryptodev_stats_reset(ts_params->valid_devs[0]);
 	TEST_ASSERT((rte_cryptodev_stats_get(ts_params->valid_devs[0] + 600,
 			&stats) == -ENODEV),
 		"rte_cryptodev_stats_get invalid dev failed");
 	TEST_ASSERT((rte_cryptodev_stats_get(ts_params->valid_devs[0], 0) != 0),
 		"rte_cryptodev_stats_get invalid Param failed");
-	dev = &rte_cryptodevs[ts_params->valid_devs[0]];
-	temp_pfn = dev->dev_ops->stats_get;
-	dev->dev_ops->stats_get = (cryptodev_stats_get_t)0;
-	TEST_ASSERT((rte_cryptodev_stats_get(ts_params->valid_devs[0], &stats)
-			== -ENOTSUP),
-		"rte_cryptodev_stats_get invalid Param failed");
-	dev->dev_ops->stats_get = temp_pfn;
 
 	/* Test expected values */
 	ut_setup();
