@@ -197,6 +197,12 @@ static void bnxt_free_leds_info(struct bnxt *bp)
 	bp->leds = NULL;
 }
 
+static void bnxt_free_cos_queues(struct bnxt *bp)
+{
+	rte_free(bp->rx_cos_queue);
+	rte_free(bp->tx_cos_queue);
+}
+
 static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 {
 	bnxt_free_filter_mem(bp);
@@ -225,6 +231,27 @@ static int bnxt_alloc_leds_info(struct bnxt *bp)
 			       BNXT_MAX_LED * sizeof(struct bnxt_led_info),
 			       0);
 	if (bp->leds == NULL)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static int bnxt_alloc_cos_queues(struct bnxt *bp)
+{
+	bp->rx_cos_queue =
+		rte_zmalloc("bnxt_rx_cosq",
+			    BNXT_COS_QUEUE_COUNT *
+			    sizeof(struct bnxt_cos_queue_info),
+			    0);
+	if (bp->rx_cos_queue == NULL)
+		return -ENOMEM;
+
+	bp->tx_cos_queue =
+		rte_zmalloc("bnxt_tx_cosq",
+			    BNXT_COS_QUEUE_COUNT *
+			    sizeof(struct bnxt_cos_queue_info),
+			    0);
+	if (bp->tx_cos_queue == NULL)
 		return -ENOMEM;
 
 	return 0;
@@ -1234,6 +1261,7 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	bnxt_uninit_resources(bp, false);
 
 	bnxt_free_leds_info(bp);
+	bnxt_free_cos_queues(bp);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
@@ -5379,6 +5407,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		goto error_free;
 	}
 	rc = bnxt_alloc_leds_info(bp);
+	if (rc)
+		goto error_free;
+
+	rc = bnxt_alloc_cos_queues(bp);
 	if (rc)
 		goto error_free;
 
