@@ -224,7 +224,7 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 	}
 
 	/* Open the dpdmux object */
-	dpdmux_dev->dpdmux.regs = rte_mcp_ptr_list[MC_PORTAL_INDEX];
+	dpdmux_dev->dpdmux.regs = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
 	ret = dpdmux_open(&dpdmux_dev->dpdmux, CMD_PRI_LOW, dpdmux_id,
 			  &dpdmux_dev->token);
 	if (ret) {

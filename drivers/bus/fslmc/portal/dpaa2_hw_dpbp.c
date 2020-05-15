@@ -56,7 +56,7 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 	}
 
 	/* Open the dpbp object */
-	dpbp_node->dpbp.regs = rte_mcp_ptr_list[MC_PORTAL_INDEX];
+	dpbp_node->dpbp.regs = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
 	ret = dpbp_open(&dpbp_node->dpbp,
 			CMD_PRI_LOW, dpbp_id, &dpbp_node->token);
 	if (ret) {

@@ -3786,7 +3786,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 			"Error in allocating the memory for dpsec object");
 		return -ENOMEM;
 	}
-	dpseci->regs = rte_mcp_ptr_list[0];
+	dpseci->regs = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
 
 	retcode = dpseci_open(dpseci, CMD_PRI_LOW, hw_id, &token);
 	if (retcode != 0) {

@@ -147,7 +147,7 @@ dpaa2_create_dprtc_device(int vdev_fd __rte_unused,
 	}
 
 	/* Open the dprtc object */
-	dprtc_dev->dprtc.regs = rte_mcp_ptr_list[MC_PORTAL_INDEX];
+	dprtc_dev->dprtc.regs = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
 	ret = dprtc_open(&dprtc_dev->dprtc, CMD_PRI_LOW, dprtc_id,
 			  &dprtc_dev->token);
 	if (ret) {

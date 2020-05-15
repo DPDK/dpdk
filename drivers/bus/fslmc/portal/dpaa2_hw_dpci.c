@@ -50,7 +50,7 @@ rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
 	}
 
 	/* Open the dpci object */
-	dpci_node->dpci.regs = rte_mcp_ptr_list[MC_PORTAL_INDEX];
+	dpci_node->dpci.regs = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
 	ret = dpci_open(&dpci_node->dpci,
 			CMD_PRI_LOW, dpci_id, &dpci_node->token);
 	if (ret) {

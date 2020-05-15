@@ -2343,7 +2343,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		DPAA2_PMD_ERR("Memory allocation failed for dpni device");
 		return -1;
 	}
-	dpni_dev->regs = rte_mcp_ptr_list[0];
+	dpni_dev->regs = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
 	eth_dev->process_private = (void *)dpni_dev;
 
 	/* For secondary processes, the primary has done all the work */

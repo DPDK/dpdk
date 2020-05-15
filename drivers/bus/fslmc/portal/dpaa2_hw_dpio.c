@@ -416,7 +416,7 @@ dpaa2_create_dpio_device(int vdev_fd,
 	dpio_dev->hw_id = object_id;
 	rte_atomic16_init(&dpio_dev->ref_count);
 	/* Using single portal  for all devices */
-	dpio_dev->mc_portal = rte_mcp_ptr_list[MC_PORTAL_INDEX];
+	dpio_dev->mc_portal = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
 
 	if (!check_lcore_cpuset) {
 		check_lcore_cpuset = 1;
