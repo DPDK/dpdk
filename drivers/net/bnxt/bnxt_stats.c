@@ -669,7 +669,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 
 	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
 	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
-	    bp->flow_xstat) {
+	    BNXT_FLOW_XSTATS_EN(bp)) {
 		int j;
 
 		i = 0;
@@ -713,7 +713,7 @@ int bnxt_flow_stats_cnt(struct bnxt *bp)
 {
 	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
 	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
-	    bp->flow_xstat) {
+	    BNXT_FLOW_XSTATS_EN(bp)) {
 		struct bnxt_xstats_name_off flow_bytes[bp->max_l2_ctx];
 		struct bnxt_xstats_name_off flow_pkts[bp->max_l2_ctx];
 
@@ -783,7 +783,7 @@ int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 
 		if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
 		    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
-		    bp->flow_xstat) {
+		    BNXT_FLOW_XSTATS_EN(bp)) {
 			for (i = 0; i < bp->max_l2_ctx; i++) {
 				char buf[RTE_ETH_XSTATS_NAME_SIZE];
 
@@ -936,8 +936,8 @@ static int bnxt_update_fc_tbl(struct bnxt *bp, uint16_t ctr,
 	uint32_t out_rx_tbl_cnt = 0;
 	int i, rc = 0;
 
-	in_rx_tbl = (uint32_t *)bp->rx_fc_in_tbl.va;
-	out_rx_tbl = (uint64_t *)bp->rx_fc_out_tbl.va;
+	in_rx_tbl = (uint32_t *)bp->flow_stat->rx_fc_in_tbl.va;
+	out_rx_tbl = (uint64_t *)bp->flow_stat->rx_fc_out_tbl.va;
 
 	for (i = 0; i < in_flow_cnt; i++) {
 		if (!en_tbl[i])
@@ -979,7 +979,7 @@ int bnxt_flow_stats_req(struct bnxt *bp)
 	struct rte_flow *flow;
 	uint16_t in_flow_tbl_cnt = 0;
 	struct bnxt_vnic_info *vnic = NULL;
-	struct bnxt_filter_info *valid_en_tbl[bp->max_fc];
+	struct bnxt_filter_info *valid_en_tbl[bp->flow_stat->max_fc];
 	uint16_t counter_type = CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC;
 
 	bnxt_acquire_flow_lock(bp);
@@ -996,7 +996,7 @@ int bnxt_flow_stats_req(struct bnxt *bp)
 				continue;
 
 			valid_en_tbl[in_flow_tbl_cnt++] = flow->filter;
-			if (in_flow_tbl_cnt >= bp->max_fc) {
+			if (in_flow_tbl_cnt >= bp->flow_stat->max_fc) {
 				rc = bnxt_update_fc_tbl(bp, counter_type,
 							valid_en_tbl,
 							in_flow_tbl_cnt);

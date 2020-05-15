@@ -5274,7 +5274,6 @@ int bnxt_hwrm_cfa_counter_qcaps(struct bnxt *bp, uint16_t *max_fc)
 		*max_fc = rte_le_to_cpu_16(resp->max_rx_fc);
 	HWRM_UNLOCK();
 
-	PMD_DRV_LOG(DEBUG, "max_fc = %d\n", *max_fc);
 	return 0;
 }
 
@@ -5387,10 +5386,10 @@ int bnxt_hwrm_cfa_counter_qstats(struct bnxt *bp,
 	}
 
 	if (dir == BNXT_DIR_RX) {
-		flow_ctx_id = bp->rx_fc_in_tbl.ctx_id;
+		flow_ctx_id = bp->flow_stat->rx_fc_in_tbl.ctx_id;
 		flags = HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH_RX;
 	} else if (dir == BNXT_DIR_TX) {
-		flow_ctx_id = bp->tx_fc_in_tbl.ctx_id;
+		flow_ctx_id = bp->flow_stat->tx_fc_in_tbl.ctx_id;
 		flags = HWRM_CFA_COUNTER_QSTATS_INPUT_FLAGS_PATH_TX;
 	}
 

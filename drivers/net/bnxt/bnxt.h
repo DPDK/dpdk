@@ -515,6 +515,16 @@ struct bnxt_mark_info {
 #define BNXT_FW_STATUS_SHUTDOWN		0x100000
 
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
+
+struct bnxt_flow_stat_info {
+	uint16_t                max_fc;
+	uint16_t		flow_count;
+	struct bnxt_ctx_mem_buf_info rx_fc_in_tbl;
+	struct bnxt_ctx_mem_buf_info rx_fc_out_tbl;
+	struct bnxt_ctx_mem_buf_info tx_fc_in_tbl;
+	struct bnxt_ctx_mem_buf_info tx_fc_out_tbl;
+};
+
 struct bnxt {
 	void				*bar0;
 
@@ -549,6 +559,7 @@ struct bnxt {
 #define BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS		BIT(22)
 #define BNXT_FLAG_FC_THREAD			BIT(23)
 #define BNXT_FLAG_RX_VECTOR_PKT_MODE		BIT(24)
+#define BNXT_FLAG_FLOW_XSTATS_EN		BIT(25)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->flags & BNXT_FLAG_NPAR_PF)
@@ -561,6 +572,7 @@ struct bnxt {
 #define BNXT_STINGRAY(bp)	((bp)->flags & BNXT_FLAG_STINGRAY)
 #define BNXT_HAS_NQ(bp)		BNXT_CHIP_THOR(bp)
 #define BNXT_HAS_RING_GRPS(bp)	(!BNXT_CHIP_THOR(bp))
+#define BNXT_FLOW_XSTATS_EN(bp)	((bp)->flags & BNXT_FLAG_FLOW_XSTATS_EN)
 
 	uint32_t		fw_cap;
 #define BNXT_FW_CAP_HOT_RESET		BIT(0)
@@ -709,12 +721,7 @@ struct bnxt {
 	struct tf		tfp;
 	struct bnxt_ulp_context	ulp_ctx;
 	uint8_t			truflow;
-	uint16_t                max_fc;
-	struct bnxt_ctx_mem_buf_info rx_fc_in_tbl;
-	struct bnxt_ctx_mem_buf_info rx_fc_out_tbl;
-	struct bnxt_ctx_mem_buf_info tx_fc_in_tbl;
-	struct bnxt_ctx_mem_buf_info tx_fc_out_tbl;
-	uint16_t		flow_count;
+	struct bnxt_flow_stat_info *flow_stat;
 	uint8_t			flow_xstat;
 };
 

@@ -197,6 +197,12 @@ static void bnxt_free_leds_info(struct bnxt *bp)
 	bp->leds = NULL;
 }
 
+static void bnxt_free_flow_stats_info(struct bnxt *bp)
+{
+	rte_free(bp->flow_stat);
+	bp->flow_stat = NULL;
+}
+
 static void bnxt_free_cos_queues(struct bnxt *bp)
 {
 	rte_free(bp->rx_cos_queue);
@@ -205,6 +211,8 @@ static void bnxt_free_cos_queues(struct bnxt *bp)
 
 static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 {
+	bnxt_free_flow_stats_info(bp);
+
 	bnxt_free_filter_mem(bp);
 	bnxt_free_vnic_attributes(bp);
 	bnxt_free_vnic_mem(bp);
@@ -257,6 +265,16 @@ static int bnxt_alloc_cos_queues(struct bnxt *bp)
 	return 0;
 }
 
+static int bnxt_alloc_flow_stats_info(struct bnxt *bp)
+{
+	bp->flow_stat = rte_zmalloc("bnxt_flow_xstat",
+				    sizeof(struct bnxt_flow_stat_info), 0);
+	if (bp->flow_stat == NULL)
+		return -ENOMEM;
+
+	return 0;
+}
+
 static int bnxt_alloc_mem(struct bnxt *bp, bool reconfig)
 {
 	int rc;
@@ -288,6 +306,12 @@ static int bnxt_alloc_mem(struct bnxt *bp, bool reconfig)
 	rc = bnxt_alloc_rxtx_nq_ring(bp);
 	if (rc)
 		goto alloc_mem_err;
+
+	if (BNXT_FLOW_XSTATS_EN(bp)) {
+		rc = bnxt_alloc_flow_stats_info(bp);
+		if (rc)
+			goto alloc_mem_err;
+	}
 
 	return 0;
 
@@ -390,68 +414,72 @@ static int bnxt_register_fc_ctx_mem(struct bnxt *bp)
 {
 	int rc = 0;
 
-	rc = bnxt_hwrm_ctx_rgtr(bp, bp->rx_fc_in_tbl.dma,
-				&bp->rx_fc_in_tbl.ctx_id);
+	rc = bnxt_hwrm_ctx_rgtr(bp, bp->flow_stat->rx_fc_in_tbl.dma,
+				&bp->flow_stat->rx_fc_in_tbl.ctx_id);
 	if (rc)
 		return rc;
 
 	PMD_DRV_LOG(DEBUG,
 		    "rx_fc_in_tbl.va = %p rx_fc_in_tbl.dma = %p"
 		    " rx_fc_in_tbl.ctx_id = %d\n",
-		    bp->rx_fc_in_tbl.va,
-		    (void *)((uintptr_t)bp->rx_fc_in_tbl.dma),
-		    bp->rx_fc_in_tbl.ctx_id);
+		    bp->flow_stat->rx_fc_in_tbl.va,
+		    (void *)((uintptr_t)bp->flow_stat->rx_fc_in_tbl.dma),
+		    bp->flow_stat->rx_fc_in_tbl.ctx_id);
 
-	rc = bnxt_hwrm_ctx_rgtr(bp, bp->rx_fc_out_tbl.dma,
-				&bp->rx_fc_out_tbl.ctx_id);
+	rc = bnxt_hwrm_ctx_rgtr(bp, bp->flow_stat->rx_fc_out_tbl.dma,
+				&bp->flow_stat->rx_fc_out_tbl.ctx_id);
 	if (rc)
 		return rc;
 
 	PMD_DRV_LOG(DEBUG,
 		    "rx_fc_out_tbl.va = %p rx_fc_out_tbl.dma = %p"
 		    " rx_fc_out_tbl.ctx_id = %d\n",
-		    bp->rx_fc_out_tbl.va,
-		    (void *)((uintptr_t)bp->rx_fc_out_tbl.dma),
-		    bp->rx_fc_out_tbl.ctx_id);
+		    bp->flow_stat->rx_fc_out_tbl.va,
+		    (void *)((uintptr_t)bp->flow_stat->rx_fc_out_tbl.dma),
+		    bp->flow_stat->rx_fc_out_tbl.ctx_id);
 
-	rc = bnxt_hwrm_ctx_rgtr(bp, bp->tx_fc_in_tbl.dma,
-				&bp->tx_fc_in_tbl.ctx_id);
+	rc = bnxt_hwrm_ctx_rgtr(bp, bp->flow_stat->tx_fc_in_tbl.dma,
+				&bp->flow_stat->tx_fc_in_tbl.ctx_id);
 	if (rc)
 		return rc;
 
 	PMD_DRV_LOG(DEBUG,
 		    "tx_fc_in_tbl.va = %p tx_fc_in_tbl.dma = %p"
 		    " tx_fc_in_tbl.ctx_id = %d\n",
-		    bp->tx_fc_in_tbl.va,
-		    (void *)((uintptr_t)bp->tx_fc_in_tbl.dma),
-		    bp->tx_fc_in_tbl.ctx_id);
+		    bp->flow_stat->tx_fc_in_tbl.va,
+		    (void *)((uintptr_t)bp->flow_stat->tx_fc_in_tbl.dma),
+		    bp->flow_stat->tx_fc_in_tbl.ctx_id);
 
-	rc = bnxt_hwrm_ctx_rgtr(bp, bp->tx_fc_out_tbl.dma,
-				&bp->tx_fc_out_tbl.ctx_id);
+	rc = bnxt_hwrm_ctx_rgtr(bp, bp->flow_stat->tx_fc_out_tbl.dma,
+				&bp->flow_stat->tx_fc_out_tbl.ctx_id);
 	if (rc)
 		return rc;
 
 	PMD_DRV_LOG(DEBUG,
 		    "tx_fc_out_tbl.va = %p tx_fc_out_tbl.dma = %p"
 		    " tx_fc_out_tbl.ctx_id = %d\n",
-		    bp->tx_fc_out_tbl.va,
-		    (void *)((uintptr_t)bp->tx_fc_out_tbl.dma),
-		    bp->tx_fc_out_tbl.ctx_id);
+		    bp->flow_stat->tx_fc_out_tbl.va,
+		    (void *)((uintptr_t)bp->flow_stat->tx_fc_out_tbl.dma),
+		    bp->flow_stat->tx_fc_out_tbl.ctx_id);
 
-	memset(bp->rx_fc_out_tbl.va, 0, bp->rx_fc_out_tbl.size);
+	memset(bp->flow_stat->rx_fc_out_tbl.va,
+	       0,
+	       bp->flow_stat->rx_fc_out_tbl.size);
 	rc = bnxt_hwrm_cfa_counter_cfg(bp, BNXT_DIR_RX,
 				       CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC,
-				       bp->rx_fc_out_tbl.ctx_id,
-				       bp->max_fc,
+				       bp->flow_stat->rx_fc_out_tbl.ctx_id,
+				       bp->flow_stat->max_fc,
 				       true);
 	if (rc)
 		return rc;
 
-	memset(bp->tx_fc_out_tbl.va, 0, bp->tx_fc_out_tbl.size);
+	memset(bp->flow_stat->tx_fc_out_tbl.va,
+	       0,
+	       bp->flow_stat->tx_fc_out_tbl.size);
 	rc = bnxt_hwrm_cfa_counter_cfg(bp, BNXT_DIR_TX,
 				       CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC,
-				       bp->tx_fc_out_tbl.ctx_id,
-				       bp->max_fc,
+				       bp->flow_stat->tx_fc_out_tbl.ctx_id,
+				       bp->flow_stat->max_fc,
 				       true);
 
 	return rc;
@@ -482,33 +510,41 @@ static int bnxt_init_fc_ctx_mem(struct bnxt *bp)
 	uint16_t max_fc;
 	int rc = 0;
 
-	max_fc = bp->max_fc;
+	max_fc = bp->flow_stat->max_fc;
 
 	sprintf(type, "bnxt_rx_fc_in_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	/* 4 bytes for each counter-id */
-	rc = bnxt_alloc_ctx_mem_buf(type, max_fc * 4, &bp->rx_fc_in_tbl);
+	rc = bnxt_alloc_ctx_mem_buf(type,
+				    max_fc * 4,
+				    &bp->flow_stat->rx_fc_in_tbl);
 	if (rc)
 		return rc;
 
 	sprintf(type, "bnxt_rx_fc_out_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	/* 16 bytes for each counter - 8 bytes pkt_count, 8 bytes byte_count */
-	rc = bnxt_alloc_ctx_mem_buf(type, max_fc * 16, &bp->rx_fc_out_tbl);
+	rc = bnxt_alloc_ctx_mem_buf(type,
+				    max_fc * 16,
+				    &bp->flow_stat->rx_fc_out_tbl);
 	if (rc)
 		return rc;
 
 	sprintf(type, "bnxt_tx_fc_in_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	/* 4 bytes for each counter-id */
-	rc = bnxt_alloc_ctx_mem_buf(type, max_fc * 4, &bp->tx_fc_in_tbl);
+	rc = bnxt_alloc_ctx_mem_buf(type,
+				    max_fc * 4,
+				    &bp->flow_stat->tx_fc_in_tbl);
 	if (rc)
 		return rc;
 
 	sprintf(type, "bnxt_tx_fc_out_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	/* 16 bytes for each counter - 8 bytes pkt_count, 8 bytes byte_count */
-	rc = bnxt_alloc_ctx_mem_buf(type, max_fc * 16, &bp->tx_fc_out_tbl);
+	rc = bnxt_alloc_ctx_mem_buf(type,
+				    max_fc * 16,
+				    &bp->flow_stat->tx_fc_out_tbl);
 	if (rc)
 		return rc;
 
@@ -522,10 +558,11 @@ static int bnxt_init_ctx_mem(struct bnxt *bp)
 	int rc = 0;
 
 	if (!(bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS) ||
-	    !(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp)))
+	    !(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp)) ||
+	    !BNXT_FLOW_XSTATS_EN(bp))
 		return 0;
 
-	rc = bnxt_hwrm_cfa_counter_qcaps(bp, &bp->max_fc);
+	rc = bnxt_hwrm_cfa_counter_qcaps(bp, &bp->flow_stat->max_fc);
 	if (rc)
 		return rc;
 
@@ -1244,6 +1281,9 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 
 	bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
 	bp->rx_cosq_cnt = 0;
+	/* All filters are deleted on a port stop. */
+	if (BNXT_FLOW_XSTATS_EN(bp))
+		bp->flow_stat->flow_count = 0;
 }
 
 static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
@@ -5314,8 +5354,8 @@ bnxt_parse_devarg_flow_xstat(__rte_unused const char *key,
 		return -EINVAL;
 	}
 
-	bp->flow_xstat = flow_xstat;
-	if (bp->flow_xstat)
+	bp->flags |= BNXT_FLAG_FLOW_XSTATS_EN;
+	if (BNXT_FLOW_XSTATS_EN(bp))
 		PMD_DRV_LOG(INFO, "flow_xstat feature enabled.\n");
 
 	return 0;
@@ -5457,46 +5497,47 @@ static void bnxt_unregister_fc_ctx_mem(struct bnxt *bp)
 {
 	bnxt_hwrm_cfa_counter_cfg(bp, BNXT_DIR_RX,
 				  CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC,
-				  bp->rx_fc_out_tbl.ctx_id,
-				  bp->max_fc,
+				  bp->flow_stat->rx_fc_out_tbl.ctx_id,
+				  bp->flow_stat->max_fc,
 				  false);
 
 	bnxt_hwrm_cfa_counter_cfg(bp, BNXT_DIR_TX,
 				  CFA_COUNTER_CFG_IN_COUNTER_TYPE_FC,
-				  bp->tx_fc_out_tbl.ctx_id,
-				  bp->max_fc,
+				  bp->flow_stat->tx_fc_out_tbl.ctx_id,
+				  bp->flow_stat->max_fc,
 				  false);
 
-	if (bp->rx_fc_in_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
-		bnxt_hwrm_ctx_unrgtr(bp, bp->rx_fc_in_tbl.ctx_id);
-	bp->rx_fc_in_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
+	if (bp->flow_stat->rx_fc_in_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
+		bnxt_hwrm_ctx_unrgtr(bp, bp->flow_stat->rx_fc_in_tbl.ctx_id);
+	bp->flow_stat->rx_fc_in_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
 
-	if (bp->rx_fc_out_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
-		bnxt_hwrm_ctx_unrgtr(bp, bp->rx_fc_out_tbl.ctx_id);
-	bp->rx_fc_out_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
+	if (bp->flow_stat->rx_fc_out_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
+		bnxt_hwrm_ctx_unrgtr(bp, bp->flow_stat->rx_fc_out_tbl.ctx_id);
+	bp->flow_stat->rx_fc_out_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
 
-	if (bp->tx_fc_in_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
-		bnxt_hwrm_ctx_unrgtr(bp, bp->tx_fc_in_tbl.ctx_id);
-	bp->tx_fc_in_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
+	if (bp->flow_stat->tx_fc_in_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
+		bnxt_hwrm_ctx_unrgtr(bp, bp->flow_stat->tx_fc_in_tbl.ctx_id);
+	bp->flow_stat->tx_fc_in_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
 
-	if (bp->tx_fc_out_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
-		bnxt_hwrm_ctx_unrgtr(bp, bp->tx_fc_out_tbl.ctx_id);
-	bp->tx_fc_out_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
+	if (bp->flow_stat->tx_fc_out_tbl.ctx_id != BNXT_CTX_VAL_INVAL)
+		bnxt_hwrm_ctx_unrgtr(bp, bp->flow_stat->tx_fc_out_tbl.ctx_id);
+	bp->flow_stat->tx_fc_out_tbl.ctx_id = BNXT_CTX_VAL_INVAL;
 }
 
 static void bnxt_uninit_fc_ctx_mem(struct bnxt *bp)
 {
 	bnxt_unregister_fc_ctx_mem(bp);
 
-	bnxt_free_ctx_mem_buf(&bp->rx_fc_in_tbl);
-	bnxt_free_ctx_mem_buf(&bp->rx_fc_out_tbl);
-	bnxt_free_ctx_mem_buf(&bp->tx_fc_in_tbl);
-	bnxt_free_ctx_mem_buf(&bp->tx_fc_out_tbl);
+	bnxt_free_ctx_mem_buf(&bp->flow_stat->rx_fc_in_tbl);
+	bnxt_free_ctx_mem_buf(&bp->flow_stat->rx_fc_out_tbl);
+	bnxt_free_ctx_mem_buf(&bp->flow_stat->tx_fc_in_tbl);
+	bnxt_free_ctx_mem_buf(&bp->flow_stat->tx_fc_out_tbl);
 }
 
 static void bnxt_uninit_ctx_mem(struct bnxt *bp)
 {
-	bnxt_uninit_fc_ctx_mem(bp);
+	if (BNXT_FLOW_XSTATS_EN(bp))
+		bnxt_uninit_fc_ctx_mem(bp);
 }
 
 static void

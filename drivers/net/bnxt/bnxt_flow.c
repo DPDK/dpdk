@@ -1633,7 +1633,7 @@ static void
 bnxt_setup_flow_counter(struct bnxt *bp)
 {
 	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
-	    !(bp->flags & BNXT_FLAG_FC_THREAD)) {
+	    !(bp->flags & BNXT_FLAG_FC_THREAD) && BNXT_FLOW_XSTATS_EN(bp)) {
 		rte_eal_alarm_set(US_PER_S * BNXT_FC_TIMER,
 				  bnxt_flow_cnt_alarm_cb,
 				  (void *)bp);
@@ -1646,13 +1646,13 @@ void bnxt_flow_cnt_alarm_cb(void *arg)
 	int rc = 0;
 	struct bnxt *bp = arg;
 
-	if (!bp->rx_fc_out_tbl.va) {
-		PMD_DRV_LOG(ERR, "bp->rx_fc_out_tbl.va is NULL?\n");
+	if (!bp->flow_stat->rx_fc_out_tbl.va) {
+		PMD_DRV_LOG(ERR, "bp->flow_stat->rx_fc_out_tbl.va is NULL?\n");
 		bnxt_cancel_fc_thread(bp);
 		return;
 	}
 
-	if (!bp->flow_count) {
+	if (!bp->flow_stat->flow_count) {
 		bnxt_cancel_fc_thread(bp);
 		return;
 	}
@@ -1830,7 +1830,8 @@ done:
 			bp->mark_table[flow_id].valid = true;
 			bp->mark_table[flow_id].mark_id = filter->mark;
 		}
-		bp->flow_count++;
+		if (BNXT_FLOW_XSTATS_EN(bp))
+			bp->flow_stat->flow_count++;
 		bnxt_release_flow_lock(bp);
 		bnxt_setup_flow_counter(bp);
 		return flow;
@@ -1952,7 +1953,8 @@ done:
 		bnxt_free_filter(bp, filter);
 		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
 		rte_free(flow);
-		bp->flow_count--;
+		if (BNXT_FLOW_XSTATS_EN(bp))
+			bp->flow_stat->flow_count--;
 
 		/* If this was the last flow associated with this vnic,
 		 * switch the queue back to RSS pool.
