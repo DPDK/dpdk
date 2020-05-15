@@ -44,6 +44,12 @@ enum qm_dc_portal {
 	qm_dc_portal_pme = 3
 };
 
+__rte_internal
+u16 dpaa_get_qm_channel_caam(void);
+
+__rte_internal
+u16 dpaa_get_qm_channel_pool(void);
+
 /* Portal processing (interrupt) sources */
 #define QM_PIRQ_CCSCI	0x00200000	/* CEETM Congestion State Change */
 #define QM_PIRQ_CSCI	0x00100000	/* Congestion State Change */
@@ -65,7 +71,7 @@ enum qm_dc_portal {
 /* for conversion from n of qm_channel */
 static inline u32 QM_SDQCR_CHANNELS_POOL_CONV(u16 channel)
 {
-	return QM_SDQCR_CHANNELS_POOL(channel + 1 - qm_channel_pool1);
+	return QM_SDQCR_CHANNELS_POOL(channel + 1 - dpaa_get_qm_channel_pool());
 }
 
 /* For qman_volatile_dequeue(); Choose one PRECEDENCE. EXACT is optional. Use

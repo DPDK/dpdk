@@ -12,6 +12,8 @@ INTERNAL {
 	bman_query_free_buffers;
 	bman_release;
 	bman_thread_irq;
+	dpaa_get_qm_channel_caam;
+	dpaa_get_qm_channel_pool;
 	dpaa_logtype_eventdev;
 	dpaa_logtype_mempool;
 	dpaa_logtype_pmd;
@@ -50,8 +52,6 @@ INTERNAL {
 	netcfg_release;
 	per_lcore_dpaa_io;
 	per_lcore_held_bufs;
-	qm_channel_caam;
-	qm_channel_pool1;
 	qman_alloc_cgrid_range;
 	qman_alloc_pool_range;
 	qman_clear_irq;

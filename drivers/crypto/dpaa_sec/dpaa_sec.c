@@ -121,7 +121,7 @@ dpaa_sec_init_rx(struct qman_fq *fq_in, rte_iova_t hwdesc,
 
 	qm_fqd_context_a_set64(&fq_opts.fqd, hwdesc);
 	fq_opts.fqd.context_b = fqid_out;
-	fq_opts.fqd.dest.channel = qm_channel_caam;
+	fq_opts.fqd.dest.channel = dpaa_get_qm_channel_caam();
 	fq_opts.fqd.dest.wq = 0;
 
 	fq_in->cb.ern  = ern_sec_fq_handler;

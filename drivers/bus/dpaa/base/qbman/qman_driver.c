@@ -30,6 +30,16 @@ static __thread struct dpaa_ioctl_portal_map map = {
 	.type = dpaa_portal_qman
 };
 
+u16 dpaa_get_qm_channel_caam(void)
+{
+	return qm_channel_caam;
+}
+
+u16 dpaa_get_qm_channel_pool(void)
+{
+	return qm_channel_pool1;
+}
+
 static int fsl_qman_portal_init(uint32_t index, int is_shared)
 {
 	struct qman_portal *portal;
