@@ -1796,7 +1796,9 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	}
 
 	bp->flags |= BNXT_FLAG_UPDATE_HASH;
-	memcpy(&bp->rss_conf, rss_conf, sizeof(*rss_conf));
+	memcpy(&eth_dev->data->dev_conf.rx_adv_conf.rss_conf,
+	       rss_conf,
+	       sizeof(*rss_conf));
 
 	/* Update the default RSS VNIC(s) */
 	vnic = BNXT_GET_DEFAULT_VNIC(bp);

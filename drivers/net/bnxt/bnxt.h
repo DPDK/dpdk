@@ -530,7 +530,6 @@ struct bnxt {
 	void				*bar0;
 
 	struct rte_eth_dev		*eth_dev;
-	struct rte_eth_rss_conf		rss_conf;
 	struct rte_pci_device		*pdev;
 	void				*doorbell_base;
 

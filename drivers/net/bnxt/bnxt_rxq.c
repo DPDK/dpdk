@@ -168,10 +168,8 @@ out:
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		struct rte_eth_rss_conf *rss = &dev_conf->rx_adv_conf.rss_conf;
 
-		if (bp->flags & BNXT_FLAG_UPDATE_HASH) {
-			rss = &bp->rss_conf;
+		if (bp->flags & BNXT_FLAG_UPDATE_HASH)
 			bp->flags &= ~BNXT_FLAG_UPDATE_HASH;
-		}
 
 		for (i = 0; i < bp->nr_vnics; i++) {
 			vnic = &bp->vnic_info[i];
