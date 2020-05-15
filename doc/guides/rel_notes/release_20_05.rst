@@ -209,6 +209,10 @@ New Features
   use this feature by passing zero length IV in appropriate xform. For more
   info please refer to rte_crypto_sym.h J0 comments.
 
+* **Updated the QAT PMD for AES-256 DOCSIS.**
+
+  Added AES-256 DOCSIS algorithm support to QAT PMD.
+
 * **Added QAT intermediate buffer too small handling in QAT compression PMD.**
 
   Added a special way of buffer handling when internal QAT intermediate buffer
