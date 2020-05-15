@@ -24,6 +24,7 @@
 #include <limits.h>
 #include <rte_common.h>
 #include <dpaa_list.h>
+#include <rte_compat.h>
 
 #ifndef OF_INIT_DEFAULT_PATH
 #define OF_INIT_DEFAULT_PATH "/proc/device-tree"
@@ -102,6 +103,7 @@ struct dt_file {
 	uint64_t buf[OF_FILE_BUF_MAX >> 3];
 };
 
+__rte_internal
 const struct device_node *of_find_compatible_node(
 					const struct device_node *from,
 					const char *type __rte_unused,
@@ -113,32 +115,42 @@ const struct device_node *of_find_compatible_node(
 		dev_node != NULL; \
 		dev_node = of_find_compatible_node(dev_node, type, compatible))
 
+__rte_internal
 const void *of_get_property(const struct device_node *from, const char *name,
 			    size_t *lenp) __attribute__((nonnull(2)));
+__rte_internal
 bool of_device_is_available(const struct device_node *dev_node);
 
+__rte_internal
 const struct device_node *of_find_node_by_phandle(uint64_t ph);
 
+__rte_internal
 const struct device_node *of_get_parent(const struct device_node *dev_node);
 
+__rte_internal
 const struct device_node *of_get_next_child(const struct device_node *dev_node,
 					    const struct device_node *prev);
 
+__rte_internal
 const void *of_get_mac_address(const struct device_node *np);
 
 #define for_each_child_node(parent, child) \
 	for (child = of_get_next_child(parent, NULL); child != NULL; \
 			child = of_get_next_child(parent, child))
 
+__rte_internal
 uint32_t of_n_addr_cells(const struct device_node *dev_node);
 uint32_t of_n_size_cells(const struct device_node *dev_node);
 
+__rte_internal
 const uint32_t *of_get_address(const struct device_node *dev_node, size_t idx,
 			       uint64_t *size, uint32_t *flags);
 
+__rte_internal
 uint64_t of_translate_address(const struct device_node *dev_node,
 			      const uint32_t *addr) __attribute__((nonnull));
 
+__rte_internal
 bool of_device_is_compatible(const struct device_node *dev_node,
 			     const char *compatible);
 
@@ -146,6 +158,7 @@ bool of_device_is_compatible(const struct device_node *dev_node,
  * subsystem that is device-tree-dependent. Eg. Qman/Bman, config layers, etc.
  * The path should usually be "/proc/device-tree".
  */
+__rte_internal
 int of_init_path(const char *dt_path);
 
 /* of_finish() allows a controlled tear-down of the device-tree layer, eg. if a

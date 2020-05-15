@@ -1,4 +1,8 @@
 DPDK_20.0 {
+	local: *;
+};
+
+INTERNAL {
 	global:
 
 	dpaax_iova_table_depopulate;
@@ -18,10 +22,5 @@ DPDK_20.0 {
 	of_init_path;
 	of_n_addr_cells;
 	of_translate_address;
-
-	local: *;
-};
-
-INTERNAL {
 	rta_sec_era;
 };

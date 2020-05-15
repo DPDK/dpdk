@@ -60,3 +60,6 @@
 ; Ignore moving mlx5 stable functions to INTERNAL
 [suppress_file]
 	file_name_regexp = ^librte_common_mlx5\.
+; Ignore moving DPAAx stable functions to INTERNAL
+[suppress_file]
+        file_name_regexp = ^librte_common_dpaax\.
