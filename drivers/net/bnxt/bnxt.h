@@ -147,6 +147,7 @@
 #define BNXT_NUM_CMPL_DMA_AGGR_DURING_INT	12
 
 struct bnxt_led_info {
+	uint8_t	     num_leds;
 	uint8_t      led_id;
 	uint8_t      led_type;
 	uint8_t      led_group_id;
@@ -686,8 +687,7 @@ struct bnxt {
 	uint32_t		fw_ver;
 	uint32_t		hwrm_spec_code;
 
-	struct bnxt_led_info	leds[BNXT_MAX_LED];
-	uint8_t			num_leds;
+	struct bnxt_led_info	*leds;
 	struct bnxt_ptp_cfg     *ptp_cfg;
 	uint16_t		vf_resv_strategy;
 	struct bnxt_ctx_mem_info        *ctx;

@@ -3900,17 +3900,17 @@ int bnxt_hwrm_port_led_qcaps(struct bnxt *bp)
 	if (resp->num_leds > 0 && resp->num_leds < BNXT_MAX_LED) {
 		unsigned int i;
 
-		bp->num_leds = resp->num_leds;
+		bp->leds->num_leds = resp->num_leds;
 		memcpy(bp->leds, &resp->led0_id,
-			sizeof(bp->leds[0]) * bp->num_leds);
-		for (i = 0; i < bp->num_leds; i++) {
+			sizeof(bp->leds[0]) * bp->leds->num_leds);
+		for (i = 0; i < bp->leds->num_leds; i++) {
 			struct bnxt_led_info *led = &bp->leds[i];
 
 			uint16_t caps = led->led_state_caps;
 
 			if (!led->led_group_id ||
 				!BNXT_LED_ALT_BLINK_CAP(caps)) {
-				bp->num_leds = 0;
+				bp->leds->num_leds = 0;
 				break;
 			}
 		}
@@ -3930,7 +3930,7 @@ int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on)
 	uint16_t duration = 0;
 	int rc, i;
 
-	if (!bp->num_leds || BNXT_VF(bp))
+	if (!bp->leds->num_leds || BNXT_VF(bp))
 		return -EOPNOTSUPP;
 
 	HWRM_PREP(&req, HWRM_PORT_LED_CFG, BNXT_USE_CHIMP_MB);
@@ -3940,9 +3940,9 @@ int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on)
 		duration = rte_cpu_to_le_16(500);
 	}
 	req.port_id = bp->pf.port_id;
-	req.num_leds = bp->num_leds;
+	req.num_leds = bp->leds->num_leds;
 	led_cfg = (struct bnxt_led_cfg *)&req.led0_id;
-	for (i = 0; i < bp->num_leds; i++, led_cfg++) {
+	for (i = 0; i < bp->leds->num_leds; i++, led_cfg++) {
 		req.enables |= BNXT_LED_DFLT_ENABLES(i);
 		led_cfg->led_id = bp->leds[i].led_id;
 		led_cfg->led_state = led_state;

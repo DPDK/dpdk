@@ -191,6 +191,12 @@ static uint16_t  bnxt_rss_hash_tbl_size(const struct bnxt *bp)
 	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_THOR;
 }
 
+static void bnxt_free_leds_info(struct bnxt *bp)
+{
+	rte_free(bp->leds);
+	bp->leds = NULL;
+}
+
 static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 {
 	bnxt_free_filter_mem(bp);
@@ -211,6 +217,17 @@ static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;
+}
+
+static int bnxt_alloc_leds_info(struct bnxt *bp)
+{
+	bp->leds = rte_zmalloc("bnxt_leds",
+			       BNXT_MAX_LED * sizeof(struct bnxt_led_info),
+			       0);
+	if (bp->leds == NULL)
+		return -ENOMEM;
+
+	return 0;
 }
 
 static int bnxt_alloc_mem(struct bnxt *bp, bool reconfig)
@@ -1215,6 +1232,8 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 		bnxt_dev_stop_op(eth_dev);
 
 	bnxt_uninit_resources(bp, false);
+
+	bnxt_free_leds_info(bp);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
@@ -5359,6 +5378,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 			    "Failed to allocate hwrm resource rc: %x\n", rc);
 		goto error_free;
 	}
+	rc = bnxt_alloc_leds_info(bp);
+	if (rc)
+		goto error_free;
+
 	rc = bnxt_init_resources(bp, false);
 	if (rc)
 		goto error_free;
