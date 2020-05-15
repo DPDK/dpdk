@@ -6,12 +6,13 @@
 #ifndef _DPAA2_SEC_EVENT_H_
 #define _DPAA2_SEC_EVENT_H_
 
-int
-dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
+__rte_internal
+int dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
 		int qp_id,
 		struct dpaa2_dpcon_dev *dpcon,
 		const struct rte_event *event);
 
+__rte_internal
 int dpaa2_sec_eventq_detach(const struct rte_cryptodev *dev,
 		int qp_id);
 

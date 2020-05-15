@@ -75,3 +75,5 @@
         name = rte_dpaa2_bpid_info
 [suppress_function]
         name = rte_dpaa2_mbuf_alloc_bulk
+[suppress_function]
+        name_regexp = ^dpaa2?_.*tach$
