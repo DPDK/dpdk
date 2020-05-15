@@ -1332,7 +1332,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	dpaa_device = DEV_TO_DPAA_DEVICE(eth_dev->device);
 	dev_id = dpaa_device->id.dev_id;
 	dpaa_intf = eth_dev->data->dev_private;
-	cfg = &dpaa_netcfg->port_cfg[dev_id];
+	cfg = dpaa_get_eth_port_cfg(dev_id);
 	fman_intf = cfg->fman_if;
 
 	dpaa_intf->name = dpaa_device->name;

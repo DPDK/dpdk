@@ -57,6 +57,12 @@ unsigned int dpaa_svr_family;
 RTE_DEFINE_PER_LCORE(bool, dpaa_io);
 RTE_DEFINE_PER_LCORE(struct dpaa_portal_dqrr, held_bufs);
 
+struct fm_eth_port_cfg *
+dpaa_get_eth_port_cfg(int dev_id)
+{
+	return &dpaa_netcfg->port_cfg[dev_id];
+}
+
 static int
 compare_dpaa_devices(struct rte_dpaa_device *dev1,
 		     struct rte_dpaa_device *dev2)

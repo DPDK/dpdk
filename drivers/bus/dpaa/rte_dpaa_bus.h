@@ -44,9 +44,6 @@ struct rte_dpaa_driver;
 TAILQ_HEAD(rte_dpaa_device_list, rte_dpaa_device);
 TAILQ_HEAD(rte_dpaa_driver_list, rte_dpaa_driver);
 
-/* Configuration variables exported from DPAA bus */
-extern struct netcfg_info *dpaa_netcfg;
-
 enum rte_dpaa_type {
 	FSL_DPAA_ETH = 1,
 	FSL_DPAA_CRYPTO,
@@ -216,6 +213,9 @@ RTE_DECLARE_PER_LCORE(struct dpaa_portal_dqrr, held_bufs);
 #define DPAA_PER_LCORE_DQRR_SIZE       RTE_PER_LCORE(held_bufs).dqrr_size
 #define DPAA_PER_LCORE_DQRR_HELD       RTE_PER_LCORE(held_bufs).dqrr_held
 #define DPAA_PER_LCORE_DQRR_MBUF(i)    RTE_PER_LCORE(held_bufs).mbuf[i]
+
+__rte_internal
+struct fm_eth_port_cfg *dpaa_get_eth_port_cfg(int dev_id);
 
 #ifdef __cplusplus
 }
