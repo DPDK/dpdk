@@ -497,6 +497,7 @@ test_lookup_functions(void)
 			printf("Test number of edges for node = %s failed Expected = %d, got %d\n",
 			       tm->test_node[i].node.name,
 			       tm->test_node[i].node.nb_edges, count);
+			free(next_edges);
 			return -1;
 		}
 
@@ -506,6 +507,7 @@ test_lookup_functions(void)
 				printf("Edge name miss match, expected = %s got = %s\n",
 				       tm->test_node[i].node.next_nodes[j],
 				       next_edges[j]);
+				free(next_edges);
 				return -1;
 			}
 		}
