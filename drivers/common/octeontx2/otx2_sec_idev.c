@@ -55,7 +55,7 @@ otx2_sec_idev_tx_cpt_qp_add(uint16_t port_id, struct otx2_cpt_qp *qp)
 	struct otx2_sec_idev_cfg *cfg;
 	int i, ret;
 
-	if (qp == NULL || port_id > OTX2_MAX_INLINE_PORTS)
+	if (qp == NULL || port_id >= OTX2_MAX_INLINE_PORTS)
 		return -EINVAL;
 
 	cfg = &sec_cfg[port_id];
@@ -126,7 +126,7 @@ otx2_sec_idev_tx_cpt_qp_get(uint16_t port_id, struct otx2_cpt_qp **qp)
 	uint16_t index;
 	int i, ret;
 
-	if (port_id > OTX2_MAX_INLINE_PORTS || qp == NULL)
+	if (port_id >= OTX2_MAX_INLINE_PORTS || qp == NULL)
 		return -EINVAL;
 
 	cfg = &sec_cfg[port_id];
