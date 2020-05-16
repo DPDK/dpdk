@@ -20,8 +20,6 @@
 #include "otx2_ipsec_fp.h"
 #include "otx2_sec_idev.h"
 
-#define ETH_SEC_MAX_PKT_LEN	1450
-
 #define AH_HDR_LEN	12
 #define AES_GCM_IV_LEN	8
 #define AES_GCM_MAC_LEN	16
@@ -745,7 +743,7 @@ eth_sec_ipsec_cfg(struct rte_eth_dev *eth_dev, uint8_t tt)
 
 	req->ipsec_cfg0.sa_pow2_size =
 			rte_log2_u32(sizeof(struct otx2_ipsec_fp_in_sa));
-	req->ipsec_cfg0.lenm1_max = ETH_SEC_MAX_PKT_LEN - 1;
+	req->ipsec_cfg0.lenm1_max = NIX_MAX_FRS - 1;
 
 	req->ipsec_cfg1.sa_idx_w = rte_log2_u32(dev->ipsec_in_max_spi);
 	req->ipsec_cfg1.sa_idx_max = dev->ipsec_in_max_spi - 1;
