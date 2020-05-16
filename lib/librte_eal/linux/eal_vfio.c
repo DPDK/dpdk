@@ -933,9 +933,6 @@ int
 rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 		    int vfio_dev_fd)
 {
-	struct vfio_group_status group_status = {
-			.argsz = sizeof(group_status)
-	};
 	struct vfio_config *vfio_cfg;
 	int vfio_group_fd;
 	int iommu_group_num;
