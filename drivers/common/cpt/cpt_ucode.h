@@ -22,38 +22,6 @@ static uint8_t zuc_d[32] = {
 	0x5E, 0x26, 0x3C, 0x4D, 0x78, 0x9A, 0x47, 0xAC
 };
 
-static __rte_always_inline int
-cpt_is_algo_supported(struct rte_crypto_sym_xform *xform)
-{
-	/*
-	 * Microcode only supports the following combination.
-	 * Encryption followed by authentication
-	 * Authentication followed by decryption
-	 */
-	if (xform->next) {
-		if ((xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) &&
-		    (xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER) &&
-		    (xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)) {
-			/* Unsupported as of now by microcode */
-			CPT_LOG_DP_ERR("Unsupported combination");
-			return -1;
-		}
-		if ((xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) &&
-		    (xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) &&
-		    (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT)) {
-			/* For GMAC auth there is no cipher operation */
-			if (xform->aead.algo != RTE_CRYPTO_AEAD_AES_GCM ||
-			    xform->next->auth.algo !=
-			    RTE_CRYPTO_AUTH_AES_GMAC) {
-				/* Unsupported as of now by microcode */
-				CPT_LOG_DP_ERR("Unsupported combination");
-				return -1;
-			}
-		}
-	}
-	return 0;
-}
-
 static __rte_always_inline void
 gen_key_snow3g(const uint8_t *ck, uint32_t *keyx)
 {
@@ -3331,49 +3299,6 @@ compl_auth_verify(struct rte_crypto_op *op,
 		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	else
 		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
-}
-
-static __rte_always_inline int
-instance_session_cfg(struct rte_crypto_sym_xform *xform, void *sess)
-{
-	struct rte_crypto_sym_xform *chain;
-
-	CPT_PMD_INIT_FUNC_TRACE();
-
-	if (cpt_is_algo_supported(xform))
-		goto err;
-
-	chain = xform;
-	while (chain) {
-		switch (chain->type) {
-		case RTE_CRYPTO_SYM_XFORM_AEAD:
-			if (fill_sess_aead(chain, sess))
-				goto err;
-			break;
-		case RTE_CRYPTO_SYM_XFORM_CIPHER:
-			if (fill_sess_cipher(chain, sess))
-				goto err;
-			break;
-		case RTE_CRYPTO_SYM_XFORM_AUTH:
-			if (chain->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
-				if (fill_sess_gmac(chain, sess))
-					goto err;
-			} else {
-				if (fill_sess_auth(chain, sess))
-					goto err;
-			}
-			break;
-		default:
-			CPT_LOG_DP_ERR("Invalid crypto xform type");
-			break;
-		}
-		chain = chain->next;
-	}
-
-	return 0;
-
-err:
-	return -1;
 }
 
 static __rte_always_inline void
