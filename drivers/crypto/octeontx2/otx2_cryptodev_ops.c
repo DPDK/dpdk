@@ -312,6 +312,41 @@ otx2_cpt_qp_destroy(const struct rte_cryptodev *dev, struct otx2_cpt_qp *qp)
 }
 
 static int
+sym_xform_verify(struct rte_crypto_sym_xform *xform)
+{
+	if (xform->next) {
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+			return -ENOTSUP;
+
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		    xform->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT &&
+		    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
+			return -ENOTSUP;
+
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		    xform->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC &&
+		    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		    xform->next->auth.algo == RTE_CRYPTO_AUTH_SHA1)
+			return -ENOTSUP;
+
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		    xform->auth.algo == RTE_CRYPTO_AUTH_SHA1 &&
+		    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		    xform->next->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC)
+			return -ENOTSUP;
+
+	} else {
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		    xform->auth.algo == RTE_CRYPTO_AUTH_NULL &&
+		    xform->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY)
+			return -ENOTSUP;
+	}
+	return 0;
+}
+
+static int
 sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 		      struct rte_cryptodev_sym_session *sess,
 		      struct rte_mempool *pool)
@@ -320,10 +355,9 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 	void *priv;
 	int ret;
 
-	if (unlikely(cpt_is_algo_supported(xform))) {
-		CPT_LOG_ERR("Crypto xform not supported");
-		return -ENOTSUP;
-	}
+	ret = sym_xform_verify(xform);
+	if (unlikely(ret))
+		return ret;
 
 	if (unlikely(rte_mempool_get(pool, &priv))) {
 		CPT_LOG_ERR("Could not allocate session private data");
@@ -373,7 +407,6 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 priv_put:
 	rte_mempool_put(pool, priv);
 
-	CPT_LOG_ERR("Crypto xform not supported");
 	return -ENOTSUP;
 }
 
