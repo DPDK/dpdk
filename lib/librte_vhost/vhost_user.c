@@ -206,7 +206,7 @@ vhost_backend_cleanup(struct virtio_net *dev)
 			dev->inflight_info->addr = NULL;
 		}
 
-		if (dev->inflight_info->fd > 0) {
+		if (dev->inflight_info->fd >= 0) {
 			close(dev->inflight_info->fd);
 			dev->inflight_info->fd = -1;
 		}
@@ -1417,6 +1417,7 @@ vhost_user_get_inflight_fd(struct virtio_net **pdev,
 				"failed to alloc dev inflight area\n");
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
+		dev->inflight_info->fd = -1;
 	}
 
 	num_queues = msg->payload.inflight.num_queues;
@@ -1445,6 +1446,11 @@ vhost_user_get_inflight_fd(struct virtio_net **pdev,
 	if (dev->inflight_info->addr) {
 		munmap(dev->inflight_info->addr, dev->inflight_info->size);
 		dev->inflight_info->addr = NULL;
+	}
+
+	if (dev->inflight_info->fd >= 0) {
+		close(dev->inflight_info->fd);
+		dev->inflight_info->fd = -1;
 	}
 
 	dev->inflight_info->addr = addr;
@@ -1529,6 +1535,7 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev, VhostUserMsg *msg,
 				"failed to alloc dev inflight area\n");
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
+		dev->inflight_info->fd = -1;
 	}
 
 	if (dev->inflight_info->addr) {
@@ -1543,8 +1550,10 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev, VhostUserMsg *msg,
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
-	if (dev->inflight_info->fd)
+	if (dev->inflight_info->fd >= 0) {
 		close(dev->inflight_info->fd);
+		dev->inflight_info->fd = -1;
+	}
 
 	dev->inflight_info->fd = fd;
 	dev->inflight_info->addr = addr;
