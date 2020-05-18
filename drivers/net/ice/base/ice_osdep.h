@@ -78,6 +78,7 @@ typedef uint64_t        s64;
 #define CPU_TO_BE16(o) rte_cpu_to_be_16(o)
 #define CPU_TO_BE32(o) rte_cpu_to_be_32(o)
 #define CPU_TO_BE64(o) rte_cpu_to_be_64(o)
+#define BE16_TO_CPU(o) rte_be_to_cpu_16(o)
 
 #define NTOHS(a) rte_be_to_cpu_16(a)
 #define NTOHL(a) rte_be_to_cpu_32(a)

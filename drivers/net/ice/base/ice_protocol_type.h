@@ -163,6 +163,7 @@ enum ice_prot_id {
 
 #define ICE_MDID_SIZE 2
 #define ICE_TUN_FLAG_MDID 21
+#define ICE_TUN_FLAG_MDID_OFF (ICE_MDID_SIZE * ICE_TUN_FLAG_MDID)
 #define ICE_TUN_FLAG_MASK 0xFF
 #define ICE_TUN_FLAG_FV_IND 2
 

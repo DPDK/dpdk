@@ -945,6 +945,8 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 					  rg_entry->fv_idx[i], &prot, &off);
 			lkup_exts->fv_words[fv_word_idx].prot_id = prot;
 			lkup_exts->fv_words[fv_word_idx].off = off;
+			lkup_exts->field_mask[fv_word_idx] =
+				rg_entry->fv_mask[i];
 			fv_word_idx++;
 		}
 		/* populate rg_list with the data from the child entry of this
@@ -5253,20 +5255,23 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
 
 		/* if number of words we are looking for match */
 		if (lkup_exts->n_val_words == recp[i].lkup_exts.n_val_words) {
-			struct ice_fv_word *a = lkup_exts->fv_words;
-			struct ice_fv_word *b = recp[i].lkup_exts.fv_words;
-			u16 *c = recp[i].lkup_exts.field_mask;
-			u16 *d = lkup_exts->field_mask;
+			struct ice_fv_word *ar = recp[i].lkup_exts.fv_words;
+			struct ice_fv_word *be = lkup_exts->fv_words;
+			u16 *cr = recp[i].lkup_exts.field_mask;
+			u16 *de = lkup_exts->field_mask;
 			bool found = true;
-			u8 p, q;
+			u8 pe, qr;
 
-			for (p = 0; p < lkup_exts->n_val_words; p++) {
-				for (q = 0; q < recp[i].lkup_exts.n_val_words;
-				     q++) {
-					if (a[p].off == b[q].off &&
-					    a[p].prot_id == b[q].prot_id &&
-					    d[p] == c[q])
-						/* Found the "p"th word in the
+			/* ar, cr, and qr are related to the recipe words, while
+			 * be, de and pe are related to the lookup words
+			 */
+			for (pe = 0; pe < lkup_exts->n_val_words; pe++) {
+				for (qr = 0; qr < recp[i].lkup_exts.n_val_words;
+				     qr++) {
+					if (ar[qr].off == be[pe].off &&
+					    ar[qr].prot_id == be[pe].prot_id &&
+					    cr[qr] == de[pe])
+						/* Found the "pe"th word in the
 						 * given recipe
 						 */
 						break;
@@ -5277,7 +5282,7 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
 				 * So break out from this loop and try the next
 				 * recipe
 				 */
-				if (q >= recp[i].lkup_exts.n_val_words) {
+				if (qr >= recp[i].lkup_exts.n_val_words) {
 					found = false;
 					break;
 				}
@@ -5285,7 +5290,8 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
 			/* If for "i"th recipe the found was never set to false
 			 * then it means we found our match
 			 */
-			if (tun_type == recp[i].tun_type && found)
+			if ((tun_type == recp[i].tun_type ||
+			     tun_type == ICE_SW_TUN_AND_NON_TUN) && found)
 				return i; /* Return the recipe ID */
 		}
 	}
@@ -5339,7 +5345,8 @@ ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 				ice_prot_ext[rule->type].offs[j];
 			lkup_exts->fv_words[word].prot_id =
 				ice_prot_id_tbl[rule->type].protocol_id;
-			lkup_exts->field_mask[word] = ((u16 *)&rule->m_u)[j];
+			lkup_exts->field_mask[word] =
+				BE16_TO_CPU(((__be16 *)&rule->m_u)[j]);
 			word++;
 		}
 
@@ -5455,11 +5462,7 @@ ice_fill_fv_word_index(struct ice_hw *hw, struct LIST_HEAD_TYPE *fv_list,
 
 					/* Store index of field vector */
 					rg->fv_idx[i] = j;
-					/* Mask is given by caller as big
-					 * endian, but sent to FW as little
-					 * endian
-					 */
-					rg->fv_mask[i] = mask << 8 | mask >> 8;
+					rg->fv_mask[i] = mask;
 					break;
 				}
 
@@ -5941,6 +5944,27 @@ free_mem:
 }
 
 /**
+ * ice_tun_type_match_mask - determine if tun type needs a match mask
+ * @tun_type: tunnel type
+ * @mask: mask to be used for the tunnel
+ */
+static bool ice_tun_type_match_word(enum ice_sw_tunnel_type tun_type, u16 *mask)
+{
+	switch (tun_type) {
+	case ICE_SW_TUN_VXLAN_GPE:
+	case ICE_SW_TUN_NVGRE:
+	case ICE_SW_TUN_UDP:
+	case ICE_ALL_TUNNELS:
+		*mask = ICE_TUN_FLAG_MASK;
+		return true;
+
+	default:
+		*mask = 0;
+		return false;
+	}
+}
+
+/**
  * ice_add_special_words - Add words that are not protocols, such as metadata
  * @rinfo: other information regarding the rule e.g. priority and action info
  * @lkup_exts: lookup word structure
@@ -5949,17 +5973,18 @@ static enum ice_status
 ice_add_special_words(struct ice_adv_rule_info *rinfo,
 		      struct ice_prot_lkup_ext *lkup_exts)
 {
+	u16 mask;
+
 	/* If this is a tunneled packet, then add recipe index to match the
 	 * tunnel bit in the packet metadata flags.
 	 */
-	if (rinfo->tun_type != ICE_NON_TUN) {
+	if (ice_tun_type_match_word(rinfo->tun_type, &mask)) {
 		if (lkup_exts->n_val_words < ICE_MAX_CHAIN_WORDS) {
 			u8 word = lkup_exts->n_val_words++;
 
 			lkup_exts->fv_words[word].prot_id = ICE_META_DATA_ID_HW;
-			lkup_exts->fv_words[word].off = ICE_TUN_FLAG_MDID *
-				ICE_MDID_SIZE;
-			lkup_exts->field_mask[word] = ICE_TUN_FLAG_MASK;
+			lkup_exts->fv_words[word].off = ICE_TUN_FLAG_MDID_OFF;
+			lkup_exts->field_mask[word] = mask;
 		} else {
 			return ICE_ERR_MAX_LIMIT;
 		}
@@ -6099,6 +6124,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	enum ice_status status = ICE_SUCCESS;
 	struct ice_sw_recipe *rm;
 	bool match_tun = false;
+	u16 mask;
 	u8 i;
 
 	if (!ice_is_prof_rule(rinfo->tun_type) && !lkups_cnt)
@@ -6156,14 +6182,13 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	if (status)
 		goto err_unroll;
 
-	/* There is only profile for UDP tunnels. So, it is necessary to use a
-	 * metadata ID flag to differentiate different tunnel types. A separate
-	 * recipe needs to be used for the metadata.
+	/* For certain tunnel types it is necessary to use a metadata ID flag to
+	 * differentiate different tunnel types. A separate recipe needs to be
+	 * used for the metadata.
 	 */
-	if ((rinfo->tun_type == ICE_SW_TUN_VXLAN_GPE ||
-	     rinfo->tun_type == ICE_SW_TUN_GENEVE ||
-	     rinfo->tun_type == ICE_SW_TUN_VXLAN) && rm->n_grp_count > 1)
-		match_tun = true;
+	if (ice_tun_type_match_word(rinfo->tun_type,  &mask) &&
+	    rm->n_grp_count > 1)
+		match_tun = mask;
 
 	/* set the recipe priority if specified */
 	rm->priority = (u8)rinfo->priority;
