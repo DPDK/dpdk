@@ -1442,6 +1442,11 @@ vhost_user_get_inflight_fd(struct virtio_net **pdev,
 	}
 	memset(addr, 0, mmap_size);
 
+	if (dev->inflight_info->addr) {
+		munmap(dev->inflight_info->addr, dev->inflight_info->size);
+		dev->inflight_info->addr = NULL;
+	}
+
 	dev->inflight_info->addr = addr;
 	dev->inflight_info->size = msg->payload.inflight.mmap_size = mmap_size;
 	dev->inflight_info->fd = msg->fds[0] = fd;
@@ -1526,8 +1531,10 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev, VhostUserMsg *msg,
 		}
 	}
 
-	if (dev->inflight_info->addr)
+	if (dev->inflight_info->addr) {
 		munmap(dev->inflight_info->addr, dev->inflight_info->size);
+		dev->inflight_info->addr = NULL;
+	}
 
 	addr = mmap(0, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		    fd, mmap_offset);
