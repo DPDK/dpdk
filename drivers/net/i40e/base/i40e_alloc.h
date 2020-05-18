@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2018
+ * Copyright(c) 2001-2020 Intel Corporation
  */
 
 #ifndef _I40E_ALLOC_H_
