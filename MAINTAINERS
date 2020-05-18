@@ -528,6 +528,7 @@ F: doc/guides/nics/features/default.ini
 
 Link bonding
 M: Chas Williams <chas3@att.com>
+M: Wei Hu (Xavier) <xavier.huwei@huawei.com>
 F: drivers/net/bonding/
 F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
 F: app/test/test_link_bonding*
