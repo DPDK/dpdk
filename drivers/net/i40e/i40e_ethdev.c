@@ -4935,6 +4935,7 @@ i40e_res_pool_free(struct i40e_res_pool_info *pool,
 {
 	struct pool_entry *entry, *next, *prev, *valid_entry = NULL;
 	uint32_t pool_offset;
+	uint16_t len;
 	int insert;
 
 	if (pool == NULL) {
@@ -4973,12 +4974,13 @@ i40e_res_pool_free(struct i40e_res_pool_info *pool,
 	}
 
 	insert = 0;
+	len = valid_entry->len;
 	/* Try to merge with next one*/
 	if (next != NULL) {
 		/* Merge with next one */
-		if (valid_entry->base + valid_entry->len == next->base) {
+		if (valid_entry->base + len == next->base) {
 			next->base = valid_entry->base;
-			next->len += valid_entry->len;
+			next->len += len;
 			rte_free(valid_entry);
 			valid_entry = next;
 			insert = 1;
@@ -4988,13 +4990,15 @@ i40e_res_pool_free(struct i40e_res_pool_info *pool,
 	if (prev != NULL) {
 		/* Merge with previous one */
 		if (prev->base + prev->len == valid_entry->base) {
-			prev->len += valid_entry->len;
+			prev->len += len;
 			/* If it merge with next one, remove next node */
 			if (insert == 1) {
 				LIST_REMOVE(valid_entry, next);
 				rte_free(valid_entry);
+				valid_entry = NULL;
 			} else {
 				rte_free(valid_entry);
+				valid_entry = NULL;
 				insert = 1;
 			}
 		}
@@ -5010,8 +5014,8 @@ i40e_res_pool_free(struct i40e_res_pool_info *pool,
 			LIST_INSERT_HEAD(&pool->free_list, valid_entry, next);
 	}
 
-	pool->num_free += valid_entry->len;
-	pool->num_alloc -= valid_entry->len;
+	pool->num_free += len;
+	pool->num_alloc -= len;
 
 	return 0;
 }
