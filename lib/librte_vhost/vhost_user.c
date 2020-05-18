@@ -2534,7 +2534,7 @@ static int
 vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev,
 			struct VhostUserMsg *msg)
 {
-	uint16_t vring_idx;
+	uint32_t vring_idx;
 
 	switch (msg->request.master) {
 	case VHOST_USER_SET_VRING_KICK:
