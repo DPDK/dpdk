@@ -1571,6 +1571,15 @@ i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	PMD_INIT_FUNC_TRACE();
 
 	rxq = dev->data->rx_queues[rx_queue_id];
+	if (!rxq || !rxq->q_set) {
+		PMD_DRV_LOG(ERR, "RX queue %u not available or setup",
+			    rx_queue_id);
+		return -EINVAL;
+	}
+
+	if (rxq->rx_deferred_start)
+		PMD_DRV_LOG(WARNING, "RX queue %u is deferrd start",
+			    rx_queue_id);
 
 	err = i40e_alloc_rx_queue_mbufs(rxq);
 	if (err) {
@@ -1603,6 +1612,11 @@ i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	rxq = dev->data->rx_queues[rx_queue_id];
+	if (!rxq || !rxq->q_set) {
+		PMD_DRV_LOG(ERR, "RX queue %u not available or setup",
+				rx_queue_id);
+		return -EINVAL;
+	}
 
 	/*
 	 * rx_queue_id is queue id application refers to, while
@@ -1631,6 +1645,15 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	PMD_INIT_FUNC_TRACE();
 
 	txq = dev->data->tx_queues[tx_queue_id];
+	if (!txq || !txq->q_set) {
+		PMD_DRV_LOG(ERR, "TX queue %u is not available or setup",
+			    tx_queue_id);
+		return -EINVAL;
+	}
+
+	if (txq->tx_deferred_start)
+		PMD_DRV_LOG(WARNING, "TX queue %u is deferrd start",
+			    tx_queue_id);
 
 	/*
 	 * tx_queue_id is queue id application refers to, while
@@ -1655,6 +1678,11 @@ i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	txq = dev->data->tx_queues[tx_queue_id];
+	if (!txq || !txq->q_set) {
+		PMD_DRV_LOG(ERR, "TX queue %u is not available or setup",
+			tx_queue_id);
+		return -EINVAL;
+	}
 
 	/*
 	 * tx_queue_id is queue id application refers to, while
