@@ -1069,6 +1069,8 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 						  VHOST_ACCESS_RW);
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		if (unlikely(!desc_addrs[i]))
+			return -1;
 		if (unlikely(lens[i] != descs[avail_idx + i].len))
 			return -1;
 	}
@@ -1822,6 +1824,8 @@ vhost_reserve_avail_batch_packed(struct virtio_net *dev,
 	}
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
+		if (unlikely(!desc_addrs[i]))
+			return -1;
 		if (unlikely((lens[i] != descs[avail_idx + i].len)))
 			return -1;
 	}
