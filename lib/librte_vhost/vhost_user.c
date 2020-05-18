@@ -2068,10 +2068,10 @@ vhost_user_set_log_base(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	size = msg->payload.log.mmap_size;
 	off  = msg->payload.log.mmap_offset;
 
-	/* Don't allow mmap_offset to point outside the mmap region */
-	if (off > size) {
+	/* Check for mmap size and offset overflow. */
+	if (off >= -size) {
 		VHOST_LOG_CONFIG(ERR,
-			"log offset %#"PRIx64" exceeds log size %#"PRIx64"\n",
+			"log offset %#"PRIx64" and log size %#"PRIx64" overflow\n",
 			off, size);
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
