@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2020
+ * Copyright(c) 2001-2020 Intel Corporation
  */
 
 #ifndef _ICE_FLEX_PIPE_H_
