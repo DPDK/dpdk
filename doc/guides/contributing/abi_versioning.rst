@@ -413,7 +413,7 @@ Finally, we need to indicate to the :doc:`meson/ninja build system
 library or driver. In the libraries or driver where we have added symbol
 versioning, in the ``meson.build`` file we add the following
 
-.. code-block::
+.. code-block:: none
 
    use_function_versioning = true
 
