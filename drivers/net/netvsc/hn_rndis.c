@@ -17,6 +17,7 @@
 #include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_atomic.h>
+#include <rte_alarm.h>
 #include <rte_branch_prediction.h>
 #include <rte_ether.h>
 #include <rte_common.h>
@@ -281,6 +282,15 @@ static int hn_nvs_send_rndis_ctrl(struct vmbus_channel *chan,
 				  &nvs_rndis, sizeof(nvs_rndis), 0U, NULL);
 }
 
+/*
+ * Alarm callback to process link changed notifications.
+ * Can not directly since link_status is discovered while reading ring
+ */
+static void hn_rndis_link_alarm(void *arg)
+{
+	_rte_eth_dev_callback_process(arg, RTE_ETH_EVENT_INTR_LSC, NULL);
+}
+
 void hn_rndis_link_status(struct rte_eth_dev *dev, const void *msg)
 {
 	const struct rndis_status_msg *indicate = msg;
@@ -298,11 +308,8 @@ void hn_rndis_link_status(struct rte_eth_dev *dev, const void *msg)
 	case RNDIS_STATUS_LINK_SPEED_CHANGE:
 	case RNDIS_STATUS_MEDIA_CONNECT:
 	case RNDIS_STATUS_MEDIA_DISCONNECT:
-		if (dev->data->dev_conf.intr_conf.lsc &&
-		    hn_dev_link_update(dev, 0) == 0)
-			_rte_eth_dev_callback_process(dev,
-						      RTE_ETH_EVENT_INTR_LSC,
-						      NULL);
+		if (dev->data->dev_conf.intr_conf.lsc)
+			rte_eal_alarm_set(10, hn_rndis_link_alarm, dev);
 		break;
 	default:
 		PMD_DRV_LOG(NOTICE, "unknown RNDIS indication: %#x",
@@ -1101,6 +1108,10 @@ hn_rndis_attach(struct hn_data *hv)
 void
 hn_rndis_detach(struct hn_data *hv)
 {
+	struct rte_eth_dev *dev = &rte_eth_devices[hv->port_id];
+
+	rte_eal_alarm_cancel(hn_rndis_link_alarm, dev);
+
 	/* Halt the RNDIS. */
 	hn_rndis_halt(hv);
 }
