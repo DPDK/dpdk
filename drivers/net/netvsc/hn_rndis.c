@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev.h>
@@ -33,6 +34,9 @@
 #include "hn_nvs.h"
 #include "hn_rndis.h"
 #include "ndis.h"
+
+#define RNDIS_TIMEOUT_SEC 5
+#define RNDIS_DELAY_MS    10
 
 #define HN_RNDIS_XFER_SIZE		0x4000
 
@@ -354,7 +358,7 @@ void hn_rndis_receive_response(struct hn_data *hv,
 	rte_smp_wmb();
 
 	if (rte_atomic32_cmpset(&hv->rndis_pending, hdr->rid, 0) == 0) {
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(NOTICE,
 			    "received id %#x pending id %#x",
 			    hdr->rid, (uint32_t)hv->rndis_pending);
 	}
@@ -377,6 +381,11 @@ static int hn_rndis_exec1(struct hn_data *hv,
 		return -EIO;
 	}
 
+	if (rid == 0) {
+		PMD_DRV_LOG(ERR, "Invalid request id");
+		return -EINVAL;
+	}
+
 	if (comp != NULL &&
 	    rte_atomic32_cmpset(&hv->rndis_pending, 0, rid) == 0) {
 		PMD_DRV_LOG(ERR,
@@ -391,9 +400,26 @@ static int hn_rndis_exec1(struct hn_data *hv,
 	}
 
 	if (comp) {
+		time_t start = time(NULL);
+
 		/* Poll primary channel until response received */
-		while (hv->rndis_pending == rid)
+		while (hv->rndis_pending == rid) {
+			if (hv->closed)
+				return -ENETDOWN;
+
+			if (time(NULL) - start > RNDIS_TIMEOUT_SEC) {
+				PMD_DRV_LOG(ERR,
+					    "RNDIS response timed out");
+
+				rte_atomic32_cmpset(&hv->rndis_pending, rid, 0);
+				return -ETIMEDOUT;
+			}
+
+			if (rte_vmbus_chan_rx_empty(hv->primary->chan))
+				rte_delay_ms(RNDIS_DELAY_MS);
+
 			hn_process_events(hv, 0, 1);
+		}
 
 		memcpy(comp, hv->rndis_resp, comp_len);
 	}
