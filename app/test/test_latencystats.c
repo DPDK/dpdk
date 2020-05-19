@@ -60,6 +60,9 @@ static int test_latency_uninit(void)
 	ret = rte_latencystats_uninit();
 	TEST_ASSERT(ret >= 0, "Test Failed: rte_latencystats_uninit failed");
 
+	ret = rte_metrics_deinit();
+	TEST_ASSERT(ret >= 0, "Test Failed: rte_metrics_deinit failed");
+
 	return TEST_SUCCESS;
 }
 
