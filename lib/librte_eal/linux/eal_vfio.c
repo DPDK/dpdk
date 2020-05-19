@@ -295,7 +295,7 @@ vfio_open_group_fd(int iommu_group_num)
 							strerror(errno));
 					return -1;
 				}
-				return 0;
+				return -ENOENT;
 			}
 			/* noiommu group found */
 		}
@@ -320,12 +320,12 @@ vfio_open_group_fd(int iommu_group_num)
 			vfio_group_fd = mp_rep->fds[0];
 		} else if (p->result == SOCKET_NO_FD) {
 			RTE_LOG(ERR, EAL, "  bad VFIO group fd\n");
-			vfio_group_fd = 0;
+			vfio_group_fd = -ENOENT;
 		}
 	}
 
 	free(mp_reply.msgs);
-	if (vfio_group_fd < 0)
+	if (vfio_group_fd < 0 && vfio_group_fd != -ENOENT)
 		RTE_LOG(ERR, EAL, "  cannot request group fd\n");
 	return vfio_group_fd;
 }
@@ -381,9 +381,9 @@ vfio_get_group_fd(struct vfio_config *vfio_cfg,
 	}
 
 	vfio_group_fd = vfio_open_group_fd(iommu_group_num);
-	if (vfio_group_fd <= 0) {
+	if (vfio_group_fd < 0) {
 		RTE_LOG(ERR, EAL, "Failed to open group %d\n", iommu_group_num);
-		return -1;
+		return vfio_group_fd;
 	}
 
 	cur_grp->group_num = iommu_group_num;
@@ -733,11 +733,14 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 
 	/* get the actual group fd */
 	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_num);
-	if (vfio_group_fd < 0)
+	if (vfio_group_fd < 0 && vfio_group_fd != -ENOENT)
 		return -1;
 
-	/* if group_fd == 0, that means the device isn't managed by VFIO */
-	if (vfio_group_fd == 0) {
+	/*
+	 * if vfio_group_fd == -ENOENT, that means the device
+	 * isn't managed by VFIO
+	 */
+	if (vfio_group_fd == -ENOENT) {
 		RTE_LOG(WARNING, EAL, " %s not managed by VFIO driver, skipping\n",
 				dev_addr);
 		return 1;
@@ -975,10 +978,10 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 
 	/* get the actual group fd */
 	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_num);
-	if (vfio_group_fd <= 0) {
+	if (vfio_group_fd < 0) {
 		RTE_LOG(INFO, EAL, "rte_vfio_get_group_fd failed for %s\n",
 				   dev_addr);
-		ret = -1;
+		ret = vfio_group_fd;
 		goto out;
 	}
 

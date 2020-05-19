@@ -44,9 +44,9 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 		r->req = SOCKET_REQ_GROUP;
 		r->group_num = m->group_num;
 		fd = rte_vfio_get_group_fd(m->group_num);
-		if (fd < 0)
+		if (fd < 0 && fd != -ENOENT)
 			r->result = SOCKET_ERR;
-		else if (fd == 0)
+		else if (fd == -ENOENT)
 			/* if VFIO group exists but isn't bound to VFIO driver */
 			r->result = SOCKET_NO_FD;
 		else {
