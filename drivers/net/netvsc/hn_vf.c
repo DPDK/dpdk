@@ -120,11 +120,11 @@ static void hn_vf_remove(struct hn_data *hv)
 		/* Stop incoming packets from arriving on VF */
 		hn_nvs_set_datapath(hv, NVS_DATAPATH_SYNTHETIC);
 
-		/* Stop transmission over VF */
-		hv->vf_port = HN_INVALID_PORT;
-
 		/* Give back ownership */
 		rte_eth_dev_owner_unset(hv->vf_port, hv->owner.id);
+
+		/* Stop transmission over VF */
+		hv->vf_port = HN_INVALID_PORT;
 	}
 }
 
