@@ -457,11 +457,14 @@ fslmc_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 
 	/* get the actual group fd */
 	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_no);
-	if (vfio_group_fd < 0)
+	if (vfio_group_fd < 0 && vfio_group_fd != -ENOENT)
 		return -1;
 
-	/* if group_fd == 0, that means the device isn't managed by VFIO */
-	if (vfio_group_fd == 0) {
+	/*
+	 * if vfio_group_fd == -ENOENT, that means the device
+	 * isn't managed by VFIO
+	 */
+	if (vfio_group_fd == -ENOENT) {
 		RTE_LOG(WARNING, EAL, " %s not managed by VFIO driver, skipping\n",
 				dev_addr);
 		return 1;
