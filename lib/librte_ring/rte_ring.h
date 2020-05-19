@@ -733,7 +733,9 @@ rte_ring_full(const struct rte_ring *r)
 static inline int
 rte_ring_empty(const struct rte_ring *r)
 {
-	return rte_ring_count(r) == 0;
+	uint32_t prod_tail = r->prod.tail;
+	uint32_t cons_tail = r->cons.tail;
+	return cons_tail == prod_tail;
 }
 
 /**
