@@ -178,6 +178,8 @@ int	hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			      unsigned int socket_id,
 			      const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp);
+void	hn_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_id,
+			     struct rte_eth_rxq_info *qinfo);
 void	hn_dev_rx_queue_release(void *arg);
 void	hn_dev_free_queues(struct rte_eth_dev *dev);
 

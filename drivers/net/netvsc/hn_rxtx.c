@@ -319,6 +319,15 @@ error:
 	return err;
 }
 
+void
+hn_dev_tx_queue_info(struct rte_eth_dev *dev, uint16_t queue_id,
+		     struct rte_eth_txq_info *qinfo)
+{
+	struct hn_tx_queue *txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->txdesc_pool->size;
+	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
+}
 
 static struct hn_txdesc *hn_txd_get(struct hn_tx_queue *txq)
 {
@@ -857,6 +866,17 @@ struct hn_rx_queue *hn_rx_queue_alloc(struct hn_data *hv,
 	}
 
 	return rxq;
+}
+
+void
+hn_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_id,
+		     struct rte_eth_rxq_info *qinfo)
+{
+	struct hn_rx_queue *rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->nb_desc = rxq->rx_ring->size;
+	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
 }
 
 int
