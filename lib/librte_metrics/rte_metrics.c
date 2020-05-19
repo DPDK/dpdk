@@ -85,6 +85,7 @@ rte_metrics_deinit(void)
 {
 	struct rte_metrics_data_s *stats;
 	const struct rte_memzone *memzone;
+	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EINVAL;
@@ -96,8 +97,10 @@ rte_metrics_deinit(void)
 	stats = memzone->addr;
 	memset(stats, 0, sizeof(struct rte_metrics_data_s));
 
-	return rte_memzone_free(memzone);
-
+	ret = rte_memzone_free(memzone);
+	if (ret == 0)
+		metrics_initialized = 0;
+	return ret;
 }
 
 int
