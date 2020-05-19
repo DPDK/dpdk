@@ -523,11 +523,12 @@ struct rte_mbuf {
 	RTE_STD_C11
 	union {
 		uint32_t packet_type; /**< L2/L3/L4 and tunnel information. */
+		__extension__
 		struct {
-			uint32_t l2_type:4; /**< (Outer) L2 type. */
-			uint32_t l3_type:4; /**< (Outer) L3 type. */
-			uint32_t l4_type:4; /**< (Outer) L4 type. */
-			uint32_t tun_type:4; /**< Tunnel type. */
+			uint8_t l2_type:4;   /**< (Outer) L2 type. */
+			uint8_t l3_type:4;   /**< (Outer) L3 type. */
+			uint8_t l4_type:4;   /**< (Outer) L4 type. */
+			uint8_t tun_type:4;  /**< Tunnel type. */
 			RTE_STD_C11
 			union {
 				uint8_t inner_esp_next_proto;
@@ -543,7 +544,7 @@ struct rte_mbuf {
 					/**< Inner L3 type. */
 				};
 			};
-			uint32_t inner_l4_type:4; /**< Inner L4 type. */
+			uint8_t inner_l4_type:4; /**< Inner L4 type. */
 		};
 	};
 
