@@ -3,3 +3,4 @@
 
 sources = files('rte_meter.c')
 headers = files('rte_meter.h')
+use_function_versioning = true
