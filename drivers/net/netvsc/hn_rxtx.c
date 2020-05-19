@@ -369,6 +369,29 @@ hn_dev_tx_queue_release(void *arg)
 	rte_free(txq);
 }
 
+/*
+ * Check the status of a Tx descriptor in the queue.
+ *
+ * returns:
+ *  - -EINVAL              - offset outside of tx_descriptor pool.
+ *  - RTE_ETH_TX_DESC_FULL - descriptor is not acknowledged by host.
+ *  - RTE_ETH_TX_DESC_DONE - descriptor is available.
+ */
+int hn_dev_tx_descriptor_status(void *arg, uint16_t offset)
+{
+	const struct hn_tx_queue *txq = arg;
+
+	hn_process_events(txq->hv, txq->queue_id, 0);
+
+	if (offset >= rte_mempool_avail_count(txq->txdesc_pool))
+		return -EINVAL;
+
+	if (offset < rte_mempool_in_use_count(txq->txdesc_pool))
+		return RTE_ETH_TX_DESC_FULL;
+	else
+		return RTE_ETH_TX_DESC_DONE;
+}
+
 static void
 hn_nvs_send_completed(struct rte_eth_dev *dev, uint16_t queue_id,
 		      unsigned long xactid, const struct hn_nvs_rndis_ack *ack)
@@ -964,6 +987,40 @@ hn_dev_rx_queue_release(void *arg)
 	PMD_INIT_FUNC_TRACE();
 
 	hn_rx_queue_free(rxq, true);
+}
+
+/*
+ * Get the number of used descriptor in a rx queue
+ * For this device that means how many packets are pending in the ring.
+ */
+uint32_t
+hn_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct hn_rx_queue *rxq = dev->data->rx_queues[queue_id];
+
+	return rte_ring_count(rxq->rx_ring);
+}
+
+/*
+ * Check the status of a Rx descriptor in the queue
+ *
+ * returns:
+ *  - -EINVAL               - offset outside of ring
+ *  - RTE_ETH_RX_DESC_AVAIL - no data available yet
+ *  - RTE_ETH_RX_DESC_DONE  - data is waiting in stagin ring
+ */
+int hn_dev_rx_queue_status(void *arg, uint16_t offset)
+{
+	const struct hn_rx_queue *rxq = arg;
+
+	hn_process_events(rxq->hv, rxq->queue_id, 0);
+	if (offset >= rxq->rx_ring->capacity)
+		return -EINVAL;
+
+	if (offset < rte_ring_count(rxq->rx_ring))
+		return RTE_ETH_RX_DESC_DONE;
+	else
+		return RTE_ETH_RX_DESC_AVAIL;
 }
 
 int
