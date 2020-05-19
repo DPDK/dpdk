@@ -412,8 +412,8 @@ hn_nvs_send_completed(struct rte_eth_dev *dev, uint16_t queue_id,
 		txq->stats.bytes += txd->data_size;
 		txq->stats.packets += txd->packets;
 	} else {
-		PMD_TX_LOG(NOTICE, "port %u:%u complete tx %u failed status %u",
-			   txq->port_id, txq->queue_id, txd->chim_index, ack->status);
+		PMD_DRV_LOG(NOTICE, "port %u:%u complete tx %u failed status %u",
+			    txq->port_id, txq->queue_id, txd->chim_index, ack->status);
 		++txq->stats.errors;
 	}
 
@@ -438,8 +438,7 @@ hn_nvs_handle_comp(struct rte_eth_dev *dev, uint16_t queue_id,
 		break;
 
 	default:
-		PMD_TX_LOG(NOTICE,
-			   "unexpected send completion type %u",
+		PMD_DRV_LOG(NOTICE, "unexpected send completion type %u",
 			   hdr->type);
 	}
 }
@@ -657,6 +656,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 
 	if (unlikely(rte_ring_sp_enqueue(rxq->rx_ring, m) != 0)) {
 		++rxq->stats.ring_full;
+		PMD_RX_LOG(DEBUG, "rx ring full");
 		rte_pktmbuf_free(m);
 	}
 }
@@ -1174,10 +1174,16 @@ static int hn_flush_txagg(struct hn_tx_queue *txq, bool *need_sig)
 
 	if (likely(ret == 0))
 		hn_reset_txagg(txq);
-	else
-		PMD_TX_LOG(NOTICE, "port %u:%u send failed: %d",
-			   txq->port_id, txq->queue_id, ret);
+	else if (ret == -EAGAIN) {
+		PMD_TX_LOG(DEBUG, "port %u:%u channel full",
+			   txq->port_id, txq->queue_id);
+		++txq->stats.channel_full;
+	} else {
+		++txq->stats.errors;
 
+		PMD_DRV_LOG(NOTICE, "port %u:%u send failed: %d",
+			   txq->port_id, txq->queue_id, ret);
+	}
 	return ret;
 }
 
@@ -1523,8 +1529,13 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			ret = hn_xmit_sg(txq, txd, m, &need_sig);
 			if (unlikely(ret != 0)) {
-				PMD_TX_LOG(NOTICE, "sg send failed: %d", ret);
-				++txq->stats.errors;
+				if (ret == -EAGAIN) {
+					PMD_TX_LOG(DEBUG, "sg channel full");
+					++txq->stats.channel_full;
+				} else {
+					PMD_DRV_LOG(NOTICE, "sg send failed: %d", ret);
+					++txq->stats.errors;
+				}
 				hn_txd_put(txq, txd);
 				goto fail;
 			}

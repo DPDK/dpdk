@@ -40,6 +40,7 @@ struct hn_stats {
 	uint64_t	bytes;
 	uint64_t	errors;
 	uint64_t	ring_full;
+	uint64_t	channel_full;
 	uint64_t	multicast;
 	uint64_t	broadcast;
 	/* Size bins in array as RFC 2819, undersized [0], 64 [1], etc */
