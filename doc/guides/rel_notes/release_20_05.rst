@@ -111,6 +111,13 @@ New Features
   * Added support for accelerated LLQ mode.
   * Handling of the 0 length descriptors on the Rx path.
 
+* **Updated Hisilicon hns3 driver.**
+
+  Updated Hisilicon hns3 driver with new features and improvements, including:
+
+  * Added support for TSO
+  * Added support for configuring promiscuous and allmulticast mode for VF
+
 * **Updated Intel i40e driver.**
 
   Updated i40e PMD with new features and improvements, including:
