@@ -926,7 +926,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 			ret = -1;
 			goto out_mutex;
 		}
-		if (!vsocket->is_server) {
+		if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
 			VHOST_LOG_CONFIG(ERR,
 			"error: zero copy is incompatible with vhost client mode\n");
 			ret = -1;
