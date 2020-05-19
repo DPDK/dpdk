@@ -55,7 +55,7 @@ extern "C" {
  *   - The memory size needed for the ring on success.
  *   - -EINVAL if count is not a power of 2.
  */
-ssize_t rte_ring_get_memsize(unsigned count);
+ssize_t rte_ring_get_memsize(unsigned int count);
 
 /**
  * Initialize a ring structure.
@@ -109,8 +109,8 @@ ssize_t rte_ring_get_memsize(unsigned count);
  * @return
  *   0 on success, or a negative value on error.
  */
-int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
-	unsigned flags);
+int rte_ring_init(struct rte_ring *r, const char *name, unsigned int count,
+	unsigned int flags);
 
 /**
  * Create a new ring named *name* in memory.
@@ -169,8 +169,8 @@ int rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
  *    - EEXIST - a memzone with the same name already exists
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
-struct rte_ring *rte_ring_create(const char *name, unsigned count,
-				 int socket_id, unsigned flags);
+struct rte_ring *rte_ring_create(const char *name, unsigned int count,
+				 int socket_id, unsigned int flags);
 
 /**
  * De-allocate all memory used by the ring.
@@ -199,11 +199,11 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
 	uint32_t idx = prod_head & (r)->mask; \
 	obj_type *ring = (obj_type *)ring_start; \
 	if (likely(idx + n < size)) { \
-		for (i = 0; i < (n & ((~(unsigned)0x3))); i+=4, idx+=4) { \
+		for (i = 0; i < (n & ~0x3); i += 4, idx += 4) { \
 			ring[idx] = obj_table[i]; \
-			ring[idx+1] = obj_table[i+1]; \
-			ring[idx+2] = obj_table[i+2]; \
-			ring[idx+3] = obj_table[i+3]; \
+			ring[idx + 1] = obj_table[i + 1]; \
+			ring[idx + 2] = obj_table[i + 2]; \
+			ring[idx + 3] = obj_table[i + 3]; \
 		} \
 		switch (n & 0x3) { \
 		case 3: \
@@ -230,11 +230,11 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
 	const uint32_t size = (r)->size; \
 	obj_type *ring = (obj_type *)ring_start; \
 	if (likely(idx + n < size)) { \
-		for (i = 0; i < (n & (~(unsigned)0x3)); i+=4, idx+=4) {\
+		for (i = 0; i < (n & ~0x3); i += 4, idx += 4) {\
 			obj_table[i] = ring[idx]; \
-			obj_table[i+1] = ring[idx+1]; \
-			obj_table[i+2] = ring[idx+2]; \
-			obj_table[i+3] = ring[idx+3]; \
+			obj_table[i + 1] = ring[idx + 1]; \
+			obj_table[i + 2] = ring[idx + 2]; \
+			obj_table[i + 3] = ring[idx + 3]; \
 		} \
 		switch (n & 0x3) { \
 		case 3: \
@@ -683,7 +683,7 @@ rte_ring_reset(struct rte_ring *r);
  * @return
  *   The number of entries in the ring.
  */
-static inline unsigned
+static inline unsigned int
 rte_ring_count(const struct rte_ring *r)
 {
 	uint32_t prod_tail = r->prod.tail;
@@ -700,7 +700,7 @@ rte_ring_count(const struct rte_ring *r)
  * @return
  *   The number of free entries in the ring.
  */
-static inline unsigned
+static inline unsigned int
 rte_ring_free_count(const struct rte_ring *r)
 {
 	return r->capacity - rte_ring_count(r);
@@ -860,7 +860,7 @@ struct rte_ring *rte_ring_lookup(const char *name);
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static __rte_always_inline unsigned
+static __rte_always_inline unsigned int
 rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
 {
@@ -883,7 +883,7 @@ rte_ring_mp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static __rte_always_inline unsigned
+static __rte_always_inline unsigned int
 rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 			 unsigned int n, unsigned int *free_space)
 {
@@ -910,7 +910,7 @@ rte_ring_sp_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects enqueued.
  */
-static __rte_always_inline unsigned
+static __rte_always_inline unsigned int
 rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 		      unsigned int n, unsigned int *free_space)
 {
@@ -954,7 +954,7 @@ rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-static __rte_always_inline unsigned
+static __rte_always_inline unsigned int
 rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
 {
@@ -979,7 +979,7 @@ rte_ring_mc_dequeue_burst(struct rte_ring *r, void **obj_table,
  * @return
  *   - n: Actual number of objects dequeued, 0 if ring is empty
  */
-static __rte_always_inline unsigned
+static __rte_always_inline unsigned int
 rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
 {
@@ -1006,7 +1006,7 @@ rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table,
  * @return
  *   - Number of objects dequeued
  */
-static __rte_always_inline unsigned
+static __rte_always_inline unsigned int
 rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table,
 		unsigned int n, unsigned int *available)
 {

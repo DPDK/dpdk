@@ -179,8 +179,8 @@ get_sync_type(uint32_t flags, enum rte_ring_sync_type *prod_st,
 }
 
 int
-rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
-	unsigned flags)
+rte_ring_init(struct rte_ring *r, const char *name, unsigned int count,
+	unsigned int flags)
 {
 	int ret;
 
