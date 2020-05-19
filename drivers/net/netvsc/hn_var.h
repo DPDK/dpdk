@@ -141,7 +141,6 @@ struct hn_data {
 	uint16_t	rss_ind[128];
 
 	struct rte_eth_dev_owner owner;
-	struct rte_intr_handle vf_intr;
 
 	struct vmbus_channel *channels[HN_MAX_CHANNELS];
 };
@@ -228,8 +227,6 @@ int	hn_vf_mc_addr_list(struct rte_eth_dev *dev,
 			   struct rte_ether_addr *mc_addr_set,
 			   uint32_t nb_mc_addr);
 
-int	hn_vf_link_update(struct rte_eth_dev *dev,
-			  int wait_to_complete);
 int	hn_vf_tx_queue_setup(struct rte_eth_dev *dev,
 			     uint16_t queue_idx, uint16_t nb_desc,
 			     unsigned int socket_id,

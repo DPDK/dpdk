@@ -97,15 +97,8 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 	}
 
 	err = hn_vf_attach(hv, port);
-	if (err == 0) {
-		dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
-		hv->vf_intr = (struct rte_intr_handle) {
-			.fd = -1,
-			.type = RTE_INTR_HANDLE_EXT,
-		};
-		dev->intr_handle = &hv->vf_intr;
+	if (err == 0)
 		hn_nvs_set_datapath(hv, NVS_DATAPATH_VF);
-	}
 
 	return err;
 }
@@ -223,80 +216,6 @@ int hn_vf_info_get(struct hn_data *hv, struct rte_eth_dev_info *info)
 	return ret;
 }
 
-int hn_vf_link_update(struct rte_eth_dev *dev,
-		      int wait_to_complete)
-{
-	struct hn_data *hv = dev->data->dev_private;
-	struct rte_eth_dev *vf_dev;
-	int ret = 0;
-
-	rte_rwlock_read_lock(&hv->vf_lock);
-	vf_dev = hn_get_vf_dev(hv);
-	if (vf_dev && vf_dev->dev_ops->link_update)
-		ret = (*vf_dev->dev_ops->link_update)(vf_dev, wait_to_complete);
-	rte_rwlock_read_unlock(&hv->vf_lock);
-
-	return ret;
-}
-
-/* called when VF has link state interrupts enabled */
-static int hn_vf_lsc_event(uint16_t port_id __rte_unused,
-			   enum rte_eth_event_type event,
-			   void *cb_arg, void *out __rte_unused)
-{
-	struct rte_eth_dev *dev = cb_arg;
-
-	if (event != RTE_ETH_EVENT_INTR_LSC)
-		return 0;
-
-	/* if link state has changed pass on */
-	if (hn_dev_link_update(dev, 0) == 0)
-		return 0; /* no change */
-
-	return _rte_eth_dev_callback_process(dev,
-					     RTE_ETH_EVENT_INTR_LSC,
-					     NULL);
-}
-
-static int _hn_vf_configure(struct rte_eth_dev *dev,
-			    uint16_t vf_port,
-			    const struct rte_eth_conf *dev_conf)
-{
-	struct rte_eth_conf vf_conf = *dev_conf;
-	struct rte_eth_dev *vf_dev;
-	int ret;
-
-	vf_dev = &rte_eth_devices[vf_port];
-	if (dev_conf->intr_conf.lsc &&
-	    (vf_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)) {
-		PMD_DRV_LOG(DEBUG, "enabling LSC for VF %u",
-			    vf_port);
-		vf_conf.intr_conf.lsc = 1;
-	} else {
-		PMD_DRV_LOG(DEBUG, "disabling LSC for VF %u",
-			    vf_port);
-		vf_conf.intr_conf.lsc = 0;
-	}
-
-	ret = rte_eth_dev_configure(vf_port,
-				    dev->data->nb_rx_queues,
-				    dev->data->nb_tx_queues,
-				    &vf_conf);
-	if (ret) {
-		PMD_DRV_LOG(ERR,
-			    "VF configuration failed: %d", ret);
-	} else if (vf_conf.intr_conf.lsc) {
-		ret = rte_eth_dev_callback_register(vf_port,
-						    RTE_ETH_DEV_INTR_LSC,
-						    hn_vf_lsc_event, dev);
-		if (ret)
-			PMD_DRV_LOG(ERR,
-				    "Failed to register LSC callback for VF %u",
-				    vf_port);
-	}
-	return ret;
-}
-
 /*
  * Configure VF if present.
  * Force VF to have same number of queues as synthetic device
@@ -305,11 +224,22 @@ int hn_vf_configure(struct rte_eth_dev *dev,
 		    const struct rte_eth_conf *dev_conf)
 {
 	struct hn_data *hv = dev->data->dev_private;
+	struct rte_eth_conf vf_conf = *dev_conf;
 	int ret = 0;
 
+	/* link state interrupt does not matter here. */
+	vf_conf.intr_conf.lsc = 0;
+
 	rte_rwlock_read_lock(&hv->vf_lock);
-	if (hv->vf_port != HN_INVALID_PORT)
-		ret = _hn_vf_configure(dev, hv->vf_port, dev_conf);
+	if (hv->vf_port != HN_INVALID_PORT) {
+		ret = rte_eth_dev_configure(hv->vf_port,
+					    dev->data->nb_rx_queues,
+					    dev->data->nb_tx_queues,
+					    &vf_conf);
+		if (ret != 0)
+			PMD_DRV_LOG(ERR,
+				    "VF configuration failed: %d", ret);
+	}
 	rte_rwlock_read_unlock(&hv->vf_lock);
 	return ret;
 }
