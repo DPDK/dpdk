@@ -68,8 +68,6 @@ J=$DPDK_MAKE_JOBS
 builds_dir=${DPDK_BUILD_TEST_DIR:-.}
 short=false
 unset verbose
-# for ABI checks, we need debuginfo
-test_cflags="-Wfatal-errors -g"
 while getopts hj:sv ARG ; do
 	case $ARG in
 		j ) J=$OPTARG ;;
@@ -248,7 +246,7 @@ for conf in $configs ; do
 	config $dir $target $options
 
 	echo "================== Build $conf"
-	${MAKE} -j$J EXTRA_CFLAGS="$test_cflags $DPDK_DEP_CFLAGS" \
+	${MAKE} -j$J EXTRA_CFLAGS="-Wfatal-errors -g $DPDK_DEP_CFLAGS" \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose O=$dir
 	! $short || break
 	export RTE_TARGET=$target
@@ -282,7 +280,7 @@ for conf in $configs ; do
 			echo -n "================== Build $conf "
 			echo "($DPDK_ABI_REF_VERSION)"
 			${MAKE} -j$J \
-				EXTRA_CFLAGS="$test_cflags $DPDK_DEP_CFLAGS" \
+				EXTRA_CFLAGS="-Wno-error -g $DPDK_DEP_CFLAGS" \
 				EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
 				O=$abirefdir/build
 			export RTE_TARGET=$target

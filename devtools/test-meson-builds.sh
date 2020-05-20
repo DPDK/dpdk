@@ -74,7 +74,6 @@ config () # <dir> <builddir> <meson options>
 		return
 	fi
 	options=
-	options="$options --werror"
 	if echo $* | grep -qw -- '--default-library=shared' ; then
 		options="$options -Dexamples=all"
 	else
@@ -127,7 +126,7 @@ build () # <directory> <target compiler> <meson options>
 	# skip build if compiler not available
 	command -v ${CC##* } >/dev/null 2>&1 || return 0
 	load_env $targetcc || return 0
-	config $srcdir $builds_dir/$targetdir $*
+	config $srcdir $builds_dir/$targetdir --werror $*
 	compile $builds_dir/$targetdir
 	if [ -n "$DPDK_ABI_REF_VERSION" ]; then
 		abirefdir=${DPDK_ABI_REF_DIR:-reference}/$DPDK_ABI_REF_VERSION
