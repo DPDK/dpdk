@@ -372,6 +372,12 @@ Example for the io forwarding engine, with some packet drops on the tx side::
      TX-packets: 548595568      TX-dropped: 128           TX-total: 548595696
      ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+.. note::
+
+   Enabling CONFIG_RTE_TEST_PMD_RECORD_CORE_CYCLES appends "CPU cycles/packet" stats, like:
+
+   CPU cycles/packet=xx.dd (total cycles=xxxx / total RX packets=xxxx) at xxx MHz clock
+
 clear fwd
 ~~~~~~~~~
 
