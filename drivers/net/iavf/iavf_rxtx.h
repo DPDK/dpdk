@@ -509,8 +509,8 @@ void iavf_fdir_rx_proc_enable(struct iavf_adapter *ad, bool on)
 {
 	if (on) {
 		/* enable flow director processing */
-		if (ad->fdir_ref_cnt++ == 0)
-			FDIR_PROC_ENABLE_PER_QUEUE(ad, on);
+		FDIR_PROC_ENABLE_PER_QUEUE(ad, on);
+		ad->fdir_ref_cnt++;
 	} else {
 		if (ad->fdir_ref_cnt >= 1) {
 			ad->fdir_ref_cnt--;
