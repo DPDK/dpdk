@@ -373,10 +373,7 @@ nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
 	aq->rq.first_skip = first_skip;
 	aq->rq.later_skip = (sizeof(struct rte_mbuf) / 8);
 	aq->rq.flow_tagw = 32; /* 32-bits */
-	aq->rq.lpb_sizem1 = rte_pktmbuf_data_room_size(mp);
-	aq->rq.lpb_sizem1 += rte_pktmbuf_priv_size(mp);
-	aq->rq.lpb_sizem1 += sizeof(struct rte_mbuf);
-	aq->rq.lpb_sizem1 /= 8;
+	aq->rq.lpb_sizem1 = mp->elt_size / 8;
 	aq->rq.lpb_sizem1 -= 1; /* Expressed in size minus one */
 	aq->rq.ena = 1;
 	aq->rq.pb_caching = 0x2; /* First cache aligned block to LLC */
