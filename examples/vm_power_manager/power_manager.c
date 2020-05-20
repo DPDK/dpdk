@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include <sys/un.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>

@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 #include <linux/limits.h>
-#include <sys/un.h>
+#include <linux/un.h>
 #include <rte_atomic.h>
 #include <stdbool.h>
 
@@ -25,11 +25,6 @@ extern "C" {
 
 /* FIFO file name template */
 #define CHANNEL_MGR_FIFO_PATTERN_NAME   "fifo"
-
-#ifndef UNIX_PATH_MAX
-struct sockaddr_un _sockaddr_un;
-#define UNIX_PATH_MAX sizeof(_sockaddr_un.sun_path)
-#endif
 
 #define MAX_CLIENTS 64
 #define MAX_VCPUS 20
