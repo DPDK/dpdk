@@ -35,6 +35,8 @@
 
 #define RTE_LOGTYPE_CHANNEL_MANAGER RTE_LOGTYPE_USER1
 
+struct libvirt_vm_info lvm_info[MAX_CLIENTS];
+
 /* Global pointer to libvirt connection */
 static virConnectPtr global_vir_conn_ptr;
 

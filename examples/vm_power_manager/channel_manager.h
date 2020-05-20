@@ -41,7 +41,7 @@ struct libvirt_vm_info {
 	uint8_t num_cpus;
 };
 
-struct libvirt_vm_info lvm_info[MAX_CLIENTS];
+extern struct libvirt_vm_info lvm_info[MAX_CLIENTS];
 /* Communication Channel Status */
 enum channel_status { CHANNEL_MGR_CHANNEL_DISCONNECTED = 0,
 	CHANNEL_MGR_CHANNEL_CONNECTED,
