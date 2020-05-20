@@ -29,6 +29,7 @@ ice_rx_reassemble_packets(struct ice_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 			if (!split_flags[buf_idx]) {
 				/* it's the last packet of the set */
 				start->hash = end->hash;
+				start->vlan_tci = end->vlan_tci;
 				start->ol_flags = end->ol_flags;
 				/* we need to strip crc for the whole packet */
 				start->pkt_len -= rxq->crc_len;
