@@ -987,9 +987,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 					    rxq->queue_id, i, ring->ring_size);
 				break;
 			}
-			rxr->rx_prod = prod;
-			prod = RING_NEXT(rxr->rx_ring_struct, prod);
 		}
+		rxr->rx_prod = prod;
+		prod = RING_NEXT(rxr->rx_ring_struct, prod);
 	}
 
 	ring = rxr->ag_ring_struct;
@@ -1005,9 +1005,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 					    rxq->queue_id, i, ring->ring_size);
 				break;
 			}
-			rxr->ag_prod = prod;
-			prod = RING_NEXT(rxr->ag_ring_struct, prod);
 		}
+		rxr->ag_prod = prod;
+		prod = RING_NEXT(rxr->ag_ring_struct, prod);
 	}
 	PMD_DRV_LOG(DEBUG, "AGG Done!\n");
 
