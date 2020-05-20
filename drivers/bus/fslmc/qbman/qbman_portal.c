@@ -1019,7 +1019,7 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 	return num_enqueued;
 }
 
-inline int qbman_swp_enqueue_multiple(struct qbman_swp *s,
+int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 				      const struct qbman_eq_desc *d,
 				      const struct qbman_fd *fd,
 				      uint32_t *flags,
@@ -1227,7 +1227,7 @@ static int qbman_swp_enqueue_multiple_fd_mem_back(struct qbman_swp *s,
 	return num_enqueued;
 }
 
-inline int qbman_swp_enqueue_multiple_fd(struct qbman_swp *s,
+int qbman_swp_enqueue_multiple_fd(struct qbman_swp *s,
 					 const struct qbman_eq_desc *d,
 					 struct qbman_fd **fd,
 					 uint32_t *flags,
@@ -1421,7 +1421,7 @@ static int qbman_swp_enqueue_multiple_desc_mem_back(struct qbman_swp *s,
 
 	return num_enqueued;
 }
-inline int qbman_swp_enqueue_multiple_desc(struct qbman_swp *s,
+int qbman_swp_enqueue_multiple_desc(struct qbman_swp *s,
 					   const struct qbman_eq_desc *d,
 					   const struct qbman_fd *fd,
 					   int num_frames)
@@ -1599,7 +1599,7 @@ static int qbman_swp_pull_mem_back(struct qbman_swp *s,
 	return 0;
 }
 
-inline int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
+int qbman_swp_pull(struct qbman_swp *s, struct qbman_pull_desc *d)
 {
 	return qbman_swp_pull_ptr(s, d);
 }
@@ -1636,7 +1636,7 @@ void qbman_swp_prefetch_dqrr_next(struct qbman_swp *s)
  * only once, so repeated calls can return a sequence of DQRR entries, without
  * requiring they be consumed immediately or in any particular order.
  */
-inline const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
+const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 {
 	return qbman_swp_dqrr_next_ptr(s);
 }
@@ -2129,7 +2129,7 @@ static int qbman_swp_release_mem_back(struct qbman_swp *s,
 	return 0;
 }
 
-inline int qbman_swp_release(struct qbman_swp *s,
+int qbman_swp_release(struct qbman_swp *s,
 			     const struct qbman_release_desc *d,
 			     const uint64_t *buffers,
 			     unsigned int num_buffers)
