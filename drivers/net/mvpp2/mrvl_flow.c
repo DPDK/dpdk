@@ -2511,14 +2511,14 @@ mrvl_create_cls_table(struct rte_eth_dev *dev, struct rte_flow *first_flow)
 
 	if (first_flow->pattern & F_UDP_SPORT) {
 		key->proto_field[key->num_fields].proto = MV_NET_PROTO_UDP;
-		key->proto_field[key->num_fields].field.tcp = MV_NET_TCP_F_SP;
+		key->proto_field[key->num_fields].field.udp = MV_NET_UDP_F_SP;
 		key->key_size += 2;
 		key->num_fields += 1;
 	}
 
 	if (first_flow->pattern & F_UDP_DPORT) {
 		key->proto_field[key->num_fields].proto = MV_NET_PROTO_UDP;
-		key->proto_field[key->num_fields].field.udp = MV_NET_TCP_F_DP;
+		key->proto_field[key->num_fields].field.udp = MV_NET_UDP_F_DP;
 		key->key_size += 2;
 		key->num_fields += 1;
 	}
