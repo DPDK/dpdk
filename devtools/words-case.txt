@@ -1,5 +1,6 @@
 aarch32
 aarch64
+AltiVec
 API
 Arm
 armv7
@@ -15,7 +16,9 @@ FW
 GENEVE
 HW
 IO
+IOTLB
 IOVA
+IPsec
 L2
 L3
 L4
@@ -37,6 +40,8 @@ PCI
 PF
 PHY
 PMD
+PPPoE
+PVID
 RDMA
 RETA
 RSS
