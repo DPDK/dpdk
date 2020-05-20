@@ -455,7 +455,7 @@ static inline bool hinic_is_tso_sge_valid(struct rte_mbuf *mbuf,
 					  *poff_info,
 					  struct hinic_wqe_info *sqe_info)
 {
-	u32 total_len, limit_len, checked_len, left_len;
+	u32 total_len, limit_len, checked_len, left_len, adjust_mss;
 	u32 i, first_mss_sges, left_sges;
 	struct rte_mbuf *mbuf_head, *mbuf_pre;
 
@@ -465,7 +465,9 @@ static inline bool hinic_is_tso_sge_valid(struct rte_mbuf *mbuf,
 	/* tso sge number validation */
 	if (unlikely(left_sges >= HINIC_NONTSO_PKT_MAX_SGE)) {
 		checked_len = 0;
-		limit_len = mbuf->tso_segsz + poff_info->payload_offset;
+		adjust_mss = mbuf->tso_segsz >= TX_MSS_MIN ?
+				mbuf->tso_segsz : TX_MSS_MIN;
+		limit_len = adjust_mss + poff_info->payload_offset;
 		first_mss_sges = HINIC_NONTSO_PKT_MAX_SGE;
 
 		/* each continues 17 mbufs segmust do one check */
@@ -479,7 +481,7 @@ static inline bool hinic_is_tso_sge_valid(struct rte_mbuf *mbuf,
 				mbuf_pre = mbuf;
 				mbuf = mbuf->next;
 				if (total_len >= limit_len) {
-					limit_len = mbuf_head->tso_segsz;
+					limit_len = adjust_mss;
 					break;
 				}
 			}
