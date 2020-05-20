@@ -1161,7 +1161,8 @@ ef10_filter_delete(
 		i = (hash + depth) & (EFX_EF10_FILTER_TBL_ROWS - 1);
 		saved_spec = ef10_filter_entry_spec(table, i);
 		if (saved_spec && ef10_filter_equal(spec, saved_spec) &&
-		    ef10_filter_same_dest(spec, saved_spec)) {
+		    ef10_filter_same_dest(spec, saved_spec) &&
+		    saved_spec->efs_priority == EFX_FILTER_PRI_MANUAL) {
 			break;
 		}
 		if (depth == EF10_FILTER_SEARCH_LIMIT) {
