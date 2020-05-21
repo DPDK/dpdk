@@ -1388,7 +1388,7 @@ ice_switch_check_action(const struct rte_flow_action *actions,
 		}
 	}
 
-	if (actions_num > 1) {
+	if (actions_num != 1) {
 		rte_flow_error_set(error,
 				   EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 				   actions,
