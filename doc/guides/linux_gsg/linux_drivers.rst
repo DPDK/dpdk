@@ -38,6 +38,12 @@ be loaded as shown below:
 
 .. note::
 
+   ``igb_uio`` module is disabled by default starting from ``DPDK v20.02``.
+   To build it, the config option ``CONFIG_RTE_EAL_IGB_UIO`` should be enabled.
+   It is planned to move ``igb_uio`` module to a different git repository.
+
+.. note::
+
     For some devices which lack support for legacy interrupts, e.g. virtual function
     (VF) devices, the ``igb_uio`` module may be needed in place of ``uio_pci_generic``.
 
