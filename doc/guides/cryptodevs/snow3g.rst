@@ -46,6 +46,20 @@ on their system before building DPDK:
     make
     make install
 
+The library requires NASM to be built. Depending on the library version, it might
+require a minimum NASM version (e.g. v0.54 requires at least NASM 2.14).
+
+NASM is packaged for different OS. However, on some OS the version is too old,
+so a manual installation is required. In that case, NASM can be downloaded from
+`NASM website <https://www.nasm.us/pub/nasm/releasebuilds/?C=M;O=D>`_.
+Once it is downloaded, extract it and follow these steps:
+
+.. code-block:: console
+
+    ./configure
+    make
+    make install
+
 .. note::
 
    Compilation of the Multi-Buffer library is broken when GCC < 5.0, if library <= v0.53.
