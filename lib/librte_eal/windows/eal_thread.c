@@ -64,12 +64,6 @@ eal_thread_init_master(unsigned int lcore_id)
 	RTE_PER_LCORE(_lcore_id) = lcore_id;
 }
 
-static inline pthread_t
-eal_thread_self(void)
-{
-	return GetCurrentThreadId();
-}
-
 /* main loop of threads */
 void *
 eal_thread_loop(void *arg __rte_unused)
@@ -81,7 +75,7 @@ eal_thread_loop(void *arg __rte_unused)
 	int m2s, s2m;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 
-	thread_id = eal_thread_self();
+	thread_id = pthread_self();
 
 	/* retrieve our lcore_id from the configuration structure */
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
@@ -155,6 +149,13 @@ eal_thread_create(pthread_t *thread)
 	SetThreadPriority(th, THREAD_PRIORITY_TIME_CRITICAL);
 
 	return 0;
+}
+
+/* get current thread ID */
+int
+rte_sys_gettid(void)
+{
+	return GetCurrentThreadId();
 }
 
 int
