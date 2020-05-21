@@ -768,9 +768,8 @@ monitor_all_ports_link_status(void *arg)
 	return NULL;
 }
 
-/* Callback for request of changing MTU */
 static int
-kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
+kni_change_mtu_(uint16_t port_id, unsigned int new_mtu)
 {
 	int ret;
 	uint16_t nb_rxd = NB_RXD;
@@ -849,6 +848,19 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 	}
 
 	return 0;
+}
+
+/* Callback for request of changing MTU */
+static int
+kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
+{
+	int ret;
+
+	rte_atomic32_inc(&kni_pause);
+	ret =  kni_change_mtu_(port_id, new_mtu);
+	rte_atomic32_dec(&kni_pause);
+
+	return ret;
 }
 
 /* Callback for request of configuring network interface up/down */
