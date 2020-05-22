@@ -241,7 +241,16 @@ int
 rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help);
 
 /**
+ * @internal
  * Initialize Telemetry.
+ *
+ * @param runtime_dir
+ * The runtime directory of DPDK.
+ * @param cpuset
+ * The CPU set to be used for setting the thread affinity.
+ * @param err_str
+ * This err_str pointer should point to NULL on entry. In the case of an error
+ * or warning, it will be non-NULL on exit.
  *
  * @return
  *  0 on success.

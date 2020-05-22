@@ -403,12 +403,10 @@ rte_telemetry_init(const char *runtime_dir, rte_cpuset_t *cpuset,
 {
 	if (telemetry_v2_init(runtime_dir, cpuset) != 0) {
 		*err_str = telemetry_log_error;
-		printf("Error initialising telemetry - %s\n", *err_str);
 		return -1;
 	}
 	if (telemetry_legacy_init(runtime_dir, cpuset) != 0) {
 		*err_str = telemetry_log_error;
-		printf("No telemetry legacy support - %s\n", *err_str);
 	}
 	return 0;
 }

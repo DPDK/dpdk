@@ -956,13 +956,15 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 	if (!internal_config.no_telemetry) {
-		const char *error_str;
+		const char *error_str = NULL;
 		if (rte_telemetry_init(rte_eal_get_runtime_dir(),
 				&internal_config.ctrl_cpuset, &error_str)
 				!= 0) {
 			rte_eal_init_alert(error_str);
 			return -1;
 		}
+		if (error_str != NULL)
+			RTE_LOG(NOTICE, EAL, "%s\n", error_str);
 	}
 
 	eal_mcfg_complete();
