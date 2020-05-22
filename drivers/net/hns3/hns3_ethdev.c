@@ -474,10 +474,9 @@ hns3_set_vlan_rx_offload_cfg(struct hns3_adapter *hns,
 
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
-	 * driver, the PF-related vf_id is 0, just need to configure parameters
-	 * for vport_id 0.
+	 * driver, just need to configure parameters for PF vport.
 	 */
-	vport_id = 0;
+	vport_id = HNS3_PF_FUNC_ID;
 	req->vf_offset = vport_id / HNS3_VF_NUM_PER_CMD;
 	bitmap = 1 << (vport_id % HNS3_VF_NUM_PER_BYTE);
 	req->vf_bitmap[req->vf_offset] = bitmap;
@@ -564,14 +563,16 @@ hns3_vlan_filter_init(struct hns3_adapter *hns)
 	int ret;
 
 	ret = hns3_set_vlan_filter_ctrl(hw, HNS3_FILTER_TYPE_VF,
-					HNS3_FILTER_FE_EGRESS, false, 0);
+					HNS3_FILTER_FE_EGRESS, false,
+					HNS3_PF_FUNC_ID);
 	if (ret) {
 		hns3_err(hw, "failed to init vf vlan filter, ret = %d", ret);
 		return ret;
 	}
 
 	ret = hns3_set_vlan_filter_ctrl(hw, HNS3_FILTER_TYPE_PORT,
-					HNS3_FILTER_FE_INGRESS, false, 0);
+					HNS3_FILTER_FE_INGRESS, false,
+					HNS3_PF_FUNC_ID);
 	if (ret)
 		hns3_err(hw, "failed to init port vlan filter, ret = %d", ret);
 
@@ -585,7 +586,8 @@ hns3_enable_vlan_filter(struct hns3_adapter *hns, bool enable)
 	int ret;
 
 	ret = hns3_set_vlan_filter_ctrl(hw, HNS3_FILTER_TYPE_PORT,
-					HNS3_FILTER_FE_INGRESS, enable, 0);
+					HNS3_FILTER_FE_INGRESS, enable,
+					HNS3_PF_FUNC_ID);
 	if (ret)
 		hns3_err(hw, "failed to %s port vlan filter, ret = %d",
 			 enable ? "enable" : "disable", ret);
@@ -674,10 +676,9 @@ hns3_set_vlan_tx_offload_cfg(struct hns3_adapter *hns,
 
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
-	 * driver, the PF-related vf_id is 0, just need to configure parameters
-	 * for vport_id 0.
+	 * driver, just need to configure parameters for PF vport.
 	 */
-	vport_id = 0;
+	vport_id = HNS3_PF_FUNC_ID;
 	req->vf_offset = vport_id / HNS3_VF_NUM_PER_CMD;
 	bitmap = 1 << (vport_id % HNS3_VF_NUM_PER_BYTE);
 	req->vf_bitmap[req->vf_offset] = bitmap;
@@ -1425,10 +1426,9 @@ hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
-	 * driver, the PF-related vf_id is 0, just need to configure parameters
-	 * for vf_id 0.
+	 * driver, just need to configure parameters for PF vport.
 	 */
-	vf_id = 0;
+	vf_id = HNS3_PF_FUNC_ID;
 	hns3_set_field(egress_port, HNS3_MAC_EPORT_VFID_M,
 		       HNS3_MAC_EPORT_VFID_S, vf_id);
 
@@ -1781,10 +1781,9 @@ hns3_add_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
-	 * driver, the PF-related vf_id is 0, just need to configure parameters
-	 * for vf_id 0.
+	 * driver, just need to configure parameters for PF vport.
 	 */
-	vf_id = 0;
+	vf_id = HNS3_PF_FUNC_ID;
 	hns3_update_desc_vfid(desc, vf_id, false);
 	ret = hns3_add_mac_vlan_tbl(hw, &req, desc);
 	if (ret) {
@@ -1824,10 +1823,9 @@ hns3_remove_mc_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 		/*
 		 * This mac addr exist, remove this handle's VFID for it.
 		 * In current version VF is not supported when PF is driven by
-		 * DPDK driver, the PF-related vf_id is 0, just need to
-		 * configure parameters for vf_id 0.
+		 * DPDK driver, just need to configure parameters for PF vport.
 		 */
-		vf_id = 0;
+		vf_id = HNS3_PF_FUNC_ID;
 		hns3_update_desc_vfid(desc, vf_id, true);
 
 		/* All the vfid is zero, so need to delete this entry */
@@ -2926,8 +2924,8 @@ hns3_map_tqp(struct hns3_hw *hw)
 	 */
 	tqp_id = 0;
 	num = DIV_ROUND_UP(hw->total_tqps_num, HNS3_MAX_TQP_NUM_PER_FUNC);
-	for (func_id = 0; func_id < num; func_id++) {
-		is_pf = func_id == 0 ? true : false;
+	for (func_id = HNS3_PF_FUNC_ID; func_id < num; func_id++) {
+		is_pf = func_id == HNS3_PF_FUNC_ID ? true : false;
 		for (i = 0;
 		     i < HNS3_MAX_TQP_NUM_PER_FUNC && tqp_id < tqps_num; i++) {
 			ret = hns3_map_tqps_to_func(hw, func_id, tqp_id++, i,
@@ -3819,10 +3817,9 @@ hns3_set_promisc_mode(struct hns3_hw *hw, bool en_uc_pmc, bool en_mc_pmc)
 
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
-	 * driver, the PF-related vf_id is 0, just need to configure parameters
-	 * for vf_id 0.
+	 * driver, just need to configure parameters for PF vport.
 	 */
-	vf_id = 0;
+	vf_id = HNS3_PF_FUNC_ID;
 
 	hns3_promisc_param_init(&param, en_uc_pmc, en_mc_pmc, en_bc_pmc, vf_id);
 	return hns3_cmd_set_promisc_mode(hw, &param);
@@ -3837,8 +3834,7 @@ hns3_clear_all_vfs_promisc_mode(struct hns3_hw *hw)
 	uint16_t func_id;
 	int ret;
 
-	/* func_id 0 is denoted PF, the VFs start from 1 */
-	for (func_id = 1; func_id < pf->func_num; func_id++) {
+	for (func_id = HNS3_1ST_VF_FUNC_ID; func_id < pf->func_num; func_id++) {
 		hns3_promisc_param_init(&param, false, false, false, func_id);
 		ret = hns3_cmd_set_promisc_mode(hw, &param);
 		if (ret)
@@ -5056,7 +5052,7 @@ hns3_prepare_reset(struct hns3_adapter *hns)
 
 	switch (hw->reset.level) {
 	case HNS3_FUNC_RESET:
-		ret = hns3_func_reset_cmd(hw, 0);
+		ret = hns3_func_reset_cmd(hw, HNS3_PF_FUNC_ID);
 		if (ret)
 			return ret;
 
