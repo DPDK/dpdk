@@ -2313,12 +2313,6 @@ hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
 
-		/* check the size of packet */
-		if (m->pkt_len < RTE_ETHER_MIN_LEN) {
-			rte_errno = EINVAL;
-			return i;
-		}
-
 		if (hns3_pkt_is_tso(m) &&
 		    (hns3_pkt_need_linearized(m, m->nb_segs) ||
 		     hns3_check_tso_pkt_valid(m))) {
