@@ -3826,7 +3826,7 @@ hns3_set_promisc_mode(struct hns3_hw *hw, bool en_uc_pmc, bool en_mc_pmc)
 }
 
 static int
-hns3_clear_all_vfs_promisc_mode(struct hns3_hw *hw)
+hns3_promisc_init(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_pf *pf = &hns->pf;
@@ -3834,14 +3834,52 @@ hns3_clear_all_vfs_promisc_mode(struct hns3_hw *hw)
 	uint16_t func_id;
 	int ret;
 
+	ret = hns3_set_promisc_mode(hw, false, false);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to set promisc mode, ret = %d", ret);
+		return ret;
+	}
+
+	/*
+	 * In current version VFs are not supported when PF is driven by DPDK
+	 * driver. After PF has been taken over by DPDK, the original VF will
+	 * be invalid. So, there is a possibility of entry residues. It should
+	 * clear VFs's promisc mode to avoid unnecessary bandwidth usage
+	 * during init.
+	 */
 	for (func_id = HNS3_1ST_VF_FUNC_ID; func_id < pf->func_num; func_id++) {
 		hns3_promisc_param_init(&param, false, false, false, func_id);
 		ret = hns3_cmd_set_promisc_mode(hw, &param);
-		if (ret)
+		if (ret) {
+			PMD_INIT_LOG(ERR, "failed to clear vf:%d promisc mode,"
+					" ret = %d", func_id, ret);
 			return ret;
+		}
 	}
 
 	return 0;
+}
+
+static void
+hns3_promisc_uninit(struct hns3_hw *hw)
+{
+	struct hns3_promisc_param param;
+	uint16_t func_id;
+	int ret;
+
+	func_id = HNS3_PF_FUNC_ID;
+
+	/*
+	 * In current version VFs are not supported when PF is driven by
+	 * DPDK driver, and VFs' promisc mode status has been cleared during
+	 * init and their status will not change. So just clear PF's promisc
+	 * mode status during uninit.
+	 */
+	hns3_promisc_param_init(&param, false, false, false, func_id);
+	ret = hns3_cmd_set_promisc_mode(hw, &param);
+	if (ret)
+		PMD_INIT_LOG(ERR, "failed to clear promisc status during"
+				" uninit, ret = %d", ret);
 }
 
 static int
@@ -4186,15 +4224,9 @@ hns3_init_hardware(struct hns3_adapter *hns)
 		goto err_mac_init;
 	}
 
-	ret = hns3_set_promisc_mode(hw, false, false);
+	ret = hns3_promisc_init(hw);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to set promisc mode: %d", ret);
-		goto err_mac_init;
-	}
-
-	ret = hns3_clear_all_vfs_promisc_mode(hw);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to clear all vfs promisc mode: %d",
+		PMD_INIT_LOG(ERR, "Failed to init promisc: %d",
 			     ret);
 		goto err_mac_init;
 	}
@@ -4353,6 +4385,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 
 	hns3_enable_hw_error_intr(hns, false);
 	hns3_rss_uninit(hns);
+	hns3_promisc_uninit(hw);
 	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
 	hns3_pf_disable_irq0(hw);
