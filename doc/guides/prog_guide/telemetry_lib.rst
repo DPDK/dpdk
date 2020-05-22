@@ -21,14 +21,18 @@ Registering Commands
 
 Libraries and applications must register commands to make their information
 available via the Telemetry library. This involves providing a string command
-in the required format ("/library/command"), and the callback function that
-will handle formatting the information when required. An example showing ethdev
-commands being registered is shown below:
+in the required format ("/library/command"), the callback function that
+will handle formatting the information when required, and help text for the
+command. An example showing ethdev commands being registered is shown below:
 
 .. code-block:: c
 
-    rte_telemetry_register_cmd("/ethdev/list", handle_port_list);
-    rte_telemetry_register_cmd("/ethdev/xstats", handle_port_xstats);
+    rte_telemetry_register_cmd("/ethdev/list", handle_port_list,
+            "Returns list of available ethdev ports. Takes no parameters");
+    rte_telemetry_register_cmd("/ethdev/xstats", handle_port_xstats,
+            "Returns the extended stats for a port. Parameters: int port_id");
+    rte_telemetry_register_cmd("/ethdev/link_status", handle_port_link_status,
+            "Returns the link status for a port. Parameters: int port_id");
 
 
 Formatting JSON response
