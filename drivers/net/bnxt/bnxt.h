@@ -780,4 +780,5 @@ void bnxt_cancel_fc_thread(struct bnxt *bp);
 void bnxt_flow_cnt_alarm_cb(void *arg);
 int bnxt_flow_stats_req(struct bnxt *bp);
 int bnxt_flow_stats_cnt(struct bnxt *bp);
+uint32_t bnxt_get_speed_capabilities(struct bnxt *bp);
 #endif

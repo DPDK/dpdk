@@ -778,7 +778,7 @@ static int bnxt_shutdown_nic(struct bnxt *bp)
  * Device configuration and status function
  */
 
-static uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
+uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 {
 	uint32_t link_speed = bp->link_info->support_speeds;
 	uint32_t speed_capa = 0;

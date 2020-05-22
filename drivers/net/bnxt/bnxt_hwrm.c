@@ -2788,12 +2788,17 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed)
 		ETH_LINK_SPEED_40G | ETH_LINK_SPEED_50G | \
 		ETH_LINK_SPEED_100G | ETH_LINK_SPEED_200G)
 
-static int bnxt_valid_link_speed(uint32_t link_speed, uint16_t port_id)
+static int bnxt_validate_link_speed(struct bnxt *bp)
 {
+	uint32_t link_speed = bp->eth_dev->data->dev_conf.link_speeds;
+	uint16_t port_id = bp->eth_dev->data->port_id;
+	uint32_t link_speed_capa;
 	uint32_t one_speed;
 
 	if (link_speed == ETH_LINK_SPEED_AUTONEG)
 		return 0;
+
+	link_speed_capa = bnxt_get_speed_capabilities(bp);
 
 	if (link_speed & ETH_LINK_SPEED_FIXED) {
 		one_speed = link_speed & ~ETH_LINK_SPEED_FIXED;
@@ -2804,14 +2809,14 @@ static int bnxt_valid_link_speed(uint32_t link_speed, uint16_t port_id)
 				link_speed, port_id);
 			return -EINVAL;
 		}
-		if ((one_speed & BNXT_SUPPORTED_SPEEDS) != one_speed) {
+		if ((one_speed & link_speed_capa) != one_speed) {
 			PMD_DRV_LOG(ERR,
 				"Unsupported advertised speed (%u) for port %u\n",
 				link_speed, port_id);
 			return -EINVAL;
 		}
 	} else {
-		if (!(link_speed & BNXT_SUPPORTED_SPEEDS)) {
+		if (!(link_speed & link_speed_capa)) {
 			PMD_DRV_LOG(ERR,
 				"Unsupported advertised speeds (%u) for port %u\n",
 				link_speed, port_id);
@@ -2957,8 +2962,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 	if (!BNXT_SINGLE_PF(bp) || BNXT_VF(bp))
 		return 0;
 
-	rc = bnxt_valid_link_speed(dev_conf->link_speeds,
-			bp->eth_dev->data->port_id);
+	rc = bnxt_validate_link_speed(bp);
 	if (rc)
 		goto error;
 
