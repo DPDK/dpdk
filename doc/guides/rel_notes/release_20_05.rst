@@ -324,6 +324,10 @@ New Features
   * Added a new cmdline option ``--rx-mq-mode`` which can be used to test PMD's
     behaviour on handling Rx mq mode.
 
+* **Added support for GCC 10.**
+
+  Added support for building with GCC 10.1.
+
 
 Removed Items
 -------------
