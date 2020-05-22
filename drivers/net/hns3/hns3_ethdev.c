@@ -2312,6 +2312,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 
 	/* When RSS is not configured, redirect the packet queue 0 */
 	if ((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) {
+		conf->rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
 		rss_conf = conf->rx_adv_conf.rss_conf;
 		if (rss_conf.rss_key == NULL) {
 			rss_conf.rss_key = rss_cfg->key;
