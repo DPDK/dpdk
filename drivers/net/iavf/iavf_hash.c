@@ -887,7 +887,7 @@ static struct iavf_flow_parser iavf_hash_parser = {
 };
 
 static int
-iavf_hash_default_set(struct iavf_adapter *ad)
+iavf_hash_default_set(struct iavf_adapter *ad, bool add)
 {
 	struct virtchnl_rss_cfg *rss_cfg;
 	uint16_t i;
@@ -902,9 +902,10 @@ iavf_hash_default_set(struct iavf_adapter *ad)
 		rss_cfg->proto_hdrs = *iavf_hash_default_hdrs[i];
 		rss_cfg->rss_algorithm = VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC;
 
-		ret = iavf_add_del_rss_cfg(ad, rss_cfg, true);
+		ret = iavf_add_del_rss_cfg(ad, rss_cfg, add);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "fail to add RSS configure");
+			PMD_DRV_LOG(ERR, "fail to %s RSS configure",
+				    add ? "add" : "delete");
 			rte_free(rss_cfg);
 			return ret;
 		}
@@ -941,7 +942,7 @@ iavf_hash_init(struct iavf_adapter *ad)
 		return ret;
 	}
 
-	ret = iavf_hash_default_set(ad);
+	ret = iavf_hash_default_set(ad, true);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "fail to set default RSS");
 		iavf_unregister_parser(parser, ad);
@@ -1222,6 +1223,9 @@ iavf_hash_destroy(__rte_unused struct iavf_adapter *ad,
 static void
 iavf_hash_uninit(struct iavf_adapter *ad)
 {
+	if (iavf_hash_default_set(ad, false))
+		PMD_DRV_LOG(ERR, "fail to delete default RSS");
+
 	iavf_unregister_parser(&iavf_hash_parser, ad);
 }
 

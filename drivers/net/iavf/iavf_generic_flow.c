@@ -935,6 +935,22 @@ free_flow:
 	return flow;
 }
 
+static bool
+iavf_flow_is_valid(struct rte_flow *flow)
+{
+	struct iavf_flow_engine *engine;
+	void *temp;
+
+	if (flow && flow->engine) {
+		TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
+			if (engine == flow->engine)
+				return true;
+		}
+	}
+
+	return false;
+}
+
 static int
 iavf_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
@@ -945,10 +961,10 @@ iavf_flow_destroy(struct rte_eth_dev *dev,
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
 	int ret = 0;
 
-	if (!flow || !flow->engine || !flow->engine->destroy) {
+	if (!iavf_flow_is_valid(flow) || !flow->engine->destroy) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "Invalid flow");
+				   NULL, "Invalid flow destroy");
 		return -rte_errno;
 	}
 
@@ -1002,10 +1018,10 @@ iavf_flow_query(struct rte_eth_dev *dev,
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_flow_query_count *count = data;
 
-	if (!flow || !flow->engine || !flow->engine->query_count) {
+	if (!iavf_flow_is_valid(flow) || !flow->engine->query_count) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "Invalid flow");
+				   NULL, "Invalid flow query");
 		return -rte_errno;
 	}
 
