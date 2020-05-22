@@ -64,9 +64,9 @@ struct bnxt_db_info;
 				(cons));				\
 } while (0)
 #define B_CP_DIS_DB(cpr, raw_cons)					\
-	rte_write32((DB_CP_FLAGS |					\
-		    RING_CMP(((cpr)->cp_ring_struct), raw_cons)),	\
-		    ((cpr)->cp_db.doorbell))
+	rte_write32_relaxed((DB_CP_FLAGS |				\
+			    RING_CMP(((cpr)->cp_ring_struct), raw_cons)), \
+			    ((cpr)->cp_db.doorbell))
 
 #define B_CP_DB(cpr, raw_cons, ring_mask)				\
 	rte_write32((DB_CP_FLAGS |					\
