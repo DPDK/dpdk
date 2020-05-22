@@ -1475,6 +1475,14 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	if (rss_flow_conf.key_len &&
+	    rss_flow_conf.key_len > RTE_DIM(rss_info->key)) {
+		hns3_err(hw,
+			"input hash key(%u) greater than supported len(%zu)",
+			rss_flow_conf.key_len, RTE_DIM(rss_info->key));
+		return -EINVAL;
+	}
+
 	/* Filter the unsupported flow types */
 	flow_types = rss_flow_conf.types & HNS3_ETH_RSS_SUPPORT;
 	if (flow_types != rss_flow_conf.types)
