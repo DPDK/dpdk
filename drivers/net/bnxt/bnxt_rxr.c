@@ -465,17 +465,15 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 		break;
 	}
 
-	if (cfa_code) {
-		rc = ulp_mark_db_mark_get(bp->ulp_ctx, gfid,
-					  cfa_code, &mark_id);
-		if (!rc) {
-			/* Got the mark, write it to the mbuf and return */
-			mbuf->hash.fdir.hi = mark_id;
-			mbuf->udata64 = (cfa_code & 0xffffffffull) << 32;
-			mbuf->hash.fdir.id = rxcmp1->cfa_code;
-			mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
-			return;
-		}
+	rc = ulp_mark_db_mark_get(bp->ulp_ctx, gfid,
+				  cfa_code, &mark_id);
+	if (!rc) {
+		/* Got the mark, write it to the mbuf and return */
+		mbuf->hash.fdir.hi = mark_id;
+		mbuf->udata64 = (cfa_code & 0xffffffffull) << 32;
+		mbuf->hash.fdir.id = rxcmp1->cfa_code;
+		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		return;
 	}
 
 skip_mark:
