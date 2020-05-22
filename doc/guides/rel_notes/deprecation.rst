@@ -38,6 +38,19 @@ Deprecation Notices
   remove it from the externally visible ABI and allow it to be updated in the
   future.
 
+* rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
+  not allow for writing optimized code for all the CPU architectures supported
+  in DPDK. DPDK will adopt C11 atomic operations semantics and provide wrappers
+  using C11 atomic built-ins. These wrappers must be used for patches that
+  need to be merged in 20.08 onwards. This change will not introduce any
+  performance degradation.
+
+* rte_smp_*mb: These APIs provide full barrier functionality. However, many
+  use cases do not require full barriers. To support such use cases, DPDK will
+  adopt C11 barrier semantics and provide wrappers using C11 atomic built-ins.
+  These wrappers must be used for patches that need to be merged in 20.08
+  onwards. This change will not introduce any performance degradation.
+
 * igb_uio: In the view of reducing the kernel dependency from the main tree,
   as a first step, the Technical Board decided to move ``igb_uio``
   kernel module to the dpdk-kmods repository in the /linux/igb_uio/ directory
