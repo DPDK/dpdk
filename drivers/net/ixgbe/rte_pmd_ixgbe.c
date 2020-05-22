@@ -522,6 +522,9 @@ rte_pmd_ixgbe_macsec_enable(uint16_t port, uint8_t en, uint8_t rp)
 
 	dev = &rte_eth_devices[port];
 
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
 	macsec_setting.offload_en = 1;
 	macsec_setting.encrypt_en = en;
 	macsec_setting.replayprotect_en = rp;
@@ -541,6 +544,9 @@ rte_pmd_ixgbe_macsec_disable(uint16_t port)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
+
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
 
 	ixgbe_dev_macsec_setting_reset(dev);
 
