@@ -195,7 +195,7 @@ dev_uev_parse(const char *buf, struct rte_dev_event *event, int length)
 	else if (!strncmp(subsystem, "vfio", 4))
 		event->subsystem = EAL_DEV_EVENT_SUBSYSTEM_VFIO;
 	else
-		return -1;
+		goto err;
 
 	/* parse the action type */
 	if (!strncmp(action, "add", 3))
@@ -203,8 +203,11 @@ dev_uev_parse(const char *buf, struct rte_dev_event *event, int length)
 	else if (!strncmp(action, "remove", 6))
 		event->type = RTE_DEV_EVENT_REMOVE;
 	else
-		return -1;
+		goto err;
 	return 0;
+err:
+	free(event->devname);
+	return -1;
 }
 
 static void
@@ -282,12 +285,14 @@ dev_uev_handler(__rte_unused void *param)
 			rte_spinlock_unlock(&failure_handle_lock);
 		}
 		rte_dev_event_callback_process(uevent.devname, uevent.type);
+		free(uevent.devname);
 	}
 
 	return;
 
 failure_handle_err:
 	rte_spinlock_unlock(&failure_handle_lock);
+	free(uevent.devname);
 }
 
 int
