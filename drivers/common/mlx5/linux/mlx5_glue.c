@@ -587,11 +587,12 @@ mlx5_glue_dv_create_flow(void *matcher,
 	return mlx5dv_dr_rule_create(matcher, match_value, num_actions,
 				     (struct mlx5dv_dr_action **)actions);
 #else
+	size_t i;
 	struct mlx5dv_flow_action_attr actions_attr[8];
 
 	if (num_actions > 8)
 		return NULL;
-	for (size_t i = 0; i < num_actions; i++)
+	for (i = 0; i < num_actions; i++)
 		actions_attr[i] =
 			*((struct mlx5dv_flow_action_attr *)(actions[i]));
 	return mlx5dv_create_flow(matcher, match_value,

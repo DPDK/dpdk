@@ -1351,6 +1351,9 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 	struct caam_jr_session *ses;
 	struct caam_jr_op_ctx *ctx = NULL;
 	struct sec_job_descriptor_t *jobdescr __rte_unused;
+#if CAAM_JR_DBG
+	int i;
+#endif
 
 	switch (op->sess_type) {
 	case RTE_CRYPTO_OP_WITH_SESSION:
@@ -1413,7 +1416,7 @@ err1:
 			rte_pktmbuf_data_len(op->sym->m_src));
 
 	printf("\n JD before conversion\n");
-	for (int i = 0; i < 12; i++)
+	for (i = 0; i < 12; i++)
 		printf("\n 0x%08x", ctx->jobdes.desc[i]);
 #endif
 

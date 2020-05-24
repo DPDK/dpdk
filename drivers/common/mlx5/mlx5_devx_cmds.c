@@ -416,7 +416,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	uint32_t in[MLX5_ST_SZ_DW(query_hca_cap_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
 	void *hcattr;
-	int status, syndrome, rc;
+	int status, syndrome, rc, i;
 
 	MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP);
 	MLX5_SET(query_hca_cap_in, in, op_mod,
@@ -532,7 +532,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->lro_max_msg_sz_mode = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, lro_max_msg_sz_mode);
-	for (int i = 0 ; i < MLX5_LRO_NUM_SUPP_PERIODS ; i++) {
+	for (i = 0 ; i < MLX5_LRO_NUM_SUPP_PERIODS ; i++) {
 		attr->lro_timer_supported_periods[i] =
 			MLX5_GET(per_protocol_networking_offload_caps, hcattr,
 				 lro_timer_supported_periods[i]);

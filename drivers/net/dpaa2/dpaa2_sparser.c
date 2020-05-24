@@ -145,36 +145,6 @@ struct frame_attr_ext frame_attr_ext_arr[] = {
 	/* 112 */ {NULL,                                       0, 0x0000}
 };
 
-#define SWAP_WORD(pr)						\
-do {								\
-	for (int i = 0; i < 4 ; i++) {				\
-		pr[i] = pr[i] ^ pr[6 - i + 1];			\
-		pr[6 - i + 1] = pr[6 - i + 1] ^ pr[i];		\
-		pr[i] = pr[i] ^ pr[6 - i + 1];			\
-	}							\
-} while (0)
-
-#define fa_print_sb()						\
-do {								\
-	if (rte_cpu_to_be_32(*pdw) & frm_attr->fld_mask)	\
-		DPAA2_PMD_DP_DEBUG("t %s : Yes", frm_attr->fld_name);	\
-} while (0)
-
-#define fa_print_sb_ext()					\
-do {								\
-	if (rte_cpu_to_be_16(*pw) & frm_attr_ext->fld_mask)	\
-		DPAA2_PMD_DP_DEBUG("\t %s : Yes",			\
-			  frm_attr_ext->fld_name);		\
-} while (0)
-
-#define fa_print_mb_ext()					\
-do {								\
-	if (rte_cpu_to_be_16(*pw) & frm_attr_ext->fld_mask)	\
-		DPAA2_PMD_DP_DEBUG("\t %s : 0x%02x",			\
-			  frm_attr_ext->fld_name,		\
-			  rte_cpu_to_be_16(*pw) & frm_attr_ext->fld_mask);\
-} while (0)
-
 int dpaa2_eth_load_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 				     enum dpni_soft_sequence_dest dest)
 {
