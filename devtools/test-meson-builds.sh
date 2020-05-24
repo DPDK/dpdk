@@ -154,10 +154,16 @@ build () # <directory> <target compiler | cross file> <meson options>
 			fi
 
 			rm -rf $abirefdir/build
-			config $abirefdir/src $abirefdir/build $cross $*
+			config $abirefdir/src $abirefdir/build $cross \
+				-Dexamples= $*
 			compile $abirefdir/build
 			install_target $abirefdir/build $abirefdir/$targetdir
 			$srcdir/devtools/gen-abi.sh $abirefdir/$targetdir
+
+			# save disk space by removing static libs and apps
+			find $abirefdir/$targetdir/usr/local -name '*.a' -delete
+			rm -rf $abirefdir/$targetdir/usr/local/bin
+			rm -rf $abirefdir/$targetdir/usr/local/share
 		fi
 
 		install_target $builds_dir/$targetdir \
