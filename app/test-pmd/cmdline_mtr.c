@@ -1262,6 +1262,7 @@ static void cmd_set_port_meter_policer_action_parsed(void *parsed_result,
 	ret = rte_mtr_policer_actions_update(port_id, mtr_id,
 		action_mask, actions, &error);
 	if (ret != 0) {
+		free(actions);
 		print_err_msg(&error);
 		return;
 	}
