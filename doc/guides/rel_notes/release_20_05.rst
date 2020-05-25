@@ -414,6 +414,56 @@ Tested Platforms
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* Intel\ |reg| platforms with Broadcom\ |reg| NICs combinations
+
+  * CPU:
+
+    * Intel\ |reg| Xeon\ |reg| Gold 6154 CPU @ 3.00GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2650 v2 @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2667 v3 @ 3.20GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6142 CPU @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| Silver 4110 CPU @ 2.10GHz
+
+  * OS:
+
+    * Red Hat Enterprise Linux Server release 8.1
+    * Red Hat Enterprise Linux Server release 7.6
+    * Red Hat Enterprise Linux Server release 7.5
+    * Ubuntu 16.04
+    * Centos 8.1
+    * Centos 7.7
+
+  * upstream kernel:
+
+    * Linux 5.3
+
+  * NICs:
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P225p (2x25G)
+
+      * Host interface: PCI Express 3.0 x8
+      * Firmware version: 214.4.81.0 and above
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P425p (4x25G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Firmware version: 216.4.259.0 and above
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P2100G (2x100G)
+
+      * Host interface: PCI Express 3.0 x16
+      * Firmware version: 216.1.259.0 and above
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P425p (4x25G)
+
+      * Host interface: PCI Express 4.0 x16
+      * Firmware version: 216.1.259.0 and above
+
+    * Broadcom\ |reg| NetXtreme-E\ |reg| Series P2100G (2x100G)
+
+      * Host interface: PCI Express 4.0 x16
+      * Firmware version: 216.1.259.0 and above
+
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
   * CPU
