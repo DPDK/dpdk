@@ -12,32 +12,13 @@ the Intel Ethernet Controller E810.
 Prerequisites
 -------------
 
-- Identifying your adapter using `Intel Support
-  <http://www.intel.com/support>`_ and get the latest NVM/FW images.
+- The E810 is currently in sampling state only. To obtain early samples and/or get further information
+  about kernel drivers, firmware and DDP support, please speak to your Intel representative.
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
 - To get better performance on Intel platforms, please follow the "How to get best performance with NICs on Intel platforms"
   section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
-
-Recommended Matching List
--------------------------
-
-It is highly recommended to upgrade the ice kernel driver and firmware and
-DDP packages to avoid the compatibility issues with ice PMD. Here is the
-suggested matching list.
-
-   +----------------------+-----------------------+------------------+----------------+-------------------+
-   |     DPDK version     | Kernel driver version | Firmware version | DDP OS Package | DDP COMMS Package |
-   +======================+=======================+==================+================+===================+
-   |        20.02         |        0.12.25        |     1.1.16.39    |      1.3.4     |       1.3.10      |
-   +----------------------+-----------------------+------------------+----------------+-------------------+
-   |        19.11         |        0.12.25        |     1.1.16.39    |      1.3.4     |       1.3.10      |
-   +----------------------+-----------------------+------------------+----------------+-------------------+
-   | 19.08 (experimental) |        0.10.1         |     1.1.12.7     |      1.2.0     |        N/A        |
-   +----------------------+-----------------------+------------------+----------------+-------------------+
-   | 19.05 (experimental) |        0.9.4          |     1.1.10.16    |      1.1.0     |        N/A        |
-   +----------------------+-----------------------+------------------+----------------+-------------------+
 
 Pre-Installation Configuration
 ------------------------------
@@ -330,7 +311,7 @@ is stored in ``ice_adapter->active_pkg_type``.
 A symbolic link to the DDP package file is also ok. The same package
 file is used by both the kernel driver and the DPDK PMD.
 
-19.02 limitation
-~~~~~~~~~~~~~~~~
+limitation
+~~~~~~~~~~
 
-Ice code released in 19.02 is for evaluation only.
+Ice code released is for evaluation only currently.
