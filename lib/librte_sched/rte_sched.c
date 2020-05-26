@@ -888,7 +888,7 @@ rte_sched_subport_free(struct rte_sched_port *port,
 		}
 	}
 
-	rte_bitmap_free(subport->bmp);
+	rte_free(subport);
 }
 
 void
