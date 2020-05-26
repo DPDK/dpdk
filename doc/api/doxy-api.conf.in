@@ -3,6 +3,7 @@
 
 PROJECT_NAME            = DPDK
 PROJECT_NUMBER          = @VERSION@
+USE_MDFILE_AS_MAINPAGE  = @TOPDIR@/doc/api/doxy-api-index.md
 INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/bus/vdev \
                           @TOPDIR@/drivers/crypto/scheduler \
