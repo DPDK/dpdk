@@ -352,6 +352,10 @@ if dpdk_conf.has('RTE_LIBRTE_BOND_PMD')
 	test_deps += 'pmd_bond'
 	test_sources += ['test_link_bonding.c', 'test_link_bonding_rssconf.c']
 	driver_test_names += ['link_bonding_autotest', 'link_bonding_rssconf_autotest']
+	if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
+		test_sources += 'test_link_bonding_mode4.c'
+		driver_test_names += 'link_bonding_mode4_autotest'
+	endif
 endif
 if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
 	test_deps += 'pmd_ring'
@@ -360,7 +364,6 @@ if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
 	test_sources += 'test_event_eth_tx_adapter.c'
 	test_sources += 'test_bitratestats.c'
 	test_sources += 'test_latencystats.c'
-	test_sources += 'test_link_bonding_mode4.c'
 	test_sources += 'sample_packet_forward.c'
 	test_sources += 'test_pdump.c'
 	fast_tests += [['ring_pmd_autotest', true]]
@@ -368,7 +371,6 @@ if dpdk_conf.has('RTE_LIBRTE_RING_PMD')
 	fast_tests += [['event_eth_tx_adapter_autotest', false]]
 	fast_tests += [['bitratestats_autotest', true]]
 	fast_tests += [['latencystats_autotest', true]]
-	driver_test_names += 'link_bonding_mode4_autotest'
 	fast_tests += [['pdump_autotest', true]]
 endif
 
