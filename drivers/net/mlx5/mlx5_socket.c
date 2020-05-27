@@ -109,7 +109,7 @@ mlx5_pmd_socket_handle(void *cb __rte_unused)
 		DRV_LOG(WARNING, "failed to send response %s",
 			strerror(errno));
 error:
-	if (conn_sock > 0)
+	if (conn_sock >= 0)
 		close(conn_sock);
 	if (file)
 		fclose(file);
