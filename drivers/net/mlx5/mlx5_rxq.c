@@ -1267,7 +1267,6 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	struct mlx5_devx_create_rq_attr attr = { 0 };
 	struct mlx5_rxq_obj *tmpl = NULL;
-	int ret = 0;
 	uint32_t max_wq_data;
 
 	MLX5_ASSERT(rxq_data);
@@ -1279,7 +1278,7 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 			"port %u Rx queue %u cannot allocate verbs resources",
 			dev->data->port_id, rxq_data->idx);
 		rte_errno = ENOMEM;
-		goto error;
+		return NULL;
 	}
 	tmpl->type = MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN;
 	tmpl->rxq_ctrl = rxq_ctrl;
@@ -1291,6 +1290,7 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 			DRV_LOG(ERR, "total data size %u power of 2 is "
 				"too large for hairpin",
 				priv->config.log_hp_size);
+			rte_free(tmpl);
 			rte_errno = ERANGE;
 			return NULL;
 		}
@@ -1310,8 +1310,9 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 		DRV_LOG(ERR,
 			"port %u Rx hairpin queue %u can't create rq object",
 			dev->data->port_id, idx);
+		rte_free(tmpl);
 		rte_errno = errno;
-		goto error;
+		return NULL;
 	}
 	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
 		idx, (void *)&tmpl);
@@ -1319,12 +1320,6 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return tmpl;
-error:
-	ret = rte_errno; /* Save rte_errno before cleanup. */
-	if (tmpl->rq)
-		mlx5_devx_cmd_destroy(tmpl->rq);
-	rte_errno = ret; /* Restore rte_errno. */
-	return NULL;
 }
 
 /**
