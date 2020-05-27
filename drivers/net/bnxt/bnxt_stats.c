@@ -1008,8 +1008,10 @@ int bnxt_flow_stats_req(struct bnxt *bp)
 		}
 	}
 
-	if (!in_flow_tbl_cnt)
+	if (!in_flow_tbl_cnt) {
+		bnxt_release_flow_lock(bp);
 		goto out;
+	}
 
 	rc = bnxt_update_fc_tbl(bp, counter_type, valid_en_tbl,
 				in_flow_tbl_cnt);
