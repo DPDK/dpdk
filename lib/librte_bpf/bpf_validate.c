@@ -70,6 +70,7 @@ struct bpf_verifier {
 	uint64_t stack_sz;
 	uint32_t nb_nodes;
 	uint32_t nb_jcc_nodes;
+	uint32_t nb_ldmb_nodes;
 	uint32_t node_colour[MAX_NODE_COLOUR];
 	uint32_t edge_type[MAX_EDGE_TYPE];
 	struct bpf_eval_state *evst;
@@ -2020,6 +2021,14 @@ validate(struct bpf_verifier *bvf)
 			rc |= add_edge(bvf, node, i + 2);
 			i++;
 			break;
+		case (BPF_LD | BPF_ABS | BPF_B):
+		case (BPF_LD | BPF_ABS | BPF_H):
+		case (BPF_LD | BPF_ABS | BPF_W):
+		case (BPF_LD | BPF_IND | BPF_B):
+		case (BPF_LD | BPF_IND | BPF_H):
+		case (BPF_LD | BPF_IND | BPF_W):
+			bvf->nb_ldmb_nodes++;
+			/* fallthrough */
 		default:
 			rc |= add_edge(bvf, node, i + 1);
 			break;
@@ -2320,8 +2329,14 @@ bpf_validate(struct rte_bpf *bpf)
 	free(bvf.in);
 
 	/* copy collected info */
-	if (rc == 0)
+	if (rc == 0) {
 		bpf->stack_sz = bvf.stack_sz;
+
+		/* for LD_ABS/LD_IND, we'll need extra space on the stack */
+		if (bvf.nb_ldmb_nodes != 0)
+			bpf->stack_sz = RTE_ALIGN_CEIL(bpf->stack_sz +
+				sizeof(uint64_t), sizeof(uint64_t));
+	}
 
 	return rc;
 }

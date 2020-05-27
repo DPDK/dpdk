@@ -87,6 +87,14 @@ enum {
 	REG_TMP1 = R10,
 };
 
+/* LD_ABS/LD_IMM offsets */
+enum {
+	LDMB_FSP_OFS, /* fast-path */
+	LDMB_SLP_OFS, /* slow-path */
+	LDMB_FIN_OFS, /* final part */
+	LDMB_OFS_NUM
+};
+
 /*
  * callee saved registers list.
  * keep RBP as the last one.
@@ -100,6 +108,9 @@ struct bpf_jit_state {
 		uint32_t num;
 		int32_t off;
 	} exit;
+	struct {
+		uint32_t stack_ofs;
+	} ldmb;
 	uint32_t reguse;
 	int32_t *off;
 	uint8_t *ins;
@@ -1024,6 +1035,166 @@ emit_div(struct bpf_jit_state *st, uint32_t op, uint32_t sreg, uint32_t dreg,
 		emit_mov_reg(st, EBPF_ALU64 | EBPF_MOV | BPF_X, REG_TMP1, RDX);
 }
 
+/*
+ * helper function, used by emit_ld_mbuf().
+ * generates code for 'fast_path':
+ * calculate load offset and check is it inside first packet segment.
+ */
+static void
+emit_ldmb_fast_path(struct bpf_jit_state *st, const uint32_t rg[EBPF_REG_7],
+	uint32_t sreg, uint32_t mode, uint32_t sz, uint32_t imm,
+	const int32_t ofs[LDMB_OFS_NUM])
+{
+	/* make R2 contain *off* value */
+
+	if (sreg != rg[EBPF_REG_2]) {
+		emit_mov_imm(st, EBPF_ALU64 | EBPF_MOV | BPF_K,
+			rg[EBPF_REG_2], imm);
+		if (mode == BPF_IND)
+			emit_alu_reg(st, EBPF_ALU64 | BPF_ADD | BPF_X,
+				sreg, rg[EBPF_REG_2]);
+	} else
+		/* BPF_IND with sreg == R2 */
+		emit_alu_imm(st, EBPF_ALU64 | BPF_ADD | BPF_K,
+			rg[EBPF_REG_2], imm);
+
+	/* R3 = mbuf->data_len */
+	emit_ld_reg(st, BPF_LDX | BPF_MEM | BPF_H,
+		rg[EBPF_REG_6], rg[EBPF_REG_3],
+		offsetof(struct rte_mbuf, data_len));
+
+	/* R3 = R3 - R2 */
+	emit_alu_reg(st, EBPF_ALU64 | BPF_SUB | BPF_X,
+		rg[EBPF_REG_2], rg[EBPF_REG_3]);
+
+	/* JSLT R3, <sz> <slow_path> */
+	emit_cmp_imm(st, EBPF_ALU64, rg[EBPF_REG_3], sz);
+	emit_abs_jcc(st, BPF_JMP | EBPF_JSLT | BPF_K, ofs[LDMB_SLP_OFS]);
+
+	/* R3 = mbuf->data_off */
+	emit_ld_reg(st, BPF_LDX | BPF_MEM | BPF_H,
+		rg[EBPF_REG_6], rg[EBPF_REG_3],
+		offsetof(struct rte_mbuf, data_off));
+
+	/* R0 = mbuf->buf_addr */
+	emit_ld_reg(st, BPF_LDX | BPF_MEM | EBPF_DW,
+		rg[EBPF_REG_6], rg[EBPF_REG_0],
+		offsetof(struct rte_mbuf, buf_addr));
+
+	/* R0 = R0 + R3 */
+	emit_alu_reg(st, EBPF_ALU64 | BPF_ADD | BPF_X,
+		rg[EBPF_REG_3], rg[EBPF_REG_0]);
+
+	/* R0 = R0 + R2 */
+	emit_alu_reg(st, EBPF_ALU64 | BPF_ADD | BPF_X,
+		rg[EBPF_REG_2], rg[EBPF_REG_0]);
+
+	/* JMP <fin_part> */
+	emit_abs_jmp(st, ofs[LDMB_FIN_OFS]);
+}
+
+/*
+ * helper function, used by emit_ld_mbuf().
+ * generates code for 'slow_path':
+ * call __rte_pktmbuf_read() and check return value.
+ */
+static void
+emit_ldmb_slow_path(struct bpf_jit_state *st, const uint32_t rg[EBPF_REG_7],
+	uint32_t sz)
+{
+	/* make R3 contain *len* value (1/2/4) */
+
+	emit_mov_imm(st, EBPF_ALU64 | EBPF_MOV | BPF_K, rg[EBPF_REG_3], sz);
+
+	/* make R4 contain (RBP - ldmb.stack_ofs) */
+
+	emit_mov_reg(st, EBPF_ALU64 | EBPF_MOV | BPF_X, RBP, rg[EBPF_REG_4]);
+	emit_alu_imm(st, EBPF_ALU64 | BPF_SUB | BPF_K, rg[EBPF_REG_4],
+		st->ldmb.stack_ofs);
+
+	/* make R1 contain mbuf ptr */
+
+	emit_mov_reg(st, EBPF_ALU64 | EBPF_MOV | BPF_X,
+		rg[EBPF_REG_6], rg[EBPF_REG_1]);
+
+	/* call rte_pktmbuf_read */
+	emit_call(st, (uintptr_t)__rte_pktmbuf_read);
+
+	/* check that return value (R0) is not zero */
+	emit_tst_reg(st, EBPF_ALU64, rg[EBPF_REG_0], rg[EBPF_REG_0]);
+	emit_abs_jcc(st, BPF_JMP | BPF_JEQ | BPF_K, st->exit.off);
+}
+
+/*
+ * helper function, used by emit_ld_mbuf().
+ * generates final part of code for BPF_ABS/BPF_IND load:
+ * perform data load and endianness conversion.
+ * expects dreg to contain valid data pointer.
+ */
+static void
+emit_ldmb_fin(struct bpf_jit_state *st, uint32_t dreg, uint32_t opsz,
+	uint32_t sz)
+{
+	emit_ld_reg(st, BPF_LDX | BPF_MEM | opsz, dreg, dreg, 0);
+	if (sz != sizeof(uint8_t))
+		emit_be2le(st, dreg, sz * CHAR_BIT);
+}
+
+/*
+ * emit code for BPF_ABS/BPF_IND load.
+ * generates the following construction:
+ * fast_path:
+ *   off = ins->sreg + ins->imm
+ *   if (mbuf->data_len - off < ins->opsz)
+ *      goto slow_path;
+ *   ptr = mbuf->buf_addr + mbuf->data_off + off;
+ *   goto fin_part;
+ * slow_path:
+ *   typeof(ins->opsz) buf; //allocate space on the stack
+ *   ptr = __rte_pktmbuf_read(mbuf, off, ins->opsz, &buf);
+ *   if (ptr == NULL)
+ *      goto exit_label;
+ * fin_part:
+ *   res = *(typeof(ins->opsz))ptr;
+ *   res = bswap(res);
+ */
+static void
+emit_ld_mbuf(struct bpf_jit_state *st, uint32_t op, uint32_t sreg, uint32_t imm)
+{
+	uint32_t i, mode, opsz, sz;
+	uint32_t rg[EBPF_REG_7];
+	int32_t ofs[LDMB_OFS_NUM];
+
+	mode = BPF_MODE(op);
+	opsz = BPF_SIZE(op);
+	sz = bpf_size(opsz);
+
+	for (i = 0; i != RTE_DIM(rg); i++)
+		rg[i] = ebpf2x86[i];
+
+	/* fill with fake offsets */
+	for (i = 0; i != RTE_DIM(ofs); i++)
+		ofs[i] = st->sz + INT8_MAX;
+
+	/* dry run first to calculate jump offsets */
+
+	ofs[LDMB_FSP_OFS] = st->sz;
+	emit_ldmb_fast_path(st, rg, sreg, mode, sz, imm, ofs);
+	ofs[LDMB_SLP_OFS] = st->sz;
+	emit_ldmb_slow_path(st, rg, sz);
+	ofs[LDMB_FIN_OFS] = st->sz;
+	emit_ldmb_fin(st, rg[EBPF_REG_0], opsz, sz);
+
+	RTE_VERIFY(ofs[LDMB_FIN_OFS] - ofs[LDMB_FSP_OFS] <= INT8_MAX);
+
+	/* reset dry-run code and do a proper run */
+
+	st->sz = ofs[LDMB_FSP_OFS];
+	emit_ldmb_fast_path(st, rg, sreg, mode, sz, imm, ofs);
+	emit_ldmb_slow_path(st, rg, sz);
+	emit_ldmb_fin(st, rg[EBPF_REG_0], opsz, sz);
+}
+
 static void
 emit_prolog(struct bpf_jit_state *st, int32_t stack_size)
 {
@@ -1121,6 +1292,7 @@ emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
 	/* reset state fields */
 	st->sz = 0;
 	st->exit.num = 0;
+	st->ldmb.stack_ofs = bpf->stack_sz;
 
 	emit_prolog(st, bpf->stack_sz);
 
@@ -1239,6 +1411,15 @@ emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
 		case (BPF_LD | BPF_IMM | EBPF_DW):
 			emit_ld_imm64(st, dr, ins[0].imm, ins[1].imm);
 			i++;
+			break;
+		/* load absolute/indirect instructions */
+		case (BPF_LD | BPF_ABS | BPF_B):
+		case (BPF_LD | BPF_ABS | BPF_H):
+		case (BPF_LD | BPF_ABS | BPF_W):
+		case (BPF_LD | BPF_IND | BPF_B):
+		case (BPF_LD | BPF_IND | BPF_H):
+		case (BPF_LD | BPF_IND | BPF_W):
+			emit_ld_mbuf(st, op, sr, ins->imm);
 			break;
 		/* store instructions */
 		case (BPF_STX | BPF_MEM | BPF_B):
