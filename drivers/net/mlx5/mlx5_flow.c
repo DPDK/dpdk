@@ -2269,11 +2269,12 @@ mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev __rte_unused,
 	if (ret < 0)
 		return ret;
 	return 0;
-#endif
+#else
 	return rte_flow_error_set(error, ENOTSUP,
 				  RTE_FLOW_ERROR_TYPE_ITEM, item,
 				  "MPLS is not supported by Verbs, please"
 				  " update.");
+#endif
 }
 
 /**
