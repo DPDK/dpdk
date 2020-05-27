@@ -1432,6 +1432,7 @@ iavf_dev_close(struct rte_eth_dev *dev)
 
 	iavf_dev_stop(dev);
 	iavf_flow_flush(dev, NULL);
+	iavf_flow_uninit(adapter);
 	iavf_shutdown_adminq(hw);
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
@@ -1440,8 +1441,6 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(intr_handle,
 				     iavf_dev_interrupt_handler, dev);
 	iavf_disable_irq0(hw);
-
-	iavf_flow_uninit(adapter);
 }
 
 static int
