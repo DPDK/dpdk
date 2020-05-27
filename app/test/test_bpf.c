@@ -1797,13 +1797,6 @@ test_call1_check(uint64_t rc, const void *arg)
 	dummy_func1(arg, &v32, &v64);
 	v64 += v32;
 
-	if (v64 != rc) {
-		printf("%s@%d: invalid return value "
-			"expected=0x%" PRIx64 ", actual=0x%" PRIx64 "\n",
-			__func__, __LINE__, v64, rc);
-		return -1;
-	}
-	return 0;
 	return cmp_res(__func__, v64, rc, dv, dv, sizeof(*dv));
 }
 
@@ -1934,13 +1927,7 @@ test_call2_check(uint64_t rc, const void *arg)
 	dummy_func2(&a, &b);
 	v = a.u64 + a.u32 + b.u16 + b.u8;
 
-	if (v != rc) {
-		printf("%s@%d: invalid return value "
-			"expected=0x%" PRIx64 ", actual=0x%" PRIx64 "\n",
-			__func__, __LINE__, v, rc);
-		return -1;
-	}
-	return 0;
+	return cmp_res(__func__, v, rc, arg, arg, 0);
 }
 
 static const struct rte_bpf_xsym test_call2_xsym[] = {
@@ -2429,7 +2416,6 @@ test_call5_check(uint64_t rc, const void *arg)
 	v = 0;
 
 fail:
-
 	return cmp_res(__func__, v, rc, &v, &rc, sizeof(v));
 }
 
@@ -2458,6 +2444,7 @@ static const struct rte_bpf_xsym test_call5_xsym[] = {
 	},
 };
 
+/* all bpf test cases */
 static const struct bpf_test tests[] = {
 	{
 		.name = "test_store1",
@@ -2738,7 +2725,6 @@ run_test(const struct bpf_test *tst)
 	}
 
 	tst->prepare(tbuf);
-
 	rc = rte_bpf_exec(bpf, tbuf);
 	ret = tst->check_result(rc, tbuf);
 	if (ret != 0) {
@@ -2746,17 +2732,20 @@ run_test(const struct bpf_test *tst)
 			__func__, __LINE__, tst->name, ret, strerror(ret));
 	}
 
+	/* repeat the same test with jit, when possible */
 	rte_bpf_get_jit(bpf, &jit);
-	if (jit.func == NULL)
-		return 0;
+	if (jit.func != NULL) {
 
-	tst->prepare(tbuf);
-	rc = jit.func(tbuf);
-	rv = tst->check_result(rc, tbuf);
-	ret |= rv;
-	if (rv != 0) {
-		printf("%s@%d: check_result(%s) failed, error: %d(%s);\n",
-			__func__, __LINE__, tst->name, rv, strerror(ret));
+		tst->prepare(tbuf);
+		rc = jit.func(tbuf);
+		rv = tst->check_result(rc, tbuf);
+		ret |= rv;
+		if (rv != 0) {
+			printf("%s@%d: check_result(%s) failed, "
+				"error: %d(%s);\n",
+				__func__, __LINE__, tst->name,
+				rv, strerror(ret));
+		}
 	}
 
 	rte_bpf_destroy(bpf);
