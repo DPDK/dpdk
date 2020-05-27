@@ -74,6 +74,26 @@
 		(uintptr_t)((reg)[(ins)->dst_reg] + (ins)->off), \
 		reg[ins->src_reg]))
 
+/* BPF_LD | BPF_ABS/BPF_IND */
+
+#define	NOP(x)	(x)
+
+#define BPF_LD_ABS(bpf, reg, ins, type, op) do { \
+	const type *p = bpf_ld_mbuf(bpf, reg, ins, (ins)->imm, sizeof(type)); \
+	if (p == NULL)  \
+		return 0; \
+	reg[EBPF_REG_0] = op(p[0]); \
+} while (0)
+
+#define BPF_LD_IND(bpf, reg, ins, type, op) do { \
+	uint32_t ofs = reg[ins->src_reg] + (ins)->imm; \
+	const type *p = bpf_ld_mbuf(bpf, reg, ins, ofs, sizeof(type)); \
+	if (p == NULL)  \
+		return 0; \
+	reg[EBPF_REG_0] = op(p[0]); \
+} while (0)
+
+
 static inline void
 bpf_alu_be(uint64_t reg[EBPF_REG_NUM], const struct ebpf_insn *ins)
 {
@@ -110,6 +130,23 @@ bpf_alu_le(uint64_t reg[EBPF_REG_NUM], const struct ebpf_insn *ins)
 		*v = rte_cpu_to_le_64(*v);
 		break;
 	}
+}
+
+static inline const void *
+bpf_ld_mbuf(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM],
+	const struct ebpf_insn *ins, uint32_t off, uint32_t len)
+{
+	const struct rte_mbuf *mb;
+	const void *p;
+
+	mb = (const struct rte_mbuf *)(uintptr_t)reg[EBPF_REG_6];
+	p = rte_pktmbuf_read(mb, off, len, reg + EBPF_REG_0);
+	if (p == NULL)
+		RTE_BPF_LOG(DEBUG, "%s(bpf=%p, mbuf=%p, ofs=%u, len=%u): "
+			"load beyond packet boundary at pc: %#zx;\n",
+			__func__, bpf, mb, off, len,
+			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.ins);
+	return p;
 }
 
 static inline uint64_t
@@ -295,6 +332,26 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 			reg[ins->dst_reg] = (uint32_t)ins[0].imm |
 				(uint64_t)(uint32_t)ins[1].imm << 32;
 			ins++;
+			break;
+		/* load absolute instructions */
+		case (BPF_LD | BPF_ABS | BPF_B):
+			BPF_LD_ABS(bpf, reg, ins, uint8_t, NOP);
+			break;
+		case (BPF_LD | BPF_ABS | BPF_H):
+			BPF_LD_ABS(bpf, reg, ins, uint16_t, rte_be_to_cpu_16);
+			break;
+		case (BPF_LD | BPF_ABS | BPF_W):
+			BPF_LD_ABS(bpf, reg, ins, uint32_t, rte_be_to_cpu_32);
+			break;
+		/* load indirect instructions */
+		case (BPF_LD | BPF_IND | BPF_B):
+			BPF_LD_IND(bpf, reg, ins, uint8_t, NOP);
+			break;
+		case (BPF_LD | BPF_IND | BPF_H):
+			BPF_LD_IND(bpf, reg, ins, uint16_t, rte_be_to_cpu_16);
+			break;
+		case (BPF_LD | BPF_IND | BPF_W):
+			BPF_LD_IND(bpf, reg, ins, uint32_t, rte_be_to_cpu_32);
 			break;
 		/* store instructions */
 		case (BPF_STX | BPF_MEM | BPF_B):

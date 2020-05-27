@@ -68,6 +68,13 @@ New Features
 
   * Added new PMD devarg ``reclaim_mem_mode``.
 
+* **Added support for BPF_ABS/BPF_IND load instructions.**
+
+  Added support for two BPF non-generic instructions:
+  ``(BPF_ABS | <size> | BPF_LD)`` and ``(BPF_IND | <size> | BPF_LD)``
+  which are used to access packet data in a safe manner. Currently JIT support
+  for these instructions is implemented for x86 only.
+
 
 Removed Items
 -------------

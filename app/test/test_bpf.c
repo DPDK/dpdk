@@ -43,6 +43,14 @@ struct dummy_net {
 	struct rte_ipv4_hdr ip_hdr;
 };
 
+#define	DUMMY_MBUF_NUM	2
+
+/* first mbuf in the packet, should always be at offset 0 */
+struct dummy_mbuf {
+	struct rte_mbuf mb[DUMMY_MBUF_NUM];
+	uint8_t buf[DUMMY_MBUF_NUM][RTE_MBUF_DEFAULT_BUF_SIZE];
+};
+
 #define	TEST_FILL_1	0xDEADBEEF
 
 #define	TEST_MUL_1	21
@@ -2444,6 +2452,413 @@ static const struct rte_bpf_xsym test_call5_xsym[] = {
 	},
 };
 
+/* load mbuf (BPF_ABS/BPF_IND) test-cases */
+static const struct ebpf_insn test_ld_mbuf1_prog[] = {
+
+	/* BPF_ABS/BPF_IND implicitly expect mbuf ptr in R6 */
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_6,
+		.src_reg = EBPF_REG_1,
+	},
+	/* load IPv4 version and IHL */
+	{
+		.code = (BPF_LD | BPF_ABS | BPF_B),
+		.imm = offsetof(struct rte_ipv4_hdr, version_ihl),
+	},
+	/* check IP version */
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_2,
+		.src_reg = EBPF_REG_0,
+	},
+	{
+		.code = (BPF_ALU | BPF_AND | BPF_K),
+		.dst_reg = EBPF_REG_2,
+		.imm = 0xf0,
+	},
+	{
+		.code = (BPF_JMP | BPF_JEQ | BPF_K),
+		.dst_reg = EBPF_REG_2,
+		.imm = IPVERSION << 4,
+		.off = 2,
+	},
+	/* invalid IP version, return 0 */
+	{
+		.code = (EBPF_ALU64 | BPF_XOR | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_0,
+	},
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+	/* load 3-rd byte of IP data */
+	{
+		.code = (BPF_ALU | BPF_AND | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = RTE_IPV4_HDR_IHL_MASK,
+	},
+	{
+		.code = (BPF_ALU | BPF_LSH | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = 2,
+	},
+	{
+		.code = (BPF_LD | BPF_IND | BPF_B),
+		.src_reg = EBPF_REG_0,
+		.imm = 3,
+	},
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_7,
+		.src_reg = EBPF_REG_0,
+	},
+	/* load IPv4 src addr */
+	{
+		.code = (BPF_LD | BPF_ABS | BPF_W),
+		.imm = offsetof(struct rte_ipv4_hdr, src_addr),
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_7,
+		.src_reg = EBPF_REG_0,
+	},
+	/* load IPv4 total length */
+	{
+		.code = (BPF_LD | BPF_ABS | BPF_H),
+		.imm = offsetof(struct rte_ipv4_hdr, total_length),
+	},
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_8,
+		.src_reg = EBPF_REG_0,
+	},
+	/* load last 4 bytes of IP data */
+	{
+		.code = (BPF_LD | BPF_IND | BPF_W),
+		.src_reg = EBPF_REG_8,
+		.imm = -(int32_t)sizeof(uint32_t),
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_7,
+		.src_reg = EBPF_REG_0,
+	},
+	/* load 2 bytes from the middle of IP data */
+	{
+		.code = (EBPF_ALU64 | BPF_RSH | BPF_K),
+		.dst_reg = EBPF_REG_8,
+		.imm = 1,
+	},
+	{
+		.code = (BPF_LD | BPF_IND | BPF_H),
+		.src_reg = EBPF_REG_8,
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_7,
+	},
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
+static void
+dummy_mbuf_prep(struct rte_mbuf *mb, uint8_t buf[], uint32_t buf_len,
+	uint32_t data_len)
+{
+	uint32_t i;
+	uint8_t *db;
+
+	mb->buf_addr = buf;
+	mb->buf_iova = (uintptr_t)buf;
+	mb->buf_len = buf_len;
+	rte_mbuf_refcnt_set(mb, 1);
+
+	/* set pool pointer to dummy value, test doesn't use it */
+	mb->pool = (void *)buf;
+
+	rte_pktmbuf_reset(mb);
+	db = (uint8_t *)rte_pktmbuf_append(mb, data_len);
+
+	for (i = 0; i != data_len; i++)
+		db[i] = i;
+}
+
+static void
+test_ld_mbuf1_prepare(void *arg)
+{
+	struct dummy_mbuf *dm;
+	struct rte_ipv4_hdr *ph;
+
+	const uint32_t plen = 400;
+	const struct rte_ipv4_hdr iph = {
+		.version_ihl = RTE_IPV4_VHL_DEF,
+		.total_length = rte_cpu_to_be_16(plen),
+		.time_to_live = IPDEFTTL,
+		.next_proto_id = IPPROTO_RAW,
+		.src_addr = rte_cpu_to_be_32(RTE_IPV4_LOOPBACK),
+		.dst_addr = rte_cpu_to_be_32(RTE_IPV4_BROADCAST),
+	};
+
+	dm = arg;
+	memset(dm, 0, sizeof(*dm));
+
+	dummy_mbuf_prep(&dm->mb[0], dm->buf[0], sizeof(dm->buf[0]),
+		plen / 2 + 1);
+	dummy_mbuf_prep(&dm->mb[1], dm->buf[1], sizeof(dm->buf[0]),
+		plen / 2 - 1);
+
+	rte_pktmbuf_chain(&dm->mb[0], &dm->mb[1]);
+
+	ph = rte_pktmbuf_mtod(dm->mb, typeof(ph));
+	memcpy(ph, &iph, sizeof(iph));
+}
+
+static uint64_t
+test_ld_mbuf1(const struct rte_mbuf *pkt)
+{
+	uint64_t n, v;
+	const uint8_t *p8;
+	const uint16_t *p16;
+	const uint32_t *p32;
+	struct dummy_offset dof;
+
+	/* load IPv4 version and IHL */
+	p8 = rte_pktmbuf_read(pkt,
+		offsetof(struct rte_ipv4_hdr, version_ihl), sizeof(*p8),
+		&dof);
+	if (p8 == NULL)
+		return 0;
+
+	/* check IP version */
+	if ((p8[0] & 0xf0) != IPVERSION << 4)
+		return 0;
+
+	n = (p8[0] & RTE_IPV4_HDR_IHL_MASK) * RTE_IPV4_IHL_MULTIPLIER;
+
+	/* load 3-rd byte of IP data */
+	p8 = rte_pktmbuf_read(pkt, n + 3, sizeof(*p8), &dof);
+	if (p8 == NULL)
+		return 0;
+
+	v = p8[0];
+
+	/* load IPv4 src addr */
+	p32 = rte_pktmbuf_read(pkt,
+		offsetof(struct rte_ipv4_hdr, src_addr), sizeof(*p32),
+		&dof);
+	if (p32 == NULL)
+		return 0;
+
+	v += rte_be_to_cpu_32(p32[0]);
+
+	/* load IPv4 total length */
+	p16 = rte_pktmbuf_read(pkt,
+		offsetof(struct rte_ipv4_hdr, total_length), sizeof(*p16),
+		&dof);
+	if (p16 == NULL)
+		return 0;
+
+	n = rte_be_to_cpu_16(p16[0]);
+
+	/* load last 4 bytes of IP data */
+	p32 = rte_pktmbuf_read(pkt, n - sizeof(*p32), sizeof(*p32), &dof);
+	if (p32 == NULL)
+		return 0;
+
+	v += rte_be_to_cpu_32(p32[0]);
+
+	/* load 2 bytes from the middle of IP data */
+	p16 = rte_pktmbuf_read(pkt, n / 2, sizeof(*p16), &dof);
+	if (p16 == NULL)
+		return 0;
+
+	v += rte_be_to_cpu_16(p16[0]);
+	return v;
+}
+
+static int
+test_ld_mbuf1_check(uint64_t rc, const void *arg)
+{
+	const struct dummy_mbuf *dm;
+	uint64_t v;
+
+	dm = arg;
+	v = test_ld_mbuf1(dm->mb);
+	return cmp_res(__func__, v, rc, arg, arg, 0);
+}
+
+/*
+ * same as ld_mbuf1, but then trancate the mbuf by 1B,
+ * so load of last 4B fail.
+ */
+static void
+test_ld_mbuf2_prepare(void *arg)
+{
+	struct dummy_mbuf *dm;
+
+	test_ld_mbuf1_prepare(arg);
+	dm = arg;
+	rte_pktmbuf_trim(dm->mb, 1);
+}
+
+static int
+test_ld_mbuf2_check(uint64_t rc, const void *arg)
+{
+	return cmp_res(__func__, 0, rc, arg, arg, 0);
+}
+
+/* same as test_ld_mbuf1, but now store intermediate results on the stack */
+static const struct ebpf_insn test_ld_mbuf3_prog[] = {
+
+	/* BPF_ABS/BPF_IND implicitly expect mbuf ptr in R6 */
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_6,
+		.src_reg = EBPF_REG_1,
+	},
+	/* load IPv4 version and IHL */
+	{
+		.code = (BPF_LD | BPF_ABS | BPF_B),
+		.imm = offsetof(struct rte_ipv4_hdr, version_ihl),
+	},
+	/* check IP version */
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_2,
+		.src_reg = EBPF_REG_0,
+	},
+	{
+		.code = (BPF_ALU | BPF_AND | BPF_K),
+		.dst_reg = EBPF_REG_2,
+		.imm = 0xf0,
+	},
+	{
+		.code = (BPF_JMP | BPF_JEQ | BPF_K),
+		.dst_reg = EBPF_REG_2,
+		.imm = IPVERSION << 4,
+		.off = 2,
+	},
+	/* invalid IP version, return 0 */
+	{
+		.code = (EBPF_ALU64 | BPF_XOR | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_0,
+	},
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+	/* load 3-rd byte of IP data */
+	{
+		.code = (BPF_ALU | BPF_AND | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = RTE_IPV4_HDR_IHL_MASK,
+	},
+	{
+		.code = (BPF_ALU | BPF_LSH | BPF_K),
+		.dst_reg = EBPF_REG_0,
+		.imm = 2,
+	},
+	{
+		.code = (BPF_LD | BPF_IND | BPF_B),
+		.src_reg = EBPF_REG_0,
+		.imm = 3,
+	},
+	{
+		.code = (BPF_STX | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_10,
+		.src_reg = EBPF_REG_0,
+		.off = (int16_t)(offsetof(struct dummy_offset, u8) -
+			sizeof(struct dummy_offset)),
+	},
+	/* load IPv4 src addr */
+	{
+		.code = (BPF_LD | BPF_ABS | BPF_W),
+		.imm = offsetof(struct rte_ipv4_hdr, src_addr),
+	},
+	{
+		.code = (BPF_STX | BPF_MEM | BPF_W),
+		.dst_reg = EBPF_REG_10,
+		.src_reg = EBPF_REG_0,
+		.off = (int16_t)(offsetof(struct dummy_offset, u32) -
+			sizeof(struct dummy_offset)),
+	},
+	/* load IPv4 total length */
+	{
+		.code = (BPF_LD | BPF_ABS | BPF_H),
+		.imm = offsetof(struct rte_ipv4_hdr, total_length),
+	},
+	{
+		.code = (EBPF_ALU64 | EBPF_MOV | BPF_X),
+		.dst_reg = EBPF_REG_8,
+		.src_reg = EBPF_REG_0,
+	},
+	/* load last 4 bytes of IP data */
+	{
+		.code = (BPF_LD | BPF_IND | BPF_W),
+		.src_reg = EBPF_REG_8,
+		.imm = -(int32_t)sizeof(uint32_t),
+	},
+	{
+		.code = (BPF_STX | BPF_MEM | EBPF_DW),
+		.dst_reg = EBPF_REG_10,
+		.src_reg = EBPF_REG_0,
+		.off = (int16_t)(offsetof(struct dummy_offset, u64) -
+			sizeof(struct dummy_offset)),
+	},
+	/* load 2 bytes from the middle of IP data */
+	{
+		.code = (EBPF_ALU64 | BPF_RSH | BPF_K),
+		.dst_reg = EBPF_REG_8,
+		.imm = 1,
+	},
+	{
+		.code = (BPF_LD | BPF_IND | BPF_H),
+		.src_reg = EBPF_REG_8,
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | EBPF_DW),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_10,
+		.off = (int16_t)(offsetof(struct dummy_offset, u64) -
+			sizeof(struct dummy_offset)),
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_1,
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_W),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_10,
+		.off = (int16_t)(offsetof(struct dummy_offset, u32) -
+			sizeof(struct dummy_offset)),
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_1,
+	},
+	{
+		.code = (BPF_LDX | BPF_MEM | BPF_B),
+		.dst_reg = EBPF_REG_1,
+		.src_reg = EBPF_REG_10,
+		.off = (int16_t)(offsetof(struct dummy_offset, u8) -
+			sizeof(struct dummy_offset)),
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_1,
+	},
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
 /* all bpf test cases */
 static const struct bpf_test tests[] = {
 	{
@@ -2702,6 +3117,54 @@ static const struct bpf_test tests[] = {
 		.prepare = test_store1_prepare,
 		.check_result = test_call5_check,
 		/* for now don't support function calls on 32 bit platform */
+		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
+	},
+	{
+		.name = "test_ld_mbuf1",
+		.arg_sz = sizeof(struct dummy_mbuf),
+		.prm = {
+			.ins = test_ld_mbuf1_prog,
+			.nb_ins = RTE_DIM(test_ld_mbuf1_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR_MBUF,
+				.buf_size = sizeof(struct dummy_mbuf),
+			},
+		},
+		.prepare = test_ld_mbuf1_prepare,
+		.check_result = test_ld_mbuf1_check,
+		/* mbuf as input argument is not supported on 32 bit platform */
+		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
+	},
+	{
+		.name = "test_ld_mbuf2",
+		.arg_sz = sizeof(struct dummy_mbuf),
+		.prm = {
+			.ins = test_ld_mbuf1_prog,
+			.nb_ins = RTE_DIM(test_ld_mbuf1_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR_MBUF,
+				.buf_size = sizeof(struct dummy_mbuf),
+			},
+		},
+		.prepare = test_ld_mbuf2_prepare,
+		.check_result = test_ld_mbuf2_check,
+		/* mbuf as input argument is not supported on 32 bit platform */
+		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
+	},
+	{
+		.name = "test_ld_mbuf3",
+		.arg_sz = sizeof(struct dummy_mbuf),
+		.prm = {
+			.ins = test_ld_mbuf3_prog,
+			.nb_ins = RTE_DIM(test_ld_mbuf3_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR_MBUF,
+				.buf_size = sizeof(struct dummy_mbuf),
+			},
+		},
+		.prepare = test_ld_mbuf1_prepare,
+		.check_result = test_ld_mbuf1_check,
+		/* mbuf as input argument is not supported on 32 bit platform */
 		.allow_fail = (sizeof(uint64_t) != sizeof(uintptr_t)),
 	},
 };
