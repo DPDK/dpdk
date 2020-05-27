@@ -1068,6 +1068,13 @@ fs_dev_merge_info(struct rte_eth_dev_info *info,
 	info->rx_queue_offload_capa &= sinfo->rx_queue_offload_capa;
 	info->tx_queue_offload_capa &= sinfo->tx_queue_offload_capa;
 	info->flow_type_rss_offloads &= sinfo->flow_type_rss_offloads;
+
+	/*
+	 * RETA size is a GCD of RETA sizes indicated by sub-devices.
+	 * Each of these sizes is a power of 2, so use the lower one.
+	 */
+	info->reta_size = RTE_MIN(info->reta_size, sinfo->reta_size);
+
 	info->hash_key_size = RTE_MIN(info->hash_key_size,
 				      sinfo->hash_key_size);
 }
@@ -1119,6 +1126,7 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 	infos->max_hash_mac_addrs = UINT32_MAX;
 	infos->max_vfs = UINT16_MAX;
 	infos->max_vmdq_pools = UINT16_MAX;
+	infos->reta_size = UINT16_MAX;
 	infos->hash_key_size = UINT8_MAX;
 
 	/*
