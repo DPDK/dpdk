@@ -37,7 +37,7 @@ static void
 mlx5_pmd_socket_handle(void *cb __rte_unused)
 {
 	int conn_sock;
-	int ret = -1;
+	int ret;
 	struct cmsghdr *cmsg = NULL;
 	int data;
 	char buf[CMSG_SPACE(sizeof(int))] = { 0 };
@@ -163,7 +163,7 @@ mlx5_pmd_socket_init(void)
 	struct sockaddr_un sun = {
 		.sun_family = AF_UNIX,
 	};
-	int ret = -1;
+	int ret;
 	int flags;
 
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
