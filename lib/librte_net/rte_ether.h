@@ -353,6 +353,10 @@ static inline int rte_vlan_insert(struct rte_mbuf **m)
 	if (!RTE_MBUF_DIRECT(*m) || rte_mbuf_refcnt_read(*m) > 1)
 		return -EINVAL;
 
+	/* Can't insert header if the first segment is too short */
+	if (rte_pktmbuf_data_len(*m) < 2 * RTE_ETHER_ADDR_LEN)
+		return -EINVAL;
+
 	oh = rte_pktmbuf_mtod(*m, struct rte_ether_hdr *);
 	nh = (struct rte_ether_hdr *)
 		rte_pktmbuf_prepend(*m, sizeof(struct rte_vlan_hdr));
