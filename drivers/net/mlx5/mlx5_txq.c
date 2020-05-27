@@ -793,7 +793,7 @@ error:
 		claim_zero(mlx5_glue->destroy_cq(tmpl.cq));
 	if (tmpl.qp)
 		claim_zero(mlx5_glue->destroy_qp(tmpl.qp));
-	if (txq_data && txq_data->fcqs)
+	if (txq_data->fcqs)
 		rte_free(txq_data->fcqs);
 	if (txq_obj)
 		rte_free(txq_obj);
