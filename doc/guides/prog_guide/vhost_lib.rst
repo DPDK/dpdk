@@ -104,11 +104,6 @@ The following is an overview of some key Vhost API functions:
     from accessing memory the virtio device isn't allowed to, when the feature
     is negotiated and an IOMMU device is declared.
 
-    However, this feature enables vhost-user's reply-ack protocol feature,
-    which implementation is buggy in Qemu v2.7.0-v2.9.0 when doing multiqueue.
-    Enabling this flag with these Qemu version results in Qemu being blocked
-    when multiple queue pairs are declared.
-
   - ``RTE_VHOST_USER_POSTCOPY_SUPPORT``
 
     Postcopy live-migration support will be enabled when this flag is set.
