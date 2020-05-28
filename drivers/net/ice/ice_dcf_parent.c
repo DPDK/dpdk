@@ -242,13 +242,13 @@ ice_dcf_request_pkg_name(struct ice_hw *hw, char *pkg_name)
 	rte_memcpy(&dsn, pkg_info.dsn, sizeof(dsn));
 
 	snprintf(pkg_name, ICE_MAX_PKG_FILENAME_SIZE,
-		 ICE_PKG_FILE_SEARCH_PATH_UPDATES "ice-%016llX.pkg",
+		 ICE_PKG_FILE_SEARCH_PATH_UPDATES "ice-%016llx.pkg",
 		 (unsigned long long)dsn);
 	if (!access(pkg_name, 0))
 		return 0;
 
 	snprintf(pkg_name, ICE_MAX_PKG_FILENAME_SIZE,
-		 ICE_PKG_FILE_SEARCH_PATH_DEFAULT "ice-%016llX.pkg",
+		 ICE_PKG_FILE_SEARCH_PATH_DEFAULT "ice-%016llx.pkg",
 		 (unsigned long long)dsn);
 	if (!access(pkg_name, 0))
 		return 0;
