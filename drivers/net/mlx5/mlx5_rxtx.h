@@ -434,6 +434,7 @@ int mlx5_tx_hairpin_queue_setup
 	 const struct rte_eth_hairpin_conf *hairpin_conf);
 void mlx5_tx_queue_release(void *dpdk_txq);
 int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
+void mlx5_tx_uar_uninit_secondary(struct rte_eth_dev *dev);
 struct mlx5_txq_obj *mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 				      enum mlx5_txq_obj_type type);
 struct mlx5_txq_obj *mlx5_txq_obj_get(struct rte_eth_dev *dev, uint16_t idx);

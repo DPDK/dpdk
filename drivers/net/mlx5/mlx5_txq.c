@@ -428,6 +428,30 @@ txq_uar_uninit_secondary(struct mlx5_txq_ctrl *txq_ctrl)
 }
 
 /**
+ * Deinitialize Tx UAR registers for secondary process.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_tx_uar_uninit_secondary(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_data *txq;
+	struct mlx5_txq_ctrl *txq_ctrl;
+	unsigned int i;
+
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	for (i = 0; i != priv->txqs_n; ++i) {
+		if (!(*priv->txqs)[i])
+			continue;
+		txq = (*priv->txqs)[i];
+		txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
+		txq_uar_uninit_secondary(txq_ctrl);
+	}
+}
+
+/**
  * Initialize Tx UAR registers for secondary process.
  *
  * @param dev

@@ -1423,6 +1423,17 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	unsigned int i;
 	int ret;
 
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		/* Check if process_private released. */
+		if (!dev->process_private)
+			return;
+		mlx5_tx_uar_uninit_secondary(dev);
+		mlx5_proc_priv_uninit(dev);
+		rte_eth_dev_release_port(dev);
+		return;
+	}
+	if (!priv->sh)
+		return;
 	DRV_LOG(DEBUG, "port %u closing device \"%s\"",
 		dev->data->port_id,
 		((priv->sh->ctx != NULL) ? priv->sh->ctx->device->name : ""));
@@ -1512,16 +1523,13 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some flows still remain",
 			dev->data->port_id);
-	if (priv->sh) {
-		/*
-		 * Free the shared context in last turn, because the cleanup
-		 * routines above may use some shared fields, like
-		 * mlx5_nl_mac_addr_flush() uses ibdev_path for retrieveing
-		 * ifindex if Netlink fails.
-		 */
-		mlx5_free_shared_ibctx(priv->sh);
-		priv->sh = NULL;
-	}
+	/*
+	 * Free the shared context in last turn, because the cleanup
+	 * routines above may use some shared fields, like
+	 * mlx5_nl_mac_addr_flush() uses ibdev_path for retrieveing
+	 * ifindex if Netlink fails.
+	 */
+	mlx5_free_shared_ibctx(priv->sh);
 	if (priv->domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
 		unsigned int c = 0;
 		uint16_t port_id;
@@ -2409,11 +2417,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		/* Receive command fd from primary process */
 		err = mlx5_mp_req_verbs_cmd_fd(&mp_id);
 		if (err < 0)
-			return NULL;
+			goto err_secondary;
 		/* Remap UAR for Tx queues. */
 		err = mlx5_tx_uar_init_secondary(eth_dev, err);
 		if (err)
-			return NULL;
+			goto err_secondary;
 		/*
 		 * Ethdev pointer is still required as input since
 		 * the primary device is not accessible from the
@@ -2422,6 +2430,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		eth_dev->rx_pkt_burst = mlx5_select_rx_function(eth_dev);
 		eth_dev->tx_pkt_burst = mlx5_select_tx_function(eth_dev);
 		return eth_dev;
+err_secondary:
+		mlx5_dev_close(eth_dev);
+		return NULL;
 	}
 	/*
 	 * Some parameters ("tx_db_nc" in particularly) are needed in
@@ -3707,8 +3718,16 @@ mlx5_pci_remove(struct rte_pci_device *pci_dev)
 {
 	uint16_t port_id;
 
-	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device)
-		rte_eth_dev_close(port_id);
+	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device) {
+		/*
+		 * mlx5_dev_close() is not registered to secondary process,
+		 * call the close function explicitly for secondary process.
+		 */
+		if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+			mlx5_dev_close(&rte_eth_devices[port_id]);
+		else
+			rte_eth_dev_close(port_id);
+	}
 	return 0;
 }
 
