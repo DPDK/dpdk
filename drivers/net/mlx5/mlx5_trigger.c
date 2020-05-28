@@ -269,6 +269,7 @@ error:
 int
 mlx5_dev_start(struct rte_eth_dev *dev)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 	int fine_inline;
 
@@ -340,7 +341,18 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
 	/* Enable datapath on secondary process. */
 	mlx5_mp_req_start_rxtx(dev);
-	mlx5_dev_interrupt_handler_install(dev);
+	if (priv->sh->intr_handle.fd >= 0) {
+		priv->sh->port[priv->ibv_port - 1].ih_port_id =
+					(uint32_t)dev->data->port_id;
+	} else {
+		DRV_LOG(INFO, "port %u starts without LSC and RMV interrupts.",
+			dev->data->port_id);
+		dev->data->dev_conf.intr_conf.lsc = 0;
+		dev->data->dev_conf.intr_conf.rmv = 0;
+	}
+	if (priv->sh->intr_handle_devx.fd >= 0)
+		priv->sh->port[priv->ibv_port - 1].devx_ih_port_id =
+					(uint32_t)dev->data->port_id;
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
@@ -382,7 +394,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	/* All RX queue flags will be cleared in the flush interface. */
 	mlx5_flow_list_flush(dev, &priv->flows, true);
 	mlx5_rx_intr_vec_disable(dev);
-	mlx5_dev_interrupt_handler_uninstall(dev);
+	priv->sh->port[priv->ibv_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
+	priv->sh->port[priv->ibv_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
 }
