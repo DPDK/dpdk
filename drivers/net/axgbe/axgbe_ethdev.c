@@ -60,6 +60,16 @@ axgbe_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 				 const uint64_t *ids,
 				 unsigned int size);
 static int axgbe_dev_xstats_reset(struct rte_eth_dev *dev);
+static int axgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_reta_entry64 *reta_conf,
+			  uint16_t reta_size);
+static int axgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size);
+static int axgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+				     struct rte_eth_rss_conf *rss_conf);
+static int axgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+				       struct rte_eth_rss_conf *rss_conf);
 static int  axgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
 static int axgbe_flow_ctrl_get(struct rte_eth_dev *dev,
@@ -201,6 +211,10 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.xstats_get_names     = axgbe_dev_xstats_get_names,
 	.xstats_get_names_by_id = axgbe_dev_xstats_get_names_by_id,
 	.xstats_get_by_id     = axgbe_dev_xstats_get_by_id,
+	.reta_update          = axgbe_dev_rss_reta_update,
+	.reta_query           = axgbe_dev_rss_reta_query,
+	.rss_hash_update      = axgbe_dev_rss_hash_update,
+	.rss_hash_conf_get    = axgbe_dev_rss_hash_conf_get,
 	.dev_infos_get        = axgbe_dev_info_get,
 	.rx_queue_setup       = axgbe_dev_rx_queue_setup,
 	.rx_queue_release     = axgbe_dev_rx_queue_release,
@@ -447,6 +461,136 @@ axgbe_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		return -EINVAL;
 	}
 	axgbe_set_mac_addn_addr(pdata, (u8 *)mac_addr, index);
+	return 0;
+}
+
+static int
+axgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_reta_entry64 *reta_conf,
+			  uint16_t reta_size)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	unsigned int i, idx, shift;
+	int ret;
+
+	if (!pdata->rss_enable) {
+		PMD_DRV_LOG(ERR, "RSS not enabled\n");
+		return -ENOTSUP;
+	}
+
+	if (reta_size == 0 || reta_size > AXGBE_RSS_MAX_TABLE_SIZE) {
+		PMD_DRV_LOG(ERR, "reta_size %d is not supported\n", reta_size);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if ((reta_conf[idx].mask & (1ULL << shift)) == 0)
+			continue;
+		pdata->rss_table[i] = reta_conf[idx].reta[shift];
+	}
+
+	/* Program the lookup table */
+	ret = axgbe_write_rss_lookup_table(pdata);
+	return ret;
+}
+
+static int
+axgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	unsigned int i, idx, shift;
+
+	if (!pdata->rss_enable) {
+		PMD_DRV_LOG(ERR, "RSS not enabled\n");
+		return -ENOTSUP;
+	}
+
+	if (reta_size == 0 || reta_size > AXGBE_RSS_MAX_TABLE_SIZE) {
+		PMD_DRV_LOG(ERR, "reta_size %d is not supported\n", reta_size);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if ((reta_conf[idx].mask & (1ULL << shift)) == 0)
+			continue;
+		reta_conf[idx].reta[shift] = pdata->rss_table[i];
+	}
+	return 0;
+}
+
+static int
+axgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+	int ret;
+
+	if (!pdata->rss_enable) {
+		PMD_DRV_LOG(ERR, "RSS not enabled\n");
+		return -ENOTSUP;
+	}
+
+	if (rss_conf == NULL) {
+		PMD_DRV_LOG(ERR, "rss_conf value isn't valid\n");
+		return -EINVAL;
+	}
+
+	if (rss_conf->rss_key != NULL &&
+	    rss_conf->rss_key_len == AXGBE_RSS_HASH_KEY_SIZE) {
+		rte_memcpy(pdata->rss_key, rss_conf->rss_key,
+		       AXGBE_RSS_HASH_KEY_SIZE);
+		/* Program the hash key */
+		ret = axgbe_write_rss_hash_key(pdata);
+		if (ret != 0)
+			return ret;
+	}
+
+	pdata->rss_hf = rss_conf->rss_hf & AXGBE_RSS_OFFLOAD;
+
+	if (pdata->rss_hf & (ETH_RSS_IPV4 | ETH_RSS_IPV6))
+		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, IP2TE, 1);
+	if (pdata->rss_hf &
+	    (ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV6_TCP))
+		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, TCP4TE, 1);
+	if (pdata->rss_hf &
+	    (ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP))
+		AXGMAC_SET_BITS(pdata->rss_options, MAC_RSSCR, UDP4TE, 1);
+
+	/* Set the RSS options */
+	AXGMAC_IOWRITE(pdata, MAC_RSSCR, pdata->rss_options);
+
+	return 0;
+}
+
+static int
+axgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_conf *rss_conf)
+{
+	struct axgbe_port *pdata = dev->data->dev_private;
+
+	if (!pdata->rss_enable) {
+		PMD_DRV_LOG(ERR, "RSS not enabled\n");
+		return -ENOTSUP;
+	}
+
+	if (rss_conf == NULL) {
+		PMD_DRV_LOG(ERR, "rss_conf value isn't valid\n");
+		return -EINVAL;
+	}
+
+	if (rss_conf->rss_key != NULL &&
+	    rss_conf->rss_key_len >= AXGBE_RSS_HASH_KEY_SIZE) {
+		rte_memcpy(rss_conf->rss_key, pdata->rss_key,
+		       AXGBE_RSS_HASH_KEY_SIZE);
+	}
+	rss_conf->rss_key_len = AXGBE_RSS_HASH_KEY_SIZE;
+	rss_conf->rss_hf = pdata->rss_hf;
 	return 0;
 }
 

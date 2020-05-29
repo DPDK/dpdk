@@ -614,7 +614,7 @@ static int axgbe_write_rss_reg(struct axgbe_port *pdata, unsigned int type,
 	return -EBUSY;
 }
 
-static int axgbe_write_rss_hash_key(struct axgbe_port *pdata)
+int axgbe_write_rss_hash_key(struct axgbe_port *pdata)
 {
 	struct rte_eth_rss_conf *rss_conf;
 	unsigned int key_regs = sizeof(pdata->rss_key) / sizeof(u32);
@@ -638,7 +638,7 @@ static int axgbe_write_rss_hash_key(struct axgbe_port *pdata)
 	return 0;
 }
 
-static int axgbe_write_rss_lookup_table(struct axgbe_port *pdata)
+int axgbe_write_rss_lookup_table(struct axgbe_port *pdata)
 {
 	unsigned int i;
 	int ret;
@@ -683,6 +683,7 @@ static void axgbe_rss_options(struct axgbe_port *pdata)
 	uint64_t rss_hf;
 
 	rss_conf = &pdata->eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
+	pdata->rss_hf = rss_conf->rss_hf;
 	rss_hf = rss_conf->rss_hf;
 
 	if (rss_hf & (ETH_RSS_IPV4 | ETH_RSS_IPV6))

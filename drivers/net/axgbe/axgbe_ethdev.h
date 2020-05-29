@@ -594,6 +594,7 @@ struct axgbe_port {
 	uint32_t rss_table[AXGBE_RSS_MAX_TABLE_SIZE];
 	uint32_t rss_options;
 	int rss_enable;
+	uint64_t rss_hf;
 
 	/* Hardware features of the device */
 	struct axgbe_hw_features hw_feat;
@@ -653,5 +654,7 @@ void axgbe_init_function_ptrs_i2c(struct axgbe_i2c_if *i2c_if);
 void axgbe_set_mac_addn_addr(struct axgbe_port *pdata, u8 *addr,
 			     uint32_t index);
 void axgbe_set_mac_hash_table(struct axgbe_port *pdata, u8 *addr, bool add);
+int axgbe_write_rss_lookup_table(struct axgbe_port *pdata);
+int axgbe_write_rss_hash_key(struct axgbe_port *pdata);
 
 #endif /* RTE_ETH_AXGBE_H_ */
