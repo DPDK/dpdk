@@ -289,4 +289,3 @@ Then start the communication::
 Finally we can check port stats to see the traffic::
 
     testpmd> show port stats all
-    testpmd> show port stats all
