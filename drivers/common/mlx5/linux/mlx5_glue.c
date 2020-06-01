@@ -1182,6 +1182,18 @@ mlx5_glue_dv_free_var(struct mlx5dv_var *var)
 #endif
 }
 
+
+static void
+mlx5_glue_dr_reclaim_domain_memory(void *domain, uint32_t enable)
+{
+#ifdef HAVE_MLX5DV_DR_MEM_RECLAIM
+	mlx5dv_dr_domain_set_reclaim_device_memory(domain, enable);
+#else
+	(void)(enable);
+	(void)(domain);
+#endif
+}
+
 __rte_cache_aligned
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.version = MLX5_GLUE_VERSION,
@@ -1281,6 +1293,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.devx_qp_query = mlx5_glue_devx_qp_query,
 	.devx_port_query = mlx5_glue_devx_port_query,
 	.dr_dump_domain = mlx5_glue_dr_dump_domain,
+	.dr_reclaim_domain_memory = mlx5_glue_dr_reclaim_domain_memory,
 	.devx_query_eqn = mlx5_glue_devx_query_eqn,
 	.devx_create_event_channel = mlx5_glue_devx_create_event_channel,
 	.devx_destroy_event_channel = mlx5_glue_devx_destroy_event_channel,

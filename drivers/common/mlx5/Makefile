@@ -196,6 +196,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		func mlx5dv_alloc_var \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_MLX5DV_DR_MEM_RECLAIM \
+		infiniband/mlx5dv.h \
+		func mlx5dv_dr_domain_set_reclaim_device_memory \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_ETHTOOL_LINK_MODE_25G \
 		/usr/include/linux/ethtool.h \
 		enum ETHTOOL_LINK_MODE_25000baseCR_Full_BIT \
