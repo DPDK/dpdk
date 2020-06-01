@@ -262,6 +262,50 @@ enum pdb_type_e {
 	PDCP_PDB_TYPE_INVALID
 };
 
+/**
+ * rta_inline_pdcp_query() - Provide indications if a key can be passed as
+ *                           immediate data or shall be referenced in a
+ *                           shared descriptor.
+ * Return: 0 if data can be inlined or 1 if referenced.
+ */
+static inline int
+rta_inline_pdcp_query(enum auth_type_pdcp auth_alg,
+		      enum cipher_type_pdcp cipher_alg,
+		      enum pdcp_sn_size sn_size,
+		      int8_t hfn_ovd)
+{
+	/**
+	 * Shared Descriptors for some of the cases does not fit in the
+	 * MAX_DESC_SIZE of the descriptor especially when non-protocol
+	 * descriptors are formed as in 18bit cases and when HFN override
+	 * is enabled as 2 extra words are added in the job descriptor.
+	 * The cases which exceed are for RTA_SEC_ERA=8 and HFN override
+	 * enabled and 18bit uplane and either of following Algo combinations.
+	 * - SNOW-AES
+	 * - AES-SNOW
+	 * - SNOW-SNOW
+	 * - ZUC-SNOW
+	 *
+	 * We cannot make inline for all cases, as this will impact performance
+	 * due to extra memory accesses for the keys.
+	 */
+	if ((rta_sec_era == RTA_SEC_ERA_8) && hfn_ovd &&
+			(sn_size == PDCP_SN_SIZE_18) &&
+			((cipher_alg == PDCP_CIPHER_TYPE_SNOW &&
+				auth_alg == PDCP_AUTH_TYPE_AES) ||
+			(cipher_alg == PDCP_CIPHER_TYPE_AES &&
+				auth_alg == PDCP_AUTH_TYPE_SNOW) ||
+			(cipher_alg == PDCP_CIPHER_TYPE_SNOW &&
+				auth_alg == PDCP_AUTH_TYPE_SNOW) ||
+			(cipher_alg == PDCP_CIPHER_TYPE_ZUC &&
+				auth_alg == PDCP_AUTH_TYPE_SNOW))) {
+
+		return 1;
+	}
+
+	return 0;
+}
+
 /*
  * Function for appending the portion of a PDCP Control Plane shared descriptor
  * which performs NULL encryption and integrity (i.e. copies the input frame

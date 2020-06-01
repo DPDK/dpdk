@@ -3154,6 +3154,14 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 		goto out;
 	}
 
+	if (rta_inline_pdcp_query(authdata.algtype,
+				cipherdata.algtype,
+				session->pdcp.sn_size,
+				session->pdcp.hfn_ovd)) {
+		cipherdata.key = DPAA2_VADDR_TO_IOVA(cipherdata.key);
+		cipherdata.key_type = RTA_DATA_PTR;
+	}
+
 	if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
 		if (session->dir == DIR_ENC)
 			bufsize = cnstr_shdsc_pdcp_c_plane_encap(
