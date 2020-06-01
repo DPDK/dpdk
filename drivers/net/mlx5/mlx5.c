@@ -161,6 +161,9 @@
  */
 #define MLX5_HP_BUF_SIZE "hp_buf_log_sz"
 
+/* Flow memory reclaim mode. */
+#define MLX5_RECLAIM_MEM "reclaim_mem_mode"
+
 #ifndef HAVE_IBV_MLX5_MOD_MPW
 #define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
 #define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
@@ -577,8 +580,11 @@ mlx5_flow_ipool_create(struct mlx5_ibv_shared *sh,
 		mlx5_ipool_cfg[MLX5_IPOOL_MLX5_FLOW].size =
 					MLX5_FLOW_HANDLE_VERBS_SIZE;
 #endif
-	for (i = 0; i < MLX5_IPOOL_MAX; ++i)
+	for (i = 0; i < MLX5_IPOOL_MAX; ++i) {
+		if (config->reclaim_mode)
+			mlx5_ipool_cfg[i].release_mem_en = 1;
 		sh->ipool[i] = mlx5_ipool_create(&mlx5_ipool_cfg[i]);
+	}
 }
 
 /**
@@ -1192,6 +1198,12 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		sh->esw_drop_action = mlx5_glue->dr_create_flow_action_drop();
 	}
 #endif
+	if (priv->config.reclaim_mode == MLX5_RCM_AGGR) {
+		mlx5_glue->dr_reclaim_domain_memory(sh->rx_domain, 1);
+		mlx5_glue->dr_reclaim_domain_memory(sh->tx_domain, 1);
+		if (sh->fdb_domain)
+			mlx5_glue->dr_reclaim_domain_memory(sh->fdb_domain, 1);
+	}
 	sh->pop_vlan_action = mlx5_glue->dr_create_flow_action_pop_vlan();
 #endif /* HAVE_MLX5DV_DR */
 	sh->dv_refcnt++;
@@ -1862,6 +1874,15 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		DRV_LOG(DEBUG, "class argument is %s.", val);
 	} else if (strcmp(MLX5_HP_BUF_SIZE, key) == 0) {
 		config->log_hp_size = tmp;
+	} else if (strcmp(MLX5_RECLAIM_MEM, key) == 0) {
+		if (tmp != MLX5_RCM_NONE &&
+		    tmp != MLX5_RCM_LIGHT &&
+		    tmp != MLX5_RCM_AGGR) {
+			DRV_LOG(ERR, "Unrecognize %s: \"%s\"", key, val);
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		config->reclaim_mode = tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -1916,6 +1937,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_LRO_TIMEOUT_USEC,
 		MLX5_CLASS_ARG_NAME,
 		MLX5_HP_BUF_SIZE,
+		MLX5_RECLAIM_MEM,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;

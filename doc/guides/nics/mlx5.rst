@@ -849,6 +849,26 @@ Driver options
   By default, the PMD will set this value to 16, which means that 9KB jumbo
   frames will be supported.
 
+- ``reclaim_mem_mode`` parameter [int]
+
+  Cache some resources in flow destroy will help flow recreation more efficient.
+  While some systems may require the all the resources can be reclaimed after
+  flow destroyed.
+  The parameter ``reclaim_mem_mode`` provides the option for user to configure
+  if the resource cache is needed or not.
+
+  There are three options to choose:
+
+  - 0. It means the flow resources will be cached as usual. The resources will
+    be cached, helpful with flow insertion rate.
+
+  - 1. It will only enable the DPDK PMD level resources reclaim.
+
+  - 2. Both DPDK PMD level and rdma-core low level will be configured as
+    reclaimed mode.
+
+  By default, the PMD will set this value to 0.
+
 .. _mlx5_firmware_config:
 
 Firmware configuration

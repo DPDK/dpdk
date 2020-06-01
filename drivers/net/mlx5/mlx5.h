@@ -60,6 +60,18 @@ enum mlx5_ipool_index {
 	MLX5_IPOOL_MAX,
 };
 
+/*
+ * There are three reclaim memory mode supported.
+ * 0(none) means no memory reclaim.
+ * 1(light) means only PMD level reclaim.
+ * 2(aggressive) means both PMD and rdma-core level reclaim.
+ */
+enum mlx5_reclaim_mem_mode {
+	MLX5_RCM_NONE, /* Don't reclaim memory. */
+	MLX5_RCM_LIGHT, /* Reclaim PMD level. */
+	MLX5_RCM_AGGR, /* Reclaim PMD and rdma-core level. */
+};
+
 /** Key string for IPC. */
 #define MLX5_MP_NAME "net_mlx5_mp"
 
@@ -160,6 +172,7 @@ struct mlx5_dev_config {
 	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
 	unsigned int devx:1; /* Whether devx interface is available or not. */
 	unsigned int dest_tir:1; /* Whether advanced DR API is available. */
+	unsigned int reclaim_mode:2; /* Memory reclaim mode. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */
