@@ -45,6 +45,7 @@ if static_ibverbs
 	ext_deps += declare_dependency(link_args:ibv_ldflags.split())
 endif
 
+sources += files('mlx5_nl.c')
 if not dlopen_ibverbs
 	sources += files('mlx5_glue.c')
 endif

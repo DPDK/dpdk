@@ -429,9 +429,10 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
 				return -rte_errno;
 			}
 #ifdef RTE_LIBRTE_MLX5_DEBUG
-			char m[18];
+			char m[RTE_ETHER_ADDR_FMT_SIZE];
 
-			rte_ether_format_addr(m, 18, RTA_DATA(attribute));
+			rte_ether_format_addr(m, RTE_ETHER_ADDR_FMT_SIZE,
+					      RTA_DATA(attribute));
 			DRV_LOG(DEBUG, "bridge MAC address %s", m);
 #endif
 			memcpy(&(*data->mac)[data->mac_n++],
@@ -557,15 +558,17 @@ mlx5_nl_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 		goto error;
 	return 0;
 error:
-	DRV_LOG(DEBUG,
-		"Interface %u cannot %s MAC address"
-		" %02X:%02X:%02X:%02X:%02X:%02X %s",
-		iface_idx,
-		add ? "add" : "remove",
-		mac->addr_bytes[0], mac->addr_bytes[1],
-		mac->addr_bytes[2], mac->addr_bytes[3],
-		mac->addr_bytes[4], mac->addr_bytes[5],
-		strerror(rte_errno));
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+	{
+		char m[RTE_ETHER_ADDR_FMT_SIZE];
+
+		rte_ether_format_addr(m, RTE_ETHER_ADDR_FMT_SIZE, mac);
+		DRV_LOG(DEBUG,
+			"Interface %u cannot %s MAC address %s %s",
+			iface_idx,
+			add ? "add" : "remove", m, strerror(rte_errno));
+	}
+#endif
 	return -rte_errno;
 }
 
@@ -1406,7 +1409,7 @@ mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 		DRV_LOG(WARNING, "netlink: VLAN %s create failure (%d)", name,
 			ret);
 	}
-	// Try to get ifindex of created or pre-existing device.
+	/* Try to get ifindex of created or pre-existing device. */
 	ret = if_nametoindex(name);
 	if (!ret) {
 		DRV_LOG(WARNING, "VLAN %s failed to get index (%d)", name,

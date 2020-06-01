@@ -16,7 +16,7 @@ SRCS-y += linux/mlx5_glue.c
 endif
 SRCS-y += mlx5_devx_cmds.c
 SRCS-y += mlx5_common.c
-SRCS-y += mlx5_nl.c
+SRCS-y += linux/mlx5_nl.c
 SRCS-y += mlx5_common_mp.c
 SRCS-y += mlx5_common_mr.c
 ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
