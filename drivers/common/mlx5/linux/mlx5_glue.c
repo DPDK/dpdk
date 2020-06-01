@@ -189,7 +189,7 @@ mlx5_glue_destroy_flow_action(void *action)
 #endif
 #else
 	(void)action;
-	return ENOTSUP;
+	return -ENOTSUP;
 #endif
 }
 
@@ -260,7 +260,7 @@ mlx5_glue_destroy_counter_set(struct ibv_counter_set *cs)
 {
 #ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	(void)cs;
-	return ENOTSUP;
+	return -ENOTSUP;
 #else
 	return ibv_destroy_counter_set(cs);
 #endif
@@ -275,7 +275,7 @@ mlx5_glue_describe_counter_set(struct ibv_context *context,
 	(void)context;
 	(void)counter_set_id;
 	(void)cs_desc;
-	return ENOTSUP;
+	return -ENOTSUP;
 #else
 	return ibv_describe_counter_set(context, counter_set_id, cs_desc);
 #endif
@@ -288,7 +288,7 @@ mlx5_glue_query_counter_set(struct ibv_query_counter_set_attr *query_attr,
 #ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	(void)query_attr;
 	(void)cs_data;
-	return ENOTSUP;
+	return -ENOTSUP;
 #else
 	return ibv_query_counter_set(query_attr, cs_data);
 #endif
@@ -313,7 +313,7 @@ mlx5_glue_destroy_counters(struct ibv_counters *counters)
 {
 #ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V45
 	(void)counters;
-	return ENOTSUP;
+	return -ENOTSUP;
 #else
 	return ibv_destroy_counters(counters);
 #endif
@@ -328,7 +328,7 @@ mlx5_glue_attach_counters(struct ibv_counters *counters,
 	(void)counters;
 	(void)attr;
 	(void)flow;
-	return ENOTSUP;
+	return -ENOTSUP;
 #else
 	return ibv_attach_counters_point_flow(counters, attr, flow);
 #endif
@@ -345,7 +345,7 @@ mlx5_glue_query_counters(struct ibv_counters *counters,
 	(void)counters_value;
 	(void)ncounters;
 	(void)flags;
-	return ENOTSUP;
+	return -ENOTSUP;
 #else
 	return ibv_read_counters(counters, counters_value, ncounters, flags);
 #endif

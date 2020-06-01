@@ -20,6 +20,7 @@ CFLAGS += -O3
 CFLAGS += -std=c11 -Wall -Wextra
 CFLAGS += -g
 CFLAGS += -I$(RTE_SDK)/drivers/common/mlx5
+CFLAGS += -I$(RTE_SDK)/drivers/common/mlx5/linux
 CFLAGS += -I$(RTE_SDK)/drivers/net/mlx5_vdpa
 CFLAGS += -I$(RTE_SDK)/lib/librte_sched
 CFLAGS += -I$(BUILDDIR)/drivers/common/mlx5
