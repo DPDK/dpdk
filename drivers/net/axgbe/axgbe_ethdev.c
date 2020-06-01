@@ -83,6 +83,7 @@ static void axgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 static void axgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 const uint32_t *axgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+static int axgb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 struct axgbe_xstats {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -228,6 +229,7 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.dev_supported_ptypes_get     = axgbe_dev_supported_ptypes_get,
 	.rx_descriptor_status         = axgbe_dev_rx_descriptor_status,
 	.tx_descriptor_status         = axgbe_dev_tx_descriptor_status,
+	.mtu_set		= axgb_mtu_set,
 };
 
 static int axgbe_phy_reset(struct axgbe_port *pdata)
@@ -1398,7 +1400,35 @@ axgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		return ptypes;
 	return NULL;
 }
-
+static int axgb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct rte_eth_dev_info dev_info;
+	struct axgbe_port *pdata = dev->data->dev_private;
+	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	unsigned int val = 0;
+	axgbe_dev_info_get(dev, &dev_info);
+	/* check that mtu is within the allowed range */
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
+		return -EINVAL;
+	/* mtu setting is forbidden if port is start */
+	if (dev->data->dev_started) {
+		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
+				dev->data->port_id);
+		return -EBUSY;
+	}
+	if (frame_size > RTE_ETHER_MAX_LEN) {
+		dev->data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
+		val = 1;
+	} else {
+		dev->data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+		val = 0;
+	}
+	AXGMAC_IOWRITE_BITS(pdata, MAC_RCR, JE, val);
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+	return 0;
+}
 static void axgbe_get_all_hw_features(struct axgbe_port *pdata)
 {
 	unsigned int mac_hfr0, mac_hfr1, mac_hfr2;
