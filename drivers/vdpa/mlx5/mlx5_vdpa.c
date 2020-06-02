@@ -192,6 +192,37 @@ mlx5_vdpa_features_set(int vid)
 }
 
 static int
+mlx5_vdpa_pd_create(struct mlx5_vdpa_priv *priv)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	priv->pd = mlx5_glue->alloc_pd(priv->ctx);
+	if (priv->pd == NULL) {
+		DRV_LOG(ERR, "Failed to allocate PD.");
+		return errno ? -errno : -ENOMEM;
+	}
+	struct mlx5dv_obj obj;
+	struct mlx5dv_pd pd_info;
+	int ret = 0;
+
+	obj.pd.in = priv->pd;
+	obj.pd.out = &pd_info;
+	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
+	if (ret) {
+		DRV_LOG(ERR, "Fail to get PD object info.");
+		mlx5_glue->dealloc_pd(priv->pd);
+		priv->pd = NULL;
+		return -errno;
+	}
+	priv->pdn = pd_info.pdn;
+	return 0;
+#else
+	(void)priv;
+	DRV_LOG(ERR, "Cannot get pdn - no DV support.");
+	return -ENOTSUP;
+#endif /* HAVE_IBV_FLOW_DV_SUPPORT */
+}
+
+static int
 mlx5_vdpa_dev_close(int vid)
 {
 	int did = rte_vhost_get_vdpa_device_id(vid);
@@ -209,6 +240,10 @@ mlx5_vdpa_dev_close(int vid)
 	mlx5_vdpa_virtqs_release(priv);
 	mlx5_vdpa_event_qp_global_release(priv);
 	mlx5_vdpa_mem_dereg(priv);
+	if (priv->pd) {
+		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
+		priv->pd = NULL;
+	}
 	priv->configured = 0;
 	priv->vid = 0;
 	DRV_LOG(INFO, "vDPA device %d was closed.", vid);
@@ -230,7 +265,8 @@ mlx5_vdpa_dev_config(int vid)
 		return -1;
 	}
 	priv->vid = vid;
-	if (mlx5_vdpa_mem_register(priv) || mlx5_vdpa_direct_db_prepare(priv) ||
+	if (mlx5_vdpa_pd_create(priv) || mlx5_vdpa_mem_register(priv) ||
+	    mlx5_vdpa_direct_db_prepare(priv) ||
 	    mlx5_vdpa_virtqs_prepare(priv) || mlx5_vdpa_steer_setup(priv) ||
 	    mlx5_vdpa_cqe_event_setup(priv)) {
 		mlx5_vdpa_dev_close(vid);

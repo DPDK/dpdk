@@ -284,6 +284,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	attr.mkey = priv->gpa_mkey_index;
 	attr.tis_id = priv->tis->id;
 	attr.queue_index = index;
+	attr.pd = priv->pdn;
 	virtq->virtq = mlx5_devx_cmd_create_virtq(priv->ctx, &attr);
 	virtq->priv = priv;
 	if (!virtq->virtq)

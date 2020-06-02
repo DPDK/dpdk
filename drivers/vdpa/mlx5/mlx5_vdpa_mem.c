@@ -14,39 +14,6 @@
 #include "mlx5_vdpa_utils.h"
 #include "mlx5_vdpa.h"
 
-static int
-mlx5_vdpa_pd_prepare(struct mlx5_vdpa_priv *priv)
-{
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	if (priv->pd)
-		return 0;
-	priv->pd = mlx5_glue->alloc_pd(priv->ctx);
-	if (priv->pd == NULL) {
-		DRV_LOG(ERR, "Failed to allocate PD.");
-		return errno ? -errno : -ENOMEM;
-	}
-	struct mlx5dv_obj obj;
-	struct mlx5dv_pd pd_info;
-	int ret = 0;
-
-	obj.pd.in = priv->pd;
-	obj.pd.out = &pd_info;
-	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
-	if (ret) {
-		DRV_LOG(ERR, "Fail to get PD object info.");
-		mlx5_glue->dealloc_pd(priv->pd);
-		priv->pd = NULL;
-		return -errno;
-	}
-	priv->pdn = pd_info.pdn;
-	return 0;
-#else
-	(void)priv;
-	DRV_LOG(ERR, "Cannot get pdn - no DV support.");
-	return -ENOTSUP;
-#endif /* HAVE_IBV_FLOW_DV_SUPPORT */
-}
-
 void
 mlx5_vdpa_mem_dereg(struct mlx5_vdpa_priv *priv)
 {
@@ -67,10 +34,6 @@ mlx5_vdpa_mem_dereg(struct mlx5_vdpa_priv *priv)
 	if (priv->null_mr) {
 		claim_zero(mlx5_glue->dereg_mr(priv->null_mr));
 		priv->null_mr = NULL;
-	}
-	if (priv->pd) {
-		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
-		priv->pd = NULL;
 	}
 	if (priv->vmem) {
 		free(priv->vmem);
@@ -230,9 +193,6 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 	if (!mem)
 		return -rte_errno;
 	priv->vmem = mem;
-	ret = mlx5_vdpa_pd_prepare(priv);
-	if (ret)
-		goto error;
 	priv->null_mr = mlx5_glue->alloc_null_mr(priv->pd);
 	if (!priv->null_mr) {
 		DRV_LOG(ERR, "Failed to allocate null MR.");
