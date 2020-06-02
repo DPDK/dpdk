@@ -259,6 +259,7 @@ struct mlx5_devx_virtq_attr {
 	uint16_t hw_available_index;
 	uint16_t hw_used_index;
 	uint16_t q_size;
+	uint32_t pd:24;
 	uint32_t virtio_version_1_0:1;
 	uint32_t tso_ipv4:1;
 	uint32_t tso_ipv6:1;
