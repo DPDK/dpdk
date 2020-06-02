@@ -304,7 +304,7 @@ rte_sched_port_tc_queue(struct rte_sched_port *port, uint32_t qindex)
 
 static int
 pipe_profile_check(struct rte_sched_pipe_params *params,
-	uint32_t rate, uint16_t *qsize)
+	uint64_t rate, uint16_t *qsize)
 {
 	uint32_t i;
 
@@ -624,7 +624,7 @@ rte_sched_pipe_profile_convert(struct rte_sched_subport *subport,
 
 static void
 rte_sched_subport_config_pipe_profile_table(struct rte_sched_subport *subport,
-	struct rte_sched_subport_params *params, uint32_t rate)
+	struct rte_sched_subport_params *params, uint64_t rate)
 {
 	uint32_t i;
 
