@@ -564,13 +564,15 @@ rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq,
  * @param[out] err
  *   Pointer to a flag. Set non-zero value if pkts array has at least one error
  *   packet to handle.
+ * @param[out] no_cq
+ *  Pointer to a boolean. Set true if no new CQE seen.
  *
  * @return
  *   Number of packets received including errors (<= pkts_n).
  */
 static inline uint16_t
 rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
-	    uint64_t *err)
+	    uint64_t *err, bool *no_cq)
 {
 	const uint16_t q_n = 1 << rxq->cqe_n;
 	const uint16_t q_mask = q_n - 1;
@@ -663,8 +665,10 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	/* Not to cross queue end. */
 	pkts_n = RTE_MIN(pkts_n, q_n - elts_idx);
 	pkts_n = RTE_MIN(pkts_n, q_n - cq_idx);
-	if (!pkts_n)
+	if (!pkts_n) {
+		*no_cq = !rcvd_pkt;
 		return rcvd_pkt;
+	}
 	/* At this point, there shouldn't be any remaining packets. */
 	MLX5_ASSERT(rxq->decompressed == 0);
 
@@ -1079,8 +1083,10 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 			break;
 	}
 	/* If no new CQE seen, return without updating cq_db. */
-	if (unlikely(!nocmp_n && comp_idx == MLX5_VPMD_DESCS_PER_LOOP))
+	if (unlikely(!nocmp_n && comp_idx == MLX5_VPMD_DESCS_PER_LOOP)) {
+		*no_cq = true;
 		return rcvd_pkt;
+	}
 	/* Update the consumer indexes for non-compressed CQEs. */
 	MLX5_ASSERT(nocmp_n <= pkts_n);
 	rxq->cq_ci += nocmp_n;
@@ -1108,6 +1114,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	}
 	rte_compiler_barrier();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
+	*no_cq = !rcvd_pkt;
 	return rcvd_pkt;
 }
 

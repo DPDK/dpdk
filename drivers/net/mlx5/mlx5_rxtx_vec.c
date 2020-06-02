@@ -103,13 +103,20 @@ uint16_t
 mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct mlx5_rxq_data *rxq = dpdk_rxq;
-	uint16_t nb_rx;
+	uint16_t nb_rx = 0;
+	uint16_t tn = 0;
 	uint64_t err = 0;
+	bool no_cq = false;
 
-	nb_rx = rxq_burst_v(rxq, pkts, pkts_n, &err);
-	if (unlikely(err | rxq->err_state))
-		nb_rx = rxq_handle_pending_error(rxq, pkts, nb_rx);
-	return nb_rx;
+	do {
+		nb_rx = rxq_burst_v(rxq, pkts + tn, pkts_n - tn, &err, &no_cq);
+		if (unlikely(err | rxq->err_state))
+			nb_rx = rxq_handle_pending_error(rxq, pkts + tn, nb_rx);
+		tn += nb_rx;
+		if (unlikely(no_cq))
+			break;
+	} while (tn != pkts_n);
+	return tn;
 }
 
 /**
