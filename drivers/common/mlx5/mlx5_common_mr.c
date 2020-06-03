@@ -521,7 +521,7 @@ mr_find_contig_memsegs_cb(const struct rte_memseg_list *msl,
  * request fails.
  *
  * @param pd
- *   Pointer to ibv_pd of a device (net, regex, vdpa,...).
+ *   Pointer to pd of a device (net, regex, vdpa,...).
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param[out] entry
@@ -536,7 +536,7 @@ mr_find_contig_memsegs_cb(const struct rte_memseg_list *msl,
  *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
  */
 static uint32_t
-mlx5_mr_create_secondary(struct ibv_pd *pd __rte_unused,
+mlx5_mr_create_secondary(void *pd __rte_unused,
 			 struct mlx5_mp_id *mp_id,
 			 struct mlx5_mr_share_cache *share_cache,
 			 struct mr_cache_entry *entry, uintptr_t addr,
@@ -569,7 +569,7 @@ mlx5_mr_create_secondary(struct ibv_pd *pd __rte_unused,
  * Register entire virtually contiguous memory chunk around the address.
  *
  * @param pd
- *   Pointer to ibv_pd of a device (net, regex, vdpa,...).
+ *   Pointer to pd of a device (net, regex, vdpa,...).
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param[out] entry
@@ -584,7 +584,7 @@ mlx5_mr_create_secondary(struct ibv_pd *pd __rte_unused,
  *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
  */
 uint32_t
-mlx5_mr_create_primary(struct ibv_pd *pd,
+mlx5_mr_create_primary(void *pd,
 		       struct mlx5_mr_share_cache *share_cache,
 		       struct mr_cache_entry *entry, uintptr_t addr,
 		       unsigned int mr_ext_memseg_en)
@@ -816,7 +816,7 @@ err_nolock:
  * This can be called from primary and secondary process.
  *
  * @param pd
- *   Pointer to ibv_pd of a device (net, regex, vdpa,...).
+ *   Pointer to pd handle of a device (net, regex, vdpa,...).
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param[out] entry
@@ -829,7 +829,7 @@ err_nolock:
  *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
  */
 static uint32_t
-mlx5_mr_create(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
+mlx5_mr_create(void *pd, struct mlx5_mp_id *mp_id,
 	       struct mlx5_mr_share_cache *share_cache,
 	       struct mr_cache_entry *entry, uintptr_t addr,
 	       unsigned int mr_ext_memseg_en)
@@ -856,7 +856,7 @@ mlx5_mr_create(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
  * Insert the found/created entry to local bottom-half cache table.
  *
  * @param pd
- *   Pointer to ibv_pd of a device (net, regex, vdpa,...).
+ *   Pointer to pd of a device (net, regex, vdpa,...).
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param mr_ctrl
@@ -871,7 +871,7 @@ mlx5_mr_create(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
  *   Searched LKey on success, UINT32_MAX on no match.
  */
 static uint32_t
-mr_lookup_caches(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
+mr_lookup_caches(void *pd, struct mlx5_mp_id *mp_id,
 		 struct mlx5_mr_share_cache *share_cache,
 		 struct mlx5_mr_ctrl *mr_ctrl,
 		 struct mr_cache_entry *entry, uintptr_t addr,
@@ -920,7 +920,7 @@ mr_lookup_caches(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
  * per-queue local caches.
  *
  * @param pd
- *   Pointer to ibv_pd of a device (net, regex, vdpa,...).
+ *   Pointer to pd of a device (net, regex, vdpa,...).
  * @param share_cache
  *   Pointer to a global shared MR cache.
  * @param mr_ctrl
@@ -931,7 +931,7 @@ mr_lookup_caches(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
  */
-uint32_t mlx5_mr_addr2mr_bh(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
+uint32_t mlx5_mr_addr2mr_bh(void *pd, struct mlx5_mp_id *mp_id,
 			    struct mlx5_mr_share_cache *share_cache,
 			    struct mlx5_mr_ctrl *mr_ctrl,
 			    uintptr_t addr, unsigned int mr_ext_memseg_en)
@@ -1022,7 +1022,7 @@ mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl)
  * part of the DPDK memory segments.
  *
  * @param pd
- *   Pointer to ibv_pd of a device (net, regex, vdpa,...).
+ *   Pointer to pd of a device (net, regex, vdpa,...).
  * @param addr
  *   Starting virtual address of memory.
  * @param len
@@ -1034,7 +1034,7 @@ mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl)
  *   Pointer to MR structure on success, NULL otherwise.
  */
 struct mlx5_mr *
-mlx5_create_mr_ext(struct ibv_pd *pd, uintptr_t addr, size_t len, int socket_id)
+mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id)
 {
 	struct mlx5_mr *mr = NULL;
 

@@ -122,7 +122,7 @@ void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);
 __rte_internal
 void mlx5_mr_btree_dump(struct mlx5_mr_btree *bt __rte_unused);
 __rte_internal
-uint32_t mlx5_mr_addr2mr_bh(struct ibv_pd *pd, struct mlx5_mp_id *mp_id,
+uint32_t mlx5_mr_addr2mr_bh(void *pd, struct mlx5_mp_id *mp_id,
 			    struct mlx5_mr_share_cache *share_cache,
 			    struct mlx5_mr_ctrl *mr_ctrl,
 			    uintptr_t addr, unsigned int mr_ext_memseg_en);
@@ -148,11 +148,11 @@ mlx5_mr_lookup_list(struct mlx5_mr_share_cache *share_cache,
 		    struct mr_cache_entry *entry, uintptr_t addr);
 __rte_internal
 struct mlx5_mr *
-mlx5_create_mr_ext(struct ibv_pd *pd, uintptr_t addr, size_t len,
+mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len,
 		   int socket_id);
 __rte_internal
 uint32_t
-mlx5_mr_create_primary(struct ibv_pd *pd,
+mlx5_mr_create_primary(void *pd,
 		       struct mlx5_mr_share_cache *share_cache,
 		       struct mr_cache_entry *entry, uintptr_t addr,
 		       unsigned int mr_ext_memseg_en);

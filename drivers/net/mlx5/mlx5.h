@@ -494,7 +494,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t devx:1; /* Opened with DV. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	void *ctx; /* Verbs/DV/DevX context. */
-	struct ibv_pd *pd; /* Protection Domain. */
+	void *pd; /* Protection Domain. */
 	uint32_t pdn; /* Protection Domain number. */
 	uint32_t tdn; /* Transport Domain number. */
 	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
