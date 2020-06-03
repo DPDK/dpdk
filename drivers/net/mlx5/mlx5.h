@@ -76,7 +76,7 @@ enum mlx5_reclaim_mem_mode {
 #define MLX5_MP_NAME "net_mlx5_mp"
 
 
-LIST_HEAD(mlx5_dev_list, mlx5_ibv_shared);
+LIST_HEAD(mlx5_dev_list, mlx5_dev_ctx_shared);
 
 /* Shared data between primary and secondary processes. */
 struct mlx5_shared_data {
@@ -488,8 +488,8 @@ struct mlx5_flow_id_pool {
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
  **/
-struct mlx5_ibv_shared {
-	LIST_ENTRY(mlx5_ibv_shared) next;
+struct mlx5_dev_ctx_shared {
+	LIST_ENTRY(mlx5_dev_ctx_shared) next;
 	uint32_t refcnt;
 	uint32_t devx:1; /* Opened with DV. */
 	uint32_t max_port; /* Maximal IB device port index. */
@@ -500,7 +500,7 @@ struct mlx5_ibv_shared {
 	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
-	LIST_ENTRY(mlx5_ibv_shared) mem_event_cb;
+	LIST_ENTRY(mlx5_dev_ctx_shared) mem_event_cb;
 	/**< Called by memory event callback. */
 	struct mlx5_mr_share_cache share_cache;
 	/* Shared DV/DR flow data section. */
@@ -552,7 +552,7 @@ TAILQ_HEAD(mlx5_flow_meters, mlx5_flow_meter);
 
 struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
-	struct mlx5_ibv_shared *sh; /* Shared IB device context. */
+	struct mlx5_dev_ctx_shared *sh; /* Shared device context. */
 	uint32_t ibv_port; /* IB device port number. */
 	struct rte_pci_device *pci_dev; /* Backend PCI device. */
 	struct rte_ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
@@ -817,9 +817,9 @@ int mlx5_ctrl_flow(struct rte_eth_dev *dev,
 struct rte_flow *mlx5_flow_create_esw_table_zero_flow(struct rte_eth_dev *dev);
 int mlx5_flow_create_drop_queue(struct rte_eth_dev *dev);
 void mlx5_flow_delete_drop_queue(struct rte_eth_dev *dev);
-void mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,
+void mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 				       uint64_t async_id, int status);
-void mlx5_set_query_alarm(struct mlx5_ibv_shared *sh);
+void mlx5_set_query_alarm(struct mlx5_dev_ctx_shared *sh);
 void mlx5_flow_query_alarm(void *arg);
 uint32_t mlx5_counter_alloc(struct rte_eth_dev *dev);
 void mlx5_counter_free(struct rte_eth_dev *dev, uint32_t cnt);

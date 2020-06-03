@@ -57,7 +57,7 @@ struct mr_update_mp_data {
  *   Size of freed memory.
  */
 static void
-mlx5_mr_mem_event_free_cb(struct mlx5_ibv_shared *sh,
+mlx5_mr_mem_event_free_cb(struct mlx5_dev_ctx_shared *sh,
 			  const void *addr, size_t len)
 {
 	const struct rte_memseg_list *msl;
@@ -145,7 +145,7 @@ void
 mlx5_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 		     size_t len, void *arg __rte_unused)
 {
-	struct mlx5_ibv_shared *sh;
+	struct mlx5_dev_ctx_shared *sh;
 	struct mlx5_dev_list *dev_list = &mlx5_shared_data->mem_event_cb_list;
 
 	/* Must be called from the primary process. */
@@ -259,7 +259,7 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	struct mr_update_mp_data *data = opaque;
 	struct rte_eth_dev *dev = data->dev;
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_mr_ctrl *mr_ctrl = data->mr_ctrl;
 	struct mlx5_mr *mr = NULL;
 	uintptr_t addr = (uintptr_t)memhdr->addr;
@@ -339,7 +339,7 @@ mlx5_dma_map(struct rte_pci_device *pdev, void *addr,
 	struct rte_eth_dev *dev;
 	struct mlx5_mr *mr;
 	struct mlx5_priv *priv;
-	struct mlx5_ibv_shared *sh;
+	struct mlx5_dev_ctx_shared *sh;
 
 	dev = pci_dev_to_eth_dev(pdev);
 	if (!dev) {
@@ -386,7 +386,7 @@ mlx5_dma_unmap(struct rte_pci_device *pdev, void *addr,
 {
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
-	struct mlx5_ibv_shared *sh;
+	struct mlx5_dev_ctx_shared *sh;
 	struct mlx5_mr *mr;
 	struct mr_cache_entry entry;
 

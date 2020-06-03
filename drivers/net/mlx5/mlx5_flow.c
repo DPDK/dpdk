@@ -5794,13 +5794,13 @@ mlx5_counter_query(struct rte_eth_dev *dev, uint32_t cnt,
  * Get number of all validate pools.
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object.
+ *   Pointer to mlx5_dev_ctx_shared object.
  *
  * @return
  *   The number of all validate pools.
  */
 static uint32_t
-mlx5_get_all_valid_pool_count(struct mlx5_ibv_shared *sh)
+mlx5_get_all_valid_pool_count(struct mlx5_dev_ctx_shared *sh)
 {
 	int i;
 	uint32_t pools_n = 0;
@@ -5815,10 +5815,10 @@ mlx5_get_all_valid_pool_count(struct mlx5_ibv_shared *sh)
  * the counter pools.
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object.
+ *   Pointer to mlx5_dev_ctx_shared object.
  */
 void
-mlx5_set_query_alarm(struct mlx5_ibv_shared *sh)
+mlx5_set_query_alarm(struct mlx5_dev_ctx_shared *sh)
 {
 	uint32_t pools_n, us;
 
@@ -5843,7 +5843,7 @@ mlx5_set_query_alarm(struct mlx5_ibv_shared *sh)
 void
 mlx5_flow_query_alarm(void *arg)
 {
-	struct mlx5_ibv_shared *sh = arg;
+	struct mlx5_dev_ctx_shared *sh = arg;
 	struct mlx5_devx_obj *dcs;
 	uint16_t offset;
 	int ret;
@@ -5928,12 +5928,12 @@ set_alarm:
  * Check and callback event for new aged flow in the counter pool
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object.
+ *   Pointer to mlx5_dev_ctx_shared object.
  * @param[in] pool
  *   Pointer to Current counter pool.
  */
 static void
-mlx5_flow_aging_check(struct mlx5_ibv_shared *sh,
+mlx5_flow_aging_check(struct mlx5_dev_ctx_shared *sh,
 		   struct mlx5_flow_counter_pool *pool)
 {
 	struct mlx5_priv *priv;
@@ -5993,14 +5993,14 @@ mlx5_flow_aging_check(struct mlx5_ibv_shared *sh,
  * query. This function is probably called by the host thread.
  *
  * @param[in] sh
- *   The pointer to the shared IB device context.
+ *   The pointer to the shared device context.
  * @param[in] async_id
  *   The Devx async ID.
  * @param[in] status
  *   The status of the completion.
  */
 void
-mlx5_flow_async_pool_query_handle(struct mlx5_ibv_shared *sh,
+mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 				  uint64_t async_id, int status)
 {
 	struct mlx5_flow_counter_pool *pool =
@@ -6161,7 +6161,7 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev,
 		   struct rte_flow_error *error __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 
 	return mlx5_devx_cmd_flow_dump(sh->fdb_domain, sh->rx_domain,
 				       sh->tx_domain, file);

@@ -1237,7 +1237,7 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
  *   Infiniband device shared context.
  */
 static void
-mlx5_dev_interrupt_device_fatal(struct mlx5_ibv_shared *sh)
+mlx5_dev_interrupt_device_fatal(struct mlx5_dev_ctx_shared *sh)
 {
 	uint32_t i;
 
@@ -1269,7 +1269,7 @@ mlx5_dev_interrupt_device_fatal(struct mlx5_ibv_shared *sh)
 void
 mlx5_dev_interrupt_handler(void *cb_arg)
 {
-	struct mlx5_ibv_shared *sh = cb_arg;
+	struct mlx5_dev_ctx_shared *sh = cb_arg;
 	struct ibv_async_event event;
 
 	/* Read all message from the IB device and acknowledge them. */
@@ -1426,7 +1426,7 @@ mlx5_dev_interrupt_handler_devx(void *cb_arg)
 	(void)cb_arg;
 	return;
 #else
-	struct mlx5_ibv_shared *sh = cb_arg;
+	struct mlx5_dev_ctx_shared *sh = cb_arg;
 	union {
 		struct mlx5dv_devx_async_cmd_hdr cmd_resp;
 		uint8_t buf[MLX5_ST_SZ_BYTES(query_flow_counter_out) +

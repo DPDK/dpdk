@@ -199,7 +199,7 @@ struct mlx5_dev_spawn_data {
 	struct rte_pci_device *pci_dev; /**< Backend PCI device. */
 };
 
-static LIST_HEAD(, mlx5_ibv_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(, mlx5_dev_ctx_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
@@ -445,10 +445,10 @@ mlx5_flow_id_release(struct mlx5_flow_id_pool *pool, uint32_t id)
  * Initialize the shared aging list information per port.
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object.
+ *   Pointer to mlx5_dev_ctx_shared object.
  */
 static void
-mlx5_flow_aging_init(struct mlx5_ibv_shared *sh)
+mlx5_flow_aging_init(struct mlx5_dev_ctx_shared *sh)
 {
 	uint32_t i;
 	struct mlx5_age_info *age_info;
@@ -466,10 +466,10 @@ mlx5_flow_aging_init(struct mlx5_ibv_shared *sh)
  * Initialize the counters management structure.
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object to free
+ *   Pointer to mlx5_dev_ctx_shared object to free
  */
 static void
-mlx5_flow_counters_mng_init(struct mlx5_ibv_shared *sh)
+mlx5_flow_counters_mng_init(struct mlx5_dev_ctx_shared *sh)
 {
 	int i;
 
@@ -502,10 +502,10 @@ mlx5_flow_destroy_counter_stat_mem_mng(struct mlx5_counter_stats_mem_mng *mng)
  * Close and release all the resources of the counters management.
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object to free.
+ *   Pointer to mlx5_dev_ctx_shared object to free.
  */
 static void
-mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
+mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 {
 	struct mlx5_counter_stats_mem_mng *mng;
 	int i;
@@ -560,12 +560,12 @@ mlx5_flow_counters_mng_close(struct mlx5_ibv_shared *sh)
  * Initialize the flow resources' indexed mempool.
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object.
+ *   Pointer to mlx5_dev_ctx_shared object.
  * @param[in] sh
  *   Pointer to user dev config.
  */
 static void
-mlx5_flow_ipool_create(struct mlx5_ibv_shared *sh,
+mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh,
 		       const struct mlx5_dev_config *config __rte_unused)
 {
 	uint8_t i;
@@ -591,10 +591,10 @@ mlx5_flow_ipool_create(struct mlx5_ibv_shared *sh,
  * Release the flow resources' indexed mempool.
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object.
+ *   Pointer to mlx5_dev_ctx_shared object.
  */
 static void
-mlx5_flow_ipool_destroy(struct mlx5_ibv_shared *sh)
+mlx5_flow_ipool_destroy(struct mlx5_dev_ctx_shared *sh)
 {
 	uint8_t i;
 
@@ -668,10 +668,10 @@ mlx5_restore_doorbell_mapping_env(int value)
  * between multiple ports of single IB device.
  *
  * @param sh
- *   Pointer to mlx5_ibv_shared object.
+ *   Pointer to mlx5_dev_ctx_shared object.
  */
 static void
-mlx5_dev_shared_handler_install(struct mlx5_ibv_shared *sh)
+mlx5_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 {
 	int ret;
 	int flags;
@@ -724,10 +724,10 @@ mlx5_dev_shared_handler_install(struct mlx5_ibv_shared *sh)
  * between multiple ports of single IB device.
  *
  * @param dev
- *   Pointer to mlx5_ibv_shared object.
+ *   Pointer to mlx5_dev_ctx_shared object.
  */
 static void
-mlx5_dev_shared_handler_uninstall(struct mlx5_ibv_shared *sh)
+mlx5_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 {
 	if (sh->intr_handle.fd >= 0)
 		mlx5_intr_callback_unregister(&sh->intr_handle,
@@ -758,14 +758,14 @@ mlx5_dev_shared_handler_uninstall(struct mlx5_ibv_shared *sh)
  *   Pointer to device configuration structure.
  *
  * @return
- *   Pointer to mlx5_ibv_shared object on success,
+ *   Pointer to mlx5_dev_ctx_shared object on success,
  *   otherwise NULL and rte_errno is set.
  */
-static struct mlx5_ibv_shared *
+static struct mlx5_dev_ctx_shared *
 mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 			const struct mlx5_dev_config *config)
 {
-	struct mlx5_ibv_shared *sh;
+	struct mlx5_dev_ctx_shared *sh;
 	int dbmap_env;
 	int err = 0;
 	uint32_t i;
@@ -787,7 +787,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 	/* No device found, we have to create new shared context. */
 	MLX5_ASSERT(spawn->max_port);
 	sh = rte_zmalloc("ethdev shared ib context",
-			 sizeof(struct mlx5_ibv_shared) +
+			 sizeof(struct mlx5_dev_ctx_shared) +
 			 spawn->max_port *
 			 sizeof(struct mlx5_ibv_shared_port),
 			 RTE_CACHE_LINE_SIZE);
@@ -933,15 +933,15 @@ error:
  * all allocated resources and close handles.
  *
  * @param[in] sh
- *   Pointer to mlx5_ibv_shared object to free
+ *   Pointer to mlx5_dev_ctx_shared object to free
  */
 static void
-mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
+mlx5_free_shared_ibctx(struct mlx5_dev_ctx_shared *sh)
 {
 	pthread_mutex_lock(&mlx5_ibv_list_mutex);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	/* Check the object presence in the list. */
-	struct mlx5_ibv_shared *lctx;
+	struct mlx5_dev_ctx_shared *lctx;
 
 	LIST_FOREACH(lctx, &mlx5_ibv_list, next)
 		if (lctx == sh)
@@ -997,7 +997,7 @@ exit:
 static void
 mlx5_free_table_hash_list(struct mlx5_priv *priv)
 {
-	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_flow_tbl_data_entry *tbl_data;
 	union mlx5_flow_tbl_key table_key = {
 		{
@@ -1054,7 +1054,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 static int
 mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 {
-	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	char s[MLX5_HLIST_NAMESIZE];
 	int err = 0;
 
@@ -1139,7 +1139,7 @@ error:
 static int
 mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 {
-	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	char s[MLX5_HLIST_NAMESIZE];
 	int err = 0;
 
@@ -1249,7 +1249,7 @@ error:
 static void
 mlx5_free_shared_dr(struct mlx5_priv *priv)
 {
-	struct mlx5_ibv_shared *sh;
+	struct mlx5_dev_ctx_shared *sh;
 
 	if (!priv->dr_shared)
 		return;
@@ -2154,7 +2154,7 @@ static void
 mlx5_set_metadata_mask(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	uint32_t meta, mark, reg_c0;
 
 	reg_c0 = ~priv->vport_meta_mask;
@@ -2356,7 +2356,7 @@ static int
 mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 			      struct mlx5_dev_config *config)
 {
-	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_dev_config *sh_conf = NULL;
 	uint16_t port_id;
 
@@ -2413,7 +2413,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	       struct mlx5_dev_config config)
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
-	struct mlx5_ibv_shared *sh = NULL;
+	struct mlx5_dev_ctx_shared *sh = NULL;
 	struct ibv_port_attr port_attr;
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	struct rte_eth_dev *eth_dev = NULL;
