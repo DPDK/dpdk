@@ -76,6 +76,8 @@ otx2_nix_mac_addr_add(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr,
 
 	/* Enable promiscuous mode at NIX level */
 	otx2_nix_promisc_config(eth_dev, 1);
+	dev->dmac_filter_enable = true;
+	eth_dev->data->promiscuous = 0;
 
 done:
 	return rc;

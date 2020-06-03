@@ -271,6 +271,7 @@ struct otx2_eth_dev {
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t mkex_pfl_name[MKEX_NAME_LEN];
 	uint8_t max_mac_entries;
+	bool dmac_filter_enable;
 	uint8_t lf_tx_stats;
 	uint8_t lf_rx_stats;
 	uint16_t flags;

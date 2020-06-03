@@ -148,8 +148,10 @@ otx2_nix_promisc_enable(struct rte_eth_dev *eth_dev)
 int
 otx2_nix_promisc_disable(struct rte_eth_dev *eth_dev)
 {
-	otx2_nix_promisc_config(eth_dev, 0);
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	otx2_nix_promisc_config(eth_dev, dev->dmac_filter_enable);
 	nix_cgx_promisc_config(eth_dev, 0);
+	dev->dmac_filter_enable = false;
 
 	return 0;
 }
