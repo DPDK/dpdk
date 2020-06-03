@@ -832,25 +832,28 @@ hns3_update_vlan_filter_entries(struct hns3_adapter *hns,
 }
 
 static int
-hns3_en_rx_strip_all(struct hns3_adapter *hns, int on)
+hns3_en_pvid_strip(struct hns3_adapter *hns, int on)
 {
+	struct hns3_rx_vtag_cfg *old_cfg = &hns->pf.vtag_config.rx_vcfg;
 	struct hns3_rx_vtag_cfg rx_vlan_cfg;
-	struct hns3_hw *hw = &hns->hw;
 	bool rx_strip_en;
 	int ret;
 
-	rx_strip_en = on ? true : false;
-	rx_vlan_cfg.strip_tag1_en = rx_strip_en;
-	rx_vlan_cfg.strip_tag2_en = rx_strip_en;
+	rx_strip_en = old_cfg->rx_vlan_offload_en ? true : false;
+	if (on) {
+		rx_vlan_cfg.strip_tag1_en = rx_strip_en;
+		rx_vlan_cfg.strip_tag2_en = true;
+	} else {
+		rx_vlan_cfg.strip_tag1_en = false;
+		rx_vlan_cfg.strip_tag2_en = rx_strip_en;
+	}
 	rx_vlan_cfg.vlan1_vlan_prionly = false;
 	rx_vlan_cfg.vlan2_vlan_prionly = false;
-	rx_vlan_cfg.rx_vlan_offload_en = rx_strip_en;
+	rx_vlan_cfg.rx_vlan_offload_en = old_cfg->rx_vlan_offload_en;
 
 	ret = hns3_set_vlan_rx_offload_cfg(hns, &rx_vlan_cfg);
-	if (ret) {
-		hns3_err(hw, "enable strip rx failed, ret =%d", ret);
+	if (ret)
 		return ret;
-	}
 
 	hns3_update_rx_offload_cfg(hns, &rx_vlan_cfg);
 	return ret;
@@ -877,13 +880,15 @@ hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid, int on)
 				    HNS3_PORT_BASE_VLAN_DISABLE;
 	ret = hns3_vlan_txvlan_cfg(hns, port_base_vlan_state, pvid);
 	if (ret) {
-		hns3_err(hw, "Failed to config tx vlan, ret =%d", ret);
+		hns3_err(hw, "failed to config tx vlan for pvid, ret = %d",
+			 ret);
 		return ret;
 	}
 
-	ret = hns3_en_rx_strip_all(hns, on);
+	ret = hns3_en_pvid_strip(hns, on);
 	if (ret) {
-		hns3_err(hw, "Failed to config rx vlan strip, ret =%d", ret);
+		hns3_err(hw, "failed to config rx vlan strip for pvid, "
+			 "ret = %d", ret);
 		return ret;
 	}
 
