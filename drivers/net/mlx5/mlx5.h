@@ -41,6 +41,7 @@
 
 #include "mlx5_defs.h"
 #include "mlx5_utils.h"
+#include "mlx5_os.h"
 #include "mlx5_autoconf.h"
 
 enum mlx5_ipool_index {
@@ -536,8 +537,8 @@ struct mlx5_dev_ctx_shared {
 	void *pd; /* Protection Domain. */
 	uint32_t pdn; /* Protection Domain number. */
 	uint32_t tdn; /* Transport Domain number. */
-	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
-	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
+	char ibdev_name[DEV_SYSFS_NAME_MAX]; /* SYSFS dev name. */
+	char ibdev_path[DEV_SYSFS_PATH_MAX]; /* SYSFS dev path for secondary */
 	struct mlx5_dev_attr device_attr; /* Device properties. */
 	LIST_ENTRY(mlx5_dev_ctx_shared) mem_event_cb;
 	/**< Called by memory event callback. */
