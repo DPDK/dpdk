@@ -613,7 +613,8 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 	pthread_mutex_lock(&mlx5_ibv_list_mutex);
 	/* Search for IB context by device name. */
 	LIST_FOREACH(sh, &mlx5_ibv_list, next) {
-		if (!strcmp(sh->ibdev_name, spawn->ibv_dev->name)) {
+		if (!strcmp(sh->ibdev_name,
+			mlx5_os_get_dev_device_name(spawn->phys_dev))) {
 			sh->refcnt++;
 			goto exit;
 		}

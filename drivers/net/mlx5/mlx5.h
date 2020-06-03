@@ -98,11 +98,11 @@ struct mlx5_dev_attr {
 /** Data associated with devices to spawn. */
 struct mlx5_dev_spawn_data {
 	uint32_t ifindex; /**< Network interface index. */
-	uint32_t max_port; /**< IB device maximal port index. */
-	uint32_t ibv_port; /**< IB device physical port index. */
+	uint32_t max_port; /**< Device maximal port index. */
+	uint32_t phys_port; /**< Device physical port index. */
 	int pf_bond; /**< bonding device PF index. < 0 - no bonding */
 	struct mlx5_switch_info info; /**< Switch information. */
-	struct ibv_device *ibv_dev; /**< Associated IB device. */
+	void *phys_dev; /**< Associated physical device. */
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
 	struct rte_pci_device *pci_dev; /**< Backend PCI device. */
 };
@@ -911,6 +911,7 @@ void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
 struct rte_pci_driver;
 const char *mlx5_os_get_ctx_device_name(void *ctx);
 const char *mlx5_os_get_ctx_device_path(void *ctx);
+const char *mlx5_os_get_dev_device_name(void *dev);
 uint32_t mlx5_os_get_umem_id(void *umem);
 int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
 void mlx5_os_free_shared_dr(struct mlx5_priv *priv);

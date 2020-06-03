@@ -62,6 +62,24 @@
 #endif
 
 /**
+ * Get device name. Given an ibv_device pointer - return a
+ * pointer to the corresponding device name.
+ *
+ * @param[in] dev
+ *   Pointer to ibv device.
+ *
+ * @return
+ *   Pointer to device name if dev is valid, NULL otherwise.
+ */
+const char *
+mlx5_os_get_dev_device_name(void *dev)
+{
+	if (!dev)
+		return NULL;
+	return ((struct ibv_device *)dev)->name;
+}
+
+/**
  * Get ibv device name. Given an ibv_context pointer - return a
  * pointer to the corresponding device name.
  *
@@ -482,10 +500,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		/* Bonding device. */
 		if (!switch_info->representor)
 			snprintf(name, sizeof(name), "%s_%s",
-				 dpdk_dev->name, spawn->ibv_dev->name);
+				 dpdk_dev->name,
+				 mlx5_os_get_dev_device_name(spawn->phys_dev));
 		else
 			snprintf(name, sizeof(name), "%s_%s_representor_%u",
-				 dpdk_dev->name, spawn->ibv_dev->name,
+				 dpdk_dev->name,
+				 mlx5_os_get_dev_device_name(spawn->phys_dev),
 				 switch_info->port_name);
 	}
 	/* check if the device is already spawned */
@@ -649,7 +669,7 @@ err_secondary:
 #endif
 	config.mpls_en = mpls_en;
 	/* Check port status. */
-	err = mlx5_glue->query_port(sh->ctx, spawn->ibv_port, &port_attr);
+	err = mlx5_glue->query_port(sh->ctx, spawn->phys_port, &port_attr);
 	if (err) {
 		DRV_LOG(ERR, "port query failed: %s", strerror(err));
 		goto error;
@@ -673,7 +693,7 @@ err_secondary:
 		goto error;
 	}
 	priv->sh = sh;
-	priv->ibv_port = spawn->ibv_port;
+	priv->ibv_port = spawn->phys_port;
 	priv->pci_dev = spawn->pci_dev;
 	priv->mtu = RTE_ETHER_MTU;
 	priv->mp_id.port_id = port_id;
@@ -703,12 +723,13 @@ err_secondary:
 	if (switch_info->representor || switch_info->master) {
 		devx_port.comp_mask = MLX5DV_DEVX_PORT_VPORT |
 				      MLX5DV_DEVX_PORT_MATCH_REG_C_0;
-		err = mlx5_glue->devx_port_query(sh->ctx, spawn->ibv_port,
+		err = mlx5_glue->devx_port_query(sh->ctx, spawn->phys_port,
 						 &devx_port);
 		if (err) {
 			DRV_LOG(WARNING,
 				"can't query devx port %d on device %s",
-				spawn->ibv_port, spawn->ibv_dev->name);
+				spawn->phys_port,
+				mlx5_os_get_dev_device_name(spawn->phys_dev));
 			devx_port.comp_mask = 0;
 		}
 	}
@@ -718,14 +739,18 @@ err_secondary:
 		if (!priv->vport_meta_mask) {
 			DRV_LOG(ERR, "vport zero mask for port %d"
 				     " on bonding device %s",
-				     spawn->ibv_port, spawn->ibv_dev->name);
+				     spawn->phys_port,
+				     mlx5_os_get_dev_device_name
+							(spawn->phys_dev));
 			err = ENOTSUP;
 			goto error;
 		}
 		if (priv->vport_meta_tag & ~priv->vport_meta_mask) {
 			DRV_LOG(ERR, "invalid vport tag for port %d"
 				     " on bonding device %s",
-				     spawn->ibv_port, spawn->ibv_dev->name);
+				     spawn->phys_port,
+				     mlx5_os_get_dev_device_name
+							(spawn->phys_dev));
 			err = ENOTSUP;
 			goto error;
 		}
@@ -735,7 +760,8 @@ err_secondary:
 	} else if (spawn->pf_bond >= 0) {
 		DRV_LOG(ERR, "can't deduce vport index for port %d"
 			     " on bonding device %s",
-			     spawn->ibv_port, spawn->ibv_dev->name);
+			     spawn->phys_port,
+			     mlx5_os_get_dev_device_name(spawn->phys_dev));
 		err = ENOTSUP;
 		goto error;
 	} else {
@@ -1491,13 +1517,15 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		MLX5_ASSERT(np);
 		for (i = 1; i <= np; ++i) {
 			list[ns].max_port = np;
-			list[ns].ibv_port = i;
-			list[ns].ibv_dev = ibv_match[0];
+			list[ns].phys_port = i;
+			list[ns].phys_dev = ibv_match[0];
 			list[ns].eth_dev = NULL;
 			list[ns].pci_dev = pci_dev;
 			list[ns].pf_bond = bd;
 			list[ns].ifindex = mlx5_nl_ifindex
-					(nl_rdma, list[ns].ibv_dev->name, i);
+				(nl_rdma,
+				mlx5_os_get_dev_device_name
+						(list[ns].phys_dev), i);
 			if (!list[ns].ifindex) {
 				/*
 				 * No network interface index found for the
@@ -1573,15 +1601,17 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		for (i = 0; i != nd; ++i) {
 			memset(&list[ns].info, 0, sizeof(list[ns].info));
 			list[ns].max_port = 1;
-			list[ns].ibv_port = 1;
-			list[ns].ibv_dev = ibv_match[i];
+			list[ns].phys_port = 1;
+			list[ns].phys_dev = ibv_match[i];
 			list[ns].eth_dev = NULL;
 			list[ns].pci_dev = pci_dev;
 			list[ns].pf_bond = -1;
 			list[ns].ifindex = 0;
 			if (nl_rdma >= 0)
 				list[ns].ifindex = mlx5_nl_ifindex
-					(nl_rdma, list[ns].ibv_dev->name, 1);
+				(nl_rdma,
+				mlx5_os_get_dev_device_name
+						(list[ns].phys_dev), 1);
 			if (!list[ns].ifindex) {
 				char ifname[IF_NAMESIZE];
 
@@ -1858,7 +1888,7 @@ mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
 	dbmap_env = mlx5_config_doorbell_mapping_env(config);
 	/* Try to open IB device with DV first, then usual Verbs. */
 	errno = 0;
-	sh->ctx = mlx5_glue->dv_open_device(spawn->ibv_dev);
+	sh->ctx = mlx5_glue->dv_open_device(spawn->phys_dev);
 	if (sh->ctx) {
 		sh->devx = 1;
 		DRV_LOG(DEBUG, "DevX is supported");
@@ -1866,7 +1896,7 @@ mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
 		mlx5_restore_doorbell_mapping_env(dbmap_env);
 	} else {
 		/* The environment variable is still configured. */
-		sh->ctx = mlx5_glue->open_device(spawn->ibv_dev);
+		sh->ctx = mlx5_glue->open_device(spawn->phys_dev);
 		err = errno ? errno : ENODEV;
 		/*
 		 * The environment variable is not needed anymore,
