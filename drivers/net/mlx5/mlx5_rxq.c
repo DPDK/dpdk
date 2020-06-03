@@ -1405,9 +1405,9 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		goto error;
 	}
 	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
-		dev->data->port_id, priv->sh->device_attr.orig_attr.max_qp_wr);
+		dev->data->port_id, priv->sh->device_attr.max_qp_wr);
 	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
-		dev->data->port_id, priv->sh->device_attr.orig_attr.max_sge);
+		dev->data->port_id, priv->sh->device_attr.max_sge);
 	/* Allocate door-bell for types created with DevX. */
 	if (tmpl->type != MLX5_RXQ_OBJ_TYPE_IBV) {
 		struct mlx5_devx_dbr_page *dbr_page;

@@ -626,8 +626,8 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	 * Since we need one CQ per QP, the limit is the minimum number
 	 * between the two values.
 	 */
-	max = RTE_MIN(priv->sh->device_attr.orig_attr.max_cq,
-		      priv->sh->device_attr.orig_attr.max_qp);
+	max = RTE_MIN(priv->sh->device_attr.max_cq,
+		      priv->sh->device_attr.max_qp);
 	/* max_rx_queues is uint16_t. */
 	max = RTE_MIN(max, (unsigned int)UINT16_MAX);
 	info->max_rx_queues = max;
@@ -736,7 +736,7 @@ mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
 int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct ibv_device_attr *attr = &priv->sh->device_attr.orig_attr;
+	struct mlx5_dev_attr *attr = &priv->sh->device_attr;
 	size_t size = strnlen(attr->fw_ver, sizeof(attr->fw_ver)) + 1;
 
 	if (fw_size < size)

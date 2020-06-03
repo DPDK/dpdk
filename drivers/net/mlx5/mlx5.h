@@ -43,7 +43,6 @@
 #include "mlx5_utils.h"
 #include "mlx5_autoconf.h"
 
-
 enum mlx5_ipool_index {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	MLX5_IPOOL_DECAP_ENCAP = 0, /* Pool for encap/decap resource. */
@@ -70,6 +69,29 @@ enum mlx5_reclaim_mem_mode {
 	MLX5_RCM_NONE, /* Don't reclaim memory. */
 	MLX5_RCM_LIGHT, /* Reclaim PMD level. */
 	MLX5_RCM_AGGR, /* Reclaim PMD and rdma-core level. */
+};
+
+/* Device attributes used in mlx5 PMD */
+struct mlx5_dev_attr {
+	uint64_t	device_cap_flags_ex;
+	int		max_qp_wr;
+	int		max_sge;
+	int		max_cq;
+	int		max_qp;
+	uint32_t	raw_packet_caps;
+	uint32_t	max_rwq_indirection_table_size;
+	uint32_t	max_tso;
+	uint32_t	tso_supported_qpts;
+	uint64_t	flags;
+	uint64_t	comp_mask;
+	uint32_t	sw_parsing_offloads;
+	uint32_t	min_single_stride_log_num_of_bytes;
+	uint32_t	max_single_stride_log_num_of_bytes;
+	uint32_t	min_single_wqe_log_num_of_strides;
+	uint32_t	max_single_wqe_log_num_of_strides;
+	uint32_t	stride_supported_qpts;
+	uint32_t	tunnel_offloads_caps;
+	char		fw_ver[64];
 };
 
 /** Key string for IPC. */
@@ -499,7 +521,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t tdn; /* Transport Domain number. */
 	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
-	struct ibv_device_attr_ex device_attr; /* Device properties. */
+	struct mlx5_dev_attr device_attr; /* Device properties. */
 	LIST_ENTRY(mlx5_dev_ctx_shared) mem_event_cb;
 	/**< Called by memory event callback. */
 	struct mlx5_mr_share_cache share_cache;
@@ -856,5 +878,6 @@ void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
 /* mlx5_os.c */
 const char *mlx5_os_get_ctx_device_name(void *ctx);
 const char *mlx5_os_get_ctx_device_path(void *ctx);
+int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
 
 #endif /* RTE_PMD_MLX5_H_ */

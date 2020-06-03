@@ -825,9 +825,9 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 			goto error;
 		DRV_LOG(DEBUG, "DevX is NOT supported");
 	}
-	err = mlx5_glue->query_device_ex(sh->ctx, NULL, &sh->device_attr);
+	err = mlx5_os_get_dev_attr(sh->ctx, &sh->device_attr);
 	if (err) {
-		DRV_LOG(DEBUG, "ibv_query_device_ex() failed");
+		DRV_LOG(DEBUG, "mlx5_os_get_dev_attr() failed");
 		goto error;
 	}
 	sh->refcnt = 1;
@@ -2799,7 +2799,7 @@ err_secondary:
 	}
 #endif
 	config.ind_table_max_size =
-		sh->device_attr.rss_caps.max_rwq_indirection_table_size;
+		sh->device_attr.max_rwq_indirection_table_size;
 	/*
 	 * Remove this check once DPDK supports larger/variable
 	 * indirection tables.
@@ -2828,11 +2828,11 @@ err_secondary:
 	} else if (config.hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding is enabled");
 	}
-	config.tso = (sh->device_attr.tso_caps.max_tso > 0 &&
-		      (sh->device_attr.tso_caps.supported_qpts &
+	config.tso = (sh->device_attr.max_tso > 0 &&
+		      (sh->device_attr.tso_supported_qpts &
 		       (1 << IBV_QPT_RAW_PACKET)));
 	if (config.tso)
-		config.tso_max_payload_sz = sh->device_attr.tso_caps.max_tso;
+		config.tso_max_payload_sz = sh->device_attr.max_tso;
 	/*
 	 * MPW is disabled by default, while the Enhanced MPW is enabled
 	 * by default.

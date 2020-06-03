@@ -85,3 +85,66 @@ mlx5_os_get_ctx_device_path(void *ctx)
 
 	return ((struct ibv_context *)ctx)->device->ibdev_path;
 }
+
+/**
+ * Get mlx5 device attributes. The glue function query_device_ex() is called
+ * with out parameter of type 'struct ibv_device_attr_ex *'. Then fill in mlx5
+ * device attributes from the glue out parameter.
+ *
+ * @param dev
+ *   Pointer to ibv context.
+ *
+ * @param device_attr
+ *   Pointer to mlx5 device attributes.
+ *
+ * @return
+ *   0 on success, non zero error number otherwise
+ */
+int
+mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
+{
+	int err;
+	struct ibv_device_attr_ex attr_ex;
+	memset(device_attr, 0, sizeof(*device_attr));
+	err = mlx5_glue->query_device_ex(ctx, NULL, &attr_ex);
+	if (err)
+		return err;
+
+	device_attr->device_cap_flags_ex = attr_ex.device_cap_flags_ex;
+	device_attr->max_qp_wr = attr_ex.orig_attr.max_qp_wr;
+	device_attr->max_sge = attr_ex.orig_attr.max_sge;
+	device_attr->max_cq = attr_ex.orig_attr.max_cq;
+	device_attr->max_qp = attr_ex.orig_attr.max_qp;
+	device_attr->raw_packet_caps = attr_ex.raw_packet_caps;
+	device_attr->max_rwq_indirection_table_size =
+		attr_ex.rss_caps.max_rwq_indirection_table_size;
+	device_attr->max_tso = attr_ex.tso_caps.max_tso;
+	device_attr->tso_supported_qpts = attr_ex.tso_caps.supported_qpts;
+
+	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
+	err = mlx5_glue->dv_query_device(ctx, &dv_attr);
+	if (err)
+		return err;
+
+	device_attr->flags = dv_attr.flags;
+	device_attr->comp_mask = dv_attr.comp_mask;
+#ifdef HAVE_IBV_MLX5_MOD_SWP
+	device_attr->sw_parsing_offloads =
+		dv_attr.sw_parsing_caps.sw_parsing_offloads;
+#endif
+	device_attr->min_single_stride_log_num_of_bytes =
+		dv_attr.striding_rq_caps.min_single_stride_log_num_of_bytes;
+	device_attr->max_single_stride_log_num_of_bytes =
+		dv_attr.striding_rq_caps.max_single_stride_log_num_of_bytes;
+	device_attr->min_single_wqe_log_num_of_strides =
+		dv_attr.striding_rq_caps.min_single_wqe_log_num_of_strides;
+	device_attr->max_single_wqe_log_num_of_strides =
+		dv_attr.striding_rq_caps.max_single_wqe_log_num_of_strides;
+	device_attr->stride_supported_qpts =
+		dv_attr.striding_rq_caps.supported_qpts;
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	device_attr->tunnel_offloads_caps = dv_attr.tunnel_offloads_caps;
+#endif
+
+	return err;
+}
