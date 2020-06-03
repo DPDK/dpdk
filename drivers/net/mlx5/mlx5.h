@@ -94,6 +94,18 @@ struct mlx5_dev_attr {
 	char		fw_ver[64];
 };
 
+/** Data associated with devices to spawn. */
+struct mlx5_dev_spawn_data {
+	uint32_t ifindex; /**< Network interface index. */
+	uint32_t max_port; /**< IB device maximal port index. */
+	uint32_t ibv_port; /**< IB device physical port index. */
+	int pf_bond; /**< bonding device PF index. < 0 - no bonding */
+	struct mlx5_switch_info info; /**< Switch information. */
+	struct ibv_device *ibv_dev; /**< Associated IB device. */
+	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
+	struct rte_pci_device *pci_dev; /**< Backend PCI device. */
+};
+
 /** Key string for IPC. */
 #define MLX5_MP_NAME "net_mlx5_mp"
 
@@ -116,6 +128,11 @@ struct mlx5_local_data {
 };
 
 extern struct mlx5_shared_data *mlx5_shared_data;
+extern struct rte_pci_driver mlx5_driver;
+
+/* Dev ops structs */
+extern const struct eth_dev_ops mlx5_dev_sec_ops;
+extern const struct eth_dev_ops mlx5_dev_ops;
 
 struct mlx5_counter_ctrl {
 	/* Name of the counter. */
@@ -670,12 +687,26 @@ int32_t mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id,
 int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
 uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev);
+void mlx5_dev_close(struct rte_eth_dev *dev);
 
 /* Macro to iterate over all valid ports for mlx5 driver. */
 #define MLX5_ETH_FOREACH_DEV(port_id, pci_dev) \
 	for (port_id = mlx5_eth_find_next(0, pci_dev); \
 	     port_id < RTE_MAX_ETHPORTS; \
 	     port_id = mlx5_eth_find_next(port_id + 1, pci_dev))
+int mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs);
+struct mlx5_dev_ctx_shared *
+mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
+			const struct mlx5_dev_config *config);
+void mlx5_free_shared_ibctx(struct mlx5_dev_ctx_shared *sh);
+void mlx5_free_table_hash_list(struct mlx5_priv *priv);
+int mlx5_alloc_table_hash_list(struct mlx5_priv *priv);
+void mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
+			 struct mlx5_dev_config *config);
+void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
+int mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
+				  struct mlx5_dev_config *config);
+int mlx5_init_once(void);
 
 /* mlx5_ethdev.c */
 
@@ -876,9 +907,18 @@ struct mlx5_flow_meter *mlx5_flow_meter_attach
 void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
 
 /* mlx5_os.c */
+struct rte_pci_driver;
 const char *mlx5_os_get_ctx_device_name(void *ctx);
 const char *mlx5_os_get_ctx_device_path(void *ctx);
 uint32_t mlx5_os_get_umem_id(void *umem);
 int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
-
+void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
+int mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,
+			 const struct mlx5_dev_config *config,
+			 struct mlx5_dev_ctx_shared *sh);
+int mlx5_os_get_pdn(void *pd, uint32_t *pdn);
+int mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		       struct rte_pci_device *pci_dev);
+void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);
+void mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh);
 #endif /* RTE_PMD_MLX5_H_ */
