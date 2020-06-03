@@ -4130,7 +4130,7 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 	}
 	mkey_attr.addr = (uintptr_t)mem;
 	mkey_attr.size = size;
-	mkey_attr.umem_id = mem_mng->umem->umem_id;
+	mkey_attr.umem_id = mlx5_os_get_umem_id(mem_mng->umem);
 	mkey_attr.pd = sh->pdn;
 	mkey_attr.log_entity_size = 0;
 	mkey_attr.pg_access = 0;

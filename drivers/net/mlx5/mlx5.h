@@ -384,7 +384,7 @@ struct mlx5_counter_stats_mem_mng {
 	LIST_ENTRY(mlx5_counter_stats_mem_mng) next;
 	struct mlx5_counter_stats_raw *raws;
 	struct mlx5_devx_obj *dm;
-	struct mlx5dv_devx_umem *umem;
+	void *umem;
 };
 
 /* Raw memory structure for the counter statistics values of a pool. */
@@ -490,7 +490,7 @@ struct mlx5_devx_dbr_page {
 	/* Door-bell records, must be first member in structure. */
 	uint8_t dbrs[MLX5_DBR_PAGE_SIZE];
 	LIST_ENTRY(mlx5_devx_dbr_page) next; /* Pointer to the next element. */
-	struct mlx5dv_devx_umem *umem;
+	void *umem;
 	uint32_t dbr_count; /* Number of door-bell records in use. */
 	/* 1 bit marks matching door-bell is in use. */
 	uint64_t dbr_bitmap[MLX5_DBR_BITMAP_SIZE];
@@ -878,6 +878,7 @@ void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
 /* mlx5_os.c */
 const char *mlx5_os_get_ctx_device_name(void *ctx);
 const char *mlx5_os_get_ctx_device_path(void *ctx);
+uint32_t mlx5_os_get_umem_id(void *umem);
 int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
 
 #endif /* RTE_PMD_MLX5_H_ */

@@ -1417,7 +1417,7 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		if (dbr_offset < 0)
 			goto error;
 		rxq_ctrl->dbr_offset = dbr_offset;
-		rxq_ctrl->dbr_umem_id = dbr_page->umem->umem_id;
+		rxq_ctrl->dbr_umem_id = mlx5_os_get_umem_id(dbr_page->umem);
 		rxq_ctrl->dbr_umem_id_valid = 1;
 		rxq_data->rq_db = (uint32_t *)((uintptr_t)dbr_page->dbrs +
 					       (uintptr_t)rxq_ctrl->dbr_offset);

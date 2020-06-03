@@ -2298,7 +2298,7 @@ mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id, uint64_t offset)
 
 	LIST_FOREACH(page, &priv->dbrpgs, next)
 		/* Find the page this address belongs to. */
-		if (page->umem->umem_id == umem_id)
+		if (mlx5_os_get_umem_id(page->umem) == umem_id)
 			break;
 	if (!page)
 		return -EINVAL;

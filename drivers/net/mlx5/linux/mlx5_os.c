@@ -87,6 +87,24 @@ mlx5_os_get_ctx_device_path(void *ctx)
 }
 
 /**
+ * Get umem id. Given a pointer to umem object of type
+ * 'struct mlx5dv_devx_umem *' - return its id.
+ *
+ * @param[in] umem
+ *   Pointer to umem object.
+ *
+ * @return
+ *   The umem id if umem is valid, 0 otherwise.
+ */
+uint32_t
+mlx5_os_get_umem_id(void *umem)
+{
+	if (!umem)
+		return 0;
+	return ((struct mlx5dv_devx_umem *)umem)->umem_id;
+}
+
+/**
  * Get mlx5 device attributes. The glue function query_device_ex() is called
  * with out parameter of type 'struct ibv_device_attr_ex *'. Then fill in mlx5
  * device attributes from the glue out parameter.
