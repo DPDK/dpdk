@@ -52,7 +52,7 @@ mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	case MLX5_MP_REQ_VERBS_CMD_FD:
 		mp_init_msg(&priv->mp_id, &mp_res, param->type);
 		mp_res.num_fds = 1;
-		mp_res.fds[0] = priv->sh->ctx->cmd_fd;
+		mp_res.fds[0] = ((struct ibv_context *)priv->sh->ctx)->cmd_fd;
 		res->result = 0;
 		ret = rte_mp_reply(&mp_res, peer);
 		break;

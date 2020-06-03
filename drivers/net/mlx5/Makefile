@@ -32,6 +32,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_flow_verbs.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_mp.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_utils.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_socket.c
+SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += linux/mlx5_os.c
 
 # Basic CFLAGS.
 CFLAGS += -O3

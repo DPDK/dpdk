@@ -493,7 +493,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t refcnt;
 	uint32_t devx:1; /* Opened with DV. */
 	uint32_t max_port; /* Maximal IB device port index. */
-	struct ibv_context *ctx; /* Verbs/DV context. */
+	void *ctx; /* Verbs/DV/DevX context. */
 	struct ibv_pd *pd; /* Protection Domain. */
 	uint32_t pdn; /* Protection Domain number. */
 	uint32_t tdn; /* Transport Domain number. */
@@ -852,5 +852,9 @@ struct mlx5_flow_meter *mlx5_flow_meter_attach
 					 const struct rte_flow_attr *attr,
 					 struct rte_flow_error *error);
 void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
+
+/* mlx5_os.c */
+const char *mlx5_os_get_ctx_device_name(void *ctx);
+const char *mlx5_os_get_ctx_device_path(void *ctx);
 
 #endif /* RTE_PMD_MLX5_H_ */

@@ -677,13 +677,14 @@ mlx5_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 	int flags;
 
 	sh->intr_handle.fd = -1;
-	flags = fcntl(sh->ctx->async_fd, F_GETFL);
-	ret = fcntl(sh->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
+	flags = fcntl(((struct ibv_context *)sh->ctx)->async_fd, F_GETFL);
+	ret = fcntl(((struct ibv_context *)sh->ctx)->async_fd,
+		    F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
 		DRV_LOG(INFO, "failed to change file descriptor async event"
 			" queue");
 	} else {
-		sh->intr_handle.fd = sh->ctx->async_fd;
+		sh->intr_handle.fd = ((struct ibv_context *)sh->ctx)->async_fd;
 		sh->intr_handle.type = RTE_INTR_HANDLE_EXT;
 		if (rte_intr_callback_register(&sh->intr_handle,
 					mlx5_dev_interrupt_handler, sh)) {
@@ -831,10 +832,10 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 	}
 	sh->refcnt = 1;
 	sh->max_port = spawn->max_port;
-	strncpy(sh->ibdev_name, sh->ctx->device->name,
-		sizeof(sh->ibdev_name));
-	strncpy(sh->ibdev_path, sh->ctx->device->ibdev_path,
-		sizeof(sh->ibdev_path));
+	strncpy(sh->ibdev_name, mlx5_os_get_ctx_device_name(sh->ctx),
+		sizeof(sh->ibdev_name) - 1);
+	strncpy(sh->ibdev_path, mlx5_os_get_ctx_device_path(sh->ctx),
+		sizeof(sh->ibdev_path) - 1);
 	/*
 	 * Setting port_id to max unallowed value means
 	 * there is no interrupt subhandler installed for
@@ -1515,7 +1516,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		return;
 	DRV_LOG(DEBUG, "port %u closing device \"%s\"",
 		dev->data->port_id,
-		((priv->sh->ctx != NULL) ? priv->sh->ctx->device->name : ""));
+		((priv->sh->ctx != NULL) ?
+		mlx5_os_get_ctx_device_name(priv->sh->ctx) : ""));
 	/*
 	 * If default mreg copy action is removed at the stop stage,
 	 * the search will return none and nothing will be done anymore.
