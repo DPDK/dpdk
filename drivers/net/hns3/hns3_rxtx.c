@@ -1850,6 +1850,12 @@ hns3_tso_proc_tunnel(struct hns3_desc *desc, uint64_t ol_flags,
 	return 0;
 }
 
+static inline bool
+hns3_pkt_is_tso(struct rte_mbuf *m)
+{
+	return (m->tso_segsz != 0 && m->ol_flags & PKT_TX_TCP_SEG);
+}
+
 static void
 hns3_set_tso(struct hns3_desc *desc,
 	     uint64_t ol_flags, struct rte_mbuf *rxm)
@@ -1858,7 +1864,7 @@ hns3_set_tso(struct hns3_desc *desc,
 	uint32_t tmp;
 	uint8_t l2_len = rxm->l2_len;
 
-	if (!(ol_flags & PKT_TX_TCP_SEG))
+	if (!hns3_pkt_is_tso(rxm))
 		return;
 
 	if (hns3_tso_proc_tunnel(desc, ol_flags, rxm, &l2_len))
@@ -2305,12 +2311,6 @@ hns3_outer_header_cksum_prepare(struct rte_mbuf *m)
 						  m->outer_l3_len);
 		udp_hdr->dgram_cksum = 0;
 	}
-}
-
-static inline bool
-hns3_pkt_is_tso(struct rte_mbuf *m)
-{
-	return (m->tso_segsz != 0 && m->ol_flags & PKT_TX_TCP_SEG);
 }
 
 static int
