@@ -35,8 +35,6 @@
 #define HNS3_DEFAULT_PORT_CONF_QUEUES_NUM	1
 
 #define HNS3_SERVICE_INTERVAL		1000000 /* us */
-#define HNS3_PORT_BASE_VLAN_DISABLE	0
-#define HNS3_PORT_BASE_VLAN_ENABLE	1
 #define HNS3_INVLID_PVID		0xFFFF
 
 #define HNS3_FILTER_TYPE_VF		0
@@ -313,13 +311,14 @@ static int
 hns3_restore_vlan_table(struct hns3_adapter *hns)
 {
 	struct hns3_user_vlan_table *vlan_entry;
+	struct hns3_hw *hw = &hns->hw;
 	struct hns3_pf *pf = &hns->pf;
 	uint16_t vlan_id;
 	int ret = 0;
 
-	if (pf->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_ENABLE)
+	if (hw->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_ENABLE)
 		return hns3_vlan_pvid_configure(hns,
-						pf->port_base_vlan_cfg.pvid, 1);
+						hw->port_base_vlan_cfg.pvid, 1);
 
 	LIST_FOREACH(vlan_entry, &pf->vlan_list, next) {
 		if (vlan_entry->hd_tbl_status) {
@@ -336,7 +335,7 @@ hns3_restore_vlan_table(struct hns3_adapter *hns)
 static int
 hns3_vlan_filter_configure(struct hns3_adapter *hns, uint16_t vlan_id, int on)
 {
-	struct hns3_pf *pf = &hns->pf;
+	struct hns3_hw *hw = &hns->hw;
 	bool writen_to_tbl = false;
 	int ret = 0;
 
@@ -354,7 +353,7 @@ hns3_vlan_filter_configure(struct hns3_adapter *hns, uint16_t vlan_id, int on)
 	 * vlan list. The vlan id in vlan list will be writen in vlan filter
 	 * table until port base vlan disabled
 	 */
-	if (pf->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_DISABLE) {
+	if (hw->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_DISABLE) {
 		ret = hns3_set_port_vlan_filter(hns, vlan_id, on);
 		writen_to_tbl = true;
 	}
@@ -507,11 +506,10 @@ static int
 hns3_en_hw_strip_rxvtag(struct hns3_adapter *hns, bool enable)
 {
 	struct hns3_rx_vtag_cfg rxvlan_cfg;
-	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	if (pf->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_DISABLE) {
+	if (hw->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_DISABLE) {
 		rxvlan_cfg.strip_tag1_en = false;
 		rxvlan_cfg.strip_tag2_en = enable;
 	} else {
@@ -728,12 +726,12 @@ hns3_vlan_txvlan_cfg(struct hns3_adapter *hns, uint16_t port_base_vlan_state,
 static void
 hns3_store_port_base_vlan_info(struct hns3_adapter *hns, uint16_t pvid, int on)
 {
-	struct hns3_pf *pf = &hns->pf;
+	struct hns3_hw *hw = &hns->hw;
 
-	pf->port_base_vlan_cfg.state = on ?
+	hw->port_base_vlan_cfg.state = on ?
 	    HNS3_PORT_BASE_VLAN_ENABLE : HNS3_PORT_BASE_VLAN_DISABLE;
 
-	pf->port_base_vlan_cfg.pvid = pvid;
+	hw->port_base_vlan_cfg.pvid = pvid;
 }
 
 static void
@@ -777,13 +775,12 @@ static void
 hns3_remove_all_vlan_table(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
-	struct hns3_pf *pf = &hns->pf;
 	int ret;
 
 	hns3_rm_all_vlan_table(hns, true);
-	if (pf->port_base_vlan_cfg.pvid != HNS3_INVLID_PVID) {
+	if (hw->port_base_vlan_cfg.pvid != HNS3_INVLID_PVID) {
 		ret = hns3_set_port_vlan_filter(hns,
-						pf->port_base_vlan_cfg.pvid, 0);
+						hw->port_base_vlan_cfg.pvid, 0);
 		if (ret) {
 			hns3_err(hw, "Failed to remove all vlan table, ret =%d",
 				 ret);
@@ -797,7 +794,6 @@ hns3_update_vlan_filter_entries(struct hns3_adapter *hns,
 				uint16_t port_base_vlan_state,
 				uint16_t new_pvid, uint16_t old_pvid)
 {
-	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
 	int ret = 0;
 
@@ -825,7 +821,7 @@ hns3_update_vlan_filter_entries(struct hns3_adapter *hns,
 		}
 	}
 
-	if (new_pvid == pf->port_base_vlan_cfg.pvid)
+	if (new_pvid == hw->port_base_vlan_cfg.pvid)
 		hns3_add_all_vlan_table(hns);
 
 	return ret;
@@ -862,17 +858,16 @@ hns3_en_pvid_strip(struct hns3_adapter *hns, int on)
 static int
 hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid, int on)
 {
-	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
 	uint16_t port_base_vlan_state;
 	uint16_t old_pvid;
 	int ret;
 
-	if (on == 0 && pvid != pf->port_base_vlan_cfg.pvid) {
-		if (pf->port_base_vlan_cfg.pvid != HNS3_INVLID_PVID)
+	if (on == 0 && pvid != hw->port_base_vlan_cfg.pvid) {
+		if (hw->port_base_vlan_cfg.pvid != HNS3_INVLID_PVID)
 			hns3_warn(hw, "Invalid operation! As current pvid set "
 				  "is %u, disable pvid %u is invalid",
-				  pf->port_base_vlan_cfg.pvid, pvid);
+				  hw->port_base_vlan_cfg.pvid, pvid);
 		return 0;
 	}
 
@@ -894,7 +889,7 @@ hns3_vlan_pvid_configure(struct hns3_adapter *hns, uint16_t pvid, int on)
 
 	if (pvid == HNS3_INVLID_PVID)
 		goto out;
-	old_pvid = pf->port_base_vlan_cfg.pvid;
+	old_pvid = hw->port_base_vlan_cfg.pvid;
 	ret = hns3_update_vlan_filter_entries(hns, port_base_vlan_state, pvid,
 					      old_pvid);
 	if (ret) {
@@ -930,11 +925,8 @@ hns3_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 static void
 init_port_base_vlan_info(struct hns3_hw *hw)
 {
-	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	struct hns3_pf *pf = &hns->pf;
-
-	pf->port_base_vlan_cfg.state = HNS3_PORT_BASE_VLAN_DISABLE;
-	pf->port_base_vlan_cfg.pvid = HNS3_INVLID_PVID;
+	hw->port_base_vlan_cfg.state = HNS3_PORT_BASE_VLAN_DISABLE;
+	hw->port_base_vlan_cfg.pvid = HNS3_INVLID_PVID;
 }
 
 static int

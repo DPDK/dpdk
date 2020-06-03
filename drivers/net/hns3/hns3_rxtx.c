@@ -1255,9 +1255,9 @@ rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint32_t ol_info)
 
 	static const uint32_t l2table[HNS3_L2TBL_NUM] = {
 		RTE_PTYPE_L2_ETHER,
-		RTE_PTYPE_L2_ETHER_VLAN,
 		RTE_PTYPE_L2_ETHER_QINQ,
-		0
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L2_ETHER_VLAN
 	};
 
 	static const uint32_t l3table[HNS3_L3TBL_NUM] = {
@@ -1450,6 +1450,58 @@ hns3_rx_set_cksum_flag(struct rte_mbuf *rxm, uint64_t packet_type,
 	}
 }
 
+static inline void
+hns3_rxd_to_vlan_tci(struct rte_eth_dev *dev, struct rte_mbuf *mb,
+		     uint32_t l234_info, const struct hns3_desc *rxd)
+{
+#define HNS3_STRP_STATUS_NUM		0x4
+
+#define HNS3_NO_STRP_VLAN_VLD		0x0
+#define HNS3_INNER_STRP_VLAN_VLD	0x1
+#define HNS3_OUTER_STRP_VLAN_VLD	0x2
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	uint32_t strip_status;
+	uint32_t report_mode;
+
+	/*
+	 * Since HW limitation, the vlan tag will always be inserted into RX
+	 * descriptor when strip the tag from packet, driver needs to determine
+	 * reporting which tag to mbuf according to the PVID configuration
+	 * and vlan striped status.
+	 */
+	static const uint32_t report_type[][HNS3_STRP_STATUS_NUM] = {
+		{
+			HNS3_NO_STRP_VLAN_VLD,
+			HNS3_OUTER_STRP_VLAN_VLD,
+			HNS3_INNER_STRP_VLAN_VLD,
+			HNS3_OUTER_STRP_VLAN_VLD
+		},
+		{
+			HNS3_NO_STRP_VLAN_VLD,
+			HNS3_NO_STRP_VLAN_VLD,
+			HNS3_NO_STRP_VLAN_VLD,
+			HNS3_INNER_STRP_VLAN_VLD
+		}
+	};
+	strip_status = hns3_get_field(l234_info, HNS3_RXD_STRP_TAGP_M,
+				      HNS3_RXD_STRP_TAGP_S);
+	report_mode = report_type[hw->port_base_vlan_cfg.state][strip_status];
+	switch (report_mode) {
+	case HNS3_NO_STRP_VLAN_VLD:
+		mb->vlan_tci = 0;
+		return;
+	case HNS3_INNER_STRP_VLAN_VLD:
+		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->vlan_tci = rte_le_to_cpu_16(rxd->rx.vlan_tag);
+		return;
+	case HNS3_OUTER_STRP_VLAN_VLD:
+		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->vlan_tci = rte_le_to_cpu_16(rxd->rx.ot_vlan_tag);
+		return;
+	}
+}
+
 uint16_t
 hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -1625,10 +1677,8 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			hns3_rx_set_cksum_flag(first_seg,
 					       first_seg->packet_type,
 					       cksum_err);
+		hns3_rxd_to_vlan_tci(dev, first_seg, l234_info, &rxd);
 
-		first_seg->vlan_tci = rte_le_to_cpu_16(rxd.rx.vlan_tag);
-		first_seg->vlan_tci_outer =
-			rte_le_to_cpu_16(rxd.rx.ot_vlan_tag);
 		rx_pkts[nb_rx++] = first_seg;
 		first_seg = NULL;
 		continue;
