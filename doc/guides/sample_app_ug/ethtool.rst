@@ -24,7 +24,7 @@ The only available options are the standard ones for the EAL:
 
 .. code-block:: console
 
-    ./ethtool-app/ethtool-app/${RTE_TARGET}/ethtool [EAL options]
+    ./ethtool-app/${RTE_TARGET}/ethtool [EAL options]
 
 Refer to the *DPDK Getting Started Guide* for general information on
 running applications and the Environment Abstraction Layer (EAL)
