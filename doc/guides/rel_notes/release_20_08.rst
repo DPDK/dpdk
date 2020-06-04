@@ -77,7 +77,9 @@ New Features
 
 * **Added flow performance test application.**
 
-  Added new application to test ``rte_flow`` performance.
+  Added new application to test ``rte_flow`` performance, including:
+
+  * Measure ``rte_flow`` insertion rate.
 
 
 Removed Items

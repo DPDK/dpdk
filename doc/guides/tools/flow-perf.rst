@@ -5,6 +5,26 @@ Flow Performance Tool
 =====================
 
 Application for rte_flow performance testing.
+The application provide the ability to test insertion rate of specific
+rte_flow rule, by stressing it to the NIC, and calculate the insertion
+rate.
+
+The application offers some options in the command line, to configure
+which rule to apply.
+
+After that the application will start producing rules with same pattern
+but increasing the outer IP source address by 1 each time, thus it will
+give different flow each time, and all other items will have open masks.
+
+
+Known Limitations
+=================
+
+The current version has limitations which can be removed in future:
+
+* Support outer items up to tunnel layer only.
+* Single core insertion only.
+* Only one instance of same action can be added in one rule.
 
 
 Compiling the Application
@@ -36,9 +56,179 @@ with a ``--`` separator:
 
 .. code-block:: console
 
-	sudo ./dpdk-test-flow-perf -n 4 -w 08:00.0 --
+	sudo ./dpdk-test-flow_perf -n 4 -w 08:00.0 -- --ingress --ether --ipv4 --queue --flows-count=1000000
 
 The command line options are:
 
 *	``--help``
 	Display a help message and quit.
+
+*	``--flows-count=N``
+	Set the number of needed flows to insert,
+	where 1 <= N <= "number of flows".
+	The default value is 4,000,000.
+
+*	``--dump-iterations``
+	Print rates for each iteration of flows.
+	Default iteration is 1,00,000.
+
+
+Attributes:
+
+*	``--ingress``
+	Set Ingress attribute to all flows attributes.
+
+*	``--egress``
+	Set Egress attribute to all flows attributes.
+
+*	``--transfer``
+	Set Transfer attribute to all flows attributes.
+
+*	``--group=N``
+	Set group for all flows, where N >= 0.
+	Default group is 0.
+
+Items:
+
+*	``--ether``
+	Add Ether item to all flows items, This item have open mask.
+
+*	``--vlan``
+	Add VLAN item to all flows items,
+	This item have VLAN value defined in user_parameters.h
+	under ``VNI_VALUE`` with full mask, default value = 1.
+	Other fields are open mask.
+
+*	``--ipv4``
+	Add IPv4 item to all flows items,
+	This item have incremental source IP, with full mask.
+	Other fields are open mask.
+
+*	``--ipv6``
+	Add IPv6 item to all flows item,
+	This item have incremental source IP, with full mask.
+	Other fields are open mask.
+
+*	``--tcp``
+	Add TCP item to all flows items, This item have open mask.
+
+*	``--udp``
+	Add UDP item to all flows items, This item have open mask.
+
+*	``--vxlan``
+	Add VXLAN item to all flows items,
+	This item have VNI value defined in user_parameters.h
+	under ``VNI_VALUE`` with full mask, default value = 1.
+	Other fields are open mask.
+
+*	``--vxlan-gpe``
+	Add VXLAN-GPE item to all flows items,
+	This item have VNI value defined in user_parameters.h
+	under ``VNI_VALUE`` with full mask, default value = 1.
+	Other fields are open mask.
+
+*	``--gre``
+	Add GRE item to all flows items,
+	This item have protocol value defined in user_parameters.h
+	under ``GRE_PROTO`` with full mask, default protocol = 0x6558 "Ether"
+	Other fields are open mask.
+
+*	``--geneve``
+	Add GENEVE item to all flows items,
+	This item have VNI value defined in user_parameters.h
+	under ``VNI_VALUE`` with full mask, default value = 1.
+	Other fields are open mask.
+
+*	``--gtp``
+	Add GTP item to all flows items,
+	This item have TEID value defined in user_parameters.h
+	under ``TEID_VALUE`` with full mask, default value = 1.
+	Other fields are open mask.
+
+*	``--meta``
+	Add Meta item to all flows items,
+	This item have data value defined in user_parameters.h
+	under ``META_DATA`` with full mask, default value = 1.
+	Other fields are open mask.
+
+*	``--tag``
+	Add Tag item to all flows items,
+	This item have data value defined in user_parameters.h
+	under ``META_DATA`` with full mask, default value = 1.
+
+	Also it have tag value defined in user_parameters.h
+	under ``TAG_INDEX`` with full mask, default value = 0.
+	Other fields are open mask.
+
+
+Actions:
+
+*	``--port-id``
+	Add port redirection action to all flows actions.
+	Port redirection destination is defined in user_parameters.h
+	under PORT_ID_DST, default value = 1.
+
+*	``--rss``
+	Add RSS action to all flows actions,
+	The queues in RSS action will be all queues configured
+	in the app.
+
+*	``--queue``
+	Add queue action to all flows items,
+	The queue will change in round robin state for each flow.
+
+	For example:
+		The app running with 4 RX queues
+		Flow #0: queue index 0
+		Flow #1: queue index 1
+		Flow #2: queue index 2
+		Flow #3: queue index 3
+		Flow #4: queue index 0
+		...
+
+*	``--jump``
+	Add jump action to all flows actions.
+	Jump action destination is defined in user_parameters.h
+	under ``JUMP_ACTION_TABLE``, default value = 2.
+
+*	``--mark``
+	Add mark action to all flows actions.
+	Mark action id is defined in user_parameters.h
+	under ``MARK_ID``, default value = 1.
+
+*	``--count``
+	Add count action to all flows actions.
+
+*	``--set-meta``
+	Add set-meta action to all flows actions.
+	Meta data is defined in user_parameters.h under ``META_DATA``
+	with full mask, default value = 1.
+
+*	``--set-tag``
+	Add set-tag action to all flows actions.
+	Meta data is defined in user_parameters.h under ``META_DATA``
+	with full mask, default value = 1.
+
+	Tag index is defined in user_parameters.h under ``TAG_INDEX``
+	with full mask, default value = 0.
+
+*	``--drop``
+	Add drop action to all flows actions.
+
+*	``--hairpin-queue=N``
+	Add hairpin queue action to all flows actions.
+	The queue will change in round robin state for each flow.
+
+	For example:
+		The app running with 4 RX hairpin queues and 4 normal RX queues
+		Flow #0: queue index 4
+		Flow #1: queue index 5
+		Flow #2: queue index 6
+		Flow #3: queue index 7
+		Flow #4: queue index 4
+		...
+
+*	``--hairpin-rss=N``
+	Add hairpin RSS action to all flows actions.
+	The queues in RSS action will be all hairpin queues configured
+	in the app.

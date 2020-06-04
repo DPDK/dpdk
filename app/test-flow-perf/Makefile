@@ -16,6 +16,9 @@ CFLAGS += $(WERROR_FLAGS)
 #
 # all source are stored in SRCS-y
 #
+SRCS-y += actions_gen.c
+SRCS-y += flow_gen.c
+SRCS-y += items_gen.c
 SRCS-y += main.c
 
 include $(RTE_SDK)/mk/rte.app.mk
