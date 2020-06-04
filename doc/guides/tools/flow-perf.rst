@@ -29,6 +29,8 @@ The current version has limitations which can be removed in future:
 The application also provide the ability to measure rte flow deletion rate,
 in addition to memory consumption before and after the flows creation.
 
+The app supports single and multi core performance measurements.
+
 
 Compiling the Application
 =========================
@@ -80,6 +82,10 @@ The command line options are:
 
 *	``--dump-socket-mem``
 	Dump the memory stats for each socket before the insertion and after.
+
+*	``--enable-fwd``
+	Enable packets forwarding after insertion/deletion operations.
+
 
 Attributes:
 

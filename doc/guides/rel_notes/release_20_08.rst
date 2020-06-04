@@ -82,6 +82,7 @@ New Features
   * Measure ``rte_flow`` insertion rate.
   * Measure ``rte_flow`` deletion rate.
   * Dump ``rte_flow`` memory consumption.
+  * Measure packet per second forwarding.
 
 
 Removed Items
