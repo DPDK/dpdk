@@ -1537,6 +1537,11 @@ T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
+Flow performance tool
+M: Wisam Jaddo <wisamm@mellanox.com>
+F: app/test-flow-perf/
+F: doc/guides/tools/flow-perf.rst
+
 Compression performance test application
 T: git://dpdk.org/next/dpdk-next-crypto
 F: app/test-compress-perf/

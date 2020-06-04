@@ -15,6 +15,7 @@ apps = [
 	'test-crypto-perf',
 	'test-eventdev',
 	'test-fib',
+	'test-flow-perf',
 	'test-pipeline',
 	'test-pmd',
 	'test-sad']
