@@ -81,6 +81,7 @@ New Features
 
   * Measure ``rte_flow`` insertion rate.
   * Measure ``rte_flow`` deletion rate.
+  * Dump ``rte_flow`` memory consumption.
 
 
 Removed Items

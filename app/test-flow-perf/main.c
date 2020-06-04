@@ -50,6 +50,7 @@ static uint64_t flow_attrs;
 static volatile bool force_quit;
 static bool dump_iterations;
 static bool delete_flag;
+static bool dump_socket_mem_flag;
 static struct rte_mempool *mbuf_mp;
 static uint32_t nb_lcores;
 static uint32_t flows_count;
@@ -67,6 +68,7 @@ usage(char *progname)
 		" iteration\n");
 	printf("  --deletion-rate: Enable deletion rate"
 		" calculations\n");
+	printf("  --dump-socket-mem: To dump all socket memory\n");
 
 	printf("To set flow attributes:\n");
 	printf("  --ingress: set ingress attribute in flows\n");
@@ -250,6 +252,7 @@ args_parse(int argc, char **argv)
 		{ "flows-count",                1, 0, 0 },
 		{ "dump-iterations",            0, 0, 0 },
 		{ "deletion-rate",              0, 0, 0 },
+		{ "dump-socket-mem",            0, 0, 0 },
 		/* Attributes */
 		{ "ingress",                    0, 0, 0 },
 		{ "egress",                     0, 0, 0 },
@@ -360,6 +363,9 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name,
 					"deletion-rate") == 0)
 				delete_flag = true;
+			if (strcmp(lgopts[opt_idx].name,
+					"dump-socket-mem") == 0)
+				dump_socket_mem_flag = true;
 			break;
 		default:
 			fprintf(stderr, "Invalid option: %s\n", argv[optind]);
@@ -369,6 +375,62 @@ args_parse(int argc, char **argv)
 		}
 	}
 	printf("end_flow\n");
+}
+
+/* Dump the socket memory statistics on console */
+static size_t
+dump_socket_mem(FILE *f)
+{
+	struct rte_malloc_socket_stats socket_stats;
+	unsigned int i = 0;
+	size_t total = 0;
+	size_t alloc = 0;
+	size_t free = 0;
+	unsigned int n_alloc = 0;
+	unsigned int n_free = 0;
+	bool active_nodes = false;
+
+
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
+		if (rte_malloc_get_socket_stats(i, &socket_stats) ||
+		    !socket_stats.heap_totalsz_bytes)
+			continue;
+		active_nodes = true;
+		total += socket_stats.heap_totalsz_bytes;
+		alloc += socket_stats.heap_allocsz_bytes;
+		free += socket_stats.heap_freesz_bytes;
+		n_alloc += socket_stats.alloc_count;
+		n_free += socket_stats.free_count;
+		if (dump_socket_mem_flag) {
+			fprintf(f, "::::::::::::::::::::::::::::::::::::::::");
+			fprintf(f,
+				"\nSocket %u:\nsize(M) total: %.6lf\nalloc:"
+				" %.6lf(%.3lf%%)\nfree: %.6lf"
+				"\nmax: %.6lf"
+				"\ncount alloc: %u\nfree: %u\n",
+				i,
+				socket_stats.heap_totalsz_bytes / 1.0e6,
+				socket_stats.heap_allocsz_bytes / 1.0e6,
+				(double)socket_stats.heap_allocsz_bytes * 100 /
+				(double)socket_stats.heap_totalsz_bytes,
+				socket_stats.heap_freesz_bytes / 1.0e6,
+				socket_stats.greatest_free_size / 1.0e6,
+				socket_stats.alloc_count,
+				socket_stats.free_count);
+				fprintf(f, "::::::::::::::::::::::::::::::::::::::::");
+		}
+	}
+	if (dump_socket_mem_flag && active_nodes) {
+		fprintf(f,
+			"\nTotal: size(M)\ntotal: %.6lf"
+			"\nalloc: %.6lf(%.3lf%%)\nfree: %.6lf"
+			"\ncount alloc: %u\nfree: %u\n",
+			total / 1.0e6, alloc / 1.0e6,
+			(double)alloc * 100 / (double)total, free / 1.0e6,
+			n_alloc, n_free);
+		fprintf(f, "::::::::::::::::::::::::::::::::::::::::\n");
+	}
+	return alloc;
 }
 
 static void
@@ -701,6 +763,7 @@ main(int argc, char **argv)
 	int ret;
 	uint16_t port;
 	struct rte_flow_error error;
+	int64_t alloc, last_alloc;
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
@@ -711,6 +774,7 @@ main(int argc, char **argv)
 	flows_count = DEFAULT_RULES_COUNT;
 	iterations_number = DEFAULT_ITERATION;
 	delete_flag = false;
+	dump_socket_mem_flag = false;
 	flow_group = 0;
 
 	signal(SIGINT, signal_handler);
@@ -727,7 +791,13 @@ main(int argc, char **argv)
 	if (nb_lcores <= 1)
 		rte_exit(EXIT_FAILURE, "This app needs at least two cores\n");
 
+	last_alloc = (int64_t)dump_socket_mem(stdout);
 	flows_handler();
+	alloc = (int64_t)dump_socket_mem(stdout);
+
+	if (last_alloc)
+		fprintf(stdout, ":: Memory allocation change(M): %.6lf\n",
+		(alloc - last_alloc) / 1.0e6);
 
 	RTE_ETH_FOREACH_DEV(port) {
 		rte_flow_flush(port, &error);
