@@ -2192,7 +2192,7 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 
 	priv->flc_desc[0].desc[0] = aeaddata.keylen;
 	err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
-			       MIN_JOB_DESC_SIZE,
+			       DESC_JOB_IO_LEN,
 			       (unsigned int *)priv->flc_desc[0].desc,
 			       &priv->flc_desc[0].desc[1], 1);
 
@@ -2416,7 +2416,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 	priv->flc_desc[0].desc[0] = cipherdata.keylen;
 	priv->flc_desc[0].desc[1] = authdata.keylen;
 	err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
-			       MIN_JOB_DESC_SIZE,
+			       DESC_JOB_IO_LEN,
 			       (unsigned int *)priv->flc_desc[0].desc,
 			       &priv->flc_desc[0].desc[2], 2);
 

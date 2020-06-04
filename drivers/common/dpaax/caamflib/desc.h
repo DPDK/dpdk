@@ -26,7 +26,7 @@ extern enum rta_sec_era rta_sec_era;
 #define CAAM_CMD_SZ sizeof(uint32_t)
 #define CAAM_PTR_SZ sizeof(dma_addr_t)
 #define CAAM_DESC_BYTES_MAX (CAAM_CMD_SZ * MAX_CAAM_DESCSIZE)
-#define DESC_JOB_IO_LEN (CAAM_CMD_SZ * 5 + CAAM_PTR_SZ * 3)
+#define DESC_JOB_IO_LEN (CAAM_CMD_SZ * 7 + CAAM_PTR_SZ * 3)
 
 /* Block size of any entity covered/uncovered with a KEK/TKEK */
 #define KEK_BLOCKSIZE		16

@@ -351,7 +351,7 @@ dpaa_sec_prep_ipsec_cdb(dpaa_sec_session *ses)
 	cdb->sh_desc[0] = cipherdata.keylen;
 	cdb->sh_desc[1] = authdata.keylen;
 	err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
-			       MIN_JOB_DESC_SIZE,
+			       DESC_JOB_IO_LEN,
 			       (unsigned int *)cdb->sh_desc,
 			       &cdb->sh_desc[2], 2);
 
@@ -537,7 +537,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 		cdb->sh_desc[0] = alginfo_c.keylen;
 		cdb->sh_desc[1] = alginfo_a.keylen;
 		err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
-				       MIN_JOB_DESC_SIZE,
+				       DESC_JOB_IO_LEN,
 				       (unsigned int *)cdb->sh_desc,
 				       &cdb->sh_desc[2], 2);
 
