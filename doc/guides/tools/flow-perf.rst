@@ -26,6 +26,8 @@ The current version has limitations which can be removed in future:
 * Single core insertion only.
 * Only one instance of same action can be added in one rule.
 
+The application also provide the ability to measure rte flow deletion rate.
+
 
 Compiling the Application
 =========================
@@ -72,6 +74,8 @@ The command line options are:
 	Print rates for each iteration of flows.
 	Default iteration is 1,00,000.
 
+*	``--deletion-rate``
+	Enable deletion rate calculations.
 
 Attributes:
 

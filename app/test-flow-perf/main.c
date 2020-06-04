@@ -49,6 +49,7 @@ static uint64_t flow_actions;
 static uint64_t flow_attrs;
 static volatile bool force_quit;
 static bool dump_iterations;
+static bool delete_flag;
 static struct rte_mempool *mbuf_mp;
 static uint32_t nb_lcores;
 static uint32_t flows_count;
@@ -64,6 +65,8 @@ usage(char *progname)
 		" flows to insert, default is 4,000,000\n");
 	printf("  --dump-iterations: To print rates for each"
 		" iteration\n");
+	printf("  --deletion-rate: Enable deletion rate"
+		" calculations\n");
 
 	printf("To set flow attributes:\n");
 	printf("  --ingress: set ingress attribute in flows\n");
@@ -246,6 +249,7 @@ args_parse(int argc, char **argv)
 		{ "help",                       0, 0, 0 },
 		{ "flows-count",                1, 0, 0 },
 		{ "dump-iterations",            0, 0, 0 },
+		{ "deletion-rate",              0, 0, 0 },
 		/* Attributes */
 		{ "ingress",                    0, 0, 0 },
 		{ "egress",                     0, 0, 0 },
@@ -353,6 +357,9 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name,
 					"dump-iterations") == 0)
 				dump_iterations = true;
+			if (strcmp(lgopts[opt_idx].name,
+					"deletion-rate") == 0)
+				delete_flag = true;
 			break;
 		default:
 			fprintf(stderr, "Invalid option: %s\n", argv[optind]);
@@ -373,8 +380,74 @@ print_flow_error(struct rte_flow_error error)
 }
 
 static inline void
+destroy_flows(int port_id, struct rte_flow **flow_list)
+{
+	struct rte_flow_error error;
+	clock_t start_iter, end_iter;
+	double cpu_time_used = 0;
+	double flows_rate;
+	double cpu_time_per_iter[MAX_ITERATIONS];
+	double delta;
+	uint32_t i;
+	int iter_id;
+
+	for (i = 0; i < MAX_ITERATIONS; i++)
+		cpu_time_per_iter[i] = -1;
+
+	if (iterations_number > flows_count)
+		iterations_number = flows_count;
+
+	/* Deletion Rate */
+	printf("Flows Deletion on port = %d\n", port_id);
+	start_iter = clock();
+	for (i = 0; i < flows_count; i++) {
+		if (flow_list[i] == 0)
+			break;
+
+		memset(&error, 0x33, sizeof(error));
+		if (rte_flow_destroy(port_id, flow_list[i], &error)) {
+			print_flow_error(error);
+			rte_exit(EXIT_FAILURE, "Error in deleting flow");
+		}
+
+		if (i && !((i + 1) % iterations_number)) {
+			/* Save the deletion rate of each iter */
+			end_iter = clock();
+			delta = (double) (end_iter - start_iter);
+			iter_id = ((i + 1) / iterations_number) - 1;
+			cpu_time_per_iter[iter_id] =
+				delta / CLOCKS_PER_SEC;
+			cpu_time_used += cpu_time_per_iter[iter_id];
+			start_iter = clock();
+		}
+	}
+
+	/* Deletion rate per iteration */
+	if (dump_iterations)
+		for (i = 0; i < MAX_ITERATIONS; i++) {
+			if (cpu_time_per_iter[i] == -1)
+				continue;
+			delta = (double)(iterations_number /
+				cpu_time_per_iter[i]);
+			flows_rate = delta / 1000;
+			printf(":: Iteration #%d: %d flows "
+				"in %f sec[ Rate = %f K/Sec ]\n",
+				i, iterations_number,
+				cpu_time_per_iter[i], flows_rate);
+		}
+
+	/* Deletion rate for all flows */
+	flows_rate = ((double) (flows_count / cpu_time_used) / 1000);
+	printf("\n:: Total flow deletion rate -> %f K/Sec\n",
+		flows_rate);
+	printf(":: The time for deleting %d in flows %f seconds\n",
+		flows_count, cpu_time_used);
+}
+
+static inline void
 flows_handler(void)
 {
+	struct rte_flow **flow_list;
 	struct rte_flow_error error;
 	clock_t start_iter, end_iter;
 	double cpu_time_used;
@@ -385,6 +458,7 @@ flows_handler(void)
 	uint32_t i;
 	int port_id;
 	int iter_id;
+	uint32_t flow_index;
 
 	nr_ports = rte_eth_dev_count_avail();
 
@@ -396,8 +470,14 @@ flows_handler(void)
 
 	printf(":: Flows Count per port: %d\n", flows_count);
 
+	flow_list = rte_zmalloc("flow_list",
+		(sizeof(struct rte_flow *) * flows_count) + 1, 0);
+	if (flow_list == NULL)
+		rte_exit(EXIT_FAILURE, "No Memory available!");
+
 	for (port_id = 0; port_id < nr_ports; port_id++) {
 		cpu_time_used = 0;
+		flow_index = 0;
 		if (flow_group > 0) {
 			/*
 			 * Create global rule to jump into flow_group,
@@ -416,6 +496,7 @@ flows_handler(void)
 				print_flow_error(error);
 				rte_exit(EXIT_FAILURE, "error in creating flow");
 			}
+			flow_list[flow_index++] = flow;
 		}
 
 		/* Insertion Rate */
@@ -433,6 +514,8 @@ flows_handler(void)
 				print_flow_error(error);
 				rte_exit(EXIT_FAILURE, "error in creating flow");
 			}
+
+			flow_list[flow_index++] = flow;
 
 			if (i && !((i + 1) % iterations_number)) {
 				/* Save the insertion rate of each iter */
@@ -466,6 +549,9 @@ flows_handler(void)
 						flows_rate);
 		printf(":: The time for creating %d in flows %f seconds\n",
 						flows_count, cpu_time_used);
+
+		if (delete_flag)
+			destroy_flows(port_id, flow_list);
 	}
 }
 
@@ -624,6 +710,7 @@ main(int argc, char **argv)
 	dump_iterations = false;
 	flows_count = DEFAULT_RULES_COUNT;
 	iterations_number = DEFAULT_ITERATION;
+	delete_flag = false;
 	flow_group = 0;
 
 	signal(SIGINT, signal_handler);

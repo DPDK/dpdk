@@ -80,6 +80,7 @@ New Features
   Added new application to test ``rte_flow`` performance, including:
 
   * Measure ``rte_flow`` insertion rate.
+  * Measure ``rte_flow`` deletion rate.
 
 
 Removed Items
