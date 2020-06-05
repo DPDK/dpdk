@@ -47,6 +47,9 @@ if arch_subdir == 'x86'
 elif arch_subdir == 'ppc'
        dpdk_conf.set('RTE_LIBRTE_I40E_INC_VECTOR', 1)
        sources += files('i40e_rxtx_vec_altivec.c')
+elif arch_subdir == 'arm'
+       dpdk_conf.set('RTE_LIBRTE_I40E_INC_VECTOR', 1)
+       sources += files('i40e_rxtx_vec_neon.c')
 endif
 
 install_headers('rte_pmd_i40e.h')
