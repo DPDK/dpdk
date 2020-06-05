@@ -672,7 +672,7 @@ main(int argc, char **argv)
 	/* Initialize EAL */
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
-		return -1;
+		rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
 
 	argc -= ret;
 	argv += ret;
@@ -680,7 +680,7 @@ main(int argc, char **argv)
 	/* Parse the application specific arguments */
 	ret = parse_args(argc, argv);
 	if (ret < 0)
-		return -1;
+		rte_exit(EXIT_FAILURE, "Invalid packet_ordering arguments\n");
 
 	/* Check if we have enought cores */
 	if (rte_lcore_count() < 3)
