@@ -156,7 +156,7 @@ int rte_vfio_enable(const char *modname);
  *   kernel module name.
  *
  * @return
- *   !0 if true.
+ *   1 if true.
  *   0 otherwise.
  */
 int rte_vfio_is_enabled(const char *modname);
@@ -168,8 +168,9 @@ int rte_vfio_is_enabled(const char *modname);
  * an error on BSD.
  *
  * @return
- *   !0 if true.
- *   0 otherwise.
+ *   1 if true.
+ *   0 if false.
+ *   <0 for errors.
  */
 int rte_vfio_noiommu_is_enabled(void);
 
