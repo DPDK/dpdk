@@ -46,6 +46,8 @@ struct node_mbuf_priv2 {
 
 #define NODE_MBUF_PRIV2_SIZE sizeof(struct node_mbuf_priv2)
 
+#define OBJS_PER_CLINE (RTE_CACHE_LINE_SIZE / sizeof(void *))
+
 /**
  * Get mbuf_priv1 pointer from rte_mbuf.
  *

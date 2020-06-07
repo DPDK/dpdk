@@ -23,6 +23,7 @@ typedef struct ethdev_rx_node_ctx ethdev_rx_node_ctx_t;
 struct ethdev_rx_node_ctx {
 	uint16_t port_id;  /**< Port identifier of the Rx node. */
 	uint16_t queue_id; /**< Queue identifier of the Rx node. */
+	uint16_t cls_next;
 };
 
 /**
@@ -41,6 +42,7 @@ struct ethdev_rx_node_elem {
 
 enum ethdev_rx_next_nodes {
 	ETHDEV_RX_NEXT_IP4_LOOKUP,
+	ETHDEV_RX_NEXT_PKT_CLS,
 	ETHDEV_RX_NEXT_MAX,
 };
 

@@ -16,9 +16,14 @@ static struct ethdev_rx_node_main ethdev_rx_main;
 
 static __rte_always_inline uint16_t
 ethdev_rx_node_process_inline(struct rte_graph *graph, struct rte_node *node,
-			      uint16_t port, uint16_t queue)
+			      ethdev_rx_node_ctx_t *ctx)
 {
-	uint16_t count, next_index = ETHDEV_RX_NEXT_IP4_LOOKUP;
+	uint16_t count, next_index;
+	uint16_t port, queue;
+
+	port = ctx->port_id;
+	queue = ctx->queue_id;
+	next_index = ctx->cls_next;
 
 	/* Get pkts from port */
 	count = rte_eth_rx_burst(port, queue, (struct rte_mbuf **)node->objs,
@@ -43,8 +48,7 @@ ethdev_rx_node_process(struct rte_graph *graph, struct rte_node *node,
 	RTE_SET_USED(objs);
 	RTE_SET_USED(cnt);
 
-	n_pkts = ethdev_rx_node_process_inline(graph, node, ctx->port_id,
-					       ctx->queue_id);
+	n_pkts = ethdev_rx_node_process_inline(graph, node, ctx);
 	return n_pkts;
 }
 
@@ -191,6 +195,8 @@ ethdev_rx_node_init(const struct rte_graph *graph, struct rte_node *node)
 
 	RTE_VERIFY(elem != NULL);
 
+	ctx->cls_next = ETHDEV_RX_NEXT_PKT_CLS;
+
 	/* Check and setup ptype */
 	return ethdev_ptype_setup(ctx->port_id, ctx->queue_id);
 }
@@ -209,7 +215,11 @@ static struct rte_node_register ethdev_rx_node_base = {
 	.init = ethdev_rx_node_init,
 
 	.nb_edges = ETHDEV_RX_NEXT_MAX,
-	.next_nodes = {[ETHDEV_RX_NEXT_IP4_LOOKUP] = "ip4_lookup"},
+	.next_nodes = {
+		/* Default pkt classification node */
+		[ETHDEV_RX_NEXT_PKT_CLS] = "pkt_cls",
+		[ETHDEV_RX_NEXT_IP4_LOOKUP] = "ip4_lookup",
+	},
 };
 
 struct rte_node_register *
