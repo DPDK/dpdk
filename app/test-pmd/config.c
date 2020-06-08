@@ -1281,8 +1281,9 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 		return;
 	}
 	diag = rte_eth_dev_set_mtu(port_id, mtu);
-	if (diag == 0 &&
-	    dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+	if (diag)
+		printf("Set MTU failed. diag=%d\n", diag);
+	else if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		/*
 		 * Ether overhead in driver is equal to the difference of
 		 * max_rx_pktlen and max_mtu in rte_eth_dev_info when the
@@ -1297,10 +1298,7 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 		} else
 			rte_port->dev_conf.rxmode.offloads &=
 						~DEV_RX_OFFLOAD_JUMBO_FRAME;
-
-		return;
 	}
-	printf("Set MTU failed. diag=%d\n", diag);
 }
 
 /* Generic flow management functions. */
