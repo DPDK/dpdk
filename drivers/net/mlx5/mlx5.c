@@ -179,7 +179,7 @@ int mlx5_logtype;
 static LIST_HEAD(, mlx5_dev_ctx_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
+static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	{
 		.size = sizeof(struct mlx5_flow_dv_encap_decap_resource),
@@ -271,7 +271,11 @@ static struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.type = "mlx5_hrxq_ipool",
 	},
 	{
-		.size = sizeof(struct mlx5_flow_handle),
+		/*
+		 * MLX5_IPOOL_MLX5_FLOW size varies for DV and VERBS flows.
+		 * It set in run time according to PCI function configuration.
+		 */
+		.size = 0,
 		.trunk_size = 64,
 		.grow_trunk = 3,
 		.grow_shift = 2,
@@ -542,24 +546,29 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
  */
 static void
 mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh,
-		       const struct mlx5_dev_config *config __rte_unused)
+		       const struct mlx5_dev_config *config)
 {
 	uint8_t i;
+	struct mlx5_indexed_pool_config cfg;
 
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	/*
-	 * While DV is supported, user chooses the verbs mode,
-	 * the mlx5 flow handle size is different with the
-	 * MLX5_FLOW_HANDLE_VERBS_SIZE.
-	 */
-	if (!config->dv_flow_en)
-		mlx5_ipool_cfg[MLX5_IPOOL_MLX5_FLOW].size =
-					MLX5_FLOW_HANDLE_VERBS_SIZE;
-#endif
 	for (i = 0; i < MLX5_IPOOL_MAX; ++i) {
+		cfg = mlx5_ipool_cfg[i];
+		switch (i) {
+		default:
+			break;
+		/*
+		 * Set MLX5_IPOOL_MLX5_FLOW ipool size
+		 * according to PCI function flow configuration.
+		 */
+		case MLX5_IPOOL_MLX5_FLOW:
+			cfg.size = config->dv_flow_en ?
+				sizeof(struct mlx5_flow_handle) :
+				MLX5_FLOW_HANDLE_VERBS_SIZE;
+			break;
+		}
 		if (config->reclaim_mode)
-			mlx5_ipool_cfg[i].release_mem_en = 1;
-		sh->ipool[i] = mlx5_ipool_create(&mlx5_ipool_cfg[i]);
+			cfg.release_mem_en = 1;
+		sh->ipool[i] = mlx5_ipool_create(&cfg);
 	}
 }
 
