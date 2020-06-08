@@ -27,7 +27,7 @@ elif [ -f "$codespell" ] ; then
 fi
 options="$options --max-line-length=$length"
 options="$options --show-types"
-options="$options --ignore=LINUX_VERSION_CODE,\
+options="$options --ignore=LINUX_VERSION_CODE,ENOSYS,\
 FILE_PATH_CHANGES,MAINTAINERS_STYLE,SPDX_LICENSE_TAG,\
 VOLATILE,PREFER_PACKED,PREFER_ALIGNED,PREFER_PRINTF,\
 PREFER_KERNEL_TYPES,BIT_MACRO,CONST_STRUCT,\
