@@ -935,8 +935,9 @@ testsuite_setup(void)
 	}
 
 	/* setup asym session pool */
-	unsigned int session_size =
-		rte_cryptodev_asym_get_private_session_size(dev_id);
+	unsigned int session_size = RTE_MAX(
+		rte_cryptodev_asym_get_private_session_size(dev_id),
+		rte_cryptodev_asym_get_header_session_size());
 	/*
 	 * Create mempool with TEST_NUM_SESSIONS * 2,
 	 * to include the session headers
