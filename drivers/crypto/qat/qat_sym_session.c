@@ -537,8 +537,16 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 	int ret;
 	int qat_cmd_id;
 
+	/* Verify the session physical address is known */
+	rte_iova_t session_paddr = rte_mempool_virt2iova(session);
+	if (session_paddr == 0 || session_paddr == RTE_BAD_IOVA) {
+		QAT_LOG(ERR,
+			"Session physical address unknown. Bad memory pool.");
+		return -EINVAL;
+	}
+
 	/* Set context descriptor physical address */
-	session->cd_paddr = rte_mempool_virt2iova(session) +
+	session->cd_paddr = session_paddr +
 			offsetof(struct qat_sym_session, cd);
 
 	session->min_qat_dev_gen = QAT_GEN1;
