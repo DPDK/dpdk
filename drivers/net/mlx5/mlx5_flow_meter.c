@@ -303,7 +303,7 @@ mlx5_flow_mtr_cap_get(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	memset(cap, 0, sizeof(*cap));
 	cap->n_max = 1 << qattr->log_max_flow_meter;
 	cap->n_shared_max = cap->n_max;
@@ -349,7 +349,7 @@ mlx5_flow_meter_profile_add(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Check input params. */
 	ret = mlx5_flow_meter_profile_validate(dev, meter_profile_id,
 					       profile, error);
@@ -402,19 +402,19 @@ mlx5_flow_meter_profile_delete(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Meter profile must exist. */
 	fmp = mlx5_flow_meter_profile_find(priv, meter_profile_id);
 	if (fmp == NULL)
 		return -rte_mtr_error_set(error, ENOENT,
 					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
 					  &meter_profile_id,
-					  "Meter profile id invalid.");
+					  "Meter profile id is invalid.");
 	/* Check profile is unused. */
 	if (fmp->ref_cnt)
 		return -rte_mtr_error_set(error, EBUSY,
 					  RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
-					  NULL, "Meter profile in use.");
+					  NULL, "Meter profile is in use.");
 	/* Remove from list. */
 	TAILQ_REMOVE(&priv->flow_meter_profiles, fmp, next);
 	rte_free(fmp);
@@ -636,7 +636,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Validate the parameters. */
 	ret = mlx5_flow_meter_validate(priv, meter_id, params, error);
 	if (ret)
@@ -723,7 +723,7 @@ mlx5_flow_meter_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Meter object must exist. */
 	fm = mlx5_flow_meter_find(priv, meter_id);
 	if (fm == NULL)
@@ -828,7 +828,7 @@ mlx5_flow_meter_enable(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Meter object must exist. */
 	fm = mlx5_flow_meter_find(priv, meter_id);
 	if (fm == NULL)
@@ -869,7 +869,7 @@ mlx5_flow_meter_disable(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Meter object must exist. */
 	fm = mlx5_flow_meter_find(priv, meter_id);
 	if (fm == NULL)
@@ -917,7 +917,7 @@ mlx5_flow_meter_profile_update(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Meter profile must exist. */
 	fmp = mlx5_flow_meter_profile_find(priv, meter_profile_id);
 	if (fmp == NULL)
@@ -980,7 +980,7 @@ mlx5_flow_meter_stats_update(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Meter object must exist. */
 	fm = mlx5_flow_meter_find(priv, meter_id);
 	if (fm == NULL)
@@ -1037,7 +1037,7 @@ mlx5_flow_meter_stats_read(struct rte_eth_dev *dev,
 	if (!priv->mtr_en)
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Meter is not support");
+					  "Meter is not supported");
 	/* Meter object must exist. */
 	fm = mlx5_flow_meter_find(priv, meter_id);
 	if (fm == NULL)
