@@ -1422,7 +1422,7 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
-	if (sess == NULL || xforms == NULL || dev == NULL)
+	if (sess == NULL || xforms == NULL || dev == NULL || mp == NULL)
 		return -EINVAL;
 
 	if (mp->elt_size < sess_priv_sz)
@@ -1540,23 +1540,38 @@ rte_cryptodev_sym_session_data_size(struct rte_cryptodev_sym_session *sess)
 			sess->user_data_sz;
 }
 
+static uint8_t
+rte_cryptodev_sym_is_valid_session_pool(struct rte_mempool *mp)
+{
+	struct rte_cryptodev_sym_session_pool_private_data *pool_priv;
+
+	if (!mp)
+		return 0;
+
+	pool_priv = rte_mempool_get_priv(mp);
+
+	if (!pool_priv || mp->private_data_size < sizeof(*pool_priv) ||
+			pool_priv->nb_drivers != nb_drivers ||
+			mp->elt_size <
+				rte_cryptodev_sym_get_header_session_size()
+				+ pool_priv->user_data_sz)
+		return 0;
+
+	return 1;
+}
+
 struct rte_cryptodev_sym_session *
 rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 {
 	struct rte_cryptodev_sym_session *sess;
 	struct rte_cryptodev_sym_session_pool_private_data *pool_priv;
 
-	if (!mp) {
+	if (!rte_cryptodev_sym_is_valid_session_pool(mp)) {
 		CDEV_LOG_ERR("Invalid mempool\n");
 		return NULL;
 	}
 
 	pool_priv = rte_mempool_get_priv(mp);
-
-	if (!pool_priv || mp->private_data_size < sizeof(*pool_priv)) {
-		CDEV_LOG_ERR("Invalid mempool\n");
-		return NULL;
-	}
 
 	/* Allocate a session structure from the session pool */
 	if (rte_mempool_get(mp, (void **)&sess)) {
@@ -1582,6 +1597,20 @@ struct rte_cryptodev_asym_session *
 rte_cryptodev_asym_session_create(struct rte_mempool *mp)
 {
 	struct rte_cryptodev_asym_session *sess;
+	unsigned int session_size =
+			rte_cryptodev_asym_get_header_session_size();
+
+	if (!mp) {
+		CDEV_LOG_ERR("invalid mempool\n");
+		return NULL;
+	}
+
+	/* Verify if provided mempool can hold elements big enough. */
+	if (mp->elt_size < session_size) {
+		CDEV_LOG_ERR(
+			"mempool elements too small to hold session objects");
+		return NULL;
+	}
 
 	/* Allocate a session structure from the session pool */
 	if (rte_mempool_get(mp, (void **)&sess)) {
@@ -1592,7 +1621,7 @@ rte_cryptodev_asym_session_create(struct rte_mempool *mp)
 	/* Clear device session pointer.
 	 * Include the flag indicating presence of private data
 	 */
-	memset(sess, 0, (sizeof(void *) * nb_drivers) + sizeof(uint8_t));
+	memset(sess, 0, session_size);
 
 	rte_cryptodev_trace_asym_session_create(mp, sess);
 	return sess;
