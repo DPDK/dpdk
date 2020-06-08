@@ -58,8 +58,8 @@ be loaded as shown below:
 
    If the devices used for DPDK are bound to the ``uio_pci_generic`` kernel module,
    please make sure that the IOMMU is disabled or passthrough. One can add
-   ``intel_iommu=off`` or ``amd_iommu=off`` or ``intel_iommu=on iommu=pt``in GRUB
-   command line on x86_64 systems, or add ``iommu.passthrough=1`` on arm64 system.
+   ``intel_iommu=off`` or ``amd_iommu=off`` or ``intel_iommu=on iommu=pt`` in GRUB
+   command line on x86_64 systems, or add ``iommu.passthrough=1`` on aarch64 system.
 
 Since DPDK release 1.7 onward provides VFIO support, use of UIO is optional
 for platforms that support using VFIO.
