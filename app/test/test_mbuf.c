@@ -2647,7 +2647,7 @@ test_mbuf_dyn(struct rte_mempool *pktmbuf_pool)
 	flag3 = rte_mbuf_dynflag_register_bitnum(&dynflag3,
 						rte_bsf64(PKT_LAST_FREE));
 	if (flag3 != rte_bsf64(PKT_LAST_FREE))
-		GOTO_FAIL("failed to register dynamic flag 3, flag2=%d: %s",
+		GOTO_FAIL("failed to register dynamic flag 3, flag3=%d: %s",
 			flag3, strerror(errno));
 
 	printf("dynflag: flag=%d, flag2=%d, flag3=%d\n", flag, flag2, flag3);
