@@ -19,7 +19,6 @@
 #define RTE_MBUF_DYN_MZNAME "rte_mbuf_dyn"
 
 struct mbuf_dynfield_elt {
-	TAILQ_ENTRY(mbuf_dynfield_elt) next;
 	struct rte_mbuf_dynfield params;
 	size_t offset;
 };
@@ -31,7 +30,6 @@ static struct rte_tailq_elem mbuf_dynfield_tailq = {
 EAL_REGISTER_TAILQ(mbuf_dynfield_tailq);
 
 struct mbuf_dynflag_elt {
-	TAILQ_ENTRY(mbuf_dynflag_elt) next;
 	struct rte_mbuf_dynflag params;
 	unsigned int bitnum;
 };
