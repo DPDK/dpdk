@@ -893,7 +893,7 @@ static int hns3_insert_fdir_filter(struct hns3_hw *hw,
 	if (ret < 0) {
 		rte_spinlock_unlock(&fdir_info->flows_lock);
 		hns3_err(hw, "Hash table full? err:%d(%s)!", ret,
-			 strerror(ret));
+			 strerror(-ret));
 		return ret;
 	}
 
