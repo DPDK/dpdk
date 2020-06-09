@@ -116,7 +116,7 @@ static int
 hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	int cmdq_lines, common_lines, ring_lines, tqp_intr_lines;
+	uint32_t cmdq_lines, common_lines, ring_lines, tqp_intr_lines;
 	uint32_t regs_num_32_bit, regs_num_64_bit;
 	uint32_t len;
 	int ret;
