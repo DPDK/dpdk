@@ -619,7 +619,7 @@ static void hns3_fd_convert_meta_data(struct hns3_fd_key_cfg *cfg,
 				      uint8_t *key_x, uint8_t *key_y)
 {
 	uint16_t meta_data = 0;
-	uint16_t port_number;
+	uint32_t port_number;
 	uint8_t cur_pos = 0;
 	uint8_t tuple_size;
 	uint8_t shift_bits;
@@ -637,7 +637,7 @@ static void hns3_fd_convert_meta_data(struct hns3_fd_key_cfg *cfg,
 				     rule->key_conf.spec.tunnel_type ? 1 : 0);
 			cur_pos += tuple_size;
 		} else if (i == VLAN_NUMBER) {
-			uint8_t vlan_tag;
+			uint32_t vlan_tag;
 			uint8_t vlan_num;
 			if (rule->key_conf.spec.tunnel_type == 0)
 				vlan_num = rule->key_conf.vlan_num;
