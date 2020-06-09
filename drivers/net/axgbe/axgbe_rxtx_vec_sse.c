@@ -13,6 +13,7 @@
 
 /* Useful to avoid shifting for every descriptor prepration*/
 #define TX_DESC_CTRL_FLAGS 0xb000000000000000
+#define TX_DESC_CTRL_FLAG_TMST 0x40000000
 #define TX_FREE_BULK	   8
 #define TX_FREE_BULK_CHECK (TX_FREE_BULK - 1)
 
@@ -20,8 +21,13 @@ static inline void
 axgbe_vec_tx(volatile struct axgbe_tx_desc *desc,
 	     struct rte_mbuf *mbuf)
 {
+	uint64_t tmst_en = 0;
+	/* Timestamp enablement check */
+	if (mbuf->ol_flags & PKT_TX_IEEE1588_TMST)
+		tmst_en = TX_DESC_CTRL_FLAG_TMST;
 	__m128i descriptor = _mm_set_epi64x((uint64_t)mbuf->pkt_len << 32 |
-					    TX_DESC_CTRL_FLAGS | mbuf->data_len,
+					    TX_DESC_CTRL_FLAGS | mbuf->data_len
+					    | tmst_en,
 					    mbuf->buf_iova
 					    + mbuf->data_off);
 	_mm_store_si128((__m128i *)desc, descriptor);

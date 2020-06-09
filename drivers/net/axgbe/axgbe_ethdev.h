@@ -9,6 +9,7 @@
 #include <rte_mempool.h>
 #include <rte_lcore.h>
 #include "axgbe_common.h"
+#include "rte_time.h"
 
 #define IRQ				0xff
 #define VLAN_HLEN			4
@@ -62,6 +63,13 @@
 /* PCI clock frequencies */
 #define AXGBE_V2_DMA_CLOCK_FREQ		500000000
 #define AXGBE_V2_PTP_CLOCK_FREQ		125000000
+
+/* Timestamp support - values based on 50MHz PTP clock
+ *   50MHz => 20 nsec
+ */
+#define AXGBE_TSTAMP_SSINC       20
+#define AXGBE_TSTAMP_SNSINC      0
+#define AXGBE_CYCLECOUNTER_MASK 0xffffffffffffffffULL
 
 #define AXGMAC_FIFO_MIN_ALLOC		2048
 #define AXGMAC_FIFO_UNIT		256
@@ -645,6 +653,12 @@ struct axgbe_port {
 	unsigned int hash_table_count;
 	unsigned int uc_hash_mac_addr;
 	unsigned int uc_hash_table[AXGBE_MAC_HASH_TABLE_SIZE];
+
+	/* For IEEE1588 PTP */
+	struct rte_timecounter systime_tc;
+	struct rte_timecounter tx_tstamp;
+	unsigned int tstamp_addend;
+
 };
 
 void axgbe_init_function_ptrs_dev(struct axgbe_hw_if *hw_if);

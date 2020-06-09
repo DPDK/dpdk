@@ -275,6 +275,10 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* Get the RSS hash */
 		if (AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3, RSV))
 			mbuf->hash.rss = rte_le_to_cpu_32(desc->write.desc1);
+		/* Indicate if a Context Descriptor is next */
+		if (AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3, CDA))
+			mbuf->ol_flags |= PKT_RX_IEEE1588_PTP
+					| PKT_RX_IEEE1588_TMST;
 		pkt_len = AXGMAC_GET_BITS_LE(desc->write.desc3, RX_NORMAL_DESC3,
 					     PL) - rxq->crc_len;
 		/* Mbuf populate */
@@ -722,6 +726,10 @@ static int axgbe_xmit_hw(struct axgbe_tx_queue *txq,
 	/* Total msg length to transmit */
 	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FL,
 			   mbuf->pkt_len);
+	/* Timestamp enablement check */
+	if (mbuf->ol_flags & PKT_TX_IEEE1588_TMST)
+		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, TTSE, 1);
+	rte_wmb();
 	/* Mark it as First and Last Descriptor */
 	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FD, 1);
 	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, LD, 1);
