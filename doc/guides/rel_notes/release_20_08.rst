@@ -56,6 +56,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated PCAP driver.**
+
+  Updated PCAP driver with new features and improvements, including:
+
+  * Support software Tx nanosecond timestamps precision.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:
