@@ -12,6 +12,8 @@
 #include <net/if.h>
 #include <sys/mman.h>
 #include <linux/rtnetlink.h>
+#include <linux/sockios.h>
+#include <linux/ethtool.h>
 #include <fcntl.h>
 
 /* Verbs header. */
@@ -1991,6 +1993,332 @@ mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 	if (sh->devx_comp)
 		mlx5_glue->devx_destroy_cmd_comp(sh->devx_comp);
 #endif
+}
+
+/**
+ * Read statistics by a named counter.
+ *
+ * @param[in] priv
+ *   Pointer to the private device data structure.
+ * @param[in] ctr_name
+ *   Pointer to the name of the statistic counter to read
+ * @param[out] stat
+ *   Pointer to read statistic value.
+ * @return
+ *   0 on success and stat is valud, 1 if failed to read the value
+ *   rte_errno is set.
+ *
+ */
+int
+mlx5_os_read_dev_stat(struct mlx5_priv *priv, const char *ctr_name,
+		      uint64_t *stat)
+{
+	int fd;
+
+	if (priv->sh) {
+		MKSTR(path, "%s/ports/%d/hw_counters/%s",
+			  priv->sh->ibdev_path,
+			  priv->dev_port,
+			  ctr_name);
+		fd = open(path, O_RDONLY);
+		if (fd != -1) {
+			char buf[21] = {'\0'};
+			ssize_t n = read(fd, buf, sizeof(buf));
+
+			close(fd);
+			if (n != -1) {
+				*stat = strtoull(buf, NULL, 10);
+				return 0;
+			}
+		}
+	}
+	*stat = 0;
+	return 1;
+}
+
+/**
+ * Read device counters table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] stats
+ *   Counters table output buffer.
+ *
+ * @return
+ *   0 on success and stats is filled, negative errno value otherwise and
+ *   rte_errno is set.
+ */
+int
+mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	unsigned int i;
+	struct ifreq ifr;
+	unsigned int stats_sz = xstats_ctrl->stats_n * sizeof(uint64_t);
+	unsigned char et_stat_buf[sizeof(struct ethtool_stats) + stats_sz];
+	struct ethtool_stats *et_stats = (struct ethtool_stats *)et_stat_buf;
+	int ret;
+
+	et_stats->cmd = ETHTOOL_GSTATS;
+	et_stats->n_stats = xstats_ctrl->stats_n;
+	ifr.ifr_data = (caddr_t)et_stats;
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING,
+			"port %u unable to read statistic values from device",
+			dev->data->port_id);
+		return ret;
+	}
+	for (i = 0; i != xstats_ctrl->mlx5_stats_n; ++i) {
+		if (xstats_ctrl->info[i].dev) {
+			ret = mlx5_os_read_dev_stat(priv,
+					    xstats_ctrl->info[i].ctr_name,
+					    &stats[i]);
+			/* return last xstats counter if fail to read. */
+			if (ret == 0)
+				xstats_ctrl->xstats[i] = stats[i];
+			else
+				stats[i] = xstats_ctrl->xstats[i];
+		} else {
+			stats[i] = (uint64_t)
+				et_stats->data[xstats_ctrl->dev_table_idx[i]];
+		}
+	}
+	return 0;
+}
+
+/**
+ * Query the number of statistics provided by ETHTOOL.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   Number of statistics on success, negative errno value otherwise and
+ *   rte_errno is set.
+ */
+int
+mlx5_os_get_stats_n(struct rte_eth_dev *dev)
+{
+	struct ethtool_drvinfo drvinfo;
+	struct ifreq ifr;
+	int ret;
+
+	drvinfo.cmd = ETHTOOL_GDRVINFO;
+	ifr.ifr_data = (caddr_t)&drvinfo;
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING, "port %u unable to query number of statistics",
+			dev->data->port_id);
+		return ret;
+	}
+	return drvinfo.n_stats;
+}
+
+static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
+	{
+		.dpdk_name = "rx_port_unicast_bytes",
+		.ctr_name = "rx_vport_unicast_bytes",
+	},
+	{
+		.dpdk_name = "rx_port_multicast_bytes",
+		.ctr_name = "rx_vport_multicast_bytes",
+	},
+	{
+		.dpdk_name = "rx_port_broadcast_bytes",
+		.ctr_name = "rx_vport_broadcast_bytes",
+	},
+	{
+		.dpdk_name = "rx_port_unicast_packets",
+		.ctr_name = "rx_vport_unicast_packets",
+	},
+	{
+		.dpdk_name = "rx_port_multicast_packets",
+		.ctr_name = "rx_vport_multicast_packets",
+	},
+	{
+		.dpdk_name = "rx_port_broadcast_packets",
+		.ctr_name = "rx_vport_broadcast_packets",
+	},
+	{
+		.dpdk_name = "tx_port_unicast_bytes",
+		.ctr_name = "tx_vport_unicast_bytes",
+	},
+	{
+		.dpdk_name = "tx_port_multicast_bytes",
+		.ctr_name = "tx_vport_multicast_bytes",
+	},
+	{
+		.dpdk_name = "tx_port_broadcast_bytes",
+		.ctr_name = "tx_vport_broadcast_bytes",
+	},
+	{
+		.dpdk_name = "tx_port_unicast_packets",
+		.ctr_name = "tx_vport_unicast_packets",
+	},
+	{
+		.dpdk_name = "tx_port_multicast_packets",
+		.ctr_name = "tx_vport_multicast_packets",
+	},
+	{
+		.dpdk_name = "tx_port_broadcast_packets",
+		.ctr_name = "tx_vport_broadcast_packets",
+	},
+	{
+		.dpdk_name = "rx_wqe_err",
+		.ctr_name = "rx_wqe_err",
+	},
+	{
+		.dpdk_name = "rx_crc_errors_phy",
+		.ctr_name = "rx_crc_errors_phy",
+	},
+	{
+		.dpdk_name = "rx_in_range_len_errors_phy",
+		.ctr_name = "rx_in_range_len_errors_phy",
+	},
+	{
+		.dpdk_name = "rx_symbol_err_phy",
+		.ctr_name = "rx_symbol_err_phy",
+	},
+	{
+		.dpdk_name = "tx_errors_phy",
+		.ctr_name = "tx_errors_phy",
+	},
+	{
+		.dpdk_name = "rx_out_of_buffer",
+		.ctr_name = "out_of_buffer",
+		.dev = 1,
+	},
+	{
+		.dpdk_name = "tx_packets_phy",
+		.ctr_name = "tx_packets_phy",
+	},
+	{
+		.dpdk_name = "rx_packets_phy",
+		.ctr_name = "rx_packets_phy",
+	},
+	{
+		.dpdk_name = "tx_discards_phy",
+		.ctr_name = "tx_discards_phy",
+	},
+	{
+		.dpdk_name = "rx_discards_phy",
+		.ctr_name = "rx_discards_phy",
+	},
+	{
+		.dpdk_name = "tx_bytes_phy",
+		.ctr_name = "tx_bytes_phy",
+	},
+	{
+		.dpdk_name = "rx_bytes_phy",
+		.ctr_name = "rx_bytes_phy",
+	},
+	/* Representor only */
+	{
+		.dpdk_name = "rx_packets",
+		.ctr_name = "vport_rx_packets",
+	},
+	{
+		.dpdk_name = "rx_bytes",
+		.ctr_name = "vport_rx_bytes",
+	},
+	{
+		.dpdk_name = "tx_packets",
+		.ctr_name = "vport_tx_packets",
+	},
+	{
+		.dpdk_name = "tx_bytes",
+		.ctr_name = "vport_tx_bytes",
+	},
+};
+
+static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
+
+/**
+ * Init the structures to read device counters.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_os_stats_init(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	struct mlx5_stats_ctrl *stats_ctrl = &priv->stats_ctrl;
+	unsigned int i;
+	unsigned int j;
+	struct ifreq ifr;
+	struct ethtool_gstrings *strings = NULL;
+	unsigned int dev_stats_n;
+	unsigned int str_sz;
+	int ret;
+
+	/* So that it won't aggregate for each init. */
+	xstats_ctrl->mlx5_stats_n = 0;
+	ret = mlx5_os_get_stats_n(dev);
+	if (ret < 0) {
+		DRV_LOG(WARNING, "port %u no extended statistics available",
+			dev->data->port_id);
+		return;
+	}
+	dev_stats_n = ret;
+	/* Allocate memory to grab stat names and values. */
+	str_sz = dev_stats_n * ETH_GSTRING_LEN;
+	strings = (struct ethtool_gstrings *)
+		  rte_malloc("xstats_strings",
+			     str_sz + sizeof(struct ethtool_gstrings), 0);
+	if (!strings) {
+		DRV_LOG(WARNING, "port %u unable to allocate memory for xstats",
+		     dev->data->port_id);
+		return;
+	}
+	strings->cmd = ETHTOOL_GSTRINGS;
+	strings->string_set = ETH_SS_STATS;
+	strings->len = dev_stats_n;
+	ifr.ifr_data = (caddr_t)strings;
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING, "port %u unable to get statistic names",
+			dev->data->port_id);
+		goto free;
+	}
+	for (i = 0; i != dev_stats_n; ++i) {
+		const char *curr_string = (const char *)
+			&strings->data[i * ETH_GSTRING_LEN];
+
+		for (j = 0; j != xstats_n; ++j) {
+			if (!strcmp(mlx5_counters_init[j].ctr_name,
+				    curr_string)) {
+				unsigned int idx = xstats_ctrl->mlx5_stats_n++;
+
+				xstats_ctrl->dev_table_idx[idx] = i;
+				xstats_ctrl->info[idx] = mlx5_counters_init[j];
+				break;
+			}
+		}
+	}
+	/* Add dev counters. */
+	for (i = 0; i != xstats_n; ++i) {
+		if (mlx5_counters_init[i].dev) {
+			unsigned int idx = xstats_ctrl->mlx5_stats_n++;
+
+			xstats_ctrl->info[idx] = mlx5_counters_init[i];
+			xstats_ctrl->hw_stats[idx] = 0;
+		}
+	}
+	MLX5_ASSERT(xstats_ctrl->mlx5_stats_n <= MLX5_MAX_XSTATS);
+	xstats_ctrl->stats_n = dev_stats_n;
+	/* Copy to base at first time. */
+	ret = mlx5_os_read_dev_counters(dev, xstats_ctrl->base);
+	if (ret)
+		DRV_LOG(ERR, "port %u cannot read device counters: %s",
+			dev->data->port_id, strerror(rte_errno));
+	mlx5_os_read_dev_stat(priv, "out_of_buffer", &stats_ctrl->imissed_base);
+	stats_ctrl->imissed = 0;
+free:
+	rte_free(strings);
 }
 
 const struct eth_dev_ops mlx5_os_dev_ops = {

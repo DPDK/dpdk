@@ -141,7 +141,7 @@ struct mlx5_counter_ctrl {
 	char dpdk_name[RTE_ETH_XSTATS_NAME_SIZE];
 	/* Name of the counter on the device table. */
 	char ctr_name[RTE_ETH_XSTATS_NAME_SIZE];
-	uint32_t ib:1; /**< Nonzero for IB counters. */
+	uint32_t dev:1; /**< Nonzero for dev counters. */
 };
 
 struct mlx5_xstats_ctrl {
@@ -807,7 +807,6 @@ int mlx5_allmulticast_disable(struct rte_eth_dev *dev);
 
 /* mlx5_stats.c */
 
-void mlx5_stats_init(struct rte_eth_dev *dev);
 int mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 int mlx5_stats_reset(struct rte_eth_dev *dev);
 int mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
@@ -936,4 +935,9 @@ int mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		       struct rte_pci_device *pci_dev);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh);
+int mlx5_os_read_dev_stat(struct mlx5_priv *priv,
+			  const char *ctr_name, uint64_t *stat);
+int mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats);
+int mlx5_os_get_stats_n(struct rte_eth_dev *dev);
+void mlx5_os_stats_init(struct rte_eth_dev *dev);
 #endif /* RTE_PMD_MLX5_H_ */
