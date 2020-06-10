@@ -802,15 +802,13 @@ F: doc/guides/nics/netvsc.rst
 F: doc/guides/nics/features/netvsc.ini
 
 Netcope szedata2
-M: Martin Zizka <zizka@netcope.com>
-M: Jakub Neruda <neruda@netcope.com>
+M: Martin Spinler <spinler@cesnet.cz>
 F: drivers/net/szedata2/
 F: doc/guides/nics/szedata2.rst
 F: doc/guides/nics/features/szedata2.ini
 
 Netcope nfb
-M: Martin Zizka <zizka@netcope.com>
-M: Jakub Neruda <neruda@netcope.com>
+M: Martin Spinler <spinler@cesnet.cz>
 F: drivers/net/nfb/
 F: doc/guides/nics/nfb.rst
 F: doc/guides/nics/features/nfb.ini
