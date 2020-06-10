@@ -1639,18 +1639,6 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/*
- * GTP flags are contained in 1 byte of the format:
- * -------------------------------------------
- * | bit   | 0 - 2   | 3  | 4   | 5 | 6 | 7  |
- * |-----------------------------------------|
- * | value | Version | PT | Res | E | S | PN |
- * -------------------------------------------
- *
- * Matching is supported only for GTP flags E, S, PN.
- */
-#define MLX5_GTP_FLAGS_MASK	0x07
-
 /**
  * Validate VLAN item.
  *
@@ -1723,6 +1711,18 @@ flow_dv_validate_item_vlan(const struct rte_flow_item *item,
 	}
 	return 0;
 }
+
+/*
+ * GTP flags are contained in 1 byte of the format:
+ * -------------------------------------------
+ * | bit   | 0 - 2   | 3  | 4   | 5 | 6 | 7  |
+ * |-----------------------------------------|
+ * | value | Version | PT | Res | E | S | PN |
+ * -------------------------------------------
+ *
+ * Matching is supported only for GTP flags E, S, PN.
+ */
+#define MLX5_GTP_FLAGS_MASK	0x07
 
 /**
  * Validate GTP item.
