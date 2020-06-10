@@ -5,5 +5,6 @@ includes += include_directories('.')
 sources += files(
 	'mlx5_socket.c',
 	'mlx5_os.c',
+	'mlx5_ethdev_os.c',
 )
 

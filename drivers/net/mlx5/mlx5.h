@@ -711,6 +711,18 @@ int mlx5_init_once(void);
 
 /* mlx5_ethdev.c */
 
+int mlx5_dev_configure(struct rte_eth_dev *dev);
+int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver,
+			size_t fw_size);
+int mlx5_dev_infos_get(struct rte_eth_dev *dev,
+		       struct rte_eth_dev_info *info);
+const uint32_t *mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
+int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
+			 struct rte_eth_hairpin_cap *cap);
+
+/* mlx5_ethdev_os.c */
+
 int mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE]);
 int mlx5_get_master_ifname(const char *ibdev_path, char (*ifname)[IF_NAMESIZE]);
 unsigned int mlx5_ifindex(const struct rte_eth_dev *dev);
@@ -718,14 +730,10 @@ int mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
 int mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep,
 		   unsigned int flags);
-int mlx5_dev_configure(struct rte_eth_dev *dev);
-int mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
+int mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
-int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
-const uint32_t *mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 int mlx5_force_link_status_change(struct rte_eth_dev *dev, int status);
-int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev,
 			   struct rte_eth_fc_conf *fc_conf);
 int mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev,
@@ -754,8 +762,6 @@ int mlx5_get_module_info(struct rte_eth_dev *dev,
 			 struct rte_eth_dev_module_info *modinfo);
 int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 			   struct rte_dev_eeprom_info *info);
-int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
-			 struct rte_eth_hairpin_cap *cap);
 int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
 
 /* mlx5_mac.c */
