@@ -78,6 +78,6 @@ readline.set_completer_delims(readline.get_completer_delims().replace('/', ''))
 for f in glob.glob('/var/run/dpdk/*/dpdk_telemetry.%s' % TELEMETRY_VERSION):
     handle_socket(f)
 # Path to sockets for processes run as a regular user
-for f in glob.glob('/run/user/%d/dpdk/*/dpdk_telemetry.%s' %
-                   (os.getuid(), TELEMETRY_VERSION)):
+for f in glob.glob('%s/dpdk/*/dpdk_telemetry.%s' %
+                   (os.environ.get('XDG_RUNTIME_DIR', '/tmp'), TELEMETRY_VERSION)):
     handle_socket(f)
