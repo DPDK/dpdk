@@ -524,7 +524,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			return NULL;
 		}
 		eth_dev->device = dpdk_dev;
-		eth_dev->dev_ops = &mlx5_dev_sec_ops;
+		eth_dev->dev_ops = &mlx5_os_dev_sec_ops;
 		err = mlx5_proc_priv_init(eth_dev);
 		if (err)
 			return NULL;
@@ -1043,7 +1043,7 @@ err_secondary:
 	/* Initialize burst functions to prevent crashes before link-up. */
 	eth_dev->rx_pkt_burst = removed_rx_burst;
 	eth_dev->tx_pkt_burst = removed_tx_burst;
-	eth_dev->dev_ops = &mlx5_dev_ops;
+	eth_dev->dev_ops = &mlx5_os_dev_ops;
 	/* Register MAC address. */
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
 	if (config.vf && config.vf_nl_en)
@@ -1992,3 +1992,134 @@ mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 		mlx5_glue->devx_destroy_cmd_comp(sh->devx_comp);
 #endif
 }
+
+const struct eth_dev_ops mlx5_os_dev_ops = {
+	.dev_configure = mlx5_dev_configure,
+	.dev_start = mlx5_dev_start,
+	.dev_stop = mlx5_dev_stop,
+	.dev_set_link_down = mlx5_set_link_down,
+	.dev_set_link_up = mlx5_set_link_up,
+	.dev_close = mlx5_dev_close,
+	.promiscuous_enable = mlx5_promiscuous_enable,
+	.promiscuous_disable = mlx5_promiscuous_disable,
+	.allmulticast_enable = mlx5_allmulticast_enable,
+	.allmulticast_disable = mlx5_allmulticast_disable,
+	.link_update = mlx5_link_update,
+	.stats_get = mlx5_stats_get,
+	.stats_reset = mlx5_stats_reset,
+	.xstats_get = mlx5_xstats_get,
+	.xstats_reset = mlx5_xstats_reset,
+	.xstats_get_names = mlx5_xstats_get_names,
+	.fw_version_get = mlx5_fw_version_get,
+	.dev_infos_get = mlx5_dev_infos_get,
+	.read_clock = mlx5_read_clock,
+	.dev_supported_ptypes_get = mlx5_dev_supported_ptypes_get,
+	.vlan_filter_set = mlx5_vlan_filter_set,
+	.rx_queue_setup = mlx5_rx_queue_setup,
+	.rx_hairpin_queue_setup = mlx5_rx_hairpin_queue_setup,
+	.tx_queue_setup = mlx5_tx_queue_setup,
+	.tx_hairpin_queue_setup = mlx5_tx_hairpin_queue_setup,
+	.rx_queue_release = mlx5_rx_queue_release,
+	.tx_queue_release = mlx5_tx_queue_release,
+	.flow_ctrl_get = mlx5_dev_get_flow_ctrl,
+	.flow_ctrl_set = mlx5_dev_set_flow_ctrl,
+	.mac_addr_remove = mlx5_mac_addr_remove,
+	.mac_addr_add = mlx5_mac_addr_add,
+	.mac_addr_set = mlx5_mac_addr_set,
+	.set_mc_addr_list = mlx5_set_mc_addr_list,
+	.mtu_set = mlx5_dev_set_mtu,
+	.vlan_strip_queue_set = mlx5_vlan_strip_queue_set,
+	.vlan_offload_set = mlx5_vlan_offload_set,
+	.reta_update = mlx5_dev_rss_reta_update,
+	.reta_query = mlx5_dev_rss_reta_query,
+	.rss_hash_update = mlx5_rss_hash_update,
+	.rss_hash_conf_get = mlx5_rss_hash_conf_get,
+	.filter_ctrl = mlx5_dev_filter_ctrl,
+	.rx_descriptor_status = mlx5_rx_descriptor_status,
+	.tx_descriptor_status = mlx5_tx_descriptor_status,
+	.rxq_info_get = mlx5_rxq_info_get,
+	.txq_info_get = mlx5_txq_info_get,
+	.rx_burst_mode_get = mlx5_rx_burst_mode_get,
+	.tx_burst_mode_get = mlx5_tx_burst_mode_get,
+	.rx_queue_count = mlx5_rx_queue_count,
+	.rx_queue_intr_enable = mlx5_rx_intr_enable,
+	.rx_queue_intr_disable = mlx5_rx_intr_disable,
+	.is_removed = mlx5_is_removed,
+	.udp_tunnel_port_add  = mlx5_udp_tunnel_port_add,
+	.get_module_info = mlx5_get_module_info,
+	.get_module_eeprom = mlx5_get_module_eeprom,
+	.hairpin_cap_get = mlx5_hairpin_cap_get,
+	.mtr_ops_get = mlx5_flow_meter_ops_get,
+};
+
+/* Available operations from secondary process. */
+const struct eth_dev_ops mlx5_os_dev_sec_ops = {
+	.stats_get = mlx5_stats_get,
+	.stats_reset = mlx5_stats_reset,
+	.xstats_get = mlx5_xstats_get,
+	.xstats_reset = mlx5_xstats_reset,
+	.xstats_get_names = mlx5_xstats_get_names,
+	.fw_version_get = mlx5_fw_version_get,
+	.dev_infos_get = mlx5_dev_infos_get,
+	.rx_descriptor_status = mlx5_rx_descriptor_status,
+	.tx_descriptor_status = mlx5_tx_descriptor_status,
+	.rxq_info_get = mlx5_rxq_info_get,
+	.txq_info_get = mlx5_txq_info_get,
+	.rx_burst_mode_get = mlx5_rx_burst_mode_get,
+	.tx_burst_mode_get = mlx5_tx_burst_mode_get,
+	.get_module_info = mlx5_get_module_info,
+	.get_module_eeprom = mlx5_get_module_eeprom,
+};
+
+/* Available operations in flow isolated mode. */
+const struct eth_dev_ops mlx5_os_dev_ops_isolate = {
+	.dev_configure = mlx5_dev_configure,
+	.dev_start = mlx5_dev_start,
+	.dev_stop = mlx5_dev_stop,
+	.dev_set_link_down = mlx5_set_link_down,
+	.dev_set_link_up = mlx5_set_link_up,
+	.dev_close = mlx5_dev_close,
+	.promiscuous_enable = mlx5_promiscuous_enable,
+	.promiscuous_disable = mlx5_promiscuous_disable,
+	.allmulticast_enable = mlx5_allmulticast_enable,
+	.allmulticast_disable = mlx5_allmulticast_disable,
+	.link_update = mlx5_link_update,
+	.stats_get = mlx5_stats_get,
+	.stats_reset = mlx5_stats_reset,
+	.xstats_get = mlx5_xstats_get,
+	.xstats_reset = mlx5_xstats_reset,
+	.xstats_get_names = mlx5_xstats_get_names,
+	.fw_version_get = mlx5_fw_version_get,
+	.dev_infos_get = mlx5_dev_infos_get,
+	.dev_supported_ptypes_get = mlx5_dev_supported_ptypes_get,
+	.vlan_filter_set = mlx5_vlan_filter_set,
+	.rx_queue_setup = mlx5_rx_queue_setup,
+	.rx_hairpin_queue_setup = mlx5_rx_hairpin_queue_setup,
+	.tx_queue_setup = mlx5_tx_queue_setup,
+	.tx_hairpin_queue_setup = mlx5_tx_hairpin_queue_setup,
+	.rx_queue_release = mlx5_rx_queue_release,
+	.tx_queue_release = mlx5_tx_queue_release,
+	.flow_ctrl_get = mlx5_dev_get_flow_ctrl,
+	.flow_ctrl_set = mlx5_dev_set_flow_ctrl,
+	.mac_addr_remove = mlx5_mac_addr_remove,
+	.mac_addr_add = mlx5_mac_addr_add,
+	.mac_addr_set = mlx5_mac_addr_set,
+	.set_mc_addr_list = mlx5_set_mc_addr_list,
+	.mtu_set = mlx5_dev_set_mtu,
+	.vlan_strip_queue_set = mlx5_vlan_strip_queue_set,
+	.vlan_offload_set = mlx5_vlan_offload_set,
+	.filter_ctrl = mlx5_dev_filter_ctrl,
+	.rx_descriptor_status = mlx5_rx_descriptor_status,
+	.tx_descriptor_status = mlx5_tx_descriptor_status,
+	.rxq_info_get = mlx5_rxq_info_get,
+	.txq_info_get = mlx5_txq_info_get,
+	.rx_burst_mode_get = mlx5_rx_burst_mode_get,
+	.tx_burst_mode_get = mlx5_tx_burst_mode_get,
+	.rx_queue_intr_enable = mlx5_rx_intr_enable,
+	.rx_queue_intr_disable = mlx5_rx_intr_disable,
+	.is_removed = mlx5_is_removed,
+	.get_module_info = mlx5_get_module_info,
+	.get_module_eeprom = mlx5_get_module_eeprom,
+	.hairpin_cap_get = mlx5_hairpin_cap_get,
+	.mtr_ops_get = mlx5_flow_meter_ops_get,
+};

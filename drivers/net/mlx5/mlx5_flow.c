@@ -38,10 +38,6 @@
 #include "mlx5_flow.h"
 #include "mlx5_rxtx.h"
 
-/* Dev ops structure defined in mlx5.c */
-extern const struct eth_dev_ops mlx5_dev_ops;
-extern const struct eth_dev_ops mlx5_dev_ops_isolate;
-
 /** Device flow drivers. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 extern const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops;
@@ -5042,9 +5038,9 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 	}
 	priv->isolated = !!enable;
 	if (enable)
-		dev->dev_ops = &mlx5_dev_ops_isolate;
+		dev->dev_ops = &mlx5_os_dev_ops_isolate;
 	else
-		dev->dev_ops = &mlx5_dev_ops;
+		dev->dev_ops = &mlx5_os_dev_ops;
 	return 0;
 }
 

@@ -132,8 +132,9 @@ extern struct mlx5_shared_data *mlx5_shared_data;
 extern struct rte_pci_driver mlx5_driver;
 
 /* Dev ops structs */
-extern const struct eth_dev_ops mlx5_dev_sec_ops;
-extern const struct eth_dev_ops mlx5_dev_ops;
+extern const struct eth_dev_ops mlx5_os_dev_ops;
+extern const struct eth_dev_ops mlx5_os_dev_sec_ops;
+extern const struct eth_dev_ops mlx5_os_dev_ops_isolate;
 
 struct mlx5_counter_ctrl {
 	/* Name of the counter. */
@@ -708,6 +709,12 @@ void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
 int mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 				  struct mlx5_dev_config *config);
 int mlx5_init_once(void);
+int mlx5_dev_configure(struct rte_eth_dev *dev);
+int mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
+int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
+int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
+int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
+			 struct rte_eth_hairpin_cap *cap);
 
 /* mlx5_ethdev.c */
 
