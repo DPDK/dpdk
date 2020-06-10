@@ -717,8 +717,13 @@ rte_cryptodev_data_alloc(uint8_t dev_id, struct rte_cryptodev_data **data,
 		mz = rte_memzone_reserve(mz_name,
 				sizeof(struct rte_cryptodev_data),
 				socket_id, 0);
-	} else
+		CDEV_LOG_DEBUG("PRIMARY:reserved memzone for %s (%p)",
+				mz_name, mz);
+	} else {
 		mz = rte_memzone_lookup(mz_name);
+		CDEV_LOG_DEBUG("SECONDARY:looked up memzone for %s (%p)",
+				mz_name, mz);
+	}
 
 	if (mz == NULL)
 		return -ENOMEM;
@@ -749,8 +754,14 @@ rte_cryptodev_data_free(uint8_t dev_id, struct rte_cryptodev_data **data)
 	RTE_ASSERT(*data == mz->addr);
 	*data = NULL;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		CDEV_LOG_DEBUG("PRIMARY:free memzone of %s (%p)",
+				mz_name, mz);
 		return rte_memzone_free(mz);
+	} else {
+		CDEV_LOG_DEBUG("SECONDARY:don't free memzone of %s (%p)",
+				mz_name, mz);
+	}
 
 	return 0;
 }
@@ -807,7 +818,14 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id)
 			cryptodev->data->dev_id = dev_id;
 			cryptodev->data->socket_id = socket_id;
 			cryptodev->data->dev_started = 0;
+			CDEV_LOG_DEBUG("PRIMARY:init data");
 		}
+
+		CDEV_LOG_DEBUG("Data for %s: dev_id %d, socket %d, started %d",
+				cryptodev->data->name,
+				cryptodev->data->dev_id,
+				cryptodev->data->socket_id,
+				cryptodev->data->dev_started);
 
 		/* init user callbacks */
 		TAILQ_INIT(&(cryptodev->link_intr_cbs));
