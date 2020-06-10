@@ -567,7 +567,7 @@ struct mlx5_dev_ctx_shared {
 	/* Shared interrupt handler section. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
 	struct rte_intr_handle intr_handle_devx; /* DEVX interrupt handler. */
-	struct mlx5dv_devx_cmd_comp *devx_comp; /* DEVX async comp obj. */
+	void *devx_comp; /* DEVX async comp obj. */
 	struct mlx5_devx_obj *tis; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_flow_id_pool *flow_id_pool; /* Flow ID pool. */

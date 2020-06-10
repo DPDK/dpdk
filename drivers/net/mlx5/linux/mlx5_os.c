@@ -1944,19 +1944,21 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 	if (sh->devx) {
 #ifdef HAVE_IBV_DEVX_ASYNC
 		sh->intr_handle_devx.fd = -1;
-		sh->devx_comp = mlx5_glue->devx_create_cmd_comp(sh->ctx);
-		if (!sh->devx_comp) {
+		sh->devx_comp =
+			(void *)mlx5_glue->devx_create_cmd_comp(sh->ctx);
+		struct mlx5dv_devx_cmd_comp *devx_comp = sh->devx_comp;
+		if (!devx_comp) {
 			DRV_LOG(INFO, "failed to allocate devx_comp.");
 			return;
 		}
-		flags = fcntl(sh->devx_comp->fd, F_GETFL);
-		ret = fcntl(sh->devx_comp->fd, F_SETFL, flags | O_NONBLOCK);
+		flags = fcntl(devx_comp->fd, F_GETFL);
+		ret = fcntl(devx_comp->fd, F_SETFL, flags | O_NONBLOCK);
 		if (ret) {
 			DRV_LOG(INFO, "failed to change file descriptor"
 				" devx comp");
 			return;
 		}
-		sh->intr_handle_devx.fd = sh->devx_comp->fd;
+		sh->intr_handle_devx.fd = devx_comp->fd;
 		sh->intr_handle_devx.type = RTE_INTR_HANDLE_EXT;
 		if (rte_intr_callback_register(&sh->intr_handle_devx,
 					mlx5_dev_interrupt_handler_devx, sh)) {
