@@ -446,7 +446,7 @@ struct mlx5_flow_counter_mng {
 #define MLX5_AGE_GET(age_info, BIT) \
 	((age_info)->flags & (1 << (BIT)))
 #define GET_PORT_AGE_INFO(priv) \
-	(&((priv)->sh->port[(priv)->ibv_port - 1].age_info))
+	(&((priv)->sh->port[(priv)->dev_port - 1].age_info))
 
 /* Aging information for per port. */
 struct mlx5_age_info {
@@ -456,7 +456,7 @@ struct mlx5_age_info {
 };
 
 /* Per port data of shared IB device. */
-struct mlx5_ibv_shared_port {
+struct mlx5_dev_shared_port {
 	uint32_t ih_port_id;
 	uint32_t devx_ih_port_id;
 	/*
@@ -571,7 +571,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_devx_obj *tis; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_flow_id_pool *flow_id_pool; /* Flow ID pool. */
-	struct mlx5_ibv_shared_port port[]; /* per device port data array. */
+	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
 /* Per-process private structure. */
@@ -593,7 +593,7 @@ TAILQ_HEAD(mlx5_flow_meters, mlx5_flow_meter);
 struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared device context. */
-	uint32_t ibv_port; /* IB device port number. */
+	uint32_t dev_port; /* Device port number. */
 	struct rte_pci_device *pci_dev; /* Backend PCI device. */
 	struct rte_ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
 	BITFIELD_DECLARE(mac_own, uint64_t, MLX5_MAX_MAC_ADDRESSES);
@@ -697,9 +697,9 @@ void mlx5_dev_close(struct rte_eth_dev *dev);
 	     port_id = mlx5_eth_find_next(port_id + 1, pci_dev))
 int mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs);
 struct mlx5_dev_ctx_shared *
-mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
-			const struct mlx5_dev_config *config);
-void mlx5_free_shared_ibctx(struct mlx5_dev_ctx_shared *sh);
+mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
+			   const struct mlx5_dev_config *config);
+void mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh);
 void mlx5_free_table_hash_list(struct mlx5_priv *priv);
 int mlx5_alloc_table_hash_list(struct mlx5_priv *priv);
 void mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,

@@ -176,8 +176,9 @@ static struct mlx5_local_data mlx5_local_data;
 /** Driver-specific log messages type. */
 int mlx5_logtype;
 
-static LIST_HEAD(, mlx5_dev_ctx_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
-static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+static LIST_HEAD(, mlx5_dev_ctx_shared) mlx5_dev_ctx_list =
+						LIST_HEAD_INITIALIZER();
+static pthread_mutex_t mlx5_dev_ctx_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -588,18 +589,18 @@ mlx5_flow_ipool_destroy(struct mlx5_dev_ctx_shared *sh)
 }
 
 /**
- * Allocate shared IB device context. If there is multiport device the
+ * Allocate shared device context. If there is multiport device the
  * master and representors will share this context, if there is single
- * port dedicated IB device, the context will be used by only given
+ * port dedicated device, the context will be used by only given
  * port due to unification.
  *
- * Routine first searches the context for the specified IB device name,
+ * Routine first searches the context for the specified device name,
  * if found the shared context assumed and reference counter is incremented.
  * If no context found the new one is created and initialized with specified
- * IB device context and parameters.
+ * device context and parameters.
  *
  * @param[in] spawn
- *   Pointer to the IB device attributes (name, port, etc).
+ *   Pointer to the device attributes (name, port, etc).
  * @param[in] config
  *   Pointer to device configuration structure.
  *
@@ -608,8 +609,8 @@ mlx5_flow_ipool_destroy(struct mlx5_dev_ctx_shared *sh)
  *   otherwise NULL and rte_errno is set.
  */
 struct mlx5_dev_ctx_shared *
-mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
-			const struct mlx5_dev_config *config)
+mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
+			   const struct mlx5_dev_config *config)
 {
 	struct mlx5_dev_ctx_shared *sh;
 	int err = 0;
@@ -619,9 +620,9 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 	MLX5_ASSERT(spawn);
 	/* Secondary process should not create the shared context. */
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	pthread_mutex_lock(&mlx5_ibv_list_mutex);
+	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
 	/* Search for IB context by device name. */
-	LIST_FOREACH(sh, &mlx5_ibv_list, next) {
+	LIST_FOREACH(sh, &mlx5_dev_ctx_list, next) {
 		if (!strcmp(sh->ibdev_name,
 			mlx5_os_get_dev_device_name(spawn->phys_dev))) {
 			sh->refcnt++;
@@ -633,7 +634,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 	sh = rte_zmalloc("ethdev shared ib context",
 			 sizeof(struct mlx5_dev_ctx_shared) +
 			 spawn->max_port *
-			 sizeof(struct mlx5_ibv_shared_port),
+			 sizeof(struct mlx5_dev_shared_port),
 			 RTE_CACHE_LINE_SIZE);
 	if (!sh) {
 		DRV_LOG(ERR, "shared context allocation failure");
@@ -722,12 +723,12 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn,
 			 sh, mem_event_cb);
 	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	/* Add context to the global device list. */
-	LIST_INSERT_HEAD(&mlx5_ibv_list, sh, next);
+	LIST_INSERT_HEAD(&mlx5_dev_ctx_list, sh, next);
 exit:
-	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
+	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	return sh;
 error:
-	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
+	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	MLX5_ASSERT(sh);
 	if (sh->tis)
 		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
@@ -753,14 +754,14 @@ error:
  *   Pointer to mlx5_dev_ctx_shared object to free
  */
 void
-mlx5_free_shared_ibctx(struct mlx5_dev_ctx_shared *sh)
+mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 {
-	pthread_mutex_lock(&mlx5_ibv_list_mutex);
+	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 	/* Check the object presence in the list. */
 	struct mlx5_dev_ctx_shared *lctx;
 
-	LIST_FOREACH(lctx, &mlx5_ibv_list, next)
+	LIST_FOREACH(lctx, &mlx5_dev_ctx_list, next)
 		if (lctx == sh)
 			break;
 	MLX5_ASSERT(lctx);
@@ -802,7 +803,7 @@ mlx5_free_shared_ibctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_flow_id_pool_release(sh->flow_id_pool);
 	rte_free(sh);
 exit:
-	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
+	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 }
 
 /**
@@ -1202,7 +1203,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	 * mlx5_nl_mac_addr_flush() uses ibdev_path for retrieveing
 	 * ifindex if Netlink fails.
 	 */
-	mlx5_free_shared_ibctx(priv->sh);
+	mlx5_free_shared_dev_ctx(priv->sh);
 	if (priv->domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
 		unsigned int c = 0;
 		uint16_t port_id;

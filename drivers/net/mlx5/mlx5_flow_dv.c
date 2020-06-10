@@ -2725,7 +2725,7 @@ flow_dv_port_id_action_resource_register
 	*cache_resource = *resource;
 	/*
 	 * Depending on rdma_core version the glue routine calls
-	 * either mlx5dv_dr_action_create_dest_ib_port(domain, ibv_port)
+	 * either mlx5dv_dr_action_create_dest_ib_port(domain, dev_port)
 	 * or mlx5dv_dr_action_create_dest_vport(domain, vport_id).
 	 */
 	cache_resource->action =
@@ -7557,7 +7557,7 @@ flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
 	 * This parameter is transferred to
 	 * mlx5dv_dr_action_create_dest_ib_port().
 	 */
-	*dst_port_id = priv->ibv_port;
+	*dst_port_id = priv->dev_port;
 #else
 	/*
 	 * Legacy mode, no LAG configurations is supported.

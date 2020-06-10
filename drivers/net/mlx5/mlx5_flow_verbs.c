@@ -1755,7 +1755,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	/* Other members of attr will be ignored. */
 	dev_flow->verbs.attr.priority =
 		mlx5_flow_adjust_priority(dev, priority, subpriority);
-	dev_flow->verbs.attr.port = (uint8_t)priv->ibv_port;
+	dev_flow->verbs.attr.port = (uint8_t)priv->dev_port;
 	return 0;
 }
 

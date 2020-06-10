@@ -149,7 +149,7 @@ mlx5_read_ib_stat(struct mlx5_priv *priv, const char *ctr_name, uint64_t *stat)
 	if (priv->sh) {
 		MKSTR(path, "%s/ports/%d/hw_counters/%s",
 			  priv->sh->ibdev_path,
-			  priv->ibv_port,
+			  priv->dev_port,
 			  ctr_name);
 		fd = open(path, O_RDONLY);
 		if (fd != -1) {

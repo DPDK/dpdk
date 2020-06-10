@@ -563,7 +563,7 @@ err_secondary:
 			strerror(rte_errno));
 		goto error;
 	}
-	sh = mlx5_alloc_shared_ibctx(spawn, &config);
+	sh = mlx5_alloc_shared_dev_ctx(spawn, &config);
 	if (!sh)
 		return NULL;
 	config.devx = sh->devx;
@@ -693,7 +693,7 @@ err_secondary:
 		goto error;
 	}
 	priv->sh = sh;
-	priv->ibv_port = spawn->phys_port;
+	priv->dev_port = spawn->phys_port;
 	priv->pci_dev = spawn->pci_dev;
 	priv->mtu = RTE_ETHER_MTU;
 	priv->mp_id.port_id = port_id;
@@ -1188,7 +1188,7 @@ error:
 		rte_eth_dev_release_port(eth_dev);
 	}
 	if (sh)
-		mlx5_free_shared_ibctx(sh);
+		mlx5_free_shared_dev_ctx(sh);
 	MLX5_ASSERT(err > 0);
 	rte_errno = err;
 	return NULL;

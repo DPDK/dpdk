@@ -946,7 +946,7 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 			container_of(txq, struct mlx5_txq_ctrl, txq);
 		struct ibv_qp_attr mod = {
 			.qp_state = IBV_QPS_RESET,
-			.port_num = (uint8_t)priv->ibv_port,
+			.port_num = (uint8_t)priv->dev_port,
 		};
 		struct ibv_qp *qp = txq_ctrl->obj->qp;
 

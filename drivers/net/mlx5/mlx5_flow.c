@@ -509,7 +509,7 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 	} flow_attr = {
 		.attr = {
 			.num_of_specs = 2,
-			.port = (uint8_t)priv->ibv_port,
+			.port = (uint8_t)priv->dev_port,
 		},
 		.eth = {
 			.type = IBV_FLOW_SPEC_ETH,
