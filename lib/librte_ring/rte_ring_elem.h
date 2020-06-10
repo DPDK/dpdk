@@ -578,9 +578,6 @@ static __rte_always_inline unsigned int
 rte_ring_enqueue_bulk_elem(struct rte_ring *r, const void *obj_table,
 		unsigned int esize, unsigned int n, unsigned int *free_space)
 {
-	return __rte_ring_do_enqueue_elem(r, obj_table, esize, n,
-			RTE_RING_QUEUE_FIXED, r->prod.sync_type, free_space);
-
 	switch (r->prod.sync_type) {
 	case RTE_RING_SYNC_MT:
 		return rte_ring_mp_enqueue_bulk_elem(r, obj_table, esize, n,
