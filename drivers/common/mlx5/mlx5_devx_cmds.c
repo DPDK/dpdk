@@ -577,6 +577,7 @@ int
 mlx5_devx_cmd_qp_query_tis_td(void *qp, uint32_t tis_num,
 			      uint32_t *tis_td)
 {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	uint32_t in[MLX5_ST_SZ_DW(query_tis_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(query_tis_out)] = {0};
 	int rc;
@@ -592,6 +593,12 @@ mlx5_devx_cmd_qp_query_tis_td(void *qp, uint32_t tis_num,
 	tis_ctx = MLX5_ADDR_OF(query_tis_out, out, tis_context);
 	*tis_td = MLX5_GET(tisc, tis_ctx, transport_domain);
 	return 0;
+#else
+	(void)qp;
+	(void)tis_num;
+	(void)tis_td;
+	return -ENOTSUP;
+#endif
 }
 
 /**
