@@ -1290,7 +1290,7 @@ rte_eal_init(int argc, char **argv)
 	 * place, so no cleanup needed.
 	 */
 	if (!internal_config.no_shconf && eal_clean_runtime_dir() < 0) {
-		rte_eal_init_alert("Cannot clear runtime directory\n");
+		rte_eal_init_alert("Cannot clear runtime directory");
 		return -1;
 	}
 	if (!internal_config.no_telemetry) {
