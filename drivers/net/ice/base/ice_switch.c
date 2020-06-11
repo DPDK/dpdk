@@ -13,6 +13,7 @@
 #define ICE_IPV4_NVGRE_PROTO_ID		0x002F
 #define ICE_PPP_IPV6_PROTO_ID		0x0057
 #define ICE_IPV6_ETHER_ID		0x86DD
+#define ICE_TCP_PROTO_ID		0x06
 
 /* Dummy ethernet header needed in the ice_aqc_sw_rules_elem
  * struct to configure any switch filter rules.
@@ -6836,6 +6837,12 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			 lkups[i].m_u.ethertype.ethtype_id ==
 					0xFFFF)
 			ipv6 = true;
+		else if (lkups[i].type == ICE_IPV4_IL &&
+			 lkups[i].h_u.ipv4_hdr.protocol ==
+				ICE_TCP_PROTO_ID &&
+			 lkups[i].m_u.ipv4_hdr.protocol ==
+				0xFF)
+			tcp = true;
 	}
 
 	if (tun_type == ICE_SW_TUN_IPV4_ESP) {
