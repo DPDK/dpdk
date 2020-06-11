@@ -25,8 +25,8 @@ int	opterr = 1;		/* if error message should be printed */
 int	optind = 1;		/* index into parent argv vector */
 int	optopt = '?';		/* character checked for validity */
 
-static void pass(void) {}
-#define warnx(a, ...) pass()
+static void pass(const char *a) {(void) a; }
+#define warnx(a, ...) pass(a)
 
 #define PRINT_ERROR	((opterr) && (*options != ':'))
 

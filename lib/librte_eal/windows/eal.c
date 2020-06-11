@@ -139,7 +139,7 @@ eal_log_level_parse(int argc, char **argv)
 }
 
 /* Parse the argument given in the command line of the application */
-__attribute__((optnone)) static int
+static int
 eal_parse_args(int argc, char **argv)
 {
 	int opt, ret;

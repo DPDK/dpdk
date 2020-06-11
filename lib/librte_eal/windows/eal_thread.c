@@ -140,7 +140,8 @@ eal_thread_create(pthread_t *thread)
 {
 	HANDLE th;
 
-	th = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)eal_thread_loop,
+	th = CreateThread(NULL, 0,
+		(LPTHREAD_START_ROUTINE)(ULONG_PTR)eal_thread_loop,
 						NULL, 0, (LPDWORD)thread);
 	if (!th)
 		return -1;

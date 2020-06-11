@@ -45,7 +45,7 @@ typedef SYNCHRONIZATION_BARRIER pthread_barrier_t;
 #define pthread_getaffinity_np(thread, size, cpuset) \
 	eal_get_thread_affinity_mask(thread, (unsigned long *) cpuset)
 #define pthread_create(threadid, threadattr, threadfunc, args) \
-	eal_create_thread(threadid, threadfunc, args)
+	eal_create_thread(threadid, threadattr, threadfunc, args)
 
 static inline int
 eal_set_thread_affinity_mask(pthread_t threadid, unsigned long *cpuset)
@@ -70,8 +70,10 @@ eal_get_thread_affinity_mask(pthread_t threadid, unsigned long *cpuset)
 }
 
 static inline int
-eal_create_thread(void *threadid, void *threadfunc, void *args)
+eal_create_thread(void *threadid, const void *threadattr, void *threadfunc,
+		void *args)
 {
+	RTE_SET_USED(threadattr);
 	HANDLE hThread;
 	hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadfunc,
 		args, 0, (LPDWORD)threadid);

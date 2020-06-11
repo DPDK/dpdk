@@ -27,7 +27,7 @@ static struct _wcpu_map {
  * Create a map of all processors and associated cores on the system
  */
 void
-eal_create_cpu_map()
+eal_create_cpu_map(void)
 {
 	wcpu_map.total_procs =
 		GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
