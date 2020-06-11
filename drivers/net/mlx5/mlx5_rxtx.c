@@ -5542,6 +5542,9 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 			/* Does not meet requested offloads at all. */
 			continue;
 		}
+		if ((olx ^ tmp) & MLX5_TXOFF_CONFIG_MPW)
+			/* Do not enable legacy MPW if not configured. */
+			continue;
 		if ((olx ^ tmp) & MLX5_TXOFF_CONFIG_EMPW)
 			/* Do not enable eMPW if not configured. */
 			continue;
