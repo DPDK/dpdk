@@ -193,6 +193,8 @@ otx2_unregister_irq(struct rte_intr_handle *intr_handle,
 		    rte_intr_callback_fn cb, void *data, unsigned int vec)
 {
 	struct rte_intr_handle tmp_handle;
+	uint8_t retries = 5; /* 5 ms */
+	int rc;
 
 	if (vec > intr_handle->max_intr) {
 		otx2_err("Error unregistering MSI-X interrupts vec:%d > %d",
@@ -205,8 +207,21 @@ otx2_unregister_irq(struct rte_intr_handle *intr_handle,
 	if (tmp_handle.fd == -1)
 		return;
 
-	/* Un-register callback func from eal lib */
-	rte_intr_callback_unregister(&tmp_handle, cb, data);
+	do {
+		/* Un-register callback func from eal lib */
+		rc = rte_intr_callback_unregister(&tmp_handle, cb, data);
+		/* Retry only if -EAGAIN */
+		if (rc != -EAGAIN)
+			break;
+		rte_delay_ms(1);
+		retries--;
+	} while (retries);
+
+	if (rc < 0) {
+		otx2_err("Error unregistering MSI-X intr vec %d cb, rc=%d",
+			 vec, rc);
+		return;
+	}
 
 	otx2_base_dbg("Disable vector:0x%x for vfio (efds: %d, max:%d)",
 			vec, intr_handle->nb_efd, intr_handle->max_intr);
