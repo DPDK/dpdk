@@ -2215,15 +2215,17 @@ enum ice_status
 ice_flow_get_hw_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 		     u8 *hw_prof_id)
 {
+	enum ice_status status = ICE_ERR_DOES_NOT_EXIST;
 	struct ice_prof_map *map;
 
+	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
 	map = ice_search_prof_id(hw, blk, prof_id);
 	if (map) {
 		*hw_prof_id = map->prof_id;
-		return ICE_SUCCESS;
+		status = ICE_SUCCESS;
 	}
-
-	return ICE_ERR_DOES_NOT_EXIST;
+	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
+	return status;
 }
 
 /**
@@ -3456,9 +3458,13 @@ ice_rss_update_symm(struct ice_hw *hw,
 	struct ice_prof_map *map;
 	u8 prof_id, m;
 
+	ice_acquire_lock(&hw->blk[ICE_BLK_RSS].es.prof_map_lock);
 	map = ice_search_prof_id(hw, ICE_BLK_RSS, prof->id);
-	prof_id = map->prof_id;
-
+	if (map)
+		prof_id = map->prof_id;
+	ice_release_lock(&hw->blk[ICE_BLK_RSS].es.prof_map_lock);
+	if (!map)
+		return;
 	/* clear to default */
 	for (m = 0; m < 6; m++)
 		wr32(hw, GLQF_HSYMM(prof_id, m), 0);
