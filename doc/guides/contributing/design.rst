@@ -57,6 +57,22 @@ The following config options can be used:
 * ``CONFIG_RTE_EXEC_ENV`` is a string that contains the name of the executive environment.
 * ``CONFIG_RTE_EXEC_ENV_FREEBSD`` or ``CONFIG_RTE_EXEC_ENV_LINUX`` are defined only if we are building for this execution environment.
 
+Mbuf features
+-------------
+
+The ``rte_mbuf`` structure must be kept small (128 bytes).
+
+In order to add new features without wasting buffer space for unused features,
+some fields and flags can be registered dynamically in a shared area.
+The "dynamic" mbuf area is the default choice for the new features.
+
+The "dynamic" area is eating the remaining space in mbuf,
+and some existing "static" fields may need to become "dynamic".
+
+Adding a new static field or flag must be an exception matching many criteria
+like (non exhaustive): wide usage, performance, size.
+
+
 Library Statistics
 ------------------
 

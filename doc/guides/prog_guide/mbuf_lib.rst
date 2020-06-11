@@ -207,6 +207,29 @@ The list of flags and their precise meaning is described in the mbuf API
 documentation (rte_mbuf.h). Also refer to the testpmd source code
 (specifically the csumonly.c file) for details.
 
+Dynamic fields and flags
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The size of the mbuf is constrained and limited;
+while the amount of metadata to save for each packet is quite unlimited.
+The most basic networking information already find their place
+in the existing mbuf fields and flags.
+
+If new features need to be added, the new fields and flags should fit
+in the "dynamic space", by registering some room in the mbuf structure:
+
+dynamic field
+   named area in the mbuf structure,
+   with a given size (at least 1 byte) and alignment constraint.
+
+dynamic flag
+   named bit in the mbuf structure,
+   stored in the field ``ol_flags``.
+
+The dynamic fields and flags are managed with the functions ``rte_mbuf_dyn*``.
+
+It is not possible to unregister fields or flags.
+
 .. _direct_indirect_buffer:
 
 Direct and Indirect Buffers

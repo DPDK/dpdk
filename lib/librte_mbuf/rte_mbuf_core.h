@@ -12,6 +12,8 @@
  * packet offload flags and some related macros.
  * For majority of DPDK entities, it is not recommended to include
  * this file directly, use include <rte_mbuf.h> instead.
+ *
+ * New fields and flags should fit in the "dynamic space".
  */
 
 #include <stdint.h>
