@@ -340,11 +340,13 @@ int
 fips_test_parse_one_case(void)
 {
 	uint32_t i, j = 0;
-	uint32_t is_interim = 0;
+	uint32_t is_interim;
+	uint32_t interim_cnt = 0;
 	int ret;
 
 	if (info.interim_callbacks) {
 		for (i = 0; i < info.nb_vec_lines; i++) {
+			is_interim = 0;
 			for (j = 0; info.interim_callbacks[j].key != NULL; j++)
 				if (strstr(info.vec[i],
 					info.interim_callbacks[j].key)) {
@@ -357,17 +359,24 @@ fips_test_parse_one_case(void)
 					if (ret < 0)
 						return ret;
 				}
+
+			if (is_interim)
+				interim_cnt += 1;
 		}
 	}
 
-	if (is_interim) {
-		for (i = 0; i < info.nb_vec_lines; i++)
+	info.vec_start_off = interim_cnt;
+
+	if (interim_cnt) {
+		for (i = 0; i < interim_cnt; i++)
 			fprintf(info.fp_wr, "%s\n", info.vec[i]);
 		fprintf(info.fp_wr, "\n");
-		return 1;
+
+		if (info.nb_vec_lines == interim_cnt)
+			return 1;
 	}
 
-	for (i = 0; i < info.nb_vec_lines; i++) {
+	for (i = info.vec_start_off; i < info.nb_vec_lines; i++) {
 		for (j = 0; info.callbacks[j].key != NULL; j++)
 			if (strstr(info.vec[i], info.callbacks[j].key)) {
 				ret = info.callbacks[j].cb(
@@ -387,7 +396,7 @@ fips_test_write_one_case(void)
 {
 	uint32_t i;
 
-	for (i = 0; i < info.nb_vec_lines; i++)
+	for (i = info.vec_start_off; i < info.nb_vec_lines; i++)
 		fprintf(info.fp_wr, "%s\n", info.vec[i]);
 }
 

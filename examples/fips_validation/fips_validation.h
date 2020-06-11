@@ -161,6 +161,7 @@ struct fips_test_interim_info {
 	enum fips_test_algorithms algo;
 	char *one_line_text;
 	char *vec[MAX_LINE_PER_VECTOR];
+	uint32_t vec_start_off;
 	uint32_t nb_vec_lines;
 	char device_name[MAX_STRING_SIZE];
 	char file_name[MAX_STRING_SIZE];
