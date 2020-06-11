@@ -150,27 +150,27 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_tx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc)
+mlx5_tx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t *desc)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (desc <= MLX5_TX_COMP_THRESH) {
+	if (*desc <= MLX5_TX_COMP_THRESH) {
 		DRV_LOG(WARNING,
 			"port %u number of descriptors requested for Tx queue"
 			" %u must be higher than MLX5_TX_COMP_THRESH, using %u"
-			" instead of %u",
-			dev->data->port_id, idx, MLX5_TX_COMP_THRESH + 1, desc);
-		desc = MLX5_TX_COMP_THRESH + 1;
+			" instead of %u", dev->data->port_id, idx,
+			MLX5_TX_COMP_THRESH + 1, *desc);
+		*desc = MLX5_TX_COMP_THRESH + 1;
 	}
-	if (!rte_is_power_of_2(desc)) {
-		desc = 1 << log2above(desc);
+	if (!rte_is_power_of_2(*desc)) {
+		*desc = 1 << log2above(*desc);
 		DRV_LOG(WARNING,
 			"port %u increased number of descriptors in Tx queue"
 			" %u to the next power of two (%d)",
-			dev->data->port_id, idx, desc);
+			dev->data->port_id, idx, *desc);
 	}
 	DRV_LOG(DEBUG, "port %u configuring queue %u for %u descriptors",
-		dev->data->port_id, idx, desc);
+		dev->data->port_id, idx, *desc);
 	if (idx >= priv->txqs_n) {
 		DRV_LOG(ERR, "port %u Tx queue index out of range (%u >= %u)",
 			dev->data->port_id, idx, priv->txqs_n);
@@ -213,7 +213,7 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		container_of(txq, struct mlx5_txq_ctrl, txq);
 	int res;
 
-	res = mlx5_tx_queue_pre_setup(dev, idx, desc);
+	res = mlx5_tx_queue_pre_setup(dev, idx, &desc);
 	if (res)
 		return res;
 	txq_ctrl = mlx5_txq_new(dev, idx, desc, socket, conf);
@@ -254,7 +254,7 @@ mlx5_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 		container_of(txq, struct mlx5_txq_ctrl, txq);
 	int res;
 
-	res = mlx5_tx_queue_pre_setup(dev, idx, desc);
+	res = mlx5_tx_queue_pre_setup(dev, idx, &desc);
 	if (res)
 		return res;
 	if (hairpin_conf->peer_count != 1 ||

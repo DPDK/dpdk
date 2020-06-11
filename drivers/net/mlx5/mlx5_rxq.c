@@ -453,19 +453,19 @@ mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_rx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc)
+mlx5_rx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t *desc)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (!rte_is_power_of_2(desc)) {
-		desc = 1 << log2above(desc);
+	if (!rte_is_power_of_2(*desc)) {
+		*desc = 1 << log2above(*desc);
 		DRV_LOG(WARNING,
 			"port %u increased number of descriptors in Rx queue %u"
 			" to the next power of two (%d)",
-			dev->data->port_id, idx, desc);
+			dev->data->port_id, idx, *desc);
 	}
 	DRV_LOG(DEBUG, "port %u configuring Rx queue %u for %u descriptors",
-		dev->data->port_id, idx, desc);
+		dev->data->port_id, idx, *desc);
 	if (idx >= priv->rxqs_n) {
 		DRV_LOG(ERR, "port %u Rx queue index out of range (%u >= %u)",
 			dev->data->port_id, idx, priv->rxqs_n);
@@ -511,7 +511,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	int res;
 
-	res = mlx5_rx_queue_pre_setup(dev, idx, desc);
+	res = mlx5_rx_queue_pre_setup(dev, idx, &desc);
 	if (res)
 		return res;
 	rxq_ctrl = mlx5_rxq_new(dev, idx, desc, socket, conf, mp);
@@ -552,7 +552,7 @@ mlx5_rx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	int res;
 
-	res = mlx5_rx_queue_pre_setup(dev, idx, desc);
+	res = mlx5_rx_queue_pre_setup(dev, idx, &desc);
 	if (res)
 		return res;
 	if (hairpin_conf->peer_count != 1 ||
