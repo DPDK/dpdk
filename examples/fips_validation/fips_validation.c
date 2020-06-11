@@ -640,6 +640,14 @@ update_info_vec(uint32_t count)
 
 	cb = &info.writeback_callbacks[0];
 
+	if (!(strstr(info.vec[0], cb->key))) {
+		fprintf(info.fp_wr, "%s%u\n", cb->key, count);
+		i = 0;
+	} else {
+		snprintf(info.vec[0], strlen(info.vec[0]) + 4, "%s%u", cb->key,
+				count);
+		i = 1;
+	}
 	snprintf(info.vec[0], strlen(info.vec[0]) + 4, "%s%u", cb->key, count);
 
 	for (i = 1; i < info.nb_vec_lines; i++) {
