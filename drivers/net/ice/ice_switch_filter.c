@@ -23,6 +23,7 @@
 #include "ice_logs.h"
 #include "ice_ethdev.h"
 #include "ice_generic_flow.h"
+#include "ice_dcf_ethdev.h"
 
 
 #define MAX_QGRP_NUM_TYPE 7
@@ -1240,7 +1241,8 @@ out:
 }
 
 static int
-ice_switch_parse_dcf_action(const struct rte_flow_action *actions,
+ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
+			    const struct rte_flow_action *actions,
 			    struct rte_flow_error *error,
 			    struct ice_adv_rule_info *rule_info)
 {
@@ -1255,7 +1257,11 @@ ice_switch_parse_dcf_action(const struct rte_flow_action *actions,
 		case RTE_FLOW_ACTION_TYPE_VF:
 			rule_info->sw_act.fltr_act = ICE_FWD_TO_VSI;
 			act_vf = action->conf;
-			rule_info->sw_act.vsi_handle = act_vf->id;
+			if (act_vf->original)
+				rule_info->sw_act.vsi_handle =
+					ad->real_hw.avf.bus.func;
+			else
+				rule_info->sw_act.vsi_handle = act_vf->id;
 			break;
 		default:
 			rte_flow_error_set(error,
@@ -1515,7 +1521,8 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	}
 
 	if (ad->hw.dcf_enabled)
-		ret = ice_switch_parse_dcf_action(actions, error, &rule_info);
+		ret = ice_switch_parse_dcf_action((void *)ad, actions, error,
+						  &rule_info);
 	else
 		ret = ice_switch_parse_action(pf, actions, error, &rule_info);
 
