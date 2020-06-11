@@ -1024,6 +1024,179 @@ static void ice_collect_result_idx(struct ice_aqc_recipe_data_elem *buf,
 }
 
 /**
+ * ice_get_tun_type_for_recipe - get tunnel type for the recipe
+ * @rid: recipe ID that we are populating
+ */
+static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid)
+{
+	u8 vxlan_profile[12] = {10, 11, 12, 16, 17, 18, 22, 23, 24, 25, 26, 27};
+	u8 gre_profile[12] = {13, 14, 15, 19, 20, 21, 28, 29, 30, 31, 32, 33};
+	u8 pppoe_profile[7] = {34, 35, 36, 37, 38, 39, 40};
+	u8 non_tun_profile[6] = {4, 5, 6, 7, 8, 9};
+	enum ice_sw_tunnel_type tun_type = ICE_NON_TUN;
+	u16 i, j, profile_num = 0;
+	bool non_tun_valid = false;
+	bool pppoe_valid = false;
+	bool vxlan_valid = false;
+	bool gre_valid = false;
+	bool gtp_valid = false;
+	bool flag_valid = false;
+
+	for (j = 0; j < ICE_MAX_NUM_PROFILES; j++) {
+		if (!ice_is_bit_set(recipe_to_profile[rid], j))
+			continue;
+		else
+			profile_num++;
+
+		for (i = 0; i < 12; i++) {
+			if (gre_profile[i] == j)
+				gre_valid = true;
+		}
+
+		for (i = 0; i < 12; i++) {
+			if (vxlan_profile[i] == j)
+				vxlan_valid = true;
+		}
+
+		for (i = 0; i < 7; i++) {
+			if (pppoe_profile[i] == j)
+				pppoe_valid = true;
+		}
+
+		for (i = 0; i < 6; i++) {
+			if (non_tun_profile[i] == j)
+				non_tun_valid = true;
+		}
+
+		if (j >= ICE_PROFID_IPV4_GTPC_TEID &&
+		    j <= ICE_PROFID_IPV6_GTPU_IPV6_OTHER)
+			gtp_valid = true;
+
+		if (j >= ICE_PROFID_IPV4_ESP &&
+		    j <= ICE_PROFID_IPV6_PFCP_SESSION)
+			flag_valid = true;
+	}
+
+	if (!non_tun_valid && vxlan_valid)
+		tun_type = ICE_SW_TUN_VXLAN;
+	else if (!non_tun_valid && gre_valid)
+		tun_type = ICE_SW_TUN_NVGRE;
+	else if (!non_tun_valid && pppoe_valid)
+		tun_type = ICE_SW_TUN_PPPOE;
+	else if (!non_tun_valid && gtp_valid)
+		tun_type = ICE_SW_TUN_GTP;
+	else if ((non_tun_valid && vxlan_valid) ||
+		 (non_tun_valid && gre_valid) ||
+		 (non_tun_valid && gtp_valid) ||
+		 (non_tun_valid && pppoe_valid))
+		tun_type = ICE_SW_TUN_AND_NON_TUN;
+	else if ((non_tun_valid && !vxlan_valid) ||
+		 (non_tun_valid && !gre_valid) ||
+		 (non_tun_valid && !gtp_valid) ||
+		 (non_tun_valid && !pppoe_valid))
+		tun_type = ICE_NON_TUN;
+
+	if (profile_num > 1 && tun_type == ICE_SW_TUN_PPPOE) {
+		i = ice_is_bit_set(recipe_to_profile[rid],
+				   ICE_PROFID_PPPOE_IPV4_OTHER);
+		j = ice_is_bit_set(recipe_to_profile[rid],
+				   ICE_PROFID_PPPOE_IPV6_OTHER);
+		if (i && !j)
+			tun_type = ICE_SW_TUN_PPPOE_IPV4;
+		else if (!i && j)
+			tun_type = ICE_SW_TUN_PPPOE_IPV6;
+	}
+
+	if (profile_num == 1 && (flag_valid || non_tun_valid)) {
+		for (j = 0; j < ICE_MAX_NUM_PROFILES; j++) {
+			if (ice_is_bit_set(recipe_to_profile[rid], j)) {
+				switch (j) {
+				case ICE_PROFID_IPV4_TCP:
+					tun_type = ICE_SW_IPV4_TCP;
+					break;
+				case ICE_PROFID_IPV4_UDP:
+					tun_type = ICE_SW_IPV4_UDP;
+					break;
+				case ICE_PROFID_IPV6_TCP:
+					tun_type = ICE_SW_IPV6_TCP;
+					break;
+				case ICE_PROFID_IPV6_UDP:
+					tun_type = ICE_SW_IPV6_UDP;
+					break;
+				case ICE_PROFID_PPPOE_PAY:
+					tun_type = ICE_SW_TUN_PPPOE_PAY;
+					break;
+				case ICE_PROFID_PPPOE_IPV4_TCP:
+					tun_type = ICE_SW_TUN_PPPOE_IPV4_TCP;
+					break;
+				case ICE_PROFID_PPPOE_IPV4_UDP:
+					tun_type = ICE_SW_TUN_PPPOE_IPV4_UDP;
+					break;
+				case ICE_PROFID_PPPOE_IPV4_OTHER:
+					tun_type = ICE_SW_TUN_PPPOE_IPV4;
+					break;
+				case ICE_PROFID_PPPOE_IPV6_TCP:
+					tun_type = ICE_SW_TUN_PPPOE_IPV6_TCP;
+					break;
+				case ICE_PROFID_PPPOE_IPV6_UDP:
+					tun_type = ICE_SW_TUN_PPPOE_IPV4_UDP;
+					break;
+				case ICE_PROFID_PPPOE_IPV6_OTHER:
+					tun_type = ICE_SW_TUN_PPPOE_IPV6;
+					break;
+				case ICE_PROFID_IPV4_ESP:
+					tun_type = ICE_SW_TUN_IPV4_ESP;
+					break;
+				case ICE_PROFID_IPV6_ESP:
+					tun_type = ICE_SW_TUN_IPV6_ESP;
+					break;
+				case ICE_PROFID_IPV4_AH:
+					tun_type = ICE_SW_TUN_IPV4_AH;
+					break;
+				case ICE_PROFID_IPV6_AH:
+					tun_type = ICE_SW_TUN_IPV6_AH;
+					break;
+				case ICE_PROFID_IPV4_NAT_T:
+					tun_type = ICE_SW_TUN_IPV4_NAT_T;
+					break;
+				case ICE_PROFID_IPV6_NAT_T:
+					tun_type = ICE_SW_TUN_IPV6_NAT_T;
+					break;
+				case ICE_PROFID_IPV4_PFCP_NODE:
+					tun_type =
+					ICE_SW_TUN_PROFID_IPV4_PFCP_NODE;
+					break;
+				case ICE_PROFID_IPV6_PFCP_NODE:
+					tun_type =
+					ICE_SW_TUN_PROFID_IPV6_PFCP_NODE;
+					break;
+				case ICE_PROFID_IPV4_PFCP_SESSION:
+					tun_type =
+					ICE_SW_TUN_PROFID_IPV4_PFCP_SESSION;
+					break;
+				case ICE_PROFID_IPV6_PFCP_SESSION:
+					tun_type =
+					ICE_SW_TUN_PROFID_IPV6_PFCP_SESSION;
+					break;
+				case ICE_PROFID_MAC_IPV4_L2TPV3:
+					tun_type = ICE_SW_TUN_IPV4_L2TPV3;
+					break;
+				case ICE_PROFID_MAC_IPV6_L2TPV3:
+					tun_type = ICE_SW_TUN_IPV6_L2TPV3;
+					break;
+				default:
+					break;
+				}
+
+				return tun_type;
+			}
+		}
+	}
+
+	return tun_type;
+}
+
+/**
  * ice_get_recp_frm_fw - update SW bookkeeping from FW recipe entries
  * @hw: pointer to hardware structure
  * @recps: struct that we need to populate
@@ -1166,6 +1339,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	lkup_exts->n_val_words = fv_word_idx;
 	recps[rid].big_recp = (num_recps > 1);
 	recps[rid].n_grp_count = (u8)num_recps;
+	recps[rid].tun_type = ice_get_tun_type_for_recipe(rid);
 	recps[rid].root_buf = (struct ice_aqc_recipe_data_elem *)
 		ice_memdup(hw, tmp, recps[rid].n_grp_count *
 			   sizeof(*recps[rid].root_buf), ICE_NONDMA_TO_NONDMA);
@@ -5548,8 +5722,7 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
 			/* If for "i"th recipe the found was never set to false
 			 * then it means we found our match
 			 */
-			if ((tun_type == recp[i].tun_type ||
-			     tun_type == ICE_SW_TUN_AND_NON_TUN) && found)
+			if (tun_type == recp[i].tun_type && found)
 				return i; /* Return the recipe ID */
 		}
 	}
