@@ -650,10 +650,7 @@ ptp_parse_portmask(const char *portmask)
 	pm = strtoul(portmask, &end, 16);
 
 	if ((portmask[0] == '\0') || (end == NULL) || (*end != '\0'))
-		return -1;
-
-	if (pm == 0)
-		return -1;
+		return 0;
 
 	return pm;
 }
