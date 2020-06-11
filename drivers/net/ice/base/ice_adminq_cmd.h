@@ -2646,6 +2646,50 @@ struct ice_aqc_event_lan_overflow {
 	u8 reserved[8];
 };
 
+/* Set Health Status (direct 0xFF20) */
+struct ice_aqc_set_health_status_config {
+	u8 event_source;
+#define ICE_AQC_HEALTH_STATUS_SET_PF_SPECIFIC_MASK	BIT(0)
+#define ICE_AQC_HEALTH_STATUS_SET_ALL_PF_MASK		BIT(1)
+#define ICE_AQC_HEALTH_STATUS_SET_GLOBAL_MASK		BIT(2)
+	u8 reserved[15];
+};
+
+/* Get Health Status codes (indirect 0xFF21) */
+struct ice_aqc_get_supported_health_status_codes {
+	__le16 health_code_count;
+	u8 reserved[6];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Get Health Status (indirect 0xFF22) */
+struct ice_aqc_get_health_status {
+	__le16 health_status_count;
+	u8 reserved[6];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Get Health Status event buffer entry, (0xFF22)
+ * repeated per reported health status
+ */
+struct ice_aqc_health_status_elem {
+	__le16 health_status_code;
+	__le16 event_source;
+#define ICE_AQC_HEALTH_STATUS_PF			(0x1)
+#define ICE_AQC_HEALTH_STATUS_PORT			(0x2)
+#define ICE_AQC_HEALTH_STATUS_GLOBAL			(0x3)
+	__le32 internal_data1;
+#define ICE_AQC_HEALTH_STATUS_UNDEFINED_DATA	(0xDEADBEEF)
+	__le32 internal_data2;
+};
+
+/* Clear Health Status (direct 0xFF23) */
+struct ice_aqc_clear_health_status {
+	__le32 reserved[4];
+};
+
 /**
  * struct ice_aq_desc - Admin Queue (AQ) descriptor
  * @flags: ICE_AQ_FLAG_* flags
@@ -2750,6 +2794,10 @@ struct ice_aq_desc {
 		struct ice_aqc_get_link_status get_link_status;
 		struct ice_aqc_event_lan_overflow lan_overflow;
 		struct ice_aqc_get_link_topo get_link_topo;
+		struct ice_aqc_set_health_status_config set_health_status_config;
+		struct ice_aqc_get_supported_health_status_codes get_supported_health_status_codes;
+		struct ice_aqc_get_health_status get_health_status;
+		struct ice_aqc_clear_health_status clear_health_status;
 	} params;
 };
 
@@ -2989,6 +3037,12 @@ enum ice_adminq_opc {
 
 	/* Standalone Commands/Events */
 	ice_aqc_opc_event_lan_overflow			= 0x1001,
+
+	/* SystemDiagnostic commands */
+	ice_aqc_opc_set_health_status_config		= 0xFF20,
+	ice_aqc_opc_get_supported_health_status_codes	= 0xFF21,
+	ice_aqc_opc_get_health_status			= 0xFF22,
+	ice_aqc_opc_clear_health_status			= 0xFF23
 };
 
 #endif /* _ICE_ADMINQ_CMD_H_ */
