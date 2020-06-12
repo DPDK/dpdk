@@ -222,4 +222,29 @@ ulp_flow_db_validate_flow_func(struct bnxt_ulp_context *ulp_ctx,
 			       uint32_t flow_id,
 			       uint32_t func_id);
 
+/*
+ * Api to get the cfa action pointer from a flow.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * flow_id [in] flow id
+ * cfa_action [out] The resource handle stored in the flow database
+ *
+ * returns 0 on success
+ */
+int32_t
+ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
+				   uint32_t flow_id,
+				   uint32_t *cfa_action);
+
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+/*
+ * Dump the flow database entry details
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ *
+ * returns none
+ */
+int32_t	ulp_flow_db_debug_dump(struct bnxt_ulp_context	*ulp_ctxt);
+#endif
+
 #endif /* _ULP_FLOW_DB_H_ */
