@@ -124,6 +124,10 @@ bnxt_ulp_rte_parser_act_parse(const struct rte_flow_action actions[],
 	const struct rte_flow_action *action_item = actions;
 	struct bnxt_ulp_rte_act_info *hdr_info;
 
+	if (params->dir == ULP_DIR_EGRESS)
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_FLOW_DIR_BITMASK_EGR);
+
 	/* Parse all the items in the pattern */
 	while (action_item && action_item->type != RTE_FLOW_ACTION_TYPE_END) {
 		/* get the header information from the flow_hdr_info table */

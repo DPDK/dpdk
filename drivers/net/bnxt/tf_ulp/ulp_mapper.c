@@ -611,6 +611,8 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 	uint8_t	 *val = NULL;
 	uint64_t regval;
 	uint32_t val_size = 0, field_size = 0;
+	uint64_t act_bit;
+	uint8_t act_val;
 
 	switch (fld->result_opcode) {
 	case BNXT_ULP_RESULT_OPC_SET_TO_CONSTANT:
@@ -643,6 +645,24 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			BNXT_TF_DBG(ERR, "%s push field failed\n", name);
 			return -EINVAL;
 		}
+		break;
+	case BNXT_ULP_RESULT_OPC_SET_TO_ACT_BIT:
+		if (!ulp_operand_read(fld->result_operand,
+				      (uint8_t *)&act_bit, sizeof(uint64_t))) {
+			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			return -EINVAL;
+		}
+		act_bit = tfp_be_to_cpu_64(act_bit);
+		act_val = ULP_BITMAP_ISSET(parms->act_bitmap->bits, act_bit);
+		if (fld->field_bit_size > ULP_BYTE_2_BITS(sizeof(act_val))) {
+			BNXT_TF_DBG(ERR, "%s field size is incorrect\n", name);
+			return -EINVAL;
+		}
+		if (!ulp_blob_push(blob, &act_val, fld->field_bit_size)) {
+			BNXT_TF_DBG(ERR, "%s push field failed\n", name);
+			return -EINVAL;
+		}
+		val = &act_val;
 		break;
 	case BNXT_ULP_RESULT_OPC_SET_TO_ENCAP_ACT_PROP_SZ:
 		if (!ulp_operand_read(fld->result_operand,

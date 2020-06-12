@@ -1769,9 +1769,17 @@ struct bnxt_ulp_mapper_result_field_info ulp_act_result_field_list[] = {
 	},
 	{
 	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_RESULT_OPC_SET_TO_CONSTANT,
-	.result_operand = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	.result_opcode = BNXT_ULP_RESULT_OPC_SET_TO_ACT_BIT,
+	.result_operand = {
+		((uint64_t)BNXT_ULP_ACTION_BIT_POP_VLAN >> 56) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_POP_VLAN >> 48) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_POP_VLAN >> 40) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_POP_VLAN >> 32) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_POP_VLAN >> 24) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_POP_VLAN >> 16) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_POP_VLAN >> 8) & 0xff,
+		(uint64_t)BNXT_ULP_ACTION_BIT_POP_VLAN & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 2,
