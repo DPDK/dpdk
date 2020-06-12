@@ -39,14 +39,15 @@ struct bnxt_ulp_mapper_cache_entry {
 	uint8_t ident_types[BNXT_ULP_CACHE_TBL_IDENT_MAX_NUM];
 };
 
-struct bnxt_ulp_mapper_def_id_entry {
-	enum tf_identifier_type ident_type;
-	uint64_t ident;
+struct bnxt_ulp_mapper_glb_resource_entry {
+	enum bnxt_ulp_resource_func	resource_func;
+	uint32_t			resource_type; /* TF_ enum type */
+	uint64_t			resource_hndl;
 };
 
 struct bnxt_ulp_mapper_data {
-	struct bnxt_ulp_mapper_def_id_entry
-		dflt_ids[TF_DIR_MAX][BNXT_ULP_DEF_IDENT_INFO_TBL_MAX_SZ];
+	struct bnxt_ulp_mapper_glb_resource_entry
+		glb_res_tbl[TF_DIR_MAX][BNXT_ULP_GLB_RESOURCE_INFO_TBL_MAX_SZ];
 	struct bnxt_ulp_mapper_cache_entry
 		*cache_tbl[BNXT_ULP_CACHE_TBL_MAX_SZ];
 };

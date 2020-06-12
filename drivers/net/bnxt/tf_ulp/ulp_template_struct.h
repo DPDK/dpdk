@@ -224,10 +224,11 @@ struct bnxt_ulp_mapper_ident_info {
 	enum bnxt_ulp_regfile_index	regfile_wr_idx;
 };
 
-struct bnxt_ulp_def_ident_info {
-	enum tf_dir direction;
-	enum tf_identifier_type ident_type;
-	enum bnxt_ulp_def_regfile_index def_regfile_index;
+struct bnxt_ulp_glb_resource_info {
+	enum bnxt_ulp_resource_func	resource_func;
+	uint32_t			resource_type; /* TF_ enum type */
+	enum bnxt_ulp_glb_regfile_index	glb_regfile_index;
+	enum tf_dir			direction;
 };
 
 struct bnxt_ulp_cache_tbl_params {
@@ -298,10 +299,10 @@ extern struct bnxt_ulp_mapper_ident_info	ulp_ident_list[];
 extern uint32_t ulp_act_prop_map_table[];
 
 /*
- * The ulp_def_ident_tbl provides the list of default identifiers that need to
+ * The ulp_glb_resource_tbl provides the list of global resources that need to
  * be initialized and where to store them.
  */
-extern struct bnxt_ulp_def_ident_info ulp_def_ident_tbl[];
+extern struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[];
 
 /*
  * The ulp_cache_tbl_parms table provides the sizes of the cache tables the
