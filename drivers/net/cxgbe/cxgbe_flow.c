@@ -188,19 +188,22 @@ ch_rte_parsetype_eth(const void *dmask, const struct rte_flow_item *item,
 		return 0;
 
 	/* we don't support SRC_MAC filtering*/
-	if (!rte_is_zero_ether_addr(&mask->src))
+	if (!rte_is_zero_ether_addr(&spec->src) ||
+	    (umask && !rte_is_zero_ether_addr(&umask->src)))
 		return rte_flow_error_set(e, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "src mac filtering not supported");
 
-	if (!rte_is_zero_ether_addr(&mask->dst)) {
+	if (!rte_is_zero_ether_addr(&spec->dst) ||
+	    (umask && !rte_is_zero_ether_addr(&umask->dst))) {
 		CXGBE_FILL_FS(0, 0x1ff, macidx);
 		CXGBE_FILL_FS_MEMCPY(spec->dst.addr_bytes, mask->dst.addr_bytes,
 				     dmac);
 	}
 
-	CXGBE_FILL_FS(be16_to_cpu(spec->type),
-		      be16_to_cpu(mask->type), ethtype);
+	if (spec->type || (umask && umask->type))
+		CXGBE_FILL_FS(be16_to_cpu(spec->type),
+			      be16_to_cpu(mask->type), ethtype);
 
 	return 0;
 }
@@ -224,7 +227,8 @@ ch_rte_parsetype_port(const void *dmask, const struct rte_flow_item *item,
 					  item,
 					  "port index up to 0x7 is supported");
 
-	CXGBE_FILL_FS(val->index, mask->index, iport);
+	if (val->index || (umask && umask->index))
+		CXGBE_FILL_FS(val->index, mask->index, iport);
 
 	return 0;
 }
@@ -265,24 +269,24 @@ ch_rte_parsetype_vlan(const void *dmask, const struct rte_flow_item *item,
 	if (fs->val.ethtype == RTE_ETHER_TYPE_QINQ) {
 		CXGBE_FILL_FS(1, 1, ovlan_vld);
 		if (spec) {
-			CXGBE_FILL_FS(be16_to_cpu(spec->tci),
-				      be16_to_cpu(mask->tci), ovlan);
-
+			if (spec->tci || (umask && umask->tci))
+				CXGBE_FILL_FS(be16_to_cpu(spec->tci),
+					      be16_to_cpu(mask->tci), ovlan);
 			fs->mask.ethtype = 0;
 			fs->val.ethtype = 0;
 		}
 	} else if (fs->val.ethtype == RTE_ETHER_TYPE_VLAN) {
 		CXGBE_FILL_FS(1, 1, ivlan_vld);
 		if (spec) {
-			CXGBE_FILL_FS(be16_to_cpu(spec->tci),
-				      be16_to_cpu(mask->tci), ivlan);
-
+			if (spec->tci || (umask && umask->tci))
+				CXGBE_FILL_FS(be16_to_cpu(spec->tci),
+					      be16_to_cpu(mask->tci), ivlan);
 			fs->mask.ethtype = 0;
 			fs->val.ethtype = 0;
 		}
 	}
 
-	if (spec)
+	if (spec && (spec->inner_type || (umask && umask->inner_type)))
 		CXGBE_FILL_FS(be16_to_cpu(spec->inner_type),
 			      be16_to_cpu(mask->inner_type), ethtype);
 
@@ -328,7 +332,8 @@ ch_rte_parsetype_vf(const void *dmask, const struct rte_flow_item *item,
 					  item,
 					  "VF ID > MAX(255)");
 
-	CXGBE_FILL_FS(val->id, mask->id, vf);
+	if (val->id || (umask && umask->id))
+		CXGBE_FILL_FS(val->id, mask->id, vf);
 
 	return 0;
 }
@@ -352,10 +357,15 @@ ch_rte_parsetype_udp(const void *dmask, const struct rte_flow_item *item,
 	CXGBE_FILL_FS(IPPROTO_UDP, 0xff, proto);
 	if (!val)
 		return 0;
-	CXGBE_FILL_FS(be16_to_cpu(val->hdr.src_port),
-		      be16_to_cpu(mask->hdr.src_port), fport);
-	CXGBE_FILL_FS(be16_to_cpu(val->hdr.dst_port),
-		      be16_to_cpu(mask->hdr.dst_port), lport);
+
+	if (val->hdr.src_port || (umask && umask->hdr.src_port))
+		CXGBE_FILL_FS(be16_to_cpu(val->hdr.src_port),
+			      be16_to_cpu(mask->hdr.src_port), fport);
+
+	if (val->hdr.dst_port || (umask && umask->hdr.dst_port))
+		CXGBE_FILL_FS(be16_to_cpu(val->hdr.dst_port),
+			      be16_to_cpu(mask->hdr.dst_port), lport);
+
 	return 0;
 }
 
@@ -380,10 +390,15 @@ ch_rte_parsetype_tcp(const void *dmask, const struct rte_flow_item *item,
 	CXGBE_FILL_FS(IPPROTO_TCP, 0xff, proto);
 	if (!val)
 		return 0;
-	CXGBE_FILL_FS(be16_to_cpu(val->hdr.src_port),
-		      be16_to_cpu(mask->hdr.src_port), fport);
-	CXGBE_FILL_FS(be16_to_cpu(val->hdr.dst_port),
-		      be16_to_cpu(mask->hdr.dst_port), lport);
+
+	if (val->hdr.src_port || (umask && umask->hdr.src_port))
+		CXGBE_FILL_FS(be16_to_cpu(val->hdr.src_port),
+			      be16_to_cpu(mask->hdr.src_port), fport);
+
+	if (val->hdr.dst_port || (umask && umask->hdr.dst_port))
+		CXGBE_FILL_FS(be16_to_cpu(val->hdr.dst_port),
+			      be16_to_cpu(mask->hdr.dst_port), lport);
+
 	return 0;
 }
 
@@ -411,10 +426,21 @@ ch_rte_parsetype_ipv4(const void *dmask, const struct rte_flow_item *item,
 	if (!val)
 		return 0; /* ipv4 wild card */
 
-	CXGBE_FILL_FS(val->hdr.next_proto_id, mask->hdr.next_proto_id, proto);
-	CXGBE_FILL_FS_MEMCPY(val->hdr.dst_addr, mask->hdr.dst_addr, lip);
-	CXGBE_FILL_FS_MEMCPY(val->hdr.src_addr, mask->hdr.src_addr, fip);
-	CXGBE_FILL_FS(val->hdr.type_of_service, mask->hdr.type_of_service, tos);
+	if (val->hdr.next_proto_id || (umask && umask->hdr.next_proto_id))
+		CXGBE_FILL_FS(val->hdr.next_proto_id, mask->hdr.next_proto_id,
+			      proto);
+
+	if (val->hdr.dst_addr || (umask && umask->hdr.dst_addr))
+		CXGBE_FILL_FS_MEMCPY(val->hdr.dst_addr, mask->hdr.dst_addr,
+				     lip);
+
+	if (val->hdr.src_addr || (umask && umask->hdr.src_addr))
+		CXGBE_FILL_FS_MEMCPY(val->hdr.src_addr, mask->hdr.src_addr,
+				     fip);
+
+	if (val->hdr.type_of_service || (umask && umask->hdr.type_of_service))
+		CXGBE_FILL_FS(val->hdr.type_of_service,
+			      mask->hdr.type_of_service, tos);
 
 	return 0;
 }
@@ -428,6 +454,7 @@ ch_rte_parsetype_ipv6(const void *dmask, const struct rte_flow_item *item,
 	const struct rte_flow_item_ipv6 *umask = item->mask;
 	const struct rte_flow_item_ipv6 *mask;
 	u32 vtc_flow, vtc_flow_mask;
+	u8 z[16] = { 0 };
 
 	mask = umask ? umask : (const struct rte_flow_item_ipv6 *)dmask;
 
@@ -448,17 +475,28 @@ ch_rte_parsetype_ipv6(const void *dmask, const struct rte_flow_item *item,
 	if (!val)
 		return 0; /* ipv6 wild card */
 
-	CXGBE_FILL_FS(val->hdr.proto, mask->hdr.proto, proto);
+	if (val->hdr.proto || (umask && umask->hdr.proto))
+		CXGBE_FILL_FS(val->hdr.proto, mask->hdr.proto, proto);
 
 	vtc_flow = be32_to_cpu(val->hdr.vtc_flow);
-	CXGBE_FILL_FS((vtc_flow & RTE_IPV6_HDR_TC_MASK) >>
-		      RTE_IPV6_HDR_TC_SHIFT,
-		      (vtc_flow_mask & RTE_IPV6_HDR_TC_MASK) >>
-		      RTE_IPV6_HDR_TC_SHIFT,
-		      tos);
+	if (val->hdr.vtc_flow || (umask && umask->hdr.vtc_flow))
+		CXGBE_FILL_FS((vtc_flow & RTE_IPV6_HDR_TC_MASK) >>
+			      RTE_IPV6_HDR_TC_SHIFT,
+			      (vtc_flow_mask & RTE_IPV6_HDR_TC_MASK) >>
+			      RTE_IPV6_HDR_TC_SHIFT,
+			      tos);
 
-	CXGBE_FILL_FS_MEMCPY(val->hdr.dst_addr, mask->hdr.dst_addr, lip);
-	CXGBE_FILL_FS_MEMCPY(val->hdr.src_addr, mask->hdr.src_addr, fip);
+	if (memcmp(val->hdr.dst_addr, z, sizeof(val->hdr.dst_addr)) ||
+	    (umask &&
+	     memcmp(umask->hdr.dst_addr, z, sizeof(umask->hdr.dst_addr))))
+		CXGBE_FILL_FS_MEMCPY(val->hdr.dst_addr, mask->hdr.dst_addr,
+				     lip);
+
+	if (memcmp(val->hdr.src_addr, z, sizeof(val->hdr.src_addr)) ||
+	    (umask &&
+	     memcmp(umask->hdr.src_addr, z, sizeof(umask->hdr.src_addr))))
+		CXGBE_FILL_FS_MEMCPY(val->hdr.src_addr, mask->hdr.src_addr,
+				     fip);
 
 	return 0;
 }
@@ -1051,8 +1089,8 @@ cxgbe_rtef_parse_items(struct rte_flow *flow,
 		}
 	}
 
-	cxgbe_fill_filter_region(adap, &flow->fs);
 	cxgbe_tweak_filter_spec(adap, &flow->fs);
+	cxgbe_fill_filter_region(adap, &flow->fs);
 
 	return 0;
 }
@@ -1310,6 +1348,7 @@ cxgbe_flow_validate(struct rte_eth_dev *dev,
 
 	flow->item_parser = parseitem;
 	flow->dev = dev;
+	flow->fs.private = (void *)flow;
 
 	ret = cxgbe_flow_parse(flow, attr, item, action, e);
 	if (ret) {
