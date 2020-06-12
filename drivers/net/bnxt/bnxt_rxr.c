@@ -412,7 +412,12 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 	bool gfid = false;
 	uint32_t mark_id;
 	uint32_t flags2;
+	uint32_t gfid_support = 0;
 	int rc;
+
+
+	if (BNXT_GFID_ENABLED(bp))
+		gfid_support = 1;
 
 	cfa_code = rte_le_to_cpu_16(rxcmp1->cfa_code);
 	flags2 = rte_le_to_cpu_32(rxcmp1->flags2);
@@ -427,8 +432,14 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 
 	switch (meta_fmt) {
 	case 0:
-		/* Not an LFID or GFID, a flush cmd. */
-		goto skip_mark;
+		if (gfid_support) {
+			/* Not an LFID or GFID, a flush cmd. */
+			goto skip_mark;
+		} else {
+			/* LFID mode, no vlan scenario */
+			gfid = false;
+		}
+		break;
 	case 4:
 	case 5:
 		/*
@@ -437,13 +448,19 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 		 * collisions with EEM.  Simply return without setting the mark
 		 * in the mbuf.
 		 */
-		if (BNXT_CFA_META_EM_TEST(meta))
-			goto skip_mark;
-		/*
-		 * It is a TCAM entry, so it is an LFID. The TCAM IDX and Mode
-		 * can also be determined by decoding the meta_data.  We are not
-		 * using these for now.
-		 */
+		if (BNXT_CFA_META_EM_TEST(meta)) {
+			/*This is EM hit {EM(1), GFID[27:16], 19'd0 or vtag } */
+			gfid = true;
+			meta >>= BNXT_RX_META_CFA_CODE_SHIFT;
+			cfa_code |= meta << BNXT_CFA_CODE_META_SHIFT;
+		} else {
+			/*
+			 * It is a TCAM entry, so it is an LFID.
+			 * The TCAM IDX and Mode can also be determined
+			 * by decoding the meta_data. We are not
+			 * using these for now.
+			 */
+		}
 		break;
 	case 6:
 	case 7:

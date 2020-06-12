@@ -804,7 +804,7 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	case BNXT_ULP_MAPPER_OPC_SET_TO_ZERO:
-		if (!ulp_blob_pad_push(blob, bitlen)) {
+		if (ulp_blob_pad_push(blob, bitlen) < 0) {
 			BNXT_TF_DBG(ERR, "%s pad too large for blob\n", name);
 			return -EINVAL;
 		}
@@ -1284,6 +1284,13 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			return rc;
 		}
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+	ulp_mapper_result_dump("EEM Result", tbl, &data);
+#endif
+
+	/* do the transpose for the internal EM keys */
+	if (tbl->resource_type == TF_MEM_INTERNAL)
+		ulp_blob_perform_byte_reverse(&key);
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_get(parms->ulp_ctx,
 					     &iparms.tbl_scope_id);

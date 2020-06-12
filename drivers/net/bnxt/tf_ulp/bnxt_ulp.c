@@ -308,6 +308,32 @@ ulp_dparms_init(struct bnxt *bp,
 	return 0;
 }
 
+/* The function to initialize bp flags with truflow features */
+static int32_t
+ulp_dparms_dev_port_intf_update(struct bnxt *bp,
+				struct bnxt_ulp_context *ulp_ctx)
+{
+	struct bnxt_ulp_device_params *dparms;
+	uint32_t dev_id;
+
+	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id)) {
+		BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
+		return -EINVAL;
+	}
+
+	dparms = bnxt_ulp_device_params_get(dev_id);
+	if (!dparms) {
+		BNXT_TF_DBG(DEBUG, "Failed to get device parms\n");
+		return -EINVAL;
+	}
+
+	/* Update the bp flag with gfid flag */
+	if (dparms->global_fid_enable)
+		bp->flags |= BNXT_FLAG_GFID_ENABLE;
+
+	return 0;
+}
+
 static int32_t
 ulp_ctx_attach(struct bnxt_ulp_context *ulp_ctx,
 	       struct bnxt_ulp_session_state *session)
@@ -510,6 +536,17 @@ bnxt_ulp_init(struct bnxt *bp)
 			rte_free(bp->ulp_ctx);
 			return rc;
 		}
+
+		/* Update bnxt driver flags */
+		rc = ulp_dparms_dev_port_intf_update(bp, bp->ulp_ctx);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Failed to update driver flags\n");
+			ulp_ctx_detach(bp, session);
+			ulp_session_deinit(session);
+			rte_free(bp->ulp_ctx);
+			return rc;
+		}
+
 		/* update the port database */
 		rc = ulp_port_db_dev_port_intf_update(bp->ulp_ctx, bp);
 		if (rc) {
@@ -536,6 +573,13 @@ bnxt_ulp_init(struct bnxt *bp)
 	rc = ulp_port_db_init(bp->ulp_ctx);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to create the port database\n");
+		goto jump_to_error;
+	}
+
+	/* Update bnxt driver flags */
+	rc = ulp_dparms_dev_port_intf_update(bp, bp->ulp_ctx);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to update driver flags\n");
 		goto jump_to_error;
 	}
 
