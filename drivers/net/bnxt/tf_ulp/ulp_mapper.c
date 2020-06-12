@@ -324,13 +324,14 @@ ulp_mapper_ident_fields_get(struct bnxt_ulp_mapper_class_tbl_info *tbl,
 
 static struct bnxt_ulp_mapper_cache_entry *
 ulp_mapper_cache_entry_get(struct bnxt_ulp_context *ulp,
-			   enum bnxt_ulp_cache_tbl_id id,
+			   uint32_t id,
 			   uint16_t key)
 {
 	struct bnxt_ulp_mapper_data *mapper_data;
 
 	mapper_data = bnxt_ulp_cntxt_ptr2_mapper_data_get(ulp);
-	if (!mapper_data || !mapper_data->cache_tbl[id]) {
+	if (!mapper_data || id >= BNXT_ULP_CACHE_TBL_MAX_SZ ||
+	    !mapper_data->cache_tbl[id]) {
 		BNXT_TF_DBG(ERR, "Unable to acquire the cache tbl (%d)\n", id);
 		return NULL;
 	}
@@ -987,6 +988,98 @@ error:
 	return rc;
 }
 
+static int32_t
+ulp_mapper_mark_gfid_process(struct bnxt_ulp_mapper_parms *parms,
+			     struct bnxt_ulp_mapper_class_tbl_info *tbl,
+			     uint64_t flow_id)
+{
+	struct ulp_flow_db_res_params fid_parms;
+	uint32_t vfr_flag, mark, gfid, mark_flag;
+	int32_t rc = 0;
+
+	vfr_flag = ULP_COMP_FLD_IDX_RD(parms, BNXT_ULP_CF_IDX_VFR_FLAG);
+	if (!(tbl->mark_enable &&
+	      (ULP_BITMAP_ISSET(parms->act_bitmap->bits,
+			      BNXT_ULP_ACTION_BIT_MARK) || vfr_flag)))
+		return rc; /* no need to perform gfid process */
+
+	/* Get the mark id details from action property */
+	memcpy(&mark, &parms->act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_MARK],
+	       sizeof(mark));
+	mark = tfp_be_to_cpu_32(mark);
+
+	TF_GET_GFID_FROM_FLOW_ID(flow_id, gfid);
+	mark_flag  = BNXT_ULP_MARK_GLOBAL_HW_FID;
+	mark_flag |= (vfr_flag) ? BNXT_ULP_MARK_VFR_ID : 0;
+	rc = ulp_mark_db_mark_add(parms->ulp_ctx, mark_flag,
+				  gfid, mark);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add mark to flow\n");
+		return rc;
+	}
+	fid_parms.direction = tbl->direction;
+	fid_parms.resource_func = BNXT_ULP_RESOURCE_FUNC_HW_FID;
+	fid_parms.critical_resource = 0;
+	fid_parms.resource_type	= mark_flag;
+	fid_parms.resource_hndl	= gfid;
+	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
+				      parms->tbl_idx,
+				      parms->fid,
+				      &fid_parms);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
+	return rc;
+}
+
+static int32_t
+ulp_mapper_mark_act_ptr_process(struct bnxt_ulp_mapper_parms *parms,
+				struct bnxt_ulp_mapper_class_tbl_info *tbl)
+{
+	struct ulp_flow_db_res_params fid_parms;
+	uint32_t vfr_flag, act_idx, mark, mark_flag;
+	uint64_t val64;
+	int32_t rc = 0;
+
+	vfr_flag = ULP_COMP_FLD_IDX_RD(parms, BNXT_ULP_CF_IDX_VFR_FLAG);
+	if (!(tbl->mark_enable &&
+	      (ULP_BITMAP_ISSET(parms->act_bitmap->bits,
+				BNXT_ULP_ACTION_BIT_MARK) || vfr_flag)))
+		return rc; /* no need to perform mark action process */
+
+	/* Get the mark id details from action property */
+	memcpy(&mark, &parms->act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_MARK],
+	       sizeof(mark));
+	mark = tfp_be_to_cpu_32(mark);
+
+	if (!ulp_regfile_read(parms->regfile,
+			      BNXT_ULP_REGFILE_INDEX_ACTION_PTR_MAIN,
+			      &val64)) {
+		BNXT_TF_DBG(ERR, "read action ptr main failed\n");
+		return -EINVAL;
+	}
+	act_idx = tfp_be_to_cpu_64(val64);
+	mark_flag  = BNXT_ULP_MARK_LOCAL_HW_FID;
+	mark_flag |= (vfr_flag) ? BNXT_ULP_MARK_VFR_ID : 0;
+	rc = ulp_mark_db_mark_add(parms->ulp_ctx, mark_flag,
+				  act_idx, mark);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add mark to flow\n");
+		return rc;
+	}
+	fid_parms.direction = tbl->direction;
+	fid_parms.resource_func = BNXT_ULP_RESOURCE_FUNC_HW_FID;
+	fid_parms.critical_resource = 0;
+	fid_parms.resource_type	= mark_flag;
+	fid_parms.resource_hndl	= act_idx;
+	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
+				      parms->tbl_idx,
+				      parms->fid,
+				      &fid_parms);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
+	return rc;
+}
+
 /*
  * Function to process the action Info. Iterate through the list
  * action info templates and process it.
@@ -1370,6 +1463,18 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return rc;
 	}
 
+	/* Mark action process */
+	if (parms->device_params->global_fid_enable &&
+	    tbl->resource_type == TF_MEM_EXTERNAL)
+		rc = ulp_mapper_mark_gfid_process(parms, tbl, iparms.flow_id);
+	else if (!parms->device_params->global_fid_enable &&
+		 tbl->resource_type == TF_MEM_INTERNAL)
+		rc = ulp_mapper_mark_act_ptr_process(parms, tbl);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add mark to flow\n");
+		goto error;
+	}
+
 	/* Link the EM resource to the flow in the flow db */
 	memset(&fid_parms, 0, sizeof(fid_parms));
 	fid_parms.direction		= tbl->direction;
@@ -1575,8 +1680,15 @@ ulp_mapper_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	 */
 	cache_key = ulp_blob_data_get(&key, &tmplen);
 	ckey = (uint16_t *)cache_key;
+
+	/*
+	 * The id computed based on resource sub type and direction where
+	 * dir is the bit0 and rest of the bits come from resource
+	 * sub type.
+	 */
 	cache_entry = ulp_mapper_cache_entry_get(parms->ulp_ctx,
-						 tbl->cache_tbl_id,
+						 (tbl->resource_sub_type << 1 |
+						 (tbl->direction & 0x1)),
 						 *ckey);
 
 	/*
@@ -1640,12 +1752,13 @@ ulp_mapper_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_func	= tbl->resource_func;
 
 	/*
-	 * Cache resource type is composed of both table_type and cache_tbl_id
-	 * need to set it appropriately via setter.
+	 * Cache resource type is composed of table_type, resource
+	 * sub type and direction, it needs to set appropriately via setter.
 	 */
 	ulp_mapper_cache_res_type_set(&fid_parms,
 				      tbl->resource_type,
-				      tbl->cache_tbl_id);
+				      (tbl->resource_sub_type << 1 |
+				       (tbl->direction & 0x1)));
 	fid_parms.resource_hndl	= (uint64_t)*ckey;
 	fid_parms.critical_resource = tbl->critical_resource;
 	rc = ulp_flow_db_resource_add(parms->ulp_ctx,

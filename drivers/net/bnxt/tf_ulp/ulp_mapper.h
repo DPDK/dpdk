@@ -75,6 +75,7 @@ struct bnxt_ulp_mapper_parms {
 	struct bnxt_ulp_mapper_data		*mapper_data;
 	enum bnxt_ulp_cache_table_opc		tcam_tbl_opc;
 	struct bnxt_ulp_mapper_cache_entry	*cache_ptr;
+	struct bnxt_ulp_device_params           *device_params;
 };
 
 struct bnxt_ulp_mapper_create_parms {

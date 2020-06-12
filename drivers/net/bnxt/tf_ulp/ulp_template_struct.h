@@ -182,8 +182,6 @@ struct bnxt_ulp_mapper_class_tbl_info {
 
 	uint8_t		mark_enable;
 	enum bnxt_ulp_regfile_index	regfile_wr_idx;
-
-	enum bnxt_ulp_cache_tbl_id cache_tbl_id;
 };
 
 struct bnxt_ulp_mapper_act_tbl_info {
