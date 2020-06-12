@@ -365,8 +365,8 @@ ulp_mapper_cache_res_type_get(struct ulp_flow_db_res_params *res,
 
 static int32_t
 ulp_mapper_cache_entry_free(struct bnxt_ulp_context *ulp,
-			   struct tf *tfp,
-			   struct ulp_flow_db_res_params *res)
+			    struct tf *tfp,
+			    struct ulp_flow_db_res_params *res)
 {
 	struct bnxt_ulp_mapper_cache_entry *cache_entry;
 	struct tf_free_identifier_parms ident_parms;
@@ -1074,9 +1074,12 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
-	if (!ulp_blob_init(&key, tbl->key_bit_size, parms->order) ||
-	    !ulp_blob_init(&mask, tbl->key_bit_size, parms->order) ||
-	    !ulp_blob_init(&data, tbl->result_bit_size, parms->order)) {
+	if (!ulp_blob_init(&key, tbl->key_bit_size,
+			   parms->device_params->byte_order) ||
+	    !ulp_blob_init(&mask, tbl->key_bit_size,
+			   parms->device_params->byte_order) ||
+	    !ulp_blob_init(&data, tbl->result_bit_size,
+			   parms->device_params->byte_order)) {
 		BNXT_TF_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -1219,6 +1222,11 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			parms->cache_ptr->tcam_idx = aparms.idx;
 		}
 
+		/* Mark action */
+		rc = ulp_mapper_mark_act_ptr_process(parms, tbl);
+		if (rc)
+			goto error;
+
 	} else {
 		BNXT_TF_DBG(ERR, "Not supporting search before alloc now\n");
 		rc = -EINVAL;
@@ -1292,8 +1300,10 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* Initialize the key/result blobs */
-	if (!ulp_blob_init(&key, tbl->blob_key_bit_size, parms->order) ||
-	    !ulp_blob_init(&data, tbl->result_bit_size, parms->order)) {
+	if (!ulp_blob_init(&key, tbl->blob_key_bit_size,
+			   parms->device_params->byte_order) ||
+	    !ulp_blob_init(&data, tbl->result_bit_size,
+			   parms->device_params->byte_order)) {
 		BNXT_TF_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -1620,7 +1630,8 @@ ulp_mapper_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		BNXT_TF_DBG(ERR, "Failed to get key fields\n");
 		return -EINVAL;
 	}
-	if (!ulp_blob_init(&key, tbl->key_bit_size, parms->order)) {
+	if (!ulp_blob_init(&key, tbl->key_bit_size,
+			   parms->device_params->byte_order)) {
 		BNXT_TF_DBG(ERR, "Failed to alloc blob\n");
 		return -EINVAL;
 	}
@@ -2018,7 +2029,6 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 		       struct bnxt_ulp_mapper_create_parms *cparms,
 		       uint32_t *flowid)
 {
-	struct bnxt_ulp_device_params *device_params;
 	struct bnxt_ulp_mapper_parms parms;
 	struct ulp_regfile regfile;
 	int32_t	 rc, trc;
@@ -2076,15 +2086,13 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
-	/* Get the byte order for the further processing from device params */
-	device_params = bnxt_ulp_device_params_get(parms.dev_id);
-	if (!device_params) {
+	/* Get the device params, it will be used in later processing */
+	parms.device_params = bnxt_ulp_device_params_get(parms.dev_id);
+	if (!parms.device_params) {
 		BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
 			    parms.dev_id, parms.class_tid);
 		return -EINVAL;
 	}
-	parms.order = device_params->byte_order;
-	parms.encap_byte_swap = device_params->encap_byte_swap;
 
 	/* initialize the registry file for further processing */
 	if (!ulp_regfile_init(parms.regfile)) {

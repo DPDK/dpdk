@@ -54,7 +54,6 @@ struct bnxt_ulp_mapper_data {
 /* Internal Structure for passing the arguments around */
 struct bnxt_ulp_mapper_parms {
 	uint32_t				dev_id;
-	enum bnxt_ulp_byte_order		order;
 	uint32_t				act_tid;
 	struct bnxt_ulp_mapper_tbl_info		*atbls; /* action table */
 	uint32_t				num_atbls;
