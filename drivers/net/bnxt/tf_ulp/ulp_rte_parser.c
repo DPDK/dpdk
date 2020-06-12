@@ -1284,7 +1284,7 @@ ulp_rte_phy_port_act_handler(const struct rte_flow_action *action_item,
 			     struct ulp_rte_parser_params *prm)
 {
 	const struct rte_flow_action_phy_port *phy_port;
-	uint32_t pid;
+	uint32_t vport;
 
 	phy_port = action_item->conf;
 	if (phy_port) {
@@ -1293,10 +1293,12 @@ ulp_rte_phy_port_act_handler(const struct rte_flow_action *action_item,
 				    "Parse Err:Port Original not supported\n");
 			return BNXT_TF_RC_PARSE_ERR;
 		}
-		pid = bnxt_get_vnic_id(phy_port->index);
-		pid = rte_cpu_to_be_32(pid);
+		/* Get the vport of the physical port */
+		/* TBD: shall be changed later to portdb call */
+		vport = 1 << phy_port->index;
+		vport = rte_cpu_to_be_32(vport);
 		memcpy(&prm->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
-		       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
+		       &vport, BNXT_ULP_ACT_PROP_SZ_VPORT);
 	}
 
 	/* Update the hdr_bitmap with count */
