@@ -194,20 +194,9 @@ ch_rte_parsetype_eth(const void *dmask, const struct rte_flow_item *item,
 					  "src mac filtering not supported");
 
 	if (!rte_is_zero_ether_addr(&mask->dst)) {
-		const u8 *addr = (const u8 *)&spec->dst.addr_bytes[0];
-		const u8 *m = (const u8 *)&mask->dst.addr_bytes[0];
-		struct rte_flow *flow = (struct rte_flow *)fs->private;
-		struct port_info *pi = (struct port_info *)
-					(flow->dev->data->dev_private);
-		int idx;
-
-		idx = cxgbe_mpstcam_alloc(pi, addr, m);
-		if (idx <= 0)
-			return rte_flow_error_set(e, idx,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  NULL, "unable to allocate mac"
-						  " entry in h/w");
-		CXGBE_FILL_FS(idx, 0x1ff, macidx);
+		CXGBE_FILL_FS(0, 0x1ff, macidx);
+		CXGBE_FILL_FS_MEMCPY(spec->dst.addr_bytes, mask->dst.addr_bytes,
+				     dmac);
 	}
 
 	CXGBE_FILL_FS(be16_to_cpu(spec->type),
@@ -1210,17 +1199,6 @@ static int __cxgbe_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		dev_err(adap, "Hardware error %d while deleting the filter.\n",
 			ctx.result);
 		return ctx.result;
-	}
-
-	fs = &flow->fs;
-	if (fs->mask.macidx) {
-		struct port_info *pi = (struct port_info *)
-					(dev->data->dev_private);
-		int ret;
-
-		ret = cxgbe_mpstcam_remove(pi, fs->val.macidx);
-		if (!ret)
-			return ret;
 	}
 
 	return 0;

@@ -69,8 +69,10 @@ struct ch_filter_tuple {
 	uint16_t lport;		/* local port */
 	uint16_t fport;		/* foreign port */
 
+	uint8_t dmac[6];        /* Destination MAC to match */
+
 	/* reservations for future additions */
-	uint8_t rsvd[12];
+	uint8_t rsvd[6];
 };
 
 /*

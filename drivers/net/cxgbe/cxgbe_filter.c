@@ -8,6 +8,7 @@
 #include "base/t4_tcb.h"
 #include "base/t4_regs.h"
 #include "cxgbe_filter.h"
+#include "mps_tcam.h"
 #include "clip_tbl.h"
 #include "l2t.h"
 #include "smt.h"
@@ -290,11 +291,16 @@ int cxgbe_alloc_ftid(struct adapter *adap, u8 nentries)
  */
 static void clear_filter(struct filter_entry *f)
 {
+	struct port_info *pi = ethdev2pinfo(f->dev);
+
 	if (f->clipt)
 		cxgbe_clip_release(f->dev, f->clipt);
 
 	if (f->l2t)
 		cxgbe_l2t_release(f->l2t);
+
+	if (f->fs.mask.macidx)
+		cxgbe_mpstcam_remove(pi, f->fs.val.macidx);
 
 	/* The zeroing of the filter rule below clears the filter valid,
 	 * pending, locked flags etc. so it's all we need for
@@ -608,6 +614,19 @@ static int cxgbe_set_hash_filter(struct rte_eth_dev *dev,
 	f->ctx = ctx;
 	f->dev = dev;
 	f->fs.iq = iq;
+
+	/* Allocate MPS TCAM entry to match Destination MAC. */
+	if (f->fs.mask.macidx) {
+		int idx;
+
+		idx = cxgbe_mpstcam_alloc(pi, f->fs.val.dmac, f->fs.mask.dmac);
+		if (idx <= 0) {
+			ret = -ENOMEM;
+			goto out_err;
+		}
+
+		f->fs.val.macidx = idx;
+	}
 
 	/*
 	 * If the new filter requires loopback Destination MAC and/or VLAN
@@ -1066,6 +1085,19 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	f->fs = *fs;
 	f->fs.iq = iq;
 	f->dev = dev;
+
+	/* Allocate MPS TCAM entry to match Destination MAC. */
+	if (f->fs.mask.macidx) {
+		int idx;
+
+		idx = cxgbe_mpstcam_alloc(pi, f->fs.val.dmac, f->fs.mask.dmac);
+		if (idx <= 0) {
+			ret = -ENOMEM;
+			goto free_tid;
+		}
+
+		f->fs.val.macidx = idx;
+	}
 
 	/* Allocate a clip table entry only if we have non-zero IPv6 address. */
 	if (chip_ver > CHELSIO_T5 && f->fs.type &&
