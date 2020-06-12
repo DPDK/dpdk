@@ -230,6 +230,9 @@ ulp_rte_parser_vnic_process(struct ulp_rte_parser_params *params)
 
 	/* Update the vnic details */
 	ulp_rte_pf_act_handler(NULL, params);
+	/* Reset the hdr_bitmap with vnic bit */
+	ULP_BITMAP_RESET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VNIC);
+
 	return BNXT_TF_RC_SUCCESS;
 }
 
