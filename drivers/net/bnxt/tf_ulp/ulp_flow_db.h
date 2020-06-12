@@ -7,7 +7,7 @@
 #define _ULP_FLOW_DB_H_
 
 #include "bnxt_ulp.h"
-#include "ulp_template_db.h"
+#include "ulp_template_db_enum.h"
 
 #define BNXT_FLOW_DB_DEFAULT_NUM_FLOWS		128
 #define BNXT_FLOW_DB_DEFAULT_NUM_RESOURCES	5

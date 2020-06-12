@@ -8,7 +8,7 @@
 
 #include <rte_log.h>
 #include "bnxt.h"
-#include "ulp_template_db.h"
+#include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 #include "bnxt_tf_common.h"
 

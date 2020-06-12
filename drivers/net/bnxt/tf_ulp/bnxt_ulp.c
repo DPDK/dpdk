@@ -15,7 +15,7 @@
 #include "tf_core.h"
 #include "tf_ext_flow_handle.h"
 
-#include "ulp_template_db.h"
+#include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 #include "ulp_mark_mgr.h"
 #include "ulp_flow_db.h"

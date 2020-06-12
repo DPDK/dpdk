@@ -7,7 +7,7 @@
 #define _ULP_UTILS_H_
 
 #include "bnxt.h"
-#include "ulp_template_db.h"
+#include "ulp_template_db_enum.h"
 
 /*
  * Macros for bitmap sets and gets

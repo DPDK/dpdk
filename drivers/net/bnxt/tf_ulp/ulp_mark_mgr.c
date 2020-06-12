@@ -11,7 +11,7 @@
 #include "tf_ext_flow_handle.h"
 #include "ulp_mark_mgr.h"
 #include "bnxt_tf_common.h"
-#include "ulp_template_db.h"
+#include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 
 #define ULP_MARK_DB_ENTRY_SET_VALID(mark_info) ((mark_info)->flags |=\

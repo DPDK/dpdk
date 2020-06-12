@@ -10,7 +10,7 @@
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include "tf_core.h"
-#include "ulp_template_db.h"
+#include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 #include "bnxt_ulp.h"
 #include "ulp_utils.h"

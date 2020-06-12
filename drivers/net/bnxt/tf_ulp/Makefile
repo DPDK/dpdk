@@ -4,7 +4,9 @@
 # Copyright(c) Broadcom Limited.
 # All rights reserved.
 
-SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_template_db.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_template_db_tbl.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_template_db_class.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_template_db_act.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_rte_parser.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/bnxt_ulp_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_matcher.c

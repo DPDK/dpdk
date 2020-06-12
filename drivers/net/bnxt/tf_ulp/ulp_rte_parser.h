@@ -9,7 +9,7 @@
 #include <rte_log.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
-#include "ulp_template_db.h"
+#include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 
 /* defines to be used in the tunnel header parsing */
