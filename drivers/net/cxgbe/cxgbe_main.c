@@ -1126,13 +1126,12 @@ static int adap_init0_tweaks(struct adapter *adapter)
  */
 static int adap_init0_config(struct adapter *adapter, int reset)
 {
+	u32 finiver, finicsum, cfcsum, param, val;
 	struct fw_caps_config_cmd caps_cmd;
 	unsigned long mtype = 0, maddr = 0;
-	u32 finiver, finicsum, cfcsum;
-	int ret;
-	int config_issued = 0;
-	int cfg_addr;
+	u8 config_issued = 0;
 	char config_name[20];
+	int cfg_addr, ret;
 
 	/*
 	 * Reset device if necessary.
@@ -1158,6 +1157,12 @@ static int adap_init0_config(struct adapter *adapter, int reset)
 	strcpy(config_name, "On Flash");
 	mtype = FW_MEMTYPE_CF_FLASH;
 	maddr = cfg_addr;
+
+	/* Enable HASH filter region when support is available. */
+	val = 1;
+	param = CXGBE_FW_PARAM_DEV(HASHFILTER_WITH_OFLD);
+	t4_set_params(adapter, adapter->mbox, adapter->pf, 0, 1,
+		      &param, &val);
 
 	/*
 	 * Issue a Capability Configuration command to the firmware to get it
@@ -1217,6 +1222,7 @@ static int adap_init0_config(struct adapter *adapter, int reset)
 	caps_cmd.iscsicaps = 0;
 	caps_cmd.rdmacaps = 0;
 	caps_cmd.fcoecaps = 0;
+	caps_cmd.cryptocaps = 0;
 
 	/*
 	 * And now tell the firmware to use the configuration we just loaded.

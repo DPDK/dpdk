@@ -627,7 +627,7 @@ struct fw_caps_config_cmd {
 	__be16 niccaps;
 	__be16 toecaps;
 	__be16 rdmacaps;
-	__be16 r4;
+	__be16 cryptocaps;
 	__be16 iscsicaps;
 	__be16 fcoecaps;
 	__be32 cfcsum;
@@ -700,6 +700,7 @@ enum fw_params_param_dev {
 	FW_PARAMS_PARAM_DEV_ULPTX_MEMWRITE_DSGL = 0x17,
 	FW_PARAMS_PARAM_DEV_FILTER2_WR	= 0x1D,
 	FW_PARAMS_PARAM_DEV_OPAQUE_VIID_SMT_EXTN = 0x27,
+	FW_PARAMS_PARAM_DEV_HASHFILTER_WITH_OFLD = 0x28,
 	FW_PARAMS_PARAM_DEV_FILTER      = 0x2E,
 };
 

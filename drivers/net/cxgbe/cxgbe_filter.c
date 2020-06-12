@@ -12,33 +12,37 @@
 #include "clip_tbl.h"
 #include "l2t.h"
 #include "smt.h"
+#include "cxgbe_pfvf.h"
 
 /**
  * Initialize Hash Filters
  */
 int cxgbe_init_hash_filter(struct adapter *adap)
 {
-	unsigned int n_user_filters;
-	unsigned int user_filter_perc;
+	unsigned int user_filter_perc, n_user_filters;
+	u32 param, val;
 	int ret;
-	u32 params[7], val[7];
 
-#define FW_PARAM_DEV(param) \
-	(V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DEV) | \
-	V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_DEV_##param))
+	if (CHELSIO_CHIP_VERSION(adap->params.chip) > CHELSIO_T5) {
+		val = t4_read_reg(adap, A_LE_DB_RSP_CODE_0);
+		if (G_TCAM_ACTV_HIT(val) != 4) {
+			adap->params.hash_filter = 0;
+			return 0;
+		}
 
-#define FW_PARAM_PFVF(param) \
-	(V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_PFVF) | \
-	V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_PFVF_##param) |  \
-	V_FW_PARAMS_PARAM_Y(0) | \
-	V_FW_PARAMS_PARAM_Z(0))
+		val = t4_read_reg(adap, A_LE_DB_RSP_CODE_1);
+		if (G_HASH_ACTV_HIT(val) != 4) {
+			adap->params.hash_filter = 0;
+			return 0;
+		}
+	}
 
-	params[0] = FW_PARAM_DEV(NTID);
+	param = CXGBE_FW_PARAM_DEV(NTID);
 	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1,
-			      params, val);
+			      &param, &val);
 	if (ret < 0)
 		return ret;
-	adap->tids.ntids = val[0];
+	adap->tids.ntids = val;
 	adap->tids.natids = min(adap->tids.ntids / 2, MAX_ATIDS);
 
 	user_filter_perc = 100;
