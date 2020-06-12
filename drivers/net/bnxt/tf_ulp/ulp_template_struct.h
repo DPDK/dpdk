@@ -157,7 +157,8 @@ struct bnxt_ulp_mapper_tbl_list_info {
 
 struct bnxt_ulp_mapper_class_tbl_info {
 	enum bnxt_ulp_resource_func	resource_func;
-	uint32_t	table_type;
+	uint32_t			resource_type; /* TF_ enum type */
+	enum bnxt_ulp_resource_sub_type	resource_sub_type;
 	uint8_t		direction;
 	uint32_t	priority;
 	uint8_t		srch_b4_alloc;
@@ -187,7 +188,8 @@ struct bnxt_ulp_mapper_class_tbl_info {
 
 struct bnxt_ulp_mapper_act_tbl_info {
 	enum bnxt_ulp_resource_func	resource_func;
-	enum tf_tbl_type table_type;
+	uint32_t			resource_type; /* TF_ enum type */
+	enum bnxt_ulp_resource_sub_type	resource_sub_type;
 	uint8_t		direction;
 	uint8_t		srch_b4_alloc;
 	uint32_t	result_start_idx;

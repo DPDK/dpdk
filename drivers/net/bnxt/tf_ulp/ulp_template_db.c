@@ -590,7 +590,8 @@ struct bnxt_ulp_mapper_tbl_list_info ulp_class_tmpl_list[] = {
 struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.table_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_TT_L2_CNTXT_TCAM_CACHE,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_NOT_USED,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -610,7 +611,8 @@ struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.table_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_NOT_USED,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -630,7 +632,8 @@ struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.table_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.resource_sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_TT_PROFILE_TCAM_CACHE,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_NOT_USED,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -650,7 +653,8 @@ struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.table_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_PROF_TCAM,
+	.resource_sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_TT_PROFILE_TCAM_CACHE,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -670,7 +674,8 @@ struct bnxt_ulp_mapper_class_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
-	.table_type = TF_MEM_EXTERNAL,
+	.resource_type = TF_MEM_EXTERNAL,
+	.resource_sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_NOT_USED,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_NOT_USED,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -1613,7 +1618,8 @@ struct bnxt_ulp_mapper_tbl_list_info ulp_act_tmpl_list[] = {
 struct bnxt_ulp_mapper_act_tbl_info ulp_act_tbl_list[] = {
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-	.table_type = TF_TBL_TYPE_EXT,
+	.resource_type = TF_TBL_TYPE_EXT,
+	.resource_sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_IT_NORMAL,
 	.direction = TF_DIR_RX,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
 	.result_start_idx = 0,
