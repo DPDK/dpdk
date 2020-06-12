@@ -112,7 +112,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 0,
 	.ident_nums = 1,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -134,7 +134,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 1,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -156,7 +156,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 1,
 	.ident_nums = 1,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -178,7 +178,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 2,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -200,7 +200,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 2,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_YES,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -222,7 +222,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 2,
 	.ident_nums = 1,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -244,7 +244,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 3,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -266,7 +266,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 3,
 	.ident_nums = 1,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -288,7 +288,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 4,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -310,7 +310,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 4,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_YES,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -332,7 +332,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 4,
 	.ident_nums = 1,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -354,7 +354,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 5,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -376,7 +376,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 5,
 	.ident_nums = 1,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -398,7 +398,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 6,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
@@ -420,7 +420,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.encap_num_fields = 0,
 	.ident_start_idx = 6,
 	.ident_nums = 0,
-	.mark_enable = BNXT_ULP_MARK_ENABLE_YES,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_YES,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	}

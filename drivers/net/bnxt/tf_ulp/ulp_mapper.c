@@ -904,13 +904,15 @@ ulp_mapper_mark_gfid_process(struct bnxt_ulp_mapper_parms *parms,
 			     struct bnxt_ulp_mapper_tbl_info *tbl,
 			     uint64_t flow_id)
 {
+	enum bnxt_ulp_mark_db_opcode mark_op = tbl->mark_db_opcode;
 	struct ulp_flow_db_res_params fid_parms;
 	uint32_t mark, gfid, mark_flag;
 	int32_t rc = 0;
 
-	if (!(tbl->mark_enable &&
+	if (mark_op == BNXT_ULP_MARK_DB_OPCODE_NOP ||
+	    !(mark_op == BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION &&
 	      ULP_BITMAP_ISSET(parms->act_bitmap->bits,
-			      BNXT_ULP_ACTION_BIT_MARK)))
+			       BNXT_ULP_ACTION_BIT_MARK)))
 		return rc; /* no need to perform gfid process */
 
 	/* Get the mark id details from action property */
@@ -944,14 +946,16 @@ static int32_t
 ulp_mapper_mark_act_ptr_process(struct bnxt_ulp_mapper_parms *parms,
 				struct bnxt_ulp_mapper_tbl_info *tbl)
 {
+	enum bnxt_ulp_mark_db_opcode mark_op = tbl->mark_db_opcode;
 	struct ulp_flow_db_res_params fid_parms;
 	uint32_t act_idx, mark, mark_flag;
 	uint64_t val64;
 	int32_t rc = 0;
 
-	if (!(tbl->mark_enable &&
+	if (mark_op == BNXT_ULP_MARK_DB_OPCODE_NOP ||
+	    !(mark_op == BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION &&
 	      ULP_BITMAP_ISSET(parms->act_bitmap->bits,
-				BNXT_ULP_ACTION_BIT_MARK)))
+			       BNXT_ULP_ACTION_BIT_MARK)))
 		return rc; /* no need to perform mark action process */
 
 	/* Get the mark id details from action property */
@@ -967,6 +971,55 @@ ulp_mapper_mark_act_ptr_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 	act_idx = tfp_be_to_cpu_64(val64);
 	mark_flag  = BNXT_ULP_MARK_LOCAL_HW_FID;
+	rc = ulp_mark_db_mark_add(parms->ulp_ctx, mark_flag,
+				  act_idx, mark);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add mark to flow\n");
+		return rc;
+	}
+	fid_parms.direction = tbl->direction;
+	fid_parms.resource_func = BNXT_ULP_RESOURCE_FUNC_HW_FID;
+	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
+	fid_parms.resource_type	= mark_flag;
+	fid_parms.resource_hndl	= act_idx;
+	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
+				      parms->tbl_idx,
+				      parms->fid,
+				      &fid_parms);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
+	return rc;
+}
+
+static int32_t
+ulp_mapper_mark_vfr_idx_process(struct bnxt_ulp_mapper_parms *parms,
+				struct bnxt_ulp_mapper_tbl_info *tbl)
+{
+	struct ulp_flow_db_res_params fid_parms;
+	uint32_t act_idx, mark, mark_flag;
+	uint64_t val64;
+	enum bnxt_ulp_mark_db_opcode mark_op = tbl->mark_db_opcode;
+	int32_t rc = 0;
+
+	if (mark_op == BNXT_ULP_MARK_DB_OPCODE_NOP ||
+	    mark_op == BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION)
+		return rc; /* no need to perform mark action process */
+
+	/* Get the mark id details from the computed field of dev port id */
+	mark = ULP_COMP_FLD_IDX_RD(parms, BNXT_ULP_CF_IDX_DEV_PORT_ID);
+
+	 /* Get the main action pointer */
+	if (!ulp_regfile_read(parms->regfile,
+			      BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
+			      &val64)) {
+		BNXT_TF_DBG(ERR, "read action ptr main failed\n");
+		return -EINVAL;
+	}
+	act_idx = tfp_be_to_cpu_64(val64);
+
+	/* Set the mark flag to local fid and vfr flag */
+	mark_flag  = BNXT_ULP_MARK_LOCAL_HW_FID | BNXT_ULP_MARK_VFR_ID;
+
 	rc = ulp_mark_db_mark_add(parms->ulp_ctx, mark_flag,
 				  act_idx, mark);
 	if (rc) {
@@ -1520,6 +1573,12 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		goto error;
 	}
 
+	/* Perform the VF rep action */
+	rc = ulp_mapper_mark_vfr_idx_process(parms, tbl);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to add vfr mark rc = %d\n", rc);
+		goto error;
+	}
 	return rc;
 error:
 	/*

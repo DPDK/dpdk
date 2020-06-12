@@ -151,10 +151,11 @@ enum bnxt_ulp_hdr_type {
 	BNXT_ULP_HDR_TYPE_LAST = 3
 };
 
-enum bnxt_ulp_mark_enable {
-	BNXT_ULP_MARK_ENABLE_NO = 0,
-	BNXT_ULP_MARK_ENABLE_YES = 1,
-	BNXT_ULP_MARK_ENABLE_LAST = 2
+enum bnxt_ulp_mark_db_opcode {
+	BNXT_ULP_MARK_DB_OPCODE_NOP = 0,
+	BNXT_ULP_MARK_DB_OPCODE_SET_IF_MARK_ACTION = 1,
+	BNXT_ULP_MARK_DB_OPCODE_SET_VFR_FLAG = 2,
+	BNXT_ULP_MARK_DB_OPCODE_LAST = 3
 };
 
 enum bnxt_ulp_mapper_opc {
@@ -212,12 +213,6 @@ enum bnxt_ulp_search_before_alloc {
 	BNXT_ULP_SEARCH_BEFORE_ALLOC_NO = 0,
 	BNXT_ULP_SEARCH_BEFORE_ALLOC_YES = 1,
 	BNXT_ULP_SEARCH_BEFORE_ALLOC_LAST = 2
-};
-
-enum bnxt_ulp_vfr_flag {
-	BNXT_ULP_VFR_FLAG_NO = 0,
-	BNXT_ULP_VFR_FLAG_YES = 1,
-	BNXT_ULP_VFR_FLAG_LAST = 2
 };
 
 enum bnxt_ulp_fdb_resource_flags {

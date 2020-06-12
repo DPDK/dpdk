@@ -668,6 +668,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
+	.vfr_flag = BNXT_ULP_VFR_FLAG_NO,
+	.regfile_wr_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
@@ -690,6 +692,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
+	.vfr_flag = BNXT_ULP_VFR_FLAG_NO,
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
@@ -712,6 +715,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
+	.vfr_flag = BNXT_ULP_VFR_FLAG_NO,
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
@@ -734,6 +738,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.mark_enable = BNXT_ULP_MARK_ENABLE_NO,
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_NOT_USED
+	.vfr_flag = BNXT_ULP_VFR_FLAG_NO,
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,

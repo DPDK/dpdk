@@ -181,9 +181,8 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint32_t	ident_start_idx;
 	uint16_t	ident_nums;
 
-	uint8_t		mark_enable;
-	enum bnxt_ulp_regfile_index	regfile_wr_idx;
 	enum bnxt_ulp_regfile_index	regfile_idx;
+	enum bnxt_ulp_mark_db_opcode	mark_db_opcode;
 };
 
 struct bnxt_ulp_mapper_class_key_field_info {

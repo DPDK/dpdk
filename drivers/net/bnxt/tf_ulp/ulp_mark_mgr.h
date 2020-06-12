@@ -68,6 +68,8 @@ ulp_mark_db_deinit(struct bnxt_ulp_context *ctxt);
  *
  * fid [in] The flow id that is returned by HW in BD
  *
+ * vfr_flag [out].it indicatesif mark is vfr_id or mark id
+ *
  * mark [out] The mark that is associated with the FID
  *
  */
@@ -75,6 +77,7 @@ int32_t
 ulp_mark_db_mark_get(struct bnxt_ulp_context *ctxt,
 		     bool is_gfid,
 		     uint32_t fid,
+		     uint32_t *vfr_flag,
 		     uint32_t *mark);
 
 /*

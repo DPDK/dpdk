@@ -117,8 +117,7 @@ enum bnxt_ulp_cf_idx {
 	BNXT_ULP_CF_IDX_PHY_PORT_SPIF = 25,
 	BNXT_ULP_CF_IDX_PHY_PORT_PARIF = 26,
 	BNXT_ULP_CF_IDX_PHY_PORT_VPORT = 27,
-	BNXT_ULP_CF_IDX_VFR_FLAG = 28,
-	BNXT_ULP_CF_IDX_LAST = 29
+	BNXT_ULP_CF_IDX_LAST = 28
 };
 
 enum bnxt_ulp_critical_resource {
@@ -256,6 +255,12 @@ enum bnxt_ulp_encap_vtag_encoding {
 	BNXT_ULP_ENCAP_VTAG_ENCODING_STAG_ECAP_PRI = 1,
 	BNXT_ULP_ENCAP_VTAG_ENCODING_STAG_IVLAN_PRI = 2,
 	BNXT_ULP_ENCAP_VTAG_ENCODING_STAG_REMAP_DIFFSERV = 3
+};
+
+enum bnxt_ulp_vfr_flag {
+	BNXT_ULP_VFR_FLAG_NO = 0,
+	BNXT_ULP_VFR_FLAG_YES = 1,
+	BNXT_ULP_VFR_FLAG_LAST = 2
 };
 
 enum bnxt_ulp_fdb_resource_flags {
