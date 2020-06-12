@@ -302,6 +302,9 @@ static void clear_filter(struct filter_entry *f)
 	if (f->fs.mask.macidx)
 		cxgbe_mpstcam_remove(pi, f->fs.val.macidx);
 
+	if (f->smt)
+		cxgbe_smt_release(f->smt);
+
 	/* The zeroing of the filter rule below clears the filter valid,
 	 * pending, locked flags etc. so it's all we need for
 	 * this operation.
@@ -777,20 +780,6 @@ static int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 	unsigned int port_id = ethdev2pinfo(dev)->port_id;
 	int ret;
 
-	/* If the new filter requires Source MAC rewriting then we need to
-	 * allocate a SMT entry for the filter
-	 */
-	if (f->fs.newsmac) {
-		f->smt = cxgbe_smt_alloc_switching(f->dev, f->fs.smac);
-		if (!f->smt) {
-			if (f->l2t) {
-				cxgbe_l2t_release(f->l2t);
-				f->l2t = NULL;
-			}
-			return -ENOMEM;
-		}
-	}
-
 	ctrlq = &adapter->sge.ctrlq[port_id];
 	mbuf = rte_pktmbuf_alloc(ctrlq->mb_pool);
 	if (!mbuf) {
@@ -1117,6 +1106,17 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 		f->l2t = cxgbe_l2t_alloc_switching(f->dev, f->fs.vlan,
 						   f->fs.eport, f->fs.dmac);
 		if (!f->l2t) {
+			ret = -ENOMEM;
+			goto free_tid;
+		}
+	}
+
+	/* If the new filter requires Source MAC rewriting then we need to
+	 * allocate a SMT entry for the filter
+	 */
+	if (f->fs.newsmac) {
+		f->smt = cxgbe_smt_alloc_switching(f->dev, f->fs.smac);
+		if (!f->smt) {
 			ret = -ENOMEM;
 			goto free_tid;
 		}

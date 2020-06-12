@@ -193,6 +193,12 @@ struct smt_entry *cxgbe_smt_alloc_switching(struct rte_eth_dev *dev, u8 *smac)
 	return t4_smt_alloc_switching(dev, 0x0, smac);
 }
 
+void cxgbe_smt_release(struct smt_entry *e)
+{
+	if (rte_atomic32_read(&e->refcnt))
+		rte_atomic32_dec(&e->refcnt);
+}
+
 /**
  * Initialize Source MAC Table
  */

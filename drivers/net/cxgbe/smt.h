@@ -39,6 +39,7 @@ void t4_cleanup_smt(struct adapter *adap);
 void cxgbe_do_smt_write_rpl(struct adapter *adap,
 			    const struct cpl_smt_write_rpl *rpl);
 struct smt_entry *cxgbe_smt_alloc_switching(struct rte_eth_dev *dev, u8 *smac);
+void cxgbe_smt_release(struct smt_entry *e);
 
 #endif  /* __CXGBE_SMT_H_ */
 
