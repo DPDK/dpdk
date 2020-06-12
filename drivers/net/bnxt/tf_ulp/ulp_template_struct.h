@@ -60,7 +60,7 @@ struct ulp_rte_parser_params {
 	struct ulp_rte_hdr_bitmap	hdr_bitmap;
 	struct ulp_rte_field_bitmap	fld_bitmap;
 	struct ulp_rte_hdr_field	hdr_field[BNXT_ULP_PROTO_HDR_MAX];
-	uint32_t			comp_fld[BNXT_ULP_CHF_IDX_LAST];
+	uint32_t			comp_fld[BNXT_ULP_CF_IDX_LAST];
 	uint32_t			field_idx;
 	uint32_t			vlan_idx;
 	struct ulp_rte_act_bitmap	act_bitmap;

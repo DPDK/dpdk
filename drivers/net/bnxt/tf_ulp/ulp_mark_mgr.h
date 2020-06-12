@@ -9,6 +9,7 @@
 #include "bnxt_ulp.h"
 
 #define BNXT_ULP_MARK_VALID   0x1
+#define BNXT_ULP_MARK_VFR_ID  0x2
 #define BNXT_ULP_MARK_GLOBAL_HW_FID 0x4
 #define BNXT_ULP_MARK_LOCAL_HW_FID 0x8
 

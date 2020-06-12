@@ -662,7 +662,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_RESULT_OPC_SET_TO_COMP_HDR_FIELD:
+	case BNXT_ULP_RESULT_OPC_SET_TO_COMP_FIELD:
 		if (!ulp_operand_read(fld->result_operand,
 				      (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
@@ -670,7 +670,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (idx < BNXT_ULP_CHF_IDX_LAST)
+		if (idx < BNXT_ULP_CF_IDX_LAST)
 			val = ulp_blob_push_32(blob, &parms->comp_fld[idx],
 					       fld->field_bit_size);
 		if (!val) {
@@ -754,14 +754,14 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_SPEC_OPC_SET_TO_COMP_HDR_FIELD:
+	case BNXT_ULP_SPEC_OPC_SET_TO_COMP_FIELD:
 		if (!ulp_operand_read(operand, (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s key operand read failed.\n", name);
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
-		if (idx < BNXT_ULP_CHF_IDX_LAST)
+		if (idx < BNXT_ULP_CF_IDX_LAST)
 			val = ulp_blob_push_32(blob, &parms->comp_fld[idx],
 					       bitlen);
 		if (!val) {

@@ -51,10 +51,10 @@
 #define ULP_BITS_2_BYTE_NR(bits_x)	((bits_x) / 8)
 
 /* Macros to read the computed fields */
-#define ULP_UTIL_CHF_IDX_RD(params, idx) \
+#define ULP_COMP_FLD_IDX_RD(params, idx) \
 	rte_be_to_cpu_32((params)->comp_fld[(idx)])
 
-#define ULP_UTIL_CHF_IDX_WR(params, idx, val)	\
+#define ULP_COMP_FLD_IDX_WR(params, idx, val)	\
 	((params)->comp_fld[(idx)] = rte_cpu_to_be_32((val)))
 /*
  * Making the blob statically sized to 128 bytes for now.
