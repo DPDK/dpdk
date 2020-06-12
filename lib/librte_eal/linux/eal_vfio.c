@@ -895,7 +895,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		/* we have successfully initialized VFIO, notify user */
 		const struct vfio_iommu_type *t =
 				default_vfio_cfg->vfio_iommu_type;
-		RTE_LOG(NOTICE, EAL, "  using IOMMU type %d (%s)\n",
+		RTE_LOG(INFO, EAL, "  using IOMMU type %d (%s)\n",
 				t->type_id, t->name);
 	}
 
@@ -1072,7 +1072,7 @@ rte_vfio_enable(const char *modname)
 
 	/* check if we have VFIO driver enabled */
 	if (default_vfio_cfg->vfio_container_fd != -1) {
-		RTE_LOG(NOTICE, EAL, "VFIO support initialized\n");
+		RTE_LOG(INFO, EAL, "VFIO support initialized\n");
 		default_vfio_cfg->vfio_enabled = 1;
 	} else {
 		RTE_LOG(NOTICE, EAL, "VFIO support could not be initialized\n");
@@ -1150,7 +1150,7 @@ vfio_set_iommu_type(int vfio_container_fd)
 		int ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU,
 				t->type_id);
 		if (!ret) {
-			RTE_LOG(NOTICE, EAL, "  using IOMMU type %d (%s)\n",
+			RTE_LOG(INFO, EAL, "  using IOMMU type %d (%s)\n",
 					t->type_id, t->name);
 			return t;
 		}
