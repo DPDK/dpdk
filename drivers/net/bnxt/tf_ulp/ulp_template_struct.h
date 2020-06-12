@@ -183,6 +183,7 @@ struct bnxt_ulp_mapper_tbl_info {
 
 	uint8_t		mark_enable;
 	enum bnxt_ulp_regfile_index	regfile_wr_idx;
+	enum bnxt_ulp_regfile_index	regfile_idx;
 };
 
 struct bnxt_ulp_mapper_class_key_field_info {
@@ -208,7 +209,7 @@ struct bnxt_ulp_mapper_ident_info {
 	uint16_t	ident_type;
 	uint16_t	ident_bit_size;
 	uint16_t	ident_bit_pos;
-	enum bnxt_ulp_regfile_index	regfile_wr_idx;
+	enum bnxt_ulp_regfile_index	regfile_idx;
 };
 
 struct bnxt_ulp_glb_resource_info {

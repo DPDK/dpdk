@@ -540,7 +540,7 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
-	idx = ident->regfile_wr_idx;
+	idx = ident->regfile_idx;
 
 	iparms.ident_type = ident->ident_type;
 	iparms.dir = tbl->direction;
@@ -956,7 +956,7 @@ ulp_mapper_mark_act_ptr_process(struct bnxt_ulp_mapper_parms *parms,
 	mark = tfp_be_to_cpu_32(mark);
 
 	if (!ulp_regfile_read(parms->regfile,
-			      BNXT_ULP_REGFILE_INDEX_ACTION_PTR_MAIN,
+			      BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
 			      &val64)) {
 		BNXT_TF_DBG(ERR, "read action ptr main failed\n");
 		return -EINVAL;
@@ -1465,10 +1465,10 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Always storing values in Regfile in BE */
 	idx = tfp_cpu_to_be_64(idx);
-	rc = ulp_regfile_write(parms->regfile, tbl->regfile_wr_idx, idx);
+	rc = ulp_regfile_write(parms->regfile, tbl->regfile_idx, idx);
 	if (!rc) {
 		BNXT_TF_DBG(ERR, "Write regfile[%d] failed\n",
-			    tbl->regfile_wr_idx);
+			    tbl->regfile_idx);
 		goto error;
 	}
 
@@ -1624,7 +1624,7 @@ ulp_mapper_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		for (i = 0; i < num_idents; i++) {
 			regval = (uint64_t)cache_entry->idents[i];
 			if (!ulp_regfile_write(parms->regfile,
-					       idents[i].regfile_wr_idx,
+					       idents[i].regfile_idx,
 					       tfp_cpu_to_be_64(regval))) {
 				BNXT_TF_DBG(ERR,
 					    "Failed to write to regfile\n");
