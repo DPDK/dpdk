@@ -15,7 +15,6 @@
 #include "bnxt_ulp.h"
 #include "ulp_utils.h"
 
-#define ULP_SZ_BITS2BYTES(x) (((x) + 7) / 8)
 #define ULP_IDENTS_INVALID ((uint16_t)0xffff)
 
 /*
@@ -57,10 +56,10 @@ struct bnxt_ulp_mapper_parms {
 	uint32_t				dev_id;
 	enum bnxt_ulp_byte_order		order;
 	uint32_t				act_tid;
-	struct bnxt_ulp_mapper_act_tbl_info	*atbls;
+	struct bnxt_ulp_mapper_tbl_info		*atbls; /* action table */
 	uint32_t				num_atbls;
 	uint32_t				class_tid;
-	struct bnxt_ulp_mapper_class_tbl_info	*ctbls;
+	struct bnxt_ulp_mapper_tbl_info		*ctbls; /* class table */
 	uint32_t				num_ctbls;
 	struct ulp_rte_act_prop			*act_prop;
 	struct ulp_rte_act_bitmap		*act_bitmap;
