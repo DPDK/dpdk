@@ -242,7 +242,7 @@ static int vmbus_uio_map_subchan(const struct rte_vmbus_device *dev,
 	*ring_size = file_size / 2;
 	*ring_buf = mapaddr;
 
-	vmbus_map_addr = RTE_PTR_ADD(ring_buf, file_size);
+	vmbus_map_addr = RTE_PTR_ADD(mapaddr, file_size);
 	return 0;
 }
 
