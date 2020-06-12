@@ -1529,7 +1529,7 @@ mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *restrict tcp,
 	if (cqe->lro_tcppsh_abort_dupack & MLX5_CQE_LRO_PUSH_MASK)
 		tcp->tcp_flags |= RTE_TCP_PSH_FLAG;
 	tcp->cksum = 0;
-	csum += rte_raw_cksum(tcp, (tcp->data_off & 0xF) * 4);
+	csum += rte_raw_cksum(tcp, (tcp->data_off >> 4) * 4);
 	csum = ((csum & 0xffff0000) >> 16) + (csum & 0xffff);
 	csum = (~csum) & 0xffff;
 	if (csum == 0)
