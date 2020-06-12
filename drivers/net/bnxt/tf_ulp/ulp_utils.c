@@ -403,9 +403,9 @@ ulp_blob_push_encap(struct ulp_blob *blob,
  *
  * datalen [in] The number of bits of pad to add
  *
- * returns the number of pad bits added, zero on failure
+ * returns the number of pad bits added, -1 on failure
  */
-uint32_t
+int32_t
 ulp_blob_pad_push(struct ulp_blob *blob,
 		  uint32_t datalen)
 {
@@ -491,6 +491,35 @@ ulp_blob_perform_encap_swap(struct ulp_blob *blob)
 			blob->data[idx + 6 - i] = temp_val_1;
 		}
 		idx += 8;
+	}
+}
+
+/*
+ * Perform the blob buffer reversal byte wise.
+ * This api makes the first byte the last and
+ * vice-versa.
+ *
+ * blob [in] The blob's data to be used for swap.
+ *
+ * returns void.
+ */
+void
+ulp_blob_perform_byte_reverse(struct ulp_blob *blob)
+{
+	uint32_t idx = 0, num = 0;
+	uint8_t xchar;
+
+	/* validate the arguments */
+	if (!blob) {
+		BNXT_TF_DBG(ERR, "invalid argument\n");
+		return; /* failure */
+	}
+
+	num = ULP_BITS_2_BYTE_NR(blob->write_idx);
+	for (idx = 0; idx < (num / 2); idx++) {
+		xchar = blob->data[idx];
+		blob->data[idx] = blob->data[(num - 1) - idx];
+		blob->data[(num - 1) - idx] = xchar;
 	}
 }
 

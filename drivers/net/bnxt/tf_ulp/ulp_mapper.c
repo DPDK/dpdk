@@ -615,14 +615,14 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 	uint8_t act_val;
 
 	switch (fld->result_opcode) {
-	case BNXT_ULP_RESULT_OPC_SET_TO_CONSTANT:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT:
 		val = fld->result_operand;
 		if (!ulp_blob_push(blob, val, fld->field_bit_size)) {
 			BNXT_TF_DBG(ERR, "%s failed to add field\n", name);
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_RESULT_OPC_SET_TO_ACT_PROP:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_ACT_PROP:
 		if (!ulp_operand_read(fld->result_operand,
 				      (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
@@ -646,7 +646,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_RESULT_OPC_SET_TO_ACT_BIT:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_ACT_BIT:
 		if (!ulp_operand_read(fld->result_operand,
 				      (uint8_t *)&act_bit, sizeof(uint64_t))) {
 			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
@@ -664,7 +664,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		val = &act_val;
 		break;
-	case BNXT_ULP_RESULT_OPC_SET_TO_ENCAP_ACT_PROP_SZ:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_ENCAP_ACT_PROP_SZ:
 		if (!ulp_operand_read(fld->result_operand,
 				      (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
@@ -696,7 +696,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 		val_size = ULP_BYTE_2_BITS(val_size);
 		ulp_blob_push_encap(blob, val, val_size);
 		break;
-	case BNXT_ULP_RESULT_OPC_SET_TO_REGFILE:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE:
 		if (!ulp_operand_read(fld->result_operand,
 				      (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
@@ -717,7 +717,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_RESULT_OPC_SET_TO_GLB_REGFILE:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_GLB_REGFILE:
 		if (!ulp_operand_read(fld->result_operand,
 				      (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
@@ -738,7 +738,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_RESULT_OPC_SET_TO_COMP_FIELD:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_COMP_FIELD:
 		if (!ulp_operand_read(fld->result_operand,
 				      (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
@@ -753,6 +753,13 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			BNXT_TF_DBG(ERR, "%s push to key blob failed\n", name);
 			return -EINVAL;
 		}
+		break;
+	case BNXT_ULP_MAPPER_OPC_SET_TO_ZERO:
+		if (ulp_blob_pad_push(blob, fld->field_bit_size) < 0) {
+			BNXT_TF_DBG(ERR, "%s too large for blob\n", name);
+			return -EINVAL;
+		}
+
 		break;
 	default:
 		return -EINVAL;
@@ -789,21 +796,21 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 	bitlen = fld->field_bit_size;
 
 	switch (opcode) {
-	case BNXT_ULP_SPEC_OPC_SET_TO_CONSTANT:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT:
 		val = operand;
 		if (!ulp_blob_push(blob, val, bitlen)) {
 			BNXT_TF_DBG(ERR, "%s push to key blob failed\n", name);
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_SPEC_OPC_ADD_PAD:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_ZERO:
 		if (!ulp_blob_pad_push(blob, bitlen)) {
 			BNXT_TF_DBG(ERR, "%s pad too large for blob\n", name);
 			return -EINVAL;
 		}
 
 		break;
-	case BNXT_ULP_SPEC_OPC_SET_TO_HDR_FIELD:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD:
 		if (!ulp_operand_read(operand, (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s key operand read failed.\n", name);
@@ -830,7 +837,7 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_SPEC_OPC_SET_TO_COMP_FIELD:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_COMP_FIELD:
 		if (!ulp_operand_read(operand, (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s key operand read failed.\n", name);
@@ -845,7 +852,7 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_SPEC_OPC_SET_TO_REGFILE:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_REGFILE:
 		if (!ulp_operand_read(operand, (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s key operand read failed.\n", name);
@@ -865,7 +872,7 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
-	case BNXT_ULP_SPEC_OPC_SET_TO_GLB_REGFILE:
+	case BNXT_ULP_MAPPER_OPC_SET_TO_GLB_REGFILE:
 		if (!ulp_operand_read(operand, (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
 			BNXT_TF_DBG(ERR, "%s key operand read failed.\n", name);

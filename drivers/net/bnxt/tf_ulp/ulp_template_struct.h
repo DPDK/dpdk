@@ -187,17 +187,17 @@ struct bnxt_ulp_mapper_tbl_info {
 };
 
 struct bnxt_ulp_mapper_class_key_field_info {
-	uint8_t			description[64];
-	enum bnxt_ulp_mask_opc	mask_opcode;
-	enum bnxt_ulp_spec_opc	spec_opcode;
-	uint16_t		field_bit_size;
-	uint8_t			mask_operand[16];
-	uint8_t			spec_operand[16];
+	uint8_t				description[64];
+	enum bnxt_ulp_mapper_opc	mask_opcode;
+	enum bnxt_ulp_mapper_opc	spec_opcode;
+	uint16_t			field_bit_size;
+	uint8_t				mask_operand[16];
+	uint8_t				spec_operand[16];
 };
 
 struct bnxt_ulp_mapper_result_field_info {
 	uint8_t				description[64];
-	enum bnxt_ulp_result_opc	result_opcode;
+	enum bnxt_ulp_mapper_opc	result_opcode;
 	uint16_t			field_bit_size;
 	uint8_t				result_operand[16];
 };

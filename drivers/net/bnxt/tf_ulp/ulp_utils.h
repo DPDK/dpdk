@@ -236,9 +236,9 @@ ulp_blob_data_get(struct ulp_blob *blob,
  *
  * datalen [in] The number of bits of pad to add
  *
- * returns the number of pad bits added, zero on failure
+ * returns the number of pad bits added, -1 on failure
  */
-uint32_t
+int32_t
 ulp_blob_pad_push(struct ulp_blob *blob,
 		  uint32_t datalen);
 
@@ -262,6 +262,18 @@ ulp_blob_encap_swap_idx_set(struct ulp_blob *blob);
  */
 void
 ulp_blob_perform_encap_swap(struct ulp_blob *blob);
+
+/*
+ * Perform the blob buffer reversal byte wise.
+ * This api makes the first byte the last and
+ * vice-versa.
+ *
+ * blob [in] The blob's data to be used for swap.
+ *
+ * returns void.
+ */
+void
+ulp_blob_perform_byte_reverse(struct ulp_blob *blob);
 
 /*
  * Read data from the operand
