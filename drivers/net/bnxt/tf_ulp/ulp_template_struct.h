@@ -162,7 +162,7 @@ struct bnxt_ulp_mapper_tbl_info {
 	uint8_t		direction;
 	uint32_t	priority;
 	uint8_t		srch_b4_alloc;
-	uint32_t	critical_resource;
+	enum bnxt_ulp_critical_resource	critical_resource;
 
 	/* Information for accessing the ulp_key_field_list */
 	uint32_t	key_start_idx;
