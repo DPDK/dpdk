@@ -60,4 +60,4 @@ enum bnxt_ulp_hf_bitmask0 {
 	BNXT_ULP_HF0_BITMASK_O_UDP_CSUM          = 0x0000010000000000
 };
 
-#endif /* _ULP_HDR_FIELD_ENUMS_H_ */
+#endif

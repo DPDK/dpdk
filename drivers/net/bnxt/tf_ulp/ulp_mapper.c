@@ -743,6 +743,21 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
+	case BNXT_ULP_SPEC_OPC_SET_TO_COMP_HDR_FIELD:
+		if (!ulp_operand_read(operand, (uint8_t *)&idx,
+				      sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "%s key operand read failed.\n", name);
+			return -EINVAL;
+		}
+		idx = tfp_be_to_cpu_16(idx);
+		if (idx < BNXT_ULP_CHF_IDX_LAST)
+			val = ulp_blob_push_32(blob, &parms->comp_fld[idx],
+					       bitlen);
+		if (!val) {
+			BNXT_TF_DBG(ERR, "%s push to key blob failed\n", name);
+			return -EINVAL;
+		}
+		break;
 	case BNXT_ULP_SPEC_OPC_SET_TO_REGFILE:
 		if (!ulp_operand_read(operand, (uint8_t *)&idx,
 				      sizeof(uint16_t))) {
@@ -1278,7 +1293,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	 */
 	iparms.dup_check		= 0;
 	iparms.dir			= tbl->direction;
-	iparms.mem			= tbl->mem;
+	iparms.mem			= tbl->table_type;
 	iparms.key			= ulp_blob_data_get(&key, &tmplen);
 	iparms.key_sz_in_bits		= tbl->key_bit_size;
 	iparms.em_record		= ulp_blob_data_get(&data, &tmplen);
@@ -1857,6 +1872,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	parms.act_bitmap = cparms->act;
 	parms.regfile = &regfile;
 	parms.hdr_field = cparms->hdr_field;
+	parms.comp_fld = cparms->comp_fld;
 	parms.tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
 	parms.ulp_ctx = ulp_ctx;
 	parms.tcam_tbl_opc = BNXT_ULP_MAPPER_TCAM_TBL_OPC_NORMAL;

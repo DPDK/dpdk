@@ -19,6 +19,7 @@
 #define BNXT_ULP_ENCAP_IPV4_SIZE		12
 #define BNXT_ULP_ENCAP_IPV6_SIZE		8
 #define BNXT_ULP_ENCAP_UDP_SIZE			4
+#define BNXT_ULP_INVALID_SVIF_VAL		-1U
 
 /* Function to handle the parsing of the RTE port id. */
 int32_t

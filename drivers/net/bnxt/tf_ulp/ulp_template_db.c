@@ -3,10 +3,6 @@
  * All rights reserved.
  */
 
-/*
- * date: Mon Mar  9 02:37:53 2020
- * version: 0.0
- */
 
 #include "ulp_template_db.h"
 #include "ulp_template_field_db.h"
@@ -538,12 +534,12 @@ uint32_t bnxt_ulp_encap_vtag_map[] = {
 };
 
 uint16_t ulp_class_sig_tbl[BNXT_ULP_CLASS_SIG_TBL_MAX_SZ] = {
-	[BNXT_ULP_CLASS_HID_0092] = 1
+	[BNXT_ULP_CLASS_HID_0013] = 1
 };
 
 struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 	[1] = {
-	.class_hid = BNXT_ULP_CLASS_HID_0092,
+	.class_hid = BNXT_ULP_CLASS_HID_0013,
 	.hdr_sig = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
 		BNXT_ULP_HDR_BIT_O_IPV4 |
@@ -833,15 +829,17 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 	.spec_operand = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
-	/* class template id: 0, wh_plus, table: profile_tcam_cache_0 */
 	{
 	.field_bit_size = 1,
 	.mask_opcode = BNXT_ULP_MASK_OPC_SET_TO_CONSTANT,
 	.mask_operand = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	.spec_opcode = BNXT_ULP_SPEC_OPC_SET_TO_CONSTANT,
-	.spec_operand = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	.spec_opcode = BNXT_ULP_SPEC_OPC_SET_TO_COMP_HDR_FIELD,
+	.spec_operand = {
+		(BNXT_ULP_CHF_IDX_O_VTAG_NUM >> 8) & 0xff,
+		BNXT_ULP_CHF_IDX_O_VTAG_NUM & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 7,

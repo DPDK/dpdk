@@ -179,6 +179,24 @@ ulp_blob_push_64(struct ulp_blob *blob,
 		 uint32_t datalen);
 
 /*
+ * Add data to the binary blob at the current offset.
+ *
+ * blob [in] The blob that data is added to.  The blob must
+ * be initialized prior to pushing data.
+ *
+ * data [in] 32-bit value to be added to the blob.
+ *
+ * datalen [in] The number of bits to be added ot the blob.
+ *
+ * The offset of the data is updated after each push of data.
+ * NULL returned on error, pointer pushed value otherwise.
+ */
+uint8_t *
+ulp_blob_push_32(struct ulp_blob *blob,
+		 uint32_t *data,
+		 uint32_t datalen);
+
+/*
  * Add encap data to the binary blob at the current offset.
  *
  * blob [in] The blob that data is added to.  The blob must

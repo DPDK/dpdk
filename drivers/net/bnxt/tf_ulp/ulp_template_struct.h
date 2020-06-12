@@ -159,7 +159,6 @@ struct bnxt_ulp_mapper_class_tbl_info {
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t	table_type;
 	uint8_t		direction;
-	uint8_t		mem;
 	uint32_t	priority;
 	uint8_t		srch_b4_alloc;
 	uint32_t	critical_resource;

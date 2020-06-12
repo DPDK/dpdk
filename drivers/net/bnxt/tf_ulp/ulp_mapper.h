@@ -67,6 +67,7 @@ struct bnxt_ulp_mapper_parms {
 	struct ulp_rte_act_prop			*act_prop;
 	struct ulp_rte_act_bitmap		*act_bitmap;
 	struct ulp_rte_hdr_field		*hdr_field;
+	uint32_t				*comp_fld;
 	struct ulp_regfile			*regfile;
 	struct tf				*tfp;
 	struct bnxt_ulp_context			*ulp_ctx;
@@ -82,6 +83,7 @@ struct bnxt_ulp_mapper_create_parms {
 	uint32_t			app_priority;
 	struct ulp_rte_hdr_bitmap	*hdr_bitmap;
 	struct ulp_rte_hdr_field	*hdr_field;
+	uint32_t			*comp_fld;
 	struct ulp_rte_act_bitmap	*act;
 	struct ulp_rte_act_prop		*act_prop;
 	uint32_t			class_tid;

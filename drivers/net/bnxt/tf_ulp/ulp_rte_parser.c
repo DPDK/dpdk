@@ -165,14 +165,12 @@ ulp_rte_parser_svif_set(struct ulp_rte_parser_params *params,
 	uint32_t ifindex;
 	int32_t rc;
 
-	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_SVIF)) {
+	if (ULP_UTIL_CHF_IDX_RD(params, BNXT_ULP_CHF_IDX_SVIF) !=
+	    BNXT_ULP_INVALID_SVIF_VAL) {
 		BNXT_TF_DBG(ERR,
 			    "SVIF already set,multiple source not support'd\n");
 		return BNXT_TF_RC_ERROR;
 	}
-
-	/*update the hdr_bitmap with BNXT_ULP_HDR_PROTO_SVIF */
-	ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_SVIF);
 
 	if (proto == RTE_FLOW_ITEM_TYPE_PORT_ID) {
 		dir = ULP_UTIL_CHF_IDX_RD(params,
@@ -192,6 +190,8 @@ ulp_rte_parser_svif_set(struct ulp_rte_parser_params *params,
 	memcpy(hdr_field->spec, &svif, sizeof(svif));
 	memcpy(hdr_field->mask, &mask, sizeof(mask));
 	hdr_field->size = sizeof(svif);
+	ULP_UTIL_CHF_IDX_WR(params, BNXT_ULP_CHF_IDX_SVIF,
+			    rte_be_to_cpu_16(svif));
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -202,7 +202,8 @@ ulp_rte_parser_svif_process(struct ulp_rte_parser_params *params)
 	uint16_t port_id = 0;
 	uint16_t svif_mask = 0xFFFF;
 
-	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_SVIF))
+	if (ULP_UTIL_CHF_IDX_RD(params, BNXT_ULP_CHF_IDX_SVIF) !=
+	    BNXT_ULP_INVALID_SVIF_VAL)
 		return BNXT_TF_RC_SUCCESS;
 
 	/* SVIF not set. So get the port id */
@@ -421,41 +422,39 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 	/* Update the hdr_bitmap of the vlans */
 	hdr_bit = &params->hdr_bitmap;
 	if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
-	    !ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OO_VLAN)) {
-		/* Set the outer vlan bit and update the vlan tag num */
-		ULP_BITMAP_SET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OO_VLAN);
+	    !outer_vtag_num) {
+		/* Update the vlan tag num */
 		outer_vtag_num++;
 		ULP_UTIL_CHF_IDX_WR(params, BNXT_ULP_CHF_IDX_O_VTAG_NUM,
 				    outer_vtag_num);
 		ULP_UTIL_CHF_IDX_WR(params, BNXT_ULP_CHF_IDX_O_VTAG_PRESENT, 1);
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
-		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OO_VLAN) &&
-		   !ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OI_VLAN)) {
-		/* Set the outer vlan bit and update the vlan tag num */
-		ULP_BITMAP_SET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OI_VLAN);
+		   ULP_UTIL_CHF_IDX_RD(params,
+				       BNXT_ULP_CHF_IDX_O_VTAG_PRESENT) &&
+		   outer_vtag_num == 1) {
+		/* update the vlan tag num */
 		outer_vtag_num++;
 		ULP_UTIL_CHF_IDX_WR(params, BNXT_ULP_CHF_IDX_O_VTAG_NUM,
 				    outer_vtag_num);
 		ULP_UTIL_CHF_IDX_WR(params, BNXT_ULP_CHF_IDX_O_TWO_VTAGS, 1);
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
-		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OO_VLAN) &&
-		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OI_VLAN) &&
+		   ULP_UTIL_CHF_IDX_RD(params,
+				       BNXT_ULP_CHF_IDX_O_VTAG_PRESENT) &&
 		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_I_ETH) &&
-		   !ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_IO_VLAN)) {
-		/* Set the inner vlan bit and update the vlan tag num */
-		ULP_BITMAP_SET(hdr_bit->bits, BNXT_ULP_HDR_BIT_IO_VLAN);
+		   !inner_vtag_num) {
+		/* update the vlan tag num */
 		inner_vtag_num++;
 		ULP_UTIL_CHF_IDX_WR(params, BNXT_ULP_CHF_IDX_I_VTAG_NUM,
 				    inner_vtag_num);
 		ULP_UTIL_CHF_IDX_WR(params, BNXT_ULP_CHF_IDX_I_VTAG_PRESENT, 1);
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
-		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OO_VLAN) &&
-		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_OI_VLAN) &&
+		   ULP_UTIL_CHF_IDX_RD(params,
+				       BNXT_ULP_CHF_IDX_O_VTAG_PRESENT) &&
 		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_I_ETH) &&
-		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_IO_VLAN) &&
-		   !ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_II_VLAN)) {
-		/* Set the inner vlan bit and update the vlan tag num */
-		ULP_BITMAP_SET(hdr_bit->bits, BNXT_ULP_HDR_BIT_II_VLAN);
+		   ULP_UTIL_CHF_IDX_RD(params,
+				       BNXT_ULP_CHF_IDX_O_VTAG_PRESENT) &&
+		   inner_vtag_num == 1) {
+		/* update the vlan tag num */
 		inner_vtag_num++;
 		ULP_UTIL_CHF_IDX_WR(params, BNXT_ULP_CHF_IDX_I_VTAG_NUM,
 				    inner_vtag_num);
