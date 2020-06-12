@@ -17,9 +17,6 @@
 
 #define ULP_SZ_BITS2BYTES(x) (((x) + 7) / 8)
 #define ULP_IDENTS_INVALID ((uint16_t)0xffff)
-#define ULP_MAPPER_CACHE_RES_TBL_ID_SHFT 16
-#define ULP_MAPPER_CACHE_RES_TBL_TYPE_SHFT 0
-#define ULP_MAPPER_CACHE_RES_TBL_MASK ((uint32_t)0x0000ffff)
 
 /*
  * The cache table opcode is used to convey informat from the cache handler

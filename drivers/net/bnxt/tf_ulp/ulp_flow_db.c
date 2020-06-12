@@ -16,6 +16,9 @@
 #define ULP_FLOW_DB_RES_FUNC_BITS	28
 #define ULP_FLOW_DB_RES_FUNC_MASK	0x70000000
 #define ULP_FLOW_DB_RES_NXT_MASK	0x0FFFFFFF
+#define ULP_FLOW_DB_RES_FUNC_UPPER	5
+#define ULP_FLOW_DB_RES_FUNC_NEED_LOWER	0x80
+#define ULP_FLOW_DB_RES_FUNC_LOWER_MASK	0x1F
 
 /* Macro to copy the nxt_resource_idx */
 #define ULP_FLOW_DB_RES_NXT_SET(dst, src)	{(dst) |= ((src) &\
@@ -77,20 +80,32 @@ ulp_flow_db_active_flow_is_set(struct bnxt_ulp_flow_tbl	*flow_tbl,
  * returns none
  */
 static void
-ulp_flow_db_res_params_to_info(struct ulp_fdb_resource_info   *resource_info,
-			       struct ulp_flow_db_res_params  *params)
+ulp_flow_db_res_params_to_info(struct ulp_fdb_resource_info *resource_info,
+			       struct ulp_flow_db_res_params *params)
 {
+	uint32_t resource_func;
+
 	resource_info->nxt_resource_idx |= ((params->direction <<
 				      ULP_FLOW_DB_RES_DIR_BIT) &
 				     ULP_FLOW_DB_RES_DIR_MASK);
-	resource_info->nxt_resource_idx |= ((params->resource_func <<
+	resource_func = (params->resource_func >> ULP_FLOW_DB_RES_FUNC_UPPER);
+	resource_info->nxt_resource_idx |= ((resource_func <<
 					     ULP_FLOW_DB_RES_FUNC_BITS) &
 					    ULP_FLOW_DB_RES_FUNC_MASK);
 
+	if (params->resource_func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER) {
+		/* Break the resource func into two parts */
+		resource_func = (params->resource_func &
+				 ULP_FLOW_DB_RES_FUNC_LOWER_MASK);
+		resource_info->resource_func_lower = resource_func;
+	}
+
+	/* Store the handle as 64bit only for EM table entries */
 	if (params->resource_func != BNXT_ULP_RESOURCE_FUNC_EM_TABLE) {
 		resource_info->resource_hndl = (uint32_t)params->resource_hndl;
 		resource_info->resource_type = params->resource_type;
-
+		resource_info->resource_sub_type = params->resource_sub_type;
+		resource_info->reserved = params->reserved;
 	} else {
 		resource_info->resource_em_handle = params->resource_hndl;
 	}
@@ -106,22 +121,34 @@ ulp_flow_db_res_params_to_info(struct ulp_fdb_resource_info   *resource_info,
  * returns none
  */
 static void
-ulp_flow_db_res_info_to_params(struct ulp_fdb_resource_info   *resource_info,
-			       struct ulp_flow_db_res_params  *params)
+ulp_flow_db_res_info_to_params(struct ulp_fdb_resource_info *resource_info,
+			       struct ulp_flow_db_res_params *params)
 {
+	uint8_t resource_func_upper;
+
 	memset(params, 0, sizeof(struct ulp_flow_db_res_params));
 	params->direction = ((resource_info->nxt_resource_idx &
 				 ULP_FLOW_DB_RES_DIR_MASK) >>
 				 ULP_FLOW_DB_RES_DIR_BIT);
-	params->resource_func = ((resource_info->nxt_resource_idx &
-				 ULP_FLOW_DB_RES_FUNC_MASK) >>
-				 ULP_FLOW_DB_RES_FUNC_BITS);
+	resource_func_upper = (((resource_info->nxt_resource_idx &
+				ULP_FLOW_DB_RES_FUNC_MASK) >>
+			       ULP_FLOW_DB_RES_FUNC_BITS) <<
+			       ULP_FLOW_DB_RES_FUNC_UPPER);
 
-	if (params->resource_func != BNXT_ULP_RESOURCE_FUNC_EM_TABLE) {
+	/* The reource func is split into upper and lower */
+	if (resource_func_upper & ULP_FLOW_DB_RES_FUNC_NEED_LOWER)
+		params->resource_func = (resource_func_upper |
+					 resource_info->resource_func_lower);
+	else
+		params->resource_func = resource_func_upper;
+
+	if (params->resource_func == BNXT_ULP_RESOURCE_FUNC_EM_TABLE) {
+		params->resource_hndl = resource_info->resource_em_handle;
+	} else if (params->resource_func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER) {
 		params->resource_hndl = resource_info->resource_hndl;
 		params->resource_type = resource_info->resource_type;
-	} else {
-		params->resource_hndl = resource_info->resource_em_handle;
+		params->resource_sub_type = resource_info->resource_sub_type;
+		params->reserved = resource_info->reserved;
 	}
 }
 

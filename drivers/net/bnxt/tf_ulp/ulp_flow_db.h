@@ -12,14 +12,24 @@
 #define BNXT_FLOW_DB_DEFAULT_NUM_FLOWS		128
 #define BNXT_FLOW_DB_DEFAULT_NUM_RESOURCES	5
 
-/* Structure for the flow database resource information. */
+/*
+ * Structure for the flow database resource information
+ * The below structure is based on the below paritions
+ * nxt_resource_idx = dir[31],resource_func_upper[30:28],nxt_resource_idx[27:0]
+ * If resource_func is EM_TBL then use resource_em_handle.
+ * Else the other part of the union is used and
+ * resource_func is resource_func_upper[30:28] << 5 | resource_func_lower
+ */
 struct ulp_fdb_resource_info {
 	/* Points to next resource in the chained list. */
-	uint32_t	nxt_resource_idx;
+	uint32_t			nxt_resource_idx;
 	union {
-		uint64_t	resource_em_handle;
+		uint64_t		resource_em_handle;
 		struct {
-			uint32_t	resource_type;
+			uint8_t		resource_func_lower;
+			uint8_t		resource_type;
+			uint8_t		resource_sub_type;
+			uint8_t		reserved;
 			uint32_t	resource_hndl;
 		};
 	};
@@ -59,9 +69,11 @@ struct bnxt_ulp_flow_db {
 struct ulp_flow_db_res_params {
 	enum tf_dir			direction;
 	enum bnxt_ulp_resource_func	resource_func;
+	uint8_t				resource_type;
+	uint8_t				resource_sub_type;
+	uint8_t				reserved;
+	uint8_t				critical_resource;
 	uint64_t			resource_hndl;
-	uint32_t			resource_type;
-	uint32_t			critical_resource;
 };
 
 /*

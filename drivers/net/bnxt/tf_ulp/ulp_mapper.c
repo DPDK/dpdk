@@ -292,9 +292,8 @@ ulp_mapper_cache_res_type_set(struct ulp_flow_db_res_params *res,
 			      uint16_t tbl_type,
 			      uint16_t tbl_id)
 {
-	res->resource_type =
-		((uint32_t)tbl_id << ULP_MAPPER_CACHE_RES_TBL_ID_SHFT) |
-		((uint32_t)tbl_type << ULP_MAPPER_CACHE_RES_TBL_TYPE_SHFT);
+	res->resource_type = tbl_type;
+	res->resource_sub_type = tbl_id;
 }
 
 /* Extracts the tbl_type and tbl_id from the 32bit resource type. */
@@ -303,12 +302,8 @@ ulp_mapper_cache_res_type_get(struct ulp_flow_db_res_params *res,
 			      uint16_t *tbl_type,
 			      uint16_t *tbl_id)
 {
-	*tbl_type = (uint16_t)((res->resource_type >>
-				ULP_MAPPER_CACHE_RES_TBL_TYPE_SHFT) &
-			       ULP_MAPPER_CACHE_RES_TBL_MASK);
-	*tbl_id = (uint16_t)((res->resource_type >>
-			      ULP_MAPPER_CACHE_RES_TBL_ID_SHFT) &
-			     ULP_MAPPER_CACHE_RES_TBL_MASK);
+	*tbl_type = res->resource_type;
+	*tbl_id = res->resource_sub_type;
 }
 
 static int32_t
