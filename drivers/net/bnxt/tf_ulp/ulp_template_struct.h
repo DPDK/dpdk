@@ -137,14 +137,14 @@ extern struct bnxt_ulp_act_match_info ulp_act_match_list[];
 /* Device specific parameters */
 struct bnxt_ulp_device_params {
 	uint8_t				description[16];
-	uint32_t			global_fid_enable;
+	enum bnxt_ulp_flow_mem_type	flow_mem_type;
 	enum bnxt_ulp_byte_order	byte_order;
 	uint8_t				encap_byte_swap;
-	uint32_t			lfid_entries;
-	uint32_t			lfid_entry_size;
-	uint64_t			gfid_entries;
-	uint32_t			gfid_entry_size;
-	uint64_t			num_flows;
+	uint8_t				num_phy_ports;
+	uint32_t			mark_db_lfid_entries;
+	uint64_t			mark_db_gfid_entries;
+	uint64_t			flow_db_num_entries;
+	uint32_t			flow_count_db_entries;
 	uint32_t			num_resources_per_flow;
 };
 

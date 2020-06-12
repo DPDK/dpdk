@@ -139,6 +139,13 @@ enum bnxt_ulp_direction {
 	BNXT_ULP_DIRECTION_LAST = 2
 };
 
+enum bnxt_ulp_flow_mem_type {
+	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,
+	BNXT_ULP_FLOW_MEM_TYPE_EXT = 1,
+	BNXT_ULP_FLOW_MEM_TYPE_BOTH = 2,
+	BNXT_ULP_FLOW_MEM_TYPE_LAST = 3
+};
+
 enum bnxt_ulp_glb_regfile_index {
 	BNXT_ULP_GLB_REGFILE_INDEX_GLB_PROF_FUNC_ID = 0,
 	BNXT_ULP_GLB_REGFILE_INDEX_LAST = 1

@@ -1291,6 +1291,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct tf_insert_em_entry_parms iparms = { 0 };
 	struct tf_delete_em_entry_parms free_parms = { 0 };
 	int32_t	trc;
+	enum bnxt_ulp_flow_mem_type mtype = parms->device_params->flow_mem_type;
 	int32_t rc = 0;
 
 	kflds = ulp_mapper_key_fields_get(tbl, &num_kflds);
@@ -1381,10 +1382,10 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* Mark action process */
-	if (parms->device_params->global_fid_enable &&
+	if (mtype == BNXT_ULP_FLOW_MEM_TYPE_EXT &&
 	    tbl->resource_type == TF_MEM_EXTERNAL)
 		rc = ulp_mapper_mark_gfid_process(parms, tbl, iparms.flow_id);
-	else if (!parms->device_params->global_fid_enable &&
+	else if (mtype == BNXT_ULP_FLOW_MEM_TYPE_INT &&
 		 tbl->resource_type == TF_MEM_INTERNAL)
 		rc = ulp_mapper_mark_act_ptr_process(parms, tbl);
 	if (rc) {

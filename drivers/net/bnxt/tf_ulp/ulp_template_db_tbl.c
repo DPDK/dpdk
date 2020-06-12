@@ -313,15 +313,16 @@ struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[] = {
 
 struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
-		.global_fid_enable       = BNXT_ULP_SYM_YES,
-		.byte_order              = BNXT_ULP_BYTE_ORDER_LE,
-		.encap_byte_swap         = 1,
-		.lfid_entries            = 16384,
-		.lfid_entry_size         = 4,
-		.gfid_entries            = 65536,
-		.gfid_entry_size         = 4,
-		.num_flows               = 32768,
-		.num_resources_per_flow  = 8
+	.description            = "Whitney_Plus",
+	.flow_mem_type          = BNXT_ULP_FLOW_MEM_TYPE_EXT,
+	.byte_order             = BNXT_ULP_BYTE_ORDER_LE,
+	.encap_byte_swap        = 1,
+	.flow_db_num_entries    = 32768,
+	.mark_db_lfid_entries   = 65536,
+	.mark_db_gfid_entries   = 65536,
+	.flow_count_db_entries  = 16384,
+	.num_resources_per_flow = 8,
+	.num_phy_ports          = 2
 	}
 };
 

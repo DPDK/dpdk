@@ -77,7 +77,7 @@ ulp_mark_db_init(struct bnxt_ulp_context *ctxt)
 		goto mem_error;
 
 	/* Need to allocate 2 * Num flows to account for hash type bit.*/
-	mark_tbl->lfid_num_entries = dparms->lfid_entries;
+	mark_tbl->lfid_num_entries = dparms->mark_db_lfid_entries;
 	mark_tbl->lfid_tbl = rte_zmalloc("ulp_rx_em_flow_mark_table",
 					 mark_tbl->lfid_num_entries *
 					 sizeof(struct bnxt_lfid_mark_info),
@@ -86,7 +86,7 @@ ulp_mark_db_init(struct bnxt_ulp_context *ctxt)
 		goto mem_error;
 
 	/* Need to allocate 2 * Num flows to account for hash type bit */
-	mark_tbl->gfid_num_entries = dparms->gfid_entries;
+	mark_tbl->gfid_num_entries = dparms->mark_db_gfid_entries;
 	mark_tbl->gfid_tbl = rte_zmalloc("ulp_rx_eem_flow_mark_table",
 					 mark_tbl->gfid_num_entries *
 					 sizeof(struct bnxt_gfid_mark_info),

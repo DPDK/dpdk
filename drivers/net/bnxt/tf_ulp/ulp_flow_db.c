@@ -300,7 +300,7 @@ int32_t	ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 
 	/* Populate the regular flow table limits. */
 	flow_tbl = &flow_db->flow_tbl[BNXT_ULP_REGULAR_FLOW_TABLE];
-	flow_tbl->num_flows = dparms->num_flows + 1;
+	flow_tbl->num_flows = dparms->flow_db_num_entries + 1;
 	flow_tbl->num_resources = (flow_tbl->num_flows *
 				   dparms->num_resources_per_flow);
 
@@ -317,7 +317,7 @@ int32_t	ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 		goto error_free;
 
 	/* add 1 since we are not using index 0 for flow id */
-	flow_db->func_id_tbl_size = dparms->num_flows + 1;
+	flow_db->func_id_tbl_size = dparms->flow_db_num_entries + 1;
 	/* Allocate the function Id table */
 	flow_db->func_id_tbl = rte_zmalloc("bnxt_ulp_flow_db_func_id_table",
 					   flow_db->func_id_tbl_size *

@@ -146,14 +146,14 @@ bnxt_init_tbl_scope_parms(struct bnxt *bp,
 		params->rx_max_action_entry_sz_in_bits =
 			BNXT_ULP_DFLT_RX_MAX_ACTN_ENTRY;
 		params->rx_mem_size_in_mb = BNXT_ULP_DFLT_RX_MEM;
-		params->rx_num_flows_in_k = dparms->num_flows / (1024);
+		params->rx_num_flows_in_k = dparms->flow_db_num_entries / 1024;
 		params->rx_tbl_if_id = BNXT_ULP_RX_TBL_IF_ID;
 
 		params->tx_max_key_sz_in_bits = BNXT_ULP_DFLT_TX_MAX_KEY;
 		params->tx_max_action_entry_sz_in_bits =
 			BNXT_ULP_DFLT_TX_MAX_ACTN_ENTRY;
 		params->tx_mem_size_in_mb = BNXT_ULP_DFLT_TX_MEM;
-		params->tx_num_flows_in_k = dparms->num_flows / (1024);
+		params->tx_num_flows_in_k = dparms->flow_db_num_entries / 1024;
 		params->tx_tbl_if_id = BNXT_ULP_TX_TBL_IF_ID;
 	}
 }
@@ -299,11 +299,11 @@ ulp_dparms_init(struct bnxt *bp,
 	}
 
 	/* num_flows = max_num_kflows * 1024 */
-	dparms->num_flows = bp->max_num_kflows * 1024;
+	dparms->flow_db_num_entries = bp->max_num_kflows * 1024;
 	/* GFID =  2 * num_flows */
-	dparms->gfid_entries = dparms->num_flows * 2;
+	dparms->mark_db_gfid_entries = dparms->flow_db_num_entries * 2;
 	BNXT_TF_DBG(DEBUG, "Set the number of flows = %"PRIu64"\n",
-		    dparms->num_flows);
+		    dparms->flow_db_num_entries);
 
 	return 0;
 }
@@ -328,7 +328,7 @@ ulp_dparms_dev_port_intf_update(struct bnxt *bp,
 	}
 
 	/* Update the bp flag with gfid flag */
-	if (dparms->global_fid_enable)
+	if (dparms->flow_mem_type == BNXT_ULP_FLOW_MEM_TYPE_EXT)
 		bp->flags |= BNXT_FLAG_GFID_ENABLE;
 
 	return 0;
