@@ -276,6 +276,38 @@ ulp_ctx_init(struct bnxt *bp,
 	return rc;
 }
 
+/* The function to initialize ulp dparms with devargs */
+static int32_t
+ulp_dparms_init(struct bnxt *bp,
+		struct bnxt_ulp_context *ulp_ctx)
+{
+	struct bnxt_ulp_device_params *dparms;
+	uint32_t dev_id;
+
+	if (!bp->max_num_kflows)
+		return -EINVAL;
+
+	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id)) {
+		BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
+		return -EINVAL;
+	}
+
+	dparms = bnxt_ulp_device_params_get(dev_id);
+	if (!dparms) {
+		BNXT_TF_DBG(DEBUG, "Failed to get device parms\n");
+		return -EINVAL;
+	}
+
+	/* num_flows = max_num_kflows * 1024 */
+	dparms->num_flows = bp->max_num_kflows * 1024;
+	/* GFID =  2 * num_flows */
+	dparms->gfid_entries = dparms->num_flows * 2;
+	BNXT_TF_DBG(DEBUG, "Set the number of flows = %"PRIu64"\n",
+		    dparms->num_flows);
+
+	return 0;
+}
+
 static int32_t
 ulp_ctx_attach(struct bnxt_ulp_context *ulp_ctx,
 	       struct bnxt_ulp_session_state *session)
@@ -496,6 +528,9 @@ bnxt_ulp_init(struct bnxt *bp)
 		BNXT_TF_DBG(ERR, "Failed to create the ulp context\n");
 		goto jump_to_error;
 	}
+
+	/* Initialize ulp dparms with values devargs passed */
+	rc = ulp_dparms_init(bp, bp->ulp_ctx);
 
 	/* create the port database */
 	rc = ulp_port_db_init(bp->ulp_ctx);

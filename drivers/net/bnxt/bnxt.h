@@ -725,6 +725,7 @@ struct bnxt {
 	struct bnxt_ulp_context	*ulp_ctx;
 	struct bnxt_flow_stat_info *flow_stat;
 	uint8_t			flow_xstat;
+	uint16_t		max_num_kflows;
 };
 
 #define BNXT_FC_TIMER	1 /* Timer freq in Sec Flow Counters */

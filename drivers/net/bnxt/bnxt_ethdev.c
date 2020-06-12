@@ -129,9 +129,11 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 
 #define BNXT_DEVARG_TRUFLOW	"host-based-truflow"
 #define BNXT_DEVARG_FLOW_XSTAT	"flow-xstat"
+#define BNXT_DEVARG_MAX_NUM_KFLOWS  "max-num-kflows"
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_TRUFLOW,
 	BNXT_DEVARG_FLOW_XSTAT,
+	BNXT_DEVARG_MAX_NUM_KFLOWS,
 	NULL
 };
 
@@ -146,6 +148,19 @@ static const char *const bnxt_dev_args[] = {
  * flow_xstat == true to enable the feature
  */
 #define	BNXT_DEVARG_FLOW_XSTAT_INVALID(flow_xstat)	((flow_xstat) > 1)
+
+/*
+ * max_num_kflows must be >= 32
+ * and must be a power-of-2 supported value
+ * return: 1 -> invalid
+ *         0 -> valid
+ */
+static int bnxt_devarg_max_num_kflow_invalid(uint16_t max_num_kflows)
+{
+	if (max_num_kflows < 32 || !rte_is_power_of_2(max_num_kflows))
+		return 1;
+	return 0;
+}
 
 static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 static void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
@@ -5390,6 +5405,42 @@ bnxt_parse_devarg_flow_xstat(__rte_unused const char *key,
 	return 0;
 }
 
+static int
+bnxt_parse_devarg_max_num_kflows(__rte_unused const char *key,
+					const char *value, void *opaque_arg)
+{
+	struct bnxt *bp = opaque_arg;
+	unsigned long max_num_kflows;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			"Invalid parameter passed to max_num_kflows devarg.\n");
+		return -EINVAL;
+	}
+
+	max_num_kflows = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+		(max_num_kflows == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			"Invalid parameter passed to max_num_kflows devarg.\n");
+		return -EINVAL;
+	}
+
+	if (bnxt_devarg_max_num_kflow_invalid(max_num_kflows)) {
+		PMD_DRV_LOG(ERR,
+			"Invalid value passed to max_num_kflows devarg.\n");
+		return -EINVAL;
+	}
+
+	bp->max_num_kflows = max_num_kflows;
+	if (bp->max_num_kflows)
+		PMD_DRV_LOG(INFO, "max_num_kflows set as %ldK.\n",
+				max_num_kflows);
+
+	return 0;
+}
+
 static void
 bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 {
@@ -5404,17 +5455,24 @@ bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 
 	/*
 	 * Handler for "truflow" devarg.
-	 * Invoked as for ex: "-w 0000:00:0d.0,host-based-truflow=1”
+	 * Invoked as for ex: "-w 0000:00:0d.0,host-based-truflow=1"
 	 */
 	rte_kvargs_process(kvlist, BNXT_DEVARG_TRUFLOW,
 			   bnxt_parse_devarg_truflow, bp);
 
 	/*
 	 * Handler for "flow_xstat" devarg.
-	 * Invoked as for ex: "-w 0000:00:0d.0,flow_xstat=1”
+	 * Invoked as for ex: "-w 0000:00:0d.0,flow_xstat=1"
 	 */
 	rte_kvargs_process(kvlist, BNXT_DEVARG_FLOW_XSTAT,
 			   bnxt_parse_devarg_flow_xstat, bp);
+
+	/*
+	 * Handler for "max_num_kflows" devarg.
+	 * Invoked as for ex: "-w 000:00:0d.0,max_num_kflows=32"
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_MAX_NUM_KFLOWS,
+			   bnxt_parse_devarg_max_num_kflows, bp);
 
 	rte_kvargs_free(kvlist);
 }
