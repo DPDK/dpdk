@@ -10,8 +10,8 @@
 
 uint16_t ulp_act_sig_tbl[BNXT_ULP_ACT_SIG_TBL_MAX_SZ] = {
 	[BNXT_ULP_ACT_HID_00a1] = 1,
-	[BNXT_ULP_ACT_HID_0040] = 2,
-	[BNXT_ULP_ACT_HID_0029] = 3
+	[BNXT_ULP_ACT_HID_0029] = 2,
+	[BNXT_ULP_ACT_HID_0040] = 3
 };
 
 struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
@@ -25,20 +25,20 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	.act_tid = 0
 	},
 	[2] = {
-	.act_hid = BNXT_ULP_ACT_HID_0040,
-	.act_sig = { .bits =
-		BNXT_ULP_ACTION_BIT_VPORT |
-		BNXT_ULP_ACTION_BIT_VXLAN_ENCAP |
-		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
-	.act_tid = 1
-	},
-	[3] = {
 	.act_hid = BNXT_ULP_ACT_HID_0029,
 	.act_sig = { .bits =
 		BNXT_ULP_ACTION_BIT_MARK |
 		BNXT_ULP_ACTION_BIT_RSS |
 		BNXT_ULP_ACTION_BIT_VNIC |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 1
+	},
+	[3] = {
+	.act_hid = BNXT_ULP_ACT_HID_0040,
+	.act_sig = { .bits =
+		BNXT_ULP_ACTION_BIT_VXLAN_ENCAP |
+		BNXT_ULP_ACTION_BIT_VPORT |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 2
 	}
 };
@@ -76,20 +76,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-	.resource_type = TF_TBL_TYPE_EXT,
-	.resource_sub_type =
-		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_NORMAL,
-	.direction = TF_DIR_TX,
-	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.result_start_idx = 26,
-	.result_bit_size = 128,
-	.result_num_fields = 26,
-	.encap_num_fields = 12,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
@@ -98,11 +86,26 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_NORMAL,
 	.direction = TF_DIR_RX,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
-	.result_start_idx = 64,
+	.result_start_idx = 26,
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+	.resource_type = TF_TBL_TYPE_EXT,
+	.resource_sub_type =
+		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_NORMAL,
+	.direction = TF_DIR_TX,
+	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
+	.result_start_idx = 52,
+	.result_bit_size = 128,
+	.result_num_fields = 26,
+	.encap_num_fields = 12,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
+	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
 	}
 };
 
@@ -302,11 +305,116 @@ struct bnxt_ulp_mapper_result_field_info ulp_act_result_field_list[] = {
 	},
 	{
 	.field_bit_size = 4,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 12,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ACT_PROP,
 	.result_operand = {
-		BNXT_ULP_SYM_DECAP_FUNC_NONE,
+		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
+		BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 2,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 14,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 8,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 11,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 16,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 10,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 1,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 4,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
 	},
 	{
 	.field_bit_size = 12,
@@ -433,118 +541,5 @@ struct bnxt_ulp_mapper_result_field_info ulp_act_result_field_list[] = {
 		BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN_SZ & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	},
-	{
-	.field_bit_size = 14,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 8,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 11,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 10,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 16,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 10,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 16,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 10,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 4,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
-	.result_operand = {
-		BNXT_ULP_SYM_DECAP_FUNC_NONE,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	},
-	{
-	.field_bit_size = 12,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ACT_PROP,
-	.result_operand = {
-		(BNXT_ULP_ACT_PROP_IDX_VNIC >> 8) & 0xff,
-		BNXT_ULP_ACT_PROP_IDX_VNIC & 0xff,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 2,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	},
-	{
-	.field_bit_size = 1,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	}
 };

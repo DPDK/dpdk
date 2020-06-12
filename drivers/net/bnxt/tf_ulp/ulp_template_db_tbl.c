@@ -313,7 +313,6 @@ struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[] = {
 
 struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
-	.description            = "Whitney_Plus",
 	.flow_mem_type          = BNXT_ULP_FLOW_MEM_TYPE_EXT,
 	.byte_order             = BNXT_ULP_BYTE_ORDER_LE,
 	.encap_byte_swap        = 1,
@@ -334,10 +333,16 @@ struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	.direction               = TF_DIR_RX
 	},
 	[1] = {
-	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
-	.glb_regfile_index       = BNXT_ULP_GLB_REGFILE_INDEX_GLB_PROF_FUNC_ID,
-	.direction               = TF_DIR_TX
+	.resource_func      = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type      = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index  = BNXT_ULP_GLB_REGFILE_INDEX_GLB_PROF_FUNC_ID,
+	.direction          = TF_DIR_TX
+	},
+	[2] = {
+	.resource_func      = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.resource_type      = TF_IDENT_TYPE_L2_CTXT,
+	.glb_regfile_index  = BNXT_ULP_GLB_REGFILE_INDEX_GLB_L2_CNTXT_ID,
+	.direction          = TF_DIR_RX
 	}
 };
 
