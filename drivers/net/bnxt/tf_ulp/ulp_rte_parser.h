@@ -21,6 +21,16 @@
 #define BNXT_ULP_ENCAP_UDP_SIZE			4
 #define BNXT_ULP_INVALID_SVIF_VAL		-1U
 
+#define	BNXT_ULP_GET_IPV6_VER(vtcf)		\
+			(((vtcf) & BNXT_ULP_PARSER_IPV6_VER_MASK) >> 28)
+#define	BNXT_ULP_GET_IPV6_TC(vtcf)		\
+			(((vtcf) & BNXT_ULP_PARSER_IPV6_TC) >> 20)
+#define	BNXT_ULP_GET_IPV6_FLOWLABEL(vtcf)	\
+			((vtcf) & BNXT_ULP_PARSER_IPV6_FLOW_LABEL)
+#define	BNXT_ULP_PARSER_IPV6_VER_MASK		0xf0000000
+#define	BNXT_ULP_PARSER_IPV6_TC			0x0ff00000
+#define	BNXT_ULP_PARSER_IPV6_FLOW_LABEL		0x000fffff
+
 /* Function to handle the parsing of the RTE port id. */
 int32_t
 ulp_rte_parser_svif_process(struct ulp_rte_parser_params *params);

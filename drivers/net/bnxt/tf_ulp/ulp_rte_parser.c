@@ -598,6 +598,7 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 	uint32_t idx = params->field_idx;
 	uint32_t size;
 	uint32_t inner_l3, outer_l3;
+	uint32_t vtcf, vtcf_mask;
 
 	inner_l3 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_I_L3);
 	if (inner_l3) {
@@ -606,14 +607,27 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 	}
 
 	/*
-	 * Copy the rte_flow_item for ipv4 into hdr_field using ipv4
+	 * Copy the rte_flow_item for ipv6 into hdr_field using ipv6
 	 * header fields
 	 */
 	if (ipv6_spec) {
 		size = sizeof(ipv6_spec->hdr.vtc_flow);
+
+		vtcf = BNXT_ULP_GET_IPV6_VER(ipv6_spec->hdr.vtc_flow);
 		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
-						&ipv6_spec->hdr.vtc_flow,
+						&vtcf,
 						size);
+
+		vtcf = BNXT_ULP_GET_IPV6_TC(ipv6_spec->hdr.vtc_flow);
+		field = ulp_rte_parser_fld_copy(field,
+						&vtcf,
+						size);
+
+		vtcf = BNXT_ULP_GET_IPV6_FLOWLABEL(ipv6_spec->hdr.vtc_flow);
+		field = ulp_rte_parser_fld_copy(field,
+						&vtcf,
+						size);
+
 		size = sizeof(ipv6_spec->hdr.payload_len);
 		field = ulp_rte_parser_fld_copy(field,
 						&ipv6_spec->hdr.payload_len,
@@ -636,9 +650,24 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 						size);
 	}
 	if (ipv6_mask) {
+		size = sizeof(ipv6_mask->hdr.vtc_flow);
+
+		vtcf_mask = BNXT_ULP_GET_IPV6_VER(ipv6_mask->hdr.vtc_flow);
 		ulp_rte_prsr_mask_copy(params, &idx,
-				       &ipv6_mask->hdr.vtc_flow,
-				       sizeof(ipv6_mask->hdr.vtc_flow));
+				       &vtcf_mask,
+				       size);
+
+		vtcf_mask = BNXT_ULP_GET_IPV6_TC(ipv6_mask->hdr.vtc_flow);
+		ulp_rte_prsr_mask_copy(params, &idx,
+				       &vtcf_mask,
+				       size);
+
+		vtcf_mask =
+			BNXT_ULP_GET_IPV6_FLOWLABEL(ipv6_mask->hdr.vtc_flow);
+		ulp_rte_prsr_mask_copy(params, &idx,
+				       &vtcf_mask,
+				       size);
+
 		ulp_rte_prsr_mask_copy(params, &idx,
 				       &ipv6_mask->hdr.payload_len,
 				       sizeof(ipv6_mask->hdr.payload_len));
