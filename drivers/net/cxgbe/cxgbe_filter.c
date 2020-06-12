@@ -285,6 +285,22 @@ int cxgbe_alloc_ftid(struct adapter *adap, u8 nentries)
 }
 
 /**
+ * Clear a filter and release any of its resources that we own.  This also
+ * clears the filter's "pending" status.
+ */
+static void clear_filter(struct filter_entry *f)
+{
+	if (f->clipt)
+		cxgbe_clip_release(f->dev, f->clipt);
+
+	/* The zeroing of the filter rule below clears the filter valid,
+	 * pending, locked flags etc. so it's all we need for
+	 * this operation.
+	 */
+	memset(f, 0, sizeof(*f));
+}
+
+/**
  * Construct hash filter ntuple.
  */
 static u64 hash_filter_ntuple(const struct filter_entry *f)
@@ -583,7 +599,7 @@ static int cxgbe_set_hash_filter(struct rte_eth_dev *dev,
 
 	f = t4_os_alloc(sizeof(*f));
 	if (!f)
-		goto out_err;
+		return -ENOMEM;
 
 	f->fs = *fs;
 	f->ctx = ctx;
@@ -631,7 +647,7 @@ static int cxgbe_set_hash_filter(struct rte_eth_dev *dev,
 		mbuf = rte_pktmbuf_alloc(ctrlq->mb_pool);
 		if (!mbuf) {
 			ret = -ENOMEM;
-			goto free_clip;
+			goto free_atid;
 		}
 
 		mbuf->data_len = size;
@@ -661,31 +677,13 @@ static int cxgbe_set_hash_filter(struct rte_eth_dev *dev,
 	t4_mgmt_tx(ctrlq, mbuf);
 	return 0;
 
-free_clip:
-	cxgbe_clip_release(f->dev, f->clipt);
 free_atid:
 	cxgbe_free_atid(t, atid);
 
 out_err:
+	clear_filter(f);
 	t4_os_free(f);
 	return ret;
-}
-
-/**
- * Clear a filter and release any of its resources that we own.  This also
- * clears the filter's "pending" status.
- */
-static void clear_filter(struct filter_entry *f)
-{
-	if (f->clipt)
-		cxgbe_clip_release(f->dev, f->clipt);
-
-	/*
-	 * The zeroing of the filter rule below clears the filter valid,
-	 * pending, locked flags etc. so it's all we need for
-	 * this operation.
-	 */
-	memset(f, 0, sizeof(*f));
 }
 
 /**
@@ -1071,16 +1069,6 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	}
 
 	/*
-	 * Allocate a clip table entry only if we have non-zero IPv6 address
-	 */
-	if (chip_ver > CHELSIO_T5 && fs->type &&
-	    memcmp(fs->val.lip, bitoff, sizeof(bitoff))) {
-		f->clipt = cxgbe_clip_alloc(dev, (u32 *)&fs->val.lip);
-		if (!f->clipt)
-			goto free_tid;
-	}
-
-	/*
 	 * Convert the filter specification into our internal format.
 	 * We copy the PF/VF specification into the Outer VLAN field
 	 * here so the rest of the code -- including the interface to
@@ -1089,6 +1077,16 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	f->fs = *fs;
 	f->fs.iq = iq;
 	f->dev = dev;
+
+	/* Allocate a clip table entry only if we have non-zero IPv6 address. */
+	if (chip_ver > CHELSIO_T5 && f->fs.type &&
+	    memcmp(f->fs.val.lip, bitoff, sizeof(bitoff))) {
+		f->clipt = cxgbe_clip_alloc(dev, (u32 *)&f->fs.val.lip);
+		if (!f->clipt) {
+			ret = -ENOMEM;
+			goto free_tid;
+		}
+	}
 
 	iconf = adapter->params.tp.ingress_config;
 
@@ -1192,6 +1190,7 @@ void cxgbe_hash_filter_rpl(struct adapter *adap,
 		}
 
 		cxgbe_free_atid(t, ftid);
+		clear_filter(f);
 		t4_os_free(f);
 	}
 
@@ -1416,13 +1415,8 @@ void cxgbe_hash_del_filter_rpl(struct adapter *adap,
 	}
 
 	ctx = f->ctx;
-	f->ctx = NULL;
 
-	f->valid = 0;
-
-	if (f->clipt)
-		cxgbe_clip_release(f->dev, f->clipt);
-
+	clear_filter(f);
 	cxgbe_remove_tid(t, 0, tid, 0);
 	t4_os_free(f);
 
