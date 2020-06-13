@@ -552,7 +552,7 @@ void rte_mbuf_dyn_dump(FILE *out)
 			dynflag->params.name, dynflag->bitnum,
 			dynflag->params.flags);
 	}
-	fprintf(out, "Free space in mbuf (0 = free, value = zone alignment):\n");
+	fprintf(out, "Free space in mbuf (0 = occupied, value = free zone alignment):\n");
 	for (i = 0; i < sizeof(struct rte_mbuf); i++) {
 		if ((i % 8) == 0)
 			fprintf(out, "  %4.4zx: ", i);
