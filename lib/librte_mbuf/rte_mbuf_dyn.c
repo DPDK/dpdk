@@ -67,13 +67,16 @@ process_score(void)
 			shm->free_space[i] = 1;
 	}
 
-	for (off = 0; off < sizeof(struct rte_mbuf); off++) {
+	off = 0;
+	while (off < sizeof(struct rte_mbuf)) {
 		/* get the size of the free zone */
 		for (size = 0; (off + size) < sizeof(struct rte_mbuf) &&
 			     shm->free_space[off + size]; size++)
 			;
-		if (size == 0)
+		if (size == 0) {
+			off++;
 			continue;
+		}
 
 		/* get the alignment of biggest object that can fit in
 		 * the zone at this offset.
@@ -84,8 +87,10 @@ process_score(void)
 			;
 
 		/* save it in free_space[] */
-		for (i = off; i < off + size; i++)
+		for (i = off; i < off + align; i++)
 			shm->free_space[i] = RTE_MAX(align, shm->free_space[i]);
+
+		off += align;
 	}
 }
 
