@@ -559,5 +559,13 @@ void rte_mbuf_dyn_dump(FILE *out)
 		fprintf(out, "%2.2x%s", shm->free_space[i],
 			(i % 8 != 7) ? " " : "\n");
 	}
+	fprintf(out, "Free bit in mbuf->ol_flags (0 = occupied, 1 = free):\n");
+	for (i = 0; i < sizeof(uint64_t) * CHAR_BIT; i++) {
+		if ((i % 8) == 0)
+			fprintf(out, "  %4.4zx: ", i);
+		fprintf(out, "%1.1x%s", (shm->free_flags & (1ULL << i)) ? 1 : 0,
+			(i % 8 != 7) ? " " : "\n");
+	}
+
 	rte_mcfg_tailq_write_unlock();
 }
