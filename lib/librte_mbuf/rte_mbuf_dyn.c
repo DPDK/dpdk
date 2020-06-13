@@ -69,7 +69,8 @@ process_score(void)
 
 	for (off = 0; off < sizeof(struct rte_mbuf); off++) {
 		/* get the size of the free zone */
-		for (size = 0; shm->free_space[off + size]; size++)
+		for (size = 0; (off + size) < sizeof(struct rte_mbuf) &&
+			     shm->free_space[off + size]; size++)
 			;
 		if (size == 0)
 			continue;
