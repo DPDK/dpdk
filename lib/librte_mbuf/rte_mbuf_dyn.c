@@ -278,12 +278,15 @@ __rte_mbuf_dynfield_register_offset(const struct rte_mbuf_dynfield *params,
 		mbuf_dynfield_tailq.head, mbuf_dynfield_list);
 
 	te = rte_zmalloc("MBUF_DYNFIELD_TAILQ_ENTRY", sizeof(*te), 0);
-	if (te == NULL)
+	if (te == NULL) {
+		rte_errno = ENOMEM;
 		return -1;
+	}
 
 	mbuf_dynfield = rte_zmalloc("mbuf_dynfield", sizeof(*mbuf_dynfield), 0);
 	if (mbuf_dynfield == NULL) {
 		rte_free(te);
+		rte_errno = ENOMEM;
 		return -1;
 	}
 
@@ -456,12 +459,15 @@ __rte_mbuf_dynflag_register_bitnum(const struct rte_mbuf_dynflag *params,
 		mbuf_dynflag_tailq.head, mbuf_dynflag_list);
 
 	te = rte_zmalloc("MBUF_DYNFLAG_TAILQ_ENTRY", sizeof(*te), 0);
-	if (te == NULL)
+	if (te == NULL) {
+		rte_errno = ENOMEM;
 		return -1;
+	}
 
 	mbuf_dynflag = rte_zmalloc("mbuf_dynflag", sizeof(*mbuf_dynflag), 0);
 	if (mbuf_dynflag == NULL) {
 		rte_free(te);
+		rte_errno = ENOMEM;
 		return -1;
 	}
 
