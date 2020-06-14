@@ -1,0 +1,11 @@
+[binaries]
+c = 'powerpc64le-linux-gcc'
+cpp = 'powerpc64le-linux-cpp'
+ar = 'powerpc64le-linux-gcc-ar'
+strip = 'powerpc64le-linux-strip'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'ppc64'
+cpu = 'power8'
+endian = 'little'

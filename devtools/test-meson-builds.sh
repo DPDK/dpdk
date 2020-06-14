@@ -212,6 +212,11 @@ for f in $srcdir/config/arm/arm64_[bdo]*gcc ; do
 	unset CC
 done
 
+# ppc configurations
+for f in $srcdir/config/ppc/ppc* ; do
+	build build-$(basename $f | cut -d'-' -f-2) $f $use_shared
+done
+
 # Test installation of the x86-default target, to be used for checking
 # the sample apps build using the pkg-config file for cflags and libs
 build_path=$(readlink -f $builds_dir/build-x86-default)
