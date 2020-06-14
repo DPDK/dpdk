@@ -117,16 +117,24 @@ install_target () # <builddir> <installdir>
 	fi
 }
 
-build () # <directory> <target compiler> <meson options>
+build () # <directory> <target compiler | cross file> <meson options>
 {
 	targetdir=$1
 	shift
-	targetcc=$1
+	crossfile=
+	[ -r $1 ] && crossfile=$1 || targetcc=$1
 	shift
 	# skip build if compiler not available
 	command -v ${CC##* } >/dev/null 2>&1 || return 0
+	if [ -n "$crossfile" ] ; then
+		cross="--cross-file $crossfile"
+		targetcc=$(sed -n 's,^c[[:space:]]*=[[:space:]]*,,p' \
+			$crossfile | tr -d "'" | tr -d '"')
+	else
+		cross=
+	fi
 	load_env $targetcc || return 0
-	config $srcdir $builds_dir/$targetdir --werror $*
+	config $srcdir $builds_dir/$targetdir $cross --werror $*
 	compile $builds_dir/$targetdir
 	if [ -n "$DPDK_ABI_REF_VERSION" ]; then
 		abirefdir=${DPDK_ABI_REF_DIR:-reference}/$DPDK_ABI_REF_VERSION
@@ -140,7 +148,7 @@ build () # <directory> <target compiler> <meson options>
 			fi
 
 			rm -rf $abirefdir/build
-			config $abirefdir/src $abirefdir/build $*
+			config $abirefdir/src $abirefdir/build $cross $*
 			compile $abirefdir/build
 			install_target $abirefdir/build $abirefdir/$targetdir
 			$srcdir/devtools/gen-abi.sh $abirefdir/$targetdir
@@ -186,17 +194,15 @@ if [ "$ok" = "false" ] ; then
 fi
 build build-x86-default cc -Dlibdir=lib -Dmachine=$default_machine $use_shared
 
-c=aarch64-linux-gnu-gcc
 # generic armv8a with clang as host compiler
+f=$srcdir/config/arm/arm64_armv8_linux_gcc
 export CC="clang"
-build build-arm64-host-clang $c $use_shared \
-	--cross-file $srcdir/config/arm/arm64_armv8_linux_gcc
+build build-arm64-host-clang $f $use_shared
 unset CC
-# all gcc/arm configurations
+# some gcc/arm configurations
 for f in $srcdir/config/arm/arm64_[bdo]*gcc ; do
 	export CC="$CCACHE gcc"
-	build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) $c \
-		$use_shared --cross-file $f
+	build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) $f $use_shared
 	unset CC
 done
 
