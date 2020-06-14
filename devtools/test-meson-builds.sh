@@ -52,9 +52,15 @@ load_env () # <target compiler>
 	export CFLAGS=$default_cflags
 	export LDFLAGS=$default_ldflags
 	unset DPDK_MESON_OPTIONS
-	command -v $targetcc >/dev/null 2>&1 || return 1
-	DPDK_TARGET=$($targetcc -v 2>&1 | sed -n 's,^Target: ,,p')
+	if command -v $targetcc >/dev/null 2>&1 ; then
+		DPDK_TARGET=$($targetcc -v 2>&1 | sed -n 's,^Target: ,,p')
+	else # toolchain not yet in PATH: its name should be enough
+		DPDK_TARGET=$targetcc
+	fi
+	# config input: $DPDK_TARGET
 	. $srcdir/devtools/load-devel-config
+	# config output: $DPDK_MESON_OPTIONS, $PATH, $PKG_CONFIG_PATH, etc
+	command -v $targetcc >/dev/null 2>&1 || return 1
 }
 
 config () # <dir> <builddir> <meson options>
