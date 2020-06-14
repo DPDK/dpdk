@@ -111,5 +111,5 @@ Depending on the distribution, paths in this file may need adjustments.
 
 .. code-block:: console
 
-    meson --cross-file config/x86/meson_mingw.txt -Dexamples=helloworld build
+    meson --cross-file config/x86/cross-mingw -Dexamples=helloworld build
     ninja -C build

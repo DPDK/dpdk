@@ -200,6 +200,9 @@ if [ "$ok" = "false" ] ; then
 fi
 build build-x86-default cc -Dlibdir=lib -Dmachine=$default_machine $use_shared
 
+# x86 MinGW
+build build-x86-mingw $srcdir/config/x86/cross-mingw -Dexamples=helloworld
+
 # generic armv8a with clang as host compiler
 f=$srcdir/config/arm/arm64_armv8_linux_gcc
 export CC="clang"
