@@ -481,7 +481,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	tx_ctx.tso_qnum = txq->reg_idx; /* index for tso state structure */
 	tx_ctx.legacy_int = 1; /* Legacy or Advanced Host Interface */
 
-	ice_set_ctx((uint8_t *)&tx_ctx, txq_elem.txqs[0].txq_ctx,
+	ice_set_ctx(hw, (uint8_t *)&tx_ctx, txq_elem.txqs[0].txq_ctx,
 		    ice_tlan_ctx_info);
 
 	txq->qtx_tail = hw->hw_addr + QTX_COMM_DBELL(txq->reg_idx);
@@ -653,7 +653,7 @@ ice_fdir_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	tx_ctx.tso_qnum = txq->reg_idx; /* index for tso state structure */
 	tx_ctx.legacy_int = 1; /* Legacy or Advanced Host Interface */
 
-	ice_set_ctx((uint8_t *)&tx_ctx, txq_elem.txqs[0].txq_ctx,
+	ice_set_ctx(hw, (uint8_t *)&tx_ctx, txq_elem.txqs[0].txq_ctx,
 		    ice_tlan_ctx_info);
 
 	txq->qtx_tail = hw->hw_addr + QTX_COMM_DBELL(txq->reg_idx);
