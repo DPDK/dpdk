@@ -171,7 +171,7 @@ ice_sched_add_node(struct ice_port_info *pi, u8 layer,
 		return ICE_ERR_PARAM;
 	}
 
-	/* query the current node information from FW  before additing it
+	/* query the current node information from FW before adding it
 	 * to the SW DB
 	 */
 	status = ice_sched_query_elem(hw, LE32_TO_CPU(info->node_teid), &elem);
@@ -599,14 +599,14 @@ ice_alloc_lan_q_ctx(struct ice_hw *hw, u16 vsi_handle, u8 tc, u16 new_numqs)
 /**
  * ice_aq_rl_profile - performs a rate limiting task
  * @hw: pointer to the HW struct
- * @opcode:opcode for add, query, or remove profile(s)
+ * @opcode: opcode for add, query, or remove profile(s)
  * @num_profiles: the number of profiles
  * @buf: pointer to buffer
  * @buf_size: buffer size in bytes
  * @num_processed: number of processed add or remove profile(s) to return
  * @cd: pointer to command details structure
  *
- * Rl profile function to add, query, or remove profile(s)
+ * RL profile function to add, query, or remove profile(s)
  */
 static enum ice_status
 ice_aq_rl_profile(struct ice_hw *hw, enum ice_adminq_opc opcode,
@@ -789,7 +789,7 @@ void ice_sched_clear_agg(struct ice_hw *hw)
 }
 
 /**
- * ice_sched_clear_tx_topo - clears the schduler tree nodes
+ * ice_sched_clear_tx_topo - clears the scheduler tree nodes
  * @pi: port information structure
  *
  * This function removes all the nodes from HW as well as from SW DB.
@@ -2114,7 +2114,7 @@ ice_aq_query_node_to_root(struct ice_hw *hw, u32 node_teid,
  * This function validates aggregator ID. The function returns info if
  * aggregator ID is present in list otherwise it returns null.
  */
-static struct ice_sched_agg_info*
+static struct ice_sched_agg_info *
 ice_get_agg_info(struct ice_hw *hw, u32 agg_id)
 {
 	struct ice_sched_agg_info *agg_info;
@@ -2697,7 +2697,7 @@ ice_cfg_agg(struct ice_port_info *pi, u32 agg_id, enum ice_agg_type agg_type,
  * The function returns aggregator VSI info based on VSI handle. This function
  * needs to be called with scheduler lock held.
  */
-static struct ice_sched_agg_vsi_info*
+static struct ice_sched_agg_vsi_info *
 ice_get_agg_vsi_info(struct ice_sched_agg_info *agg_info, u16 vsi_handle)
 {
 	struct ice_sched_agg_vsi_info *agg_vsi_info;
@@ -2719,7 +2719,7 @@ ice_get_agg_vsi_info(struct ice_sched_agg_info *agg_info, u16 vsi_handle)
  * VSI has in this case a different aggregator than the default one. This
  * function needs to be called with scheduler lock held.
  */
-static struct ice_sched_agg_info*
+static struct ice_sched_agg_info *
 ice_get_vsi_agg_info(struct ice_hw *hw, u16 vsi_handle)
 {
 	struct ice_sched_agg_info *agg_info;
@@ -3470,7 +3470,6 @@ ice_cfg_agg_bw_no_shared_lmt(struct ice_port_info *pi, u32 agg_id)
  * ice_config_vsi_queue_priority - config VSI queue priority of node
  * @pi: port information structure
  * @num_qs: number of VSI queues
- * @q_ids: queue IDs array
  * @q_ids: queue IDs array
  * @q_prio: queue priority array
  *
@@ -5128,7 +5127,7 @@ enum ice_status ice_cfg_rl_burst_size(struct ice_hw *hw, u32 bytes)
 	return ICE_SUCCESS;
 }
 
-/*
+/**
  * ice_sched_replay_node_prio - re-configure node priority
  * @hw: pointer to the HW struct
  * @node: sched node to configure

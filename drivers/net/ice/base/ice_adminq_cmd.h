@@ -533,7 +533,7 @@ struct ice_aqc_vsi_props {
 	u8 q_opt_reserved[3];
 	/* outer up section */
 	__le32 outer_up_table; /* same structure and defines as ingress tbl */
-	/* acl section */
+	/* ACL section */
 	__le16 acl_def_act;
 #define ICE_AQ_VSI_ACL_DEF_RX_PROF_S	0
 #define ICE_AQ_VSI_ACL_DEF_RX_PROF_M	(0xF << ICE_AQ_VSI_ACL_DEF_RX_PROF_S)
@@ -675,7 +675,7 @@ struct ice_aqc_storm_cfg {
 
 #define ICE_MAX_NUM_RECIPES 64
 
-/* Add/Get Recipe (indirect 0x0290/0x0292)*/
+/* Add/Get Recipe (indirect 0x0290/0x0292) */
 struct ice_aqc_add_get_recipe {
 	__le16 num_sub_recipes;	/* Input in Add cmd, Output in Get cmd */
 	__le16 return_index;	/* Input, used for Get cmd only */
@@ -2020,7 +2020,7 @@ struct ice_aqc_clear_fd_table {
 	u8 reserved[12];
 };
 
-/* ACL - allocate (indirect 0x0C10) table */
+/* Allocate ACL table (indirect 0x0C10) */
 #define ICE_AQC_ACL_KEY_WIDTH		40
 #define ICE_AQC_ACL_KEY_WIDTH_BYTES	5
 #define ICE_AQC_ACL_TCAM_DEPTH		512
@@ -2065,9 +2065,9 @@ struct ice_aqc_acl_alloc_table_data {
 	__le16 alloc_ids[ICE_AQC_MAX_CONCURRENT_ACL_TBL];
 };
 
-/* ACL - deallocate (indirect 0x0C11) table
- * ACL - allocate (indirect 0x0C12) action-pair
- * ACL - deallocate (indirect 0x0C13) action-pair
+/* Deallocate ACL table (indirect 0x0C11)
+ * Allocate ACL action-pair (indirect 0x0C12)
+ * Deallocate ACL action-pair (indirect 0x0C13)
  */
 
 /* Following structure is common and used in case of deallocation
@@ -2126,7 +2126,7 @@ struct ice_aqc_acl_generic {
 	u8 act_mem[ICE_AQC_MAX_ACTION_MEMORIES];
 };
 
-/* ACL - allocate (indirect 0x0C14) scenario. This command doesn't have separate
+/* Allocate ACL scenario (indirect 0x0C14). This command doesn't have separate
  * response buffer since original command buffer gets updated with
  * 'scen_id' in case of success
  */
@@ -2144,7 +2144,7 @@ struct ice_aqc_acl_alloc_scen {
 	__le32 addr_low;
 };
 
-/* ACL - de-allocate (direct 0x0C15) scenario. This command doesn't need
+/* De-allocate ACL scenario (direct 0x0C15). This command doesn't need
  * separate response buffer since nothing to be returned as a response
  * except status.
  */
@@ -2153,8 +2153,9 @@ struct ice_aqc_acl_dealloc_scen {
 	u8 reserved[14];
 };
 
-/* ACL - update (direct 0x0C1B) scenario */
-/* ACL - query (direct 0x0C23) scenario */
+/* Update ACL scenario (direct 0x0C1B)
+ * Query ACL scenario (direct 0x0C23)
+ */
 struct ice_aqc_acl_update_query_scen {
 	__le16 scen_id;
 	u8 reserved[6];
@@ -2202,7 +2203,7 @@ struct ice_aqc_acl_scen {
 	u8 act_mem_cfg[ICE_AQC_MAX_ACTION_MEMORIES];
 };
 
-/* ACL - allocate (indirect 0x0C16) counters */
+/* Allocate ACL counters (indirect 0x0C16) */
 struct ice_aqc_acl_alloc_counters {
 	/* Amount of contiguous counters requested. Min value is 1 and
 	 * max value is 255
@@ -2253,7 +2254,7 @@ struct ice_aqc_acl_alloc_counters {
 	} ops;
 };
 
-/* ACL - de-allocate (direct 0x0C17) counters */
+/* De-allocate ACL counters (direct 0x0C17) */
 struct ice_aqc_acl_dealloc_counters {
 	/* first counter being released */
 	__le16 first_counter;
@@ -2266,15 +2267,16 @@ struct ice_aqc_acl_dealloc_counters {
 	u8 reserved[10];
 };
 
-/* ACL - de-allocate (direct 0x0C1A) resources. Used by SW to release all the
+/* De-allocate ACL resources (direct 0x0C1A). Used by SW to release all the
  * resources allocated for it using a single command
  */
 struct ice_aqc_acl_dealloc_res {
 	u8 reserved[16];
 };
 
-/* ACL - program actionpair (indirect 0x0C1C) */
-/* ACL - query actionpair (indirect 0x0C25) */
+/* Program ACL actionpair (indirect 0x0C1C)
+ * Query ACL actionpair (indirect 0x0C25)
+ */
 struct ice_aqc_acl_actpair {
 	/* action mem index to program/update */
 	u8 act_mem_index;
@@ -2349,10 +2351,11 @@ struct ice_aqc_acl_prof_generic_frmt {
 	u8 pf_scenario_num[ICE_AQC_ACL_PROF_PF_SCEN_NUM_ELEMS];
 };
 
-/* ACL - program ACL profile extraction (indirect 0x0C1D) */
-/* ACL - program ACL profile ranges (indirect 0x0C1E) */
-/* ACL - query ACL profile (indirect 0x0C21) */
-/* ACL - query ACL profile ranges (indirect 0x0C22) */
+/* Program ACL profile extraction (indirect 0x0C1D)
+ * Program ACL profile ranges (indirect 0x0C1E)
+ * Query ACL profile (indirect 0x0C21)
+ * Query ACL profile ranges (indirect 0x0C22)
+ */
 struct ice_aqc_acl_profile {
 	u8 profile_id; /* Programmed/Updated profile ID */
 	u8 reserved[7];
@@ -2389,8 +2392,9 @@ struct ice_aqc_acl_profile_ranges {
 	struct ice_acl_rng_data checker_cfg[ICE_AQC_ACL_PROF_RANGES_NUM_CFG];
 };
 
-/* ACL - program ACL entry (indirect 0x0C20) */
-/* ACL - query ACL entry (indirect 0x0C24) */
+/* Program ACL entry (indirect 0x0C20)
+ * Query ACL entry (indirect 0x0C24)
+ */
 struct ice_aqc_acl_entry {
 	u8 tcam_index; /* Updated TCAM block index */
 	u8 reserved;
@@ -2414,7 +2418,7 @@ struct ice_aqc_acl_data {
 	} entry_key, entry_key_invert;
 };
 
-/* ACL - query ACL counter (direct 0x0C27) */
+/* Query ACL counter (direct 0x0C27) */
 struct ice_aqc_acl_query_counter {
 	/* Queried counter index */
 	__le16 counter_index;
@@ -2556,7 +2560,7 @@ struct ice_aqc_move_txqs_data {
 };
 
 /* Download Package (indirect 0x0C40) */
-/* Also used for Update Package (indirect 0x0C42) */
+/* Also used for Update Package (indirect 0x0C42 and 0x0C41) */
 struct ice_aqc_download_pkg {
 	u8 flags;
 #define ICE_AQC_DOWNLOAD_PKG_LAST_BUF	0x01

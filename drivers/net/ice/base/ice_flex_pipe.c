@@ -648,7 +648,7 @@ static bool ice_bits_max_set(const u8 *mask, u16 size, u16 max)
  * This function generates a key from a value, a don't care mask and a never
  * match mask.
  * upd, dc, and nm are optional parameters, and can be NULL:
- *	upd == NULL --> udp mask is all 1's (update all bits)
+ *	upd == NULL --> upd mask is all 1's (update all bits)
  *	dc == NULL --> dc mask is all 0's (no don't care bits)
  *	nm == NULL --> nm mask is all 0's (no never match bits)
  */
@@ -2738,7 +2738,7 @@ ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
  * @blk: HW block
  * @prof: profile to check
  * @idx: profile index to check
- * @masks: masks to match
+ * @mask: mask to match
  */
 static bool
 ice_prof_has_mask_idx(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 idx,
@@ -3264,7 +3264,6 @@ static void ice_shutdown_prof_masks(struct ice_hw *hw, enum ice_block blk)
 /**
  * ice_shutdown_all_prof_masks - releases all locks for masking
  * @hw: pointer to the HW struct
- * @blk: hardware block
  *
  * This should be called before unloading the driver
  */
@@ -3279,12 +3278,11 @@ void ice_shutdown_all_prof_masks(struct ice_hw *hw)
  * @hw: pointer to the HW struct
  * @blk: hardware block
  * @prof_id: profile ID
- * @es: field vector
  * @masks: masks
  */
 static enum ice_status
 ice_update_prof_masking(struct ice_hw *hw, enum ice_block blk, u16 prof_id,
-			struct ice_fv_word *es, u16 *masks)
+			u16 *masks)
 {
 	bool err = false;
 	u32 ena_mask = 0;
@@ -3986,7 +3984,7 @@ ice_prof_gen_key(struct ice_hw *hw, enum ice_block blk, u8 ptg, u16 vsig,
  * @prof_id: profile ID
  * @ptg: packet type group (PTG) portion of key
  * @vsig: VSIG portion of key
- * @cdid: CDID: portion of key
+ * @cdid: CDID portion of key
  * @flags: flag portion of key
  * @vl_msk: valid mask
  * @dc_msk: don't care mask
@@ -4628,7 +4626,7 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 			if (status)
 				goto err_ice_add_prof;
 		}
-		status = ice_update_prof_masking(hw, blk, prof_id, es, masks);
+		status = ice_update_prof_masking(hw, blk, prof_id, masks);
 		if (status)
 			goto err_ice_add_prof;
 

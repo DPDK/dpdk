@@ -747,7 +747,6 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	/* Initialize max burst size */
 	if (!hw->max_burst_size)
 		ice_cfg_rl_burst_size(hw, ICE_SCHED_DFLT_BURST_SIZE);
-
 	status = ice_init_fltr_mgmt_struct(hw);
 	if (status)
 		goto err_unroll_sched;
@@ -1901,6 +1900,7 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 			}
 			if (func_p) {
 				u32 reg_val, val;
+
 				if (hw->dcf_enabled)
 					break;
 				reg_val = rd32(hw, GLQF_FD_SIZE);
@@ -2611,7 +2611,7 @@ ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
 
 	ice_copy_phy_caps_to_cfg(pi, pcaps, &cfg);
 
-	/* Configure the set phy data */
+	/* Configure the set PHY data */
 	status = ice_cfg_phy_fc(pi, &cfg, pi->fc.req_mode);
 	if (status) {
 		if (status != ICE_ERR_BAD_PTR)

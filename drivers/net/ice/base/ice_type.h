@@ -497,7 +497,7 @@ struct ice_nvm_info {
 	u32 flash_size;			/* Size of available flash in bytes */
 	u8 major_ver;			/* major version of dev starter */
 	u8 minor_ver;			/* minor version of dev starter */
-	u8 blank_nvm_mode;		/* is NVM empty (no FW present)*/
+	u8 blank_nvm_mode;		/* is NVM empty (no FW present) */
 };
 
 struct ice_link_default_override_tlv {
@@ -1053,7 +1053,7 @@ enum ice_sw_fwd_act_type {
 #define ICE_SR_1ST_SCRATCH_PAD_PTR		0x41
 #define ICE_SR_1ST_NVM_BANK_PTR			0x42
 #define ICE_SR_NVM_BANK_SIZE			0x43
-#define ICE_SR_1ND_OROM_BANK_PTR		0x44
+#define ICE_SR_1ST_OROM_BANK_PTR		0x44
 #define ICE_SR_OROM_BANK_SIZE			0x45
 #define ICE_SR_NETLIST_BANK_PTR			0x46
 #define ICE_SR_NETLIST_BANK_SIZE		0x47

@@ -261,8 +261,7 @@ struct ice_sw_recipe {
 	/* Profiles this recipe is associated with */
 	u8 num_profs, *prof_ids;
 
-	/* Possible result indexes are 44, 45, 46 and 47 */
-#define ICE_POSSIBLE_RES_IDX 0x0000F00000000000ULL
+	/* Bit map for possible result indexes */
 	ice_declare_bitmap(res_idxs, ICE_MAX_FV_WORDS);
 
 	/* This allows user to specify the recipe priority.

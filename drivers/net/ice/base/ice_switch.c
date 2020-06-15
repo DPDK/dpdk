@@ -2166,15 +2166,13 @@ out:
  */
 static void ice_fill_sw_info(struct ice_hw *hw, struct ice_fltr_info *fi)
 {
-	fi->lb_en = false;
-	fi->lan_en = false;
-
 	if ((fi->flag & ICE_FLTR_RX) &&
 	    (fi->fltr_act == ICE_FWD_TO_VSI ||
 	     fi->fltr_act == ICE_FWD_TO_VSI_LIST) &&
 	    fi->lkup_type == ICE_SW_LKUP_LAST)
 		fi->lan_en = true;
-
+	fi->lb_en = false;
+	fi->lan_en = false;
 	if ((fi->flag & ICE_FLTR_TX) &&
 	    (fi->fltr_act == ICE_FWD_TO_VSI ||
 	     fi->fltr_act == ICE_FWD_TO_VSI_LIST ||
@@ -5351,7 +5349,7 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
 			u8 pe, qr;
 
 			/* ar, cr, and qr are related to the recipe words, while
-			 * be, de and pe are related to the lookup words
+			 * be, de, and pe are related to the lookup words
 			 */
 			for (pe = 0; pe < lkup_exts->n_val_words; pe++) {
 				for (qr = 0; qr < recp[i].lkup_exts.n_val_words;

@@ -495,7 +495,7 @@ ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		fdir_fltr_ctx.toq_prio = 0;
 	else
 		fdir_fltr_ctx.toq_prio = 3;
-	fdir_fltr_ctx.pcmd = (add) ? ICE_FXD_FLTR_QW1_PCMD_ADD :
+	fdir_fltr_ctx.pcmd = add ? ICE_FXD_FLTR_QW1_PCMD_ADD :
 		ICE_FXD_FLTR_QW1_PCMD_REMOVE;
 	fdir_fltr_ctx.swap = ICE_FXD_FLTR_QW1_SWAP_NOT_SET;
 	fdir_fltr_ctx.comp_q = ICE_FXD_FLTR_QW0_COMP_Q_ZERO;
@@ -684,7 +684,6 @@ static void ice_pkt_insert_u32(u8 *pkt, int offset, __be32 data)
 /**
  * ice_pkt_insert_mac_addr - insert a MAC addr into a memory buffer.
  * @pkt: packet buffer
- * @offset: offset into buffer
  * @addr: MAC address to convert and insert into pkt at offset
  */
 static void ice_pkt_insert_mac_addr(u8 *pkt, u8 *addr)

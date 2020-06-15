@@ -214,7 +214,7 @@ ice_or_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	ice_bitmap_t mask;
 	u16 i;
 
-	/* Handle all but last chunk*/
+	/* Handle all but last chunk */
 	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
 		dst[i] = bmp1[i] | bmp2[i];
 
@@ -245,7 +245,7 @@ ice_xor_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	ice_bitmap_t mask;
 	u16 i;
 
-	/* Handle all but last chunk*/
+	/* Handle all but last chunk */
 	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
 		dst[i] = bmp1[i] ^ bmp2[i];
 
@@ -276,7 +276,7 @@ ice_andnot_bitmap(ice_bitmap_t *dst, const ice_bitmap_t *bmp1,
 	ice_bitmap_t mask;
 	u16 i;
 
-	/* Handle all but last chunk*/
+	/* Handle all but last chunk */
 	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
 		dst[i] = bmp1[i] & ~bmp2[i];
 
@@ -389,12 +389,12 @@ ice_cmp_bitmap(ice_bitmap_t *bmp1, ice_bitmap_t *bmp2, u16 size)
 	ice_bitmap_t mask;
 	u16 i;
 
-	/* Handle all but last chunk*/
+	/* Handle all but last chunk */
 	for (i = 0; i < BITS_TO_CHUNKS(size) - 1; i++)
 		if (bmp1[i] != bmp2[i])
 			return false;
 
-	/* We want to only compare bits within the size.*/
+	/* We want to only compare bits within the size */
 	mask = LAST_CHUNK_MASK(size);
 	if ((bmp1[i] & mask) != (bmp2[i] & mask))
 		return false;

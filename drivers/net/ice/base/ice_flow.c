@@ -1489,13 +1489,13 @@ ice_dealloc_flow_entry(struct ice_hw *hw, struct ice_flow_entry *entry)
 #define ICE_ACL_INVALID_SCEN	0x3f
 
 /**
- * ice_flow_acl_is_prof_in_use - Verify if the profile is associated to any pf
+ * ice_flow_acl_is_prof_in_use - Verify if the profile is associated to any PF
  * @hw: pointer to the hardware structure
  * @prof: pointer to flow profile
- * @buf: destination buffer function writes partial xtrct sequence to
+ * @buf: destination buffer function writes partial extraction sequence to
  *
- * returns ICE_SUCCESS if no pf is associated to the given profile
- * returns ICE_ERR_IN_USE if at least one pf is associated to the given profile
+ * returns ICE_SUCCESS if no PF is associated to the given profile
+ * returns ICE_ERR_IN_USE if at least one PF is associated to the given profile
  * returns other error code for real error
  */
 static enum ice_status
@@ -1513,7 +1513,7 @@ ice_flow_acl_is_prof_in_use(struct ice_hw *hw, struct ice_flow_prof *prof,
 	if (status)
 		return status;
 
-	/* If all pf's associated scenarios are all 0 or all
+	/* If all PF's associated scenarios are all 0 or all
 	 * ICE_ACL_INVALID_SCEN (63) for the given profile then the latter has
 	 * not been configured yet.
 	 */
@@ -1537,7 +1537,7 @@ ice_flow_acl_is_prof_in_use(struct ice_hw *hw, struct ice_flow_prof *prof,
 }
 
 /**
- * ice_flow_acl_free_act_cntr - Free the acl rule's actions
+ * ice_flow_acl_free_act_cntr - Free the ACL rule's actions
  * @hw: pointer to the hardware structure
  * @acts: array of actions to be performed on a match
  * @acts_cnt: number of actions
@@ -1575,11 +1575,11 @@ ice_flow_acl_free_act_cntr(struct ice_hw *hw, struct ice_flow_action *acts,
 }
 
 /**
- * ice_flow_acl_disassoc_scen - Disassociate the scenario to the Profile
+ * ice_flow_acl_disassoc_scen - Disassociate the scenario from the profile
  * @hw: pointer to the hardware structure
  * @prof: pointer to flow profile
  *
- * Disassociate the scenario to the Profile for the PF of the VSI.
+ * Disassociate the scenario from the profile for the PF of the VSI.
  */
 static enum ice_status
 ice_flow_acl_disassoc_scen(struct ice_hw *hw, struct ice_flow_prof *prof)
@@ -1598,7 +1598,7 @@ ice_flow_acl_disassoc_scen(struct ice_hw *hw, struct ice_flow_prof *prof)
 	if (status)
 		return status;
 
-	/* Clear scenario for this pf */
+	/* Clear scenario for this PF */
 	buf.pf_scenario_num[hw->pf_id] = ICE_ACL_INVALID_SCEN;
 	status = ice_prgm_acl_prof_extrt(hw, prof_id, &buf, NULL);
 
@@ -1773,7 +1773,7 @@ ice_flow_rem_prof_sync(struct ice_hw *hw, enum ice_block blk,
 		struct ice_aqc_acl_prof_generic_frmt buf;
 		u8 prof_id = 0;
 
-		/* Deassociate the scenario to the Profile for the PF */
+		/* Disassociate the scenario from the profile for the PF */
 		status = ice_flow_acl_disassoc_scen(hw, prof);
 		if (status)
 			return status;
@@ -2140,11 +2140,11 @@ u64 ice_flow_find_entry(struct ice_hw *hw, enum ice_block blk, u64 entry_id)
 }
 
 /**
- * ice_flow_acl_check_actions - Checks the acl rule's actions
+ * ice_flow_acl_check_actions - Checks the ACL rule's actions
  * @hw: pointer to the hardware structure
  * @acts: array of actions to be performed on a match
  * @acts_cnt: number of actions
- * @cnt_alloc: indicates if a ACL counter has been allocated.
+ * @cnt_alloc: indicates if an ACL counter has been allocated.
  */
 static enum ice_status
 ice_flow_acl_check_actions(struct ice_hw *hw, struct ice_flow_action *acts,
@@ -2203,7 +2203,7 @@ ice_flow_acl_check_actions(struct ice_hw *hw, struct ice_flow_action *acts,
 }
 
 /**
- * ice_flow_acl_frmt_entry_range - Format an acl range checker for a given field
+ * ice_flow_acl_frmt_entry_range - Format an ACL range checker for a given field
  * @fld: number of the given field
  * @info: info about field
  * @range_buf: range checker configuration buffer
@@ -2244,7 +2244,7 @@ ice_flow_acl_frmt_entry_range(u16 fld, struct ice_flow_fld_info *info,
 }
 
 /**
- * ice_flow_acl_frmt_entry_fld - Partially format acl entry for a given field
+ * ice_flow_acl_frmt_entry_fld - Partially format ACL entry for a given field
  * @fld: number of the given field
  * @info: info about the field
  * @buf: buffer containing the entry
@@ -2316,7 +2316,7 @@ ice_flow_acl_frmt_entry_fld(u16 fld, struct ice_flow_fld_info *info, u8 *buf,
 }
 
 /**
- * ice_flow_acl_frmt_entry - Format acl entry
+ * ice_flow_acl_frmt_entry - Format ACL entry
  * @hw: pointer to the hardware structure
  * @prof: pointer to flow profile
  * @e: pointer to the flow entry
@@ -2326,7 +2326,7 @@ ice_flow_acl_frmt_entry_fld(u16 fld, struct ice_flow_fld_info *info, u8 *buf,
  *
  * Formats the key (and key_inverse) to be matched from the data passed in,
  * along with data from the flow profile. This key/key_inverse pair makes up
- * the 'entry' for an acl flow entry.
+ * the 'entry' for an ACL flow entry.
  */
 static enum ice_status
 ice_flow_acl_frmt_entry(struct ice_hw *hw, struct ice_flow_prof *prof,
@@ -3447,7 +3447,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	}
 
 	/* Check if a flow profile exists with the same protocol headers and
-	 * associated with the input VSI. If so disasscociate the VSI from
+	 * associated with the input VSI. If so disassociate the VSI from
 	 * this profile. The VSI will be added to a new profile created with
 	 * the protocol header and new hash field configuration.
 	 */
