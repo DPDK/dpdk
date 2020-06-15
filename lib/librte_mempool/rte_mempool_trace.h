@@ -72,7 +72,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_string(mempool->name);
 	rte_trace_point_emit_ptr(vaddr);
 	rte_trace_point_emit_u64(iova);
-	rte_trace_point_emit_long(len);
+	rte_trace_point_emit_size_t(len);
 	rte_trace_point_emit_ptr(free_cb);
 	rte_trace_point_emit_ptr(opaque);
 )
@@ -84,8 +84,8 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_ptr(mempool);
 	rte_trace_point_emit_string(mempool->name);
 	rte_trace_point_emit_ptr(addr);
-	rte_trace_point_emit_long(len);
-	rte_trace_point_emit_long(pg_sz);
+	rte_trace_point_emit_size_t(len);
+	rte_trace_point_emit_size_t(pg_sz);
 	rte_trace_point_emit_ptr(free_cb);
 	rte_trace_point_emit_ptr(opaque);
 )
@@ -126,7 +126,7 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(struct rte_mempool *mempool, size_t pg_sz),
 	rte_trace_point_emit_ptr(mempool);
 	rte_trace_point_emit_string(mempool->name);
-	rte_trace_point_emit_long(pg_sz);
+	rte_trace_point_emit_size_t(pg_sz);
 )
 
 RTE_TRACE_POINT(
@@ -139,7 +139,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u32(max_objs);
 	rte_trace_point_emit_ptr(vaddr);
 	rte_trace_point_emit_u64(iova);
-	rte_trace_point_emit_long(len);
+	rte_trace_point_emit_size_t(len);
 	rte_trace_point_emit_ptr(obj_cb);
 	rte_trace_point_emit_ptr(obj_cb_arg);
 )

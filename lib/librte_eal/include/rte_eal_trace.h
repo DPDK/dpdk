@@ -143,7 +143,7 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(const char *type, size_t size, unsigned int align,
 		int socket, void *ptr),
 	rte_trace_point_emit_string(type);
-	rte_trace_point_emit_long(size);
+	rte_trace_point_emit_size_t(size);
 	rte_trace_point_emit_u32(align);
 	rte_trace_point_emit_int(socket);
 	rte_trace_point_emit_ptr(ptr);
@@ -154,7 +154,7 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(const char *type, size_t size, unsigned int align,
 		int socket, void *ptr),
 	rte_trace_point_emit_string(type);
-	rte_trace_point_emit_long(size);
+	rte_trace_point_emit_size_t(size);
 	rte_trace_point_emit_u32(align);
 	rte_trace_point_emit_int(socket);
 	rte_trace_point_emit_ptr(ptr);
@@ -164,7 +164,7 @@ RTE_TRACE_POINT(
 	rte_eal_trace_mem_realloc,
 	RTE_TRACE_POINT_ARGS(size_t size, unsigned int align, int socket,
 		void *ptr),
-	rte_trace_point_emit_long(size);
+	rte_trace_point_emit_size_t(size);
 	rte_trace_point_emit_u32(align);
 	rte_trace_point_emit_int(socket);
 	rte_trace_point_emit_ptr(ptr);
@@ -183,7 +183,7 @@ RTE_TRACE_POINT(
 		unsigned int flags, unsigned int align, unsigned int bound,
 		const void *mz),
 	rte_trace_point_emit_string(name);
-	rte_trace_point_emit_long(len);
+	rte_trace_point_emit_size_t(len);
 	rte_trace_point_emit_int(socket_id);
 	rte_trace_point_emit_u32(flags);
 	rte_trace_point_emit_u32(align);
