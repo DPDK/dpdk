@@ -1007,8 +1007,7 @@ err_unroll:
  * this array is the recipe ID and the element is the mapping of which profiles
  * is this recipe mapped to.
  */
-static void
-ice_get_recp_to_prof_map(struct ice_hw *hw)
+static void ice_get_recp_to_prof_map(struct ice_hw *hw)
 {
 	ice_declare_bitmap(r_bitmap, ICE_MAX_NUM_RECIPES);
 	u16 i;
@@ -3511,8 +3510,7 @@ ice_add_mac_exit:
  *
  * Function add MAC rule for logical port from HW struct
  */
-enum ice_status
-ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
+enum ice_status ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 {
 	if (!m_list || !hw)
 		return ICE_ERR_PARAM;
@@ -3710,8 +3708,7 @@ ice_add_vlan_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list,
  *
  * Function add VLAN rule for logical port from HW struct
  */
-enum ice_status
-ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
+enum ice_status ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list)
 {
 	if (!v_list || !hw)
 		return ICE_ERR_PARAM;
@@ -3814,7 +3811,6 @@ ice_add_eth_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list,
 	return ICE_SUCCESS;
 }
 
-enum ice_status
 /**
  * ice_add_eth_mac - Add a ethertype based filter rule
  * @hw: pointer to the hardware structure
@@ -3822,6 +3818,7 @@ enum ice_status
  *
  * Function add ethertype rule for logical port from HW struct
  */
+enum ice_status
 ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list)
 {
 	if (!em_list || !hw)
@@ -4124,8 +4121,7 @@ ice_remove_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
  * @m_list: list of MAC addresses and forwarding information
  *
  */
-enum ice_status
-ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
+enum ice_status ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 {
 	struct ice_sw_recipe *recp_list;
 
@@ -7415,8 +7411,7 @@ ice_rem_adv_rule_by_id(struct ice_hw *hw,
  * as removing a rule fails, it will return immediately with the error code,
  * else it will return ICE_SUCCESS
  */
-enum ice_status
-ice_rem_adv_rule_for_vsi(struct ice_hw *hw, u16 vsi_handle)
+enum ice_status ice_rem_adv_rule_for_vsi(struct ice_hw *hw, u16 vsi_handle)
 {
 	struct ice_adv_fltr_mgmt_list_entry *list_itr;
 	struct ice_vsi_list_map_info *map_info;

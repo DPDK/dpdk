@@ -1720,8 +1720,7 @@ ice_alloc_res_exit:
  * @num: number of resources
  * @res: pointer to array that contains the resources to free
  */
-enum ice_status
-ice_free_hw_res(struct ice_hw *hw, u16 type, u16 num, u16 *res)
+enum ice_status ice_free_hw_res(struct ice_hw *hw, u16 type, u16 num, u16 *res)
 {
 	struct ice_aqc_alloc_free_res_elem *buf;
 	enum ice_status status;

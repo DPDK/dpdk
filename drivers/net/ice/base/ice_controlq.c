@@ -742,8 +742,7 @@ enum ice_status ice_create_all_ctrlq(struct ice_hw *hw)
  *
  * Destroys the send and receive queue locks for a given control queue.
  */
-static void
-ice_destroy_ctrlq_locks(struct ice_ctl_q_info *cq)
+static void ice_destroy_ctrlq_locks(struct ice_ctl_q_info *cq)
 {
 	ice_destroy_lock(&cq->sq_lock);
 	ice_destroy_lock(&cq->rq_lock);
@@ -1040,8 +1039,7 @@ ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	if (!cmd_completed) {
 		if (rd32(hw, cq->rq.len) & cq->rq.len_crit_mask ||
 		    rd32(hw, cq->sq.len) & cq->sq.len_crit_mask) {
-			ice_debug(hw, ICE_DBG_AQ_MSG,
-				  "Critical FW error.\n");
+			ice_debug(hw, ICE_DBG_AQ_MSG, "Critical FW error.\n");
 			status = ICE_ERR_AQ_FW_CRITICAL;
 		} else {
 			ice_debug(hw, ICE_DBG_AQ_MSG,
@@ -1167,8 +1165,7 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 
 	ice_debug(hw, ICE_DBG_AQ_DESC, "ARQ: desc and buffer:\n");
 
-	ice_debug_cq(hw, (void *)desc, e->msg_buf,
-		     cq->rq_buf_size);
+	ice_debug_cq(hw, (void *)desc, e->msg_buf, cq->rq_buf_size);
 
 	/* Restore the original datalen and buffer address in the desc,
 	 * FW updates datalen to indicate the event message size

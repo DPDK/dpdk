@@ -1932,8 +1932,7 @@ ice_sched_cfg_vsi(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u16 maxqs,
  * This function removes single aggregator VSI info entry from
  * aggregator list.
  */
-static void
-ice_sched_rm_agg_vsi_info(struct ice_port_info *pi, u16 vsi_handle)
+static void ice_sched_rm_agg_vsi_info(struct ice_port_info *pi, u16 vsi_handle)
 {
 	struct ice_sched_agg_info *agg_info;
 	struct ice_sched_agg_info *atmp;
@@ -3079,8 +3078,7 @@ ice_sched_save_vsi_bw_alloc(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
  *
  * Save or clear CIR bandwidth (BW) in the passed param bw_t_info.
  */
-static void
-ice_set_clear_cir_bw(struct ice_bw_type_info *bw_t_info, u32 bw)
+static void ice_set_clear_cir_bw(struct ice_bw_type_info *bw_t_info, u32 bw)
 {
 	if (bw == ICE_SCHED_DFLT_BW) {
 		ice_clear_bit(ICE_BW_TYPE_CIR, bw_t_info->bw_t_bitmap);
@@ -3099,8 +3097,7 @@ ice_set_clear_cir_bw(struct ice_bw_type_info *bw_t_info, u32 bw)
  *
  * Save or clear EIR bandwidth (BW) in the passed param bw_t_info.
  */
-static void
-ice_set_clear_eir_bw(struct ice_bw_type_info *bw_t_info, u32 bw)
+static void ice_set_clear_eir_bw(struct ice_bw_type_info *bw_t_info, u32 bw)
 {
 	if (bw == ICE_SCHED_DFLT_BW) {
 		ice_clear_bit(ICE_BW_TYPE_EIR, bw_t_info->bw_t_bitmap);
@@ -3125,8 +3122,7 @@ ice_set_clear_eir_bw(struct ice_bw_type_info *bw_t_info, u32 bw)
  *
  * Save or clear shared bandwidth (BW) in the passed param bw_t_info.
  */
-static void
-ice_set_clear_shared_bw(struct ice_bw_type_info *bw_t_info, u32 bw)
+static void ice_set_clear_shared_bw(struct ice_bw_type_info *bw_t_info, u32 bw)
 {
 	if (bw == ICE_SCHED_DFLT_BW) {
 		ice_clear_bit(ICE_BW_TYPE_SHARED, bw_t_info->bw_t_bitmap);
@@ -3188,8 +3184,7 @@ ice_sched_save_vsi_bw(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
  *
  * Save or clear priority (prio) in the passed param bw_t_info.
  */
-static void
-ice_set_clear_prio(struct ice_bw_type_info *bw_t_info, u8 prio)
+static void ice_set_clear_prio(struct ice_bw_type_info *bw_t_info, u8 prio)
 {
 	bw_t_info->generic = prio;
 	if (bw_t_info->generic)
@@ -5355,8 +5350,7 @@ void ice_sched_replay_agg_vsi_preinit(struct ice_hw *hw)
  *
  * This function replay TC nodes.
  */
-enum ice_status
-ice_sched_replay_tc_node_bw(struct ice_port_info *pi)
+enum ice_status ice_sched_replay_tc_node_bw(struct ice_port_info *pi)
 {
 	enum ice_status status = ICE_SUCCESS;
 	u8 tc;
@@ -5479,8 +5473,7 @@ ice_sched_replay_vsi_agg(struct ice_hw *hw, u16 vsi_handle)
  * This function replays association of VSI to aggregator type nodes, and
  * node bandwidth information.
  */
-enum ice_status
-ice_replay_vsi_agg(struct ice_hw *hw, u16 vsi_handle)
+enum ice_status ice_replay_vsi_agg(struct ice_hw *hw, u16 vsi_handle)
 {
 	struct ice_port_info *pi = hw->port_info;
 	enum ice_status status;
