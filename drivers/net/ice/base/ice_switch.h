@@ -32,24 +32,24 @@
 #define DUMMY_ETH_HDR_LEN		16
 #define ICE_SW_RULE_RX_TX_ETH_HDR_SIZE \
 	(sizeof(struct ice_aqc_sw_rules_elem) - \
-	 sizeof(((struct ice_aqc_sw_rules_elem *)0)->pdata) + \
+	 FIELD_SIZEOF(struct ice_aqc_sw_rules_elem, pdata) + \
 	 sizeof(struct ice_sw_rule_lkup_rx_tx) + DUMMY_ETH_HDR_LEN - 1)
 #define ICE_SW_RULE_RX_TX_NO_HDR_SIZE \
 	(sizeof(struct ice_aqc_sw_rules_elem) - \
-	 sizeof(((struct ice_aqc_sw_rules_elem *)0)->pdata) + \
+	 FIELD_SIZEOF(struct ice_aqc_sw_rules_elem, pdata) + \
 	 sizeof(struct ice_sw_rule_lkup_rx_tx) - 1)
 #define ICE_SW_RULE_LG_ACT_SIZE(n) \
 	(sizeof(struct ice_aqc_sw_rules_elem) - \
-	 sizeof(((struct ice_aqc_sw_rules_elem *)0)->pdata) + \
+	 FIELD_SIZEOF(struct ice_aqc_sw_rules_elem, pdata) + \
 	 sizeof(struct ice_sw_rule_lg_act) - \
-	 sizeof(((struct ice_sw_rule_lg_act *)0)->act) + \
-	 ((n) * sizeof(((struct ice_sw_rule_lg_act *)0)->act)))
+	 FIELD_SIZEOF(struct ice_sw_rule_lg_act, act) + \
+	 ((n) * FIELD_SIZEOF(struct ice_sw_rule_lg_act, act)))
 #define ICE_SW_RULE_VSI_LIST_SIZE(n) \
 	(sizeof(struct ice_aqc_sw_rules_elem) - \
-	 sizeof(((struct ice_aqc_sw_rules_elem *)0)->pdata) + \
+	 FIELD_SIZEOF(struct ice_aqc_sw_rules_elem, pdata) + \
 	 sizeof(struct ice_sw_rule_vsi_list) - \
-	 sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi) + \
-	 ((n) * sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi)))
+	 FIELD_SIZEOF(struct ice_sw_rule_vsi_list, vsi) + \
+	 ((n) * FIELD_SIZEOF(struct ice_sw_rule_vsi_list, vsi)))
 
 /* Worst case buffer length for ice_aqc_opc_get_res_alloc */
 #define ICE_MAX_RES_TYPES 0x80
@@ -490,5 +490,4 @@ ice_replay_vsi_all_fltr(struct ice_hw *hw, struct ice_port_info *pi,
 void ice_rm_sw_replay_rule_info(struct ice_hw *hw, struct ice_switch_info *sw);
 void ice_rm_all_sw_replay_rule_info(struct ice_hw *hw);
 bool ice_is_prof_rule(enum ice_sw_tunnel_type type);
-
 #endif /* _ICE_SWITCH_H_ */
