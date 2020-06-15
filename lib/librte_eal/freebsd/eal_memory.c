@@ -64,55 +64,34 @@ rte_eal_hugepage_init(void)
 	/* for debug purposes, hugetlbfs can be disabled */
 	if (internal_config.no_hugetlbfs) {
 		struct rte_memseg_list *msl;
-		struct rte_fbarray *arr;
-		struct rte_memseg *ms;
-		uint64_t page_sz;
-		int n_segs, cur_seg;
+		uint64_t mem_sz, page_sz;
+		int n_segs;
 
 		/* create a memseg list */
 		msl = &mcfg->memsegs[0];
 
+		mem_sz = internal_config.memory;
 		page_sz = RTE_PGSIZE_4K;
-		n_segs = internal_config.memory / page_sz;
+		n_segs = mem_sz / page_sz;
 
-		if (rte_fbarray_init(&msl->memseg_arr, "nohugemem", n_segs,
-				sizeof(struct rte_memseg))) {
-			RTE_LOG(ERR, EAL, "Cannot allocate memseg list\n");
+		if (eal_memseg_list_init_named(
+				msl, "nohugemem", page_sz, n_segs, 0, true)) {
 			return -1;
 		}
 
-		addr = mmap(NULL, internal_config.memory,
-				PROT_READ | PROT_WRITE,
+		addr = mmap(NULL, mem_sz, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		if (addr == MAP_FAILED) {
 			RTE_LOG(ERR, EAL, "%s: mmap() failed: %s\n", __func__,
 					strerror(errno));
 			return -1;
 		}
+
 		msl->base_va = addr;
-		msl->page_sz = page_sz;
-		msl->len = internal_config.memory;
-		msl->socket_id = 0;
-		msl->heap = 1;
+		msl->len = mem_sz;
 
-		/* populate memsegs. each memseg is 1 page long */
-		for (cur_seg = 0; cur_seg < n_segs; cur_seg++) {
-			arr = &msl->memseg_arr;
+		eal_memseg_list_populate(msl, addr, n_segs);
 
-			ms = rte_fbarray_get(arr, cur_seg);
-			if (rte_eal_iova_mode() == RTE_IOVA_VA)
-				ms->iova = (uintptr_t)addr;
-			else
-				ms->iova = RTE_BAD_IOVA;
-			ms->addr = addr;
-			ms->hugepage_sz = page_sz;
-			ms->len = page_sz;
-			ms->socket_id = 0;
-
-			rte_fbarray_set_used(arr, cur_seg);
-
-			addr = RTE_PTR_ADD(addr, page_sz);
-		}
 		return 0;
 	}
 
@@ -336,63 +315,24 @@ get_mem_amount(uint64_t page_sz, uint64_t max_mem)
 	return RTE_ALIGN(area_sz, page_sz);
 }
 
-#define MEMSEG_LIST_FMT "memseg-%" PRIu64 "k-%i-%i"
 static int
-alloc_memseg_list(struct rte_memseg_list *msl, uint64_t page_sz,
+memseg_list_init(struct rte_memseg_list *msl, uint64_t page_sz,
 		int n_segs, int socket_id, int type_msl_idx)
 {
-	char name[RTE_FBARRAY_NAME_LEN];
-
-	snprintf(name, sizeof(name), MEMSEG_LIST_FMT, page_sz >> 10, socket_id,
-		 type_msl_idx);
-	if (rte_fbarray_init(&msl->memseg_arr, name, n_segs,
-			sizeof(struct rte_memseg))) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memseg list: %s\n",
-			rte_strerror(rte_errno));
-		return -1;
-	}
-
-	msl->page_sz = page_sz;
-	msl->socket_id = socket_id;
-	msl->base_va = NULL;
-
-	RTE_LOG(DEBUG, EAL, "Memseg list allocated: 0x%zxkB at socket %i\n",
-			(size_t)page_sz >> 10, socket_id);
-
-	return 0;
+	return eal_memseg_list_init(
+		msl, page_sz, n_segs, socket_id, type_msl_idx, false);
 }
 
 static int
-alloc_va_space(struct rte_memseg_list *msl)
+memseg_list_alloc(struct rte_memseg_list *msl)
 {
-	uint64_t page_sz;
-	size_t mem_sz;
-	void *addr;
 	int flags = 0;
 
 #ifdef RTE_ARCH_PPC_64
-	flags |= MAP_HUGETLB;
+	flags |= EAL_RESERVE_HUGEPAGES;
 #endif
-
-	page_sz = msl->page_sz;
-	mem_sz = page_sz * msl->memseg_arr.len;
-
-	addr = eal_get_virtual_area(msl->base_va, &mem_sz, page_sz, 0, flags);
-	if (addr == NULL) {
-		if (rte_errno == EADDRNOTAVAIL)
-			RTE_LOG(ERR, EAL, "Could not mmap %llu bytes at [%p] - "
-				"please use '--" OPT_BASE_VIRTADDR "' option\n",
-				(unsigned long long)mem_sz, msl->base_va);
-		else
-			RTE_LOG(ERR, EAL, "Cannot reserve memory\n");
-		return -1;
-	}
-	msl->base_va = addr;
-	msl->len = mem_sz;
-
-	return 0;
+	return eal_memseg_list_alloc(msl, flags);
 }
-
 
 static int
 memseg_primary_init(void)
@@ -479,7 +419,7 @@ memseg_primary_init(void)
 					cur_max_mem);
 			n_segs = cur_mem / hugepage_sz;
 
-			if (alloc_memseg_list(msl, hugepage_sz, n_segs,
+			if (memseg_list_init(msl, hugepage_sz, n_segs,
 					0, type_msl_idx))
 				return -1;
 
@@ -487,7 +427,7 @@ memseg_primary_init(void)
 			total_type_mem = total_segs * hugepage_sz;
 			type_msl_idx++;
 
-			if (alloc_va_space(msl)) {
+			if (memseg_list_alloc(msl)) {
 				RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list\n");
 				return -1;
 			}
@@ -518,7 +458,7 @@ memseg_secondary_init(void)
 		}
 
 		/* preallocate VA space */
-		if (alloc_va_space(msl)) {
+		if (memseg_list_alloc(msl)) {
 			RTE_LOG(ERR, EAL, "Cannot preallocate VA space for hugepage memory\n");
 			return -1;
 		}

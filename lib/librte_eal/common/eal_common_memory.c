@@ -25,6 +25,7 @@
 #include "eal_private.h"
 #include "eal_internal_cfg.h"
 #include "eal_memcfg.h"
+#include "eal_options.h"
 #include "malloc_heap.h"
 
 /*
@@ -180,6 +181,101 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	}
 
 	return aligned_addr;
+}
+
+int
+eal_memseg_list_init_named(struct rte_memseg_list *msl, const char *name,
+		uint64_t page_sz, int n_segs, int socket_id, bool heap)
+{
+	if (rte_fbarray_init(&msl->memseg_arr, name, n_segs,
+			sizeof(struct rte_memseg))) {
+		RTE_LOG(ERR, EAL, "Cannot allocate memseg list: %s\n",
+			rte_strerror(rte_errno));
+		return -1;
+	}
+
+	msl->page_sz = page_sz;
+	msl->socket_id = socket_id;
+	msl->base_va = NULL;
+	msl->heap = heap;
+
+	RTE_LOG(DEBUG, EAL,
+		"Memseg list allocated at socket %i, page size 0x%"PRIx64"kB\n",
+		socket_id, page_sz >> 10);
+
+	return 0;
+}
+
+int
+eal_memseg_list_init(struct rte_memseg_list *msl, uint64_t page_sz,
+		int n_segs, int socket_id, int type_msl_idx, bool heap)
+{
+	char name[RTE_FBARRAY_NAME_LEN];
+
+	snprintf(name, sizeof(name), MEMSEG_LIST_FMT, page_sz >> 10, socket_id,
+		 type_msl_idx);
+
+	return eal_memseg_list_init_named(
+		msl, name, page_sz, n_segs, socket_id, heap);
+}
+
+int
+eal_memseg_list_alloc(struct rte_memseg_list *msl, int reserve_flags)
+{
+	size_t page_sz, mem_sz;
+	void *addr;
+
+	page_sz = msl->page_sz;
+	mem_sz = page_sz * msl->memseg_arr.len;
+
+	addr = eal_get_virtual_area(
+		msl->base_va, &mem_sz, page_sz, 0, reserve_flags);
+	if (addr == NULL) {
+#ifndef RTE_EXEC_ENV_WINDOWS
+		/* The hint would be misleading on Windows, because address
+		 * is by default system-selected (base VA = 0).
+		 * However, this function is called from many places,
+		 * including common code, so don't duplicate the message.
+		 */
+		if (rte_errno == EADDRNOTAVAIL)
+			RTE_LOG(ERR, EAL, "Cannot reserve %llu bytes at [%p] - "
+				"please use '--" OPT_BASE_VIRTADDR "' option\n",
+				(unsigned long long)mem_sz, msl->base_va);
+#endif
+		return -1;
+	}
+	msl->base_va = addr;
+	msl->len = mem_sz;
+
+	RTE_LOG(DEBUG, EAL, "VA reserved for memseg list at %p, size %zx\n",
+			addr, mem_sz);
+
+	return 0;
+}
+
+void
+eal_memseg_list_populate(struct rte_memseg_list *msl, void *addr, int n_segs)
+{
+	size_t page_sz = msl->page_sz;
+	int i;
+
+	for (i = 0; i < n_segs; i++) {
+		struct rte_fbarray *arr = &msl->memseg_arr;
+		struct rte_memseg *ms = rte_fbarray_get(arr, i);
+
+		if (rte_eal_iova_mode() == RTE_IOVA_VA)
+			ms->iova = (uintptr_t)addr;
+		else
+			ms->iova = RTE_BAD_IOVA;
+		ms->addr = addr;
+		ms->hugepage_sz = page_sz;
+		ms->socket_id = 0;
+		ms->len = page_sz;
+
+		rte_fbarray_set_used(arr, i);
+
+		addr = RTE_PTR_ADD(addr, page_sz);
+	}
 }
 
 static struct rte_memseg *
