@@ -1387,7 +1387,7 @@ ice_flow_find_prof_conds(struct ice_hw *hw, enum ice_block blk,
 	struct ice_flow_prof *p, *prof = NULL;
 
 	ice_acquire_lock(&hw->fl_profs_locks[blk]);
-	LIST_FOR_EACH_ENTRY(p, &hw->fl_profs[blk], ice_flow_prof, l_entry) {
+	LIST_FOR_EACH_ENTRY(p, &hw->fl_profs[blk], ice_flow_prof, l_entry)
 		if ((p->dir == dir || conds & ICE_FLOW_FIND_PROF_NOT_CHK_DIR) &&
 		    segs_cnt && segs_cnt == p->segs_cnt) {
 			u8 i;
@@ -1413,7 +1413,6 @@ ice_flow_find_prof_conds(struct ice_hw *hw, enum ice_block blk,
 				break;
 			}
 		}
-	}
 	ice_release_lock(&hw->fl_profs_locks[blk]);
 
 	return prof;
@@ -1450,10 +1449,9 @@ ice_flow_find_prof_id(struct ice_hw *hw, enum ice_block blk, u64 prof_id)
 {
 	struct ice_flow_prof *p;
 
-	LIST_FOR_EACH_ENTRY(p, &hw->fl_profs[blk], ice_flow_prof, l_entry) {
+	LIST_FOR_EACH_ENTRY(p, &hw->fl_profs[blk], ice_flow_prof, l_entry)
 		if (p->id == prof_id)
 			return p;
-	}
 
 	return NULL;
 }
@@ -3159,13 +3157,12 @@ void ice_rem_vsi_rss_list(struct ice_hw *hw, u16 vsi_handle)
 
 	ice_acquire_lock(&hw->rss_locks);
 	LIST_FOR_EACH_ENTRY_SAFE(r, tmp, &hw->rss_list_head,
-				 ice_rss_cfg, l_entry) {
+				 ice_rss_cfg, l_entry)
 		if (ice_test_and_clear_bit(vsi_handle, r->vsis))
 			if (!ice_is_any_bit_set(r->vsis, ICE_MAX_VSI)) {
 				LIST_DEL(&r->l_entry);
 				ice_free(hw, r);
 			}
-	}
 	ice_release_lock(&hw->rss_locks);
 }
 
@@ -3192,7 +3189,7 @@ enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 
 	ice_acquire_lock(&hw->fl_profs_locks[blk]);
 	LIST_FOR_EACH_ENTRY_SAFE(p, t, &hw->fl_profs[blk], ice_flow_prof,
-				 l_entry) {
+				 l_entry)
 		if (ice_is_bit_set(p->vsis, vsi_handle)) {
 			status = ice_flow_disassoc_prof(hw, blk, p, vsi_handle);
 			if (status)
@@ -3204,7 +3201,6 @@ enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 					break;
 			}
 		}
-	}
 	ice_release_lock(&hw->fl_profs_locks[blk]);
 
 	return status;
@@ -3228,7 +3224,7 @@ ice_rem_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 	 * remove from the RSS entry list of the VSI context and delete entry.
 	 */
 	LIST_FOR_EACH_ENTRY_SAFE(r, tmp, &hw->rss_list_head,
-				 ice_rss_cfg, l_entry) {
+				 ice_rss_cfg, l_entry)
 		if (r->hashed_flds == prof->segs[prof->segs_cnt - 1].match &&
 		    r->packet_hdr == prof->segs[prof->segs_cnt - 1].hdrs) {
 			ice_clear_bit(vsi_handle, r->vsis);
@@ -3238,7 +3234,6 @@ ice_rem_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 			}
 			return;
 		}
-	}
 }
 
 /**
