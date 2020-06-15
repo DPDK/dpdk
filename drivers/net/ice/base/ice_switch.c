@@ -7491,6 +7491,7 @@ ice_adv_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 			ice_get_hw_vsi_num(hw, rem_vsi_handle);
 		fm_list->rule_info.sw_act.fwd_id.hw_vsi_id =
 			ice_get_hw_vsi_num(hw, rem_vsi_handle);
+		fm_list->rule_info.sw_act.vsi_handle = rem_vsi_handle;
 
 		/* Update the previous switch rule of "MAC forward to VSI" to
 		 * "MAC fwd to VSI list"
