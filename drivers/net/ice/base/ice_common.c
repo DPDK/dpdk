@@ -2762,6 +2762,9 @@ ice_cfg_phy_fec(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 	if (status)
 		goto out;
 
+	cfg->caps |= (pcaps->caps & ICE_AQC_PHY_EN_AUTO_FEC);
+	cfg->link_fec_opt = pcaps->link_fec_options;
+
 	switch (fec) {
 	case ICE_FEC_BASER:
 		/* Clear RS bits, and AND BASE-R ability
