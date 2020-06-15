@@ -7488,6 +7488,7 @@ ice_adv_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 				  tmp_fltr.fwd_id.hw_vsi_id, status);
 			return status;
 		}
+		fm_list->vsi_list_info->ref_cnt--;
 
 		/* Remove the VSI list since it is no longer used */
 		status = ice_remove_vsi_list_rule(hw, vsi_list_id, lkup_type);
@@ -7566,7 +7567,6 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	if (list_elem->rule_info.sw_act.fltr_act != ICE_FWD_TO_VSI_LIST) {
 		remove_rule = true;
 	} else if (list_elem->vsi_count > 1) {
-		list_elem->vsi_list_info->ref_cnt--;
 		remove_rule = false;
 		vsi_handle = rinfo->sw_act.vsi_handle;
 		status = ice_adv_rem_update_vsi_list(hw, vsi_handle, list_elem);
