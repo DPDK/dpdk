@@ -16,6 +16,10 @@
 #define ICE_FLTR_TX_RX (ICE_FLTR_RX | ICE_FLTR_TX)
 
 /* Switch Profile IDs for Profile related switch rules */
+#define ICE_PROFID_IPV4_TCP		4
+#define ICE_PROFID_IPV4_UDP		5
+#define ICE_PROFID_IPV6_TCP		7
+#define ICE_PROFID_IPV6_UDP		8
 #define ICE_PROFID_PPPOE_PAY		34
 #define ICE_PROFID_PPPOE_IPV4_TCP	35
 #define ICE_PROFID_PPPOE_IPV4_UDP	36

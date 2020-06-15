@@ -6357,6 +6357,18 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 	case ICE_SW_TUN_IPV4_AH:
 		ice_set_bit(ICE_PROFID_IPV4_AH, bm);
 		return;
+	case ICE_SW_IPV4_TCP:
+		ice_set_bit(ICE_PROFID_IPV4_TCP, bm);
+		return;
+	case ICE_SW_IPV4_UDP:
+		ice_set_bit(ICE_PROFID_IPV4_UDP, bm);
+		return;
+	case ICE_SW_IPV6_TCP:
+		ice_set_bit(ICE_PROFID_IPV6_TCP, bm);
+		return;
+	case ICE_SW_IPV6_UDP:
+		ice_set_bit(ICE_PROFID_IPV6_UDP, bm);
+		return;
 	case ICE_SW_TUN_AND_NON_TUN:
 	default:
 		prof_type = ICE_PROF_ALL;
@@ -6768,6 +6780,34 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		*pkt = dummy_pppoe_ipv6_udp_packet;
 		*pkt_len = sizeof(dummy_pppoe_ipv6_udp_packet);
 		*offsets = dummy_pppoe_packet_ipv6_udp_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_IPV4_TCP) {
+		*pkt = dummy_tcp_packet;
+		*pkt_len = sizeof(dummy_tcp_packet);
+		*offsets = dummy_tcp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_IPV4_UDP) {
+		*pkt = dummy_udp_packet;
+		*pkt_len = sizeof(dummy_udp_packet);
+		*offsets = dummy_udp_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_IPV6_TCP) {
+		*pkt = dummy_tcp_ipv6_packet;
+		*pkt_len = sizeof(dummy_tcp_ipv6_packet);
+		*offsets = dummy_tcp_ipv6_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_IPV6_UDP) {
+		*pkt = dummy_udp_ipv6_packet;
+		*pkt_len = sizeof(dummy_udp_ipv6_packet);
+		*offsets = dummy_udp_ipv6_packet_offsets;
 		return;
 	}
 

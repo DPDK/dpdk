@@ -66,6 +66,10 @@ enum ice_sw_tunnel_type {
 	ICE_SW_TUN_UDP, /* This means all "UDP" tunnel types: VXLAN-GPE, VXLAN
 			 * and GENEVE
 			 */
+	ICE_SW_IPV4_TCP,
+	ICE_SW_IPV4_UDP,
+	ICE_SW_IPV6_TCP,
+	ICE_SW_IPV6_UDP,
 	ICE_SW_TUN_GTP,
 	ICE_SW_TUN_PPPOE,
 	ICE_SW_TUN_PPPOE_PAY,
