@@ -2637,6 +2637,7 @@ ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
 	if (!pi || !aq_failures)
 		return ICE_ERR_BAD_PTR;
 
+	*aq_failures = 0;
 	hw = pi->hw;
 
 	pcaps = (struct ice_aqc_get_phy_caps_data *)
