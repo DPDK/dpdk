@@ -4122,6 +4122,9 @@ void ice_rem_all_sw_rules_info(struct ice_hw *hw)
 			ice_rem_sw_rule_info(hw, rule_head);
 		else
 			ice_rem_adv_rule_info(hw, rule_head);
+		if (sw->recp_list[i].adv_rule &&
+		    LIST_EMPTY(&sw->recp_list[i].filt_rules))
+			sw->recp_list[i].adv_rule = false;
 	}
 }
 
@@ -6130,7 +6133,6 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		recp->n_grp_count = rm->n_grp_count;
 		recp->tun_type = rm->tun_type;
 		recp->recp_created = true;
-		recp->adv_rule = 1;
 	}
 	rm->root_buf = buf;
 	ice_free(hw, tmp);
@@ -7611,11 +7613,15 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 					 rule_buf_sz, 1,
 					 ice_aqc_opc_remove_sw_rules, NULL);
 		if (status == ICE_SUCCESS || status == ICE_ERR_DOES_NOT_EXIST) {
+			struct ice_switch_info *sw = hw->switch_info;
+
 			ice_acquire_lock(rule_lock);
 			LIST_DEL(&list_elem->list_entry);
 			ice_free(hw, list_elem->lkups);
 			ice_free(hw, list_elem);
 			ice_release_lock(rule_lock);
+			if (LIST_EMPTY(&sw->recp_list[rid].filt_rules))
+				sw->recp_list[rid].adv_rule = false;
 		}
 		ice_free(hw, s_rule);
 	}
