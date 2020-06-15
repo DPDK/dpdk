@@ -549,6 +549,11 @@ enum ice_status ice_init_nvm(struct ice_hw *hw)
 	case ICE_DEV_ID_E822L_SFP:
 	case ICE_DEV_ID_E822L_10G_BASE_T:
 	case ICE_DEV_ID_E822L_SGMII:
+	case ICE_DEV_ID_E823L_BACKPLANE:
+	case ICE_DEV_ID_E823L_SFP:
+	case ICE_DEV_ID_E823L_10G_BASE_T:
+	case ICE_DEV_ID_E823L_1GBE:
+	case ICE_DEV_ID_E823L_QSFP:
 		return status;
 	default:
 		break;
