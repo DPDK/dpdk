@@ -1384,7 +1384,6 @@ ice_flow_proc_segs(struct ice_hw *hw, struct ice_flow_prof_params *params)
 		if (status)
 			return status;
 		break;
-	case ICE_BLK_SW:
 	default:
 		return ICE_ERR_NOT_IMPL;
 	}
@@ -2915,8 +2914,6 @@ ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 			goto out;
 
 		break;
-	case ICE_BLK_SW:
-	case ICE_BLK_PE:
 	default:
 		status = ICE_ERR_NOT_IMPL;
 		goto out;
