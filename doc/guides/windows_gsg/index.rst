@@ -12,3 +12,4 @@ Getting Started Guide for Windows
 
     intro
     build_dpdk
+    run_apps
