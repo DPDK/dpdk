@@ -2811,6 +2811,12 @@ ice_find_prof_id_with_mask(struct ice_hw *hw, enum ice_block blk,
 	struct ice_es *es = &hw->blk[blk].es;
 	u8 i;
 
+	/* For FD, we don't want to re-use an existed profile with the same
+	 * field vector and mask. This will cause rule interference.
+	 */
+	if (blk == ICE_BLK_FD)
+		return ICE_ERR_DOES_NOT_EXIST;
+
 	for (i = 0; i < (u8)es->count; i++) {
 		u16 off = i * es->fvw;
 
