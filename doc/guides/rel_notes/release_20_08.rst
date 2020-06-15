@@ -91,6 +91,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* ``rte_page_sizes`` enumeration is replaced with ``RTE_PGSIZE_xxx`` defines.
+
 
 ABI Changes
 -----------
