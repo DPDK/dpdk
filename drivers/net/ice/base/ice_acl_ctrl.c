@@ -934,9 +934,10 @@ ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
 		  enum ice_acl_entry_prior prior, u8 *keys, u8 *inverts,
 		  struct ice_acl_act_entry *acts, u8 acts_cnt, u16 *entry_idx)
 {
-	u8 i, entry_tcam, num_cscd, idx, offset;
+	u8 i, entry_tcam, num_cscd, offset;
 	struct ice_aqc_acl_data buf;
 	enum ice_status status = ICE_SUCCESS;
+	u16 idx;
 
 	if (!scen)
 		return ICE_ERR_DOES_NOT_EXIST;
