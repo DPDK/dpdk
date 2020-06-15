@@ -1120,6 +1120,7 @@ ice_fdir_add_del_filter(struct ice_pf *pf,
 	filter->input.dest_vsi = pf->main_vsi->idx;
 
 	memset(&desc, 0, sizeof(desc));
+	filter->input.comp_report = ICE_FXD_FLTR_QW0_COMP_REPORT_SW;
 	ice_fdir_get_prgm_desc(hw, &filter->input, &desc, add);
 
 	is_tun = ice_fdir_is_tunnel_profile(filter->tunnel_type);

@@ -204,6 +204,7 @@ struct ice_fdir_fltr {
 	u16 cnt_index;
 	u32 fltr_id;
 	u8 fdid_prio;
+	u8 comp_report;
 	/* Set to true for an ACL filter */
 	bool acl_fltr;
 };
