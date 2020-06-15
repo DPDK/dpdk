@@ -20,6 +20,7 @@
 #include <rte_lcore.h>
 #include <rte_common.h>
 #include <rte_spinlock.h>
+
 #include <rte_eal_trace.h>
 
 #include <rte_malloc.h>

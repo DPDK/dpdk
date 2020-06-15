@@ -337,6 +337,7 @@ F: doc/guides/windows_gsg/
 Windows memory allocation
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
 F: lib/librte_eal/windows/eal_hugepages.c
+F: lib/librte_eal/windows/eal_mem*
 
 
 Core Libraries

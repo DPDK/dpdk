@@ -14,6 +14,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +37,9 @@ extern "C" {
 
 #define strncasecmp(s1, s2, count)        _strnicmp(s1, s2, count)
 
+#define close _close
+#define unlink _unlink
+
 /* cpu_set macros implementation */
 #define RTE_CPU_AND(dst, src1, src2) CPU_AND(dst, src1, src2)
 #define RTE_CPU_OR(dst, src1, src2) CPU_OR(dst, src1, src2)
@@ -46,6 +50,7 @@ extern "C" {
 typedef long long ssize_t;
 
 #ifndef RTE_TOOLCHAIN_GCC
+
 static inline int
 asprintf(char **buffer, const char *format, ...)
 {
@@ -72,6 +77,18 @@ asprintf(char **buffer, const char *format, ...)
 	}
 	return ret;
 }
+
+static inline const char *
+eal_strerror(int code)
+{
+	static char buffer[128];
+
+	strerror_s(buffer, sizeof(buffer), code);
+	return buffer;
+}
+
+#define strerror eal_strerror
+
 #endif /* RTE_TOOLCHAIN_GCC */
 
 #ifdef __cplusplus

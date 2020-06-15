@@ -94,6 +94,24 @@ eal_proc_type_detect(void)
 	return ptype;
 }
 
+enum rte_proc_type_t
+rte_eal_process_type(void)
+{
+	return rte_config.process_type;
+}
+
+int
+rte_eal_has_hugepages(void)
+{
+	return !internal_config.no_hugetlbfs;
+}
+
+enum rte_iova_mode
+rte_eal_iova_mode(void)
+{
+	return rte_config.iova_mode;
+}
+
 /* display usage */
 static void
 eal_usage(const char *prgname)
@@ -256,7 +274,7 @@ __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
 	return -ENOTSUP;
 }
 
-/* Launch threads, called at application init(). */
+ /* Launch threads, called at application init(). */
 int
 rte_eal_init(int argc, char **argv)
 {
@@ -282,6 +300,13 @@ rte_eal_init(int argc, char **argv)
 	if (fctret < 0)
 		exit(1);
 
+	/* Prevent creation of shared memory files. */
+	if (internal_config.in_memory == 0) {
+		RTE_LOG(WARNING, EAL, "Multi-process support is requested, "
+			"but not available.\n");
+		internal_config.in_memory = 1;
+	}
+
 	if (!internal_config.no_hugetlbfs && (eal_hugepage_info_init() < 0)) {
 		rte_eal_init_alert("Cannot get hugepage information");
 		rte_errno = EACCES;
@@ -291,6 +316,42 @@ rte_eal_init(int argc, char **argv)
 	if (internal_config.memory == 0 && !internal_config.force_sockets) {
 		if (internal_config.no_hugetlbfs)
 			internal_config.memory = MEMSIZE_IF_NO_HUGE_PAGE;
+	}
+
+	if (eal_mem_win32api_init() < 0) {
+		rte_eal_init_alert("Cannot access Win32 memory management");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+
+	if (eal_mem_virt2iova_init() < 0) {
+		/* Non-fatal error if physical addresses are not required. */
+		RTE_LOG(WARNING, EAL, "Cannot access virt2phys driver, "
+			"PA will not be available\n");
+	}
+
+	if (rte_eal_memzone_init() < 0) {
+		rte_eal_init_alert("Cannot init memzone");
+		rte_errno = ENODEV;
+		return -1;
+	}
+
+	if (rte_eal_memory_init() < 0) {
+		rte_eal_init_alert("Cannot init memory");
+		rte_errno = ENOMEM;
+		return -1;
+	}
+
+	if (rte_eal_malloc_heap_init() < 0) {
+		rte_eal_init_alert("Cannot init malloc heap");
+		rte_errno = ENODEV;
+		return -1;
+	}
+
+	if (rte_eal_tailqs_init() < 0) {
+		rte_eal_init_alert("Cannot init tail queues for objects");
+		rte_errno = EFAULT;
+		return -1;
 	}
 
 	eal_thread_init_master(rte_config.master_lcore);

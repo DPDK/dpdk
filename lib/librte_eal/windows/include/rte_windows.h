@@ -23,6 +23,8 @@
 
 #include <basetsd.h>
 #include <psapi.h>
+#include <setupapi.h>
+#include <winioctl.h>
 
 /* Have GUIDs defined. */
 #ifndef INITGUID

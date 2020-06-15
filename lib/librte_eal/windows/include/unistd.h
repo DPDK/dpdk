@@ -9,4 +9,7 @@
  * as Microsoft libc does not contain unistd.h. This may be removed
  * in future releases.
  */
+
+#include <io.h>
+
 #endif /* _UNISTD_H_ */
