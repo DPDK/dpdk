@@ -7661,7 +7661,8 @@ ice_rem_adv_rule_by_id(struct ice_hw *hw,
 						list_itr->lkups_cnt, &rinfo);
 		}
 	}
-	return ICE_ERR_PARAM;
+	/* either list is empty or unable to find rule */
+	return ICE_ERR_DOES_NOT_EXIST;
 }
 
 /**
