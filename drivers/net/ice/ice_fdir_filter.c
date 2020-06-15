@@ -1676,9 +1676,9 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 					input_set |= ICE_INSET_IPV4_PROTO;
 
 				filter->input.ip.v4.dst_ip =
-					ipv4_spec->hdr.src_addr;
-				filter->input.ip.v4.src_ip =
 					ipv4_spec->hdr.dst_addr;
+				filter->input.ip.v4.src_ip =
+					ipv4_spec->hdr.src_addr;
 				filter->input.ip.v4.tos =
 					ipv4_spec->hdr.type_of_service;
 				filter->input.ip.v4.ttl =
@@ -1723,9 +1723,9 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 					input_set |= ICE_INSET_IPV6_HOP_LIMIT;
 
 				rte_memcpy(filter->input.ip.v6.dst_ip,
-					   ipv6_spec->hdr.src_addr, 16);
-				rte_memcpy(filter->input.ip.v6.src_ip,
 					   ipv6_spec->hdr.dst_addr, 16);
+				rte_memcpy(filter->input.ip.v6.src_ip,
+					   ipv6_spec->hdr.src_addr, 16);
 
 				vtc_flow_cpu =
 				      rte_be_to_cpu_32(ipv6_spec->hdr.vtc_flow);
@@ -1777,14 +1777,14 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				/* Get filter info */
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.ip.v4.dst_port =
-						tcp_spec->hdr.src_port;
-					filter->input.ip.v4.src_port =
 						tcp_spec->hdr.dst_port;
+					filter->input.ip.v4.src_port =
+						tcp_spec->hdr.src_port;
 				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
 					filter->input.ip.v6.dst_port =
-						tcp_spec->hdr.src_port;
-					filter->input.ip.v6.src_port =
 						tcp_spec->hdr.dst_port;
+					filter->input.ip.v6.src_port =
+						tcp_spec->hdr.src_port;
 				}
 			}
 			break;
@@ -1820,14 +1820,14 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				/* Get filter info */
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.ip.v4.dst_port =
-						udp_spec->hdr.src_port;
-					filter->input.ip.v4.src_port =
 						udp_spec->hdr.dst_port;
+					filter->input.ip.v4.src_port =
+						udp_spec->hdr.src_port;
 				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
 					filter->input.ip.v6.src_port =
-						udp_spec->hdr.dst_port;
-					filter->input.ip.v6.dst_port =
 						udp_spec->hdr.src_port;
+					filter->input.ip.v6.dst_port =
+						udp_spec->hdr.dst_port;
 				}
 			}
 			break;
@@ -1862,14 +1862,14 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				/* Get filter info */
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.ip.v4.dst_port =
-						sctp_spec->hdr.src_port;
-					filter->input.ip.v4.src_port =
 						sctp_spec->hdr.dst_port;
+					filter->input.ip.v4.src_port =
+						sctp_spec->hdr.src_port;
 				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
 					filter->input.ip.v6.dst_port =
-						sctp_spec->hdr.src_port;
-					filter->input.ip.v6.src_port =
 						sctp_spec->hdr.dst_port;
+					filter->input.ip.v6.src_port =
+						sctp_spec->hdr.src_port;
 				}
 			}
 			break;
