@@ -17,6 +17,7 @@
 #include <eal_filesystem.h>
 #include <eal_options.h>
 #include <eal_private.h>
+#include <rte_trace_point.h>
 
 #include "eal_windows.h"
 
@@ -221,7 +222,38 @@ rte_eal_init_alert(const char *msg)
 	RTE_LOG(ERR, EAL, "%s\n", msg);
 }
 
- /* Launch threads, called at application init(). */
+/* Stubs to enable EAL trace point compilation
+ * until eal_common_trace.c can be compiled.
+ */
+
+RTE_DEFINE_PER_LCORE(volatile int, trace_point_sz);
+RTE_DEFINE_PER_LCORE(void *, trace_mem);
+
+void
+__rte_trace_mem_per_thread_alloc(void)
+{
+}
+
+void
+__rte_trace_point_emit_field(size_t sz, const char *field,
+	const char *type)
+{
+	RTE_SET_USED(sz);
+	RTE_SET_USED(field);
+	RTE_SET_USED(type);
+}
+
+int
+__rte_trace_point_register(rte_trace_point_t *trace, const char *name,
+	void (*register_fn)(void))
+{
+	RTE_SET_USED(trace);
+	RTE_SET_USED(name);
+	RTE_SET_USED(register_fn);
+	return -ENOTSUP;
+}
+
+/* Launch threads, called at application init(). */
 int
 rte_eal_init(int argc, char **argv)
 {
