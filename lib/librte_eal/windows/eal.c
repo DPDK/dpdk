@@ -263,8 +263,11 @@ rte_eal_init(int argc, char **argv)
 
 	eal_log_level_parse(argc, argv);
 
-	/* create a map of all processors in the system */
-	eal_create_cpu_map();
+	if (eal_create_cpu_map() < 0) {
+		rte_eal_init_alert("Cannot discover CPU and NUMA.");
+		/* rte_errno is set */
+		return -1;
+	}
 
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");
