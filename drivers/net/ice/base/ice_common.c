@@ -493,6 +493,7 @@ ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
 enum ice_status ice_init_fltr_mgmt_struct(struct ice_hw *hw)
 {
 	struct ice_switch_info *sw;
+	enum ice_status status;
 
 	hw->switch_info = (struct ice_switch_info *)
 			  ice_malloc(hw, sizeof(*hw->switch_info));
@@ -504,27 +505,36 @@ enum ice_status ice_init_fltr_mgmt_struct(struct ice_hw *hw)
 
 	INIT_LIST_HEAD(&sw->vsi_list_map_head);
 
-	return ice_init_def_sw_recp(hw, &hw->switch_info->recp_list);
+	status = ice_init_def_sw_recp(hw, &hw->switch_info->recp_list);
+	if (status) {
+		ice_free(hw, hw->switch_info);
+		return status;
+	}
+	return ICE_SUCCESS;
 }
 
 /**
- * ice_cleanup_fltr_mgmt_struct - cleanup filter management list and locks
+ * ice_cleanup_fltr_mgmt_single - clears single filter mngt struct
  * @hw: pointer to the HW struct
+ * @sw: pointer to switch info struct for which function clears filters
  */
-void ice_cleanup_fltr_mgmt_struct(struct ice_hw *hw)
+static void
+ice_cleanup_fltr_mgmt_single(struct ice_hw *hw, struct ice_switch_info *sw)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	struct ice_vsi_list_map_info *v_pos_map;
 	struct ice_vsi_list_map_info *v_tmp_map;
 	struct ice_sw_recipe *recps;
 	u8 i;
+
+	if (!sw)
+		return;
 
 	LIST_FOR_EACH_ENTRY_SAFE(v_pos_map, v_tmp_map, &sw->vsi_list_map_head,
 				 ice_vsi_list_map_info, list_entry) {
 		LIST_DEL(&v_pos_map->list_entry);
 		ice_free(hw, v_pos_map);
 	}
-	recps = hw->switch_info->recp_list;
+	recps = sw->recp_list;
 	for (i = 0; i < ICE_MAX_NUM_RECIPES; i++) {
 		struct ice_recp_grp_entry *rg_entry, *tmprg_entry;
 
@@ -564,9 +574,18 @@ void ice_cleanup_fltr_mgmt_struct(struct ice_hw *hw)
 		if (recps[i].root_buf)
 			ice_free(hw, recps[i].root_buf);
 	}
-	ice_rm_all_sw_replay_rule_info(hw);
+	ice_rm_sw_replay_rule_info(hw, sw);
 	ice_free(hw, sw->recp_list);
 	ice_free(hw, sw);
+}
+
+/**
+ * ice_cleanup_all_fltr_mgmt - cleanup filter management list and locks
+ * @hw: pointer to the HW struct
+ */
+void ice_cleanup_fltr_mgmt_struct(struct ice_hw *hw)
+{
+	ice_cleanup_fltr_mgmt_single(hw, hw->switch_info);
 }
 
 /**
@@ -4104,18 +4123,32 @@ ice_cfg_vsi_lan(struct ice_port_info *pi, u16 vsi_handle, u16 tc_bitmap,
 }
 
 /**
+ * ice_is_main_vsi - checks whether the VSI is main VSI
+ * @hw: pointer to the HW struct
+ * @vsi_handle: VSI handle
+ *
+ * Checks whether the VSI is the main VSI (the first PF VSI created on
+ * given PF).
+ */
+static bool ice_is_main_vsi(struct ice_hw *hw, u16 vsi_handle)
+{
+	return vsi_handle == ICE_MAIN_VSI_HANDLE && hw->vsi_ctx[vsi_handle];
+}
+
+/**
  * ice_replay_pre_init - replay pre initialization
  * @hw: pointer to the HW struct
+ * @sw: pointer to switch info struct for which function initializes filters
  *
  * Initializes required config data for VSI, FD, ACL, and RSS before replay.
  */
-static enum ice_status ice_replay_pre_init(struct ice_hw *hw)
+static enum ice_status
+ice_replay_pre_init(struct ice_hw *hw, struct ice_switch_info *sw)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	u8 i;
 
 	/* Delete old entries from replay filter list head if there is any */
-	ice_rm_all_sw_replay_rule_info(hw);
+	ice_rm_sw_replay_rule_info(hw, sw);
 	/* In start of replay, move entries into replay_rules list, it
 	 * will allow adding rules entries back to filt_rules list,
 	 * which is operational list.
@@ -4138,14 +4171,16 @@ static enum ice_status ice_replay_pre_init(struct ice_hw *hw)
  */
 enum ice_status ice_replay_vsi(struct ice_hw *hw, u16 vsi_handle)
 {
+	struct ice_switch_info *sw = hw->switch_info;
+	struct ice_port_info *pi = hw->port_info;
 	enum ice_status status;
 
 	if (!ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
 
 	/* Replay pre-initialization if there is any */
-	if (vsi_handle == ICE_MAIN_VSI_HANDLE) {
-		status = ice_replay_pre_init(hw);
+	if (ice_is_main_vsi(hw, vsi_handle)) {
+		status = ice_replay_pre_init(hw, sw);
 		if (status)
 			return status;
 	}
@@ -4154,7 +4189,7 @@ enum ice_status ice_replay_vsi(struct ice_hw *hw, u16 vsi_handle)
 	if (status)
 		return status;
 	/* Replay per VSI all filters */
-	status = ice_replay_vsi_all_fltr(hw, vsi_handle);
+	status = ice_replay_vsi_all_fltr(hw, pi, vsi_handle);
 	if (!status)
 		status = ice_replay_vsi_agg(hw, vsi_handle);
 	return status;

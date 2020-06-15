@@ -485,7 +485,10 @@ ice_init_def_sw_recp(struct ice_hw *hw, struct ice_sw_recipe **recp_list);
 u16 ice_get_hw_vsi_num(struct ice_hw *hw, u16 vsi_handle);
 bool ice_is_vsi_valid(struct ice_hw *hw, u16 vsi_handle);
 
-enum ice_status ice_replay_vsi_all_fltr(struct ice_hw *hw, u16 vsi_handle);
+enum ice_status
+ice_replay_vsi_all_fltr(struct ice_hw *hw, struct ice_port_info *pi,
+			u16 vsi_handle);
+void ice_rm_sw_replay_rule_info(struct ice_hw *hw, struct ice_switch_info *sw);
 void ice_rm_all_sw_replay_rule_info(struct ice_hw *hw);
 bool ice_is_prof_rule(enum ice_sw_tunnel_type type);
 

@@ -7460,6 +7460,8 @@ enum ice_status ice_replay_all_fltr(struct ice_hw *hw)
 /**
  * ice_replay_vsi_fltr - Replay filters for requested VSI
  * @hw: pointer to the hardware structure
+ * @pi: pointer to port information structure
+ * @sw: pointer to switch info struct for which function replays filters
  * @vsi_handle: driver VSI handle
  * @recp_id: Recipe ID for which rules need to be replayed
  * @list_head: list for which filters need to be replayed
@@ -7468,7 +7470,8 @@ enum ice_status ice_replay_all_fltr(struct ice_hw *hw)
  * It is required to pass valid VSI handle.
  */
 static enum ice_status
-ice_replay_vsi_fltr(struct ice_hw *hw, u16 vsi_handle, u8 recp_id,
+ice_replay_vsi_fltr(struct ice_hw *hw, struct ice_port_info *pi,
+		    struct ice_switch_info *sw, u16 vsi_handle, u8 recp_id,
 		    struct LIST_HEAD_TYPE *list_head)
 {
 	struct ice_fltr_mgmt_list_entry *itr;
@@ -7478,7 +7481,7 @@ ice_replay_vsi_fltr(struct ice_hw *hw, u16 vsi_handle, u8 recp_id,
 
 	if (LIST_EMPTY(list_head))
 		return status;
-	recp_list = &hw->switch_info->recp_list[recp_id];
+	recp_list = &sw->recp_list[recp_id];
 	hw_vsi_id = ice_get_hw_vsi_num(hw, vsi_handle);
 
 	LIST_FOR_EACH_ENTRY(itr, list_head, ice_fltr_mgmt_list_entry,
@@ -7492,7 +7495,7 @@ ice_replay_vsi_fltr(struct ice_hw *hw, u16 vsi_handle, u8 recp_id,
 			if (f_entry.fltr_info.src_id == ICE_SRC_ID_VSI)
 				f_entry.fltr_info.src = hw_vsi_id;
 			status = ice_add_rule_internal(hw, recp_list,
-						       hw->port_info->lport,
+						       pi->lport,
 						       &f_entry);
 			if (status != ICE_SUCCESS)
 				goto end;
@@ -7512,7 +7515,7 @@ ice_replay_vsi_fltr(struct ice_hw *hw, u16 vsi_handle, u8 recp_id,
 			status = ice_add_vlan_internal(hw, recp_list, &f_entry);
 		else
 			status = ice_add_rule_internal(hw, recp_list,
-						       hw->port_info->lport,
+						       pi->lport,
 						       &f_entry);
 		if (status != ICE_SUCCESS)
 			goto end;
@@ -7557,11 +7560,14 @@ ice_replay_vsi_adv_rule(struct ice_hw *hw, u16 vsi_handle,
 /**
  * ice_replay_vsi_all_fltr - replay all filters stored in bookkeeping lists
  * @hw: pointer to the hardware structure
+ * @pi: pointer to port information structure
  * @vsi_handle: driver VSI handle
  *
  * Replays filters for requested VSI via vsi_handle.
  */
-enum ice_status ice_replay_vsi_all_fltr(struct ice_hw *hw, u16 vsi_handle)
+enum ice_status
+ice_replay_vsi_all_fltr(struct ice_hw *hw, struct ice_port_info *pi,
+			u16 vsi_handle)
 {
 	struct ice_switch_info *sw = hw->switch_info;
 	enum ice_status status;
@@ -7573,7 +7579,8 @@ enum ice_status ice_replay_vsi_all_fltr(struct ice_hw *hw, u16 vsi_handle)
 
 		head = &sw->recp_list[i].filt_replay_rules;
 		if (!sw->recp_list[i].adv_rule)
-			status = ice_replay_vsi_fltr(hw, vsi_handle, i, head);
+			status = ice_replay_vsi_fltr(hw, pi, sw, vsi_handle, i,
+						     head);
 		else
 			status = ice_replay_vsi_adv_rule(hw, vsi_handle, head);
 		if (status != ICE_SUCCESS)
@@ -7584,14 +7591,14 @@ enum ice_status ice_replay_vsi_all_fltr(struct ice_hw *hw, u16 vsi_handle)
 }
 
 /**
- * ice_rm_all_sw_replay_rule_info - deletes filter replay rules
+ * ice_rm_all_sw_replay_rule - helper function to delete filter replay rules
  * @hw: pointer to the HW struct
+ * @sw: pointer to switch info struct for which function removes filters
  *
- * Deletes the filter replay rules.
+ * Deletes the filter replay rules for given switch
  */
-void ice_rm_all_sw_replay_rule_info(struct ice_hw *hw)
+void ice_rm_sw_replay_rule_info(struct ice_hw *hw, struct ice_switch_info *sw)
 {
-	struct ice_switch_info *sw = hw->switch_info;
 	u8 i;
 
 	if (!sw)
@@ -7608,4 +7615,15 @@ void ice_rm_all_sw_replay_rule_info(struct ice_hw *hw)
 				ice_rem_adv_rule_info(hw, l_head);
 		}
 	}
+}
+
+/**
+ * ice_rm_all_sw_replay_rule_info - deletes filter replay rules
+ * @hw: pointer to the HW struct
+ *
+ * Deletes the filter replay rules.
+ */
+void ice_rm_all_sw_replay_rule_info(struct ice_hw *hw)
+{
+	ice_rm_sw_replay_rule_info(hw, hw->switch_info);
 }
