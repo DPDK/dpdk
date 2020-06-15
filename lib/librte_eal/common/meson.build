@@ -56,3 +56,7 @@ sources += files(
 	'rte_reciprocal.c',
 	'rte_service.c',
 )
+
+if is_linux
+	sources += files('eal_common_dynmem.c')
+endif

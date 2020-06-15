@@ -13,6 +13,8 @@
 #include <rte_lcore.h>
 #include <rte_memory.h>
 
+#include "eal_internal_cfg.h"
+
 /**
  * Structure storing internal configuration (per-lcore)
  */
@@ -317,6 +319,45 @@ void
 eal_memseg_list_populate(struct rte_memseg_list *msl, void *addr, int n_segs);
 
 /**
+ * Distribute available memory between MSLs.
+ *
+ * @return
+ *  0 on success, (-1) on failure.
+ */
+int
+eal_dynmem_memseg_lists_init(void);
+
+/**
+ * Preallocate hugepages for dynamic allocation.
+ *
+ * @return
+ *  0 on success, (-1) on failure.
+ */
+int
+eal_dynmem_hugepage_init(void);
+
+/**
+ * Given the list of hugepage sizes and the number of pages thereof,
+ * calculate the best number of pages of each size to fulfill the request
+ * for RAM on each NUMA node.
+ *
+ * @param memory
+ *  Amounts of memory requested for each NUMA node of RTE_MAX_NUMA_NODES.
+ * @param hp_info
+ *  Information about hugepages of different size.
+ * @param hp_used
+ *  Receives information about used hugepages of each size.
+ * @param num_hp_info
+ *  Number of elements in hp_info and hp_used.
+ * @return
+ *  0 on success, (-1) on failure.
+ */
+int
+eal_dynmem_calc_num_pages_per_socket(
+		uint64_t *memory, struct hugepage_info *hp_info,
+		struct hugepage_info *hp_used, unsigned int num_hp_info);
+
+/**
  * Get cpu core_id.
  *
  * This function is private to the EAL.
@@ -595,7 +636,7 @@ void *
 eal_mem_reserve(void *requested_addr, size_t size, int flags);
 
 /**
- * Free memory obtained by eal_mem_reserve() or eal_mem_alloc().
+ * Free memory obtained by eal_mem_reserve() and possibly allocated.
  *
  * If *virt* and *size* describe a part of the reserved region,
  * only this part of the region is freed (accurately up to the system

@@ -316,14 +316,6 @@ get_mem_amount(uint64_t page_sz, uint64_t max_mem)
 }
 
 static int
-memseg_list_init(struct rte_memseg_list *msl, uint64_t page_sz,
-		int n_segs, int socket_id, int type_msl_idx)
-{
-	return eal_memseg_list_init(
-		msl, page_sz, n_segs, socket_id, type_msl_idx, false);
-}
-
-static int
 memseg_list_alloc(struct rte_memseg_list *msl)
 {
 	int flags = 0;
@@ -419,8 +411,8 @@ memseg_primary_init(void)
 					cur_max_mem);
 			n_segs = cur_mem / hugepage_sz;
 
-			if (memseg_list_init(msl, hugepage_sz, n_segs,
-					0, type_msl_idx))
+			if (eal_memseg_list_init(msl, hugepage_sz, n_segs,
+					0, type_msl_idx, false))
 				return -1;
 
 			total_segs += msl->memseg_arr.len;

@@ -209,6 +209,7 @@ F: lib/librte_eal/include/rte_fbarray.h
 F: lib/librte_eal/include/rte_mem*
 F: lib/librte_eal/include/rte_malloc.h
 F: lib/librte_eal/common/*malloc*
+F: lib/librte_eal/common/eal_common_dynmem.c
 F: lib/librte_eal/common/eal_common_fbarray.c
 F: lib/librte_eal/common/eal_common_mem*
 F: lib/librte_eal/common/eal_hugepages.h
