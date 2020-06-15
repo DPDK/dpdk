@@ -268,6 +268,8 @@ if is_windows
 	if cc.get_id() == 'gcc'
 		add_project_arguments('-D__USE_MINGW_ANSI_STDIO', language: 'c')
 	endif
+
+	add_project_link_arguments('-ladvapi32', language: 'c')
 endif
 
 if get_option('b_lto')

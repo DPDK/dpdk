@@ -334,6 +334,10 @@ F: lib/librte_eal/windows/
 F: lib/librte_eal/rte_eal_exports.def
 F: doc/guides/windows_gsg/
 
+Windows memory allocation
+M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
+F: lib/librte_eal/windows/eal_hugepages.c
+
 
 Core Libraries
 --------------

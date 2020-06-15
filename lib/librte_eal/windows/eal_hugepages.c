@@ -1,0 +1,108 @@
+#include <rte_errno.h>
+#include <rte_log.h>
+#include <rte_memory.h>
+#include <rte_memzone.h>
+#include <rte_os.h>
+
+#include "eal_filesystem.h"
+#include "eal_hugepages.h"
+#include "eal_internal_cfg.h"
+#include "eal_windows.h"
+
+static int
+hugepage_claim_privilege(void)
+{
+	static const wchar_t privilege[] = L"SeLockMemoryPrivilege";
+
+	HANDLE token;
+	LUID luid;
+	TOKEN_PRIVILEGES tp;
+	int ret = -1;
+
+	if (!OpenProcessToken(GetCurrentProcess(),
+			TOKEN_ADJUST_PRIVILEGES, &token)) {
+		RTE_LOG_WIN32_ERR("OpenProcessToken()");
+		return -1;
+	}
+
+	if (!LookupPrivilegeValueW(NULL, privilege, &luid)) {
+		RTE_LOG_WIN32_ERR("LookupPrivilegeValue(\"%S\")", privilege);
+		goto exit;
+	}
+
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = luid;
+	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+	if (!AdjustTokenPrivileges(
+			token, FALSE, &tp, sizeof(tp), NULL, NULL)) {
+		RTE_LOG_WIN32_ERR("AdjustTokenPrivileges()");
+		goto exit;
+	}
+
+	ret = 0;
+
+exit:
+	CloseHandle(token);
+
+	return ret;
+}
+
+static int
+hugepage_info_init(void)
+{
+	struct hugepage_info *hpi;
+	unsigned int socket_id;
+	int ret = 0;
+
+	/* Only one hugepage size available on Windows. */
+	internal_config.num_hugepage_sizes = 1;
+	hpi = &internal_config.hugepage_info[0];
+
+	hpi->hugepage_sz = GetLargePageMinimum();
+	if (hpi->hugepage_sz == 0)
+		return -ENOTSUP;
+
+	/* Assume all memory on each NUMA node available for hugepages,
+	 * because Windows neither advertises additional limits,
+	 * nor provides an API to query them.
+	 */
+	for (socket_id = 0; socket_id < rte_socket_count(); socket_id++) {
+		ULONGLONG bytes;
+		unsigned int numa_node;
+
+		numa_node = eal_socket_numa_node(socket_id);
+		if (!GetNumaAvailableMemoryNodeEx(numa_node, &bytes)) {
+			RTE_LOG_WIN32_ERR("GetNumaAvailableMemoryNodeEx(%u)",
+				numa_node);
+			continue;
+		}
+
+		hpi->num_pages[socket_id] = bytes / hpi->hugepage_sz;
+		RTE_LOG(DEBUG, EAL,
+			"Found %u hugepages of %zu bytes on socket %u\n",
+			hpi->num_pages[socket_id], hpi->hugepage_sz, socket_id);
+	}
+
+	/* No hugepage filesystem on Windows. */
+	hpi->lock_descriptor = -1;
+	memset(hpi->hugedir, 0, sizeof(hpi->hugedir));
+
+	return ret;
+}
+
+int
+eal_hugepage_info_init(void)
+{
+	if (hugepage_claim_privilege() < 0) {
+		RTE_LOG(ERR, EAL, "Cannot claim hugepage privilege\n");
+		return -1;
+	}
+
+	if (hugepage_info_init() < 0) {
+		RTE_LOG(ERR, EAL, "Cannot get hugepage information\n");
+		return -1;
+	}
+
+	return 0;
+}
