@@ -1828,10 +1828,16 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 	if (opc == ice_aqc_opc_list_dev_caps) {
 		dev_p = &hw->dev_caps;
 		caps = &dev_p->common_cap;
+
+		ice_memset(dev_p, 0, sizeof(*dev_p), ICE_NONDMA_MEM);
+
 		prefix = "dev cap";
 	} else if (opc == ice_aqc_opc_list_func_caps) {
 		func_p = &hw->func_caps;
 		caps = &func_p->common_cap;
+
+		ice_memset(func_p, 0, sizeof(*func_p), ICE_NONDMA_MEM);
+
 		prefix = "func cap";
 	} else {
 		ice_debug(hw, ICE_DBG_INIT, "wrong opcode\n");
