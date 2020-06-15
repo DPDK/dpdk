@@ -182,7 +182,9 @@ unwind_alloc_rq_bufs:
 	i--;
 	for (; i >= 0; i--)
 		ice_free_dma_mem(hw, &cq->rq.r.rq_bi[i]);
+	cq->rq.r.rq_bi = NULL;
 	ice_free(hw, cq->rq.dma_head);
+	cq->rq.dma_head = NULL;
 
 	return ICE_ERR_NO_MEMORY;
 }
@@ -220,7 +222,9 @@ unwind_alloc_sq_bufs:
 	i--;
 	for (; i >= 0; i--)
 		ice_free_dma_mem(hw, &cq->sq.r.sq_bi[i]);
+	cq->sq.r.sq_bi = NULL;
 	ice_free(hw, cq->sq.dma_head);
+	cq->sq.dma_head = NULL;
 
 	return ICE_ERR_NO_MEMORY;
 }
@@ -279,6 +283,24 @@ ice_cfg_rq_regs(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 	return ICE_SUCCESS;
 }
 
+#define ICE_FREE_CQ_BUFS(hw, qi, ring)					\
+do {									\
+	/* free descriptors */						\
+	if ((qi)->ring.r.ring##_bi) {					\
+		int i;							\
+									\
+		for (i = 0; i < (qi)->num_##ring##_entries; i++)	\
+			if ((qi)->ring.r.ring##_bi[i].pa)		\
+				ice_free_dma_mem((hw),			\
+					&(qi)->ring.r.ring##_bi[i]);	\
+	}								\
+	/* free the buffer info list */					\
+	if ((qi)->ring.cmd_buf)						\
+		ice_free(hw, (qi)->ring.cmd_buf);			\
+	/* free DMA head */						\
+	ice_free(hw, (qi)->ring.dma_head);				\
+} while (0)
+
 /**
  * ice_init_sq - main initialization routine for Control ATQ
  * @hw: pointer to the hardware structure
@@ -334,6 +356,7 @@ static enum ice_status ice_init_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 	goto init_ctrlq_exit;
 
 init_ctrlq_free_rings:
+	ICE_FREE_CQ_BUFS(hw, cq, sq);
 	ice_free_cq_ring(hw, &cq->sq);
 
 init_ctrlq_exit:
@@ -395,26 +418,12 @@ static enum ice_status ice_init_rq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 	goto init_ctrlq_exit;
 
 init_ctrlq_free_rings:
+	ICE_FREE_CQ_BUFS(hw, cq, rq);
 	ice_free_cq_ring(hw, &cq->rq);
 
 init_ctrlq_exit:
 	return ret_code;
 }
-
-#define ICE_FREE_CQ_BUFS(hw, qi, ring)					\
-do {									\
-	int i;								\
-	/* free descriptors */						\
-	for (i = 0; i < (qi)->num_##ring##_entries; i++)		\
-		if ((qi)->ring.r.ring##_bi[i].pa)			\
-			ice_free_dma_mem((hw),				\
-					 &(qi)->ring.r.ring##_bi[i]);	\
-	/* free the buffer info list */					\
-	if ((qi)->ring.cmd_buf)						\
-		ice_free(hw, (qi)->ring.cmd_buf);			\
-	/* free DMA head */						\
-	ice_free(hw, (qi)->ring.dma_head);				\
-} while (0)
 
 /**
  * ice_shutdown_sq - shutdown the Control ATQ
