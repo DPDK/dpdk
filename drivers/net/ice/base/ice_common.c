@@ -536,6 +536,7 @@ enum ice_status ice_init_fltr_mgmt_struct(struct ice_hw *hw)
 		return ICE_ERR_NO_MEMORY;
 
 	INIT_LIST_HEAD(&sw->vsi_list_map_head);
+	sw->prof_res_bm_init = 0;
 
 	status = ice_init_def_sw_recp(hw, &hw->switch_info->recp_list);
 	if (status) {
