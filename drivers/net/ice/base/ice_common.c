@@ -410,29 +410,19 @@ ice_aq_get_link_info(struct ice_port_info *pi, bool ena_lse,
 }
 
 /**
- * ice_aq_set_mac_cfg
+ * ice_fill_tx_timer_and_fc_thresh
  * @hw: pointer to the HW struct
- * @max_frame_size: Maximum Frame Size to be supported
- * @cd: pointer to command details structure or NULL
+ * @cmd: pointer to MAC cfg structure
  *
- * Set MAC configuration (0x0603)
+ * Add Tx timer and FC refresh threshold info to Set MAC Config AQ command
+ * descriptor
  */
-enum ice_status
-ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
+static void
+ice_fill_tx_timer_and_fc_thresh(struct ice_hw *hw,
+				struct ice_aqc_set_mac_cfg *cmd)
 {
-	u16 fc_threshold_val, tx_timer_val;
-	struct ice_aqc_set_mac_cfg *cmd;
-	struct ice_aq_desc desc;
-	u32 reg_val;
-
-	cmd = &desc.params.set_mac_cfg;
-
-	if (max_frame_size == 0)
-		return ICE_ERR_PARAM;
-
-	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_mac_cfg);
-
-	cmd->max_frame_size = CPU_TO_LE16(max_frame_size);
+	u16 fc_thres_val, tx_timer_val;
+	u32 val;
 
 	/* We read back the transmit timer and fc threshold value of
 	 * LFC. Thus, we will use index =
@@ -444,17 +434,42 @@ ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
 #define IDX_OF_LFC PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_MAX_INDEX
 
 	/* Retrieve the transmit timer */
-	reg_val = rd32(hw,
-		       PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA(IDX_OF_LFC));
-	tx_timer_val = reg_val &
+	val = rd32(hw, PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA(IDX_OF_LFC));
+	tx_timer_val = val &
 		PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_HSEC_CTL_TX_PAUSE_QUANTA_M;
 	cmd->tx_tmr_value = CPU_TO_LE16(tx_timer_val);
 
 	/* Retrieve the fc threshold */
-	reg_val = rd32(hw,
-		       PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER(IDX_OF_LFC));
-	fc_threshold_val = reg_val & MAKEMASK(0xFFFF, 0);
-	cmd->fc_refresh_threshold = CPU_TO_LE16(fc_threshold_val);
+	val = rd32(hw, PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER(IDX_OF_LFC));
+	fc_thres_val = val & PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER_M;
+
+	cmd->fc_refresh_threshold = CPU_TO_LE16(fc_thres_val);
+}
+
+/**
+ * ice_aq_set_mac_cfg
+ * @hw: pointer to the HW struct
+ * @max_frame_size: Maximum Frame Size to be supported
+ * @cd: pointer to command details structure or NULL
+ *
+ * Set MAC configuration (0x0603)
+ */
+enum ice_status
+ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
+{
+	struct ice_aqc_set_mac_cfg *cmd;
+	struct ice_aq_desc desc;
+
+	cmd = &desc.params.set_mac_cfg;
+
+	if (max_frame_size == 0)
+		return ICE_ERR_PARAM;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_mac_cfg);
+
+	cmd->max_frame_size = CPU_TO_LE16(max_frame_size);
+
+	ice_fill_tx_timer_and_fc_thresh(hw, cmd);
 
 	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
 }
@@ -719,6 +734,10 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	status = ice_aq_manage_mac_read(hw, mac_buf, mac_buf_len, NULL);
 	ice_free(hw, mac_buf);
 
+	if (status)
+		goto err_unroll_fltr_mgmt_struct;
+	/* enable jumbo frame support at MAC level */
+	status = ice_aq_set_mac_cfg(hw, ICE_AQ_SET_MAC_FRAME_SIZE_MAX, NULL);
 	if (status)
 		goto err_unroll_fltr_mgmt_struct;
 	/* Obtain counter base index which would be used by flow director */
