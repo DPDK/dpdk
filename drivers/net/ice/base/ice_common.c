@@ -291,7 +291,7 @@ static enum ice_media_type ice_get_media_type(struct ice_port_info *pi)
 		case ICE_PHY_TYPE_LOW_100G_AUI4:
 		case ICE_PHY_TYPE_LOW_100G_CAUI4:
 			if (ice_is_media_cage_present(pi))
-				return ICE_MEDIA_DA;
+				return ICE_MEDIA_AUI;
 			/* fall-through */
 		case ICE_PHY_TYPE_LOW_1000BASE_KX:
 		case ICE_PHY_TYPE_LOW_2500BASE_KX:
@@ -311,8 +311,9 @@ static enum ice_media_type ice_get_media_type(struct ice_port_info *pi)
 	} else {
 		switch (hw_link_info->phy_type_high) {
 		case ICE_PHY_TYPE_HIGH_100G_AUI2:
+		case ICE_PHY_TYPE_HIGH_100G_CAUI2:
 			if (ice_is_media_cage_present(pi))
-				return ICE_MEDIA_DA;
+				return ICE_MEDIA_AUI;
 			/* fall-through */
 		case ICE_PHY_TYPE_HIGH_100GBASE_KR2_PAM4:
 			return ICE_MEDIA_BACKPLANE;
