@@ -3856,8 +3856,8 @@ ice_sched_add_rl_profile(struct ice_port_info *pi,
 	hw = pi->hw;
 	LIST_FOR_EACH_ENTRY(rl_prof_elem, &pi->rl_prof_list[layer_num],
 			    ice_aqc_rl_profile_info, list_entry)
-		if (rl_prof_elem->profile.flags == profile_type &&
-		    rl_prof_elem->bw == bw)
+		if ((rl_prof_elem->profile.flags & ICE_AQC_RL_PROFILE_TYPE_M) ==
+		    profile_type && rl_prof_elem->bw == bw)
 			/* Return existing profile ID info */
 			return rl_prof_elem;
 
@@ -4088,7 +4088,8 @@ ice_sched_rm_rl_profile(struct ice_port_info *pi, u8 layer_num, u8 profile_type,
 	/* Check the existing list for RL profile */
 	LIST_FOR_EACH_ENTRY(rl_prof_elem, &pi->rl_prof_list[layer_num],
 			    ice_aqc_rl_profile_info, list_entry)
-		if (rl_prof_elem->profile.flags == profile_type &&
+		if ((rl_prof_elem->profile.flags & ICE_AQC_RL_PROFILE_TYPE_M) ==
+		    profile_type &&
 		    LE16_TO_CPU(rl_prof_elem->profile.profile_id) ==
 		    profile_id) {
 			if (rl_prof_elem->prof_id_ref)
@@ -4250,8 +4251,8 @@ ice_sched_set_node_bw(struct ice_port_info *pi, struct ice_sched_node *node,
 		return ICE_SUCCESS;
 
 	return ice_sched_rm_rl_profile(pi, layer_num,
-				       rl_prof_info->profile.flags,
-				       old_id);
+				       rl_prof_info->profile.flags &
+				       ICE_AQC_RL_PROFILE_TYPE_M, old_id);
 }
 
 /**
