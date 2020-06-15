@@ -63,7 +63,7 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* ICE_FLOW_FIELD_IDX_C_VLAN */
 	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_VLAN, 14, ICE_FLOW_FLD_SZ_VLAN),
 	/* ICE_FLOW_FIELD_IDX_ETH_TYPE */
-	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ETH, 12, ICE_FLOW_FLD_SZ_ETH_TYPE),
+	ICE_FLOW_FLD_INFO(ICE_FLOW_SEG_HDR_ETH, 0, ICE_FLOW_FLD_SZ_ETH_TYPE),
 	/* IPv4 / IPv6 */
 	/* ICE_FLOW_FIELD_IDX_IPV4_DSCP */
 	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_IPV4, 0, ICE_FLOW_FLD_SZ_IP_DSCP,
@@ -532,6 +532,17 @@ static const u32 ice_ptypes_nat_t_esp[] = {
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 };
 
+static const u32 ice_ptypes_mac_non_ip_ofos[] = {
+	0x00000846, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00400000, 0x03FFF000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+};
+
 /* Manage parameters and info. used during the creation of a flow profile */
 struct ice_flow_prof_params {
 	enum ice_block blk;
@@ -683,12 +694,6 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				       ICE_FLOW_PTYPE_MAX);
 		}
 
-		if (hdrs & ICE_FLOW_SEG_HDR_PPPOE) {
-			src = (const ice_bitmap_t *)ice_ptypes_pppoe;
-			ice_and_bitmap(params->ptypes, params->ptypes, src,
-				       ICE_FLOW_PTYPE_MAX);
-		}
-
 		if (hdrs & ICE_FLOW_SEG_HDR_IPV4) {
 			src = !i ? (const ice_bitmap_t *)ice_ptypes_ipv4_ofos :
 				(const ice_bitmap_t *)ice_ptypes_ipv4_il;
@@ -729,6 +734,16 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				ice_and_bitmap(params->ptypes, params->ptypes,
 					       src, ICE_FLOW_PTYPE_MAX);
 			}
+		}
+
+		if (hdrs & ICE_FLOW_SEG_HDR_ETH_NON_IP) {
+			src = (const ice_bitmap_t *)ice_ptypes_mac_non_ip_ofos;
+			ice_and_bitmap(params->ptypes, params->ptypes,
+				       src, ICE_FLOW_PTYPE_MAX);
+		} else if (hdrs & ICE_FLOW_SEG_HDR_PPPOE) {
+			src = (const ice_bitmap_t *)ice_ptypes_pppoe;
+			ice_and_bitmap(params->ptypes, params->ptypes, src,
+				       ICE_FLOW_PTYPE_MAX);
 		}
 
 		if (hdrs & ICE_FLOW_SEG_HDR_ICMP) {
