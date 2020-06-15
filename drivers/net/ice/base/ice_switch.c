@@ -5651,12 +5651,12 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
  * ice_add_sw_recipe - function to call AQ calls to create switch recipe
  * @hw: pointer to hardware structure
  * @rm: recipe management list entry
- * @match_tun: if field vector index for tunnel needs to be programmed
- * @profiles: bitmap of profiles that will be assocated.
+ * @match_tun_mask: tunnel mask that needs to be programmed
+ * @profiles: bitmap of profiles that will be associated.
  */
 static enum ice_status
 ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
-		  bool match_tun, ice_bitmap_t *profiles)
+		  u16 match_tun_mask, ice_bitmap_t *profiles)
 {
 	ice_declare_bitmap(result_idx_bm, ICE_MAX_FV_WORDS);
 	struct ice_aqc_recipe_data_elem *tmp;
@@ -5874,10 +5874,10 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		/* To differentiate among different UDP tunnels, a meta data ID
 		 * flag is used.
 		 */
-		if (match_tun) {
+		if (match_tun_mask) {
 			buf[recps].content.lkup_indx[i] = ICE_TUN_FLAG_FV_IND;
 			buf[recps].content.mask[i] =
-				CPU_TO_LE16(ICE_TUN_FLAG_MASK);
+				CPU_TO_LE16(match_tun_mask);
 		}
 
 		recps++;
@@ -6038,10 +6038,17 @@ static bool ice_tun_type_match_word(enum ice_sw_tunnel_type tun_type, u16 *mask)
 {
 	switch (tun_type) {
 	case ICE_SW_TUN_VXLAN_GPE:
+	case ICE_SW_TUN_GENEVE:
+	case ICE_SW_TUN_VXLAN:
 	case ICE_SW_TUN_NVGRE:
 	case ICE_SW_TUN_UDP:
 	case ICE_ALL_TUNNELS:
 		*mask = ICE_TUN_FLAG_MASK;
+		return true;
+
+	case ICE_SW_TUN_GENEVE_VLAN:
+	case ICE_SW_TUN_VXLAN_VLAN:
+		*mask = ICE_TUN_FLAG_MASK & ~ICE_TUN_FLAG_VLAN_MASK;
 		return true;
 
 	default:
@@ -6101,7 +6108,9 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		break;
 	case ICE_SW_TUN_VXLAN_GPE:
 	case ICE_SW_TUN_GENEVE:
+	case ICE_SW_TUN_GENEVE_VLAN:
 	case ICE_SW_TUN_VXLAN:
+	case ICE_SW_TUN_VXLAN_VLAN:
 	case ICE_SW_TUN_UDP:
 	case ICE_SW_TUN_GTP:
 		prof_type = ICE_PROF_TUN_UDP;
@@ -6209,7 +6218,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	struct ice_sw_fv_list_entry *tmp;
 	enum ice_status status = ICE_SUCCESS;
 	struct ice_sw_recipe *rm;
-	bool match_tun = false;
+	u16 match_tun_mask = 0;
 	u16 mask;
 	u8 i;
 
@@ -6272,9 +6281,9 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	 * differentiate different tunnel types. A separate recipe needs to be
 	 * used for the metadata.
 	 */
-	if (ice_tun_type_match_word(rinfo->tun_type,  &mask) &&
+	if (ice_tun_type_match_word(rinfo->tun_type, &mask) &&
 	    rm->n_grp_count > 1)
-		match_tun = mask;
+		match_tun_mask = mask;
 
 	/* set the recipe priority if specified */
 	rm->priority = (u8)rinfo->priority;
@@ -6329,7 +6338,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 
 	rm->tun_type = rinfo->tun_type;
 	/* Recipe we need does not exist, add a recipe */
-	status = ice_add_sw_recipe(hw, rm, match_tun, profiles);
+	status = ice_add_sw_recipe(hw, rm, match_tun_mask, profiles);
 	if (status)
 		goto err_unroll;
 
@@ -6510,6 +6519,7 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		*offsets = dummy_udp_gtp_packet_offsets;
 		return;
 	}
+
 	if (tun_type == ICE_SW_TUN_PPPOE && ipv6) {
 		*pkt = dummy_pppoe_ipv6_packet;
 		*pkt_len = sizeof(dummy_pppoe_ipv6_packet);
@@ -6544,7 +6554,9 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 	}
 
 	if (tun_type == ICE_SW_TUN_VXLAN || tun_type == ICE_SW_TUN_GENEVE ||
-	    tun_type == ICE_SW_TUN_VXLAN_GPE || tun_type == ICE_SW_TUN_UDP) {
+	    tun_type == ICE_SW_TUN_VXLAN_GPE || tun_type == ICE_SW_TUN_UDP ||
+	    tun_type == ICE_SW_TUN_GENEVE_VLAN ||
+	    tun_type == ICE_SW_TUN_VXLAN_VLAN) {
 		if (tcp) {
 			*pkt = dummy_udp_tun_tcp_packet;
 			*pkt_len = sizeof(dummy_udp_tun_tcp_packet);
@@ -6751,12 +6763,14 @@ ice_fill_adv_packet_tun(struct ice_hw *hw, enum ice_sw_tunnel_type tun_type,
 	case ICE_SW_TUN_AND_NON_TUN:
 	case ICE_SW_TUN_VXLAN_GPE:
 	case ICE_SW_TUN_VXLAN:
+	case ICE_SW_TUN_VXLAN_VLAN:
 	case ICE_SW_TUN_UDP:
 		if (!ice_get_open_tunnel_port(hw, TNL_VXLAN, &open_port))
 			return ICE_ERR_CFG;
 		break;
 
 	case ICE_SW_TUN_GENEVE:
+	case ICE_SW_TUN_GENEVE_VLAN:
 		if (!ice_get_open_tunnel_port(hw, TNL_GENEVE, &open_port))
 			return ICE_ERR_CFG;
 		break;
@@ -6863,13 +6877,6 @@ ice_adv_add_update_vsi_list(struct ice_hw *hw,
 	     new_fltr->sw_act.fltr_act == ICE_FWD_TO_QGRP) &&
 	    (cur_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI ||
 	     cur_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI_LIST))
-		return ICE_ERR_NOT_IMPL;
-
-	/* Workaround fix for unexpected rule deletion by kernel PF
-	 * during VF reset.
-	 */
-	if (new_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI &&
-	    cur_fltr->sw_act.fltr_act == ICE_FWD_TO_VSI)
 		return ICE_ERR_NOT_IMPL;
 
 	if (m_entry->vsi_count < 2 && !m_entry->vsi_list_info) {
