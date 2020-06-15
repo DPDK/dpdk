@@ -239,13 +239,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 			  u8 *pkt, bool frag, bool tun);
 enum ice_status
 ice_fdir_get_prgm_pkt(struct ice_fdir_fltr *input, u8 *pkt, bool frag);
-enum ice_status
-ice_add_del_fdir(struct ice_hw *hw, struct ice_fdir_fltr *input, bool add);
 int ice_get_fdir_cnt_all(struct ice_hw *hw);
 bool ice_fdir_is_dup_fltr(struct ice_hw *hw, struct ice_fdir_fltr *input);
-enum ice_status
-ice_update_fdir_list_entry(struct ice_hw *hw, struct ice_fdir_fltr *input,
-			   u16 sw_idx);
 bool ice_fdir_has_frag(enum ice_fltr_ptype flow);
 struct ice_fdir_fltr *
 ice_fdir_find_fltr_by_idx(struct ice_hw *hw, u32 fltr_idx);
