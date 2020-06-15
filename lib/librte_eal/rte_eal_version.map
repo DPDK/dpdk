@@ -387,3 +387,12 @@ EXPERIMENTAL {
 	rte_trace_regexp;
 	rte_trace_save;
 };
+
+INTERNAL {
+	global:
+
+	rte_mem_lock;
+	rte_mem_map;
+	rte_mem_page_size;
+	rte_mem_unmap;
+};

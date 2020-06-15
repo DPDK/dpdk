@@ -77,6 +77,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += rte_reciprocal.c
 
 # from unix dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_file.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_unix_memory.c
 
 # from arch dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += rte_cpuflags.c

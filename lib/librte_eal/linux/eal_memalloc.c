@@ -630,7 +630,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 mapped:
 	munmap(addr, alloc_sz);
 unmapped:
-	flags = MAP_FIXED;
+	flags = EAL_RESERVE_FORCE_ADDRESS;
 	new_addr = eal_get_virtual_area(addr, &alloc_sz, alloc_sz, 0, flags);
 	if (new_addr != addr) {
 		if (new_addr != NULL)
@@ -687,8 +687,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		return -1;
 	}
 
-	if (madvise(ms->addr, ms->len, MADV_DONTDUMP) != 0)
-		RTE_LOG(DEBUG, EAL, "madvise failed: %s\n", strerror(errno));
+	eal_mem_set_dump(ms->addr, ms->len, false);
 
 	exit_early = false;
 

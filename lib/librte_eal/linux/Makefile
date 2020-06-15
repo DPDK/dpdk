@@ -84,6 +84,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += rte_reciprocal.c
 
 # from unix dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_file.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_unix_memory.c
 
 # from arch dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += rte_cpuflags.c
