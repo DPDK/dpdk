@@ -7,47 +7,6 @@
 
 #include "ice_common.h"
 
-/* Flow Director (FD) Filter Programming descriptor */
-struct ice_fd_fltr_desc_ctx {
-	u32 fdid;
-	u16 qindex;
-	u16 cnt_index;
-	u16 fd_vsi;
-	u16 flex_val;
-	u8 comp_q;
-	u8 comp_report;
-	u8 fd_space;
-	u8 cnt_ena;
-	u8 evict_ena;
-	u8 toq;
-	u8 toq_prio;
-	u8 dpu_recipe;
-	u8 drop;
-	u8 flex_prio;
-	u8 flex_mdid;
-	u8 dtype;
-	u8 pcmd;
-	u8 desc_prof_prio;
-	u8 desc_prof;
-	u8 swap;
-	u8 fdid_prio;
-	u8 fdid_mdid;
-};
-
-enum ice_status ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id);
-enum ice_status ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id);
-void ice_set_dflt_val_fd_desc(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx);
-enum ice_status
-ice_alloc_fd_guar_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
-enum ice_status
-ice_free_fd_guar_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr);
-enum ice_status
-ice_alloc_fd_shrd_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
-enum ice_status
-ice_free_fd_shrd_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr);
-enum ice_status ice_clear_vsi_fd_table(struct ice_hw *hw, u16 vsi_num);
-enum ice_status ice_clear_pf_fd_table(struct ice_hw *hw);
-
 #define ICE_FDIR_IP_PROTOCOLS
 #define ICE_IP_PROTO_TCP		6
 #define ICE_IP_PROTO_UDP		17
@@ -109,6 +68,33 @@ enum ice_fltr_prgm_desc_fd_status {
 	ICE_FLTR_PRGM_DESC_FD_STATUS_FD_ID,
 	ICE_FLTR_PRGM_DESC_FD_STATUS_FD_ID_4FLEX_BYTES,
 	ICE_FLTR_PRGM_DESC_FD_STATUS_8FLEX_BYTES,
+};
+
+/* Flow Director (FD) Filter Programming descriptor */
+struct ice_fd_fltr_desc_ctx {
+	u32 fdid;
+	u16 qindex;
+	u16 cnt_index;
+	u16 fd_vsi;
+	u16 flex_val;
+	u8 comp_q;
+	u8 comp_report;
+	u8 fd_space;
+	u8 cnt_ena;
+	u8 evict_ena;
+	u8 toq;
+	u8 toq_prio;
+	u8 dpu_recipe;
+	u8 drop;
+	u8 flex_prio;
+	u8 flex_mdid;
+	u8 dtype;
+	u8 pcmd;
+	u8 desc_prof_prio;
+	u8 desc_prof;
+	u8 swap;
+	u8 fdid_prio;
+	u8 fdid_mdid;
 };
 
 #define ICE_FLTR_PRGM_FLEX_WORD_SIZE	sizeof(__be16)
@@ -207,7 +193,7 @@ struct ice_fdir_fltr {
 	bool acl_fltr;
 };
 
-/* Dummy packet filter definition structure. */
+/* Dummy packet filter definition structure */
 struct ice_fdir_base_pkt {
 	enum ice_fltr_ptype flow;
 	u16 pkt_len;
@@ -216,6 +202,19 @@ struct ice_fdir_base_pkt {
 	const u8 *tun_pkt;
 };
 
+enum ice_status ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id);
+enum ice_status ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id);
+void ice_set_dflt_val_fd_desc(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx);
+enum ice_status
+ice_alloc_fd_guar_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
+enum ice_status
+ice_free_fd_guar_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr);
+enum ice_status
+ice_alloc_fd_shrd_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
+enum ice_status
+ice_free_fd_shrd_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr);
+enum ice_status ice_clear_vsi_fd_table(struct ice_hw *hw, u16 vsi_num);
+enum ice_status ice_clear_pf_fd_table(struct ice_hw *hw);
 void
 ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		       struct ice_fltr_desc *fdesc, bool add);
