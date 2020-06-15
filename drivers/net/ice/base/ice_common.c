@@ -4357,6 +4357,10 @@ enum ice_fw_modes ice_get_fw_mode(struct ice_hw *hw)
  */
 bool ice_fw_supports_link_override(struct ice_hw *hw)
 {
+	/* Currently, only supported for E810 devices */
+	if (hw->mac_type != ICE_MAC_E810)
+		return false;
+
 	if (hw->api_maj_ver == ICE_FW_API_LINK_OVERRIDE_MAJ) {
 		if (hw->api_min_ver > ICE_FW_API_LINK_OVERRIDE_MIN)
 			return true;
