@@ -4012,7 +4012,18 @@ ice_ena_vsi_txq(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u16 q_handle,
 	 * Without setting the generic section as valid in valid_sections, the
 	 * Admin queue command will fail with error code ICE_AQ_RC_EINVAL.
 	 */
-	buf->txqs[0].info.valid_sections = ICE_AQC_ELEM_VALID_GENERIC;
+	buf->txqs[0].info.valid_sections =
+		ICE_AQC_ELEM_VALID_GENERIC | ICE_AQC_ELEM_VALID_CIR |
+		ICE_AQC_ELEM_VALID_EIR;
+	buf->txqs[0].info.generic = 0;
+	buf->txqs[0].info.cir_bw.bw_profile_idx =
+		CPU_TO_LE16(ICE_SCHED_DFLT_RL_PROF_ID);
+	buf->txqs[0].info.cir_bw.bw_alloc =
+		CPU_TO_LE16(ICE_SCHED_DFLT_BW_WT);
+	buf->txqs[0].info.eir_bw.bw_profile_idx =
+		CPU_TO_LE16(ICE_SCHED_DFLT_RL_PROF_ID);
+	buf->txqs[0].info.eir_bw.bw_alloc =
+		CPU_TO_LE16(ICE_SCHED_DFLT_BW_WT);
 
 	/* add the LAN queue */
 	status = ice_aq_add_lan_txq(hw, num_qgrps, buf, buf_size, cd);
