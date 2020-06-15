@@ -46,6 +46,14 @@
 #define ICE_IPV6_PROTO_OFFSET		20
 #define ICE_IPV4_GTPU_TEID_OFFSET	46
 #define ICE_IPV4_GTPU_QFI_OFFSET	56
+#define ICE_IPV4_L2TPV3_SESS_ID_OFFSET	34
+#define ICE_IPV6_L2TPV3_SESS_ID_OFFSET	54
+#define ICE_IPV4_ESP_SPI_OFFSET		34
+#define ICE_IPV6_ESP_SPI_OFFSET		54
+#define ICE_IPV4_AH_SPI_OFFSET		38
+#define ICE_IPV6_AH_SPI_OFFSET		58
+#define ICE_IPV4_NAT_T_ESP_SPI_OFFSET	42
+#define ICE_IPV6_NAT_T_ESP_SPI_OFFSET	62
 
 #define ICE_FDIR_MAX_FLTRS		16384
 
@@ -150,6 +158,10 @@ struct ice_fdir_udp_gtp {
 	u8 next_ext;
 };
 
+struct ice_fdir_l2tpv3 {
+	__be32 session_id;
+};
+
 struct ice_fdir_extra {
 	u8 dst_mac[ETH_ALEN];	/* dest MAC address */
 	__be16 ether_type;      /* for NON_IP_L2 */
@@ -169,6 +181,9 @@ struct ice_fdir_fltr {
 
 	struct ice_fdir_udp_gtp gtpu_data;
 	struct ice_fdir_udp_gtp gtpu_mask;
+
+	struct ice_fdir_l2tpv3 l2tpv3_data;
+	struct ice_fdir_l2tpv3 l2tpv3_mask;
 
 	struct ice_fdir_extra ext_data;
 	struct ice_fdir_extra ext_mask;
