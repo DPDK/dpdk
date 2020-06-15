@@ -8,8 +8,8 @@
 #include <sys/mman.h>
 #include <stdint.h>
 #include <errno.h>
-#include <sys/file.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
@@ -85,10 +85,8 @@ resize_and_map(int fd, void *addr, size_t len)
 	char path[PATH_MAX];
 	void *map_addr;
 
-	if (ftruncate(fd, len)) {
+	if (eal_file_truncate(fd, len)) {
 		RTE_LOG(ERR, EAL, "Cannot truncate %s\n", path);
-		/* pass errno up the chain */
-		rte_errno = errno;
 		return -1;
 	}
 
@@ -772,15 +770,15 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 		 * and see if we succeed. If we don't, someone else is using it
 		 * already.
 		 */
-		fd = open(path, O_CREAT | O_RDWR, 0600);
+		fd = eal_file_open(path, EAL_OPEN_CREATE | EAL_OPEN_READWRITE);
 		if (fd < 0) {
 			RTE_LOG(DEBUG, EAL, "%s(): couldn't open %s: %s\n",
-					__func__, path, strerror(errno));
-			rte_errno = errno;
+				__func__, path, rte_strerror(rte_errno));
 			goto fail;
-		} else if (flock(fd, LOCK_EX | LOCK_NB)) {
+		} else if (eal_file_lock(
+				fd, EAL_FLOCK_EXCLUSIVE, EAL_FLOCK_RETURN)) {
 			RTE_LOG(DEBUG, EAL, "%s(): couldn't lock %s: %s\n",
-					__func__, path, strerror(errno));
+				__func__, path, rte_strerror(rte_errno));
 			rte_errno = EBUSY;
 			goto fail;
 		}
@@ -789,10 +787,8 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 		 * still attach to it, but no other process could reinitialize
 		 * it.
 		 */
-		if (flock(fd, LOCK_SH | LOCK_NB)) {
-			rte_errno = errno;
+		if (eal_file_lock(fd, EAL_FLOCK_SHARED, EAL_FLOCK_RETURN))
 			goto fail;
-		}
 
 		if (resize_and_map(fd, data, mmap_len))
 			goto fail;
@@ -888,17 +884,14 @@ rte_fbarray_attach(struct rte_fbarray *arr)
 
 	eal_get_fbarray_path(path, sizeof(path), arr->name);
 
-	fd = open(path, O_RDWR);
+	fd = eal_file_open(path, EAL_OPEN_READWRITE);
 	if (fd < 0) {
-		rte_errno = errno;
 		goto fail;
 	}
 
 	/* lock the file, to let others know we're using it */
-	if (flock(fd, LOCK_SH | LOCK_NB)) {
-		rte_errno = errno;
+	if (eal_file_lock(fd, EAL_FLOCK_SHARED, EAL_FLOCK_RETURN))
 		goto fail;
-	}
 
 	if (resize_and_map(fd, data, mmap_len))
 		goto fail;
@@ -1025,7 +1018,7 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 		 * has been detached by all other processes
 		 */
 		fd = tmp->fd;
-		if (flock(fd, LOCK_EX | LOCK_NB)) {
+		if (eal_file_lock(fd, EAL_FLOCK_EXCLUSIVE, EAL_FLOCK_RETURN)) {
 			RTE_LOG(DEBUG, EAL, "Cannot destroy fbarray - another process is using it\n");
 			rte_errno = EBUSY;
 			ret = -1;
@@ -1042,7 +1035,7 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 			 * we're still holding an exclusive lock, so drop it to
 			 * shared.
 			 */
-			flock(fd, LOCK_SH | LOCK_NB);
+			eal_file_lock(fd, EAL_FLOCK_SHARED, EAL_FLOCK_RETURN);
 
 			ret = -1;
 			goto out;

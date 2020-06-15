@@ -420,4 +420,77 @@ eal_malloc_no_trace(const char *type, size_t size, unsigned int align);
 
 void eal_free_no_trace(void *addr);
 
+/** Options for eal_file_open(). */
+enum eal_open_flags {
+	/** Open file for reading. */
+	EAL_OPEN_READONLY = 0x00,
+	/** Open file for reading and writing. */
+	EAL_OPEN_READWRITE = 0x02,
+	/**
+	 * Create the file if it doesn't exist.
+	 * New files are only accessible to the owner (0600 equivalent).
+	 */
+	EAL_OPEN_CREATE = 0x04
+};
+
+/**
+ * Open or create a file.
+ *
+ * @param path
+ *  Path to the file.
+ * @param flags
+ *  A combination of eal_open_flags controlling operation and FD behavior.
+ * @return
+ *  Open file descriptor on success, (-1) on failure and rte_errno is set.
+ */
+int
+eal_file_open(const char *path, int flags);
+
+/** File locking operation. */
+enum eal_flock_op {
+	EAL_FLOCK_SHARED,    /**< Acquire a shared lock. */
+	EAL_FLOCK_EXCLUSIVE, /**< Acquire an exclusive lock. */
+	EAL_FLOCK_UNLOCK     /**< Release a previously taken lock. */
+};
+
+/** Behavior on file locking conflict. */
+enum eal_flock_mode {
+	EAL_FLOCK_WAIT,  /**< Wait until the file gets unlocked to lock it. */
+	EAL_FLOCK_RETURN /**< Return immediately if the file is locked. */
+};
+
+/**
+ * Lock or unlock the file.
+ *
+ * On failure @code rte_errno @endcode is set to the error code
+ * specified by POSIX flock(3) description.
+ *
+ * @param fd
+ *  Opened file descriptor.
+ * @param op
+ *  Operation to perform.
+ * @param mode
+ *  Behavior on conflict.
+ * @return
+ *  0 on success, (-1) on failure.
+ */
+int
+eal_file_lock(int fd, enum eal_flock_op op, enum eal_flock_mode mode);
+
+/**
+ * Truncate or extend the file to the specified size.
+ *
+ * On failure @code rte_errno @endcode is set to the error code
+ * specified by POSIX ftruncate(3) description.
+ *
+ * @param fd
+ *  Opened file descriptor.
+ * @param size
+ *  Desired file size.
+ * @return
+ *  0 on success, (-1) on failure.
+ */
+int
+eal_file_truncate(int fd, ssize_t size);
+
 #endif /* _EAL_PRIVATE_H_ */

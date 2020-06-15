@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2020 Dmitry Kozlyuk
+
+sources += files(
+	'eal_file.c',
+)

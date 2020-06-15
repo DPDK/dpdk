@@ -6,6 +6,10 @@ subdir('include')
 
 subdir('common')
 
+if not is_windows
+	subdir('unix')
+endif
+
 dpdk_conf.set('RTE_EXEC_ENV_' + exec_env.to_upper(), 1)
 subdir(exec_env)
 
