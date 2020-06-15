@@ -3250,26 +3250,11 @@ static enum ice_status
 ice_remove_vsi_list_rule(struct ice_hw *hw, u16 vsi_list_id,
 			 enum ice_sw_lkup_type lkup_type)
 {
-	struct ice_aqc_sw_rules_elem *s_rule;
-	enum ice_status status;
-	u16 s_rule_size;
-
-	s_rule_size = (u16)ICE_SW_RULE_VSI_LIST_SIZE(0);
-	s_rule = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw, s_rule_size);
-	if (!s_rule)
-		return ICE_ERR_NO_MEMORY;
-
-	s_rule->type = CPU_TO_LE16(ICE_AQC_SW_RULES_T_VSI_LIST_CLEAR);
-	s_rule->pdata.vsi_list.index = CPU_TO_LE16(vsi_list_id);
-
 	/* Free the vsi_list resource that we allocated. It is assumed that the
 	 * list is empty at this point.
 	 */
-	status = ice_aq_alloc_free_vsi_list(hw, &vsi_list_id, lkup_type,
+	return ice_aq_alloc_free_vsi_list(hw, &vsi_list_id, lkup_type,
 					    ice_aqc_opc_free_res);
-
-	ice_free(hw, s_rule);
-	return status;
 }
 
 /**
