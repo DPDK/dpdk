@@ -52,6 +52,7 @@
 #include "mlx5_mr.h"
 #include "mlx5_flow.h"
 #include "rte_pmd_mlx5.h"
+#include "mlx5_verbs.h"
 
 #define MLX5_TAGS_HLIST_ARRAY_SIZE 8192
 
@@ -2335,8 +2336,8 @@ void
 mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
 		      mlx5_dereg_mr_t *dereg_mr_cb)
 {
-	*reg_mr_cb = mlx5_common_verbs_reg_mr;
-	*dereg_mr_cb = mlx5_common_verbs_dereg_mr;
+	*reg_mr_cb = mlx5_verbs_ops.reg_mr;
+	*dereg_mr_cb = mlx5_verbs_ops.dereg_mr;
 }
 
 const struct eth_dev_ops mlx5_os_dev_ops = {
