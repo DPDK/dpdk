@@ -1043,7 +1043,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 	RTE_ASSERT(port->tx_ring == NULL);
 
 	socket_id = rte_eth_dev_socket_id(slave_id);
-	if (socket_id == (int)LCORE_ID_ANY)
+	if (socket_id == -1)
 		socket_id = rte_socket_id();
 
 	element_size = sizeof(struct slow_protocol_frame) +
