@@ -266,18 +266,16 @@ mr_find_next_chunk(struct mlx5_mr *mr, struct mr_cache_entry *entry,
 
 	/* MR for external memory doesn't have memseg list. */
 	if (mr->msl == NULL) {
-		struct ibv_mr *ibv_mr = mr->ibv_mr;
-
 		MLX5_ASSERT(mr->ms_bmp_n == 1);
 		MLX5_ASSERT(mr->ms_n == 1);
 		MLX5_ASSERT(base_idx == 0);
 		/*
 		 * Can't search it from memseg list but get it directly from
-		 * verbs MR as there's only one chunk.
+		 * pmd_mr as there's only one chunk.
 		 */
-		entry->start = (uintptr_t)ibv_mr->addr;
-		entry->end = (uintptr_t)ibv_mr->addr + mr->ibv_mr->length;
-		entry->lkey = rte_cpu_to_be_32(mr->ibv_mr->lkey);
+		entry->start = (uintptr_t)mr->pmd_mr.addr;
+		entry->end = (uintptr_t)mr->pmd_mr.addr + mr->pmd_mr.len;
+		entry->lkey = rte_cpu_to_be_32(mr->pmd_mr.lkey);
 		/* Returning 1 ends iteration. */
 		return 1;
 	}
@@ -302,7 +300,7 @@ mr_find_next_chunk(struct mlx5_mr *mr, struct mr_cache_entry *entry,
 		/* Found one chunk. */
 		entry->start = start;
 		entry->end = end;
-		entry->lkey = rte_cpu_to_be_32(mr->ibv_mr->lkey);
+		entry->lkey = rte_cpu_to_be_32(mr->pmd_mr.lkey);
 	}
 	return idx;
 }
@@ -442,8 +440,8 @@ mr_free(struct mlx5_mr *mr)
 	if (mr == NULL)
 		return;
 	DRV_LOG(DEBUG, "freeing MR(%p):", (void *)mr);
-	if (mr->ibv_mr != NULL)
-		claim_zero(mlx5_glue->dereg_mr(mr->ibv_mr));
+	if (mr->pmd_mr.obj != NULL)
+		claim_zero(mlx5_glue->dereg_mr(mr->pmd_mr.obj));
 	if (mr->ms_bmp != NULL)
 		rte_bitmap_free(mr->ms_bmp);
 	rte_free(mr);
@@ -600,6 +598,7 @@ mlx5_mr_create_primary(void *pd,
 	uint32_t ms_n;
 	uint32_t n;
 	size_t len;
+	struct ibv_mr *ibv_mr;
 
 	DRV_LOG(DEBUG, "Creating a MR using address (%p)", (void *)addr);
 	/*
@@ -768,24 +767,28 @@ alloc_resources:
 	 * mlx5_alloc_buf_extern() which eventually calls rte_malloc_socket()
 	 * through mlx5_alloc_verbs_buf().
 	 */
-	mr->ibv_mr = mlx5_glue->reg_mr(pd, (void *)data.start, len,
-				       IBV_ACCESS_LOCAL_WRITE |
-				       (haswell_broadwell_cpu ? 0 :
-				       IBV_ACCESS_RELAXED_ORDERING));
-	if (mr->ibv_mr == NULL) {
-		DEBUG("Fail to create a verbs MR for address (%p)",
+	ibv_mr = mlx5_glue->reg_mr(pd, (void *)data.start, len,
+				   IBV_ACCESS_LOCAL_WRITE |
+				   (haswell_broadwell_cpu ? 0 :
+				   IBV_ACCESS_RELAXED_ORDERING));
+	if (ibv_mr == NULL) {
+		DEBUG("Fail to create an MR for address (%p)",
 		      (void *)addr);
 		rte_errno = EINVAL;
 		goto err_mrlock;
 	}
-	MLX5_ASSERT((uintptr_t)mr->ibv_mr->addr == data.start);
-	MLX5_ASSERT(mr->ibv_mr->length == len);
+	mr->pmd_mr.lkey = ibv_mr->lkey;
+	mr->pmd_mr.addr = ibv_mr->addr;
+	mr->pmd_mr.len = ibv_mr->length;
+	mr->pmd_mr.obj = ibv_mr;
+	MLX5_ASSERT((uintptr_t)mr->pmd_mr.addr == data.start);
+	MLX5_ASSERT(mr->pmd_mr.len);
 	LIST_INSERT_HEAD(&share_cache->mr_list, mr, mr);
 	DEBUG("MR CREATED (%p) for %p:\n"
 	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
 	      " lkey=0x%x base_idx=%u ms_n=%u, ms_bmp_n=%u",
 	      (void *)mr, (void *)addr, data.start, data.end,
-	      rte_cpu_to_be_32(mr->ibv_mr->lkey),
+	      rte_cpu_to_be_32(mr->pmd_mr.lkey),
 	      mr->ms_base_idx, mr->ms_n, mr->ms_bmp_n);
 	/* Insert to the global cache table. */
 	mlx5_mr_insert_cache(share_cache, mr);
@@ -1036,6 +1039,7 @@ mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl)
 struct mlx5_mr *
 mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id)
 {
+	struct ibv_mr *ibv_mr;
 	struct mlx5_mr *mr = NULL;
 
 	mr = rte_zmalloc_socket(NULL,
@@ -1044,17 +1048,21 @@ mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id)
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (mr == NULL)
 		return NULL;
-	mr->ibv_mr = mlx5_glue->reg_mr(pd, (void *)addr, len,
-				       IBV_ACCESS_LOCAL_WRITE |
-				       (haswell_broadwell_cpu ? 0 :
-				       IBV_ACCESS_RELAXED_ORDERING));
-	if (mr->ibv_mr == NULL) {
+	ibv_mr = mlx5_glue->reg_mr(pd, (void *)addr, len,
+				   IBV_ACCESS_LOCAL_WRITE |
+				   (haswell_broadwell_cpu ? 0 :
+				   IBV_ACCESS_RELAXED_ORDERING));
+	if (ibv_mr == NULL) {
 		DRV_LOG(WARNING,
-			"Fail to create a verbs MR for address (%p)",
+			"Fail to create MR for address (%p)",
 			(void *)addr);
 		rte_free(mr);
 		return NULL;
 	}
+	mr->pmd_mr.lkey = ibv_mr->lkey;
+	mr->pmd_mr.addr = ibv_mr->addr;
+	mr->pmd_mr.len = ibv_mr->length;
+	mr->pmd_mr.obj = ibv_mr;
 	mr->msl = NULL; /* Mark it is external memory. */
 	mr->ms_bmp = NULL;
 	mr->ms_n = 1;
@@ -1064,7 +1072,7 @@ mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id)
 		"  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
 		" lkey=0x%x base_idx=%u ms_n=%u, ms_bmp_n=%u",
 		(void *)mr, (void *)addr,
-		addr, addr + len, rte_cpu_to_be_32(mr->ibv_mr->lkey),
+		addr, addr + len, rte_cpu_to_be_32(mr->pmd_mr.lkey),
 		mr->ms_base_idx, mr->ms_n, mr->ms_bmp_n);
 	return mr;
 }
@@ -1089,7 +1097,7 @@ mlx5_mr_dump_cache(struct mlx5_mr_share_cache *share_cache __rte_unused)
 		unsigned int n;
 
 		DEBUG("MR[%u], LKey = 0x%x, ms_n = %u, ms_bmp_n = %u",
-		      mr_n++, rte_cpu_to_be_32(mr->ibv_mr->lkey),
+		      mr_n++, rte_cpu_to_be_32(mr->pmd_mr.lkey),
 		      mr->ms_n, mr->ms_bmp_n);
 		if (mr->ms_n == 0)
 			continue;

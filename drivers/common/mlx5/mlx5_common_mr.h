@@ -31,10 +31,17 @@
 #define MLX5_MR_CACHE_N 8
 #define MLX5_MR_BTREE_CACHE_N 256
 
+/* mlx5 PMD MR struct. */
+struct mlx5_pmd_mr {
+	uint32_t	     lkey;
+	void		     *addr;
+	size_t		     len;
+	void		     *obj;  /* verbs mr object or devx umem object. */
+};
 /* Memory Region object. */
 struct mlx5_mr {
 	LIST_ENTRY(mlx5_mr) mr; /**< Pointer to the prev/next entry. */
-	struct ibv_mr *ibv_mr; /* Verbs Memory Region. */
+	struct mlx5_pmd_mr pmd_mr; /* PMD memory region. */
 	const struct rte_memseg_list *msl;
 	int ms_base_idx; /* Start index of msl->memseg_arr[]. */
 	int ms_n; /* Number of memsegs in use. */
@@ -46,7 +53,7 @@ struct mlx5_mr {
 struct mr_cache_entry {
 	uintptr_t start; /* Start address of MR. */
 	uintptr_t end; /* End address of MR. */
-	uint32_t lkey; /* rte_cpu_to_be_32(ibv_mr->lkey). */
+	uint32_t lkey; /* rte_cpu_to_be_32(lkey). */
 } __rte_packed;
 
 /* MR Cache table for Binary search. */
