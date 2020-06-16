@@ -3,6 +3,9 @@ INTERNAL {
 
 	mlx5_class_get;
 
+	mlx5_common_verbs_reg_mr;
+	mlx5_common_verbs_dereg_mr;
+
 	mlx5_create_mr_ext;
 
 	mlx5_dev_to_pci_addr;

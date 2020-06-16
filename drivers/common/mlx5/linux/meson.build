@@ -47,6 +47,7 @@ endif
 
 sources += files('mlx5_nl.c')
 sources += files('mlx5_common_os.c')
+sources += files('mlx5_common_verbs.c')
 if not dlopen_ibverbs
 	sources += files('mlx5_glue.c')
 endif

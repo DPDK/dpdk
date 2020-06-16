@@ -163,5 +163,11 @@ mlx5_mr_create_primary(void *pd,
 		       struct mlx5_mr_share_cache *share_cache,
 		       struct mr_cache_entry *entry, uintptr_t addr,
 		       unsigned int mr_ext_memseg_en);
-
+__rte_internal
+int
+mlx5_common_verbs_reg_mr(void *pd, void *addr, size_t length,
+			 struct mlx5_pmd_mr *pmd_mr);
+__rte_internal
+void
+mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr);
 #endif /* RTE_PMD_MLX5_COMMON_MR_H_ */
