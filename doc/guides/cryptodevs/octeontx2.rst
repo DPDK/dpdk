@@ -55,6 +55,7 @@ Hash algorithms:
 AEAD algorithms:
 
 * ``RTE_CRYPTO_AEAD_AES_GCM``
+* ``RTE_CRYPTO_AEAD_CHACHA20_POLY1305``
 
 Asymmetric Crypto Algorithms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

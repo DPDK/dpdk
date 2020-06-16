@@ -131,6 +131,10 @@ New Features
   * Added support for lookaside protocol offload for DOCSIS through the
     ``rte_security`` API.
 
+* **Updated the OCTEON TX2 crypto PMD.**
+
+  Added Chacha20-Poly1305 AEAD algorithm support in OCTEON TX2 crypto PMD.
+
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 
   Added support for two BPF non-generic instructions:

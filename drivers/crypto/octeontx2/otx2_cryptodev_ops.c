@@ -398,9 +398,10 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 
 	/*
 	 * IE engines support IPsec operations
-	 * SE engines support IPsec operations and Air-Crypto operations
+	 * SE engines support IPsec operations, Chacha-Poly and
+	 * Air-Crypto operations
 	 */
-	if (misc->zsk_flag)
+	if (misc->zsk_flag || misc->chacha_poly)
 		misc->egrp = OTX2_CPT_EGRP_SE;
 	else
 		misc->egrp = OTX2_CPT_EGRP_SE_IE;

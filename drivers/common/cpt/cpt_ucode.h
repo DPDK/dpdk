@@ -77,6 +77,9 @@ cpt_fc_ciph_set_type(cipher_type_t type, struct cpt_ctx *ctx, uint16_t key_len)
 			return -1;
 		fc_type = FC_GEN;
 		break;
+	case CHACHA20:
+		fc_type = FC_GEN;
+		break;
 	case AES_XTS:
 		key_len = key_len / 2;
 		if (unlikely(key_len == CPT_BYTE_24)) {
@@ -229,6 +232,7 @@ cpt_fc_ciph_set_key(void *ctx, cipher_type_t type, const uint8_t *key,
 	case AES_ECB:
 	case AES_CFB:
 	case AES_CTR:
+	case CHACHA20:
 		cpt_fc_ciph_set_key_set_aes_key_type(fctx, key_len);
 		break;
 	case AES_GCM:
@@ -2539,16 +2543,14 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform,
 	aead_form = &xform->aead;
 	void *ctx = SESS_PRIV(sess);
 
-	if (aead_form->op == RTE_CRYPTO_AEAD_OP_ENCRYPT &&
-	   aead_form->algo == RTE_CRYPTO_AEAD_AES_GCM) {
+	if (aead_form->op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
 		sess->cpt_op |= CPT_OP_CIPHER_ENCRYPT;
 		sess->cpt_op |= CPT_OP_AUTH_GENERATE;
-	} else if (aead_form->op == RTE_CRYPTO_AEAD_OP_DECRYPT &&
-		aead_form->algo == RTE_CRYPTO_AEAD_AES_GCM) {
+	} else if (aead_form->op == RTE_CRYPTO_AEAD_OP_DECRYPT) {
 		sess->cpt_op |= CPT_OP_CIPHER_DECRYPT;
 		sess->cpt_op |= CPT_OP_AUTH_VERIFY;
 	} else {
-		CPT_LOG_DP_ERR("Unknown cipher operation\n");
+		CPT_LOG_DP_ERR("Unknown aead operation\n");
 		return -1;
 	}
 	switch (aead_form->algo) {
@@ -2561,6 +2563,12 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform,
 		CPT_LOG_DP_ERR("Crypto: Unsupported cipher algo %u",
 			       aead_form->algo);
 		return -1;
+	case RTE_CRYPTO_AEAD_CHACHA20_POLY1305:
+		enc_type = CHACHA20;
+		auth_type = POLY1305;
+		cipher_key_len = 32;
+		sess->chacha_poly = 1;
+		break;
 	default:
 		CPT_LOG_DP_ERR("Crypto: Undefined cipher algo %u specified",
 			       aead_form->algo);
@@ -3063,7 +3071,7 @@ fill_fc_params(struct rte_crypto_op *cop,
 	m_src = sym_op->m_src;
 	m_dst = sym_op->m_dst;
 
-	if (sess_misc->aes_gcm) {
+	if (sess_misc->aes_gcm || sess_misc->chacha_poly) {
 		uint8_t *salt;
 		uint8_t *aad_data;
 		uint16_t aad_len;

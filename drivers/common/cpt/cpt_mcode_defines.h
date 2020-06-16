@@ -106,7 +106,7 @@ typedef enum {
 	SHA2_SHA384     = 5,
 	SHA2_SHA512     = 6,
 	GMAC_TYPE       = 7,
-	XCBC_TYPE       = 8,
+	POLY1305        = 8,
 	SHA3_SHA224     = 10,
 	SHA3_SHA256     = 11,
 	SHA3_SHA384     = 12,
@@ -136,6 +136,7 @@ typedef enum {
 	AES_CTR     = 0x6,
 	AES_GCM     = 0x7,
 	AES_XTS     = 0x8,
+	CHACHA20    = 0x9,
 
 	/* These are only for software use */
 	ZUC_EEA3        = 0x90,
@@ -241,6 +242,8 @@ struct cpt_sess_misc {
 	uint16_t aes_gcm:1;
 	/** Flag for AES CTR */
 	uint16_t aes_ctr:1;
+	/** Flag for CHACHA POLY */
+	uint16_t chacha_poly:1;
 	/** Flag for NULL cipher/auth */
 	uint16_t is_null:1;
 	/** Flag for GMAC */
