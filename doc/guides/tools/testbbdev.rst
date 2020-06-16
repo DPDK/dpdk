@@ -6,7 +6,7 @@ dpdk-test-bbdev Application
 
 The ``dpdk-test-bbdev`` tool is a Data Plane Development Kit (DPDK) utility that
 allows measuring performance parameters of PMDs available in the bbdev framework.
-Available tests available for execution are: latency, throughput, validation,
+Tests available for execution are: latency, throughput, validation,
 bler and sanity tests. Execution of tests can be customized using various
 parameters passed to a python running script.
 
