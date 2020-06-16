@@ -1070,7 +1070,7 @@ otx2_cpt_dev_info_get(struct rte_cryptodev *dev,
 	if (info != NULL) {
 		info->max_nb_queue_pairs = vf->max_queues;
 		info->feature_flags = dev->feature_flags;
-		info->capabilities = otx2_cpt_capabilities_get();
+		info->capabilities = otx2_cpt_capabilities_get(vf->hw_caps);
 		info->sym.max_nb_sessions = 0;
 		info->driver_id = otx2_cryptodev_driver_id;
 		info->min_mbuf_headroom_req = OTX2_CPT_MIN_HEADROOM_REQ;

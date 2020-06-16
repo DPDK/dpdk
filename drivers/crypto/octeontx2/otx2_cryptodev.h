@@ -29,6 +29,8 @@ struct otx2_cpt_vf {
 	/**< MSI-X offsets */
 	uint8_t err_intr_registered:1;
 	/**< Are error interrupts registered? */
+	union cpt_eng_caps hw_caps[CPT_MAX_ENG_TYPES];
+	/**< CPT device capabilities */
 };
 
 #define CPT_LOGTYPE otx2_cpt_logtype

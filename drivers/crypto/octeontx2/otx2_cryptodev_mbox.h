@@ -9,6 +9,9 @@
 
 #include "otx2_cryptodev_hw_access.h"
 
+int otx2_cpt_hardware_caps_get(const struct rte_cryptodev *dev,
+			      union cpt_eng_caps *hw_caps);
+
 int otx2_cpt_available_queues_get(const struct rte_cryptodev *dev,
 				  uint16_t *nb_queues);
 

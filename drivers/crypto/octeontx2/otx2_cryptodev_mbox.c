@@ -15,6 +15,27 @@
 #include "cpt_pmd_logs.h"
 
 int
+otx2_cpt_hardware_caps_get(const struct rte_cryptodev *dev,
+			      union cpt_eng_caps *hw_caps)
+{
+	struct otx2_cpt_vf *vf = dev->data->dev_private;
+	struct otx2_dev *otx2_dev = &vf->otx2_dev;
+	struct cpt_caps_rsp_msg *rsp;
+	int ret;
+
+	otx2_mbox_alloc_msg_cpt_caps_get(otx2_dev->mbox);
+
+	ret = otx2_mbox_process_msg(otx2_dev->mbox, (void *)&rsp);
+	if (ret)
+		return -EIO;
+
+	memcpy(hw_caps, rsp->eng_caps,
+		sizeof(union cpt_eng_caps) * CPT_MAX_ENG_TYPES);
+
+	return 0;
+}
+
+int
 otx2_cpt_available_queues_get(const struct rte_cryptodev *dev,
 			      uint16_t *nb_queues)
 {

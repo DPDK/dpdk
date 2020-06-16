@@ -198,6 +198,7 @@ M(CPT_INLINE_IPSEC_CFG, 0xA04, cpt_inline_ipsec_cfg,			\
 			       cpt_inline_ipsec_cfg_msg, msg_rsp)	\
 M(CPT_RX_INLINE_LF_CFG, 0xBFE, cpt_rx_inline_lf_cfg,			\
 			       cpt_rx_inline_lf_cfg_msg, msg_rsp)	\
+M(CPT_GET_CAPS,		0xBFD, cpt_caps_get, msg_req, cpt_caps_rsp_msg)	\
 /* NPC mbox IDs (range 0x6000 - 0x7FFF) */				\
 M(NPC_MCAM_ALLOC_ENTRY,	0x6000, npc_mcam_alloc_entry,			\
 				npc_mcam_alloc_entry_req,		\
@@ -1256,6 +1257,38 @@ struct cpt_inline_ipsec_cfg_msg {
 struct cpt_rx_inline_lf_cfg_msg {
 	struct mbox_msghdr hdr;
 	uint16_t __otx2_io sso_pf_func;
+};
+
+enum cpt_eng_type {
+	CPT_ENG_TYPE_AE = 1,
+	CPT_ENG_TYPE_SE = 2,
+	CPT_ENG_TYPE_IE = 3,
+	CPT_MAX_ENG_TYPES,
+};
+
+/* CPT HW capabilities */
+union cpt_eng_caps {
+	uint64_t __otx2_io u;
+	struct {
+		uint64_t __otx2_io reserved_0_4:5;
+		uint64_t __otx2_io mul:1;
+		uint64_t __otx2_io sha1_sha2:1;
+		uint64_t __otx2_io chacha20:1;
+		uint64_t __otx2_io zuc_snow3g:1;
+		uint64_t __otx2_io sha3:1;
+		uint64_t __otx2_io aes:1;
+		uint64_t __otx2_io kasumi:1;
+		uint64_t __otx2_io des:1;
+		uint64_t __otx2_io crc:1;
+		uint64_t __otx2_io reserved_14_63:50;
+	};
+};
+
+struct cpt_caps_rsp_msg {
+	struct mbox_msghdr hdr;
+	uint16_t __otx2_io cpt_pf_drv_version;
+	uint8_t __otx2_io cpt_revision;
+	union cpt_eng_caps eng_caps[CPT_MAX_ENG_TYPES];
 };
 
 /* NPC mbox message structs */
