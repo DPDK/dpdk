@@ -816,7 +816,7 @@ mrvl_flush_bpool(struct rte_eth_dev *dev)
 	unsigned int core_id = rte_lcore_id();
 
 	if (core_id == LCORE_ID_ANY)
-		core_id = 0;
+		core_id = rte_get_master_lcore();
 
 	hif = mrvl_get_hif(priv, core_id);
 
@@ -1620,7 +1620,7 @@ mrvl_fill_bpool(struct mrvl_rxq *rxq, int num)
 
 	core_id = rte_lcore_id();
 	if (core_id == LCORE_ID_ANY)
-		core_id = 0;
+		core_id = rte_get_master_lcore();
 
 	hif = mrvl_get_hif(rxq->priv, core_id);
 	if (!hif)
@@ -1770,7 +1770,7 @@ mrvl_rx_queue_release(void *rxq)
 	unsigned int core_id = rte_lcore_id();
 
 	if (core_id == LCORE_ID_ANY)
-		core_id = 0;
+		core_id = rte_get_master_lcore();
 
 	if (!q)
 		return;
