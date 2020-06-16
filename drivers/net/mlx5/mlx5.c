@@ -713,6 +713,8 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		err = rte_errno;
 		goto error;
 	}
+	mlx5_os_set_reg_mr_cb(&sh->share_cache.reg_mr_cb,
+			      &sh->share_cache.dereg_mr_cb);
 	mlx5_os_dev_shared_handler_install(sh);
 	mlx5_flow_aging_init(sh);
 	mlx5_flow_counters_mng_init(sh);

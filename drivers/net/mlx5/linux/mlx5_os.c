@@ -42,6 +42,7 @@
 #include <mlx5_devx_cmds.h>
 #include <mlx5_common.h>
 #include <mlx5_common_mp.h>
+#include <mlx5_common_mr.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
@@ -2319,6 +2320,23 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
 	stats_ctrl->imissed = 0;
 free:
 	rte_free(strings);
+}
+
+/**
+ * Set the reg_mr and dereg_mr call backs
+ *
+ * @param reg_mr_cb[out]
+ *   Pointer to reg_mr func
+ * @param dereg_mr_cb[out]
+ *   Pointer to dereg_mr func
+ *
+ */
+void
+mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
+		      mlx5_dereg_mr_t *dereg_mr_cb)
+{
+	*reg_mr_cb = mlx5_common_verbs_reg_mr;
+	*dereg_mr_cb = mlx5_common_verbs_dereg_mr;
 }
 
 const struct eth_dev_ops mlx5_os_dev_ops = {

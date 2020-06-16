@@ -435,12 +435,12 @@ mlx5_mr_lookup_cache(struct mlx5_mr_share_cache *share_cache,
  *   Pointer to MR to free.
  */
 static void
-mr_free(struct mlx5_mr *mr)
+mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb)
 {
 	if (mr == NULL)
 		return;
 	DRV_LOG(DEBUG, "freeing MR(%p):", (void *)mr);
-	mlx5_common_verbs_dereg_mr(&mr->pmd_mr);
+	dereg_mr_cb(&mr->pmd_mr);
 	if (mr->ms_bmp != NULL)
 		rte_bitmap_free(mr->ms_bmp);
 	rte_free(mr);
@@ -490,7 +490,7 @@ mlx5_mr_garbage_collect(struct mlx5_mr_share_cache *share_cache)
 		struct mlx5_mr *mr = mr_next;
 
 		mr_next = LIST_NEXT(mr, mr);
-		mr_free(mr);
+		mr_free(mr, share_cache->dereg_mr_cb);
 	}
 }
 
@@ -702,7 +702,7 @@ alloc_resources:
 		data.start = RTE_ALIGN_FLOOR(addr, msl->page_sz);
 		data.end = data.start + msl->page_sz;
 		rte_mcfg_mem_read_unlock();
-		mr_free(mr);
+		mr_free(mr, share_cache->dereg_mr_cb);
 		goto alloc_resources;
 	}
 	MLX5_ASSERT(data.msl == data_re.msl);
@@ -725,7 +725,7 @@ alloc_resources:
 		 * Must be unlocked before calling rte_free() because
 		 * mlx5_mr_mem_event_free_cb() can be called inside.
 		 */
-		mr_free(mr);
+		mr_free(mr, share_cache->dereg_mr_cb);
 		return entry->lkey;
 	}
 	/*
@@ -760,12 +760,12 @@ alloc_resources:
 	mr->ms_bmp_n = len / msl->page_sz;
 	MLX5_ASSERT(ms_idx_shift + mr->ms_bmp_n <= ms_n);
 	/*
-	 * Finally create a verbs MR for the memory chunk. ibv_reg_mr() can be
-	 * called with holding the memory lock because it doesn't use
+	 * Finally create an MR for the memory chunk. Verbs: ibv_reg_mr() can
+	 * be called with holding the memory lock because it doesn't use
 	 * mlx5_alloc_buf_extern() which eventually calls rte_malloc_socket()
 	 * through mlx5_alloc_verbs_buf().
 	 */
-	mlx5_common_verbs_reg_mr(pd, (void *)data.start, len, &mr->pmd_mr);
+	share_cache->reg_mr_cb(pd, (void *)data.start, len, &mr->pmd_mr);
 	if (mr->pmd_mr.obj == NULL) {
 		DEBUG("Fail to create an MR for address (%p)",
 		      (void *)addr);
@@ -801,7 +801,7 @@ err_nolock:
 	 * calling rte_free() because mlx5_mr_mem_event_free_cb() can be called
 	 * inside.
 	 */
-	mr_free(mr);
+	mr_free(mr, share_cache->dereg_mr_cb);
 	return UINT32_MAX;
 }
 
@@ -1028,7 +1028,8 @@ mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl)
  *   Pointer to MR structure on success, NULL otherwise.
  */
 struct mlx5_mr *
-mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id)
+mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id,
+		   mlx5_reg_mr_t reg_mr_cb)
 {
 	struct mlx5_mr *mr = NULL;
 
@@ -1038,7 +1039,7 @@ mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id)
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (mr == NULL)
 		return NULL;
-	mlx5_common_verbs_reg_mr(pd, (void *)addr, len, &mr->pmd_mr);
+	reg_mr_cb(pd, (void *)addr, len, &mr->pmd_mr);
 	if (mr->pmd_mr.obj == NULL) {
 		DRV_LOG(WARNING,
 			"Fail to create MR for address (%p)",

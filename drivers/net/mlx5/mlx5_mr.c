@@ -276,7 +276,8 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 		return;
 	DRV_LOG(DEBUG, "port %u register MR for chunk #%d of mempool (%s)",
 		dev->data->port_id, mem_idx, mp->name);
-	mr = mlx5_create_mr_ext(sh->pd, addr, len, mp->socket_id);
+	mr = mlx5_create_mr_ext(sh->pd, addr, len, mp->socket_id,
+				sh->share_cache.reg_mr_cb);
 	if (!mr) {
 		DRV_LOG(WARNING,
 			"port %u unable to allocate a new MR of"
@@ -350,7 +351,8 @@ mlx5_dma_map(struct rte_pci_device *pdev, void *addr,
 	}
 	priv = dev->data->dev_private;
 	sh = priv->sh;
-	mr = mlx5_create_mr_ext(sh->pd, (uintptr_t)addr, len, SOCKET_ID_ANY);
+	mr = mlx5_create_mr_ext(sh->pd, (uintptr_t)addr, len, SOCKET_ID_ANY,
+				sh->share_cache.reg_mr_cb);
 	if (!mr) {
 		DRV_LOG(WARNING,
 			"port %u unable to dma map", dev->data->port_id);
