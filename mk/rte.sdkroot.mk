@@ -60,7 +60,22 @@ export ROOTDIRS-y ROOTDIRS- ROOTDIRS-n
 .PHONY: default test-build
 default test-build: all
 
+.PHONY: warning
+warning:
+	@echo
+	@echo "=========================== WARNING ============================"
+	@echo "It is recommended to build DPDK using 'meson' and 'ninja'"
+	@echo "See https://doc.dpdk.org/guides/linux_gsg/build_dpdk.html"
+	@echo "Building DPDK with 'make' will be deprecated in a future release"
+	@echo "================================================================"
+	@echo
+	@test "$(MAKE_PAUSE)" = n || ( \
+	echo "This deprecation warning can be passed by adding MAKE_PAUSE=n"; \
+	echo "to 'make' command line or as an exported environment variable."; \
+	echo "Press enter to continue..."; read junk)
+
 .PHONY: config defconfig showconfigs showversion showversionum
+config: warning
 config defconfig showconfigs showversion showversionum:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkconfig.mk $@
 
@@ -96,4 +111,5 @@ examples examples_clean:
 # all other build targets
 %:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkconfig.mk checkconfig
+	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkroot.mk warning
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkbuild.mk $@
