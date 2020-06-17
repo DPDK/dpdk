@@ -124,16 +124,10 @@ The following are some recommendations on GRUB boot settings:
 Configurations before running DPDK
 ----------------------------------
 
-1. Build the DPDK target and reserve huge pages.
+1. Reserve huge pages.
    See the earlier section on :ref:`linux_gsg_hugepages` for more details.
 
-   The following shell commands may help with building and configuration:
-
    .. code-block:: console
-
-      # Build DPDK target.
-      cd dpdk_folder
-      make install T=x86_64-native-linux-gcc -j
 
       # Get the hugepage size.
       awk '/Hugepagesize/ {print $2}' /proc/meminfo

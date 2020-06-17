@@ -19,45 +19,12 @@ information on how to build and run testpmd.
 Driver Compilation
 ------------------
 
-To compile a PMD for a platform, run make with appropriate target as shown below.
-Use "make" command in Linux and "gmake" in FreeBSD. This will also build testpmd.
+To compile a PMD for a platform, build DPDK
+as described in the "Getting Started Guide" for your platform.
+This will also build testpmd.
 
-To check available targets:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make showconfigs
-
-Example output:
-
-.. code-block:: console
-
-   arm-armv7a-linux-gcc
-   arm64-armv8a-linux-gcc
-   arm64-dpaa-linux-gcc
-   arm64-thunderx-linux-gcc
-   arm64-xgene1-linux-gcc
-   i686-native-linux-gcc
-   i686-native-linux-icc
-   ppc_64-power8-linux-gcc
-   x86_64-native-freebsd-clang
-   x86_64-native-freebsd-gcc
-   x86_64-native-linux-clang
-   x86_64-native-linux-gcc
-   x86_64-native-linux-icc
-   x86_x32-native-linux-gcc
-
-To compile a PMD for Linux x86_64 gcc target, run the following "make" command:
-
-.. code-block:: console
-
-   make install T=x86_64-native-linux-gcc
-
-Use ARM (ThunderX, DPAA, X-Gene) or PowerPC target for respective platform.
-
-For more information, refer to the :ref:`Getting Started Guide for Linux <linux_gsg>`
-or :ref:`Getting Started Guide for FreeBSD <freebsd_gsg>` depending on your platform.
+Detailed instructions are available
+in the :doc:`meson build guide <../prog_guide/build-sdk-meson>`.
 
 Running testpmd in Linux
 ------------------------

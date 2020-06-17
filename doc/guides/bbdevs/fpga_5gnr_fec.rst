@@ -51,15 +51,10 @@ FPGA 5GNR FEC does not support the following:
 Installation
 ------------
 
-Section 3 of the DPDK manual provides instuctions on installing and compiling DPDK. The
+Section 3 of the DPDK manual provides instructions on installing and compiling DPDK. The
 default set of bbdev compile flags may be found in config/common_base, where for example
 the flag to build the FPGA 5GNR FEC device, ``CONFIG_RTE_LIBRTE_PMD_BBDEV_FPGA_5GNR_FEC``,
-is already set. It is assumed DPDK has been compiled using for instance:
-
-.. code-block:: console
-
-  make install T=x86_64-native-linuxapp-gcc
-
+is already set.
 
 DPDK requires hugepages to be configured as detailed in section 2 of the DPDK manual.
 The bbdev test application has been tested with a configuration 40 x 1GB hugepages. The

@@ -56,32 +56,14 @@ The BNXT PMD supports operating with:
 * Linux igb_uio
 * BSD nic_uio
 
-Compiling BNXT PMD
-------------------
-
-To compile the BNXT PMD:
-
-.. code-block:: console
-
-    make config T=x86_64-native-linux-gcc && make // for x86-64
-    make config T=x86_32-native-linux-gcc && make // for x86-32
-    make config T=armv8a-linux-gcc && make // for ARMv8
+Running BNXT PMD
+----------------
 
 Bind the device to one of the kernel modules listed above
 
 .. code-block:: console
 
     ./dpdk-devbind.py -b vfio-pci|igb_uio|uio_pci_generic bus_id:device_id.function_id
-
-Load an application (e.g. testpmd) with a default configuration (e.g. a single
-TX /RX queue):
-
-.. code-block:: console
-
-    ./testpmd -c 0xF -n 4 -- -i --portmask=0x1 --nb-cores=2
-
-Running BNXT PMD
-----------------
 
 The BNXT PMD can run on PF or VF.
 
