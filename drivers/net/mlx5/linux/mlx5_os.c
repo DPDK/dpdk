@@ -284,7 +284,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	snprintf(s, sizeof(s), "%s_tags", sh->ibdev_name);
 	sh->tag_table = mlx5_hlist_create(s, MLX5_TAGS_HLIST_ARRAY_SIZE);
 	if (!sh->tag_table) {
-		DRV_LOG(ERR, "tags with hash creation failed.\n");
+		DRV_LOG(ERR, "tags with hash creation failed.");
 		err = ENOMEM;
 		goto error;
 	}

@@ -20,7 +20,7 @@ mlx5_hlist_create(const char *name, uint32_t size)
 	if (!rte_is_power_of_2(size)) {
 		act_size = rte_align32pow2(size);
 		DRV_LOG(WARNING, "Size 0x%" PRIX32 " is not power of 2, will "
-			"be aligned to 0x%" PRIX32 ".\n", size, act_size);
+			"be aligned to 0x%" PRIX32 ".", size, act_size);
 	} else {
 		act_size = size;
 	}
@@ -29,7 +29,7 @@ mlx5_hlist_create(const char *name, uint32_t size)
 	/* Using zmalloc, then no need to initialize the heads. */
 	h = rte_zmalloc(name, alloc_size, RTE_CACHE_LINE_SIZE);
 	if (!h) {
-		DRV_LOG(ERR, "No memory for hash list %s creation\n",
+		DRV_LOG(ERR, "No memory for hash list %s creation",
 			name ? name : "None");
 		return NULL;
 	}
@@ -37,7 +37,7 @@ mlx5_hlist_create(const char *name, uint32_t size)
 		snprintf(h->name, MLX5_HLIST_NAMESIZE, "%s", name);
 	h->table_sz = act_size;
 	h->mask = act_size - 1;
-	DRV_LOG(DEBUG, "Hash list with %s size 0x%" PRIX32 " is created.\n",
+	DRV_LOG(DEBUG, "Hash list with %s size 0x%" PRIX32 " is created.",
 		h->name, act_size);
 	return h;
 }

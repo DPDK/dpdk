@@ -882,7 +882,7 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 	snprintf(s, sizeof(s), "%s_flow_table", priv->sh->ibdev_name);
 	sh->flow_tbls = mlx5_hlist_create(s, MLX5_FLOW_TABLE_HLIST_ARRAY_SIZE);
 	if (!sh->flow_tbls) {
-		DRV_LOG(ERR, "flow tables with hash creation failed.\n");
+		DRV_LOG(ERR, "flow tables with hash creation failed.");
 		err = ENOMEM;
 		return err;
 	}
