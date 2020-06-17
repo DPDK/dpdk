@@ -1584,6 +1584,9 @@ ice_switch_redirect(struct ice_adapter *ad,
 	uint16_t lkups_cnt;
 	int ret;
 
+	if (rdata->vsi_handle != rd->vsi_handle)
+		return 0;
+
 	sw = hw->switch_info;
 	if (!sw->recp_list[rdata->rid].recp_created)
 		return -EINVAL;
@@ -1595,25 +1598,32 @@ ice_switch_redirect(struct ice_adapter *ad,
 	LIST_FOR_EACH_ENTRY(list_itr, list_head, ice_adv_fltr_mgmt_list_entry,
 			    list_entry) {
 		rinfo = list_itr->rule_info;
-		if (rinfo.fltr_rule_id == rdata->rule_id &&
+		if ((rinfo.fltr_rule_id == rdata->rule_id &&
 		    rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI &&
-		    rinfo.sw_act.vsi_handle == rd->vsi_handle) {
+		    rinfo.sw_act.vsi_handle == rd->vsi_handle) ||
+		    (rinfo.fltr_rule_id == rdata->rule_id &&
+		    rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI_LIST)){
 			lkups_cnt = list_itr->lkups_cnt;
 			lkups_dp = (struct ice_adv_lkup_elem *)
 				ice_memdup(hw, list_itr->lkups,
 					   sizeof(*list_itr->lkups) *
 					   lkups_cnt, ICE_NONDMA_TO_NONDMA);
+
 			if (!lkups_dp) {
 				PMD_DRV_LOG(ERR, "Failed to allocate memory.");
 				return -EINVAL;
 			}
 
+			if (rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI_LIST) {
+				rinfo.sw_act.vsi_handle = rd->vsi_handle;
+				rinfo.sw_act.fltr_act = ICE_FWD_TO_VSI;
+			}
 			break;
 		}
 	}
 
 	if (!lkups_dp)
-		return 0;
+		return -EINVAL;
 
 	/* Remove the old rule */
 	ret = ice_rem_adv_rule(hw, list_itr->lkups,
