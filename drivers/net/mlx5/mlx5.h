@@ -312,6 +312,12 @@ struct mlx5_drop {
 	MLX5_CNT_TO_CNT_EXT(pool, MLX5_POOL_GET_CNT((pool), (offset)))
 #define MLX5_CNT_TO_AGE(cnt) \
 	((struct mlx5_age_param *)((cnt) + 1))
+/*
+ * The maximum single counter is 0x800000 as MLX5_CNT_BATCH_OFFSET
+ * defines. The pool size is 512, pool index should never reach
+ * INT16_MAX.
+ */
+#define POOL_IDX_INVALID UINT16_MAX
 
 struct mlx5_flow_counter_pool;
 
@@ -420,6 +426,9 @@ TAILQ_HEAD(mlx5_counter_pools, mlx5_flow_counter_pool);
 struct mlx5_pools_container {
 	rte_atomic16_t n_valid; /* Number of valid pools. */
 	uint16_t n; /* Number of pools. */
+	uint16_t last_pool_idx; /* Last used pool index */
+	int min_id; /* The minimum counter ID in the pools. */
+	int max_id; /* The maximum counter ID in the pools. */
 	rte_spinlock_t resize_sl; /* The resize lock. */
 	struct mlx5_counter_pools pool_list; /* Counter pool list. */
 	struct mlx5_flow_counter_pool **pools; /* Counter pool array. */

@@ -4051,6 +4051,28 @@ flow_dv_counter_get_by_idx(struct rte_eth_dev *dev,
 }
 
 /**
+ * Check the devx counter belongs to the pool.
+ *
+ * @param[in] pool
+ *   Pointer to the counter pool.
+ * @param[in] id
+ *   The counter devx ID.
+ *
+ * @return
+ *   True if counter belongs to the pool, false otherwise.
+ */
+static bool
+flow_dv_is_counter_in_pool(struct mlx5_flow_counter_pool *pool, int id)
+{
+	int base = (pool->min_dcs->id / MLX5_COUNTERS_PER_POOL) *
+		   MLX5_COUNTERS_PER_POOL;
+
+	if (id >= base && id < base + MLX5_COUNTERS_PER_POOL)
+		return true;
+	return false;
+}
+
+/**
  * Get a pool by devx counter ID.
  *
  * @param[in] cont
@@ -4065,24 +4087,25 @@ static struct mlx5_flow_counter_pool *
 flow_dv_find_pool_by_id(struct mlx5_pools_container *cont, int id)
 {
 	uint32_t i;
-	uint32_t n_valid = rte_atomic16_read(&cont->n_valid);
 
-	for (i = 0; i < n_valid; i++) {
+	/* Check last used pool. */
+	if (cont->last_pool_idx != POOL_IDX_INVALID &&
+	    flow_dv_is_counter_in_pool(cont->pools[cont->last_pool_idx], id))
+		return cont->pools[cont->last_pool_idx];
+	/* ID out of range means no suitable pool in the container. */
+	if (id > cont->max_id || id < cont->min_id)
+		return NULL;
+	/*
+	 * Find the pool from the end of the container, since mostly counter
+	 * ID is sequence increasing, and the last pool should be the needed
+	 * one.
+	 */
+	i = rte_atomic16_read(&cont->n_valid);
+	while (i--) {
 		struct mlx5_flow_counter_pool *pool = cont->pools[i];
-		int base = (pool->min_dcs->id / MLX5_COUNTERS_PER_POOL) *
-			   MLX5_COUNTERS_PER_POOL;
 
-		if (id >= base && id < base + MLX5_COUNTERS_PER_POOL) {
-			/*
-			 * Move the pool to the head, as counter allocate
-			 * always gets the first pool in the container.
-			 */
-			if (pool != TAILQ_FIRST(&cont->pool_list)) {
-				TAILQ_REMOVE(&cont->pool_list, pool, next);
-				TAILQ_INSERT_HEAD(&cont->pool_list, pool, next);
-			}
+		if (flow_dv_is_counter_in_pool(pool, id))
 			return pool;
-		}
 	}
 	return NULL;
 }
@@ -4337,6 +4360,15 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	TAILQ_INSERT_HEAD(&cont->pool_list, pool, next);
 	pool->index = n_valid;
 	cont->pools[n_valid] = pool;
+	if (!batch) {
+		int base = RTE_ALIGN_FLOOR(dcs->id, MLX5_COUNTERS_PER_POOL);
+
+		if (base < cont->min_id)
+			cont->min_id = base;
+		if (base > cont->max_id)
+			cont->max_id = base + MLX5_COUNTERS_PER_POOL - 1;
+		cont->last_pool_idx = pool->index;
+	}
 	/* Pool initialization must be updated before host thread access. */
 	rte_cio_wmb();
 	rte_atomic16_add(&cont->n_valid, 1);
