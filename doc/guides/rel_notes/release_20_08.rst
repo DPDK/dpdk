@@ -73,6 +73,12 @@ New Features
      A new 3 APIs has been added to query virtio queue statistics, to get their
      names and to reset them by a vDPA device.
 
+* **Updated Mellanox mlx5 vDPA driver.**
+
+  Updated Mellanox mlx5 vDPA driver with new features, including:
+
+  * Added support for virtio queue statistics.
+
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 
   Added support for two BPF non-generic instructions:

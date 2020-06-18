@@ -72,6 +72,11 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 			rte_free(virtq->umems[i].buf);
 	}
 	memset(&virtq->umems, 0, sizeof(virtq->umems));
+	if (virtq->counters) {
+		claim_zero(mlx5_devx_cmd_destroy(virtq->counters));
+		virtq->counters = NULL;
+	}
+	memset(&virtq->reset, 0, sizeof(virtq->reset));
 	if (virtq->eqp.fw_qp)
 		mlx5_vdpa_event_qp_destroy(&virtq->eqp);
 	return 0;
@@ -204,6 +209,16 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 	} else {
 		DRV_LOG(INFO, "Virtq %d is, for sure, working by poll mode, no"
 			" need event QPs and event mechanism.", index);
+	}
+	if (priv->caps.queue_counters_valid) {
+		virtq->counters = mlx5_devx_cmd_create_virtio_q_counters
+								    (priv->ctx);
+		if (!virtq->counters) {
+			DRV_LOG(ERR, "Failed to create virtq couners for virtq"
+				" %d.", index);
+			goto error;
+		}
+		attr.counters_obj_id = virtq->counters->id;
 	}
 	/* Setup 3 UMEMs for each virtq. */
 	for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
@@ -454,4 +469,83 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
 		}
 	}
 	return 0;
+}
+
+int
+mlx5_vdpa_virtq_stats_get(struct mlx5_vdpa_priv *priv, int qid,
+			  struct rte_vdpa_stat *stats, unsigned int n)
+{
+	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[qid];
+	struct mlx5_devx_virtio_q_couners_attr attr = {0};
+	int ret;
+
+	if (!virtq->virtq || !virtq->enable) {
+		DRV_LOG(ERR, "Failed to read virtq %d statistics - virtq "
+			"is invalid.", qid);
+		return -EINVAL;
+	}
+	MLX5_ASSERT(virtq->counters);
+	ret = mlx5_devx_cmd_query_virtio_q_counters(virtq->counters, &attr);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to read virtq %d stats from HW.", qid);
+		return ret;
+	}
+	ret = (int)RTE_MIN(n, (unsigned int)MLX5_VDPA_STATS_MAX);
+	if (ret == MLX5_VDPA_STATS_RECEIVED_DESCRIPTORS)
+		return ret;
+	stats[MLX5_VDPA_STATS_RECEIVED_DESCRIPTORS] = (struct rte_vdpa_stat) {
+		.id = MLX5_VDPA_STATS_RECEIVED_DESCRIPTORS,
+		.value = attr.received_desc - virtq->reset.received_desc,
+	};
+	if (ret == MLX5_VDPA_STATS_COMPLETED_DESCRIPTORS)
+		return ret;
+	stats[MLX5_VDPA_STATS_COMPLETED_DESCRIPTORS] = (struct rte_vdpa_stat) {
+		.id = MLX5_VDPA_STATS_COMPLETED_DESCRIPTORS,
+		.value = attr.completed_desc - virtq->reset.completed_desc,
+	};
+	if (ret == MLX5_VDPA_STATS_BAD_DESCRIPTOR_ERRORS)
+		return ret;
+	stats[MLX5_VDPA_STATS_BAD_DESCRIPTOR_ERRORS] = (struct rte_vdpa_stat) {
+		.id = MLX5_VDPA_STATS_BAD_DESCRIPTOR_ERRORS,
+		.value = attr.bad_desc_errors - virtq->reset.bad_desc_errors,
+	};
+	if (ret == MLX5_VDPA_STATS_EXCEED_MAX_CHAIN)
+		return ret;
+	stats[MLX5_VDPA_STATS_EXCEED_MAX_CHAIN] = (struct rte_vdpa_stat) {
+		.id = MLX5_VDPA_STATS_EXCEED_MAX_CHAIN,
+		.value = attr.exceed_max_chain - virtq->reset.exceed_max_chain,
+	};
+	if (ret == MLX5_VDPA_STATS_INVALID_BUFFER)
+		return ret;
+	stats[MLX5_VDPA_STATS_INVALID_BUFFER] = (struct rte_vdpa_stat) {
+		.id = MLX5_VDPA_STATS_INVALID_BUFFER,
+		.value = attr.invalid_buffer - virtq->reset.invalid_buffer,
+	};
+	if (ret == MLX5_VDPA_STATS_COMPLETION_ERRORS)
+		return ret;
+	stats[MLX5_VDPA_STATS_COMPLETION_ERRORS] = (struct rte_vdpa_stat) {
+		.id = MLX5_VDPA_STATS_COMPLETION_ERRORS,
+		.value = attr.error_cqes - virtq->reset.error_cqes,
+	};
+	return ret;
+}
+
+int
+mlx5_vdpa_virtq_stats_reset(struct mlx5_vdpa_priv *priv, int qid)
+{
+	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[qid];
+	int ret;
+
+	if (!virtq->virtq || !virtq->enable) {
+		DRV_LOG(ERR, "Failed to read virtq %d statistics - virtq "
+			"is invalid.", qid);
+		return -EINVAL;
+	}
+	MLX5_ASSERT(virtq->counters);
+	ret = mlx5_devx_cmd_query_virtio_q_counters(virtq->counters,
+						    &virtq->reset);
+	if (ret)
+		DRV_LOG(ERR, "Failed to read virtq %d reset stats from HW.",
+			qid);
+	return ret;
 }

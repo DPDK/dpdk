@@ -76,6 +76,7 @@ struct mlx5_vdpa_virtq {
 	uint16_t vq_size;
 	struct mlx5_vdpa_priv *priv;
 	struct mlx5_devx_obj *virtq;
+	struct mlx5_devx_obj *counters;
 	struct mlx5_vdpa_event_qp eqp;
 	struct {
 		struct mlx5dv_devx_umem *obj;
@@ -83,6 +84,7 @@ struct mlx5_vdpa_virtq {
 		uint32_t size;
 	} umems[3];
 	struct rte_intr_handle intr_handle;
+	struct mlx5_devx_virtio_q_couners_attr reset;
 };
 
 struct mlx5_vdpa_steer {
@@ -125,6 +127,16 @@ struct mlx5_vdpa_priv {
 	void *virtq_db_addr;
 	SLIST_HEAD(mr_list, mlx5_vdpa_query_mr) mr_list;
 	struct mlx5_vdpa_virtq virtqs[];
+};
+
+enum {
+	MLX5_VDPA_STATS_RECEIVED_DESCRIPTORS,
+	MLX5_VDPA_STATS_COMPLETED_DESCRIPTORS,
+	MLX5_VDPA_STATS_BAD_DESCRIPTOR_ERRORS,
+	MLX5_VDPA_STATS_EXCEED_MAX_CHAIN,
+	MLX5_VDPA_STATS_INVALID_BUFFER,
+	MLX5_VDPA_STATS_COMPLETION_ERRORS,
+	MLX5_VDPA_STATS_MAX
 };
 
 /*
@@ -352,4 +364,37 @@ int mlx5_vdpa_virtq_modify(struct mlx5_vdpa_virtq *virtq, int state);
  */
 int mlx5_vdpa_virtq_stop(struct mlx5_vdpa_priv *priv, int index);
 
+/**
+ * Get virtq statistics.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ * @param[in] qid
+ *   The virtq index.
+ * @param stats
+ *   The virtq statistics array to fill.
+ * @param n
+ *   The number of elements in @p stats array.
+ *
+ * @return
+ *   A negative value on error, otherwise the number of entries filled in the
+ *   @p stats array.
+ */
+int
+mlx5_vdpa_virtq_stats_get(struct mlx5_vdpa_priv *priv, int qid,
+			  struct rte_vdpa_stat *stats, unsigned int n);
+
+/**
+ * Reset virtq statistics.
+ *
+ * @param[in] priv
+ *   The vdpa driver private structure.
+ * @param[in] qid
+ *   The virtq index.
+ *
+ * @return
+ *   A negative value on error, otherwise 0.
+ */
+int
+mlx5_vdpa_virtq_stats_reset(struct mlx5_vdpa_priv *priv, int qid);
 #endif /* RTE_PMD_MLX5_VDPA_H_ */

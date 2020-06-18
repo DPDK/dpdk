@@ -8,6 +8,7 @@
 #include <rte_errno.h>
 #include <rte_bus_pci.h>
 #include <rte_pci.h>
+#include <rte_string_fns.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
@@ -274,6 +275,85 @@ mlx5_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 	return 0;
 }
 
+static int
+mlx5_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
+			  unsigned int size)
+{
+	static const char *mlx5_vdpa_stats_names[MLX5_VDPA_STATS_MAX] = {
+		"received_descriptors",
+		"completed_descriptors",
+		"bad descriptor errors",
+		"exceed max chain",
+		"invalid buffer",
+		"completion errors",
+	};
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	unsigned int i;
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -ENODEV;
+	}
+	if (!stats_names)
+		return MLX5_VDPA_STATS_MAX;
+	size = RTE_MIN(size, (unsigned int)MLX5_VDPA_STATS_MAX);
+	for (i = 0; i < size; ++i)
+		strlcpy(stats_names[i].name, mlx5_vdpa_stats_names[i],
+			RTE_VDPA_STATS_NAME_SIZE);
+	return size;
+}
+
+static int
+mlx5_vdpa_get_stats(int did, int qid, struct rte_vdpa_stat *stats,
+		    unsigned int n)
+{
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -ENODEV;
+	}
+	if (!priv->configured) {
+		DRV_LOG(ERR, "Device %d was not configured.", did);
+		return -ENODATA;
+	}
+	if (qid >= (int)priv->nr_virtqs) {
+		DRV_LOG(ERR, "Too big vring id: %d.", qid);
+		return -E2BIG;
+	}
+	if (!priv->caps.queue_counters_valid) {
+		DRV_LOG(ERR, "Virtq statistics is not supported for device %d.",
+			did);
+		return -ENOTSUP;
+	}
+	return mlx5_vdpa_virtq_stats_get(priv, qid, stats, n);
+}
+
+static int
+mlx5_vdpa_reset_stats(int did, int qid)
+{
+	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+
+	if (priv == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		return -ENODEV;
+	}
+	if (!priv->configured) {
+		DRV_LOG(ERR, "Device %d was not configured.", did);
+		return -ENODATA;
+	}
+	if (qid >= (int)priv->nr_virtqs) {
+		DRV_LOG(ERR, "Too big vring id: %d.", qid);
+		return -E2BIG;
+	}
+	if (!priv->caps.queue_counters_valid) {
+		DRV_LOG(ERR, "Virtq statistics is not supported for device %d.",
+			did);
+		return -ENOTSUP;
+	}
+	return mlx5_vdpa_virtq_stats_reset(priv, qid);
+}
+
 static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_queue_num = mlx5_vdpa_get_queue_num,
 	.get_features = mlx5_vdpa_get_vdpa_features,
@@ -286,6 +366,9 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_vfio_group_fd = NULL,
 	.get_vfio_device_fd = mlx5_vdpa_get_device_fd,
 	.get_notify_area = mlx5_vdpa_get_notify_area,
+	.get_stats_names = mlx5_vdpa_get_stats_names,
+	.get_stats = mlx5_vdpa_get_stats,
+	.reset_stats = mlx5_vdpa_reset_stats,
 };
 
 static struct ibv_device *
@@ -489,6 +572,8 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_errno = ENOTSUP;
 		goto error;
 	}
+	if (!attr.vdpa.queue_counters_valid)
+		DRV_LOG(DEBUG, "No capability to support virtq statistics.");
 	priv = rte_zmalloc("mlx5 vDPA device private", sizeof(*priv) +
 			   sizeof(struct mlx5_vdpa_virtq) *
 			   attr.vdpa.max_num_virtio_queues * 2,
