@@ -25,6 +25,8 @@ extern "C" {
 #define PATH_MAX _MAX_PATH
 #endif
 
+#define sleep(x) Sleep(1000 * (x))
+
 #define strerror_r(a, b, c) strerror_s(b, c, a)
 
 /* strdup is deprecated in Microsoft libc and _strdup is preferred */

@@ -14,6 +14,7 @@ sources += files(
 	'eal_memory.c',
 	'eal_mp.c',
 	'eal_thread.c',
+	'eal_timer.c',
 	'fnmatch.c',
 	'getopt.c',
 )

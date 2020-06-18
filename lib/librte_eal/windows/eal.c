@@ -354,6 +354,12 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	if (rte_eal_timer_init() < 0) {
+		rte_eal_init_alert("Cannot init TSC timer");
+		rte_errno = EFAULT;
+		return -1;
+	}
+
 	eal_thread_init_master(rte_config.master_lcore);
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
