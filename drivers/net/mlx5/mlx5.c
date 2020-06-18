@@ -716,6 +716,11 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	mlx5_os_set_reg_mr_cb(&sh->share_cache.reg_mr_cb,
 			      &sh->share_cache.dereg_mr_cb);
 	mlx5_os_dev_shared_handler_install(sh);
+	sh->cnt_id_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_DWORD);
+	if (!sh->cnt_id_tbl) {
+		err = rte_errno;
+		goto error;
+	}
 	mlx5_flow_aging_init(sh);
 	mlx5_flow_counters_mng_init(sh);
 	mlx5_flow_ipool_create(sh, config);
@@ -732,6 +737,10 @@ exit:
 error:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	MLX5_ASSERT(sh);
+	if (sh->cnt_id_tbl) {
+		mlx5_l3t_destroy(sh->cnt_id_tbl);
+		sh->cnt_id_tbl = NULL;
+	}
 	if (sh->tis)
 		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
 	if (sh->td)
@@ -793,6 +802,10 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	mlx5_flow_counters_mng_close(sh);
 	mlx5_flow_ipool_destroy(sh);
 	mlx5_os_dev_shared_handler_uninstall(sh);
+	if (sh->cnt_id_tbl) {
+		mlx5_l3t_destroy(sh->cnt_id_tbl);
+		sh->cnt_id_tbl = NULL;
+	}
 	if (sh->pd)
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
 	if (sh->tis)

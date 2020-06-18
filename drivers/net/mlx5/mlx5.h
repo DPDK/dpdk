@@ -565,6 +565,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_flow_counter_mng cmng; /* Counters management structure. */
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
 	/* Memory Pool for mlx5 flow resources. */
+	struct mlx5_l3t_tbl *cnt_id_tbl; /* Shared counter lookup table. */
 	/* Shared interrupt handler section. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
 	struct rte_intr_handle intr_handle_devx; /* DEVX interrupt handler. */
