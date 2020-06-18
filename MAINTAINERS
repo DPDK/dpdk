@@ -37,7 +37,6 @@ M: Ajit Khaparde <ajit.khaparde@broadcom.com>
 T: git://dpdk.org/next/dpdk-next-net-brcm
 
 Next-net-intel Tree
-M: Xiaolong Ye <xiaolong.ye@intel.com>
 M: Qi Zhang <qi.z.zhang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 
@@ -565,7 +564,6 @@ F: drivers/net/af_packet/
 F: doc/guides/nics/features/afpacket.ini
 
 Linux AF_XDP
-M: Xiaolong Ye <xiaolong.ye@intel.com>
 M: Qi Zhang <qi.z.zhang@intel.com>
 F: drivers/net/af_xdp/
 F: doc/guides/nics/af_xdp.rst
@@ -881,7 +879,6 @@ F: doc/guides/nics/features/vmxnet3.ini
 Vhost-user
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 M: Zhihong Wang <zhihong.wang@intel.com>
-M: Xiaolong Ye <xiaolong.ye@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: lib/librte_vhost/
 F: doc/guides/prog_guide/vhost_lib.rst
@@ -896,7 +893,6 @@ F: doc/guides/sample_app_ug/vdpa.rst
 Vhost PMD
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 M: Zhihong Wang <zhihong.wang@intel.com>
-M: Xiaolong Ye <xiaolong.ye@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
 F: doc/guides/nics/vhost.rst
@@ -905,7 +901,6 @@ F: doc/guides/nics/features/vhost.ini
 Virtio PMD
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 M: Zhihong Wang <zhihong.wang@intel.com>
-M: Xiaolong Ye <xiaolong.ye@intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/virtio/
 F: doc/guides/nics/virtio.rst
