@@ -949,6 +949,7 @@ enum {
 
 enum {
 	MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q = (1ULL << 0xd),
+	MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS = (1ULL << 0x1c),
 };
 
 enum {
@@ -2006,6 +2007,7 @@ struct mlx5_ifc_create_cq_in_bits {
 
 enum {
 	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
+	MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS = 0x001c,
 };
 
 struct mlx5_ifc_general_obj_in_cmd_hdr_bits {
@@ -2024,6 +2026,27 @@ struct mlx5_ifc_general_obj_out_cmd_hdr_bits {
 	u8 reserved_at_60[0x20];
 };
 
+struct mlx5_ifc_virtio_q_counters_bits {
+	u8 modify_field_select[0x40];
+	u8 reserved_at_40[0x40];
+	u8 received_desc[0x40];
+	u8 completed_desc[0x40];
+	u8 error_cqes[0x20];
+	u8 bad_desc_errors[0x20];
+	u8 exceed_max_chain[0x20];
+	u8 invalid_buffer[0x20];
+	u8 reserved_at_180[0x50];
+};
+
+struct mlx5_ifc_create_virtio_q_counters_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_virtio_q_counters_bits virtio_q_counters;
+};
+
+struct mlx5_ifc_query_virtio_q_counters_out_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_virtio_q_counters_bits virtio_q_counters;
+};
 enum {
 	MLX5_VIRTQ_STATE_INIT = 0,
 	MLX5_VIRTQ_STATE_RDY = 1,
@@ -2064,7 +2087,8 @@ struct mlx5_ifc_virtio_q_bits {
 	u8 umem_3_id[0x20];
 	u8 umem_3_size[0x20];
 	u8 umem_3_offset[0x40];
-	u8 reserved_at_300[0x100];
+	u8 counter_set_id[0x20];
+	u8 reserved_at_320[0xe0];
 };
 
 struct mlx5_ifc_virtio_net_q_bits {

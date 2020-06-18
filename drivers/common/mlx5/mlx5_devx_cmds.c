@@ -464,6 +464,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->vdpa.valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 					 general_obj_types) &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q);
+	attr->vdpa.queue_counters_valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
+							general_obj_types) &
+				  MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS);
 	if (attr->qos.sup) {
 		MLX5_SET(query_hca_cap_in, in, op_mod,
 			 MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
@@ -1265,6 +1268,7 @@ mlx5_devx_cmd_create_virtq(void *ctx,
 	MLX5_SET(virtio_q, virtctx, umem_3_id, attr->umems[2].id);
 	MLX5_SET(virtio_q, virtctx, umem_3_size, attr->umems[2].size);
 	MLX5_SET64(virtio_q, virtctx, umem_3_offset, attr->umems[2].offset);
+	MLX5_SET(virtio_q, virtctx, counter_set_id, attr->counters_obj_id);
 	MLX5_SET(virtio_net_q, virtq, tisn_or_qpn, attr->tis_id);
 	virtq_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
 						    sizeof(out));
@@ -1537,5 +1541,74 @@ mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp, uint32_t qp_st_mod_op,
 		rte_errno = errno;
 		return -errno;
 	}
+	return ret;
+}
+
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_virtio_q_counters(void *ctx)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_virtio_q_counters_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	struct mlx5_devx_obj *couners_obj = rte_zmalloc(__func__,
+						       sizeof(*couners_obj), 0);
+	void *hdr = MLX5_ADDR_OF(create_virtio_q_counters_in, in, hdr);
+
+	if (!couners_obj) {
+		DRV_LOG(ERR, "Failed to allocate virtio queue counters data.");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS);
+	couners_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out,
+						      sizeof(out));
+	if (!couners_obj->obj) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create virtio queue counters Obj using"
+			" DevX.");
+		rte_free(couners_obj);
+		return NULL;
+	}
+	couners_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return couners_obj;
+}
+
+int
+mlx5_devx_cmd_query_virtio_q_counters(struct mlx5_devx_obj *couners_obj,
+				   struct mlx5_devx_virtio_q_couners_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_virtio_q_counters_out)] = {0};
+	void *hdr = MLX5_ADDR_OF(query_virtio_q_counters_out, in, hdr);
+	void *virtio_q_counters = MLX5_ADDR_OF(query_virtio_q_counters_out, out,
+					       virtio_q_counters);
+	int ret;
+
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_QUERY_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_id, couners_obj->id);
+	ret = mlx5_glue->devx_obj_query(couners_obj->obj, in, sizeof(in), out,
+					sizeof(out));
+	if (ret) {
+		DRV_LOG(ERR, "Failed to query virtio q counters using DevX.");
+		rte_errno = errno;
+		return -errno;
+	}
+	attr->received_desc = MLX5_GET64(virtio_q_counters, virtio_q_counters,
+					 received_desc);
+	attr->completed_desc = MLX5_GET64(virtio_q_counters, virtio_q_counters,
+					  completed_desc);
+	attr->error_cqes = MLX5_GET(virtio_q_counters, virtio_q_counters,
+				    error_cqes);
+	attr->bad_desc_errors = MLX5_GET(virtio_q_counters, virtio_q_counters,
+					 bad_desc_errors);
+	attr->exceed_max_chain = MLX5_GET(virtio_q_counters, virtio_q_counters,
+					  exceed_max_chain);
+	attr->invalid_buffer = MLX5_GET(virtio_q_counters, virtio_q_counters,
+					invalid_buffer);
 	return ret;
 }
