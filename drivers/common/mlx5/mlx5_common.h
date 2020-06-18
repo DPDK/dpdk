@@ -198,6 +198,9 @@ check_cqe(volatile struct mlx5_cqe *cqe, const uint16_t cqes_n,
 
 __rte_internal
 int mlx5_dev_to_pci_addr(const char *dev_path, struct rte_pci_addr *pci_addr);
+__rte_internal
+int mlx5_get_ifname_sysfs(const char *ibdev_path, char *ifname);
+
 
 #define MLX5_CLASS_ARG_NAME "class"
 

@@ -1637,8 +1637,8 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 					 */
 					continue;
 				}
-				ret = mlx5_get_master_ifname
-					(ibv_match[i]->ibdev_path, &ifname);
+				ret = mlx5_get_ifname_sysfs
+					(ibv_match[i]->ibdev_path, ifname);
 				if (!ret)
 					list[ns].ifindex =
 						if_nametoindex(ifname);

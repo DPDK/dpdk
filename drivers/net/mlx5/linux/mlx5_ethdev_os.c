@@ -128,96 +128,11 @@ struct ethtool_link_settings {
 #define ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT 2 /* 66 - 64 */
 #endif
 
-/**
- * Get master interface name from private structure.
- *
- * @param[in] dev
- *   Pointer to Ethernet device.
- * @param[out] ifname
- *   Interface name output buffer.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-int
-mlx5_get_master_ifname(const char *ibdev_path, char (*ifname)[IF_NAMESIZE])
-{
-	DIR *dir;
-	struct dirent *dent;
-	unsigned int dev_type = 0;
-	unsigned int dev_port_prev = ~0u;
-	char match[IF_NAMESIZE] = "";
-
-	MLX5_ASSERT(ibdev_path);
-	{
-		MKSTR(path, "%s/device/net", ibdev_path);
-
-		dir = opendir(path);
-		if (dir == NULL) {
-			rte_errno = errno;
-			return -rte_errno;
-		}
-	}
-	while ((dent = readdir(dir)) != NULL) {
-		char *name = dent->d_name;
-		FILE *file;
-		unsigned int dev_port;
-		int r;
-
-		if ((name[0] == '.') &&
-		    ((name[1] == '\0') ||
-		     ((name[1] == '.') && (name[2] == '\0'))))
-			continue;
-
-		MKSTR(path, "%s/device/net/%s/%s",
-		      ibdev_path, name,
-		      (dev_type ? "dev_id" : "dev_port"));
-
-		file = fopen(path, "rb");
-		if (file == NULL) {
-			if (errno != ENOENT)
-				continue;
-			/*
-			 * Switch to dev_id when dev_port does not exist as
-			 * is the case with Linux kernel versions < 3.15.
-			 */
-try_dev_id:
-			match[0] = '\0';
-			if (dev_type)
-				break;
-			dev_type = 1;
-			dev_port_prev = ~0u;
-			rewinddir(dir);
-			continue;
-		}
-		r = fscanf(file, (dev_type ? "%x" : "%u"), &dev_port);
-		fclose(file);
-		if (r != 1)
-			continue;
-		/*
-		 * Switch to dev_id when dev_port returns the same value for
-		 * all ports. May happen when using a MOFED release older than
-		 * 3.0 with a Linux kernel >= 3.15.
-		 */
-		if (dev_port == dev_port_prev)
-			goto try_dev_id;
-		dev_port_prev = dev_port;
-		if (dev_port == 0)
-			strlcpy(match, name, sizeof(match));
-	}
-	closedir(dir);
-	if (match[0] == '\0') {
-		rte_errno = ENOENT;
-		return -rte_errno;
-	}
-	strncpy(*ifname, match, sizeof(*ifname));
-	return 0;
-}
 
 /**
  * Get interface name from private structure.
  *
- * This is a port representor-aware version of mlx5_get_master_ifname().
+ * This is a port representor-aware version of mlx5_get_ifname_sysfs().
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
@@ -238,8 +153,8 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 	ifindex = mlx5_ifindex(dev);
 	if (!ifindex) {
 		if (!priv->representor)
-			return mlx5_get_master_ifname(priv->sh->ibdev_path,
-						      ifname);
+			return mlx5_get_ifname_sysfs(priv->sh->ibdev_path,
+						     *ifname);
 		rte_errno = ENXIO;
 		return -rte_errno;
 	}
