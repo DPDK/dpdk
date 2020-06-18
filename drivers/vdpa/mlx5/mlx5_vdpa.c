@@ -2,6 +2,11 @@
  * Copyright 2019 Mellanox Technologies, Ltd
  */
 #include <unistd.h>
+#include <net/if.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <netinet/in.h>
 
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -25,14 +30,19 @@
 			    (1ULL << VIRTIO_NET_F_MQ) | \
 			    (1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) | \
 			    (1ULL << VIRTIO_F_ORDER_PLATFORM) | \
-			    (1ULL << VHOST_F_LOG_ALL))
+			    (1ULL << VHOST_F_LOG_ALL) | \
+			    (1ULL << VIRTIO_NET_F_MTU))
 
 #define MLX5_VDPA_PROTOCOL_FEATURES \
 			    ((1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ) | \
 			     (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_SEND_FD) | \
 			     (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER) | \
 			     (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) | \
-			     (1ULL << VHOST_USER_PROTOCOL_F_MQ))
+			     (1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
+			     (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU))
+
+#define MLX5_VDPA_MAX_RETRIES 20
+#define MLX5_VDPA_USEC 1000
 
 TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
 					      TAILQ_HEAD_INITIALIZER(priv_list);
@@ -223,6 +233,55 @@ mlx5_vdpa_pd_create(struct mlx5_vdpa_priv *priv)
 }
 
 static int
+mlx5_vdpa_mtu_set(struct mlx5_vdpa_priv *priv)
+{
+	struct ifreq request;
+	uint16_t vhost_mtu = 0;
+	uint16_t kern_mtu = 0;
+	int ret = rte_vhost_get_mtu(priv->vid, &vhost_mtu);
+	int sock;
+	int retries = MLX5_VDPA_MAX_RETRIES;
+
+	if (ret) {
+		DRV_LOG(DEBUG, "Cannot get vhost MTU - %d.", ret);
+		return ret;
+	}
+	if (!vhost_mtu) {
+		DRV_LOG(DEBUG, "Vhost MTU is 0.");
+		return ret;
+	}
+	ret = mlx5_get_ifname_sysfs(priv->ctx->device->ibdev_path,
+				    request.ifr_name);
+	if (ret) {
+		DRV_LOG(DEBUG, "Cannot get kernel IF name - %d.", ret);
+		return ret;
+	}
+	sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (sock == -1) {
+		DRV_LOG(DEBUG, "Cannot open IF socket.");
+		return sock;
+	}
+	while (retries--) {
+		ret = ioctl(sock, SIOCGIFMTU, &request);
+		if (ret == -1)
+			break;
+		kern_mtu = request.ifr_mtu;
+		DRV_LOG(DEBUG, "MTU: current %d requested %d.", (int)kern_mtu,
+			(int)vhost_mtu);
+		if (kern_mtu == vhost_mtu)
+			break;
+		request.ifr_mtu = vhost_mtu;
+		ret = ioctl(sock, SIOCSIFMTU, &request);
+		if (ret == -1)
+			break;
+		request.ifr_mtu = 0;
+		usleep(MLX5_VDPA_USEC);
+	}
+	close(sock);
+	return kern_mtu == vhost_mtu ? 0 : -1;
+}
+
+static int
 mlx5_vdpa_dev_close(int vid)
 {
 	int did = rte_vhost_get_vdpa_device_id(vid);
@@ -265,6 +324,8 @@ mlx5_vdpa_dev_config(int vid)
 		return -1;
 	}
 	priv->vid = vid;
+	if (mlx5_vdpa_mtu_set(priv))
+		DRV_LOG(WARNING, "MTU cannot be set on device %d.", did);
 	if (mlx5_vdpa_pd_create(priv) || mlx5_vdpa_mem_register(priv) ||
 	    mlx5_vdpa_direct_db_prepare(priv) ||
 	    mlx5_vdpa_virtqs_prepare(priv) || mlx5_vdpa_steer_setup(priv) ||
@@ -513,8 +574,6 @@ close:
 	return ret;
 }
 
-#define MLX5_VDPA_MAX_RETRIES 20
-#define MLX5_VDPA_USEC 1000
 static int
 mlx5_vdpa_roce_disable(struct rte_pci_addr *addr, struct ibv_device **ibv)
 {

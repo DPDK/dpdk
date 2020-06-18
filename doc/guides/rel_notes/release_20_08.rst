@@ -78,6 +78,7 @@ New Features
   Updated Mellanox mlx5 vDPA driver with new features, including:
 
   * Added support for virtio queue statistics.
+  * Added support for MTU update.
 
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 
