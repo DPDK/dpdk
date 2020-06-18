@@ -5888,7 +5888,7 @@ next_container:
 	 * should wait for a new round of query as the new arrived packets
 	 * will not be taken into account.
 	 */
-	rte_atomic64_add(&pool->start_query_gen, 1);
+	pool->query_gen++;
 	ret = mlx5_devx_cmd_flow_counter_query(dcs, 0, MLX5_COUNTERS_PER_POOL -
 					       offset, NULL, NULL,
 					       pool->raw_hw->mem_mng->dm->id,
@@ -5897,7 +5897,6 @@ next_container:
 					       sh->devx_comp,
 					       (uint64_t)(uintptr_t)pool);
 	if (ret) {
-		rte_atomic64_sub(&pool->start_query_gen, 1);
 		DRV_LOG(ERR, "Failed to trigger asynchronous query for dcs ID"
 			" %d", pool->min_dcs->id);
 		pool->raw_hw = NULL;
@@ -6002,9 +6001,12 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 	struct mlx5_flow_counter_pool *pool =
 		(struct mlx5_flow_counter_pool *)(uintptr_t)async_id;
 	struct mlx5_counter_stats_raw *raw_to_free;
+	uint8_t age = !!IS_AGE_POOL(pool);
+	uint8_t query_gen = pool->query_gen ^ 1;
+	struct mlx5_pools_container *cont =
+		MLX5_CNT_CONTAINER(sh, !IS_EXT_POOL(pool), age);
 
 	if (unlikely(status)) {
-		rte_atomic64_sub(&pool->start_query_gen, 1);
 		raw_to_free = pool->raw_hw;
 	} else {
 		raw_to_free = pool->raw;
@@ -6013,12 +6015,14 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 		rte_spinlock_lock(&pool->sl);
 		pool->raw = pool->raw_hw;
 		rte_spinlock_unlock(&pool->sl);
-		MLX5_ASSERT(rte_atomic64_read(&pool->end_query_gen) + 1 ==
-			    rte_atomic64_read(&pool->start_query_gen));
-		rte_atomic64_set(&pool->end_query_gen,
-				 rte_atomic64_read(&pool->start_query_gen));
 		/* Be sure the new raw counters data is updated in memory. */
 		rte_cio_wmb();
+		if (!TAILQ_EMPTY(&pool->counters[query_gen])) {
+			rte_spinlock_lock(&cont->csl);
+			TAILQ_CONCAT(&cont->counters,
+				     &pool->counters[query_gen], next);
+			rte_spinlock_unlock(&cont->csl);
+		}
 	}
 	LIST_INSERT_HEAD(&sh->cmng.free_stat_raws, raw_to_free, next);
 	pool->raw_hw = NULL;

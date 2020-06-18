@@ -462,6 +462,8 @@ mlx5_flow_counters_mng_init(struct mlx5_dev_ctx_shared *sh)
 		sh->cmng.ccont[i].last_pool_idx = POOL_IDX_INVALID;
 		TAILQ_INIT(&sh->cmng.ccont[i].pool_list);
 		rte_spinlock_init(&sh->cmng.ccont[i].resize_sl);
+		TAILQ_INIT(&sh->cmng.ccont[i].counters);
+		rte_spinlock_init(&sh->cmng.ccont[i].csl);
 	}
 }
 

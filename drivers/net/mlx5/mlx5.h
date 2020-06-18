@@ -353,13 +353,14 @@ struct flow_counter_stats {
 	uint64_t bytes;
 };
 
+struct mlx5_flow_counter_pool;
 /* Generic counters information. */
 struct mlx5_flow_counter {
 	TAILQ_ENTRY(mlx5_flow_counter) next;
 	/**< Pointer to the next flow counter structure. */
 	union {
 		uint64_t hits; /**< Reset value of hits packets. */
-		int64_t query_gen; /**< Generation of the last release. */
+		struct mlx5_flow_counter_pool *pool; /**< Counter pool. */
 	};
 	uint64_t bytes; /**< Reset value of bytes. */
 	void *action; /**< Pointer to the dv action. */
@@ -387,16 +388,15 @@ TAILQ_HEAD(mlx5_counters, mlx5_flow_counter);
 /* Generic counter pool structure - query is in pool resolution. */
 struct mlx5_flow_counter_pool {
 	TAILQ_ENTRY(mlx5_flow_counter_pool) next;
-	struct mlx5_counters counters; /* Free counter list. */
+	struct mlx5_counters counters[2]; /* Free counter list. */
 	union {
 		struct mlx5_devx_obj *min_dcs;
 		rte_atomic64_t a64_dcs;
 	};
 	/* The devx object of the minimum counter ID. */
-	rte_atomic64_t start_query_gen; /* Query start round. */
-	rte_atomic64_t end_query_gen; /* Query end round. */
-	uint32_t index; /* Pool index in container. */
-	uint8_t type; /* Memory type behind the counter array. */
+	uint32_t index:29; /* Pool index in container. */
+	uint32_t type:2; /* Memory type behind the counter array. */
+	volatile uint32_t query_gen:1; /* Query round. */
 	rte_spinlock_t sl; /* The pool lock. */
 	struct mlx5_counter_stats_raw *raw;
 	struct mlx5_counter_stats_raw *raw_hw; /* The raw on HW working. */
@@ -430,6 +430,8 @@ struct mlx5_pools_container {
 	int min_id; /* The minimum counter ID in the pools. */
 	int max_id; /* The maximum counter ID in the pools. */
 	rte_spinlock_t resize_sl; /* The resize lock. */
+	rte_spinlock_t csl; /* The counter free list lock. */
+	struct mlx5_counters counters; /* Free counter list. */
 	struct mlx5_counter_pools pool_list; /* Counter pool list. */
 	struct mlx5_flow_counter_pool **pools; /* Counter pool array. */
 	struct mlx5_counter_stats_mem_mng *mem_mng;

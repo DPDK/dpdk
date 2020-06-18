@@ -176,7 +176,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		pool = cont->pools[pool_idx];
 		if (!pool)
 			continue;
-		cnt = TAILQ_FIRST(&pool->counters);
+		cnt = TAILQ_FIRST(&pool->counters[0]);
 		if (cnt)
 			break;
 	}
@@ -209,7 +209,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		pool->type |= CNT_POOL_TYPE_EXT;
 		for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 			cnt = MLX5_POOL_GET_CNT(pool, i);
-			TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
+			TAILQ_INSERT_HEAD(&pool->counters[0], cnt, next);
 		}
 		cnt = MLX5_POOL_GET_CNT(pool, 0);
 		cont->pools[n_valid] = pool;
@@ -227,7 +227,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	/* Create counter with Verbs. */
 	ret = flow_verbs_counter_create(dev, cnt_ext);
 	if (!ret) {
-		TAILQ_REMOVE(&pool->counters, cnt, next);
+		TAILQ_REMOVE(&pool->counters[0], cnt, next);
 		return MLX5_MAKE_CNT_IDX(pool_idx, i);
 	}
 	/* Some error occurred in Verbs library. */
@@ -261,7 +261,7 @@ flow_verbs_counter_release(struct rte_eth_dev *dev, uint32_t counter)
 		claim_zero(mlx5_glue->destroy_counters(cnt_ext->cs));
 		cnt_ext->cs = NULL;
 #endif
-		TAILQ_INSERT_HEAD(&pool->counters, cnt, next);
+		TAILQ_INSERT_HEAD(&pool->counters[0], cnt, next);
 	}
 }
 
