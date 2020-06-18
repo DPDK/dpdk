@@ -37,6 +37,34 @@ struct rte_vdpa_dev_addr {
 	};
 };
 
+/** Maximum name length for statistics counters */
+#define RTE_VDPA_STATS_NAME_SIZE 64
+
+/**
+ * A vDPA device statistic structure
+ *
+ * This structure is used by rte_vdpa_stats_get() to provide
+ * statistics from the HW vDPA device.
+ *
+ * It maps a name id, corresponding to an index in the array returned
+ * by rte_vdpa_get_stats_names, to a statistic value.
+ */
+struct rte_vdpa_stat {
+	uint64_t id;        /**< The index in stats name array */
+	uint64_t value;     /**< The statistic counter value */
+};
+
+/**
+ * A name element for statistics
+ *
+ * An array of this structure is returned by rte_vdpa_get_stats_names
+ * It lists the names of extended statistics for a PMD. The rte_vdpa_stat
+ * structure references these names by their array index
+ */
+struct rte_vdpa_stat_name {
+	char name[RTE_VDPA_STATS_NAME_SIZE]; /**< The statistic name */
+};
+
 /**
  * vdpa device operations
  */
@@ -73,8 +101,19 @@ struct rte_vdpa_dev_ops {
 	int (*get_notify_area)(int vid, int qid,
 			uint64_t *offset, uint64_t *size);
 
+	/** Get statistics name */
+	int (*get_stats_names)(int did, struct rte_vdpa_stat_name *stats_names,
+			       unsigned int size);
+
+	/** Get statistics of the queue */
+	int (*get_stats)(int did, int qid, struct rte_vdpa_stat *stats,
+			 unsigned int n);
+
+	/** Reset statistics of the queue */
+	int (*reset_stats)(int did, int qid);
+
 	/** Reserved for future extension */
-	void *reserved[5];
+	void *reserved[2];
 };
 
 /**
@@ -200,4 +239,78 @@ rte_vhost_host_notifier_ctrl(int vid, bool enable);
 __rte_experimental
 int
 rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Retrieve names of statistics of a vDPA device.
+ *
+ * There is an assumption that 'stat_names' and 'stats' arrays are matched
+ * by array index: stats_names[i].name => stats[i].value
+ *
+ * And the array index is same with id field of 'struct rte_vdpa_stat':
+ * stats[i].id == i
+ *
+ * @param did
+ *  device id
+ * @param stats_names
+ *   array of at least size elements to be filled.
+ *   If set to NULL, the function returns the required number of elements.
+ * @param size
+ *   The number of elements in stats_names array.
+ * @return
+ *   A negative value on error, otherwise the number of entries filled in the
+ *   stats name array.
+ */
+__rte_experimental
+int
+rte_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
+			 unsigned int size);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Retrieve statistics of a vDPA device.
+ *
+ * There is an assumption that 'stat_names' and 'stats' arrays are matched
+ * by array index: stats_names[i].name => stats[i].value
+ *
+ * And the array index is same with id field of 'struct rte_vdpa_stat':
+ * stats[i].id == i
+ *
+ * @param did
+ *  device id
+ * @param qid
+ *  queue id
+ * @param stats
+ *   A pointer to a table of structure of type rte_vdpa_stat to be filled with
+ *   device statistics ids and values.
+ * @param n
+ *   The number of elements in stats array.
+ * @return
+ *   A negative value on error, otherwise the number of entries filled in the
+ *   stats table.
+ */
+__rte_experimental
+int
+rte_vdpa_get_stats(int did, uint16_t qid, struct rte_vdpa_stat *stats,
+		   unsigned int n);
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Reset statistics of a vDPA device.
+ *
+ * @param did
+ *  device id
+ * @param qid
+ *  queue id
+ * @return
+ *   0 on success, a negative value on error.
+ */
+__rte_experimental
+int
+rte_vdpa_reset_stats(int did, uint16_t qid);
 #endif /* _RTE_VDPA_H_ */

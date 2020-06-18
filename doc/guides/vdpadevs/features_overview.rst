@@ -96,6 +96,9 @@ proto host notifier
 proto pagefault
   Slave expose page-fault FD for migration process.
 
+queue statistics
+  Support virtio queue statistics query.
+
 BSD nic_uio
   BSD ``nic_uio`` module supported.
 

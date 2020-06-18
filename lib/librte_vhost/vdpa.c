@@ -227,3 +227,50 @@ fail:
 		free_ind_table(idesc);
 	return -1;
 }
+
+int
+rte_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
+			 unsigned int size)
+{
+	struct rte_vdpa_device *vdpa_dev;
+
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (!vdpa_dev)
+		return -ENODEV;
+
+	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_stats_names, -ENOTSUP);
+
+	return vdpa_dev->ops->get_stats_names(did, stats_names, size);
+}
+
+int
+rte_vdpa_get_stats(int did, uint16_t qid, struct rte_vdpa_stat *stats,
+		   unsigned int n)
+{
+	struct rte_vdpa_device *vdpa_dev;
+
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (!vdpa_dev)
+		return -ENODEV;
+
+	if (!stats || !n)
+		return -EINVAL;
+
+	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_stats, -ENOTSUP);
+
+	return vdpa_dev->ops->get_stats(did, qid, stats, n);
+}
+
+int
+rte_vdpa_reset_stats(int did, uint16_t qid)
+{
+	struct rte_vdpa_device *vdpa_dev;
+
+	vdpa_dev = rte_vdpa_get_device(did);
+	if (!vdpa_dev)
+		return -ENODEV;
+
+	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->reset_stats, -ENOTSUP);
+
+	return vdpa_dev->ops->reset_stats(did, qid);
+}

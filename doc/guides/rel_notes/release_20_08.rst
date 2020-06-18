@@ -68,6 +68,11 @@ New Features
 
   * Added new PMD devarg ``reclaim_mem_mode``.
 
+* **Added vDPA device APIs to query virtio queue statistics.**
+
+     A new 3 APIs has been added to query virtio queue statistics, to get their
+     names and to reset them by a vDPA device.
+
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 
   Added support for two BPF non-generic instructions:
