@@ -4,4 +4,5 @@
 sources += files(
 	'eal_file.c',
 	'eal_unix_memory.c',
+	'eal_unix_timer.c',
 )
