@@ -204,25 +204,8 @@ struct vhost_virtqueue {
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
 } __rte_cache_aligned;
 
-/* Old kernels have no such macros defined */
-#ifndef VIRTIO_NET_F_GUEST_ANNOUNCE
- #define VIRTIO_NET_F_GUEST_ANNOUNCE 21
-#endif
-
-#ifndef VIRTIO_NET_F_MQ
- #define VIRTIO_NET_F_MQ		22
-#endif
-
 #define VHOST_MAX_VRING			0x100
 #define VHOST_MAX_QUEUE_PAIRS		0x80
-
-#ifndef VIRTIO_NET_F_MTU
- #define VIRTIO_NET_F_MTU 3
-#endif
-
-#ifndef VIRTIO_F_ANY_LAYOUT
- #define VIRTIO_F_ANY_LAYOUT		27
-#endif
 
 /* Declare IOMMU related bits for older kernels */
 #ifndef VIRTIO_F_IOMMU_PLATFORM
