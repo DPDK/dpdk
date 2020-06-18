@@ -18,6 +18,7 @@
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
 #include <cmdline_parse_string.h>
+#include <cmdline_parse_num.h>
 #include <cmdline.h>
 
 #define MAX_PATH_LEN 128
@@ -29,6 +30,9 @@ struct vdpa_port {
 	int did;
 	int vid;
 	uint64_t flags;
+	int stats_n;
+	struct rte_vdpa_stat_name *stats_names;
+	struct rte_vdpa_stat *stats;
 };
 
 static struct vdpa_port vports[MAX_VDPA_SAMPLE_PORTS];
@@ -199,6 +203,10 @@ close_vdpa(struct vdpa_port *vport)
 		RTE_LOG(ERR, VDPA,
 				"Fail to unregister vhost driver for %s.\n",
 				socket_path);
+	if (vport->stats_names) {
+		rte_free(vport->stats_names);
+		vport->stats_names = NULL;
+	}
 }
 
 static void
@@ -240,6 +248,7 @@ static void cmd_help_parsed(__rte_unused void *parsed_result,
 		"    help                                      : Show interactive instructions.\n"
 		"    list                                      : list all available vdpa devices.\n"
 		"    create <socket file> <vdev addr>          : create a new vdpa port.\n"
+		"    stats <device ID> <virtio queue ID>       : show statistics of virtio queue, 0xffff for all.\n"
 		"    quit                                      : exit vdpa sample app.\n"
 	);
 }
@@ -363,6 +372,115 @@ cmdline_parse_inst_t cmd_create_vdpa_port = {
 	},
 };
 
+/* *** STATS *** */
+struct cmd_stats_result {
+	cmdline_fixed_string_t stats;
+	uint16_t did;
+	uint16_t qid;
+};
+
+static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
+				    __rte_unused void *data)
+{
+	struct cmd_stats_result *res = parsed_result;
+	struct rte_vdpa_device *vdev = rte_vdpa_get_device(res->did);
+	struct vdpa_port *vport = NULL;
+	uint32_t first, last;
+	int i;
+
+	if (!vdev) {
+		RTE_LOG(ERR, VDPA, "Invalid device id %" PRIu16 ".\n",
+			res->did);
+		return;
+	}
+	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, dev_total); i++) {
+		if (vports[i].did == res->did) {
+			vport = &vports[i];
+			break;
+		}
+	}
+	if (!vport) {
+		RTE_LOG(ERR, VDPA, "Device id %" PRIu16 " was not created.\n",
+			res->did);
+		return;
+	}
+	if (res->qid == 0xFFFF) {
+		first = 0;
+		last = rte_vhost_get_vring_num(vport->vid);
+		if (last == 0) {
+			RTE_LOG(ERR, VDPA, "Failed to get num of actual virtqs"
+				" for device id %d.\n", (int)res->did);
+			return;
+		}
+		last--;
+	} else {
+		first = res->qid;
+		last = res->qid;
+	}
+	if (!vport->stats_names) {
+		vport->stats_n = rte_vdpa_get_stats_names(vport->did, NULL, 0);
+		if (vport->stats_n <= 0) {
+			RTE_LOG(ERR, VDPA, "Failed to get names number of "
+				"device %d stats.\n", (int)res->did);
+			return;
+		}
+		vport->stats_names = rte_zmalloc(NULL,
+			(sizeof(*vport->stats_names) + sizeof(*vport->stats)) *
+							vport->stats_n, 0);
+		if (!vport->stats_names) {
+			RTE_LOG(ERR, VDPA, "Failed to allocate memory for stat"
+				" names of device %d.\n", (int)res->did);
+			return;
+		}
+		i = rte_vdpa_get_stats_names(vport->did, vport->stats_names,
+						vport->stats_n);
+		if (vport->stats_n != i) {
+			RTE_LOG(ERR, VDPA, "Failed to get names of device %d "
+				"stats.\n", (int)res->did);
+			return;
+		}
+		vport->stats = (struct rte_vdpa_stat *)
+					(vport->stats_names + vport->stats_n);
+	}
+	cmdline_printf(cl, "\nDevice %d:\n", (int)res->did);
+	for (; first <= last; first++) {
+		memset(vport->stats, 0, sizeof(*vport->stats) * vport->stats_n);
+		if (rte_vdpa_get_stats(vport->did, (int)first, vport->stats,
+					vport->stats_n) <= 0) {
+			RTE_LOG(ERR, VDPA, "Failed to get vdpa queue statistics"
+				" for device id %d qid %d.\n", (int)res->did,
+				(int)first);
+			return;
+		}
+		cmdline_printf(cl, "\tVirtq %" PRIu32 ":\n", first);
+		for (i = 0; i < vport->stats_n; ++i) {
+			cmdline_printf(cl, "\t\t%-*s %-16" PRIu64 "\n",
+				RTE_VDPA_STATS_NAME_SIZE,
+				vport->stats_names[vport->stats[i].id].name,
+				vport->stats[i].value);
+		}
+	}
+}
+
+cmdline_parse_token_string_t cmd_device_stats_ =
+	TOKEN_STRING_INITIALIZER(struct cmd_stats_result, stats, "stats");
+cmdline_parse_token_num_t cmd_device_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_stats_result, did, UINT32);
+cmdline_parse_token_num_t cmd_queue_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_stats_result, qid, UINT32);
+
+cmdline_parse_inst_t cmd_device_stats = {
+	.f = cmd_device_stats_parsed,
+	.data = NULL,
+	.help_str = "stats: show device statistics",
+	.tokens = {
+		(void *)&cmd_device_stats_,
+		(void *)&cmd_device_id,
+		(void *)&cmd_queue_id,
+		NULL,
+	},
+};
+
 /* *** QUIT *** */
 struct cmd_quit_result {
 	cmdline_fixed_string_t quit;
@@ -392,6 +510,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_help,
 	(cmdline_parse_inst_t *)&cmd_list_vdpa_devices,
 	(cmdline_parse_inst_t *)&cmd_create_vdpa_port,
+	(cmdline_parse_inst_t *)&cmd_device_stats,
 	(cmdline_parse_inst_t *)&cmd_quit,
 	NULL,
 };

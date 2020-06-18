@@ -44,7 +44,8 @@ where
   1. help: show help message
   2. list: list all available vdpa devices
   3. create: create a new vdpa port with socket file and vdpa device address
-  4. quit: unregister vhost driver and exit the application
+  4. stats: show statistics of virtio queues
+  5. quit: unregister vhost driver and exit the application
 
 Take IFCVF driver for example:
 
