@@ -55,6 +55,106 @@ extern int mlx5_logtype;
 	 (((val) & (from)) * ((to) / (from))))
 
 /*
+ * For the case which data is linked with sequence increased index, the
+ * array table will be more efficiect than hash table once need to serarch
+ * one data entry in large numbers of entries. Since the traditional hash
+ * tables has fixed table size, when huge numbers of data saved to the hash
+ * table, it also comes lots of hash conflict.
+ *
+ * But simple array table also has fixed size, allocates all the needed
+ * memory at once will waste lots of memory. For the case don't know the
+ * exactly number of entries will be impossible to allocate the array.
+ *
+ * Then the multiple level table helps to balance the two disadvantages.
+ * Allocate a global high level table with sub table entries at first,
+ * the global table contains the sub table entries, and the sub table will
+ * be allocated only once the corresponding index entry need to be saved.
+ * e.g. for up to 32-bits index, three level table with 10-10-12 splitting,
+ * with sequence increased index, the memory grows with every 4K entries.
+ *
+ * The currently implementation introduces 10-10-12 32-bits splitting
+ * Three-Level table to help the cases which have millions of enties to
+ * save. The index entries can be addressed directly by the index, no
+ * search will be needed.q
+ */
+
+/* L3 table global table define. */
+#define MLX5_L3T_GT_OFFSET 22
+#define MLX5_L3T_GT_SIZE (1 << 10)
+#define MLX5_L3T_GT_MASK (MLX5_L3T_GT_SIZE - 1)
+
+/* L3 table middle table define. */
+#define MLX5_L3T_MT_OFFSET 12
+#define MLX5_L3T_MT_SIZE (1 << 10)
+#define MLX5_L3T_MT_MASK (MLX5_L3T_MT_SIZE - 1)
+
+/* L3 table entry table define. */
+#define MLX5_L3T_ET_OFFSET 0
+#define MLX5_L3T_ET_SIZE (1 << 12)
+#define MLX5_L3T_ET_MASK (MLX5_L3T_ET_SIZE - 1)
+
+/* L3 table type. */
+enum mlx5_l3t_type {
+	MLX5_L3T_TYPE_WORD = 0,
+	MLX5_L3T_TYPE_DWORD,
+	MLX5_L3T_TYPE_QWORD,
+	MLX5_L3T_TYPE_PTR,
+	MLX5_L3T_TYPE_MAX,
+};
+
+struct mlx5_indexed_pool;
+
+/* Generic data struct. */
+union mlx5_l3t_data {
+	uint16_t word;
+	uint32_t dword;
+	uint64_t qword;
+	void *ptr;
+};
+
+/* L3 level table data structure. */
+struct mlx5_l3t_level_tbl {
+	uint64_t ref_cnt; /* Table ref_cnt. */
+	void *tbl[]; /* Table array. */
+};
+
+/* L3 word entry table data structure. */
+struct mlx5_l3t_entry_word {
+	uint32_t idx; /* Table index. */
+	uint64_t ref_cnt; /* Table ref_cnt. */
+	uint16_t entry[]; /* Entry array. */
+};
+
+/* L3 double word entry table data structure. */
+struct mlx5_l3t_entry_dword {
+	uint32_t idx; /* Table index. */
+	uint64_t ref_cnt; /* Table ref_cnt. */
+	uint32_t entry[]; /* Entry array. */
+};
+
+/* L3 quad word entry table data structure. */
+struct mlx5_l3t_entry_qword {
+	uint32_t idx; /* Table index. */
+	uint64_t ref_cnt; /* Table ref_cnt. */
+	uint64_t entry[]; /* Entry array. */
+};
+
+/* L3 pointer entry table data structure. */
+struct mlx5_l3t_entry_ptr {
+	uint32_t idx; /* Table index. */
+	uint64_t ref_cnt; /* Table ref_cnt. */
+	void *entry[]; /* Entry array. */
+};
+
+/* L3 table data structure. */
+struct mlx5_l3t_tbl {
+	enum mlx5_l3t_type type; /* Table type. */
+	struct mlx5_indexed_pool *eip;
+	/* Table index pool handles. */
+	struct mlx5_l3t_level_tbl *tbl; /* Global table index. */
+};
+
+/*
  * The indexed memory entry index is made up of trunk index and offset of
  * the entry in the trunk. Since the entry index is 32 bits, in case user
  * prefers to have small trunks, user can change the macro below to a big
@@ -344,6 +444,71 @@ int mlx5_ipool_destroy(struct mlx5_indexed_pool *pool);
  *   Pointer to indexed memory pool.
  */
 void mlx5_ipool_dump(struct mlx5_indexed_pool *pool);
+
+/**
+ * This function allocates new empty Three-level table.
+ *
+ * @param type
+ *   The l3t can set as word, double word, quad word or pointer with index.
+ *
+ * @return
+ *   - Pointer to the allocated l3t.
+ *   - NULL on error. Not enough memory, or invalid arguments.
+ */
+struct mlx5_l3t_tbl *mlx5_l3t_create(enum mlx5_l3t_type type);
+
+/**
+ * This function destroys Three-level table.
+ *
+ * @param tbl
+ *   Pointer to the l3t.
+ */
+void mlx5_l3t_destroy(struct mlx5_l3t_tbl *tbl);
+
+/**
+ * This function gets the index entry from Three-level table.
+ *
+ * @param tbl
+ *   Pointer to the l3t.
+ * @param idx
+ *   Index to the entry.
+ * @param data
+ *   Pointer to the memory which saves the entry data.
+ *   When function call returns 0, data contains the entry data get from
+ *   l3t.
+ *   When function call returns -1, data is not modified.
+ *
+ * @return
+ *   0 if success, -1 on error.
+ */
+
+uint32_t mlx5_l3t_get_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx,
+			    union mlx5_l3t_data *data);
+/**
+ * This function clears the index entry from Three-level table.
+ *
+ * @param tbl
+ *   Pointer to the l3t.
+ * @param idx
+ *   Index to the entry.
+ */
+void mlx5_l3t_clear_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx);
+
+/**
+ * This function gets the index entry from Three-level table.
+ *
+ * @param tbl
+ *   Pointer to the l3t.
+ * @param idx
+ *   Index to the entry.
+ * @param data
+ *   Pointer to the memory which contains the entry data save to l3t.
+ *
+ * @return
+ *   0 if success, -1 on error.
+ */
+uint32_t mlx5_l3t_set_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx,
+			    union mlx5_l3t_data *data);
 
 /*
  * Macros for linked list based on indexed memory.
