@@ -1126,7 +1126,7 @@ main_empty_poll_loop(__rte_unused void *dummy)
 }
 /* main processing loop */
 static int
-main_loop(__rte_unused void *dummy)
+main_legacy_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	unsigned lcore_id;
@@ -1581,6 +1581,7 @@ parse_ep_config(const char *q_arg)
 
 }
 #define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
+#define CMD_LINE_OPT_EMPTY_POLL "empty-poll"
 #define CMD_LINE_OPT_TELEMETRY "telemetry"
 
 /* Parse the argument given in the command line of the application */
@@ -1598,7 +1599,7 @@ parse_args(int argc, char **argv)
 		{"high-perf-cores", 1, 0, 0},
 		{"no-numa", 0, 0, 0},
 		{"enable-jumbo", 0, 0, 0},
-		{"empty-poll", 1, 0, 0},
+		{CMD_LINE_OPT_EMPTY_POLL, 1, 0, 0},
 		{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, 0},
 		{CMD_LINE_OPT_TELEMETRY, 0, 0, 0},
 		{NULL, 0, 0, 0}
@@ -1673,7 +1674,7 @@ parse_args(int argc, char **argv)
 			}
 
 			if (!strncmp(lgopts[option_index].name,
-						"empty-poll", 10)) {
+					CMD_LINE_OPT_EMPTY_POLL, 10)) {
 				if (app_mode == APP_MODE_TELEMETRY) {
 					printf(" empty-poll cannot be enabled as telemetry mode is enabled\n");
 					return -1;
@@ -2253,7 +2254,9 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
 
-	if (app_mode != APP_MODE_TELEMETRY && init_power_library())
+	/* only legacy and empty poll mode rely on power library */
+	if ((app_mode == APP_MODE_LEGACY || app_mode == APP_MODE_EMPTY_POLL) &&
+			init_power_library())
 		rte_exit(EXIT_FAILURE, "init_power_library failed\n");
 
 	if (update_lcore_params() < 0)
@@ -2526,12 +2529,12 @@ main(int argc, char **argv)
 
 	/* launch per-lcore init on every lcore */
 	if (app_mode == APP_MODE_LEGACY) {
-		rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);
+		rte_eal_mp_remote_launch(main_legacy_loop, NULL, CALL_MASTER);
 	} else if (app_mode == APP_MODE_EMPTY_POLL) {
 		empty_poll_stop = false;
 		rte_eal_mp_remote_launch(main_empty_poll_loop, NULL,
 				SKIP_MASTER);
-	} else {
+	} else if (app_mode == APP_MODE_TELEMETRY) {
 		unsigned int i;
 
 		/* Init metrics library */
@@ -2577,7 +2580,8 @@ main(int argc, char **argv)
 	if (app_mode == APP_MODE_EMPTY_POLL)
 		rte_power_empty_poll_stat_free();
 
-	if (app_mode != APP_MODE_TELEMETRY && deinit_power_library())
+	if ((app_mode == APP_MODE_LEGACY || app_mode == APP_MODE_EMPTY_POLL) &&
+			deinit_power_library())
 		rte_exit(EXIT_FAILURE, "deinit_power_library failed\n");
 
 	if (rte_eal_cleanup() < 0)
