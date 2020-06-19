@@ -71,6 +71,7 @@
 		"/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_min_freq"
 #define POWER_SYSFILE_BASE_FREQ  \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/base_frequency"
+#define POWER_PSTATE_DRIVER "intel_pstate"
 #define POWER_MSR_PATH  "/dev/cpu/%u/msr"
 
 /*
@@ -529,6 +530,12 @@ out:
 	fclose(f_max);
 
 	return ret;
+}
+
+int
+power_pstate_cpufreq_check_supported(void)
+{
+	return cpufreq_check_scaling_driver(POWER_PSTATE_DRIVER);
 }
 
 int

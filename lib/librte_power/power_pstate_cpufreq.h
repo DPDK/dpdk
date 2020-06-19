@@ -21,6 +21,16 @@ extern "C" {
 #endif
 
 /**
+ * Check if pstate power management is supported.
+ *
+ * @return
+ *   - 1 if supported
+ *   - 0 if unsupported
+ *   - -1 if error, with rte_errno indicating reason for error.
+ */
+int power_pstate_cpufreq_check_supported(void);
+
+/**
  * Initialize power management for a specific lcore. It will check and set the
  * governor to performance for the lcore, get the available frequencies, and
  * prepare to set new lcore frequency.

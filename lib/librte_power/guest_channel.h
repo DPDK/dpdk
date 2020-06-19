@@ -11,6 +11,18 @@ extern "C" {
 #include <channel_commands.h>
 
 /**
+ * Check if any Virtio-Serial VM end-points exist in path.
+ *
+ * @param path
+ *  The path to the serial device on the filesystem
+ *
+ * @return
+ *  - 1 if at least one potential end-point found.
+ *  - 0 if no end-points found.
+ */
+int guest_channel_host_check_exists(const char *path);
+
+/**
  * Connect to the Virtio-Serial VM end-point located in path. It is
  * thread safe for unique lcore_ids. This function must be only called once from
  * each lcore.

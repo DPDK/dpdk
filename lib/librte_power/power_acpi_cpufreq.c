@@ -59,6 +59,7 @@
 		"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_available_frequencies"
 #define POWER_SYSFILE_SETSPEED   \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_setspeed"
+#define POWER_ACPI_DRIVER "acpi-cpufreq"
 
 /*
  * MSR related
@@ -287,6 +288,12 @@ out:
 	fclose(f);
 
 	return -1;
+}
+
+int
+power_acpi_cpufreq_check_supported(void)
+{
+	return cpufreq_check_scaling_driver(POWER_ACPI_DRIVER);
 }
 
 int

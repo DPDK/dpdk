@@ -21,6 +21,16 @@ extern "C" {
 #endif
 
 /**
+ * Check if KVM power management is supported.
+ *
+ * @return
+ *   - 1 if supported
+ *   - 0 if unsupported
+ *   - -1 if error, with rte_errno indicating reason for error.
+ */
+int power_kvm_vm_check_supported(void);
+
+/**
  * Initialize power management for a specific lcore.
  *
  * @param lcore_id

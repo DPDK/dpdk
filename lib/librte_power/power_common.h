@@ -7,4 +7,7 @@
 
 #define RTE_POWER_INVALID_FREQ_INDEX (~0)
 
+/* check if scaling driver matches one we want */
+int cpufreq_check_scaling_driver(const char *driver);
+
 #endif /* _POWER_COMMON_H_ */

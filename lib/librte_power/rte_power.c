@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <rte_errno.h>
 #include <rte_spinlock.h>
 
 #include "rte_power.h"
@@ -41,6 +42,22 @@ reset_power_function_ptrs(void)
 	rte_power_freq_enable_turbo = NULL;
 	rte_power_freq_disable_turbo = NULL;
 	rte_power_get_capabilities = NULL;
+}
+
+int
+rte_power_check_env_supported(enum power_management_env env)
+{
+	switch (env) {
+	case PM_ENV_ACPI_CPUFREQ:
+		return power_acpi_cpufreq_check_supported();
+	case PM_ENV_PSTATE_CPUFREQ:
+		return power_pstate_cpufreq_check_supported();
+	case PM_ENV_KVM_VM:
+		return power_kvm_vm_check_supported();
+	default:
+		rte_errno = EINVAL;
+		return -1;
+	}
 }
 
 int

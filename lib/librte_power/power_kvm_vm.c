@@ -15,6 +15,11 @@
 
 static struct channel_packet pkt[RTE_MAX_LCORE];
 
+int
+power_kvm_vm_check_supported(void)
+{
+	return guest_channel_host_check_exists(FD_PATH);
+}
 
 int
 power_kvm_vm_init(unsigned int lcore_id)

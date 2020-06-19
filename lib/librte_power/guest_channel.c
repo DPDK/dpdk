@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -24,6 +25,31 @@
 #define TIMEOUT 10
 
 static int global_fds[RTE_MAX_LCORE] = { [0 ... RTE_MAX_LCORE-1] = -1 };
+
+int
+guest_channel_host_check_exists(const char *path)
+{
+	char glob_path[PATH_MAX];
+	glob_t g;
+	int ret;
+
+	/* we cannot know in advance which cores have VM channels, so glob */
+	snprintf(glob_path, PATH_MAX, "%s.*", path);
+
+	ret = glob(glob_path, GLOB_NOSORT, NULL, &g);
+	if (ret != 0) {
+		/* couldn't read anything */
+		ret = 0;
+		goto out;
+	}
+
+	/* do we have at least one match? */
+	ret = g.gl_pathc > 0;
+
+out:
+	globfree(&g);
+	return ret;
+}
 
 int
 guest_channel_host_connect(const char *path, unsigned int lcore_id)
