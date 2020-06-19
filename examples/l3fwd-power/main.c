@@ -2043,6 +2043,7 @@ static int check_ptype(uint16_t portid)
 static int
 init_power_library(void)
 {
+	enum power_management_env env;
 	unsigned int lcore_id;
 	int ret = 0;
 
@@ -2054,6 +2055,14 @@ init_power_library(void)
 				"Library initialization failed on core %u\n",
 				lcore_id);
 			return ret;
+		}
+		/* we're not supporting the VM channel mode */
+		env = rte_power_get_env();
+		if (env != PM_ENV_ACPI_CPUFREQ &&
+				env != PM_ENV_PSTATE_CPUFREQ) {
+			RTE_LOG(ERR, POWER,
+				"Only ACPI and PSTATE mode are supported\n");
+			return -1;
 		}
 	}
 	return ret;
