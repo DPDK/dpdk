@@ -46,6 +46,7 @@
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
+#include "mlx5_common_os.h"
 #include "mlx5_utils.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
@@ -64,79 +65,6 @@
 #ifndef HAVE_IBV_MLX5_MOD_CQE_128B_COMP
 #define MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP (1 << 4)
 #endif
-
-/**
- * Get device name. Given an ibv_device pointer - return a
- * pointer to the corresponding device name.
- *
- * @param[in] dev
- *   Pointer to ibv device.
- *
- * @return
- *   Pointer to device name if dev is valid, NULL otherwise.
- */
-const char *
-mlx5_os_get_dev_device_name(void *dev)
-{
-	if (!dev)
-		return NULL;
-	return ((struct ibv_device *)dev)->name;
-}
-
-/**
- * Get ibv device name. Given an ibv_context pointer - return a
- * pointer to the corresponding device name.
- *
- * @param[in] ctx
- *   Pointer to ibv context.
- *
- * @return
- *   Pointer to device name if ctx is valid, NULL otherwise.
- */
-const char *
-mlx5_os_get_ctx_device_name(void *ctx)
-{
-	if (!ctx)
-		return NULL;
-	return ((struct ibv_context *)ctx)->device->name;
-}
-
-/**
- * Get ibv device path name. Given an ibv_context pointer - return a
- * pointer to the corresponding device path name.
- *
- * @param[in] ctx
- *   Pointer to ibv context.
- *
- * @return
- *   Pointer to device path name if ctx is valid, NULL otherwise.
- */
-const char *
-mlx5_os_get_ctx_device_path(void *ctx)
-{
-	if (!ctx)
-		return NULL;
-
-	return ((struct ibv_context *)ctx)->device->ibdev_path;
-}
-
-/**
- * Get umem id. Given a pointer to umem object of type
- * 'struct mlx5dv_devx_umem *' - return its id.
- *
- * @param[in] umem
- *   Pointer to umem object.
- *
- * @return
- *   The umem id if umem is valid, 0 otherwise.
- */
-uint32_t
-mlx5_os_get_umem_id(void *umem)
-{
-	if (!umem)
-		return 0;
-	return ((struct mlx5dv_devx_umem *)umem)->umem_id;
-}
 
 /**
  * Get mlx5 device attributes. The glue function query_device_ex() is called

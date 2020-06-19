@@ -8,8 +8,8 @@
 
 /* verb enumerations translations to local enums. */
 enum {
-	DEV_SYSFS_NAME_MAX = IBV_SYSFS_NAME_MAX,
-	DEV_SYSFS_PATH_MAX = IBV_SYSFS_PATH_MAX
+	DEV_SYSFS_NAME_MAX = IBV_SYSFS_NAME_MAX + 1,
+	DEV_SYSFS_PATH_MAX = IBV_SYSFS_PATH_MAX + 1
 };
 
 #define PCI_DRV_FLAGS  (RTE_PCI_DRV_INTR_LSC | \

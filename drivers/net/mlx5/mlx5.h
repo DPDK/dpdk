@@ -932,10 +932,6 @@ void mlx5_flow_meter_detach(struct mlx5_flow_meter *fm);
 
 /* mlx5_os.c */
 struct rte_pci_driver;
-const char *mlx5_os_get_ctx_device_name(void *ctx);
-const char *mlx5_os_get_ctx_device_path(void *ctx);
-const char *mlx5_os_get_dev_device_name(void *dev);
-uint32_t mlx5_os_get_umem_id(void *umem);
 int mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *dev_attr);
 void mlx5_os_free_shared_dr(struct mlx5_priv *priv);
 int mlx5_os_open_device(const struct mlx5_dev_spawn_data *spawn,

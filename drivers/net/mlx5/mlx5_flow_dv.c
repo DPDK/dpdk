@@ -36,6 +36,7 @@
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
+#include "mlx5_common_os.h"
 #include "mlx5_flow.h"
 #include "mlx5_rxtx.h"
 
