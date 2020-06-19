@@ -2412,6 +2412,42 @@ launch_timer(unsigned int lcore_id)
 	return 0;
 }
 
+static int
+autodetect_mode(void)
+{
+	RTE_LOG(NOTICE, L3FWD_POWER, "Operating mode not specified, probing frequency scaling support...\n");
+
+	/*
+	 * Empty poll and telemetry modes have to be specifically requested to
+	 * be enabled, but we can auto-detect between interrupt mode with or
+	 * without frequency scaling. Both ACPI and pstate can be used.
+	 */
+	if (rte_power_check_env_supported(PM_ENV_ACPI_CPUFREQ))
+		return APP_MODE_LEGACY;
+	if (rte_power_check_env_supported(PM_ENV_PSTATE_CPUFREQ))
+		return APP_MODE_LEGACY;
+
+	RTE_LOG(NOTICE, L3FWD_POWER, "Frequency scaling not supported, selecting interrupt-only mode\n");
+
+	return APP_MODE_INTERRUPT;
+}
+
+static const char *
+mode_to_str(enum appmode mode)
+{
+	switch (mode) {
+	case APP_MODE_LEGACY:
+		return "legacy";
+	case APP_MODE_EMPTY_POLL:
+		return "empty poll";
+	case APP_MODE_TELEMETRY:
+		return "telemetry";
+	case APP_MODE_INTERRUPT:
+		return "interrupt-only";
+	default:
+		return "invalid";
+	}
+}
 
 int
 main(int argc, char **argv)
@@ -2449,7 +2485,10 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
 
 	if (app_mode == APP_MODE_DEFAULT)
-		app_mode = APP_MODE_LEGACY;
+		app_mode = autodetect_mode();
+
+	RTE_LOG(INFO, L3FWD_POWER, "Selected operation mode: %s\n",
+			mode_to_str(app_mode));
 
 	/* only legacy and empty poll mode rely on power library */
 	if ((app_mode == APP_MODE_LEGACY || app_mode == APP_MODE_EMPTY_POLL) &&
