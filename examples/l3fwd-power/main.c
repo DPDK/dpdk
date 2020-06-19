@@ -256,10 +256,7 @@ static struct rte_eth_conf port_conf = {
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
-	},
-	.intr_conf = {
-		.rxq = 1,
-	},
+	}
 };
 
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
@@ -2270,6 +2267,8 @@ main(int argc, char **argv)
 	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid) {
 		struct rte_eth_conf local_port_conf = port_conf;
+		/* not all app modes need interrupts */
+		bool need_intr = app_mode == APP_MODE_LEGACY;
 
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << portid)) == 0) {
@@ -2303,7 +2302,10 @@ main(int argc, char **argv)
 			nb_rx_queue, (unsigned)n_tx_queue );
 		/* If number of Rx queue is 0, no need to enable Rx interrupt */
 		if (nb_rx_queue == 0)
-			local_port_conf.intr_conf.rxq = 0;
+			need_intr = false;
+
+		if (need_intr)
+			local_port_conf.intr_conf.rxq = 1;
 
 		ret = rte_eth_dev_info_get(portid, &dev_info);
 		if (ret != 0)
