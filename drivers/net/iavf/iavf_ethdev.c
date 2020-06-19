@@ -123,34 +123,6 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 };
 
 static int
-iavf_dev_configure(struct rte_eth_dev *dev)
-{
-	struct iavf_adapter *ad =
-		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(ad);
-	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
-
-	ad->rx_bulk_alloc_allowed = true;
-	/* Initialize to TRUE. If any of Rx queues doesn't meet the
-	 * vector Rx/Tx preconditions, it will be reset.
-	 */
-	ad->rx_vec_allowed = true;
-	ad->tx_vec_allowed = true;
-
-	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
-
-	/* Vlan stripping setting */
-	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN) {
-		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
-			iavf_enable_vlan_strip(ad);
-		else
-			iavf_disable_vlan_strip(ad);
-	}
-	return 0;
-}
-
-static int
 iavf_init_rss(struct iavf_adapter *adapter)
 {
 	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(adapter);
@@ -203,6 +175,41 @@ iavf_init_rss(struct iavf_adapter *adapter)
 	if (ret)
 		return ret;
 
+	return 0;
+}
+
+static int
+iavf_dev_configure(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *ad =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(ad);
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+
+	ad->rx_bulk_alloc_allowed = true;
+	/* Initialize to TRUE. If any of Rx queues doesn't meet the
+	 * vector Rx/Tx preconditions, it will be reset.
+	 */
+	ad->rx_vec_allowed = true;
+	ad->tx_vec_allowed = true;
+
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
+	/* Vlan stripping setting */
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN) {
+		if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			iavf_enable_vlan_strip(ad);
+		else
+			iavf_disable_vlan_strip(ad);
+	}
+
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
+		if (iavf_init_rss(ad) != 0) {
+			PMD_DRV_LOG(ERR, "configure rss failed");
+			return -1;
+		}
+	}
 	return 0;
 }
 
@@ -426,13 +433,6 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		return -1;
 	}
 
-	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
-		if (iavf_init_rss(adapter) != 0) {
-			PMD_DRV_LOG(ERR, "configure rss failed");
-			goto err_rss;
-		}
-	}
-
 	if (iavf_configure_queues(adapter) != 0) {
 		PMD_DRV_LOG(ERR, "configure queues failed");
 		goto err_queue;
@@ -461,7 +461,6 @@ iavf_dev_start(struct rte_eth_dev *dev)
 err_mac:
 	iavf_add_del_all_mac_addr(adapter, false);
 err_queue:
-err_rss:
 	return -1;
 }
 
