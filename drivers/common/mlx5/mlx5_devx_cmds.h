@@ -9,19 +9,6 @@
 #include "mlx5_prm.h"
 
 
-/* devX creation object */
-struct mlx5_devx_obj {
-	void *obj; /* The DV object. */
-	int id; /* The object ID. */
-};
-
-/* UMR memory buffer used to define 1 entry in indirect mkey. */
-struct mlx5_klm {
-	uint32_t byte_count;
-	uint32_t mkey;
-	uint64_t address;
-};
-
 /* This is limitation of libibverbs: in length variable type is u16. */
 #define MLX5_DEVX_MAX_KLM_ENTRIES ((UINT16_MAX - \
 		MLX5_ST_SZ_DW(create_mkey_in) * 4) / (MLX5_ST_SZ_DW(klm) * 4))

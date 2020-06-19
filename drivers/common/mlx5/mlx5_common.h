@@ -15,6 +15,7 @@
 #include <rte_devargs.h>
 
 #include "mlx5_prm.h"
+#include "mlx5_devx_cmds.h"
 
 
 /* Bit-field manipulation. */
@@ -210,13 +211,48 @@ enum mlx5_class {
 	MLX5_CLASS_INVALID,
 };
 
+#define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
+#define MLX5_DBR_SIZE 8
+#define MLX5_DBR_PER_PAGE (MLX5_DBR_PAGE_SIZE / MLX5_DBR_SIZE)
+#define MLX5_DBR_BITMAP_SIZE (MLX5_DBR_PER_PAGE / 64)
+
+struct mlx5_devx_dbr_page {
+	/* Door-bell records, must be first member in structure. */
+	uint8_t dbrs[MLX5_DBR_PAGE_SIZE];
+	LIST_ENTRY(mlx5_devx_dbr_page) next; /* Pointer to the next element. */
+	void *umem;
+	uint32_t dbr_count; /* Number of door-bell records in use. */
+	/* 1 bit marks matching door-bell is in use. */
+	uint64_t dbr_bitmap[MLX5_DBR_BITMAP_SIZE];
+};
+
+/* devX creation object */
+struct mlx5_devx_obj {
+	void *obj; /* The DV object. */
+	int id; /* The object ID. */
+};
+
+/* UMR memory buffer used to define 1 entry in indirect mkey. */
+struct mlx5_klm {
+	uint32_t byte_count;
+	uint32_t mkey;
+	uint64_t address;
+};
+
+LIST_HEAD(mlx5_dbr_page_list, mlx5_devx_dbr_page);
+
 __rte_internal
 enum mlx5_class mlx5_class_get(struct rte_devargs *devargs);
 __rte_internal
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 void mlx5_glue_constructor(void);
-
+__rte_internal
+int64_t mlx5_get_dbr(void *ctx,  struct mlx5_dbr_page_list *head,
+		     struct mlx5_devx_dbr_page **dbr_page);
+__rte_internal
+int32_t mlx5_release_dbr(struct mlx5_dbr_page_list *head, uint32_t umem_id,
+			 uint64_t offset);
 extern uint8_t haswell_broadwell_cpu;
 
 #endif /* RTE_PMD_MLX5_COMMON_H_ */

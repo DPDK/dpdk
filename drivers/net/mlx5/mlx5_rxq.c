@@ -1414,7 +1414,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		struct mlx5_devx_dbr_page *dbr_page;
 		int64_t dbr_offset;
 
-		dbr_offset = mlx5_get_dbr(dev, &dbr_page);
+		dbr_offset = mlx5_get_dbr(priv->sh->ctx, &priv->dbrpgs,
+					  &dbr_page);
 		if (dbr_offset < 0)
 			goto error;
 		rxq_ctrl->dbr_offset = dbr_offset;
@@ -2102,7 +2103,8 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 		rxq_ctrl->obj = NULL;
 	if (rte_atomic32_dec_and_test(&rxq_ctrl->refcnt)) {
 		if (rxq_ctrl->dbr_umem_id_valid)
-			claim_zero(mlx5_release_dbr(dev, rxq_ctrl->dbr_umem_id,
+			claim_zero(mlx5_release_dbr(&priv->dbrpgs,
+						    rxq_ctrl->dbr_umem_id,
 						    rxq_ctrl->dbr_offset));
 		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
 			mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);

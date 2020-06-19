@@ -7,8 +7,11 @@
 #include <stdio.h>
 
 #include <rte_errno.h>
+#include <rte_mempool.h>
+#include <rte_malloc.h>
 
 #include "mlx5_common.h"
+#include "mlx5_common_os.h"
 #include "mlx5_common_utils.h"
 
 int mlx5_common_logtype;
@@ -149,4 +152,123 @@ RTE_INIT_PRIO(mlx5_is_haswell_broadwell_cpu, LOG)
 	}
 #endif
 	haswell_broadwell_cpu = 0;
+}
+
+/**
+ * Allocate page of door-bells and register it using DevX API.
+ *
+ * @param [in] ctx
+ *   Pointer to the device context.
+ *
+ * @return
+ *   Pointer to new page on success, NULL otherwise.
+ */
+static struct mlx5_devx_dbr_page *
+mlx5_alloc_dbr_page(void *ctx)
+{
+	struct mlx5_devx_dbr_page *page;
+
+	/* Allocate space for door-bell page and management data. */
+	page = rte_calloc_socket(__func__, 1, sizeof(struct mlx5_devx_dbr_page),
+				 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (!page) {
+		DRV_LOG(ERR, "cannot allocate dbr page");
+		return NULL;
+	}
+	/* Register allocated memory. */
+	page->umem = mlx5_glue->devx_umem_reg(ctx, page->dbrs,
+					      MLX5_DBR_PAGE_SIZE, 0);
+	if (!page->umem) {
+		DRV_LOG(ERR, "cannot umem reg dbr page");
+		rte_free(page);
+		return NULL;
+	}
+	return page;
+}
+
+/**
+ * Find the next available door-bell, allocate new page if needed.
+ *
+ * @param [in] ctx
+ *   Pointer to device context.
+ * @param [in] head
+ *   Pointer to the head of dbr pages list.
+ * @param [out] dbr_page
+ *   Door-bell page containing the page data.
+ *
+ * @return
+ *   Door-bell address offset on success, a negative error value otherwise.
+ */
+int64_t
+mlx5_get_dbr(void *ctx,  struct mlx5_dbr_page_list *head,
+	     struct mlx5_devx_dbr_page **dbr_page)
+{
+	struct mlx5_devx_dbr_page *page = NULL;
+	uint32_t i, j;
+
+	LIST_FOREACH(page, head, next)
+		if (page->dbr_count < MLX5_DBR_PER_PAGE)
+			break;
+	if (!page) { /* No page with free door-bell exists. */
+		page = mlx5_alloc_dbr_page(ctx);
+		if (!page) /* Failed to allocate new page. */
+			return (-1);
+		LIST_INSERT_HEAD(head, page, next);
+	}
+	/* Loop to find bitmap part with clear bit. */
+	for (i = 0;
+	     i < MLX5_DBR_BITMAP_SIZE && page->dbr_bitmap[i] == UINT64_MAX;
+	     i++)
+		; /* Empty. */
+	/* Find the first clear bit. */
+	MLX5_ASSERT(i < MLX5_DBR_BITMAP_SIZE);
+	j = rte_bsf64(~page->dbr_bitmap[i]);
+	page->dbr_bitmap[i] |= (UINT64_C(1) << j);
+	page->dbr_count++;
+	*dbr_page = page;
+	return (((i * 64) + j) * sizeof(uint64_t));
+}
+
+/**
+ * Release a door-bell record.
+ *
+ * @param [in] head
+ *   Pointer to the head of dbr pages list.
+ * @param [in] umem_id
+ *   UMEM ID of page containing the door-bell record to release.
+ * @param [in] offset
+ *   Offset of door-bell record in page.
+ *
+ * @return
+ *   0 on success, a negative error value otherwise.
+ */
+int32_t
+mlx5_release_dbr(struct mlx5_dbr_page_list *head, uint32_t umem_id,
+		 uint64_t offset)
+{
+	struct mlx5_devx_dbr_page *page = NULL;
+	int ret = 0;
+
+	LIST_FOREACH(page, head, next)
+		/* Find the page this address belongs to. */
+		if (mlx5_os_get_umem_id(page->umem) == umem_id)
+			break;
+	if (!page)
+		return -EINVAL;
+	page->dbr_count--;
+	if (!page->dbr_count) {
+		/* Page not used, free it and remove from list. */
+		LIST_REMOVE(page, next);
+		if (page->umem)
+			ret = -mlx5_glue->devx_umem_dereg(page->umem);
+		rte_free(page);
+	} else {
+		/* Mark in bitmap that this door-bell is not in use. */
+		offset /= MLX5_DBR_SIZE;
+		int i = offset / 64;
+		int j = offset % 64;
+
+		page->dbr_bitmap[i] &= ~(UINT64_C(1) << j);
+	}
+	return ret;
 }

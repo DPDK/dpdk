@@ -511,21 +511,6 @@ struct mlx5_flow_tbl_resource {
 #define MLX5_MAX_TABLES_EXTERNAL (MLX5_MAX_TABLES - 3)
 #define MLX5_MAX_TABLES_FDB UINT16_MAX
 
-#define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
-#define MLX5_DBR_SIZE 8
-#define MLX5_DBR_PER_PAGE (MLX5_DBR_PAGE_SIZE / MLX5_DBR_SIZE)
-#define MLX5_DBR_BITMAP_SIZE (MLX5_DBR_PER_PAGE / 64)
-
-struct mlx5_devx_dbr_page {
-	/* Door-bell records, must be first member in structure. */
-	uint8_t dbrs[MLX5_DBR_PAGE_SIZE];
-	LIST_ENTRY(mlx5_devx_dbr_page) next; /* Pointer to the next element. */
-	void *umem;
-	uint32_t dbr_count; /* Number of door-bell records in use. */
-	/* 1 bit marks matching door-bell is in use. */
-	uint64_t dbr_bitmap[MLX5_DBR_BITMAP_SIZE];
-};
-
 /* ID generation structure. */
 struct mlx5_flow_id_pool {
 	uint32_t *free_arr; /**< Pointer to the a array of free values. */
@@ -667,7 +652,7 @@ struct mlx5_priv {
 	/* Context for Verbs allocator. */
 	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
-	LIST_HEAD(dbrpage, mlx5_devx_dbr_page) dbrpgs; /* Door-bell pages. */
+	struct mlx5_dbr_page_list dbrpgs; /* Door-bell pages. */
 	struct mlx5_nl_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
 	struct mlx5_flow_id_pool *qrss_id_pool;
 	struct mlx5_hlist *mreg_cp_tbl;
@@ -694,10 +679,6 @@ struct mlx5_priv {
 
 int mlx5_getenv_int(const char *);
 int mlx5_proc_priv_init(struct rte_eth_dev *dev);
-int64_t mlx5_get_dbr(struct rte_eth_dev *dev,
-		     struct mlx5_devx_dbr_page **dbr_page);
-int32_t mlx5_release_dbr(struct rte_eth_dev *dev, uint32_t umem_id,
-			 uint64_t offset);
 int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
 uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev);
