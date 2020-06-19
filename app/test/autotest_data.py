@@ -406,7 +406,7 @@ parallel_test_list = [
     },
     {
         "Name":    "Bitops test",
-        "Command": "bitops_test",
+        "Command": "bitops_autotest",
         "Func":    default_autotest,
         "Report":  None,
     },
