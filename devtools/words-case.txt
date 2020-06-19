@@ -8,6 +8,7 @@ armv8
 BAR
 CRC
 DCB
+DevX
 DMA
 EEPROM
 FDIR
@@ -32,8 +33,8 @@ MSS
 MTU
 NEON
 NIC
-NUMA
 null
+NUMA
 NVGRE
 NVM
 PCI
@@ -56,6 +57,7 @@ TTL
 Tx
 UDP
 vDPA
+Verbs
 VF
 VFIO
 VLAN
