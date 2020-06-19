@@ -1010,7 +1010,7 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 		}
 
 		/* notify the pipe fd waited by epoll_wait to rebuild the wait list */
-		if (rv >= 0 && write(intr_pipe.writefd, "1", 1) < 0) {
+		if (rv > 0 && write(intr_pipe.writefd, "1", 1) < 0) {
 			rte_spinlock_unlock(&intr_lock);
 			return -EPIPE;
 		}
