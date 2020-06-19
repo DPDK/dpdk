@@ -294,6 +294,9 @@ struct rte_vlan_hdr {
 #define RTE_ETHER_TYPE_RARP 0x8035 /**< Reverse Arp Protocol. */
 #define RTE_ETHER_TYPE_VLAN 0x8100 /**< IEEE 802.1Q VLAN tagging. */
 #define RTE_ETHER_TYPE_QINQ 0x88A8 /**< IEEE 802.1ad QinQ tagging. */
+#define RTE_ETHER_TYPE_QINQ1 0x9100 /**< Deprecated QinQ VLAN. */
+#define RTE_ETHER_TYPE_QINQ2 0x9200 /**< Deprecated QinQ VLAN. */
+#define RTE_ETHER_TYPE_QINQ3 0x9300 /**< Deprecated QinQ VLAN. */
 #define RTE_ETHER_TYPE_PPPOE_DISCOVERY 0x8863 /**< PPPoE Discovery Stage. */
 #define RTE_ETHER_TYPE_PPPOE_SESSION 0x8864 /**< PPPoE Session Stage. */
 #define RTE_ETHER_TYPE_ETAG 0x893F /**< IEEE 802.1BR E-Tag. */

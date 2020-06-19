@@ -2495,15 +2495,15 @@ bnxt_vlan_tpid_set_op(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type,
 			bp->outer_tpid_bd =
 				TX_BD_LONG_CFA_META_VLAN_TPID_TPID8100;
 				break;
-		case 0x9100:
+		case RTE_ETHER_TYPE_QINQ1:
 			bp->outer_tpid_bd =
 				TX_BD_LONG_CFA_META_VLAN_TPID_TPID9100;
 				break;
-		case 0x9200:
+		case RTE_ETHER_TYPE_QINQ2:
 			bp->outer_tpid_bd =
 				TX_BD_LONG_CFA_META_VLAN_TPID_TPID9200;
 				break;
-		case 0x9300:
+		case RTE_ETHER_TYPE_QINQ3:
 			bp->outer_tpid_bd =
 				 TX_BD_LONG_CFA_META_VLAN_TPID_TPID9300;
 				break;
