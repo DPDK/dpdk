@@ -195,7 +195,8 @@ static int parse_ptype; /**< Parse packet type using rx callback, and */
 			/**< disabled by default */
 
 enum appmode {
-	APP_MODE_LEGACY = 0,
+	APP_MODE_DEFAULT = 0,
+	APP_MODE_LEGACY,
 	APP_MODE_EMPTY_POLL,
 	APP_MODE_TELEMETRY
 };
@@ -1435,6 +1436,7 @@ print_usage(const char *prgname)
 		"  --enable-jumbo: enable jumbo frame"
 		" which max packet len is PKTLEN in decimal (64-9600)\n"
 		"  --parse-ptype: parse packet type by software\n"
+		"  --legacy: use legacy interrupt-based scaling\n"
 		"  --empty-poll: enable empty poll detection"
 		" follow (training_flag, high_threshold, med_threshold)\n"
 		" --telemetry: enable telemetry mode, to update"
@@ -1581,6 +1583,7 @@ parse_ep_config(const char *q_arg)
 
 }
 #define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
+#define CMD_LINE_OPT_LEGACY "legacy"
 #define CMD_LINE_OPT_EMPTY_POLL "empty-poll"
 #define CMD_LINE_OPT_TELEMETRY "telemetry"
 
@@ -1601,6 +1604,7 @@ parse_args(int argc, char **argv)
 		{"enable-jumbo", 0, 0, 0},
 		{CMD_LINE_OPT_EMPTY_POLL, 1, 0, 0},
 		{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, 0},
+		{CMD_LINE_OPT_LEGACY, 0, 0, 0},
 		{CMD_LINE_OPT_TELEMETRY, 0, 0, 0},
 		{NULL, 0, 0, 0}
 	};
@@ -1674,9 +1678,20 @@ parse_args(int argc, char **argv)
 			}
 
 			if (!strncmp(lgopts[option_index].name,
+					CMD_LINE_OPT_LEGACY,
+					sizeof(CMD_LINE_OPT_LEGACY))) {
+				if (app_mode != APP_MODE_DEFAULT) {
+					printf(" legacy mode is mutually exclusive with other modes\n");
+					return -1;
+				}
+				app_mode = APP_MODE_LEGACY;
+				printf("legacy mode is enabled\n");
+			}
+
+			if (!strncmp(lgopts[option_index].name,
 					CMD_LINE_OPT_EMPTY_POLL, 10)) {
-				if (app_mode == APP_MODE_TELEMETRY) {
-					printf(" empty-poll cannot be enabled as telemetry mode is enabled\n");
+				if (app_mode != APP_MODE_DEFAULT) {
+					printf(" empty-poll mode is mutually exclusive with other modes\n");
 					return -1;
 				}
 				app_mode = APP_MODE_EMPTY_POLL;
@@ -1693,8 +1708,8 @@ parse_args(int argc, char **argv)
 			if (!strncmp(lgopts[option_index].name,
 					CMD_LINE_OPT_TELEMETRY,
 					sizeof(CMD_LINE_OPT_TELEMETRY))) {
-				if (app_mode == APP_MODE_EMPTY_POLL) {
-					printf("telemetry mode cannot be enabled as empty poll mode is enabled\n");
+				if (app_mode != APP_MODE_DEFAULT) {
+					printf(" telemetry mode is mutually exclusive with other modes\n");
 					return -1;
 				}
 				app_mode = APP_MODE_TELEMETRY;
@@ -2253,6 +2268,9 @@ main(int argc, char **argv)
 	ret = parse_args(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
+
+	if (app_mode == APP_MODE_DEFAULT)
+		app_mode = APP_MODE_LEGACY;
 
 	/* only legacy and empty poll mode rely on power library */
 	if ((app_mode == APP_MODE_LEGACY || app_mode == APP_MODE_EMPTY_POLL) &&
