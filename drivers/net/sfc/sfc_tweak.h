@@ -26,7 +26,7 @@
  * this improves cache locality because the same mbufs may be used to send
  * subsequent bursts in certain cases because of well-timed reap
  */
-#define SFC_TX_XMIT_PKTS_REAP_AT_LEAST_ONCE	0
+#define SFC_TX_XMIT_PKTS_REAP_AT_LEAST_ONCE	1
 
 /** Default free threshold follows recommendations from DPDK documentation */
 #define SFC_TX_DEFAULT_FREE_THRESH	32
