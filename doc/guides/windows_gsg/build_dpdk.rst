@@ -44,13 +44,15 @@ and ensure the Windows SDK is selected.
 Option 2. MinGW-w64 Toolchain
 -----------------------------
 
-Obtain the latest version from
-`MinGW-w64 website <http://mingw-w64.org/doku.php/download>`_.
-On Windows, install to a folder without spaces in its name, like ``C:\MinGW``.
-This path is assumed for the rest of this guide.
-
+On Linux, i.e. for cross-compilation, install MinGW-w64 via a package manager.
 Version 4.0.4 for Ubuntu 16.04 cannot be used due to a
 `MinGW-w64 bug <https://sourceforge.net/p/mingw-w64/bugs/562/>`_.
+
+On Windows, obtain the latest version installer from
+`MinGW-w64 repository <https://sourceforge.net/projects/mingw-w64/files/>`_.
+Any thread model (POSIX or Win32) can be chosen, DPDK does not rely on it.
+Install to a folder without spaces in its name, like ``C:\MinGW``.
+This path is assumed for the rest of this guide.
 
 
 Install the Build System
