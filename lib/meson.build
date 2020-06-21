@@ -37,7 +37,9 @@ libraries = [
 
 if is_windows
 	libraries = [
-		'kvargs','eal',
+		'kvargs',
+		'eal',
+		'ring',
 		'pci',
 	] # only supported libraries for windows
 endif
