@@ -156,7 +156,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
       -netdev tap,id=net0,ifname=tap0,script=/etc/qemu-ifup_thunder \
       -device virtio-net-device,netdev=net0 \
       -serial stdio \
-      -mem-path /dev/huge
+      -mem-path /dev/hugepages
 
 #. Enable **VFIO-NOIOMMU** mode (optional):
 

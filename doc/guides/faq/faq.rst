@@ -18,7 +18,7 @@ The number of pages allocated can be seen by executing the following command::
 
 Once all the pages are mmapped by an application, they stay that way.
 If you start a test application with less than the maximum, then you have free pages.
-When you stop and restart the test application, it looks to see if the pages are available in the ``/dev/huge`` directory and mmaps them.
+When you stop and restart the test application, it looks to see if the pages are available in the ``/dev/hugepages`` directory and mmaps them.
 If you look in the directory, you will see ``n`` number of 2M pages files. If you specified 1024, you will see 1024 page files.
 These are then placed in memory segments to get contiguous memory.
 
