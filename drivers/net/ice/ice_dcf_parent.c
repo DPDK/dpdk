@@ -341,6 +341,7 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 	if (!parent_adapter->pf.main_vsi)
 		return -ENOMEM;
 	parent_adapter->pf.main_vsi->adapter = parent_adapter;
+	parent_adapter->pf.adapter_stopped = 1;
 
 	parent_hw->back = parent_adapter;
 	parent_hw->mac_type = ICE_MAC_GENERIC;

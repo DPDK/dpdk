@@ -45,6 +45,11 @@ ice_dcf_xmit_pkts(__rte_unused void *tx_queue,
 static int
 ice_dcf_dev_start(struct rte_eth_dev *dev)
 {
+	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
+	struct ice_adapter *ad = &dcf_ad->parent;
+
+	ad->pf.adapter_stopped = 0;
+
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	return 0;
@@ -53,7 +58,16 @@ ice_dcf_dev_start(struct rte_eth_dev *dev)
 static void
 ice_dcf_dev_stop(struct rte_eth_dev *dev)
 {
+	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
+	struct ice_adapter *ad = &dcf_ad->parent;
+
+	if (ad->pf.adapter_stopped == 1) {
+		PMD_DRV_LOG(DEBUG, "Port is already stopped");
+		return;
+	}
+
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	ad->pf.adapter_stopped = 1;
 }
 
 static int
