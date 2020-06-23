@@ -464,6 +464,15 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 				" configured - only Eswitch group 0 flows are"
 				" supported.", dev->data->port_id);
 	}
+	if (!priv->config.lacp_by_user && priv->pf_bond >= 0) {
+		ret = mlx5_flow_lacp_miss(dev);
+		if (ret)
+			DRV_LOG(INFO, "port %u LACP rule cannot be created - "
+				"forward LACP to kernel.", dev->data->port_id);
+		else
+			DRV_LOG(INFO, "LACP traffic will be missed in port %u."
+				, dev->data->port_id);
+	}
 	if (priv->isolated)
 		return 0;
 	if (dev->data->promiscuous) {

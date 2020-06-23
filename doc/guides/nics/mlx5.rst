@@ -796,6 +796,16 @@ Driver options
 
   Enabled by default if supported.
 
+- ``lacp_by_user`` parameter [int]
+
+  A nonzero value enables the control of LACP traffic by the user application.
+  When a bond exists in the driver, by default it should be managed by the
+  kernel and therefore LACP traffic should be steered to the kernel.
+  If this devarg is set to 1 it will allow the user to manage the bond by
+  itself and not steer LACP traffic to the kernel.
+
+  Disabled by default (set to 0).
+
 - ``mr_ext_memseg_en`` parameter [int]
 
   A nonzero value enables extending memseg when registering DMA memory. If

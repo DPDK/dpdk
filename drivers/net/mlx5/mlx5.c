@@ -140,6 +140,9 @@
 /* Enable extensive flow metadata support. */
 #define MLX5_DV_XMETA_EN "dv_xmeta_en"
 
+/* Device parameter to let the user manage the lacp traffic of bonded device */
+#define MLX5_LACP_BY_USER "lacp_by_user"
+
 /* Activate Netlink support in VF mode. */
 #define MLX5_VF_NL_EN "vf_nl_en"
 
@@ -1352,6 +1355,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 			return -rte_errno;
 		}
 		config->dv_xmeta_en = tmp;
+	} else if (strcmp(MLX5_LACP_BY_USER, key) == 0) {
+		config->lacp_by_user = !!tmp;
 	} else if (strcmp(MLX5_MR_EXT_MEMSEG_EN, key) == 0) {
 		config->mr_ext_memseg_en = !!tmp;
 	} else if (strcmp(MLX5_MAX_DUMP_FILES_NUM, key) == 0) {
@@ -1419,6 +1424,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_DV_ESW_EN,
 		MLX5_DV_FLOW_EN,
 		MLX5_DV_XMETA_EN,
+		MLX5_LACP_BY_USER,
 		MLX5_MR_EXT_MEMSEG_EN,
 		MLX5_REPRESENTOR,
 		MLX5_MAX_DUMP_FILES_NUM,

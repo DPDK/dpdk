@@ -67,6 +67,7 @@ New Features
   Updated Mellanox mlx5 driver with new features and improvements, including:
 
   * Added new PMD devarg ``reclaim_mem_mode``.
+  * Added new devarg ``lacp_by_user``.
 
 * **Added vDPA device APIs to query virtio queue statistics.**
 
