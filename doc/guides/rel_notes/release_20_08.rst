@@ -84,6 +84,12 @@ New Features
 
   Updated Marvell octeontx2 driver with cn98xx support.
 
+* **Updated the Intel ice driver.**
+
+  Updated the Intel ice driver with new features and improvements, including:
+
+  * Added support for DCF datapath configuration.
+
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 
   Added support for two BPF non-generic instructions:
