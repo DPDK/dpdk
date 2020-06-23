@@ -276,6 +276,7 @@ if is_windows
 	endif
 
 	add_project_link_arguments('-ladvapi32', '-lsetupapi', language: 'c')
+	add_project_link_arguments('-ldbghelp', language: 'c')
 endif
 
 if get_option('b_lto')

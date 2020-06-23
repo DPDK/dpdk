@@ -274,7 +274,14 @@ __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
 	return -ENOTSUP;
 }
 
- /* Launch threads, called at application init(). */
+int
+rte_eal_cleanup(void)
+{
+	eal_cleanup_config(&internal_config);
+	return 0;
+}
+
+/* Launch threads, called at application init(). */
 int
 rte_eal_init(int argc, char **argv)
 {
