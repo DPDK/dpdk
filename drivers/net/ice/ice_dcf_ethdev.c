@@ -57,8 +57,17 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 }
 
 static int
-ice_dcf_dev_configure(__rte_unused struct rte_eth_dev *dev)
+ice_dcf_dev_configure(struct rte_eth_dev *dev)
 {
+	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
+	struct ice_adapter *ad = &dcf_ad->parent;
+
+	ad->rx_bulk_alloc_allowed = true;
+	ad->tx_simple_allowed = true;
+
+	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_RSS_HASH;
+
 	return 0;
 }
 
