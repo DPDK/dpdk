@@ -228,6 +228,272 @@ ice_dcf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 }
 
 static int
+alloc_rxq_mbufs(struct ice_rx_queue *rxq)
+{
+	volatile union ice_32b_rx_flex_desc *rxd;
+	struct rte_mbuf *mbuf = NULL;
+	uint64_t dma_addr;
+	uint16_t i;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		mbuf = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(!mbuf)) {
+			PMD_DRV_LOG(ERR, "Failed to allocate mbuf for RX");
+			return -ENOMEM;
+		}
+
+		rte_mbuf_refcnt_set(mbuf, 1);
+		mbuf->next = NULL;
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->nb_segs = 1;
+		mbuf->port = rxq->port_id;
+
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+
+		rxd = &rxq->rx_ring[i];
+		rxd->read.pkt_addr = dma_addr;
+		rxd->read.hdr_addr = 0;
+		rxd->read.rsvd1 = 0;
+		rxd->read.rsvd2 = 0;
+
+		rxq->sw_ring[i].mbuf = (void *)mbuf;
+	}
+
+	return 0;
+}
+
+static int
+ice_dcf_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct iavf_hw *hw = &ad->real_hw.avf;
+	struct ice_rx_queue *rxq;
+	int err = 0;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	err = alloc_rxq_mbufs(rxq);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to allocate RX queue mbuf");
+		return err;
+	}
+
+	rte_wmb();
+
+	/* Init the RX tail register. */
+	IAVF_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
+	IAVF_WRITE_FLUSH(hw);
+
+	/* Ready to switch the queue on */
+	err = ice_dcf_switch_queue(&ad->real_hw, rx_queue_id, true, true);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u on",
+			    rx_queue_id);
+		return err;
+	}
+
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+static inline void
+reset_rx_queue(struct ice_rx_queue *rxq)
+{
+	uint16_t len;
+	uint32_t i;
+
+	if (!rxq)
+		return;
+
+	len = rxq->nb_rx_desc + ICE_RX_MAX_BURST;
+
+	for (i = 0; i < len * sizeof(union ice_rx_flex_desc); i++)
+		((volatile char *)rxq->rx_ring)[i] = 0;
+
+	memset(&rxq->fake_mbuf, 0x0, sizeof(rxq->fake_mbuf));
+
+	for (i = 0; i < ICE_RX_MAX_BURST; i++)
+		rxq->sw_ring[rxq->nb_rx_desc + i].mbuf = &rxq->fake_mbuf;
+
+	/* for rx bulk */
+	rxq->rx_nb_avail = 0;
+	rxq->rx_next_avail = 0;
+	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
+
+	rxq->rx_tail = 0;
+	rxq->nb_rx_hold = 0;
+	rxq->pkt_first_seg = NULL;
+	rxq->pkt_last_seg = NULL;
+}
+
+static inline void
+reset_tx_queue(struct ice_tx_queue *txq)
+{
+	struct ice_tx_entry *txe;
+	uint32_t i, size;
+	uint16_t prev;
+
+	if (!txq) {
+		PMD_DRV_LOG(DEBUG, "Pointer to txq is NULL");
+		return;
+	}
+
+	txe = txq->sw_ring;
+	size = sizeof(struct ice_tx_desc) * txq->nb_tx_desc;
+	for (i = 0; i < size; i++)
+		((volatile char *)txq->tx_ring)[i] = 0;
+
+	prev = (uint16_t)(txq->nb_tx_desc - 1);
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		txq->tx_ring[i].cmd_type_offset_bsz =
+			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE);
+		txe[i].mbuf =  NULL;
+		txe[i].last_id = i;
+		txe[prev].next_id = i;
+		prev = i;
+	}
+
+	txq->tx_tail = 0;
+	txq->nb_tx_used = 0;
+
+	txq->last_desc_cleaned = txq->nb_tx_desc - 1;
+	txq->nb_tx_free = txq->nb_tx_desc - 1;
+
+	txq->tx_next_dd = txq->tx_rs_thresh - 1;
+	txq->tx_next_rs = txq->tx_rs_thresh - 1;
+}
+
+static int
+ice_dcf_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &ad->real_hw;
+	struct ice_rx_queue *rxq;
+	int err;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	err = ice_dcf_switch_queue(hw, rx_queue_id, true, false);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
+			    rx_queue_id);
+		return err;
+	}
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	rxq->rx_rel_mbufs(rxq);
+	reset_rx_queue(rxq);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+static int
+ice_dcf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct iavf_hw *hw = &ad->real_hw.avf;
+	struct ice_tx_queue *txq;
+	int err = 0;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	txq = dev->data->tx_queues[tx_queue_id];
+
+	/* Init the RX tail register. */
+	txq->qtx_tail = hw->hw_addr + IAVF_QTX_TAIL1(tx_queue_id);
+	IAVF_PCI_REG_WRITE(txq->qtx_tail, 0);
+	IAVF_WRITE_FLUSH(hw);
+
+	/* Ready to switch the queue on */
+	err = ice_dcf_switch_queue(&ad->real_hw, tx_queue_id, false, true);
+
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u on",
+			    tx_queue_id);
+		return err;
+	}
+
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+static int
+ice_dcf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &ad->real_hw;
+	struct ice_tx_queue *txq;
+	int err;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	err = ice_dcf_switch_queue(hw, tx_queue_id, false, false);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to switch TX queue %u off",
+			    tx_queue_id);
+		return err;
+	}
+
+	txq = dev->data->tx_queues[tx_queue_id];
+	txq->tx_rel_mbufs(txq);
+	reset_tx_queue(txq);
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+static int
+ice_dcf_start_queues(struct rte_eth_dev *dev)
+{
+	struct ice_rx_queue *rxq;
+	struct ice_tx_queue *txq;
+	int nb_rxq = 0;
+	int nb_txq, i;
+
+	for (nb_txq = 0; nb_txq < dev->data->nb_tx_queues; nb_txq++) {
+		txq = dev->data->tx_queues[nb_txq];
+		if (txq->tx_deferred_start)
+			continue;
+		if (ice_dcf_tx_queue_start(dev, nb_txq) != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start queue %u", nb_txq);
+			goto tx_err;
+		}
+	}
+
+	for (nb_rxq = 0; nb_rxq < dev->data->nb_rx_queues; nb_rxq++) {
+		rxq = dev->data->rx_queues[nb_rxq];
+		if (rxq->rx_deferred_start)
+			continue;
+		if (ice_dcf_rx_queue_start(dev, nb_rxq) != 0) {
+			PMD_DRV_LOG(ERR, "Fail to start queue %u", nb_rxq);
+			goto rx_err;
+		}
+	}
+
+	return 0;
+
+	/* stop the started queues if failed to start all queues */
+rx_err:
+	for (i = 0; i < nb_rxq; i++)
+		ice_dcf_rx_queue_stop(dev, i);
+tx_err:
+	for (i = 0; i < nb_txq; i++)
+		ice_dcf_tx_queue_stop(dev, i);
+
+	return -1;
+}
+
+static int
 ice_dcf_dev_start(struct rte_eth_dev *dev)
 {
 	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
@@ -267,20 +533,72 @@ ice_dcf_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 
+	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+		rte_intr_disable(intr_handle);
+		rte_intr_enable(intr_handle);
+	}
+
+	ret = ice_dcf_start_queues(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to enable queues");
+		return ret;
+	}
+
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	return 0;
 }
 
 static void
+ice_dcf_stop_queues(struct rte_eth_dev *dev)
+{
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &ad->real_hw;
+	struct ice_rx_queue *rxq;
+	struct ice_tx_queue *txq;
+	int ret, i;
+
+	/* Stop All queues */
+	ret = ice_dcf_disable_queues(hw);
+	if (ret)
+		PMD_DRV_LOG(WARNING, "Fail to stop queues");
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (!txq)
+			continue;
+		txq->tx_rel_mbufs(txq);
+		reset_tx_queue(txq);
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (!rxq)
+			continue;
+		rxq->rx_rel_mbufs(rxq);
+		reset_rx_queue(rxq);
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+}
+
+static void
 ice_dcf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
+	struct rte_intr_handle *intr_handle = dev->intr_handle;
 	struct ice_adapter *ad = &dcf_ad->parent;
 
 	if (ad->pf.adapter_stopped == 1) {
 		PMD_DRV_LOG(DEBUG, "Port is already stopped");
 		return;
+	}
+
+	ice_dcf_stop_queues(dev);
+
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
 	}
 
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
@@ -477,6 +795,10 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.tx_queue_setup          = ice_tx_queue_setup,
 	.rx_queue_release        = ice_rx_queue_release,
 	.tx_queue_release        = ice_tx_queue_release,
+	.rx_queue_start          = ice_dcf_rx_queue_start,
+	.tx_queue_start          = ice_dcf_tx_queue_start,
+	.rx_queue_stop           = ice_dcf_rx_queue_stop,
+	.tx_queue_stop           = ice_dcf_tx_queue_stop,
 	.link_update             = ice_dcf_link_update,
 	.stats_get               = ice_dcf_stats_get,
 	.stats_reset             = ice_dcf_stats_reset,

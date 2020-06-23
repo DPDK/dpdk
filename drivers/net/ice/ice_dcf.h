@@ -70,5 +70,6 @@ void ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
 int ice_dcf_init_rss(struct ice_dcf_hw *hw);
 int ice_dcf_configure_queues(struct ice_dcf_hw *hw);
 int ice_dcf_config_irq_map(struct ice_dcf_hw *hw);
-
+int ice_dcf_switch_queue(struct ice_dcf_hw *hw, uint16_t qid, bool rx, bool on);
+int ice_dcf_disable_queues(struct ice_dcf_hw *hw);
 #endif /* _ICE_DCF_H_ */

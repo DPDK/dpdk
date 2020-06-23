@@ -936,3 +936,60 @@ ice_dcf_config_irq_map(struct ice_dcf_hw *hw)
 	rte_free(map_info);
 	return err;
 }
+
+int
+ice_dcf_switch_queue(struct ice_dcf_hw *hw, uint16_t qid, bool rx, bool on)
+{
+	struct virtchnl_queue_select queue_select;
+	struct dcf_virtchnl_cmd args;
+	int err;
+
+	memset(&queue_select, 0, sizeof(queue_select));
+	queue_select.vsi_id = hw->vsi_res->vsi_id;
+	if (rx)
+		queue_select.rx_queues |= 1 << qid;
+	else
+		queue_select.tx_queues |= 1 << qid;
+
+	memset(&args, 0, sizeof(args));
+	if (on)
+		args.v_op = VIRTCHNL_OP_ENABLE_QUEUES;
+	else
+		args.v_op = VIRTCHNL_OP_DISABLE_QUEUES;
+
+	args.req_msg = (u8 *)&queue_select;
+	args.req_msglen = sizeof(queue_select);
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "Failed to execute command of %s",
+			    on ? "OP_ENABLE_QUEUES" : "OP_DISABLE_QUEUES");
+
+	return err;
+}
+
+int
+ice_dcf_disable_queues(struct ice_dcf_hw *hw)
+{
+	struct virtchnl_queue_select queue_select;
+	struct dcf_virtchnl_cmd args;
+	int err;
+
+	memset(&queue_select, 0, sizeof(queue_select));
+	queue_select.vsi_id = hw->vsi_res->vsi_id;
+
+	queue_select.rx_queues = BIT(hw->eth_dev->data->nb_rx_queues) - 1;
+	queue_select.tx_queues = BIT(hw->eth_dev->data->nb_tx_queues) - 1;
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = VIRTCHNL_OP_DISABLE_QUEUES;
+	args.req_msg = (u8 *)&queue_select;
+	args.req_msglen = sizeof(queue_select);
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command of OP_DISABLE_QUEUES");
+
+	return err;
+}
