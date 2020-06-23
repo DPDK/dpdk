@@ -237,6 +237,7 @@ struct mlx5_glue {
 		(struct mlx5dv_dr_flow_meter_attr *attr);
 	int (*dv_modify_flow_action_meter)(void *action,
 		struct mlx5dv_dr_flow_meter_attr *attr, uint64_t modify_bits);
+	void *(*dr_create_flow_action_default_miss)(void);
 	int (*dv_destroy_flow)(void *flow);
 	int (*dv_destroy_flow_matcher)(void *matcher);
 	struct ibv_context *(*dv_open_device)(struct ibv_device *device);

@@ -157,6 +157,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum MLX5DV_FLOW_ACTION_COUNTERS_DEVX \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_MLX5_DR_CREATE_ACTION_DEFAULT_MISS \
+		infiniband/mlx5dv.h \
+		enum MLX5DV_FLOW_ACTION_DEFAULT_MISS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_IBV_DEVX_ASYNC \
 		infiniband/mlx5dv.h \
 		func mlx5dv_devx_obj_query_async \
