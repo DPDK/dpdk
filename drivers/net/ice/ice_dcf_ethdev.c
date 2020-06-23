@@ -43,12 +43,95 @@ ice_dcf_xmit_pkts(__rte_unused void *tx_queue,
 }
 
 static int
+ice_dcf_init_rxq(struct rte_eth_dev *dev, struct ice_rx_queue *rxq)
+{
+	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
+	struct rte_eth_dev_data *dev_data = dev->data;
+	struct iavf_hw *hw = &dcf_ad->real_hw.avf;
+	uint16_t buf_size, max_pkt_len, len;
+
+	buf_size = rte_pktmbuf_data_room_size(rxq->mp) - RTE_PKTMBUF_HEADROOM;
+	rxq->rx_hdr_len = 0;
+	rxq->rx_buf_len = RTE_ALIGN(buf_size, (1 << ICE_RLAN_CTX_DBUF_S));
+	len = ICE_SUPPORT_CHAIN_NUM * rxq->rx_buf_len;
+	max_pkt_len = RTE_MIN(len, dev->data->dev_conf.rxmode.max_rx_pkt_len);
+
+	/* Check if the jumbo frame and maximum packet length are set
+	 * correctly.
+	 */
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+		if (max_pkt_len <= RTE_ETHER_MAX_LEN ||
+		    max_pkt_len > ICE_FRAME_SIZE_MAX) {
+			PMD_DRV_LOG(ERR, "maximum packet length must be "
+				    "larger than %u and smaller than %u, "
+				    "as jumbo frame is enabled",
+				    (uint32_t)RTE_ETHER_MAX_LEN,
+				    (uint32_t)ICE_FRAME_SIZE_MAX);
+			return -EINVAL;
+		}
+	} else {
+		if (max_pkt_len < RTE_ETHER_MIN_LEN ||
+		    max_pkt_len > RTE_ETHER_MAX_LEN) {
+			PMD_DRV_LOG(ERR, "maximum packet length must be "
+				    "larger than %u and smaller than %u, "
+				    "as jumbo frame is disabled",
+				    (uint32_t)RTE_ETHER_MIN_LEN,
+				    (uint32_t)RTE_ETHER_MAX_LEN);
+			return -EINVAL;
+		}
+	}
+
+	rxq->max_pkt_len = max_pkt_len;
+	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
+	    (rxq->max_pkt_len + 2 * ICE_VLAN_TAG_SIZE) > buf_size) {
+		dev_data->scattered_rx = 1;
+	}
+	rxq->qrx_tail = hw->hw_addr + IAVF_QRX_TAIL1(rxq->queue_id);
+	IAVF_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
+	IAVF_WRITE_FLUSH(hw);
+
+	return 0;
+}
+
+static int
+ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
+{
+	struct ice_rx_queue **rxq =
+		(struct ice_rx_queue **)dev->data->rx_queues;
+	int i, ret;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (!rxq[i] || !rxq[i]->q_set)
+			continue;
+		ret = ice_dcf_init_rxq(dev, rxq[i]);
+		if (ret)
+			return ret;
+	}
+
+	ice_set_rx_function(dev);
+	ice_set_tx_function(dev);
+
+	return 0;
+}
+
+static int
 ice_dcf_dev_start(struct rte_eth_dev *dev)
 {
 	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
 	struct ice_adapter *ad = &dcf_ad->parent;
+	struct ice_dcf_hw *hw = &dcf_ad->real_hw;
+	int ret;
 
 	ad->pf.adapter_stopped = 0;
+
+	hw->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
+				      dev->data->nb_tx_queues);
+
+	ret = ice_dcf_init_rx_queues(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Fail to init queues");
+		return ret;
+	}
 
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 

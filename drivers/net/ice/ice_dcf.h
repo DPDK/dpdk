@@ -53,6 +53,7 @@ struct ice_dcf_hw {
 	uint8_t *rss_lut;
 	uint8_t *rss_key;
 	uint64_t supported_rxdid;
+	uint16_t num_queue_pairs;
 };
 
 int ice_dcf_execute_virtchnl_cmd(struct ice_dcf_hw *hw,
