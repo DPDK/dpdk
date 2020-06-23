@@ -335,6 +335,13 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 	parent_adapter->eth_dev = eth_dev;
 	parent_adapter->pf.adapter = parent_adapter;
 	parent_adapter->pf.dev_data = eth_dev->data;
+	/* create a dummy main_vsi */
+	parent_adapter->pf.main_vsi =
+		rte_zmalloc(NULL, sizeof(struct ice_vsi), 0);
+	if (!parent_adapter->pf.main_vsi)
+		return -ENOMEM;
+	parent_adapter->pf.main_vsi->adapter = parent_adapter;
+
 	parent_hw->back = parent_adapter;
 	parent_hw->mac_type = ICE_MAC_GENERIC;
 	parent_hw->vendor_id = ICE_INTEL_VENDOR_ID;

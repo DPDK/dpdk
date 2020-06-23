@@ -229,44 +229,10 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 	ice_dcf_uninit_hw(dev, &adapter->real_hw);
 }
 
-static void
-ice_dcf_queue_release(__rte_unused void *q)
-{
-}
-
 static int
 ice_dcf_link_update(__rte_unused struct rte_eth_dev *dev,
 		    __rte_unused int wait_to_complete)
 {
-	return 0;
-}
-
-static int
-ice_dcf_rx_queue_setup(struct rte_eth_dev *dev,
-		       uint16_t rx_queue_id,
-		       __rte_unused uint16_t nb_rx_desc,
-		       __rte_unused unsigned int socket_id,
-		       __rte_unused const struct rte_eth_rxconf *rx_conf,
-		       __rte_unused struct rte_mempool *mb_pool)
-{
-	struct ice_dcf_adapter *adapter = dev->data->dev_private;
-
-	dev->data->rx_queues[rx_queue_id] = &adapter->rxqs[rx_queue_id];
-
-	return 0;
-}
-
-static int
-ice_dcf_tx_queue_setup(struct rte_eth_dev *dev,
-		       uint16_t tx_queue_id,
-		       __rte_unused uint16_t nb_tx_desc,
-		       __rte_unused unsigned int socket_id,
-		       __rte_unused const struct rte_eth_txconf *tx_conf)
-{
-	struct ice_dcf_adapter *adapter = dev->data->dev_private;
-
-	dev->data->tx_queues[tx_queue_id] = &adapter->txqs[tx_queue_id];
-
 	return 0;
 }
 
@@ -276,10 +242,10 @@ static const struct eth_dev_ops ice_dcf_eth_dev_ops = {
 	.dev_close               = ice_dcf_dev_close,
 	.dev_configure           = ice_dcf_dev_configure,
 	.dev_infos_get           = ice_dcf_dev_info_get,
-	.rx_queue_setup          = ice_dcf_rx_queue_setup,
-	.tx_queue_setup          = ice_dcf_tx_queue_setup,
-	.rx_queue_release        = ice_dcf_queue_release,
-	.tx_queue_release        = ice_dcf_queue_release,
+	.rx_queue_setup          = ice_rx_queue_setup,
+	.tx_queue_setup          = ice_tx_queue_setup,
+	.rx_queue_release        = ice_rx_queue_release,
+	.tx_queue_release        = ice_tx_queue_release,
 	.link_update             = ice_dcf_link_update,
 	.stats_get               = ice_dcf_stats_get,
 	.stats_reset             = ice_dcf_stats_reset,

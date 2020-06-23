@@ -19,10 +19,7 @@ struct ice_dcf_queue {
 
 struct ice_dcf_adapter {
 	struct ice_adapter parent; /* Must be first */
-
 	struct ice_dcf_hw real_hw;
-	struct ice_dcf_queue rxqs[ICE_DCF_MAX_RINGS];
-	struct ice_dcf_queue txqs[ICE_DCF_MAX_RINGS];
 };
 
 void ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
