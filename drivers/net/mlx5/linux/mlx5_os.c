@@ -1491,6 +1491,8 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 					if (list[ns].info.port_name == bd)
 						ns++;
 					break;
+				case MLX5_PHYS_PORT_NAME_TYPE_PFHPF:
+					/* Fallthrough */
 				case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
 					if (list[ns].info.pf_num == bd)
 						ns++;

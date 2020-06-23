@@ -117,6 +117,17 @@ mlx5_translate_port_name(const char *port_name_in,
 		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_UPLINK;
 		return;
 	}
+	/*
+	 * Check for port-name as a string of the form pf0
+	 * (support kernel ver >= 5.7 for HPF representor on BF).
+	 */
+	sc_items = sscanf(port_name_in, "%c%c%d",
+			  &pf_c1, &pf_c2, &port_info_out->pf_num);
+	if (sc_items == 3 && pf_c1 == 'p' && pf_c2 == 'f') {
+		port_info_out->port_name = -1;
+		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_PFHPF;
+		return;
+	}
 	/* Check for port-name as a number (support kernel ver < 5.0 */
 	errno = 0;
 	port_info_out->port_name = strtol(port_name_in, &end, 0);
