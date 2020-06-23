@@ -24,6 +24,7 @@
 #include <rte_dev.h>
 
 #include "ice_dcf.h"
+#include "ice_rxtx.h"
 
 #define ICE_DCF_AQ_LEN     32
 #define ICE_DCF_AQ_BUF_SZ  4096
@@ -824,4 +825,114 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 		return ret;
 
 	return 0;
+}
+
+#define IAVF_RXDID_LEGACY_1 1
+#define IAVF_RXDID_COMMS_GENERIC 16
+
+int
+ice_dcf_configure_queues(struct ice_dcf_hw *hw)
+{
+	struct ice_rx_queue **rxq =
+		(struct ice_rx_queue **)hw->eth_dev->data->rx_queues;
+	struct ice_tx_queue **txq =
+		(struct ice_tx_queue **)hw->eth_dev->data->tx_queues;
+	struct virtchnl_vsi_queue_config_info *vc_config;
+	struct virtchnl_queue_pair_info *vc_qp;
+	struct dcf_virtchnl_cmd args;
+	uint16_t i, size;
+	int err;
+
+	size = sizeof(*vc_config) +
+	       sizeof(vc_config->qpair[0]) * hw->num_queue_pairs;
+	vc_config = rte_zmalloc("cfg_queue", size, 0);
+	if (!vc_config)
+		return -ENOMEM;
+
+	vc_config->vsi_id = hw->vsi_res->vsi_id;
+	vc_config->num_queue_pairs = hw->num_queue_pairs;
+
+	for (i = 0, vc_qp = vc_config->qpair;
+	     i < hw->num_queue_pairs;
+	     i++, vc_qp++) {
+		vc_qp->txq.vsi_id = hw->vsi_res->vsi_id;
+		vc_qp->txq.queue_id = i;
+		if (i < hw->eth_dev->data->nb_tx_queues) {
+			vc_qp->txq.ring_len = txq[i]->nb_tx_desc;
+			vc_qp->txq.dma_ring_addr = txq[i]->tx_ring_dma;
+		}
+		vc_qp->rxq.vsi_id = hw->vsi_res->vsi_id;
+		vc_qp->rxq.queue_id = i;
+		vc_qp->rxq.max_pkt_size = rxq[i]->max_pkt_len;
+
+		if (i >= hw->eth_dev->data->nb_rx_queues)
+			continue;
+
+		vc_qp->rxq.ring_len = rxq[i]->nb_rx_desc;
+		vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_dma;
+		vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
+
+		if (hw->vf_res->vf_cap_flags &
+		    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
+		    hw->supported_rxdid &
+		    BIT(IAVF_RXDID_COMMS_GENERIC)) {
+			vc_qp->rxq.rxdid = IAVF_RXDID_COMMS_GENERIC;
+			PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
+				    "Queue[%d]", vc_qp->rxq.rxdid, i);
+		} else {
+			PMD_DRV_LOG(ERR, "RXDID 16 is not supported");
+			return -EINVAL;
+		}
+	}
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = VIRTCHNL_OP_CONFIG_VSI_QUEUES;
+	args.req_msg = (uint8_t *)vc_config;
+	args.req_msglen = size;
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "Failed to execute command of"
+			    " VIRTCHNL_OP_CONFIG_VSI_QUEUES");
+
+	rte_free(vc_config);
+	return err;
+}
+
+int
+ice_dcf_config_irq_map(struct ice_dcf_hw *hw)
+{
+	struct virtchnl_irq_map_info *map_info;
+	struct virtchnl_vector_map *vecmap;
+	struct dcf_virtchnl_cmd args;
+	int len, i, err;
+
+	len = sizeof(struct virtchnl_irq_map_info) +
+	      sizeof(struct virtchnl_vector_map) * hw->nb_msix;
+
+	map_info = rte_zmalloc("map_info", len, 0);
+	if (!map_info)
+		return -ENOMEM;
+
+	map_info->num_vectors = hw->nb_msix;
+	for (i = 0; i < hw->nb_msix; i++) {
+		vecmap = &map_info->vecmap[i];
+		vecmap->vsi_id = hw->vsi_res->vsi_id;
+		vecmap->rxitr_idx = 0;
+		vecmap->vector_id = hw->msix_base + i;
+		vecmap->txq_map = 0;
+		vecmap->rxq_map = hw->rxq_map[hw->msix_base + i];
+	}
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = VIRTCHNL_OP_CONFIG_IRQ_MAP;
+	args.req_msg = (u8 *)map_info;
+	args.req_msglen = len;
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command OP_CONFIG_IRQ_MAP");
+
+	rte_free(map_info);
+	return err;
 }

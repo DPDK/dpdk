@@ -54,6 +54,10 @@ struct ice_dcf_hw {
 	uint8_t *rss_key;
 	uint64_t supported_rxdid;
 	uint16_t num_queue_pairs;
+
+	uint16_t msix_base;
+	uint16_t nb_msix;
+	uint16_t rxq_map[16];
 };
 
 int ice_dcf_execute_virtchnl_cmd(struct ice_dcf_hw *hw,
@@ -64,5 +68,7 @@ int ice_dcf_handle_vsi_update_event(struct ice_dcf_hw *hw);
 int ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
 void ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
 int ice_dcf_init_rss(struct ice_dcf_hw *hw);
+int ice_dcf_configure_queues(struct ice_dcf_hw *hw);
+int ice_dcf_config_irq_map(struct ice_dcf_hw *hw);
 
 #endif /* _ICE_DCF_H_ */

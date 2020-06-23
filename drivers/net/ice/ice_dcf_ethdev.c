@@ -114,10 +114,124 @@ ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
 	return 0;
 }
 
+#define IAVF_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
+#define IAVF_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
+
+#define IAVF_ITR_INDEX_DEFAULT          0
+#define IAVF_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
+#define IAVF_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
+
+static inline uint16_t
+iavf_calc_itr_interval(int16_t interval)
+{
+	if (interval < 0 || interval > IAVF_QUEUE_ITR_INTERVAL_MAX)
+		interval = IAVF_QUEUE_ITR_INTERVAL_DEFAULT;
+
+	/* Convert to hardware count, as writing each 1 represents 2 us */
+	return interval / 2;
+}
+
+static int
+ice_dcf_config_rx_queues_irqs(struct rte_eth_dev *dev,
+				     struct rte_intr_handle *intr_handle)
+{
+	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
+	uint16_t interval, i;
+	int vec;
+
+	if (rte_intr_cap_multiple(intr_handle) &&
+	    dev->data->dev_conf.intr_conf.rxq) {
+		if (rte_intr_efd_enable(intr_handle, dev->data->nb_rx_queues))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    dev->data->nb_rx_queues * sizeof(int), 0);
+		if (!intr_handle->intr_vec) {
+			PMD_DRV_LOG(ERR, "Failed to allocate %d rx intr_vec",
+				    dev->data->nb_rx_queues);
+			return -1;
+		}
+	}
+
+	if (!dev->data->dev_conf.intr_conf.rxq ||
+	    !rte_intr_dp_is_en(intr_handle)) {
+		/* Rx interrupt disabled, Map interrupt only for writeback */
+		hw->nb_msix = 1;
+		if (hw->vf_res->vf_cap_flags &
+		    VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
+			/* If WB_ON_ITR supports, enable it */
+			hw->msix_base = IAVF_RX_VEC_START;
+			IAVF_WRITE_REG(&hw->avf,
+				       IAVF_VFINT_DYN_CTLN1(hw->msix_base - 1),
+				       IAVF_VFINT_DYN_CTLN1_ITR_INDX_MASK |
+				       IAVF_VFINT_DYN_CTLN1_WB_ON_ITR_MASK);
+		} else {
+			/* If no WB_ON_ITR offload flags, need to set
+			 * interrupt for descriptor write back.
+			 */
+			hw->msix_base = IAVF_MISC_VEC_ID;
+
+			/* set ITR to max */
+			interval =
+			iavf_calc_itr_interval(IAVF_QUEUE_ITR_INTERVAL_MAX);
+			IAVF_WRITE_REG(&hw->avf, IAVF_VFINT_DYN_CTL01,
+				       IAVF_VFINT_DYN_CTL01_INTENA_MASK |
+				       (IAVF_ITR_INDEX_DEFAULT <<
+					IAVF_VFINT_DYN_CTL01_ITR_INDX_SHIFT) |
+				       (interval <<
+					IAVF_VFINT_DYN_CTL01_INTERVAL_SHIFT));
+		}
+		IAVF_WRITE_FLUSH(&hw->avf);
+		/* map all queues to the same interrupt */
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			hw->rxq_map[hw->msix_base] |= 1 << i;
+	} else {
+		if (!rte_intr_allow_others(intr_handle)) {
+			hw->nb_msix = 1;
+			hw->msix_base = IAVF_MISC_VEC_ID;
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				hw->rxq_map[hw->msix_base] |= 1 << i;
+				intr_handle->intr_vec[i] = IAVF_MISC_VEC_ID;
+			}
+			PMD_DRV_LOG(DEBUG,
+				    "vector %u are mapping to all Rx queues",
+				    hw->msix_base);
+		} else {
+			/* If Rx interrupt is reuquired, and we can use
+			 * multi interrupts, then the vec is from 1
+			 */
+			hw->nb_msix = RTE_MIN(hw->vf_res->max_vectors,
+					      intr_handle->nb_efd);
+			hw->msix_base = IAVF_MISC_VEC_ID;
+			vec = IAVF_MISC_VEC_ID;
+			for (i = 0; i < dev->data->nb_rx_queues; i++) {
+				hw->rxq_map[vec] |= 1 << i;
+				intr_handle->intr_vec[i] = vec++;
+				if (vec >= hw->nb_msix)
+					vec = IAVF_RX_VEC_START;
+			}
+			PMD_DRV_LOG(DEBUG,
+				    "%u vectors are mapping to %u Rx queues",
+				    hw->nb_msix, dev->data->nb_rx_queues);
+		}
+	}
+
+	if (ice_dcf_config_irq_map(hw)) {
+		PMD_DRV_LOG(ERR, "config interrupt mapping failed");
+		return -1;
+	}
+	return 0;
+}
+
 static int
 ice_dcf_dev_start(struct rte_eth_dev *dev)
 {
 	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
+	struct rte_intr_handle *intr_handle = dev->intr_handle;
 	struct ice_adapter *ad = &dcf_ad->parent;
 	struct ice_dcf_hw *hw = &dcf_ad->real_hw;
 	int ret;
@@ -139,6 +253,18 @@ ice_dcf_dev_start(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, "Failed to configure RSS");
 			return ret;
 		}
+	}
+
+	ret = ice_dcf_configure_queues(hw);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Fail to config queues");
+		return ret;
+	}
+
+	ret = ice_dcf_config_rx_queues_irqs(dev, intr_handle);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Fail to config rx queues' irqs");
+		return ret;
 	}
 
 	dev->data->dev_link.link_status = ETH_LINK_UP;
