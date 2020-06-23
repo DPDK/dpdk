@@ -7,23 +7,44 @@
 # If any doubt about the formatting, please check in the most recent history:
 #	git log --format='%>|(15)%cr   %s' --reverse | grep -i <pattern>
 
-if [ "$1" = '-h' -o "$1" = '--help' ] ; then
+print_usage () {
 	cat <<- END_OF_HELP
-	usage: $(basename $0) [-h] [range]
+	usage: $(basename $0) [-h] [-nX|-r range]
 
 	Check commit log formatting.
-	The git range can be specified as a "git log" option,
-	e.g. -1 to check only the latest commit.
-	The default range starts from origin/master to HEAD.
+	The git commits to be checked can be specified as a "git log" option,
+	by latest git commits limited with -n option, or commits in the git
+	range specified with -r option.
+	e.g. To check only the last commit, ‘-n1’ or ‘-r@~..’ is used.
+	If no range provided, default is origin/master..HEAD.
 	END_OF_HELP
-	exit
-fi
+}
 
 selfdir=$(dirname $(readlink -f $0))
+# The script caters for two formats, the new preferred format, and the old
+# format to ensure backward compatibility.
+# The new format is aligned with the format of the checkpatches script,
+# and allows for specifying the patches to check by passing -nX or -r range.
+# The old format allows for specifying patches by passing -X or range
+# as the first argument.
 range=${1:-origin/master..}
+
+if [ "$range" = '--help' ] ; then
+	print_usage
+	exit 0
 # convert -N to HEAD~N.. in order to comply with git-log-fixes.sh getopts
-if printf -- $range | grep -q '^-[0-9]\+' ; then
-	range="HEAD$(printf -- $range | sed 's,^-,~,').."
+elif printf -- "$range" | grep -q '^-[0-9]\+' ; then
+	range="HEAD$(printf -- "$range" | sed 's,^-,~,').."
+else
+	while getopts hr:n: ARG ; do
+		case $ARG in
+			n ) range="HEAD~$OPTARG.." ;;
+			r ) range=$OPTARG ;;
+			h ) print_usage ; exit 0 ;;
+			? ) print_usage ; exit 1 ;;
+		esac
+	done
+	shift $(($OPTIND - 1))
 fi
 
 commits=$(git log --format='%h' --reverse $range)

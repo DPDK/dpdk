@@ -38,7 +38,7 @@ options="$options $DPDK_CHECKPATCH_OPTIONS"
 
 print_usage () {
 	cat <<- END_OF_HELP
-	usage: $(basename $0) [-q] [-v] [-nX|-r range|patch1 [patch2] ...]]
+	usage: $(basename $0) [-h] [-q] [-v] [-nX|-r range|patch1 [patch2] ...]
 
 	Run Linux kernel checkpatch.pl with DPDK options.
 	The environment variable DPDK_CHECKPATCH_PATH must be set.
