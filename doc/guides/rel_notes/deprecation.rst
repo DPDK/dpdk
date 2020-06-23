@@ -104,6 +104,12 @@ Deprecation Notices
   Existing ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
   APIs can be used as replacement.
 
+* ethdev: Some internal APIs for driver usage are exported in the .map file.
+  Now DPDK has ``__rte_internal`` marker so we can mark internal APIs and move
+  them to the INTERNAL block in .map. Although these APIs are internal it will
+  break the ABI checks, that is why change is planned for 20.11.
+  The list of internal APIs are mainly ones listed in ``rte_ethdev_driver.h``.
+
 * traffic manager: All traffic manager API's in ``rte_tm.h`` were mistakenly made
   ABI stable in the v19.11 release. The TM maintainer and other contributors have
   agreed to keep the TM APIs as experimental in expectation of additional spec
