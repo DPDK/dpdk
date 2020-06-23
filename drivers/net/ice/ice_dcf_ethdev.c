@@ -133,6 +133,14 @@ ice_dcf_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 
+	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
+		ret = ice_dcf_init_rss(hw);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to configure RSS");
+			return ret;
+		}
+	}
+
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	return 0;

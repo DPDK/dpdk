@@ -708,3 +708,120 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	rte_free(hw->rss_lut);
 	rte_free(hw->rss_key);
 }
+
+static int
+ice_dcf_configure_rss_key(struct ice_dcf_hw *hw)
+{
+	struct virtchnl_rss_key *rss_key;
+	struct dcf_virtchnl_cmd args;
+	int len, err;
+
+	len = sizeof(*rss_key) + hw->vf_res->rss_key_size - 1;
+	rss_key = rte_zmalloc("rss_key", len, 0);
+	if (!rss_key)
+		return -ENOMEM;
+
+	rss_key->vsi_id = hw->vsi_res->vsi_id;
+	rss_key->key_len = hw->vf_res->rss_key_size;
+	rte_memcpy(rss_key->key, hw->rss_key, hw->vf_res->rss_key_size);
+
+	args.v_op = VIRTCHNL_OP_CONFIG_RSS_KEY;
+	args.req_msglen = len;
+	args.req_msg = (uint8_t *)rss_key;
+	args.rsp_msglen = 0;
+	args.rsp_buflen = 0;
+	args.rsp_msgbuf = NULL;
+	args.pending = 0;
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_INIT_LOG(ERR, "Failed to execute OP_CONFIG_RSS_KEY");
+
+	rte_free(rss_key);
+	return err;
+}
+
+static int
+ice_dcf_configure_rss_lut(struct ice_dcf_hw *hw)
+{
+	struct virtchnl_rss_lut *rss_lut;
+	struct dcf_virtchnl_cmd args;
+	int len, err;
+
+	len = sizeof(*rss_lut) + hw->vf_res->rss_lut_size - 1;
+	rss_lut = rte_zmalloc("rss_lut", len, 0);
+	if (!rss_lut)
+		return -ENOMEM;
+
+	rss_lut->vsi_id = hw->vsi_res->vsi_id;
+	rss_lut->lut_entries = hw->vf_res->rss_lut_size;
+	rte_memcpy(rss_lut->lut, hw->rss_lut, hw->vf_res->rss_lut_size);
+
+	args.v_op = VIRTCHNL_OP_CONFIG_RSS_LUT;
+	args.req_msglen = len;
+	args.req_msg = (uint8_t *)rss_lut;
+	args.rsp_msglen = 0;
+	args.rsp_buflen = 0;
+	args.rsp_msgbuf = NULL;
+	args.pending = 0;
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_INIT_LOG(ERR, "Failed to execute OP_CONFIG_RSS_LUT");
+
+	rte_free(rss_lut);
+	return err;
+}
+
+int
+ice_dcf_init_rss(struct ice_dcf_hw *hw)
+{
+	struct rte_eth_dev *dev = hw->eth_dev;
+	struct rte_eth_rss_conf *rss_conf;
+	uint8_t i, j, nb_q;
+	int ret;
+
+	rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
+	nb_q = dev->data->nb_rx_queues;
+
+	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF)) {
+		PMD_DRV_LOG(DEBUG, "RSS is not supported");
+		return -ENOTSUP;
+	}
+	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
+		PMD_DRV_LOG(WARNING, "RSS is enabled by PF by default");
+		/* set all lut items to default queue */
+		memset(hw->rss_lut, 0, hw->vf_res->rss_lut_size);
+		return ice_dcf_configure_rss_lut(hw);
+	}
+
+	/* In IAVF, RSS enablement is set by PF driver. It is not supported
+	 * to set based on rss_conf->rss_hf.
+	 */
+
+	/* configure RSS key */
+	if (!rss_conf->rss_key)
+		/* Calculate the default hash key */
+		for (i = 0; i < hw->vf_res->rss_key_size; i++)
+			hw->rss_key[i] = (uint8_t)rte_rand();
+	else
+		rte_memcpy(hw->rss_key, rss_conf->rss_key,
+			   RTE_MIN(rss_conf->rss_key_len,
+				   hw->vf_res->rss_key_size));
+
+	/* init RSS LUT table */
+	for (i = 0, j = 0; i < hw->vf_res->rss_lut_size; i++, j++) {
+		if (j >= nb_q)
+			j = 0;
+		hw->rss_lut[i] = j;
+	}
+	/* send virtchnnl ops to configure rss*/
+	ret = ice_dcf_configure_rss_lut(hw);
+	if (ret)
+		return ret;
+	ret = ice_dcf_configure_rss_key(hw);
+	if (ret)
+		return ret;
+
+	return 0;
+}

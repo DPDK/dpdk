@@ -63,5 +63,6 @@ int ice_dcf_send_aq_cmd(void *dcf_hw, struct ice_aq_desc *desc,
 int ice_dcf_handle_vsi_update_event(struct ice_dcf_hw *hw);
 int ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
 void ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw);
+int ice_dcf_init_rss(struct ice_dcf_hw *hw);
 
 #endif /* _ICE_DCF_H_ */
