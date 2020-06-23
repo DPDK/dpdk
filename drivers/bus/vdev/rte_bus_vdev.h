@@ -155,7 +155,7 @@ int rte_vdev_init(const char *name, const char *args);
  * Uninitalize a driver specified by name.
  *
  * @param name
- *   The pointer to a driver name to be initialized.
+ *   The pointer to a driver name to be uninitialized.
  * @return
  *  0 on success, negative on error
  */
