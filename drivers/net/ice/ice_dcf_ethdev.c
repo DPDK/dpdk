@@ -24,6 +24,7 @@
 
 #include "ice_generic_flow.h"
 #include "ice_dcf_ethdev.h"
+#include "ice_rxtx.h"
 
 static uint16_t
 ice_dcf_recv_pkts(__rte_unused void *rx_queue,
@@ -66,11 +67,74 @@ ice_dcf_dev_info_get(struct rte_eth_dev *dev,
 		     struct rte_eth_dev_info *dev_info)
 {
 	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &adapter->real_hw;
 
 	dev_info->max_mac_addrs = 1;
-	dev_info->max_rx_pktlen = (uint32_t)-1;
-	dev_info->max_rx_queues = RTE_DIM(adapter->rxqs);
-	dev_info->max_tx_queues = RTE_DIM(adapter->txqs);
+	dev_info->max_rx_queues = hw->vsi_res->num_queue_pairs;
+	dev_info->max_tx_queues = hw->vsi_res->num_queue_pairs;
+	dev_info->min_rx_bufsize = ICE_BUF_SIZE_MIN;
+	dev_info->max_rx_pktlen = ICE_FRAME_SIZE_MAX;
+	dev_info->hash_key_size = hw->vf_res->rss_key_size;
+	dev_info->reta_size = hw->vf_res->rss_lut_size;
+	dev_info->flow_type_rss_offloads = ICE_RSS_OFFLOAD_ALL;
+
+	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_VLAN_STRIP |
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_SCATTER |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
+		DEV_RX_OFFLOAD_VLAN_FILTER |
+		DEV_RX_OFFLOAD_RSS_HASH;
+	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_VLAN_INSERT |
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_SCTP_CKSUM |
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_TCP_TSO |
+		DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+		DEV_TX_OFFLOAD_GRE_TNL_TSO |
+		DEV_TX_OFFLOAD_IPIP_TNL_TSO |
+		DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
+		DEV_TX_OFFLOAD_MULTI_SEGS;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = ICE_DEFAULT_RX_PTHRESH,
+			.hthresh = ICE_DEFAULT_RX_HTHRESH,
+			.wthresh = ICE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = ICE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+		.offloads = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = ICE_DEFAULT_TX_PTHRESH,
+			.hthresh = ICE_DEFAULT_TX_HTHRESH,
+			.wthresh = ICE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = ICE_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = ICE_DEFAULT_TX_RSBIT_THRESH,
+		.offloads = 0,
+	};
+
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = ICE_MAX_RING_DESC,
+		.nb_min = ICE_MIN_RING_DESC,
+		.nb_align = ICE_ALIGN_RING_DESC,
+	};
+
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = ICE_MAX_RING_DESC,
+		.nb_min = ICE_MIN_RING_DESC,
+		.nb_align = ICE_ALIGN_RING_DESC,
+	};
 
 	return 0;
 }
