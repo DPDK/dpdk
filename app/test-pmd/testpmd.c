@@ -179,9 +179,6 @@ struct fwd_engine * fwd_engines[] = {
 	&csum_fwd_engine,
 	&icmp_echo_engine,
 	&noisy_vnf_engine,
-#if defined RTE_LIBRTE_PMD_SOFTNIC
-	&softnic_fwd_engine,
-#endif
 #ifdef RTE_LIBRTE_IEEE1588
 	&ieee1588_fwd_engine,
 #endif
@@ -1561,19 +1558,6 @@ init_config(void)
 					"rte_gro_ctx_create() failed\n");
 		}
 	}
-
-#if defined RTE_LIBRTE_PMD_SOFTNIC
-	if (strcmp(cur_fwd_eng->fwd_mode_name, "softnic") == 0) {
-		RTE_ETH_FOREACH_DEV(pid) {
-			port = &ports[pid];
-			const char *driver = port->dev_info.driver_name;
-
-			if (strcmp(driver, "net_softnic") == 0)
-				port->softport.fwd_lcore_arg = fwd_lcores;
-		}
-	}
-#endif
-
 }
 
 

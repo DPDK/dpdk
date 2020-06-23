@@ -36,10 +36,6 @@ endif
 if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
 	deps += 'pmd_ixgbe'
 endif
-if dpdk_conf.has('RTE_LIBRTE_SOFTNIC_PMD')
-	sources += files('softnicfwd.c')
-	deps += 'pmd_softnic'
-endif
 if dpdk_conf.has('RTE_LIBRTE_DPAA_PMD')
 	deps += ['bus_dpaa', 'mempool_dpaa', 'pmd_dpaa']
 endif

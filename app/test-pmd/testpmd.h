@@ -58,12 +58,6 @@ typedef uint16_t portid_t;
 typedef uint16_t queueid_t;
 typedef uint16_t streamid_t;
 
-#if defined RTE_LIBRTE_PMD_SOFTNIC
-#define SOFTNIC			1
-#else
-#define SOFTNIC			0
-#endif
-
 enum {
 	PORT_TOPOLOGY_PAIRED,
 	PORT_TOPOLOGY_CHAINED,
@@ -154,16 +148,6 @@ struct port_flow {
 	uint8_t data[]; /**< Storage for flow rule description */
 };
 
-#ifdef SOFTNIC
-/**
- * The data structure associate with softnic port
- */
-struct softnic_port {
-	uint32_t default_tm_hierarchy_enable; /**< default tm hierarchy */
-	struct fwd_lcore **fwd_lcore_arg; /**< softnic fwd core parameters */
-};
-#endif
-
 /**
  * The data structure associated with each port.
  */
@@ -196,9 +180,6 @@ struct rte_port {
 	struct port_flow        *flow_list; /**< Associated flows. */
 	const struct rte_eth_rxtx_callback *rx_dump_cb[RTE_MAX_QUEUES_PER_PORT+1];
 	const struct rte_eth_rxtx_callback *tx_dump_cb[RTE_MAX_QUEUES_PER_PORT+1];
-#ifdef SOFTNIC
-	struct softnic_port     softport;  /**< softnic params */
-#endif
 	/**< metadata value to insert in Tx packets. */
 	uint32_t		tx_metadata;
 	const struct rte_eth_rxtx_callback *tx_set_md_cb[RTE_MAX_QUEUES_PER_PORT+1];
@@ -266,9 +247,6 @@ extern struct fwd_engine tx_only_engine;
 extern struct fwd_engine csum_fwd_engine;
 extern struct fwd_engine icmp_echo_engine;
 extern struct fwd_engine noisy_vnf_engine;
-#ifdef SOFTNIC
-extern struct fwd_engine softnic_fwd_engine;
-#endif
 #ifdef RTE_LIBRTE_IEEE1588
 extern struct fwd_engine ieee1588_fwd_engine;
 #endif

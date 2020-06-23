@@ -329,9 +329,6 @@ The available information categories are:
 
 * ``ieee1588``: Demonstrate L2 IEEE1588 V2 PTP timestamping for RX and TX. Requires ``CONFIG_RTE_LIBRTE_IEEE1588=y``.
 
-* ``softnic``: Demonstrates the softnic forwarding operation. In this mode, packet forwarding is
-  similar to I/O mode except for the fact that packets are loopback to the softnic ports only. Therefore, portmask parameter should be set to softnic port only. The various software based custom NIC pipelines specified through the softnic firmware (DPDK packet framework script) can be tested in this mode. Furthermore, it allows to build 5-level hierarchical QoS scheduler as a default option that can be enabled through CLI once testpmd application is initialised. The user can modify the default scheduler hierarchy or can specify the new QoS Scheduler hierarchy through CLI. Requires ``CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y``.
-
 * ``noisy``: Noisy neighbor simulation.
   Simulate more realistic behavior of a guest machine engaged in receiving
   and sending packets performing Virtual Network Function (VNF).
@@ -3111,13 +3108,6 @@ where:
 
 * ``red`` enable 1, disable 0 marking IP ecn for yellow marked packets with ecn of 2'b01  or 2'b10
   to ecn of 2'b11 when IP is caring TCP or SCTP
-
-Set port traffic management default hierarchy (softnic forwarding mode)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-set the traffic management default hierarchy on the port::
-
-   testpmd> set port tm hierarchy default (port_id)
 
 Filter Functions
 ----------------

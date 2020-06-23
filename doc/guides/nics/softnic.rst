@@ -82,29 +82,56 @@ Soft NIC device instance:
 #.  ``tm_n_queues``: number of traffic manager's scheduler queues. The traffic manager
     is based on DPDK *librte_sched* library. (Optional: yes, Default value: 65,536 queues)
 
-#.  ``tm_qsize0``: size of scheduler queue 0 per traffic class of the pipes/subscribers.
+#.  ``tm_qsize0``: size of scheduler queue 0 (traffic class 0) of the pipes/subscribers.
     (Optional: yes, Default: 64)
 
-#.  ``tm_qsize1``: size of scheduler queue 1 per traffic class of the pipes/subscribers.
+#.  ``tm_qsize1``: size of scheduler queue 1 (traffic class 1) of the pipes/subscribers.
     (Optional: yes, Default: 64)
 
-#.  ``tm_qsize2``: size of scheduler queue 2 per traffic class of the pipes/subscribers.
+#.  ``tm_qsize2``: size of scheduler queue 2 (traffic class 2) of the pipes/subscribers.
     (Optional: yes, Default: 64)
 
-#.  ``tm_qsize3``: size of scheduler queue 3 per traffic class of the pipes/subscribers.
+#.  ``tm_qsize3``: size of scheduler queue 3 (traffic class 3) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize4``: size of scheduler queue 4 (traffic class 4) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize5``: size of scheduler queue 5 (traffic class 5) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize6``: size of scheduler queue 6 (traffic class 6) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize7``: size of scheduler queue 7 (traffic class 7) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize8``: size of scheduler queue 8 (traffic class 8) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize9``: size of scheduler queue 9 (traffic class 9) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize10``: size of scheduler queue 10 (traffic class 10) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize11``: size of scheduler queue 11 (traffic class 11) of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize12``: size of scheduler queue 12 (traffic class 12) of the pipes/subscribers.
     (Optional: yes, Default: 64)
 
 
 Soft NIC testing
 ----------------
 
-* Run testpmd application in Soft NIC forwarding mode with loopback feature
+* Run testpmd application with Soft NIC device with loopback feature
   enabled on Soft NIC port:
 
     .. code-block:: console
 
-         ./testpmd -c 0x3 --vdev 'net_softnic0,firmware=<script path>/firmware.cli,cpu_id=0,conn_port=8086' -- -i
-              --forward-mode=softnic --portmask=0x2
+         ./testpmd -c 0x7 -s 0x4 --vdev 'net_softnic0,firmware=<script path>/firmware.cli,cpu_id=0,conn_port=8086' -- -i
+              --portmask=0x2
 
     .. code-block:: console
 
@@ -133,8 +160,8 @@ Soft NIC testing
         pipeline TX table match stub
         pipeline TX port in 0 table 0
 
-        thread 1 pipeline RX enable
-        thread 1 pipeline TX enable
+        thread 2 pipeline RX enable
+        thread 2 pipeline TX enable
         Port 1: 00:00:00:00:00:00
         Checking link statuses...
         Done
@@ -172,7 +199,8 @@ Soft NIC testing
          TX threshold registers: pthresh=0 hthresh=0  wthresh=0
          TX offloads=0x0 - TX RS bit threshold=0
 
-* Start remote client (e.g. telnet) to communicate with the softnic device:
+* Softnic device can be configured using remote client (e.g. telnet). However,
+  testpmd application doesn't support configuration through telnet :
 
     .. code-block:: console
 
@@ -246,8 +274,8 @@ command description provided in `softnic/rte_eth_softnic_cli.c`.
 
     .. code-block:: console
 
-        thread 1 pipeline RX enable        (Soft NIC rx pipeline enable on cpu thread id 1)
-        thread 1 pipeline TX enable        (Soft NIC tx pipeline enable on cpu thread id 1)
+        thread 2 pipeline RX enable        (Soft NIC rx pipeline enable on cpu thread id 2)
+        thread 2 pipeline TX enable        (Soft NIC tx pipeline enable on cpu thread id 2)
 
 QoS API Support:
 ----------------
@@ -340,19 +368,19 @@ commands.
             1.10.11.12 2.20.21.22 100 200 6 action fwd port 0
         pipeline TX table 0 rule add match hash ipv4_5tuple
             1.10.11.13 2.20.21.23 100 200 6 action fwd port 1
-        thread 25 pipeline RX enable
-        thread 25 pipeline TX enable
+        thread 2 pipeline RX enable
+        thread 2 pipeline TX enable
 
 * Run testpmd:
 
     .. code-block:: console
 
-        ./x86_64-native-linux-gcc/app/testpmd -l 23-25  -n 4 \
+        ./x86_64-native-linux-gcc/app/testpmd -c 0x7 -s 0x4 -n 4 \
                                     --vdev 'net_softnic0, \
                                     firmware=./drivers/net/softnic/ \
                                         firmware.cli, \
                                     cpu_id=1,conn_port=8086' -- \
-                                    -i --forward-mode=softnic --rxq=2, \
+                                    -i --rxq=2, \
                                     --txq=2, --disable-rss --portmask=0x4
 
 * Configure flow rules on softnic:

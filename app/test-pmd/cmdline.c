@@ -1186,11 +1186,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port tm node stats (port_id) (node_id) (clear)\n"
 			"       Display the port TM node stats.\n\n"
 
-#if defined RTE_LIBRTE_PMD_SOFTNIC && defined RTE_LIBRTE_SCHED
-			"set port tm hierarchy default (port_id)\n"
-			"       Set default traffic Management hierarchy on a port\n\n"
-#endif
-
 			"add port tm node shaper profile (port_id) (shaper_profile_id)"
 			" (cmit_tb_rate) (cmit_tb_size) (peak_tb_rate) (peak_tb_size)"
 			" (packet_length_adjust)\n"
@@ -15369,80 +15364,6 @@ cmdline_parse_inst_t cmd_vf_tc_max_bw = {
 	},
 };
 
-
-#if defined RTE_LIBRTE_PMD_SOFTNIC && defined RTE_LIBRTE_SCHED
-
-/* *** Set Port default Traffic Management Hierarchy *** */
-struct cmd_set_port_tm_hierarchy_default_result {
-	cmdline_fixed_string_t set;
-	cmdline_fixed_string_t port;
-	cmdline_fixed_string_t tm;
-	cmdline_fixed_string_t hierarchy;
-	cmdline_fixed_string_t def;
-	portid_t port_id;
-};
-
-cmdline_parse_token_string_t cmd_set_port_tm_hierarchy_default_set =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_tm_hierarchy_default_result, set, "set");
-cmdline_parse_token_string_t cmd_set_port_tm_hierarchy_default_port =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_tm_hierarchy_default_result, port, "port");
-cmdline_parse_token_string_t cmd_set_port_tm_hierarchy_default_tm =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_tm_hierarchy_default_result, tm, "tm");
-cmdline_parse_token_string_t cmd_set_port_tm_hierarchy_default_hierarchy =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_tm_hierarchy_default_result,
-			hierarchy, "hierarchy");
-cmdline_parse_token_string_t cmd_set_port_tm_hierarchy_default_default =
-	TOKEN_STRING_INITIALIZER(
-		struct cmd_set_port_tm_hierarchy_default_result,
-			def, "default");
-cmdline_parse_token_num_t cmd_set_port_tm_hierarchy_default_port_id =
-	TOKEN_NUM_INITIALIZER(
-		struct cmd_set_port_tm_hierarchy_default_result,
-			port_id, UINT16);
-
-static void cmd_set_port_tm_hierarchy_default_parsed(void *parsed_result,
-	__rte_unused struct cmdline *cl,
-	__rte_unused void *data)
-{
-	struct cmd_set_port_tm_hierarchy_default_result *res = parsed_result;
-	struct rte_port *p;
-	portid_t port_id = res->port_id;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-
-	p = &ports[port_id];
-
-	/* Forward mode: tm */
-	if (strcmp(cur_fwd_config.fwd_eng->fwd_mode_name, "softnic")) {
-		printf("  softnicfwd mode not enabled(error)\n");
-		return;
-	}
-
-	/* Set the default tm hierarchy */
-	p->softport.default_tm_hierarchy_enable = 1;
-}
-
-cmdline_parse_inst_t cmd_set_port_tm_hierarchy_default = {
-	.f = cmd_set_port_tm_hierarchy_default_parsed,
-	.data = NULL,
-	.help_str = "set port tm hierarchy default <port_id>",
-	.tokens = {
-		(void *)&cmd_set_port_tm_hierarchy_default_set,
-		(void *)&cmd_set_port_tm_hierarchy_default_port,
-		(void *)&cmd_set_port_tm_hierarchy_default_tm,
-		(void *)&cmd_set_port_tm_hierarchy_default_hierarchy,
-		(void *)&cmd_set_port_tm_hierarchy_default_default,
-		(void *)&cmd_set_port_tm_hierarchy_default_port_id,
-		NULL,
-	},
-};
-#endif
-
 /** Set VXLAN encapsulation details */
 struct cmd_set_vxlan_result {
 	cmdline_fixed_string_t set;
@@ -19627,9 +19548,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_tc_max_bw,
 	(cmdline_parse_inst_t *)&cmd_strict_link_prio,
 	(cmdline_parse_inst_t *)&cmd_tc_min_bw,
-#if defined RTE_LIBRTE_PMD_SOFTNIC && defined RTE_LIBRTE_SCHED
-	(cmdline_parse_inst_t *)&cmd_set_port_tm_hierarchy_default,
-#endif
 	(cmdline_parse_inst_t *)&cmd_set_vxlan,
 	(cmdline_parse_inst_t *)&cmd_set_vxlan_tos_ttl,
 	(cmdline_parse_inst_t *)&cmd_set_vxlan_with_vlan,
