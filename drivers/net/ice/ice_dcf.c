@@ -993,3 +993,30 @@ ice_dcf_disable_queues(struct ice_dcf_hw *hw)
 
 	return err;
 }
+
+int
+ice_dcf_query_stats(struct ice_dcf_hw *hw,
+				   struct virtchnl_eth_stats *pstats)
+{
+	struct virtchnl_queue_select q_stats;
+	struct dcf_virtchnl_cmd args;
+	int err;
+
+	memset(&q_stats, 0, sizeof(q_stats));
+	q_stats.vsi_id = hw->vsi_res->vsi_id;
+
+	args.v_op = VIRTCHNL_OP_GET_STATS;
+	args.req_msg = (uint8_t *)&q_stats;
+	args.req_msglen = sizeof(q_stats);
+	args.rsp_msglen = sizeof(*pstats);
+	args.rsp_msgbuf = (uint8_t *)pstats;
+	args.rsp_buflen = sizeof(*pstats);
+
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to execute command OP_GET_STATS");
+		return err;
+	}
+
+	return 0;
+}

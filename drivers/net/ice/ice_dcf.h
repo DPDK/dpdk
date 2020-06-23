@@ -58,6 +58,7 @@ struct ice_dcf_hw {
 	uint16_t msix_base;
 	uint16_t nb_msix;
 	uint16_t rxq_map[16];
+	struct virtchnl_eth_stats eth_stats_offset;
 };
 
 int ice_dcf_execute_virtchnl_cmd(struct ice_dcf_hw *hw,
@@ -72,4 +73,7 @@ int ice_dcf_configure_queues(struct ice_dcf_hw *hw);
 int ice_dcf_config_irq_map(struct ice_dcf_hw *hw);
 int ice_dcf_switch_queue(struct ice_dcf_hw *hw, uint16_t qid, bool rx, bool on);
 int ice_dcf_disable_queues(struct ice_dcf_hw *hw);
+int ice_dcf_query_stats(struct ice_dcf_hw *hw,
+			struct virtchnl_eth_stats *pstats);
+
 #endif /* _ICE_DCF_H_ */

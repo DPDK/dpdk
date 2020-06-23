@@ -698,19 +698,6 @@ ice_dcf_dev_info_get(struct rte_eth_dev *dev,
 }
 
 static int
-ice_dcf_stats_get(__rte_unused struct rte_eth_dev *dev,
-		  __rte_unused struct rte_eth_stats *igb_stats)
-{
-	return 0;
-}
-
-static int
-ice_dcf_stats_reset(__rte_unused struct rte_eth_dev *dev)
-{
-	return 0;
-}
-
-static int
 ice_dcf_dev_promiscuous_enable(__rte_unused struct rte_eth_dev *dev)
 {
 	return 0;
@@ -760,6 +747,95 @@ ice_dcf_dev_filter_ctrl(struct rte_eth_dev *dev,
 	}
 
 	return ret;
+}
+
+#define ICE_DCF_32_BIT_WIDTH (CHAR_BIT * 4)
+#define ICE_DCF_48_BIT_WIDTH (CHAR_BIT * 6)
+#define ICE_DCF_48_BIT_MASK  RTE_LEN2MASK(ICE_DCF_48_BIT_WIDTH, uint64_t)
+
+static void
+ice_dcf_stat_update_48(uint64_t *offset, uint64_t *stat)
+{
+	if (*stat >= *offset)
+		*stat = *stat - *offset;
+	else
+		*stat = (uint64_t)((*stat +
+			((uint64_t)1 << ICE_DCF_48_BIT_WIDTH)) - *offset);
+
+	*stat &= ICE_DCF_48_BIT_MASK;
+}
+
+static void
+ice_dcf_stat_update_32(uint64_t *offset, uint64_t *stat)
+{
+	if (*stat >= *offset)
+		*stat = (uint64_t)(*stat - *offset);
+	else
+		*stat = (uint64_t)((*stat +
+			((uint64_t)1 << ICE_DCF_32_BIT_WIDTH)) - *offset);
+}
+
+static void
+ice_dcf_update_stats(struct virtchnl_eth_stats *oes,
+		     struct virtchnl_eth_stats *nes)
+{
+	ice_dcf_stat_update_48(&oes->rx_bytes, &nes->rx_bytes);
+	ice_dcf_stat_update_48(&oes->rx_unicast, &nes->rx_unicast);
+	ice_dcf_stat_update_48(&oes->rx_multicast, &nes->rx_multicast);
+	ice_dcf_stat_update_48(&oes->rx_broadcast, &nes->rx_broadcast);
+	ice_dcf_stat_update_32(&oes->rx_discards, &nes->rx_discards);
+	ice_dcf_stat_update_48(&oes->tx_bytes, &nes->tx_bytes);
+	ice_dcf_stat_update_48(&oes->tx_unicast, &nes->tx_unicast);
+	ice_dcf_stat_update_48(&oes->tx_multicast, &nes->tx_multicast);
+	ice_dcf_stat_update_48(&oes->tx_broadcast, &nes->tx_broadcast);
+	ice_dcf_stat_update_32(&oes->tx_errors, &nes->tx_errors);
+	ice_dcf_stat_update_32(&oes->tx_discards, &nes->tx_discards);
+}
+
+
+static int
+ice_dcf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &ad->real_hw;
+	struct virtchnl_eth_stats pstats;
+	int ret;
+
+	ret = ice_dcf_query_stats(hw, &pstats);
+	if (ret == 0) {
+		ice_dcf_update_stats(&hw->eth_stats_offset, &pstats);
+		stats->ipackets = pstats.rx_unicast + pstats.rx_multicast +
+				pstats.rx_broadcast - pstats.rx_discards;
+		stats->opackets = pstats.tx_broadcast + pstats.tx_multicast +
+						pstats.tx_unicast;
+		stats->imissed = pstats.rx_discards;
+		stats->oerrors = pstats.tx_errors + pstats.tx_discards;
+		stats->ibytes = pstats.rx_bytes;
+		stats->ibytes -= stats->ipackets * RTE_ETHER_CRC_LEN;
+		stats->obytes = pstats.tx_bytes;
+	} else {
+		PMD_DRV_LOG(ERR, "Get statistics failed");
+	}
+	return ret;
+}
+
+static int
+ice_dcf_stats_reset(struct rte_eth_dev *dev)
+{
+	struct ice_dcf_adapter *ad = dev->data->dev_private;
+	struct ice_dcf_hw *hw = &ad->real_hw;
+	struct virtchnl_eth_stats pstats;
+	int ret;
+
+	/* read stat values to clear hardware registers */
+	ret = ice_dcf_query_stats(hw, &pstats);
+	if (ret != 0)
+		return ret;
+
+	/* set stats offset base on current values */
+	hw->eth_stats_offset = pstats;
+
+	return 0;
 }
 
 static void
