@@ -582,6 +582,8 @@ iavf_dev_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link new_link;
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
+	memset(&new_link, 0, sizeof(new_link));
+
 	/* Only read status info stored in VF, and the info is updated
 	 *  when receive LINK_CHANGE evnet from PF by Virtchnnl.
 	 */
