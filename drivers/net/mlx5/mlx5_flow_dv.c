@@ -79,6 +79,9 @@ static int
 flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 			     struct mlx5_flow_tbl_resource *tbl);
 
+static int
+flow_dv_default_miss_resource_release(struct rte_eth_dev *dev);
+
 /**
  * Initialize flow attributes structure according to flow items' types.
  *
@@ -2676,6 +2679,42 @@ flow_dv_jump_tbl_resource_register
 }
 
 /**
+ * Find existing default miss resource or create and register a new one.
+ *
+ * @param[in, out] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_default_miss_resource_register(struct rte_eth_dev *dev,
+		struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_flow_default_miss_resource *cache_resource =
+			&sh->default_miss;
+	int cnt = rte_atomic32_read(&cache_resource->refcnt);
+
+	if (!cnt) {
+		MLX5_ASSERT(cache_resource->action);
+		cache_resource->action =
+		mlx5_glue->dr_create_flow_action_default_miss();
+		if (!cache_resource->action)
+			return rte_flow_error_set(error, ENOMEM,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"cannot create default miss action");
+		DRV_LOG(DEBUG, "new default miss resource %p: refcnt %d++",
+				(void *)cache_resource->action, cnt);
+	}
+	rte_atomic32_inc(&cache_resource->refcnt);
+	return 0;
+}
+
+/**
  * Find existing table port ID resource or create and register a new one.
  *
  * @param[in, out] dev
@@ -5247,6 +5286,15 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (rss != NULL && rss->queue_num)
 				queue_index = rss->queue[0];
 			action_flags |= MLX5_FLOW_ACTION_RSS;
+			++actions_n;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
+			ret =
+			mlx5_flow_validate_action_default_miss(action_flags,
+					attr, error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_DEFAULT_MISS;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
@@ -8212,6 +8260,11 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_TAG;
 			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
+			action_flags |= MLX5_FLOW_ACTION_DEFAULT_MISS;
+			dev_flow->handle->fate_action =
+					MLX5_FLOW_FATE_DEFAULT_MISS;
+			break;
 		case RTE_FLOW_ACTION_TYPE_METER:
 			mtr = actions->conf;
 			if (!flow->meter) {
@@ -8304,7 +8357,11 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			flow_dv_translate_item_eth(match_mask, match_value,
 						   items, tunnel,
 						   dev_flow->dv.group);
-			matcher.priority = MLX5_PRIORITY_MAP_L2;
+			matcher.priority = action_flags &
+					MLX5_FLOW_ACTION_DEFAULT_MISS &&
+					!dev_flow->external ?
+					MLX5_PRIORITY_MAP_L3 :
+					MLX5_PRIORITY_MAP_L2;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
 					     MLX5_FLOW_LAYER_OUTER_L2;
 			break;
@@ -8604,7 +8661,19 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			}
 			dh->rix_hrxq = hrxq_idx;
 			dv->actions[n++] = hrxq->action;
+		} else if (dh->fate_action == MLX5_FLOW_FATE_DEFAULT_MISS) {
+			if (flow_dv_default_miss_resource_register
+					(dev, error)) {
+				rte_flow_error_set
+					(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "cannot create default miss resource");
+				goto error_default_miss;
+			}
+			dh->rix_default_fate =  MLX5_FLOW_FATE_DEFAULT_MISS;
+			dv->actions[n++] = priv->sh->default_miss.action;
 		}
+
 		dh->ib_flow =
 			mlx5_glue->dv_create_flow(dv_h->matcher->matcher_object,
 						  (void *)&dv->value, n,
@@ -8629,6 +8698,9 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	}
 	return 0;
 error:
+	if (dh->fate_action == MLX5_FLOW_FATE_DEFAULT_MISS)
+		flow_dv_default_miss_resource_release(dev);
+error_default_miss:
 	err = rte_errno; /* Save rte_errno before cleanup. */
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dh, next) {
@@ -8766,6 +8838,36 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 }
 
 /**
+ * Release a default miss resource.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+static int
+flow_dv_default_miss_resource_release(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_flow_default_miss_resource *cache_resource =
+			&sh->default_miss;
+
+	MLX5_ASSERT(cache_resource->action);
+	DRV_LOG(DEBUG, "default miss resource %p: refcnt %d--",
+			(void *)cache_resource->action,
+			rte_atomic32_read(&cache_resource->refcnt));
+	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		claim_zero(mlx5_glue->destroy_flow_action
+				(cache_resource->action));
+		DRV_LOG(DEBUG, "default miss resource %p: removed",
+				(void *)cache_resource->action);
+		return 0;
+	}
+	return 1;
+}
+
+/**
  * Release a modify-header resource.
  *
  * @param handle
@@ -8892,16 +8994,26 @@ flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 {
 	if (!handle->rix_fate)
 		return;
-	if (handle->fate_action == MLX5_FLOW_FATE_DROP)
+	switch (handle->fate_action) {
+	case MLX5_FLOW_FATE_DROP:
 		mlx5_hrxq_drop_release(dev);
-	else if (handle->fate_action == MLX5_FLOW_FATE_QUEUE)
+		break;
+	case MLX5_FLOW_FATE_QUEUE:
 		mlx5_hrxq_release(dev, handle->rix_hrxq);
-	else if (handle->fate_action == MLX5_FLOW_FATE_JUMP)
+		break;
+	case MLX5_FLOW_FATE_JUMP:
 		flow_dv_jump_tbl_resource_release(dev, handle);
-	else if (handle->fate_action == MLX5_FLOW_FATE_PORT_ID)
+		break;
+	case MLX5_FLOW_FATE_PORT_ID:
 		flow_dv_port_id_action_resource_release(dev, handle);
-	else
+		break;
+	case MLX5_FLOW_FATE_DEFAULT_MISS:
+		flow_dv_default_miss_resource_release(dev);
+		break;
+	default:
 		DRV_LOG(DEBUG, "Incorrect fate action:%d", handle->fate_action);
+		break;
+	}
 	handle->rix_fate = 0;
 }
 
@@ -8934,7 +9046,8 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			dh->ib_flow = NULL;
 		}
 		if (dh->fate_action == MLX5_FLOW_FATE_DROP ||
-		    dh->fate_action == MLX5_FLOW_FATE_QUEUE)
+		    dh->fate_action == MLX5_FLOW_FATE_QUEUE ||
+		    dh->fate_action == MLX5_FLOW_FATE_DEFAULT_MISS)
 			flow_dv_fate_resource_release(dev, dh);
 		if (dh->vf_vlan.tag && dh->vf_vlan.created)
 			mlx5_vlan_vmwa_release(dev, &dh->vf_vlan);

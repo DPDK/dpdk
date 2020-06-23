@@ -1238,6 +1238,43 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 }
 
 /*
+ * Validate the default miss action.
+ *
+ * @param[in] action_flags
+ *   Bit-fields that holds the actions detected until now.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_action_default_miss(uint64_t action_flags,
+				const struct rte_flow_attr *attr,
+				struct rte_flow_error *error)
+{
+	if (action_flags & MLX5_FLOW_FATE_ACTIONS)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't have 2 fate actions in"
+					  " same flow");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "default miss action not supported "
+					  "for egress");
+	if (attr->group)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP, NULL,
+					  "only group 0 is supported");
+	if (attr->transfer)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+					  NULL, "transfer is not supported");
+	return 0;
+}
+
+/*
  * Validate the count action.
  *
  * @param[in] dev
@@ -4981,6 +5018,62 @@ mlx5_ctrl_flow(struct rte_eth_dev *dev,
 	       struct rte_flow_item_eth *eth_mask)
 {
 	return mlx5_ctrl_flow_vlan(dev, eth_spec, eth_mask, NULL, NULL);
+}
+
+/**
+ * Create default miss flow rule matching lacp traffic
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param eth_spec
+ *   An Ethernet flow spec to apply.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_lacp_miss(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	/*
+	 * The LACP matching is done by only using ether type since using
+	 * a multicast dst mac causes kernel to give low priority to this flow.
+	 */
+	static const struct rte_flow_item_eth lacp_spec = {
+		.type = RTE_BE16(0x8809),
+	};
+	static const struct rte_flow_item_eth lacp_mask = {
+		.type = 0xffff,
+	};
+	const struct rte_flow_attr attr = {
+		.ingress = 1,
+	};
+	struct rte_flow_item items[] = {
+		{
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.spec = &lacp_spec,
+			.mask = &lacp_mask,
+		},
+		{
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+	};
+	struct rte_flow_action actions[] = {
+		{
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
+	struct rte_flow_error error;
+	uint32_t flow_idx = flow_list_create(dev, &priv->ctrl_flows,
+				&attr, items, actions, false, &error);
+
+	if (!flow_idx)
+		return -rte_errno;
+	return 0;
 }
 
 /**

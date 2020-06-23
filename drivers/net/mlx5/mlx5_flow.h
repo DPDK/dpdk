@@ -43,6 +43,7 @@ enum mlx5_rte_flow_action_type {
 	MLX5_RTE_FLOW_ACTION_TYPE_TAG,
 	MLX5_RTE_FLOW_ACTION_TYPE_MARK,
 	MLX5_RTE_FLOW_ACTION_TYPE_COPY_MREG,
+	MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
 };
 
 /* Matches on selected register. */
@@ -200,10 +201,12 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_SET_IPV4_DSCP (1ull << 32)
 #define MLX5_FLOW_ACTION_SET_IPV6_DSCP (1ull << 33)
 #define MLX5_FLOW_ACTION_AGE (1ull << 34)
+#define MLX5_FLOW_ACTION_DEFAULT_MISS (1ull << 35)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
-	 MLX5_FLOW_ACTION_RSS | MLX5_FLOW_ACTION_JUMP)
+	 MLX5_FLOW_ACTION_RSS | MLX5_FLOW_ACTION_JUMP | \
+	 MLX5_FLOW_ACTION_DEFAULT_MISS)
 
 #define MLX5_FLOW_FATE_ESWITCH_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_PORT_ID | \
@@ -364,6 +367,7 @@ enum mlx5_flow_fate_type {
 	MLX5_FLOW_FATE_JUMP,
 	MLX5_FLOW_FATE_PORT_ID,
 	MLX5_FLOW_FATE_DROP,
+	MLX5_FLOW_FATE_DEFAULT_MISS,
 	MLX5_FLOW_FATE_MAX,
 };
 
@@ -545,6 +549,8 @@ struct mlx5_flow_handle {
 		/**< Index to port ID action resource. */
 		uint32_t rix_fate;
 		/**< Generic value indicates the fate action. */
+		uint32_t rix_default_fate;
+		/**< Indicates default miss fate action. */
 	};
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5_flow_handle_dv dvh;
@@ -946,6 +952,9 @@ int mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 				  const struct rte_flow_attr *attr,
 				  uint64_t item_flags,
 				  struct rte_flow_error *error);
+int mlx5_flow_validate_action_default_miss(uint64_t action_flags,
+				const struct rte_flow_attr *attr,
+				struct rte_flow_error *error);
 int mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
 				  const struct rte_flow_attr *attributes,
 				  struct rte_flow_error *error);
