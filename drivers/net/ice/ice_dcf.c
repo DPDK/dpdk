@@ -1020,3 +1020,45 @@ ice_dcf_query_stats(struct ice_dcf_hw *hw,
 
 	return 0;
 }
+
+int
+ice_dcf_add_del_all_mac_addr(struct ice_dcf_hw *hw, bool add)
+{
+	struct virtchnl_ether_addr_list *list;
+	struct rte_ether_addr *addr;
+	struct dcf_virtchnl_cmd args;
+	int len, err = 0;
+
+	len = sizeof(struct virtchnl_ether_addr_list);
+	addr = hw->eth_dev->data->mac_addrs;
+	len += sizeof(struct virtchnl_ether_addr);
+
+	list = rte_zmalloc(NULL, len, 0);
+	if (!list) {
+		PMD_DRV_LOG(ERR, "fail to allocate memory");
+		return -ENOMEM;
+	}
+
+	rte_memcpy(list->list[0].addr, addr->addr_bytes,
+			sizeof(addr->addr_bytes));
+	PMD_DRV_LOG(DEBUG, "add/rm mac:%x:%x:%x:%x:%x:%x",
+			    addr->addr_bytes[0], addr->addr_bytes[1],
+			    addr->addr_bytes[2], addr->addr_bytes[3],
+			    addr->addr_bytes[4], addr->addr_bytes[5]);
+
+	list->vsi_id = hw->vsi_res->vsi_id;
+	list->num_elements = 1;
+
+	memset(&args, 0, sizeof(args));
+	args.v_op = add ? VIRTCHNL_OP_ADD_ETH_ADDR :
+			VIRTCHNL_OP_DEL_ETH_ADDR;
+	args.req_msg = (uint8_t *)list;
+	args.req_msglen  = len;
+	err = ice_dcf_execute_virtchnl_cmd(hw, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			    add ? "OP_ADD_ETHER_ADDRESS" :
+			    "OP_DEL_ETHER_ADDRESS");
+	rte_free(list);
+	return err;
+}

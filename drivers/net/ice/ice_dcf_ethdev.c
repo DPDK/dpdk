@@ -544,6 +544,12 @@ ice_dcf_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 
+	ret = ice_dcf_add_del_all_mac_addr(hw, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to add mac addr");
+		return ret;
+	}
+
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	return 0;
@@ -601,6 +607,7 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 		intr_handle->intr_vec = NULL;
 	}
 
+	ice_dcf_add_del_all_mac_addr(&dcf_ad->real_hw, false);
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	ad->pf.adapter_stopped = 1;
 }
