@@ -50,6 +50,9 @@ struct ice_dcf_hw {
 	uint16_t vsi_id;
 
 	struct rte_eth_dev *eth_dev;
+	uint8_t *rss_lut;
+	uint8_t *rss_key;
+	uint64_t supported_rxdid;
 };
 
 int ice_dcf_execute_virtchnl_cmd(struct ice_dcf_hw *hw,

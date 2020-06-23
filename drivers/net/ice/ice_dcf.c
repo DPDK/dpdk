@@ -233,7 +233,7 @@ ice_dcf_get_vf_resource(struct ice_dcf_hw *hw)
 
 	caps = VIRTCHNL_VF_OFFLOAD_WB_ON_ITR | VIRTCHNL_VF_OFFLOAD_RX_POLLING |
 	       VIRTCHNL_VF_CAP_ADV_LINK_SPEED | VIRTCHNL_VF_CAP_DCF |
-	       VF_BASE_MODE_OFFLOADS;
+	       VF_BASE_MODE_OFFLOADS | VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC;
 
 	err = ice_dcf_send_cmd_req_no_irq(hw, VIRTCHNL_OP_GET_VF_RESOURCES,
 					  (uint8_t *)&caps, sizeof(caps));
@@ -547,6 +547,30 @@ ice_dcf_handle_vsi_update_event(struct ice_dcf_hw *hw)
 	return err;
 }
 
+static int
+ice_dcf_get_supported_rxdid(struct ice_dcf_hw *hw)
+{
+	int err;
+
+	err = ice_dcf_send_cmd_req_no_irq(hw,
+					  VIRTCHNL_OP_GET_SUPPORTED_RXDIDS,
+					  NULL, 0);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Failed to send OP_GET_SUPPORTED_RXDIDS");
+		return -1;
+	}
+
+	err = ice_dcf_recv_cmd_rsp_no_irq(hw, VIRTCHNL_OP_GET_SUPPORTED_RXDIDS,
+					  (uint8_t *)&hw->supported_rxdid,
+					  sizeof(uint64_t), NULL);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Failed to get response of OP_GET_SUPPORTED_RXDIDS");
+		return -1;
+	}
+
+	return 0;
+}
+
 int
 ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 {
@@ -620,6 +644,29 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 		goto err_alloc;
 	}
 
+	/* Allocate memory for RSS info */
+	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
+		hw->rss_key = rte_zmalloc(NULL,
+					  hw->vf_res->rss_key_size, 0);
+		if (!hw->rss_key) {
+			PMD_INIT_LOG(ERR, "unable to allocate rss_key memory");
+			goto err_alloc;
+		}
+		hw->rss_lut = rte_zmalloc("rss_lut",
+					  hw->vf_res->rss_lut_size, 0);
+		if (!hw->rss_lut) {
+			PMD_INIT_LOG(ERR, "unable to allocate rss_lut memory");
+			goto err_rss;
+		}
+	}
+
+	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
+		if (ice_dcf_get_supported_rxdid(hw) != 0) {
+			PMD_INIT_LOG(ERR, "failed to do get supported rxdid");
+			goto err_rss;
+		}
+	}
+
 	hw->eth_dev = eth_dev;
 	rte_intr_callback_register(&pci_dev->intr_handle,
 				   ice_dcf_dev_interrupt_handler, hw);
@@ -628,6 +675,9 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 
 	return 0;
 
+err_rss:
+	rte_free(hw->rss_key);
+	rte_free(hw->rss_lut);
 err_alloc:
 	rte_free(hw->vf_res);
 err_api:
@@ -655,4 +705,6 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	rte_free(hw->arq_buf);
 	rte_free(hw->vf_vsi_map);
 	rte_free(hw->vf_res);
+	rte_free(hw->rss_lut);
+	rte_free(hw->rss_key);
 }
