@@ -108,7 +108,7 @@ inline int
 mlx5_mprq_enabled(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint16_t i;
+	uint32_t i;
 	uint16_t n = 0;
 	uint16_t n_ibv = 0;
 

@@ -156,7 +156,7 @@ int __rte_cold
 mlx5_check_vec_rx_support(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	uint16_t i;
+	uint32_t i;
 
 	if (!priv->config.rx_vec_en)
 		return -ENOTSUP;
