@@ -1080,6 +1080,35 @@ rte_cryptodev_close(uint8_t dev_id)
 }
 
 int
+rte_cryptodev_get_qp_status(uint8_t dev_id, uint16_t queue_pair_id)
+{
+	struct rte_cryptodev *dev;
+
+	if (!rte_cryptodev_pmd_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
+		return -EINVAL;
+	}
+
+	dev = &rte_crypto_devices[dev_id];
+	if (queue_pair_id >= dev->data->nb_queue_pairs) {
+		CDEV_LOG_ERR("Invalid queue_pair_id=%d", queue_pair_id);
+		return -EINVAL;
+	}
+	void **qps = dev->data->queue_pairs;
+
+	if (qps[queue_pair_id])	{
+		CDEV_LOG_DEBUG("qp %d on dev %d is initialised",
+			queue_pair_id, dev_id);
+		return 1;
+	}
+
+	CDEV_LOG_DEBUG("qp %d on dev %d is not initialised",
+		queue_pair_id, dev_id);
+
+	return 0;
+}
+
+int
 rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
 

@@ -103,4 +103,7 @@ EXPERIMENTAL {
 	__rte_cryptodev_trace_asym_session_clear;
 	__rte_cryptodev_trace_dequeue_burst;
 	__rte_cryptodev_trace_enqueue_burst;
+
+	# added in 20.08
+	rte_cryptodev_get_qp_status;
 };

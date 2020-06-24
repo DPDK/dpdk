@@ -727,6 +727,23 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id);
 
 /**
+ * Get the status of queue pairs setup on a specific crypto device
+ *
+ * @param	dev_id		Crypto device identifier.
+ * @param	queue_pair_id	The index of the queue pairs to set up. The
+ *				value must be in the range [0, nb_queue_pair
+ *				- 1] previously supplied to
+ *				rte_cryptodev_configure().
+ * @return
+ *   - 0: qp was not configured
+ *	 - 1: qp was configured
+ *	 - -EINVAL: device was not configured
+ */
+__rte_experimental
+int
+rte_cryptodev_get_qp_status(uint8_t dev_id, uint16_t queue_pair_id);
+
+/**
  * Get the number of queue pairs on a specific crypto device
  *
  * @param	dev_id		Crypto device identifier.
