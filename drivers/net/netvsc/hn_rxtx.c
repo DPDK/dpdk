@@ -550,6 +550,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 {
 	struct hn_data *hv = rxq->hv;
 	struct rte_mbuf *m;
+	bool use_extbuf = false;
 
 	m = rte_pktmbuf_alloc(rxq->mb_pool);
 	if (unlikely(!m)) {
@@ -587,6 +588,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 		rte_pktmbuf_attach_extbuf(m, data, iova,
 					  dlen + headroom, shinfo);
 		m->data_off = headroom;
+		use_extbuf = true;
 	} else {
 		/* Mbuf's in pool must be large enough to hold small packets */
 		if (unlikely(rte_pktmbuf_tailroom(m) < dlen)) {
@@ -614,6 +616,8 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 		if (!hv->vlan_strip && rte_vlan_insert(&m)) {
 			PMD_DRV_LOG(DEBUG, "vlan insert failed");
 			++rxq->stats.errors;
+			if (use_extbuf)
+				rte_pktmbuf_detach_extbuf(m);
 			rte_pktmbuf_free(m);
 			return;
 		}
@@ -648,6 +652,8 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 	if (unlikely(rte_ring_sp_enqueue(rxq->rx_ring, m) != 0)) {
 		++rxq->stats.ring_full;
 		PMD_RX_LOG(DEBUG, "rx ring full");
+		if (use_extbuf)
+			rte_pktmbuf_detach_extbuf(m);
 		rte_pktmbuf_free(m);
 	}
 }
