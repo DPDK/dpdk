@@ -71,8 +71,8 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	 */
 	uint16x8_t len_adjust = {
 		0, 0,
-		(uint16_t)vq->hw->vtnet_hdr_size, 0,
-		(uint16_t)vq->hw->vtnet_hdr_size,
+		(uint16_t)hw->vtnet_hdr_size, 0,
+		(uint16_t)hw->vtnet_hdr_size,
 		0,
 		0, 0
 	};
