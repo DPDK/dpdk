@@ -988,14 +988,13 @@ err_secondary:
 	TAILQ_INIT(&priv->flow_meters);
 	TAILQ_INIT(&priv->flow_meter_profiles);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
-	struct mlx5dv_ctx_allocators alctr = {
-		.alloc = &mlx5_alloc_verbs_buf,
-		.free = &mlx5_free_verbs_buf,
-		.data = priv,
-	};
 	mlx5_glue->dv_set_context_attr(sh->ctx,
-				       MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
-				       (void *)((uintptr_t)&alctr));
+			MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
+			(void *)((uintptr_t)&(struct mlx5dv_ctx_allocators){
+				.alloc = &mlx5_alloc_verbs_buf,
+				.free = &mlx5_free_verbs_buf,
+				.data = priv,
+			}));
 	/* Bring Ethernet device up. */
 	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up",
 		eth_dev->data->port_id);
