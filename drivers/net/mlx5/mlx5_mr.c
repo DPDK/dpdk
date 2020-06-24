@@ -313,9 +313,10 @@ pci_dev_to_eth_dev(struct rte_pci_device *pdev)
 {
 	uint16_t port_id;
 
-	RTE_ETH_FOREACH_DEV_OF(port_id, &pdev->device)
-		return &rte_eth_devices[port_id];
-	return NULL;
+	port_id = rte_eth_find_next_of(0, &pdev->device);
+	if (port_id == RTE_MAX_ETHPORTS)
+		return NULL;
+	return &rte_eth_devices[port_id];
 }
 
 /**
