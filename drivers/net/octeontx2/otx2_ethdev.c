@@ -2177,6 +2177,20 @@ otx2_eth_dev_is_sdp(struct rte_pci_device *pci_dev)
 	return false;
 }
 
+static inline uint64_t
+nix_get_blkaddr(struct otx2_eth_dev *dev)
+{
+	uint64_t reg;
+
+	/* Reading the discovery register to know which NIX is the LF
+	 * attached to.
+	 */
+	reg = otx2_read64(dev->bar2 +
+			  RVU_PF_BLOCK_ADDRX_DISC(RVU_BLOCK_ADDR_NIX0));
+
+	return reg & 0x1FFULL ? RVU_BLOCK_ADDR_NIX0 : RVU_BLOCK_ADDR_NIX1;
+}
+
 static int
 otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -2236,13 +2250,14 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	dev->configured = 0;
 	dev->drv_inited = true;
 	dev->ptype_disable = 0;
-	dev->base = dev->bar2 + (RVU_BLOCK_ADDR_NIX0 << 20);
 	dev->lmt_addr = dev->bar2 + (RVU_BLOCK_ADDR_LMT << 20);
 
 	/* Attach NIX LF */
 	rc = nix_lf_attach(dev);
 	if (rc)
 		goto otx2_npa_uninit;
+
+	dev->base = dev->bar2 + (nix_get_blkaddr(dev) << 20);
 
 	/* Get NIX MSIX offset */
 	rc = nix_lf_get_msix_offset(dev);

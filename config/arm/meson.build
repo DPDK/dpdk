@@ -82,7 +82,7 @@ flags_thunderx2_extra = [
 flags_octeontx2_extra = [
 	['RTE_MACHINE', '"octeontx2"'],
 	['RTE_MAX_NUMA_NODES', 1],
-	['RTE_MAX_LCORE', 24],
+	['RTE_MAX_LCORE', 36],
 	['RTE_ARM_FEATURE_ATOMICS', true],
 	['RTE_EAL_IGB_UIO', false],
 	['RTE_USE_C11_MEM_MODEL', true]]

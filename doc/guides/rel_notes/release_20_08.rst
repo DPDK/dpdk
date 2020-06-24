@@ -80,6 +80,10 @@ New Features
   * Added support for virtio queue statistics.
   * Added support for MTU update.
 
+* **Updated Marvell octeontx2 ethdev PMD.**
+
+  Updated Marvell octeontx2 driver with cn98xx support.
+
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 
   Added support for two BPF non-generic instructions:

@@ -13,6 +13,7 @@ More information about OCTEON TX2 SoC can be found at `Marvell Official Website
 Supported OCTEON TX2 SoCs
 -------------------------
 
+- CN98xx
 - CN96xx
 - CN93xx
 
