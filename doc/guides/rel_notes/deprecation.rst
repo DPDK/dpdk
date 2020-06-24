@@ -130,11 +130,3 @@ Deprecation Notices
   Python 2 support will be completely removed in 20.11.
   In 20.08, explicit deprecation warnings will be displayed when running
   scripts with Python 2.
-
-* pci: Remove ``RTE_KDRV_NONE`` based device driver probing.
-  In order to optimize the DPDK PCI enumeration management, ``RTE_KDRV_NONE``
-  based device driver probing will be removed in v20.08.
-  The legacy virtio is the only consumer of ``RTE_KDRV_NONE`` based device
-  driver probe scheme. The legacy virtio support will be available through
-  the existing VFIO/UIO based kernel driver scheme.
-  More details at https://patches.dpdk.org/patch/69351/

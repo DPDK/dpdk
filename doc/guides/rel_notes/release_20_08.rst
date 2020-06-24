@@ -88,6 +88,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* Removed ``RTE_KDRV_NONE`` based PCI device driver probing.
+
 
 API Changes
 -----------
