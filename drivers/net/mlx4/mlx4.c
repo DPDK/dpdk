@@ -1054,14 +1054,13 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->dev_ops = &mlx4_dev_ops;
 #ifdef HAVE_IBV_MLX4_BUF_ALLOCATORS
 		/* Hint libmlx4 to use PMD allocator for data plane resources */
-		struct mlx4dv_ctx_allocators alctr = {
-			.alloc = &mlx4_alloc_verbs_buf,
-			.free = &mlx4_free_verbs_buf,
-			.data = priv,
-		};
 		err = mlx4_glue->dv_set_context_attr
 			(ctx, MLX4DV_SET_CTX_ATTR_BUF_ALLOCATORS,
-			 (void *)((uintptr_t)&alctr));
+			 (void *)((uintptr_t)&(struct mlx4dv_ctx_allocators){
+				 .alloc = &mlx4_alloc_verbs_buf,
+				 .free = &mlx4_free_verbs_buf,
+				 .data = priv,
+			}));
 		if (err)
 			WARN("Verbs external allocator is not supported");
 		else
