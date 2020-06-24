@@ -69,7 +69,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_dcb.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_rxtx.c
-ifeq ($(CONFIG_RTE_ARCH_ARM64),y)
+ifneq ($(filter y,$(CONFIG_RTE_ARCH_ARM) $(CONFIG_RTE_ARCH_ARM64)),)
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_INC_VECTOR) += i40e_rxtx_vec_neon.c
 else ifeq ($(CONFIG_RTE_ARCH_PPC_64),y)
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_INC_VECTOR) += i40e_rxtx_vec_altivec.c

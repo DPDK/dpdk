@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
+#include <rte_vect.h>
 
 #include "base/i40e_prototype.h"
 #include "base/i40e_type.h"
@@ -13,7 +14,6 @@
 #include "i40e_rxtx.h"
 #include "i40e_rxtx_vec_common.h"
 
-#include <arm_neon.h>
 
 #pragma GCC diagnostic ignored "-Wcast-qual"
 
