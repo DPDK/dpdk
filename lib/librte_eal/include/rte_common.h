@@ -304,7 +304,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * than the first parameter.
  */
 #define RTE_ALIGN_MUL_CEIL(v, mul) \
-	(((v + (typeof(v))(mul) - 1) / ((typeof(v))(mul))) * (typeof(v))(mul))
+	((((v) + (typeof(v))(mul) - 1) / ((typeof(v))(mul))) * (typeof(v))(mul))
 
 /**
  * Macro to align a value to the multiple of given value. The resultant
@@ -312,7 +312,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * than the first parameter.
  */
 #define RTE_ALIGN_MUL_FLOOR(v, mul) \
-	((v / ((typeof(v))(mul))) * (typeof(v))(mul))
+	(((v) / ((typeof(v))(mul))) * (typeof(v))(mul))
 
 /**
  * Macro to align value to the nearest multiple of the given value.
@@ -323,7 +323,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 	({							\
 		typeof(v) ceil = RTE_ALIGN_MUL_CEIL(v, mul);	\
 		typeof(v) floor = RTE_ALIGN_MUL_FLOOR(v, mul);	\
-		(ceil - v) > (v - floor) ? floor : ceil;	\
+		(ceil - (v)) > ((v) - floor) ? floor : ceil;	\
 	})
 
 /**
