@@ -492,7 +492,6 @@ mlx4_ibv_device_to_pci_addr(const struct ibv_device *device,
 			   &pci_addr->bus,
 			   &pci_addr->devid,
 			   &pci_addr->function) == 4) {
-			ret = 0;
 			break;
 		}
 	}
