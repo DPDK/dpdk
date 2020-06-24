@@ -2441,6 +2441,100 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_vsi *vsi = pf->main_vsi;
+	int ret;
+
+	/* Configure RSS for IPv4 with src/dst addr as input set */
+	if (rss_hf & ETH_RSS_IPV4) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
+				      ICE_FLOW_SEG_HDR_IPV4 |
+				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s IPV4 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	/* Configure RSS for IPv6 with src/dst addr as input set */
+	if (rss_hf & ETH_RSS_IPV6) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV6,
+				      ICE_FLOW_SEG_HDR_IPV6 |
+				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s IPV6 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	/* Configure RSS for udp4 with src/dst addr and port as input set */
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_UDP_IPV4,
+				      ICE_FLOW_SEG_HDR_UDP |
+				      ICE_FLOW_SEG_HDR_IPV4 |
+				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s UDP_IPV4 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	/* Configure RSS for udp6 with src/dst addr and port as input set */
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_UDP_IPV6,
+				      ICE_FLOW_SEG_HDR_UDP |
+				      ICE_FLOW_SEG_HDR_IPV6 |
+				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s UDP_IPV6 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	/* Configure RSS for tcp4 with src/dst addr and port as input set */
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV4,
+				      ICE_FLOW_SEG_HDR_TCP |
+				      ICE_FLOW_SEG_HDR_IPV4 |
+				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s TCP_IPV4 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	/* Configure RSS for tcp6 with src/dst addr and port as input set */
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV6,
+				      ICE_FLOW_SEG_HDR_TCP |
+				      ICE_FLOW_SEG_HDR_IPV6 |
+				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s TCP_IPV6 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	/* Configure RSS for sctp4 with src/dst addr and port as input set */
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
+				      ICE_FLOW_SEG_HDR_SCTP |
+				      ICE_FLOW_SEG_HDR_IPV4 |
+				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s SCTP_IPV4 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	/* Configure RSS for sctp6 with src/dst addr and port as input set */
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV6,
+				      ICE_FLOW_SEG_HDR_SCTP |
+				      ICE_FLOW_SEG_HDR_IPV6 |
+				      ICE_FLOW_SEG_HDR_IPV_OTHER, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s SCTP_IPV6 rss flow fail %d",
+				    __func__, ret);
+	}
+}
+
 static int ice_init_rss(struct ice_pf *pf)
 {
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
@@ -2501,72 +2595,8 @@ static int ice_init_rss(struct ice_pf *pf)
 		(1 << VSIQF_HASH_CTL_HASH_SCHEME_S);
 	ICE_WRITE_REG(hw, VSIQF_HASH_CTL(vsi->vsi_id), reg);
 
-	/* configure RSS for IPv4 with input set IPv4 src/dst */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
-			      ICE_FLOW_SEG_HDR_IPV4, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s IPV4 rss flow fail %d", __func__, ret);
-
-	/* configure RSS for IPv6 with input set IPv6 src/dst */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV6,
-			      ICE_FLOW_SEG_HDR_IPV6, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s IPV6 rss flow fail %d", __func__, ret);
-
-	/* configure RSS for tcp6 with input set IPv6 src/dst, TCP src/dst */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV6,
-			      ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV6, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s TCP_IPV6 rss flow fail %d", __func__, ret);
-
-	/* configure RSS for udp6 with input set IPv6 src/dst, UDP src/dst */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_UDP_IPV6,
-			      ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV6, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s UDP_IPV6 rss flow fail %d", __func__, ret);
-
-	/* configure RSS for sctp6 with input set IPv6 src/dst */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV6,
-			      ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV6, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s SCTP_IPV6 rss flow fail %d",
-				__func__, ret);
-
-	/* configure RSS for tcp4 with input set IP src/dst, TCP src/dst */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV4,
-			      ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV4, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s TCP_IPV4 rss flow fail %d", __func__, ret);
-
-	/* configure RSS for udp4 with input set IP src/dst, UDP src/dst */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_UDP_IPV4,
-			      ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV4, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s UDP_IPV4 rss flow fail %d", __func__, ret);
-
-	/* configure RSS for sctp4 with input set IP src/dst */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
-			      ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV4, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s SCTP_IPV4 rss flow fail %d",
-				__func__, ret);
-
-	/* configure RSS for gtpu with input set TEID */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_GTP_U_IPV4_TEID,
-				ICE_FLOW_SEG_HDR_GTPU_IP, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s GTPU_TEID rss flow fail %d",
-				__func__, ret);
-
-	/**
-	 * configure RSS for pppoe/pppod with input set
-	 * Source MAC and Session ID
-	 */
-	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_PPPOE_SESS_ID_ETH,
-				ICE_FLOW_SEG_HDR_PPPOE, 0);
-	if (ret)
-		PMD_DRV_LOG(ERR, "%s PPPoE/PPPoD_SessionID rss flow fail %d",
-				__func__, ret);
+	/* RSS hash configuration */
+	ice_rss_hash_set(pf, rss_conf->rss_hf);
 
 	return 0;
 }
@@ -3687,7 +3717,12 @@ ice_rss_hash_update(struct rte_eth_dev *dev,
 	if (status)
 		return status;
 
-	/* TODO: hash enable config, ice_add_rss_cfg */
+	if (rss_conf->rss_hf == 0)
+		return 0;
+
+	/* RSS hash configuration */
+	ice_rss_hash_set(pf, rss_conf->rss_hf);
+
 	return 0;
 }
 
