@@ -62,7 +62,11 @@ vaddvq_u16(uint16x8_t a)
 
 #endif
 
-#if RTE_CC_IS_GNU && (GCC_VERSION < 70000)
+#if defined(RTE_ARCH_ARM) || \
+(defined(RTE_ARCH_ARM64) && RTE_CC_IS_GNU && (GCC_VERSION < 70000))
+/* NEON intrinsic vcopyq_laneq_u32() is not supported in ARMv7-A(AArch32)
+ * On AArch64, this intrinsic is supported since GCC version 7.
+ */
 static inline uint32x4_t
 vcopyq_laneq_u32(uint32x4_t a, const int lane_a,
 		 uint32x4_t b, const int lane_b)
