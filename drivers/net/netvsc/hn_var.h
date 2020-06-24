@@ -113,7 +113,7 @@ struct hn_data {
 	struct rte_mem_resource *rxbuf_res;	/* UIO resource for Rx */
 	struct hn_rx_bufinfo *rxbuf_info;
 	uint32_t	rxbuf_section_cnt;	/* # of Rx sections */
-	volatile uint32_t rxbuf_outstanding;
+	rte_atomic32_t	rxbuf_outstanding;
 	uint16_t	max_queues;		/* Max available queues */
 	uint16_t	num_queues;
 	uint64_t	rss_offloads;

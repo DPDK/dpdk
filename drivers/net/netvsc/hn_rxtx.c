@@ -519,24 +519,13 @@ next:
 	return 0;
 }
 
-/*
- * Ack the consumed RXBUF associated w/ this channel packet,
- * so that this RXBUF can be recycled by the hypervisor.
- */
-static void hn_rx_buf_release(struct hn_rx_bufinfo *rxb)
-{
-	struct rte_mbuf_ext_shared_info *shinfo = &rxb->shinfo;
-	struct hn_data *hv = rxb->hv;
-
-	if (rte_mbuf_ext_refcnt_update(shinfo, -1) == 0) {
-		hn_nvs_ack_rxbuf(rxb->chan, rxb->xactid);
-		--hv->rxbuf_outstanding;
-	}
-}
-
 static void hn_rx_buf_free_cb(void *buf __rte_unused, void *opaque)
 {
-	hn_rx_buf_release(opaque);
+	struct hn_rx_bufinfo *rxb = opaque;
+	struct hn_data *hv = rxb->hv;
+
+	rte_atomic32_dec(&hv->rxbuf_outstanding);
+	hn_nvs_ack_rxbuf(rxb->chan, rxb->xactid);
 }
 
 static struct hn_rx_bufinfo *hn_rx_buf_init(const struct hn_rx_queue *rxq,
@@ -576,7 +565,8 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 	 * some space available in receive area for later packets.
 	 */
 	if (dlen >= HN_RXCOPY_THRESHOLD &&
-	    hv->rxbuf_outstanding < hv->rxbuf_section_cnt / 2) {
+	    (uint32_t)rte_atomic32_read(&hv->rxbuf_outstanding) <
+			hv->rxbuf_section_cnt / 2) {
 		struct rte_mbuf_ext_shared_info *shinfo;
 		const void *rxbuf;
 		rte_iova_t iova;
@@ -590,8 +580,9 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 		iova = rte_mem_virt2iova(rxbuf) + RTE_PTR_DIFF(data, rxbuf);
 		shinfo = &rxb->shinfo;
 
-		if (rte_mbuf_ext_refcnt_update(shinfo, 1) == 1)
-			++hv->rxbuf_outstanding;
+		/* shinfo is already set to 1 by the caller */
+		if (rte_mbuf_ext_refcnt_update(shinfo, 1) == 2)
+			rte_atomic32_inc(&hv->rxbuf_outstanding);
 
 		rte_pktmbuf_attach_extbuf(m, data, iova,
 					  dlen + headroom, shinfo);
@@ -832,7 +823,8 @@ hn_nvs_handle_rxbuf(struct rte_eth_dev *dev,
 	}
 
 	/* Send ACK now if external mbuf not used */
-	hn_rx_buf_release(rxb);
+	if (rte_mbuf_ext_refcnt_update(&rxb->shinfo, -1) == 0)
+		hn_nvs_ack_rxbuf(rxb->chan, rxb->xactid);
 }
 
 /*

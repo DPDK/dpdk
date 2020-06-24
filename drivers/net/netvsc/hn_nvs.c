@@ -99,7 +99,6 @@ __hn_nvs_execute(struct hn_data *hv,
 	/* Silently drop received packets while waiting for response */
 	if (hdr->type == NVS_TYPE_RNDIS) {
 		hn_nvs_ack_rxbuf(chan, xactid);
-		--hv->rxbuf_outstanding;
 		goto retry;
 	}
 
