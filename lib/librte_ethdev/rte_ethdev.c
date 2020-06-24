@@ -4200,8 +4200,18 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 	}
 
 	mz = rte_memzone_lookup(z_name);
-	if (mz)
+	if (mz) {
+		if ((socket_id != SOCKET_ID_ANY && socket_id != mz->socket_id) ||
+				size > mz->len ||
+				((uintptr_t)mz->addr & (align - 1)) != 0) {
+			RTE_ETHDEV_LOG(ERR,
+				"memzone %s does not justify the requested attributes\n",
+				mz->name);
+			return NULL;
+		}
+
 		return mz;
+	}
 
 	return rte_memzone_reserve_aligned(z_name, size, socket_id,
 			RTE_MEMZONE_IOVA_CONTIG, align);
