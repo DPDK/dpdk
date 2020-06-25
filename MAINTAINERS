@@ -540,6 +540,7 @@ F: drivers/bus/vdev/
 
 VMBUS bus driver
 M: Stephen Hemminger <sthemmin@microsoft.com>
+M: Long Li <longli@microsoft.com>
 F: drivers/bus/vmbus/
 
 
