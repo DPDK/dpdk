@@ -7,8 +7,6 @@ if not (is_linux or is_windows)
 	subdir_done()
 endif
 
-allow_experimental_apis = true
-
 deps += ['hash', 'pci', 'net', 'eal', 'kvargs']
 sources += files(
 	'mlx5_devx_cmds.c',
