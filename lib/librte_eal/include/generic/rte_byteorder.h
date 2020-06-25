@@ -17,7 +17,7 @@
 #include <stdint.h>
 #ifdef RTE_EXEC_ENV_FREEBSD
 #include <sys/endian.h>
-#else
+#elif defined RTE_EXEC_ENV_LINUX
 #include <endian.h>
 #endif
 
