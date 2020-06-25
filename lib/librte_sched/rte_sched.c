@@ -222,6 +222,7 @@ struct rte_sched_port {
 	uint64_t time_cpu_bytes;      /* Current CPU time measured in bytes */
 	uint64_t time;                /* Current NIC TX time measured in bytes */
 	struct rte_reciprocal inv_cycles_per_byte; /* CPU cycles per byte */
+	uint64_t cycles_per_byte;
 
 	/* Grinders */
 	struct rte_mbuf **pkts_out;
@@ -852,6 +853,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	cycles_per_byte = (rte_get_tsc_hz() << RTE_SCHED_TIME_SHIFT)
 		/ params->rate;
 	port->inv_cycles_per_byte = rte_reciprocal_value(cycles_per_byte);
+	port->cycles_per_byte = cycles_per_byte;
 
 	/* Grinders */
 	port->pkts_out = NULL;
@@ -2673,16 +2675,21 @@ static inline void
 rte_sched_port_time_resync(struct rte_sched_port *port)
 {
 	uint64_t cycles = rte_get_tsc_cycles();
-	uint64_t cycles_diff = cycles - port->time_cpu_cycles;
+	uint64_t cycles_diff;
 	uint64_t bytes_diff;
 	uint32_t i;
 
+	if (cycles < port->time_cpu_cycles)
+		port->time_cpu_cycles = 0;
+
+	cycles_diff = cycles - port->time_cpu_cycles;
 	/* Compute elapsed time in bytes */
 	bytes_diff = rte_reciprocal_divide(cycles_diff << RTE_SCHED_TIME_SHIFT,
 					   port->inv_cycles_per_byte);
 
 	/* Advance port time */
-	port->time_cpu_cycles = cycles;
+	port->time_cpu_cycles +=
+		(bytes_diff * port->cycles_per_byte) >> RTE_SCHED_TIME_SHIFT;
 	port->time_cpu_bytes += bytes_diff;
 	if (port->time < port->time_cpu_bytes)
 		port->time = port->time_cpu_bytes;
