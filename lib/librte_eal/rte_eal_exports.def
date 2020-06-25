@@ -3,6 +3,7 @@ EXPORTS
 	__rte_trace_mem_per_thread_alloc
 	__rte_trace_point_emit_field
 	__rte_trace_point_register
+	per_lcore__lcore_id
 	per_lcore__rte_errno
 	per_lcore_trace_mem
 	per_lcore_trace_point_sz
@@ -17,6 +18,7 @@ EXPORTS
 	rte_eal_has_pci
 	rte_eal_init
 	rte_eal_iova_mode
+	rte_eal_mbuf_user_pool_ops
 	rte_eal_mp_remote_launch
 	rte_eal_mp_wait_lcore
 	rte_eal_process_type
@@ -26,6 +28,7 @@ EXPORTS
 	rte_eal_tailq_register
 	rte_eal_using_phys_addrs
 	rte_free
+	rte_hexdump
 	rte_malloc
 	rte_malloc_dump_stats
 	rte_malloc_get_socket_stats
