@@ -21,6 +21,10 @@
 #include <rte_memcpy.h>
 #include <rte_compat.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define RTE_RIB6_IPV6_ADDR_SIZE	16
 
 /**
@@ -339,4 +343,8 @@ __rte_experimental
 void
 rte_rib6_free(struct rte_rib6 *rib);
 
-#endif /* _RTE_RIB_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _RTE_RIB6_H_ */
