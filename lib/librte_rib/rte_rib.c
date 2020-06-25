@@ -342,7 +342,7 @@ rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 }
 
 int
-rte_rib_get_ip(struct rte_rib_node *node, uint32_t *ip)
+rte_rib_get_ip(const struct rte_rib_node *node, uint32_t *ip)
 {
 	if ((node == NULL) || (ip == NULL)) {
 		rte_errno = EINVAL;
@@ -353,7 +353,7 @@ rte_rib_get_ip(struct rte_rib_node *node, uint32_t *ip)
 }
 
 int
-rte_rib_get_depth(struct rte_rib_node *node, uint8_t *depth)
+rte_rib_get_depth(const struct rte_rib_node *node, uint8_t *depth)
 {
 	if ((node == NULL) || (depth == NULL)) {
 		rte_errno = EINVAL;
@@ -370,7 +370,7 @@ rte_rib_get_ext(struct rte_rib_node *node)
 }
 
 int
-rte_rib_get_nh(struct rte_rib_node *node, uint64_t *nh)
+rte_rib_get_nh(const struct rte_rib_node *node, uint64_t *nh)
 {
 	if ((node == NULL) || (nh == NULL)) {
 		rte_errno = EINVAL;
@@ -392,7 +392,7 @@ rte_rib_set_nh(struct rte_rib_node *node, uint64_t nh)
 }
 
 struct rte_rib *
-rte_rib_create(const char *name, int socket_id, struct rte_rib_conf *conf)
+rte_rib_create(const char *name, int socket_id, const struct rte_rib_conf *conf)
 {
 	char mem_name[RTE_RIB_NAMESIZE];
 	struct rte_rib *rib = NULL;
