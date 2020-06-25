@@ -460,8 +460,7 @@ rte_rib6_create(const char *name, int socket_id,
 	struct rte_mempool *node_pool;
 
 	/* Check user arguments. */
-	if ((name == NULL) || (conf == NULL) ||
-			(conf->max_nodes == 0)) {
+	if (name == NULL || conf == NULL || conf->max_nodes <= 0) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
