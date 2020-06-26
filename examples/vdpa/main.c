@@ -301,13 +301,13 @@ static void cmd_list_vdpa_devices_parsed(
 		vdev = rte_vdpa_find_device_by_name(dev->name);
 		if (!vdev)
 			continue;
-		if (vdev->ops->get_queue_num(vdev, &queue_num) < 0) {
+		if (rte_vdpa_get_queue_num(vdev, &queue_num) < 0) {
 			RTE_LOG(ERR, VDPA,
 				"failed to get vdpa queue number "
 				"for device %s.\n", dev->name);
 			continue;
 		}
-		if (vdev->ops->get_features(vdev, &features) < 0) {
+		if (rte_vdpa_get_features(vdev, &features) < 0) {
 			RTE_LOG(ERR, VDPA,
 				"failed to get vdpa features "
 				"for device %s.\n", dev->name);
