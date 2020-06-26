@@ -22,6 +22,7 @@
 
 #include "rte_vhost.h"
 #include "rte_vdpa.h"
+#include "rte_vdpa_dev.h"
 
 /* Used to indicate that the device is running on a data core */
 #define VIRTIO_DEV_RUNNING 1

@@ -21,5 +21,6 @@ cflags += '-fno-strict-aliasing'
 sources = files('fd_man.c', 'iotlb.c', 'socket.c', 'vdpa.c',
 		'vhost.c', 'vhost_user.c',
 		'virtio_net.c', 'vhost_crypto.c')
-headers = files('rte_vhost.h', 'rte_vdpa.h', 'rte_vhost_crypto.h')
+headers = files('rte_vhost.h', 'rte_vdpa.h', 'rte_vdpa_dev.h',
+		'rte_vhost_crypto.h')
 deps += ['ethdev', 'cryptodev', 'hash', 'pci']

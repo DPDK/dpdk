@@ -16,6 +16,7 @@
 #include <rte_bus_pci.h>
 #include <rte_vhost.h>
 #include <rte_vdpa.h>
+#include <rte_vdpa_dev.h>
 #include <rte_vfio.h>
 #include <rte_spinlock.h>
 #include <rte_log.h>

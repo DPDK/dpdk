@@ -41,7 +41,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := fd_man.c iotlb.c socket.c vhost.c \
 					vhost_user.c virtio_net.c vdpa.c
 
 # install includes
-SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_vhost.h rte_vdpa.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_vhost.h rte_vdpa.h \
+						rte_vdpa_dev.h
 
 # only compile vhost crypto when cryptodev is enabled
 ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
