@@ -230,6 +230,34 @@ fail:
 }
 
 int
+rte_vdpa_get_queue_num(struct rte_vdpa_device *dev, uint32_t *queue_num)
+{
+	if (dev == NULL || dev->ops == NULL || dev->ops->get_queue_num == NULL)
+		return -1;
+
+	return dev->ops->get_queue_num(dev, queue_num);
+}
+
+int
+rte_vdpa_get_features(struct rte_vdpa_device *dev, uint64_t *features)
+{
+	if (dev == NULL || dev->ops == NULL || dev->ops->get_features == NULL)
+		return -1;
+
+	return dev->ops->get_features(dev, features);
+}
+
+int
+rte_vdpa_get_protocol_features(struct rte_vdpa_device *dev, uint64_t *features)
+{
+	if (dev == NULL || dev->ops == NULL ||
+			dev->ops->get_protocol_features == NULL)
+		return -1;
+
+	return dev->ops->get_protocol_features(dev, features);
+}
+
+int
 rte_vdpa_get_stats_names(struct rte_vdpa_device *dev,
 		struct rte_vdpa_stat_name *stats_names,
 		unsigned int size)

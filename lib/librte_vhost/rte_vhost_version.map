@@ -69,4 +69,7 @@ EXPERIMENTAL {
 	rte_vhost_slave_config_change;
 	rte_vdpa_find_device_by_name;
 	rte_vdpa_get_rte_device;
+	rte_vdpa_get_queue_num;
+	rte_vdpa_get_features;
+	rte_vdpa_get_protocol_features;
 };
