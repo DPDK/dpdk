@@ -38,7 +38,6 @@ struct vdpa_port {
 static struct vdpa_port vports[MAX_VDPA_SAMPLE_PORTS];
 
 static char iface[MAX_PATH_LEN];
-static int dev_total;
 static int devcnt;
 static int interactive;
 static int client_mode;
@@ -227,7 +226,7 @@ static void
 vdpa_sample_quit(void)
 {
 	int i;
-	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, dev_total); i++) {
+	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, devcnt); i++) {
 		if (vports[i].ifname[0] != '\0')
 			close_vdpa(&vports[i]);
 	}
@@ -399,7 +398,7 @@ static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
 			res->bdf);
 		return;
 	}
-	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, dev_total); i++) {
+	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, devcnt); i++) {
 		if (vports[i].dev == vdev) {
 			vport = &vports[i];
 			break;
@@ -535,10 +534,6 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "eal init failed\n");
 	argc -= ret;
 	argv += ret;
-
-	dev_total = rte_vdpa_get_device_num();
-	if (dev_total <= 0)
-		rte_exit(EXIT_FAILURE, "No available vdpa device found\n");
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
