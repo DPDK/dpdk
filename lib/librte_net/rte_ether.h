@@ -150,10 +150,9 @@ static inline int rte_is_multicast_ether_addr(const struct rte_ether_addr *ea)
  */
 static inline int rte_is_broadcast_ether_addr(const struct rte_ether_addr *ea)
 {
-	const uint16_t *ea_words = (const uint16_t *)ea;
+	const uint16_t *w = (const uint16_t *)ea;
 
-	return (ea_words[0] == 0xFFFF && ea_words[1] == 0xFFFF &&
-		ea_words[2] == 0xFFFF);
+	return (w[0] & w[1] & w[2]) == 0xFFFF;
 }
 
 /**
@@ -212,29 +211,18 @@ void
 rte_eth_random_addr(uint8_t *addr);
 
 /**
- * Fast copy an Ethernet address.
+ * Copy an Ethernet address.
  *
  * @param ea_from
  *   A pointer to a ether_addr structure holding the Ethernet address to copy.
  * @param ea_to
  *   A pointer to a ether_addr structure where to copy the Ethernet address.
  */
-static inline void rte_ether_addr_copy(const struct rte_ether_addr *ea_from,
-				   struct rte_ether_addr *ea_to)
+static inline void
+rte_ether_addr_copy(const struct rte_ether_addr *__restrict ea_from,
+		    struct rte_ether_addr *__restrict ea_to)
 {
-#ifdef __INTEL_COMPILER
-	uint16_t *from_words = (uint16_t *)(ea_from->addr_bytes);
-	uint16_t *to_words   = (uint16_t *)(ea_to->addr_bytes);
-
-	to_words[0] = from_words[0];
-	to_words[1] = from_words[1];
-	to_words[2] = from_words[2];
-#else
-	/*
-	 * Use the common way, because of a strange gcc warning.
-	 */
 	*ea_to = *ea_from;
-#endif
 }
 
 #define RTE_ETHER_ADDR_FMT_SIZE         18
