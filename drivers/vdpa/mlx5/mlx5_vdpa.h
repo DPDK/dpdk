@@ -103,7 +103,7 @@ struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	uint8_t configured;
 	uint8_t direct_notifier; /* Whether direct notifier is on or off. */
-	int id; /* vDPA device id. */
+	struct rte_vdpa_device *vdev; /* vDPA device. */
 	int vid; /* vhost device id. */
 	struct ibv_context *ctx; /* Device context. */
 	struct rte_pci_device *pci_dev;

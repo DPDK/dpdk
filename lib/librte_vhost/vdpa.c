@@ -18,52 +18,6 @@
 static struct rte_vdpa_device vdpa_devices[MAX_VHOST_DEVICE];
 static uint32_t vdpa_device_num;
 
-int
-rte_vdpa_register_device(struct rte_device *rte_dev,
-		struct rte_vdpa_dev_ops *ops)
-{
-	struct rte_vdpa_device *dev;
-	int i;
-
-	if (vdpa_device_num >= MAX_VHOST_DEVICE || ops == NULL)
-		return -1;
-
-	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
-		dev = &vdpa_devices[i];
-		if (dev->ops == NULL)
-			continue;
-
-		if (dev->device == rte_dev)
-			return -1;
-	}
-
-	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
-		if (vdpa_devices[i].ops == NULL)
-			break;
-	}
-
-	if (i == MAX_VHOST_DEVICE)
-		return -1;
-
-	dev = &vdpa_devices[i];
-	dev->device = rte_dev;
-	dev->ops = ops;
-	vdpa_device_num++;
-
-	return i;
-}
-
-int
-rte_vdpa_unregister_device(int did)
-{
-	if (did < 0 || did >= MAX_VHOST_DEVICE || vdpa_devices[did].ops == NULL)
-		return -1;
-
-	memset(&vdpa_devices[did], 0, sizeof(struct rte_vdpa_device));
-	vdpa_device_num--;
-
-	return did;
-}
 
 int
 rte_vdpa_find_device_id(struct rte_vdpa_device *dev)
@@ -114,6 +68,55 @@ rte_vdpa_get_device(int did)
 		return NULL;
 
 	return &vdpa_devices[did];
+}
+
+struct rte_vdpa_device *
+rte_vdpa_register_device(struct rte_device *rte_dev,
+		struct rte_vdpa_dev_ops *ops)
+{
+	struct rte_vdpa_device *dev;
+	int i;
+
+	if (vdpa_device_num >= MAX_VHOST_DEVICE || ops == NULL)
+		return NULL;
+
+	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
+		dev = &vdpa_devices[i];
+		if (dev->ops == NULL)
+			continue;
+
+		if (dev->device == rte_dev)
+			return NULL;
+	}
+
+	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
+		if (vdpa_devices[i].ops == NULL)
+			break;
+	}
+
+	if (i == MAX_VHOST_DEVICE)
+		return NULL;
+
+	dev = &vdpa_devices[i];
+	dev->device = rte_dev;
+	dev->ops = ops;
+	vdpa_device_num++;
+
+	return dev;
+}
+
+int
+rte_vdpa_unregister_device(struct rte_vdpa_device *vdev)
+{
+	int did = rte_vdpa_find_device_id(vdev);
+
+	if (did < 0 || vdpa_devices[did].ops == NULL)
+		return -1;
+
+	memset(&vdpa_devices[did], 0, sizeof(struct rte_vdpa_device));
+	vdpa_device_num--;
+
+	return 0;
 }
 
 int
@@ -236,7 +239,7 @@ rte_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
 
 	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_stats_names, -ENOTSUP);
 
-	return vdpa_dev->ops->get_stats_names(did, stats_names, size);
+	return vdpa_dev->ops->get_stats_names(vdpa_dev, stats_names, size);
 }
 
 int
@@ -254,7 +257,7 @@ rte_vdpa_get_stats(int did, uint16_t qid, struct rte_vdpa_stat *stats,
 
 	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_stats, -ENOTSUP);
 
-	return vdpa_dev->ops->get_stats(did, qid, stats, n);
+	return vdpa_dev->ops->get_stats(vdpa_dev, qid, stats, n);
 }
 
 int
@@ -268,7 +271,7 @@ rte_vdpa_reset_stats(int did, uint16_t qid)
 
 	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->reset_stats, -ENOTSUP);
 
-	return vdpa_dev->ops->reset_stats(did, qid);
+	return vdpa_dev->ops->reset_stats(vdpa_dev, qid);
 }
 
 static uint16_t

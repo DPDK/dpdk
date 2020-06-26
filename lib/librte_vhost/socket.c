@@ -712,7 +712,7 @@ rte_vhost_driver_get_features(const char *path, uint64_t *features)
 		goto unlock_exit;
 	}
 
-	if (vdpa_dev->ops->get_features(did, &vdpa_features) < 0) {
+	if (vdpa_dev->ops->get_features(vdpa_dev, &vdpa_features) < 0) {
 		VHOST_LOG_CONFIG(ERR,
 				"failed to get vdpa features "
 				"for socket file %s.\n", path);
@@ -767,7 +767,7 @@ rte_vhost_driver_get_protocol_features(const char *path,
 		goto unlock_exit;
 	}
 
-	if (vdpa_dev->ops->get_protocol_features(did,
+	if (vdpa_dev->ops->get_protocol_features(vdpa_dev,
 				&vdpa_protocol_features) < 0) {
 		VHOST_LOG_CONFIG(ERR,
 				"failed to get vdpa protocol features "
@@ -809,7 +809,7 @@ rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num)
 		goto unlock_exit;
 	}
 
-	if (vdpa_dev->ops->get_queue_num(did, &vdpa_queue_num) < 0) {
+	if (vdpa_dev->ops->get_queue_num(vdpa_dev, &vdpa_queue_num) < 0) {
 		VHOST_LOG_CONFIG(ERR,
 				"failed to get vdpa queue number "
 				"for socket file %s.\n", path);

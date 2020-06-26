@@ -50,21 +50,21 @@ static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 int mlx5_vdpa_logtype;
 
 static struct mlx5_vdpa_priv *
-mlx5_vdpa_find_priv_resource_by_did(int did)
+mlx5_vdpa_find_priv_resource_by_vdev(struct rte_vdpa_device *vdev)
 {
 	struct mlx5_vdpa_priv *priv;
 	int found = 0;
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_FOREACH(priv, &priv_list, next) {
-		if (did == priv->id) {
+		if (vdev == priv->vdev) {
 			found = 1;
 			break;
 		}
 	}
 	pthread_mutex_unlock(&priv_list_lock);
 	if (!found) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -72,12 +72,13 @@ mlx5_vdpa_find_priv_resource_by_did(int did)
 }
 
 static int
-mlx5_vdpa_get_queue_num(int did, uint32_t *queue_num)
+mlx5_vdpa_get_queue_num(struct rte_vdpa_device *vdev, uint32_t *queue_num)
 {
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -1;
 	}
 	*queue_num = priv->caps.max_num_virtio_queues;
@@ -85,12 +86,13 @@ mlx5_vdpa_get_queue_num(int did, uint32_t *queue_num)
 }
 
 static int
-mlx5_vdpa_get_vdpa_features(int did, uint64_t *features)
+mlx5_vdpa_get_vdpa_features(struct rte_vdpa_device *vdev, uint64_t *features)
 {
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -1;
 	}
 	*features = MLX5_VDPA_DEFAULT_FEATURES;
@@ -110,12 +112,14 @@ mlx5_vdpa_get_vdpa_features(int did, uint64_t *features)
 }
 
 static int
-mlx5_vdpa_get_protocol_features(int did, uint64_t *features)
+mlx5_vdpa_get_protocol_features(struct rte_vdpa_device *vdev,
+		uint64_t *features)
 {
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -1;
 	}
 	*features = MLX5_VDPA_PROTOCOL_FEATURES;
@@ -125,11 +129,13 @@ mlx5_vdpa_get_protocol_features(int did, uint64_t *features)
 static int
 mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 {
-	int did = rte_vhost_get_vdpa_device_id(vid);
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
+			rte_vhost_get_vdpa_device_id(vid));
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
 	if (vring >= (int)priv->caps.max_num_virtio_queues * 2) {
@@ -165,14 +171,16 @@ mlx5_vdpa_direct_db_prepare(struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_features_set(int vid)
 {
-	int did = rte_vhost_get_vdpa_device_id(vid);
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
+			rte_vhost_get_vdpa_device_id(vid));
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 	uint64_t log_base, log_size;
 	uint64_t features;
 	int ret;
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
 	ret = rte_vhost_get_negotiated_features(vid, &features);
@@ -284,12 +292,14 @@ mlx5_vdpa_mtu_set(struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_dev_close(int vid)
 {
-	int did = rte_vhost_get_vdpa_device_id(vid);
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
+			rte_vhost_get_vdpa_device_id(vid));
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 	int ret = 0;
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -1;
 	}
 	if (priv->configured)
@@ -312,11 +322,13 @@ mlx5_vdpa_dev_close(int vid)
 static int
 mlx5_vdpa_dev_config(int vid)
 {
-	int did = rte_vhost_get_vdpa_device_id(vid);
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
+			rte_vhost_get_vdpa_device_id(vid));
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
 	if (priv->configured && mlx5_vdpa_dev_close(vid)) {
@@ -325,7 +337,8 @@ mlx5_vdpa_dev_config(int vid)
 	}
 	priv->vid = vid;
 	if (mlx5_vdpa_mtu_set(priv))
-		DRV_LOG(WARNING, "MTU cannot be set on device %d.", did);
+		DRV_LOG(WARNING, "MTU cannot be set on device %s.",
+				vdev->device->name);
 	if (mlx5_vdpa_pd_create(priv) || mlx5_vdpa_mem_register(priv) ||
 	    mlx5_vdpa_direct_db_prepare(priv) ||
 	    mlx5_vdpa_virtqs_prepare(priv) || mlx5_vdpa_steer_setup(priv) ||
@@ -341,11 +354,13 @@ mlx5_vdpa_dev_config(int vid)
 static int
 mlx5_vdpa_get_device_fd(int vid)
 {
-	int did = rte_vhost_get_vdpa_device_id(vid);
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
+			rte_vhost_get_vdpa_device_id(vid));
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
 	return priv->ctx->cmd_fd;
@@ -354,17 +369,19 @@ mlx5_vdpa_get_device_fd(int vid)
 static int
 mlx5_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 {
-	int did = rte_vhost_get_vdpa_device_id(vid);
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
+			rte_vhost_get_vdpa_device_id(vid));
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	RTE_SET_USED(qid);
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
 		return -EINVAL;
 	}
 	if (!priv->var) {
-		DRV_LOG(ERR, "VAR was not created for device %d, is the device"
-			" configured?.", did);
+		DRV_LOG(ERR, "VAR was not created for device %s, is the device"
+			" configured?.", vdev->device->name);
 		return -EINVAL;
 	}
 	*offset = priv->var->mmap_off;
@@ -373,8 +390,9 @@ mlx5_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 }
 
 static int
-mlx5_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
-			  unsigned int size)
+mlx5_vdpa_get_stats_names(struct rte_vdpa_device *vdev,
+		struct rte_vdpa_stat_name *stats_names,
+		unsigned int size)
 {
 	static const char *mlx5_vdpa_stats_names[MLX5_VDPA_STATS_MAX] = {
 		"received_descriptors",
@@ -384,11 +402,12 @@ mlx5_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
 		"invalid buffer",
 		"completion errors",
 	};
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 	unsigned int i;
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
 	if (!stats_names)
@@ -401,51 +420,57 @@ mlx5_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
 }
 
 static int
-mlx5_vdpa_get_stats(int did, int qid, struct rte_vdpa_stat *stats,
-		    unsigned int n)
+mlx5_vdpa_get_stats(struct rte_vdpa_device *vdev, int qid,
+		struct rte_vdpa_stat *stats, unsigned int n)
 {
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
 	if (!priv->configured) {
-		DRV_LOG(ERR, "Device %d was not configured.", did);
+		DRV_LOG(ERR, "Device %s was not configured.",
+				vdev->device->name);
 		return -ENODATA;
 	}
 	if (qid >= (int)priv->nr_virtqs) {
-		DRV_LOG(ERR, "Too big vring id: %d.", qid);
+		DRV_LOG(ERR, "Too big vring id: %d for device %s.", qid,
+				vdev->device->name);
 		return -E2BIG;
 	}
 	if (!priv->caps.queue_counters_valid) {
-		DRV_LOG(ERR, "Virtq statistics is not supported for device %d.",
-			did);
+		DRV_LOG(ERR, "Virtq statistics is not supported for device %s.",
+			vdev->device->name);
 		return -ENOTSUP;
 	}
 	return mlx5_vdpa_virtq_stats_get(priv, qid, stats, n);
 }
 
 static int
-mlx5_vdpa_reset_stats(int did, int qid)
+mlx5_vdpa_reset_stats(struct rte_vdpa_device *vdev, int qid)
 {
-	struct mlx5_vdpa_priv *priv = mlx5_vdpa_find_priv_resource_by_did(did);
+	struct mlx5_vdpa_priv *priv =
+		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
 	if (priv == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d.", did);
+		DRV_LOG(ERR, "Invalid device: %s.", vdev->device->name);
 		return -ENODEV;
 	}
 	if (!priv->configured) {
-		DRV_LOG(ERR, "Device %d was not configured.", did);
+		DRV_LOG(ERR, "Device %s was not configured.",
+				vdev->device->name);
 		return -ENODATA;
 	}
 	if (qid >= (int)priv->nr_virtqs) {
-		DRV_LOG(ERR, "Too big vring id: %d.", qid);
+		DRV_LOG(ERR, "Too big vring id: %d for device %s.", qid,
+				vdev->device->name);
 		return -E2BIG;
 	}
 	if (!priv->caps.queue_counters_valid) {
-		DRV_LOG(ERR, "Virtq statistics is not supported for device %d.",
-			did);
+		DRV_LOG(ERR, "Virtq statistics is not supported for device %s.",
+			vdev->device->name);
 		return -ENOTSUP;
 	}
 	return mlx5_vdpa_virtq_stats_reset(priv, qid);
@@ -687,8 +712,9 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "Failed to allocate VAR %u.\n", errno);
 		goto error;
 	}
-	priv->id = rte_vdpa_register_device(&pci_dev->device, &mlx5_vdpa_ops);
-	if (priv->id < 0) {
+	priv->vdev = rte_vdpa_register_device(&pci_dev->device,
+			&mlx5_vdpa_ops);
+	if (priv->vdev == NULL) {
 		DRV_LOG(ERR, "Failed to register vDPA device.");
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		goto error;

@@ -55,7 +55,7 @@ struct ifcvf_internal {
 	pthread_t tid;	/* thread for notify relay */
 	int epfd;
 	int vid;
-	int did;
+	struct rte_vdpa_device *vdev;
 	uint16_t max_queues;
 	uint64_t features;
 	rte_atomic32_t started;
@@ -84,7 +84,7 @@ static pthread_mutex_t internal_list_lock = PTHREAD_MUTEX_INITIALIZER;
 static void update_used_ring(struct ifcvf_internal *internal, uint16_t qid);
 
 static struct internal_list *
-find_internal_resource_by_did(int did)
+find_internal_resource_by_vdev(struct rte_vdpa_device *vdev)
 {
 	int found = 0;
 	struct internal_list *list;
@@ -92,7 +92,7 @@ find_internal_resource_by_did(int did)
 	pthread_mutex_lock(&internal_list_lock);
 
 	TAILQ_FOREACH(list, &internal_list, next) {
-		if (did == list->internal->did) {
+		if (vdev == list->internal->vdev) {
 			found = 1;
 			break;
 		}
@@ -877,14 +877,14 @@ error:
 static int
 ifcvf_dev_config(int vid)
 {
-	int did;
+	struct rte_vdpa_device *vdev;
 	struct internal_list *list;
 	struct ifcvf_internal *internal;
 
-	did = rte_vhost_get_vdpa_device_id(vid);
-	list = find_internal_resource_by_did(did);
+	vdev = rte_vdpa_get_device(rte_vhost_get_vdpa_device_id(vid));
+	list = find_internal_resource_by_vdev(vdev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
 		return -1;
 	}
 
@@ -894,7 +894,8 @@ ifcvf_dev_config(int vid)
 	update_datapath(internal);
 
 	if (rte_vhost_host_notifier_ctrl(vid, true) != 0)
-		DRV_LOG(NOTICE, "vDPA (%d): software relay is used.", did);
+		DRV_LOG(NOTICE, "vDPA (%s): software relay is used.",
+				vdev->device->name);
 
 	return 0;
 }
@@ -902,14 +903,14 @@ ifcvf_dev_config(int vid)
 static int
 ifcvf_dev_close(int vid)
 {
-	int did;
+	struct rte_vdpa_device *vdev;
 	struct internal_list *list;
 	struct ifcvf_internal *internal;
 
-	did = rte_vhost_get_vdpa_device_id(vid);
-	list = find_internal_resource_by_did(did);
+	vdev = rte_vdpa_get_device(rte_vhost_get_vdpa_device_id(vid));
+	list = find_internal_resource_by_vdev(vdev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
 		return -1;
 	}
 
@@ -941,15 +942,15 @@ static int
 ifcvf_set_features(int vid)
 {
 	uint64_t features = 0;
-	int did;
+	struct rte_vdpa_device *vdev;
 	struct internal_list *list;
 	struct ifcvf_internal *internal;
 	uint64_t log_base = 0, log_size = 0;
 
-	did = rte_vhost_get_vdpa_device_id(vid);
-	list = find_internal_resource_by_did(did);
+	vdev = rte_vdpa_get_device(rte_vhost_get_vdpa_device_id(vid));
+	list = find_internal_resource_by_vdev(vdev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
 		return -1;
 	}
 
@@ -974,13 +975,13 @@ ifcvf_set_features(int vid)
 static int
 ifcvf_get_vfio_group_fd(int vid)
 {
-	int did;
+	struct rte_vdpa_device *vdev;
 	struct internal_list *list;
 
-	did = rte_vhost_get_vdpa_device_id(vid);
-	list = find_internal_resource_by_did(did);
+	vdev = rte_vdpa_get_device(rte_vhost_get_vdpa_device_id(vid));
+	list = find_internal_resource_by_vdev(vdev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
 		return -1;
 	}
 
@@ -990,13 +991,13 @@ ifcvf_get_vfio_group_fd(int vid)
 static int
 ifcvf_get_vfio_device_fd(int vid)
 {
-	int did;
+	struct rte_vdpa_device *vdev;
 	struct internal_list *list;
 
-	did = rte_vhost_get_vdpa_device_id(vid);
-	list = find_internal_resource_by_did(did);
+	vdev = rte_vdpa_get_device(rte_vhost_get_vdpa_device_id(vid));
+	list = find_internal_resource_by_vdev(vdev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
 		return -1;
 	}
 
@@ -1006,16 +1007,16 @@ ifcvf_get_vfio_device_fd(int vid)
 static int
 ifcvf_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 {
-	int did;
+	struct rte_vdpa_device *vdev;
 	struct internal_list *list;
 	struct ifcvf_internal *internal;
 	struct vfio_region_info reg = { .argsz = sizeof(reg) };
 	int ret;
 
-	did = rte_vhost_get_vdpa_device_id(vid);
-	list = find_internal_resource_by_did(did);
+	vdev = rte_vdpa_get_device(rte_vhost_get_vdpa_device_id(vid));
+	list = find_internal_resource_by_vdev(vdev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
 		return -1;
 	}
 
@@ -1036,13 +1037,13 @@ ifcvf_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 }
 
 static int
-ifcvf_get_queue_num(int did, uint32_t *queue_num)
+ifcvf_get_queue_num(struct rte_vdpa_device *vdev, uint32_t *queue_num)
 {
 	struct internal_list *list;
 
-	list = find_internal_resource_by_did(did);
+	list = find_internal_resource_by_vdev(vdev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
 		return -1;
 	}
 
@@ -1052,13 +1053,13 @@ ifcvf_get_queue_num(int did, uint32_t *queue_num)
 }
 
 static int
-ifcvf_get_vdpa_features(int did, uint64_t *features)
+ifcvf_get_vdpa_features(struct rte_vdpa_device *vdev, uint64_t *features)
 {
 	struct internal_list *list;
 
-	list = find_internal_resource_by_did(did);
+	list = find_internal_resource_by_vdev(vdev);
 	if (list == NULL) {
-		DRV_LOG(ERR, "Invalid device id: %d", did);
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
 		return -1;
 	}
 
@@ -1074,8 +1075,10 @@ ifcvf_get_vdpa_features(int did, uint64_t *features)
 		 1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER | \
 		 1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD)
 static int
-ifcvf_get_protocol_features(int did __rte_unused, uint64_t *features)
+ifcvf_get_protocol_features(struct rte_vdpa_device *vdev, uint64_t *features)
 {
+	RTE_SET_USED(vdev);
+
 	*features = VDPA_SUPPORTED_PROTOCOL_FEATURES;
 	return 0;
 }
@@ -1186,8 +1189,8 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	internal->sw_lm = sw_fallback_lm;
 
-	internal->did = rte_vdpa_register_device(&pci_dev->device, &ifcvf_ops);
-	if (internal->did < 0) {
+	internal->vdev = rte_vdpa_register_device(&pci_dev->device, &ifcvf_ops);
+	if (internal->vdev == NULL) {
 		DRV_LOG(ERR, "failed to register device %s", pci_dev->name);
 		goto error;
 	}
@@ -1230,7 +1233,7 @@ ifcvf_pci_remove(struct rte_pci_device *pci_dev)
 
 	rte_pci_unmap_device(internal->pdev);
 	rte_vfio_container_destroy(internal->vfio_container_fd);
-	rte_vdpa_unregister_device(internal->did);
+	rte_vdpa_unregister_device(internal->vdev);
 
 	pthread_mutex_lock(&internal_list_lock);
 	TAILQ_REMOVE(&internal_list, list, next);

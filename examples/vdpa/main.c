@@ -291,13 +291,13 @@ static void cmd_list_vdpa_devices_parsed(
 		vdev = rte_vdpa_get_device(did);
 		if (!vdev)
 			continue;
-		if (vdev->ops->get_queue_num(did, &queue_num) < 0) {
+		if (vdev->ops->get_queue_num(vdev, &queue_num) < 0) {
 			RTE_LOG(ERR, VDPA,
 				"failed to get vdpa queue number "
 				"for device id %d.\n", did);
 			continue;
 		}
-		if (vdev->ops->get_features(did, &features) < 0) {
+		if (vdev->ops->get_features(vdev, &features) < 0) {
 			RTE_LOG(ERR, VDPA,
 				"failed to get vdpa features "
 				"for device id %d.\n", did);
