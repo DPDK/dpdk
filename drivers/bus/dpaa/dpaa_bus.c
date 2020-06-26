@@ -703,6 +703,11 @@ dpaa_bus_dev_iterate(const void *start, const char *str,
 	struct rte_dpaa_device *dev;
 	char *dup, *dev_name = NULL;
 
+	if (str == NULL) {
+		DPAA_BUS_DEBUG("No device string");
+		return NULL;
+	}
+
 	/* Expectation is that device would be name=device_name */
 	if (strncmp(str, "name=", 5) != 0) {
 		DPAA_BUS_DEBUG("Invalid device string (%s)\n", str);
