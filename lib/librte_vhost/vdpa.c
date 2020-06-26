@@ -25,7 +25,6 @@ TAILQ_HEAD(vdpa_device_list, rte_vdpa_device);
 static struct vdpa_device_list vdpa_device_list =
 		TAILQ_HEAD_INITIALIZER(vdpa_device_list);
 static rte_spinlock_t vdpa_device_list_lock = RTE_SPINLOCK_INITIALIZER;
-static uint32_t vdpa_device_num;
 
 
 /* Unsafe, needs to be called with vdpa_device_list_lock held */
@@ -92,7 +91,6 @@ rte_vdpa_register_device(struct rte_device *rte_dev,
 	dev->device = rte_dev;
 	dev->ops = ops;
 	TAILQ_INSERT_TAIL(&vdpa_device_list, dev, next);
-	vdpa_device_num++;
 out_unlock:
 	rte_spinlock_unlock(&vdpa_device_list_lock);
 
@@ -112,19 +110,12 @@ rte_vdpa_unregister_device(struct rte_vdpa_device *dev)
 
 		TAILQ_REMOVE(&vdpa_device_list, dev, next);
 		rte_free(dev);
-		vdpa_device_num--;
 		ret = 0;
 		break;
 	}
 	rte_spinlock_unlock(&vdpa_device_list_lock);
 
 	return ret;
-}
-
-int
-rte_vdpa_get_device_num(void)
-{
-	return vdpa_device_num;
 }
 
 int

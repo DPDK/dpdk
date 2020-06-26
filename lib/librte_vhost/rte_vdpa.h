@@ -179,19 +179,6 @@ rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Get current available vdpa device number
- *
- * @return
- *  available vdpa device number
- */
-__rte_experimental
-int
-rte_vdpa_get_device_num(void);
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Enable/Disable host notifier mapping for a vdpa port.
  *
  * @param vid

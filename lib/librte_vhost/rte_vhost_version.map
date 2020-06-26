@@ -35,7 +35,6 @@ EXPERIMENTAL {
 
 	rte_vdpa_register_device;
 	rte_vdpa_unregister_device;
-	rte_vdpa_get_device_num;
 	rte_vdpa_get_stats_names;
 	rte_vdpa_get_stats;
 	rte_vdpa_reset_stats;
