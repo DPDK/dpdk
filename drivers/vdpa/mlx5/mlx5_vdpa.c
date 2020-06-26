@@ -681,14 +681,13 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->caps = attr.vdpa;
 	priv->log_max_rqt_size = attr.log_max_rqt_size;
 	priv->ctx = ctx;
-	priv->dev_addr.pci_addr = pci_dev->addr;
-	priv->dev_addr.type = VDPA_ADDR_PCI;
+	priv->pci_dev = pci_dev;
 	priv->var = mlx5_glue->dv_alloc_var(ctx, 0);
 	if (!priv->var) {
 		DRV_LOG(ERR, "Failed to allocate VAR %u.\n", errno);
 		goto error;
 	}
-	priv->id = rte_vdpa_register_device(&priv->dev_addr, &mlx5_vdpa_ops);
+	priv->id = rte_vdpa_register_device(&pci_dev->device, &mlx5_vdpa_ops);
 	if (priv->id < 0) {
 		DRV_LOG(ERR, "Failed to register vDPA device.");
 		rte_errno = rte_errno ? rte_errno : EINVAL;
@@ -730,8 +729,7 @@ mlx5_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_FOREACH(priv, &priv_list, next) {
-		if (memcmp(&priv->dev_addr.pci_addr, &pci_dev->addr,
-			   sizeof(pci_dev->addr)) == 0) {
+		if (!rte_pci_addr_cmp(&priv->pci_dev->addr, &pci_dev->addr)) {
 			found = 1;
 			break;
 		}

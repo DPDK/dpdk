@@ -280,10 +280,14 @@ static void cmd_list_vdpa_devices_parsed(
 	uint32_t queue_num;
 	uint64_t features;
 	struct rte_vdpa_device *vdev;
-	struct rte_pci_addr addr;
+	struct rte_device *dev;
+	struct rte_dev_iterator dev_iter;
 
-	cmdline_printf(cl, "device id\tdevice address\tqueue num\tsupported features\n");
-	for (did = 0; did < dev_total; did++) {
+	cmdline_printf(cl, "device id\tdevice name\tqueue num\tsupported features\n");
+	RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter) {
+		did = rte_vdpa_find_device_id_by_name(dev->name);
+		if (did < 0)
+			continue;
 		vdev = rte_vdpa_get_device(did);
 		if (!vdev)
 			continue;
@@ -299,11 +303,8 @@ static void cmd_list_vdpa_devices_parsed(
 				"for device id %d.\n", did);
 			continue;
 		}
-		addr = vdev->addr.pci_addr;
-		cmdline_printf(cl,
-			"%d\t\t" PCI_PRI_FMT "\t%" PRIu32 "\t\t0x%" PRIx64 "\n",
-			did, addr.domain, addr.bus, addr.devid,
-			addr.function, queue_num, features);
+		cmdline_printf(cl, "%d\t\t%s\t\t%" PRIu32 "\t\t0x%" PRIx64 "\n",
+			did, dev->name, queue_num, features);
 	}
 }
 
@@ -333,17 +334,12 @@ static void cmd_create_vdpa_port_parsed(void *parsed_result,
 {
 	int did;
 	struct cmd_create_result *res = parsed_result;
-	struct rte_vdpa_dev_addr addr;
 
 	rte_strscpy(vports[devcnt].ifname, res->socket_path, MAX_PATH_LEN);
-	if (rte_pci_addr_parse(res->bdf, &addr.pci_addr) != 0) {
-		cmdline_printf(cl, "Unable to parse the given bdf.\n");
-		return;
-	}
-	addr.type = VDPA_ADDR_PCI;
-	did = rte_vdpa_find_device_id(&addr);
+	did = rte_vdpa_find_device_id_by_name(res->bdf);
 	if (did < 0) {
-		cmdline_printf(cl, "Unable to find vdpa device id.\n");
+		cmdline_printf(cl, "Unable to find vdpa device id for %s.\n",
+				res->bdf);
 		return;
 	}
 
@@ -519,9 +515,11 @@ int
 main(int argc, char *argv[])
 {
 	char ch;
-	int i;
+	int did;
 	int ret;
 	struct cmdline *cl;
+	struct rte_device *dev;
+	struct rte_dev_iterator dev_iter;
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
@@ -547,13 +545,18 @@ main(int argc, char *argv[])
 		cmdline_interact(cl);
 		cmdline_stdin_exit(cl);
 	} else {
-		for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, dev_total);
-				i++) {
-			vports[i].did = i;
-			snprintf(vports[i].ifname, MAX_PATH_LEN, "%s%d",
-					iface, i);
+		RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter) {
+			did = rte_vdpa_find_device_id_by_name(dev->name);
+			if (did < 0) {
+				rte_panic("Failed to find device id for %s\n",
+						dev->name);
+			}
+			vports[devcnt].did = did;
+			snprintf(vports[devcnt].ifname, MAX_PATH_LEN, "%s%d",
+					iface, devcnt);
 
-			start_vdpa(&vports[i]);
+			start_vdpa(&vports[devcnt]);
+			devcnt++;
 		}
 
 		printf("enter \'q\' to quit\n");

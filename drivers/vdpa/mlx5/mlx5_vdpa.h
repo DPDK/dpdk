@@ -106,7 +106,7 @@ struct mlx5_vdpa_priv {
 	int id; /* vDPA device id. */
 	int vid; /* vhost device id. */
 	struct ibv_context *ctx; /* Device context. */
-	struct rte_vdpa_dev_addr dev_addr;
+	struct rte_pci_device *pci_dev;
 	struct mlx5_hca_vdpa_attr caps;
 	uint32_t pdn; /* Protection Domain number. */
 	struct ibv_pd *pd;

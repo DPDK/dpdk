@@ -18,25 +18,6 @@
 
 #define MAX_VDPA_NAME_LEN 128
 
-enum vdpa_addr_type {
-	VDPA_ADDR_PCI,
-	VDPA_ADDR_MAX
-};
-
-/**
- * vdpa device address
- */
-struct rte_vdpa_dev_addr {
-	/** vdpa address type */
-	enum vdpa_addr_type type;
-
-	/** vdpa pci address */
-	union {
-		uint8_t __dummy[64];
-		struct rte_pci_addr pci_addr;
-	};
-};
-
 /** Maximum name length for statistics counters */
 #define RTE_VDPA_STATS_NAME_SIZE 64
 
@@ -120,8 +101,8 @@ struct rte_vdpa_dev_ops {
  * vdpa device structure includes device address and device operations.
  */
 struct rte_vdpa_device {
-	/** vdpa device address */
-	struct rte_vdpa_dev_addr addr;
+	/** Generic device information */
+	struct rte_device *device;
 	/** vdpa device operations */
 	struct rte_vdpa_dev_ops *ops;
 } __rte_cache_aligned;
@@ -141,7 +122,7 @@ struct rte_vdpa_device {
  */
 __rte_experimental
 int
-rte_vdpa_register_device(struct rte_vdpa_dev_addr *addr,
+rte_vdpa_register_device(struct rte_device *rte_dev,
 		struct rte_vdpa_dev_ops *ops);
 
 /**
@@ -163,6 +144,21 @@ rte_vdpa_unregister_device(int did);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
+ * Find the device id of a vdpa device from its name
+ *
+ * @param name
+ *  the vdpa device name
+ * @return
+ *  device id on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vdpa_find_device_id_by_name(const char *name);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Find the device id of a vdpa device
  *
  * @param addr
@@ -172,7 +168,7 @@ rte_vdpa_unregister_device(int did);
  */
 __rte_experimental
 int
-rte_vdpa_find_device_id(struct rte_vdpa_dev_addr *addr);
+rte_vdpa_find_device_id(struct rte_vdpa_device *dev);
 
 /**
  * @warning

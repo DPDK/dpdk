@@ -12,50 +12,28 @@
 
 #include <rte_class.h>
 #include <rte_malloc.h>
-#include <rte_pci.h>
 #include "rte_vdpa.h"
 #include "vhost.h"
 
 static struct rte_vdpa_device vdpa_devices[MAX_VHOST_DEVICE];
 static uint32_t vdpa_device_num;
 
-static bool
-is_same_vdpa_device(struct rte_vdpa_dev_addr *a,
-		struct rte_vdpa_dev_addr *b)
-{
-	bool ret = true;
-
-	if (a->type != b->type)
-		return false;
-
-	switch (a->type) {
-	case VDPA_ADDR_PCI:
-		if (a->pci_addr.domain != b->pci_addr.domain ||
-				a->pci_addr.bus != b->pci_addr.bus ||
-				a->pci_addr.devid != b->pci_addr.devid ||
-				a->pci_addr.function != b->pci_addr.function)
-			ret = false;
-		break;
-	default:
-		break;
-	}
-
-	return ret;
-}
-
 int
-rte_vdpa_register_device(struct rte_vdpa_dev_addr *addr,
+rte_vdpa_register_device(struct rte_device *rte_dev,
 		struct rte_vdpa_dev_ops *ops)
 {
 	struct rte_vdpa_device *dev;
 	int i;
 
-	if (vdpa_device_num >= MAX_VHOST_DEVICE || addr == NULL || ops == NULL)
+	if (vdpa_device_num >= MAX_VHOST_DEVICE || ops == NULL)
 		return -1;
 
 	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
 		dev = &vdpa_devices[i];
-		if (dev->ops && is_same_vdpa_device(&dev->addr, addr))
+		if (dev->ops == NULL)
+			continue;
+
+		if (dev->device == rte_dev)
 			return -1;
 	}
 
@@ -68,7 +46,7 @@ rte_vdpa_register_device(struct rte_vdpa_dev_addr *addr,
 		return -1;
 
 	dev = &vdpa_devices[i];
-	memcpy(&dev->addr, addr, sizeof(struct rte_vdpa_dev_addr));
+	dev->device = rte_dev;
 	dev->ops = ops;
 	vdpa_device_num++;
 
@@ -88,12 +66,33 @@ rte_vdpa_unregister_device(int did)
 }
 
 int
-rte_vdpa_find_device_id(struct rte_vdpa_dev_addr *addr)
+rte_vdpa_find_device_id(struct rte_vdpa_device *dev)
+{
+	struct rte_vdpa_device *tmp_dev;
+	int i;
+
+	if (dev == NULL)
+		return -1;
+
+	for (i = 0; i < MAX_VHOST_DEVICE; ++i) {
+		tmp_dev = &vdpa_devices[i];
+		if (tmp_dev->ops == NULL)
+			continue;
+
+		if (tmp_dev == dev)
+			return i;
+	}
+
+	return -1;
+}
+
+int
+rte_vdpa_find_device_id_by_name(const char *name)
 {
 	struct rte_vdpa_device *dev;
 	int i;
 
-	if (addr == NULL)
+	if (name == NULL)
 		return -1;
 
 	for (i = 0; i < MAX_VHOST_DEVICE; ++i) {
@@ -101,7 +100,7 @@ rte_vdpa_find_device_id(struct rte_vdpa_dev_addr *addr)
 		if (dev->ops == NULL)
 			continue;
 
-		if (is_same_vdpa_device(&dev->addr, addr))
+		if (strncmp(dev->device->name, name, RTE_DEV_NAME_MAX_LEN) == 0)
 			return i;
 	}
 
@@ -289,21 +288,10 @@ static int
 vdpa_dev_match(struct rte_vdpa_device *dev,
 	      const struct rte_device *rte_dev)
 {
-	struct rte_vdpa_dev_addr addr;
+	if (dev->device == rte_dev)
+		return 0;
 
-	/*  Only PCI bus supported for now */
-	if (strcmp(rte_dev->bus->name, "pci") != 0)
-		return -1;
-
-	addr.type = VDPA_ADDR_PCI;
-
-	if (rte_pci_addr_parse(rte_dev->name, &addr.pci_addr) != 0)
-		return -1;
-
-	if (!is_same_vdpa_device(&dev->addr, &addr))
-		return -1;
-
-	return 0;
+	return -1;
 }
 
 /* Generic rte_vdpa_dev comparison function. */
