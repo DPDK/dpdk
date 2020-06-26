@@ -633,7 +633,6 @@ vhost_new_device(void)
 	dev->vid = i;
 	dev->flags = VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 	dev->slave_req_fd = -1;
-	dev->vdpa_dev_id = -1;
 	dev->postcopy_ufd = -1;
 	rte_spinlock_init(&dev->slave_req_lock);
 
@@ -644,11 +643,9 @@ void
 vhost_destroy_device_notify(struct virtio_net *dev)
 {
 	struct rte_vdpa_device *vdpa_dev;
-	int did;
 
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
-		did = dev->vdpa_dev_id;
-		vdpa_dev = rte_vdpa_get_device(did);
+		vdpa_dev = dev->vdpa_dev;
 		if (vdpa_dev && vdpa_dev->ops->dev_close)
 			vdpa_dev->ops->dev_close(dev->vid);
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
@@ -677,17 +674,14 @@ vhost_destroy_device(int vid)
 }
 
 void
-vhost_attach_vdpa_device(int vid, int did)
+vhost_attach_vdpa_device(int vid, struct rte_vdpa_device *vdpa_dev)
 {
 	struct virtio_net *dev = get_device(vid);
 
 	if (dev == NULL)
 		return;
 
-	if (rte_vdpa_get_device(did) == NULL)
-		return;
-
-	dev->vdpa_dev_id = did;
+	dev->vdpa_dev = vdpa_dev;
 }
 
 void
@@ -1402,14 +1396,15 @@ out:
 	return ret;
 }
 
-int rte_vhost_get_vdpa_device_id(int vid)
+struct rte_vdpa_device *
+rte_vhost_get_vdpa_device(int vid)
 {
 	struct virtio_net *dev = get_device(vid);
 
 	if (dev == NULL)
-		return -1;
+		return NULL;
 
-	return dev->vdpa_dev_id;
+	return dev->vdpa_dev;
 }
 
 int rte_vhost_get_log_base(int vid, uint64_t *log_base,

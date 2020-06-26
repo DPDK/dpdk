@@ -55,12 +55,7 @@ struct vhost_user_socket {
 
 	uint64_t protocol_features;
 
-	/*
-	 * Device id to identify a specific backend device.
-	 * It's set to -1 for the default software implementation.
-	 * If valid, one socket can have 1 connection only.
-	 */
-	int vdpa_dev_id;
+	struct rte_vdpa_device *vdpa_dev;
 
 	struct vhost_device_ops const *notify_ops;
 };
@@ -230,7 +225,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	vhost_set_builtin_virtio_net(vid, vsocket->use_builtin_virtio_net);
 
-	vhost_attach_vdpa_device(vid, vsocket->vdpa_dev_id);
+	vhost_attach_vdpa_device(vid, vsocket->vdpa_dev);
 
 	if (vsocket->dequeue_zero_copy)
 		vhost_enable_dequeue_zero_copy(vid);
@@ -578,17 +573,18 @@ find_vhost_user_socket(const char *path)
 }
 
 int
-rte_vhost_driver_attach_vdpa_device(const char *path, int did)
+rte_vhost_driver_attach_vdpa_device(const char *path,
+		struct rte_vdpa_device *dev)
 {
 	struct vhost_user_socket *vsocket;
 
-	if (rte_vdpa_get_device(did) == NULL || path == NULL)
+	if (dev == NULL || path == NULL)
 		return -1;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
 	if (vsocket)
-		vsocket->vdpa_dev_id = did;
+		vsocket->vdpa_dev = dev;
 	pthread_mutex_unlock(&vhost_user.mutex);
 
 	return vsocket ? 0 : -1;
@@ -602,25 +598,25 @@ rte_vhost_driver_detach_vdpa_device(const char *path)
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
 	if (vsocket)
-		vsocket->vdpa_dev_id = -1;
+		vsocket->vdpa_dev = NULL;
 	pthread_mutex_unlock(&vhost_user.mutex);
 
 	return vsocket ? 0 : -1;
 }
 
-int
-rte_vhost_driver_get_vdpa_device_id(const char *path)
+struct rte_vdpa_device *
+rte_vhost_driver_get_vdpa_device(const char *path)
 {
 	struct vhost_user_socket *vsocket;
-	int did = -1;
+	struct rte_vdpa_device *dev = NULL;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
 	if (vsocket)
-		did = vsocket->vdpa_dev_id;
+		dev = vsocket->vdpa_dev;
 	pthread_mutex_unlock(&vhost_user.mutex);
 
-	return did;
+	return dev;
 }
 
 int
@@ -693,7 +689,6 @@ rte_vhost_driver_get_features(const char *path, uint64_t *features)
 	struct vhost_user_socket *vsocket;
 	uint64_t vdpa_features;
 	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 	int ret = 0;
 
 	pthread_mutex_lock(&vhost_user.mutex);
@@ -705,8 +700,7 @@ rte_vhost_driver_get_features(const char *path, uint64_t *features)
 		goto unlock_exit;
 	}
 
-	did = vsocket->vdpa_dev_id;
-	vdpa_dev = rte_vdpa_get_device(did);
+	vdpa_dev = vsocket->vdpa_dev;
 	if (!vdpa_dev || !vdpa_dev->ops->get_features) {
 		*features = vsocket->features;
 		goto unlock_exit;
@@ -748,7 +742,6 @@ rte_vhost_driver_get_protocol_features(const char *path,
 	struct vhost_user_socket *vsocket;
 	uint64_t vdpa_protocol_features;
 	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 	int ret = 0;
 
 	pthread_mutex_lock(&vhost_user.mutex);
@@ -760,8 +753,7 @@ rte_vhost_driver_get_protocol_features(const char *path,
 		goto unlock_exit;
 	}
 
-	did = vsocket->vdpa_dev_id;
-	vdpa_dev = rte_vdpa_get_device(did);
+	vdpa_dev = vsocket->vdpa_dev;
 	if (!vdpa_dev || !vdpa_dev->ops->get_protocol_features) {
 		*protocol_features = vsocket->protocol_features;
 		goto unlock_exit;
@@ -790,7 +782,6 @@ rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num)
 	struct vhost_user_socket *vsocket;
 	uint32_t vdpa_queue_num;
 	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 	int ret = 0;
 
 	pthread_mutex_lock(&vhost_user.mutex);
@@ -802,8 +793,7 @@ rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num)
 		goto unlock_exit;
 	}
 
-	did = vsocket->vdpa_dev_id;
-	vdpa_dev = rte_vdpa_get_device(did);
+	vdpa_dev = vsocket->vdpa_dev;
 	if (!vdpa_dev || !vdpa_dev->ops->get_queue_num) {
 		*queue_num = VHOST_MAX_QUEUE_PAIRS;
 		goto unlock_exit;
@@ -878,7 +868,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 			"error: failed to init connection mutex\n");
 		goto out_free;
 	}
-	vsocket->vdpa_dev_id = -1;
+	vsocket->vdpa_dev = NULL;
 	vsocket->dequeue_zero_copy = flags & RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
 	vsocket->extbuf = flags & RTE_VHOST_USER_EXTBUF_SUPPORT;
 	vsocket->linearbuf = flags & RTE_VHOST_USER_LINEARBUF_SUPPORT;

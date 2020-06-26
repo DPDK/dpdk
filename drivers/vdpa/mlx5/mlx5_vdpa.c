@@ -129,8 +129,7 @@ mlx5_vdpa_get_protocol_features(struct rte_vdpa_device *vdev,
 static int
 mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 {
-	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
-			rte_vhost_get_vdpa_device_id(vid));
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct mlx5_vdpa_priv *priv =
 		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
@@ -171,8 +170,7 @@ mlx5_vdpa_direct_db_prepare(struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_features_set(int vid)
 {
-	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
-			rte_vhost_get_vdpa_device_id(vid));
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct mlx5_vdpa_priv *priv =
 		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 	uint64_t log_base, log_size;
@@ -292,8 +290,7 @@ mlx5_vdpa_mtu_set(struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_dev_close(int vid)
 {
-	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
-			rte_vhost_get_vdpa_device_id(vid));
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct mlx5_vdpa_priv *priv =
 		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 	int ret = 0;
@@ -322,8 +319,7 @@ mlx5_vdpa_dev_close(int vid)
 static int
 mlx5_vdpa_dev_config(int vid)
 {
-	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
-			rte_vhost_get_vdpa_device_id(vid));
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct mlx5_vdpa_priv *priv =
 		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
@@ -354,8 +350,7 @@ mlx5_vdpa_dev_config(int vid)
 static int
 mlx5_vdpa_get_device_fd(int vid)
 {
-	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
-			rte_vhost_get_vdpa_device_id(vid));
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct mlx5_vdpa_priv *priv =
 		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 
@@ -369,8 +364,7 @@ mlx5_vdpa_get_device_fd(int vid)
 static int
 mlx5_vdpa_get_notify_area(int vid, int qid, uint64_t *offset, uint64_t *size)
 {
-	struct rte_vdpa_device *vdev = rte_vdpa_get_device(
-			rte_vhost_get_vdpa_device_id(vid));
+	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct mlx5_vdpa_priv *priv =
 		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
 

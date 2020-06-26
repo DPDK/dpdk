@@ -149,6 +149,7 @@ start_vdpa(struct vdpa_port *vport)
 {
 	int ret;
 	char *socket_path = vport->ifname;
+	struct rte_vdpa_device *vdev;
 	int did = vport->did;
 
 	if (client_mode)
@@ -173,7 +174,13 @@ start_vdpa(struct vdpa_port *vport)
 			"register driver ops failed: %s\n",
 			socket_path);
 
-	ret = rte_vhost_driver_attach_vdpa_device(socket_path, did);
+	vdev = rte_vdpa_get_device(did);
+	if (!vdev)
+		rte_exit(EXIT_FAILURE,
+			"vDPA device retrieval failed: %p\n",
+			vdev);
+
+	ret = rte_vhost_driver_attach_vdpa_device(socket_path, vdev);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE,
 			"attach vdpa device failed: %s\n",

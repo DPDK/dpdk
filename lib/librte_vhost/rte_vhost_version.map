@@ -43,8 +43,8 @@ EXPERIMENTAL {
 	rte_vdpa_reset_stats;
 	rte_vhost_driver_attach_vdpa_device;
 	rte_vhost_driver_detach_vdpa_device;
-	rte_vhost_driver_get_vdpa_device_id;
-	rte_vhost_get_vdpa_device_id;
+	rte_vhost_driver_get_vdpa_device;
+	rte_vhost_get_vdpa_device;
 	rte_vhost_driver_get_protocol_features;
 	rte_vhost_driver_get_queue_num;
 	rte_vhost_get_log_base;

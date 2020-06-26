@@ -377,11 +377,7 @@ struct virtio_net {
 	int			postcopy_ufd;
 	int			postcopy_listening;
 
-	/*
-	 * Device id to identify a specific backend device.
-	 * It's set to -1 for the default software implementation.
-	 */
-	int			vdpa_dev_id;
+	struct rte_vdpa_device *vdpa_dev;
 
 	/* context data for the external message handlers */
 	void			*extern_data;
@@ -639,7 +635,7 @@ void free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq);
 
 int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 
-void vhost_attach_vdpa_device(int vid, int did);
+void vhost_attach_vdpa_device(int vid, struct rte_vdpa_device *dev);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 void vhost_enable_dequeue_zero_copy(int vid);

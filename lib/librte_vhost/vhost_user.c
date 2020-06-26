@@ -315,7 +315,6 @@ vhost_user_set_features(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	uint64_t features = msg->payload.u64;
 	uint64_t vhost_features = 0;
 	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 
 	if (validate_msg_fds(msg, 0) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
@@ -384,8 +383,7 @@ vhost_user_set_features(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		}
 	}
 
-	did = dev->vdpa_dev_id;
-	vdpa_dev = rte_vdpa_get_device(did);
+	vdpa_dev = dev->vdpa_dev;
 	if (vdpa_dev && vdpa_dev->ops->set_features)
 		vdpa_dev->ops->set_features(dev->vid);
 
@@ -1971,7 +1969,6 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 	int enable = (int)msg->payload.state.num;
 	int index = (int)msg->payload.state.index;
 	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 
 	if (validate_msg_fds(msg, 0) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
@@ -1980,8 +1977,7 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 		"set queue enable: %d to qp idx: %d\n",
 		enable, index);
 
-	did = dev->vdpa_dev_id;
-	vdpa_dev = rte_vdpa_get_device(did);
+	vdpa_dev = dev->vdpa_dev;
 	if (vdpa_dev && vdpa_dev->ops->set_vring_state)
 		vdpa_dev->ops->set_vring_state(dev->vid, index, enable);
 
@@ -2147,7 +2143,6 @@ vhost_user_send_rarp(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	struct virtio_net *dev = *pdev;
 	uint8_t *mac = (uint8_t *)&msg->payload.u64;
 	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 
 	if (validate_msg_fds(msg, 0) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
@@ -2165,8 +2160,7 @@ vhost_user_send_rarp(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	 * copied before the flag is set.
 	 */
 	__atomic_store_n(&dev->broadcast_rarp, 1, __ATOMIC_RELEASE);
-	did = dev->vdpa_dev_id;
-	vdpa_dev = rte_vdpa_get_device(did);
+	vdpa_dev = dev->vdpa_dev;
 	if (vdpa_dev && vdpa_dev->ops->migration_done)
 		vdpa_dev->ops->migration_done(dev->vid);
 
@@ -2613,7 +2607,6 @@ vhost_user_msg_handler(int vid, int fd)
 	struct virtio_net *dev;
 	struct VhostUserMsg msg;
 	struct rte_vdpa_device *vdpa_dev;
-	int did = -1;
 	int ret;
 	int unlock_required = 0;
 	bool handled;
@@ -2805,8 +2798,7 @@ skip_to_post_handle:
 		}
 	}
 
-	did = dev->vdpa_dev_id;
-	vdpa_dev = rte_vdpa_get_device(did);
+	vdpa_dev = dev->vdpa_dev;
 	if (vdpa_dev && virtio_is_ready(dev) &&
 			!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED) &&
 			msg.request.master == VHOST_USER_SET_VRING_CALL) {
@@ -2955,7 +2947,7 @@ int rte_vhost_host_notifier_ctrl(int vid, bool enable)
 {
 	struct virtio_net *dev;
 	struct rte_vdpa_device *vdpa_dev;
-	int vfio_device_fd, did, ret = 0;
+	int vfio_device_fd, ret = 0;
 	uint64_t offset, size;
 	unsigned int i;
 
@@ -2963,9 +2955,9 @@ int rte_vhost_host_notifier_ctrl(int vid, bool enable)
 	if (!dev)
 		return -ENODEV;
 
-	did = dev->vdpa_dev_id;
-	if (did < 0)
-		return -EINVAL;
+	vdpa_dev = dev->vdpa_dev;
+	if (vdpa_dev == NULL)
+		return -ENODEV;
 
 	if (!(dev->features & (1ULL << VIRTIO_F_VERSION_1)) ||
 	    !(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)) ||
@@ -2976,10 +2968,6 @@ int rte_vhost_host_notifier_ctrl(int vid, bool enable)
 	    !(dev->protocol_features &
 			(1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER)))
 		return -ENOTSUP;
-
-	vdpa_dev = rte_vdpa_get_device(did);
-	if (!vdpa_dev)
-		return -ENODEV;
 
 	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_vfio_device_fd, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_notify_area, -ENOTSUP);
