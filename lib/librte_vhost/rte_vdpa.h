@@ -178,36 +178,6 @@ rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Find the device id of a vdpa device
- *
- * @param addr
- *  the vdpa device address
- * @return
- *  device id on success, -1 on failure
- */
-__rte_experimental
-int
-rte_vdpa_find_device_id(struct rte_vdpa_device *dev);
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
- * Find a vdpa device based on device id
- *
- * @param did
- *  device id
- * @return
- *  rte_vdpa_device on success, NULL on failure
- */
-__rte_experimental
-struct rte_vdpa_device *
-rte_vdpa_get_device(int did);
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get current available vdpa device number
  *
  * @return

@@ -19,27 +19,6 @@ static struct rte_vdpa_device vdpa_devices[MAX_VHOST_DEVICE];
 static uint32_t vdpa_device_num;
 
 
-int
-rte_vdpa_find_device_id(struct rte_vdpa_device *dev)
-{
-	struct rte_vdpa_device *tmp_dev;
-	int i;
-
-	if (dev == NULL)
-		return -1;
-
-	for (i = 0; i < MAX_VHOST_DEVICE; ++i) {
-		tmp_dev = &vdpa_devices[i];
-		if (tmp_dev->ops == NULL)
-			continue;
-
-		if (tmp_dev == dev)
-			return i;
-	}
-
-	return -1;
-}
-
 struct rte_vdpa_device *
 rte_vdpa_find_device_by_name(const char *name)
 {
@@ -68,15 +47,6 @@ rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev)
 		return NULL;
 
 	return vdpa_dev->device;
-}
-
-struct rte_vdpa_device *
-rte_vdpa_get_device(int did)
-{
-	if (did < 0 || did >= MAX_VHOST_DEVICE)
-		return NULL;
-
-	return &vdpa_devices[did];
 }
 
 struct rte_vdpa_device *
@@ -117,15 +87,19 @@ rte_vdpa_register_device(struct rte_device *rte_dev,
 int
 rte_vdpa_unregister_device(struct rte_vdpa_device *vdev)
 {
-	int did = rte_vdpa_find_device_id(vdev);
+	int i;
 
-	if (did < 0 || vdpa_devices[did].ops == NULL)
-		return -1;
+	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
+		if (vdev != &vdpa_devices[i])
+			continue;
 
-	memset(&vdpa_devices[did], 0, sizeof(struct rte_vdpa_device));
-	vdpa_device_num--;
+		memset(vdev, 0, sizeof(struct rte_vdpa_device));
+		vdpa_device_num--;
 
-	return 0;
+		return 0;
+	}
+
+	return -1;
 }
 
 int
