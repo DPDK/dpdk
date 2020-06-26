@@ -1,7 +1,3 @@
-DPDK_20.0 {
-	local: *;
-};
-
 INTERNAL {
 	global:
 
@@ -42,4 +38,6 @@ INTERNAL {
 	otx2_sso_pf_func_get;
 	otx2_sso_pf_func_set;
 	otx2_unregister_irq;
+
+	local: *;
 };

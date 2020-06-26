@@ -1,7 +1,3 @@
-DPDK_20.0 {
-	local: *;
-};
-
 EXPERIMENTAL {
 	global:
 
@@ -111,4 +107,6 @@ INTERNAL {
 	rte_fslmc_get_device_count;
 	rte_fslmc_object_register;
 	rte_global_active_dqs_list;
+
+	local: *;
 };

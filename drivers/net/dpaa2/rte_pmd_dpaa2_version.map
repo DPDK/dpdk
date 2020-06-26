@@ -1,7 +1,3 @@
-DPDK_20.0 {
-	local: *;
-};
-
 EXPERIMENTAL {
 	global:
 
@@ -15,4 +11,6 @@ INTERNAL {
 
 	dpaa2_eth_eventq_attach;
 	dpaa2_eth_eventq_detach;
+
+	local: *;
 };

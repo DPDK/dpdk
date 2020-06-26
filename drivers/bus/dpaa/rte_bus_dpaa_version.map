@@ -1,7 +1,3 @@
-DPDK_20.0 {
-	local: *;
-};
-
 INTERNAL {
 	global:
 
@@ -90,4 +86,6 @@ INTERNAL {
 	rte_dpaa_portal_fq_close;
 	rte_dpaa_portal_fq_init;
 	rte_dpaa_portal_init;
+
+	local: *;
 };

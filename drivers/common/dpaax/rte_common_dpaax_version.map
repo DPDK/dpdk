@@ -1,7 +1,3 @@
-DPDK_20.0 {
-	local: *;
-};
-
 INTERNAL {
 	global:
 
@@ -23,4 +19,6 @@ INTERNAL {
 	of_n_addr_cells;
 	of_translate_address;
 	rta_sec_era;
+
+	local: *;
 };
