@@ -50,9 +50,9 @@
         name = rte_crypto_aead_algorithm_strings
 
 ;;;;;;;;;;;;;;;;;;;;;;
-; Temporary exceptions for new __rte_internal marking till DPDK 20.11
+; Temporary exceptions till DPDK 20.11
 ;;;;;;;;;;;;;;;;;;;;;;
-; Ignore moving OCTEONTX2 stable functions to INTERNAL tag
+; Ignore moving OCTEONTX2 stable functions to INTERNAL
 [suppress_file]
 	file_name_regexp = ^librte_common_octeontx2\.
 [suppress_file]
@@ -77,3 +77,28 @@
         name = rte_dpaa2_mbuf_alloc_bulk
 [suppress_function]
         name_regexp = ^dpaa2?_.*tach$
+; Ignore soname changes for experimental libraries
+[suppress_file]
+	file_name_regexp = ^librte_bbdev\.
+[suppress_file]
+	file_name_regexp = ^librte_bpf\.
+[suppress_file]
+	file_name_regexp = ^librte_compressdev\.
+[suppress_file]
+	file_name_regexp = ^librte_fib\.
+[suppress_file]
+	file_name_regexp = ^librte_flow_classify\.
+[suppress_file]
+	file_name_regexp = ^librte_graph\.
+[suppress_file]
+	file_name_regexp = ^librte_ipsec\.
+[suppress_file]
+	file_name_regexp = ^librte_node\.
+[suppress_file]
+	file_name_regexp = ^librte_rcu\.
+[suppress_file]
+	file_name_regexp = ^librte_rib\.
+[suppress_file]
+	file_name_regexp = ^librte_telemetry\.
+[suppress_file]
+	file_name_regexp = ^librte_stack\.

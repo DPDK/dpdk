@@ -112,8 +112,7 @@ how this may be done.
 
 At the same time, the major ABI version is changed atomically across all
 libraries by incrementing the major version in the ABI_VERSION file. This is
-done globally for all libraries that declare a stable ABI. For libraries marked
-as EXPERIMENTAL, their major ABI version is always set to 0.
+done globally for all libraries.
 
 Minor ABI versions
 ~~~~~~~~~~~~~~~~~~

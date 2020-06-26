@@ -28,7 +28,6 @@ General Guidelines
    once approved these will form part of the next ABI version.
 #. Libraries or APIs marked as :ref:`experimental <experimental_apis>` may
    change without constraint, as they are not considered part of an ABI version.
-   Experimental libraries have the major ABI version ``0``.
 #. Updates to the :ref:`minimum hardware requirements <hw_rqmts>`, which drop
    support for hardware which was previously supported, should be treated as an
    ABI change.
@@ -331,7 +330,4 @@ Libraries
 ~~~~~~~~~
 
 Libraries marked as ``experimental`` are entirely not considered part of an ABI
-version, and may change without warning at any time. Experimental libraries
-always have a major ABI version of ``0`` to indicate they exist outside of
-:ref:`abi_versioning` , with the minor version incremented with each ABI change
-to library.
+version, and may change without warning at any time.

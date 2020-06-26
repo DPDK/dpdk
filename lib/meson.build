@@ -116,20 +116,6 @@ foreach l:libraries
 				cflags += '-DRTE_USE_FUNCTION_VERSIONING'
 			endif
 
-			version_map = '@0@/@1@/rte_@2@_version.map'.format(
-					meson.current_source_dir(), dir_name, name)
-
-			is_stable = run_command(is_stable_cmd,
-					files(version_map)).returncode() == 0
-
-			if is_stable
-				lib_version = abi_version
-				so_version = stable_so_version
-			else
-				lib_version = experimental_abi_version
-				so_version = experimental_so_version
-			endif
-
 			# first build static lib
 			static_lib = static_library(libname,
 					sources,
@@ -197,7 +183,7 @@ foreach l:libraries
 					include_directories: includes,
 					link_args: lk_args,
 					link_depends: lk_deps,
-					version: lib_version,
+					version: abi_version,
 					soversion: so_version,
 					install: true)
 			shared_dep = declare_dependency(link_with: shared_lib,

@@ -121,20 +121,6 @@ foreach class:dpdk_driver_classes
 						output: out_filename,
 						depends: [pmdinfogen, tmp_lib])
 			endif
-			version_map = '@0@/@1@/@2@_version.map'.format(
-					meson.current_source_dir(),
-					drv_path, lib_name)
-
-			is_stable = run_command(is_stable_cmd,
-				files(version_map)).returncode() == 0
-
-			if is_stable
-				lib_version = abi_version
-				so_version = stable_so_version
-			else
-				lib_version = experimental_abi_version
-				so_version = experimental_so_version
-			endif
 
 			# now build the static driver
 			static_lib = static_library(lib_name,
@@ -190,7 +176,7 @@ foreach class:dpdk_driver_classes
 				c_args: cflags,
 				link_args: lk_args,
 				link_depends: lk_deps,
-				version: lib_version,
+				version: abi_version,
 				soversion: so_version,
 				install: true,
 				install_dir: driver_install_path)
