@@ -419,7 +419,7 @@
 				.key_size = {				\
 					.min = 32,			\
 					.max = 64,			\
-					.increment = 0			\
+					.increment = 32			\
 				},					\
 				.iv_size = {				\
 					.min = 16,			\
