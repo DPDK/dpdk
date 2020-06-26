@@ -8,6 +8,13 @@
 
 /**
  * @file
+ *
+ * RTE RIB library.
+ *
+ * @warning
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
+ *
  * Level compressed tree implementation for IPv4 Longest Prefix Match
  */
 

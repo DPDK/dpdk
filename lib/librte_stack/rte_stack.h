@@ -4,9 +4,12 @@
 
 /**
  * @file rte_stack.h
- * @b EXPERIMENTAL: this API may change without prior notice
  *
- * RTE Stack
+ * RTE Stack.
+ *
+ * @warning
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
  *
  * librte_stack provides an API for configuration and use of a bounded stack of
  * pointers. Push and pop operations are MT-safe, allowing concurrent access,

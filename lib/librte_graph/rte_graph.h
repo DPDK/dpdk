@@ -9,7 +9,8 @@
  * @file rte_graph.h
  *
  * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
  *
  * Graph architecture abstracts the data processing functions as
  * "node" and "link" them together to create a complex "graph" to enable

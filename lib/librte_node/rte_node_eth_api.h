@@ -9,7 +9,8 @@
  * @file rte_node_eth_api.h
  *
  * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
  *
  * This API allows to setup ethdev_rx and ethdev_tx nodes
  * and its queue associations.

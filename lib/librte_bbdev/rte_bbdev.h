@@ -11,7 +11,8 @@
  * Wireless base band device abstraction APIs.
  *
  * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
  *
  * This API allows an application to discover, configure and use a device to
  * process operations. An asynchronous API (enqueue, followed by later dequeue)

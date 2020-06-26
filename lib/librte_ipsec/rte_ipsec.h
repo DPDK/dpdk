@@ -7,9 +7,13 @@
 
 /**
  * @file rte_ipsec.h
- * @b EXPERIMENTAL: this API may change without prior notice
  *
  * RTE IPsec support.
+ *
+ * @warning
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
+ *
  * librte_ipsec provides a framework for data-path IPsec protocol
  * processing (ESP/AH).
  */

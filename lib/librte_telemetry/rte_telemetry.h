@@ -20,11 +20,13 @@
 #define RTE_TEL_MAX_ARRAY_ENTRIES 512
 
 /**
- * @warning
- * @b EXPERIMENTAL: all functions in this file may change without prior notice
- *
  * @file
- * RTE Telemetry
+ *
+ * RTE Telemetry.
+ *
+ * @warning
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
  *
  * The telemetry library provides a method to retrieve statistics from
  * DPDK by sending a request message over a socket. DPDK will send

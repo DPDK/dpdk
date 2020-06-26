@@ -9,7 +9,8 @@
  * @file rte_node_ip4_api.h
  *
  * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
  *
  * This API allows to do control path functions of ip4_* nodes
  * like ip4_lookup, ip4_rewrite.

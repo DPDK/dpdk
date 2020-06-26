@@ -27,7 +27,8 @@ General Guidelines
 #. The removal of symbols is considered an :ref:`ABI breakage <abi_breakages>`,
    once approved these will form part of the next ABI version.
 #. Libraries or APIs marked as :ref:`experimental <experimental_apis>` may
-   change without constraint, as they are not considered part of an ABI version.
+   be changed or removed without prior notice, as they are not considered part
+   of an ABI version.
 #. Updates to the :ref:`minimum hardware requirements <hw_rqmts>`, which drop
    support for hardware which was previously supported, should be treated as an
    ABI change.
@@ -294,7 +295,7 @@ APIs
 ~~~~
 
 APIs marked as ``experimental`` are not considered part of an ABI version and
-may change without warning at any time. Since changes to APIs are most likely
+may be changed or removed without prior notice. Since changes to APIs are most likely
 immediately after their introduction, as users begin to take advantage of those
 new APIs and start finding issues with them, new DPDK APIs will be automatically
 marked as ``experimental`` to allow for a period of stabilization before they
@@ -330,4 +331,5 @@ Libraries
 ~~~~~~~~~
 
 Libraries marked as ``experimental`` are entirely not considered part of an ABI
-version, and may change without warning at any time.
+version.
+All functions in such libraries may be changed or removed without prior notice.

@@ -7,7 +7,12 @@
 
 /**
  * @file
- * RTE Quiescent State Based Reclamation (QSBR)
+ *
+ * RTE Quiescent State Based Reclamation (QSBR).
+ *
+ * @warning
+ * @b EXPERIMENTAL:
+ * All functions in this file may be changed or removed without prior notice.
  *
  * Quiescent State (QS) is any point in the thread execution
  * where the thread does not hold a reference to a data structure
