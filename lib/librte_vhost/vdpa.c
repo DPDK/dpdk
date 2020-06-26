@@ -10,11 +10,13 @@
 
 #include <stdbool.h>
 
+#include <rte_class.h>
 #include <rte_malloc.h>
+#include <rte_pci.h>
 #include "rte_vdpa.h"
 #include "vhost.h"
 
-static struct rte_vdpa_device *vdpa_devices[MAX_VHOST_DEVICE];
+static struct rte_vdpa_device vdpa_devices[MAX_VHOST_DEVICE];
 static uint32_t vdpa_device_num;
 
 static bool
@@ -46,35 +48,28 @@ rte_vdpa_register_device(struct rte_vdpa_dev_addr *addr,
 		struct rte_vdpa_dev_ops *ops)
 {
 	struct rte_vdpa_device *dev;
-	char device_name[MAX_VDPA_NAME_LEN];
 	int i;
 
 	if (vdpa_device_num >= MAX_VHOST_DEVICE || addr == NULL || ops == NULL)
 		return -1;
 
 	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
-		dev = vdpa_devices[i];
-		if (dev && is_same_vdpa_device(&dev->addr, addr))
+		dev = &vdpa_devices[i];
+		if (dev->ops && is_same_vdpa_device(&dev->addr, addr))
 			return -1;
 	}
 
 	for (i = 0; i < MAX_VHOST_DEVICE; i++) {
-		if (vdpa_devices[i] == NULL)
+		if (vdpa_devices[i].ops == NULL)
 			break;
 	}
 
 	if (i == MAX_VHOST_DEVICE)
 		return -1;
 
-	snprintf(device_name, sizeof(device_name), "vdpa-dev-%d", i);
-	dev = rte_zmalloc(device_name, sizeof(struct rte_vdpa_device),
-			RTE_CACHE_LINE_SIZE);
-	if (!dev)
-		return -1;
-
+	dev = &vdpa_devices[i];
 	memcpy(&dev->addr, addr, sizeof(struct rte_vdpa_dev_addr));
 	dev->ops = ops;
-	vdpa_devices[i] = dev;
 	vdpa_device_num++;
 
 	return i;
@@ -83,11 +78,10 @@ rte_vdpa_register_device(struct rte_vdpa_dev_addr *addr,
 int
 rte_vdpa_unregister_device(int did)
 {
-	if (did < 0 || did >= MAX_VHOST_DEVICE || vdpa_devices[did] == NULL)
+	if (did < 0 || did >= MAX_VHOST_DEVICE || vdpa_devices[did].ops == NULL)
 		return -1;
 
-	rte_free(vdpa_devices[did]);
-	vdpa_devices[did] = NULL;
+	memset(&vdpa_devices[did], 0, sizeof(struct rte_vdpa_device));
 	vdpa_device_num--;
 
 	return did;
@@ -103,8 +97,11 @@ rte_vdpa_find_device_id(struct rte_vdpa_dev_addr *addr)
 		return -1;
 
 	for (i = 0; i < MAX_VHOST_DEVICE; ++i) {
-		dev = vdpa_devices[i];
-		if (dev && is_same_vdpa_device(&dev->addr, addr))
+		dev = &vdpa_devices[i];
+		if (dev->ops == NULL)
+			continue;
+
+		if (is_same_vdpa_device(&dev->addr, addr))
 			return i;
 	}
 
@@ -117,7 +114,7 @@ rte_vdpa_get_device(int did)
 	if (did < 0 || did >= MAX_VHOST_DEVICE)
 		return NULL;
 
-	return vdpa_devices[did];
+	return &vdpa_devices[did];
 }
 
 int
@@ -274,3 +271,86 @@ rte_vdpa_reset_stats(int did, uint16_t qid)
 
 	return vdpa_dev->ops->reset_stats(did, qid);
 }
+
+static uint16_t
+vdpa_dev_to_id(const struct rte_vdpa_device *dev)
+{
+	if (dev == NULL)
+		return MAX_VHOST_DEVICE;
+
+	if (dev < &vdpa_devices[0] ||
+			dev >= &vdpa_devices[MAX_VHOST_DEVICE])
+		return MAX_VHOST_DEVICE;
+
+	return (uint16_t)(dev - vdpa_devices);
+}
+
+static int
+vdpa_dev_match(struct rte_vdpa_device *dev,
+	      const struct rte_device *rte_dev)
+{
+	struct rte_vdpa_dev_addr addr;
+
+	/*  Only PCI bus supported for now */
+	if (strcmp(rte_dev->bus->name, "pci") != 0)
+		return -1;
+
+	addr.type = VDPA_ADDR_PCI;
+
+	if (rte_pci_addr_parse(rte_dev->name, &addr.pci_addr) != 0)
+		return -1;
+
+	if (!is_same_vdpa_device(&dev->addr, &addr))
+		return -1;
+
+	return 0;
+}
+
+/* Generic rte_vdpa_dev comparison function. */
+typedef int (*rte_vdpa_cmp_t)(struct rte_vdpa_device *,
+		const struct rte_device *rte_dev);
+
+static struct rte_vdpa_device *
+vdpa_find_device(const struct rte_vdpa_device *start, rte_vdpa_cmp_t cmp,
+		struct rte_device *rte_dev)
+{
+	struct rte_vdpa_device *dev;
+	uint16_t idx;
+
+	if (start != NULL)
+		idx = vdpa_dev_to_id(start) + 1;
+	else
+		idx = 0;
+	for (; idx < MAX_VHOST_DEVICE; idx++) {
+		dev = &vdpa_devices[idx];
+		/*
+		 * ToDo: Certainly better to introduce a state field,
+		 * but rely on ops being set for now.
+		 */
+		if (dev->ops == NULL)
+			continue;
+		if (cmp(dev, rte_dev) == 0)
+			return dev;
+	}
+	return NULL;
+}
+
+static void *
+vdpa_dev_iterate(const void *start,
+		const char *str,
+		const struct rte_dev_iterator *it)
+{
+	struct rte_vdpa_device *vdpa_dev = NULL;
+
+	RTE_SET_USED(str);
+
+	vdpa_dev = vdpa_find_device(start, vdpa_dev_match, it->device);
+
+	return vdpa_dev;
+}
+
+static struct rte_class rte_class_vdpa = {
+	.dev_iterate = vdpa_dev_iterate,
+};
+
+RTE_REGISTER_CLASS(vdpa, rte_class_vdpa);
