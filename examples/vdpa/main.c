@@ -27,7 +27,7 @@
 
 struct vdpa_port {
 	char ifname[MAX_PATH_LEN];
-	int did;
+	struct rte_vdpa_device *dev;
 	int vid;
 	uint64_t flags;
 	int stats_n;
@@ -105,16 +105,23 @@ static int
 new_device(int vid)
 {
 	char ifname[MAX_PATH_LEN];
+	struct rte_device *dev;
 	int i;
 
 	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	for (i = 0; i < MAX_VDPA_SAMPLE_PORTS; i++) {
-		if (strncmp(ifname, vports[i].ifname, MAX_PATH_LEN) == 0) {
-			printf("\nnew port %s, did: %d\n",
-					ifname, vports[i].did);
-			vports[i].vid = vid;
-			break;
+		if (strncmp(ifname, vports[i].ifname, MAX_PATH_LEN))
+			continue;
+
+		dev = rte_vdpa_get_rte_device(vports[i].dev);
+		if (!dev) {
+			RTE_LOG(ERR, VDPA,
+				"Failed to get generic device for port %d\n", i);
+			continue;
 		}
+		printf("\nnew port %s, device : %s\n", ifname, dev->name);
+		vports[i].vid = vid;
+		break;
 	}
 
 	if (i >= MAX_VDPA_SAMPLE_PORTS)
@@ -126,16 +133,24 @@ new_device(int vid)
 static void
 destroy_device(int vid)
 {
+	struct rte_device *dev;
 	char ifname[MAX_PATH_LEN];
 	int i;
 
 	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	for (i = 0; i < MAX_VDPA_SAMPLE_PORTS; i++) {
-		if (strcmp(ifname, vports[i].ifname) == 0) {
-			printf("\ndestroy port %s, did: %d\n",
-					ifname, vports[i].did);
-			break;
+		if (strncmp(ifname, vports[i].ifname, MAX_PATH_LEN))
+			continue;
+
+		dev = rte_vdpa_get_rte_device(vports[i].dev);
+		if (!dev) {
+			RTE_LOG(ERR, VDPA,
+				"Failed to get generic device for port %d\n", i);
+			continue;
 		}
+
+		printf("\ndestroy port %s, device: %s\n", ifname, dev->name);
+		break;
 	}
 }
 
@@ -149,8 +164,6 @@ start_vdpa(struct vdpa_port *vport)
 {
 	int ret;
 	char *socket_path = vport->ifname;
-	struct rte_vdpa_device *vdev;
-	int did = vport->did;
 
 	if (client_mode)
 		vport->flags |= RTE_VHOST_USER_CLIENT;
@@ -174,13 +187,7 @@ start_vdpa(struct vdpa_port *vport)
 			"register driver ops failed: %s\n",
 			socket_path);
 
-	vdev = rte_vdpa_get_device(did);
-	if (!vdev)
-		rte_exit(EXIT_FAILURE,
-			"vDPA device retrieval failed: %p\n",
-			vdev);
-
-	ret = rte_vhost_driver_attach_vdpa_device(socket_path, vdev);
+	ret = rte_vhost_driver_attach_vdpa_device(socket_path, vport->dev);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE,
 			"attach vdpa device failed: %s\n",
@@ -283,35 +290,31 @@ static void cmd_list_vdpa_devices_parsed(
 		struct cmdline *cl,
 		__rte_unused void *data)
 {
-	int did;
 	uint32_t queue_num;
 	uint64_t features;
 	struct rte_vdpa_device *vdev;
 	struct rte_device *dev;
 	struct rte_dev_iterator dev_iter;
 
-	cmdline_printf(cl, "device id\tdevice name\tqueue num\tsupported features\n");
+	cmdline_printf(cl, "device name\tqueue num\tsupported features\n");
 	RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter) {
-		did = rte_vdpa_find_device_id_by_name(dev->name);
-		if (did < 0)
-			continue;
-		vdev = rte_vdpa_get_device(did);
+		vdev = rte_vdpa_find_device_by_name(dev->name);
 		if (!vdev)
 			continue;
 		if (vdev->ops->get_queue_num(vdev, &queue_num) < 0) {
 			RTE_LOG(ERR, VDPA,
 				"failed to get vdpa queue number "
-				"for device id %d.\n", did);
+				"for device %s.\n", dev->name);
 			continue;
 		}
 		if (vdev->ops->get_features(vdev, &features) < 0) {
 			RTE_LOG(ERR, VDPA,
 				"failed to get vdpa features "
-				"for device id %d.\n", did);
+				"for device %s.\n", dev->name);
 			continue;
 		}
-		cmdline_printf(cl, "%d\t\t%s\t\t%" PRIu32 "\t\t0x%" PRIx64 "\n",
-			did, dev->name, queue_num, features);
+		cmdline_printf(cl, "%s\t\t%" PRIu32 "\t\t0x%" PRIx64 "\n",
+			dev->name, queue_num, features);
 	}
 }
 
@@ -339,18 +342,18 @@ static void cmd_create_vdpa_port_parsed(void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
 {
-	int did;
+	struct rte_vdpa_device *dev;
 	struct cmd_create_result *res = parsed_result;
 
 	rte_strscpy(vports[devcnt].ifname, res->socket_path, MAX_PATH_LEN);
-	did = rte_vdpa_find_device_id_by_name(res->bdf);
-	if (did < 0) {
+	dev = rte_vdpa_find_device_by_name(res->bdf);
+	if (dev == NULL) {
 		cmdline_printf(cl, "Unable to find vdpa device id for %s.\n",
 				res->bdf);
 		return;
 	}
 
-	vports[devcnt].did = did;
+	vports[devcnt].dev = dev;
 
 	if (start_vdpa(&vports[devcnt]) == 0)
 		devcnt++;
@@ -378,7 +381,7 @@ cmdline_parse_inst_t cmd_create_vdpa_port = {
 /* *** STATS *** */
 struct cmd_stats_result {
 	cmdline_fixed_string_t stats;
-	uint16_t did;
+	cmdline_fixed_string_t bdf;
 	uint16_t qid;
 };
 
@@ -386,25 +389,24 @@ static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
 				    __rte_unused void *data)
 {
 	struct cmd_stats_result *res = parsed_result;
-	struct rte_vdpa_device *vdev = rte_vdpa_get_device(res->did);
+	struct rte_vdpa_device *vdev = rte_vdpa_find_device_by_name(res->bdf);
 	struct vdpa_port *vport = NULL;
 	uint32_t first, last;
 	int i;
 
 	if (!vdev) {
-		RTE_LOG(ERR, VDPA, "Invalid device id %" PRIu16 ".\n",
-			res->did);
+		RTE_LOG(ERR, VDPA, "Invalid device: %s.\n",
+			res->bdf);
 		return;
 	}
 	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, dev_total); i++) {
-		if (vports[i].did == res->did) {
+		if (vports[i].dev == vdev) {
 			vport = &vports[i];
 			break;
 		}
 	}
 	if (!vport) {
-		RTE_LOG(ERR, VDPA, "Device id %" PRIu16 " was not created.\n",
-			res->did);
+		RTE_LOG(ERR, VDPA, "Device %s was not created.\n", res->bdf);
 		return;
 	}
 	if (res->qid == 0xFFFF) {
@@ -412,7 +414,7 @@ static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
 		last = rte_vhost_get_vring_num(vport->vid);
 		if (last == 0) {
 			RTE_LOG(ERR, VDPA, "Failed to get num of actual virtqs"
-				" for device id %d.\n", (int)res->did);
+				" for device %s.\n", res->bdf);
 			return;
 		}
 		last--;
@@ -421,10 +423,10 @@ static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
 		last = res->qid;
 	}
 	if (!vport->stats_names) {
-		vport->stats_n = rte_vdpa_get_stats_names(vport->did, NULL, 0);
+		vport->stats_n = rte_vdpa_get_stats_names(vport->dev, NULL, 0);
 		if (vport->stats_n <= 0) {
 			RTE_LOG(ERR, VDPA, "Failed to get names number of "
-				"device %d stats.\n", (int)res->did);
+				"device %s stats.\n", res->bdf);
 			return;
 		}
 		vport->stats_names = rte_zmalloc(NULL,
@@ -432,26 +434,26 @@ static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
 							vport->stats_n, 0);
 		if (!vport->stats_names) {
 			RTE_LOG(ERR, VDPA, "Failed to allocate memory for stat"
-				" names of device %d.\n", (int)res->did);
+				" names of device %s.\n", res->bdf);
 			return;
 		}
-		i = rte_vdpa_get_stats_names(vport->did, vport->stats_names,
+		i = rte_vdpa_get_stats_names(vport->dev, vport->stats_names,
 						vport->stats_n);
 		if (vport->stats_n != i) {
-			RTE_LOG(ERR, VDPA, "Failed to get names of device %d "
-				"stats.\n", (int)res->did);
+			RTE_LOG(ERR, VDPA, "Failed to get names of device %s "
+				"stats.\n", res->bdf);
 			return;
 		}
 		vport->stats = (struct rte_vdpa_stat *)
 					(vport->stats_names + vport->stats_n);
 	}
-	cmdline_printf(cl, "\nDevice %d:\n", (int)res->did);
+	cmdline_printf(cl, "\nDevice %s:\n", res->bdf);
 	for (; first <= last; first++) {
 		memset(vport->stats, 0, sizeof(*vport->stats) * vport->stats_n);
-		if (rte_vdpa_get_stats(vport->did, (int)first, vport->stats,
+		if (rte_vdpa_get_stats(vport->dev, (int)first, vport->stats,
 					vport->stats_n) <= 0) {
 			RTE_LOG(ERR, VDPA, "Failed to get vdpa queue statistics"
-				" for device id %d qid %d.\n", (int)res->did,
+				" for device %s qid %d.\n", res->bdf,
 				(int)first);
 			return;
 		}
@@ -467,8 +469,8 @@ static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
 
 cmdline_parse_token_string_t cmd_device_stats_ =
 	TOKEN_STRING_INITIALIZER(struct cmd_stats_result, stats, "stats");
-cmdline_parse_token_num_t cmd_device_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_stats_result, did, UINT32);
+cmdline_parse_token_string_t cmd_device_bdf =
+	TOKEN_STRING_INITIALIZER(struct cmd_stats_result, bdf, NULL);
 cmdline_parse_token_num_t cmd_queue_id =
 	TOKEN_NUM_INITIALIZER(struct cmd_stats_result, qid, UINT32);
 
@@ -478,7 +480,7 @@ cmdline_parse_inst_t cmd_device_stats = {
 	.help_str = "stats: show device statistics",
 	.tokens = {
 		(void *)&cmd_device_stats_,
-		(void *)&cmd_device_id,
+		(void *)&cmd_device_bdf,
 		(void *)&cmd_queue_id,
 		NULL,
 	},
@@ -522,9 +524,9 @@ int
 main(int argc, char *argv[])
 {
 	char ch;
-	int did;
 	int ret;
 	struct cmdline *cl;
+	struct rte_vdpa_device *vdev;
 	struct rte_device *dev;
 	struct rte_dev_iterator dev_iter;
 
@@ -553,12 +555,12 @@ main(int argc, char *argv[])
 		cmdline_stdin_exit(cl);
 	} else {
 		RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter) {
-			did = rte_vdpa_find_device_id_by_name(dev->name);
-			if (did < 0) {
-				rte_panic("Failed to find device id for %s\n",
+			vdev = rte_vdpa_find_device_by_name(dev->name);
+			if (vdev == NULL) {
+				rte_panic("Failed to find vDPA dev for %s\n",
 						dev->name);
 			}
-			vports[devcnt].did = did;
+			vports[devcnt].dev = vdev;
 			snprintf(vports[devcnt].ifname, MAX_PATH_LEN, "%s%d",
 					iface, devcnt);
 

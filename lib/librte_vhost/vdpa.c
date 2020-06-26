@@ -40,14 +40,14 @@ rte_vdpa_find_device_id(struct rte_vdpa_device *dev)
 	return -1;
 }
 
-int
-rte_vdpa_find_device_id_by_name(const char *name)
+struct rte_vdpa_device *
+rte_vdpa_find_device_by_name(const char *name)
 {
 	struct rte_vdpa_device *dev;
 	int i;
 
 	if (name == NULL)
-		return -1;
+		return NULL;
 
 	for (i = 0; i < MAX_VHOST_DEVICE; ++i) {
 		dev = &vdpa_devices[i];
@@ -55,10 +55,19 @@ rte_vdpa_find_device_id_by_name(const char *name)
 			continue;
 
 		if (strncmp(dev->device->name, name, RTE_DEV_NAME_MAX_LEN) == 0)
-			return i;
+			return dev;
 	}
 
-	return -1;
+	return NULL;
+}
+
+struct rte_device *
+rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev)
+{
+	if (vdpa_dev == NULL)
+		return NULL;
+
+	return vdpa_dev->device;
 }
 
 struct rte_vdpa_device *
@@ -228,50 +237,39 @@ fail:
 }
 
 int
-rte_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
-			 unsigned int size)
+rte_vdpa_get_stats_names(struct rte_vdpa_device *dev,
+		struct rte_vdpa_stat_name *stats_names,
+		unsigned int size)
 {
-	struct rte_vdpa_device *vdpa_dev;
-
-	vdpa_dev = rte_vdpa_get_device(did);
-	if (!vdpa_dev)
-		return -ENODEV;
-
-	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_stats_names, -ENOTSUP);
-
-	return vdpa_dev->ops->get_stats_names(vdpa_dev, stats_names, size);
-}
-
-int
-rte_vdpa_get_stats(int did, uint16_t qid, struct rte_vdpa_stat *stats,
-		   unsigned int n)
-{
-	struct rte_vdpa_device *vdpa_dev;
-
-	vdpa_dev = rte_vdpa_get_device(did);
-	if (!vdpa_dev)
-		return -ENODEV;
-
-	if (!stats || !n)
+	if (!dev)
 		return -EINVAL;
 
-	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->get_stats, -ENOTSUP);
+	RTE_FUNC_PTR_OR_ERR_RET(dev->ops->get_stats_names, -ENOTSUP);
 
-	return vdpa_dev->ops->get_stats(vdpa_dev, qid, stats, n);
+	return dev->ops->get_stats_names(dev, stats_names, size);
 }
 
 int
-rte_vdpa_reset_stats(int did, uint16_t qid)
+rte_vdpa_get_stats(struct rte_vdpa_device *dev, uint16_t qid,
+		struct rte_vdpa_stat *stats, unsigned int n)
 {
-	struct rte_vdpa_device *vdpa_dev;
+	if (!dev || !stats || !n)
+		return -EINVAL;
 
-	vdpa_dev = rte_vdpa_get_device(did);
-	if (!vdpa_dev)
-		return -ENODEV;
+	RTE_FUNC_PTR_OR_ERR_RET(dev->ops->get_stats, -ENOTSUP);
 
-	RTE_FUNC_PTR_OR_ERR_RET(vdpa_dev->ops->reset_stats, -ENOTSUP);
+	return dev->ops->get_stats(dev, qid, stats, n);
+}
 
-	return vdpa_dev->ops->reset_stats(vdpa_dev, qid);
+int
+rte_vdpa_reset_stats(struct rte_vdpa_device *dev, uint16_t qid)
+{
+	if (!dev)
+		return -EINVAL;
+
+	RTE_FUNC_PTR_OR_ERR_RET(dev->ops->reset_stats, -ENOTSUP);
+
+	return dev->ops->reset_stats(dev, qid);
 }
 
 static uint16_t

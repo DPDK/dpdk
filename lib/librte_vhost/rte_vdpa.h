@@ -153,11 +153,26 @@ rte_vdpa_unregister_device(struct rte_vdpa_device *);
  * @param name
  *  the vdpa device name
  * @return
- *  device id on success, -1 on failure
+ *  vDPA device pointer on success, NULL on failure
  */
 __rte_experimental
-int
-rte_vdpa_find_device_id_by_name(const char *name);
+struct rte_vdpa_device *
+rte_vdpa_find_device_by_name(const char *name);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get the generic device from the vdpa device
+ *
+ * @param vdpa_dev
+ *  the vdpa device pointer
+ * @return
+ *  generic device pointer on success, NULL on failure
+ */
+__rte_experimental
+struct rte_device *
+rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev);
 
 /**
  * @warning
@@ -252,8 +267,8 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m);
  * And the array index is same with id field of 'struct rte_vdpa_stat':
  * stats[i].id == i
  *
- * @param did
- *  device id
+ * @param dev
+ *  vDPA device pointer
  * @param stats_names
  *   array of at least size elements to be filled.
  *   If set to NULL, the function returns the required number of elements.
@@ -265,8 +280,9 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m);
  */
 __rte_experimental
 int
-rte_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
-			 unsigned int size);
+rte_vdpa_get_stats_names(struct rte_vdpa_device *dev,
+		struct rte_vdpa_stat_name *stats_names,
+		unsigned int size);
 
 /**
  * @warning
@@ -280,8 +296,8 @@ rte_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
  * And the array index is same with id field of 'struct rte_vdpa_stat':
  * stats[i].id == i
  *
- * @param did
- *  device id
+ * @param dev
+ *  vDPA device pointer
  * @param qid
  *  queue id
  * @param stats
@@ -295,16 +311,16 @@ rte_vdpa_get_stats_names(int did, struct rte_vdpa_stat_name *stats_names,
  */
 __rte_experimental
 int
-rte_vdpa_get_stats(int did, uint16_t qid, struct rte_vdpa_stat *stats,
-		   unsigned int n);
+rte_vdpa_get_stats(struct rte_vdpa_device *dev, uint16_t qid,
+		struct rte_vdpa_stat *stats, unsigned int n);
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
  * Reset statistics of a vDPA device.
  *
- * @param did
- *  device id
+ * @param dev
+ *  vDPA device pointer
  * @param qid
  *  queue id
  * @return
@@ -312,5 +328,5 @@ rte_vdpa_get_stats(int did, uint16_t qid, struct rte_vdpa_stat *stats,
  */
 __rte_experimental
 int
-rte_vdpa_reset_stats(int did, uint16_t qid);
+rte_vdpa_reset_stats(struct rte_vdpa_device *dev, uint16_t qid);
 #endif /* _RTE_VDPA_H_ */
