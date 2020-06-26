@@ -50,7 +50,7 @@ __rte_arm64_cntvct_precise(void)
  * This call is portable to any ARMv8 architecture, however, typically
  * cntvct_el0 runs at <= 100MHz and it may be imprecise for some tasks.
  */
-static inline uint64_t
+static __rte_always_inline uint64_t
 rte_rdtsc(void)
 {
 	return __rte_arm64_cntvct();
@@ -85,22 +85,25 @@ __rte_arm64_pmccntr(void)
 	return tsc;
 }
 
-static inline uint64_t
+static __rte_always_inline uint64_t
 rte_rdtsc(void)
 {
 	return __rte_arm64_pmccntr();
 }
 #endif
 
-static inline uint64_t
+static __rte_always_inline uint64_t
 rte_rdtsc_precise(void)
 {
 	asm volatile("isb" : : : "memory");
 	return rte_rdtsc();
 }
 
-static inline uint64_t
-rte_get_tsc_cycles(void) { return rte_rdtsc(); }
+static __rte_always_inline uint64_t
+rte_get_tsc_cycles(void)
+{
+	return rte_rdtsc();
+}
 
 #ifdef __cplusplus
 }
