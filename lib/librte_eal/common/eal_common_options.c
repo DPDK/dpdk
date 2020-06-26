@@ -484,8 +484,15 @@ eal_plugins_init(void)
 	struct shared_driver *solib = NULL;
 	struct stat sb;
 
-	if (*default_solib_dir != '\0' && stat(default_solib_dir, &sb) == 0 &&
-				S_ISDIR(sb.st_mode))
+	/* If we are not statically linked, add default driver loading
+	 * path if it exists as a directory.
+	 * (Using dlopen with NOLOAD flag on EAL, will return NULL if the EAL
+	 * shared library is not already loaded i.e. it's statically linked.)
+	 */
+	if (dlopen("librte_eal.so", RTLD_LAZY | RTLD_NOLOAD) != NULL &&
+			*default_solib_dir != '\0' &&
+			stat(default_solib_dir, &sb) == 0 &&
+			S_ISDIR(sb.st_mode))
 		eal_plugin_add(default_solib_dir);
 
 	TAILQ_FOREACH(solib, &solib_list, next) {
