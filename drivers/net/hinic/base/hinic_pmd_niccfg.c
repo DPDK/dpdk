@@ -55,7 +55,7 @@ int hinic_init_function_table(void *hwdev, u16 rx_buf_sz)
 		PMD_DRV_LOG(ERR,
 			"Failed to init func table, err: %d, status: 0x%x, out size: 0x%x",
 			err, function_table.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -96,7 +96,7 @@ int hinic_get_base_qpn(void *hwdev, u16 *global_qpn)
 		PMD_DRV_LOG(ERR,
 			"Failed to get base qpn, err: %d, status: 0x%x, out size: 0x%x",
 			err, cmd_qpn.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	*global_qpn = cmd_qpn.base_qpn;
@@ -143,7 +143,7 @@ int hinic_set_mac(void *hwdev, u8 *mac_addr, u16 vlan_id, u16 func_id)
 	    mac_info.mgmt_msg_head.status != HINIC_PF_SET_VF_ALREADY)) {
 		PMD_DRV_LOG(ERR, "Failed to set MAC, err: %d, status: 0x%x, out size: 0x%x",
 			err, mac_info.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	if (mac_info.mgmt_msg_head.status == HINIC_PF_SET_VF_ALREADY) {
@@ -198,7 +198,7 @@ int hinic_del_mac(void *hwdev, u8 *mac_addr, u16 vlan_id, u16 func_id)
 		mac_info.mgmt_msg_head.status != HINIC_PF_SET_VF_ALREADY)) {
 		PMD_DRV_LOG(ERR, "Failed to delete MAC, err: %d, status: 0x%x, out size: 0x%x",
 			err, mac_info.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 	if (mac_info.mgmt_msg_head.status == HINIC_PF_SET_VF_ALREADY) {
 		PMD_DRV_LOG(WARNING, "PF has already set vf mac, Ignore delete operation.");
@@ -241,7 +241,7 @@ int hinic_get_default_mac(void *hwdev, u8 *mac_addr)
 	if (err || !out_size || mac_info.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to get mac, err: %d, status: 0x%x, out size: 0x%x",
 			err, mac_info.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	memmove(mac_addr, mac_info.mac, ETH_ALEN);
@@ -294,7 +294,7 @@ int hinic_update_mac(void *hwdev, u8 *old_mac, u8 *new_mac, u16 vlan_id,
 	     mac_info.mgmt_msg_head.status != HINIC_PF_SET_VF_ALREADY)) {
 		PMD_DRV_LOG(ERR, "Failed to update MAC, err: %d, status: 0x%x, out size: 0x%x",
 			    err, mac_info.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 	if (mac_info.mgmt_msg_head.status == HINIC_PF_SET_VF_ALREADY) {
 		PMD_DRV_LOG(WARNING, "PF has already set vf mac, Ignore update operation");
@@ -338,7 +338,7 @@ int hinic_set_port_mtu(void *hwdev, u32 new_mtu)
 	if (err || !out_size || mtu_info.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to set mtu, err: %d, status: 0x%x, out size: 0x%x",
 			err, mtu_info.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -386,7 +386,7 @@ int hinic_add_remove_vlan(void *hwdev, u16 vlan_id, u16 func_id, bool add)
 			"Failed to %s vlan, err: %d, status: 0x%x, out size: 0x%x",
 			add ? "add" : "remove", err,
 			vlan_info.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -432,7 +432,7 @@ int hinic_config_vlan_filter(void *hwdev, u32 vlan_filter_ctrl)
 			"Failed to config vlan filter, vlan_filter_ctrl: 0x%x, err: %d, status: 0x%x, out size: 0x%x",
 			vlan_filter_ctrl, err,
 			vlan_filter.mgmt_msg_head.status, out_size);
-		err = -EINVAL;
+		err = -EIO;
 	}
 
 	return err;
@@ -473,7 +473,7 @@ int hinic_set_rx_vlan_offload(void *hwdev, u8 en)
 		PMD_DRV_LOG(ERR,
 			"Failed to set rx vlan offload, err: %d, status: 0x%x, out size: 0x%x",
 			err, vlan_cfg.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -512,7 +512,7 @@ int hinic_get_link_status(void *hwdev, u8 *link_state)
 	if (err || !out_size || get_link.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to get link state, err: %d, status: 0x%x, out size: 0x%x",
 			err, get_link.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	*link_state = get_link.link_status;
@@ -554,7 +554,7 @@ int hinic_set_vport_enable(void *hwdev, bool enable)
 	if (err || !out_size || en_state.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to set vport state, err: %d, status: 0x%x, out size: 0x%x",
 			err, en_state.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -596,7 +596,7 @@ int hinic_set_port_enable(void *hwdev, bool enable)
 	if (err || !out_size || en_state.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to set phy port state, err: %d, status: 0x%x, out size: 0x%x",
 			err, en_state.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -660,7 +660,7 @@ int hinic_set_pause_config(void *hwdev, struct nic_pause_config nic_pause)
 	if (err || !out_size || pause_info.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to set pause info, err: %d, status: 0x%x, out size: 0x%x",
 			err, pause_info.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -685,7 +685,7 @@ int hinic_get_pause_info(void *hwdev, struct nic_pause_config *nic_pause)
 	if (err || !out_size || pause_info.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to get pause info, err: %d, status: 0x%x, out size: 0x%x\n",
 			err, pause_info.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	nic_pause->auto_neg = pause_info.auto_neg;
@@ -741,7 +741,7 @@ int hinic_dcb_set_ets(void *hwdev, u8 *up_tc, u8 *pg_bw,
 		PMD_DRV_LOG(ERR,
 			"Failed to set ets, err: %d, status: 0x%x, out size: 0x%x",
 			err, ets.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -773,7 +773,7 @@ int hinic_get_vport_stats(void *hwdev, struct hinic_vport_stats *stats)
 		PMD_DRV_LOG(ERR,
 			"Get vport stats from fw failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, vport_stats_rsp.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	memcpy(stats, &vport_stats_rsp.stats, sizeof(*stats));
@@ -806,7 +806,7 @@ int hinic_get_phy_port_stats(void *hwdev, struct hinic_phy_port_stats *stats)
 		PMD_DRV_LOG(ERR,
 			"Failed to get port statistics, err: %d, status: 0x%x, out size: 0x%x",
 			err, port_stats_rsp.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	memcpy(stats, &port_stats_rsp.stats, sizeof(*stats));
@@ -863,7 +863,7 @@ int hinic_set_rss_type(void *hwdev, u32 tmpl_idx, struct nic_rss_type rss_type)
 
 	if (err || out_param != 0) {
 		PMD_DRV_LOG(ERR, "Failed to set rss context table");
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -891,7 +891,7 @@ int hinic_get_rss_type(void *hwdev, u32 tmpl_idx, struct nic_rss_type *rss_type)
 		PMD_DRV_LOG(ERR,
 			"Failed to get hash type, err: %d, status: 0x%x, out size: 0x%x",
 			err, ctx_tbl.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	rss_type->ipv4 = HINIC_RSS_TYPE_GET(ctx_tbl.context, IPV4);
@@ -931,7 +931,7 @@ int hinic_rss_set_template_tbl(void *hwdev, u32 tmpl_idx, u8 *temp)
 		PMD_DRV_LOG(ERR,
 			"Failed to set hash key, err: %d, status: 0x%x, out size: 0x%x",
 			err, temp_key.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -959,7 +959,7 @@ int hinic_rss_get_template_tbl(void *hwdev, u32 tmpl_idx, u8 *temp)
 	if (err || !out_size || temp_key.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to get hash key, err: %d, status: 0x%x, out size: 0x%x",
 			err, temp_key.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	memcpy(temp, temp_key.key, HINIC_RSS_KEY_SIZE);
@@ -1004,7 +1004,7 @@ int hinic_rss_set_hash_engine(void *hwdev, u8 tmpl_idx, u8 type)
 	if (err || !out_size || hash_type.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to get hash engine, err: %d, status: 0x%x, out size: 0x%x",
 			err, hash_type.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1055,7 +1055,7 @@ int hinic_rss_set_indir_tbl(void *hwdev, u32 tmpl_idx, u32 *indir_table)
 				     cmd_buf, &out_param, 0);
 	if (err || out_param != 0) {
 		PMD_DRV_LOG(ERR, "Failed to set rss indir table");
-		err = -EFAULT;
+		err = -EIO;
 		goto free_buf;
 	}
 
@@ -1069,7 +1069,7 @@ int hinic_rss_set_indir_tbl(void *hwdev, u32 tmpl_idx, u32 *indir_table)
 				     cmd_buf, &out_param, 0);
 	if (err || out_param != 0) {
 		PMD_DRV_LOG(ERR, "Failed to set rss indir table");
-		err = -EFAULT;
+		err = -EIO;
 	}
 
 free_buf:
@@ -1101,7 +1101,7 @@ int hinic_rss_get_indir_tbl(void *hwdev, u32 tmpl_idx, u32 *indir_table)
 	if (err || !out_size || rss_cfg.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to get indir table, err: %d, status: 0x%x, out size: 0x%x",
 			err, rss_cfg.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	hinic_be32_to_cpu(rss_cfg.indir, HINIC_RSS_INDIR_SIZE);
@@ -1139,7 +1139,7 @@ int hinic_rss_cfg(void *hwdev, u8 rss_en, u8 tmpl_idx, u8 tc_num, u8 *prio_tc)
 	if (err || !out_size || rss_cfg.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to set rss cfg, err: %d, status: 0x%x, out size: 0x%x",
 			err, rss_cfg.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1180,7 +1180,7 @@ int hinic_rss_template_alloc(void *hwdev, u8 *tmpl_idx)
 	if (err || !out_size || template_mgmt.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to alloc rss template, err: %d, status: 0x%x, out size: 0x%x",
 			err, template_mgmt.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	*tmpl_idx = template_mgmt.template_id;
@@ -1223,7 +1223,7 @@ int hinic_rss_template_free(void *hwdev, u8 tmpl_idx)
 	if (err || !out_size || template_mgmt.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to free rss template, err: %d, status: 0x%x, out size: 0x%x",
 			err, template_mgmt.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1296,7 +1296,7 @@ int hinic_set_rx_mode(void *hwdev, u32 enable)
 	if (err || !out_size || rx_mode_cfg.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to set rx mode, err: %d, status: 0x%x, out size: 0x%x",
 			err, rx_mode_cfg.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1334,7 +1334,7 @@ int hinic_get_mgmt_version(void *hwdev, char *fw)
 	if (err || !out_size || fw_ver.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to get mgmt version, err: %d, status: 0x%x, out size: 0x%x\n",
 			err, fw_ver.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	snprintf(fw, HINIC_MGMT_VERSION_MAX_LEN, "%s", fw_ver.ver);
@@ -1365,7 +1365,7 @@ int hinic_set_rx_csum_offload(void *hwdev, u32 en)
 		PMD_DRV_LOG(ERR,
 			"Failed to set rx csum offload, err: %d, status: 0x%x, out size: 0x%x",
 			err, rx_csum_cfg.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1395,7 +1395,7 @@ int hinic_set_rx_lro(void *hwdev, u8 ipv4_en, u8 ipv6_en, u8 max_wqe_num)
 	if (err || !out_size || lro_cfg.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to set lro offload, err: %d, status: 0x%x, out size: 0x%x",
 			err, lro_cfg.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1427,7 +1427,7 @@ int hinic_set_anti_attack(void *hwdev, bool enable)
 		PMD_DRV_LOG(ERR, "Can't %s port Anti-Attack rate limit, err: %d, status: 0x%x, out size: 0x%x",
 			(enable ? "enable" : "disable"), err,
 			rate.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1450,7 +1450,7 @@ int hinic_reset_port_link_cfg(void *hwdev)
 	if (err || !out_size || reset_cfg.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Reset port link configure failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, reset_cfg.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -1556,7 +1556,7 @@ int hinic_clear_vport_stats(struct hinic_hwdev *hwdev)
 	if (err || !out_size || clear_vport_stats.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to clear vport statistics, err: %d, status: 0x%x, out size: 0x%x",
 			err, clear_vport_stats.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1586,7 +1586,7 @@ int hinic_clear_phy_port_stats(struct hinic_hwdev *hwdev)
 		PMD_DRV_LOG(ERR, "Failed to clear phy port statistics, err: %d, status: 0x%x, out size: 0x%x",
 			err, clear_phy_port_stats.mgmt_msg_head.status,
 			out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1623,7 +1623,7 @@ int hinic_set_link_status_follow(void *hwdev,
 		PMD_DRV_LOG(ERR,
 			"Failed to set link status follow phy port status, err: %d, status: 0x%x, out size: 0x%x",
 			err, follow.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return follow.mgmt_msg_head.status;
@@ -1649,7 +1649,7 @@ int hinic_get_link_mode(void *hwdev, u32 *supported, u32 *advertised)
 		PMD_DRV_LOG(ERR,
 			"Failed to get link mode, err: %d, status: 0x%x, out size: 0x%x",
 			err, link_mode.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	*supported = link_mode.supported;
@@ -1690,7 +1690,7 @@ int hinic_set_xsfp_tx_status(void *hwdev, bool enable)
 			"Failed to %s port xsfp status, err: %d, status: 0x%x, out size: 0x%x\n",
 			enable ? "Disable" : "Enable", err,
 			xsfp_status.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -1723,7 +1723,7 @@ int hinic_flush_qp_res(void *hwdev)
 	if (err || !out_size || qp_res.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Failed to clear sq resources, err: %d, status: 0x%x, out size: 0x%x",
 			err, qp_res.mgmt_msg_head.status, out_size);
-		return -EINVAL;
+		return -EIO;
 	}
 
 	return 0;
@@ -1808,7 +1808,7 @@ int hinic_set_fdir_filter(void *hwdev, u8 filter_type, u8 qid, u8 type_enable,
 			" enable: 0x%x, qid: 0x%x, filter_type_enable: 0x%x\n",
 			err, port_filer_cmd.mgmt_msg_head.status, out_size,
 			filter_type, enable, qid, type_enable);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -1860,7 +1860,7 @@ int hinic_set_normal_filter(void *hwdev, u8 qid, u8 normal_type_enable,
 			" enable: 0x%x, qid: 0x%x, normal_type_enable: 0x%x, key:0x%x\n",
 			err, port_filer_cmd.mgmt_msg_head.status, out_size,
 			flag, enable, qid, normal_type_enable, key);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -1908,7 +1908,7 @@ int hinic_set_fdir_tcam(void *hwdev, u16 type_mask,
 	if (err || !out_size || port_tcam_cmd.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Set tcam table failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, port_tcam_cmd.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -1945,7 +1945,7 @@ int hinic_clear_fdir_tcam(void *hwdev, u16 type_mask)
 	if (err || !out_size || port_tcam_cmd.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Clear tcam table failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, port_tcam_cmd.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -1964,7 +1964,7 @@ int hinic_add_tcam_rule(void *hwdev, struct tag_tcam_cfg_rule *tcam_rule)
 
 	if (tcam_rule->index >= HINIC_MAX_TCAM_RULES_NUM) {
 		PMD_DRV_LOG(ERR, "Tcam rules num to add is invalid");
-		return -EFAULT;
+		return -EINVAL;
 	}
 
 	memset(&tcam_cmd, 0, sizeof(struct tag_fdir_add_rule_cmd));
@@ -1979,7 +1979,7 @@ int hinic_add_tcam_rule(void *hwdev, struct tag_tcam_cfg_rule *tcam_rule)
 		PMD_DRV_LOG(ERR,
 			"Add tcam rule failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, tcam_cmd.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -1998,7 +1998,7 @@ int hinic_del_tcam_rule(void *hwdev, u32 index)
 
 	if (index >= HINIC_MAX_TCAM_RULES_NUM) {
 		PMD_DRV_LOG(ERR, "Tcam rules num to del is invalid");
-		return -EFAULT;
+		return -EINVAL;
 	}
 
 	memset(&tcam_cmd, 0, sizeof(struct tag_fdir_del_rule_cmd));
@@ -2013,7 +2013,7 @@ int hinic_del_tcam_rule(void *hwdev, u32 index)
 		PMD_DRV_LOG(ERR,
 			"Del tcam rule failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, tcam_cmd.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	return 0;
@@ -2057,7 +2057,7 @@ static int hinic_mgmt_tcam_block(void *hwdev, u8 alloc_en,
 		PMD_DRV_LOG(ERR,
 			"Set tcam block failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, tcam_block_info.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	if (alloc_en)
@@ -2108,7 +2108,7 @@ int hinic_flush_tcam_rule(void *hwdev)
 		PMD_DRV_LOG(ERR,
 			"Flush tcam fdir rules failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, tcam_flush.mgmt_msg_head.status, out_size);
-		err = -EFAULT;
+		err = -EIO;
 	}
 
 	return err;
@@ -2143,7 +2143,7 @@ int hinic_set_fdir_tcam_rule_filter(void *hwdev, bool enable)
 			"status: 0x%x, out size: 0x%x, enable: 0x%x",
 			err, port_tcam_cmd.mgmt_msg_head.status, out_size,
 			enable);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	if (port_tcam_cmd.mgmt_msg_head.status == HINIC_MGMT_CMD_UNSUPPORTED) {

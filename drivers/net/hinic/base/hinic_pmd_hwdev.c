@@ -681,17 +681,15 @@ int hinic_set_interrupt_cfg(struct hinic_hwdev *hwdev,
 	u16 out_size = sizeof(msix_cfg);
 	int err;
 
+	temp_info.msix_index = interrupt_info.msix_index;
+	err = hinic_get_interrupt_cfg(hwdev, &temp_info);
+	if (err)
+		return -EIO;
+
 	memset(&msix_cfg, 0, sizeof(msix_cfg));
 	msix_cfg.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
 	msix_cfg.func_id = hinic_global_func_id(hwdev);
 	msix_cfg.msix_index = (u16)interrupt_info.msix_index;
-
-	temp_info.msix_index = interrupt_info.msix_index;
-
-	err = hinic_get_interrupt_cfg(hwdev, &temp_info);
-	if (err)
-		return -EINVAL;
-
 	msix_cfg.lli_credit_cnt = temp_info.lli_credit_limit;
 	msix_cfg.lli_tmier_cnt = temp_info.lli_timer_cfg;
 	msix_cfg.pending_cnt = temp_info.pending_limt;
@@ -1051,7 +1049,7 @@ int hinic_get_board_info(void *hwdev, struct hinic_board_info *info)
 	if (err || board_info.mgmt_msg_head.status || !out_size) {
 		PMD_DRV_LOG(ERR, "Failed to get board info, err: %d, status: 0x%x, out size: 0x%x",
 			err, board_info.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	memcpy(info, &board_info.info, sizeof(*info));

@@ -179,7 +179,7 @@ static int get_cap_from_fw(struct hinic_hwdev *dev, enum func_type type)
 	if (err || dev_cap.mgmt_msg_head.status || !out_len) {
 		PMD_DRV_LOG(ERR, "Get capability from FW failed, err: %d, status: %d, out_len: %d",
 			err, dev_cap.mgmt_msg_head.status, out_len);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	parse_dev_cap(dev, &dev_cap, type);
@@ -201,7 +201,7 @@ static int get_cap_from_pf(struct hinic_hwdev *dev, enum func_type type)
 	if (err || dev_cap.mgmt_msg_head.status || !out_len) {
 		PMD_DRV_LOG(ERR, "Get capability from PF failed, err: %d, status: %d, out_len: %d",
 				err, dev_cap.mgmt_msg_head.status, out_len);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	parse_dev_cap(dev, &dev_cap, type);

@@ -314,7 +314,7 @@ static int init_sq_ctxts(struct hinic_nic_io *nic_io)
 		if (err || out_param != 0) {
 			PMD_DRV_LOG(ERR, "Failed to set SQ ctxts, err: %d",
 				err);
-			err = -EFAULT;
+			err = -EIO;
 			break;
 		}
 
@@ -371,7 +371,7 @@ static int init_rq_ctxts(struct hinic_nic_io *nic_io)
 					     cmd_buf, &out_param, 0);
 		if ((err) || out_param != 0) {
 			PMD_DRV_LOG(ERR, "Failed to set RQ ctxts");
-			err = -EFAULT;
+			err = -EIO;
 			break;
 		}
 
@@ -422,7 +422,7 @@ static int clean_queue_offload_ctxt(struct hinic_nic_io *nic_io,
 
 	if ((err) || (out_param)) {
 		PMD_DRV_LOG(ERR, "Failed to clean queue offload ctxts");
-		err = -EFAULT;
+		err = -EIO;
 	}
 
 	hinic_free_cmd_buf(hwdev, cmd_buf);
