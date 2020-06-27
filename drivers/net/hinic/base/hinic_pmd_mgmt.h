@@ -101,8 +101,7 @@ struct hinic_msg_pf_to_mgmt {
 };
 
 int hinic_msg_to_mgmt_no_ack(void *hwdev, enum hinic_mod_type mod, u8 cmd,
-			     void *buf_in, u16 in_size, void *buf_out,
-			     u16 *out_size);
+			     void *buf_in, u16 in_size);
 
 int hinic_comm_pf_to_mgmt_init(struct hinic_hwdev *hwdev);
 

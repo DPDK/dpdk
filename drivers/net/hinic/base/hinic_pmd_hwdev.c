@@ -599,7 +599,7 @@ static int hinic_pf_rx_tx_flush(struct hinic_hwdev *hwdev)
 
 	err = hinic_msg_to_mgmt_no_ack(hwdev, HINIC_MOD_COMM,
 				       HINIC_MGMT_CMD_START_FLR, &clr_res,
-				       sizeof(clr_res), NULL, NULL);
+				       sizeof(clr_res));
 	if (err) {
 		PMD_DRV_LOG(WARNING, "Notice flush msg failed, err: %d", err);
 		ret = err;

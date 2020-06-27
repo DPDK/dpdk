@@ -504,8 +504,7 @@ int hinic_msg_to_mgmt_sync(void *hwdev, enum hinic_mod_type mod, u8 cmd,
 }
 
 int hinic_msg_to_mgmt_no_ack(void *hwdev, enum hinic_mod_type mod, u8 cmd,
-		     void *buf_in, u16 in_size, __rte_unused void *buf_out,
-		     __rte_unused u16 *out_size)
+			     void *buf_in, u16 in_size)
 {
 	struct hinic_msg_pf_to_mgmt *pf_to_mgmt =
 				((struct hinic_hwdev *)hwdev)->pf_to_mgmt;
