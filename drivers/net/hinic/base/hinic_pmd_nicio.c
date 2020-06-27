@@ -471,6 +471,8 @@ static int
 hinic_set_root_ctxt(void *hwdev, u16 rq_depth, u16 sq_depth, int rx_buf_sz)
 {
 	struct hinic_root_ctxt root_ctxt;
+	u16 out_size = sizeof(root_ctxt);
+	int err;
 
 	memset(&root_ctxt, 0, sizeof(root_ctxt));
 	root_ctxt.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
@@ -483,10 +485,18 @@ hinic_set_root_ctxt(void *hwdev, u16 rq_depth, u16 sq_depth, int rx_buf_sz)
 	root_ctxt.rx_buf_sz = get_hw_rx_buf_size(rx_buf_sz);
 	root_ctxt.sq_depth  = (u16)ilog2(sq_depth);
 
-	return hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_COMM,
-				      HINIC_MGMT_CMD_VAT_SET,
-				      &root_ctxt, sizeof(root_ctxt),
-				      NULL, NULL, 0);
+	err = hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_COMM,
+				     HINIC_MGMT_CMD_VAT_SET,
+				     &root_ctxt, sizeof(root_ctxt),
+				     &root_ctxt, &out_size, 0);
+	if (err || !out_size || root_ctxt.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR,
+			"Set root context failed, err: %d, status: 0x%x, out_size: 0x%x",
+			err, root_ctxt.mgmt_msg_head.status, out_size);
+		return -EIO;
+	}
+
+	return 0;
 }
 
 /**
@@ -499,6 +509,8 @@ hinic_set_root_ctxt(void *hwdev, u16 rq_depth, u16 sq_depth, int rx_buf_sz)
 static int hinic_clean_root_ctxt(void *hwdev)
 {
 	struct hinic_root_ctxt root_ctxt;
+	u16 out_size = sizeof(root_ctxt);
+	int err;
 
 	memset(&root_ctxt, 0, sizeof(root_ctxt));
 	root_ctxt.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
@@ -511,10 +523,18 @@ static int hinic_clean_root_ctxt(void *hwdev)
 	root_ctxt.rx_buf_sz = 0;
 	root_ctxt.sq_depth  = 0;
 
-	return hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_COMM,
-				      HINIC_MGMT_CMD_VAT_SET,
-				      &root_ctxt, sizeof(root_ctxt),
-				      NULL, NULL, 0);
+	err = hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_COMM,
+				     HINIC_MGMT_CMD_VAT_SET,
+				     &root_ctxt, sizeof(root_ctxt),
+				     &root_ctxt, &out_size, 0);
+	if (err || !out_size || root_ctxt.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR,
+			"Clean root context failed, err: %d, status: 0x%x, out_size: 0x%x",
+			err, root_ctxt.mgmt_msg_head.status, out_size);
+		return -EIO;
+	}
+
+	return 0;
 }
 
 /* init qps ctxt and set sq ci attr and arm all sq and set vat page_size */

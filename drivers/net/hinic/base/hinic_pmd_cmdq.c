@@ -426,27 +426,31 @@ static int hinic_set_cmdq_ctxts(struct hinic_hwdev *hwdev)
 {
 	struct hinic_cmdqs *cmdqs = hwdev->cmdqs;
 	struct hinic_cmdq_ctxt *cmdq_ctxt;
+	struct hinic_cmdq_ctxt cmdq_ctxt_out;
 	enum hinic_cmdq_type cmdq_type;
+	u16 out_size = sizeof(cmdq_ctxt_out);
 	u16 in_size;
 	int err;
 
 	cmdq_type = HINIC_CMDQ_SYNC;
+	memset(&cmdq_ctxt_out, 0, out_size);
 	for (; cmdq_type < HINIC_MAX_CMDQ_TYPES; cmdq_type++) {
 		cmdq_ctxt = &cmdqs->cmdq[cmdq_type].cmdq_ctxt;
 		cmdq_ctxt->resp_aeq_num = HINIC_AEQ1;
 		in_size = sizeof(*cmdq_ctxt);
 		err = hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_COMM,
 					     HINIC_MGMT_CMD_CMDQ_CTXT_SET,
-					     cmdq_ctxt, in_size, NULL,
-					     NULL, 0);
-		if (err) {
+					     cmdq_ctxt, in_size, &cmdq_ctxt_out,
+					     &out_size, 0);
+		if (err || !out_size || cmdq_ctxt_out.status) {
 			if (err == HINIC_MBOX_PF_BUSY_ACTIVE_FW ||
 				err == HINIC_DEV_BUSY_ACTIVE_FW) {
 				cmdqs->status |= HINIC_CMDQ_SET_FAIL;
 				PMD_DRV_LOG(ERR, "PF or VF fw is hot active");
 			}
-			PMD_DRV_LOG(ERR, "Set cmdq ctxt failed, err: %d", err);
-			return -EFAULT;
+			PMD_DRV_LOG(ERR, "Set cmdq ctxt failed, err: %d, status: 0x%x, out_size: 0x%x",
+				err, cmdq_ctxt_out.status, out_size);
+			return -EIO;
 		}
 	}
 
@@ -631,6 +635,8 @@ static void hinic_cmdqs_free(struct hinic_hwdev *hwdev)
 static int hinic_set_cmdq_depth(struct hinic_hwdev *hwdev, u16 cmdq_depth)
 {
 	struct hinic_root_ctxt root_ctxt;
+	u16 out_size = sizeof(root_ctxt);
+	int err;
 
 	memset(&root_ctxt, 0, sizeof(root_ctxt));
 	root_ctxt.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
@@ -638,10 +644,17 @@ static int hinic_set_cmdq_depth(struct hinic_hwdev *hwdev, u16 cmdq_depth)
 	root_ctxt.ppf_idx = hinic_ppf_idx(hwdev);
 	root_ctxt.set_cmdq_depth = 1;
 	root_ctxt.cmdq_depth = (u8)ilog2(cmdq_depth);
-	return hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_COMM,
-				      HINIC_MGMT_CMD_VAT_SET,
-				      &root_ctxt, sizeof(root_ctxt),
-				      NULL, NULL, 0);
+	err = hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_COMM,
+				     HINIC_MGMT_CMD_VAT_SET,
+				     &root_ctxt, sizeof(root_ctxt),
+				     &root_ctxt, &out_size, 0);
+	if (err || !out_size || root_ctxt.mgmt_msg_head.status) {
+		PMD_DRV_LOG(ERR, "Set cmdq depth failed, err: %d, status: 0x%x, out_size: 0x%x",
+			err, root_ctxt.mgmt_msg_head.status, out_size);
+		return -EIO;
+	}
+
+	return 0;
 }
 
 int hinic_comm_cmdqs_init(struct hinic_hwdev *hwdev)

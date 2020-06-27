@@ -18,7 +18,6 @@
 			buf_in, in_size,			\
 			buf_out, out_size, 0)
 
-
 /**
  * hinic_init_function_table - Initialize function table.
  *
@@ -380,9 +379,8 @@ int hinic_add_remove_vlan(void *hwdev, u16 vlan_id, u16 func_id, bool add)
 	vlan_info.func_id = func_id;
 	vlan_info.vlan_id = vlan_id;
 
-	err = l2nic_msg_to_mgmt_sync(hwdev, cmd, &vlan_info,
-				     sizeof(vlan_info), &vlan_info,
-				     &out_size);
+	err = l2nic_msg_to_mgmt_sync(hwdev, cmd, &vlan_info, sizeof(vlan_info),
+				     &vlan_info, &out_size);
 	if (err || !out_size || vlan_info.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR,
 			"Failed to %s vlan, err: %d, status: 0x%x, out size: 0x%x",
@@ -469,8 +467,8 @@ int hinic_set_rx_vlan_offload(void *hwdev, u8 en)
 	vlan_cfg.vlan_rx_offload = en;
 
 	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_SET_RX_VLAN_OFFLOAD,
-					&vlan_cfg, sizeof(vlan_cfg),
-					&vlan_cfg, &out_size);
+				     &vlan_cfg, sizeof(vlan_cfg),
+				     &vlan_cfg, &out_size);
 	if (err || !out_size || vlan_cfg.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR,
 			"Failed to set rx vlan offload, err: %d, status: 0x%x, out size: 0x%x",
@@ -626,7 +624,7 @@ int hinic_get_port_info(void *hwdev, struct nic_port_info *port_info)
 		PMD_DRV_LOG(ERR,
 			"Failed to get port info, err: %d, status: 0x%x, out size: 0x%x",
 			err, port_msg.mgmt_msg_head.status, out_size);
-		return err;
+		return -EIO;
 	}
 
 	port_info->autoneg_cap = port_msg.autoneg_cap;
@@ -1270,7 +1268,6 @@ int hinic_set_rx_vhd_mode(void *hwdev, u16 vhd_mode, u16 rx_buf_sz)
 		PMD_DRV_LOG(ERR,
 			"Failed to set vhd mode, err: %d, status: 0x%x, out size: 0x%x",
 			err, vhd_mode_cfg.mgmt_msg_head.status, out_size);
-
 		return -EIO;
 	}
 
@@ -1425,8 +1422,7 @@ int hinic_set_anti_attack(void *hwdev, bool enable)
 	rate.xbs = ANTI_ATTACK_DEFAULT_XBS;
 
 	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_SET_ANTI_ATTACK_RATE,
-				     &rate, sizeof(rate), &rate,
-				     &out_size);
+				     &rate, sizeof(rate), &rate, &out_size);
 	if (err || !out_size || rate.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Can't %s port Anti-Attack rate limit, err: %d, status: 0x%x, out size: 0x%x",
 			(enable ? "enable" : "disable"), err,
@@ -1530,9 +1526,9 @@ int hinic_set_fast_recycle_mode(void *hwdev, u8 mode)
 				     sizeof(fast_recycled_mode),
 				     &fast_recycled_mode, &out_size, 0);
 	if (err || fast_recycled_mode.mgmt_msg_head.status || !out_size) {
-		PMD_DRV_LOG(ERR, "Failed to set recycle mode, ret: %d",
-			fast_recycled_mode.mgmt_msg_head.status);
-		return -EFAULT;
+		PMD_DRV_LOG(ERR, "Failed to set recycle mode, err: %d, status: 0x%x, out size: 0x%x",
+			err, fast_recycled_mode.mgmt_msg_head.status, out_size);
+		return -EIO;
 	}
 
 	return 0;
@@ -1756,12 +1752,11 @@ int hinic_vf_get_default_cos(struct hinic_hwdev *hwdev, u8 *cos_id)
 
 	err = hinic_msg_to_mgmt_sync(hwdev, HINIC_MOD_L2NIC,
 				     HINIC_PORT_CMD_GET_VF_COS, &vf_cos,
-				     sizeof(vf_cos), &vf_cos,
-				     &out_size, 0);
+				     sizeof(vf_cos), &vf_cos, &out_size, 0);
 	if (err || !out_size || vf_cos.mgmt_msg_head.status) {
 		PMD_DRV_LOG(ERR, "Get VF default cos failed, err: %d, status: 0x%x, out size: 0x%x",
 			err, vf_cos.mgmt_msg_head.status, out_size);
-		return -EFAULT;
+		return -EIO;
 	}
 	*cos_id = vf_cos.state.default_cos;
 
