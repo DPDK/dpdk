@@ -2114,3 +2114,44 @@ int hinic_flush_tcam_rule(void *hwdev)
 	return err;
 }
 
+int hinic_set_fdir_tcam_rule_filter(void *hwdev, bool enable)
+{
+	struct hinic_port_tcam_info port_tcam_cmd;
+	u16 out_size = sizeof(port_tcam_cmd);
+	int err;
+
+	if (!hwdev)
+		return -EINVAL;
+
+	memset(&port_tcam_cmd, 0, sizeof(port_tcam_cmd));
+	port_tcam_cmd.mgmt_msg_head.resp_aeq_num = HINIC_AEQ1;
+	port_tcam_cmd.func_id = hinic_global_func_id(hwdev);
+	port_tcam_cmd.tcam_enable = (u8)enable;
+
+	err = l2nic_msg_to_mgmt_sync(hwdev, HINIC_PORT_CMD_UP_TC_ENABLE,
+			&port_tcam_cmd, sizeof(port_tcam_cmd),
+			&port_tcam_cmd, &out_size);
+	if ((port_tcam_cmd.mgmt_msg_head.status != HINIC_MGMT_CMD_UNSUPPORTED &&
+		port_tcam_cmd.mgmt_msg_head.status) || err || !out_size) {
+		if (err == HINIC_MBOX_VF_CMD_ERROR &&
+			HINIC_IS_VF((struct hinic_hwdev *)hwdev)) {
+			err = HINIC_MGMT_CMD_UNSUPPORTED;
+			PMD_DRV_LOG(WARNING, "VF doesn't support setting fdir tcam filter");
+			return err;
+		}
+		PMD_DRV_LOG(ERR, "Set fdir tcam filter failed, err: %d, "
+			"status: 0x%x, out size: 0x%x, enable: 0x%x",
+			err, port_tcam_cmd.mgmt_msg_head.status, out_size,
+			enable);
+		return -EFAULT;
+	}
+
+	if (port_tcam_cmd.mgmt_msg_head.status == HINIC_MGMT_CMD_UNSUPPORTED) {
+		err = HINIC_MGMT_CMD_UNSUPPORTED;
+		PMD_DRV_LOG(WARNING, "Fw doesn't support setting fdir tcam filter");
+	}
+
+	return err;
+}
+
+

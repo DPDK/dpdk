@@ -766,6 +766,15 @@ struct hinic_port_qfilter_info {
 	u32 key;
 };
 
+struct hinic_port_tcam_info {
+	struct hinic_mgmt_msg_head mgmt_msg_head;
+
+	u16 func_id;
+	u8 tcam_enable;
+	u8 rsvd1;
+	u32 rsvd2;
+};
+
 #define HINIC_MAX_TCAM_RULES_NUM   (10240)
 #define HINIC_TCAM_BLOCK_ENABLE      1
 #define HINIC_TCAM_BLOCK_DISABLE     0
@@ -940,5 +949,7 @@ int hinic_alloc_tcam_block(void *hwdev, u8 block_type, u16 *index);
 int hinic_free_tcam_block(void *hwdev, u8 block_type, u16 *index);
 
 int hinic_flush_tcam_rule(void *hwdev);
+
+int hinic_set_fdir_tcam_rule_filter(void *hwdev, bool enable);
 
 #endif /* _HINIC_PMD_NICCFG_H_ */

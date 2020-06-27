@@ -1900,6 +1900,8 @@ void hinic_free_fdir_filter(struct hinic_nic_dev *nic_dev)
 {
 	(void)hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0, false);
 
+	(void)hinic_set_fdir_tcam_rule_filter(nic_dev->hwdev, false);
+
 	(void)hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_DPORT);
 
 	(void)hinic_clear_fdir_tcam(nic_dev->hwdev, TCAM_PKT_BGP_SPORT);
@@ -2801,6 +2803,15 @@ static int hinic_add_tcam_filter(struct rte_eth_dev *dev,
 						fdir_tcam_rule->index);
 			return rc;
 		}
+
+		rc = hinic_set_fdir_tcam_rule_filter(nic_dev->hwdev, true);
+		if (rc && rc != HINIC_MGMT_CMD_UNSUPPORTED) {
+			(void)hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0,
+						false);
+			(void)hinic_del_tcam_rule(nic_dev->hwdev,
+						fdir_tcam_rule->index);
+			return rc;
+		}
 	}
 
 	TAILQ_INSERT_TAIL(&tcam_info->tcam_list, tcam_filter, entries);
@@ -3196,6 +3207,8 @@ static void hinic_clear_all_fdir_filter(struct rte_eth_dev *dev)
 		(void)hinic_del_tcam_filter(dev, tcam_filter_ptr);
 
 	(void)hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0, false);
+
+	(void)hinic_set_fdir_tcam_rule_filter(nic_dev->hwdev, false);
 
 	(void)hinic_flush_tcam_rule(nic_dev->hwdev);
 }
