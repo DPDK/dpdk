@@ -163,7 +163,7 @@ mlx5_alloc_verbs_buf(size_t size, void *data)
 		socket = ctrl->socket;
 	}
 	MLX5_ASSERT(data != NULL);
-	ret = rte_malloc_socket(__func__, size, alignment, socket);
+	ret = mlx5_malloc(0, size, alignment, socket);
 	if (!ret && size)
 		rte_errno = ENOMEM;
 	return ret;
@@ -181,7 +181,7 @@ static void
 mlx5_free_verbs_buf(void *ptr, void *data __rte_unused)
 {
 	MLX5_ASSERT(data != NULL);
-	rte_free(ptr);
+	mlx5_free(ptr);
 }
 
 /**
@@ -618,9 +618,9 @@ err_secondary:
 			mlx5_glue->port_state_str(port_attr.state),
 			port_attr.state);
 	/* Allocate private eth device data. */
-	priv = rte_zmalloc("ethdev private structure",
+	priv = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
 			   sizeof(*priv),
-			   RTE_CACHE_LINE_SIZE);
+			   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (priv == NULL) {
 		DRV_LOG(ERR, "priv allocation failure");
 		err = ENOMEM;
@@ -1187,7 +1187,7 @@ error:
 			mlx5_flow_id_pool_release(priv->qrss_id_pool);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
-		rte_free(priv);
+		mlx5_free(priv);
 		if (eth_dev != NULL)
 			eth_dev->data->dev_private = NULL;
 	}
@@ -1506,10 +1506,10 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * Now we can determine the maximal
 	 * amount of devices to be spawned.
 	 */
-	list = rte_zmalloc("device spawn data",
-			 sizeof(struct mlx5_dev_spawn_data) *
-			 (np ? np : nd),
-			 RTE_CACHE_LINE_SIZE);
+	list = mlx5_malloc(MLX5_MEM_ZERO,
+			   sizeof(struct mlx5_dev_spawn_data) *
+			   (np ? np : nd),
+			   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!list) {
 		DRV_LOG(ERR, "spawn data array allocation failure");
 		rte_errno = ENOMEM;
@@ -1800,7 +1800,7 @@ exit:
 	if (nl_route >= 0)
 		close(nl_route);
 	if (list)
-		rte_free(list);
+		mlx5_free(list);
 	MLX5_ASSERT(ibv_list);
 	mlx5_glue->free_device_list(ibv_list);
 	return ret;
@@ -2281,8 +2281,8 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
 	/* Allocate memory to grab stat names and values. */
 	str_sz = dev_stats_n * ETH_GSTRING_LEN;
 	strings = (struct ethtool_gstrings *)
-		  rte_malloc("xstats_strings",
-			     str_sz + sizeof(struct ethtool_gstrings), 0);
+		  mlx5_malloc(0, str_sz + sizeof(struct ethtool_gstrings), 0,
+			      SOCKET_ID_ANY);
 	if (!strings) {
 		DRV_LOG(WARNING, "port %u unable to allocate memory for xstats",
 		     dev->data->port_id);
@@ -2332,7 +2332,7 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
 	mlx5_os_read_dev_stat(priv, "out_of_buffer", &stats_ctrl->imissed_base);
 	stats_ctrl->imissed = 0;
 free:
-	rte_free(strings);
+	mlx5_free(strings);
 }
 
 /**

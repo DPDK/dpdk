@@ -38,6 +38,7 @@
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_common.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
@@ -1162,8 +1163,9 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	eeprom = rte_calloc(__func__, 1,
-			    (sizeof(struct ethtool_eeprom) + info->length), 0);
+	eeprom = mlx5_malloc(MLX5_MEM_ZERO,
+			     (sizeof(struct ethtool_eeprom) + info->length), 0,
+			     SOCKET_ID_ANY);
 	if (!eeprom) {
 		DRV_LOG(WARNING, "port %u cannot allocate memory for "
 			"eeprom data", dev->data->port_id);
@@ -1182,6 +1184,6 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 			dev->data->port_id, strerror(rte_errno));
 	else
 		rte_memcpy(info->data, eeprom->data, info->length);
-	rte_free(eeprom);
+	mlx5_free(eeprom);
 	return ret;
 }

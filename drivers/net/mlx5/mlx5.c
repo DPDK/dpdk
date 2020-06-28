@@ -762,11 +762,11 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	}
 	/* No device found, we have to create new shared context. */
 	MLX5_ASSERT(spawn->max_port);
-	sh = rte_zmalloc("ethdev shared ib context",
+	sh = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
 			 sizeof(struct mlx5_dev_ctx_shared) +
 			 spawn->max_port *
 			 sizeof(struct mlx5_dev_shared_port),
-			 RTE_CACHE_LINE_SIZE);
+			 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!sh) {
 		DRV_LOG(ERR, "shared context allocation failure");
 		rte_errno  = ENOMEM;
@@ -899,7 +899,7 @@ error:
 		claim_zero(mlx5_glue->close_device(sh->ctx));
 	if (sh->flow_id_pool)
 		mlx5_flow_id_pool_release(sh->flow_id_pool);
-	rte_free(sh);
+	mlx5_free(sh);
 	MLX5_ASSERT(err > 0);
 	rte_errno = err;
 	return NULL;
@@ -969,7 +969,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	if (sh->flow_id_pool)
 		mlx5_flow_id_pool_release(sh->flow_id_pool);
 	pthread_mutex_destroy(&sh->txpp.mutex);
-	rte_free(sh);
+	mlx5_free(sh);
 exit:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 }
@@ -1229,8 +1229,8 @@ mlx5_proc_priv_init(struct rte_eth_dev *dev)
 	 */
 	ppriv_size =
 		sizeof(struct mlx5_proc_priv) + priv->txqs_n * sizeof(void *);
-	ppriv = rte_malloc_socket("mlx5_proc_priv", ppriv_size,
-				  RTE_CACHE_LINE_SIZE, dev->device->numa_node);
+	ppriv = mlx5_malloc(MLX5_MEM_RTE, ppriv_size, RTE_CACHE_LINE_SIZE,
+			    dev->device->numa_node);
 	if (!ppriv) {
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -1251,7 +1251,7 @@ mlx5_proc_priv_uninit(struct rte_eth_dev *dev)
 {
 	if (!dev->process_private)
 		return;
-	rte_free(dev->process_private);
+	mlx5_free(dev->process_private);
 	dev->process_private = NULL;
 }
 
