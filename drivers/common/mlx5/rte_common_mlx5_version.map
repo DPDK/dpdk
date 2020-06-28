@@ -84,5 +84,11 @@ INTERNAL {
 	mlx5_release_dbr;
 
 	mlx5_translate_port_name;
+
+	mlx5_malloc_mem_select;
+	mlx5_memory_stat_dump;
+	mlx5_malloc;
+	mlx5_realloc;
+	mlx5_free;
 };
 

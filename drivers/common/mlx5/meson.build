@@ -13,6 +13,7 @@ sources += files(
 	'mlx5_common.c',
 	'mlx5_common_mp.c',
 	'mlx5_common_mr.c',
+	'mlx5_malloc.c',
 )
 
 cflags_options = [

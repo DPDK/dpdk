@@ -21,6 +21,7 @@ SRCS-y += linux/mlx5_nl.c
 SRCS-y += linux/mlx5_common_verbs.c
 SRCS-y += mlx5_common_mp.c
 SRCS-y += mlx5_common_mr.c
+SRCS-y += mlx5_malloc.c
 ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 INSTALL-y-lib += $(LIB_GLUE)
 endif
