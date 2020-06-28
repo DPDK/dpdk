@@ -3979,8 +3979,7 @@ ice_get_eeprom_length(struct rte_eth_dev *dev)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* Convert word count to byte count */
-	return hw->nvm.sr_words << 1;
+	return hw->nvm.flash_size;
 }
 
 static int
@@ -3988,26 +3987,24 @@ ice_get_eeprom(struct rte_eth_dev *dev,
 	       struct rte_dev_eeprom_info *eeprom)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint16_t *data = eeprom->data;
-	uint16_t first_word, last_word, nwords;
 	enum ice_status status = ICE_SUCCESS;
-
-	first_word = eeprom->offset >> 1;
-	last_word = (eeprom->offset + eeprom->length - 1) >> 1;
-	nwords = last_word - first_word + 1;
-
-	if (first_word >= hw->nvm.sr_words ||
-	    last_word >= hw->nvm.sr_words) {
-		PMD_DRV_LOG(ERR, "Requested EEPROM bytes out of range.");
-		return -EINVAL;
-	}
+	uint8_t *data = eeprom->data;
 
 	eeprom->magic = hw->vendor_id | (hw->device_id << 16);
 
-	status = ice_read_sr_buf(hw, first_word, &nwords, data);
+	status = ice_acquire_nvm(hw, ICE_RES_READ);
+	if (status) {
+		PMD_DRV_LOG(ERR, "acquire nvm failed.");
+		return -EIO;
+	}
+
+	status = ice_read_flat_nvm(hw, eeprom->offset, &eeprom->length,
+				   data, false);
+
+	ice_release_nvm(hw);
+
 	if (status) {
 		PMD_DRV_LOG(ERR, "EEPROM read failed.");
-		eeprom->length = sizeof(uint16_t) * nwords;
 		return -EIO;
 	}
 
