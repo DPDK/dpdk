@@ -40,7 +40,7 @@ __rte_ring_st_get_tail(struct rte_ring_headtail *ht, uint32_t *tail,
 	RTE_ASSERT(n >= num);
 	num = (n >= num) ? num : 0;
 
-	*tail = h;
+	*tail = t;
 	return num;
 }
 
