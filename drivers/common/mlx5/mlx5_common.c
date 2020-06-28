@@ -13,6 +13,7 @@
 #include "mlx5_common.h"
 #include "mlx5_common_os.h"
 #include "mlx5_common_utils.h"
+#include "mlx5_malloc.h"
 
 int mlx5_common_logtype;
 
@@ -165,8 +166,9 @@ mlx5_alloc_dbr_page(void *ctx)
 	struct mlx5_devx_dbr_page *page;
 
 	/* Allocate space for door-bell page and management data. */
-	page = rte_calloc_socket(__func__, 1, sizeof(struct mlx5_devx_dbr_page),
-				 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	page = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+			   sizeof(struct mlx5_devx_dbr_page),
+			   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!page) {
 		DRV_LOG(ERR, "cannot allocate dbr page");
 		return NULL;
@@ -176,7 +178,7 @@ mlx5_alloc_dbr_page(void *ctx)
 					      MLX5_DBR_PAGE_SIZE, 0);
 	if (!page->umem) {
 		DRV_LOG(ERR, "cannot umem reg dbr page");
-		rte_free(page);
+		mlx5_free(page);
 		return NULL;
 	}
 	return page;
@@ -257,7 +259,7 @@ mlx5_release_dbr(struct mlx5_dbr_page_list *head, uint32_t umem_id,
 		LIST_REMOVE(page, next);
 		if (page->umem)
 			ret = -mlx5_glue->devx_umem_dereg(page->umem);
-		rte_free(page);
+		mlx5_free(page);
 	} else {
 		/* Mark in bitmap that this door-bell is not in use. */
 		offset /= MLX5_DBR_SIZE;

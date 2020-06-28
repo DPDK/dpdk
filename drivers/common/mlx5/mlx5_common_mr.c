@@ -12,6 +12,7 @@
 #include "mlx5_common_mp.h"
 #include "mlx5_common_mr.h"
 #include "mlx5_common_utils.h"
+#include "mlx5_malloc.h"
 
 struct mr_find_contig_memsegs_data {
 	uintptr_t addr;
@@ -47,7 +48,8 @@ mr_btree_expand(struct mlx5_mr_btree *bt, int n)
 	 * Initially cache_bh[] will be given practically enough space and once
 	 * it is expanded, expansion wouldn't be needed again ever.
 	 */
-	mem = rte_realloc(bt->table, n * sizeof(struct mr_cache_entry), 0);
+	mem = mlx5_realloc(bt->table, MLX5_MEM_RTE | MLX5_MEM_ZERO,
+			   n * sizeof(struct mr_cache_entry), 0, SOCKET_ID_ANY);
 	if (mem == NULL) {
 		/* Not an error, B-tree search will be skipped. */
 		DRV_LOG(WARNING, "failed to expand MR B-tree (%p) table",
@@ -180,9 +182,9 @@ mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket)
 	}
 	MLX5_ASSERT(!bt->table && !bt->size);
 	memset(bt, 0, sizeof(*bt));
-	bt->table = rte_calloc_socket("B-tree table",
-				      n, sizeof(struct mr_cache_entry),
-				      0, socket);
+	bt->table = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+				sizeof(struct mr_cache_entry) * n,
+				0, socket);
 	if (bt->table == NULL) {
 		rte_errno = ENOMEM;
 		DEBUG("failed to allocate memory for btree cache on socket %d",
@@ -212,7 +214,7 @@ mlx5_mr_btree_free(struct mlx5_mr_btree *bt)
 		return;
 	DEBUG("freeing B-tree %p with table %p",
 	      (void *)bt, (void *)bt->table);
-	rte_free(bt->table);
+	mlx5_free(bt->table);
 	memset(bt, 0, sizeof(*bt));
 }
 
@@ -443,7 +445,7 @@ mr_free(struct mlx5_mr *mr, mlx5_dereg_mr_t dereg_mr_cb)
 	dereg_mr_cb(&mr->pmd_mr);
 	if (mr->ms_bmp != NULL)
 		rte_bitmap_free(mr->ms_bmp);
-	rte_free(mr);
+	mlx5_free(mr);
 }
 
 void
@@ -650,11 +652,9 @@ alloc_resources:
 	      (void *)addr, data.start, data.end, msl->page_sz, ms_n);
 	/* Size of memory for bitmap. */
 	bmp_size = rte_bitmap_get_memory_footprint(ms_n);
-	mr = rte_zmalloc_socket(NULL,
-				RTE_ALIGN_CEIL(sizeof(*mr),
-					       RTE_CACHE_LINE_SIZE) +
-				bmp_size,
-				RTE_CACHE_LINE_SIZE, msl->socket_id);
+	mr = mlx5_malloc(MLX5_MEM_RTE |  MLX5_MEM_ZERO,
+			 RTE_ALIGN_CEIL(sizeof(*mr), RTE_CACHE_LINE_SIZE) +
+			 bmp_size, RTE_CACHE_LINE_SIZE, msl->socket_id);
 	if (mr == NULL) {
 		DEBUG("Unable to allocate memory for a new MR of"
 		      " address (%p).", (void *)addr);
@@ -1033,10 +1033,9 @@ mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id,
 {
 	struct mlx5_mr *mr = NULL;
 
-	mr = rte_zmalloc_socket(NULL,
-				RTE_ALIGN_CEIL(sizeof(*mr),
-					       RTE_CACHE_LINE_SIZE),
-				RTE_CACHE_LINE_SIZE, socket_id);
+	mr = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+			 RTE_ALIGN_CEIL(sizeof(*mr), RTE_CACHE_LINE_SIZE),
+			 RTE_CACHE_LINE_SIZE, socket_id);
 	if (mr == NULL)
 		return NULL;
 	reg_mr_cb(pd, (void *)addr, len, &mr->pmd_mr);
@@ -1044,7 +1043,7 @@ mlx5_create_mr_ext(void *pd, uintptr_t addr, size_t len, int socket_id,
 		DRV_LOG(WARNING,
 			"Fail to create MR for address (%p)",
 			(void *)addr);
-		rte_free(mr);
+		mlx5_free(mr);
 		return NULL;
 	}
 	mr->msl = NULL; /* Mark it is external memory. */
