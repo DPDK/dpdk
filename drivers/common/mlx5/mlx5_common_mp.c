@@ -11,6 +11,7 @@
 
 #include "mlx5_common_mp.h"
 #include "mlx5_common_utils.h"
+#include "mlx5_malloc.h"
 
 /**
  * Request Memory Region creation to the primary process.
@@ -49,7 +50,7 @@ mlx5_mp_req_mr_create(struct mlx5_mp_id *mp_id, uintptr_t addr)
 	ret = res->result;
 	if (ret)
 		rte_errno = -ret;
-	free(mp_rep.msgs);
+	mlx5_free(mp_rep.msgs);
 	return ret;
 }
 
@@ -89,7 +90,7 @@ mlx5_mp_req_queue_state_modify(struct mlx5_mp_id *mp_id,
 	mp_res = &mp_rep.msgs[0];
 	res = (struct mlx5_mp_param *)mp_res->param;
 	ret = res->result;
-	free(mp_rep.msgs);
+	mlx5_free(mp_rep.msgs);
 	return ret;
 }
 
@@ -136,7 +137,7 @@ mlx5_mp_req_verbs_cmd_fd(struct mlx5_mp_id *mp_id)
 	DRV_LOG(DEBUG, "port %u command FD from primary is %d",
 		mp_id->port_id, ret);
 exit:
-	free(mp_rep.msgs);
+	mlx5_free(mp_rep.msgs);
 	return ret;
 }
 

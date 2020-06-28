@@ -22,6 +22,7 @@
 
 #include "mlx5_nl.h"
 #include "mlx5_common_utils.h"
+#include "mlx5_malloc.h"
 #ifdef HAVE_DEVLINK
 #include <linux/devlink.h>
 #endif
@@ -330,7 +331,7 @@ mlx5_nl_recv(int nlsk_fd, uint32_t sn, int (*cb)(struct nlmsghdr *, void *arg),
 	     void *arg)
 {
 	struct sockaddr_nl sa;
-	void *buf = malloc(MLX5_RECV_BUF_SIZE);
+	void *buf = mlx5_malloc(0, MLX5_RECV_BUF_SIZE, 0, SOCKET_ID_ANY);
 	struct iovec iov = {
 		.iov_base = buf,
 		.iov_len = MLX5_RECV_BUF_SIZE,
@@ -393,7 +394,7 @@ mlx5_nl_recv(int nlsk_fd, uint32_t sn, int (*cb)(struct nlmsghdr *, void *arg),
 		}
 	} while (multipart);
 exit:
-	free(buf);
+	mlx5_free(buf);
 	return ret;
 }
 

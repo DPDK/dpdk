@@ -9,6 +9,7 @@
 #include "mlx5_prm.h"
 #include "mlx5_devx_cmds.h"
 #include "mlx5_common_utils.h"
+#include "mlx5_malloc.h"
 
 
 /**
@@ -89,7 +90,8 @@ error:
 struct mlx5_devx_obj *
 mlx5_devx_cmd_flow_counter_alloc(void *ctx, uint32_t bulk_n_128)
 {
-	struct mlx5_devx_obj *dcs = rte_zmalloc("dcs", sizeof(*dcs), 0);
+	struct mlx5_devx_obj *dcs = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*dcs),
+						0, SOCKET_ID_ANY);
 	uint32_t in[MLX5_ST_SZ_DW(alloc_flow_counter_in)]   = {0};
 	uint32_t out[MLX5_ST_SZ_DW(alloc_flow_counter_out)] = {0};
 
@@ -105,7 +107,7 @@ mlx5_devx_cmd_flow_counter_alloc(void *ctx, uint32_t bulk_n_128)
 	if (!dcs->obj) {
 		DRV_LOG(ERR, "Can't allocate counters - error %d", errno);
 		rte_errno = errno;
-		rte_free(dcs);
+		mlx5_free(dcs);
 		return NULL;
 	}
 	dcs->id = MLX5_GET(alloc_flow_counter_out, out, flow_counter_id);
@@ -210,7 +212,8 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	uint32_t in[in_size_dw];
 	uint32_t out[MLX5_ST_SZ_DW(create_mkey_out)] = {0};
 	void *mkc;
-	struct mlx5_devx_obj *mkey = rte_zmalloc("mkey", sizeof(*mkey), 0);
+	struct mlx5_devx_obj *mkey = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*mkey),
+						 0, SOCKET_ID_ANY);
 	size_t pgsize;
 	uint32_t translation_size;
 
@@ -269,7 +272,7 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 		DRV_LOG(ERR, "Can't create %sdirect mkey - error %d\n",
 			klm_num ? "an in" : "a ", errno);
 		rte_errno = errno;
-		rte_free(mkey);
+		mlx5_free(mkey);
 		return NULL;
 	}
 	mkey->id = MLX5_GET(create_mkey_out, out, mkey_index);
@@ -321,7 +324,7 @@ mlx5_devx_cmd_destroy(struct mlx5_devx_obj *obj)
 	if (!obj)
 		return 0;
 	ret =  mlx5_glue->devx_obj_destroy(obj->obj);
-	rte_free(obj);
+	mlx5_free(obj);
 	return ret;
 }
 
@@ -523,11 +526,12 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 	struct mlx5_devx_obj *parse_flex_obj = NULL;
 	uint32_t i;
 
-	parse_flex_obj = rte_calloc(__func__, 1, sizeof(*parse_flex_obj), 0);
+	parse_flex_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*parse_flex_obj), 0,
+				     SOCKET_ID_ANY);
 	if (!parse_flex_obj) {
 		DRV_LOG(ERR, "Failed to allocate flex parser data");
 		rte_errno = ENOMEM;
-		rte_free(in);
+		mlx5_free(in);
 		return NULL;
 	}
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
@@ -611,7 +615,7 @@ mlx5_devx_cmd_create_flex_parser(void *ctx,
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to create FLEX PARSE GRAPH object "
 			"by using DevX.");
-		rte_free(parse_flex_obj);
+		mlx5_free(parse_flex_obj);
 		return NULL;
 	}
 	parse_flex_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
@@ -911,7 +915,7 @@ mlx5_devx_cmd_create_rq(void *ctx,
 	struct mlx5_devx_wq_attr *wq_attr;
 	struct mlx5_devx_obj *rq = NULL;
 
-	rq = rte_calloc_socket(__func__, 1, sizeof(*rq), 0, socket);
+	rq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rq), 0, socket);
 	if (!rq) {
 		DRV_LOG(ERR, "Failed to allocate RQ data");
 		rte_errno = ENOMEM;
@@ -939,7 +943,7 @@ mlx5_devx_cmd_create_rq(void *ctx,
 	if (!rq->obj) {
 		DRV_LOG(ERR, "Failed to create RQ using DevX");
 		rte_errno = errno;
-		rte_free(rq);
+		mlx5_free(rq);
 		return NULL;
 	}
 	rq->id = MLX5_GET(create_rq_out, out, rqn);
@@ -1016,7 +1020,7 @@ mlx5_devx_cmd_create_tir(void *ctx,
 	void *tir_ctx, *outer, *inner, *rss_key;
 	struct mlx5_devx_obj *tir = NULL;
 
-	tir = rte_calloc(__func__, 1, sizeof(*tir), 0);
+	tir = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tir), 0, SOCKET_ID_ANY);
 	if (!tir) {
 		DRV_LOG(ERR, "Failed to allocate TIR data");
 		rte_errno = ENOMEM;
@@ -1058,7 +1062,7 @@ mlx5_devx_cmd_create_tir(void *ctx,
 	if (!tir->obj) {
 		DRV_LOG(ERR, "Failed to create TIR using DevX");
 		rte_errno = errno;
-		rte_free(tir);
+		mlx5_free(tir);
 		return NULL;
 	}
 	tir->id = MLX5_GET(create_tir_out, out, tirn);
@@ -1088,17 +1092,17 @@ mlx5_devx_cmd_create_rqt(void *ctx,
 	struct mlx5_devx_obj *rqt = NULL;
 	int i;
 
-	in = rte_calloc(__func__, 1, inlen, 0);
+	in = mlx5_malloc(MLX5_MEM_ZERO, inlen, 0, SOCKET_ID_ANY);
 	if (!in) {
 		DRV_LOG(ERR, "Failed to allocate RQT IN data");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	rqt = rte_calloc(__func__, 1, sizeof(*rqt), 0);
+	rqt = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rqt), 0, SOCKET_ID_ANY);
 	if (!rqt) {
 		DRV_LOG(ERR, "Failed to allocate RQT data");
 		rte_errno = ENOMEM;
-		rte_free(in);
+		mlx5_free(in);
 		return NULL;
 	}
 	MLX5_SET(create_rqt_in, in, opcode, MLX5_CMD_OP_CREATE_RQT);
@@ -1109,11 +1113,11 @@ mlx5_devx_cmd_create_rqt(void *ctx,
 	for (i = 0; i < rqt_attr->rqt_actual_size; i++)
 		MLX5_SET(rqtc, rqt_ctx, rq_num[i], rqt_attr->rq_list[i]);
 	rqt->obj = mlx5_glue->devx_obj_create(ctx, in, inlen, out, sizeof(out));
-	rte_free(in);
+	mlx5_free(in);
 	if (!rqt->obj) {
 		DRV_LOG(ERR, "Failed to create RQT using DevX");
 		rte_errno = errno;
-		rte_free(rqt);
+		mlx5_free(rqt);
 		return NULL;
 	}
 	rqt->id = MLX5_GET(create_rqt_out, out, rqtn);
@@ -1138,7 +1142,7 @@ mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 	uint32_t inlen = MLX5_ST_SZ_BYTES(modify_rqt_in) +
 			 rqt_attr->rqt_actual_size * sizeof(uint32_t);
 	uint32_t out[MLX5_ST_SZ_DW(modify_rqt_out)] = {0};
-	uint32_t *in = rte_calloc(__func__, 1, inlen, 0);
+	uint32_t *in = mlx5_malloc(MLX5_MEM_ZERO, inlen, 0, SOCKET_ID_ANY);
 	void *rqt_ctx;
 	int i;
 	int ret;
@@ -1158,7 +1162,7 @@ mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 	for (i = 0; i < rqt_attr->rqt_actual_size; i++)
 		MLX5_SET(rqtc, rqt_ctx, rq_num[i], rqt_attr->rq_list[i]);
 	ret = mlx5_glue->devx_obj_modify(rqt->obj, in, inlen, out, sizeof(out));
-	rte_free(in);
+	mlx5_free(in);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to modify RQT using DevX.");
 		rte_errno = errno;
@@ -1191,7 +1195,7 @@ mlx5_devx_cmd_create_sq(void *ctx,
 	struct mlx5_devx_wq_attr *wq_attr;
 	struct mlx5_devx_obj *sq = NULL;
 
-	sq = rte_calloc(__func__, 1, sizeof(*sq), 0);
+	sq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*sq), 0, SOCKET_ID_ANY);
 	if (!sq) {
 		DRV_LOG(ERR, "Failed to allocate SQ data");
 		rte_errno = ENOMEM;
@@ -1227,7 +1231,7 @@ mlx5_devx_cmd_create_sq(void *ctx,
 	if (!sq->obj) {
 		DRV_LOG(ERR, "Failed to create SQ using DevX");
 		rte_errno = errno;
-		rte_free(sq);
+		mlx5_free(sq);
 		return NULL;
 	}
 	sq->id = MLX5_GET(create_sq_out, out, sqn);
@@ -1291,7 +1295,7 @@ mlx5_devx_cmd_create_tis(void *ctx,
 	struct mlx5_devx_obj *tis = NULL;
 	void *tis_ctx;
 
-	tis = rte_calloc(__func__, 1, sizeof(*tis), 0);
+	tis = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tis), 0, SOCKET_ID_ANY);
 	if (!tis) {
 		DRV_LOG(ERR, "Failed to allocate TIS object");
 		rte_errno = ENOMEM;
@@ -1311,7 +1315,7 @@ mlx5_devx_cmd_create_tis(void *ctx,
 	if (!tis->obj) {
 		DRV_LOG(ERR, "Failed to create TIS using DevX");
 		rte_errno = errno;
-		rte_free(tis);
+		mlx5_free(tis);
 		return NULL;
 	}
 	tis->id = MLX5_GET(create_tis_out, out, tisn);
@@ -1333,7 +1337,7 @@ mlx5_devx_cmd_create_td(void *ctx)
 	uint32_t out[MLX5_ST_SZ_DW(alloc_transport_domain_out)] = {0};
 	struct mlx5_devx_obj *td = NULL;
 
-	td = rte_calloc(__func__, 1, sizeof(*td), 0);
+	td = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*td), 0, SOCKET_ID_ANY);
 	if (!td) {
 		DRV_LOG(ERR, "Failed to allocate TD object");
 		rte_errno = ENOMEM;
@@ -1346,7 +1350,7 @@ mlx5_devx_cmd_create_td(void *ctx)
 	if (!td->obj) {
 		DRV_LOG(ERR, "Failed to create TIS using DevX");
 		rte_errno = errno;
-		rte_free(td);
+		mlx5_free(td);
 		return NULL;
 	}
 	td->id = MLX5_GET(alloc_transport_domain_out, out,
@@ -1410,8 +1414,9 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 {
 	uint32_t in[MLX5_ST_SZ_DW(create_cq_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(create_cq_out)] = {0};
-	struct mlx5_devx_obj *cq_obj = rte_zmalloc(__func__, sizeof(*cq_obj),
-						   0);
+	struct mlx5_devx_obj *cq_obj = mlx5_malloc(MLX5_MEM_ZERO,
+						   sizeof(*cq_obj),
+						   0, SOCKET_ID_ANY);
 	void *cqctx = MLX5_ADDR_OF(create_cq_in, in, cq_context);
 
 	if (!cq_obj) {
@@ -1446,7 +1451,7 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	if (!cq_obj->obj) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to create CQ using DevX errno=%d.", errno);
-		rte_free(cq_obj);
+		mlx5_free(cq_obj);
 		return NULL;
 	}
 	cq_obj->id = MLX5_GET(create_cq_out, out, cqn);
@@ -1470,8 +1475,9 @@ mlx5_devx_cmd_create_virtq(void *ctx,
 {
 	uint32_t in[MLX5_ST_SZ_DW(create_virtq_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
-	struct mlx5_devx_obj *virtq_obj = rte_zmalloc(__func__,
-						     sizeof(*virtq_obj), 0);
+	struct mlx5_devx_obj *virtq_obj = mlx5_malloc(MLX5_MEM_ZERO,
+						     sizeof(*virtq_obj),
+						     0, SOCKET_ID_ANY);
 	void *virtq = MLX5_ADDR_OF(create_virtq_in, in, virtq);
 	void *hdr = MLX5_ADDR_OF(create_virtq_in, in, hdr);
 	void *virtctx = MLX5_ADDR_OF(virtio_net_q, virtq, virtio_q_context);
@@ -1519,7 +1525,7 @@ mlx5_devx_cmd_create_virtq(void *ctx,
 	if (!virtq_obj->obj) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to create VIRTQ Obj using DevX.");
-		rte_free(virtq_obj);
+		mlx5_free(virtq_obj);
 		return NULL;
 	}
 	virtq_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
@@ -1641,8 +1647,9 @@ mlx5_devx_cmd_create_qp(void *ctx,
 {
 	uint32_t in[MLX5_ST_SZ_DW(create_qp_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(create_qp_out)] = {0};
-	struct mlx5_devx_obj *qp_obj = rte_zmalloc(__func__, sizeof(*qp_obj),
-						   0);
+	struct mlx5_devx_obj *qp_obj = mlx5_malloc(MLX5_MEM_ZERO,
+						   sizeof(*qp_obj),
+						   0, SOCKET_ID_ANY);
 	void *qpc = MLX5_ADDR_OF(create_qp_in, in, qpc);
 
 	if (!qp_obj) {
@@ -1697,7 +1704,7 @@ mlx5_devx_cmd_create_qp(void *ctx,
 	if (!qp_obj->obj) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to create QP Obj using DevX.");
-		rte_free(qp_obj);
+		mlx5_free(qp_obj);
 		return NULL;
 	}
 	qp_obj->id = MLX5_GET(create_qp_out, out, qpn);
@@ -1793,8 +1800,9 @@ mlx5_devx_cmd_create_virtio_q_counters(void *ctx)
 {
 	uint32_t in[MLX5_ST_SZ_DW(create_virtio_q_counters_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
-	struct mlx5_devx_obj *couners_obj = rte_zmalloc(__func__,
-						       sizeof(*couners_obj), 0);
+	struct mlx5_devx_obj *couners_obj = mlx5_malloc(MLX5_MEM_ZERO,
+						       sizeof(*couners_obj), 0,
+						       SOCKET_ID_ANY);
 	void *hdr = MLX5_ADDR_OF(create_virtio_q_counters_in, in, hdr);
 
 	if (!couners_obj) {
@@ -1812,7 +1820,7 @@ mlx5_devx_cmd_create_virtio_q_counters(void *ctx)
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to create virtio queue counters Obj using"
 			" DevX.");
-		rte_free(couners_obj);
+		mlx5_free(couners_obj);
 		return NULL;
 	}
 	couners_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
