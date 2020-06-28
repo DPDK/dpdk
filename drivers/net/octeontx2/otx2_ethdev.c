@@ -298,8 +298,7 @@ nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
 				      NIX_CQ_ALIGN, dev->node);
 	if (rz == NULL) {
 		otx2_err("Failed to allocate mem for cq hw ring");
-		rc = -ENOMEM;
-		goto fail;
+		return -ENOMEM;
 	}
 	memset(rz->addr, 0, rz->len);
 	rxq->desc = (uintptr_t)rz->addr;
@@ -348,7 +347,7 @@ nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
 	rc = otx2_mbox_process(mbox);
 	if (rc) {
 		otx2_err("Failed to init cq context");
-		goto fail;
+		return rc;
 	}
 
 	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
@@ -387,12 +386,44 @@ nix_cq_rq_init(struct rte_eth_dev *eth_dev, struct otx2_eth_dev *dev,
 	rc = otx2_mbox_process(mbox);
 	if (rc) {
 		otx2_err("Failed to init rq context");
-		goto fail;
+		return rc;
+	}
+
+	if (dev->lock_rx_ctx) {
+		aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+		aq->qidx = qid;
+		aq->ctype = NIX_AQ_CTYPE_CQ;
+		aq->op = NIX_AQ_INSTOP_LOCK;
+
+		aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq) {
+			/* The shared memory buffer can be full.
+			 * Flush it and retry
+			 */
+			otx2_mbox_msg_send(mbox, 0);
+			rc = otx2_mbox_wait_for_rsp(mbox, 0);
+			if (rc < 0) {
+				otx2_err("Failed to LOCK cq context");
+				return rc;
+			}
+
+			aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+			if (!aq) {
+				otx2_err("Failed to LOCK rq context");
+				return -ENOMEM;
+			}
+		}
+		aq->qidx = qid;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_LOCK;
+		rc = otx2_mbox_process(mbox);
+		if (rc < 0) {
+			otx2_err("Failed to LOCK rq context");
+			return rc;
+		}
 	}
 
 	return 0;
-fail:
-	return rc;
 }
 
 static int
@@ -437,6 +468,40 @@ nix_cq_rq_uninit(struct rte_eth_dev *eth_dev, struct otx2_eth_rxq *rxq)
 	if (rc < 0) {
 		otx2_err("Failed to disable cq context");
 		return rc;
+	}
+
+	if (dev->lock_rx_ctx) {
+		aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+		aq->qidx = rxq->rq;
+		aq->ctype = NIX_AQ_CTYPE_CQ;
+		aq->op = NIX_AQ_INSTOP_UNLOCK;
+
+		aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!aq) {
+			/* The shared memory buffer can be full.
+			 * Flush it and retry
+			 */
+			otx2_mbox_msg_send(mbox, 0);
+			rc = otx2_mbox_wait_for_rsp(mbox, 0);
+			if (rc < 0) {
+				otx2_err("Failed to UNLOCK cq context");
+				return rc;
+			}
+
+			aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+			if (!aq) {
+				otx2_err("Failed to UNLOCK rq context");
+				return -ENOMEM;
+			}
+		}
+		aq->qidx = rxq->rq;
+		aq->ctype = NIX_AQ_CTYPE_RQ;
+		aq->op = NIX_AQ_INSTOP_UNLOCK;
+		rc = otx2_mbox_process(mbox);
+		if (rc < 0) {
+			otx2_err("Failed to UNLOCK rq context");
+			return rc;
+		}
 	}
 
 	return 0;
@@ -725,6 +790,94 @@ nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
 }
 
 static int
+nix_sqb_lock(struct rte_mempool *mp)
+{
+	struct otx2_npa_lf *npa_lf = otx2_intra_dev_get_cfg()->npa_lf;
+	struct npa_aq_enq_req *req;
+	int rc;
+
+	req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+	req->aura_id = npa_lf_aura_handle_to_aura(mp->pool_id);
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_LOCK;
+
+	req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+	if (!req) {
+		/* The shared memory buffer can be full.
+		 * Flush it and retry
+		 */
+		otx2_mbox_msg_send(npa_lf->mbox, 0);
+		rc = otx2_mbox_wait_for_rsp(npa_lf->mbox, 0);
+		if (rc < 0) {
+			otx2_err("Failed to LOCK AURA context");
+			return rc;
+		}
+
+		req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+		if (!req) {
+			otx2_err("Failed to LOCK POOL context");
+			return -ENOMEM;
+		}
+	}
+
+	req->aura_id = npa_lf_aura_handle_to_aura(mp->pool_id);
+	req->ctype = NPA_AQ_CTYPE_POOL;
+	req->op = NPA_AQ_INSTOP_LOCK;
+
+	rc = otx2_mbox_process(npa_lf->mbox);
+	if (rc < 0) {
+		otx2_err("Unable to lock POOL in NDC");
+		return rc;
+	}
+
+	return 0;
+}
+
+static int
+nix_sqb_unlock(struct rte_mempool *mp)
+{
+	struct otx2_npa_lf *npa_lf = otx2_intra_dev_get_cfg()->npa_lf;
+	struct npa_aq_enq_req *req;
+	int rc;
+
+	req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+	req->aura_id = npa_lf_aura_handle_to_aura(mp->pool_id);
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_UNLOCK;
+
+	req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+	if (!req) {
+		/* The shared memory buffer can be full.
+		 * Flush it and retry
+		 */
+		otx2_mbox_msg_send(npa_lf->mbox, 0);
+		rc = otx2_mbox_wait_for_rsp(npa_lf->mbox, 0);
+		if (rc < 0) {
+			otx2_err("Failed to UNLOCK AURA context");
+			return rc;
+		}
+
+		req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+		if (!req) {
+			otx2_err("Failed to UNLOCK POOL context");
+			return -ENOMEM;
+		}
+	}
+	req = otx2_mbox_alloc_msg_npa_aq_enq(npa_lf->mbox);
+	req->aura_id = npa_lf_aura_handle_to_aura(mp->pool_id);
+	req->ctype = NPA_AQ_CTYPE_POOL;
+	req->op = NPA_AQ_INSTOP_UNLOCK;
+
+	rc = otx2_mbox_process(npa_lf->mbox);
+	if (rc < 0) {
+		otx2_err("Unable to UNLOCK AURA in NDC");
+		return rc;
+	}
+
+	return 0;
+}
+
+static int
 nix_sq_init(struct otx2_eth_txq *txq)
 {
 	struct otx2_eth_dev *dev = txq->dev;
@@ -766,7 +919,20 @@ nix_sq_init(struct otx2_eth_txq *txq)
 	/* Many to one reduction */
 	sq->sq.qint_idx = txq->sq % dev->qints;
 
-	return otx2_mbox_process(mbox);
+	rc = otx2_mbox_process(mbox);
+	if (rc < 0)
+		return rc;
+
+	if (dev->lock_tx_ctx) {
+		sq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+		sq->qidx = txq->sq;
+		sq->ctype = NIX_AQ_CTYPE_SQ;
+		sq->op = NIX_AQ_INSTOP_LOCK;
+
+		rc = otx2_mbox_process(mbox);
+	}
+
+	return rc;
 }
 
 static int
@@ -808,6 +974,20 @@ nix_sq_uninit(struct otx2_eth_txq *txq)
 	rc = otx2_mbox_process(mbox);
 	if (rc)
 		return rc;
+
+	if (dev->lock_tx_ctx) {
+		/* Unlock sq */
+		aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+		aq->qidx = txq->sq;
+		aq->ctype = NIX_AQ_CTYPE_SQ;
+		aq->op = NIX_AQ_INSTOP_UNLOCK;
+
+		rc = otx2_mbox_process(mbox);
+		if (rc < 0)
+			return rc;
+
+		nix_sqb_unlock(txq->sqb_pool);
+	}
 
 	/* Read SQ and free sqb's */
 	aq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
@@ -930,6 +1110,8 @@ nix_alloc_sqb_pool(int port, struct otx2_eth_txq *txq, uint16_t nb_desc)
 	}
 
 	nix_sqb_aura_limit_cfg(txq->sqb_pool, txq->nb_sqb_bufs);
+	if (dev->lock_tx_ctx)
+		nix_sqb_lock(txq->sqb_pool);
 
 	return 0;
 fail:

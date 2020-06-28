@@ -33,6 +33,29 @@ otx2_nix_rss_tbl_init(struct otx2_eth_dev *dev,
 		req->qidx = (group * rss->rss_size) + idx;
 		req->ctype = NIX_AQ_CTYPE_RSS;
 		req->op = NIX_AQ_INSTOP_INIT;
+
+		if (!dev->lock_rx_ctx)
+			continue;
+
+		req = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+		if (!req) {
+			/* The shared memory buffer can be full.
+			 * Flush it and retry
+			 */
+			otx2_mbox_msg_send(mbox, 0);
+			rc = otx2_mbox_wait_for_rsp(mbox, 0);
+			if (rc < 0)
+				return rc;
+
+			req = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+			if (!req)
+				return -ENOMEM;
+		}
+		req->rss.rq = ind_tbl[idx];
+		/* Fill AQ info */
+		req->qidx = (group * rss->rss_size) + idx;
+		req->ctype = NIX_AQ_CTYPE_RSS;
+		req->op = NIX_AQ_INSTOP_LOCK;
 	}
 
 	otx2_mbox_msg_send(mbox, 0);

@@ -210,6 +210,22 @@ Runtime Config Options
    With the above configuration, application can enable inline IPsec processing
    on 128 SAs (SPI 0-127).
 
+- ``Lock Rx contexts in NDC cache``
+
+   Lock Rx contexts in NDC cache by using ``lock_rx_ctx`` parameter.
+
+   For example::
+
+      -w 0002:02:00.0,lock_rx_ctx=1
+
+- ``Lock Tx contexts in NDC cache``
+
+   Lock Tx contexts in NDC cache by using ``lock_tx_ctx`` parameter.
+
+   For example::
+
+      -w 0002:02:00.0,lock_tx_ctx=1
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the

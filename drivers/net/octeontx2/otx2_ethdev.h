@@ -274,6 +274,8 @@ struct otx2_eth_dev {
 	bool dmac_filter_enable;
 	uint8_t lf_tx_stats;
 	uint8_t lf_rx_stats;
+	uint8_t lock_rx_ctx;
+	uint8_t lock_tx_ctx;
 	uint16_t flags;
 	uint16_t cints;
 	uint16_t qints;
