@@ -2603,13 +2603,13 @@ flow_dv_encap_decap_resource_register
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate resource memory");
 	*cache_resource = *resource;
-	cache_resource->verbs_action =
+	cache_resource->action =
 		mlx5_glue->dv_create_flow_action_packet_reformat
 			(sh->ctx, cache_resource->reformat_type,
 			 cache_resource->ft_type, domain, cache_resource->flags,
 			 cache_resource->size,
 			 (cache_resource->size ? cache_resource->buf : NULL));
-	if (!cache_resource->verbs_action) {
+	if (!cache_resource->action) {
 		rte_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -4030,12 +4030,12 @@ flow_dv_modify_hdr_resource_register
 					  "cannot allocate resource memory");
 	*cache_resource = *resource;
 	rte_memcpy(cache_resource->actions, resource->actions, actions_len);
-	cache_resource->verbs_action =
+	cache_resource->action =
 		mlx5_glue->dv_create_flow_action_modify_header
 					(sh->ctx, cache_resource->ft_type, ns,
 					 cache_resource->flags, actions_len,
 					 (uint64_t *)cache_resource->actions);
-	if (!cache_resource->verbs_action) {
+	if (!cache_resource->action) {
 		rte_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8093,7 +8093,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 							   error))
 				return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
-					dev_flow->dv.encap_decap->verbs_action;
+					dev_flow->dv.encap_decap->action;
 			action_flags |= MLX5_FLOW_ACTION_ENCAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
@@ -8103,7 +8103,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 							   error))
 				return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
-					dev_flow->dv.encap_decap->verbs_action;
+					dev_flow->dv.encap_decap->action;
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
@@ -8113,7 +8113,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 					(dev, actions, dev_flow, attr, error))
 					return -rte_errno;
 				dev_flow->dv.actions[actions_n++] =
-					dev_flow->dv.encap_decap->verbs_action;
+					dev_flow->dv.encap_decap->action;
 			} else {
 				/* Handle encap without preceding decap. */
 				if (flow_dv_create_action_l2_encap
@@ -8121,7 +8121,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				     error))
 					return -rte_errno;
 				dev_flow->dv.actions[actions_n++] =
-					dev_flow->dv.encap_decap->verbs_action;
+					dev_flow->dv.encap_decap->action;
 			}
 			action_flags |= MLX5_FLOW_ACTION_ENCAP;
 			break;
@@ -8133,7 +8133,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 				    (dev, dev_flow, attr->transfer, error))
 					return -rte_errno;
 				dev_flow->dv.actions[actions_n++] =
-					dev_flow->dv.encap_decap->verbs_action;
+					dev_flow->dv.encap_decap->action;
 			}
 			/* If decap is followed by encap, handle it at encap. */
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
@@ -8315,7 +8315,7 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 					(dev, mhdr_res, dev_flow, error))
 					return -rte_errno;
 				dev_flow->dv.actions[modify_action_position] =
-					handle->dvh.modify_hdr->verbs_action;
+					handle->dvh.modify_hdr->action;
 			}
 			if (action_flags & MLX5_FLOW_ACTION_COUNT) {
 				flow->counter =
@@ -8778,13 +8778,13 @@ flow_dv_encap_decap_resource_release(struct rte_eth_dev *dev,
 			 idx);
 	if (!cache_resource)
 		return 0;
-	MLX5_ASSERT(cache_resource->verbs_action);
+	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "encap/decap resource %p: refcnt %d--",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
 	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
 		claim_zero(mlx5_glue->destroy_flow_action
-				(cache_resource->verbs_action));
+				(cache_resource->action));
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_DECAP_ENCAP],
 			     &priv->sh->encaps_decaps, idx,
 			     cache_resource, next);
@@ -8881,13 +8881,13 @@ flow_dv_modify_hdr_resource_release(struct mlx5_flow_handle *handle)
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource =
 							handle->dvh.modify_hdr;
 
-	MLX5_ASSERT(cache_resource->verbs_action);
+	MLX5_ASSERT(cache_resource->action);
 	DRV_LOG(DEBUG, "modify-header resource %p: refcnt %d--",
 		(void *)cache_resource,
 		rte_atomic32_read(&cache_resource->refcnt));
 	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
 		claim_zero(mlx5_glue->destroy_flow_action
-				(cache_resource->verbs_action));
+				(cache_resource->action));
 		LIST_REMOVE(cache_resource, next);
 		rte_free(cache_resource);
 		DRV_LOG(DEBUG, "modify-header resource %p: removed",

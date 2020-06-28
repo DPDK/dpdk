@@ -399,8 +399,8 @@ struct mlx5_flow_dv_encap_decap_resource {
 	ILIST_ENTRY(uint32_t)next;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
-	void *verbs_action;
-	/**< Verbs encap/decap action object. */
+	void *action;
+	/**< Encap/decap action object. */
 	uint8_t buf[MLX5_ENCAP_MAX_LEN];
 	size_t size;
 	uint8_t reformat_type;
@@ -413,7 +413,7 @@ struct mlx5_flow_dv_tag_resource {
 	struct mlx5_hlist_entry entry;
 	/**< hash list entry for tag resource, tag value as the key. */
 	void *action;
-	/**< Verbs tag action object. */
+	/**< Tag action object. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
 	uint32_t idx; /**< Index for the index memory pool. */
 };
@@ -436,8 +436,8 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	LIST_ENTRY(mlx5_flow_dv_modify_hdr_resource) next;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
-	struct ibv_flow_action *verbs_action;
-	/**< Verbs modify header action object. */
+	struct ibv_flow_action *action;
+	/**< Modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint32_t actions_num; /**< Number of modification actions. */
 	uint64_t flags; /**< Flags for RDMA API. */
@@ -458,7 +458,7 @@ struct mlx5_flow_dv_port_id_action_resource {
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
 	void *action;
-	/**< Verbs tag action object. */
+	/**< Action object. */
 	uint32_t port_id; /**< Port ID value. */
 };
 
@@ -467,7 +467,7 @@ struct mlx5_flow_dv_push_vlan_action_resource {
 	ILIST_ENTRY(uint32_t)next;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
-	void *action; /**< Direct verbs action object. */
+	void *action; /**< Action object. */
 	uint8_t ft_type; /**< Flow table type, Rx, Tx or FDB. */
 	rte_be32_t vlan_tag; /**< VLAN tag value. */
 };
@@ -660,7 +660,7 @@ struct mlx5_flow_verbs_workspace {
 struct mlx5_flow {
 	struct rte_flow *flow; /**< Pointer to the main flow. */
 	uint32_t flow_idx; /**< The memory pool index to the main flow. */
-	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
+	uint64_t hash_fields; /**< Hash Rx queue hash fields. */
 	uint64_t act_flags;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	bool external; /**< true if the flow is created external to PMD. */
