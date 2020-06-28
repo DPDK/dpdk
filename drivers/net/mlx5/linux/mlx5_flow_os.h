@@ -167,4 +167,202 @@ mlx5_flow_os_destroy_flow_matcher(void *matcher)
 	return mlx5_glue->dv_destroy_flow_matcher(matcher);
 }
 
+/**
+ * Create flow action: packet reformat.
+ *
+ * @param[in] ctx
+ *   Pointer to relevant device context.
+ * @param[in] domain
+ *   Pointer to domain handler.
+ * @param[in] resource
+ *   Pointer to action data resource.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_packet_reformat(void *ctx, void *domain,
+						void *resource, void **action)
+{
+	struct mlx5_flow_dv_encap_decap_resource *res =
+			(struct mlx5_flow_dv_encap_decap_resource *)resource;
+
+	*action = mlx5_glue->dv_create_flow_action_packet_reformat
+					(ctx, res->reformat_type, res->ft_type,
+					 domain, res->flags, res->size,
+					 (res->size ? res->buf : NULL));
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Create flow action: modify header.
+ *
+ * @param[in] ctx
+ *   Pointer to relevant device context.
+ * @param[in] domain
+ *   Pointer to domain handler.
+ * @param[in] resource
+ *   Pointer to action data resource.
+ * @param[in] actions_len
+ *   Total length of actions data in resource.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_modify_header(void *ctx, void *domain,
+					      void *resource,
+					      uint32_t actions_len,
+					      void **action)
+{
+	struct mlx5_flow_dv_modify_hdr_resource *res =
+			(struct mlx5_flow_dv_modify_hdr_resource *)resource;
+
+	*action = mlx5_glue->dv_create_flow_action_modify_header
+					(ctx, res->ft_type, domain, res->flags,
+					 actions_len, (uint64_t *)res->actions);
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Create flow action: destination flow table.
+ *
+ * @param[in] tbl_obj
+ *   Pointer to destination table object.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_dest_flow_tbl(void *tbl_obj, void **action)
+{
+	*action = mlx5_glue->dr_create_flow_action_dest_flow_tbl(tbl_obj);
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Create flow action: destination port.
+ *
+ * @param[in] domain
+ *   Pointer to domain handler.
+ * @param[in] port_id
+ *   Destination port ID.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_dest_port(void *domain, uint32_t port_id,
+					  void **action)
+{
+	/*
+	 * Depending on rdma_core version the glue routine calls
+	 * either mlx5dv_dr_action_create_dest_ib_port(domain, dev_port)
+	 * or mlx5dv_dr_action_create_dest_vport(domain, vport_id).
+	 */
+	*action = mlx5_glue->dr_create_flow_action_dest_port(domain, port_id);
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Create flow action: push vlan.
+ *
+ * @param[in] domain
+ *   Pointer to domain handler.
+ * @param[in] vlan_tag
+ *   VLAN tag value.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_push_vlan(void *domain, rte_be32_t vlan_tag,
+					  void **action)
+{
+	*action = mlx5_glue->dr_create_flow_action_push_vlan(domain, vlan_tag);
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Create flow action: count.
+ *
+ * @param[in] cnt_obj
+ *   Pointer to DevX counter object.
+ * @param[in] offset
+ *   Offset of counter in array.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_count(void *cnt_obj, uint16_t offset,
+				      void **action)
+{
+	*action = mlx5_glue->dv_create_flow_action_counter(cnt_obj, offset);
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Create flow action: tag.
+ *
+ * @param[in] tag
+ *   Tag value.
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_tag(uint32_t tag, void **action)
+{
+	*action = mlx5_glue->dv_create_flow_action_tag(tag);
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Create flow action: drop.
+ *
+ * @param[out] action
+ *   Pointer to a valid action on success, NULL otherwise.
+ *
+ * @return
+ *   0 on success, or -1 on failure and errno is set.
+ */
+static inline int
+mlx5_flow_os_create_flow_action_drop(void **action)
+{
+	*action = mlx5_glue->dr_create_flow_action_drop();
+	return (*action) ? 0 : -1;
+}
+
+/**
+ * Destroy flow action.
+ *
+ * @param[in] action
+ *   Pointer to action object to destroy.
+ *
+ * @return
+ *   0 on success, or the value of errno on failure.
+ */
+static inline int
+mlx5_flow_os_destroy_flow_action(void *action)
+{
+	return mlx5_glue->destroy_flow_action(action);
+}
+
 #endif /* RTE_PMD_MLX5_FLOW_OS_H_ */

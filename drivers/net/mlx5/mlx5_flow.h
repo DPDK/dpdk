@@ -436,7 +436,7 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	LIST_ENTRY(mlx5_flow_dv_modify_hdr_resource) next;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
-	struct ibv_flow_action *action;
+	void *action;
 	/**< Modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint32_t actions_num; /**< Number of modification actions. */
