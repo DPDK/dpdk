@@ -7340,8 +7340,8 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		domain = sh->tx_domain;
 	else
 		domain = sh->rx_domain;
-	tbl->obj = mlx5_glue->dr_create_flow_tbl(domain, table_id);
-	if (!tbl->obj) {
+	ret = mlx5_flow_os_create_flow_tbl(domain, table_id, &tbl->obj);
+	if (ret) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "cannot create flow table object");
@@ -7361,7 +7361,7 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "cannot insert flow table data entry");
-		mlx5_glue->dr_destroy_flow_tbl(tbl->obj);
+		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
 		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_JUMP], idx);
 	}
 	rte_atomic32_inc(&tbl->refcnt);
@@ -7393,7 +7393,7 @@ flow_dv_tbl_resource_release(struct rte_eth_dev *dev,
 	if (rte_atomic32_dec_and_test(&tbl->refcnt)) {
 		struct mlx5_hlist_entry *pos = &tbl_data->entry;
 
-		mlx5_glue->dr_destroy_flow_tbl(tbl->obj);
+		mlx5_flow_os_destroy_flow_tbl(tbl->obj);
 		tbl->obj = NULL;
 		/* remove the entry from the hash list and free memory. */
 		mlx5_hlist_remove(sh->flow_tbls, pos);
@@ -7437,6 +7437,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	};
 	struct mlx5_flow_tbl_resource *tbl;
 	struct mlx5_flow_tbl_data_entry *tbl_data;
+	int ret;
 
 	tbl = flow_dv_tbl_resource_get(dev, key->table_id, key->direction,
 				       key->domain, error);
@@ -7479,9 +7480,9 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	dv_attr.priority = matcher->priority;
 	if (key->direction)
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
-	cache_matcher->matcher_object =
-		mlx5_glue->dv_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj);
-	if (!cache_matcher->matcher_object) {
+	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj,
+					       &cache_matcher->matcher_object);
+	if (ret) {
 		rte_free(cache_matcher);
 #ifdef HAVE_MLX5DV_DR
 		flow_dv_tbl_resource_release(dev, tbl);
@@ -8693,11 +8694,10 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			dh->rix_default_fate =  MLX5_FLOW_FATE_DEFAULT_MISS;
 			dv->actions[n++] = priv->sh->default_miss.action;
 		}
-		dh->drv_flow =
-			mlx5_glue->dv_create_flow(dv_h->matcher->matcher_object,
-						  (void *)&dv->value, n,
-						  dv->actions);
-		if (!dh->drv_flow) {
+		err = mlx5_flow_os_create_flow(dv_h->matcher->matcher_object,
+					       (void *)&dv->value, n,
+					       dv->actions, &dh->drv_flow);
+		if (err) {
 			rte_flow_error_set(error, errno,
 					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					   NULL,
@@ -8762,7 +8762,7 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 		dev->data->port_id, (void *)matcher,
 		rte_atomic32_read(&matcher->refcnt));
 	if (rte_atomic32_dec_and_test(&matcher->refcnt)) {
-		claim_zero(mlx5_glue->dv_destroy_flow_matcher
+		claim_zero(mlx5_flow_os_destroy_flow_matcher
 			   (matcher->matcher_object));
 		LIST_REMOVE(matcher, next);
 		/* table ref-- in release interface. */
@@ -9061,7 +9061,7 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 		if (!dh)
 			return;
 		if (dh->drv_flow) {
-			claim_zero(mlx5_glue->dv_destroy_flow(dh->drv_flow));
+			claim_zero(mlx5_flow_os_destroy_flow(dh->drv_flow));
 			dh->drv_flow = NULL;
 		}
 		if (dh->fate_action == MLX5_FLOW_FATE_DROP ||
@@ -9242,40 +9242,40 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 	if (!mtd || !priv->config.dv_flow_en)
 		return 0;
 	if (mtd->ingress.policer_rules[RTE_MTR_DROPPED])
-		claim_zero(mlx5_glue->dv_destroy_flow
-			  (mtd->ingress.policer_rules[RTE_MTR_DROPPED]));
+		claim_zero(mlx5_flow_os_destroy_flow
+			   (mtd->ingress.policer_rules[RTE_MTR_DROPPED]));
 	if (mtd->egress.policer_rules[RTE_MTR_DROPPED])
-		claim_zero(mlx5_glue->dv_destroy_flow
-			  (mtd->egress.policer_rules[RTE_MTR_DROPPED]));
+		claim_zero(mlx5_flow_os_destroy_flow
+			   (mtd->egress.policer_rules[RTE_MTR_DROPPED]));
 	if (mtd->transfer.policer_rules[RTE_MTR_DROPPED])
-		claim_zero(mlx5_glue->dv_destroy_flow
-			  (mtd->transfer.policer_rules[RTE_MTR_DROPPED]));
+		claim_zero(mlx5_flow_os_destroy_flow
+			   (mtd->transfer.policer_rules[RTE_MTR_DROPPED]));
 	if (mtd->egress.color_matcher)
-		claim_zero(mlx5_glue->dv_destroy_flow_matcher
-			  (mtd->egress.color_matcher));
+		claim_zero(mlx5_flow_os_destroy_flow_matcher
+			   (mtd->egress.color_matcher));
 	if (mtd->egress.any_matcher)
-		claim_zero(mlx5_glue->dv_destroy_flow_matcher
-			  (mtd->egress.any_matcher));
+		claim_zero(mlx5_flow_os_destroy_flow_matcher
+			   (mtd->egress.any_matcher));
 	if (mtd->egress.tbl)
 		flow_dv_tbl_resource_release(dev, mtd->egress.tbl);
 	if (mtd->egress.sfx_tbl)
 		flow_dv_tbl_resource_release(dev, mtd->egress.sfx_tbl);
 	if (mtd->ingress.color_matcher)
-		claim_zero(mlx5_glue->dv_destroy_flow_matcher
-			  (mtd->ingress.color_matcher));
+		claim_zero(mlx5_flow_os_destroy_flow_matcher
+			   (mtd->ingress.color_matcher));
 	if (mtd->ingress.any_matcher)
-		claim_zero(mlx5_glue->dv_destroy_flow_matcher
-			  (mtd->ingress.any_matcher));
+		claim_zero(mlx5_flow_os_destroy_flow_matcher
+			   (mtd->ingress.any_matcher));
 	if (mtd->ingress.tbl)
 		flow_dv_tbl_resource_release(dev, mtd->ingress.tbl);
 	if (mtd->ingress.sfx_tbl)
 		flow_dv_tbl_resource_release(dev, mtd->ingress.sfx_tbl);
 	if (mtd->transfer.color_matcher)
-		claim_zero(mlx5_glue->dv_destroy_flow_matcher
-			  (mtd->transfer.color_matcher));
+		claim_zero(mlx5_flow_os_destroy_flow_matcher
+			   (mtd->transfer.color_matcher));
 	if (mtd->transfer.any_matcher)
-		claim_zero(mlx5_glue->dv_destroy_flow_matcher
-			  (mtd->transfer.any_matcher));
+		claim_zero(mlx5_flow_os_destroy_flow_matcher
+			   (mtd->transfer.any_matcher));
 	if (mtd->transfer.tbl)
 		flow_dv_tbl_resource_release(dev, mtd->transfer.tbl);
 	if (mtd->transfer.sfx_tbl)
@@ -9330,6 +9330,7 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 	struct mlx5_meter_domain_info *dtb;
 	struct rte_flow_error error;
 	int i = 0;
+	int ret;
 
 	if (transfer)
 		dtb = &mtb->transfer;
@@ -9355,10 +9356,9 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 	/* Create matchers, Any and Color. */
 	dv_attr.priority = 3;
 	dv_attr.match_criteria_enable = 0;
-	dtb->any_matcher = mlx5_glue->dv_create_flow_matcher(sh->ctx,
-							     &dv_attr,
-							     dtb->tbl->obj);
-	if (!dtb->any_matcher) {
+	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, dtb->tbl->obj,
+					       &dtb->any_matcher);
+	if (ret) {
 		DRV_LOG(ERR, "Failed to create meter"
 			     " policer default matcher.");
 		goto error_exit;
@@ -9368,10 +9368,9 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 				1 << MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT;
 	flow_dv_match_meta_reg(mask.buf, value.buf, color_reg_c_idx,
 			       rte_col_2_mlx5_col(RTE_COLORS), UINT8_MAX);
-	dtb->color_matcher = mlx5_glue->dv_create_flow_matcher(sh->ctx,
-							       &dv_attr,
-							       dtb->tbl->obj);
-	if (!dtb->color_matcher) {
+	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, dtb->tbl->obj,
+					       &dtb->color_matcher);
+	if (ret) {
 		DRV_LOG(ERR, "Failed to create meter policer color matcher.");
 		goto error_exit;
 	}
@@ -9379,10 +9378,10 @@ flow_dv_prepare_mtr_tables(struct rte_eth_dev *dev,
 		actions[i++] = mtb->count_actns[RTE_MTR_DROPPED];
 	actions[i++] = mtb->drop_actn;
 	/* Default rule: lowest priority, match any, actions: drop. */
-	dtb->policer_rules[RTE_MTR_DROPPED] =
-			mlx5_glue->dv_create_flow(dtb->any_matcher,
-						 (void *)&value, i, actions);
-	if (!dtb->policer_rules[RTE_MTR_DROPPED]) {
+	ret = mlx5_flow_os_create_flow(dtb->any_matcher, (void *)&value, i,
+				       actions,
+				       &dtb->policer_rules[RTE_MTR_DROPPED]);
+	if (ret) {
 		DRV_LOG(ERR, "Failed to create meter policer drop rule.");
 		goto error_exit;
 	}
@@ -9476,8 +9475,8 @@ flow_dv_destroy_domain_policer_rule(struct mlx5_meter_domain_info *dt)
 
 	for (i = 0; i < RTE_MTR_DROPPED; i++) {
 		if (dt->policer_rules[i]) {
-			claim_zero(mlx5_glue->dv_destroy_flow
-				  (dt->policer_rules[i]));
+			claim_zero(mlx5_flow_os_destroy_flow
+				   (dt->policer_rules[i]));
 			dt->policer_rules[i] = NULL;
 		}
 	}
@@ -9545,6 +9544,7 @@ flow_dv_create_policer_forward_rule(struct mlx5_flow_meter *fm,
 	struct mlx5_meter_domains_infos *mtb = fm->mfts;
 	void *actions[METER_ACTIONS];
 	int i;
+	int ret;
 
 	/* Create jump action. */
 	if (!dtb->jump_actn)
@@ -9566,11 +9566,10 @@ flow_dv_create_policer_forward_rule(struct mlx5_flow_meter *fm,
 			actions[j++] = mtb->drop_actn;
 		else
 			actions[j++] = dtb->jump_actn;
-		dtb->policer_rules[i] =
-			mlx5_glue->dv_create_flow(dtb->color_matcher,
-						 (void *)&value,
-						  j, actions);
-		if (!dtb->policer_rules[i]) {
+		ret = mlx5_flow_os_create_flow(dtb->color_matcher,
+					       (void *)&value, j, actions,
+					       &dtb->policer_rules[i]);
+		if (ret) {
 			DRV_LOG(ERR, "Failed to create policer rule.");
 			goto error;
 		}
