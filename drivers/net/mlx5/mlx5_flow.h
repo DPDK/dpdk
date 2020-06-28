@@ -538,7 +538,7 @@ struct mlx5_flow_handle {
 	/**< Index to next device flow handle. */
 	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
-	void *ib_flow; /**< Verbs flow pointer. */
+	void *drv_flow; /**< pointer to driver flow object. */
 	uint32_t split_flow_id:28; /**< Sub flow unique match flow id. */
 	uint32_t mark:1; /**< Metadate rxq mark flag. */
 	uint32_t fate_action:3; /**< Fate action type. */

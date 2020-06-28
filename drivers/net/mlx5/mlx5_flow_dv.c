@@ -8673,12 +8673,11 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			dh->rix_default_fate =  MLX5_FLOW_FATE_DEFAULT_MISS;
 			dv->actions[n++] = priv->sh->default_miss.action;
 		}
-
-		dh->ib_flow =
+		dh->drv_flow =
 			mlx5_glue->dv_create_flow(dv_h->matcher->matcher_object,
 						  (void *)&dv->value, n,
 						  dv->actions);
-		if (!dh->ib_flow) {
+		if (!dh->drv_flow) {
 			rte_flow_error_set(error, errno,
 					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					   NULL,
@@ -9041,9 +9040,9 @@ __flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 				    handle_idx);
 		if (!dh)
 			return;
-		if (dh->ib_flow) {
-			claim_zero(mlx5_glue->dv_destroy_flow(dh->ib_flow));
-			dh->ib_flow = NULL;
+		if (dh->drv_flow) {
+			claim_zero(mlx5_glue->dv_destroy_flow(dh->drv_flow));
+			dh->drv_flow = NULL;
 		}
 		if (dh->fate_action == MLX5_FLOW_FATE_DROP ||
 		    dh->fate_action == MLX5_FLOW_FATE_QUEUE ||

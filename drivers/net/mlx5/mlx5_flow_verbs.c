@@ -1778,9 +1778,9 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 		return;
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, handle, next) {
-		if (handle->ib_flow) {
-			claim_zero(mlx5_glue->destroy_flow(handle->ib_flow));
-			handle->ib_flow = NULL;
+		if (handle->drv_flow) {
+			claim_zero(mlx5_glue->destroy_flow(handle->drv_flow));
+			handle->drv_flow = NULL;
 		}
 		/* hrxq is union, don't touch it only the flag is set. */
 		if (handle->rix_hrxq) {
@@ -1901,9 +1901,9 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			handle->rix_hrxq = hrxq_idx;
 		}
 		MLX5_ASSERT(hrxq);
-		handle->ib_flow = mlx5_glue->create_flow(hrxq->qp,
-						     &dev_flow->verbs.attr);
-		if (!handle->ib_flow) {
+		handle->drv_flow = mlx5_glue->create_flow
+					(hrxq->qp, &dev_flow->verbs.attr);
+		if (!handle->drv_flow) {
 			rte_flow_error_set(error, errno,
 					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					   NULL,
