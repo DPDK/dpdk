@@ -593,6 +593,7 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 	if (eth_dev->data->rx_queues[rq] != NULL) {
 		otx2_nix_dbg("Freeing memory prior to re-allocation %d", rq);
 		otx2_nix_rx_queue_release(eth_dev->data->rx_queues[rq]);
+		rte_eth_dma_zone_free(eth_dev, "cq", rq);
 		eth_dev->data->rx_queues[rq] = NULL;
 	}
 
