@@ -641,7 +641,7 @@ static void
 rxq_release_rq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	if (rxq_ctrl->rxq.wqes) {
-		rte_free((void *)(uintptr_t)rxq_ctrl->rxq.wqes);
+		mlx5_free((void *)(uintptr_t)rxq_ctrl->rxq.wqes);
 		rxq_ctrl->rxq.wqes = NULL;
 	}
 	if (rxq_ctrl->wq_umem) {
@@ -707,7 +707,7 @@ mlx5_rxq_obj_release(struct mlx5_rxq_obj *rxq_obj)
 			claim_zero(mlx5_glue->destroy_comp_channel
 				   (rxq_obj->channel));
 		LIST_REMOVE(rxq_obj, next);
-		rte_free(rxq_obj);
+		mlx5_free(rxq_obj);
 		return 0;
 	}
 	return 1;
@@ -1233,15 +1233,15 @@ mlx5_devx_rq_new(struct rte_eth_dev *dev, uint16_t idx, uint32_t cqn)
 	/* Calculate and allocate WQ memory space. */
 	wqe_size = 1 << log_wqe_size; /* round up power of two.*/
 	wq_size = wqe_n * wqe_size;
-	buf = rte_calloc_socket(__func__, 1, wq_size, MLX5_WQE_BUF_ALIGNMENT,
-				rxq_ctrl->socket);
+	buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, wq_size,
+			  MLX5_WQE_BUF_ALIGNMENT, rxq_ctrl->socket);
 	if (!buf)
 		return NULL;
 	rxq_data->wqes = buf;
 	rxq_ctrl->wq_umem = mlx5_glue->devx_umem_reg(priv->sh->ctx,
 						     buf, wq_size, 0);
 	if (!rxq_ctrl->wq_umem) {
-		rte_free(buf);
+		mlx5_free(buf);
 		return NULL;
 	}
 	mlx5_devx_wq_attr_fill(priv, rxq_ctrl, &rq_attr.wq_attr);
@@ -1275,8 +1275,8 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 
 	MLX5_ASSERT(rxq_data);
 	MLX5_ASSERT(!rxq_ctrl->obj);
-	tmpl = rte_calloc_socket(__func__, 1, sizeof(*tmpl), 0,
-				 rxq_ctrl->socket);
+	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
+			   rxq_ctrl->socket);
 	if (!tmpl) {
 		DRV_LOG(ERR,
 			"port %u Rx queue %u cannot allocate verbs resources",
@@ -1294,7 +1294,7 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 			DRV_LOG(ERR, "total data size %u power of 2 is "
 				"too large for hairpin",
 				priv->config.log_hp_size);
-			rte_free(tmpl);
+			mlx5_free(tmpl);
 			rte_errno = ERANGE;
 			return NULL;
 		}
@@ -1314,7 +1314,7 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 		DRV_LOG(ERR,
 			"port %u Rx hairpin queue %u can't create rq object",
 			dev->data->port_id, idx);
-		rte_free(tmpl);
+		mlx5_free(tmpl);
 		rte_errno = errno;
 		return NULL;
 	}
@@ -1362,8 +1362,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		return mlx5_rxq_obj_hairpin_new(dev, idx);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_RX_QUEUE;
 	priv->verbs_alloc_ctx.obj = rxq_ctrl;
-	tmpl = rte_calloc_socket(__func__, 1, sizeof(*tmpl), 0,
-				 rxq_ctrl->socket);
+	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
+			   rxq_ctrl->socket);
 	if (!tmpl) {
 		DRV_LOG(ERR,
 			"port %u Rx queue %u cannot allocate verbs resources",
@@ -1503,7 +1503,7 @@ error:
 		if (tmpl->channel)
 			claim_zero(mlx5_glue->destroy_comp_channel
 							(tmpl->channel));
-		rte_free(tmpl);
+		mlx5_free(tmpl);
 		rte_errno = ret; /* Restore rte_errno. */
 	}
 	if (type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ)
@@ -1825,10 +1825,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = ENOSPC;
 		return NULL;
 	}
-	tmpl = rte_calloc_socket("RXQ", 1,
-				 sizeof(*tmpl) +
-				 desc_n * sizeof(struct rte_mbuf *),
-				 0, socket);
+	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl) +
+			   desc_n * sizeof(struct rte_mbuf *), 0, socket);
 	if (!tmpl) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -2007,7 +2005,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
 error:
-	rte_free(tmpl);
+	mlx5_free(tmpl);
 	return NULL;
 }
 
@@ -2033,7 +2031,8 @@ mlx5_rxq_hairpin_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *tmpl;
 
-	tmpl = rte_calloc_socket("RXQ", 1, sizeof(*tmpl), 0, SOCKET_ID_ANY);
+	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
+			   SOCKET_ID_ANY);
 	if (!tmpl) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -2112,7 +2111,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
 			mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
 		LIST_REMOVE(rxq_ctrl, next);
-		rte_free(rxq_ctrl);
+		mlx5_free(rxq_ctrl);
 		(*priv->rxqs)[idx] = NULL;
 		return 0;
 	}

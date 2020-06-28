@@ -11,6 +11,8 @@
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 
+#include <mlx5_malloc.h>
+
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_common_os.h"
@@ -134,13 +136,13 @@ mlx5_txpp_destroy_send_queue(struct mlx5_txpp_wq *wq)
 	if (wq->sq_umem)
 		claim_zero(mlx5_glue->devx_umem_dereg(wq->sq_umem));
 	if (wq->sq_buf)
-		rte_free((void *)(uintptr_t)wq->sq_buf);
+		mlx5_free((void *)(uintptr_t)wq->sq_buf);
 	if (wq->cq)
 		claim_zero(mlx5_devx_cmd_destroy(wq->cq));
 	if (wq->cq_umem)
 		claim_zero(mlx5_glue->devx_umem_dereg(wq->cq_umem));
 	if (wq->cq_buf)
-		rte_free((void *)(uintptr_t)wq->cq_buf);
+		mlx5_free((void *)(uintptr_t)wq->cq_buf);
 	memset(wq, 0, sizeof(*wq));
 }
 
@@ -159,7 +161,7 @@ mlx5_txpp_destroy_clock_queue(struct mlx5_dev_ctx_shared *sh)
 
 	mlx5_txpp_destroy_send_queue(wq);
 	if (sh->txpp.tsa) {
-		rte_free(sh->txpp.tsa);
+		mlx5_free(sh->txpp.tsa);
 		sh->txpp.tsa = NULL;
 	}
 }
@@ -255,8 +257,8 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	umem_size = sizeof(struct mlx5_cqe) * MLX5_TXPP_REARM_CQ_SIZE;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
-	wq->cq_buf = rte_zmalloc_socket(__func__, umem_size,
-					page_size, sh->numa_node);
+	wq->cq_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+				 page_size, sh->numa_node);
 	if (!wq->cq_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for Rearm Queue.");
 		return -ENOMEM;
@@ -304,8 +306,8 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	umem_size =  MLX5_WQE_SIZE * wq->sq_size;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
-	wq->sq_buf = rte_zmalloc_socket(__func__, umem_size,
-					page_size, sh->numa_node);
+	wq->sq_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+				 page_size, sh->numa_node);
 	if (!wq->sq_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for Rearm Queue.");
 		rte_errno = ENOMEM;
@@ -474,10 +476,10 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	uint32_t umem_size, umem_dbrec;
 	int ret;
 
-	sh->txpp.tsa = rte_zmalloc_socket(__func__,
-					   MLX5_TXPP_REARM_SQ_SIZE *
-					   sizeof(struct mlx5_txpp_ts),
-					   0, sh->numa_node);
+	sh->txpp.tsa = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+				   MLX5_TXPP_REARM_SQ_SIZE *
+				   sizeof(struct mlx5_txpp_ts),
+				   0, sh->numa_node);
 	if (!sh->txpp.tsa) {
 		DRV_LOG(ERR, "Failed to allocate memory for CQ stats.");
 		return -ENOMEM;
@@ -488,7 +490,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	umem_size = sizeof(struct mlx5_cqe) * MLX5_TXPP_CLKQ_SIZE;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
-	wq->cq_buf = rte_zmalloc_socket(__func__, umem_size,
+	wq->cq_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
 					page_size, sh->numa_node);
 	if (!wq->cq_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for Clock Queue.");
@@ -543,8 +545,8 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	umem_size =  MLX5_WQE_SIZE * wq->sq_size;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
-	wq->sq_buf = rte_zmalloc_socket(__func__, umem_size,
-					page_size, sh->numa_node);
+	wq->sq_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+				 page_size, sh->numa_node);
 	if (!wq->sq_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for Clock Queue.");
 		rte_errno = ENOMEM;
