@@ -193,7 +193,7 @@ struct mlx5_indexed_pool_config {
 	/* Lock is needed for multiple thread usage. */
 	uint32_t release_mem_en:1; /* Rlease trunk when it is free. */
 	const char *type; /* Memory allocate type name. */
-	void *(*malloc)(const char *type, size_t size, unsigned int align,
+	void *(*malloc)(uint32_t flags, size_t size, unsigned int align,
 			int socket);
 	/* User defined memory allocator. */
 	void (*free)(void *addr); /* User defined memory release. */

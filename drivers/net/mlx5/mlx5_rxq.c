@@ -31,6 +31,7 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
@@ -734,7 +735,9 @@ mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev)
 	if (!dev->data->dev_conf.intr_conf.rxq)
 		return 0;
 	mlx5_rx_intr_vec_disable(dev);
-	intr_handle->intr_vec = malloc(n * sizeof(intr_handle->intr_vec[0]));
+	intr_handle->intr_vec = mlx5_malloc(0,
+				n * sizeof(intr_handle->intr_vec[0]),
+				0, SOCKET_ID_ANY);
 	if (intr_handle->intr_vec == NULL) {
 		DRV_LOG(ERR,
 			"port %u failed to allocate memory for interrupt"
@@ -831,7 +834,7 @@ mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev)
 free:
 	rte_intr_free_epoll_fd(intr_handle);
 	if (intr_handle->intr_vec)
-		free(intr_handle->intr_vec);
+		mlx5_free(intr_handle->intr_vec);
 	intr_handle->nb_efd = 0;
 	intr_handle->intr_vec = NULL;
 }
@@ -2187,8 +2190,8 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 	struct mlx5_ind_table_obj *ind_tbl;
 	unsigned int i = 0, j = 0, k = 0;
 
-	ind_tbl = rte_calloc(__func__, 1, sizeof(*ind_tbl) +
-			     queues_n * sizeof(uint16_t), 0);
+	ind_tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ind_tbl) +
+			      queues_n * sizeof(uint16_t), 0, SOCKET_ID_ANY);
 	if (!ind_tbl) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -2231,8 +2234,9 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 			      log2above(queues_n) :
 			      log2above(priv->config.ind_table_max_size));
 
-		rqt_attr = rte_calloc(__func__, 1, sizeof(*rqt_attr) +
-				      rqt_n * sizeof(uint32_t), 0);
+		rqt_attr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rqt_attr) +
+				      rqt_n * sizeof(uint32_t), 0,
+				      SOCKET_ID_ANY);
 		if (!rqt_attr) {
 			DRV_LOG(ERR, "port %u cannot allocate RQT resources",
 				dev->data->port_id);
@@ -2254,7 +2258,7 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 			rqt_attr->rq_list[k] = rqt_attr->rq_list[j];
 		ind_tbl->rqt = mlx5_devx_cmd_create_rqt(priv->sh->ctx,
 							rqt_attr);
-		rte_free(rqt_attr);
+		mlx5_free(rqt_attr);
 		if (!ind_tbl->rqt) {
 			DRV_LOG(ERR, "port %u cannot create DevX RQT",
 				dev->data->port_id);
@@ -2269,7 +2273,7 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 error:
 	for (j = 0; j < i; j++)
 		mlx5_rxq_release(dev, ind_tbl->queues[j]);
-	rte_free(ind_tbl);
+	mlx5_free(ind_tbl);
 	DEBUG("port %u cannot create indirection table", dev->data->port_id);
 	return NULL;
 }
@@ -2339,7 +2343,7 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 		claim_nonzero(mlx5_rxq_release(dev, ind_tbl->queues[i]));
 	if (!rte_atomic32_read(&ind_tbl->refcnt)) {
 		LIST_REMOVE(ind_tbl, next);
-		rte_free(ind_tbl);
+		mlx5_free(ind_tbl);
 		return 0;
 	}
 	return 1;
@@ -2761,7 +2765,7 @@ mlx5_rxq_obj_drop_new(struct rte_eth_dev *dev)
 		rte_errno = errno;
 		goto error;
 	}
-	rxq = rte_calloc(__func__, 1, sizeof(*rxq), 0);
+	rxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq), 0, SOCKET_ID_ANY);
 	if (!rxq) {
 		DEBUG("port %u cannot allocate drop Rx queue memory",
 		      dev->data->port_id);
@@ -2799,7 +2803,7 @@ mlx5_rxq_obj_drop_release(struct rte_eth_dev *dev)
 		claim_zero(mlx5_glue->destroy_wq(rxq->wq));
 	if (rxq->cq)
 		claim_zero(mlx5_glue->destroy_cq(rxq->cq));
-	rte_free(rxq);
+	mlx5_free(rxq);
 	priv->drop_queue.rxq = NULL;
 }
 
@@ -2837,7 +2841,8 @@ mlx5_ind_table_obj_drop_new(struct rte_eth_dev *dev)
 		rte_errno = errno;
 		goto error;
 	}
-	ind_tbl = rte_calloc(__func__, 1, sizeof(*ind_tbl), 0);
+	ind_tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ind_tbl), 0,
+			      SOCKET_ID_ANY);
 	if (!ind_tbl) {
 		rte_errno = ENOMEM;
 		goto error;
@@ -2863,7 +2868,7 @@ mlx5_ind_table_obj_drop_release(struct rte_eth_dev *dev)
 
 	claim_zero(mlx5_glue->destroy_rwq_ind_table(ind_tbl->ind_table));
 	mlx5_rxq_obj_drop_release(dev);
-	rte_free(ind_tbl);
+	mlx5_free(ind_tbl);
 	priv->drop_queue.hrxq->ind_table = NULL;
 }
 
@@ -2888,7 +2893,7 @@ mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 		rte_atomic32_inc(&priv->drop_queue.hrxq->refcnt);
 		return priv->drop_queue.hrxq;
 	}
-	hrxq = rte_calloc(__func__, 1, sizeof(*hrxq), 0);
+	hrxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hrxq), 0, SOCKET_ID_ANY);
 	if (!hrxq) {
 		DRV_LOG(WARNING,
 			"port %u cannot allocate memory for drop queue",
@@ -2945,7 +2950,7 @@ error:
 		mlx5_ind_table_obj_drop_release(dev);
 	if (hrxq) {
 		priv->drop_queue.hrxq = NULL;
-		rte_free(hrxq);
+		mlx5_free(hrxq);
 	}
 	return NULL;
 }
@@ -2968,7 +2973,7 @@ mlx5_hrxq_drop_release(struct rte_eth_dev *dev)
 #endif
 		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
 		mlx5_ind_table_obj_drop_release(dev);
-		rte_free(hrxq);
+		mlx5_free(hrxq);
 		priv->drop_queue.hrxq = NULL;
 	}
 }

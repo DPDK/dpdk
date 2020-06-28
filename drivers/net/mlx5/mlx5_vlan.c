@@ -33,6 +33,7 @@
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_nl.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
@@ -288,7 +289,8 @@ mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex)
 		 */
 		return NULL;
 	}
-	vmwa = rte_zmalloc(__func__, sizeof(*vmwa), sizeof(uint32_t));
+	vmwa = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*vmwa), sizeof(uint32_t),
+			   SOCKET_ID_ANY);
 	if (!vmwa) {
 		DRV_LOG(WARNING,
 			"Can not allocate memory"
@@ -300,7 +302,7 @@ mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex)
 		DRV_LOG(WARNING,
 			"Can not create Netlink socket"
 			" for VLAN workaround context");
-		rte_free(vmwa);
+		mlx5_free(vmwa);
 		return NULL;
 	}
 	vmwa->vf_ifindex = ifindex;
@@ -323,5 +325,5 @@ void mlx5_vlan_vmwa_exit(struct mlx5_nl_vlan_vmwa_context *vmwa)
 	}
 	if (vmwa->nl_socket >= 0)
 		close(vmwa->nl_socket);
-	rte_free(vmwa);
+	mlx5_free(vmwa);
 }

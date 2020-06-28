@@ -28,6 +28,7 @@
 
 #include <mlx5_glue.h>
 #include <mlx5_prm.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
@@ -188,14 +189,15 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 			/* Resize the container pool array. */
 			size = sizeof(struct mlx5_flow_counter_pool *) *
 				     (n_valid + MLX5_CNT_CONTAINER_RESIZE);
-			pools = rte_zmalloc(__func__, size, 0);
+			pools = mlx5_malloc(MLX5_MEM_ZERO, size, 0,
+					    SOCKET_ID_ANY);
 			if (!pools)
 				return 0;
 			if (n_valid) {
 				memcpy(pools, cont->pools,
 				       sizeof(struct mlx5_flow_counter_pool *) *
 				       n_valid);
-				rte_free(cont->pools);
+				mlx5_free(cont->pools);
 			}
 			cont->pools = pools;
 			cont->n += MLX5_CNT_CONTAINER_RESIZE;
@@ -203,7 +205,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		/* Allocate memory for new pool*/
 		size = sizeof(*pool) + (sizeof(*cnt_ext) + sizeof(*cnt)) *
 		       MLX5_COUNTERS_PER_POOL;
-		pool = rte_calloc(__func__, 1, size, 0);
+		pool = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
 		if (!pool)
 			return 0;
 		pool->type |= CNT_POOL_TYPE_EXT;

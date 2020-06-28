@@ -5,6 +5,8 @@
 #include <rte_malloc.h>
 #include <rte_hash_crc.h>
 
+#include <mlx5_malloc.h>
+
 #include "mlx5_utils.h"
 
 struct mlx5_hlist *
@@ -27,7 +29,8 @@ mlx5_hlist_create(const char *name, uint32_t size)
 	alloc_size = sizeof(struct mlx5_hlist) +
 		     sizeof(struct mlx5_hlist_head) * act_size;
 	/* Using zmalloc, then no need to initialize the heads. */
-	h = rte_zmalloc(name, alloc_size, RTE_CACHE_LINE_SIZE);
+	h = mlx5_malloc(MLX5_MEM_ZERO, alloc_size, RTE_CACHE_LINE_SIZE,
+			SOCKET_ID_ANY);
 	if (!h) {
 		DRV_LOG(ERR, "No memory for hash list %s creation",
 			name ? name : "None");
@@ -112,10 +115,10 @@ mlx5_hlist_destroy(struct mlx5_hlist *h,
 			if (cb)
 				cb(entry, ctx);
 			else
-				rte_free(entry);
+				mlx5_free(entry);
 		}
 	}
-	rte_free(h);
+	mlx5_free(h);
 }
 
 static inline void
@@ -193,16 +196,17 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 	    (cfg->trunk_size && ((cfg->trunk_size & (cfg->trunk_size - 1)) ||
 	    ((__builtin_ffs(cfg->trunk_size) + TRUNK_IDX_BITS) > 32))))
 		return NULL;
-	pool = rte_zmalloc("mlx5_ipool", sizeof(*pool) + cfg->grow_trunk *
-				sizeof(pool->grow_tbl[0]), RTE_CACHE_LINE_SIZE);
+	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool) + cfg->grow_trunk *
+			   sizeof(pool->grow_tbl[0]), RTE_CACHE_LINE_SIZE,
+			   SOCKET_ID_ANY);
 	if (!pool)
 		return NULL;
 	pool->cfg = *cfg;
 	if (!pool->cfg.trunk_size)
 		pool->cfg.trunk_size = MLX5_IPOOL_DEFAULT_TRUNK_SIZE;
 	if (!cfg->malloc && !cfg->free) {
-		pool->cfg.malloc = rte_malloc_socket;
-		pool->cfg.free = rte_free;
+		pool->cfg.malloc = mlx5_malloc;
+		pool->cfg.free = mlx5_free;
 	}
 	pool->free_list = TRUNK_INVALID;
 	if (pool->cfg.need_lock)
@@ -237,10 +241,9 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 		int n_grow = pool->n_trunk_valid ? pool->n_trunk :
 			     RTE_CACHE_LINE_SIZE / sizeof(void *);
 
-		p = pool->cfg.malloc(pool->cfg.type,
-				 (pool->n_trunk_valid + n_grow) *
-				 sizeof(struct mlx5_indexed_trunk *),
-				 RTE_CACHE_LINE_SIZE, rte_socket_id());
+		p = pool->cfg.malloc(0, (pool->n_trunk_valid + n_grow) *
+				     sizeof(struct mlx5_indexed_trunk *),
+				     RTE_CACHE_LINE_SIZE, rte_socket_id());
 		if (!p)
 			return -ENOMEM;
 		if (pool->trunks)
@@ -268,7 +271,7 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	/* rte_bitmap requires memory cacheline aligned. */
 	trunk_size += RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size);
 	trunk_size += bmp_size;
-	trunk = pool->cfg.malloc(pool->cfg.type, trunk_size,
+	trunk = pool->cfg.malloc(0, trunk_size,
 				 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!trunk)
 		return -ENOMEM;
@@ -464,7 +467,7 @@ mlx5_ipool_destroy(struct mlx5_indexed_pool *pool)
 	if (!pool->trunks)
 		pool->cfg.free(pool->trunks);
 	mlx5_ipool_unlock(pool);
-	rte_free(pool);
+	mlx5_free(pool);
 	return 0;
 }
 
@@ -493,15 +496,16 @@ mlx5_l3t_create(enum mlx5_l3t_type type)
 		.grow_shift = 1,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 	};
 
 	if (type >= MLX5_L3T_TYPE_MAX) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
-	tbl = rte_zmalloc(NULL, sizeof(struct mlx5_l3t_tbl), 1);
+	tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct mlx5_l3t_tbl), 1,
+			  SOCKET_ID_ANY);
 	if (!tbl) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -532,7 +536,7 @@ mlx5_l3t_create(enum mlx5_l3t_type type)
 	tbl->eip = mlx5_ipool_create(&l3t_ip_cfg);
 	if (!tbl->eip) {
 		rte_errno = ENOMEM;
-		rte_free(tbl);
+		mlx5_free(tbl);
 		tbl = NULL;
 	}
 	return tbl;
@@ -565,17 +569,17 @@ mlx5_l3t_destroy(struct mlx5_l3t_tbl *tbl)
 					break;
 			}
 			MLX5_ASSERT(!m_tbl->ref_cnt);
-			rte_free(g_tbl->tbl[i]);
+			mlx5_free(g_tbl->tbl[i]);
 			g_tbl->tbl[i] = 0;
 			if (!(--g_tbl->ref_cnt))
 				break;
 		}
 		MLX5_ASSERT(!g_tbl->ref_cnt);
-		rte_free(tbl->tbl);
+		mlx5_free(tbl->tbl);
 		tbl->tbl = 0;
 	}
 	mlx5_ipool_destroy(tbl->eip);
-	rte_free(tbl);
+	mlx5_free(tbl);
 }
 
 uint32_t
@@ -667,11 +671,11 @@ mlx5_l3t_clear_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx)
 		m_tbl->tbl[(idx >> MLX5_L3T_MT_OFFSET) & MLX5_L3T_MT_MASK] =
 									NULL;
 		if (!(--m_tbl->ref_cnt)) {
-			rte_free(m_tbl);
+			mlx5_free(m_tbl);
 			g_tbl->tbl
 			[(idx >> MLX5_L3T_GT_OFFSET) & MLX5_L3T_GT_MASK] = NULL;
 			if (!(--g_tbl->ref_cnt)) {
-				rte_free(g_tbl);
+				mlx5_free(g_tbl);
 				tbl->tbl = 0;
 			}
 		}
@@ -693,8 +697,10 @@ mlx5_l3t_set_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx,
 	/* Check the global table, create it if empty. */
 	g_tbl = tbl->tbl;
 	if (!g_tbl) {
-		g_tbl = rte_zmalloc(NULL, sizeof(struct mlx5_l3t_level_tbl) +
-				    sizeof(void *) * MLX5_L3T_GT_SIZE, 1);
+		g_tbl = mlx5_malloc(MLX5_MEM_ZERO,
+				    sizeof(struct mlx5_l3t_level_tbl) +
+				    sizeof(void *) * MLX5_L3T_GT_SIZE, 1,
+				    SOCKET_ID_ANY);
 		if (!g_tbl) {
 			rte_errno = ENOMEM;
 			return -1;
@@ -707,8 +713,10 @@ mlx5_l3t_set_entry(struct mlx5_l3t_tbl *tbl, uint32_t idx,
 	 */
 	m_tbl = g_tbl->tbl[(idx >> MLX5_L3T_GT_OFFSET) & MLX5_L3T_GT_MASK];
 	if (!m_tbl) {
-		m_tbl = rte_zmalloc(NULL, sizeof(struct mlx5_l3t_level_tbl) +
-				    sizeof(void *) * MLX5_L3T_MT_SIZE, 1);
+		m_tbl = mlx5_malloc(MLX5_MEM_ZERO,
+				    sizeof(struct mlx5_l3t_level_tbl) +
+				    sizeof(void *) * MLX5_L3T_MT_SIZE, 1,
+				    SOCKET_ID_ANY);
 		if (!m_tbl) {
 			rte_errno = ENOMEM;
 			return -1;

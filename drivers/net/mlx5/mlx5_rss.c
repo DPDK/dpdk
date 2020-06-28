@@ -21,6 +21,8 @@
 #include <rte_malloc.h>
 #include <rte_ethdev_driver.h>
 
+#include <mlx5_malloc.h>
+
 #include "mlx5_defs.h"
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
@@ -57,8 +59,10 @@ mlx5_rss_hash_update(struct rte_eth_dev *dev,
 			rte_errno = EINVAL;
 			return -rte_errno;
 		}
-		priv->rss_conf.rss_key = rte_realloc(priv->rss_conf.rss_key,
-						     rss_conf->rss_key_len, 0);
+		priv->rss_conf.rss_key = mlx5_realloc(priv->rss_conf.rss_key,
+						      MLX5_MEM_RTE,
+						      rss_conf->rss_key_len,
+						      0, SOCKET_ID_ANY);
 		if (!priv->rss_conf.rss_key) {
 			rte_errno = ENOMEM;
 			return -rte_errno;
@@ -131,8 +135,9 @@ mlx5_rss_reta_index_resize(struct rte_eth_dev *dev, unsigned int reta_size)
 	if (priv->reta_idx_n == reta_size)
 		return 0;
 
-	mem = rte_realloc(priv->reta_idx,
-			  reta_size * sizeof((*priv->reta_idx)[0]), 0);
+	mem = mlx5_realloc(priv->reta_idx, MLX5_MEM_RTE,
+			   reta_size * sizeof((*priv->reta_idx)[0]), 0,
+			   SOCKET_ID_ANY);
 	if (!mem) {
 		rte_errno = ENOMEM;
 		return -rte_errno;

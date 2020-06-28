@@ -32,6 +32,7 @@
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
@@ -4115,7 +4116,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		act_size = sizeof(struct rte_flow_action) * (actions_n + 1) +
 			   sizeof(struct rte_flow_action_set_tag) +
 			   sizeof(struct rte_flow_action_jump);
-		ext_actions = rte_zmalloc(__func__, act_size, 0);
+		ext_actions = mlx5_malloc(MLX5_MEM_ZERO, act_size, 0,
+					  SOCKET_ID_ANY);
 		if (!ext_actions)
 			return rte_flow_error_set(error, ENOMEM,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4151,7 +4153,8 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		 */
 		act_size = sizeof(struct rte_flow_action) * (actions_n + 1) +
 			   sizeof(struct mlx5_flow_action_copy_mreg);
-		ext_actions = rte_zmalloc(__func__, act_size, 0);
+		ext_actions = mlx5_malloc(MLX5_MEM_ZERO, act_size, 0,
+					  SOCKET_ID_ANY);
 		if (!ext_actions)
 			return rte_flow_error_set(error, ENOMEM,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4245,7 +4248,7 @@ exit:
 	 * by flow_drv_destroy.
 	 */
 	flow_qrss_free_id(dev, qrss_id);
-	rte_free(ext_actions);
+	mlx5_free(ext_actions);
 	return ret;
 }
 
@@ -4310,7 +4313,8 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 #define METER_SUFFIX_ITEM 4
 		item_size = sizeof(struct rte_flow_item) * METER_SUFFIX_ITEM +
 			    sizeof(struct mlx5_rte_flow_item_tag) * 2;
-		sfx_actions = rte_zmalloc(__func__, (act_size + item_size), 0);
+		sfx_actions = mlx5_malloc(MLX5_MEM_ZERO, (act_size + item_size),
+					  0, SOCKET_ID_ANY);
 		if (!sfx_actions)
 			return rte_flow_error_set(error, ENOMEM,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4349,7 +4353,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 					 external, flow_idx, error);
 exit:
 	if (sfx_actions)
-		rte_free(sfx_actions);
+		mlx5_free(sfx_actions);
 	return ret;
 }
 
@@ -4763,8 +4767,8 @@ flow_list_destroy(struct rte_eth_dev *dev, uint32_t *list,
 		}
 		if (priv_fdir_flow) {
 			LIST_REMOVE(priv_fdir_flow, next);
-			rte_free(priv_fdir_flow->fdir);
-			rte_free(priv_fdir_flow);
+			mlx5_free(priv_fdir_flow->fdir);
+			mlx5_free(priv_fdir_flow);
 		}
 	}
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_RTE_FLOW], flow_idx);
@@ -4904,11 +4908,12 @@ mlx5_flow_alloc_intermediate(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (!priv->inter_flows) {
-		priv->inter_flows = rte_calloc(__func__, 1,
+		priv->inter_flows = mlx5_malloc(MLX5_MEM_ZERO,
 				    MLX5_NUM_MAX_DEV_FLOWS *
 				    sizeof(struct mlx5_flow) +
 				    (sizeof(struct mlx5_flow_rss_desc) +
-				    sizeof(uint16_t) * UINT16_MAX) * 2, 0);
+				    sizeof(uint16_t) * UINT16_MAX) * 2, 0,
+				    SOCKET_ID_ANY);
 		if (!priv->inter_flows) {
 			DRV_LOG(ERR, "can't allocate intermediate memory.");
 			return;
@@ -4932,7 +4937,7 @@ mlx5_flow_free_intermediate(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	rte_free(priv->inter_flows);
+	mlx5_free(priv->inter_flows);
 	priv->inter_flows = NULL;
 }
 
@@ -5572,7 +5577,8 @@ flow_fdir_filter_add(struct rte_eth_dev *dev,
 	uint32_t flow_idx;
 	int ret;
 
-	fdir_flow = rte_zmalloc(__func__, sizeof(*fdir_flow), 0);
+	fdir_flow = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*fdir_flow), 0,
+				SOCKET_ID_ANY);
 	if (!fdir_flow) {
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -5585,8 +5591,9 @@ flow_fdir_filter_add(struct rte_eth_dev *dev,
 		rte_errno = EEXIST;
 		goto error;
 	}
-	priv_fdir_flow = rte_zmalloc(__func__, sizeof(struct mlx5_fdir_flow),
-				     0);
+	priv_fdir_flow = mlx5_malloc(MLX5_MEM_ZERO,
+				     sizeof(struct mlx5_fdir_flow),
+				     0, SOCKET_ID_ANY);
 	if (!priv_fdir_flow) {
 		rte_errno = ENOMEM;
 		goto error;
@@ -5605,8 +5612,8 @@ flow_fdir_filter_add(struct rte_eth_dev *dev,
 		dev->data->port_id, (void *)flow);
 	return 0;
 error:
-	rte_free(priv_fdir_flow);
-	rte_free(fdir_flow);
+	mlx5_free(priv_fdir_flow);
+	mlx5_free(fdir_flow);
 	return -rte_errno;
 }
 
@@ -5646,8 +5653,8 @@ flow_fdir_filter_delete(struct rte_eth_dev *dev,
 	LIST_REMOVE(priv_fdir_flow, next);
 	flow_idx = priv_fdir_flow->rix_flow;
 	flow_list_destroy(dev, &priv->flows, flow_idx);
-	rte_free(priv_fdir_flow->fdir);
-	rte_free(priv_fdir_flow);
+	mlx5_free(priv_fdir_flow->fdir);
+	mlx5_free(priv_fdir_flow);
 	DRV_LOG(DEBUG, "port %u deleted FDIR flow %u",
 		dev->data->port_id, flow_idx);
 	return 0;
@@ -5692,8 +5699,8 @@ flow_fdir_filter_flush(struct rte_eth_dev *dev)
 		priv_fdir_flow = LIST_FIRST(&priv->fdir_flows);
 		LIST_REMOVE(priv_fdir_flow, next);
 		flow_list_destroy(dev, &priv->flows, priv_fdir_flow->rix_flow);
-		rte_free(priv_fdir_flow->fdir);
-		rte_free(priv_fdir_flow);
+		mlx5_free(priv_fdir_flow->fdir);
+		mlx5_free(priv_fdir_flow);
 	}
 }
 

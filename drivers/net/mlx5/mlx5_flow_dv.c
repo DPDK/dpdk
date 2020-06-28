@@ -32,6 +32,7 @@
 
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
@@ -2615,7 +2616,7 @@ flow_dv_encap_decap_resource_register
 					(sh->ctx, domain, cache_resource,
 					 &cache_resource->action);
 	if (ret) {
-		rte_free(cache_resource);
+		mlx5_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
@@ -2772,7 +2773,7 @@ flow_dv_port_id_action_resource_register
 				(priv->sh->fdb_domain, resource->port_id,
 				 &cache_resource->action);
 	if (ret) {
-		rte_free(cache_resource);
+		mlx5_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
@@ -2851,7 +2852,7 @@ flow_dv_push_vlan_action_resource_register
 					(domain, resource->vlan_tag,
 					 &cache_resource->action);
 	if (ret) {
-		rte_free(cache_resource);
+		mlx5_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
@@ -4024,8 +4025,9 @@ flow_dv_modify_hdr_resource_register
 		}
 	}
 	/* Register new modify-header resource. */
-	cache_resource = rte_calloc(__func__, 1,
-				    sizeof(*cache_resource) + actions_len, 0);
+	cache_resource = mlx5_malloc(MLX5_MEM_ZERO,
+				    sizeof(*cache_resource) + actions_len, 0,
+				    SOCKET_ID_ANY);
 	if (!cache_resource)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -4036,7 +4038,7 @@ flow_dv_modify_hdr_resource_register
 					(sh->ctx, ns, cache_resource,
 					 actions_len, &cache_resource->action);
 	if (ret) {
-		rte_free(cache_resource);
+		mlx5_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
@@ -4175,7 +4177,8 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 			MLX5_COUNTERS_PER_POOL +
 			sizeof(struct mlx5_counter_stats_raw)) * raws_n +
 			sizeof(struct mlx5_counter_stats_mem_mng);
-	uint8_t *mem = rte_calloc(__func__, 1, size, sysconf(_SC_PAGESIZE));
+	uint8_t *mem = mlx5_malloc(MLX5_MEM_ZERO, size, sysconf(_SC_PAGESIZE),
+				  SOCKET_ID_ANY);
 	int i;
 
 	if (!mem) {
@@ -4188,7 +4191,7 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 						 IBV_ACCESS_LOCAL_WRITE);
 	if (!mem_mng->umem) {
 		rte_errno = errno;
-		rte_free(mem);
+		mlx5_free(mem);
 		return NULL;
 	}
 	mkey_attr.addr = (uintptr_t)mem;
@@ -4207,7 +4210,7 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 	if (!mem_mng->dm) {
 		mlx5_glue->devx_umem_dereg(mem_mng->umem);
 		rte_errno = errno;
-		rte_free(mem);
+		mlx5_free(mem);
 		return NULL;
 	}
 	mem_mng->raws = (struct mlx5_counter_stats_raw *)(mem + size);
@@ -4244,7 +4247,7 @@ flow_dv_container_resize(struct rte_eth_dev *dev,
 	void *old_pools = cont->pools;
 	uint32_t resize = cont->n + MLX5_CNT_CONTAINER_RESIZE;
 	uint32_t mem_size = sizeof(struct mlx5_flow_counter_pool *) * resize;
-	void *pools = rte_calloc(__func__, 1, mem_size, 0);
+	void *pools = mlx5_malloc(MLX5_MEM_ZERO, mem_size, 0, SOCKET_ID_ANY);
 
 	if (!pools) {
 		rte_errno = ENOMEM;
@@ -4263,7 +4266,7 @@ flow_dv_container_resize(struct rte_eth_dev *dev,
 		mem_mng = flow_dv_create_counter_stat_mem_mng(dev,
 			  MLX5_CNT_CONTAINER_RESIZE + MLX5_MAX_PENDING_QUERIES);
 		if (!mem_mng) {
-			rte_free(pools);
+			mlx5_free(pools);
 			return -ENOMEM;
 		}
 		for (i = 0; i < MLX5_MAX_PENDING_QUERIES; ++i)
@@ -4278,7 +4281,7 @@ flow_dv_container_resize(struct rte_eth_dev *dev,
 	cont->pools = pools;
 	rte_spinlock_unlock(&cont->resize_sl);
 	if (old_pools)
-		rte_free(old_pools);
+		mlx5_free(old_pools);
 	return 0;
 }
 
@@ -4367,7 +4370,7 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 	size += MLX5_COUNTERS_PER_POOL * CNT_SIZE;
 	size += (batch ? 0 : MLX5_COUNTERS_PER_POOL * CNTEXT_SIZE);
 	size += (!age ? 0 : MLX5_COUNTERS_PER_POOL * AGE_SIZE);
-	pool = rte_calloc(__func__, 1, size, 0);
+	pool = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
 	if (!pool) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -7585,7 +7588,8 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		}
 	}
 	/* Register new matcher. */
-	cache_matcher = rte_calloc(__func__, 1, sizeof(*cache_matcher), 0);
+	cache_matcher = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*cache_matcher), 0,
+				    SOCKET_ID_ANY);
 	if (!cache_matcher) {
 		flow_dv_tbl_resource_release(dev, tbl);
 		return rte_flow_error_set(error, ENOMEM,
@@ -7601,7 +7605,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	ret = mlx5_flow_os_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj,
 					       &cache_matcher->matcher_object);
 	if (ret) {
-		rte_free(cache_matcher);
+		mlx5_free(cache_matcher);
 #ifdef HAVE_MLX5DV_DR
 		flow_dv_tbl_resource_release(dev, tbl);
 #endif
@@ -7676,7 +7680,7 @@ flow_dv_tag_resource_register
 	ret = mlx5_flow_os_create_flow_action_tag(tag_be24,
 						  &cache_resource->action);
 	if (ret) {
-		rte_free(cache_resource);
+		mlx5_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create action");
@@ -7685,7 +7689,7 @@ flow_dv_tag_resource_register
 	rte_atomic32_inc(&cache_resource->refcnt);
 	if (mlx5_hlist_insert(sh->tag_table, &cache_resource->entry)) {
 		mlx5_flow_os_destroy_flow_action(cache_resource->action);
-		rte_free(cache_resource);
+		mlx5_free(cache_resource);
 		return rte_flow_error_set(error, EEXIST,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot insert tag");
@@ -8908,7 +8912,7 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 		LIST_REMOVE(matcher, next);
 		/* table ref-- in release interface. */
 		flow_dv_tbl_resource_release(dev, matcher->tbl);
-		rte_free(matcher);
+		mlx5_free(matcher);
 		DRV_LOG(DEBUG, "port %u matcher %p: removed",
 			dev->data->port_id, (void *)matcher);
 		return 0;
@@ -9050,7 +9054,7 @@ flow_dv_modify_hdr_resource_release(struct mlx5_flow_handle *handle)
 		claim_zero(mlx5_flow_os_destroy_flow_action
 						(cache_resource->action));
 		LIST_REMOVE(cache_resource, next);
-		rte_free(cache_resource);
+		mlx5_free(cache_resource);
 		DRV_LOG(DEBUG, "modify-header resource %p: removed",
 			(void *)cache_resource);
 		return 0;
@@ -9423,7 +9427,7 @@ flow_dv_destroy_mtr_tbl(struct rte_eth_dev *dev,
 		flow_dv_tbl_resource_release(dev, mtd->transfer.sfx_tbl);
 	if (mtd->drop_actn)
 		claim_zero(mlx5_flow_os_destroy_flow_action(mtd->drop_actn));
-	rte_free(mtd);
+	mlx5_free(mtd);
 	return 0;
 }
 
@@ -9556,7 +9560,7 @@ flow_dv_create_mtr_tbl(struct rte_eth_dev *dev,
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
-	mtb = rte_calloc(__func__, 1, sizeof(*mtb), 0);
+	mtb = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*mtb), 0, SOCKET_ID_ANY);
 	if (!mtb) {
 		DRV_LOG(ERR, "Failed to allocate memory for meter.");
 		return NULL;

@@ -12,6 +12,7 @@
 
 #include <mlx5_common_mp.h>
 #include <mlx5_common_mr.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
@@ -181,7 +182,7 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum mlx5_mp_req_type type)
 		}
 	}
 exit:
-	free(mp_rep.msgs);
+	mlx5_free(mp_rep.msgs);
 }
 
 /**

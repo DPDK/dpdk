@@ -10,6 +10,7 @@
 #include <rte_mtr_driver.h>
 
 #include <mlx5_devx_cmds.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5.h"
 #include "mlx5_flow.h"
@@ -356,8 +357,8 @@ mlx5_flow_meter_profile_add(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 	/* Meter profile memory allocation. */
-	fmp = rte_calloc(__func__, 1, sizeof(struct mlx5_flow_meter_profile),
-			 RTE_CACHE_LINE_SIZE);
+	fmp = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct mlx5_flow_meter_profile),
+			 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (fmp == NULL)
 		return -rte_mtr_error_set(error, ENOMEM,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
@@ -374,7 +375,7 @@ mlx5_flow_meter_profile_add(struct rte_eth_dev *dev,
 	TAILQ_INSERT_TAIL(fmps, fmp, next);
 	return 0;
 error:
-	rte_free(fmp);
+	mlx5_free(fmp);
 	return ret;
 }
 
@@ -417,7 +418,7 @@ mlx5_flow_meter_profile_delete(struct rte_eth_dev *dev,
 					  NULL, "Meter profile is in use.");
 	/* Remove from list. */
 	TAILQ_REMOVE(&priv->flow_meter_profiles, fmp, next);
-	rte_free(fmp);
+	mlx5_free(fmp);
 	return 0;
 }
 
@@ -1286,7 +1287,7 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 		MLX5_ASSERT(!fmp->ref_cnt);
 		/* Remove from list. */
 		TAILQ_REMOVE(&priv->flow_meter_profiles, fmp, next);
-		rte_free(fmp);
+		mlx5_free(fmp);
 	}
 	return 0;
 }

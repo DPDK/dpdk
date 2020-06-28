@@ -40,6 +40,7 @@
 #include <mlx5_common.h>
 #include <mlx5_common_os.h>
 #include <mlx5_common_mp.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
@@ -207,8 +208,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_encap_decap_ipool",
 	},
 	{
@@ -218,8 +219,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_push_vlan_ipool",
 	},
 	{
@@ -229,8 +230,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_tag_ipool",
 	},
 	{
@@ -240,8 +241,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_port_id_ipool",
 	},
 	{
@@ -251,8 +252,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_jump_ipool",
 	},
 #endif
@@ -263,8 +264,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_meter_ipool",
 	},
 	{
@@ -274,8 +275,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_mcp_ipool",
 	},
 	{
@@ -285,8 +286,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_hrxq_ipool",
 	},
 	{
@@ -300,8 +301,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.grow_shift = 2,
 		.need_lock = 0,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "mlx5_flow_handle_ipool",
 	},
 	{
@@ -309,8 +310,8 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.trunk_size = 4096,
 		.need_lock = 1,
 		.release_mem_en = 1,
-		.malloc = rte_malloc_socket,
-		.free = rte_free,
+		.malloc = mlx5_malloc,
+		.free = mlx5_free,
 		.type = "rte_flow_ipool",
 	},
 };
@@ -336,15 +337,16 @@ mlx5_flow_id_pool_alloc(uint32_t max_id)
 	struct mlx5_flow_id_pool *pool;
 	void *mem;
 
-	pool = rte_zmalloc("id pool allocation", sizeof(*pool),
-			   RTE_CACHE_LINE_SIZE);
+	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool),
+			   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!pool) {
 		DRV_LOG(ERR, "can't allocate id pool");
 		rte_errno  = ENOMEM;
 		return NULL;
 	}
-	mem = rte_zmalloc("", MLX5_FLOW_MIN_ID_POOL_SIZE * sizeof(uint32_t),
-			  RTE_CACHE_LINE_SIZE);
+	mem = mlx5_malloc(MLX5_MEM_ZERO,
+			  MLX5_FLOW_MIN_ID_POOL_SIZE * sizeof(uint32_t),
+			  RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!mem) {
 		DRV_LOG(ERR, "can't allocate mem for id pool");
 		rte_errno  = ENOMEM;
@@ -357,7 +359,7 @@ mlx5_flow_id_pool_alloc(uint32_t max_id)
 	pool->max_id = max_id;
 	return pool;
 error:
-	rte_free(pool);
+	mlx5_free(pool);
 	return NULL;
 }
 
@@ -370,8 +372,8 @@ error:
 void
 mlx5_flow_id_pool_release(struct mlx5_flow_id_pool *pool)
 {
-	rte_free(pool->free_arr);
-	rte_free(pool);
+	mlx5_free(pool->free_arr);
+	mlx5_free(pool);
 }
 
 /**
@@ -423,14 +425,15 @@ mlx5_flow_id_release(struct mlx5_flow_id_pool *pool, uint32_t id)
 		size = pool->curr - pool->free_arr;
 		size2 = size * MLX5_ID_GENERATION_ARRAY_FACTOR;
 		MLX5_ASSERT(size2 > size);
-		mem = rte_malloc("", size2 * sizeof(uint32_t), 0);
+		mem = mlx5_malloc(0, size2 * sizeof(uint32_t), 0,
+				  SOCKET_ID_ANY);
 		if (!mem) {
 			DRV_LOG(ERR, "can't allocate mem for id pool");
 			rte_errno  = ENOMEM;
 			return -rte_errno;
 		}
 		memcpy(mem, pool->free_arr, size * sizeof(uint32_t));
-		rte_free(pool->free_arr);
+		mlx5_free(pool->free_arr);
 		pool->free_arr = mem;
 		pool->curr = pool->free_arr + size;
 		pool->last = pool->free_arr + size2;
@@ -499,7 +502,7 @@ mlx5_flow_destroy_counter_stat_mem_mng(struct mlx5_counter_stats_mem_mng *mng)
 	LIST_REMOVE(mng, next);
 	claim_zero(mlx5_devx_cmd_destroy(mng->dm));
 	claim_zero(mlx5_glue->devx_umem_dereg(mng->umem));
-	rte_free(mem);
+	mlx5_free(mem);
 }
 
 /**
@@ -547,10 +550,10 @@ mlx5_flow_counters_mng_close(struct mlx5_dev_ctx_shared *sh)
 						    (pool, j)->dcs));
 			}
 			TAILQ_REMOVE(&sh->cmng.ccont[i].pool_list, pool, next);
-			rte_free(pool);
+			mlx5_free(pool);
 			pool = TAILQ_FIRST(&sh->cmng.ccont[i].pool_list);
 		}
-		rte_free(sh->cmng.ccont[i].pools);
+		mlx5_free(sh->cmng.ccont[i].pools);
 	}
 	mng = LIST_FIRST(&sh->cmng.mem_mngs);
 	while (mng) {
@@ -1000,7 +1003,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 					entry);
 		MLX5_ASSERT(tbl_data);
 		mlx5_hlist_remove(sh->flow_tbls, pos);
-		rte_free(tbl_data);
+		mlx5_free(tbl_data);
 	}
 	table_key.direction = 1;
 	pos = mlx5_hlist_lookup(sh->flow_tbls, table_key.v64);
@@ -1009,7 +1012,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 					entry);
 		MLX5_ASSERT(tbl_data);
 		mlx5_hlist_remove(sh->flow_tbls, pos);
-		rte_free(tbl_data);
+		mlx5_free(tbl_data);
 	}
 	table_key.direction = 0;
 	table_key.domain = 1;
@@ -1019,7 +1022,7 @@ mlx5_free_table_hash_list(struct mlx5_priv *priv)
 					entry);
 		MLX5_ASSERT(tbl_data);
 		mlx5_hlist_remove(sh->flow_tbls, pos);
-		rte_free(tbl_data);
+		mlx5_free(tbl_data);
 	}
 	mlx5_hlist_destroy(sh->flow_tbls, NULL, NULL);
 }
@@ -1063,8 +1066,9 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 			.direction = 0,
 		}
 	};
-	struct mlx5_flow_tbl_data_entry *tbl_data = rte_zmalloc(NULL,
-							  sizeof(*tbl_data), 0);
+	struct mlx5_flow_tbl_data_entry *tbl_data = mlx5_malloc(MLX5_MEM_ZERO,
+							  sizeof(*tbl_data), 0,
+							  SOCKET_ID_ANY);
 
 	if (!tbl_data) {
 		err = ENOMEM;
@@ -1077,7 +1081,8 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 	rte_atomic32_init(&tbl_data->tbl.refcnt);
 	rte_atomic32_inc(&tbl_data->tbl.refcnt);
 	table_key.direction = 1;
-	tbl_data = rte_zmalloc(NULL, sizeof(*tbl_data), 0);
+	tbl_data = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tbl_data), 0,
+			       SOCKET_ID_ANY);
 	if (!tbl_data) {
 		err = ENOMEM;
 		goto error;
@@ -1090,7 +1095,8 @@ mlx5_alloc_table_hash_list(struct mlx5_priv *priv)
 	rte_atomic32_inc(&tbl_data->tbl.refcnt);
 	table_key.direction = 0;
 	table_key.domain = 1;
-	tbl_data = rte_zmalloc(NULL, sizeof(*tbl_data), 0);
+	tbl_data = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tbl_data), 0,
+			       SOCKET_ID_ANY);
 	if (!tbl_data) {
 		err = ENOMEM;
 		goto error;
@@ -1323,9 +1329,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_mprq_free_mp(dev);
 	mlx5_os_free_shared_dr(priv);
 	if (priv->rss_conf.rss_key != NULL)
-		rte_free(priv->rss_conf.rss_key);
+		mlx5_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)
-		rte_free(priv->reta_idx);
+		mlx5_free(priv->reta_idx);
 	if (priv->config.vf)
 		mlx5_nl_mac_addr_flush(priv->nl_socket_route, mlx5_ifindex(dev),
 				       dev->data->mac_addrs,

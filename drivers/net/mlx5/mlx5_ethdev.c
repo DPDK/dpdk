@@ -21,6 +21,8 @@
 #include <rte_rwlock.h>
 #include <rte_cycles.h>
 
+#include <mlx5_malloc.h>
+
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
 
@@ -75,8 +77,8 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		return -rte_errno;
 	}
 	priv->rss_conf.rss_key =
-		rte_realloc(priv->rss_conf.rss_key,
-			    MLX5_RSS_HASH_KEY_LEN, 0);
+		mlx5_realloc(priv->rss_conf.rss_key, MLX5_MEM_RTE,
+			    MLX5_RSS_HASH_KEY_LEN, 0, SOCKET_ID_ANY);
 	if (!priv->rss_conf.rss_key) {
 		DRV_LOG(ERR, "port %u cannot allocate RSS hash key memory (%u)",
 			dev->data->port_id, rxqs_n);
@@ -142,7 +144,8 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 
 	if (priv->skip_default_rss_reta)
 		return ret;
-	rss_queue_arr = rte_malloc("", rxqs_n * sizeof(unsigned int), 0);
+	rss_queue_arr = mlx5_malloc(0, rxqs_n * sizeof(unsigned int), 0,
+				    SOCKET_ID_ANY);
 	if (!rss_queue_arr) {
 		DRV_LOG(ERR, "port %u cannot allocate RSS queue list (%u)",
 			dev->data->port_id, rxqs_n);
@@ -163,7 +166,7 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 		DRV_LOG(ERR, "port %u cannot handle this many Rx queues (%u)",
 			dev->data->port_id, rss_queue_n);
 		rte_errno = EINVAL;
-		rte_free(rss_queue_arr);
+		mlx5_free(rss_queue_arr);
 		return -rte_errno;
 	}
 	DRV_LOG(INFO, "port %u Rx queues number update: %u -> %u",
@@ -179,7 +182,7 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 				rss_queue_n));
 	ret = mlx5_rss_reta_index_resize(dev, reta_idx_n);
 	if (ret) {
-		rte_free(rss_queue_arr);
+		mlx5_free(rss_queue_arr);
 		return ret;
 	}
 	/*
@@ -192,7 +195,7 @@ mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev)
 		if (++j == rss_queue_n)
 			j = 0;
 	}
-	rte_free(rss_queue_arr);
+	mlx5_free(rss_queue_arr);
 	return ret;
 }
 
