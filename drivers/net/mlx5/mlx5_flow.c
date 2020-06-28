@@ -36,12 +36,10 @@
 #include "mlx5_defs.h"
 #include "mlx5.h"
 #include "mlx5_flow.h"
+#include "mlx5_flow_os.h"
 #include "mlx5_rxtx.h"
 
 /** Device flow drivers. */
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-extern const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops;
-#endif
 extern const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops;
 
 const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops;
@@ -2501,8 +2499,12 @@ static enum mlx5_flow_drv_type
 flow_get_drv_type(struct rte_eth_dev *dev, const struct rte_flow_attr *attr)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	enum mlx5_flow_drv_type type = MLX5_FLOW_TYPE_MAX;
+	/* The OS can determine first a specific flow type (DV, VERBS) */
+	enum mlx5_flow_drv_type type = mlx5_flow_os_get_type();
 
+	if (type != MLX5_FLOW_TYPE_MAX)
+		return type;
+	/* If no OS specific type - continue with DV/VERBS selection */
 	if (attr->transfer && priv->config.dv_esw_en)
 		type = MLX5_FLOW_TYPE_DV;
 	if (!attr->transfer)
