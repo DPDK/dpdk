@@ -38,6 +38,7 @@
 #include "mlx5.h"
 #include "mlx5_common_os.h"
 #include "mlx5_flow.h"
+#include "mlx5_flow_os.h"
 #include "mlx5_rxtx.h"
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -4939,6 +4940,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int type = items->type;
 
+		if (!mlx5_flow_os_item_supported(type))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "item not supported");
 		switch (type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
@@ -5177,6 +5182,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		int type = actions->type;
+
+		if (!mlx5_flow_os_action_supported(type))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
 		if (actions_n == MLX5_DV_MAX_NUMBER_OF_ACTIONS)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -7907,6 +7918,11 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		const struct rte_flow_action *found_action = NULL;
 		struct mlx5_flow_meter *fm = NULL;
 
+		if (!mlx5_flow_os_action_supported(action_type))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
 		switch (action_type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -8347,6 +8363,10 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int item_type = items->type;
 
+		if (!mlx5_flow_os_item_supported(item_type))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "item not supported");
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
 			flow_dv_translate_item_port_id(dev, match_mask,
