@@ -180,6 +180,9 @@
 /* Flow memory reclaim mode. */
 #define MLX5_RECLAIM_MEM "reclaim_mem_mode"
 
+/* The default memory allocator used in PMD. */
+#define MLX5_SYS_MEM_EN "sys_mem_en"
+
 static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
 
 /* Shared memory between primary and secondary processes. */
@@ -1533,6 +1536,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 			return -rte_errno;
 		}
 		config->reclaim_mode = tmp;
+	} else if (strcmp(MLX5_SYS_MEM_EN, key) == 0) {
+		config->sys_mem_en = !!tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -1591,6 +1596,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_CLASS_ARG_NAME,
 		MLX5_HP_BUF_SIZE,
 		MLX5_RECLAIM_MEM,
+		MLX5_SYS_MEM_EN,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;

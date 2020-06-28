@@ -43,6 +43,7 @@
 #include <mlx5_common.h>
 #include <mlx5_common_mp.h>
 #include <mlx5_common_mr.h>
+#include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
@@ -495,6 +496,7 @@ err_secondary:
 			strerror(rte_errno));
 		goto error;
 	}
+	mlx5_malloc_mem_select(config.sys_mem_en);
 	sh = mlx5_alloc_shared_dev_ctx(spawn, &config);
 	if (!sh)
 		return NULL;

@@ -217,6 +217,7 @@ struct mlx5_dev_config {
 	unsigned int dest_tir:1; /* Whether advanced DR API is available. */
 	unsigned int reclaim_mode:2; /* Memory reclaim mode. */
 	unsigned int rt_timestamp:1; /* realtime timestamp format. */
+	unsigned int sys_mem_en:1; /* The default memory allocator. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */

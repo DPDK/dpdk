@@ -916,6 +916,13 @@ Driver options
 
   By default, the PMD will set this value to 0.
 
+- ``sys_mem_en`` parameter [int]
+
+  A non-zero value enables the PMD memory management allocating memory
+  from system by default, without explicit rte memory flag.
+
+  By default, the PMD will set this value to 0.
+
 .. _mlx5_firmware_config:
 
 Firmware configuration
