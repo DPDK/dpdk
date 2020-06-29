@@ -10,8 +10,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/queue.h>
-#include <sys/mman.h>
-
 #include <rte_errno.h>
 #include <rte_interrupts.h>
 #include <rte_log.h>

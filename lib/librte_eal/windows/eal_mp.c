@@ -16,6 +16,7 @@
 #include "eal_private.h"
 #include "eal_windows.h"
 #include "malloc_mp.h"
+#include "hotplug_mp.h"
 
 void
 rte_mp_channel_cleanup(void)
@@ -99,5 +100,19 @@ request_sync(void)
 {
 	/* Common memory allocator depends on this function success. */
 	EAL_LOG_STUB();
+	return 0;
+}
+
+int
+eal_dev_hotplug_request_to_primary(struct eal_dev_mp_req *req)
+{
+	RTE_SET_USED(req);
+	return 0;
+}
+
+int
+eal_dev_hotplug_request_to_secondary(struct eal_dev_mp_req *req)
+{
+	RTE_SET_USED(req);
 	return 0;
 }

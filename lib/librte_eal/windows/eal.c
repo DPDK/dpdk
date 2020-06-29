@@ -18,6 +18,7 @@
 #include <eal_options.h>
 #include <eal_private.h>
 #include <rte_trace_point.h>
+#include <rte_vfio.h>
 
 #include "eal_hugepages.h"
 #include "eal_windows.h"
@@ -247,7 +248,7 @@ rte_eal_cleanup(void)
 int
 rte_eal_init(int argc, char **argv)
 {
-	int i, fctret;
+	int i, fctret, bscan;
 	const struct rte_config *config = rte_eal_get_configuration();
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
@@ -334,6 +335,13 @@ rte_eal_init(int argc, char **argv)
 
 	eal_thread_init_master(config->master_lcore);
 
+	bscan = rte_bus_scan();
+	if (bscan < 0) {
+		rte_eal_init_alert("Cannot init PCI");
+		rte_errno = ENODEV;
+		return -1;
+	}
+
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
 		/*
@@ -361,4 +369,22 @@ rte_eal_init(int argc, char **argv)
 	rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MASTER);
 	rte_eal_mp_wait_lcore();
 	return fctret;
+}
+
+int
+rte_vfio_container_dma_map(__rte_unused int container_fd,
+			__rte_unused uint64_t vaddr,
+			__rte_unused uint64_t iova,
+			__rte_unused uint64_t len)
+{
+	return -1;
+}
+
+int
+rte_vfio_container_dma_unmap(__rte_unused int container_fd,
+			__rte_unused uint64_t vaddr,
+			__rte_unused uint64_t iova,
+			__rte_unused uint64_t len)
+{
+	return -1;
 }

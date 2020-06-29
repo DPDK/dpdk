@@ -3,6 +3,10 @@ EXPORTS
 	per_lcore__rte_errno
 	rte_calloc
 	rte_calloc_socket
+	rte_bus_register
+	rte_dev_is_probed
+	rte_devargs_next
+	rte_devargs_remove
 	rte_eal_get_configuration
 	rte_eal_has_hugepages
 	rte_eal_init
@@ -48,6 +52,9 @@ EXPORTS
 	rte_memzone_reserve_bounded
 	rte_memzone_walk
 	rte_strerror
+	rte_strsplit
+	rte_vfio_container_dma_map
+	rte_vfio_container_dma_unmap
 	rte_vlog
 	rte_realloc
 	rte_zmalloc

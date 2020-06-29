@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+if is_windows
+	subdir_done()
+endif
+
 drivers = ['aesni_gcm',
 	   'aesni_mb',
 	   'armv8',
