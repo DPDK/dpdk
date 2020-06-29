@@ -146,6 +146,29 @@ static int master_lcore_parsed;
 static int mem_parsed;
 static int core_parsed;
 
+/* Allow the application to print its usage message too if set */
+static rte_usage_hook_t rte_application_usage_hook;
+
+/* Returns rte_usage_hook_t */
+rte_usage_hook_t
+eal_get_application_usage_hook(void)
+{
+	return rte_application_usage_hook;
+}
+
+/* Set a per-application usage message */
+rte_usage_hook_t
+rte_set_application_usage_hook(rte_usage_hook_t usage_func)
+{
+	rte_usage_hook_t old_func;
+
+	/* Will be NULL on the first call to denote the last usage routine. */
+	old_func = rte_application_usage_hook;
+	rte_application_usage_hook = usage_func;
+
+	return old_func;
+}
+
 #ifndef RTE_EXEC_ENV_WINDOWS
 static char **eal_args;
 static char **eal_app_args;

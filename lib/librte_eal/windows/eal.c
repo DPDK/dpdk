@@ -24,9 +24,6 @@
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
- /* Allow the application to print its usage message too if set */
-static rte_usage_hook_t	rte_application_usage_hook;
-
 /* define fd variable here, because file needs to be kept open for the
  * duration of the program, as we hold a write lock on it in the primary proc
  */
@@ -72,14 +69,16 @@ eal_proc_type_detect(void)
 static void
 eal_usage(const char *prgname)
 {
+	rte_usage_hook_t hook = eal_get_application_usage_hook();
+
 	printf("\nUsage: %s ", prgname);
 	eal_common_usage();
 	/* Allow the application to print its usage message too
 	 * if hook is set
 	 */
-	if (rte_application_usage_hook) {
+	if (hook) {
 		printf("===== Application Usage =====\n\n");
-		rte_application_usage_hook(prgname);
+		(hook)(prgname);
 	}
 }
 

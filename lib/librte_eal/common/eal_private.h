@@ -690,4 +690,13 @@ eal_set_runtime_dir(char *run_dir, size_t size);
 struct internal_config *
 eal_get_internal_configuration(void);
 
+/**
+ * Get the current value of the rte_application_usage pointer
+ *
+ * @return
+ *   Pointer to the current value of rte_application_usage .
+ */
+rte_usage_hook_t
+eal_get_application_usage_hook(void);
+
 #endif /* _EAL_PRIVATE_H_ */

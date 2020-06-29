@@ -56,8 +56,6 @@
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
-/* Allow the application to print its usage message too if set */
-static rte_usage_hook_t	rte_application_usage_hook = NULL;
 /* define fd variable here, because file needs to be kept open for the
  * duration of the program, as we hold a write lock on it in the primary proc */
 static int mem_cfg_fd = -1;
@@ -418,26 +416,15 @@ rte_config_init(void)
 static void
 eal_usage(const char *prgname)
 {
+	rte_usage_hook_t hook = eal_get_application_usage_hook();
+
 	printf("\nUsage: %s ", prgname);
 	eal_common_usage();
 	/* Allow the application to print its usage message too if hook is set */
-	if ( rte_application_usage_hook ) {
+	if (hook) {
 		printf("===== Application Usage =====\n\n");
-		rte_application_usage_hook(prgname);
+		(hook)(prgname);
 	}
-}
-
-/* Set a per-application usage message */
-rte_usage_hook_t
-rte_set_application_usage_hook( rte_usage_hook_t usage_func )
-{
-	rte_usage_hook_t	old_func;
-
-	/* Will be NULL on the first call to denote the last usage routine. */
-	old_func					= rte_application_usage_hook;
-	rte_application_usage_hook	= usage_func;
-
-	return old_func;
 }
 
 static inline size_t
