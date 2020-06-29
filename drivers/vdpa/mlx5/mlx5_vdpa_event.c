@@ -127,12 +127,12 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 	struct mlx5_devx_cq_attr attr;
 	size_t pgsize = sysconf(_SC_PAGESIZE);
 	uint32_t umem_size;
-	int ret;
 	uint16_t event_nums[1] = {0};
+	uint16_t cq_size = 1 << log_desc_n;
+	int ret;
 
 	cq->log_desc_n = log_desc_n;
-	umem_size = sizeof(struct mlx5_cqe) * (1 << log_desc_n) +
-							sizeof(*cq->db_rec) * 2;
+	umem_size = sizeof(struct mlx5_cqe) * cq_size + sizeof(*cq->db_rec) * 2;
 	cq->umem_buf = rte_zmalloc(__func__, umem_size, 4096);
 	if (!cq->umem_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for CQ.");
@@ -149,13 +149,13 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 	}
 	attr.q_umem_valid = 1;
 	attr.db_umem_valid = 1;
-	attr.use_first_only = 0;
+	attr.use_first_only = 1;
 	attr.overrun_ignore = 0;
 	attr.uar_page_id = priv->uar->page_id;
 	attr.q_umem_id = cq->umem_obj->umem_id;
 	attr.q_umem_offset = 0;
 	attr.db_umem_id = cq->umem_obj->umem_id;
-	attr.db_umem_offset = sizeof(struct mlx5_cqe) * (1 << log_desc_n);
+	attr.db_umem_offset = sizeof(struct mlx5_cqe) * cq_size;
 	attr.eqn = priv->eqn;
 	attr.log_cq_size = log_desc_n;
 	attr.log_page_size = rte_log2_u32(pgsize);
@@ -187,7 +187,8 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 	}
 	cq->callfd = callfd;
 	/* Init CQ to ones to be in HW owner in the start. */
-	memset((void *)(uintptr_t)cq->umem_buf, 0xFF, attr.db_umem_offset);
+	cq->cqes[0].op_own = MLX5_CQE_OWNER_MASK;
+	cq->cqes[0].wqe_counter = rte_cpu_to_be_16(cq_size - 1);
 	/* First arming. */
 	mlx5_vdpa_cq_arm(priv, cq);
 	return 0;
@@ -203,34 +204,40 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_cq *cq)
 				container_of(cq, struct mlx5_vdpa_event_qp, cq);
 	const unsigned int cq_size = 1 << cq->log_desc_n;
 	const unsigned int cq_mask = cq_size - 1;
-	uint32_t total = 0;
-	int ret;
+	union {
+		struct {
+			uint16_t wqe_counter;
+			uint8_t rsvd5;
+			uint8_t op_own;
+		};
+		uint32_t word;
+	} last_word;
+	uint16_t next_wqe_counter = cq->cq_ci & cq_mask;
+	uint16_t cur_wqe_counter;
+	uint16_t comp;
 
-	do {
-		volatile struct mlx5_cqe *cqe = cq->cqes + ((cq->cq_ci + total)
-							    & cq_mask);
-
-		ret = check_cqe(cqe, cq_size, cq->cq_ci + total);
-		switch (ret) {
-		case MLX5_CQE_STATUS_ERR:
+	last_word.word = rte_read32(&cq->cqes[0].wqe_counter);
+	cur_wqe_counter = rte_be_to_cpu_16(last_word.wqe_counter);
+	comp = (cur_wqe_counter + 1u - next_wqe_counter) & cq_mask;
+	if (comp) {
+		cq->cq_ci += comp;
+		MLX5_ASSERT(!!(cq->cq_ci & cq_size) ==
+			    MLX5_CQE_OWNER(last_word.op_own));
+		MLX5_ASSERT(MLX5_CQE_OPCODE(last_word.op_own) !=
+			    MLX5_CQE_INVALID);
+		if (unlikely(!(MLX5_CQE_OPCODE(last_word.op_own) ==
+			       MLX5_CQE_RESP_ERR ||
+			       MLX5_CQE_OPCODE(last_word.op_own) ==
+			       MLX5_CQE_REQ_ERR)))
 			cq->errors++;
-			/*fall-through*/
-		case MLX5_CQE_STATUS_SW_OWN:
-			total++;
-			break;
-		case MLX5_CQE_STATUS_HW_OWN:
-		default:
-			break;
-		}
-	} while (ret != MLX5_CQE_STATUS_HW_OWN);
-	rte_io_wmb();
-	cq->cq_ci += total;
-	/* Ring CQ doorbell record. */
-	cq->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
-	rte_io_wmb();
-	/* Ring SW QP doorbell record. */
-	eqp->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci + cq_size);
-	return total;
+		rte_io_wmb();
+		/* Ring CQ doorbell record. */
+		cq->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
+		rte_io_wmb();
+		/* Ring SW QP doorbell record. */
+		eqp->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci + cq_size);
+	}
+	return comp;
 }
 
 static void
