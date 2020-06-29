@@ -65,8 +65,11 @@ otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 
 	if (event.sched_type != SSO_TT_EMPTY &&
 	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
-		otx2_wqe_to_mbuf(get_work1, mbuf, event.sub_event_type,
-				 (uint32_t) event.get_work0, flags, lookup_mem);
+		uint8_t port = event.sub_event_type;
+
+		event.sub_event_type = 0;
+		otx2_wqe_to_mbuf(get_work1, mbuf, port,
+				 event.flow_id, flags, lookup_mem);
 		/* Extracting tstamp, if PTP enabled. CGX will prepend the
 		 * timestamp at starting of packet data and it can be derieved
 		 * from WQE 9 dword which corresponds to SG iova.
