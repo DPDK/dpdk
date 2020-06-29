@@ -35,9 +35,11 @@ const char *rte_pci_get_sysfs_path(void)
 {
 	const char *path = NULL;
 
+#ifdef RTE_EXEC_ENV_LINUX
 	path = getenv("SYSFS_PCI_DEVICES");
 	if (path == NULL)
 		return SYSFS_PCI_DEVICES;
+#endif
 
 	return path;
 }

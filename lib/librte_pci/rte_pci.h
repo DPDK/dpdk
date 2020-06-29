@@ -20,6 +20,7 @@ extern "C" {
 #include <limits.h>
 #include <sys/queue.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8

@@ -1,5 +1,6 @@
 EXPORTS
 	__rte_panic
+	per_lcore__rte_errno
 	rte_calloc
 	rte_calloc_socket
 	rte_eal_get_configuration
