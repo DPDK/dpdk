@@ -74,13 +74,15 @@ eal_memalloc_is_contig(const struct rte_memseg_list *msl, void *start,
 	void *end, *aligned_start, *aligned_end;
 	size_t pgsz = (size_t)msl->page_sz;
 	const struct rte_memseg *ms;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* for IOVA_VA, it's always contiguous */
 	if (rte_eal_iova_mode() == RTE_IOVA_VA && !msl->external)
 		return true;
 
 	/* for legacy memory, it's always contiguous */
-	if (internal_config.legacy_mem)
+	if (internal_conf->legacy_mem)
 		return true;
 
 	end = RTE_PTR_ADD(start, len);

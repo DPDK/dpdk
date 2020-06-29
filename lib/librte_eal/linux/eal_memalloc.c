@@ -249,8 +249,10 @@ get_seg_memfd(struct hugepage_info *hi __rte_unused,
 	char segname[250]; /* as per manpage, limit is 249 bytes plus null */
 
 	int flags = RTE_MFD_HUGETLB | pagesz_flags(hi->hugepage_sz);
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	if (internal_config.single_file_segments) {
+	if (internal_conf->single_file_segments) {
 		fd = fd_list[list_idx].memseg_list_fd;
 
 		if (fd < 0) {
@@ -288,14 +290,16 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 		unsigned int list_idx, unsigned int seg_idx)
 {
 	int fd;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* for in-memory mode, we only make it here when we're sure we support
 	 * memfd, and this is a special case.
 	 */
-	if (internal_config.in_memory)
+	if (internal_conf->in_memory)
 		return get_seg_memfd(hi, list_idx, seg_idx);
 
-	if (internal_config.single_file_segments) {
+	if (internal_conf->single_file_segments) {
 		/* create a hugepage file path */
 		eal_get_hugefile_path(path, buflen, hi->hugedir, list_idx);
 
@@ -439,11 +443,13 @@ resize_hugefile_in_filesystem(int fd, uint64_t fa_offset, uint64_t page_sz,
 static void
 close_hugefile(int fd, char *path, int list_idx)
 {
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 	/*
 	 * primary process must unlink the file, but only when not in in-memory
 	 * mode (as in that case there is no file to unlink).
 	 */
-	if (!internal_config.in_memory &&
+	if (!internal_conf->in_memory &&
 			rte_eal_process_type() == RTE_PROC_PRIMARY &&
 			unlink(path))
 		RTE_LOG(ERR, EAL, "%s(): unlinking '%s' failed: %s\n",
@@ -459,7 +465,10 @@ resize_hugefile(int fd, uint64_t fa_offset, uint64_t page_sz, bool grow)
 	/* in-memory mode is a special case, because we can be sure that
 	 * fallocate() is supported.
 	 */
-	if (internal_config.in_memory)
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	if (internal_conf->in_memory)
 		return resize_hugefile_in_memory(fd, fa_offset,
 				page_sz, grow);
 
@@ -484,16 +493,18 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	size_t alloc_sz;
 	int flags;
 	void *new_addr;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	alloc_sz = hi->hugepage_sz;
 
 	/* these are checked at init, but code analyzers don't know that */
-	if (internal_config.in_memory && !anonymous_hugepages_supported) {
+	if (internal_conf->in_memory && !anonymous_hugepages_supported) {
 		RTE_LOG(ERR, EAL, "Anonymous hugepages not supported, in-memory mode cannot allocate memory\n");
 		return -1;
 	}
-	if (internal_config.in_memory && !memfd_create_supported &&
-			internal_config.single_file_segments) {
+	if (internal_conf->in_memory && !memfd_create_supported &&
+			internal_conf->single_file_segments) {
 		RTE_LOG(ERR, EAL, "Single-file segments are not supported without memfd support\n");
 		return -1;
 	}
@@ -501,7 +512,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	/* in-memory without memfd is a special case */
 	int mmap_flags;
 
-	if (internal_config.in_memory && !memfd_create_supported) {
+	if (internal_conf->in_memory && !memfd_create_supported) {
 		const int in_memory_flags = MAP_HUGETLB | MAP_FIXED |
 				MAP_PRIVATE | MAP_ANONYMOUS;
 		int pagesz_flag;
@@ -524,7 +535,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 			return -1;
 		}
 
-		if (internal_config.single_file_segments) {
+		if (internal_conf->single_file_segments) {
 			map_offset = seg_idx * alloc_sz;
 			ret = resize_hugefile(fd, map_offset, alloc_sz, true);
 			if (ret < 0)
@@ -538,8 +549,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 					__func__, strerror(errno));
 				goto resized;
 			}
-			if (internal_config.hugepage_unlink &&
-					!internal_config.in_memory) {
+			if (internal_conf->hugepage_unlink &&
+					!internal_conf->in_memory) {
 				if (unlink(path)) {
 					RTE_LOG(DEBUG, EAL, "%s(): unlink() failed: %s\n",
 						__func__, strerror(errno));
@@ -642,14 +653,14 @@ unmapped:
 		RTE_LOG(CRIT, EAL, "Can't mmap holes in our virtual address space\n");
 	}
 	/* roll back the ref count */
-	if (internal_config.single_file_segments)
+	if (internal_conf->single_file_segments)
 		fd_list[list_idx].count--;
 resized:
 	/* some codepaths will return negative fd, so exit early */
 	if (fd < 0)
 		return -1;
 
-	if (internal_config.single_file_segments) {
+	if (internal_conf->single_file_segments) {
 		resize_hugefile(fd, map_offset, alloc_sz, false);
 		/* ignore failure, can't make it any worse */
 
@@ -658,8 +669,8 @@ resized:
 			close_hugefile(fd, path, list_idx);
 	} else {
 		/* only remove file if we can take out a write lock */
-		if (internal_config.hugepage_unlink == 0 &&
-				internal_config.in_memory == 0 &&
+		if (internal_conf->hugepage_unlink == 0 &&
+				internal_conf->in_memory == 0 &&
 				lock(fd, LOCK_EX) == 1)
 			unlink(path);
 		close(fd);
@@ -676,6 +687,8 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	char path[PATH_MAX];
 	int fd, ret = 0;
 	bool exit_early;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* erase page data */
 	memset(ms->addr, 0, ms->len);
@@ -692,11 +705,11 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	exit_early = false;
 
 	/* if we're using anonymous hugepages, nothing to be done */
-	if (internal_config.in_memory && !memfd_create_supported)
+	if (internal_conf->in_memory && !memfd_create_supported)
 		exit_early = true;
 
 	/* if we've already unlinked the page, nothing needs to be done */
-	if (!internal_config.in_memory && internal_config.hugepage_unlink)
+	if (!internal_conf->in_memory && internal_conf->hugepage_unlink)
 		exit_early = true;
 
 	if (exit_early) {
@@ -712,7 +725,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	if (fd < 0)
 		return -1;
 
-	if (internal_config.single_file_segments) {
+	if (internal_conf->single_file_segments) {
 		map_offset = seg_idx * ms->len;
 		if (resize_hugefile(fd, map_offset, ms->len, false))
 			return -1;
@@ -725,7 +738,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		/* if we're able to take out a write lock, we're the last one
 		 * holding onto this page.
 		 */
-		if (!internal_config.in_memory) {
+		if (!internal_conf->in_memory) {
 			ret = lock(fd, LOCK_EX);
 			if (ret >= 0) {
 				/* no one else is using this page */
@@ -761,6 +774,8 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	size_t page_sz;
 	int cur_idx, start_idx, j, dir_fd = -1;
 	unsigned int msl_idx, need, i;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (msl->page_sz != wa->page_sz)
 		return 0;
@@ -810,7 +825,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	 * during init, we already hold a write lock, so don't try to take out
 	 * another one.
 	 */
-	if (wa->hi->lock_descriptor == -1 && !internal_config.in_memory) {
+	if (wa->hi->lock_descriptor == -1 && !internal_conf->in_memory) {
 		dir_fd = open(wa->hi->hugedir, O_RDONLY);
 		if (dir_fd < 0) {
 			RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n",
@@ -893,6 +908,8 @@ free_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	struct free_walk_param *wa = arg;
 	uintptr_t start_addr, end_addr;
 	int msl_idx, seg_idx, ret, dir_fd = -1;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	start_addr = (uintptr_t) msl->base_va;
 	end_addr = start_addr + msl->len;
@@ -915,7 +932,7 @@ free_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	 * during init, we already hold a write lock, so don't try to take out
 	 * another one.
 	 */
-	if (wa->hi->lock_descriptor == -1 && !internal_config.in_memory) {
+	if (wa->hi->lock_descriptor == -1 && !internal_conf->in_memory) {
 		dir_fd = open(wa->hi->hugedir, O_RDONLY);
 		if (dir_fd < 0) {
 			RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n",
@@ -958,17 +975,19 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs, size_t page_sz,
 #endif
 	struct alloc_walk_param wa;
 	struct hugepage_info *hi = NULL;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	memset(&wa, 0, sizeof(wa));
 
 	/* dynamic allocation not supported in legacy mode */
-	if (internal_config.legacy_mem)
+	if (internal_conf->legacy_mem)
 		return -1;
 
-	for (i = 0; i < (int) RTE_DIM(internal_config.hugepage_info); i++) {
+	for (i = 0; i < (int) RTE_DIM(internal_conf->hugepage_info); i++) {
 		if (page_sz ==
-				internal_config.hugepage_info[i].hugepage_sz) {
-			hi = &internal_config.hugepage_info[i];
+				internal_conf->hugepage_info[i].hugepage_sz) {
+			hi = &internal_conf->hugepage_info[i];
 			break;
 		}
 	}
@@ -1025,9 +1044,11 @@ int
 eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 {
 	int seg, ret = 0;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* dynamic free not supported in legacy mode */
-	if (internal_config.legacy_mem)
+	if (internal_conf->legacy_mem)
 		return -1;
 
 	for (seg = 0; seg < n_segs; seg++) {
@@ -1045,13 +1066,13 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 
 		memset(&wa, 0, sizeof(wa));
 
-		for (i = 0; i < (int)RTE_DIM(internal_config.hugepage_info);
+		for (i = 0; i < (int)RTE_DIM(internal_conf->hugepage_info);
 				i++) {
-			hi = &internal_config.hugepage_info[i];
+			hi = &internal_conf->hugepage_info[i];
 			if (cur->hugepage_sz == hi->hugepage_sz)
 				break;
 		}
-		if (i == (int)RTE_DIM(internal_config.hugepage_info)) {
+		if (i == (int)RTE_DIM(internal_conf->hugepage_info)) {
 			RTE_LOG(ERR, EAL, "Can't find relevant hugepage_info entry\n");
 			ret = -1;
 			continue;
@@ -1076,8 +1097,11 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 int
 eal_memalloc_free_seg(struct rte_memseg *ms)
 {
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
 	/* dynamic free not supported in legacy mode */
-	if (internal_config.legacy_mem)
+	if (internal_conf->legacy_mem)
 		return -1;
 
 	return eal_memalloc_free_seg_bulk(&ms, 1);
@@ -1316,6 +1340,8 @@ sync_walk(const struct rte_memseg_list *msl, void *arg __rte_unused)
 	struct hugepage_info *hi = NULL;
 	unsigned int i;
 	int msl_idx;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (msl->external)
 		return 0;
@@ -1324,12 +1350,12 @@ sync_walk(const struct rte_memseg_list *msl, void *arg __rte_unused)
 	primary_msl = &mcfg->memsegs[msl_idx];
 	local_msl = &local_memsegs[msl_idx];
 
-	for (i = 0; i < RTE_DIM(internal_config.hugepage_info); i++) {
+	for (i = 0; i < RTE_DIM(internal_conf->hugepage_info); i++) {
 		uint64_t cur_sz =
-			internal_config.hugepage_info[i].hugepage_sz;
+			internal_conf->hugepage_info[i].hugepage_sz;
 		uint64_t msl_sz = primary_msl->page_sz;
 		if (msl_sz == cur_sz) {
-			hi = &internal_config.hugepage_info[i];
+			hi = &internal_conf->hugepage_info[i];
 			break;
 		}
 	}
@@ -1397,9 +1423,11 @@ alloc_list(int list_idx, int len)
 {
 	int *data;
 	int i;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* single-file segments mode does not need fd list */
-	if (!internal_config.single_file_segments) {
+	if (!internal_conf->single_file_segments) {
 		/* ensure we have space to store fd per each possible segment */
 		data = malloc(sizeof(int) * len);
 		if (data == NULL) {
@@ -1443,9 +1471,11 @@ int
 eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* single file segments mode doesn't support individual segment fd's */
-	if (internal_config.single_file_segments)
+	if (internal_conf->single_file_segments)
 		return -ENOTSUP;
 
 	/* if list is not allocated, allocate it */
@@ -1463,8 +1493,11 @@ eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 int
 eal_memalloc_set_seg_list_fd(int list_idx, int fd)
 {
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
 	/* non-single file segment mode doesn't support segment list fd's */
-	if (!internal_config.single_file_segments)
+	if (!internal_conf->single_file_segments)
 		return -ENOTSUP;
 
 	fd_list[list_idx].memseg_list_fd = fd;
@@ -1476,18 +1509,20 @@ int
 eal_memalloc_get_seg_fd(int list_idx, int seg_idx)
 {
 	int fd;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	if (internal_config.in_memory || internal_config.no_hugetlbfs) {
+	if (internal_conf->in_memory || internal_conf->no_hugetlbfs) {
 #ifndef MEMFD_SUPPORTED
 		/* in in-memory or no-huge mode, we rely on memfd support */
 		return -ENOTSUP;
 #endif
 		/* memfd supported, but hugetlbfs memfd may not be */
-		if (!internal_config.no_hugetlbfs && !memfd_create_supported)
+		if (!internal_conf->no_hugetlbfs && !memfd_create_supported)
 			return -ENOTSUP;
 	}
 
-	if (internal_config.single_file_segments) {
+	if (internal_conf->single_file_segments) {
 		fd = fd_list[list_idx].memseg_list_fd;
 	} else if (fd_list[list_idx].len == 0) {
 		/* list not initialized */
@@ -1504,9 +1539,11 @@ static int
 test_memfd_create(void)
 {
 #ifdef MEMFD_SUPPORTED
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 	unsigned int i;
-	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
-		uint64_t pagesz = internal_config.hugepage_info[i].hugepage_sz;
+	for (i = 0; i < internal_conf->num_hugepage_sizes; i++) {
+		uint64_t pagesz = internal_conf->hugepage_info[i].hugepage_sz;
 		int pagesz_flag = pagesz_flags(pagesz);
 		int flags;
 
@@ -1533,18 +1570,20 @@ int
 eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	if (internal_config.in_memory || internal_config.no_hugetlbfs) {
+	if (internal_conf->in_memory || internal_conf->no_hugetlbfs) {
 #ifndef MEMFD_SUPPORTED
 		/* in in-memory or no-huge mode, we rely on memfd support */
 		return -ENOTSUP;
 #endif
 		/* memfd supported, but hugetlbfs memfd may not be */
-		if (!internal_config.no_hugetlbfs && !memfd_create_supported)
+		if (!internal_conf->no_hugetlbfs && !memfd_create_supported)
 			return -ENOTSUP;
 	}
 
-	if (internal_config.single_file_segments) {
+	if (internal_conf->single_file_segments) {
 		size_t pgsz = mcfg->memsegs[list_idx].page_sz;
 
 		/* segment not active? */
@@ -1567,11 +1606,14 @@ eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
 int
 eal_memalloc_init(void)
 {
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		if (rte_memseg_list_walk(secondary_msl_create_walk, NULL) < 0)
 			return -1;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
-			internal_config.in_memory) {
+			internal_conf->in_memory) {
 		int mfd_res = test_memfd_create();
 
 		if (mfd_res < 0) {
@@ -1587,7 +1629,7 @@ eal_memalloc_init(void)
 		 * if we support hugetlbfs with memfd_create. this code will
 		 * test if we do.
 		 */
-		if (internal_config.single_file_segments &&
+		if (internal_conf->single_file_segments &&
 				mfd_res != 1) {
 			RTE_LOG(ERR, EAL, "Single-file segments mode cannot be used without memfd support\n");
 			return -1;

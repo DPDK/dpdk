@@ -715,6 +715,8 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 	struct mem_area *ma = NULL;
 	void *data = NULL;
 	int fd = -1;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (arr == NULL) {
 		rte_errno = EINVAL;
@@ -750,7 +752,7 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 
 	fd = -1;
 
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		/* remap virtual area as writable */
 		static const int flags = RTE_MAP_FORCE_ADDRESS |
 			RTE_MAP_PRIVATE | RTE_MAP_ANONYMOUS;
@@ -977,6 +979,8 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 	size_t mmap_len;
 	int fd, ret;
 	char path[PATH_MAX];
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (arr == NULL) {
 		rte_errno = EINVAL;
@@ -1010,7 +1014,7 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 		goto out;
 	}
 	/* with no shconf, there were never any files to begin with */
-	if (!internal_config.no_shconf) {
+	if (!internal_conf->no_shconf) {
 		/*
 		 * attempt to get an exclusive lock on the file, to ensure it
 		 * has been detached by all other processes

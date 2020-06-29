@@ -320,14 +320,16 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs,
 	int ret = -1;
 	struct alloc_walk_param wa;
 	struct hugepage_info *hi = NULL;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	if (internal_config.legacy_mem) {
+	if (internal_conf->legacy_mem) {
 		RTE_LOG(ERR, EAL, "dynamic allocation not supported in legacy mode\n");
 		return -ENOTSUP;
 	}
 
-	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
-		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
+	for (i = 0; i < internal_conf->num_hugepage_sizes; i++) {
+		struct hugepage_info *hpi = &internal_conf->hugepage_info[i];
 		if (page_sz == hpi->hugepage_sz) {
 			hi = hpi;
 			break;
@@ -371,9 +373,11 @@ int
 eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 {
 	int seg, ret = 0;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* dynamic free not supported in legacy mode */
-	if (internal_config.legacy_mem)
+	if (internal_conf->legacy_mem)
 		return -1;
 
 	for (seg = 0; seg < n_segs; seg++) {
@@ -392,12 +396,12 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 
 		memset(&wa, 0, sizeof(wa));
 
-		for (i = 0; i < RTE_DIM(internal_config.hugepage_info); i++) {
-			hi = &internal_config.hugepage_info[i];
+		for (i = 0; i < RTE_DIM(internal_conf->hugepage_info); i++) {
+			hi = &internal_conf->hugepage_info[i];
 			if (cur->hugepage_sz == hi->hugepage_sz)
 				break;
 		}
-		if (i == RTE_DIM(internal_config.hugepage_info)) {
+		if (i == RTE_DIM(internal_conf->hugepage_info)) {
 			RTE_LOG(ERR, EAL, "Can't find relevant hugepage_info entry\n");
 			ret = -1;
 			continue;

@@ -72,9 +72,6 @@
 /* Allow the application to print its usage message too if set */
 static rte_usage_hook_t	rte_application_usage_hook = NULL;
 
-/* early configuration structure, when memory config is not mmapped */
-static struct rte_mem_config early_mem_config;
-
 /* define fd variable here, because file needs to be kept open for the
  * duration of the program, as we hold a write lock on it in the primary proc */
 static int mem_cfg_fd = -1;
@@ -83,25 +80,14 @@ static struct flock wr_lock = {
 		.l_type = F_WRLCK,
 		.l_whence = SEEK_SET,
 		.l_start = offsetof(struct rte_mem_config, memsegs),
-		.l_len = sizeof(early_mem_config.memsegs),
-};
-
-/* Address of global and public configuration */
-static struct rte_config rte_config = {
-		.mem_config = &early_mem_config,
+		.l_len = RTE_SIZEOF_FIELD(struct rte_mem_config, memsegs),
 };
 
 /* internal configuration (per-core) */
 struct lcore_config lcore_config[RTE_MAX_LCORE];
 
-/* internal configuration */
-struct internal_config internal_config;
-
 /* used by rte_rdtsc() */
 int rte_cycles_vmware_tsc_map;
-
-/* platform-specific runtime dir */
-static char runtime_dir[PATH_MAX];
 
 static const char *default_runtime_dir = "/var/run";
 
@@ -111,6 +97,7 @@ eal_create_runtime_dir(void)
 	const char *directory = default_runtime_dir;
 	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
 	const char *fallback = "/tmp";
+	char run_dir[PATH_MAX];
 	char tmp[PATH_MAX];
 	int ret;
 
@@ -129,9 +116,9 @@ eal_create_runtime_dir(void)
 	}
 
 	/* create prefix-specific subdirectory under DPDK runtime dir */
-	ret = snprintf(runtime_dir, sizeof(runtime_dir), "%s/%s",
+	ret = snprintf(run_dir, sizeof(run_dir), "%s/%s",
 			tmp, eal_get_hugefile_prefix());
-	if (ret < 0 || ret == sizeof(runtime_dir)) {
+	if (ret < 0 || ret == sizeof(run_dir)) {
 		RTE_LOG(ERR, EAL, "Error creating prefix-specific runtime path name\n");
 		return -1;
 	}
@@ -146,12 +133,15 @@ eal_create_runtime_dir(void)
 		return -1;
 	}
 
-	ret = mkdir(runtime_dir, 0700);
+	ret = mkdir(run_dir, 0700);
 	if (ret < 0 && errno != EEXIST) {
 		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
-			runtime_dir, strerror(errno));
+			run_dir, strerror(errno));
 		return -1;
 	}
+
+	if (eal_set_runtime_dir(run_dir, sizeof(run_dir)))
+		return -1;
 
 	return 0;
 }
@@ -159,6 +149,7 @@ eal_create_runtime_dir(void)
 int
 eal_clean_runtime_dir(void)
 {
+	const char *runtime_dir = rte_eal_get_runtime_dir();
 	DIR *dir;
 	struct dirent *dirent;
 	int dir_fd, fd, lck_result;
@@ -241,32 +232,6 @@ error:
 	return -1;
 }
 
-const char *
-rte_eal_get_runtime_dir(void)
-{
-	return runtime_dir;
-}
-
-/* Return user provided mbuf pool ops name */
-const char *
-rte_eal_mbuf_user_pool_ops(void)
-{
-	return internal_config.user_mbuf_pool_ops_name;
-}
-
-/* Return a pointer to the configuration structure */
-struct rte_config *
-rte_eal_get_configuration(void)
-{
-	return &rte_config;
-}
-
-enum rte_iova_mode
-rte_eal_iova_mode(void)
-{
-	return rte_eal_get_configuration()->iova_mode;
-}
-
 /* parse a sysfs (or other) file containing one integer value */
 int
 eal_parse_sysfs_value(const char *filename, unsigned long *val)
@@ -308,21 +273,24 @@ eal_parse_sysfs_value(const char *filename, unsigned long *val)
 static int
 rte_eal_config_create(void)
 {
+	struct rte_config *config = rte_eal_get_configuration();
 	size_t page_sz = sysconf(_SC_PAGE_SIZE);
-	size_t cfg_len = sizeof(*rte_config.mem_config);
+	size_t cfg_len = sizeof(*config->mem_config);
 	size_t cfg_len_aligned = RTE_ALIGN(cfg_len, page_sz);
 	void *rte_mem_cfg_addr, *mapped_mem_cfg_addr;
 	int retval;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	const char *pathname = eal_runtime_config_path();
 
-	if (internal_config.no_shconf)
+	if (internal_conf->no_shconf)
 		return 0;
 
 	/* map the config before hugepage address so that we don't waste a page */
-	if (internal_config.base_virtaddr != 0)
+	if (internal_conf->base_virtaddr != 0)
 		rte_mem_cfg_addr = (void *)
-			RTE_ALIGN_FLOOR(internal_config.base_virtaddr -
+			RTE_ALIGN_FLOOR(internal_conf->base_virtaddr -
 			sizeof(struct rte_mem_config), page_sz);
 	else
 		rte_mem_cfg_addr = NULL;
@@ -376,14 +344,14 @@ rte_eal_config_create(void)
 		return -1;
 	}
 
-	memcpy(rte_mem_cfg_addr, &early_mem_config, sizeof(early_mem_config));
-	rte_config.mem_config = rte_mem_cfg_addr;
+	memcpy(rte_mem_cfg_addr, config->mem_config, sizeof(struct rte_mem_config));
+	config->mem_config = rte_mem_cfg_addr;
 
 	/* store address of the config in the config itself so that secondary
-	 * processes could later map the config into this exact location */
-	rte_config.mem_config->mem_cfg_addr = (uintptr_t) rte_mem_cfg_addr;
-
-	rte_config.mem_config->dma_maskbits = 0;
+	 * processes could later map the config into this exact location
+	 */
+	config->mem_config->mem_cfg_addr = (uintptr_t) rte_mem_cfg_addr;
+	config->mem_config->dma_maskbits = 0;
 
 	return 0;
 }
@@ -392,11 +360,14 @@ rte_eal_config_create(void)
 static int
 rte_eal_config_attach(void)
 {
+	struct rte_config *config = rte_eal_get_configuration();
 	struct rte_mem_config *mem_config;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	const char *pathname = eal_runtime_config_path();
 
-	if (internal_config.no_shconf)
+	if (internal_conf->no_shconf)
 		return 0;
 
 	if (mem_cfg_fd < 0){
@@ -419,7 +390,7 @@ rte_eal_config_attach(void)
 		return -1;
 	}
 
-	rte_config.mem_config = mem_config;
+	config->mem_config = mem_config;
 
 	return 0;
 }
@@ -428,17 +399,21 @@ rte_eal_config_attach(void)
 static int
 rte_eal_config_reattach(void)
 {
+	struct rte_config *config = rte_eal_get_configuration();
 	struct rte_mem_config *mem_config;
 	void *rte_mem_cfg_addr;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	if (internal_config.no_shconf)
+	if (internal_conf->no_shconf)
 		return 0;
 
 	/* save the address primary process has mapped shared config to */
-	rte_mem_cfg_addr = (void *) (uintptr_t) rte_config.mem_config->mem_cfg_addr;
+	rte_mem_cfg_addr =
+		(void *) (uintptr_t) config->mem_config->mem_cfg_addr;
 
 	/* unmap original config */
-	munmap(rte_config.mem_config, sizeof(struct rte_mem_config));
+	munmap(config->mem_config, sizeof(struct rte_mem_config));
 
 	/* remap the config at proper address */
 	mem_config = (struct rte_mem_config *) mmap(rte_mem_cfg_addr,
@@ -462,7 +437,7 @@ rte_eal_config_reattach(void)
 		return -1;
 	}
 
-	rte_config.mem_config = mem_config;
+	config->mem_config = mem_config;
 
 	return 0;
 }
@@ -473,9 +448,11 @@ eal_proc_type_detect(void)
 {
 	enum rte_proc_type_t ptype = RTE_PROC_PRIMARY;
 	const char *pathname = eal_runtime_config_path();
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* if there no shared config, there can be no secondary processes */
-	if (!internal_config.no_shconf) {
+	if (!internal_conf->no_shconf) {
 		/* if we can open the file but not get a write-lock we are a
 		 * secondary process. NOTE: if we get a file handle back, we
 		 * keep that open and don't close it to prevent a race condition
@@ -496,9 +473,13 @@ eal_proc_type_detect(void)
 static int
 rte_config_init(void)
 {
-	rte_config.process_type = internal_config.process_type;
+	struct rte_config *config = rte_eal_get_configuration();
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	switch (rte_config.process_type){
+	config->process_type = internal_conf->process_type;
+
+	switch (config->process_type) {
 	case RTE_PROC_PRIMARY:
 		if (rte_eal_config_create() < 0)
 			return -1;
@@ -519,7 +500,7 @@ rte_config_init(void)
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:
 		RTE_LOG(ERR, EAL, "Invalid process type %d\n",
-			rte_config.process_type);
+			config->process_type);
 		return -1;
 	}
 
@@ -531,17 +512,19 @@ static void
 eal_hugedirs_unlock(void)
 {
 	int i;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++)
 	{
 		/* skip uninitialized */
-		if (internal_config.hugepage_info[i].lock_descriptor < 0)
+		if (internal_conf->hugepage_info[i].lock_descriptor < 0)
 			continue;
 		/* unlock hugepage file */
-		flock(internal_config.hugepage_info[i].lock_descriptor, LOCK_UN);
-		close(internal_config.hugepage_info[i].lock_descriptor);
+		flock(internal_conf->hugepage_info[i].lock_descriptor, LOCK_UN);
+		close(internal_conf->hugepage_info[i].lock_descriptor);
 		/* reset the field */
-		internal_config.hugepage_info[i].lock_descriptor = -1;
+		internal_conf->hugepage_info[i].lock_descriptor = -1;
 	}
 }
 
@@ -630,6 +613,8 @@ eal_parse_socket_arg(char *strval, volatile uint64_t *socket_arg)
 static int
 eal_parse_vfio_intr(const char *mode)
 {
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 	unsigned i;
 	static struct {
 		const char *name;
@@ -642,7 +627,7 @@ eal_parse_vfio_intr(const char *mode)
 
 	for (i = 0; i < RTE_DIM(map); i++) {
 		if (!strcmp(mode, map[i].name)) {
-			internal_config.vfio_intr_mode = map[i].value;
+			internal_conf->vfio_intr_mode = map[i].value;
 			return 0;
 		}
 	}
@@ -659,6 +644,8 @@ eal_log_level_parse(int argc, char **argv)
 	const int old_optind = optind;
 	const int old_optopt = optopt;
 	char * const old_optarg = optarg;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	argvopt = argv;
 	optind = 1;
@@ -673,7 +660,7 @@ eal_log_level_parse(int argc, char **argv)
 			break;
 
 		ret = (opt == OPT_LOG_LEVEL_NUM) ?
-			eal_parse_common_option(opt, optarg, &internal_config) : 0;
+			eal_parse_common_option(opt, optarg, internal_conf) : 0;
 
 		/* common parser is not happy */
 		if (ret < 0)
@@ -697,6 +684,8 @@ eal_parse_args(int argc, char **argv)
 	const int old_optind = optind;
 	const int old_optopt = optopt;
 	char * const old_optarg = optarg;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	argvopt = argv;
 	optind = 1;
@@ -711,7 +700,7 @@ eal_parse_args(int argc, char **argv)
 			goto out;
 		}
 
-		ret = eal_parse_common_option(opt, optarg, &internal_config);
+		ret = eal_parse_common_option(opt, optarg, internal_conf);
 		/* common parser is not happy */
 		if (ret < 0) {
 			eal_usage(prgname);
@@ -734,9 +723,9 @@ eal_parse_args(int argc, char **argv)
 				RTE_LOG(ERR, EAL, "Could not store hugepage directory\n");
 			else {
 				/* free old hugepage dir */
-				if (internal_config.hugepage_dir != NULL)
-					free(internal_config.hugepage_dir);
-				internal_config.hugepage_dir = hdir;
+				if (internal_conf->hugepage_dir != NULL)
+					free(internal_conf->hugepage_dir);
+				internal_conf->hugepage_dir = hdir;
 			}
 			break;
 		}
@@ -747,34 +736,34 @@ eal_parse_args(int argc, char **argv)
 				RTE_LOG(ERR, EAL, "Could not store file prefix\n");
 			else {
 				/* free old prefix */
-				if (internal_config.hugefile_prefix != NULL)
-					free(internal_config.hugefile_prefix);
-				internal_config.hugefile_prefix = prefix;
+				if (internal_conf->hugefile_prefix != NULL)
+					free(internal_conf->hugefile_prefix);
+				internal_conf->hugefile_prefix = prefix;
 			}
 			break;
 		}
 		case OPT_SOCKET_MEM_NUM:
 			if (eal_parse_socket_arg(optarg,
-					internal_config.socket_mem) < 0) {
+					internal_conf->socket_mem) < 0) {
 				RTE_LOG(ERR, EAL, "invalid parameters for --"
 						OPT_SOCKET_MEM "\n");
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
 			}
-			internal_config.force_sockets = 1;
+			internal_conf->force_sockets = 1;
 			break;
 
 		case OPT_SOCKET_LIMIT_NUM:
 			if (eal_parse_socket_arg(optarg,
-					internal_config.socket_limit) < 0) {
+					internal_conf->socket_limit) < 0) {
 				RTE_LOG(ERR, EAL, "invalid parameters for --"
 						OPT_SOCKET_LIMIT "\n");
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
 			}
-			internal_config.force_socket_limits = 1;
+			internal_conf->force_socket_limits = 1;
 			break;
 
 		case OPT_VFIO_INTR_NUM:
@@ -788,7 +777,7 @@ eal_parse_args(int argc, char **argv)
 			break;
 
 		case OPT_CREATE_UIO_DEV_NUM:
-			internal_config.create_uio_dev = 1;
+			internal_conf->create_uio_dev = 1;
 			break;
 
 		case OPT_MBUF_POOL_OPS_NAME_NUM:
@@ -798,17 +787,17 @@ eal_parse_args(int argc, char **argv)
 				RTE_LOG(ERR, EAL, "Could not store mbuf pool ops name\n");
 			else {
 				/* free old ops name */
-				if (internal_config.user_mbuf_pool_ops_name !=
+				if (internal_conf->user_mbuf_pool_ops_name !=
 						NULL)
-					free(internal_config.user_mbuf_pool_ops_name);
+					free(internal_conf->user_mbuf_pool_ops_name);
 
-				internal_config.user_mbuf_pool_ops_name =
+				internal_conf->user_mbuf_pool_ops_name =
 						ops_name;
 			}
 			break;
 		}
 		case OPT_MATCH_ALLOCATIONS_NUM:
-			internal_config.match_allocations = 1;
+			internal_conf->match_allocations = 1;
 			break;
 
 		default:
@@ -831,20 +820,20 @@ eal_parse_args(int argc, char **argv)
 	}
 
 	/* create runtime data directory */
-	if (internal_config.no_shconf == 0 &&
+	if (internal_conf->no_shconf == 0 &&
 			eal_create_runtime_dir() < 0) {
 		RTE_LOG(ERR, EAL, "Cannot create runtime directory\n");
 		ret = -1;
 		goto out;
 	}
 
-	if (eal_adjust_config(&internal_config) != 0) {
+	if (eal_adjust_config(internal_conf) != 0) {
 		ret = -1;
 		goto out;
 	}
 
 	/* sanity checks */
-	if (eal_check_common_options(&internal_config) != 0) {
+	if (eal_check_common_options(internal_conf) != 0) {
 		eal_usage(prgname);
 		ret = -1;
 		goto out;
@@ -878,8 +867,9 @@ static void
 eal_check_mem_on_local_socket(void)
 {
 	int socket_id;
+	const struct rte_config *config = rte_eal_get_configuration();
 
-	socket_id = rte_lcore_to_socket_id(rte_config.master_lcore);
+	socket_id = rte_lcore_to_socket_id(config->master_lcore);
 
 	if (rte_memseg_list_walk(check_socket, &socket_id) == 0)
 		RTE_LOG(WARNING, EAL, "WARNING: Master core has no memory on local socket!\n");
@@ -961,6 +951,9 @@ rte_eal_init(int argc, char **argv)
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 	bool phys_addrs;
+	const struct rte_config *config = rte_eal_get_configuration();
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* checks if the machine is adequate */
 	if (!rte_cpu_is_supported()) {
@@ -979,7 +972,7 @@ rte_eal_init(int argc, char **argv)
 	strlcpy(logid, p ? p + 1 : argv[0], sizeof(logid));
 	thread_id = pthread_self();
 
-	eal_reset_internal_config(&internal_config);
+	eal_reset_internal_config(internal_conf);
 
 	/* set log level as early as possible */
 	eal_log_level_parse(argc, argv);
@@ -1063,7 +1056,7 @@ rte_eal_init(int argc, char **argv)
 	phys_addrs = rte_eal_using_phys_addrs() != 0;
 
 	/* if no EAL option "--iova-mode=<pa|va>", use bus IOVA scheme */
-	if (internal_config.iova_mode == RTE_IOVA_DC) {
+	if (internal_conf->iova_mode == RTE_IOVA_DC) {
 		/* autodetect the IOVA mapping mode */
 		enum rte_iova_mode iova_mode = rte_bus_get_iommu_class();
 
@@ -1110,7 +1103,7 @@ rte_eal_init(int argc, char **argv)
 		rte_eal_get_configuration()->iova_mode = iova_mode;
 	} else {
 		rte_eal_get_configuration()->iova_mode =
-			internal_config.iova_mode;
+			internal_conf->iova_mode;
 	}
 
 	if (rte_eal_iova_mode() == RTE_IOVA_PA && !phys_addrs) {
@@ -1122,9 +1115,9 @@ rte_eal_init(int argc, char **argv)
 	RTE_LOG(INFO, EAL, "Selected IOVA mode '%s'\n",
 		rte_eal_iova_mode() == RTE_IOVA_PA ? "PA" : "VA");
 
-	if (internal_config.no_hugetlbfs == 0) {
+	if (internal_conf->no_hugetlbfs == 0) {
 		/* rte_config isn't initialized yet */
-		ret = internal_config.process_type == RTE_PROC_PRIMARY ?
+		ret = internal_conf->process_type == RTE_PROC_PRIMARY ?
 				eal_hugepage_info_init() :
 				eal_hugepage_info_read();
 		if (ret < 0) {
@@ -1135,12 +1128,12 @@ rte_eal_init(int argc, char **argv)
 		}
 	}
 
-	if (internal_config.memory == 0 && internal_config.force_sockets == 0) {
-		if (internal_config.no_hugetlbfs)
-			internal_config.memory = MEMSIZE_IF_NO_HUGE_PAGE;
+	if (internal_conf->memory == 0 && internal_conf->force_sockets == 0) {
+		if (internal_conf->no_hugetlbfs)
+			internal_conf->memory = MEMSIZE_IF_NO_HUGE_PAGE;
 	}
 
-	if (internal_config.vmware_tsc_map == 1) {
+	if (internal_conf->vmware_tsc_map == 1) {
 #ifdef RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT
 		rte_cycles_vmware_tsc_map = 1;
 		RTE_LOG (DEBUG, EAL, "Using VMWARE TSC MAP, "
@@ -1151,7 +1144,7 @@ rte_eal_init(int argc, char **argv)
 #endif
 	}
 
-	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0) {
+	if (rte_eal_log_init(logid, internal_conf->syslog_facility) < 0) {
 		rte_eal_init_alert("Cannot init logging.");
 		rte_errno = ENOMEM;
 		rte_atomic32_clear(&run_once);
@@ -1205,12 +1198,12 @@ rte_eal_init(int argc, char **argv)
 
 	eal_check_mem_on_local_socket();
 
-	eal_thread_init_master(rte_config.master_lcore);
+	eal_thread_init_master(config->master_lcore);
 
 	ret = eal_thread_dump_affinity(cpuset, sizeof(cpuset));
 
 	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
-		rte_config.master_lcore, (uintptr_t)thread_id, cpuset,
+		config->master_lcore, (uintptr_t)thread_id, cpuset,
 		ret == 0 ? "" : "...");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
@@ -1289,14 +1282,14 @@ rte_eal_init(int argc, char **argv)
 	 * In no_shconf mode, no runtime directory is created in the first
 	 * place, so no cleanup needed.
 	 */
-	if (!internal_config.no_shconf && eal_clean_runtime_dir() < 0) {
+	if (!internal_conf->no_shconf && eal_clean_runtime_dir() < 0) {
 		rte_eal_init_alert("Cannot clear runtime directory");
 		return -1;
 	}
-	if (!internal_config.no_telemetry) {
+	if (!internal_conf->no_telemetry) {
 		const char *error_str = NULL;
 		if (rte_telemetry_init(rte_eal_get_runtime_dir(),
-				&internal_config.ctrl_cpuset, &error_str)
+				&internal_conf->ctrl_cpuset, &error_str)
 				!= 0) {
 			rte_eal_init_alert(error_str);
 			return -1;
@@ -1333,41 +1326,34 @@ rte_eal_cleanup(void)
 	/* if we're in a primary process, we need to mark hugepages as freeable
 	 * so that finalization can release them back to the system.
 	 */
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_memseg_walk(mark_freeable, NULL);
 	rte_service_finalize();
 	rte_mp_channel_cleanup();
 	rte_trace_save();
 	eal_trace_fini();
-	eal_cleanup_config(&internal_config);
+	eal_cleanup_config(internal_conf);
 	return 0;
-}
-
-enum rte_proc_type_t
-rte_eal_process_type(void)
-{
-	return rte_config.process_type;
-}
-
-int rte_eal_has_hugepages(void)
-{
-	return ! internal_config.no_hugetlbfs;
-}
-
-int rte_eal_has_pci(void)
-{
-	return !internal_config.no_pci;
 }
 
 int rte_eal_create_uio_dev(void)
 {
-	return internal_config.create_uio_dev;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	return internal_conf->create_uio_dev;
 }
 
 enum rte_intr_mode
 rte_eal_vfio_intr_mode(void)
 {
-	return internal_config.vfio_intr_mode;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	return internal_conf->vfio_intr_mode;
 }
 
 int

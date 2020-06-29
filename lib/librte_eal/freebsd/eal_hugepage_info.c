@@ -8,6 +8,8 @@
 
 #include <rte_log.h>
 #include <fcntl.h>
+
+#include "eal_private.h"
 #include "eal_hugepages.h"
 #include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
@@ -55,12 +57,15 @@ eal_hugepage_info_init(void)
 	size_t sysctl_size;
 	int num_buffers, fd, error;
 	int64_t buffer_size;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
 	/* re-use the linux "internal config" structure for our memory data */
-	struct hugepage_info *hpi = &internal_config.hugepage_info[0];
+	struct hugepage_info *hpi = &internal_conf->hugepage_info[0];
 	struct hugepage_info *tmp_hpi;
 	unsigned int i;
 
-	internal_config.num_hugepage_sizes = 1;
+	internal_conf->num_hugepage_sizes = 1;
 
 	sysctl_size = sizeof(num_buffers);
 	error = sysctlbyname("hw.contigmem.num_buffers", &num_buffers,
@@ -102,27 +107,27 @@ eal_hugepage_info_init(void)
 	hpi->lock_descriptor = fd;
 
 	/* for no shared files mode, do not create shared memory config */
-	if (internal_config.no_shconf)
+	if (internal_conf->no_shconf)
 		return 0;
 
 	tmp_hpi = create_shared_memory(eal_hugepage_info_path(),
-			sizeof(internal_config.hugepage_info));
+			sizeof(internal_conf->hugepage_info));
 	if (tmp_hpi == NULL ) {
 		RTE_LOG(ERR, EAL, "Failed to create shared memory!\n");
 		return -1;
 	}
 
-	memcpy(tmp_hpi, hpi, sizeof(internal_config.hugepage_info));
+	memcpy(tmp_hpi, hpi, sizeof(internal_conf->hugepage_info));
 
 	/* we've copied file descriptors along with everything else, but they
 	 * will be invalid in secondary process, so overwrite them
 	 */
-	for (i = 0; i < RTE_DIM(internal_config.hugepage_info); i++) {
+	for (i = 0; i < RTE_DIM(internal_conf->hugepage_info); i++) {
 		struct hugepage_info *tmp = &tmp_hpi[i];
 		tmp->lock_descriptor = -1;
 	}
 
-	if (munmap(tmp_hpi, sizeof(internal_config.hugepage_info)) < 0) {
+	if (munmap(tmp_hpi, sizeof(internal_conf->hugepage_info)) < 0) {
 		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
 		return -1;
 	}
@@ -134,21 +139,24 @@ eal_hugepage_info_init(void)
 int
 eal_hugepage_info_read(void)
 {
-	struct hugepage_info *hpi = &internal_config.hugepage_info[0];
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	struct hugepage_info *hpi = &internal_conf->hugepage_info[0];
 	struct hugepage_info *tmp_hpi;
 
-	internal_config.num_hugepage_sizes = 1;
+	internal_conf->num_hugepage_sizes = 1;
 
 	tmp_hpi = open_shared_memory(eal_hugepage_info_path(),
-				  sizeof(internal_config.hugepage_info));
+				  sizeof(internal_conf->hugepage_info));
 	if (tmp_hpi == NULL) {
 		RTE_LOG(ERR, EAL, "Failed to open shared memory!\n");
 		return -1;
 	}
 
-	memcpy(hpi, tmp_hpi, sizeof(internal_config.hugepage_info));
+	memcpy(hpi, tmp_hpi, sizeof(internal_conf->hugepage_info));
 
-	if (munmap(tmp_hpi, sizeof(internal_config.hugepage_info)) < 0) {
+	if (munmap(tmp_hpi, sizeof(internal_conf->hugepage_info)) < 0) {
 		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
 		return -1;
 	}

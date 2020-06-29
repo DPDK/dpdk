@@ -32,35 +32,8 @@ static rte_usage_hook_t	rte_application_usage_hook;
  */
 static int mem_cfg_fd = -1;
 
-/* early configuration structure, when memory config is not mmapped */
-static struct rte_mem_config early_mem_config;
-
-/* Address of global and public configuration */
-static struct rte_config rte_config = {
-		.mem_config = &early_mem_config,
-};
-
 /* internal configuration (per-core) */
 struct lcore_config lcore_config[RTE_MAX_LCORE];
-
-/* internal configuration */
-struct internal_config internal_config;
-
-/* platform-specific runtime dir */
-static char runtime_dir[PATH_MAX];
-
-const char *
-rte_eal_get_runtime_dir(void)
-{
-	return runtime_dir;
-}
-
-/* Return a pointer to the configuration structure */
-struct rte_config *
-rte_eal_get_configuration(void)
-{
-	return &rte_config;
-}
 
 /* Detect if we are a primary or a secondary process */
 enum rte_proc_type_t
@@ -68,6 +41,7 @@ eal_proc_type_detect(void)
 {
 	enum rte_proc_type_t ptype = RTE_PROC_PRIMARY;
 	const char *pathname = eal_runtime_config_path();
+	const struct rte_config *config = rte_eal_get_configuration();
 
 	/* if we can open the file but not get a write-lock we are a secondary
 	 * process. NOTE: if we get a file handle back, we keep that open
@@ -77,14 +51,14 @@ eal_proc_type_detect(void)
 		_O_RDWR, _SH_DENYNO, _S_IREAD | _S_IWRITE);
 	if (err == 0) {
 		OVERLAPPED soverlapped = { 0 };
-		soverlapped.Offset = sizeof(*rte_config.mem_config);
+		soverlapped.Offset = sizeof(*config->mem_config);
 		soverlapped.OffsetHigh = 0;
 
 		HANDLE hwinfilehandle = (HANDLE)_get_osfhandle(mem_cfg_fd);
 
 		if (!LockFileEx(hwinfilehandle,
 			LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0,
-			sizeof(*rte_config.mem_config), 0, &soverlapped))
+			sizeof(*config->mem_config), 0, &soverlapped))
 			ptype = RTE_PROC_SECONDARY;
 	}
 
@@ -92,24 +66,6 @@ eal_proc_type_detect(void)
 		ptype == RTE_PROC_PRIMARY ? "PRIMARY" : "SECONDARY");
 
 	return ptype;
-}
-
-enum rte_proc_type_t
-rte_eal_process_type(void)
-{
-	return rte_config.process_type;
-}
-
-int
-rte_eal_has_hugepages(void)
-{
-	return !internal_config.no_hugetlbfs;
-}
-
-enum rte_iova_mode
-rte_eal_iova_mode(void)
-{
-	return rte_config.iova_mode;
 }
 
 /* display usage */
@@ -134,10 +90,12 @@ eal_log_level_parse(int argc, char **argv)
 	int opt;
 	char **argvopt;
 	int option_index;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	argvopt = argv;
 
-	eal_reset_internal_config(&internal_config);
+	eal_reset_internal_config(internal_conf);
 
 	while ((opt = getopt_long(argc, argvopt, eal_short_options,
 		eal_long_options, &option_index)) != EOF) {
@@ -150,7 +108,7 @@ eal_log_level_parse(int argc, char **argv)
 
 		ret = (opt == OPT_LOG_LEVEL_NUM) ?
 			eal_parse_common_option(opt, optarg,
-				&internal_config) : 0;
+				internal_conf) : 0;
 
 		/* common parser is not happy */
 		if (ret < 0)
@@ -168,6 +126,8 @@ eal_parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	argvopt = argv;
 
@@ -182,7 +142,7 @@ eal_parse_args(int argc, char **argv)
 			return -1;
 		}
 
-		ret = eal_parse_common_option(opt, optarg, &internal_config);
+		ret = eal_parse_common_option(opt, optarg, internal_conf);
 		/* common parser is not happy */
 		if (ret < 0) {
 			eal_usage(prgname);
@@ -214,11 +174,11 @@ eal_parse_args(int argc, char **argv)
 		}
 	}
 
-	if (eal_adjust_config(&internal_config) != 0)
+	if (eal_adjust_config(internal_conf) != 0)
 		return -1;
 
 	/* sanity checks */
-	if (eal_check_common_options(&internal_config) != 0) {
+	if (eal_check_common_options(internal_conf) != 0) {
 		eal_usage(prgname);
 		return -1;
 	}
@@ -277,7 +237,10 @@ __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
 int
 rte_eal_cleanup(void)
 {
-	eal_cleanup_config(&internal_config);
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	eal_cleanup_config(internal_conf);
 	return 0;
 }
 
@@ -286,6 +249,9 @@ int
 rte_eal_init(int argc, char **argv)
 {
 	int i, fctret;
+	const struct rte_config *config = rte_eal_get_configuration();
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	rte_eal_log_init(NULL, 0);
 
@@ -308,21 +274,21 @@ rte_eal_init(int argc, char **argv)
 		exit(1);
 
 	/* Prevent creation of shared memory files. */
-	if (internal_config.in_memory == 0) {
+	if (internal_conf->in_memory == 0) {
 		RTE_LOG(WARNING, EAL, "Multi-process support is requested, "
 			"but not available.\n");
-		internal_config.in_memory = 1;
+		internal_conf->in_memory = 1;
 	}
 
-	if (!internal_config.no_hugetlbfs && (eal_hugepage_info_init() < 0)) {
+	if (!internal_conf->no_hugetlbfs && (eal_hugepage_info_init() < 0)) {
 		rte_eal_init_alert("Cannot get hugepage information");
 		rte_errno = EACCES;
 		return -1;
 	}
 
-	if (internal_config.memory == 0 && !internal_config.force_sockets) {
-		if (internal_config.no_hugetlbfs)
-			internal_config.memory = MEMSIZE_IF_NO_HUGE_PAGE;
+	if (internal_conf->memory == 0 && !internal_conf->force_sockets) {
+		if (internal_conf->no_hugetlbfs)
+			internal_conf->memory = MEMSIZE_IF_NO_HUGE_PAGE;
 	}
 
 	if (eal_mem_win32api_init() < 0) {
@@ -367,7 +333,7 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	eal_thread_init_master(rte_config.master_lcore);
+	eal_thread_init_master(config->master_lcore);
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 

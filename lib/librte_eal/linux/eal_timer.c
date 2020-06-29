@@ -104,7 +104,10 @@ hpet_msb_inc(__rte_unused void *arg)
 uint64_t
 rte_get_hpet_hz(void)
 {
-	if(internal_config.no_hpet)
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	if (internal_conf->no_hpet)
 		rte_panic("Error, HPET called, but no HPET present\n");
 
 	return eal_hpet_resolution_hz;
@@ -115,8 +118,10 @@ rte_get_hpet_cycles(void)
 {
 	uint32_t t, msb;
 	uint64_t ret;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	if(internal_config.no_hpet)
+	if (internal_conf->no_hpet)
 		rte_panic("Error, HPET called, but no HPET present\n");
 
 	t = eal_hpet->counter_l;
@@ -138,8 +143,10 @@ int
 rte_eal_hpet_init(int make_default)
 {
 	int fd, ret;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	if (internal_config.no_hpet) {
+	if (internal_conf->no_hpet) {
 		RTE_LOG(NOTICE, EAL, "HPET is disabled\n");
 		return -1;
 	}
@@ -148,7 +155,7 @@ rte_eal_hpet_init(int make_default)
 	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "ERROR: Cannot open "DEV_HPET": %s!\n",
 			strerror(errno));
-		internal_config.no_hpet = 1;
+		internal_conf->no_hpet = 1;
 		return -1;
 	}
 	eal_hpet = mmap(NULL, 1024, PROT_READ, MAP_SHARED, fd, 0);
@@ -159,7 +166,7 @@ rte_eal_hpet_init(int make_default)
 				"To run without using HPET, set CONFIG_RTE_LIBEAL_USE_HPET=n "
 				"in your build configuration or use '--no-hpet' EAL flag.\n");
 		close(fd);
-		internal_config.no_hpet = 1;
+		internal_conf->no_hpet = 1;
 		return -1;
 	}
 	close(fd);
@@ -182,7 +189,7 @@ rte_eal_hpet_init(int make_default)
 				     hpet_msb_inc, NULL);
 	if (ret != 0) {
 		RTE_LOG(ERR, EAL, "ERROR: Cannot create HPET timer thread!\n");
-		internal_config.no_hpet = 1;
+		internal_conf->no_hpet = 1;
 		return -1;
 	}
 

@@ -45,6 +45,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_alarm.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_dev.c
 
 # from common dir
+SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_config.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_lcore.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_timer.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_common_memzone.c

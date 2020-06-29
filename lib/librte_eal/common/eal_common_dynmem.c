@@ -29,9 +29,11 @@ eal_dynmem_memseg_lists_init(void)
 	uint64_t max_mem, max_mem_per_type;
 	unsigned int max_seglists_per_type;
 	unsigned int n_memtypes, cur_type;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* no-huge does not need this at all */
-	if (internal_config.no_hugetlbfs)
+	if (internal_conf->no_hugetlbfs)
 		return 0;
 
 	/*
@@ -70,7 +72,7 @@ eal_dynmem_memseg_lists_init(void)
 	 */
 
 	/* create space for mem types */
-	n_memtypes = internal_config.num_hugepage_sizes * rte_socket_count();
+	n_memtypes = internal_conf->num_hugepage_sizes * rte_socket_count();
 	memtypes = calloc(n_memtypes, sizeof(*memtypes));
 	if (memtypes == NULL) {
 		RTE_LOG(ERR, EAL, "Cannot allocate space for memory types\n");
@@ -79,12 +81,12 @@ eal_dynmem_memseg_lists_init(void)
 
 	/* populate mem types */
 	cur_type = 0;
-	for (hpi_idx = 0; hpi_idx < (int) internal_config.num_hugepage_sizes;
+	for (hpi_idx = 0; hpi_idx < (int) internal_conf->num_hugepage_sizes;
 			hpi_idx++) {
 		struct hugepage_info *hpi;
 		uint64_t hugepage_sz;
 
-		hpi = &internal_config.hugepage_info[hpi_idx];
+		hpi = &internal_conf->hugepage_info[hpi_idx];
 		hugepage_sz = hpi->hugepage_sz;
 
 		for (i = 0; i < (int) rte_socket_count(); i++, cur_type++) {
@@ -92,7 +94,7 @@ eal_dynmem_memseg_lists_init(void)
 
 #ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
 			/* we can still sort pages by socket in legacy mode */
-			if (!internal_config.legacy_mem && socket_id > 0)
+			if (!internal_conf->legacy_mem && socket_id > 0)
 				break;
 #endif
 			memtypes[cur_type].page_sz = hugepage_sz;
@@ -227,11 +229,13 @@ eal_dynmem_hugepage_init(void)
 	struct hugepage_info used_hp[MAX_HUGEPAGE_SIZES];
 	uint64_t memory[RTE_MAX_NUMA_NODES];
 	int hp_sz_idx, socket_id;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	memset(used_hp, 0, sizeof(used_hp));
 
 	for (hp_sz_idx = 0;
-			hp_sz_idx < (int) internal_config.num_hugepage_sizes;
+			hp_sz_idx < (int) internal_conf->num_hugepage_sizes;
 			hp_sz_idx++) {
 #ifndef RTE_ARCH_64
 		struct hugepage_info dummy;
@@ -239,7 +243,7 @@ eal_dynmem_hugepage_init(void)
 #endif
 		/* also initialize used_hp hugepage sizes in used_hp */
 		struct hugepage_info *hpi;
-		hpi = &internal_config.hugepage_info[hp_sz_idx];
+		hpi = &internal_conf->hugepage_info[hp_sz_idx];
 		used_hp[hp_sz_idx].hugepage_sz = hpi->hugepage_sz;
 
 #ifndef RTE_ARCH_64
@@ -260,16 +264,16 @@ eal_dynmem_hugepage_init(void)
 
 	/* make a copy of socket_mem, needed for balanced allocation. */
 	for (hp_sz_idx = 0; hp_sz_idx < RTE_MAX_NUMA_NODES; hp_sz_idx++)
-		memory[hp_sz_idx] = internal_config.socket_mem[hp_sz_idx];
+		memory[hp_sz_idx] = internal_conf->socket_mem[hp_sz_idx];
 
 	/* calculate final number of pages */
 	if (eal_dynmem_calc_num_pages_per_socket(memory,
-			internal_config.hugepage_info, used_hp,
-			internal_config.num_hugepage_sizes) < 0)
+			internal_conf->hugepage_info, used_hp,
+			internal_conf->num_hugepage_sizes) < 0)
 		return -1;
 
 	for (hp_sz_idx = 0;
-			hp_sz_idx < (int)internal_config.num_hugepage_sizes;
+			hp_sz_idx < (int)internal_conf->num_hugepage_sizes;
 			hp_sz_idx++) {
 		for (socket_id = 0; socket_id < RTE_MAX_NUMA_NODES;
 				socket_id++) {
@@ -324,10 +328,10 @@ eal_dynmem_hugepage_init(void)
 	}
 
 	/* if socket limits were specified, set them */
-	if (internal_config.force_socket_limits) {
+	if (internal_conf->force_socket_limits) {
 		unsigned int i;
 		for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
-			uint64_t limit = internal_config.socket_limit[i];
+			uint64_t limit = internal_conf->socket_limit[i];
 			if (limit == 0)
 				continue;
 			if (rte_mem_alloc_validator_register("socket-limit",
@@ -344,9 +348,11 @@ get_socket_mem_size(int socket)
 {
 	uint64_t size = 0;
 	unsigned int i;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
-		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
+	for (i = 0; i < internal_conf->num_hugepage_sizes; i++) {
+		struct hugepage_info *hpi = &internal_conf->hugepage_info[i];
 		size += hpi->hugepage_sz * hpi->num_pages[socket];
 	}
 
@@ -362,13 +368,15 @@ eal_dynmem_calc_num_pages_per_socket(
 	unsigned int requested, available;
 	int total_num_pages = 0;
 	uint64_t remaining_mem, cur_mem;
-	uint64_t total_mem = internal_config.memory;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+	uint64_t total_mem = internal_conf->memory;
 
 	if (num_hp_info == 0)
 		return -1;
 
 	/* if specific memory amounts per socket weren't requested */
-	if (internal_config.force_sockets == 0) {
+	if (internal_conf->force_sockets == 0) {
 		size_t total_size;
 #ifdef RTE_ARCH_64
 		int cpu_per_socket[RTE_MAX_NUMA_NODES];
@@ -386,12 +394,12 @@ eal_dynmem_calc_num_pages_per_socket(
 		 * sockets according to number of cores from CPU mask present
 		 * on each socket.
 		 */
-		total_size = internal_config.memory;
+		total_size = internal_conf->memory;
 		for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_size != 0;
 				socket++) {
 
 			/* Set memory amount per socket */
-			default_size = internal_config.memory *
+			default_size = internal_conf->memory *
 				cpu_per_socket[socket] / rte_lcore_count();
 
 			/* Limit to maximum available memory on socket */
@@ -422,7 +430,7 @@ eal_dynmem_calc_num_pages_per_socket(
 		/* in 32-bit mode, allocate all of the memory only on master
 		 * lcore socket
 		 */
-		total_size = internal_config.memory;
+		total_size = internal_conf->memory;
 		for (socket = 0; socket < RTE_MAX_NUMA_NODES && total_size != 0;
 				socket++) {
 			struct rte_config *cfg = rte_eal_get_configuration();
@@ -495,10 +503,10 @@ eal_dynmem_calc_num_pages_per_socket(
 
 		/* if we didn't satisfy all memory requirements per socket */
 		if (memory[socket] > 0 &&
-				internal_config.socket_mem[socket] != 0) {
+				internal_conf->socket_mem[socket] != 0) {
 			/* to prevent icc errors */
 			requested = (unsigned int)(
-				internal_config.socket_mem[socket] / 0x100000);
+				internal_conf->socket_mem[socket] / 0x100000);
 			available = requested -
 				((unsigned int)(memory[socket] / 0x100000));
 			RTE_LOG(ERR, EAL, "Not enough memory available on "
@@ -510,7 +518,7 @@ eal_dynmem_calc_num_pages_per_socket(
 
 	/* if we didn't satisfy total memory requirements */
 	if (total_mem > 0) {
-		requested = (unsigned int)(internal_config.memory / 0x100000);
+		requested = (unsigned int)(internal_conf->memory / 0x100000);
 		available = requested - (unsigned int)(total_mem / 0x100000);
 		RTE_LOG(ERR, EAL, "Not enough memory available! "
 			"Requested: %uMB, available: %uMB\n",

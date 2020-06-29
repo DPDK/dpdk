@@ -201,11 +201,13 @@ int
 rte_mp_action_register(const char *name, rte_mp_t action)
 {
 	struct action_entry *entry;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (validate_action_name(name) != 0)
 		return -1;
 
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
 		rte_errno = ENOTSUP;
 		return -1;
@@ -235,11 +237,13 @@ void
 rte_mp_action_unregister(const char *name)
 {
 	struct action_entry *entry;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (validate_action_name(name) != 0)
 		return;
 
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
 		return;
 	}
@@ -315,6 +319,8 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 	struct action_entry *entry;
 	struct rte_mp_msg *msg = &m->msg;
 	rte_mp_t action = NULL;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	RTE_LOG(DEBUG, EAL, "msg: %s\n", msg->name);
 
@@ -350,7 +356,7 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 	pthread_mutex_unlock(&mp_mutex_action);
 
 	if (!action) {
-		if (m->type == MP_REQ && !internal_config.init_complete) {
+		if (m->type == MP_REQ && !internal_conf->init_complete) {
 			/* if this is a request, and init is not yet complete,
 			 * and callback wasn't registered, we should tell the
 			 * requester to ignore our existence because we're not
@@ -581,11 +587,13 @@ rte_mp_channel_init(void)
 	char path[PATH_MAX];
 	int dir_fd;
 	pthread_t mp_handle_tid;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* in no shared files mode, we do not have secondary processes support,
 	 * so no need to initialize IPC.
 	 */
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC will be disabled\n");
 		rte_errno = ENOTSUP;
 		return -1;
@@ -804,10 +812,13 @@ check_input(const struct rte_mp_msg *msg)
 int
 rte_mp_sendmsg(struct rte_mp_msg *msg)
 {
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
 	if (check_input(msg) != 0)
 		return -1;
 
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
 		rte_errno = ENOTSUP;
 		return -1;
@@ -957,6 +968,8 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	struct dirent *ent;
 	struct timeval now;
 	struct timespec end;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	RTE_LOG(DEBUG, EAL, "request: %s\n", req->name);
 
@@ -967,7 +980,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	if (check_input(req) != 0)
 		goto end;
 
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
 		rte_errno = ENOTSUP;
 		return -1;
@@ -1058,13 +1071,15 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 	struct timeval now;
 	struct timespec *end;
 	bool dummy_used = false;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	RTE_LOG(DEBUG, EAL, "request: %s\n", req->name);
 
 	if (check_input(req) != 0)
 		return -1;
 
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
 		rte_errno = ENOTSUP;
 		return -1;
@@ -1198,6 +1213,8 @@ int
 rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 {
 	RTE_LOG(DEBUG, EAL, "reply: %s\n", msg->name);
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (check_input(msg) != 0)
 		return -1;
@@ -1208,7 +1225,7 @@ rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 		return -1;
 	}
 
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
 		return 0;
 	}

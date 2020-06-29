@@ -264,8 +264,11 @@ eal_option_device_parse(void)
 const char *
 eal_get_hugefile_prefix(void)
 {
-	if (internal_config.hugefile_prefix != NULL)
-		return internal_config.hugefile_prefix;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	if (internal_conf->hugefile_prefix != NULL)
+		return internal_conf->hugefile_prefix;
 	return HUGEFILE_PREFIX_DEFAULT;
 }
 
@@ -1176,6 +1179,8 @@ static int
 eal_parse_iova_mode(const char *name)
 {
 	int mode;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (name == NULL)
 		return -1;
@@ -1187,7 +1192,7 @@ eal_parse_iova_mode(const char *name)
 	else
 		return -1;
 
-	internal_config.iova_mode = mode;
+	internal_conf->iova_mode = mode;
 	return 0;
 }
 
@@ -1196,6 +1201,8 @@ eal_parse_base_virtaddr(const char *arg)
 {
 	char *end;
 	uint64_t addr;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	errno = 0;
 	addr = strtoull(arg, &end, 16);
@@ -1215,7 +1222,7 @@ eal_parse_base_virtaddr(const char *arg)
 	 * it can align to 2MB for x86. So this alignment can also be used
 	 * on x86 and other architectures.
 	 */
-	internal_config.base_virtaddr =
+	internal_conf->base_virtaddr =
 		RTE_PTR_ALIGN_CEIL((uintptr_t)addr, (size_t)RTE_PGSIZE_16M);
 
 	return 0;
@@ -1668,12 +1675,14 @@ eal_adjust_config(struct internal_config *internal_cfg)
 {
 	int i;
 	struct rte_config *cfg = rte_eal_get_configuration();
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (!core_parsed)
 		eal_auto_detect_cores(cfg);
 
-	if (internal_config.process_type == RTE_PROC_AUTO)
-		internal_config.process_type = eal_proc_type_detect();
+	if (internal_conf->process_type == RTE_PROC_AUTO)
+		internal_conf->process_type = eal_proc_type_detect();
 
 	/* default master lcore is the first one */
 	if (!master_lcore_parsed) {
@@ -1697,6 +1706,8 @@ int
 eal_check_common_options(struct internal_config *internal_cfg)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	if (cfg->lcore_role[cfg->master_lcore] != ROLE_RTE) {
 		RTE_LOG(ERR, EAL, "Master lcore is not enabled for DPDK\n");
@@ -1743,7 +1754,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			"be specified together with --"OPT_NO_HUGE"\n");
 		return -1;
 	}
-	if (internal_config.force_socket_limits && internal_config.legacy_mem) {
+	if (internal_conf->force_socket_limits && internal_conf->legacy_mem) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_SOCKET_LIMIT
 			" is only supported in non-legacy memory mode\n");
 	}

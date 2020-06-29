@@ -57,12 +57,14 @@ rte_eal_hugepage_init(void)
 	uint64_t total_mem = 0;
 	void *addr;
 	unsigned int i, j, seg_idx = 0;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* get pointer to global configuration */
 	mcfg = rte_eal_get_configuration()->mem_config;
 
 	/* for debug purposes, hugetlbfs can be disabled */
-	if (internal_config.no_hugetlbfs) {
+	if (internal_conf->no_hugetlbfs) {
 		struct rte_memseg_list *msl;
 		uint64_t mem_sz, page_sz;
 		int n_segs;
@@ -70,7 +72,7 @@ rte_eal_hugepage_init(void)
 		/* create a memseg list */
 		msl = &mcfg->memsegs[0];
 
-		mem_sz = internal_config.memory;
+		mem_sz = internal_conf->memory;
 		page_sz = RTE_PGSIZE_4K;
 		n_segs = mem_sz / page_sz;
 
@@ -96,17 +98,17 @@ rte_eal_hugepage_init(void)
 	}
 
 	/* map all hugepages and sort them */
-	for (i = 0; i < internal_config.num_hugepage_sizes; i ++){
+	for (i = 0; i < internal_conf->num_hugepage_sizes; i++) {
 		struct hugepage_info *hpi;
 		rte_iova_t prev_end = 0;
 		int prev_ms_idx = -1;
 		uint64_t page_sz, mem_needed;
 		unsigned int n_pages, max_pages;
 
-		hpi = &internal_config.hugepage_info[i];
+		hpi = &internal_conf->hugepage_info[i];
 		page_sz = hpi->hugepage_sz;
 		max_pages = hpi->num_pages[0];
-		mem_needed = RTE_ALIGN_CEIL(internal_config.memory - total_mem,
+		mem_needed = RTE_ALIGN_CEIL(internal_conf->memory - total_mem,
 				page_sz);
 
 		n_pages = RTE_MIN(mem_needed / page_sz, max_pages);
@@ -210,14 +212,14 @@ rte_eal_hugepage_init(void)
 
 			total_mem += seg->len;
 		}
-		if (total_mem >= internal_config.memory)
+		if (total_mem >= internal_conf->memory)
 			break;
 	}
-	if (total_mem < internal_config.memory) {
+	if (total_mem < internal_conf->memory) {
 		RTE_LOG(ERR, EAL, "Couldn't reserve requested memory, "
 				"requested: %" PRIu64 "M "
 				"available: %" PRIu64 "M\n",
-				internal_config.memory >> 20, total_mem >> 20);
+				internal_conf->memory >> 20, total_mem >> 20);
 		return -1;
 	}
 	return 0;
@@ -250,13 +252,15 @@ attach_segment(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 int
 rte_eal_hugepage_attach(void)
 {
-	const struct hugepage_info *hpi;
+	struct hugepage_info *hpi;
 	int fd_hugepage = -1;
 	unsigned int i;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	hpi = &internal_config.hugepage_info[0];
+	hpi = &internal_conf->hugepage_info[0];
 
-	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
+	for (i = 0; i < internal_conf->num_hugepage_sizes; i++) {
 		const struct hugepage_info *cur_hpi = &hpi[i];
 		struct attach_walk_args wa;
 
@@ -333,9 +337,11 @@ memseg_primary_init(void)
 	int hpi_idx, msl_idx = 0;
 	struct rte_memseg_list *msl;
 	uint64_t max_mem, total_mem;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* no-huge does not need this at all */
-	if (internal_config.no_hugetlbfs)
+	if (internal_conf->no_hugetlbfs)
 		return 0;
 
 	/* FreeBSD has an issue where core dump will dump the entire memory
@@ -352,7 +358,7 @@ memseg_primary_init(void)
 	total_mem = 0;
 
 	/* create memseg lists */
-	for (hpi_idx = 0; hpi_idx < (int) internal_config.num_hugepage_sizes;
+	for (hpi_idx = 0; hpi_idx < (int) internal_conf->num_hugepage_sizes;
 			hpi_idx++) {
 		uint64_t max_type_mem, total_type_mem = 0;
 		uint64_t avail_mem;
@@ -360,7 +366,7 @@ memseg_primary_init(void)
 		struct hugepage_info *hpi;
 		uint64_t hugepage_sz;
 
-		hpi = &internal_config.hugepage_info[hpi_idx];
+		hpi = &internal_conf->hugepage_info[hpi_idx];
 		hugepage_sz = hpi->hugepage_sz;
 
 		/* no NUMA support on FreeBSD */

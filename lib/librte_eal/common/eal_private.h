@@ -668,4 +668,26 @@ eal_mem_free(void *virt, size_t size);
 int
 eal_mem_set_dump(void *virt, size_t size, bool dump);
 
+/**
+ * Sets the runtime directory of DPDK
+ *
+ * @param run_dir
+ *   The new runtime directory path of DPDK
+ * @param size
+ *   The size of the new runtime directory path in bytes.
+ * @return
+ *   0 on success, (-1) on failure.
+ */
+int
+eal_set_runtime_dir(char *run_dir, size_t size);
+
+/**
+ * Get the internal configuration structure.
+ *
+ * @return
+ *   A pointer to the internal configuration structure.
+ */
+struct internal_config *
+eal_get_internal_configuration(void);
+
 #endif /* _EAL_PRIVATE_H_ */

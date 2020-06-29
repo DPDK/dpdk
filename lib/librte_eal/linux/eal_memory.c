@@ -267,6 +267,8 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 	struct bitmask *oldmask = NULL;
 	bool have_numa = true;
 	unsigned long maxnode = 0;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* Check if kernel supports NUMA. */
 	if (numa_available() != 0) {
@@ -285,7 +287,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 			oldpolicy = MPOL_DEFAULT;
 		}
 		for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-			if (internal_config.socket_mem[i])
+			if (internal_conf->socket_mem[i])
 				maxnode = i + 1;
 	}
 #endif
@@ -304,7 +306,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 
 			if (j == maxnode) {
 				node_id = (node_id + 1) % maxnode;
-				while (!internal_config.socket_mem[node_id]) {
+				while (!internal_conf->socket_mem[node_id]) {
 					node_id++;
 					node_id %= maxnode;
 				}
@@ -525,9 +527,11 @@ create_shared_memory(const char *filename, const size_t mem_size)
 {
 	void *retval;
 	int fd;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* if no shared files mode is used, create anonymous memory instead */
-	if (internal_config.no_shconf) {
+	if (internal_conf->no_shconf) {
 		retval = mmap(NULL, mem_size, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		if (retval == MAP_FAILED)
@@ -577,12 +581,14 @@ unlink_hugepage_files(struct hugepage_file *hugepg_tbl,
 {
 	unsigned socket, size;
 	int page, nrpages = 0;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* get total number of hugepages */
 	for (size = 0; size < num_hp_info; size++)
 		for (socket = 0; socket < RTE_MAX_NUMA_NODES; socket++)
 			nrpages +=
-			internal_config.hugepage_info[size].num_pages[socket];
+			internal_conf->hugepage_info[size].num_pages[socket];
 
 	for (page = 0; page < nrpages; page++) {
 		struct hugepage_file *hp = &hugepg_tbl[page];
@@ -606,11 +612,13 @@ unmap_unneeded_hugepages(struct hugepage_file *hugepg_tbl,
 {
 	unsigned socket, size;
 	int page, nrpages = 0;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* get total number of hugepages */
 	for (size = 0; size < num_hp_info; size++)
 		for (socket = 0; socket < RTE_MAX_NUMA_NODES; socket++)
-			nrpages += internal_config.hugepage_info[size].num_pages[socket];
+			nrpages += internal_conf->hugepage_info[size].num_pages[socket];
 
 	for (size = 0; size < num_hp_info; size++) {
 		for (socket = 0; socket < RTE_MAX_NUMA_NODES; socket++) {
@@ -665,7 +673,10 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 	uint64_t page_sz;
 	size_t memseg_len;
 	int socket_id;
-
+#ifndef RTE_ARCH_64
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+#endif
 	page_sz = hugepages[seg_start].size;
 	socket_id = hugepages[seg_start].socket_id;
 	seg_len = seg_end - seg_start;
@@ -750,7 +761,7 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 		/* we have a new address, so unmap previous one */
 #ifndef RTE_ARCH_64
 		/* in 32-bit legacy mode, we have already unmapped the page */
-		if (!internal_config.legacy_mem)
+		if (!internal_conf->legacy_mem)
 			munmap(hfile->orig_va, page_sz);
 #else
 		munmap(hfile->orig_va, page_sz);
@@ -828,6 +839,8 @@ prealloc_segments(struct hugepage_file *hugepages, int n_pages)
 	unsigned int hpi_idx, socket, i;
 	int n_contig_segs, n_segs;
 	int msl_idx;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* before we preallocate segments, we need to free up our VA space.
 	 * we're not removing files, and we already have information about
@@ -842,10 +855,10 @@ prealloc_segments(struct hugepage_file *hugepages, int n_pages)
 	/* we cannot know how many page sizes and sockets we have discovered, so
 	 * loop over all of them
 	 */
-	for (hpi_idx = 0; hpi_idx < internal_config.num_hugepage_sizes;
+	for (hpi_idx = 0; hpi_idx < internal_conf->num_hugepage_sizes;
 			hpi_idx++) {
 		uint64_t page_sz =
-			internal_config.hugepage_info[hpi_idx].hugepage_sz;
+			internal_conf->hugepage_info[hpi_idx].hugepage_sz;
 
 		for (i = 0; i < rte_socket_count(); i++) {
 			struct rte_memseg_list *msl;
@@ -1039,9 +1052,11 @@ eal_get_hugepage_mem_size(void)
 {
 	uint64_t size = 0;
 	unsigned i, j;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
-	for (i = 0; i < internal_config.num_hugepage_sizes; i++) {
-		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
+	for (i = 0; i < internal_conf->num_hugepage_sizes; i++) {
+		struct hugepage_info *hpi = &internal_conf->hugepage_info[i];
 		if (strnlen(hpi->hugedir, sizeof(hpi->hugedir)) != 0) {
 			for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
 				size += hpi->hugepage_sz * hpi->num_pages[j];
@@ -1096,6 +1111,8 @@ eal_legacy_hugepage_init(void)
 	struct rte_mem_config *mcfg;
 	struct hugepage_file *hugepage = NULL, *tmp_hp = NULL;
 	struct hugepage_info used_hp[MAX_HUGEPAGE_SIZES];
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	uint64_t memory[RTE_MAX_NUMA_NODES];
 
@@ -1110,7 +1127,7 @@ eal_legacy_hugepage_init(void)
 	mcfg = rte_eal_get_configuration()->mem_config;
 
 	/* hugetlbfs can be disabled */
-	if (internal_config.no_hugetlbfs) {
+	if (internal_conf->no_hugetlbfs) {
 		void *prealloc_addr;
 		size_t mem_sz;
 		struct rte_memseg_list *msl;
@@ -1121,15 +1138,15 @@ eal_legacy_hugepage_init(void)
 		uint64_t page_sz;
 
 		/* nohuge mode is legacy mode */
-		internal_config.legacy_mem = 1;
+		internal_conf->legacy_mem = 1;
 
 		/* nohuge mode is single-file segments mode */
-		internal_config.single_file_segments = 1;
+		internal_conf->single_file_segments = 1;
 
 		/* create a memseg list */
 		msl = &mcfg->memsegs[0];
 
-		mem_sz = internal_config.memory;
+		mem_sz = internal_conf->memory;
 		page_sz = RTE_PGSIZE_4K;
 		n_segs = mem_sz / page_sz;
 
@@ -1151,7 +1168,7 @@ eal_legacy_hugepage_init(void)
 			RTE_LOG(DEBUG, EAL, "Falling back to anonymous map\n");
 		} else {
 			/* we got an fd - now resize it */
-			if (ftruncate(memfd, internal_config.memory) < 0) {
+			if (ftruncate(memfd, internal_conf->memory) < 0) {
 				RTE_LOG(ERR, EAL, "Cannot resize memfd: %s\n",
 						strerror(errno));
 				RTE_LOG(ERR, EAL, "Falling back to anonymous map\n");
@@ -1215,11 +1232,11 @@ eal_legacy_hugepage_init(void)
 
 	/* calculate total number of hugepages available. at this point we haven't
 	 * yet started sorting them so they all are on socket 0 */
-	for (i = 0; i < (int) internal_config.num_hugepage_sizes; i++) {
+	for (i = 0; i < (int) internal_conf->num_hugepage_sizes; i++) {
 		/* meanwhile, also initialize used_hp hugepage sizes in used_hp */
-		used_hp[i].hugepage_sz = internal_config.hugepage_info[i].hugepage_sz;
+		used_hp[i].hugepage_sz = internal_conf->hugepage_info[i].hugepage_sz;
 
-		nr_hugepages += internal_config.hugepage_info[i].num_pages[0];
+		nr_hugepages += internal_conf->hugepage_info[i].num_pages[0];
 	}
 
 	/*
@@ -1240,10 +1257,10 @@ eal_legacy_hugepage_init(void)
 
 	/* make a copy of socket_mem, needed for balanced allocation. */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		memory[i] = internal_config.socket_mem[i];
+		memory[i] = internal_conf->socket_mem[i];
 
 	/* map all hugepages and sort them */
-	for (i = 0; i < (int)internal_config.num_hugepage_sizes; i ++){
+	for (i = 0; i < (int)internal_conf->num_hugepage_sizes; i++) {
 		unsigned pages_old, pages_new;
 		struct hugepage_info *hpi;
 
@@ -1252,7 +1269,7 @@ eal_legacy_hugepage_init(void)
 		 * we just map all hugepages available to the system
 		 * all hugepages are still located on socket 0
 		 */
-		hpi = &internal_config.hugepage_info[i];
+		hpi = &internal_conf->hugepage_info[i];
 
 		if (hpi->num_pages[0] == 0)
 			continue;
@@ -1308,16 +1325,16 @@ eal_legacy_hugepage_init(void)
 
 	huge_recover_sigbus();
 
-	if (internal_config.memory == 0 && internal_config.force_sockets == 0)
-		internal_config.memory = eal_get_hugepage_mem_size();
+	if (internal_conf->memory == 0 && internal_conf->force_sockets == 0)
+		internal_conf->memory = eal_get_hugepage_mem_size();
 
 	nr_hugefiles = nr_hugepages;
 
 
 	/* clean out the numbers of pages */
-	for (i = 0; i < (int) internal_config.num_hugepage_sizes; i++)
+	for (i = 0; i < (int) internal_conf->num_hugepage_sizes; i++)
 		for (j = 0; j < RTE_MAX_NUMA_NODES; j++)
-			internal_config.hugepage_info[i].num_pages[j] = 0;
+			internal_conf->hugepage_info[i].num_pages[j] = 0;
 
 	/* get hugepages for each socket */
 	for (i = 0; i < nr_hugefiles; i++) {
@@ -1325,30 +1342,30 @@ eal_legacy_hugepage_init(void)
 
 		/* find a hugepage info with right size and increment num_pages */
 		const int nb_hpsizes = RTE_MIN(MAX_HUGEPAGE_SIZES,
-				(int)internal_config.num_hugepage_sizes);
+				(int)internal_conf->num_hugepage_sizes);
 		for (j = 0; j < nb_hpsizes; j++) {
 			if (tmp_hp[i].size ==
-					internal_config.hugepage_info[j].hugepage_sz) {
-				internal_config.hugepage_info[j].num_pages[socket]++;
+					internal_conf->hugepage_info[j].hugepage_sz) {
+				internal_conf->hugepage_info[j].num_pages[socket]++;
 			}
 		}
 	}
 
 	/* make a copy of socket_mem, needed for number of pages calculation */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		memory[i] = internal_config.socket_mem[i];
+		memory[i] = internal_conf->socket_mem[i];
 
 	/* calculate final number of pages */
 	nr_hugepages = eal_dynmem_calc_num_pages_per_socket(memory,
-			internal_config.hugepage_info, used_hp,
-			internal_config.num_hugepage_sizes);
+			internal_conf->hugepage_info, used_hp,
+			internal_conf->num_hugepage_sizes);
 
 	/* error if not enough memory available */
 	if (nr_hugepages < 0)
 		goto fail;
 
 	/* reporting in! */
-	for (i = 0; i < (int) internal_config.num_hugepage_sizes; i++) {
+	for (i = 0; i < (int) internal_conf->num_hugepage_sizes; i++) {
 		for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
 			if (used_hp[i].num_pages[j] > 0) {
 				RTE_LOG(DEBUG, EAL,
@@ -1377,7 +1394,7 @@ eal_legacy_hugepage_init(void)
 	 * also, sets final_va to NULL on pages that were unmapped.
 	 */
 	if (unmap_unneeded_hugepages(tmp_hp, used_hp,
-			internal_config.num_hugepage_sizes) < 0) {
+			internal_conf->num_hugepage_sizes) < 0) {
 		RTE_LOG(ERR, EAL, "Unmapping and locking hugepages failed!\n");
 		goto fail;
 	}
@@ -1395,7 +1412,7 @@ eal_legacy_hugepage_init(void)
 
 #ifndef RTE_ARCH_64
 	/* for legacy 32-bit mode, we did not preallocate VA space, so do it */
-	if (internal_config.legacy_mem &&
+	if (internal_conf->legacy_mem &&
 			prealloc_segments(hugepage, nr_hugefiles)) {
 		RTE_LOG(ERR, EAL, "Could not preallocate VA space for hugepages\n");
 		goto fail;
@@ -1411,8 +1428,8 @@ eal_legacy_hugepage_init(void)
 	}
 
 	/* free the hugepage backing files */
-	if (internal_config.hugepage_unlink &&
-		unlink_hugepage_files(tmp_hp, internal_config.num_hugepage_sizes) < 0) {
+	if (internal_conf->hugepage_unlink &&
+		unlink_hugepage_files(tmp_hp, internal_conf->num_hugepage_sizes) < 0) {
 		RTE_LOG(ERR, EAL, "Unlinking hugepage files failed!\n");
 		goto fail;
 	}
@@ -1622,7 +1639,10 @@ eal_hugepage_attach(void)
 int
 rte_eal_hugepage_init(void)
 {
-	return internal_config.legacy_mem ?
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	return internal_conf->legacy_mem ?
 			eal_legacy_hugepage_init() :
 			eal_dynmem_hugepage_init();
 }
@@ -1630,7 +1650,10 @@ rte_eal_hugepage_init(void)
 int
 rte_eal_hugepage_attach(void)
 {
-	return internal_config.legacy_mem ?
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	return internal_conf->legacy_mem ?
 			eal_legacy_hugepage_attach() :
 			eal_hugepage_attach();
 }
@@ -1659,9 +1682,11 @@ memseg_primary_init_32(void)
 	struct rte_memseg_list *msl;
 	uint64_t extra_mem_per_socket, total_extra_mem, total_requested_mem;
 	uint64_t max_mem;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* no-huge does not need this at all */
-	if (internal_config.no_hugetlbfs)
+	if (internal_conf->no_hugetlbfs)
 		return 0;
 
 	/* this is a giant hack, but desperate times call for desperate
@@ -1674,7 +1699,7 @@ memseg_primary_init_32(void)
 	 * unneeded pages. this will not affect secondary processes, as those
 	 * should be able to mmap the space without (too many) problems.
 	 */
-	if (internal_config.legacy_mem)
+	if (internal_conf->legacy_mem)
 		return 0;
 
 	/* 32-bit mode is a very special case. we cannot know in advance where
@@ -1683,12 +1708,12 @@ memseg_primary_init_32(void)
 	 */
 	active_sockets = 0;
 	total_requested_mem = 0;
-	if (internal_config.force_sockets)
+	if (internal_conf->force_sockets)
 		for (i = 0; i < rte_socket_count(); i++) {
 			uint64_t mem;
 
 			socket_id = rte_socket_id_by_idx(i);
-			mem = internal_config.socket_mem[socket_id];
+			mem = internal_conf->socket_mem[socket_id];
 
 			if (mem == 0)
 				continue;
@@ -1697,7 +1722,7 @@ memseg_primary_init_32(void)
 			total_requested_mem += mem;
 		}
 	else
-		total_requested_mem = internal_config.memory;
+		total_requested_mem = internal_conf->memory;
 
 	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
 	if (total_requested_mem > max_mem) {
@@ -1724,7 +1749,7 @@ memseg_primary_init_32(void)
 
 	/* create memseg lists */
 	for (i = 0; i < rte_socket_count(); i++) {
-		int hp_sizes = (int) internal_config.num_hugepage_sizes;
+		int hp_sizes = (int) internal_conf->num_hugepage_sizes;
 		uint64_t max_socket_mem, cur_socket_mem;
 		unsigned int master_lcore_socket;
 		struct rte_config *cfg = rte_eal_get_configuration();
@@ -1734,13 +1759,13 @@ memseg_primary_init_32(void)
 
 #ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
 		/* we can still sort pages by socket in legacy mode */
-		if (!internal_config.legacy_mem && socket_id > 0)
+		if (!internal_conf->legacy_mem && socket_id > 0)
 			break;
 #endif
 
 		/* if we didn't specifically request memory on this socket */
 		skip = active_sockets != 0 &&
-				internal_config.socket_mem[socket_id] == 0;
+				internal_conf->socket_mem[socket_id] == 0;
 		/* ...or if we didn't specifically request memory on *any*
 		 * socket, and this is not master lcore
 		 */
@@ -1755,8 +1780,8 @@ memseg_primary_init_32(void)
 
 		/* max amount of memory on this socket */
 		max_socket_mem = (active_sockets != 0 ?
-					internal_config.socket_mem[socket_id] :
-					internal_config.memory) +
+					internal_conf->socket_mem[socket_id] :
+					internal_conf->memory) +
 					extra_mem_per_socket;
 		cur_socket_mem = 0;
 
@@ -1766,7 +1791,7 @@ memseg_primary_init_32(void)
 			struct hugepage_info *hpi;
 			int type_msl_idx, max_segs, total_segs = 0;
 
-			hpi = &internal_config.hugepage_info[hpi_idx];
+			hpi = &internal_conf->hugepage_info[hpi_idx];
 			hugepage_sz = hpi->hugepage_sz;
 
 			/* check if pages are actually available */
@@ -1883,6 +1908,10 @@ rte_eal_memseg_init(void)
 	/* increase rlimit to maximum */
 	struct rlimit lim;
 
+#ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+#endif
 	if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
 		/* set limit to maximum */
 		lim.rlim_cur = lim.rlim_max;
@@ -1899,7 +1928,7 @@ rte_eal_memseg_init(void)
 		RTE_LOG(ERR, EAL, "Cannot get current resource limits\n");
 	}
 #ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
-	if (!internal_config.legacy_mem && rte_socket_count() > 1) {
+	if (!internal_conf->legacy_mem && rte_socket_count() > 1) {
 		RTE_LOG(WARNING, EAL, "DPDK is running on a NUMA system, but is compiled without NUMA support.\n");
 		RTE_LOG(WARNING, EAL, "This will have adverse consequences for performance and usability.\n");
 		RTE_LOG(WARNING, EAL, "Please use --"OPT_LEGACY_MEM" option, or recompile with NUMA support.\n");

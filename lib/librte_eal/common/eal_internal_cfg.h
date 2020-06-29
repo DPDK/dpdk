@@ -84,7 +84,6 @@ struct internal_config {
 	/**< indicates whether EAL has completed initialization */
 	unsigned int no_telemetry; /**< true to disable Telemetry */
 };
-extern struct internal_config internal_config; /**< Global EAL configuration. */
 
 void eal_reset_internal_config(struct internal_config *internal_cfg);
 

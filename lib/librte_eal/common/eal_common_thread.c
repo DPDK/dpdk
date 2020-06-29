@@ -153,7 +153,9 @@ struct rte_thread_ctrl_params {
 static void *rte_thread_init(void *arg)
 {
 	int ret;
-	rte_cpuset_t *cpuset = &internal_config.ctrl_cpuset;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+	rte_cpuset_t *cpuset = &internal_conf->ctrl_cpuset;
 	struct rte_thread_ctrl_params *params = arg;
 	void *(*start_routine)(void *) = params->start_routine;
 	void *routine_arg = params->arg;
@@ -177,7 +179,9 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		const pthread_attr_t *attr,
 		void *(*start_routine)(void *), void *arg)
 {
-	rte_cpuset_t *cpuset = &internal_config.ctrl_cpuset;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+	rte_cpuset_t *cpuset = &internal_conf->ctrl_cpuset;
 	struct rte_thread_ctrl_params *params;
 	int ret;
 

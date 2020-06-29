@@ -656,13 +656,15 @@ eal_nohuge_init(void)
 	void *addr;
 
 	mcfg = rte_eal_get_configuration()->mem_config;
+	struct internal_config *internal_conf =
+		eal_get_internal_configuration();
 
 	/* nohuge mode is legacy mode */
-	internal_config.legacy_mem = 1;
+	internal_conf->legacy_mem = 1;
 
 	msl = &mcfg->memsegs[0];
 
-	mem_sz = internal_config.memory;
+	mem_sz = internal_conf->memory;
 	page_sz = RTE_PGSIZE_4K;
 	n_segs = mem_sz / page_sz;
 
@@ -698,7 +700,10 @@ eal_nohuge_init(void)
 int
 rte_eal_hugepage_init(void)
 {
-	return internal_config.no_hugetlbfs ?
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	return internal_conf->no_hugetlbfs ?
 		eal_nohuge_init() : eal_dynmem_hugepage_init();
 }
 
