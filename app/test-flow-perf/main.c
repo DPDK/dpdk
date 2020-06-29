@@ -84,7 +84,7 @@ struct lcore_info {
 	uint64_t tx_drops;
 	uint64_t rx_pkts;
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
-} __attribute__((__aligned__(64))); /* let it be cacheline aligned */
+} __rte_cache_aligned;
 
 static struct lcore_info lcore_infos[MAX_LCORES];
 
