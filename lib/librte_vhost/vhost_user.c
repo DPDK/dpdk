@@ -2683,8 +2683,10 @@ vhost_user_msg_handler(int vid, int fd)
 	case VHOST_USER_SEND_RARP:
 	case VHOST_USER_NET_SET_MTU:
 	case VHOST_USER_SET_SLAVE_REQ_FD:
-		vhost_user_lock_all_queue_pairs(dev);
-		unlock_required = 1;
+		if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
+			vhost_user_lock_all_queue_pairs(dev);
+			unlock_required = 1;
+		}
 		break;
 	default:
 		break;
