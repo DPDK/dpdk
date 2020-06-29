@@ -111,19 +111,20 @@ foreach class:dpdk_driver_classes
 			# lib and then running pmdinfogen on the contents of
 			# that lib. The final lib reuses the object files and
 			# adds in the new source file.
-			out_filename = lib_name + '.pmd.c'
-			tmp_lib = static_library('tmp_' + lib_name,
-					sources,
-					include_directories: includes,
-					dependencies: static_deps,
-					c_args: cflags)
-			objs += tmp_lib.extract_all_objects()
-			sources = custom_target(out_filename,
-					command: [pmdinfo, tmp_lib.full_path(),
-						'@OUTPUT@', pmdinfogen],
-					output: out_filename,
-					depends: [pmdinfogen, tmp_lib])
-
+			if not is_windows
+				out_filename = lib_name + '.pmd.c'
+				tmp_lib = static_library('tmp_' + lib_name,
+						sources,
+						include_directories: includes,
+						dependencies: static_deps,
+						c_args: cflags)
+				objs += tmp_lib.extract_all_objects()
+				sources = custom_target(out_filename,
+						command: [pmdinfo, tmp_lib.full_path(),
+							'@OUTPUT@', pmdinfogen],
+						output: out_filename,
+						depends: [pmdinfogen, tmp_lib])
+			endif
 			version_map = '@0@/@1@/@2@_version.map'.format(
 					meson.current_source_dir(),
 					drv_path, lib_name)
