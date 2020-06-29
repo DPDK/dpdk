@@ -141,6 +141,7 @@ struct otx2_sso_evdev {
 	uint64_t adptr_xae_cnt;
 	uint16_t rx_adptr_pool_cnt;
 	uint64_t *rx_adptr_pools;
+	uint16_t max_port_id;
 	uint16_t tim_adptr_ring_cnt;
 	uint16_t *timer_adptr_rings;
 	uint64_t *timer_adptr_sz;
@@ -185,6 +186,8 @@ struct otx2_ssogws {
 	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP];
 	/* PTP timestamp */
 	struct otx2_timesync_info *tstamp;
+	/* Tx Fastpath data */
+	uint8_t tx_adptr_data[] __rte_cache_aligned;
 } __rte_cache_aligned;
 
 struct otx2_ssogws_state {
@@ -204,6 +207,8 @@ struct otx2_ssogws_dual {
 	uintptr_t grps_base[OTX2_SSO_MAX_VHGRP];
 	/* PTP timestamp */
 	struct otx2_timesync_info *tstamp;
+	/* Tx Fastpath data */
+	uint8_t tx_adptr_data[] __rte_cache_aligned;
 } __rte_cache_aligned;
 
 static inline struct otx2_sso_evdev *

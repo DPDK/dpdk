@@ -260,10 +260,11 @@ otx2_ssogws_order(struct otx2_ssogws *ws, const uint8_t wait_flag)
 }
 
 static __rte_always_inline const struct otx2_eth_txq *
-otx2_ssogws_xtract_meta(struct rte_mbuf *m)
+otx2_ssogws_xtract_meta(struct rte_mbuf *m,
+			const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT])
 {
-	return rte_eth_devices[m->port].data->tx_queues[
-			rte_event_eth_tx_adapter_txq_get(m)];
+	return (const struct otx2_eth_txq *)txq_data[m->port][
+					rte_event_eth_tx_adapter_txq_get(m)];
 }
 
 static __rte_always_inline void
@@ -276,20 +277,24 @@ otx2_ssogws_prepare_pkt(const struct otx2_eth_txq *txq, struct rte_mbuf *m,
 
 static __rte_always_inline uint16_t
 otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
-		     uint64_t *cmd, const uint32_t flags)
+		     uint64_t *cmd, const uint64_t
+		     txq_data[][RTE_MAX_QUEUES_PER_PORT],
+		     const uint32_t flags)
 {
 	struct rte_mbuf *m = ev[0].mbuf;
-	const struct otx2_eth_txq *txq = otx2_ssogws_xtract_meta(m);
-
-	rte_prefetch_non_temporal(txq);
+	const struct otx2_eth_txq *txq;
 
 	if ((flags & NIX_TX_OFFLOAD_SECURITY_F) &&
-	    (m->ol_flags & PKT_TX_SEC_OFFLOAD))
+	    (m->ol_flags & PKT_TX_SEC_OFFLOAD)) {
+		txq = otx2_ssogws_xtract_meta(m, txq_data);
 		return otx2_sec_event_tx(ws, ev, m, txq, flags);
+	}
 
+	rte_prefetch_non_temporal(&txq_data[m->port][0]);
 	/* Perform header writes before barrier for TSO */
 	otx2_nix_xmit_prepare_tso(m, flags);
 	otx2_ssogws_order(ws, !ev->sched_type);
+	txq = otx2_ssogws_xtract_meta(m, txq_data);
 	otx2_ssogws_prepare_pkt(txq, m, cmd, flags);
 
 	if (flags & NIX_TX_MULTI_SEG_F) {

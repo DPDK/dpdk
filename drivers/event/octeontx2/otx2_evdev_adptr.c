@@ -438,6 +438,60 @@ sso_sqb_aura_limit_edit(struct rte_mempool *mp, uint16_t nb_sqb_bufs)
 	return otx2_mbox_process(npa_lf->mbox);
 }
 
+static int
+sso_add_tx_queue_data(const struct rte_eventdev *event_dev,
+		      uint16_t eth_port_id, uint16_t tx_queue_id,
+		      struct otx2_eth_txq *txq)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	int i;
+
+	for (i = 0; i < event_dev->data->nb_ports; i++) {
+		dev->max_port_id = RTE_MAX(dev->max_port_id, eth_port_id);
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *old_dws;
+			struct otx2_ssogws_dual *dws;
+
+			old_dws = event_dev->data->ports[i];
+			dws = rte_realloc_socket(old_dws,
+						 sizeof(struct otx2_ssogws_dual)
+						 + (sizeof(uint64_t) *
+						    (dev->max_port_id + 1) *
+						    RTE_MAX_QUEUES_PER_PORT),
+						 RTE_CACHE_LINE_SIZE,
+						 event_dev->data->socket_id);
+			if (dws == NULL)
+				return -ENOMEM;
+
+			((uint64_t (*)[RTE_MAX_QUEUES_PER_PORT]
+			 )&dws->tx_adptr_data)[eth_port_id][tx_queue_id] =
+				(uint64_t)txq;
+			event_dev->data->ports[i] = dws;
+		} else {
+			struct otx2_ssogws *old_ws;
+			struct otx2_ssogws *ws;
+
+			old_ws = event_dev->data->ports[i];
+			ws = rte_realloc_socket(old_ws,
+						sizeof(struct otx2_ssogws_dual)
+						+ (sizeof(uint64_t) *
+						   (dev->max_port_id + 1) *
+						   RTE_MAX_QUEUES_PER_PORT),
+						RTE_CACHE_LINE_SIZE,
+						event_dev->data->socket_id);
+			if (ws == NULL)
+				return -ENOMEM;
+
+			((uint64_t (*)[RTE_MAX_QUEUES_PER_PORT]
+			 )&ws->tx_adptr_data)[eth_port_id][tx_queue_id] =
+				(uint64_t)txq;
+			event_dev->data->ports[i] = ws;
+		}
+	}
+
+	return 0;
+}
+
 int
 otx2_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
 			      const struct rte_eth_dev *eth_dev,
@@ -446,18 +500,27 @@ otx2_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
 	struct otx2_eth_dev *otx2_eth_dev = eth_dev->data->dev_private;
 	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
 	struct otx2_eth_txq *txq;
-	int i;
+	int i, ret;
 
 	RTE_SET_USED(id);
 	if (tx_queue_id < 0) {
 		for (i = 0 ; i < eth_dev->data->nb_tx_queues; i++) {
 			txq = eth_dev->data->tx_queues[i];
 			sso_sqb_aura_limit_edit(txq->sqb_pool,
-						OTX2_SSO_SQB_LIMIT);
+					OTX2_SSO_SQB_LIMIT);
+			ret = sso_add_tx_queue_data(event_dev,
+						    eth_dev->data->port_id, i,
+						    txq);
+			if (ret < 0)
+				return ret;
 		}
 	} else {
 		txq = eth_dev->data->tx_queues[tx_queue_id];
 		sso_sqb_aura_limit_edit(txq->sqb_pool, OTX2_SSO_SQB_LIMIT);
+		ret = sso_add_tx_queue_data(event_dev, eth_dev->data->port_id,
+					    tx_queue_id, txq);
+		if (ret < 0)
+			return ret;
 	}
 
 	dev->tx_offloads |= otx2_eth_dev->tx_offload_flags;
