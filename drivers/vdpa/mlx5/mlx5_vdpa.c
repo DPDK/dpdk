@@ -151,7 +151,8 @@ mlx5_vdpa_direct_db_prepare(struct mlx5_vdpa_priv *priv)
 	int ret;
 
 	if (priv->direct_notifier) {
-		ret = rte_vhost_host_notifier_ctrl(priv->vid, false);
+		ret = rte_vhost_host_notifier_ctrl(priv->vid,
+						   RTE_VHOST_QUEUE_ALL, false);
 		if (ret != 0) {
 			DRV_LOG(INFO, "Direct HW notifier FD cannot be "
 				"destroyed for device %d: %d.", priv->vid, ret);
@@ -159,7 +160,8 @@ mlx5_vdpa_direct_db_prepare(struct mlx5_vdpa_priv *priv)
 		}
 		priv->direct_notifier = 0;
 	}
-	ret = rte_vhost_host_notifier_ctrl(priv->vid, true);
+	ret = rte_vhost_host_notifier_ctrl(priv->vid, RTE_VHOST_QUEUE_ALL,
+					   true);
 	if (ret != 0)
 		DRV_LOG(INFO, "Direct HW notifier FD cannot be configured for"
 			" device %d: %d.", priv->vid, ret);

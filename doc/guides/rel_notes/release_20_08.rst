@@ -140,6 +140,9 @@ API Changes
 
 * ``rte_page_sizes`` enumeration is replaced with ``RTE_PGSIZE_xxx`` defines.
 
+* vhost: The API of ``rte_vhost_host_notifier_ctrl`` was changed to be per
+  queue and not per device, a qid parameter was added to the arguments list.
+
 
 ABI Changes
 -----------

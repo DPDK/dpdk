@@ -840,7 +840,7 @@ ifcvf_sw_fallback_switchover(struct ifcvf_internal *internal)
 	vdpa_ifcvf_stop(internal);
 	vdpa_disable_vfio_intr(internal);
 
-	ret = rte_vhost_host_notifier_ctrl(vid, false);
+	ret = rte_vhost_host_notifier_ctrl(vid, RTE_VHOST_QUEUE_ALL, false);
 	if (ret && ret != -ENOTSUP)
 		goto error;
 
@@ -859,7 +859,7 @@ ifcvf_sw_fallback_switchover(struct ifcvf_internal *internal)
 	if (ret)
 		goto stop_vf;
 
-	rte_vhost_host_notifier_ctrl(vid, true);
+	rte_vhost_host_notifier_ctrl(vid, RTE_VHOST_QUEUE_ALL, true);
 
 	internal->sw_fallback_running = true;
 
@@ -894,7 +894,7 @@ ifcvf_dev_config(int vid)
 	rte_atomic32_set(&internal->dev_attached, 1);
 	update_datapath(internal);
 
-	if (rte_vhost_host_notifier_ctrl(vid, true) != 0)
+	if (rte_vhost_host_notifier_ctrl(vid, RTE_VHOST_QUEUE_ALL, true) != 0)
 		DRV_LOG(NOTICE, "vDPA (%s): software relay is used.",
 				vdev->device->name);
 

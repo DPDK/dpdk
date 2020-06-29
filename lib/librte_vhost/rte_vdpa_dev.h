@@ -9,6 +9,8 @@
 
 #include "rte_vhost.h"
 
+#define RTE_VHOST_QUEUE_ALL UINT16_MAX
+
 /**
  * vdpa device operations
  */
@@ -116,12 +118,14 @@ rte_vdpa_unregister_device(struct rte_vdpa_device *dev);
  *  vhost device id
  * @param enable
  *  true for host notifier map, false for host notifier unmap
+ * @param qid
+ *  vhost queue id, RTE_VHOST_QUEUE_ALL to configure all the device queues
  * @return
  *  0 on success, -1 on failure
  */
 __rte_experimental
 int
-rte_vhost_host_notifier_ctrl(int vid, bool enable);
+rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable);
 
 /**
  * @warning
