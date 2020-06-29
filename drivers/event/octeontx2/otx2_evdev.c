@@ -726,6 +726,46 @@ sso_clr_links(const struct rte_eventdev *event_dev)
 }
 
 static void
+sso_restore_links(const struct rte_eventdev *event_dev)
+{
+	struct otx2_sso_evdev *dev = sso_pmd_priv(event_dev);
+	uint16_t *links_map;
+	int i, j;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		links_map = event_dev->data->links_map;
+		/* Point links_map to this port specific area */
+		links_map += (i * RTE_EVENT_MAX_QUEUES_PER_DEV);
+		if (dev->dual_ws) {
+			struct otx2_ssogws_dual *ws;
+
+			ws = event_dev->data->ports[i];
+			for (j = 0; j < dev->nb_event_queues; j++) {
+				if (links_map[j] == 0xdead)
+					continue;
+				sso_port_link_modify((struct otx2_ssogws *)
+						&ws->ws_state[0], j, true);
+				sso_port_link_modify((struct otx2_ssogws *)
+						&ws->ws_state[1], j, true);
+				sso_func_trace("Restoring port %d queue %d "
+						"link", i, j);
+			}
+		} else {
+			struct otx2_ssogws *ws;
+
+			ws = event_dev->data->ports[i];
+			for (j = 0; j < dev->nb_event_queues; j++) {
+				if (links_map[j] == 0xdead)
+					continue;
+				sso_port_link_modify(ws, j, true);
+				sso_func_trace("Restoring port %d queue %d "
+						"link", i, j);
+			}
+		}
+	}
+}
+
+static void
 sso_set_port_ops(struct otx2_ssogws *ws, uintptr_t base)
 {
 	ws->tag_op		= base + SSOW_LF_GWS_TAG;
@@ -765,18 +805,15 @@ sso_configure_dual_ports(const struct rte_eventdev *event_dev)
 		struct otx2_ssogws_dual *ws;
 		uintptr_t base;
 
-		/* Free memory prior to re-allocation if needed */
 		if (event_dev->data->ports[i] != NULL) {
 			ws = event_dev->data->ports[i];
-			rte_free(ws);
-			ws = NULL;
-		}
-
-		/* Allocate event port memory */
-		ws = rte_zmalloc_socket("otx2_sso_ws",
+		} else {
+			/* Allocate event port memory */
+			ws = rte_zmalloc_socket("otx2_sso_ws",
 					sizeof(struct otx2_ssogws_dual),
 					RTE_CACHE_LINE_SIZE,
 					event_dev->data->socket_id);
+		}
 		if (ws == NULL) {
 			otx2_err("Failed to alloc memory for port=%d", i);
 			rc = -ENOMEM;
@@ -1061,8 +1098,11 @@ otx2_sso_configure(const struct rte_eventdev *event_dev)
 		return -EINVAL;
 	}
 
-	if (dev->configured)
+	if (dev->configured) {
 		sso_unregister_irqs(event_dev);
+		/* Clear any prior port-queue mapping. */
+		sso_clr_links(event_dev);
+	}
 
 	if (dev->nb_event_queues) {
 		/* Finit any previous queues. */
@@ -1097,8 +1137,8 @@ otx2_sso_configure(const struct rte_eventdev *event_dev)
 		goto teardown_hwggrp;
 	}
 
-	/* Clear any prior port-queue mapping. */
-	sso_clr_links(event_dev);
+	/* Restore any prior port-queue mapping. */
+	sso_restore_links(event_dev);
 	rc = sso_ggrp_alloc_xaq(dev);
 	if (rc < 0) {
 		otx2_err("Failed to alloc xaq to ggrp %d", rc);
