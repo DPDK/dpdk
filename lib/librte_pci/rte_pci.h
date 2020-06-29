@@ -23,7 +23,7 @@ extern "C" {
 #include <sys/types.h>
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
-#define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
+#define PCI_PRI_FMT "%.4" PRIx32 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
 #define PCI_PRI_STR_SIZE sizeof("XXXXXXXX:XX:XX.X")
 
 /** Short formatting string, without domain, for PCI device: Ex: 00:01.0 */
