@@ -43,6 +43,7 @@
 
 #define MLX5_VDPA_MAX_RETRIES 20
 #define MLX5_VDPA_USEC 1000
+#define MLX5_VDPA_DEFAULT_NO_TRAFFIC_TIME_S 2LLU
 
 TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
 					      TAILQ_HEAD_INITIALIZER(priv_list);
@@ -624,6 +625,61 @@ mlx5_vdpa_roce_disable(struct rte_pci_addr *addr, struct ibv_device **ibv)
 	return -rte_errno;
 }
 
+static int
+mlx5_vdpa_args_check_handler(const char *key, const char *val, void *opaque)
+{
+	struct mlx5_vdpa_priv *priv = opaque;
+	unsigned long tmp;
+
+	if (strcmp(key, "class") == 0)
+		return 0;
+	errno = 0;
+	tmp = strtoul(val, NULL, 0);
+	if (errno) {
+		DRV_LOG(WARNING, "%s: \"%s\" is an invalid integer.", key, val);
+		return -errno;
+	}
+	if (strcmp(key, "event_mode") == 0) {
+		if (tmp <= MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT)
+			priv->event_mode = (int)tmp;
+		else
+			DRV_LOG(WARNING, "Invalid event_mode %s.", val);
+	} else if (strcmp(key, "event_us") == 0) {
+		priv->event_us = (uint32_t)tmp;
+	} else if (strcmp(key, "no_traffic_time") == 0) {
+		priv->no_traffic_time_s = (uint32_t)tmp;
+	} else {
+		DRV_LOG(WARNING, "Invalid key %s.", key);
+	}
+	return 0;
+}
+
+static void
+mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
+{
+	struct rte_kvargs *kvlist;
+
+	priv->event_mode = MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER;
+	priv->event_us = 0;
+	priv->no_traffic_time_s = MLX5_VDPA_DEFAULT_NO_TRAFFIC_TIME_S;
+	if (devargs == NULL)
+		return;
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return;
+	rte_kvargs_process(kvlist, NULL, mlx5_vdpa_args_check_handler, priv);
+	rte_kvargs_free(kvlist);
+	if (!priv->event_us) {
+		if (priv->event_mode == MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER)
+			priv->event_us = MLX5_VDPA_DEFAULT_TIMER_STEP_US;
+		else if (priv->event_mode == MLX5_VDPA_EVENT_MODE_FIXED_TIMER)
+			priv->event_us = MLX5_VDPA_DEFAULT_TIMER_DELAY_US;
+	}
+	DRV_LOG(DEBUG, "event mode is %d.", priv->event_mode);
+	DRV_LOG(DEBUG, "event_us is %u us.", priv->event_us);
+	DRV_LOG(DEBUG, "no traffic time is %u s.", priv->no_traffic_time_s);
+}
+
 /**
  * DPDK callback to register a PCI device.
  *
@@ -713,6 +769,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		goto error;
 	}
+	mlx5_vdpa_config_get(pci_dev->device.devargs, priv);
 	SLIST_INIT(&priv->mr_list);
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&priv_list, priv, next);

@@ -36,6 +36,9 @@
 #define VIRTIO_F_RING_PACKED 34
 #endif
 
+#define MLX5_VDPA_DEFAULT_TIMER_DELAY_US 100u
+#define MLX5_VDPA_DEFAULT_TIMER_STEP_US 1u
+
 struct mlx5_vdpa_cq {
 	uint16_t log_desc_n;
 	uint32_t cq_ci:24;
@@ -101,6 +104,12 @@ struct mlx5_vdpa_steer {
 	} rss[7];
 };
 
+enum {
+	MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER,
+	MLX5_VDPA_EVENT_MODE_FIXED_TIMER,
+	MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT
+};
+
 struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	uint8_t configured;
@@ -110,7 +119,10 @@ struct mlx5_vdpa_priv {
 	pthread_mutex_t timer_lock;
 	pthread_cond_t timer_cond;
 	volatile uint8_t timer_on;
+	int event_mode;
+	uint32_t event_us;
 	uint32_t timer_delay_us;
+	uint32_t no_traffic_time_s;
 	struct rte_vdpa_device *vdev; /* vDPA device. */
 	int vid; /* vhost device id. */
 	struct ibv_context *ctx; /* Device context. */

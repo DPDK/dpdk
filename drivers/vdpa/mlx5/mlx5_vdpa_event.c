@@ -20,9 +20,6 @@
 #include "mlx5_vdpa.h"
 
 
-#define MLX5_VDPA_DEFAULT_TIMER_DELAY_US 500u
-#define MLX5_VDPA_NO_TRAFFIC_TIME_S 2LLU
-
 void
 mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 {
@@ -175,7 +172,8 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 		rte_errno = errno;
 		goto error;
 	}
-	if (callfd != -1) {
+	if (callfd != -1 &&
+	    priv->event_mode != MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT) {
 		ret = mlx5_glue->devx_subscribe_devx_event_fd(priv->eventc,
 							      callfd,
 							      cq->cq->obj, 0);
@@ -253,21 +251,43 @@ mlx5_vdpa_arm_all_cqs(struct mlx5_vdpa_priv *priv)
 	}
 }
 
+static void
+mlx5_vdpa_timer_sleep(struct mlx5_vdpa_priv *priv, uint32_t max)
+{
+	if (priv->event_mode == MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER) {
+		switch (max) {
+		case 0:
+			priv->timer_delay_us += priv->event_us;
+			break;
+		case 1:
+			break;
+		default:
+			priv->timer_delay_us /= max;
+			break;
+		}
+	}
+	usleep(priv->timer_delay_us);
+}
+
 static void *
 mlx5_vdpa_poll_handle(void *arg)
 {
 	struct mlx5_vdpa_priv *priv = arg;
 	int i;
 	struct mlx5_vdpa_cq *cq;
-	uint32_t total;
+	uint32_t max;
 	uint64_t current_tic;
 
 	pthread_mutex_lock(&priv->timer_lock);
 	while (!priv->timer_on)
 		pthread_cond_wait(&priv->timer_cond, &priv->timer_lock);
 	pthread_mutex_unlock(&priv->timer_lock);
+	priv->timer_delay_us = priv->event_mode ==
+					    MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER ?
+					      MLX5_VDPA_DEFAULT_TIMER_DELAY_US :
+								 priv->event_us;
 	while (1) {
-		total = 0;
+		max = 0;
 		for (i = 0; i < priv->nr_virtqs; i++) {
 			cq = &priv->virtqs[i].eqp.cq;
 			if (cq->cq && !cq->armed) {
@@ -278,15 +298,16 @@ mlx5_vdpa_poll_handle(void *arg)
 					if (cq->callfd != -1)
 						eventfd_write(cq->callfd,
 							      (eventfd_t)1);
-					total += comp;
+					if (comp > max)
+						max = comp;
 				}
 			}
 		}
 		current_tic = rte_rdtsc();
-		if (!total) {
+		if (!max) {
 			/* No traffic ? stop timer and load interrupts. */
 			if (current_tic - priv->last_traffic_tic >=
-			    rte_get_timer_hz() * MLX5_VDPA_NO_TRAFFIC_TIME_S) {
+			    rte_get_timer_hz() * priv->no_traffic_time_s) {
 				DRV_LOG(DEBUG, "Device %s traffic was stopped.",
 					priv->vdev->device->name);
 				mlx5_vdpa_arm_all_cqs(priv);
@@ -296,12 +317,16 @@ mlx5_vdpa_poll_handle(void *arg)
 					pthread_cond_wait(&priv->timer_cond,
 							  &priv->timer_lock);
 				pthread_mutex_unlock(&priv->timer_lock);
+				priv->timer_delay_us = priv->event_mode ==
+					    MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER ?
+					      MLX5_VDPA_DEFAULT_TIMER_DELAY_US :
+								 priv->event_us;
 				continue;
 			}
 		} else {
 			priv->last_traffic_tic = current_tic;
 		}
-		usleep(priv->timer_delay_us);
+		mlx5_vdpa_timer_sleep(priv, max);
 	}
 	return NULL;
 }
@@ -327,6 +352,13 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 						   struct mlx5_vdpa_virtq, eqp);
 
 		mlx5_vdpa_cq_poll(cq);
+		if (priv->event_mode == MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT) {
+			mlx5_vdpa_cq_arm(priv, cq);
+			/* Notify guest for descs consuming. */
+			if (cq->callfd != -1)
+				eventfd_write(cq->callfd, (eventfd_t)1);
+			return;
+		}
 		/* Don't arm again - timer will take control. */
 		DRV_LOG(DEBUG, "Device %s virtq %d cq %d event was captured."
 			" Timer is %s, cq ci is %u.\n",
@@ -356,15 +388,16 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 	if (!priv->eventc)
 		/* All virtqs are in poll mode. */
 		return 0;
-	pthread_mutex_init(&priv->timer_lock, NULL);
-	pthread_cond_init(&priv->timer_cond, NULL);
-	priv->timer_on = 0;
-	priv->timer_delay_us = MLX5_VDPA_DEFAULT_TIMER_DELAY_US;
-	ret = pthread_create(&priv->timer_tid, NULL, mlx5_vdpa_poll_handle,
-			     (void *)priv);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to create timer thread.");
-		return -1;
+	if (priv->event_mode != MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT) {
+		pthread_mutex_init(&priv->timer_lock, NULL);
+		pthread_cond_init(&priv->timer_cond, NULL);
+		priv->timer_on = 0;
+		ret = pthread_create(&priv->timer_tid, NULL,
+				     mlx5_vdpa_poll_handle, (void *)priv);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to create timer thread.");
+			return -1;
+		}
 	}
 	flags = fcntl(priv->eventc->fd, F_GETFL);
 	ret = fcntl(priv->eventc->fd, F_SETFL, flags | O_NONBLOCK);

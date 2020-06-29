@@ -106,8 +106,40 @@ Run-time configuration
 
 - **ethtool** operations on related kernel interfaces also affect the PMD.
 
+Driver options
+^^^^^^^^^^^^^^
+
 - ``class`` parameter [string]
 
   Select the class of the driver that should probe the device.
   `vdpa` for the mlx5 vDPA driver.
 
+- ``event_mode`` parameter [int]
+
+  - 0, Completion queue scheduling will be managed by a timer thread which
+    automatically adjusts its delays to the coming traffic rate.
+
+  - 1, Completion queue scheduling will be managed by a timer thread with fixed
+    delay time.
+
+  - 2, Completion queue scheduling will be managed by interrupts. Each CQ burst
+    arms the CQ in order to get an interrupt event in the next traffic burst.
+
+  - Default mode is 0.
+
+- ``event_us`` parameter [int]
+
+  Per mode micro-seconds parameter - relevant only for event mode 0 and 1:
+
+  - 0, A nonzero value to set timer step in micro-seconds. The timer thread
+    dynamic delay change steps according to this value. Default value is 1us.
+
+  - 1, A nonzero value to set fixed timer delay in micro-seconds. Default value
+    is 100us.
+
+- ``no_traffic_time`` parameter [int]
+
+  A nonzero value defines the traffic off time, in seconds, that moves the
+  driver to no-traffic mode. In this mode the timer events are stopped and
+  interrupts are configured to the device in order to notify traffic for the
+  driver. Default value is 2s.
