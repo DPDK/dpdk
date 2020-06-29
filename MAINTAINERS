@@ -127,7 +127,6 @@ F: config/rte_config.h
 F: buildtools/call-sphinx-build.py
 F: buildtools/gen-pmdinfo-cfile.sh
 F: buildtools/list-dir-globs.py
-F: buildtools/map_to_def.py
 F: buildtools/symlink-drivers-solibs.sh
 
 Public CI
@@ -341,6 +340,7 @@ M: Pallavi Kadam <pallavi.kadam@intel.com>
 M: Ranjit Menon <ranjit.menon@intel.com>
 F: lib/librte_eal/windows/
 F: lib/librte_eal/rte_eal_exports.def
+F: buildtools/map_to_win.py
 F: doc/guides/windows_gsg/
 
 Windows memory allocation

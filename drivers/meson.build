@@ -156,16 +156,22 @@ foreach class:dpdk_driver_classes
 			implib = 'lib' + lib_name + '.dll.a'
 
 			def_file = custom_target(lib_name + '_def',
-				command: [map_to_def_cmd, '@INPUT@', '@OUTPUT@'],
+				command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
 				input: version_map,
 				output: '@0@_exports.def'.format(lib_name))
-			lk_deps = [version_map, def_file]
+
+			mingw_map = custom_target(lib_name + '_mingw',
+				command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
+				input: version_map,
+				output: '@0@_mingw.map'.format(lib_name))
+
+			lk_deps = [version_map, def_file, mingw_map]
 			if is_windows
 				if is_ms_linker
 					lk_args = ['-Wl,/def:' + def_file.full_path(),
 						'-Wl,/implib:drivers\\' + implib]
 				else
-					lk_args = []
+					lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
 				endif
 			else
 				lk_args = ['-Wl,--version-script=' + version_map]

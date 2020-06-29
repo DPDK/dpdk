@@ -9,14 +9,14 @@ list_dir_globs = find_program('list-dir-globs.py')
 check_symbols = find_program('check-symbols.sh')
 ldflags_ibverbs_static = find_program('options-ibverbs-static.sh')
 
-# set up map-to-def script using python, either built-in or external
+# set up map-to-win script using python, either built-in or external
 python3 = import('python').find_installation(required: false)
 if python3.found()
 	py3 = [python3]
 else
 	py3 = ['meson', 'runpython']
 endif
-map_to_def_cmd = py3 + files('map_to_def.py')
+map_to_win_cmd = py3 + files('map_to_win.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
 
 # stable ABI always starts with "DPDK_"
