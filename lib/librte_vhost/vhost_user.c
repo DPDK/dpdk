@@ -1070,6 +1070,13 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	}
 
 	if (dev->mem) {
+		if (dev->flags & VIRTIO_DEV_VDPA_CONFIGURED) {
+			struct rte_vdpa_device *vdpa_dev = dev->vdpa_dev;
+
+			if (vdpa_dev && vdpa_dev->ops->dev_close)
+				vdpa_dev->ops->dev_close(dev->vid);
+			dev->flags &= ~VIRTIO_DEV_VDPA_CONFIGURED;
+		}
 		free_mem_region(dev);
 		rte_free(dev->mem);
 		dev->mem = NULL;
