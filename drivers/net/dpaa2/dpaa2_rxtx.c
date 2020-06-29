@@ -42,10 +42,12 @@ static void enable_tx_tstamp(struct qbman_fd *fd) __rte_unused;
 } while (0)
 
 static inline void __rte_hot
-dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
+dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd,
+		       void *hw_annot_addr)
 {
-	struct dpaa2_annot_hdr *annotation;
 	uint16_t frc = DPAA2_GET_FD_FRC_PARSE_SUM(fd);
+	struct dpaa2_annot_hdr *annotation =
+			(struct dpaa2_annot_hdr *)hw_annot_addr;
 
 	m->packet_type = RTE_PTYPE_UNKNOWN;
 	switch (frc) {
@@ -101,17 +103,12 @@ dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
 			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_ICMP;
 		break;
 	default:
-		m->packet_type = dpaa2_dev_rx_parse_slow(m,
-		  (void *)((size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
-			 + DPAA2_FD_PTA_SIZE));
+		m->packet_type = dpaa2_dev_rx_parse_slow(m, annotation);
 	}
 	m->hash.rss = fd->simple.flc_hi;
 	m->ol_flags |= PKT_RX_RSS_HASH;
 
 	if (dpaa2_enable_ts == PMD_DPAA2_ENABLE_TS) {
-		annotation = (struct dpaa2_annot_hdr *)
-			((size_t)DPAA2_IOVA_TO_VADDR(
-			DPAA2_GET_FD_ADDR(fd)) + DPAA2_FD_PTA_SIZE);
 		m->timestamp = annotation->word2;
 		m->ol_flags |= PKT_RX_TIMESTAMP;
 		DPAA2_PMD_DP_DEBUG("pkt timestamp:0x%" PRIx64 "", m->timestamp);
@@ -266,9 +263,11 @@ eth_sg_fd_to_mbuf(const struct qbman_fd *fd,
 	struct qbman_sge *sgt, *sge;
 	size_t sg_addr, fd_addr;
 	int i = 0;
+	void *hw_annot_addr;
 	struct rte_mbuf *first_seg, *next_seg, *cur_seg, *temp;
 
 	fd_addr = (size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+	hw_annot_addr = (void *)(fd_addr + DPAA2_FD_PTA_SIZE);
 
 	/* Get Scatter gather table address */
 	sgt = (struct qbman_sge *)(fd_addr + DPAA2_GET_FD_OFFSET(fd));
@@ -289,11 +288,10 @@ eth_sg_fd_to_mbuf(const struct qbman_fd *fd,
 	first_seg->next = NULL;
 	first_seg->port = port_id;
 	if (dpaa2_svr_family == SVR_LX2160A)
-		dpaa2_dev_rx_parse_new(first_seg, fd);
+		dpaa2_dev_rx_parse_new(first_seg, fd, hw_annot_addr);
 	else
-		first_seg->packet_type = dpaa2_dev_rx_parse(first_seg,
-			(void *)((size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
-			 + DPAA2_FD_PTA_SIZE));
+		first_seg->packet_type =
+			dpaa2_dev_rx_parse(first_seg, hw_annot_addr);
 
 	rte_mbuf_refcnt_set(first_seg, 1);
 	cur_seg = first_seg;
@@ -324,8 +322,9 @@ static inline struct rte_mbuf *__rte_hot
 eth_fd_to_mbuf(const struct qbman_fd *fd,
 	       int port_id)
 {
-	void *iova_addr = DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
-	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(iova_addr,
+	void *v_addr = DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+	void *hw_annot_addr = (void *)((size_t)v_addr + DPAA2_FD_PTA_SIZE);
+	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(v_addr,
 		     rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
 
 	/* need to repopulated some of the fields,
@@ -347,10 +346,9 @@ eth_fd_to_mbuf(const struct qbman_fd *fd,
 	 */
 
 	if (dpaa2_svr_family == SVR_LX2160A)
-		dpaa2_dev_rx_parse_new(mbuf, fd);
+		dpaa2_dev_rx_parse_new(mbuf, fd, hw_annot_addr);
 	else
-		mbuf->packet_type = dpaa2_dev_rx_parse(mbuf,
-			(void *)((size_t)iova_addr + DPAA2_FD_PTA_SIZE));
+		mbuf->packet_type = dpaa2_dev_rx_parse(mbuf, hw_annot_addr);
 
 	DPAA2_PMD_DP_DEBUG("to mbuf - mbuf =%p, mbuf->buf_addr =%p, off = %d,"
 		"fd_off=%d fd =%" PRIx64 ", meta = %d  bpid =%d, len=%d\n",
