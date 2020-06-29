@@ -152,6 +152,7 @@ struct vhost_virtqueue {
 	int			backend;
 	int			enabled;
 	int			access_ok;
+	int			ready;
 	rte_spinlock_t		access_lock;
 
 	/* Used to notify the guest (trigger interrupt) */

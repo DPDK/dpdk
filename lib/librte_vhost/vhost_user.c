@@ -228,6 +228,20 @@ vhost_backend_cleanup(struct virtio_net *dev)
 	dev->postcopy_listening = 0;
 }
 
+static void
+vhost_user_notify_queue_state(struct virtio_net *dev, uint16_t index,
+			      int enable)
+{
+	struct rte_vdpa_device *vdpa_dev = dev->vdpa_dev;
+
+	if (vdpa_dev && vdpa_dev->ops->set_vring_state)
+		vdpa_dev->ops->set_vring_state(dev->vid, index, enable);
+
+	if (dev->notify_ops->vring_state_changed)
+		dev->notify_ops->vring_state_changed(dev->vid,
+				index, enable);
+}
+
 /*
  * This function just returns success at the moment unless
  * the device hasn't been initialised.
@@ -1304,8 +1318,11 @@ vq_is_ready(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	return rings_ok &&
 	       vq->kickfd != VIRTIO_UNINITIALIZED_EVENTFD &&
-	       vq->callfd != VIRTIO_UNINITIALIZED_EVENTFD;
+	       vq->callfd != VIRTIO_UNINITIALIZED_EVENTFD &&
+	       vq->enabled;
 }
+
+#define VIRTIO_DEV_NUM_VQS_TO_BE_READY 2u
 
 static int
 virtio_is_ready(struct virtio_net *dev)
@@ -1313,18 +1330,19 @@ virtio_is_ready(struct virtio_net *dev)
 	struct vhost_virtqueue *vq;
 	uint32_t i;
 
-	if (dev->nr_vring == 0)
+	if (dev->nr_vring < VIRTIO_DEV_NUM_VQS_TO_BE_READY)
 		return 0;
 
-	for (i = 0; i < dev->nr_vring; i++) {
+	for (i = 0; i < VIRTIO_DEV_NUM_VQS_TO_BE_READY; i++) {
 		vq = dev->virtqueue[i];
 
 		if (!vq_is_ready(dev, vq))
 			return 0;
 	}
 
-	VHOST_LOG_CONFIG(INFO,
-		"virtio is now ready for processing.\n");
+	if (!(dev->flags & VIRTIO_DEV_RUNNING))
+		VHOST_LOG_CONFIG(INFO,
+			"virtio is now ready for processing.\n");
 	return 1;
 }
 
@@ -1968,7 +1986,6 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 	struct virtio_net *dev = *pdev;
 	int enable = (int)msg->payload.state.num;
 	int index = (int)msg->payload.state.index;
-	struct rte_vdpa_device *vdpa_dev;
 
 	if (validate_msg_fds(msg, 0) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
@@ -1976,14 +1993,6 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 	VHOST_LOG_CONFIG(INFO,
 		"set queue enable: %d to qp idx: %d\n",
 		enable, index);
-
-	vdpa_dev = dev->vdpa_dev;
-	if (vdpa_dev && vdpa_dev->ops->set_vring_state)
-		vdpa_dev->ops->set_vring_state(dev->vid, index, enable);
-
-	if (dev->notify_ops->vring_state_changed)
-		dev->notify_ops->vring_state_changed(dev->vid,
-				index, enable);
 
 	/* On disable, rings have to be stopped being processed. */
 	if (!enable && dev->dequeue_zero_copy)
@@ -2611,6 +2620,7 @@ vhost_user_msg_handler(int vid, int fd)
 	int unlock_required = 0;
 	bool handled;
 	int request;
+	uint32_t i;
 
 	dev = get_device(vid);
 	if (dev == NULL)
@@ -2786,6 +2796,17 @@ skip_to_post_handle:
 		return -1;
 	}
 
+	for (i = 0; i < dev->nr_vring; i++) {
+		struct vhost_virtqueue *vq = dev->virtqueue[i];
+		bool cur_ready = vq_is_ready(dev, vq);
+
+		if (cur_ready != (vq && vq->ready)) {
+			vhost_user_notify_queue_state(dev, i, cur_ready);
+			vq->ready = cur_ready;
+		}
+	}
+
+
 	if (!(dev->flags & VIRTIO_DEV_RUNNING) && virtio_is_ready(dev)) {
 		dev->flags |= VIRTIO_DEV_READY;
 
@@ -2802,8 +2823,7 @@ skip_to_post_handle:
 
 	vdpa_dev = dev->vdpa_dev;
 	if (vdpa_dev && virtio_is_ready(dev) &&
-			!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED) &&
-			msg.request.master == VHOST_USER_SET_VRING_CALL) {
+	    !(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
 		if (vdpa_dev->ops->dev_conf)
 			vdpa_dev->ops->dev_conf(dev->vid);
 		dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
