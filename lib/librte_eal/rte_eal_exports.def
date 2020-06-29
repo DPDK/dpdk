@@ -9,6 +9,7 @@ EXPORTS
 	rte_devargs_remove
 	rte_eal_get_configuration
 	rte_eal_has_hugepages
+	rte_eal_has_pci
 	rte_eal_init
 	rte_eal_iova_mode
 	rte_eal_mp_remote_launch

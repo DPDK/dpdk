@@ -25,6 +25,7 @@
 #include <psapi.h>
 #include <setupapi.h>
 #include <winioctl.h>
+#include <devguid.h>
 
 /* Have GUIDs defined. */
 #ifndef INITGUID
