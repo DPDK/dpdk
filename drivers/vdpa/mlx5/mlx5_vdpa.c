@@ -146,31 +146,6 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 }
 
 static int
-mlx5_vdpa_direct_db_prepare(struct mlx5_vdpa_priv *priv)
-{
-	int ret;
-
-	if (priv->direct_notifier) {
-		ret = rte_vhost_host_notifier_ctrl(priv->vid,
-						   RTE_VHOST_QUEUE_ALL, false);
-		if (ret != 0) {
-			DRV_LOG(INFO, "Direct HW notifier FD cannot be "
-				"destroyed for device %d: %d.", priv->vid, ret);
-			return -1;
-		}
-		priv->direct_notifier = 0;
-	}
-	ret = rte_vhost_host_notifier_ctrl(priv->vid, RTE_VHOST_QUEUE_ALL,
-					   true);
-	if (ret != 0)
-		DRV_LOG(INFO, "Direct HW notifier FD cannot be configured for"
-			" device %d: %d.", priv->vid, ret);
-	else
-		priv->direct_notifier = 1;
-	return 0;
-}
-
-static int
 mlx5_vdpa_features_set(int vid)
 {
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
@@ -339,7 +314,6 @@ mlx5_vdpa_dev_config(int vid)
 		DRV_LOG(WARNING, "MTU cannot be set on device %s.",
 				vdev->device->name);
 	if (mlx5_vdpa_pd_create(priv) || mlx5_vdpa_mem_register(priv) ||
-	    mlx5_vdpa_direct_db_prepare(priv) ||
 	    mlx5_vdpa_virtqs_prepare(priv) || mlx5_vdpa_steer_setup(priv) ||
 	    mlx5_vdpa_cqe_event_setup(priv)) {
 		mlx5_vdpa_dev_close(vid);

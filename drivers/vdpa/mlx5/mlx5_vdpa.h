@@ -74,11 +74,18 @@ struct mlx5_vdpa_query_mr {
 	int is_indirect;
 };
 
+enum {
+	MLX5_VDPA_NOTIFIER_STATE_DISABLED,
+	MLX5_VDPA_NOTIFIER_STATE_ENABLED,
+	MLX5_VDPA_NOTIFIER_STATE_ERR
+};
+
 struct mlx5_vdpa_virtq {
 	SLIST_ENTRY(mlx5_vdpa_virtq) next;
 	uint8_t enable;
 	uint16_t index;
 	uint16_t vq_size;
+	uint8_t notifier_state;
 	struct mlx5_vdpa_priv *priv;
 	struct mlx5_devx_obj *virtq;
 	struct mlx5_devx_obj *counters;
@@ -113,7 +120,6 @@ enum {
 struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	uint8_t configured;
-	uint8_t direct_notifier; /* Whether direct notifier is on or off. */
 	uint64_t last_traffic_tic;
 	pthread_t timer_tid;
 	pthread_mutex_t timer_lock;
