@@ -1619,6 +1619,12 @@ vhost_user_set_vring_call(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		"vring call idx:%d file:%d\n", file.index, file.fd);
 
 	vq = dev->virtqueue[file.index];
+
+	if (vq->ready) {
+		vhost_user_notify_queue_state(dev, file.index, 0);
+		vq->ready = 0;
+	}
+
 	if (vq->callfd >= 0)
 		close(vq->callfd);
 
@@ -1875,6 +1881,11 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		if (dev->notify_ops->vring_state_changed)
 			dev->notify_ops->vring_state_changed(
 				dev->vid, file.index, 1);
+	}
+
+	if (vq->ready) {
+		vhost_user_notify_queue_state(dev, file.index, 0);
+		vq->ready = 0;
 	}
 
 	if (vq->kickfd >= 0)
