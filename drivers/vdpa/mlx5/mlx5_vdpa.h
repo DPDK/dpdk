@@ -40,6 +40,7 @@ struct mlx5_vdpa_cq {
 	uint16_t log_desc_n;
 	uint32_t cq_ci:24;
 	uint32_t arm_sn:2;
+	uint32_t armed:1;
 	int callfd;
 	rte_spinlock_t sl;
 	struct mlx5_devx_obj *cq;
@@ -104,6 +105,12 @@ struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	uint8_t configured;
 	uint8_t direct_notifier; /* Whether direct notifier is on or off. */
+	uint64_t last_traffic_tic;
+	pthread_t timer_tid;
+	pthread_mutex_t timer_lock;
+	pthread_cond_t timer_cond;
+	volatile uint8_t timer_on;
+	uint32_t timer_delay_us;
 	struct rte_vdpa_device *vdev; /* vDPA device. */
 	int vid; /* vhost device id. */
 	struct ibv_context *ctx; /* Device context. */

@@ -12,12 +12,16 @@
 #include <rte_atomic.h>
 #include <rte_common.h>
 #include <rte_io.h>
+#include <rte_alarm.h>
 
 #include <mlx5_common.h>
 
 #include "mlx5_vdpa_utils.h"
 #include "mlx5_vdpa.h"
 
+
+#define MLX5_VDPA_DEFAULT_TIMER_DELAY_US 500u
+#define MLX5_VDPA_NO_TRAFFIC_TIME_S 2LLU
 
 void
 mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
@@ -26,10 +30,23 @@ mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 		mlx5_glue->devx_free_uar(priv->uar);
 		priv->uar = NULL;
 	}
+#ifdef HAVE_IBV_DEVX_EVENT
 	if (priv->eventc) {
+		union {
+			struct mlx5dv_devx_async_event_hdr event_resp;
+			uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr)
+									 + 128];
+		} out;
+
+		/* Clean all pending events. */
+		while (mlx5_glue->devx_get_event(priv->eventc, &out.event_resp,
+		       sizeof(out.buf)) >=
+		       (ssize_t)sizeof(out.event_resp.cookie))
+			;
 		mlx5_glue->devx_destroy_event_channel(priv->eventc);
 		priv->eventc = NULL;
 	}
+#endif
 	priv->eqn = 0;
 }
 
@@ -79,7 +96,7 @@ mlx5_vdpa_cq_destroy(struct mlx5_vdpa_cq *cq)
 	memset(cq, 0, sizeof(*cq));
 }
 
-static inline void
+static inline void __rte_unused
 mlx5_vdpa_cq_arm(struct mlx5_vdpa_priv *priv, struct mlx5_vdpa_cq *cq)
 {
 	uint32_t arm_sn = cq->arm_sn << MLX5_CQ_SQN_OFFSET;
@@ -100,6 +117,7 @@ mlx5_vdpa_cq_arm(struct mlx5_vdpa_priv *priv, struct mlx5_vdpa_cq *cq)
 	*((uint32_t *)addr + 1) = db_be >> 32;
 #endif
 	cq->arm_sn++;
+	cq->armed = 1;
 }
 
 static int
@@ -157,6 +175,16 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 		rte_errno = errno;
 		goto error;
 	}
+	if (callfd != -1) {
+		ret = mlx5_glue->devx_subscribe_devx_event_fd(priv->eventc,
+							      callfd,
+							      cq->cq->obj, 0);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to subscribe CQE event fd.");
+			rte_errno = errno;
+			goto error;
+		}
+	}
 	cq->callfd = callfd;
 	/* Init CQ to ones to be in HW owner in the start. */
 	memset((void *)(uintptr_t)cq->umem_buf, 0xFF, attr.db_umem_offset);
@@ -168,27 +196,27 @@ error:
 	return -1;
 }
 
-static inline void __rte_unused
-mlx5_vdpa_cq_poll(struct mlx5_vdpa_priv *priv __rte_unused,
-		  struct mlx5_vdpa_cq *cq)
+static inline uint32_t
+mlx5_vdpa_cq_poll(struct mlx5_vdpa_cq *cq)
 {
 	struct mlx5_vdpa_event_qp *eqp =
 				container_of(cq, struct mlx5_vdpa_event_qp, cq);
 	const unsigned int cq_size = 1 << cq->log_desc_n;
 	const unsigned int cq_mask = cq_size - 1;
+	uint32_t total = 0;
 	int ret;
 
 	do {
-		volatile struct mlx5_cqe *cqe = cq->cqes + (cq->cq_ci &
-							    cq_mask);
+		volatile struct mlx5_cqe *cqe = cq->cqes + ((cq->cq_ci + total)
+							    & cq_mask);
 
-		ret = check_cqe(cqe, cq_size, cq->cq_ci);
+		ret = check_cqe(cqe, cq_size, cq->cq_ci + total);
 		switch (ret) {
 		case MLX5_CQE_STATUS_ERR:
 			cq->errors++;
 			/*fall-through*/
 		case MLX5_CQE_STATUS_SW_OWN:
-			cq->cq_ci++;
+			total++;
 			break;
 		case MLX5_CQE_STATUS_HW_OWN:
 		default:
@@ -196,21 +224,86 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_priv *priv __rte_unused,
 		}
 	} while (ret != MLX5_CQE_STATUS_HW_OWN);
 	rte_io_wmb();
+	cq->cq_ci += total;
 	/* Ring CQ doorbell record. */
 	cq->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci);
 	rte_io_wmb();
 	/* Ring SW QP doorbell record. */
 	eqp->db_rec[0] = rte_cpu_to_be_32(cq->cq_ci + cq_size);
+	return total;
+}
+
+static void
+mlx5_vdpa_arm_all_cqs(struct mlx5_vdpa_priv *priv)
+{
+	struct mlx5_vdpa_cq *cq;
+	int i;
+
+	for (i = 0; i < priv->nr_virtqs; i++) {
+		cq = &priv->virtqs[i].eqp.cq;
+		if (cq->cq && !cq->armed)
+			mlx5_vdpa_cq_arm(priv, cq);
+	}
+}
+
+static void *
+mlx5_vdpa_poll_handle(void *arg)
+{
+	struct mlx5_vdpa_priv *priv = arg;
+	int i;
+	struct mlx5_vdpa_cq *cq;
+	uint32_t total;
+	uint64_t current_tic;
+
+	pthread_mutex_lock(&priv->timer_lock);
+	while (!priv->timer_on)
+		pthread_cond_wait(&priv->timer_cond, &priv->timer_lock);
+	pthread_mutex_unlock(&priv->timer_lock);
+	while (1) {
+		total = 0;
+		for (i = 0; i < priv->nr_virtqs; i++) {
+			cq = &priv->virtqs[i].eqp.cq;
+			if (cq->cq && !cq->armed) {
+				uint32_t comp = mlx5_vdpa_cq_poll(cq);
+
+				if (comp) {
+					/* Notify guest for descs consuming. */
+					if (cq->callfd != -1)
+						eventfd_write(cq->callfd,
+							      (eventfd_t)1);
+					total += comp;
+				}
+			}
+		}
+		current_tic = rte_rdtsc();
+		if (!total) {
+			/* No traffic ? stop timer and load interrupts. */
+			if (current_tic - priv->last_traffic_tic >=
+			    rte_get_timer_hz() * MLX5_VDPA_NO_TRAFFIC_TIME_S) {
+				DRV_LOG(DEBUG, "Device %s traffic was stopped.",
+					priv->vdev->device->name);
+				mlx5_vdpa_arm_all_cqs(priv);
+				pthread_mutex_lock(&priv->timer_lock);
+				priv->timer_on = 0;
+				while (!priv->timer_on)
+					pthread_cond_wait(&priv->timer_cond,
+							  &priv->timer_lock);
+				pthread_mutex_unlock(&priv->timer_lock);
+				continue;
+			}
+		} else {
+			priv->last_traffic_tic = current_tic;
+		}
+		usleep(priv->timer_delay_us);
+	}
+	return NULL;
 }
 
 static void
 mlx5_vdpa_interrupt_handler(void *cb_arg)
 {
-#ifndef HAVE_IBV_DEVX_EVENT
-	(void)cb_arg;
-	return;
-#else
 	struct mlx5_vdpa_priv *priv = cb_arg;
+#ifdef HAVE_IBV_DEVX_EVENT
 	union {
 		struct mlx5dv_devx_async_event_hdr event_resp;
 		uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr) + 128];
@@ -221,17 +314,30 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 				       (ssize_t)sizeof(out.event_resp.cookie)) {
 		struct mlx5_vdpa_cq *cq = (struct mlx5_vdpa_cq *)
 					       (uintptr_t)out.event_resp.cookie;
-		rte_spinlock_lock(&cq->sl);
-		mlx5_vdpa_cq_poll(priv, cq);
-		mlx5_vdpa_cq_arm(priv, cq);
-		if (cq->callfd != -1)
-			/* Notify guest for descriptors consuming. */
-			eventfd_write(cq->callfd, (eventfd_t)1);
-		rte_spinlock_unlock(&cq->sl);
-		DRV_LOG(DEBUG, "CQ %d event: new cq_ci = %u.", cq->cq->id,
-			cq->cq_ci);
+		struct mlx5_vdpa_event_qp *eqp = container_of(cq,
+						 struct mlx5_vdpa_event_qp, cq);
+		struct mlx5_vdpa_virtq *virtq = container_of(eqp,
+						   struct mlx5_vdpa_virtq, eqp);
+
+		mlx5_vdpa_cq_poll(cq);
+		/* Don't arm again - timer will take control. */
+		DRV_LOG(DEBUG, "Device %s virtq %d cq %d event was captured."
+			" Timer is %s, cq ci is %u.\n",
+			priv->vdev->device->name,
+			(int)virtq->index, cq->cq->id,
+			priv->timer_on ? "on" : "off", cq->cq_ci);
+		cq->armed = 0;
 	}
-#endif /* HAVE_IBV_DEVX_ASYNC */
+#endif
+
+	/* Traffic detected: make sure timer is on. */
+	priv->last_traffic_tic = rte_rdtsc();
+	pthread_mutex_lock(&priv->timer_lock);
+	if (!priv->timer_on) {
+		priv->timer_on = 1;
+		pthread_cond_signal(&priv->timer_cond);
+	}
+	pthread_mutex_unlock(&priv->timer_lock);
 }
 
 int
@@ -243,12 +349,21 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 	if (!priv->eventc)
 		/* All virtqs are in poll mode. */
 		return 0;
+	pthread_mutex_init(&priv->timer_lock, NULL);
+	pthread_cond_init(&priv->timer_cond, NULL);
+	priv->timer_on = 0;
+	priv->timer_delay_us = MLX5_VDPA_DEFAULT_TIMER_DELAY_US;
+	ret = pthread_create(&priv->timer_tid, NULL, mlx5_vdpa_poll_handle,
+			     (void *)priv);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to create timer thread.");
+		return -1;
+	}
 	flags = fcntl(priv->eventc->fd, F_GETFL);
 	ret = fcntl(priv->eventc->fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to change event channel FD.");
-		rte_errno = errno;
-		return -rte_errno;
+		goto error;
 	}
 	priv->intr_handle.fd = priv->eventc->fd;
 	priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
@@ -256,9 +371,12 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 				       mlx5_vdpa_interrupt_handler, priv)) {
 		priv->intr_handle.fd = 0;
 		DRV_LOG(ERR, "Failed to register CQE interrupt %d.", rte_errno);
-		return -rte_errno;
+		goto error;
 	}
 	return 0;
+error:
+	mlx5_vdpa_cqe_event_unset(priv);
+	return -1;
 }
 
 void
@@ -266,6 +384,7 @@ mlx5_vdpa_cqe_event_unset(struct mlx5_vdpa_priv *priv)
 {
 	int retries = MLX5_VDPA_INTR_RETRIES;
 	int ret = -EAGAIN;
+	void *status;
 
 	if (priv->intr_handle.fd) {
 		while (retries-- && ret == -EAGAIN) {
@@ -276,11 +395,16 @@ mlx5_vdpa_cqe_event_unset(struct mlx5_vdpa_priv *priv)
 				DRV_LOG(DEBUG, "Try again to unregister fd %d "
 					"of CQ interrupt, retries = %d.",
 					priv->intr_handle.fd, retries);
-				usleep(MLX5_VDPA_INTR_RETRIES_USEC);
+				rte_pause();
 			}
 		}
 		memset(&priv->intr_handle, 0, sizeof(priv->intr_handle));
 	}
+	if (priv->timer_tid) {
+		pthread_cancel(priv->timer_tid);
+		pthread_join(priv->timer_tid, &status);
+	}
+	priv->timer_tid = 0;
 }
 
 void
