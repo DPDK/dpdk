@@ -14,6 +14,7 @@
 #include <rte_log.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
+#include <rte_eal_paging.h>
 #include <rte_malloc.h>
 #include <rte_vfio.h>
 #include <rte_eal.h>
@@ -561,11 +562,11 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 			map_addr = pci_map_resource(bar_addr, vfio_dev_fd,
 							memreg[0].offset,
 							memreg[0].size,
-							MAP_FIXED);
+							RTE_MAP_FORCE_ADDRESS);
 		}
 
 		/* if there's a second part, try to map it */
-		if (map_addr != MAP_FAILED
+		if (map_addr != NULL
 			&& memreg[1].offset && memreg[1].size) {
 			void *second_addr = RTE_PTR_ADD(bar_addr,
 						(uintptr_t)(memreg[1].offset -
@@ -574,10 +575,10 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 							vfio_dev_fd,
 							memreg[1].offset,
 							memreg[1].size,
-							MAP_FIXED);
+							RTE_MAP_FORCE_ADDRESS);
 		}
 
-		if (map_addr == MAP_FAILED || !map_addr) {
+		if (map_addr == NULL) {
 			munmap(bar_addr, bar->size);
 			bar_addr = MAP_FAILED;
 			RTE_LOG(ERR, EAL, "Failed to map pci BAR%d\n",

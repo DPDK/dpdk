@@ -9,12 +9,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/queue.h>
-#include <sys/mman.h>
 
 #include <rte_errno.h>
 #include <rte_interrupts.h>
 #include <rte_log.h>
 #include <rte_bus.h>
+#include <rte_eal_paging.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -154,14 +154,15 @@ pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
 	void *mapaddr;
 
 	/* Map the PCI memory resource of device */
-	mapaddr = mmap(requested_addr, size, PROT_READ | PROT_WRITE,
-			MAP_SHARED | additional_flags, fd, offset);
-	if (mapaddr == MAP_FAILED) {
+	mapaddr = rte_mem_map(requested_addr, size,
+		RTE_PROT_READ | RTE_PROT_WRITE,
+		RTE_MAP_SHARED | additional_flags, fd, offset);
+	if (mapaddr == NULL) {
 		RTE_LOG(ERR, EAL,
-			"%s(): cannot mmap(%d, %p, 0x%zx, 0x%llx): %s (%p)\n",
+			"%s(): cannot map resource(%d, %p, 0x%zx, 0x%llx): %s (%p)\n",
 			__func__, fd, requested_addr, size,
 			(unsigned long long)offset,
-			strerror(errno), mapaddr);
+			rte_strerror(rte_errno), mapaddr);
 	} else
 		RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
 
@@ -176,10 +177,10 @@ pci_unmap_resource(void *requested_addr, size_t size)
 		return;
 
 	/* Unmap the PCI memory resource of device */
-	if (munmap(requested_addr, size)) {
-		RTE_LOG(ERR, EAL, "%s(): cannot munmap(%p, %#zx): %s\n",
+	if (rte_mem_unmap(requested_addr, size)) {
+		RTE_LOG(ERR, EAL, "%s(): cannot mem unmap(%p, %#zx): %s\n",
 			__func__, requested_addr, size,
-			strerror(errno));
+			rte_strerror(rte_errno));
 	} else
 		RTE_LOG(DEBUG, EAL, "  PCI memory unmapped at %p\n",
 				requested_addr);

@@ -46,6 +46,7 @@ EXPORTS
 	rte_memzone_reserve_aligned
 	rte_memzone_reserve_bounded
 	rte_memzone_walk
+	rte_strerror
 	rte_vlog
 	rte_realloc
 	rte_zmalloc

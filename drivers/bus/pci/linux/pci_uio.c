@@ -345,7 +345,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	mapaddr = pci_map_resource(pci_map_addr, fd, 0,
 			(size_t)dev->mem_resource[res_idx].len, 0);
 	close(fd);
-	if (mapaddr == MAP_FAILED)
+	if (mapaddr == NULL)
 		goto error;
 
 	pci_map_addr = RTE_PTR_ADD(mapaddr,

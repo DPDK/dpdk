@@ -58,7 +58,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 					"Cannot mmap device resource file %s to address: %p\n",
 					uio_res->maps[i].path,
 					uio_res->maps[i].addr);
-				if (mapaddr != MAP_FAILED) {
+				if (mapaddr != NULL) {
 					/* unmap addrs correctly mapped */
 					for (j = 0; j < i; j++)
 						pci_unmap_resource(

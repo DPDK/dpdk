@@ -159,7 +159,7 @@ int rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr);
  *      The additional flags for the mapping range.
  * @return
  *   - On success, the function returns a pointer to the mapped area.
- *   - On error, the value MAP_FAILED is returned.
+ *   - On error, NULL is returned.
  */
 void *pci_map_resource(void *requested_addr, int fd, off_t offset,
 		size_t size, int additional_flags);
