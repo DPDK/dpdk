@@ -238,6 +238,6 @@ if pkg-config --define-prefix libdpdk >/dev/null 2>&1; then
 	export PKGCONF="pkg-config --define-prefix"
 	for example in cmdline helloworld l2fwd l3fwd skeleton timer; do
 		echo "## Building $example"
-		$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example clean all
+		$MAKE -C $DESTDIR/usr/local/share/dpdk/examples/$example clean shared static
 	done
 fi
