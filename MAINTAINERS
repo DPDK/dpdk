@@ -126,6 +126,7 @@ F: config/rte_config.h
 F: buildtools/call-sphinx-build.py
 F: buildtools/gen-pmdinfo-cfile.sh
 F: buildtools/list-dir-globs.py
+F: buildtools/pkg-config/
 F: buildtools/symlink-drivers-solibs.sh
 
 Public CI
