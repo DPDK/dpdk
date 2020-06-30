@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
-driver_libs = []
+link_whole_libs = []
 node_libs = []
 if get_option('default_library') == 'static'
-	driver_libs = dpdk_drivers
+	link_whole_libs = dpdk_static_libraries + dpdk_drivers
 	node_libs = dpdk_graph_nodes
 endif
 
@@ -101,7 +101,7 @@ foreach example: examples
 		endif
 		executable('dpdk-' + name, sources,
 			include_directories: includes,
-			link_whole: driver_libs + node_libs,
+			link_whole: link_whole_libs + node_libs,
 			link_args: dpdk_extra_ldflags,
 			c_args: cflags,
 			dependencies: dep_objs)

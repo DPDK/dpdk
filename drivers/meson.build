@@ -200,7 +200,7 @@ foreach class:dpdk_driver_classes
 			shared_dep = declare_dependency(link_with: shared_lib,
 					include_directories: includes,
 					dependencies: shared_deps)
-			static_dep = declare_dependency(link_with: static_lib,
+			static_dep = declare_dependency(
 					include_directories: includes,
 					dependencies: static_deps)
 

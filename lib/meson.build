@@ -134,7 +134,7 @@ foreach l:libraries
 					dependencies: static_deps,
 					include_directories: includes,
 					install: true)
-			static_dep = declare_dependency(link_with: static_lib,
+			static_dep = declare_dependency(
 					include_directories: includes,
 					dependencies: static_deps)
 

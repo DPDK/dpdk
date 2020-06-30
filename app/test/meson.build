@@ -417,7 +417,7 @@ test_dep_objs += cc.find_library('execinfo', required: false)
 link_libs = []
 link_nodes = []
 if get_option('default_library') == 'static'
-	link_libs = dpdk_drivers
+	link_libs = dpdk_static_libraries + dpdk_drivers
 	link_nodes = dpdk_graph_nodes
 endif
 
