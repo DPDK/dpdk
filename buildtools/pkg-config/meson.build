@@ -21,6 +21,11 @@ endif
 # Another requirement is to allow linking dependencies as shared libraries,
 # while linking static DPDK libraries and drivers. It is satisfied by
 # listing the static files in Libs.private with the explicit syntax -l:libfoo.a.
+# As a consequence, the regular DPDK libraries are already listed as static
+# in the field Libs.private. The second occurences of DPDK libraries,
+# included from Requires and used for shared library linkage case,
+# are skipped in the case of static linkage thanks to the flag --as-needed.
+
 
 pkg.generate(name: 'dpdk-libs',
 	filebase: 'libdpdk-libs',
@@ -29,7 +34,7 @@ Use libdpdk.pc instead of this file to query DPDK compile/link arguments''',
 	version: meson.project_version(),
 	subdirs: [get_option('include_subdir_arch'), '.'],
 	extra_cflags: pkg_extra_cflags,
-	libraries: dpdk_libraries,
+	libraries: ['-Wl,--as-needed'] + dpdk_libraries,
 	libraries_private: dpdk_extra_ldflags)
 
 pkg.generate(name: 'DPDK', # main DPDK pkgconfig file
