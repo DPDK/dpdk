@@ -37,7 +37,7 @@ foreach app:apps
 	# use "deps" for internal DPDK dependencies, and "ext_deps" for
 	# external package/library requirements
 	ext_deps = []
-	deps = dpdk_app_link_libraries
+	deps = []
 
 	subdir(name)
 

@@ -20,7 +20,6 @@ dpdk_graph_nodes = []
 dpdk_driver_classes = []
 dpdk_drivers = []
 dpdk_extra_ldflags = []
-dpdk_app_link_libraries = []
 dpdk_libs_disabled = []
 dpdk_drvs_disabled = []
 abi_version_file = files('ABI_VERSION')
