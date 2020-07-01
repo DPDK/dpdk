@@ -73,7 +73,7 @@
 #define HNS3_RXD_TSIND_M			(0x7 << HNS3_RXD_TSIND_S)
 #define HNS3_RXD_LKBK_B				15
 #define HNS3_RXD_GRO_SIZE_S			16
-#define HNS3_RXD_GRO_SIZE_M			(0x3ff << HNS3_RXD_GRO_SIZE_S)
+#define HNS3_RXD_GRO_SIZE_M			(0x3fff << HNS3_RXD_GRO_SIZE_S)
 
 #define HNS3_TXD_L3T_S				0
 #define HNS3_TXD_L3T_M				(0x3 << HNS3_TXD_L3T_S)
@@ -376,5 +376,7 @@ void hns3_set_queue_intr_rl(struct hns3_hw *hw, uint16_t queue_id,
 			    uint16_t rl_value);
 int hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 				  uint16_t nb_tx_q);
+int hns3_config_gro(struct hns3_hw *hw, bool en);
+int hns3_restore_gro_conf(struct hns3_hw *hw);
 
 #endif /* _HNS3_RXTX_H_ */

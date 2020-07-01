@@ -1096,25 +1096,6 @@ hns3_config_tso(struct hns3_hw *hw, unsigned int tso_mss_min,
 	return hns3_cmd_send(hw, &desc, 1);
 }
 
-int
-hns3_config_gro(struct hns3_hw *hw, bool en)
-{
-	struct hns3_cfg_gro_status_cmd *req;
-	struct hns3_cmd_desc desc;
-	int ret;
-
-	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_GRO_GENERIC_CONFIG, false);
-	req = (struct hns3_cfg_gro_status_cmd *)desc.data;
-
-	req->gro_en = rte_cpu_to_le_16(en ? 1 : 0);
-
-	ret = hns3_cmd_send(hw, &desc, 1);
-	if (ret)
-		hns3_err(hw, "GRO hardware config cmd failed, ret = %d", ret);
-
-	return ret;
-}
-
 static int
 hns3_set_umv_space(struct hns3_hw *hw, uint16_t space_size,
 		   uint16_t *allocated_size, bool is_alloc)
@@ -2273,6 +2254,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	uint16_t nb_tx_q = dev->data->nb_tx_queues;
 	struct rte_eth_rss_conf rss_conf;
 	uint16_t mtu;
+	bool gro_en;
 	int ret;
 
 	/*
@@ -2336,6 +2318,12 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	ret = hns3_dev_configure_vlan(dev);
+	if (ret)
+		goto cfg_err;
+
+	/* config hardware GRO */
+	gro_en = conf->rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO ? true : false;
+	ret = hns3_config_gro(hw, gro_en);
 	if (ret)
 		goto cfg_err;
 
@@ -2446,6 +2434,7 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->min_rx_bufsize = hw->rx_buf_len;
 	info->max_mac_addrs = HNS3_UC_MACADDR_NUM;
 	info->max_mtu = info->max_rx_pktlen - HNS3_ETH_OVERHEAD;
+	info->max_lro_pkt_size = HNS3_MAX_LRO_SIZE;
 	info->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM |
 				 DEV_RX_OFFLOAD_TCP_CKSUM |
 				 DEV_RX_OFFLOAD_UDP_CKSUM |
@@ -2457,7 +2446,8 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_RX_OFFLOAD_VLAN_STRIP |
 				 DEV_RX_OFFLOAD_VLAN_FILTER |
 				 DEV_RX_OFFLOAD_JUMBO_FRAME |
-				 DEV_RX_OFFLOAD_RSS_HASH);
+				 DEV_RX_OFFLOAD_RSS_HASH |
+				 DEV_RX_OFFLOAD_TCP_LRO);
 	info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	info->tx_offload_capa = (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 				 DEV_TX_OFFLOAD_IPV4_CKSUM |
@@ -4378,6 +4368,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 
 	hns3_enable_hw_error_intr(hns, false);
 	hns3_rss_uninit(hns);
+	(void)hns3_config_gro(hw, false);
 	hns3_promisc_uninit(hw);
 	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
@@ -5209,6 +5200,10 @@ hns3_restore_conf(struct hns3_adapter *hns)
 		goto err_promisc;
 
 	ret = hns3_restore_rx_interrupt(hw);
+	if (ret)
+		goto err_promisc;
+
+	ret = hns3_restore_gro_conf(hw);
 	if (ret)
 		goto err_promisc;
 

@@ -1519,6 +1519,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint32_t bd_base_info;
 	uint32_t cksum_err;
 	uint32_t l234_info;
+	uint32_t gro_size;
 	uint32_t ol_info;
 	uint64_t dma_addr;
 	uint16_t data_len;
@@ -1664,6 +1665,13 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			first_seg->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 		}
 		rxm->next = NULL;
+
+		gro_size = hns3_get_field(bd_base_info, HNS3_RXD_GRO_SIZE_M,
+					  HNS3_RXD_GRO_SIZE_S);
+		if (gro_size != 0) {
+			first_seg->ol_flags |= PKT_RX_LRO;
+			first_seg->tso_segsz = gro_size;
+		}
 
 		ret = hns3_handle_bdinfo(rxq, first_seg, bd_base_info,
 					 l234_info, &cksum_err);
@@ -1848,6 +1856,43 @@ hns3_tso_proc_tunnel(struct hns3_desc *desc, uint64_t ol_flags,
 	desc->tx.ol_type_vlan_len_msec = rte_cpu_to_le_32(otmp);
 
 	return 0;
+}
+
+int
+hns3_config_gro(struct hns3_hw *hw, bool en)
+{
+	struct hns3_cfg_gro_status_cmd *req;
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_GRO_GENERIC_CONFIG, false);
+	req = (struct hns3_cfg_gro_status_cmd *)desc.data;
+
+	req->gro_en = rte_cpu_to_le_16(en ? 1 : 0);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "%s hardware GRO failed, ret = %d",
+			 en ? "enable" : "disable", ret);
+
+	return ret;
+}
+
+int
+hns3_restore_gro_conf(struct hns3_hw *hw)
+{
+	uint64_t offloads;
+	bool gro_en;
+	int ret;
+
+	offloads = hw->data->dev_conf.rxmode.offloads;
+	gro_en = offloads & DEV_RX_OFFLOAD_TCP_LRO ? true : false;
+	ret = hns3_config_gro(hw, gro_en);
+	if (ret)
+		hns3_err(hw, "restore hardware GRO to %s failed, ret = %d",
+			 gro_en ? "enabled" : "disabled", ret);
+
+	return ret;
 }
 
 static inline bool

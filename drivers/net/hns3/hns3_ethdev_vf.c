@@ -757,6 +757,7 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	uint16_t nb_tx_q = dev->data->nb_tx_queues;
 	struct rte_eth_rss_conf rss_conf;
 	uint16_t mtu;
+	bool gro_en;
 	int ret;
 
 	/*
@@ -814,6 +815,12 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	ret = hns3vf_dev_configure_vlan(dev);
+	if (ret)
+		goto cfg_err;
+
+	/* config hardware GRO */
+	gro_en = conf->rxmode.offloads & DEV_RX_OFFLOAD_TCP_LRO ? true : false;
+	ret = hns3_config_gro(hw, gro_en);
 	if (ret)
 		goto cfg_err;
 
@@ -898,6 +905,7 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->min_rx_bufsize = hw->rx_buf_len;
 	info->max_mac_addrs = HNS3_VF_UC_MACADDR_NUM;
 	info->max_mtu = info->max_rx_pktlen - HNS3_ETH_OVERHEAD;
+	info->max_lro_pkt_size = HNS3_MAX_LRO_SIZE;
 
 	info->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM |
 				 DEV_RX_OFFLOAD_UDP_CKSUM |
@@ -910,7 +918,8 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_RX_OFFLOAD_VLAN_STRIP |
 				 DEV_RX_OFFLOAD_VLAN_FILTER |
 				 DEV_RX_OFFLOAD_JUMBO_FRAME |
-				 DEV_RX_OFFLOAD_RSS_HASH);
+				 DEV_RX_OFFLOAD_RSS_HASH |
+				 DEV_RX_OFFLOAD_TCP_LRO);
 	info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	info->tx_offload_capa = (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 				 DEV_TX_OFFLOAD_IPV4_CKSUM |
@@ -1648,6 +1657,7 @@ hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	hns3_rss_uninit(hns);
+	(void)hns3_config_gro(hw, false);
 	(void)hns3vf_set_alive(hw, false);
 	(void)hns3vf_set_promisc_mode(hw, false, false, false);
 	hns3vf_disable_irq0(hw);
@@ -2216,6 +2226,10 @@ hns3vf_restore_conf(struct hns3_adapter *hns)
 		goto err_vlan_table;
 
 	ret = hns3vf_restore_rx_interrupt(hw);
+	if (ret)
+		goto err_vlan_table;
+
+	ret = hns3_restore_gro_conf(hw);
 	if (ret)
 		goto err_vlan_table;
 

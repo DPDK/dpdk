@@ -18,6 +18,7 @@ Features of the HNS3 PMD are:
 - Packet type information
 - Checksum offload
 - TSO offload
+- LRO offload
 - Promiscuous mode
 - Multicast mode
 - Port hardware statistics

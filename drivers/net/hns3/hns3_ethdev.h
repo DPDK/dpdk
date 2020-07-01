@@ -46,6 +46,7 @@
 #define HNS3_MAX_BD_PAYLEN		(1024 * 1024 - 1)
 #define HNS3_MAX_TSO_HDR_SIZE		512
 #define HNS3_MAX_TSO_HDR_BD_NUM		3
+#define HNS3_MAX_LRO_SIZE		64512
 
 #define HNS3_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + HNS3_VLAN_TAG_SIZE * 2)
@@ -654,7 +655,6 @@ hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
 }
 
 int hns3_buffer_alloc(struct hns3_hw *hw);
-int hns3_config_gro(struct hns3_hw *hw, bool en);
 int hns3_dev_filter_ctrl(struct rte_eth_dev *dev,
 			 enum rte_filter_type filter_type,
 			 enum rte_filter_op filter_op, void *arg);
