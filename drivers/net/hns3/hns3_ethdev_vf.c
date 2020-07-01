@@ -1059,6 +1059,29 @@ hns3vf_interrupt_handler(void *param)
 }
 
 static int
+hns3vf_get_capability(struct hns3_hw *hw)
+{
+	struct rte_pci_device *pci_dev;
+	struct rte_eth_dev *eth_dev;
+	uint8_t revision;
+	int ret;
+
+	eth_dev = &rte_eth_devices[hw->data->port_id];
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	/* Get PCI revision id */
+	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
+				  HNS3_PCI_REVISION_ID);
+	if (ret != HNS3_PCI_REVISION_ID_LEN) {
+		PMD_INIT_LOG(ERR, "failed to read pci revision id: %d", ret);
+		return -EIO;
+	}
+	hw->revision = revision;
+
+	return 0;
+}
+
+static int
 hns3vf_check_tqp_info(struct hns3_hw *hw)
 {
 	uint16_t tqps_num;
@@ -1207,6 +1230,13 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 
 	hw->mac.media_type = HNS3_MEDIA_TYPE_NONE;
 	hw->rss_dis_flag = false;
+
+	/* Get device capability */
+	ret = hns3vf_get_capability(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to get device capability: %d.", ret);
+		return ret;
+	}
 
 	/* Get queue configuration from PF */
 	ret = hns3vf_get_queue_info(hw);
@@ -2474,24 +2504,11 @@ static const struct hns3_reset_ops hns3vf_reset_ops = {
 static int
 hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_device *dev = eth_dev->device;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	uint8_t revision;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-
-	/* Get PCI revision id */
-	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
-				  HNS3_PCI_REVISION_ID);
-	if (ret != HNS3_PCI_REVISION_ID_LEN) {
-		PMD_INIT_LOG(ERR, "Failed to read pci revision id, ret = %d",
-			     ret);
-		return -EIO;
-	}
-	hw->revision = revision;
 
 	eth_dev->process_private = (struct hns3_process_private *)
 	    rte_zmalloc_socket("hns3_filter_list",

@@ -2795,6 +2795,36 @@ hns3_parse_speed(int speed_cmd, uint32_t *speed)
 }
 
 static int
+hns3_get_capability(struct hns3_hw *hw)
+{
+	struct rte_pci_device *pci_dev;
+	struct rte_eth_dev *eth_dev;
+	uint16_t device_id;
+	uint8_t revision;
+	int ret;
+
+	eth_dev = &rte_eth_devices[hw->data->port_id];
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	device_id = pci_dev->id.device_id;
+
+	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
+	    device_id == HNS3_DEV_ID_50GE_RDMA ||
+	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC)
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
+
+	/* Get PCI revision id */
+	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
+				  HNS3_PCI_REVISION_ID);
+	if (ret != HNS3_PCI_REVISION_ID_LEN) {
+		PMD_INIT_LOG(ERR, "failed to read pci revision id: %d", ret);
+		return -EIO;
+	}
+	hw->revision = revision;
+
+	return 0;
+}
+
+static int
 hns3_get_board_configuration(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
@@ -2866,6 +2896,13 @@ hns3_get_configuration(struct hns3_hw *hw)
 	ret = hns3_query_function_status(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to query function status: %d.", ret);
+		return ret;
+	}
+
+	/* Get device capability */
+	ret = hns3_get_capability(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to get device capability: %d.", ret);
 		return ret;
 	}
 
@@ -5363,25 +5400,11 @@ static const struct hns3_reset_ops hns3_reset_ops = {
 static int
 hns3_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_device *dev = eth_dev->device;
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev);
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	uint16_t device_id = pci_dev->id.device_id;
-	uint8_t revision;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-
-	/* Get PCI revision id */
-	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
-				  HNS3_PCI_REVISION_ID);
-	if (ret != HNS3_PCI_REVISION_ID_LEN) {
-		PMD_INIT_LOG(ERR, "Failed to read pci revision id, ret = %d",
-			     ret);
-		return -EIO;
-	}
-	hw->revision = revision;
 
 	eth_dev->process_private = (struct hns3_process_private *)
 	    rte_zmalloc_socket("hns3_filter_list",
@@ -5404,12 +5427,6 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 
 	hns3_mp_init_primary();
 	hw->adapter_state = HNS3_NIC_UNINITIALIZED;
-
-	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
-	    device_id == HNS3_DEV_ID_50GE_RDMA ||
-	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC)
-		hns3_set_bit(hw->flag, HNS3_DEV_SUPPORT_DCB_B, 1);
-
 	hns->is_vf = false;
 	hw->data = eth_dev->data;
 

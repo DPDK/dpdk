@@ -402,7 +402,7 @@ struct hns3_hw {
 	uint16_t alloc_rss_size;    /* RX queue number per TC */
 	uint16_t tx_qnum_per_tc;    /* TX queue number per TC */
 
-	uint32_t flag;
+	uint32_t capability;
 
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;
 	/*
@@ -533,7 +533,7 @@ struct hns3_adapter {
 #define HNS3_DEV_SUPPORT_DCB_B			0x0
 
 #define hns3_dev_dcb_supported(hw) \
-	hns3_get_bit((hw)->flag, HNS3_DEV_SUPPORT_DCB_B)
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)adapter)->hw)
