@@ -3666,6 +3666,8 @@ static void ice_free_flow_profs(struct ice_hw *hw, u8 blk_idx)
 		LIST_DEL(&p->l_entry);
 		if (p->acts)
 			ice_free(hw, p->acts);
+
+		ice_destroy_lock(&p->entries_lock);
 		ice_free(hw, p);
 	}
 	ice_release_lock(&hw->fl_profs_locks[blk_idx]);
@@ -3794,7 +3796,7 @@ void ice_clear_hw_tbls(struct ice_hw *hw)
 			   prof_redir->count * sizeof(*prof_redir->t),
 			   ICE_NONDMA_MEM);
 
-		ice_memset(es->t, 0, es->count * sizeof(*es->t),
+		ice_memset(es->t, 0, es->count * sizeof(*es->t) * es->fvw,
 			   ICE_NONDMA_MEM);
 		ice_memset(es->ref_count, 0, es->count * sizeof(*es->ref_count),
 			   ICE_NONDMA_MEM);
