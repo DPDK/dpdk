@@ -6,7 +6,7 @@ Intel® ICE driver
 ==================
 
 This directory contains source code of FreeBSD ice driver of version
-2020.03.26 released by the team which develops
+2020.06.17 released by the team which develops
 basic drivers for any ice NIC. The directory of base/ contains the
 original source package.
 This driver is valid for the product(s) listed below
