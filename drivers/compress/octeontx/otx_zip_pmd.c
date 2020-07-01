@@ -11,8 +11,6 @@
 
 #include "otx_zip.h"
 
-int octtx_zip_logtype_driver;
-
 static const struct rte_compressdev_capabilities
 				octtx_zip_pmd_capabilities[] = {
 	{	.algo = RTE_COMP_ALGO_DEFLATE,
@@ -648,10 +646,4 @@ static struct rte_pci_driver octtx_zip_pmd = {
 
 RTE_PMD_REGISTER_PCI(COMPRESSDEV_NAME_ZIP_PMD, octtx_zip_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(COMPRESSDEV_NAME_ZIP_PMD, pci_id_octtx_zipvf_table);
-
-RTE_INIT(octtx_zip_init_log)
-{
-	octtx_zip_logtype_driver = rte_log_register("pmd.compress.octeontx");
-	if (octtx_zip_logtype_driver >= 0)
-		rte_log_set_level(octtx_zip_logtype_driver, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(octtx_zip_logtype_driver, pmd.compress.octeontx, INFO);

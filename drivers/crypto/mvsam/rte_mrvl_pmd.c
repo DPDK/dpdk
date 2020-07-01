@@ -19,7 +19,6 @@
 #define MRVL_PMD_MAX_NB_SESS_ARG		("max_nb_sessions")
 #define MRVL_PMD_DEFAULT_MAX_NB_SESSIONS	2048
 
-int mrvl_logtype_driver;
 static uint8_t cryptodev_driver_id;
 
 struct mrvl_pmd_init_params {
@@ -1020,8 +1019,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_MRVL_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(mrvl_crypto_drv, cryptodev_mrvl_pmd_drv.driver,
 		cryptodev_driver_id);
-
-RTE_INIT(crypto_mrvl_init_log)
-{
-	mrvl_logtype_driver = rte_log_register("pmd.crypto.mvsam");
-}
+RTE_LOG_REGISTER(mrvl_logtype_driver, pmd.crypto.mvsam, NOTICE);

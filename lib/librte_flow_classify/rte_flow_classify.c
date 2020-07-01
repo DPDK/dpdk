@@ -10,8 +10,6 @@
 #include <rte_table_acl.h>
 #include <stdbool.h>
 
-int librte_flow_classify_logtype;
-
 static uint32_t unique_id = 1;
 
 enum rte_flow_classify_table_type table_type
@@ -669,10 +667,4 @@ rte_flow_classifier_query(struct rte_flow_classifier *cls,
 	return ret;
 }
 
-RTE_INIT(librte_flow_classify_init_log)
-{
-	librte_flow_classify_logtype =
-		rte_log_register("lib.flow_classify");
-	if (librte_flow_classify_logtype >= 0)
-		rte_log_set_level(librte_flow_classify_logtype, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(librte_flow_classify_logtype, lib.flow_classify, INFO);

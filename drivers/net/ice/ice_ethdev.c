@@ -71,18 +71,6 @@ static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 #define ICE_COMMS_PKG_NAME			"ICE COMMS Package"
 #define ICE_MAX_RES_DESC_NUM        1024
 
-int ice_logtype_init;
-int ice_logtype_driver;
-#ifdef RTE_LIBRTE_ICE_DEBUG_RX
-int ice_logtype_rx;
-#endif
-#ifdef RTE_LIBRTE_ICE_DEBUG_TX
-int ice_logtype_tx;
-#endif
-#ifdef RTE_LIBRTE_ICE_DEBUG_TX_FREE
-int ice_logtype_tx_free;
-#endif
-
 static int ice_dev_configure(struct rte_eth_dev *dev);
 static int ice_dev_start(struct rte_eth_dev *dev);
 static void ice_dev_stop(struct rte_eth_dev *dev);
@@ -4611,30 +4599,14 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ice,
 			      ICE_PIPELINE_MODE_SUPPORT_ARG "=<0|1>"
 			      ICE_FLOW_MARK_SUPPORT_ARG "=<0|1>");
 
-RTE_INIT(ice_init_log)
-{
-	ice_logtype_init = rte_log_register("pmd.net.ice.init");
-	if (ice_logtype_init >= 0)
-		rte_log_set_level(ice_logtype_init, RTE_LOG_NOTICE);
-	ice_logtype_driver = rte_log_register("pmd.net.ice.driver");
-	if (ice_logtype_driver >= 0)
-		rte_log_set_level(ice_logtype_driver, RTE_LOG_NOTICE);
-
+RTE_LOG_REGISTER(ice_logtype_init, pmd.net.ice.init, NOTICE);
+RTE_LOG_REGISTER(ice_logtype_driver, pmd.net.ice.driver, NOTICE);
 #ifdef RTE_LIBRTE_ICE_DEBUG_RX
-	ice_logtype_rx = rte_log_register("pmd.net.ice.rx");
-	if (ice_logtype_rx >= 0)
-		rte_log_set_level(ice_logtype_rx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(ice_logtype_rx, pmd.net.ice.rx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_ICE_DEBUG_TX
-	ice_logtype_tx = rte_log_register("pmd.net.ice.tx");
-	if (ice_logtype_tx >= 0)
-		rte_log_set_level(ice_logtype_tx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(ice_logtype_tx, pmd.net.ice.tx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_ICE_DEBUG_TX_FREE
-	ice_logtype_tx_free = rte_log_register("pmd.net.ice.tx_free");
-	if (ice_logtype_tx_free >= 0)
-		rte_log_set_level(ice_logtype_tx_free, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(ice_logtype_tx_free, pmd.net.ice.tx_free, DEBUG);
 #endif
-}

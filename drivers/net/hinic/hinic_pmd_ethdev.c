@@ -78,9 +78,6 @@
 /* lro numer limit for one packet */
 #define HINIC_LRO_WQE_NUM_DEFAULT	8
 
-/* Driver-specific log messages type */
-int hinic_logtype;
-
 struct hinic_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	u32  offset;
@@ -3250,10 +3247,4 @@ static struct rte_pci_driver rte_hinic_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_hinic, rte_hinic_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_hinic, pci_id_hinic_map);
-
-RTE_INIT(hinic_init_log)
-{
-	hinic_logtype = rte_log_register("pmd.net.hinic");
-	if (hinic_logtype >= 0)
-		rte_log_set_level(hinic_logtype, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(hinic_logtype, pmd.net.hinic, INFO);

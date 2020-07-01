@@ -50,7 +50,7 @@
 #define PF_XDP AF_XDP
 #endif
 
-static int af_xdp_logtype;
+RTE_LOG_REGISTER(af_xdp_logtype, pmd.net.af_xdp, NOTICE);
 
 #define AF_XDP_LOG(level, fmt, args...)			\
 	rte_log(RTE_LOG_ ## level, af_xdp_logtype,	\
@@ -1377,10 +1377,3 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
 			      "iface=<string> "
 			      "start_queue=<int> "
 			      "queue_count=<int> ");
-
-RTE_INIT(af_xdp_init_log)
-{
-	af_xdp_logtype = rte_log_register("pmd.net.af_xdp");
-	if (af_xdp_logtype >= 0)
-		rte_log_set_level(af_xdp_logtype, RTE_LOG_NOTICE);
-}

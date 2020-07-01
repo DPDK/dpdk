@@ -10,8 +10,6 @@
 #include "rte_compressdev_internal.h"
 #include "rte_compressdev_pmd.h"
 
-int compressdev_logtype;
-
 /**
  * Parse name from argument
  */

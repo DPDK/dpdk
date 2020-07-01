@@ -74,20 +74,6 @@ static int iavf_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_op filter_op,
 		     void *arg);
 
-
-int iavf_logtype_init;
-int iavf_logtype_driver;
-
-#ifdef RTE_LIBRTE_IAVF_DEBUG_RX
-int iavf_logtype_rx;
-#endif
-#ifdef RTE_LIBRTE_IAVF_DEBUG_TX
-int iavf_logtype_tx;
-#endif
-#ifdef RTE_LIBRTE_IAVF_DEBUG_TX_FREE
-int iavf_logtype_tx_free;
-#endif
-
 static const struct rte_pci_id pci_id_iavf_map[] = {
 	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_ADAPTIVE_VF) },
 	{ .vendor_id = 0, /* sentinel */ },
@@ -1556,30 +1542,14 @@ RTE_PMD_REGISTER_PCI(net_iavf, rte_iavf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_iavf, pci_id_iavf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_iavf, "* igb_uio | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_iavf, "cap=dcf");
-RTE_INIT(iavf_init_log)
-{
-	iavf_logtype_init = rte_log_register("pmd.net.iavf.init");
-	if (iavf_logtype_init >= 0)
-		rte_log_set_level(iavf_logtype_init, RTE_LOG_NOTICE);
-	iavf_logtype_driver = rte_log_register("pmd.net.iavf.driver");
-	if (iavf_logtype_driver >= 0)
-		rte_log_set_level(iavf_logtype_driver, RTE_LOG_NOTICE);
-
+RTE_LOG_REGISTER(iavf_logtype_init, pmd.net.iavf.init, NOTICE);
+RTE_LOG_REGISTER(iavf_logtype_driver, pmd.net.iavf.driver, NOTICE);
 #ifdef RTE_LIBRTE_IAVF_DEBUG_RX
-	iavf_logtype_rx = rte_log_register("pmd.net.iavf.rx");
-	if (iavf_logtype_rx >= 0)
-		rte_log_set_level(iavf_logtype_rx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(iavf_logtype_rx, pmd.net.iavf.rx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_IAVF_DEBUG_TX
-	iavf_logtype_tx = rte_log_register("pmd.net.iavf.tx");
-	if (iavf_logtype_tx >= 0)
-		rte_log_set_level(iavf_logtype_tx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(iavf_logtype_tx, pmd.net.iavf.tx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_IAVF_DEBUG_TX_FREE
-	iavf_logtype_tx_free = rte_log_register("pmd.net.iavf.tx_free");
-	if (iavf_logtype_tx_free >= 0)
-		rte_log_set_level(iavf_logtype_tx_free, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(iavf_logtype_tx_free, pmd.net.iavf.tx_free, DEBUG);
 #endif
-}

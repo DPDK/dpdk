@@ -10,10 +10,6 @@
 #include <rte_version.h>
 #include <rte_kvargs.h>
 
-/* Globals */
-int qede_logtype_init;
-int qede_logtype_driver;
-
 static const struct qed_eth_ops *qed_ops;
 static int qede_eth_dev_uninit(struct rte_eth_dev *eth_dev);
 static int qede_eth_dev_init(struct rte_eth_dev *eth_dev);
@@ -2863,13 +2859,5 @@ RTE_PMD_REGISTER_KMOD_DEP(net_qede, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PCI(net_qede_vf, rte_qedevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_qede_vf, pci_id_qedevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_qede_vf, "* igb_uio | vfio-pci");
-
-RTE_INIT(qede_init_log)
-{
-	qede_logtype_init = rte_log_register("pmd.net.qede.init");
-	if (qede_logtype_init >= 0)
-		rte_log_set_level(qede_logtype_init, RTE_LOG_NOTICE);
-	qede_logtype_driver = rte_log_register("pmd.net.qede.driver");
-	if (qede_logtype_driver >= 0)
-		rte_log_set_level(qede_logtype_driver, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(qede_logtype_init, pmd.net.qede.init, NOTICE);
+RTE_LOG_REGISTER(qede_logtype_driver, pmd.net.qede.driver, NOTICE);

@@ -1083,13 +1083,4 @@ static struct rte_vdev_driver evdev_sw_pmd_drv = {
 RTE_PMD_REGISTER_VDEV(EVENTDEV_NAME_SW_PMD, evdev_sw_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(event_sw, NUMA_NODE_ARG "=<int> "
 		SCHED_QUANTA_ARG "=<int>" CREDIT_QUANTA_ARG "=<int>");
-
-/* declared extern in header, for access from other .c files */
-int eventdev_sw_log_level;
-
-RTE_INIT(evdev_sw_init_log)
-{
-	eventdev_sw_log_level = rte_log_register("pmd.event.sw");
-	if (eventdev_sw_log_level >= 0)
-		rte_log_set_level(eventdev_sw_log_level, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(eventdev_sw_log_level, pmd.event.sw, NOTICE);

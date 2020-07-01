@@ -35,7 +35,6 @@
 #endif
 #define CRYPTODEV_NAME_CAAM_JR_PMD	crypto_caam_jr
 static uint8_t cryptodev_driver_id;
-int caam_jr_logtype;
 
 /* Lists the states possible for the SEC user space driver. */
 enum sec_driver_state_e {
@@ -2480,9 +2479,4 @@ RTE_INIT(caam_jr_init)
 	sec_job_rings_init();
 }
 
-RTE_INIT(caam_jr_init_log)
-{
-	caam_jr_logtype = rte_log_register("pmd.crypto.caam");
-	if (caam_jr_logtype >= 0)
-		rte_log_set_level(caam_jr_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(caam_jr_logtype, pmd.crypto.caam, NOTICE);

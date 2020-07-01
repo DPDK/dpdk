@@ -25,8 +25,6 @@
 #define IOAT_PMD_RAWDEV_NAME rawdev_ioat
 /** String reported as the device driver name by rte_rawdev_info_get() */
 #define IOAT_PMD_RAWDEV_NAME_STR "rawdev_ioat"
-/** Name used to adjust the log level for this driver */
-#define IOAT_PMD_LOG_NAME "rawdev.ioat"
 
 /**
  * Configuration structure for an ioat rawdev instance

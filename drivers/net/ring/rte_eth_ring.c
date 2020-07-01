@@ -61,7 +61,7 @@ static struct rte_eth_link pmd_link = {
 	.link_autoneg = ETH_LINK_FIXED,
 };
 
-static int eth_ring_logtype;
+RTE_LOG_REGISTER(eth_ring_logtype, pmd.net.ring, NOTICE);
 
 #define PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, eth_ring_logtype, \
@@ -702,10 +702,3 @@ RTE_PMD_REGISTER_VDEV(net_ring, pmd_ring_drv);
 RTE_PMD_REGISTER_ALIAS(net_ring, eth_ring);
 RTE_PMD_REGISTER_PARAM_STRING(net_ring,
 	ETH_RING_NUMA_NODE_ACTION_ARG "=name:node:action(ATTACH|CREATE)");
-
-RTE_INIT(eth_ring_init_log)
-{
-	eth_ring_logtype = rte_log_register("pmd.net.ring");
-	if (eth_ring_logtype >= 0)
-		rte_log_set_level(eth_ring_logtype, RTE_LOG_NOTICE);
-}

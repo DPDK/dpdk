@@ -31,7 +31,6 @@
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
 	"Broadcom NetXtreme driver " DRV_MODULE_NAME;
-int bnxt_logtype_driver;
 
 /*
  * The set of PCI devices this driver supports
@@ -5726,13 +5725,7 @@ bool is_bnxt_supported(struct rte_eth_dev *dev)
 	return is_device_supported(dev, &bnxt_rte_pmd);
 }
 
-RTE_INIT(bnxt_init_log)
-{
-	bnxt_logtype_driver = rte_log_register("pmd.net.bnxt.driver");
-	if (bnxt_logtype_driver >= 0)
-		rte_log_set_level(bnxt_logtype_driver, RTE_LOG_NOTICE);
-}
-
+RTE_LOG_REGISTER(bnxt_logtype_driver, pmd.net.bnxt.driver, NOTICE);
 RTE_PMD_REGISTER_PCI(net_bnxt, bnxt_rte_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnxt, bnxt_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_bnxt, "* igb_uio | uio_pci_generic | vfio-pci");

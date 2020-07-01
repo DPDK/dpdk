@@ -68,14 +68,7 @@ struct mbox_intf_ver {
 	uint32_t minor:10;
 };
 
-int octeontx_logtype_mbox;
-
-RTE_INIT(otx_init_log)
-{
-	octeontx_logtype_mbox = rte_log_register("pmd.octeontx.mbox");
-	if (octeontx_logtype_mbox >= 0)
-		rte_log_set_level(octeontx_logtype_mbox, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(octeontx_logtype_mbox, pmd.octeontx.mbox, NOTICE);
 
 static inline void
 mbox_msgcpy(volatile uint8_t *d, volatile const uint8_t *s, uint16_t size)

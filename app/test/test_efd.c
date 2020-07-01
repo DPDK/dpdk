@@ -32,12 +32,7 @@ struct flow_key {
 	uint8_t proto;
 } __rte_packed;
 
-int efd_logtype_test;
-
-RTE_INIT(test_efd_init_log)
-{
-	efd_logtype_test = rte_log_register("test.efd");
-}
+RTE_LOG_REGISTER(efd_logtype_test, test.efd, INFO);
 
 /*
  * Print out result of unit test efd operation.

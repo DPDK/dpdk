@@ -495,11 +495,4 @@ rte_rcu_qsbr_dq_delete(struct rte_rcu_qsbr_dq *dq)
 	return 0;
 }
 
-int rte_rcu_log_type;
-
-RTE_INIT(rte_rcu_register)
-{
-	rte_rcu_log_type = rte_log_register("lib.rcu");
-	if (rte_rcu_log_type >= 0)
-		rte_log_set_level(rte_rcu_log_type, RTE_LOG_ERR);
-}
+RTE_LOG_REGISTER(rte_rcu_log_type, lib.rcu, ERR);

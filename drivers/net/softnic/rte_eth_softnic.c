@@ -80,7 +80,7 @@ static const struct softnic_conn_params conn_params_default = {
 	.msg_handle_arg = NULL,
 };
 
-static int pmd_softnic_logtype;
+RTE_LOG_REGISTER(pmd_softnic_logtype, pmd.net.softnic, NOTICE);
 
 #define PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, pmd_softnic_logtype, \
@@ -689,14 +689,6 @@ RTE_PMD_REGISTER_PARAM_STRING(net_softnic,
 	PMD_PARAM_TM_QSIZE11 "=<uint32>"
 	PMD_PARAM_TM_QSIZE12 "=<uint32>"
 );
-
-
-RTE_INIT(pmd_softnic_init_log)
-{
-	pmd_softnic_logtype = rte_log_register("pmd.net.softnic");
-	if (pmd_softnic_logtype >= 0)
-		rte_log_set_level(pmd_softnic_logtype, RTE_LOG_NOTICE);
-}
 
 int
 rte_pmd_softnic_manage(uint16_t port_id)

@@ -106,8 +106,6 @@ static int dpaa2_dev_set_link_up(struct rte_eth_dev *dev);
 static int dpaa2_dev_set_link_down(struct rte_eth_dev *dev);
 static int dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
-int dpaa2_logtype_pmd;
-
 void
 rte_pmd_dpaa2_set_timestamp(enum pmd_dpaa2_ts enable)
 {
@@ -2694,9 +2692,4 @@ RTE_PMD_REGISTER_DPAA2(net_dpaa2, rte_dpaa2_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(net_dpaa2,
 		DRIVER_LOOPBACK_MODE "=<int> "
 		DRIVER_NO_PREFETCH_MODE "=<int>");
-RTE_INIT(dpaa2_pmd_init_log)
-{
-	dpaa2_logtype_pmd = rte_log_register("pmd.net.dpaa2");
-	if (dpaa2_logtype_pmd >= 0)
-		rte_log_set_level(dpaa2_logtype_pmd, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(dpaa2_logtype_pmd, pmd.net.dpaa2, NOTICE);

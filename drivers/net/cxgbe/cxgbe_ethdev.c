@@ -38,9 +38,6 @@
 #include "cxgbe_pfvf.h"
 #include "cxgbe_flow.h"
 
-int cxgbe_logtype;
-int cxgbe_mbox_logtype;
-
 /*
  * Macros needed to support the PCI Device ID Table ...
  */
@@ -1247,13 +1244,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cxgbe,
 			      CXGBE_DEVARG_CMN_TX_MODE_LATENCY "=<0|1> "
 			      CXGBE_DEVARG_PF_FILTER_MODE "=<uint32> "
 			      CXGBE_DEVARG_PF_FILTER_MASK "=<uint32> ");
-
-RTE_INIT(cxgbe_init_log)
-{
-	cxgbe_logtype = rte_log_register("pmd.net.cxgbe");
-	if (cxgbe_logtype >= 0)
-		rte_log_set_level(cxgbe_logtype, RTE_LOG_NOTICE);
-	cxgbe_mbox_logtype = rte_log_register("pmd.net.cxgbe.mbox");
-	if (cxgbe_mbox_logtype >= 0)
-		rte_log_set_level(cxgbe_mbox_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(cxgbe_logtype, pmd.net.cxgbe, NOTICE);
+RTE_LOG_REGISTER(cxgbe_mbox_logtype, pmd.net.cxgbe.mbox, NOTICE);

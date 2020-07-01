@@ -29,9 +29,9 @@
 #define DATA_MZ_NAME_MAX_LEN 64
 #define DATA_MZ_NAME_FORMAT "rte_event_timer_adapter_data_%d"
 
-static int evtim_logtype;
-static int evtim_svc_logtype;
-static int evtim_buffer_logtype;
+RTE_LOG_REGISTER(evtim_logtype, lib.eventdev.adapter.timer, NOTICE);
+RTE_LOG_REGISTER(evtim_buffer_logtype, lib.eventdev.adapter.timer, NOTICE);
+RTE_LOG_REGISTER(evtim_svc_logtype, lib.eventdev.adapter.timer.svc, NOTICE);
 
 static struct rte_event_timer_adapter adapters[RTE_EVENT_TIMER_ADAPTER_NUM_MAX];
 
@@ -1187,19 +1187,3 @@ static const struct rte_event_timer_adapter_ops swtim_ops = {
 	.arm_tmo_tick_burst	= swtim_arm_tmo_tick_burst,
 	.cancel_burst		= swtim_cancel_burst,
 };
-
-RTE_INIT(event_timer_adapter_init_log)
-{
-	evtim_logtype = rte_log_register("lib.eventdev.adapter.timer");
-	if (evtim_logtype >= 0)
-		rte_log_set_level(evtim_logtype, RTE_LOG_NOTICE);
-
-	evtim_buffer_logtype = rte_log_register("lib.eventdev.adapter.timer."
-						"buffer");
-	if (evtim_buffer_logtype >= 0)
-		rte_log_set_level(evtim_buffer_logtype, RTE_LOG_NOTICE);
-
-	evtim_svc_logtype = rte_log_register("lib.eventdev.adapter.timer.svc");
-	if (evtim_svc_logtype >= 0)
-		rte_log_set_level(evtim_svc_logtype, RTE_LOG_NOTICE);
-}

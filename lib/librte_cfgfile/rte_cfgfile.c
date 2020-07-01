@@ -27,7 +27,7 @@ struct rte_cfgfile {
 	struct rte_cfgfile_section *sections;
 };
 
-static int cfgfile_logtype;
+RTE_LOG_REGISTER(cfgfile_logtype, lib.cfgfile, INFO);
 
 #define CFG_LOG(level, fmt, args...)					\
 	rte_log(RTE_LOG_ ## level, cfgfile_logtype, "%s(): " fmt "\n",	\
@@ -565,11 +565,4 @@ rte_cfgfile_has_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)
 {
 	return rte_cfgfile_get_entry(cfg, sectionname, entryname) != NULL;
-}
-
-RTE_INIT(cfgfile_init)
-{
-	cfgfile_logtype = rte_log_register("lib.cfgfile");
-	if (cfgfile_logtype >= 0)
-		rte_log_set_level(cfgfile_logtype, RTE_LOG_INFO);
 }

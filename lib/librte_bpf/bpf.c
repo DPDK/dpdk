@@ -14,8 +14,6 @@
 
 #include "bpf_impl.h"
 
-int rte_bpf_logtype;
-
 void
 rte_bpf_destroy(struct rte_bpf *bpf)
 {
@@ -55,9 +53,4 @@ bpf_jit(struct rte_bpf *bpf)
 	return rc;
 }
 
-RTE_INIT(rte_bpf_init_log)
-{
-	rte_bpf_logtype = rte_log_register("lib.bpf");
-	if (rte_bpf_logtype >= 0)
-		rte_log_set_level(rte_bpf_logtype, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(rte_bpf_logtype, lib.bpf, INFO);

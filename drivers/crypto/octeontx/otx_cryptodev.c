@@ -15,7 +15,6 @@
 #include "cpt_pmd_logs.h"
 
 uint8_t otx_cryptodev_driver_id;
-int otx_cpt_logtype;
 
 static struct rte_pci_id pci_id_cpt_table[] = {
 	{
@@ -112,11 +111,4 @@ RTE_PMD_REGISTER_PCI_TABLE(CRYPTODEV_NAME_OCTEONTX_PMD, pci_id_cpt_table);
 RTE_PMD_REGISTER_KMOD_DEP(CRYPTODEV_NAME_OCTEONTX_PMD, "vfio-pci");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(otx_cryptodev_drv, otx_cryptodev_pmd.driver,
 		otx_cryptodev_driver_id);
-
-RTE_INIT(otx_cpt_init_log)
-{
-	/* Bus level logs */
-	otx_cpt_logtype = rte_log_register("pmd.crypto.octeontx");
-	if (otx_cpt_logtype >= 0)
-		rte_log_set_level(otx_cpt_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(otx_cpt_logtype, pmd.crypto.octeontx, NOTICE);

@@ -20,15 +20,9 @@
 #include "ssovf_evdev.h"
 #include "timvf_evdev.h"
 
-int otx_logtype_ssovf;
 static uint8_t timvf_enable_stats;
 
-RTE_INIT(otx_ssovf_init_log)
-{
-	otx_logtype_ssovf = rte_log_register("pmd.event.octeontx");
-	if (otx_logtype_ssovf >= 0)
-		rte_log_set_level(otx_logtype_ssovf, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(otx_logtype_ssovf, pmd.event.octeontx, NOTICE);
 
 /* SSOPF Mailbox messages */
 

@@ -45,9 +45,6 @@
 			    DEV_RX_OFFLOAD_VLAN_STRIP | \
 			    DEV_RX_OFFLOAD_RSS_HASH)
 
-int hn_logtype_init;
-int hn_logtype_driver;
-
 struct hn_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned int offset;
@@ -1121,13 +1118,5 @@ static struct rte_vmbus_driver rte_netvsc_pmd = {
 
 RTE_PMD_REGISTER_VMBUS(net_netvsc, rte_netvsc_pmd);
 RTE_PMD_REGISTER_KMOD_DEP(net_netvsc, "* uio_hv_generic");
-
-RTE_INIT(hn_init_log)
-{
-	hn_logtype_init = rte_log_register("pmd.net.netvsc.init");
-	if (hn_logtype_init >= 0)
-		rte_log_set_level(hn_logtype_init, RTE_LOG_NOTICE);
-	hn_logtype_driver = rte_log_register("pmd.net.netvsc.driver");
-	if (hn_logtype_driver >= 0)
-		rte_log_set_level(hn_logtype_driver, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(hn_logtype_init, pmd.net.netvsc.init, NOTICE);
+RTE_LOG_REGISTER(hn_logtype_driver, pmd.net.netvsc.driver, NOTICE);

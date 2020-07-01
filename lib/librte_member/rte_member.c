@@ -16,8 +16,6 @@
 #include "rte_member_ht.h"
 #include "rte_member_vbf.h"
 
-int librte_member_logtype;
-
 TAILQ_HEAD(rte_member_list, rte_tailq_entry);
 static struct rte_tailq_elem rte_member_tailq = {
 	.name = "RTE_MEMBER",
@@ -299,9 +297,4 @@ rte_member_reset(const struct rte_member_setsum *setsum)
 	}
 }
 
-RTE_INIT(librte_member_init_log)
-{
-	librte_member_logtype = rte_log_register("lib.member");
-	if (librte_member_logtype >= 0)
-		rte_log_set_level(librte_member_logtype, RTE_LOG_DEBUG);
-}
+RTE_LOG_REGISTER(librte_member_logtype, lib.member, DEBUG);

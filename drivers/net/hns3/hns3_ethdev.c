@@ -60,9 +60,6 @@
 #define HNS3_RESET_WAIT_MS	100
 #define HNS3_RESET_WAIT_CNT	200
 
-int hns3_logtype_init;
-int hns3_logtype_driver;
-
 enum hns3_evt_cause {
 	HNS3_VECTOR0_EVENT_RST,
 	HNS3_VECTOR0_EVENT_MBX,
@@ -5525,13 +5522,5 @@ static struct rte_pci_driver rte_hns3_pmd = {
 RTE_PMD_REGISTER_PCI(net_hns3, rte_hns3_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_hns3, pci_id_hns3_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_hns3, "* igb_uio | vfio-pci");
-
-RTE_INIT(hns3_init_log)
-{
-	hns3_logtype_init = rte_log_register("pmd.net.hns3.init");
-	if (hns3_logtype_init >= 0)
-		rte_log_set_level(hns3_logtype_init, RTE_LOG_NOTICE);
-	hns3_logtype_driver = rte_log_register("pmd.net.hns3.driver");
-	if (hns3_logtype_driver >= 0)
-		rte_log_set_level(hns3_logtype_driver, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(hns3_logtype_init, pmd.net.hns3.init, NOTICE);
+RTE_LOG_REGISTER(hns3_logtype_driver, pmd.net.hns3.driver, NOTICE);

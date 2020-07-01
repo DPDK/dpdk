@@ -14,7 +14,6 @@
 #define ZUC_MAX_BURST 16
 #define BYTE_LEN 8
 
-int zuc_logtype_driver;
 static uint8_t cryptodev_driver_id;
 
 /** Get xform chain order. */
@@ -580,8 +579,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_ZUC_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(zuc_crypto_drv, cryptodev_zuc_pmd_drv.driver,
 		cryptodev_driver_id);
-
-RTE_INIT(zuc_init_log)
-{
-	zuc_logtype_driver = rte_log_register("pmd.crypto.zuc");
-}
+RTE_LOG_REGISTER(zuc_logtype_driver, pmd.crypto.zuc, INFO);

@@ -27,8 +27,6 @@
 
 #define VDEV_MP_KEY	"bus_vdev_mp"
 
-int vdev_logtype_bus;
-
 /* Forward declare to access virtual bus name */
 static struct rte_bus rte_vdev_bus;
 
@@ -557,10 +555,4 @@ static struct rte_bus rte_vdev_bus = {
 };
 
 RTE_REGISTER_BUS(vdev, rte_vdev_bus);
-
-RTE_INIT(vdev_init_log)
-{
-	vdev_logtype_bus = rte_log_register("bus.vdev");
-	if (vdev_logtype_bus >= 0)
-		rte_log_set_level(vdev_logtype_bus, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(vdev_logtype_bus, bus.vdev, NOTICE);

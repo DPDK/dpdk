@@ -29,7 +29,7 @@
 
 
 /* BBDev library logging ID */
-static int bbdev_logtype;
+RTE_LOG_REGISTER(bbdev_logtype, lib.bbdev, NOTICE);
 
 /* Helper macro for logging */
 #define rte_bbdev_log(level, fmt, ...) \
@@ -1132,11 +1132,4 @@ rte_bbdev_op_type_str(enum rte_bbdev_op_type op_type)
 
 	rte_bbdev_log(ERR, "Invalid operation type");
 	return NULL;
-}
-
-RTE_INIT(rte_bbdev_init_log)
-{
-	bbdev_logtype = rte_log_register("lib.bbdev");
-	if (bbdev_logtype >= 0)
-		rte_log_set_level(bbdev_logtype, RTE_LOG_NOTICE);
 }

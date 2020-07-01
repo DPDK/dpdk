@@ -46,8 +46,6 @@
 #include "ethdev_profile.h"
 #include "ethdev_private.h"
 
-int rte_eth_dev_logtype;
-
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
 
@@ -5295,11 +5293,10 @@ handle_port_link_status(const char *cmd __rte_unused,
 	return 0;
 }
 
-RTE_INIT(ethdev_init_log)
+RTE_LOG_REGISTER(rte_eth_dev_logtype, lib.ethdev, INFO);
+
+RTE_INIT(ethdev_init_telemetry)
 {
-	rte_eth_dev_logtype = rte_log_register("lib.ethdev");
-	if (rte_eth_dev_logtype >= 0)
-		rte_log_set_level(rte_eth_dev_logtype, RTE_LOG_INFO);
 	rte_telemetry_register_cmd("/ethdev/list", handle_port_list,
 			"Returns list of available ethdev ports. Takes no parameters");
 	rte_telemetry_register_cmd("/ethdev/xstats", handle_port_xstats,

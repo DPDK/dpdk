@@ -613,11 +613,10 @@ handle_dev_xstats(const char *cmd __rte_unused,
 	return 0;
 }
 
-RTE_INIT(librawdev_init_log)
+RTE_LOG_REGISTER(librawdev_logtype, lib.rawdev, INFO);
+
+RTE_INIT(librawdev_init_telemetry)
 {
-	librawdev_logtype = rte_log_register("lib.rawdev");
-	if (librawdev_logtype >= 0)
-		rte_log_set_level(librawdev_logtype, RTE_LOG_INFO);
 	rte_telemetry_register_cmd("/rawdev/list", handle_dev_list,
 			"Returns list of available rawdev ports. Takes no parameters");
 	rte_telemetry_register_cmd("/rawdev/xstats", handle_dev_xstats,

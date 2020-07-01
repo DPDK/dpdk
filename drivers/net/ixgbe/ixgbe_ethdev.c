@@ -419,19 +419,6 @@ static int ixgbe_wait_for_link_up(struct ixgbe_hw *hw);
 		(r) = (h)->bitmap[idx] >> bit & 1;\
 	} while (0)
 
-int ixgbe_logtype_init;
-int ixgbe_logtype_driver;
-
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_RX
-int ixgbe_logtype_rx;
-#endif
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX
-int ixgbe_logtype_tx;
-#endif
-#ifdef RTE_LIBRTE_IXGBE_DEBUG_TX_FREE
-int ixgbe_logtype_tx_free;
-#endif
-
 /*
  * The set of PCI devices this driver supports
  */
@@ -9117,29 +9104,15 @@ RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe_vf, "* igb_uio | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ixgbe_vf,
 			      IXGBEVF_DEVARG_PFLINK_FULLCHK "=<0|1>");
 
-RTE_INIT(ixgbe_init_log)
-{
-	ixgbe_logtype_init = rte_log_register("pmd.net.ixgbe.init");
-	if (ixgbe_logtype_init >= 0)
-		rte_log_set_level(ixgbe_logtype_init, RTE_LOG_NOTICE);
-	ixgbe_logtype_driver = rte_log_register("pmd.net.ixgbe.driver");
-	if (ixgbe_logtype_driver >= 0)
-		rte_log_set_level(ixgbe_logtype_driver, RTE_LOG_NOTICE);
+RTE_LOG_REGISTER(ixgbe_logtype_init, pmd.net.ixgbe.init, NOTICE);
+RTE_LOG_REGISTER(ixgbe_logtype_driver, pmd.net.ixgbe.driver, NOTICE);
+
 #ifdef RTE_LIBRTE_IXGBE_DEBUG_RX
-	ixgbe_logtype_rx = rte_log_register("pmd.net.ixgbe.rx");
-	if (ixgbe_logtype_rx >= 0)
-		rte_log_set_level(ixgbe_logtype_rx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(ixgbe_logtype_rx, pmd.net.ixgbe.rx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_IXGBE_DEBUG_TX
-	ixgbe_logtype_tx = rte_log_register("pmd.net.ixgbe.tx");
-	if (ixgbe_logtype_tx >= 0)
-		rte_log_set_level(ixgbe_logtype_tx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(ixgbe_logtype_tx, pmd.net.ixgbe.tx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_IXGBE_DEBUG_TX_FREE
-	ixgbe_logtype_tx_free = rte_log_register("pmd.net.ixgbe.tx_free");
-	if (ixgbe_logtype_tx_free >= 0)
-		rte_log_set_level(ixgbe_logtype_tx_free, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(ixgbe_logtype_tx_free, pmd.net.ixgbe.tx_free, DEBUG);
 #endif
-}

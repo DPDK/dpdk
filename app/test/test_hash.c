@@ -69,8 +69,6 @@ struct flow_key {
 	uint8_t proto;
 } __rte_packed;
 
-int hash_logtype_test;
-
 /*
  * Hash function that always returns the same value, to easily test what
  * happens when a bucket is full.
@@ -82,10 +80,7 @@ static uint32_t pseudo_hash(__rte_unused const void *keys,
 	return 3;
 }
 
-RTE_INIT(test_hash_init_log)
-{
-	hash_logtype_test = rte_log_register("test.hash");
-}
+RTE_LOG_REGISTER(hash_logtype_test, test.hash, INFO);
 
 /*
  * Print out result of unit test hash operation.

@@ -15,8 +15,6 @@
 
 #include "aesni_mb_pmd_private.h"
 
-int aesni_mb_logtype_driver;
-
 #define AES_CCM_DIGEST_MIN_LEN 4
 #define AES_CCM_DIGEST_MAX_LEN 16
 #define HMAC_MAX_BLOCK_SIZE 128
@@ -1744,8 +1742,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_MB_PMD,
 RTE_PMD_REGISTER_CRYPTO_DRIVER(aesni_mb_crypto_drv,
 		cryptodev_aesni_mb_pmd_drv.driver,
 		cryptodev_driver_id);
-
-RTE_INIT(aesni_mb_init_log)
-{
-	aesni_mb_logtype_driver = rte_log_register("pmd.crypto.aesni_mb");
-}
+RTE_LOG_REGISTER(aesni_mb_logtype_driver, pmd.crypto.aesni_mb, NOTICE);

@@ -40,19 +40,6 @@
 #define GLORT_FD_MASK    GLORT_PF_MASK
 #define GLORT_FD_INDEX   GLORT_FD_Q_BASE
 
-int fm10k_logtype_init;
-int fm10k_logtype_driver;
-
-#ifdef RTE_LIBRTE_FM10K_DEBUG_RX
-int fm10k_logtype_rx;
-#endif
-#ifdef RTE_LIBRTE_FM10K_DEBUG_TX
-int fm10k_logtype_tx;
-#endif
-#ifdef RTE_LIBRTE_FM10K_DEBUG_TX_FREE
-int fm10k_logtype_tx_free;
-#endif
-
 static void fm10k_close_mbx_service(struct fm10k_hw *hw);
 static int fm10k_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int fm10k_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -3318,31 +3305,14 @@ static struct rte_pci_driver rte_pmd_fm10k = {
 RTE_PMD_REGISTER_PCI(net_fm10k, rte_pmd_fm10k);
 RTE_PMD_REGISTER_PCI_TABLE(net_fm10k, pci_id_fm10k_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_fm10k, "* igb_uio | uio_pci_generic | vfio-pci");
-
-RTE_INIT(fm10k_init_log)
-{
-	fm10k_logtype_init = rte_log_register("pmd.net.fm10k.init");
-	if (fm10k_logtype_init >= 0)
-		rte_log_set_level(fm10k_logtype_init, RTE_LOG_NOTICE);
-	fm10k_logtype_driver = rte_log_register("pmd.net.fm10k.driver");
-	if (fm10k_logtype_driver >= 0)
-		rte_log_set_level(fm10k_logtype_driver, RTE_LOG_NOTICE);
-
+RTE_LOG_REGISTER(fm10k_logtype_init, pmd.net.fm10k.init, NOTICE);
+RTE_LOG_REGISTER(fm10k_logtype_driver, pmd.net.fm10k.driver, NOTICE);
 #ifdef RTE_LIBRTE_FM10K_DEBUG_RX
-	fm10k_logtype_rx = rte_log_register("pmd.net.fm10k.rx");
-	if (fm10k_logtype_rx >= 0)
-		rte_log_set_level(fm10k_logtype_rx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(fm10k_logtype_rx, pmd.net.fm10k.rx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_FM10K_DEBUG_TX
-	fm10k_logtype_tx = rte_log_register("pmd.net.fm10k.tx");
-	if (fm10k_logtype_tx >= 0)
-		rte_log_set_level(fm10k_logtype_tx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(fm10k_logtype_tx, pmd.net.fm10k.tx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_FM10K_DEBUG_TX_FREE
-	fm10k_logtype_tx_free = rte_log_register("pmd.net.fm10k.tx_free");
-	if (fm10k_logtype_tx_free >= 0)
-		rte_log_set_level(fm10k_logtype_tx_free, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(fm10k_logtype_tx_free, pmd.net.fm10k.tx_free, DEBUG);
 #endif
-}

@@ -34,8 +34,6 @@
 /** Maximum length of a match string */
 #define MVNETA_MATCH_LEN 16
 
-int mvneta_logtype;
-
 static const char * const valid_args[] = {
 	MVNETA_IFACE_NAME_ARG,
 	NULL
@@ -982,10 +980,4 @@ static struct rte_vdev_driver pmd_mvneta_drv = {
 
 RTE_PMD_REGISTER_VDEV(net_mvneta, pmd_mvneta_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_mvneta, "iface=<ifc>");
-
-RTE_INIT(mvneta_init_log)
-{
-	mvneta_logtype = rte_log_register("pmd.net.mvneta");
-	if (mvneta_logtype >= 0)
-		rte_log_set_level(mvneta_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(mvneta_logtype, pmd.net.mvneta, NOTICE);

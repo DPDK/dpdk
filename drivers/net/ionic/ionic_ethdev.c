@@ -59,8 +59,6 @@ static int  ionic_dev_xstats_get_names_by_id(struct rte_eth_dev *dev,
 static int  ionic_dev_fw_version_get(struct rte_eth_dev *eth_dev,
 	char *fw_version, size_t fw_size);
 
-int ionic_logtype;
-
 static const struct rte_pci_id pci_id_ionic_map[] = {
 	{ RTE_PCI_DEVICE(IONIC_PENSANDO_VENDOR_ID, IONIC_DEV_ID_ETH_PF) },
 	{ RTE_PCI_DEVICE(IONIC_PENSANDO_VENDOR_ID, IONIC_DEV_ID_ETH_VF) },
@@ -1318,10 +1316,4 @@ static struct rte_pci_driver rte_ionic_pmd = {
 RTE_PMD_REGISTER_PCI(net_ionic, rte_ionic_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ionic, pci_id_ionic_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ionic, "* igb_uio | uio_pci_generic | vfio-pci");
-
-RTE_INIT(ionic_init_log)
-{
-	ionic_logtype = rte_log_register("pmd.net.ionic");
-	if (ionic_logtype >= 0)
-		rte_log_set_level(ionic_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(ionic_logtype, pmd.net.ionic, NOTICE);

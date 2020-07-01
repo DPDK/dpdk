@@ -61,12 +61,7 @@ static volatile unsigned stop_slaves;
 
 static int reload_timer(struct rte_timer *tim);
 
-int timer_logtype_test;
-
-RTE_INIT(test_timer_init_log)
-{
-	timer_logtype_test = rte_log_register("test.timer");
-}
+RTE_LOG_REGISTER(timer_logtype_test, test.timer, INFO);
 
 static void
 timer_cb(struct rte_timer *tim, void *arg __rte_unused)

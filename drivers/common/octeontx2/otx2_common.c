@@ -203,89 +203,13 @@ void otx2_parse_common_devargs(struct rte_kvargs *kvlist)
 	idev->npa_lock_mask = npa_lock_mask;
 }
 
-/**
- * @internal
- */
-int otx2_logtype_base;
-/**
- * @internal
- */
-int otx2_logtype_mbox;
-/**
- * @internal
- */
-int otx2_logtype_npa;
-/**
- * @internal
- */
-int otx2_logtype_nix;
-/**
- * @internal
- */
-int otx2_logtype_npc;
-/**
- * @internal
- */
-int otx2_logtype_tm;
-/**
- * @internal
- */
-int otx2_logtype_sso;
-/**
- * @internal
- */
-int otx2_logtype_tim;
-/**
- * @internal
- */
-int otx2_logtype_dpi;
-/**
- * @internal
- */
-int otx2_logtype_ep;
-
-RTE_INIT(otx2_log_init);
-static void
-otx2_log_init(void)
-{
-	otx2_logtype_base = rte_log_register("pmd.octeontx2.base");
-	if (otx2_logtype_base >= 0)
-		rte_log_set_level(otx2_logtype_base, RTE_LOG_NOTICE);
-
-	otx2_logtype_mbox = rte_log_register("pmd.octeontx2.mbox");
-	if (otx2_logtype_mbox >= 0)
-		rte_log_set_level(otx2_logtype_mbox, RTE_LOG_NOTICE);
-
-	otx2_logtype_npa = rte_log_register("pmd.mempool.octeontx2");
-	if (otx2_logtype_npa >= 0)
-		rte_log_set_level(otx2_logtype_npa, RTE_LOG_NOTICE);
-
-	otx2_logtype_nix = rte_log_register("pmd.net.octeontx2");
-	if (otx2_logtype_nix >= 0)
-		rte_log_set_level(otx2_logtype_nix, RTE_LOG_NOTICE);
-
-	otx2_logtype_npc = rte_log_register("pmd.net.octeontx2.flow");
-	if (otx2_logtype_npc >= 0)
-		rte_log_set_level(otx2_logtype_npc, RTE_LOG_NOTICE);
-
-	otx2_logtype_tm = rte_log_register("pmd.net.octeontx2.tm");
-	if (otx2_logtype_tm >= 0)
-		rte_log_set_level(otx2_logtype_tm, RTE_LOG_NOTICE);
-
-	otx2_logtype_sso = rte_log_register("pmd.event.octeontx2");
-	if (otx2_logtype_sso >= 0)
-		rte_log_set_level(otx2_logtype_sso, RTE_LOG_NOTICE);
-
-	otx2_logtype_tim = rte_log_register("pmd.event.octeontx2.timer");
-	if (otx2_logtype_tim >= 0)
-		rte_log_set_level(otx2_logtype_tim, RTE_LOG_NOTICE);
-
-	otx2_logtype_dpi = rte_log_register("pmd.raw.octeontx2.dpi");
-	if (otx2_logtype_dpi >= 0)
-		rte_log_set_level(otx2_logtype_dpi, RTE_LOG_NOTICE);
-
-	otx2_logtype_ep = rte_log_register("pmd.raw.octeontx2.ep");
-	if (otx2_logtype_ep >= 0)
-		rte_log_set_level(otx2_logtype_ep, RTE_LOG_NOTICE);
-
-}
+RTE_LOG_REGISTER(otx2_logtype_base, pmd.octeontx2.base, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_mbox, pmd.octeontx2.mbox, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_npa, pmd.mempool.octeontx2, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_nix, pmd.net.octeontx2, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_npc, pmd.net.octeontx2.flow, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_tm, pmd.net.octeontx2.tm, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_sso, pmd.event.octeontx2, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_tim, pmd.event.octeontx2.timer, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_dpi, pmd.raw.octeontx2.dpi, NOTICE);
+RTE_LOG_REGISTER(otx2_logtype_ep, pmd.raw.octeontx2.ep, NOTICE);

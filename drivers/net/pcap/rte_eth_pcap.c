@@ -135,7 +135,7 @@ static struct rte_eth_link pmd_link = {
 		.link_autoneg = ETH_LINK_FIXED,
 };
 
-static int eth_pcap_logtype;
+RTE_LOG_REGISTER(eth_pcap_logtype, pmd.net.pcap, NOTICE);
 
 #define PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, eth_pcap_logtype, \
@@ -1588,10 +1588,3 @@ RTE_PMD_REGISTER_PARAM_STRING(net_pcap,
 	ETH_PCAP_IFACE_ARG "=<ifc> "
 	ETH_PCAP_PHY_MAC_ARG "=<int>"
 	ETH_PCAP_INFINITE_RX_ARG "=<0|1>");
-
-RTE_INIT(eth_pcap_init_log)
-{
-	eth_pcap_logtype = rte_log_register("pmd.net.pcap");
-	if (eth_pcap_logtype >= 0)
-		rte_log_set_level(eth_pcap_logtype, RTE_LOG_NOTICE);
-}

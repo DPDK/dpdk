@@ -15,8 +15,7 @@
 
 #define DRIVER_NAME baseband_null
 
-/* NULL BBDev logging ID */
-static int bbdev_null_logtype;
+RTE_LOG_REGISTER(bbdev_null_logtype, pmd.bb.null, NOTICE);
 
 /* Helper macro for logging */
 #define rte_bbdev_log(level, fmt, ...) \
@@ -347,10 +346,3 @@ RTE_PMD_REGISTER_PARAM_STRING(DRIVER_NAME,
 	BBDEV_NULL_MAX_NB_QUEUES_ARG"=<int> "
 	BBDEV_NULL_SOCKET_ID_ARG"=<int>");
 RTE_PMD_REGISTER_ALIAS(DRIVER_NAME, bbdev_null);
-
-RTE_INIT(null_bbdev_init_log)
-{
-	bbdev_null_logtype = rte_log_register("pmd.bb.null");
-	if (bbdev_null_logtype >= 0)
-		rte_log_set_level(bbdev_null_logtype, RTE_LOG_NOTICE);
-}

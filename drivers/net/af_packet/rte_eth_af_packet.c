@@ -97,7 +97,7 @@ static struct rte_eth_link pmd_link = {
 	.link_autoneg = ETH_LINK_FIXED,
 };
 
-static int af_packet_logtype;
+RTE_LOG_REGISTER(af_packet_logtype, pmd.net.packet, NOTICE);
 
 #define PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, af_packet_logtype, \
@@ -1081,10 +1081,3 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_packet,
 	"framesz=<int> "
 	"framecnt=<int> "
 	"qdisc_bypass=<0|1>");
-
-RTE_INIT(af_packet_init_log)
-{
-	af_packet_logtype = rte_log_register("pmd.net.packet");
-	if (af_packet_logtype >= 0)
-		rte_log_set_level(af_packet_logtype, RTE_LOG_NOTICE);
-}

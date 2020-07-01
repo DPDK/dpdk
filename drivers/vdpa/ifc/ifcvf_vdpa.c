@@ -25,6 +25,7 @@
 
 #include "base/ifcvf.h"
 
+RTE_LOG_REGISTER(ifcvf_vdpa_logtype, pmd.net.ifcvf_vdpa, NOTICE);
 #define DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, ifcvf_vdpa_logtype, \
 		"IFCVF %s(): " fmt "\n", __func__, ##args)
@@ -44,8 +45,6 @@ static const char * const ifcvf_valid_arguments[] = {
 	IFCVF_SW_FALLBACK_LM,
 	NULL
 };
-
-static int ifcvf_vdpa_logtype;
 
 struct ifcvf_internal {
 	struct rte_pci_device *pdev;
@@ -1272,10 +1271,3 @@ static struct rte_pci_driver rte_ifcvf_vdpa = {
 RTE_PMD_REGISTER_PCI(net_ifcvf, rte_ifcvf_vdpa);
 RTE_PMD_REGISTER_PCI_TABLE(net_ifcvf, pci_id_ifcvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ifcvf, "* vfio-pci");
-
-RTE_INIT(ifcvf_vdpa_init_log)
-{
-	ifcvf_vdpa_logtype = rte_log_register("pmd.net.ifcvf_vdpa");
-	if (ifcvf_vdpa_logtype >= 0)
-		rte_log_set_level(ifcvf_vdpa_logtype, RTE_LOG_NOTICE);
-}

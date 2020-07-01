@@ -43,8 +43,6 @@
 #include <dpaa_sec_log.h>
 #include <dpaax_iova_table.h>
 
-int dpaa_logtype_sec;
-
 static uint8_t cryptodev_driver_id;
 
 static __thread struct rte_crypto_op **dpaa_sec_ops;
@@ -3520,10 +3518,4 @@ static struct cryptodev_driver dpaa_sec_crypto_drv;
 RTE_PMD_REGISTER_DPAA(CRYPTODEV_NAME_DPAA_SEC_PMD, rte_dpaa_sec_driver);
 RTE_PMD_REGISTER_CRYPTO_DRIVER(dpaa_sec_crypto_drv, rte_dpaa_sec_driver.driver,
 		cryptodev_driver_id);
-
-RTE_INIT(dpaa_sec_init_log)
-{
-	dpaa_logtype_sec = rte_log_register("pmd.crypto.dpaa");
-	if (dpaa_logtype_sec >= 0)
-		rte_log_set_level(dpaa_logtype_sec, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(dpaa_logtype_sec, pmd.crypto.dpaa, NOTICE);

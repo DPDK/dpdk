@@ -48,8 +48,6 @@
  * Soft Event Flow is DPCI Instance
  */
 
-/* Dynamic logging identified for mempool */
-int dpaa2_logtype_event;
 #define DPAA2_EV_TX_RETRY_COUNT 10000
 
 static uint16_t
@@ -1205,10 +1203,4 @@ static struct rte_vdev_driver vdev_eventdev_dpaa2_pmd = {
 };
 
 RTE_PMD_REGISTER_VDEV(EVENTDEV_NAME_DPAA2_PMD, vdev_eventdev_dpaa2_pmd);
-
-RTE_INIT(dpaa2_eventdev_init_log)
-{
-	dpaa2_logtype_event = rte_log_register("pmd.event.dpaa2");
-	if (dpaa2_logtype_event >= 0)
-		rte_log_set_level(dpaa2_logtype_event, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(dpaa2_logtype_event, pmd.event.dpaa2, NOTICE);

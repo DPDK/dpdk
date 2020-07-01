@@ -42,8 +42,6 @@
 #include <fsl_bman.h>
 #include <netcfg.h>
 
-int dpaa_logtype_bus;
-
 static struct rte_dpaa_bus rte_dpaa_bus;
 struct netcfg_info *dpaa_netcfg;
 
@@ -754,10 +752,4 @@ static struct rte_dpaa_bus rte_dpaa_bus = {
 };
 
 RTE_REGISTER_BUS(FSL_DPAA_BUS_NAME, rte_dpaa_bus.bus);
-
-RTE_INIT(dpaa_init_log)
-{
-	dpaa_logtype_bus = rte_log_register("bus.dpaa");
-	if (dpaa_logtype_bus >= 0)
-		rte_log_set_level(dpaa_logtype_bus, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(dpaa_logtype_bus, bus.dpaa, NOTICE);

@@ -23,8 +23,11 @@
 #include "fpga_5gnr_fec.h"
 #include "rte_pmd_fpga_5gnr_fec.h"
 
-/* 5GNR SW PMD logging ID */
-static int fpga_5gnr_fec_logtype;
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+RTE_LOG_REGISTER(fpga_5gnr_fec_logtype, pmd.bb.fpga_5gnr_fec, DEBUG);
+#else
+RTE_LOG_REGISTER(fpga_5gnr_fec_logtype, pmd.bb.fpga_5gnr_fec, NOTICE);
+#endif
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 
@@ -2174,14 +2177,3 @@ RTE_PMD_REGISTER_PCI_TABLE(FPGA_5GNR_FEC_PF_DRIVER_NAME,
 RTE_PMD_REGISTER_PCI(FPGA_5GNR_FEC_VF_DRIVER_NAME, fpga_5gnr_fec_pci_vf_driver);
 RTE_PMD_REGISTER_PCI_TABLE(FPGA_5GNR_FEC_VF_DRIVER_NAME,
 		pci_id_fpga_5gnr_fec_vf_map);
-
-RTE_INIT(fpga_5gnr_fec_init_log)
-{
-	fpga_5gnr_fec_logtype = rte_log_register("pmd.bb.fpga_5gnr_fec");
-	if (fpga_5gnr_fec_logtype >= 0)
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
-		rte_log_set_level(fpga_5gnr_fec_logtype, RTE_LOG_DEBUG);
-#else
-		rte_log_set_level(fpga_5gnr_fec_logtype, RTE_LOG_NOTICE);
-#endif
-}

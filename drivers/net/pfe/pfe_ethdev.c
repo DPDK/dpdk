@@ -40,8 +40,6 @@ unsigned int pfe_svr = SVR_LS1012A_REV1;
 static void *cbus_emac_base[3];
 static void *cbus_gpi_base[3];
 
-int pfe_logtype_pmd;
-
 /* pfe_gemac_init
  */
 static int
@@ -1181,10 +1179,4 @@ struct rte_vdev_driver pmd_pfe_drv = {
 
 RTE_PMD_REGISTER_VDEV(PFE_NAME_PMD, pmd_pfe_drv);
 RTE_PMD_REGISTER_PARAM_STRING(PFE_NAME_PMD, PFE_VDEV_GEM_ID_ARG "=<int> ");
-
-RTE_INIT(pfe_pmd_init_log)
-{
-	pfe_logtype_pmd = rte_log_register("pmd.net.pfe");
-	if (pfe_logtype_pmd >= 0)
-		rte_log_set_level(pfe_logtype_pmd, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(pfe_logtype_pmd, pmd.net.pfe, NOTICE);

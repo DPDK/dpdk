@@ -7,8 +7,6 @@
 
 #include "zlib_pmd_private.h"
 
-int zlib_logtype_driver;
-
 /** Compute next mbuf in the list, assign data buffer and length,
  *  returns 0 if mbuf is NULL
  */
@@ -428,10 +426,4 @@ static struct rte_vdev_driver zlib_pmd_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(COMPRESSDEV_NAME_ZLIB_PMD, zlib_pmd_drv);
-
-RTE_INIT(zlib_init_log)
-{
-	zlib_logtype_driver = rte_log_register("pmd.compress.zlib");
-	if (zlib_logtype_driver >= 0)
-		rte_log_set_level(zlib_logtype_driver, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(zlib_logtype_driver, pmd.compress.zlib, INFO);

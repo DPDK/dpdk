@@ -78,8 +78,6 @@ static int  eth_ark_set_mtu(struct rte_eth_dev *dev, uint16_t size);
 #define ARK_TX_MAX_QUEUE (4096 * 4)
 #define ARK_TX_MIN_QUEUE (256)
 
-int ark_logtype;
-
 static const char * const valid_arguments[] = {
 	ARK_PKTGEN_ARG,
 	ARK_PKTCHKR_ARG,
@@ -1018,10 +1016,4 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ark,
 			      ARK_PKTGEN_ARG "=<filename> "
 			      ARK_PKTCHKR_ARG "=<filename> "
 			      ARK_PKTDIR_ARG "=<bitmap>");
-
-RTE_INIT(ark_init_log)
-{
-	ark_logtype = rte_log_register("pmd.net.ark");
-	if (ark_logtype >= 0)
-		rte_log_set_level(ark_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(ark_logtype, pmd.net.ark, NOTICE);

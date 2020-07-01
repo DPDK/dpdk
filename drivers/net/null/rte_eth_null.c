@@ -73,7 +73,7 @@ static struct rte_eth_link pmd_link = {
 	.link_autoneg = ETH_LINK_FIXED,
 };
 
-static int eth_null_logtype;
+RTE_LOG_REGISTER(eth_null_logtype, pmd.net.null, NOTICE);
 
 #define PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, eth_null_logtype, \
@@ -729,10 +729,3 @@ RTE_PMD_REGISTER_PARAM_STRING(net_null,
 	"size=<int> "
 	"copy=<int> "
 	ETH_NULL_PACKET_NO_RX_ARG "=0|1");
-
-RTE_INIT(eth_null_init_log)
-{
-	eth_null_logtype = rte_log_register("pmd.net.null");
-	if (eth_null_logtype >= 0)
-		rte_log_set_level(eth_null_logtype, RTE_LOG_NOTICE);
-}

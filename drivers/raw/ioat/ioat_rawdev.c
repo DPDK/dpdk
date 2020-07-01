@@ -9,9 +9,6 @@
 
 #include "rte_ioat_rawdev.h"
 
-/* Dynamic log type identifier */
-int ioat_pmd_logtype;
-
 static struct rte_pci_driver ioat_pmd_drv;
 
 #define IOAT_VENDOR_ID		0x8086
@@ -27,6 +24,8 @@ static struct rte_pci_driver ioat_pmd_drv;
 #define IOAT_DEVICE_ID_BDXE	0x6f2E
 #define IOAT_DEVICE_ID_BDXF	0x6f2F
 #define IOAT_DEVICE_ID_ICX	0x0b00
+
+RTE_LOG_REGISTER(ioat_pmd_logtype, rawdev.ioat, INFO);
 
 #define IOAT_PMD_LOG(level, fmt, args...) rte_log(RTE_LOG_ ## level, \
 	ioat_pmd_logtype, "%s(): " fmt "\n", __func__, ##args)
@@ -386,10 +385,3 @@ static struct rte_pci_driver ioat_pmd_drv = {
 RTE_PMD_REGISTER_PCI(IOAT_PMD_RAWDEV_NAME, ioat_pmd_drv);
 RTE_PMD_REGISTER_PCI_TABLE(IOAT_PMD_RAWDEV_NAME, pci_id_ioat_map);
 RTE_PMD_REGISTER_KMOD_DEP(IOAT_PMD_RAWDEV_NAME, "* igb_uio | uio_pci_generic");
-
-RTE_INIT(ioat_pmd_init_log)
-{
-	ioat_pmd_logtype = rte_log_register(IOAT_PMD_LOG_NAME);
-	if (ioat_pmd_logtype >= 0)
-		rte_log_set_level(ioat_pmd_logtype, RTE_LOG_INFO);
-}

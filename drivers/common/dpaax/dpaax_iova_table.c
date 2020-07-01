@@ -7,9 +7,6 @@
 #include "dpaax_iova_table.h"
 #include "dpaax_logs.h"
 
-/* Global dpaax logger identifier */
-int dpaax_logger;
-
 /* Global table reference */
 struct dpaax_iova_table *dpaax_iova_table_p;
 
@@ -463,9 +460,4 @@ dpaax_handle_memevents(void)
 					       dpaax_memevent_cb, NULL);
 }
 
-RTE_INIT(dpaax_log)
-{
-	dpaax_logger = rte_log_register("pmd.common.dpaax");
-	if (dpaax_logger >= 0)
-		rte_log_set_level(dpaax_logger, RTE_LOG_ERR);
-}
+RTE_LOG_REGISTER(dpaax_logger, pmd.common.dpaax, ERR);

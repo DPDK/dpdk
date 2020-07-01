@@ -194,9 +194,4 @@ rte_stack_lookup(const char *name)
 	return r;
 }
 
-RTE_INIT(librte_stack_init_log)
-{
-	stack_logtype = rte_log_register("lib.stack");
-	if (stack_logtype >= 0)
-		rte_log_set_level(stack_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(stack_logtype, lib.stack, NOTICE);

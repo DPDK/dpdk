@@ -28,9 +28,6 @@
 
 #include "skeleton_rawdev.h"
 
-/* Dynamic log type identifier */
-int skeleton_pmd_logtype;
-
 /* Count of instances */
 static uint16_t skeldev_init_once;
 
@@ -759,10 +756,4 @@ static struct rte_vdev_driver skeleton_pmd_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(SKELETON_PMD_RAWDEV_NAME, skeleton_pmd_drv);
-
-RTE_INIT(skeleton_pmd_init_log)
-{
-	skeleton_pmd_logtype = rte_log_register("rawdev.skeleton");
-	if (skeleton_pmd_logtype >= 0)
-		rte_log_set_level(skeleton_pmd_logtype, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(skeleton_pmd_logtype, rawdev.skeleton, INFO);

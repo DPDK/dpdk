@@ -21,8 +21,6 @@
 #include "vnic_enet.h"
 #include "enic.h"
 
-int enic_pmd_logtype;
-
 /*
  * The set of PCI devices this driver supports
  */
@@ -71,12 +69,7 @@ static const struct vic_speed_capa {
 #define ENIC_DEVARG_GENEVE_OPT "geneve-opt"
 #define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
 
-RTE_INIT(enicpmd_init_log)
-{
-	enic_pmd_logtype = rte_log_register("pmd.net.enic");
-	if (enic_pmd_logtype >= 0)
-		rte_log_set_level(enic_pmd_logtype, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(enic_pmd_logtype, pmd.net.enic, INFO);
 
 static int
 enicpmd_fdir_ctrl_func(struct rte_eth_dev *eth_dev,

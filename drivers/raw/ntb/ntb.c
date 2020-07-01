@@ -23,8 +23,6 @@
 #include "rte_pmd_ntb.h"
 #include "ntb.h"
 
-int ntb_logtype;
-
 static const struct rte_pci_id pci_id_ntb_map[] = {
 	{ RTE_PCI_DEVICE(NTB_INTEL_VENDOR_ID, NTB_INTEL_DEV_ID_B2B_SKX) },
 	{ .vendor_id = 0, /* sentinel */ },
@@ -1504,10 +1502,4 @@ static struct rte_pci_driver rte_ntb_pmd = {
 RTE_PMD_REGISTER_PCI(raw_ntb, rte_ntb_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(raw_ntb, pci_id_ntb_map);
 RTE_PMD_REGISTER_KMOD_DEP(raw_ntb, "* igb_uio | uio_pci_generic | vfio-pci");
-
-RTE_INIT(ntb_init_log)
-{
-	ntb_logtype = rte_log_register("pmd.raw.ntb");
-	if (ntb_logtype >= 0)
-		rte_log_set_level(ntb_logtype, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(ntb_logtype, pmd.raw.ntb, INFO);

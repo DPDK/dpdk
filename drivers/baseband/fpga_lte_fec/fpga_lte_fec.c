@@ -22,8 +22,11 @@
 
 #include "fpga_lte_fec.h"
 
-/* Turbo SW PMD logging ID */
-static int fpga_lte_fec_logtype;
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+RTE_LOG_REGISTER(fpga_lte_fec_logtype, pmd.bb.fpga_lte_fec, DEBUG);
+#else
+RTE_LOG_REGISTER(fpga_lte_fec_logtype, pmd.bb.fpga_lte_fec, NOTICE);
+#endif
 
 /* Helper macro for logging */
 #define rte_bbdev_log(level, fmt, ...) \
@@ -2662,14 +2665,3 @@ RTE_PMD_REGISTER_PCI_TABLE(FPGA_LTE_FEC_PF_DRIVER_NAME,
 RTE_PMD_REGISTER_PCI(FPGA_LTE_FEC_VF_DRIVER_NAME, fpga_lte_fec_pci_vf_driver);
 RTE_PMD_REGISTER_PCI_TABLE(FPGA_LTE_FEC_VF_DRIVER_NAME,
 		pci_id_fpga_lte_fec_vf_map);
-
-RTE_INIT(fpga_lte_fec_init_log)
-{
-	fpga_lte_fec_logtype = rte_log_register("pmd.bb.fpga_lte_fec");
-	if (fpga_lte_fec_logtype >= 0)
-#ifdef RTE_LIBRTE_BBDEV_DEBUG
-		rte_log_set_level(fpga_lte_fec_logtype, RTE_LOG_DEBUG);
-#else
-		rte_log_set_level(fpga_lte_fec_logtype, RTE_LOG_NOTICE);
-#endif
-}

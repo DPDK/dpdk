@@ -67,7 +67,7 @@ static const struct rte_eth_link pmd_link = {
 };
 static int is_kni_initialized;
 
-static int eth_kni_logtype;
+RTE_LOG_REGISTER(eth_kni_logtype, pmd.net.kni, NOTICE);
 
 #define PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, eth_kni_logtype, \
@@ -508,10 +508,3 @@ static struct rte_vdev_driver eth_kni_drv = {
 
 RTE_PMD_REGISTER_VDEV(net_kni, eth_kni_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_kni, ETH_KNI_NO_REQUEST_THREAD_ARG "=<int>");
-
-RTE_INIT(eth_kni_init_log)
-{
-	eth_kni_logtype = rte_log_register("pmd.net.kni");
-	if (eth_kni_logtype >= 0)
-		rte_log_set_level(eth_kni_logtype, RTE_LOG_NOTICE);
-}

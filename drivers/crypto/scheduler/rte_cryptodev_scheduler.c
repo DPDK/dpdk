@@ -10,8 +10,6 @@
 #include "rte_cryptodev_scheduler.h"
 #include "scheduler_pmd_private.h"
 
-int scheduler_logtype_driver;
-
 /** update the scheduler pmd's capability with attaching device's
  *  capability.
  *  For each device to be attached, the scheduler's capability should be
@@ -578,7 +576,5 @@ rte_cryptodev_scheduler_option_get(uint8_t scheduler_id,
 	return (*sched_ctx->ops.option_get)(dev, option_type, option);
 }
 
-RTE_INIT(scheduler_init_log)
-{
-	scheduler_logtype_driver = rte_log_register("pmd.crypto.scheduler");
-}
+
+RTE_LOG_REGISTER(scheduler_logtype_driver, pmd.crypto.scheduler, INFO);

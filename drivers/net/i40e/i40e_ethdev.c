@@ -398,18 +398,6 @@ static void i40e_tunnel_filter_restore(struct i40e_pf *pf);
 static void i40e_filter_restore(struct i40e_pf *pf);
 static void i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev);
 
-int i40e_logtype_init;
-int i40e_logtype_driver;
-#ifdef RTE_LIBRTE_I40E_DEBUG_RX
-int i40e_logtype_rx;
-#endif
-#ifdef RTE_LIBRTE_I40E_DEBUG_TX
-int i40e_logtype_tx;
-#endif
-#ifdef RTE_LIBRTE_I40E_DEBUG_TX_FREE
-int i40e_logtype_tx_free;
-#endif
-
 static const char *const valid_keys[] = {
 	ETH_I40E_FLOATING_VEB_ARG,
 	ETH_I40E_FLOATING_VEB_LIST_ARG,
@@ -13411,33 +13399,17 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 	return 0;
 }
 
-RTE_INIT(i40e_init_log)
-{
-	i40e_logtype_init = rte_log_register("pmd.net.i40e.init");
-	if (i40e_logtype_init >= 0)
-		rte_log_set_level(i40e_logtype_init, RTE_LOG_NOTICE);
-	i40e_logtype_driver = rte_log_register("pmd.net.i40e.driver");
-	if (i40e_logtype_driver >= 0)
-		rte_log_set_level(i40e_logtype_driver, RTE_LOG_NOTICE);
-
+RTE_LOG_REGISTER(i40e_logtype_init, pmd.net.i40e.init, NOTICE);
+RTE_LOG_REGISTER(i40e_logtype_driver, pmd.net.i40e.driver, NOTICE);
 #ifdef RTE_LIBRTE_I40E_DEBUG_RX
-	i40e_logtype_rx = rte_log_register("pmd.net.i40e.rx");
-	if (i40e_logtype_rx >= 0)
-		rte_log_set_level(i40e_logtype_rx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(i40e_logtype_rx, pmd.net.i40e.rx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_I40E_DEBUG_TX
-	i40e_logtype_tx = rte_log_register("pmd.net.i40e.tx");
-	if (i40e_logtype_tx >= 0)
-		rte_log_set_level(i40e_logtype_tx, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(i40e_logtype_tx, pmd.net.i40e.tx, DEBUG);
 #endif
-
 #ifdef RTE_LIBRTE_I40E_DEBUG_TX_FREE
-	i40e_logtype_tx_free = rte_log_register("pmd.net.i40e.tx_free");
-	if (i40e_logtype_tx_free >= 0)
-		rte_log_set_level(i40e_logtype_tx_free, RTE_LOG_DEBUG);
+RTE_LOG_REGISTER(i40e_logtype_tx_free, pmd.net.i40e.tx_free, DEBUG);
 #endif
-}
 
 RTE_PMD_REGISTER_PARAM_STRING(net_i40e,
 			      ETH_I40E_FLOATING_VEB_ARG "=1"

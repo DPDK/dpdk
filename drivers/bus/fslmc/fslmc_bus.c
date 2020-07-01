@@ -21,8 +21,6 @@
 
 #include <dpaax_iova_table.h>
 
-int dpaa2_logtype_bus;
-
 #define VFIO_IOMMU_GROUP_PATH "/sys/kernel/iommu_groups"
 #define FSLMC_BUS_NAME	fslmc
 
@@ -654,11 +652,4 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 };
 
 RTE_REGISTER_BUS(FSLMC_BUS_NAME, rte_fslmc_bus.bus);
-
-RTE_INIT(fslmc_init_log)
-{
-	/* Bus level logs */
-	dpaa2_logtype_bus = rte_log_register("bus.fslmc");
-	if (dpaa2_logtype_bus >= 0)
-		rte_log_set_level(dpaa2_logtype_bus, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(dpaa2_logtype_bus, bus.fslmc, NOTICE);

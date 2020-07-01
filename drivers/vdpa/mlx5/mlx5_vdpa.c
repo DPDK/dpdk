@@ -839,15 +839,13 @@ static struct rte_pci_driver mlx5_vdpa_driver = {
 	.drv_flags = 0,
 };
 
+RTE_LOG_REGISTER(mlx5_vdpa_logtype, pmd.vdpa.mlx5, NOTICE)
+
 /**
  * Driver initialization routine.
  */
 RTE_INIT(rte_mlx5_vdpa_init)
 {
-	/* Initialize common log type. */
-	mlx5_vdpa_logtype = rte_log_register("pmd.vdpa.mlx5");
-	if (mlx5_vdpa_logtype >= 0)
-		rte_log_set_level(mlx5_vdpa_logtype, RTE_LOG_NOTICE);
 	if (mlx5_glue)
 		rte_pci_register(&mlx5_vdpa_driver);
 }

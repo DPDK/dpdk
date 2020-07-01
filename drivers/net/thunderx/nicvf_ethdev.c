@@ -44,10 +44,6 @@
 #include "nicvf_svf.h"
 #include "nicvf_logs.h"
 
-int nicvf_logtype_mbox;
-int nicvf_logtype_init;
-int nicvf_logtype_driver;
-
 static void nicvf_dev_stop(struct rte_eth_dev *dev);
 static void nicvf_dev_stop_cleanup(struct rte_eth_dev *dev, bool cleanup);
 static void nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic,
@@ -55,20 +51,9 @@ static void nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic,
 static int nicvf_vlan_offload_config(struct rte_eth_dev *dev, int mask);
 static int nicvf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 
-RTE_INIT(nicvf_init_log)
-{
-	nicvf_logtype_mbox = rte_log_register("pmd.net.thunderx.mbox");
-	if (nicvf_logtype_mbox >= 0)
-		rte_log_set_level(nicvf_logtype_mbox, RTE_LOG_NOTICE);
-
-	nicvf_logtype_init = rte_log_register("pmd.net.thunderx.init");
-	if (nicvf_logtype_init >= 0)
-		rte_log_set_level(nicvf_logtype_init, RTE_LOG_NOTICE);
-
-	nicvf_logtype_driver = rte_log_register("pmd.net.thunderx.driver");
-	if (nicvf_logtype_driver >= 0)
-		rte_log_set_level(nicvf_logtype_driver, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(nicvf_logtype_mbox, pmd.net.thunderx.mbox, NOTICE);
+RTE_LOG_REGISTER(nicvf_logtype_init, pmd.net.thunderx.init, NOTICE);
+RTE_LOG_REGISTER(nicvf_logtype_driver, pmd.net.thunderx.driver, NOTICE);
 
 static void
 nicvf_link_status_update(struct nicvf *nic,

@@ -31,8 +31,6 @@
 #define OPDL_OPA_MASK    (0xFF)
 #define OPDL_OPA_OFFSET  (0x38)
 
-int opdl_logtype_driver;
-
 /* Types of dependency between stages */
 enum dep_type {
 	DEP_NONE = 0,  /* no dependency */

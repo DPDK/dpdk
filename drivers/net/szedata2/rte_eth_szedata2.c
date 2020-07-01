@@ -102,9 +102,6 @@ struct szedata2_tx_queue {
 	volatile uint64_t err_pkts;
 };
 
-int szedata2_logtype_init;
-int szedata2_logtype_driver;
-
 static struct rte_ether_addr eth_addr = {
 	.addr_bytes = { 0x00, 0x11, 0x17, 0x00, 0x00, 0x00 }
 };
@@ -1941,13 +1938,5 @@ RTE_PMD_REGISTER_PCI(RTE_SZEDATA2_DRIVER_NAME, szedata2_eth_driver);
 RTE_PMD_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_SZEDATA2_DRIVER_NAME,
 	"* combo6core & combov3 & szedata2 & ( szedata2_cv3 | szedata2_cv3_fdt )");
-
-RTE_INIT(szedata2_init_log)
-{
-	szedata2_logtype_init = rte_log_register("pmd.net.szedata2.init");
-	if (szedata2_logtype_init >= 0)
-		rte_log_set_level(szedata2_logtype_init, RTE_LOG_NOTICE);
-	szedata2_logtype_driver = rte_log_register("pmd.net.szedata2.driver");
-	if (szedata2_logtype_driver >= 0)
-		rte_log_set_level(szedata2_logtype_driver, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(szedata2_logtype_init, pmd.net.szedata2.init, NOTICE);
+RTE_LOG_REGISTER(szedata2_logtype_driver, pmd.net.szedata2.driver, NOTICE);

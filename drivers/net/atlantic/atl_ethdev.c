@@ -120,9 +120,6 @@ static int eth_atl_pci_remove(struct rte_pci_device *pci_dev);
 static int atl_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 
-int atl_logtype_init;
-int atl_logtype_driver;
-
 /*
  * The set of PCI devices this driver supports
  */
@@ -1929,13 +1926,5 @@ is_atlantic_supported(struct rte_eth_dev *dev)
 RTE_PMD_REGISTER_PCI(net_atlantic, rte_atl_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_atlantic, pci_id_atl_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_atlantic, "* igb_uio | uio_pci_generic");
-
-RTE_INIT(atl_init_log)
-{
-	atl_logtype_init = rte_log_register("pmd.net.atlantic.init");
-	if (atl_logtype_init >= 0)
-		rte_log_set_level(atl_logtype_init, RTE_LOG_NOTICE);
-	atl_logtype_driver = rte_log_register("pmd.net.atlantic.driver");
-	if (atl_logtype_driver >= 0)
-		rte_log_set_level(atl_logtype_driver, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(atl_logtype_init, pmd.net.atlantic.init, NOTICE);
+RTE_LOG_REGISTER(atl_logtype_driver, pmd.net.atlantic.driver, NOTICE);

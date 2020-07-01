@@ -525,6 +525,8 @@ handle_ports_stats_values_by_name(const char *cmd __rte_unused,
 	return used;
 }
 
+RTE_LOG_REGISTER(metrics_log_level, lib.metrics, ERR);
+
 RTE_INIT(metrics_ctor)
 {
 #ifdef RTE_LIBRTE_TELEMETRY
@@ -535,7 +537,4 @@ RTE_INIT(metrics_ctor)
 	rte_telemetry_legacy_register("ports_stats_values_by_name", DATA_REQ,
 			handle_ports_stats_values_by_name);
 #endif
-	metrics_log_level = rte_log_register("lib.metrics");
-	if (metrics_log_level >= 0)
-		rte_log_set_level(metrics_log_level, RTE_LOG_ERR);
 }

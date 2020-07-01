@@ -141,22 +141,6 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 #define	ENA_TX_OFFLOAD_NOTSUP_MASK	\
 	(PKT_TX_OFFLOAD_MASK ^ ENA_TX_OFFLOAD_MASK)
 
-int ena_logtype_init;
-int ena_logtype_driver;
-
-#ifdef RTE_LIBRTE_ENA_DEBUG_RX
-int ena_logtype_rx;
-#endif
-#ifdef RTE_LIBRTE_ENA_DEBUG_TX
-int ena_logtype_tx;
-#endif
-#ifdef RTE_LIBRTE_ENA_DEBUG_TX_FREE
-int ena_logtype_tx_free;
-#endif
-#ifdef RTE_LIBRTE_ENA_COM_DEBUG
-int ena_logtype_com;
-#endif
-
 static const struct rte_pci_id pci_id_ena_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_LLQ_VF) },
@@ -2849,40 +2833,20 @@ RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ena, ENA_DEVARG_LARGE_LLQ_HDR "=<0|1>");
-
-RTE_INIT(ena_init_log)
-{
-	ena_logtype_init = rte_log_register("pmd.net.ena.init");
-	if (ena_logtype_init >= 0)
-		rte_log_set_level(ena_logtype_init, RTE_LOG_NOTICE);
-	ena_logtype_driver = rte_log_register("pmd.net.ena.driver");
-	if (ena_logtype_driver >= 0)
-		rte_log_set_level(ena_logtype_driver, RTE_LOG_NOTICE);
-
+RTE_LOG_REGISTER(ena_logtype_init, pmd.net.ena.init, NOTICE);
+RTE_LOG_REGISTER(ena_logtype_driver, pmd.net.ena.driver, NOTICE);
 #ifdef RTE_LIBRTE_ENA_DEBUG_RX
-	ena_logtype_rx = rte_log_register("pmd.net.ena.rx");
-	if (ena_logtype_rx >= 0)
-		rte_log_set_level(ena_logtype_rx, RTE_LOG_NOTICE);
+RTE_LOG_REGISTER(ena_logtype_rx, pmd.net.ena.rx, NOTICE);
 #endif
-
 #ifdef RTE_LIBRTE_ENA_DEBUG_TX
-	ena_logtype_tx = rte_log_register("pmd.net.ena.tx");
-	if (ena_logtype_tx >= 0)
-		rte_log_set_level(ena_logtype_tx, RTE_LOG_NOTICE);
+RTE_LOG_REGISTER(ena_logtype_tx, pmd.net.ena.tx, NOTICE);
 #endif
-
 #ifdef RTE_LIBRTE_ENA_DEBUG_TX_FREE
-	ena_logtype_tx_free = rte_log_register("pmd.net.ena.tx_free");
-	if (ena_logtype_tx_free >= 0)
-		rte_log_set_level(ena_logtype_tx_free, RTE_LOG_NOTICE);
+RTE_LOG_REGISTER(ena_logtype_tx_free, pmd.net.ena.tx_free, NOTICE);
 #endif
-
 #ifdef RTE_LIBRTE_ENA_COM_DEBUG
-	ena_logtype_com = rte_log_register("pmd.net.ena.com");
-	if (ena_logtype_com >= 0)
-		rte_log_set_level(ena_logtype_com, RTE_LOG_NOTICE);
+RTE_LOG_REGISTER(ena_logtype_com, pmd.net.ena.com, NOTICE);
 #endif
-}
 
 /******************************************************************************
  ******************************** AENQ Handlers *******************************

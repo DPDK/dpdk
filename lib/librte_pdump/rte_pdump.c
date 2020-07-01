@@ -14,8 +14,9 @@
 
 #define DEVICE_ID_SIZE 64
 
+RTE_LOG_REGISTER(pdump_logtype, lib.pdump, NOTICE);
+
 /* Macro for printing using RTE_LOG */
-static int pdump_logtype;
 #define PDUMP_LOG(level, fmt, args...)				\
 	rte_log(RTE_LOG_ ## level, pdump_logtype, "%s(): " fmt,	\
 		__func__, ## args)
@@ -559,11 +560,4 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
 						DISABLE, NULL, NULL, NULL);
 
 	return ret;
-}
-
-RTE_INIT(pdump_log)
-{
-	pdump_logtype = rte_log_register("lib.pdump");
-	if (pdump_logtype >= 0)
-		rte_log_set_level(pdump_logtype, RTE_LOG_NOTICE);
 }

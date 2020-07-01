@@ -48,15 +48,14 @@
 #define NETVSC_CLASS_ID "{f8615163-df3e-46c5-913f-f2d2f965ed0e}"
 #define NETVSC_MAX_ROUTE_LINE_SIZE 300
 
+RTE_LOG_REGISTER(vdev_netvsc_logtype, pmd.net.vdev_netvsc, NOTICE);
+
 #define DRV_LOG(level, ...) \
 	rte_log(RTE_LOG_ ## level, \
 		vdev_netvsc_logtype, \
 		RTE_FMT(VDEV_NETVSC_DRIVER_NAME ": " \
 			RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 		RTE_FMT_TAIL(__VA_ARGS__,)))
-
-/** Driver-specific log messages type. */
-static int vdev_netvsc_logtype;
 
 /** Context structure for a vdev_netvsc instance. */
 struct vdev_netvsc_ctx {
@@ -773,14 +772,6 @@ RTE_PMD_REGISTER_PARAM_STRING(net_vdev_netvsc,
 			      VDEV_NETVSC_ARG_MAC "=<string> "
 			      VDEV_NETVSC_ARG_FORCE "=<int> "
 			      VDEV_NETVSC_ARG_IGNORE "=<int>");
-
-/** Initialize driver log type. */
-RTE_INIT(vdev_netvsc_init_log)
-{
-	vdev_netvsc_logtype = rte_log_register("pmd.net.vdev_netvsc");
-	if (vdev_netvsc_logtype >= 0)
-		rte_log_set_level(vdev_netvsc_logtype, RTE_LOG_NOTICE);
-}
 
 /** Compare function for vdev find device operation. */
 static int

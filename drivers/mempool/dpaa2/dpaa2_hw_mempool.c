@@ -36,9 +36,6 @@
 struct dpaa2_bp_info *rte_dpaa2_bpid_info;
 static struct dpaa2_bp_list *h_bp_list;
 
-/* Dynamic logging identified for mempool */
-int dpaa2_logtype_mempool;
-
 static int
 rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 {
@@ -454,9 +451,4 @@ static const struct rte_mempool_ops dpaa2_mpool_ops = {
 
 MEMPOOL_REGISTER_OPS(dpaa2_mpool_ops);
 
-RTE_INIT(dpaa2_mempool_init_log)
-{
-	dpaa2_logtype_mempool = rte_log_register("mempool.dpaa2");
-	if (dpaa2_logtype_mempool >= 0)
-		rte_log_set_level(dpaa2_logtype_mempool, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(dpaa2_logtype_mempool, mempool.dpaa2, NOTICE);

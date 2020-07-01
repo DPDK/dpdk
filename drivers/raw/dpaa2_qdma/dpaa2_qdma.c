@@ -26,9 +26,6 @@
 
 #define DPAA2_QDMA_NO_PREFETCH "no_prefetch"
 
-/* Dynamic log type identifier */
-int dpaa2_qdma_logtype;
-
 uint32_t dpaa2_coherent_no_alloc_cache;
 uint32_t dpaa2_coherent_alloc_cache;
 
@@ -1495,10 +1492,4 @@ static struct rte_dpaa2_driver rte_dpaa2_qdma_pmd = {
 RTE_PMD_REGISTER_DPAA2(dpaa2_qdma, rte_dpaa2_qdma_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(dpaa2_qdma,
 	"no_prefetch=<int> ");
-
-RTE_INIT(dpaa2_qdma_init_log)
-{
-	dpaa2_qdma_logtype = rte_log_register("pmd.raw.dpaa2.qdma");
-	if (dpaa2_qdma_logtype >= 0)
-		rte_log_set_level(dpaa2_qdma_logtype, RTE_LOG_INFO);
-}
+RTE_LOG_REGISTER(dpaa2_qdma_logtype, pmd.raw.dpaa2.qdma, INFO);

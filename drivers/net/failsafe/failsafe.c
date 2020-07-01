@@ -15,8 +15,6 @@
 
 #include "failsafe_private.h"
 
-int failsafe_logtype;
-
 const char pmd_failsafe_driver_name[] = FAILSAFE_DRIVER_NAME;
 static const struct rte_eth_link eth_link = {
 	.link_speed = ETH_SPEED_NUM_10G,
@@ -410,10 +408,4 @@ static struct rte_vdev_driver failsafe_drv = {
 
 RTE_PMD_REGISTER_VDEV(net_failsafe, failsafe_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_failsafe, PMD_FAILSAFE_PARAM_STRING);
-
-RTE_INIT(failsafe_init_log)
-{
-	failsafe_logtype = rte_log_register("pmd.net.failsafe");
-	if (failsafe_logtype >= 0)
-		rte_log_set_level(failsafe_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(failsafe_logtype, pmd.net.failsafe, NOTICE)

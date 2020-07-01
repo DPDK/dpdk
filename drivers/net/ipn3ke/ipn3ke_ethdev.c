@@ -26,8 +26,6 @@
 #include "ipn3ke_logs.h"
 #include "ipn3ke_ethdev.h"
 
-int ipn3ke_afu_logtype;
-
 static const struct rte_afu_uuid afu_uuid_ipn3ke_map[] = {
 	{ MAP_UUID_10G_LOW,  MAP_UUID_10G_HIGH },
 	{ IPN3KE_UUID_10G_LOW, IPN3KE_UUID_10G_HIGH },
@@ -587,10 +585,4 @@ static struct rte_afu_driver afu_ipn3ke_driver = {
 };
 
 RTE_PMD_REGISTER_AFU(net_ipn3ke_afu, afu_ipn3ke_driver);
-
-RTE_INIT(ipn3ke_afu_init_log)
-{
-	ipn3ke_afu_logtype = rte_log_register("pmd.afu.ipn3ke");
-	if (ipn3ke_afu_logtype >= 0)
-		rte_log_set_level(ipn3ke_afu_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(ipn3ke_afu_logtype, pmd.afu.ipn3ke, NOTICE);

@@ -47,8 +47,6 @@
 #define RTE_PCI_EXT_CAP_ID(header)       (int)(header & 0x0000ffff)
 #define RTE_PCI_EXT_CAP_NEXT(header)     ((header >> 20) & 0xffc)
 
-int ifpga_rawdev_logtype;
-
 #define PCI_VENDOR_ID_INTEL          0x8086
 /* PCI Device ID */
 #define PCIE_DEVICE_ID_PF_INT_5_X    0xBCBD
@@ -1597,13 +1595,7 @@ static struct rte_pci_driver rte_ifpga_rawdev_pmd = {
 RTE_PMD_REGISTER_PCI(ifpga_rawdev_pci_driver, rte_ifpga_rawdev_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(ifpga_rawdev_pci_driver, rte_ifpga_rawdev_pmd);
 RTE_PMD_REGISTER_KMOD_DEP(ifpga_rawdev_pci_driver, "* igb_uio | uio_pci_generic | vfio-pci");
-
-RTE_INIT(ifpga_rawdev_init_log)
-{
-	ifpga_rawdev_logtype = rte_log_register("driver.raw.init");
-	if (ifpga_rawdev_logtype >= 0)
-		rte_log_set_level(ifpga_rawdev_logtype, RTE_LOG_NOTICE);
-}
+RTE_LOG_REGISTER(ifpga_rawdev_logtype, driver.raw.init, NOTICE);
 
 static const char * const valid_args[] = {
 #define IFPGA_ARG_NAME         "ifpga"
