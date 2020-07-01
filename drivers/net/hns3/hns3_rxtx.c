@@ -909,7 +909,7 @@ hns3_fake_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 	nb_rx_q = dev->data->nb_rx_queues;
 	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				(nb_rx_q + idx) * HNS3_TQP_REG_SIZE);
-	rxq->rx_buf_len = hw->rx_buf_len;
+	rxq->rx_buf_len = HNS3_MIN_BD_BUF_SIZE;
 
 	rte_spinlock_lock(&hw->lock);
 	hw->fkq_data.rx_queues[idx] = rxq;
@@ -1185,6 +1185,48 @@ hns3_dev_release_mbufs(struct hns3_adapter *hns)
 		}
 }
 
+static int
+hns3_rx_buf_len_calc(struct rte_mempool *mp, uint16_t *rx_buf_len)
+{
+	uint16_t vld_buf_size;
+	uint16_t num_hw_specs;
+	uint16_t i;
+
+	/*
+	 * hns3 network engine only support to set 4 typical specification, and
+	 * different buffer size will affect the max packet_len and the max
+	 * number of segmentation when hw gro is turned on in receive side. The
+	 * relationship between them is as follows:
+	 *      rx_buf_size     |  max_gro_pkt_len  |  max_gro_nb_seg
+	 * ---------------------|-------------------|----------------
+	 * HNS3_4K_BD_BUF_SIZE  |        60KB       |       15
+	 * HNS3_2K_BD_BUF_SIZE  |        62KB       |       31
+	 * HNS3_1K_BD_BUF_SIZE  |        63KB       |       63
+	 * HNS3_512_BD_BUF_SIZE |      31.5KB       |       63
+	 */
+	static const uint16_t hw_rx_buf_size[] = {
+		HNS3_4K_BD_BUF_SIZE,
+		HNS3_2K_BD_BUF_SIZE,
+		HNS3_1K_BD_BUF_SIZE,
+		HNS3_512_BD_BUF_SIZE
+	};
+
+	vld_buf_size = (uint16_t)(rte_pktmbuf_data_room_size(mp) -
+			RTE_PKTMBUF_HEADROOM);
+
+	if (vld_buf_size < HNS3_MIN_BD_BUF_SIZE)
+		return -EINVAL;
+
+	num_hw_specs = RTE_DIM(hw_rx_buf_size);
+	for (i = 0; i < num_hw_specs; i++) {
+		if (vld_buf_size >= hw_rx_buf_size[i]) {
+			*rx_buf_len = hw_rx_buf_size[i];
+			break;
+		}
+	}
+	return 0;
+}
+
 int
 hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		    unsigned int socket_id, const struct rte_eth_rxconf *conf,
@@ -1194,6 +1236,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_queue_info q_info;
 	struct hns3_rx_queue *rxq;
+	uint16_t rx_buf_size;
 	int rx_entry_len;
 
 	if (dev->data->dev_started) {
@@ -1218,6 +1261,15 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	q_info.nb_desc = nb_desc;
 	q_info.type = "hns3 RX queue";
 	q_info.ring_name = "rx_ring";
+
+	if (hns3_rx_buf_len_calc(mp, &rx_buf_size)) {
+		hns3_err(hw, "rxq mbufs' data room size:%u is not enough! "
+				"minimal data room size:%u.",
+				rte_pktmbuf_data_room_size(mp),
+				HNS3_MIN_BD_BUF_SIZE + RTE_PKTMBUF_HEADROOM);
+		return -EINVAL;
+	}
+
 	rxq = hns3_alloc_rxq_and_dma_zone(dev, &q_info);
 	if (rxq == NULL) {
 		hns3_err(hw,
@@ -1252,7 +1304,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->configured = true;
 	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
-	rxq->rx_buf_len = hw->rx_buf_len;
+	rxq->rx_buf_len = rx_buf_size;
 	rxq->l2_errors = 0;
 	rxq->pkt_len_errors = 0;
 	rxq->l3_csum_erros = 0;

@@ -2450,7 +2450,7 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->max_rx_queues = queue_num;
 	info->max_tx_queues = hw->tqps_num;
 	info->max_rx_pktlen = HNS3_MAX_FRAME_LEN; /* CRC included */
-	info->min_rx_bufsize = hw->rx_buf_len;
+	info->min_rx_bufsize = HNS3_MIN_BD_BUF_SIZE;
 	info->max_mac_addrs = HNS3_UC_MACADDR_NUM;
 	info->max_mtu = info->max_rx_pktlen - HNS3_ETH_OVERHEAD;
 	info->max_lro_pkt_size = HNS3_MAX_LRO_SIZE;
@@ -2848,7 +2848,6 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 	hw->mac.media_type = cfg.media_type;
 	hw->rss_size_max = cfg.rss_size_max;
 	hw->rss_dis_flag = false;
-	hw->rx_buf_len = cfg.rx_buf_len;
 	memcpy(hw->mac.mac_addr, cfg.mac_addr, RTE_ETHER_ADDR_LEN);
 	hw->mac.phy_addr = cfg.phy_addr;
 	hw->mac.default_addr_setted = false;
