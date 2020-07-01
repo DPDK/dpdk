@@ -4319,6 +4319,21 @@ err_mac_init:
 }
 
 static int
+hns3_clear_hw(struct hns3_hw *hw)
+{
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_CLEAR_HW_STATE, false);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		return ret;
+
+	return 0;
+}
+
+static int
 hns3_init_pf(struct rte_eth_dev *eth_dev)
 {
 	struct rte_device *dev = eth_dev->device;
@@ -4345,6 +4360,18 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 	ret = hns3_cmd_init(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init cmd: %d", ret);
+		goto err_cmd_init;
+	}
+
+	/*
+	 * To ensure that the hardware environment is clean during
+	 * initialization, the driver actively clear the hardware environment
+	 * during initialization, including PF and corresponding VFs' vlan, mac,
+	 * flow table configurations, etc.
+	 */
+	ret = hns3_clear_hw(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to clear hardware: %d", ret);
 		goto err_cmd_init;
 	}
 

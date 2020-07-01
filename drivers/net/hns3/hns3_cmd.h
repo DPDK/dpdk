@@ -207,6 +207,9 @@ enum hns3_opcode_type {
 	HNS3_OPC_FD_AD_OP               = 0x1204,
 	HNS3_OPC_FD_COUNTER_OP          = 0x1205,
 
+	/* Clear hardware state command */
+	HNS3_OPC_CLEAR_HW_STATE         = 0x700A,
+
 	/* SFP command */
 	HNS3_OPC_SFP_GET_SPEED          = 0x7104,
 
