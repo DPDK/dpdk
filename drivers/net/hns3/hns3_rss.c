@@ -28,7 +28,7 @@ static const uint8_t hns3_hash_key[] = {
  * Used to set algorithm, key_offset and hash key of rss.
  */
 int
-hns3_set_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo, const uint8_t *key)
+hns3_set_rss_algo_key(struct hns3_hw *hw, const uint8_t *key)
 {
 #define HNS3_KEY_OFFSET_MAX	3
 #define HNS3_SET_HASH_KEY_BYTE_FOUR	2
@@ -51,7 +51,8 @@ hns3_set_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo, const uint8_t *key)
 		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RSS_GENERIC_CONFIG,
 					  false);
 
-		req->hash_config |= (hash_algo & HNS3_RSS_HASH_ALGO_MASK);
+		req->hash_config |=
+			(hw->rss_info.hash_algo & HNS3_RSS_HASH_ALGO_MASK);
 		req->hash_config |= (key_offset << HNS3_RSS_HASH_KEY_OFFSET_B);
 
 		if (key_offset == HNS3_SET_HASH_KEY_BYTE_FOUR)
@@ -256,7 +257,6 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	struct hns3_rss_tuple_cfg *tuple = &hw->rss_info.rss_tuple_sets;
 	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint8_t key_len = rss_conf->rss_key_len;
-	uint8_t algo;
 	uint64_t rss_hf = rss_conf->rss_hf;
 	uint8_t *key = rss_conf->rss_key;
 	int ret;
@@ -292,9 +292,7 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 			ret = -EINVAL;
 			goto conf_err;
 		}
-		algo = rss_cfg->conf.func == RTE_ETH_HASH_FUNCTION_SIMPLE_XOR ?
-			HNS3_RSS_HASH_ALGO_SIMPLE : HNS3_RSS_HASH_ALGO_TOEPLITZ;
-		ret = hns3_set_rss_algo_key(hw, algo, key);
+		ret = hns3_set_rss_algo_key(hw, key);
 		if (ret)
 			goto conf_err;
 	}
@@ -529,20 +527,29 @@ hns3_config_rss(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
-	uint8_t hash_algo =
-		(hw->rss_info.conf.func == RTE_ETH_HASH_FUNCTION_TOEPLITZ ?
-		 HNS3_RSS_HASH_ALGO_TOEPLITZ : HNS3_RSS_HASH_ALGO_SIMPLE);
 	uint8_t *hash_key = rss_cfg->key;
 	int ret, ret1;
 
 	enum rte_eth_rx_mq_mode mq_mode = hw->data->dev_conf.rxmode.mq_mode;
+
+	switch (hw->rss_info.conf.func) {
+	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
+		hw->rss_info.hash_algo = HNS3_RSS_HASH_ALGO_SIMPLE;
+		break;
+	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
+		hw->rss_info.hash_algo = HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP;
+		break;
+	default:
+		hw->rss_info.hash_algo = HNS3_RSS_HASH_ALGO_TOEPLITZ;
+		break;
+	}
 
 	/* When RSS is off, redirect the packet queue 0 */
 	if (((uint32_t)mq_mode & ETH_MQ_RX_RSS_FLAG) == 0)
 		hns3_rss_uninit(hns);
 
 	/* Configure RSS hash algorithm and hash key offset */
-	ret = hns3_set_rss_algo_key(hw, hash_algo, hash_key);
+	ret = hns3_set_rss_algo_key(hw, hash_key);
 	if (ret)
 		return ret;
 

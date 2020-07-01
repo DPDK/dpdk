@@ -1287,6 +1287,7 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 	case RTE_ETH_HASH_FUNCTION_DEFAULT:
 	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
 	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
+	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
 		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
@@ -1365,6 +1366,9 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function *func,
 	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
 		*hash_algo = HNS3_RSS_HASH_ALGO_SIMPLE;
 		break;
+	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
+		*hash_algo = HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP;
+		break;
 	default:
 		hns3_err(hw, "Invalid RSS algorithm configuration(%u)",
 			 algo_func);
@@ -1378,9 +1382,6 @@ hns3_parse_rss_algorithm(struct hns3_hw *hw, enum rte_eth_hash_function *func,
 static int
 hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 {
-	uint8_t hash_algo =
-		(hw->rss_info.conf.func == RTE_ETH_HASH_FUNCTION_TOEPLITZ ?
-		 HNS3_RSS_HASH_ALGO_TOEPLITZ : HNS3_RSS_HASH_ALGO_SIMPLE);
 	struct hns3_rss_tuple_cfg *tuple;
 	int ret;
 
@@ -1388,11 +1389,12 @@ hns3_hw_rss_hash_set(struct hns3_hw *hw, struct rte_flow_action_rss *rss_config)
 	hns3_parse_rss_key(hw, rss_config);
 
 	/* Parse hash algorithm */
-	ret = hns3_parse_rss_algorithm(hw, &rss_config->func, &hash_algo);
+	ret = hns3_parse_rss_algorithm(hw, &rss_config->func,
+				       &hw->rss_info.hash_algo);
 	if (ret)
 		return ret;
 
-	ret = hns3_set_rss_algo_key(hw, hash_algo, rss_config->key);
+	ret = hns3_set_rss_algo_key(hw, rss_config->key);
 	if (ret)
 		return ret;
 

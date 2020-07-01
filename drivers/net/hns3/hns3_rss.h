@@ -27,6 +27,7 @@
 
 #define HNS3_RSS_HASH_ALGO_TOEPLITZ	0
 #define HNS3_RSS_HASH_ALGO_SIMPLE	1
+#define HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP 2
 #define HNS3_RSS_HASH_ALGO_MASK		0xf
 
 #define HNS3_RSS_INPUT_TUPLE_OTHER	GENMASK(3, 0)
@@ -49,6 +50,7 @@ struct hns3_rss_tuple_cfg {
 struct hns3_rss_conf {
 	/* RSS parameters :algorithm, flow_types,  key, queue */
 	struct rte_flow_action_rss conf;
+	uint8_t hash_algo; /* hash function type definited by hardware */
 	uint8_t key[HNS3_RSS_KEY_SIZE];  /* Hash key */
 	struct hns3_rss_tuple_cfg rss_tuple_sets;
 	uint8_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE]; /* Shadow table */
@@ -109,8 +111,7 @@ void hns3_rss_uninit(struct hns3_adapter *hns);
 int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw,
 				 struct hns3_rss_tuple_cfg *tuple,
 				 uint64_t rss_hf);
-int hns3_set_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
-			  const uint8_t *key);
+int hns3_set_rss_algo_key(struct hns3_hw *hw, const uint8_t *key);
 int hns3_restore_rss_filter(struct rte_eth_dev *dev);
 
 #endif /* _HNS3_RSS_H_ */
