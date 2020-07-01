@@ -2491,6 +2491,8 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 		.nb_max = HNS3_MAX_RING_DESC,
 		.nb_min = HNS3_MIN_RING_DESC,
 		.nb_align = HNS3_ALIGN_RING_DESC,
+		.nb_seg_max = HNS3_MAX_TSO_BD_PER_PKT,
+		.nb_mtu_seg_max = HNS3_MAX_NON_TSO_BD_PER_PKT,
 	};
 
 	info->vmdq_queue_num = 0;
