@@ -425,7 +425,8 @@ dpdk_test = executable('dpdk-test',
 	link_whole: link_libs,
 	dependencies: test_dep_objs,
 	c_args: cflags,
-	install_rpath: driver_install_path,
+	install_rpath: join_paths(get_option('prefix'),
+			 driver_install_path),
 	install: true)
 
 has_hugepage = run_command('has-hugepage.sh').stdout().strip() != '0'
