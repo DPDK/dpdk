@@ -202,9 +202,6 @@ foreach l:libraries
 
 			dpdk_libraries = [shared_lib] + dpdk_libraries
 			dpdk_static_libraries = [static_lib] + dpdk_static_libraries
-			if libname == 'rte_node'
-				dpdk_graph_nodes = [static_lib]
-			endif
 		endif # sources.length() > 0
 
 		set_variable('shared_rte_' + name, shared_dep)

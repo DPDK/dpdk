@@ -2,10 +2,8 @@
 # Copyright(c) 2017-2019 Intel Corporation
 
 link_whole_libs = []
-node_libs = []
 if get_option('default_library') == 'static'
 	link_whole_libs = dpdk_static_libraries + dpdk_drivers
-	node_libs = dpdk_graph_nodes
 endif
 
 execinfo = cc.find_library('execinfo', required: false)
@@ -101,7 +99,7 @@ foreach example: examples
 		endif
 		executable('dpdk-' + name, sources,
 			include_directories: includes,
-			link_whole: link_whole_libs + node_libs,
+			link_whole: link_whole_libs,
 			link_args: dpdk_extra_ldflags,
 			c_args: cflags,
 			dependencies: dep_objs)
