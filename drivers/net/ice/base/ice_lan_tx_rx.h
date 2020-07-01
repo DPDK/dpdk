@@ -1148,7 +1148,6 @@ struct ice_tx_cmpltnq {
 };
 #pragma pack()
 
-
 /* LAN Tx Completion Queue Context */
 #pragma pack(1)
 struct ice_tx_cmpltnq_ctx {
