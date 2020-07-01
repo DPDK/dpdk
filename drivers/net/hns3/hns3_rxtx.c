@@ -2095,6 +2095,20 @@ hns3_tx_alloc_mbufs(struct hns3_tx_queue *txq, struct rte_mempool *mb_pool,
 	return 0;
 }
 
+static inline void
+hns3_pktmbuf_copy_hdr(struct rte_mbuf *new_pkt, struct rte_mbuf *old_pkt)
+{
+	new_pkt->ol_flags = old_pkt->ol_flags;
+	new_pkt->pkt_len = rte_pktmbuf_pkt_len(old_pkt);
+	new_pkt->outer_l2_len = old_pkt->outer_l2_len;
+	new_pkt->outer_l3_len = old_pkt->outer_l3_len;
+	new_pkt->l2_len = old_pkt->l2_len;
+	new_pkt->l3_len = old_pkt->l3_len;
+	new_pkt->l4_len = old_pkt->l4_len;
+	new_pkt->vlan_tci_outer = old_pkt->vlan_tci_outer;
+	new_pkt->vlan_tci = old_pkt->vlan_tci;
+}
+
 static int
 hns3_reassemble_tx_pkts(void *tx_queue, struct rte_mbuf *tx_pkt,
 			struct rte_mbuf **new_pkt)
@@ -2118,9 +2132,11 @@ hns3_reassemble_tx_pkts(void *tx_queue, struct rte_mbuf *tx_pkt,
 
 	mb_pool = tx_pkt->pool;
 	buf_size = tx_pkt->buf_len - RTE_PKTMBUF_HEADROOM;
-	nb_new_buf = (tx_pkt->pkt_len - 1) / buf_size + 1;
+	nb_new_buf = (rte_pktmbuf_pkt_len(tx_pkt) - 1) / buf_size + 1;
+	if (nb_new_buf > HNS3_MAX_NON_TSO_BD_PER_PKT)
+		return -EINVAL;
 
-	last_buf_len = tx_pkt->pkt_len % buf_size;
+	last_buf_len = rte_pktmbuf_pkt_len(tx_pkt) % buf_size;
 	if (last_buf_len == 0)
 		last_buf_len = buf_size;
 
@@ -2132,7 +2148,7 @@ hns3_reassemble_tx_pkts(void *tx_queue, struct rte_mbuf *tx_pkt,
 	/* Copy the original packet content to the new mbufs */
 	temp = tx_pkt;
 	s = rte_pktmbuf_mtod(temp, char *);
-	len_s = temp->data_len;
+	len_s = rte_pktmbuf_data_len(temp);
 	temp_new = new_mbuf;
 	for (i = 0; i < nb_new_buf; i++) {
 		d = rte_pktmbuf_mtod(temp_new, char *);
@@ -2155,13 +2171,14 @@ hns3_reassemble_tx_pkts(void *tx_queue, struct rte_mbuf *tx_pkt,
 				if (temp == NULL)
 					break;
 				s = rte_pktmbuf_mtod(temp, char *);
-				len_s = temp->data_len;
+				len_s = rte_pktmbuf_data_len(temp);
 			}
 		}
 
 		temp_new->data_len = buf_len;
 		temp_new = temp_new->next;
 	}
+	hns3_pktmbuf_copy_hdr(new_mbuf, tx_pkt);
 
 	/* free original mbufs */
 	rte_pktmbuf_free(tx_pkt);
