@@ -905,6 +905,8 @@ hns3_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
+	bool pvid_en_state_change;
+	uint16_t pvid_state;
 	int ret;
 
 	if (pvid > RTE_ETHER_MAX_VLAN_ID) {
@@ -913,10 +915,27 @@ hns3_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 		return -EINVAL;
 	}
 
+	/*
+	 * If PVID configuration state change, should refresh the PVID
+	 * configuration state in struct hns3_tx_queue/hns3_rx_queue.
+	 */
+	pvid_state = hw->port_base_vlan_cfg.state;
+	if ((on && pvid_state == HNS3_PORT_BASE_VLAN_ENABLE) ||
+	    (!on && pvid_state == HNS3_PORT_BASE_VLAN_DISABLE))
+		pvid_en_state_change = false;
+	else
+		pvid_en_state_change = true;
+
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_vlan_pvid_configure(hns, pvid, on);
 	rte_spinlock_unlock(&hw->lock);
-	return ret;
+	if (ret)
+		return ret;
+
+	if (pvid_en_state_change)
+		hns3_update_all_queues_pvid_state(hw);
+
+	return 0;
 }
 
 static void

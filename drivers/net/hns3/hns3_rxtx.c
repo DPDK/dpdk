@@ -316,6 +316,31 @@ hns3_init_tx_queue_hw(struct hns3_tx_queue *txq)
 }
 
 void
+hns3_update_all_queues_pvid_state(struct hns3_hw *hw)
+{
+	uint16_t nb_rx_q = hw->data->nb_rx_queues;
+	uint16_t nb_tx_q = hw->data->nb_tx_queues;
+	struct hns3_rx_queue *rxq;
+	struct hns3_tx_queue *txq;
+	int pvid_state;
+	int i;
+
+	pvid_state = hw->port_base_vlan_cfg.state;
+	for (i = 0; i < hw->cfg_max_queues; i++) {
+		if (i < nb_rx_q) {
+			rxq = hw->data->rx_queues[i];
+			if (rxq != NULL)
+				rxq->pvid_state = pvid_state;
+		}
+		if (i < nb_tx_q) {
+			txq = hw->data->tx_queues[i];
+			if (txq != NULL)
+				txq->pvid_state = pvid_state;
+		}
+	}
+}
+
+void
 hns3_enable_all_queues(struct hns3_hw *hw, bool en)
 {
 	uint16_t nb_rx_q = hw->data->nb_rx_queues;
@@ -1223,6 +1248,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 	rxq->port_id = dev->data->port_id;
+	rxq->pvid_state = hw->port_base_vlan_cfg.state;
 	rxq->configured = true;
 	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
@@ -1451,7 +1477,7 @@ hns3_rx_set_cksum_flag(struct rte_mbuf *rxm, uint64_t packet_type,
 }
 
 static inline void
-hns3_rxd_to_vlan_tci(struct rte_eth_dev *dev, struct rte_mbuf *mb,
+hns3_rxd_to_vlan_tci(struct hns3_rx_queue *rxq, struct rte_mbuf *mb,
 		     uint32_t l234_info, const struct hns3_desc *rxd)
 {
 #define HNS3_STRP_STATUS_NUM		0x4
@@ -1459,8 +1485,6 @@ hns3_rxd_to_vlan_tci(struct rte_eth_dev *dev, struct rte_mbuf *mb,
 #define HNS3_NO_STRP_VLAN_VLD		0x0
 #define HNS3_INNER_STRP_VLAN_VLD	0x1
 #define HNS3_OUTER_STRP_VLAN_VLD	0x2
-	struct hns3_adapter *hns = dev->data->dev_private;
-	struct hns3_hw *hw = &hns->hw;
 	uint32_t strip_status;
 	uint32_t report_mode;
 
@@ -1486,7 +1510,7 @@ hns3_rxd_to_vlan_tci(struct rte_eth_dev *dev, struct rte_mbuf *mb,
 	};
 	strip_status = hns3_get_field(l234_info, HNS3_RXD_STRP_TAGP_M,
 				      HNS3_RXD_STRP_TAGP_S);
-	report_mode = report_type[hw->port_base_vlan_cfg.state][strip_status];
+	report_mode = report_type[rxq->pvid_state][strip_status];
 	switch (report_mode) {
 	case HNS3_NO_STRP_VLAN_VLD:
 		mb->vlan_tci = 0;
@@ -1532,7 +1556,6 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	nb_rx = 0;
 	nb_rx_bd = 0;
 	rxq = rx_queue;
-	dev = &rte_eth_devices[rxq->port_id];
 
 	rx_id = rxq->next_to_clean;
 	rx_ring = rxq->rx_ring;
@@ -1609,6 +1632,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(nmb == NULL)) {
+			dev = &rte_eth_devices[rxq->port_id];
 			dev->data->rx_mbuf_alloc_failed++;
 			break;
 		}
@@ -1685,7 +1709,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			hns3_rx_set_cksum_flag(first_seg,
 					       first_seg->packet_type,
 					       cksum_err);
-		hns3_rxd_to_vlan_tci(dev, first_seg, l234_info, &rxd);
+		hns3_rxd_to_vlan_tci(rxq, first_seg, l234_info, &rxd);
 
 		rx_pkts[nb_rx++] = first_seg;
 		first_seg = NULL;
@@ -1763,6 +1787,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->next_to_clean = 0;
 	txq->tx_bd_ready = txq->nb_tx_desc - 1;
 	txq->port_id = dev->data->port_id;
+	txq->pvid_state = hw->port_base_vlan_cfg.state;
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
