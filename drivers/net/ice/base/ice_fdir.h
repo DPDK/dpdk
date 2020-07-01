@@ -17,7 +17,6 @@
 #define ICE_FDIR_TUN_PKT_OFF		50
 #define ICE_FDIR_MAX_RAW_PKT_SIZE	(512 + ICE_FDIR_TUN_PKT_OFF)
 #define ICE_FDIR_BUF_FULL_MARGIN	10
-#define ICE_FDIR_BUF_HEAD_ROOM		32
 
 /* macros for offsets into packets for flow director programming */
 #define ICE_IPV4_SRC_ADDR_OFFSET	26
@@ -222,7 +221,6 @@ struct ice_fdir_base_pkt {
 
 enum ice_status ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id);
 enum ice_status ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id);
-void ice_set_dflt_val_fd_desc(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx);
 enum ice_status
 ice_alloc_fd_guar_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
 enum ice_status
@@ -231,7 +229,6 @@ enum ice_status
 ice_alloc_fd_shrd_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
 enum ice_status
 ice_free_fd_shrd_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr);
-enum ice_status ice_clear_vsi_fd_table(struct ice_hw *hw, u16 vsi_num);
 enum ice_status ice_clear_pf_fd_table(struct ice_hw *hw);
 void
 ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,

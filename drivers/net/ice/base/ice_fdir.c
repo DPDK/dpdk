@@ -597,7 +597,7 @@ static const struct ice_fdir_base_pkt ice_fdir_pkt[] = {
  * ice_set_dflt_val_fd_desc
  * @fd_fltr_ctx: pointer to fd filter descriptor
  */
-void ice_set_dflt_val_fd_desc(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx)
+static void ice_set_dflt_val_fd_desc(struct ice_fd_fltr_desc_ctx *fd_fltr_ctx)
 {
 	fd_fltr_ctx->comp_q = ICE_FXD_FLTR_QW0_COMP_Q_ZERO;
 	fd_fltr_ctx->comp_report = ICE_FXD_FLTR_QW0_COMP_REPORT_SW_FAIL;
@@ -1386,27 +1386,6 @@ bool ice_fdir_is_dup_fltr(struct ice_hw *hw, struct ice_fdir_fltr *input)
 	}
 
 	return ret;
-}
-
-/**
- * ice_clear_vsi_fd_table - admin command to clear FD table for a VSI
- * @hw: hardware data structure
- * @vsi_num: vsi_num (HW VSI num)
- *
- * Clears FD table entries by issuing admin command (direct, 0x0B06)
- * Must to pass valid vsi_num as returned by "AddVSI".
- */
-enum ice_status ice_clear_vsi_fd_table(struct ice_hw *hw, u16 vsi_num)
-{
-	struct ice_aqc_clear_fd_table *cmd;
-	struct ice_aq_desc desc;
-
-	cmd = &desc.params.clear_fd_table;
-	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_clear_fd_table);
-	cmd->clear_type = CL_FD_VM_VF_TYPE_VSI_IDX;
-
-	cmd->vsi_index = CPU_TO_LE16(vsi_num);
-	return ice_aq_send_cmd(hw, &desc, NULL, 0, NULL);
 }
 
 /**
