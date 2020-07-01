@@ -673,4 +673,13 @@ is_reset_pending(struct hns3_adapter *hns)
 	return ret;
 }
 
+static inline uint64_t
+hns3_txvlan_cap_get(struct hns3_hw *hw)
+{
+	if (hw->port_base_vlan_cfg.state)
+		return DEV_TX_OFFLOAD_VLAN_INSERT;
+	else
+		return DEV_TX_OFFLOAD_VLAN_INSERT | DEV_TX_OFFLOAD_QINQ_INSERT;
+}
+
 #endif /* _HNS3_ETHDEV_H_ */

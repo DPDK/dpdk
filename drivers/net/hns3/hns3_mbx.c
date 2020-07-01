@@ -23,6 +23,7 @@
 #include "hns3_regs.h"
 #include "hns3_logs.h"
 #include "hns3_intr.h"
+#include "hns3_rxtx.h"
 
 #define HNS3_CMD_CODE_OFFSET		2
 
@@ -327,6 +328,30 @@ hns3_handle_link_change_event(struct hns3_hw *hw,
 }
 
 static void
+hns3_update_port_base_vlan_info(struct hns3_hw *hw,
+				struct hns3_mbx_pf_to_vf_cmd *req)
+{
+#define PVID_STATE_OFFSET	1
+	uint16_t new_pvid_state = req->msg[PVID_STATE_OFFSET] ?
+		HNS3_PORT_BASE_VLAN_ENABLE : HNS3_PORT_BASE_VLAN_DISABLE;
+	/*
+	 * Currently, hardware doesn't support more than two layers VLAN offload
+	 * based on hns3 network engine, which would cause packets loss or wrong
+	 * packets for these types of packets. If the hns3 PF kernel ethdev
+	 * driver sets the PVID for VF device after initialization of the
+	 * related VF device, the PF driver will notify VF driver to update the
+	 * PVID configuration state. The VF driver will update the PVID
+	 * configuration state immediately to ensure that the VLAN process in Tx
+	 * and Rx is correct. But in the window period of this state transition,
+	 * packets loss or packets with wrong VLAN may occur.
+	 */
+	if (hw->port_base_vlan_cfg.state != new_pvid_state) {
+		hw->port_base_vlan_cfg.state = new_pvid_state;
+		hns3_update_all_queues_pvid_state(hw);
+	}
+}
+
+static void
 hns3_handle_promisc_info(struct hns3_hw *hw, uint16_t promisc_en)
 {
 	if (!promisc_en) {
@@ -398,6 +423,14 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			break;
 		case HNS3_MBX_PUSH_LINK_STATUS:
 			hns3_handle_link_change_event(hw, req);
+			break;
+		case HNS3_MBX_PUSH_VLAN_INFO:
+			/*
+			 * When the PVID configuration status of VF device is
+			 * changed by the hns3 PF kernel driver, VF driver will
+			 * receive this mailbox message from PF driver.
+			 */
+			hns3_update_port_base_vlan_info(hw, req);
 			break;
 		case HNS3_MBX_PUSH_PROMISC_INFO:
 			/*

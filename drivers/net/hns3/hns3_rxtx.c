@@ -2422,6 +2422,48 @@ hns3_check_tso_pkt_valid(struct rte_mbuf *m)
 	return 0;
 }
 
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+static inline int
+hns3_vld_vlan_chk(struct hns3_tx_queue *txq, struct rte_mbuf *m)
+{
+	struct rte_ether_hdr *eh;
+	struct rte_vlan_hdr *vh;
+
+	if (!txq->pvid_state)
+		return 0;
+
+	/*
+	 * Due to hardware limitations, we only support two-layer VLAN hardware
+	 * offload in Tx direction based on hns3 network engine, so when PVID is
+	 * enabled, QinQ insert is no longer supported.
+	 * And when PVID is enabled, in the following two cases:
+	 *  i) packets with more than two VLAN tags.
+	 *  ii) packets with one VLAN tag while the hardware VLAN insert is
+	 *      enabled.
+	 * The packets will be regarded as abnormal packets and discarded by
+	 * hardware in Tx direction. For debugging purposes, a validation check
+	 * for these types of packets is added to the '.tx_pkt_prepare' ops
+	 * implementation function named hns3_prep_pkts to inform users that
+	 * these packets will be discarded.
+	 */
+	if (m->ol_flags & PKT_TX_QINQ_PKT)
+		return -EINVAL;
+
+	eh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+	if (eh->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
+		if (m->ol_flags & PKT_TX_VLAN_PKT)
+			return -EINVAL;
+
+		/* Ensure the incoming packet is not a QinQ packet */
+		vh = (struct rte_vlan_hdr *)(eh + 1);
+		if (vh->eth_proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN))
+			return -EINVAL;
+	}
+
+	return 0;
+}
+#endif
+
 uint16_t
 hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	       uint16_t nb_pkts)
@@ -2444,6 +2486,11 @@ hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		ret = rte_validate_tx_offload(m);
 		if (ret != 0) {
 			rte_errno = -ret;
+			return i;
+		}
+
+		if (hns3_vld_vlan_chk(tx_queue, m)) {
+			rte_errno = EINVAL;
 			return i;
 		}
 #endif

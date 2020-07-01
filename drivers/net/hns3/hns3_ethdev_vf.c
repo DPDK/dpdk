@@ -926,14 +926,13 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_TX_OFFLOAD_TCP_CKSUM |
 				 DEV_TX_OFFLOAD_UDP_CKSUM |
 				 DEV_TX_OFFLOAD_SCTP_CKSUM |
-				 DEV_TX_OFFLOAD_VLAN_INSERT |
-				 DEV_TX_OFFLOAD_QINQ_INSERT |
 				 DEV_TX_OFFLOAD_MULTI_SEGS |
 				 DEV_TX_OFFLOAD_TCP_TSO |
 				 DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 				 DEV_TX_OFFLOAD_GRE_TNL_TSO |
 				 DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-				 info->tx_queue_offload_capa);
+				 info->tx_queue_offload_capa |
+				 hns3_txvlan_cap_get(hw));
 
 	info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = HNS3_MAX_RING_DESC,
@@ -1078,6 +1077,49 @@ hns3vf_check_tqp_info(struct hns3_hw *hw)
 
 	return 0;
 }
+static int
+hns3vf_get_port_base_vlan_filter_state(struct hns3_hw *hw)
+{
+	uint8_t resp_msg;
+	int ret;
+
+	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_VLAN,
+				HNS3_MBX_GET_PORT_BASE_VLAN_STATE, NULL, 0,
+				true, &resp_msg, sizeof(resp_msg));
+	if (ret) {
+		if (ret == -ETIME) {
+			/*
+			 * Getting current port based VLAN state from PF driver
+			 * will not affect VF driver's basic function. Because
+			 * the VF driver relies on hns3 PF kernel ether driver,
+			 * to avoid introducing compatibility issues with older
+			 * version of PF driver, no failure will be returned
+			 * when the return value is ETIME. This return value has
+			 * the following scenarios:
+			 * 1) Firmware didn't return the results in time
+			 * 2) the result return by firmware is timeout
+			 * 3) the older version of kernel side PF driver does
+			 *    not support this mailbox message.
+			 * For scenarios 1 and 2, it is most likely that a
+			 * hardware error has occurred, or a hardware reset has
+			 * occurred. In this case, these errors will be caught
+			 * by other functions.
+			 */
+			PMD_INIT_LOG(WARNING,
+				"failed to get PVID state for timeout, maybe "
+				"kernel side PF driver doesn't support this "
+				"mailbox message, or firmware didn't respond.");
+			resp_msg = HNS3_PORT_BASE_VLAN_DISABLE;
+		} else {
+			PMD_INIT_LOG(ERR, "failed to get port based VLAN state,"
+				" ret = %d", ret);
+			return ret;
+		}
+	}
+	hw->port_base_vlan_cfg.state = resp_msg ?
+		HNS3_PORT_BASE_VLAN_ENABLE : HNS3_PORT_BASE_VLAN_DISABLE;
+	return 0;
+}
 
 static int
 hns3vf_get_queue_info(struct hns3_hw *hw)
@@ -1178,6 +1220,10 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 
 	/* Get user defined VF MAC addr from PF */
 	ret = hns3vf_get_host_mac_addr(hw);
+	if (ret)
+		return ret;
+
+	ret = hns3vf_get_port_base_vlan_filter_state(hw);
 	if (ret)
 		return ret;
 
@@ -2222,6 +2268,10 @@ hns3vf_restore_conf(struct hns3_adapter *hns)
 		goto err_vlan_table;
 
 	ret = hns3vf_restore_vlan_conf(hns);
+	if (ret)
+		goto err_vlan_table;
+
+	ret = hns3vf_get_port_base_vlan_filter_state(hw);
 	if (ret)
 		goto err_vlan_table;
 
