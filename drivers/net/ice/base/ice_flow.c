@@ -805,16 +805,16 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 		}
 		if ((hdrs & ICE_FLOW_SEG_HDR_IPV4) &&
 		    (hdrs & ICE_FLOW_SEG_HDR_IPV_OTHER)) {
-			src = !i ?
-				(const ice_bitmap_t *)ice_ptypes_ipv4_ofos_all :
-				(const ice_bitmap_t *)ice_ptypes_ipv4_il;
+			src = i ?
+				(const ice_bitmap_t *)ice_ptypes_ipv4_il :
+				(const ice_bitmap_t *)ice_ptypes_ipv4_ofos_all;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
 		} else if ((hdrs & ICE_FLOW_SEG_HDR_IPV6) &&
 			   (hdrs & ICE_FLOW_SEG_HDR_IPV_OTHER)) {
-			src = !i ?
-				(const ice_bitmap_t *)ice_ptypes_ipv6_ofos_all :
-				(const ice_bitmap_t *)ice_ptypes_ipv6_il;
+			src = i ?
+				(const ice_bitmap_t *)ice_ptypes_ipv6_il :
+				(const ice_bitmap_t *)ice_ptypes_ipv6_ofos_all;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
 		} else if ((hdrs & ICE_FLOW_SEG_HDR_IPV4) &&

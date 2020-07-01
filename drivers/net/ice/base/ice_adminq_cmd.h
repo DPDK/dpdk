@@ -2794,8 +2794,10 @@ struct ice_aq_desc {
 		struct ice_aqc_get_link_status get_link_status;
 		struct ice_aqc_event_lan_overflow lan_overflow;
 		struct ice_aqc_get_link_topo get_link_topo;
-		struct ice_aqc_set_health_status_config set_health_status_config;
-		struct ice_aqc_get_supported_health_status_codes get_supported_health_status_codes;
+		struct ice_aqc_set_health_status_config
+			set_health_status_config;
+		struct ice_aqc_get_supported_health_status_codes
+			get_supported_health_status_codes;
 		struct ice_aqc_get_health_status get_health_status;
 		struct ice_aqc_clear_health_status clear_health_status;
 	} params;

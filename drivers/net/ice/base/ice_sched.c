@@ -5334,7 +5334,7 @@ void ice_sched_replay_agg(struct ice_hw *hw)
 
 	ice_acquire_lock(&pi->sched_lock);
 	LIST_FOR_EACH_ENTRY(agg_info, &hw->agg_list, ice_sched_agg_info,
-			    list_entry) {
+			    list_entry)
 		/* replay aggregator (re-create aggregator node) */
 		if (!ice_cmp_bitmap(agg_info->tc_bitmap,
 				    agg_info->replay_tc_bitmap,
@@ -5363,7 +5363,6 @@ void ice_sched_replay_agg(struct ice_hw *hw)
 				ice_info(hw, "Replay agg bw [id=%d] failed\n",
 					 agg_info->agg_id);
 		}
-	}
 	ice_release_lock(&pi->sched_lock);
 }
 
