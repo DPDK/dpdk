@@ -1473,7 +1473,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		flds = ulp_mapper_act_result_fields_get(tbl, &num_flds,
 							&encap_flds);
 
-	if (!flds || !num_flds) {
+	if (!flds || (!num_flds && !encap_flds)) {
 		BNXT_TF_DBG(ERR, "template undefined for the index table\n");
 		return -EINVAL;
 	}
@@ -1482,7 +1482,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	for (i = 0; i < (num_flds + encap_flds); i++) {
 		/* set the swap index if encap swap bit is enabled */
 		if (parms->device_params->encap_byte_swap && encap_flds &&
-		    ((i + 1) == num_flds))
+		    (i == num_flds))
 			ulp_blob_encap_swap_idx_set(&data);
 
 		/* Process the result fields */
@@ -1495,18 +1495,15 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			BNXT_TF_DBG(ERR, "data field failed\n");
 			return rc;
 		}
+	}
 
-		/* if encap bit swap is enabled perform the bit swap */
-		if (parms->device_params->encap_byte_swap && encap_flds) {
-			if ((i + 1) == (num_flds + encap_flds))
-				ulp_blob_perform_encap_swap(&data);
+	/* if encap bit swap is enabled perform the bit swap */
+	if (parms->device_params->encap_byte_swap && encap_flds) {
+		ulp_blob_perform_encap_swap(&data);
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-			if ((i + 1) == (num_flds + encap_flds)) {
-				BNXT_TF_DBG(INFO, "Dump fter encap swap\n");
-				ulp_mapper_blob_dump(&data);
-			}
+		BNXT_TF_DBG(INFO, "Dump after encap swap\n");
+		ulp_mapper_blob_dump(&data);
 #endif
-		}
 	}
 
 	/* Perform the tf table allocation by filling the alloc params */
@@ -1817,17 +1814,17 @@ ulp_mapper_action_tbls_process(struct bnxt_ulp_mapper_parms *parms)
 		switch (tbl->resource_func) {
 		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
 			rc = ulp_mapper_index_tbl_process(parms, tbl, false);
+			if (rc) {
+				BNXT_TF_DBG(ERR, "Resource type %d failed\n",
+					    tbl->resource_func);
+				return rc;
+			}
 			break;
 		default:
 			BNXT_TF_DBG(ERR, "Unexpected action resource %d\n",
 				    tbl->resource_func);
 			return -EINVAL;
 		}
-	}
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Resource type %d failed\n",
-			    tbl->resource_func);
-		return rc;
 	}
 
 	return rc;

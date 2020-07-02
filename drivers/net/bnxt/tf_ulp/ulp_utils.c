@@ -478,7 +478,7 @@ ulp_blob_perform_encap_swap(struct ulp_blob *blob)
 		BNXT_TF_DBG(ERR, "invalid argument\n");
 		return; /* failure */
 	}
-	idx = ULP_BITS_2_BYTE_NR(blob->encap_swap_idx + 1);
+	idx = ULP_BITS_2_BYTE_NR(blob->encap_swap_idx);
 	end_idx = ULP_BITS_2_BYTE(blob->write_idx);
 
 	while (idx <= end_idx) {
