@@ -20,46 +20,48 @@
 
 /* L2 Context TCAM */
 #define CFA_RESOURCE_TYPE_P59_L2_CTXT_TCAM    0x0UL
+/* L2 Context REMAP */
+#define CFA_RESOURCE_TYPE_P59_L2_CTXT_REMAP   0x1UL
 /* Profile Func */
-#define CFA_RESOURCE_TYPE_P59_PROF_FUNC       0x1UL
+#define CFA_RESOURCE_TYPE_P59_PROF_FUNC       0x2UL
 /* Profile TCAM */
-#define CFA_RESOURCE_TYPE_P59_PROF_TCAM       0x2UL
+#define CFA_RESOURCE_TYPE_P59_PROF_TCAM       0x3UL
 /* Exact Match Profile Id */
-#define CFA_RESOURCE_TYPE_P59_EM_PROF_ID      0x3UL
+#define CFA_RESOURCE_TYPE_P59_EM_PROF_ID      0x4UL
 /* Wildcard TCAM Profile Id */
-#define CFA_RESOURCE_TYPE_P59_WC_TCAM_PROF_ID 0x4UL
+#define CFA_RESOURCE_TYPE_P59_WC_TCAM_PROF_ID 0x5UL
 /* Wildcard TCAM */
-#define CFA_RESOURCE_TYPE_P59_WC_TCAM         0x5UL
+#define CFA_RESOURCE_TYPE_P59_WC_TCAM         0x6UL
 /* Meter Profile */
-#define CFA_RESOURCE_TYPE_P59_METER_PROF      0x6UL
+#define CFA_RESOURCE_TYPE_P59_METER_PROF      0x7UL
 /* Meter */
-#define CFA_RESOURCE_TYPE_P59_METER           0x7UL
+#define CFA_RESOURCE_TYPE_P59_METER           0x8UL
 /* Meter */
-#define CFA_RESOURCE_TYPE_P59_MIRROR          0x8UL
+#define CFA_RESOURCE_TYPE_P59_MIRROR          0x9UL
 /* Source Properties TCAM */
-#define CFA_RESOURCE_TYPE_P59_SP_TCAM         0x9UL
+#define CFA_RESOURCE_TYPE_P59_SP_TCAM         0xaUL
 /* Exact Match Flexible Key Builder */
-#define CFA_RESOURCE_TYPE_P59_EM_FKB          0xaUL
+#define CFA_RESOURCE_TYPE_P59_EM_FKB          0xbUL
 /* Wildcard Flexible Key Builder */
-#define CFA_RESOURCE_TYPE_P59_WC_FKB          0xbUL
+#define CFA_RESOURCE_TYPE_P59_WC_FKB          0xcUL
 /* Table Scope */
-#define CFA_RESOURCE_TYPE_P59_TBL_SCOPE       0xcUL
+#define CFA_RESOURCE_TYPE_P59_TBL_SCOPE       0xdUL
 /* L2 Func */
-#define CFA_RESOURCE_TYPE_P59_L2_FUNC         0xdUL
+#define CFA_RESOURCE_TYPE_P59_L2_FUNC         0xeUL
 /* EPOCH */
-#define CFA_RESOURCE_TYPE_P59_EPOCH           0xeUL
+#define CFA_RESOURCE_TYPE_P59_EPOCH           0xfUL
 /* Metadata */
-#define CFA_RESOURCE_TYPE_P59_METADATA        0xfUL
+#define CFA_RESOURCE_TYPE_P59_METADATA        0x10UL
 /* Connection Tracking Rule TCAM */
-#define CFA_RESOURCE_TYPE_P59_CT_RULE_TCAM    0x10UL
+#define CFA_RESOURCE_TYPE_P59_CT_RULE_TCAM    0x11UL
 /* Range Profile */
-#define CFA_RESOURCE_TYPE_P59_RANGE_PROF      0x11UL
+#define CFA_RESOURCE_TYPE_P59_RANGE_PROF      0x12UL
 /* Range */
-#define CFA_RESOURCE_TYPE_P59_RANGE           0x12UL
+#define CFA_RESOURCE_TYPE_P59_RANGE           0x13UL
 /* Link Aggrigation */
-#define CFA_RESOURCE_TYPE_P59_LAG             0x13UL
+#define CFA_RESOURCE_TYPE_P59_LAG             0x14UL
 /* VEB TCAM */
-#define CFA_RESOURCE_TYPE_P59_VEB_TCAM        0x14UL
+#define CFA_RESOURCE_TYPE_P59_VEB_TCAM        0x15UL
 #define CFA_RESOURCE_TYPE_P59_LAST           CFA_RESOURCE_TYPE_P59_VEB_TCAM
 
 
@@ -105,30 +107,32 @@
 #define CFA_RESOURCE_TYPE_P58_FORMAT_4_ACTION 0x13UL
 /* L2 Context TCAM */
 #define CFA_RESOURCE_TYPE_P58_L2_CTXT_TCAM    0x14UL
+/* L2 Context REMAP */
+#define CFA_RESOURCE_TYPE_P58_L2_CTXT_REMAP   0x15UL
 /* Profile Func */
-#define CFA_RESOURCE_TYPE_P58_PROF_FUNC       0x15UL
+#define CFA_RESOURCE_TYPE_P58_PROF_FUNC       0x16UL
 /* Profile TCAM */
-#define CFA_RESOURCE_TYPE_P58_PROF_TCAM       0x16UL
+#define CFA_RESOURCE_TYPE_P58_PROF_TCAM       0x17UL
 /* Exact Match Profile Id */
-#define CFA_RESOURCE_TYPE_P58_EM_PROF_ID      0x17UL
+#define CFA_RESOURCE_TYPE_P58_EM_PROF_ID      0x18UL
 /* Wildcard Profile Id */
-#define CFA_RESOURCE_TYPE_P58_WC_TCAM_PROF_ID 0x18UL
+#define CFA_RESOURCE_TYPE_P58_WC_TCAM_PROF_ID 0x19UL
 /* Exact Match Record */
-#define CFA_RESOURCE_TYPE_P58_EM_REC          0x19UL
+#define CFA_RESOURCE_TYPE_P58_EM_REC          0x1aUL
 /* Wildcard TCAM */
-#define CFA_RESOURCE_TYPE_P58_WC_TCAM         0x1aUL
+#define CFA_RESOURCE_TYPE_P58_WC_TCAM         0x1bUL
 /* Meter profile */
-#define CFA_RESOURCE_TYPE_P58_METER_PROF      0x1bUL
+#define CFA_RESOURCE_TYPE_P58_METER_PROF      0x1cUL
 /* Meter */
-#define CFA_RESOURCE_TYPE_P58_MIRROR          0x1cUL
+#define CFA_RESOURCE_TYPE_P58_MIRROR          0x1dUL
 /* Source Property TCAM */
-#define CFA_RESOURCE_TYPE_P58_SP_TCAM         0x1dUL
+#define CFA_RESOURCE_TYPE_P58_SP_TCAM         0x1eUL
 /* Exact Match Flexible Key Builder */
-#define CFA_RESOURCE_TYPE_P58_EM_FKB          0x1eUL
+#define CFA_RESOURCE_TYPE_P58_EM_FKB          0x1fUL
 /* Wildcard Flexible Key Builder */
-#define CFA_RESOURCE_TYPE_P58_WC_FKB          0x1fUL
+#define CFA_RESOURCE_TYPE_P58_WC_FKB          0x20UL
 /* VEB TCAM */
-#define CFA_RESOURCE_TYPE_P58_VEB_TCAM        0x20UL
+#define CFA_RESOURCE_TYPE_P58_VEB_TCAM        0x21UL
 #define CFA_RESOURCE_TYPE_P58_LAST           CFA_RESOURCE_TYPE_P58_VEB_TCAM
 
 
@@ -176,26 +180,28 @@
 #define CFA_RESOURCE_TYPE_P45_FORMAT_4_ACTION 0x14UL
 /* L2 Context TCAM */
 #define CFA_RESOURCE_TYPE_P45_L2_CTXT_TCAM    0x15UL
+/* L2 Context REMAP */
+#define CFA_RESOURCE_TYPE_P45_L2_CTXT_REMAP   0x16UL
 /* Profile Func */
-#define CFA_RESOURCE_TYPE_P45_PROF_FUNC       0x16UL
+#define CFA_RESOURCE_TYPE_P45_PROF_FUNC       0x17UL
 /* Profile TCAM */
-#define CFA_RESOURCE_TYPE_P45_PROF_TCAM       0x17UL
+#define CFA_RESOURCE_TYPE_P45_PROF_TCAM       0x18UL
 /* Exact Match Profile Id */
-#define CFA_RESOURCE_TYPE_P45_EM_PROF_ID      0x18UL
+#define CFA_RESOURCE_TYPE_P45_EM_PROF_ID      0x19UL
 /* Exact Match Record */
-#define CFA_RESOURCE_TYPE_P45_EM_REC          0x19UL
+#define CFA_RESOURCE_TYPE_P45_EM_REC          0x1aUL
 /* Wildcard Profile Id */
-#define CFA_RESOURCE_TYPE_P45_WC_TCAM_PROF_ID 0x1aUL
+#define CFA_RESOURCE_TYPE_P45_WC_TCAM_PROF_ID 0x1bUL
 /* Wildcard TCAM */
-#define CFA_RESOURCE_TYPE_P45_WC_TCAM         0x1bUL
+#define CFA_RESOURCE_TYPE_P45_WC_TCAM         0x1cUL
 /* Meter profile */
-#define CFA_RESOURCE_TYPE_P45_METER_PROF      0x1cUL
+#define CFA_RESOURCE_TYPE_P45_METER_PROF      0x1dUL
 /* Meter */
-#define CFA_RESOURCE_TYPE_P45_MIRROR          0x1dUL
+#define CFA_RESOURCE_TYPE_P45_MIRROR          0x1eUL
 /* Source Property TCAM */
-#define CFA_RESOURCE_TYPE_P45_SP_TCAM         0x1eUL
+#define CFA_RESOURCE_TYPE_P45_SP_TCAM         0x1fUL
 /* VEB TCAM */
-#define CFA_RESOURCE_TYPE_P45_VEB_TCAM        0x1fUL
+#define CFA_RESOURCE_TYPE_P45_VEB_TCAM        0x20UL
 #define CFA_RESOURCE_TYPE_P45_LAST           CFA_RESOURCE_TYPE_P45_VEB_TCAM
 
 
@@ -243,24 +249,26 @@
 #define CFA_RESOURCE_TYPE_P4_FORMAT_4_ACTION 0x14UL
 /* L2 Context TCAM */
 #define CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM    0x15UL
+/* L2 Context REMAP */
+#define CFA_RESOURCE_TYPE_P4_L2_CTXT_REMAP   0x16UL
 /* Profile Func */
-#define CFA_RESOURCE_TYPE_P4_PROF_FUNC       0x16UL
+#define CFA_RESOURCE_TYPE_P4_PROF_FUNC       0x17UL
 /* Profile TCAM */
-#define CFA_RESOURCE_TYPE_P4_PROF_TCAM       0x17UL
+#define CFA_RESOURCE_TYPE_P4_PROF_TCAM       0x18UL
 /* Exact Match Profile Id */
-#define CFA_RESOURCE_TYPE_P4_EM_PROF_ID      0x18UL
+#define CFA_RESOURCE_TYPE_P4_EM_PROF_ID      0x19UL
 /* Exact Match Record */
-#define CFA_RESOURCE_TYPE_P4_EM_REC          0x19UL
+#define CFA_RESOURCE_TYPE_P4_EM_REC          0x1aUL
 /* Wildcard Profile Id */
-#define CFA_RESOURCE_TYPE_P4_WC_TCAM_PROF_ID 0x1aUL
+#define CFA_RESOURCE_TYPE_P4_WC_TCAM_PROF_ID 0x1bUL
 /* Wildcard TCAM */
-#define CFA_RESOURCE_TYPE_P4_WC_TCAM         0x1bUL
+#define CFA_RESOURCE_TYPE_P4_WC_TCAM         0x1cUL
 /* Meter profile */
-#define CFA_RESOURCE_TYPE_P4_METER_PROF      0x1cUL
+#define CFA_RESOURCE_TYPE_P4_METER_PROF      0x1dUL
 /* Meter */
-#define CFA_RESOURCE_TYPE_P4_MIRROR          0x1dUL
+#define CFA_RESOURCE_TYPE_P4_MIRROR          0x1eUL
 /* Source Property TCAM */
-#define CFA_RESOURCE_TYPE_P4_SP_TCAM         0x1eUL
+#define CFA_RESOURCE_TYPE_P4_SP_TCAM         0x1fUL
 #define CFA_RESOURCE_TYPE_P4_LAST           CFA_RESOURCE_TYPE_P4_SP_TCAM
 
 
