@@ -80,14 +80,19 @@ ulp_mapper_glb_resource_write(struct bnxt_ulp_mapper_data *data,
  * returns 0 on success
  */
 static int32_t
-ulp_mapper_resource_ident_allocate(struct tf *tfp,
+ulp_mapper_resource_ident_allocate(struct bnxt_ulp_context *ulp_ctx,
 				   struct bnxt_ulp_mapper_data *mapper_data,
 				   struct bnxt_ulp_glb_resource_info *glb_res)
 {
 	struct tf_alloc_identifier_parms iparms = { 0 };
 	struct tf_free_identifier_parms fparms;
 	uint64_t regval;
+	struct tf *tfp;
 	int32_t rc = 0;
+
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	if (!tfp)
+		return -EINVAL;
 
 	iparms.ident_type = glb_res->resource_type;
 	iparms.dir = glb_res->direction;
@@ -115,9 +120,72 @@ ulp_mapper_resource_ident_allocate(struct tf *tfp,
 		return rc;
 	}
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	BNXT_TF_DBG(DEBUG, "Allocated Glb Res[%s][%d][%d] = 0x%04x\n",
+	BNXT_TF_DBG(DEBUG, "Allocated Glb Res Ident [%s][%d][%d] = 0x%04x\n",
 		    (iparms.dir == TF_DIR_RX) ? "RX" : "TX",
 		    glb_res->glb_regfile_index, iparms.ident_type, iparms.id);
+#endif
+	return rc;
+}
+
+/*
+ * Internal function to allocate index tbl resource and store it in mapper data.
+ *
+ * returns 0 on success
+ */
+static int32_t
+ulp_mapper_resource_index_tbl_alloc(struct bnxt_ulp_context *ulp_ctx,
+				    struct bnxt_ulp_mapper_data *mapper_data,
+				    struct bnxt_ulp_glb_resource_info *glb_res)
+{
+	struct tf_alloc_tbl_entry_parms	aparms = { 0 };
+	struct tf_free_tbl_entry_parms	free_parms = { 0 };
+	uint64_t regval;
+	struct tf *tfp;
+	uint32_t tbl_scope_id;
+	int32_t rc = 0;
+
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+	if (!tfp)
+		return -EINVAL;
+
+	/* Get the scope id */
+	rc = bnxt_ulp_cntxt_tbl_scope_id_get(ulp_ctx, &tbl_scope_id);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get table scope rc=%d\n", rc);
+		return rc;
+	}
+
+	aparms.type = glb_res->resource_type;
+	aparms.dir = glb_res->direction;
+	aparms.search_enable = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO;
+	aparms.tbl_scope_id = tbl_scope_id;
+
+	/* Allocate the index tbl using tf api */
+	rc = tf_alloc_tbl_entry(tfp, &aparms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to alloc identifier [%s][%d]\n",
+			    (aparms.dir == TF_DIR_RX) ? "RX" : "TX",
+			    aparms.type);
+		return rc;
+	}
+
+	/* entries are stored as big-endian format */
+	regval = tfp_cpu_to_be_64((uint64_t)aparms.idx);
+	/* write to the mapper global resource */
+	rc = ulp_mapper_glb_resource_write(mapper_data, glb_res, regval);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to write to global resource id\n");
+		/* Free the identifier when update failed */
+		free_parms.dir = aparms.dir;
+		free_parms.type = aparms.type;
+		free_parms.idx = aparms.idx;
+		tf_free_tbl_entry(tfp, &free_parms);
+		return rc;
+	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+	BNXT_TF_DBG(DEBUG, "Allocated Glb Res Index [%s][%d][%d] = 0x%04x\n",
+		    (aparms.dir == TF_DIR_RX) ? "RX" : "TX",
+		    glb_res->glb_regfile_index, aparms.type, aparms.idx);
 #endif
 	return rc;
 }
@@ -130,6 +198,16 @@ ulp_mapper_cache_tbl_params_get(uint32_t tbl_idx)
 		return NULL;
 
 	return &ulp_cache_tbl_params[tbl_idx];
+}
+
+/* Retrieve the global template table */
+static uint32_t *
+ulp_mapper_glb_template_table_get(uint32_t *num_entries)
+{
+	if (!num_entries)
+		return NULL;
+	*num_entries = BNXT_ULP_GLB_TEMPLATE_TBL_MAX_SZ;
+	return ulp_glb_template_tbl;
 }
 
 /*
@@ -659,7 +737,10 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		act_bit = tfp_be_to_cpu_64(act_bit);
-		act_val = ULP_BITMAP_ISSET(parms->act_bitmap->bits, act_bit);
+		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits, act_bit))
+			act_val = 1;
+		else
+			act_val = 0;
 		if (fld->field_bit_size > ULP_BYTE_2_BITS(sizeof(act_val))) {
 			BNXT_TF_DBG(ERR, "%s field size is incorrect\n", name);
 			return -EINVAL;
@@ -1552,6 +1633,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		return 0; /* success */
 	}
+
 	/* Perform the tf table allocation by filling the alloc params */
 	aparms.dir		= tbl->direction;
 	aparms.type		= tbl->resource_type;
@@ -1616,6 +1698,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.direction	= tbl->direction;
 	fid_parms.resource_func	= tbl->resource_func;
 	fid_parms.resource_type	= tbl->resource_type;
+	fid_parms.resource_sub_type = tbl->resource_sub_type;
 	fid_parms.resource_hndl	= aparms.idx;
 	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
 
@@ -1884,7 +1967,7 @@ ulp_mapper_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 }
 
 static int32_t
-ulp_mapper_glb_resource_info_init(struct tf *tfp,
+ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 				  struct bnxt_ulp_mapper_data *mapper_data)
 {
 	struct bnxt_ulp_glb_resource_info *glb_res;
@@ -1901,15 +1984,23 @@ ulp_mapper_glb_resource_info_init(struct tf *tfp,
 	for (idx = 0; idx < num_glb_res_ids; idx++) {
 		switch (glb_res[idx].resource_func) {
 		case BNXT_ULP_RESOURCE_FUNC_IDENTIFIER:
-			rc = ulp_mapper_resource_ident_allocate(tfp,
+			rc = ulp_mapper_resource_ident_allocate(ulp_ctx,
 								mapper_data,
 								&glb_res[idx]);
+			break;
+		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
+			rc = ulp_mapper_resource_index_tbl_alloc(ulp_ctx,
+								 mapper_data,
+								 &glb_res[idx]);
 			break;
 		default:
 			BNXT_TF_DBG(ERR, "Global resource %x not supported\n",
 				    glb_res[idx].resource_func);
+			rc = -EINVAL;
 			break;
 		}
+		if (rc)
+			return rc;
 	}
 	return rc;
 }
@@ -2125,7 +2216,9 @@ ulp_mapper_glb_resource_info_deinit(struct bnxt_ulp_context *ulp_ctx,
 			res.resource_func = ent->resource_func;
 			res.direction = dir;
 			res.resource_type = ent->resource_type;
-			res.resource_hndl = ent->resource_hndl;
+			/*convert it from BE to cpu */
+			res.resource_hndl =
+				tfp_be_to_cpu_64(ent->resource_hndl);
 			ulp_mapper_resource_free(ulp_ctx, &res);
 		}
 	}
@@ -2142,6 +2235,71 @@ ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid)
 	return ulp_mapper_resources_free(ulp_ctx,
 					 fid,
 					 BNXT_ULP_REGULAR_FLOW_TABLE);
+}
+
+/* Function to handle the default global templates that are allocated during
+ * the startup and reused later.
+ */
+static int32_t
+ulp_mapper_glb_template_table_init(struct bnxt_ulp_context *ulp_ctx)
+{
+	uint32_t *glbl_tmpl_list;
+	uint32_t num_glb_tmpls, idx, dev_id;
+	struct bnxt_ulp_mapper_parms parms;
+	struct bnxt_ulp_mapper_data *mapper_data;
+	int32_t rc = 0;
+
+	glbl_tmpl_list = ulp_mapper_glb_template_table_get(&num_glb_tmpls);
+	if (!glbl_tmpl_list || !num_glb_tmpls)
+		return rc; /* No global templates to process */
+
+	/* Get the device id from the ulp context */
+	if (bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id)) {
+		BNXT_TF_DBG(ERR, "Invalid ulp context\n");
+		return -EINVAL;
+	}
+
+	mapper_data = bnxt_ulp_cntxt_ptr2_mapper_data_get(ulp_ctx);
+	if (!mapper_data) {
+		BNXT_TF_DBG(ERR, "Failed to get the ulp mapper data\n");
+		return -EINVAL;
+	}
+
+	/* Iterate the global resources and process each one */
+	for (idx = 0; idx < num_glb_tmpls; idx++) {
+		/* Initialize the parms structure */
+		memset(&parms, 0, sizeof(parms));
+		parms.tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx);
+		parms.ulp_ctx = ulp_ctx;
+		parms.dev_id = dev_id;
+		parms.mapper_data = mapper_data;
+
+		/* Get the class table entry from dev id and class id */
+		parms.class_tid = glbl_tmpl_list[idx];
+		parms.ctbls = ulp_mapper_class_tbl_list_get(parms.dev_id,
+							    parms.class_tid,
+							    &parms.num_ctbls,
+							    &parms.tbl_idx);
+		if (!parms.ctbls || !parms.num_ctbls) {
+			BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
+				    parms.dev_id, parms.class_tid);
+			return -EINVAL;
+		}
+		parms.device_params = bnxt_ulp_device_params_get(parms.dev_id);
+		if (!parms.device_params) {
+			BNXT_TF_DBG(ERR, "No class tables for %d:%d\n",
+				    parms.dev_id, parms.class_tid);
+			return -EINVAL;
+		}
+		rc = ulp_mapper_class_tbls_process(&parms);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "class tables failed creation for %d:%d\n",
+				    parms.dev_id, parms.class_tid);
+			return rc;
+		}
+	}
+	return rc;
 }
 
 /* Function to handle the mapping of the Flow to be compatible
@@ -2316,7 +2474,7 @@ ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)
 	}
 
 	/* Allocate the global resource ids */
-	rc = ulp_mapper_glb_resource_info_init(tfp, data);
+	rc = ulp_mapper_glb_resource_info_init(ulp_ctx, data);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to initialize global resource ids\n");
 		goto error;
@@ -2342,6 +2500,12 @@ ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)
 				goto error;
 			}
 		}
+	}
+
+	rc = ulp_mapper_glb_template_table_init(ulp_ctx);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to initialize global templates\n");
+		goto error;
 	}
 
 	return 0;

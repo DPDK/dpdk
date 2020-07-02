@@ -546,3 +546,6 @@ uint32_t bnxt_ulp_encap_vtag_map[] = {
 	[1] = BNXT_ULP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI,
 	[2] = BNXT_ULP_SYM_ECV_VTAG_TYPE_ADD_2_ENCAP_PRI
 };
+
+uint32_t ulp_glb_template_tbl[] = {
+};

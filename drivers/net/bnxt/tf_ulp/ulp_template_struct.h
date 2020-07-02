@@ -299,4 +299,10 @@ extern struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[];
  */
 extern struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[];
 
+/*
+ * The ulp_global template table is used to initialize default entries
+ * that could be reused by other templates.
+ */
+extern uint32_t ulp_glb_template_tbl[];
+
 #endif /* _ULP_TEMPLATE_STRUCT_H_ */
