@@ -191,7 +191,8 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 		}
 		/* skip parsing if comment character found */
 		pos = memchr(buffer, params->comment_character, len);
-		if (pos != NULL && (*(pos-1) != '\\')) {
+		if (pos != NULL &&
+		    (pos == buffer || *(pos-1) != '\\')) {
 			*pos = '\0';
 			len = pos -  buffer;
 		}
