@@ -114,6 +114,16 @@ struct rss_type_match_hdr hint_14 = {
 	ICE_FLOW_SEG_HDR_GTPU_EH, ETH_RSS_NONFRAG_IPV4_UDP};
 struct rss_type_match_hdr hint_15 = {
 	ICE_FLOW_SEG_HDR_GTPU_EH, ETH_RSS_NONFRAG_IPV4_TCP};
+struct rss_type_match_hdr hint_16 = {
+	ICE_FLOW_SEG_HDR_PPPOE,	ETH_RSS_IPV6};
+struct rss_type_match_hdr hint_17 = {
+	ICE_FLOW_SEG_HDR_PPPOE,	ETH_RSS_NONFRAG_IPV6_UDP};
+struct rss_type_match_hdr hint_18 = {
+	ICE_FLOW_SEG_HDR_PPPOE,	ETH_RSS_NONFRAG_IPV6_TCP};
+struct rss_type_match_hdr hint_19 = {
+	ICE_FLOW_SEG_HDR_PPPOE,	ETH_RSS_NONFRAG_IPV6_SCTP};
+struct rss_type_match_hdr hint_20 = {
+	ICE_FLOW_SEG_HDR_PPPOE, ETH_RSS_ETH | ETH_RSS_PPPOE};
 
 /* Supported pattern for os default package. */
 static struct ice_pattern_match_item ice_hash_pattern_list_os[] = {
@@ -146,6 +156,11 @@ static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
 	{pattern_eth_pppoes_ipv4_udp,	    ICE_INSET_NONE,  &hint_11},
 	{pattern_eth_pppoes_ipv4_tcp,	    ICE_INSET_NONE,  &hint_12},
 	{pattern_eth_pppoes_ipv4_sctp,	    ICE_INSET_NONE,  &hint_13},
+	{pattern_eth_pppoes_ipv6,	    ICE_INSET_NONE,  &hint_16},
+	{pattern_eth_pppoes_ipv6_udp,	    ICE_INSET_NONE,  &hint_17},
+	{pattern_eth_pppoes_ipv6_tcp,	    ICE_INSET_NONE,  &hint_18},
+	{pattern_eth_pppoes_ipv6_sctp,	    ICE_INSET_NONE,  &hint_19},
+	{pattern_eth_pppoes,		    ICE_INSET_NONE,  &hint_20},
 };
 
 /**
@@ -213,6 +228,9 @@ struct ice_hash_match_type ice_hash_type_list[] = {
 	{ETH_RSS_NONFRAG_IPV6_SCTP | ETH_RSS_L4_SRC_ONLY,			BIT_ULL(ICE_FLOW_FIELD_IDX_SCTP_SRC_PORT)},
 	{ETH_RSS_NONFRAG_IPV6_SCTP | ETH_RSS_L4_DST_ONLY,			BIT_ULL(ICE_FLOW_FIELD_IDX_SCTP_DST_PORT)},
 	{ETH_RSS_NONFRAG_IPV6_SCTP,						ICE_HASH_SCTP_IPV6},
+	{ETH_RSS_ETH | ETH_RSS_L2_SRC_ONLY,					BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_SA)},
+	{ETH_RSS_PPPOE,								ICE_FLOW_HASH_PPPOE_SESS_ID},
+	{ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_L2_SRC_ONLY,			ICE_FLOW_HASH_PPPOE_SESS_ID | BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_SA)},
 };
 
 static struct ice_flow_engine ice_hash_engine = {
@@ -331,6 +349,13 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 					RTE_FLOW_ERROR_TYPE_ACTION, action,
 					"Not supported flow");
 
+			if ((rss_hf & ETH_RSS_ETH) && (rss_hf & ~ETH_RSS_PPPOE))
+				m->eth_rss_hint = ETH_RSS_ETH;
+			else if ((rss_hf & ETH_RSS_PPPOE) && (rss_hf & ~ETH_RSS_ETH))
+				m->eth_rss_hint = ETH_RSS_PPPOE;
+			else if ((rss_hf & ETH_RSS_ETH) && (rss_hf & ETH_RSS_PPPOE))
+				m->eth_rss_hint = ETH_RSS_ETH | ETH_RSS_PPPOE;
+
 			/* Check if rss types match pattern. */
 			if (rss->func != RTE_ETH_HASH_FUNCTION_SIMPLE_XOR) {
 				if (((rss_hf & ETH_RSS_IPV4) != m->eth_rss_hint) &&
@@ -340,7 +365,11 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 				((rss_hf & ETH_RSS_IPV6) != m->eth_rss_hint) &&
 				((rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) != m->eth_rss_hint) &&
 				((rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) != m->eth_rss_hint) &&
-				((rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) != m->eth_rss_hint))
+				((rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) != m->eth_rss_hint) &&
+				((rss_hf & ETH_RSS_ETH) != m->eth_rss_hint) &&
+				((rss_hf & ETH_RSS_PPPOE) != m->eth_rss_hint) &&
+				(((rss_hf & (ETH_RSS_ETH | ETH_RSS_PPPOE)) !=
+									m->eth_rss_hint)))
 					return rte_flow_error_set(error,
 					ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 					action, "Not supported RSS types");
