@@ -36,7 +36,7 @@ _st_ring_init(struct rte_ring *r, const char *name, uint32_t num)
 		RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ);
 }
 
-const struct test test_ring_peek_stress = {
+const struct test test_ring_mt_peek_stress = {
 	.name = "MT_PEEK",
 	.nb_case = RTE_DIM(tests),
 	.cases = tests,
