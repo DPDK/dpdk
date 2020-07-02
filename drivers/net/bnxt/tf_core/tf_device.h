@@ -10,6 +10,7 @@
 #include "tf_identifier.h"
 #include "tf_tbl.h"
 #include "tf_tcam.h"
+#include "tf_if_tbl.h"
 
 struct tf;
 struct tf_session;
@@ -567,6 +568,44 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_free_tbl_scope)(struct tf *tfp,
 				     struct tf_free_tbl_scope_parms *parms);
+
+	/**
+	 * Sets the specified interface table type element.
+	 *
+	 * This API sets the specified element data by invoking the
+	 * firmware.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to interface table set parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_set_if_tbl)(struct tf *tfp,
+				 struct tf_if_tbl_set_parms *parms);
+
+	/**
+	 * Retrieves the specified interface table type element.
+	 *
+	 * This API retrieves the specified element data by invoking the
+	 * firmware.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table get parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_if_tbl)(struct tf *tfp,
+				 struct tf_if_tbl_get_parms *parms);
 };
 
 /**

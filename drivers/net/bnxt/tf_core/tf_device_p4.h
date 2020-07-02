@@ -10,6 +10,7 @@
 
 #include "tf_core.h"
 #include "tf_rm.h"
+#include "tf_if_tbl.h"
 
 struct tf_rm_element_cfg tf_ident_p4[TF_IDENT_TYPE_MAX] = {
 	{ TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P4_L2_CTXT_REMAP },
@@ -84,6 +85,15 @@ struct tf_rm_element_cfg tf_em_int_p4[TF_EM_TBL_TYPE_MAX] = {
 	{ TF_RM_ELEM_CFG_HCAPI, CFA_RESOURCE_TYPE_P4_EM_REC },
 	/* CFA_RESOURCE_TYPE_P4_TBL_SCOPE */
 	{ TF_RM_ELEM_CFG_NULL, CFA_RESOURCE_TYPE_INVALID },
+};
+
+struct tf_if_tbl_cfg tf_if_tbl_p4[TF_IF_TBL_TYPE_MAX] = {
+	{ TF_IF_TBL_CFG, CFA_P4_TBL_PROF_SPIF_DFLT_L2CTXT },
+	{ TF_IF_TBL_CFG, CFA_P4_TBL_PROF_PARIF_DFLT_ACT_REC_PTR },
+	{ TF_IF_TBL_CFG, CFA_P4_TBL_PROF_PARIF_ERR_ACT_REC_PTR },
+	{ TF_IF_TBL_CFG, CFA_P4_TBL_LKUP_PARIF_DFLT_ACT_REC_PTR },
+	{ TF_IF_TBL_CFG_NULL, CFA_IF_TBL_TYPE_INVALID },
+	{ TF_IF_TBL_CFG_NULL, CFA_IF_TBL_TYPE_INVALID }
 };
 
 #endif /* _TF_DEVICE_P4_H_ */

@@ -11,6 +11,7 @@
 #include "tf_tbl.h"
 #include "tf_tcam.h"
 #include "tf_em.h"
+#include "tf_if_tbl.h"
 
 /**
  * Device specific function that retrieves the MAX number of HCAPI
@@ -105,6 +106,8 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_delete_ext_em_entry = NULL,
 	.tf_dev_alloc_tbl_scope = NULL,
 	.tf_dev_free_tbl_scope = NULL,
+	.tf_dev_set_if_tbl = NULL,
+	.tf_dev_get_if_tbl = NULL,
 };
 
 /**
@@ -135,4 +138,6 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_delete_ext_em_entry = tf_em_delete_ext_entry,
 	.tf_dev_alloc_tbl_scope = tf_em_ext_common_alloc,
 	.tf_dev_free_tbl_scope = tf_em_ext_common_free,
+	.tf_dev_set_if_tbl = tf_if_tbl_set,
+	.tf_dev_get_if_tbl = tf_if_tbl_get,
 };

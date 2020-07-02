@@ -428,4 +428,34 @@ int tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 			      uint16_t entry_sz_in_bytes,
 			      uint64_t physical_mem_addr);
 
+/**
+ * Sends Set message of a IF Table Type element to the firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] parms
+ *   Pointer to IF table set parameters
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int tf_msg_set_if_tbl_entry(struct tf *tfp,
+			    struct tf_if_tbl_set_parms *params);
+
+/**
+ * Sends get message of a IF Table Type element to the firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] parms
+ *   Pointer to IF table get parameters
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int tf_msg_get_if_tbl_entry(struct tf *tfp,
+			    struct tf_if_tbl_get_parms *params);
+
 #endif  /* _TF_MSG_H_ */

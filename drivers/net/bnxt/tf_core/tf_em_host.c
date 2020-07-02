@@ -831,7 +831,8 @@ tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 	op.opcode = HCAPI_CFA_HWOPS_ADD;
 	key_tbl.base0 = (uint8_t *)
 		&tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_KEY0_TABLE];
-	key_obj.offset = (index * TF_EM_KEY_RECORD_SIZE) % TF_EM_PAGE_SIZE;
+	key_tbl.page_size = TF_EM_PAGE_SIZE;
+	key_obj.offset = index * TF_EM_KEY_RECORD_SIZE;
 	key_obj.data = (uint8_t *)&key_entry;
 	key_obj.size = TF_EM_KEY_RECORD_SIZE;
 
@@ -847,8 +848,7 @@ tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 
 		key_tbl.base0 = (uint8_t *)
 		&tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_KEY1_TABLE];
-		key_obj.offset =
-			(index * TF_EM_KEY_RECORD_SIZE) % TF_EM_PAGE_SIZE;
+		key_obj.offset = index * TF_EM_KEY_RECORD_SIZE;
 
 		rc = hcapi_cfa_key_hw_op(&op,
 					 &key_tbl,
@@ -914,7 +914,8 @@ tf_delete_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 	&tbl_scope_cb->em_ctx_info[parms->dir].em_tables[(hash_type == 0 ?
 							  TF_KEY0_TABLE :
 							  TF_KEY1_TABLE)];
-	key_obj.offset = (index * TF_EM_KEY_RECORD_SIZE) % TF_EM_PAGE_SIZE;
+	key_tbl.page_size = TF_EM_PAGE_SIZE;
+	key_obj.offset = index * TF_EM_KEY_RECORD_SIZE;
 	key_obj.data = NULL;
 	key_obj.size = TF_EM_KEY_RECORD_SIZE;
 
@@ -1195,7 +1196,8 @@ int tf_tbl_ext_host_set(struct tf *tfp,
 	op.opcode = HCAPI_CFA_HWOPS_PUT;
 	key_tbl.base0 =
 		(uint8_t *)&tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_RECORD_TABLE];
-	key_obj.offset = parms->idx % TF_EM_PAGE_SIZE;
+	key_tbl.page_size = TF_EM_PAGE_SIZE;
+	key_obj.offset = parms->idx;
 	key_obj.data = parms->data;
 	key_obj.size = parms->data_sz_in_bytes;
 

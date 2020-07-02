@@ -125,12 +125,19 @@ tf_msg_session_close(struct tf *tfp)
 	int rc;
 	struct hwrm_tf_session_close_input req = { 0 };
 	struct hwrm_tf_session_close_output resp = { 0 };
-	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
 	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Unable to lookup FW id, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
 
 	/* Populate the request */
-	req.fw_session_id =
-		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 
 	parms.tf_type = HWRM_TF_SESSION_CLOSE;
 	parms.req_data = (uint32_t *)&req;
@@ -150,12 +157,19 @@ tf_msg_session_qcfg(struct tf *tfp)
 	int rc;
 	struct hwrm_tf_session_qcfg_input req = { 0 };
 	struct hwrm_tf_session_qcfg_output resp = { 0 };
-	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
 	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Unable to lookup FW id, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
 
 	/* Populate the request */
-	req.fw_session_id =
-		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 
 	parms.tf_type = HWRM_TF_SESSION_QCFG,
 	parms.req_data = (uint32_t *)&req;
@@ -448,13 +462,22 @@ tf_msg_insert_em_internal_entry(struct tf *tfp,
 	struct tfp_send_msg_parms parms = { 0 };
 	struct hwrm_tf_em_insert_input req = { 0 };
 	struct hwrm_tf_em_insert_output resp = { 0 };
-	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
 	struct tf_em_64b_entry *em_result =
 		(struct tf_em_64b_entry *)em_parms->em_record;
 	uint16_t flags;
+	uint8_t fw_session_id;
 
-	req.fw_session_id =
-		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 	tfp_memcpy(req.em_key,
 		   em_parms->key,
 		   ((em_parms->key_sz_in_bits + 7) / 8));
@@ -498,11 +521,19 @@ tf_msg_delete_em_entry(struct tf *tfp,
 	struct hwrm_tf_em_delete_input req = { 0 };
 	struct hwrm_tf_em_delete_output resp = { 0 };
 	uint16_t flags;
-	struct tf_session *tfs =
-		(struct tf_session *)(tfp->session->core_data);
+	uint8_t fw_session_id;
 
-	req.fw_session_id =
-		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 
 	flags = (em_parms->dir == TF_DIR_TX ?
 		 HWRM_TF_EM_DELETE_INPUT_FLAGS_DIR_TX :
@@ -789,21 +820,19 @@ tf_msg_set_tbl_entry(struct tf *tfp,
 	struct hwrm_tf_tbl_type_set_input req = { 0 };
 	struct hwrm_tf_tbl_type_set_output resp = { 0 };
 	struct tfp_send_msg_parms parms = { 0 };
-	struct tf_session *tfs;
+	uint8_t fw_session_id;
 
-	/* Retrieve the session information */
-	rc = tf_session_get_session(tfp, &tfs);
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup session, rc:%s\n",
+			    "%s: Unable to lookup FW id, rc:%s\n",
 			    tf_dir_2_str(dir),
 			    strerror(-rc));
 		return rc;
 	}
 
 	/* Populate the request */
-	req.fw_session_id =
-		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 	req.flags = tfp_cpu_to_le_16(dir);
 	req.type = tfp_cpu_to_le_32(hcapi_type);
 	req.size = tfp_cpu_to_le_16(size);
@@ -840,21 +869,19 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 	struct hwrm_tf_tbl_type_get_input req = { 0 };
 	struct hwrm_tf_tbl_type_get_output resp = { 0 };
 	struct tfp_send_msg_parms parms = { 0 };
-	struct tf_session *tfs;
+	uint8_t fw_session_id;
 
-	/* Retrieve the session information */
-	rc = tf_session_get_session(tfp, &tfs);
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup session, rc:%s\n",
+			    "%s: Unable to lookup FW id, rc:%s\n",
 			    tf_dir_2_str(dir),
 			    strerror(-rc));
 		return rc;
 	}
 
 	/* Populate the request */
-	req.fw_session_id =
-		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 	req.flags = tfp_cpu_to_le_16(dir);
 	req.type = tfp_cpu_to_le_32(hcapi_type);
 	req.index = tfp_cpu_to_le_32(index);
@@ -897,22 +924,20 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 	struct tfp_send_msg_parms parms = { 0 };
 	struct tf_tbl_type_bulk_get_input req = { 0 };
 	struct tf_tbl_type_bulk_get_output resp = { 0 };
-	struct tf_session *tfs;
 	int data_size = 0;
+	uint8_t fw_session_id;
 
-	/* Retrieve the session information */
-	rc = tf_session_get_session(tfp, &tfs);
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
-			    "%s: Failed to lookup session, rc:%s\n",
+			    "%s: Unable to lookup FW id, rc:%s\n",
 			    tf_dir_2_str(dir),
 			    strerror(-rc));
 		return rc;
 	}
 
 	/* Populate the request */
-	req.fw_session_id =
-		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 	req.flags = tfp_cpu_to_le_16(dir);
 	req.type = tfp_cpu_to_le_32(hcapi_type);
 	req.start_index = tfp_cpu_to_le_32(starting_idx);
@@ -936,6 +961,105 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 	/* Verify that we got enough buffer to return the requested data */
 	if (tfp_le_to_cpu_32(resp.size) != data_size)
 		return -EINVAL;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+int
+tf_msg_get_if_tbl_entry(struct tf *tfp,
+			struct tf_if_tbl_get_parms *params)
+{
+	int rc = 0;
+	struct tfp_send_msg_parms parms = { 0 };
+	tf_if_tbl_get_input_t req = { 0 };
+	tf_if_tbl_get_output_t resp;
+	uint32_t flags = 0;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(params->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	flags = (params->dir == TF_DIR_TX ? TF_IF_TBL_SET_INPUT_FLAGS_DIR_TX :
+		 TF_IF_TBL_SET_INPUT_FLAGS_DIR_RX);
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = flags;
+	req.tf_if_tbl_type = params->hcapi_type;
+	req.idx = tfp_cpu_to_le_16(params->idx);
+	req.data_sz_in_bytes = tfp_cpu_to_le_16(params->data_sz_in_bytes);
+
+	MSG_PREP(parms,
+		 TF_KONG_MB,
+		 HWRM_TF,
+		 HWRM_TFT_IF_TBL_GET,
+		 req,
+		 resp);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+
+	if (rc != 0)
+		return rc;
+
+	if (parms.tf_resp_code != 0)
+		return tfp_le_to_cpu_32(parms.tf_resp_code);
+
+	tfp_memcpy(&params->data[0], resp.data, req.data_sz_in_bytes);
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+int
+tf_msg_set_if_tbl_entry(struct tf *tfp,
+			struct tf_if_tbl_set_parms *params)
+{
+	int rc = 0;
+	struct tfp_send_msg_parms parms = { 0 };
+	tf_if_tbl_set_input_t req = { 0 };
+	uint32_t flags = 0;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(params->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+
+	flags = (params->dir == TF_DIR_TX ? TF_IF_TBL_SET_INPUT_FLAGS_DIR_TX :
+		 TF_IF_TBL_SET_INPUT_FLAGS_DIR_RX);
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = flags;
+	req.tf_if_tbl_type = params->hcapi_type;
+	req.idx = tfp_cpu_to_le_32(params->idx);
+	req.data_sz_in_bytes = tfp_cpu_to_le_32(params->data_sz_in_bytes);
+	tfp_memcpy(&req.data[0], params->data, params->data_sz_in_bytes);
+
+	MSG_PREP_NO_RESP(parms,
+			 TF_KONG_MB,
+			 HWRM_TF,
+			 HWRM_TFT_IF_TBL_SET,
+			 req);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+
+	if (rc != 0)
+		return rc;
 
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }

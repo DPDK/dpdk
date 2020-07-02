@@ -35,10 +35,6 @@
 
 #define CFA_GLOBAL_CFG_DATA_SZ (100)
 
-#if SUPPORT_CFA_HW_P4 && SUPPORT_CFA_HW_P58 && SUPPORT_CFA_HW_P59
-#define SUPPORT_CFA_HW_ALL (1)
-#endif
-
 #include "hcapi_cfa_p4.h"
 #define CFA_PROF_L2CTXT_TCAM_MAX_FIELD_CNT CFA_P40_PROF_L2_CTXT_TCAM_MAX_FLD
 #define CFA_PROF_L2CTXT_REMAP_MAX_FIELD_CNT CFA_P40_PROF_L2_CTXT_RMP_DR_MAX_FLD
@@ -121,6 +117,8 @@ struct hcapi_cfa_layout {
 	const struct hcapi_cfa_field *field_array;
 	/** [out] number of HW field entries in the HW layout field array */
 	uint32_t array_sz;
+	/** [out] layout_id - layout id associated with the layout */
+	uint16_t layout_id;
 };
 
 /**
@@ -247,6 +245,8 @@ struct hcapi_cfa_key_tbl {
 	 *  applicable for newer chip
 	 */
 	uint8_t *base1;
+	/** [in] Page size for EEM tables */
+	uint32_t page_size;
 };
 
 /**
@@ -267,7 +267,7 @@ struct hcapi_cfa_key_obj {
 struct hcapi_cfa_key_data {
 	/** [in] For on-chip key table, it is the offset in unit of smallest
 	 *  key. For off-chip key table, it is the byte offset relative
-	 *  to the key record memory base.
+	 *  to the key record memory base and adjusted for page and entry size.
 	 */
 	uint32_t offset;
 	/** [in] HW key data buffer pointer */
@@ -668,5 +668,5 @@ int hcapi_cfa_key_hw_op(struct hcapi_cfa_hwop *op,
 			struct hcapi_cfa_key_loc *key_loc);
 
 uint64_t hcapi_get_table_page(struct hcapi_cfa_em_table *mem,
-			      uint32_t offset);
+			      uint32_t page);
 #endif /* HCAPI_CFA_DEFS_H_ */

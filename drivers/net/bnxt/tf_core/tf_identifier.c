@@ -68,7 +68,7 @@ tf_ident_bind(struct tf *tfp,
 int
 tf_ident_unbind(struct tf *tfp)
 {
-	int rc;
+	int rc = 0;
 	int i;
 	struct tf_rm_free_db_parms fparms = { 0 };
 
@@ -89,7 +89,6 @@ tf_ident_unbind(struct tf *tfp)
 			TFP_DRV_LOG(ERR,
 				    "rm free failed on unbind\n");
 		}
-
 		ident_db[i] = NULL;
 	}
 

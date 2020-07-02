@@ -13,7 +13,6 @@
 #include "hcapi_cfa_defs.h"
 
 #define HCAPI_CFA_LKUP_SEED_MEM_SIZE 512
-#define TF_EM_PAGE_SIZE (1 << 21)
 uint32_t hcapi_cfa_lkup_lkup3_init_cfg;
 uint32_t hcapi_cfa_lkup_em_seed_mem[HCAPI_CFA_LKUP_SEED_MEM_SIZE];
 bool hcapi_cfa_lkup_init;
@@ -199,10 +198,9 @@ static uint32_t hcapi_cfa_lookup3_hash(uint8_t *in_key)
 
 
 uint64_t hcapi_get_table_page(struct hcapi_cfa_em_table *mem,
-			      uint32_t offset)
+			      uint32_t page)
 {
 	int level = 0;
-	int page = offset / TF_EM_PAGE_SIZE;
 	uint64_t addr;
 
 	if (mem == NULL)
@@ -362,7 +360,9 @@ int hcapi_cfa_key_hw_op(struct hcapi_cfa_hwop *op,
 	op->hw.base_addr =
 		hcapi_get_table_page((struct hcapi_cfa_em_table *)
 				     key_tbl->base0,
-				     key_obj->offset);
+				     key_obj->offset / key_tbl->page_size);
+	/* Offset is adjusted to be the offset into the page */
+	key_obj->offset = key_obj->offset % key_tbl->page_size;
 
 	if (op->hw.base_addr == 0)
 		return -1;

@@ -337,11 +337,10 @@ tf_em_ext_common_bind(struct tf *tfp,
 		db_exists = 1;
 	}
 
-	if (db_exists) {
-		mem_type = parms->mem_type;
+	if (db_exists)
 		init = 1;
-	}
 
+	mem_type = parms->mem_type;
 	return 0;
 }
 

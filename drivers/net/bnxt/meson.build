@@ -43,7 +43,7 @@ sources = files('bnxt_cpr.c',
 	'tf_core/tf_shadow_tcam.c',
 	'tf_core/tf_tcam.c',
 	'tf_core/tf_util.c',
-	'tf_core/tf_rm.c',
+	'tf_core/tf_if_tbl.c',
 
 	'hcapi/hcapi_cfa_p4.c',
 

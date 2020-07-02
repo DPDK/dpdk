@@ -1556,4 +1556,108 @@ int tf_delete_em_entry(struct tf *tfp,
 int tf_search_em_entry(struct tf *tfp,
 		       struct tf_search_em_entry_parms *parms);
 
+/**
+ * @page if_tbl Interface Table Access
+ *
+ * @ref tf_set_if_tbl_entry
+ *
+ * @ref tf_get_if_tbl_entry
+ *
+ * @ref tf_restore_if_tbl_entry
+ */
+/**
+ * Enumeration of TruFlow interface table types.
+ */
+enum tf_if_tbl_type {
+	/** Default Profile L2 Context Entry */
+	TF_IF_TBL_TYPE_PROF_SPIF_DFLT_L2_CTXT,
+	/** Default Profile TCAM/Lookup Action Record Pointer Table */
+	TF_IF_TBL_TYPE_PROF_PARIF_DFLT_ACT_REC_PTR,
+	/** Error Profile TCAM Miss Action Record Pointer Table */
+	TF_IF_TBL_TYPE_PROF_PARIF_ERR_ACT_REC_PTR,
+	/** Default Error Profile TCAM Miss Action Record Pointer Table */
+	TF_IF_TBL_TYPE_LKUP_PARIF_DFLT_ACT_REC_PTR,
+	/** SR2 Ingress lookup table */
+	TF_IF_TBL_TYPE_ILT,
+	/** SR2 VNIC/SVIF Table */
+	TF_IF_TBL_TYPE_VNIC_SVIF,
+	TF_IF_TBL_TYPE_MAX
+};
+
+/**
+ * tf_set_if_tbl_entry parameter definition
+ */
+struct tf_set_if_tbl_entry_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of object to set
+	 */
+	enum tf_if_tbl_type type;
+	/**
+	 * [in] Entry data
+	 */
+	uint32_t *data;
+	/**
+	 * [in] Entry size
+	 */
+	uint16_t data_sz_in_bytes;
+	/**
+	 * [in] Interface to write
+	 */
+	uint32_t idx;
+};
+
+/**
+ * set interface table entry
+ *
+ * Used to set an interface table. This API is used for managing tables indexed
+ * by SVIF/SPIF/PARIF interfaces. In current implementation only the value is
+ * set.
+ * Returns success or failure code.
+ */
+int tf_set_if_tbl_entry(struct tf *tfp,
+			struct tf_set_if_tbl_entry_parms *parms);
+
+/**
+ * tf_get_if_tbl_entry parameter definition
+ */
+struct tf_get_if_tbl_entry_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of table to get
+	 */
+	enum tf_if_tbl_type type;
+	/**
+	 * [out] Entry data
+	 */
+	uint32_t *data;
+	/**
+	 * [in] Entry size
+	 */
+	uint16_t data_sz_in_bytes;
+	/**
+	 * [in] Entry index to read
+	 */
+	uint32_t idx;
+};
+
+/**
+ * get interface table entry
+ *
+ * Used to retrieve an interface table entry.
+ *
+ * Reads the interface table entry value
+ *
+ * Returns success or failure code. Failure will be returned if the
+ * provided data buffer is too small for the data type requested.
+ */
+int tf_get_if_tbl_entry(struct tf *tfp,
+			struct tf_get_if_tbl_entry_parms *parms);
+
 #endif /* _TF_CORE_H_ */

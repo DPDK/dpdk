@@ -70,14 +70,24 @@ tf_session_open_session(struct tf *tfp,
 		goto cleanup;
 	}
 	tfp->session->core_data = cparms.mem_va;
+	session_id = &parms->open_cfg->session_id;
 
-	/* Initialize Session and Device */
+	/* Update Session Info, which is what is visible to the caller */
+	tfp->session->ver.major = 0;
+	tfp->session->ver.minor = 0;
+	tfp->session->ver.update = 0;
+
+	tfp->session->session_id.internal.domain = session_id->internal.domain;
+	tfp->session->session_id.internal.bus = session_id->internal.bus;
+	tfp->session->session_id.internal.device = session_id->internal.device;
+	tfp->session->session_id.internal.fw_session_id = fw_session_id;
+
+	/* Initialize Session and Device, which is private */
 	session = (struct tf_session *)tfp->session->core_data;
 	session->ver.major = 0;
 	session->ver.minor = 0;
 	session->ver.update = 0;
 
-	session_id = &parms->open_cfg->session_id;
 	session->session_id.internal.domain = session_id->internal.domain;
 	session->session_id.internal.bus = session_id->internal.bus;
 	session->session_id.internal.device = session_id->internal.device;

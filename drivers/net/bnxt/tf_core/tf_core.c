@@ -1039,3 +1039,119 @@ tf_free_tbl_scope(struct tf *tfp,
 
 	return rc;
 }
+
+int
+tf_set_if_tbl_entry(struct tf *tfp,
+		    struct tf_set_if_tbl_entry_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_if_tbl_set_parms sparms = { 0 };
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_set_if_tbl == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	sparms.dir = parms->dir;
+	sparms.type = parms->type;
+	sparms.idx = parms->idx;
+	sparms.data_sz_in_bytes = parms->data_sz_in_bytes;
+	sparms.data = parms->data;
+
+	rc = dev->ops->tf_dev_set_if_tbl(tfp, &sparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: If_tbl set failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return 0;
+}
+
+int
+tf_get_if_tbl_entry(struct tf *tfp,
+		    struct tf_get_if_tbl_entry_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_if_tbl_get_parms gparms = { 0 };
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_get_if_tbl == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	gparms.dir = parms->dir;
+	gparms.type = parms->type;
+	gparms.idx = parms->idx;
+	gparms.data_sz_in_bytes = parms->data_sz_in_bytes;
+	gparms.data = parms->data;
+
+	rc = dev->ops->tf_dev_get_if_tbl(tfp, &gparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: If_tbl get failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return 0;
+}

@@ -44,6 +44,7 @@ tf_dev_bind_p4(struct tf *tfp,
 	struct tf_tbl_cfg_parms tbl_cfg;
 	struct tf_tcam_cfg_parms tcam_cfg;
 	struct tf_em_cfg_parms em_cfg;
+	struct tf_if_tbl_cfg_parms if_tbl_cfg;
 
 	dev_handle->type = TF_DEVICE_TYPE_WH;
 	/* Initial function initialization */
@@ -111,6 +112,19 @@ tf_dev_bind_p4(struct tf *tfp,
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "EM initialization failure\n");
+		goto fail;
+	}
+
+	/*
+	 * IF_TBL
+	 */
+	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
+	if_tbl_cfg.cfg = tf_if_tbl_p4;
+	if_tbl_cfg.shadow_copy = shadow_copy;
+	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "IF Table initialization failure\n");
 		goto fail;
 	}
 
@@ -183,6 +197,13 @@ tf_dev_unbind_p4(struct tf *tfp)
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "Device unbind failed, EM\n");
+		fail = true;
+	}
+
+	rc = tf_if_tbl_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, IF Table Type\n");
 		fail = true;
 	}
 
