@@ -106,7 +106,8 @@ tf_rm_count_hcapi_reservations(enum tf_dir dir,
 	uint16_t cnt = 0;
 
 	for (i = 0; i < count; i++) {
-		if (cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI &&
+		if ((cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI ||
+		     cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) &&
 		    reservations[i] > 0)
 			cnt++;
 
@@ -467,7 +468,8 @@ tf_rm_create_db(struct tf *tfp,
 	/* Build the request */
 	for (i = 0, j = 0; i < parms->num_elements; i++) {
 		/* Skip any non HCAPI cfg elements */
-		if (parms->cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI) {
+		if (parms->cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI ||
+		    parms->cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) {
 			/* Only perform reservation for entries that
 			 * has been requested
 			 */
@@ -529,7 +531,8 @@ tf_rm_create_db(struct tf *tfp,
 		/* Skip any non HCAPI types as we didn't include them
 		 * in the reservation request.
 		 */
-		if (parms->cfg[i].cfg_type != TF_RM_ELEM_CFG_HCAPI)
+		if (parms->cfg[i].cfg_type != TF_RM_ELEM_CFG_HCAPI &&
+		    parms->cfg[i].cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
 			continue;
 
 		/* If the element didn't request an allocation no need
@@ -551,29 +554,32 @@ tf_rm_create_db(struct tf *tfp,
 			       resv[j].start,
 			       resv[j].stride);
 
-			/* Create pool */
-			pool_size = (BITALLOC_SIZEOF(resv[j].stride) /
-				     sizeof(struct bitalloc));
-			/* Alloc request, alignment already set */
-			cparms.nitems = pool_size;
-			cparms.size = sizeof(struct bitalloc);
-			rc = tfp_calloc(&cparms);
-			if (rc) {
-				TFP_DRV_LOG(ERR,
-					    "%s: Pool alloc failed, type:%d\n",
-					    tf_dir_2_str(parms->dir),
-					    db[i].cfg_type);
-				goto fail;
-			}
-			db[i].pool = (struct bitalloc *)cparms.mem_va;
+			/* Only allocate BA pool if so requested */
+			if (parms->cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) {
+				/* Create pool */
+				pool_size = (BITALLOC_SIZEOF(resv[j].stride) /
+					     sizeof(struct bitalloc));
+				/* Alloc request, alignment already set */
+				cparms.nitems = pool_size;
+				cparms.size = sizeof(struct bitalloc);
+				rc = tfp_calloc(&cparms);
+				if (rc) {
+					TFP_DRV_LOG(ERR,
+					     "%s: Pool alloc failed, type:%d\n",
+					     tf_dir_2_str(parms->dir),
+					     db[i].cfg_type);
+					goto fail;
+				}
+				db[i].pool = (struct bitalloc *)cparms.mem_va;
 
-			rc = ba_init(db[i].pool, resv[j].stride);
-			if (rc) {
-				TFP_DRV_LOG(ERR,
-					    "%s: Pool init failed, type:%d\n",
-					    tf_dir_2_str(parms->dir),
-					    db[i].cfg_type);
-				goto fail;
+				rc = ba_init(db[i].pool, resv[j].stride);
+				if (rc) {
+					TFP_DRV_LOG(ERR,
+					     "%s: Pool init failed, type:%d\n",
+					     tf_dir_2_str(parms->dir),
+					     db[i].cfg_type);
+					goto fail;
+				}
 			}
 			j++;
 		} else {
@@ -682,6 +688,9 @@ tf_rm_free_db(struct tf *tfp,
 				    tf_device_module_type_2_str(rm_db->type));
 	}
 
+	/* No need to check for configuration type, even if we do not
+	 * have a BA pool we just delete on a null ptr, no harm
+	 */
 	for (i = 0; i < rm_db->num_entries; i++)
 		tfp_free((void *)rm_db->db[i].pool);
 
@@ -705,8 +714,7 @@ tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 	cfg_type = rm_db->db[parms->db_index].cfg_type;
 
 	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-	    cfg_type != TF_RM_ELEM_CFG_PRIVATE)
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
 		return -ENOTSUP;
 
 	/* Bail out if the pool is not valid, should never happen */
@@ -770,8 +778,7 @@ tf_rm_free(struct tf_rm_free_parms *parms)
 	cfg_type = rm_db->db[parms->db_index].cfg_type;
 
 	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-	    cfg_type != TF_RM_ELEM_CFG_PRIVATE)
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
 		return -ENOTSUP;
 
 	/* Bail out if the pool is not valid, should never happen */
@@ -816,8 +823,7 @@ tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms)
 	cfg_type = rm_db->db[parms->db_index].cfg_type;
 
 	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-	    cfg_type != TF_RM_ELEM_CFG_PRIVATE)
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
 		return -ENOTSUP;
 
 	/* Bail out if the pool is not valid, should never happen */
@@ -857,9 +863,9 @@ tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms)
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
 	cfg_type = rm_db->db[parms->db_index].cfg_type;
 
-	/* Bail out if not controlled by RM */
+	/* Bail out if not controlled by HCAPI */
 	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-	    cfg_type != TF_RM_ELEM_CFG_PRIVATE)
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
 		return -ENOTSUP;
 
 	memcpy(parms->info,
@@ -880,9 +886,9 @@ tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms)
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
 	cfg_type = rm_db->db[parms->db_index].cfg_type;
 
-	/* Bail out if not controlled by RM */
+	/* Bail out if not controlled by HCAPI */
 	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-	    cfg_type != TF_RM_ELEM_CFG_PRIVATE)
+	    cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
 		return -ENOTSUP;
 
 	*parms->hcapi_type = rm_db->db[parms->db_index].hcapi_type;
@@ -903,8 +909,7 @@ tf_rm_get_inuse_count(struct tf_rm_get_inuse_count_parms *parms)
 	cfg_type = rm_db->db[parms->db_index].cfg_type;
 
 	/* Bail out if not controlled by RM */
-	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
-	    cfg_type != TF_RM_ELEM_CFG_PRIVATE)
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
 		return -ENOTSUP;
 
 	/* Bail silently (no logging), if the pool is not valid there

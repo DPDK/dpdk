@@ -857,12 +857,12 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 		return rc;
 
 	/* Verify that we got enough buffer to return the requested data */
-	if (resp.size < size)
+	if (tfp_le_to_cpu_32(resp.size) != size)
 		return -EINVAL;
 
 	tfp_memcpy(data,
 		   &resp.data,
-		   resp.size);
+		   size);
 
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
@@ -919,7 +919,7 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 		return rc;
 
 	/* Verify that we got enough buffer to return the requested data */
-	if (resp.size < data_size)
+	if (tfp_le_to_cpu_32(resp.size) != data_size)
 		return -EINVAL;
 
 	return tfp_le_to_cpu_32(parms.tf_resp_code);

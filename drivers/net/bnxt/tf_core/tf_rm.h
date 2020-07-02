@@ -56,12 +56,18 @@ struct tf_rm_new_entry {
  * ULP layer that is not controlled by HCAPI within the Firmware.
  */
 enum tf_rm_elem_cfg_type {
-	/** No configuration */
+	/**
+	 * No configuration
+	 */
 	TF_RM_ELEM_CFG_NULL,
-	/** HCAPI 'controlled', uses a Pool for internal storage */
+	/** HCAPI 'controlled', no RM storage thus the Device Module
+	 *  using the RM can chose to handle storage locally.
+	 */
 	TF_RM_ELEM_CFG_HCAPI,
-	/** Private thus not HCAPI 'controlled', creates a Pool for storage */
-	TF_RM_ELEM_CFG_PRIVATE,
+	/** HCAPI 'controlled', uses a Bit Allocator Pool for internal
+	 *  storage in the RM.
+	 */
+	TF_RM_ELEM_CFG_HCAPI_BA,
 	/**
 	 * Shared element thus it belongs to a shared FW Session and
 	 * is not controlled by the Host.

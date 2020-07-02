@@ -103,11 +103,6 @@ struct tf_session {
 
 	/** Table scope array */
 	struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
-
-	/**
-	 * EM Pools
-	 */
-	struct stack em_pool[TF_DIR_MAX];
 };
 
 /**

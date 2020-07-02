@@ -43,6 +43,7 @@ tf_tcam_bind(struct tf *tfp,
 {
 	int rc;
 	int i;
+	struct tf_tcam_resources *tcam_cnt;
 	struct tf_rm_create_db_parms db_cfg = { 0 };
 
 	TF_CHECK_PARMS2(tfp, parms);
@@ -50,6 +51,14 @@ tf_tcam_bind(struct tf *tfp,
 	if (init) {
 		TFP_DRV_LOG(ERR,
 			    "TCAM DB already initialized\n");
+		return -EINVAL;
+	}
+
+	tcam_cnt = parms->resources->tcam_cnt;
+	if ((tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] % 2) ||
+	    (tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] % 2)) {
+		TFP_DRV_LOG(ERR,
+			    "Number of WC TCAM entries cannot be odd num\n");
 		return -EINVAL;
 	}
 
@@ -166,6 +175,18 @@ tf_tcam_alloc(struct tf *tfp,
 			    tf_dir_2_str(parms->dir),
 			    parms->type);
 		return rc;
+	}
+
+	if (parms->type == TF_TCAM_TBL_TYPE_WC_TCAM &&
+	    (parms->idx % 2) != 0) {
+		rc = tf_rm_allocate(&aparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Failed tcam, type:%d\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type);
+			return rc;
+		}
 	}
 
 	parms->idx *= num_slice_per_row;
