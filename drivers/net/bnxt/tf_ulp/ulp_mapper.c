@@ -1443,7 +1443,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct bnxt_ulp_mapper_result_field_info *flds;
 	struct ulp_flow_db_res_params	fid_parms;
 	struct ulp_blob	data;
-	uint64_t idx;
+	uint64_t idx = 0;
 	uint16_t tmplen;
 	uint32_t i, num_flds;
 	int32_t rc = 0, trc = 0;
@@ -1516,6 +1516,42 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 #endif
 	}
 
+	/*
+	 * Check for index opcode, if it is Global then
+	 * no need to allocate the table, just set the table
+	 * and exit since it is not maintained in the flow db.
+	 */
+	if (tbl->index_opcode == BNXT_ULP_INDEX_OPCODE_GLOBAL) {
+		/* get the index from index operand */
+		if (tbl->index_operand < BNXT_ULP_GLB_REGFILE_INDEX_LAST &&
+		    ulp_mapper_glb_resource_read(parms->mapper_data,
+						 tbl->direction,
+						 tbl->index_operand,
+						 &idx)) {
+			BNXT_TF_DBG(ERR, "Glbl regfile[%d] read failed.\n",
+				    tbl->index_operand);
+			return -EINVAL;
+		}
+		/* set the Tf index table */
+		sparms.dir		= tbl->direction;
+		sparms.type		= tbl->resource_type;
+		sparms.data		= ulp_blob_data_get(&data, &tmplen);
+		sparms.data_sz_in_bytes = ULP_BITS_2_BYTE(tmplen);
+		sparms.idx		= tfp_be_to_cpu_64(idx);
+		sparms.tbl_scope_id	= tbl_scope_id;
+
+		rc = tf_set_tbl_entry(tfp, &sparms);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Glbl Set table[%d][%s][%d] failed rc=%d\n",
+				    sparms.type,
+				    (sparms.dir == TF_DIR_RX) ? "RX" : "TX",
+				    sparms.idx,
+				    rc);
+			return rc;
+		}
+		return 0; /* success */
+	}
 	/* Perform the tf table allocation by filling the alloc params */
 	aparms.dir		= tbl->direction;
 	aparms.type		= tbl->resource_type;
@@ -1546,11 +1582,13 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Always storing values in Regfile in BE */
 	idx = tfp_cpu_to_be_64(idx);
-	rc = ulp_regfile_write(parms->regfile, tbl->regfile_idx, idx);
-	if (!rc) {
-		BNXT_TF_DBG(ERR, "Write regfile[%d] failed\n",
-			    tbl->regfile_idx);
-		goto error;
+	if (tbl->index_opcode == BNXT_ULP_INDEX_OPCODE_ALLOCATE) {
+		rc = ulp_regfile_write(parms->regfile, tbl->index_operand, idx);
+		if (!rc) {
+			BNXT_TF_DBG(ERR, "Write regfile[%d] failed\n",
+				    tbl->index_operand);
+			goto error;
+		}
 	}
 
 	/* Perform the tf table set by filling the set params */
@@ -1815,7 +1853,11 @@ ulp_mapper_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* Get the index details from computed field */
-	idx = ULP_COMP_FLD_IDX_RD(parms, tbl->comp_field_idx);
+	if (tbl->index_opcode != BNXT_ULP_INDEX_OPCODE_COMP_FIELD) {
+		BNXT_TF_DBG(ERR, "Invalid tbl index opcode\n");
+		return -EINVAL;
+	}
+	idx = ULP_COMP_FLD_IDX_RD(parms, tbl->index_operand);
 
 	/* Perform the tf table set by filling the set params */
 	iftbl_params.dir = tbl->direction;

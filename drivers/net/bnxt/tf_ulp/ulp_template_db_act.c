@@ -76,7 +76,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
+	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
 	},
 	{
@@ -90,7 +91,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 0,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
+	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
 	},
 	{
@@ -104,7 +106,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	.result_bit_size = 128,
 	.result_num_fields = 26,
 	.encap_num_fields = 12,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
+	.index_opcode = BNXT_ULP_INDEX_OPCODE_ALLOCATE,
+	.index_operand = BNXT_ULP_REGFILE_INDEX_MAIN_ACTION_PTR,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPCODE_NOP
 	}
 };
