@@ -96,6 +96,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 #define BNXT_DEVARG_TRUFLOW	"host-based-truflow"
 #define BNXT_DEVARG_FLOW_XSTAT	"flow-xstat"
 #define BNXT_DEVARG_MAX_NUM_KFLOWS  "max-num-kflows"
+
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_TRUFLOW,
 	BNXT_DEVARG_FLOW_XSTAT,
@@ -172,6 +173,11 @@ uint16_t bnxt_rss_hash_tbl_size(const struct bnxt *bp)
 	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_THOR;
 }
 
+static void bnxt_free_parent_info(struct bnxt *bp)
+{
+	rte_free(bp->parent);
+}
+
 static void bnxt_free_pf_info(struct bnxt *bp)
 {
 	rte_free(bp->pf);
@@ -220,6 +226,16 @@ static void bnxt_free_mem(struct bnxt *bp, bool reconfig)
 
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;
+}
+
+static int bnxt_alloc_parent_info(struct bnxt *bp)
+{
+	bp->parent = rte_zmalloc("bnxt_parent_info",
+				 sizeof(struct bnxt_parent_info), 0);
+	if (bp->parent == NULL)
+		return -ENOMEM;
+
+	return 0;
 }
 
 static int bnxt_alloc_pf_info(struct bnxt *bp)
@@ -1321,6 +1337,7 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	bnxt_free_cos_queues(bp);
 	bnxt_free_link_info(bp);
 	bnxt_free_pf_info(bp);
+	bnxt_free_parent_info(bp);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
@@ -5209,6 +5226,8 @@ static int bnxt_init_fw(struct bnxt *bp)
 
 	bnxt_hwrm_port_mac_qcfg(bp);
 
+	bnxt_hwrm_parent_pf_qcfg(bp);
+
 	rc = bnxt_hwrm_cfa_adv_flow_mgmt_qcaps(bp);
 	if (rc)
 		return rc;
@@ -5524,6 +5543,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 		goto error_free;
 
 	rc = bnxt_alloc_link_info(bp);
+	if (rc)
+		goto error_free;
+
+	rc = bnxt_alloc_parent_info(bp);
 	if (rc)
 		goto error_free;
 

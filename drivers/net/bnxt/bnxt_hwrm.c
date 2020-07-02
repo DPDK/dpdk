@@ -3094,6 +3094,48 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	return rc;
 }
 
+int bnxt_hwrm_parent_pf_qcfg(struct bnxt *bp)
+{
+	struct hwrm_func_qcfg_input req = {0};
+	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	if (!BNXT_VF_IS_TRUSTED(bp))
+		return 0;
+
+	if (!bp->parent)
+		return -EINVAL;
+
+	bp->parent->fid = BNXT_PF_FID_INVALID;
+
+	HWRM_PREP(&req, HWRM_FUNC_QCFG, BNXT_USE_CHIMP_MB);
+
+	req.fid = rte_cpu_to_le_16(0xfffe); /* Request parent PF information. */
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	memcpy(bp->parent->mac_addr, resp->mac_address, RTE_ETHER_ADDR_LEN);
+	bp->parent->vnic = rte_le_to_cpu_16(resp->dflt_vnic_id);
+	bp->parent->fid = rte_le_to_cpu_16(resp->fid);
+	bp->parent->port_id = rte_le_to_cpu_16(resp->port_id);
+
+	/* FIXME: Temporary workaround - remove when firmware issue is fixed. */
+	if (bp->parent->vnic == 0) {
+		PMD_DRV_LOG(ERR, "Error: parent VNIC unavailable.\n");
+		/* Use hard-coded values appropriate for current Wh+ fw. */
+		if (bp->parent->fid == 2)
+			bp->parent->vnic = 0x100;
+		else
+			bp->parent->vnic = 1;
+	}
+
+	HWRM_UNLOCK();
+
+	return 0;
+}
+
 int bnxt_hwrm_get_dflt_vnic_svif(struct bnxt *bp, uint16_t fid,
 				 uint16_t *vnic_id, uint16_t *svif)
 {

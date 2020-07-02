@@ -217,6 +217,14 @@ struct bnxt_child_vf_info {
 	bool			persist_stats;
 };
 
+struct bnxt_parent_info {
+#define	BNXT_PF_FID_INVALID	0xFFFF
+	uint16_t		fid;
+	uint16_t		vnic;
+	uint16_t		port_id;
+	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];
+};
+
 struct bnxt_pf_info {
 #define BNXT_FIRST_PF_FID	1
 #define BNXT_MAX_VFS(bp)	((bp)->pf->max_vfs)
@@ -738,6 +746,7 @@ struct bnxt {
 #define BNXT_OUTER_TPID_BD_SHFT	16
 	uint32_t		outer_tpid_bd;
 	struct bnxt_pf_info	*pf;
+	struct bnxt_parent_info	*parent;
 	uint8_t			vxlan_port_cnt;
 	uint8_t			geneve_port_cnt;
 	uint16_t		vxlan_port;
