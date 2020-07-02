@@ -9,7 +9,6 @@
 #include "tf_core.h"
 #include "tf_session.h"
 
-#define TF_HACK_TBL_SCOPE_BASE 68
 #define SUPPORT_CFA_HW_P4 1
 #define SUPPORT_CFA_HW_P58 0
 #define SUPPORT_CFA_HW_P59 0

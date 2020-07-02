@@ -287,7 +287,8 @@ tf_tcam_free(struct tf *tfp,
 	rc = tf_msg_tcam_entry_free(tfp, parms);
 	if (rc) {
 		/* Log error */
-		TFP_DRV_LOG(ERR, "%s: %s: Entry %d free failed with err %s",
+		TFP_DRV_LOG(ERR,
+			    "%s: %s: Entry %d free failed, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_tcam_tbl_2_str(parms->type),
 			    parms->idx,
@@ -382,7 +383,8 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	rc = tf_msg_tcam_entry_set(tfp, parms);
 	if (rc) {
 		/* Log error */
-		TFP_DRV_LOG(ERR, "%s: %s: Entry %d free failed with err %s",
+		TFP_DRV_LOG(ERR,
+			    "%s: %s: Entry %d set failed, rc:%s",
 			    tf_dir_2_str(parms->dir),
 			    tf_tcam_tbl_2_str(parms->type),
 			    parms->idx,

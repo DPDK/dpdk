@@ -48,6 +48,9 @@
  * EM DBs.
  */
 extern void *eem_db[TF_DIR_MAX];
+#define TF_EEM_DB_TBL_SCOPE 1
+
+extern struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
 
 /**
  * Function to free a page table
@@ -934,14 +937,12 @@ tf_delete_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
  *    -EINVAL - Error
  */
 int
-tf_em_insert_ext_entry(struct tf *tfp,
+tf_em_insert_ext_entry(struct tf *tfp __rte_unused,
 		       struct tf_insert_em_entry_parms *parms)
 {
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 
-	tbl_scope_cb =
-	tbl_scope_cb_find((struct tf_session *)(tfp->session->core_data),
-			  parms->tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
 	if (tbl_scope_cb == NULL) {
 		TFP_DRV_LOG(ERR, "Invalid tbl_scope_cb\n");
 		return -EINVAL;
@@ -957,14 +958,12 @@ tf_em_insert_ext_entry(struct tf *tfp,
  *    -EINVAL - Error
  */
 int
-tf_em_delete_ext_entry(struct tf *tfp,
+tf_em_delete_ext_entry(struct tf *tfp __rte_unused,
 		       struct tf_delete_em_entry_parms *parms)
 {
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 
-	tbl_scope_cb =
-	tbl_scope_cb_find((struct tf_session *)(tfp->session->core_data),
-			  parms->tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
 	if (tbl_scope_cb == NULL) {
 		TFP_DRV_LOG(ERR, "Invalid tbl_scope_cb\n");
 		return -EINVAL;
@@ -981,16 +980,13 @@ tf_em_ext_host_alloc(struct tf *tfp,
 	enum tf_dir dir;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 	struct hcapi_cfa_em_table *em_tables;
-	struct tf_session *session;
 	struct tf_free_tbl_scope_parms free_parms;
 	struct tf_rm_allocate_parms aparms = { 0 };
 	struct tf_rm_free_parms fparms = { 0 };
 
-	session = (struct tf_session *)tfp->session->core_data;
-
 	/* Get Table Scope control block from the session pool */
 	aparms.rm_db = eem_db[TF_DIR_RX];
-	aparms.db_index = 1/**** TYPE TABLE-SCOPE??? ****/;
+	aparms.db_index = TF_EEM_DB_TBL_SCOPE;
 	aparms.index = (uint32_t *)&parms->tbl_scope_id;
 	rc = tf_rm_allocate(&aparms);
 	if (rc) {
@@ -999,8 +995,7 @@ tf_em_ext_host_alloc(struct tf *tfp,
 		return rc;
 	}
 
-	parms->tbl_scope_id -= TF_HACK_TBL_SCOPE_BASE;
-	tbl_scope_cb = &session->tbl_scopes[parms->tbl_scope_id];
+	tbl_scope_cb = &tbl_scopes[parms->tbl_scope_id];
 	tbl_scope_cb->index = parms->tbl_scope_id;
 	tbl_scope_cb->tbl_scope_id = parms->tbl_scope_id;
 
@@ -1092,8 +1087,8 @@ cleanup_full:
 cleanup:
 	/* Free Table control block */
 	fparms.rm_db = eem_db[TF_DIR_RX];
-	fparms.db_index = 1/**** TYPE TABLE-SCOPE??? ****/;
-	fparms.index = parms->tbl_scope_id + TF_HACK_TBL_SCOPE_BASE;
+	fparms.db_index = TF_EEM_DB_TBL_SCOPE;
+	fparms.index = parms->tbl_scope_id;
 	tf_rm_free(&fparms);
 	return -EINVAL;
 }
@@ -1105,13 +1100,9 @@ tf_em_ext_host_free(struct tf *tfp,
 	int rc = 0;
 	enum tf_dir  dir;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
-	struct tf_session *session;
 	struct tf_rm_free_parms aparms = { 0 };
 
-	session = (struct tf_session *)(tfp->session->core_data);
-
-	tbl_scope_cb = tbl_scope_cb_find(session,
-					 parms->tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
 
 	if (tbl_scope_cb == NULL) {
 		TFP_DRV_LOG(ERR, "Table scope error\n");
@@ -1120,8 +1111,8 @@ tf_em_ext_host_free(struct tf *tfp,
 
 	/* Free Table control block */
 	aparms.rm_db = eem_db[TF_DIR_RX];
-	aparms.db_index = 1/**** TYPE TABLE-SCOPE??? ****/;
-	aparms.index = parms->tbl_scope_id + TF_HACK_TBL_SCOPE_BASE;
+	aparms.db_index = TF_EEM_DB_TBL_SCOPE;
+	aparms.index = parms->tbl_scope_id;
 	rc = tf_rm_free(&aparms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -1142,5 +1133,6 @@ tf_em_ext_host_free(struct tf *tfp,
 		tf_em_ctx_unreg(tfp, tbl_scope_cb, dir);
 	}
 
+	tbl_scopes[parms->tbl_scope_id].tbl_scope_id = -1;
 	return rc;
 }

@@ -100,9 +100,6 @@ struct tf_session {
 
 	/** Device handle */
 	struct tf_dev_info dev;
-
-	/** Table scope array */
-	struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
 };
 
 /**

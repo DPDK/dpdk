@@ -29,6 +29,8 @@
  */
 void *eem_db[TF_DIR_MAX];
 
+#define TF_EEM_DB_TBL_SCOPE 1
+
 /**
  * Init flag, set on bind and cleared on unbind
  */
@@ -39,10 +41,12 @@ static uint8_t init;
  */
 static enum tf_mem_type mem_type;
 
+/** Table scope array */
+struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
+
 /* API defined in tf_em.h */
 struct tf_tbl_scope_cb *
-tbl_scope_cb_find(struct tf_session *session,
-		  uint32_t tbl_scope_id)
+tbl_scope_cb_find(uint32_t tbl_scope_id)
 {
 	int i;
 	struct tf_rm_is_allocated_parms parms;
@@ -50,8 +54,8 @@ tbl_scope_cb_find(struct tf_session *session,
 
 	/* Check that id is valid */
 	parms.rm_db = eem_db[TF_DIR_RX];
-	parms.db_index = 1/**** TYPE TABLE-SCOPE??? ****/;
-	parms.index = tbl_scope_id + TF_HACK_TBL_SCOPE_BASE;
+	parms.db_index = TF_EEM_DB_TBL_SCOPE;
+	parms.index = tbl_scope_id;
 	parms.allocated = &allocated;
 
 	i = tf_rm_is_allocated(&parms);
@@ -60,8 +64,8 @@ tbl_scope_cb_find(struct tf_session *session,
 		return NULL;
 
 	for (i = 0; i < TF_NUM_TBL_SCOPE; i++) {
-		if (session->tbl_scopes[i].tbl_scope_id == tbl_scope_id)
-			return &session->tbl_scopes[i];
+		if (tbl_scopes[i].tbl_scope_id == tbl_scope_id)
+			return &tbl_scopes[i];
 	}
 
 	return NULL;

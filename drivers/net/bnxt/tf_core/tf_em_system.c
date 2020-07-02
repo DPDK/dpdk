@@ -63,14 +63,12 @@ tf_delete_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb __rte_unused,
  *    -EINVAL - Error
  */
 int
-tf_em_insert_ext_sys_entry(struct tf *tfp,
+tf_em_insert_ext_sys_entry(struct tf *tfp __rte_unused,
 			   struct tf_insert_em_entry_parms *parms)
 {
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 
-	tbl_scope_cb = tbl_scope_cb_find
-		((struct tf_session *)(tfp->session->core_data),
-		parms->tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
 	if (tbl_scope_cb == NULL) {
 		TFP_DRV_LOG(ERR, "Invalid tbl_scope_cb\n");
 		return -EINVAL;
@@ -87,14 +85,12 @@ tf_em_insert_ext_sys_entry(struct tf *tfp,
  *    -EINVAL - Error
  */
 int
-tf_em_delete_ext_sys_entry(struct tf *tfp,
+tf_em_delete_ext_sys_entry(struct tf *tfp __rte_unused,
 			   struct tf_delete_em_entry_parms *parms)
 {
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 
-	tbl_scope_cb = tbl_scope_cb_find
-		((struct tf_session *)(tfp->session->core_data),
-		parms->tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
 	if (tbl_scope_cb == NULL) {
 		TFP_DRV_LOG(ERR, "Invalid tbl_scope_cb\n");
 		return -EINVAL;

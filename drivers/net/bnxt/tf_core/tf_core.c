@@ -573,7 +573,7 @@ tf_free_tcam_entry(struct tf *tfp,
 	rc = dev->ops->tf_dev_free_tcam(tfp, &fparms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
-			    "%s: TCAM allocation failed, rc:%s\n",
+			    "%s: TCAM free failed, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
 			    strerror(-rc));
 		return rc;

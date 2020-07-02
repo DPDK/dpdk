@@ -14,8 +14,6 @@
  * Function to search for table scope control block structure
  * with specified table scope ID.
  *
- * [in] session
- *   Session to use for the search of the table scope control block
  * [in] tbl_scope_id
  *   Table scope ID to search for
  *
@@ -23,8 +21,7 @@
  *  Pointer to the found table scope control block struct or NULL if
  *   table scope control block struct not found
  */
-struct tf_tbl_scope_cb *tbl_scope_cb_find(struct tf_session *session,
-					  uint32_t tbl_scope_id);
+struct tf_tbl_scope_cb *tbl_scope_cb_find(uint32_t tbl_scope_id);
 
 /**
  * Create and initialize a stack to use for action entries
