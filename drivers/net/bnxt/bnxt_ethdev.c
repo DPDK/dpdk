@@ -1115,12 +1115,15 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 {
 #ifdef RTE_ARCH_X86
 #ifndef RTE_LIBRTE_IEEE1588
+	struct bnxt *bp = eth_dev->data->dev_private;
+
 	/*
 	 * Vector mode transmit can be enabled only if not using scatter rx
 	 * or tx offloads.
 	 */
 	if (!eth_dev->data->scattered_rx &&
-	    !eth_dev->data->dev_conf.txmode.offloads) {
+	    !eth_dev->data->dev_conf.txmode.offloads &&
+	    !BNXT_TRUFLOW_EN(bp)) {
 		PMD_DRV_LOG(INFO, "Using vector mode transmit for port %d\n",
 			    eth_dev->data->port_id);
 		return bnxt_xmit_pkts_vec;
