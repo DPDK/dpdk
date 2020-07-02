@@ -992,6 +992,111 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 /* HWRM Tunneled messages */
 
 int
+tf_msg_get_global_cfg(struct tf *tfp,
+		      struct tf_dev_global_cfg_parms *params)
+{
+	int rc = 0;
+	struct tfp_send_msg_parms parms = { 0 };
+	tf_get_global_cfg_input_t req = { 0 };
+	tf_get_global_cfg_output_t resp = { 0 };
+	uint32_t flags = 0;
+	uint8_t fw_session_id;
+	uint16_t resp_size = 0;
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(params->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	flags = (params->dir == TF_DIR_TX ?
+		 TF_GET_GLOBAL_CFG_INPUT_FLAGS_DIR_TX :
+		 TF_GET_GLOBAL_CFG_INPUT_FLAGS_DIR_RX);
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_32(flags);
+	req.type = tfp_cpu_to_le_32(params->type);
+	req.offset = tfp_cpu_to_le_32(params->offset);
+	req.size = tfp_cpu_to_le_32(params->config_sz_in_bytes);
+
+	MSG_PREP(parms,
+		 TF_KONG_MB,
+		 HWRM_TF,
+		 HWRM_TFT_GET_GLOBAL_CFG,
+		 req,
+		 resp);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+
+	if (rc != 0)
+		return rc;
+
+	/* Verify that we got enough buffer to return the requested data */
+	resp_size = tfp_le_to_cpu_16(resp.size);
+	if (resp_size < params->config_sz_in_bytes)
+		return -EINVAL;
+
+	if (params->config)
+		tfp_memcpy(params->config,
+			   resp.data,
+			   resp_size);
+	else
+		return -EFAULT;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+int
+tf_msg_set_global_cfg(struct tf *tfp,
+		      struct tf_dev_global_cfg_parms *params)
+{
+	int rc = 0;
+	struct tfp_send_msg_parms parms = { 0 };
+	tf_set_global_cfg_input_t req = { 0 };
+	uint32_t flags = 0;
+	uint8_t fw_session_id;
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(params->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	flags = (params->dir == TF_DIR_TX ?
+		 TF_SET_GLOBAL_CFG_INPUT_FLAGS_DIR_TX :
+		 TF_SET_GLOBAL_CFG_INPUT_FLAGS_DIR_RX);
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_32(flags);
+	req.type = tfp_cpu_to_le_32(params->type);
+	req.offset = tfp_cpu_to_le_32(params->offset);
+	tfp_memcpy(req.data, params->config,
+		   params->config_sz_in_bytes);
+	req.size = tfp_cpu_to_le_32(params->config_sz_in_bytes);
+
+	MSG_PREP_NO_RESP(parms,
+			 TF_KONG_MB,
+			 HWRM_TF,
+			 HWRM_TFT_SET_GLOBAL_CFG,
+			 req);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+
+	if (rc != 0)
+		return rc;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+int
 tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 			  enum tf_dir dir,
 			  uint16_t hcapi_type,
@@ -1066,8 +1171,8 @@ tf_msg_get_if_tbl_entry(struct tf *tfp,
 		return rc;
 	}
 
-	flags = (params->dir == TF_DIR_TX ? TF_IF_TBL_SET_INPUT_FLAGS_DIR_TX :
-		 TF_IF_TBL_SET_INPUT_FLAGS_DIR_RX);
+	flags = (params->dir == TF_DIR_TX ? TF_IF_TBL_GET_INPUT_FLAGS_DIR_TX :
+		 TF_IF_TBL_GET_INPUT_FLAGS_DIR_RX);
 
 	/* Populate the request */
 	req.fw_session_id =

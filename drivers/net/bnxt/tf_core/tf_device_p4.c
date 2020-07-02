@@ -108,6 +108,8 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_free_tbl_scope = NULL,
 	.tf_dev_set_if_tbl = NULL,
 	.tf_dev_get_if_tbl = NULL,
+	.tf_dev_set_global_cfg = NULL,
+	.tf_dev_get_global_cfg = NULL,
 };
 
 /**
@@ -140,4 +142,6 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_free_tbl_scope = tf_em_ext_common_free,
 	.tf_dev_set_if_tbl = tf_if_tbl_set,
 	.tf_dev_get_if_tbl = tf_if_tbl_get,
+	.tf_dev_set_global_cfg = tf_global_cfg_set,
+	.tf_dev_get_global_cfg = tf_global_cfg_get,
 };

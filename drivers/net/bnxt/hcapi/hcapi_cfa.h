@@ -245,6 +245,9 @@ int hcapi_cfa_p4_wc_tcam_rec_hwop(struct hcapi_cfa_hwop *op,
 				   struct hcapi_cfa_data *obj_data);
 int hcapi_cfa_p4_mirror_hwop(struct hcapi_cfa_hwop *op,
 			     struct hcapi_cfa_data *mirror);
+int hcapi_cfa_p4_global_cfg_hwop(struct hcapi_cfa_hwop *op,
+				 uint32_t type,
+				 struct hcapi_cfa_data *config);
 #endif /* SUPPORT_CFA_HW_P4 */
 /**
  *  HCAPI CFA device HW operation function callback definition

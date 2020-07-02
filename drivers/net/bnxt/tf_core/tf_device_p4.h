@@ -11,6 +11,7 @@
 #include "tf_core.h"
 #include "tf_rm.h"
 #include "tf_if_tbl.h"
+#include "tf_global_cfg.h"
 
 struct tf_rm_element_cfg tf_ident_p4[TF_IDENT_TYPE_MAX] = {
 	{ TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P4_L2_CTXT_REMAP },
@@ -96,4 +97,8 @@ struct tf_if_tbl_cfg tf_if_tbl_p4[TF_IF_TBL_TYPE_MAX] = {
 	{ TF_IF_TBL_CFG_NULL, CFA_IF_TBL_TYPE_INVALID }
 };
 
+struct tf_global_cfg_cfg tf_global_cfg_p4[TF_GLOBAL_CFG_TYPE_MAX] = {
+	{ TF_GLOBAL_CFG_CFG_HCAPI, TF_TUNNEL_ENCAP },
+	{ TF_GLOBAL_CFG_CFG_HCAPI, TF_ACTION_BLOCK },
+};
 #endif /* _TF_DEVICE_P4_H_ */

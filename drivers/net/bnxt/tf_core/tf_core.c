@@ -11,6 +11,7 @@
 #include "tf_tbl.h"
 #include "tf_em.h"
 #include "tf_rm.h"
+#include "tf_global_cfg.h"
 #include "tf_msg.h"
 #include "tfp.h"
 #include "bitalloc.h"
@@ -269,6 +270,142 @@ int tf_delete_em_entry(struct tf *tfp,
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s: EM delete failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return rc;
+}
+
+/** Get global configuration API
+ *
+ *    returns:
+ *    0       - Success
+ *    -EINVAL - Error
+ */
+int tf_get_global_cfg(struct tf *tfp,
+		      struct tf_global_cfg_parms *parms)
+{
+	int rc = 0;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_dev_global_cfg_parms gparms = { 0 };
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (parms->config == NULL ||
+	   parms->config_sz_in_bytes == 0) {
+		TFP_DRV_LOG(ERR, "Invalid Argument(s)\n");
+		return -EINVAL;
+	}
+
+	if (dev->ops->tf_dev_get_global_cfg == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return -EOPNOTSUPP;
+	}
+
+	gparms.dir = parms->dir;
+	gparms.type = parms->type;
+	gparms.offset = parms->offset;
+	gparms.config = parms->config;
+	gparms.config_sz_in_bytes = parms->config_sz_in_bytes;
+	rc = dev->ops->tf_dev_get_global_cfg(tfp, &gparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Global Cfg get failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return rc;
+}
+
+/** Set global configuration API
+ *
+ *    returns:
+ *    0       - Success
+ *    -EINVAL - Error
+ */
+int tf_set_global_cfg(struct tf *tfp,
+		      struct tf_global_cfg_parms *parms)
+{
+	int rc = 0;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_dev_global_cfg_parms gparms = { 0 };
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (parms->config == NULL ||
+	   parms->config_sz_in_bytes == 0) {
+		TFP_DRV_LOG(ERR, "Invalid Argument(s)\n");
+		return -EINVAL;
+	}
+
+	if (dev->ops->tf_dev_set_global_cfg == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return -EOPNOTSUPP;
+	}
+
+	gparms.dir = parms->dir;
+	gparms.type = parms->type;
+	gparms.offset = parms->offset;
+	gparms.config = parms->config;
+	gparms.config_sz_in_bytes = parms->config_sz_in_bytes;
+	rc = dev->ops->tf_dev_set_global_cfg(tfp, &gparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Global Cfg set failed, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
 			    strerror(-rc));
 		return rc;

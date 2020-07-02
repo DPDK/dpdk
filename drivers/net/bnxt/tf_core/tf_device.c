@@ -45,6 +45,7 @@ tf_dev_bind_p4(struct tf *tfp,
 	struct tf_tcam_cfg_parms tcam_cfg;
 	struct tf_em_cfg_parms em_cfg;
 	struct tf_if_tbl_cfg_parms if_tbl_cfg;
+	struct tf_global_cfg_cfg_parms global_cfg;
 
 	dev_handle->type = TF_DEVICE_TYPE_WH;
 	/* Initial function initialization */
@@ -128,6 +129,18 @@ tf_dev_bind_p4(struct tf *tfp,
 		goto fail;
 	}
 
+	/*
+	 * GLOBAL_CFG
+	 */
+	global_cfg.num_elements = TF_GLOBAL_CFG_TYPE_MAX;
+	global_cfg.cfg = tf_global_cfg_p4;
+	rc = tf_global_cfg_bind(tfp, &global_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Global Cfg initialization failure\n");
+		goto fail;
+	}
+
 	/* Final function initialization */
 	dev_handle->ops = &tf_dev_ops_p4;
 
@@ -204,6 +217,13 @@ tf_dev_unbind_p4(struct tf *tfp)
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "Device unbind failed, IF Table Type\n");
+		fail = true;
+	}
+
+	rc = tf_global_cfg_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, Global Cfg Type\n");
 		fail = true;
 	}
 

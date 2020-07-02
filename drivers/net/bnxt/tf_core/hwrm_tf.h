@@ -13,8 +13,8 @@ typedef enum tf_type {
 } tf_type_t;
 
 typedef enum tf_subtype {
-	HWRM_TFT_REG_GET = 821,
-	HWRM_TFT_REG_SET = 822,
+	HWRM_TFT_GET_GLOBAL_CFG = 821,
+	HWRM_TFT_SET_GLOBAL_CFG = 822,
 	HWRM_TFT_TBL_TYPE_BULK_GET = 825,
 	HWRM_TFT_IF_TBL_SET = 827,
 	HWRM_TFT_IF_TBL_GET = 828,
@@ -66,18 +66,66 @@ typedef enum tf_subtype {
 #define TF_BITS2BYTES(x) (((x) + 7) >> 3)
 #define TF_BITS2BYTES_WORD_ALIGN(x) ((((x) + 31) >> 5) * 4)
 
+struct tf_set_global_cfg_input;
+struct tf_get_global_cfg_input;
+struct tf_get_global_cfg_output;
 struct tf_tbl_type_bulk_get_input;
 struct tf_tbl_type_bulk_get_output;
 struct tf_if_tbl_set_input;
 struct tf_if_tbl_get_input;
 struct tf_if_tbl_get_output;
+/* Input params for global config set */
+typedef struct tf_set_global_cfg_input {
+	/* Session Id */
+	uint32_t			 fw_session_id;
+	/* flags */
+	uint32_t			 flags;
+	/* When set to 0, indicates the query apply to RX */
+#define TF_SET_GLOBAL_CFG_INPUT_FLAGS_DIR_RX		  (0x0)
+	/* When set to 1, indicates the query apply to TX */
+#define TF_SET_GLOBAL_CFG_INPUT_FLAGS_DIR_TX		  (0x1)
+	/* Config type */
+	uint32_t			 type;
+	/* Offset of the type */
+	uint32_t			 offset;
+	/* Size of the data to set in bytes */
+	uint16_t			 size;
+	/* Data to set */
+	uint8_t			  data[TF_BULK_SEND];
+} tf_set_global_cfg_input_t, *ptf_set_global_cfg_input_t;
+
+/* Input params for global config to get */
+typedef struct tf_get_global_cfg_input {
+	/* Session Id */
+	uint32_t			 fw_session_id;
+	/* flags */
+	uint32_t			 flags;
+	/* When set to 0, indicates the query apply to RX */
+#define TF_GET_GLOBAL_CFG_INPUT_FLAGS_DIR_RX		  (0x0)
+	/* When set to 1, indicates the query apply to TX */
+#define TF_GET_GLOBAL_CFG_INPUT_FLAGS_DIR_TX		  (0x1)
+	/* Config to retrieve */
+	uint32_t			 type;
+	/* Offset to retrieve */
+	uint32_t			 offset;
+	/* Size of the data to set in bytes */
+	uint16_t			 size;
+} tf_get_global_cfg_input_t, *ptf_get_global_cfg_input_t;
+
+/* Output params for global config */
+typedef struct tf_get_global_cfg_output {
+	/* Size of the total data read in bytes */
+	uint16_t			 size;
+	/* Data to get */
+	uint8_t			  data[TF_BULK_SEND];
+} tf_get_global_cfg_output_t, *ptf_get_global_cfg_output_t;
 
 /* Input params for table type get */
 typedef struct tf_tbl_type_bulk_get_input {
 	/* Session Id */
 	uint32_t			 fw_session_id;
 	/* flags */
-	uint16_t			 flags;
+	uint32_t			 flags;
 	/* When set to 0, indicates the get apply to RX */
 #define TF_TBL_TYPE_BULK_GET_INPUT_FLAGS_DIR_RX	   (0x0)
 	/* When set to 1, indicates the get apply to TX */

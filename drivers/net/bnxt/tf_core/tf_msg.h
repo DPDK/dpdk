@@ -12,6 +12,7 @@
 #include "tf_tbl.h"
 #include "tf_rm.h"
 #include "tf_tcam.h"
+#include "tf_global_cfg.h"
 
 struct tf;
 
@@ -447,6 +448,36 @@ int tf_msg_get_tbl_entry(struct tf *tfp,
 			 uint32_t index);
 
 /* HWRM Tunneled messages */
+
+/**
+ * Sends global cfg read request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] params
+ *   Pointer to read parameters
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_get_global_cfg(struct tf *tfp,
+			  struct tf_dev_global_cfg_parms *params);
+
+/**
+ * Sends global cfg update request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] params
+ *   Pointer to write parameters
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_set_global_cfg(struct tf *tfp,
+			  struct tf_dev_global_cfg_parms *params);
 
 /**
  * Sends bulk get message of a Table Type element to the firmware.

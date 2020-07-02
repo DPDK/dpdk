@@ -1612,6 +1612,83 @@ int tf_search_em_entry(struct tf *tfp,
 		       struct tf_search_em_entry_parms *parms);
 
 /**
+ * @page global Global Configuration
+ *
+ * @ref tf_set_global_cfg
+ *
+ * @ref tf_get_global_cfg
+ */
+/**
+ * Tunnel Encapsulation Offsets
+ */
+enum tf_tunnel_encap_offsets {
+	TF_TUNNEL_ENCAP_L2,
+	TF_TUNNEL_ENCAP_NAT,
+	TF_TUNNEL_ENCAP_MPLS,
+	TF_TUNNEL_ENCAP_VXLAN,
+	TF_TUNNEL_ENCAP_GENEVE,
+	TF_TUNNEL_ENCAP_NVGRE,
+	TF_TUNNEL_ENCAP_GRE,
+	TF_TUNNEL_ENCAP_FULL_GENERIC
+};
+/**
+ * Global Configuration Table Types
+ */
+enum tf_global_config_type {
+	TF_TUNNEL_ENCAP,  /**< Tunnel Encap Config(TECT) */
+	TF_ACTION_BLOCK,  /**< Action Block Config(ABCR) */
+	TF_GLOBAL_CFG_TYPE_MAX
+};
+
+/**
+ * tf_global_cfg parameter definition
+ */
+struct tf_global_cfg_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Global config type
+	 */
+	enum tf_global_config_type type;
+	/**
+	 * [in] Offset @ the type
+	 */
+	uint32_t offset;
+	/**
+	 * [in/out] Value of the configuration
+	 * set - Read, Modify and Write
+	 * get - Read the full configuration
+	 */
+	uint8_t *config;
+	/**
+	 * [in] struct containing size
+	 */
+	uint16_t config_sz_in_bytes;
+};
+
+/**
+ * Get global configuration
+ *
+ * Retrieve the configuration
+ *
+ * Returns success or failure code.
+ */
+int tf_get_global_cfg(struct tf *tfp,
+		      struct tf_global_cfg_parms *parms);
+
+/**
+ * Update the global configuration table
+ *
+ * Read, modify write the value.
+ *
+ * Returns success or failure code.
+ */
+int tf_set_global_cfg(struct tf *tfp,
+		      struct tf_global_cfg_parms *parms);
+
+/**
  * @page if_tbl Interface Table Access
  *
  * @ref tf_set_if_tbl_entry

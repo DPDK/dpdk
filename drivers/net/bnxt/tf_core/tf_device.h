@@ -11,6 +11,7 @@
 #include "tf_tbl.h"
 #include "tf_tcam.h"
 #include "tf_if_tbl.h"
+#include "tf_global_cfg.h"
 
 struct tf;
 struct tf_session;
@@ -606,6 +607,38 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_get_if_tbl)(struct tf *tfp,
 				 struct tf_if_tbl_get_parms *parms);
+
+	/**
+	 * Update global cfg
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to global cfg parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_set_global_cfg)(struct tf *tfp,
+				     struct tf_dev_global_cfg_parms *parms);
+
+	/**
+	 * Get global cfg
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to global cfg parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_get_global_cfg)(struct tf *tfp,
+				     struct tf_dev_global_cfg_parms *parms);
 };
 
 /**
