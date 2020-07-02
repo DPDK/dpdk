@@ -9,7 +9,7 @@
 #include "tf_tcam.h"
 #include "tf_common.h"
 #include "tf_util.h"
-#include "tf_rm_new.h"
+#include "tf_rm.h"
 #include "tf_device.h"
 #include "tfp.h"
 #include "tf_session.h"
@@ -49,7 +49,7 @@ tf_tcam_bind(struct tf *tfp,
 
 	if (init) {
 		TFP_DRV_LOG(ERR,
-			    "TCAM already initialized\n");
+			    "TCAM DB already initialized\n");
 		return -EINVAL;
 	}
 
@@ -86,11 +86,12 @@ tf_tcam_unbind(struct tf *tfp)
 
 	TF_CHECK_PARMS1(tfp);
 
-	/* Bail if nothing has been initialized done silent as to
-	 * allow for creation cleanup.
-	 */
-	if (!init)
-		return -EINVAL;
+	/* Bail if nothing has been initialized */
+	if (!init) {
+		TFP_DRV_LOG(INFO,
+			    "No TCAM DBs created\n");
+		return 0;
+	}
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		fparms.dir = i;

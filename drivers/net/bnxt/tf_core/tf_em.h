@@ -23,6 +23,56 @@
 #define TF_EM_MAX_MASK 0x7FFF
 #define TF_EM_MAX_ENTRY (128 * 1024 * 1024)
 
+/**
+ * Hardware Page sizes supported for EEM:
+ *   4K, 8K, 64K, 256K, 1M, 2M, 4M, 1G.
+ *
+ * Round-down other page sizes to the lower hardware page
+ * size supported.
+ */
+#define TF_EM_PAGE_SIZE_4K 12
+#define TF_EM_PAGE_SIZE_8K 13
+#define TF_EM_PAGE_SIZE_64K 16
+#define TF_EM_PAGE_SIZE_256K 18
+#define TF_EM_PAGE_SIZE_1M 20
+#define TF_EM_PAGE_SIZE_2M 21
+#define TF_EM_PAGE_SIZE_4M 22
+#define TF_EM_PAGE_SIZE_1G 30
+
+/* Set page size */
+#define BNXT_TF_PAGE_SIZE TF_EM_PAGE_SIZE_2M
+
+#if (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_4K)	/** 4K */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_4K
+#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_4K
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_8K)	/** 8K */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_8K
+#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_8K
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_64K)	/** 64K */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_64K
+#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_64K
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_256K)	/** 256K */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_256K
+#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_256K
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_1M)	/** 1M */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_1M
+#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_1M
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_2M)	/** 2M */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_2M
+#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_2M
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_4M)	/** 4M */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_4M
+#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_4M
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_1G)	/** 1G */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_1G
+#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_1G
+#else
+#error "Invalid Page Size specified. Please use a TF_EM_PAGE_SIZE_n define"
+#endif
+
+#define TF_EM_PAGE_SIZE	(1 << TF_EM_PAGE_SHIFT)
+#define TF_EM_PAGE_ALIGNMENT (1 << TF_EM_PAGE_SHIFT)
+
 /*
  * Used to build GFID:
  *
@@ -80,13 +130,43 @@ struct tf_em_cfg_parms {
 };
 
 /**
- * @page table Table
+ * @page em EM
  *
  * @ref tf_alloc_eem_tbl_scope
  *
  * @ref tf_free_eem_tbl_scope_cb
  *
- * @ref tbl_scope_cb_find
+ * @ref tf_em_insert_int_entry
+ *
+ * @ref tf_em_delete_int_entry
+ *
+ * @ref tf_em_insert_ext_entry
+ *
+ * @ref tf_em_delete_ext_entry
+ *
+ * @ref tf_em_insert_ext_sys_entry
+ *
+ * @ref tf_em_delete_ext_sys_entry
+ *
+ * @ref tf_em_int_bind
+ *
+ * @ref tf_em_int_unbind
+ *
+ * @ref tf_em_ext_common_bind
+ *
+ * @ref tf_em_ext_common_unbind
+ *
+ * @ref tf_em_ext_host_alloc
+ *
+ * @ref tf_em_ext_host_free
+ *
+ * @ref tf_em_ext_system_alloc
+ *
+ * @ref tf_em_ext_system_free
+ *
+ * @ref tf_em_ext_common_free
+ *
+ * @ref tf_em_ext_common_alloc
  */
 
 /**
@@ -328,7 +408,7 @@ int tf_em_ext_host_free(struct tf *tfp,
  *   -EINVAL - Parameter error
  */
 int tf_em_ext_system_alloc(struct tf *tfp,
-			 struct tf_alloc_tbl_scope_parms *parms);
+			   struct tf_alloc_tbl_scope_parms *parms);
 
 /**
  * Free for external EEM using system memory
@@ -344,7 +424,7 @@ int tf_em_ext_system_alloc(struct tf *tfp,
  *   -EINVAL - Parameter error
  */
 int tf_em_ext_system_free(struct tf *tfp,
-			struct tf_free_tbl_scope_parms *parms);
+			  struct tf_free_tbl_scope_parms *parms);
 
 /**
  * Common free for external EEM using host or system memory

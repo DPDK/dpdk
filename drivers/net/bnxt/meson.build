@@ -41,10 +41,9 @@ sources = files('bnxt_cpr.c',
 	'tf_core/tf_identifier.c',
 	'tf_core/tf_shadow_tbl.c',
 	'tf_core/tf_shadow_tcam.c',
-	'tf_core/tf_tbl_type.c',
 	'tf_core/tf_tcam.c',
 	'tf_core/tf_util.c',
-	'tf_core/tf_rm_new.c',
+	'tf_core/tf_rm.c',
 
 	'hcapi/hcapi_cfa_p4.c',
 

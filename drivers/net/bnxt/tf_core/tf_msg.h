@@ -11,7 +11,6 @@
 
 #include "tf_tbl.h"
 #include "tf_rm.h"
-#include "tf_rm_new.h"
 #include "tf_tcam.h"
 
 struct tf;
@@ -422,6 +421,11 @@ int tf_msg_get_tbl_entry(struct tf *tfp,
  *  0 on Success else internal Truflow error
  */
 int tf_msg_bulk_get_tbl_entry(struct tf *tfp,
-			  struct tf_bulk_get_tbl_entry_parms *parms);
+			      enum tf_dir dir,
+			      uint16_t hcapi_type,
+			      uint32_t starting_idx,
+			      uint16_t num_entries,
+			      uint16_t entry_sz_in_bytes,
+			      uint64_t physical_mem_addr);
 
 #endif  /* _TF_MSG_H_ */

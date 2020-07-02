@@ -8,7 +8,7 @@
 
 #include "tf_core.h"
 #include "tf_identifier.h"
-#include "tf_tbl_type.h"
+#include "tf_tbl.h"
 #include "tf_tcam.h"
 
 struct tf;
@@ -293,7 +293,27 @@ struct tf_dev_ops {
 	 *   - (-EINVAL) on failure.
 	 */
 	int (*tf_dev_get_tbl)(struct tf *tfp,
-			       struct tf_tbl_get_parms *parms);
+			      struct tf_tbl_get_parms *parms);
+
+	/**
+	 * Retrieves the specified table type element using 'bulk'
+	 * mechanism.
+	 *
+	 * This API retrieves the specified element data by invoking the
+	 * firmware.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table get bulk parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_bulk_tbl)(struct tf *tfp,
+				   struct tf_tbl_get_bulk_parms *parms);
 
 	/**
 	 * Allocation of a tcam element.

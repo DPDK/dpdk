@@ -186,7 +186,7 @@ int tf_insert_em_entry(struct tf *tfp,
 	struct tf_dev_info     *dev;
 	int rc;
 
-	TF_CHECK_PARMS_SESSION(tfp, parms);
+	TF_CHECK_PARMS2(tfp, parms);
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
@@ -241,7 +241,7 @@ int tf_delete_em_entry(struct tf *tfp,
 	struct tf_dev_info     *dev;
 	int rc;
 
-	TF_CHECK_PARMS_SESSION(tfp, parms);
+	TF_CHECK_PARMS2(tfp, parms);
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
@@ -523,7 +523,7 @@ int
 tf_get_tcam_entry(struct tf *tfp __rte_unused,
 		  struct tf_get_tcam_entry_parms *parms __rte_unused)
 {
-	TF_CHECK_PARMS_SESSION(tfp, parms);
+	TF_CHECK_PARMS2(tfp, parms);
 	return -EOPNOTSUPP;
 }
 
@@ -821,7 +821,80 @@ tf_get_tbl_entry(struct tf *tfp,
 	return rc;
 }
 
-/* API defined in tf_core.h */
+int
+tf_bulk_get_tbl_entry(struct tf *tfp,
+		 struct tf_bulk_get_tbl_entry_parms *parms)
+{
+	int rc = 0;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_tbl_get_bulk_parms bparms;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Can't do static initialization due to UT enum check */
+	memset(&bparms, 0, sizeof(struct tf_tbl_get_bulk_parms));
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (parms->type == TF_TBL_TYPE_EXT) {
+		/* Not supported, yet */
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s, External table type not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+
+		return rc;
+	}
+
+	/* Internal table type processing */
+
+	if (dev->ops->tf_dev_get_bulk_tbl == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return -EOPNOTSUPP;
+	}
+
+	bparms.dir = parms->dir;
+	bparms.type = parms->type;
+	bparms.starting_idx = parms->starting_idx;
+	bparms.num_entries = parms->num_entries;
+	bparms.entry_sz_in_bytes = parms->entry_sz_in_bytes;
+	bparms.physical_mem_addr = parms->physical_mem_addr;
+	rc = dev->ops->tf_dev_get_bulk_tbl(tfp, &bparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Table get bulk failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return rc;
+}
+
 int
 tf_alloc_tbl_scope(struct tf *tfp,
 		   struct tf_alloc_tbl_scope_parms *parms)
@@ -830,7 +903,7 @@ tf_alloc_tbl_scope(struct tf *tfp,
 	struct tf_dev_info *dev;
 	int rc;
 
-	TF_CHECK_PARMS_SESSION_NO_DIR(tfp, parms);
+	TF_CHECK_PARMS2(tfp, parms);
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
@@ -861,7 +934,6 @@ tf_alloc_tbl_scope(struct tf *tfp,
 	return rc;
 }
 
-/* API defined in tf_core.h */
 int
 tf_free_tbl_scope(struct tf *tfp,
 		  struct tf_free_tbl_scope_parms *parms)
@@ -870,7 +942,7 @@ tf_free_tbl_scope(struct tf *tfp,
 	struct tf_dev_info *dev;
 	int rc;
 
-	TF_CHECK_PARMS_SESSION_NO_DIR(tfp, parms);
+	TF_CHECK_PARMS2(tfp, parms);
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);

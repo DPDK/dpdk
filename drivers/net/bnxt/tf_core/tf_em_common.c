@@ -194,12 +194,13 @@ tf_em_ext_common_bind(struct tf *tfp,
 	int rc;
 	int i;
 	struct tf_rm_create_db_parms db_cfg = { 0 };
+	uint8_t db_exists = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
 	if (init) {
 		TFP_DRV_LOG(ERR,
-			    "Identifier already initialized\n");
+			    "EM Ext DB already initialized\n");
 		return -EINVAL;
 	}
 
@@ -210,19 +211,29 @@ tf_em_ext_common_bind(struct tf *tfp,
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		db_cfg.dir = i;
 		db_cfg.alloc_cnt = parms->resources->em_cnt[i].cnt;
+
+		/* Check if we got any request to support EEM, if so
+		 * we build an EM Ext DB holding Table Scopes.
+		 */
+		if (db_cfg.alloc_cnt[TF_EM_TBL_TYPE_TBL_SCOPE] == 0)
+			continue;
+
 		db_cfg.rm_db = &eem_db[i];
 		rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
-				    "%s: EM DB creation failed\n",
+				    "%s: EM Ext DB creation failed\n",
 				    tf_dir_2_str(i));
 
 			return rc;
 		}
+		db_exists = 1;
 	}
 
-	mem_type = parms->mem_type;
-	init = 1;
+	if (db_exists) {
+		mem_type = parms->mem_type;
+		init = 1;
+	}
 
 	return 0;
 }
@@ -236,13 +247,11 @@ tf_em_ext_common_unbind(struct tf *tfp)
 
 	TF_CHECK_PARMS1(tfp);
 
-	/* Bail if nothing has been initialized done silent as to
-	 * allow for creation cleanup.
-	 */
+	/* Bail if nothing has been initialized */
 	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "No EM DBs created\n");
-		return -EINVAL;
+		TFP_DRV_LOG(INFO,
+			    "No EM Ext DBs created\n");
+		return 0;
 	}
 
 	for (i = 0; i < TF_DIR_MAX; i++) {

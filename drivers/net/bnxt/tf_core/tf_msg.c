@@ -871,26 +871,41 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 
 int
 tf_msg_bulk_get_tbl_entry(struct tf *tfp,
-			  struct tf_bulk_get_tbl_entry_parms *params)
+			  enum tf_dir dir,
+			  uint16_t hcapi_type,
+			  uint32_t starting_idx,
+			  uint16_t num_entries,
+			  uint16_t entry_sz_in_bytes,
+			  uint64_t physical_mem_addr)
 {
 	int rc;
 	struct tfp_send_msg_parms parms = { 0 };
 	struct tf_tbl_type_bulk_get_input req = { 0 };
 	struct tf_tbl_type_bulk_get_output resp = { 0 };
-	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+	struct tf_session *tfs;
 	int data_size = 0;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
 
 	/* Populate the request */
 	req.fw_session_id =
 		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
-	req.flags = tfp_cpu_to_le_16(params->dir);
-	req.type = tfp_cpu_to_le_32(params->type);
-	req.start_index = tfp_cpu_to_le_32(params->starting_idx);
-	req.num_entries = tfp_cpu_to_le_32(params->num_entries);
+	req.flags = tfp_cpu_to_le_16(dir);
+	req.type = tfp_cpu_to_le_32(hcapi_type);
+	req.start_index = tfp_cpu_to_le_32(starting_idx);
+	req.num_entries = tfp_cpu_to_le_32(num_entries);
 
-	data_size = params->num_entries * params->entry_sz_in_bytes;
+	data_size = num_entries * entry_sz_in_bytes;
 
-	req.host_addr = tfp_cpu_to_le_64(params->physical_mem_addr);
+	req.host_addr = tfp_cpu_to_le_64(physical_mem_addr);
 
 	MSG_PREP(parms,
 		 TF_KONG_MB,

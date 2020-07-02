@@ -8,7 +8,7 @@
 
 #include "tf_device.h"
 #include "tf_identifier.h"
-#include "tf_tbl_type.h"
+#include "tf_tbl.h"
 #include "tf_tcam.h"
 #include "tf_em.h"
 
@@ -88,6 +88,7 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_alloc_search_tbl = NULL,
 	.tf_dev_set_tbl = NULL,
 	.tf_dev_get_tbl = NULL,
+	.tf_dev_get_bulk_tbl = NULL,
 	.tf_dev_alloc_tcam = NULL,
 	.tf_dev_free_tcam = NULL,
 	.tf_dev_alloc_search_tcam = NULL,
@@ -114,6 +115,7 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_alloc_search_tbl = NULL,
 	.tf_dev_set_tbl = tf_tbl_set,
 	.tf_dev_get_tbl = tf_tbl_get,
+	.tf_dev_get_bulk_tbl = tf_tbl_bulk_get,
 	.tf_dev_alloc_tcam = tf_tcam_alloc,
 	.tf_dev_free_tcam = tf_tcam_free,
 	.tf_dev_alloc_search_tcam = NULL,

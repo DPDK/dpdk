@@ -5,175 +5,413 @@
 
 /* Truflow Table APIs and supporting code */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-#include <math.h>
-#include <sys/param.h>
 #include <rte_common.h>
-#include <rte_errno.h>
-#include "hsi_struct_def_dpdk.h"
 
-#include "tf_core.h"
+#include "tf_tbl.h"
+#include "tf_common.h"
+#include "tf_rm.h"
 #include "tf_util.h"
-#include "tf_em.h"
 #include "tf_msg.h"
 #include "tfp.h"
-#include "hwrm_tf.h"
-#include "bnxt.h"
-#include "tf_resources.h"
-#include "tf_rm.h"
-#include "stack.h"
-#include "tf_common.h"
+
+
+struct tf;
 
 /**
- * Internal function to get a Table Entry. Supports all Table Types
- * except the TF_TBL_TYPE_EXT as that is handled as a table scope.
- *
- * [in] tfp
- *   Pointer to TruFlow handle
- *
- * [in] parms
- *   Pointer to input parameters
- *
- * Returns:
- *   0       - Success
- *   -EINVAL - Parameter error
+ * Table DBs.
  */
-static int
-tf_bulk_get_tbl_entry_internal(struct tf *tfp,
-			  struct tf_bulk_get_tbl_entry_parms *parms)
+static void *tbl_db[TF_DIR_MAX];
+
+/**
+ * Table Shadow DBs
+ */
+/* static void *shadow_tbl_db[TF_DIR_MAX]; */
+
+/**
+ * Init flag, set on bind and cleared on unbind
+ */
+static uint8_t init;
+
+/**
+ * Shadow init flag, set on bind and cleared on unbind
+ */
+/* static uint8_t shadow_init; */
+
+int
+tf_tbl_bind(struct tf *tfp,
+	    struct tf_tbl_cfg_parms *parms)
 {
 	int rc;
-	int id;
-	uint32_t index;
-	struct bitalloc *session_pool;
-	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+	int i;
+	struct tf_rm_create_db_parms db_cfg = { 0 };
 
-	/* Lookup the pool using the table type of the element */
-	rc = tf_rm_lookup_tbl_type_pool(tfs,
-					parms->dir,
-					parms->type,
-					&session_pool);
-	/* Error logging handled by tf_rm_lookup_tbl_type_pool */
-	if (rc)
-		return rc;
+	TF_CHECK_PARMS2(tfp, parms);
 
-	index = parms->starting_idx;
-
-	/*
-	 * Adjust the returned index/offset as there is no guarantee
-	 * that the start is 0 at time of RM allocation
-	 */
-	tf_rm_convert_index(tfs,
-			    parms->dir,
-			    parms->type,
-			    TF_RM_CONVERT_RM_BASE,
-			    parms->starting_idx,
-			    &index);
-
-	/* Verify that the entry has been previously allocated */
-	id = ba_inuse(session_pool, index);
-	if (id != 1) {
+	if (init) {
 		TFP_DRV_LOG(ERR,
-		   "%s, Invalid or not allocated index, type:%d, starting_idx:%d\n",
-		   tf_dir_2_str(parms->dir),
-		   parms->type,
-		   index);
+			    "Table DB already initialized\n");
 		return -EINVAL;
 	}
 
+	db_cfg.num_elements = parms->num_elements;
+	db_cfg.type = TF_DEVICE_MODULE_TYPE_TABLE;
+	db_cfg.num_elements = parms->num_elements;
+	db_cfg.cfg = parms->cfg;
+
+	for (i = 0; i < TF_DIR_MAX; i++) {
+		db_cfg.dir = i;
+		db_cfg.alloc_cnt = parms->resources->tbl_cnt[i].cnt;
+		db_cfg.rm_db = &tbl_db[i];
+		rc = tf_rm_create_db(tfp, &db_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Table DB creation failed\n",
+				    tf_dir_2_str(i));
+
+			return rc;
+		}
+	}
+
+	init = 1;
+
+	printf("Table Type - initialized\n");
+
+	return 0;
+}
+
+int
+tf_tbl_unbind(struct tf *tfp)
+{
+	int rc;
+	int i;
+	struct tf_rm_free_db_parms fparms = { 0 };
+
+	TF_CHECK_PARMS1(tfp);
+
+	/* Bail if nothing has been initialized */
+	if (!init) {
+		TFP_DRV_LOG(INFO,
+			    "No Table DBs created\n");
+		return 0;
+	}
+
+	for (i = 0; i < TF_DIR_MAX; i++) {
+		fparms.dir = i;
+		fparms.rm_db = tbl_db[i];
+		rc = tf_rm_free_db(tfp, &fparms);
+		if (rc)
+			return rc;
+
+		tbl_db[i] = NULL;
+	}
+
+	init = 0;
+
+	return 0;
+}
+
+int
+tf_tbl_alloc(struct tf *tfp __rte_unused,
+	     struct tf_tbl_alloc_parms *parms)
+{
+	int rc;
+	uint32_t idx;
+	struct tf_rm_allocate_parms aparms = { 0 };
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	if (!init) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No Table DBs created\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	/* Allocate requested element */
+	aparms.rm_db = tbl_db[parms->dir];
+	aparms.db_index = parms->type;
+	aparms.index = &idx;
+	rc = tf_rm_allocate(&aparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed allocate, type:%d\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type);
+		return rc;
+	}
+
+	*parms->idx = idx;
+
+	return 0;
+}
+
+int
+tf_tbl_free(struct tf *tfp __rte_unused,
+	    struct tf_tbl_free_parms *parms)
+{
+	int rc;
+	struct tf_rm_is_allocated_parms aparms = { 0 };
+	struct tf_rm_free_parms fparms = { 0 };
+	int allocated = 0;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	if (!init) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No Table DBs created\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	/* Check if element is in use */
+	aparms.rm_db = tbl_db[parms->dir];
+	aparms.db_index = parms->type;
+	aparms.index = parms->idx;
+	aparms.allocated = &allocated;
+	rc = tf_rm_is_allocated(&aparms);
+	if (rc)
+		return rc;
+
+	if (!allocated) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Entry already free, type:%d, index:%d\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    parms->idx);
+		return rc;
+	}
+
+	/* Free requested element */
+	fparms.rm_db = tbl_db[parms->dir];
+	fparms.db_index = parms->type;
+	fparms.index = parms->idx;
+	rc = tf_rm_free(&fparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Free failed, type:%d, index:%d\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    parms->idx);
+		return rc;
+	}
+
+	return 0;
+}
+
+int
+tf_tbl_alloc_search(struct tf *tfp __rte_unused,
+		    struct tf_tbl_alloc_search_parms *parms __rte_unused)
+{
+	return 0;
+}
+
+int
+tf_tbl_set(struct tf *tfp,
+	   struct tf_tbl_set_parms *parms)
+{
+	int rc;
+	int allocated = 0;
+	uint16_t hcapi_type;
+	struct tf_rm_is_allocated_parms aparms = { 0 };
+	struct tf_rm_get_hcapi_parms hparms = { 0 };
+
+	TF_CHECK_PARMS3(tfp, parms, parms->data);
+
+	if (!init) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No Table DBs created\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	/* Verify that the entry has been previously allocated */
+	aparms.rm_db = tbl_db[parms->dir];
+	aparms.db_index = parms->type;
+	aparms.index = parms->idx;
+	aparms.allocated = &allocated;
+	rc = tf_rm_is_allocated(&aparms);
+	if (rc)
+		return rc;
+
+	if (!allocated) {
+		TFP_DRV_LOG(ERR,
+		   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
+		   tf_dir_2_str(parms->dir),
+		   parms->type,
+		   parms->idx);
+		return -EINVAL;
+	}
+
+	/* Set the entry */
+	hparms.rm_db = tbl_db[parms->dir];
+	hparms.db_index = parms->type;
+	hparms.hcapi_type = &hcapi_type;
+	rc = tf_rm_get_hcapi_type(&hparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s, Failed type lookup, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_msg_set_tbl_entry(tfp,
+				  parms->dir,
+				  hcapi_type,
+				  parms->data_sz_in_bytes,
+				  parms->data,
+				  parms->idx);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s, Set failed, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    strerror(-rc));
+	}
+
+	return 0;
+}
+
+int
+tf_tbl_get(struct tf *tfp,
+	   struct tf_tbl_get_parms *parms)
+{
+	int rc;
+	uint16_t hcapi_type;
+	int allocated = 0;
+	struct tf_rm_is_allocated_parms aparms = { 0 };
+	struct tf_rm_get_hcapi_parms hparms = { 0 };
+
+	TF_CHECK_PARMS3(tfp, parms, parms->data);
+
+	if (!init) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No Table DBs created\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	/* Verify that the entry has been previously allocated */
+	aparms.rm_db = tbl_db[parms->dir];
+	aparms.db_index = parms->type;
+	aparms.index = parms->idx;
+	aparms.allocated = &allocated;
+	rc = tf_rm_is_allocated(&aparms);
+	if (rc)
+		return rc;
+
+	if (!allocated) {
+		TFP_DRV_LOG(ERR,
+		   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
+		   tf_dir_2_str(parms->dir),
+		   parms->type,
+		   parms->idx);
+		return -EINVAL;
+	}
+
+	/* Set the entry */
+	hparms.rm_db = tbl_db[parms->dir];
+	hparms.db_index = parms->type;
+	hparms.hcapi_type = &hcapi_type;
+	rc = tf_rm_get_hcapi_type(&hparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s, Failed type lookup, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    strerror(-rc));
+		return rc;
+	}
+
 	/* Get the entry */
-	rc = tf_msg_bulk_get_tbl_entry(tfp, parms);
+	rc = tf_msg_get_tbl_entry(tfp,
+				  parms->dir,
+				  hcapi_type,
+				  parms->data_sz_in_bytes,
+				  parms->data,
+				  parms->idx);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s, Get failed, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    strerror(-rc));
+	}
+
+	return 0;
+}
+
+int
+tf_tbl_bulk_get(struct tf *tfp,
+		struct tf_tbl_get_bulk_parms *parms)
+{
+	int rc;
+	int i;
+	uint16_t hcapi_type;
+	uint32_t idx;
+	int allocated = 0;
+	struct tf_rm_is_allocated_parms aparms = { 0 };
+	struct tf_rm_get_hcapi_parms hparms = { 0 };
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	if (!init) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No Table DBs created\n",
+			    tf_dir_2_str(parms->dir));
+
+		return -EINVAL;
+	}
+	/* Verify that the entries has been previously allocated */
+	aparms.rm_db = tbl_db[parms->dir];
+	aparms.db_index = parms->type;
+	aparms.allocated = &allocated;
+	idx = parms->starting_idx;
+	for (i = 0; i < parms->num_entries; i++) {
+		aparms.index = idx;
+		rc = tf_rm_is_allocated(&aparms);
+		if (rc)
+			return rc;
+
+		if (!allocated) {
+			TFP_DRV_LOG(ERR,
+				    "%s, Invalid or not allocated index, type:%d, idx:%d\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type,
+				    idx);
+			return -EINVAL;
+		}
+		idx++;
+	}
+
+	hparms.rm_db = tbl_db[parms->dir];
+	hparms.db_index = parms->type;
+	hparms.hcapi_type = &hcapi_type;
+	rc = tf_rm_get_hcapi_type(&hparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s, Failed type lookup, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Get the entries */
+	rc = tf_msg_bulk_get_tbl_entry(tfp,
+				       parms->dir,
+				       hcapi_type,
+				       parms->starting_idx,
+				       parms->num_entries,
+				       parms->entry_sz_in_bytes,
+				       parms->physical_mem_addr);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s, Bulk get failed, type:%d, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
 			    parms->type,
 			    strerror(-rc));
-	}
-
-	return rc;
-}
-
-#if (TF_SHADOW == 1)
-/**
- * Allocate Tbl entry from the Shadow DB. Shadow DB is searched for
- * the requested entry. If found the ref count is incremente and
- * returned.
- *
- * [in] tfs
- *   Pointer to session
- * [in] parms
- *   Allocation parameters
- *
- * Return:
- *  0       - Success, entry found and ref count incremented
- *  -ENOENT - Failure, entry not found
- */
-static int
-tf_alloc_tbl_entry_shadow(struct tf_session *tfs __rte_unused,
-			  struct tf_alloc_tbl_entry_parms *parms __rte_unused)
-{
-	TFP_DRV_LOG(ERR,
-		    "%s, Entry Alloc with search not supported\n",
-		    tf_dir_2_str(parms->dir));
-
-	return -EOPNOTSUPP;
-}
-
-/**
- * Free Tbl entry from the Shadow DB. Shadow DB is searched for
- * the requested entry. If found the ref count is decremente and
- * new ref_count returned.
- *
- * [in] tfs
- *   Pointer to session
- * [in] parms
- *   Allocation parameters
- *
- * Return:
- *  0       - Success, entry found and ref count decremented
- *  -ENOENT - Failure, entry not found
- */
-static int
-tf_free_tbl_entry_shadow(struct tf_session *tfs,
-			 struct tf_free_tbl_entry_parms *parms)
-{
-	TFP_DRV_LOG(ERR,
-		    "%s, Entry Free with search not supported\n",
-		    tf_dir_2_str(parms->dir));
-
-	return -EOPNOTSUPP;
-}
-#endif /* TF_SHADOW */
-
-
- /* API defined in tf_core.h */
-int
-tf_bulk_get_tbl_entry(struct tf *tfp,
-		 struct tf_bulk_get_tbl_entry_parms *parms)
-{
-	int rc = 0;
-
-	TF_CHECK_PARMS_SESSION(tfp, parms);
-
-	if (parms->type == TF_TBL_TYPE_EXT) {
-		/* Not supported, yet */
-		TFP_DRV_LOG(ERR,
-			    "%s, External table type not supported\n",
-			    tf_dir_2_str(parms->dir));
-
-		rc = -EOPNOTSUPP;
-	} else {
-		/* Internal table type processing */
-		rc = tf_bulk_get_tbl_entry_internal(tfp, parms);
-		if (rc)
-			TFP_DRV_LOG(ERR,
-				    "%s, Bulk get failed, type:%d, rc:%s\n",
-				    tf_dir_2_str(parms->dir),
-				    parms->type,
-				    strerror(-rc));
 	}
 
 	return rc;

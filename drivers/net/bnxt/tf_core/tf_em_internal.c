@@ -225,12 +225,13 @@ tf_em_int_bind(struct tf *tfp,
 	int i;
 	struct tf_rm_create_db_parms db_cfg = { 0 };
 	struct tf_session *session;
+	uint8_t db_exists = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
 	if (init) {
 		TFP_DRV_LOG(ERR,
-			    "Identifier already initialized\n");
+			    "EM Int DB already initialized\n");
 		return -EINVAL;
 	}
 
@@ -242,31 +243,35 @@ tf_em_int_bind(struct tf *tfp,
 				  TF_SESSION_EM_POOL_SIZE);
 	}
 
-	/*
-	 * I'm not sure that this code is needed.
-	 * leaving for now until resolved
-	 */
-	if (parms->num_elements) {
-		db_cfg.type = TF_DEVICE_MODULE_TYPE_EM;
-		db_cfg.num_elements = parms->num_elements;
-		db_cfg.cfg = parms->cfg;
+	db_cfg.type = TF_DEVICE_MODULE_TYPE_EM;
+	db_cfg.num_elements = parms->num_elements;
+	db_cfg.cfg = parms->cfg;
 
-		for (i = 0; i < TF_DIR_MAX; i++) {
-			db_cfg.dir = i;
-			db_cfg.alloc_cnt = parms->resources->em_cnt[i].cnt;
-			db_cfg.rm_db = &em_db[i];
-			rc = tf_rm_create_db(tfp, &db_cfg);
-			if (rc) {
-				TFP_DRV_LOG(ERR,
-					    "%s: EM DB creation failed\n",
-					    tf_dir_2_str(i));
+	for (i = 0; i < TF_DIR_MAX; i++) {
+		db_cfg.dir = i;
+		db_cfg.alloc_cnt = parms->resources->em_cnt[i].cnt;
 
-				return rc;
-			}
+		/* Check if we got any request to support EEM, if so
+		 * we build an EM Int DB holding Table Scopes.
+		 */
+		if (db_cfg.alloc_cnt[TF_EM_TBL_TYPE_EM_RECORD] == 0)
+			continue;
+
+		db_cfg.rm_db = &em_db[i];
+		rc = tf_rm_create_db(tfp, &db_cfg);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: EM Int DB creation failed\n",
+				    tf_dir_2_str(i));
+
+			return rc;
 		}
+		db_exists = 1;
 	}
 
-	init = 1;
+	if (db_exists)
+		init = 1;
+
 	return 0;
 }
 
@@ -280,13 +285,11 @@ tf_em_int_unbind(struct tf *tfp)
 
 	TF_CHECK_PARMS1(tfp);
 
-	/* Bail if nothing has been initialized done silent as to
-	 * allow for creation cleanup.
-	 */
+	/* Bail if nothing has been initialized */
 	if (!init) {
-		TFP_DRV_LOG(ERR,
-			    "No EM DBs created\n");
-		return -EINVAL;
+		TFP_DRV_LOG(INFO,
+			    "No EM Int DBs created\n");
+		return 0;
 	}
 
 	session = (struct tf_session *)tfp->session->core_data;

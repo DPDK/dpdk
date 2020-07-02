@@ -23,7 +23,5 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_device_p4.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_identifier.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_shadow_tbl.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_shadow_tcam.c
-SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_tbl_type.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_tcam.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_util.c
-SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_rm_new.c

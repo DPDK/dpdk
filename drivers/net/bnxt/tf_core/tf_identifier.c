@@ -7,7 +7,7 @@
 
 #include "tf_identifier.h"
 #include "tf_common.h"
-#include "tf_rm_new.h"
+#include "tf_rm.h"
 #include "tf_util.h"
 #include "tfp.h"
 
@@ -35,7 +35,7 @@ tf_ident_bind(struct tf *tfp,
 
 	if (init) {
 		TFP_DRV_LOG(ERR,
-			    "Identifier already initialized\n");
+			    "Identifier DB already initialized\n");
 		return -EINVAL;
 	}
 
@@ -65,7 +65,7 @@ tf_ident_bind(struct tf *tfp,
 }
 
 int
-tf_ident_unbind(struct tf *tfp __rte_unused)
+tf_ident_unbind(struct tf *tfp)
 {
 	int rc;
 	int i;
@@ -73,13 +73,11 @@ tf_ident_unbind(struct tf *tfp __rte_unused)
 
 	TF_CHECK_PARMS1(tfp);
 
-	/* Bail if nothing has been initialized done silent as to
-	 * allow for creation cleanup.
-	 */
+	/* Bail if nothing has been initialized */
 	if (!init) {
-		TFP_DRV_LOG(ERR,
+		TFP_DRV_LOG(INFO,
 			    "No Identifier DBs created\n");
-		return -EINVAL;
+		return 0;
 	}
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
