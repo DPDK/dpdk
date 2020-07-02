@@ -10,16 +10,6 @@
 
 #define BNXT_PORT_DB_MAX_INTF_LIST		256
 
-/* enumeration of the interface types */
-enum bnxt_ulp_intf_type {
-	BNXT_ULP_INTF_TYPE_INVALID = 0,
-	BNXT_ULP_INTF_TYPE_PF = 1,
-	BNXT_ULP_INTF_TYPE_VF,
-	BNXT_ULP_INTF_TYPE_PF_REP,
-	BNXT_ULP_INTF_TYPE_VF_REP,
-	BNXT_ULP_INTF_TYPE_LAST
-};
-
 /* Structure for the Port database resource information. */
 struct ulp_interface_info {
 	enum bnxt_ulp_intf_type	type;

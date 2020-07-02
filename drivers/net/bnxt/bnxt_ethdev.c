@@ -28,6 +28,7 @@
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 #include "bnxt_nvm_defs.h"
+#include "bnxt_tf_common.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -5098,6 +5099,63 @@ bnxt_get_fw_func_id(uint16_t port)
 	bp = eth_dev->data->dev_private;
 
 	return bp->fw_fid;
+}
+
+enum bnxt_ulp_intf_type
+bnxt_get_interface_type(uint16_t port)
+{
+	struct rte_eth_dev *eth_dev;
+	struct bnxt *bp;
+
+	eth_dev = &rte_eth_devices[port];
+	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev))
+		return BNXT_ULP_INTF_TYPE_VF_REP;
+
+	bp = eth_dev->data->dev_private;
+	return BNXT_PF(bp) ? BNXT_ULP_INTF_TYPE_PF
+			   : BNXT_ULP_INTF_TYPE_VF;
+}
+
+uint16_t
+bnxt_get_phy_port_id(uint16_t port_id)
+{
+	struct bnxt_vf_representor *vfr;
+	struct rte_eth_dev *eth_dev;
+	struct bnxt *bp;
+
+	eth_dev = &rte_eth_devices[port_id];
+	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
+		vfr = eth_dev->data->dev_private;
+		eth_dev = vfr->parent_dev;
+	}
+
+	bp = eth_dev->data->dev_private;
+
+	return BNXT_PF(bp) ? bp->pf->port_id : bp->parent->port_id;
+}
+
+uint16_t
+bnxt_get_parif(uint16_t port_id)
+{
+	struct bnxt_vf_representor *vfr;
+	struct rte_eth_dev *eth_dev;
+	struct bnxt *bp;
+
+	eth_dev = &rte_eth_devices[port_id];
+	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
+		vfr = eth_dev->data->dev_private;
+		eth_dev = vfr->parent_dev;
+	}
+
+	bp = eth_dev->data->dev_private;
+
+	return BNXT_PF(bp) ? bp->fw_fid - 1 : bp->parent->fid - 1;
+}
+
+uint16_t
+bnxt_get_vport(uint16_t port_id)
+{
+	return (1 << bnxt_get_phy_port_id(port_id));
 }
 
 static void bnxt_alloc_error_recovery_info(struct bnxt *bp)

@@ -44,6 +44,16 @@ enum ulp_direction_type {
 	ULP_DIR_EGRESS,
 };
 
+/* enumeration of the interface types */
+enum bnxt_ulp_intf_type {
+	BNXT_ULP_INTF_TYPE_INVALID = 0,
+	BNXT_ULP_INTF_TYPE_PF,
+	BNXT_ULP_INTF_TYPE_VF,
+	BNXT_ULP_INTF_TYPE_PF_REP,
+	BNXT_ULP_INTF_TYPE_VF_REP,
+	BNXT_ULP_INTF_TYPE_LAST
+};
+
 struct bnxt_ulp_mark_tbl *
 bnxt_ulp_cntxt_ptr2_mark_db_get(struct bnxt_ulp_context *ulp_ctx);
 

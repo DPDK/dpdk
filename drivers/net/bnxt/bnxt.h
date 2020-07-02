@@ -855,6 +855,9 @@ extern const struct rte_flow_ops bnxt_flow_ops;
 	} \
 } while (0)
 
+#define	BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)	\
+		((eth_dev)->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+
 extern int bnxt_logtype_driver;
 #define PMD_DRV_LOG_RAW(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, bnxt_logtype_driver, "%s(): " fmt, \
@@ -870,6 +873,11 @@ void bnxt_ulp_deinit(struct bnxt *bp);
 uint16_t bnxt_get_vnic_id(uint16_t port);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif);
 uint16_t bnxt_get_fw_func_id(uint16_t port);
+uint16_t bnxt_get_parif(uint16_t port);
+uint16_t bnxt_get_phy_port_id(uint16_t port);
+uint16_t bnxt_get_vport(uint16_t port);
+enum bnxt_ulp_intf_type
+bnxt_get_interface_type(uint16_t port);
 
 void bnxt_cancel_fc_thread(struct bnxt *bp);
 void bnxt_flow_cnt_alarm_cb(void *arg);
