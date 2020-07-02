@@ -12,6 +12,7 @@
 #include <rte_memory.h>
 
 #include "bnxt.h"
+#include "bnxt_reps.h"
 #include "bnxt_ring.h"
 #include "bnxt_rxr.h"
 #include "bnxt_rxq.h"
@@ -539,7 +540,7 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 }
 
 static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
-			    struct bnxt_rx_queue *rxq, uint32_t *raw_cons)
+		       struct bnxt_rx_queue *rxq, uint32_t *raw_cons)
 {
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
@@ -735,6 +736,20 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 rx:
 	*rx_pkt = mbuf;
 
+	if ((BNXT_VF_IS_TRUSTED(rxq->bp) || BNXT_PF(rxq->bp)) &&
+	    rxq->bp->cfa_code_map && rxcmp1->cfa_code) {
+		if (!bnxt_vfr_recv(rxq->bp, rxcmp1->cfa_code, rxq->queue_id,
+				   mbuf)) {
+			/* Now return an error so that nb_rx_pkts is not
+			 * incremented.
+			 * This packet was meant to be given to the representor.
+			 * So no need to account the packet and give it to
+			 * parent Rx burst function.
+			 */
+			rc = -ENODEV;
+		}
+	}
+
 next_rx:
 
 	*raw_cons = tmp_raw_cons;
@@ -751,6 +766,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint32_t raw_cons = cpr->cp_raw_cons;
 	uint32_t cons;
 	int nb_rx_pkts = 0;
+	int nb_rep_rx_pkts = 0;
 	struct rx_pkt_cmpl *rxcmp;
 	uint16_t prod = rxr->rx_prod;
 	uint16_t ag_prod = rxr->ag_prod;
@@ -784,6 +800,8 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				nb_rx_pkts++;
 			if (rc == -EBUSY)	/* partial completion */
 				break;
+			if (rc == -ENODEV)	/* completion for representor */
+				nb_rep_rx_pkts++;
 		} else if (!BNXT_NUM_ASYNC_CPR(rxq->bp)) {
 			evt =
 			bnxt_event_hwrm_resp_handler(rxq->bp,
@@ -802,7 +820,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	}
 
 	cpr->cp_raw_cons = raw_cons;
-	if (!nb_rx_pkts && !evt) {
+	if (!nb_rx_pkts && !nb_rep_rx_pkts && !evt) {
 		/*
 		 * For PMD, there is no need to keep on pushing to REARM
 		 * the doorbell if there are no new completions

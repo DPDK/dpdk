@@ -9,6 +9,12 @@
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
 
+#define BNXT_MAX_CFA_CODE               65536
+#define BNXT_VF_IDX_INVALID             0xffff
+
+uint16_t
+bnxt_vfr_recv(struct bnxt *bp, uint16_t cfa_code, uint16_t queue_id,
+	      struct rte_mbuf *mbuf);
 int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params);
 int bnxt_vf_representor_uninit(struct rte_eth_dev *eth_dev);
 int bnxt_vf_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
@@ -30,6 +36,11 @@ int bnxt_vf_rep_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				  __rte_unused unsigned int socket_id,
 				  __rte_unused const struct rte_eth_txconf *
 				  tx_conf);
+void bnxt_vf_rep_rx_queue_release_op(void *rx_queue);
+void bnxt_vf_rep_tx_queue_release_op(void *tx_queue);
 void bnxt_vf_rep_dev_stop_op(struct rte_eth_dev *eth_dev);
 void bnxt_vf_rep_dev_close_op(struct rte_eth_dev *eth_dev);
+int bnxt_vf_rep_stats_get_op(struct rte_eth_dev *eth_dev,
+			     struct rte_eth_stats *stats);
+int bnxt_vf_rep_stats_reset_op(struct rte_eth_dev *eth_dev);
 #endif /* _BNXT_REPS_H_ */

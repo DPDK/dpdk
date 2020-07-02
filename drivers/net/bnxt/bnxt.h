@@ -495,6 +495,7 @@ struct bnxt_mark_info {
 
 struct bnxt_rep_info {
 	struct rte_eth_dev	*vfr_eth_dev;
+	pthread_mutex_t		vfr_lock;
 };
 
 /* address space location of register */
@@ -755,7 +756,8 @@ struct bnxt {
 	uint16_t		fw_reset_max_msecs;
 	uint16_t		switch_domain_id;
 	uint16_t		num_reps;
-	struct bnxt_rep_info	rep_info[BNXT_MAX_VF_REPS];
+	struct bnxt_rep_info	*rep_info;
+	uint16_t                *cfa_code_map;
 	/* Struct to hold adapter error recovery related info */
 	struct bnxt_error_recovery_info *recovery_info;
 #define BNXT_MARK_TABLE_SZ	(sizeof(struct bnxt_mark_info)  * 64 * 1024)
@@ -780,12 +782,28 @@ struct bnxt {
  * Structure to store private data for each VF representor instance
  */
 struct bnxt_vf_representor {
-	uint16_t switch_domain_id;
-	uint16_t vf_id;
+	uint16_t		switch_domain_id;
+	uint16_t		vf_id;
+	uint16_t		tx_cfa_action;
+	uint16_t		rx_cfa_code;
 	/* Private data store of associated PF/Trusted VF */
-	struct bnxt	*parent_priv;
-	uint8_t		mac_addr[RTE_ETHER_ADDR_LEN];
-	uint8_t		dflt_mac_addr[RTE_ETHER_ADDR_LEN];
+	struct rte_eth_dev	*parent_dev;
+	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];
+	uint8_t			dflt_mac_addr[RTE_ETHER_ADDR_LEN];
+	struct bnxt_rx_queue	**rx_queues;
+	unsigned int		rx_nr_rings;
+	unsigned int		tx_nr_rings;
+	uint64_t                tx_pkts[BNXT_MAX_VF_REP_RINGS];
+	uint64_t                tx_bytes[BNXT_MAX_VF_REP_RINGS];
+	uint64_t                rx_pkts[BNXT_MAX_VF_REP_RINGS];
+	uint64_t                rx_bytes[BNXT_MAX_VF_REP_RINGS];
+	uint64_t                rx_drop_pkts[BNXT_MAX_VF_REP_RINGS];
+	uint64_t                rx_drop_bytes[BNXT_MAX_VF_REP_RINGS];
+};
+
+struct bnxt_vf_rep_tx_queue {
+	struct bnxt_tx_queue *txq;
+	struct bnxt_vf_representor *bp;
 };
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);

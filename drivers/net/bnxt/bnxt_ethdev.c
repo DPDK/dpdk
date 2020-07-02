@@ -136,6 +136,7 @@ static void bnxt_cancel_fw_health_check(struct bnxt *bp);
 static int bnxt_restore_vlan_filters(struct bnxt *bp);
 static void bnxt_dev_recover(void *arg);
 static void bnxt_free_error_recovery_info(struct bnxt *bp);
+static void bnxt_free_rep_info(struct bnxt *bp);
 
 int is_bnxt_in_error(struct bnxt *bp)
 {
@@ -5242,7 +5243,7 @@ bnxt_init_locks(struct bnxt *bp)
 
 static int bnxt_init_resources(struct bnxt *bp, bool reconfig_dev)
 {
-	int rc;
+	int rc = 0;
 
 	rc = bnxt_init_fw(bp);
 	if (rc)
@@ -5641,6 +5642,8 @@ bnxt_uninit_locks(struct bnxt *bp)
 {
 	pthread_mutex_destroy(&bp->flow_lock);
 	pthread_mutex_destroy(&bp->def_cp_lock);
+	if (bp->rep_info)
+		pthread_mutex_destroy(&bp->rep_info->vfr_lock);
 }
 
 static int
@@ -5663,6 +5666,7 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 
 	bnxt_uninit_locks(bp);
 	bnxt_free_flow_stats_info(bp);
+	bnxt_free_rep_info(bp);
 	rte_free(bp->ptp_cfg);
 	bp->ptp_cfg = NULL;
 	return rc;
@@ -5702,56 +5706,73 @@ static int bnxt_pci_remove_dev_with_reps(struct rte_eth_dev *eth_dev)
 	return ret;
 }
 
-static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	struct rte_pci_device *pci_dev)
+static void bnxt_free_rep_info(struct bnxt *bp)
 {
+	rte_free(bp->rep_info);
+	bp->rep_info = NULL;
+	rte_free(bp->cfa_code_map);
+	bp->cfa_code_map = NULL;
+}
+
+static int bnxt_init_rep_info(struct bnxt *bp)
+{
+	int i = 0, rc;
+
+	if (bp->rep_info)
+		return 0;
+
+	bp->rep_info = rte_zmalloc("bnxt_rep_info",
+				   sizeof(bp->rep_info[0]) * BNXT_MAX_VF_REPS,
+				   0);
+	if (!bp->rep_info) {
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for rep info\n");
+		return -ENOMEM;
+	}
+	bp->cfa_code_map = rte_zmalloc("bnxt_cfa_code_map",
+				       sizeof(*bp->cfa_code_map) *
+				       BNXT_MAX_CFA_CODE, 0);
+	if (!bp->cfa_code_map) {
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for cfa_code_map\n");
+		bnxt_free_rep_info(bp);
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < BNXT_MAX_CFA_CODE; i++)
+		bp->cfa_code_map[i] = BNXT_VF_IDX_INVALID;
+
+	rc = pthread_mutex_init(&bp->rep_info->vfr_lock, NULL);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Unable to initialize vfr_lock\n");
+		bnxt_free_rep_info(bp);
+		return rc;
+	}
+	return rc;
+}
+
+static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
+			       struct rte_eth_devargs eth_da,
+			       struct rte_eth_dev *backing_eth_dev)
+{
+	struct rte_eth_dev *vf_rep_eth_dev;
 	char name[RTE_ETH_NAME_MAX_LEN];
-	struct rte_eth_devargs eth_da = { .nb_representor_ports = 0 };
-	struct rte_eth_dev *backing_eth_dev, *vf_rep_eth_dev;
+	struct bnxt *backing_bp;
 	uint16_t num_rep;
 	int i, ret = 0;
-	struct bnxt *backing_bp;
-
-	if (pci_dev->device.devargs) {
-		ret = rte_eth_devargs_parse(pci_dev->device.devargs->args,
-					    &eth_da);
-		if (ret)
-			return ret;
-	}
 
 	num_rep = eth_da.nb_representor_ports;
-	PMD_DRV_LOG(DEBUG, "nb_representor_ports = %d\n",
-		    num_rep);
-
-	/* We could come here after first level of probe is already invoked
-	 * as part of an application bringup(OVS-DPDK vswitchd), so first check
-	 * for already allocated eth_dev for the backing device (PF/Trusted VF)
-	 */
-	backing_eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
-	if (backing_eth_dev == NULL) {
-		ret = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
-					 sizeof(struct bnxt),
-					 eth_dev_pci_specific_init, pci_dev,
-					 bnxt_dev_init, NULL);
-
-		if (ret || !num_rep)
-			return ret;
-	}
-
 	if (num_rep > BNXT_MAX_VF_REPS) {
 		PMD_DRV_LOG(ERR, "nb_representor_ports = %d > %d MAX VF REPS\n",
-			    eth_da.nb_representor_ports, BNXT_MAX_VF_REPS);
-		ret = -EINVAL;
-		return ret;
+			    num_rep, BNXT_MAX_VF_REPS);
+		return -EINVAL;
 	}
 
-	/* probe representor ports now */
-	if (!backing_eth_dev)
-		backing_eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
-	if (backing_eth_dev == NULL) {
-		ret = -ENODEV;
-		return ret;
+	if (num_rep > RTE_MAX_ETHPORTS) {
+		PMD_DRV_LOG(ERR,
+			    "nb_representor_ports = %d > %d MAX ETHPORTS\n",
+			    num_rep, RTE_MAX_ETHPORTS);
+		return -EINVAL;
 	}
+
 	backing_bp = backing_eth_dev->data->dev_private;
 
 	if (!(BNXT_PF(backing_bp) || BNXT_VF_IS_TRUSTED(backing_bp))) {
@@ -5760,14 +5781,17 @@ static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		/* Returning an error is not an option.
 		 * Applications are not handling this correctly
 		 */
-		return ret;
+		return 0;
 	}
 
-	for (i = 0; i < eth_da.nb_representor_ports; i++) {
+	if (bnxt_init_rep_info(backing_bp))
+		return 0;
+
+	for (i = 0; i < num_rep; i++) {
 		struct bnxt_vf_representor representor = {
 			.vf_id = eth_da.representor_ports[i],
 			.switch_domain_id = backing_bp->switch_domain_id,
-			.parent_priv = backing_bp
+			.parent_dev = backing_eth_dev
 		};
 
 		if (representor.vf_id >= BNXT_MAX_VF_REPS) {
@@ -5804,6 +5828,48 @@ static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			bnxt_pci_remove_dev_with_reps(backing_eth_dev);
 		}
 	}
+
+	return ret;
+}
+
+static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+			  struct rte_pci_device *pci_dev)
+{
+	struct rte_eth_devargs eth_da = { .nb_representor_ports = 0 };
+	struct rte_eth_dev *backing_eth_dev;
+	uint16_t num_rep;
+	int ret = 0;
+
+	if (pci_dev->device.devargs) {
+		ret = rte_eth_devargs_parse(pci_dev->device.devargs->args,
+					    &eth_da);
+		if (ret)
+			return ret;
+	}
+
+	num_rep = eth_da.nb_representor_ports;
+	PMD_DRV_LOG(DEBUG, "nb_representor_ports = %d\n",
+		    num_rep);
+
+	/* We could come here after first level of probe is already invoked
+	 * as part of an application bringup(OVS-DPDK vswitchd), so first check
+	 * for already allocated eth_dev for the backing device (PF/Trusted VF)
+	 */
+	backing_eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (backing_eth_dev == NULL) {
+		ret = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
+					 sizeof(struct bnxt),
+					 eth_dev_pci_specific_init, pci_dev,
+					 bnxt_dev_init, NULL);
+
+		if (ret || !num_rep)
+			return ret;
+
+		backing_eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
+	}
+
+	/* probe representor ports now */
+	ret = bnxt_rep_port_probe(pci_dev, eth_da, backing_eth_dev);
 
 	return ret;
 }
