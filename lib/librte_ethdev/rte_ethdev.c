@@ -277,7 +277,7 @@ end:
 
 error:
 	if (ret == -ENOTSUP)
-		RTE_LOG(ERR, EAL, "Bus %s does not support iterating.\n",
+		RTE_ETHDEV_LOG(ERR, "Bus %s does not support iterating.\n",
 				iter->bus->name);
 	free(devargs.args);
 	free(bus_str);
@@ -4230,7 +4230,8 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 				device->numa_node);
 
 			if (!ethdev->data->dev_private) {
-				RTE_LOG(ERR, EAL, "failed to allocate private data");
+				RTE_ETHDEV_LOG(ERR,
+					"failed to allocate private data\n");
 				retval = -ENOMEM;
 				goto probe_failed;
 			}
@@ -4238,8 +4239,8 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 	} else {
 		ethdev = rte_eth_dev_attach_secondary(name);
 		if (!ethdev) {
-			RTE_LOG(ERR, EAL, "secondary process attach failed, "
-				"ethdev doesn't exist");
+			RTE_ETHDEV_LOG(ERR,
+				"secondary process attach failed, ethdev doesn't exist\n");
 			return  -ENODEV;
 		}
 	}
@@ -4249,15 +4250,15 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 	if (ethdev_bus_specific_init) {
 		retval = ethdev_bus_specific_init(ethdev, bus_init_params);
 		if (retval) {
-			RTE_LOG(ERR, EAL,
-				"ethdev bus specific initialisation failed");
+			RTE_ETHDEV_LOG(ERR,
+				"ethdev bus specific initialisation failed\n");
 			goto probe_failed;
 		}
 	}
 
 	retval = ethdev_init(ethdev, init_params);
 	if (retval) {
-		RTE_LOG(ERR, EAL, "ethdev initialisation failed");
+		RTE_ETHDEV_LOG(ERR, "ethdev initialisation failed\n");
 		goto probe_failed;
 	}
 
