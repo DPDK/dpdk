@@ -97,8 +97,10 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 #define BNXT_DEVARG_TRUFLOW	"host-based-truflow"
 #define BNXT_DEVARG_FLOW_XSTAT	"flow-xstat"
 #define BNXT_DEVARG_MAX_NUM_KFLOWS  "max-num-kflows"
+#define BNXT_DEVARG_REPRESENTOR	"representor"
 
 static const char *const bnxt_dev_args[] = {
+	BNXT_DEVARG_REPRESENTOR,
 	BNXT_DEVARG_TRUFLOW,
 	BNXT_DEVARG_FLOW_XSTAT,
 	BNXT_DEVARG_MAX_NUM_KFLOWS,
