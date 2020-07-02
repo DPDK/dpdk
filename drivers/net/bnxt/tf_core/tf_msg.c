@@ -813,7 +813,19 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 	struct tf_msg_dma_buf buf = { 0 };
 	uint8_t *data = NULL;
 	int data_size = 0;
+	uint8_t fw_session_id;
 
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 	req.type = parms->hcapi_type;
 	req.idx = tfp_cpu_to_le_16(parms->idx);
 	if (parms->dir == TF_DIR_TX)
@@ -869,7 +881,19 @@ tf_msg_tcam_entry_free(struct tf *tfp,
 	struct hwrm_tf_tcam_free_input req =  { 0 };
 	struct hwrm_tf_tcam_free_output resp = { 0 };
 	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
 
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(in_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 	req.type = in_parms->hcapi_type;
 	req.count = 1;
 	req.idx_list[0] = tfp_cpu_to_le_16(in_parms->idx);

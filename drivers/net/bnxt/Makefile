@@ -50,6 +50,9 @@ CFLAGS += -I$(SRCDIR) -I$(SRCDIR)/tf_ulp -I$(SRCDIR)/tf_core -I$(SRCDIR)/hcapi
 include $(SRCDIR)/tf_ulp/Makefile
 include $(SRCDIR)/tf_core/Makefile
 include $(SRCDIR)/hcapi/Makefile
+ifeq ($(CONFIG_RTE_LIBRTE_BNXT_PMD_SYSTEM), y)
+CFLAGS += -DTF_USE_SYSTEM_MEM
+endif
 endif
 
 #

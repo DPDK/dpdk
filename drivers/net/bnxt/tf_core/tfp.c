@@ -87,6 +87,18 @@ tfp_send_msg_tunneled(struct tf *tfp,
 	return rc;
 }
 
+#ifdef TF_USE_SYSTEM_MEM
+int
+tfp_msg_hwrm_oem_cmd(struct tf *tfp,
+		     uint32_t max_flows)
+{
+	return bnxt_hwrm_oem_cmd(container_of(tfp,
+					      struct bnxt,
+					      tfp),
+				 max_flows);
+}
+#endif /* TF_USE_SYSTEM_MEM */
+
 /**
  * Allocates zero'ed memory from the heap.
  *

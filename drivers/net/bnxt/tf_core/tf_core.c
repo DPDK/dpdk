@@ -540,9 +540,11 @@ tf_alloc_tcam_entry(struct tf *tfp,
 	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_tcam_alloc_parms aparms = { 0 };
+	struct tf_tcam_alloc_parms aparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
+
+	memset(&aparms, 0, sizeof(struct tf_tcam_alloc_parms));
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
@@ -598,9 +600,12 @@ tf_set_tcam_entry(struct tf *tfp,
 	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_tcam_set_parms sparms = { 0 };
+	struct tf_tcam_set_parms sparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
+
+	memset(&sparms, 0, sizeof(struct tf_tcam_set_parms));
+
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
@@ -667,9 +672,11 @@ tf_free_tcam_entry(struct tf *tfp,
 	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
-	struct tf_tcam_free_parms fparms = { 0 };
+	struct tf_tcam_free_parms fparms;
 
 	TF_CHECK_PARMS2(tfp, parms);
+
+	memset(&fparms, 0, sizeof(struct tf_tcam_free_parms));
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);

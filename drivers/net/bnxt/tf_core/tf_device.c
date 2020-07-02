@@ -92,8 +92,11 @@ tf_dev_bind_p4(struct tf *tfp,
 	em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
 	em_cfg.cfg = tf_em_ext_p4;
 	em_cfg.resources = resources;
+#ifdef TF_USE_SYSTEM_MEM
+	em_cfg.mem_type = TF_EEM_MEM_TYPE_SYSTEM;
+#else
 	em_cfg.mem_type = TF_EEM_MEM_TYPE_HOST;
-
+#endif
 	rc = tf_em_ext_common_bind(tfp, &em_cfg);
 	if (rc) {
 		TFP_DRV_LOG(ERR,

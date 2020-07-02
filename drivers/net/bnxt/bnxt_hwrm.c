@@ -5506,3 +5506,30 @@ int bnxt_hwrm_cfa_counter_qstats(struct bnxt *bp,
 
 	return 0;
 }
+
+#ifdef RTE_LIBRTE_BNXT_PMD_SYSTEM
+int
+bnxt_hwrm_oem_cmd(struct bnxt *bp, uint32_t entry_num)
+{
+	struct hwrm_oem_cmd_input req = {0};
+	struct hwrm_oem_cmd_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_dmabuf_info oem_data;
+	int rc = 0;
+
+	HWRM_PREP(&req, HWRM_OEM_CMD, BNXT_USE_CHIMP_MB);
+	req.IANA = 0x14e4;
+
+	memset(&oem_data, 0, sizeof(struct bnxt_dmabuf_info));
+	oem_data.entry_num = (entry_num);
+	memcpy(&req.oem_data[0], &oem_data, sizeof(struct bnxt_dmabuf_info));
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+
+	bp->dmabuf.entry_num = entry_num;
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+#endif /* RTE_LIBRTE_BNXT_PMD_SYSTEM */

@@ -220,6 +220,7 @@ CONFIG_RTE_LIBRTE_BNX2X_DEBUG_PERIODIC=n
 # Compile burst-oriented Broadcom BNXT PMD driver
 #
 CONFIG_RTE_LIBRTE_BNXT_PMD=y
+CONFIG_RTE_LIBRTE_BNXT_PMD_SYSTEM=n
 
 #
 # Compile burst-oriented Chelsio Terminator (CXGBE) PMD

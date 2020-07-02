@@ -1731,7 +1731,7 @@ struct tf_set_if_tbl_entry_parms {
 	/**
 	 * [in] Entry data
 	 */
-	uint32_t *data;
+	uint8_t *data;
 	/**
 	 * [in] Entry size
 	 */
@@ -1768,7 +1768,7 @@ struct tf_get_if_tbl_entry_parms {
 	/**
 	 * [out] Entry data
 	 */
-	uint32_t *data;
+	uint8_t *data;
 	/**
 	 * [in] Entry size
 	 */

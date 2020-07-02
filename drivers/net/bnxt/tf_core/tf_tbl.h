@@ -38,6 +38,13 @@ struct tf_em_caps {
  */
 struct tf_tbl_scope_cb {
 	uint32_t tbl_scope_id;
+#ifdef TF_USE_SYSTEM_MEM
+	int lfc_fd;
+	uint32_t bus;
+	uint32_t devfn;
+	int fd[TF_DIR_MAX][TF_MAX_TABLE];
+	bool valid;
+#endif
 	int index;
 	struct hcapi_cfa_em_ctx_mem_info em_ctx_info[TF_DIR_MAX];
 	struct tf_em_caps em_caps[TF_DIR_MAX];

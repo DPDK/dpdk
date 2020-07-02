@@ -101,4 +101,34 @@ void *tf_em_get_table_page(struct tf_tbl_scope_cb *tbl_scope_cb,
 			   uint32_t offset,
 			   enum hcapi_cfa_em_table_type table_type);
 
+/**
+ * Validates EM number of entries requested
+ *
+ * [in] tbl_scope_cb
+ *   Pointer to table scope control block to be populated
+ *
+ * [in] parms
+ *   Pointer to input parameters
+ *
+ * Returns:
+ *   0       - Success
+ *   -EINVAL - Parameter error
+ */
+int tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
+			       struct tf_alloc_tbl_scope_parms *parms);
+
+/**
+ * Size the EM table based on capabilities
+ *
+ * [in] tbl
+ *   EM table to size
+ *
+ * Returns:
+ *   0        - Success
+ *   - EINVAL - Parameter error
+ *   - ENOMEM - Out of memory
+ */
+int tf_em_size_table(struct hcapi_cfa_em_table *tbl,
+		     uint32_t page_size);
+
 #endif /* _TF_EM_COMMON_H_ */

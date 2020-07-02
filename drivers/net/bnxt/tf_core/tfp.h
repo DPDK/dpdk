@@ -171,6 +171,21 @@ tfp_msg_hwrm_oem_cmd(struct tf *tfp,
 		     uint32_t max_flows);
 
 /**
+ * Sends OEM command message to Chimp
+ *
+ * [in] session, pointer to session handle
+ * [in] max_flows, max number of flows requested
+ *
+ * Returns:
+ *   0              - Success
+ *   -1             - Global error like not supported
+ *   -EINVAL        - Parameter Error
+ */
+int
+tfp_msg_hwrm_oem_cmd(struct tf *tfp,
+		     uint32_t max_flows);
+
+/**
  * Allocates zero'ed memory from the heap.
  *
  * NOTE: Also performs virt2phy address conversion by default thus is
