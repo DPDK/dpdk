@@ -116,8 +116,11 @@ struct tf_dev_ops {
 	 * [in] tfp
 	 *   Pointer to TF handle
 	 *
-	 * [out] slice_size
-	 *   Pointer to slice size the device supports
+	 * [in] type
+	 *   TCAM table type
+	 *
+	 * [in] key_sz
+	 *   Key size
 	 *
 	 * [out] num_slices_per_row
 	 *   Pointer to number of slices per row the device supports
@@ -126,9 +129,10 @@ struct tf_dev_ops {
 	 *   - (0) if successful.
 	 *   - (-EINVAL) on failure.
 	 */
-	int (*tf_dev_get_wc_tcam_slices)(struct tf *tfp,
-					 uint16_t *slice_size,
-					 uint16_t *num_slices_per_row);
+	int (*tf_dev_get_tcam_slice_info)(struct tf *tfp,
+					  enum tf_tcam_tbl_type type,
+					  uint16_t key_sz,
+					  uint16_t *num_slices_per_row);
 
 	/**
 	 * Allocation of an identifier element.

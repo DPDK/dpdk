@@ -19,43 +19,6 @@
 #include "tf_common.h"
 #include "hwrm_tf.h"
 
-static int tf_check_tcam_entry(enum tf_tcam_tbl_type tcam_tbl_type,
-			       enum tf_device_type device,
-			       uint16_t key_sz_in_bits,
-			       uint16_t *num_slice_per_row)
-{
-	uint16_t key_bytes;
-	uint16_t slice_sz = 0;
-
-#define CFA_P4_WC_TCAM_SLICES_PER_ROW 2
-#define CFA_P4_WC_TCAM_SLICE_SIZE     12
-
-	if (tcam_tbl_type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		key_bytes = TF_BITS2BYTES_WORD_ALIGN(key_sz_in_bits);
-		if (device == TF_DEVICE_TYPE_WH) {
-			slice_sz = CFA_P4_WC_TCAM_SLICE_SIZE;
-			*num_slice_per_row = CFA_P4_WC_TCAM_SLICES_PER_ROW;
-		} else {
-			TFP_DRV_LOG(ERR,
-				    "Unsupported device type %d\n",
-				    device);
-			return -ENOTSUP;
-		}
-
-		if (key_bytes > *num_slice_per_row * slice_sz) {
-			TFP_DRV_LOG(ERR,
-				    "%s: Key size %d is not supported\n",
-				    tf_tcam_tbl_2_str(tcam_tbl_type),
-				    key_bytes);
-			return -ENOTSUP;
-		}
-	} else { /* for other type of tcam */
-		*num_slice_per_row = 1;
-	}
-
-	return 0;
-}
-
 /**
  * Create EM Tbl pool of memory indexes.
  *
@@ -918,49 +881,56 @@ tf_alloc_tcam_entry(struct tf *tfp,
 		    struct tf_alloc_tcam_entry_parms *parms)
 {
 	int rc;
-	int index;
 	struct tf_session *tfs;
-	struct bitalloc *session_pool;
-	uint16_t num_slice_per_row;
+	struct tf_dev_info *dev;
+	struct tf_tcam_alloc_parms aparms = { 0 };
 
-	/* TEMP, due to device design. When tcam is modularized device
-	 * should be retrieved from the session
-	 */
-	enum tf_device_type device_type;
-	/* TEMP */
-	device_type = TF_DEVICE_TYPE_WH;
+	TF_CHECK_PARMS2(tfp, parms);
 
-	TF_CHECK_PARMS_SESSION(tfp, parms);
-
-	tfs = (struct tf_session *)(tfp->session->core_data);
-
-	rc = tf_check_tcam_entry(parms->tcam_tbl_type,
-				 device_type,
-				 parms->key_sz_in_bits,
-				 &num_slice_per_row);
-	/* Error logging handled by tf_check_tcam_entry */
-	if (rc)
-		return rc;
-
-	rc = tf_rm_lookup_tcam_type_pool(tfs,
-					 parms->dir,
-					 parms->tcam_tbl_type,
-					 &session_pool);
-	/* Error logging handled by tf_rm_lookup_tcam_type_pool */
-	if (rc)
-		return rc;
-
-	index = ba_alloc(session_pool);
-	if (index == BA_FAIL) {
-		TFP_DRV_LOG(ERR, "%s: %s: No resource available\n",
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
-			    tf_tcam_tbl_2_str(parms->tcam_tbl_type));
-		return -ENOMEM;
+			    strerror(-rc));
+		return rc;
 	}
 
-	index *= num_slice_per_row;
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
 
-	parms->idx = index;
+	if (dev->ops->tf_dev_alloc_tcam == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	aparms.dir = parms->dir;
+	aparms.type = parms->tcam_tbl_type;
+	aparms.key_size = TF_BITS2BYTES_WORD_ALIGN(parms->key_sz_in_bits);
+	aparms.priority = parms->priority;
+	rc = dev->ops->tf_dev_alloc_tcam(tfp, &aparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: TCAM allocation failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	parms->idx = aparms.idx;
+
 	return 0;
 }
 
@@ -969,55 +939,60 @@ tf_set_tcam_entry(struct tf *tfp,
 		  struct tf_set_tcam_entry_parms *parms)
 {
 	int rc;
-	int id;
-	int index;
 	struct tf_session *tfs;
-	struct bitalloc *session_pool;
-	uint16_t num_slice_per_row;
+	struct tf_dev_info *dev;
+	struct tf_tcam_set_parms sparms = { 0 };
 
-	/* TEMP, due to device design. When tcam is modularized device
-	 * should be retrieved from the session
-	 */
-	enum tf_device_type device_type;
-	/* TEMP */
-	device_type = TF_DEVICE_TYPE_WH;
+	TF_CHECK_PARMS2(tfp, parms);
 
-	TF_CHECK_PARMS_SESSION(tfp, parms);
-
-	tfs = (struct tf_session *)(tfp->session->core_data);
-
-	rc = tf_check_tcam_entry(parms->tcam_tbl_type,
-				 device_type,
-				 parms->key_sz_in_bits,
-				 &num_slice_per_row);
-	/* Error logging handled by tf_check_tcam_entry */
-	if (rc)
-		return rc;
-
-	rc = tf_rm_lookup_tcam_type_pool(tfs,
-					 parms->dir,
-					 parms->tcam_tbl_type,
-					 &session_pool);
-	/* Error logging handled by tf_rm_lookup_tcam_type_pool */
-	if (rc)
-		return rc;
-
-	/* Verify that the entry has been previously allocated */
-	index = parms->idx / num_slice_per_row;
-
-	id = ba_inuse(session_pool, index);
-	if (id != 1) {
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
 		TFP_DRV_LOG(ERR,
-		   "%s: %s: Invalid or not allocated index, idx:%d\n",
-		   tf_dir_2_str(parms->dir),
-		   tf_tcam_tbl_2_str(parms->tcam_tbl_type),
-		   parms->idx);
-		return -EINVAL;
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
 	}
 
-	rc = tf_msg_tcam_entry_set(tfp, parms);
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
 
-	return rc;
+	if (dev->ops->tf_dev_set_tcam == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	sparms.dir = parms->dir;
+	sparms.type = parms->tcam_tbl_type;
+	sparms.idx = parms->idx;
+	sparms.key = parms->key;
+	sparms.mask = parms->mask;
+	sparms.key_size = TF_BITS2BYTES_WORD_ALIGN(parms->key_sz_in_bits);
+	sparms.result = parms->result;
+	sparms.result_size = TF_BITS2BYTES_WORD_ALIGN(parms->result_sz_in_bits);
+
+	rc = dev->ops->tf_dev_set_tcam(tfp, &sparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: TCAM set failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return 0;
 }
 
 int
@@ -1033,59 +1008,52 @@ tf_free_tcam_entry(struct tf *tfp,
 		   struct tf_free_tcam_entry_parms *parms)
 {
 	int rc;
-	int index;
 	struct tf_session *tfs;
-	struct bitalloc *session_pool;
-	uint16_t num_slice_per_row = 1;
+	struct tf_dev_info *dev;
+	struct tf_tcam_free_parms fparms = { 0 };
 
-	/* TEMP, due to device design. When tcam is modularized device
-	 * should be retrieved from the session
-	 */
-	enum tf_device_type device_type;
-	/* TEMP */
-	device_type = TF_DEVICE_TYPE_WH;
+	TF_CHECK_PARMS2(tfp, parms);
 
-	TF_CHECK_PARMS_SESSION(tfp, parms);
-	tfs = (struct tf_session *)(tfp->session->core_data);
-
-	rc = tf_check_tcam_entry(parms->tcam_tbl_type,
-				 device_type,
-				 0,
-				 &num_slice_per_row);
-	/* Error logging handled by tf_check_tcam_entry */
-	if (rc)
-		return rc;
-
-	rc = tf_rm_lookup_tcam_type_pool(tfs,
-					 parms->dir,
-					 parms->tcam_tbl_type,
-					 &session_pool);
-	/* Error logging handled by tf_rm_lookup_tcam_type_pool */
-	if (rc)
-		return rc;
-
-	index = parms->idx / num_slice_per_row;
-
-	rc = ba_inuse(session_pool, index);
-	if (rc == BA_FAIL || rc == BA_ENTRY_FREE) {
-		TFP_DRV_LOG(ERR, "%s: %s: Entry %d already free",
-			    tf_dir_2_str(parms->dir),
-			    tf_tcam_tbl_2_str(parms->tcam_tbl_type),
-			    index);
-		return -EINVAL;
-	}
-
-	ba_free(session_pool, index);
-
-	rc = tf_msg_tcam_entry_free(tfp, parms);
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
 	if (rc) {
-		/* Log error */
-		TFP_DRV_LOG(ERR, "%s: %s: Entry %d free failed with err %s",
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
-			    tf_tcam_tbl_2_str(parms->tcam_tbl_type),
-			    parms->idx,
 			    strerror(-rc));
+		return rc;
 	}
 
-	return rc;
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_free_tcam == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	fparms.dir = parms->dir;
+	fparms.type = parms->tcam_tbl_type;
+	fparms.idx = parms->idx;
+	rc = dev->ops->tf_dev_free_tcam(tfp, &fparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: TCAM allocation failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return 0;
 }

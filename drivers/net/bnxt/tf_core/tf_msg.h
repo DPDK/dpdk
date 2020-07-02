@@ -247,7 +247,7 @@ int tf_msg_em_op(struct tf *tfp,
  *  0 on Success else internal Truflow error
  */
 int tf_msg_tcam_entry_set(struct tf *tfp,
-			  struct tf_set_tcam_entry_parms *parms);
+			  struct tf_tcam_set_parms *parms);
 
 /**
  * Sends tcam entry 'free' to the Firmware.
@@ -262,7 +262,7 @@ int tf_msg_tcam_entry_set(struct tf *tfp,
  *  0 on Success else internal Truflow error
  */
 int tf_msg_tcam_entry_free(struct tf *tfp,
-			   struct tf_free_tcam_entry_parms *parms);
+			   struct tf_tcam_free_parms *parms);
 
 /**
  * Sends Set message of a Table Type element to the firmware.

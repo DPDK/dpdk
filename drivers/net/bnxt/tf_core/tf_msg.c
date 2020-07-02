@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "tf_msg_common.h"
+#include "tf_device.h"
 #include "tf_msg.h"
 #include "tf_util.h"
 #include "tf_session.h"
@@ -1480,27 +1481,19 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
 
-#define TF_BYTES_PER_SLICE(tfp) 12
-#define NUM_SLICES(tfp, bytes) \
-	(((bytes) + TF_BYTES_PER_SLICE(tfp) - 1) / TF_BYTES_PER_SLICE(tfp))
-
 int
 tf_msg_tcam_entry_set(struct tf *tfp,
-		      struct tf_set_tcam_entry_parms *parms)
+		      struct tf_tcam_set_parms *parms)
 {
 	int rc;
 	struct tfp_send_msg_parms mparms = { 0 };
 	struct hwrm_tf_tcam_set_input req = { 0 };
 	struct hwrm_tf_tcam_set_output resp = { 0 };
-	uint16_t key_bytes =
-		TF_BITS2BYTES_WORD_ALIGN(parms->key_sz_in_bits);
-	uint16_t result_bytes =
-		TF_BITS2BYTES_WORD_ALIGN(parms->result_sz_in_bits);
 	struct tf_msg_dma_buf buf = { 0 };
 	uint8_t *data = NULL;
 	int data_size = 0;
 
-	rc = tf_tcam_tbl_2_hwrm(parms->tcam_tbl_type, &req.type);
+	rc = tf_tcam_tbl_2_hwrm(parms->type, &req.type);
 	if (rc != 0)
 		return rc;
 
@@ -1508,11 +1501,11 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 	if (parms->dir == TF_DIR_TX)
 		req.flags |= HWRM_TF_TCAM_SET_INPUT_FLAGS_DIR_TX;
 
-	req.key_size = key_bytes;
-	req.mask_offset = key_bytes;
+	req.key_size = parms->key_size;
+	req.mask_offset = parms->key_size;
 	/* Result follows after key and mask, thus multiply by 2 */
-	req.result_offset = 2 * key_bytes;
-	req.result_size = result_bytes;
+	req.result_offset = 2 * parms->key_size;
+	req.result_size = parms->result_size;
 	data_size = 2 * req.key_size + req.result_size;
 
 	if (data_size <= TF_PCI_BUF_SIZE_MAX) {
@@ -1530,9 +1523,9 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 			   sizeof(buf.pa_addr));
 	}
 
-	tfp_memcpy(&data[0], parms->key, key_bytes);
-	tfp_memcpy(&data[key_bytes], parms->mask, key_bytes);
-	tfp_memcpy(&data[req.result_offset], parms->result, result_bytes);
+	tfp_memcpy(&data[0], parms->key, parms->key_size);
+	tfp_memcpy(&data[parms->key_size], parms->mask, parms->key_size);
+	tfp_memcpy(&data[req.result_offset], parms->result, parms->result_size);
 
 	mparms.tf_type = HWRM_TF_TCAM_SET;
 	mparms.req_data = (uint32_t *)&req;
@@ -1554,7 +1547,7 @@ cleanup:
 
 int
 tf_msg_tcam_entry_free(struct tf *tfp,
-		       struct tf_free_tcam_entry_parms *in_parms)
+		       struct tf_tcam_free_parms *in_parms)
 {
 	int rc;
 	struct hwrm_tf_tcam_free_input req =  { 0 };
@@ -1562,7 +1555,7 @@ tf_msg_tcam_entry_free(struct tf *tfp,
 	struct tfp_send_msg_parms parms = { 0 };
 
 	/* Populate the request */
-	rc = tf_tcam_tbl_2_hwrm(in_parms->tcam_tbl_type, &req.type);
+	rc = tf_tcam_tbl_2_hwrm(in_parms->type, &req.type);
 	if (rc != 0)
 		return rc;
 

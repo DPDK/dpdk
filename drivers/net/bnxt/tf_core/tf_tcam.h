@@ -51,9 +51,17 @@ struct tf_tcam_alloc_parms {
 	 */
 	enum tf_tcam_tbl_type type;
 	/**
+	 * [in] key size
+	 */
+	uint16_t key_size;
+	/**
+	 * [in] Priority of entry requested (definition TBD)
+	 */
+	uint32_t priority;
+	/**
 	 * [out] Idx of allocated entry or found entry (if search_enable)
 	 */
-	uint32_t idx;
+	uint16_t idx;
 };
 
 /**
@@ -71,7 +79,7 @@ struct tf_tcam_free_parms {
 	/**
 	 * [in] Index to free
 	 */
-	uint32_t idx;
+	uint16_t idx;
 	/**
 	 * [out] Reference count after free, only valid if session has been
 	 * created with shadow_copy.
@@ -90,7 +98,7 @@ struct tf_tcam_alloc_search_parms {
 	/**
 	 * [in] TCAM table type
 	 */
-	enum tf_tcam_tbl_type tcam_tbl_type;
+	enum tf_tcam_tbl_type type;
 	/**
 	 * [in] Enable search for matching entry
 	 */
@@ -100,9 +108,9 @@ struct tf_tcam_alloc_search_parms {
 	 */
 	uint8_t *key;
 	/**
-	 * [in] key size in bits (if search)
+	 * [in] key size (if search)
 	 */
-	uint16_t key_sz_in_bits;
+	uint16_t key_size;
 	/**
 	 * [in] Mask data to match on (if search)
 	 */
@@ -139,17 +147,29 @@ struct tf_tcam_set_parms {
 	 */
 	enum tf_tcam_tbl_type type;
 	/**
-	 * [in] Entry data
-	 */
-	uint8_t *data;
-	/**
-	 * [in] Entry size
-	 */
-	uint16_t data_sz_in_bytes;
-	/**
 	 * [in] Entry index to write to
 	 */
 	uint32_t idx;
+	/**
+	 * [in] array containing key
+	 */
+	uint8_t *key;
+	/**
+	 * [in] array containing mask fields
+	 */
+	uint8_t *mask;
+	/**
+	 * [in] key size
+	 */
+	uint16_t key_size;
+	/**
+	 * [in] array containing result
+	 */
+	uint8_t *result;
+	/**
+	 * [in] result size
+	 */
+	uint16_t result_size;
 };
 
 /**
@@ -165,17 +185,29 @@ struct tf_tcam_get_parms {
 	 */
 	enum tf_tcam_tbl_type type;
 	/**
-	 * [out] Entry data
-	 */
-	uint8_t *data;
-	/**
-	 * [out] Entry size
-	 */
-	uint16_t data_sz_in_bytes;
-	/**
 	 * [in] Entry index to read
 	 */
 	uint32_t idx;
+	/**
+	 * [out] array containing key
+	 */
+	uint8_t *key;
+	/**
+	 * [out] array containing mask fields
+	 */
+	uint8_t *mask;
+	/**
+	 * [out] key size
+	 */
+	uint16_t key_size;
+	/**
+	 * [out] array containing result
+	 */
+	uint8_t *result;
+	/**
+	 * [out] result size
+	 */
+	uint16_t result_size;
 };
 
 /**
