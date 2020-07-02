@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "tf_core.h"
+#include "tf_util.h"
 #include "tf_session.h"
 #include "tf_tbl.h"
 #include "tf_em.h"
@@ -229,6 +230,7 @@ tf_open_session(struct tf                    *tfp,
 
 	/* Initialize Session */
 	session->device_type = parms->device_type;
+	session->dev = NULL;
 	tf_rm_init(tfp);
 
 	/* Construct the Session ID */

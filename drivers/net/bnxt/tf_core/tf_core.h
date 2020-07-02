@@ -371,6 +371,35 @@ struct tf {
 	struct tf_session_info *session;
 };
 
+/**
+ * tf_session_resources parameter definition.
+ */
+struct tf_session_resources {
+	/** [in] Requested Identifier Resources
+	 *
+	 * The number of identifier resources requested for the session.
+	 * The index used is tf_identifier_type.
+	 */
+	uint16_t identifer_cnt[TF_DIR_MAX][TF_IDENT_TYPE_MAX];
+	/** [in] Requested Index Table resource counts
+	 *
+	 * The number of index table resources requested for the session.
+	 * The index used is tf_tbl_type.
+	 */
+	uint16_t tbl_cnt[TF_TBL_TYPE_MAX][TF_DIR_MAX];
+	/** [in] Requested TCAM Table resource counts
+	 *
+	 * The number of TCAM table resources requested for the session.
+	 * The index used is tf_tcam_tbl_type.
+	 */
+	uint16_t tcam_tbl_cnt[TF_TCAM_TBL_TYPE_MAX][TF_DIR_MAX];
+	/** [in] Requested EM resource counts
+	 *
+	 * The number of internal EM table resources requested for the session
+	 * The index used is tf_em_tbl_type.
+	 */
+	uint16_t em_tbl_cnt[TF_EM_TBL_TYPE_MAX][TF_DIR_MAX];
+};
 
 /**
  * tf_open_session parameters definition.
@@ -414,33 +443,14 @@ struct tf_open_session_parms {
 	union tf_session_id session_id;
 	/** [in] device type
 	 *
-	 * Device type is passed, one of Wh+, Brd2, Brd3, Brd4
+	 * Device type is passed, one of Wh+, SR, Thor, SR2
 	 */
 	enum tf_device_type device_type;
-	/** [in] Requested Identifier Resources
+	/** [in] resources
 	 *
-	 * The number of identifier resources requested for the session.
-	 * The index used is tf_identifier_type.
+	 * Resource allocation
 	 */
-	uint16_t identifer_cnt[TF_IDENT_TYPE_MAX];
-	/** [in] Requested Index Table resource counts
-	 *
-	 * The number of index table resources requested for the session.
-	 * The index used is tf_tbl_type.
-	 */
-	uint16_t tbl_cnt[TF_TBL_TYPE_MAX];
-	/** [in] Requested TCAM Table resource counts
-	 *
-	 * The number of TCAM table resources requested for the session.
-	 * The index used is tf_tcam_tbl_type.
-	 */
-	uint16_t tcam_tbl_cnt[TF_TCAM_TBL_TYPE_MAX];
-	/** [in] Requested EM resource counts
-	 *
-	 * The number of internal EM table resources requested for the session
-	 * The index used is tf_em_tbl_type.
-	 */
-	uint16_t em_tbl_cnt[TF_EM_TBL_TYPE_MAX];
+	struct tf_session_resources resources;
 };
 
 /**

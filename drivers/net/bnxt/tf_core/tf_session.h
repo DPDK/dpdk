@@ -11,9 +11,20 @@
 
 #include "bitalloc.h"
 #include "tf_core.h"
+#include "tf_device.h"
 #include "tf_rm.h"
 #include "tf_tbl.h"
 #include "stack.h"
+
+/**
+ * The Session module provides session control support. A session is
+ * to the ULP layer known as a session_info instance. The session
+ * private data is the actual session.
+ *
+ * Session manages:
+ *   - The device and all the resources related to the device.
+ *   - Any session sharing between ULP applications
+ */
 
 /** Session defines
  */
@@ -89,6 +100,9 @@ struct tf_session {
 	 * Core goes away without informing the Firmware.
 	 */
 	uint8_t ref_count;
+
+	/** Device */
+	struct tf_dev_info *dev;
 
 	/** Session HW and SRAM resources */
 	struct tf_rm_db resc;
@@ -308,5 +322,45 @@ struct tf_session {
 	 */
 	struct stack em_pool[TF_DIR_MAX];
 };
+
+/**
+ * @page session Session Management
+ *
+ * @ref tf_session_get_session
+ *
+ * @ref tf_session_get_device
+ */
+
+/**
+ * Looks up the private session information from the TF session info.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [out] tfs
+ *   Pointer to the session
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_get_session(struct tf *tfp,
+			   struct tf_session *tfs);
+
+/**
+ * Looks up the device information from the TF Session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [out] tfd
+ *   Pointer to the device
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_get_device(struct tf_session *tfs,
+			  struct tf_dev_info *tfd);
 
 #endif /* _TF_SESSION_H_ */

@@ -15,6 +15,7 @@
 #include "hsi_struct_def_dpdk.h"
 
 #include "tf_core.h"
+#include "tf_util.h"
 #include "tf_em.h"
 #include "tf_msg.h"
 #include "tfp.h"

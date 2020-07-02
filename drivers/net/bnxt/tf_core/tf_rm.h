@@ -125,24 +125,6 @@ struct tf_rm_db {
 };
 
 /**
- * Helper function converting direction to text string
- */
-const char
-*tf_dir_2_str(enum tf_dir dir);
-
-/**
- * Helper function converting identifier to text string
- */
-const char
-*tf_ident_2_str(enum tf_identifier_type id_type);
-
-/**
- * Helper function converting tcam type to text string
- */
-const char
-*tf_tcam_tbl_2_str(enum tf_tcam_tbl_type tcam_type);
-
-/**
  * Helper function used to convert HW HCAPI resource type to a string.
  */
 const char

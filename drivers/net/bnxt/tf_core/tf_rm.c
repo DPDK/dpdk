@@ -9,6 +9,7 @@
 
 #include "tf_rm.h"
 #include "tf_core.h"
+#include "tf_util.h"
 #include "tf_session.h"
 #include "tf_resources.h"
 #include "tf_msg.h"
@@ -75,59 +76,6 @@
 		else				\
 			(dtype) = type ## _TX;	\
 	} while (0)
-
-const char
-*tf_dir_2_str(enum tf_dir dir)
-{
-	switch (dir) {
-	case TF_DIR_RX:
-		return "RX";
-	case TF_DIR_TX:
-		return "TX";
-	default:
-		return "Invalid direction";
-	}
-}
-
-const char
-*tf_ident_2_str(enum tf_identifier_type id_type)
-{
-	switch (id_type) {
-	case TF_IDENT_TYPE_L2_CTXT:
-		return "l2_ctxt_remap";
-	case TF_IDENT_TYPE_PROF_FUNC:
-		return "prof_func";
-	case TF_IDENT_TYPE_WC_PROF:
-		return "wc_prof";
-	case TF_IDENT_TYPE_EM_PROF:
-		return "em_prof";
-	case TF_IDENT_TYPE_L2_FUNC:
-		return "l2_func";
-	default:
-		return "Invalid identifier";
-	}
-}
-
-const char
-*tf_tcam_tbl_2_str(enum tf_tcam_tbl_type tcam_type)
-{
-	switch (tcam_type) {
-	case TF_TCAM_TBL_TYPE_L2_CTXT_TCAM:
-		return "l2_ctxt_tcam";
-	case TF_TCAM_TBL_TYPE_PROF_TCAM:
-		return "prof_tcam";
-	case TF_TCAM_TBL_TYPE_WC_TCAM:
-		return "wc_tcam";
-	case TF_TCAM_TBL_TYPE_VEB_TCAM:
-		return "veb_tcam";
-	case TF_TCAM_TBL_TYPE_SP_TCAM:
-		return "sp_tcam";
-	case TF_TCAM_TBL_TYPE_CT_RULE_TCAM:
-		return "ct_rule_tcam";
-	default:
-		return "Invalid tcam table type";
-	}
-}
 
 const char
 *tf_hcapi_hw_2_str(enum tf_resource_type_hw hw_type)
