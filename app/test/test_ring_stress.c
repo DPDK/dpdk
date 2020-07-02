@@ -49,6 +49,9 @@ test_ring_stress(void)
 	n += test_ring_peek_stress.nb_case;
 	k += run_test(&test_ring_peek_stress);
 
+	n += test_ring_st_peek_stress.nb_case;
+	k += run_test(&test_ring_st_peek_stress);
+
 	printf("Number of tests:\t%u\nSuccess:\t%u\nFailed:\t%u\n",
 		n, k, n - k);
 	return (k != n);
