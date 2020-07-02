@@ -91,11 +91,11 @@ tf_session_open_session(struct tf *tfp,
 		   parms->open_cfg->ctrl_chan_name,
 		   TF_SESSION_NAME_MAX);
 
-	rc = dev_bind(tfp,
-		      parms->open_cfg->device_type,
-		      session->shadow_copy,
-		      &parms->open_cfg->resources,
-		      &session->dev);
+	rc = tf_dev_bind(tfp,
+			 parms->open_cfg->device_type,
+			 session->shadow_copy,
+			 &parms->open_cfg->resources,
+			 &session->dev);
 	/* Logging handled by dev_bind */
 	if (rc)
 		return rc;
@@ -151,6 +151,8 @@ tf_session_close_session(struct tf *tfp,
 		return rc;
 	}
 
+	tfs->ref_count--;
+
 	/* Record the session we're closing so the caller knows the
 	 * details.
 	 */
@@ -164,6 +166,32 @@ tf_session_close_session(struct tf *tfp,
 		return rc;
 	}
 
+	if (tfs->ref_count > 0) {
+		/* In case we're attached only the session client gets
+		 * closed.
+		 */
+		rc = tf_msg_session_close(tfp);
+		if (rc) {
+			/* Log error */
+			TFP_DRV_LOG(ERR,
+				    "FW Session close failed, rc:%s\n",
+				    strerror(-rc));
+		}
+
+		return 0;
+	}
+
+	/* Final cleanup as we're last user of the session */
+
+	/* Unbind the device */
+	rc = tf_dev_unbind(tfp, tfd);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, rc:%s\n",
+			    strerror(-rc));
+	}
+
 	/* In case we're attached only the session client gets closed */
 	rc = tf_msg_session_close(tfp);
 	if (rc) {
@@ -173,23 +201,9 @@ tf_session_close_session(struct tf *tfp,
 			    strerror(-rc));
 	}
 
-	tfs->ref_count--;
-
-	/* Final cleanup as we're last user of the session */
-	if (tfs->ref_count == 0) {
-		/* Unbind the device */
-		rc = dev_unbind(tfp, tfd);
-		if (rc) {
-			/* Log error */
-			TFP_DRV_LOG(ERR,
-				    "Device unbind failed, rc:%s\n",
-				    strerror(-rc));
-		}
-
-		tfp_free(tfp->session->core_data);
-		tfp_free(tfp->session);
-		tfp->session = NULL;
-	}
+	tfp_free(tfp->session->core_data);
+	tfp_free(tfp->session);
+	tfp->session = NULL;
 
 	return 0;
 }

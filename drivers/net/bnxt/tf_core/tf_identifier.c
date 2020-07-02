@@ -39,12 +39,12 @@ tf_ident_bind(struct tf *tfp,
 		return -EINVAL;
 	}
 
+	db_cfg.type = TF_DEVICE_MODULE_TYPE_IDENTIFIER;
 	db_cfg.num_elements = parms->num_elements;
+	db_cfg.cfg = parms->cfg;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		db_cfg.dir = i;
-		db_cfg.num_elements = parms->num_elements;
-		db_cfg.cfg = parms->cfg;
 		db_cfg.alloc_cnt = parms->resources->ident_cnt[i].cnt;
 		db_cfg.rm_db = &ident_db[i];
 		rc = tf_rm_create_db(tfp, &db_cfg);
@@ -86,8 +86,10 @@ tf_ident_unbind(struct tf *tfp __rte_unused)
 		fparms.dir = i;
 		fparms.rm_db = ident_db[i];
 		rc = tf_rm_free_db(tfp, &fparms);
-		if (rc)
-			return rc;
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "rm free failed on unbind\n");
+		}
 
 		ident_db[i] = NULL;
 	}

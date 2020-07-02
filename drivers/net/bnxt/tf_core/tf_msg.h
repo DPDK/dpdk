@@ -182,6 +182,13 @@ int tf_msg_session_resc_alloc(struct tf *tfp,
 			      struct tf_rm_resc_entry *resv);
 
 /**
+ * Sends session resource flush request to TF Firmware
+ */
+int tf_msg_session_resc_flush(struct tf *tfp,
+			      enum tf_dir dir,
+			      uint16_t size,
+			      struct tf_rm_resc_entry *resv);
+/**
  * Sends EM internal insert request to Firmware
  */
 int tf_msg_insert_em_internal_entry(struct tf *tfp,

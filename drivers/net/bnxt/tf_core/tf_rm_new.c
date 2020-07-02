@@ -61,6 +61,11 @@ struct tf_rm_new_db {
 	enum tf_dir dir;
 
 	/**
+	 * Module type, used for logging purposes.
+	 */
+	enum tf_device_module_type type;
+
+	/**
 	 * The DB consists of an array of elements
 	 */
 	struct tf_rm_element *db;
@@ -163,6 +168,178 @@ tf_rm_adjust_index(struct tf_rm_element *db,
 	default:
 		return -EOPNOTSUPP;
 	}
+
+	return rc;
+}
+
+/**
+ * Logs an array of found residual entries to the console.
+ *
+ * [in] dir
+ *   Receive or transmit direction
+ *
+ * [in] type
+ *   Type of Device Module
+ *
+ * [in] count
+ *   Number of entries in the residual array
+ *
+ * [in] residuals
+ *   Pointer to an array of residual entries. Array is index same as
+ *   the DB in which this function is used. Each entry holds residual
+ *   value for that entry.
+ */
+static void
+tf_rm_log_residuals(enum tf_dir dir,
+		    enum tf_device_module_type type,
+		    uint16_t count,
+		    uint16_t *residuals)
+{
+	int i;
+
+	/* Walk the residual array and log the types that wasn't
+	 * cleaned up to the console.
+	 */
+	for (i = 0; i < count; i++) {
+		if (residuals[i] != 0)
+			TFP_DRV_LOG(ERR,
+				"%s, %s was not cleaned up, %d outstanding\n",
+				tf_dir_2_str(dir),
+				tf_device_module_type_subtype_2_str(type, i),
+				residuals[i]);
+	}
+}
+
+/**
+ * Performs a check of the passed in DB for any lingering elements. If
+ * a resource type was found to not have been cleaned up by the caller
+ * then its residual values are recorded, logged and passed back in an
+ * allocate reservation array that the caller can pass to the FW for
+ * cleanup.
+ *
+ * [in] db
+ *   Pointer to the db, used for the lookup
+ *
+ * [out] resv_size
+ *   Pointer to the reservation size of the generated reservation
+ *   array.
+ *
+ * [in/out] resv
+ *   Pointer Pointer to a reservation array. The reservation array is
+ *   allocated after the residual scan and holds any found residual
+ *   entries. Thus it can be smaller than the DB that the check was
+ *   performed on. Array must be freed by the caller.
+ *
+ * [out] residuals_present
+ *   Pointer to a bool flag indicating if residual was present in the
+ *   DB
+ *
+ * Returns:
+ *     0          - Success
+ *   - EOPNOTSUPP - Operation not supported
+ */
+static int
+tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
+		      uint16_t *resv_size,
+		      struct tf_rm_resc_entry **resv,
+		      bool *residuals_present)
+{
+	int rc;
+	int i;
+	int f;
+	uint16_t count;
+	uint16_t found;
+	uint16_t *residuals = NULL;
+	uint16_t hcapi_type;
+	struct tf_rm_get_inuse_count_parms iparms;
+	struct tf_rm_get_alloc_info_parms aparms;
+	struct tf_rm_get_hcapi_parms hparms;
+	struct tf_rm_alloc_info info;
+	struct tfp_calloc_parms cparms;
+	struct tf_rm_resc_entry *local_resv = NULL;
+
+	/* Create array to hold the entries that have residuals */
+	cparms.nitems = rm_db->num_entries;
+	cparms.size = sizeof(uint16_t);
+	cparms.alignment = 0;
+	rc = tfp_calloc(&cparms);
+	if (rc)
+		return rc;
+
+	residuals = (uint16_t *)cparms.mem_va;
+
+	/* Traverse the DB and collect any residual elements */
+	iparms.rm_db = rm_db;
+	iparms.count = &count;
+	for (i = 0, found = 0; i < rm_db->num_entries; i++) {
+		iparms.db_index = i;
+		rc = tf_rm_get_inuse_count(&iparms);
+		/* Not a device supported entry, just skip */
+		if (rc == -ENOTSUP)
+			continue;
+		if (rc)
+			goto cleanup_residuals;
+
+		if (count) {
+			found++;
+			residuals[i] = count;
+			*residuals_present = true;
+		}
+	}
+
+	if (*residuals_present) {
+		/* Populate a reduced resv array with only the entries
+		 * that have residuals.
+		 */
+		cparms.nitems = found;
+		cparms.size = sizeof(struct tf_rm_resc_entry);
+		cparms.alignment = 0;
+		rc = tfp_calloc(&cparms);
+		if (rc)
+			return rc;
+
+		local_resv = (struct tf_rm_resc_entry *)cparms.mem_va;
+
+		aparms.rm_db = rm_db;
+		hparms.rm_db = rm_db;
+		hparms.hcapi_type = &hcapi_type;
+		for (i = 0, f = 0; i < rm_db->num_entries; i++) {
+			if (residuals[i] == 0)
+				continue;
+			aparms.db_index = i;
+			aparms.info = &info;
+			rc = tf_rm_get_info(&aparms);
+			if (rc)
+				goto cleanup_all;
+
+			hparms.db_index = i;
+			rc = tf_rm_get_hcapi_type(&hparms);
+			if (rc)
+				goto cleanup_all;
+
+			local_resv[f].type = hcapi_type;
+			local_resv[f].start = info.entry.start;
+			local_resv[f].stride = info.entry.stride;
+			f++;
+		}
+		*resv_size = found;
+	}
+
+	tf_rm_log_residuals(rm_db->dir,
+			    rm_db->type,
+			    rm_db->num_entries,
+			    residuals);
+
+	tfp_free((void *)residuals);
+	*resv = local_resv;
+
+	return 0;
+
+ cleanup_all:
+	tfp_free((void *)local_resv);
+	*resv = NULL;
+ cleanup_residuals:
+	tfp_free((void *)residuals);
 
 	return rc;
 }
@@ -373,6 +550,7 @@ tf_rm_create_db(struct tf *tfp,
 
 	rm_db->num_entries = i;
 	rm_db->dir = parms->dir;
+	rm_db->type = parms->type;
 	*parms->rm_db = (void *)rm_db;
 
 	tfp_free((void *)req);
@@ -392,20 +570,69 @@ tf_rm_create_db(struct tf *tfp,
 }
 
 int
-tf_rm_free_db(struct tf *tfp __rte_unused,
+tf_rm_free_db(struct tf *tfp,
 	      struct tf_rm_free_db_parms *parms)
 {
-	int rc = 0;
+	int rc;
 	int i;
+	uint16_t resv_size = 0;
 	struct tf_rm_new_db *rm_db;
+	struct tf_rm_resc_entry *resv;
+	bool residuals_found = false;
 
-	TF_CHECK_PARMS1(parms);
+	TF_CHECK_PARMS2(parms, parms->rm_db);
 
-	/* Traverse the DB and clear each pool.
-	 * NOTE:
-	 *   Firmware is not cleared. It will be cleared on close only.
+	/* Device unbind happens when the TF Session is closed and the
+	 * session ref count is 0. Device unbind will cleanup each of
+	 * its support modules, i.e. Identifier, thus we're ending up
+	 * here to close the DB.
+	 *
+	 * On TF Session close it is assumed that the session has already
+	 * cleaned up all its resources, individually, while
+	 * destroying its flows.
+	 *
+	 * To assist in the 'cleanup checking' the DB is checked for any
+	 * remaining elements and logged if found to be the case.
+	 *
+	 * Any such elements will need to be 'cleared' ahead of
+	 * returning the resources to the HCAPI RM.
+	 *
+	 * RM will signal FW to flush the DB resources. FW will
+	 * perform the invalidation. TF Session close will return the
+	 * previous allocated elements to the RM and then close the
+	 * HCAPI RM registration. That then saves several 'free' msgs
+	 * from being required.
 	 */
+
 	rm_db = (struct tf_rm_new_db *)parms->rm_db;
+
+	/* Check for residuals that the client didn't clean up */
+	rc = tf_rm_check_residuals(rm_db,
+				   &resv_size,
+				   &resv,
+				   &residuals_found);
+	if (rc)
+		return rc;
+
+	/* Invalidate any residuals followed by a DB traversal for
+	 * pool cleanup.
+	 */
+	if (residuals_found) {
+		rc = tf_msg_session_resc_flush(tfp,
+					       parms->dir,
+					       resv_size,
+					       resv);
+		tfp_free((void *)resv);
+		/* On failure we still have to cleanup so we can only
+		 * log that FW failed.
+		 */
+		if (rc)
+			TFP_DRV_LOG(ERR,
+				    "%s: Internal Flush error, module:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    tf_device_module_type_2_str(rm_db->type));
+	}
+
 	for (i = 0; i < rm_db->num_entries; i++)
 		tfp_free((void *)rm_db->db[i].pool);
 
@@ -417,7 +644,7 @@ tf_rm_free_db(struct tf *tfp __rte_unused,
 int
 tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 {
-	int rc = 0;
+	int rc;
 	int id;
 	uint32_t index;
 	struct tf_rm_new_db *rm_db;
@@ -446,11 +673,12 @@ tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 
 	id = ba_alloc(rm_db->db[parms->db_index].pool);
 	if (id == BA_FAIL) {
+		rc = -ENOMEM;
 		TFP_DRV_LOG(ERR,
 			    "%s: Allocation failed, rc:%s\n",
 			    tf_dir_2_str(rm_db->dir),
 			    strerror(-rc));
-		return -ENOMEM;
+		return rc;
 	}
 
 	/* Adjust for any non zero start value */
@@ -475,7 +703,7 @@ tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 int
 tf_rm_free(struct tf_rm_free_parms *parms)
 {
-	int rc = 0;
+	int rc;
 	uint32_t adj_index;
 	struct tf_rm_new_db *rm_db;
 	enum tf_rm_elem_cfg_type cfg_type;
@@ -521,7 +749,7 @@ tf_rm_free(struct tf_rm_free_parms *parms)
 int
 tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms)
 {
-	int rc = 0;
+	int rc;
 	uint32_t adj_index;
 	struct tf_rm_new_db *rm_db;
 	enum tf_rm_elem_cfg_type cfg_type;
@@ -565,7 +793,6 @@ tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms)
 int
 tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms)
 {
-	int rc = 0;
 	struct tf_rm_new_db *rm_db;
 	enum tf_rm_elem_cfg_type cfg_type;
 
@@ -579,15 +806,16 @@ tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms)
 	    cfg_type != TF_RM_ELEM_CFG_PRIVATE)
 		return -ENOTSUP;
 
-	parms->info = &rm_db->db[parms->db_index].alloc;
+	memcpy(parms->info,
+	       &rm_db->db[parms->db_index].alloc,
+	       sizeof(struct tf_rm_alloc_info));
 
-	return rc;
+	return 0;
 }
 
 int
 tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms)
 {
-	int rc = 0;
 	struct tf_rm_new_db *rm_db;
 	enum tf_rm_elem_cfg_type cfg_type;
 
@@ -603,5 +831,36 @@ tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms)
 
 	*parms->hcapi_type = rm_db->db[parms->db_index].hcapi_type;
 
+	return 0;
+}
+
+int
+tf_rm_get_inuse_count(struct tf_rm_get_inuse_count_parms *parms)
+{
+	int rc = 0;
+	struct tf_rm_new_db *rm_db;
+	enum tf_rm_elem_cfg_type cfg_type;
+
+	TF_CHECK_PARMS2(parms, parms->rm_db);
+
+	rm_db = (struct tf_rm_new_db *)parms->rm_db;
+	cfg_type = rm_db->db[parms->db_index].cfg_type;
+
+	/* Bail out if not controlled by RM */
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI &&
+	    cfg_type != TF_RM_ELEM_CFG_PRIVATE)
+		return -ENOTSUP;
+
+	/* Bail silently (no logging), if the pool is not valid there
+	 * was no elements allocated for it.
+	 */
+	if (rm_db->db[parms->db_index].pool == NULL) {
+		*parms->count = 0;
+		return 0;
+	}
+
+	*parms->count = ba_inuse_count(rm_db->db[parms->db_index].pool);
+
 	return rc;
+
 }

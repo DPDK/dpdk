@@ -51,11 +51,12 @@ tf_tbl_bind(struct tf *tfp,
 	}
 
 	db_cfg.num_elements = parms->num_elements;
+	db_cfg.type = TF_DEVICE_MODULE_TYPE_TABLE;
+	db_cfg.num_elements = parms->num_elements;
+	db_cfg.cfg = parms->cfg;
 
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		db_cfg.dir = i;
-		db_cfg.num_elements = parms->num_elements;
-		db_cfg.cfg = parms->cfg;
 		db_cfg.alloc_cnt = parms->resources->tbl_cnt[i].cnt;
 		db_cfg.rm_db = &tbl_db[i];
 		rc = tf_rm_create_db(tfp, &db_cfg);

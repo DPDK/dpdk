@@ -1110,6 +1110,69 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 	return rc;
 }
 
+int
+tf_msg_session_resc_flush(struct tf *tfp,
+			  enum tf_dir dir,
+			  uint16_t size,
+			  struct tf_rm_resc_entry *resv)
+{
+	int rc;
+	int i;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct hwrm_tf_session_resc_flush_input req = { 0 };
+	struct hwrm_tf_session_resc_flush_output resp = { 0 };
+	uint8_t fw_session_id;
+	struct tf_msg_dma_buf resv_buf = { 0 };
+	struct tf_rm_resc_entry *resv_data;
+	int dma_size;
+
+	TF_CHECK_PARMS2(tfp, resv);
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Prepare DMA buffers */
+	dma_size = size * sizeof(struct tf_rm_resc_entry);
+	rc = tf_msg_alloc_dma_buf(&resv_buf, dma_size);
+	if (rc)
+		return rc;
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+	req.flush_size = size;
+
+	resv_data = (struct tf_rm_resc_entry *)resv_buf.va_addr;
+	for (i = 0; i < size; i++) {
+		resv_data[i].type = tfp_cpu_to_le_32(resv[i].type);
+		resv_data[i].start = tfp_cpu_to_le_16(resv[i].start);
+		resv_data[i].stride = tfp_cpu_to_le_16(resv[i].stride);
+	}
+
+	req.flush_addr = tfp_cpu_to_le_64(resv_buf.pa_addr);
+
+	parms.tf_type = HWRM_TF_SESSION_RESC_FLUSH;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp, &parms);
+	if (rc)
+		return rc;
+
+	tf_msg_free_dma_buf(&resv_buf);
+
+	return rc;
+}
+
 /**
  * Sends EM mem register request to Firmware
  */
@@ -1512,9 +1575,7 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 	uint8_t *data = NULL;
 	int data_size = 0;
 
-	rc = tf_tcam_tbl_2_hwrm(parms->type, &req.type);
-	if (rc != 0)
-		return rc;
+	req.type = parms->type;
 
 	req.idx = tfp_cpu_to_le_16(parms->idx);
 	if (parms->dir == TF_DIR_TX)

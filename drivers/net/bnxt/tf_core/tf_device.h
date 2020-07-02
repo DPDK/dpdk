@@ -15,6 +15,17 @@ struct tf;
 struct tf_session;
 
 /**
+ *
+ */
+enum tf_device_module_type {
+	TF_DEVICE_MODULE_TYPE_IDENTIFIER,
+	TF_DEVICE_MODULE_TYPE_TABLE,
+	TF_DEVICE_MODULE_TYPE_TCAM,
+	TF_DEVICE_MODULE_TYPE_EM,
+	TF_DEVICE_MODULE_TYPE_MAX
+};
+
+/**
  * The Device module provides a general device template. A supported
  * device type should implement one or more of the listed function
  * pointers according to its capabilities.
@@ -60,11 +71,11 @@ struct tf_dev_info {
  *   - (-EINVAL) parameter failure.
  *   - (-ENODEV) no such device supported.
  */
-int dev_bind(struct tf *tfp,
-	     enum tf_device_type type,
-	     bool shadow_copy,
-	     struct tf_session_resources *resources,
-	     struct tf_dev_info *dev_handle);
+int tf_dev_bind(struct tf *tfp,
+		enum tf_device_type type,
+		bool shadow_copy,
+		struct tf_session_resources *resources,
+		struct tf_dev_info *dev_handle);
 
 /**
  * Device release handles cleanup of the device specific information.
@@ -80,8 +91,8 @@ int dev_bind(struct tf *tfp,
  *   - (-EINVAL) parameter failure.
  *   - (-ENODEV) no such device supported.
  */
-int dev_unbind(struct tf *tfp,
-	       struct tf_dev_info *dev_handle);
+int tf_dev_unbind(struct tf *tfp,
+		  struct tf_dev_info *dev_handle);
 
 /**
  * Truflow device specific function hooks structure

@@ -7,6 +7,7 @@
 #define _TF_UTIL_H_
 
 #include "tf_core.h"
+#include "tf_device.h"
 
 /**
  * Helper function converting direction to text string
@@ -62,5 +63,36 @@ const char *tf_tbl_type_2_str(enum tf_tbl_type tbl_type);
  *   Pointer to a char string holding the string for the EM type
  */
 const char *tf_em_tbl_type_2_str(enum tf_em_tbl_type em_type);
+
+/**
+ * Helper function converting device module type and module type to
+ * text string.
+ *
+ * [in] dm_type
+ *   Device Module type
+ *
+ * [in] mod_type
+ *   Module specific type
+ *
+ * Returns:
+ *   Pointer to a char string holding the string for the EM type
+ */
+const char *tf_device_module_type_subtype_2_str
+					(enum tf_device_module_type dm_type,
+					 uint16_t mod_type);
+
+/**
+ * Helper function converting device module type to text string
+ *
+ * [in] dm_type
+ *   Device Module type
+ *
+ * [in] mod_type
+ *   Module specific type
+ *
+ * Returns:
+ *   Pointer to a char string holding the string for the EM type
+ */
+const char *tf_device_module_type_2_str(enum tf_device_module_type dm_type);
 
 #endif /* _TF_UTIL_H_ */

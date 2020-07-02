@@ -8,6 +8,7 @@
 
 #include "tf_core.h"
 #include "bitalloc.h"
+#include "tf_device.h"
 
 struct tf;
 
@@ -57,9 +58,9 @@ struct tf_rm_new_entry {
 enum tf_rm_elem_cfg_type {
 	/** No configuration */
 	TF_RM_ELEM_CFG_NULL,
-	/** HCAPI 'controlled' */
+	/** HCAPI 'controlled', uses a Pool for internal storage */
 	TF_RM_ELEM_CFG_HCAPI,
-	/** Private thus not HCAPI 'controlled' */
+	/** Private thus not HCAPI 'controlled', creates a Pool for storage */
 	TF_RM_ELEM_CFG_PRIVATE,
 	/**
 	 * Shared element thus it belongs to a shared FW Session and
@@ -123,7 +124,11 @@ struct tf_rm_alloc_info {
  */
 struct tf_rm_create_db_parms {
 	/**
-	 * [in] Receive or transmit direction
+	 * [in] Device module type. Used for logging purposes.
+	 */
+	enum tf_device_module_type type;
+	/**
+	 * [in] Receive or transmit direction.
 	 */
 	enum tf_dir dir;
 	/**
@@ -264,6 +269,25 @@ struct tf_rm_get_hcapi_parms {
 };
 
 /**
+ * Get InUse count parameters for single element
+ */
+struct tf_rm_get_inuse_count_parms {
+	/**
+	 * [in] RM DB Handle
+	 */
+	void *rm_db;
+	/**
+	 * [in] DB Index, indicates which DB entry to perform the
+	 * action on.
+	 */
+	uint16_t db_index;
+	/**
+	 * [out] Pointer to the inuse count for the specified db_index
+	 */
+	uint16_t *count;
+};
+
+/**
  * @page rm Resource Manager
  *
  * @ref tf_rm_create_db
@@ -279,6 +303,8 @@ struct tf_rm_get_hcapi_parms {
  * @ref tf_rm_get_info
  *
  * @ref tf_rm_get_hcapi_type
+ *
+ * @ref tf_rm_get_inuse_count
  */
 
 /**
@@ -395,5 +421,18 @@ int tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms);
  *   - (-EINVAL) on failure.
  */
 int tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms);
+
+/**
+ * Performs a lookup in the Resource Manager DB and retrieves the
+ * requested HCAPI RM type inuse count.
+ *
+ * [in] parms
+ *   Pointer to get inuse parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_rm_get_inuse_count(struct tf_rm_get_inuse_count_parms *parms);
 
 #endif /* TF_RM_NEW_H_ */

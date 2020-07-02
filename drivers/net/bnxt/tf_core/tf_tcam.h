@@ -147,6 +147,10 @@ struct tf_tcam_set_parms {
 	 */
 	enum tf_tcam_tbl_type type;
 	/**
+	 * [in] Type of HCAPI
+	 */
+	uint16_t hcapi_type;
+	/**
 	 * [in] Entry index to write to
 	 */
 	uint32_t idx;

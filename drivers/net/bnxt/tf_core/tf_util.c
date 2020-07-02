@@ -7,8 +7,8 @@
 
 #include "tf_util.h"
 
-const char
-*tf_dir_2_str(enum tf_dir dir)
+const char *
+tf_dir_2_str(enum tf_dir dir)
 {
 	switch (dir) {
 	case TF_DIR_RX:
@@ -20,8 +20,8 @@ const char
 	}
 }
 
-const char
-*tf_ident_2_str(enum tf_identifier_type id_type)
+const char *
+tf_ident_2_str(enum tf_identifier_type id_type)
 {
 	switch (id_type) {
 	case TF_IDENT_TYPE_L2_CTXT:
@@ -39,8 +39,8 @@ const char
 	}
 }
 
-const char
-*tf_tcam_tbl_2_str(enum tf_tcam_tbl_type tcam_type)
+const char *
+tf_tcam_tbl_2_str(enum tf_tcam_tbl_type tcam_type)
 {
 	switch (tcam_type) {
 	case TF_TCAM_TBL_TYPE_L2_CTXT_TCAM:
@@ -60,8 +60,8 @@ const char
 	}
 }
 
-const char
-*tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
+const char *
+tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 {
 	switch (tbl_type) {
 	case TF_TBL_TYPE_FULL_ACT_RECORD:
@@ -131,8 +131,8 @@ const char
 	}
 }
 
-const char
-*tf_em_tbl_type_2_str(enum tf_em_tbl_type em_type)
+const char *
+tf_em_tbl_type_2_str(enum tf_em_tbl_type em_type)
 {
 	switch (em_type) {
 	case TF_EM_TBL_TYPE_EM_RECORD:
@@ -141,5 +141,40 @@ const char
 		return "Table Scope";
 	default:
 		return "Invalid EM type";
+	}
+}
+
+const char *
+tf_device_module_type_subtype_2_str(enum tf_device_module_type dm_type,
+				    uint16_t mod_type)
+{
+	switch (dm_type) {
+	case TF_DEVICE_MODULE_TYPE_IDENTIFIER:
+		return tf_ident_2_str(mod_type);
+	case TF_DEVICE_MODULE_TYPE_TABLE:
+		return tf_tcam_tbl_2_str(mod_type);
+	case TF_DEVICE_MODULE_TYPE_TCAM:
+		return tf_tbl_type_2_str(mod_type);
+	case TF_DEVICE_MODULE_TYPE_EM:
+		return tf_em_tbl_type_2_str(mod_type);
+	default:
+		return "Invalid Device Module type";
+	}
+}
+
+const char *
+tf_device_module_type_2_str(enum tf_device_module_type dm_type)
+{
+	switch (dm_type) {
+	case TF_DEVICE_MODULE_TYPE_IDENTIFIER:
+		return "Identifier";
+	case TF_DEVICE_MODULE_TYPE_TABLE:
+		return "Table";
+	case TF_DEVICE_MODULE_TYPE_TCAM:
+		return "TCAM";
+	case TF_DEVICE_MODULE_TYPE_EM:
+		return "EM";
+	default:
+		return "Invalid Device Module type";
 	}
 }

@@ -77,5 +77,4 @@ struct tf_rm_element_cfg tf_tbl_p4[TF_TBL_TYPE_MAX] = {
 	/* CFA_RESOURCE_TYPE_P4_EXT */
 	{ TF_RM_ELEM_CFG_NULL, CFA_RESOURCE_TYPE_INVALID }
 };
-
 #endif /* _TF_DEVICE_P4_H_ */

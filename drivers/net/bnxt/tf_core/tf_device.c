@@ -10,7 +10,7 @@
 struct tf;
 
 /* Forward declarations */
-static int dev_unbind_p4(struct tf *tfp);
+static int tf_dev_unbind_p4(struct tf *tfp);
 
 /**
  * Device specific bind function, WH+
@@ -32,10 +32,10 @@ static int dev_unbind_p4(struct tf *tfp);
  *   - (-EINVAL) on parameter or internal failure.
  */
 static int
-dev_bind_p4(struct tf *tfp,
-	    bool shadow_copy,
-	    struct tf_session_resources *resources,
-	    struct tf_dev_info *dev_handle)
+tf_dev_bind_p4(struct tf *tfp,
+	       bool shadow_copy,
+	       struct tf_session_resources *resources,
+	       struct tf_dev_info *dev_handle)
 {
 	int rc;
 	int frc;
@@ -93,7 +93,7 @@ dev_bind_p4(struct tf *tfp,
 
  fail:
 	/* Cleanup of already created modules */
-	frc = dev_unbind_p4(tfp);
+	frc = tf_dev_unbind_p4(tfp);
 	if (frc)
 		return frc;
 
@@ -111,7 +111,7 @@ dev_bind_p4(struct tf *tfp,
  *   - (-EINVAL) on failure.
  */
 static int
-dev_unbind_p4(struct tf *tfp)
+tf_dev_unbind_p4(struct tf *tfp)
 {
 	int rc = 0;
 	bool fail = false;
@@ -119,7 +119,17 @@ dev_unbind_p4(struct tf *tfp)
 	/* Unbind all the support modules. As this is only done on
 	 * close we only report errors as everything has to be cleaned
 	 * up regardless.
+	 *
+	 * In case of residuals TCAMs are cleaned up first as to
+	 * invalidate the pipeline in a clean manner.
 	 */
+	rc = tf_tcam_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, TCAM\n");
+		fail = true;
+	}
+
 	rc = tf_ident_unbind(tfp);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -134,13 +144,6 @@ dev_unbind_p4(struct tf *tfp)
 		fail = true;
 	}
 
-	rc = tf_tcam_unbind(tfp);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Device unbind failed, TCAM\n");
-		fail = true;
-	}
-
 	if (fail)
 		return -1;
 
@@ -148,18 +151,18 @@ dev_unbind_p4(struct tf *tfp)
 }
 
 int
-dev_bind(struct tf *tfp __rte_unused,
-	 enum tf_device_type type,
-	 bool shadow_copy,
-	 struct tf_session_resources *resources,
-	 struct tf_dev_info *dev_handle)
+tf_dev_bind(struct tf *tfp __rte_unused,
+	    enum tf_device_type type,
+	    bool shadow_copy,
+	    struct tf_session_resources *resources,
+	    struct tf_dev_info *dev_handle)
 {
 	switch (type) {
 	case TF_DEVICE_TYPE_WH:
-		return dev_bind_p4(tfp,
-				   shadow_copy,
-				   resources,
-				   dev_handle);
+		return tf_dev_bind_p4(tfp,
+				      shadow_copy,
+				      resources,
+				      dev_handle);
 	default:
 		TFP_DRV_LOG(ERR,
 			    "No such device\n");
@@ -168,12 +171,12 @@ dev_bind(struct tf *tfp __rte_unused,
 }
 
 int
-dev_unbind(struct tf *tfp,
-	   struct tf_dev_info *dev_handle)
+tf_dev_unbind(struct tf *tfp,
+	      struct tf_dev_info *dev_handle)
 {
 	switch (dev_handle->type) {
 	case TF_DEVICE_TYPE_WH:
-		return dev_unbind_p4(tfp);
+		return tf_dev_unbind_p4(tfp);
 	default:
 		TFP_DRV_LOG(ERR,
 			    "No such device\n");
