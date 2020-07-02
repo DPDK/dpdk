@@ -957,6 +957,49 @@ static void enicpmd_dev_txq_info_get(struct rte_eth_dev *dev,
 	/* tx_thresh, and all the other fields are not applicable for enic */
 }
 
+static int enicpmd_dev_rx_burst_mode_get(struct rte_eth_dev *dev,
+					 __rte_unused uint16_t queue_id,
+					 struct rte_eth_burst_mode *mode)
+{
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	struct enic *enic = pmd_priv(dev);
+	const char *info_str = NULL;
+	int ret = -EINVAL;
+
+	ENICPMD_FUNC_TRACE();
+	if (enic->use_noscatter_vec_rx_handler)
+		info_str = "Vector AVX2 No Scatter";
+	else if (pkt_burst == enic_noscatter_recv_pkts)
+		info_str = "Scalar No Scatter";
+	else if (pkt_burst == enic_recv_pkts)
+		info_str = "Scalar";
+	if (info_str) {
+		strlcpy(mode->info, info_str, sizeof(mode->info));
+		ret = 0;
+	}
+	return ret;
+}
+
+static int enicpmd_dev_tx_burst_mode_get(struct rte_eth_dev *dev,
+					 __rte_unused uint16_t queue_id,
+					 struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	const char *info_str = NULL;
+	int ret = -EINVAL;
+
+	ENICPMD_FUNC_TRACE();
+	if (pkt_burst == enic_simple_xmit_pkts)
+		info_str = "Scalar Simplified";
+	else if (pkt_burst == enic_xmit_pkts)
+		info_str = "Scalar";
+	if (info_str) {
+		strlcpy(mode->info, info_str, sizeof(mode->info));
+		ret = 0;
+	}
+	return ret;
+}
+
 static int enicpmd_dev_rx_queue_intr_enable(struct rte_eth_dev *eth_dev,
 					    uint16_t rx_queue_id)
 {
@@ -1106,6 +1149,8 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.rx_queue_intr_disable = enicpmd_dev_rx_queue_intr_disable,
 	.rxq_info_get         = enicpmd_dev_rxq_info_get,
 	.txq_info_get         = enicpmd_dev_txq_info_get,
+	.rx_burst_mode_get    = enicpmd_dev_rx_burst_mode_get,
+	.tx_burst_mode_get    = enicpmd_dev_tx_burst_mode_get,
 	.dev_led_on           = NULL,
 	.dev_led_off          = NULL,
 	.flow_ctrl_get        = NULL,

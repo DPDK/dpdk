@@ -148,6 +148,7 @@ struct enic {
 	uint8_t ig_vlan_rewrite_mode; /* devargs ig-vlan-rewrite */
 	uint16_t vxlan_port;  /* current vxlan port pushed to NIC */
 	int use_simple_tx_handler;
+	int use_noscatter_vec_rx_handler;
 
 	unsigned int flags;
 	unsigned int priv_flags;

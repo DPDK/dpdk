@@ -824,6 +824,7 @@ enic_use_vector_rx_handler(struct rte_eth_dev *eth_dev)
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2)) {
 		ENICPMD_LOG(DEBUG, " use the non-scatter avx2 Rx handler");
 		eth_dev->rx_pkt_burst = &enic_noscatter_vec_recv_pkts;
+		enic->use_noscatter_vec_rx_handler = 1;
 		return true;
 	}
 	return false;
