@@ -55,7 +55,7 @@ struct tf_tbl_alloc_parms {
 	/**
 	 * [out] Idx of allocated entry or found entry (if search_enable)
 	 */
-	uint32_t idx;
+	uint32_t *idx;
 };
 
 /**

@@ -135,13 +135,16 @@ struct tf_rm_create_db_parms {
 	 */
 	struct tf_rm_element_cfg *cfg;
 	/**
-	 * Allocation number array. Array size is num_elements.
+	 * Resource allocation count array. This array content
+	 * originates from the tf_session_resources that is passed in
+	 * on session open.
+	 * Array size is num_elements.
 	 */
-	uint16_t *alloc_num;
+	uint16_t *alloc_cnt;
 	/**
 	 * [out] RM DB Handle
 	 */
-	void *rm_db;
+	void **rm_db;
 };
 
 /**
@@ -382,7 +385,7 @@ int tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms);
 
 /**
  * Performs a lookup in the Resource Manager DB and retrieves the
- * requested HCAPI type.
+ * requested HCAPI RM type.
  *
  * [in] parms
  *   Pointer to get hcapi parameters

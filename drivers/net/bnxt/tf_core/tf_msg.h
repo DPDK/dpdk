@@ -12,6 +12,7 @@
 #include "tf_tbl.h"
 #include "tf_rm.h"
 #include "tf_rm_new.h"
+#include "tf_tcam.h"
 
 struct tf;
 

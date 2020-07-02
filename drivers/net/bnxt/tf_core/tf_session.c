@@ -95,20 +95,10 @@ tf_session_open_session(struct tf *tfp,
 		      parms->open_cfg->device_type,
 		      session->shadow_copy,
 		      &parms->open_cfg->resources,
-		      session->dev);
+		      &session->dev);
 	/* Logging handled by dev_bind */
 	if (rc)
 		return rc;
-
-	/* Query for Session Config
-	 */
-	rc = tf_msg_session_qcfg(tfp);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "Query config message send failed, rc:%s\n",
-			    strerror(-rc));
-		goto cleanup_close;
-	}
 
 	session->ref_count++;
 
@@ -119,10 +109,6 @@ tf_session_open_session(struct tf *tfp,
 	tfp_free(tfp->session);
 	tfp->session = NULL;
 	return rc;
-
- cleanup_close:
-	tf_close_session(tfp);
-	return -EINVAL;
 }
 
 int
@@ -231,17 +217,7 @@ int
 tf_session_get_device(struct tf_session *tfs,
 		      struct tf_dev_info **tfd)
 {
-	int rc;
-
-	if (tfs->dev == NULL) {
-		rc = -EINVAL;
-		TFP_DRV_LOG(ERR,
-			    "Device not created, rc:%s\n",
-			    strerror(-rc));
-		return rc;
-	}
-
-	*tfd = tfs->dev;
+	*tfd = &tfs->dev;
 
 	return 0;
 }

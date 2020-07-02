@@ -12,6 +12,7 @@
 #include "tf_device.h"
 #include "tf_msg.h"
 #include "tf_util.h"
+#include "tf_common.h"
 #include "tf_session.h"
 #include "tfp.h"
 #include "hwrm_tf.h"
@@ -935,13 +936,7 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 	struct tf_rm_resc_req_entry *data;
 	int dma_size;
 
-	if (size == 0 || query == NULL || resv_strategy == NULL) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Resource QCAPS parameter error, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-EINVAL));
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS3(tfp, query, resv_strategy);
 
 	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
 	if (rc) {
@@ -962,7 +957,7 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 	req.flags = tfp_cpu_to_le_16(dir);
 	req.qcaps_size = size;
-	req.qcaps_addr = qcaps_buf.pa_addr;
+	req.qcaps_addr = tfp_cpu_to_le_64(qcaps_buf.pa_addr);
 
 	parms.tf_type = HWRM_TF_SESSION_RESC_QCAPS;
 	parms.req_data = (uint32_t *)&req;
@@ -980,18 +975,29 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 	 */
 	if (resp.size != size) {
 		TFP_DRV_LOG(ERR,
-			    "%s: QCAPS message error, rc:%s\n",
+			    "%s: QCAPS message size error, rc:%s\n",
 			    tf_dir_2_str(dir),
 			    strerror(-EINVAL));
 		return -EINVAL;
 	}
 
+	printf("size: %d\n", resp.size);
+
 	/* Post process the response */
 	data = (struct tf_rm_resc_req_entry *)qcaps_buf.va_addr;
+
+	printf("\nQCAPS\n");
 	for (i = 0; i < size; i++) {
 		query[i].type = tfp_cpu_to_le_32(data[i].type);
 		query[i].min = tfp_le_to_cpu_16(data[i].min);
 		query[i].max = tfp_le_to_cpu_16(data[i].max);
+
+		printf("type: %d(0x%x) %d %d\n",
+		       query[i].type,
+		       query[i].type,
+		       query[i].min,
+		       query[i].max);
+
 	}
 
 	*resv_strategy = resp.flags &
@@ -1020,6 +1026,8 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 	struct tf_rm_resc_req_entry *req_data;
 	struct tf_rm_resc_entry *resv_data;
 	int dma_size;
+
+	TF_CHECK_PARMS3(tfp, request, resv);
 
 	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
 	if (rc) {
@@ -1053,8 +1061,8 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 		req_data[i].max = tfp_cpu_to_le_16(request[i].max);
 	}
 
-	req.req_addr = req_buf.pa_addr;
-	req.resp_addr = resv_buf.pa_addr;
+	req.req_addr = tfp_cpu_to_le_64(req_buf.pa_addr);
+	req.resc_addr = tfp_cpu_to_le_64(resv_buf.pa_addr);
 
 	parms.tf_type = HWRM_TF_SESSION_RESC_ALLOC;
 	parms.req_data = (uint32_t *)&req;
@@ -1072,11 +1080,14 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 	 */
 	if (resp.size != size) {
 		TFP_DRV_LOG(ERR,
-			    "%s: Alloc message error, rc:%s\n",
+			    "%s: Alloc message size error, rc:%s\n",
 			    tf_dir_2_str(dir),
 			    strerror(-EINVAL));
 		return -EINVAL;
 	}
+
+	printf("\nRESV\n");
+	printf("size: %d\n", resp.size);
 
 	/* Post process the response */
 	resv_data = (struct tf_rm_resc_entry *)resv_buf.va_addr;
@@ -1084,6 +1095,13 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 		resv[i].type = tfp_cpu_to_le_32(resv_data[i].type);
 		resv[i].start = tfp_cpu_to_le_16(resv_data[i].start);
 		resv[i].stride = tfp_cpu_to_le_16(resv_data[i].stride);
+
+		printf("%d type: %d(0x%x) %d %d\n",
+		       i,
+		       resv[i].type,
+		       resv[i].type,
+		       resv[i].start,
+		       resv[i].stride);
 	}
 
 	tf_msg_free_dma_buf(&req_buf);
@@ -1460,7 +1478,8 @@ tf_msg_bulk_get_tbl_entry(struct tf *tfp,
 	req.start_index = tfp_cpu_to_le_32(params->starting_idx);
 	req.num_entries = tfp_cpu_to_le_32(params->num_entries);
 
-	data_size = (params->num_entries * params->entry_sz_in_bytes);
+	data_size = params->num_entries * params->entry_sz_in_bytes;
+
 	req.host_addr = tfp_cpu_to_le_64(params->physical_mem_addr);
 
 	MSG_PREP(parms,

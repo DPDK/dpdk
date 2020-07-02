@@ -102,13 +102,13 @@ tfp_calloc(struct tfp_calloc_parms *parms)
 				    (parms->nitems * parms->size),
 				    parms->alignment);
 	if (parms->mem_va == NULL) {
-		PMD_DRV_LOG(ERR, "Allocate failed mem_va\n");
+		TFP_DRV_LOG(ERR, "Allocate failed mem_va\n");
 		return -ENOMEM;
 	}
 
 	parms->mem_pa = (void *)((uintptr_t)rte_mem_virt2iova(parms->mem_va));
 	if (parms->mem_pa == (void *)((uintptr_t)RTE_BAD_IOVA)) {
-		PMD_DRV_LOG(ERR, "Allocate failed mem_pa\n");
+		TFP_DRV_LOG(ERR, "Allocate failed mem_pa\n");
 		return -ENOMEM;
 	}
 

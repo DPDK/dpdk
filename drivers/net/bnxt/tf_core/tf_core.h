@@ -385,33 +385,86 @@ struct tf {
 };
 
 /**
+ * Identifier resource definition
+ */
+struct tf_identifier_resources {
+	/**
+	 * Array of TF Identifiers where each entry is expected to be
+	 * set to the requested resource number of that specific type.
+	 * The index used is tf_identifier_type.
+	 */
+	uint16_t cnt[TF_IDENT_TYPE_MAX];
+};
+
+/**
+ * Table type resource definition
+ */
+struct tf_tbl_resources {
+	/**
+	 * Array of TF Table types where each entry is expected to be
+	 * set to the requeste resource number of that specific
+	 * type. The index used is tf_tbl_type.
+	 */
+	uint16_t cnt[TF_TBL_TYPE_MAX];
+};
+
+/**
+ * TCAM type resource definition
+ */
+struct tf_tcam_resources {
+	/**
+	 * Array of TF TCAM types where each entry is expected to be
+	 * set to the requested resource number of that specific
+	 * type. The index used is tf_tcam_tbl_type.
+	 */
+	uint16_t cnt[TF_TCAM_TBL_TYPE_MAX];
+};
+
+/**
+ * EM type resource definition
+ */
+struct tf_em_resources {
+	/**
+	 * Array of TF EM table types where each entry is expected to
+	 * be set to the requested resource number of that specific
+	 * type. The index used is tf_em_tbl_type.
+	 */
+	uint16_t cnt[TF_EM_TBL_TYPE_MAX];
+};
+
+/**
  * tf_session_resources parameter definition.
  */
 struct tf_session_resources {
-	/** [in] Requested Identifier Resources
+	/**
+	 * [in] Requested Identifier Resources
 	 *
-	 * The number of identifier resources requested for the session.
-	 * The index used is tf_identifier_type.
+	 * Number of identifier resources requested for the
+	 * session.
 	 */
-	uint16_t identifier_cnt[TF_IDENT_TYPE_MAX][TF_DIR_MAX];
-	/** [in] Requested Index Table resource counts
+	struct tf_identifier_resources ident_cnt[TF_DIR_MAX];
+	/**
+	 * [in] Requested Index Table resource counts
 	 *
-	 * The number of index table resources requested for the session.
-	 * The index used is tf_tbl_type.
+	 * The number of index table resources requested for the
+	 * session.
 	 */
-	uint16_t tbl_cnt[TF_TBL_TYPE_MAX][TF_DIR_MAX];
-	/** [in] Requested TCAM Table resource counts
+	struct tf_tbl_resources tbl_cnt[TF_DIR_MAX];
+	/**
+	 * [in] Requested TCAM Table resource counts
 	 *
-	 * The number of TCAM table resources requested for the session.
-	 * The index used is tf_tcam_tbl_type.
+	 * The number of TCAM table resources requested for the
+	 * session.
 	 */
-	uint16_t tcam_tbl_cnt[TF_TCAM_TBL_TYPE_MAX][TF_DIR_MAX];
-	/** [in] Requested EM resource counts
+
+	struct tf_tcam_resources tcam_cnt[TF_DIR_MAX];
+	/**
+	 * [in] Requested EM resource counts
 	 *
-	 * The number of internal EM table resources requested for the session
-	 * The index used is tf_em_tbl_type.
+	 * The number of internal EM table resources requested for the
+	 * session.
 	 */
-	uint16_t em_tbl_cnt[TF_EM_TBL_TYPE_MAX][TF_DIR_MAX];
+	struct tf_em_resources em_cnt[TF_DIR_MAX];
 };
 
 /**
@@ -497,9 +550,6 @@ struct tf_open_session_parms {
 int tf_open_session(struct tf *tfp,
 		    struct tf_open_session_parms *parms);
 
-int tf_open_session_new(struct tf *tfp,
-			struct tf_open_session_parms *parms);
-
 struct tf_attach_session_parms {
 	/**
 	 * [in] ctrl_chan_name
@@ -565,8 +615,6 @@ struct tf_attach_session_parms {
  */
 int tf_attach_session(struct tf *tfp,
 		      struct tf_attach_session_parms *parms);
-int tf_attach_session_new(struct tf *tfp,
-			  struct tf_attach_session_parms *parms);
 
 /**
  * Closes an existing session. Cleans up all hardware and firmware
@@ -576,7 +624,6 @@ int tf_attach_session_new(struct tf *tfp,
  * Returns success or failure code.
  */
 int tf_close_session(struct tf *tfp);
-int tf_close_session_new(struct tf *tfp);
 
 /**
  * @page  ident Identity Management
@@ -631,8 +678,6 @@ struct tf_free_identifier_parms {
  */
 int tf_alloc_identifier(struct tf *tfp,
 			struct tf_alloc_identifier_parms *parms);
-int tf_alloc_identifier_new(struct tf *tfp,
-			    struct tf_alloc_identifier_parms *parms);
 
 /**
  * free identifier resource
@@ -645,8 +690,6 @@ int tf_alloc_identifier_new(struct tf *tfp,
  */
 int tf_free_identifier(struct tf *tfp,
 		       struct tf_free_identifier_parms *parms);
-int tf_free_identifier_new(struct tf *tfp,
-			   struct tf_free_identifier_parms *parms);
 
 /**
  * @page dram_table DRAM Table Scope Interface
@@ -1277,7 +1320,7 @@ struct tf_bulk_get_tbl_entry_parms {
  * provided data buffer is too small for the data type requested.
  */
 int tf_bulk_get_tbl_entry(struct tf *tfp,
-		     struct tf_bulk_get_tbl_entry_parms *parms);
+			  struct tf_bulk_get_tbl_entry_parms *parms);
 
 /**
  * @page exact_match Exact Match Table

@@ -43,7 +43,7 @@ struct tf_ident_alloc_parms {
 	/**
 	 * [in] Identifier type
 	 */
-	enum tf_identifier_type ident_type;
+	enum tf_identifier_type type;
 	/**
 	 * [out] Identifier allocated
 	 */
@@ -61,7 +61,7 @@ struct tf_ident_free_parms {
 	/**
 	 * [in] Identifier type
 	 */
-	enum tf_identifier_type ident_type;
+	enum tf_identifier_type type;
 	/**
 	 * [in] ID to free
 	 */

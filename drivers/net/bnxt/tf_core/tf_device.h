@@ -407,6 +407,7 @@ struct tf_dev_ops {
 /**
  * Supported device operation structures
  */
+extern const struct tf_dev_ops tf_dev_ops_p4_init;
 extern const struct tf_dev_ops tf_dev_ops_p4;
 
 #endif /* _TF_DEVICE_H_ */

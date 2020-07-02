@@ -97,7 +97,7 @@ struct tf_session {
 	uint8_t ref_count;
 
 	/** Device handle */
-	struct tf_dev_info *dev;
+	struct tf_dev_info dev;
 
 	/** Session HW and SRAM resources */
 	struct tf_rm_db resc;

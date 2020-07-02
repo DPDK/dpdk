@@ -38,8 +38,8 @@ static uint8_t init;
 /* static uint8_t shadow_init; */
 
 int
-tf_tcam_bind(struct tf *tfp __rte_unused,
-	     struct tf_tcam_cfg_parms *parms __rte_unused)
+tf_tcam_bind(struct tf *tfp,
+	     struct tf_tcam_cfg_parms *parms)
 {
 	int rc;
 	int i;
@@ -59,8 +59,8 @@ tf_tcam_bind(struct tf *tfp __rte_unused,
 		db_cfg.dir = i;
 		db_cfg.num_elements = parms->num_elements;
 		db_cfg.cfg = parms->cfg;
-		db_cfg.alloc_num = parms->resources->tcam_tbl_cnt[i];
-		db_cfg.rm_db = tcam_db[i];
+		db_cfg.alloc_cnt = parms->resources->tcam_cnt[i].cnt;
+		db_cfg.rm_db = &tcam_db[i];
 		rc = tf_rm_create_db(tfp, &db_cfg);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
@@ -72,11 +72,13 @@ tf_tcam_bind(struct tf *tfp __rte_unused,
 
 	init = 1;
 
+	printf("TCAM - initialized\n");
+
 	return 0;
 }
 
 int
-tf_tcam_unbind(struct tf *tfp __rte_unused)
+tf_tcam_unbind(struct tf *tfp)
 {
 	int rc;
 	int i;

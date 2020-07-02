@@ -78,6 +78,26 @@ tf_dev_p4_get_tcam_slice_info(struct tf *tfp __rte_unused,
 /**
  * Truflow P4 device specific functions
  */
+const struct tf_dev_ops tf_dev_ops_p4_init = {
+	.tf_dev_get_max_types = tf_dev_p4_get_max_types,
+	.tf_dev_get_tcam_slice_info = tf_dev_p4_get_tcam_slice_info,
+	.tf_dev_alloc_ident = NULL,
+	.tf_dev_free_ident = NULL,
+	.tf_dev_alloc_tbl = NULL,
+	.tf_dev_free_tbl = NULL,
+	.tf_dev_alloc_search_tbl = NULL,
+	.tf_dev_set_tbl = NULL,
+	.tf_dev_get_tbl = NULL,
+	.tf_dev_alloc_tcam = NULL,
+	.tf_dev_free_tcam = NULL,
+	.tf_dev_alloc_search_tcam = NULL,
+	.tf_dev_set_tcam = NULL,
+	.tf_dev_get_tcam = NULL,
+};
+
+/**
+ * Truflow P4 device specific functions
+ */
 const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_max_types = tf_dev_p4_get_max_types,
 	.tf_dev_get_tcam_slice_info = tf_dev_p4_get_tcam_slice_info,
@@ -85,14 +105,14 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_free_ident = tf_ident_free,
 	.tf_dev_alloc_tbl = tf_tbl_alloc,
 	.tf_dev_free_tbl = tf_tbl_free,
-	.tf_dev_alloc_search_tbl = tf_tbl_alloc_search,
+	.tf_dev_alloc_search_tbl = NULL,
 	.tf_dev_set_tbl = tf_tbl_set,
 	.tf_dev_get_tbl = tf_tbl_get,
 	.tf_dev_alloc_tcam = tf_tcam_alloc,
 	.tf_dev_free_tcam = tf_tcam_free,
-	.tf_dev_alloc_search_tcam = tf_tcam_alloc_search,
+	.tf_dev_alloc_search_tcam = NULL,
 	.tf_dev_set_tcam = tf_tcam_set,
-	.tf_dev_get_tcam = tf_tcam_get,
+	.tf_dev_get_tcam = NULL,
 	.tf_dev_insert_em_entry = tf_em_insert_entry,
 	.tf_dev_delete_em_entry = tf_em_delete_entry,
 };

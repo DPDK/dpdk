@@ -43,6 +43,14 @@ dev_bind_p4(struct tf *tfp,
 	struct tf_tbl_cfg_parms tbl_cfg;
 	struct tf_tcam_cfg_parms tcam_cfg;
 
+	dev_handle->type = TF_DEVICE_TYPE_WH;
+	/* Initial function initialization */
+	dev_handle->ops = &tf_dev_ops_p4_init;
+
+	dev_handle->type = TF_DEVICE_TYPE_WH;
+	/* Initial function initialization */
+	dev_handle->ops = &tf_dev_ops_p4_init;
+
 	/* Initialize the modules */
 
 	ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
@@ -78,7 +86,7 @@ dev_bind_p4(struct tf *tfp,
 		goto fail;
 	}
 
-	dev_handle->type = TF_DEVICE_TYPE_WH;
+	/* Final function initialization */
 	dev_handle->ops = &tf_dev_ops_p4;
 
 	return 0;
