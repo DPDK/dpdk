@@ -1330,6 +1330,28 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 	return rc;
 }
 
+int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp)
+{
+	int rc = 0;
+	struct hwrm_port_phy_qcaps_input req = {0};
+	struct hwrm_port_phy_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp))
+		return 0;
+
+	HWRM_PREP(&req, HWRM_PORT_PHY_QCAPS, BNXT_USE_CHIMP_MB);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	bp->port_cnt = resp->port_cnt;
+
+	HWRM_UNLOCK();
+
+	return 0;
+}
+
 static bool bnxt_find_lossy_profile(struct bnxt *bp)
 {
 	int i = 0;

@@ -275,4 +275,5 @@ int bnxt_hwrm_get_dflt_vnic_id(struct bnxt *bp, uint16_t fid,
 int bnxt_hwrm_get_dflt_vnic_svif(struct bnxt *bp, uint16_t fid,
 				 uint16_t *vnic_id, uint16_t *svif);
 int bnxt_hwrm_parent_pf_qcfg(struct bnxt *bp);
+int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp);
 #endif

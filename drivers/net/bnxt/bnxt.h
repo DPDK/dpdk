@@ -747,6 +747,7 @@ struct bnxt {
 	uint32_t		outer_tpid_bd;
 	struct bnxt_pf_info	*pf;
 	struct bnxt_parent_info	*parent;
+	uint8_t			port_cnt;
 	uint8_t			vxlan_port_cnt;
 	uint8_t			geneve_port_cnt;
 	uint16_t		vxlan_port;
