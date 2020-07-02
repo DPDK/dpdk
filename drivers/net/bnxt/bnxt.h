@@ -220,6 +220,7 @@ struct bnxt_child_vf_info {
 struct bnxt_pf_info {
 #define BNXT_FIRST_PF_FID	1
 #define BNXT_MAX_VFS(bp)	((bp)->pf->max_vfs)
+#define BNXT_MAX_VF_REPS	64
 #define BNXT_TOTAL_VFS(bp)	((bp)->pf->total_vfs)
 #define BNXT_FIRST_VF_FID	128
 #define BNXT_PF_RINGS_USED(bp)	bnxt_get_num_queues(bp)
@@ -492,6 +493,10 @@ struct bnxt_mark_info {
 	bool		valid;
 };
 
+struct bnxt_rep_info {
+	struct rte_eth_dev	*vfr_eth_dev;
+};
+
 /* address space location of register */
 #define BNXT_FW_STATUS_REG_TYPE_MASK	3
 /* register is located in PCIe config space */
@@ -514,6 +519,40 @@ struct bnxt_mark_info {
 
 #define BNXT_FW_STATUS_HEALTHY		0x8000
 #define BNXT_FW_STATUS_SHUTDOWN		0x100000
+
+#define BNXT_ETH_RSS_SUPPORT (	\
+	ETH_RSS_IPV4 |		\
+	ETH_RSS_NONFRAG_IPV4_TCP |	\
+	ETH_RSS_NONFRAG_IPV4_UDP |	\
+	ETH_RSS_IPV6 |		\
+	ETH_RSS_NONFRAG_IPV6_TCP |	\
+	ETH_RSS_NONFRAG_IPV6_UDP)
+
+#define BNXT_DEV_TX_OFFLOAD_SUPPORT (DEV_TX_OFFLOAD_VLAN_INSERT | \
+				     DEV_TX_OFFLOAD_IPV4_CKSUM | \
+				     DEV_TX_OFFLOAD_TCP_CKSUM | \
+				     DEV_TX_OFFLOAD_UDP_CKSUM | \
+				     DEV_TX_OFFLOAD_TCP_TSO | \
+				     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM | \
+				     DEV_TX_OFFLOAD_VXLAN_TNL_TSO | \
+				     DEV_TX_OFFLOAD_GRE_TNL_TSO | \
+				     DEV_TX_OFFLOAD_IPIP_TNL_TSO | \
+				     DEV_TX_OFFLOAD_GENEVE_TNL_TSO | \
+				     DEV_TX_OFFLOAD_QINQ_INSERT | \
+				     DEV_TX_OFFLOAD_MULTI_SEGS)
+
+#define BNXT_DEV_RX_OFFLOAD_SUPPORT (DEV_RX_OFFLOAD_VLAN_FILTER | \
+				     DEV_RX_OFFLOAD_VLAN_STRIP | \
+				     DEV_RX_OFFLOAD_IPV4_CKSUM | \
+				     DEV_RX_OFFLOAD_UDP_CKSUM | \
+				     DEV_RX_OFFLOAD_TCP_CKSUM | \
+				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM | \
+				     DEV_RX_OFFLOAD_JUMBO_FRAME | \
+				     DEV_RX_OFFLOAD_KEEP_CRC | \
+				     DEV_RX_OFFLOAD_VLAN_EXTEND | \
+				     DEV_RX_OFFLOAD_TCP_LRO | \
+				     DEV_RX_OFFLOAD_SCATTER | \
+				     DEV_RX_OFFLOAD_RSS_HASH)
 
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 
@@ -682,6 +721,9 @@ struct bnxt {
 #define BNXT_MAX_RINGS(bp) \
 	(RTE_MIN((((bp)->max_cp_rings - BNXT_NUM_ASYNC_CPR(bp)) / 2U), \
 		 BNXT_MAX_TX_RINGS(bp)))
+
+#define BNXT_MAX_VF_REP_RINGS	8
+
 	uint16_t		max_nq_rings;
 	uint16_t		max_l2_ctx;
 	uint16_t		max_rx_em_flows;
@@ -711,7 +753,9 @@ struct bnxt {
 
 	uint16_t		fw_reset_min_msecs;
 	uint16_t		fw_reset_max_msecs;
-
+	uint16_t		switch_domain_id;
+	uint16_t		num_reps;
+	struct bnxt_rep_info	rep_info[BNXT_MAX_VF_REPS];
 	/* Struct to hold adapter error recovery related info */
 	struct bnxt_error_recovery_info *recovery_info;
 #define BNXT_MARK_TABLE_SZ	(sizeof(struct bnxt_mark_info)  * 64 * 1024)
@@ -732,6 +776,18 @@ struct bnxt {
 
 #define BNXT_FC_TIMER	1 /* Timer freq in Sec Flow Counters */
 
+/**
+ * Structure to store private data for each VF representor instance
+ */
+struct bnxt_vf_representor {
+	uint16_t switch_domain_id;
+	uint16_t vf_id;
+	/* Private data store of associated PF/Trusted VF */
+	struct bnxt	*parent_priv;
+	uint8_t		mac_addr[RTE_ETHER_ADDR_LEN];
+	uint8_t		dflt_mac_addr[RTE_ETHER_ADDR_LEN];
+};
+
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
 int bnxt_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete,
 		     bool exp_link_status);
@@ -744,7 +800,13 @@ void bnxt_schedule_fw_health_check(struct bnxt *bp);
 
 bool is_bnxt_supported(struct rte_eth_dev *dev);
 bool bnxt_stratus_device(struct bnxt *bp);
+void bnxt_print_link_info(struct rte_eth_dev *eth_dev);
+uint16_t bnxt_rss_hash_tbl_size(const struct bnxt *bp);
+int bnxt_link_update_op(struct rte_eth_dev *eth_dev,
+			int wait_to_complete);
+
 extern const struct rte_flow_ops bnxt_flow_ops;
+
 #define bnxt_acquire_flow_lock(bp) \
 	pthread_mutex_lock(&(bp)->flow_lock)
 

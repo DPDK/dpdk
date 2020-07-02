@@ -21,6 +21,7 @@ sources = files('bnxt_cpr.c',
 	'bnxt_txr.c',
 	'bnxt_util.c',
 	'bnxt_vnic.c',
+	'bnxt_reps.c',
 
 	'tf_core/tf_core.c',
 	'tf_core/bitalloc.c',
