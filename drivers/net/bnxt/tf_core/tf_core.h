@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
-
+#include "hcapi/hcapi_cfa.h"
 #include "tf_project.h"
 
 /**
@@ -53,6 +53,7 @@ enum tf_mem {
  */
 #define TF_ACT_REC_OFFSET_2_PTR(offset) ((offset) >> 4)
 #define TF_ACT_REC_PTR_2_OFFSET(offset) ((offset) << 4)
+
 
 /*
  * Helper Macros
@@ -132,34 +133,40 @@ struct tf_session_version {
  */
 enum tf_device_type {
 	TF_DEVICE_TYPE_WH = 0, /**< Whitney+  */
-	TF_DEVICE_TYPE_BRD2,   /**< TBD       */
-	TF_DEVICE_TYPE_BRD3,   /**< TBD       */
-	TF_DEVICE_TYPE_BRD4,   /**< TBD       */
+	TF_DEVICE_TYPE_SR,     /**< Stingray  */
+	TF_DEVICE_TYPE_THOR,   /**< Thor      */
+	TF_DEVICE_TYPE_SR2,    /**< Stingray2 */
 	TF_DEVICE_TYPE_MAX     /**< Maximum   */
 };
 
-/** Identifier resource types
+/**
+ * Identifier resource types
  */
 enum tf_identifier_type {
-	/** The L2 Context is returned from the L2 Ctxt TCAM lookup
+	/**
+	 *  The L2 Context is returned from the L2 Ctxt TCAM lookup
 	 *  and can be used in WC TCAM or EM keys to virtualize further
 	 *  lookups.
 	 */
 	TF_IDENT_TYPE_L2_CTXT,
-	/** The WC profile func is returned from the L2 Ctxt TCAM lookup
+	/**
+	 *  The WC profile func is returned from the L2 Ctxt TCAM lookup
 	 *  to enable virtualization of the profile TCAM.
 	 */
 	TF_IDENT_TYPE_PROF_FUNC,
-	/** The WC profile ID is included in the WC lookup key
+	/**
+	 *  The WC profile ID is included in the WC lookup key
 	 *  to enable virtualization of the WC TCAM hardware.
 	 */
 	TF_IDENT_TYPE_WC_PROF,
-	/** The EM profile ID is included in the EM lookup key
+	/**
+	 *  The EM profile ID is included in the EM lookup key
 	 *  to enable virtualization of the EM hardware. (not required for SR2
 	 *  as it has table scope)
 	 */
 	TF_IDENT_TYPE_EM_PROF,
-	/** The L2 func is included in the ILT result and from recycling to
+	/**
+	 *  The L2 func is included in the ILT result and from recycling to
 	 *  enable virtualization of further lookups.
 	 */
 	TF_IDENT_TYPE_L2_FUNC,
@@ -239,7 +246,8 @@ enum tf_tbl_type {
 
 	/* External */
 
-	/** External table type - initially 1 poolsize entries.
+	/**
+	 * External table type - initially 1 poolsize entries.
 	 * All External table types are associated with a table
 	 * scope. Internal types are not.
 	 */
@@ -279,13 +287,17 @@ enum tf_em_tbl_type {
 	TF_EM_TBL_TYPE_MAX
 };
 
-/** TruFlow Session Information
+/**
+ * TruFlow Session Information
  *
  * Structure defining a TruFlow Session, also known as a Management
  * session. This structure is initialized at time of
  * tf_open_session(). It is passed to all of the TruFlow APIs as way
  * to prescribe and isolate resources between different TruFlow ULP
  * Applications.
+ *
+ * Ownership of the elements is split between ULP and TruFlow. Please
+ * see the individual elements.
  */
 struct tf_session_info {
 	/**
@@ -355,7 +367,8 @@ struct tf_session_info {
 	uint32_t              core_data_sz_bytes;
 };
 
-/** TruFlow handle
+/**
+ * TruFlow handle
  *
  * Contains a pointer to the session info. Allocated by ULP and passed
  * to TruFlow using tf_open_session(). TruFlow will populate the
@@ -405,7 +418,8 @@ struct tf_session_resources {
  * tf_open_session parameters definition.
  */
 struct tf_open_session_parms {
-	/** [in] ctrl_chan_name
+	/**
+	 * [in] ctrl_chan_name
 	 *
 	 * String containing name of control channel interface to be
 	 * used for this session to communicate with firmware.
@@ -417,7 +431,8 @@ struct tf_open_session_parms {
 	 * shared memory allocation.
 	 */
 	char ctrl_chan_name[TF_SESSION_NAME_MAX];
-	/** [in] shadow_copy
+	/**
+	 * [in] shadow_copy
 	 *
 	 * Boolean controlling the use and availability of shadow
 	 * copy. Shadow copy will allow the TruFlow to keep track of
@@ -430,7 +445,8 @@ struct tf_open_session_parms {
 	 * control channel.
 	 */
 	bool shadow_copy;
-	/** [in/out] session_id
+	/**
+	 * [in/out] session_id
 	 *
 	 * Session_id is unique per session.
 	 *
@@ -441,7 +457,8 @@ struct tf_open_session_parms {
 	 * The session_id allows a session to be shared between devices.
 	 */
 	union tf_session_id session_id;
-	/** [in] device type
+	/**
+	 * [in] device type
 	 *
 	 * Device type is passed, one of Wh+, SR, Thor, SR2
 	 */
@@ -484,7 +501,8 @@ int tf_open_session_new(struct tf *tfp,
 			struct tf_open_session_parms *parms);
 
 struct tf_attach_session_parms {
-	/** [in] ctrl_chan_name
+	/**
+	 * [in] ctrl_chan_name
 	 *
 	 * String containing name of control channel interface to be
 	 * used for this session to communicate with firmware.
@@ -497,7 +515,8 @@ struct tf_attach_session_parms {
 	 */
 	char ctrl_chan_name[TF_SESSION_NAME_MAX];
 
-	/** [in] attach_chan_name
+	/**
+	 * [in] attach_chan_name
 	 *
 	 * String containing name of attach channel interface to be
 	 * used for this session.
@@ -510,7 +529,8 @@ struct tf_attach_session_parms {
 	 */
 	char attach_chan_name[TF_SESSION_NAME_MAX];
 
-	/** [in] session_id
+	/**
+	 * [in] session_id
 	 *
 	 * Session_id is unique per session. For Attach the session_id
 	 * should be the session_id that was returned on the first
@@ -565,7 +585,8 @@ int tf_close_session_new(struct tf *tfp);
  *
  * @ref tf_free_identifier
  */
-/** tf_alloc_identifier parameter definition
+/**
+ * tf_alloc_identifier parameter definition
  */
 struct tf_alloc_identifier_parms {
 	/**
@@ -582,7 +603,8 @@ struct tf_alloc_identifier_parms {
 	uint16_t id;
 };
 
-/** tf_free_identifier parameter definition
+/**
+ * tf_free_identifier parameter definition
  */
 struct tf_free_identifier_parms {
 	/**
@@ -599,7 +621,8 @@ struct tf_free_identifier_parms {
 	uint16_t id;
 };
 
-/** allocate identifier resource
+/**
+ * allocate identifier resource
  *
  * TruFlow core will allocate a free id from the per identifier resource type
  * pool reserved for the session during tf_open().  No firmware is involved.
@@ -611,7 +634,8 @@ int tf_alloc_identifier(struct tf *tfp,
 int tf_alloc_identifier_new(struct tf *tfp,
 			    struct tf_alloc_identifier_parms *parms);
 
-/** free identifier resource
+/**
+ * free identifier resource
  *
  * TruFlow core will return an id back to the per identifier resource type pool
  * reserved for the session.  No firmware is involved.  During tf_close, the
@@ -639,7 +663,8 @@ int tf_free_identifier_new(struct tf *tfp,
  */
 
 
-/** tf_alloc_tbl_scope_parms definition
+/**
+ * tf_alloc_tbl_scope_parms definition
  */
 struct tf_alloc_tbl_scope_parms {
 	/**
@@ -662,7 +687,7 @@ struct tf_alloc_tbl_scope_parms {
 	 */
 	uint32_t rx_num_flows_in_k;
 	/**
-	 * [in] Brd4 only receive table access interface id
+	 * [in] SR2 only receive table access interface id
 	 */
 	uint32_t rx_tbl_if_id;
 	/**
@@ -684,7 +709,7 @@ struct tf_alloc_tbl_scope_parms {
 	 */
 	uint32_t tx_num_flows_in_k;
 	/**
-	 * [in] Brd4 only receive table access interface id
+	 * [in] SR2 only receive table access interface id
 	 */
 	uint32_t tx_tbl_if_id;
 	/**
@@ -709,7 +734,7 @@ struct tf_free_tbl_scope_parms {
 /**
  * allocate a table scope
  *
- * On Brd4 Firmware will allocate a scope ID.  On other devices, the scope
+ * On SR2 Firmware will allocate a scope ID.  On other devices, the scope
  * is a software construct to identify an EEM table.  This function will
  * divide the hash memory/buckets and records according to the device
  * device constraints based upon calculations using either the number of flows
@@ -719,7 +744,7 @@ struct tf_free_tbl_scope_parms {
  *
  * This API will allocate the table region in
  * DRAM, program the PTU page table entries, and program the number of static
- * buckets (if Brd4) in the RX and TX CFAs.  Buckets are assumed to start at
+ * buckets (if SR2) in the RX and TX CFAs.  Buckets are assumed to start at
  * 0 in the EM memory for the scope.  Upon successful completion of this API,
  * hash tables are fully initialized and ready for entries to be inserted.
  *
@@ -750,14 +775,13 @@ int tf_alloc_tbl_scope(struct tf *tfp,
  *
  * Firmware checks that the table scope ID is owned by the TruFlow
  * session, verifies that no references to this table scope remains
- * (Brd4 ILT) or Profile TCAM entries for either CFA (RX/TX) direction,
+ * (SR2 ILT) or Profile TCAM entries for either CFA (RX/TX) direction,
  * then frees the table scope ID.
  *
  * Returns success or failure code.
  */
 int tf_free_tbl_scope(struct tf *tfp,
 		      struct tf_free_tbl_scope_parms *parms);
-
 
 /**
  * @page tcam TCAM Access
@@ -771,7 +795,9 @@ int tf_free_tbl_scope(struct tf *tfp,
  * @ref tf_free_tcam_entry
  */
 
-/** tf_alloc_tcam_entry parameter definition
+
+/**
+ * tf_alloc_tcam_entry parameter definition
  */
 struct tf_alloc_tcam_entry_parms {
 	/**
@@ -799,9 +825,7 @@ struct tf_alloc_tcam_entry_parms {
 	 */
 	uint8_t *mask;
 	/**
-	 * [in] Priority of entry requested
-	 * 0: index from top i.e. highest priority first
-	 * !0: index from bottom i.e lowest priority first
+	 * [in] Priority of entry requested (definition TBD)
 	 */
 	uint32_t priority;
 	/**
@@ -819,7 +843,8 @@ struct tf_alloc_tcam_entry_parms {
 	uint16_t idx;
 };
 
-/** allocate TCAM entry
+/**
+ * allocate TCAM entry
  *
  * Allocate a TCAM entry - one of these types:
  *
@@ -844,7 +869,8 @@ struct tf_alloc_tcam_entry_parms {
 int tf_alloc_tcam_entry(struct tf *tfp,
 			struct tf_alloc_tcam_entry_parms *parms);
 
-/** tf_set_tcam_entry parameter definition
+/**
+ * tf_set_tcam_entry parameter definition
  */
 struct	tf_set_tcam_entry_parms {
 	/**
@@ -881,7 +907,8 @@ struct	tf_set_tcam_entry_parms {
 	uint16_t result_sz_in_bits;
 };
 
-/** set TCAM entry
+/**
+ * set TCAM entry
  *
  * Program a TCAM table entry for a TruFlow session.
  *
@@ -892,7 +919,8 @@ struct	tf_set_tcam_entry_parms {
 int tf_set_tcam_entry(struct tf	*tfp,
 		      struct tf_set_tcam_entry_parms *parms);
 
-/** tf_get_tcam_entry parameter definition
+/**
+ * tf_get_tcam_entry parameter definition
  */
 struct tf_get_tcam_entry_parms {
 	/**
@@ -929,7 +957,7 @@ struct tf_get_tcam_entry_parms {
 	uint16_t result_sz_in_bits;
 };
 
-/*
+/**
  * get TCAM entry
  *
  * Program a TCAM table entry for a TruFlow session.
@@ -941,7 +969,7 @@ struct tf_get_tcam_entry_parms {
 int tf_get_tcam_entry(struct tf *tfp,
 		      struct tf_get_tcam_entry_parms *parms);
 
-/*
+/**
  * tf_free_tcam_entry parameter definition
  */
 struct tf_free_tcam_entry_parms {
@@ -963,7 +991,9 @@ struct tf_free_tcam_entry_parms {
 	uint16_t ref_cnt;
 };
 
-/*
+/**
+ * free TCAM entry
+ *
  * Free TCAM entry.
  *
  * Firmware checks to ensure the TCAM entries are owned by the TruFlow
@@ -988,6 +1018,7 @@ int tf_free_tcam_entry(struct tf *tfp,
  *
  * @ref tf_get_tbl_entry
  */
+
 
 /**
  * tf_alloc_tbl_entry parameter definition
@@ -1201,9 +1232,9 @@ int tf_get_tbl_entry(struct tf *tfp,
 		     struct tf_get_tbl_entry_parms *parms);
 
 /**
- * tf_get_bulk_tbl_entry parameter definition
+ * tf_bulk_get_tbl_entry parameter definition
  */
-struct tf_get_bulk_tbl_entry_parms {
+struct tf_bulk_get_tbl_entry_parms {
 	/**
 	 * [in] Receive or transmit direction
 	 */
@@ -1212,11 +1243,6 @@ struct tf_get_bulk_tbl_entry_parms {
 	 * [in] Type of object to get
 	 */
 	enum tf_tbl_type type;
-	/**
-	 * [in] Clear hardware entries on reads only
-	 * supported for TF_TBL_TYPE_ACT_STATS_64
-	 */
-	bool clear_on_read;
 	/**
 	 * [in] Starting index to read from
 	 */
@@ -1250,8 +1276,8 @@ struct tf_get_bulk_tbl_entry_parms {
  * Returns success or failure code. Failure will be returned if the
  * provided data buffer is too small for the data type requested.
  */
-int tf_get_bulk_tbl_entry(struct tf *tfp,
-		     struct tf_get_bulk_tbl_entry_parms *parms);
+int tf_bulk_get_tbl_entry(struct tf *tfp,
+		     struct tf_bulk_get_tbl_entry_parms *parms);
 
 /**
  * @page exact_match Exact Match Table
@@ -1280,7 +1306,7 @@ struct tf_insert_em_entry_parms {
 	 */
 	uint32_t tbl_scope_id;
 	/**
-	 * [in] ID of table interface to use (Brd4 only)
+	 * [in] ID of table interface to use (SR2 only)
 	 */
 	uint32_t tbl_if_id;
 	/**
@@ -1332,12 +1358,12 @@ struct tf_delete_em_entry_parms {
 	 */
 	uint32_t tbl_scope_id;
 	/**
-	 * [in] ID of table interface to use (Brd4 only)
+	 * [in] ID of table interface to use (SR2 only)
 	 */
 	uint32_t tbl_if_id;
 	/**
 	 * [in] epoch group IDs of entry to delete
-	 * 2 element array with 2 ids. (Brd4 only)
+	 * 2 element array with 2 ids. (SR2 only)
 	 */
 	uint16_t *epochs;
 	/**
@@ -1366,7 +1392,7 @@ struct tf_search_em_entry_parms {
 	 */
 	uint32_t tbl_scope_id;
 	/**
-	 * [in] ID of table interface to use (Brd4 only)
+	 * [in] ID of table interface to use (SR2 only)
 	 */
 	uint32_t tbl_if_id;
 	/**
@@ -1387,7 +1413,7 @@ struct tf_search_em_entry_parms {
 	uint16_t em_record_sz_in_bits;
 	/**
 	 * [in] epoch group IDs of entry to lookup
-	 * 2 element array with 2 ids. (Brd4 only)
+	 * 2 element array with 2 ids. (SR2 only)
 	 */
 	uint16_t *epochs;
 	/**
@@ -1415,7 +1441,7 @@ struct tf_search_em_entry_parms {
  * specified direction and table scope.
  *
  * When inserting an entry into an exact match table, the TruFlow library may
- * need to allocate a dynamic bucket for the entry (Brd4 only).
+ * need to allocate a dynamic bucket for the entry (SR2 only).
  *
  * The insertion of duplicate entries in an EM table is not permitted.	If a
  * TruFlow application can guarantee that it will never insert duplicates, it
@@ -1490,4 +1516,5 @@ int tf_delete_em_entry(struct tf *tfp,
  */
 int tf_search_em_entry(struct tf *tfp,
 		       struct tf_search_em_entry_parms *parms);
+
 #endif /* _TF_CORE_H_ */

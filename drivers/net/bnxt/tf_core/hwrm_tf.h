@@ -27,8 +27,8 @@ typedef enum tf_subtype {
 	HWRM_TFT_REG_SET = 822,
 	HWRM_TFT_TBL_TYPE_SET = 823,
 	HWRM_TFT_TBL_TYPE_GET = 824,
-	HWRM_TFT_TBL_TYPE_GET_BULK = 825,
-	TF_SUBTYPE_LAST = HWRM_TFT_TBL_TYPE_GET_BULK,
+	HWRM_TFT_TBL_TYPE_BULK_GET = 825,
+	TF_SUBTYPE_LAST = HWRM_TFT_TBL_TYPE_BULK_GET,
 } tf_subtype_t;
 
 /* Request and Response compile time checking */
@@ -82,8 +82,8 @@ struct tf_session_sram_resc_flush_input;
 struct tf_tbl_type_set_input;
 struct tf_tbl_type_get_input;
 struct tf_tbl_type_get_output;
-struct tf_tbl_type_get_bulk_input;
-struct tf_tbl_type_get_bulk_output;
+struct tf_tbl_type_bulk_get_input;
+struct tf_tbl_type_bulk_get_output;
 /* Input params for session attach */
 typedef struct tf_session_attach_input {
 	/* Firmware session id returned when HWRM_TF_SESSION_OPEN is sent */
@@ -905,8 +905,6 @@ typedef struct tf_tbl_type_get_input {
 #define TF_TBL_TYPE_GET_INPUT_FLAGS_DIR_RX			(0x0)
 	/* When set to 1, indicates the get apply to TX */
 #define TF_TBL_TYPE_GET_INPUT_FLAGS_DIR_TX			(0x1)
-	/* When set to 1, indicates the clear entry on read */
-#define TF_TBL_TYPE_GET_INPUT_FLAGS_CLEAR_ON_READ	  (0x2)
 	/* Type of the object to set */
 	uint32_t			 type;
 	/* Index to get */
@@ -922,17 +920,17 @@ typedef struct tf_tbl_type_get_output {
 } tf_tbl_type_get_output_t, *ptf_tbl_type_get_output_t;
 
 /* Input params for table type get */
-typedef struct tf_tbl_type_get_bulk_input {
+typedef struct tf_tbl_type_bulk_get_input {
 	/* Session Id */
 	uint32_t			 fw_session_id;
 	/* flags */
 	uint16_t			 flags;
 	/* When set to 0, indicates the get apply to RX */
-#define TF_TBL_TYPE_GET_BULK_INPUT_FLAGS_DIR_RX	   (0x0)
+#define TF_TBL_TYPE_BULK_GET_INPUT_FLAGS_DIR_RX	   (0x0)
 	/* When set to 1, indicates the get apply to TX */
-#define TF_TBL_TYPE_GET_BULK_INPUT_FLAGS_DIR_TX	   (0x1)
+#define TF_TBL_TYPE_BULK_GET_INPUT_FLAGS_DIR_TX	   (0x1)
 	/* When set to 1, indicates the clear entry on read */
-#define TF_TBL_TYPE_GET_BULK_INPUT_FLAGS_CLEAR_ON_READ	  (0x2)
+#define TF_TBL_TYPE_BULK_GET_INPUT_FLAGS_CLEAR_ON_READ	  (0x2)
 	/* Type of the object to set */
 	uint32_t			 type;
 	/* Starting index to get from */
@@ -941,12 +939,12 @@ typedef struct tf_tbl_type_get_bulk_input {
 	uint32_t			 num_entries;
 	/* Host memory where data will be stored */
 	uint64_t			 host_addr;
-} tf_tbl_type_get_bulk_input_t, *ptf_tbl_type_get_bulk_input_t;
+} tf_tbl_type_bulk_get_input_t, *ptf_tbl_type_bulk_get_input_t;
 
 /* Output params for table type get */
-typedef struct tf_tbl_type_get_bulk_output {
+typedef struct tf_tbl_type_bulk_get_output {
 	/* Size of the total data read in bytes */
 	uint16_t			 size;
-} tf_tbl_type_get_bulk_output_t, *ptf_tbl_type_get_bulk_output_t;
+} tf_tbl_type_bulk_get_output_t, *ptf_tbl_type_bulk_get_output_t;
 
 #endif /* _HWRM_TF_H_ */

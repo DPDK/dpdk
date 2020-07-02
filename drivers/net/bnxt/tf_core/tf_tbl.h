@@ -13,45 +13,6 @@
 
 struct tf_session;
 
-enum tf_pg_tbl_lvl {
-	TF_PT_LVL_0,
-	TF_PT_LVL_1,
-	TF_PT_LVL_2,
-	TF_PT_LVL_MAX
-};
-
-enum tf_em_table_type {
-	TF_KEY0_TABLE,
-	TF_KEY1_TABLE,
-	TF_RECORD_TABLE,
-	TF_EFC_TABLE,
-	TF_MAX_TABLE
-};
-
-struct tf_em_page_tbl {
-	uint32_t	pg_count;
-	uint32_t	pg_size;
-	void		**pg_va_tbl;
-	uint64_t	*pg_pa_tbl;
-};
-
-struct tf_em_table {
-	int				type;
-	uint32_t			num_entries;
-	uint16_t			ctx_id;
-	uint32_t			entry_size;
-	int				num_lvl;
-	uint32_t			page_cnt[TF_PT_LVL_MAX];
-	uint64_t			num_data_pages;
-	void				*l0_addr;
-	uint64_t			l0_dma_addr;
-	struct tf_em_page_tbl pg_tbl[TF_PT_LVL_MAX];
-};
-
-struct tf_em_ctx_mem_info {
-	struct tf_em_table		em_tables[TF_MAX_TABLE];
-};
-
 /** table scope control block content */
 struct tf_em_caps {
 	uint32_t flags;
@@ -74,18 +35,14 @@ struct tf_em_caps {
 struct tf_tbl_scope_cb {
 	uint32_t tbl_scope_id;
 	int index;
-	struct tf_em_ctx_mem_info  em_ctx_info[TF_DIR_MAX];
+	struct hcapi_cfa_em_ctx_mem_info  em_ctx_info[TF_DIR_MAX];
 	struct tf_em_caps          em_caps[TF_DIR_MAX];
 	struct stack               ext_act_pool[TF_DIR_MAX];
 	uint32_t                  *ext_act_pool_mem[TF_DIR_MAX];
 };
 
-/**
- * Hardware Page sizes supported for EEM:
- *   4K, 8K, 64K, 256K, 1M, 2M, 4M, 1G.
- *
- * Round-down other page sizes to the lower hardware page
- * size supported.
+/** Hardware Page sizes supported for EEM: 4K, 8K, 64K, 256K, 1M, 2M, 4M, 1G.
+ * Round-down other page sizes to the lower hardware page size supported.
  */
 #define TF_EM_PAGE_SIZE_4K 12
 #define TF_EM_PAGE_SIZE_8K 13

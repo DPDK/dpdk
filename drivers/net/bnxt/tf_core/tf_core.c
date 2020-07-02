@@ -19,33 +19,41 @@
 #include "tf_common.h"
 #include "hwrm_tf.h"
 
-static inline uint32_t SWAP_WORDS32(uint32_t val32)
+static int tf_check_tcam_entry(enum tf_tcam_tbl_type tcam_tbl_type,
+			       enum tf_device_type device,
+			       uint16_t key_sz_in_bits,
+			       uint16_t *num_slice_per_row)
 {
-	return (((val32 & 0x0000ffff) << 16) |
-		((val32 & 0xffff0000) >> 16));
-}
+	uint16_t key_bytes;
+	uint16_t slice_sz = 0;
 
-static void tf_seeds_init(struct tf_session *session)
-{
-	int i;
-	uint32_t r;
+#define CFA_P4_WC_TCAM_SLICES_PER_ROW 2
+#define CFA_P4_WC_TCAM_SLICE_SIZE     12
 
-	/* Initialize the lfsr */
-	rand_init();
+	if (tcam_tbl_type == TF_TCAM_TBL_TYPE_WC_TCAM) {
+		key_bytes = TF_BITS2BYTES_WORD_ALIGN(key_sz_in_bits);
+		if (device == TF_DEVICE_TYPE_WH) {
+			slice_sz = CFA_P4_WC_TCAM_SLICE_SIZE;
+			*num_slice_per_row = CFA_P4_WC_TCAM_SLICES_PER_ROW;
+		} else {
+			TFP_DRV_LOG(ERR,
+				    "Unsupported device type %d\n",
+				    device);
+			return -ENOTSUP;
+		}
 
-	/* RX and TX use the same seed values */
-	session->lkup_lkup3_init_cfg[TF_DIR_RX] =
-		session->lkup_lkup3_init_cfg[TF_DIR_TX] =
-						SWAP_WORDS32(rand32());
-
-	for (i = 0; i < TF_LKUP_SEED_MEM_SIZE / 2; i++) {
-		r = SWAP_WORDS32(rand32());
-		session->lkup_em_seed_mem[TF_DIR_RX][i * 2] = r;
-		session->lkup_em_seed_mem[TF_DIR_TX][i * 2] = r;
-		r = SWAP_WORDS32(rand32());
-		session->lkup_em_seed_mem[TF_DIR_RX][i * 2 + 1] = (r & 0x1);
-		session->lkup_em_seed_mem[TF_DIR_TX][i * 2 + 1] = (r & 0x1);
+		if (key_bytes > *num_slice_per_row * slice_sz) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Key size %d is not supported\n",
+				    tf_tcam_tbl_2_str(tcam_tbl_type),
+				    key_bytes);
+			return -ENOTSUP;
+		}
+	} else { /* for other type of tcam */
+		*num_slice_per_row = 1;
 	}
+
+	return 0;
 }
 
 /**
@@ -153,15 +161,18 @@ tf_open_session(struct tf                    *tfp,
 	uint8_t fw_session_id;
 	int dir;
 
-	if (tfp == NULL || parms == NULL)
-		return -EINVAL;
+	TF_CHECK_PARMS(tfp, parms);
 
 	/* Filter out any non-supported device types on the Core
 	 * side. It is assumed that the Firmware will be supported if
 	 * firmware open session succeeds.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_WH)
+	if (parms->device_type != TF_DEVICE_TYPE_WH) {
+		TFP_DRV_LOG(ERR,
+			    "Unsupported device type %d\n",
+			    parms->device_type);
 		return -ENOTSUP;
+	}
 
 	/* Build the beginning of session_id */
 	rc = sscanf(parms->ctrl_chan_name,
@@ -171,7 +182,7 @@ tf_open_session(struct tf                    *tfp,
 		    &slot,
 		    &device);
 	if (rc != 4) {
-		PMD_DRV_LOG(ERR,
+		TFP_DRV_LOG(ERR,
 			    "Failed to scan device ctrl_chan_name\n");
 		return -EINVAL;
 	}
@@ -183,13 +194,13 @@ tf_open_session(struct tf                    *tfp,
 	if (rc) {
 		/* Log error */
 		if (rc == -EEXIST)
-			PMD_DRV_LOG(ERR,
-				    "Session is already open, rc:%d\n",
-				    rc);
+			TFP_DRV_LOG(ERR,
+				    "Session is already open, rc:%s\n",
+				    strerror(-rc));
 		else
-			PMD_DRV_LOG(ERR,
-				    "Open message send failed, rc:%d\n",
-				    rc);
+			TFP_DRV_LOG(ERR,
+				    "Open message send failed, rc:%s\n",
+				    strerror(-rc));
 
 		parms->session_id.id = TF_FW_SESSION_ID_INVALID;
 		return rc;
@@ -202,13 +213,13 @@ tf_open_session(struct tf                    *tfp,
 	rc = tfp_calloc(&alloc_parms);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "Failed to allocate session info, rc:%d\n",
-			    rc);
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate session info, rc:%s\n",
+			    strerror(-rc));
 		goto cleanup;
 	}
 
-	tfp->session = alloc_parms.mem_va;
+	tfp->session = (struct tf_session_info *)alloc_parms.mem_va;
 
 	/* Allocate core data for the session */
 	alloc_parms.nitems = 1;
@@ -217,9 +228,9 @@ tf_open_session(struct tf                    *tfp,
 	rc = tfp_calloc(&alloc_parms);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "Failed to allocate session data, rc:%d\n",
-			    rc);
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate session data, rc:%s\n",
+			    strerror(-rc));
 		goto cleanup;
 	}
 
@@ -240,12 +251,13 @@ tf_open_session(struct tf                    *tfp,
 	session->session_id.internal.device = device;
 	session->session_id.internal.fw_session_id = fw_session_id;
 
+	/* Query for Session Config
+	 */
 	rc = tf_msg_session_qcfg(tfp);
 	if (rc) {
-		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "Query config message send failed, rc:%d\n",
-			    rc);
+		TFP_DRV_LOG(ERR,
+			    "Query config message send failed, rc:%s\n",
+			    strerror(-rc));
 		goto cleanup_close;
 	}
 
@@ -256,9 +268,9 @@ tf_open_session(struct tf                    *tfp,
 #if (TF_SHADOW == 1)
 		rc = tf_rm_shadow_db_init(tfs);
 		if (rc)
-			PMD_DRV_LOG(ERR,
-				    "Shadow DB Initialization failed\n, rc:%d",
-				    rc);
+			TFP_DRV_LOG(ERR,
+				    "Shadow DB Initialization failed\n, rc:%s",
+				    strerror(-rc));
 		/* Add additional processing */
 #endif /* TF_SHADOW */
 	}
@@ -266,12 +278,11 @@ tf_open_session(struct tf                    *tfp,
 	/* Adjust the Session with what firmware allowed us to get */
 	rc = tf_rm_allocate_validate(tfp);
 	if (rc) {
-		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Rm allocate validate failed, rc:%s\n",
+			    strerror(-rc));
 		goto cleanup_close;
 	}
-
-	/* Setup hash seeds */
-	tf_seeds_init(session);
 
 	/* Initialize EM pool */
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
@@ -290,11 +301,11 @@ tf_open_session(struct tf                    *tfp,
 	/* Return session ID */
 	parms->session_id = session->session_id;
 
-	PMD_DRV_LOG(INFO,
+	TFP_DRV_LOG(INFO,
 		    "Session created, session_id:%d\n",
 		    parms->session_id.id);
 
-	PMD_DRV_LOG(INFO,
+	TFP_DRV_LOG(INFO,
 		    "domain:%d, bus:%d, device:%d, fw_session_id:%d\n",
 		    parms->session_id.internal.domain,
 		    parms->session_id.internal.bus,
@@ -379,8 +390,7 @@ tf_attach_session(struct tf *tfp __rte_unused,
 #if (TF_SHARED == 1)
 	int rc;
 
-	if (tfp == NULL)
-		return -EINVAL;
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	/* - Open the shared memory for the attach_chan_name
 	 * - Point to the shared session for this Device instance
@@ -389,12 +399,10 @@ tf_attach_session(struct tf *tfp __rte_unused,
 	 *   than one client of the session.
 	 */
 
-	if (tfp->session) {
-		if (tfp->session->session_id.id != TF_SESSION_ID_INVALID) {
-			rc = tf_msg_session_attach(tfp,
-						   parms->ctrl_chan_name,
-						   parms->session_id);
-		}
+	if (tfp->session->session_id.id != TF_SESSION_ID_INVALID) {
+		rc = tf_msg_session_attach(tfp,
+					   parms->ctrl_chan_name,
+					   parms->session_id);
 	}
 #endif /* TF_SHARED */
 	return -1;
@@ -472,8 +480,7 @@ tf_close_session(struct tf *tfp)
 	union tf_session_id session_id;
 	int dir;
 
-	if (tfp == NULL || tfp->session == NULL)
-		return -EINVAL;
+	TF_CHECK_TFP_SESSION(tfp);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
@@ -487,9 +494,9 @@ tf_close_session(struct tf *tfp)
 		rc = tf_msg_session_close(tfp);
 		if (rc) {
 			/* Log error */
-			PMD_DRV_LOG(ERR,
-				    "Message send failed, rc:%d\n",
-				    rc);
+			TFP_DRV_LOG(ERR,
+				    "Message send failed, rc:%s\n",
+				    strerror(-rc));
 		}
 
 		/* Update the ref_count */
@@ -509,11 +516,11 @@ tf_close_session(struct tf *tfp)
 		tfp->session = NULL;
 	}
 
-	PMD_DRV_LOG(INFO,
+	TFP_DRV_LOG(INFO,
 		    "Session closed, session_id:%d\n",
 		    session_id.id);
 
-	PMD_DRV_LOG(INFO,
+	TFP_DRV_LOG(INFO,
 		    "domain:%d, bus:%d, device:%d, fw_session_id:%d\n",
 		    session_id.internal.domain,
 		    session_id.internal.bus,
@@ -565,27 +572,39 @@ tf_close_session_new(struct tf *tfp)
 int tf_insert_em_entry(struct tf *tfp,
 		       struct tf_insert_em_entry_parms *parms)
 {
-	struct tf_tbl_scope_cb     *tbl_scope_cb;
+	struct tf_session      *tfs;
+	struct tf_dev_info     *dev;
+	int rc;
 
-	if (tfp == NULL || parms == NULL)
-		return -EINVAL;
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
-	tbl_scope_cb = tbl_scope_cb_find((struct tf_session *)
-					 (tfp->session->core_data),
-					 parms->tbl_scope_id);
-	if (tbl_scope_cb == NULL)
-		return -EINVAL;
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
 
-	/* Process the EM entry per Table Scope type */
-	if (parms->mem == TF_MEM_EXTERNAL) {
-		/* External EEM */
-		return tf_insert_eem_entry((struct tf_session *)
-					   (tfp->session->core_data),
-					   tbl_scope_cb,
-					   parms);
-	} else if (parms->mem == TF_MEM_INTERNAL) {
-		/* Internal EM */
-		return tf_insert_em_internal_entry(tfp,	parms);
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_insert_em_entry(tfp, parms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: EM insert failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
 	}
 
 	return -EINVAL;
@@ -600,27 +619,44 @@ int tf_insert_em_entry(struct tf *tfp,
 int tf_delete_em_entry(struct tf *tfp,
 		       struct tf_delete_em_entry_parms *parms)
 {
-	struct tf_tbl_scope_cb     *tbl_scope_cb;
+	struct tf_session      *tfs;
+	struct tf_dev_info     *dev;
+	int rc;
 
-	if (tfp == NULL || parms == NULL)
-		return -EINVAL;
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
-	tbl_scope_cb = tbl_scope_cb_find((struct tf_session *)
-					 (tfp->session->core_data),
-					 parms->tbl_scope_id);
-	if (tbl_scope_cb == NULL)
-		return -EINVAL;
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
 
-	if (parms->mem == TF_MEM_EXTERNAL)
-		return tf_delete_eem_entry(tfp, parms);
-	else
-		return tf_delete_em_internal_entry(tfp, parms);
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_delete_em_entry(tfp, parms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: EM delete failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return rc;
 }
 
-/** allocate identifier resource
- *
- * Returns success or failure code.
- */
 int tf_alloc_identifier(struct tf *tfp,
 			struct tf_alloc_identifier_parms *parms)
 {
@@ -629,14 +665,7 @@ int tf_alloc_identifier(struct tf *tfp,
 	int id;
 	int rc;
 
-	if (parms == NULL || tfp == NULL)
-		return -EINVAL;
-
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR, "%s: session error\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
@@ -662,30 +691,31 @@ int tf_alloc_identifier(struct tf *tfp,
 				rc);
 		break;
 	case TF_IDENT_TYPE_L2_FUNC:
-		PMD_DRV_LOG(ERR, "%s: unsupported %s\n",
+		TFP_DRV_LOG(ERR, "%s: unsupported %s\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_ident_2_str(parms->ident_type));
 		rc = -EOPNOTSUPP;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "%s: %s\n",
+		TFP_DRV_LOG(ERR, "%s: %s\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_ident_2_str(parms->ident_type));
-		rc = -EINVAL;
+		rc = -EOPNOTSUPP;
 		break;
 	}
 
 	if (rc) {
-		PMD_DRV_LOG(ERR, "%s: identifier pool %s failure\n",
+		TFP_DRV_LOG(ERR, "%s: identifier pool %s failure, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
-			    tf_ident_2_str(parms->ident_type));
+			    tf_ident_2_str(parms->ident_type),
+			    strerror(-rc));
 		return rc;
 	}
 
 	id = ba_alloc(session_pool);
 
 	if (id == BA_FAIL) {
-		PMD_DRV_LOG(ERR, "%s: %s: No resource available\n",
+		TFP_DRV_LOG(ERR, "%s: %s: No resource available\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_ident_2_str(parms->ident_type));
 		return -ENOMEM;
@@ -763,14 +793,7 @@ int tf_free_identifier(struct tf *tfp,
 	int ba_rc;
 	struct tf_session *tfs;
 
-	if (parms == NULL || tfp == NULL)
-		return -EINVAL;
-
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR, "%s: Session error\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
@@ -796,29 +819,31 @@ int tf_free_identifier(struct tf *tfp,
 				rc);
 		break;
 	case TF_IDENT_TYPE_L2_FUNC:
-		PMD_DRV_LOG(ERR, "%s: unsupported %s\n",
+		TFP_DRV_LOG(ERR, "%s: unsupported %s\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_ident_2_str(parms->ident_type));
 		rc = -EOPNOTSUPP;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "%s: invalid %s\n",
+		TFP_DRV_LOG(ERR, "%s: invalid %s\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_ident_2_str(parms->ident_type));
-		rc = -EINVAL;
+		rc = -EOPNOTSUPP;
 		break;
 	}
 	if (rc) {
-		PMD_DRV_LOG(ERR, "%s: %s Identifier pool access failed\n",
+		TFP_DRV_LOG(ERR,
+			    "%s: %s Identifier pool access failed, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
-			    tf_ident_2_str(parms->ident_type));
+			    tf_ident_2_str(parms->ident_type),
+			    strerror(-rc));
 		return rc;
 	}
 
 	ba_rc = ba_inuse(session_pool, (int)parms->id);
 
 	if (ba_rc == BA_FAIL || ba_rc == BA_ENTRY_FREE) {
-		PMD_DRV_LOG(ERR, "%s: %s: Entry %d already free",
+		TFP_DRV_LOG(ERR, "%s: %s: Entry %d already free",
 			    tf_dir_2_str(parms->dir),
 			    tf_ident_2_str(parms->ident_type),
 			    parms->id);
@@ -893,20 +918,29 @@ tf_alloc_tcam_entry(struct tf *tfp,
 		    struct tf_alloc_tcam_entry_parms *parms)
 {
 	int rc;
-	int index = 0;
+	int index;
 	struct tf_session *tfs;
 	struct bitalloc *session_pool;
+	uint16_t num_slice_per_row;
 
-	if (parms == NULL || tfp == NULL)
-		return -EINVAL;
+	/* TEMP, due to device design. When tcam is modularized device
+	 * should be retrieved from the session
+	 */
+	enum tf_device_type device_type;
+	/* TEMP */
+	device_type = TF_DEVICE_TYPE_WH;
 
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR, "%s: session error\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	rc = tf_check_tcam_entry(parms->tcam_tbl_type,
+				 device_type,
+				 parms->key_sz_in_bits,
+				 &num_slice_per_row);
+	/* Error logging handled by tf_check_tcam_entry */
+	if (rc)
+		return rc;
 
 	rc = tf_rm_lookup_tcam_type_pool(tfs,
 					 parms->dir,
@@ -916,35 +950,15 @@ tf_alloc_tcam_entry(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	/*
-	 * priority  0: allocate from top of the tcam i.e. high
-	 * priority !0: allocate index from bottom i.e lowest
-	 */
-	if (parms->priority) {
-		for (index = session_pool->size - 1; index >= 0; index--) {
-			if (ba_inuse(session_pool,
-					  index) == BA_ENTRY_FREE) {
-				break;
-			}
-		}
-		if (ba_alloc_index(session_pool,
-				   index) == BA_FAIL) {
-			TFP_DRV_LOG(ERR,
-				    "%s: %s: ba_alloc index %d failed\n",
-				    tf_dir_2_str(parms->dir),
-				    tf_tcam_tbl_2_str(parms->tcam_tbl_type),
-				    index);
-			return -ENOMEM;
-		}
-	} else {
-		index = ba_alloc(session_pool);
-		if (index == BA_FAIL) {
-			TFP_DRV_LOG(ERR, "%s: %s: Out of resource\n",
-				    tf_dir_2_str(parms->dir),
-				    tf_tcam_tbl_2_str(parms->tcam_tbl_type));
-			return -ENOMEM;
-		}
+	index = ba_alloc(session_pool);
+	if (index == BA_FAIL) {
+		TFP_DRV_LOG(ERR, "%s: %s: No resource available\n",
+			    tf_dir_2_str(parms->dir),
+			    tf_tcam_tbl_2_str(parms->tcam_tbl_type));
+		return -ENOMEM;
 	}
+
+	index *= num_slice_per_row;
 
 	parms->idx = index;
 	return 0;
@@ -956,26 +970,29 @@ tf_set_tcam_entry(struct tf *tfp,
 {
 	int rc;
 	int id;
+	int index;
 	struct tf_session *tfs;
 	struct bitalloc *session_pool;
+	uint16_t num_slice_per_row;
 
-	if (tfp == NULL || parms == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid parameters\n");
-		return -EINVAL;
-	}
+	/* TEMP, due to device design. When tcam is modularized device
+	 * should be retrieved from the session
+	 */
+	enum tf_device_type device_type;
+	/* TEMP */
+	device_type = TF_DEVICE_TYPE_WH;
 
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "%s, Session info invalid\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
-	/*
-	 * Each tcam send msg function should check for key sizes range
-	 */
+	rc = tf_check_tcam_entry(parms->tcam_tbl_type,
+				 device_type,
+				 parms->key_sz_in_bits,
+				 &num_slice_per_row);
+	/* Error logging handled by tf_check_tcam_entry */
+	if (rc)
+		return rc;
 
 	rc = tf_rm_lookup_tcam_type_pool(tfs,
 					 parms->dir,
@@ -985,11 +1002,12 @@ tf_set_tcam_entry(struct tf *tfp,
 	if (rc)
 		return rc;
 
-
 	/* Verify that the entry has been previously allocated */
-	id = ba_inuse(session_pool, parms->idx);
+	index = parms->idx / num_slice_per_row;
+
+	id = ba_inuse(session_pool, index);
 	if (id != 1) {
-		PMD_DRV_LOG(ERR,
+		TFP_DRV_LOG(ERR,
 		   "%s: %s: Invalid or not allocated index, idx:%d\n",
 		   tf_dir_2_str(parms->dir),
 		   tf_tcam_tbl_2_str(parms->tcam_tbl_type),
@@ -1006,21 +1024,8 @@ int
 tf_get_tcam_entry(struct tf *tfp __rte_unused,
 		  struct tf_get_tcam_entry_parms *parms __rte_unused)
 {
-	int rc = -EOPNOTSUPP;
-
-	if (tfp == NULL || parms == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid parameters\n");
-		return -EINVAL;
-	}
-
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "%s, Session info invalid\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
-
-	return rc;
+	TF_CHECK_PARMS_SESSION(tfp, parms);
+	return -EOPNOTSUPP;
 }
 
 int
@@ -1028,19 +1033,28 @@ tf_free_tcam_entry(struct tf *tfp,
 		   struct tf_free_tcam_entry_parms *parms)
 {
 	int rc;
+	int index;
 	struct tf_session *tfs;
 	struct bitalloc *session_pool;
+	uint16_t num_slice_per_row = 1;
 
-	if (parms == NULL || tfp == NULL)
-		return -EINVAL;
+	/* TEMP, due to device design. When tcam is modularized device
+	 * should be retrieved from the session
+	 */
+	enum tf_device_type device_type;
+	/* TEMP */
+	device_type = TF_DEVICE_TYPE_WH;
 
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR, "%s: Session error\n",
-			    tf_dir_2_str(parms->dir));
-		return -EINVAL;
-	}
-
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 	tfs = (struct tf_session *)(tfp->session->core_data);
+
+	rc = tf_check_tcam_entry(parms->tcam_tbl_type,
+				 device_type,
+				 0,
+				 &num_slice_per_row);
+	/* Error logging handled by tf_check_tcam_entry */
+	if (rc)
+		return rc;
 
 	rc = tf_rm_lookup_tcam_type_pool(tfs,
 					 parms->dir,
@@ -1050,24 +1064,27 @@ tf_free_tcam_entry(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	rc = ba_inuse(session_pool, (int)parms->idx);
+	index = parms->idx / num_slice_per_row;
+
+	rc = ba_inuse(session_pool, index);
 	if (rc == BA_FAIL || rc == BA_ENTRY_FREE) {
-		PMD_DRV_LOG(ERR, "%s: %s: Entry %d already free",
+		TFP_DRV_LOG(ERR, "%s: %s: Entry %d already free",
 			    tf_dir_2_str(parms->dir),
 			    tf_tcam_tbl_2_str(parms->tcam_tbl_type),
-			    parms->idx);
+			    index);
 		return -EINVAL;
 	}
 
-	ba_free(session_pool, (int)parms->idx);
+	ba_free(session_pool, index);
 
 	rc = tf_msg_tcam_entry_free(tfp, parms);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR, "%s: %s: Entry %d free failed",
+		TFP_DRV_LOG(ERR, "%s: %s: Entry %d free failed with err %s",
 			    tf_dir_2_str(parms->dir),
 			    tf_tcam_tbl_2_str(parms->tcam_tbl_type),
-			    parms->idx);
+			    parms->idx,
+			    strerror(-rc));
 	}
 
 	return rc;

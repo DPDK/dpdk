@@ -23,29 +23,27 @@
 					    * IDs
 					    */
 #define TF_NUM_WC_PROF_ID         256      /* < Number WC profile IDs */
-#define TF_NUM_WC_TCAM_ROW        256      /*  Number slices per row in WC
-					    * TCAM. A slices is a WC TCAM entry.
-					    */
+#define TF_NUM_WC_TCAM_ROW        512      /* < Number of rows in WC TCAM */
 #define TF_NUM_METER_PROF         256      /* < Number of meter profiles */
 #define TF_NUM_METER             1024      /* < Number of meter instances */
 #define TF_NUM_MIRROR               2      /* < Number of mirror instances */
 #define TF_NUM_UPAR                 2      /* < Number of UPAR instances */
 
-/* Wh+/Brd2 specific HW resources */
+/* Wh+/SR specific HW resources */
 #define TF_NUM_SP_TCAM            512      /* < Number of Source Property TCAM
 					    * entries
 					    */
 
-/* Brd2/Brd4 specific HW resources */
+/* SR/SR2 specific HW resources */
 #define TF_NUM_L2_FUNC            256      /* < Number of L2 Func */
 
 
-/* Brd3, Brd4 common HW resources */
+/* Thor, SR2 common HW resources */
 #define TF_NUM_FKB                  1      /* < Number of Flexible Key Builder
 					    * templates
 					    */
 
-/* Brd4 specific HW resources */
+/* SR2 specific HW resources */
 #define TF_NUM_TBL_SCOPE           16      /* < Number of TBL scopes */
 #define TF_NUM_EPOCH0               1      /* < Number of Epoch0 */
 #define TF_NUM_EPOCH1               1      /* < Number of Epoch1 */
@@ -149,10 +147,11 @@
 #define TF_RSVD_METER_INST_END_IDX_TX             0
 
 /* Mirror */
-#define TF_RSVD_MIRROR_RX                         1
+/* Not yet supported fully in the infra */
+#define TF_RSVD_MIRROR_RX                         0
 #define TF_RSVD_MIRROR_BEGIN_IDX_RX               0
 #define TF_RSVD_MIRROR_END_IDX_RX                 0
-#define TF_RSVD_MIRROR_TX                         1
+#define TF_RSVD_MIRROR_TX                         0
 #define TF_RSVD_MIRROR_BEGIN_IDX_TX               0
 #define TF_RSVD_MIRROR_END_IDX_TX                 0
 
@@ -501,13 +500,13 @@ enum tf_resource_type_hw {
 	TF_RESC_TYPE_HW_METER_INST,
 	TF_RESC_TYPE_HW_MIRROR,
 	TF_RESC_TYPE_HW_UPAR,
-	/* Wh+/Brd2 specific HW resources */
+	/* Wh+/SR specific HW resources */
 	TF_RESC_TYPE_HW_SP_TCAM,
-	/* Brd2/Brd4 specific HW resources */
+	/* SR/SR2 specific HW resources */
 	TF_RESC_TYPE_HW_L2_FUNC,
-	/* Brd3, Brd4 common HW resources */
+	/* Thor, SR2 common HW resources */
 	TF_RESC_TYPE_HW_FKB,
-	/* Brd4 specific HW resources */
+	/* SR2 specific HW resources */
 	TF_RESC_TYPE_HW_TBL_SCOPE,
 	TF_RESC_TYPE_HW_EPOCH0,
 	TF_RESC_TYPE_HW_EPOCH1,

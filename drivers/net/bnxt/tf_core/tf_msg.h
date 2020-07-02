@@ -338,7 +338,7 @@ int tf_msg_get_tbl_entry(struct tf *tfp,
  * Returns:
  *  0 on Success else internal Truflow error
  */
-int tf_msg_get_bulk_tbl_entry(struct tf *tfp,
-			  struct tf_get_bulk_tbl_entry_parms *parms);
+int tf_msg_bulk_get_tbl_entry(struct tf *tfp,
+			  struct tf_bulk_get_tbl_entry_parms *parms);
 
 #endif  /* _TF_MSG_H_ */

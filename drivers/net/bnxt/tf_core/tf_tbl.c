@@ -23,6 +23,7 @@
 #include "bnxt.h"
 #include "tf_resources.h"
 #include "tf_rm.h"
+#include "stack.h"
 #include "tf_common.h"
 
 #define PTU_PTE_VALID          0x1UL
@@ -53,14 +54,14 @@
  *   Pointer to the page table to free
  */
 static void
-tf_em_free_pg_tbl(struct tf_em_page_tbl *tp)
+tf_em_free_pg_tbl(struct hcapi_cfa_em_page_tbl *tp)
 {
 	uint32_t i;
 
 	for (i = 0; i < tp->pg_count; i++) {
 		if (!tp->pg_va_tbl[i]) {
-			PMD_DRV_LOG(WARNING,
-				    "No map for page %d table %016" PRIu64 "\n",
+			TFP_DRV_LOG(WARNING,
+				    "No mapping for page: %d table: %016" PRIu64 "\n",
 				    i,
 				    (uint64_t)(uintptr_t)tp);
 			continue;
@@ -84,15 +85,14 @@ tf_em_free_pg_tbl(struct tf_em_page_tbl *tp)
  *   Pointer to the EM table to free
  */
 static void
-tf_em_free_page_table(struct tf_em_table *tbl)
+tf_em_free_page_table(struct hcapi_cfa_em_table *tbl)
 {
-	struct tf_em_page_tbl *tp;
+	struct hcapi_cfa_em_page_tbl *tp;
 	int i;
 
 	for (i = 0; i < tbl->num_lvl; i++) {
 		tp = &tbl->pg_tbl[i];
-
-		PMD_DRV_LOG(INFO,
+		TFP_DRV_LOG(INFO,
 			   "EEM: Freeing page table: size %u lvl %d cnt %u\n",
 			   TF_EM_PAGE_SIZE,
 			    i,
@@ -124,7 +124,7 @@ tf_em_free_page_table(struct tf_em_table *tbl)
  *   -ENOMEM - Out of memory
  */
 static int
-tf_em_alloc_pg_tbl(struct tf_em_page_tbl *tp,
+tf_em_alloc_pg_tbl(struct hcapi_cfa_em_page_tbl *tp,
 		   uint32_t pg_count,
 		   uint32_t pg_size)
 {
@@ -183,9 +183,9 @@ cleanup:
  *   -ENOMEM - Out of memory
  */
 static int
-tf_em_alloc_page_table(struct tf_em_table *tbl)
+tf_em_alloc_page_table(struct hcapi_cfa_em_table *tbl)
 {
-	struct tf_em_page_tbl *tp;
+	struct hcapi_cfa_em_page_tbl *tp;
 	int rc = 0;
 	int i;
 	uint32_t j;
@@ -197,14 +197,15 @@ tf_em_alloc_page_table(struct tf_em_table *tbl)
 					tbl->page_cnt[i],
 					TF_EM_PAGE_SIZE);
 		if (rc) {
-			PMD_DRV_LOG(WARNING,
-				"Failed to allocate page table: lvl: %d\n",
-				i);
+			TFP_DRV_LOG(WARNING,
+				"Failed to allocate page table: lvl: %d, rc:%s\n",
+				i,
+				strerror(-rc));
 			goto cleanup;
 		}
 
 		for (j = 0; j < tp->pg_count; j++) {
-			PMD_DRV_LOG(INFO,
+			TFP_DRV_LOG(INFO,
 				"EEM: Allocated page table: size %u lvl %d cnt"
 				" %u VA:%p PA:%p\n",
 				TF_EM_PAGE_SIZE,
@@ -234,8 +235,8 @@ cleanup:
  *   Flag controlling if the page table is last
  */
 static void
-tf_em_link_page_table(struct tf_em_page_tbl *tp,
-		      struct tf_em_page_tbl *tp_next,
+tf_em_link_page_table(struct hcapi_cfa_em_page_tbl *tp,
+		      struct hcapi_cfa_em_page_tbl *tp_next,
 		      bool set_pte_last)
 {
 	uint64_t *pg_pa = tp_next->pg_pa_tbl;
@@ -270,10 +271,10 @@ tf_em_link_page_table(struct tf_em_page_tbl *tp,
  *   Pointer to EM page table
  */
 static void
-tf_em_setup_page_table(struct tf_em_table *tbl)
+tf_em_setup_page_table(struct hcapi_cfa_em_table *tbl)
 {
-	struct tf_em_page_tbl *tp_next;
-	struct tf_em_page_tbl *tp;
+	struct hcapi_cfa_em_page_tbl *tp_next;
+	struct hcapi_cfa_em_page_tbl *tp;
 	bool set_pte_last = 0;
 	int i;
 
@@ -415,7 +416,7 @@ tf_em_size_page_tbls(int max_lvl,
  *   - ENOMEM - Out of memory
  */
 static int
-tf_em_size_table(struct tf_em_table *tbl)
+tf_em_size_table(struct hcapi_cfa_em_table *tbl)
 {
 	uint64_t num_data_pages;
 	uint32_t *page_cnt;
@@ -456,11 +457,10 @@ tf_em_size_table(struct tf_em_table *tbl)
 					  tbl->num_entries,
 					  &num_data_pages);
 	if (max_lvl < 0) {
-		PMD_DRV_LOG(WARNING, "EEM: Failed to size page table levels\n");
-		PMD_DRV_LOG(WARNING,
+		TFP_DRV_LOG(WARNING, "EEM: Failed to size page table levels\n");
+		TFP_DRV_LOG(WARNING,
 			    "table: %d data-sz: %016" PRIu64 " page-sz: %u\n",
-			    tbl->type,
-			    (uint64_t)num_entries * tbl->entry_size,
+			    tbl->type, (uint64_t)num_entries * tbl->entry_size,
 			    TF_EM_PAGE_SIZE);
 		return -ENOMEM;
 	}
@@ -474,8 +474,8 @@ tf_em_size_table(struct tf_em_table *tbl)
 	tf_em_size_page_tbls(max_lvl, num_data_pages, TF_EM_PAGE_SIZE,
 				page_cnt);
 
-	PMD_DRV_LOG(INFO, "EEM: Sized page table: %d\n", tbl->type);
-	PMD_DRV_LOG(INFO,
+	TFP_DRV_LOG(INFO, "EEM: Sized page table: %d\n", tbl->type);
+	TFP_DRV_LOG(INFO,
 		    "EEM: lvls: %d sz: %016" PRIu64 " pgs: %016" PRIu64 " l0: %u l1: %u l2: %u\n",
 		    max_lvl + 1,
 		    (uint64_t)num_data_pages * TF_EM_PAGE_SIZE,
@@ -504,8 +504,9 @@ tf_em_ctx_unreg(struct tf *tfp,
 		struct tf_tbl_scope_cb *tbl_scope_cb,
 		int dir)
 {
-	struct tf_em_ctx_mem_info *ctxp = &tbl_scope_cb->em_ctx_info[dir];
-	struct tf_em_table *tbl;
+	struct hcapi_cfa_em_ctx_mem_info *ctxp =
+		&tbl_scope_cb->em_ctx_info[dir];
+	struct hcapi_cfa_em_table *tbl;
 	int i;
 
 	for (i = TF_KEY0_TABLE; i < TF_MAX_TABLE; i++) {
@@ -539,8 +540,9 @@ tf_em_ctx_reg(struct tf *tfp,
 	      struct tf_tbl_scope_cb *tbl_scope_cb,
 	      int dir)
 {
-	struct tf_em_ctx_mem_info *ctxp = &tbl_scope_cb->em_ctx_info[dir];
-	struct tf_em_table *tbl;
+	struct hcapi_cfa_em_ctx_mem_info *ctxp =
+		&tbl_scope_cb->em_ctx_info[dir];
+	struct hcapi_cfa_em_table *tbl;
 	int rc = 0;
 	int i;
 
@@ -601,7 +603,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 					TF_MEGABYTE) / (key_b + action_b);
 
 		if (num_entries < TF_EM_MIN_ENTRIES) {
-			PMD_DRV_LOG(ERR, "EEM: Insufficient memory requested:"
+			TFP_DRV_LOG(ERR, "EEM: Insufficient memory requested:"
 				    "%uMB\n",
 				    parms->rx_mem_size_in_mb);
 			return -EINVAL;
@@ -613,7 +615,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 			cnt *= 2;
 
 		if (cnt > TF_EM_MAX_ENTRIES) {
-			PMD_DRV_LOG(ERR, "EEM: Invalid number of Tx requested: "
+			TFP_DRV_LOG(ERR, "EEM: Invalid number of Tx requested: "
 				    "%u\n",
 		       (parms->tx_num_flows_in_k * TF_KILOBYTE));
 			return -EINVAL;
@@ -625,7 +627,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 		    TF_EM_MIN_ENTRIES ||
 		    (parms->rx_num_flows_in_k * TF_KILOBYTE) >
 		    tbl_scope_cb->em_caps[TF_DIR_RX].max_entries_supported) {
-			PMD_DRV_LOG(ERR,
+			TFP_DRV_LOG(ERR,
 				    "EEM: Invalid number of Rx flows "
 				    "requested:%u max:%u\n",
 				    parms->rx_num_flows_in_k * TF_KILOBYTE,
@@ -642,7 +644,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 			cnt *= 2;
 
 		if (cnt > TF_EM_MAX_ENTRIES) {
-			PMD_DRV_LOG(ERR,
+			TFP_DRV_LOG(ERR,
 				    "EEM: Invalid number of Rx requested: %u\n",
 				    (parms->rx_num_flows_in_k * TF_KILOBYTE));
 			return -EINVAL;
@@ -658,7 +660,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 			(key_b + action_b);
 
 		if (num_entries < TF_EM_MIN_ENTRIES) {
-			PMD_DRV_LOG(ERR,
+			TFP_DRV_LOG(ERR,
 				    "EEM: Insufficient memory requested:%uMB\n",
 				    parms->rx_mem_size_in_mb);
 			return -EINVAL;
@@ -670,7 +672,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 			cnt *= 2;
 
 		if (cnt > TF_EM_MAX_ENTRIES) {
-			PMD_DRV_LOG(ERR,
+			TFP_DRV_LOG(ERR,
 				    "EEM: Invalid number of Tx requested: %u\n",
 		       (parms->tx_num_flows_in_k * TF_KILOBYTE));
 			return -EINVAL;
@@ -682,7 +684,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 		    TF_EM_MIN_ENTRIES ||
 		    (parms->tx_num_flows_in_k * TF_KILOBYTE) >
 		    tbl_scope_cb->em_caps[TF_DIR_TX].max_entries_supported) {
-			PMD_DRV_LOG(ERR,
+			TFP_DRV_LOG(ERR,
 				    "EEM: Invalid number of Tx flows "
 				    "requested:%u max:%u\n",
 				    (parms->tx_num_flows_in_k * TF_KILOBYTE),
@@ -696,7 +698,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 			cnt *= 2;
 
 		if (cnt > TF_EM_MAX_ENTRIES) {
-			PMD_DRV_LOG(ERR,
+			TFP_DRV_LOG(ERR,
 				    "EEM: Invalid number of Tx requested: %u\n",
 		       (parms->tx_num_flows_in_k * TF_KILOBYTE));
 			return -EINVAL;
@@ -705,7 +707,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 
 	if (parms->rx_num_flows_in_k != 0 &&
 	    (parms->rx_max_key_sz_in_bits / 8 == 0)) {
-		PMD_DRV_LOG(ERR,
+		TFP_DRV_LOG(ERR,
 			    "EEM: Rx key size required: %u\n",
 			    (parms->rx_max_key_sz_in_bits));
 		return -EINVAL;
@@ -713,7 +715,7 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 
 	if (parms->tx_num_flows_in_k != 0 &&
 	    (parms->tx_max_key_sz_in_bits / 8 == 0)) {
-		PMD_DRV_LOG(ERR,
+		TFP_DRV_LOG(ERR,
 			    "EEM: Tx key size required: %u\n",
 			    (parms->tx_max_key_sz_in_bits));
 		return -EINVAL;
@@ -795,11 +797,10 @@ tf_set_tbl_entry_internal(struct tf *tfp,
 
 	if (parms->type != TF_TBL_TYPE_FULL_ACT_RECORD &&
 	    parms->type != TF_TBL_TYPE_ACT_SP_SMAC_IPV4 &&
-	    parms->type != TF_TBL_TYPE_MIRROR_CONFIG &&
 	    parms->type != TF_TBL_TYPE_ACT_STATS_64) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Type not supported, type:%d\n",
-			    parms->dir,
+		TFP_DRV_LOG(ERR,
+			    "%s, Type not supported, type:%d\n",
+			    tf_dir_2_str(parms->dir),
 			    parms->type);
 		return -EOPNOTSUPP;
 	}
@@ -817,9 +818,9 @@ tf_set_tbl_entry_internal(struct tf *tfp,
 	/* Verify that the entry has been previously allocated */
 	id = ba_inuse(session_pool, index);
 	if (id != 1) {
-		PMD_DRV_LOG(ERR,
-		   "dir:%d, Invalid or not allocated index, type:%d, idx:%d\n",
-		   parms->dir,
+		TFP_DRV_LOG(ERR,
+		   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
+		   tf_dir_2_str(parms->dir),
 		   parms->type,
 		   index);
 		return -EINVAL;
@@ -833,11 +834,11 @@ tf_set_tbl_entry_internal(struct tf *tfp,
 				  parms->data,
 				  parms->idx);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Set failed, type:%d, rc:%d\n",
-			    parms->dir,
+		TFP_DRV_LOG(ERR,
+			    "%s, Set failed, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
 			    parms->type,
-			    rc);
+			    strerror(-rc));
 	}
 
 	return rc;
@@ -891,9 +892,9 @@ tf_get_tbl_entry_internal(struct tf *tfp,
 	/* Verify that the entry has been previously allocated */
 	id = ba_inuse(session_pool, index);
 	if (id != 1) {
-		PMD_DRV_LOG(ERR,
-		   "dir:%d, Invalid or not allocated index, type:%d, idx:%d\n",
-		   parms->dir,
+		TFP_DRV_LOG(ERR,
+		   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
+		   tf_dir_2_str(parms->dir),
 		   parms->type,
 		   index);
 		return -EINVAL;
@@ -907,11 +908,11 @@ tf_get_tbl_entry_internal(struct tf *tfp,
 				  parms->data,
 				  parms->idx);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Get failed, type:%d, rc:%d\n",
-			    parms->dir,
+		TFP_DRV_LOG(ERR,
+			    "%s, Get failed, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
 			    parms->type,
-			    rc);
+			    strerror(-rc));
 	}
 
 	return rc;
@@ -932,8 +933,8 @@ tf_get_tbl_entry_internal(struct tf *tfp,
  *   -EINVAL - Parameter error
  */
 static int
-tf_get_bulk_tbl_entry_internal(struct tf *tfp,
-			  struct tf_get_bulk_tbl_entry_parms *parms)
+tf_bulk_get_tbl_entry_internal(struct tf *tfp,
+			  struct tf_bulk_get_tbl_entry_parms *parms)
 {
 	int rc;
 	int id;
@@ -975,7 +976,7 @@ tf_get_bulk_tbl_entry_internal(struct tf *tfp,
 	}
 
 	/* Get the entry */
-	rc = tf_msg_get_bulk_tbl_entry(tfp, parms);
+	rc = tf_msg_bulk_get_tbl_entry(tfp, parms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s, Bulk get failed, type:%d, rc:%s\n",
@@ -1006,10 +1007,9 @@ static int
 tf_alloc_tbl_entry_shadow(struct tf_session *tfs __rte_unused,
 			  struct tf_alloc_tbl_entry_parms *parms __rte_unused)
 {
-	PMD_DRV_LOG(ERR,
-		    "dir:%d, Entry Alloc with search not supported\n",
-		    parms->dir);
-
+	TFP_DRV_LOG(ERR,
+		    "%s, Entry Alloc with search not supported\n",
+		    tf_dir_2_str(parms->dir));
 
 	return -EOPNOTSUPP;
 }
@@ -1032,9 +1032,9 @@ static int
 tf_free_tbl_entry_shadow(struct tf_session *tfs,
 			 struct tf_free_tbl_entry_parms *parms)
 {
-	PMD_DRV_LOG(ERR,
-		    "dir:%d, Entry Free with search not supported\n",
-		    parms->dir);
+	TFP_DRV_LOG(ERR,
+		    "%s, Entry Free with search not supported\n",
+		    tf_dir_2_str(parms->dir));
 
 	return -EOPNOTSUPP;
 }
@@ -1074,8 +1074,8 @@ tf_create_tbl_pool_external(enum tf_dir dir,
 	parms.alignment = 0;
 
 	if (tfp_calloc(&parms) != 0) {
-		PMD_DRV_LOG(ERR, "%d: TBL: external pool failure %s\n",
-			    dir, strerror(-ENOMEM));
+		TFP_DRV_LOG(ERR, "%s: TBL: external pool failure %s\n",
+			    tf_dir_2_str(dir), strerror(ENOMEM));
 		return -ENOMEM;
 	}
 
@@ -1084,8 +1084,8 @@ tf_create_tbl_pool_external(enum tf_dir dir,
 	rc = stack_init(num_entries, parms.mem_va, pool);
 
 	if (rc != 0) {
-		PMD_DRV_LOG(ERR, "%d: TBL: stack init failure %s\n",
-			    dir, strerror(-rc));
+		TFP_DRV_LOG(ERR, "%s: TBL: stack init failure %s\n",
+			    tf_dir_2_str(dir), strerror(-rc));
 		goto cleanup;
 	}
 
@@ -1101,13 +1101,13 @@ tf_create_tbl_pool_external(enum tf_dir dir,
 	for (i = 0; i < num_entries; i++) {
 		rc = stack_push(pool, j);
 		if (rc != 0) {
-			PMD_DRV_LOG(ERR, "%s TBL: stack failure %s\n",
+			TFP_DRV_LOG(ERR, "%s TBL: stack failure %s\n",
 				    tf_dir_2_str(dir), strerror(-rc));
 			goto cleanup;
 		}
 
 		if (j < 0) {
-			PMD_DRV_LOG(ERR, "%d TBL: invalid offset (%d)\n",
+			TFP_DRV_LOG(ERR, "%d TBL: invalid offset (%d)\n",
 				    dir, j);
 			goto cleanup;
 		}
@@ -1116,8 +1116,8 @@ tf_create_tbl_pool_external(enum tf_dir dir,
 
 	if (!stack_is_full(pool)) {
 		rc = -EINVAL;
-		PMD_DRV_LOG(ERR, "%d TBL: stack failure %s\n",
-			    dir, strerror(-rc));
+		TFP_DRV_LOG(ERR, "%s TBL: stack failure %s\n",
+			    tf_dir_2_str(dir), strerror(-rc));
 		goto cleanup;
 	}
 	return 0;
@@ -1168,18 +1168,7 @@ tf_alloc_tbl_entry_pool_external(struct tf *tfp,
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 	struct stack *pool;
 
-	/* Check parameters */
-	if (tfp == NULL || parms == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid parameters\n");
-		return -EINVAL;
-	}
-
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
@@ -1188,9 +1177,9 @@ tf_alloc_tbl_entry_pool_external(struct tf *tfp,
 	tbl_scope_cb = tbl_scope_cb_find(tfs, parms->tbl_scope_id);
 
 	if (tbl_scope_cb == NULL) {
-		PMD_DRV_LOG(ERR,
-					"%s, table scope not allocated\n",
-					tf_dir_2_str(parms->dir));
+		TFP_DRV_LOG(ERR,
+			    "%s, table scope not allocated\n",
+			    tf_dir_2_str(parms->dir));
 		return -EINVAL;
 	}
 	pool = &tbl_scope_cb->ext_act_pool[parms->dir];
@@ -1200,9 +1189,9 @@ tf_alloc_tbl_entry_pool_external(struct tf *tfp,
 	rc = stack_pop(pool, &index);
 
 	if (rc != 0) {
-		PMD_DRV_LOG(ERR,
-		   "dir:%d, Allocation failed, type:%d\n",
-		   parms->dir,
+		TFP_DRV_LOG(ERR,
+		   "%s, Allocation failed, type:%d\n",
+		   tf_dir_2_str(parms->dir),
 		   parms->type);
 		return rc;
 	}
@@ -1233,18 +1222,7 @@ tf_alloc_tbl_entry_pool_internal(struct tf *tfp,
 	struct bitalloc *session_pool;
 	struct tf_session *tfs;
 
-	/* Check parameters */
-	if (tfp == NULL || parms == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid parameters\n");
-		return -EINVAL;
-	}
-
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
@@ -1254,11 +1232,10 @@ tf_alloc_tbl_entry_pool_internal(struct tf *tfp,
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_8B &&
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_16B &&
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_64B &&
-	    parms->type != TF_TBL_TYPE_MIRROR_CONFIG &&
 	    parms->type != TF_TBL_TYPE_ACT_STATS_64) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Type not supported, type:%d\n",
-			    parms->dir,
+		TFP_DRV_LOG(ERR,
+			    "%s, Type not supported, type:%d\n",
+			    tf_dir_2_str(parms->dir),
 			    parms->type);
 		return -EOPNOTSUPP;
 	}
@@ -1276,9 +1253,9 @@ tf_alloc_tbl_entry_pool_internal(struct tf *tfp,
 	if (id == -1) {
 		free_cnt = ba_free_count(session_pool);
 
-		PMD_DRV_LOG(ERR,
-		   "dir:%d, Allocation failed, type:%d, free:%d\n",
-		   parms->dir,
+		TFP_DRV_LOG(ERR,
+		   "%s, Allocation failed, type:%d, free:%d\n",
+		   tf_dir_2_str(parms->dir),
 		   parms->type,
 		   free_cnt);
 		return -ENOMEM;
@@ -1323,18 +1300,7 @@ tf_free_tbl_entry_pool_external(struct tf *tfp,
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 	struct stack *pool;
 
-	/* Check parameters */
-	if (tfp == NULL || parms == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid parameters\n");
-		return -EINVAL;
-	}
-
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
@@ -1343,9 +1309,9 @@ tf_free_tbl_entry_pool_external(struct tf *tfp,
 	tbl_scope_cb = tbl_scope_cb_find(tfs, parms->tbl_scope_id);
 
 	if (tbl_scope_cb == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
+		TFP_DRV_LOG(ERR,
+			    "%s, table scope error\n",
+			    tf_dir_2_str(parms->dir));
 		return -EINVAL;
 	}
 	pool = &tbl_scope_cb->ext_act_pool[parms->dir];
@@ -1355,9 +1321,9 @@ tf_free_tbl_entry_pool_external(struct tf *tfp,
 	rc = stack_push(pool, index);
 
 	if (rc != 0) {
-		PMD_DRV_LOG(ERR,
-		   "dir:%d, consistency error, stack full, type:%d, idx:%d\n",
-		   parms->dir,
+		TFP_DRV_LOG(ERR,
+		   "%s, consistency error, stack full, type:%d, idx:%d\n",
+		   tf_dir_2_str(parms->dir),
 		   parms->type,
 		   index);
 	}
@@ -1386,18 +1352,7 @@ tf_free_tbl_entry_pool_internal(struct tf *tfp,
 	struct tf_session *tfs;
 	uint32_t index;
 
-	/* Check parameters */
-	if (tfp == NULL || parms == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid parameters\n");
-		return -EINVAL;
-	}
-
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
@@ -1408,9 +1363,9 @@ tf_free_tbl_entry_pool_internal(struct tf *tfp,
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_16B &&
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_64B &&
 	    parms->type != TF_TBL_TYPE_ACT_STATS_64) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Type not supported, type:%d\n",
-			    parms->dir,
+		TFP_DRV_LOG(ERR,
+			    "%s, Type not supported, type:%d\n",
+			    tf_dir_2_str(parms->dir),
 			    parms->type);
 		return -EOPNOTSUPP;
 	}
@@ -1439,9 +1394,9 @@ tf_free_tbl_entry_pool_internal(struct tf *tfp,
 	/* Check if element was indeed allocated */
 	id = ba_inuse_free(session_pool, index);
 	if (id == -1) {
-		PMD_DRV_LOG(ERR,
-		   "dir:%d, Element not previously alloc'ed, type:%d, idx:%d\n",
-		   parms->dir,
+		TFP_DRV_LOG(ERR,
+		   "%s, Element not previously alloc'ed, type:%d, idx:%d\n",
+		   tf_dir_2_str(parms->dir),
 		   parms->type,
 		   index);
 		return -ENOMEM;
@@ -1485,8 +1440,10 @@ tf_free_eem_tbl_scope_cb(struct tf *tfp,
 	tbl_scope_cb = tbl_scope_cb_find(session,
 					 parms->tbl_scope_id);
 
-	if (tbl_scope_cb == NULL)
+	if (tbl_scope_cb == NULL) {
+		TFP_DRV_LOG(ERR, "Table scope error\n");
 		return -EINVAL;
+	}
 
 	/* Free Table control block */
 	ba_free(session->tbl_scope_pool_rx, tbl_scope_cb->index);
@@ -1516,23 +1473,17 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 	int rc;
 	enum tf_dir dir;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
-	struct tf_em_table *em_tables;
+	struct hcapi_cfa_em_table *em_tables;
 	int index;
 	struct tf_session *session;
 	struct tf_free_tbl_scope_parms free_parms;
-
-	/* check parameters */
-	if (parms == NULL || tfp->session == NULL) {
-		PMD_DRV_LOG(ERR, "TBL: Invalid parameters\n");
-		return -EINVAL;
-	}
 
 	session = (struct tf_session *)tfp->session->core_data;
 
 	/* Get Table Scope control block from the session pool */
 	index = ba_alloc(session->tbl_scope_pool_rx);
 	if (index == -1) {
-		PMD_DRV_LOG(ERR, "EEM: Unable to allocate table scope "
+		TFP_DRV_LOG(ERR, "EEM: Unable to allocate table scope "
 			    "Control Block\n");
 		return -ENOMEM;
 	}
@@ -1547,8 +1498,10 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 				     dir,
 				     &tbl_scope_cb->em_caps[dir]);
 		if (rc) {
-			PMD_DRV_LOG(ERR,
-				"EEM: Unable to query for EEM capability\n");
+			TFP_DRV_LOG(ERR,
+				    "EEM: Unable to query for EEM capability,"
+				    " rc:%s\n",
+				    strerror(-rc));
 			goto cleanup;
 		}
 	}
@@ -1565,8 +1518,10 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 		 */
 		rc = tf_em_ctx_reg(tfp, tbl_scope_cb, dir);
 		if (rc) {
-			PMD_DRV_LOG(ERR,
-				    "EEM: Unable to register for EEM ctx\n");
+			TFP_DRV_LOG(ERR,
+				    "EEM: Unable to register for EEM ctx,"
+				    " rc:%s\n",
+				    strerror(-rc));
 			goto cleanup;
 		}
 
@@ -1580,8 +1535,10 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 				   parms->hw_flow_cache_flush_timer,
 				   dir);
 		if (rc) {
-			PMD_DRV_LOG(ERR,
-				"TBL: Unable to configure EEM in firmware\n");
+			TFP_DRV_LOG(ERR,
+				    "TBL: Unable to configure EEM in firmware"
+				    " rc:%s\n",
+				    strerror(-rc));
 			goto cleanup_full;
 		}
 
@@ -1590,8 +1547,10 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 				  HWRM_TF_EXT_EM_OP_INPUT_OP_EXT_EM_ENABLE);
 
 		if (rc) {
-			PMD_DRV_LOG(ERR,
-				    "EEM: Unable to enable EEM in firmware\n");
+			TFP_DRV_LOG(ERR,
+				    "EEM: Unable to enable EEM in firmware"
+				    " rc:%s\n",
+				    strerror(-rc));
 			goto cleanup_full;
 		}
 
@@ -1604,9 +1563,9 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 				    em_tables[TF_RECORD_TABLE].num_entries,
 				    em_tables[TF_RECORD_TABLE].entry_size);
 		if (rc) {
-			PMD_DRV_LOG(ERR,
-				    "%d TBL: Unable to allocate idx pools %s\n",
-				    dir,
+			TFP_DRV_LOG(ERR,
+				    "%s TBL: Unable to allocate idx pools %s\n",
+				    tf_dir_2_str(dir),
 				    strerror(-rc));
 			goto cleanup_full;
 		}
@@ -1634,13 +1593,12 @@ tf_set_tbl_entry(struct tf *tfp,
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 	struct tf_session *session;
 
-	if (tfp == NULL || parms == NULL || parms->data == NULL)
-		return -EINVAL;
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
+	if (parms->data == NULL) {
+		TFP_DRV_LOG(ERR,
+			    "%s, invalid parms->data\n",
+			    tf_dir_2_str(parms->dir));
 		return -EINVAL;
 	}
 
@@ -1654,9 +1612,9 @@ tf_set_tbl_entry(struct tf *tfp,
 		tbl_scope_id = parms->tbl_scope_id;
 
 		if (tbl_scope_id == TF_TBL_SCOPE_INVALID)  {
-			PMD_DRV_LOG(ERR,
-				    "dir:%d, Table scope not allocated\n",
-				    parms->dir);
+			TFP_DRV_LOG(ERR,
+				    "%s, Table scope not allocated\n",
+				    tf_dir_2_str(parms->dir));
 			return -EINVAL;
 		}
 
@@ -1665,18 +1623,21 @@ tf_set_tbl_entry(struct tf *tfp,
 		 */
 		tbl_scope_cb = tbl_scope_cb_find(session, tbl_scope_id);
 
-		if (tbl_scope_cb == NULL)
-			return -EINVAL;
+		if (tbl_scope_cb == NULL) {
+			TFP_DRV_LOG(ERR,
+				    "%s, table scope error\n",
+				    tf_dir_2_str(parms->dir));
+				return -EINVAL;
+		}
 
 		/* External table, implicitly the Action table */
-		base_addr = tf_em_get_table_page(tbl_scope_cb,
-						 parms->dir,
-						 offset,
-						 TF_RECORD_TABLE);
+		base_addr = (void *)(uintptr_t)
+		hcapi_get_table_page(&tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_RECORD_TABLE], offset);
+
 		if (base_addr == NULL) {
-			PMD_DRV_LOG(ERR,
-				    "dir:%d, Base address lookup failed\n",
-				    parms->dir);
+			TFP_DRV_LOG(ERR,
+				    "%s, Base address lookup failed\n",
+				    tf_dir_2_str(parms->dir));
 			return -EINVAL;
 		}
 
@@ -1688,11 +1649,11 @@ tf_set_tbl_entry(struct tf *tfp,
 		/* Internal table type processing */
 		rc = tf_set_tbl_entry_internal(tfp, parms);
 		if (rc) {
-			PMD_DRV_LOG(ERR,
-				    "dir:%d, Set failed, type:%d, rc:%d\n",
-				    parms->dir,
+			TFP_DRV_LOG(ERR,
+				    "%s, Set failed, type:%d, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
 				    parms->type,
-				    rc);
+				    strerror(-rc));
 		}
 	}
 
@@ -1703,43 +1664,6 @@ tf_set_tbl_entry(struct tf *tfp,
 int
 tf_get_tbl_entry(struct tf *tfp,
 		 struct tf_get_tbl_entry_parms *parms)
-{
-	int rc = 0;
-
-	if (tfp == NULL || parms == NULL)
-		return -EINVAL;
-
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
-		return -EINVAL;
-	}
-
-	if (parms->type == TF_TBL_TYPE_EXT) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, External table type not supported\n",
-			    parms->dir);
-
-		rc = -EOPNOTSUPP;
-	} else {
-		/* Internal table type processing */
-		rc = tf_get_tbl_entry_internal(tfp, parms);
-		if (rc)
-			PMD_DRV_LOG(ERR,
-				    "dir:%d, Get failed, type:%d, rc:%d\n",
-				    parms->dir,
-				    parms->type,
-				    rc);
-	}
-
-	return rc;
-}
-
-/* API defined in tf_core.h */
-int
-tf_get_bulk_tbl_entry(struct tf *tfp,
-		 struct tf_get_bulk_tbl_entry_parms *parms)
 {
 	int rc = 0;
 
@@ -1754,7 +1678,37 @@ tf_get_bulk_tbl_entry(struct tf *tfp,
 		rc = -EOPNOTSUPP;
 	} else {
 		/* Internal table type processing */
-		rc = tf_get_bulk_tbl_entry_internal(tfp, parms);
+		rc = tf_get_tbl_entry_internal(tfp, parms);
+		if (rc)
+			TFP_DRV_LOG(ERR,
+				    "%s, Get failed, type:%d, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    parms->type,
+				    strerror(-rc));
+	}
+
+	return rc;
+}
+
+/* API defined in tf_core.h */
+int
+tf_bulk_get_tbl_entry(struct tf *tfp,
+		 struct tf_bulk_get_tbl_entry_parms *parms)
+{
+	int rc = 0;
+
+	TF_CHECK_PARMS_SESSION(tfp, parms);
+
+	if (parms->type == TF_TBL_TYPE_EXT) {
+		/* Not supported, yet */
+		TFP_DRV_LOG(ERR,
+			    "%s, External table type not supported\n",
+			    tf_dir_2_str(parms->dir));
+
+		rc = -EOPNOTSUPP;
+	} else {
+		/* Internal table type processing */
+		rc = tf_bulk_get_tbl_entry_internal(tfp, parms);
 		if (rc)
 			TFP_DRV_LOG(ERR,
 				    "%s, Bulk get failed, type:%d, rc:%s\n",
@@ -1773,11 +1727,7 @@ tf_alloc_tbl_scope(struct tf *tfp,
 {
 	int rc;
 
-	/* check parameters */
-	if (parms == NULL || tfp == NULL) {
-		PMD_DRV_LOG(ERR, "TBL: Invalid parameters\n");
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION_NO_DIR(tfp, parms);
 
 	rc = tf_alloc_eem_tbl_scope(tfp, parms);
 
@@ -1791,11 +1741,7 @@ tf_free_tbl_scope(struct tf *tfp,
 {
 	int rc;
 
-	/* check parameters */
-	if (parms == NULL || tfp == NULL) {
-		PMD_DRV_LOG(ERR, "TBL: Invalid parameters\n");
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION_NO_DIR(tfp, parms);
 
 	/* free table scope and all associated resources */
 	rc = tf_free_eem_tbl_scope_cb(tfp, parms);
@@ -1813,11 +1759,7 @@ tf_alloc_tbl_entry(struct tf *tfp,
 	struct tf_session *tfs;
 #endif /* TF_SHADOW */
 
-	/* Check parameters */
-	if (parms == NULL || tfp == NULL) {
-		PMD_DRV_LOG(ERR, "TBL: Invalid parameters\n");
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
 	/*
 	 * No shadow copy support for external tables, allocate and return
 	 */
@@ -1827,13 +1769,6 @@ tf_alloc_tbl_entry(struct tf *tfp,
 	}
 
 #if (TF_SHADOW == 1)
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
-		return -EINVAL;
-	}
-
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
 	/* Search the Shadow DB for requested element. If not found go
@@ -1849,9 +1784,9 @@ tf_alloc_tbl_entry(struct tf *tfp,
 
 	rc = tf_alloc_tbl_entry_pool_internal(tfp, parms);
 	if (rc)
-		PMD_DRV_LOG(ERR, "dir%d, Alloc failed, rc:%d\n",
-			    parms->dir,
-			    rc);
+		TFP_DRV_LOG(ERR, "%s, Alloc failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
 
 	return rc;
 }
@@ -1866,11 +1801,8 @@ tf_free_tbl_entry(struct tf *tfp,
 	struct tf_session *tfs;
 #endif /* TF_SHADOW */
 
-	/* Check parameters */
-	if (parms == NULL || tfp == NULL) {
-		PMD_DRV_LOG(ERR, "TBL: Invalid parameters\n");
-		return -EINVAL;
-	}
+	TF_CHECK_PARMS_SESSION(tfp, parms);
+
 	/*
 	 * No shadow of external tables so just free the entry
 	 */
@@ -1880,13 +1812,6 @@ tf_free_tbl_entry(struct tf *tfp,
 	}
 
 #if (TF_SHADOW == 1)
-	if (tfp->session == NULL || tfp->session->core_data == NULL) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Session info invalid\n",
-			    parms->dir);
-		return -EINVAL;
-	}
-
 	tfs = (struct tf_session *)(tfp->session->core_data);
 
 	/* Search the Shadow DB for requested element. If not found go
@@ -1903,16 +1828,16 @@ tf_free_tbl_entry(struct tf *tfp,
 	rc = tf_free_tbl_entry_pool_internal(tfp, parms);
 
 	if (rc)
-		PMD_DRV_LOG(ERR, "dir:%d, Alloc failed, rc:%d\n",
-			    parms->dir,
-			    rc);
+		TFP_DRV_LOG(ERR, "%s, Alloc failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
 	return rc;
 }
 
 
 static void
-tf_dump_link_page_table(struct tf_em_page_tbl *tp,
-			struct tf_em_page_tbl *tp_next)
+tf_dump_link_page_table(struct hcapi_cfa_em_page_tbl *tp,
+			struct hcapi_cfa_em_page_tbl *tp_next)
 {
 	uint64_t *pg_va;
 	uint32_t i;
@@ -1951,9 +1876,9 @@ void tf_dump_dma(struct tf *tfp, uint32_t tbl_scope_id)
 {
 	struct tf_session      *session;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
-	struct tf_em_page_tbl *tp;
-	struct tf_em_page_tbl *tp_next;
-	struct tf_em_table *tbl;
+	struct hcapi_cfa_em_page_tbl *tp;
+	struct hcapi_cfa_em_page_tbl *tp_next;
+	struct hcapi_cfa_em_table *tbl;
 	int i;
 	int j;
 	int dir;
@@ -1967,7 +1892,7 @@ void tf_dump_dma(struct tf *tfp, uint32_t tbl_scope_id)
 	tbl_scope_cb = tbl_scope_cb_find(session,
 					 tbl_scope_id);
 	if (tbl_scope_cb == NULL)
-		TFP_DRV_LOG(ERR, "No table scope\n");
+		PMD_DRV_LOG(ERR, "No table scope\n");
 
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
 		printf("Direction %s:\n", (dir == TF_DIR_RX ? "Rx" : "Tx"));

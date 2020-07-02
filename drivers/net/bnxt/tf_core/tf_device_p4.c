@@ -10,6 +10,7 @@
 #include "tf_identifier.h"
 #include "tf_tbl_type.h"
 #include "tf_tcam.h"
+#include "tf_em.h"
 
 /**
  * Device specific function that retrieves the MAX number of HCAPI
@@ -89,4 +90,6 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_alloc_search_tcam = tf_tcam_alloc_search,
 	.tf_dev_set_tcam = tf_tcam_set,
 	.tf_dev_get_tcam = tf_tcam_get,
+	.tf_dev_insert_em_entry = tf_em_insert_entry,
+	.tf_dev_delete_em_entry = tf_em_delete_entry,
 };

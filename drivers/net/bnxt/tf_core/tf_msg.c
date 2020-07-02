@@ -184,6 +184,10 @@ tf_msg_free_dma_buf(struct tf_msg_dma_buf *buf)
 }
 
 /**
+ * NEW HWRM direct messages
+ */
+
+/**
  * Sends session open request to TF Firmware
  */
 int
@@ -1259,8 +1263,9 @@ int tf_msg_insert_em_internal_entry(struct tf *tfp,
 		 HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_TX :
 		 HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_RX);
 	req.flags = tfp_cpu_to_le_16(flags);
-	req.strength = (em_result->hdr.word1 & TF_LKUP_RECORD_STRENGTH_MASK) >>
-		TF_LKUP_RECORD_STRENGTH_SHIFT;
+	req.strength =
+		(em_result->hdr.word1 & CFA_P4_EEM_ENTRY_STRENGTH_MASK) >>
+		CFA_P4_EEM_ENTRY_STRENGTH_SHIFT;
 	req.em_key_bitlen = em_parms->key_sz_in_bits;
 	req.action_ptr = em_result->hdr.pointer;
 	req.em_record_idx = *rptr_index;
@@ -1436,22 +1441,20 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 }
 
 int
-tf_msg_get_bulk_tbl_entry(struct tf *tfp,
-			  struct tf_get_bulk_tbl_entry_parms *params)
+tf_msg_bulk_get_tbl_entry(struct tf *tfp,
+			  struct tf_bulk_get_tbl_entry_parms *params)
 {
 	int rc;
 	struct tfp_send_msg_parms parms = { 0 };
-	struct tf_tbl_type_get_bulk_input req = { 0 };
-	struct tf_tbl_type_get_bulk_output resp = { 0 };
+	struct tf_tbl_type_bulk_get_input req = { 0 };
+	struct tf_tbl_type_bulk_get_output resp = { 0 };
 	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
 	int data_size = 0;
 
 	/* Populate the request */
 	req.fw_session_id =
 		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
-	req.flags = tfp_cpu_to_le_16((params->dir) |
-		((params->clear_on_read) ?
-		 TF_TBL_TYPE_GET_BULK_INPUT_FLAGS_CLEAR_ON_READ : 0x0));
+	req.flags = tfp_cpu_to_le_16(params->dir);
 	req.type = tfp_cpu_to_le_32(params->type);
 	req.start_index = tfp_cpu_to_le_32(params->starting_idx);
 	req.num_entries = tfp_cpu_to_le_32(params->num_entries);
@@ -1462,7 +1465,7 @@ tf_msg_get_bulk_tbl_entry(struct tf *tfp,
 	MSG_PREP(parms,
 		 TF_KONG_MB,
 		 HWRM_TF,
-		 HWRM_TFT_TBL_TYPE_GET_BULK,
+		 HWRM_TFT_TBL_TYPE_BULK_GET,
 		 req,
 		 resp);
 

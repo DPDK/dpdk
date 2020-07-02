@@ -14,6 +14,7 @@
 #include "tf_resources.h"
 #include "tf_msg.h"
 #include "bnxt.h"
+#include "tfp.h"
 
 /**
  * Internal macro to perform HW resource allocation check between what
@@ -329,13 +330,13 @@ tf_rm_print_hw_qcaps_error(enum tf_dir dir,
 {
 	int i;
 
-	PMD_DRV_LOG(ERR, "QCAPS errors HW\n");
-	PMD_DRV_LOG(ERR, "  Direction: %s\n", tf_dir_2_str(dir));
-	PMD_DRV_LOG(ERR, "  Elements:\n");
+	TFP_DRV_LOG(ERR, "QCAPS errors HW\n");
+	TFP_DRV_LOG(ERR, "  Direction: %s\n", tf_dir_2_str(dir));
+	TFP_DRV_LOG(ERR, "  Elements:\n");
 
 	for (i = 0; i < TF_RESC_TYPE_HW_MAX; i++) {
 		if (*error_flag & 1 << i)
-			PMD_DRV_LOG(ERR, "    %s, %d elem available, req:%d\n",
+			TFP_DRV_LOG(ERR, "    %s, %d elem available, req:%d\n",
 				    tf_hcapi_hw_2_str(i),
 				    hw_query->hw_query[i].max,
 				    tf_rm_rsvd_hw_value(dir, i));
@@ -359,13 +360,13 @@ tf_rm_print_sram_qcaps_error(enum tf_dir dir,
 {
 	int i;
 
-	PMD_DRV_LOG(ERR, "QCAPS errors SRAM\n");
-	PMD_DRV_LOG(ERR, "  Direction: %s\n", tf_dir_2_str(dir));
-	PMD_DRV_LOG(ERR, "  Elements:\n");
+	TFP_DRV_LOG(ERR, "QCAPS errors SRAM\n");
+	TFP_DRV_LOG(ERR, "  Direction: %s\n", tf_dir_2_str(dir));
+	TFP_DRV_LOG(ERR, "  Elements:\n");
 
 	for (i = 0; i < TF_RESC_TYPE_SRAM_MAX; i++) {
 		if (*error_flag & 1 << i)
-			PMD_DRV_LOG(ERR, "    %s, %d elem available, req:%d\n",
+			TFP_DRV_LOG(ERR, "    %s, %d elem available, req:%d\n",
 				    tf_hcapi_sram_2_str(i),
 				    sram_query->sram_query[i].max,
 				    tf_rm_rsvd_sram_value(dir, i));
@@ -1700,7 +1701,7 @@ tf_rm_hw_alloc_validate(enum tf_dir dir,
 
 	for (i = 0; i < TF_RESC_TYPE_HW_MAX; i++) {
 		if (hw_entry[i].stride != hw_alloc->hw_num[i]) {
-			PMD_DRV_LOG(ERR,
+			TFP_DRV_LOG(ERR,
 				"%s, Alloc failed id:%d expect:%d got:%d\n",
 				tf_dir_2_str(dir),
 				i,
@@ -1727,7 +1728,7 @@ tf_rm_sram_alloc_validate(enum tf_dir dir __rte_unused,
 
 	for (i = 0; i < TF_RESC_TYPE_SRAM_MAX; i++) {
 		if (sram_entry[i].stride != sram_alloc->sram_num[i]) {
-			PMD_DRV_LOG(ERR,
+			TFP_DRV_LOG(ERR,
 				"%s, Alloc failed idx:%d expect:%d got:%d\n",
 				tf_dir_2_str(dir),
 				i,
@@ -1820,19 +1821,22 @@ tf_rm_allocate_validate_hw(struct tf *tfp,
 	rc = tf_msg_session_hw_resc_qcaps(tfp, dir, &hw_query);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "%s, HW qcaps message send failed\n",
-			    tf_dir_2_str(dir));
+		TFP_DRV_LOG(ERR,
+			    "%s, HW qcaps message send failed, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
 		goto cleanup;
 	}
 
 	rc = tf_rm_check_hw_qcaps_static(&hw_query, dir, &error_flag);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			"%s, HW QCAPS validation failed, error_flag:0x%x\n",
+		TFP_DRV_LOG(ERR,
+			"%s, HW QCAPS validation failed,"
+			"error_flag:0x%x, rc:%s\n",
 			tf_dir_2_str(dir),
-			error_flag);
+			error_flag,
+			strerror(-rc));
 		tf_rm_print_hw_qcaps_error(dir, &hw_query, &error_flag);
 		goto cleanup;
 	}
@@ -1845,9 +1849,10 @@ tf_rm_allocate_validate_hw(struct tf *tfp,
 	rc = tf_msg_session_hw_resc_alloc(tfp, dir, &hw_alloc, hw_entries);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "%s, HW alloc message send failed\n",
-			    tf_dir_2_str(dir));
+		TFP_DRV_LOG(ERR,
+			    "%s, HW alloc message send failed, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
 		goto cleanup;
 	}
 
@@ -1857,15 +1862,17 @@ tf_rm_allocate_validate_hw(struct tf *tfp,
 	rc = tf_rm_hw_alloc_validate(dir, &hw_alloc, hw_entries);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "%s, HW Resource validation failed\n",
-			    tf_dir_2_str(dir));
+		TFP_DRV_LOG(ERR,
+			    "%s, HW Resource validation failed, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
 		goto cleanup;
 	}
 
 	return 0;
 
  cleanup:
+
 	return -1;
 }
 
@@ -1903,19 +1910,22 @@ tf_rm_allocate_validate_sram(struct tf *tfp,
 	rc = tf_msg_session_sram_resc_qcaps(tfp, dir, &sram_query);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "%s, SRAM qcaps message send failed\n",
-			    tf_dir_2_str(dir));
+		TFP_DRV_LOG(ERR,
+			    "%s, SRAM qcaps message send failed, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
 		goto cleanup;
 	}
 
 	rc = tf_rm_check_sram_qcaps_static(&sram_query, dir, &error_flag);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			"%s, SRAM QCAPS validation failed, error_flag:%x\n",
+		TFP_DRV_LOG(ERR,
+			"%s, SRAM QCAPS validation failed,"
+			"error_flag:%x, rc:%s\n",
 			tf_dir_2_str(dir),
-			error_flag);
+			error_flag,
+			strerror(-rc));
 		tf_rm_print_sram_qcaps_error(dir, &sram_query, &error_flag);
 		goto cleanup;
 	}
@@ -1931,9 +1941,10 @@ tf_rm_allocate_validate_sram(struct tf *tfp,
 					    sram_entries);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "%s, SRAM alloc message send failed\n",
-			    tf_dir_2_str(dir));
+		TFP_DRV_LOG(ERR,
+			    "%s, SRAM alloc message send failed, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
 		goto cleanup;
 	}
 
@@ -1943,15 +1954,18 @@ tf_rm_allocate_validate_sram(struct tf *tfp,
 	rc = tf_rm_sram_alloc_validate(dir, &sram_alloc, sram_entries);
 	if (rc) {
 		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "%s, SRAM Resource allocation validation failed\n",
-			    tf_dir_2_str(dir));
+		TFP_DRV_LOG(ERR,
+			    "%s, SRAM Resource allocation validation failed,"
+			    " rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
 		goto cleanup;
 	}
 
 	return 0;
 
  cleanup:
+
 	return -1;
 }
 
@@ -2177,7 +2191,7 @@ tf_rm_hw_to_flush(struct tf_session *tfs,
 		flush_entries[TF_RESC_TYPE_HW_TBL_SCOPE].start = 0;
 		flush_entries[TF_RESC_TYPE_HW_TBL_SCOPE].stride = 0;
 	} else {
-		PMD_DRV_LOG(ERR, "%s: TBL_SCOPE free_cnt:%d, entries:%d\n",
+		TFP_DRV_LOG(ERR, "%s, TBL_SCOPE free_cnt:%d, entries:%d\n",
 			    tf_dir_2_str(dir),
 			    free_cnt,
 			    hw_entries[TF_RESC_TYPE_HW_TBL_SCOPE].stride);
@@ -2538,8 +2552,8 @@ tf_rm_log_hw_flush(enum tf_dir dir,
 	 */
 	for (i = 0; i < TF_RESC_TYPE_HW_MAX; i++) {
 		if (hw_entries[i].stride != 0)
-			PMD_DRV_LOG(ERR,
-				    "%s: %s was not cleaned up\n",
+			TFP_DRV_LOG(ERR,
+				    "%s, %s was not cleaned up\n",
 				    tf_dir_2_str(dir),
 				    tf_hcapi_hw_2_str(i));
 	}
@@ -2564,8 +2578,8 @@ tf_rm_log_sram_flush(enum tf_dir dir,
 	 */
 	for (i = 0; i < TF_RESC_TYPE_SRAM_MAX; i++) {
 		if (sram_entries[i].stride != 0)
-			PMD_DRV_LOG(ERR,
-				    "%s: %s was not cleaned up\n",
+			TFP_DRV_LOG(ERR,
+				    "%s, %s was not cleaned up\n",
 				    tf_dir_2_str(dir),
 				    tf_hcapi_sram_2_str(i));
 	}
@@ -2777,9 +2791,10 @@ tf_rm_close(struct tf *tfp)
 		if (rc) {
 			rc_close = -ENOTEMPTY;
 			/* Log error */
-			PMD_DRV_LOG(ERR,
-				    "%s, lingering HW resources\n",
-				    tf_dir_2_str(i));
+			TFP_DRV_LOG(ERR,
+				    "%s, lingering HW resources, rc:%s\n",
+				    tf_dir_2_str(i),
+				    strerror(-rc));
 
 			/* Log the entries to be flushed */
 			tf_rm_log_hw_flush(i, hw_flush_entries);
@@ -2789,9 +2804,10 @@ tf_rm_close(struct tf *tfp)
 			if (rc) {
 				rc_close = rc;
 				/* Log error */
-				PMD_DRV_LOG(ERR,
-					    "%s, HW flush failed\n",
-					    tf_dir_2_str(i));
+				TFP_DRV_LOG(ERR,
+					    "%s, HW flush failed, rc:%s\n",
+					    tf_dir_2_str(i),
+					    strerror(-rc));
 			}
 		}
 
@@ -2805,9 +2821,10 @@ tf_rm_close(struct tf *tfp)
 		if (rc) {
 			rc_close = -ENOTEMPTY;
 			/* Log error */
-			PMD_DRV_LOG(ERR,
-				    "%s, lingering SRAM resources\n",
-				    tf_dir_2_str(i));
+			TFP_DRV_LOG(ERR,
+				    "%s, lingering SRAM resources, rc:%s\n",
+				    tf_dir_2_str(i),
+				    strerror(-rc));
 
 			/* Log the entries to be flushed */
 			tf_rm_log_sram_flush(i, sram_flush_entries);
@@ -2818,9 +2835,10 @@ tf_rm_close(struct tf *tfp)
 			if (rc) {
 				rc_close = rc;
 				/* Log error */
-				PMD_DRV_LOG(ERR,
-					    "%s, HW flush failed\n",
-					    tf_dir_2_str(i));
+				TFP_DRV_LOG(ERR,
+					    "%s, HW flush failed, rc:%s\n",
+					    tf_dir_2_str(i),
+					    strerror(-rc));
 			}
 		}
 
@@ -2828,18 +2846,20 @@ tf_rm_close(struct tf *tfp)
 		if (rc) {
 			rc_close = rc;
 			/* Log error */
-			PMD_DRV_LOG(ERR,
-				    "%s, HW free failed\n",
-				    tf_dir_2_str(i));
+			TFP_DRV_LOG(ERR,
+				    "%s, HW free failed, rc:%s\n",
+				    tf_dir_2_str(i),
+				    strerror(-rc));
 		}
 
 		rc = tf_msg_session_sram_resc_free(tfp, i, sram_entries);
 		if (rc) {
 			rc_close = rc;
 			/* Log error */
-			PMD_DRV_LOG(ERR,
-				    "%s, SRAM free failed\n",
-				    tf_dir_2_str(i));
+			TFP_DRV_LOG(ERR,
+				    "%s, SRAM free failed, rc:%s\n",
+				    tf_dir_2_str(i),
+				    strerror(-rc));
 		}
 	}
 
@@ -2890,14 +2910,14 @@ tf_rm_lookup_tcam_type_pool(struct tf_session *tfs,
 	}
 
 	if (rc == -EOPNOTSUPP) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Tcam type not supported, type:%d\n",
-			    dir,
+		TFP_DRV_LOG(ERR,
+			    "%s, Tcam type not supported, type:%d\n",
+			    tf_dir_2_str(dir),
 			    type);
 		return rc;
 	} else if (rc == -1) {
-		PMD_DRV_LOG(ERR,
-			    "%s:, Tcam type lookup failed, type:%d\n",
+		TFP_DRV_LOG(ERR,
+			    "%s, Tcam type lookup failed, type:%d\n",
 			    tf_dir_2_str(dir),
 			    type);
 		return rc;
@@ -3057,15 +3077,15 @@ tf_rm_lookup_tbl_type_pool(struct tf_session *tfs,
 	}
 
 	if (rc == -EOPNOTSUPP) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Table type not supported, type:%d\n",
-			    dir,
+		TFP_DRV_LOG(ERR,
+			    "%s, Table type not supported, type:%d\n",
+			    tf_dir_2_str(dir),
 			    type);
 		return rc;
 	} else if (rc == -1) {
-		PMD_DRV_LOG(ERR,
-			    "dir:%d, Table type lookup failed, type:%d\n",
-			    dir,
+		TFP_DRV_LOG(ERR,
+			    "%s, Table type lookup failed, type:%d\n",
+			    tf_dir_2_str(dir),
 			    type);
 		return rc;
 	}

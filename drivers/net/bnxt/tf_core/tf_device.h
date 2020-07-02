@@ -366,6 +366,38 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_get_tcam)(struct tf *tfp,
 			       struct tf_tcam_get_parms *parms);
+
+	/**
+	 * Insert EM hash entry API
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to E/EM insert parameters
+	 *
+	 *  Returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_insert_em_entry)(struct tf *tfp,
+				      struct tf_insert_em_entry_parms *parms);
+
+	/**
+	 * Delete EM hash entry API
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to E/EM delete parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_delete_em_entry)(struct tf *tfp,
+				      struct tf_delete_em_entry_parms *parms);
 };
 
 /**

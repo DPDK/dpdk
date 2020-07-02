@@ -2,7 +2,7 @@
  * Copyright(c) 2019-2020 Broadcom
  * All rights reserved.
  */
-
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
