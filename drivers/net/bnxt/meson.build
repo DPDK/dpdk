@@ -43,6 +43,8 @@ sources = files('bnxt_cpr.c',
 	'tf_core/tf_util.c',
 	'tf_core/tf_rm_new.c',
 
+	'hcapi/hcapi_cfa_p4.c',
+
 	'tf_ulp/bnxt_ulp.c',
 	'tf_ulp/ulp_mark_mgr.c',
 	'tf_ulp/ulp_flow_db.c',

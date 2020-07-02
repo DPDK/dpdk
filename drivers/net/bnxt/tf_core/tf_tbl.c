@@ -285,8 +285,8 @@ tf_em_setup_page_table(struct tf_em_table *tbl)
 		tf_em_link_page_table(tp, tp_next, set_pte_last);
 	}
 
-	tbl->l0_addr = tbl->pg_tbl[PT_LVL_0].pg_va_tbl[0];
-	tbl->l0_dma_addr = tbl->pg_tbl[PT_LVL_0].pg_pa_tbl[0];
+	tbl->l0_addr = tbl->pg_tbl[TF_PT_LVL_0].pg_va_tbl[0];
+	tbl->l0_dma_addr = tbl->pg_tbl[TF_PT_LVL_0].pg_pa_tbl[0];
 }
 
 /**
@@ -317,7 +317,7 @@ tf_em_size_page_tbl_lvl(uint32_t page_size,
 			uint64_t *num_data_pages)
 {
 	uint64_t lvl_data_size = page_size;
-	int lvl = PT_LVL_0;
+	int lvl = TF_PT_LVL_0;
 	uint64_t data_size;
 
 	*num_data_pages = 0;
@@ -326,10 +326,10 @@ tf_em_size_page_tbl_lvl(uint32_t page_size,
 	while (lvl_data_size < data_size) {
 		lvl++;
 
-		if (lvl == PT_LVL_1)
+		if (lvl == TF_PT_LVL_1)
 			lvl_data_size = (uint64_t)MAX_PAGE_PTRS(page_size) *
 				page_size;
-		else if (lvl == PT_LVL_2)
+		else if (lvl == TF_PT_LVL_2)
 			lvl_data_size = (uint64_t)MAX_PAGE_PTRS(page_size) *
 				MAX_PAGE_PTRS(page_size) * page_size;
 		else
@@ -386,18 +386,18 @@ tf_em_size_page_tbls(int max_lvl,
 		     uint32_t page_size,
 		     uint32_t *page_cnt)
 {
-	if (max_lvl == PT_LVL_0) {
-		page_cnt[PT_LVL_0] = num_data_pages;
-	} else if (max_lvl == PT_LVL_1) {
-		page_cnt[PT_LVL_1] = num_data_pages;
-		page_cnt[PT_LVL_0] =
-		tf_em_page_tbl_pgcnt(page_cnt[PT_LVL_1], page_size);
-	} else if (max_lvl == PT_LVL_2) {
-		page_cnt[PT_LVL_2] = num_data_pages;
-		page_cnt[PT_LVL_1] =
-		tf_em_page_tbl_pgcnt(page_cnt[PT_LVL_2], page_size);
-		page_cnt[PT_LVL_0] =
-		tf_em_page_tbl_pgcnt(page_cnt[PT_LVL_1], page_size);
+	if (max_lvl == TF_PT_LVL_0) {
+		page_cnt[TF_PT_LVL_0] = num_data_pages;
+	} else if (max_lvl == TF_PT_LVL_1) {
+		page_cnt[TF_PT_LVL_1] = num_data_pages;
+		page_cnt[TF_PT_LVL_0] =
+		tf_em_page_tbl_pgcnt(page_cnt[TF_PT_LVL_1], page_size);
+	} else if (max_lvl == TF_PT_LVL_2) {
+		page_cnt[TF_PT_LVL_2] = num_data_pages;
+		page_cnt[TF_PT_LVL_1] =
+		tf_em_page_tbl_pgcnt(page_cnt[TF_PT_LVL_2], page_size);
+		page_cnt[TF_PT_LVL_0] =
+		tf_em_page_tbl_pgcnt(page_cnt[TF_PT_LVL_1], page_size);
 	} else {
 		return;
 	}
@@ -434,7 +434,7 @@ tf_em_size_table(struct tf_em_table *tbl)
 	/* Determine number of page table levels and the number
 	 * of data pages needed to process the given eem table.
 	 */
-	if (tbl->type == RECORD_TABLE) {
+	if (tbl->type == TF_RECORD_TABLE) {
 		/*
 		 * For action records just a memory size is provided. Work
 		 * backwards to resolve to number of entries
@@ -480,9 +480,9 @@ tf_em_size_table(struct tf_em_table *tbl)
 		    max_lvl + 1,
 		    (uint64_t)num_data_pages * TF_EM_PAGE_SIZE,
 		    num_data_pages,
-		    page_cnt[PT_LVL_0],
-		    page_cnt[PT_LVL_1],
-		    page_cnt[PT_LVL_2]);
+		    page_cnt[TF_PT_LVL_0],
+		    page_cnt[TF_PT_LVL_1],
+		    page_cnt[TF_PT_LVL_2]);
 
 	return 0;
 }
@@ -508,7 +508,7 @@ tf_em_ctx_unreg(struct tf *tfp,
 	struct tf_em_table *tbl;
 	int i;
 
-	for (i = KEY0_TABLE; i < MAX_TABLE; i++) {
+	for (i = TF_KEY0_TABLE; i < TF_MAX_TABLE; i++) {
 		tbl = &ctxp->em_tables[i];
 
 		if (tbl->num_entries != 0 && tbl->entry_size != 0) {
@@ -544,7 +544,7 @@ tf_em_ctx_reg(struct tf *tfp,
 	int rc = 0;
 	int i;
 
-	for (i = KEY0_TABLE; i < MAX_TABLE; i++) {
+	for (i = TF_KEY0_TABLE; i < TF_MAX_TABLE; i++) {
 		tbl = &ctxp->em_tables[i];
 
 		if (tbl->num_entries && tbl->entry_size) {
@@ -719,41 +719,41 @@ tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 		return -EINVAL;
 	}
 	/* Rx */
-	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[KEY0_TABLE].num_entries =
+	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[TF_KEY0_TABLE].num_entries =
 		parms->rx_num_flows_in_k * TF_KILOBYTE;
-	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[KEY0_TABLE].entry_size =
+	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[TF_KEY0_TABLE].entry_size =
 		parms->rx_max_key_sz_in_bits / 8;
 
-	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[KEY1_TABLE].num_entries =
+	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[TF_KEY1_TABLE].num_entries =
 		parms->rx_num_flows_in_k * TF_KILOBYTE;
-	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[KEY1_TABLE].entry_size =
+	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[TF_KEY1_TABLE].entry_size =
 		parms->rx_max_key_sz_in_bits / 8;
 
-	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[RECORD_TABLE].num_entries =
+	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[TF_RECORD_TABLE].num_entries =
 		parms->rx_num_flows_in_k * TF_KILOBYTE;
-	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[RECORD_TABLE].entry_size =
+	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[TF_RECORD_TABLE].entry_size =
 		parms->rx_max_action_entry_sz_in_bits / 8;
 
-	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[EFC_TABLE].num_entries =
+	tbl_scope_cb->em_ctx_info[TF_DIR_RX].em_tables[TF_EFC_TABLE].num_entries =
 		0;
 
 	/* Tx */
-	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[KEY0_TABLE].num_entries =
+	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[TF_KEY0_TABLE].num_entries =
 		parms->tx_num_flows_in_k * TF_KILOBYTE;
-	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[KEY0_TABLE].entry_size =
+	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[TF_KEY0_TABLE].entry_size =
 		parms->tx_max_key_sz_in_bits / 8;
 
-	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[KEY1_TABLE].num_entries =
+	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[TF_KEY1_TABLE].num_entries =
 		parms->tx_num_flows_in_k * TF_KILOBYTE;
-	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[KEY1_TABLE].entry_size =
+	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[TF_KEY1_TABLE].entry_size =
 		parms->tx_max_key_sz_in_bits / 8;
 
-	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[RECORD_TABLE].num_entries =
+	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[TF_RECORD_TABLE].num_entries =
 		parms->tx_num_flows_in_k * TF_KILOBYTE;
-	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[RECORD_TABLE].entry_size =
+	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[TF_RECORD_TABLE].entry_size =
 		parms->tx_max_action_entry_sz_in_bits / 8;
 
-	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[EFC_TABLE].num_entries =
+	tbl_scope_cb->em_ctx_info[TF_DIR_TX].em_tables[TF_EFC_TABLE].num_entries =
 		0;
 
 	return 0;
@@ -1572,11 +1572,11 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 
 		em_tables = tbl_scope_cb->em_ctx_info[dir].em_tables;
 		rc = tf_msg_em_cfg(tfp,
-				   em_tables[KEY0_TABLE].num_entries,
-				   em_tables[KEY0_TABLE].ctx_id,
-				   em_tables[KEY1_TABLE].ctx_id,
-				   em_tables[RECORD_TABLE].ctx_id,
-				   em_tables[EFC_TABLE].ctx_id,
+				   em_tables[TF_KEY0_TABLE].num_entries,
+				   em_tables[TF_KEY0_TABLE].ctx_id,
+				   em_tables[TF_KEY1_TABLE].ctx_id,
+				   em_tables[TF_RECORD_TABLE].ctx_id,
+				   em_tables[TF_EFC_TABLE].ctx_id,
 				   parms->hw_flow_cache_flush_timer,
 				   dir);
 		if (rc) {
@@ -1600,9 +1600,9 @@ tf_alloc_eem_tbl_scope(struct tf *tfp,
 		 * actions related to a single table scope.
 		 */
 		rc = tf_create_tbl_pool_external(dir,
-					    tbl_scope_cb,
-					    em_tables[RECORD_TABLE].num_entries,
-					    em_tables[RECORD_TABLE].entry_size);
+				    tbl_scope_cb,
+				    em_tables[TF_RECORD_TABLE].num_entries,
+				    em_tables[TF_RECORD_TABLE].entry_size);
 		if (rc) {
 			PMD_DRV_LOG(ERR,
 				    "%d TBL: Unable to allocate idx pools %s\n",
@@ -1672,7 +1672,7 @@ tf_set_tbl_entry(struct tf *tfp,
 		base_addr = tf_em_get_table_page(tbl_scope_cb,
 						 parms->dir,
 						 offset,
-						 RECORD_TABLE);
+						 TF_RECORD_TABLE);
 		if (base_addr == NULL) {
 			PMD_DRV_LOG(ERR,
 				    "dir:%d, Base address lookup failed\n",
@@ -1972,7 +1972,7 @@ void tf_dump_dma(struct tf *tfp, uint32_t tbl_scope_id)
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
 		printf("Direction %s:\n", (dir == TF_DIR_RX ? "Rx" : "Tx"));
 
-		for (j = KEY0_TABLE; j < MAX_TABLE; j++) {
+		for (j = TF_KEY0_TABLE; j < TF_MAX_TABLE; j++) {
 			tbl = &tbl_scope_cb->em_ctx_info[dir].em_tables[j];
 			printf
 	("Table: j:%d type:%d num_entries:%d entry_size:0x%x num_lvl:%d ",

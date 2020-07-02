@@ -14,18 +14,18 @@
 struct tf_session;
 
 enum tf_pg_tbl_lvl {
-	PT_LVL_0,
-	PT_LVL_1,
-	PT_LVL_2,
-	PT_LVL_MAX
+	TF_PT_LVL_0,
+	TF_PT_LVL_1,
+	TF_PT_LVL_2,
+	TF_PT_LVL_MAX
 };
 
 enum tf_em_table_type {
-	KEY0_TABLE,
-	KEY1_TABLE,
-	RECORD_TABLE,
-	EFC_TABLE,
-	MAX_TABLE
+	TF_KEY0_TABLE,
+	TF_KEY1_TABLE,
+	TF_RECORD_TABLE,
+	TF_EFC_TABLE,
+	TF_MAX_TABLE
 };
 
 struct tf_em_page_tbl {
@@ -41,15 +41,15 @@ struct tf_em_table {
 	uint16_t			ctx_id;
 	uint32_t			entry_size;
 	int				num_lvl;
-	uint32_t			page_cnt[PT_LVL_MAX];
+	uint32_t			page_cnt[TF_PT_LVL_MAX];
 	uint64_t			num_data_pages;
 	void				*l0_addr;
 	uint64_t			l0_dma_addr;
-	struct tf_em_page_tbl pg_tbl[PT_LVL_MAX];
+	struct tf_em_page_tbl pg_tbl[TF_PT_LVL_MAX];
 };
 
 struct tf_em_ctx_mem_info {
-	struct tf_em_table		em_tables[MAX_TABLE];
+	struct tf_em_table		em_tables[TF_MAX_TABLE];
 };
 
 /** table scope control block content */

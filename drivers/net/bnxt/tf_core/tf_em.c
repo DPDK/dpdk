@@ -189,7 +189,7 @@ void *tf_em_get_table_page(struct tf_tbl_scope_cb *tbl_scope_cb,
 	if (dir != TF_DIR_RX && dir != TF_DIR_TX)
 		return NULL;
 
-	if (table_type < KEY0_TABLE || table_type > EFC_TABLE)
+	if (table_type < TF_KEY0_TABLE || table_type > TF_EFC_TABLE)
 		return NULL;
 
 	/*
@@ -325,7 +325,7 @@ static int tf_em_select_inject_table(struct tf_tbl_scope_cb *tbl_scope_cb,
 	key0_entry = tf_em_entry_exists(tbl_scope_cb,
 					 entry,
 					 key0_hash,
-					 KEY0_TABLE,
+					 TF_KEY0_TABLE,
 					 dir);
 
 	/*
@@ -334,23 +334,23 @@ static int tf_em_select_inject_table(struct tf_tbl_scope_cb *tbl_scope_cb,
 	key1_entry = tf_em_entry_exists(tbl_scope_cb,
 					 entry,
 					 key1_hash,
-					 KEY1_TABLE,
+					 TF_KEY1_TABLE,
 					 dir);
 
 	if (key0_entry == -EEXIST) {
-		*table = KEY0_TABLE;
+		*table = TF_KEY0_TABLE;
 		*index = key0_hash;
 		return -EEXIST;
 	} else if (key1_entry == -EEXIST) {
-		*table = KEY1_TABLE;
+		*table = TF_KEY1_TABLE;
 		*index = key1_hash;
 		return -EEXIST;
 	} else if (key0_entry == 0) {
-		*table = KEY0_TABLE;
+		*table = TF_KEY0_TABLE;
 		*index = key0_hash;
 		return 0;
 	} else if (key1_entry == 0) {
-		*table = KEY1_TABLE;
+		*table = TF_KEY1_TABLE;
 		*index = key1_hash;
 		return 0;
 	}
@@ -384,7 +384,7 @@ int tf_insert_eem_entry(struct tf_session *session,
 	int		   num_of_entry;
 
 	/* Get mask to use on hash */
-	mask = tf_em_get_key_mask(tbl_scope_cb->em_ctx_info[parms->dir].em_tables[KEY0_TABLE].num_entries);
+	mask = tf_em_get_key_mask(tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_KEY0_TABLE].num_entries);
 
 	if (!mask)
 		return -EINVAL;
@@ -392,13 +392,13 @@ int tf_insert_eem_entry(struct tf_session *session,
 	num_of_entry = TF_HW_EM_KEY_MAX_SIZE + 4;
 
 	key0_hash = tf_em_lkup_get_crc32_hash(session,
-				      &parms->key[num_of_entry] - 1,
-				      parms->dir);
+					      &parms->key[num_of_entry] - 1,
+					      parms->dir);
 	key0_index = key0_hash & mask;
 
 	key1_hash =
 	   tf_em_lkup_get_lookup3_hash(session->lkup_lkup3_init_cfg[parms->dir],
-					parms->key);
+				       parms->key);
 	key1_index = key1_hash & mask;
 
 	/*
@@ -420,14 +420,14 @@ int tf_insert_eem_entry(struct tf_session *session,
 				      key1_index,
 				      &index,
 				      &table_type) == 0) {
-		if (table_type == KEY0_TABLE) {
+		if (table_type == TF_KEY0_TABLE) {
 			TF_SET_GFID(gfid,
 				    key0_index,
-				    KEY0_TABLE);
+				    TF_KEY0_TABLE);
 		} else {
 			TF_SET_GFID(gfid,
 				    key1_index,
-				    KEY1_TABLE);
+				    TF_KEY1_TABLE);
 		}
 
 		/*
