@@ -150,9 +150,10 @@ struct bnxt_ulp_device_params {
 
 /* Flow Mapper */
 struct bnxt_ulp_mapper_tbl_list_info {
-	uint32_t	device_name;
-	uint32_t	start_tbl_idx;
-	uint32_t	num_tbls;
+	uint32_t		device_name;
+	uint32_t		start_tbl_idx;
+	uint32_t		num_tbls;
+	enum bnxt_ulp_fdb_type	flow_db_table_type;
 };
 
 struct bnxt_ulp_mapper_tbl_info {
@@ -183,6 +184,7 @@ struct bnxt_ulp_mapper_tbl_info {
 
 	enum bnxt_ulp_regfile_index	regfile_idx;
 	enum bnxt_ulp_mark_db_opcode	mark_db_opcode;
+	uint32_t			comp_field_idx;
 };
 
 struct bnxt_ulp_mapper_class_key_field_info {

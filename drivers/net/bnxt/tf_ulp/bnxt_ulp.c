@@ -115,6 +115,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 
 	/* ENCAP */
 	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_64B] = 16;
+	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 16;
 
 	/* TCAMs */
 	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM] = 8;

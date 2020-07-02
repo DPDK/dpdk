@@ -256,6 +256,7 @@ ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
 			BNXT_TF_DBG(ERR, "Mark index greater than allocated\n");
 			return -EINVAL;
 		}
+		BNXT_TF_DBG(DEBUG, "Set LFID[0x%0x] = 0x%0x\n", fid, mark);
 		mtbl->lfid_tbl[fid].mark_id = mark;
 		ULP_MARK_DB_ENTRY_SET_VALID(&mtbl->lfid_tbl[fid]);
 	}
