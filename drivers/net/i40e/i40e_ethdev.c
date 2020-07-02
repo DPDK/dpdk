@@ -12081,7 +12081,7 @@ static int i40e_get_module_eeprom(struct rte_eth_dev *dev,
 		}
 		status = i40e_aq_get_phy_register(hw,
 				I40E_AQ_PHY_REG_ACCESS_EXTERNAL_MODULE,
-				addr, offset, 1, &value, NULL);
+				addr, 1, offset, &value, NULL);
 		if (status)
 			return -EIO;
 		data[i] = (uint8_t)value;
