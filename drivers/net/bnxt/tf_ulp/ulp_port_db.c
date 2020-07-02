@@ -106,13 +106,12 @@ int32_t	ulp_port_db_deinit(struct bnxt_ulp_context *ulp_ctxt)
 int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 					 struct rte_eth_dev *eth_dev)
 {
-	struct bnxt_ulp_port_db *port_db;
-	struct bnxt *bp = eth_dev->data->dev_private;
 	uint32_t port_id = eth_dev->data->port_id;
-	uint32_t ifindex;
+	struct ulp_phy_port_info *port_data;
+	struct bnxt_ulp_port_db *port_db;
 	struct ulp_interface_info *intf;
+	uint32_t ifindex;
 	int32_t rc;
-	struct bnxt_vnic_info *vnic;
 
 	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
 	if (!port_db) {
@@ -133,22 +132,22 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 
 	/* update the interface details */
 	intf = &port_db->ulp_intf_list[ifindex];
-	if (BNXT_PF(bp) || BNXT_VF(bp)) {
-		if (BNXT_PF(bp)) {
-			intf->type = BNXT_ULP_INTF_TYPE_PF;
-			intf->port_svif = bp->port_svif;
-		} else {
-			intf->type = BNXT_ULP_INTF_TYPE_VF;
-		}
-		intf->func_id = bp->fw_fid;
-		intf->func_svif = bp->func_svif;
-		vnic = BNXT_GET_DEFAULT_VNIC(bp);
-		if (vnic)
-			intf->default_vnic = vnic->fw_vnic_id;
-		intf->bp = bp;
-		memcpy(intf->mac_addr, bp->mac_addr, sizeof(intf->mac_addr));
-	} else {
-		BNXT_TF_DBG(ERR, "Invalid interface type\n");
+
+	intf->type = bnxt_get_interface_type(port_id);
+
+	intf->func_id = bnxt_get_fw_func_id(port_id);
+	intf->func_svif = bnxt_get_svif(port_id, 1);
+	intf->func_spif = bnxt_get_phy_port_id(port_id);
+	intf->func_parif = bnxt_get_parif(port_id);
+	intf->default_vnic = bnxt_get_vnic_id(port_id);
+	intf->phy_port_id = bnxt_get_phy_port_id(port_id);
+
+	if (intf->type == BNXT_ULP_INTF_TYPE_PF) {
+		port_data = &port_db->phy_port_list[intf->phy_port_id];
+		port_data->port_svif = bnxt_get_svif(port_id, 0);
+		port_data->port_spif = bnxt_get_phy_port_id(port_id);
+		port_data->port_parif = bnxt_get_parif(port_id);
+		port_data->port_vport = bnxt_get_vport(port_id);
 	}
 
 	return 0;
@@ -209,7 +208,7 @@ ulp_port_db_function_id_get(struct bnxt_ulp_context *ulp_ctxt,
 }
 
 /*
- * Api to get the svid for a given ulp ifindex.
+ * Api to get the svif for a given ulp ifindex.
  *
  * ulp_ctxt [in] Ptr to ulp context
  * ifindex [in] ulp ifindex
@@ -225,16 +224,88 @@ ulp_port_db_svif_get(struct bnxt_ulp_context *ulp_ctxt,
 		     uint16_t *svif)
 {
 	struct bnxt_ulp_port_db *port_db;
+	uint16_t phy_port_id;
 
 	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
 	if (!port_db || ifindex >= port_db->ulp_intf_list_size || !ifindex) {
 		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
 		return -EINVAL;
 	}
-	if (dir == ULP_DIR_EGRESS)
+	if (dir == ULP_DIR_EGRESS) {
 		*svif = port_db->ulp_intf_list[ifindex].func_svif;
-	else
-		*svif = port_db->ulp_intf_list[ifindex].port_svif;
+	} else {
+		phy_port_id = port_db->ulp_intf_list[ifindex].phy_port_id;
+		*svif = port_db->phy_port_list[phy_port_id].port_svif;
+	}
+
+	return 0;
+}
+
+/*
+ * Api to get the spif for a given ulp ifindex.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * ifindex [in] ulp ifindex
+ * dir [in] the direction for the flow.
+ * spif [out] the spif of the given ifindex.
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_spif_get(struct bnxt_ulp_context *ulp_ctxt,
+		     uint32_t ifindex,
+		     uint32_t dir,
+		     uint16_t *spif)
+{
+	struct bnxt_ulp_port_db *port_db;
+	uint16_t phy_port_id;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db || ifindex >= port_db->ulp_intf_list_size || !ifindex) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	if (dir == ULP_DIR_EGRESS) {
+		*spif = port_db->ulp_intf_list[ifindex].func_spif;
+	} else {
+		phy_port_id = port_db->ulp_intf_list[ifindex].phy_port_id;
+		*spif = port_db->phy_port_list[phy_port_id].port_spif;
+	}
+
+	return 0;
+}
+
+/*
+ * Api to get the parif for a given ulp ifindex.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * ifindex [in] ulp ifindex
+ * dir [in] the direction for the flow.
+ * parif [out] the parif of the given ifindex.
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_parif_get(struct bnxt_ulp_context *ulp_ctxt,
+		     uint32_t ifindex,
+		     uint32_t dir,
+		     uint16_t *parif)
+{
+	struct bnxt_ulp_port_db *port_db;
+	uint16_t phy_port_id;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db || ifindex >= port_db->ulp_intf_list_size || !ifindex) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	if (dir == ULP_DIR_EGRESS) {
+		*parif = port_db->ulp_intf_list[ifindex].func_parif;
+	} else {
+		phy_port_id = port_db->ulp_intf_list[ifindex].phy_port_id;
+		*parif = port_db->phy_port_list[phy_port_id].port_parif;
+	}
+
 	return 0;
 }
 
@@ -260,5 +331,31 @@ ulp_port_db_default_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 	*vnic = port_db->ulp_intf_list[ifindex].default_vnic;
+	return 0;
+}
+
+/*
+ * Api to get the vport id for a given ulp ifindex.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * ifindex [in] ulp ifindex
+ * vport [out] the port of the given ifindex.
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_vport_get(struct bnxt_ulp_context *ulp_ctxt,
+		      uint32_t ifindex, uint16_t *vport)
+{
+	struct bnxt_ulp_port_db *port_db;
+	uint16_t phy_port_id;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db || ifindex >= port_db->ulp_intf_list_size || !ifindex) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	phy_port_id = port_db->ulp_intf_list[ifindex].phy_port_id;
+	*vport = port_db->phy_port_list[phy_port_id].port_vport;
 	return 0;
 }

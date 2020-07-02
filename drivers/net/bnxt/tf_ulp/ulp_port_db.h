@@ -15,11 +15,17 @@ struct ulp_interface_info {
 	enum bnxt_ulp_intf_type	type;
 	uint16_t		func_id;
 	uint16_t		func_svif;
-	uint16_t		port_svif;
+	uint16_t		func_spif;
+	uint16_t		func_parif;
 	uint16_t		default_vnic;
-	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];
-	/* back pointer to the bnxt driver, it is null for rep ports */
-	struct bnxt		*bp;
+	uint16_t		phy_port_id;
+};
+
+struct ulp_phy_port_info {
+	uint16_t	port_svif;
+	uint16_t	port_spif;
+	uint16_t	port_parif;
+	uint16_t	port_vport;
 };
 
 /* Structure for the Port database */
@@ -29,6 +35,7 @@ struct bnxt_ulp_port_db {
 
 	/* dpdk device external port list */
 	uint16_t			dev_port_list[RTE_MAX_ETHPORTS];
+	struct ulp_phy_port_info	phy_port_list[RTE_MAX_ETHPORTS];
 };
 
 /*
@@ -74,8 +81,7 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_port_db_dev_port_to_ulp_index(struct bnxt_ulp_context *ulp_ctxt,
-				  uint32_t port_id,
-				  uint32_t *ifindex);
+				  uint32_t port_id, uint32_t *ifindex);
 
 /*
  * Api to get the function id for a given ulp ifindex.
@@ -88,11 +94,10 @@ ulp_port_db_dev_port_to_ulp_index(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_port_db_function_id_get(struct bnxt_ulp_context *ulp_ctxt,
-			    uint32_t ifindex,
-			    uint16_t *func_id);
+			    uint32_t ifindex, uint16_t *func_id);
 
 /*
- * Api to get the svid for a given ulp ifindex.
+ * Api to get the svif for a given ulp ifindex.
  *
  * ulp_ctxt [in] Ptr to ulp context
  * ifindex [in] ulp ifindex
@@ -103,9 +108,36 @@ ulp_port_db_function_id_get(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_port_db_svif_get(struct bnxt_ulp_context *ulp_ctxt,
-		     uint32_t ifindex,
-		     uint32_t dir,
-		     uint16_t *svif);
+		     uint32_t ifindex, uint32_t dir, uint16_t *svif);
+
+/*
+ * Api to get the spif for a given ulp ifindex.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * ifindex [in] ulp ifindex
+ * dir [in] the direction for the flow.
+ * spif [out] the spif of the given ifindex.
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_spif_get(struct bnxt_ulp_context *ulp_ctxt,
+		     uint32_t ifindex, uint32_t dir, uint16_t *spif);
+
+
+/*
+ * Api to get the parif for a given ulp ifindex.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * ifindex [in] ulp ifindex
+ * dir [in] the direction for the flow.
+ * parif [out] the parif of the given ifindex.
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_parif_get(struct bnxt_ulp_context *ulp_ctxt,
+		      uint32_t ifindex, uint32_t dir, uint16_t *parif);
 
 /*
  * Api to get the vnic id for a given ulp ifindex.
@@ -118,7 +150,19 @@ ulp_port_db_svif_get(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_port_db_default_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
-			     uint32_t ifindex,
-			     uint16_t *vnic);
+			     uint32_t ifindex, uint16_t *vnic);
+
+/*
+ * Api to get the vport id for a given ulp ifindex.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * ifindex [in] ulp ifindex
+ * vport [out] the port of the given ifindex.
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_vport_get(struct bnxt_ulp_context *ulp_ctxt,
+		      uint32_t ifindex,	uint16_t *vport);
 
 #endif /* _ULP_PORT_DB_H_ */
