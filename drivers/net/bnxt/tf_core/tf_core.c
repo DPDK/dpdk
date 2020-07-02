@@ -58,21 +58,20 @@ tf_open_session(struct tf *tfp,
 	parms->session_id.internal.device = device;
 	oparms.open_cfg = parms;
 
+	/* Session vs session client is decided in
+	 * tf_session_open_session()
+	 */
+	printf("TF_OPEN, %s\n", parms->ctrl_chan_name);
 	rc = tf_session_open_session(tfp, &oparms);
 	/* Logging handled by tf_session_open_session */
 	if (rc)
 		return rc;
 
 	TFP_DRV_LOG(INFO,
-		    "Session created, session_id:%d\n",
-		    parms->session_id.id);
-
-	TFP_DRV_LOG(INFO,
-		    "domain:%d, bus:%d, device:%d, fw_session_id:%d\n",
+		    "domain:%d, bus:%d, device:%d\n",
 		    parms->session_id.internal.domain,
 		    parms->session_id.internal.bus,
-		    parms->session_id.internal.device,
-		    parms->session_id.internal.fw_session_id);
+		    parms->session_id.internal.device);
 
 	return 0;
 }
@@ -152,6 +151,9 @@ tf_close_session(struct tf *tfp)
 
 	cparms.ref_count = &ref_count;
 	cparms.session_id = &session_id;
+	/* Session vs session client is decided in
+	 * tf_session_close_session()
+	 */
 	rc = tf_session_close_session(tfp,
 				      &cparms);
 	/* Logging handled by tf_session_close_session */
@@ -159,16 +161,10 @@ tf_close_session(struct tf *tfp)
 		return rc;
 
 	TFP_DRV_LOG(INFO,
-		    "Closed session, session_id:%d, ref_count:%d\n",
-		    cparms.session_id->id,
-		    *cparms.ref_count);
-
-	TFP_DRV_LOG(INFO,
-		    "domain:%d, bus:%d, device:%d, fw_session_id:%d\n",
+		    "domain:%d, bus:%d, device:%d\n",
 		    cparms.session_id->internal.domain,
 		    cparms.session_id->internal.bus,
-		    cparms.session_id->internal.device,
-		    cparms.session_id->internal.fw_session_id);
+		    cparms.session_id->internal.device);
 
 	return rc;
 }

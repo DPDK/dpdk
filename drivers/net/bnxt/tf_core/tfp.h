@@ -238,4 +238,19 @@ int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
 #define tfp_bswap_32(val) rte_bswap32(val)
 #define tfp_bswap_64(val) rte_bswap64(val)
 
+/**
+ * Lookup of the FID in the platform specific structure.
+ *
+ * [in] session
+ *   Pointer to session handle
+ *
+ * [out] fw_fid
+ *   Pointer to the fw_fid
+ *
+ * Returns:
+ *   0       - Success
+ *   -EINVAL - Parameter error
+ */
+int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
+
 #endif /* _TFP_H_ */

@@ -34,13 +34,17 @@ struct tf;
  */
 int tf_msg_session_open(struct tf *tfp,
 			char *ctrl_chan_name,
-			uint8_t *fw_session_id);
+			uint8_t *fw_session_id,
+			uint8_t *fw_session_client_id);
 
 /**
  * Sends session close request to Firmware
  *
  * [in] session
  *   Pointer to session handle
+ *
+ * [in] ctrl_chan_name
+ *   PCI name of the control channel
  *
  * [in] fw_session_id
  *   Pointer to the fw_session_id that is assigned to the session at
@@ -52,6 +56,42 @@ int tf_msg_session_open(struct tf *tfp,
 int tf_msg_session_attach(struct tf *tfp,
 			  char *ctrl_channel_name,
 			  uint8_t tf_fw_session_id);
+
+/**
+ * Sends session client register request to Firmware
+ *
+ * [in] session
+ *   Pointer to session handle
+ *
+ * [in] ctrl_chan_name
+ *   PCI name of the control channel
+ *
+ * [in/out] fw_session_client_id
+ *   Pointer to the fw_session_client_id that is allocated on firmware
+ *   side
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_session_client_register(struct tf *tfp,
+				   char *ctrl_channel_name,
+				   uint8_t *fw_session_client_id);
+
+/**
+ * Sends session client unregister request to Firmware
+ *
+ * [in] session
+ *   Pointer to session handle
+ *
+ * [in/out] fw_session_client_id
+ *   Pointer to the fw_session_client_id that is allocated on firmware
+ *   side
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_session_client_unregister(struct tf *tfp,
+				     uint8_t fw_session_client_id);
 
 /**
  * Sends session close request to Firmware

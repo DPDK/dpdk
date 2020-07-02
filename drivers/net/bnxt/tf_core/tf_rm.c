@@ -389,7 +389,7 @@ tf_rm_create_db(struct tf *tfp,
 	TF_CHECK_PARMS2(tfp, parms);
 
 	/* Retrieve the session information */
-	rc = tf_session_get_session(tfp, &tfs);
+	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
 

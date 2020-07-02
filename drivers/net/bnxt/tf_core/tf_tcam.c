@@ -138,7 +138,7 @@ tf_tcam_alloc(struct tf *tfp,
 	}
 
 	/* Retrieve the session information */
-	rc = tf_session_get_session(tfp, &tfs);
+	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
 
@@ -218,7 +218,7 @@ tf_tcam_free(struct tf *tfp,
 	}
 
 	/* Retrieve the session information */
-	rc = tf_session_get_session(tfp, &tfs);
+	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
 
@@ -319,6 +319,7 @@ tf_tcam_free(struct tf *tfp,
 			    tf_tcam_tbl_2_str(parms->type),
 			    parms->idx,
 			    strerror(-rc));
+		return rc;
 	}
 
 	return 0;
@@ -353,7 +354,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	}
 
 	/* Retrieve the session information */
-	rc = tf_session_get_session(tfp, &tfs);
+	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
 
@@ -415,6 +416,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 			    tf_tcam_tbl_2_str(parms->type),
 			    parms->idx,
 			    strerror(-rc));
+		return rc;
 	}
 
 	return 0;

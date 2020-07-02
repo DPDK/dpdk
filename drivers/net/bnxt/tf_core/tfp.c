@@ -161,3 +161,20 @@ tfp_spinlock_unlock(struct tfp_spinlock_parms *parms)
 {
 	rte_spinlock_unlock(&parms->slock);
 }
+
+int
+tfp_get_fid(struct tf *tfp, uint16_t *fw_fid)
+{
+	struct bnxt *bp = NULL;
+
+	if (tfp == NULL || fw_fid == NULL)
+		return -EINVAL;
+
+	bp = container_of(tfp, struct bnxt, tfp);
+	if (bp == NULL)
+		return -EINVAL;
+
+	*fw_fid = bp->fw_fid;
+
+	return 0;
+}

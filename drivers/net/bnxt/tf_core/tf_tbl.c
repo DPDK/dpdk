@@ -269,6 +269,7 @@ tf_tbl_set(struct tf *tfp,
 			    tf_dir_2_str(parms->dir),
 			    parms->type,
 			    strerror(-rc));
+		return rc;
 	}
 
 	return 0;
@@ -338,6 +339,7 @@ tf_tbl_get(struct tf *tfp,
 			    tf_dir_2_str(parms->dir),
 			    parms->type,
 			    strerror(-rc));
+		return rc;
 	}
 
 	return 0;

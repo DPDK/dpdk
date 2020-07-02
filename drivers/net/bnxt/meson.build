@@ -44,6 +44,7 @@ sources = files('bnxt_cpr.c',
 	'tf_core/tf_tcam.c',
 	'tf_core/tf_util.c',
 	'tf_core/tf_if_tbl.c',
+	'tf_core/ll.c',
 
 	'hcapi/hcapi_cfa_p4.c',
 

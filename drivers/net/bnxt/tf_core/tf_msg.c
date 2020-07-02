@@ -84,7 +84,8 @@ tf_msg_free_dma_buf(struct tf_msg_dma_buf *buf)
 int
 tf_msg_session_open(struct tf *tfp,
 		    char *ctrl_chan_name,
-		    uint8_t *fw_session_id)
+		    uint8_t *fw_session_id,
+		    uint8_t *fw_session_client_id)
 {
 	int rc;
 	struct hwrm_tf_session_open_input req = { 0 };
@@ -106,7 +107,8 @@ tf_msg_session_open(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	*fw_session_id = resp.fw_session_id;
+	*fw_session_id = (uint8_t)tfp_le_to_cpu_32(resp.fw_session_id);
+	*fw_session_client_id = (uint8_t)tfp_le_to_cpu_32(resp.fw_session_id);
 
 	return rc;
 }
@@ -117,6 +119,84 @@ tf_msg_session_attach(struct tf *tfp __rte_unused,
 		      uint8_t tf_fw_session_id __rte_unused)
 {
 	return -1;
+}
+
+int
+tf_msg_session_client_register(struct tf *tfp,
+			       char *ctrl_channel_name,
+			       uint8_t *fw_session_client_id)
+{
+	int rc;
+	struct hwrm_tf_session_register_input req = { 0 };
+	struct hwrm_tf_session_register_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Unable to lookup FW id, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	tfp_memcpy(&req.session_client_name,
+		   ctrl_channel_name,
+		   TF_SESSION_NAME_MAX);
+
+	parms.tf_type = HWRM_TF_SESSION_REGISTER;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+	if (rc)
+		return rc;
+
+	*fw_session_client_id =
+		(uint8_t)tfp_le_to_cpu_32(resp.fw_session_client_id);
+
+	return rc;
+}
+
+int
+tf_msg_session_client_unregister(struct tf *tfp,
+				 uint8_t fw_session_client_id)
+{
+	int rc;
+	struct hwrm_tf_session_unregister_input req = { 0 };
+	struct hwrm_tf_session_unregister_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Unable to lookup FW id, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.fw_session_client_id = tfp_cpu_to_le_32(fw_session_client_id);
+
+	parms.tf_type = HWRM_TF_SESSION_UNREGISTER;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp,
+				 &parms);
+
+	return rc;
 }
 
 int

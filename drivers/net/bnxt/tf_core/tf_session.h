@@ -16,6 +16,7 @@
 #include "tf_tbl.h"
 #include "tf_resources.h"
 #include "stack.h"
+#include "ll.h"
 
 /**
  * The Session module provides session control support. A session is
@@ -29,7 +30,6 @@
 
 /** Session defines
  */
-#define TF_SESSIONS_MAX	          1          /** max # sessions */
 #define TF_SESSION_ID_INVALID     0xFFFFFFFF /** Invalid Session ID define */
 
 /**
@@ -50,7 +50,7 @@
  * Shared memory containing private TruFlow session information.
  * Through this structure the session can keep track of resource
  * allocations and (if so configured) any shadow copy of flow
- * information.
+ * information. It also holds info about Session Clients.
  *
  * Memory is assigned to the Truflow instance by way of
  * tf_open_session. Memory is allocated and owned by i.e. ULP.
@@ -65,17 +65,10 @@ struct tf_session {
 	 */
 	struct tf_session_version ver;
 
-	/** Session ID, allocated by FW on tf_open_session() */
-	union tf_session_id session_id;
-
 	/**
-	 * String containing name of control channel interface to be
-	 * used for this session to communicate with firmware.
-	 *
-	 * ctrl_chan_name will be used as part of a name for any
-	 * shared memory allocation.
+	 * Session ID, allocated by FW on tf_open_session()
 	 */
-	char ctrl_chan_name[TF_SESSION_NAME_MAX];
+	union tf_session_id session_id;
 
 	/**
 	 * Boolean controlling the use and availability of shadow
@@ -92,14 +85,67 @@ struct tf_session {
 
 	/**
 	 * Session Reference Count. To keep track of functions per
-	 * session the ref_count is incremented. There is also a
+	 * session the ref_count is updated. There is also a
 	 * parallel TruFlow Firmware ref_count in case the TruFlow
 	 * Core goes away without informing the Firmware.
 	 */
 	uint8_t ref_count;
 
-	/** Device handle */
+	/**
+	 * Session Reference Count for attached sessions. To keep
+	 * track of application sharing of a session the
+	 * ref_count_attach is updated.
+	 */
+	uint8_t ref_count_attach;
+
+	/**
+	 * Device handle
+	 */
 	struct tf_dev_info dev;
+	/**
+	 * Device init flag. False if Device is not fully initialized,
+	 * else true.
+	 */
+	bool dev_init;
+
+	/**
+	 * Linked list of clients registered for this session
+	 */
+	struct ll client_ll;
+};
+
+/**
+ * Session Client
+ *
+ * Shared memory for each of the Session Clients. A session can have
+ * one or more clients.
+ */
+struct tf_session_client {
+	/**
+	 * Linked list of clients
+	 */
+	struct ll_entry ll_entry; /* For inserting in link list, must be
+				   * first field of struct.
+				   */
+
+	/**
+	 * String containing name of control channel interface to be
+	 * used for this session to communicate with firmware.
+	 *
+	 * ctrl_chan_name will be used as part of a name for any
+	 * shared memory allocation.
+	 */
+	char ctrl_chan_name[TF_SESSION_NAME_MAX];
+
+	/**
+	 * Firmware FID, learned at time of Session Client create.
+	 */
+	uint16_t fw_fid;
+
+	/**
+	 * Session Client ID, allocated by FW on tf_register_session()
+	 */
+	union tf_session_client_id session_client_id;
 };
 
 /**
@@ -126,7 +172,13 @@ struct tf_session_attach_session_parms {
  * Session close parameter definition
  */
 struct tf_session_close_session_parms {
+	/**
+	 * []
+	 */
 	uint8_t *ref_count;
+	/**
+	 * []
+	 */
 	union tf_session_id *session_id;
 };
 
@@ -139,11 +191,23 @@ struct tf_session_close_session_parms {
  *
  * @ref tf_session_close_session
  *
+ * @ref tf_session_is_fid_supported
+ *
+ * @ref tf_session_get_session_internal
+ *
  * @ref tf_session_get_session
+ *
+ * @ref tf_session_get_session_client
+ *
+ * @ref tf_session_find_session_client_by_name
+ *
+ * @ref tf_session_find_session_client_by_fid
  *
  * @ref tf_session_get_device
  *
  * @ref tf_session_get_fw_session_id
+ *
+ * @ref tf_session_get_session_id
  */
 
 /**
@@ -179,7 +243,8 @@ int tf_session_attach_session(struct tf *tfp,
 			      struct tf_session_attach_session_parms *parms);
 
 /**
- * Closes a previous created session.
+ * Closes a previous created session. Only possible if previous
+ * registered Clients had been unregistered first.
  *
  * [in] tfp
  *   Pointer to TF handle
@@ -189,13 +254,53 @@ int tf_session_attach_session(struct tf *tfp,
  *
  * Returns
  *   - (0) if successful.
+ *   - (-EUSERS) if clients are still registered with the session.
  *   - (-EINVAL) on failure.
  */
 int tf_session_close_session(struct tf *tfp,
 			     struct tf_session_close_session_parms *parms);
 
 /**
- * Looks up the private session information from the TF session info.
+ * Verifies that the fid is supported by the session. Used to assure
+ * that a function i.e. client/control channel is registered with the
+ * session.
+ *
+ * [in] tfs
+ *   Pointer to TF Session handle
+ *
+ * [in] fid
+ *   FID value to check
+ *
+ * Returns
+ *   - (true) if successful, else false
+ *   - (-EINVAL) on failure.
+ */
+bool
+tf_session_is_fid_supported(struct tf_session *tfs,
+			    uint16_t fid);
+
+/**
+ * Looks up the private session information from the TF session
+ * info. Does not perform a fid check against the registered
+ * clients. Should be used if tf_session_get_session() was used
+ * previously i.e. at the TF API boundary.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [out] tfs
+ *   Pointer pointer to the session
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_get_session_internal(struct tf *tfp,
+				    struct tf_session **tfs);
+
+/**
+ * Looks up the private session information from the TF session
+ * info. Performs a fid check against the clients on the session.
  *
  * [in] tfp
  *   Pointer to TF handle
@@ -209,6 +314,53 @@ int tf_session_close_session(struct tf *tfp,
  */
 int tf_session_get_session(struct tf *tfp,
 			   struct tf_session **tfs);
+
+/**
+ * Looks up client within the session.
+ *
+ * [in] tfs
+ *   Pointer pointer to the session
+ *
+ * [in] session_client_id
+ *   Client id to look for within the session
+ *
+ * Returns
+ *   client if successful.
+ *   - (NULL) on failure, client not found.
+ */
+struct tf_session_client *
+tf_session_get_session_client(struct tf_session *tfs,
+			      union tf_session_client_id session_client_id);
+
+/**
+ * Looks up client using name within the session.
+ *
+ * [in] session, pointer to the session
+ *
+ * [in] session_client_name, name of the client to lookup in the session
+ *
+ * Returns:
+ *   - Pointer to the session, if found.
+ *   - (NULL) on failure, client not found.
+ */
+struct tf_session_client *
+tf_session_find_session_client_by_name(struct tf_session *tfs,
+				       const char *ctrl_chan_name);
+
+/**
+ * Looks up client using the fid.
+ *
+ * [in] session, pointer to the session
+ *
+ * [in] fid, fid of the client to find
+ *
+ * Returns:
+ *   - Pointer to the session, if found.
+ *   - (NULL) on failure, client not found.
+ */
+struct tf_session_client *
+tf_session_find_session_client_by_fid(struct tf_session *tfs,
+				      uint16_t fid);
 
 /**
  * Looks up the device information from the TF Session.
@@ -227,8 +379,7 @@ int tf_session_get_device(struct tf_session *tfs,
 			  struct tf_dev_info **tfd);
 
 /**
- * Looks up the FW session id of the firmware connection for the
- * requested TF handle.
+ * Looks up the FW Session id the requested TF handle.
  *
  * [in] tfp
  *   Pointer to TF handle
@@ -242,5 +393,21 @@ int tf_session_get_device(struct tf_session *tfs,
  */
 int tf_session_get_fw_session_id(struct tf *tfp,
 				 uint8_t *fw_session_id);
+
+/**
+ * Looks up the Session id the requested TF handle.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [out] session_id
+ *   Pointer to the session_id
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_get_session_id(struct tf *tfp,
+			      union tf_session_id *session_id);
 
 #endif /* _TF_SESSION_H_ */

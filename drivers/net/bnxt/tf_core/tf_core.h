@@ -72,7 +72,6 @@ enum tf_mem {
  * @ref tf_close_session
  */
 
-
 /**
  * Session Version defines
  *
@@ -110,6 +109,21 @@ union tf_session_id {
 		uint8_t bus;
 		uint8_t device;
 		uint8_t fw_session_id;
+	} internal;
+};
+
+/**
+ * Session Client Identifier
+ *
+ * Unique identifier for a client within a session. Session Client ID
+ * is constructed from the passed in session and a firmware allocated
+ * fw_session_client_id. Done by TruFlow on tf_open_session().
+ */
+union tf_session_client_id {
+	uint16_t id;
+	struct {
+		uint8_t fw_session_id;
+		uint8_t fw_session_client_id;
 	} internal;
 };
 
@@ -368,8 +382,8 @@ struct tf_session_info {
  *
  * Contains a pointer to the session info. Allocated by ULP and passed
  * to TruFlow using tf_open_session(). TruFlow will populate the
- * session info at that time. Additional 'opens' can be done using
- * same session_info by using tf_attach_session().
+ * session info at that time. A TruFlow Session can be used by more
+ * than one PF/VF by using the tf_open_session().
  *
  * It is expected that ULP allocates this memory as shared memory.
  *
@@ -507,35 +521,61 @@ struct tf_open_session_parms {
 	 */
 	union tf_session_id session_id;
 	/**
+	 * [in/out] session_client_id
+	 *
+	 * Session_client_id is unique per client.
+	 *
+	 * Session_client_id is composed of session_id and the
+	 * fw_session_client_id fw_session_id. The construction is
+	 * done by parsing the ctrl_chan_name together with allocation
+	 * of a fw_session_client_id during tf_open_session().
+	 *
+	 * A reference count will be incremented in the session on
+	 * which a client is created.
+	 *
+	 * A session can first be closed if there is one Session
+	 * Client left. Session Clients should closed using
+	 * tf_close_session().
+	 */
+	union tf_session_client_id session_client_id;
+	/**
 	 * [in] device type
 	 *
-	 * Device type is passed, one of Wh+, SR, Thor, SR2
+	 * Device type for the session.
 	 */
 	enum tf_device_type device_type;
-	/** [in] resources
+	/**
+	 * [in] resources
 	 *
-	 * Resource allocation
+	 * Resource allocation for the session.
 	 */
 	struct tf_session_resources resources;
 };
 
 /**
- * Opens a new TruFlow management session.
+ * Opens a new TruFlow Session or session client.
  *
- * TruFlow will allocate session specific memory, shared memory, to
- * hold its session data. This data is private to TruFlow.
+ * What gets created depends on the passed in tfp content. If the tfp
+ * does not have prior session data a new session with associated
+ * session client. If tfp has a session already a session client will
+ * be created. In both cases the session client is created using the
+ * provided ctrl_chan_name.
  *
- * Multiple PFs can share the same session. An association, refcount,
- * between session and PFs is maintained within TruFlow. Thus, a PF
- * can attach to an existing session, see tf_attach_session().
+ * In case of session creation TruFlow will allocate session specific
+ * memory, shared memory, to hold its session data. This data is
+ * private to TruFlow.
  *
- * No other TruFlow APIs will succeed unless this API is first called and
- * succeeds.
+ * No other TruFlow APIs will succeed unless this API is first called
+ * and succeeds.
  *
- * tf_open_session() returns a session id that can be used on attach.
+ * tf_open_session() returns a session id and session client id that
+ * is used on all other TF APIs.
+ *
+ * A Session or session client can be closed using tf_close_session().
  *
  * [in] tfp
  *   Pointer to TF handle
+ *
  * [in] parms
  *   Pointer to open parameters
  *
@@ -546,6 +586,11 @@ struct tf_open_session_parms {
 int tf_open_session(struct tf *tfp,
 		    struct tf_open_session_parms *parms);
 
+/**
+ * Experimental
+ *
+ * tf_attach_session parameters definition.
+ */
 struct tf_attach_session_parms {
 	/**
 	 * [in] ctrl_chan_name
@@ -595,15 +640,18 @@ struct tf_attach_session_parms {
 };
 
 /**
- * Attaches to an existing session. Used when more than one PF wants
- * to share a single session. In that case all TruFlow management
- * traffic will be sent to the TruFlow firmware using the 'PF' that
- * did the attach not the session ctrl channel.
+ * Experimental
+ *
+ * Allows a 2nd application instance to attach to an existing
+ * session. Used when a session is to be shared between two processes.
  *
  * Attach will increment a ref count as to manage the shared session data.
  *
- * [in] tfp, pointer to TF handle
- * [in] parms, pointer to attach parameters
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to attach parameters
  *
  * Returns
  *   - (0) if successful.
@@ -613,9 +661,15 @@ int tf_attach_session(struct tf *tfp,
 		      struct tf_attach_session_parms *parms);
 
 /**
- * Closes an existing session. Cleans up all hardware and firmware
- * state associated with the TruFlow application session when the last
- * PF associated with the session results in refcount to be zero.
+ * Closes an existing session client or the session it self. The
+ * session client is default closed and if the session reference count
+ * is 0 then the session is closed as well.
+ *
+ * On session close all hardware and firmware state associated with
+ * the TruFlow application is cleaned up.
+ *
+ * The session client is extracted from the tfp. Thus tf_close_session()
+ * cannot close a session client on behalf of another function.
  *
  * Returns success or failure code.
  */
@@ -1056,8 +1110,9 @@ int tf_free_tcam_entry(struct tf *tfp,
  * @ref tf_set_tbl_entry
  *
  * @ref tf_get_tbl_entry
+ *
+ * @ref tf_bulk_get_tbl_entry
  */
-
 
 /**
  * tf_alloc_tbl_entry parameter definition
