@@ -300,7 +300,7 @@ set fwd
 Set the packet forwarding mode::
 
    testpmd> set fwd (io|mac|macswap|flowgen| \
-                     rxonly|txonly|csum|icmpecho|noisy) (""|retry)
+                     rxonly|txonly|csum|icmpecho|noisy|5tswap) (""|retry)
 
 ``retry`` can be specified for forwarding engines except ``rx_only``.
 
@@ -334,6 +334,14 @@ The available information categories are:
 * ``noisy``: Noisy neighbor simulation.
   Simulate more realistic behavior of a guest machine engaged in receiving
   and sending packets performing Virtual Network Function (VNF).
+
+* ``5tswap``: Swap the source and destination of L2,L3,L4 if they exist.
+
+  L2 swaps the source address and destination address of Ethernet, as same as ``macswap``.
+
+  L3 swaps the source address and destination address of IP (v4 and v6).
+
+  L4 swaps the source port and destination port of transport layer (TCP and UDP).
 
 Example::
 

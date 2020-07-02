@@ -147,6 +147,8 @@ usage(char* progname)
 	       "is default).\n");
 	printf("  --forward-mode=N: set forwarding mode (N: %s).\n",
 	       list_pkt_forwarding_modes());
+	printf("  --forward-mode=5tswap: set forwarding mode to "
+			"swap L2,L3,L4 for MAC, IPv4/IPv6 and TCP/UDP only.\n");
 	printf("  --rss-ip: set RSS functions to IPv4/IPv6 only .\n");
 	printf("  --rss-udp: set RSS functions to IPv4/IPv6 + UDP.\n");
 	printf("  --rxq=N: set the number of RX queues per port to N.\n");

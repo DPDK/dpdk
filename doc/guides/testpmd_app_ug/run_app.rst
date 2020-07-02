@@ -248,6 +248,7 @@ The command line options are:
        ieee1588
        tm
        noisy
+       5tswap
 
 *   ``--rss-ip``
 

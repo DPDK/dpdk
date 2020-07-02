@@ -247,6 +247,7 @@ extern struct fwd_engine tx_only_engine;
 extern struct fwd_engine csum_fwd_engine;
 extern struct fwd_engine icmp_echo_engine;
 extern struct fwd_engine noisy_vnf_engine;
+extern struct fwd_engine five_tuple_swap_fwd_engine;
 #ifdef RTE_LIBRTE_IEEE1588
 extern struct fwd_engine ieee1588_fwd_engine;
 #endif

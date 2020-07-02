@@ -199,6 +199,12 @@ New Features
   which are used to access packet data in a safe manner. Currently JIT support
   for these instructions is implemented for x86 only.
 
+* **Added new testpmd forward mode.**
+
+  Added new ``5tswap`` forward mode to testpmd.
+  the  ``5tswap`` swaps source and destination in layers 2,3,4
+  for ipv4 and ipv6 in L3 and UDP and TCP in L4.
+
 * **Added flow performance test application.**
 
   Added new application to test ``rte_flow`` performance, including:
