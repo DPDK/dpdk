@@ -287,7 +287,7 @@ static int tf_em_entry_exists(struct tf_tbl_scope_cb *tbl_scope_cb,
 }
 
 static void tf_em_create_key_entry(struct tf_eem_entry_hdr *result,
-				    uint8_t	       *in_key,
+				    uint8_t *in_key,
 				    struct tf_eem_64b_entry *key_entry)
 {
 	key_entry->hdr.word1 = result->word1;
@@ -308,7 +308,7 @@ static void tf_em_create_key_entry(struct tf_eem_entry_hdr *result,
  * EEXIST  - Key does exist in table at "index" in table "table".
  * TF_ERR     - Something went horribly wrong.
  */
-static int tf_em_select_inject_table(struct tf_tbl_scope_cb	*tbl_scope_cb,
+static int tf_em_select_inject_table(struct tf_tbl_scope_cb *tbl_scope_cb,
 					  enum tf_dir dir,
 					  struct tf_eem_64b_entry *entry,
 					  uint32_t key0_hash,
@@ -368,8 +368,8 @@ static int tf_em_select_inject_table(struct tf_tbl_scope_cb	*tbl_scope_cb,
  *   0
  *   TF_ERR_EM_DUP  - key is already in table
  */
-int tf_insert_eem_entry(struct tf_session	   *session,
-			struct tf_tbl_scope_cb	   *tbl_scope_cb,
+int tf_insert_eem_entry(struct tf_session *session,
+			struct tf_tbl_scope_cb *tbl_scope_cb,
 			struct tf_insert_em_entry_parms *parms)
 {
 	uint32_t	   mask;
@@ -456,6 +456,96 @@ int tf_insert_eem_entry(struct tf_session	   *session,
 
 	return -EINVAL;
 }
+
+/**
+ * Insert EM internal entry API
+ *
+ *  returns:
+ *     0 - Success
+ */
+int tf_insert_em_internal_entry(struct tf *tfp,
+				struct tf_insert_em_entry_parms *parms)
+{
+	int       rc;
+	uint32_t  gfid;
+	uint16_t  rptr_index = 0;
+	uint8_t   rptr_entry = 0;
+	uint8_t   num_of_entries = 0;
+	struct tf_session *session =
+		(struct tf_session *)(tfp->session->core_data);
+	struct stack *pool = &session->em_pool[parms->dir];
+	uint32_t index;
+
+	rc = stack_pop(pool, &index);
+
+	if (rc != 0) {
+		PMD_DRV_LOG
+		   (ERR,
+		   "dir:%d, EM entry index allocation failed\n",
+		   parms->dir);
+		return rc;
+	}
+
+	rptr_index = index * TF_SESSION_EM_ENTRY_SIZE;
+	rc = tf_msg_insert_em_internal_entry(tfp,
+					     parms,
+					     &rptr_index,
+					     &rptr_entry,
+					     &num_of_entries);
+	if (rc != 0)
+		return -1;
+
+	PMD_DRV_LOG
+		   (ERR,
+		   "Internal entry @ Index:%d rptr_index:0x%x rptr_entry:0x%x num_of_entries:%d\n",
+		   index * TF_SESSION_EM_ENTRY_SIZE,
+		   rptr_index,
+		   rptr_entry,
+		   num_of_entries);
+
+	TF_SET_GFID(gfid,
+		    ((rptr_index << TF_EM_INTERNAL_INDEX_SHIFT) |
+		     rptr_entry),
+		    0); /* N/A for internal table */
+
+	TF_SET_FLOW_ID(parms->flow_id,
+		       gfid,
+		       TF_GFID_TABLE_INTERNAL,
+		       parms->dir);
+
+	TF_SET_FIELDS_IN_FLOW_HANDLE(parms->flow_handle,
+				     num_of_entries,
+				     0,
+				     0,
+				     rptr_index,
+				     rptr_entry,
+				     0);
+	return 0;
+}
+
+/** Delete EM internal entry API
+ *
+ * returns:
+ * 0
+ * -EINVAL
+ */
+int tf_delete_em_internal_entry(struct tf *tfp,
+				struct tf_delete_em_entry_parms *parms)
+{
+	int rc;
+	struct tf_session *session =
+		(struct tf_session *)(tfp->session->core_data);
+	struct stack *pool = &session->em_pool[parms->dir];
+
+	rc = tf_msg_delete_em_entry(tfp, parms);
+
+	/* Return resource to pool */
+	if (rc == 0)
+		stack_push(pool, parms->index / TF_SESSION_EM_ENTRY_SIZE);
+
+	return rc;
+}
+
 
 /** delete EEM hash entry API
  *

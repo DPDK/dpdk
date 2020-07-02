@@ -90,6 +90,18 @@ do {									\
 		     TF_HASH_TYPE_FLOW_HANDLE_SFT);			\
 } while (0)
 
+#define TF_GET_NUM_KEY_ENTRIES_FROM_FLOW_HANDLE(flow_handle,		\
+					  num_key_entries)		\
+	(num_key_entries =						\
+		(((flow_handle) & TF_NUM_KEY_ENTRIES_FLOW_HANDLE_MASK) >> \
+		     TF_NUM_KEY_ENTRIES_FLOW_HANDLE_SFT))		\
+
+#define TF_GET_ENTRY_NUM_FROM_FLOW_HANDLE(flow_handle,		\
+					  entry_num)		\
+	(entry_num =						\
+		(((flow_handle) & TF_ENTRY_NUM_FLOW_HANDLE_MASK) >> \
+		     TF_ENTRY_NUM_FLOW_HANDLE_SFT))		\
+
 /*
  * 32 bit Flow ID handlers
  */

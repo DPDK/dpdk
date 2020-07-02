@@ -86,6 +86,7 @@ struct tf_tbl_type_get_output;
 struct tf_em_internal_insert_input;
 struct tf_em_internal_insert_output;
 struct tf_em_internal_delete_input;
+struct tf_em_internal_delete_output;
 /* Input params for session attach */
 typedef struct tf_session_attach_input {
 	/* Firmware session id returned when HWRM_TF_SESSION_OPEN is sent */
@@ -949,6 +950,8 @@ typedef struct tf_em_internal_insert_output {
 	uint16_t			 rptr_index;
 	/* EM record offset 0~3 */
 	uint8_t			  rptr_entry;
+	/* Number of word entries consumed by the key */
+	uint8_t			  num_of_entries;
 } tf_em_internal_insert_output_t, *ptf_em_internal_insert_output_t;
 
 /* Input params for EM INTERNAL rule delete */
@@ -968,5 +971,11 @@ typedef struct tf_em_internal_delete_input {
 	/* number of bits in em_key */
 	uint16_t			 em_key_bitlen;
 } tf_em_internal_delete_input_t, *ptf_em_internal_delete_input_t;
+
+/* Input params for EM INTERNAL rule delete */
+typedef struct tf_em_internal_delete_output {
+	/* Original stack allocation index */
+	uint16_t			 em_index;
+} tf_em_internal_delete_output_t, *ptf_em_internal_delete_output_t;
 
 #endif /* _HWRM_TF_H_ */

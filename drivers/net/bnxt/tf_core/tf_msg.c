@@ -16,6 +16,7 @@
 #include "tf_msg.h"
 #include "hsi_struct_def_dpdk.h"
 #include "hwrm_tf.h"
+#include "tf_em.h"
 
 /**
  * Endian converts min and max values from the HW response to the query
@@ -1014,14 +1015,93 @@ int tf_msg_em_cfg(struct tf *tfp,
 }
 
 /**
+ * Sends EM internal insert request to Firmware
+ */
+int tf_msg_insert_em_internal_entry(struct tf *tfp,
+				struct tf_insert_em_entry_parms *em_parms,
+				uint16_t *rptr_index,
+				uint8_t *rptr_entry,
+				uint8_t *num_of_entries)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_em_internal_insert_input req = { 0 };
+	struct tf_em_internal_insert_output resp = { 0 };
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+	struct tf_em_64b_entry *em_result =
+		(struct tf_em_64b_entry *)em_parms->em_record;
+
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	memcpy(req.em_key, em_parms->key, ((em_parms->key_sz_in_bits + 7) / 8));
+	req.flags = tfp_cpu_to_le_16(em_parms->dir);
+	req.strength = (em_result->hdr.word1 & TF_LKUP_RECORD_STRENGTH_MASK) >>
+		TF_LKUP_RECORD_STRENGTH_SHIFT;
+	req.em_key_bitlen = em_parms->key_sz_in_bits;
+	req.action_ptr = em_result->hdr.pointer;
+	req.em_record_idx = *rptr_index;
+
+	MSG_PREP(parms,
+		 TF_KONG_MB,
+		 HWRM_TF,
+		 HWRM_TFT_EM_RULE_INSERT,
+		 req,
+		 resp);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	*rptr_entry = resp.rptr_entry;
+	*rptr_index = resp.rptr_index;
+	*num_of_entries = resp.num_of_entries;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+/**
+ * Sends EM delete insert request to Firmware
+ */
+int tf_msg_delete_em_entry(struct tf *tfp,
+			   struct tf_delete_em_entry_parms *em_parms)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_em_internal_delete_input req = { 0 };
+	struct tf_em_internal_delete_output resp = { 0 };
+	struct tf_session *tfs =
+		(struct tf_session *)(tfp->session->core_data);
+
+	req.tf_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16(em_parms->dir);
+	req.flow_handle = tfp_cpu_to_le_64(em_parms->flow_handle);
+
+	MSG_PREP(parms,
+		 TF_KONG_MB,
+		 HWRM_TF,
+		 HWRM_TFT_EM_RULE_DELETE,
+		 req,
+		resp);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	em_parms->index = tfp_le_to_cpu_16(resp.em_index);
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+/**
  * Sends EM operation request to Firmware
  */
 int tf_msg_em_op(struct tf *tfp,
-		 int        dir,
-		 uint16_t   op)
+		 int dir,
+		 uint16_t op)
 {
 	int rc;
-	struct hwrm_tf_ext_em_op_input  req = {0};
+	struct hwrm_tf_ext_em_op_input req = {0};
 	struct hwrm_tf_ext_em_op_output resp = {0};
 	uint32_t flags;
 	struct tfp_send_msg_parms parms = { 0 };

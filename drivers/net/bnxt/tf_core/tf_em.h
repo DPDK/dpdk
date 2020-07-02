@@ -12,6 +12,20 @@
 #define TF_HW_EM_KEY_MAX_SIZE 52
 #define TF_EM_KEY_RECORD_SIZE 64
 
+/*
+ * Used to build GFID:
+ *
+ *   15           2  0
+ *  +--------------+--+
+ *  |   Index      |E |
+ *  +--------------+--+
+ *
+ * E = Entry (bucket inndex)
+ */
+#define TF_EM_INTERNAL_INDEX_SHIFT 2
+#define TF_EM_INTERNAL_INDEX_MASK 0xFFFC
+#define TF_EM_INTERNAL_ENTRY_MASK  0x3
+
 /** EEM Entry header
  *
  */
@@ -51,6 +65,17 @@ struct tf_eem_64b_entry {
 	uint8_t key[TF_EM_KEY_RECORD_SIZE - sizeof(struct tf_eem_entry_hdr)];
 	/** Header is 8 bytes long */
 	struct tf_eem_entry_hdr hdr;
+};
+
+/** EM Entry
+ *  Each EM entry is 512-bit (64-bytes) but ordered differently to
+ *  EEM.
+ */
+struct tf_em_64b_entry {
+	/** Header is 8 bytes long */
+	struct tf_eem_entry_hdr hdr;
+	/** Key is 448 bits - 56 bytes */
+	uint8_t key[TF_EM_KEY_RECORD_SIZE - sizeof(struct tf_eem_entry_hdr)];
 };
 
 /**
@@ -106,8 +131,14 @@ int tf_insert_eem_entry(struct tf_session *session,
 			struct tf_tbl_scope_cb *tbl_scope_cb,
 			struct tf_insert_em_entry_parms *parms);
 
+int tf_insert_em_internal_entry(struct tf *tfp,
+				struct tf_insert_em_entry_parms *parms);
+
 int tf_delete_eem_entry(struct tf *tfp,
 			struct tf_delete_em_entry_parms *parms);
+
+int tf_delete_em_internal_entry(struct tf                       *tfp,
+				struct tf_delete_em_entry_parms *parms);
 
 void *tf_em_get_table_page(struct tf_tbl_scope_cb *tbl_scope_cb,
 			   enum tf_dir dir,

@@ -45,6 +45,100 @@ static void tf_seeds_init(struct tf_session *session)
 	}
 }
 
+/**
+ * Create EM Tbl pool of memory indexes.
+ *
+ * [in] session
+ *   Pointer to session
+ * [in] dir
+ *   direction
+ * [in] num_entries
+ *   number of entries to write
+ *
+ * Return:
+ *  0       - Success, entry allocated - no search support
+ *  -ENOMEM -EINVAL -EOPNOTSUPP
+ *          - Failure, entry not allocated, out of resources
+ */
+static int
+tf_create_em_pool(struct tf_session *session,
+		  enum tf_dir dir,
+		  uint32_t num_entries)
+{
+	struct tfp_calloc_parms parms;
+	uint32_t i, j;
+	int rc = 0;
+	struct stack *pool = &session->em_pool[dir];
+
+	parms.nitems = num_entries;
+	parms.size = sizeof(uint32_t);
+	parms.alignment = 0;
+
+	if (tfp_calloc(&parms) != 0) {
+		TFP_DRV_LOG(ERR, "EM pool allocation failure %s\n",
+			    strerror(-ENOMEM));
+		return -ENOMEM;
+	}
+
+	/* Create empty stack
+	 */
+	rc = stack_init(num_entries, parms.mem_va, pool);
+
+	if (rc != 0) {
+		TFP_DRV_LOG(ERR, "EM pool stack init failure %s\n",
+			    strerror(-rc));
+		goto cleanup;
+	}
+
+	/* Fill pool with indexes
+	 */
+	j = num_entries - 1;
+
+	for (i = 0; i < num_entries; i++) {
+		rc = stack_push(pool, j);
+		if (rc != 0) {
+			TFP_DRV_LOG(ERR, "EM pool stack push failure %s\n",
+				    strerror(-rc));
+			goto cleanup;
+		}
+		j--;
+	}
+
+	if (!stack_is_full(pool)) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR, "EM pool stack failure %s\n",
+			    strerror(-rc));
+		goto cleanup;
+	}
+
+	return 0;
+cleanup:
+	tfp_free((void *)parms.mem_va);
+	return rc;
+}
+
+/**
+ * Create EM Tbl pool of memory indexes.
+ *
+ * [in] session
+ *   Pointer to session
+ * [in] dir
+ *   direction
+ *
+ * Return:
+ */
+static void
+tf_free_em_pool(struct tf_session *session,
+		enum tf_dir dir)
+{
+	struct stack *pool = &session->em_pool[dir];
+	uint32_t *ptr;
+
+	ptr = stack_items(pool);
+
+	tfp_free(ptr);
+}
+
 int
 tf_open_session(struct tf                    *tfp,
 		struct tf_open_session_parms *parms)
@@ -54,6 +148,7 @@ tf_open_session(struct tf                    *tfp,
 	struct tfp_calloc_parms alloc_parms;
 	unsigned int domain, bus, slot, device;
 	uint8_t fw_session_id;
+	int dir;
 
 	if (tfp == NULL || parms == NULL)
 		return -EINVAL;
@@ -110,7 +205,7 @@ tf_open_session(struct tf                    *tfp,
 		goto cleanup;
 	}
 
-	tfp->session = (struct tf_session_info *)alloc_parms.mem_va;
+	tfp->session = alloc_parms.mem_va;
 
 	/* Allocate core data for the session */
 	alloc_parms.nitems = 1;
@@ -174,6 +269,16 @@ tf_open_session(struct tf                    *tfp,
 
 	/* Setup hash seeds */
 	tf_seeds_init(session);
+
+	/* Initialize EM pool */
+	for (dir = 0; dir < TF_DIR_MAX; dir++) {
+		rc = tf_create_em_pool(session, dir, TF_SESSION_EM_POOL_SIZE);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "EM Pool initialization failed\n");
+			goto cleanup_close;
+		}
+	}
 
 	session->ref_count++;
 
@@ -239,6 +344,7 @@ tf_close_session(struct tf *tfp)
 	int rc_close = 0;
 	struct tf_session *tfs;
 	union tf_session_id session_id;
+	int dir;
 
 	if (tfp == NULL || tfp->session == NULL)
 		return -EINVAL;
@@ -268,6 +374,10 @@ tf_close_session(struct tf *tfp)
 
 	/* Final cleanup as we're last user of the session */
 	if (tfs->ref_count == 0) {
+		/* Free EM pool */
+		for (dir = 0; dir < TF_DIR_MAX; dir++)
+			tf_free_em_pool(tfs, dir);
+
 		tfp_free(tfp->session->core_data);
 		tfp_free(tfp->session);
 		tfp->session = NULL;
@@ -301,16 +411,25 @@ int tf_insert_em_entry(struct tf *tfp,
 	if (tfp == NULL || parms == NULL)
 		return -EINVAL;
 
-	tbl_scope_cb =
-		tbl_scope_cb_find((struct tf_session *)tfp->session->core_data,
-				  parms->tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find((struct tf_session *)
+					 (tfp->session->core_data),
+					 parms->tbl_scope_id);
 	if (tbl_scope_cb == NULL)
 		return -EINVAL;
 
 	/* Process the EM entry per Table Scope type */
-	return tf_insert_eem_entry((struct tf_session *)tfp->session->core_data,
-				   tbl_scope_cb,
-				   parms);
+	if (parms->mem == TF_MEM_EXTERNAL) {
+		/* External EEM */
+		return tf_insert_eem_entry((struct tf_session *)
+					   (tfp->session->core_data),
+					   tbl_scope_cb,
+					   parms);
+	} else if (parms->mem == TF_MEM_INTERNAL) {
+		/* Internal EM */
+		return tf_insert_em_internal_entry(tfp,	parms);
+	}
+
+	return -EINVAL;
 }
 
 /** Delete EM hash entry API
@@ -327,13 +446,16 @@ int tf_delete_em_entry(struct tf *tfp,
 	if (tfp == NULL || parms == NULL)
 		return -EINVAL;
 
-	tbl_scope_cb =
-		tbl_scope_cb_find((struct tf_session *)tfp->session->core_data,
-				  parms->tbl_scope_id);
+	tbl_scope_cb = tbl_scope_cb_find((struct tf_session *)
+					 (tfp->session->core_data),
+					 parms->tbl_scope_id);
 	if (tbl_scope_cb == NULL)
 		return -EINVAL;
 
-	return tf_delete_eem_entry(tfp, parms);
+	if (parms->mem == TF_MEM_EXTERNAL)
+		return tf_delete_eem_entry(tfp, parms);
+	else
+		return tf_delete_em_internal_entry(tfp, parms);
 }
 
 /** allocate identifier resource

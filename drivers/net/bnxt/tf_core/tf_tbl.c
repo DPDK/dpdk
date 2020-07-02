@@ -156,7 +156,7 @@ tf_em_alloc_pg_tbl(struct tf_em_page_tbl *tp,
 		if (tfp_calloc(&parms) != 0)
 			goto cleanup;
 
-		tp->pg_pa_tbl[i] = (uint64_t)(uintptr_t)parms.mem_pa;
+		tp->pg_pa_tbl[i] = (uintptr_t)parms.mem_pa;
 		tp->pg_va_tbl[i] = parms.mem_va;
 
 		memset(tp->pg_va_tbl[i], 0, pg_size);
@@ -792,7 +792,8 @@ tf_set_tbl_entry_internal(struct tf *tfp,
 	index = parms->idx;
 
 	if (parms->type != TF_TBL_TYPE_FULL_ACT_RECORD &&
-	    parms->type != TF_TBL_TYPE_ACT_SP_SMAC_IPV4) {
+	    parms->type != TF_TBL_TYPE_ACT_SP_SMAC_IPV4 &&
+	    parms->type != TF_TBL_TYPE_ACT_STATS_64) {
 		PMD_DRV_LOG(ERR,
 			    "dir:%d, Type not supported, type:%d\n",
 			    parms->dir,
@@ -1179,7 +1180,8 @@ tf_alloc_tbl_entry_pool_internal(struct tf *tfp,
 	    parms->type != TF_TBL_TYPE_ACT_SP_SMAC_IPV4 &&
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_8B &&
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_16B &&
-	    parms->type != TF_TBL_TYPE_ACT_ENCAP_64B) {
+	    parms->type != TF_TBL_TYPE_ACT_ENCAP_64B &&
+	    parms->type != TF_TBL_TYPE_ACT_STATS_64) {
 		PMD_DRV_LOG(ERR,
 			    "dir:%d, Type not supported, type:%d\n",
 			    parms->dir,
@@ -1330,7 +1332,8 @@ tf_free_tbl_entry_pool_internal(struct tf *tfp,
 	    parms->type != TF_TBL_TYPE_ACT_SP_SMAC_IPV4 &&
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_8B &&
 	    parms->type != TF_TBL_TYPE_ACT_ENCAP_16B &&
-	    parms->type != TF_TBL_TYPE_ACT_ENCAP_64B) {
+	    parms->type != TF_TBL_TYPE_ACT_ENCAP_64B &&
+	    parms->type != TF_TBL_TYPE_ACT_STATS_64) {
 		PMD_DRV_LOG(ERR,
 			    "dir:%d, Type not supported, type:%d\n",
 			    parms->dir,
@@ -1800,4 +1803,92 @@ tf_free_tbl_entry(struct tf *tfp,
 			    parms->dir,
 			    rc);
 	return rc;
+}
+
+
+static void
+tf_dump_link_page_table(struct tf_em_page_tbl *tp,
+			struct tf_em_page_tbl *tp_next)
+{
+	uint64_t *pg_va;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k = 0;
+
+	printf("pg_count:%d pg_size:0x%x\n",
+	       tp->pg_count,
+	       tp->pg_size);
+	for (i = 0; i < tp->pg_count; i++) {
+		pg_va = tp->pg_va_tbl[i];
+		printf("\t%p\n", (void *)pg_va);
+		for (j = 0; j < MAX_PAGE_PTRS(tp->pg_size); j++) {
+			printf("\t\t%p\n", (void *)(uintptr_t)pg_va[j]);
+			if (((pg_va[j] & 0x7) ==
+			     tfp_cpu_to_le_64(PTU_PTE_LAST |
+					      PTU_PTE_VALID)))
+				return;
+
+			if (!(pg_va[j] & tfp_cpu_to_le_64(PTU_PTE_VALID))) {
+				printf("** Invalid entry **\n");
+				return;
+			}
+
+			if (++k >= tp_next->pg_count) {
+				printf("** Shouldn't get here **\n");
+				return;
+			}
+		}
+	}
+}
+
+void tf_dump_dma(struct tf *tfp, uint32_t tbl_scope_id);
+
+void tf_dump_dma(struct tf *tfp, uint32_t tbl_scope_id)
+{
+	struct tf_session      *session;
+	struct tf_tbl_scope_cb *tbl_scope_cb;
+	struct tf_em_page_tbl *tp;
+	struct tf_em_page_tbl *tp_next;
+	struct tf_em_table *tbl;
+	int i;
+	int j;
+	int dir;
+
+	printf("called %s\n", __func__);
+
+	/* find session struct */
+	session = (struct tf_session *)tfp->session->core_data;
+
+	/* find control block for table scope */
+	tbl_scope_cb = tbl_scope_cb_find(session,
+					 tbl_scope_id);
+	if (tbl_scope_cb == NULL)
+		PMD_DRV_LOG(ERR, "No table scope\n");
+
+	for (dir = 0; dir < TF_DIR_MAX; dir++) {
+		printf("Direction %s:\n", (dir == TF_DIR_RX ? "Rx" : "Tx"));
+
+		for (j = KEY0_TABLE; j < MAX_TABLE; j++) {
+			tbl = &tbl_scope_cb->em_ctx_info[dir].em_tables[j];
+			printf
+	("Table: j:%d type:%d num_entries:%d entry_size:0x%x num_lvl:%d ",
+			       j,
+			       tbl->type,
+			       tbl->num_entries,
+			       tbl->entry_size,
+			       tbl->num_lvl);
+			if (tbl->pg_tbl[0].pg_va_tbl &&
+			    tbl->pg_tbl[0].pg_pa_tbl)
+				printf("%p %p\n",
+			       tbl->pg_tbl[0].pg_va_tbl[0],
+			       (void *)(uintptr_t)tbl->pg_tbl[0].pg_pa_tbl[0]);
+			for (i = 0; i < tbl->num_lvl - 1; i++) {
+				printf("Level:%d\n", i);
+				tp = &tbl->pg_tbl[i];
+				tp_next = &tbl->pg_tbl[i + 1];
+				tf_dump_link_page_table(tp, tp_next);
+			}
+			printf("\n");
+		}
+	}
 }

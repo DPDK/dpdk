@@ -611,6 +611,10 @@ struct cmd_nums {
 	#define HWRM_FUNC_VF_BW_QCFG                      UINT32_C(0x196)
 	/* Queries pf ids belong to specified host(s) */
 	#define HWRM_FUNC_HOST_PF_IDS_QUERY               UINT32_C(0x197)
+	/* Queries extended stats per function */
+	#define HWRM_FUNC_QSTATS_EXT                      UINT32_C(0x198)
+	/* Queries extended statistics context */
+	#define HWRM_STAT_EXT_CTX_QUERY                   UINT32_C(0x199)
 	/* Experimental */
 	#define HWRM_SELFTEST_QLIST                       UINT32_C(0x200)
 	/* Experimental */
@@ -647,41 +651,49 @@ struct cmd_nums {
 	/* Experimental */
 	#define HWRM_TF_SESSION_ATTACH                    UINT32_C(0x2c7)
 	/* Experimental */
-	#define HWRM_TF_SESSION_CLOSE                     UINT32_C(0x2c8)
+	#define HWRM_TF_SESSION_REGISTER                  UINT32_C(0x2c8)
 	/* Experimental */
-	#define HWRM_TF_SESSION_QCFG                      UINT32_C(0x2c9)
+	#define HWRM_TF_SESSION_UNREGISTER                UINT32_C(0x2c9)
 	/* Experimental */
-	#define HWRM_TF_SESSION_RESC_QCAPS                UINT32_C(0x2ca)
+	#define HWRM_TF_SESSION_CLOSE                     UINT32_C(0x2ca)
 	/* Experimental */
-	#define HWRM_TF_SESSION_RESC_ALLOC                UINT32_C(0x2cb)
+	#define HWRM_TF_SESSION_QCFG                      UINT32_C(0x2cb)
 	/* Experimental */
-	#define HWRM_TF_SESSION_RESC_FREE                 UINT32_C(0x2cc)
+	#define HWRM_TF_SESSION_RESC_QCAPS                UINT32_C(0x2cc)
 	/* Experimental */
-	#define HWRM_TF_SESSION_RESC_FLUSH                UINT32_C(0x2cd)
+	#define HWRM_TF_SESSION_RESC_ALLOC                UINT32_C(0x2cd)
 	/* Experimental */
-	#define HWRM_TF_TBL_TYPE_GET                      UINT32_C(0x2d0)
+	#define HWRM_TF_SESSION_RESC_FREE                 UINT32_C(0x2ce)
 	/* Experimental */
-	#define HWRM_TF_TBL_TYPE_SET                      UINT32_C(0x2d1)
+	#define HWRM_TF_SESSION_RESC_FLUSH                UINT32_C(0x2cf)
 	/* Experimental */
-	#define HWRM_TF_CTXT_MEM_RGTR                     UINT32_C(0x2da)
+	#define HWRM_TF_TBL_TYPE_GET                      UINT32_C(0x2da)
 	/* Experimental */
-	#define HWRM_TF_CTXT_MEM_UNRGTR                   UINT32_C(0x2db)
+	#define HWRM_TF_TBL_TYPE_SET                      UINT32_C(0x2db)
 	/* Experimental */
-	#define HWRM_TF_EXT_EM_QCAPS                      UINT32_C(0x2dc)
+	#define HWRM_TF_CTXT_MEM_RGTR                     UINT32_C(0x2e4)
 	/* Experimental */
-	#define HWRM_TF_EXT_EM_OP                         UINT32_C(0x2dd)
+	#define HWRM_TF_CTXT_MEM_UNRGTR                   UINT32_C(0x2e5)
 	/* Experimental */
-	#define HWRM_TF_EXT_EM_CFG                        UINT32_C(0x2de)
+	#define HWRM_TF_EXT_EM_QCAPS                      UINT32_C(0x2e6)
 	/* Experimental */
-	#define HWRM_TF_EXT_EM_QCFG                       UINT32_C(0x2df)
+	#define HWRM_TF_EXT_EM_OP                         UINT32_C(0x2e7)
 	/* Experimental */
-	#define HWRM_TF_TCAM_SET                          UINT32_C(0x2ee)
+	#define HWRM_TF_EXT_EM_CFG                        UINT32_C(0x2e8)
 	/* Experimental */
-	#define HWRM_TF_TCAM_GET                          UINT32_C(0x2ef)
+	#define HWRM_TF_EXT_EM_QCFG                       UINT32_C(0x2e9)
 	/* Experimental */
-	#define HWRM_TF_TCAM_MOVE                         UINT32_C(0x2f0)
+	#define HWRM_TF_EM_INSERT                         UINT32_C(0x2ea)
 	/* Experimental */
-	#define HWRM_TF_TCAM_FREE                         UINT32_C(0x2f1)
+	#define HWRM_TF_EM_DELETE                         UINT32_C(0x2eb)
+	/* Experimental */
+	#define HWRM_TF_TCAM_SET                          UINT32_C(0x2f8)
+	/* Experimental */
+	#define HWRM_TF_TCAM_GET                          UINT32_C(0x2f9)
+	/* Experimental */
+	#define HWRM_TF_TCAM_MOVE                         UINT32_C(0x2fa)
+	/* Experimental */
+	#define HWRM_TF_TCAM_FREE                         UINT32_C(0x2fb)
 	/* Experimental */
 	#define HWRM_SV                                   UINT32_C(0x400)
 	/* Experimental */
@@ -715,6 +727,13 @@ struct cmd_nums {
 	#define HWRM_DBG_CRASHDUMP_ERASE                  UINT32_C(0xff1e)
 	/* Send driver debug information to firmware */
 	#define HWRM_DBG_DRV_TRACE                        UINT32_C(0xff1f)
+	/* Query debug capabilities of firmware */
+	#define HWRM_DBG_QCAPS                            UINT32_C(0xff20)
+	/* Retrieve debug settings of firmware */
+	#define HWRM_DBG_QCFG                             UINT32_C(0xff21)
+	/* Set destination parameters for crashdump medium */
+	#define HWRM_DBG_CRASHDUMP_MEDIUM_CFG             UINT32_C(0xff22)
+	#define HWRM_NVM_REQ_ARBITRATION                  UINT32_C(0xffed)
 	/* Experimental */
 	#define HWRM_NVM_FACTORY_DEFAULTS                 UINT32_C(0xffee)
 	#define HWRM_NVM_VALIDATE_OPTION                  UINT32_C(0xffef)
@@ -914,8 +933,8 @@ struct hwrm_err_output {
 #define HWRM_VERSION_MINOR 10
 #define HWRM_VERSION_UPDATE 1
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 30
-#define HWRM_VERSION_STR "1.10.1.30"
+#define HWRM_VERSION_RSVD 45
+#define HWRM_VERSION_STR "1.10.1.45"
 
 /****************
  * hwrm_ver_get *
@@ -2293,6 +2312,35 @@ struct cmpl_base {
 	 */
 	#define CMPL_BASE_TYPE_TX_L2             UINT32_C(0x0)
 	/*
+	 * NO-OP completion:
+	 * Completion of NO-OP. Length = 16B
+	 */
+	#define CMPL_BASE_TYPE_NO_OP             UINT32_C(0x1)
+	/*
+	 * TX L2 coalesced completion:
+	 * Completion of coalesced TX packet. Length = 16B
+	 */
+	#define CMPL_BASE_TYPE_TX_L2_COAL        UINT32_C(0x2)
+	/*
+	 * TX L2 PTP completion:
+	 * Completion of PTP TX packet. Length = 32B
+	 */
+	#define CMPL_BASE_TYPE_TX_L2_PTP         UINT32_C(0x3)
+	/*
+	 * RX L2 TPA Start V2 Completion:
+	 * Completion of and L2 RX packet. Length = 32B
+	 * This is the new version of the RX_TPA_START completion used
+	 * in SR2 and later chips.
+	 */
+	#define CMPL_BASE_TYPE_RX_TPA_START_V2   UINT32_C(0xd)
+	/*
+	 * RX L2 V2 completion:
+	 * Completion of and L2 RX packet. Length = 32B
+	 * This is the new version of the RX_L2 completion used in SR2
+	 * and later chips.
+	 */
+	#define CMPL_BASE_TYPE_RX_L2_V2          UINT32_C(0xf)
+	/*
 	 * RX L2 completion:
 	 * Completion of and L2 RX packet. Length = 32B
 	 */
@@ -2321,6 +2369,24 @@ struct cmpl_base {
 	 * Length = 16B
 	 */
 	#define CMPL_BASE_TYPE_STAT_EJECT        UINT32_C(0x1a)
+	/*
+	 * VEE Flush Completion:
+	 * This completion is inserted manually by
+	 * the Primate and processed by the VEE hardware to ensure that
+	 * all completions on a VEE function have been processed by the
+	 * VEE hardware before FLR process is completed.
+	 */
+	#define CMPL_BASE_TYPE_VEE_FLUSH         UINT32_C(0x1c)
+	/*
+	 * Mid Path Short Completion :
+	 * Completion of a Mid Path Command. Length = 16B
+	 */
+	#define CMPL_BASE_TYPE_MID_PATH_SHORT    UINT32_C(0x1e)
+	/*
+	 * Mid Path Long Completion :
+	 * Completion of a Mid Path Command. Length = 32B
+	 */
+	#define CMPL_BASE_TYPE_MID_PATH_LONG     UINT32_C(0x1f)
 	/*
 	 * HWRM Command Completion:
 	 * Completion of an HWRM command.
@@ -2398,7 +2464,9 @@ struct tx_cmpl {
 	uint16_t	unused_0;
 	/*
 	 * This is a copy of the opaque field from the first TX BD of this
-	 * transmitted packet.
+	 * transmitted packet. Note that, if the packet was described by a short
+	 * CSO or short CSO inline BD, then the 16-bit opaque field from the
+	 * short CSO BD will appear in the bottom 16 bits of this field.
 	 */
 	uint32_t	opaque;
 	uint16_t	errors_v;
@@ -2407,56 +2475,350 @@ struct tx_cmpl {
 	 * for each pass through the completion queue. The even passes
 	 * will write 1. The odd passes will write 0.
 	 */
-	#define TX_CMPL_V                              UINT32_C(0x1)
-	#define TX_CMPL_ERRORS_MASK                    UINT32_C(0xfffe)
-	#define TX_CMPL_ERRORS_SFT                     1
+	#define TX_CMPL_V                                  UINT32_C(0x1)
+	#define TX_CMPL_ERRORS_MASK                        UINT32_C(0xfffe)
+	#define TX_CMPL_ERRORS_SFT                         1
 	/*
 	 * This error indicates that there was some sort of problem
 	 * with the BDs for the packet.
 	 */
-	#define TX_CMPL_ERRORS_BUFFER_ERROR_MASK        UINT32_C(0xe)
-	#define TX_CMPL_ERRORS_BUFFER_ERROR_SFT         1
+	#define TX_CMPL_ERRORS_BUFFER_ERROR_MASK            UINT32_C(0xe)
+	#define TX_CMPL_ERRORS_BUFFER_ERROR_SFT             1
 	/* No error */
-	#define TX_CMPL_ERRORS_BUFFER_ERROR_NO_ERROR      (UINT32_C(0x0) << 1)
+	#define TX_CMPL_ERRORS_BUFFER_ERROR_NO_ERROR \
+		(UINT32_C(0x0) << 1)
 	/*
 	 * Bad Format:
 	 * BDs were not formatted correctly.
 	 */
-	#define TX_CMPL_ERRORS_BUFFER_ERROR_BAD_FMT       (UINT32_C(0x2) << 1)
+	#define TX_CMPL_ERRORS_BUFFER_ERROR_BAD_FMT \
+		(UINT32_C(0x2) << 1)
 	#define TX_CMPL_ERRORS_BUFFER_ERROR_LAST \
 		TX_CMPL_ERRORS_BUFFER_ERROR_BAD_FMT
 	/*
 	 * When this bit is '1', it indicates that the length of
 	 * the packet was zero. No packet was transmitted.
 	 */
-	#define TX_CMPL_ERRORS_ZERO_LENGTH_PKT          UINT32_C(0x10)
+	#define TX_CMPL_ERRORS_ZERO_LENGTH_PKT              UINT32_C(0x10)
 	/*
 	 * When this bit is '1', it indicates that the packet
 	 * was longer than the programmed limit in TDI. No
 	 * packet was transmitted.
 	 */
-	#define TX_CMPL_ERRORS_EXCESSIVE_BD_LENGTH      UINT32_C(0x20)
+	#define TX_CMPL_ERRORS_EXCESSIVE_BD_LENGTH          UINT32_C(0x20)
 	/*
 	 * When this bit is '1', it indicates that one or more of the
 	 * BDs associated with this packet generated a PCI error.
 	 * This probably means the address was not valid.
 	 */
-	#define TX_CMPL_ERRORS_DMA_ERROR                UINT32_C(0x40)
+	#define TX_CMPL_ERRORS_DMA_ERROR                    UINT32_C(0x40)
 	/*
 	 * When this bit is '1', it indicates that the packet was longer
 	 * than indicated by the hint. No packet was transmitted.
 	 */
-	#define TX_CMPL_ERRORS_HINT_TOO_SHORT           UINT32_C(0x80)
+	#define TX_CMPL_ERRORS_HINT_TOO_SHORT               UINT32_C(0x80)
 	/*
 	 * When this bit is '1', it indicates that the packet was
 	 * dropped due to Poison TLP error on one or more of the
 	 * TLPs in the PXP completion.
 	 */
-	#define TX_CMPL_ERRORS_POISON_TLP_ERROR         UINT32_C(0x100)
+	#define TX_CMPL_ERRORS_POISON_TLP_ERROR             UINT32_C(0x100)
+	/*
+	 * When this bit is '1', it indicates that the packet was dropped
+	 * due to a transient internal error in TDC. The packet or LSO can
+	 * be retried and may transmit successfully on a subsequent attempt.
+	 */
+	#define TX_CMPL_ERRORS_INTERNAL_ERROR               UINT32_C(0x200)
+	/*
+	 * When this bit is '1', it was not possible to collect a a timestamp
+	 * for a PTP completion, in which case the timestamp_hi and
+	 * timestamp_lo fields are invalid. When this bit is '0' for a PTP
+	 * completion, the timestamp_hi and timestamp_lo fields are valid.
+	 * RJRN will copy the value of this bit into the field of the same
+	 * name in all TX completions, regardless of whether such completions
+	 * are PTP completions or other TX completions.
+	 */
+	#define TX_CMPL_ERRORS_TIMESTAMP_INVALID_ERROR      UINT32_C(0x400)
 	/* unused2 is 16 b */
 	uint16_t	unused_1;
 	/* unused3 is 32 b */
 	uint32_t	unused_2;
+} __rte_packed;
+
+/* tx_cmpl_coal (size:128b/16B) */
+struct tx_cmpl_coal {
+	uint16_t	flags_type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units. Even values indicate 16B
+	 * records. Odd values indicate 32B
+	 * records.
+	 */
+	#define TX_CMPL_COAL_TYPE_MASK       UINT32_C(0x3f)
+	#define TX_CMPL_COAL_TYPE_SFT        0
+	/*
+	 * TX L2 coalesced completion:
+	 * Completion of TX packet. Length = 16B
+	 */
+	#define TX_CMPL_COAL_TYPE_TX_L2_COAL   UINT32_C(0x2)
+	#define TX_CMPL_COAL_TYPE_LAST        TX_CMPL_COAL_TYPE_TX_L2_COAL
+	#define TX_CMPL_COAL_FLAGS_MASK      UINT32_C(0xffc0)
+	#define TX_CMPL_COAL_FLAGS_SFT       6
+	/*
+	 * When this bit is '1', it indicates a packet that has an
+	 * error of some type. Type of error is indicated in
+	 * error_flags.
+	 */
+	#define TX_CMPL_COAL_FLAGS_ERROR      UINT32_C(0x40)
+	/*
+	 * When this bit is '1', it indicates that the packet completed
+	 * was transmitted using the push acceleration data provided
+	 * by the driver. When this bit is '0', it indicates that the
+	 * packet had not push acceleration data written or was executed
+	 * as a normal packet even though push data was provided.
+	 */
+	#define TX_CMPL_COAL_FLAGS_PUSH       UINT32_C(0x80)
+	/* unused1 is 16 b */
+	uint16_t	unused_0;
+	/*
+	 * This is a copy of the opaque field from the first TX BD of the packet
+	 * which corresponds with the reported sq_cons_idx. Note that, with
+	 * coalesced completions, completions are generated for only some of the
+	 * packets. The driver will see the opaque field for only those packets.
+	 * Note that, if the packet was described by a short CSO or short CSO
+	 * inline BD, then the 16-bit opaque field from the short CSO BD will
+	 * appear in the bottom 16 bits of this field. For TX rings with
+	 * completion coalescing enabled (which would use the coalesced
+	 * completion record), it is suggested that the driver populate the
+	 * opaque field to indicate the specific TX ring with which the
+	 * completion is associated, then utilize the opaque and sq_cons_idx
+	 * fields in the coalesced completion record to determine the specific
+	 * packets that are to be completed on that ring.
+	 */
+	uint32_t	opaque;
+	uint16_t	errors_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes
+	 * will write 1. The odd passes will write 0.
+	 */
+	#define TX_CMPL_COAL_V                                  UINT32_C(0x1)
+	#define TX_CMPL_COAL_ERRORS_MASK \
+		UINT32_C(0xfffe)
+	#define TX_CMPL_COAL_ERRORS_SFT                         1
+	/*
+	 * This error indicates that there was some sort of problem
+	 * with the BDs for the packet.
+	 */
+	#define TX_CMPL_COAL_ERRORS_BUFFER_ERROR_MASK            UINT32_C(0xe)
+	#define TX_CMPL_COAL_ERRORS_BUFFER_ERROR_SFT             1
+	/* No error */
+	#define TX_CMPL_COAL_ERRORS_BUFFER_ERROR_NO_ERROR \
+		(UINT32_C(0x0) << 1)
+	/*
+	 * Bad Format:
+	 * BDs were not formatted correctly.
+	 */
+	#define TX_CMPL_COAL_ERRORS_BUFFER_ERROR_BAD_FMT \
+		(UINT32_C(0x2) << 1)
+	#define TX_CMPL_COAL_ERRORS_BUFFER_ERROR_LAST \
+		TX_CMPL_COAL_ERRORS_BUFFER_ERROR_BAD_FMT
+	/*
+	 * When this bit is '1', it indicates that the length of
+	 * the packet was zero. No packet was transmitted.
+	 */
+	#define TX_CMPL_COAL_ERRORS_ZERO_LENGTH_PKT              UINT32_C(0x10)
+	/*
+	 * When this bit is '1', it indicates that the packet
+	 * was longer than the programmed limit in TDI. No
+	 * packet was transmitted.
+	 */
+	#define TX_CMPL_COAL_ERRORS_EXCESSIVE_BD_LENGTH          UINT32_C(0x20)
+	/*
+	 * When this bit is '1', it indicates that one or more of the
+	 * BDs associated with this packet generated a PCI error.
+	 * This probably means the address was not valid.
+	 */
+	#define TX_CMPL_COAL_ERRORS_DMA_ERROR                    UINT32_C(0x40)
+	/*
+	 * When this bit is '1', it indicates that the packet was longer
+	 * than indicated by the hint. No packet was transmitted.
+	 */
+	#define TX_CMPL_COAL_ERRORS_HINT_TOO_SHORT               UINT32_C(0x80)
+	/*
+	 * When this bit is '1', it indicates that the packet was
+	 * dropped due to Poison TLP error on one or more of the
+	 * TLPs in the PXP completion.
+	 */
+	#define TX_CMPL_COAL_ERRORS_POISON_TLP_ERROR \
+		UINT32_C(0x100)
+	/*
+	 * When this bit is '1', it indicates that the packet was dropped
+	 * due to a transient internal error in TDC. The packet or LSO can
+	 * be retried and may transmit successfully on a subsequent attempt.
+	 */
+	#define TX_CMPL_COAL_ERRORS_INTERNAL_ERROR \
+		UINT32_C(0x200)
+	/*
+	 * When this bit is '1', it was not possible to collect a a timestamp
+	 * for a PTP completion, in which case the timestamp_hi and
+	 * timestamp_lo fields are invalid. When this bit is '0' for a PTP
+	 * completion, the timestamp_hi and timestamp_lo fields are valid.
+	 * RJRN will copy the value of this bit into the field of the same
+	 * name in all TX completions, regardless of whether such
+	 * completions are PTP completions or other TX completions.
+	 */
+	#define TX_CMPL_COAL_ERRORS_TIMESTAMP_INVALID_ERROR \
+		UINT32_C(0x400)
+	/* unused2 is 16 b */
+	uint16_t	unused_1;
+	uint32_t	sq_cons_idx;
+	/*
+	 * This value is SQ index for the start of the packet following the
+	 * last completed packet.
+	 */
+	#define TX_CMPL_COAL_SQ_CONS_IDX_MASK UINT32_C(0xffffff)
+	#define TX_CMPL_COAL_SQ_CONS_IDX_SFT 0
+} __rte_packed;
+
+/* tx_cmpl_ptp (size:128b/16B) */
+struct tx_cmpl_ptp {
+	uint16_t	flags_type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units. Even values indicate 16B
+	 * records. Odd values indicate 32B
+	 * records.
+	 */
+	#define TX_CMPL_PTP_TYPE_MASK       UINT32_C(0x3f)
+	#define TX_CMPL_PTP_TYPE_SFT        0
+	/*
+	 * TX L2 PTP completion:
+	 * Completion of TX packet. Length = 32B
+	 */
+	#define TX_CMPL_PTP_TYPE_TX_L2_PTP    UINT32_C(0x2)
+	#define TX_CMPL_PTP_TYPE_LAST        TX_CMPL_PTP_TYPE_TX_L2_PTP
+	#define TX_CMPL_PTP_FLAGS_MASK      UINT32_C(0xffc0)
+	#define TX_CMPL_PTP_FLAGS_SFT       6
+	/*
+	 * When this bit is '1', it indicates a packet that has an
+	 * error of some type. Type of error is indicated in
+	 * error_flags.
+	 */
+	#define TX_CMPL_PTP_FLAGS_ERROR      UINT32_C(0x40)
+	/*
+	 * When this bit is '1', it indicates that the packet completed
+	 * was transmitted using the push acceleration data provided
+	 * by the driver. When this bit is '0', it indicates that the
+	 * packet had not push acceleration data written or was executed
+	 * as a normal packet even though push data was provided.
+	 */
+	#define TX_CMPL_PTP_FLAGS_PUSH       UINT32_C(0x80)
+	/* unused1 is 16 b */
+	uint16_t	unused_0;
+	/*
+	 * This is a copy of the opaque field from the first TX BD of this
+	 * transmitted packet. Note that, if the packet was described by a short
+	 * CSO or short CSO inline BD, then the 16-bit opaque field from the
+	 * short CSO BD will appear in the bottom 16 bits of this field.
+	 */
+	uint32_t	opaque;
+	uint16_t	errors_v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes
+	 * will write 1. The odd passes will write 0.
+	 */
+	#define TX_CMPL_PTP_V                                  UINT32_C(0x1)
+	#define TX_CMPL_PTP_ERRORS_MASK                        UINT32_C(0xfffe)
+	#define TX_CMPL_PTP_ERRORS_SFT                         1
+	/*
+	 * This error indicates that there was some sort of problem
+	 * with the BDs for the packet.
+	 */
+	#define TX_CMPL_PTP_ERRORS_BUFFER_ERROR_MASK            UINT32_C(0xe)
+	#define TX_CMPL_PTP_ERRORS_BUFFER_ERROR_SFT             1
+	/* No error */
+	#define TX_CMPL_PTP_ERRORS_BUFFER_ERROR_NO_ERROR \
+		(UINT32_C(0x0) << 1)
+	/*
+	 * Bad Format:
+	 * BDs were not formatted correctly.
+	 */
+	#define TX_CMPL_PTP_ERRORS_BUFFER_ERROR_BAD_FMT \
+		(UINT32_C(0x2) << 1)
+	#define TX_CMPL_PTP_ERRORS_BUFFER_ERROR_LAST \
+		TX_CMPL_PTP_ERRORS_BUFFER_ERROR_BAD_FMT
+	/*
+	 * When this bit is '1', it indicates that the length of
+	 * the packet was zero. No packet was transmitted.
+	 */
+	#define TX_CMPL_PTP_ERRORS_ZERO_LENGTH_PKT              UINT32_C(0x10)
+	/*
+	 * When this bit is '1', it indicates that the packet
+	 * was longer than the programmed limit in TDI. No
+	 * packet was transmitted.
+	 */
+	#define TX_CMPL_PTP_ERRORS_EXCESSIVE_BD_LENGTH          UINT32_C(0x20)
+	/*
+	 * When this bit is '1', it indicates that one or more of the
+	 * BDs associated with this packet generated a PCI error.
+	 * This probably means the address was not valid.
+	 */
+	#define TX_CMPL_PTP_ERRORS_DMA_ERROR                    UINT32_C(0x40)
+	/*
+	 * When this bit is '1', it indicates that the packet was longer
+	 * than indicated by the hint. No packet was transmitted.
+	 */
+	#define TX_CMPL_PTP_ERRORS_HINT_TOO_SHORT               UINT32_C(0x80)
+	/*
+	 * When this bit is '1', it indicates that the packet was
+	 * dropped due to Poison TLP error on one or more of the
+	 * TLPs in the PXP completion.
+	 */
+	#define TX_CMPL_PTP_ERRORS_POISON_TLP_ERROR             UINT32_C(0x100)
+	/*
+	 * When this bit is '1', it indicates that the packet was dropped due
+	 * to a transient internal error in TDC. The packet or LSO can be
+	 * retried and may transmit successfully on a subsequent attempt.
+	 */
+	#define TX_CMPL_PTP_ERRORS_INTERNAL_ERROR               UINT32_C(0x200)
+	/*
+	 * When this bit is '1', it was not possible to collect a a timestamp
+	 * for a PTP completion, in which case the timestamp_hi and
+	 * timestamp_lo fields are invalid. When this bit is '0' for a PTP
+	 * completion, the timestamp_hi and timestamp_lo fields are valid.
+	 * RJRN will copy the value of this bit into the field of the same
+	 * name in all TX completions, regardless of whether such
+	 * completions are PTP completions or other TX completions.
+	 */
+	#define TX_CMPL_PTP_ERRORS_TIMESTAMP_INVALID_ERROR      UINT32_C(0x400)
+	/* unused2 is 16 b */
+	uint16_t	unused_1;
+	/*
+	 * This is timestamp value (lower 32bits) read from PM for the PTP
+	 * timestamp enabled packet.
+	 */
+	uint32_t	timestamp_lo;
+} __rte_packed;
+
+/* tx_cmpl_ptp_hi (size:128b/16B) */
+struct tx_cmpl_ptp_hi {
+	/*
+	 * This is timestamp value (lower 32bits) read from PM for the PTP
+	 * timestamp enabled packet.
+	 */
+	uint16_t	timestamp_hi[3];
+	uint16_t	reserved16;
+	uint64_t	v2;
+	/*
+	 * This value is written by the NIC such that it will be different for
+	 * each pass through the completion queue.The even passes will write 1.
+	 * The odd passes will write 0
+	 */
+	#define TX_CMPL_PTP_HI_V2     UINT32_C(0x1)
 } __rte_packed;
 
 /* rx_pkt_cmpl (size:128b/16B) */
@@ -3003,6 +3365,639 @@ struct rx_pkt_cmpl_hi {
 	#define RX_PKT_CMPL_REORDER_SFT 0
 } __rte_packed;
 
+/* rx_pkt_v2_cmpl (size:128b/16B) */
+struct rx_pkt_v2_cmpl {
+	uint16_t	flags_type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units. Even values indicate 16B
+	 * records. Odd values indicate 32B
+	 * records.
+	 */
+	#define RX_PKT_V2_CMPL_TYPE_MASK                      UINT32_C(0x3f)
+	#define RX_PKT_V2_CMPL_TYPE_SFT                       0
+	/*
+	 * RX L2 V2 completion:
+	 * Completion of and L2 RX packet. Length = 32B
+	 * This is the new version of the RX_L2 completion used in SR2
+	 * and later chips.
+	 */
+	#define RX_PKT_V2_CMPL_TYPE_RX_L2_V2                    UINT32_C(0xf)
+	#define RX_PKT_V2_CMPL_TYPE_LAST \
+		RX_PKT_V2_CMPL_TYPE_RX_L2_V2
+	#define RX_PKT_V2_CMPL_FLAGS_MASK                     UINT32_C(0xffc0)
+	#define RX_PKT_V2_CMPL_FLAGS_SFT                      6
+	/*
+	 * When this bit is '1', it indicates a packet that has an
+	 * error of some type. Type of error is indicated in
+	 * error_flags.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ERROR                     UINT32_C(0x40)
+	/* This field indicates how the packet was placed in the buffer. */
+	#define RX_PKT_V2_CMPL_FLAGS_PLACEMENT_MASK            UINT32_C(0x380)
+	#define RX_PKT_V2_CMPL_FLAGS_PLACEMENT_SFT             7
+	/*
+	 * Normal:
+	 * Packet was placed using normal algorithm.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_PLACEMENT_NORMAL \
+		(UINT32_C(0x0) << 7)
+	/*
+	 * Jumbo:
+	 * Packet was placed using jumbo algorithm.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_PLACEMENT_JUMBO \
+		(UINT32_C(0x1) << 7)
+	/*
+	 * Header/Data Separation:
+	 * Packet was placed using Header/Data separation algorithm.
+	 * The separation location is indicated by the itype field.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_PLACEMENT_HDS \
+		(UINT32_C(0x2) << 7)
+	/*
+	 * Truncation:
+	 * Packet was placed using truncation algorithm. The
+	 * placed (truncated) length is indicated in the payload_offset
+	 * field. The original length is indicated in the len field.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_PLACEMENT_TRUNCATION \
+		(UINT32_C(0x3) << 7)
+	#define RX_PKT_V2_CMPL_FLAGS_PLACEMENT_LAST \
+		RX_PKT_V2_CMPL_FLAGS_PLACEMENT_TRUNCATION
+	/* This bit is '1' if the RSS field in this completion is valid. */
+	#define RX_PKT_V2_CMPL_FLAGS_RSS_VALID                 UINT32_C(0x400)
+	/*
+	 * This bit is '1' if metadata has been added to the end of the
+	 * packet in host memory. Metadata starts at the first 32B boundary
+	 * after the end of the packet for regular and jumbo placement.
+	 * It starts at the first 32B boundary after the end of the header
+	 * for HDS placement. The length of the metadata is indicated in the
+	 * metadata itself.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_PKT_METADATA_PRESENT      UINT32_C(0x800)
+	/*
+	 * This value indicates what the inner packet determined for the
+	 * packet was.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_MASK                UINT32_C(0xf000)
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_SFT                 12
+	/*
+	 * Not Known:
+	 * Indicates that the packet type was not known.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_NOT_KNOWN \
+		(UINT32_C(0x0) << 12)
+	/*
+	 * IP Packet:
+	 * Indicates that the packet was an IP packet, but further
+	 * classification was not possible.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_IP \
+		(UINT32_C(0x1) << 12)
+	/*
+	 * TCP Packet:
+	 * Indicates that the packet was IP and TCP.
+	 * This indicates that the payload_offset field is valid.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_TCP \
+		(UINT32_C(0x2) << 12)
+	/*
+	 * UDP Packet:
+	 * Indicates that the packet was IP and UDP.
+	 * This indicates that the payload_offset field is valid.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_UDP \
+		(UINT32_C(0x3) << 12)
+	/*
+	 * FCoE Packet:
+	 * Indicates that the packet was recognized as a FCoE.
+	 * This also indicates that the payload_offset field is valid.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_FCOE \
+		(UINT32_C(0x4) << 12)
+	/*
+	 * RoCE Packet:
+	 * Indicates that the packet was recognized as a RoCE.
+	 * This also indicates that the payload_offset field is valid.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_ROCE \
+		(UINT32_C(0x5) << 12)
+	/*
+	 * ICMP Packet:
+	 * Indicates that the packet was recognized as ICMP.
+	 * This indicates that the payload_offset field is valid.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_ICMP \
+		(UINT32_C(0x7) << 12)
+	/*
+	 * PtP packet wo/timestamp:
+	 * Indicates that the packet was recognized as a PtP
+	 * packet.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_PTP_WO_TIMESTAMP \
+		(UINT32_C(0x8) << 12)
+	/*
+	 * PtP packet w/timestamp:
+	 * Indicates that the packet was recognized as a PtP
+	 * packet and that a timestamp was taken for the packet.
+	 */
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP \
+		(UINT32_C(0x9) << 12)
+	#define RX_PKT_V2_CMPL_FLAGS_ITYPE_LAST \
+		RX_PKT_V2_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP
+	/*
+	 * This is the length of the data for the packet stored in the
+	 * buffer(s) identified by the opaque value. This includes
+	 * the packet BD and any associated buffer BDs. This does not include
+	 * the length of any data places in aggregation BDs.
+	 */
+	uint16_t	len;
+	/*
+	 * This is a copy of the opaque field from the RX BD this completion
+	 * corresponds to.
+	 */
+	uint32_t	opaque;
+	uint8_t	agg_bufs_v1;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes
+	 * will write 1. The odd passes will write 0.
+	 */
+	#define RX_PKT_V2_CMPL_V1           UINT32_C(0x1)
+	/*
+	 * This value is the number of aggregation buffers that follow this
+	 * entry in the completion ring that are a part of this packet.
+	 * If the value is zero, then the packet is completely contained
+	 * in the buffer space provided for the packet in the RX ring.
+	 */
+	#define RX_PKT_V2_CMPL_AGG_BUFS_MASK UINT32_C(0x3e)
+	#define RX_PKT_V2_CMPL_AGG_BUFS_SFT 1
+	/* unused1 is 2 b */
+	#define RX_PKT_V2_CMPL_UNUSED1_MASK UINT32_C(0xc0)
+	#define RX_PKT_V2_CMPL_UNUSED1_SFT  6
+	/*
+	 * This is the RSS hash type for the packet. The value is packed
+	 * {tuple_extrac_op[1:0],rss_profile_id[4:0],tuple_extrac_op[2]}.
+	 *
+	 * The value of tuple_extrac_op provides the information about
+	 * what fields the hash was computed on.
+	 * * 0: The RSS hash was computed over source IP address,
+	 * destination IP address, source port, and destination port of inner
+	 * IP and TCP or UDP headers. Note: For non-tunneled packets,
+	 * the packet headers are considered inner packet headers for the RSS
+	 * hash computation purpose.
+	 * * 1: The RSS hash was computed over source IP address and destination
+	 * IP address of inner IP header. Note: For non-tunneled packets,
+	 * the packet headers are considered inner packet headers for the RSS
+	 * hash computation purpose.
+	 * * 2: The RSS hash was computed over source IP address,
+	 * destination IP address, source port, and destination port of
+	 * IP and TCP or UDP headers of outer tunnel headers.
+	 * Note: For non-tunneled packets, this value is not applicable.
+	 * * 3: The RSS hash was computed over source IP address and
+	 * destination IP address of IP header of outer tunnel headers.
+	 * Note: For non-tunneled packets, this value is not applicable.
+	 *
+	 * Note that 4-tuples values listed above are applicable
+	 * for layer 4 protocols supported and enabled for RSS in the hardware,
+	 * HWRM firmware, and drivers. For example, if RSS hash is supported and
+	 * enabled for TCP traffic only, then the values of tuple_extract_op
+	 * corresponding to 4-tuples are only valid for TCP traffic.
+	 */
+	uint8_t	rss_hash_type;
+	uint16_t	metadata1_payload_offset;
+	/*
+	 * This is data from the CFA as indicated by the meta_format field.
+	 * If truncation placement is not used, this value indicates the offset
+	 * in bytes from the beginning of the packet where the inner payload
+	 * starts. This value is valid for TCP, UDP, FCoE, and RoCE packets. If
+	 * truncation placement is used, this value represents the placed
+	 * (truncated) length of the packet.
+	 */
+	#define RX_PKT_V2_CMPL_PAYLOAD_OFFSET_MASK    UINT32_C(0x1ff)
+	#define RX_PKT_V2_CMPL_PAYLOAD_OFFSET_SFT     0
+	/* This is data from the CFA as indicated by the meta_format field. */
+	#define RX_PKT_V2_CMPL_METADATA1_MASK         UINT32_C(0xf000)
+	#define RX_PKT_V2_CMPL_METADATA1_SFT          12
+	/* When meta_format != 0, this value is the VLAN TPID_SEL. */
+	#define RX_PKT_V2_CMPL_METADATA1_TPID_SEL_MASK UINT32_C(0x7000)
+	#define RX_PKT_V2_CMPL_METADATA1_TPID_SEL_SFT  12
+	/* When meta_format != 0, this value is the VLAN TPID_SEL. */
+	#define RX_PKT_V2_CMPL_METADATA1_VALID         UINT32_C(0x8000)
+	/*
+	 * This value is the RSS hash value calculated for the packet
+	 * based on the mode bits and key value in the VNIC. When vee_cmpl_mode
+	 * is set in VNIC context, this is the lower 32b of the host address
+	 * from the first BD used to place the packet.
+	 */
+	uint32_t	rss_hash;
+} __rte_packed;
+
+/* Last 16 bytes of RX Packet V2 Completion Record */
+/* rx_pkt_v2_cmpl_hi (size:128b/16B) */
+struct rx_pkt_v2_cmpl_hi {
+	uint32_t	flags2;
+	/*
+	 * When this bit is '0', the cs_ok field has the following definition:-
+	 * ip_cs_ok[2:0] = The number of header groups with a valid IP checksum
+	 * in the delivered packet, counted from the outer-most header group to
+	 * the inner-most header group, stopping at the first error. -
+	 * l4_cs_ok[5:3] = The number of header groups with a valid L4 checksum
+	 * in the delivered packet, counted from the outer-most header group to
+	 * the inner-most header group, stopping at the first error. When this
+	 * bit is '1', the cs_ok field has the following definition: -
+	 * hdr_cnt[2:0] = The number of header groups that were parsed by the
+	 * chip and passed in the delivered packet. - ip_cs_all_ok[3] =This bit
+	 * will be '1' if all the parsed header groups with an IP checksum are
+	 * valid. - l4_cs_all_ok[4] = This bit will be '1' if all the parsed
+	 * header groups with an L4 checksum are valid.
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_CS_ALL_OK_MODE \
+		UINT32_C(0x8)
+	/* This value indicates what format the metadata field is. */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_MASK \
+		UINT32_C(0xf0)
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_SFT            4
+	/* There is no metadata information. Values are zero. */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_NONE \
+		(UINT32_C(0x0) << 4)
+	/*
+	 * The {metadata1, metadata0} fields contain the vtag
+	 * information: - vtag[19:0] = {valid, tpid_sel[2:0], pri[2:0],
+	 * de, vid[11:0]} The metadata2 field contains the table scope
+	 * and action record pointer. - metadata2[25:0] contains the
+	 * action record pointer. - metadata2[31:26] contains the table
+	 * scope.
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_ACT_REC_PTR \
+		(UINT32_C(0x1) << 4)
+	/*
+	 * The {metadata1, metadata0} fields contain the vtag
+	 * information:
+	 * - vtag[19:0] = {valid, tpid_sel[2:0], pri[2:0], de, vid[11:0]}
+	 * The metadata2 field contains the Tunnel ID
+	 * value, justified to LSB. i
+	 * - VXLAN = VNI[23:0] -> VXLAN Network ID
+	 * - Geneve (NGE) = VNI[23:0] a-> Virtual Network Identifier
+	 * - NVGRE = TNI[23:0] -> Tenant Network ID
+	 * - GRE = KEY[31:0] -> key field with bit mask. zero if K=0
+	 * - IPv4 = 0 (not populated)
+	 * - IPv6 = Flow Label[19:0]
+	 * - PPPoE = sessionID[15:0]
+	 * - MPLs = Outer label[19:0]
+	 * - UPAR = Selected[31:0] with bit mask
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_TUNNEL_ID \
+		(UINT32_C(0x2) << 4)
+	/*
+	 * The {metadata1, metadata0} fields contain the vtag
+	 * information:
+	 * - vtag[19:0] = {valid, tpid_sel[2:0], pri[2:0],de, vid[11:0]}
+	 * The metadata2 field contains the 32b metadata from the prepended
+	 * header (chdr_data).
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_CHDR_DATA \
+		(UINT32_C(0x3) << 4)
+	/*
+	 * The {metadata1, metadata0} fields contain the vtag
+	 * information:
+	 * - vtag[19:0] = {valid, tpid_sel[2:0], pri[2:0], de, vid[11:0]}
+	 * The metadata2 field contains the outer_l3_offset,
+	 * inner_l2_offset, inner_l3_offset, and inner_l4_size.
+	 * - metadata2[8:0] contains the outer_l3_offset.
+	 * - metadata2[17:9] contains the inner_l2_offset.
+	 * - metadata2[26:18] contains the inner_l3_offset.
+	 * - metadata2[31:27] contains the inner_l4_size.
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_HDR_OFFSET \
+		(UINT32_C(0x4) << 4)
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_LAST \
+		RX_PKT_V2_CMPL_HI_FLAGS2_META_FORMAT_HDR_OFFSET
+	/*
+	 * This field indicates the IP type for the inner-most IP header.
+	 * A value of '0' indicates IPv4. A value of '1' indicates IPv6.
+	 * This value is only valid if itype indicates a packet
+	 * with an IP header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_IP_TYPE \
+		UINT32_C(0x100)
+	/*
+	 * This indicates that the complete 1's complement checksum was
+	 * calculated for the packet.
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_COMPLETE_CHECKSUM_CALC \
+		UINT32_C(0x200)
+	/*
+	 * This field indicates the status of IP and L4 CS calculations done
+	 * by the chip. The format of this field is indicated by the
+	 * cs_all_ok_mode bit.
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_CS_OK_MASK \
+		UINT32_C(0xfc00)
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_CS_OK_SFT                  10
+	/*
+	 * This value is the complete 1's complement checksum calculated from
+	 * the start of the outer L3 header to the end of the packet (not
+	 * including the ethernet crc). It is valid when the
+	 * 'complete_checksum_calc' flag is set.
+	 */
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_COMPLETE_CHECKSUM_MASK \
+		UINT32_C(0xffff0000)
+	#define RX_PKT_V2_CMPL_HI_FLAGS2_COMPLETE_CHECKSUM_SFT      16
+	/*
+	 * This is data from the CFA block as indicated by the meta_format
+	 * field.
+	 * - meta_format 0 - none - metadata2 = 0 - not valid/not stripped
+	 * - meta_format 1 - act_rec_ptr - metadata2 = {table_scope[5:0],
+	 *   act_rec_ptr[25:0]}
+	 * - meta_format 2 - tunnel_id - metadata2 = tunnel_id[31:0]
+	 * - meta_format 3 - chdr_data - metadata2 = updated_chdr_data[31:0]
+	 * - meta_format 4 - hdr_offsets - metadata2 = hdr_offsets[31:0]
+	 * When vee_cmpl_mode is set in VNIC context, this is the upper 32b
+	 * of the host address from the first BD used to place the packet.
+	 */
+	uint32_t	metadata2;
+	uint16_t	errors_v2;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes
+	 * will write 1. The odd passes will write 0.
+	 */
+	#define RX_PKT_V2_CMPL_HI_V2 \
+		UINT32_C(0x1)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_MASK \
+		UINT32_C(0xfffe)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_SFT                               1
+	/*
+	 * This error indicates that there was some sort of problem with
+	 * the BDs for the packet that was found after part of the
+	 * packet was already placed. The packet should be treated as
+	 * invalid.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_MASK \
+		UINT32_C(0xe)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_SFT                   1
+	/* No buffer error */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_NO_BUFFER \
+		(UINT32_C(0x0) << 1)
+	/*
+	 * Did Not Fit: Packet did not fit into packet buffer provided.
+	 * For regular placement, this means the packet did not fit in
+	 * the buffer provided. For HDS and jumbo placement, this means
+	 * that the packet could not be placed into 8 physical buffers
+	 * (if fixed-size buffers are used), or that the packet could
+	 * not be placed in the number of physical buffers configured
+	 * for the VNIC (if variable-size buffers are used)
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_DID_NOT_FIT \
+		(UINT32_C(0x1) << 1)
+	/*
+	 * Not On Chip: All BDs needed for the packet were not on-chip
+	 * when the packet arrived. For regular placement, this error is
+	 * not valid. For HDS and jumbo placement, this means that not
+	 * enough agg BDs were posted to place the packet.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_NOT_ON_CHIP \
+		(UINT32_C(0x2) << 1)
+	/*
+	 * Bad Format:
+	 * BDs were not formatted correctly.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_BAD_FORMAT \
+		(UINT32_C(0x3) << 1)
+	/*
+	 * Flush:
+	 * There was a bad_format error on the previous operation
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_FLUSH \
+		(UINT32_C(0x5) << 1)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_LAST \
+		RX_PKT_V2_CMPL_HI_ERRORS_BUFFER_ERROR_FLUSH
+	/*
+	 * This indicates that there was an error in the outer tunnel
+	 * portion of the packet when this field is non-zero.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_MASK \
+		UINT32_C(0x70)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_SFT                   4
+	/*
+	 * No additional error occurred on the outer tunnel portion
+	 * of the packet or the packet does not have a outer tunnel.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_NO_ERROR \
+		(UINT32_C(0x0) << 4)
+	/*
+	 * Indicates that IP header version does not match expectation
+	 * from L2 Ethertype for IPv4 and IPv6 in the outer tunnel header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_OT_L3_BAD_VERSION \
+		(UINT32_C(0x1) << 4)
+	/*
+	 * Indicates that header length is out of range in the outer
+	 * tunnel header. Valid for IPv4.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_OT_L3_BAD_HDR_LEN \
+		(UINT32_C(0x2) << 4)
+	/*
+	 * Indicates that physical packet is shorter than that claimed
+	 * by the outer tunnel l3 header length. Valid for IPv4, or
+	 * IPv6 outer tunnel packets.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_OT_IP_TOTAL_ERROR \
+		(UINT32_C(0x3) << 4)
+	/*
+	 * Indicates that the physical packet is shorter than that
+	 * claimed by the outer tunnel UDP header length for a outer
+	 * tunnel UDP packet that is not fragmented.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_OT_UDP_TOTAL_ERROR \
+		(UINT32_C(0x4) << 4)
+	/*
+	 * Indicates that the IPv4 TTL or IPv6 hop limit check have
+	 * failed (e.g. TTL = 0) in the outer tunnel header. Valid for
+	 * IPv4, and IPv6.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_OT_L3_BAD_TTL \
+		(UINT32_C(0x5) << 4)
+	/*
+	 * Indicates that the IP checksum failed its check in the outer
+	 * tunnel header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_OT_IP_CS_ERROR \
+		(UINT32_C(0x6) << 4)
+	/*
+	 * Indicates that the L4 checksum failed its check in the outer
+	 * tunnel header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_OT_L4_CS_ERROR \
+		(UINT32_C(0x7) << 4)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_LAST \
+		RX_PKT_V2_CMPL_HI_ERRORS_OT_PKT_ERROR_OT_L4_CS_ERROR
+	/*
+	 * This indicates that there was a CRC error on either an FCoE
+	 * or RoCE packet. The itype indicates the packet type.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_CRC_ERROR \
+		UINT32_C(0x100)
+	/*
+	 * This indicates that there was an error in the tunnel portion
+	 * of the packet when this field is non-zero.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_MASK \
+		UINT32_C(0xe00)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_SFT                    9
+	/*
+	 * No additional error occurred on the tunnel portion
+	 * of the packet or the packet does not have a tunnel.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_NO_ERROR \
+		(UINT32_C(0x0) << 9)
+	/*
+	 * Indicates that IP header version does not match expectation
+	 * from L2 Ethertype for IPv4 and IPv6 in the tunnel header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_T_L3_BAD_VERSION \
+		(UINT32_C(0x1) << 9)
+	/*
+	 * Indicates that header length is out of range in the tunnel
+	 * header. Valid for IPv4.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_T_L3_BAD_HDR_LEN \
+		(UINT32_C(0x2) << 9)
+	/*
+	 * Indicates that physical packet is shorter than that claimed
+	 * by the tunnel l3 header length. Valid for IPv4, or IPv6 tunnel
+	 * packet packets.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_T_IP_TOTAL_ERROR \
+		(UINT32_C(0x3) << 9)
+	/*
+	 * Indicates that the physical packet is shorter than that claimed
+	 * by the tunnel UDP header length for a tunnel UDP packet that is
+	 * not fragmented.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_T_UDP_TOTAL_ERROR \
+		(UINT32_C(0x4) << 9)
+	/*
+	 * Indicates that the IPv4 TTL or IPv6 hop limit check have failed
+	 * (e.g. TTL = 0) in the tunnel header. Valid for IPv4, and IPv6.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_T_L3_BAD_TTL \
+		(UINT32_C(0x5) << 9)
+	/*
+	 * Indicates that the IP checksum failed its check in the tunnel
+	 * header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_T_IP_CS_ERROR \
+		(UINT32_C(0x6) << 9)
+	/*
+	 * Indicates that the L4 checksum failed its check in the tunnel
+	 * header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_T_L4_CS_ERROR \
+		(UINT32_C(0x7) << 9)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_LAST \
+		RX_PKT_V2_CMPL_HI_ERRORS_T_PKT_ERROR_T_L4_CS_ERROR
+	/*
+	 * This indicates that there was an error in the inner
+	 * portion of the packet when this
+	 * field is non-zero.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_MASK \
+		UINT32_C(0xf000)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_SFT                      12
+	/*
+	 * No additional error occurred on the tunnel portion
+	 * or the packet of the packet does not have a tunnel.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_NO_ERROR \
+		(UINT32_C(0x0) << 12)
+	/*
+	 * Indicates that IP header version does not match
+	 * expectation from L2 Ethertype for IPv4 and IPv6 or that
+	 * option other than VFT was parsed on
+	 * FCoE packet.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_L3_BAD_VERSION \
+		(UINT32_C(0x1) << 12)
+	/*
+	 * indicates that header length is out of range. Valid for
+	 * IPv4 and RoCE
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_L3_BAD_HDR_LEN \
+		(UINT32_C(0x2) << 12)
+	/*
+	 * indicates that the IPv4 TTL or IPv6 hop limit check
+	 * have failed (e.g. TTL = 0). Valid for IPv4, and IPv6
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_L3_BAD_TTL \
+		(UINT32_C(0x3) << 12)
+	/*
+	 * Indicates that physical packet is shorter than that
+	 * claimed by the l3 header length. Valid for IPv4,
+	 * IPv6 packet or RoCE packets.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_IP_TOTAL_ERROR \
+		(UINT32_C(0x4) << 12)
+	/*
+	 * Indicates that the physical packet is shorter than that
+	 * claimed by the UDP header length for a UDP packet that is
+	 * not fragmented.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_UDP_TOTAL_ERROR \
+		(UINT32_C(0x5) << 12)
+	/*
+	 * Indicates that TCP header length > IP payload. Valid for
+	 * TCP packets only.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_L4_BAD_HDR_LEN \
+		(UINT32_C(0x6) << 12)
+	/* Indicates that TCP header length < 5. Valid for TCP. */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_L4_BAD_HDR_LEN_TOO_SMALL \
+		(UINT32_C(0x7) << 12)
+	/*
+	 * Indicates that TCP option headers result in a TCP header
+	 * size that does not match data offset in TCP header. Valid
+	 * for TCP.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_L4_BAD_OPT_LEN \
+		(UINT32_C(0x8) << 12)
+	/*
+	 * Indicates that the IP checksum failed its check in the
+	 * inner header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_IP_CS_ERROR \
+		(UINT32_C(0x9) << 12)
+	/*
+	 * Indicates that the L4 checksum failed its check in the
+	 * inner header.
+	 */
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_L4_CS_ERROR \
+		(UINT32_C(0xa) << 12)
+	#define RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_LAST \
+		RX_PKT_V2_CMPL_HI_ERRORS_PKT_ERROR_L4_CS_ERROR
+	/*
+	 * This is data from the CFA block as indicated by the meta_format
+	 * field.
+	 */
+	uint16_t	metadata0;
+	/* When meta_format=1, this value is the VLAN VID. */
+	#define RX_PKT_V2_CMPL_HI_METADATA0_VID_MASK UINT32_C(0xfff)
+	#define RX_PKT_V2_CMPL_HI_METADATA0_VID_SFT 0
+	/* When meta_format=1, this value is the VLAN DE. */
+	#define RX_PKT_V2_CMPL_HI_METADATA0_DE      UINT32_C(0x1000)
+	/* When meta_format=1, this value is the VLAN PRI. */
+	#define RX_PKT_V2_CMPL_HI_METADATA0_PRI_MASK UINT32_C(0xe000)
+	#define RX_PKT_V2_CMPL_HI_METADATA0_PRI_SFT 13
+	/*
+	 * The timestamp field contains the 32b timestamp for the packet from
+	 * the MAC.
+	 */
+	uint32_t	timestamp;
+} __rte_packed;
+
 /*
  * This TPA completion structure is used on devices where the
  * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
@@ -3288,6 +4283,430 @@ struct rx_tpa_start_cmpl_hi {
 /*
  * This TPA completion structure is used on devices where the
  * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
+ * RX L2 TPA Start V2 Completion Record (32 bytes split to 2 16-byte
+ * struct)
+ */
+/* rx_tpa_start_v2_cmpl (size:128b/16B) */
+struct rx_tpa_start_v2_cmpl {
+	uint16_t	flags_type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units. Even values indicate 16B
+	 * records. Odd values indicate 32B
+	 * records.
+	 */
+	#define RX_TPA_START_V2_CMPL_TYPE_MASK \
+		UINT32_C(0x3f)
+	#define RX_TPA_START_V2_CMPL_TYPE_SFT                       0
+	/*
+	 * RX L2 TPA Start V2 Completion:
+	 * Completion at the beginning of a TPA operation.
+	 * Length = 32B
+	 * This is the new version of the RX_TPA_START completion used
+	 * in SR2 and later chips.
+	 */
+	#define RX_TPA_START_V2_CMPL_TYPE_RX_TPA_START_V2 \
+		UINT32_C(0xd)
+	#define RX_TPA_START_V2_CMPL_TYPE_LAST \
+		RX_TPA_START_V2_CMPL_TYPE_RX_TPA_START_V2
+	#define RX_TPA_START_V2_CMPL_FLAGS_MASK \
+		UINT32_C(0xffc0)
+	#define RX_TPA_START_V2_CMPL_FLAGS_SFT                      6
+	/*
+	 * When this bit is '1', it indicates a packet that has an error
+	 * of some type. Type of error is indicated in error_flags.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_ERROR \
+		UINT32_C(0x40)
+	/* This field indicates how the packet was placed in the buffer. */
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_MASK \
+		UINT32_C(0x380)
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_SFT             7
+	/*
+	 * Jumbo:
+	 * TPA Packet was placed using jumbo algorithm. This means
+	 * that the first buffer will be filled with data before
+	 * moving to aggregation buffers. Each aggregation buffer
+	 * will be filled before moving to the next aggregation
+	 * buffer.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_JUMBO \
+		(UINT32_C(0x1) << 7)
+	/*
+	 * Header/Data Separation:
+	 * Packet was placed using Header/Data separation algorithm.
+	 * The separation location is indicated by the itype field.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_HDS \
+		(UINT32_C(0x2) << 7)
+	/*
+	 * IOC/Jumbo:
+	 * Packet will be placed using In-Order Completion/Jumbo where
+	 * the first packet of the aggregation is placed using Jumbo
+	 * Placement. Subsequent packets will be placed such that each
+	 * packet starts at the beginning of an aggregation buffer.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_IOC_JUMBO \
+		(UINT32_C(0x4) << 7)
+	/*
+	 * GRO/Jumbo:
+	 * Packet will be placed using GRO/Jumbo where the first
+	 * packet is filled with data. Subsequent packets will be
+	 * placed such that any one packet does not span two
+	 * aggregation buffers unless it starts at the beginning of
+	 * an aggregation buffer.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_GRO_JUMBO \
+		(UINT32_C(0x5) << 7)
+	/*
+	 * GRO/Header-Data Separation:
+	 * Packet will be placed using GRO/HDS where the header
+	 * is in the first packet.
+	 * Payload of each packet will be
+	 * placed such that any one packet does not span two
+	 * aggregation buffers unless it starts at the beginning of
+	 * an aggregation buffer.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_GRO_HDS \
+		(UINT32_C(0x6) << 7)
+	/*
+	 * IOC/Header-Data Separation:
+	 * Packet will be placed using In-Order Completion/HDS where
+	 * the header is in the first packet buffer. Payload of each
+	 * packet will be placed such that each packet starts at the
+	 * beginning of an aggregation buffer.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_IOC_HDS \
+		(UINT32_C(0x7) << 7)
+	#define RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_LAST \
+		RX_TPA_START_V2_CMPL_FLAGS_PLACEMENT_IOC_HDS
+	/* This bit is '1' if the RSS field in this completion is valid. */
+	#define RX_TPA_START_V2_CMPL_FLAGS_RSS_VALID \
+		UINT32_C(0x400)
+	/*
+	 * This bit is '1' if metadata has been added to the end of the
+	 * packet in host memory. Metadata starts at the first 32B boundary
+	 * after the end of the packet for regular and jumbo placement. It
+	 * starts at the first 32B boundary after the end of the header for
+	 * HDS placement. The length of the metadata is indicated in the
+	 * metadata itself.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_PKT_METADATA_PRESENT \
+		UINT32_C(0x800)
+	/*
+	 * This value indicates what the inner packet determined for the
+	 * packet was.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_ITYPE_MASK \
+		UINT32_C(0xf000)
+	#define RX_TPA_START_V2_CMPL_FLAGS_ITYPE_SFT                 12
+	/*
+	 * TCP Packet:
+	 * Indicates that the packet was IP and TCP.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS_ITYPE_TCP \
+		(UINT32_C(0x2) << 12)
+	#define RX_TPA_START_V2_CMPL_FLAGS_ITYPE_LAST \
+		RX_TPA_START_V2_CMPL_FLAGS_ITYPE_TCP
+	/*
+	 * This value indicates the amount of packet data written to the
+	 * buffer the opaque field in this completion corresponds to.
+	 */
+	uint16_t	len;
+	/*
+	 * This is a copy of the opaque field from the RX BD this completion
+	 * corresponds to. If the VNIC is configured to not use an Rx BD for
+	 * the TPA Start completion, then this is a copy of the opaque field
+	 * from the first BD used to place the TPA Start packet.
+	 */
+	uint32_t	opaque;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes
+	 * will write 1. The odd passes will write 0.
+	 */
+	uint8_t	v1;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes
+	 * will write 1. The odd passes will write 0.
+	 */
+	#define RX_TPA_START_V2_CMPL_V1 UINT32_C(0x1)
+	#define RX_TPA_START_V2_CMPL_LAST RX_TPA_START_V2_CMPL_V1
+	/*
+	 * This is the RSS hash type for the packet. The value is packed
+	 * {tuple_extrac_op[1:0],rss_profile_id[4:0],tuple_extrac_op[2]}.
+	 *
+	 * The value of tuple_extrac_op provides the information about
+	 * what fields the hash was computed on.
+	 * * 0: The RSS hash was computed over source IP address,
+	 * destination IP address, source port, and destination port of inner
+	 * IP and TCP or UDP headers. Note: For non-tunneled packets,
+	 * the packet headers are considered inner packet headers for the RSS
+	 * hash computation purpose.
+	 * * 1: The RSS hash was computed over source IP address and destination
+	 * IP address of inner IP header. Note: For non-tunneled packets,
+	 * the packet headers are considered inner packet headers for the RSS
+	 * hash computation purpose.
+	 * * 2: The RSS hash was computed over source IP address,
+	 * destination IP address, source port, and destination port of
+	 * IP and TCP or UDP headers of outer tunnel headers.
+	 * Note: For non-tunneled packets, this value is not applicable.
+	 * * 3: The RSS hash was computed over source IP address and
+	 * destination IP address of IP header of outer tunnel headers.
+	 * Note: For non-tunneled packets, this value is not applicable.
+	 *
+	 * Note that 4-tuples values listed above are applicable
+	 * for layer 4 protocols supported and enabled for RSS in the hardware,
+	 * HWRM firmware, and drivers. For example, if RSS hash is supported and
+	 * enabled for TCP traffic only, then the values of tuple_extract_op
+	 * corresponding to 4-tuples are only valid for TCP traffic.
+	 */
+	uint8_t	rss_hash_type;
+	/*
+	 * This is the aggregation ID that the completion is associated
+	 * with. Use this number to correlate the TPA start completion
+	 * with the TPA end completion.
+	 */
+	uint16_t	agg_id;
+	/*
+	 * This is the aggregation ID that the completion is associated
+	 * with. Use this number to correlate the TPA start completion
+	 * with the TPA end completion.
+	 */
+	#define RX_TPA_START_V2_CMPL_AGG_ID_MASK            UINT32_C(0xfff)
+	#define RX_TPA_START_V2_CMPL_AGG_ID_SFT             0
+	#define RX_TPA_START_V2_CMPL_METADATA1_MASK         UINT32_C(0xf000)
+	#define RX_TPA_START_V2_CMPL_METADATA1_SFT          12
+	/* When meta_format != 0, this value is the VLAN TPID_SEL. */
+	#define RX_TPA_START_V2_CMPL_METADATA1_TPID_SEL_MASK UINT32_C(0x7000)
+	#define RX_TPA_START_V2_CMPL_METADATA1_TPID_SEL_SFT  12
+	/* When meta_format != 0, this value is the VLAN valid. */
+	#define RX_TPA_START_V2_CMPL_METADATA1_VALID         UINT32_C(0x8000)
+	/*
+	 * This value is the RSS hash value calculated for the packet
+	 * based on the mode bits and key value in the VNIC.
+	 * When vee_cmpl_mode is set in VNIC context, this is the lower
+	 * 32b of the host address from the first BD used to place the packet.
+	 */
+	uint32_t	rss_hash;
+} __rte_packed;
+
+/*
+ * Last 16 bytes of RX L2 TPA Start V2 Completion Record
+ *
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
+ */
+/* rx_tpa_start_v2_cmpl_hi (size:128b/16B) */
+struct rx_tpa_start_v2_cmpl_hi {
+	uint32_t	flags2;
+	/* This indicates that the aggregation was done using GRO rules. */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_AGG_GRO \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '0', the cs_ok field has the following definition:-
+	 * ip_cs_ok[2:0] = The number of header groups with a valid IP checksum
+	 * in the delivered packet, counted from the outer-most header group to
+	 * the inner-most header group, stopping at the first error. -
+	 * l4_cs_ok[5:3] = The number of header groups with a valid L4 checksum
+	 * in the delivered packet, counted from the outer-most header group to
+	 * the inner-most header group, stopping at the first error. When this
+	 * bit is '1', the cs_ok field has the following definition: -
+	 * hdr_cnt[2:0] = The number of header groups that were parsed by the
+	 * chip and passed in the delivered packet. - ip_cs_all_ok[3] =This bit
+	 * will be '1' if all the parsed header groups with an IP checksum are
+	 * valid. - l4_cs_all_ok[4] = This bit will be '1' if all the parsed
+	 * header groups with an L4 checksum are valid.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_CS_ALL_OK_MODE \
+		UINT32_C(0x8)
+	/* This value indicates what format the metadata field is. */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_MASK \
+		UINT32_C(0xf0)
+	#define RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_SFT            4
+	/* There is no metadata information. Values are zero. */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_NONE \
+		(UINT32_C(0x0) << 4)
+	/*
+	 * The {metadata1, metadata0} fields contain the vtag
+	 * information: - vtag[19:0] = {valid, tpid_sel[2:0], pri[2:0],
+	 * de, vid[11:0]} The metadata2 field contains the table scope
+	 * and action record pointer. - metadata2[25:0] contains the
+	 * action record pointer. - metadata2[31:26] contains the table
+	 * scope.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_ACT_REC_PTR \
+		(UINT32_C(0x1) << 4)
+	/*
+	 * The {metadata1, metadata0} fields contain the vtag
+	 * information:
+	 * - vtag[19:0] = {valid, tpid_sel[2:0], pri[2:0], de, vid[11:0]}
+	 * The metadata2 field contains the Tunnel ID
+	 * value, justified to LSB. i
+	 * - VXLAN = VNI[23:0] -> VXLAN Network ID
+	 * - Geneve (NGE) = VNI[23:0] a-> Virtual Network Identifier
+	 * - NVGRE = TNI[23:0] -> Tenant Network ID
+	 * - GRE = KEY[31:0] -> key field with bit mask. zero if K=0
+	 * - IPv4 = 0 (not populated)
+	 * - IPv6 = Flow Label[19:0]
+	 * - PPPoE = sessionID[15:0]
+	 * - MPLs = Outer label[19:0]
+	 * - UPAR = Selected[31:0] with bit mask
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_TUNNEL_ID \
+		(UINT32_C(0x2) << 4)
+	/*
+	 * The {metadata1, metadata0} fields contain the vtag
+	 * information:
+	 * - vtag[19:0] = {valid, tpid_sel[2:0], pri[2:0],de, vid[11:0]}
+	 * The metadata2 field contains the 32b metadata from the prepended
+	 * header (chdr_data).
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_CHDR_DATA \
+		(UINT32_C(0x3) << 4)
+	/*
+	 * The {metadata1, metadata0} fields contain the vtag
+	 * information:
+	 * - vtag[19:0] = {valid, tpid_sel[2:0], pri[2:0], de, vid[11:0]}
+	 * The metadata2 field contains the outer_l3_offset,
+	 * inner_l2_offset, inner_l3_offset, and inner_l4_size.
+	 * - metadata2[8:0] contains the outer_l3_offset.
+	 * - metadata2[17:9] contains the inner_l2_offset.
+	 * - metadata2[26:18] contains the inner_l3_offset.
+	 * - metadata2[31:27] contains the inner_l4_size.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_HDR_OFFSET \
+		(UINT32_C(0x4) << 4)
+	#define RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_LAST \
+		RX_TPA_START_V2_CMPL_FLAGS2_META_FORMAT_HDR_OFFSET
+	/*
+	 * This field indicates the IP type for the inner-most IP header.
+	 * A value of '0' indicates IPv4. A value of '1' indicates IPv6.
+	 * This value is only valid if itype indicates a packet
+	 * with an IP header.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_IP_TYPE \
+		UINT32_C(0x100)
+	/*
+	 * This indicates that the complete 1's complement checksum was
+	 * calculated for the packet in the affregation.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_COMPLETE_CHECKSUM_CALC \
+		UINT32_C(0x200)
+	/*
+	 * This field indicates the status of IP and L4 CS calculations done
+	 * by the chip. The format of this field is indicated by the
+	 * cs_all_ok_mode bit.
+	 * CS status for TPA packets is always valid. This means that "all_ok"
+	 * status will always be set. The ok count status will be set
+	 * appropriately for the packet header, such that all existing CS
+	 * values are ok.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_CS_OK_MASK \
+		UINT32_C(0xfc00)
+	#define RX_TPA_START_V2_CMPL_FLAGS2_CS_OK_SFT                  10
+	/*
+	 * This value is the complete 1's complement checksum calculated from
+	 * the start of the outer L3 header to the end of the packet (not
+	 * including the ethernet crc). It is valid when the
+	 * 'complete_checksum_calc' flag is set. For TPA Start completions,
+	 * the complete checksum is calculated for the first packet in the
+	 * aggregation only.
+	 */
+	#define RX_TPA_START_V2_CMPL_FLAGS2_COMPLETE_CHECKSUM_MASK \
+		UINT32_C(0xffff0000)
+	#define RX_TPA_START_V2_CMPL_FLAGS2_COMPLETE_CHECKSUM_SFT      16
+	/*
+	 * This is data from the CFA block as indicated by the meta_format
+	 * field.
+	 * - meta_format 0 - none - metadata2 = 0 - not valid/not stripped
+	 * - meta_format 1 - act_rec_ptr - metadata2 = {table_scope[5:0],
+	 *   act_rec_ptr[25:0]}
+	 * - meta_format 2 - tunnel_id - metadata2 = tunnel_id[31:0]
+	 * - meta_format 3 - chdr_data - metadata2 = updated_chdr_data[31:0]
+	 * - meta_format 4 - hdr_offsets - metadata2 = hdr_offsets[31:0]
+	 * When vee_cmpl_mode is set in VNIC context, this is the upper 32b
+	 * of the host address from the first BD used to place the packet.
+	 */
+	uint32_t	metadata2;
+	uint16_t	errors_v2;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes
+	 * will write 1. The odd passes will write 0.
+	 */
+	#define RX_TPA_START_V2_CMPL_V2 \
+		UINT32_C(0x1)
+	#define RX_TPA_START_V2_CMPL_ERRORS_MASK \
+		UINT32_C(0xfffe)
+	#define RX_TPA_START_V2_CMPL_ERRORS_SFT                     1
+	/*
+	 * This error indicates that there was some sort of problem with
+	 * the BDs for the packetThe packet should be treated as
+	 * invalid.
+	 */
+	#define RX_TPA_START_V2_CMPL_ERRORS_BUFFER_ERROR_MASK \
+		UINT32_C(0xe)
+	#define RX_TPA_START_V2_CMPL_ERRORS_BUFFER_ERROR_SFT         1
+	/* No buffer error */
+	#define RX_TPA_START_V2_CMPL_ERRORS_BUFFER_ERROR_NO_BUFFER \
+		(UINT32_C(0x0) << 1)
+	/*
+	 * Did Not Fit:
+	 * Packet did not fit into packet buffer provided. This means
+	 * that the TPA Start packet was too big to be placed into the
+	 * per-packet maximum number of physical buffers configured for
+	 * the VNIC, or that it was too big to be placed into the
+	 * per-aggregation maximum number of physical buffers configured
+	 * for the VNIC. This error only occurs when the VNIC is
+	 * configured for variable size receive buffers.
+	 */
+	#define RX_TPA_START_V2_CMPL_ERRORS_BUFFER_ERROR_DID_NOT_FIT \
+		(UINT32_C(0x1) << 1)
+	/*
+	 * Bad Format:
+	 * BDs were not formatted correctly.
+	 */
+	#define RX_TPA_START_V2_CMPL_ERRORS_BUFFER_ERROR_BAD_FORMAT \
+		(UINT32_C(0x3) << 1)
+	/*
+	 * Flush:
+	 * There was a bad_format error on the previous operation
+	 */
+	#define RX_TPA_START_V2_CMPL_ERRORS_BUFFER_ERROR_FLUSH \
+		(UINT32_C(0x5) << 1)
+	#define RX_TPA_START_V2_CMPL_ERRORS_BUFFER_ERROR_LAST \
+		RX_TPA_START_V2_CMPL_ERRORS_BUFFER_ERROR_FLUSH
+	/*
+	 * This is data from the CFA block as indicated by the meta_format
+	 * field.
+	 */
+	uint16_t	metadata0;
+	/* When meta_format != 0, this value is the VLAN VID. */
+	#define RX_TPA_START_V2_CMPL_METADATA0_VID_MASK UINT32_C(0xfff)
+	#define RX_TPA_START_V2_CMPL_METADATA0_VID_SFT 0
+	/* When meta_format != 0, this value is the VLAN DE. */
+	#define RX_TPA_START_V2_CMPL_METADATA0_DE      UINT32_C(0x1000)
+	/* When meta_format != 0, this value is the VLAN PRI. */
+	#define RX_TPA_START_V2_CMPL_METADATA0_PRI_MASK UINT32_C(0xe000)
+	#define RX_TPA_START_V2_CMPL_METADATA0_PRI_SFT 13
+	/*
+	 * This field contains the outer_l3_offset, inner_l2_offset,
+	 * inner_l3_offset, and inner_l4_size.
+	 *
+	 * hdr_offsets[8:0] contains the outer_l3_offset.
+	 * hdr_offsets[17:9] contains the inner_l2_offset.
+	 * hdr_offsets[26:18] contains the inner_l3_offset.
+	 * hdr_offsets[31:27] contains the inner_l4_size.
+	 */
+	uint32_t	hdr_offsets;
+} __rte_packed;
+
+/*
+ * This TPA completion structure is used on devices where the
+ * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
  */
 /* rx_tpa_end_cmpl (size:128b/16B) */
 struct rx_tpa_end_cmpl {
@@ -3299,27 +4718,27 @@ struct rx_tpa_end_cmpl {
 	 * records. Odd values indicate 32B
 	 * records.
 	 */
-	#define RX_TPA_END_CMPL_TYPE_MASK                UINT32_C(0x3f)
-	#define RX_TPA_END_CMPL_TYPE_SFT                 0
+	#define RX_TPA_END_CMPL_TYPE_MASK                      UINT32_C(0x3f)
+	#define RX_TPA_END_CMPL_TYPE_SFT                       0
 	/*
 	 * RX L2 TPA End Completion:
 	 * Completion at the end of a TPA operation.
 	 * Length = 32B
 	 */
-	#define RX_TPA_END_CMPL_TYPE_RX_TPA_END            UINT32_C(0x15)
+	#define RX_TPA_END_CMPL_TYPE_RX_TPA_END                  UINT32_C(0x15)
 	#define RX_TPA_END_CMPL_TYPE_LAST \
 		RX_TPA_END_CMPL_TYPE_RX_TPA_END
-	#define RX_TPA_END_CMPL_FLAGS_MASK               UINT32_C(0xffc0)
-	#define RX_TPA_END_CMPL_FLAGS_SFT                6
+	#define RX_TPA_END_CMPL_FLAGS_MASK                     UINT32_C(0xffc0)
+	#define RX_TPA_END_CMPL_FLAGS_SFT                      6
 	/*
 	 * When this bit is '1', it indicates a packet that has an
 	 * error of some type. Type of error is indicated in
 	 * error_flags.
 	 */
-	#define RX_TPA_END_CMPL_FLAGS_ERROR               UINT32_C(0x40)
+	#define RX_TPA_END_CMPL_FLAGS_ERROR                     UINT32_C(0x40)
 	/* This field indicates how the packet was placed in the buffer. */
-	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_MASK      UINT32_C(0x380)
-	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_SFT       7
+	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_MASK            UINT32_C(0x380)
+	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_SFT             7
 	/*
 	 * Jumbo:
 	 * TPA Packet was placed using jumbo algorithm. This means
@@ -3337,6 +4756,15 @@ struct rx_tpa_end_cmpl {
 	 */
 	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_HDS \
 		(UINT32_C(0x2) << 7)
+	/*
+	 * IOC/Jumbo:
+	 * Packet will be placed using In-Order Completion/Jumbo where
+	 * the first packet of the aggregation is placed using Jumbo
+	 * Placement. Subsequent packets will be placed such that each
+	 * packet starts at the beginning of an aggregation buffer.
+	 */
+	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_IOC_JUMBO \
+		(UINT32_C(0x4) << 7)
 	/*
 	 * GRO/Jumbo:
 	 * Packet will be placed using GRO/Jumbo where the first
@@ -3358,11 +4786,28 @@ struct rx_tpa_end_cmpl {
 	 */
 	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_GRO_HDS \
 		(UINT32_C(0x6) << 7)
+	/*
+	 * IOC/Header-Data Separation:
+	 * Packet will be placed using In-Order Completion/HDS where
+	 * the header is in the first packet buffer. Payload of each
+	 * packet will be placed such that each packet starts at the
+	 * beginning of an aggregation buffer.
+	 */
+	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_IOC_HDS \
+		(UINT32_C(0x7) << 7)
 	#define RX_TPA_END_CMPL_FLAGS_PLACEMENT_LAST \
-		RX_TPA_END_CMPL_FLAGS_PLACEMENT_GRO_HDS
-	/* unused is 2 b */
-	#define RX_TPA_END_CMPL_FLAGS_UNUSED_MASK         UINT32_C(0xc00)
-	#define RX_TPA_END_CMPL_FLAGS_UNUSED_SFT          10
+		RX_TPA_END_CMPL_FLAGS_PLACEMENT_IOC_HDS
+	/* unused is 1 b */
+	#define RX_TPA_END_CMPL_FLAGS_UNUSED                    UINT32_C(0x400)
+	/*
+	 * This bit is '1' if metadata has been added to the end of the
+	 * packet in host memory. Metadata starts at the first 32B boundary
+	 * after the end of the packet for regular and jumbo placement.
+	 * It starts at the first 32B boundary after the end of the header
+	 * for HDS placement. The length of the metadata is indicated in the
+	 * metadata itself.
+	 */
+	#define RX_TPA_END_CMPL_FLAGS_PKT_METADATA_PRESENT      UINT32_C(0x800)
 	/*
 	 * This value indicates what the inner packet determined for the
 	 * packet was.
@@ -3372,8 +4817,9 @@ struct rx_tpa_end_cmpl {
 	 *     field is valid and contains the TCP checksum.
 	 *     This also indicates that the payload_offset field is valid.
 	 */
-	#define RX_TPA_END_CMPL_FLAGS_ITYPE_MASK          UINT32_C(0xf000)
-	#define RX_TPA_END_CMPL_FLAGS_ITYPE_SFT           12
+	#define RX_TPA_END_CMPL_FLAGS_ITYPE_MASK \
+		UINT32_C(0xf000)
+	#define RX_TPA_END_CMPL_FLAGS_ITYPE_SFT                 12
 	/*
 	 * This value is zero for TPA End completions.
 	 * There is no data in the buffer that corresponds to the opaque
@@ -4241,6 +5687,52 @@ struct rx_abuf_cmpl {
 	#define RX_ABUF_CMPL_V     UINT32_C(0x1)
 	/* unused3 is 32 b */
 	uint32_t	unused_2;
+} __rte_packed;
+
+/* VEE FLUSH Completion Record (16 bytes) */
+/* vee_flush (size:128b/16B) */
+struct vee_flush {
+	uint32_t	downstream_path_type;
+	/*
+	 * This field indicates the exact type of the completion.
+	 * By convention, the LSB identifies the length of the
+	 * record in 16B units. Even values indicate 16B
+	 * records. Odd values indicate 32B
+	 * records.
+	 */
+	#define VEE_FLUSH_TYPE_MASK           UINT32_C(0x3f)
+	#define VEE_FLUSH_TYPE_SFT            0
+	/*
+	 * VEE Flush Completion:
+	 * This completion is inserted manually by the Primate and processed
+	 * by the VEE hardware to ensure that all completions on a VEE
+	 * function have been processed by the VEE hardware before FLR
+	 * process is completed.
+	 */
+	#define VEE_FLUSH_TYPE_VEE_FLUSH        UINT32_C(0x1c)
+	#define VEE_FLUSH_TYPE_LAST            VEE_FLUSH_TYPE_VEE_FLUSH
+	/* downstream_path is 1 b */
+	#define VEE_FLUSH_DOWNSTREAM_PATH     UINT32_C(0x40)
+	/* This completion is associated with VEE Transmit */
+	#define VEE_FLUSH_DOWNSTREAM_PATH_TX    (UINT32_C(0x0) << 6)
+	/* This completion is associated with VEE Receive */
+	#define VEE_FLUSH_DOWNSTREAM_PATH_RX    (UINT32_C(0x1) << 6)
+	#define VEE_FLUSH_DOWNSTREAM_PATH_LAST VEE_FLUSH_DOWNSTREAM_PATH_RX
+	/*
+	 * This is an opaque value that is passed through the completion
+	 * to the VEE handler SW and is used to indicate what VEE VQ or
+	 * function has completed FLR processing.
+	 */
+	uint32_t	opaque;
+	uint32_t	v;
+	/*
+	 * This value is written by the NIC such that it will be different
+	 * for each pass through the completion queue. The even passes will
+	 * write 1. The odd passes will write 0.
+	 */
+	#define VEE_FLUSH_V     UINT32_C(0x1)
+	/* unused3 is 32 b */
+	uint32_t	unused_3;
 } __rte_packed;
 
 /* eject_cmpl (size:128b/16B) */
@@ -7476,6 +8968,8 @@ struct hwrm_func_qcaps_input {
 	 * Function ID of the function that is being queried.
 	 * 0xFF... (All Fs) if the query is for the requesting
 	 * function.
+	 * 0xFFFE (REQUESTING_PARENT_FID) This is a special FID
+	 * to be used by a trusted VF to query its parent PF.
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
@@ -7730,6 +9224,12 @@ struct hwrm_func_qcaps_output {
 	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PFC_WD_STATS_SUPPORTED \
 		UINT32_C(0x40000000)
 	/*
+	 * When this bit is '1', it indicates that core firmware supports
+	 * DBG_QCAPS command
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_DBG_QCAPS_CMD_SUPPORTED \
+		UINT32_C(0x80000000)
+	/*
 	 * This value is current MAC address configured for this
 	 * function. A value of 00-00-00-00-00-00 indicates no
 	 * MAC address is currently configured.
@@ -7854,6 +9354,19 @@ struct hwrm_func_qcaps_output {
 	 */
 	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_ECN_STATS_SUPPORTED \
 		UINT32_C(0x2)
+	/*
+	 * If 1, the device can report extended hw statistics (including
+	 * additional tpa statistics).
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_EXT_HW_STATS_SUPPORTED \
+		UINT32_C(0x4)
+	/*
+	 * If set to 1, then the core firmware has support to enable/
+	 * disable hot reset support for interface dynamically through
+	 * HWRM_FUNC_CFG.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_HOT_RESET_IF_SUPPORT \
+		UINT32_C(0x8)
 	uint8_t	unused_1[3];
 	/*
 	 * This field is used in Output records to indicate that the output
@@ -7904,6 +9417,8 @@ struct hwrm_func_qcfg_input {
 	 * Function ID of the function that is being queried.
 	 * 0xFF... (All Fs) if the query is for the requesting
 	 * function.
+	 * 0xFFFE (REQUESTING_PARENT_FID) This is a special FID
+	 * to be used by a trusted VF to query its parent PF.
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
@@ -8013,6 +9528,15 @@ struct hwrm_func_qcfg_output {
 	 */
 	#define HWRM_FUNC_QCFG_OUTPUT_FLAGS_PREBOOT_LEGACY_L2_RINGS \
 		UINT32_C(0x100)
+	/*
+	 * If set to 1, then the firmware and all currently registered driver
+	 * instances support hot reset. The hot reset support will be updated
+	 * dynamically based on the driver interface advertisement.
+	 * If set to 0, then the adapter is not currently able to initiate
+	 * hot reset.
+	 */
+	#define HWRM_FUNC_QCFG_OUTPUT_FLAGS_HOT_RESET_ALLOWED \
+		UINT32_C(0x200)
 	/*
 	 * This value is current MAC address configured for this
 	 * function. A value of 00-00-00-00-00-00 indicates no
@@ -8565,6 +10089,17 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_FLAGS_PREBOOT_LEGACY_L2_RINGS \
 		UINT32_C(0x2000000)
+	/*
+	 * If this bit is set to 0, then the interface does not support hot
+	 * reset capability which it advertised with the hot_reset_support
+	 * flag in HWRM_FUNC_DRV_RGTR. If any of the function has set this
+	 * flag to 0, adapter cannot do the hot reset. In this state, if the
+	 * firmware receives a hot reset request, firmware must fail the
+	 * request. If this bit is set to 1, then interface is renabling the
+	 * hot reset capability.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_FLAGS_HOT_RESET_IF_EN_DIS \
+		UINT32_C(0x4000000)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the mtu field to be
@@ -8704,6 +10239,12 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_ENABLES_ADMIN_LINK_STATE \
 		UINT32_C(0x400000)
+	/*
+	 * This bit must be '1' for the hot_reset_if_en_dis field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES_HOT_RESET_IF_SUPPORT \
+		UINT32_C(0x800000)
 	/*
 	 * The maximum transmission unit of the function.
 	 * The HWRM should make sure that the mtu of
@@ -9036,15 +10577,21 @@ struct hwrm_func_qstats_input {
 	/* This flags indicates the type of statistics request. */
 	uint8_t	flags;
 	/* This value is not used to avoid backward compatibility issues. */
-	#define HWRM_FUNC_QSTATS_INPUT_FLAGS_UNUSED    UINT32_C(0x0)
+	#define HWRM_FUNC_QSTATS_INPUT_FLAGS_UNUSED       UINT32_C(0x0)
 	/*
 	 * flags should be set to 1 when request is for only RoCE statistics.
 	 * This will be honored only if the caller_fid is a privileged PF.
 	 * In all other cases FID and caller_fid should be the same.
 	 */
-	#define HWRM_FUNC_QSTATS_INPUT_FLAGS_ROCE_ONLY UINT32_C(0x1)
+	#define HWRM_FUNC_QSTATS_INPUT_FLAGS_ROCE_ONLY    UINT32_C(0x1)
+	/*
+	 * flags should be set to 2 when request is for the counter mask,
+	 * representing the width of each of the stats counters, rather
+	 * than counters themselves.
+	 */
+	#define HWRM_FUNC_QSTATS_INPUT_FLAGS_COUNTER_MASK UINT32_C(0x2)
 	#define HWRM_FUNC_QSTATS_INPUT_FLAGS_LAST \
-		HWRM_FUNC_QSTATS_INPUT_FLAGS_ROCE_ONLY
+		HWRM_FUNC_QSTATS_INPUT_FLAGS_COUNTER_MASK
 	uint8_t	unused_0[5];
 } __rte_packed;
 
@@ -9119,6 +10666,132 @@ struct hwrm_func_qstats_output {
 	uint64_t	rx_agg_events;
 	/* Number of aborted aggregations on the function. */
 	uint64_t	rx_agg_aborts;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/************************
+ * hwrm_func_qstats_ext *
+ ************************/
+
+
+/* hwrm_func_qstats_ext_input (size:192b/24B) */
+struct hwrm_func_qstats_ext_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Function ID of the function that is being queried.
+	 * 0xFF... (All Fs) if the query is for the requesting
+	 * function.
+	 * A privileged PF can query for other function's statistics.
+	 */
+	uint16_t	fid;
+	/* This flags indicates the type of statistics request. */
+	uint8_t	flags;
+	/* This value is not used to avoid backward compatibility issues. */
+	#define HWRM_FUNC_QSTATS_EXT_INPUT_FLAGS_UNUSED       UINT32_C(0x0)
+	/*
+	 * flags should be set to 1 when request is for only RoCE statistics.
+	 * This will be honored only if the caller_fid is a privileged PF.
+	 * In all other cases FID and caller_fid should be the same.
+	 */
+	#define HWRM_FUNC_QSTATS_EXT_INPUT_FLAGS_ROCE_ONLY    UINT32_C(0x1)
+	/*
+	 * flags should be set to 2 when request is for the counter mask
+	 * representing the width of each of the stats counters, rather
+	 * than counters themselves.
+	 */
+	#define HWRM_FUNC_QSTATS_EXT_INPUT_FLAGS_COUNTER_MASK UINT32_C(0x2)
+	#define HWRM_FUNC_QSTATS_EXT_INPUT_FLAGS_LAST \
+		HWRM_FUNC_QSTATS_EXT_INPUT_FLAGS_COUNTER_MASK
+	uint8_t	unused_0[5];
+} __rte_packed;
+
+/* hwrm_func_qstats_ext_output (size:1472b/184B) */
+struct hwrm_func_qstats_ext_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Number of received unicast packets */
+	uint64_t	rx_ucast_pkts;
+	/* Number of received multicast packets */
+	uint64_t	rx_mcast_pkts;
+	/* Number of received broadcast packets */
+	uint64_t	rx_bcast_pkts;
+	/* Number of discarded packets on received path */
+	uint64_t	rx_discard_pkts;
+	/* Number of packets on receive path with error */
+	uint64_t	rx_error_pkts;
+	/* Number of received bytes for unicast traffic */
+	uint64_t	rx_ucast_bytes;
+	/* Number of received bytes for multicast traffic */
+	uint64_t	rx_mcast_bytes;
+	/* Number of received bytes for broadcast traffic */
+	uint64_t	rx_bcast_bytes;
+	/* Number of transmitted unicast packets */
+	uint64_t	tx_ucast_pkts;
+	/* Number of transmitted multicast packets */
+	uint64_t	tx_mcast_pkts;
+	/* Number of transmitted broadcast packets */
+	uint64_t	tx_bcast_pkts;
+	/* Number of packets on transmit path with error */
+	uint64_t	tx_error_pkts;
+	/* Number of discarded packets on transmit path */
+	uint64_t	tx_discard_pkts;
+	/* Number of transmitted bytes for unicast traffic */
+	uint64_t	tx_ucast_bytes;
+	/* Number of transmitted bytes for multicast traffic */
+	uint64_t	tx_mcast_bytes;
+	/* Number of transmitted bytes for broadcast traffic */
+	uint64_t	tx_bcast_bytes;
+	/* Number of TPA eligible packets */
+	uint64_t	rx_tpa_eligible_pkt;
+	/* Number of TPA eligible bytes */
+	uint64_t	rx_tpa_eligible_bytes;
+	/* Number of TPA packets */
+	uint64_t	rx_tpa_pkt;
+	/* Number of TPA bytes */
+	uint64_t	rx_tpa_bytes;
+	/* Number of TPA errors */
+	uint64_t	rx_tpa_errors;
 	uint8_t	unused_0[7];
 	/*
 	 * This field is used in Output records to indicate that the output
@@ -10116,7 +11789,7 @@ struct hwrm_func_backing_store_qcaps_output {
 	 *
 	 * TQM slowpath rings should be sized as follows:
 	 *
-	 * num_entries = num_vnics + num_l2_tx_rings + num_roce_qps + tqm_min_size
+	 * num_entries = num_vnics + num_l2_tx_rings + 2 * num_roce_qps + tqm_min_size
 	 *
 	 * Where:
 	 *   num_vnics is the number of VNICs allocated in the VNIC backing store
@@ -11039,7 +12712,7 @@ struct hwrm_func_backing_store_cfg_input {
 	 *
 	 * TQM slowpath rings should be sized as follows:
 	 *
-	 * num_entries = num_vnics + num_l2_tx_rings + num_roce_qps + tqm_min_size
+	 * num_entries = num_vnics + num_l2_tx_rings + 2 * num_roce_qps + tqm_min_size
 	 *
 	 * Where:
 	 *   num_vnics is the number of VNICs allocated in the VNIC backing store
@@ -16149,7 +17822,18 @@ struct hwrm_port_qstats_input {
 	uint64_t	resp_addr;
 	/* Port ID of port that is being queried. */
 	uint16_t	port_id;
-	uint8_t	unused_0[6];
+	uint8_t	flags;
+	/* This value is not used to avoid backward compatibility issues. */
+	#define HWRM_PORT_QSTATS_INPUT_FLAGS_UNUSED       UINT32_C(0x0)
+	/*
+	 * This bit is set to 1 when request is for a counter mask,
+	 * representing the width of each of the stats counters, rather
+	 * than counters themselves.
+	 */
+	#define HWRM_PORT_QSTATS_INPUT_FLAGS_COUNTER_MASK UINT32_C(0x1)
+	#define HWRM_PORT_QSTATS_INPUT_FLAGS_LAST \
+		HWRM_PORT_QSTATS_INPUT_FLAGS_COUNTER_MASK
+	uint8_t	unused_0[5];
 	/*
 	 * This is the host address where
 	 * Tx port statistics will be stored
@@ -16843,7 +18527,18 @@ struct hwrm_port_qstats_ext_input {
 	 * statistics block in bytes
 	 */
 	uint16_t	rx_stat_size;
-	uint8_t	unused_0[2];
+	uint8_t	flags;
+	/* This value is not used to avoid backward compatibility issues. */
+	#define HWRM_PORT_QSTATS_EXT_INPUT_FLAGS_UNUSED       UINT32_C(0x0)
+	/*
+	 * This bit is set to 1 when request is for the counter mask,
+	 * representing width of each of the stats counters, rather than
+	 * counters themselves.
+	 */
+	#define HWRM_PORT_QSTATS_EXT_INPUT_FLAGS_COUNTER_MASK UINT32_C(0x1)
+	#define HWRM_PORT_QSTATS_EXT_INPUT_FLAGS_LAST \
+		HWRM_PORT_QSTATS_EXT_INPUT_FLAGS_COUNTER_MASK
+	uint8_t	unused_0;
 	/*
 	 * This is the host address where
 	 * Tx port statistics will be stored
@@ -25390,17 +27085,26 @@ struct hwrm_ring_reset_input {
 	/* Ring Type. */
 	uint8_t	ring_type;
 	/* L2 Completion Ring (CR) */
-	#define HWRM_RING_RESET_INPUT_RING_TYPE_L2_CMPL   UINT32_C(0x0)
+	#define HWRM_RING_RESET_INPUT_RING_TYPE_L2_CMPL     UINT32_C(0x0)
 	/* TX Ring (TR) */
-	#define HWRM_RING_RESET_INPUT_RING_TYPE_TX        UINT32_C(0x1)
+	#define HWRM_RING_RESET_INPUT_RING_TYPE_TX          UINT32_C(0x1)
 	/* RX Ring (RR) */
-	#define HWRM_RING_RESET_INPUT_RING_TYPE_RX        UINT32_C(0x2)
+	#define HWRM_RING_RESET_INPUT_RING_TYPE_RX          UINT32_C(0x2)
 	/* RoCE Notification Completion Ring (ROCE_CR) */
-	#define HWRM_RING_RESET_INPUT_RING_TYPE_ROCE_CMPL UINT32_C(0x3)
+	#define HWRM_RING_RESET_INPUT_RING_TYPE_ROCE_CMPL   UINT32_C(0x3)
+	/*
+	 * Rx Ring Group.  This is to reset rx and aggregation in an atomic
+	 * operation. Completion ring associated with this ring group is
+	 * not reset.
+	 */
+	#define HWRM_RING_RESET_INPUT_RING_TYPE_RX_RING_GRP UINT32_C(0x6)
 	#define HWRM_RING_RESET_INPUT_RING_TYPE_LAST \
-		HWRM_RING_RESET_INPUT_RING_TYPE_ROCE_CMPL
+		HWRM_RING_RESET_INPUT_RING_TYPE_RX_RING_GRP
 	uint8_t	unused_0;
-	/* Physical number of the ring. */
+	/*
+	 * Physical number of the ring. When ring type is rx_ring_grp, ring id
+	 * actually refers to ring group id.
+	 */
 	uint16_t	ring_id;
 	uint8_t	unused_1[4];
 } __rte_packed;
@@ -25615,7 +27319,18 @@ struct hwrm_ring_cmpl_ring_qaggint_params_input {
 	uint64_t	resp_addr;
 	/* Physical number of completion ring. */
 	uint16_t	ring_id;
-	uint8_t	unused_0[6];
+	uint16_t	flags;
+	#define HWRM_RING_CMPL_RING_QAGGINT_PARAMS_INPUT_FLAGS_UNUSED_0_MASK \
+		UINT32_C(0x3)
+	#define HWRM_RING_CMPL_RING_QAGGINT_PARAMS_INPUT_FLAGS_UNUSED_0_SFT 0
+	/*
+	 * Set this flag to 1 when querying parameters on a notification
+	 * queue. Set this flag to 0 when querying parameters on a
+	 * completion queue or completion ring.
+	 */
+	#define HWRM_RING_CMPL_RING_QAGGINT_PARAMS_INPUT_FLAGS_IS_NQ \
+		UINT32_C(0x4)
+	uint8_t	unused_0[4];
 } __rte_packed;
 
 /* hwrm_ring_cmpl_ring_qaggint_params_output (size:256b/32B) */
@@ -25652,19 +27367,19 @@ struct hwrm_ring_cmpl_ring_qaggint_params_output {
 	 */
 	uint16_t	num_cmpl_dma_aggr_during_int;
 	/*
-	 * Timer in unit of 80-nsec used to aggregate completions before
+	 * Timer used to aggregate completions before
 	 * DMA during the normal mode (not in interrupt mode).
 	 */
 	uint16_t	cmpl_aggr_dma_tmr;
 	/*
-	 * Timer in unit of 80-nsec used to aggregate completions before
-	 * DMA during the interrupt mode.
+	 * Timer used to aggregate completions before
+	 * DMA when in interrupt mode.
 	 */
 	uint16_t	cmpl_aggr_dma_tmr_during_int;
-	/* Minimum time (in unit of 80-nsec) between two interrupts. */
+	/* Minimum time between two interrupts. */
 	uint16_t	int_lat_tmr_min;
 	/*
-	 * Maximum wait time (in unit of 80-nsec) spent aggregating
+	 * Maximum wait time spent aggregating
 	 * completions before signaling the interrupt after the
 	 * interrupt is enabled.
 	 */
@@ -25738,7 +27453,7 @@ struct hwrm_ring_cmpl_ring_cfg_aggint_params_input {
 	/*
 	 * Set this flag to 1 when configuring parameters on a
 	 * notification queue. Set this flag to 0 when configuring
-	 * parameters on a completion queue.
+	 * parameters on a completion queue or completion ring.
 	 */
 	#define HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_FLAGS_IS_NQ \
 		UINT32_C(0x4)
@@ -25753,20 +27468,20 @@ struct hwrm_ring_cmpl_ring_cfg_aggint_params_input {
 	 */
 	uint16_t	num_cmpl_dma_aggr_during_int;
 	/*
-	 * Timer in unit of 80-nsec used to aggregate completions before
+	 * Timer used to aggregate completions before
 	 * DMA during the normal mode (not in interrupt mode).
 	 */
 	uint16_t	cmpl_aggr_dma_tmr;
 	/*
-	 * Timer in unit of 80-nsec used to aggregate completions before
-	 * DMA during the interrupt mode.
+	 * Timer used to aggregate completions before
+	 * DMA while in interrupt mode.
 	 */
 	uint16_t	cmpl_aggr_dma_tmr_during_int;
-	/* Minimum time (in unit of 80-nsec) between two interrupts. */
+	/* Minimum time between two interrupts. */
 	uint16_t	int_lat_tmr_min;
 	/*
-	 * Maximum wait time (in unit of 80-nsec) spent aggregating
-	 * cmpls before signaling the interrupt after the
+	 * Maximum wait time spent aggregating
+	 * completions before signaling the interrupt after the
 	 * interrupt is enabled.
 	 */
 	uint16_t	int_lat_tmr_max;
@@ -33409,7 +35124,7 @@ struct hwrm_tf_session_open_input {
 	uint8_t	session_name[64];
 } __rte_packed;
 
-/* hwrm_tf_session_open_output (size:128b/16B) */
+/* hwrm_tf_session_open_output (size:192b/24B) */
 struct hwrm_tf_session_open_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -33421,13 +35136,18 @@ struct hwrm_tf_session_open_output {
 	uint16_t	resp_len;
 	/*
 	 * Unique session identifier for the session created by the
-	 * firmware. It includes PCIe bus info to distinguish the PF
-	 * and session info to identify the associated TruFlow
-	 * session.
+	 * firmware.
 	 */
 	uint32_t	fw_session_id;
+	/*
+	 * Unique session client identifier for the first client on
+	 * the newly created session.
+	 */
+	uint32_t	fw_session_client_id;
 	/* unused. */
-	uint8_t	unused0[3];
+	uint32_t	unused0;
+	/* unused. */
+	uint8_t	unused1[3];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM. This field should be read as '1'
@@ -33511,6 +35231,155 @@ struct hwrm_tf_session_attach_output {
 	uint32_t	fw_session_id;
 	/* unused. */
 	uint8_t	unused0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM. This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field is
+	 * written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/****************************
+ * hwrm_tf_session_register *
+ ****************************/
+
+
+/* hwrm_tf_session_register_input (size:704b/88B) */
+struct hwrm_tf_session_register_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Unique session identifier for the session that the
+	 * register request want to create a new client on. This
+	 * value originates from the first open request.
+	 * The fw_session_id of the attach session includes PCIe bus
+	 * info to distinguish the PF and session info to identify
+	 * the associated TruFlow session.
+	 */
+	uint32_t	fw_session_id;
+	/* unused. */
+	uint32_t	unused0;
+	/* Name of the session client. */
+	uint8_t	session_client_name[64];
+} __rte_packed;
+
+/* hwrm_tf_session_register_output (size:128b/16B) */
+struct hwrm_tf_session_register_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/*
+	 * Unique session client identifier for the session created
+	 * by the firmware. It includes the session the client it
+	 * attached to and session client info.
+	 */
+	uint32_t	fw_session_client_id;
+	/* unused. */
+	uint8_t	unused0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM. This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field is
+	 * written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/******************************
+ * hwrm_tf_session_unregister *
+ ******************************/
+
+
+/* hwrm_tf_session_unregister_input (size:192b/24B) */
+struct hwrm_tf_session_unregister_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Unique session identifier for the session that the
+	 * unregister request want to close a session client on.
+	 */
+	uint32_t	fw_session_id;
+	/*
+	 * Unique session client identifier for the session that the
+	 * unregister request want to close.
+	 */
+	uint32_t	fw_session_client_id;
+} __rte_packed;
+
+/* hwrm_tf_session_unregister_output (size:128b/16B) */
+struct hwrm_tf_session_unregister_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* unused. */
+	uint8_t	unused0[7];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM. This field should be read as '1'
@@ -33746,15 +35615,17 @@ struct hwrm_tf_session_resc_qcaps_input {
 	#define HWRM_TF_SESSION_RESC_QCAPS_INPUT_FLAGS_DIR_LAST \
 		HWRM_TF_SESSION_RESC_QCAPS_INPUT_FLAGS_DIR_TX
 	/*
-	 * Defines the size, in bytes, of the provided qcaps_addr
+	 * Defines the size of the provided qcaps_addr array
 	 * buffer. The size should be set to the Resource Manager
-	 * provided max qcaps value that is device specific. This is
-	 * the max size possible.
+	 * provided max number of qcaps entries which is device
+	 * specific. Resource Manager gets the max size from HCAPI
+	 * RM.
 	 */
-	uint16_t	size;
+	uint16_t	qcaps_size;
 	/*
-	 * This is the DMA address for the qcaps output data
-	 * array. Array is of tf_rm_cap type and is device specific.
+	 * This is the DMA address for the qcaps output data array
+	 * buffer. Array is of tf_rm_resc_req_entry type and is
+	 * device specific.
 	 */
 	uint64_t	qcaps_addr;
 } __rte_packed;
@@ -33772,29 +35643,28 @@ struct hwrm_tf_session_resc_qcaps_output {
 	/* Control flags. */
 	uint32_t	flags;
 	/* Session reservation strategy. */
-	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RES_STRATEGY_MASK \
+	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_MASK \
 		UINT32_C(0x3)
-	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RES_STRATEGY_SFT \
+	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_SFT \
 		0
 	/* Static partitioning. */
-	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RES_STRATEGY_STATIC \
+	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_STATIC \
 		UINT32_C(0x0)
 	/* Strategy 1. */
-	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RES_STRATEGY_1 \
+	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_1 \
 		UINT32_C(0x1)
 	/* Strategy 2. */
-	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RES_STRATEGY_2 \
+	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_2 \
 		UINT32_C(0x2)
 	/* Strategy 3. */
-	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RES_STRATEGY_3 \
+	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_3 \
 		UINT32_C(0x3)
-	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RES_STRATEGY_LAST \
-		HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RES_STRATEGY_3
+	#define HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_LAST \
+		HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_3
 	/*
-	 * Size of the returned tf_rm_cap data array. The value
-	 * cannot exceed the size defined by the input msg. The data
-	 * array is returned using the qcaps_addr specified DMA
-	 * address also provided by the input msg.
+	 * Size of the returned qcaps_addr data array buffer. The
+	 * value cannot exceed the size defined by the input msg,
+	 * qcaps_size.
 	 */
 	uint16_t	size;
 	/* unused. */
@@ -33817,7 +35687,7 @@ struct hwrm_tf_session_resc_qcaps_output {
  ******************************/
 
 
-/* hwrm_tf_session_resc_alloc_input (size:256b/32B) */
+/* hwrm_tf_session_resc_alloc_input (size:320b/40B) */
 struct hwrm_tf_session_resc_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -33860,16 +35730,25 @@ struct hwrm_tf_session_resc_alloc_input {
 	#define HWRM_TF_SESSION_RESC_ALLOC_INPUT_FLAGS_DIR_LAST \
 		HWRM_TF_SESSION_RESC_ALLOC_INPUT_FLAGS_DIR_TX
 	/*
-	 * Defines the size, in bytes, of the provided num_addr
-	 * buffer.
+	 * Defines the array size of the provided req_addr and
+	 * resv_addr array buffers. Should be set to the number of
+	 * request entries.
 	 */
-	uint16_t	size;
+	uint16_t	req_size;
 	/*
-	 * This is the DMA address for the num input data array
-	 * buffer. Array is of tf_rm_num type. Size of the buffer is
-	 * provided by the 'size' field in this message.
+	 * This is the DMA address for the request input data array
+	 * buffer. Array is of tf_rm_resc_req_entry type. Size of the
+	 * array buffer is provided by the 'req_size' field in this
+	 * message.
 	 */
-	uint64_t	num_addr;
+	uint64_t	req_addr;
+	/*
+	 * This is the DMA address for the resc output data array
+	 * buffer. Array is of tf_rm_resc_entry type. Size of the array
+	 * buffer is provided by the 'req_size' field in this
+	 * message.
+	 */
+	uint64_t	resc_addr;
 } __rte_packed;
 
 /* hwrm_tf_session_resc_alloc_output (size:128b/16B) */
@@ -33882,8 +35761,15 @@ struct hwrm_tf_session_resc_alloc_output {
 	uint16_t	seq_id;
 	/* The length of the response data in number of bytes. */
 	uint16_t	resp_len;
+	/*
+	 * Size of the returned tf_rm_resc_entry data array. The value
+	 * cannot exceed the req_size defined by the input msg. The data
+	 * array is returned using the resv_addr specified DMA
+	 * address also provided by the input msg.
+	 */
+	uint16_t	size;
 	/* unused. */
-	uint8_t	unused0[7];
+	uint8_t	unused0[5];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM. This field should be read as '1'
@@ -33946,11 +35832,12 @@ struct hwrm_tf_session_resc_free_input {
 	 * Defines the size, in bytes, of the provided free_addr
 	 * buffer.
 	 */
-	uint16_t	size;
+	uint16_t	free_size;
 	/*
 	 * This is the DMA address for the free input data array
-	 * buffer.  Array of tf_rm_res type. Size of the buffer is
-	 * provided by the 'size field of this message.
+	 * buffer.  Array is of tf_rm_resc_entry type. Size of the
+	 * buffer is provided by the 'free_size' field of this
+	 * message.
 	 */
 	uint64_t	free_addr;
 } __rte_packed;
@@ -34029,11 +35916,12 @@ struct hwrm_tf_session_resc_flush_input {
 	 * Defines the size, in bytes, of the provided flush_addr
 	 * buffer.
 	 */
-	uint16_t	size;
+	uint16_t	flush_size;
 	/*
 	 * This is the DMA address for the flush input data array
-	 * buffer.  Array of tf_rm_res type. Size of the buffer is
-	 * provided by the 'size' field in this message.
+	 * buffer.  Array of tf_rm_resc_entry type. Size of the
+	 * buffer is provided by the 'flush_size' field in this
+	 * message.
 	 */
 	uint64_t	flush_addr;
 } __rte_packed;
@@ -34062,12 +35950,9 @@ struct hwrm_tf_session_resc_flush_output {
 } __rte_packed;
 
 /* TruFlow RM capability of a resource. */
-/* tf_rm_cap (size:64b/8B) */
-struct tf_rm_cap {
-	/*
-	 * Type of the resource, defined globally in the
-	 * hwrm_tf_resc_type enum.
-	 */
+/* tf_rm_resc_req_entry (size:64b/8B) */
+struct tf_rm_resc_req_entry {
+	/* Type of the resource, defined globally in HCAPI RM. */
 	uint32_t	type;
 	/* Minimum value. */
 	uint16_t	min;
@@ -34075,25 +35960,10 @@ struct tf_rm_cap {
 	uint16_t	max;
 } __rte_packed;
 
-/* TruFlow RM number of a resource. */
-/* tf_rm_num (size:64b/8B) */
-struct tf_rm_num {
-	/*
-	 * Type of the resource, defined globally in the
-	 * hwrm_tf_resc_type enum.
-	 */
-	uint32_t	type;
-	/* Number of resources. */
-	uint32_t	num;
-} __rte_packed;
-
 /* TruFlow RM reservation information. */
-/* tf_rm_res (size:64b/8B) */
-struct tf_rm_res {
-	/*
-	 * Type of the resource, defined globally in the
-	 * hwrm_tf_resc_type enum.
-	 */
+/* tf_rm_resc_entry (size:64b/8B) */
+struct tf_rm_resc_entry {
+	/* Type of the resource, defined globally in HCAPI RM. */
 	uint32_t	type;
 	/* Start offset. */
 	uint16_t	start;
@@ -34925,6 +36795,162 @@ struct hwrm_tf_ext_em_qcfg_output {
 	uint8_t	valid;
 } __rte_packed;
 
+/*********************
+ * hwrm_tf_em_insert *
+ *********************/
+
+
+/* hwrm_tf_em_insert_input (size:832b/104B) */
+struct hwrm_tf_em_insert_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Firmware Session Id. */
+	uint32_t	fw_session_id;
+	/* Control Flags. */
+	uint16_t	flags;
+	/* Indicates the flow direction. */
+	#define HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR     UINT32_C(0x1)
+	/* If this bit set to 0, then it indicates rx flow. */
+	#define HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_RX    UINT32_C(0x0)
+	/* If this bit is set to 1, then it indicates that tx flow. */
+	#define HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_TX    UINT32_C(0x1)
+	#define HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_LAST \
+		HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_TX
+	/* Reported match strength. */
+	uint16_t	strength;
+	/* Index to action. */
+	uint32_t	action_ptr;
+	/* Index of EM record. */
+	uint32_t	em_record_idx;
+	/* EM Key value. */
+	uint64_t	em_key[8];
+	/* Number of bits in em_key. */
+	uint16_t	em_key_bitlen;
+	/* unused. */
+	uint16_t	unused0[3];
+} __rte_packed;
+
+/* hwrm_tf_em_insert_output (size:128b/16B) */
+struct hwrm_tf_em_insert_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* EM record pointer index. */
+	uint16_t	rptr_index;
+	/* EM record offset 0~3. */
+	uint8_t	rptr_entry;
+	/* Number of word entries consumed by the key. */
+	uint8_t	num_of_entries;
+	/* unused. */
+	uint32_t	unused0;
+} __rte_packed;
+
+/*********************
+ * hwrm_tf_em_delete *
+ *********************/
+
+
+/* hwrm_tf_em_delete_input (size:832b/104B) */
+struct hwrm_tf_em_delete_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Session Id. */
+	uint32_t	fw_session_id;
+	/* Control flags. */
+	uint16_t	flags;
+	/* Indicates the flow direction. */
+	#define HWRM_TF_EM_DELETE_INPUT_FLAGS_DIR     UINT32_C(0x1)
+	/* If this bit set to 0, then it indicates rx flow. */
+	#define HWRM_TF_EM_DELETE_INPUT_FLAGS_DIR_RX    UINT32_C(0x0)
+	/* If this bit is set to 1, then it indicates that tx flow. */
+	#define HWRM_TF_EM_DELETE_INPUT_FLAGS_DIR_TX    UINT32_C(0x1)
+	#define HWRM_TF_EM_DELETE_INPUT_FLAGS_DIR_LAST \
+		HWRM_TF_EM_DELETE_INPUT_FLAGS_DIR_TX
+	/* Unused0 */
+	uint16_t	unused0;
+	/* EM internal flow hanndle. */
+	uint64_t	flow_handle;
+	/* EM Key value */
+	uint64_t	em_key[8];
+	/* Number of bits in em_key. */
+	uint16_t	em_key_bitlen;
+	/* unused. */
+	uint16_t	unused1[3];
+} __rte_packed;
+
+/* hwrm_tf_em_delete_output (size:128b/16B) */
+struct hwrm_tf_em_delete_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Original stack allocation index. */
+	uint16_t	em_index;
+	/* unused. */
+	uint16_t	unused0[3];
+} __rte_packed;
+
 /********************
  * hwrm_tf_tcam_set *
  ********************/
@@ -35582,10 +37608,10 @@ struct ctx_hw_stats {
 	uint64_t	rx_mcast_pkts;
 	/* Number of received broadcast packets */
 	uint64_t	rx_bcast_pkts;
-	/* Number of discarded packets on received path */
+	/* Number of discarded packets on receive path */
 	uint64_t	rx_discard_pkts;
-	/* Number of dropped packets on received path */
-	uint64_t	rx_drop_pkts;
+	/* Number of packets on receive path with error */
+	uint64_t	rx_error_pkts;
 	/* Number of received bytes for unicast traffic */
 	uint64_t	rx_ucast_bytes;
 	/* Number of received bytes for multicast traffic */
@@ -35598,10 +37624,10 @@ struct ctx_hw_stats {
 	uint64_t	tx_mcast_pkts;
 	/* Number of transmitted broadcast packets */
 	uint64_t	tx_bcast_pkts;
+	/* Number of packets on transmit path with error */
+	uint64_t	tx_error_pkts;
 	/* Number of discarded packets on transmit path */
 	uint64_t	tx_discard_pkts;
-	/* Number of dropped packets on transmit path */
-	uint64_t	tx_drop_pkts;
 	/* Number of transmitted bytes for unicast traffic */
 	uint64_t	tx_ucast_bytes;
 	/* Number of transmitted bytes for multicast traffic */
@@ -35618,7 +37644,11 @@ struct ctx_hw_stats {
 	uint64_t	tpa_aborts;
 } __rte_packed;
 
-/* Periodic statistics context DMA to host. */
+/*
+ * Extended periodic statistics context DMA to host. On cards that
+ * support TPA v2, additional TPA related stats exist and can be retrieved
+ * by DMA of ctx_hw_stats_ext, rather than legacy ctx_hw_stats structure.
+ */
 /* ctx_hw_stats_ext (size:1344b/168B) */
 struct ctx_hw_stats_ext {
 	/* Number of received unicast packets */
@@ -35627,10 +37657,10 @@ struct ctx_hw_stats_ext {
 	uint64_t	rx_mcast_pkts;
 	/* Number of received broadcast packets */
 	uint64_t	rx_bcast_pkts;
-	/* Number of discarded packets on received path */
+	/* Number of discarded packets on receive path */
 	uint64_t	rx_discard_pkts;
-	/* Number of dropped packets on received path */
-	uint64_t	rx_drop_pkts;
+	/* Number of packets on receive path with error */
+	uint64_t	rx_error_pkts;
 	/* Number of received bytes for unicast traffic */
 	uint64_t	rx_ucast_bytes;
 	/* Number of received bytes for multicast traffic */
@@ -35643,10 +37673,10 @@ struct ctx_hw_stats_ext {
 	uint64_t	tx_mcast_pkts;
 	/* Number of transmitted broadcast packets */
 	uint64_t	tx_bcast_pkts;
+	/* Number of packets on transmit path with error */
+	uint64_t	tx_error_pkts;
 	/* Number of discarded packets on transmit path */
 	uint64_t	tx_discard_pkts;
-	/* Number of dropped packets on transmit path */
-	uint64_t	tx_drop_pkts;
 	/* Number of transmitted bytes for unicast traffic */
 	uint64_t	tx_ucast_bytes;
 	/* Number of transmitted bytes for multicast traffic */
@@ -35912,7 +37942,14 @@ struct hwrm_stat_ctx_query_input {
 	uint64_t	resp_addr;
 	/* ID of the statistics context that is being queried. */
 	uint32_t	stat_ctx_id;
-	uint8_t	unused_0[4];
+	uint8_t	flags;
+	/*
+	 * This bit is set to 1 when request is for a counter mask,
+	 * representing the width of each of the stats counters, rather
+	 * than counters themselves.
+	 */
+	#define HWRM_STAT_CTX_QUERY_INPUT_FLAGS_COUNTER_MASK     UINT32_C(0x1)
+	uint8_t	unused_0[3];
 } __rte_packed;
 
 /* hwrm_stat_ctx_query_output (size:1408b/176B) */
@@ -35949,7 +37986,7 @@ struct hwrm_stat_ctx_query_output {
 	uint64_t	rx_bcast_pkts;
 	/* Number of received packets with error */
 	uint64_t	rx_err_pkts;
-	/* Number of dropped packets on received path */
+	/* Number of dropped packets on receive path */
 	uint64_t	rx_drop_pkts;
 	/* Number of received bytes for unicast traffic */
 	uint64_t	rx_ucast_bytes;
@@ -35965,6 +38002,117 @@ struct hwrm_stat_ctx_query_output {
 	uint64_t	rx_agg_events;
 	/* Number of aborted aggregations */
 	uint64_t	rx_agg_aborts;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/***************************
+ * hwrm_stat_ext_ctx_query *
+ ***************************/
+
+
+/* hwrm_stat_ext_ctx_query_input (size:192b/24B) */
+struct hwrm_stat_ext_ctx_query_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* ID of the extended statistics context that is being queried. */
+	uint32_t	stat_ctx_id;
+	uint8_t	flags;
+	/*
+	 * This bit is set to 1 when request is for a counter mask,
+	 * representing the width of each of the stats counters, rather
+	 * than counters themselves.
+	 */
+	#define HWRM_STAT_EXT_CTX_QUERY_INPUT_FLAGS_COUNTER_MASK \
+		UINT32_C(0x1)
+	uint8_t	unused_0[3];
+} __rte_packed;
+
+/* hwrm_stat_ext_ctx_query_output (size:1472b/184B) */
+struct hwrm_stat_ext_ctx_query_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Number of received unicast packets */
+	uint64_t	rx_ucast_pkts;
+	/* Number of received multicast packets */
+	uint64_t	rx_mcast_pkts;
+	/* Number of received broadcast packets */
+	uint64_t	rx_bcast_pkts;
+	/* Number of discarded packets on receive path */
+	uint64_t	rx_discard_pkts;
+	/* Number of packets on receive path with error */
+	uint64_t	rx_error_pkts;
+	/* Number of received bytes for unicast traffic */
+	uint64_t	rx_ucast_bytes;
+	/* Number of received bytes for multicast traffic */
+	uint64_t	rx_mcast_bytes;
+	/* Number of received bytes for broadcast traffic */
+	uint64_t	rx_bcast_bytes;
+	/* Number of transmitted unicast packets */
+	uint64_t	tx_ucast_pkts;
+	/* Number of transmitted multicast packets */
+	uint64_t	tx_mcast_pkts;
+	/* Number of transmitted broadcast packets */
+	uint64_t	tx_bcast_pkts;
+	/* Number of packets on transmit path with error */
+	uint64_t	tx_error_pkts;
+	/* Number of discarded packets on transmit path */
+	uint64_t	tx_discard_pkts;
+	/* Number of transmitted bytes for unicast traffic */
+	uint64_t	tx_ucast_bytes;
+	/* Number of transmitted bytes for multicast traffic */
+	uint64_t	tx_mcast_bytes;
+	/* Number of transmitted bytes for broadcast traffic */
+	uint64_t	tx_bcast_bytes;
+	/* Number of TPA eligible packets */
+	uint64_t	rx_tpa_eligible_pkt;
+	/* Number of TPA eligible bytes */
+	uint64_t	rx_tpa_eligible_bytes;
+	/* Number of TPA packets */
+	uint64_t	rx_tpa_pkt;
+	/* Number of TPA bytes */
+	uint64_t	rx_tpa_bytes;
+	/* Number of TPA errors */
+	uint64_t	rx_tpa_errors;
 	uint8_t	unused_0[7];
 	/*
 	 * This field is used in Output records to indicate that the output
@@ -37565,6 +39713,13 @@ struct hwrm_nvm_install_update_input {
 	 */
 	#define HWRM_NVM_INSTALL_UPDATE_INPUT_FLAGS_ALLOWED_TO_DEFRAG \
 		UINT32_C(0x4)
+	/*
+	 * If set to 1, FW will verify the package in the "UPDATE" NVM item
+	 * without installing it. This flag is for FW internal use only.
+	 * Users should not set this flag. The request will otherwise fail.
+	 */
+	#define HWRM_NVM_INSTALL_UPDATE_INPUT_FLAGS_VERIFY_ONLY \
+		UINT32_C(0x8)
 	uint8_t	unused_0[2];
 } __rte_packed;
 
@@ -38115,6 +40270,72 @@ struct hwrm_nvm_validate_option_cmd_err {
 	uint8_t	unused_0[7];
 } __rte_packed;
 
+/****************
+ * hwrm_oem_cmd *
+ ****************/
+
+
+/* hwrm_oem_cmd_input (size:1024b/128B) */
+struct hwrm_oem_cmd_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	IANA;
+	uint32_t	unused_0;
+	/* This field contains the vendor specific command data. */
+	uint32_t	oem_data[26];
+} __rte_packed;
+
+/* hwrm_oem_cmd_output (size:768b/96B) */
+struct hwrm_oem_cmd_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint32_t	IANA;
+	uint32_t	unused_0;
+	/* This field contains the vendor specific response data. */
+	uint32_t	oem_data[18];
+	uint8_t	unused_1[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
 /*****************
  * hwrm_fw_reset *
  ******************/
@@ -38337,6 +40558,55 @@ struct hwrm_port_ts_query_output {
 	 */
 	uint8_t		valid;
 } __rte_packed;
+
+/*
+ * This structure is fixed at the beginning of the ChiMP SRAM (GRC
+ * offset: 0x31001F0). Host software is expected to read from this
+ * location for a defined signature. If it exists, the software can
+ * assume the presence of this structure and the validity of the
+ * FW_STATUS location in the next field.
+ */
+/* hcomm_status (size:64b/8B) */
+struct hcomm_status {
+	uint32_t	sig_ver;
+	/*
+	 * This field defines the version of the structure. The latest
+	 * version value is 1.
+	 */
+	#define HCOMM_STATUS_VER_MASK		UINT32_C(0xff)
+	#define HCOMM_STATUS_VER_SFT		0
+	#define HCOMM_STATUS_VER_LATEST		UINT32_C(0x1)
+	#define HCOMM_STATUS_VER_LAST		HCOMM_STATUS_VER_LATEST
+	/*
+	 * This field is to store the signature value to indicate the
+	 * presence of the structure.
+	 */
+	#define HCOMM_STATUS_SIGNATURE_MASK	UINT32_C(0xffffff00)
+	#define HCOMM_STATUS_SIGNATURE_SFT	8
+	#define HCOMM_STATUS_SIGNATURE_VAL	(UINT32_C(0x484353) << 8)
+	#define HCOMM_STATUS_SIGNATURE_LAST	HCOMM_STATUS_SIGNATURE_VAL
+	uint32_t	fw_status_loc;
+	#define HCOMM_STATUS_TRUE_ADDR_SPACE_MASK	UINT32_C(0x3)
+	#define HCOMM_STATUS_TRUE_ADDR_SPACE_SFT	0
+	/* PCIE configuration space */
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_PCIE_CFG	UINT32_C(0x0)
+	/* GRC space */
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_GRC	UINT32_C(0x1)
+	/* BAR0 space */
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR0	UINT32_C(0x2)
+	/* BAR1 space */
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR1	UINT32_C(0x3)
+	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_LAST	\
+		HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR1
+	/*
+	 * This offset where the fw_status register is located. The value
+	 * is generally 4-byte aligned.
+	 */
+	#define HCOMM_STATUS_TRUE_OFFSET_MASK		UINT32_C(0xfffffffc)
+	#define HCOMM_STATUS_TRUE_OFFSET_SFT		2
+} __rte_packed;
+/* This is the GRC offset where the hcomm_status struct resides. */
+#define HCOMM_STATUS_STRUCT_LOC		0x31001F0UL
 
 /**************************
  * hwrm_cfa_counter_qcaps *
@@ -38621,54 +40891,5 @@ struct hwrm_cfa_counter_qstats_output {
 	 */
 	uint8_t	valid;
 } __rte_packed;
-
-/*
- * This structure is fixed at the beginning of the ChiMP SRAM (GRC
- * offset: 0x31001F0). Host software is expected to read from this
- * location for a defined signature. If it exists, the software can
- * assume the presence of this structure and the validity of the
- * FW_STATUS location in the next field.
- */
-/* hcomm_status (size:64b/8B) */
-struct hcomm_status {
-	uint32_t	sig_ver;
-	/*
-	 * This field defines the version of the structure. The latest
-	 * version value is 1.
-	 */
-	#define HCOMM_STATUS_VER_MASK		UINT32_C(0xff)
-	#define HCOMM_STATUS_VER_SFT		0
-	#define HCOMM_STATUS_VER_LATEST		UINT32_C(0x1)
-	#define HCOMM_STATUS_VER_LAST		HCOMM_STATUS_VER_LATEST
-	/*
-	 * This field is to store the signature value to indicate the
-	 * presence of the structure.
-	 */
-	#define HCOMM_STATUS_SIGNATURE_MASK	UINT32_C(0xffffff00)
-	#define HCOMM_STATUS_SIGNATURE_SFT	8
-	#define HCOMM_STATUS_SIGNATURE_VAL	(UINT32_C(0x484353) << 8)
-	#define HCOMM_STATUS_SIGNATURE_LAST	HCOMM_STATUS_SIGNATURE_VAL
-	uint32_t	fw_status_loc;
-	#define HCOMM_STATUS_TRUE_ADDR_SPACE_MASK	UINT32_C(0x3)
-	#define HCOMM_STATUS_TRUE_ADDR_SPACE_SFT	0
-	/* PCIE configuration space */
-	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_PCIE_CFG	UINT32_C(0x0)
-	/* GRC space */
-	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_GRC	UINT32_C(0x1)
-	/* BAR0 space */
-	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR0	UINT32_C(0x2)
-	/* BAR1 space */
-	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR1	UINT32_C(0x3)
-	#define HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_LAST	\
-		HCOMM_STATUS_FW_STATUS_LOC_ADDR_SPACE_BAR1
-	/*
-	 * This offset where the fw_status register is located. The value
-	 * is generally 4-byte aligned.
-	 */
-	#define HCOMM_STATUS_TRUE_OFFSET_MASK		UINT32_C(0xfffffffc)
-	#define HCOMM_STATUS_TRUE_OFFSET_SFT		2
-} __rte_packed;
-/* This is the GRC offset where the hcomm_status struct resides. */
-#define HCOMM_STATUS_STRUCT_LOC		0x31001F0UL
 
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */

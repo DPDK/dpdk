@@ -76,38 +76,51 @@ struct tf_tbl_scope_cb {
 	uint32_t                  *ext_act_pool_mem[TF_DIR_MAX];
 };
 
-/** Hardware Page sizes supported for EEM: 4K, 8K, 64K, 256K, 1M, 2M, 4M, 1G.
- * Round-down other page sizes to the lower hardware page size supported.
+/**
+ * Hardware Page sizes supported for EEM:
+ *   4K, 8K, 64K, 256K, 1M, 2M, 4M, 1G.
+ *
+ * Round-down other page sizes to the lower hardware page
+ * size supported.
  */
-#define BNXT_PAGE_SHIFT 22 /** 2M */
+#define TF_EM_PAGE_SIZE_4K 12
+#define TF_EM_PAGE_SIZE_8K 13
+#define TF_EM_PAGE_SIZE_64K 16
+#define TF_EM_PAGE_SIZE_256K 18
+#define TF_EM_PAGE_SIZE_1M 20
+#define TF_EM_PAGE_SIZE_2M 21
+#define TF_EM_PAGE_SIZE_4M 22
+#define TF_EM_PAGE_SIZE_1G 30
 
-#if (BNXT_PAGE_SHIFT < 12)				/** < 4K >> 4K */
-#define TF_EM_PAGE_SHIFT 12
+/* Set page size */
+#define BNXT_TF_PAGE_SIZE TF_EM_PAGE_SIZE_2M
+
+#if (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_4K)	/** 4K */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_4K
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_4K
-#elif (BNXT_PAGE_SHIFT <= 13)			/** 4K, 8K */
-#define TF_EM_PAGE_SHIFT 13
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_8K)	/** 8K */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_8K
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_8K
-#elif (BNXT_PAGE_SHIFT < 16)				/** 16K, 32K >> 8K */
-#define TF_EM_PAGE_SHIFT 15
-#define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_32K
-#elif (BNXT_PAGE_SHIFT <= 17)			/** 64K, 128K >> 64K */
-#define TF_EM_PAGE_SHIFT 16
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_64K)	/** 64K */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_64K
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_64K
-#elif (BNXT_PAGE_SHIFT <= 19)			/** 256K, 512K >> 256K */
-#define TF_EM_PAGE_SHIFT 18
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_256K)	/** 256K */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_256K
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_256K
-#elif (BNXT_PAGE_SHIFT <= 21)			/** 1M */
-#define TF_EM_PAGE_SHIFT 20
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_1M)	/** 1M */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_1M
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_1M
-#elif (BNXT_PAGE_SHIFT <= 22)			/** 2M, 4M */
-#define TF_EM_PAGE_SHIFT 21
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_2M)	/** 2M */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_2M
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_2M
-#elif (BNXT_PAGE_SHIFT <= 29)			/** 8M ... 512M >> 4M */
-#define TF_EM_PAGE_SHIFT 22
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_4M)	/** 4M */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_4M
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_4M
-#else						/** >= 1G >> 1G */
-#define TF_EM_PAGE_SHIFT	30
+#elif (BNXT_TF_PAGE_SIZE == TF_EM_PAGE_SIZE_1G)	/** 1G */
+#define TF_EM_PAGE_SHIFT TF_EM_PAGE_SIZE_1G
 #define TF_EM_PAGE_SIZE_ENUM HWRM_TF_CTXT_MEM_RGTR_INPUT_PAGE_SIZE_1G
+#else
+#error "Invalid Page Size specified. Please use a TF_EM_PAGE_SIZE_n define"
 #endif
 
 #define TF_EM_PAGE_SIZE	(1 << TF_EM_PAGE_SHIFT)

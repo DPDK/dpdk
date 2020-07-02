@@ -122,6 +122,19 @@ int tf_msg_session_sram_resc_flush(struct tf *tfp,
 				   struct tf_rm_entry *sram_entry);
 
 /**
+ * Sends EM internal insert request to Firmware
+ */
+int tf_msg_insert_em_internal_entry(struct tf *tfp,
+				    struct tf_insert_em_entry_parms *params,
+				    uint16_t *rptr_index,
+				    uint8_t *rptr_entry,
+				    uint8_t *num_of_entries);
+/**
+ * Sends EM internal delete request to Firmware
+ */
+int tf_msg_delete_em_entry(struct tf *tfp,
+			   struct tf_delete_em_entry_parms *em_parms);
+/**
  * Sends EM mem register request to Firmware
  */
 int tf_msg_em_mem_rgtr(struct tf *tfp,

@@ -36,6 +36,16 @@ int stack_init(int num_entries,
 	       uint32_t *items,
 	       struct stack *st);
 
+/** Return the address of the stack contents
+ *
+ *  [in] st
+ *    pointer to the stack
+ *
+ *  return
+ *    pointer to the stack contents
+ */
+uint32_t *stack_items(struct stack *st);
+
 /** Return the size of the stack
  *
  *  [in] st

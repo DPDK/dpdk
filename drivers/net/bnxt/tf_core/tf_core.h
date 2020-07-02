@@ -44,44 +44,7 @@ enum tf_mem {
 };
 
 /**
- * The size of the external action record (Wh+/Brd2)
- *
- * Currently set to 512.
- *
- * AR (16B) + encap (256B) + stats_ptrs (8) + resvd (8)
- * + stats (16) = 304 aligned on a 16B boundary
- *
- * Theoretically, the size should be smaller. ~304B
- */
-#define TF_ACTION_RECORD_SZ 512
-
-/**
- * External pool size
- *
- * Defines a single pool of external action records of
- * fixed size.  Currently, this is an index.
- */
-#define TF_EXT_POOL_ENTRY_SZ_BYTES 1
-
-/**
- *  External pool entry count
- *
- *  Defines the number of entries in the external action pool
- */
-#define TF_EXT_POOL_ENTRY_CNT (1 * 1024)
-
-/**
- * Number of external pools
- */
-#define TF_EXT_POOL_CNT_MAX 1
-
-/**
- * External pool Id
- */
-#define TF_EXT_POOL_0      0 /**< matches TF_TBL_TYPE_EXT   */
-#define TF_EXT_POOL_1      1 /**< matches TF_TBL_TYPE_EXT_0 */
-
-/** EEM record AR helper
+ * EEM record AR helper
  *
  * Helper to handle the Action Record Pointer in the EEM Record Entry.
  *
@@ -109,7 +72,8 @@ enum tf_mem {
  */
 
 
-/** Session Version defines
+/**
+ * Session Version defines
  *
  * The version controls the format of the tf_session and
  * tf_session_info structure. This is to assure upgrade between
@@ -119,7 +83,8 @@ enum tf_mem {
 #define TF_SESSION_VER_MINOR  0   /**< Minor Version */
 #define TF_SESSION_VER_UPDATE 0   /**< Update Version */
 
-/** Session Name
+/**
+ * Session Name
  *
  * Name of the TruFlow control channel interface.  Expects
  * format to be RTE Name specific, i.e. rte_eth_dev_get_name_by_port()
@@ -128,7 +93,8 @@ enum tf_mem {
 
 #define TF_FW_SESSION_ID_INVALID  0xFF  /**< Invalid FW Session ID define */
 
-/** Session Identifier
+/**
+ * Session Identifier
  *
  * Unique session identifier which includes PCIe bus info to
  * distinguish the PF and session info to identify the associated
@@ -146,7 +112,8 @@ union tf_session_id {
 	} internal;
 };
 
-/** Session Version
+/**
+ * Session Version
  *
  * The version controls the format of the tf_session and
  * tf_session_info structure. This is to assure upgrade between
@@ -160,8 +127,8 @@ struct tf_session_version {
 	uint8_t update;
 };
 
-/** Session supported device types
- *
+/**
+ * Session supported device types
  */
 enum tf_device_type {
 	TF_DEVICE_TYPE_WH = 0, /**< Whitney+  */
@@ -169,6 +136,147 @@ enum tf_device_type {
 	TF_DEVICE_TYPE_BRD3,   /**< TBD       */
 	TF_DEVICE_TYPE_BRD4,   /**< TBD       */
 	TF_DEVICE_TYPE_MAX     /**< Maximum   */
+};
+
+/** Identifier resource types
+ */
+enum tf_identifier_type {
+	/** The L2 Context is returned from the L2 Ctxt TCAM lookup
+	 *  and can be used in WC TCAM or EM keys to virtualize further
+	 *  lookups.
+	 */
+	TF_IDENT_TYPE_L2_CTXT,
+	/** The WC profile func is returned from the L2 Ctxt TCAM lookup
+	 *  to enable virtualization of the profile TCAM.
+	 */
+	TF_IDENT_TYPE_PROF_FUNC,
+	/** The WC profile ID is included in the WC lookup key
+	 *  to enable virtualization of the WC TCAM hardware.
+	 */
+	TF_IDENT_TYPE_WC_PROF,
+	/** The EM profile ID is included in the EM lookup key
+	 *  to enable virtualization of the EM hardware. (not required for SR2
+	 *  as it has table scope)
+	 */
+	TF_IDENT_TYPE_EM_PROF,
+	/** The L2 func is included in the ILT result and from recycling to
+	 *  enable virtualization of further lookups.
+	 */
+	TF_IDENT_TYPE_L2_FUNC,
+	TF_IDENT_TYPE_MAX
+};
+
+/**
+ * Enumeration of TruFlow table types. A table type is used to identify a
+ * resource object.
+ *
+ * NOTE: The table type TF_TBL_TYPE_EXT is unique in that it is
+ * the only table type that is connected with a table scope.
+ */
+enum tf_tbl_type {
+	/* Internal */
+
+	/** Wh+/SR Action Record */
+	TF_TBL_TYPE_FULL_ACT_RECORD,
+	/** Wh+/SR/Th Multicast Groups */
+	TF_TBL_TYPE_MCAST_GROUPS,
+	/** Wh+/SR Action Encap 8 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_8B,
+	/** Wh+/SR Action Encap 16 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_16B,
+	/** Action Encap 32 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_32B,
+	/** Wh+/SR Action Encap 64 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_64B,
+	/** Action Source Properties SMAC */
+	TF_TBL_TYPE_ACT_SP_SMAC,
+	/** Wh+/SR Action Source Properties SMAC IPv4 */
+	TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
+	/** Action Source Properties SMAC IPv6 */
+	TF_TBL_TYPE_ACT_SP_SMAC_IPV6,
+	/** Wh+/SR Action Statistics 64 Bits */
+	TF_TBL_TYPE_ACT_STATS_64,
+	/** Wh+/SR Action Modify L4 Src Port */
+	TF_TBL_TYPE_ACT_MODIFY_SPORT,
+	/** Wh+/SR Action Modify L4 Dest Port */
+	TF_TBL_TYPE_ACT_MODIFY_DPORT,
+	/** Wh+/SR Action Modify IPv4 Source */
+	TF_TBL_TYPE_ACT_MODIFY_IPV4_SRC,
+	/** Wh+/SR Action _Modify L4 Dest Port */
+	TF_TBL_TYPE_ACT_MODIFY_IPV4_DEST,
+	/** Action Modify IPv6 Source */
+	TF_TBL_TYPE_ACT_MODIFY_IPV6_SRC,
+	/** Action Modify IPv6 Destination */
+	TF_TBL_TYPE_ACT_MODIFY_IPV6_DEST,
+	/** Meter Profiles */
+	TF_TBL_TYPE_METER_PROF,
+	/** Meter Instance */
+	TF_TBL_TYPE_METER_INST,
+	/** Mirror Config */
+	TF_TBL_TYPE_MIRROR_CONFIG,
+	/** UPAR */
+	TF_TBL_TYPE_UPAR,
+	/** SR2 Epoch 0 table */
+	TF_TBL_TYPE_EPOCH0,
+	/** SR2 Epoch 1 table  */
+	TF_TBL_TYPE_EPOCH1,
+	/** SR2 Metadata  */
+	TF_TBL_TYPE_METADATA,
+	/** SR2 CT State  */
+	TF_TBL_TYPE_CT_STATE,
+	/** SR2 Range Profile  */
+	TF_TBL_TYPE_RANGE_PROF,
+	/** SR2 Range Entry  */
+	TF_TBL_TYPE_RANGE_ENTRY,
+	/** SR2 LAG Entry  */
+	TF_TBL_TYPE_LAG,
+	/** SR2 VNIC/SVIF Table */
+	TF_TBL_TYPE_VNIC_SVIF,
+	/** Th/SR2 EM Flexible Key builder */
+	TF_TBL_TYPE_EM_FKB,
+	/** Th/SR2 WC Flexible Key builder */
+	TF_TBL_TYPE_WC_FKB,
+
+	/* External */
+
+	/** External table type - initially 1 poolsize entries.
+	 * All External table types are associated with a table
+	 * scope. Internal types are not.
+	 */
+	TF_TBL_TYPE_EXT,
+	TF_TBL_TYPE_MAX
+};
+
+/**
+ * TCAM table type
+ */
+enum tf_tcam_tbl_type {
+	/** L2 Context TCAM */
+	TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	/** Profile TCAM */
+	TF_TCAM_TBL_TYPE_PROF_TCAM,
+	/** Wildcard TCAM */
+	TF_TCAM_TBL_TYPE_WC_TCAM,
+	/** Source Properties TCAM */
+	TF_TCAM_TBL_TYPE_SP_TCAM,
+	/** Connection Tracking Rule TCAM */
+	TF_TCAM_TBL_TYPE_CT_RULE_TCAM,
+	/** Virtual Edge Bridge TCAM */
+	TF_TCAM_TBL_TYPE_VEB_TCAM,
+	TF_TCAM_TBL_TYPE_MAX
+};
+
+/**
+ * EM Resources
+ * These defines are provisioned during
+ * tf_open_session()
+ */
+enum tf_em_tbl_type {
+	/** The number of internal EM records for the session */
+	TF_EM_TBL_TYPE_EM_RECORD,
+	/** The number of table scopes reequested */
+	TF_EM_TBL_TYPE_TBL_SCOPE,
+	TF_EM_TBL_TYPE_MAX
 };
 
 /** TruFlow Session Information
@@ -309,6 +417,30 @@ struct tf_open_session_parms {
 	 * Device type is passed, one of Wh+, Brd2, Brd3, Brd4
 	 */
 	enum tf_device_type device_type;
+	/** [in] Requested Identifier Resources
+	 *
+	 * The number of identifier resources requested for the session.
+	 * The index used is tf_identifier_type.
+	 */
+	uint16_t identifer_cnt[TF_IDENT_TYPE_MAX];
+	/** [in] Requested Index Table resource counts
+	 *
+	 * The number of index table resources requested for the session.
+	 * The index used is tf_tbl_type.
+	 */
+	uint16_t tbl_cnt[TF_TBL_TYPE_MAX];
+	/** [in] Requested TCAM Table resource counts
+	 *
+	 * The number of TCAM table resources requested for the session.
+	 * The index used is tf_tcam_tbl_type.
+	 */
+	uint16_t tcam_tbl_cnt[TF_TCAM_TBL_TYPE_MAX];
+	/** [in] Requested EM resource counts
+	 *
+	 * The number of internal EM table resources requested for the session
+	 * The index used is tf_em_tbl_type.
+	 */
+	uint16_t em_tbl_cnt[TF_EM_TBL_TYPE_MAX];
 };
 
 /**
@@ -417,31 +549,6 @@ int tf_close_session(struct tf *tfp);
  *
  * @ref tf_free_identifier
  */
-enum tf_identifier_type {
-	/** The L2 Context is returned from the L2 Ctxt TCAM lookup
-	 *  and can be used in WC TCAM or EM keys to virtualize further
-	 *  lookups.
-	 */
-	TF_IDENT_TYPE_L2_CTXT,
-	/** The WC profile func is returned from the L2 Ctxt TCAM lookup
-	 *  to enable virtualization of the profile TCAM.
-	 */
-	TF_IDENT_TYPE_PROF_FUNC,
-	/** The WC profile ID is included in the WC lookup key
-	 *  to enable virtualization of the WC TCAM hardware.
-	 */
-	TF_IDENT_TYPE_WC_PROF,
-	/** The EM profile ID is included in the EM lookup key
-	 *  to enable virtualization of the EM hardware. (not required for Brd4
-	 *  as it has table scope)
-	 */
-	TF_IDENT_TYPE_EM_PROF,
-	/** The L2 func is included in the ILT result and from recycling to
-	 *  enable virtualization of further lookups.
-	 */
-	TF_IDENT_TYPE_L2_FUNC
-};
-
 /** tf_alloc_identifier parameter definition
  */
 struct tf_alloc_identifier_parms {
@@ -631,19 +738,6 @@ int tf_alloc_tbl_scope(struct tf *tfp,
 int tf_free_tbl_scope(struct tf *tfp,
 		      struct tf_free_tbl_scope_parms *parms);
 
-/**
- * TCAM table type
- */
-enum tf_tcam_tbl_type {
-	TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
-	TF_TCAM_TBL_TYPE_PROF_TCAM,
-	TF_TCAM_TBL_TYPE_WC_TCAM,
-	TF_TCAM_TBL_TYPE_SP_TCAM,
-	TF_TCAM_TBL_TYPE_CT_RULE_TCAM,
-	TF_TCAM_TBL_TYPE_VEB_TCAM,
-	TF_TCAM_TBL_TYPE_MAX
-
-};
 
 /**
  * @page tcam TCAM Access
@@ -813,7 +907,8 @@ struct tf_get_tcam_entry_parms {
 	uint16_t result_sz_in_bits;
 };
 
-/** get TCAM entry
+/*
+ * get TCAM entry
  *
  * Program a TCAM table entry for a TruFlow session.
  *
@@ -824,7 +919,8 @@ struct tf_get_tcam_entry_parms {
 int tf_get_tcam_entry(struct tf *tfp,
 		      struct tf_get_tcam_entry_parms *parms);
 
-/** tf_free_tcam_entry parameter definition
+/*
+ * tf_free_tcam_entry parameter definition
  */
 struct tf_free_tcam_entry_parms {
 	/**
@@ -845,8 +941,7 @@ struct tf_free_tcam_entry_parms {
 	uint16_t ref_cnt;
 };
 
-/** free TCAM entry
- *
+/*
  * Free TCAM entry.
  *
  * Firmware checks to ensure the TCAM entries are owned by the TruFlow
@@ -873,84 +968,7 @@ int tf_free_tcam_entry(struct tf *tfp,
  */
 
 /**
- * Enumeration of TruFlow table types. A table type is used to identify a
- * resource object.
- *
- * NOTE: The table type TF_TBL_TYPE_EXT is unique in that it is
- * the only table type that is connected with a table scope.
- */
-enum tf_tbl_type {
-	/** Wh+/Brd2 Action Record */
-	TF_TBL_TYPE_FULL_ACT_RECORD,
-	/** Multicast Groups */
-	TF_TBL_TYPE_MCAST_GROUPS,
-	/** Action Encap 8 Bytes */
-	TF_TBL_TYPE_ACT_ENCAP_8B,
-	/** Action Encap 16 Bytes */
-	TF_TBL_TYPE_ACT_ENCAP_16B,
-	/** Action Encap 64 Bytes */
-	TF_TBL_TYPE_ACT_ENCAP_32B,
-	/** Action Encap 64 Bytes */
-	TF_TBL_TYPE_ACT_ENCAP_64B,
-	/** Action Source Properties SMAC */
-	TF_TBL_TYPE_ACT_SP_SMAC,
-	/** Action Source Properties SMAC IPv4 */
-	TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
-	/** Action Source Properties SMAC IPv6 */
-	TF_TBL_TYPE_ACT_SP_SMAC_IPV6,
-	/** Action Statistics 64 Bits */
-	TF_TBL_TYPE_ACT_STATS_64,
-	/** Action Modify L4 Src Port */
-	TF_TBL_TYPE_ACT_MODIFY_SPORT,
-	/** Action Modify L4 Dest Port */
-	TF_TBL_TYPE_ACT_MODIFY_DPORT,
-	/** Action Modify IPv4 Source */
-	TF_TBL_TYPE_ACT_MODIFY_IPV4_SRC,
-	/** Action _Modify L4 Dest Port */
-	TF_TBL_TYPE_ACT_MODIFY_IPV4_DEST,
-	/** Action Modify IPv6 Source */
-	TF_TBL_TYPE_ACT_MODIFY_IPV6_SRC,
-	/** Action Modify IPv6 Destination */
-	TF_TBL_TYPE_ACT_MODIFY_IPV6_DEST,
-
-	/* HW */
-
-	/** Meter Profiles */
-	TF_TBL_TYPE_METER_PROF,
-	/** Meter Instance */
-	TF_TBL_TYPE_METER_INST,
-	/** Mirror Config */
-	TF_TBL_TYPE_MIRROR_CONFIG,
-	/** UPAR */
-	TF_TBL_TYPE_UPAR,
-	/** Brd4 Epoch 0 table */
-	TF_TBL_TYPE_EPOCH0,
-	/** Brd4 Epoch 1 table  */
-	TF_TBL_TYPE_EPOCH1,
-	/** Brd4 Metadata  */
-	TF_TBL_TYPE_METADATA,
-	/** Brd4 CT State  */
-	TF_TBL_TYPE_CT_STATE,
-	/** Brd4 Range Profile  */
-	TF_TBL_TYPE_RANGE_PROF,
-	/** Brd4 Range Entry  */
-	TF_TBL_TYPE_RANGE_ENTRY,
-	/** Brd4 LAG Entry  */
-	TF_TBL_TYPE_LAG,
-	/** Brd4 only VNIC/SVIF Table */
-	TF_TBL_TYPE_VNIC_SVIF,
-
-	/* External */
-
-	/** External table type - initially 1 poolsize entries.
-	 * All External table types are associated with a table
-	 * scope. Internal types are not.
-	 */
-	TF_TBL_TYPE_EXT,
-	TF_TBL_TYPE_MAX
-};
-
-/** tf_alloc_tbl_entry parameter definition
+ * tf_alloc_tbl_entry parameter definition
  */
 struct tf_alloc_tbl_entry_parms {
 	/**
@@ -993,7 +1011,8 @@ struct tf_alloc_tbl_entry_parms {
 	uint32_t idx;
 };
 
-/** allocate index table entries
+/**
+ * allocate index table entries
  *
  * Internal types:
  *
@@ -1023,7 +1042,8 @@ struct tf_alloc_tbl_entry_parms {
 int tf_alloc_tbl_entry(struct tf *tfp,
 		       struct tf_alloc_tbl_entry_parms *parms);
 
-/** tf_free_tbl_entry parameter definition
+/**
+ * tf_free_tbl_entry parameter definition
  */
 struct tf_free_tbl_entry_parms {
 	/**
@@ -1049,7 +1069,8 @@ struct tf_free_tbl_entry_parms {
 	uint16_t ref_cnt;
 };
 
-/** free index table entry
+/**
+ * free index table entry
  *
  * Used to free a previously allocated table entry.
  *
@@ -1075,7 +1096,8 @@ struct tf_free_tbl_entry_parms {
 int tf_free_tbl_entry(struct tf *tfp,
 		      struct tf_free_tbl_entry_parms *parms);
 
-/** tf_set_tbl_entry parameter definition
+/**
+ * tf_set_tbl_entry parameter definition
  */
 struct tf_set_tbl_entry_parms {
 	/**
@@ -1104,7 +1126,8 @@ struct tf_set_tbl_entry_parms {
 	uint32_t idx;
 };
 
-/** set index table entry
+/**
+ * set index table entry
  *
  * Used to insert an application programmed index table entry into a
  * previous allocated table location.  A shadow copy of the table
@@ -1115,7 +1138,8 @@ struct tf_set_tbl_entry_parms {
 int tf_set_tbl_entry(struct tf *tfp,
 		     struct tf_set_tbl_entry_parms *parms);
 
-/** tf_get_tbl_entry parameter definition
+/**
+ * tf_get_tbl_entry parameter definition
  */
 struct tf_get_tbl_entry_parms {
 	/**
@@ -1140,7 +1164,8 @@ struct tf_get_tbl_entry_parms {
 	uint32_t idx;
 };
 
-/** get index table entry
+/**
+ * get index table entry
  *
  * Used to retrieve a previous set index table entry.
  *
@@ -1163,7 +1188,8 @@ int tf_get_tbl_entry(struct tf *tfp,
  * @ref tf_search_em_entry
  *
  */
-/** tf_insert_em_entry parameter definition
+/**
+ * tf_insert_em_entry parameter definition
  */
 struct tf_insert_em_entry_parms {
 	/**
@@ -1240,6 +1266,10 @@ struct tf_delete_em_entry_parms {
 	 */
 	uint16_t *epochs;
 	/**
+	 * [out] The index of the entry
+	 */
+	uint16_t index;
+	/**
 	 * [in] structure containing flow delete handle information
 	 */
 	uint64_t flow_handle;
@@ -1291,7 +1321,8 @@ struct tf_search_em_entry_parms {
 	uint64_t flow_handle;
 };
 
-/** insert em hash entry in internal table memory
+/**
+ * insert em hash entry in internal table memory
  *
  * Internal:
  *
@@ -1328,7 +1359,8 @@ struct tf_search_em_entry_parms {
 int tf_insert_em_entry(struct tf *tfp,
 		       struct tf_insert_em_entry_parms *parms);
 
-/** delete em hash entry table memory
+/**
+ * delete em hash entry table memory
  *
  * Internal:
  *
@@ -1353,7 +1385,8 @@ int tf_insert_em_entry(struct tf *tfp,
 int tf_delete_em_entry(struct tf *tfp,
 		       struct tf_delete_em_entry_parms *parms);
 
-/** search em hash entry table memory
+/**
+ * search em hash entry table memory
  *
  * Internal:
 

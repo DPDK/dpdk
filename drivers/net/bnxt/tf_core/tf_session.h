@@ -13,11 +13,24 @@
 #include "tf_core.h"
 #include "tf_rm.h"
 #include "tf_tbl.h"
+#include "stack.h"
 
 /** Session defines
  */
 #define TF_SESSIONS_MAX	          1          /** max # sessions */
 #define TF_SESSION_ID_INVALID     0xFFFFFFFF /** Invalid Session ID define */
+
+/**
+ * Number of EM entries. Static for now will be removed
+ * when parameter added at a later date. At this stage we
+ * are using fixed size entries so that each stack entry
+ * represents 4 RT (f/n)blocks. So we take the total block
+ * allocation for truflow and divide that by 4.
+ */
+#define TF_SESSION_TOTAL_FN_BLOCKS (1024 * 8) /* 8K blocks */
+#define TF_SESSION_EM_ENTRY_SIZE 4 /* 4 blocks per entry */
+#define TF_SESSION_EM_POOL_SIZE \
+	(TF_SESSION_TOTAL_FN_BLOCKS / TF_SESSION_EM_ENTRY_SIZE)
 
 /** Session
  *
@@ -289,6 +302,11 @@ struct tf_session {
 
 	/** Table scope array */
 	struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
+
+	/**
+	 * EM Pools
+	 */
+	struct stack em_pool[TF_DIR_MAX];
 };
 
 #endif /* _TF_SESSION_H_ */

@@ -152,7 +152,6 @@ static inline uint32_t hashword(const uint32_t *k,
 		final(a, b, c);
 		/* Falls through. */
 	case 0:	    /* case 0: nothing left to add */
-		/* FALLTHROUGH */
 		break;
 	}
 	/*------------------------------------------------- report the result */
