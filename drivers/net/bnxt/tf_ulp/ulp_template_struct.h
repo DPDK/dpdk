@@ -165,6 +165,8 @@ struct bnxt_ulp_mapper_tbl_info {
 	enum bnxt_ulp_resource_func	resource_func;
 	uint32_t			resource_type; /* TF_ enum type */
 	enum bnxt_ulp_resource_sub_type	resource_sub_type;
+	enum bnxt_ulp_cond_opcode	cond_opcode;
+	uint32_t			cond_operand;
 	uint8_t		direction;
 	uint32_t	priority;
 	uint8_t		srch_b4_alloc;

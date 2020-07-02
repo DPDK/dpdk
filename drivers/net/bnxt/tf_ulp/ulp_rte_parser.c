@@ -1128,6 +1128,10 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE],
 		       &ip_type, sizeof(uint32_t));
 
+		/* update the computed field to notify it is ipv4 header */
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_ENCAP_IPV4_FLAG,
+				    1);
+
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;
 	} else if (item->type == RTE_FLOW_ITEM_TYPE_IPV6) {
@@ -1147,6 +1151,10 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		ip_type = rte_cpu_to_be_32(BNXT_ULP_ETH_IPV6);
 		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_L3_TYPE],
 		       &ip_type, sizeof(uint32_t));
+
+		/* update the computed field to notify it is ipv6 header */
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_ENCAP_IPV6_FLAG,
+				    1);
 
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;

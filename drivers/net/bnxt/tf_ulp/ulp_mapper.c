@@ -2009,6 +2009,44 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 }
 
 /*
+ * Function to process the conditional opcode of the mapper table.
+ * returns 1 to skip the table.
+ * return 0 to continue processing the table.
+ */
+static int32_t
+ulp_mapper_tbl_cond_opcode_process(struct bnxt_ulp_mapper_parms *parms,
+				   struct bnxt_ulp_mapper_tbl_info *tbl)
+{
+	int32_t rc = 1;
+
+	switch (tbl->cond_opcode) {
+	case BNXT_ULP_COND_OPCODE_NOP:
+		rc = 0;
+		break;
+	case BNXT_ULP_COND_OPCODE_COMP_FIELD:
+		if (tbl->cond_operand < BNXT_ULP_CF_IDX_LAST &&
+		    ULP_COMP_FLD_IDX_RD(parms, tbl->cond_operand))
+			rc = 0;
+		break;
+	case BNXT_ULP_COND_OPCODE_ACTION_BIT:
+		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits,
+				     tbl->cond_operand))
+			rc = 0;
+		break;
+	case BNXT_ULP_COND_OPCODE_HDR_BIT:
+		if (ULP_BITMAP_ISSET(parms->hdr_bitmap->bits,
+				     tbl->cond_operand))
+			rc = 0;
+		break;
+	default:
+		BNXT_TF_DBG(ERR,
+			    "Invalid arg in mapper tbl for cond opcode\n");
+		break;
+	}
+	return rc;
+}
+
+/*
  * Function to process the action template. Iterate through the list
  * action info templates and process it.
  */
@@ -2027,6 +2065,9 @@ ulp_mapper_action_tbls_process(struct bnxt_ulp_mapper_parms *parms)
 
 	for (i = 0; i < parms->num_atbls; i++) {
 		tbl = &parms->atbls[i];
+		if (ulp_mapper_tbl_cond_opcode_process(parms, tbl))
+			continue;
+
 		switch (tbl->resource_func) {
 		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
 			rc = ulp_mapper_index_tbl_process(parms, tbl, false);
@@ -2064,6 +2105,9 @@ ulp_mapper_class_tbls_process(struct bnxt_ulp_mapper_parms *parms)
 
 	for (i = 0; i < parms->num_ctbls; i++) {
 		struct bnxt_ulp_mapper_tbl_info *tbl = &parms->ctbls[i];
+
+		if (ulp_mapper_tbl_cond_opcode_process(parms, tbl))
+			continue;
 
 		switch (tbl->resource_func) {
 		case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
@@ -2326,6 +2370,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	memset(&parms, 0, sizeof(parms));
 	parms.act_prop = cparms->act_prop;
 	parms.act_bitmap = cparms->act;
+	parms.hdr_bitmap = cparms->hdr_bitmap;
 	parms.regfile = &regfile;
 	parms.hdr_field = cparms->hdr_field;
 	parms.comp_fld = cparms->comp_fld;

@@ -62,6 +62,7 @@ struct bnxt_ulp_mapper_parms {
 	uint32_t				num_ctbls;
 	struct ulp_rte_act_prop			*act_prop;
 	struct ulp_rte_act_bitmap		*act_bitmap;
+	struct ulp_rte_hdr_bitmap		*hdr_bitmap;
 	struct ulp_rte_hdr_field		*hdr_field;
 	uint32_t				*comp_fld;
 	struct ulp_regfile			*regfile;
