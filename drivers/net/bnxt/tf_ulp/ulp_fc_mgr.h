@@ -23,6 +23,7 @@ struct sw_acc_counter {
 	uint64_t pkt_count;
 	uint64_t byte_count;
 	bool	valid;
+	uint32_t hw_cntr_id;
 };
 
 struct hw_fc_mem_info {
@@ -142,7 +143,21 @@ bool ulp_fc_mgr_start_idx_isset(struct bnxt_ulp_context *ctxt, enum tf_dir dir);
  * ctxt [in] The ulp context for the flow counter manager
  *
  */
-
 bool ulp_fc_mgr_thread_isstarted(struct bnxt_ulp_context *ctxt);
 
+/*
+ * Fill the rte_flow_query_count 'data' argument passed
+ * in the rte_flow_query() with the values obtained and
+ * accumulated locally.
+ *
+ * ctxt [in] The ulp context for the flow counter manager
+ *
+ * flow_id [in] The HW flow ID
+ *
+ * count [out] The rte_flow_query_count 'data' that is set
+ *
+ */
+int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ulp_ctx,
+			       uint32_t flow_id,
+			       struct rte_flow_query_count *count);
 #endif /* _ULP_FC_MGR_H_ */

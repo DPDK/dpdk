@@ -11,6 +11,7 @@
 #include "bnxt_ulp.h"
 #include "bnxt_tf_common.h"
 #include "ulp_fc_mgr.h"
+#include "ulp_flow_db.h"
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 #include "tf_tbl.h"
@@ -226,9 +227,10 @@ void ulp_fc_mgr_thread_cancel(struct bnxt_ulp_context *ctxt)
  * num_counters [in] The number of counters
  *
  */
-static int32_t ulp_bulk_get_flow_stats(struct tf *tfp,
+__rte_unused static int32_t ulp_bulk_get_flow_stats(struct tf *tfp,
 				       struct bnxt_ulp_fc_info *fc_info,
 				       enum tf_dir dir, uint32_t num_counters)
+/* MARK AS UNUSED FOR NOW TO AVOID COMPILATION ERRORS TILL API is RESOLVED */
 {
 	int rc = 0;
 	struct tf_tbl_get_bulk_parms parms = { 0 };
@@ -275,6 +277,45 @@ static int32_t ulp_bulk_get_flow_stats(struct tf *tfp,
 
 	return rc;
 }
+
+static int ulp_get_single_flow_stat(struct tf *tfp,
+				    struct bnxt_ulp_fc_info *fc_info,
+				    enum tf_dir dir,
+				    uint32_t hw_cntr_id)
+{
+	int rc = 0;
+	struct tf_get_tbl_entry_parms parms = { 0 };
+	enum tf_tbl_type stype = TF_TBL_TYPE_ACT_STATS_64;  /* TBD:Template? */
+	struct sw_acc_counter *sw_acc_tbl_entry = NULL;
+	uint64_t stats = 0;
+	uint32_t sw_cntr_indx = 0;
+
+	parms.dir = dir;
+	parms.type = stype;
+	parms.idx = hw_cntr_id;
+	/*
+	 * TODO:
+	 * Size of an entry needs to obtained from template
+	 */
+	parms.data_sz_in_bytes = sizeof(uint64_t);
+	parms.data = (uint8_t *)&stats;
+	rc = tf_get_tbl_entry(tfp, &parms);
+	if (rc) {
+		PMD_DRV_LOG(ERR,
+			    "Get failed for id:0x%x rc:%d\n",
+			    parms.idx, rc);
+		return rc;
+	}
+
+	/* TBD - Get PKT/BYTE COUNT SHIFT/MASK from Template */
+	sw_cntr_indx = hw_cntr_id - fc_info->shadow_hw_tbl[dir].start_idx;
+	sw_acc_tbl_entry = &fc_info->sw_acc_tbl[dir][sw_cntr_indx];
+	sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats);
+	sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats);
+
+	return rc;
+}
+
 /*
  * Alarm handler that will issue the TF-Core API to fetch
  * data from the chip's internal flow counters
@@ -282,15 +323,18 @@ static int32_t ulp_bulk_get_flow_stats(struct tf *tfp,
  * ctxt [in] The ulp context for the flow counter manager
  *
  */
+
 void
 ulp_fc_mgr_alarm_cb(void *arg)
 {
-	int rc = 0, i;
+	int rc = 0;
+	unsigned int j;
+	enum tf_dir i;
 	struct bnxt_ulp_context *ctxt = arg;
 	struct bnxt_ulp_fc_info *ulp_fc_info;
 	struct bnxt_ulp_device_params *dparms;
 	struct tf *tfp;
-	uint32_t dev_id;
+	uint32_t dev_id, hw_cntr_id = 0;
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
 	if (!ulp_fc_info)
@@ -325,12 +369,26 @@ ulp_fc_mgr_alarm_cb(void *arg)
 		ulp_fc_mgr_thread_cancel(ctxt);
 		return;
 	}
-
-	for (i = 0; i < TF_DIR_MAX; i++) {
+	/*
+	 * Commented for now till GET_BULK is resolved, just get the first flow
+	 * stat for now
+	 for (i = 0; i < TF_DIR_MAX; i++) {
 		rc = ulp_bulk_get_flow_stats(tfp, ulp_fc_info, i,
 					     dparms->flow_count_db_entries);
 		if (rc)
 			break;
+	}
+	*/
+	for (i = 0; i < TF_DIR_MAX; i++) {
+		for (j = 0; j < ulp_fc_info->num_entries; j++) {
+			if (!ulp_fc_info->sw_acc_tbl[i][j].valid)
+				continue;
+			hw_cntr_id = ulp_fc_info->sw_acc_tbl[i][j].hw_cntr_id;
+			rc = ulp_get_single_flow_stat(tfp, ulp_fc_info, i,
+						      hw_cntr_id);
+			if (rc)
+				break;
+		}
 	}
 
 	pthread_mutex_unlock(&ulp_fc_info->fc_lock);
@@ -425,6 +483,7 @@ int32_t ulp_fc_mgr_cntr_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
 	pthread_mutex_lock(&ulp_fc_info->fc_lock);
 	sw_cntr_idx = hw_cntr_id - ulp_fc_info->shadow_hw_tbl[dir].start_idx;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].valid = true;
+	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].hw_cntr_id = hw_cntr_id;
 	ulp_fc_info->num_entries++;
 	pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 
@@ -456,10 +515,82 @@ int32_t ulp_fc_mgr_cntr_reset(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
 	pthread_mutex_lock(&ulp_fc_info->fc_lock);
 	sw_cntr_idx = hw_cntr_id - ulp_fc_info->shadow_hw_tbl[dir].start_idx;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].valid = false;
+	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].hw_cntr_id = 0;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].pkt_count = 0;
 	ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx].byte_count = 0;
 	ulp_fc_info->num_entries--;
 	pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 
 	return 0;
+}
+
+/*
+ * Fill the rte_flow_query_count 'data' argument passed
+ * in the rte_flow_query() with the values obtained and
+ * accumulated locally.
+ *
+ * ctxt [in] The ulp context for the flow counter manager
+ *
+ * flow_id [in] The HW flow ID
+ *
+ * count [out] The rte_flow_query_count 'data' that is set
+ *
+ */
+int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
+			       uint32_t flow_id,
+			       struct rte_flow_query_count *count)
+{
+	int rc = 0;
+	uint32_t nxt_resource_index = 0;
+	struct bnxt_ulp_fc_info *ulp_fc_info;
+	struct ulp_flow_db_res_params params;
+	enum tf_dir dir;
+	uint32_t hw_cntr_id = 0, sw_cntr_idx = 0;
+	struct sw_acc_counter sw_acc_tbl_entry;
+	bool found_cntr_resource = false;
+
+	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
+	if (!ulp_fc_info)
+		return -ENODEV;
+
+	do {
+		rc = ulp_flow_db_resource_get(ctxt,
+					      BNXT_ULP_REGULAR_FLOW_TABLE,
+					      flow_id,
+					      &nxt_resource_index,
+					      &params);
+		if (params.resource_func ==
+		     BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE &&
+		     (params.resource_sub_type ==
+		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT ||
+		      params.resource_sub_type ==
+		      BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_EXT_COUNT)) {
+			found_cntr_resource = true;
+			break;
+		}
+
+	} while (!rc);
+
+	if (rc)
+		return rc;
+
+	if (found_cntr_resource) {
+		dir = params.direction;
+		hw_cntr_id = params.resource_hndl;
+		sw_cntr_idx = hw_cntr_id -
+				ulp_fc_info->shadow_hw_tbl[dir].start_idx;
+		sw_acc_tbl_entry = ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx];
+		if (params.resource_sub_type ==
+			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
+			count->hits_set = 1;
+			count->bytes_set = 1;
+			count->hits = sw_acc_tbl_entry.pkt_count;
+			count->bytes = sw_acc_tbl_entry.byte_count;
+		} else {
+			/* TBD: Handle External counters */
+			rc = -EINVAL;
+		}
+	}
+
+	return rc;
 }

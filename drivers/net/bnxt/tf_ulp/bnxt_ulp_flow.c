@@ -9,6 +9,7 @@
 #include "ulp_matcher.h"
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
+#include "ulp_fc_mgr.h"
 #include <rte_malloc.h>
 
 static int32_t
@@ -289,11 +290,53 @@ bnxt_ulp_flow_flush(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
+/* Function to query the rte flows. */
+static int32_t
+bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
+		    struct rte_flow *flow,
+		    const struct rte_flow_action *action,
+		    void *data,
+		    struct rte_flow_error *error)
+{
+	int rc = 0;
+	struct bnxt_ulp_context *ulp_ctx;
+	struct rte_flow_query_count *count;
+	uint32_t flow_id;
+
+	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
+	if (!ulp_ctx) {
+		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to query flow.");
+		return -EINVAL;
+	}
+
+	flow_id = (uint32_t)(uintptr_t)flow;
+
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		count = data;
+		rc = ulp_fc_mgr_query_count_get(ulp_ctx, flow_id, count);
+		if (rc) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Failed to query flow.");
+		}
+		break;
+	default:
+		rte_flow_error_set(error, -rc, RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				   NULL, "Unsupported action item");
+	}
+
+	return rc;
+}
+
 const struct rte_flow_ops bnxt_ulp_rte_flow_ops = {
 	.validate = bnxt_ulp_flow_validate,
 	.create = bnxt_ulp_flow_create,
 	.destroy = bnxt_ulp_flow_destroy,
 	.flush = bnxt_ulp_flow_flush,
-	.query = NULL,
+	.query = bnxt_ulp_flow_query,
 	.isolate = NULL
 };
