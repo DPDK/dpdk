@@ -104,10 +104,11 @@ int32_t	ulp_port_db_deinit(struct bnxt_ulp_context *ulp_ctxt)
  * Returns 0 on success or negative number on failure.
  */
 int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
-					 struct bnxt *bp)
+					 struct rte_eth_dev *eth_dev)
 {
 	struct bnxt_ulp_port_db *port_db;
-	uint32_t port_id = bp->eth_dev->data->port_id;
+	struct bnxt *bp = eth_dev->data->dev_private;
+	uint32_t port_id = eth_dev->data->port_id;
 	uint32_t ifindex;
 	struct ulp_interface_info *intf;
 	int32_t rc;

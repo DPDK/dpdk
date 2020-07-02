@@ -71,7 +71,7 @@ int32_t	ulp_port_db_deinit(struct bnxt_ulp_context *ulp_ctxt);
  * Returns 0 on success or negative number on failure.
  */
 int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
-					 struct bnxt *bp);
+					 struct rte_eth_dev *eth_dev);
 
 /*
  * Api to get the ulp ifindex for a given device port.

@@ -548,7 +548,7 @@ bnxt_ulp_init(struct bnxt *bp)
 		}
 
 		/* update the port database */
-		rc = ulp_port_db_dev_port_intf_update(bp->ulp_ctx, bp);
+		rc = ulp_port_db_dev_port_intf_update(bp->ulp_ctx, bp->eth_dev);
 		if (rc) {
 			BNXT_TF_DBG(ERR,
 				    "Failed to update port database\n");
@@ -584,7 +584,7 @@ bnxt_ulp_init(struct bnxt *bp)
 	}
 
 	/* update the port database */
-	rc = ulp_port_db_dev_port_intf_update(bp->ulp_ctx, bp);
+	rc = ulp_port_db_dev_port_intf_update(bp->ulp_ctx, bp->eth_dev);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to update port database\n");
 		goto jump_to_error;
