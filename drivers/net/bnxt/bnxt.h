@@ -784,6 +784,9 @@ struct bnxt {
 struct bnxt_vf_representor {
 	uint16_t		switch_domain_id;
 	uint16_t		vf_id;
+	uint16_t		fw_fid;
+	uint16_t		dflt_vnic_id;
+	uint16_t		svif;
 	uint16_t		tx_cfa_action;
 	uint16_t		rx_cfa_code;
 	/* Private data store of associated PF/Trusted VF */

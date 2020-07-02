@@ -270,4 +270,8 @@ int bnxt_hwrm_cfa_counter_qstats(struct bnxt *bp,
 				 enum bnxt_flow_dir dir,
 				 uint16_t cntr,
 				 uint16_t num_entries);
+int bnxt_hwrm_get_dflt_vnic_id(struct bnxt *bp, uint16_t fid,
+			       uint16_t *vnic_id);
+int bnxt_hwrm_get_dflt_vnic_svif(struct bnxt *bp, uint16_t fid,
+				 uint16_t *vnic_id, uint16_t *svif);
 #endif

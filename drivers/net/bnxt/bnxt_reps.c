@@ -150,6 +150,7 @@ int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params)
 				 (struct bnxt_vf_representor *)params;
 	struct rte_eth_link *link;
 	struct bnxt *parent_bp;
+	int rc = 0;
 
 	vf_rep_bp->vf_id = rep_params->vf_id;
 	vf_rep_bp->switch_domain_id = rep_params->switch_domain_id;
@@ -178,6 +179,17 @@ int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params)
 	eth_dev->data->dev_link.link_duplex = link->link_duplex;
 	eth_dev->data->dev_link.link_status = link->link_status;
 	eth_dev->data->dev_link.link_autoneg = link->link_autoneg;
+
+	vf_rep_bp->fw_fid = rep_params->vf_id + parent_bp->first_vf_id;
+	PMD_DRV_LOG(INFO, "vf_rep->fw_fid = %d\n", vf_rep_bp->fw_fid);
+	rc = bnxt_hwrm_get_dflt_vnic_svif(parent_bp, vf_rep_bp->fw_fid,
+					  &vf_rep_bp->dflt_vnic_id,
+					  &vf_rep_bp->svif);
+	if (rc)
+		PMD_DRV_LOG(ERR, "Failed to get default vnic id of VF\n");
+	else
+		PMD_DRV_LOG(INFO, "vf_rep->dflt_vnic_id = %d\n",
+			    vf_rep_bp->dflt_vnic_id);
 
 	PMD_DRV_LOG(INFO, "calling bnxt_print_link_info\n");
 	bnxt_print_link_info(eth_dev);

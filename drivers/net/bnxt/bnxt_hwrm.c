@@ -3094,6 +3094,33 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp, uint16_t *mtu)
 	return rc;
 }
 
+int bnxt_hwrm_get_dflt_vnic_svif(struct bnxt *bp, uint16_t fid,
+				 uint16_t *vnic_id, uint16_t *svif)
+{
+	struct hwrm_func_qcfg_input req = {0};
+	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint16_t svif_info;
+	int rc = 0;
+
+	HWRM_PREP(&req, HWRM_FUNC_QCFG, BNXT_USE_CHIMP_MB);
+	req.fid = rte_cpu_to_le_16(fid);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	if (vnic_id)
+		*vnic_id = rte_le_to_cpu_16(resp->dflt_vnic_id);
+
+	svif_info = rte_le_to_cpu_16(resp->svif_info);
+	if (svif && (svif_info & HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_VALID))
+		*svif = svif_info & HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_MASK;
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
 int bnxt_hwrm_port_mac_qcfg(struct bnxt *bp)
 {
 	struct hwrm_port_mac_qcfg_input req = {0};
