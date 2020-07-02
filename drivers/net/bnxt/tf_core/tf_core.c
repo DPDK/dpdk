@@ -893,7 +893,7 @@ tf_alloc_tcam_entry(struct tf *tfp,
 		    struct tf_alloc_tcam_entry_parms *parms)
 {
 	int rc;
-	int index;
+	int index = 0;
 	struct tf_session *tfs;
 	struct bitalloc *session_pool;
 
@@ -916,12 +916,34 @@ tf_alloc_tcam_entry(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	index = ba_alloc(session_pool);
-	if (index == BA_FAIL) {
-		PMD_DRV_LOG(ERR, "%s: %s: No resource available\n",
-			    tf_dir_2_str(parms->dir),
-			    tf_tcam_tbl_2_str(parms->tcam_tbl_type));
-		return -ENOMEM;
+	/*
+	 * priority  0: allocate from top of the tcam i.e. high
+	 * priority !0: allocate index from bottom i.e lowest
+	 */
+	if (parms->priority) {
+		for (index = session_pool->size - 1; index >= 0; index--) {
+			if (ba_inuse(session_pool,
+					  index) == BA_ENTRY_FREE) {
+				break;
+			}
+		}
+		if (ba_alloc_index(session_pool,
+				   index) == BA_FAIL) {
+			TFP_DRV_LOG(ERR,
+				    "%s: %s: ba_alloc index %d failed\n",
+				    tf_dir_2_str(parms->dir),
+				    tf_tcam_tbl_2_str(parms->tcam_tbl_type),
+				    index);
+			return -ENOMEM;
+		}
+	} else {
+		index = ba_alloc(session_pool);
+		if (index == BA_FAIL) {
+			TFP_DRV_LOG(ERR, "%s: %s: Out of resource\n",
+				    tf_dir_2_str(parms->dir),
+				    tf_tcam_tbl_2_str(parms->tcam_tbl_type));
+			return -ENOMEM;
+		}
 	}
 
 	parms->idx = index;

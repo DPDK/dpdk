@@ -1967,7 +1967,7 @@ void tf_dump_dma(struct tf *tfp, uint32_t tbl_scope_id)
 	tbl_scope_cb = tbl_scope_cb_find(session,
 					 tbl_scope_id);
 	if (tbl_scope_cb == NULL)
-		PMD_DRV_LOG(ERR, "No table scope\n");
+		TFP_DRV_LOG(ERR, "No table scope\n");
 
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
 		printf("Direction %s:\n", (dir == TF_DIR_RX ? "Rx" : "Tx"));

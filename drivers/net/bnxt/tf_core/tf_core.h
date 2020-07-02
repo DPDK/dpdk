@@ -799,7 +799,9 @@ struct tf_alloc_tcam_entry_parms {
 	 */
 	uint8_t *mask;
 	/**
-	 * [in] Priority of entry requested (definition TBD)
+	 * [in] Priority of entry requested
+	 * 0: index from top i.e. highest priority first
+	 * !0: index from bottom i.e lowest priority first
 	 */
 	uint32_t priority;
 	/**

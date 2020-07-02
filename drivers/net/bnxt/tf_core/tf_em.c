@@ -479,8 +479,7 @@ int tf_insert_em_internal_entry(struct tf *tfp,
 	rc = stack_pop(pool, &index);
 
 	if (rc != 0) {
-		PMD_DRV_LOG
-		   (ERR,
+		TFP_DRV_LOG(ERR,
 		   "dir:%d, EM entry index allocation failed\n",
 		   parms->dir);
 		return rc;
@@ -495,8 +494,7 @@ int tf_insert_em_internal_entry(struct tf *tfp,
 	if (rc != 0)
 		return -1;
 
-	PMD_DRV_LOG
-		   (ERR,
+	TFP_DRV_LOG(INFO,
 		   "Internal entry @ Index:%d rptr_index:0x%x rptr_entry:0x%x num_of_entries:%d\n",
 		   index * TF_SESSION_EM_ENTRY_SIZE,
 		   rptr_index,
