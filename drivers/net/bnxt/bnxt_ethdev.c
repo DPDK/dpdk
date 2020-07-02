@@ -29,6 +29,7 @@
 #include "hsi_struct_def_dpdk.h"
 #include "bnxt_nvm_defs.h"
 #include "bnxt_tf_common.h"
+#include "ulp_flow_db.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -1161,6 +1162,73 @@ static int bnxt_handle_if_change_status(struct bnxt *bp)
 	return rc;
 }
 
+static int32_t
+bnxt_create_port_app_df_rule(struct bnxt *bp, uint8_t flow_type,
+			     uint32_t *flow_id)
+{
+	uint16_t port_id = bp->eth_dev->data->port_id;
+	struct ulp_tlv_param param_list[] = {
+		{
+			.type = BNXT_ULP_DF_PARAM_TYPE_DEV_PORT_ID,
+			.length = 2,
+			.value = {(port_id >> 8) & 0xff, port_id & 0xff}
+		},
+		{
+			.type = BNXT_ULP_DF_PARAM_TYPE_LAST,
+			.length = 0,
+			.value = {0}
+		}
+	};
+
+	return ulp_default_flow_create(bp->eth_dev, param_list, flow_type,
+				       flow_id);
+}
+
+static int32_t
+bnxt_create_df_rules(struct bnxt *bp)
+{
+	struct bnxt_ulp_data *cfg_data;
+	int rc;
+
+	cfg_data = bp->ulp_ctx->cfg_data;
+	rc = bnxt_create_port_app_df_rule(bp, BNXT_ULP_DF_TPL_PORT_TO_VS,
+					  &cfg_data->port_to_app_flow_id);
+	if (rc) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to create port to app default rule\n");
+		return rc;
+	}
+
+	BNXT_TF_DBG(DEBUG, "***** created port to app default rule ******\n");
+	rc = bnxt_create_port_app_df_rule(bp, BNXT_ULP_DF_TPL_VS_TO_PORT,
+					  &cfg_data->app_to_port_flow_id);
+	if (!rc) {
+		rc = ulp_default_flow_db_cfa_action_get(bp->ulp_ctx,
+							cfg_data->app_to_port_flow_id,
+							&cfg_data->tx_cfa_action);
+		if (rc)
+			goto err;
+
+		BNXT_TF_DBG(DEBUG,
+			    "***** created app to port default rule *****\n");
+		return 0;
+	}
+
+err:
+	BNXT_TF_DBG(DEBUG, "Failed to create app to port default rule\n");
+	return rc;
+}
+
+static void
+bnxt_destroy_df_rules(struct bnxt *bp)
+{
+	struct bnxt_ulp_data *cfg_data;
+
+	cfg_data = bp->ulp_ctx->cfg_data;
+	ulp_default_flow_destroy(bp->eth_dev, cfg_data->port_to_app_flow_id);
+	ulp_default_flow_destroy(bp->eth_dev, cfg_data->app_to_port_flow_id);
+}
+
 static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -1329,8 +1397,11 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);
 	bnxt_cancel_fc_thread(bp);
 
-	if (BNXT_TRUFLOW_EN(bp))
+	if (BNXT_TRUFLOW_EN(bp)) {
+		if (bp->rep_info != NULL)
+			bnxt_destroy_df_rules(bp);
 		bnxt_ulp_deinit(bp);
+	}
 
 	if (eth_dev->data->dev_started)
 		bnxt_dev_stop_op(eth_dev);
@@ -1579,6 +1650,9 @@ static int bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 	if (rc != 0)
 		vnic->flags = old_flags;
+
+	if (BNXT_TRUFLOW_EN(bp) && bp->rep_info != NULL)
+		bnxt_create_df_rules(bp);
 
 	return rc;
 }

@@ -22,6 +22,9 @@ struct bnxt_ulp_data {
 	struct bnxt_ulp_flow_db		*flow_db;
 	void				*mapper_data;
 	struct bnxt_ulp_port_db		*port_db;
+	uint32_t			port_to_app_flow_id;
+	uint32_t			app_to_port_flow_id;
+	uint32_t			tx_cfa_action;
 };
 
 struct bnxt_ulp_context {
