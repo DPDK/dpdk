@@ -29,8 +29,6 @@
  */
 void *eem_db[TF_DIR_MAX];
 
-#define TF_EEM_DB_TBL_SCOPE 1
-
 /**
  * Init flag, set on bind and cleared on unbind
  */
@@ -54,13 +52,13 @@ tbl_scope_cb_find(uint32_t tbl_scope_id)
 
 	/* Check that id is valid */
 	parms.rm_db = eem_db[TF_DIR_RX];
-	parms.db_index = TF_EEM_DB_TBL_SCOPE;
+	parms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
 	parms.index = tbl_scope_id;
 	parms.allocated = &allocated;
 
 	i = tf_rm_is_allocated(&parms);
 
-	if (i < 0 || !allocated)
+	if (i < 0 || allocated != TF_RM_ALLOCATED_ENTRY_IN_USE)
 		return NULL;
 
 	for (i = 0; i < TF_NUM_TBL_SCOPE; i++) {
@@ -156,6 +154,111 @@ tf_destroy_tbl_pool_external(enum tf_dir dir,
 		tbl_scope_cb->ext_act_pool_mem[dir];
 
 	tfp_free(ext_act_pool_mem);
+}
+
+/**
+ * Allocate External Tbl entry from the scope pool.
+ *
+ * [in] tfp
+ *   Pointer to Truflow Handle
+ * [in] parms
+ *   Allocation parameters
+ *
+ * Return:
+ *  0       - Success, entry allocated - no search support
+ *  -ENOMEM -EINVAL -EOPNOTSUPP
+ *          - Failure, entry not allocated, out of resources
+ */
+int
+tf_tbl_ext_alloc(struct tf *tfp,
+		 struct tf_tbl_alloc_parms *parms)
+{
+	int rc;
+	uint32_t index;
+	struct tf_tbl_scope_cb *tbl_scope_cb;
+	struct stack *pool;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Get the pool info from the table scope
+	 */
+	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
+
+	if (tbl_scope_cb == NULL) {
+		TFP_DRV_LOG(ERR,
+			    "%s, table scope not allocated\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+	pool = &tbl_scope_cb->ext_act_pool[parms->dir];
+
+	/* Allocate an element
+	 */
+	rc = stack_pop(pool, &index);
+
+	if (rc != 0) {
+		TFP_DRV_LOG(ERR,
+		   "%s, Allocation failed, type:%d\n",
+		   tf_dir_2_str(parms->dir),
+		   parms->type);
+		return rc;
+	}
+
+	*parms->idx = index;
+	return rc;
+}
+
+/**
+ * Free External Tbl entry to the scope pool.
+ *
+ * [in] tfp
+ *   Pointer to Truflow Handle
+ * [in] parms
+ *   Allocation parameters
+ *
+ * Return:
+ *  0       - Success, entry freed
+ *
+ * - Failure, entry not successfully freed for these reasons
+ *  -ENOMEM
+ *  -EOPNOTSUPP
+ *  -EINVAL
+ */
+int
+tf_tbl_ext_free(struct tf *tfp,
+		struct tf_tbl_free_parms *parms)
+{
+	int rc = 0;
+	uint32_t index;
+	struct tf_tbl_scope_cb *tbl_scope_cb;
+	struct stack *pool;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Get the pool info from the table scope
+	 */
+	tbl_scope_cb = tbl_scope_cb_find(parms->tbl_scope_id);
+
+	if (tbl_scope_cb == NULL) {
+		TFP_DRV_LOG(ERR,
+			    "%s, table scope error\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+	pool = &tbl_scope_cb->ext_act_pool[parms->dir];
+
+	index = parms->idx;
+
+	rc = stack_push(pool, index);
+
+	if (rc != 0) {
+		TFP_DRV_LOG(ERR,
+		   "%s, consistency error, stack full, type:%d, idx:%d\n",
+		   tf_dir_2_str(parms->dir),
+		   parms->type,
+		   index);
+	}
+	return rc;
 }
 
 uint32_t
@@ -271,6 +374,15 @@ tf_em_ext_common_unbind(struct tf *tfp)
 	init = 0;
 
 	return 0;
+}
+
+int tf_tbl_ext_set(struct tf *tfp,
+		   struct tf_tbl_set_parms *parms)
+{
+	if (mem_type == TF_EEM_MEM_TYPE_HOST)
+		return tf_tbl_ext_host_set(tfp, parms);
+	else
+		return tf_tbl_ext_system_set(tfp, parms);
 }
 
 int

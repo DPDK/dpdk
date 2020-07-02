@@ -48,7 +48,6 @@
  * EM DBs.
  */
 extern void *eem_db[TF_DIR_MAX];
-#define TF_EEM_DB_TBL_SCOPE 1
 
 extern struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
 
@@ -986,7 +985,7 @@ tf_em_ext_host_alloc(struct tf *tfp,
 
 	/* Get Table Scope control block from the session pool */
 	aparms.rm_db = eem_db[TF_DIR_RX];
-	aparms.db_index = TF_EEM_DB_TBL_SCOPE;
+	aparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
 	aparms.index = (uint32_t *)&parms->tbl_scope_id;
 	rc = tf_rm_allocate(&aparms);
 	if (rc) {
@@ -1087,7 +1086,7 @@ cleanup_full:
 cleanup:
 	/* Free Table control block */
 	fparms.rm_db = eem_db[TF_DIR_RX];
-	fparms.db_index = TF_EEM_DB_TBL_SCOPE;
+	fparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
 	fparms.index = parms->tbl_scope_id;
 	tf_rm_free(&fparms);
 	return -EINVAL;
@@ -1111,7 +1110,7 @@ tf_em_ext_host_free(struct tf *tfp,
 
 	/* Free Table control block */
 	aparms.rm_db = eem_db[TF_DIR_RX];
-	aparms.db_index = TF_EEM_DB_TBL_SCOPE;
+	aparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
 	aparms.index = parms->tbl_scope_id;
 	rc = tf_rm_free(&aparms);
 	if (rc) {
@@ -1133,6 +1132,77 @@ tf_em_ext_host_free(struct tf *tfp,
 		tf_em_ctx_unreg(tfp, tbl_scope_cb, dir);
 	}
 
-	tbl_scopes[parms->tbl_scope_id].tbl_scope_id = -1;
+	tbl_scopes[parms->tbl_scope_id].tbl_scope_id = TF_TBL_SCOPE_INVALID;
+	return rc;
+}
+
+/**
+ * Sets the specified external table type element.
+ *
+ * This API sets the specified element data
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to table set parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_tbl_ext_host_set(struct tf *tfp,
+			struct tf_tbl_set_parms *parms)
+{
+	int rc = 0;
+	struct tf_tbl_scope_cb *tbl_scope_cb;
+	uint32_t tbl_scope_id;
+	struct hcapi_cfa_hwop op;
+	struct hcapi_cfa_key_tbl key_tbl;
+	struct hcapi_cfa_key_data key_obj;
+	struct hcapi_cfa_key_loc key_loc;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	if (parms->data == NULL) {
+		TFP_DRV_LOG(ERR,
+			    "%s, invalid parms->data\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	tbl_scope_id = parms->tbl_scope_id;
+
+	if (tbl_scope_id == TF_TBL_SCOPE_INVALID)  {
+		TFP_DRV_LOG(ERR,
+			    "%s, Table scope not allocated\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	/* Get the table scope control block associated with the
+	 * external pool
+	 */
+	tbl_scope_cb = tbl_scope_cb_find(tbl_scope_id);
+
+	if (tbl_scope_cb == NULL) {
+		TFP_DRV_LOG(ERR,
+			    "%s, table scope error\n",
+			    tf_dir_2_str(parms->dir));
+		return -EINVAL;
+	}
+
+	op.opcode = HCAPI_CFA_HWOPS_PUT;
+	key_tbl.base0 =
+		(uint8_t *)&tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_RECORD_TABLE];
+	key_obj.offset = parms->idx % TF_EM_PAGE_SIZE;
+	key_obj.data = parms->data;
+	key_obj.size = parms->data_sz_in_bytes;
+
+	rc = hcapi_cfa_key_hw_op(&op,
+				 &key_tbl,
+				 &key_obj,
+				 &key_loc);
+
 	return rc;
 }

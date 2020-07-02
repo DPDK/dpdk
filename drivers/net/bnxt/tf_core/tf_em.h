@@ -456,4 +456,99 @@ int tf_em_ext_common_free(struct tf *tfp,
  */
 int tf_em_ext_common_alloc(struct tf *tfp,
 			   struct tf_alloc_tbl_scope_parms *parms);
+
+/**
+ * Allocate External Tbl entry from the scope pool.
+ *
+ * [in] tfp
+ *   Pointer to Truflow Handle
+ * [in] parms
+ *   Allocation parameters
+ *
+ * Return:
+ *  0       - Success, entry allocated - no search support
+ *  -ENOMEM -EINVAL -EOPNOTSUPP
+ *          - Failure, entry not allocated, out of resources
+ */
+int
+tf_tbl_ext_alloc(struct tf *tfp,
+		 struct tf_tbl_alloc_parms *parms);
+
+/**
+ * Free External Tbl entry to the scope pool.
+ *
+ * [in] tfp
+ *   Pointer to Truflow Handle
+ * [in] parms
+ *   Allocation parameters
+ *
+ * Return:
+ *  0       - Success, entry freed
+ *
+ * - Failure, entry not successfully freed for these reasons
+ *  -ENOMEM
+ *  -EOPNOTSUPP
+ *  -EINVAL
+ */
+int
+tf_tbl_ext_free(struct tf *tfp,
+		struct tf_tbl_free_parms *parms);
+
+/**
+ * Sets the specified external table type element.
+ *
+ * This API sets the specified element data by invoking the
+ * firmware.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to table set parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_tbl_ext_set(struct tf *tfp,
+		   struct tf_tbl_set_parms *parms);
+
+/**
+ * Sets the specified external table type element.
+ *
+ * This API sets the specified element data by invoking the
+ * firmware.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to table set parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_tbl_ext_host_set(struct tf *tfp,
+			struct tf_tbl_set_parms *parms);
+
+/**
+ * Sets the specified external table type element.
+ *
+ * This API sets the specified element data by invoking the
+ * firmware.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to table set parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_tbl_ext_system_set(struct tf *tfp,
+			  struct tf_tbl_set_parms *parms);
+
 #endif /* _TF_EM_H_ */

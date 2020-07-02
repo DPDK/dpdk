@@ -617,25 +617,48 @@ tf_alloc_tbl_entry(struct tf *tfp,
 		return rc;
 	}
 
-	if (dev->ops->tf_dev_alloc_tbl == NULL) {
-		rc = -EOPNOTSUPP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Operation not supported, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return -EOPNOTSUPP;
-	}
-
 	aparms.dir = parms->dir;
 	aparms.type = parms->type;
 	aparms.idx = &idx;
-	rc = dev->ops->tf_dev_alloc_tbl(tfp, &aparms);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Table allocation failed, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return rc;
+	aparms.tbl_scope_id = parms->tbl_scope_id;
+
+	if (parms->type == TF_TBL_TYPE_EXT) {
+		if (dev->ops->tf_dev_alloc_ext_tbl == NULL) {
+			rc = -EOPNOTSUPP;
+			TFP_DRV_LOG(ERR,
+				    "%s: Operation not supported, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return -EOPNOTSUPP;
+		}
+
+		rc = dev->ops->tf_dev_alloc_ext_tbl(tfp, &aparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: External table allocation failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
+
+	} else {
+		if (dev->ops->tf_dev_alloc_tbl == NULL) {
+			rc = -EOPNOTSUPP;
+			TFP_DRV_LOG(ERR,
+				    "%s: Operation not supported, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return -EOPNOTSUPP;
+		}
+
+		rc = dev->ops->tf_dev_alloc_tbl(tfp, &aparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Table allocation failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
 	}
 
 	parms->idx = idx;
@@ -677,25 +700,47 @@ tf_free_tbl_entry(struct tf *tfp,
 		return rc;
 	}
 
-	if (dev->ops->tf_dev_free_tbl == NULL) {
-		rc = -EOPNOTSUPP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Operation not supported, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return -EOPNOTSUPP;
-	}
-
 	fparms.dir = parms->dir;
 	fparms.type = parms->type;
 	fparms.idx = parms->idx;
-	rc = dev->ops->tf_dev_free_tbl(tfp, &fparms);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Table free failed, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return rc;
+	fparms.tbl_scope_id = parms->tbl_scope_id;
+
+	if (parms->type == TF_TBL_TYPE_EXT) {
+		if (dev->ops->tf_dev_free_ext_tbl == NULL) {
+			rc = -EOPNOTSUPP;
+			TFP_DRV_LOG(ERR,
+				    "%s: Operation not supported, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return -EOPNOTSUPP;
+		}
+
+		rc = dev->ops->tf_dev_free_ext_tbl(tfp, &fparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Table free failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
+	} else {
+		if (dev->ops->tf_dev_free_tbl == NULL) {
+			rc = -EOPNOTSUPP;
+			TFP_DRV_LOG(ERR,
+				    "%s: Operation not supported, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return -EOPNOTSUPP;
+		}
+
+		rc = dev->ops->tf_dev_free_tbl(tfp, &fparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Table free failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
 	}
 
 	return 0;
@@ -735,27 +780,49 @@ tf_set_tbl_entry(struct tf *tfp,
 		return rc;
 	}
 
-	if (dev->ops->tf_dev_set_tbl == NULL) {
-		rc = -EOPNOTSUPP;
-		TFP_DRV_LOG(ERR,
-			    "%s: Operation not supported, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return -EOPNOTSUPP;
-	}
-
 	sparms.dir = parms->dir;
 	sparms.type = parms->type;
 	sparms.data = parms->data;
 	sparms.data_sz_in_bytes = parms->data_sz_in_bytes;
 	sparms.idx = parms->idx;
-	rc = dev->ops->tf_dev_set_tbl(tfp, &sparms);
-	if (rc) {
-		TFP_DRV_LOG(ERR,
-			    "%s: Table set failed, rc:%s\n",
-			    tf_dir_2_str(parms->dir),
-			    strerror(-rc));
-		return rc;
+	sparms.tbl_scope_id = parms->tbl_scope_id;
+
+	if (parms->type == TF_TBL_TYPE_EXT) {
+		if (dev->ops->tf_dev_set_ext_tbl == NULL) {
+			rc = -EOPNOTSUPP;
+			TFP_DRV_LOG(ERR,
+				    "%s: Operation not supported, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return -EOPNOTSUPP;
+		}
+
+		rc = dev->ops->tf_dev_set_ext_tbl(tfp, &sparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Table set failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
+	} else {
+		if (dev->ops->tf_dev_set_tbl == NULL) {
+			rc = -EOPNOTSUPP;
+			TFP_DRV_LOG(ERR,
+				    "%s: Operation not supported, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return -EOPNOTSUPP;
+		}
+
+		rc = dev->ops->tf_dev_set_tbl(tfp, &sparms);
+		if (rc) {
+			TFP_DRV_LOG(ERR,
+				    "%s: Table set failed, rc:%s\n",
+				    tf_dir_2_str(parms->dir),
+				    strerror(-rc));
+			return rc;
+		}
 	}
 
 	return rc;

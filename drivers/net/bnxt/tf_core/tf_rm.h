@@ -12,6 +12,11 @@
 
 struct tf;
 
+/** RM return codes */
+#define TF_RM_ALLOCATED_ENTRY_FREE        0
+#define TF_RM_ALLOCATED_ENTRY_IN_USE      1
+#define TF_RM_ALLOCATED_NO_ENTRY_FOUND   -1
+
 /**
  * The Resource Manager (RM) module provides basic DB handling for
  * internal resources. These resources exists within the actual device

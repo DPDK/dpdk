@@ -252,13 +252,13 @@ tf_tcam_free(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	if (!allocated) {
+	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
 		TFP_DRV_LOG(ERR,
 			    "%s: Entry already free, type:%d, index:%d\n",
 			    tf_dir_2_str(parms->dir),
 			    parms->type,
 			    parms->idx);
-		return rc;
+		return -EINVAL;
 	}
 
 	/* Free requested element */
@@ -362,13 +362,13 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
-	if (!allocated) {
+	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
 		TFP_DRV_LOG(ERR,
 			    "%s: Entry is not allocated, type:%d, index:%d\n",
 			    tf_dir_2_str(parms->dir),
 			    parms->type,
 			    parms->idx);
-		return rc;
+		return -EINVAL;
 	}
 
 	/* Convert TF type to HCAPI RM type */

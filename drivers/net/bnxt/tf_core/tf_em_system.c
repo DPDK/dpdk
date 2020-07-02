@@ -112,3 +112,9 @@ tf_em_ext_system_free(struct tf *tfp __rte_unused,
 {
 	return 0;
 }
+
+int tf_tbl_ext_system_set(struct tf *tfp __rte_unused,
+			  struct tf_tbl_set_parms *parms __rte_unused)
+{
+	return 0;
+}

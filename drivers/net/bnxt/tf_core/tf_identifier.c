@@ -159,13 +159,13 @@ tf_ident_free(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
-	if (!allocated) {
+	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
 		TFP_DRV_LOG(ERR,
 			    "%s: Entry already free, type:%d, index:%d\n",
 			    tf_dir_2_str(parms->dir),
 			    parms->type,
 			    parms->id);
-		return rc;
+		return -EINVAL;
 	}
 
 	/* Free requested element */

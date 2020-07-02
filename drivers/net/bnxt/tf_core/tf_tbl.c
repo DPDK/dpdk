@@ -172,13 +172,13 @@ tf_tbl_free(struct tf *tfp __rte_unused,
 	if (rc)
 		return rc;
 
-	if (!allocated) {
+	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
 		TFP_DRV_LOG(ERR,
 			    "%s: Entry already free, type:%d, index:%d\n",
 			    tf_dir_2_str(parms->dir),
 			    parms->type,
 			    parms->idx);
-		return rc;
+		return -EINVAL;
 	}
 
 	/* Free requested element */
@@ -233,7 +233,7 @@ tf_tbl_set(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	if (!allocated) {
+	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
 		TFP_DRV_LOG(ERR,
 		   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
 		   tf_dir_2_str(parms->dir),
@@ -301,7 +301,7 @@ tf_tbl_get(struct tf *tfp,
 	if (rc)
 		return rc;
 
-	if (!allocated) {
+	if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
 		TFP_DRV_LOG(ERR,
 		   "%s, Invalid or not allocated index, type:%d, idx:%d\n",
 		   tf_dir_2_str(parms->dir),
@@ -374,7 +374,7 @@ tf_tbl_bulk_get(struct tf *tfp,
 		if (rc)
 			return rc;
 
-		if (!allocated) {
+		if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
 			TFP_DRV_LOG(ERR,
 				    "%s, Invalid or not allocated index, type:%d, idx:%d\n",
 				    tf_dir_2_str(parms->dir),

@@ -84,6 +84,10 @@ struct tf_tbl_alloc_parms {
 	 */
 	enum tf_tbl_type type;
 	/**
+	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
+	 */
+	uint32_t tbl_scope_id;
+	/**
 	 * [out] Idx of allocated entry or found entry (if search_enable)
 	 */
 	uint32_t *idx;
@@ -101,6 +105,10 @@ struct tf_tbl_free_parms {
 	 * [in] Type of the allocation type
 	 */
 	enum tf_tbl_type type;
+	/**
+	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
+	 */
+	uint32_t tbl_scope_id;
 	/**
 	 * [in] Index to free
 	 */
@@ -168,6 +176,10 @@ struct tf_tbl_set_parms {
 	 * [in] Type of object to set
 	 */
 	enum tf_tbl_type type;
+	/**
+	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
+	 */
+	uint32_t tbl_scope_id;
 	/**
 	 * [in] Entry data
 	 */

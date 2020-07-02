@@ -217,6 +217,26 @@ struct tf_dev_ops {
 				struct tf_tbl_alloc_parms *parms);
 
 	/**
+	 * Allocation of a external table type element.
+	 *
+	 * This API allocates the specified table type element from a
+	 * device specific table type DB. The allocated element is
+	 * returned.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table allocation parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_alloc_ext_tbl)(struct tf *tfp,
+				    struct tf_tbl_alloc_parms *parms);
+
+	/**
 	 * Free of a table type element.
 	 *
 	 * This API free's a previous allocated table type element from a
@@ -234,6 +254,25 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_free_tbl)(struct tf *tfp,
 			       struct tf_tbl_free_parms *parms);
+
+	/**
+	 * Free of a external table type element.
+	 *
+	 * This API free's a previous allocated table type element from a
+	 * device specific table type DB.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table free parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_free_ext_tbl)(struct tf *tfp,
+				   struct tf_tbl_free_parms *parms);
 
 	/**
 	 * Searches for the specified table type element in a shadow DB.
@@ -275,6 +314,25 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_set_tbl)(struct tf *tfp,
 			      struct tf_tbl_set_parms *parms);
+
+	/**
+	 * Sets the specified external table type element.
+	 *
+	 * This API sets the specified element data by invoking the
+	 * firmware.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table set parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_set_ext_tbl)(struct tf *tfp,
+				  struct tf_tbl_set_parms *parms);
 
 	/**
 	 * Retrieves the specified table type element.

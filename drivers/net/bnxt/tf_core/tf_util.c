@@ -92,10 +92,6 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 		return "NAT IPv4 Source";
 	case TF_TBL_TYPE_ACT_MODIFY_IPV4_DEST:
 		return "NAT IPv4 Destination";
-	case TF_TBL_TYPE_ACT_MODIFY_IPV6_SRC:
-		return "NAT IPv6 Source";
-	case TF_TBL_TYPE_ACT_MODIFY_IPV6_DEST:
-		return "NAT IPv6 Destination";
 	case TF_TBL_TYPE_METER_PROF:
 		return "Meter Profile";
 	case TF_TBL_TYPE_METER_INST:
