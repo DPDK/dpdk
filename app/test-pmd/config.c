@@ -118,6 +118,7 @@ const struct rss_type_info rss_type_table[] = {
 	{ "ah", ETH_RSS_AH },
 	{ "l2tpv3", ETH_RSS_L2TPV3 },
 	{ "pfcp", ETH_RSS_PFCP },
+	{ "pppoe", ETH_RSS_PPPOE },
 	{ NULL, 0 },
 };
 
