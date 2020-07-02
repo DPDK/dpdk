@@ -93,6 +93,12 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_alloc_search_tcam = NULL,
 	.tf_dev_set_tcam = NULL,
 	.tf_dev_get_tcam = NULL,
+	.tf_dev_insert_int_em_entry = NULL,
+	.tf_dev_delete_int_em_entry = NULL,
+	.tf_dev_insert_ext_em_entry = NULL,
+	.tf_dev_delete_ext_em_entry = NULL,
+	.tf_dev_alloc_tbl_scope = NULL,
+	.tf_dev_free_tbl_scope = NULL,
 };
 
 /**
@@ -113,6 +119,10 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_alloc_search_tcam = NULL,
 	.tf_dev_set_tcam = tf_tcam_set,
 	.tf_dev_get_tcam = NULL,
-	.tf_dev_insert_em_entry = tf_em_insert_entry,
-	.tf_dev_delete_em_entry = tf_em_delete_entry,
+	.tf_dev_insert_int_em_entry = tf_em_insert_int_entry,
+	.tf_dev_delete_int_em_entry = tf_em_delete_int_entry,
+	.tf_dev_insert_ext_em_entry = tf_em_insert_ext_entry,
+	.tf_dev_delete_ext_em_entry = tf_em_delete_ext_entry,
+	.tf_dev_alloc_tbl_scope = tf_em_ext_common_alloc,
+	.tf_dev_free_tbl_scope = tf_em_ext_common_free,
 };

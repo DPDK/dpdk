@@ -53,7 +53,6 @@ tf_tcam_bind(struct tf *tfp,
 		return -EINVAL;
 	}
 
-	db_cfg.num_elements = parms->num_elements;
 	db_cfg.type = TF_DEVICE_MODULE_TYPE_TCAM;
 	db_cfg.num_elements = parms->num_elements;
 	db_cfg.cfg = parms->cfg;
@@ -174,14 +173,15 @@ tf_tcam_alloc(struct tf *tfp,
 }
 
 int
-tf_tcam_free(struct tf *tfp __rte_unused,
-	     struct tf_tcam_free_parms *parms __rte_unused)
+tf_tcam_free(struct tf *tfp,
+	     struct tf_tcam_free_parms *parms)
 {
 	int rc;
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	struct tf_rm_is_allocated_parms aparms = { 0 };
 	struct tf_rm_free_parms fparms = { 0 };
+	struct tf_rm_get_hcapi_parms hparms = { 0 };
 	uint16_t num_slice_per_row = 1;
 	int allocated = 0;
 
@@ -253,6 +253,15 @@ tf_tcam_free(struct tf *tfp __rte_unused,
 		return rc;
 	}
 
+	/* Convert TF type to HCAPI RM type */
+	hparms.rm_db = tcam_db[parms->dir];
+	hparms.db_index = parms->type;
+	hparms.hcapi_type = &parms->hcapi_type;
+
+	rc = tf_rm_get_hcapi_type(&hparms);
+	if (rc)
+		return rc;
+
 	rc = tf_msg_tcam_entry_free(tfp, parms);
 	if (rc) {
 		/* Log error */
@@ -281,6 +290,7 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	struct tf_rm_is_allocated_parms aparms = { 0 };
+	struct tf_rm_get_hcapi_parms hparms = { 0 };
 	uint16_t num_slice_per_row = 1;
 	int allocated = 0;
 
@@ -337,6 +347,15 @@ tf_tcam_set(struct tf *tfp __rte_unused,
 			    parms->idx);
 		return rc;
 	}
+
+	/* Convert TF type to HCAPI RM type */
+	hparms.rm_db = tcam_db[parms->dir];
+	hparms.db_index = parms->type;
+	hparms.hcapi_type = &parms->hcapi_type;
+
+	rc = tf_rm_get_hcapi_type(&hparms);
+	if (rc)
+		return rc;
 
 	rc = tf_msg_tcam_entry_set(tfp, parms);
 	if (rc) {

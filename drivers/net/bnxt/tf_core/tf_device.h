@@ -15,12 +15,24 @@ struct tf;
 struct tf_session;
 
 /**
- *
+ * Device module types
  */
 enum tf_device_module_type {
+	/**
+	 * Identifier module
+	 */
 	TF_DEVICE_MODULE_TYPE_IDENTIFIER,
+	/**
+	 * Table type module
+	 */
 	TF_DEVICE_MODULE_TYPE_TABLE,
+	/**
+	 * TCAM module
+	 */
 	TF_DEVICE_MODULE_TYPE_TCAM,
+	/**
+	 * EM module
+	 */
 	TF_DEVICE_MODULE_TYPE_EM,
 	TF_DEVICE_MODULE_TYPE_MAX
 };
@@ -395,8 +407,8 @@ struct tf_dev_ops {
 	 *    0       - Success
 	 *    -EINVAL - Error
 	 */
-	int (*tf_dev_insert_em_entry)(struct tf *tfp,
-				      struct tf_insert_em_entry_parms *parms);
+	int (*tf_dev_insert_int_em_entry)(struct tf *tfp,
+					  struct tf_insert_em_entry_parms *parms);
 
 	/**
 	 * Delete EM hash entry API
@@ -411,8 +423,72 @@ struct tf_dev_ops {
 	 *    0       - Success
 	 *    -EINVAL - Error
 	 */
-	int (*tf_dev_delete_em_entry)(struct tf *tfp,
-				      struct tf_delete_em_entry_parms *parms);
+	int (*tf_dev_delete_int_em_entry)(struct tf *tfp,
+					  struct tf_delete_em_entry_parms *parms);
+
+	/**
+	 * Insert EEM hash entry API
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to E/EM insert parameters
+	 *
+	 *  Returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_insert_ext_em_entry)(struct tf *tfp,
+					  struct tf_insert_em_entry_parms *parms);
+
+	/**
+	 * Delete EEM hash entry API
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to E/EM delete parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_delete_ext_em_entry)(struct tf *tfp,
+					  struct tf_delete_em_entry_parms *parms);
+
+	/**
+	 * Allocate EEM table scope
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table scope alloc parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_alloc_tbl_scope)(struct tf *tfp,
+				      struct tf_alloc_tbl_scope_parms *parms);
+
+	/**
+	 * Free EEM table scope
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to table scope free parameters
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_free_tbl_scope)(struct tf *tfp,
+				     struct tf_free_tbl_scope_parms *parms);
 };
 
 /**

@@ -1818,16 +1818,8 @@ tf_rm_allocate_validate_hw(struct tf *tfp,
 		hw_entries = tfs->resc.tx.hw_entry;
 
 	/* Query for Session HW Resources */
-	rc = tf_msg_session_hw_resc_qcaps(tfp, dir, &hw_query);
-	if (rc) {
-		/* Log error */
-		TFP_DRV_LOG(ERR,
-			    "%s, HW qcaps message send failed, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		goto cleanup;
-	}
 
+	memset(&hw_query, 0, sizeof(hw_query)); /* RSXX */
 	rc = tf_rm_check_hw_qcaps_static(&hw_query, dir, &error_flag);
 	if (rc) {
 		/* Log error */
@@ -1846,16 +1838,6 @@ tf_rm_allocate_validate_hw(struct tf *tfp,
 		hw_alloc.hw_num[i] = hw_query.hw_query[i].max;
 
 	/* Allocate Session HW Resources */
-	rc = tf_msg_session_hw_resc_alloc(tfp, dir, &hw_alloc, hw_entries);
-	if (rc) {
-		/* Log error */
-		TFP_DRV_LOG(ERR,
-			    "%s, HW alloc message send failed, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		goto cleanup;
-	}
-
 	/* Perform HW allocation validation as its possible the
 	 * resource availability changed between qcaps and alloc
 	 */
@@ -1906,17 +1888,7 @@ tf_rm_allocate_validate_sram(struct tf *tfp,
 	else
 		sram_entries = tfs->resc.tx.sram_entry;
 
-	/* Query for Session SRAM Resources */
-	rc = tf_msg_session_sram_resc_qcaps(tfp, dir, &sram_query);
-	if (rc) {
-		/* Log error */
-		TFP_DRV_LOG(ERR,
-			    "%s, SRAM qcaps message send failed, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		goto cleanup;
-	}
-
+	memset(&sram_query, 0, sizeof(sram_query)); /* RSXX */
 	rc = tf_rm_check_sram_qcaps_static(&sram_query, dir, &error_flag);
 	if (rc) {
 		/* Log error */
@@ -1933,20 +1905,6 @@ tf_rm_allocate_validate_sram(struct tf *tfp,
 	/* Post process SRAM capability */
 	for (i = 0; i < TF_RESC_TYPE_SRAM_MAX; i++)
 		sram_alloc.sram_num[i] = sram_query.sram_query[i].max;
-
-	/* Allocate Session SRAM Resources */
-	rc = tf_msg_session_sram_resc_alloc(tfp,
-					    dir,
-					    &sram_alloc,
-					    sram_entries);
-	if (rc) {
-		/* Log error */
-		TFP_DRV_LOG(ERR,
-			    "%s, SRAM alloc message send failed, rc:%s\n",
-			    tf_dir_2_str(dir),
-			    strerror(-rc));
-		goto cleanup;
-	}
 
 	/* Perform SRAM allocation validation as its possible the
 	 * resource availability changed between qcaps and alloc
@@ -2798,17 +2756,6 @@ tf_rm_close(struct tf *tfp)
 
 			/* Log the entries to be flushed */
 			tf_rm_log_hw_flush(i, hw_flush_entries);
-			rc = tf_msg_session_hw_resc_flush(tfp,
-							  i,
-							  hw_flush_entries);
-			if (rc) {
-				rc_close = rc;
-				/* Log error */
-				TFP_DRV_LOG(ERR,
-					    "%s, HW flush failed, rc:%s\n",
-					    tf_dir_2_str(i),
-					    strerror(-rc));
-			}
 		}
 
 		/* Check for any not previously freed SRAM resources
@@ -2828,38 +2775,6 @@ tf_rm_close(struct tf *tfp)
 
 			/* Log the entries to be flushed */
 			tf_rm_log_sram_flush(i, sram_flush_entries);
-
-			rc = tf_msg_session_sram_resc_flush(tfp,
-							    i,
-							    sram_flush_entries);
-			if (rc) {
-				rc_close = rc;
-				/* Log error */
-				TFP_DRV_LOG(ERR,
-					    "%s, HW flush failed, rc:%s\n",
-					    tf_dir_2_str(i),
-					    strerror(-rc));
-			}
-		}
-
-		rc = tf_msg_session_hw_resc_free(tfp, i, hw_entries);
-		if (rc) {
-			rc_close = rc;
-			/* Log error */
-			TFP_DRV_LOG(ERR,
-				    "%s, HW free failed, rc:%s\n",
-				    tf_dir_2_str(i),
-				    strerror(-rc));
-		}
-
-		rc = tf_msg_session_sram_resc_free(tfp, i, sram_entries);
-		if (rc) {
-			rc_close = rc;
-			/* Log error */
-			TFP_DRV_LOG(ERR,
-				    "%s, SRAM free failed, rc:%s\n",
-				    tf_dir_2_str(i),
-				    strerror(-rc));
 		}
 	}
 

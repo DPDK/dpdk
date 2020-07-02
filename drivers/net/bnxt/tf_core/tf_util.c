@@ -152,9 +152,9 @@ tf_device_module_type_subtype_2_str(enum tf_device_module_type dm_type,
 	case TF_DEVICE_MODULE_TYPE_IDENTIFIER:
 		return tf_ident_2_str(mod_type);
 	case TF_DEVICE_MODULE_TYPE_TABLE:
-		return tf_tcam_tbl_2_str(mod_type);
-	case TF_DEVICE_MODULE_TYPE_TCAM:
 		return tf_tbl_type_2_str(mod_type);
+	case TF_DEVICE_MODULE_TYPE_TCAM:
+		return tf_tcam_tbl_2_str(mod_type);
 	case TF_DEVICE_MODULE_TYPE_EM:
 		return tf_em_tbl_type_2_str(mod_type);
 	default:

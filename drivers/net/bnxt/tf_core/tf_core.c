@@ -208,7 +208,15 @@ int tf_insert_em_entry(struct tf *tfp,
 		return rc;
 	}
 
-	rc = dev->ops->tf_dev_insert_em_entry(tfp, parms);
+	if (parms->mem == TF_MEM_EXTERNAL &&
+		dev->ops->tf_dev_insert_ext_em_entry != NULL)
+		rc = dev->ops->tf_dev_insert_ext_em_entry(tfp, parms);
+	else if (parms->mem == TF_MEM_INTERNAL &&
+		dev->ops->tf_dev_insert_int_em_entry != NULL)
+		rc = dev->ops->tf_dev_insert_int_em_entry(tfp, parms);
+	else
+		return -EINVAL;
+
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s: EM insert failed, rc:%s\n",
@@ -217,7 +225,7 @@ int tf_insert_em_entry(struct tf *tfp,
 		return rc;
 	}
 
-	return -EINVAL;
+	return 0;
 }
 
 /** Delete EM hash entry API
@@ -255,7 +263,13 @@ int tf_delete_em_entry(struct tf *tfp,
 		return rc;
 	}
 
-	rc = dev->ops->tf_dev_delete_em_entry(tfp, parms);
+	if (parms->mem == TF_MEM_EXTERNAL)
+		rc = dev->ops->tf_dev_delete_ext_em_entry(tfp, parms);
+	else if (parms->mem == TF_MEM_INTERNAL)
+		rc = dev->ops->tf_dev_delete_int_em_entry(tfp, parms);
+	else
+		return -EINVAL;
+
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s: EM delete failed, rc:%s\n",
@@ -802,6 +816,86 @@ tf_get_tbl_entry(struct tf *tfp,
 			    tf_dir_2_str(parms->dir),
 			    strerror(-rc));
 		return rc;
+	}
+
+	return rc;
+}
+
+/* API defined in tf_core.h */
+int
+tf_alloc_tbl_scope(struct tf *tfp,
+		   struct tf_alloc_tbl_scope_parms *parms)
+{
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	int rc;
+
+	TF_CHECK_PARMS_SESSION_NO_DIR(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup device, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_alloc_tbl_scope != NULL) {
+		rc = dev->ops->tf_dev_alloc_tbl_scope(tfp, parms);
+	} else {
+		TFP_DRV_LOG(ERR,
+			    "Alloc table scope not supported by device\n");
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
+/* API defined in tf_core.h */
+int
+tf_free_tbl_scope(struct tf *tfp,
+		  struct tf_free_tbl_scope_parms *parms)
+{
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	int rc;
+
+	TF_CHECK_PARMS_SESSION_NO_DIR(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup session, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to lookup device, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_free_tbl_scope) {
+		rc = dev->ops->tf_dev_free_tbl_scope(tfp, parms);
+	} else {
+		TFP_DRV_LOG(ERR,
+			    "Free table scope not supported by device\n");
+		return -EINVAL;
 	}
 
 	return rc;

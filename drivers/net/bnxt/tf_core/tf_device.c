@@ -6,6 +6,7 @@
 #include "tf_device.h"
 #include "tf_device_p4.h"
 #include "tfp.h"
+#include "tf_em.h"
 
 struct tf;
 
@@ -42,10 +43,7 @@ tf_dev_bind_p4(struct tf *tfp,
 	struct tf_ident_cfg_parms ident_cfg;
 	struct tf_tbl_cfg_parms tbl_cfg;
 	struct tf_tcam_cfg_parms tcam_cfg;
-
-	dev_handle->type = TF_DEVICE_TYPE_WH;
-	/* Initial function initialization */
-	dev_handle->ops = &tf_dev_ops_p4_init;
+	struct tf_em_cfg_parms em_cfg;
 
 	dev_handle->type = TF_DEVICE_TYPE_WH;
 	/* Initial function initialization */
@@ -83,6 +81,36 @@ tf_dev_bind_p4(struct tf *tfp,
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "TCAM initialization failure\n");
+		goto fail;
+	}
+
+	/*
+	 * EEM
+	 */
+	em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
+	em_cfg.cfg = tf_em_ext_p4;
+	em_cfg.resources = resources;
+	em_cfg.mem_type = TF_EEM_MEM_TYPE_HOST;
+
+	rc = tf_em_ext_common_bind(tfp, &em_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "EEM initialization failure\n");
+		goto fail;
+	}
+
+	/*
+	 * EM
+	 */
+	em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
+	em_cfg.cfg = tf_em_int_p4;
+	em_cfg.resources = resources;
+	em_cfg.mem_type = 0; /* Not used by EM */
+
+	rc = tf_em_int_bind(tfp, &em_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "EM initialization failure\n");
 		goto fail;
 	}
 
@@ -141,6 +169,20 @@ tf_dev_unbind_p4(struct tf *tfp)
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "Device unbind failed, Table Type\n");
+		fail = true;
+	}
+
+	rc = tf_em_ext_common_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, EEM\n");
+		fail = true;
+	}
+
+	rc = tf_em_int_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, EM\n");
 		fail = true;
 	}
 

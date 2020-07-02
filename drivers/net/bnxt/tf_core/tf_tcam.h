@@ -77,6 +77,10 @@ struct tf_tcam_free_parms {
 	 */
 	enum tf_tcam_tbl_type type;
 	/**
+	 * [in] Type of HCAPI
+	 */
+	uint16_t hcapi_type;
+	/**
 	 * [in] Index to free
 	 */
 	uint16_t idx;

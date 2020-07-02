@@ -95,7 +95,9 @@ struct tf_rm_new_db {
  *   - EOPNOTSUPP - Operation not supported
  */
 static void
-tf_rm_count_hcapi_reservations(struct tf_rm_element_cfg *cfg,
+tf_rm_count_hcapi_reservations(enum tf_dir dir,
+			       enum tf_device_module_type type,
+			       struct tf_rm_element_cfg *cfg,
 			       uint16_t *reservations,
 			       uint16_t count,
 			       uint16_t *valid_count)
@@ -107,6 +109,26 @@ tf_rm_count_hcapi_reservations(struct tf_rm_element_cfg *cfg,
 		if (cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI &&
 		    reservations[i] > 0)
 			cnt++;
+
+		/* Only log msg if a type is attempted reserved and
+		 * not supported. We ignore EM module as its using a
+		 * split configuration array thus it would fail for
+		 * this type of check.
+		 */
+		if (type != TF_DEVICE_MODULE_TYPE_EM &&
+		    cfg[i].cfg_type == TF_RM_ELEM_CFG_NULL &&
+		    reservations[i] > 0) {
+			TFP_DRV_LOG(ERR,
+				"%s, %s, %s allocation not supported\n",
+				tf_device_module_type_2_str(type),
+				tf_dir_2_str(dir),
+				tf_device_module_type_subtype_2_str(type, i));
+			printf("%s, %s, %s allocation of %d not supported\n",
+				tf_device_module_type_2_str(type),
+				tf_dir_2_str(dir),
+			       tf_device_module_type_subtype_2_str(type, i),
+			       reservations[i]);
+		}
 	}
 
 	*valid_count = cnt;
@@ -405,7 +427,9 @@ tf_rm_create_db(struct tf *tfp,
 	 * the DB holds them all as to give a fast lookup. We can also
 	 * remove entries where there are no request for elements.
 	 */
-	tf_rm_count_hcapi_reservations(parms->cfg,
+	tf_rm_count_hcapi_reservations(parms->dir,
+				       parms->type,
+				       parms->cfg,
 				       parms->alloc_cnt,
 				       parms->num_elements,
 				       &hcapi_items);
@@ -507,6 +531,11 @@ tf_rm_create_db(struct tf *tfp,
 			db[i].alloc.entry.start = resv[j].start;
 			db[i].alloc.entry.stride = resv[j].stride;
 
+			printf("Entry:%d Start:%d Stride:%d\n",
+			       i,
+			       resv[j].start,
+			       resv[j].stride);
+
 			/* Create pool */
 			pool_size = (BITALLOC_SIZEOF(resv[j].stride) /
 				     sizeof(struct bitalloc));
@@ -548,10 +577,15 @@ tf_rm_create_db(struct tf *tfp,
 		}
 	}
 
-	rm_db->num_entries = i;
+	rm_db->num_entries = parms->num_elements;
 	rm_db->dir = parms->dir;
 	rm_db->type = parms->type;
 	*parms->rm_db = (void *)rm_db;
+
+	printf("%s: type:%d num_entries:%d\n",
+	       tf_dir_2_str(parms->dir),
+	       parms->type,
+	       i);
 
 	tfp_free((void *)req);
 	tfp_free((void *)resv);

@@ -16,6 +16,8 @@
 
 struct tf;
 
+/* HWRM Direct messages */
+
 /**
  * Sends session open request to Firmware
  *
@@ -29,7 +31,7 @@ struct tf;
  *   Pointer to the fw_session_id that is allocated on firmware side
  *
  * Returns:
- *
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_session_open(struct tf *tfp,
 			char *ctrl_chan_name,
@@ -46,7 +48,7 @@ int tf_msg_session_open(struct tf *tfp,
  *   time of session open
  *
  * Returns:
- *
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_session_attach(struct tf *tfp,
 			  char *ctrl_channel_name,
@@ -59,72 +61,20 @@ int tf_msg_session_attach(struct tf *tfp,
  *   Pointer to session handle
  *
  * Returns:
- *
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_session_close(struct tf *tfp);
 
 /**
  * Sends session query config request to TF Firmware
+ *
+ * [in] session
+ *   Pointer to session handle
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_session_qcfg(struct tf *tfp);
-
-/**
- * Sends session HW resource query capability request to TF Firmware
- */
-int tf_msg_session_hw_resc_qcaps(struct tf *tfp,
-				 enum tf_dir dir,
-				 struct tf_rm_hw_query *hw_query);
-
-/**
- * Sends session HW resource allocation request to TF Firmware
- */
-int tf_msg_session_hw_resc_alloc(struct tf *tfp,
-				 enum tf_dir dir,
-				 struct tf_rm_hw_alloc *hw_alloc,
-				 struct tf_rm_entry *hw_entry);
-
-/**
- * Sends session HW resource free request to TF Firmware
- */
-int tf_msg_session_hw_resc_free(struct tf *tfp,
-				enum tf_dir dir,
-				struct tf_rm_entry *hw_entry);
-
-/**
- * Sends session HW resource flush request to TF Firmware
- */
-int tf_msg_session_hw_resc_flush(struct tf *tfp,
-				 enum tf_dir dir,
-				 struct tf_rm_entry *hw_entry);
-
-/**
- * Sends session SRAM resource query capability request to TF Firmware
- */
-int tf_msg_session_sram_resc_qcaps(struct tf *tfp,
-				   enum tf_dir dir,
-				   struct tf_rm_sram_query *sram_query);
-
-/**
- * Sends session SRAM resource allocation request to TF Firmware
- */
-int tf_msg_session_sram_resc_alloc(struct tf *tfp,
-				   enum tf_dir dir,
-				   struct tf_rm_sram_alloc *sram_alloc,
-				   struct tf_rm_entry *sram_entry);
-
-/**
- * Sends session SRAM resource free request to TF Firmware
- */
-int tf_msg_session_sram_resc_free(struct tf *tfp,
-				  enum tf_dir dir,
-				  struct tf_rm_entry *sram_entry);
-
-/**
- * Sends session SRAM resource flush request to TF Firmware
- */
-int tf_msg_session_sram_resc_flush(struct tf *tfp,
-				   enum tf_dir dir,
-				   struct tf_rm_entry *sram_entry);
 
 /**
  * Sends session HW resource query capability request to TF Firmware
@@ -183,6 +133,21 @@ int tf_msg_session_resc_alloc(struct tf *tfp,
 
 /**
  * Sends session resource flush request to TF Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or Transmit direction
+ *
+ * [in] size
+ *   Number of elements in the req and resv arrays
+ *
+ * [in] resv
+ *   Pointer to an array of reserved elements that needs to be flushed
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_session_resc_flush(struct tf *tfp,
 			      enum tf_dir dir,
@@ -190,6 +155,24 @@ int tf_msg_session_resc_flush(struct tf *tfp,
 			      struct tf_rm_resc_entry *resv);
 /**
  * Sends EM internal insert request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] params
+ *   Pointer to em insert parameter list
+ *
+ * [in] rptr_index
+ *   Record ptr index
+ *
+ * [in] rptr_entry
+ *   Record ptr entry
+ *
+ * [in] num_of_entries
+ *   Number of entries to insert
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_insert_em_internal_entry(struct tf *tfp,
 				    struct tf_insert_em_entry_parms *params,
@@ -198,26 +181,75 @@ int tf_msg_insert_em_internal_entry(struct tf *tfp,
 				    uint8_t *num_of_entries);
 /**
  * Sends EM internal delete request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] em_parms
+ *   Pointer to em delete parameters
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_delete_em_entry(struct tf *tfp,
 			   struct tf_delete_em_entry_parms *em_parms);
+
 /**
  * Sends EM mem register request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] page_lvl
+ *   Page level
+ *
+ * [in] page_size
+ *   Page size
+ *
+ * [in] dma_addr
+ *   DMA Address for the memory page
+ *
+ * [in] ctx_id
+ *   Context id
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_em_mem_rgtr(struct tf *tfp,
-		       int           page_lvl,
-		       int           page_size,
-		       uint64_t      dma_addr,
-		       uint16_t     *ctx_id);
+		       int page_lvl,
+		       int page_size,
+		       uint64_t dma_addr,
+		       uint16_t *ctx_id);
 
 /**
  * Sends EM mem unregister request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] ctx_id
+ *   Context id
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_em_mem_unrgtr(struct tf *tfp,
-			 uint16_t     *ctx_id);
+			 uint16_t *ctx_id);
 
 /**
  * Sends EM qcaps request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or Transmit direction
+ *
+ * [in] em_caps
+ *   Pointer to EM capabilities
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_em_qcaps(struct tf *tfp,
 		    int dir,
@@ -225,22 +257,63 @@ int tf_msg_em_qcaps(struct tf *tfp,
 
 /**
  * Sends EM config request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] num_entries
+ *   EM Table, key 0, number of entries to configure
+ *
+ * [in] key0_ctx_id
+ *   EM Table, Key 0 context id
+ *
+ * [in] key1_ctx_id
+ *   EM Table, Key 1 context id
+ *
+ * [in] record_ctx_id
+ *   EM Table, Record context id
+ *
+ * [in] efc_ctx_id
+ *   EM Table, EFC Table context id
+ *
+ * [in] flush_interval
+ *   Flush pending HW cached flows every 1/10th of value set in
+ *   seconds, both idle and active flows are flushed from the HW
+ *   cache. If set to 0, this feature will be disabled.
+ *
+ * [in] dir
+ *   Receive or Transmit direction
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_em_cfg(struct tf *tfp,
-		  uint32_t      num_entries,
-		  uint16_t      key0_ctx_id,
-		  uint16_t      key1_ctx_id,
-		  uint16_t      record_ctx_id,
-		  uint16_t      efc_ctx_id,
-		  uint8_t       flush_interval,
-		  int           dir);
+		  uint32_t num_entries,
+		  uint16_t key0_ctx_id,
+		  uint16_t key1_ctx_id,
+		  uint16_t record_ctx_id,
+		  uint16_t efc_ctx_id,
+		  uint8_t flush_interval,
+		  int dir);
 
 /**
  * Sends EM operation request to Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or Transmit direction
+ *
+ * [in] op
+ *   CFA Operator
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
  */
 int tf_msg_em_op(struct tf *tfp,
-		 int        dir,
-		 uint16_t   op);
+		 int dir,
+		 uint16_t op);
 
 /**
  * Sends tcam entry 'set' to the Firmware.
@@ -281,7 +354,7 @@ int tf_msg_tcam_entry_free(struct tf *tfp,
  * [in] dir
  *   Direction location of the element to set
  *
- * [in] type
+ * [in] hcapi_type
  *   Type of the object to set
  *
  * [in] size
@@ -298,7 +371,7 @@ int tf_msg_tcam_entry_free(struct tf *tfp,
  */
 int tf_msg_set_tbl_entry(struct tf *tfp,
 			 enum tf_dir dir,
-			 enum tf_tbl_type type,
+			 uint16_t hcapi_type,
 			 uint16_t size,
 			 uint8_t *data,
 			 uint32_t index);
@@ -312,7 +385,7 @@ int tf_msg_set_tbl_entry(struct tf *tfp,
  * [in] dir
  *   Direction location of the element to get
  *
- * [in] type
+ * [in] hcapi_type
  *   Type of the object to get
  *
  * [in] size
@@ -329,10 +402,12 @@ int tf_msg_set_tbl_entry(struct tf *tfp,
  */
 int tf_msg_get_tbl_entry(struct tf *tfp,
 			 enum tf_dir dir,
-			 enum tf_tbl_type type,
+			 uint16_t hcapi_type,
 			 uint16_t size,
 			 uint8_t *data,
 			 uint32_t index);
+
+/* HWRM Tunneled messages */
 
 /**
  * Sends bulk get message of a Table Type element to the firmware.

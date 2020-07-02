@@ -209,8 +209,10 @@ tf_tbl_set(struct tf *tfp,
 	   struct tf_tbl_set_parms *parms)
 {
 	int rc;
-	struct tf_rm_is_allocated_parms aparms;
 	int allocated = 0;
+	uint16_t hcapi_type;
+	struct tf_rm_is_allocated_parms aparms = { 0 };
+	struct tf_rm_get_hcapi_parms hparms = { 0 };
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
 
@@ -240,9 +242,22 @@ tf_tbl_set(struct tf *tfp,
 	}
 
 	/* Set the entry */
+	hparms.rm_db = tbl_db[parms->dir];
+	hparms.db_index = parms->type;
+	hparms.hcapi_type = &hcapi_type;
+	rc = tf_rm_get_hcapi_type(&hparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s, Failed type lookup, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    strerror(-rc));
+		return rc;
+	}
+
 	rc = tf_msg_set_tbl_entry(tfp,
 				  parms->dir,
-				  parms->type,
+				  hcapi_type,
 				  parms->data_sz_in_bytes,
 				  parms->data,
 				  parms->idx);
@@ -262,8 +277,10 @@ tf_tbl_get(struct tf *tfp,
 	   struct tf_tbl_get_parms *parms)
 {
 	int rc;
-	struct tf_rm_is_allocated_parms aparms;
+	uint16_t hcapi_type;
 	int allocated = 0;
+	struct tf_rm_is_allocated_parms aparms = { 0 };
+	struct tf_rm_get_hcapi_parms hparms = { 0 };
 
 	TF_CHECK_PARMS3(tfp, parms, parms->data);
 
@@ -292,10 +309,24 @@ tf_tbl_get(struct tf *tfp,
 		return -EINVAL;
 	}
 
+	/* Set the entry */
+	hparms.rm_db = tbl_db[parms->dir];
+	hparms.db_index = parms->type;
+	hparms.hcapi_type = &hcapi_type;
+	rc = tf_rm_get_hcapi_type(&hparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s, Failed type lookup, type:%d, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    parms->type,
+			    strerror(-rc));
+		return rc;
+	}
+
 	/* Get the entry */
 	rc = tf_msg_get_tbl_entry(tfp,
 				  parms->dir,
-				  parms->type,
+				  hcapi_type,
 				  parms->data_sz_in_bytes,
 				  parms->data,
 				  parms->idx);
