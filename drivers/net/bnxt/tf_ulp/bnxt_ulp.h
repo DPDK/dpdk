@@ -22,6 +22,7 @@ struct bnxt_ulp_data {
 	struct bnxt_ulp_flow_db		*flow_db;
 	void				*mapper_data;
 	struct bnxt_ulp_port_db		*port_db;
+	struct bnxt_ulp_fc_info		*fc_info;
 	uint32_t			port_to_app_flow_id;
 	uint32_t			app_to_port_flow_id;
 	uint32_t			tx_cfa_action;
@@ -153,5 +154,12 @@ ulp_default_flow_destroy(struct rte_eth_dev *eth_dev,
 int
 bnxt_ulp_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		      struct rte_flow_error *error);
+
+int32_t
+bnxt_ulp_cntxt_ptr2_fc_info_set(struct bnxt_ulp_context *ulp_ctx,
+				struct bnxt_ulp_fc_info *ulp_fc_info);
+
+struct bnxt_ulp_fc_info *
+bnxt_ulp_cntxt_ptr2_fc_info_get(struct bnxt_ulp_context *ulp_ctx);
 
 #endif /* _BNXT_ULP_H_ */

@@ -18,6 +18,7 @@
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 #include "ulp_mark_mgr.h"
+#include "ulp_fc_mgr.h"
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 #include "ulp_port_db.h"
@@ -705,6 +706,12 @@ bnxt_ulp_init(struct bnxt *bp)
 		goto jump_to_error;
 	}
 
+	rc = ulp_fc_mgr_init(bp->ulp_ctx);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to initialize ulp flow counter mgr\n");
+		goto jump_to_error;
+	}
+
 	return rc;
 
 jump_to_error:
@@ -751,6 +758,9 @@ bnxt_ulp_deinit(struct bnxt *bp)
 
 	/* cleanup the ulp mapper */
 	ulp_mapper_deinit(bp->ulp_ctx);
+
+	/* Delete the Flow Counter Manager */
+	ulp_fc_mgr_deinit(bp->ulp_ctx);
 
 	/* Delete the Port database */
 	ulp_port_db_deinit(bp->ulp_ctx);
@@ -962,4 +972,29 @@ bnxt_ulp_cntxt_ptr2_port_db_get(struct bnxt_ulp_context	*ulp_ctx)
 		return NULL;
 
 	return ulp_ctx->cfg_data->port_db;
+}
+
+/* Function to set the flow counter info into the context */
+int32_t
+bnxt_ulp_cntxt_ptr2_fc_info_set(struct bnxt_ulp_context *ulp_ctx,
+				struct bnxt_ulp_fc_info *ulp_fc_info)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data) {
+		BNXT_TF_DBG(ERR, "Invalid ulp context data\n");
+		return -EINVAL;
+	}
+
+	ulp_ctx->cfg_data->fc_info = ulp_fc_info;
+
+	return 0;
+}
+
+/* Function to retrieve the flow counter info from the context. */
+struct bnxt_ulp_fc_info *
+bnxt_ulp_cntxt_ptr2_fc_info_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return NULL;
+
+	return ulp_ctx->cfg_data->fc_info;
 }

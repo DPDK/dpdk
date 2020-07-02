@@ -10,6 +10,7 @@
 #include "ulp_utils.h"
 #include "ulp_template_struct.h"
 #include "ulp_mapper.h"
+#include "ulp_fc_mgr.h"
 
 #define ULP_FLOW_DB_RES_DIR_BIT		31
 #define ULP_FLOW_DB_RES_DIR_MASK	0x80000000
@@ -484,6 +485,21 @@ int32_t	ulp_flow_db_resource_add(struct bnxt_ulp_context	*ulp_ctxt,
 		ulp_flow_db_res_params_to_info(fid_resource, params);
 	}
 
+	if (params->resource_type == TF_TBL_TYPE_ACT_STATS_64 &&
+	    params->resource_sub_type ==
+	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
+		/* Store the first HW counter ID for this table */
+		if (!ulp_fc_mgr_start_idx_isset(ulp_ctxt, params->direction))
+			ulp_fc_mgr_start_idx_set(ulp_ctxt, params->direction,
+						 params->resource_hndl);
+
+		ulp_fc_mgr_cntr_set(ulp_ctxt, params->direction,
+				    params->resource_hndl);
+
+		if (!ulp_fc_mgr_thread_isstarted(ulp_ctxt))
+			ulp_fc_mgr_thread_start(ulp_ctxt);
+	}
+
 	/* all good, return success */
 	return 0;
 }
@@ -572,6 +588,17 @@ int32_t	ulp_flow_db_resource_del(struct bnxt_ulp_context	*ulp_ctxt,
 		memset(fid_resource, 0, sizeof(struct ulp_fdb_resource_info));
 		ULP_FLOW_DB_RES_NXT_SET(fid_resource->nxt_resource_idx,
 					nxt_idx);
+	}
+
+	/* Now that the HW Flow counter resource is deleted, reset it's
+	 * corresponding slot in the SW accumulation table in the Flow Counter
+	 * manager
+	 */
+	if (params->resource_type == TF_TBL_TYPE_ACT_STATS_64 &&
+	    params->resource_sub_type ==
+	    BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
+		ulp_fc_mgr_cntr_reset(ulp_ctxt, params->direction,
+				      params->resource_hndl);
 	}
 
 	/* all good, return success */
