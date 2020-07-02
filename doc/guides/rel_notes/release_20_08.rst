@@ -87,6 +87,16 @@ New Features
 
   * Support software Tx nanosecond timestamps precision.
 
+* **Updated Broadcom bnxt driver.**
+
+  Updated the Broadcom bnxt driver with new features and improvements, including:
+
+  * Added support for VF representors.
+  * Added support for multiple devices.
+  * Added support for new resource manager API.
+  * Added support for VXLAN encap/decap.
+  * Added support for rte_flow_query for COUNT action.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:
