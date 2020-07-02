@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2020 Broadcom
+ * Copyright(c) 2019 Broadcom
  * All rights reserved.
  */
 #ifndef _HWRM_TF_H_
@@ -23,8 +23,6 @@ typedef enum tf_subtype {
 	HWRM_TFT_SESSION_SRAM_RESC_FREE = 727,
 	HWRM_TFT_SESSION_SRAM_RESC_FLUSH = 728,
 	HWRM_TFT_TBL_SCOPE_CFG = 731,
-	HWRM_TFT_EM_RULE_INSERT = 739,
-	HWRM_TFT_EM_RULE_DELETE = 740,
 	HWRM_TFT_REG_GET = 821,
 	HWRM_TFT_REG_SET = 822,
 	HWRM_TFT_TBL_TYPE_SET = 823,
@@ -83,10 +81,6 @@ struct tf_session_sram_resc_flush_input;
 struct tf_tbl_type_set_input;
 struct tf_tbl_type_get_input;
 struct tf_tbl_type_get_output;
-struct tf_em_internal_insert_input;
-struct tf_em_internal_insert_output;
-struct tf_em_internal_delete_input;
-struct tf_em_internal_delete_output;
 /* Input params for session attach */
 typedef struct tf_session_attach_input {
 	/* Firmware session id returned when HWRM_TF_SESSION_OPEN is sent */
@@ -921,61 +915,5 @@ typedef struct tf_tbl_type_get_output {
 	/* Data read */
 	uint8_t			  data[TF_BULK_RECV];
 } tf_tbl_type_get_output_t, *ptf_tbl_type_get_output_t;
-
-/* Input params for EM internal rule insert */
-typedef struct tf_em_internal_insert_input {
-	/* Firmware Session Id */
-	uint32_t			 fw_session_id;
-	/* flags */
-	uint16_t			 flags;
-	/* When set to 0, indicates the get apply to RX */
-#define TF_EM_INTERNAL_INSERT_INPUT_FLAGS_DIR_RX	  (0x0)
-	/* When set to 1, indicates the get apply to TX */
-#define TF_EM_INTERNAL_INSERT_INPUT_FLAGS_DIR_TX	  (0x1)
-	/* strength */
-	uint16_t			 strength;
-	/* index to action */
-	uint32_t			 action_ptr;
-	/* index of em record */
-	uint32_t			 em_record_idx;
-	/* EM Key value */
-	uint64_t			 em_key[8];
-	/* number of bits in em_key */
-	uint16_t			 em_key_bitlen;
-} tf_em_internal_insert_input_t, *ptf_em_internal_insert_input_t;
-
-/* Output params for EM internal rule insert */
-typedef struct tf_em_internal_insert_output {
-	/* EM record pointer index */
-	uint16_t			 rptr_index;
-	/* EM record offset 0~3 */
-	uint8_t			  rptr_entry;
-	/* Number of word entries consumed by the key */
-	uint8_t			  num_of_entries;
-} tf_em_internal_insert_output_t, *ptf_em_internal_insert_output_t;
-
-/* Input params for EM INTERNAL rule delete */
-typedef struct tf_em_internal_delete_input {
-	/* Session Id */
-	uint32_t			 tf_session_id;
-	/* flags */
-	uint16_t			 flags;
-	/* When set to 0, indicates the get apply to RX */
-#define TF_EM_INTERNAL_DELETE_INPUT_FLAGS_DIR_RX	  (0x0)
-	/* When set to 1, indicates the get apply to TX */
-#define TF_EM_INTERNAL_DELETE_INPUT_FLAGS_DIR_TX	  (0x1)
-	/* EM internal flow hanndle */
-	uint64_t			 flow_handle;
-	/* EM Key value */
-	uint64_t			 em_key[8];
-	/* number of bits in em_key */
-	uint16_t			 em_key_bitlen;
-} tf_em_internal_delete_input_t, *ptf_em_internal_delete_input_t;
-
-/* Input params for EM INTERNAL rule delete */
-typedef struct tf_em_internal_delete_output {
-	/* Original stack allocation index */
-	uint16_t			 em_index;
-} tf_em_internal_delete_output_t, *ptf_em_internal_delete_output_t;
 
 #endif /* _HWRM_TF_H_ */
