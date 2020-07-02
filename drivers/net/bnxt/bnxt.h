@@ -806,8 +806,10 @@ struct bnxt_vf_representor {
 	uint16_t		fw_fid;
 	uint16_t		dflt_vnic_id;
 	uint16_t		svif;
-	uint16_t		tx_cfa_action;
+	uint32_t		vfr_tx_cfa_action;
 	uint16_t		rx_cfa_code;
+	uint32_t		rep2vf_flow_id;
+	uint32_t		vf2rep_flow_id;
 	/* Private data store of associated PF/Trusted VF */
 	struct rte_eth_dev	*parent_dev;
 	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];

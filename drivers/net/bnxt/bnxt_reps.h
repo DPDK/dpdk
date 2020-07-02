@@ -13,8 +13,7 @@
 #define BNXT_VF_IDX_INVALID             0xffff
 
 uint16_t
-bnxt_vfr_recv(struct bnxt *bp, uint16_t cfa_code, uint16_t queue_id,
-	      struct rte_mbuf *mbuf);
+bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf);
 int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params);
 int bnxt_vf_representor_uninit(struct rte_eth_dev *eth_dev);
 int bnxt_vf_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,

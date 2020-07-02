@@ -12,6 +12,9 @@
 #include "bnxt_txr.h"
 #include "bnxt_hwrm.h"
 #include "hsi_struct_def_dpdk.h"
+#include "bnxt_tf_common.h"
+#include "ulp_port_db.h"
+#include "ulp_flow_db.h"
 
 static const struct eth_dev_ops bnxt_vf_rep_dev_ops = {
 	.dev_infos_get = bnxt_vf_rep_dev_info_get_op,
@@ -29,30 +32,20 @@ static const struct eth_dev_ops bnxt_vf_rep_dev_ops = {
 };
 
 uint16_t
-bnxt_vfr_recv(struct bnxt *bp, uint16_t cfa_code, uint16_t queue_id,
-	      struct rte_mbuf *mbuf)
+bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 {
 	struct bnxt_sw_rx_bd *prod_rx_buf;
 	struct bnxt_rx_ring_info *rep_rxr;
 	struct bnxt_rx_queue *rep_rxq;
 	struct rte_eth_dev *vfr_eth_dev;
 	struct bnxt_vf_representor *vfr_bp;
-	uint16_t vf_id;
 	uint16_t mask;
 	uint8_t que;
 
-	vf_id = bp->cfa_code_map[cfa_code];
-	/* cfa_code is invalid OR vf_id > MAX REP. Assume normal Rx */
-	if (vf_id == BNXT_VF_IDX_INVALID || vf_id > BNXT_MAX_VF_REPS)
-		return 1;
-	vfr_eth_dev = bp->rep_info[vf_id].vfr_eth_dev;
+	vfr_eth_dev = &rte_eth_devices[port_id];
 	if (!vfr_eth_dev)
 		return 1;
 	vfr_bp = vfr_eth_dev->data->dev_private;
-	if (vfr_bp->rx_cfa_code != cfa_code) {
-		/* cfa_code not meant for this VF rep!!?? */
-		return 1;
-	}
 	/* If rxq_id happens to be > max rep_queue, use rxq0 */
 	que = queue_id < BNXT_MAX_VF_REP_RINGS ? queue_id : 0;
 	rep_rxq = vfr_bp->rx_queues[que];
@@ -127,7 +120,7 @@ bnxt_vf_rep_tx_burst(void *tx_queue,
 	pthread_mutex_lock(&parent->rep_info->vfr_lock);
 	ptxq = parent->tx_queues[qid];
 
-	ptxq->tx_cfa_action = vf_rep_bp->tx_cfa_action;
+	ptxq->vfr_tx_cfa_action = vf_rep_bp->vfr_tx_cfa_action;
 
 	for (i = 0; i < nb_pkts; i++) {
 		vf_rep_bp->tx_bytes[qid] += tx_pkts[i]->pkt_len;
@@ -135,7 +128,7 @@ bnxt_vf_rep_tx_burst(void *tx_queue,
 	}
 
 	rc = bnxt_xmit_pkts(ptxq, tx_pkts, nb_pkts);
-	ptxq->tx_cfa_action = 0;
+	ptxq->vfr_tx_cfa_action = 0;
 	pthread_mutex_unlock(&parent->rep_info->vfr_lock);
 
 	return rc;
@@ -252,10 +245,67 @@ int bnxt_vf_rep_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_compl)
 	return rc;
 }
 
-static int bnxt_vfr_alloc(struct bnxt_vf_representor *vfr)
+static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
+{
+	int rc;
+	struct bnxt_vf_representor *vfr = vfr_ethdev->data->dev_private;
+	struct rte_eth_dev *parent_dev = vfr->parent_dev;
+	struct bnxt *parent_bp = parent_dev->data->dev_private;
+	uint16_t vfr_port_id = vfr_ethdev->data->port_id;
+	struct ulp_tlv_param param_list[] = {
+		{
+			.type = BNXT_ULP_DF_PARAM_TYPE_DEV_PORT_ID,
+			.length = 2,
+			.value = {(vfr_port_id >> 8) & 0xff, vfr_port_id & 0xff}
+		},
+		{
+			.type = BNXT_ULP_DF_PARAM_TYPE_LAST,
+			.length = 0,
+			.value = {0}
+		}
+	};
+
+	ulp_port_db_dev_port_intf_update(parent_bp->ulp_ctx, vfr_ethdev);
+
+	rc = ulp_default_flow_create(parent_dev, param_list,
+				     BNXT_ULP_DF_TPL_VFREP_TO_VF,
+				     &vfr->rep2vf_flow_id);
+	if (rc) {
+		BNXT_TF_DBG(DEBUG,
+			    "Default flow rule creation for VFR->VF failed!\n");
+		return -EIO;
+	}
+
+	BNXT_TF_DBG(DEBUG, "*** Default flow rule created for VFR->VF! ***\n");
+	BNXT_TF_DBG(DEBUG, "rep2vf_flow_id = %d\n", vfr->rep2vf_flow_id);
+	rc = ulp_default_flow_db_cfa_action_get(parent_bp->ulp_ctx,
+						vfr->rep2vf_flow_id,
+						&vfr->vfr_tx_cfa_action);
+	if (rc) {
+		BNXT_TF_DBG(DEBUG,
+			    "Failed to get action_ptr for VFR->VF dflt rule\n");
+		return -EIO;
+	}
+	BNXT_TF_DBG(DEBUG, "tx_cfa_action = %d\n", vfr->vfr_tx_cfa_action);
+	rc = ulp_default_flow_create(parent_dev, param_list,
+				     BNXT_ULP_DF_TPL_VF_TO_VFREP,
+				     &vfr->vf2rep_flow_id);
+	if (rc) {
+		BNXT_TF_DBG(DEBUG,
+			    "Default flow rule creation for VF->VFR failed!\n");
+		return -EIO;
+	}
+
+	BNXT_TF_DBG(DEBUG, "*** Default flow rule created for VF->VFR! ***\n");
+	BNXT_TF_DBG(DEBUG, "vfr2rep_flow_id = %d\n", vfr->vf2rep_flow_id);
+
+	return 0;
+}
+
+static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 {
 	int rc = 0;
-	struct bnxt *parent_bp;
+	struct bnxt_vf_representor *vfr = vfr_ethdev->data->dev_private;
 
 	if (!vfr || !vfr->parent_dev) {
 		PMD_DRV_LOG(ERR,
@@ -263,10 +313,8 @@ static int bnxt_vfr_alloc(struct bnxt_vf_representor *vfr)
 		return -ENOMEM;
 	}
 
-	parent_bp = vfr->parent_dev->data->dev_private;
-
 	/* Check if representor has been already allocated in FW */
-	if (vfr->tx_cfa_action && vfr->rx_cfa_code)
+	if (vfr->vfr_tx_cfa_action && vfr->rx_cfa_code)
 		return 0;
 
 	/*
@@ -274,24 +322,14 @@ static int bnxt_vfr_alloc(struct bnxt_vf_representor *vfr)
 	 * Otherwise the FW will create the VF-rep rules with
 	 * default drop action.
 	 */
-
-	/*
-	 * This is where we need to replace invoking an HWRM cmd
-	 * with the new TFLIB ULP API to do more/less the same job
-	rc = bnxt_hwrm_cfa_vfr_alloc(parent_bp,
-				     vfr->vf_id,
-				     &vfr->tx_cfa_action,
-				     &vfr->rx_cfa_code);
-	 */
-	if (!rc) {
-		parent_bp->cfa_code_map[vfr->rx_cfa_code] = vfr->vf_id;
+	rc = bnxt_tf_vfr_alloc(vfr_ethdev);
+	if (!rc)
 		PMD_DRV_LOG(DEBUG, "allocated representor %d in FW\n",
 			    vfr->vf_id);
-	} else {
+	else
 		PMD_DRV_LOG(ERR,
 			    "Failed to alloc representor %d in FW\n",
 			    vfr->vf_id);
-	}
 
 	return rc;
 }
@@ -312,7 +350,7 @@ int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 	struct bnxt_vf_representor *rep_bp = eth_dev->data->dev_private;
 	int rc;
 
-	rc = bnxt_vfr_alloc(rep_bp);
+	rc = bnxt_vfr_alloc(eth_dev);
 
 	if (!rc) {
 		eth_dev->rx_pkt_burst = &bnxt_vf_rep_rx_burst;
@@ -325,6 +363,25 @@ int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 	}
 
 	return rc;
+}
+
+static int bnxt_tf_vfr_free(struct bnxt_vf_representor *vfr)
+{
+	int rc = 0;
+
+	rc = ulp_default_flow_destroy(vfr->parent_dev,
+				      vfr->rep2vf_flow_id);
+	if (rc)
+		PMD_DRV_LOG(ERR,
+			    "default flow destroy failed rep2vf flowid: %d\n",
+			    vfr->rep2vf_flow_id);
+	rc = ulp_default_flow_destroy(vfr->parent_dev,
+				      vfr->vf2rep_flow_id);
+	if (rc)
+		PMD_DRV_LOG(ERR,
+			    "default flow destroy failed vf2rep flowid: %d\n",
+			    vfr->vf2rep_flow_id);
+	return 0;
 }
 
 static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
@@ -341,15 +398,10 @@ static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
 	parent_bp = vfr->parent_dev->data->dev_private;
 
 	/* Check if representor has been already freed in FW */
-	if (!vfr->tx_cfa_action && !vfr->rx_cfa_code)
+	if (!vfr->vfr_tx_cfa_action && !vfr->rx_cfa_code)
 		return 0;
 
-	/*
-	 * This is where we need to replace invoking an HWRM cmd
-	 * with the new TFLIB ULP API to do more/less the same job
-	rc = bnxt_hwrm_cfa_vfr_free(parent_bp,
-				    vfr->vf_id);
-	 */
+	rc = bnxt_tf_vfr_free(vfr);
 	if (rc) {
 		PMD_DRV_LOG(ERR,
 			    "Failed to free representor %d in FW\n",
@@ -360,7 +412,7 @@ static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
 	parent_bp->cfa_code_map[vfr->rx_cfa_code] = BNXT_VF_IDX_INVALID;
 	PMD_DRV_LOG(DEBUG, "freed representor %d in FW\n",
 		    vfr->vf_id);
-	vfr->tx_cfa_action = 0;
+	vfr->vfr_tx_cfa_action = 0;
 	vfr->rx_cfa_code = 0;
 
 	return rc;

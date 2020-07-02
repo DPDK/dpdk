@@ -403,9 +403,9 @@ bnxt_get_rx_ts_thor(struct bnxt *bp, uint32_t rx_ts_cmpl)
 }
 #endif
 
-static void
+static uint32_t
 bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
-			  struct rte_mbuf *mbuf)
+			  struct rte_mbuf *mbuf, uint32_t *vfr_flag)
 {
 	uint32_t cfa_code;
 	uint32_t meta_fmt;
@@ -415,8 +415,6 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 	uint32_t flags2;
 	uint32_t gfid_support = 0;
 	int rc;
-	uint32_t vfr_flag;
-
 
 	if (BNXT_GFID_ENABLED(bp))
 		gfid_support = 1;
@@ -485,19 +483,21 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 	}
 
 	rc = ulp_mark_db_mark_get(bp->ulp_ctx, gfid,
-				  cfa_code, &vfr_flag, &mark_id);
+				  cfa_code, vfr_flag, &mark_id);
 	if (!rc) {
 		/* Got the mark, write it to the mbuf and return */
 		mbuf->hash.fdir.hi = mark_id;
 		mbuf->udata64 = (cfa_code & 0xffffffffull) << 32;
 		mbuf->hash.fdir.id = rxcmp1->cfa_code;
 		mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
-		return;
+		return mark_id;
 	}
 
 skip_mark:
 	mbuf->hash.fdir.hi = 0;
 	mbuf->hash.fdir.id = 0;
+
+	return 0;
 }
 
 void bnxt_set_mark_in_mbuf(struct bnxt *bp,
@@ -553,7 +553,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	int rc = 0;
 	uint8_t agg_buf = 0;
 	uint16_t cmp_type;
-	uint32_t flags2_f = 0;
+	uint32_t flags2_f = 0, vfr_flag = 0, mark_id = 0;
 	uint16_t flags_type;
 	struct bnxt *bp = rxq->bp;
 
@@ -632,7 +632,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	}
 
 	if (BNXT_TRUFLOW_EN(bp))
-		bnxt_ulp_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf);
+		mark_id = bnxt_ulp_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf,
+						    &vfr_flag);
 	else
 		bnxt_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf);
 
@@ -736,10 +737,10 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 rx:
 	*rx_pkt = mbuf;
 
-	if ((BNXT_VF_IS_TRUSTED(rxq->bp) || BNXT_PF(rxq->bp)) &&
-	    rxq->bp->cfa_code_map && rxcmp1->cfa_code) {
-		if (!bnxt_vfr_recv(rxq->bp, rxcmp1->cfa_code, rxq->queue_id,
-				   mbuf)) {
+	if (BNXT_TRUFLOW_EN(bp) &&
+	    (BNXT_VF_IS_TRUSTED(bp) || BNXT_PF(bp)) &&
+	    vfr_flag) {
+		if (!bnxt_vfr_recv(mark_id, rxq->queue_id, mbuf)) {
 			/* Now return an error so that nb_rx_pkts is not
 			 * incremented.
 			 * This packet was meant to be given to the representor.
