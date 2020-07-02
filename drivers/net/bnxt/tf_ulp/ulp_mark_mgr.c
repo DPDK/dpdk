@@ -87,6 +87,9 @@ ulp_mark_db_init(struct bnxt_ulp_context *ctxt)
 
 	/* Need to allocate 2 * Num flows to account for hash type bit */
 	mark_tbl->gfid_num_entries = dparms->mark_db_gfid_entries;
+	if (!mark_tbl->gfid_num_entries)
+		goto gfid_not_required;
+
 	mark_tbl->gfid_tbl = rte_zmalloc("ulp_rx_eem_flow_mark_table",
 					 mark_tbl->gfid_num_entries *
 					 sizeof(struct bnxt_gfid_mark_info),
@@ -109,6 +112,7 @@ ulp_mark_db_init(struct bnxt_ulp_context *ctxt)
 		    mark_tbl->gfid_num_entries - 1,
 		    mark_tbl->gfid_mask);
 
+gfid_not_required:
 	/* Add the mark tbl to the ulp context. */
 	bnxt_ulp_cntxt_ptr2_mark_db_set(ctxt, mark_tbl);
 	return 0;

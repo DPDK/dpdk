@@ -146,6 +146,11 @@ struct bnxt_ulp_device_params {
 	uint64_t			flow_db_num_entries;
 	uint32_t			flow_count_db_entries;
 	uint32_t			num_resources_per_flow;
+	uint32_t			ext_cntr_table_type;
+	uint64_t			byte_count_mask;
+	uint64_t			packet_count_mask;
+	uint32_t			byte_count_shift;
+	uint32_t			packet_count_shift;
 };
 
 /* Flow Mapper */

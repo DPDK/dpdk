@@ -179,7 +179,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_NOT_USED,
@@ -284,7 +284,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_NOT_USED,
@@ -389,7 +389,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO
 	},
 	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_EM_TABLE,
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE,
 	.resource_type = TF_MEM_EXTERNAL,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_NOT_USED,

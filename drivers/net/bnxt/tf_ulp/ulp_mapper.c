@@ -556,15 +556,18 @@ ulp_mapper_index_entry_free(struct bnxt_ulp_context *ulp,
 }
 
 static inline int32_t
-ulp_mapper_eem_entry_free(struct bnxt_ulp_context *ulp,
-			  struct tf *tfp,
-			  struct ulp_flow_db_res_params *res)
+ulp_mapper_em_entry_free(struct bnxt_ulp_context *ulp,
+			 struct tf *tfp,
+			 struct ulp_flow_db_res_params *res)
 {
 	struct tf_delete_em_entry_parms fparms = { 0 };
 	int32_t rc;
 
 	fparms.dir		= res->direction;
-	fparms.mem		= TF_MEM_EXTERNAL;
+	if (res->resource_func == BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE)
+		fparms.mem = TF_MEM_EXTERNAL;
+	else
+		fparms.mem = TF_MEM_INTERNAL;
 	fparms.flow_handle	= res->resource_hndl;
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_get(ulp, &fparms.tbl_scope_id);
@@ -1443,7 +1446,7 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 #endif
 
 	/* do the transpose for the internal EM keys */
-	if (tbl->resource_type == TF_MEM_INTERNAL)
+	if (tbl->resource_func == BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE)
 		ulp_blob_perform_byte_reverse(&key);
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_get(parms->ulp_ctx,
@@ -2066,7 +2069,8 @@ ulp_mapper_class_tbls_process(struct bnxt_ulp_mapper_parms *parms)
 		case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
 			rc = ulp_mapper_tcam_tbl_process(parms, tbl);
 			break;
-		case BNXT_ULP_RESOURCE_FUNC_EM_TABLE:
+		case BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE:
+		case BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE:
 			rc = ulp_mapper_em_tbl_process(parms, tbl);
 			break;
 		case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
@@ -2119,8 +2123,9 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 	case BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE:
 		rc = ulp_mapper_tcam_entry_free(ulp, tfp, res);
 		break;
-	case BNXT_ULP_RESOURCE_FUNC_EM_TABLE:
-		rc = ulp_mapper_eem_entry_free(ulp, tfp, res);
+	case BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE:
+	case BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE:
+		rc = ulp_mapper_em_entry_free(ulp, tfp, res);
 		break;
 	case BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE:
 		rc = ulp_mapper_index_entry_free(ulp, tfp, res);

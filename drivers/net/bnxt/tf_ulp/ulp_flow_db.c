@@ -114,7 +114,8 @@ ulp_flow_db_res_params_to_info(struct ulp_fdb_resource_info *resource_info,
 	}
 
 	/* Store the handle as 64bit only for EM table entries */
-	if (params->resource_func != BNXT_ULP_RESOURCE_FUNC_EM_TABLE) {
+	if (params->resource_func != BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE &&
+	    params->resource_func != BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE) {
 		resource_info->resource_hndl = (uint32_t)params->resource_hndl;
 		resource_info->resource_type = params->resource_type;
 		resource_info->resource_sub_type = params->resource_sub_type;
@@ -145,7 +146,8 @@ ulp_flow_db_res_info_to_params(struct ulp_fdb_resource_info *resource_info,
 	/* use the helper function to get the resource func */
 	params->resource_func = ulp_flow_db_resource_func_get(resource_info);
 
-	if (params->resource_func == BNXT_ULP_RESOURCE_FUNC_EM_TABLE) {
+	if (params->resource_func == BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE ||
+	    params->resource_func == BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE) {
 		params->resource_hndl = resource_info->resource_em_handle;
 	} else if (params->resource_func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER) {
 		params->resource_hndl = resource_info->resource_hndl;
@@ -908,7 +910,9 @@ ulp_flow_db_resource_hndl_get(struct bnxt_ulp_context *ulp_ctx,
 				}
 
 			} else if (resource_func ==
-				   BNXT_ULP_RESOURCE_FUNC_EM_TABLE){
+				   BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE ||
+				   resource_func ==
+				   BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE) {
 				*res_hndl = fid_res->resource_em_handle;
 				return 0;
 			}
@@ -966,7 +970,8 @@ static void ulp_flow_db_res_dump(struct ulp_fdb_resource_info	*r,
 
 	BNXT_TF_DBG(DEBUG, "Resource func = %x, nxt_resource_idx = %x\n",
 		    res_func, (ULP_FLOW_DB_RES_NXT_MASK & r->nxt_resource_idx));
-	if (res_func == BNXT_ULP_RESOURCE_FUNC_EM_TABLE)
+	if (res_func == BNXT_ULP_RESOURCE_FUNC_EXT_EM_TABLE ||
+	    res_func == BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE)
 		BNXT_TF_DBG(DEBUG, "EM Handle = 0x%016" PRIX64 "\n",
 			    r->resource_em_handle);
 	else

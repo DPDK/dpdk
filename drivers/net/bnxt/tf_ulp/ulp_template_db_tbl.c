@@ -321,7 +321,12 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.mark_db_gfid_entries   = 65536,
 	.flow_count_db_entries  = 16384,
 	.num_resources_per_flow = 8,
-	.num_phy_ports          = 2
+	.num_phy_ports          = 2,
+	.ext_cntr_table_type    = 0,
+	.byte_count_mask        = 0x00000003ffffffff,
+	.packet_count_mask      = 0xfffffffc00000000,
+	.byte_count_shift       = 0,
+	.packet_count_shift     = 36
 	}
 };
 

@@ -213,7 +213,26 @@ static int32_t
 ulp_eem_tbl_scope_init(struct bnxt *bp)
 {
 	struct tf_alloc_tbl_scope_parms params = {0};
+	uint32_t dev_id;
+	struct bnxt_ulp_device_params *dparms;
 	int rc;
+
+	/* Get the dev specific number of flows that needed to be supported. */
+	if (bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &dev_id)) {
+		BNXT_TF_DBG(ERR, "Invalid device id\n");
+		return -EINVAL;
+	}
+
+	dparms = bnxt_ulp_device_params_get(dev_id);
+	if (!dparms) {
+		BNXT_TF_DBG(ERR, "could not fetch the device params\n");
+		return -ENODEV;
+	}
+
+	if (dparms->flow_mem_type != BNXT_ULP_FLOW_MEM_TYPE_EXT) {
+		BNXT_TF_DBG(INFO, "Table Scope alloc is not required\n");
+		return 0;
+	}
 
 	bnxt_init_tbl_scope_parms(bp, &params);
 
@@ -240,6 +259,8 @@ ulp_eem_tbl_scope_deinit(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 	struct tf_free_tbl_scope_parms	params = {0};
 	struct tf			*tfp;
 	int32_t				rc = 0;
+	struct bnxt_ulp_device_params *dparms;
+	uint32_t dev_id;
 
 	if (!ulp_ctx || !ulp_ctx->cfg_data)
 		return -EINVAL;
@@ -252,6 +273,23 @@ ulp_eem_tbl_scope_deinit(struct bnxt *bp, struct bnxt_ulp_context *ulp_ctx)
 	if (!tfp) {
 		BNXT_TF_DBG(ERR, "Failed to get the truflow pointer\n");
 		return -EINVAL;
+	}
+
+	/* Get the dev specific number of flows that needed to be supported. */
+	if (bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &dev_id)) {
+		BNXT_TF_DBG(ERR, "Invalid device id\n");
+		return -EINVAL;
+	}
+
+	dparms = bnxt_ulp_device_params_get(dev_id);
+	if (!dparms) {
+		BNXT_TF_DBG(ERR, "could not fetch the device params\n");
+		return -ENODEV;
+	}
+
+	if (dparms->flow_mem_type != BNXT_ULP_FLOW_MEM_TYPE_EXT) {
+		BNXT_TF_DBG(INFO, "Table Scope free is not required\n");
+		return 0;
 	}
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_get(ulp_ctx, &params.tbl_scope_id);
