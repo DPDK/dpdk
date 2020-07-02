@@ -12,6 +12,8 @@
 
 #include "rte_ethdev.h"
 
+#include "ulp_template_db_enum.h"
+
 struct bnxt_ulp_data {
 	uint32_t			tbl_scope_id;
 	struct bnxt_ulp_mark_tbl	*mark_tbl;
@@ -47,6 +49,12 @@ struct bnxt_ulp_session_state {
 /* ULP flow id structure */
 struct rte_tf_flow {
 	uint32_t	flow_id;
+};
+
+struct ulp_tlv_param {
+	enum bnxt_ulp_df_param_type type;
+	uint32_t length;
+	uint8_t value[16];
 };
 
 /*
@@ -126,5 +134,21 @@ bnxt_ulp_cntxt_ptr2_port_db_set(struct bnxt_ulp_context	*ulp_ctx,
 /* Function to get the port database from the ulp context. */
 struct bnxt_ulp_port_db *
 bnxt_ulp_cntxt_ptr2_port_db_get(struct bnxt_ulp_context	*ulp_ctx);
+
+/* Function to create default flows. */
+int32_t
+ulp_default_flow_create(struct rte_eth_dev *eth_dev,
+			struct ulp_tlv_param *param_list,
+			uint32_t ulp_class_tid,
+			uint32_t *flow_id);
+
+/* Function to destroy default flows. */
+int32_t
+ulp_default_flow_destroy(struct rte_eth_dev *eth_dev,
+			 uint32_t flow_id);
+
+int
+bnxt_ulp_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
+		      struct rte_flow_error *error);
 
 #endif /* _BNXT_ULP_H_ */

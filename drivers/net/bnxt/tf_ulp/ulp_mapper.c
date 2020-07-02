@@ -2274,16 +2274,15 @@ ulp_mapper_glb_resource_info_deinit(struct bnxt_ulp_context *ulp_ctx,
 }
 
 int32_t
-ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid)
+ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid,
+			enum bnxt_ulp_flow_db_tables flow_tbl_type)
 {
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR, "Invalid parms, unable to free flow\n");
 		return -EINVAL;
 	}
 
-	return ulp_mapper_resources_free(ulp_ctx,
-					 fid,
-					 BNXT_ULP_REGULAR_FLOW_TABLE);
+	return ulp_mapper_resources_free(ulp_ctx, fid, flow_tbl_type);
 }
 
 /* Function to handle the default global templates that are allocated during
@@ -2486,7 +2485,8 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 
 flow_error:
 	/* Free all resources that were allocated during flow creation */
-	trc = ulp_mapper_flow_destroy(ulp_ctx, parms.fid);
+	trc = ulp_mapper_flow_destroy(ulp_ctx, parms.fid,
+				      BNXT_ULP_REGULAR_FLOW_TABLE);
 	if (trc)
 		BNXT_TF_DBG(ERR, "Failed to free all resources rc=%d\n", trc);
 

@@ -109,7 +109,8 @@ ulp_mapper_flow_create(struct bnxt_ulp_context	*ulp_ctx,
 
 /* Function that frees all resources associated with the flow. */
 int32_t
-ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid);
+ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid,
+			enum bnxt_ulp_flow_db_tables flow_tbl_type);
 
 /*
  * Function that frees all resources and can be called on default or regular

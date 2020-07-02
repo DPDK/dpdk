@@ -16,3 +16,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/bnxt_ulp.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_mark_mgr.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_flow_db.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_port_db.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_ulp/ulp_def_rules.c

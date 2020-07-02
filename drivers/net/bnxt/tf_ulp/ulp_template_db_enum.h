@@ -145,6 +145,11 @@ enum bnxt_ulp_device_id {
 	BNXT_ULP_DEVICE_ID_LAST = 4
 };
 
+enum bnxt_ulp_df_param_type {
+	BNXT_ULP_DF_PARAM_TYPE_DEV_PORT_ID = 0,
+	BNXT_ULP_DF_PARAM_TYPE_LAST = 1
+};
+
 enum bnxt_ulp_direction {
 	BNXT_ULP_DIRECTION_INGRESS = 0,
 	BNXT_ULP_DIRECTION_EGRESS = 1,

@@ -1274,9 +1274,6 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
-	if (BNXT_TRUFLOW_EN(bp))
-		bnxt_ulp_deinit(bp);
-
 	eth_dev->data->dev_started = 0;
 	/* Prevent crashes when queues are still in use */
 	eth_dev->rx_pkt_burst = &bnxt_dummy_recv_pkts;
@@ -1331,6 +1328,9 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	rte_eal_alarm_cancel(bnxt_dev_reset_and_resume, (void *)bp);
 	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);
 	bnxt_cancel_fc_thread(bp);
+
+	if (BNXT_TRUFLOW_EN(bp))
+		bnxt_ulp_deinit(bp);
 
 	if (eth_dev->data->dev_started)
 		bnxt_dev_stop_op(eth_dev);

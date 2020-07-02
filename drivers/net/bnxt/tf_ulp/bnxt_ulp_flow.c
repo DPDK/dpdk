@@ -207,7 +207,7 @@ parse_error:
 }
 
 /* Function to destroy the rte flow. */
-static int
+int
 bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 		      struct rte_flow *flow,
 		      struct rte_flow_error *error)
@@ -220,9 +220,10 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to destroy flow.");
+		if (error)
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Failed to destroy flow.");
 		return -EINVAL;
 	}
 
@@ -233,17 +234,22 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 	if (ulp_flow_db_validate_flow_func(ulp_ctx, flow_id, func_id) ==
 	    false) {
 		BNXT_TF_DBG(ERR, "Incorrect device params\n");
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to destroy flow.");
+		if (error)
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Failed to destroy flow.");
 		return -EINVAL;
 	}
 
-	ret = ulp_mapper_flow_destroy(ulp_ctx, flow_id);
-	if (ret)
-		rte_flow_error_set(error, -ret,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to destroy flow.");
+	ret = ulp_mapper_flow_destroy(ulp_ctx, flow_id,
+				      BNXT_ULP_REGULAR_FLOW_TABLE);
+	if (ret) {
+		BNXT_TF_DBG(ERR, "Failed to destroy flow.\n");
+		if (error)
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Failed to destroy flow.");
+	}
 
 	return ret;
 }
