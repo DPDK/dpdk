@@ -294,60 +294,72 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 
 struct bnxt_ulp_cache_tbl_params ulp_cache_tbl_params[] = {
 	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM << 1 |
-	TF_DIR_RX] = {
-		.num_entries        = 16384
+		TF_DIR_RX] = {
+		.num_entries             = 16384
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM << 1 |
-	TF_DIR_TX] = {
-		.num_entries        = 16384
+		TF_DIR_TX] = {
+		.num_entries             = 16384
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM << 1 |
-	TF_DIR_RX] = {
-		.num_entries        = 16384
+		TF_DIR_RX] = {
+		.num_entries             = 16384
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_PROFILE_TCAM << 1 |
-	TF_DIR_TX] = {
-		.num_entries        = 16384
+		TF_DIR_TX] = {
+		.num_entries             = 16384
 	}
 };
 
 struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	[BNXT_ULP_DEVICE_ID_WH_PLUS] = {
-	.flow_mem_type          = BNXT_ULP_FLOW_MEM_TYPE_EXT,
-	.byte_order             = BNXT_ULP_BYTE_ORDER_LE,
-	.encap_byte_swap        = 1,
-	.flow_db_num_entries    = 32768,
-	.mark_db_lfid_entries   = 65536,
-	.mark_db_gfid_entries   = 65536,
-	.flow_count_db_entries  = 16384,
-	.num_resources_per_flow = 8,
-	.num_phy_ports          = 2,
-	.ext_cntr_table_type    = 0,
-	.byte_count_mask        = 0x00000003ffffffff,
-	.packet_count_mask      = 0xfffffffc00000000,
-	.byte_count_shift       = 0,
-	.packet_count_shift     = 36
+		.flow_mem_type           = BNXT_ULP_FLOW_MEM_TYPE_EXT,
+		.byte_order              = BNXT_ULP_BYTE_ORDER_LE,
+		.encap_byte_swap         = 1,
+		.flow_db_num_entries     = 32768,
+		.mark_db_lfid_entries    = 65536,
+		.mark_db_gfid_entries    = 65536,
+		.flow_count_db_entries   = 16384,
+		.num_resources_per_flow  = 8,
+		.num_phy_ports           = 2,
+		.ext_cntr_table_type     = 0,
+		.byte_count_mask         = 0x0000000fffffffff,
+		.packet_count_mask       = 0xffffffff00000000,
+		.byte_count_shift        = 0,
+		.packet_count_shift      = 36
 	}
 };
 
 struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	[0] = {
-	.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
-	.glb_regfile_index       = BNXT_ULP_GLB_REGFILE_INDEX_GLB_PROF_FUNC_ID,
-	.direction               = TF_DIR_RX
+		.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+		.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index = BNXT_ULP_GLB_REGFILE_INDEX_GLB_PROF_FUNC_ID,
+		.direction               = TF_DIR_RX
 	},
 	[1] = {
-	.resource_func      = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.resource_type      = TF_IDENT_TYPE_PROF_FUNC,
-	.glb_regfile_index  = BNXT_ULP_GLB_REGFILE_INDEX_GLB_PROF_FUNC_ID,
-	.direction          = TF_DIR_TX
+		.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+		.resource_type           = TF_IDENT_TYPE_PROF_FUNC,
+	.glb_regfile_index = BNXT_ULP_GLB_REGFILE_INDEX_GLB_PROF_FUNC_ID,
+		.direction               = TF_DIR_TX
 	},
 	[2] = {
-	.resource_func      = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.resource_type      = TF_IDENT_TYPE_L2_CTXT,
-	.glb_regfile_index  = BNXT_ULP_GLB_REGFILE_INDEX_GLB_L2_CNTXT_ID,
-	.direction          = TF_DIR_RX
+		.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+		.resource_type           = TF_IDENT_TYPE_L2_CTXT,
+		.glb_regfile_index = BNXT_ULP_GLB_REGFILE_INDEX_GLB_L2_CNTXT_ID,
+		.direction               = TF_DIR_RX
+	},
+	[3] = {
+		.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+		.resource_type           = TF_IDENT_TYPE_L2_CTXT,
+		.glb_regfile_index = BNXT_ULP_GLB_REGFILE_INDEX_GLB_L2_CNTXT_ID,
+		.direction               = TF_DIR_TX
+	},
+	[4] = {
+		.resource_func           = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
+		.resource_type           = TF_TBL_TYPE_FULL_ACT_RECORD,
+		.glb_regfile_index = BNXT_ULP_GLB_REGFILE_INDEX_GLB_LB_AREC_PTR,
+		.direction               = TF_DIR_TX
 	}
 };
 
@@ -547,10 +559,11 @@ struct bnxt_ulp_rte_hdr_info ulp_hdr_info[] = {
 };
 
 uint32_t bnxt_ulp_encap_vtag_map[] = {
-	[0] = BNXT_ULP_SYM_ECV_VTAG_TYPE_NOP,
-	[1] = BNXT_ULP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI,
-	[2] = BNXT_ULP_SYM_ECV_VTAG_TYPE_ADD_2_ENCAP_PRI
+	BNXT_ULP_SYM_ECV_VTAG_TYPE_NOP,
+	BNXT_ULP_SYM_ECV_VTAG_TYPE_ADD_1_ENCAP_PRI,
+	BNXT_ULP_SYM_ECV_VTAG_TYPE_ADD_2_ENCAP_PRI
 };
 
 uint32_t ulp_glb_template_tbl[] = {
+	BNXT_ULP_DF_TPL_LOOPBACK_ACTION_REC
 };

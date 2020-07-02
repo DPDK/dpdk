@@ -22,7 +22,7 @@ ulp_mapper_glb_resource_info_list_get(uint32_t *num_entries)
 {
 	if (!num_entries)
 		return NULL;
-	*num_entries = BNXT_ULP_GLB_RESOURCE_INFO_TBL_MAX_SZ;
+	*num_entries = BNXT_ULP_GLB_RESOURCE_TBL_MAX_SZ;
 	return ulp_glb_resource_tbl;
 }
 
@@ -119,11 +119,6 @@ ulp_mapper_resource_ident_allocate(struct bnxt_ulp_context *ulp_ctx,
 		tf_free_identifier(tfp, &fparms);
 		return rc;
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	BNXT_TF_DBG(DEBUG, "Allocated Glb Res Ident [%s][%d][%d] = 0x%04x\n",
-		    (iparms.dir == TF_DIR_RX) ? "RX" : "TX",
-		    glb_res->glb_regfile_index, iparms.ident_type, iparms.id);
-#endif
 	return rc;
 }
 
@@ -182,11 +177,6 @@ ulp_mapper_resource_index_tbl_alloc(struct bnxt_ulp_context *ulp_ctx,
 		tf_free_tbl_entry(tfp, &free_parms);
 		return rc;
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	BNXT_TF_DBG(DEBUG, "Allocated Glb Res Index [%s][%d][%d] = 0x%04x\n",
-		    (aparms.dir == TF_DIR_RX) ? "RX" : "TX",
-		    glb_res->glb_regfile_index, aparms.type, aparms.idx);
-#endif
 	return rc;
 }
 
@@ -1441,9 +1431,6 @@ ulp_mapper_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			return rc;
 		}
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	ulp_mapper_result_dump("EEM Result", tbl, &data);
-#endif
 
 	/* do the transpose for the internal EM keys */
 	if (tbl->resource_func == BNXT_ULP_RESOURCE_FUNC_INT_EM_TABLE)
@@ -1594,10 +1581,6 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	/* if encap bit swap is enabled perform the bit swap */
 	if (parms->device_params->encap_byte_swap && encap_flds) {
 		ulp_blob_perform_encap_swap(&data);
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-		BNXT_TF_DBG(INFO, "Dump after encap swap\n");
-		ulp_mapper_blob_dump(&data);
-#endif
 	}
 
 	/*
@@ -2255,7 +2238,7 @@ ulp_mapper_glb_resource_info_deinit(struct bnxt_ulp_context *ulp_ctx,
 
 	/* Iterate the global resources and process each one */
 	for (dir = TF_DIR_RX; dir < TF_DIR_MAX; dir++) {
-		for (idx = 0; idx < BNXT_ULP_GLB_RESOURCE_INFO_TBL_MAX_SZ;
+		for (idx = 0; idx < BNXT_ULP_GLB_RESOURCE_TBL_MAX_SZ;
 		      idx++) {
 			ent = &mapper_data->glb_res_tbl[dir][idx];
 			if (ent->resource_func ==
