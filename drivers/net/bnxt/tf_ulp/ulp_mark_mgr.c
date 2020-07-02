@@ -18,6 +18,8 @@
 						BNXT_ULP_MARK_VALID)
 #define ULP_MARK_DB_ENTRY_IS_INVALID(mark_info) (!((mark_info)->flags &\
 						   BNXT_ULP_MARK_VALID))
+#define ULP_MARK_DB_ENTRY_SET_VFR_ID(mark_info) ((mark_info)->flags |=\
+						 BNXT_ULP_MARK_VFR_ID)
 #define ULP_MARK_DB_ENTRY_IS_VFR_ID(mark_info) ((mark_info)->flags &\
 						BNXT_ULP_MARK_VFR_ID)
 #define ULP_MARK_DB_ENTRY_IS_GLOBAL_HW_FID(mark_info) ((mark_info)->flags &\
@@ -263,6 +265,9 @@ ulp_mark_db_mark_add(struct bnxt_ulp_context *ctxt,
 		BNXT_TF_DBG(DEBUG, "Set LFID[0x%0x] = 0x%0x\n", fid, mark);
 		mtbl->lfid_tbl[fid].mark_id = mark;
 		ULP_MARK_DB_ENTRY_SET_VALID(&mtbl->lfid_tbl[fid]);
+
+		if (mark_flag & BNXT_ULP_MARK_VFR_ID)
+			ULP_MARK_DB_ENTRY_SET_VFR_ID(&mtbl->lfid_tbl[fid]);
 	}
 
 	return 0;
