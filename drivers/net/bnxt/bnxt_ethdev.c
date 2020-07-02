@@ -5066,25 +5066,48 @@ static void bnxt_config_vf_req_fwd(struct bnxt *bp)
 }
 
 uint16_t
-bnxt_get_svif(uint16_t port_id, bool func_svif)
+bnxt_get_svif(uint16_t port_id, bool func_svif,
+	      enum bnxt_ulp_intf_type type)
 {
 	struct rte_eth_dev *eth_dev;
 	struct bnxt *bp;
 
 	eth_dev = &rte_eth_devices[port_id];
+	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
+		struct bnxt_vf_representor *vfr = eth_dev->data->dev_private;
+		if (!vfr)
+			return 0;
+
+		if (type == BNXT_ULP_INTF_TYPE_VF_REP)
+			return vfr->svif;
+
+		eth_dev = vfr->parent_dev;
+	}
+
 	bp = eth_dev->data->dev_private;
 
 	return func_svif ? bp->func_svif : bp->port_svif;
 }
 
 uint16_t
-bnxt_get_vnic_id(uint16_t port)
+bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type)
 {
 	struct rte_eth_dev *eth_dev;
 	struct bnxt_vnic_info *vnic;
 	struct bnxt *bp;
 
 	eth_dev = &rte_eth_devices[port];
+	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
+		struct bnxt_vf_representor *vfr = eth_dev->data->dev_private;
+		if (!vfr)
+			return 0;
+
+		if (type == BNXT_ULP_INTF_TYPE_VF_REP)
+			return vfr->dflt_vnic_id;
+
+		eth_dev = vfr->parent_dev;
+	}
+
 	bp = eth_dev->data->dev_private;
 
 	vnic = BNXT_GET_DEFAULT_VNIC(bp);
@@ -5093,12 +5116,23 @@ bnxt_get_vnic_id(uint16_t port)
 }
 
 uint16_t
-bnxt_get_fw_func_id(uint16_t port)
+bnxt_get_fw_func_id(uint16_t port, enum bnxt_ulp_intf_type type)
 {
 	struct rte_eth_dev *eth_dev;
 	struct bnxt *bp;
 
 	eth_dev = &rte_eth_devices[port];
+	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
+		struct bnxt_vf_representor *vfr = eth_dev->data->dev_private;
+		if (!vfr)
+			return 0;
+
+		if (type == BNXT_ULP_INTF_TYPE_VF_REP)
+			return vfr->fw_fid;
+
+		eth_dev = vfr->parent_dev;
+	}
+
 	bp = eth_dev->data->dev_private;
 
 	return bp->fw_fid;
@@ -5115,8 +5149,14 @@ bnxt_get_interface_type(uint16_t port)
 		return BNXT_ULP_INTF_TYPE_VF_REP;
 
 	bp = eth_dev->data->dev_private;
-	return BNXT_PF(bp) ? BNXT_ULP_INTF_TYPE_PF
-			   : BNXT_ULP_INTF_TYPE_VF;
+	if (BNXT_PF(bp))
+		return BNXT_ULP_INTF_TYPE_PF;
+	else if (BNXT_VF_IS_TRUSTED(bp))
+		return BNXT_ULP_INTF_TYPE_TRUSTED_VF;
+	else if (BNXT_VF(bp))
+		return BNXT_ULP_INTF_TYPE_VF;
+
+	return BNXT_ULP_INTF_TYPE_INVALID;
 }
 
 uint16_t
@@ -5129,6 +5169,9 @@ bnxt_get_phy_port_id(uint16_t port_id)
 	eth_dev = &rte_eth_devices[port_id];
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
 		vfr = eth_dev->data->dev_private;
+		if (!vfr)
+			return 0;
+
 		eth_dev = vfr->parent_dev;
 	}
 
@@ -5138,15 +5181,20 @@ bnxt_get_phy_port_id(uint16_t port_id)
 }
 
 uint16_t
-bnxt_get_parif(uint16_t port_id)
+bnxt_get_parif(uint16_t port_id, enum bnxt_ulp_intf_type type)
 {
-	struct bnxt_vf_representor *vfr;
 	struct rte_eth_dev *eth_dev;
 	struct bnxt *bp;
 
 	eth_dev = &rte_eth_devices[port_id];
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
-		vfr = eth_dev->data->dev_private;
+		struct bnxt_vf_representor *vfr = eth_dev->data->dev_private;
+		if (!vfr)
+			return 0;
+
+		if (type == BNXT_ULP_INTF_TYPE_VF_REP)
+			return vfr->fw_fid - 1;
+
 		eth_dev = vfr->parent_dev;
 	}
 

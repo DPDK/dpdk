@@ -23,6 +23,7 @@
 
 #include "tf_core.h"
 #include "bnxt_ulp.h"
+#include "bnxt_tf_common.h"
 
 /* Vendor ID */
 #define PCI_VENDOR_ID_BROADCOM		0x14E4
@@ -879,10 +880,11 @@ extern const struct rte_flow_ops bnxt_ulp_rte_flow_ops;
 int32_t bnxt_ulp_init(struct bnxt *bp);
 void bnxt_ulp_deinit(struct bnxt *bp);
 
-uint16_t bnxt_get_vnic_id(uint16_t port);
-uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif);
-uint16_t bnxt_get_fw_func_id(uint16_t port);
-uint16_t bnxt_get_parif(uint16_t port);
+uint16_t bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type);
+uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif,
+		       enum bnxt_ulp_intf_type type);
+uint16_t bnxt_get_fw_func_id(uint16_t port, enum bnxt_ulp_intf_type type);
+uint16_t bnxt_get_parif(uint16_t port, enum bnxt_ulp_intf_type type);
 uint16_t bnxt_get_phy_port_id(uint16_t port);
 uint16_t bnxt_get_vport(uint16_t port);
 enum bnxt_ulp_intf_type

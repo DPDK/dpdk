@@ -6,6 +6,11 @@
 #ifndef _BNXT_TF_COMMON_H_
 #define _BNXT_TF_COMMON_H_
 
+#include <inttypes.h>
+
+#include "bnxt_ulp.h"
+#include "ulp_template_db_enum.h"
+
 #define BNXT_TF_DBG(lvl, fmt, args...)	PMD_DRV_LOG(lvl, fmt, ## args)
 
 #define BNXT_ULP_EM_FLOWS			8192
@@ -48,6 +53,7 @@ enum ulp_direction_type {
 enum bnxt_ulp_intf_type {
 	BNXT_ULP_INTF_TYPE_INVALID = 0,
 	BNXT_ULP_INTF_TYPE_PF,
+	BNXT_ULP_INTF_TYPE_TRUSTED_VF,
 	BNXT_ULP_INTF_TYPE_VF,
 	BNXT_ULP_INTF_TYPE_PF_REP,
 	BNXT_ULP_INTF_TYPE_VF_REP,

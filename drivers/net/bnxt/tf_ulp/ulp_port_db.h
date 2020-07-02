@@ -9,19 +9,54 @@
 #include "bnxt_ulp.h"
 
 #define BNXT_PORT_DB_MAX_INTF_LIST		256
+#define BNXT_PORT_DB_MAX_FUNC			2048
+
+enum bnxt_ulp_svif_type {
+	BNXT_ULP_DRV_FUNC_SVIF = 0,
+	BNXT_ULP_VF_FUNC_SVIF,
+	BNXT_ULP_PHY_PORT_SVIF
+};
+
+enum bnxt_ulp_spif_type {
+	BNXT_ULP_DRV_FUNC_SPIF = 0,
+	BNXT_ULP_VF_FUNC_SPIF,
+	BNXT_ULP_PHY_PORT_SPIF
+};
+
+enum bnxt_ulp_parif_type {
+	BNXT_ULP_DRV_FUNC_PARIF = 0,
+	BNXT_ULP_VF_FUNC_PARIF,
+	BNXT_ULP_PHY_PORT_PARIF
+};
+
+enum bnxt_ulp_vnic_type {
+	BNXT_ULP_DRV_FUNC_VNIC = 0,
+	BNXT_ULP_VF_FUNC_VNIC
+};
+
+enum bnxt_ulp_fid_type {
+	BNXT_ULP_DRV_FUNC_FID,
+	BNXT_ULP_VF_FUNC_FID
+};
+
+struct ulp_func_if_info {
+	uint16_t		func_valid;
+	uint16_t		func_svif;
+	uint16_t		func_spif;
+	uint16_t		func_parif;
+	uint16_t		func_vnic;
+	uint16_t		phy_port_id;
+};
 
 /* Structure for the Port database resource information. */
 struct ulp_interface_info {
 	enum bnxt_ulp_intf_type	type;
-	uint16_t		func_id;
-	uint16_t		func_svif;
-	uint16_t		func_spif;
-	uint16_t		func_parif;
-	uint16_t		default_vnic;
-	uint16_t		phy_port_id;
+	uint16_t		drv_func_id;
+	uint16_t		vf_func_id;
 };
 
 struct ulp_phy_port_info {
+	uint16_t	port_valid;
 	uint16_t	port_svif;
 	uint16_t	port_spif;
 	uint16_t	port_parif;
@@ -35,7 +70,8 @@ struct bnxt_ulp_port_db {
 
 	/* dpdk device external port list */
 	uint16_t			dev_port_list[RTE_MAX_ETHPORTS];
-	struct ulp_phy_port_info	phy_port_list[RTE_MAX_ETHPORTS];
+	struct ulp_phy_port_info	*phy_port_list;
+	struct ulp_func_if_info		ulp_func_id_tbl[BNXT_PORT_DB_MAX_FUNC];
 };
 
 /*
@@ -46,7 +82,7 @@ struct bnxt_ulp_port_db {
  *
  * Returns 0 on success or negative number on failure.
  */
-int32_t	ulp_port_db_init(struct bnxt_ulp_context *ulp_ctxt);
+int32_t	ulp_port_db_init(struct bnxt_ulp_context *ulp_ctxt, uint8_t port_cnt);
 
 /*
  * Deinitialize the port database. Memory is deallocated in
@@ -94,7 +130,8 @@ ulp_port_db_dev_port_to_ulp_index(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_port_db_function_id_get(struct bnxt_ulp_context *ulp_ctxt,
-			    uint32_t ifindex, uint16_t *func_id);
+			    uint32_t ifindex, uint32_t fid_type,
+			    uint16_t *func_id);
 
 /*
  * Api to get the svif for a given ulp ifindex.
@@ -150,7 +187,8 @@ ulp_port_db_parif_get(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_port_db_default_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
-			     uint32_t ifindex, uint16_t *vnic);
+			     uint32_t ifindex, uint32_t vnic_type,
+			     uint16_t *vnic);
 
 /*
  * Api to get the vport id for a given ulp ifindex.

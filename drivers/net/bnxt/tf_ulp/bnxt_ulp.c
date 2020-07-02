@@ -658,7 +658,7 @@ bnxt_ulp_init(struct bnxt *bp)
 	rc = ulp_dparms_init(bp, bp->ulp_ctx);
 
 	/* create the port database */
-	rc = ulp_port_db_init(bp->ulp_ctx);
+	rc = ulp_port_db_init(bp->ulp_ctx, bp->port_cnt);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to create the port database\n");
 		goto jump_to_error;

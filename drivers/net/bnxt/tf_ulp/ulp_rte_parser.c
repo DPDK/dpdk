@@ -166,6 +166,8 @@ ulp_rte_parser_svif_set(struct ulp_rte_parser_params *params,
 	uint16_t port_id = svif;
 	uint32_t dir = 0;
 	struct ulp_rte_hdr_field *hdr_field;
+	enum bnxt_ulp_svif_type svif_type;
+	enum bnxt_ulp_intf_type if_type;
 	uint32_t ifindex;
 	int32_t rc;
 
@@ -187,7 +189,18 @@ ulp_rte_parser_svif_set(struct ulp_rte_parser_params *params,
 				    "Invalid port id\n");
 			return BNXT_TF_RC_ERROR;
 		}
-		ulp_port_db_svif_get(params->ulp_ctx, ifindex, dir, &svif);
+
+		if (dir == ULP_DIR_INGRESS) {
+			svif_type = BNXT_ULP_PHY_PORT_SVIF;
+		} else {
+			if_type = bnxt_get_interface_type(port_id);
+			if (if_type == BNXT_ULP_INTF_TYPE_VF_REP)
+				svif_type = BNXT_ULP_VF_FUNC_SVIF;
+			else
+				svif_type = BNXT_ULP_DRV_FUNC_SVIF;
+		}
+		ulp_port_db_svif_get(params->ulp_ctx, ifindex, svif_type,
+				     &svif);
 		svif = rte_cpu_to_be_16(svif);
 	}
 	hdr_field = &params->hdr_field[BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX];
@@ -1256,7 +1269,7 @@ ulp_rte_pf_act_handler(const struct rte_flow_action *action_item __rte_unused,
 
 	/* copy the PF of the current device into VNIC Property */
 	svif = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_INCOMING_IF);
-	svif = bnxt_get_vnic_id(svif);
+	svif = bnxt_get_vnic_id(svif, BNXT_ULP_INTF_TYPE_INVALID);
 	svif = rte_cpu_to_be_32(svif);
 	memcpy(&params->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
 	       &svif, BNXT_ULP_ACT_PROP_SZ_VNIC);
@@ -1280,7 +1293,8 @@ ulp_rte_vf_act_handler(const struct rte_flow_action *action_item,
 			return BNXT_TF_RC_PARSE_ERR;
 		}
 		/* TBD: Update the computed VNIC using VF conversion */
-		pid = bnxt_get_vnic_id(vf_action->id);
+		pid = bnxt_get_vnic_id(vf_action->id,
+				       BNXT_ULP_INTF_TYPE_INVALID);
 		pid = rte_cpu_to_be_32(pid);
 		memcpy(&param->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
 		       &pid, BNXT_ULP_ACT_PROP_SZ_VNIC);
@@ -1307,7 +1321,7 @@ ulp_rte_port_id_act_handler(const struct rte_flow_action *act_item,
 			return BNXT_TF_RC_PARSE_ERR;
 		}
 		/* TBD: Update the computed VNIC using port conversion */
-		pid = bnxt_get_vnic_id(port_id->id);
+		pid = bnxt_get_vnic_id(port_id->id, BNXT_ULP_INTF_TYPE_INVALID);
 		pid = rte_cpu_to_be_32(pid);
 		memcpy(&param->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
 		       &pid, BNXT_ULP_ACT_PROP_SZ_VNIC);
