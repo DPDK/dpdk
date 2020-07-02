@@ -81,7 +81,8 @@ tf_tcam_bind(struct tf *tfp,
 
 	init = 1;
 
-	printf("TCAM - initialized\n");
+	TFP_DRV_LOG(INFO,
+		    "TCAM - initialized\n");
 
 	return 0;
 }
@@ -273,6 +274,31 @@ tf_tcam_free(struct tf *tfp,
 			    parms->type,
 			    parms->idx);
 		return rc;
+	}
+
+	if (parms->type == TF_TCAM_TBL_TYPE_WC_TCAM) {
+		int i;
+
+		for (i = -1; i < 3; i += 3) {
+			aparms.index += i;
+			rc = tf_rm_is_allocated(&aparms);
+			if (rc)
+				return rc;
+
+			if (allocated == TF_RM_ALLOCATED_ENTRY_IN_USE) {
+				/* Free requested element */
+				fparms.index = aparms.index;
+				rc = tf_rm_free(&fparms);
+				if (rc) {
+					TFP_DRV_LOG(ERR,
+						    "%s: Free failed, type:%d, index:%d\n",
+						    tf_dir_2_str(parms->dir),
+						    parms->type,
+						    fparms.index);
+					return rc;
+				}
+			}
+		}
 	}
 
 	/* Convert TF type to HCAPI RM type */

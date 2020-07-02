@@ -18,6 +18,9 @@
 #include "hwrm_tf.h"
 #include "tf_em.h"
 
+/* Logging defines */
+#define TF_RM_MSG_DEBUG  0
+
 /**
  * This is the MAX data we can transport across regular HWRM
  */
@@ -215,7 +218,7 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 
 	rc = tfp_send_msg_direct(tfp, &parms);
 	if (rc)
-		return rc;
+		goto cleanup;
 
 	/* Process the response
 	 * Should always get expected number of entries
@@ -225,31 +228,39 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 			    "%s: QCAPS message size error, rc:%s\n",
 			    tf_dir_2_str(dir),
 			    strerror(-EINVAL));
-		return -EINVAL;
+		rc = -EINVAL;
+		goto cleanup;
 	}
 
+#if (TF_RM_MSG_DEBUG == 1)
 	printf("size: %d\n", tfp_le_to_cpu_32(resp.size));
+#endif /* (TF_RM_MSG_DEBUG == 1) */
 
 	/* Post process the response */
 	data = (struct tf_rm_resc_req_entry *)qcaps_buf.va_addr;
 
+#if (TF_RM_MSG_DEBUG == 1)
 	printf("\nQCAPS\n");
+#endif /* (TF_RM_MSG_DEBUG == 1) */
 	for (i = 0; i < size; i++) {
 		query[i].type = tfp_le_to_cpu_32(data[i].type);
 		query[i].min = tfp_le_to_cpu_16(data[i].min);
 		query[i].max = tfp_le_to_cpu_16(data[i].max);
 
+#if (TF_RM_MSG_DEBUG == 1)
 		printf("type: %d(0x%x) %d %d\n",
 		       query[i].type,
 		       query[i].type,
 		       query[i].min,
 		       query[i].max);
+#endif /* (TF_RM_MSG_DEBUG == 1) */
 
 	}
 
 	*resv_strategy = resp.flags &
 	      HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_MASK;
 
+cleanup:
 	tf_msg_free_dma_buf(&qcaps_buf);
 
 	return rc;
@@ -293,8 +304,10 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 
 	dma_size = size * sizeof(struct tf_rm_resc_entry);
 	rc = tf_msg_alloc_dma_buf(&resv_buf, dma_size);
-	if (rc)
+	if (rc) {
+		tf_msg_free_dma_buf(&req_buf);
 		return rc;
+	}
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
@@ -320,7 +333,7 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 
 	rc = tfp_send_msg_direct(tfp, &parms);
 	if (rc)
-		return rc;
+		goto cleanup;
 
 	/* Process the response
 	 * Should always get expected number of entries
@@ -330,11 +343,14 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 			    "%s: Alloc message size error, rc:%s\n",
 			    tf_dir_2_str(dir),
 			    strerror(-EINVAL));
-		return -EINVAL;
+		rc = -EINVAL;
+		goto cleanup;
 	}
 
+#if (TF_RM_MSG_DEBUG == 1)
 	printf("\nRESV\n");
 	printf("size: %d\n", tfp_le_to_cpu_32(resp.size));
+#endif /* (TF_RM_MSG_DEBUG == 1) */
 
 	/* Post process the response */
 	resv_data = (struct tf_rm_resc_entry *)resv_buf.va_addr;
@@ -343,14 +359,17 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 		resv[i].start = tfp_le_to_cpu_16(resv_data[i].start);
 		resv[i].stride = tfp_le_to_cpu_16(resv_data[i].stride);
 
+#if (TF_RM_MSG_DEBUG == 1)
 		printf("%d type: %d(0x%x) %d %d\n",
 		       i,
 		       resv[i].type,
 		       resv[i].type,
 		       resv[i].start,
 		       resv[i].stride);
+#endif /* (TF_RM_MSG_DEBUG == 1) */
 	}
 
+cleanup:
 	tf_msg_free_dma_buf(&req_buf);
 	tf_msg_free_dma_buf(&resv_buf);
 
@@ -412,8 +431,6 @@ tf_msg_session_resc_flush(struct tf *tfp,
 	parms.mailbox = TF_KONG_MB;
 
 	rc = tfp_send_msg_direct(tfp, &parms);
-	if (rc)
-		return rc;
 
 	tf_msg_free_dma_buf(&resv_buf);
 
@@ -434,7 +451,7 @@ tf_msg_insert_em_internal_entry(struct tf *tfp,
 	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
 	struct tf_em_64b_entry *em_result =
 		(struct tf_em_64b_entry *)em_parms->em_record;
-	uint32_t flags;
+	uint16_t flags;
 
 	req.fw_session_id =
 		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
@@ -480,7 +497,7 @@ tf_msg_delete_em_entry(struct tf *tfp,
 	struct tfp_send_msg_parms parms = { 0 };
 	struct hwrm_tf_em_delete_input req = { 0 };
 	struct hwrm_tf_em_delete_output resp = { 0 };
-	uint32_t flags;
+	uint16_t flags;
 	struct tf_session *tfs =
 		(struct tf_session *)(tfp->session->core_data);
 
@@ -726,8 +743,6 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 
 	rc = tfp_send_msg_direct(tfp,
 				 &mparms);
-	if (rc)
-		goto cleanup;
 
 cleanup:
 	tf_msg_free_dma_buf(&buf);

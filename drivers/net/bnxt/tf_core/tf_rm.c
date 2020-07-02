@@ -17,6 +17,9 @@
 #include "tfp.h"
 #include "tf_msg.h"
 
+/* Logging defines */
+#define TF_RM_DEBUG  0
+
 /**
  * Generic RM Element data type that an RM DB is build upon.
  */
@@ -120,16 +123,11 @@ tf_rm_count_hcapi_reservations(enum tf_dir dir,
 		    cfg[i].cfg_type == TF_RM_ELEM_CFG_NULL &&
 		    reservations[i] > 0) {
 			TFP_DRV_LOG(ERR,
-				"%s, %s, %s allocation not supported\n",
+				"%s, %s, %s allocation of %d not supported\n",
 				tf_device_module_type_2_str(type),
 				tf_dir_2_str(dir),
-				tf_device_module_type_subtype_2_str(type, i));
-			printf("%s, %s, %s allocation of %d not supported\n",
-				tf_device_module_type_2_str(type),
-				tf_dir_2_str(dir),
-			       tf_device_module_type_subtype_2_str(type, i),
-			       reservations[i]);
-
+				tf_device_module_type_subtype_2_str(type, i),
+				reservations[i]);
 		}
 	}
 
@@ -549,11 +547,6 @@ tf_rm_create_db(struct tf *tfp,
 			db[i].alloc.entry.start = resv[j].start;
 			db[i].alloc.entry.stride = resv[j].stride;
 
-			printf("Entry:%d Start:%d Stride:%d\n",
-			       i,
-			       resv[j].start,
-			       resv[j].stride);
-
 			/* Only allocate BA pool if so requested */
 			if (parms->cfg[i].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA) {
 				/* Create pool */
@@ -603,10 +596,12 @@ tf_rm_create_db(struct tf *tfp,
 	rm_db->type = parms->type;
 	*parms->rm_db = (void *)rm_db;
 
+#if (TF_RM_DEBUG == 1)
 	printf("%s: type:%d num_entries:%d\n",
 	       tf_dir_2_str(parms->dir),
 	       parms->type,
 	       i);
+#endif /* (TF_RM_DEBUG == 1) */
 
 	tfp_free((void *)req);
 	tfp_free((void *)resv);

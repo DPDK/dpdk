@@ -74,7 +74,8 @@ tf_tbl_bind(struct tf *tfp,
 
 	init = 1;
 
-	printf("Table Type - initialized\n");
+	TFP_DRV_LOG(INFO,
+		    "Table Type - initialized\n");
 
 	return 0;
 }

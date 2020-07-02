@@ -59,7 +59,8 @@ tf_ident_bind(struct tf *tfp,
 
 	init = 1;
 
-	printf("Identifier - initialized\n");
+	TFP_DRV_LOG(INFO,
+		    "Identifier - initialized\n");
 
 	return 0;
 }
