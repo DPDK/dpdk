@@ -73,6 +73,11 @@ int ba_alloc(struct bitalloc *pool);
 int ba_alloc_index(struct bitalloc *pool, int index);
 
 /**
+ * Returns -1 on failure, or index of allocated entry
+ */
+int ba_alloc_reverse(struct bitalloc *pool);
+
+/**
  * Query a particular index in a pool to check if its in use.
  *
  * Returns -1 on invalid index, 1 if the index is allocated, 0 if it

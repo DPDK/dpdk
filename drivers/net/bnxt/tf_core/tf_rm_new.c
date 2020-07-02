@@ -671,7 +671,14 @@ tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 		return rc;
 	}
 
-	id = ba_alloc(rm_db->db[parms->db_index].pool);
+	/*
+	 * priority  0: allocate from top of the tcam i.e. high
+	 * priority !0: allocate index from bottom i.e lowest
+	 */
+	if (parms->priority)
+		id = ba_alloc_reverse(rm_db->db[parms->db_index].pool);
+	else
+		id = ba_alloc(rm_db->db[parms->db_index].pool);
 	if (id == BA_FAIL) {
 		rc = -ENOMEM;
 		TFP_DRV_LOG(ERR,

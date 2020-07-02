@@ -157,6 +157,7 @@ tf_tcam_alloc(struct tf *tfp,
 	/* Allocate requested element */
 	aparms.rm_db = tcam_db[parms->dir];
 	aparms.db_index = parms->type;
+	aparms.priority = parms->priority;
 	aparms.index = (uint32_t *)&parms->idx;
 	rc = tf_rm_allocate(&aparms);
 	if (rc) {

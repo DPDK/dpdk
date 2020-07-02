@@ -185,6 +185,14 @@ struct tf_rm_allocate_parms {
 	 * i.e. Full Action Record offsets.
 	 */
 	uint32_t *index;
+	/**
+	 * [in] Priority, indicates the priority of the entry
+	 * priority  0: allocate from top of the tcam (from index 0
+	 *              or lowest available index)
+	 * priority !0: allocate from bottom of the tcam (from highest
+	 *              available index)
+	 */
+	uint32_t priority;
 };
 
 /**
