@@ -267,4 +267,19 @@ int tf_msg_get_tbl_entry(struct tf *tfp,
 			 uint8_t *data,
 			 uint32_t index);
 
+/**
+ * Sends bulk get message of a Table Type element to the firmware.
+ *
+ * [in] tfp
+ *   Pointer to session handle
+ *
+ * [in] parms
+ *   Pointer to table get bulk parameters
+ *
+ * Returns:
+ *  0 on Success else internal Truflow error
+ */
+int tf_msg_get_bulk_tbl_entry(struct tf *tfp,
+			  struct tf_get_bulk_tbl_entry_parms *parms);
+
 #endif  /* _TF_MSG_H_ */

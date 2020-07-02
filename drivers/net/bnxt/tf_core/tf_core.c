@@ -16,6 +16,8 @@
 #include "bitalloc.h"
 #include "bnxt.h"
 #include "rand.h"
+#include "tf_common.h"
+#include "hwrm_tf.h"
 
 static inline uint32_t SWAP_WORDS32(uint32_t val32)
 {

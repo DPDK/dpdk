@@ -1216,12 +1216,8 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
 
-#define TF_BYTES_PER_SLICE(tfp) 12
-#define NUM_SLICES(tfp, bytes) \
-	(((bytes) + TF_BYTES_PER_SLICE(tfp) - 1) / TF_BYTES_PER_SLICE(tfp))
-
 static int
-tf_msg_get_dma_buf(struct tf_msg_dma_buf *buf, int size)
+tf_msg_alloc_dma_buf(struct tf_msg_dma_buf *buf, int size)
 {
 	struct tfp_calloc_parms alloc_parms;
 	int rc;
@@ -1229,21 +1225,62 @@ tf_msg_get_dma_buf(struct tf_msg_dma_buf *buf, int size)
 	/* Allocate session */
 	alloc_parms.nitems = 1;
 	alloc_parms.size = size;
-	alloc_parms.alignment = 0;
+	alloc_parms.alignment = 4096;
 	rc = tfp_calloc(&alloc_parms);
-	if (rc) {
-		/* Log error */
-		PMD_DRV_LOG(ERR,
-			    "Failed to allocate tcam dma entry, rc:%d\n",
-			    rc);
+	if (rc)
 		return -ENOMEM;
-	}
 
 	buf->pa_addr = (uintptr_t)alloc_parms.mem_pa;
 	buf->va_addr = alloc_parms.mem_va;
 
 	return 0;
 }
+
+int
+tf_msg_get_bulk_tbl_entry(struct tf *tfp,
+			  struct tf_get_bulk_tbl_entry_parms *params)
+{
+	int rc;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_tbl_type_get_bulk_input req = { 0 };
+	struct tf_tbl_type_get_bulk_output resp = { 0 };
+	struct tf_session *tfs = (struct tf_session *)(tfp->session->core_data);
+	int data_size = 0;
+
+	/* Populate the request */
+	req.fw_session_id =
+		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
+	req.flags = tfp_cpu_to_le_16((params->dir) |
+		((params->clear_on_read) ?
+		 TF_TBL_TYPE_GET_BULK_INPUT_FLAGS_CLEAR_ON_READ : 0x0));
+	req.type = tfp_cpu_to_le_32(params->type);
+	req.start_index = tfp_cpu_to_le_32(params->starting_idx);
+	req.num_entries = tfp_cpu_to_le_32(params->num_entries);
+
+	data_size = (params->num_entries * params->entry_sz_in_bytes);
+	req.host_addr = tfp_cpu_to_le_64(params->physical_mem_addr);
+
+	MSG_PREP(parms,
+		 TF_KONG_MB,
+		 HWRM_TF,
+		 HWRM_TFT_TBL_TYPE_GET_BULK,
+		 req,
+		 resp);
+
+	rc = tfp_send_msg_tunneled(tfp, &parms);
+	if (rc)
+		return rc;
+
+	/* Verify that we got enough buffer to return the requested data */
+	if (resp.size < data_size)
+		return -EINVAL;
+
+	return tfp_le_to_cpu_32(parms.tf_resp_code);
+}
+
+#define TF_BYTES_PER_SLICE(tfp) 12
+#define NUM_SLICES(tfp, bytes) \
+	(((bytes) + TF_BYTES_PER_SLICE(tfp) - 1) / TF_BYTES_PER_SLICE(tfp))
 
 int
 tf_msg_tcam_entry_set(struct tf *tfp,
@@ -1282,9 +1319,9 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 	} else {
 		/* use dma buffer */
 		req.flags |= HWRM_TF_TCAM_SET_INPUT_FLAGS_DMA;
-		rc = tf_msg_get_dma_buf(&buf, data_size);
-		if (rc != 0)
-			return rc;
+		rc = tf_msg_alloc_dma_buf(&buf, data_size);
+		if (rc)
+			goto cleanup;
 		data = buf.va_addr;
 		memcpy(&req.dev_data[0], &buf.pa_addr, sizeof(buf.pa_addr));
 	}
@@ -1303,8 +1340,9 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 	rc = tfp_send_msg_direct(tfp,
 				 &mparms);
 	if (rc)
-		return rc;
+		goto cleanup;
 
+cleanup:
 	if (buf.va_addr != NULL)
 		tfp_free(buf.va_addr);
 

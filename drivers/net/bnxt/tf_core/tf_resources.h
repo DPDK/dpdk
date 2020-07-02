@@ -149,11 +149,10 @@
 #define TF_RSVD_METER_INST_END_IDX_TX             0
 
 /* Mirror */
-/* Not yet supported fully in the infra */
-#define TF_RSVD_MIRROR_RX                         0
+#define TF_RSVD_MIRROR_RX                         1
 #define TF_RSVD_MIRROR_BEGIN_IDX_RX               0
 #define TF_RSVD_MIRROR_END_IDX_RX                 0
-#define TF_RSVD_MIRROR_TX                         0
+#define TF_RSVD_MIRROR_TX                         1
 #define TF_RSVD_MIRROR_BEGIN_IDX_TX               0
 #define TF_RSVD_MIRROR_END_IDX_TX                 0
 

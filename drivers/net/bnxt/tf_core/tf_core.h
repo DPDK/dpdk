@@ -1165,7 +1165,7 @@ struct tf_get_tbl_entry_parms {
 	 */
 	uint8_t *data;
 	/**
-	 * [out] Entry size
+	 * [in] Entry size
 	 */
 	uint16_t data_sz_in_bytes;
 	/**
@@ -1187,6 +1187,59 @@ struct tf_get_tbl_entry_parms {
  */
 int tf_get_tbl_entry(struct tf *tfp,
 		     struct tf_get_tbl_entry_parms *parms);
+
+/**
+ * tf_get_bulk_tbl_entry parameter definition
+ */
+struct tf_get_bulk_tbl_entry_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of object to get
+	 */
+	enum tf_tbl_type type;
+	/**
+	 * [in] Clear hardware entries on reads only
+	 * supported for TF_TBL_TYPE_ACT_STATS_64
+	 */
+	bool clear_on_read;
+	/**
+	 * [in] Starting index to read from
+	 */
+	uint32_t starting_idx;
+	/**
+	 * [in] Number of sequential entries
+	 */
+	uint16_t num_entries;
+	/**
+	 * [in] Size of the single entry
+	 */
+	uint16_t entry_sz_in_bytes;
+	/**
+	 * [out] Host physical address, where the data
+	 * will be copied to by the firmware.
+	 * Use tfp_calloc() API and mem_pa
+	 * variable of the tfp_calloc_parms
+	 * structure for the physical address.
+	 */
+	uint64_t physical_mem_addr;
+};
+
+/**
+ * Bulk get index table entry
+ *
+ * Used to retrieve a previous set index table entry.
+ *
+ * Reads and compares with the shadow table copy (if enabled) (only
+ * for internal objects).
+ *
+ * Returns success or failure code. Failure will be returned if the
+ * provided data buffer is too small for the data type requested.
+ */
+int tf_get_bulk_tbl_entry(struct tf *tfp,
+		     struct tf_get_bulk_tbl_entry_parms *parms);
 
 /**
  * @page exact_match Exact Match Table
