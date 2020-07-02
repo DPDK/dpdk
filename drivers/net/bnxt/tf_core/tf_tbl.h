@@ -7,7 +7,11 @@
 #define _TF_TBL_H_
 
 #include <stdint.h>
+
+#include "tf_core.h"
 #include "stack.h"
+
+struct tf_session;
 
 enum tf_pg_tbl_lvl {
 	PT_LVL_0,

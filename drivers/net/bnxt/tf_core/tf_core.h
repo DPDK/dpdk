@@ -380,7 +380,7 @@ struct tf_session_resources {
 	 * The number of identifier resources requested for the session.
 	 * The index used is tf_identifier_type.
 	 */
-	uint16_t identifer_cnt[TF_DIR_MAX][TF_IDENT_TYPE_MAX];
+	uint16_t identifier_cnt[TF_IDENT_TYPE_MAX][TF_DIR_MAX];
 	/** [in] Requested Index Table resource counts
 	 *
 	 * The number of index table resources requested for the session.
@@ -480,6 +480,9 @@ struct tf_open_session_parms {
 int tf_open_session(struct tf *tfp,
 		    struct tf_open_session_parms *parms);
 
+int tf_open_session_new(struct tf *tfp,
+			struct tf_open_session_parms *parms);
+
 struct tf_attach_session_parms {
 	/** [in] ctrl_chan_name
 	 *
@@ -542,6 +545,8 @@ struct tf_attach_session_parms {
  */
 int tf_attach_session(struct tf *tfp,
 		      struct tf_attach_session_parms *parms);
+int tf_attach_session_new(struct tf *tfp,
+			  struct tf_attach_session_parms *parms);
 
 /**
  * Closes an existing session. Cleans up all hardware and firmware
@@ -551,6 +556,7 @@ int tf_attach_session(struct tf *tfp,
  * Returns success or failure code.
  */
 int tf_close_session(struct tf *tfp);
+int tf_close_session_new(struct tf *tfp);
 
 /**
  * @page  ident Identity Management
@@ -602,6 +608,8 @@ struct tf_free_identifier_parms {
  */
 int tf_alloc_identifier(struct tf *tfp,
 			struct tf_alloc_identifier_parms *parms);
+int tf_alloc_identifier_new(struct tf *tfp,
+			    struct tf_alloc_identifier_parms *parms);
 
 /** free identifier resource
  *
@@ -613,6 +621,8 @@ int tf_alloc_identifier(struct tf *tfp,
  */
 int tf_free_identifier(struct tf *tfp,
 		       struct tf_free_identifier_parms *parms);
+int tf_free_identifier_new(struct tf *tfp,
+			   struct tf_free_identifier_parms *parms);
 
 /**
  * @page dram_table DRAM Table Scope Interface

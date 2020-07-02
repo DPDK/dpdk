@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef TF_RM_H_
-#define TF_RM_H_
+#ifndef TF_RM_NEW_H_
+#define TF_RM_NEW_H_
 
 #include "tf_core.h"
 #include "bitalloc.h"
@@ -32,13 +32,16 @@ struct tf;
  * MAX pool size of the Chip œneeds to be added to the tf_rm_elem_info
  * structure and several new APIs would need to be added to allow for
  * growth of a single TF resource type.
+ *
+ * The access functions does not check for NULL pointers as it's a
+ * support module, not called directly.
  */
 
 /**
  * Resource reservation single entry result. Used when accessing HCAPI
  * RM on the firmware.
  */
-struct tf_rm_entry {
+struct tf_rm_new_entry {
 	/** Starting index of the allocated resource */
 	uint16_t start;
 	/** Number of allocated elements */
@@ -52,10 +55,30 @@ struct tf_rm_entry {
  * ULP layer that is not controlled by HCAPI within the Firmware.
  */
 enum tf_rm_elem_cfg_type {
-	TF_RM_ELEM_CFG_NULL,    /**< No configuration */
-	TF_RM_ELEM_CFG_HCAPI,   /**< HCAPI 'controlled' */
-	TF_RM_ELEM_CFG_PRIVATE, /**< Private thus not HCAPI 'controlled' */
+	/** No configuration */
+	TF_RM_ELEM_CFG_NULL,
+	/** HCAPI 'controlled' */
+	TF_RM_ELEM_CFG_HCAPI,
+	/** Private thus not HCAPI 'controlled' */
+	TF_RM_ELEM_CFG_PRIVATE,
+	/**
+	 * Shared element thus it belongs to a shared FW Session and
+	 * is not controlled by the Host.
+	 */
+	TF_RM_ELEM_CFG_SHARED,
 	TF_RM_TYPE_MAX
+};
+
+/**
+ * RM Reservation strategy enumeration. Type of strategy comes from
+ * the HCAPI RM QCAPS handshake.
+ */
+enum tf_rm_resc_resv_strategy {
+	TF_RM_RESC_RESV_STATIC_PARTITION,
+	TF_RM_RESC_RESV_STRATEGY_1,
+	TF_RM_RESC_RESV_STRATEGY_2,
+	TF_RM_RESC_RESV_STRATEGY_3,
+	TF_RM_RESC_RESV_MAX
 };
 
 /**
@@ -68,7 +91,7 @@ struct tf_rm_element_cfg {
 	 * RM Element config controls how the DB for that element is
 	 * processed.
 	 */
-	enum tf_rm_elem_cfg_type cfg;
+	enum tf_rm_elem_cfg_type cfg_type;
 
 	/* If a HCAPI to TF type conversion is required then TF type
 	 * can be added here.
@@ -92,7 +115,7 @@ struct tf_rm_alloc_info {
 	 * In case of dynamic allocation support this would have
 	 * to be changed to linked list of tf_rm_entry instead.
 	 */
-	struct tf_rm_entry entry;
+	struct tf_rm_new_entry entry;
 };
 
 /**
@@ -104,17 +127,21 @@ struct tf_rm_create_db_parms {
 	 */
 	enum tf_dir dir;
 	/**
-	 * [in] Number of elements in the parameter structure
+	 * [in] Number of elements.
 	 */
 	uint16_t num_elements;
 	/**
-	 * [in] Parameter structure
+	 * [in] Parameter structure array. Array size is num_elements.
 	 */
-	struct tf_rm_element_cfg *parms;
+	struct tf_rm_element_cfg *cfg;
+	/**
+	 * Allocation number array. Array size is num_elements.
+	 */
+	uint16_t *alloc_num;
 	/**
 	 * [out] RM DB Handle
 	 */
-	void *tf_rm_db;
+	void *rm_db;
 };
 
 /**
@@ -128,7 +155,7 @@ struct tf_rm_free_db_parms {
 	/**
 	 * [in] RM DB Handle
 	 */
-	void *tf_rm_db;
+	void *rm_db;
 };
 
 /**
@@ -138,7 +165,7 @@ struct tf_rm_allocate_parms {
 	/**
 	 * [in] RM DB Handle
 	 */
-	void *tf_rm_db;
+	void *rm_db;
 	/**
 	 * [in] DB Index, indicates which DB entry to perform the
 	 * action on.
@@ -159,7 +186,7 @@ struct tf_rm_free_parms {
 	/**
 	 * [in] RM DB Handle
 	 */
-	void *tf_rm_db;
+	void *rm_db;
 	/**
 	 * [in] DB Index, indicates which DB entry to perform the
 	 * action on.
@@ -168,7 +195,7 @@ struct tf_rm_free_parms {
 	/**
 	 * [in] Index to free
 	 */
-	uint32_t index;
+	uint16_t index;
 };
 
 /**
@@ -178,7 +205,7 @@ struct tf_rm_is_allocated_parms {
 	/**
 	 * [in] RM DB Handle
 	 */
-	void *tf_rm_db;
+	void *rm_db;
 	/**
 	 * [in] DB Index, indicates which DB entry to perform the
 	 * action on.
@@ -191,7 +218,7 @@ struct tf_rm_is_allocated_parms {
 	/**
 	 * [in] Pointer to flag that indicates the state of the query
 	 */
-	uint8_t *allocated;
+	int *allocated;
 };
 
 /**
@@ -201,7 +228,7 @@ struct tf_rm_get_alloc_info_parms {
 	/**
 	 * [in] RM DB Handle
 	 */
-	void *tf_rm_db;
+	void *rm_db;
 	/**
 	 * [in] DB Index, indicates which DB entry to perform the
 	 * action on.
@@ -221,7 +248,7 @@ struct tf_rm_get_hcapi_parms {
 	/**
 	 * [in] RM DB Handle
 	 */
-	void *tf_rm_db;
+	void *rm_db;
 	/**
 	 * [in] DB Index, indicates which DB entry to perform the
 	 * action on.
@@ -306,6 +333,7 @@ int tf_rm_free_db(struct tf *tfp,
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
+ *   - (-ENOMEM) if pool is empty
  */
 int tf_rm_allocate(struct tf_rm_allocate_parms *parms);
 
@@ -317,7 +345,7 @@ int tf_rm_allocate(struct tf_rm_allocate_parms *parms);
  *
  * Returns
  *   - (0) if successful.
- *   - (-EpINVAL) on failure.
+ *   - (-EINVAL) on failure.
  */
 int tf_rm_free(struct tf_rm_free_parms *parms);
 
@@ -365,4 +393,4 @@ int tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms);
  */
 int tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms);
 
-#endif /* TF_RM_H_ */
+#endif /* TF_RM_NEW_H_ */

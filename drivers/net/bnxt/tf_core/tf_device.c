@@ -6,45 +6,169 @@
 #include "tf_device.h"
 #include "tf_device_p4.h"
 #include "tfp.h"
-#include "bnxt.h"
 
 struct tf;
 
+/* Forward declarations */
+static int dev_unbind_p4(struct tf *tfp);
+
 /**
- * Device specific bind function
+ * Device specific bind function, WH+
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] shadow_copy
+ *   Flag controlling shadow copy DB creation
+ *
+ * [in] resources
+ *   Pointer to resource allocation information
+ *
+ * [out] dev_handle
+ *   Device handle
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on parameter or internal failure.
  */
 static int
-dev_bind_p4(struct tf *tfp __rte_unused,
-	    struct tf_session_resources *resources __rte_unused,
-	    struct tf_dev_info *dev_info)
+dev_bind_p4(struct tf *tfp,
+	    bool shadow_copy,
+	    struct tf_session_resources *resources,
+	    struct tf_dev_info *dev_handle)
 {
+	int rc;
+	int frc;
+	struct tf_ident_cfg_parms ident_cfg;
+	struct tf_tbl_cfg_parms tbl_cfg;
+	struct tf_tcam_cfg_parms tcam_cfg;
+
 	/* Initialize the modules */
 
-	dev_info->ops = &tf_dev_ops_p4;
+	ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
+	ident_cfg.cfg = tf_ident_p4;
+	ident_cfg.shadow_copy = shadow_copy;
+	ident_cfg.resources = resources;
+	rc = tf_ident_bind(tfp, &ident_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Identifier initialization failure\n");
+		goto fail;
+	}
+
+	tbl_cfg.num_elements = TF_TBL_TYPE_MAX;
+	tbl_cfg.cfg = tf_tbl_p4;
+	tbl_cfg.shadow_copy = shadow_copy;
+	tbl_cfg.resources = resources;
+	rc = tf_tbl_bind(tfp, &tbl_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Table initialization failure\n");
+		goto fail;
+	}
+
+	tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
+	tcam_cfg.cfg = tf_tcam_p4;
+	tcam_cfg.shadow_copy = shadow_copy;
+	tcam_cfg.resources = resources;
+	rc = tf_tcam_bind(tfp, &tcam_cfg);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "TCAM initialization failure\n");
+		goto fail;
+	}
+
+	dev_handle->type = TF_DEVICE_TYPE_WH;
+	dev_handle->ops = &tf_dev_ops_p4;
+
 	return 0;
+
+ fail:
+	/* Cleanup of already created modules */
+	frc = dev_unbind_p4(tfp);
+	if (frc)
+		return frc;
+
+	return rc;
+}
+
+/**
+ * Device specific unbind function, WH+
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int
+dev_unbind_p4(struct tf *tfp)
+{
+	int rc = 0;
+	bool fail = false;
+
+	/* Unbind all the support modules. As this is only done on
+	 * close we only report errors as everything has to be cleaned
+	 * up regardless.
+	 */
+	rc = tf_ident_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, Identifier\n");
+		fail = true;
+	}
+
+	rc = tf_tbl_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, Table Type\n");
+		fail = true;
+	}
+
+	rc = tf_tcam_unbind(tfp);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Device unbind failed, TCAM\n");
+		fail = true;
+	}
+
+	if (fail)
+		return -1;
+
+	return rc;
 }
 
 int
 dev_bind(struct tf *tfp __rte_unused,
 	 enum tf_device_type type,
+	 bool shadow_copy,
 	 struct tf_session_resources *resources,
-	 struct tf_dev_info *dev_info)
+	 struct tf_dev_info *dev_handle)
 {
 	switch (type) {
 	case TF_DEVICE_TYPE_WH:
 		return dev_bind_p4(tfp,
+				   shadow_copy,
 				   resources,
-				   dev_info);
+				   dev_handle);
 	default:
 		TFP_DRV_LOG(ERR,
-			    "Device type not supported\n");
-		return -ENOTSUP;
+			    "No such device\n");
+		return -ENODEV;
 	}
 }
 
 int
-dev_unbind(struct tf *tfp __rte_unused,
-	   struct tf_dev_info *dev_handle __rte_unused)
+dev_unbind(struct tf *tfp,
+	   struct tf_dev_info *dev_handle)
 {
-	return 0;
+	switch (dev_handle->type) {
+	case TF_DEVICE_TYPE_WH:
+		return dev_unbind_p4(tfp);
+	default:
+		TFP_DRV_LOG(ERR,
+			    "No such device\n");
+		return -ENODEV;
+	}
 }

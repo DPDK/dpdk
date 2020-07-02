@@ -85,7 +85,7 @@ tf_create_em_pool(struct tf_session *session,
 
 	/* Create empty stack
 	 */
-	rc = stack_init(num_entries, parms.mem_va, pool);
+	rc = stack_init(num_entries, (uint32_t *)parms.mem_va, pool);
 
 	if (rc != 0) {
 		TFP_DRV_LOG(ERR, "EM pool stack init failure %s\n",
@@ -231,7 +231,6 @@ tf_open_session(struct tf                    *tfp,
 		   TF_SESSION_NAME_MAX);
 
 	/* Initialize Session */
-	session->device_type = parms->device_type;
 	session->dev = NULL;
 	tf_rm_init(tfp);
 
@@ -276,7 +275,9 @@ tf_open_session(struct tf                    *tfp,
 
 	/* Initialize EM pool */
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
-		rc = tf_create_em_pool(session, dir, TF_SESSION_EM_POOL_SIZE);
+		rc = tf_create_em_pool(session,
+				       (enum tf_dir)dir,
+				       TF_SESSION_EM_POOL_SIZE);
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "EM Pool initialization failed\n");
@@ -314,6 +315,64 @@ tf_open_session(struct tf                    *tfp,
 }
 
 int
+tf_open_session_new(struct tf *tfp,
+		    struct tf_open_session_parms *parms)
+{
+	int rc;
+	unsigned int domain, bus, slot, device;
+	struct tf_session_open_session_parms oparms;
+
+	TF_CHECK_PARMS(tfp, parms);
+
+	/* Filter out any non-supported device types on the Core
+	 * side. It is assumed that the Firmware will be supported if
+	 * firmware open session succeeds.
+	 */
+	if (parms->device_type != TF_DEVICE_TYPE_WH) {
+		TFP_DRV_LOG(ERR,
+			    "Unsupported device type %d\n",
+			    parms->device_type);
+		return -ENOTSUP;
+	}
+
+	/* Verify control channel and build the beginning of session_id */
+	rc = sscanf(parms->ctrl_chan_name,
+		    "%x:%x:%x.%d",
+		    &domain,
+		    &bus,
+		    &slot,
+		    &device);
+	if (rc != 4) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to scan device ctrl_chan_name\n");
+		return -EINVAL;
+	}
+
+	parms->session_id.internal.domain = domain;
+	parms->session_id.internal.bus = bus;
+	parms->session_id.internal.device = device;
+	oparms.open_cfg = parms;
+
+	rc = tf_session_open_session(tfp, &oparms);
+	/* Logging handled by tf_session_open_session */
+	if (rc)
+		return rc;
+
+	TFP_DRV_LOG(INFO,
+		    "Session created, session_id:%d\n",
+		    parms->session_id.id);
+
+	TFP_DRV_LOG(INFO,
+		    "domain:%d, bus:%d, device:%d, fw_session_id:%d\n",
+		    parms->session_id.internal.domain,
+		    parms->session_id.internal.bus,
+		    parms->session_id.internal.device,
+		    parms->session_id.internal.fw_session_id);
+
+	return 0;
+}
+
+int
 tf_attach_session(struct tf *tfp __rte_unused,
 		  struct tf_attach_session_parms *parms __rte_unused)
 {
@@ -339,6 +398,69 @@ tf_attach_session(struct tf *tfp __rte_unused,
 	}
 #endif /* TF_SHARED */
 	return -1;
+}
+
+int
+tf_attach_session_new(struct tf *tfp,
+		      struct tf_attach_session_parms *parms)
+{
+	int rc;
+	unsigned int domain, bus, slot, device;
+	struct tf_session_attach_session_parms aparms;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Verify control channel */
+	rc = sscanf(parms->ctrl_chan_name,
+		    "%x:%x:%x.%d",
+		    &domain,
+		    &bus,
+		    &slot,
+		    &device);
+	if (rc != 4) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to scan device ctrl_chan_name\n");
+		return -EINVAL;
+	}
+
+	/* Verify 'attach' channel */
+	rc = sscanf(parms->attach_chan_name,
+		    "%x:%x:%x.%d",
+		    &domain,
+		    &bus,
+		    &slot,
+		    &device);
+	if (rc != 4) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to scan device attach_chan_name\n");
+		return -EINVAL;
+	}
+
+	/* Prepare return value of session_id, using ctrl_chan_name
+	 * device values as it becomes the session id.
+	 */
+	parms->session_id.internal.domain = domain;
+	parms->session_id.internal.bus = bus;
+	parms->session_id.internal.device = device;
+	aparms.attach_cfg = parms;
+	rc = tf_session_attach_session(tfp,
+				       &aparms);
+	/* Logging handled by dev_bind */
+	if (rc)
+		return rc;
+
+	TFP_DRV_LOG(INFO,
+		    "Attached to session, session_id:%d\n",
+		    parms->session_id.id);
+
+	TFP_DRV_LOG(INFO,
+		    "domain:%d, bus:%d, device:%d, fw_session_id:%d\n",
+		    parms->session_id.internal.domain,
+		    parms->session_id.internal.bus,
+		    parms->session_id.internal.device,
+		    parms->session_id.internal.fw_session_id);
+
+	return rc;
 }
 
 int
@@ -380,7 +502,7 @@ tf_close_session(struct tf *tfp)
 	if (tfs->ref_count == 0) {
 		/* Free EM pool */
 		for (dir = 0; dir < TF_DIR_MAX; dir++)
-			tf_free_em_pool(tfs, dir);
+			tf_free_em_pool(tfs, (enum tf_dir)dir);
 
 		tfp_free(tfp->session->core_data);
 		tfp_free(tfp->session);
@@ -399,6 +521,39 @@ tf_close_session(struct tf *tfp)
 		    session_id.internal.fw_session_id);
 
 	return rc_close;
+}
+
+int
+tf_close_session_new(struct tf *tfp)
+{
+	int rc;
+	struct tf_session_close_session_parms cparms = { 0 };
+	union tf_session_id session_id = { 0 };
+	uint8_t ref_count;
+
+	TF_CHECK_PARMS1(tfp);
+
+	cparms.ref_count = &ref_count;
+	cparms.session_id = &session_id;
+	rc = tf_session_close_session(tfp,
+				      &cparms);
+	/* Logging handled by tf_session_close_session */
+	if (rc)
+		return rc;
+
+	TFP_DRV_LOG(INFO,
+		    "Closed session, session_id:%d, ref_count:%d\n",
+		    cparms.session_id->id,
+		    *cparms.ref_count);
+
+	TFP_DRV_LOG(INFO,
+		    "domain:%d, bus:%d, device:%d, fw_session_id:%d\n",
+		    cparms.session_id->internal.domain,
+		    cparms.session_id->internal.bus,
+		    cparms.session_id->internal.device,
+		    cparms.session_id->internal.fw_session_id);
+
+	return rc;
 }
 
 /** insert EM hash entry API
@@ -539,10 +694,67 @@ int tf_alloc_identifier(struct tf *tfp,
 	return 0;
 }
 
-/** free identifier resource
- *
- * Returns success or failure code.
- */
+int
+tf_alloc_identifier_new(struct tf *tfp,
+			struct tf_alloc_identifier_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_ident_alloc_parms aparms;
+	uint16_t id;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Can't do static initialization due to UT enum check */
+	memset(&aparms, 0, sizeof(struct tf_ident_alloc_parms));
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_alloc_ident == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return -EOPNOTSUPP;
+	}
+
+	aparms.dir = parms->dir;
+	aparms.ident_type = parms->ident_type;
+	aparms.id = &id;
+	rc = dev->ops->tf_dev_alloc_ident(tfp, &aparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Identifier allocation failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	parms->id = id;
+
+	return 0;
+}
+
 int tf_free_identifier(struct tf *tfp,
 		       struct tf_free_identifier_parms *parms)
 {
@@ -614,6 +826,64 @@ int tf_free_identifier(struct tf *tfp,
 	}
 
 	ba_free(session_pool, (int)parms->id);
+
+	return 0;
+}
+
+int
+tf_free_identifier_new(struct tf *tfp,
+		       struct tf_free_identifier_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_ident_free_parms fparms;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Can't do static initialization due to UT enum check */
+	memset(&fparms, 0, sizeof(struct tf_ident_free_parms));
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_free_ident == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return -EOPNOTSUPP;
+	}
+
+	fparms.dir = parms->dir;
+	fparms.ident_type = parms->ident_type;
+	fparms.id = parms->id;
+	rc = dev->ops->tf_dev_free_ident(tfp, &fparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Identifier allocation failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
 
 	return 0;
 }

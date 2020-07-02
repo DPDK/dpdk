@@ -27,6 +27,7 @@ struct tf_session;
  * TF device information
  */
 struct tf_dev_info {
+	enum tf_device_type type;
 	const struct tf_dev_ops *ops;
 };
 
@@ -56,10 +57,12 @@ struct tf_dev_info {
  *
  * Returns
  *   - (0) if successful.
- *   - (-EINVAL) on failure.
+ *   - (-EINVAL) parameter failure.
+ *   - (-ENODEV) no such device supported.
  */
 int dev_bind(struct tf *tfp,
 	     enum tf_device_type type,
+	     bool shadow_copy,
 	     struct tf_session_resources *resources,
 	     struct tf_dev_info *dev_handle);
 
@@ -71,6 +74,11 @@ int dev_bind(struct tf *tfp,
  *
  * [in] dev_handle
  *   Device handle
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) parameter failure.
+ *   - (-ENODEV) no such device supported.
  */
 int dev_unbind(struct tf *tfp,
 	       struct tf_dev_info *dev_handle);
@@ -84,6 +92,44 @@ int dev_unbind(struct tf *tfp,
  * different device variants.
  */
 struct tf_dev_ops {
+	/**
+	 * Retrieves the MAX number of resource types that the device
+	 * supports.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [out] max_types
+	 *   Pointer to MAX number of types the device supports
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_max_types)(struct tf *tfp,
+				    uint16_t *max_types);
+
+	/**
+	 * Retrieves the WC TCAM slice information that the device
+	 * supports.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [out] slice_size
+	 *   Pointer to slice size the device supports
+	 *
+	 * [out] num_slices_per_row
+	 *   Pointer to number of slices per row the device supports
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_get_wc_tcam_slices)(struct tf *tfp,
+					 uint16_t *slice_size,
+					 uint16_t *num_slices_per_row);
+
 	/**
 	 * Allocation of an identifier element.
 	 *
@@ -134,14 +180,14 @@ struct tf_dev_ops {
 	 *   Pointer to TF handle
 	 *
 	 * [in] parms
-	 *   Pointer to table type allocation parameters
+	 *   Pointer to table allocation parameters
 	 *
 	 * Returns
 	 *   - (0) if successful.
 	 *   - (-EINVAL) on failure.
 	 */
-	int (*tf_dev_alloc_tbl_type)(struct tf *tfp,
-				     struct tf_tbl_type_alloc_parms *parms);
+	int (*tf_dev_alloc_tbl)(struct tf *tfp,
+				struct tf_tbl_alloc_parms *parms);
 
 	/**
 	 * Free of a table type element.
@@ -153,14 +199,14 @@ struct tf_dev_ops {
 	 *   Pointer to TF handle
 	 *
 	 * [in] parms
-	 *   Pointer to table type free parameters
+	 *   Pointer to table free parameters
 	 *
 	 * Returns
 	 *   - (0) if successful.
 	 *   - (-EINVAL) on failure.
 	 */
-	int (*tf_dev_free_tbl_type)(struct tf *tfp,
-				    struct tf_tbl_type_free_parms *parms);
+	int (*tf_dev_free_tbl)(struct tf *tfp,
+			       struct tf_tbl_free_parms *parms);
 
 	/**
 	 * Searches for the specified table type element in a shadow DB.
@@ -175,15 +221,14 @@ struct tf_dev_ops {
 	 *   Pointer to TF handle
 	 *
 	 * [in] parms
-	 *   Pointer to table type allocation and search parameters
+	 *   Pointer to table allocation and search parameters
 	 *
 	 * Returns
 	 *   - (0) if successful.
 	 *   - (-EINVAL) on failure.
 	 */
-	int (*tf_dev_alloc_search_tbl_type)
-			(struct tf *tfp,
-			struct tf_tbl_type_alloc_search_parms *parms);
+	int (*tf_dev_alloc_search_tbl)(struct tf *tfp,
+				       struct tf_tbl_alloc_search_parms *parms);
 
 	/**
 	 * Sets the specified table type element.
@@ -195,14 +240,14 @@ struct tf_dev_ops {
 	 *   Pointer to TF handle
 	 *
 	 * [in] parms
-	 *   Pointer to table type set parameters
+	 *   Pointer to table set parameters
 	 *
 	 * Returns
 	 *   - (0) if successful.
 	 *   - (-EINVAL) on failure.
 	 */
-	int (*tf_dev_set_tbl_type)(struct tf *tfp,
-				   struct tf_tbl_type_set_parms *parms);
+	int (*tf_dev_set_tbl)(struct tf *tfp,
+			      struct tf_tbl_set_parms *parms);
 
 	/**
 	 * Retrieves the specified table type element.
@@ -214,14 +259,14 @@ struct tf_dev_ops {
 	 *   Pointer to TF handle
 	 *
 	 * [in] parms
-	 *   Pointer to table type get parameters
+	 *   Pointer to table get parameters
 	 *
 	 * Returns
 	 *   - (0) if successful.
 	 *   - (-EINVAL) on failure.
 	 */
-	int (*tf_dev_get_tbl_type)(struct tf *tfp,
-				   struct tf_tbl_type_get_parms *parms);
+	int (*tf_dev_get_tbl)(struct tf *tfp,
+			       struct tf_tbl_get_parms *parms);
 
 	/**
 	 * Allocation of a tcam element.

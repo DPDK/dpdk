@@ -11,33 +11,39 @@
 struct tf;
 
 /**
- * The Table Type module provides processing of Internal TF table types.
+ * The Table module provides processing of Internal TF table types.
  */
 
 /**
- * Table Type configuration parameters
+ * Table configuration parameters
  */
-struct tf_tbl_type_cfg_parms {
+struct tf_tbl_cfg_parms {
 	/**
 	 * Number of table types in each of the configuration arrays
 	 */
 	uint16_t num_elements;
-
 	/**
 	 * Table Type element configuration array
 	 */
-	struct tf_rm_element_cfg *tbl_cfg[TF_DIR_MAX];
-
+	struct tf_rm_element_cfg *cfg;
 	/**
 	 * Shadow table type configuration array
 	 */
-	struct tf_shadow_tbl_type_cfg *tbl_shadow_cfg[TF_DIR_MAX];
+	struct tf_shadow_tbl_cfg *shadow_cfg;
+	/**
+	 * Boolean controlling the request shadow copy.
+	 */
+	bool shadow_copy;
+	/**
+	 * Session resource allocations
+	 */
+	struct tf_session_resources *resources;
 };
 
 /**
- * Table Type allocation parameters
+ * Table allocation parameters
  */
-struct tf_tbl_type_alloc_parms {
+struct tf_tbl_alloc_parms {
 	/**
 	 * [in] Receive or transmit direction
 	 */
@@ -53,9 +59,9 @@ struct tf_tbl_type_alloc_parms {
 };
 
 /**
- * Table Type free parameters
+ * Table free parameters
  */
-struct tf_tbl_type_free_parms {
+struct tf_tbl_free_parms {
 	/**
 	 * [in] Receive or transmit direction
 	 */
@@ -75,7 +81,10 @@ struct tf_tbl_type_free_parms {
 	uint16_t ref_cnt;
 };
 
-struct tf_tbl_type_alloc_search_parms {
+/**
+ * Table allocate search parameters
+ */
+struct tf_tbl_alloc_search_parms {
 	/**
 	 * [in] Receive or transmit direction
 	 */
@@ -117,9 +126,9 @@ struct tf_tbl_type_alloc_search_parms {
 };
 
 /**
- * Table Type set parameters
+ * Table set parameters
  */
-struct tf_tbl_type_set_parms {
+struct tf_tbl_set_parms {
 	/**
 	 * [in] Receive or transmit direction
 	 */
@@ -143,9 +152,9 @@ struct tf_tbl_type_set_parms {
 };
 
 /**
- * Table Type get parameters
+ * Table get parameters
  */
-struct tf_tbl_type_get_parms {
+struct tf_tbl_get_parms {
 	/**
 	 * [in] Receive or transmit direction
 	 */
@@ -169,39 +178,39 @@ struct tf_tbl_type_get_parms {
 };
 
 /**
- * @page tbl_type Table Type
+ * @page tbl Table
  *
- * @ref tf_tbl_type_bind
+ * @ref tf_tbl_bind
  *
- * @ref tf_tbl_type_unbind
+ * @ref tf_tbl_unbind
  *
- * @ref tf_tbl_type_alloc
+ * @ref tf_tbl_alloc
  *
- * @ref tf_tbl_type_free
+ * @ref tf_tbl_free
  *
- * @ref tf_tbl_type_alloc_search
+ * @ref tf_tbl_alloc_search
  *
- * @ref tf_tbl_type_set
+ * @ref tf_tbl_set
  *
- * @ref tf_tbl_type_get
+ * @ref tf_tbl_get
  */
 
 /**
- * Initializes the Table Type module with the requested DBs. Must be
+ * Initializes the Table module with the requested DBs. Must be
  * invoked as the first thing before any of the access functions.
  *
  * [in] tfp
  *   Pointer to TF handle, used for HCAPI communication
  *
  * [in] parms
- *   Pointer to parameters
+ *   Pointer to Table configuration parameters
  *
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int tf_tbl_type_bind(struct tf *tfp,
-		     struct tf_tbl_type_cfg_parms *parms);
+int tf_tbl_bind(struct tf *tfp,
+		struct tf_tbl_cfg_parms *parms);
 
 /**
  * Cleans up the private DBs and releases all the data.
@@ -216,7 +225,7 @@ int tf_tbl_type_bind(struct tf *tfp,
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int tf_tbl_type_unbind(struct tf *tfp);
+int tf_tbl_unbind(struct tf *tfp);
 
 /**
  * Allocates the requested table type from the internal RM DB.
@@ -225,14 +234,14 @@ int tf_tbl_type_unbind(struct tf *tfp);
  *   Pointer to TF handle, used for HCAPI communication
  *
  * [in] parms
- *   Pointer to parameters
+ *   Pointer to Table allocation parameters
  *
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int tf_tbl_type_alloc(struct tf *tfp,
-		      struct tf_tbl_type_alloc_parms *parms);
+int tf_tbl_alloc(struct tf *tfp,
+		 struct tf_tbl_alloc_parms *parms);
 
 /**
  * Free's the requested table type and returns it to the DB. If shadow
@@ -244,14 +253,14 @@ int tf_tbl_type_alloc(struct tf *tfp,
  *   Pointer to TF handle, used for HCAPI communication
  *
  * [in] parms
- *   Pointer to parameters
+ *   Pointer to Table free parameters
  *
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int tf_tbl_type_free(struct tf *tfp,
-		     struct tf_tbl_type_free_parms *parms);
+int tf_tbl_free(struct tf *tfp,
+		struct tf_tbl_free_parms *parms);
 
 /**
  * Supported if Shadow DB is configured. Searches the Shadow DB for
@@ -269,8 +278,8 @@ int tf_tbl_type_free(struct tf *tfp,
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int tf_tbl_type_alloc_search(struct tf *tfp,
-			     struct tf_tbl_type_alloc_search_parms *parms);
+int tf_tbl_alloc_search(struct tf *tfp,
+			struct tf_tbl_alloc_search_parms *parms);
 
 /**
  * Configures the requested element by sending a firmware request which
@@ -280,14 +289,14 @@ int tf_tbl_type_alloc_search(struct tf *tfp,
  *   Pointer to TF handle, used for HCAPI communication
  *
  * [in] parms
- *   Pointer to parameters
+ *   Pointer to Table set parameters
  *
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int tf_tbl_type_set(struct tf *tfp,
-		    struct tf_tbl_type_set_parms *parms);
+int tf_tbl_set(struct tf *tfp,
+	       struct tf_tbl_set_parms *parms);
 
 /**
  * Retrieves the requested element by sending a firmware request to get
@@ -297,13 +306,13 @@ int tf_tbl_type_set(struct tf *tfp,
  *   Pointer to TF handle, used for HCAPI communication
  *
  * [in] parms
- *   Pointer to parameters
+ *   Pointer to Table get parameters
  *
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int tf_tbl_type_get(struct tf *tfp,
-		    struct tf_tbl_type_get_parms *parms);
+int tf_tbl_get(struct tf *tfp,
+	       struct tf_tbl_get_parms *parms);
 
 #endif /* TF_TBL_TYPE_H */

@@ -20,16 +20,22 @@ struct tf_tcam_cfg_parms {
 	 * Number of tcam types in each of the configuration arrays
 	 */
 	uint16_t num_elements;
-
 	/**
 	 * TCAM configuration array
 	 */
-	struct tf_rm_element_cfg *tcam_cfg[TF_DIR_MAX];
-
+	struct tf_rm_element_cfg *cfg;
 	/**
 	 * Shadow table type configuration array
 	 */
-	struct tf_shadow_tcam_cfg *tcam_shadow_cfg[TF_DIR_MAX];
+	struct tf_shadow_tcam_cfg *shadow_cfg;
+	/**
+	 * Boolean controlling the request shadow copy.
+	 */
+	bool shadow_copy;
+	/**
+	 * Session resource allocations
+	 */
+	struct tf_session_resources *resources;
 };
 
 /**

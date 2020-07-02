@@ -6,15 +6,13 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
-
-#include "bnxt.h"
-#include "tf_core.h"
-#include "tf_session.h"
-#include "tfp.h"
+#include <string.h>
 
 #include "tf_msg_common.h"
 #include "tf_msg.h"
-#include "hsi_struct_def_dpdk.h"
+#include "tf_util.h"
+#include "tf_session.h"
+#include "tfp.h"
 #include "hwrm_tf.h"
 #include "tf_em.h"
 
@@ -141,6 +139,51 @@ tf_tcam_tbl_2_hwrm(enum tf_tcam_tbl_type tcam_type,
 }
 
 /**
+ * Allocates a DMA buffer that can be used for message transfer.
+ *
+ * [in] buf
+ *   Pointer to DMA buffer structure
+ *
+ * [in] size
+ *   Requested size of the buffer in bytes
+ *
+ * Returns:
+ *    0      - Success
+ *   -ENOMEM - Unable to allocate buffer, no memory
+ */
+static int
+tf_msg_alloc_dma_buf(struct tf_msg_dma_buf *buf, int size)
+{
+	struct tfp_calloc_parms alloc_parms;
+	int rc;
+
+	/* Allocate session */
+	alloc_parms.nitems = 1;
+	alloc_parms.size = size;
+	alloc_parms.alignment = 4096;
+	rc = tfp_calloc(&alloc_parms);
+	if (rc)
+		return -ENOMEM;
+
+	buf->pa_addr = (uintptr_t)alloc_parms.mem_pa;
+	buf->va_addr = alloc_parms.mem_va;
+
+	return 0;
+}
+
+/**
+ * Free's a previous allocated DMA buffer.
+ *
+ * [in] buf
+ *   Pointer to DMA buffer structure
+ */
+static void
+tf_msg_free_dma_buf(struct tf_msg_dma_buf *buf)
+{
+	tfp_free(buf->va_addr);
+}
+
+/**
  * Sends session open request to TF Firmware
  */
 int
@@ -154,7 +197,7 @@ tf_msg_session_open(struct tf *tfp,
 	struct tfp_send_msg_parms parms = { 0 };
 
 	/* Populate the request */
-	memcpy(&req.session_name, ctrl_chan_name, TF_SESSION_NAME_MAX);
+	tfp_memcpy(&req.session_name, ctrl_chan_name, TF_SESSION_NAME_MAX);
 
 	parms.tf_type = HWRM_TF_SESSION_OPEN;
 	parms.req_data = (uint32_t *)&req;
@@ -870,6 +913,180 @@ tf_msg_session_sram_resc_flush(struct tf *tfp,
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
 
+int
+tf_msg_session_resc_qcaps(struct tf *tfp,
+			  enum tf_dir dir,
+			  uint16_t size,
+			  struct tf_rm_resc_req_entry *query,
+			  enum tf_rm_resc_resv_strategy *resv_strategy)
+{
+	int rc;
+	int i;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct hwrm_tf_session_resc_qcaps_input req = { 0 };
+	struct hwrm_tf_session_resc_qcaps_output resp = { 0 };
+	uint8_t fw_session_id;
+	struct tf_msg_dma_buf qcaps_buf = { 0 };
+	struct tf_rm_resc_req_entry *data;
+	int dma_size;
+
+	if (size == 0 || query == NULL || resv_strategy == NULL) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Resource QCAPS parameter error, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-EINVAL));
+		return -EINVAL;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Prepare DMA buffer */
+	dma_size = size * sizeof(struct tf_rm_resc_req_entry);
+	rc = tf_msg_alloc_dma_buf(&qcaps_buf, dma_size);
+	if (rc)
+		return rc;
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+	req.qcaps_size = size;
+	req.qcaps_addr = qcaps_buf.pa_addr;
+
+	parms.tf_type = HWRM_TF_SESSION_RESC_QCAPS;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp, &parms);
+	if (rc)
+		return rc;
+
+	/* Process the response
+	 * Should always get expected number of entries
+	 */
+	if (resp.size != size) {
+		TFP_DRV_LOG(ERR,
+			    "%s: QCAPS message error, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-EINVAL));
+		return -EINVAL;
+	}
+
+	/* Post process the response */
+	data = (struct tf_rm_resc_req_entry *)qcaps_buf.va_addr;
+	for (i = 0; i < size; i++) {
+		query[i].type = tfp_cpu_to_le_32(data[i].type);
+		query[i].min = tfp_le_to_cpu_16(data[i].min);
+		query[i].max = tfp_le_to_cpu_16(data[i].max);
+	}
+
+	*resv_strategy = resp.flags &
+	      HWRM_TF_SESSION_RESC_QCAPS_OUTPUT_FLAGS_SESS_RESV_STRATEGY_MASK;
+
+	tf_msg_free_dma_buf(&qcaps_buf);
+
+	return rc;
+}
+
+int
+tf_msg_session_resc_alloc(struct tf *tfp,
+			  enum tf_dir dir,
+			  uint16_t size,
+			  struct tf_rm_resc_req_entry *request,
+			  struct tf_rm_resc_entry *resv)
+{
+	int rc;
+	int i;
+	struct tfp_send_msg_parms parms = { 0 };
+	struct hwrm_tf_session_resc_alloc_input req = { 0 };
+	struct hwrm_tf_session_resc_alloc_output resp = { 0 };
+	uint8_t fw_session_id;
+	struct tf_msg_dma_buf req_buf = { 0 };
+	struct tf_msg_dma_buf resv_buf = { 0 };
+	struct tf_rm_resc_req_entry *req_data;
+	struct tf_rm_resc_entry *resv_data;
+	int dma_size;
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Prepare DMA buffers */
+	dma_size = size * sizeof(struct tf_rm_resc_req_entry);
+	rc = tf_msg_alloc_dma_buf(&req_buf, dma_size);
+	if (rc)
+		return rc;
+
+	dma_size = size * sizeof(struct tf_rm_resc_entry);
+	rc = tf_msg_alloc_dma_buf(&resv_buf, dma_size);
+	if (rc)
+		return rc;
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+	req.req_size = size;
+
+	req_data = (struct tf_rm_resc_req_entry *)req_buf.va_addr;
+	for (i = 0; i < size; i++) {
+		req_data[i].type = tfp_cpu_to_le_32(request[i].type);
+		req_data[i].min = tfp_cpu_to_le_16(request[i].min);
+		req_data[i].max = tfp_cpu_to_le_16(request[i].max);
+	}
+
+	req.req_addr = req_buf.pa_addr;
+	req.resp_addr = resv_buf.pa_addr;
+
+	parms.tf_type = HWRM_TF_SESSION_RESC_ALLOC;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
+
+	rc = tfp_send_msg_direct(tfp, &parms);
+	if (rc)
+		return rc;
+
+	/* Process the response
+	 * Should always get expected number of entries
+	 */
+	if (resp.size != size) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Alloc message error, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-EINVAL));
+		return -EINVAL;
+	}
+
+	/* Post process the response */
+	resv_data = (struct tf_rm_resc_entry *)resv_buf.va_addr;
+	for (i = 0; i < size; i++) {
+		resv[i].type = tfp_cpu_to_le_32(resv_data[i].type);
+		resv[i].start = tfp_cpu_to_le_16(resv_data[i].start);
+		resv[i].stride = tfp_cpu_to_le_16(resv_data[i].stride);
+	}
+
+	tf_msg_free_dma_buf(&req_buf);
+	tf_msg_free_dma_buf(&resv_buf);
+
+	return rc;
+}
+
 /**
  * Sends EM mem register request to Firmware
  */
@@ -1034,7 +1251,9 @@ int tf_msg_insert_em_internal_entry(struct tf *tfp,
 
 	req.fw_session_id =
 		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
-	memcpy(req.em_key, em_parms->key, ((em_parms->key_sz_in_bits + 7) / 8));
+	tfp_memcpy(req.em_key,
+		   em_parms->key,
+		   ((em_parms->key_sz_in_bits + 7) / 8));
 
 	flags = (em_parms->dir == TF_DIR_TX ?
 		 HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_TX :
@@ -1216,26 +1435,6 @@ tf_msg_get_tbl_entry(struct tf *tfp,
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
 
-static int
-tf_msg_alloc_dma_buf(struct tf_msg_dma_buf *buf, int size)
-{
-	struct tfp_calloc_parms alloc_parms;
-	int rc;
-
-	/* Allocate session */
-	alloc_parms.nitems = 1;
-	alloc_parms.size = size;
-	alloc_parms.alignment = 4096;
-	rc = tfp_calloc(&alloc_parms);
-	if (rc)
-		return -ENOMEM;
-
-	buf->pa_addr = (uintptr_t)alloc_parms.mem_pa;
-	buf->va_addr = alloc_parms.mem_va;
-
-	return 0;
-}
-
 int
 tf_msg_get_bulk_tbl_entry(struct tf *tfp,
 			  struct tf_get_bulk_tbl_entry_parms *params)
@@ -1323,12 +1522,14 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 		if (rc)
 			goto cleanup;
 		data = buf.va_addr;
-		memcpy(&req.dev_data[0], &buf.pa_addr, sizeof(buf.pa_addr));
+		tfp_memcpy(&req.dev_data[0],
+			   &buf.pa_addr,
+			   sizeof(buf.pa_addr));
 	}
 
-	memcpy(&data[0], parms->key, key_bytes);
-	memcpy(&data[key_bytes], parms->mask, key_bytes);
-	memcpy(&data[req.result_offset], parms->result, result_bytes);
+	tfp_memcpy(&data[0], parms->key, key_bytes);
+	tfp_memcpy(&data[key_bytes], parms->mask, key_bytes);
+	tfp_memcpy(&data[req.result_offset], parms->result, result_bytes);
 
 	mparms.tf_type = HWRM_TF_TCAM_SET;
 	mparms.req_data = (uint32_t *)&req;
@@ -1343,8 +1544,7 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 		goto cleanup;
 
 cleanup:
-	if (buf.va_addr != NULL)
-		tfp_free(buf.va_addr);
+	tf_msg_free_dma_buf(&buf);
 
 	return rc;
 }

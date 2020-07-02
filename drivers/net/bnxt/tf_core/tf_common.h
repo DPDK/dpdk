@@ -51,4 +51,28 @@
 		} \
 	} while (0)
 
+
+#define TF_CHECK_PARMS1(parms) do {					\
+		if ((parms) == NULL) {					\
+			TFP_DRV_LOG(ERR, "Invalid Argument(s)\n");	\
+			return -EINVAL;					\
+		}							\
+	} while (0)
+
+#define TF_CHECK_PARMS2(parms1, parms2) do {				\
+		if ((parms1) == NULL || (parms2) == NULL) {		\
+			TFP_DRV_LOG(ERR, "Invalid Argument(s)\n");	\
+			return -EINVAL;					\
+		}							\
+	} while (0)
+
+#define TF_CHECK_PARMS3(parms1, parms2, parms3) do {			\
+		if ((parms1) == NULL ||					\
+		    (parms2) == NULL ||					\
+		    (parms3) == NULL) {					\
+			TFP_DRV_LOG(ERR, "Invalid Argument(s)\n");	\
+			return -EINVAL;					\
+		}							\
+	} while (0)
+
 #endif /* _TF_COMMON_H_ */

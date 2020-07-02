@@ -12,21 +12,28 @@
  * The Identifier module provides processing of Identifiers.
  */
 
-struct tf_ident_cfg {
+struct tf_ident_cfg_parms {
 	/**
-	 * Number of identifier types in each of the configuration
-	 * arrays
+	 * [in] Number of identifier types in each of the
+	 * configuration arrays
 	 */
 	uint16_t num_elements;
-
 	/**
-	 * TCAM configuration array
+	 * [in] Identifier configuration array
 	 */
-	struct tf_rm_element_cfg *ident_cfg[TF_DIR_MAX];
+	struct tf_rm_element_cfg *cfg;
+	/**
+	 * [in] Boolean controlling the request shadow copy.
+	 */
+	bool shadow_copy;
+	/**
+	 * [in] Session resource allocations
+	 */
+	struct tf_session_resources *resources;
 };
 
 /**
- * Identifier allcoation parameter definition
+ * Identifier allocation parameter definition
  */
 struct tf_ident_alloc_parms {
 	/**
@@ -40,7 +47,7 @@ struct tf_ident_alloc_parms {
 	/**
 	 * [out] Identifier allocated
 	 */
-	uint16_t id;
+	uint16_t *id;
 };
 
 /**
@@ -88,7 +95,7 @@ struct tf_ident_free_parms {
  *   - (-EINVAL) on failure.
  */
 int tf_ident_bind(struct tf *tfp,
-		  struct tf_ident_cfg *parms);
+		  struct tf_ident_cfg_parms *parms);
 
 /**
  * Cleans up the private DBs and releases all the data.

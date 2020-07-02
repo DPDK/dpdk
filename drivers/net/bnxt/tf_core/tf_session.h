@@ -63,12 +63,7 @@ struct tf_session {
 	 */
 	struct tf_session_version ver;
 
-	/** Device type, provided by tf_open_session().
-	 */
-	enum tf_device_type device_type;
-
-	/** Session ID, allocated by FW on tf_open_session().
-	 */
+	/** Session ID, allocated by FW on tf_open_session() */
 	union tf_session_id session_id;
 
 	/**
@@ -101,7 +96,7 @@ struct tf_session {
 	 */
 	uint8_t ref_count;
 
-	/** Device */
+	/** Device handle */
 	struct tf_dev_info *dev;
 
 	/** Session HW and SRAM resources */
@@ -324,12 +319,96 @@ struct tf_session {
 };
 
 /**
+ * Session open parameter definition
+ */
+struct tf_session_open_session_parms {
+	/**
+	 * [in] Pointer to the TF open session configuration
+	 */
+	struct tf_open_session_parms *open_cfg;
+};
+
+/**
+ * Session attach parameter definition
+ */
+struct tf_session_attach_session_parms {
+	/**
+	 * [in] Pointer to the TF attach session configuration
+	 */
+	struct tf_attach_session_parms *attach_cfg;
+};
+
+/**
+ * Session close parameter definition
+ */
+struct tf_session_close_session_parms {
+	uint8_t *ref_count;
+	union tf_session_id *session_id;
+};
+
+/**
  * @page session Session Management
+ *
+ * @ref tf_session_open_session
+ *
+ * @ref tf_session_attach_session
+ *
+ * @ref tf_session_close_session
  *
  * @ref tf_session_get_session
  *
  * @ref tf_session_get_device
+ *
+ * @ref tf_session_get_fw_session_id
  */
+
+/**
+ * Creates a host session with a corresponding firmware session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to the session open parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_open_session(struct tf *tfp,
+			    struct tf_session_open_session_parms *parms);
+
+/**
+ * Attaches a previous created session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to the session attach parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_attach_session(struct tf *tfp,
+			      struct tf_session_attach_session_parms *parms);
+
+/**
+ * Closes a previous created session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in/out] parms
+ *   Pointer to the session close parameters.
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_close_session(struct tf *tfp,
+			     struct tf_session_close_session_parms *parms);
 
 /**
  * Looks up the private session information from the TF session info.
@@ -338,14 +417,14 @@ struct tf_session {
  *   Pointer to TF handle
  *
  * [out] tfs
- *   Pointer to the session
+ *   Pointer pointer to the session
  *
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
 int tf_session_get_session(struct tf *tfp,
-			   struct tf_session *tfs);
+			   struct tf_session **tfs);
 
 /**
  * Looks up the device information from the TF Session.
@@ -354,13 +433,30 @@ int tf_session_get_session(struct tf *tfp,
  *   Pointer to TF handle
  *
  * [out] tfd
- *   Pointer to the device
+ *   Pointer pointer to the device
  *
  * Returns
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
 int tf_session_get_device(struct tf_session *tfs,
-			  struct tf_dev_info *tfd);
+			  struct tf_dev_info **tfd);
+
+/**
+ * Looks up the FW session id of the firmware connection for the
+ * requested TF handle.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [out] session_id
+ *   Pointer to the session_id
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_session_get_fw_session_id(struct tf *tfp,
+				 uint8_t *fw_session_id);
 
 #endif /* _TF_SESSION_H_ */

@@ -6,8 +6,12 @@
 #ifndef _TF_MSG_H_
 #define _TF_MSG_H_
 
+#include <rte_common.h>
+#include <hsi_struct_def_dpdk.h>
+
 #include "tf_tbl.h"
 #include "tf_rm.h"
+#include "tf_rm_new.h"
 
 struct tf;
 
@@ -120,6 +124,61 @@ int tf_msg_session_sram_resc_free(struct tf *tfp,
 int tf_msg_session_sram_resc_flush(struct tf *tfp,
 				   enum tf_dir dir,
 				   struct tf_rm_entry *sram_entry);
+
+/**
+ * Sends session HW resource query capability request to TF Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or Transmit direction
+ *
+ * [in] size
+ *   Number of elements in the query. Should be set to the max
+ *   elements for the device type
+ *
+ * [out] query
+ *   Pointer to an array of query elements
+ *
+ * [out] resv_strategy
+ *   Pointer to the reservation strategy
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_session_resc_qcaps(struct tf *tfp,
+			      enum tf_dir dir,
+			      uint16_t size,
+			      struct tf_rm_resc_req_entry *query,
+			      enum tf_rm_resc_resv_strategy *resv_strategy);
+
+/**
+ * Sends session HW resource allocation request to TF Firmware
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or Transmit direction
+ *
+ * [in] size
+ *   Number of elements in the req and resv arrays
+ *
+ * [in] req
+ *   Pointer to an array of request elements
+ *
+ * [in] resv
+ *   Pointer to an array of reserved elements
+ *
+ * Returns:
+ *   0 on Success else internal Truflow error
+ */
+int tf_msg_session_resc_alloc(struct tf *tfp,
+			      enum tf_dir dir,
+			      uint16_t size,
+			      struct tf_rm_resc_req_entry *request,
+			      struct tf_rm_resc_entry *resv);
 
 /**
  * Sends EM internal insert request to Firmware
