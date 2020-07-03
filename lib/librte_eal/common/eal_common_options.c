@@ -352,8 +352,7 @@ eal_plugin_add(const char *path)
 		return -1;
 	}
 	memset(solib, 0, sizeof(*solib));
-	strlcpy(solib->name, path, PATH_MAX-1);
-	solib->name[PATH_MAX-1] = 0;
+	strlcpy(solib->name, path, PATH_MAX);
 	TAILQ_INSERT_TAIL(&solib_list, solib, next);
 
 	return 0;
