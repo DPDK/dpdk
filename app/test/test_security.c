@@ -6,6 +6,7 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
+#include <rte_ether.h>
 #include <rte_security.h>
 #include <rte_security_driver.h>
 
@@ -2269,6 +2270,89 @@ test_capability_get_pdcp_match(void)
 }
 
 /**
+ * Test execution of rte_security_capability_get when capabilities table
+ * does not contain entry with matching DOCSIS direction field
+ */
+static int
+test_capability_get_docsis_mismatch_direction(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+		.docsis = {
+			.direction = RTE_SECURITY_DOCSIS_DOWNLINK
+		},
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+			.docsis = {
+				.direction = RTE_SECURITY_DOCSIS_UPLINK
+			},
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, NULL, "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
+ * Test execution of rte_security_capability_get when capabilities table
+ * contains matching DOCSIS entry
+ */
+static int
+test_capability_get_docsis_match(void)
+{
+	struct security_unittest_params *ut_params = &unittest_params;
+	struct rte_security_capability_idx idx = {
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+		.docsis = {
+			.direction = RTE_SECURITY_DOCSIS_UPLINK
+		},
+	};
+	struct rte_security_capability capabilities[] = {
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+			.docsis = {
+				.direction = RTE_SECURITY_DOCSIS_UPLINK
+			},
+		},
+		{
+			.action = RTE_SECURITY_ACTION_TYPE_NONE,
+		},
+	};
+
+	mock_capabilities_get_exp.device = NULL;
+	mock_capabilities_get_exp.ret = capabilities;
+
+	const struct rte_security_capability *ret;
+	ret = rte_security_capability_get(&ut_params->ctx, &idx);
+	TEST_ASSERT_MOCK_FUNCTION_CALL_RET(rte_security_capability_get,
+			ret, &capabilities[1], "%p");
+	TEST_ASSERT_MOCK_CALLS(mock_capabilities_get_exp, 1);
+
+	return TEST_SUCCESS;
+}
+
+/**
  * Declaration of testcases
  */
 static struct unit_test_suite security_testsuite  = {
@@ -2410,6 +2494,10 @@ static struct unit_test_suite security_testsuite  = {
 				test_capability_get_pdcp_mismatch_domain),
 		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
 				test_capability_get_pdcp_match),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_docsis_mismatch_direction),
+		TEST_CASE_ST(ut_setup_with_session, ut_teardown,
+				test_capability_get_docsis_match),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
