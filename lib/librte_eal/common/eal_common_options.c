@@ -414,11 +414,17 @@ verify_perms(const char *dirpath)
 
 	/* if not root, check down one level first */
 	if (strcmp(dirpath, "/") != 0) {
+		static __thread char last_dir_checked[PATH_MAX];
 		char copy[PATH_MAX];
+		const char *dir;
 
 		strlcpy(copy, dirpath, PATH_MAX);
-		if (verify_perms(dirname(copy)) != 0)
-			return -1;
+		dir = dirname(copy);
+		if (strncmp(dir, last_dir_checked, PATH_MAX) != 0) {
+			if (verify_perms(dir) != 0)
+				return -1;
+			strlcpy(last_dir_checked, dir, PATH_MAX);
+		}
 	}
 
 	/* call stat to check for permissions and ensure not world writable */
