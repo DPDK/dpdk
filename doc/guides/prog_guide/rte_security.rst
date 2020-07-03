@@ -10,8 +10,9 @@ The security library provides a framework for management and provisioning
 of security protocol operations offloaded to hardware based devices. The
 library defines generic APIs to create and free security sessions which can
 support full protocol offload as well as inline crypto operation with
-NIC or crypto devices. The framework currently only supports the IPsec and PDCP
-protocol and associated operations, other protocols will be added in future.
+NIC or crypto devices. The framework currently only supports the IPsec, PDCP
+and DOCSIS protocols and associated operations, other protocols will be added
+in the future.
 
 Design Principles
 -----------------
@@ -296,6 +297,53 @@ Just like IPsec, in case of PDCP also header addition/deletion, cipher/
 de-cipher, integrity protection/verification is done based on the action
 type chosen.
 
+DOCSIS Protocol
+~~~~~~~~~~~~~~~
+
+The Data Over Cable Service Interface Specification (DOCSIS) support comprises
+the combination of encryption/decryption and CRC generation/verification, for
+use in a DOCSIS-MAC pipeline.
+
+.. code-block:: c
+
+
+               Downlink                       Uplink
+               --------                       ------
+
+            Ethernet frame                Ethernet frame
+           from core network              to core network
+                  |                              ^
+                  ~                              |
+                  |                              ~         ----+
+                  V                              |             |
+        +---------|----------+        +----------|---------+   |
+        |   CRC generation   |        |  CRC verification  |   |
+        +---------|----------+        +----------|---------+   |   combined
+                  |                              |             > Crypto + CRC
+        +---------|----------+        +----------|---------+   |
+        |     Encryption     |        |     Decryption     |   |
+        +---------|----------+        +----------|---------+   |
+                  |                              ^             |
+                  ~                              |         ----+
+                  |                              ~
+                  V                              |
+             DOCSIS frame                  DOCSIS frame
+            to Cable Modem               from Cable Modem
+
+The encryption/decryption is a combination of CBC and CFB modes using either AES
+or DES algorithms as specified in the DOCSIS Security Specification (from DPDK
+lib_rtecryptodev perspective, these are RTE_CRYPTO_CIPHER_AES_DOCSISBPI and
+RTE_CRYPTO_CIPHER_DES_DOCSISBPI).
+
+The CRC is Ethernet CRC-32 as specified in Ethernet/[ISO/IEC 8802-3].
+
+.. note::
+
+    * The offset and length of data for which CRC needs to be computed are
+      specified via the auth offset and length fields of the rte_crypto_sym_op.
+    * Other DOCSIS protocol functionality such as Header Checksum (HCS)
+      calculation may be added in the future.
+
 Device Features and Capabilities
 ---------------------------------
 
@@ -408,6 +456,56 @@ PMD which supports the IPsec and PDCP protocol.
         }
     }
 
+Below is an example of the capabilities for a PMD which supports the DOCSIS
+protocol.
+
+.. code-block:: c
+
+    static const struct rte_security_capability pmd_security_capabilities[] = {
+        { /* DOCSIS Uplink */
+                .action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+                .protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+                .docsis = {
+                        .direction = RTE_SECURITY_DOCSIS_UPLINK
+                },
+                .crypto_capabilities = pmd_capabilities
+        },
+        { /* DOCSIS Downlink */
+                .action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+                .protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+                .docsis = {
+                        .direction = RTE_SECURITY_DOCSIS_DOWNLINK
+                },
+                .crypto_capabilities = pmd_capabilities
+        },
+        {
+                .action = RTE_SECURITY_ACTION_TYPE_NONE
+        }
+    };
+    static const struct rte_cryptodev_capabilities pmd_capabilities[] = {
+        {    /* AES DOCSIS BPI */
+            .op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+            .sym = {
+                .xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+                .cipher = {
+                    .algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
+                    .block_size = 16,
+                    .key_size = {
+                        .min = 16,
+                        .max = 32,
+                        .increment = 16
+                    },
+                    .iv_size = {
+                        .min = 16,
+                        .max = 16,
+                        .increment = 0
+                    }
+                }
+            }
+        },
+
+        RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+    };
 
 Capabilities Discovery
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -491,6 +589,7 @@ Security Session configuration structure is defined as ``rte_security_session_co
                 struct rte_security_ipsec_xform ipsec;
                 struct rte_security_macsec_xform macsec;
                 struct rte_security_pdcp_xform pdcp;
+                struct rte_security_docsis_xform docsis;
         };
         /**< Configuration parameters for security session */
         struct rte_crypto_sym_xform *crypto_xform;
@@ -538,6 +637,8 @@ The ``rte_security_session_protocol`` is defined as
         /**< MACSec Protocol */
         RTE_SECURITY_PROTOCOL_PDCP,
         /**< PDCP Protocol */
+        RTE_SECURITY_PROTOCOL_DOCSIS,
+        /**< DOCSIS Protocol */
     };
 
 Currently the library defines configuration parameters for IPsec and PDCP only.
@@ -592,6 +693,15 @@ PDCP related configuration parameters are defined in ``rte_security_pdcp_xform``
         uint32_t hfn;
         /** HFN Threshold for key renegotiation */
         uint32_t hfn_threshold;
+    };
+
+DOCSIS related configuration parameters are defined in ``rte_security_docsis_xform``
+
+.. code-block:: c
+
+    struct rte_security_docsis_xform {
+        enum rte_security_docsis_direction direction;
+        /**< DOCSIS direction */
     };
 
 

@@ -173,6 +173,11 @@ rte_security_capability_get(struct rte_security_ctx *instance,
 				if (capability->pdcp.domain ==
 							idx->pdcp.domain)
 					return capability;
+			} else if (idx->protocol ==
+						RTE_SECURITY_PROTOCOL_DOCSIS) {
+				if (capability->docsis.direction ==
+							idx->docsis.direction)
+					return capability;
 			}
 		}
 	}

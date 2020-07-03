@@ -116,6 +116,11 @@ New Features
 
   * Added support for DCF datapath configuration.
 
+* **Added DOCSIS protocol to rte_security.**
+
+  Added support for combined crypto and CRC operations for the DOCSIS protocol
+  to ``rte_security`` API.
+
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 
   Added support for two BPF non-generic instructions:
