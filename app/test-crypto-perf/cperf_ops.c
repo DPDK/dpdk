@@ -3,6 +3,7 @@
  */
 
 #include <rte_cryptodev.h>
+#include <rte_ether.h>
 
 #include "cperf_ops.h"
 #include "cperf_test_vectors.h"
@@ -15,8 +16,7 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options __rte_unused,
 		const struct cperf_test_vector *test_vector __rte_unused,
-		uint16_t iv_offset __rte_unused,
-		uint32_t *imix_idx __rte_unused)
+		uint16_t iv_offset __rte_unused, uint32_t *imix_idx)
 {
 	uint16_t i;
 
@@ -24,14 +24,39 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
 		struct rte_security_session *sec_sess =
 			(struct rte_security_session *)sess;
+		uint32_t buf_sz;
 
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		rte_security_attach_session(ops[i], sec_sess);
 		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] +
 							src_buf_offset);
-		sym_op->m_src->buf_len = options->segment_sz;
-		sym_op->m_src->data_len = options->test_buffer_size;
-		sym_op->m_src->pkt_len = sym_op->m_src->data_len;
+
+		if (options->op_type == CPERF_PDCP) {
+			sym_op->m_src->buf_len = options->segment_sz;
+			sym_op->m_src->data_len = options->test_buffer_size;
+			sym_op->m_src->pkt_len = sym_op->m_src->data_len;
+		}
+
+		if (options->op_type == CPERF_DOCSIS) {
+			if (options->imix_distribution_count) {
+				buf_sz = options->imix_buffer_sizes[*imix_idx];
+				*imix_idx = (*imix_idx + 1) % options->pool_sz;
+			} else
+				buf_sz = options->test_buffer_size;
+
+			/* DOCSIS header is not CRC'ed */
+			sym_op->auth.data.offset = options->docsis_hdr_sz;
+			sym_op->auth.data.length = buf_sz -
+				sym_op->auth.data.offset - RTE_ETHER_CRC_LEN;
+			/*
+			 * DOCSIS header and SRC and DST MAC addresses are not
+			 * ciphered
+			 */
+			sym_op->cipher.data.offset = sym_op->auth.data.offset +
+				RTE_ETHER_HDR_LEN - RTE_ETHER_TYPE_LEN;
+			sym_op->cipher.data.length = buf_sz -
+				sym_op->cipher.data.offset;
+		}
 
 		/* Set dest mbuf to NULL if out-of-place (dst_buf_offset = 0) */
 		if (dst_buf_offset == 0)
@@ -589,6 +614,49 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		return (void *)rte_security_session_create(ctx,
 					&sess_conf, sess_mp);
 	}
+	if (options->op_type == CPERF_DOCSIS) {
+		enum rte_security_docsis_direction direction;
+
+		cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		cipher_xform.next = NULL;
+		cipher_xform.cipher.algo = options->cipher_algo;
+		cipher_xform.cipher.op = options->cipher_op;
+		cipher_xform.cipher.iv.offset = iv_offset;
+		if (options->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+			cipher_xform.cipher.key.data =
+				test_vector->cipher_key.data;
+			cipher_xform.cipher.key.length =
+				test_vector->cipher_key.length;
+			cipher_xform.cipher.iv.length =
+				test_vector->cipher_iv.length;
+		} else {
+			cipher_xform.cipher.key.data = NULL;
+			cipher_xform.cipher.key.length = 0;
+			cipher_xform.cipher.iv.length = 0;
+		}
+		cipher_xform.next = NULL;
+
+		if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+			direction = RTE_SECURITY_DOCSIS_DOWNLINK;
+		else
+			direction = RTE_SECURITY_DOCSIS_UPLINK;
+
+		struct rte_security_session_conf sess_conf = {
+			.action_type =
+				RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+			.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+			{.docsis = {
+				.direction = direction,
+			} },
+			.crypto_xform = &cipher_xform
+		};
+		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
+					rte_cryptodev_get_sec_ctx(dev_id);
+
+		/* Create security session */
+		return (void *)rte_security_session_create(ctx,
+					&sess_conf, priv_mp);
+	}
 #endif
 	sess = rte_cryptodev_sym_session_create(sess_mp);
 	/*
@@ -769,6 +837,10 @@ cperf_get_op_functions(const struct cperf_options *options,
 	}
 #ifdef RTE_LIBRTE_SECURITY
 	if (options->op_type == CPERF_PDCP) {
+		op_fns->populate_ops = cperf_set_ops_security;
+		return 0;
+	}
+	if (options->op_type == CPERF_DOCSIS) {
 		op_fns->populate_ops = cperf_set_ops_security;
 		return 0;
 	}

@@ -469,7 +469,8 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 
 	if (options->op_type ==	CPERF_CIPHER_ONLY ||
 			options->op_type == CPERF_CIPHER_THEN_AUTH ||
-			options->op_type == CPERF_AUTH_THEN_CIPHER) {
+			options->op_type == CPERF_AUTH_THEN_CIPHER ||
+			options->op_type == CPERF_DOCSIS) {
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
 			t_vec->cipher_key.length = 0;
 			t_vec->ciphertext.data = plaintext;

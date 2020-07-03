@@ -36,7 +36,8 @@ cperf_throughput_test_free(struct cperf_throughput_ctx *ctx)
 		return;
 	if (ctx->sess) {
 #ifdef RTE_LIBRTE_SECURITY
-		if (ctx->options->op_type == CPERF_PDCP) {
+		if (ctx->options->op_type == CPERF_PDCP ||
+				ctx->options->op_type == CPERF_DOCSIS) {
 			struct rte_security_ctx *sec_ctx =
 				(struct rte_security_ctx *)
 				rte_cryptodev_get_sec_ctx(ctx->dev_id);

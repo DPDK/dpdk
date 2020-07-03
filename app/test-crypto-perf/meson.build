@@ -11,4 +11,4 @@ sources = files('cperf_ops.c',
 		'cperf_test_vectors.c',
 		'cperf_test_verify.c',
 		'main.c')
-deps += ['cryptodev', 'security']
+deps += ['cryptodev', 'net', 'security']

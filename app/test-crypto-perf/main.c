@@ -39,7 +39,8 @@ const char *cperf_op_type_strs[] = {
 	[CPERF_CIPHER_THEN_AUTH] = "cipher-then-auth",
 	[CPERF_AUTH_THEN_CIPHER] = "auth-then-cipher",
 	[CPERF_AEAD] = "aead",
-	[CPERF_PDCP] = "pdcp"
+	[CPERF_PDCP] = "pdcp",
+	[CPERF_DOCSIS] = "docsis"
 };
 
 const struct cperf_test cperf_testmap[] = {
@@ -244,7 +245,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 #endif
 		} else
 			sessions_needed = enabled_cdev_count *
-						opts->nb_qps;
+						opts->nb_qps * 2;
 
 		/*
 		 * A single session is required per queue pair

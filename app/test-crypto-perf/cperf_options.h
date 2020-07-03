@@ -50,6 +50,7 @@
 #ifdef RTE_LIBRTE_SECURITY
 #define CPERF_PDCP_SN_SZ	("pdcp-sn-sz")
 #define CPERF_PDCP_DOMAIN	("pdcp-domain")
+#define CPERF_DOCSIS_HDR_SZ	("docsis-hdr-sz")
 #endif
 
 #define CPERF_CSV		("csv-friendly")
@@ -75,7 +76,8 @@ enum cperf_op_type {
 	CPERF_CIPHER_THEN_AUTH,
 	CPERF_AUTH_THEN_CIPHER,
 	CPERF_AEAD,
-	CPERF_PDCP
+	CPERF_PDCP,
+	CPERF_DOCSIS
 };
 
 extern const char *cperf_op_type_strs[];
@@ -122,6 +124,7 @@ struct cperf_options {
 #ifdef RTE_LIBRTE_SECURITY
 	uint16_t pdcp_sn_sz;
 	enum rte_security_pdcp_domain pdcp_domain;
+	uint16_t docsis_hdr_sz;
 #endif
 	char device_type[RTE_CRYPTODEV_NAME_MAX_LEN];
 	enum cperf_op_type op_type;
