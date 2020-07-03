@@ -127,19 +127,6 @@ otx_cpt_dev_info_get(struct rte_cryptodev *dev, struct rte_cryptodev_info *info)
 	}
 }
 
-static void
-otx_cpt_stats_get(struct rte_cryptodev *dev __rte_unused,
-		  struct rte_cryptodev_stats *stats __rte_unused)
-{
-	CPT_PMD_INIT_FUNC_TRACE();
-}
-
-static void
-otx_cpt_stats_reset(struct rte_cryptodev *dev __rte_unused)
-{
-	CPT_PMD_INIT_FUNC_TRACE();
-}
-
 static int
 otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
 		       uint16_t que_pair_id,
@@ -915,8 +902,8 @@ static struct rte_cryptodev_ops cptvf_ops = {
 	.dev_close = otx_cpt_dev_close,
 	.dev_infos_get = otx_cpt_dev_info_get,
 
-	.stats_get = otx_cpt_stats_get,
-	.stats_reset = otx_cpt_stats_reset,
+	.stats_get = NULL,
+	.stats_reset = NULL,
 	.queue_pair_setup = otx_cpt_que_pair_setup,
 	.queue_pair_release = otx_cpt_que_pair_release,
 
