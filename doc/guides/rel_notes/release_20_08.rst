@@ -115,6 +115,7 @@ New Features
   Updated the Intel ice driver with new features and improvements, including:
 
   * Added support for DCF datapath configuration.
+  * Added support for more PPPoE packet type for switch filter.
 
 * **Added DOCSIS protocol to rte_security.**
 

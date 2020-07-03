@@ -27,6 +27,8 @@
 
 
 #define MAX_QGRP_NUM_TYPE 7
+#define ICE_PPP_IPV4_PROTO	0x0021
+#define ICE_PPP_IPV6_PROTO	0x0057
 
 #define ICE_SW_INSET_ETHER ( \
 	ICE_INSET_DMAC | ICE_INSET_SMAC | ICE_INSET_ETHERTYPE)
@@ -96,6 +98,18 @@
 	ICE_INSET_VLAN_OUTER | ICE_INSET_VLAN_INNER | \
 	ICE_INSET_DMAC | ICE_INSET_ETHERTYPE | ICE_INSET_PPPOE_SESSION | \
 	ICE_INSET_PPPOE_PROTO)
+#define ICE_SW_INSET_MAC_PPPOE_IPV4 ( \
+	ICE_SW_INSET_MAC_PPPOE | ICE_SW_INSET_MAC_IPV4)
+#define ICE_SW_INSET_MAC_PPPOE_IPV4_TCP ( \
+	ICE_SW_INSET_MAC_PPPOE | ICE_SW_INSET_MAC_IPV4_TCP)
+#define ICE_SW_INSET_MAC_PPPOE_IPV4_UDP ( \
+	ICE_SW_INSET_MAC_PPPOE | ICE_SW_INSET_MAC_IPV4_UDP)
+#define ICE_SW_INSET_MAC_PPPOE_IPV6 ( \
+	ICE_SW_INSET_MAC_PPPOE | ICE_SW_INSET_MAC_IPV6)
+#define ICE_SW_INSET_MAC_PPPOE_IPV6_TCP ( \
+	ICE_SW_INSET_MAC_PPPOE | ICE_SW_INSET_MAC_IPV6_TCP)
+#define ICE_SW_INSET_MAC_PPPOE_IPV6_UDP ( \
+	ICE_SW_INSET_MAC_PPPOE | ICE_SW_INSET_MAC_IPV6_UDP)
 #define ICE_SW_INSET_MAC_IPV4_ESP ( \
 	ICE_SW_INSET_MAC_IPV4 | ICE_INSET_ESP_SPI)
 #define ICE_SW_INSET_MAC_IPV6_ESP ( \
@@ -155,10 +169,6 @@ ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 			ICE_SW_INSET_DIST_NVGRE_IPV4_UDP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_nvgre_eth_ipv4_tcp,
 			ICE_SW_INSET_DIST_NVGRE_IPV4_TCP, ICE_INSET_NONE},
-	{pattern_eth_pppoed,
-			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
-	{pattern_eth_vlan_pppoed,
-			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
 	{pattern_eth_pppoes,
 			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
 	{pattern_eth_vlan_pppoes,
@@ -167,6 +177,30 @@ ice_pattern_match_item ice_switch_pattern_dist_comms[] = {
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
 	{pattern_eth_vlan_pppoes_proto,
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv4,
+			ICE_SW_INSET_MAC_PPPOE_IPV4, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv4_tcp,
+			ICE_SW_INSET_MAC_PPPOE_IPV4_TCP, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv4_udp,
+			ICE_SW_INSET_MAC_PPPOE_IPV4_UDP, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv6,
+			ICE_SW_INSET_MAC_PPPOE_IPV6, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv6_tcp,
+			ICE_SW_INSET_MAC_PPPOE_IPV6_TCP, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv6_udp,
+			ICE_SW_INSET_MAC_PPPOE_IPV6_UDP, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv4,
+			ICE_SW_INSET_MAC_PPPOE_IPV4, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv4_tcp,
+			ICE_SW_INSET_MAC_PPPOE_IPV4_TCP, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv4_udp,
+			ICE_SW_INSET_MAC_PPPOE_IPV4_UDP, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv6,
+			ICE_SW_INSET_MAC_PPPOE_IPV6, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv6_tcp,
+			ICE_SW_INSET_MAC_PPPOE_IPV6_TCP, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv6_udp,
+			ICE_SW_INSET_MAC_PPPOE_IPV6_UDP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_esp,
 			ICE_SW_INSET_MAC_IPV4_ESP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp_esp,
@@ -255,10 +289,6 @@ ice_pattern_match_item ice_switch_pattern_perm[] = {
 			ICE_SW_INSET_PERM_TUNNEL_IPV4_UDP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_nvgre_eth_ipv4_tcp,
 			ICE_SW_INSET_PERM_TUNNEL_IPV4_TCP, ICE_INSET_NONE},
-	{pattern_eth_pppoed,
-			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
-	{pattern_eth_vlan_pppoed,
-			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
 	{pattern_eth_pppoes,
 			ICE_SW_INSET_MAC_PPPOE, ICE_INSET_NONE},
 	{pattern_eth_vlan_pppoes,
@@ -267,6 +297,30 @@ ice_pattern_match_item ice_switch_pattern_perm[] = {
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
 	{pattern_eth_vlan_pppoes_proto,
 			ICE_SW_INSET_MAC_PPPOE_PROTO, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv4,
+			ICE_SW_INSET_MAC_PPPOE_IPV4, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv4_tcp,
+			ICE_SW_INSET_MAC_PPPOE_IPV4_TCP, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv4_udp,
+			ICE_SW_INSET_MAC_PPPOE_IPV4_UDP, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv6,
+			ICE_SW_INSET_MAC_PPPOE_IPV6, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv6_tcp,
+			ICE_SW_INSET_MAC_PPPOE_IPV6_TCP, ICE_INSET_NONE},
+	{pattern_eth_pppoes_ipv6_udp,
+			ICE_SW_INSET_MAC_PPPOE_IPV6_UDP, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv4,
+			ICE_SW_INSET_MAC_PPPOE_IPV4, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv4_tcp,
+			ICE_SW_INSET_MAC_PPPOE_IPV4_TCP, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv4_udp,
+			ICE_SW_INSET_MAC_PPPOE_IPV4_UDP, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv6,
+			ICE_SW_INSET_MAC_PPPOE_IPV6, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv6_tcp,
+			ICE_SW_INSET_MAC_PPPOE_IPV6_TCP, ICE_INSET_NONE},
+	{pattern_eth_vlan_pppoes_ipv6_udp,
+			ICE_SW_INSET_MAC_PPPOE_IPV6_UDP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_esp,
 			ICE_SW_INSET_MAC_IPV4_ESP, ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp_esp,
@@ -417,13 +471,16 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	const struct rte_flow_item_l2tpv3oip *l2tp_spec, *l2tp_mask;
 	const struct rte_flow_item_pfcp *pfcp_spec, *pfcp_mask;
 	uint64_t input_set = ICE_INSET_NONE;
-	uint16_t j, t = 0;
+	bool pppoe_elem_valid = 0;
+	bool pppoe_patt_valid = 0;
+	bool pppoe_prot_valid = 0;
 	bool profile_rule = 0;
 	bool tunnel_valid = 0;
-	bool pppoe_valid = 0;
 	bool ipv6_valiad = 0;
 	bool ipv4_valiad = 0;
 	bool udp_valiad = 0;
+	bool tcp_valiad = 0;
+	uint16_t j, t = 0;
 
 	for (item = pattern; item->type !=
 			RTE_FLOW_ITEM_TYPE_END; item++) {
@@ -753,6 +810,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			tcp_spec = item->spec;
 			tcp_mask = item->mask;
+			tcp_valiad = 1;
 			if (tcp_spec && tcp_mask) {
 				/* Check TCP mask and update input set */
 				if (tcp_mask->hdr.sent_seq ||
@@ -970,6 +1028,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					"Invalid pppoe item");
 				return 0;
 			}
+			pppoe_patt_valid = 1;
 			if (pppoe_spec && pppoe_mask) {
 				/* Check pppoe mask and update input set */
 				if (pppoe_mask->length ||
@@ -990,7 +1049,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					input_set |= ICE_INSET_PPPOE_SESSION;
 				}
 				t++;
-				pppoe_valid = 1;
+				pppoe_elem_valid = 1;
 			}
 			break;
 
@@ -1011,7 +1070,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				return 0;
 			}
 			if (pppoe_proto_spec && pppoe_proto_mask) {
-				if (pppoe_valid)
+				if (pppoe_elem_valid)
 					t--;
 				list[t].type = ICE_PPPOE;
 				if (pppoe_proto_mask->proto_id) {
@@ -1020,9 +1079,21 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					list[t].m_u.pppoe_hdr.ppp_prot_id =
 						pppoe_proto_mask->proto_id;
 					input_set |= ICE_INSET_PPPOE_PROTO;
+
+					pppoe_prot_valid = 1;
 				}
+				if ((pppoe_proto_mask->proto_id &
+					pppoe_proto_spec->proto_id) !=
+					    CPU_TO_BE16(ICE_PPP_IPV4_PROTO) &&
+					(pppoe_proto_mask->proto_id &
+					pppoe_proto_spec->proto_id) !=
+					    CPU_TO_BE16(ICE_PPP_IPV6_PROTO))
+					*tun_type = ICE_SW_TUN_PPPOE_PAY;
+				else
+					*tun_type = ICE_SW_TUN_PPPOE;
 				t++;
 			}
+
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_ESP:
@@ -1231,6 +1302,23 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				   "Invalid pattern item.");
 			goto out;
 		}
+	}
+
+	if (pppoe_patt_valid && !pppoe_prot_valid) {
+		if (ipv6_valiad && udp_valiad)
+			*tun_type = ICE_SW_TUN_PPPOE_IPV6_UDP;
+		else if (ipv6_valiad && tcp_valiad)
+			*tun_type = ICE_SW_TUN_PPPOE_IPV6_TCP;
+		else if (ipv4_valiad && udp_valiad)
+			*tun_type = ICE_SW_TUN_PPPOE_IPV4_UDP;
+		else if (ipv4_valiad && tcp_valiad)
+			*tun_type = ICE_SW_TUN_PPPOE_IPV4_TCP;
+		else if (ipv6_valiad)
+			*tun_type = ICE_SW_TUN_PPPOE_IPV6;
+		else if (ipv4_valiad)
+			*tun_type = ICE_SW_TUN_PPPOE_IPV4;
+		else
+			*tun_type = ICE_SW_TUN_PPPOE;
 	}
 
 	*lkups_num = t;
@@ -1453,9 +1541,6 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 			tun_type = ICE_SW_TUN_VXLAN;
 		if (item->type == RTE_FLOW_ITEM_TYPE_NVGRE)
 			tun_type = ICE_SW_TUN_NVGRE;
-		if (item->type == RTE_FLOW_ITEM_TYPE_PPPOED ||
-				item->type == RTE_FLOW_ITEM_TYPE_PPPOES)
-			tun_type = ICE_SW_TUN_PPPOE;
 		if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
 			const struct rte_flow_item_eth *eth_mask;
 			if (item->mask)
