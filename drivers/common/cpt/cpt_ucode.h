@@ -682,9 +682,6 @@ cpt_enc_hmac_prep(uint32_t flags,
 	m_vaddr = (uint8_t *)m_vaddr + size;
 	m_dma += size;
 
-	if (hash_type == GMAC_TYPE)
-		encr_data_len = 0;
-
 	if (unlikely(!(flags & VALID_IV_BUF))) {
 		iv_len = 0;
 		iv_offset = ENCR_IV_OFFSET(d_offs);
@@ -716,6 +713,11 @@ cpt_enc_hmac_prep(uint32_t flags,
 	opcode.s.major = CPT_MAJOR_OP_FC;
 	opcode.s.minor = 0;
 
+	if (hash_type == GMAC_TYPE) {
+		encr_offset = 0;
+		encr_data_len = 0;
+	}
+
 	auth_dlen = auth_offset + auth_data_len;
 	enc_dlen = encr_data_len + encr_offset;
 	if (unlikely(encr_data_len & 0xf)) {
@@ -724,11 +726,6 @@ cpt_enc_hmac_prep(uint32_t flags,
 		else if (likely((cipher_type == AES_CBC) ||
 				(cipher_type == AES_ECB)))
 			enc_dlen = ROUNDUP16(encr_data_len) + encr_offset;
-	}
-
-	if (unlikely(hash_type == GMAC_TYPE)) {
-		encr_offset = auth_dlen;
-		enc_dlen = 0;
 	}
 
 	if (unlikely(auth_dlen > enc_dlen)) {
@@ -1033,9 +1030,6 @@ cpt_dec_hmac_prep(uint32_t flags,
 	hash_type = cpt_ctx->hash_type;
 	mac_len = cpt_ctx->mac_len;
 
-	if (hash_type == GMAC_TYPE)
-		encr_data_len = 0;
-
 	if (unlikely(!(flags & VALID_IV_BUF))) {
 		iv_len = 0;
 		iv_offset = ENCR_IV_OFFSET(d_offs);
@@ -1092,6 +1086,11 @@ cpt_dec_hmac_prep(uint32_t flags,
 	opcode.s.major = CPT_MAJOR_OP_FC;
 	opcode.s.minor = 1;
 
+	if (hash_type == GMAC_TYPE) {
+		encr_offset = 0;
+		encr_data_len = 0;
+	}
+
 	enc_dlen = encr_offset + encr_data_len;
 	auth_dlen = auth_offset + auth_data_len;
 
@@ -1102,9 +1101,6 @@ cpt_dec_hmac_prep(uint32_t flags,
 		inputlen = enc_dlen + mac_len;
 		outputlen = enc_dlen;
 	}
-
-	if (hash_type == GMAC_TYPE)
-		encr_offset = inputlen;
 
 	vq_cmd_w0.u64 = 0;
 	vq_cmd_w0.s.param1 = encr_data_len;
