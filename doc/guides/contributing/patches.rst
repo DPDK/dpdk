@@ -336,6 +336,24 @@ In the commit message body the Cc: stable@dpdk.org should be inserted as follows
 For further information on stable contribution you can go to
 :doc:`Stable Contribution Guide <stable>`.
 
+Patch Dependencies
+~~~~~~~~~~~~~~~~~~
+
+Sometimes a patch or patchset can depend on another one.
+To help the maintainers and automation tasks, please document this dependency in commit log or cover letter
+with the following syntax:
+
+``Depends-on: series-NNNNN ("Title of the series")`` or ``Depends-on: patch-NNNNN ("Title of the patch")``
+
+Where ``NNNNN`` is patchwork ID for patch or series::
+
+     doc: fix some parameter description
+
+     Update the docs, fixing description of some parameter.
+
+     Signed-off-by: Alex Smith <alex.smith@example.com>
+     ---
+     Depends-on: series-10000 ("Title of the series")
 
 Creating Patches
 ----------------
