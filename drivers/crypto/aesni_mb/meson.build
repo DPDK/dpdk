@@ -22,4 +22,4 @@ else
 endif
 
 sources = files('rte_aesni_mb_pmd.c', 'rte_aesni_mb_pmd_ops.c')
-deps += ['bus_vdev']
+deps += ['bus_vdev', 'net', 'security']

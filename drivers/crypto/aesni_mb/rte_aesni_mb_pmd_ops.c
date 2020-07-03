@@ -7,6 +7,7 @@
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
+#include <rte_ether.h>
 #include <rte_cryptodev_pmd.h>
 
 #include "aesni_mb_pmd_private.h"
@@ -499,6 +500,55 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+static const struct rte_cryptodev_capabilities
+					aesni_mb_pmd_security_crypto_cap[] = {
+	{	/* AES DOCSIS BPI */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 16
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
+static const struct rte_security_capability aesni_mb_pmd_security_cap[] = {
+	{	/* DOCSIS Uplink */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+		.docsis = {
+			.direction = RTE_SECURITY_DOCSIS_UPLINK
+		},
+		.crypto_capabilities = aesni_mb_pmd_security_crypto_cap
+	},
+	{	/* DOCSIS Downlink */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+		.docsis = {
+			.direction = RTE_SECURITY_DOCSIS_DOWNLINK
+		},
+		.crypto_capabilities = aesni_mb_pmd_security_crypto_cap
+	},
+	{
+		.action = RTE_SECURITY_ACTION_TYPE_NONE
+	}
+};
+#endif
 
 /** Configure device */
 static int
@@ -810,3 +860,78 @@ struct rte_cryptodev_ops aesni_mb_pmd_ops = {
 };
 
 struct rte_cryptodev_ops *rte_aesni_mb_pmd_ops = &aesni_mb_pmd_ops;
+
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+/**
+ * Configure a aesni multi-buffer session from a security session
+ * configuration
+ */
+static int
+aesni_mb_pmd_sec_sess_create(void *dev, struct rte_security_session_conf *conf,
+		struct rte_security_session *sess,
+		struct rte_mempool *mempool)
+{
+	void *sess_private_data;
+	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
+	int ret;
+
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		AESNI_MB_LOG(ERR, "Couldn't get object from session mempool");
+		return -ENOMEM;
+	}
+
+	if (conf->protocol != RTE_SECURITY_PROTOCOL_DOCSIS) {
+		AESNI_MB_LOG(ERR, "Invalid security protocol");
+		return -EINVAL;
+	}
+
+	ret = aesni_mb_set_docsis_sec_session_parameters(cdev, conf,
+			sess_private_data);
+
+	if (ret != 0) {
+		AESNI_MB_LOG(ERR, "Failed to configure session parameters");
+
+		/* Return session to mempool */
+		rte_mempool_put(mempool, sess_private_data);
+		return ret;
+	}
+
+	set_sec_session_private_data(sess, sess_private_data);
+
+	return ret;
+}
+
+/** Clear the memory of session so it doesn't leave key material behind */
+static int
+aesni_mb_pmd_sec_sess_destroy(void *dev __rte_unused,
+		struct rte_security_session *sess)
+{
+	void *sess_priv = get_sec_session_private_data(sess);
+
+	if (sess_priv) {
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+		memset(sess, 0, sizeof(struct aesni_mb_session));
+		set_sec_session_private_data(sess, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
+	return 0;
+}
+
+/** Get security capabilities for aesni multi-buffer */
+static const struct rte_security_capability *
+aesni_mb_pmd_sec_capa_get(void *device __rte_unused)
+{
+	return aesni_mb_pmd_security_cap;
+}
+
+static struct rte_security_ops aesni_mb_pmd_sec_ops = {
+		.session_create = aesni_mb_pmd_sec_sess_create,
+		.session_update = NULL,
+		.session_stats_get = NULL,
+		.session_destroy = aesni_mb_pmd_sec_sess_destroy,
+		.set_pkt_metadata = NULL,
+		.capabilities_get = aesni_mb_pmd_sec_capa_get
+};
+
+struct rte_security_ops *rte_aesni_mb_pmd_sec_ops = &aesni_mb_pmd_sec_ops;
+#endif

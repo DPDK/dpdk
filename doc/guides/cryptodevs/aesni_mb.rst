@@ -55,10 +55,18 @@ AEAD algorithms:
 * RTE_CRYPTO_AEAD_AES_CCM
 * RTE_CRYPTO_AEAD_AES_GCM
 
+Protocol offloads:
+
+* RTE_SECURITY_PROTOCOL_DOCSIS
+
 Limitations
 -----------
 
 * Chained mbufs are not supported.
+* Out-of-place is not supported for combined Crypto-CRC DOCSIS security
+  protocol.
+* RTE_CRYPTO_CIPHER_DES_DOCSISBPI is not supported for combined Crypto-CRC
+  DOCSIS security protocol.
 
 
 Installation

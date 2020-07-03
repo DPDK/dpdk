@@ -7,6 +7,12 @@
 
 #include <intel-ipsec-mb.h>
 
+#if defined(RTE_LIBRTE_SECURITY) && (IMB_VERSION_NUM) >= IMB_VERSION(0, 54, 0)
+#define AESNI_MB_DOCSIS_SEC_ENABLED 1
+#include <rte_security.h>
+#include <rte_security_driver.h>
+#endif
+
 enum aesni_mb_vector_mode {
 	RTE_AESNI_MB_NOT_SUPPORTED = 0,
 	RTE_AESNI_MB_SSE,
@@ -272,8 +278,19 @@ aesni_mb_set_session_parameters(const MB_MGR *mb_mgr,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform);
 
-/** device specific operations function pointer structure */
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+extern int
+aesni_mb_set_docsis_sec_session_parameters(
+		__rte_unused struct rte_cryptodev *dev,
+		struct rte_security_session_conf *conf,
+		void *sess);
+#endif
+
+/** device specific operations function pointer structures */
 extern struct rte_cryptodev_ops *rte_aesni_mb_pmd_ops;
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+extern struct rte_security_ops *rte_aesni_mb_pmd_sec_ops;
+#endif
 
 extern uint32_t
 aesni_mb_cpu_crypto_process_bulk(struct rte_cryptodev *dev,

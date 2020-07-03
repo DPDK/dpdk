@@ -121,6 +121,11 @@ New Features
   Added support for combined crypto and CRC operations for the DOCSIS protocol
   to ``rte_security`` API.
 
+* **Updated the AESNI MB crypto PMD.**
+
+  Added support for lookaside protocol offload for DOCSIS through the
+  ``rte_security`` API.
+
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 
   Added support for two BPF non-generic instructions:

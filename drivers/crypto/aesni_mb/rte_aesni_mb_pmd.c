@@ -12,6 +12,7 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 #include <rte_per_lcore.h>
+#include <rte_ether.h>
 
 #include "aesni_mb_pmd_private.h"
 
@@ -718,6 +719,134 @@ aesni_mb_set_session_parameters(const MB_MGR *mb_mgr,
 	return 0;
 }
 
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+/** Check DOCSIS security session configuration is valid */
+static int
+check_docsis_sec_session(struct rte_security_session_conf *conf)
+{
+	struct rte_crypto_sym_xform *crypto_sym = conf->crypto_xform;
+	struct rte_security_docsis_xform *docsis = &conf->docsis;
+
+	/* Downlink: CRC generate -> Cipher encrypt */
+	if (docsis->direction == RTE_SECURITY_DOCSIS_DOWNLINK) {
+
+		if (crypto_sym != NULL &&
+		    crypto_sym->type ==	RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		    crypto_sym->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
+		    crypto_sym->cipher.algo ==
+					RTE_CRYPTO_CIPHER_AES_DOCSISBPI &&
+		    (crypto_sym->cipher.key.length == IMB_KEY_AES_128_BYTES ||
+		     crypto_sym->cipher.key.length == IMB_KEY_AES_256_BYTES) &&
+		    crypto_sym->cipher.iv.length == AES_BLOCK_SIZE &&
+		    crypto_sym->next == NULL) {
+			return 0;
+		}
+	/* Uplink: Cipher decrypt -> CRC verify */
+	} else if (docsis->direction == RTE_SECURITY_DOCSIS_UPLINK) {
+
+		if (crypto_sym != NULL &&
+		    crypto_sym->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		    crypto_sym->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT &&
+		    crypto_sym->cipher.algo ==
+					RTE_CRYPTO_CIPHER_AES_DOCSISBPI &&
+		    (crypto_sym->cipher.key.length == IMB_KEY_AES_128_BYTES ||
+		     crypto_sym->cipher.key.length == IMB_KEY_AES_256_BYTES) &&
+		    crypto_sym->cipher.iv.length == AES_BLOCK_SIZE &&
+		    crypto_sym->next == NULL) {
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+/** Set DOCSIS security session auth (CRC) parameters */
+static int
+aesni_mb_set_docsis_sec_session_auth_parameters(struct aesni_mb_session *sess,
+		struct rte_security_docsis_xform *xform)
+{
+	if (xform == NULL) {
+		AESNI_MB_LOG(ERR, "Invalid DOCSIS xform");
+		return -EINVAL;
+	}
+
+	/* Select CRC generate/verify */
+	if (xform->direction == RTE_SECURITY_DOCSIS_UPLINK) {
+		sess->auth.algo = IMB_AUTH_DOCSIS_CRC32;
+		sess->auth.operation = RTE_CRYPTO_AUTH_OP_VERIFY;
+	} else if (xform->direction == RTE_SECURITY_DOCSIS_DOWNLINK) {
+		sess->auth.algo = IMB_AUTH_DOCSIS_CRC32;
+		sess->auth.operation = RTE_CRYPTO_AUTH_OP_GENERATE;
+	} else {
+		AESNI_MB_LOG(ERR, "Unsupported DOCSIS direction");
+		return -ENOTSUP;
+	}
+
+	sess->auth.req_digest_len = RTE_ETHER_CRC_LEN;
+	sess->auth.gen_digest_len = RTE_ETHER_CRC_LEN;
+
+	return 0;
+}
+
+/**
+ * Parse DOCSIS security session configuration and set private session
+ * parameters
+ */
+int
+aesni_mb_set_docsis_sec_session_parameters(
+		__rte_unused struct rte_cryptodev *dev,
+		struct rte_security_session_conf *conf,
+		void *sess)
+{
+	struct rte_security_docsis_xform *docsis_xform;
+	struct rte_crypto_sym_xform *cipher_xform;
+	struct aesni_mb_session *aesni_sess = sess;
+	struct aesni_mb_private *internals = dev->data->dev_private;
+	int ret;
+
+	ret = check_docsis_sec_session(conf);
+	if (ret) {
+		AESNI_MB_LOG(ERR, "Unsupported DOCSIS security configuration");
+		return ret;
+	}
+
+	switch (conf->docsis.direction) {
+	case RTE_SECURITY_DOCSIS_UPLINK:
+		aesni_sess->chain_order = IMB_ORDER_CIPHER_HASH;
+		docsis_xform = &conf->docsis;
+		cipher_xform = conf->crypto_xform;
+		break;
+	case RTE_SECURITY_DOCSIS_DOWNLINK:
+		aesni_sess->chain_order = IMB_ORDER_HASH_CIPHER;
+		cipher_xform = conf->crypto_xform;
+		docsis_xform = &conf->docsis;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* Default IV length = 0 */
+	aesni_sess->iv.length = 0;
+
+	ret = aesni_mb_set_docsis_sec_session_auth_parameters(aesni_sess,
+			docsis_xform);
+	if (ret != 0) {
+		AESNI_MB_LOG(ERR, "Invalid/unsupported DOCSIS parameters");
+		return -EINVAL;
+	}
+
+	ret = aesni_mb_set_session_cipher_parameters(internals->mb_mgr,
+			aesni_sess, cipher_xform);
+
+	if (ret != 0) {
+		AESNI_MB_LOG(ERR, "Invalid/unsupported cipher parameters");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#endif
+
 /**
  * burst enqueue, place crypto operations on ingress queue for processing.
  *
@@ -756,6 +885,13 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 					get_sym_session_private_data(
 					op->sym->session,
 					cryptodev_driver_id);
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+	} else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		if (likely(op->sym->sec_session != NULL))
+			sess = (struct aesni_mb_session *)
+					get_sec_session_private_data(
+						op->sym->sec_session);
+#endif
 	} else {
 		void *_sess = rte_cryptodev_sym_session_create(qp->sess_mp);
 		void *_sess_private_data = NULL;
@@ -1156,6 +1292,106 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 	return 0;
 }
 
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+/**
+ * Process a crypto operation containing a security op and complete a
+ * JOB_AES_HMAC job structure for submission to the multi buffer library for
+ * processing.
+ */
+static inline int
+set_sec_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
+		struct rte_crypto_op *op, uint8_t *digest_idx)
+{
+	struct rte_mbuf *m_src, *m_dst;
+	struct rte_crypto_sym_op *sym;
+	struct aesni_mb_session *session;
+
+	session = get_session(qp, op);
+	if (unlikely(session == NULL)) {
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+		return -1;
+	}
+
+	/* Only DOCSIS protocol operations supported now */
+	if (session->cipher.mode != IMB_CIPHER_DOCSIS_SEC_BPI ||
+			session->auth.algo != IMB_AUTH_DOCSIS_CRC32) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return -1;
+	}
+
+	sym = op->sym;
+	m_src = sym->m_src;
+
+	if (likely(sym->m_dst == NULL || sym->m_dst == m_src)) {
+		/* in-place operation */
+		m_dst = m_src;
+	} else {
+		/* out-of-place operation not supported */
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return -ENOTSUP;
+	}
+
+	/* Set crypto operation */
+	job->chain_order = session->chain_order;
+
+	/* Set cipher parameters */
+	job->cipher_direction = session->cipher.direction;
+	job->cipher_mode = session->cipher.mode;
+
+	job->aes_key_len_in_bytes = session->cipher.key_length_in_bytes;
+	job->aes_enc_key_expanded = session->cipher.expanded_aes_keys.encode;
+	job->aes_dec_key_expanded = session->cipher.expanded_aes_keys.decode;
+
+	/* Set IV parameters */
+	job->iv_len_in_bytes = session->iv.length;
+	job->iv = (uint8_t *)op + session->iv.offset;
+
+	/* Set authentication parameters */
+	job->hash_alg = session->auth.algo;
+
+	/* Set digest output location */
+	job->auth_tag_output = qp->temp_digests[*digest_idx];
+	*digest_idx = (*digest_idx + 1) % MAX_JOBS;
+
+	/* Set digest length */
+	job->auth_tag_output_len_in_bytes = session->auth.gen_digest_len;
+
+	/* Set data parameters */
+	job->src = rte_pktmbuf_mtod(m_src, uint8_t *);
+	job->dst = rte_pktmbuf_mtod_offset(m_dst, uint8_t *,
+						sym->cipher.data.offset);
+
+	job->cipher_start_src_offset_in_bytes = sym->cipher.data.offset;
+	job->msg_len_to_cipher_in_bytes = sym->cipher.data.length;
+
+	job->hash_start_src_offset_in_bytes = sym->auth.data.offset;
+	job->msg_len_to_hash_in_bytes = sym->auth.data.length;
+
+	job->user_data = op;
+
+	return 0;
+}
+
+static inline void
+verify_docsis_sec_crc(JOB_AES_HMAC *job, uint8_t *status)
+{
+	uint16_t crc_offset;
+	uint8_t *crc;
+
+	if (!job->msg_len_to_hash_in_bytes)
+		return;
+
+	crc_offset = job->hash_start_src_offset_in_bytes +
+			job->msg_len_to_hash_in_bytes -
+			job->cipher_start_src_offset_in_bytes;
+	crc = job->dst + crc_offset;
+
+	/* Verify CRC (at the end of the message) */
+	if (memcmp(job->auth_tag_output, crc, RTE_ETHER_CRC_LEN) != 0)
+		*status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+}
+#endif
+
 static inline void
 verify_digest(JOB_AES_HMAC *job, void *digest, uint16_t len, uint8_t *status)
 {
@@ -1194,9 +1430,25 @@ static inline struct rte_crypto_op *
 post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 {
 	struct rte_crypto_op *op = (struct rte_crypto_op *)job->user_data;
-	struct aesni_mb_session *sess = get_sym_session_private_data(
-							op->sym->session,
-							cryptodev_driver_id);
+	struct aesni_mb_session *sess = NULL;
+
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+	uint8_t is_docsis_sec = 0;
+
+	if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		/*
+		 * Assuming at this point that if it's a security type op, that
+		 * this is for DOCSIS
+		 */
+		is_docsis_sec = 1;
+		sess = get_sec_session_private_data(op->sym->sec_session);
+	} else
+#endif
+	{
+		sess = get_sym_session_private_data(op->sym->session,
+						cryptodev_driver_id);
+	}
+
 	if (unlikely(sess == NULL)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return op;
@@ -1218,6 +1470,11 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 						op->sym->aead.digest.data,
 						sess->auth.req_digest_len,
 						&op->status);
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+				else if (is_docsis_sec)
+					verify_docsis_sec_crc(job,
+						&op->status);
+#endif
 				else
 					verify_digest(job,
 						op->sym->auth.digest.data,
@@ -1380,7 +1637,14 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		if (retval < 0)
 			break;
 
-		retval = set_mb_job_params(job, qp, op, &digest_idx);
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
+			retval = set_sec_mb_job_params(job, qp, op,
+						&digest_idx);
+		else
+#endif
+			retval = set_mb_job_params(job, qp, op, &digest_idx);
+
 		if (unlikely(retval != 0)) {
 			qp->stats.dequeue_err_count++;
 			set_job_null_op(job, op);
@@ -1617,6 +1881,9 @@ cryptodev_aesni_mb_create(const char *name,
 	struct aesni_mb_private *internals;
 	enum aesni_mb_vector_mode vector_mode;
 	MB_MGR *mb_mgr;
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+	struct rte_security_ctx *security_instance;
+#endif
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
@@ -1645,7 +1912,27 @@ cryptodev_aesni_mb_create(const char *name,
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
+			RTE_CRYPTODEV_FF_SYM_SESSIONLESS
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+			| RTE_CRYPTODEV_FF_SECURITY
+#endif
+			;
+
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+	security_instance = rte_malloc("aesni_mb_sec",
+				sizeof(struct rte_security_ctx),
+				RTE_CACHE_LINE_SIZE);
+	if (security_instance == NULL) {
+		AESNI_MB_LOG(ERR, "rte_security_ctx memory alloc failed");
+		rte_cryptodev_pmd_destroy(dev);
+		return -ENOMEM;
+	}
+
+	security_instance->device = (void *)dev;
+	security_instance->ops = rte_aesni_mb_pmd_sec_ops;
+	security_instance->sess_cnt = 0;
+	dev->security_ctx = security_instance;
+#endif
 
 	/* Check CPU for support for AES instruction set */
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES))
@@ -1723,6 +2010,10 @@ cryptodev_aesni_mb_remove(struct rte_vdev_device *vdev)
 		free_mb_mgr(RTE_PER_LCORE(sync_mb_mgr));
 		RTE_PER_LCORE(sync_mb_mgr) = NULL;
 	}
+
+#ifdef RTE_LIBRTE_SECURITY
+	rte_free(cryptodev->security_ctx);
+#endif
 
 	return rte_cryptodev_pmd_destroy(cryptodev);
 }
