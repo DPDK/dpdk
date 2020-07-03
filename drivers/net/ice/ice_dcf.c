@@ -827,6 +827,7 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 	return 0;
 }
 
+#define IAVF_RXDID_LEGACY_0 0
 #define IAVF_RXDID_LEGACY_1 1
 #define IAVF_RXDID_COMMS_GENERIC 16
 
@@ -872,6 +873,7 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 		vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_dma;
 		vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
 
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 		if (hw->vf_res->vf_cap_flags &
 		    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
 		    hw->supported_rxdid &
@@ -883,6 +885,19 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 			PMD_DRV_LOG(ERR, "RXDID 16 is not supported");
 			return -EINVAL;
 		}
+#else
+		if (hw->vf_res->vf_cap_flags &
+			VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
+			hw->supported_rxdid &
+			BIT(IAVF_RXDID_LEGACY_0)) {
+			vc_qp->rxq.rxdid = IAVF_RXDID_LEGACY_0;
+			PMD_DRV_LOG(NOTICE, "request RXDID == %d in "
+					"Queue[%d]", vc_qp->rxq.rxdid, i);
+		} else {
+			PMD_DRV_LOG(ERR, "RXDID == 0 is not supported");
+			return -EINVAL;
+		}
+#endif
 	}
 
 	memset(&args, 0, sizeof(args));

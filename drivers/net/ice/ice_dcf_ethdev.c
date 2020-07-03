@@ -230,7 +230,7 @@ ice_dcf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 static int
 alloc_rxq_mbufs(struct ice_rx_queue *rxq)
 {
-	volatile union ice_32b_rx_flex_desc *rxd;
+	volatile union ice_rx_flex_desc *rxd;
 	struct rte_mbuf *mbuf = NULL;
 	uint64_t dma_addr;
 	uint16_t i;
@@ -254,8 +254,10 @@ alloc_rxq_mbufs(struct ice_rx_queue *rxq)
 		rxd = &rxq->rx_ring[i];
 		rxd->read.pkt_addr = dma_addr;
 		rxd->read.hdr_addr = 0;
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 		rxd->read.rsvd1 = 0;
 		rxd->read.rsvd2 = 0;
+#endif
 
 		rxq->sw_ring[i].mbuf = (void *)mbuf;
 	}
