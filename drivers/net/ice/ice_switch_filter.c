@@ -29,6 +29,7 @@
 #define MAX_QGRP_NUM_TYPE 7
 #define ICE_PPP_IPV4_PROTO	0x0021
 #define ICE_PPP_IPV6_PROTO	0x0057
+#define ICE_IPV4_PROTO_NVGRE	0x002F
 
 #define ICE_SW_INSET_ETHER ( \
 	ICE_INSET_DMAC | ICE_INSET_SMAC | ICE_INSET_ETHERTYPE)
@@ -633,6 +634,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					list[t].m_u.ipv4_hdr.protocol =
 						ipv4_mask->hdr.next_proto_id;
 				}
+				if ((ipv4_spec->hdr.next_proto_id &
+					ipv4_mask->hdr.next_proto_id) ==
+					ICE_IPV4_PROTO_NVGRE)
+					*tun_type = ICE_SW_TUN_AND_NON_TUN;
 				if (ipv4_mask->hdr.type_of_service) {
 					list[t].h_u.ipv4_hdr.tos =
 						ipv4_spec->hdr.type_of_service;
@@ -1532,7 +1537,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	const struct rte_flow_item *item = pattern;
 	uint16_t item_num = 0;
 	enum ice_sw_tunnel_type tun_type =
-		ICE_SW_TUN_AND_NON_TUN;
+			ICE_NON_TUN;
 	struct ice_pattern_match_item *pattern_match_item = NULL;
 
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
