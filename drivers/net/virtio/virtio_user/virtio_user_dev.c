@@ -423,7 +423,8 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	 1ULL << VHOST_USER_F_PROTOCOL_FEATURES)
 
 #define VIRTIO_USER_SUPPORTED_PROTOCOL_FEATURES		\
-	(1ULL << VHOST_USER_PROTOCOL_F_MQ)
+	(1ULL << VHOST_USER_PROTOCOL_F_MQ |		\
+	 1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK)
 
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,

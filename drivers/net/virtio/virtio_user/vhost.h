@@ -50,7 +50,11 @@ struct vhost_vring_addr {
 
 /** Protocol features. */
 #ifndef VHOST_USER_PROTOCOL_F_MQ
-#define VHOST_USER_PROTOCOL_F_MQ	0
+#define VHOST_USER_PROTOCOL_F_MQ 0
+#endif
+
+#ifndef VHOST_USER_PROTOCOL_F_REPLY_ACK
+#define VHOST_USER_PROTOCOL_F_REPLY_ACK 3
 #endif
 
 enum vhost_user_request {
