@@ -475,8 +475,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	bool pppoe_elem_valid = 0;
 	bool pppoe_patt_valid = 0;
 	bool pppoe_prot_valid = 0;
-	bool profile_rule = 0;
 	bool tunnel_valid = 0;
+	bool profile_rule = 0;
+	bool nvgre_valid = 0;
+	bool vxlan_valid = 0;
 	bool ipv6_valiad = 0;
 	bool ipv4_valiad = 0;
 	bool udp_valiad = 0;
@@ -924,7 +926,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					   "Invalid VXLAN item");
 				return 0;
 			}
-
+			vxlan_valid = 1;
 			tunnel_valid = 1;
 			if (vxlan_spec && vxlan_mask) {
 				list[t].type = ICE_VXLAN;
@@ -961,6 +963,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					   "Invalid NVGRE item");
 				return 0;
 			}
+			nvgre_valid = 1;
 			tunnel_valid = 1;
 			if (nvgre_spec && nvgre_mask) {
 				list[t].type = ICE_NVGRE;
@@ -1326,6 +1329,21 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			*tun_type = ICE_SW_TUN_PPPOE;
 	}
 
+	if (*tun_type == ICE_NON_TUN) {
+		if (vxlan_valid)
+			*tun_type = ICE_SW_TUN_VXLAN;
+		else if (nvgre_valid)
+			*tun_type = ICE_SW_TUN_NVGRE;
+		else if (ipv4_valiad && tcp_valiad)
+			*tun_type = ICE_SW_IPV4_TCP;
+		else if (ipv4_valiad && udp_valiad)
+			*tun_type = ICE_SW_IPV4_UDP;
+		else if (ipv6_valiad && tcp_valiad)
+			*tun_type = ICE_SW_IPV6_TCP;
+		else if (ipv6_valiad && udp_valiad)
+			*tun_type = ICE_SW_IPV6_UDP;
+	}
+
 	*lkups_num = t;
 
 	return input_set;
@@ -1542,10 +1560,6 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		item_num++;
-		if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN)
-			tun_type = ICE_SW_TUN_VXLAN;
-		if (item->type == RTE_FLOW_ITEM_TYPE_NVGRE)
-			tun_type = ICE_SW_TUN_NVGRE;
 		if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
 			const struct rte_flow_item_eth *eth_mask;
 			if (item->mask)
