@@ -193,6 +193,7 @@ static const enum rte_flow_action_type enic_fm_supported_ig_actions[] = {
 	RTE_FLOW_ACTION_TYPE_FLAG,
 	RTE_FLOW_ACTION_TYPE_JUMP,
 	RTE_FLOW_ACTION_TYPE_MARK,
+	RTE_FLOW_ACTION_TYPE_OF_POP_VLAN,
 	RTE_FLOW_ACTION_TYPE_PORT_ID,
 	RTE_FLOW_ACTION_TYPE_PASSTHRU,
 	RTE_FLOW_ACTION_TYPE_QUEUE,
@@ -208,6 +209,9 @@ static const enum rte_flow_action_type enic_fm_supported_eg_actions[] = {
 	RTE_FLOW_ACTION_TYPE_COUNT,
 	RTE_FLOW_ACTION_TYPE_DROP,
 	RTE_FLOW_ACTION_TYPE_JUMP,
+	RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN,
+	RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP,
+	RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID,
 	RTE_FLOW_ACTION_TYPE_PASSTHRU,
 	RTE_FLOW_ACTION_TYPE_VOID,
 	RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP,
@@ -1090,17 +1094,22 @@ enic_fm_copy_action(struct enic_flowman *fm,
 		PASSTHRU = 1 << 2,
 		COUNT = 1 << 3,
 		ENCAP = 1 << 4,
+		PUSH_VLAN = 1 << 5,
 	};
 	struct fm_tcam_match_entry *fmt;
 	struct fm_action_op fm_op;
+	bool need_ovlan_action;
 	struct enic *enic;
 	uint32_t overlap;
 	uint64_t vnic_h;
+	uint16_t ovlan;
 	bool first_rq;
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
 	fmt = &fm->tcam_entry;
+	need_ovlan_action = false;
+	ovlan = 0;
 	first_rq = true;
 	enic = fm->enic;
 	overlap = 0;
@@ -1307,6 +1316,50 @@ enic_fm_copy_action(struct enic_flowman *fm,
 				return ret;
 			break;
 		}
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN: {
+			memset(&fm_op, 0, sizeof(fm_op));
+			fm_op.fa_op = FMOP_POP_VLAN;
+			ret = enic_fm_append_action_op(fm, &fm_op, error);
+			if (ret)
+				return ret;
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN: {
+			const struct rte_flow_action_of_push_vlan *vlan;
+
+			if (overlap & PASSTHRU)
+				goto unsupported;
+			vlan = actions->conf;
+			if (vlan->ethertype != RTE_BE16(RTE_ETHER_TYPE_VLAN)) {
+				return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL, "unexpected push_vlan ethertype");
+			}
+			overlap |= PUSH_VLAN;
+			need_ovlan_action = true;
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP: {
+			const struct rte_flow_action_of_set_vlan_pcp *pcp;
+
+			pcp = actions->conf;
+			if (pcp->vlan_pcp > 7) {
+				return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL, "invalid vlan_pcp");
+			}
+			need_ovlan_action = true;
+			ovlan |= ((uint16_t)pcp->vlan_pcp) << 13;
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID: {
+			const struct rte_flow_action_of_set_vlan_vid *vid;
+
+			vid = actions->conf;
+			need_ovlan_action = true;
+			ovlan |= rte_be_to_cpu_16(vid->vlan_vid);
+			break;
+		}
 		default:
 			goto unsupported;
 		}
@@ -1314,6 +1367,14 @@ enic_fm_copy_action(struct enic_flowman *fm,
 
 	if (!(overlap & (FATE | PASSTHRU | COUNT)))
 		goto unsupported;
+	if (need_ovlan_action) {
+		memset(&fm_op, 0, sizeof(fm_op));
+		fm_op.fa_op = FMOP_SET_OVLAN;
+		fm_op.ovlan.vlan = ovlan;
+		ret = enic_fm_append_action_op(fm, &fm_op, error);
+		if (ret)
+			return ret;
+	}
 	memset(&fm_op, 0, sizeof(fm_op));
 	fm_op.fa_op = FMOP_END;
 	ret = enic_fm_append_action_op(fm, &fm_op, error);

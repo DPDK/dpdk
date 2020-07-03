@@ -101,6 +101,10 @@ New Features
   * Added support for VLAN push and pop actions.
   * Added support for NAT action items.
 
+* **Updated Cisco enic driver.**
+
+  * Added support for VLAN push and pop flow actions.
+
 * **Updated Mellanox mlx5 driver.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:
