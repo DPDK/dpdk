@@ -26,7 +26,8 @@
 #include "ice_dcf_ethdev.h"
 
 
-#define MAX_QGRP_NUM_TYPE 7
+#define MAX_QGRP_NUM_TYPE	7
+#define MAX_INPUT_SET_BYTE	32
 #define ICE_PPP_IPV4_PROTO	0x0021
 #define ICE_PPP_IPV6_PROTO	0x0057
 #define ICE_IPV4_PROTO_NVGRE	0x002F
@@ -472,6 +473,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	const struct rte_flow_item_l2tpv3oip *l2tp_spec, *l2tp_mask;
 	const struct rte_flow_item_pfcp *pfcp_spec, *pfcp_mask;
 	uint64_t input_set = ICE_INSET_NONE;
+	uint16_t input_set_byte = 0;
 	bool pppoe_elem_valid = 0;
 	bool pppoe_patt_valid = 0;
 	bool pppoe_prot_valid = 0;
@@ -541,6 +543,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						m->src_addr[j] =
 						eth_mask->src.addr_bytes[j];
 						i = 1;
+						input_set_byte++;
 					}
 					if (eth_mask->dst.addr_bytes[j]) {
 						h->dst_addr[j] =
@@ -548,6 +551,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						m->dst_addr[j] =
 						eth_mask->dst.addr_bytes[j];
 						i = 1;
+						input_set_byte++;
 					}
 				}
 				if (i)
@@ -558,6 +562,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						eth_spec->type;
 					list[t].m_u.ethertype.ethtype_id =
 						eth_mask->type;
+					input_set_byte += 2;
 					t++;
 				}
 			}
@@ -617,24 +622,28 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						ipv4_spec->hdr.src_addr;
 					list[t].m_u.ipv4_hdr.src_addr =
 						ipv4_mask->hdr.src_addr;
+					input_set_byte += 2;
 				}
 				if (ipv4_mask->hdr.dst_addr) {
 					list[t].h_u.ipv4_hdr.dst_addr =
 						ipv4_spec->hdr.dst_addr;
 					list[t].m_u.ipv4_hdr.dst_addr =
 						ipv4_mask->hdr.dst_addr;
+					input_set_byte += 2;
 				}
 				if (ipv4_mask->hdr.time_to_live) {
 					list[t].h_u.ipv4_hdr.time_to_live =
 						ipv4_spec->hdr.time_to_live;
 					list[t].m_u.ipv4_hdr.time_to_live =
 						ipv4_mask->hdr.time_to_live;
+					input_set_byte++;
 				}
 				if (ipv4_mask->hdr.next_proto_id) {
 					list[t].h_u.ipv4_hdr.protocol =
 						ipv4_spec->hdr.next_proto_id;
 					list[t].m_u.ipv4_hdr.protocol =
 						ipv4_mask->hdr.next_proto_id;
+					input_set_byte++;
 				}
 				if ((ipv4_spec->hdr.next_proto_id &
 					ipv4_mask->hdr.next_proto_id) ==
@@ -645,6 +654,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						ipv4_spec->hdr.type_of_service;
 					list[t].m_u.ipv4_hdr.tos =
 						ipv4_mask->hdr.type_of_service;
+					input_set_byte++;
 				}
 				t++;
 			}
@@ -722,12 +732,14 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						ipv6_spec->hdr.src_addr[j];
 						s->src_addr[j] =
 						ipv6_mask->hdr.src_addr[j];
+						input_set_byte++;
 					}
 					if (ipv6_mask->hdr.dst_addr[j]) {
 						f->dst_addr[j] =
 						ipv6_spec->hdr.dst_addr[j];
 						s->dst_addr[j] =
 						ipv6_mask->hdr.dst_addr[j];
+						input_set_byte++;
 					}
 				}
 				if (ipv6_mask->hdr.proto) {
@@ -735,12 +747,14 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						ipv6_spec->hdr.proto;
 					s->next_hdr =
 						ipv6_mask->hdr.proto;
+					input_set_byte++;
 				}
 				if (ipv6_mask->hdr.hop_limits) {
 					f->hop_limit =
 						ipv6_spec->hdr.hop_limits;
 					s->hop_limit =
 						ipv6_mask->hdr.hop_limits;
+					input_set_byte++;
 				}
 				if (ipv6_mask->hdr.vtc_flow &
 						rte_cpu_to_be_32
@@ -758,6 +772,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 							RTE_IPV6_HDR_TC_MASK) >>
 							RTE_IPV6_HDR_TC_SHIFT;
 					s->be_ver_tc_flow = CPU_TO_BE32(vtf.u.val);
+					input_set_byte += 4;
 				}
 				t++;
 			}
@@ -803,14 +818,16 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						udp_spec->hdr.src_port;
 					list[t].m_u.l4_hdr.src_port =
 						udp_mask->hdr.src_port;
+					input_set_byte += 2;
 				}
 				if (udp_mask->hdr.dst_port) {
 					list[t].h_u.l4_hdr.dst_port =
 						udp_spec->hdr.dst_port;
 					list[t].m_u.l4_hdr.dst_port =
 						udp_mask->hdr.dst_port;
+					input_set_byte += 2;
 				}
-						t++;
+				t++;
 			}
 			break;
 
@@ -855,12 +872,14 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						tcp_spec->hdr.src_port;
 					list[t].m_u.l4_hdr.src_port =
 						tcp_mask->hdr.src_port;
+					input_set_byte += 2;
 				}
 				if (tcp_mask->hdr.dst_port) {
 					list[t].h_u.l4_hdr.dst_port =
 						tcp_spec->hdr.dst_port;
 					list[t].m_u.l4_hdr.dst_port =
 						tcp_mask->hdr.dst_port;
+					input_set_byte += 2;
 				}
 				t++;
 			}
@@ -900,12 +919,14 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						sctp_spec->hdr.src_port;
 					list[t].m_u.sctp_hdr.src_port =
 						sctp_mask->hdr.src_port;
+					input_set_byte += 2;
 				}
 				if (sctp_mask->hdr.dst_port) {
 					list[t].h_u.sctp_hdr.dst_port =
 						sctp_spec->hdr.dst_port;
 					list[t].m_u.sctp_hdr.dst_port =
 						sctp_mask->hdr.dst_port;
+					input_set_byte += 2;
 				}
 				t++;
 			}
@@ -943,6 +964,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						vxlan_mask->vni[0];
 					input_set |=
 						ICE_INSET_TUN_VXLAN_VNI;
+					input_set_byte += 2;
 				}
 				t++;
 			}
@@ -980,6 +1002,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 						nvgre_mask->tni[0];
 					input_set |=
 						ICE_INSET_TUN_NVGRE_TNI;
+					input_set_byte += 2;
 				}
 				t++;
 			}
@@ -1008,6 +1031,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					list[t].m_u.vlan_hdr.vlan =
 						vlan_mask->tci;
 					input_set |= ICE_INSET_VLAN_OUTER;
+					input_set_byte += 2;
 				}
 				if (vlan_mask->inner_type) {
 					list[t].h_u.vlan_hdr.type =
@@ -1015,6 +1039,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					list[t].m_u.vlan_hdr.type =
 						vlan_mask->inner_type;
 					input_set |= ICE_INSET_ETHERTYPE;
+					input_set_byte += 2;
 				}
 				t++;
 			}
@@ -1055,6 +1080,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					list[t].m_u.pppoe_hdr.session_id =
 						pppoe_mask->session_id;
 					input_set |= ICE_INSET_PPPOE_SESSION;
+					input_set_byte += 2;
 				}
 				t++;
 				pppoe_elem_valid = 1;
@@ -1087,7 +1113,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					list[t].m_u.pppoe_hdr.ppp_prot_id =
 						pppoe_proto_mask->proto_id;
 					input_set |= ICE_INSET_PPPOE_PROTO;
-
+					input_set_byte += 2;
 					pppoe_prot_valid = 1;
 				}
 				if ((pppoe_proto_mask->proto_id &
@@ -1144,6 +1170,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				list[t].m_u.esp_hdr.spi =
 					esp_mask->hdr.spi;
 				input_set |= ICE_INSET_ESP_SPI;
+				input_set_byte += 4;
 				t++;
 			}
 
@@ -1200,6 +1227,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				list[t].m_u.ah_hdr.spi =
 					ah_mask->spi;
 				input_set |= ICE_INSET_AH_SPI;
+				input_set_byte += 4;
 				t++;
 			}
 
@@ -1239,6 +1267,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				list[t].m_u.l2tpv3_sess_hdr.session_id =
 					l2tp_mask->session_id;
 				input_set |= ICE_INSET_L2TPV3OIP_SESSION_ID;
+				input_set_byte += 4;
 				t++;
 			}
 
@@ -1342,6 +1371,14 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			*tun_type = ICE_SW_IPV6_TCP;
 		else if (ipv6_valiad && udp_valiad)
 			*tun_type = ICE_SW_IPV6_UDP;
+	}
+
+	if (input_set_byte > MAX_INPUT_SET_BYTE) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"too much input set");
+		return -ENOTSUP;
 	}
 
 	*lkups_num = t;
