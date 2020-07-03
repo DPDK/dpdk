@@ -705,6 +705,14 @@ struct rte_crypto_sym_op {
 					  * For KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
 					  * this offset should be such that
 					  * data to authenticate starts at COUNT.
+					  *
+					  * @note
+					  * For DOCSIS security protocol, this
+					  * offset is the DOCSIS header length
+					  * and, therefore, also the CRC offset
+					  * i.e. the number of bytes into the
+					  * packet at which CRC calculation
+					  * should begin.
 					  */
 					uint32_t length;
 					 /**< The message length, in bytes, of the source
@@ -723,6 +731,12 @@ struct rte_crypto_sym_op {
 					  * the length should include the COUNT,
 					  * FRESH, message, direction bit and padding
 					  * (to be multiple of 8 bits).
+					  *
+					  * @note
+					  * For DOCSIS security protocol, this
+					  * is the CRC length i.e. the number of
+					  * bytes in the packet over which the
+					  * CRC should be calculated
 					  */
 				} data;
 				/**< Data offsets and length for authentication */
