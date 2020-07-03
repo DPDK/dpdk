@@ -252,6 +252,9 @@ sym_session_configure(int driver_id, struct rte_crypto_sym_xform *xform,
 		return -ENOMEM;
 	}
 
+	memset(priv, 0, sizeof(struct cpt_sess_misc) +
+			offsetof(struct cpt_ctx, fctx));
+
 	misc = priv;
 
 	for ( ; xform != NULL; xform = xform->next) {
