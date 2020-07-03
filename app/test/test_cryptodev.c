@@ -11,6 +11,7 @@
 #include <rte_memcpy.h>
 #include <rte_pause.h>
 #include <rte_bus_vdev.h>
+#include <rte_ether.h>
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
@@ -42,6 +43,7 @@
 #ifdef RTE_LIBRTE_SECURITY
 #include "test_cryptodev_security_pdcp_test_vectors.h"
 #include "test_cryptodev_security_pdcp_test_func.h"
+#include "test_cryptodev_security_docsis_test_vectors.h"
 #endif
 
 #define VDEV_ARGS_SIZE 100
@@ -72,6 +74,9 @@ struct crypto_unittest_params {
 	struct rte_crypto_sym_xform cipher_xform;
 	struct rte_crypto_sym_xform auth_xform;
 	struct rte_crypto_sym_xform aead_xform;
+#ifdef RTE_LIBRTE_SECURITY
+	struct rte_security_docsis_xform docsis_xform;
+#endif
 
 	union {
 		struct rte_cryptodev_sym_session *sess;
@@ -7067,6 +7072,34 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 }
 
 #ifdef RTE_LIBRTE_SECURITY
+static int
+security_proto_supported(enum rte_security_session_protocol proto)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+
+	const struct rte_security_capability *capabilities;
+	const struct rte_security_capability *capability;
+	uint16_t i = 0;
+
+	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
+				rte_cryptodev_get_sec_ctx(
+				ts_params->valid_devs[0]);
+
+
+	capabilities = rte_security_capabilities_get(ctx);
+
+	if (capabilities == NULL)
+		return -ENOTSUP;
+
+	while ((capability = &capabilities[i++])->action !=
+			RTE_SECURITY_ACTION_TYPE_NONE) {
+		if (capability->protocol == proto)
+			return 0;
+	}
+
+	return -ENOTSUP;
+}
+
 /* Basic algorithm run function for async inplace mode.
  * Creates a session from input parameters and runs one operation
  * on input_vec. Checks the output of the crypto operation against
@@ -7670,6 +7703,9 @@ test_PDCP_PROTO_all(void)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_SECURITY))
 		return -ENOTSUP;
 
+	if (security_proto_supported(RTE_SECURITY_PROTOCOL_PDCP) < 0)
+		return -ENOTSUP;
+
 	status = test_PDCP_PROTO_cplane_encap_all();
 	status += test_PDCP_PROTO_cplane_decap_all();
 	status += test_PDCP_PROTO_uplane_encap_all();
@@ -7678,6 +7714,481 @@ test_PDCP_PROTO_all(void)
 	status += test_PDCP_PROTO_SGL_oop_32B_128B();
 	status += test_PDCP_PROTO_SGL_oop_32B_40B();
 	status += test_PDCP_PROTO_SGL_oop_128B_32B();
+
+	if (status)
+		return TEST_FAILED;
+	else
+		return TEST_SUCCESS;
+}
+
+static int
+test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	uint8_t *plaintext, *ciphertext;
+	uint8_t *iv_ptr;
+	int32_t cipher_len, crc_len;
+	uint32_t crc_data_len;
+	int ret = TEST_SUCCESS;
+
+	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
+					rte_cryptodev_get_sec_ctx(
+						ts_params->valid_devs[0]);
+
+	/* Verify the capabilities */
+	struct rte_security_capability_idx sec_cap_idx;
+	const struct rte_security_capability *sec_cap;
+	const struct rte_cryptodev_capabilities *crypto_cap;
+	const struct rte_cryptodev_symmetric_capability *sym_cap;
+	int j = 0;
+
+	sec_cap_idx.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_DOCSIS;
+	sec_cap_idx.docsis.direction = RTE_SECURITY_DOCSIS_UPLINK;
+
+	sec_cap = rte_security_capability_get(ctx, &sec_cap_idx);
+	if (sec_cap == NULL)
+		return -ENOTSUP;
+
+	while ((crypto_cap = &sec_cap->crypto_capabilities[j++])->op !=
+			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if (crypto_cap->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
+				crypto_cap->sym.xform_type ==
+					RTE_CRYPTO_SYM_XFORM_CIPHER &&
+				crypto_cap->sym.cipher.algo ==
+					RTE_CRYPTO_CIPHER_AES_DOCSISBPI) {
+			sym_cap = &crypto_cap->sym;
+			if (rte_cryptodev_sym_capability_check_cipher(sym_cap,
+						d_td->key.len,
+						d_td->iv.len) == 0)
+				break;
+		}
+	}
+
+	if (crypto_cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED)
+		return -ENOTSUP;
+
+	/* Setup source mbuf payload */
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	ciphertext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+			d_td->ciphertext.len);
+
+	memcpy(ciphertext, d_td->ciphertext.data, d_td->ciphertext.len);
+
+	/* Set session action type */
+	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+
+	/* Setup cipher session parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+	ut_params->cipher_xform.cipher.key.data = d_td->key.data;
+	ut_params->cipher_xform.cipher.key.length = d_td->key.len;
+	ut_params->cipher_xform.cipher.iv.length = d_td->iv.len;
+	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
+	ut_params->cipher_xform.next = NULL;
+
+	/* Setup DOCSIS session parameters */
+	ut_params->docsis_xform.direction = RTE_SECURITY_DOCSIS_UPLINK;
+
+	struct rte_security_session_conf sess_conf = {
+		.action_type = ut_params->type,
+		.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+		.docsis = ut_params->docsis_xform,
+		.crypto_xform = &ut_params->cipher_xform,
+	};
+
+	/* Create security session */
+	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
+					ts_params->session_priv_mpool);
+
+	if (!ut_params->sec_session) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__, "failed to allocate session");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	/* Generate crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+				RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	if (!ut_params->op) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__,
+			"failed to allocate symmetric crypto operation");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	/* Setup CRC operation parameters */
+	crc_len = d_td->ciphertext.no_crc == false ?
+			(d_td->ciphertext.len -
+				d_td->ciphertext.crc_offset -
+				RTE_ETHER_CRC_LEN) :
+			0;
+	crc_len = crc_len > 0 ? crc_len : 0;
+	crc_data_len = crc_len == 0 ? 0 : RTE_ETHER_CRC_LEN;
+	ut_params->op->sym->auth.data.length = crc_len;
+	ut_params->op->sym->auth.data.offset = d_td->ciphertext.crc_offset;
+
+	/* Setup cipher operation parameters */
+	cipher_len = d_td->ciphertext.no_cipher == false ?
+			(d_td->ciphertext.len -
+				d_td->ciphertext.cipher_offset) :
+			0;
+	cipher_len = cipher_len > 0 ? cipher_len : 0;
+	ut_params->op->sym->cipher.data.length = cipher_len;
+	ut_params->op->sym->cipher.data.offset = d_td->ciphertext.cipher_offset;
+
+	/* Setup cipher IV */
+	iv_ptr = (uint8_t *)ut_params->op + IV_OFFSET;
+	rte_memcpy(iv_ptr, d_td->iv.data, d_td->iv.len);
+
+	/* Attach session to operation */
+	rte_security_attach_session(ut_params->op, ut_params->sec_session);
+
+	/* Set crypto operation mbufs */
+	ut_params->op->sym->m_src = ut_params->ibuf;
+	ut_params->op->sym->m_dst = NULL;
+
+	/* Process crypto operation */
+	if (process_crypto_request(ts_params->valid_devs[0], ut_params->op) ==
+			NULL) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__,
+			"failed to process security crypto op");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	if (ut_params->op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__, "crypto op processing failed");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	/* Validate plaintext */
+	plaintext = ciphertext;
+
+	if (memcmp(plaintext, d_td->plaintext.data,
+			d_td->plaintext.len - crc_data_len)) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__, "plaintext not as expected\n");
+		rte_hexdump(stdout, "expected", d_td->plaintext.data,
+				d_td->plaintext.len);
+		rte_hexdump(stdout, "actual", plaintext, d_td->plaintext.len);
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+on_err:
+	rte_crypto_op_free(ut_params->op);
+	ut_params->op = NULL;
+
+	if (ut_params->sec_session)
+		rte_security_session_destroy(ctx, ut_params->sec_session);
+	ut_params->sec_session = NULL;
+
+	rte_pktmbuf_free(ut_params->ibuf);
+	ut_params->ibuf = NULL;
+
+	return ret;
+}
+
+static int
+test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	uint8_t *plaintext, *ciphertext;
+	uint8_t *iv_ptr;
+	int32_t cipher_len, crc_len;
+	int ret = TEST_SUCCESS;
+
+	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
+					rte_cryptodev_get_sec_ctx(
+						ts_params->valid_devs[0]);
+
+	/* Verify the capabilities */
+	struct rte_security_capability_idx sec_cap_idx;
+	const struct rte_security_capability *sec_cap;
+	const struct rte_cryptodev_capabilities *crypto_cap;
+	const struct rte_cryptodev_symmetric_capability *sym_cap;
+	int j = 0;
+
+	sec_cap_idx.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_DOCSIS;
+	sec_cap_idx.docsis.direction = RTE_SECURITY_DOCSIS_DOWNLINK;
+
+	sec_cap = rte_security_capability_get(ctx, &sec_cap_idx);
+	if (sec_cap == NULL)
+		return -ENOTSUP;
+
+	while ((crypto_cap = &sec_cap->crypto_capabilities[j++])->op !=
+			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if (crypto_cap->op == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
+				crypto_cap->sym.xform_type ==
+					RTE_CRYPTO_SYM_XFORM_CIPHER &&
+				crypto_cap->sym.cipher.algo ==
+					RTE_CRYPTO_CIPHER_AES_DOCSISBPI) {
+			sym_cap = &crypto_cap->sym;
+			if (rte_cryptodev_sym_capability_check_cipher(sym_cap,
+						d_td->key.len,
+						d_td->iv.len) == 0)
+				break;
+		}
+	}
+
+	if (crypto_cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED)
+		return -ENOTSUP;
+
+	/* Setup source mbuf payload */
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+			d_td->plaintext.len);
+
+	memcpy(plaintext, d_td->plaintext.data, d_td->plaintext.len);
+
+	/* Set session action type */
+	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+
+	/* Setup cipher session parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+	ut_params->cipher_xform.cipher.key.data = d_td->key.data;
+	ut_params->cipher_xform.cipher.key.length = d_td->key.len;
+	ut_params->cipher_xform.cipher.iv.length = d_td->iv.len;
+	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
+	ut_params->cipher_xform.next = NULL;
+
+	/* Setup DOCSIS session parameters */
+	ut_params->docsis_xform.direction = RTE_SECURITY_DOCSIS_DOWNLINK;
+
+	struct rte_security_session_conf sess_conf = {
+		.action_type = ut_params->type,
+		.protocol = RTE_SECURITY_PROTOCOL_DOCSIS,
+		.docsis = ut_params->docsis_xform,
+		.crypto_xform = &ut_params->cipher_xform,
+	};
+
+	/* Create security session */
+	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
+					ts_params->session_priv_mpool);
+
+	if (!ut_params->sec_session) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__, "failed to allocate session");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	/* Generate crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+				RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	if (!ut_params->op) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__,
+			"failed to allocate security crypto operation");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	/* Setup CRC operation parameters */
+	crc_len = d_td->plaintext.no_crc == false ?
+			(d_td->plaintext.len -
+				d_td->plaintext.crc_offset -
+				RTE_ETHER_CRC_LEN) :
+			0;
+	crc_len = crc_len > 0 ? crc_len : 0;
+	ut_params->op->sym->auth.data.length = crc_len;
+	ut_params->op->sym->auth.data.offset = d_td->plaintext.crc_offset;
+
+	/* Setup cipher operation parameters */
+	cipher_len = d_td->plaintext.no_cipher == false ?
+			(d_td->plaintext.len -
+				d_td->plaintext.cipher_offset) :
+			0;
+	cipher_len = cipher_len > 0 ? cipher_len : 0;
+	ut_params->op->sym->cipher.data.length = cipher_len;
+	ut_params->op->sym->cipher.data.offset = d_td->plaintext.cipher_offset;
+
+	/* Setup cipher IV */
+	iv_ptr = (uint8_t *)ut_params->op + IV_OFFSET;
+	rte_memcpy(iv_ptr, d_td->iv.data, d_td->iv.len);
+
+	/* Attach session to operation */
+	rte_security_attach_session(ut_params->op, ut_params->sec_session);
+
+	/* Set crypto operation mbufs */
+	ut_params->op->sym->m_src = ut_params->ibuf;
+	ut_params->op->sym->m_dst = NULL;
+
+	/* Process crypto operation */
+	if (process_crypto_request(ts_params->valid_devs[0], ut_params->op) ==
+			NULL) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__,
+			"failed to process security crypto op");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	if (ut_params->op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__, "crypto op processing failed");
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+	/* Validate ciphertext */
+	ciphertext = plaintext;
+
+	if (memcmp(ciphertext, d_td->ciphertext.data, d_td->ciphertext.len)) {
+		printf("TestCase %s(%d) line %d: %s\n",
+			__func__, i, __LINE__, "ciphertext not as expected\n");
+		rte_hexdump(stdout, "expected", d_td->ciphertext.data,
+				d_td->ciphertext.len);
+		rte_hexdump(stdout, "actual", ciphertext, d_td->ciphertext.len);
+		ret = TEST_FAILED;
+		goto on_err;
+	}
+
+on_err:
+	rte_crypto_op_free(ut_params->op);
+	ut_params->op = NULL;
+
+	if (ut_params->sec_session)
+		rte_security_session_destroy(ctx, ut_params->sec_session);
+	ut_params->sec_session = NULL;
+
+	rte_pktmbuf_free(ut_params->ibuf);
+	ut_params->ibuf = NULL;
+
+	return ret;
+}
+
+#define TEST_DOCSIS_COUNT(func) do {			\
+	int ret = func;					\
+	if (ret == TEST_SUCCESS)  {			\
+		printf("\t%2d)", n++);			\
+		printf("+++++ PASSED:" #func"\n");	\
+		p++;					\
+	} else if (ret == -ENOTSUP) {			\
+		printf("\t%2d)", n++);			\
+		printf("~~~~~ UNSUPP:" #func"\n");	\
+		u++;					\
+	} else {					\
+		printf("\t%2d)", n++);			\
+		printf("----- FAILED:" #func"\n");	\
+		f++;					\
+	}						\
+} while (0)
+
+static int
+test_DOCSIS_PROTO_uplink_all(void)
+{
+	int p = 0, u = 0, f = 0, n = 0;
+
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(1, &docsis_test_case_1));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(2, &docsis_test_case_2));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(3, &docsis_test_case_3));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(4, &docsis_test_case_4));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(5, &docsis_test_case_5));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(6, &docsis_test_case_6));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(7, &docsis_test_case_7));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(8, &docsis_test_case_8));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(9, &docsis_test_case_9));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(10, &docsis_test_case_10));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(11, &docsis_test_case_11));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(12, &docsis_test_case_12));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(13, &docsis_test_case_13));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(14, &docsis_test_case_14));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(15, &docsis_test_case_15));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(16, &docsis_test_case_16));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(17, &docsis_test_case_17));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(18, &docsis_test_case_18));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(19, &docsis_test_case_19));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(20, &docsis_test_case_20));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(21, &docsis_test_case_21));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(22, &docsis_test_case_22));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(23, &docsis_test_case_23));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(24, &docsis_test_case_24));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(25, &docsis_test_case_25));
+	TEST_DOCSIS_COUNT(test_docsis_proto_uplink(26, &docsis_test_case_26));
+
+	if (f)
+		printf("## %s: %d passed out of %d (%d unsupported)\n",
+			__func__, p, n, u);
+
+	return f;
+};
+
+static int
+test_DOCSIS_PROTO_downlink_all(void)
+{
+	int p = 0, u = 0, f = 0, n = 0;
+
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(1, &docsis_test_case_1));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(2, &docsis_test_case_2));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(3, &docsis_test_case_3));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(4, &docsis_test_case_4));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(5, &docsis_test_case_5));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(6, &docsis_test_case_6));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(7, &docsis_test_case_7));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(8, &docsis_test_case_8));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(9, &docsis_test_case_9));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(10, &docsis_test_case_10));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(11, &docsis_test_case_11));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(12, &docsis_test_case_12));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(13, &docsis_test_case_13));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(14, &docsis_test_case_14));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(15, &docsis_test_case_15));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(16, &docsis_test_case_16));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(17, &docsis_test_case_17));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(18, &docsis_test_case_18));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(19, &docsis_test_case_19));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(20, &docsis_test_case_20));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(21, &docsis_test_case_21));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(22, &docsis_test_case_22));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(23, &docsis_test_case_23));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(24, &docsis_test_case_24));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(25, &docsis_test_case_25));
+	TEST_DOCSIS_COUNT(test_docsis_proto_downlink(26, &docsis_test_case_26));
+
+	if (f)
+		printf("## %s: %d passed out of %d (%d unsupported)\n",
+			__func__, p, n, u);
+
+	return f;
+};
+
+static int
+test_DOCSIS_PROTO_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+	int status;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SECURITY))
+		return -ENOTSUP;
+
+	if (security_proto_supported(RTE_SECURITY_PROTOCOL_DOCSIS) < 0)
+		return -ENOTSUP;
+
+	status = test_DOCSIS_PROTO_uplink_all();
+	status += test_DOCSIS_PROTO_downlink_all();
 
 	if (status)
 		return TEST_FAILED;
@@ -12342,6 +12853,8 @@ static struct unit_test_suite cryptodev_testsuite  = {
 #ifdef RTE_LIBRTE_SECURITY
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_PDCP_PROTO_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_DOCSIS_PROTO_all),
 #endif
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
