@@ -35,6 +35,9 @@ endif
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT_SYM),y)
 	LDLIBS += -lrte_cryptodev
 	LDLIBS += -lcrypto
+ifeq ($(CONFIG_RTE_LIBRTE_SECURITY),y)
+	LDLIBS += -lrte_net
+endif
 	CFLAGS += -DBUILD_QAT_SYM
 	SRCS-y += qat_sym.c
 	SRCS-y += qat_sym_session.c

@@ -8,6 +8,8 @@ reason = '' # sentinal value to suppress printout
 dep = dependency('libcrypto', required: false)
 qat_includes += include_directories('.')
 qat_deps += 'cryptodev'
+qat_deps += 'net'
+qat_deps += 'security'
 if dep.found()
 	# Add our sources files to the list
 	qat_sources += files('qat_sym_pmd.c',

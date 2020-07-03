@@ -14,6 +14,9 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_crypto_sym.h>
+#ifdef RTE_LIBRTE_SECURITY
+#include <rte_security.h>
+#endif
 
 #include "qat_logs.h"
 #include "qat_sym_session.h"
@@ -2100,3 +2103,153 @@ int qat_sym_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	}
 	return 0;
 }
+
+#ifdef RTE_LIBRTE_SECURITY
+static int
+qat_sec_session_check_docsis(struct rte_security_session_conf *conf)
+{
+	struct rte_crypto_sym_xform *crypto_sym = conf->crypto_xform;
+	struct rte_security_docsis_xform *docsis = &conf->docsis;
+
+	/* CRC generate -> Cipher encrypt */
+	if (docsis->direction == RTE_SECURITY_DOCSIS_DOWNLINK) {
+
+		if (crypto_sym != NULL &&
+		    crypto_sym->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		    crypto_sym->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
+		    crypto_sym->cipher.algo ==
+					RTE_CRYPTO_CIPHER_AES_DOCSISBPI &&
+		    (crypto_sym->cipher.key.length ==
+					ICP_QAT_HW_AES_128_KEY_SZ ||
+		     crypto_sym->cipher.key.length ==
+					ICP_QAT_HW_AES_256_KEY_SZ) &&
+		    crypto_sym->cipher.iv.length == ICP_QAT_HW_AES_BLK_SZ &&
+		    crypto_sym->next == NULL) {
+			return 0;
+		}
+	/* Cipher decrypt -> CRC verify */
+	} else if (docsis->direction == RTE_SECURITY_DOCSIS_UPLINK) {
+
+		if (crypto_sym != NULL &&
+		    crypto_sym->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		    crypto_sym->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT &&
+		    crypto_sym->cipher.algo ==
+					RTE_CRYPTO_CIPHER_AES_DOCSISBPI &&
+		    (crypto_sym->cipher.key.length ==
+					ICP_QAT_HW_AES_128_KEY_SZ ||
+		     crypto_sym->cipher.key.length ==
+					ICP_QAT_HW_AES_256_KEY_SZ) &&
+		    crypto_sym->cipher.iv.length == ICP_QAT_HW_AES_BLK_SZ &&
+		    crypto_sym->next == NULL) {
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+static int
+qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
+		struct rte_security_session_conf *conf, void *session_private)
+{
+	int ret;
+	int qat_cmd_id;
+	struct rte_crypto_sym_xform *xform = NULL;
+	struct qat_sym_session *session = session_private;
+
+	ret = qat_sec_session_check_docsis(conf);
+	if (ret) {
+		QAT_LOG(ERR, "Unsupported DOCSIS security configuration");
+		return ret;
+	}
+
+	xform = conf->crypto_xform;
+
+	/* Verify the session physical address is known */
+	rte_iova_t session_paddr = rte_mempool_virt2iova(session);
+	if (session_paddr == 0 || session_paddr == RTE_BAD_IOVA) {
+		QAT_LOG(ERR,
+			"Session physical address unknown. Bad memory pool.");
+		return -EINVAL;
+	}
+
+	/* Set context descriptor physical address */
+	session->cd_paddr = session_paddr +
+			offsetof(struct qat_sym_session, cd);
+
+	session->min_qat_dev_gen = QAT_GEN1;
+
+	/* Get requested QAT command id */
+	qat_cmd_id = qat_get_cmd_id(xform);
+	if (qat_cmd_id < 0 || qat_cmd_id >= ICP_QAT_FW_LA_CMD_DELIMITER) {
+		QAT_LOG(ERR, "Unsupported xform chain requested");
+		return -ENOTSUP;
+	}
+	session->qat_cmd = (enum icp_qat_fw_la_cmd_id)qat_cmd_id;
+	switch (session->qat_cmd) {
+	case ICP_QAT_FW_LA_CMD_CIPHER:
+		ret = qat_sym_session_configure_cipher(dev, xform, session);
+		if (ret < 0)
+			return ret;
+		break;
+	default:
+		QAT_LOG(ERR, "Unsupported Service %u", session->qat_cmd);
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+int
+qat_security_session_create(void *dev,
+				struct rte_security_session_conf *conf,
+				struct rte_security_session *sess,
+				struct rte_mempool *mempool)
+{
+	void *sess_private_data;
+	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
+	int ret;
+
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		QAT_LOG(ERR, "Couldn't get object from session mempool");
+		return -ENOMEM;
+	}
+
+	if (conf->protocol != RTE_SECURITY_PROTOCOL_DOCSIS) {
+		QAT_LOG(ERR, "Invalid security protocol");
+		return -EINVAL;
+	}
+
+	ret = qat_sec_session_set_docsis_parameters(cdev, conf,
+			sess_private_data);
+	if (ret != 0) {
+		QAT_LOG(ERR, "Failed to configure session parameters");
+		/* Return session to mempool */
+		rte_mempool_put(mempool, sess_private_data);
+		return ret;
+	}
+
+	set_sec_session_private_data(sess, sess_private_data);
+
+	return ret;
+}
+
+int
+qat_security_session_destroy(void *dev __rte_unused,
+				 struct rte_security_session *sess)
+{
+	void *sess_priv = get_sec_session_private_data(sess);
+	struct qat_sym_session *s = (struct qat_sym_session *)sess_priv;
+
+	if (sess_priv) {
+		if (s->bpi_ctx)
+			bpi_cipher_ctx_free(s->bpi_ctx);
+		memset(s, 0, qat_sym_session_get_private_size(dev));
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+
+		set_sec_session_private_data(sess, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
+	return 0;
+}
+#endif

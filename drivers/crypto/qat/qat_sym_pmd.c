@@ -8,6 +8,9 @@
 #include <rte_malloc.h>
 #include <rte_pci.h>
 #include <rte_cryptodev_pmd.h>
+#ifdef RTE_LIBRTE_SECURITY
+#include <rte_security_driver.h>
+#endif
 
 #include "qat_logs.h"
 #include "qat_sym.h"
@@ -28,6 +31,21 @@ static const struct rte_cryptodev_capabilities qat_gen2_sym_capabilities[] = {
 	QAT_EXTRA_GEN2_SYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
+
+#ifdef RTE_LIBRTE_SECURITY
+static const struct rte_cryptodev_capabilities
+					qat_security_sym_capabilities[] = {
+	QAT_SECURITY_SYM_CAPABILITIES,
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
+static const struct rte_security_capability qat_security_capabilities[] = {
+	QAT_SECURITY_CAPABILITIES(qat_security_sym_capabilities),
+	{
+		.action = RTE_SECURITY_ACTION_TYPE_NONE
+	}
+};
+#endif
 
 static int qat_sym_qp_release(struct rte_cryptodev *dev,
 	uint16_t queue_pair_id);
@@ -237,6 +255,24 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
 		.sym_session_clear	= qat_sym_session_clear
 };
 
+#ifdef RTE_LIBRTE_SECURITY
+static const struct rte_security_capability *
+qat_security_cap_get(void *device __rte_unused)
+{
+	return qat_security_capabilities;
+}
+
+static struct rte_security_ops security_qat_ops = {
+
+		.session_create = qat_security_session_create,
+		.session_update = NULL,
+		.session_stats_get = NULL,
+		.session_destroy = qat_security_session_destroy,
+		.set_pkt_metadata = NULL,
+		.capabilities_get = qat_security_cap_get
+};
+#endif
+
 static uint16_t
 qat_sym_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
@@ -276,6 +312,9 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	struct qat_sym_dev_private *internals;
+#ifdef RTE_LIBRTE_SECURITY
+	struct rte_security_ctx *security_instance;
+#endif
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
@@ -308,7 +347,24 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
+			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED |
+			RTE_CRYPTODEV_FF_SECURITY;
+
+#ifdef RTE_LIBRTE_SECURITY
+	security_instance = rte_malloc("qat_sec",
+				sizeof(struct rte_security_ctx),
+				RTE_CACHE_LINE_SIZE);
+	if (security_instance == NULL) {
+		QAT_LOG(ERR, "rte_security_ctx memory alloc failed");
+		rte_cryptodev_pmd_destroy(cryptodev);
+		return -ENOMEM;
+	}
+
+	security_instance->device = (void *)cryptodev;
+	security_instance->ops = &security_qat_ops;
+	security_instance->sess_cnt = 0;
+	cryptodev->security_ctx = security_instance;
+#endif
 
 	internals = cryptodev->data->dev_private;
 	internals->qat_dev = qat_pci_dev;
@@ -357,6 +413,9 @@ qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 
 	/* free crypto device */
 	cryptodev = rte_cryptodev_pmd_get_dev(qat_pci_dev->sym_dev->sym_dev_id);
+#ifdef RTE_LIBRTE_SECURITY
+	rte_free(cryptodev->security_ctx);
+#endif
 	rte_cryptodev_pmd_destroy(cryptodev);
 	qat_pci_dev->sym_rte_dev.name = NULL;
 	qat_pci_dev->sym_dev = NULL;

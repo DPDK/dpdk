@@ -76,6 +76,9 @@ Supported AEAD algorithms:
 * ``RTE_CRYPTO_AEAD_AES_GCM``
 * ``RTE_CRYPTO_AEAD_AES_CCM``
 
+Protocol offloads:
+
+* ``RTE_SECURITY_PROTOCOL_DOCSIS``
 
 Supported Chains
 ~~~~~~~~~~~~~~~~
@@ -126,6 +129,10 @@ Limitations
   generations in the same process if planning to use for GCM.
 * The mixed algo feature on GEN2 is not supported by all kernel drivers. Check
   the notes under the Available Kernel Drivers table below for specific details.
+* Out-of-place is not supported for combined Crypto-CRC DOCSIS security
+  protocol.
+* ``RTE_CRYPTO_CIPHER_DES_DOCSISBPI`` is not supported for combined Crypto-CRC
+  DOCSIS security protocol.
 
 Extra notes on KASUMI F9
 ~~~~~~~~~~~~~~~~~~~~~~~~

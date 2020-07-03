@@ -6,6 +6,9 @@
 #define _QAT_SYM_H_
 
 #include <rte_cryptodev_pmd.h>
+#ifdef RTE_LIBRTE_SECURITY
+#include <rte_net_crc.h>
+#endif
 
 #ifdef BUILD_QAT_SYM
 #include <openssl/evp.h>
@@ -132,14 +135,38 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 	return sym_op->cipher.data.length - last_block_len;
 }
 
+#ifdef RTE_LIBRTE_SECURITY
+static inline void
+qat_crc_verify(struct qat_sym_session *ctx, struct rte_crypto_op *op)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	uint32_t crc_offset, crc_length, crc;
+	uint8_t *crc_data;
+
+	if (ctx->qat_dir == ICP_QAT_HW_CIPHER_DECRYPT &&
+			sym_op->auth.data.length != 0) {
+
+		crc_offset = sym_op->auth.data.offset;
+		crc_length = sym_op->auth.data.length;
+		crc_data = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
+				crc_offset);
+
+		crc = rte_net_crc_calc(crc_data, crc_length, RTE_NET_CRC32_ETH);
+
+		if (crc != *(uint32_t *)(crc_data + crc_length))
+			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	}
+}
+#endif
+
 static inline void
 qat_sym_process_response(void **op, uint8_t *resp)
 {
-
 	struct icp_qat_fw_comn_resp *resp_msg =
 			(struct icp_qat_fw_comn_resp *)resp;
 	struct rte_crypto_op *rx_op = (struct rte_crypto_op *)(uintptr_t)
 			(resp_msg->opaque_data);
+	struct qat_sym_session *sess;
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	QAT_DP_HEXDUMP_LOG(DEBUG, "qat_response:", (uint8_t *)resp_msg,
@@ -152,15 +179,36 @@ qat_sym_process_response(void **op, uint8_t *resp)
 
 		rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	} else {
-		struct qat_sym_session *sess = (struct qat_sym_session *)
-						get_sym_session_private_data(
-						rx_op->sym->session,
-						cryptodev_qat_driver_id);
+#ifdef RTE_LIBRTE_SECURITY
+		uint8_t is_docsis_sec = 0;
 
+		if (rx_op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+			/*
+			 * Assuming at this point that if it's a security
+			 * op, that this is for DOCSIS
+			 */
+			sess = (struct qat_sym_session *)
+					get_sec_session_private_data(
+					rx_op->sym->sec_session);
+			is_docsis_sec = 1;
+		} else
+#endif
+		{
+			sess = (struct qat_sym_session *)
+					get_sym_session_private_data(
+					rx_op->sym->session,
+					cryptodev_qat_driver_id);
+		}
 
-		if (sess->bpi_ctx)
-			qat_bpicipher_postprocess(sess, rx_op);
 		rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+		if (sess->bpi_ctx) {
+			qat_bpicipher_postprocess(sess, rx_op);
+#ifdef RTE_LIBRTE_SECURITY
+			if (is_docsis_sec)
+				qat_crc_verify(sess, rx_op);
+#endif
+		}
 	}
 	*op = (void *)rx_op;
 }

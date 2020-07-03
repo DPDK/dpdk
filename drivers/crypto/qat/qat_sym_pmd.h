@@ -7,7 +7,11 @@
 
 #ifdef BUILD_QAT_SYM
 
+#include <rte_ether.h>
 #include <rte_cryptodev.h>
+#ifdef RTE_LIBRTE_SECURITY
+#include <rte_security.h>
+#endif
 
 #include "qat_sym_capabilities.h"
 #include "qat_device.h"
