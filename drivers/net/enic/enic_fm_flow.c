@@ -1421,6 +1421,13 @@ enic_fm_dump_tcam_actions(const struct fm_action *fm_action)
 		[FMOP_ENCAP] = "encap",
 		[FMOP_SET_OVLAN] = "set_ovlan",
 		[FMOP_DECAP_NOSTRIP] = "decap_nostrip",
+		[FMOP_DECAP_STRIP] = "decap_strip",
+		[FMOP_POP_VLAN] = "pop_vlan",
+		[FMOP_SET_EGPORT] = "set_egport",
+		[FMOP_RQ_STEER_ONLY] = "rq_steer_only",
+		[FMOP_SET_ENCAP_VLAN] = "set_encap_vlan",
+		[FMOP_EMIT] = "emit",
+		[FMOP_MODIFY] = "modify",
 	};
 	const struct fm_action_op *op = &fm_action->fma_action_ops[0];
 	char buf[128], *bp = buf;
