@@ -378,9 +378,15 @@ eal_plugindir_init(const char *path)
 
 	while ((dent = readdir(d)) != NULL) {
 		struct stat sb;
+		int nlen = strnlen(dent->d_name, sizeof(dent->d_name));
+
+		/* check if name ends in .so */
+		if (strcmp(&dent->d_name[nlen - 3], ".so") != 0)
+			continue;
 
 		snprintf(sopath, sizeof(sopath), "%s/%s", path, dent->d_name);
 
+		/* if a regular file, add to list to load */
 		if (!(stat(sopath, &sb) == 0 && S_ISREG(sb.st_mode)))
 			continue;
 
