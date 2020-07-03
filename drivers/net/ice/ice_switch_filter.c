@@ -481,10 +481,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	bool profile_rule = 0;
 	bool nvgre_valid = 0;
 	bool vxlan_valid = 0;
-	bool ipv6_valiad = 0;
-	bool ipv4_valiad = 0;
-	bool udp_valiad = 0;
-	bool tcp_valiad = 0;
+	bool ipv6_valid = 0;
+	bool ipv4_valid = 0;
+	bool udp_valid = 0;
+	bool tcp_valid = 0;
 	uint16_t j, t = 0;
 
 	for (item = pattern; item->type !=
@@ -571,7 +571,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ipv4_spec = item->spec;
 			ipv4_mask = item->mask;
-			ipv4_valiad = 1;
+			ipv4_valid = 1;
 			if (ipv4_spec && ipv4_mask) {
 				/* Check IPv4 mask and update input set */
 				if (ipv4_mask->hdr.version_ihl ||
@@ -663,7 +663,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			ipv6_spec = item->spec;
 			ipv6_mask = item->mask;
-			ipv6_valiad = 1;
+			ipv6_valid = 1;
 			if (ipv6_spec && ipv6_mask) {
 				if (ipv6_mask->hdr.payload_len) {
 					rte_flow_error_set(error, EINVAL,
@@ -781,7 +781,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp_spec = item->spec;
 			udp_mask = item->mask;
-			udp_valiad = 1;
+			udp_valid = 1;
 			if (udp_spec && udp_mask) {
 				/* Check UDP mask and update input set*/
 				if (udp_mask->hdr.dgram_len ||
@@ -834,7 +834,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			tcp_spec = item->spec;
 			tcp_mask = item->mask;
-			tcp_valiad = 1;
+			tcp_valid = 1;
 			if (tcp_spec && tcp_mask) {
 				/* Check TCP mask and update input set */
 				if (tcp_mask->hdr.sent_seq ||
@@ -1152,16 +1152,16 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 
 			if (!esp_spec && !esp_mask && !input_set) {
 				profile_rule = 1;
-				if (ipv6_valiad && udp_valiad)
+				if (ipv6_valid && udp_valid)
 					*tun_type =
 					ICE_SW_TUN_PROFID_IPV6_NAT_T;
-				else if (ipv6_valiad)
+				else if (ipv6_valid)
 					*tun_type = ICE_SW_TUN_PROFID_IPV6_ESP;
-				else if (ipv4_valiad)
+				else if (ipv4_valid)
 					return 0;
 			} else if (esp_spec && esp_mask &&
 						esp_mask->hdr.spi){
-				if (udp_valiad)
+				if (udp_valid)
 					list[t].type = ICE_NAT_T;
 				else
 					list[t].type = ICE_ESP;
@@ -1175,13 +1175,13 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			}
 
 			if (!profile_rule) {
-				if (ipv6_valiad && udp_valiad)
+				if (ipv6_valid && udp_valid)
 					*tun_type = ICE_SW_TUN_IPV6_NAT_T;
-				else if (ipv4_valiad && udp_valiad)
+				else if (ipv4_valid && udp_valid)
 					*tun_type = ICE_SW_TUN_IPV4_NAT_T;
-				else if (ipv6_valiad)
+				else if (ipv6_valid)
 					*tun_type = ICE_SW_TUN_IPV6_ESP;
-				else if (ipv4_valiad)
+				else if (ipv4_valid)
 					*tun_type = ICE_SW_TUN_IPV4_ESP;
 			}
 			break;
@@ -1212,12 +1212,12 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 
 			if (!ah_spec && !ah_mask && !input_set) {
 				profile_rule = 1;
-				if (ipv6_valiad && udp_valiad)
+				if (ipv6_valid && udp_valid)
 					*tun_type =
 					ICE_SW_TUN_PROFID_IPV6_NAT_T;
-				else if (ipv6_valiad)
+				else if (ipv6_valid)
 					*tun_type = ICE_SW_TUN_PROFID_IPV6_AH;
-				else if (ipv4_valiad)
+				else if (ipv4_valid)
 					return 0;
 			} else if (ah_spec && ah_mask &&
 						ah_mask->spi){
@@ -1232,11 +1232,11 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			}
 
 			if (!profile_rule) {
-				if (udp_valiad)
+				if (udp_valid)
 					return 0;
-				else if (ipv6_valiad)
+				else if (ipv6_valid)
 					*tun_type = ICE_SW_TUN_IPV6_AH;
-				else if (ipv4_valiad)
+				else if (ipv4_valid)
 					*tun_type = ICE_SW_TUN_IPV4_AH;
 			}
 			break;
@@ -1254,10 +1254,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			}
 
 			if (!l2tp_spec && !l2tp_mask && !input_set) {
-				if (ipv6_valiad)
+				if (ipv6_valid)
 					*tun_type =
 					ICE_SW_TUN_PROFID_MAC_IPV6_L2TPV3;
-				else if (ipv4_valiad)
+				else if (ipv4_valid)
 					return 0;
 			} else if (l2tp_spec && l2tp_mask &&
 						l2tp_mask->session_id){
@@ -1272,10 +1272,10 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			}
 
 			if (!profile_rule) {
-				if (ipv6_valiad)
+				if (ipv6_valid)
 					*tun_type =
 					ICE_SW_TUN_IPV6_L2TPV3;
-				else if (ipv4_valiad)
+				else if (ipv4_valid)
 					*tun_type =
 					ICE_SW_TUN_IPV4_L2TPV3;
 			}
@@ -1309,7 +1309,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 				}
 				if (pfcp_mask->s_field &&
 					pfcp_spec->s_field == 0x01 &&
-					ipv6_valiad)
+					ipv6_valid)
 					*tun_type =
 					ICE_SW_TUN_PROFID_IPV6_PFCP_SESSION;
 				else if (pfcp_mask->s_field &&
@@ -1318,7 +1318,7 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 					ICE_SW_TUN_PROFID_IPV4_PFCP_SESSION;
 				else if (pfcp_mask->s_field &&
 					!pfcp_spec->s_field &&
-					ipv6_valiad)
+					ipv6_valid)
 					*tun_type =
 					ICE_SW_TUN_PROFID_IPV6_PFCP_NODE;
 				else if (pfcp_mask->s_field &&
@@ -1342,17 +1342,17 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 	}
 
 	if (pppoe_patt_valid && !pppoe_prot_valid) {
-		if (ipv6_valiad && udp_valiad)
+		if (ipv6_valid && udp_valid)
 			*tun_type = ICE_SW_TUN_PPPOE_IPV6_UDP;
-		else if (ipv6_valiad && tcp_valiad)
+		else if (ipv6_valid && tcp_valid)
 			*tun_type = ICE_SW_TUN_PPPOE_IPV6_TCP;
-		else if (ipv4_valiad && udp_valiad)
+		else if (ipv4_valid && udp_valid)
 			*tun_type = ICE_SW_TUN_PPPOE_IPV4_UDP;
-		else if (ipv4_valiad && tcp_valiad)
+		else if (ipv4_valid && tcp_valid)
 			*tun_type = ICE_SW_TUN_PPPOE_IPV4_TCP;
-		else if (ipv6_valiad)
+		else if (ipv6_valid)
 			*tun_type = ICE_SW_TUN_PPPOE_IPV6;
-		else if (ipv4_valiad)
+		else if (ipv4_valid)
 			*tun_type = ICE_SW_TUN_PPPOE_IPV4;
 		else
 			*tun_type = ICE_SW_TUN_PPPOE;
@@ -1363,13 +1363,13 @@ ice_switch_inset_get(const struct rte_flow_item pattern[],
 			*tun_type = ICE_SW_TUN_VXLAN;
 		else if (nvgre_valid)
 			*tun_type = ICE_SW_TUN_NVGRE;
-		else if (ipv4_valiad && tcp_valiad)
+		else if (ipv4_valid && tcp_valid)
 			*tun_type = ICE_SW_IPV4_TCP;
-		else if (ipv4_valiad && udp_valiad)
+		else if (ipv4_valid && udp_valid)
 			*tun_type = ICE_SW_IPV4_UDP;
-		else if (ipv6_valiad && tcp_valiad)
+		else if (ipv6_valid && tcp_valid)
 			*tun_type = ICE_SW_IPV6_TCP;
-		else if (ipv6_valiad && udp_valiad)
+		else if (ipv6_valid && udp_valid)
 			*tun_type = ICE_SW_IPV6_UDP;
 	}
 
