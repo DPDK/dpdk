@@ -69,6 +69,8 @@ enum {
 	OPT_VDEV_NUM,
 #define OPT_VFIO_INTR         "vfio-intr"
 	OPT_VFIO_INTR_NUM,
+#define OPT_VFIO_VF_TOKEN     "vfio-vf-token"
+	OPT_VFIO_VF_TOKEN_NUM,
 #define OPT_VMWARE_TSC_MAP    "vmware-tsc-map"
 	OPT_VMWARE_TSC_MAP_NUM,
 #define OPT_LEGACY_MEM    "legacy-mem"

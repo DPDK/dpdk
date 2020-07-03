@@ -72,6 +72,8 @@ struct internal_config {
 	volatile int syslog_facility;	  /**< facility passed to openlog() */
 	/** default interrupt mode for VFIO */
 	volatile enum rte_intr_mode vfio_intr_mode;
+	/** the shared VF token for VFIO-PCI bound PF and VFs devices */
+	rte_uuid_t vfio_vf_token;
 	char *hugefile_prefix;      /**< the base filename of hugetlbfs files */
 	char *hugepage_dir;         /**< specific hugetlbfs directory to use */
 	char *user_mbuf_pool_ops_name;

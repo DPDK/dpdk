@@ -714,6 +714,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	int vfio_container_fd;
 	int vfio_group_fd;
 	int iommu_group_num;
+	rte_uuid_t vf_token;
 	int i, ret;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
@@ -899,6 +900,23 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 				t->type_id, t->name);
 	}
 
+	rte_eal_vfio_get_vf_token(vf_token);
+
+	/* get a file descriptor for the device with VF token firstly */
+	if (!rte_uuid_is_null(vf_token)) {
+		char vf_token_str[RTE_UUID_STRLEN];
+		char dev[PATH_MAX];
+
+		rte_uuid_unparse(vf_token, vf_token_str, sizeof(vf_token_str));
+		snprintf(dev, sizeof(dev),
+			 "%s vf_token=%s", dev_addr, vf_token_str);
+
+		*vfio_dev_fd = ioctl(vfio_group_fd, VFIO_GROUP_GET_DEVICE_FD,
+				     dev);
+		if (*vfio_dev_fd >= 0)
+			goto dev_get_info;
+	}
+
 	/* get a file descriptor for the device */
 	*vfio_dev_fd = ioctl(vfio_group_fd, VFIO_GROUP_GET_DEVICE_FD, dev_addr);
 	if (*vfio_dev_fd < 0) {
@@ -914,6 +932,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	}
 
 	/* test and setup the device */
+dev_get_info:
 	ret = ioctl(*vfio_dev_fd, VFIO_DEVICE_GET_INFO, device_info);
 	if (ret) {
 		RTE_LOG(ERR, EAL, "  %s cannot get device info, "

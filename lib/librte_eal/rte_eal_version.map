@@ -386,6 +386,9 @@ EXPERIMENTAL {
 	rte_trace_point_lookup;
 	rte_trace_regexp;
 	rte_trace_save;
+
+	# added in 20.08
+	rte_eal_vfio_get_vf_token;
 };
 
 INTERNAL {

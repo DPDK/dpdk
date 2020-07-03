@@ -56,6 +56,13 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added the support for vfio-pci new VF token interface.**
+
+  From Linux 5.7, vfio-pci supports to bind both SR-IOV PF and the created VFs,
+  it uses a shared VF token (UUID) to represent the collaboration between PF
+  and VFs. Update DPDK PCI driver to gain the access to the PF and VFs devices
+  by appending the VF token parameter.
+
 * **Added the RegEx Library, a generic RegEx service library.**
 
   Added the RegEx library which provides an API for offload of regular

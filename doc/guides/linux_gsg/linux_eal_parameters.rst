@@ -40,6 +40,10 @@ Device-related options
 
     Use specified interrupt mode for devices bound to VFIO kernel driver.
 
+*   ``--vfio-vf-token <uuid>``
+
+    Use specified VF token for devices bound to VFIO kernel driver.
+
 Multiprocessing-related options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

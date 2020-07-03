@@ -540,6 +540,7 @@ eal_usage(const char *prgname)
 	       "  --"OPT_FILE_PREFIX"       Prefix for hugepage filenames\n"
 	       "  --"OPT_CREATE_UIO_DEV"    Create /dev/uioX (usually done by hotplug)\n"
 	       "  --"OPT_VFIO_INTR"         Interrupt mode for VFIO (legacy|msi|msix)\n"
+	       "  --"OPT_VFIO_VF_TOKEN"     VF token (UUID) shared between SR-IOV PF and VFs\n"
 	       "  --"OPT_LEGACY_MEM"        Legacy memory mode (no dynamic allocation, contiguous segments)\n"
 	       "  --"OPT_SINGLE_FILE_SEGMENTS" Put all hugepage memory in single files\n"
 	       "  --"OPT_MATCH_ALLOCATIONS" Free hugepages exactly as allocated\n"
@@ -617,6 +618,20 @@ eal_parse_vfio_intr(const char *mode)
 			return 0;
 		}
 	}
+	return -1;
+}
+
+static int
+eal_parse_vfio_vf_token(const char *vf_token)
+{
+	struct internal_config *cfg = eal_get_internal_configuration();
+	rte_uuid_t uuid;
+
+	if (!rte_uuid_parse(vf_token, uuid)) {
+		rte_uuid_copy(cfg->vfio_vf_token, uuid);
+		return 0;
+	}
+
 	return -1;
 }
 
@@ -756,6 +771,16 @@ eal_parse_args(int argc, char **argv)
 			if (eal_parse_vfio_intr(optarg) < 0) {
 				RTE_LOG(ERR, EAL, "invalid parameters for --"
 						OPT_VFIO_INTR "\n");
+				eal_usage(prgname);
+				ret = -1;
+				goto out;
+			}
+			break;
+
+		case OPT_VFIO_VF_TOKEN_NUM:
+			if (eal_parse_vfio_vf_token(optarg) < 0) {
+				RTE_LOG(ERR, EAL, "invalid parameters for --"
+						OPT_VFIO_VF_TOKEN "\n");
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
@@ -1340,6 +1365,14 @@ rte_eal_vfio_intr_mode(void)
 		eal_get_internal_configuration();
 
 	return internal_conf->vfio_intr_mode;
+}
+
+void
+rte_eal_vfio_get_vf_token(rte_uuid_t vf_token)
+{
+	struct internal_config *cfg = eal_get_internal_configuration();
+
+	rte_uuid_copy(vf_token, cfg->vfio_vf_token);
 }
 
 int
