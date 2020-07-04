@@ -2007,51 +2007,58 @@ hns3_set_tso(struct hns3_desc *desc, uint64_t ol_flags,
 	desc->tx.mss = rte_cpu_to_le_16(rxm->tso_segsz);
 }
 
-static void
-fill_desc(struct hns3_tx_queue *txq, uint16_t tx_desc_id, struct rte_mbuf *rxm,
-	  bool first, int offset)
+static inline void
+hns3_fill_per_desc(struct hns3_desc *desc, struct rte_mbuf *rxm)
 {
-	struct hns3_desc *tx_ring = txq->tx_ring;
-	struct hns3_desc *desc = &tx_ring[tx_desc_id];
-	uint8_t frag_end = rxm->next == NULL ? 1 : 0;
+	desc->addr = rte_mbuf_data_iova(rxm);
+	desc->tx.send_size = rte_cpu_to_le_16(rte_pktmbuf_data_len(rxm));
+	desc->tx.tp_fe_sc_vld_ra_ri = rte_cpu_to_le_16(BIT(HNS3_TXD_VLD_B));
+}
+
+static void
+hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
+		     struct rte_mbuf *rxm)
+{
 	uint64_t ol_flags = rxm->ol_flags;
-	uint16_t size = rxm->data_len;
-	uint16_t rrcfv = 0;
 	uint32_t hdr_len;
 	uint32_t paylen;
-	uint32_t tmp;
 
-	desc->addr = rte_mbuf_data_iova(rxm) + offset;
-	desc->tx.send_size = rte_cpu_to_le_16(size);
-	hns3_set_bit(rrcfv, HNS3_TXD_VLD_B, 1);
-
-	if (first) {
-		hdr_len = rxm->l2_len + rxm->l3_len + rxm->l4_len;
-		hdr_len += (ol_flags & PKT_TX_TUNNEL_MASK) ?
+	hdr_len = rxm->l2_len + rxm->l3_len + rxm->l4_len;
+	hdr_len += (ol_flags & PKT_TX_TUNNEL_MASK) ?
 			   rxm->outer_l2_len + rxm->outer_l3_len : 0;
-		paylen = rxm->pkt_len - hdr_len;
-		desc->tx.paylen = rte_cpu_to_le_32(paylen);
-		hns3_set_tso(desc, ol_flags, paylen, rxm);
+	paylen = rxm->pkt_len - hdr_len;
+	desc->tx.paylen = rte_cpu_to_le_32(paylen);
+	hns3_set_tso(desc, ol_flags, paylen, rxm);
+
+	/*
+	 * Currently, hardware doesn't support more than two layers VLAN offload
+	 * in Tx direction based on hns3 network engine. So when the number of
+	 * VLANs in the packets represented by rxm plus the number of VLAN
+	 * offload by hardware such as PVID etc, exceeds two, the packets will
+	 * be discarded or the original VLAN of the packets will be overwitted
+	 * by hardware. When the PF PVID is enabled by calling the API function
+	 * named rte_eth_dev_set_vlan_pvid or the VF PVID is enabled by the hns3
+	 * PF kernel ether driver, the outer VLAN tag will always be the PVID.
+	 * To avoid the VLAN of Tx descriptor is overwritten by PVID, it should
+	 * be added to the position close to the IP header when PVID is enabled.
+	 */
+	if (!txq->pvid_state && ol_flags & (PKT_TX_VLAN_PKT |
+				PKT_TX_QINQ_PKT)) {
+		desc->tx.ol_type_vlan_len_msec |=
+				rte_cpu_to_le_32(BIT(HNS3_TXD_OVLAN_B));
+		if (ol_flags & PKT_TX_QINQ_PKT)
+			desc->tx.outer_vlan_tag =
+					rte_cpu_to_le_16(rxm->vlan_tci_outer);
+		else
+			desc->tx.outer_vlan_tag =
+					rte_cpu_to_le_16(rxm->vlan_tci);
 	}
 
-	hns3_set_bit(rrcfv, HNS3_TXD_FE_B, frag_end);
-	desc->tx.tp_fe_sc_vld_ra_ri = rte_cpu_to_le_16(rrcfv);
-
-	if (frag_end) {
-		if (ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
-			tmp = rte_le_to_cpu_32(desc->tx.type_cs_vlan_tso_len);
-			hns3_set_bit(tmp, HNS3_TXD_VLAN_B, 1);
-			desc->tx.type_cs_vlan_tso_len = rte_cpu_to_le_32(tmp);
-			desc->tx.vlan_tag = rte_cpu_to_le_16(rxm->vlan_tci);
-		}
-
-		if (ol_flags & PKT_TX_QINQ_PKT) {
-			tmp = rte_le_to_cpu_32(desc->tx.ol_type_vlan_len_msec);
-			hns3_set_bit(tmp, HNS3_TXD_OVLAN_B, 1);
-			desc->tx.ol_type_vlan_len_msec = rte_cpu_to_le_32(tmp);
-			desc->tx.outer_vlan_tag =
-				rte_cpu_to_le_16(rxm->vlan_tci_outer);
-		}
+	if (ol_flags & PKT_TX_QINQ_PKT ||
+	    ((ol_flags & PKT_TX_VLAN_PKT) && txq->pvid_state)) {
+		desc->tx.type_cs_vlan_tso_len |=
+					rte_cpu_to_le_32(BIT(HNS3_TXD_VLAN_B));
+		desc->tx.vlan_tag = rte_cpu_to_le_16(rxm->vlan_tci);
 	}
 }
 
@@ -2628,8 +2635,10 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct rte_net_hdr_lens hdr_lens = {0};
 	struct hns3_tx_queue *txq = tx_queue;
 	struct hns3_entry *tx_bak_pkt;
+	struct hns3_desc *tx_ring;
 	struct rte_mbuf *tx_pkt;
 	struct rte_mbuf *m_seg;
+	struct hns3_desc *desc;
 	uint32_t nb_hold = 0;
 	uint16_t tx_next_use;
 	uint16_t tx_pkt_num;
@@ -2644,6 +2653,7 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	tx_next_use   = txq->next_to_use;
 	tx_bd_max     = txq->nb_tx_desc;
 	tx_pkt_num = nb_pkts;
+	tx_ring = txq->tx_ring;
 
 	/* send packets */
 	tx_bak_pkt = &txq->sw_ring[tx_next_use];
@@ -2688,8 +2698,22 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			goto end_of_tx;
 
 		i = 0;
+		desc = &tx_ring[tx_next_use];
+
+		/*
+		 * If the packet is divided into multiple Tx Buffer Descriptors,
+		 * only need to fill vlan, paylen and tso into the first Tx
+		 * Buffer Descriptor.
+		 */
+		hns3_fill_first_desc(txq, desc, m_seg);
+
 		do {
-			fill_desc(txq, tx_next_use, m_seg, (i == 0), 0);
+			desc = &tx_ring[tx_next_use];
+			/*
+			 * Fill valid bits, DMA address and data length for each
+			 * Tx Buffer Descriptor.
+			 */
+			hns3_fill_per_desc(desc, m_seg);
 			tx_bak_pkt->mbuf = m_seg;
 			m_seg = m_seg->next;
 			tx_next_use++;
@@ -2701,6 +2725,10 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			i++;
 		} while (m_seg != NULL);
+
+		/* Add end flag for the last Tx Buffer Descriptor */
+		desc->tx.tp_fe_sc_vld_ra_ri |=
+				 rte_cpu_to_le_16(BIT(HNS3_TXD_FE_B));
 
 		nb_hold += i;
 		txq->next_to_use = tx_next_use;
