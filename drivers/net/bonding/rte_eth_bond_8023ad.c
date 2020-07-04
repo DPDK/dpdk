@@ -1676,9 +1676,6 @@ rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port)
 	dev = &rte_eth_devices[port];
 	internals = dev->data->dev_private;
 
-	if (check_for_bonded_ethdev(dev) != 0)
-		return -1;
-
 	if (bond_8023ad_slow_pkt_hw_filter_supported(port) != 0)
 		return -1;
 
@@ -1704,9 +1701,6 @@ rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port)
 
 	dev = &rte_eth_devices[port];
 	internals = dev->data->dev_private;
-
-	if (check_for_bonded_ethdev(dev) != 0)
-		return -1;
 
 	/* Device must be stopped to set up slow queue */
 	if (dev->data->dev_started)
