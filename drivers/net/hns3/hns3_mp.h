@@ -7,8 +7,8 @@
 
 void hns3_mp_req_start_rxtx(struct rte_eth_dev *dev);
 void hns3_mp_req_stop_rxtx(struct rte_eth_dev *dev);
-void hns3_mp_init_primary(void);
+int hns3_mp_init_primary(void);
 void hns3_mp_uninit_primary(void);
-void hns3_mp_init_secondary(void);
+int hns3_mp_init_secondary(void);
 
 #endif /* _HNS3_MP_H_ */

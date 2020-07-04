@@ -5448,12 +5448,25 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 	hns3_set_rxtx_function(eth_dev);
 	eth_dev->dev_ops = &hns3_eth_dev_ops;
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		hns3_mp_init_secondary();
+		ret = hns3_mp_init_secondary();
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to init for secondary "
+				     "process, ret = %d", ret);
+			goto err_mp_init_secondary;
+		}
+
 		hw->secondary_cnt++;
 		return 0;
 	}
 
-	hns3_mp_init_primary();
+	ret = hns3_mp_init_primary();
+	if (ret) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to init for primary process, ret = %d",
+			     ret);
+		goto err_mp_init_primary;
+	}
+
 	hw->adapter_state = HNS3_NIC_UNINITIALIZED;
 	hns->is_vf = false;
 	hw->data = eth_dev->data;
@@ -5514,7 +5527,12 @@ err_rte_zmalloc:
 
 err_init_pf:
 	rte_free(hw->reset.wait_data);
+
 err_init_reset:
+	hns3_mp_uninit_primary();
+
+err_mp_init_primary:
+err_mp_init_secondary:
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;

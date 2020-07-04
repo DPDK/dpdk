@@ -14,6 +14,8 @@
 #include "hns3_rxtx.h"
 #include "hns3_mp.h"
 
+static bool hns3_inited;
+
 /*
  * Initialize IPC message.
  *
@@ -192,9 +194,20 @@ void hns3_mp_req_stop_rxtx(struct rte_eth_dev *dev)
 /*
  * Initialize by primary process.
  */
-void hns3_mp_init_primary(void)
+int hns3_mp_init_primary(void)
 {
-	rte_mp_action_register(HNS3_MP_NAME, mp_primary_handle);
+	int ret;
+
+	if (!hns3_inited) {
+		/* primary is allowed to not support IPC */
+		ret = rte_mp_action_register(HNS3_MP_NAME, mp_primary_handle);
+		if (ret && rte_errno != ENOTSUP)
+			return ret;
+
+		hns3_inited = true;
+	}
+
+	return 0;
 }
 
 /*
@@ -202,13 +215,24 @@ void hns3_mp_init_primary(void)
  */
 void hns3_mp_uninit_primary(void)
 {
-	rte_mp_action_unregister(HNS3_MP_NAME);
+	if (hns3_inited)
+		rte_mp_action_unregister(HNS3_MP_NAME);
 }
 
 /*
  * Initialize by secondary process.
  */
-void hns3_mp_init_secondary(void)
+int hns3_mp_init_secondary(void)
 {
-	rte_mp_action_register(HNS3_MP_NAME, mp_secondary_handle);
+	int ret;
+
+	if (!hns3_inited) {
+		ret = rte_mp_action_register(HNS3_MP_NAME, mp_secondary_handle);
+		if (ret)
+			return ret;
+
+		hns3_inited = true;
+	}
+
+	return 0;
 }
