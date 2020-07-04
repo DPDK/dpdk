@@ -25,7 +25,16 @@ Features of the HNS3 PMD are:
 - Jumbo frames
 - Link state information
 - Interrupt mode for RX
-- VLAN stripping
+- VLAN stripping and inserting
+- QinQ inserting
+- DCB
+- Scattered and gather for TX and RX
+- Flow director
+- Dump register
+- SR-IOV VF
+- Multi-process
+- MAC/VLAN filter
+- MTU update
 - NUMA support
 
 Prerequisites
