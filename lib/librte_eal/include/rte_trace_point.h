@@ -34,10 +34,6 @@ extern "C" {
 /** The tracepoint object. */
 typedef uint64_t rte_trace_point_t;
 
-/** Macro to define the tracepoint. */
-#define RTE_TRACE_POINT_DEFINE(tp) \
-rte_trace_point_t __attribute__((section("__rte_trace_point"))) __##tp
-
 /**
  * Macro to define the tracepoint arguments in RTE_TRACE_POINT macro.
 
@@ -69,7 +65,7 @@ _tp _args \
  *
  * @param tp
  *   Tracepoint object. Before using the tracepoint, an application needs to
- *   define the tracepoint using RTE_TRACE_POINT_DEFINE macro.
+ *   define the tracepoint using RTE_TRACE_POINT_REGISTER macro.
  * @param args
  *   C function style input arguments to define the arguments to tracepoint
  *   function.
@@ -77,7 +73,7 @@ _tp _args \
  *   Define the payload of trace function. The payload will be formed using
  *   rte_trace_point_emit_* macros. Use ";" delimiter between two payloads.
  *
- * @see RTE_TRACE_POINT_ARGS, RTE_TRACE_POINT_DEFINE, rte_trace_point_emit_*
+ * @see RTE_TRACE_POINT_ARGS, RTE_TRACE_POINT_REGISTER, rte_trace_point_emit_*
  */
 #define RTE_TRACE_POINT(tp, args, ...) \
 	__RTE_TRACE_POINT(generic, tp, args, __VA_ARGS__)
@@ -90,7 +86,7 @@ _tp _args \
  *
  * @param tp
  *   Tracepoint object. Before using the tracepoint, an application needs to
- *   define the tracepoint using RTE_TRACE_POINT_DEFINE macro.
+ *   define the tracepoint using RTE_TRACE_POINT_REGISTER macro.
  * @param args
  *   C function style input arguments to define the arguments to tracepoint.
  *   function.
@@ -109,7 +105,7 @@ _tp _args \
  * Register a tracepoint.
  *
  * @param trace
- *   The tracepoint object created using RTE_TRACE_POINT_DEFINE.
+ *   The tracepoint object created using RTE_TRACE_POINT_REGISTER.
  * @param name
  *   The name of the tracepoint object.
  * @return
@@ -256,7 +252,7 @@ void __rte_trace_point_emit_field(size_t sz, const char *field,
  * Use RTE_TRACE_POINT_REGISTER macro for tracepoint registration.
  *
  * @param trace
- *   The tracepoint object created using RTE_TRACE_POINT_DEFINE.
+ *   The tracepoint object created using RTE_TRACE_POINT_REGISTER.
  * @param name
  *   The name of the tracepoint object.
  * @param register_fn

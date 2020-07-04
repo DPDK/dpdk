@@ -15,8 +15,12 @@
 RTE_DECLARE_PER_LCORE(volatile int, trace_point_sz);
 
 #define RTE_TRACE_POINT_REGISTER(trace, name) \
+rte_trace_point_t __attribute__((section("__rte_trace_point"))) __##trace; \
+RTE_INIT(trace##_init) \
+{ \
 	__rte_trace_point_register(&__##trace, RTE_STR(name), \
-		(void (*)(void)) trace)
+		(void (*)(void)) trace); \
+}
 
 #define __rte_trace_point_emit_header_generic(t) \
 	RTE_PER_LCORE(trace_point_sz) = __RTE_TRACE_EVENT_HEADER_SZ
