@@ -123,6 +123,7 @@ M: Bruce Richardson <bruce.richardson@intel.com>
 F: meson.build
 F: meson_options.txt
 F: config/rte_config.h
+F: buildtools/binutils-avx512-check.sh
 F: buildtools/call-sphinx-build.py
 F: buildtools/gen-pmdinfo-cfile.sh
 F: buildtools/list-dir-globs.py
