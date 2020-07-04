@@ -1979,12 +1979,11 @@ hns3_pkt_is_tso(struct rte_mbuf *m)
 }
 
 static void
-hns3_set_tso(struct hns3_desc *desc,
-	     uint64_t ol_flags, struct rte_mbuf *rxm)
+hns3_set_tso(struct hns3_desc *desc, uint64_t ol_flags,
+		uint32_t paylen, struct rte_mbuf *rxm)
 {
-	uint32_t paylen, hdr_len;
-	uint32_t tmp;
 	uint8_t l2_len = rxm->l2_len;
+	uint32_t tmp;
 
 	if (!hns3_pkt_is_tso(rxm))
 		return;
@@ -1992,10 +1991,6 @@ hns3_set_tso(struct hns3_desc *desc,
 	if (hns3_tso_proc_tunnel(desc, ol_flags, rxm, &l2_len))
 		return;
 
-	hdr_len = rxm->l2_len + rxm->l3_len + rxm->l4_len;
-	hdr_len += (ol_flags & PKT_TX_TUNNEL_MASK) ?
-		    rxm->outer_l2_len + rxm->outer_l3_len : 0;
-	paylen = rxm->pkt_len - hdr_len;
 	if (paylen <= rxm->tso_segsz)
 		return;
 
@@ -2036,7 +2031,7 @@ fill_desc(struct hns3_tx_queue *txq, uint16_t tx_desc_id, struct rte_mbuf *rxm,
 			   rxm->outer_l2_len + rxm->outer_l3_len : 0;
 		paylen = rxm->pkt_len - hdr_len;
 		desc->tx.paylen = rte_cpu_to_le_32(paylen);
-		hns3_set_tso(desc, ol_flags, rxm);
+		hns3_set_tso(desc, ol_flags, paylen, rxm);
 	}
 
 	hns3_set_bit(rrcfv, HNS3_TXD_FE_B, frag_end);
