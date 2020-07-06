@@ -1560,14 +1560,21 @@ STATIC s32 e1000_setup_copper_link_82575(struct e1000_hw *hw)
 	}
 	switch (hw->phy.type) {
 	case e1000_phy_i210:
+	/* Fall through */
 	case e1000_phy_m88:
 		switch (hw->phy.id) {
 		case I347AT4_E_PHY_ID:
+		/* Fall through */
 		case M88E1112_E_PHY_ID:
+		/* Fall through */
 		case M88E1340M_E_PHY_ID:
+		/* Fall through */
 		case M88E1543_E_PHY_ID:
+		/* Fall through */
 		case M88E1512_E_PHY_ID:
+		/* Fall through */
 		case I210_I_PHY_ID:
+		/* Fall through */
 			ret_val = e1000_copper_link_setup_m88_gen2(hw);
 			break;
 		default:
@@ -1653,7 +1660,7 @@ STATIC s32 e1000_setup_serdes_link_82575(struct e1000_hw *hw)
 	case E1000_CTRL_EXT_LINK_MODE_1000BASE_KX:
 		/* disable PCS autoneg and support parallel detect only */
 		pcs_autoneg = false;
-		/* fall through to default case */
+		/* Fall through */
 	default:
 		if (hw->mac.type == e1000_82575 ||
 		    hw->mac.type == e1000_82576) {
@@ -1779,7 +1786,7 @@ STATIC s32 e1000_get_media_type_82575(struct e1000_hw *hw)
 			dev_spec->sgmii_active = true;
 			break;
 		}
-		/* fall through for I2C based SGMII */
+		/* Fall through for I2C based SGMII */
 	case E1000_CTRL_EXT_LINK_MODE_PCIE_SERDES:
 		/* read media type from SFP EEPROM */
 		ret_val = e1000_set_sfp_media_type_82575(hw);
