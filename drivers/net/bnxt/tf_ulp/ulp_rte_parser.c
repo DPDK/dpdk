@@ -1415,3 +1415,87 @@ ulp_rte_phy_port_act_handler(const struct rte_flow_action *action_item,
 	ULP_BITMAP_SET(prm->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VPORT);
 	return BNXT_TF_RC_SUCCESS;
 }
+
+/* Function to handle the parsing of RTE Flow action pop vlan. */
+int32_t
+ulp_rte_of_pop_vlan_act_handler(const struct rte_flow_action *a __rte_unused,
+				struct ulp_rte_parser_params *params)
+{
+	/* Update the act_bitmap with pop */
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_POP_VLAN);
+	return BNXT_TF_RC_SUCCESS;
+}
+
+/* Function to handle the parsing of RTE Flow action push vlan. */
+int32_t
+ulp_rte_of_push_vlan_act_handler(const struct rte_flow_action *action_item,
+				 struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_of_push_vlan *push_vlan;
+	uint16_t ethertype;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+
+	push_vlan = action_item->conf;
+	if (push_vlan) {
+		ethertype = push_vlan->ethertype;
+		if (tfp_cpu_to_be_16(ethertype) != RTE_ETHER_TYPE_VLAN) {
+			BNXT_TF_DBG(ERR,
+				    "Parse Err: Ethertype not supported\n");
+			return BNXT_TF_RC_PARSE_ERR;
+		}
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN],
+		       &ethertype, BNXT_ULP_ACT_PROP_SZ_PUSH_VLAN);
+		/* Update the hdr_bitmap with push vlan */
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_ACTION_BIT_PUSH_VLAN);
+		return BNXT_TF_RC_SUCCESS;
+	}
+	BNXT_TF_DBG(ERR, "Parse Error: Push vlan arg is invalid\n");
+	return BNXT_TF_RC_ERROR;
+}
+
+/* Function to handle the parsing of RTE Flow action set vlan id. */
+int32_t
+ulp_rte_of_set_vlan_vid_act_handler(const struct rte_flow_action *action_item,
+				    struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_of_set_vlan_vid *vlan_vid;
+	uint32_t vid;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+
+	vlan_vid = action_item->conf;
+	if (vlan_vid && vlan_vid->vlan_vid) {
+		vid = vlan_vid->vlan_vid;
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID],
+		       &vid, BNXT_ULP_ACT_PROP_SZ_SET_VLAN_VID);
+		/* Update the hdr_bitmap with vlan vid */
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_ACTION_BIT_SET_VLAN_VID);
+		return BNXT_TF_RC_SUCCESS;
+	}
+	BNXT_TF_DBG(ERR, "Parse Error: Vlan vid arg is invalid\n");
+	return BNXT_TF_RC_ERROR;
+}
+
+/* Function to handle the parsing of RTE Flow action set vlan pcp. */
+int32_t
+ulp_rte_of_set_vlan_pcp_act_handler(const struct rte_flow_action *action_item,
+				    struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_of_set_vlan_pcp *vlan_pcp;
+	uint8_t pcp;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+
+	vlan_pcp = action_item->conf;
+	if (vlan_pcp) {
+		pcp = vlan_pcp->vlan_pcp;
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP],
+		       &pcp, BNXT_ULP_ACT_PROP_SZ_SET_VLAN_PCP);
+		/* Update the hdr_bitmap with vlan vid */
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_ACTION_BIT_SET_VLAN_PCP);
+		return BNXT_TF_RC_SUCCESS;
+	}
+	BNXT_TF_DBG(ERR, "Parse Error: Vlan pcp arg is invalid\n");
+	return BNXT_TF_RC_ERROR;
+}

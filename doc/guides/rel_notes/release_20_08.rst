@@ -98,6 +98,7 @@ New Features
   * Added support for rte_flow_query for COUNT action.
   * Added support for rx_burst_mode_get and tx_burst_mode_get.
   * Added vector mode support for ARM CPUs.
+  * Added support for VLAN push and pop actions.
 
 * **Updated Mellanox mlx5 driver.**
 

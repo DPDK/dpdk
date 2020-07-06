@@ -41,12 +41,12 @@ uint32_t ulp_act_prop_map_table[] = {
 		BNXT_ULP_ACT_PROP_SZ_SET_MAC_SRC,
 	[BNXT_ULP_ACT_PROP_IDX_SET_MAC_DST] =
 		BNXT_ULP_ACT_PROP_SZ_SET_MAC_DST,
-	[BNXT_ULP_ACT_PROP_IDX_OF_PUSH_VLAN] =
-		BNXT_ULP_ACT_PROP_SZ_OF_PUSH_VLAN,
-	[BNXT_ULP_ACT_PROP_IDX_OF_SET_VLAN_PCP] =
-		BNXT_ULP_ACT_PROP_SZ_OF_SET_VLAN_PCP,
-	[BNXT_ULP_ACT_PROP_IDX_OF_SET_VLAN_VID] =
-		BNXT_ULP_ACT_PROP_SZ_OF_SET_VLAN_VID,
+	[BNXT_ULP_ACT_PROP_IDX_PUSH_VLAN] =
+		BNXT_ULP_ACT_PROP_SZ_PUSH_VLAN,
+	[BNXT_ULP_ACT_PROP_IDX_SET_VLAN_PCP] =
+		BNXT_ULP_ACT_PROP_SZ_SET_VLAN_PCP,
+	[BNXT_ULP_ACT_PROP_IDX_SET_VLAN_VID] =
+		BNXT_ULP_ACT_PROP_SZ_SET_VLAN_VID,
 	[BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC] =
 		BNXT_ULP_ACT_PROP_SZ_SET_IPV4_SRC,
 	[BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST] =
@@ -183,20 +183,20 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 		.proto_act_func          = NULL
 	},
 	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = {
-		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-		.proto_act_func          = NULL
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_of_pop_vlan_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = {
-		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-		.proto_act_func          = NULL
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_of_push_vlan_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID] = {
-		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-		.proto_act_func          = NULL
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_of_set_vlan_vid_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP] = {
-		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-		.proto_act_func          = NULL
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_of_set_vlan_pcp_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_OF_POP_MPLS] = {
 		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
