@@ -931,7 +931,6 @@ struct e1000_shadow_ram {
 
 #define E1000_SHADOW_RAM_WORDS		2048
 
-#ifdef ULP_SUPPORT
 /* I218 PHY Ultra Low Power (ULP) states */
 enum e1000_ulp_state {
 	e1000_ulp_state_unknown,
@@ -939,7 +938,6 @@ enum e1000_ulp_state {
 	e1000_ulp_state_on,
 };
 
-#endif /* ULP_SUPPORT */
 struct e1000_dev_spec_ich8lan {
 	bool kmrn_lock_loss_workaround_enabled;
 	struct e1000_shadow_ram shadow_ram[E1000_SHADOW_RAM_WORDS];
@@ -949,12 +947,10 @@ struct e1000_dev_spec_ich8lan {
 	bool disable_k1_off;
 	bool eee_disable;
 	u16 eee_lp_ability;
-#ifdef ULP_SUPPORT
 	enum e1000_ulp_state ulp_state;
 	bool ulp_capability_disabled;
 	bool during_suspend_flow;
 	bool during_dpg_exit;
-#endif /* ULP_SUPPORT */
 	u16 lat_enc;
 	u16 max_ltr_enc;
 	bool smbus_disable;

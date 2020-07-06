@@ -128,9 +128,7 @@
 	E1000_RXDEXT_STATERR_CXE |	\
 	E1000_RXDEXT_STATERR_RXE)
 
-#if !defined(EXTERNAL_RELEASE) || defined(E1000E_MQ)
 #define E1000_MRQC_ENABLE_RSS_2Q		0x00000001
-#endif /* !EXTERNAL_RELEASE || E1000E_MQ */
 #define E1000_MRQC_RSS_FIELD_MASK		0xFFFF0000
 #define E1000_MRQC_RSS_FIELD_IPV4_TCP		0x00010000
 #define E1000_MRQC_RSS_FIELD_IPV4		0x00020000
@@ -1221,9 +1219,7 @@
 #define PCIE_LINK_SPEED_5000		0x02
 #define PCIE_DEVICE_CONTROL2_16ms	0x0005
 
-#ifndef ETH_ADDR_LEN
 #define ETH_ADDR_LEN			6
-#endif
 
 #define PHY_REVISION_MASK		0xFFFFFFF0
 #define MAX_PHY_REG_ADDRESS		0x1F  /* 5 bit address bus (0-0x1F) */
@@ -1490,10 +1486,7 @@
 /* Lan ID bit field offset in status register */
 #define E1000_STATUS_LAN_ID_OFFSET	2
 #define E1000_VFTA_ENTRIES		128
-#ifndef E1000_UNUSEDARG
+
 #define E1000_UNUSEDARG
-#endif /* E1000_UNUSEDARG */
-#ifndef ERROR_REPORT
 #define ERROR_REPORT(fmt)	do { } while (0)
-#endif /* ERROR_REPORT */
 #endif /* _E1000_DEFINES_H_ */

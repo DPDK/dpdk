@@ -26,7 +26,6 @@
 #define E1000_SW_SYNCH_MB	0x00000100
 #define E1000_STAT_DEV_RST_SET	0x00100000
 
-#ifdef E1000_BIT_FIELDS
 struct e1000_adv_data_desc {
 	__le64 buffer_addr;    /* Address of the descriptor's data buffer */
 	union {
@@ -89,7 +88,6 @@ struct e1000_adv_context_desc {
 		} fields;
 	} l4_setup;
 };
-#endif
 
 /* SRRCTL bit definitions */
 #define E1000_SRRCTL_BSIZEPKT_SHIFT		10 /* Shift _right_ */

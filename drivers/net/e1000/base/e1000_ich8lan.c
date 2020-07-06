@@ -51,11 +51,9 @@ STATIC bool e1000_check_mng_mode_pchlan(struct e1000_hw *hw);
 STATIC int  e1000_rar_set_pch2lan(struct e1000_hw *hw, u8 *addr, u32 index);
 STATIC int  e1000_rar_set_pch_lpt(struct e1000_hw *hw, u8 *addr, u32 index);
 STATIC s32 e1000_sw_lcd_config_ich8lan(struct e1000_hw *hw);
-#ifndef NO_NON_BLOCKING_PHY_MTA_UPDATE_SUPPORT
 STATIC void e1000_update_mc_addr_list_pch2lan(struct e1000_hw *hw,
 					      u8 *mc_addr_list,
 					      u32 mc_addr_count);
-#endif /* NO_NON_BLOCKING_PHY_MTA_UPDATE_SUPPORT */
 STATIC s32  e1000_check_reset_block_ich8lan(struct e1000_hw *hw);
 STATIC s32  e1000_phy_hw_reset_ich8lan(struct e1000_hw *hw);
 STATIC s32  e1000_set_lplu_state_pchlan(struct e1000_hw *hw, bool active);
@@ -297,13 +295,11 @@ STATIC s32 e1000_init_phy_workarounds_pchlan(struct e1000_hw *hw)
 	 */
 	e1000_gate_hw_phy_config_ich8lan(hw, true);
 
-#ifdef ULP_SUPPORT
 	/* It is not possible to be certain of the current state of ULP
 	 * so forcibly disable it.
 	 */
 	hw->dev_spec.ich8lan.ulp_state = e1000_ulp_state_unknown;
 
-#endif /* ULP_SUPPORT */
 	ret_val = hw->phy.ops.acquire(hw);
 	if (ret_val) {
 		DEBUGOUT("Failed to initialize PHY flow\n");
@@ -701,9 +697,7 @@ STATIC s32 e1000_init_nvm_params_ich8lan(struct e1000_hw *hw)
 STATIC s32 e1000_init_mac_params_ich8lan(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
-#if defined(QV_RELEASE) || !defined(NO_PCH_LPT_B0_SUPPORT)
 	u16 pci_cfg;
-#endif /* QV_RELEASE || !defined(NO_PCH_LPT_B0_SUPPORT) */
 
 	DEBUGFUNC("e1000_init_mac_params_ich8lan");
 
@@ -780,7 +774,6 @@ STATIC s32 e1000_init_mac_params_ich8lan(struct e1000_hw *hw)
 			e1000_update_mc_addr_list_pch2lan;
 		/* fall-through */
 	case e1000_pchlan:
-#if defined(QV_RELEASE) || !defined(NO_PCH_LPT_B0_SUPPORT)
 		/* save PCH revision_id */
 		e1000_read_pci_cfg(hw, E1000_PCI_REVISION_ID_REG, &pci_cfg);
 		/* SPT uses full byte for revision ID,
@@ -790,7 +783,6 @@ STATIC s32 e1000_init_mac_params_ich8lan(struct e1000_hw *hw)
 			hw->revision_id = (u8)(pci_cfg &= 0x00FF);
 		else
 			hw->revision_id = (u8)(pci_cfg &= 0x000F);
-#endif /* QV_RELEASE || !defined(NO_PCH_LPT_B0_SUPPORT) */
 		/* check management mode */
 		mac->ops.check_mng_mode = e1000_check_mng_mode_pchlan;
 		/* ID LED init */
@@ -1074,7 +1066,6 @@ update_fextnvm6:
 	return ret_val;
 }
 
-#ifdef ULP_SUPPORT
 /**
  *  e1000_enable_ulp_lpt_lp - configure Ultra Low Power mode for LynxPoint-LP
  *  @hw: pointer to the HW structure
@@ -1453,7 +1444,6 @@ out:
 	return ret_val;
 }
 
-#endif /* ULP_SUPPORT */
 
 
 /**
@@ -2080,7 +2070,6 @@ out:
 	return -E1000_ERR_CONFIG;
 }
 
-#ifndef NO_NON_BLOCKING_PHY_MTA_UPDATE_SUPPORT
 /**
  *  e1000_update_mc_addr_list_pch2lan - Update Multicast addresses
  *  @hw: pointer to the HW structure
@@ -2125,7 +2114,6 @@ release:
 	hw->phy.ops.release(hw);
 }
 
-#endif /* NO_NON_BLOCKING_PHY_MTA_UPDATE_SUPPORT */
 /**
  *  e1000_check_reset_block_ich8lan - Check if PHY reset is blocked
  *  @hw: pointer to the HW structure
@@ -2677,7 +2665,6 @@ release:
 	hw->phy.ops.release(hw);
 }
 
-#ifndef CRC32_OS_SUPPORT
 STATIC u32 e1000_calc_rx_da_crc(u8 mac[])
 {
 	u32 poly = 0xEDB88320;	/* Polynomial for 802.3 CRC calculation */
@@ -2696,7 +2683,6 @@ STATIC u32 e1000_calc_rx_da_crc(u8 mac[])
 	return ~crc;
 }
 
-#endif /* CRC32_OS_SUPPORT */
 /**
  *  e1000_lv_jumbo_workaround_ich8lan - required for jumbo frame operation
  *  with 82579 PHY
@@ -2741,13 +2727,8 @@ s32 e1000_lv_jumbo_workaround_ich8lan(struct e1000_hw *hw, bool enable)
 			mac_addr[4] = (addr_high & 0xFF);
 			mac_addr[5] = ((addr_high >> 8) & 0xFF);
 
-#ifndef CRC32_OS_SUPPORT
 			E1000_WRITE_REG(hw, E1000_PCH_RAICC(i),
 					e1000_calc_rx_da_crc(mac_addr));
-#else /* CRC32_OS_SUPPORT */
-			E1000_WRITE_REG(hw, E1000_PCH_RAICC(i),
-					E1000_CRC32(ETH_ADDR_LEN, mac_addr));
-#endif /* CRC32_OS_SUPPORT */
 		}
 
 		/* Write Rx addresses to the PHY */
