@@ -213,6 +213,8 @@ struct bnxt_ulp_mapper_result_field_info {
 	enum bnxt_ulp_mapper_opc	result_opcode;
 	uint16_t			field_bit_size;
 	uint8_t				result_operand[16];
+	uint8_t				result_operand_true[16];
+	uint8_t				result_operand_false[16];
 };
 
 struct bnxt_ulp_mapper_ident_info {

@@ -841,7 +841,73 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 
 		break;
+	case BNXT_ULP_MAPPER_OPC_IF_ACT_BIT_THEN_ACT_PROP_ELSE_CONST:
+		if (!ulp_operand_read(fld->result_operand,
+				      (uint8_t *)&act_bit, sizeof(uint64_t))) {
+			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			return -EINVAL;
+		}
+		act_bit = tfp_be_to_cpu_64(act_bit);
+		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits, act_bit)) {
+			/* Action bit is set so consider operand_true */
+			if (!ulp_operand_read(fld->result_operand_true,
+					      (uint8_t *)&idx,
+					      sizeof(uint16_t))) {
+				BNXT_TF_DBG(ERR, "%s operand read failed\n",
+					    name);
+				return -EINVAL;
+			}
+			idx = tfp_be_to_cpu_16(idx);
+			if (idx >= BNXT_ULP_ACT_PROP_IDX_LAST) {
+				BNXT_TF_DBG(ERR, "%s act_prop[%d] oob\n",
+					    name, idx);
+				return -EINVAL;
+			}
+			val = &parms->act_prop->act_details[idx];
+			field_size = ulp_mapper_act_prop_size_get(idx);
+			if (fld->field_bit_size < ULP_BYTE_2_BITS(field_size)) {
+				field_size  = field_size -
+				    ((fld->field_bit_size + 7) / 8);
+				val += field_size;
+			}
+			if (!ulp_blob_push(blob, val, fld->field_bit_size)) {
+				BNXT_TF_DBG(ERR, "%s push field failed\n",
+					    name);
+				return -EINVAL;
+			}
+		} else {
+			/* action bit is not set, use the operand false */
+			val = fld->result_operand_false;
+			if (!ulp_blob_push(blob, val, fld->field_bit_size)) {
+				BNXT_TF_DBG(ERR, "%s failed to add field\n",
+					    name);
+				return -EINVAL;
+			}
+		}
+		break;
+	case BNXT_ULP_MAPPER_OPC_IF_ACT_BIT_THEN_CONST_ELSE_CONST:
+		if (!ulp_operand_read(fld->result_operand,
+				      (uint8_t *)&act_bit, sizeof(uint64_t))) {
+			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			return -EINVAL;
+		}
+		act_bit = tfp_be_to_cpu_64(act_bit);
+		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits, act_bit)) {
+			/* Action bit is set so consider operand_true */
+			val = fld->result_operand_true;
+		} else {
+			/* action bit is not set, use the operand false */
+			val = fld->result_operand_false;
+		}
+		if (!ulp_blob_push(blob, val, fld->field_bit_size)) {
+			BNXT_TF_DBG(ERR, "%s failed to add field\n",
+				    name);
+			return -EINVAL;
+		}
+		break;
 	default:
+		BNXT_TF_DBG(ERR, "invalid result mapper opcode 0x%x\n",
+			    fld->result_opcode);
 		return -EINVAL;
 	}
 	return 0;
@@ -973,6 +1039,9 @@ ulp_mapper_keymask_field_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	default:
+		BNXT_TF_DBG(ERR, "invalid keymask mapper opcode 0x%x\n",
+			    opcode);
+		return -EINVAL;
 		break;
 	}
 
