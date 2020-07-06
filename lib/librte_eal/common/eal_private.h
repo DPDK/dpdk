@@ -699,4 +699,14 @@ eal_get_internal_configuration(void);
 rte_usage_hook_t
 eal_get_application_usage_hook(void);
 
+/**
+ * Init per-lcore info in current thread.
+ *
+ * @param lcore_id
+ *   identifier of lcore.
+ * @param cpuset
+ *   CPU affinity for this thread.
+ */
+void __rte_thread_init(unsigned int lcore_id, rte_cpuset_t *cpuset);
+
 #endif /* _EAL_PRIVATE_H_ */

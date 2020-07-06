@@ -333,7 +333,8 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	eal_thread_init_master(config->master_lcore);
+	__rte_thread_init(config->master_lcore,
+		&lcore_config[config->master_lcore].cpuset);
 
 	bscan = rte_bus_scan();
 	if (bscan < 0) {

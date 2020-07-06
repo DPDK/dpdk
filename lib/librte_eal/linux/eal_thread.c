@@ -66,29 +66,6 @@ finish:
 	return rc;
 }
 
-/* set affinity for current EAL thread */
-static int
-eal_thread_set_affinity(void)
-{
-	unsigned lcore_id = rte_lcore_id();
-
-	/* acquire system unique id  */
-	rte_gettid();
-
-	/* update EAL thread core affinity */
-	return rte_thread_set_affinity(&lcore_config[lcore_id].cpuset);
-}
-
-void eal_thread_init_master(unsigned lcore_id)
-{
-	/* set the lcore ID in per-lcore memory area */
-	RTE_PER_LCORE(_lcore_id) = lcore_id;
-
-	/* set CPU affinity */
-	if (eal_thread_set_affinity() < 0)
-		rte_panic("cannot set affinity\n");
-}
-
 /* main loop of threads */
 __rte_noreturn void *
 eal_thread_loop(__rte_unused void *arg)
@@ -113,19 +90,12 @@ eal_thread_loop(__rte_unused void *arg)
 	m2s = lcore_config[lcore_id].pipe_master2slave[0];
 	s2m = lcore_config[lcore_id].pipe_slave2master[1];
 
-	/* set the lcore ID in per-lcore memory area */
-	RTE_PER_LCORE(_lcore_id) = lcore_id;
-
-	/* set CPU affinity */
-	if (eal_thread_set_affinity() < 0)
-		rte_panic("cannot set affinity\n");
+	__rte_thread_init(lcore_id, &lcore_config[lcore_id].cpuset);
 
 	ret = eal_thread_dump_affinity(cpuset, sizeof(cpuset));
-
 	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
 		lcore_id, (uintptr_t)thread_id, cpuset, ret == 0 ? "" : "...");
 
-	__rte_trace_mem_per_thread_alloc();
 	rte_eal_trace_thread_lcore_ready(lcore_id, cpuset);
 
 	/* read on our pipe to get commands */

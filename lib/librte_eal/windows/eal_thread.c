@@ -53,13 +53,6 @@ rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int slave_id)
 	return 0;
 }
 
-void
-eal_thread_init_master(unsigned int lcore_id)
-{
-	/* set the lcore ID in per-lcore memory area */
-	RTE_PER_LCORE(_lcore_id) = lcore_id;
-}
-
 /* main loop of threads */
 void *
 eal_thread_loop(void *arg __rte_unused)
@@ -84,8 +77,7 @@ eal_thread_loop(void *arg __rte_unused)
 	m2s = lcore_config[lcore_id].pipe_master2slave[0];
 	s2m = lcore_config[lcore_id].pipe_slave2master[1];
 
-	/* set the lcore ID in per-lcore memory area */
-	RTE_PER_LCORE(_lcore_id) = lcore_id;
+	__rte_thread_init(lcore_id, &lcore_config[lcore_id].cpuset);
 
 	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s])\n",
 		lcore_id, (uintptr_t)thread_id, cpuset);

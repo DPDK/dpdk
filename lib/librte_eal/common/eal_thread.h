@@ -16,14 +16,6 @@
 __rte_noreturn void *eal_thread_loop(void *arg);
 
 /**
- * Init per-lcore info for master thread
- *
- * @param lcore_id
- *   identifier of master lcore
- */
-void eal_thread_init_master(unsigned lcore_id);
-
-/**
  * Get the NUMA socket id from cpu id.
  * This function is private to EAL.
  *
