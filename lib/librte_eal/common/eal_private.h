@@ -401,7 +401,8 @@ uint64_t get_tsc_freq_arch(void);
  *
  * @return
  *   - the id of a lcore with role ROLE_NON_EAL on success.
- *   - RTE_MAX_LCORE if none was available.
+ *   - RTE_MAX_LCORE if none was available or initializing was refused (see
+ *     rte_lcore_callback_register).
  */
 unsigned int eal_lcore_non_eal_allocate(void);
 

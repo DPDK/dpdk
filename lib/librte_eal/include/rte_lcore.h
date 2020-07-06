@@ -230,6 +230,76 @@ unsigned int rte_get_next_lcore(unsigned int i, int skip_master, int wrap);
 	     i = rte_get_next_lcore(i, 1, 0))
 
 /**
+ * Callback prototype for initializing lcores.
+ *
+ * @param lcore_id
+ *   The lcore to consider.
+ * @param arg
+ *   An opaque pointer passed at callback registration.
+ * @return
+ *   - -1 when refusing this operation,
+ *   - 0 otherwise.
+ */
+typedef int (*rte_lcore_init_cb)(unsigned int lcore_id, void *arg);
+
+/**
+ * Callback prototype for uninitializing lcores.
+ *
+ * @param lcore_id
+ *   The lcore to consider.
+ * @param arg
+ *   An opaque pointer passed at callback registration.
+ */
+typedef void (*rte_lcore_uninit_cb)(unsigned int lcore_id, void *arg);
+
+/**
+ * Register callbacks invoked when initializing and uninitializing a lcore.
+ *
+ * This function calls the init callback with all initialized lcores.
+ * Any error reported by the init callback triggers a rollback calling the
+ * uninit callback for each lcore.
+ * If this step succeeds, the callbacks are put in the lcore callbacks list
+ * that will get called for each lcore allocation/release.
+ *
+ * Note: callbacks execution is serialised under a lock protecting the lcores
+ * and callbacks list.
+ *
+ * @param name
+ *   A name serving as a small description for this callback.
+ * @param init
+ *   The callback invoked when a lcore_id is initialized.
+ *   init can be NULL.
+ * @param uninit
+ *   The callback invoked when a lcore_id is uninitialized.
+ *   uninit can be NULL.
+ * @param arg
+ *   An optional argument that gets passed to the callback when it gets
+ *   invoked.
+ * @return
+ *   On success, returns an opaque pointer for the registered object.
+ *   On failure (either memory allocation issue in the function itself or an
+ *   error is returned by the init callback itself), returns NULL.
+ */
+__rte_experimental
+void *
+rte_lcore_callback_register(const char *name, rte_lcore_init_cb init,
+	rte_lcore_uninit_cb uninit, void *arg);
+
+/**
+ * Unregister callbacks previously registered with rte_lcore_callback_register.
+ *
+ * This function calls the uninit callback with all initialized lcores.
+ * The callbacks are then removed from the lcore callbacks list.
+ *
+ * @param handle
+ *   The handle pointer returned by a former successful call to
+ *   rte_lcore_callback_register.
+ */
+__rte_experimental
+void
+rte_lcore_callback_unregister(void *handle);
+
+/**
  * Set core affinity of the current thread.
  * Support both EAL and non-EAL thread and update TLS.
  *

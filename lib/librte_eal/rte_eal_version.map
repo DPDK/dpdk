@@ -396,6 +396,8 @@ EXPERIMENTAL {
 
 	# added in 20.08
 	rte_eal_vfio_get_vf_token;
+	rte_lcore_callback_register;
+	rte_lcore_callback_unregister;
 	rte_thread_register;
 	rte_thread_unregister;
 };

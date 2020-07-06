@@ -232,11 +232,124 @@ rte_socket_id_by_idx(unsigned int idx)
 }
 
 static rte_spinlock_t lcore_lock = RTE_SPINLOCK_INITIALIZER;
+struct lcore_callback {
+	TAILQ_ENTRY(lcore_callback) next;
+	char *name;
+	rte_lcore_init_cb init;
+	rte_lcore_uninit_cb uninit;
+	void *arg;
+};
+static TAILQ_HEAD(lcore_callbacks_head, lcore_callback) lcore_callbacks =
+	TAILQ_HEAD_INITIALIZER(lcore_callbacks);
+
+static int
+callback_init(struct lcore_callback *callback, unsigned int lcore_id)
+{
+	if (callback->init == NULL)
+		return 0;
+	RTE_LOG(DEBUG, EAL, "Call init for lcore callback %s, lcore_id %u\n",
+		callback->name, lcore_id);
+	return callback->init(lcore_id, callback->arg);
+}
+
+static void
+callback_uninit(struct lcore_callback *callback, unsigned int lcore_id)
+{
+	if (callback->uninit == NULL)
+		return;
+	RTE_LOG(DEBUG, EAL, "Call uninit for lcore callback %s, lcore_id %u\n",
+		callback->name, lcore_id);
+	callback->uninit(lcore_id, callback->arg);
+}
+
+static void
+free_callback(struct lcore_callback *callback)
+{
+	free(callback->name);
+	free(callback);
+}
+
+void *
+rte_lcore_callback_register(const char *name, rte_lcore_init_cb init,
+	rte_lcore_uninit_cb uninit, void *arg)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	struct lcore_callback *callback;
+	unsigned int lcore_id;
+
+	if (name == NULL)
+		return NULL;
+	callback = calloc(1, sizeof(*callback));
+	if (callback == NULL)
+		return NULL;
+	if (asprintf(&callback->name, "%s-%p", name, arg) == -1) {
+		free(callback);
+		return NULL;
+	}
+	callback->init = init;
+	callback->uninit = uninit;
+	callback->arg = arg;
+	rte_spinlock_lock(&lcore_lock);
+	if (callback->init == NULL)
+		goto no_init;
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (cfg->lcore_role[lcore_id] == ROLE_OFF)
+			continue;
+		if (callback_init(callback, lcore_id) == 0)
+			continue;
+		/* Callback refused init for this lcore, uninitialize all
+		 * previous lcore.
+		 */
+		while (lcore_id-- != 0) {
+			if (cfg->lcore_role[lcore_id] == ROLE_OFF)
+				continue;
+			callback_uninit(callback, lcore_id);
+		}
+		free_callback(callback);
+		callback = NULL;
+		goto out;
+	}
+no_init:
+	TAILQ_INSERT_TAIL(&lcore_callbacks, callback, next);
+	RTE_LOG(DEBUG, EAL, "Registered new lcore callback %s (%sinit, %suninit).\n",
+		callback->name, callback->init == NULL ? "NO " : "",
+		callback->uninit == NULL ? "NO " : "");
+out:
+	rte_spinlock_unlock(&lcore_lock);
+	return callback;
+}
+
+void
+rte_lcore_callback_unregister(void *handle)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	struct lcore_callback *callback = handle;
+	unsigned int lcore_id;
+
+	if (callback == NULL)
+		return;
+	rte_spinlock_lock(&lcore_lock);
+	if (callback->uninit == NULL)
+		goto no_uninit;
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (cfg->lcore_role[lcore_id] == ROLE_OFF)
+			continue;
+		callback_uninit(callback, lcore_id);
+	}
+no_uninit:
+	TAILQ_REMOVE(&lcore_callbacks, callback, next);
+	rte_spinlock_unlock(&lcore_lock);
+	RTE_LOG(DEBUG, EAL, "Unregistered lcore callback %s-%p.\n",
+		callback->name, callback->arg);
+	free_callback(callback);
+}
 
 unsigned int
 eal_lcore_non_eal_allocate(void)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
+	struct lcore_callback *callback;
+	struct lcore_callback *prev;
 	unsigned int lcore_id;
 
 	rte_spinlock_lock(&lcore_lock);
@@ -247,8 +360,29 @@ eal_lcore_non_eal_allocate(void)
 		cfg->lcore_count++;
 		break;
 	}
-	if (lcore_id == RTE_MAX_LCORE)
+	if (lcore_id == RTE_MAX_LCORE) {
 		RTE_LOG(DEBUG, EAL, "No lcore available.\n");
+		goto out;
+	}
+	TAILQ_FOREACH(callback, &lcore_callbacks, next) {
+		if (callback_init(callback, lcore_id) == 0)
+			continue;
+		/* Callback refused init for this lcore, call uninit for all
+		 * previous callbacks.
+		 */
+		prev = TAILQ_PREV(callback, lcore_callbacks_head, next);
+		while (prev != NULL) {
+			callback_uninit(prev, lcore_id);
+			prev = TAILQ_PREV(prev, lcore_callbacks_head, next);
+		}
+		RTE_LOG(DEBUG, EAL, "Initialization refused for lcore %u.\n",
+			lcore_id);
+		cfg->lcore_role[lcore_id] = ROLE_OFF;
+		cfg->lcore_count--;
+		lcore_id = RTE_MAX_LCORE;
+		goto out;
+	}
+out:
 	rte_spinlock_unlock(&lcore_lock);
 	return lcore_id;
 }
@@ -257,11 +391,15 @@ void
 eal_lcore_non_eal_release(unsigned int lcore_id)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
+	struct lcore_callback *callback;
 
 	rte_spinlock_lock(&lcore_lock);
-	if (cfg->lcore_role[lcore_id] == ROLE_NON_EAL) {
-		cfg->lcore_role[lcore_id] = ROLE_OFF;
-		cfg->lcore_count--;
-	}
+	if (cfg->lcore_role[lcore_id] != ROLE_NON_EAL)
+		goto out;
+	TAILQ_FOREACH(callback, &lcore_callbacks, next)
+		callback_uninit(callback, lcore_id);
+	cfg->lcore_role[lcore_id] = ROLE_OFF;
+	cfg->lcore_count--;
+out:
 	rte_spinlock_unlock(&lcore_lock);
 }

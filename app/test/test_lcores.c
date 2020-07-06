@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <string.h>
 
+#include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 
@@ -117,6 +118,226 @@ skip_lcore_any:
 	return ret;
 }
 
+struct limit_lcore_context {
+	unsigned int init;
+	unsigned int max;
+	unsigned int uninit;
+};
+
+static int
+limit_lcores_init(unsigned int lcore_id __rte_unused, void *arg)
+{
+	struct limit_lcore_context *l = arg;
+
+	l->init++;
+	if (l->init > l->max)
+		return -1;
+	return 0;
+}
+
+static void
+limit_lcores_uninit(unsigned int lcore_id __rte_unused, void *arg)
+{
+	struct limit_lcore_context *l = arg;
+
+	l->uninit++;
+}
+
+static int
+test_lcores_callback(unsigned int eal_threads_count)
+{
+	struct limit_lcore_context l;
+	void *handle;
+
+	/* Refuse last lcore => callback register error. */
+	memset(&l, 0, sizeof(l));
+	l.max = eal_threads_count - 1;
+	handle = rte_lcore_callback_register("limit", limit_lcores_init,
+		limit_lcores_uninit, &l);
+	if (handle != NULL) {
+		printf("Error: lcore callback register should have failed\n");
+		goto error;
+	}
+	/* Refusal happens at the n th call to the init callback.
+	 * Besides, n - 1 were accepted, so we expect as many uninit calls when
+	 * the rollback happens.
+	 */
+	if (l.init != eal_threads_count) {
+		printf("Error: lcore callback register failed but incorrect init calls, expected %u, got %u\n",
+			eal_threads_count, l.init);
+		goto error;
+	}
+	if (l.uninit != eal_threads_count - 1) {
+		printf("Error: lcore callback register failed but incorrect uninit calls, expected %u, got %u\n",
+			eal_threads_count - 1, l.uninit);
+		goto error;
+	}
+
+	/* Accept all lcore and unregister. */
+	memset(&l, 0, sizeof(l));
+	l.max = eal_threads_count;
+	handle = rte_lcore_callback_register("limit", limit_lcores_init,
+		limit_lcores_uninit, &l);
+	if (handle == NULL) {
+		printf("Error: lcore callback register failed\n");
+		goto error;
+	}
+	if (l.uninit != 0) {
+		printf("Error: lcore callback register succeeded but incorrect uninit calls, expected 0, got %u\n",
+			l.uninit);
+		goto error;
+	}
+	rte_lcore_callback_unregister(handle);
+	handle = NULL;
+	if (l.init != eal_threads_count) {
+		printf("Error: lcore callback unregister done but incorrect init calls, expected %u, got %u\n",
+			eal_threads_count, l.init);
+		goto error;
+	}
+	if (l.uninit != eal_threads_count) {
+		printf("Error: lcore callback unregister done but incorrect uninit calls, expected %u, got %u\n",
+			eal_threads_count, l.uninit);
+		goto error;
+	}
+
+	return 0;
+
+error:
+	if (handle != NULL)
+		rte_lcore_callback_unregister(handle);
+
+	return -1;
+}
+
+static int
+test_non_eal_lcores_callback(unsigned int eal_threads_count)
+{
+	struct thread_context thread_contexts[2];
+	unsigned int non_eal_threads_count = 0;
+	struct limit_lcore_context l[2] = {};
+	unsigned int registered_count = 0;
+	struct thread_context *t;
+	void *handle[2] = {};
+	unsigned int i;
+	int ret;
+
+	/* This test requires two empty slots to be sure lcore init refusal is
+	 * because of callback execution.
+	 */
+	if (eal_threads_count + 2 >= RTE_MAX_LCORE)
+		return 0;
+
+	/* Register two callbacks:
+	 * - first one accepts any lcore,
+	 * - second one accepts all EAL lcore + one more for the first non-EAL
+	 *   thread, then refuses the next lcore.
+	 */
+	l[0].max = UINT_MAX;
+	handle[0] = rte_lcore_callback_register("no_limit", limit_lcores_init,
+		limit_lcores_uninit, &l[0]);
+	if (handle[0] == NULL) {
+		printf("Error: lcore callback [0] register failed\n");
+		goto error;
+	}
+	l[1].max = eal_threads_count + 1;
+	handle[1] = rte_lcore_callback_register("limit", limit_lcores_init,
+		limit_lcores_uninit, &l[1]);
+	if (handle[1] == NULL) {
+		printf("Error: lcore callback [1] register failed\n");
+		goto error;
+	}
+	if (l[0].init != eal_threads_count || l[1].init != eal_threads_count) {
+		printf("Error: lcore callbacks register succeeded but incorrect init calls, expected %u, %u, got %u, %u\n",
+			eal_threads_count, eal_threads_count,
+			l[0].init, l[1].init);
+		goto error;
+	}
+	if (l[0].uninit != 0 || l[1].uninit != 0) {
+		printf("Error: lcore callbacks register succeeded but incorrect uninit calls, expected 0, 1, got %u, %u\n",
+			l[0].uninit, l[1].uninit);
+		goto error;
+	}
+	/* First thread that expects a valid lcore id. */
+	t = &thread_contexts[0];
+	t->state = INIT;
+	t->registered_count = &registered_count;
+	t->lcore_id_any = false;
+	if (pthread_create(&t->id, NULL, thread_loop, t) != 0)
+		goto cleanup_threads;
+	non_eal_threads_count++;
+	while (__atomic_load_n(&registered_count, __ATOMIC_ACQUIRE) !=
+			non_eal_threads_count)
+		;
+	if (l[0].init != eal_threads_count + 1 ||
+			l[1].init != eal_threads_count + 1) {
+		printf("Error: incorrect init calls, expected %u, %u, got %u, %u\n",
+			eal_threads_count + 1, eal_threads_count + 1,
+			l[0].init, l[1].init);
+		goto cleanup_threads;
+	}
+	if (l[0].uninit != 0 || l[1].uninit != 0) {
+		printf("Error: incorrect uninit calls, expected 0, 0, got %u, %u\n",
+			l[0].uninit, l[1].uninit);
+		goto cleanup_threads;
+	}
+	/* Second thread, that expects LCORE_ID_ANY because of init refusal. */
+	t = &thread_contexts[1];
+	t->state = INIT;
+	t->registered_count = &registered_count;
+	t->lcore_id_any = true;
+	if (pthread_create(&t->id, NULL, thread_loop, t) != 0)
+		goto cleanup_threads;
+	non_eal_threads_count++;
+	while (__atomic_load_n(&registered_count, __ATOMIC_ACQUIRE) !=
+			non_eal_threads_count)
+		;
+	if (l[0].init != eal_threads_count + 2 ||
+			l[1].init != eal_threads_count + 2) {
+		printf("Error: incorrect init calls, expected %u, %u, got %u, %u\n",
+			eal_threads_count + 2, eal_threads_count + 2,
+			l[0].init, l[1].init);
+		goto cleanup_threads;
+	}
+	if (l[0].uninit != 1 || l[1].uninit != 0) {
+		printf("Error: incorrect uninit calls, expected 1, 0, got %u, %u\n",
+			l[0].uninit, l[1].uninit);
+		goto cleanup_threads;
+	}
+	/* Release all threads, and check their states. */
+	__atomic_store_n(&registered_count, 0, __ATOMIC_RELEASE);
+	ret = 0;
+	for (i = 0; i < non_eal_threads_count; i++) {
+		t = &thread_contexts[i];
+		pthread_join(t->id, NULL);
+		if (t->state != DONE)
+			ret = -1;
+	}
+	if (ret < 0)
+		goto error;
+	if (l[0].uninit != 2 || l[1].uninit != 1) {
+		printf("Error: threads reported having successfully registered and unregistered, but incorrect uninit calls, expected 2, 1, got %u, %u\n",
+			l[0].uninit, l[1].uninit);
+		goto error;
+	}
+	rte_lcore_callback_unregister(handle[0]);
+	rte_lcore_callback_unregister(handle[1]);
+	return 0;
+
+cleanup_threads:
+	/* Release all threads */
+	__atomic_store_n(&registered_count, 0, __ATOMIC_RELEASE);
+	for (i = 0; i < non_eal_threads_count; i++) {
+		t = &thread_contexts[i];
+		pthread_join(t->id, NULL);
+	}
+error:
+	if (handle[1] != NULL)
+		rte_lcore_callback_unregister(handle[1]);
+	if (handle[0] != NULL)
+		rte_lcore_callback_unregister(handle[0]);
+	return -1;
+}
+
 static int
 test_lcores(void)
 {
@@ -135,6 +356,12 @@ test_lcores(void)
 		RTE_MAX_LCORE);
 
 	if (test_non_eal_lcores(eal_threads_count) < 0)
+		return TEST_FAILED;
+
+	if (test_lcores_callback(eal_threads_count) < 0)
+		return TEST_FAILED;
+
+	if (test_non_eal_lcores_callback(eal_threads_count) < 0)
 		return TEST_FAILED;
 
 	return TEST_SUCCESS;
