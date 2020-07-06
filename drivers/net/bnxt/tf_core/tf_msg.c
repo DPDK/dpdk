@@ -1021,8 +1021,8 @@ tf_msg_get_global_cfg(struct tf *tfp,
 {
 	int rc = 0;
 	struct tfp_send_msg_parms parms = { 0 };
-	tf_get_global_cfg_input_t req = { 0 };
-	tf_get_global_cfg_output_t resp = { 0 };
+	struct hwrm_tf_global_cfg_get_input req = { 0 };
+	struct hwrm_tf_global_cfg_get_output resp = { 0 };
 	uint32_t flags = 0;
 	uint8_t fw_session_id;
 	uint16_t resp_size = 0;
@@ -1037,8 +1037,8 @@ tf_msg_get_global_cfg(struct tf *tfp,
 	}
 
 	flags = (params->dir == TF_DIR_TX ?
-		 TF_GET_GLOBAL_CFG_INPUT_FLAGS_DIR_TX :
-		 TF_GET_GLOBAL_CFG_INPUT_FLAGS_DIR_RX);
+		 HWRM_TF_GLOBAL_CFG_GET_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_GLOBAL_CFG_GET_INPUT_FLAGS_DIR_RX);
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
@@ -1047,15 +1047,14 @@ tf_msg_get_global_cfg(struct tf *tfp,
 	req.offset = tfp_cpu_to_le_32(params->offset);
 	req.size = tfp_cpu_to_le_32(params->config_sz_in_bytes);
 
-	MSG_PREP(parms,
-		 TF_KONG_MB,
-		 HWRM_TF,
-		 HWRM_TFT_GET_GLOBAL_CFG,
-		 req,
-		 resp);
+	parms.tf_type = HWRM_TF_GLOBAL_CFG_GET;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
 
-	rc = tfp_send_msg_tunneled(tfp, &parms);
-
+	rc = tfp_send_msg_direct(tfp, &parms);
 	if (rc != 0)
 		return rc;
 
@@ -1080,7 +1079,8 @@ tf_msg_set_global_cfg(struct tf *tfp,
 {
 	int rc = 0;
 	struct tfp_send_msg_parms parms = { 0 };
-	tf_set_global_cfg_input_t req = { 0 };
+	struct hwrm_tf_global_cfg_set_input req = { 0 };
+	struct hwrm_tf_global_cfg_set_output resp = { 0 };
 	uint32_t flags = 0;
 	uint8_t fw_session_id;
 
@@ -1094,8 +1094,8 @@ tf_msg_set_global_cfg(struct tf *tfp,
 	}
 
 	flags = (params->dir == TF_DIR_TX ?
-		 TF_SET_GLOBAL_CFG_INPUT_FLAGS_DIR_TX :
-		 TF_SET_GLOBAL_CFG_INPUT_FLAGS_DIR_RX);
+		 HWRM_TF_GLOBAL_CFG_SET_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_GLOBAL_CFG_SET_INPUT_FLAGS_DIR_RX);
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
@@ -1106,13 +1106,14 @@ tf_msg_set_global_cfg(struct tf *tfp,
 		   params->config_sz_in_bytes);
 	req.size = tfp_cpu_to_le_32(params->config_sz_in_bytes);
 
-	MSG_PREP_NO_RESP(parms,
-			 TF_KONG_MB,
-			 HWRM_TF,
-			 HWRM_TFT_SET_GLOBAL_CFG,
-			 req);
+	parms.tf_type = HWRM_TF_GLOBAL_CFG_SET;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
 
-	rc = tfp_send_msg_tunneled(tfp, &parms);
+	rc = tfp_send_msg_direct(tfp, &parms);
 
 	if (rc != 0)
 		return rc;
