@@ -320,7 +320,7 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 	vlan_macip_lens = (uint32_t)tx_offload.data;
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
 	ctx_txd->mss_l4len_idx = rte_cpu_to_le_32(mss_l4len_idx);
-	ctx_txd->seqnum_seed = 0;
+	ctx_txd->u.seqnum_seed = 0;
 }
 
 /*

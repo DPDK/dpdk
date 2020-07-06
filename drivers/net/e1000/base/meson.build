@@ -2,6 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 sources = [
+	'e1000_base.c',
 	'e1000_80003es2lan.c',
 	'e1000_82540.c',
 	'e1000_82541.c',
