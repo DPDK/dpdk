@@ -843,8 +843,9 @@ error:
 	if (qsockfd != -1)
 		close(qsockfd);
 	for (q = 0; q < nb_queues; q++) {
-		munmap((*internals)->rx_queue[q].map,
-		       2 * req->tp_block_size * req->tp_block_nr);
+		if ((*internals)->rx_queue[q].map != MAP_FAILED)
+			munmap((*internals)->rx_queue[q].map,
+			       2 * req->tp_block_size * req->tp_block_nr);
 
 		rte_free((*internals)->rx_queue[q].rd);
 		rte_free((*internals)->tx_queue[q].rd);
