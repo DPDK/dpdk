@@ -12,7 +12,6 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <sys/queue.h>
-#include <sys/mman.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
@@ -32,6 +31,8 @@
 #include <rte_spinlock.h>
 #include <rte_tailq.h>
 #include <rte_function_versioning.h>
+#include <rte_eal_paging.h>
+
 
 #include "rte_mempool.h"
 #include "rte_mempool_trace.h"
@@ -148,7 +149,7 @@ get_min_page_size(int socket_id)
 
 	rte_memseg_list_walk(find_min_pagesz, &wa);
 
-	return wa.min == SIZE_MAX ? (size_t) getpagesize() : wa.min;
+	return wa.min == SIZE_MAX ? (size_t) rte_mem_page_size() : wa.min;
 }
 
 
@@ -526,7 +527,7 @@ rte_mempool_get_page_size(struct rte_mempool *mp, size_t *pg_sz)
 	else if (rte_eal_has_hugepages() || alloc_in_ext_mem)
 		*pg_sz = get_min_page_size(mp->socket_id);
 	else
-		*pg_sz = getpagesize();
+		*pg_sz = rte_mem_page_size();
 
 	rte_mempool_trace_get_page_size(mp, *pg_sz);
 	return 0;
@@ -686,7 +687,7 @@ get_anon_size(const struct rte_mempool *mp)
 	size_t min_chunk_size;
 	size_t align;
 
-	pg_sz = getpagesize();
+	pg_sz = rte_mem_page_size();
 	pg_shift = rte_bsf32(pg_sz);
 	size = rte_mempool_ops_calc_mem_size(mp, mp->size, pg_shift,
 					     &min_chunk_size, &align);
@@ -710,7 +711,7 @@ rte_mempool_memchunk_anon_free(struct rte_mempool_memhdr *memhdr,
 	if (size < 0)
 		return;
 
-	munmap(opaque, size);
+	rte_mem_unmap(opaque, size);
 }
 
 /* populate the mempool with an anonymous mapping */
@@ -740,20 +741,17 @@ rte_mempool_populate_anon(struct rte_mempool *mp)
 	}
 
 	/* get chunk of virtually continuous memory */
-	addr = mmap(NULL, size, PROT_READ | PROT_WRITE,
-		MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-	if (addr == MAP_FAILED) {
-		rte_errno = errno;
+	addr = rte_mem_map(NULL, size, RTE_PROT_READ | RTE_PROT_WRITE,
+		RTE_MAP_SHARED | RTE_MAP_ANONYMOUS, -1, 0);
+	if (addr == NULL)
 		return 0;
-	}
 	/* can't use MMAP_LOCKED, it does not exist on BSD */
-	if (mlock(addr, size) < 0) {
-		rte_errno = errno;
-		munmap(addr, size);
+	if (rte_mem_lock(addr, size) < 0) {
+		rte_mem_unmap(addr, size);
 		return 0;
 	}
 
-	ret = rte_mempool_populate_virt(mp, addr, size, getpagesize(),
+	ret = rte_mempool_populate_virt(mp, addr, size, rte_mem_page_size(),
 		rte_mempool_memchunk_anon_free, addr);
 	if (ret == 0) /* should not happen */
 		ret = -ENOBUFS;
