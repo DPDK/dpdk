@@ -1873,7 +1873,7 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	if (!actions) {
+	if (!actions || actions->type == RTE_FLOW_ACTION_TYPE_END) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION_NUM,
 				   NULL, "NULL action.");
