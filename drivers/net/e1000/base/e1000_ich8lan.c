@@ -5200,9 +5200,6 @@ STATIC s32 e1000_setup_link_ich8lan(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_setup_link_ich8lan");
 
-	if (hw->phy.ops.check_reset_block(hw))
-		return E1000_SUCCESS;
-
 	/* ICH parts do not have a word in the NVM to determine
 	 * the default flow control setting, so we explicitly
 	 * set it to full.
@@ -5218,10 +5215,12 @@ STATIC s32 e1000_setup_link_ich8lan(struct e1000_hw *hw)
 	DEBUGOUT1("After fix-ups FlowControl is now = %x\n",
 		hw->fc.current_mode);
 
-	/* Continue to configure the copper link. */
-	ret_val = hw->mac.ops.setup_physical_interface(hw);
-	if (ret_val)
-		return ret_val;
+	if (!hw->phy.ops.check_reset_block(hw)) {
+		/* Continue to configure the copper link. */
+		ret_val = hw->mac.ops.setup_physical_interface(hw);
+		if (ret_val)
+			return ret_val;
+	}
 
 	E1000_WRITE_REG(hw, E1000_FCTTV, hw->fc.pause_time);
 	if ((hw->phy.type == e1000_phy_82578) ||
