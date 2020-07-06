@@ -1694,3 +1694,45 @@ ulp_rte_of_set_vlan_pcp_act_handler(const struct rte_flow_action *action_item,
 	BNXT_TF_DBG(ERR, "Parse Error: Vlan pcp arg is invalid\n");
 	return BNXT_TF_RC_ERROR;
 }
+
+/* Function to handle the parsing of RTE Flow action set ipv4 src.*/
+int32_t
+ulp_rte_set_ipv4_src_act_handler(const struct rte_flow_action *action_item,
+				 struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_set_ipv4 *set_ipv4;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+
+	set_ipv4 = action_item->conf;
+	if (set_ipv4) {
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_SET_IPV4_SRC],
+		       &set_ipv4->ipv4_addr, BNXT_ULP_ACT_PROP_SZ_SET_IPV4_SRC);
+		/* Update the hdr_bitmap with set ipv4 src */
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_ACTION_BIT_SET_IPV4_SRC);
+		return BNXT_TF_RC_SUCCESS;
+	}
+	BNXT_TF_DBG(ERR, "Parse Error: set ipv4 src arg is invalid\n");
+	return BNXT_TF_RC_ERROR;
+}
+
+/* Function to handle the parsing of RTE Flow action set ipv4 dst.*/
+int32_t
+ulp_rte_set_ipv4_dst_act_handler(const struct rte_flow_action *action_item,
+				 struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_set_ipv4 *set_ipv4;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+
+	set_ipv4 = action_item->conf;
+	if (set_ipv4) {
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_SET_IPV4_DST],
+		       &set_ipv4->ipv4_addr, BNXT_ULP_ACT_PROP_SZ_SET_IPV4_DST);
+		/* Update the hdr_bitmap with set ipv4 dst */
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_ACTION_BIT_SET_IPV4_DST);
+		return BNXT_TF_RC_SUCCESS;
+	}
+	BNXT_TF_DBG(ERR, "Parse Error: set ipv4 dst arg is invalid\n");
+	return BNXT_TF_RC_ERROR;
+}

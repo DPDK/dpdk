@@ -231,12 +231,12 @@ struct bnxt_ulp_rte_act_info ulp_act_info[] = {
 		.proto_act_func          = NULL
 	},
 	[RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC] = {
-		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-		.proto_act_func          = NULL
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_set_ipv4_src_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_SET_IPV4_DST] = {
-		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,
-		.proto_act_func          = NULL
+		.act_type                = BNXT_ULP_ACT_TYPE_SUPPORTED,
+		.proto_act_func          = ulp_rte_set_ipv4_dst_act_handler
 	},
 	[RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC] = {
 		.act_type                = BNXT_ULP_ACT_TYPE_NOT_SUPPORTED,

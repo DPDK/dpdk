@@ -99,6 +99,7 @@ New Features
   * Added support for rx_burst_mode_get and tx_burst_mode_get.
   * Added vector mode support for ARM CPUs.
   * Added support for VLAN push and pop actions.
+  * Added support for NAT action items.
 
 * **Updated Mellanox mlx5 driver.**
 
