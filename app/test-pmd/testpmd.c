@@ -1692,57 +1692,68 @@ init_fwd_streams(void)
 static void
 pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 {
-	uint64_t total_burst;
+	uint64_t total_burst, sburst;
 	uint64_t nb_burst;
-	uint64_t burst_stats[3];
-	uint16_t pktnb_stats[3];
+	uint64_t burst_stats[4];
+	uint16_t pktnb_stats[4];
 	uint16_t nb_pkt;
-	int burst_percent[3];
+	int burst_percent[4], sburstp;
+	int i;
 
 	/*
 	 * First compute the total number of packet bursts and the
 	 * two highest numbers of bursts of the same number of packets.
 	 */
-	total_burst = 0;
-	burst_stats[0] = burst_stats[1] = burst_stats[2] = 0;
-	pktnb_stats[0] = pktnb_stats[1] = pktnb_stats[2] = 0;
-	for (nb_pkt = 0; nb_pkt < MAX_PKT_BURST; nb_pkt++) {
+	memset(&burst_stats, 0x0, sizeof(burst_stats));
+	memset(&pktnb_stats, 0x0, sizeof(pktnb_stats));
+
+	/* Show stats for 0 burst size always */
+	total_burst = pbs->pkt_burst_spread[0];
+	burst_stats[0] = pbs->pkt_burst_spread[0];
+	pktnb_stats[0] = 0;
+
+	/* Find the next 2 burst sizes with highest occurrences. */
+	for (nb_pkt = 1; nb_pkt < MAX_PKT_BURST; nb_pkt++) {
 		nb_burst = pbs->pkt_burst_spread[nb_pkt];
+
 		if (nb_burst == 0)
 			continue;
+
 		total_burst += nb_burst;
-		if (nb_burst > burst_stats[0]) {
-			burst_stats[1] = burst_stats[0];
-			pktnb_stats[1] = pktnb_stats[0];
-			burst_stats[0] = nb_burst;
-			pktnb_stats[0] = nb_pkt;
-		} else if (nb_burst > burst_stats[1]) {
+
+		if (nb_burst > burst_stats[1]) {
+			burst_stats[2] = burst_stats[1];
+			pktnb_stats[2] = pktnb_stats[1];
 			burst_stats[1] = nb_burst;
 			pktnb_stats[1] = nb_pkt;
+		} else if (nb_burst > burst_stats[2]) {
+			burst_stats[2] = nb_burst;
+			pktnb_stats[2] = nb_pkt;
 		}
 	}
 	if (total_burst == 0)
 		return;
-	burst_percent[0] = (double)burst_stats[0] / total_burst * 100;
-	printf("  %s-bursts : %"PRIu64" [%d%% of %d pkts", rx_tx, total_burst,
-	       burst_percent[0], (int) pktnb_stats[0]);
-	if (burst_stats[0] == total_burst) {
-		printf("]\n");
-		return;
+
+	printf("  %s-bursts : %"PRIu64" [", rx_tx, total_burst);
+	for (i = 0, sburst = 0, sburstp = 0; i < 4; i++) {
+		if (i == 3) {
+			printf("%d%% of other]\n", 100 - sburstp);
+			return;
+		}
+
+		sburst += burst_stats[i];
+		if (sburst == total_burst) {
+			printf("%d%% of %d pkts]\n",
+				100 - sburstp, (int) pktnb_stats[i]);
+			return;
+		}
+
+		burst_percent[i] =
+			(double)burst_stats[i] / total_burst * 100;
+		printf("%d%% of %d pkts + ",
+			burst_percent[i], (int) pktnb_stats[i]);
+		sburstp += burst_percent[i];
 	}
-	if (burst_stats[0] + burst_stats[1] == total_burst) {
-		printf(" + %d%% of %d pkts]\n",
-		       100 - burst_percent[0], pktnb_stats[1]);
-		return;
-	}
-	burst_percent[1] = (double)burst_stats[1] / total_burst * 100;
-	burst_percent[2] = 100 - (burst_percent[0] + burst_percent[1]);
-	if ((burst_percent[1] == 0) || (burst_percent[2] == 0)) {
-		printf(" + %d%% of others]\n", 100 - burst_percent[0]);
-		return;
-	}
-	printf(" + %d%% of %d pkts + %d%% of others]\n",
-	       burst_percent[1], (int) pktnb_stats[1], burst_percent[2]);
 }
 #endif /* RTE_TEST_PMD_RECORD_BURST_STATS */
 

@@ -308,12 +308,12 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	 */
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
 				 nb_pkt_per_burst);
-	if (unlikely(nb_rx == 0))
-		return;
-
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
 #endif
+	if (unlikely(nb_rx == 0))
+		return;
+
 	fs->rx_packets += nb_rx;
 	nb_replies = 0;
 	for (i = 0; i < nb_rx; i++) {

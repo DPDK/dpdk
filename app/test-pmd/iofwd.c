@@ -66,13 +66,13 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 	 */
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue,
 			pkts_burst, nb_pkt_per_burst);
+#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
+	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
+#endif
 	if (unlikely(nb_rx == 0))
 		return;
 	fs->rx_packets += nb_rx;
 
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
-#endif
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
 			pkts_burst, nb_rx);
 	/*
