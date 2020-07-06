@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001 - 2015 Intel Corporation
+ * Copyright(c) 2001-2020 Intel Corporation
  */
 
 /* 80003ES2LAN Gigabit Ethernet Controller (Copper)

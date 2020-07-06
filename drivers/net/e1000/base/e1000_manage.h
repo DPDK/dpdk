@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001 - 2015 Intel Corporation
+ * Copyright(c) 2001-2020 Intel Corporation
  */
 
 #ifndef _E1000_MANAGE_H_
@@ -62,5 +62,4 @@ enum e1000_mng_mode {
 
 /* Intel(R) Active Management Technology signature */
 #define E1000_IAMT_SIGNATURE		0x544D4149
-
 #endif
