@@ -21,7 +21,10 @@
 #include "eal_private.h"
 #include "eal_thread.h"
 
-RTE_DECLARE_PER_LCORE(unsigned , _socket_id);
+RTE_DEFINE_PER_LCORE(unsigned int, _lcore_id) = LCORE_ID_ANY;
+static RTE_DEFINE_PER_LCORE(unsigned int, _socket_id) =
+	(unsigned int)SOCKET_ID_ANY;
+static RTE_DEFINE_PER_LCORE(rte_cpuset_t, _cpuset);
 
 unsigned rte_socket_id(void)
 {

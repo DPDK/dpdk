@@ -23,7 +23,6 @@ extern "C" {
 #define LCORE_ID_ANY     UINT32_MAX       /**< Any lcore. */
 
 RTE_DECLARE_PER_LCORE(unsigned, _lcore_id);  /**< Per thread "lcore id". */
-RTE_DECLARE_PER_LCORE(rte_cpuset_t, _cpuset); /**< Per thread "cpuset". */
 
 /**
  * Get a lcore's role.

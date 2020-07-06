@@ -25,10 +25,6 @@
 #include "eal_private.h"
 #include "eal_thread.h"
 
-RTE_DEFINE_PER_LCORE(unsigned, _lcore_id) = LCORE_ID_ANY;
-RTE_DEFINE_PER_LCORE(unsigned, _socket_id) = (unsigned)SOCKET_ID_ANY;
-RTE_DEFINE_PER_LCORE(rte_cpuset_t, _cpuset);
-
 /*
  * Send a message to a slave lcore identified by slave_id to call a
  * function f with argument arg. Once the execution is done, the
