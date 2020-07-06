@@ -2006,19 +2006,34 @@ ulp_mapper_tbl_cond_opcode_process(struct bnxt_ulp_mapper_parms *parms,
 	case BNXT_ULP_COND_OPCODE_NOP:
 		rc = 0;
 		break;
-	case BNXT_ULP_COND_OPCODE_COMP_FIELD:
+	case BNXT_ULP_COND_OPCODE_COMP_FIELD_IS_SET:
 		if (tbl->cond_operand < BNXT_ULP_CF_IDX_LAST &&
 		    ULP_COMP_FLD_IDX_RD(parms, tbl->cond_operand))
 			rc = 0;
 		break;
-	case BNXT_ULP_COND_OPCODE_ACTION_BIT:
+	case BNXT_ULP_COND_OPCODE_ACTION_BIT_IS_SET:
 		if (ULP_BITMAP_ISSET(parms->act_bitmap->bits,
 				     tbl->cond_operand))
 			rc = 0;
 		break;
-	case BNXT_ULP_COND_OPCODE_HDR_BIT:
+	case BNXT_ULP_COND_OPCODE_HDR_BIT_IS_SET:
 		if (ULP_BITMAP_ISSET(parms->hdr_bitmap->bits,
 				     tbl->cond_operand))
+			rc = 0;
+		break;
+	case BNXT_ULP_COND_OPCODE_COMP_FIELD_NOT_SET:
+		if (tbl->cond_operand < BNXT_ULP_CF_IDX_LAST &&
+		    !ULP_COMP_FLD_IDX_RD(parms, tbl->cond_operand))
+			rc = 0;
+		break;
+	case BNXT_ULP_COND_OPCODE_ACTION_BIT_NOT_SET:
+		if (!ULP_BITMAP_ISSET(parms->act_bitmap->bits,
+				      tbl->cond_operand))
+			rc = 0;
+		break;
+	case BNXT_ULP_COND_OPCODE_HDR_BIT_NOT_SET:
+		if (!ULP_BITMAP_ISSET(parms->hdr_bitmap->bits,
+				      tbl->cond_operand))
 			rc = 0;
 		break;
 	default:

@@ -284,7 +284,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT,
-	.cond_opcode = BNXT_ULP_COND_OPCODE_ACTION_BIT,
+	.cond_opcode = BNXT_ULP_COND_OPCODE_ACTION_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACTION_BIT_COUNT,
 	.direction = TF_DIR_RX,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -331,7 +331,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_NORMAL,
-	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD,
+	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD_IS_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_ACT_ENCAP_IPV4_FLAG,
 	.direction = TF_DIR_TX,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -348,7 +348,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_NORMAL,
-	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD,
+	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD_IS_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_ACT_ENCAP_IPV6_FLAG,
 	.direction = TF_DIR_TX,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
