@@ -333,7 +333,7 @@ tf_em_ctx_reg(struct tf *tfp,
 {
 	struct hcapi_cfa_em_ctx_mem_info *ctxp = &tbl_scope_cb->em_ctx_info[dir];
 	struct hcapi_cfa_em_table *tbl;
-	int rc;
+	int rc = 0;
 	int i;
 
 	for (i = TF_KEY0_TABLE; i < TF_MAX_TABLE; i++) {

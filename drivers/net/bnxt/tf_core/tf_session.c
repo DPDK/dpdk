@@ -472,6 +472,14 @@ tf_session_close_session(struct tf *tfp,
 
 	client = tf_session_find_session_client_by_fid(tfs,
 						       fid);
+	if (!client) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "Client not part of the session, unable to close, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
 	/* In case multiple clients we chose to close those first */
 	if (tfs->ref_count > 1) {
 		/* Linaro gcc can't static init this structure */

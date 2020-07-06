@@ -537,10 +537,10 @@ ulp_mapper_index_entry_free(struct bnxt_ulp_context *ulp,
 	};
 
 	/*
-	 * Just set the table scope, it will be ignored if not necessary
+	 * Just get the table scope, it will be ignored if not necessary
 	 * by the tf_free_tbl_entry
 	 */
-	bnxt_ulp_cntxt_tbl_scope_id_get(ulp, &fparms.tbl_scope_id);
+	(void)bnxt_ulp_cntxt_tbl_scope_id_get(ulp, &fparms.tbl_scope_id);
 
 	return tf_free_tbl_entry(tfp, &fparms);
 }

@@ -594,7 +594,7 @@ bnxt_ulp_init(struct bnxt *bp)
 	int rc;
 
 	if (bp->ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ulp ctx already allocated\n");
+		BNXT_TF_DBG(DEBUG, "ulp ctx already allocated\n");
 		return -EINVAL;
 	}
 

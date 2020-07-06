@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -20,6 +21,40 @@
 
 /* Logging defines */
 #define TF_RM_MSG_DEBUG  0
+
+/* Specific msg size defines as we cannot use defines in tf.yaml. This
+ * means we have to manually sync hwrm with these defines if the
+ * tf.yaml changes.
+ */
+#define TF_MSG_SET_GLOBAL_CFG_DATA_SIZE  16
+#define TF_MSG_EM_INSERT_KEY_SIZE        8
+#define TF_MSG_TCAM_SET_DEV_DATA_SIZE    88
+#define TF_MSG_TBL_TYPE_SET_DATA_SIZE    88
+
+/* Compile check - Catch any msg changes that we depend on, like the
+ * defines listed above for array size checking.
+ *
+ * Checking array size is dangerous in that the type could change and
+ * we wouldn't be able to catch it. Thus we check if the complete msg
+ * changed instead. Best we can do.
+ *
+ * If failure is observed then both msg size (defines below) and the
+ * array size (define above) should be checked and compared.
+ */
+#define TF_MSG_SIZE_HWRM_TF_GLOBAL_CFG_SET 56
+static_assert(sizeof(struct hwrm_tf_global_cfg_set_input) ==
+	      TF_MSG_SIZE_HWRM_TF_GLOBAL_CFG_SET,
+	      "HWRM message size changed: hwrm_tf_global_cfg_set_input");
+
+#define TF_MSG_SIZE_HWRM_TF_EM_INSERT      104
+static_assert(sizeof(struct hwrm_tf_em_insert_input) ==
+	      TF_MSG_SIZE_HWRM_TF_EM_INSERT,
+	      "HWRM message size changed: hwrm_tf_em_insert_input");
+
+#define TF_MSG_SIZE_HWRM_TF_TBL_TYPE_SET   128
+static_assert(sizeof(struct hwrm_tf_tbl_type_set_input) ==
+	      TF_MSG_SIZE_HWRM_TF_TBL_TYPE_SET,
+	      "HWRM message size changed: hwrm_tf_tbl_type_set_input");
 
 /**
  * This is the MAX data we can transport across regular HWRM
@@ -321,7 +356,7 @@ tf_msg_session_resc_qcaps(struct tf *tfp,
 		TFP_DRV_LOG(ERR,
 			    "%s: QCAPS message size error, rc:%s\n",
 			    tf_dir_2_str(dir),
-			    strerror(-EINVAL));
+			    strerror(EINVAL));
 		rc = -EINVAL;
 		goto cleanup;
 	}
@@ -436,7 +471,7 @@ tf_msg_session_resc_alloc(struct tf *tfp,
 		TFP_DRV_LOG(ERR,
 			    "%s: Alloc message size error, rc:%s\n",
 			    tf_dir_2_str(dir),
-			    strerror(-EINVAL));
+			    strerror(EINVAL));
 		rc = -EINVAL;
 		goto cleanup;
 	}
@@ -546,6 +581,7 @@ tf_msg_insert_em_internal_entry(struct tf *tfp,
 		(struct tf_em_64b_entry *)em_parms->em_record;
 	uint16_t flags;
 	uint8_t fw_session_id;
+	uint8_t msg_key_size;
 
 	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
 	if (rc) {
@@ -558,9 +594,21 @@ tf_msg_insert_em_internal_entry(struct tf *tfp,
 
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+
+	/* Check for key size conformity */
+	msg_key_size = (em_parms->key_sz_in_bits + 7) / 8;
+	if (msg_key_size > TF_MSG_EM_INSERT_KEY_SIZE) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "%s: Invalid parameters for msg type, rc:%s\n",
+			    tf_dir_2_str(em_parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
 	tfp_memcpy(req.em_key,
 		   em_parms->key,
-		   ((em_parms->key_sz_in_bits + 7) / 8));
+		   msg_key_size);
 
 	flags = (em_parms->dir == TF_DIR_TX ?
 		 HWRM_TF_EM_INSERT_INPUT_FLAGS_DIR_TX :
@@ -942,6 +990,16 @@ tf_msg_set_tbl_entry(struct tf *tfp,
 	req.size = tfp_cpu_to_le_16(size);
 	req.index = tfp_cpu_to_le_32(index);
 
+	/* Check for data size conformity */
+	if (size > TF_MSG_TBL_TYPE_SET_DATA_SIZE) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "%s: Invalid parameters for msg type, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
 	tfp_memcpy(&req.data,
 		   data,
 		   size);
@@ -1102,6 +1160,17 @@ tf_msg_set_global_cfg(struct tf *tfp,
 	req.flags = tfp_cpu_to_le_32(flags);
 	req.type = tfp_cpu_to_le_32(params->type);
 	req.offset = tfp_cpu_to_le_32(params->offset);
+
+	/* Check for data size conformity */
+	if (params->config_sz_in_bytes > TF_MSG_SET_GLOBAL_CFG_DATA_SIZE) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "%s: Invalid parameters for msg type, rc:%s\n",
+			    tf_dir_2_str(params->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
 	tfp_memcpy(req.data, params->config,
 		   params->config_sz_in_bytes);
 	req.size = tfp_cpu_to_le_32(params->config_sz_in_bytes);
