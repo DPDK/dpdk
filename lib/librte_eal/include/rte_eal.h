@@ -461,6 +461,8 @@ void rte_eal_vfio_get_vf_token(rte_uuid_t vf_token);
  */
 int rte_sys_gettid(void);
 
+RTE_DECLARE_PER_LCORE(int, _thread_id);
+
 /**
  * Get system unique thread id.
  *
@@ -470,7 +472,6 @@ int rte_sys_gettid(void);
  */
 static inline int rte_gettid(void)
 {
-	static RTE_DEFINE_PER_LCORE(int, _thread_id) = -1;
 	if (RTE_PER_LCORE(_thread_id) == -1)
 		RTE_PER_LCORE(_thread_id) = rte_sys_gettid();
 	return RTE_PER_LCORE(_thread_id);
