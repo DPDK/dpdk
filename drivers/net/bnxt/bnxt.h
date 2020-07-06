@@ -897,4 +897,9 @@ void bnxt_flow_cnt_alarm_cb(void *arg);
 int bnxt_flow_stats_req(struct bnxt *bp);
 int bnxt_flow_stats_cnt(struct bnxt *bp);
 uint32_t bnxt_get_speed_capabilities(struct bnxt *bp);
+
+int
+bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
+		    enum rte_filter_type filter_type,
+		    enum rte_filter_op filter_op, void *arg);
 #endif

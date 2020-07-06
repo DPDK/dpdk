@@ -29,6 +29,7 @@ static const struct eth_dev_ops bnxt_vf_rep_dev_ops = {
 	.dev_stop = bnxt_vf_rep_dev_stop_op,
 	.stats_get = bnxt_vf_rep_stats_get_op,
 	.stats_reset = bnxt_vf_rep_stats_reset_op,
+	.filter_ctrl = bnxt_filter_ctrl_op
 };
 
 uint16_t
@@ -132,8 +133,6 @@ bnxt_vf_rep_tx_burst(void *tx_queue,
 	pthread_mutex_unlock(&parent->rep_info->vfr_lock);
 
 	return rc;
-
-	return 0;
 }
 
 int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params)

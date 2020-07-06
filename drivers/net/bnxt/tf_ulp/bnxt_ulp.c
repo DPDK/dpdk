@@ -923,9 +923,13 @@ bnxt_ulp_cntxt_ptr2_flow_db_get(struct bnxt_ulp_context	*ulp_ctx)
 struct bnxt_ulp_context	*
 bnxt_ulp_eth_dev_ptr2_cntxt_get(struct rte_eth_dev	*dev)
 {
-	struct bnxt	*bp;
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 
-	bp = (struct bnxt *)dev->data->dev_private;
+	if (BNXT_ETH_DEV_IS_REPRESENTOR(dev)) {
+		struct bnxt_vf_representor *vfr = dev->data->dev_private;
+		bp = vfr->parent_dev->data->dev_private;
+	}
+
 	if (!bp) {
 		BNXT_TF_DBG(ERR, "Bnxt private data is not initialized\n");
 		return NULL;

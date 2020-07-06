@@ -3746,7 +3746,7 @@ free_filter:
 	return ret;
 }
 
-static int
+int
 bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 		    enum rte_filter_type filter_type,
 		    enum rte_filter_op filter_op, void *arg)
@@ -3754,7 +3754,12 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 	struct bnxt *bp = dev->data->dev_private;
 	int ret = 0;
 
-	ret = is_bnxt_in_error(dev->data->dev_private);
+	if (BNXT_ETH_DEV_IS_REPRESENTOR(dev)) {
+		struct bnxt_vf_representor *vfr = dev->data->dev_private;
+		bp = vfr->parent_dev->data->dev_private;
+	}
+
+	ret = is_bnxt_in_error(bp);
 	if (ret)
 		return ret;
 
