@@ -220,6 +220,20 @@ ulp_port_db_phy_port_vport_get(struct bnxt_ulp_context *ulp_ctxt,
 			       uint16_t *out_port);
 
 /*
+ * Api to get the svif for a given physical port.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * phy_port [in] physical port index
+ * svif [out] the svif of the given physical index
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_phy_port_svif_get(struct bnxt_ulp_context *ulp_ctxt,
+			      uint32_t phy_port,
+			      uint16_t *svif);
+
+/*
  * Api to get the port type for a given ulp ifindex.
  *
  * ulp_ctxt [in] Ptr to ulp context

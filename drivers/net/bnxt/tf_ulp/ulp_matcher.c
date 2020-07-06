@@ -47,14 +47,8 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 	uint8_t vf_to_vf;
 	uint16_t tmpl_id;
 
-	/* determine vf to vf flow */
-	if (params->dir == ULP_DIR_EGRESS &&
-	    ULP_BITMAP_ISSET(params->act_bitmap.bits,
-			     BNXT_ULP_ACTION_BIT_VNIC)) {
-		vf_to_vf = 1;
-	} else {
-		vf_to_vf = 0;
-	}
+	/* Get vf to vf flow */
+	vf_to_vf = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_VF_TO_VF);
 
 	/* calculate the hash of the given flow */
 	class_hid = ulp_matcher_class_hash_calculate(params->hdr_bitmap.bits,

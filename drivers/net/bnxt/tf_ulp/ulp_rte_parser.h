@@ -33,11 +33,11 @@
 
 /* Function to handle the parsing of the RTE port id. */
 int32_t
-ulp_rte_parser_svif_process(struct ulp_rte_parser_params *params);
+ulp_rte_parser_implicit_match_port_process(struct ulp_rte_parser_params *param);
 
 /* Function to handle the implicit action port id */
 int32_t
-ulp_rte_parser_implied_act_port_process(struct ulp_rte_parser_params *params);
+ulp_rte_parser_implicit_act_port_process(struct ulp_rte_parser_params *params);
 
 /*
  * Function to handle the parsing of RTE Flows and placing
@@ -54,6 +54,12 @@ bnxt_ulp_rte_parser_hdr_parse(const struct rte_flow_item pattern[],
 int32_t
 bnxt_ulp_rte_parser_act_parse(const struct rte_flow_action actions[],
 			      struct ulp_rte_parser_params *params);
+
+/*
+ * Function to handle the post processing of the parsing details
+ */
+int32_t
+bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params);
 
 /* Function to handle the parsing of RTE Flow item PF Header. */
 int32_t

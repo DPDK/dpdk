@@ -60,6 +60,19 @@ bnxt_ulp_flow_validate_args(const struct rte_flow_attr *attr,
 	return BNXT_TF_RC_SUCCESS;
 }
 
+static inline void
+bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
+			    const struct rte_flow_attr *attr)
+{
+	/* Set the flow attributes */
+	if (attr->egress)
+		params->dir_attr |= BNXT_ULP_FLOW_ATTR_EGRESS;
+	if (attr->ingress)
+		params->dir_attr |= BNXT_ULP_FLOW_ATTR_INGRESS;
+	if (attr->transfer)
+		params->dir_attr |= BNXT_ULP_FLOW_ATTR_TRANSFER;
+}
+
 /* Function to create the rte flow. */
 static struct rte_flow *
 bnxt_ulp_flow_create(struct rte_eth_dev *dev,
@@ -93,13 +106,12 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
 	params.ulp_ctx = ulp_ctx;
 
-	if (attr->egress)
-		params.dir = ULP_DIR_EGRESS;
+	/* Set the flow attributes */
+	bnxt_ulp_set_dir_attributes(&params, attr);
 
 	/* copy the device port id and direction for further processing */
 	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_INCOMING_IF,
 			    dev->data->port_id);
-	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DIRECTION, params.dir);
 	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_SVIF_FLAG,
 			    BNXT_ULP_INVALID_SVIF_VAL);
 
@@ -110,6 +122,11 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 
 	/* Parse the rte flow action */
 	ret = bnxt_ulp_rte_parser_act_parse(actions, &params);
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	/* Perform the rte flow post process */
+	ret = bnxt_ulp_rte_parser_post_process(&params);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
@@ -131,7 +148,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	mapper_cparms.act_tid = act_tmpl;
 	mapper_cparms.func_id = bnxt_get_fw_func_id(dev->data->port_id,
 						    BNXT_ULP_INTF_TYPE_INVALID);
-	mapper_cparms.dir = params.dir;
+	mapper_cparms.dir_attr = params.dir_attr;
 
 	/* Call the ulp mapper to create the flow in the hardware. */
 	ret = ulp_mapper_flow_create(ulp_ctx, &mapper_cparms, &fid);
@@ -176,8 +193,8 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
 	params.ulp_ctx = ulp_ctx;
 
-	if (attr->egress)
-		params.dir = ULP_DIR_EGRESS;
+	/* Set the flow attributes */
+	bnxt_ulp_set_dir_attributes(&params, attr);
 
 	/* Parse the rte flow pattern */
 	ret = bnxt_ulp_rte_parser_hdr_parse(pattern, &params);
@@ -186,6 +203,11 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 
 	/* Parse the rte flow action */
 	ret = bnxt_ulp_rte_parser_act_parse(actions, &params);
+	if (ret != BNXT_TF_RC_SUCCESS)
+		goto parse_error;
+
+	/* Perform the rte flow post process */
+	ret = bnxt_ulp_rte_parser_post_process(&params);
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 

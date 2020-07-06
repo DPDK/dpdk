@@ -30,6 +30,11 @@
 #define BNXT_ULP_PROTO_HDR_MAX		128
 #define BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX	0
 
+/* Direction attributes */
+#define BNXT_ULP_FLOW_ATTR_TRANSFER	0x1
+#define BNXT_ULP_FLOW_ATTR_INGRESS	0x2
+#define BNXT_ULP_FLOW_ATTR_EGRESS	0x4
+
 struct ulp_rte_hdr_bitmap {
 	uint64_t	bits;
 };
@@ -65,7 +70,7 @@ struct ulp_rte_parser_params {
 	uint32_t			vlan_idx;
 	struct ulp_rte_act_bitmap	act_bitmap;
 	struct ulp_rte_act_prop		act_prop;
-	uint32_t			dir;
+	uint32_t			dir_attr;
 	struct bnxt_ulp_context		*ulp_ctx;
 };
 

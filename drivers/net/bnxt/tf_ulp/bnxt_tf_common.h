@@ -44,9 +44,10 @@ enum bnxt_ulp_eth_ip_type {
 };
 
 /* ulp direction Type */
-enum ulp_direction_type {
-	ULP_DIR_INGRESS,
-	ULP_DIR_EGRESS,
+enum bnxt_ulp_direction_type {
+	BNXT_ULP_DIR_INVALID,
+	BNXT_ULP_DIR_INGRESS,
+	BNXT_ULP_DIR_EGRESS,
 };
 
 /* enumeration of the interface types */
@@ -57,6 +58,7 @@ enum bnxt_ulp_intf_type {
 	BNXT_ULP_INTF_TYPE_VF,
 	BNXT_ULP_INTF_TYPE_PF_REP,
 	BNXT_ULP_INTF_TYPE_VF_REP,
+	BNXT_ULP_INTF_TYPE_PHY_PORT,
 	BNXT_ULP_INTF_TYPE_LAST
 };
 

@@ -465,6 +465,31 @@ ulp_port_db_phy_port_vport_get(struct bnxt_ulp_context *ulp_ctxt,
 }
 
 /*
+ * Api to get the svif for a given physical port.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * phy_port [in] physical port index
+ * svif [out] the svif of the given physical index
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_phy_port_svif_get(struct bnxt_ulp_context *ulp_ctxt,
+			      uint32_t phy_port,
+			      uint16_t *svif)
+{
+	struct bnxt_ulp_port_db *port_db;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db || phy_port >= port_db->phy_port_cnt) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	*svif = port_db->phy_port_list[phy_port].port_svif;
+	return 0;
+}
+
+/*
  * Api to get the port type for a given ulp ifindex.
  *
  * ulp_ctxt [in] Ptr to ulp context

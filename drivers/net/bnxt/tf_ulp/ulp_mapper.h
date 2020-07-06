@@ -87,7 +87,7 @@ struct bnxt_ulp_mapper_create_parms {
 	uint32_t			class_tid;
 	uint32_t			act_tid;
 	uint16_t			func_id;
-	enum ulp_direction_type		dir;
+	uint32_t			dir_attr;
 };
 
 /* Function to initialize any dynamic mapper data. */
