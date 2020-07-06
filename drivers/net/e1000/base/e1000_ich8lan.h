@@ -287,6 +287,7 @@
 /* Receive Address Initial CRC Calculation */
 #define E1000_PCH_RAICC(_n)	(0x05F50 + ((_n) * 4))
 
+#define E1000_PCI_VENDOR_ID_REGISTER	0x00
 #if defined(QV_RELEASE) || !defined(NO_PCH_LPT_B0_SUPPORT)
 #define E1000_PCI_REVISION_ID_REG	0x08
 #endif /* defined(QV_RELEASE) || !defined(NO_PCH_LPT_B0_SUPPORT) */
