@@ -297,8 +297,13 @@ ulp_rte_port_id_hdr_handler(const struct rte_flow_item *item,
 	 * Copy the rte_flow_item for Port into hdr_field using port id
 	 * header fields.
 	 */
-	if (port_spec)
+	if (port_spec) {
 		svif = (uint16_t)port_spec->id;
+		if (svif >= RTE_MAX_ETHPORTS) {
+			BNXT_TF_DBG(ERR, "ParseErr:Portid is not valid\n");
+			return BNXT_TF_RC_PARSE_ERR;
+		}
+	}
 	if (port_mask)
 		mask = (uint16_t)port_mask->id;
 
@@ -314,12 +319,30 @@ ulp_rte_phy_port_hdr_handler(const struct rte_flow_item *item,
 	const struct rte_flow_item_phy_port *port_spec = item->spec;
 	const struct rte_flow_item_phy_port *port_mask = item->mask;
 	uint32_t svif = 0, mask = 0;
+	struct bnxt_ulp_device_params *dparms;
+	uint32_t dev_id;
 
 	/* Copy the rte_flow_item for phy port into hdr_field */
 	if (port_spec)
 		svif = port_spec->index;
 	if (port_mask)
 		mask = port_mask->index;
+
+	if (bnxt_ulp_cntxt_dev_id_get(params->ulp_ctx, &dev_id)) {
+		BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
+		return -EINVAL;
+	}
+
+	dparms = bnxt_ulp_device_params_get(dev_id);
+	if (!dparms) {
+		BNXT_TF_DBG(DEBUG, "Failed to get device parms\n");
+		return -EINVAL;
+	}
+
+	if (svif > dparms->num_phy_ports) {
+		BNXT_TF_DBG(ERR, "ParseErr:Phy Port is not valid\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
 
 	/* Update the SVIF details */
 	return ulp_rte_parser_svif_set(params, item->type, svif, mask);
@@ -1330,7 +1353,12 @@ ulp_rte_port_id_act_handler(const struct rte_flow_action *act_item,
 				    "ParseErr:Portid Original not supported\n");
 			return BNXT_TF_RC_PARSE_ERR;
 		}
-		/* TBD: Update the computed VNIC using port conversion */
+		/* Update the computed VNIC using port conversion */
+		if (port_id->id >= RTE_MAX_ETHPORTS) {
+			BNXT_TF_DBG(ERR,
+				    "ParseErr:Portid is not valid\n");
+			return BNXT_TF_RC_PARSE_ERR;
+		}
 		pid = bnxt_get_vnic_id(port_id->id, BNXT_ULP_INTF_TYPE_INVALID);
 		pid = rte_cpu_to_be_32(pid);
 		memcpy(&param->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
@@ -1349,6 +1377,8 @@ ulp_rte_phy_port_act_handler(const struct rte_flow_action *action_item,
 {
 	const struct rte_flow_action_phy_port *phy_port;
 	uint32_t vport;
+	struct bnxt_ulp_device_params *dparms;
+	uint32_t dev_id;
 
 	phy_port = action_item->conf;
 	if (phy_port) {
@@ -1357,6 +1387,22 @@ ulp_rte_phy_port_act_handler(const struct rte_flow_action *action_item,
 				    "Parse Err:Port Original not supported\n");
 			return BNXT_TF_RC_PARSE_ERR;
 		}
+		if (bnxt_ulp_cntxt_dev_id_get(prm->ulp_ctx, &dev_id)) {
+			BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
+			return -EINVAL;
+		}
+
+		dparms = bnxt_ulp_device_params_get(dev_id);
+		if (!dparms) {
+			BNXT_TF_DBG(DEBUG, "Failed to get device parms\n");
+			return -EINVAL;
+		}
+
+		if (phy_port->index > dparms->num_phy_ports) {
+			BNXT_TF_DBG(ERR, "ParseErr:Phy Port is not valid\n");
+			return BNXT_TF_RC_PARSE_ERR;
+		}
+
 		/* Get the vport of the physical port */
 		/* TBD: shall be changed later to portdb call */
 		vport = 1 << phy_port->index;
