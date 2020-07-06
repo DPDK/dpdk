@@ -1425,6 +1425,8 @@ ulp_rte_parser_act_port_set(struct ulp_rte_parser_params *param,
 	uint16_t pid_s;
 	uint32_t pid;
 	struct ulp_rte_act_prop *act = &param->act_prop;
+	enum bnxt_ulp_intf_type port_type;
+	uint32_t vnic_type;
 
 	/* Get the direction */
 	dir = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_DIRECTION);
@@ -1439,9 +1441,15 @@ ulp_rte_parser_act_port_set(struct ulp_rte_parser_params *param,
 		       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
 	} else {
 		/* For ingress direction, fill vnic */
+		port_type = ULP_COMP_FLD_IDX_RD(param,
+						BNXT_ULP_CF_IDX_ACT_PORT_TYPE);
+		if (port_type == BNXT_ULP_INTF_TYPE_VF_REP)
+			vnic_type = BNXT_ULP_VF_FUNC_VNIC;
+		else
+			vnic_type = BNXT_ULP_DRV_FUNC_VNIC;
+
 		if (ulp_port_db_default_vnic_get(param->ulp_ctx, ifindex,
-						 BNXT_ULP_DRV_FUNC_VNIC,
-						 &pid_s))
+						 vnic_type, &pid_s))
 			return BNXT_TF_RC_ERROR;
 
 		pid = pid_s;
