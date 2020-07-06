@@ -435,7 +435,7 @@ STATIC s32 e1000_init_mac_params_82575(struct e1000_hw *hw)
 	if ((mac->type == e1000_i210) || (mac->type == e1000_i211))
 		mac->ops.init_hw = e1000_init_hw_i210;
 	else
-	mac->ops.init_hw = e1000_init_hw_82575;
+		mac->ops.init_hw = e1000_init_hw_82575;
 	/* link setup */
 	mac->ops.setup_link = e1000_setup_link_generic;
 	/* physical interface link setup */
@@ -486,7 +486,7 @@ STATIC s32 e1000_init_mac_params_82575(struct e1000_hw *hw)
 	/* acquire SW_FW sync */
 	mac->ops.acquire_swfw_sync = e1000_acquire_swfw_sync_82575;
 	mac->ops.release_swfw_sync = e1000_release_swfw_sync_82575;
-	if (mac->type >= e1000_i210) {
+	if (mac->type == e1000_i210 || mac->type == e1000_i211) {
 		mac->ops.acquire_swfw_sync = e1000_acquire_swfw_sync_i210;
 		mac->ops.release_swfw_sync = e1000_release_swfw_sync_i210;
 	}
