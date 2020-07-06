@@ -2866,8 +2866,11 @@ skip_to_post_handle:
 		goto out;
 
 	if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
-		vdpa_dev->ops->dev_conf(dev->vid);
-		dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
+		if (vdpa_dev->ops->dev_conf(dev->vid))
+			VHOST_LOG_CONFIG(ERR,
+					 "Failed to configure vDPA device\n");
+		else
+			dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
 	}
 
 out:
