@@ -117,7 +117,7 @@ void e1000_release_swfw_sync_i210(struct e1000_hw *hw, u16 mask)
 		; /* Empty */
 
 	swfw_sync = E1000_READ_REG(hw, E1000_SW_FW_SYNC);
-	swfw_sync &= ~mask;
+	swfw_sync &= (u32)~mask;
 	E1000_WRITE_REG(hw, E1000_SW_FW_SYNC, swfw_sync);
 
 	e1000_put_hw_semaphore_generic(hw);
@@ -310,7 +310,7 @@ STATIC s32 e1000_write_nvm_srwr(struct e1000_hw *hw, u16 offset, u16 words,
 	}
 
 	for (i = 0; i < words; i++) {
-		eewr = ((offset+i) << E1000_NVM_RW_ADDR_SHIFT) |
+		eewr = ((offset + i) << E1000_NVM_RW_ADDR_SHIFT) |
 			(data[i] << E1000_NVM_RW_REG_DATA) |
 			E1000_NVM_RW_REG_START;
 
@@ -397,9 +397,9 @@ STATIC s32 e1000_read_invm_i210(struct e1000_hw *hw, u16 offset,
 	switch (offset) {
 	case NVM_MAC_ADDR:
 		ret_val = e1000_read_invm_word_i210(hw, (u8)offset, &data[0]);
-		ret_val |= e1000_read_invm_word_i210(hw, (u8)offset+1,
+		ret_val |= e1000_read_invm_word_i210(hw, (u8)offset + 1,
 						     &data[1]);
-		ret_val |= e1000_read_invm_word_i210(hw, (u8)offset+2,
+		ret_val |= e1000_read_invm_word_i210(hw, (u8)offset + 2,
 						     &data[2]);
 		if (ret_val != E1000_SUCCESS)
 			DEBUGOUT("MAC Addr not found in iNVM\n");
@@ -776,8 +776,6 @@ void e1000_init_function_pointers_i210(struct e1000_hw *hw)
 {
 	e1000_init_function_pointers_82575(hw);
 	hw->nvm.ops.init_params = e1000_init_nvm_params_i210;
-
-	return;
 }
 
 /**
