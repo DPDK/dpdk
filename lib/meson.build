@@ -107,6 +107,10 @@ foreach l:libraries
 			shared_dep = declare_dependency(include_directories: includes)
 			static_dep = shared_dep
 		else
+			if is_windows and use_function_versioning
+				message('@0@: Function versioning is not supported by Windows.'
+				.format(name))
+			endif
 
 			if use_function_versioning
 				cflags += '-DRTE_USE_FUNCTION_VERSIONING'
@@ -138,7 +142,7 @@ foreach l:libraries
 					include_directories: includes,
 					dependencies: static_deps)
 
-			if not use_function_versioning
+			if not use_function_versioning or is_windows
 				# use pre-build objects to build shared lib
 				sources = []
 				objs += static_lib.extract_all_objects(recursive: false)
