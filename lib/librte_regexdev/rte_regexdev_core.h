@@ -149,6 +149,8 @@ struct rte_regexdev_data {
 	void *dev_private; /**< PMD-specific private data. */
 	char dev_name[RTE_REGEXDEV_NAME_MAX_LEN]; /**< Unique identifier name */
 	uint16_t dev_id; /**< Device [external]  identifier. */
+	struct rte_regexdev_config dev_conf; /**< RegEx configuration. */
+	uint8_t dev_started : 1; /**< Device started to work. */
 } __rte_cache_aligned;
 
 /**
@@ -170,5 +172,12 @@ struct rte_regexdev {
 	enum rte_regexdev_state state; /**< The device state. */
 	struct rte_regexdev_data *data;  /**< Pointer to device data. */
 } __rte_cache_aligned;
+
+/**
+ * @internal
+ * The pool of *rte_regexdev* structures. The size of the pool
+ * is configured at compile-time in the <rte_regexdev.c> file.
+ */
+extern struct rte_regexdev rte_regex_devices[];
 
 #endif /* _RTE_REGEX_CORE_H_ */

@@ -212,6 +212,33 @@ extern int rte_regexdev_logtype;
 #define RTE_REGEXDEV_LOG(level, ...) \
 	rte_log(RTE_LOG_ ## level, rte_regexdev_logtype, "" __VA_ARGS__)
 
+/* Macros to check for valid port */
+#define RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, retval) do { \
+	if (!rte_regexdev_is_valid_dev(dev_id)) { \
+		RTE_REGEXDEV_LOG(ERR, "Invalid dev_id=%u\n", dev_id); \
+		return retval; \
+	} \
+} while (0)
+
+#define RTE_REGEXDEV_VALID_DEV_ID_OR_RET(dev_id) do { \
+	if (!rte_regexdev_is_valid_dev(dev_id)) { \
+		RTE_REGEXDEV_LOG(ERR, "Invalid dev_id=%u\n", dev_id); \
+		return; \
+	} \
+} while (0)
+
+/**
+ * Check if dev_id is ready.
+ *
+ * @param dev_id
+ *   The dev identifier of the RegEx device.
+ *
+ * @return
+ *   - 0 if device state is not in ready state.
+ *   - 1 if device state is ready state.
+ */
+int rte_regexdev_is_valid_dev(uint16_t dev_id);
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
@@ -1424,9 +1451,21 @@ struct rte_regex_ops {
  *   to take care of them.
  */
 __rte_experimental
-uint16_t
+static inline uint16_t
 rte_regexdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
-			   struct rte_regex_ops **ops, uint16_t nb_ops);
+			   struct rte_regex_ops **ops, uint16_t nb_ops)
+{
+	struct rte_regexdev *dev = &rte_regex_devices[dev_id];
+#ifdef RTE_LIBRTE_REGEXDEV_DEBUG
+	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->enqueue, -ENOTSUP);
+	if (qp_id >= dev->data->dev_conf.nb_queue_pairs) {
+		RTE_REGEXDEV_LOG(ERR, "Invalid queue %d\n", qp_id);
+		return -EINVAL;
+	}
+#endif
+	return (*dev->enqueue)(dev, qp_id, ops, nb_ops);
+}
 
 /**
  * @warning
@@ -1471,9 +1510,21 @@ rte_regexdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
  *   of them.
  */
 __rte_experimental
-uint16_t
+static inline uint16_t
 rte_regexdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
-			   struct rte_regex_ops **ops, uint16_t nb_ops);
+			   struct rte_regex_ops **ops, uint16_t nb_ops)
+{
+	struct rte_regexdev *dev = &rte_regex_devices[dev_id];
+#ifdef RTE_LIBRTE_REGEXDEV_DEBUG
+	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dequeue, -ENOTSUP);
+	if (qp_id >= dev->data->dev_conf.nb_queue_pairs) {
+		RTE_REGEXDEV_LOG(ERR, "Invalid queue %d\n", qp_id);
+		return -EINVAL;
+	}
+#endif
+	return (*dev->dequeue)(dev, qp_id, ops, nb_ops);
+}
 
 #ifdef __cplusplus
 }
