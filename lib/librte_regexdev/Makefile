@@ -23,6 +23,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_REGEXDEV) := rte_regexdev.c
 
 # export include files
 SYMLINK-$(CONFIG_RTE_LIBRTE_REGEXDEV)-include += rte_regexdev.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_REGEXDEV)-include += rte_regexdev_core.h
 
 # versioning export map
 EXPORT_MAP := rte_regexdev_version.map

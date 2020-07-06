@@ -1377,6 +1377,8 @@ struct rte_regex_ops {
 	 */
 };
 
+#include "rte_regexdev_core.h"
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.

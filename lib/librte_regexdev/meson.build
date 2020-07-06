@@ -2,5 +2,6 @@
 # Copyright 2020 Mellanox Technologies, Ltd
 
 sources = files('rte_regexdev.c')
-headers = files('rte_regexdev.h')
+headers = files('rte_regexdev.h',
+	'rte_regexdev_core.h')
 deps += ['mbuf']
