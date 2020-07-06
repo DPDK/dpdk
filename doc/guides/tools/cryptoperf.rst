@@ -347,6 +347,10 @@ The following are the application command-line options:
 
         Set DOCSIS header size(n) in bytes.
 
+* ``--pdcp-ses-hfn-en``
+
+        Enable fixed session based HFN instead of per packet HFN.
+
 Test Vector File
 ~~~~~~~~~~~~~~~~
 

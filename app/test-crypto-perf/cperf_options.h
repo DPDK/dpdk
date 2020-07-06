@@ -50,6 +50,8 @@
 #ifdef RTE_LIBRTE_SECURITY
 #define CPERF_PDCP_SN_SZ	("pdcp-sn-sz")
 #define CPERF_PDCP_DOMAIN	("pdcp-domain")
+#define CPERF_PDCP_SES_HFN_EN	("pdcp-ses-hfn-en")
+#define PDCP_DEFAULT_HFN	0x1
 #define CPERF_DOCSIS_HDR_SZ	("docsis-hdr-sz")
 #endif
 
@@ -123,6 +125,7 @@ struct cperf_options {
 
 #ifdef RTE_LIBRTE_SECURITY
 	uint16_t pdcp_sn_sz;
+	uint16_t pdcp_ses_hfn_en;
 	enum rte_security_pdcp_domain pdcp_domain;
 	uint16_t docsis_hdr_sz;
 #endif

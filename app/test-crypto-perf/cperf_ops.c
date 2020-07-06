@@ -26,6 +26,10 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 			(struct rte_security_session *)sess;
 		uint32_t buf_sz;
 
+		uint32_t *per_pkt_hfn = rte_crypto_op_ctod_offset(ops[i],
+					uint32_t *, iv_offset);
+		*per_pkt_hfn = options->pdcp_ses_hfn_en ? 0 : PDCP_DEFAULT_HFN;
+
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		rte_security_attach_session(ops[i], sec_sess);
 		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] +
@@ -554,16 +558,15 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		cipher_xform.cipher.algo = options->cipher_algo;
 		cipher_xform.cipher.op = options->cipher_op;
 		cipher_xform.cipher.iv.offset = iv_offset;
+		cipher_xform.cipher.iv.length = 4;
 
 		/* cipher different than null */
 		if (options->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
 			cipher_xform.cipher.key.data = test_vector->cipher_key.data;
 			cipher_xform.cipher.key.length = test_vector->cipher_key.length;
-			cipher_xform.cipher.iv.length = test_vector->cipher_iv.length;
 		} else {
 			cipher_xform.cipher.key.data = NULL;
 			cipher_xform.cipher.key.length = 0;
-			cipher_xform.cipher.iv.length = 0;
 		}
 
 		/* Setup Auth Parameters */
@@ -601,8 +604,10 @@ cperf_create_session(struct rte_mempool *sess_mp,
 				.domain = options->pdcp_domain,
 				.pkt_dir = 0,
 				.sn_size = options->pdcp_sn_sz,
-				.hfn = 0x1,
+				.hfn = options->pdcp_ses_hfn_en ?
+					PDCP_DEFAULT_HFN : 0,
 				.hfn_threshold = 0x70C0A,
+				.hfn_ovrd = !(options->pdcp_ses_hfn_en),
 			} },
 			.crypto_xform = &cipher_xform
 		};

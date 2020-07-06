@@ -58,6 +58,9 @@ usage(char *progname)
 		"           and dequeue in pmd-cyclecount benchmarking mode\n"
 		" --csv-friendly: enable test result output CSV friendly\n"
 #ifdef RTE_LIBRTE_SECURITY
+		" --pdcp-sn-sz N: set PDCP SN size N <5/7/12/15/18>\n"
+		" --pdcp-domain DOMAIN: set PDCP domain <control/user>\n"
+		" --pdcp-ses-hfn-en: enable session based fixed HFN\n"
 		" --docsis-hdr-sz: set DOCSIS header size\n"
 #endif
 		" -h: prints this help\n",
@@ -685,6 +688,13 @@ parse_pdcp_domain(struct cperf_options *opts, const char *arg)
 }
 
 static int
+parse_pdcp_ses_hfn_en(struct cperf_options *opts, const char *arg __rte_unused)
+{
+	opts->pdcp_ses_hfn_en = 1;
+	return 0;
+}
+
+static int
 parse_docsis_hdr_sz(struct cperf_options *opts, const char *arg)
 {
 	return parse_uint16_t(&opts->docsis_hdr_sz, arg);
@@ -834,6 +844,7 @@ static struct option lgopts[] = {
 #ifdef RTE_LIBRTE_SECURITY
 	{ CPERF_PDCP_SN_SZ, required_argument, 0, 0 },
 	{ CPERF_PDCP_DOMAIN, required_argument, 0, 0 },
+	{ CPERF_PDCP_SES_HFN_EN, no_argument, 0, 0 },
 	{ CPERF_DOCSIS_HDR_SZ, required_argument, 0, 0 },
 #endif
 	{ CPERF_CSV, no_argument, 0, 0},
@@ -905,6 +916,7 @@ cperf_options_default(struct cperf_options *opts)
 #ifdef RTE_LIBRTE_SECURITY
 	opts->pdcp_sn_sz = 12;
 	opts->pdcp_domain = RTE_SECURITY_PDCP_MODE_CONTROL;
+	opts->pdcp_ses_hfn_en = 0;
 	opts->docsis_hdr_sz = 17;
 #endif
 }
@@ -945,6 +957,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 #ifdef RTE_LIBRTE_SECURITY
 		{ CPERF_PDCP_SN_SZ,	parse_pdcp_sn_sz },
 		{ CPERF_PDCP_DOMAIN,	parse_pdcp_domain },
+		{ CPERF_PDCP_SES_HFN_EN,	parse_pdcp_ses_hfn_en },
 		{ CPERF_DOCSIS_HDR_SZ,	parse_docsis_hdr_sz },
 #endif
 		{ CPERF_CSV,		parse_csv_friendly},
