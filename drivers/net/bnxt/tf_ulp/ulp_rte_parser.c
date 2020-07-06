@@ -1058,6 +1058,11 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 			      eth_spec->dst.addr_bytes,
 			      BNXT_ULP_ACT_PROP_SZ_ENCAP_L2_DMAC);
 
+	buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC];
+	ulp_encap_buffer_copy(buff,
+			      eth_spec->src.addr_bytes,
+			      BNXT_ULP_ACT_PROP_SZ_ENCAP_L2_SMAC);
+
 	/* Goto the next item */
 	if (!ulp_rte_item_skip_void(&item, 1))
 		return BNXT_TF_RC_ERROR;
@@ -1130,6 +1135,11 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		ulp_encap_buffer_copy(buff,
 				      (const uint8_t *)&ipv4_spec->hdr.dst_addr,
 				      BNXT_ULP_ENCAP_IPV4_DEST_IP);
+
+		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC];
+		ulp_encap_buffer_copy(buff,
+				      (const uint8_t *)&ipv4_spec->hdr.src_addr,
+				      BNXT_ULP_ACT_PROP_SZ_ENCAP_IP_SRC);
 
 		/* Update the ip size details */
 		ip_size = tfp_cpu_to_be_32(ip_size);

@@ -103,6 +103,9 @@ ulp_ctx_session_open(struct bnxt *bp,
 	/* EM */
 	resources->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 2048;
 
+	/* EEM */
+	resources->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
+
 	/** TX **/
 	/* Identifiers */
 	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT] = 8;
@@ -127,8 +130,10 @@ ulp_ctx_session_open(struct bnxt *bp,
 	resources->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 8;
 
 	/* EEM */
-	resources->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
 	resources->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
+
+	/* SP */
+	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 128;
 
 	rc = tf_open_session(&bp->tfp, &params);
 	if (rc) {
