@@ -307,8 +307,9 @@ Custom worker function :numref:`dtg_distributor_worker`.
 
 #. Configuration issue isolation
 
-   * Identify core role using ``rte_eal_lcore_role`` to identify RTE, OFF and
-     SERVICE. Check performance functions are mapped to run on the cores.
+   * Identify core role using ``rte_eal_lcore_role`` to identify RTE, OFF,
+     SERVICE and NON_EAL. Check performance functions are mapped to run on the
+     cores.
 
    * For high-performance execution logic ensure running it on correct NUMA
      and non-master core.

@@ -492,6 +492,10 @@ rte_config_init(void)
 		}
 		if (rte_eal_config_reattach() < 0)
 			return -1;
+		if (!__rte_mp_enable()) {
+			RTE_LOG(ERR, EAL, "Primary process refused secondary attachment\n");
+			return -1;
+		}
 		eal_mcfg_update_internal();
 		break;
 	case RTE_PROC_AUTO:

@@ -66,6 +66,12 @@ eal_proc_type_detect(void)
 	return ptype;
 }
 
+bool
+__rte_mp_disable(void)
+{
+	return true;
+}
+
 /* display usage */
 static void
 eal_usage(const char *prgname)

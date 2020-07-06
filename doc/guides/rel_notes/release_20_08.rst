@@ -56,6 +56,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added non-EAL threads registration API.**
+
+  Added a new API to register non-EAL threads as lcores. This can be used by
+  applications to have its threads known of DPDK without suffering from the
+  non-EAL previous limitations in terms of performance.
+
 * **rte_*mb APIs are updated to use DMB instruction for ARMv8.**
 
   ARMv8 memory model has been strengthened to require other-multi-copy

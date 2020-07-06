@@ -182,6 +182,7 @@ F: app/test/test_cycles.c
 F: app/test/test_debug.c
 F: app/test/test_eal*
 F: app/test/test_errno.c
+F: app/test/test_lcores.c
 F: app/test/test_logs.c
 F: app/test/test_memcpy*
 F: app/test/test_per_lcore.c

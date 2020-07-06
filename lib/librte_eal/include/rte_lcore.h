@@ -31,6 +31,7 @@ enum rte_lcore_role_t {
 	ROLE_RTE,
 	ROLE_OFF,
 	ROLE_SERVICE,
+	ROLE_NON_EAL,
 };
 
 /**
@@ -67,7 +68,8 @@ rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role);
  *   to run threads with lcore IDs 0, 1, 2 and 3 on physical core 10..
  *
  * @return
- *  Logical core ID (in EAL thread) or LCORE_ID_ANY (in non-EAL thread)
+ *  Logical core ID (in EAL thread or registered non-EAL thread) or
+ *  LCORE_ID_ANY (in unregistered non-EAL thread)
  */
 static inline unsigned
 rte_lcore_id(void)
@@ -278,6 +280,30 @@ int rte_thread_setname(pthread_t id, const char *name);
  */
 __rte_experimental
 int rte_thread_getname(pthread_t id, char *name, size_t len);
+
+/**
+ * Register current non-EAL thread as a lcore.
+ *
+ * @note This API is not compatible with the multi-process feature:
+ * - if a primary process registers a non-EAL thread, then no secondary process
+ *   will initialise.
+ * - if a secondary process initialises successfully, trying to register a
+ *   non-EAL thread from either primary or secondary processes will always end
+ *   up with the thread getting LCORE_ID_ANY as lcore.
+ *
+ * @return
+ *   On success, return 0; otherwise return -1 with rte_errno set.
+ */
+__rte_experimental
+int
+rte_thread_register(void);
+
+/**
+ * Unregister current thread and release lcore if one was associated.
+ */
+__rte_experimental
+void
+rte_thread_unregister(void);
 
 /**
  * Create a control thread.

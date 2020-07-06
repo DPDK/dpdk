@@ -41,6 +41,8 @@ struct rte_mem_config {
 	rte_rwlock_t memory_hotplug_lock;
 	/**< Indicates whether memory hotplug request is in progress. */
 
+	uint8_t mp_status; /**< Multiprocess status. */
+
 	/* memory segments and zones */
 	struct rte_fbarray memzones; /**< Memzone descriptors. */
 

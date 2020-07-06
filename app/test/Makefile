@@ -98,6 +98,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_FLOW_CLASSIFY) += test_flow_classify.c
 endif
 
 SRCS-y += test_rwlock.c
+SRCS-y += test_lcores.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_STACK) += test_stack.c
 SRCS-$(CONFIG_RTE_LIBRTE_STACK) += test_stack_perf.c

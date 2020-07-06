@@ -564,9 +564,13 @@ It's also compatible with the pattern of corelist('-l') option.
 non-EAL pthread support
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-It is possible to use the DPDK execution context with any user pthread (aka. Non-EAL pthreads).
-In a non-EAL pthread, the *_lcore_id* is always LCORE_ID_ANY which identifies that it is not an EAL thread with a valid, unique, *_lcore_id*.
-Some libraries will use an alternative unique ID (e.g. TID), some will not be impacted at all, and some will work but with limitations (e.g. timer and mempool libraries).
+It is possible to use the DPDK execution context with any user pthread (aka. non-EAL pthreads).
+There are two kinds of non-EAL pthreads:
+
+- a registered non-EAL pthread with a valid *_lcore_id* that was successfully assigned by calling ``rte_thread_register()``,
+- a non registered non-EAL pthread with a LCORE_ID_ANY,
+
+For non registered non-EAL pthread (with a LCORE_ID_ANY *_lcore_id*), some libraries will use an alternative unique ID (e.g. TID), some will not be impacted at all, and some will work but with limitations (e.g. timer and mempool libraries).
 
 All these impacts are mentioned in :ref:`known_issue_label` section.
 
@@ -613,9 +617,9 @@ Known Issues
 + rte_mempool
 
   The rte_mempool uses a per-lcore cache inside the mempool.
-  For non-EAL pthreads, ``rte_lcore_id()`` will not return a valid number.
-  So for now, when rte_mempool is used with non-EAL pthreads, the put/get operations will bypass the default mempool cache and there is a performance penalty because of this bypass.
-  Only user-owned external caches can be used in a non-EAL context in conjunction with ``rte_mempool_generic_put()`` and ``rte_mempool_generic_get()`` that accept an explicit cache parameter.
+  For unregistered non-EAL pthreads, ``rte_lcore_id()`` will not return a valid number.
+  So for now, when rte_mempool is used with unregistered non-EAL pthreads, the put/get operations will bypass the default mempool cache and there is a performance penalty because of this bypass.
+  Only user-owned external caches can be used in an unregistered non-EAL context in conjunction with ``rte_mempool_generic_put()`` and ``rte_mempool_generic_get()`` that accept an explicit cache parameter.
 
 + rte_ring
 
@@ -660,15 +664,15 @@ Known Issues
 
 + rte_timer
 
-  Running  ``rte_timer_manage()`` on a non-EAL pthread is not allowed. However, resetting/stopping the timer from a non-EAL pthread is allowed.
+  Running  ``rte_timer_manage()`` on an unregistered non-EAL pthread is not allowed. However, resetting/stopping the timer from a non-EAL pthread is allowed.
 
 + rte_log
 
-  In non-EAL pthreads, there is no per thread loglevel and logtype, global loglevels are used.
+  In unregistered non-EAL pthreads, there is no per thread loglevel and logtype, global loglevels are used.
 
 + misc
 
-  The debug statistics of rte_ring, rte_mempool and rte_timer are not supported in a non-EAL pthread.
+  The debug statistics of rte_ring, rte_mempool and rte_timer are not supported in an unregistered non-EAL pthread.
 
 cgroup control
 ~~~~~~~~~~~~~~

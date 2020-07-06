@@ -29,6 +29,7 @@
 #include <rte_log.h>
 #include <rte_tailq.h>
 
+#include "eal_memcfg.h"
 #include "eal_private.h"
 #include "eal_filesystem.h"
 #include "eal_internal_cfg.h"
@@ -1231,4 +1232,44 @@ rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 	}
 
 	return mp_send(msg, peer, MP_REP);
+}
+
+/* Internally, the status of the mp feature is represented as a three-state:
+ * - "unknown" as long as no secondary process attached to a primary process
+ *   and there was no call to __rte_mp_disable yet,
+ * - "enabled" as soon as a secondary process attaches to a primary process,
+ * - "disabled" when a primary process successfully called __rte_mp_disable,
+ */
+enum mp_status {
+	MP_STATUS_UNKNOWN,
+	MP_STATUS_DISABLED,
+	MP_STATUS_ENABLED,
+};
+
+static bool
+set_mp_status(enum mp_status status)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	uint8_t expected;
+	uint8_t desired;
+
+	expected = MP_STATUS_UNKNOWN;
+	desired = status;
+	if (__atomic_compare_exchange_n(&mcfg->mp_status, &expected, desired,
+			false, __ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		return true;
+
+	return __atomic_load_n(&mcfg->mp_status, __ATOMIC_RELAXED) == desired;
+}
+
+bool
+__rte_mp_disable(void)
+{
+	return set_mp_status(MP_STATUS_DISABLED);
+}
+
+bool
+__rte_mp_enable(void)
+{
+	return set_mp_status(MP_STATUS_ENABLED);
 }

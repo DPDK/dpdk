@@ -28,9 +28,9 @@
  * rte_mempool_get() or rte_mempool_put() are designed to be called from an EAL
  * thread due to the internal per-lcore cache. Due to the lack of caching,
  * rte_mempool_get() or rte_mempool_put() performance will suffer when called
- * by non-EAL threads. Instead, non-EAL threads should call
- * rte_mempool_generic_get() or rte_mempool_generic_put() with a user cache
- * created with rte_mempool_cache_create().
+ * by unregistered non-EAL threads. Instead, unregistered non-EAL threads
+ * should call rte_mempool_generic_get() or rte_mempool_generic_put() with a
+ * user cache created with rte_mempool_cache_create().
  */
 
 #include <stdio.h>
@@ -1233,7 +1233,7 @@ void rte_mempool_dump(FILE *f, struct rte_mempool *mp);
 /**
  * Create a user-owned mempool cache.
  *
- * This can be used by non-EAL threads to enable caching when they
+ * This can be used by unregistered non-EAL threads to enable caching when they
  * interact with a mempool.
  *
  * @param size
@@ -1264,7 +1264,8 @@ rte_mempool_cache_free(struct rte_mempool_cache *cache);
  * @param lcore_id
  *   The logical core id.
  * @return
- *   A pointer to the mempool cache or NULL if disabled or non-EAL thread.
+ *   A pointer to the mempool cache or NULL if disabled or unregistered non-EAL
+ *   thread.
  */
 static __rte_always_inline struct rte_mempool_cache *
 rte_mempool_default_cache(struct rte_mempool *mp, unsigned lcore_id)

@@ -6,13 +6,15 @@
 #include <limits.h>
 #include <string.h>
 
-#include <rte_errno.h>
-#include <rte_log.h>
-#include <rte_eal.h>
-#include <rte_lcore.h>
 #include <rte_common.h>
 #include <rte_debug.h>
+#include <rte_eal.h>
+#include <rte_errno.h>
+#include <rte_lcore.h>
+#include <rte_log.h>
+#include <rte_spinlock.h>
 
+#include "eal_memcfg.h"
 #include "eal_private.h"
 #include "eal_thread.h"
 
@@ -227,4 +229,39 @@ rte_socket_id_by_idx(unsigned int idx)
 		return -1;
 	}
 	return config->numa_nodes[idx];
+}
+
+static rte_spinlock_t lcore_lock = RTE_SPINLOCK_INITIALIZER;
+
+unsigned int
+eal_lcore_non_eal_allocate(void)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	unsigned int lcore_id;
+
+	rte_spinlock_lock(&lcore_lock);
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (cfg->lcore_role[lcore_id] != ROLE_OFF)
+			continue;
+		cfg->lcore_role[lcore_id] = ROLE_NON_EAL;
+		cfg->lcore_count++;
+		break;
+	}
+	if (lcore_id == RTE_MAX_LCORE)
+		RTE_LOG(DEBUG, EAL, "No lcore available.\n");
+	rte_spinlock_unlock(&lcore_lock);
+	return lcore_id;
+}
+
+void
+eal_lcore_non_eal_release(unsigned int lcore_id)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+
+	rte_spinlock_lock(&lcore_lock);
+	if (cfg->lcore_role[lcore_id] == ROLE_NON_EAL) {
+		cfg->lcore_role[lcore_id] = ROLE_OFF;
+		cfg->lcore_count--;
+	}
+	rte_spinlock_unlock(&lcore_lock);
 }

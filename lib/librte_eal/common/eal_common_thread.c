@@ -12,9 +12,10 @@
 #include <assert.h>
 #include <string.h>
 
+#include <rte_errno.h>
 #include <rte_lcore.h>
-#include <rte_memory.h>
 #include <rte_log.h>
+#include <rte_memory.h>
 #include <rte_trace_point.h>
 
 #include "eal_internal_cfg.h"
@@ -240,4 +241,50 @@ fail:
 	pthread_cancel(*thread);
 	pthread_join(*thread, NULL);
 	return -ret;
+}
+
+int
+rte_thread_register(void)
+{
+	unsigned int lcore_id;
+	rte_cpuset_t cpuset;
+
+	/* EAL init flushes all lcores, we can't register before. */
+	if (eal_get_internal_configuration()->init_complete != 1) {
+		RTE_LOG(DEBUG, EAL, "Called %s before EAL init.\n", __func__);
+		rte_errno = EINVAL;
+		return -1;
+	}
+	if (!__rte_mp_disable()) {
+		RTE_LOG(ERR, EAL, "Multiprocess in use, registering non-EAL threads is not supported.\n");
+		rte_errno = EINVAL;
+		return -1;
+	}
+	if (pthread_getaffinity_np(pthread_self(), sizeof(cpuset),
+			&cpuset) != 0)
+		CPU_ZERO(&cpuset);
+	lcore_id = eal_lcore_non_eal_allocate();
+	if (lcore_id >= RTE_MAX_LCORE)
+		lcore_id = LCORE_ID_ANY;
+	__rte_thread_init(lcore_id, &cpuset);
+	if (lcore_id == LCORE_ID_ANY) {
+		rte_errno = ENOMEM;
+		return -1;
+	}
+	RTE_LOG(DEBUG, EAL, "Registered non-EAL thread as lcore %u.\n",
+		lcore_id);
+	return 0;
+}
+
+void
+rte_thread_unregister(void)
+{
+	unsigned int lcore_id = rte_lcore_id();
+
+	if (lcore_id != LCORE_ID_ANY)
+		eal_lcore_non_eal_release(lcore_id);
+	__rte_thread_uninit();
+	if (lcore_id != LCORE_ID_ANY)
+		RTE_LOG(DEBUG, EAL, "Unregistered non-EAL thread (was lcore %u).\n",
+			lcore_id);
 }

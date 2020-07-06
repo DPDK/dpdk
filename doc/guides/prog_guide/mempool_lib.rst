@@ -103,7 +103,7 @@ The maximum size of the cache is static and is defined at compilation time (CONF
 Alternatively to the internal default per-lcore local cache, an application can create and manage external caches through the ``rte_mempool_cache_create()``, ``rte_mempool_cache_free()`` and ``rte_mempool_cache_flush()`` calls.
 These user-owned caches can be explicitly passed to ``rte_mempool_generic_put()`` and ``rte_mempool_generic_get()``.
 The ``rte_mempool_default_cache()`` call returns the default internal cache if any.
-In contrast to the default caches, user-owned caches can be used by non-EAL threads too.
+In contrast to the default caches, user-owned caches can be used by unregistered non-EAL threads too.
 
 Mempool Handlers
 ------------------------
