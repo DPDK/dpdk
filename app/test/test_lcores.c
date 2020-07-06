@@ -303,6 +303,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 			l[0].uninit, l[1].uninit);
 		goto cleanup_threads;
 	}
+	rte_lcore_dump(stdout);
 	/* Release all threads, and check their states. */
 	__atomic_store_n(&registered_count, 0, __ATOMIC_RELEASE);
 	ret = 0;
@@ -314,6 +315,7 @@ test_non_eal_lcores_callback(unsigned int eal_threads_count)
 	}
 	if (ret < 0)
 		goto error;
+	rte_lcore_dump(stdout);
 	if (l[0].uninit != 2 || l[1].uninit != 1) {
 		printf("Error: threads reported having successfully registered and unregistered, but incorrect uninit calls, expected 2, 1, got %u, %u\n",
 			l[0].uninit, l[1].uninit);
@@ -354,6 +356,7 @@ test_lcores(void)
 	}
 	printf("EAL threads count: %u, RTE_MAX_LCORE=%u\n", eal_threads_count,
 		RTE_MAX_LCORE);
+	rte_lcore_dump(stdout);
 
 	if (test_non_eal_lcores(eal_threads_count) < 0)
 		return TEST_FAILED;

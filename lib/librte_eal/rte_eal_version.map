@@ -398,6 +398,8 @@ EXPERIMENTAL {
 	rte_eal_vfio_get_vf_token;
 	rte_lcore_callback_register;
 	rte_lcore_callback_unregister;
+	rte_lcore_dump;
+	rte_lcore_iterate;
 	rte_thread_register;
 	rte_thread_unregister;
 };

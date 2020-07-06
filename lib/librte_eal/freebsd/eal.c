@@ -858,7 +858,7 @@ rte_eal_init(int argc, char **argv)
 	__rte_thread_init(config->master_lcore,
 		&lcore_config[config->master_lcore].cpuset);
 
-	ret = eal_thread_dump_affinity(cpuset, sizeof(cpuset));
+	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
 
 	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%p;cpuset=[%s%s])\n",
 		config->master_lcore, thread_id, cpuset,

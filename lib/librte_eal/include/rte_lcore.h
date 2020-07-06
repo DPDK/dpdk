@@ -261,8 +261,8 @@ typedef void (*rte_lcore_uninit_cb)(unsigned int lcore_id, void *arg);
  * If this step succeeds, the callbacks are put in the lcore callbacks list
  * that will get called for each lcore allocation/release.
  *
- * Note: callbacks execution is serialised under a lock protecting the lcores
- * and callbacks list.
+ * Note: callbacks execution is serialised under a write lock protecting the
+ * lcores and callbacks list.
  *
  * @param name
  *   A name serving as a small description for this callback.
@@ -298,6 +298,49 @@ rte_lcore_callback_register(const char *name, rte_lcore_init_cb init,
 __rte_experimental
 void
 rte_lcore_callback_unregister(void *handle);
+
+/**
+ * Callback prototype for iterating over lcores.
+ *
+ * @param lcore_id
+ *   The lcore to consider.
+ * @param arg
+ *   An opaque pointer coming from the caller.
+ * @return
+ *   - 0 lets the iteration continue.
+ *   - !0 makes the iteration stop.
+ */
+typedef int (*rte_lcore_iterate_cb)(unsigned int lcore_id, void *arg);
+
+/**
+ * Iterate on all active lcores (ROLE_RTE, ROLE_SERVICE and ROLE_NON_EAL).
+ * No modification on the lcore states is allowed in the callback.
+ *
+ * Note: as opposed to init/uninit callbacks, iteration callbacks can be
+ * invoked in parallel as they are run under a read lock protecting the lcores
+ * and callbacks list.
+ *
+ * @param cb
+ *   The callback that gets passed each lcore.
+ * @param arg
+ *   An opaque pointer passed to cb.
+ * @return
+ *   Same return code as the callback last invocation (see rte_lcore_iterate_cb
+ *   description).
+ */
+__rte_experimental
+int
+rte_lcore_iterate(rte_lcore_iterate_cb cb, void *arg);
+
+/**
+ * List all lcores.
+ *
+ * @param f
+ *   The output stream where the dump should be sent.
+ */
+__rte_experimental
+void
+rte_lcore_dump(FILE *f);
 
 /**
  * Set core affinity of the current thread.
