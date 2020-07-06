@@ -71,7 +71,7 @@ check_forbidden_additions() { # <patch>
 
 	# forbid variable declaration inside "for" loop
 	awk -v FOLDERS='.' \
-		-v EXPRESSIONS='for *\\((char|u?int|unsigned|s?size_t)' \
+		-v EXPRESSIONS='for[[:space:]]*\\((char|u?int|unsigned|s?size_t)' \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Declaring a variable inside for()' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
