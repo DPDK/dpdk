@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2016 Intel Corporation
+ * Copyright(c) 2010-2020 Intel Corporation
  */
 
 This directory contains source code of FreeBSD em & igb drivers of version
-cid-shared-code.2016.11.22 released by ND. The sub-directory of base/
+cid-gigabit.2020.06.05.tar.gz released by ND. The sub-directory of base/
 contains the original source package.
 
 This driver is valid for the product(s) listed below
