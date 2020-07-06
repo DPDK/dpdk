@@ -1692,9 +1692,9 @@ init_fwd_streams(void)
 static void
 pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 {
-	unsigned int total_burst;
-	unsigned int nb_burst;
-	unsigned int burst_stats[3];
+	uint64_t total_burst;
+	uint64_t nb_burst;
+	uint64_t burst_stats[3];
 	uint16_t pktnb_stats[3];
 	uint16_t nb_pkt;
 	int burst_percent[3];
@@ -1723,8 +1723,8 @@ pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 	}
 	if (total_burst == 0)
 		return;
-	burst_percent[0] = (burst_stats[0] * 100) / total_burst;
-	printf("  %s-bursts : %u [%d%% of %d pkts", rx_tx, total_burst,
+	burst_percent[0] = (double)burst_stats[0] / total_burst * 100;
+	printf("  %s-bursts : %"PRIu64" [%d%% of %d pkts", rx_tx, total_burst,
 	       burst_percent[0], (int) pktnb_stats[0]);
 	if (burst_stats[0] == total_burst) {
 		printf("]\n");
@@ -1735,7 +1735,7 @@ pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 		       100 - burst_percent[0], pktnb_stats[1]);
 		return;
 	}
-	burst_percent[1] = (burst_stats[1] * 100) / total_burst;
+	burst_percent[1] = (double)burst_stats[1] / total_burst * 100;
 	burst_percent[2] = 100 - (burst_percent[0] + burst_percent[1]);
 	if ((burst_percent[1] == 0) || (burst_percent[2] == 0)) {
 		printf(" + %d%% of others]\n", 100 - burst_percent[0]);
