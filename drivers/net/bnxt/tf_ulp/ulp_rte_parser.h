@@ -35,9 +35,9 @@
 int32_t
 ulp_rte_parser_svif_process(struct ulp_rte_parser_params *params);
 
-/* Function to handle the implicit VNIC RTE port id */
+/* Function to handle the implicit action port id */
 int32_t
-ulp_rte_parser_vnic_process(struct ulp_rte_parser_params *params);
+ulp_rte_parser_implied_act_port_process(struct ulp_rte_parser_params *params);
 
 /*
  * Function to handle the parsing of RTE Flows and placing

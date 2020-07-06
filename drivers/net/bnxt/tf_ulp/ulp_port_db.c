@@ -162,6 +162,7 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 			bnxt_get_vnic_id(port_id, BNXT_ULP_INTF_TYPE_INVALID);
 		func->phy_port_id = bnxt_get_phy_port_id(port_id);
 		func->func_valid = true;
+		func->ifindex = ifindex;
 	}
 
 	if (intf->type == BNXT_ULP_INTF_TYPE_VF_REP) {
@@ -178,6 +179,7 @@ int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
 		func->func_vnic =
 			bnxt_get_vnic_id(port_id, BNXT_ULP_INTF_TYPE_VF_REP);
 		func->phy_port_id = bnxt_get_phy_port_id(port_id);
+		func->ifindex = ifindex;
 	}
 
 	port_data = &port_db->phy_port_list[func->phy_port_id];
@@ -459,5 +461,55 @@ ulp_port_db_phy_port_vport_get(struct bnxt_ulp_context *ulp_ctxt,
 		return -EINVAL;
 	}
 	*out_port = port_db->phy_port_list[phy_port].port_vport;
+	return 0;
+}
+
+/*
+ * Api to get the port type for a given ulp ifindex.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * ifindex [in] ulp ifindex
+ *
+ * Returns port type.
+ */
+enum bnxt_ulp_intf_type
+ulp_port_db_port_type_get(struct bnxt_ulp_context *ulp_ctxt,
+			  uint32_t ifindex)
+{
+	struct bnxt_ulp_port_db *port_db;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db || ifindex >= port_db->ulp_intf_list_size || !ifindex) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return BNXT_ULP_INTF_TYPE_INVALID;
+	}
+	return port_db->ulp_intf_list[ifindex].type;
+}
+
+/*
+ * Api to get the ulp ifindex for a given function id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * func_id [in].device func id
+ * ifindex [out] ulp ifindex
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_dev_func_id_to_ulp_index(struct bnxt_ulp_context *ulp_ctxt,
+				     uint32_t func_id, uint32_t *ifindex)
+{
+	struct bnxt_ulp_port_db *port_db;
+
+	*ifindex = 0;
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db || func_id >= BNXT_PORT_DB_MAX_FUNC) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	if (!port_db->ulp_func_id_tbl[func_id].func_valid)
+		return -ENOENT;
+
+	*ifindex = port_db->ulp_func_id_tbl[func_id].ifindex;
 	return 0;
 }

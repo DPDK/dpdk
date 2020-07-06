@@ -155,8 +155,8 @@ bnxt_ulp_rte_parser_act_parse(const struct rte_flow_action actions[],
 		}
 		action_item++;
 	}
-	/* update the implied VNIC */
-	ulp_rte_parser_vnic_process(params);
+	/* update the implied port details */
+	ulp_rte_parser_implied_act_port_process(params);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -235,30 +235,26 @@ ulp_rte_parser_svif_process(struct ulp_rte_parser_params *params)
 				       port_id, svif_mask);
 }
 
-/* Function to handle the implicit VNIC RTE port id */
+/* Function to handle the implicit action port id */
 int32_t
-ulp_rte_parser_vnic_process(struct ulp_rte_parser_params *params)
+ulp_rte_parser_implied_act_port_process(struct ulp_rte_parser_params *params)
 {
-	struct ulp_rte_act_bitmap *act = &params->act_bitmap;
+	struct rte_flow_action action_item = {0};
+	struct rte_flow_action_port_id port_id = {0};
 
-	if (ULP_BITMAP_ISSET(act->bits, BNXT_ULP_ACTION_BIT_VNIC) ||
-	    ULP_BITMAP_ISSET(act->bits, BNXT_ULP_ACTION_BIT_VPORT)) {
-		/*
-		 * Reset the vnic/vport action bitmaps
-		 * it is not required for match
-		 */
-		ULP_BITMAP_RESET(params->act_bitmap.bits,
-				 BNXT_ULP_ACTION_BIT_VNIC);
-		ULP_BITMAP_RESET(params->act_bitmap.bits,
-				 BNXT_ULP_ACTION_BIT_VPORT);
+	/* Read the action port set bit */
+	if (ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_ACT_PORT_IS_SET)) {
+		/* Already set, so just exit */
 		return BNXT_TF_RC_SUCCESS;
 	}
+	port_id.id = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_INCOMING_IF);
+	action_item.conf = &port_id;
 
-	/* Update the vnic details */
-	ulp_rte_pf_act_handler(NULL, params);
-	/* Reset the hdr_bitmap with vnic bit */
-	ULP_BITMAP_RESET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VNIC);
+	/* Update the action port based on incoming port */
+	ulp_rte_port_id_act_handler(&action_item, params);
 
+	/* Reset the action port set bit */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_PORT_IS_SET, 0);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1314,46 +1310,111 @@ int32_t
 ulp_rte_pf_act_handler(const struct rte_flow_action *action_item __rte_unused,
 		       struct ulp_rte_parser_params *params)
 {
-	uint32_t svif;
+	uint32_t port_id, pid;
+	uint32_t ifindex;
+	uint16_t pid_s;
+	struct ulp_rte_act_prop *act = &params->act_prop;
 
-	/* Update the hdr_bitmap with vnic bit */
-	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VNIC);
+	/* Get the port id of the current device */
+	port_id = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_INCOMING_IF);
 
-	/* copy the PF of the current device into VNIC Property */
-	svif = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_INCOMING_IF);
-	svif = bnxt_get_vnic_id(svif, BNXT_ULP_INTF_TYPE_INVALID);
-	svif = rte_cpu_to_be_32(svif);
-	memcpy(&params->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
-	       &svif, BNXT_ULP_ACT_PROP_SZ_VNIC);
+	/* Get the port db ifindex */
+	if (ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx, port_id,
+					      &ifindex)) {
+		BNXT_TF_DBG(ERR, "Invalid port id\n");
+		return BNXT_TF_RC_ERROR;
+	}
 
+	/* Check the port is PF port */
+	if (ulp_port_db_port_type_get(params->ulp_ctx,
+				      ifindex) != BNXT_ULP_INTF_TYPE_PF) {
+		BNXT_TF_DBG(ERR, "Port is not a PF port\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	if (params->dir == ULP_DIR_EGRESS) {
+		/* For egress direction, fill vport */
+		if (ulp_port_db_vport_get(params->ulp_ctx, ifindex, &pid_s))
+			return BNXT_TF_RC_ERROR;
+		pid = pid_s;
+		pid = rte_cpu_to_be_32(pid);
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
+		       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
+	} else {
+		/* For ingress direction, fill vnic */
+		if (ulp_port_db_default_vnic_get(params->ulp_ctx, ifindex,
+						 BNXT_ULP_DRV_FUNC_VNIC,
+						 &pid_s))
+			return BNXT_TF_RC_ERROR;
+		pid = pid_s;
+		pid = rte_cpu_to_be_32(pid);
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
+		       &pid, BNXT_ULP_ACT_PROP_SZ_VNIC);
+	}
+
+	/*Update the action port set bit */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_PORT_IS_SET, 1);
 	return BNXT_TF_RC_SUCCESS;
 }
 
 /* Function to handle the parsing of RTE Flow action VF. */
 int32_t
 ulp_rte_vf_act_handler(const struct rte_flow_action *action_item,
-		       struct ulp_rte_parser_params *param)
+		       struct ulp_rte_parser_params *params)
 {
 	const struct rte_flow_action_vf *vf_action;
 	uint32_t pid;
+	uint32_t ifindex;
+	uint16_t pid_s;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+	enum bnxt_ulp_intf_type intf_type;
 
 	vf_action = action_item->conf;
-	if (vf_action) {
-		if (vf_action->original) {
-			BNXT_TF_DBG(ERR,
-				    "Parse Error:VF Original not supported\n");
-			return BNXT_TF_RC_PARSE_ERR;
-		}
-		/* TBD: Update the computed VNIC using VF conversion */
-		pid = bnxt_get_vnic_id(vf_action->id,
-				       BNXT_ULP_INTF_TYPE_INVALID);
+	if (!vf_action) {
+		BNXT_TF_DBG(ERR, "ParseErr: Invalid Argument\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
+
+	if (vf_action->original) {
+		BNXT_TF_DBG(ERR, "ParseErr:VF Original not supported\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
+
+	/* Check the port is VF port */
+	if (ulp_port_db_dev_func_id_to_ulp_index(params->ulp_ctx, vf_action->id,
+						 &ifindex)) {
+		BNXT_TF_DBG(ERR, "VF is not valid interface\n");
+		return BNXT_TF_RC_ERROR;
+	}
+	intf_type = ulp_port_db_port_type_get(params->ulp_ctx, ifindex);
+	if (intf_type != BNXT_ULP_INTF_TYPE_VF &&
+	    intf_type != BNXT_ULP_INTF_TYPE_TRUSTED_VF) {
+		BNXT_TF_DBG(ERR, "Port is not a VF port\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	if (params->dir == ULP_DIR_EGRESS) {
+		/* For egress direction, fill vport */
+		if (ulp_port_db_vport_get(params->ulp_ctx, ifindex, &pid_s))
+			return BNXT_TF_RC_ERROR;
+		pid = pid_s;
 		pid = rte_cpu_to_be_32(pid);
-		memcpy(&param->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
+		       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
+	} else {
+		/* For ingress direction, fill vnic */
+		if (ulp_port_db_default_vnic_get(params->ulp_ctx, ifindex,
+						 BNXT_ULP_DRV_FUNC_VNIC,
+						 &pid_s))
+			return BNXT_TF_RC_ERROR;
+		pid = pid_s;
+		pid = rte_cpu_to_be_32(pid);
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
 		       &pid, BNXT_ULP_ACT_PROP_SZ_VNIC);
 	}
 
-	/* Update the hdr_bitmap with count */
-	ULP_BITMAP_SET(param->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VNIC);
+	/*Update the action port set bit */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_PORT_IS_SET, 1);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1415,8 +1476,8 @@ ulp_rte_port_id_act_handler(const struct rte_flow_action *act_item,
 		       &pid, BNXT_ULP_ACT_PROP_SZ_VNIC);
 	}
 
-	/*Update the hdr_bitmap with vnic */
-	ULP_BITMAP_SET(param->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VNIC);
+	/*Update the action port set bit */
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_ACT_PORT_IS_SET, 1);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1460,8 +1521,8 @@ ulp_rte_phy_port_act_handler(const struct rte_flow_action *action_item,
 	memcpy(&prm->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
 	       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
 
-	/* update the hdr_bitmap with vport */
-	ULP_BITMAP_SET(prm->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VPORT);
+	/*Update the action port set bit */
+	ULP_COMP_FLD_IDX_WR(prm, BNXT_ULP_CF_IDX_ACT_PORT_IS_SET, 1);
 	return BNXT_TF_RC_SUCCESS;
 }
 

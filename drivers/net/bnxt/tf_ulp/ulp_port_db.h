@@ -46,6 +46,7 @@ struct ulp_func_if_info {
 	uint16_t		func_parif;
 	uint16_t		func_vnic;
 	uint16_t		phy_port_id;
+	uint16_t		ifindex;
 };
 
 /* Structure for the Port database resource information. */
@@ -217,5 +218,30 @@ int32_t
 ulp_port_db_phy_port_vport_get(struct bnxt_ulp_context *ulp_ctxt,
 			       uint32_t phy_port,
 			       uint16_t *out_port);
+
+/*
+ * Api to get the port type for a given ulp ifindex.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * ifindex [in] ulp ifindex
+ *
+ * Returns port type.
+ */
+enum bnxt_ulp_intf_type
+ulp_port_db_port_type_get(struct bnxt_ulp_context *ulp_ctxt,
+			  uint32_t ifindex);
+
+/*
+ * Api to get the ulp ifindex for a given function id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * func_id [in].device func id
+ * ifindex [out] ulp ifindex
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_dev_func_id_to_ulp_index(struct bnxt_ulp_context *ulp_ctxt,
+				     uint32_t func_id, uint32_t *ifindex);
 
 #endif /* _ULP_PORT_DB_H_ */
