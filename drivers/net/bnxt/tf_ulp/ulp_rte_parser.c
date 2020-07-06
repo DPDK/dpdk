@@ -1736,3 +1736,47 @@ ulp_rte_set_ipv4_dst_act_handler(const struct rte_flow_action *action_item,
 	BNXT_TF_DBG(ERR, "Parse Error: set ipv4 dst arg is invalid\n");
 	return BNXT_TF_RC_ERROR;
 }
+
+/* Function to handle the parsing of RTE Flow action set tp src.*/
+int32_t
+ulp_rte_set_tp_src_act_handler(const struct rte_flow_action *action_item,
+			       struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_set_tp *set_tp;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+
+	set_tp = action_item->conf;
+	if (set_tp) {
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_SET_TP_SRC],
+		       &set_tp->port, BNXT_ULP_ACT_PROP_SZ_SET_TP_SRC);
+		/* Update the hdr_bitmap with set tp src */
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_ACTION_BIT_SET_TP_SRC);
+		return BNXT_TF_RC_SUCCESS;
+	}
+
+	BNXT_TF_DBG(ERR, "Parse Error: set tp src arg is invalid\n");
+	return BNXT_TF_RC_ERROR;
+}
+
+/* Function to handle the parsing of RTE Flow action set tp dst.*/
+int32_t
+ulp_rte_set_tp_dst_act_handler(const struct rte_flow_action *action_item,
+			       struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_action_set_tp *set_tp;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+
+	set_tp = action_item->conf;
+	if (set_tp) {
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_SET_TP_DST],
+		       &set_tp->port, BNXT_ULP_ACT_PROP_SZ_SET_TP_DST);
+		/* Update the hdr_bitmap with set tp dst */
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_ACTION_BIT_SET_TP_DST);
+		return BNXT_TF_RC_SUCCESS;
+	}
+
+	BNXT_TF_DBG(ERR, "Parse Error: set tp src arg is invalid\n");
+	return BNXT_TF_RC_ERROR;
+}

@@ -206,4 +206,14 @@ int32_t
 ulp_rte_set_ipv4_dst_act_handler(const struct rte_flow_action *action_item,
 				 struct ulp_rte_parser_params *params);
 
+/* Function to handle the parsing of RTE Flow action set tp src.*/
+int32_t
+ulp_rte_set_tp_src_act_handler(const struct rte_flow_action *action_item,
+			       struct ulp_rte_parser_params *params);
+
+/* Function to handle the parsing of RTE Flow action set tp dst.*/
+int32_t
+ulp_rte_set_tp_dst_act_handler(const struct rte_flow_action *action_item,
+			       struct ulp_rte_parser_params *params);
+
 #endif /* _ULP_RTE_PARSER_H_ */
