@@ -34,9 +34,6 @@
 #include "rte_rawdev.h"
 #include "rte_rawdev_pmd.h"
 
-/* dynamic log identifier */
-int librawdev_logtype;
-
 static struct rte_rawdev rte_rawdevices[RTE_RAWDEV_MAX_DEVS];
 
 struct rte_rawdev *rte_rawdevs = rte_rawdevices;

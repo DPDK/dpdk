@@ -17,8 +17,6 @@
 #include "rte_stack.h"
 #include "stack_pvt.h"
 
-int stack_logtype;
-
 TAILQ_HEAD(rte_stack_list, rte_tailq_entry);
 
 static struct rte_tailq_elem rte_stack_tailq = {

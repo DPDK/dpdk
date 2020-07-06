@@ -48,7 +48,6 @@
 TAILQ_HEAD(mlx5_vdpa_privs, mlx5_vdpa_priv) priv_list =
 					      TAILQ_HEAD_INITIALIZER(priv_list);
 static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
-int mlx5_vdpa_logtype;
 
 static struct mlx5_vdpa_priv *
 mlx5_vdpa_find_priv_resource_by_vdev(struct rte_vdpa_device *vdev)

@@ -18,7 +18,6 @@
 static struct graph_head graph_list = STAILQ_HEAD_INITIALIZER(graph_list);
 static rte_spinlock_t graph_lock = RTE_SPINLOCK_INITIALIZER;
 static rte_graph_t graph_id;
-int rte_graph_logtype;
 
 #define GRAPH_ID_CHECK(id) ID_CHECK(id, graph_id)
 
