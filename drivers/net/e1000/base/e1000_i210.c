@@ -925,6 +925,7 @@ STATIC s32 e1000_get_cfg_done_i210(struct e1000_hw *hw)
 s32 e1000_init_hw_i210(struct e1000_hw *hw)
 {
 	s32 ret_val;
+	struct e1000_mac_info *mac = &hw->mac;
 
 	DEBUGFUNC("e1000_init_hw_i210");
 	if ((hw->mac.type >= e1000_i210) &&
@@ -934,6 +935,10 @@ s32 e1000_init_hw_i210(struct e1000_hw *hw)
 			return ret_val;
 	}
 	hw->phy.ops.get_cfg_done = e1000_get_cfg_done_i210;
+
+	/* Initialize identification LED */
+	ret_val = mac->ops.id_led_init(hw);
+
 	ret_val = e1000_init_hw_base(hw);
 	return ret_val;
 }
