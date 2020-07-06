@@ -62,7 +62,7 @@ BEGIN {
 }
 END {
 	if (count > 0) {
-		print "Warning in " substr(last_file,6) ":"
+		print "Warning in " substr(last_file,7) ":"
 		print MESSAGE
 		exit RET_ON_FAIL
 	}
