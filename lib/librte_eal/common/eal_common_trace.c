@@ -101,7 +101,7 @@ eal_trace_fini(void)
 {
 	if (!rte_trace_is_enabled())
 		return;
-	trace_mem_per_thread_free();
+	trace_mem_free();
 	trace_metadata_destroy();
 	eal_trace_args_free();
 }
@@ -370,24 +370,59 @@ fail:
 	rte_spinlock_unlock(&trace->lock);
 }
 
+static void
+trace_mem_per_thread_free_unlocked(struct thread_mem_meta *meta)
+{
+	if (meta->area == TRACE_AREA_HUGEPAGE)
+		eal_free_no_trace(meta->mem);
+	else if (meta->area == TRACE_AREA_HEAP)
+		free(meta->mem);
+}
+
 void
 trace_mem_per_thread_free(void)
 {
 	struct trace *trace = trace_obj_get();
+	struct __rte_trace_header *header;
 	uint32_t count;
-	void *mem;
+
+	header = RTE_PER_LCORE(trace_mem);
+	if (header == NULL)
+		return;
+
+	rte_spinlock_lock(&trace->lock);
+	for (count = 0; count < trace->nb_trace_mem_list; count++) {
+		if (trace->lcore_meta[count].mem == header)
+			break;
+	}
+	if (count != trace->nb_trace_mem_list) {
+		struct thread_mem_meta *meta = &trace->lcore_meta[count];
+
+		trace_mem_per_thread_free_unlocked(meta);
+		if (count != trace->nb_trace_mem_list - 1) {
+			memmove(meta, meta + 1,
+				sizeof(*meta) *
+				 (trace->nb_trace_mem_list - count - 1));
+		}
+		trace->nb_trace_mem_list--;
+	}
+	rte_spinlock_unlock(&trace->lock);
+}
+
+void
+trace_mem_free(void)
+{
+	struct trace *trace = trace_obj_get();
+	uint32_t count;
 
 	if (!rte_trace_is_enabled())
 		return;
 
 	rte_spinlock_lock(&trace->lock);
 	for (count = 0; count < trace->nb_trace_mem_list; count++) {
-		mem = trace->lcore_meta[count].mem;
-		if (trace->lcore_meta[count].area == TRACE_AREA_HUGEPAGE)
-			eal_free_no_trace(mem);
-		else if (trace->lcore_meta[count].area == TRACE_AREA_HEAP)
-			free(mem);
+		trace_mem_per_thread_free_unlocked(&trace->lcore_meta[count]);
 	}
+	trace->nb_trace_mem_list = 0;
 	rte_spinlock_unlock(&trace->lock);
 }
 

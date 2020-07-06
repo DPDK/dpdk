@@ -17,10 +17,10 @@
 #include <eal_filesystem.h>
 #include <eal_options.h>
 #include <eal_private.h>
-#include <rte_trace_point.h>
 #include <rte_vfio.h>
 
 #include "eal_hugepages.h"
+#include "eal_trace.h"
 #include "eal_windows.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
@@ -212,6 +212,11 @@ RTE_DEFINE_PER_LCORE(void *, trace_mem);
 
 void
 __rte_trace_mem_per_thread_alloc(void)
+{
+}
+
+void
+trace_mem_per_thread_free(void)
 {
 }
 

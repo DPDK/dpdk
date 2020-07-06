@@ -709,4 +709,9 @@ eal_get_application_usage_hook(void);
  */
 void __rte_thread_init(unsigned int lcore_id, rte_cpuset_t *cpuset);
 
+/**
+ * Uninitialize per-lcore info for current thread.
+ */
+void __rte_thread_uninit(void);
+
 #endif /* _EAL_PRIVATE_H_ */
