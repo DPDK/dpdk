@@ -645,6 +645,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	for (q = 0; q < nb_queues; q++) {
 		(*internals)->rx_queue[q].map = MAP_FAILED;
 		(*internals)->tx_queue[q].map = MAP_FAILED;
+		(*internals)->rx_queue[q].sockfd = -1;
+		(*internals)->tx_queue[q].sockfd = -1;
 	}
 
 	req = &((*internals)->req);
@@ -848,7 +850,7 @@ error:
 
 		rte_free((*internals)->rx_queue[q].rd);
 		rte_free((*internals)->tx_queue[q].rd);
-		if (((*internals)->rx_queue[q].sockfd != 0) &&
+		if (((*internals)->rx_queue[q].sockfd >= 0) &&
 			((*internals)->rx_queue[q].sockfd != qsockfd))
 			close((*internals)->rx_queue[q].sockfd);
 	}
