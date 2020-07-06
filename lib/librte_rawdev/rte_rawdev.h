@@ -74,7 +74,13 @@ struct rte_rawdev_info;
  *
  * @param[out] dev_info
  *   A pointer to a structure of type *rte_rawdev_info* to be filled with the
- *   contextual information of the device.
+ *   contextual information of the device. The dev_info->dev_private field
+ *   should point to an appropriate buffer space for holding the device-
+ *   specific info for that hardware.
+ *   If the dev_private field is set to NULL, then the device-specific info
+ *   function will not be called and only basic information about the device
+ *   will be returned. This can be used to safely query the type of a rawdev
+ *   instance without needing to know the size of the private data to return.
  *
  * @return
  *   - 0: Success, driver updates the contextual information of the raw device
