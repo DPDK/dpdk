@@ -1340,6 +1340,9 @@ virtio_is_ready(struct virtio_net *dev)
 	struct vhost_virtqueue *vq;
 	uint32_t i;
 
+	if (dev->flags & VIRTIO_DEV_READY)
+		return 1;
+
 	if (dev->nr_vring < VIRTIO_DEV_NUM_VQS_TO_BE_READY)
 		return 0;
 
@@ -1349,6 +1352,8 @@ virtio_is_ready(struct virtio_net *dev)
 		if (!vq_is_ready(dev, vq))
 			return 0;
 	}
+
+	dev->flags |= VIRTIO_DEV_READY;
 
 	if (!(dev->flags & VIRTIO_DEV_RUNNING))
 		VHOST_LOG_CONFIG(INFO,
@@ -2842,28 +2847,32 @@ skip_to_post_handle:
 	}
 
 
-	if (!(dev->flags & VIRTIO_DEV_READY) && virtio_is_ready(dev)) {
-		dev->flags |= VIRTIO_DEV_READY;
+	if (!virtio_is_ready(dev))
+		goto out;
 
-		if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
-			if (dev->dequeue_zero_copy) {
-				VHOST_LOG_CONFIG(INFO,
-						"dequeue zero copy is enabled\n");
-			}
+	/*
+	 * Virtio is now ready. If not done already, it is time
+	 * to notify the application it can process the rings and
+	 * configure the vDPA device if present.
+	 */
 
-			if (dev->notify_ops->new_device(dev->vid) == 0)
-				dev->flags |= VIRTIO_DEV_RUNNING;
-		}
+	if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
+		if (dev->notify_ops->new_device(dev->vid) == 0)
+			dev->flags |= VIRTIO_DEV_RUNNING;
 	}
 
 	vdpa_dev = dev->vdpa_dev;
-	if (vdpa_dev && virtio_is_ready(dev) &&
-	    !(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
+	if (!vdpa_dev)
+		goto out;
+
+	if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
 		if (vdpa_dev->ops->dev_conf)
 			vdpa_dev->ops->dev_conf(dev->vid);
+
 		dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
 	}
 
+out:
 	return 0;
 }
 

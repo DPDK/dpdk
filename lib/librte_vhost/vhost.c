@@ -712,6 +712,7 @@ vhost_enable_dequeue_zero_copy(int vid)
 		return;
 
 	dev->dequeue_zero_copy = 1;
+	VHOST_LOG_CONFIG(INFO, "dequeue zero copy is enabled\n");
 }
 
 void
