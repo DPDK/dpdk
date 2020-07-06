@@ -40,6 +40,12 @@ Deprecation Notices
   These wrappers must be used for patches that need to be merged in 20.08
   onwards. This change will not introduce any performance degradation.
 
+* rte_cio_*mb: Since the IO barriers for ARMv8 platforms are relaxed from DSB
+  to DMB, rte_cio_*mb APIs provide the same functionality as rte_io_*mb
+  APIs (taking all platforms into consideration). rte_io_*mb APIs should be
+  used in the place of rte_cio_*mb APIs. The rte_cio_*mb APIs will be
+  deprecated in 20.11 release.
+
 * igb_uio: In the view of reducing the kernel dependency from the main tree,
   as a first step, the Technical Board decided to move ``igb_uio``
   kernel module to the dpdk-kmods repository in the /linux/igb_uio/ directory
