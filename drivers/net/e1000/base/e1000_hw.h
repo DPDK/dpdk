@@ -212,6 +212,7 @@ enum e1000_mac_type {
 	e1000_pch_lpt,
 	e1000_pch_spt,
 	e1000_pch_cnp,
+	e1000_pch_adp,
 	e1000_82575,
 	e1000_82576,
 	e1000_82580,
