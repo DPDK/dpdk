@@ -71,7 +71,7 @@ int32_t	ulp_port_db_init(struct bnxt_ulp_context *ulp_ctxt, uint8_t port_cnt)
 			    "Failed to allocate mem for phy port list\n");
 		goto error_free;
 	}
-
+	port_db->phy_port_cnt = port_cnt;
 	return 0;
 
 error_free:
@@ -434,5 +434,30 @@ ulp_port_db_vport_get(struct bnxt_ulp_context *ulp_ctxt,
 	func_id = port_db->ulp_intf_list[ifindex].drv_func_id;
 	phy_port_id = port_db->ulp_func_id_tbl[func_id].phy_port_id;
 	*vport = port_db->phy_port_list[phy_port_id].port_vport;
+	return 0;
+}
+
+/*
+ * Api to get the vport for a given physical port.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * phy_port [in] physical port index
+ * out_port [out] the port of the given physical index
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_phy_port_vport_get(struct bnxt_ulp_context *ulp_ctxt,
+			       uint32_t phy_port,
+			       uint16_t *out_port)
+{
+	struct bnxt_ulp_port_db *port_db;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db || phy_port >= port_db->phy_port_cnt) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	*out_port = port_db->phy_port_list[phy_port].port_vport;
 	return 0;
 }

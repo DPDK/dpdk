@@ -238,8 +238,17 @@ ulp_rte_parser_vnic_process(struct ulp_rte_parser_params *params)
 	struct ulp_rte_act_bitmap *act = &params->act_bitmap;
 
 	if (ULP_BITMAP_ISSET(act->bits, BNXT_ULP_ACTION_BIT_VNIC) ||
-	    ULP_BITMAP_ISSET(act->bits, BNXT_ULP_ACTION_BIT_VPORT))
+	    ULP_BITMAP_ISSET(act->bits, BNXT_ULP_ACTION_BIT_VPORT)) {
+		/*
+		 * Reset the vnic/vport action bitmaps
+		 * it is not required for match
+		 */
+		ULP_BITMAP_RESET(params->act_bitmap.bits,
+				 BNXT_ULP_ACTION_BIT_VNIC);
+		ULP_BITMAP_RESET(params->act_bitmap.bits,
+				 BNXT_ULP_ACTION_BIT_VPORT);
 		return BNXT_TF_RC_SUCCESS;
+	}
 
 	/* Update the vnic details */
 	ulp_rte_pf_act_handler(NULL, params);
@@ -1344,28 +1353,59 @@ ulp_rte_port_id_act_handler(const struct rte_flow_action *act_item,
 			    struct ulp_rte_parser_params *param)
 {
 	const struct rte_flow_action_port_id *port_id;
+	struct ulp_rte_act_prop *act;
 	uint32_t pid;
+	int32_t rc;
+	uint32_t ifindex;
+	uint16_t pid_s;
 
 	port_id = act_item->conf;
-	if (port_id) {
-		if (port_id->original) {
-			BNXT_TF_DBG(ERR,
-				    "ParseErr:Portid Original not supported\n");
-			return BNXT_TF_RC_PARSE_ERR;
-		}
-		/* Update the computed VNIC using port conversion */
-		if (port_id->id >= RTE_MAX_ETHPORTS) {
-			BNXT_TF_DBG(ERR,
-				    "ParseErr:Portid is not valid\n");
-			return BNXT_TF_RC_PARSE_ERR;
-		}
-		pid = bnxt_get_vnic_id(port_id->id, BNXT_ULP_INTF_TYPE_INVALID);
+	if (!port_id) {
+		BNXT_TF_DBG(ERR,
+			    "ParseErr: Invalid Argument\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
+	if (port_id->original) {
+		BNXT_TF_DBG(ERR,
+			    "ParseErr:Portid Original not supported\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
+
+	/* Get the port db ifindex */
+	rc = ulp_port_db_dev_port_to_ulp_index(param->ulp_ctx,
+					       port_id->id,
+					       &ifindex);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Invalid port id\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	act = &param->act_prop;
+	if (param->dir == ULP_DIR_EGRESS) {
+		rc = ulp_port_db_vport_get(param->ulp_ctx,
+					   ifindex, &pid_s);
+		if (rc)
+			return BNXT_TF_RC_ERROR;
+
+		pid = pid_s;
 		pid = rte_cpu_to_be_32(pid);
-		memcpy(&param->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
+		       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
+	} else {
+		rc = ulp_port_db_default_vnic_get(param->ulp_ctx,
+						  ifindex,
+						  BNXT_ULP_DRV_FUNC_VNIC,
+						  &pid_s);
+		if (rc)
+			return BNXT_TF_RC_ERROR;
+
+		pid = pid_s;
+		pid = rte_cpu_to_be_32(pid);
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
 		       &pid, BNXT_ULP_ACT_PROP_SZ_VNIC);
 	}
 
-	/* Update the hdr_bitmap with count */
+	/*Update the hdr_bitmap with vnic */
 	ULP_BITMAP_SET(param->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VNIC);
 	return BNXT_TF_RC_SUCCESS;
 }
@@ -1376,42 +1416,41 @@ ulp_rte_phy_port_act_handler(const struct rte_flow_action *action_item,
 			     struct ulp_rte_parser_params *prm)
 {
 	const struct rte_flow_action_phy_port *phy_port;
-	uint32_t vport;
-	struct bnxt_ulp_device_params *dparms;
-	uint32_t dev_id;
+	uint32_t pid;
+	int32_t rc;
+	uint16_t pid_s;
 
 	phy_port = action_item->conf;
-	if (phy_port) {
-		if (phy_port->original) {
-			BNXT_TF_DBG(ERR,
-				    "Parse Err:Port Original not supported\n");
-			return BNXT_TF_RC_PARSE_ERR;
-		}
-		if (bnxt_ulp_cntxt_dev_id_get(prm->ulp_ctx, &dev_id)) {
-			BNXT_TF_DBG(DEBUG, "Failed to get device id\n");
-			return -EINVAL;
-		}
-
-		dparms = bnxt_ulp_device_params_get(dev_id);
-		if (!dparms) {
-			BNXT_TF_DBG(DEBUG, "Failed to get device parms\n");
-			return -EINVAL;
-		}
-
-		if (phy_port->index > dparms->num_phy_ports) {
-			BNXT_TF_DBG(ERR, "ParseErr:Phy Port is not valid\n");
-			return BNXT_TF_RC_PARSE_ERR;
-		}
-
-		/* Get the vport of the physical port */
-		/* TBD: shall be changed later to portdb call */
-		vport = 1 << phy_port->index;
-		vport = rte_cpu_to_be_32(vport);
-		memcpy(&prm->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
-		       &vport, BNXT_ULP_ACT_PROP_SZ_VPORT);
+	if (!phy_port) {
+		BNXT_TF_DBG(ERR,
+			    "ParseErr: Invalid Argument\n");
+		return BNXT_TF_RC_PARSE_ERR;
 	}
 
-	/* Update the hdr_bitmap with count */
+	if (phy_port->original) {
+		BNXT_TF_DBG(ERR,
+			    "Parse Err:Port Original not supported\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
+	if (prm->dir != ULP_DIR_EGRESS) {
+		BNXT_TF_DBG(ERR,
+			    "Parse Err:Phy ports are valid only for egress\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
+	/* Get the physical port details from port db */
+	rc = ulp_port_db_phy_port_vport_get(prm->ulp_ctx, phy_port->index,
+					    &pid_s);
+	if (rc) {
+		BNXT_TF_DBG(DEBUG, "Failed to get port details\n");
+		return -EINVAL;
+	}
+
+	pid = pid_s;
+	pid = rte_cpu_to_be_32(pid);
+	memcpy(&prm->act_prop.act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
+	       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
+
+	/* update the hdr_bitmap with vport */
 	ULP_BITMAP_SET(prm->act_bitmap.bits, BNXT_ULP_ACTION_BIT_VPORT);
 	return BNXT_TF_RC_SUCCESS;
 }

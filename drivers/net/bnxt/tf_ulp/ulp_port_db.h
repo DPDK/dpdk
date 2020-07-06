@@ -71,6 +71,7 @@ struct bnxt_ulp_port_db {
 	/* dpdk device external port list */
 	uint16_t			dev_port_list[RTE_MAX_ETHPORTS];
 	struct ulp_phy_port_info	*phy_port_list;
+	uint16_t			phy_port_cnt;
 	struct ulp_func_if_info		ulp_func_id_tbl[BNXT_PORT_DB_MAX_FUNC];
 };
 
@@ -202,5 +203,19 @@ ulp_port_db_default_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
 int32_t
 ulp_port_db_vport_get(struct bnxt_ulp_context *ulp_ctxt,
 		      uint32_t ifindex,	uint16_t *vport);
+
+/*
+ * Api to get the vport for a given physical port.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * phy_port [in] physical port index
+ * out_port [out] the port of the given physical index
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_phy_port_vport_get(struct bnxt_ulp_context *ulp_ctxt,
+			       uint32_t phy_port,
+			       uint16_t *out_port);
 
 #endif /* _ULP_PORT_DB_H_ */
