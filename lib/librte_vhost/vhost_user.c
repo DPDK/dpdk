@@ -87,6 +87,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_POSTCOPY_END]  = "VHOST_USER_POSTCOPY_END",
 	[VHOST_USER_GET_INFLIGHT_FD] = "VHOST_USER_GET_INFLIGHT_FD",
 	[VHOST_USER_SET_INFLIGHT_FD] = "VHOST_USER_SET_INFLIGHT_FD",
+	[VHOST_USER_SET_STATUS] = "VHOST_USER_SET_STATUS",
 };
 
 static int send_vhost_reply(int sockfd, struct VhostUserMsg *msg);
@@ -1353,6 +1354,11 @@ virtio_is_ready(struct virtio_net *dev)
 			return 0;
 	}
 
+	/* If supported, ensure the frontend is really done with config */
+	if (dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_STATUS))
+		if (!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK))
+			return 0;
+
 	dev->flags |= VIRTIO_DEV_READY;
 
 	if (!(dev->flags & VIRTIO_DEV_RUNNING))
@@ -2469,6 +2475,42 @@ vhost_user_postcopy_end(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	return RTE_VHOST_MSG_RESULT_REPLY;
 }
 
+static int
+vhost_user_set_status(struct virtio_net **pdev, struct VhostUserMsg *msg,
+			int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+
+	if (validate_msg_fds(msg, 0) != 0)
+		return RTE_VHOST_MSG_RESULT_ERR;
+
+	/* As per Virtio specification, the device status is 8bits long */
+	if (msg->payload.u64 > UINT8_MAX) {
+		VHOST_LOG_CONFIG(ERR, "Invalid VHOST_USER_SET_STATUS payload 0x%" PRIx64 "\n",
+				msg->payload.u64);
+		return RTE_VHOST_MSG_RESULT_ERR;
+	}
+
+	dev->status = msg->payload.u64;
+
+	VHOST_LOG_CONFIG(INFO, "New device status(0x%08x):\n"
+			"\t-ACKNOWLEDGE: %u\n"
+			"\t-DRIVER: %u\n"
+			"\t-FEATURES_OK: %u\n"
+			"\t-DRIVER_OK: %u\n"
+			"\t-DEVICE_NEED_RESET: %u\n"
+			"\t-FAILED: %u\n",
+			dev->status,
+			!!(dev->status & VIRTIO_DEVICE_STATUS_ACK),
+			!!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER),
+			!!(dev->status & VIRTIO_DEVICE_STATUS_FEATURES_OK),
+			!!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK),
+			!!(dev->status & VIRTIO_DEVICE_STATUS_DEV_NEED_RESET),
+			!!(dev->status & VIRTIO_DEVICE_STATUS_FAILED));
+
+	return RTE_VHOST_MSG_RESULT_OK;
+}
+
 typedef int (*vhost_message_handler_t)(struct virtio_net **pdev,
 					struct VhostUserMsg *msg,
 					int main_fd);
@@ -2501,6 +2543,7 @@ static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
 	[VHOST_USER_POSTCOPY_END] = vhost_user_postcopy_end,
 	[VHOST_USER_GET_INFLIGHT_FD] = vhost_user_get_inflight_fd,
 	[VHOST_USER_SET_INFLIGHT_FD] = vhost_user_set_inflight_fd,
+	[VHOST_USER_SET_STATUS] = vhost_user_set_status,
 };
 
 /* return bytes# of read on success or negative val on failure. */

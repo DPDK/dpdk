@@ -230,6 +230,14 @@ struct vhost_virtqueue {
 	uint16_t	async_threshold;
 } __rte_cache_aligned;
 
+/* Virtio device status as per Virtio specification */
+#define VIRTIO_DEVICE_STATUS_ACK		0x01
+#define VIRTIO_DEVICE_STATUS_DRIVER		0x02
+#define VIRTIO_DEVICE_STATUS_DRIVER_OK		0x04
+#define VIRTIO_DEVICE_STATUS_FEATURES_OK	0x08
+#define VIRTIO_DEVICE_STATUS_DEV_NEED_RESET	0x40
+#define VIRTIO_DEVICE_STATUS_FAILED		0x80
+
 #define VHOST_MAX_VRING			0x100
 #define VHOST_MAX_QUEUE_PAIRS		0x80
 
@@ -376,6 +384,7 @@ struct virtio_net {
 	uint64_t		log_addr;
 	struct rte_ether_addr	mac;
 	uint16_t		mtu;
+	uint8_t			status;
 
 	struct vhost_device_ops const *notify_ops;
 
