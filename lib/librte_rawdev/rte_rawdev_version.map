@@ -5,6 +5,7 @@ DPDK_20.0 {
 	rte_rawdev_configure;
 	rte_rawdev_count;
 	rte_rawdev_dequeue_buffers;
+	rte_rawdev_dump;
 	rte_rawdev_enqueue_buffers;
 	rte_rawdev_firmware_load;
 	rte_rawdev_firmware_status_get;
