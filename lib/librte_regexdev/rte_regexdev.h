@@ -205,6 +205,13 @@ extern "C" {
 #include <rte_mbuf.h>
 #include <rte_memory.h>
 
+#define RTE_REGEXDEV_NAME_MAX_LEN RTE_DEV_NAME_MAX_LEN
+
+extern int rte_regexdev_logtype;
+
+#define RTE_REGEXDEV_LOG(level, ...) \
+	rte_log(RTE_LOG_ ## level, rte_regexdev_logtype, "" __VA_ARGS__)
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.

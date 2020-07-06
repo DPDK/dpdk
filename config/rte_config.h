@@ -69,6 +69,9 @@
 /* compressdev defines */
 #define RTE_COMPRESS_MAX_DEVS 64
 
+/* regexdev defines */
+#define RTE_MAX_REGEXDEV_DEVS 32
+
 /* eventdev defines */
 #define RTE_EVENT_MAX_DEVS 16
 #define RTE_EVENT_MAX_QUEUES_PER_DEV 64

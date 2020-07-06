@@ -3,5 +3,6 @@
 
 sources = files('rte_regexdev.c')
 headers = files('rte_regexdev.h',
-	'rte_regexdev_core.h')
+	'rte_regexdev_core.h',
+	'rte_regexdev_driver.h')
 deps += ['mbuf']

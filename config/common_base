@@ -739,6 +739,7 @@ CONFIG_RTE_LIBRTE_PMD_ZLIB=n
 # Compile RegEx device support
 #
 CONFIG_RTE_LIBRTE_REGEXDEV=y
+CONFIG_RTE_MAX_REGEXDEV_DEVS=32
 
 #
 # Compile generic event device library
