@@ -290,6 +290,12 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_ICP_I219_V9:
 		mac->type = e1000_pch_cnp;
 		break;
+	case E1000_DEV_ID_PCH_ADL_I219_LM16:
+	case E1000_DEV_ID_PCH_ADL_I219_V16:
+	case E1000_DEV_ID_PCH_ADL_I219_LM17:
+	case E1000_DEV_ID_PCH_ADL_I219_V17:
+		mac->type = e1000_pch_adp;
+		break;
 	case E1000_DEV_ID_82575EB_COPPER:
 	case E1000_DEV_ID_82575EB_FIBER_SERDES:
 	case E1000_DEV_ID_82575GB_QUAD_COPPER:
@@ -443,6 +449,7 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	case e1000_pch_lpt:
 	case e1000_pch_spt:
 	case e1000_pch_cnp:
+	case e1000_pch_adp:
 		e1000_init_function_pointers_ich8lan(hw);
 		break;
 	case e1000_82575:
