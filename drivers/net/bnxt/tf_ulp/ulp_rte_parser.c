@@ -1151,15 +1151,15 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 			const uint8_t *tmp_buff;
 
 			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP];
-			ulp_encap_buffer_copy(buff,
-					      &ipv4_spec->hdr.version_ihl,
-					      BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS);
-			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
-			     BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS];
 			tmp_buff = (const uint8_t *)&ipv4_spec->hdr.packet_id;
 			ulp_encap_buffer_copy(buff,
 					      tmp_buff,
 					      BNXT_ULP_ENCAP_IPV4_ID_PROTO);
+			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
+			     BNXT_ULP_ENCAP_IPV4_ID_PROTO];
+			ulp_encap_buffer_copy(buff,
+					      &ipv4_spec->hdr.version_ihl,
+					      BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS);
 		}
 		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
 		    BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS +
