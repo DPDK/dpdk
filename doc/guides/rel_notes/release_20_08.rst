@@ -56,6 +56,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added the RegEx Library, a generic RegEx service library.**
+
+  Added the RegEx library which provides an API for offload of regular
+  expressions search operations to hardware or software accelerator devices.
+
 * **Updated PCAP driver.**
 
   Updated PCAP driver with new features and improvements, including:

@@ -736,6 +736,11 @@ CONFIG_RTE_LIBRTE_PMD_ISAL=n
 CONFIG_RTE_LIBRTE_PMD_ZLIB=n
 
 #
+# Compile RegEx device support
+#
+CONFIG_RTE_LIBRTE_REGEXDEV=y
+
+#
 # Compile generic event device library
 #
 CONFIG_RTE_LIBRTE_EVENTDEV=y

@@ -40,6 +40,8 @@ DEPDIRS-librte_security += librte_cryptodev
 DIRS-$(CONFIG_RTE_LIBRTE_COMPRESSDEV) += librte_compressdev
 DEPDIRS-librte_compressdev := librte_eal librte_mempool librte_ring librte_mbuf
 DEPDIRS-librte_compressdev += librte_kvargs
+DIRS-$(CONFIG_RTE_LIBRTE_REGEXDEV) += librte_regexdev
+DEPDIRS-librte_regexdev := librte_eal librte_mbuf
 DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += librte_eventdev
 DEPDIRS-librte_eventdev := librte_eal librte_ring librte_ethdev librte_hash \
                            librte_mempool librte_timer librte_cryptodev
