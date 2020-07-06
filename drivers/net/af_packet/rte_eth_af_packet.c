@@ -637,9 +637,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 						sizeof(struct pkt_tx_queue),
 						0, numa_node);
 	if (!(*internals)->rx_queue || !(*internals)->tx_queue) {
-		rte_free((*internals)->rx_queue);
-		rte_free((*internals)->tx_queue);
-		return -1;
+		goto free_internals;
 	}
 
 	for (q = 0; q < nb_queues; q++) {
@@ -664,20 +662,20 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		PMD_LOG(ERR,
 			"%s: I/F name too long (%s)",
 			name, pair->value);
-		return -1;
+		goto free_internals;
 	}
 	if (ioctl(sockfd, SIOCGIFINDEX, &ifr) == -1) {
 		PMD_LOG_ERRNO(ERR, "%s: ioctl failed (SIOCGIFINDEX)", name);
-		return -1;
+		goto free_internals;
 	}
 	(*internals)->if_name = strdup(pair->value);
 	if ((*internals)->if_name == NULL)
-		return -1;
+		goto free_internals;
 	(*internals)->if_index = ifr.ifr_ifindex;
 
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
 		PMD_LOG_ERRNO(ERR, "%s: ioctl failed (SIOCGIFHWADDR)", name);
-		return -1;
+		goto free_internals;
 	}
 	memcpy(&(*internals)->eth_addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 
@@ -701,7 +699,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not open AF_PACKET socket",
 				name);
-			return -1;
+			goto error;
 		}
 
 		tpver = TPACKET_V2;
@@ -854,6 +852,9 @@ error:
 			((*internals)->rx_queue[q].sockfd != qsockfd))
 			close((*internals)->rx_queue[q].sockfd);
 	}
+free_internals:
+	rte_free((*internals)->rx_queue);
+	rte_free((*internals)->tx_queue);
 	free((*internals)->if_name);
 	rte_free(*internals);
 	return -1;
