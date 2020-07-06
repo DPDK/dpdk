@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2015 Cavium, Inc
- * Copyright(c) 2019 Arm Limited
+ * Copyright(c) 2020 Arm Limited
  */
 
 #ifndef _RTE_ATOMIC_ARM64_H_
@@ -19,11 +19,11 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_debug.h>
 
-#define rte_mb() asm volatile("dsb sy" : : : "memory")
+#define rte_mb() asm volatile("dmb osh" : : : "memory")
 
-#define rte_wmb() asm volatile("dsb st" : : : "memory")
+#define rte_wmb() asm volatile("dmb oshst" : : : "memory")
 
-#define rte_rmb() asm volatile("dsb ld" : : : "memory")
+#define rte_rmb() asm volatile("dmb oshld" : : : "memory")
 
 #define rte_smp_mb() asm volatile("dmb ish" : : : "memory")
 
@@ -37,9 +37,9 @@ extern "C" {
 
 #define rte_io_rmb() rte_rmb()
 
-#define rte_cio_wmb() asm volatile("dmb oshst" : : : "memory")
+#define rte_cio_wmb() rte_wmb()
 
-#define rte_cio_rmb() asm volatile("dmb oshld" : : : "memory")
+#define rte_cio_rmb() rte_rmb()
 
 /*------------------------ 128 bit atomic operations -------------------------*/
 

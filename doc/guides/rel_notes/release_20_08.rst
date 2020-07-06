@@ -56,6 +56,13 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **rte_*mb APIs are updated to use DMB instruction for ARMv8.**
+
+  ARMv8 memory model has been strengthened to require other-multi-copy
+  atomicity. This allows for using DMB instruction instead of DSB for IO
+  barriers. rte_*mb APIs, for ARMv8 platforms, are changed to use DMB
+  instruction to reflect this.
+
 * **Added the support for vfio-pci new VF token interface.**
 
   From Linux 5.7, vfio-pci supports to bind both SR-IOV PF and the created VFs,
