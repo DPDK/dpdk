@@ -116,7 +116,7 @@ struct rte_acl_rule_data {
 RTE_ACL_RULE_DEF(rte_acl_rule,);
 
 #define	RTE_ACL_RULE_SZ(fld_num)	\
-	(sizeof(struct rte_acl_rule) + sizeof(struct rte_acl_field) * (fld_num))
+	(sizeof(struct rte_acl_rule_data) + sizeof(struct rte_acl_field) * (fld_num))
 
 
 /** Max number of characters in name.*/
