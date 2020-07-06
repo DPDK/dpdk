@@ -4,6 +4,7 @@
  */
 
 #include <rte_common.h>
+#include <rte_cycles.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_alarm.h>
@@ -227,9 +228,11 @@ void ulp_fc_mgr_thread_cancel(struct bnxt_ulp_context *ctxt)
  * num_counters [in] The number of counters
  *
  */
-__rte_unused static int32_t ulp_bulk_get_flow_stats(struct tf *tfp,
-				       struct bnxt_ulp_fc_info *fc_info,
-				       enum tf_dir dir, uint32_t num_counters)
+__rte_unused static int32_t
+ulp_bulk_get_flow_stats(struct tf *tfp,
+			struct bnxt_ulp_fc_info *fc_info,
+			enum tf_dir dir,
+			struct bnxt_ulp_device_params *dparms)
 /* MARK AS UNUSED FOR NOW TO AVOID COMPILATION ERRORS TILL API is RESOLVED */
 {
 	int rc = 0;
@@ -242,7 +245,7 @@ __rte_unused static int32_t ulp_bulk_get_flow_stats(struct tf *tfp,
 	parms.dir = dir;
 	parms.type = stype;
 	parms.starting_idx = fc_info->shadow_hw_tbl[dir].start_idx;
-	parms.num_entries = num_counters;
+	parms.num_entries = dparms->flow_count_db_entries / 2; /* direction */
 	/*
 	 * TODO:
 	 * Size of an entry needs to obtained from template
@@ -266,13 +269,14 @@ __rte_unused static int32_t ulp_bulk_get_flow_stats(struct tf *tfp,
 		return rc;
 	}
 
-	for (i = 0; i < num_counters; i++) {
+	for (i = 0; i < parms.num_entries; i++) {
 		/* TBD - Get PKT/BYTE COUNT SHIFT/MASK from Template */
 		sw_acc_tbl_entry = &fc_info->sw_acc_tbl[dir][i];
 		if (!sw_acc_tbl_entry->valid)
 			continue;
-		sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats[i]);
-		sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats[i]);
+		sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats[i], dparms);
+		sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats[i],
+								dparms);
 	}
 
 	return rc;
@@ -281,7 +285,8 @@ __rte_unused static int32_t ulp_bulk_get_flow_stats(struct tf *tfp,
 static int ulp_get_single_flow_stat(struct tf *tfp,
 				    struct bnxt_ulp_fc_info *fc_info,
 				    enum tf_dir dir,
-				    uint32_t hw_cntr_id)
+				    uint32_t hw_cntr_id,
+				    struct bnxt_ulp_device_params *dparms)
 {
 	int rc = 0;
 	struct tf_get_tbl_entry_parms parms = { 0 };
@@ -310,8 +315,8 @@ static int ulp_get_single_flow_stat(struct tf *tfp,
 	/* TBD - Get PKT/BYTE COUNT SHIFT/MASK from Template */
 	sw_cntr_indx = hw_cntr_id - fc_info->shadow_hw_tbl[dir].start_idx;
 	sw_acc_tbl_entry = &fc_info->sw_acc_tbl[dir][sw_cntr_indx];
-	sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats);
-	sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats);
+	sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats, dparms);
+	sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats, dparms);
 
 	return rc;
 }
@@ -385,7 +390,7 @@ ulp_fc_mgr_alarm_cb(void *arg)
 				continue;
 			hw_cntr_id = ulp_fc_info->sw_acc_tbl[i][j].hw_cntr_id;
 			rc = ulp_get_single_flow_stat(tfp, ulp_fc_info, i,
-						      hw_cntr_id);
+						      hw_cntr_id, dparms);
 			if (rc)
 				break;
 		}

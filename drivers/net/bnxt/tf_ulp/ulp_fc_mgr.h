@@ -16,8 +16,10 @@
 #define FLOW_CNTR_BYTE_WIDTH 36
 #define FLOW_CNTR_BYTE_MASK  (((uint64_t)1 << FLOW_CNTR_BYTE_WIDTH) - 1)
 
-#define FLOW_CNTR_PKTS(v) ((v) >> FLOW_CNTR_BYTE_WIDTH)
-#define FLOW_CNTR_BYTES(v) ((v) & FLOW_CNTR_BYTE_MASK)
+#define FLOW_CNTR_PKTS(v, d) (((v) & (d)->packet_count_mask) >> \
+		(d)->packet_count_shift)
+#define FLOW_CNTR_BYTES(v, d) (((v) & (d)->byte_count_mask) >> \
+		(d)->byte_count_shift)
 
 struct sw_acc_counter {
 	uint64_t pkt_count;
