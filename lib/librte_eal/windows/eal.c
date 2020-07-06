@@ -67,7 +67,7 @@ eal_proc_type_detect(void)
 }
 
 bool
-__rte_mp_disable(void)
+rte_mp_disable(void)
 {
 	return true;
 }

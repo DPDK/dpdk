@@ -400,6 +400,7 @@ EXPERIMENTAL {
 	rte_lcore_callback_unregister;
 	rte_lcore_dump;
 	rte_lcore_iterate;
+	rte_mp_disable;
 	rte_thread_register;
 	rte_thread_unregister;
 };

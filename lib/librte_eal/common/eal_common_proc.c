@@ -1236,9 +1236,9 @@ rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 
 /* Internally, the status of the mp feature is represented as a three-state:
  * - "unknown" as long as no secondary process attached to a primary process
- *   and there was no call to __rte_mp_disable yet,
+ *   and there was no call to rte_mp_disable yet,
  * - "enabled" as soon as a secondary process attaches to a primary process,
- * - "disabled" when a primary process successfully called __rte_mp_disable,
+ * - "disabled" when a primary process successfully called rte_mp_disable,
  */
 enum mp_status {
 	MP_STATUS_UNKNOWN,
@@ -1263,7 +1263,7 @@ set_mp_status(enum mp_status status)
 }
 
 bool
-__rte_mp_disable(void)
+rte_mp_disable(void)
 {
 	return set_mp_status(MP_STATUS_DISABLED);
 }

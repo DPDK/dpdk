@@ -719,11 +719,6 @@ rte_usage_hook_t
 eal_get_application_usage_hook(void);
 
 /**
- * Mark primary process as not supporting multi-process.
- */
-bool __rte_mp_disable(void);
-
-/**
  * Instruct primary process that a secondary process wants to attach.
  */
 bool __rte_mp_enable(void);
