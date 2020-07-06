@@ -34,6 +34,8 @@
 #define VIRTIO_DEV_BUILTIN_VIRTIO_NET 4
 /* Used to indicate that the device has its own data path and configured */
 #define VIRTIO_DEV_VDPA_CONFIGURED 8
+/* Used to indicate that the feature negotiation failed */
+#define VIRTIO_DEV_FEATURES_FAILED 16
 
 /* Backend value set by guest. */
 #define VIRTIO_DEV_STOPPED -1

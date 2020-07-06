@@ -88,6 +88,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_GET_INFLIGHT_FD] = "VHOST_USER_GET_INFLIGHT_FD",
 	[VHOST_USER_SET_INFLIGHT_FD] = "VHOST_USER_SET_INFLIGHT_FD",
 	[VHOST_USER_SET_STATUS] = "VHOST_USER_SET_STATUS",
+	[VHOST_USER_GET_STATUS] = "VHOST_USER_GET_STATUS",
 };
 
 static int send_vhost_reply(int sockfd, struct VhostUserMsg *msg);
@@ -339,6 +340,9 @@ vhost_user_set_features(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		VHOST_LOG_CONFIG(ERR,
 			"(%d) received invalid negotiated features.\n",
 			dev->vid);
+		dev->flags |= VIRTIO_DEV_FEATURES_FAILED;
+		dev->status &= ~VIRTIO_DEVICE_STATUS_FEATURES_OK;
+
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
@@ -402,6 +406,7 @@ vhost_user_set_features(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	if (vdpa_dev)
 		vdpa_dev->ops->set_features(dev->vid);
 
+	dev->flags &= ~VIRTIO_DEV_FEATURES_FAILED;
 	return RTE_VHOST_MSG_RESULT_OK;
 }
 
@@ -2476,6 +2481,22 @@ vhost_user_postcopy_end(struct virtio_net **pdev, struct VhostUserMsg *msg,
 }
 
 static int
+vhost_user_get_status(struct virtio_net **pdev, struct VhostUserMsg *msg,
+		      int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+
+	if (validate_msg_fds(msg, 0) != 0)
+		return RTE_VHOST_MSG_RESULT_ERR;
+
+	msg->payload.u64 = dev->status;
+	msg->size = sizeof(msg->payload.u64);
+	msg->fd_num = 0;
+
+	return RTE_VHOST_MSG_RESULT_REPLY;
+}
+
+static int
 vhost_user_set_status(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			int main_fd __rte_unused)
 {
@@ -2492,6 +2513,16 @@ vhost_user_set_status(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	}
 
 	dev->status = msg->payload.u64;
+
+	if ((dev->status & VIRTIO_DEVICE_STATUS_FEATURES_OK) &&
+	    (dev->flags & VIRTIO_DEV_FEATURES_FAILED)) {
+		VHOST_LOG_CONFIG(ERR, "FEATURES_OK bit is set but feature negotiation failed\n");
+		/*
+		 * Clear the bit to let the driver know about the feature
+		 * negotiation failure
+		 */
+		dev->status &= ~VIRTIO_DEVICE_STATUS_FEATURES_OK;
+	}
 
 	VHOST_LOG_CONFIG(INFO, "New device status(0x%08x):\n"
 			"\t-ACKNOWLEDGE: %u\n"
@@ -2544,6 +2575,7 @@ static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
 	[VHOST_USER_GET_INFLIGHT_FD] = vhost_user_get_inflight_fd,
 	[VHOST_USER_SET_INFLIGHT_FD] = vhost_user_set_inflight_fd,
 	[VHOST_USER_SET_STATUS] = vhost_user_set_status,
+	[VHOST_USER_GET_STATUS] = vhost_user_get_status,
 };
 
 /* return bytes# of read on success or negative val on failure. */
