@@ -341,9 +341,14 @@ struct cmd_nums {
 	#define HWRM_RING_CMPL_RING_QAGGINT_PARAMS        UINT32_C(0x52)
 	#define HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS     UINT32_C(0x53)
 	#define HWRM_RING_AGGINT_QCAPS                    UINT32_C(0x54)
+	#define HWRM_RING_SQ_ALLOC                        UINT32_C(0x55)
+	#define HWRM_RING_SQ_CFG                          UINT32_C(0x56)
+	#define HWRM_RING_SQ_FREE                         UINT32_C(0x57)
 	#define HWRM_RING_RESET                           UINT32_C(0x5e)
 	#define HWRM_RING_GRP_ALLOC                       UINT32_C(0x60)
 	#define HWRM_RING_GRP_FREE                        UINT32_C(0x61)
+	#define HWRM_RING_CFG                             UINT32_C(0x62)
+	#define HWRM_RING_QCFG                            UINT32_C(0x63)
 	/* Reserved for future use. */
 	#define HWRM_RESERVED5                            UINT32_C(0x64)
 	/* Reserved for future use. */
@@ -695,6 +700,10 @@ struct cmd_nums {
 	/* Experimental */
 	#define HWRM_TF_TCAM_FREE                         UINT32_C(0x2fb)
 	/* Experimental */
+	#define HWRM_TF_GLOBAL_CFG_SET                    UINT32_C(0x2fc)
+	/* Experimental */
+	#define HWRM_TF_GLOBAL_CFG_GET                    UINT32_C(0x2fd)
+	/* Experimental */
 	#define HWRM_SV                                   UINT32_C(0x400)
 	/* Experimental */
 	#define HWRM_DBG_READ_DIRECT                      UINT32_C(0xff10)
@@ -933,8 +942,8 @@ struct hwrm_err_output {
 #define HWRM_VERSION_MINOR 10
 #define HWRM_VERSION_UPDATE 1
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 45
-#define HWRM_VERSION_STR "1.10.1.45"
+#define HWRM_VERSION_RSVD 48
+#define HWRM_VERSION_STR "1.10.1.48"
 
 /****************
  * hwrm_ver_get *
@@ -8889,6 +8898,16 @@ struct hwrm_func_vf_cfg_input {
 	 */
 	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_L2_CTX_ASSETS_TEST \
 		UINT32_C(0x80)
+	/*
+	 * If this bit is set to 1, the VF driver is requesting FW to enable
+	 * PPP TX PUSH feature on all the TX rings specified in the
+	 * num_tx_rings field. By default, the PPP TX push feature is
+	 * disabled for all the TX rings of the VF. This flag is ignored if
+	 * the num_tx_rings field is not specified or the VF doesn't support
+	 * PPP tx push feature.
+	 */
+	#define HWRM_FUNC_VF_CFG_INPUT_FLAGS_PPP_PUSH_MODE_ENABLE \
+		UINT32_C(0x100)
 	/* The number of RSS/COS contexts requested for the VF. */
 	uint16_t	num_rsscos_ctxs;
 	/* The number of completion rings requested for the VF. */
@@ -9367,7 +9386,30 @@ struct hwrm_func_qcaps_output {
 	 */
 	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_HOT_RESET_IF_SUPPORT \
 		UINT32_C(0x8)
-	uint8_t	unused_1[3];
+	/* If 1, the proxy mode is supported on this function */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_PROXY_MODE_SUPPORT \
+		UINT32_C(0x10)
+	/*
+	 * If 1, the tx rings source interface override feature is supported
+	 * on this function.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_TX_PROXY_SRC_INTF_OVERRIDE_SUPPORT \
+		UINT32_C(0x20)
+	/*
+	 * If 1, the device supports scheduler queues. SQs can be managed
+	 * using RING_SQ_ALLOC/CFG/FREE commands.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_SQ_SUPPORTED \
+		UINT32_C(0x40)
+	/*
+	 * If set to 1, then this function supports the TX push mode that
+	 * uses ping-pong buffers from the push pages.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_PPP_PUSH_MODE_SUPPORTED \
+		UINT32_C(0x80)
+	/* The maximum number of SQs supported by this device. */
+	uint8_t	max_sqs;
+	uint8_t	unused_1[2];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -9537,6 +9579,13 @@ struct hwrm_func_qcfg_output {
 	 */
 	#define HWRM_FUNC_QCFG_OUTPUT_FLAGS_HOT_RESET_ALLOWED \
 		UINT32_C(0x200)
+	/*
+	 * If set to 1, then the PPP tx push mode is enabled for all the
+	 * reserved TX rings of this function. If set to 0, then PPP tx push
+	 * mode is disabled for all the reserved TX rings of this function.
+	 */
+	#define HWRM_FUNC_QCFG_OUTPUT_FLAGS_PPP_PUSH_MODE_ENABLED \
+		UINT32_C(0x400)
 	/*
 	 * This value is current MAC address configured for this
 	 * function. A value of 00-00-00-00-00-00 indicates no
@@ -9869,7 +9918,7 @@ struct hwrm_func_qcfg_output {
  *****************/
 
 
-/* hwrm_func_cfg_input (size:704b/88B) */
+/* hwrm_func_cfg_input (size:768b/96B) */
 struct hwrm_func_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -10100,6 +10149,16 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_FLAGS_HOT_RESET_IF_EN_DIS \
 		UINT32_C(0x4000000)
+	/*
+	 * If this bit is set to 1, the PF driver is requesting FW
+	 * to enable PPP TX PUSH feature on all the TX rings specified in
+	 * the num_tx_rings field. By default, the PPP TX push feature is
+	 * disabled for all the TX rings of the function. This flag is
+	 * ignored if num_tx_rings field is not specified or the function
+	 * doesn't support PPP tx push feature.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_FLAGS_PPP_PUSH_MODE_ENABLE \
+		UINT32_C(0x8000000)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the mtu field to be
@@ -10245,6 +10304,12 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_ENABLES_HOT_RESET_IF_SUPPORT \
 		UINT32_C(0x800000)
+	/*
+	 * This bit must be '1' for the sq_id field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES_SQ_ID \
+		UINT32_C(0x1000000)
 	/*
 	 * The maximum transmission unit of the function.
 	 * The HWRM should make sure that the mtu of
@@ -10509,6 +10574,9 @@ struct hwrm_func_cfg_input {
 	 * be reserved for this function on the RX side.
 	 */
 	uint16_t	num_mcast_filters;
+	/* Used by a PF driver to associate a SQ with a VF. */
+	uint16_t	sq_id;
+	uint8_t	unused_0[6];
 } __rte_packed;
 
 /* hwrm_func_cfg_output (size:128b/16B) */
@@ -10682,7 +10750,7 @@ struct hwrm_func_qstats_output {
  ************************/
 
 
-/* hwrm_func_qstats_ext_input (size:192b/24B) */
+/* hwrm_func_qstats_ext_input (size:256b/32B) */
 struct hwrm_func_qstats_ext_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -10737,7 +10805,22 @@ struct hwrm_func_qstats_ext_input {
 	#define HWRM_FUNC_QSTATS_EXT_INPUT_FLAGS_COUNTER_MASK UINT32_C(0x2)
 	#define HWRM_FUNC_QSTATS_EXT_INPUT_FLAGS_LAST \
 		HWRM_FUNC_QSTATS_EXT_INPUT_FLAGS_COUNTER_MASK
-	uint8_t	unused_0[5];
+	uint8_t	unused_0[1];
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the sq_id and traffic_class fields to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_QSTATS_EXT_INPUT_ENABLES_SQ_ID     UINT32_C(0x1)
+	/* Specifies the SQ for which to gather statistics */
+	uint16_t	sq_id;
+	/*
+	 * Specifies the traffic class for which to gather statistics. Valid
+	 * values are 0 through (max_configurable_queues - 1), where
+	 * max_configurable_queues is in the response of HWRM_QUEUE_QPORTCFG
+	 */
+	uint16_t	traffic_class;
+	uint8_t	unused_1[4];
 } __rte_packed;
 
 /* hwrm_func_qstats_ext_output (size:1472b/184B) */
@@ -15128,8 +15211,13 @@ struct hwrm_port_phy_cfg_input {
 	#define HWRM_PORT_PHY_CFG_INPUT_FLAGS_DEPRECATED \
 		UINT32_C(0x2)
 	/*
-	 * When this bit is set to '1', the link shall be forced to
-	 * the force_link_speed value.
+	 * When this bit is set to '1', and the force_pam4_link_speed
+	 * bit in the 'enables' field is '0', the link shall be forced
+	 * to the force_link_speed value.
+	 *
+	 * When this bit is set to '1', and the force_pam4_link_speed
+	 * bit in the 'enables' field is '1', the link shall be forced
+	 * to the force_pam4_link_speed value.
 	 *
 	 * When this bit is set to '1', the HWRM client should
 	 * not enable any of the auto negotiation related
@@ -15602,7 +15690,23 @@ struct hwrm_port_phy_cfg_input {
 	/* 10Gb link speed */
 	#define HWRM_PORT_PHY_CFG_INPUT_EEE_LINK_SPEED_MASK_10GB \
 		UINT32_C(0x40)
-	uint8_t	unused_2[2];
+	/*
+	 * This is the speed that will be used if the force and force_pam4
+	 * bits are '1'.  If unsupported speed is selected, an error
+	 * will be generated.
+	 */
+	uint16_t	force_pam4_link_speed;
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_50GB \
+		UINT32_C(0x1f4)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_100GB \
+		UINT32_C(0x3e8)
+	/* 200Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB \
+		UINT32_C(0x7d0)
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_LAST \
+		HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB
 	/*
 	 * Requested setting of TX LPI timer in microseconds.
 	 * This field is valid only when EEE is enabled and TX LPI is
@@ -25307,6 +25411,9 @@ struct hwrm_vnic_cfg_input {
 	/* This bit must be '1' for the queue_id field to be configured. */
 	#define HWRM_VNIC_CFG_INPUT_ENABLES_QUEUE_ID \
 		UINT32_C(0x80)
+	/* This bit must be '1' for the rx_csum_v2_mode field to be configured. */
+	#define HWRM_VNIC_CFG_INPUT_ENABLES_RX_CSUM_V2_MODE \
+		UINT32_C(0x100)
 	/* Logical vnic ID */
 	uint16_t	vnic_id;
 	/*
@@ -25364,7 +25471,41 @@ struct hwrm_vnic_cfg_input {
 	 * filter rules with destination VNIC specified.
 	 */
 	uint16_t	queue_id;
-	uint8_t	unused0[6];
+	/*
+	 * If the device supports the RX V2 and RX TPA start V2 completion
+	 * records as indicated by the HWRM_VNIC_QCAPS command, this field is
+	 * used to specify the two RX checksum modes supported by these
+	 * completion records.
+	 */
+	uint8_t	rx_csum_v2_mode;
+	/*
+	 * When configured with this checksum mode, the number of header
+	 * groups in the delivered packet with a valid IP checksum and
+	 * the number of header groups in the delivered packet with a valid
+	 * L4 checksum are reported. Valid checksums are counted from the
+	 * outermost header group to the innermost header group, stopping at
+	 * the first error.  This is the default checksum mode supported if
+	 * the driver doesn't explicitly configure the RX checksum mode.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_RX_CSUM_V2_MODE_DEFAULT UINT32_C(0x0)
+	/*
+	 * When configured with this checksum mode, the checksum status is
+	 * reported using 'all ok' mode. In the RX completion record, one
+	 * bit indicates if the IP checksum is valid for all the parsed
+	 * header groups with an IP checksum. Another bit indicates if the
+	 * L4 checksum is valid for all the parsed header groups with an L4
+	 * checksum. The number of header groups that were parsed by the
+	 * chip and passed in the delivered packet is also reported.
+	 */
+	#define HWRM_VNIC_CFG_INPUT_RX_CSUM_V2_MODE_ALL_OK  UINT32_C(0x1)
+	/*
+	 * Any rx_csum_v2_mode value larger than or equal to this is not
+	 * valid
+	 */
+	#define HWRM_VNIC_CFG_INPUT_RX_CSUM_V2_MODE_MAX     UINT32_C(0x2)
+	#define HWRM_VNIC_CFG_INPUT_RX_CSUM_V2_MODE_LAST \
+		HWRM_VNIC_CFG_INPUT_RX_CSUM_V2_MODE_MAX
+	uint8_t	unused0[5];
 } __rte_packed;
 
 /* hwrm_vnic_cfg_output (size:128b/16B) */
@@ -25539,7 +25680,33 @@ struct hwrm_vnic_qcfg_output {
 	 * queue association.
 	 */
 	uint16_t	queue_id;
-	uint8_t	unused_1[5];
+	/*
+	 * If the device supports the RX V2 and RX TPA start V2 completion
+	 * records as indicated by the HWRM_VNIC_QCAPS command, this field is
+	 * used to specify the current RX checksum mode configured for all the
+	 * RX rings of a VNIC.
+	 */
+	uint8_t	rx_csum_v2_mode;
+	/*
+	 * This value indicates that the VNIC is configured to use the
+	 * default RX checksum mode for all the rings associated with this
+	 * VNIC.
+	 */
+	#define HWRM_VNIC_QCFG_OUTPUT_RX_CSUM_V2_MODE_DEFAULT UINT32_C(0x0)
+	/*
+	 * This value indicates that the VNIC is configured to use the RX
+	 * checksum ‘all_ok’ mode for all the rings associated with this
+	 * VNIC.
+	 */
+	#define HWRM_VNIC_QCFG_OUTPUT_RX_CSUM_V2_MODE_ALL_OK  UINT32_C(0x1)
+	/*
+	 * Any rx_csum_v2_mode value larger than or equal to this is not
+	 * valid
+	 */
+	#define HWRM_VNIC_QCFG_OUTPUT_RX_CSUM_V2_MODE_MAX     UINT32_C(0x2)
+	#define HWRM_VNIC_QCFG_OUTPUT_RX_CSUM_V2_MODE_LAST \
+		HWRM_VNIC_QCFG_OUTPUT_RX_CSUM_V2_MODE_MAX
+	uint8_t	unused_1[4];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -25676,6 +25843,17 @@ struct hwrm_vnic_qcaps_output {
 	 */
 	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_COS_ASSIGNMENT_CAP \
 		UINT32_C(0x100)
+	/*
+	 * When this bit is '1', it indicates that HW and firmware supports
+	 * the use of RX V2 and RX TPA start V2 completion records for all
+	 * the RX rings of a VNIC. Once set, this feature is mandatory to
+	 * be used for the RX rings of the VNIC. Additionally, two new RX
+	 * checksum features supported by these ompletion records can be
+	 * configured using the HWRM_VNIC_CFG on a VNIC. If set to '0', the
+	 * HW and the firmware does not support this feature.
+	 */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RX_CMPL_V2_CAP \
+		UINT32_C(0x200)
 	/*
 	 * This field advertises the maximum concurrent TPA aggregations
 	 * supported by the VNIC on new devices that support TPA v2.
@@ -26308,6 +26486,13 @@ struct hwrm_vnic_plcmodes_cfg_input {
 	 */
 	#define HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_HDS_ROCE \
 		UINT32_C(0x20)
+	/*
+	 * When this bit is '1', the VNIC shall be configured use the virtio
+	 * placement algorithm. This feature can only be configured when
+	 * proxy mode is supported on the function.
+	 */
+	#define HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_VIRTIO_PLACEMENT \
+		UINT32_C(0x40)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the jumbo_thresh_valid field to be
@@ -26327,6 +26512,12 @@ struct hwrm_vnic_plcmodes_cfg_input {
 	 */
 	#define HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_HDS_THRESHOLD_VALID \
 		UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the max_bds_valid field to be
+	 * configured.
+	 */
+	#define HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_MAX_BDS_VALID \
+		UINT32_C(0x8)
 	/* Logical vnic ID */
 	uint32_t	vnic_id;
 	/*
@@ -26354,7 +26545,21 @@ struct hwrm_vnic_plcmodes_cfg_input {
 	 * This value shall be in multiple of 4 bytes.
 	 */
 	uint16_t	hds_threshold;
-	uint8_t	unused_0[6];
+	/*
+	 * When virtio placement algorithm is enabled, this
+	 * value is used to determine the the maximum number of BDs
+	 * that can be used to place an Rx Packet.
+	 * If an incoming packet does not fit in the buffers described
+	 * by the max BDs, the packet will be dropped and an error
+	 * will be reported in the completion. Valid values for this
+	 * field are between 1 and 8. If the VNIC uses header-data-
+	 * separation and/or TPA with buffer spanning enabled, valid
+	 * values for this field are between 2 and 8.
+	 * This feature can only be configured when proxy mode is
+	 * supported on the function.
+	 */
+	uint16_t	max_bds;
+	uint8_t	unused_0[4];
 } __rte_packed;
 
 /* hwrm_vnic_plcmodes_cfg_output (size:128b/16B) */
@@ -26372,8 +26577,9 @@ struct hwrm_vnic_plcmodes_cfg_output {
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
 	 * to indicate that the output has been completely written.
-	 * When writing a command completion or response to an internal processor,
-	 * the order of writes has to be such that this field is written last.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field is
+	 * written last.
 	 */
 	uint8_t	valid;
 } __rte_packed;
@@ -26472,6 +26678,13 @@ struct hwrm_vnic_plcmodes_qcfg_output {
 	#define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_DFLT_VNIC \
 		UINT32_C(0x40)
 	/*
+	 * When this bit is '1', the VNIC is configured to use the virtio
+	 * placement algorithm. This feature can only be configured when
+	 * proxy mode is supported on the function.
+	 */
+	#define HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_VIRTIO_PLACEMENT \
+		UINT32_C(0x80)
+	/*
 	 * When jumbo placement algorithm is enabled, this value
 	 * is used to determine the threshold for jumbo placement.
 	 * Packets with length larger than this value will be
@@ -26496,13 +26709,28 @@ struct hwrm_vnic_plcmodes_qcfg_output {
 	 * This value shall be in multiple of 4 bytes.
 	 */
 	uint16_t	hds_threshold;
-	uint8_t	unused_0[5];
+	/*
+	 * When virtio placement algorithm is enabled, this
+	 * value is used to determine the the maximum number of BDs
+	 * that can be used to place an Rx Packet.
+	 * If an incoming packet does not fit in the buffers described
+	 * by the max BDs, the packet will be dropped and an error
+	 * will be reported in the completion. Valid values for this
+	 * field are between 1 and 8. If the VNIC uses header-data-
+	 * separation and/or TPA with buffer spanning enabled, valid
+	 * values for this field are between 2 and 8.
+	 * This feature can only be configured when proxy mode is supported
+	 * on the function
+	 */
+	uint16_t	max_bds;
+	uint8_t	unused_0[3];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
 	 * to indicate that the output has been completely written.
-	 * When writing a command completion or response to an internal processor,
-	 * the order of writes has to be such that this field is written last.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field is
+	 * written last.
 	 */
 	uint8_t	valid;
 } __rte_packed;
@@ -26700,6 +26928,12 @@ struct hwrm_ring_alloc_input {
 	 */
 	#define HWRM_RING_ALLOC_INPUT_ENABLES_RX_BUF_SIZE_VALID \
 		UINT32_C(0x100)
+	/*
+	 * This bit must be '1' for the sq_id field to be
+	 * configured.
+	 */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_SQ_ID \
+		UINT32_C(0x200)
 	/* Ring Type. */
 	uint8_t	ring_type;
 	/* L2 Completion Ring (CR) */
@@ -26765,7 +26999,8 @@ struct hwrm_ring_alloc_input {
 	 *    element of the ring.
 	 */
 	uint8_t	page_tbl_depth;
-	uint8_t	unused_1[2];
+	/* Used by a PF driver to associate a SQ with one of its TX rings. */
+	uint16_t	sq_id;
 	/*
 	 * Number of 16B units in the ring.  Minimum size for
 	 * a ring is 16 16B entries.
@@ -27128,6 +27363,290 @@ struct hwrm_ring_reset_output {
 	 * to indicate that the output has been completely written.
 	 * When writing a command completion or response to an internal processor,
 	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/*****************
+ * hwrm_ring_cfg *
+ *****************/
+
+
+/* hwrm_ring_cfg_input (size:256b/32B) */
+struct hwrm_ring_cfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Ring Type. */
+	uint8_t	ring_type;
+	/* TX Ring (TR) */
+	#define HWRM_RING_CFG_INPUT_RING_TYPE_TX UINT32_C(0x1)
+	/* RX Ring (RR) */
+	#define HWRM_RING_CFG_INPUT_RING_TYPE_RX UINT32_C(0x2)
+	#define HWRM_RING_CFG_INPUT_RING_TYPE_LAST \
+		HWRM_RING_CFG_INPUT_RING_TYPE_RX
+	uint8_t	unused_0;
+	/* Physical number of the ring. */
+	uint16_t	ring_id;
+	/* Ring config enable bits. */
+	uint16_t	enables;
+	/*
+	 * For Rx rings, the incoming packet data can be placed at either
+	 * a 0B, 2B, 10B or 12B offset from the start of the Rx packet
+	 * buffer.
+	 * When '1', the received packet will be padded with 2B, 10B or 12B
+	 * of zeros at the front of the packet. The exact offset is specified
+	 * by rx_sop_pad_bytes parameter.
+	 * When '0', the received packet will not be padded.
+	 * Note that this flag is only used for Rx rings and is ignored
+	 * for all other rings included Rx Aggregation rings.
+	 */
+	#define HWRM_RING_CFG_INPUT_ENABLES_RX_SOP_PAD_ENABLE \
+		UINT32_C(0x1)
+	/*
+	 * Proxy mode enable, for Tx, Rx and Rx aggregation rings only.
+	 * When rings are allocated, the PCI function on which driver issues
+	 * HWRM_RING_CFG command is assumed to own the rings. Hardware takes
+	 * the buffer descriptors (BDs) from those rings is assumed to issue
+	 * packet payload DMA using same PCI function. When proxy mode is
+	 * enabled, hardware can perform payload DMA using another PCI
+	 * function on same or different host.
+	 * When set to '0', the PCI function on which driver issues
+	 * HWRM_RING_CFG command is used for host payload DMA operation.
+	 * When set to '1', the host PCI function specified by proxy_fid is
+	 * used for host payload DMA operation.
+	 */
+	#define HWRM_RING_CFG_INPUT_ENABLES_PROXY_MODE_ENABLE \
+		UINT32_C(0x2)
+	/*
+	 * Tx ring packet source interface override, for Tx rings only.
+	 * When TX rings are allocated, the PCI function on which driver
+	 * issues HWRM_RING_CFG is assumed to be source interface of
+	 * packets sent from TX ring.
+	 * When set to '1', the host PCI function specified by proxy_fid
+	 * is used as source interface of the transmitted packets.
+	 */
+	#define HWRM_RING_CFG_INPUT_ENABLES_TX_PROXY_SRC_INTF_OVERRIDE \
+		UINT32_C(0x4)
+	/* The sq_id field is valid */
+	#define HWRM_RING_CFG_INPUT_ENABLES_SQ_ID \
+		UINT32_C(0x8)
+	/* Update completion ring ID associated with Tx or Rx ring. */
+	#define HWRM_RING_CFG_INPUT_ENABLES_CMPL_RING_ID_UPDATE \
+		UINT32_C(0x10)
+	/*
+	 * Proxy function FID value.
+	 * This value is only used when either proxy_mode_enable flag or
+	 * tx_proxy_svif_override is set to '1'.
+	 * When proxy_mode_enable is set to '1', it identifies a host PCI
+	 * function used for host payload DMA operations.
+	 * When tx_proxy_src_intf is set to '1', it identifies a host PCI
+	 * function as source interface for all transmitted packets from
+	 * the TX ring.
+	 */
+	uint16_t	proxy_fid;
+	/*
+	 * Identifies the new scheduler queue (SQ) to associate with the ring.
+	 * Only valid for Tx rings.
+	 * A value of zero indicates that the Tx ring should be associated
+	 * with the default scheduler queue (SQ).
+	 */
+	uint16_t	sq_id;
+	/*
+	 * This field is valid for TX or Rx rings. This value identifies the
+	 * new completion ring ID to associate with the TX or Rx ring.
+	 */
+	uint16_t	cmpl_ring_id;
+	/*
+	 * Rx SOP padding amount in bytes.
+	 * This value is only used when rx_sop_pad_enable flag is set to '1'.
+	 */
+	uint8_t	rx_sop_pad_bytes;
+	uint8_t	unused_1[3];
+} __rte_packed;
+
+/* hwrm_ring_cfg_output (size:128b/16B) */
+struct hwrm_ring_cfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field is
+	 * written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/******************
+ * hwrm_ring_qcfg *
+ ******************/
+
+
+/* hwrm_ring_qcfg_input (size:192b/24B) */
+struct hwrm_ring_qcfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Ring Type. */
+	uint8_t	ring_type;
+	/* TX Ring (TR) */
+	#define HWRM_RING_QCFG_INPUT_RING_TYPE_TX UINT32_C(0x1)
+	/* RX Ring (RR) */
+	#define HWRM_RING_QCFG_INPUT_RING_TYPE_RX UINT32_C(0x2)
+	#define HWRM_RING_QCFG_INPUT_RING_TYPE_LAST \
+		HWRM_RING_QCFG_INPUT_RING_TYPE_RX
+	uint8_t	unused_0[5];
+	/* Physical number of the ring. */
+	uint16_t	ring_id;
+} __rte_packed;
+
+/* hwrm_ring_qcfg_output (size:192b/24B) */
+struct hwrm_ring_qcfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Ring config enable bits. */
+	uint16_t	enables;
+	/*
+	 * For Rx rings, the incoming packet data can be placed at either
+	 * a 0B, 2B, 10B or 12B offset from the start of the Rx packet
+	 * buffer.
+	 * When '1', the received packet will be padded with 2B, 10B or 12B
+	 * of zeros at the front of the packet. The exact offset is specified
+	 * by rx_sop_pad_bytes parameter.
+	 * When '0', the received packet will not be padded.
+	 * Note that this flag is only used for Rx rings and is ignored
+	 * for all other rings included Rx Aggregation rings.
+	 */
+	#define HWRM_RING_QCFG_OUTPUT_ENABLES_RX_SOP_PAD_ENABLE \
+		UINT32_C(0x1)
+	/*
+	 * Proxy mode enable, for Tx, Rx and Rx aggregation rings only.
+	 * When rings are allocated, the PCI function on which driver issues
+	 * HWRM_RING_CFG command is assumed to own the rings. Hardware takes
+	 * the buffer descriptors (BDs) from those rings is assumed to issue
+	 * packet payload DMA using same PCI function. When proxy mode is
+	 * enabled, hardware can perform payload DMA using another PCI
+	 * function on same or different host.
+	 * When set to '0', the PCI function on which driver issues
+	 * HWRM_RING_CFG command is used for host payload DMA operation.
+	 * When set to '1', the host PCI function specified by proxy_fid is
+	 * used for host payload DMA operation.
+	 */
+	#define HWRM_RING_QCFG_OUTPUT_ENABLES_PROXY_MODE_ENABLE \
+		UINT32_C(0x2)
+	/*
+	 * Tx ring packet source interface override, for Tx rings only.
+	 * When TX rings are allocated, the PCI function on which driver
+	 * issues HWRM_RING_CFG is assumed to be source interface of
+	 * packets sent from TX ring.
+	 * When set to '1', the host PCI function specified by proxy_fid is
+	 * used as source interface of the transmitted packets.
+	 */
+	#define HWRM_RING_QCFG_OUTPUT_ENABLES_TX_PROXY_SRC_INTF_OVERRIDE \
+		UINT32_C(0x4)
+	/*
+	 * Proxy function FID value.
+	 * This value is only used when either proxy_mode_enable flag or
+	 * tx_proxy_svif_override is set to '1'.
+	 * When proxy_mode_enable is set to '1', it identifies a host PCI
+	 * function used for host payload DMA operations.
+	 * When tx_proxy_src_intf is set to '1', it identifies a host PCI
+	 * function as source interface for all transmitted packets from the TX
+	 * ring.
+	 */
+	uint16_t	proxy_fid;
+	/*
+	 * Identifies the new scheduler queue (SQ) to associate with the ring.
+	 * Only valid for Tx rings.
+	 * A value of zero indicates that the Tx ring should be associated with
+	 * the default scheduler queue (SQ).
+	 */
+	uint16_t	sq_id;
+	/*
+	 * This field is used when ring_type is a TX or Rx ring.
+	 * This value indicates what completion ring the TX or Rx ring
+	 * is associated with.
+	 */
+	uint16_t	cmpl_ring_id;
+	/*
+	 * Rx SOP padding amount in bytes.
+	 * This value is only used when rx_sop_pad_enable flag is set to '1'.
+	 */
+	uint8_t	rx_sop_pad_bytes;
+	uint8_t	unused_0[6];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field is
+	 * written last.
 	 */
 	uint8_t	valid;
 } __rte_packed;
@@ -27684,6 +28203,780 @@ struct hwrm_ring_grp_free_input {
 
 /* hwrm_ring_grp_free_output (size:128b/16B) */
 struct hwrm_ring_grp_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/**********************
+ * hwrm_ring_sq_alloc *
+ **********************/
+
+
+/* hwrm_ring_sq_alloc_input (size:1088b/136B) */
+struct hwrm_ring_sq_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the tqm_ring0 fields to be
+	 * configured.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_ENABLES_TQM_RING0     UINT32_C(0x1)
+	/*
+	 * This bit must be '1' for the tqm_ring1 fields to be
+	 * configured.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_ENABLES_TQM_RING1     UINT32_C(0x2)
+	/*
+	 * This bit must be '1' for the tqm_ring2 fields to be
+	 * configured.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_ENABLES_TQM_RING2     UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the tqm_ring3 fields to be
+	 * configured.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_ENABLES_TQM_RING3     UINT32_C(0x8)
+	/*
+	 * This bit must be '1' for the tqm_ring4 fields to be
+	 * configured.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_ENABLES_TQM_RING4     UINT32_C(0x10)
+	/*
+	 * This bit must be '1' for the tqm_ring5 fields to be
+	 * configured.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_ENABLES_TQM_RING5     UINT32_C(0x20)
+	/*
+	 * This bit must be '1' for the tqm_ring6 fields to be
+	 * configured.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_ENABLES_TQM_RING6     UINT32_C(0x40)
+	/*
+	 * This bit must be '1' for the tqm_ring7 fields to be
+	 * configured.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_ENABLES_TQM_RING7     UINT32_C(0x80)
+	/* Reserved for future use. */
+	uint32_t	reserved;
+	/* TQM ring 0 page size and level. */
+	uint8_t	tqm_ring0_pg_size_tqm_ring0_lvl;
+	/* TQM ring 0 PBL indirect levels. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_LVL_MASK      UINT32_C(0xf)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_LVL_SFT       0
+	/* PBL pointer is physical start address. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_LVL_LVL_0 \
+		UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_LVL_LVL_1 \
+		UINT32_C(0x1)
+	/*
+	 * PBL pointer points to PDE table with each entry pointing to PTE
+	 * tables.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_LVL_LVL_2 \
+		UINT32_C(0x2)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_LVL_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_LVL_LVL_2
+	/* TQM ring 0 page size. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_MASK  UINT32_C(0xf0)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_SFT   4
+	/* 4KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_PG_4K \
+		(UINT32_C(0x0) << 4)
+	/* 8KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_PG_8K \
+		(UINT32_C(0x1) << 4)
+	/* 64KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_PG_64K \
+		(UINT32_C(0x2) << 4)
+	/* 2MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_PG_2M \
+		(UINT32_C(0x3) << 4)
+	/* 8MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_PG_8M \
+		(UINT32_C(0x4) << 4)
+	/* 1GB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_PG_1G \
+		(UINT32_C(0x5) << 4)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING0_PG_SIZE_PG_1G
+	/* TQM ring 1 page size and level. */
+	uint8_t	tqm_ring1_pg_size_tqm_ring1_lvl;
+	/* TQM ring 1 PBL indirect levels. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_LVL_MASK      UINT32_C(0xf)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_LVL_SFT       0
+	/* PBL pointer is physical start address. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_LVL_LVL_0 \
+		UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_LVL_LVL_1 \
+		UINT32_C(0x1)
+	/*
+	 * PBL pointer points to PDE table with each entry pointing to PTE
+	 * tables.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_LVL_LVL_2 \
+		UINT32_C(0x2)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_LVL_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_LVL_LVL_2
+	/* TQM ring 1 page size. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_MASK  UINT32_C(0xf0)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_SFT   4
+	/* 4KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_PG_4K \
+		(UINT32_C(0x0) << 4)
+	/* 8KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_PG_8K \
+		(UINT32_C(0x1) << 4)
+	/* 64KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_PG_64K \
+		(UINT32_C(0x2) << 4)
+	/* 2MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_PG_2M \
+		(UINT32_C(0x3) << 4)
+	/* 8MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_PG_8M \
+		(UINT32_C(0x4) << 4)
+	/* 1GB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_PG_1G \
+		(UINT32_C(0x5) << 4)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING1_PG_SIZE_PG_1G
+	/* TQM ring 2 page size and level. */
+	uint8_t	tqm_ring2_pg_size_tqm_ring2_lvl;
+	/* TQM ring 2 PBL indirect levels. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_LVL_MASK      UINT32_C(0xf)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_LVL_SFT       0
+	/* PBL pointer is physical start address. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_LVL_LVL_0 \
+		UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_LVL_LVL_1 \
+		UINT32_C(0x1)
+	/*
+	 * PBL pointer points to PDE table with each entry pointing to PTE
+	 * tables.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_LVL_LVL_2 \
+		UINT32_C(0x2)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_LVL_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_LVL_LVL_2
+	/* TQM ring 2 page size. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_MASK  UINT32_C(0xf0)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_SFT   4
+	/* 4KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_PG_4K \
+		(UINT32_C(0x0) << 4)
+	/* 8KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_PG_8K \
+		(UINT32_C(0x1) << 4)
+	/* 64KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_PG_64K \
+		(UINT32_C(0x2) << 4)
+	/* 2MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_PG_2M \
+		(UINT32_C(0x3) << 4)
+	/* 8MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_PG_8M \
+		(UINT32_C(0x4) << 4)
+	/* 1GB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_PG_1G \
+		(UINT32_C(0x5) << 4)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING2_PG_SIZE_PG_1G
+	/* TQM ring 3 page size and level. */
+	uint8_t	tqm_ring3_pg_size_tqm_ring3_lvl;
+	/* TQM ring 3 PBL indirect levels. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_LVL_MASK      UINT32_C(0xf)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_LVL_SFT       0
+	/* PBL pointer is physical start address. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_LVL_LVL_0 \
+		UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_LVL_LVL_1 \
+		UINT32_C(0x1)
+	/*
+	 * PBL pointer points to PDE table with each entry pointing to PTE
+	 * tables.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_LVL_LVL_2 \
+		UINT32_C(0x2)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_LVL_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_LVL_LVL_2
+	/* TQM ring 3 page size. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_MASK  UINT32_C(0xf0)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_SFT   4
+	/* 4KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_PG_4K \
+		(UINT32_C(0x0) << 4)
+	/* 8KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_PG_8K \
+		(UINT32_C(0x1) << 4)
+	/* 64KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_PG_64K \
+		(UINT32_C(0x2) << 4)
+	/* 2MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_PG_2M \
+		(UINT32_C(0x3) << 4)
+	/* 8MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_PG_8M \
+		(UINT32_C(0x4) << 4)
+	/* 1GB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_PG_1G \
+		(UINT32_C(0x5) << 4)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING3_PG_SIZE_PG_1G
+	/* TQM ring 4 page size and level. */
+	uint8_t	tqm_ring4_pg_size_tqm_ring4_lvl;
+	/* TQM ring 4 PBL indirect levels. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_LVL_MASK      UINT32_C(0xf)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_LVL_SFT       0
+	/* PBL pointer is physical start address. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_LVL_LVL_0 \
+		UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_LVL_LVL_1 \
+		UINT32_C(0x1)
+	/*
+	 * PBL pointer points to PDE table with each entry pointing to PTE
+	 * tables.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_LVL_LVL_2 \
+		UINT32_C(0x2)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_LVL_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_LVL_LVL_2
+	/* TQM ring 4 page size. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_MASK  UINT32_C(0xf0)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_SFT   4
+	/* 4KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_PG_4K \
+		(UINT32_C(0x0) << 4)
+	/* 8KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_PG_8K \
+		(UINT32_C(0x1) << 4)
+	/* 64KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_PG_64K \
+		(UINT32_C(0x2) << 4)
+	/* 2MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_PG_2M \
+		(UINT32_C(0x3) << 4)
+	/* 8MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_PG_8M \
+		(UINT32_C(0x4) << 4)
+	/* 1GB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_PG_1G \
+		(UINT32_C(0x5) << 4)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING4_PG_SIZE_PG_1G
+	/* TQM ring 5 page size and level. */
+	uint8_t	tqm_ring5_pg_size_tqm_ring5_lvl;
+	/* TQM ring 5 PBL indirect levels. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_LVL_MASK      UINT32_C(0xf)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_LVL_SFT       0
+	/* PBL pointer is physical start address. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_LVL_LVL_0 \
+		UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_LVL_LVL_1 \
+		UINT32_C(0x1)
+	/*
+	 * PBL pointer points to PDE table with each entry pointing to PTE
+	 * tables.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_LVL_LVL_2 \
+		UINT32_C(0x2)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_LVL_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_LVL_LVL_2
+	/* TQM ring 5 page size. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_MASK  UINT32_C(0xf0)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_SFT   4
+	/* 4KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_PG_4K \
+		(UINT32_C(0x0) << 4)
+	/* 8KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_PG_8K \
+		(UINT32_C(0x1) << 4)
+	/* 64KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_PG_64K \
+		(UINT32_C(0x2) << 4)
+	/* 2MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_PG_2M \
+		(UINT32_C(0x3) << 4)
+	/* 8MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_PG_8M \
+		(UINT32_C(0x4) << 4)
+	/* 1GB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_PG_1G \
+		(UINT32_C(0x5) << 4)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING5_PG_SIZE_PG_1G
+	/* TQM ring 6 page size and level. */
+	uint8_t	tqm_ring6_pg_size_tqm_ring6_lvl;
+	/* TQM ring 6 PBL indirect levels. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_LVL_MASK      UINT32_C(0xf)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_LVL_SFT       0
+	/* PBL pointer is physical start address. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_LVL_LVL_0 \
+		UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_LVL_LVL_1 \
+		UINT32_C(0x1)
+	/*
+	 * PBL pointer points to PDE table with each entry pointing to PTE
+	 * tables.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_LVL_LVL_2 \
+		UINT32_C(0x2)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_LVL_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_LVL_LVL_2
+	/* TQM ring 6 page size. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_MASK  UINT32_C(0xf0)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_SFT   4
+	/* 4KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_PG_4K \
+		(UINT32_C(0x0) << 4)
+	/* 8KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_PG_8K \
+		(UINT32_C(0x1) << 4)
+	/* 64KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_PG_64K \
+		(UINT32_C(0x2) << 4)
+	/* 2MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_PG_2M \
+		(UINT32_C(0x3) << 4)
+	/* 8MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_PG_8M \
+		(UINT32_C(0x4) << 4)
+	/* 1GB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_PG_1G \
+		(UINT32_C(0x5) << 4)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING6_PG_SIZE_PG_1G
+	/* TQM ring 7 page size and level. */
+	uint8_t	tqm_ring7_pg_size_tqm_ring7_lvl;
+	/* TQM ring 7 PBL indirect levels. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_LVL_MASK      UINT32_C(0xf)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_LVL_SFT       0
+	/* PBL pointer is physical start address. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_LVL_LVL_0 \
+		UINT32_C(0x0)
+	/* PBL pointer points to PTE table. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_LVL_LVL_1 \
+		UINT32_C(0x1)
+	/*
+	 * PBL pointer points to PDE table with each entry pointing to PTE
+	 * tables.
+	 */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_LVL_LVL_2 \
+		UINT32_C(0x2)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_LVL_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_LVL_LVL_2
+	/* TQM ring 7 page size. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_MASK  UINT32_C(0xf0)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_SFT   4
+	/* 4KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_PG_4K \
+		(UINT32_C(0x0) << 4)
+	/* 8KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_PG_8K \
+		(UINT32_C(0x1) << 4)
+	/* 64KB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_PG_64K \
+		(UINT32_C(0x2) << 4)
+	/* 2MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_PG_2M \
+		(UINT32_C(0x3) << 4)
+	/* 8MB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_PG_8M \
+		(UINT32_C(0x4) << 4)
+	/* 1GB. */
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_PG_1G \
+		(UINT32_C(0x5) << 4)
+	#define HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_LAST \
+		HWRM_RING_SQ_ALLOC_INPUT_TQM_RING7_PG_SIZE_PG_1G
+	/* TQM ring 0 page directory. */
+	uint64_t	tqm_ring0_page_dir;
+	/* TQM ring 1 page directory. */
+	uint64_t	tqm_ring1_page_dir;
+	/* TQM ring 2 page directory. */
+	uint64_t	tqm_ring2_page_dir;
+	/* TQM ring 3 page directory. */
+	uint64_t	tqm_ring3_page_dir;
+	/* TQM ring 4 page directory. */
+	uint64_t	tqm_ring4_page_dir;
+	/* TQM ring 5 page directory. */
+	uint64_t	tqm_ring5_page_dir;
+	/* TQM ring 6 page directory. */
+	uint64_t	tqm_ring6_page_dir;
+	/* TQM ring 7 page directory. */
+	uint64_t	tqm_ring7_page_dir;
+	/*
+	 * Number of TQM ring 0 entries.
+	 *
+	 * TQM fastpath rings should be sized large enough to accommodate the
+	 * maximum number of QPs (either L2 or RoCE, or both if shared)
+	 * that can be enqueued to the TQM ring.
+	 *
+	 * Note that TQM ring sizes cannot be extended while the system is
+	 * operational. If a PF driver needs to extend a TQM ring, it needs
+	 * to delete the SQ and then reallocate it.
+	 */
+	uint32_t	tqm_ring0_num_entries;
+	/*
+	 * Number of TQM ring 1 entries.
+	 *
+	 * TQM fastpath rings should be sized large enough to accommodate the
+	 * maximum number of QPs (either L2 or RoCE, or both if shared)
+	 * that can be enqueued to the TQM ring.
+	 *
+	 * Note that TQM ring sizes cannot be extended while the system is
+	 * operational. If a PF driver needs to extend a TQM ring, it needs
+	 * to delete the SQ and then reallocate it.
+	 */
+	uint32_t	tqm_ring1_num_entries;
+	/*
+	 * Number of TQM ring 2 entries.
+	 *
+	 * TQM fastpath rings should be sized large enough to accommodate the
+	 * maximum number of QPs (either L2 or RoCE, or both if shared)
+	 * that can be enqueued to the TQM ring.
+	 *
+	 * Note that TQM ring sizes cannot be extended while the system is
+	 * operational. If a PF driver needs to extend a TQM ring, it needs
+	 * to delete the SQ and then reallocate it.
+	 */
+	uint32_t	tqm_ring2_num_entries;
+	/*
+	 * Number of TQM ring 3 entries.
+	 *
+	 * TQM fastpath rings should be sized large enough to accommodate the
+	 * maximum number of QPs (either L2 or RoCE, or both if shared)
+	 * that can be enqueued to the TQM ring.
+	 *
+	 * Note that TQM ring sizes cannot be extended while the system is
+	 * operational. If a PF driver needs to extend a TQM ring, it needs
+	 * to delete the SQ and then reallocate it.
+	 */
+	uint32_t	tqm_ring3_num_entries;
+	/*
+	 * Number of TQM ring 4 entries.
+	 *
+	 * TQM fastpath rings should be sized large enough to accommodate the
+	 * maximum number of QPs (either L2 or RoCE, or both if shared)
+	 * that can be enqueued to the TQM ring.
+	 *
+	 * Note that TQM ring sizes cannot be extended while the system is
+	 * operational. If a PF driver needs to extend a TQM ring, it needs
+	 * to delete the SQ and then reallocate it.
+	 */
+	uint32_t	tqm_ring4_num_entries;
+	/*
+	 * Number of TQM ring 5 entries.
+	 *
+	 * TQM fastpath rings should be sized large enough to accommodate the
+	 * maximum number of QPs (either L2 or RoCE, or both if shared)
+	 * that can be enqueued to the TQM ring.
+	 *
+	 * Note that TQM ring sizes cannot be extended while the system is
+	 * operational. If a PF driver needs to extend a TQM ring, it needs
+	 * to delete the SQ and then reallocate it.
+	 */
+	uint32_t	tqm_ring5_num_entries;
+	/*
+	 * Number of TQM ring 6 entries.
+	 *
+	 * TQM fastpath rings should be sized large enough to accommodate the
+	 * maximum number of QPs (either L2 or RoCE, or both if shared)
+	 * that can be enqueued to the TQM ring.
+	 *
+	 * Note that TQM ring sizes cannot be extended while the system is
+	 * operational. If a PF driver needs to extend a TQM ring, it needs
+	 * to delete the SQ and then reallocate it.
+	 */
+	uint32_t	tqm_ring6_num_entries;
+	/*
+	 * Number of TQM ring 7 entries.
+	 *
+	 * TQM fastpath rings should be sized large enough to accommodate the
+	 * maximum number of QPs (either L2 or RoCE, or both if shared)
+	 * that can be enqueued to the TQM ring.
+	 *
+	 * Note that TQM ring sizes cannot be extended while the system is
+	 * operational. If a PF driver needs to extend a TQM ring, it needs
+	 * to delete the SQ and then reallocate it.
+	 */
+	uint32_t	tqm_ring7_num_entries;
+	/* Number of bytes that have been allocated for each context entry. */
+	uint16_t	tqm_entry_size;
+	uint8_t	unused_0[6];
+} __rte_packed;
+
+/* hwrm_ring_sq_alloc_output (size:128b/16B) */
+struct hwrm_ring_sq_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/*
+	 * This is an identifier for the SQ to be used in other HWRM commands
+	 * that need to reference this SQ. This value is greater than zero
+	 * (i.e. a sq_id of zero references the default SQ).
+	 */
+	uint16_t	sq_id;
+	uint8_t	unused_0[5];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/********************
+ * hwrm_ring_sq_cfg *
+ ********************/
+
+
+/* hwrm_ring_sq_cfg_input (size:768b/96B) */
+struct hwrm_ring_sq_cfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Identifies the SQ being configured. A sq_id of zero refers to the
+	 * default SQ.
+	 */
+	uint16_t	sq_id;
+	/*
+	 * This field is an 8 bit bitmap that indicates which TCs are enabled
+	 * in this SQ. Bit 0 represents traffic class 0 and bit 7 represents
+	 * traffic class 7.
+	 */
+	uint8_t	tc_enabled;
+	uint8_t	unused_0;
+	uint32_t	flags;
+	/* The tc_max_bw array and the max_bw parameters are valid */
+	#define HWRM_RING_SQ_CFG_INPUT_FLAGS_TC_MAX_BW_ENABLED \
+		UINT32_C(0x1)
+	/* The tc_min_bw array is valid */
+	#define HWRM_RING_SQ_CFG_INPUT_FLAGS_TC_MIN_BW_ENABLED \
+		UINT32_C(0x2)
+	/* Maximum bandwidth of the traffic class, specified in Mbps. */
+	uint32_t	max_bw_tc0;
+	/* Maximum bandwidth of the traffic class, specified in Mbps. */
+	uint32_t	max_bw_tc1;
+	/* Maximum bandwidth of the traffic class, specified in Mbps. */
+	uint32_t	max_bw_tc2;
+	/* Maximum bandwidth of the traffic class, specified in Mbps. */
+	uint32_t	max_bw_tc3;
+	/* Maximum bandwidth of the traffic class, specified in Mbps. */
+	uint32_t	max_bw_tc4;
+	/* Maximum bandwidth of the traffic class, specified in Mbps. */
+	uint32_t	max_bw_tc5;
+	/* Maximum bandwidth of the traffic class, specified in Mbps. */
+	uint32_t	max_bw_tc6;
+	/* Maximum bandwidth of the traffic class, specified in Mbps. */
+	uint32_t	max_bw_tc7;
+	/*
+	 * Bandwidth reservation for the traffic class, specified in Mbps.
+	 * A value of zero signifies that traffic belonging to this class
+	 * shares the bandwidth reservation for the same traffic class of
+	 * the default SQ.
+	 */
+	uint32_t	min_bw_tc0;
+	/*
+	 * Bandwidth reservation for the traffic class, specified in Mbps.
+	 * A value of zero signifies that traffic belonging to this class
+	 * shares the bandwidth reservation for the same traffic class of
+	 * the default SQ.
+	 */
+	uint32_t	min_bw_tc1;
+	/*
+	 * Bandwidth reservation for the traffic class, specified in Mbps.
+	 * A value of zero signifies that traffic belonging to this class
+	 * shares the bandwidth reservation for the same traffic class of
+	 * the default SQ.
+	 */
+	uint32_t	min_bw_tc2;
+	/*
+	 * Bandwidth reservation for the traffic class, specified in Mbps.
+	 * A value of zero signifies that traffic belonging to this class
+	 * shares the bandwidth reservation for the same traffic class of
+	 * the default SQ.
+	 */
+	uint32_t	min_bw_tc3;
+	/*
+	 * Bandwidth reservation for the traffic class, specified in Mbps.
+	 * A value of zero signifies that traffic belonging to this class
+	 * shares the bandwidth reservation for the same traffic class of
+	 * the default SQ.
+	 */
+	uint32_t	min_bw_tc4;
+	/*
+	 * Bandwidth reservation for the traffic class, specified in Mbps.
+	 * A value of zero signifies that traffic belonging to this class
+	 * shares the bandwidth reservation for the same traffic class of
+	 * the default SQ.
+	 */
+	uint32_t	min_bw_tc5;
+	/*
+	 * Bandwidth reservation for the traffic class, specified in Mbps.
+	 * A value of zero signifies that traffic belonging to this class
+	 * shares the bandwidth reservation for the same traffic class of
+	 * the default SQ.
+	 */
+	uint32_t	min_bw_tc6;
+	/*
+	 * Bandwidth reservation for the traffic class, specified in Mbps.
+	 * A value of zero signifies that traffic belonging to this class
+	 * shares the bandwidth reservation for the same traffic class of
+	 * the default SQ.
+	 */
+	uint32_t	min_bw_tc7;
+	/*
+	 * Indicates the max bandwidth for all enabled traffic classes in
+	 * this SQ, specified in Mbps.
+	 */
+	uint32_t	max_bw;
+	uint8_t	unused_1[4];
+} __rte_packed;
+
+/* hwrm_ring_sq_cfg_output (size:128b/16B) */
+struct hwrm_ring_sq_cfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/*********************
+ * hwrm_ring_sq_free *
+ *********************/
+
+
+/* hwrm_ring_sq_free_input (size:192b/24B) */
+struct hwrm_ring_sq_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Identifies the SQ being freed. */
+	uint16_t	sq_id;
+	uint8_t	unused_0[6];
+} __rte_packed;
+
+/* hwrm_ring_sq_free_output (size:128b/16B) */
+struct hwrm_ring_sq_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -37313,6 +38606,163 @@ struct hwrm_tf_tcam_free_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
+} __rte_packed;
+
+/**************************
+ * hwrm_tf_global_cfg_set *
+ **************************/
+
+
+/* hwrm_tf_global_cfg_set_input (size:448b/56B) */
+struct hwrm_tf_global_cfg_set_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Firmware session id returned when HWRM_TF_SESSION_OPEN is sent. */
+	uint32_t	fw_session_id;
+	/* Control flags. */
+	uint32_t	flags;
+	/* Indicates the flow direction. */
+	#define HWRM_TF_GLOBAL_CFG_SET_INPUT_FLAGS_DIR     UINT32_C(0x1)
+	/* If this bit set to 0, then it indicates rx flow. */
+	#define HWRM_TF_GLOBAL_CFG_SET_INPUT_FLAGS_DIR_RX    UINT32_C(0x0)
+	/* If this bit is set to 1, then it indicates that tx flow. */
+	#define HWRM_TF_GLOBAL_CFG_SET_INPUT_FLAGS_DIR_TX    UINT32_C(0x1)
+	#define HWRM_TF_GLOBAL_CFG_SET_INPUT_FLAGS_DIR_LAST \
+		HWRM_TF_GLOBAL_CFG_SET_INPUT_FLAGS_DIR_TX
+	/* Global Cfg type */
+	uint32_t	type;
+	/* Offset of the type */
+	uint32_t	offset;
+	/* Size of the data to set in bytes */
+	uint16_t	size;
+	/* unused. */
+	uint8_t	unused0[6];
+	/* Data to set */
+	uint8_t	data[16];
+} __rte_packed;
+
+/* hwrm_tf_global_cfg_set_output (size:128b/16B) */
+struct hwrm_tf_global_cfg_set_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* unused. */
+	uint8_t	unused0[7];
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been
+	 * completely written.  When writing a command completion or
+	 * response to an internal processor, the order of writes has
+	 * to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/**************************
+ * hwrm_tf_global_cfg_get *
+ **************************/
+
+
+/* hwrm_tf_global_cfg_get_input (size:320b/40B) */
+struct hwrm_tf_global_cfg_get_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Firmware session id returned when HWRM_TF_SESSION_OPEN is sent. */
+	uint32_t	fw_session_id;
+	/* Control flags. */
+	uint32_t	flags;
+	/* Indicates the flow direction. */
+	#define HWRM_TF_GLOBAL_CFG_GET_INPUT_FLAGS_DIR     UINT32_C(0x1)
+	/* If this bit set to 0, then it indicates rx flow. */
+	#define HWRM_TF_GLOBAL_CFG_GET_INPUT_FLAGS_DIR_RX    UINT32_C(0x0)
+	/* If this bit is set to 1, then it indicates that tx flow. */
+	#define HWRM_TF_GLOBAL_CFG_GET_INPUT_FLAGS_DIR_TX    UINT32_C(0x1)
+	#define HWRM_TF_GLOBAL_CFG_GET_INPUT_FLAGS_DIR_LAST \
+		HWRM_TF_GLOBAL_CFG_GET_INPUT_FLAGS_DIR_TX
+	/* Global Cfg type */
+	uint32_t	type;
+	/* Offset of the type */
+	uint32_t	offset;
+	/* Size of the data to set in bytes */
+	uint16_t	size;
+	/* unused. */
+	uint8_t	unused0[6];
+} __rte_packed;
+
+/* hwrm_tf_global_cfg_get_output (size:256b/32B) */
+struct hwrm_tf_global_cfg_get_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Size of the data read in bytes */
+	uint16_t	size;
+	/* unused. */
+	uint8_t	unused0[6];
+	/* Data to set */
+	uint8_t	data[16];
 } __rte_packed;
 
 /******************************
