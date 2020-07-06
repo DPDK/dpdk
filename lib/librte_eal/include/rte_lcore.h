@@ -25,6 +25,15 @@ extern "C" {
 RTE_DECLARE_PER_LCORE(unsigned, _lcore_id);  /**< Per thread "lcore id". */
 
 /**
+ * The lcore role (used in RTE or not).
+ */
+enum rte_lcore_role_t {
+	ROLE_RTE,
+	ROLE_OFF,
+	ROLE_SERVICE,
+};
+
+/**
  * Get a lcore's role.
  *
  * @param lcore_id
@@ -33,6 +42,20 @@ RTE_DECLARE_PER_LCORE(unsigned, _lcore_id);  /**< Per thread "lcore id". */
  *   The role of the lcore.
  */
 enum rte_lcore_role_t rte_eal_lcore_role(unsigned int lcore_id);
+
+/**
+ * Test if the core supplied has a specific role
+ *
+ * @param lcore_id
+ *   The identifier of the lcore, which MUST be between 0 and
+ *   RTE_MAX_LCORE-1.
+ * @param role
+ *   The role to be checked against.
+ * @return
+ *   Boolean value: positive if test is true; otherwise returns 0.
+ */
+int
+rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role);
 
 /**
  * Return the Application thread ID of the execution unit.
@@ -282,20 +305,6 @@ int
 rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		const pthread_attr_t *attr,
 		void *(*start_routine)(void *), void *arg);
-
-/**
- * Test if the core supplied has a specific role
- *
- * @param lcore_id
- *   The identifier of the lcore, which MUST be between 0 and
- *   RTE_MAX_LCORE-1.
- * @param role
- *   The role to be checked against.
- * @return
- *   Boolean value: positive if test is true; otherwise returns 0.
- */
-int
-rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role);
 
 #ifdef __cplusplus
 }

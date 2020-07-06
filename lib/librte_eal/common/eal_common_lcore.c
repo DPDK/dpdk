@@ -71,6 +71,17 @@ rte_eal_lcore_role(unsigned int lcore_id)
 	return cfg->lcore_role[lcore_id];
 }
 
+int
+rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+
+	if (lcore_id >= RTE_MAX_LCORE)
+		return -EINVAL;
+
+	return cfg->lcore_role[lcore_id] == role;
+}
+
 int rte_lcore_is_enabled(unsigned int lcore_id)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();

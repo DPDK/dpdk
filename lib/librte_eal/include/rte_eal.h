@@ -33,15 +33,6 @@ extern "C" {
 #define RTE_MAX_THREAD_NAME_LEN 16
 
 /**
- * The lcore role (used in RTE or not).
- */
-enum rte_lcore_role_t {
-	ROLE_RTE,
-	ROLE_OFF,
-	ROLE_SERVICE,
-};
-
-/**
  * The type of process in a linux, multi-process setup
  */
 enum rte_proc_type_t {

@@ -33,17 +33,6 @@ unsigned rte_socket_id(void)
 	return RTE_PER_LCORE(_socket_id);
 }
 
-int
-rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role)
-{
-	struct rte_config *cfg = rte_eal_get_configuration();
-
-	if (lcore_id >= RTE_MAX_LCORE)
-		return -EINVAL;
-
-	return cfg->lcore_role[lcore_id] == role;
-}
-
 static int
 eal_cpuset_socket_id(rte_cpuset_t *cpusetp)
 {
