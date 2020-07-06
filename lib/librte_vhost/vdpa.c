@@ -77,6 +77,16 @@ rte_vdpa_register_device(struct rte_device *rte_dev,
 	if (ops == NULL)
 		return NULL;
 
+	/* Check mandatory ops are implemented */
+	if (!ops->get_queue_num || !ops->get_features ||
+			!ops->get_protocol_features || !ops->dev_conf ||
+			!ops->dev_close || !ops->set_vring_state ||
+			!ops->set_features) {
+		VHOST_LOG_CONFIG(ERR,
+				"Some mandatory vDPA ops aren't implemented\n");
+		return NULL;
+	}
+
 	rte_spinlock_lock(&vdpa_device_list_lock);
 	/* Check the device hasn't been register already */
 	dev = __vdpa_find_device_by_name(rte_dev->name);

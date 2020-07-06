@@ -710,7 +710,7 @@ rte_vhost_driver_get_features(const char *path, uint64_t *features)
 	}
 
 	vdpa_dev = vsocket->vdpa_dev;
-	if (!vdpa_dev || !vdpa_dev->ops->get_features) {
+	if (!vdpa_dev) {
 		*features = vsocket->features;
 		goto unlock_exit;
 	}
@@ -763,7 +763,7 @@ rte_vhost_driver_get_protocol_features(const char *path,
 	}
 
 	vdpa_dev = vsocket->vdpa_dev;
-	if (!vdpa_dev || !vdpa_dev->ops->get_protocol_features) {
+	if (!vdpa_dev) {
 		*protocol_features = vsocket->protocol_features;
 		goto unlock_exit;
 	}
@@ -803,7 +803,7 @@ rte_vhost_driver_get_queue_num(const char *path, uint32_t *queue_num)
 	}
 
 	vdpa_dev = vsocket->vdpa_dev;
-	if (!vdpa_dev || !vdpa_dev->ops->get_queue_num) {
+	if (!vdpa_dev) {
 		*queue_num = VHOST_MAX_QUEUE_PAIRS;
 		goto unlock_exit;
 	}

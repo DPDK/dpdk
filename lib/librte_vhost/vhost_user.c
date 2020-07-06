@@ -398,7 +398,7 @@ vhost_user_set_features(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	}
 
 	vdpa_dev = dev->vdpa_dev;
-	if (vdpa_dev && vdpa_dev->ops->set_features)
+	if (vdpa_dev)
 		vdpa_dev->ops->set_features(dev->vid);
 
 	return RTE_VHOST_MSG_RESULT_OK;
@@ -2866,9 +2866,7 @@ skip_to_post_handle:
 		goto out;
 
 	if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
-		if (vdpa_dev->ops->dev_conf)
-			vdpa_dev->ops->dev_conf(dev->vid);
-
+		vdpa_dev->ops->dev_conf(dev->vid);
 		dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
 	}
 
