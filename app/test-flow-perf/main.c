@@ -136,7 +136,7 @@ usage(char *progname)
 	printf("  --set-tag: add set tag action in flow actions\n");
 	printf("  --drop: add drop action in flow actions\n");
 	printf("  --hairpin-queue=N: add hairpin-queue action in flow actions\n");
-	printf("  --hairpin-rss=N: add hairping-rss action in flow actions\n");
+	printf("  --hairpin-rss=N: add hairpin-rss action in flow actions\n");
 }
 
 static void
