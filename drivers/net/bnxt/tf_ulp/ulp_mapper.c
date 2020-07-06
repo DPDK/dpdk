@@ -1922,11 +1922,14 @@ ulp_mapper_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* Get the index details from computed field */
-	if (tbl->index_opcode != BNXT_ULP_INDEX_OPCODE_COMP_FIELD) {
+	if (tbl->index_opcode == BNXT_ULP_INDEX_OPCODE_COMP_FIELD) {
+		idx = ULP_COMP_FLD_IDX_RD(parms, tbl->index_operand);
+	} else if (tbl->index_opcode == BNXT_ULP_INDEX_OPCODE_CONSTANT) {
+		idx = tbl->index_operand;
+	} else {
 		BNXT_TF_DBG(ERR, "Invalid tbl index opcode\n");
 		return -EINVAL;
 	}
-	idx = ULP_COMP_FLD_IDX_RD(parms, tbl->index_operand);
 
 	/* Perform the tf table set by filling the set params */
 	iftbl_params.dir = tbl->direction;
