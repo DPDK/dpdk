@@ -88,6 +88,10 @@ bnxt_ulp_rte_parser_hdr_parse(const struct rte_flow_item pattern[],
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_FLOW_DIR_BITMASK_EGR);
 
+	/* Set the computed flags for no vlan tags before parsing */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_NO_VTAG, 1);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_NO_VTAG, 1);
+
 	/* Parse all the items in the pattern */
 	while (item && item->type != RTE_FLOW_ITEM_TYPE_END) {
 		/* get the header information from the flow_hdr_info table */
@@ -480,6 +484,8 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		outer_vtag_num++;
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_VTAG_NUM,
 				    outer_vtag_num);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_NO_VTAG, 0);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_ONE_VTAG, 1);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_OO_VLAN);
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
@@ -490,6 +496,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_VTAG_NUM,
 				    outer_vtag_num);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_TWO_VTAGS, 1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_ONE_VTAG, 0);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_OI_VLAN);
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
@@ -499,6 +506,8 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		inner_vtag_num++;
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_VTAG_NUM,
 				    inner_vtag_num);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_NO_VTAG, 0);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_ONE_VTAG, 1);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_IO_VLAN);
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
@@ -509,6 +518,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_VTAG_NUM,
 				    inner_vtag_num);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_TWO_VTAGS, 1);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_ONE_VTAG, 0);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_II_VLAN);
 	} else {
