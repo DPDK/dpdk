@@ -2274,7 +2274,7 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_ETH | ETH_RSS_VLAN | ETH_RSS_IP |
 			ETH_RSS_TCP | ETH_RSS_UDP | ETH_RSS_SCTP |
 			ETH_RSS_L2_PAYLOAD | ETH_RSS_L2TPV3 | ETH_RSS_ESP |
-			ETH_RSS_AH | ETH_RSS_PFCP;
+			ETH_RSS_AH | ETH_RSS_PFCP | ETH_RSS_GTPU;
 	else if (!strcmp(res->value, "eth"))
 		rss_conf.rss_hf = ETH_RSS_ETH;
 	else if (!strcmp(res->value, "vlan"))
@@ -2319,6 +2319,8 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_PFCP;
 	else if (!strcmp(res->value, "pppoe"))
 		rss_conf.rss_hf = ETH_RSS_PPPOE;
+	else if (!strcmp(res->value, "gtpu"))
+		rss_conf.rss_hf = ETH_RSS_GTPU;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
 	else if (!strcmp(res->value, "default"))
@@ -2492,7 +2494,7 @@ cmdline_parse_token_string_t cmd_config_rss_hash_key_rss_type =
 				 "ipv6-tcp-ex#ipv6-udp-ex#"
 				 "l3-src-only#l3-dst-only#l4-src-only#l4-dst-only#"
 				 "l2-src-only#l2-dst-only#s-vlan#c-vlan#"
-				 "l2tpv3#esp#ah#pfcp#pppoe");
+				 "l2tpv3#esp#ah#pfcp#pppoe#gtpu");
 cmdline_parse_token_string_t cmd_config_rss_hash_key_value =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_key, key, NULL);
 
@@ -2505,7 +2507,7 @@ cmdline_parse_inst_t cmd_config_rss_hash_key = {
 		"l2-payload|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex|"
 		"l3-src-only|l3-dst-only|l4-src-only|l4-dst-only|"
 		"l2-src-only|l2-dst-only|s-vlan|c-vlan|"
-		"l2tpv3|esp|ah|pfcp|pppoe "
+		"l2tpv3|esp|ah|pfcp|pppoe|gtpu "
 		"<string of hex digits (variable length, NIC dependent)>",
 	.tokens = {
 		(void *)&cmd_config_rss_hash_key_port,

@@ -77,7 +77,8 @@ static const struct {
 const struct rss_type_info rss_type_table[] = {
 	{ "all", ETH_RSS_ETH | ETH_RSS_VLAN | ETH_RSS_IP | ETH_RSS_TCP |
 		ETH_RSS_UDP | ETH_RSS_SCTP | ETH_RSS_L2_PAYLOAD |
-		ETH_RSS_L2TPV3 | ETH_RSS_ESP | ETH_RSS_AH | ETH_RSS_PFCP},
+		ETH_RSS_L2TPV3 | ETH_RSS_ESP | ETH_RSS_AH | ETH_RSS_PFCP |
+		ETH_RSS_GTPU},
 	{ "none", 0 },
 	{ "eth", ETH_RSS_ETH },
 	{ "l2-src-only", ETH_RSS_L2_SRC_ONLY },
@@ -119,6 +120,7 @@ const struct rss_type_info rss_type_table[] = {
 	{ "l2tpv3", ETH_RSS_L2TPV3 },
 	{ "pfcp", ETH_RSS_PFCP },
 	{ "pppoe", ETH_RSS_PPPOE },
+	{ "gtpu", ETH_RSS_GTPU },
 	{ NULL, 0 },
 };
 
