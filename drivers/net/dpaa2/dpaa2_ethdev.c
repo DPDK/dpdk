@@ -453,7 +453,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	int rx_l4_csum_offload = false;
 	int tx_l3_csum_offload = false;
 	int tx_l4_csum_offload = false;
-	int ret;
+	int ret, tc_index;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -493,12 +493,16 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	if (eth_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) {
-		ret = dpaa2_setup_flow_dist(dev,
-				eth_conf->rx_adv_conf.rss_conf.rss_hf);
-		if (ret) {
-			DPAA2_PMD_ERR("Unable to set flow distribution."
-				      "Check queue config");
-			return ret;
+		for (tc_index = 0; tc_index < priv->num_rx_tc; tc_index++) {
+			ret = dpaa2_setup_flow_dist(dev,
+					eth_conf->rx_adv_conf.rss_conf.rss_hf,
+					tc_index);
+			if (ret) {
+				DPAA2_PMD_ERR(
+					"Unable to set flow distribution on tc%d."
+					"Check queue config", tc_index);
+				return ret;
+			}
 		}
 	}
 
@@ -755,11 +759,11 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	flow_id = 0;
 
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_TX,
-			     tc_id, flow_id, options, &tx_flow_cfg);
+			tc_id, flow_id, options, &tx_flow_cfg);
 	if (ret) {
 		DPAA2_PMD_ERR("Error in setting the tx flow: "
-			      "tc_id=%d, flow=%d err=%d",
-			      tc_id, flow_id, ret);
+			"tc_id=%d, flow=%d err=%d",
+			tc_id, flow_id, ret);
 			return -1;
 	}
 
@@ -1984,22 +1988,31 @@ dpaa2_dev_rss_hash_update(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_conf *rss_conf)
 {
 	struct rte_eth_dev_data *data = dev->data;
+	struct dpaa2_dev_priv *priv = data->dev_private;
 	struct rte_eth_conf *eth_conf = &data->dev_conf;
-	int ret;
+	int ret, tc_index;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (rss_conf->rss_hf) {
-		ret = dpaa2_setup_flow_dist(dev, rss_conf->rss_hf);
-		if (ret) {
-			DPAA2_PMD_ERR("Unable to set flow dist");
-			return ret;
+		for (tc_index = 0; tc_index < priv->num_rx_tc; tc_index++) {
+			ret = dpaa2_setup_flow_dist(dev, rss_conf->rss_hf,
+				tc_index);
+			if (ret) {
+				DPAA2_PMD_ERR("Unable to set flow dist on tc%d",
+					tc_index);
+				return ret;
+			}
 		}
 	} else {
-		ret = dpaa2_remove_flow_dist(dev, 0);
-		if (ret) {
-			DPAA2_PMD_ERR("Unable to remove flow dist");
-			return ret;
+		for (tc_index = 0; tc_index < priv->num_rx_tc; tc_index++) {
+			ret = dpaa2_remove_flow_dist(dev, tc_index);
+			if (ret) {
+				DPAA2_PMD_ERR(
+					"Unable to remove flow dist on tc%d",
+					tc_index);
+				return ret;
+			}
 		}
 	}
 	eth_conf->rx_adv_conf.rss_conf.rss_hf = rss_conf->rss_hf;

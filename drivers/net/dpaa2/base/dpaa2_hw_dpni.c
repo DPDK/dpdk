@@ -81,14 +81,14 @@ rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 
 int
 dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
-		      uint64_t req_dist_set)
+	uint64_t req_dist_set, int tc_index)
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
 	struct fsl_mc_io *dpni = priv->hw;
 	struct dpni_rx_tc_dist_cfg tc_cfg;
 	struct dpkg_profile_cfg kg_cfg;
 	void *p_params;
-	int ret, tc_index = 0;
+	int ret;
 
 	p_params = rte_malloc(
 		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
@@ -107,7 +107,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		return ret;
 	}
 	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
-	tc_cfg.dist_size = eth_dev->data->nb_rx_queues;
+	tc_cfg.dist_size = priv->dist_queues;
 	tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
 
 	ret = dpkg_prepare_key_cfg(&kg_cfg, p_params);

@@ -179,7 +179,7 @@ int dpaa2_distset_to_dpkg_profile_cfg(uint64_t req_dist_set,
 				      struct dpkg_profile_cfg *kg_cfg);
 
 int dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
-			  uint64_t req_dist_set);
+		uint64_t req_dist_set, int tc_index);
 
 int dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 			   uint8_t tc_index);
