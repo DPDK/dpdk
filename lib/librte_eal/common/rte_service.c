@@ -422,7 +422,7 @@ rte_service_may_be_active(uint32_t id)
 		return -EINVAL;
 
 	for (i = 0; i < lcore_count; i++) {
-		if (lcore_states[i].service_active_on_lcore[id])
+		if (lcore_states[ids[i]].service_active_on_lcore[id])
 			return 1;
 	}
 
