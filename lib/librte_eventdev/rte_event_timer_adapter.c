@@ -1167,8 +1167,6 @@ swtim_cancel_burst(const struct rte_event_timer_adapter *adapter,
 		rte_mempool_put(sw->tim_pool, (void **)timp);
 
 		evtims[i]->state = RTE_EVENT_TIMER_CANCELED;
-		evtims[i]->impl_opaque[0] = 0;
-		evtims[i]->impl_opaque[1] = 0;
 
 		rte_smp_wmb();
 	}
