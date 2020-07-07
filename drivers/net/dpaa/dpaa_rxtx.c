@@ -305,7 +305,7 @@ dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	struct qm_sg_entry *sgt, *sg_temp;
 	void *vaddr, *sg_vaddr;
 	int i = 0;
-	uint8_t fd_offset = fd->offset;
+	uint16_t fd_offset = fd->offset;
 
 	vaddr = DPAA_MEMPOOL_PTOV(bp_info, qm_fd_addr(fd));
 	if (!vaddr) {
