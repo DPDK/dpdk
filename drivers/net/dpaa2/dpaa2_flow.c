@@ -29,6 +29,8 @@
  */
 int mc_l4_port_identification;
 
+#define FIXED_ENTRY_SIZE 54
+
 enum flow_rule_ipaddr_type {
 	FLOW_NONE_IPADDR,
 	FLOW_IPV4_ADDR,
@@ -47,7 +49,8 @@ struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct dpni_rule_cfg qos_rule;
 	struct dpni_rule_cfg fs_rule;
-	uint8_t key_size;
+	uint8_t qos_real_key_size;
+	uint8_t fs_real_key_size;
 	uint8_t tc_id; /** Traffic Class ID. */
 	uint8_t tc_index; /** index within this Traffic Class. */
 	enum rte_flow_action_type action;
@@ -478,6 +481,7 @@ dpaa2_flow_rule_data_set(
 			prot, field);
 		return -1;
 	}
+
 	memcpy((void *)(size_t)(rule->key_iova + offset), key, size);
 	memcpy((void *)(size_t)(rule->mask_iova + offset), mask, size);
 
@@ -523,9 +527,11 @@ _dpaa2_flow_rule_move_ipaddr_tail(
 		len = NH_FLD_IPV6_ADDR_SIZE;
 
 	memcpy(tmp, (char *)key_src, len);
+	memset((char *)key_src, 0, len);
 	memcpy((char *)key_dst, tmp, len);
 
 	memcpy(tmp, (char *)mask_src, len);
+	memset((char *)mask_src, 0, len);
 	memcpy((char *)mask_dst, tmp, len);
 
 	return 0;
@@ -1251,8 +1257,7 @@ dpaa2_configure_flow_generic_ip(
 
 				return -1;
 			}
-			local_cfg |= (DPAA2_QOS_TABLE_RECONFIGURE |
-				DPAA2_QOS_TABLE_IPADDR_EXTRACT);
+			local_cfg |= DPAA2_QOS_TABLE_RECONFIGURE;
 		}
 
 		index = dpaa2_flow_extract_search(
@@ -1269,8 +1274,7 @@ dpaa2_configure_flow_generic_ip(
 
 				return -1;
 			}
-			local_cfg |= (DPAA2_FS_TABLE_RECONFIGURE |
-				DPAA2_FS_TABLE_IPADDR_EXTRACT);
+			local_cfg |= DPAA2_FS_TABLE_RECONFIGURE;
 		}
 
 		if (spec_ipv4)
@@ -1339,8 +1343,7 @@ dpaa2_configure_flow_generic_ip(
 
 				return -1;
 			}
-			local_cfg |= (DPAA2_QOS_TABLE_RECONFIGURE |
-				DPAA2_QOS_TABLE_IPADDR_EXTRACT);
+			local_cfg |= DPAA2_QOS_TABLE_RECONFIGURE;
 		}
 
 		index = dpaa2_flow_extract_search(
@@ -1361,8 +1364,7 @@ dpaa2_configure_flow_generic_ip(
 
 				return -1;
 			}
-			local_cfg |= (DPAA2_FS_TABLE_RECONFIGURE |
-				DPAA2_FS_TABLE_IPADDR_EXTRACT);
+			local_cfg |= DPAA2_FS_TABLE_RECONFIGURE;
 		}
 
 		if (spec_ipv4)
@@ -2641,7 +2643,7 @@ dpaa2_flow_entry_update(
 	char ipdst_key[NH_FLD_IPV6_ADDR_SIZE];
 	char ipsrc_mask[NH_FLD_IPV6_ADDR_SIZE];
 	char ipdst_mask[NH_FLD_IPV6_ADDR_SIZE];
-	int extend = -1, extend1, size;
+	int extend = -1, extend1, size = -1;
 	uint16_t qos_index;
 
 	while (curr) {
@@ -2696,6 +2698,9 @@ dpaa2_flow_entry_update(
 			else
 				extend = extend1;
 
+			RTE_ASSERT((size == NH_FLD_IPV4_ADDR_SIZE) ||
+				(size == NH_FLD_IPV6_ADDR_SIZE));
+
 			memcpy(ipsrc_key,
 				(char *)(size_t)curr->qos_rule.key_iova +
 				curr->ipaddr_rule.qos_ipsrc_offset,
@@ -2725,6 +2730,9 @@ dpaa2_flow_entry_update(
 			else
 				extend = extend1;
 
+			RTE_ASSERT((size == NH_FLD_IPV4_ADDR_SIZE) ||
+				(size == NH_FLD_IPV6_ADDR_SIZE));
+
 			memcpy(ipdst_key,
 				(char *)(size_t)curr->qos_rule.key_iova +
 				curr->ipaddr_rule.qos_ipdst_offset,
@@ -2745,6 +2753,8 @@ dpaa2_flow_entry_update(
 		}
 
 		if (curr->ipaddr_rule.qos_ipsrc_offset >= 0) {
+			RTE_ASSERT((size == NH_FLD_IPV4_ADDR_SIZE) ||
+				(size == NH_FLD_IPV6_ADDR_SIZE));
 			memcpy((char *)(size_t)curr->qos_rule.key_iova +
 				curr->ipaddr_rule.qos_ipsrc_offset,
 				ipsrc_key,
@@ -2755,6 +2765,8 @@ dpaa2_flow_entry_update(
 				size);
 		}
 		if (curr->ipaddr_rule.qos_ipdst_offset >= 0) {
+			RTE_ASSERT((size == NH_FLD_IPV4_ADDR_SIZE) ||
+				(size == NH_FLD_IPV6_ADDR_SIZE));
 			memcpy((char *)(size_t)curr->qos_rule.key_iova +
 				curr->ipaddr_rule.qos_ipdst_offset,
 				ipdst_key,
@@ -2766,7 +2778,9 @@ dpaa2_flow_entry_update(
 		}
 
 		if (extend >= 0)
-			curr->qos_rule.key_size += extend;
+			curr->qos_real_key_size += extend;
+
+		curr->qos_rule.key_size = FIXED_ENTRY_SIZE;
 
 		ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
 				priv->token, &curr->qos_rule,
@@ -2873,7 +2887,8 @@ dpaa2_flow_entry_update(
 		}
 
 		if (extend >= 0)
-			curr->fs_rule.key_size += extend;
+			curr->fs_real_key_size += extend;
+		curr->fs_rule.key_size = FIXED_ENTRY_SIZE;
 
 		ret = dpni_add_fs_entry(dpni, CMD_PRI_LOW,
 				priv->token, curr->tc_id, curr->tc_index,
@@ -3093,31 +3108,34 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 					priv->qos_entries);
 				return -1;
 			}
-			flow->qos_rule.key_size = priv->extract
-				.qos_key_extract.key_info.key_total_size;
+			flow->qos_rule.key_size = FIXED_ENTRY_SIZE;
 			if (flow->ipaddr_rule.ipaddr_type == FLOW_IPV4_ADDR) {
 				if (flow->ipaddr_rule.qos_ipdst_offset >=
 					flow->ipaddr_rule.qos_ipsrc_offset) {
-					flow->qos_rule.key_size =
+					flow->qos_real_key_size =
 						flow->ipaddr_rule.qos_ipdst_offset +
 						NH_FLD_IPV4_ADDR_SIZE;
 				} else {
-					flow->qos_rule.key_size =
+					flow->qos_real_key_size =
 						flow->ipaddr_rule.qos_ipsrc_offset +
 						NH_FLD_IPV4_ADDR_SIZE;
 				}
-			} else if (flow->ipaddr_rule.ipaddr_type == FLOW_IPV6_ADDR) {
+			} else if (flow->ipaddr_rule.ipaddr_type ==
+				FLOW_IPV6_ADDR) {
 				if (flow->ipaddr_rule.qos_ipdst_offset >=
 					flow->ipaddr_rule.qos_ipsrc_offset) {
-					flow->qos_rule.key_size =
+					flow->qos_real_key_size =
 						flow->ipaddr_rule.qos_ipdst_offset +
 						NH_FLD_IPV6_ADDR_SIZE;
 				} else {
-					flow->qos_rule.key_size =
+					flow->qos_real_key_size =
 						flow->ipaddr_rule.qos_ipsrc_offset +
 						NH_FLD_IPV6_ADDR_SIZE;
 				}
 			}
+
+			flow->qos_rule.key_size = FIXED_ENTRY_SIZE;
+
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
 						priv->token, &flow->qos_rule,
 						flow->tc_id, qos_index,
@@ -3134,17 +3152,20 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 					priv->fs_entries);
 				return -1;
 			}
-			flow->fs_rule.key_size = priv->extract
-					.tc_key_extract[attr->group].key_info.key_total_size;
+
+			flow->fs_real_key_size =
+				priv->extract.tc_key_extract[flow->tc_id]
+				.key_info.key_total_size;
+
 			if (flow->ipaddr_rule.ipaddr_type ==
 				FLOW_IPV4_ADDR) {
 				if (flow->ipaddr_rule.fs_ipdst_offset >=
 					flow->ipaddr_rule.fs_ipsrc_offset) {
-					flow->fs_rule.key_size =
+					flow->fs_real_key_size =
 						flow->ipaddr_rule.fs_ipdst_offset +
 						NH_FLD_IPV4_ADDR_SIZE;
 				} else {
-					flow->fs_rule.key_size =
+					flow->fs_real_key_size =
 						flow->ipaddr_rule.fs_ipsrc_offset +
 						NH_FLD_IPV4_ADDR_SIZE;
 				}
@@ -3152,15 +3173,18 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 				FLOW_IPV6_ADDR) {
 				if (flow->ipaddr_rule.fs_ipdst_offset >=
 					flow->ipaddr_rule.fs_ipsrc_offset) {
-					flow->fs_rule.key_size =
+					flow->fs_real_key_size =
 						flow->ipaddr_rule.fs_ipdst_offset +
 						NH_FLD_IPV6_ADDR_SIZE;
 				} else {
-					flow->fs_rule.key_size =
+					flow->fs_real_key_size =
 						flow->ipaddr_rule.fs_ipsrc_offset +
 						NH_FLD_IPV6_ADDR_SIZE;
 				}
 			}
+
+			flow->fs_rule.key_size = FIXED_ENTRY_SIZE;
+
 			ret = dpni_add_fs_entry(dpni, CMD_PRI_LOW, priv->token,
 						flow->tc_id, flow->tc_index,
 						&flow->fs_rule, &action);
@@ -3259,8 +3283,10 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 					priv->qos_entries);
 				return -1;
 			}
-			flow->qos_rule.key_size =
+
+			flow->qos_real_key_size =
 			  priv->extract.qos_key_extract.key_info.key_total_size;
+			flow->qos_rule.key_size = FIXED_ENTRY_SIZE;
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW, priv->token,
 						&flow->qos_rule, flow->tc_id,
 						qos_index, 0, 0);
@@ -3283,11 +3309,15 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 	}
 
 	if (!ret) {
-		ret = dpaa2_flow_entry_update(priv, flow->tc_id);
-		if (ret) {
-			DPAA2_PMD_ERR("Flow entry update failed.");
+		if (is_keycfg_configured &
+			(DPAA2_QOS_TABLE_RECONFIGURE |
+			DPAA2_FS_TABLE_RECONFIGURE)) {
+			ret = dpaa2_flow_entry_update(priv, flow->tc_id);
+			if (ret) {
+				DPAA2_PMD_ERR("Flow entry update failed.");
 
-			return -1;
+				return -1;
+			}
 		}
 		/* New rules are inserted. */
 		if (!curr) {
