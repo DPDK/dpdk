@@ -1086,15 +1086,11 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid)
 		tun_type = ICE_SW_TUN_PPPOE;
 	else if (!non_tun_valid && gtp_valid)
 		tun_type = ICE_SW_TUN_GTP;
-	else if ((non_tun_valid && vxlan_valid) ||
-		 (non_tun_valid && gre_valid) ||
-		 (non_tun_valid && gtp_valid) ||
-		 (non_tun_valid && pppoe_valid))
+	else if (non_tun_valid &&
+		 (vxlan_valid || gre_valid || gtp_valid || pppoe_valid))
 		tun_type = ICE_SW_TUN_AND_NON_TUN;
-	else if ((non_tun_valid && !vxlan_valid) ||
-		 (non_tun_valid && !gre_valid) ||
-		 (non_tun_valid && !gtp_valid) ||
-		 (non_tun_valid && !pppoe_valid))
+	else if (non_tun_valid && !vxlan_valid && !gre_valid && !gtp_valid &&
+		 !pppoe_valid)
 		tun_type = ICE_NON_TUN;
 
 	if (profile_num > 1 && tun_type == ICE_SW_TUN_PPPOE) {
@@ -1108,7 +1104,7 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid)
 			tun_type = ICE_SW_TUN_PPPOE_IPV6;
 	}
 
-	if (profile_num == 1 && (flag_valid || non_tun_valid)) {
+	if (profile_num == 1 && (flag_valid || non_tun_valid || pppoe_valid)) {
 		for (j = 0; j < ICE_MAX_NUM_PROFILES; j++) {
 			if (ice_is_bit_set(recipe_to_profile[rid], j)) {
 				switch (j) {
