@@ -1158,6 +1158,10 @@ typedef void (*qman_cb_mr)(struct qman_portal *qm, struct qman_fq *fq,
 /* This callback type is used when handling DCP ERNs */
 typedef void (*qman_cb_dc_ern)(struct qman_portal *qm,
 				const struct qm_mr_entry *msg);
+
+/* This callback function will be used to free mbufs of ERN */
+typedef uint16_t (*qman_cb_free_mbuf)(const struct qm_fd *fd);
+
 /*
  * s/w-visible states. Ie. tentatively scheduled + truly scheduled + active +
  * held-active + held-suspended are just "sched". Things like "retired" will not
@@ -1807,6 +1811,19 @@ int qman_enqueue(struct qman_fq *fq, const struct qm_fd *fd, u32 flags);
 __rte_internal
 int qman_enqueue_multi(struct qman_fq *fq, const struct qm_fd *fd, u32 *flags,
 		       int frames_to_send);
+
+/**
+ * qman_ern_poll_free - Polling on MR and calling a callback function to free
+ * mbufs when SW ERNs received.
+ */
+__rte_internal
+void qman_ern_poll_free(void);
+
+/**
+ * qman_ern_register_cb - Register a callback function to free buffers.
+ */
+__rte_internal
+void qman_ern_register_cb(qman_cb_free_mbuf cb);
 
 /**
  * qman_enqueue_multi_fq - Enqueue multiple frames to their respective frame

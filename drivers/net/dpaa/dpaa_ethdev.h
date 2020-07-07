@@ -111,6 +111,7 @@ struct dpaa_if {
 	struct qman_fq *rx_queues;
 	struct qman_cgr *cgr_rx;
 	struct qman_fq *tx_queues;
+	struct qman_cgr *cgr_tx;
 	struct qman_fq debug_queues[2];
 	uint16_t nb_rx_queues;
 	uint16_t nb_tx_queues;

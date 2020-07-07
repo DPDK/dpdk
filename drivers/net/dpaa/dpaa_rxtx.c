@@ -398,6 +398,69 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	return mbuf;
 }
 
+uint16_t
+dpaa_free_mbuf(const struct qm_fd *fd)
+{
+	struct rte_mbuf *mbuf;
+	struct dpaa_bp_info *bp_info;
+	uint8_t format;
+	void *ptr;
+
+	bp_info = DPAA_BPID_TO_POOL_INFO(fd->bpid);
+	format = (fd->opaque & DPAA_FD_FORMAT_MASK) >> DPAA_FD_FORMAT_SHIFT;
+	if (unlikely(format == qm_fd_sg)) {
+		struct rte_mbuf *first_seg, *prev_seg, *cur_seg, *temp;
+		struct qm_sg_entry *sgt, *sg_temp;
+		void *vaddr, *sg_vaddr;
+		int i = 0;
+		uint16_t fd_offset = fd->offset;
+
+		vaddr = DPAA_MEMPOOL_PTOV(bp_info, qm_fd_addr(fd));
+		if (!vaddr) {
+			DPAA_PMD_ERR("unable to convert physical address");
+			return -1;
+		}
+		sgt = vaddr + fd_offset;
+		sg_temp = &sgt[i++];
+		hw_sg_to_cpu(sg_temp);
+		temp = (struct rte_mbuf *)
+			((char *)vaddr - bp_info->meta_data_size);
+		sg_vaddr = DPAA_MEMPOOL_PTOV(bp_info,
+						qm_sg_entry_get64(sg_temp));
+
+		first_seg = (struct rte_mbuf *)((char *)sg_vaddr -
+						bp_info->meta_data_size);
+		first_seg->nb_segs = 1;
+		prev_seg = first_seg;
+		while (i < DPAA_SGT_MAX_ENTRIES) {
+			sg_temp = &sgt[i++];
+			hw_sg_to_cpu(sg_temp);
+			sg_vaddr = DPAA_MEMPOOL_PTOV(bp_info,
+						qm_sg_entry_get64(sg_temp));
+			cur_seg = (struct rte_mbuf *)((char *)sg_vaddr -
+						      bp_info->meta_data_size);
+			first_seg->nb_segs += 1;
+			prev_seg->next = cur_seg;
+			if (sg_temp->final) {
+				cur_seg->next = NULL;
+				break;
+			}
+			prev_seg = cur_seg;
+		}
+
+		rte_pktmbuf_free_seg(temp);
+		rte_pktmbuf_free_seg(first_seg);
+		return 0;
+	}
+
+	ptr = DPAA_MEMPOOL_PTOV(bp_info, qm_fd_addr(fd));
+	mbuf = (struct rte_mbuf *)((char *)ptr - bp_info->meta_data_size);
+
+	rte_pktmbuf_free(mbuf);
+
+	return 0;
+}
+
 /* Specific for LS1043 */
 void
 dpaa_rx_cb_no_prefetch(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
@@ -1009,6 +1072,14 @@ send_pkts:
 	DPAA_DP_LOG(DEBUG, "Transmitted %d buffers on queue: %p", sent, q);
 
 	return sent;
+}
+
+uint16_t
+dpaa_eth_queue_tx_slow(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
+{
+	qman_ern_poll_free();
+
+	return dpaa_eth_queue_tx(q, bufs, nb_bufs);
 }
 
 uint16_t dpaa_eth_tx_drop_all(void *q  __rte_unused,

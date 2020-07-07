@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2019 NXP
+ *   Copyright 2017-2020 NXP
  *
  */
 /* System headers */
@@ -86,8 +86,11 @@ static int dpaa_push_mode_max_queue = DPAA_DEFAULT_PUSH_MODE_QUEUE;
 static int dpaa_push_queue_idx; /* Queue index which are in push mode*/
 
 
-/* Per FQ Taildrop in frame count */
+/* Per RX FQ Taildrop in frame count */
 static unsigned int td_threshold = CGR_RX_PERFQ_THRESH;
+
+/* Per TX FQ Taildrop in frame count, disabled by default */
+static unsigned int td_tx_threshold;
 
 struct rte_dpaa_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -275,7 +278,11 @@ static int dpaa_eth_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Change tx callback to the real one */
-	dev->tx_pkt_burst = dpaa_eth_queue_tx;
+	if (dpaa_intf->cgr_tx)
+		dev->tx_pkt_burst = dpaa_eth_queue_tx_slow;
+	else
+		dev->tx_pkt_burst = dpaa_eth_queue_tx;
+
 	fman_if_enable_rx(dpaa_intf->fif);
 
 	return 0;
@@ -867,6 +874,7 @@ int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	DPAA_PMD_INFO("Tx queue setup for queue index: %d fq_id (0x%x)",
 			queue_idx, dpaa_intf->tx_queues[queue_idx].fqid);
 	dev->data->tx_queues[queue_idx] = &dpaa_intf->tx_queues[queue_idx];
+
 	return 0;
 }
 
@@ -1236,9 +1244,19 @@ without_cgr:
 
 /* Initialise a Tx FQ */
 static int dpaa_tx_queue_init(struct qman_fq *fq,
-			      struct fman_if *fman_intf)
+			      struct fman_if *fman_intf,
+			      struct qman_cgr *cgr_tx)
 {
 	struct qm_mcc_initfq opts = {0};
+	struct qm_mcc_initcgr cgr_opts = {
+		.we_mask = QM_CGR_WE_CS_THRES |
+				QM_CGR_WE_CSTD_EN |
+				QM_CGR_WE_MODE,
+		.cgr = {
+			.cstd_en = QM_CGR_EN,
+			.mode = QMAN_CGR_MODE_FRAME
+		}
+	};
 	int ret;
 
 	ret = qman_create_fq(0, QMAN_FQ_FLAG_DYNAMIC_FQID |
@@ -1257,6 +1275,27 @@ static int dpaa_tx_queue_init(struct qman_fq *fq,
 	opts.fqd.context_a.hi = 0x80000000 | fman_dealloc_bufs_mask_hi;
 	opts.fqd.context_a.lo = 0 | fman_dealloc_bufs_mask_lo;
 	DPAA_PMD_DEBUG("init tx fq %p, fqid 0x%x", fq, fq->fqid);
+
+	if (cgr_tx) {
+		/* Enable tail drop with cgr on this queue */
+		qm_cgr_cs_thres_set64(&cgr_opts.cgr.cs_thres,
+				      td_tx_threshold, 0);
+		cgr_tx->cb = NULL;
+		ret = qman_create_cgr(cgr_tx, QMAN_CGR_FLAG_USE_INIT,
+				      &cgr_opts);
+		if (ret) {
+			DPAA_PMD_WARN(
+				"rx taildrop init fail on rx fqid 0x%x(ret=%d)",
+				fq->fqid, ret);
+			goto without_cgr;
+		}
+		opts.we_mask |= QM_INITFQ_WE_CGID;
+		opts.fqd.cgid = cgr_tx->cgrid;
+		opts.fqd.fq_ctrl |= QM_FQCTRL_CGE;
+		DPAA_PMD_DEBUG("Tx FQ tail drop enabled, threshold = %d\n",
+				td_tx_threshold);
+	}
+without_cgr:
 	ret = qman_init_fq(fq, QMAN_INITFQ_FLAG_SCHED, &opts);
 	if (ret)
 		DPAA_PMD_ERR("init tx fqid 0x%x failed %d", fq->fqid, ret);
@@ -1309,6 +1348,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	struct fman_if *fman_intf;
 	struct fman_if_bpool *bp, *tmp_bp;
 	uint32_t cgrid[DPAA_MAX_NUM_PCD_QUEUES];
+	uint32_t cgrid_tx[MAX_DPAA_CORES];
 	char eth_buf[RTE_ETHER_ADDR_FMT_SIZE];
 
 	PMD_INIT_FUNC_TRACE();
@@ -1319,7 +1359,10 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		eth_dev->dev_ops = &dpaa_devops;
 		/* Plugging of UCODE burst API not supported in Secondary */
 		eth_dev->rx_pkt_burst = dpaa_eth_queue_rx;
-		eth_dev->tx_pkt_burst = dpaa_eth_queue_tx;
+		if (dpaa_intf->cgr_tx)
+			eth_dev->tx_pkt_burst = dpaa_eth_queue_tx_slow;
+		else
+			eth_dev->tx_pkt_burst = dpaa_eth_queue_tx;
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
 		qman_set_fq_lookup_table(
 				dpaa_intf->rx_queues->qman_fq_lookup_table);
@@ -1364,6 +1407,21 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	if (!dpaa_intf->rx_queues) {
 		DPAA_PMD_ERR("Failed to alloc mem for RX queues\n");
 		return -ENOMEM;
+	}
+
+	memset(cgrid, 0, sizeof(cgrid));
+	memset(cgrid_tx, 0, sizeof(cgrid_tx));
+
+	/* if DPAA_TX_TAILDROP_THRESHOLD is set, use that value; if 0, it means
+	 * Tx tail drop is disabled.
+	 */
+	if (getenv("DPAA_TX_TAILDROP_THRESHOLD")) {
+		td_tx_threshold = atoi(getenv("DPAA_TX_TAILDROP_THRESHOLD"));
+		DPAA_PMD_DEBUG("Tail drop threshold env configured: %u",
+			       td_tx_threshold);
+		/* if a very large value is being configured */
+		if (td_tx_threshold > UINT16_MAX)
+			td_tx_threshold = CGR_RX_PERFQ_THRESH;
 	}
 
 	/* If congestion control is enabled globally*/
@@ -1414,9 +1472,36 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		goto free_rx;
 	}
 
+	/* If congestion control is enabled globally*/
+	if (td_tx_threshold) {
+		dpaa_intf->cgr_tx = rte_zmalloc(NULL,
+			sizeof(struct qman_cgr) * MAX_DPAA_CORES,
+			MAX_CACHELINE);
+		if (!dpaa_intf->cgr_tx) {
+			DPAA_PMD_ERR("Failed to alloc mem for cgr_tx\n");
+			ret = -ENOMEM;
+			goto free_rx;
+		}
+
+		ret = qman_alloc_cgrid_range(&cgrid_tx[0], MAX_DPAA_CORES,
+					     1, 0);
+		if (ret != MAX_DPAA_CORES) {
+			DPAA_PMD_WARN("insufficient CGRIDs available");
+			ret = -EINVAL;
+			goto free_rx;
+		}
+	} else {
+		dpaa_intf->cgr_tx = NULL;
+	}
+
+
 	for (loop = 0; loop < MAX_DPAA_CORES; loop++) {
+		if (dpaa_intf->cgr_tx)
+			dpaa_intf->cgr_tx[loop].cgrid = cgrid_tx[loop];
+
 		ret = dpaa_tx_queue_init(&dpaa_intf->tx_queues[loop],
-					 fman_intf);
+			fman_intf,
+			dpaa_intf->cgr_tx ? &dpaa_intf->cgr_tx[loop] : NULL);
 		if (ret)
 			goto free_tx;
 		dpaa_intf->tx_queues[loop].dpaa_intf = dpaa_intf;
@@ -1487,6 +1572,7 @@ free_tx:
 
 free_rx:
 	rte_free(dpaa_intf->cgr_rx);
+	rte_free(dpaa_intf->cgr_tx);
 	rte_free(dpaa_intf->rx_queues);
 	dpaa_intf->rx_queues = NULL;
 	dpaa_intf->nb_rx_queues = 0;
@@ -1526,6 +1612,17 @@ dpaa_dev_uninit(struct rte_eth_dev *dev)
 
 	rte_free(dpaa_intf->cgr_rx);
 	dpaa_intf->cgr_rx = NULL;
+
+	/* Release TX congestion Groups */
+	if (dpaa_intf->cgr_tx) {
+		for (loop = 0; loop < MAX_DPAA_CORES; loop++)
+			qman_delete_cgr(&dpaa_intf->cgr_tx[loop]);
+
+		qman_release_cgrid_range(dpaa_intf->cgr_tx[loop].cgrid,
+					 MAX_DPAA_CORES);
+		rte_free(dpaa_intf->cgr_tx);
+		dpaa_intf->cgr_tx = NULL;
+	}
 
 	rte_free(dpaa_intf->rx_queues);
 	dpaa_intf->rx_queues = NULL;
@@ -1630,6 +1727,8 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 	}
 	eth_dev->device = &dpaa_dev->device;
 	dpaa_dev->eth_dev = eth_dev;
+
+	qman_ern_register_cb(dpaa_free_mbuf);
 
 	/* Invoke PMD device initialization function */
 	diag = dpaa_dev_init(eth_dev);

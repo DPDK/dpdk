@@ -254,6 +254,8 @@ struct annotations_t {
 
 uint16_t dpaa_eth_queue_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs);
 
+uint16_t dpaa_eth_queue_tx_slow(void *q, struct rte_mbuf **bufs,
+				uint16_t nb_bufs);
 uint16_t dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs);
 
 uint16_t dpaa_eth_tx_drop_all(void *q  __rte_unused,
@@ -266,6 +268,7 @@ int dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 			   struct qm_fd *fd,
 			   uint32_t bpid);
 
+uint16_t dpaa_free_mbuf(const struct qm_fd *fd);
 void dpaa_rx_cb(struct qman_fq **fq,
 		struct qm_dqrr_entry **dqrr, void **bufs, int num_bufs);
 

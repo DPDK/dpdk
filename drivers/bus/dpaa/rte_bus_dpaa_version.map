@@ -57,6 +57,8 @@ INTERNAL {
 	qman_enqueue;
 	qman_enqueue_multi;
 	qman_enqueue_multi_fq;
+	qman_ern_poll_free;
+	qman_ern_register_cb;
 	qman_fq_fqid;
 	qman_fq_portal_irqsource_add;
 	qman_fq_portal_irqsource_remove;

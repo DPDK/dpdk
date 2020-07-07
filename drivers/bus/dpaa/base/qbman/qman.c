@@ -40,6 +40,8 @@
 			spin_unlock(&__fq478->fqlock); \
 	} while (0)
 
+static qman_cb_free_mbuf qman_free_mbuf_cb;
+
 static inline void fq_set(struct qman_fq *fq, u32 mask)
 {
 	dpaa_set_bits(mask, &fq->flags);
@@ -788,6 +790,47 @@ static inline void fq_state_change(struct qman_portal *p, struct qman_fq *fq,
 		fq->state = qman_fq_state_parked;
 	}
 	FQUNLOCK(fq);
+}
+
+void
+qman_ern_register_cb(qman_cb_free_mbuf cb)
+{
+	qman_free_mbuf_cb = cb;
+}
+
+
+void
+qman_ern_poll_free(void)
+{
+	struct qman_portal *p = get_affine_portal();
+	u8 verb, num = 0;
+	const struct qm_mr_entry *msg;
+	const struct qm_fd *fd;
+	struct qm_mr_entry swapped_msg;
+
+	qm_mr_pvb_update(&p->p);
+	msg = qm_mr_current(&p->p);
+
+	while (msg != NULL) {
+		swapped_msg = *msg;
+		hw_fd_to_cpu(&swapped_msg.ern.fd);
+		verb = msg->ern.verb & QM_MR_VERB_TYPE_MASK;
+		fd = &swapped_msg.ern.fd;
+
+		if (unlikely(verb & 0x20)) {
+			printf("HW ERN notification, Nothing to do\n");
+		} else {
+			if ((fd->bpid & 0xff) != 0xff)
+				qman_free_mbuf_cb(fd);
+		}
+
+		num++;
+		qm_mr_next(&p->p);
+		qm_mr_pvb_update(&p->p);
+		msg = qm_mr_current(&p->p);
+	}
+
+	qm_mr_cci_consume(&p->p, num);
 }
 
 static u32 __poll_portal_slow(struct qman_portal *p, u32 is)
