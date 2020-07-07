@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2014 Freescale Semiconductor, Inc.
- * Copyright 2015-2019 NXP
+ * Copyright 2015-2020 NXP
  *
  */
 #ifndef _FSL_QBMAN_PORTAL_H
@@ -43,6 +43,12 @@ extern uint32_t dpaa2_svr_family;
  * be created.
  */
 struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d);
+
+/**
+ * qbman_swp_update() - Update portal cacheability attributes.
+ * @p: the given qbman swp portal
+ */
+int qbman_swp_update(struct qbman_swp *p, int stash_off);
 
 /**
  * qbman_swp_finish() - Create and destroy a functional object representing

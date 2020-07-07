@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2020 NXP
  *
  */
 
@@ -102,6 +102,7 @@ struct qbman_swp {
 		uint32_t ci;
 		int available;
 	} eqcr;
+	uint8_t stash_off;
 };
 
 /* -------------------------- */
@@ -118,7 +119,9 @@ struct qbman_swp {
  */
 void *qbman_swp_mc_start(struct qbman_swp *p);
 void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint8_t cmd_verb);
+void qbman_swp_mc_submit_cinh(struct qbman_swp *p, void *cmd, uint8_t cmd_verb);
 void *qbman_swp_mc_result(struct qbman_swp *p);
+void *qbman_swp_mc_result_cinh(struct qbman_swp *p);
 
 /* Wraps up submit + poll-for-result */
 static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
@@ -129,6 +132,20 @@ static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
 	qbman_swp_mc_submit(swp, cmd, cmd_verb);
 	do {
 		cmd = qbman_swp_mc_result(swp);
+	} while (!cmd && loopvar--);
+	QBMAN_BUG_ON(!loopvar);
+
+	return cmd;
+}
+
+static inline void *qbman_swp_mc_complete_cinh(struct qbman_swp *swp, void *cmd,
+					  uint8_t cmd_verb)
+{
+	int loopvar = 1000;
+
+	qbman_swp_mc_submit_cinh(swp, cmd, cmd_verb);
+	do {
+		cmd = qbman_swp_mc_result_cinh(swp);
 	} while (!cmd && loopvar--);
 	QBMAN_BUG_ON(!loopvar);
 

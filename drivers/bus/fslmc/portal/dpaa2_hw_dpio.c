@@ -53,10 +53,6 @@ static uint32_t io_space_count;
 /* Variable to store DPAA2 platform type */
 uint32_t dpaa2_svr_family;
 
-/* Physical core id for lcores running on dpaa2. */
-/* DPAA2 only support 1 lcore to 1 phy cpu mapping */
-static unsigned int dpaa2_cpu[RTE_MAX_LCORE];
-
 /* Variable to store DPAA2 DQRR size */
 uint8_t dpaa2_dqrr_size;
 /* Variable to store DPAA2 EQCR size */
@@ -159,7 +155,7 @@ dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 		return;
 	}
 
-	cpu_mask = cpu_mask << dpaa2_cpu[cpu_id];
+	cpu_mask = cpu_mask << cpu_id;
 	snprintf(command, COMMAND_LEN, "echo %X > /proc/irq/%s/smp_affinity",
 		 cpu_mask, token);
 	ret = system(command);
@@ -228,17 +224,9 @@ static void dpaa2_dpio_intr_deinit(struct dpaa2_dpio_dev *dpio_dev)
 #endif
 
 static int
-dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev)
+dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int cpu_id)
 {
 	int sdest, ret;
-	int cpu_id;
-
-	/* Set the Stashing Destination */
-	cpu_id = dpaa2_get_core_id();
-	if (cpu_id < 0) {
-		DPAA2_BUS_ERR("Thread not affined to a single core");
-		return -1;
-	}
 
 	/* Set the STASH Destination depending on Current CPU ID.
 	 * Valid values of SDEST are 4,5,6,7. Where,
@@ -277,6 +265,7 @@ static void dpaa2_put_qbman_swp(struct dpaa2_dpio_dev *dpio_dev)
 static struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(void)
 {
 	struct dpaa2_dpio_dev *dpio_dev = NULL;
+	int cpu_id;
 	int ret;
 
 	/* Get DPIO dev handle from list using index */
@@ -292,11 +281,19 @@ static struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(void)
 	DPAA2_BUS_DEBUG("New Portal %p (%d) affined thread - %lu",
 			dpio_dev, dpio_dev->index, syscall(SYS_gettid));
 
-	ret = dpaa2_configure_stashing(dpio_dev);
-	if (ret) {
-		DPAA2_BUS_ERR("dpaa2_configure_stashing failed");
-		rte_atomic16_clear(&dpio_dev->ref_count);
-		return NULL;
+	/* Set the Stashing Destination */
+	cpu_id = dpaa2_get_core_id();
+	if (cpu_id < 0) {
+		DPAA2_BUS_WARN("Thread not affined to a single core");
+		if (dpaa2_svr_family != SVR_LX2160A)
+			qbman_swp_update(dpio_dev->sw_portal, 1);
+	} else {
+		ret = dpaa2_configure_stashing(dpio_dev, cpu_id);
+		if (ret) {
+			DPAA2_BUS_ERR("dpaa2_configure_stashing failed");
+			rte_atomic16_clear(&dpio_dev->ref_count);
+			return NULL;
+		}
 	}
 
 	ret = pthread_setspecific(dpaa2_portal_key, (void *)dpio_dev);
@@ -363,46 +360,6 @@ static void dpaa2_portal_finish(void *arg)
 	pthread_setspecific(dpaa2_portal_key, NULL);
 }
 
-/*
- * This checks for not supported lcore mappings as well as get the physical
- * cpuid for the lcore.
- * one lcore can only map to 1 cpu i.e. 1@10-14 not supported.
- * one cpu can be mapped to more than one lcores.
- */
-static int
-dpaa2_check_lcore_cpuset(void)
-{
-	unsigned int lcore_id, i;
-	int ret = 0;
-
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
-		dpaa2_cpu[lcore_id] = 0xffffffff;
-
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		rte_cpuset_t cpuset = rte_lcore_cpuset(lcore_id);
-
-		for (i = 0; i < CPU_SETSIZE; i++) {
-			if (!CPU_ISSET(i, &cpuset))
-				continue;
-			if (i >= RTE_MAX_LCORE) {
-				DPAA2_BUS_ERR("ERR:lcore map to core %u (>= %u) not supported",
-					i, RTE_MAX_LCORE);
-				ret = -1;
-				continue;
-			}
-			RTE_LOG(DEBUG, EAL, "lcore id = %u cpu=%u\n",
-				lcore_id, i);
-			if (dpaa2_cpu[lcore_id] != 0xffffffff) {
-				DPAA2_BUS_ERR("ERR:lcore map to multi-cpu not supported");
-				ret = -1;
-				continue;
-			}
-			dpaa2_cpu[lcore_id] = i;
-		}
-	}
-	return ret;
-}
-
 static int
 dpaa2_create_dpio_device(int vdev_fd,
 			 struct vfio_device_info *obj_info,
@@ -413,7 +370,6 @@ dpaa2_create_dpio_device(int vdev_fd,
 	struct qbman_swp_desc p_des;
 	struct dpio_attr attr;
 	int ret;
-	static int check_lcore_cpuset;
 
 	if (obj_info->num_regions < NUM_DPIO_REGIONS) {
 		DPAA2_BUS_ERR("Not sufficient number of DPIO regions");
@@ -432,13 +388,6 @@ dpaa2_create_dpio_device(int vdev_fd,
 	rte_atomic16_init(&dpio_dev->ref_count);
 	/* Using single portal  for all devices */
 	dpio_dev->mc_portal = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
-
-	if (!check_lcore_cpuset) {
-		check_lcore_cpuset = 1;
-
-		if (dpaa2_check_lcore_cpuset() < 0)
-			goto err;
-	}
 
 	dpio_dev->dpio = rte_zmalloc(NULL, sizeof(struct fsl_mc_io),
 				     RTE_CACHE_LINE_SIZE);

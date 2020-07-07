@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
- * Copyright 2019 NXP
+ * Copyright 2019-2020 NXP
  */
 /* qbman_sys_decl.h and qbman_sys.h are the two platform-specific files in the
  * driver. They are only included via qbman_private.h, which is itself a
@@ -190,6 +190,34 @@ static inline void qbman_cinh_write(struct qbman_swp_sys *s, uint32_t offset,
 #endif
 }
 
+static inline void *qbman_cinh_write_start_wo_shadow(struct qbman_swp_sys *s,
+						     uint32_t offset)
+{
+#ifdef QBMAN_CINH_TRACE
+	pr_info("qbman_cinh_write_start(%p:%d:0x%03x)\n",
+		s->addr_cinh, s->idx, offset);
+#endif
+	QBMAN_BUG_ON(offset & 63);
+	return (s->addr_cinh + offset);
+}
+
+static inline void qbman_cinh_write_complete(struct qbman_swp_sys *s,
+					     uint32_t offset, void *cmd)
+{
+	const uint32_t *shadow = cmd;
+	int loop;
+#ifdef QBMAN_CINH_TRACE
+	pr_info("qbman_cinh_write_complete(%p:%d:0x%03x) %p\n",
+		s->addr_cinh, s->idx, offset, shadow);
+	hexdump(cmd, 64);
+#endif
+	for (loop = 15; loop >= 1; loop--)
+		__raw_writel(shadow[loop], s->addr_cinh +
+					 offset + loop * 4);
+	lwsync();
+	__raw_writel(shadow[0], s->addr_cinh + offset);
+}
+
 static inline uint32_t qbman_cinh_read(struct qbman_swp_sys *s, uint32_t offset)
 {
 	uint32_t reg = __raw_readl(s->addr_cinh + offset);
@@ -198,6 +226,35 @@ static inline uint32_t qbman_cinh_read(struct qbman_swp_sys *s, uint32_t offset)
 		s->addr_cinh, s->idx, offset, reg);
 #endif
 	return reg;
+}
+
+static inline void *qbman_cinh_read_shadow(struct qbman_swp_sys *s,
+					   uint32_t offset)
+{
+	uint32_t *shadow = (uint32_t *)(s->cena + offset);
+	unsigned int loop;
+#ifdef QBMAN_CINH_TRACE
+	pr_info(" %s (%p:%d:0x%03x) %p\n", __func__,
+		s->addr_cinh, s->idx, offset, shadow);
+#endif
+
+	for (loop = 0; loop < 16; loop++)
+		shadow[loop] = __raw_readl(s->addr_cinh + offset
+					+ loop * 4);
+#ifdef QBMAN_CINH_TRACE
+	hexdump(shadow, 64);
+#endif
+	return shadow;
+}
+
+static inline void *qbman_cinh_read_wo_shadow(struct qbman_swp_sys *s,
+					      uint32_t offset)
+{
+#ifdef QBMAN_CINH_TRACE
+	pr_info("qbman_cinh_read(%p:%d:0x%03x)\n",
+		s->addr_cinh, s->idx, offset);
+#endif
+	return s->addr_cinh + offset;
 }
 
 static inline void *qbman_cena_write_start(struct qbman_swp_sys *s,
@@ -464,6 +521,82 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	if (!reg) {
 		pr_err("The portal %d is not enabled!\n", s->idx);
 		free(s->cena);
+		return -1;
+	}
+
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access)) {
+		qbman_cinh_write(s, QBMAN_CINH_SWP_EQCR_PI, QMAN_RT_MODE);
+		qbman_cinh_write(s, QBMAN_CINH_SWP_RCR_PI, QMAN_RT_MODE);
+	}
+
+	return 0;
+}
+
+static inline int qbman_swp_sys_update(struct qbman_swp_sys *s,
+				     const struct qbman_swp_desc *d,
+				     uint8_t dqrr_size,
+				     int stash_off)
+{
+	uint32_t reg;
+	int i;
+	int cena_region_size = 4*1024;
+	uint8_t est = 1;
+#ifdef RTE_ARCH_64
+	uint8_t wn = CENA_WRITE_ENABLE;
+#else
+	uint8_t wn = CINH_WRITE_ENABLE;
+#endif
+
+	if (stash_off)
+		wn = CINH_WRITE_ENABLE;
+
+	QBMAN_BUG_ON(d->idx < 0);
+#ifdef QBMAN_CHECKING
+	/* We should never be asked to initialise for a portal that isn't in
+	 * the power-on state. (Ie. don't forget to reset portals when they are
+	 * decommissioned!)
+	 */
+	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
+	QBMAN_BUG_ON(reg);
+#endif
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access))
+		memset(s->addr_cena, 0, cena_region_size);
+	else {
+		/* Invalidate the portal memory.
+		 * This ensures no stale cache lines
+		 */
+		for (i = 0; i < cena_region_size; i += 64)
+			dccivac(s->addr_cena + i);
+	}
+
+	if (dpaa2_svr_family == SVR_LS1080A)
+		est = 0;
+
+	if (s->eqcr_mode == qman_eqcr_vb_array) {
+		reg = qbman_set_swp_cfg(dqrr_size, wn,
+					0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
+	} else {
+		if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000 &&
+			    (d->cena_access_mode == qman_cena_fastest_access))
+			reg = qbman_set_swp_cfg(dqrr_size, wn,
+						1, 3, 2, 0, 1, 1, 1, 1, 1, 1);
+		else
+			reg = qbman_set_swp_cfg(dqrr_size, wn,
+						est, 3, 2, 2, 1, 1, 1, 1, 1, 1);
+	}
+
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access))
+		reg |= 1 << SWP_CFG_CPBS_SHIFT | /* memory-backed mode */
+		       1 << SWP_CFG_VPM_SHIFT |  /* VDQCR read triggered mode */
+		       1 << SWP_CFG_CPM_SHIFT;   /* CR read triggered mode */
+
+	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
+	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
+	if (!reg) {
+		pr_err("The portal %d is not enabled!\n", s->idx);
 		return -1;
 	}
 
