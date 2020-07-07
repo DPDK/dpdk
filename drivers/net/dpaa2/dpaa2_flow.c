@@ -56,7 +56,6 @@ struct rte_flow {
 	uint8_t tc_id; /** Traffic Class ID. */
 	uint8_t tc_index; /** index within this Traffic Class. */
 	enum rte_flow_action_type action;
-	uint16_t flow_id;
 	/* Special for IP address to specify the offset
 	 * in key/mask.
 	 */
@@ -3141,6 +3140,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 	struct dpni_qos_tbl_cfg qos_cfg;
 	struct dpni_fs_action_cfg action;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct dpaa2_queue *rxq;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	size_t param;
 	struct rte_flow *curr = LIST_FIRST(&priv->flows);
@@ -3244,10 +3244,10 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			dest_queue =
 				(const struct rte_flow_action_queue *)(actions[j].conf);
-			flow->flow_id = dest_queue->index;
+			rxq = priv->rx_vq[dest_queue->index];
 			flow->action = RTE_FLOW_ACTION_TYPE_QUEUE;
 			memset(&action, 0, sizeof(struct dpni_fs_action_cfg));
-			action.flow_id = flow->flow_id;
+			action.flow_id = rxq->flow_id;
 			if (is_keycfg_configured & DPAA2_QOS_TABLE_RECONFIGURE) {
 				dpaa2_flow_qos_table_extracts_log(priv);
 				if (dpkg_prepare_key_cfg(
@@ -3302,8 +3302,6 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 				}
 			}
 			/* Configure QoS table first */
-
-			action.flow_id = action.flow_id % priv->num_rx_tc;
 
 			qos_index = flow->tc_id * priv->fs_entries +
 				flow->tc_index;
@@ -3407,13 +3405,22 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			rss_conf = (const struct rte_flow_action_rss *)(actions[j].conf);
+			if (rss_conf->queue_num > priv->dist_queues) {
+				DPAA2_PMD_ERR(
+					"RSS number exceeds the distrbution size");
+				return -ENOTSUP;
+			}
+
 			for (i = 0; i < (int)rss_conf->queue_num; i++) {
-				if (rss_conf->queue[i] <
-					(attr->group * priv->dist_queues) ||
-					rss_conf->queue[i] >=
-					((attr->group + 1) * priv->dist_queues)) {
+				if (rss_conf->queue[i] >= priv->nb_rx_queues) {
 					DPAA2_PMD_ERR(
-					"Queue/Group combination are not supported\n");
+						"RSS RXQ number exceeds the total number");
+					return -ENOTSUP;
+				}
+				rxq = priv->rx_vq[rss_conf->queue[i]];
+				if (rxq->tc_index != attr->group) {
+					DPAA2_PMD_ERR(
+						"RSS RXQ distributed is not in current group");
 					return -ENOTSUP;
 				}
 			}
