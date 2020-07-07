@@ -286,7 +286,7 @@ enum qbman_fd_format {
 #define DPAA2_GET_FD_FRC(fd)   ((fd)->simple.frc)
 #define DPAA2_GET_FD_FLC(fd) \
 	(((uint64_t)((fd)->simple.flc_hi) << 32) + (fd)->simple.flc_lo)
-#define DPAA2_GET_FD_ERR(fd)   ((fd)->simple.bpid_offset & 0x000000FF)
+#define DPAA2_GET_FD_ERR(fd)   ((fd)->simple.ctrl & 0x000000FF)
 #define DPAA2_GET_FLE_OFFSET(fle) (((fle)->fin_bpid_offset & 0x0FFF0000) >> 16)
 #define DPAA2_SET_FLE_SG_EXT(fle) ((fle)->fin_bpid_offset |= (uint64_t)1 << 29)
 #define DPAA2_IS_SET_FLE_SG_EXT(fle)	\
