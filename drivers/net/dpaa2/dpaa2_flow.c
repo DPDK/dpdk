@@ -2872,11 +2872,13 @@ dpaa2_flow_entry_update(
 
 		dpaa2_flow_qos_entry_log("Before update", curr, qos_index);
 
-		ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW,
-				priv->token, &curr->qos_rule);
-		if (ret) {
-			DPAA2_PMD_ERR("Qos entry remove failed.");
-			return -1;
+		if (priv->num_rx_tc > 1) {
+			ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW,
+					priv->token, &curr->qos_rule);
+			if (ret) {
+				DPAA2_PMD_ERR("Qos entry remove failed.");
+				return -1;
+			}
 		}
 
 		extend = -1;
@@ -2977,13 +2979,15 @@ dpaa2_flow_entry_update(
 
 		dpaa2_flow_qos_entry_log("Start update", curr, qos_index);
 
-		ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
-				priv->token, &curr->qos_rule,
-				curr->tc_id, qos_index,
-				0, 0);
-		if (ret) {
-			DPAA2_PMD_ERR("Qos entry update failed.");
-			return -1;
+		if (priv->num_rx_tc > 1) {
+			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
+					priv->token, &curr->qos_rule,
+					curr->tc_id, qos_index,
+					0, 0);
+			if (ret) {
+				DPAA2_PMD_ERR("Qos entry update failed.");
+				return -1;
+			}
 		}
 
 		if (curr->action != RTE_FLOW_ACTION_TYPE_QUEUE) {
@@ -3313,31 +3317,8 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 			flow->action = RTE_FLOW_ACTION_TYPE_QUEUE;
 			memset(&action, 0, sizeof(struct dpni_fs_action_cfg));
 			action.flow_id = rxq->flow_id;
-			if (is_keycfg_configured & DPAA2_QOS_TABLE_RECONFIGURE) {
-				dpaa2_flow_qos_table_extracts_log(priv);
-				if (dpkg_prepare_key_cfg(
-					&priv->extract.qos_key_extract.dpkg,
-					(uint8_t *)(size_t)priv->extract.qos_extract_param)
-					< 0) {
-					DPAA2_PMD_ERR(
-					"Unable to prepare extract parameters");
-					return -1;
-				}
 
-				memset(&qos_cfg, 0, sizeof(struct dpni_qos_tbl_cfg));
-				qos_cfg.discard_on_miss = true;
-				qos_cfg.keep_entries = true;
-				qos_cfg.key_cfg_iova =
-					(size_t)priv->extract.qos_extract_param;
-				ret = dpni_set_qos_table(dpni, CMD_PRI_LOW,
-						priv->token, &qos_cfg);
-				if (ret < 0) {
-					DPAA2_PMD_ERR(
-					"Distribution cannot be configured.(%d)"
-					, ret);
-					return -1;
-				}
-			}
+			/* Configure FS table first*/
 			if (is_keycfg_configured & DPAA2_FS_TABLE_RECONFIGURE) {
 				dpaa2_flow_fs_table_extracts_log(priv, flow->tc_id);
 				if (dpkg_prepare_key_cfg(
@@ -3366,17 +3347,39 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 					return -1;
 				}
 			}
-			/* Configure QoS table first */
 
-			qos_index = flow->tc_id * priv->fs_entries +
-				flow->tc_index;
+			/* Configure QoS table then.*/
+			if (is_keycfg_configured & DPAA2_QOS_TABLE_RECONFIGURE) {
+				dpaa2_flow_qos_table_extracts_log(priv);
+				if (dpkg_prepare_key_cfg(
+					&priv->extract.qos_key_extract.dpkg,
+					(uint8_t *)(size_t)priv->extract.qos_extract_param) < 0) {
+					DPAA2_PMD_ERR(
+						"Unable to prepare extract parameters");
+					return -1;
+				}
 
-			if (qos_index >= priv->qos_entries) {
-				DPAA2_PMD_ERR("QoS table with %d entries full",
-					priv->qos_entries);
-				return -1;
+				memset(&qos_cfg, 0, sizeof(struct dpni_qos_tbl_cfg));
+				qos_cfg.discard_on_miss = false;
+				qos_cfg.default_tc = 0;
+				qos_cfg.keep_entries = true;
+				qos_cfg.key_cfg_iova =
+					(size_t)priv->extract.qos_extract_param;
+				/* QoS table is effecitive for multiple TCs.*/
+				if (priv->num_rx_tc > 1) {
+					ret = dpni_set_qos_table(dpni, CMD_PRI_LOW,
+						priv->token, &qos_cfg);
+					if (ret < 0) {
+						DPAA2_PMD_ERR(
+						"RSS QoS table can not be configured(%d)\n",
+							ret);
+						return -1;
+					}
+				}
 			}
-			flow->qos_rule.key_size = FIXED_ENTRY_SIZE;
+
+			flow->qos_real_key_size = priv->extract
+				.qos_key_extract.key_info.key_total_size;
 			if (flow->ipaddr_rule.ipaddr_type == FLOW_IPV4_ADDR) {
 				if (flow->ipaddr_rule.qos_ipdst_offset >=
 					flow->ipaddr_rule.qos_ipsrc_offset) {
@@ -3402,21 +3405,30 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 				}
 			}
 
-			flow->qos_rule.key_size = FIXED_ENTRY_SIZE;
+			/* QoS entry added is only effective for multiple TCs.*/
+			if (priv->num_rx_tc > 1) {
+				qos_index = flow->tc_id * priv->fs_entries +
+					flow->tc_index;
+				if (qos_index >= priv->qos_entries) {
+					DPAA2_PMD_ERR("QoS table with %d entries full",
+						priv->qos_entries);
+					return -1;
+				}
+				flow->qos_rule.key_size = FIXED_ENTRY_SIZE;
 
-			dpaa2_flow_qos_entry_log("Start add", flow, qos_index);
+				dpaa2_flow_qos_entry_log("Start add", flow, qos_index);
 
-			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
+				ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
 						priv->token, &flow->qos_rule,
 						flow->tc_id, qos_index,
 						0, 0);
-			if (ret < 0) {
-				DPAA2_PMD_ERR(
-				"Error in addnig entry to QoS table(%d)", ret);
-				return ret;
+				if (ret < 0) {
+					DPAA2_PMD_ERR(
+						"Error in addnig entry to QoS table(%d)", ret);
+					return ret;
+				}
 			}
 
-			/* Then Configure FS table */
 			if (flow->tc_index >= priv->fs_entries) {
 				DPAA2_PMD_ERR("FS table with %d entries full",
 					priv->fs_entries);
@@ -3507,7 +3519,8 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 						 &tc_cfg);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
-				"Distribution cannot be configured: %d\n", ret);
+					"RSS FS table cannot be configured: %d\n",
+					ret);
 				rte_free((void *)param);
 				return -1;
 			}
@@ -3841,13 +3854,15 @@ int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 
 	switch (flow->action) {
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
-		/* Remove entry from QoS table first */
-		ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW, priv->token,
-					   &flow->qos_rule);
-		if (ret < 0) {
-			DPAA2_PMD_ERR(
-				"Error in adding entry to QoS table(%d)", ret);
-			goto error;
+		if (priv->num_rx_tc > 1) {
+			/* Remove entry from QoS table first */
+			ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW, priv->token,
+					&flow->qos_rule);
+			if (ret < 0) {
+				DPAA2_PMD_ERR(
+					"Error in removing entry from QoS table(%d)", ret);
+				goto error;
+			}
 		}
 
 		/* Then remove entry from FS table */
@@ -3855,17 +3870,19 @@ int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 					   flow->tc_id, &flow->fs_rule);
 		if (ret < 0) {
 			DPAA2_PMD_ERR(
-				"Error in entry addition in FS table(%d)", ret);
+				"Error in removing entry from FS table(%d)", ret);
 			goto error;
 		}
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
-		ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW, priv->token,
-					   &flow->qos_rule);
-		if (ret < 0) {
-			DPAA2_PMD_ERR(
-			"Error in entry addition in QoS table(%d)", ret);
-			goto error;
+		if (priv->num_rx_tc > 1) {
+			ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW, priv->token,
+					&flow->qos_rule);
+			if (ret < 0) {
+				DPAA2_PMD_ERR(
+					"Error in entry addition in QoS table(%d)", ret);
+				goto error;
+			}
 		}
 		break;
 	default:
