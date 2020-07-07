@@ -655,6 +655,8 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 		struct qat_dev_cmd_param *qat_dev_cmd_param)
 {
 	int i = 0;
+	struct qat_device_info *qat_dev_instance =
+			&qat_pci_devs[qat_pci_dev->qat_dev_id];
 	if (qat_pci_dev->qat_dev_gen == QAT_GEN3) {
 		QAT_LOG(ERR, "Compression PMD not supported on QAT P5xxx");
 		return 0;
@@ -662,7 +664,7 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 
 	struct rte_compressdev_pmd_init_params init_params = {
 		.name = "",
-		.socket_id = qat_pci_dev->pci_dev->device.numa_node,
+		.socket_id = qat_dev_instance->pci_dev->device.numa_node,
 	};
 	char name[RTE_COMPRESSDEV_NAME_MAX_LEN];
 	struct rte_compressdev *compressdev;
@@ -673,13 +675,13 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	QAT_LOG(DEBUG, "Creating QAT COMP device %s", name);
 
 	/* Populate subset device to use in compressdev device creation */
-	qat_pci_dev->comp_rte_dev.driver = &compdev_qat_driver;
-	qat_pci_dev->comp_rte_dev.numa_node =
-					qat_pci_dev->pci_dev->device.numa_node;
-	qat_pci_dev->comp_rte_dev.devargs = NULL;
+	qat_dev_instance->comp_rte_dev.driver = &compdev_qat_driver;
+	qat_dev_instance->comp_rte_dev.numa_node =
+			qat_dev_instance->pci_dev->device.numa_node;
+	qat_dev_instance->comp_rte_dev.devargs = NULL;
 
 	compressdev = rte_compressdev_pmd_create(name,
-			&(qat_pci_dev->comp_rte_dev),
+			&(qat_dev_instance->comp_rte_dev),
 			sizeof(struct qat_comp_dev_private),
 			&init_params);
 
@@ -694,10 +696,12 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	comp_dev = compressdev->data->dev_private;
 	comp_dev->qat_dev = qat_pci_dev;
 	comp_dev->compressdev = compressdev;
-	qat_pci_dev->comp_dev = comp_dev;
 
 	switch (qat_pci_dev->qat_dev_gen) {
 	case QAT_GEN1:
@@ -706,7 +710,6 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 		comp_dev->qat_dev_capabilities = qat_comp_gen_capabilities;
 		break;
 	default:
-		comp_dev->qat_dev_capabilities = qat_comp_gen_capabilities;
 		QAT_LOG(DEBUG,
 			"QAT gen %d capabilities unknown, default to GEN1",
 					qat_pci_dev->qat_dev_gen);
@@ -721,6 +724,7 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 					qat_dev_cmd_param[i].val;
 		i++;
 	}
+	qat_pci_dev->comp_dev = comp_dev;
 
 	QAT_LOG(DEBUG,
 		    "Created QAT COMP device %s as compressdev instance %d",

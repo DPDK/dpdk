@@ -193,7 +193,8 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 
 {
 	struct qat_qp *qp;
-	struct rte_pci_device *pci_dev = qat_dev->pci_dev;
+	struct rte_pci_device *pci_dev =
+			qat_pci_devs[qat_dev->qat_dev_id].pci_dev;
 	char op_cookie_pool_name[RTE_RING_NAMESIZE];
 	uint32_t i;
 
@@ -274,7 +275,7 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 				qp->nb_descriptors,
 				qat_qp_conf->cookie_size, 64, 0,
 				NULL, NULL, NULL, NULL,
-				qat_dev->pci_dev->device.numa_node,
+				pci_dev->device.numa_node,
 				0);
 	if (!qp->op_cookie_pool) {
 		QAT_LOG(ERR, "QAT PMD Cannot create"
@@ -379,7 +380,8 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	uint64_t queue_base;
 	void *io_addr;
 	const struct rte_memzone *qp_mz;
-	struct rte_pci_device *pci_dev = qat_dev->pci_dev;
+	struct rte_pci_device *pci_dev =
+			qat_pci_devs[qat_dev->qat_dev_id].pci_dev;
 	int ret = 0;
 	uint16_t desc_size = (dir == ADF_RING_DIR_TX ?
 			qp_conf->hw->tx_msg_size : qp_conf->hw->rx_msg_size);
@@ -403,7 +405,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 		qp_conf->service_str, "qp_mem",
 		queue->hw_bundle_number, queue->hw_queue_number);
 	qp_mz = queue_dma_zone_reserve(queue->memz_name, queue_size_bytes,
-			qat_dev->pci_dev->device.numa_node);
+			pci_dev->device.numa_node);
 	if (qp_mz == NULL) {
 		QAT_LOG(ERR, "Failed to allocate ring memzone");
 		return -ENOMEM;
@@ -627,9 +629,23 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 
 
 	while (nb_ops_sent != nb_ops_possible) {
-		ret = tmp_qp->build_request(*ops, base_addr + tail,
+		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC) {
+#ifdef BUILD_QAT_SYM
+			ret = qat_sym_build_request(*ops, base_addr + tail,
 				tmp_qp->op_cookies[tail >> queue->trailz],
 				tmp_qp->qat_dev_gen);
+#endif
+		} else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION) {
+			ret = qat_comp_build_request(*ops, base_addr + tail,
+				tmp_qp->op_cookies[tail >> queue->trailz],
+				tmp_qp->qat_dev_gen);
+		} else if (tmp_qp->service_type == QAT_SERVICE_ASYMMETRIC) {
+#ifdef BUILD_QAT_ASYM
+			ret = qat_asym_build_request(*ops, base_addr + tail,
+				tmp_qp->op_cookies[tail >> queue->trailz],
+				tmp_qp->qat_dev_gen);
+#endif
+		}
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
 			/* This message cannot be enqueued */

@@ -239,9 +239,12 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 		struct qat_dev_cmd_param *qat_dev_cmd_param)
 {
 	int i = 0;
+	struct qat_device_info *qat_dev_instance =
+			&qat_pci_devs[qat_pci_dev->qat_dev_id];
 	struct rte_cryptodev_pmd_init_params init_params = {
 			.name = "",
-			.socket_id = qat_pci_dev->pci_dev->device.numa_node,
+			.socket_id =
+				qat_dev_instance->pci_dev->device.numa_node,
 			.private_data_size = sizeof(struct qat_asym_dev_private)
 	};
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
@@ -253,18 +256,18 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	QAT_LOG(DEBUG, "Creating QAT ASYM device %s\n", name);
 
 	/* Populate subset device to use in cryptodev device creation */
-	qat_pci_dev->asym_rte_dev.driver = &cryptodev_qat_asym_driver;
-	qat_pci_dev->asym_rte_dev.numa_node =
-				qat_pci_dev->pci_dev->device.numa_node;
-	qat_pci_dev->asym_rte_dev.devargs = NULL;
+	qat_dev_instance->asym_rte_dev.driver = &cryptodev_qat_asym_driver;
+	qat_dev_instance->asym_rte_dev.numa_node =
+			qat_dev_instance->pci_dev->device.numa_node;
+	qat_dev_instance->asym_rte_dev.devargs = NULL;
 
 	cryptodev = rte_cryptodev_pmd_create(name,
-			&(qat_pci_dev->asym_rte_dev), &init_params);
+			&(qat_dev_instance->asym_rte_dev), &init_params);
 
 	if (cryptodev == NULL)
 		return -ENODEV;
 
-	qat_pci_dev->asym_rte_dev.name = cryptodev->data->name;
+	qat_dev_instance->asym_rte_dev.name = cryptodev->data->name;
 	cryptodev->driver_id = cryptodev_qat_asym_driver_id;
 	cryptodev->dev_ops = &crypto_qat_ops;
 
@@ -276,10 +279,12 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 			RTE_CRYPTODEV_FF_ASYM_SESSIONLESS |
 			RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP |
 			RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	internals = cryptodev->data->dev_private;
 	internals->qat_dev = qat_pci_dev;
-	qat_pci_dev->asym_dev = internals;
-
 	internals->asym_dev_id = cryptodev->data->dev_id;
 	internals->qat_dev_capabilities = qat_gen1_asym_capabilities;
 
@@ -292,6 +297,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 		i++;
 	}
 
+	qat_pci_dev->asym_dev = internals;
 	QAT_LOG(DEBUG, "Created QAT ASYM device %s as cryptodev instance %d",
 			cryptodev->data->name, internals->asym_dev_id);
 	return 0;
@@ -311,7 +317,7 @@ qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 	cryptodev = rte_cryptodev_pmd_get_dev(
 			qat_pci_dev->asym_dev->asym_dev_id);
 	rte_cryptodev_pmd_destroy(cryptodev);
-	qat_pci_dev->asym_rte_dev.name = NULL;
+	qat_pci_devs[qat_pci_dev->qat_dev_id].asym_rte_dev.name = NULL;
 	qat_pci_dev->asym_dev = NULL;
 
 	return 0;
