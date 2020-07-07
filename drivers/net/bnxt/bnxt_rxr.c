@@ -782,6 +782,24 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		     !rte_spinlock_trylock(&rxq->lock)))
 		return 0;
 
+#if defined(RTE_ARCH_X86)
+	/*
+	 * Replenish buffers if needed when a transition has been made from
+	 * vector- to non-vector- receive processing.
+	 */
+	while (unlikely(rxq->rxrearm_nb)) {
+		if (!bnxt_alloc_rx_data(rxq, rxr, rxq->rxrearm_start)) {
+			rxr->rx_prod = rxq->rxrearm_start;
+			bnxt_db_write(&rxr->rx_db, rxr->rx_prod);
+			rxq->rxrearm_start++;
+			rxq->rxrearm_nb--;
+		} else {
+			/* Retry allocation on next call. */
+			break;
+		}
+	}
+#endif
+
 	/* Handle RX burst request */
 	while (1) {
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);

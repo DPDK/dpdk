@@ -18,6 +18,7 @@
 #include "bnxt_hwrm.h"
 #include "bnxt_ring.h"
 #include "bnxt_rxq.h"
+#include "bnxt_rxr.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 
@@ -1403,18 +1404,6 @@ vnic_found:
 		bnxt_update_filter_flags_en(filter, filter1, use_ntuple);
 		break;
 	case RTE_FLOW_ACTION_TYPE_MARK:
-		if (bp->flags & BNXT_FLAG_RX_VECTOR_PKT_MODE) {
-			PMD_DRV_LOG(DEBUG,
-				    "Disable vector processing for mark\n");
-			rte_flow_error_set(error,
-					   ENOTSUP,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   act,
-					   "Disable vector processing for mark");
-			rc = -rte_errno;
-			goto ret;
-		}
-
 		if (bp->mark_table == NULL) {
 			rte_flow_error_set(error,
 					   ENOMEM,
@@ -1423,6 +1412,13 @@ vnic_found:
 					   "Mark table not allocated.");
 			rc = -rte_errno;
 			goto ret;
+		}
+
+		if (bp->flags & BNXT_FLAG_RX_VECTOR_PKT_MODE) {
+			PMD_DRV_LOG(DEBUG,
+				    "Disabling vector processing for mark\n");
+			bp->eth_dev->rx_pkt_burst = bnxt_recv_pkts;
+			bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
 		}
 
 		filter->valid_flags |= BNXT_FLOW_MARK_FLAG;
