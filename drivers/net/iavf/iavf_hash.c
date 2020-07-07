@@ -240,6 +240,28 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_SRC) | \
 	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_DST), {BUFF_NOUSED } }
 
+#define proto_hint_ipv4_src_prot { \
+	VIRTCHNL_PROTO_HDR_IPV4, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_PROT), \
+	{BUFF_NOUSED } }
+
+#define proto_hint_ipv4_dst_prot { \
+	VIRTCHNL_PROTO_HDR_IPV4, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_DST) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_PROT), \
+	{BUFF_NOUSED } }
+
+#define proto_hint_ipv4_only_prot { \
+	VIRTCHNL_PROTO_HDR_IPV4, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_PROT), {BUFF_NOUSED } }
+
+#define proto_hint_ipv4_prot { \
+	VIRTCHNL_PROTO_HDR_IPV4, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_DST) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV4_PROT), {BUFF_NOUSED } }
+
 #define proto_hint_udp_src_port { \
 	VIRTCHNL_PROTO_HDR_UDP, \
 	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_UDP_SRC_PORT), {BUFF_NOUSED } }
@@ -303,6 +325,28 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	VIRTCHNL_PROTO_HDR_IPV6, \
 	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_SRC) | \
 	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_DST), {BUFF_NOUSED } }
+
+#define proto_hint_ipv6_src_prot { \
+	VIRTCHNL_PROTO_HDR_IPV6, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_PROT), \
+	{BUFF_NOUSED } }
+
+#define proto_hint_ipv6_dst_prot { \
+	VIRTCHNL_PROTO_HDR_IPV6, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_DST) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_PROT), \
+	{BUFF_NOUSED } }
+
+#define proto_hint_ipv6_only_prot { \
+	VIRTCHNL_PROTO_HDR_IPV6, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_PROT), {BUFF_NOUSED } }
+
+#define proto_hint_ipv6_prot { \
+	VIRTCHNL_PROTO_HDR_IPV6, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_SRC) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_DST) | \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_PROT), {BUFF_NOUSED } }
 
 #define proto_hint_gtpu_eh_only { \
 	VIRTCHNL_PROTO_HDR_GTPU_EH, \
@@ -447,72 +491,72 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4 = {
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_udp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_src,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_src_prot,
 	proto_hint_udp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_udp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_src,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_src_prot,
 	proto_hint_udp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_udp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_dst,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_dst_prot,
 	proto_hint_udp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_udp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_dst,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_dst_prot,
 	proto_hint_udp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_only,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_only_prot,
 	proto_hint_udp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_only,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_only_prot,
 	proto_hint_udp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_prot,
 	proto_hint_udp }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_tcp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_src,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_src_prot,
 	proto_hint_tcp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_tcp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_src,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_src_prot,
 	proto_hint_tcp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_tcp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_dst,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_dst_prot,
 	proto_hint_tcp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_tcp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_dst,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_dst_prot,
 	proto_hint_tcp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_only,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_only_prot,
 	proto_hint_tcp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_only,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_only_prot,
 	proto_hint_tcp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv4_prot,
 	proto_hint_tcp }
 };
 
@@ -579,23 +623,23 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_esp = {
 /* GTPU EH */
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_src_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_only_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_dst_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_only_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_src_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_only_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_dst_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_only_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_gtpu_eh = {
@@ -604,23 +648,23 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_gtpu_eh = {
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_udp_src_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_src_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_udp_dst_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_src_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_tcp_src_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_src_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_tcp_dst_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_src_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_gtpu_eh = {
@@ -634,55 +678,55 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4_gtpu_eh = {
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_udp_src_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_dst_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_udp_dst_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_dst_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_tcp_src_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_dst_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_tcp_dst_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_dst_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_udp}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_prot, proto_hint_udp}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_gtpu_eh = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_eh_only,
-	proto_hint_tcp}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_eh_only,
+	proto_hint_ipv4_prot, proto_hint_tcp}
 };
 
 /* GTPU UP */
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_src_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_only_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_dst_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_only_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_src_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_only_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_dst_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_only_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_gtpu_up = {
@@ -691,23 +735,23 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_gtpu_up = {
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_udp_src_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_src_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_udp_dst_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_src_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_tcp_src_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_src_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_tcp_dst_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_src_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_gtpu_up = {
@@ -721,55 +765,55 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4_gtpu_up = {
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_udp_src_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_dst_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_udp_dst_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_dst_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_tcp_src_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_dst_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_tcp_dst_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_dst_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_udp}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_prot, proto_hint_udp}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_gtpu_up = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_up_only,
-	proto_hint_tcp}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_up_only,
+	proto_hint_ipv4_prot, proto_hint_tcp}
 };
 
 /* GTPU DWN */
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_src_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_only_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_dst_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_only_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_src_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_only_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_dst_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_only_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_gtpu_dwn = {
@@ -778,23 +822,23 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_gtpu_dwn = {
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_udp_src_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_src_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_udp_dst_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_src_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_tcp_src_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_src_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_tcp_dst_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_src_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_gtpu_dwn = {
@@ -808,33 +852,33 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4_gtpu_dwn = {
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_udp_src_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_udp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_dst_prot, proto_hint_udp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_udp_dst_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_udp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_dst_prot, proto_hint_udp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_tcp_src_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_tcp_src_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_dst_prot, proto_hint_tcp_src_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_tcp_dst_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_tcp_dst_port}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_dst_prot, proto_hint_tcp_dst_port}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_udp}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_prot, proto_hint_udp}
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_tcp_gtpu_dwn = {
-	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_dwn_only,
-	proto_hint_tcp}
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_THREE, {proto_hint_gtpu_dwn_only,
+	proto_hint_ipv4_prot, proto_hint_tcp}
 };
 
 /* IPV6 */
@@ -952,72 +996,72 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv6 = {
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_src_udp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_src,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_src_prot,
 	proto_hint_udp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_src_udp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_src,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_src_prot,
 	proto_hint_udp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_dst_udp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_dst,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_dst_prot,
 	proto_hint_udp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_dst_udp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_dst,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_dst_prot,
 	proto_hint_udp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_udp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_only,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_only_prot,
 	proto_hint_udp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_udp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_only,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_only_prot,
 	proto_hint_udp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_udp = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_prot,
 	proto_hint_udp }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_src_tcp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_src,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_src_prot,
 	proto_hint_tcp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_src_tcp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_src,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_src_prot,
 	proto_hint_tcp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_dst_tcp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_dst,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_dst_prot,
 	proto_hint_tcp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_dst_tcp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_dst,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_dst_prot,
 	proto_hint_tcp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_tcp_src_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_only,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_only_prot,
 	proto_hint_tcp_src_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_tcp_dst_port = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_only,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_only_prot,
 	proto_hint_tcp_dst_port }
 };
 
 struct virtchnl_proto_hdrs hdrs_hint_ipv6_tcp = {
-	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6,
+	TUNNEL_LEVEL_OUTER, PROTO_COUNT_TWO, {proto_hint_ipv6_prot,
 	proto_hint_tcp }
 };
 
