@@ -25,6 +25,9 @@
 #include "ice_ethdev.h"
 #include "ice_generic_flow.h"
 
+#define ICE_GTPU_EH_DWNLINK	0
+#define ICE_GTPU_EH_UPLINK	1
+
 struct rss_type_match_hdr {
 	uint32_t hdr_mask;
 	uint64_t eth_rss_hint;
@@ -93,6 +96,10 @@ struct rss_type_match_hdr hint_eth_ipv4_sctp = {
 	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
 	ICE_FLOW_SEG_HDR_SCTP,
 	ETH_RSS_ETH | ETH_RSS_NONFRAG_IPV4_SCTP};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_ipv4 = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_GTPU | ETH_RSS_IPV4};
 struct rss_type_match_hdr hint_eth_ipv4_gtpu_eh_ipv4 = {
 	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV4 |
 	ICE_FLOW_SEG_HDR_IPV_OTHER,
@@ -173,6 +180,8 @@ static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
 		&hint_eth_ipv4_tcp},
 	{pattern_eth_ipv4_sctp,		    ICE_INSET_NONE,
 		&hint_eth_ipv4_sctp},
+	{pattern_eth_ipv4_gtpu_ipv4,	    ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_ipv4},
 	{pattern_eth_ipv4_gtpu_eh_ipv4,	    ICE_INSET_NONE,
 		&hint_eth_ipv4_gtpu_eh_ipv4},
 	{pattern_eth_ipv4_gtpu_eh_ipv4_udp, ICE_INSET_NONE,
@@ -459,10 +468,15 @@ ice_hash_init(struct ice_adapter *ad)
 }
 
 static int
-ice_hash_check_inset(const struct rte_flow_item pattern[],
-		struct rte_flow_error *error)
+ice_hash_parse_pattern(struct ice_pattern_match_item *pattern_match_item,
+		       const struct rte_flow_item pattern[], void **meta,
+		       struct rte_flow_error *error)
 {
+	uint32_t hdr_mask = ((struct rss_type_match_hdr *)
+		(pattern_match_item->meta))->hdr_mask;
 	const struct rte_flow_item *item = pattern;
+	const struct rte_flow_item_gtp_psc *psc;
+	uint32_t hdrs = 0;
 
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
@@ -472,14 +486,28 @@ ice_hash_check_inset(const struct rte_flow_item pattern[],
 			return -rte_errno;
 		}
 
-		/* Ignore spec and mask. */
-		if (item->spec || item->mask) {
-			rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM, item,
-					"Invalid spec/mask.");
-			return -rte_errno;
+		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_GTPU:
+			hdrs |= ICE_FLOW_SEG_HDR_GTPU_IP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+			psc = item->spec;
+			hdr_mask &= ~ICE_FLOW_SEG_HDR_GTPU_EH;
+			hdrs &= ~ICE_FLOW_SEG_HDR_GTPU_IP;
+			if (!psc)
+				hdrs |= ICE_FLOW_SEG_HDR_GTPU_EH;
+			else if (psc->pdu_type == ICE_GTPU_EH_UPLINK)
+				hdrs |= ICE_FLOW_SEG_HDR_GTPU_UP;
+			else if (psc->pdu_type == ICE_GTPU_EH_DWNLINK)
+				hdrs |= ICE_FLOW_SEG_HDR_GTPU_DWN;
+			break;
+		default:
+			break;
 		}
 	}
+
+	/* Save protocol header to rss_meta. */
+	((struct rss_meta *)*meta)->pkt_hdr |= hdr_mask | hdrs;
 
 	return 0;
 }
@@ -575,6 +603,22 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 				}
 			}
 
+			/* update hash field for gtpu-ip and gtpu-eh. */
+			if (rss_type != ETH_RSS_GTPU)
+				break;
+			else if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_IP)
+				hash_meta->hash_flds |=
+				BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_IP_TEID);
+			else if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_EH)
+				hash_meta->hash_flds |=
+				BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_EH_TEID);
+			else if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_DWN)
+				hash_meta->hash_flds |=
+				BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_DWN_TEID);
+			else if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_UP)
+				hash_meta->hash_flds |=
+				BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_UP_TEID);
+
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_END:
@@ -620,13 +664,10 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 		goto error;
 	}
 
-	ret = ice_hash_check_inset(pattern, error);
+	ret = ice_hash_parse_pattern(pattern_match_item, pattern,
+				     (void **)&rss_meta_ptr, error);
 	if (ret)
 		goto error;
-
-	/* Save protocol header to rss_meta. */
-	rss_meta_ptr->pkt_hdr = ((struct rss_type_match_hdr *)
-		(pattern_match_item->meta))->hdr_mask;
 
 	/* Check rss action. */
 	ret = ice_hash_parse_action(pattern_match_item, actions,
