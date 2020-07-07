@@ -85,7 +85,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
 	struct fsl_mc_io *dpni = priv->hw;
-	struct dpni_rx_tc_dist_cfg tc_cfg;
+	struct dpni_rx_dist_cfg tc_cfg;
 	struct dpkg_profile_cfg kg_cfg;
 	void *p_params;
 	int ret;
@@ -96,8 +96,9 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return -ENOMEM;
 	}
+
 	memset(p_params, 0, DIST_PARAM_IOVA_SIZE);
-	memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
+	memset(&tc_cfg, 0, sizeof(struct dpni_rx_dist_cfg));
 
 	ret = dpaa2_distset_to_dpkg_profile_cfg(req_dist_set, &kg_cfg);
 	if (ret) {
@@ -106,9 +107,11 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		rte_free(p_params);
 		return ret;
 	}
+
 	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
 	tc_cfg.dist_size = priv->dist_queues;
-	tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
+	tc_cfg.enable = true;
+	tc_cfg.tc = tc_index;
 
 	ret = dpkg_prepare_key_cfg(&kg_cfg, p_params);
 	if (ret) {
@@ -117,8 +120,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		return ret;
 	}
 
-	ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW, priv->token, tc_index,
-				  &tc_cfg);
+	ret = dpni_set_rx_hash_dist(dpni, CMD_PRI_LOW, priv->token, &tc_cfg);
 	rte_free(p_params);
 	if (ret) {
 		DPAA2_PMD_ERR(
@@ -136,7 +138,7 @@ int dpaa2_remove_flow_dist(
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
 	struct fsl_mc_io *dpni = priv->hw;
-	struct dpni_rx_tc_dist_cfg tc_cfg;
+	struct dpni_rx_dist_cfg tc_cfg;
 	struct dpkg_profile_cfg kg_cfg;
 	void *p_params;
 	int ret;
@@ -147,13 +149,15 @@ int dpaa2_remove_flow_dist(
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return -ENOMEM;
 	}
-	memset(p_params, 0, DIST_PARAM_IOVA_SIZE);
-	memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
-	kg_cfg.num_extracts = 0;
-	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
-	tc_cfg.dist_size = 0;
-	tc_cfg.dist_mode = DPNI_DIST_MODE_NONE;
 
+	memset(&tc_cfg, 0, sizeof(struct dpni_rx_dist_cfg));
+	tc_cfg.dist_size = 0;
+	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
+	tc_cfg.enable = true;
+	tc_cfg.tc = tc_index;
+
+	memset(p_params, 0, DIST_PARAM_IOVA_SIZE);
+	kg_cfg.num_extracts = 0;
 	ret = dpkg_prepare_key_cfg(&kg_cfg, p_params);
 	if (ret) {
 		DPAA2_PMD_ERR("Unable to prepare extract parameters");
@@ -161,8 +165,8 @@ int dpaa2_remove_flow_dist(
 		return ret;
 	}
 
-	ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW, priv->token, tc_index,
-				  &tc_cfg);
+	ret = dpni_set_rx_hash_dist(dpni, CMD_PRI_LOW, priv->token,
+			&tc_cfg);
 	rte_free(p_params);
 	if (ret)
 		DPAA2_PMD_ERR(

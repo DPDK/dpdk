@@ -30,6 +30,8 @@
 int mc_l4_port_identification;
 
 static char *dpaa2_flow_control_log;
+static int dpaa2_flow_miss_flow_id =
+	DPNI_FS_MISS_DROP;
 
 #define FIXED_ENTRY_SIZE 54
 
@@ -3201,7 +3203,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 	const struct rte_flow_action_rss *rss_conf;
 	int is_keycfg_configured = 0, end_of_list = 0;
 	int ret = 0, i = 0, j = 0;
-	struct dpni_rx_tc_dist_cfg tc_cfg;
+	struct dpni_rx_dist_cfg tc_cfg;
 	struct dpni_qos_tbl_cfg qos_cfg;
 	struct dpni_fs_action_cfg action;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
@@ -3330,20 +3332,30 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 					return -1;
 				}
 
-				memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
+				memset(&tc_cfg, 0,
+					sizeof(struct dpni_rx_dist_cfg));
 				tc_cfg.dist_size = priv->nb_rx_queues / priv->num_rx_tc;
-				tc_cfg.dist_mode = DPNI_DIST_MODE_FS;
 				tc_cfg.key_cfg_iova =
 					(uint64_t)priv->extract.tc_extract_param[flow->tc_id];
-				tc_cfg.fs_cfg.miss_action = DPNI_FS_MISS_DROP;
-				tc_cfg.fs_cfg.keep_entries = true;
-				ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW,
-							 priv->token,
-							 flow->tc_id, &tc_cfg);
+				tc_cfg.tc = flow->tc_id;
+				tc_cfg.enable = false;
+				ret = dpni_set_rx_hash_dist(dpni, CMD_PRI_LOW,
+						priv->token, &tc_cfg);
 				if (ret < 0) {
 					DPAA2_PMD_ERR(
-					"Distribution cannot be configured.(%d)"
-					, ret);
+						"TC hash cannot be disabled.(%d)",
+						ret);
+					return -1;
+				}
+				tc_cfg.enable = true;
+				tc_cfg.fs_miss_flow_id =
+					dpaa2_flow_miss_flow_id;
+				ret = dpni_set_rx_fs_dist(dpni, CMD_PRI_LOW,
+							 priv->token, &tc_cfg);
+				if (ret < 0) {
+					DPAA2_PMD_ERR(
+						"TC distribution cannot be configured.(%d)",
+						ret);
 					return -1;
 				}
 			}
@@ -3508,18 +3520,16 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 				return -1;
 			}
 
-			memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
+			memset(&tc_cfg, 0, sizeof(struct dpni_rx_dist_cfg));
 			tc_cfg.dist_size = rss_conf->queue_num;
-			tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
 			tc_cfg.key_cfg_iova = (size_t)param;
-			tc_cfg.fs_cfg.miss_action = DPNI_FS_MISS_DROP;
-
-			ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW,
-						 priv->token, flow->tc_id,
-						 &tc_cfg);
+			tc_cfg.enable = true;
+			tc_cfg.tc = flow->tc_id;
+			ret = dpni_set_rx_hash_dist(dpni, CMD_PRI_LOW,
+						 priv->token, &tc_cfg);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
-					"RSS FS table cannot be configured: %d\n",
+					"RSS TC table cannot be configured: %d\n",
 					ret);
 				rte_free((void *)param);
 				return -1;
@@ -3544,7 +3554,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 							 priv->token, &qos_cfg);
 				if (ret < 0) {
 					DPAA2_PMD_ERR(
-					"Distribution can't be configured %d\n",
+					"RSS QoS dist can't be configured-%d\n",
 					ret);
 					return -1;
 				}
@@ -3760,6 +3770,20 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 
 	dpaa2_flow_control_log =
 		getenv("DPAA2_FLOW_CONTROL_LOG");
+
+	if (getenv("DPAA2_FLOW_CONTROL_MISS_FLOW")) {
+		struct dpaa2_dev_priv *priv = dev->data->dev_private;
+
+		dpaa2_flow_miss_flow_id =
+			atoi(getenv("DPAA2_FLOW_CONTROL_MISS_FLOW"));
+		if (dpaa2_flow_miss_flow_id >= priv->dist_queues) {
+			DPAA2_PMD_ERR(
+				"The missed flow ID %d exceeds the max flow ID %d",
+				dpaa2_flow_miss_flow_id,
+				priv->dist_queues - 1);
+			return NULL;
+		}
+	}
 
 	flow = rte_zmalloc(NULL, sizeof(struct rte_flow), RTE_CACHE_LINE_SIZE);
 	if (!flow) {
