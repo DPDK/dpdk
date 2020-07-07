@@ -490,7 +490,7 @@ F: lib/librte_eventdev/*crypto_adapter*
 F: app/test/test_event_crypto_adapter.c
 F: doc/guides/prog_guide/event_crypto_adapter.rst
 
-Raw device API - EXPERIMENTAL
+Raw device API
 M: Nipun Gupta <nipun.gupta@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: lib/librte_rawdev/

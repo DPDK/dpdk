@@ -11,9 +11,6 @@
  * @note
  * Driver facing APIs for a raw device. These are not to be called directly by
  * any application.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
  */
 
 #ifdef __cplusplus

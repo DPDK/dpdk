@@ -12,9 +12,6 @@
  *
  * This API allow applications to configure and use generic devices having
  * no specific type already available in DPDK.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
  */
 
 #ifdef __cplusplus
