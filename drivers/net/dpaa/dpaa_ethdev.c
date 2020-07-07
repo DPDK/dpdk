@@ -478,18 +478,15 @@ static int dpaa_eth_link_update(struct rte_eth_dev *dev,
 		DPAA_PMD_ERR("invalid link_speed: %s, %d",
 			     dpaa_intf->name, fif->mac_type);
 
-	ret = dpaa_get_link_status(__fif->node_name);
-	if (ret < 0) {
-		if (ret == -EINVAL) {
-			DPAA_PMD_DEBUG("Using default link status-No Support");
-			ret = 1;
-		} else {
-			DPAA_PMD_ERR("rte_dpaa_get_link_status %d", ret);
+	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
+		ret = dpaa_get_link_status(__fif->node_name);
+		if (ret < 0)
 			return ret;
-		}
+		link->link_status = ret;
+	} else {
+		link->link_status = dpaa_intf->valid;
 	}
 
-	link->link_status = ret;
 	link->link_duplex = ETH_LINK_FULL_DUPLEX;
 	link->link_autoneg = ETH_LINK_AUTONEG;
 
@@ -985,17 +982,33 @@ dpaa_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 static int dpaa_link_down(struct rte_eth_dev *dev)
 {
+	struct fman_if *fif = dev->process_private;
+	struct __fman_if *__fif;
+
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_eth_dev_stop(dev);
+	__fif = container_of(fif, struct __fman_if, __if);
+
+	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
+		dpaa_update_link_status(__fif->node_name, ETH_LINK_DOWN);
+	else
+		dpaa_eth_dev_stop(dev);
 	return 0;
 }
 
 static int dpaa_link_up(struct rte_eth_dev *dev)
 {
+	struct fman_if *fif = dev->process_private;
+	struct __fman_if *__fif;
+
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_eth_dev_start(dev);
+	__fif = container_of(fif, struct __fman_if, __if);
+
+	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
+		dpaa_update_link_status(__fif->node_name, ETH_LINK_UP);
+	else
+		dpaa_eth_dev_start(dev);
 	return 0;
 }
 

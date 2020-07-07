@@ -15,6 +15,7 @@ INTERNAL {
 	dpaa_intr_disable;
 	dpaa_intr_enable;
 	dpaa_svr_family;
+	dpaa_update_link_status;
 	fman_dealloc_bufs_mask_hi;
 	fman_dealloc_bufs_mask_lo;
 	fman_if_add_mac_addr;
