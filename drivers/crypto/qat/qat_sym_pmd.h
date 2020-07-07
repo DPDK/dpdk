@@ -23,7 +23,7 @@
 #define QAT_SYM_CAP_MIXED_CRYPTO	(1 << 0)
 #define QAT_SYM_CAP_VALID		(1 << 31)
 
-extern uint8_t cryptodev_qat_driver_id;
+extern uint8_t qat_sym_driver_id;
 
 /** private data structure for a QAT device.
  * This QAT device is a device offering only symmetric crypto service,

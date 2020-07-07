@@ -197,7 +197,7 @@ qat_sym_process_response(void **op, uint8_t *resp)
 			sess = (struct qat_sym_session *)
 					get_sym_session_private_data(
 					rx_op->sym->session,
-					cryptodev_qat_driver_id);
+					qat_sym_driver_id);
 		}
 
 		rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;

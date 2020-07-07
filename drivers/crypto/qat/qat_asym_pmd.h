@@ -13,7 +13,7 @@
 #define CRYPTODEV_NAME_QAT_ASYM_PMD	crypto_qat_asym
 
 
-extern uint8_t cryptodev_qat_asym_driver_id;
+extern uint8_t qat_asym_driver_id;
 
 /** private data structure for a QAT device.
  * This QAT device is a device offering only asymmetric crypto service,

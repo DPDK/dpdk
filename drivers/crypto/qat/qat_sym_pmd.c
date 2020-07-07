@@ -19,7 +19,7 @@
 
 #define MIXED_CRYPTO_MIN_FW_VER 0x04090000
 
-uint8_t cryptodev_qat_driver_id;
+uint8_t qat_sym_driver_id;
 
 static const struct rte_cryptodev_capabilities qat_gen1_sym_capabilities[] = {
 	QAT_BASE_GEN1_SYM_CAPABILITIES,
@@ -92,7 +92,7 @@ static void qat_sym_dev_info_get(struct rte_cryptodev *dev,
 			qat_qps_per_service(sym_hw_qps, QAT_SERVICE_SYMMETRIC);
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = internals->qat_dev_capabilities;
-		info->driver_id = cryptodev_qat_driver_id;
+		info->driver_id = qat_sym_driver_id;
 		/* No limit of number of sessions */
 		info->sym.max_nb_sessions = 0;
 	}
@@ -317,6 +317,25 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	struct rte_cryptodev *cryptodev;
 	struct qat_sym_dev_private *internals;
 
+	/*
+	 * All processes must use same driver id so they can share sessions.
+	 * Store driver_id so we can validate that all processes have the same
+	 * value, typically they have, but could differ if binaries built
+	 * separately.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		qat_pci_dev->qat_sym_driver_id =
+				qat_sym_driver_id;
+	} else if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		if (qat_pci_dev->qat_sym_driver_id !=
+				qat_sym_driver_id) {
+			QAT_LOG(ERR,
+				"Device %s have different driver id than corresponding device in primary process",
+				name);
+			return -(EFAULT);
+		}
+	}
+
 #ifdef RTE_LIBRTE_SECURITY
 	struct rte_security_ctx *security_instance;
 #endif
@@ -338,7 +357,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		return -ENODEV;
 
 	qat_dev_instance->sym_rte_dev.name = cryptodev->data->name;
-	cryptodev->driver_id = cryptodev_qat_driver_id;
+	cryptodev->driver_id = qat_sym_driver_id;
 	cryptodev->dev_ops = &crypto_qat_ops;
 
 	cryptodev->enqueue_burst = qat_sym_pmd_enqueue_op_burst;
@@ -434,4 +453,4 @@ qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 static struct cryptodev_driver qat_crypto_drv;
 RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv,
 		cryptodev_qat_sym_driver,
-		cryptodev_qat_driver_id);
+		qat_sym_driver_id);

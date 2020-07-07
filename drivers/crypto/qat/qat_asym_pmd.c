@@ -11,7 +11,7 @@
 #include "qat_sym_capabilities.h"
 #include "qat_asym_capabilities.h"
 
-uint8_t cryptodev_qat_asym_driver_id;
+uint8_t qat_asym_driver_id;
 
 static const struct rte_cryptodev_capabilities qat_gen1_asym_capabilities[] = {
 	QAT_BASE_GEN1_ASYM_CAPABILITIES,
@@ -63,7 +63,7 @@ static void qat_asym_dev_info_get(struct rte_cryptodev *dev,
 							QAT_SERVICE_ASYMMETRIC);
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = internals->qat_dev_capabilities;
-		info->driver_id = cryptodev_qat_asym_driver_id;
+		info->driver_id = qat_asym_driver_id;
 		/* No limit of number of sessions */
 		info->sym.max_nb_sessions = 0;
 	}
@@ -251,6 +251,19 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	struct rte_cryptodev *cryptodev;
 	struct qat_asym_dev_private *internals;
 
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		qat_pci_dev->qat_asym_driver_id =
+				qat_asym_driver_id;
+	} else if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		if (qat_pci_dev->qat_asym_driver_id !=
+				qat_asym_driver_id) {
+			QAT_LOG(ERR,
+				"Device %s have different driver id than corresponding device in primary process",
+				name);
+			return -(EFAULT);
+		}
+	}
+
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "asym");
 	QAT_LOG(DEBUG, "Creating QAT ASYM device %s\n", name);
@@ -268,7 +281,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 		return -ENODEV;
 
 	qat_dev_instance->asym_rte_dev.name = cryptodev->data->name;
-	cryptodev->driver_id = cryptodev_qat_asym_driver_id;
+	cryptodev->driver_id = qat_asym_driver_id;
 	cryptodev->dev_ops = &crypto_qat_ops;
 
 	cryptodev->enqueue_burst = qat_asym_pmd_enqueue_op_burst;
@@ -326,4 +339,4 @@ qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 static struct cryptodev_driver qat_crypto_drv;
 RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv,
 		cryptodev_qat_asym_driver,
-		cryptodev_qat_asym_driver_id);
+		qat_asym_driver_id);

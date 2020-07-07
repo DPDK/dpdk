@@ -92,9 +92,15 @@ struct qat_pci_device {
 	struct qat_sym_dev_private *sym_dev;
 	/**< link back to cryptodev private data */
 
+	int qat_sym_driver_id;
+	/**< Symmetric driver id used by this device */
+
 	/* Data relating to asymmetric crypto service */
 	struct qat_asym_dev_private *asym_dev;
 	/**< link back to cryptodev private data */
+
+	int qat_asym_driver_id;
+	/**< Symmetric driver id used by this device */
 
 	/* Data relating to compression service */
 	struct qat_comp_dev_private *comp_dev;

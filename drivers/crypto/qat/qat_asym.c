@@ -475,7 +475,7 @@ qat_asym_build_request(void *in_op,
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		ctx = (struct qat_asym_session *)
 			get_asym_session_private_data(
-			op->asym->session, cryptodev_qat_asym_driver_id);
+			op->asym->session, qat_asym_driver_id);
 		if (unlikely(ctx == NULL)) {
 			QAT_LOG(ERR, "Session has not been created for this device");
 			goto error;
@@ -693,7 +693,7 @@ qat_asym_process_response(void **op, uint8_t *resp,
 
 	if (rx_op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		ctx = (struct qat_asym_session *)get_asym_session_private_data(
-			rx_op->asym->session, cryptodev_qat_asym_driver_id);
+			rx_op->asym->session, qat_asym_driver_id);
 		qat_asym_collect_response(rx_op, cookie, ctx->xform);
 	} else if (rx_op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		qat_asym_collect_response(rx_op, cookie, rx_op->asym->xform);
