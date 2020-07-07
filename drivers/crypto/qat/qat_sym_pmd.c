@@ -35,6 +35,7 @@ static const struct rte_cryptodev_capabilities qat_gen2_sym_capabilities[] = {
 static const struct rte_cryptodev_capabilities qat_gen3_sym_capabilities[] = {
 	QAT_BASE_GEN1_SYM_CAPABILITIES,
 	QAT_EXTRA_GEN2_SYM_CAPABILITIES,
+	QAT_EXTRA_GEN3_SYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 

@@ -75,6 +75,7 @@ Supported AEAD algorithms:
 
 * ``RTE_CRYPTO_AEAD_AES_GCM``
 * ``RTE_CRYPTO_AEAD_AES_CCM``
+* ``RTE_CRYPTO_AEAD_CHACHA20_POLY1305``
 
 Protocol offloads:
 

@@ -130,6 +130,7 @@ New Features
 
   * Added support for lookaside protocol offload for DOCSIS through the
     ``rte_security`` API.
+  * Added Chacha20-Poly1305 AEAD algorithm.
   * Improved handling of multi process in QAT crypto and compression PMDs.
 
 * **Updated the OCTEON TX2 crypto PMD.**
