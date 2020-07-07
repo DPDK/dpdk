@@ -33,9 +33,10 @@ enum iavf_pattern_hint_type {
 	IAVF_PHINT_IPV6_UDP			= 0x00000020,
 	IAVF_PHINT_IPV6_TCP			= 0x00000040,
 	IAVF_PHINT_IPV6_SCTP			= 0x00000080,
-	IAVF_PHINT_IPV4_GTPU_EH			= 0x00000100,
-	IAVF_PHINT_IPV4_GTPU_EH_DWNLINK		= 0x00000200,
-	IAVF_PHINT_IPV4_GTPU_EH_UPLINK		= 0x00000400,
+	IAVF_PHINT_IPV4_GTPU_IP			= 0x00000100,
+	IAVF_PHINT_IPV4_GTPU_EH			= 0x00000200,
+	IAVF_PHINT_IPV4_GTPU_EH_DWNLINK		= 0x00000400,
+	IAVF_PHINT_IPV4_GTPU_EH_UPLINK		= 0x00000800,
 };
 
 #define IAVF_GTPU_EH_DWNLINK	0
@@ -92,6 +93,8 @@ static struct iavf_pattern_match_type phint_eth_ipv4_tcp = {
 	IAVF_PHINT_IPV4_TCP};
 static struct iavf_pattern_match_type phint_eth_ipv4_sctp = {
 	IAVF_PHINT_IPV4_SCTP};
+static struct iavf_pattern_match_type phint_eth_ipv4_gtpu_ipv4 = {
+	IAVF_PHINT_IPV4};
 static struct iavf_pattern_match_type phint_eth_ipv4_gtpu_eh_ipv4 = {
 	IAVF_PHINT_IPV4};
 static struct iavf_pattern_match_type phint_eth_ipv4_gtpu_eh_ipv4_udp = {
@@ -100,6 +103,8 @@ static struct iavf_pattern_match_type phint_eth_ipv4_gtpu_eh_ipv4_tcp = {
 	IAVF_PHINT_IPV4_TCP};
 static struct iavf_pattern_match_type phint_eth_ipv4_esp = {
 	IAVF_PHINT_IPV4};
+static struct iavf_pattern_match_type phint_eth_ipv4_udp_esp = {
+	IAVF_PHINT_IPV4_UDP};
 static struct iavf_pattern_match_type phint_eth_ipv4_ah = {
 	IAVF_PHINT_IPV4};
 static struct iavf_pattern_match_type phint_eth_ipv4_l2tpv3 = {
@@ -124,6 +129,8 @@ static struct iavf_pattern_match_type phint_eth_ipv6_sctp = {
 	IAVF_PHINT_IPV6_SCTP};
 static struct iavf_pattern_match_type phint_eth_ipv6_esp = {
 	IAVF_PHINT_IPV6};
+static struct iavf_pattern_match_type phint_eth_ipv6_udp_esp = {
+	IAVF_PHINT_IPV6_UDP};
 static struct iavf_pattern_match_type phint_eth_ipv6_ah = {
 	IAVF_PHINT_IPV6};
 static struct iavf_pattern_match_type phint_eth_ipv6_l2tpv3 = {
@@ -150,6 +157,8 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv4_udp, IAVF_INSET_NONE, &phint_eth_ipv4_udp},
 	{iavf_pattern_eth_ipv4_tcp, IAVF_INSET_NONE, &phint_eth_ipv4_tcp},
 	{iavf_pattern_eth_ipv4_sctp, IAVF_INSET_NONE, &phint_eth_ipv4_sctp},
+	{iavf_pattern_eth_ipv4_gtpu_ipv4, IAVF_INSET_NONE,
+					&phint_eth_ipv4_gtpu_ipv4},
 	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4, IAVF_INSET_NONE,
 					&phint_eth_ipv4_gtpu_eh_ipv4},
 	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4_udp, IAVF_INSET_NONE,
@@ -157,6 +166,8 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv4_gtpu_eh_ipv4_tcp, IAVF_INSET_NONE,
 					&phint_eth_ipv4_gtpu_eh_ipv4_tcp},
 	{iavf_pattern_eth_ipv4_esp, IAVF_INSET_NONE, &phint_eth_ipv4_esp},
+	{iavf_pattern_eth_ipv4_udp_esp, IAVF_INSET_NONE,
+					&phint_eth_ipv4_udp_esp},
 	{iavf_pattern_eth_ipv4_ah, IAVF_INSET_NONE, &phint_eth_ipv4_ah},
 	{iavf_pattern_eth_ipv4_l2tpv3, IAVF_INSET_NONE,
 					&phint_eth_ipv4_l2tpv3},
@@ -173,6 +184,8 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv6_tcp, IAVF_INSET_NONE, &phint_eth_ipv6_tcp},
 	{iavf_pattern_eth_ipv6_sctp, IAVF_INSET_NONE, &phint_eth_ipv6_sctp},
 	{iavf_pattern_eth_ipv6_esp, IAVF_INSET_NONE, &phint_eth_ipv6_esp},
+	{iavf_pattern_eth_ipv6_udp_esp, IAVF_INSET_NONE,
+					&phint_eth_ipv6_udp_esp},
 	{iavf_pattern_eth_ipv6_ah, IAVF_INSET_NONE, &phint_eth_ipv6_ah},
 	{iavf_pattern_eth_ipv6_l2tpv3, IAVF_INSET_NONE,
 					&phint_eth_ipv6_l2tpv3},
@@ -348,8 +361,16 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_DST) | \
 	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_IPV6_PROT), {BUFF_NOUSED } }
 
+#define proto_hint_gtpu_ip_teid { \
+	VIRTCHNL_PROTO_HDR_GTPU_IP, \
+	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_GTPU_IP_TEID), {BUFF_NOUSED } }
+
 #define proto_hint_gtpu_eh_only { \
 	VIRTCHNL_PROTO_HDR_GTPU_EH, \
+	FIELD_FOR_PROTO_ONLY, {BUFF_NOUSED } }
+
+#define proto_hint_gtpu_ip_only { \
+	VIRTCHNL_PROTO_HDR_GTPU_IP, \
 	FIELD_FOR_PROTO_ONLY, {BUFF_NOUSED } }
 
 #define proto_hint_gtpu_up_only { \
@@ -618,6 +639,26 @@ struct virtchnl_proto_hdrs hdrs_hint_ipv4_pfcp = {
 struct virtchnl_proto_hdrs hdrs_hint_ipv4_udp_esp = {
 	TUNNEL_LEVEL_OUTER, PROTO_COUNT_THREE, {proto_hint_ipv4_only,
 	proto_hint_udp_only, proto_hint_esp }
+};
+
+/* GTPU IP */
+struct virtchnl_proto_hdrs hdrs_hint_ipv4_src_gtpu_ip = {
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_ip_only,
+	proto_hint_ipv4_src }
+};
+
+struct virtchnl_proto_hdrs hdrs_hint_ipv4_dst_gtpu_ip = {
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_ip_only,
+	proto_hint_ipv4_dst }
+};
+
+struct virtchnl_proto_hdrs hdrs_hint_ipv4_gtpu_ip = {
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_ip_only,
+	proto_hint_ipv4 }
+};
+
+struct virtchnl_proto_hdrs hdrs_hint_teid_gtpu_ip = {
+	TUNNEL_LEVEL_FIRST_INNER, PROTO_COUNT_TWO, {proto_hint_gtpu_ip_teid}
 };
 
 /* GTPU EH */
@@ -1498,6 +1539,28 @@ struct iavf_hash_match_type iavf_hash_map_list[] = {
 
 struct iavf_hash_match_type iavf_gtpu_hash_map_list[] = {
 	/* GTPU */
+	/* GTPU IP */
+	/* GTPU IPV4*/
+	{ETH_RSS_L3_SRC_ONLY,
+		&hdrs_hint_ipv4_src_gtpu_ip,
+		IAVF_PHINT_IPV4_GTPU_IP | IAVF_PHINT_IPV4},
+	{ETH_RSS_L3_DST_ONLY,
+		&hdrs_hint_ipv4_dst_gtpu_ip,
+		IAVF_PHINT_IPV4_GTPU_IP | IAVF_PHINT_IPV4},
+	{ETH_RSS_IPV4 |
+		ETH_RSS_L3_SRC_ONLY,
+		&hdrs_hint_ipv4_src_gtpu_ip,
+		IAVF_PHINT_IPV4_GTPU_IP | IAVF_PHINT_IPV4},
+	{ETH_RSS_IPV4 |
+		ETH_RSS_L3_DST_ONLY,
+		&hdrs_hint_ipv4_dst_gtpu_ip,
+		IAVF_PHINT_IPV4_GTPU_IP | IAVF_PHINT_IPV4},
+	{ETH_RSS_IPV4,
+		&hdrs_hint_ipv4_gtpu_ip,
+		IAVF_PHINT_IPV4_GTPU_IP | IAVF_PHINT_IPV4},
+	{ETH_RSS_GTPU,
+		&hdrs_hint_teid_gtpu_ip,
+		IAVF_PHINT_IPV4_GTPU_IP | IAVF_PHINT_IPV4},
 	/* GTPU EH */
 	/* Inner IPV4 */
 	{ETH_RSS_L3_SRC_ONLY,
@@ -2052,8 +2115,12 @@ iavf_hash_parse_pattern(struct iavf_pattern_match_item *pattern_match_item,
 		}
 
 		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_GTPU:
+			*phint |= IAVF_PHINT_IPV4_GTPU_IP;
+			break;
 		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
 			psc = item->spec;
+			*phint &= ~IAVF_PHINT_IPV4_GTPU_IP;
 			if (!psc)
 				*phint |= IAVF_PHINT_IPV4_GTPU_EH;
 			else if (psc->pdu_type == IAVF_GTPU_EH_UPLINK)
@@ -2131,7 +2198,8 @@ iavf_hash_parse_action(const struct rte_flow_action actions[],
 			 */
 			rss_type = rte_eth_rss_hf_refine(rss_type);
 
-			if ((pattern_hint & IAVF_PHINT_IPV4_GTPU_EH) ||
+			if ((pattern_hint & IAVF_PHINT_IPV4_GTPU_IP) ||
+			    (pattern_hint & IAVF_PHINT_IPV4_GTPU_EH) ||
 			    (pattern_hint & IAVF_PHINT_IPV4_GTPU_EH_UPLINK) ||
 			    (pattern_hint & IAVF_PHINT_IPV4_GTPU_EH_DWNLINK)) {
 				hash_map_list = iavf_gtpu_hash_map_list;
