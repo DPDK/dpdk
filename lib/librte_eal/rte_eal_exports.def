@@ -11,6 +11,7 @@ EXPORTS
 	rte_calloc_socket
 	rte_bus_register
 	rte_dev_is_probed
+	rte_devargs_insert
 	rte_devargs_next
 	rte_devargs_remove
 	rte_eal_get_configuration
@@ -29,6 +30,9 @@ EXPORTS
 	rte_eal_using_phys_addrs
 	rte_free
 	rte_hexdump
+	rte_log_register
+	rte_log_register_type_and_pick_level
+	rte_log_set_level
 	rte_malloc
 	rte_malloc_dump_stats
 	rte_malloc_get_socket_stats
@@ -62,6 +66,7 @@ EXPORTS
 	rte_memzone_walk
 	rte_strerror
 	rte_strsplit
+	rte_sys_gettid
 	rte_vfio_container_dma_map
 	rte_vfio_container_dma_unmap
 	rte_vlog
