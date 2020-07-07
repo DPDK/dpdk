@@ -44,7 +44,8 @@ dump_netcfg(struct netcfg_info *cfg_ptr)
 
 		printf("\n+ Fman %d, MAC %d (%s);\n",
 		       __if->fman_idx, __if->mac_idx,
-		       (__if->mac_type == fman_mac_1g) ? "1G" : "10G");
+		       (__if->mac_type == fman_mac_1g) ? "1G" :
+		       (__if->mac_type == fman_mac_2_5g) ? "2.5G" : "10G");
 
 		printf("\tmac_addr: %02x:%02x:%02x:%02x:%02x:%02x\n",
 		       (&__if->mac_addr)->addr_bytes[0],

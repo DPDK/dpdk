@@ -72,6 +72,7 @@ enum fman_mac_type {
 	fman_offline = 0,
 	fman_mac_1g,
 	fman_mac_10g,
+	fman_mac_2_5g,
 };
 
 struct mac_addr {

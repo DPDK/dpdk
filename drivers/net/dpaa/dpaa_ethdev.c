@@ -356,8 +356,13 @@ static int dpaa_eth_dev_info(struct rte_eth_dev *dev,
 
 	if (dpaa_intf->fif->mac_type == fman_mac_1g) {
 		dev_info->speed_capa = ETH_LINK_SPEED_1G;
+	} else if (dpaa_intf->fif->mac_type == fman_mac_2_5g) {
+		dev_info->speed_capa = ETH_LINK_SPEED_1G
+					| ETH_LINK_SPEED_2_5G;
 	} else if (dpaa_intf->fif->mac_type == fman_mac_10g) {
-		dev_info->speed_capa = (ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G);
+		dev_info->speed_capa = ETH_LINK_SPEED_1G
+					| ETH_LINK_SPEED_2_5G
+					| ETH_LINK_SPEED_10G;
 	} else {
 		DPAA_PMD_ERR("invalid link_speed: %s, %d",
 			     dpaa_intf->name, dpaa_intf->fif->mac_type);
@@ -388,6 +393,8 @@ static int dpaa_eth_link_update(struct rte_eth_dev *dev,
 
 	if (dpaa_intf->fif->mac_type == fman_mac_1g)
 		link->link_speed = ETH_SPEED_NUM_1G;
+	else if (dpaa_intf->fif->mac_type == fman_mac_2_5g)
+		link->link_speed = ETH_SPEED_NUM_2_5G;
 	else if (dpaa_intf->fif->mac_type == fman_mac_10g)
 		link->link_speed = ETH_SPEED_NUM_10G;
 	else

@@ -263,7 +263,7 @@ fman_if_init(const struct device_node *dpa_node)
 		fman_dealloc_bufs_mask_hi = 0;
 		fman_dealloc_bufs_mask_lo = 0;
 	}
-	/* Is the MAC node 1G, 10G? */
+	/* Is the MAC node 1G, 2.5G, 10G? */
 	__if->__if.is_memac = 0;
 
 	if (of_device_is_compatible(mac_node, "fsl,fman-1g-mac"))
@@ -279,7 +279,9 @@ fman_if_init(const struct device_node *dpa_node)
 			/* Right now forcing memac to 1g in case of error*/
 			__if->__if.mac_type = fman_mac_1g;
 		} else {
-			if (strstr(char_prop, "sgmii"))
+			if (strstr(char_prop, "sgmii-2500"))
+				__if->__if.mac_type = fman_mac_2_5g;
+			else if (strstr(char_prop, "sgmii"))
 				__if->__if.mac_type = fman_mac_1g;
 			else if (strstr(char_prop, "rgmii")) {
 				__if->__if.mac_type = fman_mac_1g;
