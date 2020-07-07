@@ -782,7 +782,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		     !rte_spinlock_trylock(&rxq->lock)))
 		return 0;
 
-#if defined(RTE_ARCH_X86)
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/*
 	 * Replenish buffers if needed when a transition has been made from
 	 * vector- to non-vector- receive processing.

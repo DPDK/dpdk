@@ -22,7 +22,7 @@ struct bnxt_rx_queue {
 	uint16_t		nb_rx_hold; /* num held free RX desc */
 	uint16_t		rx_free_thresh; /* max free RX desc to hold */
 	uint16_t		queue_id; /* RX queue index */
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	uint16_t		rxrearm_nb; /* number of descs to reinit. */
 	uint16_t		rxrearm_start; /* next desc index to reinit. */
 #endif

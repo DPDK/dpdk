@@ -1076,7 +1076,7 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 #ifndef RTE_LIBRTE_IEEE1588
 	/*
 	 * Vector mode receive can be enabled only if scatter rx is not
@@ -1116,7 +1116,7 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 static eth_tx_burst_t
 bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 {
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 #ifndef RTE_LIBRTE_IEEE1588
 	struct bnxt *bp = eth_dev->data->dev_private;
 
@@ -2679,7 +2679,7 @@ bnxt_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 			 "Scalar");
 		return 0;
 	}
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	if (pkt_burst == bnxt_recv_pkts_vec) {
 		snprintf(mode->info, sizeof(mode->info), "%s",
 			 "Vector SSE");
@@ -2701,7 +2701,7 @@ bnxt_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 			 "Scalar");
 		return 0;
 	}
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	if (pkt_burst == bnxt_xmit_pkts_vec) {
 		snprintf(mode->info, sizeof(mode->info), "%s",
 			 "Vector SSE");
@@ -2730,7 +2730,7 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	new_pkt_size = new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
 		       VLAN_TAG_SIZE * BNXT_NUM_VLANS;
 
-#ifdef RTE_ARCH_X86
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/*
 	 * If vector-mode tx/rx is active, disallow any MTU change that would
 	 * require scattered receive support.

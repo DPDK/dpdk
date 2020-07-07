@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause
-/* Copyright(c) 2019 Broadcom All rights reserved. */
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright(c) 2019-2020 Broadcom All rights reserved. */
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -8,11 +8,7 @@
 #include <rte_byteorder.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
-#if defined(RTE_ARCH_X86)
-#include <tmmintrin.h>
-#else
-#error "bnxt vector pmd: unsupported target."
-#endif
+#include <rte_vect.h>
 
 #include "bnxt.h"
 #include "bnxt_cpr.h"
@@ -37,8 +33,8 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 	struct rte_mbuf *mb0, *mb1;
 	int i;
 
-	const __m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM, 0);
-	const __m128i addrmask = _mm_set_epi64x(UINT64_MAX, 0);
+	const uint64x2_t hdr_room = {0, RTE_PKTMBUF_HEADROOM};
+	const uint64x2_t addrmask = {0, UINT64_MAX};
 
 	/* Pull RTE_BNXT_RXQ_REARM_THRESH more mbufs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mb_pool,
@@ -52,39 +48,39 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < RTE_BNXT_RXQ_REARM_THRESH; i += 2, rx_bufs += 2) {
-		__m128i buf_addr0, buf_addr1;
-		__m128i rxbd0, rxbd1;
+		uint64x2_t buf_addr0, buf_addr1;
+		uint64x2_t rxbd0, rxbd1;
 
 		mb0 = rx_bufs[0].mbuf;
 		mb1 = rx_bufs[1].mbuf;
 
 		/* Load address fields from both mbufs */
-		buf_addr0 = _mm_loadu_si128((__m128i *)&mb0->buf_addr);
-		buf_addr1 = _mm_loadu_si128((__m128i *)&mb1->buf_addr);
+		buf_addr0 = vld1q_u64((uint64_t *)&mb0->buf_addr);
+		buf_addr1 = vld1q_u64((uint64_t *)&mb1->buf_addr);
 
 		/* Load both rx descriptors (preserving some existing fields) */
-		rxbd0 = _mm_loadu_si128((__m128i *)(rxbds + 0));
-		rxbd1 = _mm_loadu_si128((__m128i *)(rxbds + 1));
+		rxbd0 = vld1q_u64((uint64_t *)(rxbds + 0));
+		rxbd1 = vld1q_u64((uint64_t *)(rxbds + 1));
 
 		/* Add default offset to buffer address. */
-		buf_addr0 = _mm_add_epi64(buf_addr0, hdr_room);
-		buf_addr1 = _mm_add_epi64(buf_addr1, hdr_room);
+		buf_addr0 = vaddq_u64(buf_addr0, hdr_room);
+		buf_addr1 = vaddq_u64(buf_addr1, hdr_room);
 
 		/* Clear all fields except address. */
-		buf_addr0 =  _mm_and_si128(buf_addr0, addrmask);
-		buf_addr1 =  _mm_and_si128(buf_addr1, addrmask);
+		buf_addr0 =  vandq_u64(buf_addr0, addrmask);
+		buf_addr1 =  vandq_u64(buf_addr1, addrmask);
 
 		/* Clear address field in descriptor. */
-		rxbd0 = _mm_andnot_si128(addrmask, rxbd0);
-		rxbd1 = _mm_andnot_si128(addrmask, rxbd1);
+		rxbd0 = vbicq_u64(rxbd0, addrmask);
+		rxbd1 = vbicq_u64(rxbd1, addrmask);
 
 		/* Set address field in descriptor. */
-		rxbd0 = _mm_add_epi64(rxbd0, buf_addr0);
-		rxbd1 = _mm_add_epi64(rxbd1, buf_addr1);
+		rxbd0 = vaddq_u64(rxbd0, buf_addr0);
+		rxbd1 = vaddq_u64(rxbd1, buf_addr1);
 
 		/* Store descriptors to memory. */
-		_mm_store_si128((__m128i *)(rxbds++), rxbd0);
-		_mm_store_si128((__m128i *)(rxbds++), rxbd1);
+		vst1q_u64((uint64_t *)(rxbds++), rxbd0);
+		vst1q_u64((uint64_t *)(rxbds++), rxbd1);
 	}
 
 	rxq->rxrearm_start += RTE_BNXT_RXQ_REARM_THRESH;
@@ -211,13 +207,14 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	int nb_rx_pkts = 0;
 	struct rx_pkt_cmpl *rxcmp;
 	bool evt = false;
-	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
-	const __m128i shuf_msk =
-		_mm_set_epi8(15, 14, 13, 12,          /* rss */
-			     0xFF, 0xFF,              /* vlan_tci (zeroes) */
-			     3, 2,                    /* data_len */
-			     0xFF, 0xFF, 3, 2,        /* pkt_len */
-			     0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
+	const uint64x2_t mbuf_init = {rxq->mbuf_initializer, 0};
+	const uint8x16_t shuf_msk = {
+		0xFF, 0xFF, 0xFF, 0xFF,    /* pkt_type (zeroes) */
+		2, 3, 0xFF, 0xFF,          /* pkt_len */
+		2, 3,                      /* data_len */
+		0xFF, 0xFF,                /* vlan_tci (zeroes) */
+		12, 13, 14, 15             /* rss hash */
+	};
 
 	/* If Rx Q was stopped return */
 	if (unlikely(!rxq->rx_started))
@@ -229,10 +226,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	/* Return no more than RTE_BNXT_MAX_RX_BURST per call. */
 	nb_pkts = RTE_MIN(nb_pkts, RTE_BNXT_MAX_RX_BURST);
 
-	/*
-	 * Make nb_pkts an integer multiple of RTE_BNXT_DESCS_PER_LOOP.
-	 * nb_pkts < RTE_BNXT_DESCS_PER_LOOP, just return no packet
-	 */
+	/* Make nb_pkts an integer multiple of RTE_BNXT_DESCS_PER_LOOP */
 	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_BNXT_DESCS_PER_LOOP);
 	if (!nb_pkts)
 		return 0;
@@ -251,7 +245,8 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint32_t tmp_raw_cons;
 			uint16_t cp_cons;
 			struct rte_mbuf *mbuf;
-			__m128i mm_rxcmp, pkt_mb;
+			uint64x2_t mm_rxcmp;
+			uint8x16_t pkt_mb;
 
 			tmp_raw_cons = NEXT_RAW_CMP(raw_cons);
 			cp_cons = RING_CMP(cpr->cp_ring_struct, tmp_raw_cons);
@@ -270,14 +265,14 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			rxr->rx_buf_ring[cons].mbuf = NULL;
 
 			/* Set constant fields from mbuf initializer. */
-			_mm_store_si128((__m128i *)&mbuf->rearm_data,
-					mbuf_init);
+			vst1q_u64((uint64_t *)&mbuf->rearm_data, mbuf_init);
 
 			/* Set mbuf pkt_len, data_len, and rss_hash fields. */
-			mm_rxcmp = _mm_load_si128((__m128i *)rxcmp);
-			pkt_mb = _mm_shuffle_epi8(mm_rxcmp, shuf_msk);
-			_mm_storeu_si128((void *)&mbuf->rx_descriptor_fields1,
-					 pkt_mb);
+			mm_rxcmp = vld1q_u64((uint64_t *)rxcmp);
+			pkt_mb = vqtbl1q_u8(vreinterpretq_u8_u64(mm_rxcmp),
+					    shuf_msk);
+			vst1q_u64((uint64_t *)&mbuf->rx_descriptor_fields1,
+				  vreinterpretq_u64_u8(pkt_mb));
 
 			rte_compiler_barrier();
 

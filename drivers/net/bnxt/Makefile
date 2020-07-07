@@ -44,6 +44,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += rte_pmd_bnxt.c
 ifeq ($(CONFIG_RTE_ARCH_X86), y)
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_rxtx_vec_sse.c
 endif
+ifeq ($(CONFIG_RTE_ARCH_ARM64), y)
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += bnxt_rxtx_vec_neon.c
+endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_BNXT_PMD), y)
 CFLAGS += -I$(SRCDIR) -I$(SRCDIR)/tf_ulp -I$(SRCDIR)/tf_core -I$(SRCDIR)/hcapi

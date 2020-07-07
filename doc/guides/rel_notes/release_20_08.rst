@@ -97,6 +97,7 @@ New Features
   * Added support for VXLAN encap/decap.
   * Added support for rte_flow_query for COUNT action.
   * Added support for rx_burst_mode_get and tx_burst_mode_get.
+  * Added vector mode support for ARM CPUs.
 
 * **Updated Mellanox mlx5 driver.**
 

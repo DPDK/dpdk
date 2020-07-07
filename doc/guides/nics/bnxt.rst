@@ -774,9 +774,9 @@ Vector processing provides significantly improved performance over scalar
 processing (see Vector Processor, here).
 
 The BNXT PMD supports the vector processing using SSE (Streaming SIMD
-Extensions) instructions on x86 platforms. The BNXT vPMD (vector mode PMD) is
-currently limited to Intel/AMD CPU architecture. Support for ARM is *not*
-currently implemented.
+Extensions) instructions on x86 platforms. It also supports NEON intrinsics for
+vector processing on ARM CPUs. The BNXT vPMD (vector mode PMD) is available for
+Intel/AMD and ARM CPU architectures.
 
 This improved performance comes from several optimizations:
 
