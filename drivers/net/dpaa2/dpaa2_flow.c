@@ -33,29 +33,6 @@ struct rte_flow {
 	uint16_t flow_id;
 };
 
-/* Layout for rule compositions for supported patterns */
-/* TODO: Current design only supports Ethernet + IPv4 based classification. */
-/* So corresponding offset macros are valid only. Rest are placeholder for */
-/* now. Once support for other netwrok headers will be added then */
-/* corresponding macros will be updated with correct values*/
-#define DPAA2_CLS_RULE_OFFSET_ETH	0	/*Start of buffer*/
-#define DPAA2_CLS_RULE_OFFSET_VLAN	14	/* DPAA2_CLS_RULE_OFFSET_ETH */
-						/*	+ Sizeof Eth fields  */
-#define DPAA2_CLS_RULE_OFFSET_IPV4	14	/* DPAA2_CLS_RULE_OFFSET_VLAN */
-						/*	+ Sizeof VLAN fields */
-#define DPAA2_CLS_RULE_OFFSET_IPV6	25	/* DPAA2_CLS_RULE_OFFSET_IPV4 */
-						/*	+ Sizeof IPV4 fields */
-#define DPAA2_CLS_RULE_OFFSET_ICMP	58	/* DPAA2_CLS_RULE_OFFSET_IPV6 */
-						/*	+ Sizeof IPV6 fields */
-#define DPAA2_CLS_RULE_OFFSET_UDP	60	/* DPAA2_CLS_RULE_OFFSET_ICMP */
-						/*	+ Sizeof ICMP fields */
-#define DPAA2_CLS_RULE_OFFSET_TCP	64	/* DPAA2_CLS_RULE_OFFSET_UDP  */
-						/*	+ Sizeof UDP fields  */
-#define DPAA2_CLS_RULE_OFFSET_SCTP	68	/* DPAA2_CLS_RULE_OFFSET_TCP  */
-						/*	+ Sizeof TCP fields  */
-#define DPAA2_CLS_RULE_OFFSET_GRE	72	/* DPAA2_CLS_RULE_OFFSET_SCTP */
-						/*	+ Sizeof SCTP fields */
-
 static const
 enum rte_flow_item_type dpaa2_supported_pattern_type[] = {
 	RTE_FLOW_ITEM_TYPE_END,
@@ -212,7 +189,7 @@ dpaa2_configure_flow_eth(struct rte_flow *flow,
 			(pattern->mask ? pattern->mask : default_mask);
 
 	/* Key rule */
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_ETH;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)(spec->src.addr_bytes),
 						sizeof(struct rte_ether_addr));
 	key_iova += sizeof(struct rte_ether_addr);
@@ -223,7 +200,7 @@ dpaa2_configure_flow_eth(struct rte_flow *flow,
 						sizeof(rte_be16_t));
 
 	/* Key mask */
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_ETH;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)(mask->src.addr_bytes),
 						sizeof(struct rte_ether_addr));
 	mask_iova += sizeof(struct rte_ether_addr);
@@ -233,9 +210,9 @@ dpaa2_configure_flow_eth(struct rte_flow *flow,
 	memcpy((void *)mask_iova, (const void *)(&mask->type),
 						sizeof(rte_be16_t));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_ETH +
-				((2  * sizeof(struct rte_ether_addr)) +
-				sizeof(rte_be16_t)));
+	flow->key_size += ((2  * sizeof(struct rte_ether_addr)) +
+					sizeof(rte_be16_t));
+
 	return device_configured;
 }
 
@@ -335,15 +312,15 @@ dpaa2_configure_flow_vlan(struct rte_flow *flow,
 	mask	= (const struct rte_flow_item_vlan *)
 			(pattern->mask ? pattern->mask : default_mask);
 
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_VLAN;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)(&spec->tci),
 							sizeof(rte_be16_t));
 
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_VLAN;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)(&mask->tci),
 							sizeof(rte_be16_t));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_VLAN + sizeof(rte_be16_t));
+	flow->key_size += sizeof(rte_be16_t);
 	return device_configured;
 }
 
@@ -474,7 +451,7 @@ dpaa2_configure_flow_ipv4(struct rte_flow *flow,
 	mask	= (const struct rte_flow_item_ipv4 *)
 			(pattern->mask ? pattern->mask : default_mask);
 
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_IPV4;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)&spec->hdr.src_addr,
 							sizeof(uint32_t));
 	key_iova += sizeof(uint32_t);
@@ -484,7 +461,7 @@ dpaa2_configure_flow_ipv4(struct rte_flow *flow,
 	memcpy((void *)key_iova, (const void *)&spec->hdr.next_proto_id,
 							sizeof(uint8_t));
 
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_IPV4;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)&mask->hdr.src_addr,
 							sizeof(uint32_t));
 	mask_iova += sizeof(uint32_t);
@@ -494,9 +471,7 @@ dpaa2_configure_flow_ipv4(struct rte_flow *flow,
 	memcpy((void *)mask_iova, (const void *)&mask->hdr.next_proto_id,
 							sizeof(uint8_t));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_IPV4 +
-				(2 * sizeof(uint32_t)) + sizeof(uint8_t));
-
+	flow->key_size += (2 * sizeof(uint32_t)) + sizeof(uint8_t);
 	return device_configured;
 }
 
@@ -613,23 +588,22 @@ dpaa2_configure_flow_ipv6(struct rte_flow *flow,
 	mask	= (const struct rte_flow_item_ipv6 *)
 			(pattern->mask ? pattern->mask : default_mask);
 
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_IPV6;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)(spec->hdr.src_addr),
 						sizeof(spec->hdr.src_addr));
 	key_iova += sizeof(spec->hdr.src_addr);
 	memcpy((void *)key_iova, (const void *)(spec->hdr.dst_addr),
 						sizeof(spec->hdr.dst_addr));
 
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_IPV6;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)(mask->hdr.src_addr),
 						sizeof(mask->hdr.src_addr));
 	mask_iova += sizeof(mask->hdr.src_addr);
 	memcpy((void *)mask_iova, (const void *)(mask->hdr.dst_addr),
 						sizeof(mask->hdr.dst_addr));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_IPV6 +
-					sizeof(spec->hdr.src_addr) +
-					sizeof(mask->hdr.dst_addr));
+	flow->key_size += sizeof(spec->hdr.src_addr) +
+					sizeof(mask->hdr.dst_addr);
 	return device_configured;
 }
 
@@ -746,22 +720,21 @@ dpaa2_configure_flow_icmp(struct rte_flow *flow,
 	mask	= (const struct rte_flow_item_icmp *)
 			(pattern->mask ? pattern->mask : default_mask);
 
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_ICMP;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)&spec->hdr.icmp_type,
 							sizeof(uint8_t));
 	key_iova += sizeof(uint8_t);
 	memcpy((void *)key_iova, (const void *)&spec->hdr.icmp_code,
 							sizeof(uint8_t));
 
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_ICMP;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)&mask->hdr.icmp_type,
 							sizeof(uint8_t));
 	key_iova += sizeof(uint8_t);
 	memcpy((void *)mask_iova, (const void *)&mask->hdr.icmp_code,
 							sizeof(uint8_t));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_ICMP +
-				(2 * sizeof(uint8_t)));
+	flow->key_size += 2 * sizeof(uint8_t);
 
 	return device_configured;
 }
@@ -840,13 +813,6 @@ dpaa2_configure_flow_udp(struct rte_flow *flow,
 		priv->extract.qos_key_cfg.extracts[index].type =
 							DPKG_EXTRACT_FROM_HDR;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.prot = NET_PROT_IP;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.field = NH_FLD_IP_PROTO;
-		index++;
-
-		priv->extract.qos_key_cfg.extracts[index].type =
-							DPKG_EXTRACT_FROM_HDR;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.prot = NET_PROT_UDP;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.field = NH_FLD_UDP_PORT_SRC;
 		index++;
@@ -862,13 +828,6 @@ dpaa2_configure_flow_udp(struct rte_flow *flow,
 
 	if (device_configured & DPAA2_FS_TABLE_RECONFIGURE) {
 		index = priv->extract.fs_key_cfg[group].num_extracts;
-		priv->extract.fs_key_cfg[group].extracts[index].type =
-							DPKG_EXTRACT_FROM_HDR;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.prot = NET_PROT_IP;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.field = NH_FLD_IP_PROTO;
-		index++;
-
 		priv->extract.fs_key_cfg[group].extracts[index].type =
 							DPKG_EXTRACT_FROM_HDR;
 		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
@@ -892,25 +851,21 @@ dpaa2_configure_flow_udp(struct rte_flow *flow,
 	mask	= (const struct rte_flow_item_udp *)
 			(pattern->mask ? pattern->mask : default_mask);
 
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_IPV4 +
-					(2 * sizeof(uint32_t));
-	memset((void *)key_iova, 0x11, sizeof(uint8_t));
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_UDP;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)(&spec->hdr.src_port),
 							sizeof(uint16_t));
 	key_iova +=  sizeof(uint16_t);
 	memcpy((void *)key_iova, (const void *)(&spec->hdr.dst_port),
 							sizeof(uint16_t));
 
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_UDP;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)(&mask->hdr.src_port),
 							sizeof(uint16_t));
 	mask_iova +=  sizeof(uint16_t);
 	memcpy((void *)mask_iova, (const void *)(&mask->hdr.dst_port),
 							sizeof(uint16_t));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_UDP +
-				(2 * sizeof(uint16_t)));
+	flow->key_size += (2 * sizeof(uint16_t));
 
 	return device_configured;
 }
@@ -989,13 +944,6 @@ dpaa2_configure_flow_tcp(struct rte_flow *flow,
 		priv->extract.qos_key_cfg.extracts[index].type =
 							DPKG_EXTRACT_FROM_HDR;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.prot = NET_PROT_IP;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.field = NH_FLD_IP_PROTO;
-		index++;
-
-		priv->extract.qos_key_cfg.extracts[index].type =
-							DPKG_EXTRACT_FROM_HDR;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.prot = NET_PROT_TCP;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.field = NH_FLD_TCP_PORT_SRC;
 		index++;
@@ -1012,13 +960,6 @@ dpaa2_configure_flow_tcp(struct rte_flow *flow,
 
 	if (device_configured & DPAA2_FS_TABLE_RECONFIGURE) {
 		index = priv->extract.fs_key_cfg[group].num_extracts;
-		priv->extract.fs_key_cfg[group].extracts[index].type =
-							DPKG_EXTRACT_FROM_HDR;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.prot = NET_PROT_IP;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.field = NH_FLD_IP_PROTO;
-		index++;
-
 		priv->extract.fs_key_cfg[group].extracts[index].type =
 							DPKG_EXTRACT_FROM_HDR;
 		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
@@ -1042,25 +983,21 @@ dpaa2_configure_flow_tcp(struct rte_flow *flow,
 	mask	= (const struct rte_flow_item_tcp *)
 			(pattern->mask ? pattern->mask : default_mask);
 
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_IPV4 +
-					(2 * sizeof(uint32_t));
-	memset((void *)key_iova, 0x06, sizeof(uint8_t));
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_TCP;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)(&spec->hdr.src_port),
 							sizeof(uint16_t));
 	key_iova += sizeof(uint16_t);
 	memcpy((void *)key_iova, (const void *)(&spec->hdr.dst_port),
 							sizeof(uint16_t));
 
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_TCP;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)(&mask->hdr.src_port),
 							sizeof(uint16_t));
 	mask_iova += sizeof(uint16_t);
 	memcpy((void *)mask_iova, (const void *)(&mask->hdr.dst_port),
 							sizeof(uint16_t));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_TCP +
-				(2 * sizeof(uint16_t)));
+	flow->key_size += 2 * sizeof(uint16_t);
 
 	return device_configured;
 }
@@ -1139,13 +1076,6 @@ dpaa2_configure_flow_sctp(struct rte_flow *flow,
 		priv->extract.qos_key_cfg.extracts[index].type =
 							DPKG_EXTRACT_FROM_HDR;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.prot = NET_PROT_IP;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.field = NH_FLD_IP_PROTO;
-		index++;
-
-		priv->extract.qos_key_cfg.extracts[index].type =
-							DPKG_EXTRACT_FROM_HDR;
-		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.prot = NET_PROT_SCTP;
 		priv->extract.qos_key_cfg.extracts[index].extract.from_hdr.field = NH_FLD_SCTP_PORT_SRC;
 		index++;
@@ -1162,13 +1092,6 @@ dpaa2_configure_flow_sctp(struct rte_flow *flow,
 
 	if (device_configured & DPAA2_FS_TABLE_RECONFIGURE) {
 		index = priv->extract.fs_key_cfg[group].num_extracts;
-		priv->extract.fs_key_cfg[group].extracts[index].type =
-							DPKG_EXTRACT_FROM_HDR;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.prot = NET_PROT_IP;
-		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.field = NH_FLD_IP_PROTO;
-		index++;
-
 		priv->extract.fs_key_cfg[group].extracts[index].type =
 							DPKG_EXTRACT_FROM_HDR;
 		priv->extract.fs_key_cfg[group].extracts[index].extract.from_hdr.type = DPKG_FULL_FIELD;
@@ -1192,25 +1115,22 @@ dpaa2_configure_flow_sctp(struct rte_flow *flow,
 	mask	= (const struct rte_flow_item_sctp *)
 			(pattern->mask ? pattern->mask : default_mask);
 
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_IPV4 +
-						(2 * sizeof(uint32_t));
-	memset((void *)key_iova, 0x84, sizeof(uint8_t));
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_SCTP;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)(&spec->hdr.src_port),
 							sizeof(uint16_t));
 	key_iova += sizeof(uint16_t);
 	memcpy((void *)key_iova, (const void *)(&spec->hdr.dst_port),
 							sizeof(uint16_t));
 
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_SCTP;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)(&mask->hdr.src_port),
 							sizeof(uint16_t));
 	mask_iova += sizeof(uint16_t);
 	memcpy((void *)mask_iova, (const void *)(&mask->hdr.dst_port),
 							sizeof(uint16_t));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_SCTP +
-				(2 * sizeof(uint16_t)));
+	flow->key_size += 2 * sizeof(uint16_t);
+
 	return device_configured;
 }
 
@@ -1313,15 +1233,15 @@ dpaa2_configure_flow_gre(struct rte_flow *flow,
 	mask	= (const struct rte_flow_item_gre *)
 			(pattern->mask ? pattern->mask : default_mask);
 
-	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_GRE;
+	key_iova = flow->rule.key_iova + flow->key_size;
 	memcpy((void *)key_iova, (const void *)(&spec->protocol),
 							sizeof(rte_be16_t));
 
-	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_GRE;
+	mask_iova = flow->rule.mask_iova + flow->key_size;
 	memcpy((void *)mask_iova, (const void *)(&mask->protocol),
 							sizeof(rte_be16_t));
 
-	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_GRE + sizeof(rte_be16_t));
+	flow->key_size += sizeof(rte_be16_t);
 
 	return device_configured;
 }
@@ -1503,6 +1423,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 
 			action.flow_id = action.flow_id % nic_attr.num_rx_tcs;
 			index = flow->index + (flow->tc_id * nic_attr.fs_entries);
+			flow->rule.key_size = flow->key_size;
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
 						priv->token, &flow->rule,
 						flow->tc_id, index,
@@ -1606,6 +1527,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 
 			/* Add Rule into QoS table */
 			index = flow->index + (flow->tc_id * nic_attr.fs_entries);
+			flow->rule.key_size = flow->key_size;
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW, priv->token,
 						&flow->rule, flow->tc_id,
 						index, 0, 0);
@@ -1862,7 +1784,7 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 
 	flow->rule.key_iova = key_iova;
 	flow->rule.mask_iova = mask_iova;
-	flow->rule.key_size = 0;
+	flow->key_size = 0;
 
 	switch (dpaa2_filter_type) {
 	case RTE_ETH_FILTER_GENERIC:

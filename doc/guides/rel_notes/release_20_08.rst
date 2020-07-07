@@ -154,6 +154,7 @@ New Features
   Updated the NXP dpaa2 ethdev with new features and improvements, including:
 
   * Added support to use datapath APIs from non-EAL pthread
+  * Added support for dynamic flow management
 
 * **Added DOCSIS protocol to rte_security.**
 
