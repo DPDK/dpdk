@@ -35,8 +35,6 @@ rte_fslmc_get_device_count(enum rte_dpaa2_dev_type device_type)
 	return rte_fslmc_bus.device_count[device_type];
 }
 
-RTE_DEFINE_PER_LCORE(struct dpaa2_portal_dqrr, dpaa2_held_bufs);
-
 static void
 cleanup_fslmc_device_list(void)
 {

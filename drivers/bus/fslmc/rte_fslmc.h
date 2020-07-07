@@ -137,24 +137,6 @@ struct rte_fslmc_bus {
 				/**< Count of all devices scanned */
 };
 
-#define DPAA2_PORTAL_DEQUEUE_DEPTH	32
-
-/* Create storage for dqrr entries per lcore */
-struct dpaa2_portal_dqrr {
-	struct rte_mbuf *mbuf[DPAA2_PORTAL_DEQUEUE_DEPTH];
-	uint64_t dqrr_held;
-	uint8_t dqrr_size;
-};
-
-RTE_DECLARE_PER_LCORE(struct dpaa2_portal_dqrr, dpaa2_held_bufs);
-
-#define DPAA2_PER_LCORE_DQRR_SIZE \
-	RTE_PER_LCORE(dpaa2_held_bufs).dqrr_size
-#define DPAA2_PER_LCORE_DQRR_HELD \
-	RTE_PER_LCORE(dpaa2_held_bufs).dqrr_held
-#define DPAA2_PER_LCORE_DQRR_MBUF(i) \
-	RTE_PER_LCORE(dpaa2_held_bufs).mbuf[i]
-
 /**
  * Register a DPAA2 driver.
  *

@@ -28,6 +28,13 @@ RTE_DECLARE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 #define DPAA2_PER_LCORE_ETHRX_DPIO RTE_PER_LCORE(_dpaa2_io).ethrx_dpio_dev
 #define DPAA2_PER_LCORE_ETHRX_PORTAL DPAA2_PER_LCORE_ETHRX_DPIO->sw_portal
 
+#define DPAA2_PER_LCORE_DQRR_SIZE \
+	RTE_PER_LCORE(_dpaa2_io).dpio_dev->dpaa2_held_bufs.dqrr_size
+#define DPAA2_PER_LCORE_DQRR_HELD \
+	RTE_PER_LCORE(_dpaa2_io).dpio_dev->dpaa2_held_bufs.dqrr_held
+#define DPAA2_PER_LCORE_DQRR_MBUF(i) \
+	RTE_PER_LCORE(_dpaa2_io).dpio_dev->dpaa2_held_bufs.mbuf[i]
+
 /* Variable to store DPAA2 DQRR size */
 extern uint8_t dpaa2_dqrr_size;
 /* Variable to store DPAA2 EQCR size */

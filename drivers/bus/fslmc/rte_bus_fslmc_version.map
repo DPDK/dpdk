@@ -53,7 +53,6 @@ INTERNAL {
 	mc_get_version;
 	mc_send_command;
 	per_lcore__dpaa2_io;
-	per_lcore_dpaa2_held_bufs;
 	qbman_check_command_complete;
 	qbman_check_new_result;
 	qbman_eq_desc_clear;
