@@ -44,7 +44,6 @@ INTERNAL {
 	netcfg_acquire;
 	netcfg_release;
 	per_lcore_dpaa_io;
-	per_lcore_held_bufs;
 	qman_alloc_cgrid_range;
 	qman_alloc_pool_range;
 	qman_clear_irq;

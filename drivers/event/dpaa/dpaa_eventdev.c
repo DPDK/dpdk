@@ -179,7 +179,7 @@ dpaa_event_dequeue_burst(void *port, struct rte_event ev[],
 	struct dpaa_port *portal = (struct dpaa_port *)port;
 	struct rte_mbuf *mbuf;
 
-	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		/* Affine current thread context to a qman portal */
 		ret = rte_dpaa_portal_init((void *)0);
 		if (ret) {
@@ -251,7 +251,7 @@ dpaa_event_dequeue_burst_intr(void *port, struct rte_event ev[],
 	struct dpaa_port *portal = (struct dpaa_port *)port;
 	struct rte_mbuf *mbuf;
 
-	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		/* Affine current thread context to a qman portal */
 		ret = rte_dpaa_portal_init((void *)0);
 		if (ret) {

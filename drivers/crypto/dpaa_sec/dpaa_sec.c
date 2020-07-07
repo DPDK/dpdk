@@ -45,9 +45,6 @@
 
 static uint8_t cryptodev_driver_id;
 
-static __thread struct rte_crypto_op **dpaa_sec_ops;
-static __thread int dpaa_sec_op_nb;
-
 static int
 dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess);
 
@@ -143,7 +140,7 @@ dqrr_out_fq_cb_rx(struct qman_portal *qm __always_unused,
 	struct dpaa_sec_job *job;
 	struct dpaa_sec_op_ctx *ctx;
 
-	if (dpaa_sec_op_nb >= DPAA_SEC_BURST)
+	if (DPAA_PER_LCORE_DPAA_SEC_OP_NB >= DPAA_SEC_BURST)
 		return qman_cb_dqrr_defer;
 
 	if (!(dqrr->stat & QM_DQRR_STAT_FD_VALID))
@@ -174,7 +171,7 @@ dqrr_out_fq_cb_rx(struct qman_portal *qm __always_unused,
 		}
 		mbuf->data_len = len;
 	}
-	dpaa_sec_ops[dpaa_sec_op_nb++] = ctx->op;
+	DPAA_PER_LCORE_RTE_CRYPTO_OP[DPAA_PER_LCORE_DPAA_SEC_OP_NB++] = ctx->op;
 	dpaa_sec_op_ending(ctx);
 
 	return qman_cb_dqrr_consume;
@@ -2280,7 +2277,7 @@ dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess)
 		DPAA_SEC_ERR("Unable to prepare sec cdb");
 		return ret;
 	}
-	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		ret = rte_dpaa_portal_init((void *)0);
 		if (ret) {
 			DPAA_SEC_ERR("Failure in affining portal");
@@ -3442,7 +3439,7 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		}
 	}
 
-	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		retval = rte_dpaa_portal_init((void *)1);
 		if (retval) {
 			DPAA_SEC_ERR("Unable to initialize portal");

@@ -670,7 +670,7 @@ uint16_t dpaa_eth_queue_rx(void *q,
 	if (likely(fq->is_static))
 		return dpaa_eth_queue_portal_rx(fq, bufs, nb_bufs);
 
-	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		ret = rte_dpaa_portal_init((void *)0);
 		if (ret) {
 			DPAA_PMD_ERR("Failure in affining portal");
@@ -970,7 +970,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	int ret, realloc_mbuf = 0;
 	uint32_t seqn, index, flags[DPAA_TX_BURST_SIZE] = {0};
 
-	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		ret = rte_dpaa_portal_init((void *)0);
 		if (ret) {
 			DPAA_PMD_ERR("Failure in affining portal");

@@ -1707,7 +1707,7 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		is_global_init = 1;
 	}
 
-	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		ret = rte_dpaa_portal_init((void *)1);
 		if (ret) {
 			DPAA_PMD_ERR("Unable to initialize portal");

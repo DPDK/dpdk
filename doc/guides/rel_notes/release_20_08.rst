@@ -142,6 +142,12 @@ New Features
 
   * Re-implemented get_fdir_info and get_fdir_stat in private API.
 
+* **Updated NXP dpaa ethdev PMD.**
+
+  Updated the NXP dpaa ethdev with new features and improvements, including:
+
+  * Added support to use datapath APIs from non-EAL pthread
+
 * **Updated NXP dpaa2 ethdev PMD.**
 
   Updated the NXP dpaa2 ethdev with new features and improvements, including:
