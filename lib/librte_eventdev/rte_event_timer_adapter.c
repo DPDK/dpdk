@@ -583,6 +583,7 @@ swtim_callback(struct rte_timer *tim)
 	uint16_t nb_evs_invalid = 0;
 	uint64_t opaque;
 	int ret;
+	int n_lcores;
 
 	opaque = evtim->impl_opaque[1];
 	adapter = (struct rte_event_timer_adapter *)(uintptr_t)opaque;
@@ -605,8 +606,12 @@ swtim_callback(struct rte_timer *tim)
 				      "with immediate expiry value");
 		}
 
-		if (unlikely(rte_atomic16_test_and_set(&sw->in_use[lcore].v)))
-			sw->poll_lcores[sw->n_poll_lcores++] = lcore;
+		if (unlikely(rte_atomic16_test_and_set(&sw->in_use[lcore].v))) {
+			n_lcores = __atomic_fetch_add(&sw->n_poll_lcores, 1,
+						     __ATOMIC_RELAXED);
+			__atomic_store_n(&sw->poll_lcores[n_lcores], lcore,
+					__ATOMIC_RELAXED);
+		}
 	} else {
 		EVTIM_BUF_LOG_DBG("buffered an event timer expiry event");
 
@@ -1011,6 +1016,7 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 	uint32_t lcore_id = rte_lcore_id();
 	struct rte_timer *tim, *tims[nb_evtims];
 	uint64_t cycles;
+	int n_lcores;
 
 #ifdef RTE_LIBRTE_EVENTDEV_DEBUG
 	/* Check that the service is running. */
@@ -1033,8 +1039,10 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 	if (unlikely(rte_atomic16_test_and_set(&sw->in_use[lcore_id].v))) {
 		EVTIM_LOG_DBG("Adding lcore id = %u to list of lcores to poll",
 			      lcore_id);
-		sw->poll_lcores[sw->n_poll_lcores] = lcore_id;
-		++sw->n_poll_lcores;
+		n_lcores = __atomic_fetch_add(&sw->n_poll_lcores, 1,
+					     __ATOMIC_RELAXED);
+		__atomic_store_n(&sw->poll_lcores[n_lcores], lcore_id,
+				__ATOMIC_RELAXED);
 	}
 
 	ret = rte_mempool_get_bulk(sw->tim_pool, (void **)tims,
