@@ -133,4 +133,44 @@ int rte_vhost_async_channel_register(int vid, uint16_t queue_id,
 __rte_experimental
 int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id);
 
+/**
+ * This function submit enqueue data to async engine. This function has
+ * no guranttee to the transfer completion upon return. Applications
+ * should poll transfer status by rte_vhost_poll_enqueue_completed()
+ *
+ * @param vid
+ *  id of vhost device to enqueue data
+ * @param queue_id
+ *  queue id to enqueue data
+ * @param pkts
+ *  array of packets to be enqueued
+ * @param count
+ *  packets num to be enqueued
+ * @return
+ *  num of packets enqueued
+ */
+__rte_experimental
+uint16_t rte_vhost_submit_enqueue_burst(int vid, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint16_t count);
+
+/**
+ * This function check async completion status for a specific vhost
+ * device queue. Packets which finish copying (enqueue) operation
+ * will be returned in an array.
+ *
+ * @param vid
+ *  id of vhost device to enqueue data
+ * @param queue_id
+ *  queue id to enqueue data
+ * @param pkts
+ *  blank array to get return packet pointer
+ * @param count
+ *  size of the packet array
+ * @return
+ *  num of packets returned
+ */
+__rte_experimental
+uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
+		struct rte_mbuf **pkts, uint16_t count);
+
 #endif /* _RTE_VHOST_ASYNC_H_ */
