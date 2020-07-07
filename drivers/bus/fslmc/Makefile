@@ -17,6 +17,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/mc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
 CFLAGS += -I$(RTE_SDK)/drivers/common/dpaax
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common
+LDLIBS += -lpthread
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev
 LDLIBS += -lrte_common_dpaax
