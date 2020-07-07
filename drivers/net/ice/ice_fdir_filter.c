@@ -18,6 +18,9 @@
 
 #define ICE_FDIR_MAX_QREGION_SIZE	128
 
+#define ICE_FDIR_INSET_ETH (\
+	ICE_INSET_ETHERTYPE)
+
 #define ICE_FDIR_INSET_ETH_IPV4 (\
 	ICE_INSET_DMAC | \
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_TOS | \
@@ -102,6 +105,7 @@ static struct ice_pattern_match_item ice_fdir_pattern_os[] = {
 };
 
 static struct ice_pattern_match_item ice_fdir_pattern_comms[] = {
+	{pattern_ethertype,	       ICE_FDIR_INSET_ETH,		     ICE_INSET_NONE},
 	{pattern_eth_ipv4,             ICE_FDIR_INSET_ETH_IPV4,              ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp,         ICE_FDIR_INSET_ETH_IPV4_UDP,          ICE_INSET_NONE},
 	{pattern_eth_ipv4_tcp,         ICE_FDIR_INSET_ETH_IPV4_TCP,          ICE_INSET_NONE},
@@ -894,6 +898,7 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 	};
 	static const struct ice_inset_map ice_inset_map[] = {
 		{ICE_INSET_DMAC, ICE_FLOW_FIELD_IDX_ETH_DA},
+		{ICE_INSET_ETHERTYPE, ICE_FLOW_FIELD_IDX_ETH_TYPE},
 		{ICE_INSET_IPV4_SRC, ICE_FLOW_FIELD_IDX_IPV4_SA},
 		{ICE_INSET_IPV4_DST, ICE_FLOW_FIELD_IDX_IPV4_DA},
 		{ICE_INSET_IPV4_TOS, ICE_FLOW_FIELD_IDX_IPV4_DSCP},
@@ -1007,6 +1012,9 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 					  ICE_FLOW_SEG_HDR_IPV_OTHER);
 		else
 			PMD_DRV_LOG(ERR, "not supported tunnel type.");
+		break;
+	case ICE_FLTR_PTYPE_NON_IP_L2:
+		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_ETH_NON_IP);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "not supported filter type.");
@@ -1613,6 +1621,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	};
 	uint32_t vtc_flow_cpu;
 
+	enum rte_flow_item_type next_type;
+	uint16_t ether_type;
 
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
@@ -1628,6 +1638,15 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth_spec = item->spec;
 			eth_mask = item->mask;
+			next_type = (item + 1)->type;
+
+			if (next_type == RTE_FLOW_ITEM_TYPE_END &&
+				(!eth_spec || !eth_mask)) {
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "NULL eth spec/mask.");
+				return -rte_errno;
+			}
 
 			if (eth_spec && eth_mask) {
 				if (!rte_is_zero_ether_addr(&eth_spec->src) ||
@@ -1639,18 +1658,33 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 					return -rte_errno;
 				}
 
-				if (!rte_is_broadcast_ether_addr(&eth_mask->dst)) {
+				if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
+					input_set |= ICE_INSET_DMAC;
+					rte_memcpy(&filter->input.ext_data.dst_mac,
+						&eth_spec->dst,
+						RTE_ETHER_ADDR_LEN);
+				} else if (eth_mask->type == RTE_BE16(0xffff)) {
+					ether_type = rte_be_to_cpu_16(eth_spec->type);
+					if (ether_type == RTE_ETHER_TYPE_IPV4 ||
+						ether_type == RTE_ETHER_TYPE_IPV6) {
+						rte_flow_error_set(error, EINVAL,
+							RTE_FLOW_ERROR_TYPE_ITEM,
+							item,
+							"Unsupported ether_type.");
+						return -rte_errno;
+					}
+
+					input_set |= ICE_INSET_ETHERTYPE;
+					rte_memcpy(&filter->input.ext_data.ether_type,
+						&eth_spec->type,
+						sizeof(eth_spec->type));
+					flow_type = ICE_FLTR_PTYPE_NON_IP_L2;
+				} else {
 					rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ITEM,
 						item,
-						"Invalid mac addr mask");
-					return -rte_errno;
+						"Invalid dst mac addr mask or ethertype mask");
 				}
-
-				input_set |= ICE_INSET_DMAC;
-				rte_memcpy(&filter->input.ext_data.dst_mac,
-					   &eth_spec->dst,
-					   RTE_ETHER_ADDR_LEN);
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
