@@ -2521,6 +2521,82 @@ ice_rss_hash_set(struct ice_pf *pf, uint64_t rss_hf)
 			PMD_DRV_LOG(ERR, "%s SCTP_IPV6 rss flow fail %d",
 				    __func__, ret);
 	}
+
+	if (rss_hf & ETH_RSS_IPV4) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
+				ICE_FLOW_SEG_HDR_GTPU_IP, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s GTPU_IPV4 rss flow fail %d",
+				    __func__, ret);
+
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s PPPoE_IPV4 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	if (rss_hf & ETH_RSS_IPV6) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV6,
+				ICE_FLOW_SEG_HDR_GTPU_IP, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s GTPU_IPV6 rss flow fail %d",
+				    __func__, ret);
+
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV6,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s PPPoE_IPV6 rss flow fail %d",
+				    __func__, ret);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_UDP_IPV4,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s PPPoE_IPV4_UDP rss flow fail %d",
+				    __func__, ret);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_UDP_IPV6,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s PPPoE_IPV6_UDP rss flow fail %d",
+				    __func__, ret);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV4,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s PPPoE_IPV4_TCP rss flow fail %d",
+				    __func__, ret);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV6,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s PPPoE_IPV6_TCP rss flow fail %d",
+				    __func__, ret);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_SCTP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_SCTP_IPV4,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s PPPoE_IPV4_SCTP rss flow fail %d",
+				    __func__, ret);
+	}
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_SCTP) {
+		ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_SCTP_IPV6,
+				ICE_FLOW_SEG_HDR_PPPOE, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s PPPoE_IPV6_SCTP rss flow fail %d",
+				    __func__, ret);
+	}
 }
 
 static int ice_init_rss(struct ice_pf *pf)
