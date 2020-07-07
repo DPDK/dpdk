@@ -87,7 +87,68 @@ enum rte_flow_action_type dpaa2_supported_action_type[] = {
 #define DPAA2_FLOW_ITEM_TYPE_GENERIC_IP (RTE_FLOW_ITEM_TYPE_META + 1)
 
 enum rte_filter_type dpaa2_filter_type = RTE_ETH_FILTER_NONE;
-static const void *default_mask;
+
+#ifndef __cplusplus
+static const struct rte_flow_item_eth dpaa2_flow_item_eth_mask = {
+	.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.type = RTE_BE16(0xffff),
+};
+
+static const struct rte_flow_item_vlan dpaa2_flow_item_vlan_mask = {
+	.tci = RTE_BE16(0xffff),
+};
+
+static const struct rte_flow_item_ipv4 dpaa2_flow_item_ipv4_mask = {
+	.hdr.src_addr = RTE_BE32(0xffffffff),
+	.hdr.dst_addr = RTE_BE32(0xffffffff),
+	.hdr.next_proto_id = 0xff,
+};
+
+static const struct rte_flow_item_ipv6 dpaa2_flow_item_ipv6_mask = {
+	.hdr = {
+		.src_addr =
+			"\xff\xff\xff\xff\xff\xff\xff\xff"
+			"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.dst_addr =
+			"\xff\xff\xff\xff\xff\xff\xff\xff"
+			"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.proto = 0xff
+	},
+};
+
+static const struct rte_flow_item_icmp dpaa2_flow_item_icmp_mask = {
+	.hdr.icmp_type = 0xff,
+	.hdr.icmp_code = 0xff,
+};
+
+static const struct rte_flow_item_udp dpaa2_flow_item_udp_mask = {
+	.hdr = {
+		.src_port = RTE_BE16(0xffff),
+		.dst_port = RTE_BE16(0xffff),
+	},
+};
+
+static const struct rte_flow_item_tcp dpaa2_flow_item_tcp_mask = {
+	.hdr = {
+		.src_port = RTE_BE16(0xffff),
+		.dst_port = RTE_BE16(0xffff),
+	},
+};
+
+static const struct rte_flow_item_sctp dpaa2_flow_item_sctp_mask = {
+	.hdr = {
+		.src_port = RTE_BE16(0xffff),
+		.dst_port = RTE_BE16(0xffff),
+	},
+};
+
+static const struct rte_flow_item_gre dpaa2_flow_item_gre_mask = {
+	.protocol = RTE_BE16(0xffff),
+};
+
+#endif
+
 
 static inline void dpaa2_flow_extract_key_set(
 	struct dpaa2_key_info *key_info, int index, uint8_t size)
@@ -556,6 +617,67 @@ dpaa2_flow_rule_move_ipaddr_tail(
 }
 
 static int
+dpaa2_flow_extract_support(
+	const uint8_t *mask_src,
+	enum rte_flow_item_type type)
+{
+	char mask[64];
+	int i, size = 0;
+	const char *mask_support = 0;
+
+	switch (type) {
+	case RTE_FLOW_ITEM_TYPE_ETH:
+		mask_support = (const char *)&dpaa2_flow_item_eth_mask;
+		size = sizeof(struct rte_flow_item_eth);
+		break;
+	case RTE_FLOW_ITEM_TYPE_VLAN:
+		mask_support = (const char *)&dpaa2_flow_item_vlan_mask;
+		size = sizeof(struct rte_flow_item_vlan);
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		mask_support = (const char *)&dpaa2_flow_item_ipv4_mask;
+		size = sizeof(struct rte_flow_item_ipv4);
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		mask_support = (const char *)&dpaa2_flow_item_ipv6_mask;
+		size = sizeof(struct rte_flow_item_ipv6);
+		break;
+	case RTE_FLOW_ITEM_TYPE_ICMP:
+		mask_support = (const char *)&dpaa2_flow_item_icmp_mask;
+		size = sizeof(struct rte_flow_item_icmp);
+		break;
+	case RTE_FLOW_ITEM_TYPE_UDP:
+		mask_support = (const char *)&dpaa2_flow_item_udp_mask;
+		size = sizeof(struct rte_flow_item_udp);
+		break;
+	case RTE_FLOW_ITEM_TYPE_TCP:
+		mask_support = (const char *)&dpaa2_flow_item_tcp_mask;
+		size = sizeof(struct rte_flow_item_tcp);
+		break;
+	case RTE_FLOW_ITEM_TYPE_SCTP:
+		mask_support = (const char *)&dpaa2_flow_item_sctp_mask;
+		size = sizeof(struct rte_flow_item_sctp);
+		break;
+	case RTE_FLOW_ITEM_TYPE_GRE:
+		mask_support = (const char *)&dpaa2_flow_item_gre_mask;
+		size = sizeof(struct rte_flow_item_gre);
+		break;
+	default:
+		return -1;
+	}
+
+	memcpy(mask, mask_support, size);
+
+	for (i = 0; i < size; i++)
+		mask[i] = (mask[i] | mask_src[i]);
+
+	if (memcmp(mask, mask_support, size))
+		return -1;
+
+	return 0;
+}
+
+static int
 dpaa2_configure_flow_eth(struct rte_flow *flow,
 			 struct rte_eth_dev *dev,
 			 const struct rte_flow_attr *attr,
@@ -580,7 +702,7 @@ dpaa2_configure_flow_eth(struct rte_flow *flow,
 	spec    = (const struct rte_flow_item_eth *)pattern->spec;
 	last    = (const struct rte_flow_item_eth *)pattern->last;
 	mask    = (const struct rte_flow_item_eth *)
-		(pattern->mask ? pattern->mask : default_mask);
+		(pattern->mask ? pattern->mask : &dpaa2_flow_item_eth_mask);
 	if (!spec) {
 		/* Don't care any field of eth header,
 		 * only care eth protocol.
@@ -592,6 +714,13 @@ dpaa2_configure_flow_eth(struct rte_flow *flow,
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_ETH)) {
+		DPAA2_PMD_WARN("Extract field(s) of ethernet not support.");
+
+		return -1;
+	}
 
 	if (memcmp((const char *)&mask->src, zero_cmp, RTE_ETHER_ADDR_LEN)) {
 		index = dpaa2_flow_extract_search(
@@ -819,7 +948,7 @@ dpaa2_configure_flow_vlan(struct rte_flow *flow,
 	spec    = (const struct rte_flow_item_vlan *)pattern->spec;
 	last    = (const struct rte_flow_item_vlan *)pattern->last;
 	mask    = (const struct rte_flow_item_vlan *)
-		(pattern->mask ? pattern->mask : default_mask);
+		(pattern->mask ? pattern->mask : &dpaa2_flow_item_vlan_mask);
 
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
@@ -884,6 +1013,13 @@ dpaa2_configure_flow_vlan(struct rte_flow *flow,
 		(*device_configured) |= local_cfg;
 
 		return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_VLAN)) {
+		DPAA2_PMD_WARN("Extract field(s) of vlan not support.");
+
+		return -1;
 	}
 
 	if (!mask->tci)
@@ -990,11 +1126,13 @@ dpaa2_configure_flow_generic_ip(
 	if (pattern->type == RTE_FLOW_ITEM_TYPE_IPV4) {
 		spec_ipv4 = (const struct rte_flow_item_ipv4 *)pattern->spec;
 		mask_ipv4 = (const struct rte_flow_item_ipv4 *)
-			(pattern->mask ? pattern->mask : default_mask);
+			(pattern->mask ? pattern->mask :
+					&dpaa2_flow_item_ipv4_mask);
 	} else {
 		spec_ipv6 = (const struct rte_flow_item_ipv6 *)pattern->spec;
 		mask_ipv6 = (const struct rte_flow_item_ipv6 *)
-			(pattern->mask ? pattern->mask : default_mask);
+			(pattern->mask ? pattern->mask :
+					&dpaa2_flow_item_ipv6_mask);
 	}
 
 	/* Get traffic class index and flow id to be configured */
@@ -1067,6 +1205,24 @@ dpaa2_configure_flow_generic_ip(
 		(*device_configured) |= local_cfg;
 
 		return 0;
+	}
+
+	if (mask_ipv4) {
+		if (dpaa2_flow_extract_support((const uint8_t *)mask_ipv4,
+			RTE_FLOW_ITEM_TYPE_IPV4)) {
+			DPAA2_PMD_WARN("Extract field(s) of IPv4 not support.");
+
+			return -1;
+		}
+	}
+
+	if (mask_ipv6) {
+		if (dpaa2_flow_extract_support((const uint8_t *)mask_ipv6,
+			RTE_FLOW_ITEM_TYPE_IPV6)) {
+			DPAA2_PMD_WARN("Extract field(s) of IPv6 not support.");
+
+			return -1;
+		}
 	}
 
 	if (mask_ipv4 && (mask_ipv4->hdr.src_addr ||
@@ -1358,7 +1514,7 @@ dpaa2_configure_flow_icmp(struct rte_flow *flow,
 	spec    = (const struct rte_flow_item_icmp *)pattern->spec;
 	last    = (const struct rte_flow_item_icmp *)pattern->last;
 	mask    = (const struct rte_flow_item_icmp *)
-		(pattern->mask ? pattern->mask : default_mask);
+		(pattern->mask ? pattern->mask : &dpaa2_flow_item_icmp_mask);
 
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
@@ -1425,6 +1581,13 @@ dpaa2_configure_flow_icmp(struct rte_flow *flow,
 		(*device_configured) |= local_cfg;
 
 		return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_ICMP)) {
+		DPAA2_PMD_WARN("Extract field(s) of ICMP not support.");
+
+		return -1;
 	}
 
 	if (mask->hdr.icmp_type) {
@@ -1593,7 +1756,7 @@ dpaa2_configure_flow_udp(struct rte_flow *flow,
 	spec    = (const struct rte_flow_item_udp *)pattern->spec;
 	last    = (const struct rte_flow_item_udp *)pattern->last;
 	mask    = (const struct rte_flow_item_udp *)
-		(pattern->mask ? pattern->mask : default_mask);
+		(pattern->mask ? pattern->mask : &dpaa2_flow_item_udp_mask);
 
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
@@ -1654,6 +1817,13 @@ dpaa2_configure_flow_udp(struct rte_flow *flow,
 
 		if (!spec)
 			return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_UDP)) {
+		DPAA2_PMD_WARN("Extract field(s) of UDP not support.");
+
+		return -1;
 	}
 
 	if (mask->hdr.src_port) {
@@ -1825,7 +1995,7 @@ dpaa2_configure_flow_tcp(struct rte_flow *flow,
 	spec    = (const struct rte_flow_item_tcp *)pattern->spec;
 	last    = (const struct rte_flow_item_tcp *)pattern->last;
 	mask    = (const struct rte_flow_item_tcp *)
-		(pattern->mask ? pattern->mask : default_mask);
+		(pattern->mask ? pattern->mask : &dpaa2_flow_item_tcp_mask);
 
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
@@ -1886,6 +2056,13 @@ dpaa2_configure_flow_tcp(struct rte_flow *flow,
 
 		if (!spec)
 			return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_TCP)) {
+		DPAA2_PMD_WARN("Extract field(s) of TCP not support.");
+
+		return -1;
 	}
 
 	if (mask->hdr.src_port) {
@@ -2058,7 +2235,8 @@ dpaa2_configure_flow_sctp(struct rte_flow *flow,
 	spec    = (const struct rte_flow_item_sctp *)pattern->spec;
 	last    = (const struct rte_flow_item_sctp *)pattern->last;
 	mask    = (const struct rte_flow_item_sctp *)
-			(pattern->mask ? pattern->mask : default_mask);
+			(pattern->mask ? pattern->mask :
+				&dpaa2_flow_item_sctp_mask);
 
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
@@ -2119,6 +2297,13 @@ dpaa2_configure_flow_sctp(struct rte_flow *flow,
 
 		if (!spec)
 			return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_SCTP)) {
+		DPAA2_PMD_WARN("Extract field(s) of SCTP not support.");
+
+		return -1;
 	}
 
 	if (mask->hdr.src_port) {
@@ -2291,7 +2476,7 @@ dpaa2_configure_flow_gre(struct rte_flow *flow,
 	spec    = (const struct rte_flow_item_gre *)pattern->spec;
 	last    = (const struct rte_flow_item_gre *)pattern->last;
 	mask    = (const struct rte_flow_item_gre *)
-		(pattern->mask ? pattern->mask : default_mask);
+		(pattern->mask ? pattern->mask : &dpaa2_flow_item_gre_mask);
 
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
@@ -2351,6 +2536,13 @@ dpaa2_configure_flow_gre(struct rte_flow *flow,
 		(*device_configured) |= local_cfg;
 
 		return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_GRE)) {
+		DPAA2_PMD_WARN("Extract field(s) of GRE not support.");
+
+		return -1;
 	}
 
 	if (!mask->protocol)
@@ -3155,42 +3347,6 @@ dpaa2_dev_verify_attr(struct dpni_attr *dpni_attr,
 	return ret;
 }
 
-static inline void
-dpaa2_dev_update_default_mask(const struct rte_flow_item *pattern)
-{
-	switch (pattern->type) {
-	case RTE_FLOW_ITEM_TYPE_ETH:
-		default_mask = (const void *)&rte_flow_item_eth_mask;
-		break;
-	case RTE_FLOW_ITEM_TYPE_VLAN:
-		default_mask = (const void *)&rte_flow_item_vlan_mask;
-		break;
-	case RTE_FLOW_ITEM_TYPE_IPV4:
-		default_mask = (const void *)&rte_flow_item_ipv4_mask;
-		break;
-	case RTE_FLOW_ITEM_TYPE_IPV6:
-		default_mask = (const void *)&rte_flow_item_ipv6_mask;
-		break;
-	case RTE_FLOW_ITEM_TYPE_ICMP:
-		default_mask = (const void *)&rte_flow_item_icmp_mask;
-		break;
-	case RTE_FLOW_ITEM_TYPE_UDP:
-		default_mask = (const void *)&rte_flow_item_udp_mask;
-		break;
-	case RTE_FLOW_ITEM_TYPE_TCP:
-		default_mask = (const void *)&rte_flow_item_tcp_mask;
-		break;
-	case RTE_FLOW_ITEM_TYPE_SCTP:
-		default_mask = (const void *)&rte_flow_item_sctp_mask;
-		break;
-	case RTE_FLOW_ITEM_TYPE_GRE:
-		default_mask = (const void *)&rte_flow_item_gre_mask;
-		break;
-	default:
-		DPAA2_PMD_ERR("Invalid pattern type");
-	}
-}
-
 static inline int
 dpaa2_dev_verify_patterns(const struct rte_flow_item pattern[])
 {
@@ -3216,8 +3372,6 @@ dpaa2_dev_verify_patterns(const struct rte_flow_item pattern[])
 			ret = -EINVAL;
 			break;
 		}
-		if ((pattern[j].last) && (!pattern[j].mask))
-			dpaa2_dev_update_default_mask(&pattern[j]);
 	}
 
 	return ret;

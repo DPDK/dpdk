@@ -2610,11 +2610,8 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->process_private = NULL;
 	rte_free(dpni);
 
-	for (i = 0; i < MAX_TCS; i++) {
-		if (priv->extract.tc_extract_param[i])
-			rte_free((void *)
-				(size_t)priv->extract.tc_extract_param[i]);
-	}
+	for (i = 0; i < MAX_TCS; i++)
+		rte_free((void *)(size_t)priv->extract.tc_extract_param[i]);
 
 	if (priv->extract.qos_extract_param)
 		rte_free((void *)(size_t)priv->extract.qos_extract_param);
