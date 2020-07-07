@@ -2668,6 +2668,50 @@ bnxt_txq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
 
+static int
+bnxt_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
+		       struct rte_eth_burst_mode *mode)
+{
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+
+	if (pkt_burst == bnxt_recv_pkts) {
+		snprintf(mode->info, sizeof(mode->info), "%s",
+			 "Scalar");
+		return 0;
+	}
+#ifdef RTE_ARCH_X86
+	if (pkt_burst == bnxt_recv_pkts_vec) {
+		snprintf(mode->info, sizeof(mode->info), "%s",
+			 "Vector SSE");
+		return 0;
+	}
+#endif
+
+	return -EINVAL;
+}
+
+static int
+bnxt_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
+		       struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+
+	if (pkt_burst == bnxt_xmit_pkts) {
+		snprintf(mode->info, sizeof(mode->info), "%s",
+			 "Scalar");
+		return 0;
+	}
+#ifdef RTE_ARCH_X86
+	if (pkt_burst == bnxt_xmit_pkts_vec) {
+		snprintf(mode->info, sizeof(mode->info), "%s",
+			 "Vector SSE");
+		return 0;
+	}
+#endif
+
+	return -EINVAL;
+}
+
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -4244,6 +4288,8 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.set_mc_addr_list = bnxt_dev_set_mc_addr_list_op,
 	.rxq_info_get = bnxt_rxq_info_get_op,
 	.txq_info_get = bnxt_txq_info_get_op,
+	.rx_burst_mode_get = bnxt_rx_burst_mode_get,
+	.tx_burst_mode_get = bnxt_tx_burst_mode_get,
 	.dev_led_on = bnxt_dev_led_on_op,
 	.dev_led_off = bnxt_dev_led_off_op,
 	.xstats_get_by_id = bnxt_dev_xstats_get_by_id_op,
