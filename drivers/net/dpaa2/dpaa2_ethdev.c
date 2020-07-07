@@ -524,8 +524,10 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		return ret;
 	}
 
+#if !defined(RTE_LIBRTE_IEEE1588)
 	if (rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP)
-		dpaa2_enable_ts = true;
+#endif
+	dpaa2_enable_ts = true;
 
 	if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
 		tx_l3_csum_offload = true;
