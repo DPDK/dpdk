@@ -11679,6 +11679,18 @@ auth_decrypt_AES128CBC_HMAC_SHA1_esn_check(void)
 			&aes128cbc_hmac_sha1_aad_test_vector);
 }
 
+static int
+test_chacha20_poly1305_encrypt_test_case_rfc8439(void)
+{
+	return test_authenticated_encryption(&chacha20_poly1305_case_rfc8439);
+}
+
+static int
+test_chacha20_poly1305_decrypt_test_case_rfc8439(void)
+{
+	return test_authenticated_decryption(&chacha20_poly1305_case_rfc8439);
+}
+
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
 
 /* global AESNI slave IDs for the scheduler test */
@@ -12133,7 +12145,11 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_AES_GMAC_authentication_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GMAC_authentication_verify_test_case_4),
-
+		/** Chacha20-Poly1305 */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_chacha20_poly1305_encrypt_test_case_rfc8439),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_chacha20_poly1305_decrypt_test_case_rfc8439),
 		/** SNOW 3G encrypt only (UEA2) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1),
