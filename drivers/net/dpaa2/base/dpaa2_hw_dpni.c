@@ -88,7 +88,21 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	struct dpni_rx_dist_cfg tc_cfg;
 	struct dpkg_profile_cfg kg_cfg;
 	void *p_params;
-	int ret;
+	int ret, tc_dist_queues;
+
+	/*TC distribution size is set with dist_queues or
+	 * nb_rx_queues % dist_queues in order of TC priority index.
+	 * Calculating dist size for this tc_index:-
+	 */
+	tc_dist_queues = eth_dev->data->nb_rx_queues -
+		tc_index * priv->dist_queues;
+	if (tc_dist_queues <= 0) {
+		DPAA2_PMD_INFO("No distribution on TC%d", tc_index);
+		return 0;
+	}
+
+	if (tc_dist_queues > priv->dist_queues)
+		tc_dist_queues = priv->dist_queues;
 
 	p_params = rte_malloc(
 		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
@@ -109,7 +123,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	}
 
 	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
-	tc_cfg.dist_size = priv->dist_queues;
+	tc_cfg.dist_size = tc_dist_queues;
 	tc_cfg.enable = true;
 	tc_cfg.tc = tc_index;
 
