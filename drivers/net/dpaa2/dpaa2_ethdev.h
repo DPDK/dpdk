@@ -96,9 +96,38 @@ extern enum pmd_dpaa2_ts dpaa2_enable_ts;
 #define DPAA2_QOS_TABLE_RECONFIGURE	1
 #define DPAA2_FS_TABLE_RECONFIGURE	2
 
+#define DPAA2_QOS_TABLE_IPADDR_EXTRACT 4
+#define DPAA2_FS_TABLE_IPADDR_EXTRACT 8
+
+
 /*Externaly defined*/
 extern const struct rte_flow_ops dpaa2_flow_ops;
 extern enum rte_filter_type dpaa2_filter_type;
+
+#define IP_ADDRESS_OFFSET_INVALID (-1)
+
+struct dpaa2_key_info {
+	uint8_t key_offset[DPKG_MAX_NUM_OF_EXTRACTS];
+	uint8_t key_size[DPKG_MAX_NUM_OF_EXTRACTS];
+	/* Special for IP address. */
+	int ipv4_src_offset;
+	int ipv4_dst_offset;
+	int ipv6_src_offset;
+	int ipv6_dst_offset;
+	uint8_t key_total_size;
+};
+
+struct dpaa2_key_extract {
+	struct dpkg_profile_cfg dpkg;
+	struct dpaa2_key_info key_info;
+};
+
+struct extract_s {
+	struct dpaa2_key_extract qos_key_extract;
+	struct dpaa2_key_extract tc_key_extract[MAX_TCS];
+	uint64_t qos_extract_param;
+	uint64_t tc_extract_param[MAX_TCS];
+};
 
 struct dpaa2_dev_priv {
 	void *hw;
@@ -122,17 +151,9 @@ struct dpaa2_dev_priv {
 	uint8_t max_cgs;
 	uint8_t cgid_in_use[MAX_RX_QUEUES];
 
-	struct pattern_s {
-		uint8_t item_count;
-		uint8_t pattern_type[DPKG_MAX_NUM_OF_EXTRACTS];
-	} pattern[MAX_TCS + 1];
-
-	struct extract_s {
-		struct dpkg_profile_cfg qos_key_cfg;
-		struct dpkg_profile_cfg fs_key_cfg[MAX_TCS];
-		uint64_t qos_extract_param;
-		uint64_t fs_extract_param[MAX_TCS];
-	} extract;
+	struct extract_s extract;
+	uint8_t *qos_index;
+	uint8_t *fs_index;
 
 	uint16_t ss_offset;
 	uint64_t ss_iova;

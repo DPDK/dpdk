@@ -1,7 +1,7 @@
 /* * SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016 NXP
+ *   Copyright 2016-2020 NXP
  *
  */
 
@@ -2501,23 +2501,41 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 
 	/*Init fields w.r.t. classficaition*/
-	memset(&priv->extract.qos_key_cfg, 0, sizeof(struct dpkg_profile_cfg));
+	memset(&priv->extract.qos_key_extract, 0,
+		sizeof(struct dpaa2_key_extract));
 	priv->extract.qos_extract_param = (size_t)rte_malloc(NULL, 256, 64);
 	if (!priv->extract.qos_extract_param) {
 		DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow "
 			    " classificaiton ", ret);
 		goto init_err;
 	}
+	priv->extract.qos_key_extract.key_info.ipv4_src_offset =
+		IP_ADDRESS_OFFSET_INVALID;
+	priv->extract.qos_key_extract.key_info.ipv4_dst_offset =
+		IP_ADDRESS_OFFSET_INVALID;
+	priv->extract.qos_key_extract.key_info.ipv6_src_offset =
+		IP_ADDRESS_OFFSET_INVALID;
+	priv->extract.qos_key_extract.key_info.ipv6_dst_offset =
+		IP_ADDRESS_OFFSET_INVALID;
+
 	for (i = 0; i < MAX_TCS; i++) {
-		memset(&priv->extract.fs_key_cfg[i], 0,
-			sizeof(struct dpkg_profile_cfg));
-		priv->extract.fs_extract_param[i] =
+		memset(&priv->extract.tc_key_extract[i], 0,
+			sizeof(struct dpaa2_key_extract));
+		priv->extract.tc_extract_param[i] =
 			(size_t)rte_malloc(NULL, 256, 64);
-		if (!priv->extract.fs_extract_param[i]) {
+		if (!priv->extract.tc_extract_param[i]) {
 			DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow classificaiton",
 				     ret);
 			goto init_err;
 		}
+		priv->extract.tc_key_extract[i].key_info.ipv4_src_offset =
+			IP_ADDRESS_OFFSET_INVALID;
+		priv->extract.tc_key_extract[i].key_info.ipv4_dst_offset =
+			IP_ADDRESS_OFFSET_INVALID;
+		priv->extract.tc_key_extract[i].key_info.ipv6_src_offset =
+			IP_ADDRESS_OFFSET_INVALID;
+		priv->extract.tc_key_extract[i].key_info.ipv6_dst_offset =
+			IP_ADDRESS_OFFSET_INVALID;
 	}
 
 	ret = dpni_set_max_frame_length(dpni_dev, CMD_PRI_LOW, priv->token,
@@ -2593,8 +2611,9 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 	rte_free(dpni);
 
 	for (i = 0; i < MAX_TCS; i++) {
-		if (priv->extract.fs_extract_param[i])
-			rte_free((void *)(size_t)priv->extract.fs_extract_param[i]);
+		if (priv->extract.tc_extract_param[i])
+			rte_free((void *)
+				(size_t)priv->extract.tc_extract_param[i]);
 	}
 
 	if (priv->extract.qos_extract_param)
