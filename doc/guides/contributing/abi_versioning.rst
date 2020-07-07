@@ -158,7 +158,7 @@ The macros exported are:
 * ``VERSION_SYMBOL_EXPERIMENTAL(b, e)``: Creates a symbol version table entry
   binding versioned symbol ``b@EXPERIMENTAL`` to the internal function ``be``.
   The macro is used when a symbol matures to become part of the stable ABI, to
-  provide an alias to experimental for some time.
+  provide an alias to experimental until the next major ABI version.
 
 .. _example_abi_macro_usage:
 
@@ -428,8 +428,9 @@ _____________________________
 
 In situations in which an ``experimental`` symbol has been stable for some time,
 and it becomes a candidate for promotion to the stable ABI. At this time, when
-promoting the symbol, maintainer may choose to provide an alias to the
+promoting the symbol, the maintainer may choose to provide an alias to the
 ``experimental`` symbol version, so as not to break consuming applications.
+This alias is then dropped in the next major ABI version.
 
 The process to provide an alias to ``experimental`` is similar to that, of
 :ref:`symbol versioning <example_abi_macro_usage>` described above.
