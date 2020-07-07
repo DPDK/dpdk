@@ -554,7 +554,7 @@ struct swtim {
 	uint32_t timer_data_id;
 	/* Track which cores have actually armed a timer */
 	struct {
-		rte_atomic16_t v;
+		uint16_t v;
 	} __rte_cache_aligned in_use[RTE_MAX_LCORE];
 	/* Track which cores' timer lists should be polled */
 	unsigned int poll_lcores[RTE_MAX_LCORE];
@@ -606,7 +606,8 @@ swtim_callback(struct rte_timer *tim)
 				      "with immediate expiry value");
 		}
 
-		if (unlikely(rte_atomic16_test_and_set(&sw->in_use[lcore].v))) {
+		if (unlikely(sw->in_use[lcore].v == 0)) {
+			sw->in_use[lcore].v = 1;
 			n_lcores = __atomic_fetch_add(&sw->n_poll_lcores, 1,
 						     __ATOMIC_RELAXED);
 			__atomic_store_n(&sw->poll_lcores[n_lcores], lcore,
@@ -834,7 +835,7 @@ swtim_init(struct rte_event_timer_adapter *adapter)
 
 	/* Initialize the variables that track in-use timer lists */
 	for (i = 0; i < RTE_MAX_LCORE; i++)
-		rte_atomic16_init(&sw->in_use[i].v);
+		sw->in_use[i].v = 0;
 
 	/* Initialize the timer subsystem and allocate timer data instance */
 	ret = rte_timer_subsystem_init();
@@ -1017,6 +1018,8 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 	struct rte_timer *tim, *tims[nb_evtims];
 	uint64_t cycles;
 	int n_lcores;
+	/* Timer list for this lcore is not in use. */
+	uint16_t exp_state = 0;
 
 #ifdef RTE_LIBRTE_EVENTDEV_DEBUG
 	/* Check that the service is running. */
@@ -1035,8 +1038,12 @@ __swtim_arm_burst(const struct rte_event_timer_adapter *adapter,
 	/* If this is the first time we're arming an event timer on this lcore,
 	 * mark this lcore as "in use"; this will cause the service
 	 * function to process the timer list that corresponds to this lcore.
+	 * The atomic compare-and-swap operation can prevent the race condition
+	 * on in_use flag between multiple non-EAL threads.
 	 */
-	if (unlikely(rte_atomic16_test_and_set(&sw->in_use[lcore_id].v))) {
+	if (unlikely(__atomic_compare_exchange_n(&sw->in_use[lcore_id].v,
+			&exp_state, 1, 0,
+			__ATOMIC_RELAXED, __ATOMIC_RELAXED))) {
 		EVTIM_LOG_DBG("Adding lcore id = %u to list of lcores to poll",
 			      lcore_id);
 		n_lcores = __atomic_fetch_add(&sw->n_poll_lcores, 1,
