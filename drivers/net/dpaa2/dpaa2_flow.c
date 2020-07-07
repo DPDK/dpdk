@@ -493,6 +493,42 @@ static int dpaa2_flow_extract_add(
 	return 0;
 }
 
+static int dpaa2_flow_extract_add_raw(struct dpaa2_key_extract *key_extract,
+				      int size)
+{
+	struct dpkg_profile_cfg *dpkg = &key_extract->dpkg;
+	struct dpaa2_key_info *key_info = &key_extract->key_info;
+	int last_extract_size, index;
+
+	if (dpkg->num_extracts != 0 && dpkg->extracts[0].type !=
+	    DPKG_EXTRACT_FROM_DATA) {
+		DPAA2_PMD_WARN("RAW extract cannot be combined with others");
+		return -1;
+	}
+
+	last_extract_size = (size % DPAA2_FLOW_MAX_KEY_SIZE);
+	dpkg->num_extracts = (size / DPAA2_FLOW_MAX_KEY_SIZE);
+	if (last_extract_size)
+		dpkg->num_extracts++;
+	else
+		last_extract_size = DPAA2_FLOW_MAX_KEY_SIZE;
+
+	for (index = 0; index < dpkg->num_extracts; index++) {
+		dpkg->extracts[index].type = DPKG_EXTRACT_FROM_DATA;
+		if (index == dpkg->num_extracts - 1)
+			dpkg->extracts[index].extract.from_data.size =
+				last_extract_size;
+		else
+			dpkg->extracts[index].extract.from_data.size =
+				DPAA2_FLOW_MAX_KEY_SIZE;
+		dpkg->extracts[index].extract.from_data.offset =
+			DPAA2_FLOW_MAX_KEY_SIZE * index;
+	}
+
+	key_info->key_total_size = size;
+	return 0;
+}
+
 /* Protocol discrimination.
  * Discriminate IPv4/IPv6/vLan by Eth type.
  * Discriminate UDP/TCP/ICMP by next proto of IP.
@@ -667,6 +703,18 @@ dpaa2_flow_rule_data_set(
 			prot, field);
 		return -1;
 	}
+
+	memcpy((void *)(size_t)(rule->key_iova + offset), key, size);
+	memcpy((void *)(size_t)(rule->mask_iova + offset), mask, size);
+
+	return 0;
+}
+
+static inline int
+dpaa2_flow_rule_data_set_raw(struct dpni_rule_cfg *rule,
+			     const void *key, const void *mask, int size)
+{
+	int offset = 0;
 
 	memcpy((void *)(size_t)(rule->key_iova + offset), key, size);
 	memcpy((void *)(size_t)(rule->mask_iova + offset), mask, size);
@@ -2814,6 +2862,83 @@ dpaa2_configure_flow_gre(struct rte_flow *flow,
 	return 0;
 }
 
+static int
+dpaa2_configure_flow_raw(struct rte_flow *flow,
+			 struct rte_eth_dev *dev,
+			 const struct rte_flow_attr *attr,
+			 const struct rte_flow_item *pattern,
+			 const struct rte_flow_action actions[] __rte_unused,
+			 struct rte_flow_error *error __rte_unused,
+			 int *device_configured)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_raw *spec = pattern->spec;
+	const struct rte_flow_item_raw *mask = pattern->mask;
+	int prev_key_size =
+		priv->extract.qos_key_extract.key_info.key_total_size;
+	int local_cfg = 0, ret;
+	uint32_t group;
+
+	/* Need both spec and mask */
+	if (!spec || !mask) {
+		DPAA2_PMD_ERR("spec or mask not present.");
+		return -EINVAL;
+	}
+	/* Only supports non-relative with offset 0 */
+	if (spec->relative || spec->offset != 0 ||
+	    spec->search || spec->limit) {
+		DPAA2_PMD_ERR("relative and non zero offset not supported.");
+		return -EINVAL;
+	}
+	/* Spec len and mask len should be same */
+	if (spec->length != mask->length) {
+		DPAA2_PMD_ERR("Spec len and mask len mismatch.");
+		return -EINVAL;
+	}
+
+	/* Get traffic class index and flow id to be configured */
+	group = attr->group;
+	flow->tc_id = group;
+	flow->tc_index = attr->priority;
+
+	if (prev_key_size < spec->length) {
+		ret = dpaa2_flow_extract_add_raw(&priv->extract.qos_key_extract,
+						 spec->length);
+		if (ret) {
+			DPAA2_PMD_ERR("QoS Extract RAW add failed.");
+			return -1;
+		}
+		local_cfg |= DPAA2_QOS_TABLE_RECONFIGURE;
+
+		ret = dpaa2_flow_extract_add_raw(
+					&priv->extract.tc_key_extract[group],
+					spec->length);
+		if (ret) {
+			DPAA2_PMD_ERR("FS Extract RAW add failed.");
+			return -1;
+		}
+		local_cfg |= DPAA2_FS_TABLE_RECONFIGURE;
+	}
+
+	ret = dpaa2_flow_rule_data_set_raw(&flow->qos_rule, spec->pattern,
+					   mask->pattern, spec->length);
+	if (ret) {
+		DPAA2_PMD_ERR("QoS RAW rule data set failed");
+		return -1;
+	}
+
+	ret = dpaa2_flow_rule_data_set_raw(&flow->fs_rule, spec->pattern,
+					   mask->pattern, spec->length);
+	if (ret) {
+		DPAA2_PMD_ERR("FS RAW rule data set failed");
+		return -1;
+	}
+
+	(*device_configured) |= local_cfg;
+
+	return 0;
+}
+
 /* The existing QoS/FS entry with IP address(es)
  * needs update after
  * new extract(s) are inserted before IP
@@ -3294,6 +3419,16 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("GRE flow configuration failed!");
+				return ret;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_RAW:
+			ret = dpaa2_configure_flow_raw(flow,
+						       dev, attr, &pattern[i],
+						       actions, error,
+						       &is_keycfg_configured);
+			if (ret) {
+				DPAA2_PMD_ERR("RAW flow configuration failed!");
 				return ret;
 			}
 			break;

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2020 NXP
  *
  */
 
@@ -99,6 +99,7 @@ extern enum pmd_dpaa2_ts dpaa2_enable_ts;
 #define DPAA2_QOS_TABLE_IPADDR_EXTRACT 4
 #define DPAA2_FS_TABLE_IPADDR_EXTRACT 8
 
+#define DPAA2_FLOW_MAX_KEY_SIZE		16
 
 /*Externaly defined*/
 extern const struct rte_flow_ops dpaa2_flow_ops;
