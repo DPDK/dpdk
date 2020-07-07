@@ -910,6 +910,59 @@ service_may_be_active(void)
 	return unregister_all();
 }
 
+/* check service may be active when service is running on a second lcore */
+static int
+service_active_two_cores(void)
+{
+	if (!rte_lcore_is_enabled(0) || !rte_lcore_is_enabled(1) ||
+	    !rte_lcore_is_enabled(2))
+		return TEST_SKIPPED;
+
+	const uint32_t sid = 0;
+	int i;
+
+	uint32_t lcore = rte_get_next_lcore(/* start core */ -1,
+					    /* skip master */ 1,
+					    /* wrap */ 0);
+	uint32_t slcore = rte_get_next_lcore(/* start core */ lcore,
+					     /* skip master */ 1,
+					     /* wrap */ 0);
+
+	/* start the service on the second available lcore */
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 1),
+			"Starting valid service failed");
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore),
+			"Add service core failed when not in use before");
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(sid, slcore, 1),
+			"Enabling valid service on valid core failed");
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_start(slcore),
+			"Service core start after add failed");
+
+	/* ensures core really is running the service function */
+	TEST_ASSERT_EQUAL(1, service_lcore_running_check(),
+			"Service core expected to poll service but it didn't");
+
+	/* ensures that service may be active reports running state */
+	TEST_ASSERT_EQUAL(1, rte_service_may_be_active(sid),
+			"Service may be active did not report running state");
+
+	/* stop the service */
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
+			"Error: Service stop returned non-zero");
+
+	/* give the service 100ms to stop running */
+	for (i = 0; i < 100; i++) {
+		if (!rte_service_may_be_active(sid))
+			break;
+		rte_delay_ms(SERVICE_DELAY);
+	}
+
+	TEST_ASSERT_EQUAL(0, rte_service_may_be_active(sid),
+			  "Error: Service not stopped after 100ms");
+
+	return unregister_all();
+}
+
 static struct unit_test_suite service_tests  = {
 	.suite_name = "service core test suite",
 	.setup = testsuite_setup,
@@ -931,6 +984,7 @@ static struct unit_test_suite service_tests  = {
 		TEST_CASE_ST(dummy_register, NULL, service_app_lcore_mt_safe),
 		TEST_CASE_ST(dummy_register, NULL, service_app_lcore_mt_unsafe),
 		TEST_CASE_ST(dummy_register, NULL, service_may_be_active),
+		TEST_CASE_ST(dummy_register, NULL, service_active_two_cores),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
