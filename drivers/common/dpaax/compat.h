@@ -2,7 +2,7 @@
  *
  * Copyright 2011 Freescale Semiconductor, Inc.
  * All rights reserved.
- * Copyright 2019 NXP
+ * Copyright 2019-2020 NXP
  *
  */
 
@@ -389,5 +389,8 @@ static inline unsigned long get_zeroed_page(gfp_t __foo __rte_unused)
 #define atomic_inc_return(v)    rte_atomic32_add_return(v, 1)
 #define atomic_dec_return(v)    rte_atomic32_sub_return(v, 1)
 #define atomic_sub_and_test(i, v) (rte_atomic32_sub_return(v, i) == 0)
+
+/* Interface name len*/
+#define IF_NAME_MAX_LEN 16
 
 #endif /* __COMPAT_H */

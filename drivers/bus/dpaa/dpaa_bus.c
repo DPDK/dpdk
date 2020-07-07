@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017-2019 NXP
+ *   Copyright 2017-2020 NXP
  *
  */
 /* System headers */
@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#include <sys/eventfd.h>
 
 #include <rte_byteorder.h>
 #include <rte_common.h>
@@ -542,6 +543,23 @@ rte_dpaa_bus_dev_build(void)
 	return 0;
 }
 
+static int rte_dpaa_setup_intr(struct rte_intr_handle *intr_handle)
+{
+	int fd;
+
+	fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if (fd < 0) {
+		DPAA_BUS_ERR("Cannot set up eventfd, error %i (%s)",
+			     errno, strerror(errno));
+		return errno;
+	}
+
+	intr_handle->fd = fd;
+	intr_handle->type = RTE_INTR_HANDLE_EXT;
+
+	return 0;
+}
+
 static int
 rte_dpaa_bus_probe(void)
 {
@@ -587,6 +605,14 @@ rte_dpaa_bus_probe(void)
 		if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
 			dpaa_svr_family = svr_ver & SVR_MASK;
 		fclose(svr_file);
+	}
+
+	TAILQ_FOREACH(dev, &rte_dpaa_bus.device_list, next) {
+		if (dev->device_type == FSL_DPAA_ETH) {
+			ret = rte_dpaa_setup_intr(&dev->intr_handle);
+			if (ret)
+				DPAA_BUS_ERR("Error setting up interrupt.\n");
+		}
 	}
 
 	/* And initialize the PA->VA translation table */

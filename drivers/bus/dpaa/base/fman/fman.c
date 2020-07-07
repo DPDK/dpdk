@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2010-2016 Freescale Semiconductor Inc.
- * Copyright 2017-2019 NXP
+ * Copyright 2017-2020 NXP
  *
  */
 
@@ -185,6 +185,8 @@ fman_if_init(const struct device_node *dpa_node)
 	}
 	memset(__if, 0, sizeof(*__if));
 	INIT_LIST_HEAD(&__if->__if.bpool_list);
+	strlcpy(__if->node_name, dpa_node->name, IF_NAME_MAX_LEN - 1);
+	__if->node_name[IF_NAME_MAX_LEN - 1] = '\0';
 	strlcpy(__if->node_path, dpa_node->full_name, PATH_MAX - 1);
 	__if->node_path[PATH_MAX - 1] = '\0';
 

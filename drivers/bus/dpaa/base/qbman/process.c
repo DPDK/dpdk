@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2011-2016 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+ * Copyright 2017,2020 NXP
  *
  */
 #include <assert.h>
@@ -295,4 +295,74 @@ int bman_free_raw_portal(struct dpaa_raw_portal *portal)
 	input.cena = portal->cena;
 
 	return process_portal_free(&input);
+}
+
+#define DPAA_IOCTL_ENABLE_LINK_STATUS_INTERRUPT \
+	_IOW(DPAA_IOCTL_MAGIC, 0x0E, struct usdpaa_ioctl_link_status)
+
+#define DPAA_IOCTL_DISABLE_LINK_STATUS_INTERRUPT \
+	_IOW(DPAA_IOCTL_MAGIC, 0x0F, char*)
+
+int dpaa_intr_enable(char *if_name, int efd)
+{
+	struct usdpaa_ioctl_link_status args;
+
+	int ret = check_fd();
+
+	if (ret)
+		return ret;
+
+	args.efd = (uint32_t)efd;
+	strcpy(args.if_name, if_name);
+
+	ret = ioctl(fd, DPAA_IOCTL_ENABLE_LINK_STATUS_INTERRUPT, &args);
+	if (ret)
+		return errno;
+
+	return 0;
+}
+
+int dpaa_intr_disable(char *if_name)
+{
+	int ret = check_fd();
+
+	if (ret)
+		return ret;
+
+	ret = ioctl(fd, DPAA_IOCTL_DISABLE_LINK_STATUS_INTERRUPT, &if_name);
+	if (ret) {
+		if (errno == EINVAL)
+			printf("Failed to disable interrupt: Not Supported\n");
+		else
+			printf("Failed to disable interrupt\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+#define DPAA_IOCTL_GET_LINK_STATUS \
+	_IOWR(DPAA_IOCTL_MAGIC, 0x10, struct usdpaa_ioctl_link_status_args)
+
+int dpaa_get_link_status(char *if_name)
+{
+	int ret = check_fd();
+	struct usdpaa_ioctl_link_status_args args;
+
+	if (ret)
+		return ret;
+
+	strcpy(args.if_name, if_name);
+	args.link_status = 0;
+
+	ret = ioctl(fd, DPAA_IOCTL_GET_LINK_STATUS, &args);
+	if (ret) {
+		if (errno == EINVAL)
+			printf("Failed to get link status: Not Supported\n");
+		else
+			printf("Failed to get link status\n");
+		return ret;
+	}
+
+	return args.link_status;
 }

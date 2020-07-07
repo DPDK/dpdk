@@ -11,6 +11,9 @@ INTERNAL {
 	dpaa_get_eth_port_cfg;
 	dpaa_get_qm_channel_caam;
 	dpaa_get_qm_channel_pool;
+	dpaa_get_link_status;
+	dpaa_intr_disable;
+	dpaa_intr_enable;
 	dpaa_svr_family;
 	fman_dealloc_bufs_mask_hi;
 	fman_dealloc_bufs_mask_lo;

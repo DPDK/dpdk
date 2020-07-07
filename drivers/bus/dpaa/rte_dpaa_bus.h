@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017-2019 NXP
+ *   Copyright 2017-2020 NXP
  *
  */
 #ifndef __RTE_DPAA_BUS_H__
@@ -29,6 +29,9 @@
 #define SVR_LS1043A_FAMILY	0x87920000
 #define SVR_LS1046A_FAMILY	0x87070000
 #define SVR_MASK		0xffff0000
+
+/** Device driver supports link state interrupt */
+#define RTE_DPAA_DRV_INTR_LSC  0x0008
 
 #define RTE_DEV_TO_DPAA_CONST(ptr) \
 	container_of(ptr, const struct rte_dpaa_device, device)
@@ -86,6 +89,7 @@ struct rte_dpaa_driver {
 	enum rte_dpaa_type drv_type;
 	rte_dpaa_probe_t probe;
 	rte_dpaa_remove_t remove;
+	uint32_t drv_flags;                 /**< Flags for controlling device.*/
 };
 
 /* Create storage for dqrr entries per lcore */

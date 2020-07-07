@@ -146,6 +146,7 @@ New Features
 
   Updated the NXP dpaa ethdev with new features and improvements, including:
 
+  * Added support for link status and interrupt
   * Added support to use datapath APIs from non-EAL pthread
 
 * **Updated NXP dpaa2 ethdev PMD.**
