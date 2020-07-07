@@ -3124,6 +3124,67 @@ dpaa2_flow_verify_attr(
 	return 0;
 }
 
+static inline int
+dpaa2_flow_verify_action(
+	struct dpaa2_dev_priv *priv,
+	const struct rte_flow_attr *attr,
+	const struct rte_flow_action actions[])
+{
+	int end_of_list = 0, i, j = 0;
+	const struct rte_flow_action_queue *dest_queue;
+	const struct rte_flow_action_rss *rss_conf;
+	struct dpaa2_queue *rxq;
+
+	while (!end_of_list) {
+		switch (actions[j].type) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			dest_queue = (const struct rte_flow_action_queue *)
+					(actions[j].conf);
+			rxq = priv->rx_vq[dest_queue->index];
+			if (attr->group != rxq->tc_index) {
+				DPAA2_PMD_ERR(
+					"RXQ[%d] does not belong to the group %d",
+					dest_queue->index, attr->group);
+
+				return -1;
+			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			rss_conf = (const struct rte_flow_action_rss *)
+					(actions[j].conf);
+			if (rss_conf->queue_num > priv->dist_queues) {
+				DPAA2_PMD_ERR(
+					"RSS number exceeds the distrbution size");
+				return -ENOTSUP;
+			}
+			for (i = 0; i < (int)rss_conf->queue_num; i++) {
+				if (rss_conf->queue[i] >= priv->nb_rx_queues) {
+					DPAA2_PMD_ERR(
+						"RSS queue index exceeds the number of RXQs");
+					return -ENOTSUP;
+				}
+				rxq = priv->rx_vq[rss_conf->queue[i]];
+				if (rxq->tc_index != attr->group) {
+					DPAA2_PMD_ERR(
+						"Queue/Group combination are not supported\n");
+					return -ENOTSUP;
+				}
+			}
+
+			break;
+		case RTE_FLOW_ACTION_TYPE_END:
+			end_of_list = 1;
+			break;
+		default:
+			DPAA2_PMD_ERR("Invalid action type");
+			return -ENOTSUP;
+		}
+		j++;
+	}
+
+	return 0;
+}
+
 static int
 dpaa2_generic_flow_set(struct rte_flow *flow,
 		       struct rte_eth_dev *dev,
@@ -3147,6 +3208,10 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 	uint16_t qos_index;
 
 	ret = dpaa2_flow_verify_attr(priv, attr);
+	if (ret)
+		return ret;
+
+	ret = dpaa2_flow_verify_action(priv, attr, actions);
 	if (ret)
 		return ret;
 
@@ -3405,25 +3470,6 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			rss_conf = (const struct rte_flow_action_rss *)(actions[j].conf);
-			if (rss_conf->queue_num > priv->dist_queues) {
-				DPAA2_PMD_ERR(
-					"RSS number exceeds the distrbution size");
-				return -ENOTSUP;
-			}
-
-			for (i = 0; i < (int)rss_conf->queue_num; i++) {
-				if (rss_conf->queue[i] >= priv->nb_rx_queues) {
-					DPAA2_PMD_ERR(
-						"RSS RXQ number exceeds the total number");
-					return -ENOTSUP;
-				}
-				rxq = priv->rx_vq[rss_conf->queue[i]];
-				if (rxq->tc_index != attr->group) {
-					DPAA2_PMD_ERR(
-						"RSS RXQ distributed is not in current group");
-					return -ENOTSUP;
-				}
-			}
 
 			flow->action = RTE_FLOW_ACTION_TYPE_RSS;
 			ret = dpaa2_distset_to_dpkg_profile_cfg(rss_conf->types,
