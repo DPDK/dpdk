@@ -24,6 +24,8 @@
 #include "rte_vdpa.h"
 #include "rte_vdpa_dev.h"
 
+#include "rte_vhost_async.h"
+
 /* Used to indicate that the device is running on a data core */
 #define VIRTIO_DEV_RUNNING 1
 /* Used to indicate that the device is ready to operate */
@@ -39,6 +41,11 @@
 #define BUF_VECTOR_MAX 256
 
 #define VHOST_LOG_CACHE_NR 32
+
+#define MAX_PKT_BURST 32
+
+#define VHOST_MAX_ASYNC_IT (MAX_PKT_BURST * 2)
+#define VHOST_MAX_ASYNC_VEC (BUF_VECTOR_MAX * 2)
 
 #define PACKED_DESC_ENQUEUE_USED_FLAG(w)	\
 	((w) ? (VRING_DESC_F_AVAIL | VRING_DESC_F_USED | VRING_DESC_F_WRITE) : \
@@ -202,6 +209,25 @@ struct vhost_virtqueue {
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
 	int				iotlb_cache_nr;
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
+
+	/* operation callbacks for async dma */
+	struct rte_vhost_async_channel_ops	async_ops;
+
+	struct rte_vhost_iov_iter it_pool[VHOST_MAX_ASYNC_IT];
+	struct iovec vec_pool[VHOST_MAX_ASYNC_VEC];
+
+	/* async data transfer status */
+	uintptr_t	**async_pkts_pending;
+	#define		ASYNC_PENDING_INFO_N_MSK 0xFFFF
+	#define		ASYNC_PENDING_INFO_N_SFT 16
+	uint64_t	*async_pending_info;
+	uint16_t	async_pkts_idx;
+	uint16_t	async_pkts_inflight_n;
+
+	/* vq async features */
+	bool		async_inorder;
+	bool		async_registered;
+	uint16_t	async_threshold;
 } __rte_cache_aligned;
 
 #define VHOST_MAX_VRING			0x100
@@ -338,6 +364,7 @@ struct virtio_net {
 	int16_t			broadcast_rarp;
 	uint32_t		nr_vring;
 	int			dequeue_zero_copy;
+	int			async_copy;
 	int			extbuf;
 	int			linearbuf;
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
@@ -683,7 +710,8 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	/* Don't kick guest if we don't reach index specified by guest. */
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX)) {
 		uint16_t old = vq->signalled_used;
-		uint16_t new = vq->last_used_idx;
+		uint16_t new = vq->async_pkts_inflight_n ?
+					vq->used->idx:vq->last_used_idx;
 		bool signalled_used_valid = vq->signalled_used_valid;
 
 		vq->signalled_used = new;

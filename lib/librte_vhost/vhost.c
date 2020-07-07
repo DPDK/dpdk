@@ -329,8 +329,13 @@ free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	if (vq_is_packed(dev))
 		rte_free(vq->shadow_used_packed);
-	else
+	else {
 		rte_free(vq->shadow_used_split);
+		if (vq->async_pkts_pending)
+			rte_free(vq->async_pkts_pending);
+		if (vq->async_pending_info)
+			rte_free(vq->async_pending_info);
+	}
 	rte_free(vq->batch_copy_elems);
 	rte_mempool_free(vq->iotlb_pool);
 	rte_free(vq);
@@ -1507,6 +1512,125 @@ int rte_vhost_extern_callback_register(int vid,
 	dev->extern_ops = *ops;
 	dev->extern_data = ctx;
 	return 0;
+}
+
+int rte_vhost_async_channel_register(int vid, uint16_t queue_id,
+					uint32_t features,
+					struct rte_vhost_async_channel_ops *ops)
+{
+	struct vhost_virtqueue *vq;
+	struct virtio_net *dev = get_device(vid);
+	struct rte_vhost_async_features f;
+
+	if (dev == NULL || ops == NULL)
+		return -1;
+
+	f.intval = features;
+
+	vq = dev->virtqueue[queue_id];
+
+	if (unlikely(vq == NULL || !dev->async_copy))
+		return -1;
+
+	/* packed queue is not supported */
+	if (unlikely(vq_is_packed(dev) || !f.async_inorder)) {
+		VHOST_LOG_CONFIG(ERR,
+			"async copy is not supported on packed queue or non-inorder mode "
+			"(vid %d, qid: %d)\n", vid, queue_id);
+		return -1;
+	}
+
+	if (unlikely(ops->check_completed_copies == NULL ||
+		ops->transfer_data == NULL))
+		return -1;
+
+	rte_spinlock_lock(&vq->access_lock);
+
+	if (unlikely(vq->async_registered)) {
+		VHOST_LOG_CONFIG(ERR,
+			"async register failed: channel already registered "
+			"(vid %d, qid: %d)\n", vid, queue_id);
+		goto reg_out;
+	}
+
+	vq->async_pkts_pending = rte_malloc(NULL,
+			vq->size * sizeof(uintptr_t),
+			RTE_CACHE_LINE_SIZE);
+	vq->async_pending_info = rte_malloc(NULL,
+			vq->size * sizeof(uint64_t),
+			RTE_CACHE_LINE_SIZE);
+	if (!vq->async_pkts_pending || !vq->async_pending_info) {
+		if (vq->async_pkts_pending)
+			rte_free(vq->async_pkts_pending);
+
+		if (vq->async_pending_info)
+			rte_free(vq->async_pending_info);
+
+		VHOST_LOG_CONFIG(ERR,
+				"async register failed: cannot allocate memory for vq data "
+				"(vid %d, qid: %d)\n", vid, queue_id);
+		goto reg_out;
+	}
+
+	vq->async_ops.check_completed_copies = ops->check_completed_copies;
+	vq->async_ops.transfer_data = ops->transfer_data;
+
+	vq->async_inorder = f.async_inorder;
+	vq->async_threshold = f.async_threshold;
+
+	vq->async_registered = true;
+
+reg_out:
+	rte_spinlock_unlock(&vq->access_lock);
+
+	return 0;
+}
+
+int rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
+{
+	struct vhost_virtqueue *vq;
+	struct virtio_net *dev = get_device(vid);
+	int ret = -1;
+
+	if (dev == NULL)
+		return ret;
+
+	vq = dev->virtqueue[queue_id];
+
+	if (vq == NULL)
+		return ret;
+
+	ret = 0;
+	rte_spinlock_lock(&vq->access_lock);
+
+	if (!vq->async_registered)
+		goto out;
+
+	if (vq->async_pkts_inflight_n) {
+		VHOST_LOG_CONFIG(ERR, "Failed to unregister async channel. "
+			"async inflight packets must be completed before unregistration.\n");
+		ret = -1;
+		goto out;
+	}
+
+	if (vq->async_pkts_pending) {
+		rte_free(vq->async_pkts_pending);
+		vq->async_pkts_pending = NULL;
+	}
+
+	if (vq->async_pending_info) {
+		rte_free(vq->async_pending_info);
+		vq->async_pending_info = NULL;
+	}
+
+	vq->async_ops.transfer_data = NULL;
+	vq->async_ops.check_completed_copies = NULL;
+	vq->async_registered = false;
+
+out:
+	rte_spinlock_unlock(&vq->access_lock);
+
+	return ret;
 }
 
 RTE_LOG_REGISTER(vhost_config_log_level, lib.vhost.config, INFO);

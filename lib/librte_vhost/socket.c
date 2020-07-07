@@ -42,6 +42,7 @@ struct vhost_user_socket {
 	bool use_builtin_virtio_net;
 	bool extbuf;
 	bool linearbuf;
+	bool async_copy;
 
 	/*
 	 * The "supported_features" indicates the feature bits the
@@ -205,6 +206,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	size_t size;
 	struct vhost_user_connection *conn;
 	int ret;
+	struct virtio_net *dev;
 
 	if (vsocket == NULL)
 		return;
@@ -235,6 +237,13 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	if (vsocket->linearbuf)
 		vhost_enable_linearbuf(vid);
+
+	if (vsocket->async_copy) {
+		dev = get_device(vid);
+
+		if (dev)
+			dev->async_copy = 1;
+	}
 
 	VHOST_LOG_CONFIG(INFO, "new device, handle is %d\n", vid);
 
@@ -881,6 +890,17 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out_mutex;
 	}
 
+	vsocket->async_copy = flags & RTE_VHOST_USER_ASYNC_COPY;
+
+	if (vsocket->async_copy &&
+		(flags & (RTE_VHOST_USER_IOMMU_SUPPORT |
+		RTE_VHOST_USER_POSTCOPY_SUPPORT))) {
+		VHOST_LOG_CONFIG(ERR, "error: enabling async copy and IOMMU "
+			"or post-copy feature simultaneously is not "
+			"supported\n");
+		goto out_mutex;
+	}
+
 	/*
 	 * Set the supported features correctly for the builtin vhost-user
 	 * net driver.
@@ -929,6 +949,13 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 			"Dequeue zero copy requested, disabling postcopy support\n");
 		vsocket->protocol_features &=
 			~(1ULL << VHOST_USER_PROTOCOL_F_PAGEFAULT);
+	}
+
+	if (vsocket->async_copy) {
+		vsocket->supported_features &= ~(1ULL << VHOST_F_LOG_ALL);
+		vsocket->features &= ~(1ULL << VHOST_F_LOG_ALL);
+		VHOST_LOG_CONFIG(INFO,
+			"Logging feature is disabled in async copy mode\n");
 	}
 
 	/*

@@ -71,4 +71,8 @@ EXPERIMENTAL {
 	rte_vdpa_get_queue_num;
 	rte_vdpa_get_features;
 	rte_vdpa_get_protocol_features;
+	rte_vhost_async_channel_register;
+	rte_vhost_async_channel_unregister;
+	rte_vhost_submit_enqueue_burst;
+	rte_vhost_poll_enqueue_completed;
 };
