@@ -31,6 +31,7 @@ if is_windows
 		'malloc_heap.c',
 		'rte_malloc.c',
 		'eal_common_timer.c',
+		'rte_service.c',
 	)
 	subdir_done()
 endif

@@ -17,6 +17,7 @@
 #include <eal_filesystem.h>
 #include <eal_options.h>
 #include <eal_private.h>
+#include <rte_service_component.h>
 #include <rte_vfio.h>
 
 #include "eal_hugepages.h"
@@ -284,6 +285,11 @@ rte_eal_init(int argc, char **argv)
 	if (fctret < 0)
 		exit(1);
 
+	if (eal_option_device_parse()) {
+		rte_errno = ENODEV;
+		return -1;
+	}
+
 	/* Prevent creation of shared memory files. */
 	if (internal_conf->in_memory == 0) {
 		RTE_LOG(WARNING, EAL, "Multi-process support is requested, "
@@ -372,6 +378,19 @@ rte_eal_init(int argc, char **argv)
 		/* create a thread for each lcore */
 		if (eal_thread_create(&lcore_config[i].thread_id) != 0)
 			rte_panic("Cannot create thread\n");
+	}
+
+	/* Initialize services so drivers can register services during probe. */
+	if (rte_service_init()) {
+		rte_eal_init_alert("rte_service_init() failed");
+		rte_errno = ENOEXEC;
+		return -1;
+	}
+
+	if (rte_bus_probe()) {
+		rte_eal_init_alert("Cannot probe devices");
+		rte_errno = ENOTSUP;
+		return -1;
 	}
 
 	/*
