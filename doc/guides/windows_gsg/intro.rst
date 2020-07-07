@@ -19,6 +19,6 @@ compile. Support is being added in pieces so as to limit the overall scope
 of any individual patch series. The goal is to be able to run any DPDK
 application natively on Windows.
 
-The :doc:`../contributing/abi_policy` cannot be respected for Windows.
-Minor ABI versions may be incompatible
-because function versioning is not supported on Windows.
+The :doc:`../contributing/abi_policy` does not apply to the Windows build,
+as function versioning is not supported on Windows,
+therefore minor ABI versions may be incompatible.
