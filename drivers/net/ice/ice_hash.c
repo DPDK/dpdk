@@ -124,6 +124,45 @@ struct rss_type_match_hdr hint_eth_pppoes_ipv4_tcp = {
 struct rss_type_match_hdr hint_eth_pppoes_ipv4_sctp = {
 	ICE_FLOW_SEG_HDR_PPPOE,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_NONFRAG_IPV4_SCTP};
+struct rss_type_match_hdr hint_eth_ipv4_esp = {
+	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_ESP,
+	ETH_RSS_ETH | ETH_RSS_IPV4 | ETH_RSS_ESP};
+struct rss_type_match_hdr hint_eth_ipv4_udp_esp = {
+	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_NAT_T_ESP,
+	ETH_RSS_ETH | ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_ESP};
+struct rss_type_match_hdr hint_eth_ipv4_ah = {
+	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_AH,
+	ETH_RSS_ETH | ETH_RSS_IPV4 | ETH_RSS_AH};
+struct rss_type_match_hdr hint_eth_ipv4_l2tpv3 = {
+	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_L2TPV3,
+	ETH_RSS_ETH | ETH_RSS_IPV4 | ETH_RSS_L2TPV3};
+struct rss_type_match_hdr hint_eth_ipv4_pfcp = {
+	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_PFCP_SESSION,
+	ETH_RSS_ETH | ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_PFCP};
+struct rss_type_match_hdr hint_eth_vlan_ipv4 = {
+	ICE_FLOW_SEG_HDR_VLAN | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_ETH | ETH_RSS_IPV4 | ETH_RSS_C_VLAN};
+struct rss_type_match_hdr hint_eth_vlan_ipv4_udp = {
+	ICE_FLOW_SEG_HDR_VLAN | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_ETH | ETH_RSS_C_VLAN |
+	ETH_RSS_NONFRAG_IPV4_UDP};
+struct rss_type_match_hdr hint_eth_vlan_ipv4_tcp = {
+	ICE_FLOW_SEG_HDR_VLAN | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_ETH | ETH_RSS_C_VLAN |
+	ETH_RSS_NONFRAG_IPV4_TCP};
+struct rss_type_match_hdr hint_eth_vlan_ipv4_sctp = {
+	ICE_FLOW_SEG_HDR_VLAN | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_SCTP,
+	ETH_RSS_ETH | ETH_RSS_C_VLAN |
+	ETH_RSS_NONFRAG_IPV4_SCTP};
 struct rss_type_match_hdr hint_eth_ipv6 = {
 	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER,
 	ETH_RSS_ETH | ETH_RSS_IPV6};
@@ -139,6 +178,45 @@ struct rss_type_match_hdr hint_eth_ipv6_sctp = {
 	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
 	ICE_FLOW_SEG_HDR_SCTP,
 	ETH_RSS_ETH | ETH_RSS_NONFRAG_IPV6_SCTP};
+struct rss_type_match_hdr hint_eth_ipv6_esp = {
+	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_ESP,
+	ETH_RSS_ETH | ETH_RSS_IPV6 | ETH_RSS_ESP};
+struct rss_type_match_hdr hint_eth_ipv6_udp_esp = {
+	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_NAT_T_ESP,
+	ETH_RSS_ETH | ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_ESP};
+struct rss_type_match_hdr hint_eth_ipv6_ah = {
+	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_AH,
+	ETH_RSS_ETH | ETH_RSS_IPV6 | ETH_RSS_AH};
+struct rss_type_match_hdr hint_eth_ipv6_l2tpv3 = {
+	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_L2TPV3,
+	ETH_RSS_ETH | ETH_RSS_IPV6 | ETH_RSS_L2TPV3};
+struct rss_type_match_hdr hint_eth_ipv6_pfcp = {
+	ICE_FLOW_SEG_HDR_IPV6 | ICE_FLOW_SEG_HDR_IPV_OTHER |
+	ICE_FLOW_SEG_HDR_PFCP_SESSION,
+	ETH_RSS_ETH | ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_PFCP};
+struct rss_type_match_hdr hint_eth_vlan_ipv6 = {
+	ICE_FLOW_SEG_HDR_VLAN | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_ETH | ETH_RSS_IPV6 | ETH_RSS_C_VLAN};
+struct rss_type_match_hdr hint_eth_vlan_ipv6_udp = {
+	ICE_FLOW_SEG_HDR_VLAN | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_ETH | ETH_RSS_C_VLAN |
+	ETH_RSS_NONFRAG_IPV6_UDP};
+struct rss_type_match_hdr hint_eth_vlan_ipv6_tcp = {
+	ICE_FLOW_SEG_HDR_VLAN | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_ETH | ETH_RSS_C_VLAN |
+	ETH_RSS_NONFRAG_IPV6_TCP};
+struct rss_type_match_hdr hint_eth_vlan_ipv6_sctp = {
+	ICE_FLOW_SEG_HDR_VLAN | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_SCTP,
+	ETH_RSS_ETH | ETH_RSS_C_VLAN |
+	ETH_RSS_NONFRAG_IPV6_SCTP};
 struct rss_type_match_hdr hint_eth_pppoes_ipv6 = {
 	ICE_FLOW_SEG_HDR_PPPOE,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_IPV6};
@@ -196,6 +274,24 @@ static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
 		&hint_eth_pppoes_ipv4_tcp},
 	{pattern_eth_pppoes_ipv4_sctp,	    ICE_INSET_NONE,
 		&hint_eth_pppoes_ipv4_sctp},
+	{pattern_eth_ipv4_esp,		    ICE_INSET_NONE,
+		&hint_eth_ipv4_esp},
+	{pattern_eth_ipv4_udp_esp,	    ICE_INSET_NONE,
+		&hint_eth_ipv4_udp_esp},
+	{pattern_eth_ipv4_ah,		    ICE_INSET_NONE,
+		&hint_eth_ipv4_ah},
+	{pattern_eth_ipv4_l2tp,		    ICE_INSET_NONE,
+		&hint_eth_ipv4_l2tpv3},
+	{pattern_eth_ipv4_pfcp,		    ICE_INSET_NONE,
+		&hint_eth_ipv4_pfcp},
+	{pattern_eth_vlan_ipv4,		    ICE_INSET_NONE,
+		&hint_eth_vlan_ipv4},
+	{pattern_eth_vlan_ipv4_udp,	    ICE_INSET_NONE,
+		&hint_eth_vlan_ipv4_udp},
+	{pattern_eth_vlan_ipv4_tcp,	    ICE_INSET_NONE,
+		&hint_eth_vlan_ipv4_tcp},
+	{pattern_eth_vlan_ipv4_sctp,	    ICE_INSET_NONE,
+		&hint_eth_vlan_ipv4_sctp},
 	{pattern_eth_ipv6,		    ICE_INSET_NONE,
 		&hint_eth_ipv6},
 	{pattern_eth_ipv6_udp,		    ICE_INSET_NONE,
@@ -204,6 +300,24 @@ static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
 		&hint_eth_ipv6_tcp},
 	{pattern_eth_ipv6_sctp,		    ICE_INSET_NONE,
 		&hint_eth_ipv6_sctp},
+	{pattern_eth_ipv6_esp,		    ICE_INSET_NONE,
+		&hint_eth_ipv6_esp},
+	{pattern_eth_ipv6_udp_esp,	    ICE_INSET_NONE,
+		&hint_eth_ipv6_udp_esp},
+	{pattern_eth_ipv6_ah,		    ICE_INSET_NONE,
+		&hint_eth_ipv6_ah},
+	{pattern_eth_ipv6_l2tp,		    ICE_INSET_NONE,
+		&hint_eth_ipv6_l2tpv3},
+	{pattern_eth_ipv6_pfcp,		    ICE_INSET_NONE,
+		&hint_eth_ipv6_pfcp},
+	{pattern_eth_vlan_ipv6,		    ICE_INSET_NONE,
+		&hint_eth_vlan_ipv6},
+	{pattern_eth_vlan_ipv6_udp,	    ICE_INSET_NONE,
+		&hint_eth_vlan_ipv6_udp},
+	{pattern_eth_vlan_ipv6_tcp,	    ICE_INSET_NONE,
+		&hint_eth_vlan_ipv6_tcp},
+	{pattern_eth_vlan_ipv6_sctp,	    ICE_INSET_NONE,
+		&hint_eth_vlan_ipv6_sctp},
 	{pattern_eth_pppoes_ipv6,	    ICE_INSET_NONE,
 		&hint_eth_pppoes_ipv6},
 	{pattern_eth_pppoes_ipv6_udp,	    ICE_INSET_NONE,
@@ -221,11 +335,34 @@ static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
  * the second member is hash fields.
  */
 struct ice_hash_match_type ice_hash_type_list[] = {
+	{ETH_RSS_L2_SRC_ONLY,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_SA)},
+	{ETH_RSS_L2_DST_ONLY,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_DA)},
+	{ETH_RSS_ETH | ETH_RSS_L2_SRC_ONLY,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_SA)},
+	{ETH_RSS_ETH | ETH_RSS_L2_DST_ONLY,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_DA)},
+	{ETH_RSS_ETH,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_SA) |
+		BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_DA)},
 	{ETH_RSS_PPPOE,
 		ICE_FLOW_HASH_PPPOE_SESS_ID},
 	{ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_L2_SRC_ONLY,
 		ICE_FLOW_HASH_PPPOE_SESS_ID |
 		BIT_ULL(ICE_FLOW_FIELD_IDX_ETH_SA)},
+	{ETH_RSS_C_VLAN,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_C_VLAN)},
+	{ETH_RSS_S_VLAN,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_S_VLAN)},
+	{ETH_RSS_ESP,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_ESP_SPI)},
+	{ETH_RSS_AH,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_AH_SPI)},
+	{ETH_RSS_L2TPV3,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_L2TPV3_SESS_ID)},
+	{ETH_RSS_PFCP,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_PFCP_SEID)},
 	/* IPV4 */
 	{ETH_RSS_IPV4 | ETH_RSS_L3_SRC_ONLY,
 		BIT_ULL(ICE_FLOW_FIELD_IDX_IPV4_SA)},
@@ -601,6 +738,15 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 							ht_map->hash_flds;
 					break;
 				}
+			}
+
+			/* update hash field for nat-t esp. */
+			if (rss_type == ETH_RSS_ESP &&
+			    (m->eth_rss_hint & ETH_RSS_NONFRAG_IPV4_UDP)) {
+				hash_meta->hash_flds &=
+				~(BIT_ULL(ICE_FLOW_FIELD_IDX_ESP_SPI));
+				hash_meta->hash_flds |=
+				BIT_ULL(ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI);
 			}
 
 			/* update hash field for gtpu-ip and gtpu-eh. */
