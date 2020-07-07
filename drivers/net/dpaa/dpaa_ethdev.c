@@ -149,7 +149,6 @@ dpaa_poll_queue_default_config(struct qm_mcc_initfq *opts)
 static int
 dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN
 				+ VLAN_TAG_SIZE;
 	uint32_t buffsz = dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
@@ -185,7 +184,7 @@ dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
-	fman_if_set_maxfrm(dpaa_intf->fif, frame_size);
+	fman_if_set_maxfrm(dev->process_private, frame_size);
 
 	return 0;
 }
@@ -193,7 +192,6 @@ dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 static int
 dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	uint64_t tx_offloads = eth_conf->txmode.offloads;
@@ -232,14 +230,14 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 			max_len = DPAA_MAX_RX_PKT_LEN;
 		}
 
-		fman_if_set_maxfrm(dpaa_intf->fif, max_len);
+		fman_if_set_maxfrm(dev->process_private, max_len);
 		dev->data->mtu = max_len
 			- RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN - VLAN_TAG_SIZE;
 	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_SCATTER) {
 		DPAA_PMD_DEBUG("enabling scatter mode");
-		fman_if_set_sg(dpaa_intf->fif, 1);
+		fman_if_set_sg(dev->process_private, 1);
 		dev->data->scattered_rx = 1;
 	}
 
@@ -283,18 +281,18 @@ static int dpaa_eth_dev_start(struct rte_eth_dev *dev)
 	else
 		dev->tx_pkt_burst = dpaa_eth_queue_tx;
 
-	fman_if_enable_rx(dpaa_intf->fif);
+	fman_if_enable_rx(dev->process_private);
 
 	return 0;
 }
 
 static void dpaa_eth_dev_stop(struct rte_eth_dev *dev)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct fman_if *fif = dev->process_private;
 
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_disable_rx(dpaa_intf->fif);
+	fman_if_disable_rx(fif);
 	dev->tx_pkt_burst = dpaa_eth_tx_drop_all;
 }
 
@@ -342,6 +340,7 @@ static int dpaa_eth_dev_info(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct fman_if *fif = dev->process_private;
 
 	DPAA_PMD_DEBUG(": %s", dpaa_intf->name);
 
@@ -354,18 +353,18 @@ static int dpaa_eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_vmdq_pools = ETH_16_POOLS;
 	dev_info->flow_type_rss_offloads = DPAA_RSS_OFFLOAD_ALL;
 
-	if (dpaa_intf->fif->mac_type == fman_mac_1g) {
+	if (fif->mac_type == fman_mac_1g) {
 		dev_info->speed_capa = ETH_LINK_SPEED_1G;
-	} else if (dpaa_intf->fif->mac_type == fman_mac_2_5g) {
+	} else if (fif->mac_type == fman_mac_2_5g) {
 		dev_info->speed_capa = ETH_LINK_SPEED_1G
 					| ETH_LINK_SPEED_2_5G;
-	} else if (dpaa_intf->fif->mac_type == fman_mac_10g) {
+	} else if (fif->mac_type == fman_mac_10g) {
 		dev_info->speed_capa = ETH_LINK_SPEED_1G
 					| ETH_LINK_SPEED_2_5G
 					| ETH_LINK_SPEED_10G;
 	} else {
 		DPAA_PMD_ERR("invalid link_speed: %s, %d",
-			     dpaa_intf->name, dpaa_intf->fif->mac_type);
+			     dpaa_intf->name, fif->mac_type);
 		return -EINVAL;
 	}
 
@@ -388,18 +387,19 @@ static int dpaa_eth_link_update(struct rte_eth_dev *dev,
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	struct rte_eth_link *link = &dev->data->dev_link;
+	struct fman_if *fif = dev->process_private;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (dpaa_intf->fif->mac_type == fman_mac_1g)
+	if (fif->mac_type == fman_mac_1g)
 		link->link_speed = ETH_SPEED_NUM_1G;
-	else if (dpaa_intf->fif->mac_type == fman_mac_2_5g)
+	else if (fif->mac_type == fman_mac_2_5g)
 		link->link_speed = ETH_SPEED_NUM_2_5G;
-	else if (dpaa_intf->fif->mac_type == fman_mac_10g)
+	else if (fif->mac_type == fman_mac_10g)
 		link->link_speed = ETH_SPEED_NUM_10G;
 	else
 		DPAA_PMD_ERR("invalid link_speed: %s, %d",
-			     dpaa_intf->name, dpaa_intf->fif->mac_type);
+			     dpaa_intf->name, fif->mac_type);
 
 	link->link_status = dpaa_intf->valid;
 	link->link_duplex = ETH_LINK_FULL_DUPLEX;
@@ -410,21 +410,17 @@ static int dpaa_eth_link_update(struct rte_eth_dev *dev,
 static int dpaa_eth_stats_get(struct rte_eth_dev *dev,
 			       struct rte_eth_stats *stats)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_stats_get(dpaa_intf->fif, stats);
+	fman_if_stats_get(dev->process_private, stats);
 	return 0;
 }
 
 static int dpaa_eth_stats_reset(struct rte_eth_dev *dev)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_stats_reset(dpaa_intf->fif);
+	fman_if_stats_reset(dev->process_private);
 
 	return 0;
 }
@@ -433,7 +429,6 @@ static int
 dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		    unsigned int n)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	unsigned int i = 0, num = RTE_DIM(dpaa_xstats_strings);
 	uint64_t values[sizeof(struct dpaa_if_stats) / 8];
 
@@ -443,7 +438,7 @@ dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	if (xstats == NULL)
 		return 0;
 
-	fman_if_stats_get_all(dpaa_intf->fif, values,
+	fman_if_stats_get_all(dev->process_private, values,
 			      sizeof(struct dpaa_if_stats) / 8);
 
 	for (i = 0; i < num; i++) {
@@ -480,15 +475,13 @@ dpaa_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	uint64_t values_copy[sizeof(struct dpaa_if_stats) / 8];
 
 	if (!ids) {
-		struct dpaa_if *dpaa_intf = dev->data->dev_private;
-
 		if (n < stat_cnt)
 			return stat_cnt;
 
 		if (!values)
 			return 0;
 
-		fman_if_stats_get_all(dpaa_intf->fif, values_copy,
+		fman_if_stats_get_all(dev->process_private, values_copy,
 				      sizeof(struct dpaa_if_stats) / 8);
 
 		for (i = 0; i < stat_cnt; i++)
@@ -537,44 +530,36 @@ dpaa_xstats_get_names_by_id(
 
 static int dpaa_eth_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_promiscuous_enable(dpaa_intf->fif);
+	fman_if_promiscuous_enable(dev->process_private);
 
 	return 0;
 }
 
 static int dpaa_eth_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_promiscuous_disable(dpaa_intf->fif);
+	fman_if_promiscuous_disable(dev->process_private);
 
 	return 0;
 }
 
 static int dpaa_eth_multicast_enable(struct rte_eth_dev *dev)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_set_mcast_filter_table(dpaa_intf->fif);
+	fman_if_set_mcast_filter_table(dev->process_private);
 
 	return 0;
 }
 
 static int dpaa_eth_multicast_disable(struct rte_eth_dev *dev)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_reset_mcast_filter_table(dpaa_intf->fif);
+	fman_if_reset_mcast_filter_table(dev->process_private);
 
 	return 0;
 }
@@ -587,6 +572,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			    struct rte_mempool *mp)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct fman_if *fif = dev->process_private;
 	struct qman_fq *rxq = &dpaa_intf->rx_queues[queue_idx];
 	struct qm_mcc_initfq opts = {0};
 	u32 flags = 0;
@@ -643,22 +629,22 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		icp.iciof = DEFAULT_ICIOF;
 		icp.iceof = DEFAULT_RX_ICEOF;
 		icp.icsz = DEFAULT_ICSZ;
-		fman_if_set_ic_params(dpaa_intf->fif, &icp);
+		fman_if_set_ic_params(fif, &icp);
 
 		fd_offset = RTE_PKTMBUF_HEADROOM + DPAA_HW_BUF_RESERVE;
-		fman_if_set_fdoff(dpaa_intf->fif, fd_offset);
+		fman_if_set_fdoff(fif, fd_offset);
 
 		/* Buffer pool size should be equal to Dataroom Size*/
 		bp_size = rte_pktmbuf_data_room_size(mp);
-		fman_if_set_bp(dpaa_intf->fif, mp->size,
+		fman_if_set_bp(fif, mp->size,
 			       dpaa_intf->bp_info->bpid, bp_size);
 		dpaa_intf->valid = 1;
 		DPAA_PMD_DEBUG("if:%s fd_offset = %d offset = %d",
 				dpaa_intf->name, fd_offset,
-				fman_if_get_fdoff(dpaa_intf->fif));
+				fman_if_get_fdoff(fif));
 	}
 	DPAA_PMD_DEBUG("if:%s sg_on = %d, max_frm =%d", dpaa_intf->name,
-		fman_if_get_sg_enable(dpaa_intf->fif),
+		fman_if_get_sg_enable(fif),
 		dev->data->dev_conf.rxmode.max_rx_pkt_len);
 	/* checking if push mode only, no error check for now */
 	if (!rxq->is_static &&
@@ -950,11 +936,12 @@ dpaa_flow_ctrl_set(struct rte_eth_dev *dev,
 		return 0;
 	} else if (fc_conf->mode == RTE_FC_TX_PAUSE ||
 		 fc_conf->mode == RTE_FC_FULL) {
-		fman_if_set_fc_threshold(dpaa_intf->fif, fc_conf->high_water,
+		fman_if_set_fc_threshold(dev->process_private,
+					 fc_conf->high_water,
 					 fc_conf->low_water,
-				dpaa_intf->bp_info->bpid);
+					 dpaa_intf->bp_info->bpid);
 		if (fc_conf->pause_time)
-			fman_if_set_fc_quanta(dpaa_intf->fif,
+			fman_if_set_fc_quanta(dev->process_private,
 					      fc_conf->pause_time);
 	}
 
@@ -990,10 +977,11 @@ dpaa_flow_ctrl_get(struct rte_eth_dev *dev,
 		fc_conf->autoneg = net_fc->autoneg;
 		return 0;
 	}
-	ret = fman_if_get_fc_threshold(dpaa_intf->fif);
+	ret = fman_if_get_fc_threshold(dev->process_private);
 	if (ret) {
 		fc_conf->mode = RTE_FC_TX_PAUSE;
-		fc_conf->pause_time = fman_if_get_fc_quanta(dpaa_intf->fif);
+		fc_conf->pause_time =
+			fman_if_get_fc_quanta(dev->process_private);
 	} else {
 		fc_conf->mode = RTE_FC_NONE;
 	}
@@ -1008,11 +996,11 @@ dpaa_dev_add_mac_addr(struct rte_eth_dev *dev,
 			     __rte_unused uint32_t pool)
 {
 	int ret;
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
-	ret = fman_if_add_mac_addr(dpaa_intf->fif, addr->addr_bytes, index);
+	ret = fman_if_add_mac_addr(dev->process_private,
+				   addr->addr_bytes, index);
 
 	if (ret)
 		DPAA_PMD_ERR("Adding the MAC ADDR failed: err = %d", ret);
@@ -1023,11 +1011,9 @@ static void
 dpaa_dev_remove_mac_addr(struct rte_eth_dev *dev,
 			  uint32_t index)
 {
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_clear_mac_addr(dpaa_intf->fif, index);
+	fman_if_clear_mac_addr(dev->process_private, index);
 }
 
 static int
@@ -1035,11 +1021,10 @@ dpaa_dev_set_mac_addr(struct rte_eth_dev *dev,
 		       struct rte_ether_addr *addr)
 {
 	int ret;
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
-	ret = fman_if_add_mac_addr(dpaa_intf->fif, addr->addr_bytes, 0);
+	ret = fman_if_add_mac_addr(dev->process_private, addr->addr_bytes, 0);
 	if (ret)
 		DPAA_PMD_ERR("Setting the MAC ADDR failed %d", ret);
 
@@ -1142,7 +1127,6 @@ int
 rte_pmd_dpaa_set_tx_loopback(uint8_t port, uint8_t on)
 {
 	struct rte_eth_dev *dev;
-	struct dpaa_if *dpaa_intf;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
@@ -1151,17 +1135,16 @@ rte_pmd_dpaa_set_tx_loopback(uint8_t port, uint8_t on)
 	if (!is_dpaa_supported(dev))
 		return -ENOTSUP;
 
-	dpaa_intf = dev->data->dev_private;
-
 	if (on)
-		fman_if_loopback_enable(dpaa_intf->fif);
+		fman_if_loopback_enable(dev->process_private);
 	else
-		fman_if_loopback_disable(dpaa_intf->fif);
+		fman_if_loopback_disable(dev->process_private);
 
 	return 0;
 }
 
-static int dpaa_fc_set_default(struct dpaa_if *dpaa_intf)
+static int dpaa_fc_set_default(struct dpaa_if *dpaa_intf,
+			       struct fman_if *fman_intf)
 {
 	struct rte_eth_fc_conf *fc_conf;
 	int ret;
@@ -1177,10 +1160,10 @@ static int dpaa_fc_set_default(struct dpaa_if *dpaa_intf)
 		}
 	}
 	fc_conf = dpaa_intf->fc_conf;
-	ret = fman_if_get_fc_threshold(dpaa_intf->fif);
+	ret = fman_if_get_fc_threshold(fman_intf);
 	if (ret) {
 		fc_conf->mode = RTE_FC_TX_PAUSE;
-		fc_conf->pause_time = fman_if_get_fc_quanta(dpaa_intf->fif);
+		fc_conf->pause_time = fman_if_get_fc_quanta(fman_intf);
 	} else {
 		fc_conf->mode = RTE_FC_NONE;
 	}
@@ -1344,6 +1327,39 @@ static int dpaa_debug_queue_init(struct qman_fq *fq, uint32_t fqid)
 
 /* Initialise a network interface */
 static int
+dpaa_dev_init_secondary(struct rte_eth_dev *eth_dev)
+{
+	struct rte_dpaa_device *dpaa_device;
+	struct fm_eth_port_cfg *cfg;
+	struct dpaa_if *dpaa_intf;
+	struct fman_if *fman_intf;
+	int dev_id;
+
+	PMD_INIT_FUNC_TRACE();
+
+	dpaa_device = DEV_TO_DPAA_DEVICE(eth_dev->device);
+	dev_id = dpaa_device->id.dev_id;
+	cfg = dpaa_get_eth_port_cfg(dev_id);
+	fman_intf = cfg->fman_if;
+	eth_dev->process_private = fman_intf;
+
+	/* Plugging of UCODE burst API not supported in Secondary */
+	dpaa_intf = eth_dev->data->dev_private;
+	eth_dev->rx_pkt_burst = dpaa_eth_queue_rx;
+	if (dpaa_intf->cgr_tx)
+		eth_dev->tx_pkt_burst = dpaa_eth_queue_tx_slow;
+	else
+		eth_dev->tx_pkt_burst = dpaa_eth_queue_tx;
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+	qman_set_fq_lookup_table(
+		dpaa_intf->rx_queues->qman_fq_lookup_table);
+#endif
+
+	return 0;
+}
+
+/* Initialise a network interface */
+static int
 dpaa_dev_init(struct rte_eth_dev *eth_dev)
 {
 	int num_rx_fqs, fqid;
@@ -1360,23 +1376,6 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa_intf = eth_dev->data->dev_private;
-	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		eth_dev->dev_ops = &dpaa_devops;
-		/* Plugging of UCODE burst API not supported in Secondary */
-		eth_dev->rx_pkt_burst = dpaa_eth_queue_rx;
-		if (dpaa_intf->cgr_tx)
-			eth_dev->tx_pkt_burst = dpaa_eth_queue_tx_slow;
-		else
-			eth_dev->tx_pkt_burst = dpaa_eth_queue_tx;
-#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
-		qman_set_fq_lookup_table(
-				dpaa_intf->rx_queues->qman_fq_lookup_table);
-#endif
-		return 0;
-	}
-
 	dpaa_device = DEV_TO_DPAA_DEVICE(eth_dev->device);
 	dev_id = dpaa_device->id.dev_id;
 	dpaa_intf = eth_dev->data->dev_private;
@@ -1386,7 +1385,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	dpaa_intf->name = dpaa_device->name;
 
 	/* save fman_if & cfg in the interface struture */
-	dpaa_intf->fif = fman_intf;
+	eth_dev->process_private = fman_intf;
 	dpaa_intf->ifid = dev_id;
 	dpaa_intf->cfg = cfg;
 
@@ -1455,7 +1454,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		if (default_q)
 			fqid = cfg->rx_def;
 		else
-			fqid = DPAA_PCD_FQID_START + dpaa_intf->fif->mac_idx *
+			fqid = DPAA_PCD_FQID_START + fman_intf->mac_idx *
 				DPAA_PCD_FQID_MULTIPLIER + loop;
 
 		if (dpaa_intf->cgr_rx)
@@ -1527,7 +1526,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	DPAA_PMD_DEBUG("All frame queues created");
 
 	/* Get the initial configuration for flow control */
-	dpaa_fc_set_default(dpaa_intf);
+	dpaa_fc_set_default(dpaa_intf, fman_intf);
 
 	/* reset bpool list, initialize bpool dynamically */
 	list_for_each_entry_safe(bp, tmp_bp, &cfg->fman_if->bpool_list, node) {
@@ -1674,6 +1673,13 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 			return -ENOMEM;
 		eth_dev->device = &dpaa_dev->device;
 		eth_dev->dev_ops = &dpaa_devops;
+
+		ret = dpaa_dev_init_secondary(eth_dev);
+		if (ret != 0) {
+			RTE_LOG(ERR, PMD, "secondary dev init failed\n");
+			return ret;
+		}
+
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
@@ -1709,29 +1715,20 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		}
 	}
 
-	/* In case of secondary process, the device is already configured
-	 * and no further action is required, except portal initialization
-	 * and verifying secondary attachment to port name.
-	 */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		eth_dev = rte_eth_dev_attach_secondary(dpaa_dev->name);
-		if (!eth_dev)
-			return -ENOMEM;
-	} else {
-		eth_dev = rte_eth_dev_allocate(dpaa_dev->name);
-		if (eth_dev == NULL)
-			return -ENOMEM;
+	eth_dev = rte_eth_dev_allocate(dpaa_dev->name);
+	if (!eth_dev)
+		return -ENOMEM;
 
-		eth_dev->data->dev_private = rte_zmalloc(
-						"ethdev private structure",
-						sizeof(struct dpaa_if),
-						RTE_CACHE_LINE_SIZE);
-		if (!eth_dev->data->dev_private) {
-			DPAA_PMD_ERR("Cannot allocate memzone for port data");
-			rte_eth_dev_release_port(eth_dev);
-			return -ENOMEM;
-		}
+	eth_dev->data->dev_private =
+			rte_zmalloc("ethdev private structure",
+					sizeof(struct dpaa_if),
+					RTE_CACHE_LINE_SIZE);
+	if (!eth_dev->data->dev_private) {
+		DPAA_PMD_ERR("Cannot allocate memzone for port data");
+		rte_eth_dev_release_port(eth_dev);
+		return -ENOMEM;
 	}
+
 	eth_dev->device = &dpaa_dev->device;
 	dpaa_dev->eth_dev = eth_dev;
 
