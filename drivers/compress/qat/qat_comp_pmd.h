@@ -32,6 +32,8 @@ struct qat_comp_dev_private {
 	/**< The device's pool for qat_comp_xforms */
 	struct rte_mempool *streampool;
 	/**< The device's pool for qat_comp_streams */
+	const struct rte_memzone *capa_mz;
+	/* Shared memzone for storing capabilities */
 	uint16_t min_enq_burst_threshold;
 };
 

@@ -248,6 +248,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 			.private_data_size = sizeof(struct qat_asym_dev_private)
 	};
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
+	char capa_memz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	struct qat_asym_dev_private *internals;
 
@@ -296,10 +297,34 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	snprintf(capa_memz_name, RTE_CRYPTODEV_NAME_MAX_LEN,
+			"QAT_ASYM_CAPA_GEN_%d",
+			qat_pci_dev->qat_dev_gen);
+
 	internals = cryptodev->data->dev_private;
 	internals->qat_dev = qat_pci_dev;
 	internals->asym_dev_id = cryptodev->data->dev_id;
 	internals->qat_dev_capabilities = qat_gen1_asym_capabilities;
+
+	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
+	if (internals->capa_mz == NULL) {
+		internals->capa_mz = rte_memzone_reserve(capa_memz_name,
+			sizeof(qat_gen1_asym_capabilities),
+			rte_socket_id(), 0);
+	}
+	if (internals->capa_mz == NULL) {
+		QAT_LOG(DEBUG,
+			"Error allocating memzone for capabilities, destroying PMD for %s",
+			name);
+		rte_cryptodev_pmd_destroy(cryptodev);
+		memset(&qat_dev_instance->asym_rte_dev, 0,
+			sizeof(qat_dev_instance->asym_rte_dev));
+		return -EFAULT;
+	}
+
+	memcpy(internals->capa_mz->addr, qat_gen1_asym_capabilities,
+			sizeof(qat_gen1_asym_capabilities));
+	internals->qat_dev_capabilities = internals->capa_mz->addr;
 
 	while (1) {
 		if (qat_dev_cmd_param[i].name == NULL)
@@ -325,6 +350,8 @@ qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 		return -ENODEV;
 	if (qat_pci_dev->asym_dev == NULL)
 		return 0;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_memzone_free(qat_pci_dev->asym_dev->capa_mz);
 
 	/* free crypto device */
 	cryptodev = rte_cryptodev_pmd_get_dev(

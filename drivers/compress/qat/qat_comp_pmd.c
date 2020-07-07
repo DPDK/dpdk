@@ -667,8 +667,11 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 		.socket_id = qat_dev_instance->pci_dev->device.numa_node,
 	};
 	char name[RTE_COMPRESSDEV_NAME_MAX_LEN];
+	char capa_memz_name[RTE_COMPRESSDEV_NAME_MAX_LEN];
 	struct rte_compressdev *compressdev;
 	struct qat_comp_dev_private *comp_dev;
+	const struct rte_compressdev_capabilities *capabilities;
+	uint64_t capa_size;
 
 	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "comp");
@@ -699,6 +702,10 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	snprintf(capa_memz_name, RTE_COMPRESSDEV_NAME_MAX_LEN,
+			"QAT_COMP_CAPA_GEN_%d",
+			qat_pci_dev->qat_dev_gen);
+
 	comp_dev = compressdev->data->dev_private;
 	comp_dev->qat_dev = qat_pci_dev;
 	comp_dev->compressdev = compressdev;
@@ -707,14 +714,33 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	case QAT_GEN1:
 	case QAT_GEN2:
 	case QAT_GEN3:
-		comp_dev->qat_dev_capabilities = qat_comp_gen_capabilities;
+		capabilities = qat_comp_gen_capabilities;
+		capa_size = sizeof(qat_comp_gen_capabilities);
 		break;
 	default:
+		capabilities = qat_comp_gen_capabilities;
+		capa_size = sizeof(qat_comp_gen_capabilities);
 		QAT_LOG(DEBUG,
 			"QAT gen %d capabilities unknown, default to GEN1",
 					qat_pci_dev->qat_dev_gen);
 		break;
 	}
+
+	comp_dev->capa_mz = rte_memzone_reserve(capa_memz_name,
+		capa_size,
+		rte_socket_id(), 0);
+	if (comp_dev->capa_mz == NULL) {
+		QAT_LOG(DEBUG,
+			"Error allocating memzone for capabilities, destroying PMD for %s",
+			name);
+		memset(&qat_dev_instance->comp_rte_dev, 0,
+			sizeof(qat_dev_instance->comp_rte_dev));
+		rte_compressdev_pmd_destroy(compressdev);
+		return -EFAULT;
+	}
+
+	memcpy(comp_dev->capa_mz->addr, capabilities, capa_size);
+	comp_dev->qat_dev_capabilities = comp_dev->capa_mz->addr;
 
 	while (1) {
 		if (qat_dev_cmd_param[i].name == NULL)
@@ -743,6 +769,9 @@ qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev)
 	comp_dev = qat_pci_dev->comp_dev;
 	if (comp_dev == NULL)
 		return 0;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_memzone_free(qat_pci_dev->comp_dev->capa_mz);
 
 	/* clean up any resources used by the device */
 	qat_comp_dev_close(comp_dev->compressdev);

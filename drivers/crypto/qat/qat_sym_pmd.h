@@ -36,6 +36,8 @@ struct qat_sym_dev_private {
 	/**< Device instance for this rte_cryptodev */
 	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
 	/* QAT device symmetric crypto capabilities */
+	const struct rte_memzone *capa_mz;
+	/* Shared memzone for storing capabilities */
 	uint16_t min_enq_burst_threshold;
 	uint32_t internal_capabilities; /* see flags QAT_SYM_CAP_xxx */
 };
