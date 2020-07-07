@@ -2392,6 +2392,10 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	priv->num_rx_tc = attr.num_rx_tcs;
+	priv->qos_entries = attr.qos_entries;
+	priv->fs_entries = attr.fs_entries;
+	priv->dist_queues = attr.num_queues;
+
 	/* only if the custom CG is enabled */
 	if (attr.options & DPNI_OPT_CUSTOM_CG)
 		priv->max_cgs = attr.num_cgs;

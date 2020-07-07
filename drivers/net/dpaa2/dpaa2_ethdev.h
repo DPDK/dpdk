@@ -145,6 +145,9 @@ struct dpaa2_dev_priv {
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;
 	uint8_t num_rx_tc;
+	uint16_t qos_entries;
+	uint16_t fs_entries;
+	uint8_t dist_queues;
 	uint8_t flags; /*dpaa2 config flags */
 	uint8_t en_ordered;
 	uint8_t en_loose_ordered;
@@ -152,8 +155,6 @@ struct dpaa2_dev_priv {
 	uint8_t cgid_in_use[MAX_RX_QUEUES];
 
 	struct extract_s extract;
-	uint8_t *qos_index;
-	uint8_t *fs_index;
 
 	uint16_t ss_offset;
 	uint64_t ss_iova;

@@ -47,11 +47,8 @@ struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct dpni_rule_cfg qos_rule;
 	struct dpni_rule_cfg fs_rule;
-	uint16_t qos_index;
-	uint16_t fs_index;
 	uint8_t key_size;
 	uint8_t tc_id; /** Traffic Class ID. */
-	uint8_t flow_type;
 	uint8_t tc_index; /** index within this Traffic Class. */
 	enum rte_flow_action_type action;
 	uint16_t flow_id;
@@ -2645,6 +2642,7 @@ dpaa2_flow_entry_update(
 	char ipsrc_mask[NH_FLD_IPV6_ADDR_SIZE];
 	char ipdst_mask[NH_FLD_IPV6_ADDR_SIZE];
 	int extend = -1, extend1, size;
+	uint16_t qos_index;
 
 	while (curr) {
 		if (curr->ipaddr_rule.ipaddr_type ==
@@ -2675,6 +2673,9 @@ dpaa2_flow_entry_update(
 				tc_key_extract->key_info.ipv6_dst_offset;
 			size = NH_FLD_IPV6_ADDR_SIZE;
 		}
+
+		qos_index = curr->tc_id * priv->fs_entries +
+			curr->tc_index;
 
 		ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW,
 				priv->token, &curr->qos_rule);
@@ -2769,7 +2770,7 @@ dpaa2_flow_entry_update(
 
 		ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
 				priv->token, &curr->qos_rule,
-				curr->tc_id, curr->qos_index,
+				curr->tc_id, qos_index,
 				0, 0);
 		if (ret) {
 			DPAA2_PMD_ERR("Qos entry update failed.");
@@ -2875,13 +2876,35 @@ dpaa2_flow_entry_update(
 			curr->fs_rule.key_size += extend;
 
 		ret = dpni_add_fs_entry(dpni, CMD_PRI_LOW,
-				priv->token, curr->tc_id, curr->fs_index,
+				priv->token, curr->tc_id, curr->tc_index,
 				&curr->fs_rule, &curr->action_cfg);
 		if (ret) {
 			DPAA2_PMD_ERR("FS entry update failed.");
 			return -1;
 		}
 
+		curr = LIST_NEXT(curr, next);
+	}
+
+	return 0;
+}
+
+static inline int
+dpaa2_flow_verify_attr(
+	struct dpaa2_dev_priv *priv,
+	const struct rte_flow_attr *attr)
+{
+	struct rte_flow *curr = LIST_FIRST(&priv->flows);
+
+	while (curr) {
+		if (curr->tc_id == attr->group &&
+			curr->tc_index == attr->priority) {
+			DPAA2_PMD_ERR(
+				"Flow with group %d and priority %d already exists.",
+				attr->group, attr->priority);
+
+			return -1;
+		}
 		curr = LIST_NEXT(curr, next);
 	}
 
@@ -2898,10 +2921,8 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 {
 	const struct rte_flow_action_queue *dest_queue;
 	const struct rte_flow_action_rss *rss_conf;
-	uint16_t index;
 	int is_keycfg_configured = 0, end_of_list = 0;
 	int ret = 0, i = 0, j = 0;
-	struct dpni_attr nic_attr;
 	struct dpni_rx_tc_dist_cfg tc_cfg;
 	struct dpni_qos_tbl_cfg qos_cfg;
 	struct dpni_fs_action_cfg action;
@@ -2909,6 +2930,11 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	size_t param;
 	struct rte_flow *curr = LIST_FIRST(&priv->flows);
+	uint16_t qos_index;
+
+	ret = dpaa2_flow_verify_attr(priv, attr);
+	if (ret)
+		return ret;
 
 	/* Parse pattern list to get the matching parameters */
 	while (!end_of_list) {
@@ -3056,31 +3082,15 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 				}
 			}
 			/* Configure QoS table first */
-			memset(&nic_attr, 0, sizeof(struct dpni_attr));
-			ret = dpni_get_attributes(dpni, CMD_PRI_LOW,
-						 priv->token, &nic_attr);
-			if (ret < 0) {
-				DPAA2_PMD_ERR(
-				"Failure to get attribute. dpni@%p err code(%d)\n",
-				dpni, ret);
-				return ret;
-			}
 
-			action.flow_id = action.flow_id % nic_attr.num_rx_tcs;
+			action.flow_id = action.flow_id % priv->num_rx_tc;
 
-			if (!priv->qos_index) {
-				priv->qos_index = rte_zmalloc(0,
-						nic_attr.qos_entries, 64);
-			}
-			for (index = 0; index < nic_attr.qos_entries; index++) {
-				if (!priv->qos_index[index]) {
-					priv->qos_index[index] = 1;
-					break;
-				}
-			}
-			if (index >= nic_attr.qos_entries) {
+			qos_index = flow->tc_id * priv->fs_entries +
+				flow->tc_index;
+
+			if (qos_index >= priv->qos_entries) {
 				DPAA2_PMD_ERR("QoS table with %d entries full",
-					nic_attr.qos_entries);
+					priv->qos_entries);
 				return -1;
 			}
 			flow->qos_rule.key_size = priv->extract
@@ -3110,30 +3120,18 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 			}
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
 						priv->token, &flow->qos_rule,
-						flow->tc_id, index,
+						flow->tc_id, qos_index,
 						0, 0);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
 				"Error in addnig entry to QoS table(%d)", ret);
-				priv->qos_index[index] = 0;
 				return ret;
 			}
-			flow->qos_index = index;
 
 			/* Then Configure FS table */
-			if (!priv->fs_index) {
-				priv->fs_index = rte_zmalloc(0,
-								nic_attr.fs_entries, 64);
-			}
-			for (index = 0; index < nic_attr.fs_entries; index++) {
-				if (!priv->fs_index[index]) {
-					priv->fs_index[index] = 1;
-					break;
-				}
-			}
-			if (index >= nic_attr.fs_entries) {
+			if (flow->tc_index >= priv->fs_entries) {
 				DPAA2_PMD_ERR("FS table with %d entries full",
-					nic_attr.fs_entries);
+					priv->fs_entries);
 				return -1;
 			}
 			flow->fs_rule.key_size = priv->extract
@@ -3164,31 +3162,23 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 				}
 			}
 			ret = dpni_add_fs_entry(dpni, CMD_PRI_LOW, priv->token,
-						flow->tc_id, index,
+						flow->tc_id, flow->tc_index,
 						&flow->fs_rule, &action);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
 				"Error in adding entry to FS table(%d)", ret);
-				priv->fs_index[index] = 0;
 				return ret;
 			}
-			flow->fs_index = index;
 			memcpy(&flow->action_cfg, &action,
 				sizeof(struct dpni_fs_action_cfg));
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
-			ret = dpni_get_attributes(dpni, CMD_PRI_LOW,
-						 priv->token, &nic_attr);
-			if (ret < 0) {
-				DPAA2_PMD_ERR(
-				"Failure to get attribute. dpni@%p err code(%d)\n",
-				dpni, ret);
-				return ret;
-			}
 			rss_conf = (const struct rte_flow_action_rss *)(actions[j].conf);
 			for (i = 0; i < (int)rss_conf->queue_num; i++) {
-				if (rss_conf->queue[i] < (attr->group * nic_attr.num_queues) ||
-				    rss_conf->queue[i] >= ((attr->group + 1) * nic_attr.num_queues)) {
+				if (rss_conf->queue[i] <
+					(attr->group * priv->dist_queues) ||
+					rss_conf->queue[i] >=
+					((attr->group + 1) * priv->dist_queues)) {
 					DPAA2_PMD_ERR(
 					"Queue/Group combination are not supported\n");
 					return -ENOTSUP;
@@ -3262,34 +3252,24 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 			}
 
 			/* Add Rule into QoS table */
-			if (!priv->qos_index) {
-				priv->qos_index = rte_zmalloc(0,
-						nic_attr.qos_entries, 64);
-			}
-			for (index = 0; index < nic_attr.qos_entries; index++) {
-				if (!priv->qos_index[index]) {
-					priv->qos_index[index] = 1;
-					break;
-				}
-			}
-			if (index >= nic_attr.qos_entries) {
+			qos_index = flow->tc_id * priv->fs_entries +
+				flow->tc_index;
+			if (qos_index >= priv->qos_entries) {
 				DPAA2_PMD_ERR("QoS table with %d entries full",
-					nic_attr.qos_entries);
+					priv->qos_entries);
 				return -1;
 			}
 			flow->qos_rule.key_size =
 			  priv->extract.qos_key_extract.key_info.key_total_size;
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW, priv->token,
 						&flow->qos_rule, flow->tc_id,
-						index, 0, 0);
+						qos_index, 0, 0);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
 				"Error in entry addition in QoS table(%d)",
 				ret);
-				priv->qos_index[index] = 0;
 				return ret;
 			}
-			flow->qos_index = index;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			end_of_list = 1;
@@ -3574,7 +3554,6 @@ int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 				"Error in adding entry to QoS table(%d)", ret);
 			goto error;
 		}
-		priv->qos_index[flow->qos_index] = 0;
 
 		/* Then remove entry from FS table */
 		ret = dpni_remove_fs_entry(dpni, CMD_PRI_LOW, priv->token,
@@ -3584,7 +3563,6 @@ int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 				"Error in entry addition in FS table(%d)", ret);
 			goto error;
 		}
-		priv->fs_index[flow->fs_index] = 0;
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW, priv->token,
@@ -3594,7 +3572,6 @@ int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 			"Error in entry addition in QoS table(%d)", ret);
 			goto error;
 		}
-		priv->qos_index[flow->qos_index] = 0;
 		break;
 	default:
 		DPAA2_PMD_ERR(
