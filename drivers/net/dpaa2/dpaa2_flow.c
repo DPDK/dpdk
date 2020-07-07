@@ -1285,6 +1285,70 @@ dpaa2_configure_flow_vlan(struct rte_flow *flow,
 }
 
 static int
+dpaa2_configure_flow_ip_discrimation(
+	struct dpaa2_dev_priv *priv, struct rte_flow *flow,
+	const struct rte_flow_item *pattern,
+	int *local_cfg,	int *device_configured,
+	uint32_t group)
+{
+	int index, ret;
+	struct proto_discrimination proto;
+
+	index = dpaa2_flow_extract_search(
+			&priv->extract.qos_key_extract.dpkg,
+			NET_PROT_ETH, NH_FLD_ETH_TYPE);
+	if (index < 0) {
+		ret = dpaa2_flow_proto_discrimination_extract(
+				&priv->extract.qos_key_extract,
+				RTE_FLOW_ITEM_TYPE_ETH);
+		if (ret) {
+			DPAA2_PMD_ERR(
+			"QoS Extract ETH_TYPE to discriminate IP failed.");
+			return -1;
+		}
+		(*local_cfg) |= DPAA2_QOS_TABLE_RECONFIGURE;
+	}
+
+	index = dpaa2_flow_extract_search(
+			&priv->extract.tc_key_extract[group].dpkg,
+			NET_PROT_ETH, NH_FLD_ETH_TYPE);
+	if (index < 0) {
+		ret = dpaa2_flow_proto_discrimination_extract(
+				&priv->extract.tc_key_extract[group],
+				RTE_FLOW_ITEM_TYPE_ETH);
+		if (ret) {
+			DPAA2_PMD_ERR(
+			"FS Extract ETH_TYPE to discriminate IP failed.");
+			return -1;
+		}
+		(*local_cfg) |= DPAA2_FS_TABLE_RECONFIGURE;
+	}
+
+	ret = dpaa2_flow_rule_move_ipaddr_tail(flow, priv, group);
+	if (ret) {
+		DPAA2_PMD_ERR(
+			"Move ipaddr before IP discrimination set failed");
+		return -1;
+	}
+
+	proto.type = RTE_FLOW_ITEM_TYPE_ETH;
+	if (pattern->type == RTE_FLOW_ITEM_TYPE_IPV4)
+		proto.eth_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+	else
+		proto.eth_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+	ret = dpaa2_flow_proto_discrimination_rule(priv, flow, proto, group);
+	if (ret) {
+		DPAA2_PMD_ERR("IP discrimination rule set failed");
+		return -1;
+	}
+
+	(*device_configured) |= (*local_cfg);
+
+	return 0;
+}
+
+
+static int
 dpaa2_configure_flow_generic_ip(
 	struct rte_flow *flow,
 	struct rte_eth_dev *dev,
@@ -1327,73 +1391,16 @@ dpaa2_configure_flow_generic_ip(
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
 
-	if (!spec_ipv4 && !spec_ipv6) {
-		/* Don't care any field of IP header,
-		 * only care IP protocol.
-		 * Example: flow create 0 ingress pattern ipv6 /
-		 */
-		/* Eth type is actually used for IP identification.
-		 */
-		/* TODO: Current design only supports Eth + IP,
-		 *  Eth + vLan + IP needs to add.
-		 */
-		struct proto_discrimination proto;
-
-		index = dpaa2_flow_extract_search(
-				&priv->extract.qos_key_extract.dpkg,
-				NET_PROT_ETH, NH_FLD_ETH_TYPE);
-		if (index < 0) {
-			ret = dpaa2_flow_proto_discrimination_extract(
-					&priv->extract.qos_key_extract,
-					RTE_FLOW_ITEM_TYPE_ETH);
-			if (ret) {
-				DPAA2_PMD_ERR(
-				"QoS Ext ETH_TYPE to discriminate IP failed.");
-
-				return -1;
-			}
-			local_cfg |= DPAA2_QOS_TABLE_RECONFIGURE;
-		}
-
-		index = dpaa2_flow_extract_search(
-				&priv->extract.tc_key_extract[group].dpkg,
-				NET_PROT_ETH, NH_FLD_ETH_TYPE);
-		if (index < 0) {
-			ret = dpaa2_flow_proto_discrimination_extract(
-					&priv->extract.tc_key_extract[group],
-					RTE_FLOW_ITEM_TYPE_ETH);
-			if (ret) {
-				DPAA2_PMD_ERR(
-				"FS Ext ETH_TYPE to discriminate IP failed");
-
-				return -1;
-			}
-			local_cfg |= DPAA2_FS_TABLE_RECONFIGURE;
-		}
-
-		ret = dpaa2_flow_rule_move_ipaddr_tail(flow, priv, group);
-		if (ret) {
-			DPAA2_PMD_ERR(
-			"Move ipaddr before IP discrimination set failed");
-			return -1;
-		}
-
-		proto.type = RTE_FLOW_ITEM_TYPE_ETH;
-		if (pattern->type == RTE_FLOW_ITEM_TYPE_IPV4)
-			proto.eth_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
-		else
-			proto.eth_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-		ret = dpaa2_flow_proto_discrimination_rule(priv, flow,
-							proto, group);
-		if (ret) {
-			DPAA2_PMD_ERR("IP discrimination rule set failed");
-			return -1;
-		}
-
-		(*device_configured) |= local_cfg;
-
-		return 0;
+	ret = dpaa2_configure_flow_ip_discrimation(priv,
+			flow, pattern, &local_cfg,
+			device_configured, group);
+	if (ret) {
+		DPAA2_PMD_ERR("IP discrimation failed!");
+		return -1;
 	}
+
+	if (!spec_ipv4 && !spec_ipv6)
+		return 0;
 
 	if (mask_ipv4) {
 		if (dpaa2_flow_extract_support((const uint8_t *)mask_ipv4,
@@ -1433,10 +1440,10 @@ dpaa2_configure_flow_generic_ip(
 				NET_PROT_IP, NH_FLD_IP_SRC);
 		if (index < 0) {
 			ret = dpaa2_flow_extract_add(
-						&priv->extract.qos_key_extract,
-						NET_PROT_IP,
-						NH_FLD_IP_SRC,
-						0);
+					&priv->extract.qos_key_extract,
+					NET_PROT_IP,
+					NH_FLD_IP_SRC,
+					0);
 			if (ret) {
 				DPAA2_PMD_ERR("QoS Extract add IP_SRC failed.");
 
@@ -1519,10 +1526,10 @@ dpaa2_configure_flow_generic_ip(
 			else
 				size = NH_FLD_IPV6_ADDR_SIZE;
 			ret = dpaa2_flow_extract_add(
-						&priv->extract.qos_key_extract,
-						NET_PROT_IP,
-						NH_FLD_IP_DST,
-						size);
+					&priv->extract.qos_key_extract,
+					NET_PROT_IP,
+					NH_FLD_IP_DST,
+					size);
 			if (ret) {
 				DPAA2_PMD_ERR("QoS Extract add IP_DST failed.");
 
