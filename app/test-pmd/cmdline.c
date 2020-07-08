@@ -9291,6 +9291,10 @@ cmd_global_config_parsed(void *parsed_result,
 	conf.cfg.gre_key_len = res->len;
 	ret = rte_eth_dev_filter_ctrl(res->port_id, RTE_ETH_FILTER_NONE,
 				      RTE_ETH_FILTER_SET, &conf);
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_set_gre_key_len(res->port_id, res->len);
+#endif
 	if (ret != 0)
 		printf("Global config error\n");
 }
