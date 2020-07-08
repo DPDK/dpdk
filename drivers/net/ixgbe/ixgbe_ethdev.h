@@ -697,6 +697,10 @@ int ixgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
 int ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 			      struct ixgbe_fdir_rule *rule,
 			      bool del, bool update);
+void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
+			 struct rte_eth_fdir_info *fdir_info);
+void ixgbe_fdir_stats_get(struct rte_eth_dev *dev,
+			  struct rte_eth_fdir_stats *fdir_stats);
 
 void ixgbe_configure_dcb(struct rte_eth_dev *dev);
 

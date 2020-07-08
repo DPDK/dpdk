@@ -109,10 +109,6 @@ static int ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 			      bool del,
 			      bool update);
 static int ixgbe_fdir_flush(struct rte_eth_dev *dev);
-static void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
-			struct rte_eth_fdir_info *fdir_info);
-static void ixgbe_fdir_stats_get(struct rte_eth_dev *dev,
-			struct rte_eth_fdir_stats *fdir_stats);
 
 /**
  * This function is based on ixgbe_fdir_enable_82599() in base/ixgbe_82599.c.
@@ -1414,7 +1410,7 @@ ixgbe_fdir_flush(struct rte_eth_dev *dev)
 }
 
 #define FDIRENTRIES_NUM_SHIFT 10
-static void
+void
 ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1473,7 +1469,7 @@ ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info
 			(uint8_t)((info->mask.flex_bytes_mask & 0xFF00) >> 8);
 }
 
-static void
+void
 ixgbe_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *fdir_stats)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);

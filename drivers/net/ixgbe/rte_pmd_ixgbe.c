@@ -1139,3 +1139,36 @@ rte_pmd_ixgbe_mdio_unlocked_write(uint16_t port, uint32_t reg_addr,
 	}
 	return 0;
 }
+
+int
+rte_pmd_ixgbe_get_fdir_info(uint16_t port, struct rte_eth_fdir_info *fdir_info)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	ixgbe_fdir_info_get(dev, fdir_info);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_get_fdir_stats(uint16_t port,
+			     struct rte_eth_fdir_stats *fdir_stats)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	ixgbe_fdir_stats_get(dev, fdir_stats);
+
+	return 0;
+}

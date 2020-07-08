@@ -38,6 +38,8 @@ DPDK_20.0 {
 EXPERIMENTAL {
 	global:
 
+	rte_pmd_ixgbe_get_fdir_info;
+	rte_pmd_ixgbe_get_fdir_stats;
 	rte_pmd_ixgbe_mdio_lock;
 	rte_pmd_ixgbe_mdio_unlock;
 	rte_pmd_ixgbe_mdio_unlocked_read;
