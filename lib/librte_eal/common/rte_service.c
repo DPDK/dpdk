@@ -475,8 +475,6 @@ service_runner_func(void *arg)
 		cs->loops++;
 	}
 
-	lcore_config[lcore].state = WAIT;
-
 	return 0;
 }
 

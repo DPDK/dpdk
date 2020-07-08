@@ -114,6 +114,7 @@ unregister_all(void)
 	}
 
 	rte_service_lcore_reset_all();
+	rte_eal_mp_wait_lcore();
 
 	return TEST_SUCCESS;
 }
