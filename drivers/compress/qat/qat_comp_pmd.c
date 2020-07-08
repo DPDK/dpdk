@@ -726,9 +726,12 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 		break;
 	}
 
-	comp_dev->capa_mz = rte_memzone_reserve(capa_memz_name,
-		capa_size,
-		rte_socket_id(), 0);
+	comp_dev->capa_mz = rte_memzone_lookup(capa_memz_name);
+	if (comp_dev->capa_mz == NULL) {
+		comp_dev->capa_mz = rte_memzone_reserve(capa_memz_name,
+			capa_size,
+			rte_socket_id(), 0);
+	}
 	if (comp_dev->capa_mz == NULL) {
 		QAT_LOG(DEBUG,
 			"Error allocating memzone for capabilities, destroying PMD for %s",
