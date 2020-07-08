@@ -214,6 +214,8 @@ struct qede_tunn_params {
 	uint16_t udp_port;
 };
 
+#define QEDE_FW_DUMP_FILE_SIZE 128
+
 /*
  *  Structure to store private data for each port.
  */
@@ -252,6 +254,7 @@ struct qede_dev {
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
 	bool vport_started;
 	int vlan_offload_mask;
+	char dump_file[QEDE_FW_DUMP_FILE_SIZE];
 	void *ethdev;
 };
 
@@ -313,4 +316,26 @@ void qede_config_accept_any_vlan(struct qede_dev *qdev, bool flg);
 int qede_ucast_filter(struct rte_eth_dev *eth_dev,
 		      struct ecore_filter_ucast *ucast,
 		      bool add);
+
+#define REGDUMP_HEADER_SIZE sizeof(u32)
+#define REGDUMP_HEADER_FEATURE_SHIFT 24
+#define REGDUMP_HEADER_ENGINE_SHIFT 31
+#define REGDUMP_HEADER_OMIT_ENGINE_SHIFT 30
+
+enum debug_print_features {
+	OLD_MODE = 0,
+	IDLE_CHK = 1,
+	GRC_DUMP = 2,
+	MCP_TRACE = 3,
+	REG_FIFO = 4,
+	PROTECTION_OVERRIDE = 5,
+	IGU_FIFO = 6,
+	PHY = 7,
+	FW_ASSERTS = 8,
+};
+
+int qede_get_regs_len(struct qede_dev *qdev);
+int qede_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs);
+void qede_config_rx_mode(struct rte_eth_dev *eth_dev);
+void qed_dbg_dump(struct rte_eth_dev *eth_dev);
 #endif /* _QEDE_ETHDEV_H_ */

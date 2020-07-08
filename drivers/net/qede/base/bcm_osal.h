@@ -371,6 +371,11 @@ void qede_hw_err_notify(struct ecore_hwfn *p_hwfn,
 
 /* TODO: */
 #define OSAL_SCHEDULE_RECOVERY_HANDLER(hwfn) nothing
+
+int qede_save_fw_dump(uint8_t port_id);
+
+#define OSAL_SAVE_FW_DUMP(port_id) qede_save_fw_dump(port_id)
+
 #define OSAL_HW_ERROR_OCCURRED(hwfn, err_type) \
 	qede_hw_err_notify(hwfn, err_type)
 

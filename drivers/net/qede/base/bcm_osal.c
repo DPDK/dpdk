@@ -246,6 +246,28 @@ qede_get_mcp_proto_stats(struct ecore_dev *edev,
 	}
 }
 
+static void qede_hw_err_handler(void *dev, enum ecore_hw_err_type err_type)
+{
+	struct ecore_dev *edev = dev;
+
+	switch (err_type) {
+	case ECORE_HW_ERR_FAN_FAIL:
+		break;
+
+	case ECORE_HW_ERR_MFW_RESP_FAIL:
+	case ECORE_HW_ERR_HW_ATTN:
+	case ECORE_HW_ERR_DMAE_FAIL:
+	case ECORE_HW_ERR_RAMROD_FAIL:
+	case ECORE_HW_ERR_FW_ASSERT:
+		OSAL_SAVE_FW_DUMP(0); /* Using port 0 as default port_id */
+		break;
+
+	default:
+		DP_NOTICE(edev, false, "Unknown HW error [%d]\n", err_type);
+		return;
+	}
+}
+
 void
 qede_hw_err_notify(struct ecore_hwfn *p_hwfn, enum ecore_hw_err_type err_type)
 {
@@ -275,6 +297,9 @@ qede_hw_err_notify(struct ecore_hwfn *p_hwfn, enum ecore_hw_err_type err_type)
 	}
 
 	DP_ERR(p_hwfn, "HW error occurred [%s]\n", err_str);
+
+	qede_hw_err_handler(p_hwfn->p_dev, err_type);
+
 	ecore_int_attn_clr_enable(p_hwfn->p_dev, true);
 }
 

@@ -2426,6 +2426,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.udp_tunnel_port_add = qede_udp_dst_port_add,
 	.udp_tunnel_port_del = qede_udp_dst_port_del,
 	.fw_version_get = qede_fw_version_get,
+	.get_reg = qede_get_regs,
 };
 
 static const struct eth_dev_ops qede_eth_vf_dev_ops = {
