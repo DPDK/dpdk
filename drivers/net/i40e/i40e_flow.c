@@ -124,6 +124,12 @@ i40e_flow_parse_qinq_pattern(struct rte_eth_dev *dev,
 			      struct rte_flow_error *error,
 			      struct i40e_tunnel_filter_conf *filter);
 
+static int i40e_flow_parse_l4_cloud_filter(struct rte_eth_dev *dev,
+					   const struct rte_flow_attr *attr,
+					   const struct rte_flow_item pattern[],
+					   const struct rte_flow_action actions[],
+					   struct rte_flow_error *error,
+					   union i40e_filter_t *filter);
 const struct rte_flow_ops i40e_flow_ops = {
 	.validate = i40e_flow_validate,
 	.create = i40e_flow_create,
@@ -1845,6 +1851,13 @@ static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	/* L2TPv3 over IP */
 	{ pattern_fdir_ipv4_l2tpv3oip, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_l2tpv3oip, i40e_flow_parse_fdir_filter },
+	/* L4 over port */
+	{ pattern_fdir_ipv4_udp, i40e_flow_parse_l4_cloud_filter },
+	{ pattern_fdir_ipv4_tcp, i40e_flow_parse_l4_cloud_filter },
+	{ pattern_fdir_ipv4_sctp, i40e_flow_parse_l4_cloud_filter },
+	{ pattern_fdir_ipv6_udp, i40e_flow_parse_l4_cloud_filter },
+	{ pattern_fdir_ipv6_tcp, i40e_flow_parse_l4_cloud_filter },
+	{ pattern_fdir_ipv6_sctp, i40e_flow_parse_l4_cloud_filter },
 };
 
 #define NEXT_ITEM_OF_ACTION(act, actions, index)                        \
@@ -3539,6 +3552,223 @@ i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 	}
 
 	return 0;
+}
+
+/* 1. Last in item should be NULL as range is not supported.
+ * 2. Supported filter types: Source port only and Destination port only.
+ * 3. Mask of fields which need to be matched should be
+ *    filled with 1.
+ * 4. Mask of fields which needn't to be matched should be
+ *    filled with 0.
+ */
+static int
+i40e_flow_parse_l4_pattern(const struct rte_flow_item *pattern,
+			   struct rte_flow_error *error,
+			   struct i40e_tunnel_filter_conf *filter)
+{
+	const struct rte_flow_item_sctp *sctp_spec, *sctp_mask;
+	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
+	const struct rte_flow_item_udp *udp_spec, *udp_mask;
+	const struct rte_flow_item *item = pattern;
+	enum rte_flow_item_type item_type;
+
+	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Not support range");
+			return -rte_errno;
+		}
+		item_type = item->type;
+		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			if (item->spec || item->mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid ETH item");
+				return -rte_errno;
+			}
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			filter->ip_type = I40E_TUNNEL_IPTYPE_IPV4;
+			/* IPv4 is used to describe protocol,
+			 * spec and mask should be NULL.
+			 */
+			if (item->spec || item->mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid IPv4 item");
+				return -rte_errno;
+			}
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			filter->ip_type = I40E_TUNNEL_IPTYPE_IPV6;
+			/* IPv6 is used to describe protocol,
+			 * spec and mask should be NULL.
+			 */
+			if (item->spec || item->mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid IPv6 item");
+				return -rte_errno;
+			}
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			udp_spec = item->spec;
+			udp_mask = item->mask;
+
+			if (!udp_spec || !udp_mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid udp item");
+				return -rte_errno;
+			}
+
+			if (udp_spec->hdr.src_port != 0 &&
+			    udp_spec->hdr.dst_port != 0) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid udp spec");
+				return -rte_errno;
+			}
+
+			if (udp_spec->hdr.src_port != 0) {
+				filter->l4_port_type =
+					I40E_L4_PORT_TYPE_SRC;
+				filter->tenant_id =
+				rte_be_to_cpu_32(udp_spec->hdr.src_port);
+			}
+
+			if (udp_spec->hdr.dst_port != 0) {
+				filter->l4_port_type =
+					I40E_L4_PORT_TYPE_DST;
+				filter->tenant_id =
+				rte_be_to_cpu_32(udp_spec->hdr.dst_port);
+			}
+
+			filter->tunnel_type = I40E_CLOUD_TYPE_UDP;
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			tcp_spec = item->spec;
+			tcp_mask = item->mask;
+
+			if (!tcp_spec || !tcp_mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid tcp item");
+				return -rte_errno;
+			}
+
+			if (tcp_spec->hdr.src_port != 0 &&
+			    tcp_spec->hdr.dst_port != 0) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid tcp spec");
+				return -rte_errno;
+			}
+
+			if (tcp_spec->hdr.src_port != 0) {
+				filter->l4_port_type =
+					I40E_L4_PORT_TYPE_SRC;
+				filter->tenant_id =
+				rte_be_to_cpu_32(tcp_spec->hdr.src_port);
+			}
+
+			if (tcp_spec->hdr.dst_port != 0) {
+				filter->l4_port_type =
+					I40E_L4_PORT_TYPE_DST;
+				filter->tenant_id =
+				rte_be_to_cpu_32(tcp_spec->hdr.dst_port);
+			}
+
+			filter->tunnel_type = I40E_CLOUD_TYPE_TCP;
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_SCTP:
+			sctp_spec = item->spec;
+			sctp_mask = item->mask;
+
+			if (!sctp_spec || !sctp_mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid sctp item");
+				return -rte_errno;
+			}
+
+			if (sctp_spec->hdr.src_port != 0 &&
+			    sctp_spec->hdr.dst_port != 0) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid sctp spec");
+				return -rte_errno;
+			}
+
+			if (sctp_spec->hdr.src_port != 0) {
+				filter->l4_port_type =
+					I40E_L4_PORT_TYPE_SRC;
+				filter->tenant_id =
+					rte_be_to_cpu_32(sctp_spec->hdr.src_port);
+			}
+
+			if (sctp_spec->hdr.dst_port != 0) {
+				filter->l4_port_type =
+					I40E_L4_PORT_TYPE_DST;
+				filter->tenant_id =
+					rte_be_to_cpu_32(sctp_spec->hdr.dst_port);
+			}
+
+			filter->tunnel_type = I40E_CLOUD_TYPE_SCTP;
+
+			break;
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static int
+i40e_flow_parse_l4_cloud_filter(struct rte_eth_dev *dev,
+				const struct rte_flow_attr *attr,
+				const struct rte_flow_item pattern[],
+				const struct rte_flow_action actions[],
+				struct rte_flow_error *error,
+				union i40e_filter_t *filter)
+{
+	struct i40e_tunnel_filter_conf *tunnel_filter =
+		&filter->consistent_tunnel_filter;
+	int ret;
+
+	ret = i40e_flow_parse_l4_pattern(pattern, error, tunnel_filter);
+	if (ret)
+		return ret;
+
+	ret = i40e_flow_parse_tunnel_action(dev, actions, error, tunnel_filter);
+	if (ret)
+		return ret;
+
+	ret = i40e_flow_parse_attr(attr, error);
+	if (ret)
+		return ret;
+
+	cons_filter_type = RTE_ETH_FILTER_TUNNEL;
+
+	return ret;
 }
 
 static uint16_t i40e_supported_tunnel_filter_types[] = {

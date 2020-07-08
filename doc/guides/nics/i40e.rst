@@ -736,6 +736,13 @@ with DPDK, then the configuration will also impact port B in the NIC with
 kernel driver, which don't want to use the TPID.
 So PMD reports warning to clarify what is changed by writing global register.
 
+Cloud Filter
+~~~~~~~~~~~~
+
+When programming cloud filters for IPv4/6_UDP/TCP/SCTP with SRC port only or DST port only,
+it will make any cloud filter using inner_vlan or tunnel key invalid. Default configuration will be
+recovered only by NIC core reset.
+
 High Performance of Small Packets on 40GbE NIC
 ----------------------------------------------
 

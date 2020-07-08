@@ -127,6 +127,12 @@ New Features
   * Added support for DCF datapath configuration.
   * Added support for more PPPoE packet type for switch filter.
 
+* **Updated Intel i40e driver.**
+
+  Updated i40e PMD with new features and improvements, including:
+
+  * Supported cloud filter for IPv4/6_TCP/UDP/SCTP with SRC port only or DST port only.
+
 * **Added DOCSIS protocol to rte_security.**
 
   Added support for combined crypto and CRC operations for the DOCSIS protocol

@@ -767,11 +767,14 @@ struct i40e_rss_pattern_info {
 
 #define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD0 44
 #define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD1 45
+#define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_SRC_PORT 29
+#define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_DST_PORT 30
 #define I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSOUDP	8
 #define I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSOGRE	9
 #define I40E_AQC_ADD_CLOUD_FILTER_0X10		0x10
 #define I40E_AQC_ADD_CLOUD_FILTER_0X11		0x11
 #define I40E_AQC_ADD_CLOUD_FILTER_0X12		0x12
+#define I40E_AQC_ADD_L1_FILTER_0X10		0x10
 #define I40E_AQC_ADD_L1_FILTER_0X11		0x11
 #define I40E_AQC_ADD_L1_FILTER_0X12		0x12
 #define I40E_AQC_ADD_L1_FILTER_0X13		0x13
@@ -828,7 +831,18 @@ enum i40e_tunnel_type {
 	I40E_TUNNEL_TYPE_GTPU,
 	I40E_TUNNEL_TYPE_ESPoUDP,
 	I40E_TUNNEL_TYPE_ESPoIP,
+	I40E_CLOUD_TYPE_UDP,
+	I40E_CLOUD_TYPE_TCP,
+	I40E_CLOUD_TYPE_SCTP,
 	I40E_TUNNEL_TYPE_MAX,
+};
+
+/**
+ * L4 port type.
+ */
+enum i40e_l4_port_type {
+	I40E_L4_PORT_TYPE_SRC = 0,
+	I40E_L4_PORT_TYPE_DST,
 };
 
 /**
@@ -852,6 +866,7 @@ struct i40e_tunnel_filter_conf {
 	/** Flags from ETH_TUNNEL_FILTER_XX - see above. */
 	uint16_t filter_type;
 	enum i40e_tunnel_type tunnel_type; /**< Tunnel Type. */
+	enum i40e_l4_port_type l4_port_type; /**< L4 Port Type. */
 	uint32_t tenant_id;     /**< Tenant ID to match. VNI, GRE key... */
 	uint16_t queue_id;      /**< Queue assigned to if match. */
 	uint8_t is_to_vf;       /**< 0 - to PF, 1 - to VF */
@@ -1073,6 +1088,9 @@ struct i40e_pf {
 	bool mpls_replace_flag;  /* 1 - MPLS filter replace is done */
 	bool gtp_replace_flag;   /* 1 - GTP-C/U filter replace is done */
 	bool qinq_replace_flag;  /* QINQ filter replace is done */
+	/* l4 port flag */
+	bool sport_replace_flag;   /* Source port replace is done */
+	bool dport_replace_flag;   /* Destination port replace is done */
 	struct i40e_tm_conf tm_conf;
 	bool support_multi_driver; /* 1 - support multiple driver */
 
