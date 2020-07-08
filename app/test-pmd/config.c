@@ -1395,6 +1395,56 @@ port_flow_complain(struct rte_flow_error *error)
 	return -err;
 }
 
+static void
+rss_config_display(struct rte_flow_action_rss *rss_conf)
+{
+	uint8_t i;
+
+	if (rss_conf == NULL) {
+		printf("Invalid rule\n");
+		return;
+	}
+
+	printf("RSS:\n"
+	       " queues: ");
+	if (rss_conf->queue_num == 0)
+		printf("none\n");
+	for (i = 0; i < rss_conf->queue_num; i++)
+		printf("%d\n", rss_conf->queue[i]);
+
+	printf(" function: ");
+	switch (rss_conf->func) {
+	case RTE_ETH_HASH_FUNCTION_DEFAULT:
+		printf("default\n");
+		break;
+	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
+		printf("toeplitz\n");
+		break;
+	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
+		printf("simple_xor\n");
+		break;
+	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
+		printf("symmetric_toeplitz\n");
+		break;
+	default:
+		printf("Unknown function\n");
+		return;
+	}
+
+	printf(" types:\n");
+	if (rss_conf->types == 0) {
+		printf("  none\n");
+		return;
+	}
+	for (i = 0; rss_type_table[i].str; i++) {
+		if ((rss_conf->types &
+		    rss_type_table[i].rss_type) ==
+		    rss_type_table[i].rss_type &&
+		    rss_type_table[i].rss_type != 0)
+			printf("  %s\n", rss_type_table[i].str);
+	}
+}
+
 /** Validate flow rule. */
 int
 port_flow_validate(portid_t port_id,
@@ -1581,6 +1631,7 @@ port_flow_query(portid_t port_id, uint32_t rule,
 	const char *name;
 	union {
 		struct rte_flow_query_count count;
+		struct rte_flow_action_rss rss_conf;
 	} query;
 	int ret;
 
@@ -1602,6 +1653,7 @@ port_flow_query(portid_t port_id, uint32_t rule,
 		return port_flow_complain(&error);
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_COUNT:
+	case RTE_FLOW_ACTION_TYPE_RSS:
 		break;
 	default:
 		printf("Cannot query action type %d (%s)\n",
@@ -1625,6 +1677,9 @@ port_flow_query(portid_t port_id, uint32_t rule,
 		       query.count.bytes_set,
 		       query.count.hits,
 		       query.count.bytes);
+		break;
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		rss_config_display(&query.rss_conf);
 		break;
 	default:
 		printf("Cannot display result for action type %d (%s)\n",
