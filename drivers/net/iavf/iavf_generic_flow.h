@@ -192,12 +192,51 @@ extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh[];
 
 /* IPv4 GTPU IPv4 */
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv4[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv4_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv4_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv4_icmp[];
+
+/* IPv4 GTPU IPv6 */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv6[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv6_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv6_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_ipv6_icmp[];
+
+/* IPv6 GTPU IPv4 */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_ipv4[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_ipv4_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_ipv4_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_ipv4_icmp[];
+
+/* IPv6 GTPU IPv6 */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_ipv6[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_ipv6_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_ipv6_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_ipv6_icmp[];
 
 /* IPv4 GTPU EH IPv4 */
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_udp[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_tcp[];
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv4_icmp[];
+
+/* IPv4 GTPU EH IPv6 */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv6[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv6_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv6_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv4_gtpu_eh_ipv6_icmp[];
+
+/* IPv6 GTPU EH IPv4 */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh_ipv4[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh_ipv4_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh_ipv4_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh_ipv4_icmp[];
+
+/* IPv6 GTPU EH IPv6 */
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh_ipv6[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh_ipv6_udp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh_ipv6_tcp[];
+extern enum rte_flow_item_type iavf_pattern_eth_ipv6_gtpu_eh_ipv6_icmp[];
 
 /* ESP */
 extern enum rte_flow_item_type iavf_pattern_eth_ipv4_esp[];
