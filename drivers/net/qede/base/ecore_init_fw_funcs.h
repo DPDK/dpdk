@@ -9,13 +9,6 @@
 #include "ecore_hsi_common.h"
 #include "ecore_hsi_eth.h"
 
-/* Physical memory descriptor */
-struct phys_mem_desc {
-	dma_addr_t phys_addr;
-	void *virt_addr;
-	u32 size; /* In bytes */
-};
-
 /* Returns the VOQ based on port and TC */
 #define VOQ(port, tc, max_phys_tcs_per_port) \
 	((tc) == PURE_LB_TC ? NUM_OF_PHYS_TCS * MAX_NUM_PORTS_BB + (port) : \

@@ -2358,6 +2358,7 @@ alloc_err:
 enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
+	enum dbg_status debug_status = DBG_STATUS_OK;
 	int i;
 
 	if (IS_VF(p_dev)) {
@@ -2512,17 +2513,21 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 			goto alloc_err;
 		}
 
-		rc = OSAL_DBG_ALLOC_USER_DATA(p_hwfn, &p_hwfn->dbg_user_info);
-		if (rc) {
+		debug_status = OSAL_DBG_ALLOC_USER_DATA(p_hwfn,
+							&p_hwfn->dbg_user_info);
+		if (debug_status) {
 			DP_NOTICE(p_hwfn, false,
 				  "Failed to allocate dbg user info structure\n");
+			rc = (enum _ecore_status_t)debug_status;
 			goto alloc_err;
 		}
 
-		rc = OSAL_DBG_ALLOC_USER_DATA(p_hwfn, &p_hwfn->dbg_user_info);
-		if (rc) {
+		debug_status = OSAL_DBG_ALLOC_USER_DATA(p_hwfn,
+							&p_hwfn->dbg_user_info);
+		if (debug_status) {
 			DP_NOTICE(p_hwfn, false,
 				  "Failed to allocate dbg user info structure\n");
+			rc = (enum _ecore_status_t)debug_status;
 			goto alloc_err;
 		}
 	} /* hwfn loop */

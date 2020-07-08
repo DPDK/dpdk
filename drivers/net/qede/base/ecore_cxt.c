@@ -20,12 +20,6 @@
 #include "ecore_sriov.h"
 #include "ecore_mcp.h"
 
-/* Max number of connection types in HW (DQ/CDU etc.) */
-#define MAX_CONN_TYPES		PROTOCOLID_COMMON
-#define NUM_TASK_TYPES		2
-#define NUM_TASK_PF_SEGMENTS	4
-#define NUM_TASK_VF_SEGMENTS	1
-
 /* Doorbell-Queue constants */
 #define DQ_RANGE_SHIFT	4
 #define DQ_RANGE_ALIGN	(1 << DQ_RANGE_SHIFT)
@@ -89,128 +83,6 @@ struct src_ent {
 
 /* Alignment is inherent to the type1_task_context structure */
 #define TYPE1_TASK_CXT_SIZE(p_hwfn) sizeof(union type1_task_context)
-
-/* PF per protocl configuration object */
-#define TASK_SEGMENTS   (NUM_TASK_PF_SEGMENTS + NUM_TASK_VF_SEGMENTS)
-#define TASK_SEGMENT_VF (NUM_TASK_PF_SEGMENTS)
-
-struct ecore_tid_seg {
-	u32 count;
-	u8 type;
-	bool has_fl_mem;
-};
-
-struct ecore_conn_type_cfg {
-	u32 cid_count;
-	u32 cids_per_vf;
-	struct ecore_tid_seg tid_seg[TASK_SEGMENTS];
-};
-
-/* ILT Client configuration,
- * Per connection type (protocol) resources (cids, tis, vf cids etc.)
- * 1 - for connection context (CDUC) and for each task context we need two
- * values, for regular task context and for force load memory
- */
-#define ILT_CLI_PF_BLOCKS	(1 + NUM_TASK_PF_SEGMENTS * 2)
-#define ILT_CLI_VF_BLOCKS	(1 + NUM_TASK_VF_SEGMENTS * 2)
-#define CDUC_BLK		(0)
-#define SRQ_BLK			(0)
-#define CDUT_SEG_BLK(n)		(1 + (u8)(n))
-#define CDUT_FL_SEG_BLK(n, X)	(1 + (n) + NUM_TASK_##X##_SEGMENTS)
-
-struct ilt_cfg_pair {
-	u32 reg;
-	u32 val;
-};
-
-struct ecore_ilt_cli_blk {
-	u32 total_size;		/* 0 means not active */
-	u32 real_size_in_page;
-	u32 start_line;
-	u32 dynamic_line_offset;
-	u32 dynamic_line_cnt;
-};
-
-struct ecore_ilt_client_cfg {
-	bool active;
-
-	/* ILT boundaries */
-	struct ilt_cfg_pair first;
-	struct ilt_cfg_pair last;
-	struct ilt_cfg_pair p_size;
-
-	/* ILT client blocks for PF */
-	struct ecore_ilt_cli_blk pf_blks[ILT_CLI_PF_BLOCKS];
-	u32 pf_total_lines;
-
-	/* ILT client blocks for VFs */
-	struct ecore_ilt_cli_blk vf_blks[ILT_CLI_VF_BLOCKS];
-	u32 vf_total_lines;
-};
-
-#define MAP_WORD_SIZE		sizeof(unsigned long)
-#define BITS_PER_MAP_WORD	(MAP_WORD_SIZE * 8)
-
-struct ecore_cid_acquired_map {
-	u32 start_cid;
-	u32 max_count;
-	u32 *cid_map;
-};
-
-struct ecore_src_t2 {
-	struct phys_mem_desc	*dma_mem;
-	u32			num_pages;
-	u64			first_free;
-	u64			last_free;
-};
-
-struct ecore_cxt_mngr {
-	/* Per protocl configuration */
-	struct ecore_conn_type_cfg conn_cfg[MAX_CONN_TYPES];
-
-	/* computed ILT structure */
-	struct ecore_ilt_client_cfg clients[ILT_CLI_MAX];
-
-	/* Task type sizes */
-	u32 task_type_size[NUM_TASK_TYPES];
-
-	/* total number of VFs for this hwfn -
-	 * ALL VFs are symmetric in terms of HW resources
-	 */
-	u32 vf_count;
-
-	/* Acquired CIDs */
-	struct ecore_cid_acquired_map acquired[MAX_CONN_TYPES];
-	struct ecore_cid_acquired_map *acquired_vf[MAX_CONN_TYPES];
-
-	/* ILT  shadow table */
-	struct phys_mem_desc		*ilt_shadow;
-	u32 pf_start_line;
-
-	/* Mutex for a dynamic ILT allocation */
-	osal_mutex_t mutex;
-
-	/* SRC T2 */
-	struct ecore_src_t2		src_t2;
-
-	/* The infrastructure originally was very generic and context/task
-	 * oriented - per connection-type we would set how many of those
-	 * are needed, and later when determining how much memory we're
-	 * needing for a given block we'd iterate over all the relevant
-	 * connection-types.
-	 * But since then we've had some additional resources, some of which
-	 * require memory which is indepent of the general context/task
-	 * scheme. We add those here explicitly per-feature.
-	 */
-
-	/* total number of SRQ's for this hwfn */
-	u32				srq_count;
-
-	/* Maximal number of L2 steering filters */
-	u32				arfs_count;
-
-	/* TODO - VF arfs filters ? */
-};
 
 static OSAL_INLINE bool tm_cid_proto(enum protocol_type type)
 {
@@ -945,7 +817,7 @@ t2_fail:
 }
 
 #define for_each_ilt_valid_client(pos, clients)		\
-	for (pos = 0; pos < ILT_CLI_MAX; pos++)		\
+	for (pos = 0; pos < MAX_ILT_CLIENTS; pos++)		\
 		if (!clients[pos].active) {		\
 			continue;			\
 		} else					\
@@ -1238,7 +1110,7 @@ enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 	clients[ILT_CLI_TSDM].p_size.reg = ILT_CFG_REG(TSDM, P_SIZE);
 
 	/* default ILT page size for all clients is 64K */
-	for (i = 0; i < ILT_CLI_MAX; i++)
+	for (i = 0; i < MAX_ILT_CLIENTS; i++)
 		p_mngr->clients[i].p_size.val = ILT_DEFAULT_HW_P_SIZE;
 
 	/* due to removal of ISCSI/FCoE files union type0_task_context
@@ -2305,4 +2177,12 @@ ecore_cxt_free_ilt_range(struct ecore_hwfn *p_hwfn,
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return ECORE_SUCCESS;
+}
+
+static u16 ecore_blk_calculate_pages(struct ecore_ilt_cli_blk *p_blk)
+{
+	if (p_blk->real_size_in_page == 0)
+		return 0;
+
+	return DIV_ROUND_UP(p_blk->total_size, p_blk->real_size_in_page);
 }

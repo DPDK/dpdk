@@ -24,6 +24,7 @@
 #include "ecore_hsi_debug_tools.h"
 #include "ecore_hsi_init_func.h"
 #include "ecore_hsi_init_tool.h"
+#include "ecore_hsi_func_common.h"
 #include "ecore_proto_if.h"
 #include "mcp_public.h"
 
@@ -671,6 +672,7 @@ struct ecore_hwfn {
 
 	struct dbg_tools_data		dbg_info;
 	void				*dbg_user_info;
+	struct virt_mem_desc		dbg_arrays[MAX_BIN_DBG_BUFFER_TYPE];
 
 	struct z_stream_s		*stream;
 
