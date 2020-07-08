@@ -165,6 +165,7 @@ struct ice_fdir_l2tpv3 {
 
 struct ice_fdir_extra {
 	u8 dst_mac[ETH_ALEN];	/* dest MAC address */
+	u8 src_mac[ETH_ALEN];	/* src MAC address */
 	__be16 ether_type;      /* for NON_IP_L2 */
 	u32 usr_def[2];		/* user data */
 	__be16 vlan_type;	/* VLAN ethertype */

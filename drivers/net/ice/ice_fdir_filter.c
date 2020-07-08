@@ -19,10 +19,10 @@
 #define ICE_FDIR_MAX_QREGION_SIZE	128
 
 #define ICE_FDIR_INSET_ETH (\
-	ICE_INSET_ETHERTYPE)
+	ICE_INSET_DMAC | ICE_INSET_SMAC | ICE_INSET_ETHERTYPE)
 
 #define ICE_FDIR_INSET_ETH_IPV4 (\
-	ICE_INSET_DMAC | \
+	ICE_FDIR_INSET_ETH | \
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_TOS | \
 	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_PROTO)
 
@@ -1620,9 +1620,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 	};
 	uint32_t vtc_flow_cpu;
-
-	enum rte_flow_item_type next_type;
 	uint16_t ether_type;
+	enum rte_flow_item_type next_type;
 
 	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
@@ -1640,50 +1639,40 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			eth_mask = item->mask;
 			next_type = (item + 1)->type;
 
-			if (next_type == RTE_FLOW_ITEM_TYPE_END &&
-				(!eth_spec || !eth_mask)) {
-				rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ITEM,
-					item, "NULL eth spec/mask.");
-				return -rte_errno;
-			}
-
 			if (eth_spec && eth_mask) {
-				if (!rte_is_zero_ether_addr(&eth_spec->src) ||
-				    !rte_is_zero_ether_addr(&eth_mask->src)) {
-					rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ITEM,
-						item,
-						"Src mac not support");
-					return -rte_errno;
-				}
-
-				if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
+				if (!rte_is_zero_ether_addr(&eth_mask->dst)) {
 					input_set |= ICE_INSET_DMAC;
 					rte_memcpy(&filter->input.ext_data.dst_mac,
-						&eth_spec->dst,
-						RTE_ETHER_ADDR_LEN);
-				} else if (eth_mask->type == RTE_BE16(0xffff)) {
+						   &eth_spec->dst,
+						   RTE_ETHER_ADDR_LEN);
+				}
+
+				if (!rte_is_zero_ether_addr(&eth_mask->src)) {
+					input_set |= ICE_INSET_SMAC;
+					rte_memcpy(&filter->input.ext_data.src_mac,
+						   &eth_spec->src,
+						   RTE_ETHER_ADDR_LEN);
+				}
+
+				/* Ignore this field except for ICE_FLTR_PTYPE_NON_IP_L2 */
+				if (eth_mask->type == RTE_BE16(0xffff) &&
+				    next_type == RTE_FLOW_ITEM_TYPE_END) {
+					input_set |= ICE_INSET_ETHERTYPE;
 					ether_type = rte_be_to_cpu_16(eth_spec->type);
+
 					if (ether_type == RTE_ETHER_TYPE_IPV4 ||
-						ether_type == RTE_ETHER_TYPE_IPV6) {
+					    ether_type == RTE_ETHER_TYPE_IPV6) {
 						rte_flow_error_set(error, EINVAL,
-							RTE_FLOW_ERROR_TYPE_ITEM,
-							item,
-							"Unsupported ether_type.");
+								   RTE_FLOW_ERROR_TYPE_ITEM,
+								   item,
+								   "Unsupported ether_type.");
 						return -rte_errno;
 					}
 
-					input_set |= ICE_INSET_ETHERTYPE;
 					rte_memcpy(&filter->input.ext_data.ether_type,
-						&eth_spec->type,
-						sizeof(eth_spec->type));
+						   &eth_spec->type,
+						   sizeof(eth_spec->type));
 					flow_type = ICE_FLTR_PTYPE_NON_IP_L2;
-				} else {
-					rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ITEM,
-						item,
-						"Invalid dst mac addr mask or ethertype mask");
 				}
 			}
 			break;
