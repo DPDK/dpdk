@@ -489,7 +489,7 @@ Driver options
   value is not in the range of device capability, the default value will be set
   with a warning message. The default value is 11 which is 2048 bytes per a
   stride, valid only if ``mprq_en`` is set. With ``mprq_log_stride_size`` set
-  it is possible for a pcaket to span across multiple strides. This mode allows
+  it is possible for a packet to span across multiple strides. This mode allows
   support of jumbo frames (9K) with MPRQ. The memcopy of some packets (or part
   of a packet if Rx scatter is configured) may be required in case there is no
   space left for a head room at the end of a stride which incurs some
