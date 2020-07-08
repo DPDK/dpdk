@@ -289,3 +289,9 @@ u32 qede_crc32(u32 crc, u8 *ptr, u32 length)
 	}
 	return crc;
 }
+
+void qed_set_platform_str(struct ecore_hwfn *p_hwfn,
+			  char *buf_str, u32 buf_size)
+{
+	snprintf(buf_str, buf_size, "%s.", rte_version());
+}

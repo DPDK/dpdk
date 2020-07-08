@@ -3622,6 +3622,217 @@ enum _ecore_status_t ecore_mcp_bist_nvm_test_get_image_att(
 }
 
 enum _ecore_status_t
+ecore_mcp_bist_nvm_get_num_images(struct ecore_hwfn *p_hwfn,
+				  struct ecore_ptt *p_ptt, u32 *num_images)
+{
+	u32 drv_mb_param = 0, rsp;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	SET_MFW_FIELD(drv_mb_param, DRV_MB_PARAM_BIST_TEST_INDEX,
+		      DRV_MB_PARAM_BIST_NVM_TEST_NUM_IMAGES);
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
+			   drv_mb_param, &rsp, num_images);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	if (rsp == FW_MSG_CODE_UNSUPPORTED)
+		rc = ECORE_NOTIMPL;
+	else if (rsp != FW_MSG_CODE_OK)
+		rc = ECORE_UNKNOWN_ERROR;
+
+	return rc;
+}
+
+enum _ecore_status_t
+ecore_mcp_bist_nvm_get_image_att(struct ecore_hwfn *p_hwfn,
+				 struct ecore_ptt *p_ptt,
+				 struct bist_nvm_image_att *p_image_att,
+				 u32 image_index)
+{
+	u32 buf_size, nvm_offset = 0, resp, param;
+	enum _ecore_status_t rc;
+
+	SET_MFW_FIELD(nvm_offset, DRV_MB_PARAM_BIST_TEST_INDEX,
+		      DRV_MB_PARAM_BIST_NVM_TEST_IMAGE_BY_INDEX);
+	SET_MFW_FIELD(nvm_offset, DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX,
+		      image_index);
+	rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
+				  nvm_offset, &resp, &param, &buf_size,
+				  (u32 *)p_image_att);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	if (resp == FW_MSG_CODE_UNSUPPORTED)
+		rc = ECORE_NOTIMPL;
+	else if ((resp != FW_MSG_CODE_OK) || (p_image_att->return_code != 1))
+		rc = ECORE_UNKNOWN_ERROR;
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_nvm_info_populate(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_nvm_image_info nvm_info;
+	struct ecore_ptt *p_ptt;
+	enum _ecore_status_t rc;
+	u32 i;
+
+	if (p_hwfn->nvm_info.valid)
+		return ECORE_SUCCESS;
+
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) ||
+	    CHIP_REV_IS_TEDIBEAR(p_hwfn->p_dev))
+		return ECORE_SUCCESS;
+#endif
+
+	p_ptt = ecore_ptt_acquire(p_hwfn);
+	if (!p_ptt) {
+		DP_ERR(p_hwfn, "failed to acquire ptt\n");
+		return ECORE_BUSY;
+	}
+
+	/* Acquire from MFW the amount of available images */
+	OSAL_MEM_ZERO(&nvm_info, sizeof(nvm_info));
+	rc = ecore_mcp_bist_nvm_get_num_images(p_hwfn, p_ptt,
+					       &nvm_info.num_images);
+	if (rc == ECORE_NOTIMPL) {
+		DP_INFO(p_hwfn, "DRV_MSG_CODE_BIST_TEST is not supported\n");
+		goto out;
+	} else if ((rc != ECORE_SUCCESS) || (nvm_info.num_images == 0)) {
+		DP_ERR(p_hwfn, "Failed getting number of images\n");
+		goto err0;
+	}
+
+	nvm_info.image_att = OSAL_ALLOC(p_hwfn->p_dev, GFP_KERNEL,
+					 nvm_info.num_images *
+					 sizeof(struct bist_nvm_image_att));
+	if (!nvm_info.image_att) {
+		rc = ECORE_NOMEM;
+		goto err0;
+	}
+
+	/* Iterate over images and get their attributes */
+	for (i = 0; i < nvm_info.num_images; i++) {
+		rc = ecore_mcp_bist_nvm_get_image_att(p_hwfn, p_ptt,
+						      &nvm_info.image_att[i],
+						      i);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(p_hwfn,
+			       "Failed getting image index %d attributes\n",
+			       i);
+			goto err1;
+		}
+
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SP, "image index %d, size %x\n", i,
+			   nvm_info.image_att[i].len);
+	}
+out:
+	/* Update hwfn's nvm_info */
+	if (nvm_info.num_images) {
+		p_hwfn->nvm_info.num_images = nvm_info.num_images;
+		if (p_hwfn->nvm_info.image_att)
+			OSAL_FREE(p_hwfn->p_dev, p_hwfn->nvm_info.image_att);
+		p_hwfn->nvm_info.image_att = nvm_info.image_att;
+		p_hwfn->nvm_info.valid = true;
+	}
+
+	ecore_ptt_release(p_hwfn, p_ptt);
+	return ECORE_SUCCESS;
+
+err1:
+	OSAL_FREE(p_hwfn->p_dev, nvm_info.image_att);
+err0:
+	ecore_ptt_release(p_hwfn, p_ptt);
+	return rc;
+}
+
+enum _ecore_status_t
+ecore_mcp_get_nvm_image_att(struct ecore_hwfn *p_hwfn,
+			    enum ecore_nvm_images image_id,
+			    struct ecore_nvm_image_att *p_image_att)
+{
+	enum nvm_image_type type;
+	u32 i;
+
+	/* Translate image_id into MFW definitions */
+	switch (image_id) {
+	case ECORE_NVM_IMAGE_ISCSI_CFG:
+		type = NVM_TYPE_ISCSI_CFG;
+		break;
+	case ECORE_NVM_IMAGE_FCOE_CFG:
+		type = NVM_TYPE_FCOE_CFG;
+		break;
+	case ECORE_NVM_IMAGE_MDUMP:
+		type = NVM_TYPE_MDUMP;
+		break;
+	case ECORE_NVM_IMAGE_NVM_CFG1:
+		type = NVM_TYPE_NVM_CFG1;
+		break;
+	case ECORE_NVM_IMAGE_DEFAULT_CFG:
+		type = NVM_TYPE_DEFAULT_CFG;
+		break;
+	case ECORE_NVM_IMAGE_NVM_META:
+		type = NVM_TYPE_META;
+		break;
+	default:
+		DP_NOTICE(p_hwfn, false, "Unknown request of image_id %08x\n",
+			  image_id);
+		return ECORE_INVAL;
+	}
+
+	ecore_mcp_nvm_info_populate(p_hwfn);
+	for (i = 0; i < p_hwfn->nvm_info.num_images; i++) {
+		if (type == p_hwfn->nvm_info.image_att[i].image_type)
+			break;
+	}
+	if (i == p_hwfn->nvm_info.num_images) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+			   "Failed to find nvram image of type %08x\n",
+			   image_id);
+		return ECORE_NOENT;
+	}
+
+	p_image_att->start_addr = p_hwfn->nvm_info.image_att[i].nvm_start_addr;
+	p_image_att->length = p_hwfn->nvm_info.image_att[i].len;
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_mcp_get_nvm_image(struct ecore_hwfn *p_hwfn,
+					     enum ecore_nvm_images image_id,
+					     u8 *p_buffer, u32 buffer_len)
+{
+	struct ecore_nvm_image_att image_att;
+	enum _ecore_status_t rc;
+
+	OSAL_MEM_ZERO(p_buffer, buffer_len);
+
+	rc = ecore_mcp_get_nvm_image_att(p_hwfn, image_id, &image_att);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	/* Validate sizes - both the image's and the supplied buffer's */
+	if (image_att.length <= 4) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+			   "Image [%d] is too small - only %d bytes\n",
+			   image_id, image_att.length);
+		return ECORE_INVAL;
+	}
+
+	if (image_att.length > buffer_len) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_STORAGE,
+			   "Image [%d] is too big - %08x bytes where only %08x are available\n",
+			   image_id, image_att.length, buffer_len);
+		return ECORE_NOMEM;
+	}
+
+	return ecore_mcp_nvm_read(p_hwfn->p_dev, image_att.start_addr,
+				  (u8 *)p_buffer, image_att.length);
+}
+
+enum _ecore_status_t
 ecore_mcp_get_temperature_info(struct ecore_hwfn *p_hwfn,
 			       struct ecore_ptt *p_ptt,
 			       struct ecore_temperature_info *p_temp_info)

@@ -8,6 +8,7 @@
 #define __BCM_OSAL_H
 
 #include <stdbool.h>
+#include <time.h>
 #include <rte_bitops.h>
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
@@ -19,6 +20,7 @@
 #include <rte_debug.h>
 #include <rte_ether.h>
 #include <rte_io.h>
+#include <rte_version.h>
 
 /* Forward declaration */
 struct ecore_dev;
@@ -450,7 +452,11 @@ u32 qede_crc32(u32 crc, u8 *ptr, u32 length);
 
 #define OSAL_DIV_S64(a, b)	((a) / (b))
 #define OSAL_LLDP_RX_TLVS(p_hwfn, tlv_buf, tlv_size) nothing
-#define OSAL_GET_EPOCH(p_hwfn)	0
+void qed_set_platform_str(struct ecore_hwfn *p_hwfn,
+			  char *buf_str, u32 buf_size);
+#define OSAL_SET_PLATFORM_STR(p_hwfn, buf_str, buf_size) \
+	qed_set_platform_str(p_hwfn, buf_str, buf_size)
+#define OSAL_GET_EPOCH(p_hwfn) ((u32)time(NULL))
 #define OSAL_DBG_ALLOC_USER_DATA(p_hwfn, user_data_ptr) (0)
 #define OSAL_DB_REC_OCCURRED(p_hwfn) nothing
 

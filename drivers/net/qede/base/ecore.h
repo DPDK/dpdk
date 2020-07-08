@@ -576,6 +576,12 @@ enum BAR_ID {
 	BAR_ID_1	/* Used for doorbells */
 };
 
+struct ecore_nvm_image_info {
+	u32				num_images;
+	struct bist_nvm_image_att	*image_att;
+	bool				valid;
+};
+
 struct ecore_hwfn {
 	struct ecore_dev		*p_dev;
 	u8				my_id;		/* ID inside the PF */
@@ -701,6 +707,9 @@ struct ecore_hwfn {
 	 */
 	bool b_en_pacing;
 
+	/* Nvm images number and attributes */
+	struct ecore_nvm_image_info     nvm_info;
+
 	struct phys_mem_desc            *fw_overlay_mem;
 
 	/* @DPDK */
@@ -714,26 +723,34 @@ enum ecore_mf_mode {
 	ECORE_MF_UFP,
 };
 
+enum ecore_dev_type {
+	ECORE_DEV_TYPE_BB,
+	ECORE_DEV_TYPE_AH,
+};
+
 /* @DPDK */
+enum ecore_dbg_features {
+	DBG_FEATURE_GRC,
+	DBG_FEATURE_IDLE_CHK,
+	DBG_FEATURE_MCP_TRACE,
+	DBG_FEATURE_REG_FIFO,
+	DBG_FEATURE_IGU_FIFO,
+	DBG_FEATURE_PROTECTION_OVERRIDE,
+	DBG_FEATURE_FW_ASSERTS,
+	DBG_FEATURE_ILT,
+	DBG_FEATURE_NUM
+};
+
 struct ecore_dbg_feature {
 	u8				*dump_buf;
 	u32				buf_size;
 	u32				dumped_dwords;
 };
 
-enum qed_dbg_features {
-	DBG_FEATURE_BUS,
-	DBG_FEATURE_GRC,
-	DBG_FEATURE_IDLE_CHK,
-	DBG_FEATURE_MCP_TRACE,
-	DBG_FEATURE_REG_FIFO,
-	DBG_FEATURE_PROTECTION_OVERRIDE,
-	DBG_FEATURE_NUM
-};
-
-enum ecore_dev_type {
-	ECORE_DEV_TYPE_BB,
-	ECORE_DEV_TYPE_AH,
+struct ecore_dbg_params {
+	struct ecore_dbg_feature features[DBG_FEATURE_NUM];
+	u8 engine_for_debug;
+	bool print_data;
 };
 
 struct ecore_dev {
@@ -914,10 +931,12 @@ struct ecore_dev {
 	void				*firmware;
 	u64				fw_len;
 #endif
+	bool				disable_ilt_dump;
 
 	/* @DPDK */
 	struct ecore_dbg_feature	dbg_features[DBG_FEATURE_NUM];
-	u8				engine_for_debug;
+	struct ecore_dbg_params		dbg_params;
+	osal_mutex_t			dbg_lock;
 };
 
 enum ecore_hsi_def_type {
@@ -1066,6 +1085,17 @@ enum _ecore_status_t ecore_all_ppfids_wr(struct ecore_hwfn *p_hwfn,
 /* Utility functions for dumping the content of the NIG LLH filters */
 enum _ecore_status_t ecore_llh_dump_ppfid(struct ecore_dev *p_dev, u8 ppfid);
 enum _ecore_status_t ecore_llh_dump_all(struct ecore_dev *p_dev);
+
+/**
+ * @brief ecore_set_platform_str - Set the debug dump platform string.
+ * Write the ecore version and device's string to the given buffer.
+ *
+ * @param p_hwfn
+ * @param buf_str
+ * @param buf_size
+ */
+void ecore_set_platform_str(struct ecore_hwfn *p_hwfn,
+			    char *buf_str, u32 buf_size);
 
 #define TSTORM_QZONE_START	PXP_VF_BAR0_START_SDM_ZONE_A
 

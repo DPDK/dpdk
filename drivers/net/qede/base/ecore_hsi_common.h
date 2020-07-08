@@ -10,6 +10,7 @@
 /* Add include to common target */
 /********************************/
 #include "common_hsi.h"
+#include "mcp_public.h"
 
 
 /*
@@ -2229,7 +2230,40 @@ struct fw_info_location {
 };
 
 
-
+/* DMAE parameters */
+struct ecore_dmae_params {
+	u32 flags;
+/* If QED_DMAE_PARAMS_RW_REPL_SRC flag is set and the
+ * source is a block of length DMAE_MAX_RW_SIZE and the
+ * destination is larger, the source block will be duplicated as
+ * many times as required to fill the destination block. This is
+ * used mostly to write a zeroed buffer to destination address
+ * using DMA
+ */
+#define ECORE_DMAE_PARAMS_RW_REPL_SRC_MASK        0x1
+#define ECORE_DMAE_PARAMS_RW_REPL_SRC_SHIFT       0
+#define ECORE_DMAE_PARAMS_SRC_VF_VALID_MASK       0x1
+#define ECORE_DMAE_PARAMS_SRC_VF_VALID_SHIFT      1
+#define ECORE_DMAE_PARAMS_DST_VF_VALID_MASK       0x1
+#define ECORE_DMAE_PARAMS_DST_VF_VALID_SHIFT      2
+#define ECORE_DMAE_PARAMS_COMPLETION_DST_MASK     0x1
+#define ECORE_DMAE_PARAMS_COMPLETION_DST_SHIFT    3
+#define ECORE_DMAE_PARAMS_PORT_VALID_MASK         0x1
+#define ECORE_DMAE_PARAMS_PORT_VALID_SHIFT        4
+#define ECORE_DMAE_PARAMS_SRC_PF_VALID_MASK       0x1
+#define ECORE_DMAE_PARAMS_SRC_PF_VALID_SHIFT      5
+#define ECORE_DMAE_PARAMS_DST_PF_VALID_MASK       0x1
+#define ECORE_DMAE_PARAMS_DST_PF_VALID_SHIFT      6
+#define ECORE_DMAE_PARAMS_RESERVED_MASK           0x1FFFFFF
+#define ECORE_DMAE_PARAMS_RESERVED_SHIFT          7
+	u8 src_vfid;
+	u8 dst_vfid;
+	u8 port_id;
+	u8 src_pfid;
+	u8 dst_pfid;
+	u8 reserved1;
+	__le16 reserved2;
+};
 
 /*
  * IGU cleanup command
@@ -2542,5 +2576,153 @@ struct ystorm_core_conn_ag_ctx {
 	__le32 reg2 /* reg2 */;
 	__le32 reg3 /* reg3 */;
 };
+
+/*********/
+/* DEBUG */
+/*********/
+
+#define MFW_TRACE_SIGNATURE	0x25071946
+
+/* The trace in the buffer */
+#define MFW_TRACE_EVENTID_MASK		0x00ffff
+#define MFW_TRACE_PRM_SIZE_MASK		0x0f0000
+#define MFW_TRACE_PRM_SIZE_OFFSET	16
+#define MFW_TRACE_ENTRY_SIZE		3
+
+struct mcp_trace {
+	u32	signature;	/* Help to identify that the trace is valid */
+	u32	size;		/* the size of the trace buffer in bytes*/
+	u32	curr_level;	/* 2 - all will be written to the buffer
+				 * 1 - debug trace will not be written
+				 * 0 - just errors will be written to the buffer
+				 */
+	/* a bit per module, 1 means mask it off, 0 means add it to the trace
+	 * buffer
+	 */
+	u32	modules_mask[2];
+
+	/* Warning: the following pointers are assumed to be 32bits as they are
+	 * used only in the MFW
+	 */
+	/* The next trace will be written to this offset */
+	u32	trace_prod;
+	/* The oldest valid trace starts at this offset (usually very close
+	 * after the current producer)
+	 */
+	u32	trace_oldest;
+};
+
+enum spad_sections {
+	SPAD_SECTION_TRACE,
+	SPAD_SECTION_NVM_CFG,
+	SPAD_SECTION_PUBLIC,
+	SPAD_SECTION_PRIVATE,
+	SPAD_SECTION_MAX
+};
+
+#define MCP_TRACE_SIZE          2048    /* 2kb */
+
+/* This section is located at a fixed location in the beginning of the
+ * scratchpad, to ensure that the MCP trace is not run over during MFW upgrade.
+ * All the rest of data has a floating location which differs from version to
+ * version, and is pointed by the mcp_meta_data below.
+ * Moreover, the spad_layout section is part of the MFW firmware, and is loaded
+ * with it from nvram in order to clear this portion.
+ */
+struct static_init {
+	u32 num_sections;
+	offsize_t sections[SPAD_SECTION_MAX];
+#define SECTION(_sec_) (*((offsize_t *)(STRUCT_OFFSET(sections[_sec_]))))
+
+	struct mcp_trace trace;
+#define MCP_TRACE_P ((struct mcp_trace *)(STRUCT_OFFSET(trace)))
+	u8 trace_buffer[MCP_TRACE_SIZE];
+#define MCP_TRACE_BUF ((u8 *)(STRUCT_OFFSET(trace_buffer)))
+	/* running_mfw has the same definition as in nvm_map.h.
+	 * This bit indicate both the running dir, and the running bundle.
+	 * It is set once when the LIM is loaded.
+	 */
+	u32 running_mfw;
+#define RUNNING_MFW (*((u32 *)(STRUCT_OFFSET(running_mfw))))
+	u32 build_time;
+#define MFW_BUILD_TIME (*((u32 *)(STRUCT_OFFSET(build_time))))
+	u32 reset_type;
+#define RESET_TYPE (*((u32 *)(STRUCT_OFFSET(reset_type))))
+	u32 mfw_secure_mode;
+#define MFW_SECURE_MODE (*((u32 *)(STRUCT_OFFSET(mfw_secure_mode))))
+	u16 pme_status_pf_bitmap;
+#define PME_STATUS_PF_BITMAP (*((u16 *)(STRUCT_OFFSET(pme_status_pf_bitmap))))
+	u16 pme_enable_pf_bitmap;
+#define PME_ENABLE_PF_BITMAP (*((u16 *)(STRUCT_OFFSET(pme_enable_pf_bitmap))))
+	u32 mim_nvm_addr;
+	u32 mim_start_addr;
+	u32 ah_pcie_link_params;
+#define AH_PCIE_LINK_PARAMS_LINK_SPEED_MASK     (0x000000ff)
+#define AH_PCIE_LINK_PARAMS_LINK_SPEED_SHIFT    (0)
+#define AH_PCIE_LINK_PARAMS_LINK_WIDTH_MASK     (0x0000ff00)
+#define AH_PCIE_LINK_PARAMS_LINK_WIDTH_SHIFT    (8)
+#define AH_PCIE_LINK_PARAMS_ASPM_MODE_MASK      (0x00ff0000)
+#define AH_PCIE_LINK_PARAMS_ASPM_MODE_SHIFT     (16)
+#define AH_PCIE_LINK_PARAMS_ASPM_CAP_MASK       (0xff000000)
+#define AH_PCIE_LINK_PARAMS_ASPM_CAP_SHIFT      (24)
+#define AH_PCIE_LINK_PARAMS (*((u32 *)(STRUCT_OFFSET(ah_pcie_link_params))))
+
+	u32 rsrv_persist[5];	/* Persist reserved for MFW upgrades */
+};
+
+#define NVM_MAGIC_VALUE		0x669955aa
+
+enum nvm_image_type {
+	NVM_TYPE_TIM1 = 0x01,
+	NVM_TYPE_TIM2 = 0x02,
+	NVM_TYPE_MIM1 = 0x03,
+	NVM_TYPE_MIM2 = 0x04,
+	NVM_TYPE_MBA = 0x05,
+	NVM_TYPE_MODULES_PN = 0x06,
+	NVM_TYPE_VPD = 0x07,
+	NVM_TYPE_MFW_TRACE1 = 0x08,
+	NVM_TYPE_MFW_TRACE2 = 0x09,
+	NVM_TYPE_NVM_CFG1 = 0x0a,
+	NVM_TYPE_L2B = 0x0b,
+	NVM_TYPE_DIR1 = 0x0c,
+	NVM_TYPE_EAGLE_FW1 = 0x0d,
+	NVM_TYPE_FALCON_FW1 = 0x0e,
+	NVM_TYPE_PCIE_FW1 = 0x0f,
+	NVM_TYPE_HW_SET = 0x10,
+	NVM_TYPE_LIM = 0x11,
+	NVM_TYPE_AVS_FW1 = 0x12,
+	NVM_TYPE_DIR2 = 0x13,
+	NVM_TYPE_CCM = 0x14,
+	NVM_TYPE_EAGLE_FW2 = 0x15,
+	NVM_TYPE_FALCON_FW2 = 0x16,
+	NVM_TYPE_PCIE_FW2 = 0x17,
+	NVM_TYPE_AVS_FW2 = 0x18,
+	NVM_TYPE_INIT_HW = 0x19,
+	NVM_TYPE_DEFAULT_CFG = 0x1a,
+	NVM_TYPE_MDUMP = 0x1b,
+	NVM_TYPE_META = 0x1c,
+	NVM_TYPE_ISCSI_CFG = 0x1d,
+	NVM_TYPE_FCOE_CFG = 0x1f,
+	NVM_TYPE_ETH_PHY_FW1 = 0x20,
+	NVM_TYPE_ETH_PHY_FW2 = 0x21,
+	NVM_TYPE_BDN = 0x22,
+	NVM_TYPE_8485X_PHY_FW = 0x23,
+	NVM_TYPE_PUB_KEY = 0x24,
+	NVM_TYPE_RECOVERY = 0x25,
+	NVM_TYPE_PLDM = 0x26,
+	NVM_TYPE_UPK1 = 0x27,
+	NVM_TYPE_UPK2 = 0x28,
+	NVM_TYPE_MASTER_KC = 0x29,
+	NVM_TYPE_BACKUP_KC = 0x2a,
+	NVM_TYPE_HW_DUMP = 0x2b,
+	NVM_TYPE_HW_DUMP_OUT = 0x2c,
+	NVM_TYPE_BIN_NVM_META = 0x30,
+	NVM_TYPE_ROM_TEST = 0xf0,
+	NVM_TYPE_88X33X0_PHY_FW = 0x31,
+	NVM_TYPE_88X33X0_PHY_SLAVE_FW = 0x32,
+	NVM_TYPE_MAX,
+};
+
+#define DIR_ID_1    (0)
 
 #endif /* __ECORE_HSI_COMMON__ */

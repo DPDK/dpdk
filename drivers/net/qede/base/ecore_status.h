@@ -8,6 +8,8 @@
 #define __ECORE_STATUS_H__
 
 enum _ecore_status_t {
+	ECORE_NOENT = -15,
+	ECORE_CONN_REFUSED = -14,
 	ECORE_CONN_RESET = -13,
 	ECORE_UNKNOWN_ERROR  = -12,
 	ECORE_NORESOURCES	 = -11,

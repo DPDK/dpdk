@@ -245,6 +245,7 @@ struct dbg_mode_hdr {
  * Attention register
  */
 struct dbg_attn_reg {
+	struct dbg_mode_hdr mode /* Mode header */;
 /* The offset of this registers attentions within the blocks attentions list
  * (a value in the range 0..number of block attentions-1)
  */
@@ -1047,7 +1048,6 @@ struct dbg_tools_data {
 /* Numbers of registers that were read since last log */
 	u32 num_regs_read;
 };
-
 
 
 #endif /* __ECORE_HSI_DEBUG_TOOLS__ */

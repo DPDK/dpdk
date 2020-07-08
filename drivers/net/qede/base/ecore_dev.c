@@ -6798,6 +6798,19 @@ void ecore_set_fw_mac_addr(__le16 *fw_msb,
 	((u8 *)fw_lsb)[1] = mac[4];
 }
 
+void ecore_set_platform_str(struct ecore_hwfn *p_hwfn,
+			    char *buf_str, u32 buf_size)
+{
+	u32 len;
+
+	OSAL_SNPRINTF(buf_str, buf_size, "Ecore %d.%d.%d.%d. ",
+		      ECORE_MAJOR_VERSION, ECORE_MINOR_VERSION,
+		      ECORE_REVISION_VERSION, ECORE_ENGINEERING_VERSION);
+
+	len = OSAL_STRLEN(buf_str);
+	OSAL_SET_PLATFORM_STR(p_hwfn, &buf_str[len], buf_size - len);
+}
+
 bool ecore_is_mf_fip_special(struct ecore_dev *p_dev)
 {
 	return !!OSAL_GET_BIT(ECORE_MF_FIP_SPECIAL, &p_dev->mf_bits);

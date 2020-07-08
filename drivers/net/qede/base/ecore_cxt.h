@@ -345,4 +345,9 @@ struct ecore_cxt_mngr {
 	u16				task_ctx_size;
 	u16				conn_ctx_size;
 };
+
+u16 ecore_get_cdut_num_pf_init_pages(struct ecore_hwfn *p_hwfn);
+u16 ecore_get_cdut_num_vf_init_pages(struct ecore_hwfn *p_hwfn);
+u16 ecore_get_cdut_num_pf_work_pages(struct ecore_hwfn *p_hwfn);
+u16 ecore_get_cdut_num_vf_work_pages(struct ecore_hwfn *p_hwfn);
 #endif /* _ECORE_CID_ */

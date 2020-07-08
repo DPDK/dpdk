@@ -7,7 +7,6 @@
 #include "qede_ethdev.h"
 #include <rte_string_fns.h>
 #include <rte_alarm.h>
-#include <rte_version.h>
 #include <rte_kvargs.h>
 
 static const struct qed_eth_ops *qed_ops;

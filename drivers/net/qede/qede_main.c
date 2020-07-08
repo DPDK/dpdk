@@ -5,7 +5,6 @@
  */
 
 #include <limits.h>
-#include <time.h>
 #include <rte_alarm.h>
 #include <rte_string_fns.h>
 
@@ -66,7 +65,7 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 	hw_prepare_params.initiate_pf_flr = true;
 	hw_prepare_params.allow_mdump = false;
 	hw_prepare_params.b_en_pacing = false;
-	hw_prepare_params.epoch = (u32)time(NULL);
+	hw_prepare_params.epoch = OSAL_GET_EPOCH(ECORE_LEADING_HWFN(edev));
 	rc = ecore_hw_prepare(edev, &hw_prepare_params);
 	if (rc) {
 		DP_ERR(edev, "hw prepare failed\n");

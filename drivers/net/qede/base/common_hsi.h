@@ -145,6 +145,7 @@
 #define NUM_OF_CONNECTION_TYPES (8)
 #define NUM_OF_TASK_TYPES       (8)
 #define NUM_OF_LCIDS            (320)
+#define NUM_OF_LTIDS            (320)
 
 /* Global PXP windows (GTT) */
 #define NUM_OF_GTT          19

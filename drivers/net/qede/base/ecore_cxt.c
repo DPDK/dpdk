@@ -2186,3 +2186,63 @@ static u16 ecore_blk_calculate_pages(struct ecore_ilt_cli_blk *p_blk)
 
 	return DIV_ROUND_UP(p_blk->total_size, p_blk->real_size_in_page);
 }
+
+u16 ecore_get_cdut_num_pf_init_pages(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_ilt_client_cfg *p_cli;
+	struct ecore_ilt_cli_blk *p_blk;
+	u16 i, pages = 0;
+
+	p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUT];
+	for (i = 0; i < NUM_TASK_PF_SEGMENTS; i++) {
+		p_blk = &p_cli->pf_blks[CDUT_FL_SEG_BLK(i, PF)];
+		pages += ecore_blk_calculate_pages(p_blk);
+	}
+
+	return pages;
+}
+
+u16 ecore_get_cdut_num_vf_init_pages(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_ilt_client_cfg *p_cli;
+	struct ecore_ilt_cli_blk *p_blk;
+	u16 i, pages = 0;
+
+	p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUT];
+	for (i = 0; i < NUM_TASK_VF_SEGMENTS; i++) {
+		p_blk = &p_cli->vf_blks[CDUT_FL_SEG_BLK(i, VF)];
+		pages += ecore_blk_calculate_pages(p_blk);
+	}
+
+	return pages;
+}
+
+u16 ecore_get_cdut_num_pf_work_pages(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_ilt_client_cfg *p_cli;
+	struct ecore_ilt_cli_blk *p_blk;
+	u16 i, pages = 0;
+
+	p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUT];
+	for (i = 0; i < NUM_TASK_PF_SEGMENTS; i++) {
+		p_blk = &p_cli->pf_blks[CDUT_SEG_BLK(i)];
+		pages += ecore_blk_calculate_pages(p_blk);
+	}
+
+	return pages;
+}
+
+u16 ecore_get_cdut_num_vf_work_pages(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_ilt_client_cfg *p_cli;
+	struct ecore_ilt_cli_blk *p_blk;
+	u16 pages = 0, i;
+
+	p_cli = &p_hwfn->p_cxt_mngr->clients[ILT_CLI_CDUT];
+	for (i = 0; i < NUM_TASK_VF_SEGMENTS; i++) {
+		p_blk = &p_cli->vf_blks[CDUT_SEG_BLK(i)];
+		pages += ecore_blk_calculate_pages(p_blk);
+	}
+
+	return pages;
+}
