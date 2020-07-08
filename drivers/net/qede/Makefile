@@ -11,7 +11,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_pmd_qede.a
 
 CFLAGS += -O3
-CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_bus_pci
@@ -37,7 +36,6 @@ CFLAGS_BASE_DRIVER += -Wno-missing-prototypes
 
 ifneq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 CFLAGS_BASE_DRIVER += -Wno-unused-value
-CFLAGS_BASE_DRIVER += -Wno-format-nonliteral
 ifeq ($(OS_TYPE),Linux)
 ifeq ($(shell clang -Wno-shift-negative-value -Werror -E - < /dev/null > /dev/null 2>&1; echo $$?),0)
 CFLAGS_BASE_DRIVER += -Wno-shift-negative-value
@@ -48,6 +46,7 @@ endif
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
+CFLAGS += -Wno-format-nonliteral
 endif
 CFLAGS_BASE_DRIVER += -Wno-missing-declarations
 ifeq ($(shell test $(GCC_VERSION) -ge 46 && echo 1), 1)
@@ -104,5 +103,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_main.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_filter.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_debug.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

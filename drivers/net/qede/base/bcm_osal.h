@@ -457,7 +457,10 @@ void qed_set_platform_str(struct ecore_hwfn *p_hwfn,
 #define OSAL_SET_PLATFORM_STR(p_hwfn, buf_str, buf_size) \
 	qed_set_platform_str(p_hwfn, buf_str, buf_size)
 #define OSAL_GET_EPOCH(p_hwfn) ((u32)time(NULL))
-#define OSAL_DBG_ALLOC_USER_DATA(p_hwfn, user_data_ptr) (0)
+enum dbg_status	qed_dbg_alloc_user_data(struct ecore_hwfn *p_hwfn,
+					void **user_data_ptr);
+#define OSAL_DBG_ALLOC_USER_DATA(p_hwfn, user_data_ptr) \
+	qed_dbg_alloc_user_data(p_hwfn, user_data_ptr)
 #define OSAL_DB_REC_OCCURRED(p_hwfn) nothing
 
 #endif /* __BCM_OSAL_H */
