@@ -43,6 +43,10 @@ static int i40e_flow_destroy(struct rte_eth_dev *dev,
 			     struct rte_flow_error *error);
 static int i40e_flow_flush(struct rte_eth_dev *dev,
 			   struct rte_flow_error *error);
+static int i40e_flow_query(struct rte_eth_dev *dev,
+			   struct rte_flow *flow,
+			   const struct rte_flow_action *actions,
+			   void *data, struct rte_flow_error *error);
 static int
 i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 				  const struct rte_flow_item *pattern,
@@ -135,6 +139,7 @@ const struct rte_flow_ops i40e_flow_ops = {
 	.create = i40e_flow_create,
 	.destroy = i40e_flow_destroy,
 	.flush = i40e_flow_flush,
+	.query = i40e_flow_query,
 };
 
 static union i40e_filter_t cons_filter;
@@ -5691,4 +5696,48 @@ i40e_flow_flush_rss_filter(struct rte_eth_dev *dev)
 	}
 
 	return ret;
+}
+
+static int
+i40e_flow_query(struct rte_eth_dev *dev __rte_unused,
+		struct rte_flow *flow,
+		const struct rte_flow_action *actions,
+		void *data, struct rte_flow_error *error)
+{
+	struct i40e_rss_filter *rss_rule = (struct i40e_rss_filter *)flow->rule;
+	enum rte_filter_type filter_type = flow->filter_type;
+	struct rte_flow_action_rss *rss_conf = data;
+
+	if (!rss_rule) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "Invalid rule");
+		return -rte_errno;
+	}
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			if (filter_type != RTE_ETH_FILTER_HASH) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "action not supported");
+				return -rte_errno;
+			}
+			rte_memcpy(rss_conf,
+				   &rss_rule->rss_filter_info.conf,
+				   sizeof(struct rte_flow_action_rss));
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
+		}
+	}
+
+	return 0;
 }
