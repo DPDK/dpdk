@@ -1288,6 +1288,11 @@ enum i40e_filter_pctype
 				uint16_t flow_type);
 uint16_t i40e_pctype_to_flowtype(const struct i40e_adapter *adapter,
 				 enum i40e_filter_pctype pctype);
+int i40e_dev_set_gre_key_len(struct i40e_hw *hw, uint8_t len);
+void i40e_fdir_info_get(struct rte_eth_dev *dev,
+			struct rte_eth_fdir_info *fdir);
+void i40e_fdir_stats_get(struct rte_eth_dev *dev,
+			 struct rte_eth_fdir_stats *stat);
 int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 			  enum rte_filter_op filter_op,
 			  void *arg);

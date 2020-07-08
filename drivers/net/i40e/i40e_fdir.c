@@ -2169,7 +2169,7 @@ i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
  * @fdir: a pointer to a structure of type *rte_eth_fdir_info* to be filled with
  *    the flow director information.
  */
-static void
+void
 i40e_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -2214,7 +2214,7 @@ i40e_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir)
  * @stat: a pointer to a structure of type *rte_eth_fdir_stats* to be filled with
  *    the flow director statistics.
  */
-static void
+void
 i40e_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *stat)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);

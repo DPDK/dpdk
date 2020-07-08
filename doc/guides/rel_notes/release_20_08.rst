@@ -132,6 +132,8 @@ New Features
   Updated i40e PMD with new features and improvements, including:
 
   * Supported cloud filter for IPv4/6_TCP/UDP/SCTP with SRC port only or DST port only.
+  * Re-implemented get_fdir_info and get_fdir_stat in private API.
+  * Re-implemented set_gre_key_len in private API.
 
 * **Added DOCSIS protocol to rte_security.**
 

@@ -8973,7 +8973,7 @@ i40e_tunnel_filter_param_check(struct i40e_pf *pf,
 
 #define I40E_GL_PRS_FVBM_MSK_ENA 0x80000000
 #define I40E_GL_PRS_FVBM(_i)     (0x00269760 + ((_i) * 4))
-static int
+int
 i40e_dev_set_gre_key_len(struct i40e_hw *hw, uint8_t len)
 {
 	struct i40e_pf *pf = &((struct i40e_adapter *)hw->back)->pf;
