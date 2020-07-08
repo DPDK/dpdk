@@ -89,7 +89,7 @@ void
 mlx5_translate_port_name(const char *port_name_in,
 			 struct mlx5_switch_info *port_info_out)
 {
-	char pf_c1, pf_c2, vf_c1, vf_c2;
+	char pf_c1, pf_c2, vf_c1, vf_c2, eol;
 	char *end;
 	int sc_items;
 
@@ -97,9 +97,9 @@ mlx5_translate_port_name(const char *port_name_in,
 	 * Check for port-name as a string of the form pf0vf0
 	 * (support kernel ver >= 5.0 or OFED ver >= 4.6).
 	 */
-	sc_items = sscanf(port_name_in, "%c%c%d%c%c%d",
+	sc_items = sscanf(port_name_in, "%c%c%d%c%c%d%c",
 			  &pf_c1, &pf_c2, &port_info_out->pf_num,
-			  &vf_c1, &vf_c2, &port_info_out->port_name);
+			  &vf_c1, &vf_c2, &port_info_out->port_name, &eol);
 	if (sc_items == 6 &&
 	    pf_c1 == 'p' && pf_c2 == 'f' &&
 	    vf_c1 == 'v' && vf_c2 == 'f') {
@@ -110,8 +110,8 @@ mlx5_translate_port_name(const char *port_name_in,
 	 * Check for port-name as a string of the form p0
 	 * (support kernel ver >= 5.0, or OFED ver >= 4.6).
 	 */
-	sc_items = sscanf(port_name_in, "%c%d",
-			  &pf_c1, &port_info_out->port_name);
+	sc_items = sscanf(port_name_in, "%c%d%c",
+			  &pf_c1, &port_info_out->port_name, &eol);
 	if (sc_items == 2 && pf_c1 == 'p') {
 		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_UPLINK;
 		return;
@@ -120,8 +120,8 @@ mlx5_translate_port_name(const char *port_name_in,
 	 * Check for port-name as a string of the form pf0
 	 * (support kernel ver >= 5.7 for HPF representor on BF).
 	 */
-	sc_items = sscanf(port_name_in, "%c%c%d",
-			  &pf_c1, &pf_c2, &port_info_out->pf_num);
+	sc_items = sscanf(port_name_in, "%c%c%d%c",
+			  &pf_c1, &pf_c2, &port_info_out->pf_num, &eol);
 	if (sc_items == 3 && pf_c1 == 'p' && pf_c2 == 'f') {
 		port_info_out->port_name = -1;
 		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_PFHPF;
