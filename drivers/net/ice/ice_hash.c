@@ -100,6 +100,50 @@ struct rss_type_match_hdr hint_eth_ipv4_gtpu_ipv4 = {
 	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV4 |
 	ICE_FLOW_SEG_HDR_IPV_OTHER,
 	ETH_RSS_GTPU | ETH_RSS_IPV4};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_ipv4_udp = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV4_UDP};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_ipv4_tcp = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV4_TCP};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_ipv6 = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_GTPU | ETH_RSS_IPV6};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_ipv6_udp = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV6_UDP};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_ipv6_tcp = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV6_TCP};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_ipv4 = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_GTPU | ETH_RSS_IPV4};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_ipv4_udp = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV4_UDP};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_ipv4_tcp = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV4_TCP};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_ipv6 = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_GTPU | ETH_RSS_IPV6};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_ipv6_udp = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV6_UDP};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_ipv6_tcp = {
+	ICE_FLOW_SEG_HDR_GTPU_IP | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV6_TCP};
 struct rss_type_match_hdr hint_eth_ipv4_gtpu_eh_ipv4 = {
 	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV4 |
 	ICE_FLOW_SEG_HDR_IPV_OTHER,
@@ -112,6 +156,42 @@ struct rss_type_match_hdr hint_eth_ipv4_gtpu_eh_ipv4_tcp = {
 	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV4 |
 	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
 	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV4_TCP};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_eh_ipv6 = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_GTPU | ETH_RSS_IPV6};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_eh_ipv6_udp = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV6_UDP};
+struct rss_type_match_hdr hint_eth_ipv4_gtpu_eh_ipv6_tcp = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV6_TCP};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_eh_ipv4 = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_GTPU | ETH_RSS_IPV4};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_eh_ipv4_udp = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV4_UDP};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_eh_ipv4_tcp = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV4_TCP};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_eh_ipv6 = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
+	ETH_RSS_GTPU | ETH_RSS_IPV6};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_eh_ipv6_udp = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV6_UDP};
+struct rss_type_match_hdr hint_eth_ipv6_gtpu_eh_ipv6_tcp = {
+	ICE_FLOW_SEG_HDR_GTPU_EH | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
+	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV6_TCP};
 struct rss_type_match_hdr hint_eth_pppoes_ipv4 = {
 	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV4 |
 	ICE_FLOW_SEG_HDR_IPV_OTHER,
@@ -268,12 +348,52 @@ static struct ice_pattern_match_item ice_hash_pattern_list_comms[] = {
 		&hint_eth_ipv4_sctp},
 	{pattern_eth_ipv4_gtpu_ipv4,	    ICE_INSET_NONE,
 		&hint_eth_ipv4_gtpu_ipv4},
+	{pattern_eth_ipv4_gtpu_ipv4_udp,    ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_ipv4_udp},
+	{pattern_eth_ipv4_gtpu_ipv4_tcp,    ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_ipv4_tcp},
+	{pattern_eth_ipv4_gtpu_ipv6,	    ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_ipv6},
+	{pattern_eth_ipv4_gtpu_ipv6_udp,    ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_ipv6_udp},
+	{pattern_eth_ipv4_gtpu_ipv6_tcp,    ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_ipv6_tcp},
+	{pattern_eth_ipv6_gtpu_ipv4,	    ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_ipv4},
+	{pattern_eth_ipv6_gtpu_ipv4_udp,    ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_ipv4_udp},
+	{pattern_eth_ipv6_gtpu_ipv4_tcp,    ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_ipv4_tcp},
+	{pattern_eth_ipv6_gtpu_ipv6,	    ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_ipv6},
+	{pattern_eth_ipv6_gtpu_ipv6_udp,    ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_ipv6_udp},
+	{pattern_eth_ipv6_gtpu_ipv6_tcp,    ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_ipv6_tcp},
 	{pattern_eth_ipv4_gtpu_eh_ipv4,	    ICE_INSET_NONE,
 		&hint_eth_ipv4_gtpu_eh_ipv4},
 	{pattern_eth_ipv4_gtpu_eh_ipv4_udp, ICE_INSET_NONE,
 		&hint_eth_ipv4_gtpu_eh_ipv4_udp},
 	{pattern_eth_ipv4_gtpu_eh_ipv4_tcp, ICE_INSET_NONE,
 		&hint_eth_ipv4_gtpu_eh_ipv4_tcp},
+	{pattern_eth_ipv4_gtpu_eh_ipv6,	    ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_eh_ipv6},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_udp, ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_eh_ipv6_udp},
+	{pattern_eth_ipv4_gtpu_eh_ipv6_tcp, ICE_INSET_NONE,
+		&hint_eth_ipv4_gtpu_eh_ipv6_tcp},
+	{pattern_eth_ipv6_gtpu_eh_ipv4,	    ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_eh_ipv4},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_udp, ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_eh_ipv4_udp},
+	{pattern_eth_ipv6_gtpu_eh_ipv4_tcp, ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_eh_ipv4_tcp},
+	{pattern_eth_ipv6_gtpu_eh_ipv6,	    ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_eh_ipv6},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_udp, ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_eh_ipv6_udp},
+	{pattern_eth_ipv6_gtpu_eh_ipv6_tcp, ICE_INSET_NONE,
+		&hint_eth_ipv6_gtpu_eh_ipv6_tcp},
 	{pattern_eth_pppoes_ipv4,	    ICE_INSET_NONE,
 		&hint_eth_pppoes_ipv4},
 	{pattern_eth_pppoes_ipv4_udp,	    ICE_INSET_NONE,
