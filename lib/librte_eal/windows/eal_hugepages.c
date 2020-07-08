@@ -41,6 +41,10 @@ hugepage_claim_privilege(void)
 		goto exit;
 	}
 
+	/* AdjustTokenPrivileges() may succeed with ERROR_NOT_ALL_ASSIGNED. */
+	if (GetLastError() != ERROR_SUCCESS)
+		goto exit;
+
 	ret = 0;
 
 exit:
@@ -98,12 +102,13 @@ int
 eal_hugepage_info_init(void)
 {
 	if (hugepage_claim_privilege() < 0) {
-		RTE_LOG(ERR, EAL, "Cannot claim hugepage privilege\n");
+		RTE_LOG(ERR, EAL, "Cannot claim hugepage privilege\n"
+		"Verify that large-page support privilege is assigned to the current user\n");
 		return -1;
 	}
 
 	if (hugepage_info_init() < 0) {
-		RTE_LOG(ERR, EAL, "Cannot get hugepage information\n");
+		RTE_LOG(ERR, EAL, "Cannot discover available hugepages\n");
 		return -1;
 	}
 
