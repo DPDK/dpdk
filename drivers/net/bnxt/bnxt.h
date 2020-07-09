@@ -638,8 +638,6 @@ struct bnxt {
 #define BNXT_FW_CAP_ADV_FLOW_COUNTERS	BIT(6)
 #define BNXT_FW_CAP_HCOMM_FW_STATUS	BIT(7)
 
-	uint32_t		flow_flags;
-#define BNXT_FLOW_FLAG_L2_HDR_SRC_FILTER_EN	BIT(0)
 	pthread_mutex_t         flow_lock;
 
 	uint32_t		vnic_cap_flags;
