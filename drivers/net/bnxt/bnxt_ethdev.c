@@ -194,6 +194,9 @@ static void bnxt_free_link_info(struct bnxt *bp)
 
 static void bnxt_free_leds_info(struct bnxt *bp)
 {
+	if (BNXT_VF(bp))
+		return;
+
 	rte_free(bp->leds);
 	bp->leds = NULL;
 }
@@ -263,6 +266,9 @@ static int bnxt_alloc_link_info(struct bnxt *bp)
 
 static int bnxt_alloc_leds_info(struct bnxt *bp)
 {
+	if (BNXT_VF(bp))
+		return 0;
+
 	bp->leds = rte_zmalloc("bnxt_leds",
 			       BNXT_MAX_LED * sizeof(struct bnxt_led_info),
 			       0);
