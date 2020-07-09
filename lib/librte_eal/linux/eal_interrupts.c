@@ -26,7 +26,6 @@
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_debug.h>
 #include <rte_log.h>
@@ -1221,11 +1220,18 @@ eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
 {
 	unsigned int i, count = 0;
 	struct rte_epoll_event *rev;
+	uint32_t valid_status;
 
 	for (i = 0; i < n; i++) {
 		rev = evs[i].data.ptr;
-		if (!rev || !rte_atomic32_cmpset(&rev->status, RTE_EPOLL_VALID,
-						 RTE_EPOLL_EXEC))
+		valid_status =  RTE_EPOLL_VALID;
+		/* ACQUIRE memory ordering here pairs with RELEASE
+		 * ordering below acting as a lock to synchronize
+		 * the event data updating.
+		 */
+		if (!rev || !__atomic_compare_exchange_n(&rev->status,
+				    &valid_status, RTE_EPOLL_EXEC, 0,
+				    __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
 			continue;
 
 		events[count].status        = RTE_EPOLL_VALID;
@@ -1237,8 +1243,11 @@ eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
 			rev->epdata.cb_fun(rev->fd,
 					   rev->epdata.cb_arg);
 
-		rte_compiler_barrier();
-		rev->status = RTE_EPOLL_VALID;
+		/* the status update should be observed after
+		 * the other fields change.
+		 */
+		__atomic_store_n(&rev->status, RTE_EPOLL_VALID,
+				__ATOMIC_RELEASE);
 		count++;
 	}
 	return count;
@@ -1308,10 +1317,15 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 static inline void
 eal_epoll_data_safe_free(struct rte_epoll_event *ev)
 {
-	while (!rte_atomic32_cmpset(&ev->status, RTE_EPOLL_VALID,
-				    RTE_EPOLL_INVALID))
-		while (ev->status != RTE_EPOLL_VALID)
+	uint32_t valid_status = RTE_EPOLL_VALID;
+
+	while (!__atomic_compare_exchange_n(&ev->status, &valid_status,
+		    RTE_EPOLL_INVALID, 0, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+		while (__atomic_load_n(&ev->status,
+				__ATOMIC_RELAXED) != RTE_EPOLL_VALID)
 			rte_pause();
+		valid_status = RTE_EPOLL_VALID;
+	}
 	memset(&ev->epdata, 0, sizeof(ev->epdata));
 	ev->fd = -1;
 	ev->epfd = -1;
@@ -1333,7 +1347,8 @@ rte_epoll_ctl(int epfd, int op, int fd,
 		epfd = rte_intr_tls_epfd();
 
 	if (op == EPOLL_CTL_ADD) {
-		event->status = RTE_EPOLL_VALID;
+		__atomic_store_n(&event->status, RTE_EPOLL_VALID,
+				__ATOMIC_RELAXED);
 		event->fd = fd;  /* ignore fd in event */
 		event->epfd = epfd;
 		ev.data.ptr = (void *)event;
@@ -1345,11 +1360,13 @@ rte_epoll_ctl(int epfd, int op, int fd,
 			op, fd, strerror(errno));
 		if (op == EPOLL_CTL_ADD)
 			/* rollback status when CTL_ADD fail */
-			event->status = RTE_EPOLL_INVALID;
+			__atomic_store_n(&event->status, RTE_EPOLL_INVALID,
+					__ATOMIC_RELAXED);
 		return -1;
 	}
 
-	if (op == EPOLL_CTL_DEL && event->status != RTE_EPOLL_INVALID)
+	if (op == EPOLL_CTL_DEL && __atomic_load_n(&event->status,
+			__ATOMIC_RELAXED) != RTE_EPOLL_INVALID)
 		eal_epoll_data_safe_free(event);
 
 	return 0;
@@ -1378,7 +1395,8 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	case RTE_INTR_EVENT_ADD:
 		epfd_op = EPOLL_CTL_ADD;
 		rev = &intr_handle->elist[efd_idx];
-		if (rev->status != RTE_EPOLL_INVALID) {
+		if (__atomic_load_n(&rev->status,
+				__ATOMIC_RELAXED) != RTE_EPOLL_INVALID) {
 			RTE_LOG(INFO, EAL, "Event already been added.\n");
 			return -EEXIST;
 		}
@@ -1401,7 +1419,8 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	case RTE_INTR_EVENT_DEL:
 		epfd_op = EPOLL_CTL_DEL;
 		rev = &intr_handle->elist[efd_idx];
-		if (rev->status == RTE_EPOLL_INVALID) {
+		if (__atomic_load_n(&rev->status,
+				__ATOMIC_RELAXED) == RTE_EPOLL_INVALID) {
 			RTE_LOG(INFO, EAL, "Event does not exist.\n");
 			return -EPERM;
 		}
@@ -1426,12 +1445,12 @@ rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 
 	for (i = 0; i < intr_handle->nb_efd; i++) {
 		rev = &intr_handle->elist[i];
-		if (rev->status == RTE_EPOLL_INVALID)
+		if (__atomic_load_n(&rev->status,
+				__ATOMIC_RELAXED) == RTE_EPOLL_INVALID)
 			continue;
 		if (rte_epoll_ctl(rev->epfd, EPOLL_CTL_DEL, rev->fd, rev)) {
 			/* force free if the entry valid */
 			eal_epoll_data_safe_free(rev);
-			rev->status = RTE_EPOLL_INVALID;
 		}
 	}
 }

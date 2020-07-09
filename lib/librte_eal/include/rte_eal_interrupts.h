@@ -59,7 +59,7 @@ enum {
 
 /** interrupt epoll event obj, taken by epoll_event.ptr */
 struct rte_epoll_event {
-	volatile uint32_t status;  /**< OUT: event status */
+	uint32_t status;           /**< OUT: event status */
 	int fd;                    /**< OUT: event fd */
 	int epfd;       /**< OUT: epoll instance the ev associated with */
 	struct rte_epoll_data epdata;
