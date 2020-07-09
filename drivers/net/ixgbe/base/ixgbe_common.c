@@ -186,10 +186,6 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 		break;
 	}
 
-	if (!supported)
-		ERROR_REPORT2(IXGBE_ERROR_UNSUPPORTED,
-			      "Device %x does not support flow control autoneg",
-			      hw->device_id);
 	return supported;
 }
 
