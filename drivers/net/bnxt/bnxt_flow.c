@@ -1816,9 +1816,6 @@ done:
 			goto free_flow;
 		}
 
-		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
-		PMD_DRV_LOG(DEBUG, "Successfully created flow.\n");
-		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
 		if (filter->valid_flags & BNXT_FLOW_MARK_FLAG) {
 			PMD_DRV_LOG(DEBUG,
 				    "Mark action: mark id 0x%x, flow id 0x%x\n",
@@ -1833,15 +1830,21 @@ done:
 						   RTE_FLOW_ERROR_TYPE_HANDLE,
 						   NULL,
 						   "Flow with mark id exists");
+				bnxt_clear_one_vnic_filter(bp, filter);
 				goto free_filter;
 			}
 			bp->mark_table[flow_id].valid = true;
 			bp->mark_table[flow_id].mark_id = filter->mark;
 		}
+
+		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
+		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
+
 		if (BNXT_FLOW_XSTATS_EN(bp))
 			bp->flow_stat->flow_count++;
 		bnxt_release_flow_lock(bp);
 		bnxt_setup_flow_counter(bp);
+		PMD_DRV_LOG(DEBUG, "Successfully created flow.\n");
 		return flow;
 	}
 
@@ -1940,11 +1943,7 @@ _bnxt_flow_destroy(struct bnxt *bp,
 		filter->flow_id = 0;
 	}
 
-	if (filter->filter_type == HWRM_CFA_EM_FILTER)
-		ret = bnxt_hwrm_clear_em_filter(bp, filter);
-	if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
-		ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
-	ret = bnxt_hwrm_clear_l2_filter(bp, filter);
+	ret = bnxt_clear_one_vnic_filter(bp, filter);
 
 done:
 	if (!ret) {

@@ -276,4 +276,6 @@ int bnxt_hwrm_get_dflt_vnic_svif(struct bnxt *bp, uint16_t fid,
 int bnxt_hwrm_parent_pf_qcfg(struct bnxt *bp);
 int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp);
 int bnxt_hwrm_oem_cmd(struct bnxt *bp, uint32_t entry_num);
+int bnxt_clear_one_vnic_filter(struct bnxt *bp,
+			       struct bnxt_filter_info *filter);
 #endif
