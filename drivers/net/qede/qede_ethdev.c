@@ -1030,9 +1030,6 @@ static int qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 		}
 	}
 
-	if (mask & ETH_VLAN_EXTEND_MASK)
-		DP_ERR(edev, "Extend VLAN not supported\n");
-
 	qdev->vlan_offload_mask = mask;
 
 	DP_INFO(edev, "VLAN offload mask %d\n", mask);

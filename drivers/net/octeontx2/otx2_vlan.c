@@ -717,11 +717,6 @@ otx2_nix_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 
 	rxmode = &eth_dev->data->dev_conf.rxmode;
 
-	if (mask & ETH_VLAN_EXTEND_MASK) {
-		otx2_err("Extend offload not supported");
-		return -ENOTSUP;
-	}
-
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP) {
 			offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;

@@ -3258,12 +3258,14 @@ rte_eth_dev_set_vlan_ether_type(uint16_t port_id,
 int
 rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask)
 {
+	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev;
 	int ret = 0;
 	int mask = 0;
 	int cur, org = 0;
 	uint64_t orig_offloads;
 	uint64_t dev_offloads;
+	uint64_t new_offloads;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
@@ -3316,6 +3318,22 @@ rte_eth_dev_set_vlan_offload(uint16_t port_id, int offload_mask)
 	/*no change*/
 	if (mask == 0)
 		return ret;
+
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
+	/* Rx VLAN offloading must be within its device capabilities */
+	if ((dev_offloads & dev_info.rx_offload_capa) != dev_offloads) {
+		new_offloads = dev_offloads & ~orig_offloads;
+		RTE_ETHDEV_LOG(ERR,
+			"Ethdev port_id=%u requested new added VLAN offloads "
+			"0x%" PRIx64 " must be within Rx offloads capabilities "
+			"0x%" PRIx64 " in %s()\n",
+			port_id, new_offloads, dev_info.rx_offload_capa,
+			__func__);
+		return -EINVAL;
+	}
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_offload_set, -ENOTSUP);
 	dev->data->dev_conf.rxmode.offloads = dev_offloads;

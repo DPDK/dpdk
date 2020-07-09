@@ -1709,12 +1709,6 @@ static int hinic_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			  nic_dev->proc_dev_name, dev->data->port_id);
 	}
 
-	if (mask & ETH_VLAN_EXTEND_MASK) {
-		PMD_DRV_LOG(ERR, "Don't support vlan qinq, device: %s, port_id: %d",
-			  nic_dev->proc_dev_name, dev->data->port_id);
-		return -ENOTSUP;
-	}
-
 	return 0;
 }
 

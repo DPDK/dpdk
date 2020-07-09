@@ -43,16 +43,6 @@ octeontx_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 	rxmode = &dev->data->dev_conf.rxmode;
 
-	if (mask & ETH_VLAN_EXTEND_MASK) {
-		octeontx_log_err("Extend offload not supported");
-		return -ENOTSUP;
-	}
-
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		octeontx_log_err("VLAN strip offload not supported");
-		return -ENOTSUP;
-	}
-
 	if (mask & ETH_VLAN_FILTER_MASK) {
 		if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER) {
 			rc = octeontx_vlan_hw_filter(nic, true);

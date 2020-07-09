@@ -1562,28 +1562,9 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static int
-fm10k_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+fm10k_vlan_offload_set(struct rte_eth_dev *dev __rte_unused,
+		       int mask __rte_unused)
 {
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (!(dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_VLAN_STRIP))
-			PMD_INIT_LOG(ERR, "VLAN stripping is "
-					"always on in fm10k");
-	}
-
-	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_VLAN_EXTEND)
-			PMD_INIT_LOG(ERR, "VLAN QinQ is not "
-					"supported in fm10k");
-	}
-
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		if (!(dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_VLAN_FILTER))
-			PMD_INIT_LOG(ERR, "VLAN filter is always on in fm10k");
-	}
-
 	return 0;
 }
 

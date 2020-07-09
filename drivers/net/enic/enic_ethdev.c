@@ -367,18 +367,6 @@ static int enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 			enic->ig_vlan_strip_en = 0;
 	}
 
-	if ((mask & ETH_VLAN_FILTER_MASK) &&
-	    (offloads & DEV_RX_OFFLOAD_VLAN_FILTER)) {
-		dev_warning(enic,
-			"Configuration of VLAN filter is not supported\n");
-	}
-
-	if ((mask & ETH_VLAN_EXTEND_MASK) &&
-	    (offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)) {
-		dev_warning(enic,
-			"Configuration of extended VLAN is not supported\n");
-	}
-
 	return enic_set_vlan_strip(enic);
 }
 

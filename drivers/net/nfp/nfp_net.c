@@ -2353,11 +2353,6 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	new_ctrl = 0;
 
-	if ((mask & ETH_VLAN_FILTER_OFFLOAD) ||
-	    (mask & ETH_VLAN_EXTEND_OFFLOAD))
-		PMD_DRV_LOG(INFO, "No support for ETH_VLAN_FILTER_OFFLOAD or"
-			" ETH_VLAN_EXTEND_OFFLOAD");
-
 	/* Enable vlan strip if it is not configured yet */
 	if ((mask & ETH_VLAN_STRIP_OFFLOAD) &&
 	    !(hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN))

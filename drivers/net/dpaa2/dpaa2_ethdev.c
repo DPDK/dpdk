@@ -145,7 +145,7 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = dev->process_private;
-	int ret;
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -153,7 +153,7 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		/* VLAN Filter not avaialble */
 		if (!priv->max_vlan_filters) {
 			DPAA2_PMD_INFO("VLAN filter not available");
-			goto next_mask;
+			return -ENOTSUP;
 		}
 
 		if (dev->data->dev_conf.rxmode.offloads &
@@ -166,14 +166,8 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		if (ret < 0)
 			DPAA2_PMD_INFO("Unable to set vlan filter = %d", ret);
 	}
-next_mask:
-	if (mask & ETH_VLAN_EXTEND_MASK) {
-		if (dev->data->dev_conf.rxmode.offloads &
-			DEV_RX_OFFLOAD_VLAN_EXTEND)
-			DPAA2_PMD_INFO("VLAN extend offload not supported");
-	}
 
-	return 0;
+	return ret;
 }
 
 static int
