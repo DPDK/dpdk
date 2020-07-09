@@ -539,6 +539,19 @@ struct rte_eth_rss_conf {
 #define ETH_RSS_L2_SRC_ONLY        (1ULL << 59)
 #define ETH_RSS_L2_DST_ONLY        (1ULL << 58)
 
+/*
+ * Only select IPV6 address prefix as RSS input set according to
+ * https://tools.ietf.org/html/rfc6052
+ * Must be combined with ETH_RSS_IPV6, ETH_RSS_NONFRAG_IPV6_UDP,
+ * ETH_RSS_NONFRAG_IPV6_TCP, ETH_RSS_NONFRAG_IPV6_SCTP.
+ */
+#define RTE_ETH_RSS_L3_PRE32	   (1ULL << 57)
+#define RTE_ETH_RSS_L3_PRE40	   (1ULL << 56)
+#define RTE_ETH_RSS_L3_PRE48	   (1ULL << 55)
+#define RTE_ETH_RSS_L3_PRE56	   (1ULL << 54)
+#define RTE_ETH_RSS_L3_PRE64	   (1ULL << 53)
+#define RTE_ETH_RSS_L3_PRE96	   (1ULL << 52)
+
 /**
  * For input set change of hash filter, if SRC_ONLY and DST_ONLY of
  * the same level are used simultaneously, it is the same case as
@@ -560,6 +573,102 @@ rte_eth_rss_hf_refine(uint64_t rss_hf)
 
 	return rss_hf;
 }
+
+#define ETH_RSS_IPV6_PRE32 ( \
+		ETH_RSS_IPV6 | \
+		RTE_ETH_RSS_L3_PRE32)
+
+#define ETH_RSS_IPV6_PRE40 ( \
+		ETH_RSS_IPV6 | \
+		RTE_ETH_RSS_L3_PRE40)
+
+#define ETH_RSS_IPV6_PRE48 ( \
+		ETH_RSS_IPV6 | \
+		RTE_ETH_RSS_L3_PRE48)
+
+#define ETH_RSS_IPV6_PRE56 ( \
+		ETH_RSS_IPV6 | \
+		RTE_ETH_RSS_L3_PRE56)
+
+#define ETH_RSS_IPV6_PRE64 ( \
+		ETH_RSS_IPV6 | \
+		RTE_ETH_RSS_L3_PRE64)
+
+#define ETH_RSS_IPV6_PRE96 ( \
+		ETH_RSS_IPV6 | \
+		RTE_ETH_RSS_L3_PRE96)
+
+#define ETH_RSS_IPV6_PRE32_UDP ( \
+		ETH_RSS_NONFRAG_IPV6_UDP | \
+		RTE_ETH_RSS_L3_PRE32)
+
+#define ETH_RSS_IPV6_PRE40_UDP ( \
+		ETH_RSS_NONFRAG_IPV6_UDP | \
+		RTE_ETH_RSS_L3_PRE40)
+
+#define ETH_RSS_IPV6_PRE48_UDP ( \
+		ETH_RSS_NONFRAG_IPV6_UDP | \
+		RTE_ETH_RSS_L3_PRE48)
+
+#define ETH_RSS_IPV6_PRE56_UDP ( \
+		ETH_RSS_NONFRAG_IPV6_UDP | \
+		RTE_ETH_RSS_L3_PRE56)
+
+#define ETH_RSS_IPV6_PRE64_UDP ( \
+		ETH_RSS_NONFRAG_IPV6_UDP | \
+		RTE_ETH_RSS_L3_PRE64)
+
+#define ETH_RSS_IPV6_PRE96_UDP ( \
+		ETH_RSS_NONFRAG_IPV6_UDP | \
+		RTE_ETH_RSS_L3_PRE96)
+
+#define ETH_RSS_IPV6_PRE32_TCP ( \
+		ETH_RSS_NONFRAG_IPV6_TCP | \
+		RTE_ETH_RSS_L3_PRE32)
+
+#define ETH_RSS_IPV6_PRE40_TCP ( \
+		ETH_RSS_NONFRAG_IPV6_TCP | \
+		RTE_ETH_RSS_L3_PRE40)
+
+#define ETH_RSS_IPV6_PRE48_TCP ( \
+		ETH_RSS_NONFRAG_IPV6_TCP | \
+		RTE_ETH_RSS_L3_PRE48)
+
+#define ETH_RSS_IPV6_PRE56_TCP ( \
+		ETH_RSS_NONFRAG_IPV6_TCP | \
+		RTE_ETH_RSS_L3_PRE56)
+
+#define ETH_RSS_IPV6_PRE64_TCP ( \
+		ETH_RSS_NONFRAG_IPV6_TCP | \
+		RTE_ETH_RSS_L3_PRE64)
+
+#define ETH_RSS_IPV6_PRE96_TCP ( \
+		ETH_RSS_NONFRAG_IPV6_TCP | \
+		RTE_ETH_RSS_L3_PRE96)
+
+#define ETH_RSS_IPV6_PRE32_SCTP ( \
+		ETH_RSS_NONFRAG_IPV6_SCTP | \
+		RTE_ETH_RSS_L3_PRE32)
+
+#define ETH_RSS_IPV6_PRE40_SCTP ( \
+		ETH_RSS_NONFRAG_IPV6_SCTP | \
+		RTE_ETH_RSS_L3_PRE40)
+
+#define ETH_RSS_IPV6_PRE48_SCTP ( \
+		ETH_RSS_NONFRAG_IPV6_SCTP | \
+		RTE_ETH_RSS_L3_PRE48)
+
+#define ETH_RSS_IPV6_PRE56_SCTP ( \
+		ETH_RSS_NONFRAG_IPV6_SCTP | \
+		RTE_ETH_RSS_L3_PRE56)
+
+#define ETH_RSS_IPV6_PRE64_SCTP ( \
+		ETH_RSS_NONFRAG_IPV6_SCTP | \
+		RTE_ETH_RSS_L3_PRE64)
+
+#define ETH_RSS_IPV6_PRE96_SCTP ( \
+		ETH_RSS_NONFRAG_IPV6_SCTP | \
+		RTE_ETH_RSS_L3_PRE96)
 
 #define ETH_RSS_IP ( \
 	ETH_RSS_IPV4 | \
