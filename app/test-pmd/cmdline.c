@@ -2297,6 +2297,18 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_GENEVE;
 	else if (!strcmp(res->value, "nvgre"))
 		rss_conf.rss_hf = ETH_RSS_NVGRE;
+	else if (!strcmp(res->value, "l3-pre32"))
+		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE32;
+	else if (!strcmp(res->value, "l3-pre40"))
+		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE40;
+	else if (!strcmp(res->value, "l3-pre48"))
+		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE48;
+	else if (!strcmp(res->value, "l3-pre56"))
+		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE56;
+	else if (!strcmp(res->value, "l3-pre64"))
+		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE64;
+	else if (!strcmp(res->value, "l3-pre96"))
+		rss_conf.rss_hf = RTE_ETH_RSS_L3_PRE96;
 	else if (!strcmp(res->value, "l3-src-only"))
 		rss_conf.rss_hf = ETH_RSS_L3_SRC_ONLY;
 	else if (!strcmp(res->value, "l3-dst-only"))
