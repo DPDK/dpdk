@@ -12,11 +12,14 @@ DPDK_20.0 {
 	local: *;
 };
 
-EXPERIMENTAL {
+DPDK_21 {
 	global:
 
-	# added in 19.08
 	rte_ring_reset;
+} DPDK_20.0;
+
+EXPERIMENTAL {
+	global:
 
 	# added in 20.02
 	rte_ring_create_elem;
