@@ -4218,17 +4218,9 @@ s32 ixgbe_check_mac_link_generic(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		break;
 	case IXGBE_LINKS_SPEED_10_X550EM_A:
 		*speed = IXGBE_LINK_SPEED_UNKNOWN;
-#ifdef PREBOOT_SUPPORT
-		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
-		    hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L ||
-		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII ||
-		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII_L)
-			*speed = IXGBE_LINK_SPEED_10_FULL;
-#else
 		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
 		    hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)
 			*speed = IXGBE_LINK_SPEED_10_FULL;
-#endif /* PREBOOT_SUPPORT */
 		break;
 	default:
 		*speed = IXGBE_LINK_SPEED_UNKNOWN;

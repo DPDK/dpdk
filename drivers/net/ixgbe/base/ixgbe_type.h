@@ -2413,9 +2413,7 @@ enum {
 #define IXGBE_EEPROM_CTRL_2		1 /* EEPROM CTRL word 2 */
 #define IXGBE_EEPROM_CCD_BIT		2
 
-#ifndef IXGBE_EEPROM_GRANT_ATTEMPTS
 #define IXGBE_EEPROM_GRANT_ATTEMPTS	1000 /* EEPROM attempts to gain grant */
-#endif
 
 /* Number of 5 microseconds we wait for EERD read and
  * EERW write to complete */
@@ -3145,11 +3143,7 @@ enum ixgbe_fdir_pballoc_type {
 
 /* Host Interface Command Structures */
 
-#ifdef C99
 #pragma pack(push, 1)
-#else
-#pragma pack (1)
-#endif /* C99 */
 
 struct ixgbe_hic_hdr {
 	u8 cmd;
@@ -3262,11 +3256,7 @@ struct ixgbe_hic_phy_activity_resp {
 	__be32 data[FW_PHY_ACT_DATA_COUNT];
 };
 
-#ifdef C99
 #pragma pack(pop)
-#else
-#pragma pack()
-#endif /* C99 */
 
 /* Transmit Descriptor - Legacy */
 struct ixgbe_legacy_tx_desc {

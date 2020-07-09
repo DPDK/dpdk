@@ -1642,7 +1642,6 @@ STATIC s32 ixgbe_restart_an_internal_phy_x550em(struct ixgbe_hw *hw)
 	return status;
 }
 
-#ifndef PREBOOT_SUPPORT
 /**
  * ixgbe_setup_sgmii - Set up link for sgmii
  * @hw: pointer to hardware structure
@@ -1712,7 +1711,6 @@ STATIC s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 	return hw->phy.ops.setup_link_speed(hw, speed, autoneg_wait);
 }
 
-#endif /* PREBOOT_SUPPORT */
 /**
  * ixgbe_setup_sgmii_fw - Set up link for internal PHY SGMII auto-negotiation
  * @hw: pointer to hardware structure
@@ -1837,11 +1835,7 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 	case ixgbe_media_type_backplane:
 		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII ||
 		    hw->device_id == IXGBE_DEV_ID_X550EM_A_SGMII_L)
-#ifdef PREBOOT_SUPPORT
-			mac->ops.setup_link = ixgbe_setup_sgmii_fw;
-#else
 			mac->ops.setup_link = ixgbe_setup_sgmii;
-#endif /* PREBOOT_SUPPORT */
 		break;
 	default:
 		break;
@@ -1900,18 +1894,8 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 			*autoneg = false;
 			break;
 		case ixgbe_phy_ext_1g_t:
-#ifdef PREBOOT_SUPPORT
-			*speed = IXGBE_LINK_SPEED_1GB_FULL;
-			break;
-#endif /* PREBOOT_SUPPORT */
 		case ixgbe_phy_sgmii:
-#ifdef PREBOOT_SUPPORT
-			*speed = IXGBE_LINK_SPEED_1GB_FULL |
-				 IXGBE_LINK_SPEED_100_FULL |
-				 IXGBE_LINK_SPEED_10_FULL;
-#else
 			*speed = IXGBE_LINK_SPEED_1GB_FULL;
-#endif /* PREBOOT_SUPPORT */
 			break;
 		case ixgbe_phy_x550em_kr:
 			if (hw->mac.type == ixgbe_mac_X550EM_a) {
@@ -3662,13 +3646,7 @@ u64 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 			physical_layer |= IXGBE_PHYSICAL_LAYER_10BASE_T;
 		break;
 	case ixgbe_phy_sgmii:
-#ifdef PREBOOT_SUPPORT
-		physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_KX |
-				 IXGBE_PHYSICAL_LAYER_100BASE_TX |
-				 IXGBE_PHYSICAL_LAYER_10BASE_T;
-#else
 		physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_KX;
-#endif /* PREBOOT_SUPPORT */
 		break;
 	case ixgbe_phy_ext_1g_t:
 		physical_layer |= IXGBE_PHYSICAL_LAYER_1000BASE_T;
