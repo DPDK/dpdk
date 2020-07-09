@@ -6,7 +6,7 @@ Intel® IXGBE driver
 ===================
 
 This directory contains source code of FreeBSD ixgbe driver of version
-cid-ixgbe.2018.08.28.tar.gz released by the team which develop
+not-released-cid-ixgbe.2020.06.09.tar.gz released by the team which develop
 basic drivers for any ixgbe NIC. The sub-directory of base/
 contains the original source package.
 This driver is valid for the product(s) listed below
