@@ -475,7 +475,7 @@ static int wait_for_flr_finish(struct hinic_hwif *hwif)
 		rte_delay_ms(10);
 	} while (time_before(jiffies, end));
 
-	return -EFAULT;
+	return -ETIMEDOUT;
 }
 
 #define HINIC_WAIT_CMDQ_IDLE_TIMEOUT		1000
