@@ -1820,7 +1820,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	}
 	mbp_buf_size = rte_pktmbuf_data_room_size(mp);
 
-	if ((mbp_buf_size - RTE_PKTMBUF_HEADROOM) < dev_info.min_rx_bufsize) {
+	if (mbp_buf_size < dev_info.min_rx_bufsize + RTE_PKTMBUF_HEADROOM) {
 		RTE_ETHDEV_LOG(ERR,
 			"%s mbuf_data_room_size %d < %d (RTE_PKTMBUF_HEADROOM=%d + min_rx_bufsize(dev)=%d)\n",
 			mp->name, (int)mbp_buf_size,
