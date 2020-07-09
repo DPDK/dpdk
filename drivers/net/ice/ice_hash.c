@@ -113,16 +113,20 @@ struct rss_type_match_hdr hint_eth_ipv4_gtpu_eh_ipv4_tcp = {
 	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
 	ETH_RSS_GTPU | ETH_RSS_NONFRAG_IPV4_TCP};
 struct rss_type_match_hdr hint_eth_pppoes_ipv4 = {
-	ICE_FLOW_SEG_HDR_PPPOE,
+	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_IPV4};
 struct rss_type_match_hdr hint_eth_pppoes_ipv4_udp = {
-	ICE_FLOW_SEG_HDR_PPPOE,
+	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_NONFRAG_IPV4_UDP};
 struct rss_type_match_hdr hint_eth_pppoes_ipv4_tcp = {
-	ICE_FLOW_SEG_HDR_PPPOE,
+	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_NONFRAG_IPV4_TCP};
 struct rss_type_match_hdr hint_eth_pppoes_ipv4_sctp = {
-	ICE_FLOW_SEG_HDR_PPPOE,
+	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV4 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_SCTP,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_NONFRAG_IPV4_SCTP};
 struct rss_type_match_hdr hint_eth_ipv4_esp = {
 	ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV_OTHER |
@@ -218,16 +222,20 @@ struct rss_type_match_hdr hint_eth_vlan_ipv6_sctp = {
 	ETH_RSS_ETH | ETH_RSS_C_VLAN |
 	ETH_RSS_NONFRAG_IPV6_SCTP};
 struct rss_type_match_hdr hint_eth_pppoes_ipv6 = {
-	ICE_FLOW_SEG_HDR_PPPOE,
+	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_IPV6};
 struct rss_type_match_hdr hint_eth_pppoes_ipv6_udp = {
-	ICE_FLOW_SEG_HDR_PPPOE,
+	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_UDP,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_NONFRAG_IPV6_UDP};
 struct rss_type_match_hdr hint_eth_pppoes_ipv6_tcp = {
-	ICE_FLOW_SEG_HDR_PPPOE,
+	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_TCP,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_NONFRAG_IPV6_TCP};
 struct rss_type_match_hdr hint_eth_pppoes_ipv6_sctp = {
-	ICE_FLOW_SEG_HDR_PPPOE,
+	ICE_FLOW_SEG_HDR_PPPOE | ICE_FLOW_SEG_HDR_IPV6 |
+	ICE_FLOW_SEG_HDR_IPV_OTHER | ICE_FLOW_SEG_HDR_SCTP,
 	ETH_RSS_ETH | ETH_RSS_PPPOE | ETH_RSS_NONFRAG_IPV6_SCTP};
 struct rss_type_match_hdr hint_eth_pppoes = {
 	ICE_FLOW_SEG_HDR_PPPOE,
