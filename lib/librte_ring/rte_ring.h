@@ -40,6 +40,7 @@ extern "C" {
 #endif
 
 #include <rte_ring_core.h>
+#include <rte_ring_elem.h>
 
 /**
  * Calculate the memory size needed for a ring
@@ -400,10 +401,6 @@ rte_ring_sp_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 	return __rte_ring_do_enqueue(r, obj_table, n, RTE_RING_QUEUE_FIXED,
 			RTE_RING_SYNC_ST, free_space);
 }
-
-#ifdef ALLOW_EXPERIMENTAL_API
-#include <rte_ring_elem.h>
-#endif
 
 /**
  * Enqueue several objects on a ring.

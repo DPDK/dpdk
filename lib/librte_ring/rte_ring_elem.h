@@ -23,9 +23,6 @@ extern "C" {
 #include <rte_ring_core.h>
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Calculate the memory size needed for a ring with given element size
  *
  * This function returns the number of bytes needed for a ring, given
@@ -43,13 +40,9 @@ extern "C" {
  *   - -EINVAL - esize is not a multiple of 4 or count provided is not a
  *		 power of 2.
  */
-__rte_experimental
 ssize_t rte_ring_get_memsize_elem(unsigned int esize, unsigned int count);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Create a new ring named *name* that stores elements with given size.
  *
  * This function uses ``memzone_reserve()`` to allocate memory. Then it
@@ -109,7 +102,6 @@ ssize_t rte_ring_get_memsize_elem(unsigned int esize, unsigned int count);
  *    - EEXIST - a memzone with the same name already exists
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
-__rte_experimental
 struct rte_ring *rte_ring_create_elem(const char *name, unsigned int esize,
 			unsigned int count, int socket_id, unsigned int flags);
 
