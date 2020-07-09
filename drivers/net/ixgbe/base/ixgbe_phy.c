@@ -8,10 +8,10 @@
 
 STATIC void ixgbe_i2c_start(struct ixgbe_hw *hw);
 STATIC void ixgbe_i2c_stop(struct ixgbe_hw *hw);
-STATIC s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data);
+STATIC void ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data);
 STATIC s32 ixgbe_clock_out_i2c_byte(struct ixgbe_hw *hw, u8 data);
 STATIC s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw);
-STATIC s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data);
+STATIC void ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data);
 STATIC s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data);
 STATIC void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
 STATIC void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
@@ -46,11 +46,7 @@ STATIC s32 ixgbe_out_i2c_byte_ack(struct ixgbe_hw *hw, u8 byte)
  */
 STATIC s32 ixgbe_in_i2c_byte_ack(struct ixgbe_hw *hw, u8 *byte)
 {
-	s32 status;
-
-	status = ixgbe_clock_in_i2c_byte(hw, byte);
-	if (status)
-		return status;
+	ixgbe_clock_in_i2c_byte(hw, byte);
 	/* ACK */
 	return ixgbe_clock_out_i2c_bit(hw, false);
 }
@@ -123,8 +119,7 @@ s32 ixgbe_read_i2c_combined_generic_int(struct ixgbe_hw *hw, u8 addr, u16 reg,
 		if (ixgbe_in_i2c_byte_ack(hw, &low_bits))
 			goto fail;
 		/* Get csum */
-		if (ixgbe_clock_in_i2c_byte(hw, &csum_byte))
-			goto fail;
+		ixgbe_clock_in_i2c_byte(hw, &csum_byte);
 		/* NACK */
 		if (ixgbe_clock_out_i2c_bit(hw, false))
 			goto fail;
@@ -2034,9 +2029,7 @@ STATIC s32 ixgbe_read_i2c_byte_generic_int(struct ixgbe_hw *hw, u8 byte_offset,
 		if (status != IXGBE_SUCCESS)
 			goto fail;
 
-		status = ixgbe_clock_in_i2c_byte(hw, data);
-		if (status != IXGBE_SUCCESS)
-			goto fail;
+		ixgbe_clock_in_i2c_byte(hw, data);
 
 		status = ixgbe_clock_out_i2c_bit(hw, nack);
 		if (status != IXGBE_SUCCESS)
@@ -2281,7 +2274,7 @@ STATIC void ixgbe_i2c_stop(struct ixgbe_hw *hw)
  *
  * Clocks in one byte data via I2C data/clock
  **/
-STATIC s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data)
+STATIC void ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data)
 {
 	s32 i;
 	bool bit = 0;
@@ -2293,8 +2286,6 @@ STATIC s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data)
 		ixgbe_clock_in_i2c_bit(hw, &bit);
 		*data |= bit << i;
 	}
-
-	return IXGBE_SUCCESS;
 }
 
 /**
@@ -2390,7 +2381,7 @@ STATIC s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw)
  *
  * Clocks in one bit via I2C data/clock
  **/
-STATIC s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data)
+STATIC void ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data)
 {
 	u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL_BY_MAC(hw));
 	u32 data_oe_bit = IXGBE_I2C_DATA_OE_N_EN_BY_MAC(hw);
@@ -2415,8 +2406,6 @@ STATIC s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data)
 
 	/* Minimum low period of clock is 4.7 us */
 	usec_delay(IXGBE_I2C_T_LOW);
-
-	return IXGBE_SUCCESS;
 }
 
 /**
