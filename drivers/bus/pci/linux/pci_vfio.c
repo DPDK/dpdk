@@ -566,7 +566,7 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 		}
 
 		/* if there's a second part, try to map it */
-		if (map_addr != NULL
+		if (map_addr != MAP_FAILED
 			&& memreg[1].offset && memreg[1].size) {
 			void *second_addr = RTE_PTR_ADD(bar_addr,
 						(uintptr_t)(memreg[1].offset -
@@ -578,7 +578,7 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 							RTE_MAP_FORCE_ADDRESS);
 		}
 
-		if (map_addr == NULL) {
+		if (map_addr == NULL || map_addr == MAP_FAILED) {
 			munmap(bar_addr, bar->size);
 			bar_addr = MAP_FAILED;
 			RTE_LOG(ERR, EAL, "Failed to map pci BAR%d\n",

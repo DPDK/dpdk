@@ -3,6 +3,9 @@
  */
 
 #include <stdint.h>
+#ifndef RTE_EXEC_ENV_WINDOWS
+#include <sys/mman.h>
+#endif
 
 #include <rte_compat.h>
 
@@ -22,6 +25,7 @@ enum rte_mem_prot {
 
 /** Additional flags for memory mapping. */
 enum rte_map_flags {
+#ifdef RTE_EXEC_ENV_WINDOWS
 	/** Changes to the mapped memory are visible to other processes. */
 	RTE_MAP_SHARED = 1 << 0,
 	/** Mapping is not backed by a regular file. */
@@ -35,6 +39,12 @@ enum rte_map_flags {
 	 * it is not required to do so, thus mapping with this flag may fail.
 	 */
 	RTE_MAP_FORCE_ADDRESS = 1 << 3
+#else /* map mmap flags because they are exposed in pci_map_resource() API */
+	RTE_MAP_SHARED = MAP_SHARED,
+	RTE_MAP_ANONYMOUS = MAP_ANONYMOUS,
+	RTE_MAP_PRIVATE = MAP_PRIVATE,
+	RTE_MAP_FORCE_ADDRESS = MAP_FIXED,
+#endif
 };
 
 /**

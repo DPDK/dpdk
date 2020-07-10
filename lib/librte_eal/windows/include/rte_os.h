@@ -25,6 +25,12 @@ extern "C" {
 #define PATH_MAX _MAX_PATH
 #endif
 
+/* sys/mman.h
+ * The syscall mmap does not exist on Windows,
+ * but this error code is used in a badly defined DPDK API for PCI mapping.
+ */
+#define MAP_FAILED ((void *) -1)
+
 #define sleep(x) Sleep(1000 * (x))
 
 #define strerror_r(a, b, c) strerror_s(b, c, a)

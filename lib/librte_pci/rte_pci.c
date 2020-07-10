@@ -163,6 +163,7 @@ pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
 			__func__, fd, requested_addr, size,
 			(unsigned long long)offset,
 			rte_strerror(rte_errno), mapaddr);
+		mapaddr = MAP_FAILED; /* API uses mmap error code */
 	} else
 		RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
 
