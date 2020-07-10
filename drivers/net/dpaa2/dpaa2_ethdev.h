@@ -91,7 +91,7 @@
 #define DPAA2_PKT_TYPE_VLAN_2		0x0260
 
 /* enable timestamp in mbuf*/
-extern enum pmd_dpaa2_ts dpaa2_enable_ts;
+extern bool dpaa2_enable_ts;
 
 #define DPAA2_QOS_TABLE_RECONFIGURE	1
 #define DPAA2_FS_TABLE_RECONFIGURE	2

@@ -64,7 +64,7 @@ static uint64_t dev_tx_offloads_nodis =
 		DEV_TX_OFFLOAD_MULTI_SEGS;
 
 /* enable timestamp in mbuf */
-enum pmd_dpaa2_ts dpaa2_enable_ts;
+bool dpaa2_enable_ts;
 
 struct rte_dpaa2_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -105,12 +105,6 @@ static int dpaa2_dev_link_update(struct rte_eth_dev *dev,
 static int dpaa2_dev_set_link_up(struct rte_eth_dev *dev);
 static int dpaa2_dev_set_link_down(struct rte_eth_dev *dev);
 static int dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
-
-void
-rte_pmd_dpaa2_set_timestamp(enum pmd_dpaa2_ts enable)
-{
-	dpaa2_enable_ts = enable;
-}
 
 static int
 dpaa2_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)

@@ -108,7 +108,7 @@ dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd,
 	m->hash.rss = fd->simple.flc_hi;
 	m->ol_flags |= PKT_RX_RSS_HASH;
 
-	if (dpaa2_enable_ts == PMD_DPAA2_ENABLE_TS) {
+	if (dpaa2_enable_ts) {
 		m->timestamp = annotation->word2;
 		m->ol_flags |= PKT_RX_TIMESTAMP;
 		DPAA2_PMD_DP_DEBUG("pkt timestamp:0x%" PRIx64 "", m->timestamp);
