@@ -11,7 +11,7 @@
 #ifndef _PMD_ATLANTIC_H_
 #define _PMD_ATLANTIC_H_
 
-#include <rte_ethdev_driver.h>
+#include <rte_compat.h>
 
 /**
  * @warning

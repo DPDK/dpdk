@@ -15,8 +15,6 @@
  *
  */
 
-#include <rte_ethdev_driver.h>
-
 /**
  * Enable/Disable TX loopback
  *

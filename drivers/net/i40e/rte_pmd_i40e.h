@@ -14,7 +14,9 @@
  *
  */
 
-#include <rte_ethdev_driver.h>
+#include <rte_compat.h>
+#include <rte_ethdev.h>
+#include <rte_ether.h>
 
 /**
  * Response sent back to i40e driver from user app after callback

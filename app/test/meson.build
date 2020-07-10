@@ -396,6 +396,9 @@ cflags += '-D_GNU_SOURCE'
 # Strict-aliasing rules are violated by uint8_t[] to context size casts.
 cflags += '-fno-strict-aliasing'
 
+# Enable using internal APIs in unit tests
+cflags += ['-DALLOW_INTERNAL_API']
+
 test_dep_objs = []
 if dpdk_conf.has('RTE_LIBRTE_COMPRESSDEV')
 	compress_test_dep = dependency('zlib', required: false)

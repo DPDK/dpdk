@@ -6,7 +6,8 @@
 #ifndef _PMD_BNXT_H_
 #define _PMD_BNXT_H_
 
-#include <rte_ethdev_driver.h>
+#include <rte_ethdev.h>
+#include <rte_ether.h>
 
 /*
  * Response sent back to the caller after callback
