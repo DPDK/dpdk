@@ -643,7 +643,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t rx_queue_id,
 			 uint16_t nb_rx_desc,
 			 unsigned int socket_id __rte_unused,
-			 const struct rte_eth_rxconf *rx_conf __rte_unused,
+			 const struct rte_eth_rxconf *rx_conf,
 			 struct rte_mempool *mb_pool)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
@@ -659,6 +659,13 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	DPAA2_PMD_DEBUG("dev =%p, queue =%d, pool = %p, conf =%p",
 			dev, rx_queue_id, mb_pool, rx_conf);
+
+	/* Rx deferred start is not supported */
+	if (rx_conf->rx_deferred_start) {
+		DPAA2_PMD_ERR("%p:Rx deferred start not supported",
+				(void *)dev);
+		return -EINVAL;
+	}
 
 	if (!priv->bp_list || priv->bp_list->mp != mb_pool) {
 		bpid = mempool_to_bpid(mb_pool);
@@ -788,7 +795,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t tx_queue_id,
 			 uint16_t nb_tx_desc __rte_unused,
 			 unsigned int socket_id __rte_unused,
-			 const struct rte_eth_txconf *tx_conf __rte_unused)
+			 const struct rte_eth_txconf *tx_conf)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)
@@ -804,6 +811,13 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* Tx deferred start is not supported */
+	if (tx_conf->tx_deferred_start) {
+		DPAA2_PMD_ERR("%p:Tx deferred start not supported",
+				(void *)dev);
+		return -EINVAL;
+	}
 
 	/* Return if queue already configured */
 	if (dpaa2_q->flow_id != 0xffff) {
