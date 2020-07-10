@@ -64,7 +64,7 @@ static uint64_t dev_tx_offloads_nodis =
 		DEV_TX_OFFLOAD_MULTI_SEGS;
 
 /* enable timestamp in mbuf */
-bool dpaa2_enable_ts;
+bool dpaa2_enable_ts[RTE_MAX_ETHPORTS];
 
 struct rte_dpaa2_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -519,7 +519,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 #if !defined(RTE_LIBRTE_IEEE1588)
 	if (rx_offloads & DEV_RX_OFFLOAD_TIMESTAMP)
 #endif
-	dpaa2_enable_ts = true;
+		dpaa2_enable_ts[dev->data->port_id] = true;
 
 	if (tx_offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
 		tx_l3_csum_offload = true;
