@@ -36,8 +36,8 @@
  * - nb_pkts < RTE_VIRTIO_DESC_PER_LOOP, just return no packet
  */
 uint16_t
-virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
-	uint16_t nb_pkts)
+virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf
+		**__rte_restrict rx_pkts, uint16_t nb_pkts)
 {
 	struct virtnet_rx *rxvq = rx_queue;
 	struct virtqueue *vq = rxvq->vq;
