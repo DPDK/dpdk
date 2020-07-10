@@ -153,7 +153,10 @@ int rte_thread_setname(pthread_t id, const char *name)
 	int ret = ENOSYS;
 #if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
 #if __GLIBC_PREREQ(2, 12)
-	ret = pthread_setname_np(id, name);
+	char truncated[16];
+
+	strlcpy(truncated, name, sizeof(truncated));
+	ret = pthread_setname_np(id, truncated);
 #endif
 #endif
 	RTE_SET_USED(id);
