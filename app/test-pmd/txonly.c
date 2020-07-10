@@ -53,6 +53,12 @@ uint32_t tx_ip_dst_addr = (198U << 24) | (18 << 16) | (0 << 8) | 2;
 static struct rte_ipv4_hdr pkt_ip_hdr; /**< IP header of transmitted packets. */
 RTE_DEFINE_PER_LCORE(uint8_t, _ip_var); /**< IP address variation */
 static struct rte_udp_hdr pkt_udp_hdr; /**< UDP header of tx packets. */
+RTE_DEFINE_PER_LCORE(uint64_t, timestamp_qskew);
+					/**< Timestamp offset per queue */
+static uint64_t timestamp_mask; /**< Timestamp dynamic flag mask */
+static int32_t timestamp_off; /**< Timestamp dynamic field offset */
+static bool timestamp_enable; /**< Timestamp enable */
+static uint64_t timestamp_initial[RTE_MAX_ETHPORTS];
 
 static void
 copy_buf_to_pkt_segs(void* buf, unsigned len, struct rte_mbuf *pkt,
@@ -150,7 +156,8 @@ setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
 static inline bool
 pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 		struct rte_ether_hdr *eth_hdr, const uint16_t vlan_tci,
-		const uint16_t vlan_tci_outer, const uint64_t ol_flags)
+		const uint16_t vlan_tci_outer, const uint64_t ol_flags,
+		const uint16_t idx, const struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkt_segs[RTE_MAX_SEGS_PER_PKT];
 	struct rte_mbuf *pkt_seg;
@@ -213,6 +220,53 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
 			sizeof(struct rte_ether_hdr) +
 			sizeof(struct rte_ipv4_hdr));
+	if (unlikely(timestamp_enable)) {
+		uint64_t skew = RTE_PER_LCORE(timestamp_qskew);
+		struct {
+			rte_be32_t signature;
+			rte_be16_t pkt_idx;
+			rte_be16_t queue_idx;
+			rte_be64_t ts;
+		} timestamp_mark;
+
+		if (unlikely(!skew)) {
+			struct rte_eth_dev *dev = &rte_eth_devices[fs->tx_port];
+			unsigned int txqs_n = dev->data->nb_tx_queues;
+			uint64_t phase = tx_pkt_times_inter * fs->tx_queue /
+					 (txqs_n ? txqs_n : 1);
+			/*
+			 * Initialize the scheduling time phase shift
+			 * depending on queue index.
+			 */
+			skew = timestamp_initial[fs->tx_port] +
+			       tx_pkt_times_inter + phase;
+			RTE_PER_LCORE(timestamp_qskew) = skew;
+		}
+		timestamp_mark.pkt_idx = rte_cpu_to_be_16(idx);
+		timestamp_mark.queue_idx = rte_cpu_to_be_16(fs->tx_queue);
+		timestamp_mark.signature = rte_cpu_to_be_32(0xBEEFC0DE);
+		if (unlikely(!idx)) {
+			skew +=	tx_pkt_times_inter;
+			pkt->ol_flags |= timestamp_mask;
+			*RTE_MBUF_DYNFIELD
+				(pkt, timestamp_off, uint64_t *) = skew;
+			RTE_PER_LCORE(timestamp_qskew) = skew;
+			timestamp_mark.ts = rte_cpu_to_be_64(skew);
+		} else if (tx_pkt_times_intra) {
+			skew +=	tx_pkt_times_intra;
+			pkt->ol_flags |= timestamp_mask;
+			*RTE_MBUF_DYNFIELD
+				(pkt, timestamp_off, uint64_t *) = skew;
+			RTE_PER_LCORE(timestamp_qskew) = skew;
+			timestamp_mark.ts = rte_cpu_to_be_64(skew);
+		} else {
+			timestamp_mark.ts = RTE_BE64(0);
+		}
+		copy_buf_to_pkt(&timestamp_mark, sizeof(timestamp_mark), pkt,
+			sizeof(struct rte_ether_hdr) +
+			sizeof(struct rte_ipv4_hdr) +
+			sizeof(pkt_udp_hdr));
+	}
 	/*
 	 * Complete first mbuf of packet and append it to the
 	 * burst of packets to be transmitted.
@@ -275,7 +329,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 			if (unlikely(!pkt_burst_prepare(pkts_burst[nb_pkt], mbp,
 							&eth_hdr, vlan_tci,
 							vlan_tci_outer,
-							ol_flags))) {
+							ol_flags,
+							nb_pkt, fs))) {
 				rte_mempool_put_bulk(mbp,
 						(void **)&pkts_burst[nb_pkt],
 						nb_pkt_per_burst - nb_pkt);
@@ -290,7 +345,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 			if (unlikely(!pkt_burst_prepare(pkt, mbp, &eth_hdr,
 							vlan_tci,
 							vlan_tci_outer,
-							ol_flags))) {
+							ol_flags,
+							nb_pkt, fs))) {
 				rte_pktmbuf_free(pkt);
 				break;
 			}
@@ -302,6 +358,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		return;
 
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);
+
 	/*
 	 * Retry if necessary
 	 */
@@ -342,15 +399,33 @@ pkt_burst_transmit(struct fwd_stream *fs)
 }
 
 static void
-tx_only_begin(__rte_unused portid_t pi)
+tx_only_begin(portid_t pi)
 {
 	uint16_t pkt_data_len;
+	int dynf;
 
 	pkt_data_len = (uint16_t) (tx_pkt_length - (
 					sizeof(struct rte_ether_hdr) +
 					sizeof(struct rte_ipv4_hdr) +
 					sizeof(struct rte_udp_hdr)));
 	setup_pkt_udp_ip_headers(&pkt_ip_hdr, &pkt_udp_hdr, pkt_data_len);
+
+	timestamp_enable = false;
+	timestamp_mask = 0;
+	timestamp_off = -1;
+	RTE_PER_LCORE(timestamp_qskew) = 0;
+	dynf = rte_mbuf_dynflag_lookup
+				(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
+	if (dynf >= 0)
+		timestamp_mask = 1ULL << dynf;
+	dynf = rte_mbuf_dynfield_lookup
+				(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL);
+	if (dynf >= 0)
+		timestamp_off = dynf;
+	timestamp_enable = tx_pkt_times_inter &&
+			   timestamp_mask &&
+			   timestamp_off >= 0 &&
+			   !rte_eth_read_clock(pi, &timestamp_initial[pi]);
 }
 
 struct fwd_engine tx_only_engine = {

@@ -294,6 +294,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" Right now only applicable for CSUM and TXONLY"
 			" modes\n\n"
 
+			"set txtimes (x, y)\n"
+			"    Set the scheduling on timestamps"
+			" timings for the TXOMLY mode\n\n"
+
 			"set corelist (x[,y]*)\n"
 			"    Set the list of forwarding cores.\n\n"
 
@@ -3937,6 +3941,52 @@ cmdline_parse_inst_t cmd_set_txsplit = {
 	},
 };
 
+/* *** SET TIMES FOR TXONLY PACKETS SCHEDULING ON TIMESTAMPS *** */
+
+struct cmd_set_txtimes_result {
+	cmdline_fixed_string_t cmd_keyword;
+	cmdline_fixed_string_t txtimes;
+	cmdline_fixed_string_t tx_times;
+};
+
+static void
+cmd_set_txtimes_parsed(void *parsed_result,
+		       __rte_unused struct cmdline *cl,
+		       __rte_unused void *data)
+{
+	struct cmd_set_txtimes_result *res;
+	unsigned int tx_times[2] = {0, 0};
+	unsigned int n_times;
+
+	res = parsed_result;
+	n_times = parse_item_list(res->tx_times, "tx times",
+				  2, tx_times, 0);
+	if (n_times == 2)
+		set_tx_pkt_times(tx_times);
+}
+
+cmdline_parse_token_string_t cmd_set_txtimes_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_txtimes_result,
+				 cmd_keyword, "set");
+cmdline_parse_token_string_t cmd_set_txtimes_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_txtimes_result,
+				 txtimes, "txtimes");
+cmdline_parse_token_string_t cmd_set_txtimes_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_txtimes_result,
+				 tx_times, NULL);
+
+cmdline_parse_inst_t cmd_set_txtimes = {
+	.f = cmd_set_txtimes_parsed,
+	.data = NULL,
+	.help_str = "set txtimes <inter_burst>,<intra_burst>",
+	.tokens = {
+		(void *)&cmd_set_txtimes_keyword,
+		(void *)&cmd_set_txtimes_name,
+		(void *)&cmd_set_txtimes_value,
+		NULL,
+	},
+};
+
 /* *** ADD/REMOVE ALL VLAN IDENTIFIERS TO/FROM A PORT VLAN RX FILTER *** */
 struct cmd_rx_vlan_filter_all_result {
 	cmdline_fixed_string_t rx_vlan;
@@ -7425,6 +7475,8 @@ static void cmd_showcfg_parsed(void *parsed_result,
 		pkt_fwd_config_display(&cur_fwd_config);
 	else if (!strcmp(res->what, "txpkts"))
 		show_tx_pkt_segments();
+	else if (!strcmp(res->what, "txtimes"))
+		show_tx_pkt_times();
 }
 
 cmdline_parse_token_string_t cmd_showcfg_show =
@@ -7433,12 +7485,12 @@ cmdline_parse_token_string_t cmd_showcfg_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showcfg_result, cfg, "config");
 cmdline_parse_token_string_t cmd_showcfg_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showcfg_result, what,
-				 "rxtx#cores#fwd#txpkts");
+				 "rxtx#cores#fwd#txpkts#txtimes");
 
 cmdline_parse_inst_t cmd_showcfg = {
 	.f = cmd_showcfg_parsed,
 	.data = NULL,
-	.help_str = "show config rxtx|cores|fwd|txpkts",
+	.help_str = "show config rxtx|cores|fwd|txpkts|txtimes",
 	.tokens = {
 		(void *)&cmd_showcfg_show,
 		(void *)&cmd_showcfg_port,
@@ -18603,7 +18655,8 @@ cmdline_parse_token_string_t cmd_config_per_port_tx_offload_result_offload =
 			  "sctp_cksum#tcp_tso#udp_tso#outer_ipv4_cksum#"
 			  "qinq_insert#vxlan_tnl_tso#gre_tnl_tso#"
 			  "ipip_tnl_tso#geneve_tnl_tso#macsec_insert#"
-			  "mt_lockfree#multi_segs#mbuf_fast_free#security");
+			  "mt_lockfree#multi_segs#mbuf_fast_free#security#"
+			  "send_on_timestamp");
 cmdline_parse_token_string_t cmd_config_per_port_tx_offload_result_on_off =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_per_port_tx_offload_result,
@@ -18688,7 +18741,8 @@ cmdline_parse_inst_t cmd_config_per_port_tx_offload = {
 		    "sctp_cksum|tcp_tso|udp_tso|outer_ipv4_cksum|"
 		    "qinq_insert|vxlan_tnl_tso|gre_tnl_tso|"
 		    "ipip_tnl_tso|geneve_tnl_tso|macsec_insert|"
-		    "mt_lockfree|multi_segs|mbuf_fast_free|security on|off",
+		    "mt_lockfree|multi_segs|mbuf_fast_free|security|"
+		    "send_on_timestamp on|off",
 	.tokens = {
 		(void *)&cmd_config_per_port_tx_offload_result_port,
 		(void *)&cmd_config_per_port_tx_offload_result_config,
@@ -19360,6 +19414,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_log,
 	(cmdline_parse_inst_t *)&cmd_set_txpkts,
 	(cmdline_parse_inst_t *)&cmd_set_txsplit,
+	(cmdline_parse_inst_t *)&cmd_set_txtimes,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_list,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_mask,
 	(cmdline_parse_inst_t *)&cmd_set_fwd_mode,

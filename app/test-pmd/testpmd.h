@@ -420,6 +420,8 @@ extern struct rte_fdir_conf fdir_conf;
 extern uint16_t tx_pkt_length; /**< Length of TXONLY packet */
 extern uint16_t tx_pkt_seg_lengths[RTE_MAX_SEGS_PER_PKT]; /**< Seg. lengths */
 extern uint8_t  tx_pkt_nb_segs; /**< Number of segments in TX packets */
+extern uint32_t tx_pkt_times_intra;
+extern uint32_t tx_pkt_times_inter;
 
 enum tx_pkt_split {
 	TX_PKT_SPLIT_OFF,
@@ -772,6 +774,8 @@ void set_xstats_hide_zero(uint8_t on_off);
 void set_verbose_level(uint16_t vb_level);
 void set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs);
 void show_tx_pkt_segments(void);
+void set_tx_pkt_times(unsigned int *tx_times);
+void show_tx_pkt_times(void);
 void set_tx_pkt_split(const char *name);
 void set_nb_pkt_per_burst(uint16_t pkt_burst);
 char *list_pkt_forwarding_modes(void);

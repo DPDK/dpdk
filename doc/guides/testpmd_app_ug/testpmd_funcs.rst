@@ -266,7 +266,7 @@ show config
 Displays the configuration of the application.
 The configuration comes from the command-line, the runtime or the application defaults::
 
-   testpmd> show config (rxtx|cores|fwd|txpkts)
+   testpmd> show config (rxtx|cores|fwd|txpkts|txtimes)
 
 The available information categories are:
 
@@ -277,6 +277,8 @@ The available information categories are:
 * ``fwd``: Packet forwarding configuration.
 
 * ``txpkts``: Packets to TX configuration.
+
+* ``txtimes``: Burst time pattern for Tx only mode.
 
 For example:
 
@@ -721,6 +723,40 @@ Set the length of each segment of the TX-ONLY packets or length of packet for FL
    testpmd> set txpkts (x[,y]*)
 
 Where x[,y]* represents a CSV list of values, without white space.
+
+set txtimes
+~~~~~~~~~~~
+
+Configure the timing burst pattern for Tx only mode. This command enables
+the packet send scheduling on dynamic timestamp mbuf field and configures
+timing pattern in Tx only mode. In this mode, if scheduling is enabled
+application provides timestamps in the packets being sent. It is possible
+to configure delay (in unspecified device clock units) between bursts
+and between the packets within the burst::
+
+   testpmd> set txtimes (inter),(intra)
+
+where:
+
+* ``inter``  is the delay between the bursts in the device clock units.
+  If ``intra`` is zero, this is the time between the beginnings of the
+  first packets in the neighbour bursts, if ``intra`` is not zero,
+  ``inter`` specifies the time between the beginning of the first packet
+  of the current burst and the beginning of the last packet of the
+  previous burst. If ``inter`` parameter is zero the send scheduling
+  on timestamps is disabled (default).
+
+* ``intra`` is the delay between the packets within the burst specified
+  in the device clock units. The number of packets in the burst is defined
+  by regular burst setting. If ``intra`` parameter is zero no timestamps
+  provided in the packets excepting  the first one in the burst.
+
+As the result the bursts of packet will be transmitted with specific
+delays between the packets within the burst and specific delay between
+the bursts. The rte_eth_read_clock() must be supported by the device(s)
+and is supposed to be engaged to get the current device clock value
+and provide the reference for the timestamps. If there is no supported
+rte_eth_read_clock() there will be no send scheduling provided on the port.
 
 set txsplit
 ~~~~~~~~~~~

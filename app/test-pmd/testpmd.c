@@ -220,6 +220,12 @@ enum tx_pkt_split tx_pkt_split = TX_PKT_SPLIT_OFF;
 uint8_t txonly_multi_flow;
 /**< Whether multiple flows are generated in TXONLY mode. */
 
+uint32_t tx_pkt_times_inter;
+/**< Timings for send scheduling in TXONLY mode, time between bursts. */
+
+uint32_t tx_pkt_times_intra;
+/**< Timings for send scheduling in TXONLY mode, time between packets. */
+
 uint16_t nb_pkt_per_burst = DEF_PKT_BURST; /**< Number of packets per burst. */
 uint16_t mb_mempool_cache = DEF_MBUF_CACHE; /**< Size of mbuf mempool cache. */
 
