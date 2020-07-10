@@ -81,6 +81,13 @@ New Features
   Added the RegEx library which provides an API for offload of regular
   expressions search operations to hardware or software accelerator devices.
 
+
+* **Introduced send packet scheduling on the timestamps.**
+
+   Added the new mbuf dynamic field and flag to provide timestamp on what packet
+   transmitting can be synchronized. The device Tx offload flag is added to
+   indicate the PMD supports send scheduling.
+
 * **Updated PCAP driver.**
 
   Updated PCAP driver with new features and improvements, including:

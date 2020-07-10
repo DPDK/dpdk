@@ -1287,6 +1287,10 @@ struct rte_eth_conf {
 /** Device supports outer UDP checksum */
 #define DEV_TX_OFFLOAD_OUTER_UDP_CKSUM  0x00100000
 
+/** Device supports send on timestamp */
+#define DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP 0x00200000
+
+
 #define RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP 0x00000001
 /**< Device supports Rx queue setup after device started*/
 #define RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP 0x00000002

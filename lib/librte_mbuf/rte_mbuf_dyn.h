@@ -250,4 +250,35 @@ void rte_mbuf_dyn_dump(FILE *out);
 #define RTE_MBUF_DYNFIELD_METADATA_NAME "rte_flow_dynfield_metadata"
 #define RTE_MBUF_DYNFLAG_METADATA_NAME "rte_flow_dynflag_metadata"
 
+/**
+ * The timestamp dynamic field provides some timing information, the
+ * units and time references (initial phase) are not explicitly defined
+ * but are maintained always the same for a given port. Some devices allow
+ * to query rte_eth_read_clock() that will return the current device
+ * timestamp. The dynamic Tx timestamp flag tells whether the field contains
+ * actual timestamp value for the packets being sent, this value can be
+ * used by PMD to schedule packet sending.
+ *
+ * After PKT_RX_TIMESTAMP flag and fixed timestamp field deprecation
+ * and obsoleting, the dedicated Rx timestamp flag is supposed to be
+ * introduced and the shared dynamic timestamp field will be used
+ * to handle the timestamps on receiving datapath as well.
+ */
+#define RTE_MBUF_DYNFIELD_TIMESTAMP_NAME "rte_dynfield_timestamp"
+
+/**
+ * When PMD sees the RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME flag set on the
+ * packet being sent it tries to synchronize the time of packet appearing
+ * on the wire with the specified packet timestamp. If the specified one
+ * is in the past it should be ignored, if one is in the distant future
+ * it should be capped with some reasonable value (in range of seconds).
+ *
+ * There is no any packet reordering according to timestamps is supposed,
+ * neither for packet within the burst, nor for the whole bursts, it is
+ * an entirely application responsibility to generate packets and its
+ * timestamps in desired order. The timestamps might be put only in
+ * the first packet in the burst providing the entire burst scheduling.
+ */
+#define RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME "rte_dynflag_tx_timestamp"
+
 #endif
