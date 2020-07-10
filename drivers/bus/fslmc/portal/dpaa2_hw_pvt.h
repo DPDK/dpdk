@@ -167,13 +167,16 @@ struct dpaa2_queue {
 		struct qbman_result *cscn;
 	};
 	struct rte_event ev;
-	int32_t eventfd;	/*!< Event Fd of this queue */
 	dpaa2_queue_cb_dqrr_t *cb;
 	dpaa2_queue_cb_eqresp_free_t *cb_eqresp_free;
 	struct dpaa2_bp_info *bp_array;
 	/*to store tx_conf_queue corresponding to tx_queue*/
 	struct dpaa2_queue *tx_conf_queue;
-};
+	int32_t eventfd;	/*!< Event Fd of this queue */
+	uint16_t nb_desc;
+	uint16_t resv;
+	uint64_t offloads;
+} __rte_cache_aligned;
 
 struct swp_active_dqs {
 	struct qbman_result *global_active_dqs;

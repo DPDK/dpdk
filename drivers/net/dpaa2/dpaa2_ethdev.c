@@ -677,6 +677,8 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[rx_queue_id];
 	dpaa2_q->mb_pool = mb_pool; /**< mbuf pool to populate RX ring. */
 	dpaa2_q->bp_array = rte_dpaa2_bpid_info;
+	dpaa2_q->nb_desc = UINT16_MAX;
+	dpaa2_q->offloads = rx_conf->offloads;
 
 	/*Get the flow id from given VQ id*/
 	flow_id = dpaa2_q->flow_id;
@@ -729,7 +731,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		struct dpni_taildrop taildrop;
 
 		taildrop.enable = 1;
-
+		dpaa2_q->nb_desc = nb_rx_desc;
 		/* Private CGR will use tail drop length as nb_rx_desc.
 		 * for rest cases we can use standard byte based tail drop.
 		 * There is no HW restriction, but number of CGRs are limited,
@@ -819,6 +821,9 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	dpaa2_q->nb_desc = UINT16_MAX;
+	dpaa2_q->offloads = tx_conf->offloads;
+
 	/* Return if queue already configured */
 	if (dpaa2_q->flow_id != 0xffff) {
 		dev->data->tx_queues[tx_queue_id] = dpaa2_q;
@@ -871,6 +876,8 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	if (!(priv->flags & DPAA2_TX_CGR_OFF)) {
 		struct dpni_congestion_notification_cfg cong_notif_cfg = {0};
+
+		dpaa2_q->nb_desc = nb_tx_desc;
 
 		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_FRAMES;
 		cong_notif_cfg.threshold_entry = nb_tx_desc;
@@ -2255,6 +2262,43 @@ dpaa2_dev_flow_ctrl(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static void
+dpaa2_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct dpaa2_queue *rxq;
+
+	rxq = (struct dpaa2_queue *)dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_desc;
+
+	qinfo->conf.rx_free_thresh = 1;
+	qinfo->conf.rx_drop_en = 1;
+	qinfo->conf.rx_deferred_start = 0;
+	qinfo->conf.offloads = rxq->offloads;
+}
+
+static void
+dpaa2_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct dpaa2_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_desc;
+	qinfo->conf.tx_thresh.pthresh = 0;
+	qinfo->conf.tx_thresh.hthresh = 0;
+	qinfo->conf.tx_thresh.wthresh = 0;
+
+	qinfo->conf.tx_free_thresh = 0;
+	qinfo->conf.tx_rs_thresh = 0;
+	qinfo->conf.offloads = txq->offloads;
+	qinfo->conf.tx_deferred_start = 0;
+}
+
 static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_configure	  = dpaa2_eth_dev_configure,
 	.dev_start	      = dpaa2_dev_start,
@@ -2296,6 +2340,8 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.rss_hash_update      = dpaa2_dev_rss_hash_update,
 	.rss_hash_conf_get    = dpaa2_dev_rss_hash_conf_get,
 	.filter_ctrl          = dpaa2_dev_flow_ctrl,
+	.rxq_info_get	      = dpaa2_rxq_info_get,
+	.txq_info_get	      = dpaa2_txq_info_get,
 #if defined(RTE_LIBRTE_IEEE1588)
 	.timesync_enable      = dpaa2_timesync_enable,
 	.timesync_disable     = dpaa2_timesync_disable,
