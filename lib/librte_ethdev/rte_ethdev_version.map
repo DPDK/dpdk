@@ -242,3 +242,9 @@ EXPERIMENTAL {
 	__rte_ethdev_trace_tx_burst;
 	rte_flow_get_aged_flows;
 };
+
+INTERNAL {
+	global:
+
+	rte_eth_dma_zone_free;
+};
