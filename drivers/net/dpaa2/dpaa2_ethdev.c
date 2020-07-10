@@ -281,6 +281,77 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
+dpaa2_dev_rx_burst_mode_get(struct rte_eth_dev *dev,
+			__rte_unused uint16_t queue_id,
+			struct rte_eth_burst_mode *mode)
+{
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	int ret = -EINVAL;
+	unsigned int i;
+	const struct burst_info {
+		uint64_t flags;
+		const char *output;
+	} rx_offload_map[] = {
+			{DEV_RX_OFFLOAD_CHECKSUM, " Checksum,"},
+			{DEV_RX_OFFLOAD_SCTP_CKSUM, " SCTP csum,"},
+			{DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPV4 csum,"},
+			{DEV_RX_OFFLOAD_OUTER_UDP_CKSUM, " Outer UDP csum,"},
+			{DEV_RX_OFFLOAD_VLAN_STRIP, " VLAN strip,"},
+			{DEV_RX_OFFLOAD_VLAN_FILTER, " VLAN filter,"},
+			{DEV_RX_OFFLOAD_JUMBO_FRAME, " Jumbo frame,"},
+			{DEV_RX_OFFLOAD_TIMESTAMP, " Timestamp,"},
+			{DEV_RX_OFFLOAD_RSS_HASH, " RSS,"},
+			{DEV_RX_OFFLOAD_SCATTER, " Scattered,"}
+	};
+
+	/* Update Rx offload info */
+	for (i = 0; i < RTE_DIM(rx_offload_map); i++) {
+		if (eth_conf->rxmode.offloads & rx_offload_map[i].flags) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				rx_offload_map[i].output);
+			ret = 0;
+			break;
+		}
+	}
+	return ret;
+}
+
+static int
+dpaa2_dev_tx_burst_mode_get(struct rte_eth_dev *dev,
+			__rte_unused uint16_t queue_id,
+			struct rte_eth_burst_mode *mode)
+{
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	int ret = -EINVAL;
+	unsigned int i;
+	const struct burst_info {
+		uint64_t flags;
+		const char *output;
+	} tx_offload_map[] = {
+			{DEV_TX_OFFLOAD_VLAN_INSERT, " VLAN Insert,"},
+			{DEV_TX_OFFLOAD_IPV4_CKSUM, " IPV4 csum,"},
+			{DEV_TX_OFFLOAD_UDP_CKSUM, " UDP csum,"},
+			{DEV_TX_OFFLOAD_TCP_CKSUM, " TCP csum,"},
+			{DEV_TX_OFFLOAD_SCTP_CKSUM, " SCTP csum,"},
+			{DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, " Outer IPV4 csum,"},
+			{DEV_TX_OFFLOAD_MT_LOCKFREE, " MT lockfree,"},
+			{DEV_TX_OFFLOAD_MBUF_FAST_FREE, " MBUF free disable,"},
+			{DEV_TX_OFFLOAD_MULTI_SEGS, " Scattered,"}
+	};
+
+	/* Update Tx offload info */
+	for (i = 0; i < RTE_DIM(tx_offload_map); i++) {
+		if (eth_conf->txmode.offloads & tx_offload_map[i].flags) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				tx_offload_map[i].output);
+			ret = 0;
+			break;
+		}
+	}
+	return ret;
+}
+
+static int
 dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
@@ -2200,6 +2271,8 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
 	.tx_queue_setup    = dpaa2_dev_tx_queue_setup,
 	.tx_queue_release  = dpaa2_dev_tx_queue_release,
+	.rx_burst_mode_get = dpaa2_dev_rx_burst_mode_get,
+	.tx_burst_mode_get = dpaa2_dev_tx_burst_mode_get,
 	.rx_queue_count       = dpaa2_dev_rx_queue_count,
 	.flow_ctrl_get	      = dpaa2_flow_ctrl_get,
 	.flow_ctrl_set	      = dpaa2_flow_ctrl_set,
