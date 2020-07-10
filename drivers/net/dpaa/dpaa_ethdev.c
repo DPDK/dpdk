@@ -748,6 +748,8 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		DPAA_PMD_ERR("%p:Rx deferred start not supported", (void *)dev);
 		return -EINVAL;
 	}
+	rxq->nb_desc = UINT16_MAX;
+	rxq->offloads = rx_conf->offloads;
 
 	DPAA_PMD_INFO("Rx queue setup for queue index: %d fq_id (0x%x)",
 			queue_idx, rxq->fqid);
@@ -895,6 +897,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (dpaa_intf->cgr_rx) {
 		struct qm_mcc_initcgr cgr_opts = {0};
 
+		rxq->nb_desc = nb_desc;
 		/* Enable tail drop with cgr on this queue */
 		qm_cgr_cs_thres_set64(&cgr_opts.cgr.cs_thres, nb_desc, 0);
 		ret = qman_modify_cgr(dpaa_intf->cgr_rx, 0, &cgr_opts);
@@ -1015,6 +1018,7 @@ int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		const struct rte_eth_txconf *tx_conf)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct qman_fq *txq = &dpaa_intf->tx_queues[queue_idx];
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1023,6 +1027,9 @@ int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		DPAA_PMD_ERR("%p:Tx deferred start not supported", (void *)dev);
 		return -EINVAL;
 	}
+	txq->nb_desc = UINT16_MAX;
+	txq->offloads = tx_conf->offloads;
+
 	if (queue_idx >= dev->data->nb_tx_queues) {
 		rte_errno = EOVERFLOW;
 		DPAA_PMD_ERR("%p: queue index out of range (%u >= %u)",
@@ -1031,8 +1038,8 @@ int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	}
 
 	DPAA_PMD_INFO("Tx queue setup for queue index: %d fq_id (0x%x)",
-			queue_idx, dpaa_intf->tx_queues[queue_idx].fqid);
-	dev->data->tx_queues[queue_idx] = &dpaa_intf->tx_queues[queue_idx];
+			queue_idx, txq->fqid);
+	dev->data->tx_queues[queue_idx] = txq;
 
 	return 0;
 }
@@ -1247,6 +1254,43 @@ static int dpaa_dev_queue_intr_disable(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+dpaa_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct qman_fq *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = dpaa_intf->bp_info->mp;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_desc;
+	qinfo->conf.rx_free_thresh = 1;
+	qinfo->conf.rx_drop_en = 1;
+	qinfo->conf.rx_deferred_start = 0;
+	qinfo->conf.offloads = rxq->offloads;
+}
+
+static void
+dpaa_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct qman_fq *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_desc;
+	qinfo->conf.tx_thresh.pthresh = 0;
+	qinfo->conf.tx_thresh.hthresh = 0;
+	qinfo->conf.tx_thresh.wthresh = 0;
+
+	qinfo->conf.tx_free_thresh = 0;
+	qinfo->conf.tx_rs_thresh = 0;
+	qinfo->conf.offloads = txq->offloads;
+	qinfo->conf.tx_deferred_start = 0;
+}
+
 static struct eth_dev_ops dpaa_devops = {
 	.dev_configure		  = dpaa_eth_dev_configure,
 	.dev_start		  = dpaa_eth_dev_start,
@@ -1262,6 +1306,9 @@ static struct eth_dev_ops dpaa_devops = {
 	.rx_queue_count		  = dpaa_dev_rx_queue_count,
 	.rx_burst_mode_get	  = dpaa_dev_rx_burst_mode_get,
 	.tx_burst_mode_get	  = dpaa_dev_tx_burst_mode_get,
+	.rxq_info_get		  = dpaa_rxq_info_get,
+	.txq_info_get		  = dpaa_txq_info_get,
+
 	.flow_ctrl_get		  = dpaa_flow_ctrl_get,
 	.flow_ctrl_set		  = dpaa_flow_ctrl_set,
 

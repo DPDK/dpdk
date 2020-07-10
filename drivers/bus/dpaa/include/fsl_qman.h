@@ -1251,6 +1251,9 @@ struct qman_fq {
 	void **qman_fq_lookup_table;
 	u32 key;
 #endif
+	u16 nb_desc;
+	u16 resv;
+	u64 offloads;
 };
 
 /*
