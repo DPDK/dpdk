@@ -8,6 +8,7 @@
 
 #include <rte_ip.h>
 #include <rte_lpm.h>
+#include <rte_malloc.h>
 
 #include "test.h"
 #include "test_xmmt_ops.h"
@@ -40,6 +41,9 @@ static int32_t test15(void);
 static int32_t test16(void);
 static int32_t test17(void);
 static int32_t test18(void);
+static int32_t test19(void);
+static int32_t test20(void);
+static int32_t test21(void);
 
 rte_lpm_test tests[] = {
 /* Test Cases */
@@ -61,7 +65,10 @@ rte_lpm_test tests[] = {
 	test15,
 	test16,
 	test17,
-	test18
+	test18,
+	test19,
+	test20,
+	test21
 };
 
 #define MAX_DEPTH 32
@@ -1263,6 +1270,288 @@ test18(void)
 	rte_lpm_free(lpm);
 #undef group_idx
 	return PASS;
+}
+
+/*
+ * rte_lpm_rcu_qsbr_add positive and negative tests.
+ *  - Add RCU QSBR variable to LPM
+ *  - Add another RCU QSBR variable to LPM
+ *  - Check returns
+ */
+int32_t
+test19(void)
+{
+	struct rte_lpm *lpm = NULL;
+	struct rte_lpm_config config;
+	size_t sz;
+	struct rte_rcu_qsbr *qsv;
+	struct rte_rcu_qsbr *qsv2;
+	int32_t status;
+	struct rte_lpm_rcu_config rcu_cfg = {0};
+
+	config.max_rules = MAX_RULES;
+	config.number_tbl8s = NUMBER_TBL8S;
+	config.flags = 0;
+
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
+	TEST_LPM_ASSERT(lpm != NULL);
+
+	/* Create RCU QSBR variable */
+	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
+	qsv = (struct rte_rcu_qsbr *)rte_zmalloc_socket(NULL, sz,
+					RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	TEST_LPM_ASSERT(qsv != NULL);
+
+	status = rte_rcu_qsbr_init(qsv, RTE_MAX_LCORE);
+	TEST_LPM_ASSERT(status == 0);
+
+	rcu_cfg.v = qsv;
+	/* Invalid QSBR mode */
+	rcu_cfg.mode = 2;
+	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL);
+	TEST_LPM_ASSERT(status != 0);
+
+	rcu_cfg.mode = RTE_LPM_QSBR_MODE_DQ;
+	/* Attach RCU QSBR to LPM table */
+	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL);
+	TEST_LPM_ASSERT(status == 0);
+
+	/* Create and attach another RCU QSBR to LPM table */
+	qsv2 = (struct rte_rcu_qsbr *)rte_zmalloc_socket(NULL, sz,
+					RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	TEST_LPM_ASSERT(qsv2 != NULL);
+
+	rcu_cfg.v = qsv2;
+	rcu_cfg.mode = RTE_LPM_QSBR_MODE_SYNC;
+	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL);
+	TEST_LPM_ASSERT(status != 0);
+
+	rte_lpm_free(lpm);
+	rte_free(qsv);
+	rte_free(qsv2);
+
+	return PASS;
+}
+
+/*
+ * rte_lpm_rcu_qsbr_add DQ mode functional test.
+ * Reader and writer are in the same thread in this test.
+ *  - Create LPM which supports 1 tbl8 group at max
+ *  - Add RCU QSBR variable to LPM
+ *  - Add a rule with depth=28 (> 24)
+ *  - Register a reader thread (not a real thread)
+ *  - Reader lookup existing rule
+ *  - Writer delete the rule
+ *  - Reader lookup the rule
+ *  - Writer re-add the rule (no available tbl8 group)
+ *  - Reader report quiescent state and unregister
+ *  - Writer re-add the rule
+ *  - Reader lookup the rule
+ */
+int32_t
+test20(void)
+{
+	struct rte_lpm *lpm = NULL;
+	struct rte_lpm_config config;
+	size_t sz;
+	struct rte_rcu_qsbr *qsv;
+	int32_t status;
+	uint32_t ip, next_hop, next_hop_return;
+	uint8_t depth;
+	struct rte_lpm_rcu_config rcu_cfg = {0};
+
+	config.max_rules = MAX_RULES;
+	config.number_tbl8s = 1;
+	config.flags = 0;
+
+	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
+	TEST_LPM_ASSERT(lpm != NULL);
+
+	/* Create RCU QSBR variable */
+	sz = rte_rcu_qsbr_get_memsize(1);
+	qsv = (struct rte_rcu_qsbr *)rte_zmalloc_socket(NULL, sz,
+				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	TEST_LPM_ASSERT(qsv != NULL);
+
+	status = rte_rcu_qsbr_init(qsv, 1);
+	TEST_LPM_ASSERT(status == 0);
+
+	rcu_cfg.v = qsv;
+	rcu_cfg.mode = RTE_LPM_QSBR_MODE_DQ;
+	/* Attach RCU QSBR to LPM table */
+	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL);
+	TEST_LPM_ASSERT(status == 0);
+
+	ip = RTE_IPV4(192, 0, 2, 100);
+	depth = 28;
+	next_hop = 1;
+	status = rte_lpm_add(lpm, ip, depth, next_hop);
+	TEST_LPM_ASSERT(status == 0);
+	TEST_LPM_ASSERT(lpm->tbl24[ip>>8].valid_group);
+
+	/* Register pseudo reader */
+	status = rte_rcu_qsbr_thread_register(qsv, 0);
+	TEST_LPM_ASSERT(status == 0);
+	rte_rcu_qsbr_thread_online(qsv, 0);
+
+	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
+	TEST_LPM_ASSERT(status == 0);
+	TEST_LPM_ASSERT(next_hop_return == next_hop);
+
+	/* Writer update */
+	status = rte_lpm_delete(lpm, ip, depth);
+	TEST_LPM_ASSERT(status == 0);
+	TEST_LPM_ASSERT(!lpm->tbl24[ip>>8].valid);
+
+	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
+	TEST_LPM_ASSERT(status != 0);
+
+	status = rte_lpm_add(lpm, ip, depth, next_hop);
+	TEST_LPM_ASSERT(status != 0);
+
+	/* Reader quiescent */
+	rte_rcu_qsbr_quiescent(qsv, 0);
+
+	status = rte_lpm_add(lpm, ip, depth, next_hop);
+	TEST_LPM_ASSERT(status == 0);
+
+	rte_rcu_qsbr_thread_offline(qsv, 0);
+	status = rte_rcu_qsbr_thread_unregister(qsv, 0);
+	TEST_LPM_ASSERT(status == 0);
+
+	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
+	TEST_LPM_ASSERT(status == 0);
+	TEST_LPM_ASSERT(next_hop_return == next_hop);
+
+	rte_lpm_free(lpm);
+	rte_free(qsv);
+
+	return PASS;
+}
+
+static struct rte_lpm *g_lpm;
+static struct rte_rcu_qsbr *g_v;
+static uint32_t g_ip = RTE_IPV4(192, 0, 2, 100);
+static volatile uint8_t writer_done;
+/* Report quiescent state interval every 1024 lookups. Larger critical
+ * sections in reader will result in writer polling multiple times.
+ */
+#define QSBR_REPORTING_INTERVAL 1024
+#define WRITER_ITERATIONS	512
+
+/*
+ * Reader thread using rte_lpm data structure with RCU.
+ */
+static int
+test_lpm_rcu_qsbr_reader(void *arg)
+{
+	int i;
+	uint32_t next_hop_return = 0;
+
+	RTE_SET_USED(arg);
+	/* Register this thread to report quiescent state */
+	rte_rcu_qsbr_thread_register(g_v, 0);
+	rte_rcu_qsbr_thread_online(g_v, 0);
+
+	do {
+		for (i = 0; i < QSBR_REPORTING_INTERVAL; i++)
+			rte_lpm_lookup(g_lpm, g_ip, &next_hop_return);
+
+		/* Update quiescent state */
+		rte_rcu_qsbr_quiescent(g_v, 0);
+	} while (!writer_done);
+
+	rte_rcu_qsbr_thread_offline(g_v, 0);
+	rte_rcu_qsbr_thread_unregister(g_v, 0);
+
+	return 0;
+}
+
+/*
+ * rte_lpm_rcu_qsbr_add sync mode functional test.
+ * 1 Reader and 1 writer. They cannot be in the same thread in this test.
+ *  - Create LPM which supports 1 tbl8 group at max
+ *  - Add RCU QSBR variable with sync mode to LPM
+ *  - Register a reader thread. Reader keeps looking up a specific rule.
+ *  - Writer keeps adding and deleting a specific rule with depth=28 (> 24)
+ */
+int32_t
+test21(void)
+{
+	struct rte_lpm_config config;
+	size_t sz;
+	int32_t status;
+	uint32_t i, next_hop;
+	uint8_t depth;
+	struct rte_lpm_rcu_config rcu_cfg = {0};
+
+	if (rte_lcore_count() < 2) {
+		printf("Not enough cores for %s, expecting at least 2\n",
+			__func__);
+		return TEST_SKIPPED;
+	}
+
+	config.max_rules = MAX_RULES;
+	config.number_tbl8s = 1;
+	config.flags = 0;
+
+	g_lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
+	TEST_LPM_ASSERT(g_lpm != NULL);
+
+	/* Create RCU QSBR variable */
+	sz = rte_rcu_qsbr_get_memsize(1);
+	g_v = (struct rte_rcu_qsbr *)rte_zmalloc_socket(NULL, sz,
+				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	TEST_LPM_ASSERT(g_v != NULL);
+
+	status = rte_rcu_qsbr_init(g_v, 1);
+	TEST_LPM_ASSERT(status == 0);
+
+	rcu_cfg.v = g_v;
+	rcu_cfg.mode = RTE_LPM_QSBR_MODE_SYNC;
+	/* Attach RCU QSBR to LPM table */
+	status = rte_lpm_rcu_qsbr_add(g_lpm, &rcu_cfg, NULL);
+	TEST_LPM_ASSERT(status == 0);
+
+	writer_done = 0;
+	/* Launch reader thread */
+	rte_eal_remote_launch(test_lpm_rcu_qsbr_reader, NULL,
+				rte_get_next_lcore(-1, 1, 0));
+
+	depth = 28;
+	next_hop = 1;
+	status = rte_lpm_add(g_lpm, g_ip, depth, next_hop);
+	if (status != 0) {
+		printf("%s: Failed to add rule\n", __func__);
+		goto error;
+	}
+
+	/* Writer update */
+	for (i = 0; i < WRITER_ITERATIONS; i++) {
+		status = rte_lpm_delete(g_lpm, g_ip, depth);
+		if (status != 0) {
+			printf("%s: Failed to delete rule at iteration %d\n",
+				__func__, i);
+			goto error;
+		}
+
+		status = rte_lpm_add(g_lpm, g_ip, depth, next_hop);
+		if (status != 0) {
+			printf("%s: Failed to add rule at iteration %d\n",
+				__func__, i);
+			goto error;
+		}
+	}
+
+error:
+	writer_done = 1;
+	/* Wait until reader exited. */
+	rte_eal_mp_wait_lcore();
+
+	rte_lpm_free(g_lpm);
+	rte_free(g_v);
+
+	return (status == 0) ? PASS : -1;
 }
 
 /*
