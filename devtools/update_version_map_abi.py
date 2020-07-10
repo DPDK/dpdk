@@ -160,6 +160,10 @@ def __generate_internal_abi(f_out, lines):
     print("};", file=f_out)
 
 def __main():
+    if sys.version_info.major < 3:
+        print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+        print("Please use Python 3 instead", file=sys.stderr)
+
     arg_parser = argparse.ArgumentParser(
         description='Merge versions in linker version script.')
 

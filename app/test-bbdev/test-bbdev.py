@@ -16,6 +16,10 @@ def kill(process):
     print("ERROR: Test app timed out")
     process.kill()
 
+if sys.version_info.major < 3:
+    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+    print("Please use Python 3 instead", file=sys.stderr)
+
 if "RTE_SDK" in os.environ:
     dpdk_path = os.environ["RTE_SDK"]
 else:

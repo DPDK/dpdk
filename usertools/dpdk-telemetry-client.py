@@ -23,6 +23,10 @@ try:
 except NameError:
     raw_input = input  # Python 3
 
+if sys.version_info.major < 3:
+    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+    print("Please use Python 3 instead", file=sys.stderr)
+
 class Socket:
 
     def __init__(self):

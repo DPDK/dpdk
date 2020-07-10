@@ -17,6 +17,10 @@ if len(sys.argv) < 3:
     usage()
     sys.exit(1)
 
+if sys.version_info.major < 3:
+    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+    print("Please use Python 3 instead", file=sys.stderr)
+
 target = sys.argv[2]
 
 test_whitelist = None

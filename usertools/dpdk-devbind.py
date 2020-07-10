@@ -10,6 +10,10 @@ import getopt
 import subprocess
 from os.path import exists, abspath, dirname, basename
 
+if sys.version_info.major < 3:
+    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
+    print("Please use Python 3 instead", file=sys.stderr)
+
 # The PCI base class for all devices
 network_class = {'Class': '02', 'Vendor': None, 'Device': None,
                     'SVendor': None, 'SDevice': None}
