@@ -2621,6 +2621,9 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6)
 		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP;
 
+	/* Propagate current RSS hash functions to caller */
+	rss_conf->rss_hf = rss_hf;
+
 	/* Reading the key size */
 	rss_conf->rss_key_len = nn_cfg_readl(hw, NFP_NET_CFG_RSS_KEY_SZ);
 
