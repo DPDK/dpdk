@@ -2928,6 +2928,7 @@ i40e_dev_free_queues(struct rte_eth_dev *dev)
 			continue;
 		i40e_dev_rx_queue_release(dev->data->rx_queues[i]);
 		dev->data->rx_queues[i] = NULL;
+		rte_eth_dma_zone_free(dev, "rx_ring", i);
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -2935,6 +2936,7 @@ i40e_dev_free_queues(struct rte_eth_dev *dev)
 			continue;
 		i40e_dev_tx_queue_release(dev->data->tx_queues[i]);
 		dev->data->tx_queues[i] = NULL;
+		rte_eth_dma_zone_free(dev, "tx_ring", i);
 	}
 }
 

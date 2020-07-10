@@ -1905,6 +1905,7 @@ ice_free_queues(struct rte_eth_dev *dev)
 			continue;
 		ice_rx_queue_release(dev->data->rx_queues[i]);
 		dev->data->rx_queues[i] = NULL;
+		rte_eth_dma_zone_free(dev, "rx_ring", i);
 	}
 	dev->data->nb_rx_queues = 0;
 
@@ -1913,6 +1914,7 @@ ice_free_queues(struct rte_eth_dev *dev)
 			continue;
 		ice_tx_queue_release(dev->data->tx_queues[i]);
 		dev->data->tx_queues[i] = NULL;
+		rte_eth_dma_zone_free(dev, "tx_ring", i);
 	}
 	dev->data->nb_tx_queues = 0;
 }
