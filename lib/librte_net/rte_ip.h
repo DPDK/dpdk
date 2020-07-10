@@ -324,8 +324,7 @@ rte_ipv4_phdr_cksum(const struct rte_ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
  * @param l4_hdr
  *   The pointer to the beginning of the L4 header.
  * @return
- *   The complemented checksum to set in the IP packet
- *   or 0 on error
+ *   The complemented checksum to set in the IP packet.
  */
 static inline uint16_t
 rte_ipv4_udptcp_cksum(const struct rte_ipv4_hdr *ipv4_hdr, const void *l4_hdr)
@@ -344,7 +343,12 @@ rte_ipv4_udptcp_cksum(const struct rte_ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 
 	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
 	cksum = (~cksum) & 0xffff;
-	if (cksum == 0)
+	/*
+	 * Per RFC 768:If the computed checksum is zero for UDP,
+	 * it is transmitted as all ones
+	 * (the equivalent in one's complement arithmetic).
+	 */
+	if (cksum == 0 && ipv4_hdr->next_proto_id == IPPROTO_UDP)
 		cksum = 0xffff;
 
 	return (uint16_t)cksum;
@@ -438,7 +442,12 @@ rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
 
 	cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
 	cksum = (~cksum) & 0xffff;
-	if (cksum == 0)
+	/*
+	 * Per RFC 768: If the computed checksum is zero for UDP,
+	 * it is transmitted as all ones
+	 * (the equivalent in one's complement arithmetic).
+	 */
+	if (cksum == 0 && ipv6_hdr->proto == IPPROTO_UDP)
 		cksum = 0xffff;
 
 	return (uint16_t)cksum;
