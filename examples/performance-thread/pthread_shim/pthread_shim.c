@@ -341,9 +341,9 @@ int pthread_cond_signal(pthread_cond_t *cond)
 }
 
 int
-pthread_cond_timedwait(pthread_cond_t *__restrict cond,
-		       pthread_mutex_t *__restrict mutex,
-		       const struct timespec *__restrict time)
+pthread_cond_timedwait(pthread_cond_t *__rte_restrict cond,
+		       pthread_mutex_t *__rte_restrict mutex,
+		       const struct timespec *__rte_restrict time)
 {
 	NOT_IMPLEMENTED;
 	return _sys_pthread_funcs.f_pthread_cond_timedwait(cond, mutex, time);
@@ -362,10 +362,10 @@ int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 }
 
 int
-pthread_create(pthread_t *__restrict tid,
-		const pthread_attr_t *__restrict attr,
+pthread_create(pthread_t *__rte_restrict tid,
+		const pthread_attr_t *__rte_restrict attr,
 		lthread_func_t func,
-	       void *__restrict arg)
+	       void *__rte_restrict arg)
 {
 	if (override) {
 		int lcore = -1;

@@ -113,13 +113,13 @@ mlx5_queue_state_modify(struct rte_eth_dev *dev,
 			struct mlx5_mp_arg_queue_state_modify *sm);
 
 static inline void
-mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *restrict tcp,
-			volatile struct mlx5_cqe *restrict cqe,
+mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *__rte_restrict tcp,
+			volatile struct mlx5_cqe *__rte_restrict cqe,
 			uint32_t phcsum);
 
 static inline void
-mlx5_lro_update_hdr(uint8_t *restrict padd,
-		    volatile struct mlx5_cqe *restrict cqe,
+mlx5_lro_update_hdr(uint8_t *__rte_restrict padd,
+		    volatile struct mlx5_cqe *__rte_restrict cqe,
 		    uint32_t len);
 
 uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
@@ -374,7 +374,7 @@ mlx5_set_swp_types_table(void)
  *   Software Parser flags are set by pointer.
  */
 static __rte_always_inline uint32_t
-txq_mbuf_to_swp(struct mlx5_txq_local *restrict loc,
+txq_mbuf_to_swp(struct mlx5_txq_local *__rte_restrict loc,
 		uint8_t *swp_flags,
 		unsigned int olx)
 {
@@ -747,7 +747,7 @@ check_err_cqe_seen(volatile struct mlx5_err_cqe *err_cqe)
  *   the error completion entry is handled successfully.
  */
 static int
-mlx5_tx_error_cqe_handle(struct mlx5_txq_data *restrict txq,
+mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
 			 volatile struct mlx5_err_cqe *err_cqe)
 {
 	if (err_cqe->syndrome != MLX5_CQE_SYNDROME_WR_FLUSH_ERR) {
@@ -1508,8 +1508,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
  *   The L3 pseudo-header checksum.
  */
 static inline void
-mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *restrict tcp,
-			volatile struct mlx5_cqe *restrict cqe,
+mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *__rte_restrict tcp,
+			volatile struct mlx5_cqe *__rte_restrict cqe,
 			uint32_t phcsum)
 {
 	uint8_t l4_type = (rte_be_to_cpu_16(cqe->hdr_type_etc) &
@@ -1550,8 +1550,8 @@ mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *restrict tcp,
  *   The packet length.
  */
 static inline void
-mlx5_lro_update_hdr(uint8_t *restrict padd,
-		    volatile struct mlx5_cqe *restrict cqe,
+mlx5_lro_update_hdr(uint8_t *__rte_restrict padd,
+		    volatile struct mlx5_cqe *__rte_restrict cqe,
 		    uint32_t len)
 {
 	union {
@@ -1965,7 +1965,7 @@ mlx5_check_vec_rx_support(struct rte_eth_dev *dev __rte_unused)
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_free_mbuf(struct rte_mbuf **restrict pkts,
+mlx5_tx_free_mbuf(struct rte_mbuf **__rte_restrict pkts,
 		  unsigned int pkts_n,
 		  unsigned int olx __rte_unused)
 {
@@ -2070,7 +2070,7 @@ mlx5_tx_free_mbuf(struct rte_mbuf **restrict pkts,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_free_elts(struct mlx5_txq_data *restrict txq,
+mlx5_tx_free_elts(struct mlx5_txq_data *__rte_restrict txq,
 		  uint16_t tail,
 		  unsigned int olx __rte_unused)
 {
@@ -2111,8 +2111,8 @@ mlx5_tx_free_elts(struct mlx5_txq_data *restrict txq,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_copy_elts(struct mlx5_txq_data *restrict txq,
-		  struct rte_mbuf **restrict pkts,
+mlx5_tx_copy_elts(struct mlx5_txq_data *__rte_restrict txq,
+		  struct rte_mbuf **__rte_restrict pkts,
 		  unsigned int pkts_n,
 		  unsigned int olx __rte_unused)
 {
@@ -2148,7 +2148,7 @@ mlx5_tx_copy_elts(struct mlx5_txq_data *restrict txq,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_comp_flush(struct mlx5_txq_data *restrict txq,
+mlx5_tx_comp_flush(struct mlx5_txq_data *__rte_restrict txq,
 		   volatile struct mlx5_cqe *last_cqe,
 		   unsigned int olx __rte_unused)
 {
@@ -2179,7 +2179,7 @@ mlx5_tx_comp_flush(struct mlx5_txq_data *restrict txq,
  * routine smaller, simple and faster - from experiments.
  */
 static void
-mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
+mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
 			  unsigned int olx __rte_unused)
 {
 	unsigned int count = MLX5_TX_COMP_MAX_CQE;
@@ -2268,8 +2268,8 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *restrict txq,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_request_completion(struct mlx5_txq_data *restrict txq,
-			   struct mlx5_txq_local *restrict loc,
+mlx5_tx_request_completion(struct mlx5_txq_data *__rte_restrict txq,
+			   struct mlx5_txq_local *__rte_restrict loc,
 			   unsigned int olx)
 {
 	uint16_t head = txq->elts_head;
@@ -2316,7 +2316,7 @@ mlx5_tx_request_completion(struct mlx5_txq_data *restrict txq,
 int
 mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
 {
-	struct mlx5_txq_data *restrict txq = tx_queue;
+	struct mlx5_txq_data *__rte_restrict txq = tx_queue;
 	uint16_t used;
 
 	mlx5_tx_handle_completion(txq, 0);
@@ -2347,14 +2347,14 @@ mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_cseg_init(struct mlx5_txq_data *restrict txq,
-		  struct mlx5_txq_local *restrict loc __rte_unused,
-		  struct mlx5_wqe *restrict wqe,
+mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
+		  struct mlx5_txq_local *__rte_restrict loc __rte_unused,
+		  struct mlx5_wqe *__rte_restrict wqe,
 		  unsigned int ds,
 		  unsigned int opcode,
 		  unsigned int olx __rte_unused)
 {
-	struct mlx5_wqe_cseg *restrict cs = &wqe->cseg;
+	struct mlx5_wqe_cseg *__rte_restrict cs = &wqe->cseg;
 
 	/* For legacy MPW replace the EMPW by TSO with modifier. */
 	if (MLX5_TXOFF_CONFIG(MPW) && opcode == MLX5_OPCODE_ENHANCED_MPSW)
@@ -2382,12 +2382,12 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *restrict txq,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_eseg_none(struct mlx5_txq_data *restrict txq __rte_unused,
-		  struct mlx5_txq_local *restrict loc,
-		  struct mlx5_wqe *restrict wqe,
+mlx5_tx_eseg_none(struct mlx5_txq_data *__rte_restrict txq __rte_unused,
+		  struct mlx5_txq_local *__rte_restrict loc,
+		  struct mlx5_wqe *__rte_restrict wqe,
 		  unsigned int olx)
 {
-	struct mlx5_wqe_eseg *restrict es = &wqe->eseg;
+	struct mlx5_wqe_eseg *__rte_restrict es = &wqe->eseg;
 	uint32_t csum;
 
 	/*
@@ -2440,13 +2440,13 @@ mlx5_tx_eseg_none(struct mlx5_txq_data *restrict txq __rte_unused,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_eseg_dmin(struct mlx5_txq_data *restrict txq __rte_unused,
-		  struct mlx5_txq_local *restrict loc,
-		  struct mlx5_wqe *restrict wqe,
+mlx5_tx_eseg_dmin(struct mlx5_txq_data *__rte_restrict txq __rte_unused,
+		  struct mlx5_txq_local *__rte_restrict loc,
+		  struct mlx5_wqe *__rte_restrict wqe,
 		  unsigned int vlan,
 		  unsigned int olx)
 {
-	struct mlx5_wqe_eseg *restrict es = &wqe->eseg;
+	struct mlx5_wqe_eseg *__rte_restrict es = &wqe->eseg;
 	uint32_t csum;
 	uint8_t *psrc, *pdst;
 
@@ -2524,15 +2524,15 @@ mlx5_tx_eseg_dmin(struct mlx5_txq_data *restrict txq __rte_unused,
  *   Pointer to the next Data Segment (aligned and wrapped around).
  */
 static __rte_always_inline struct mlx5_wqe_dseg *
-mlx5_tx_eseg_data(struct mlx5_txq_data *restrict txq,
-		  struct mlx5_txq_local *restrict loc,
-		  struct mlx5_wqe *restrict wqe,
+mlx5_tx_eseg_data(struct mlx5_txq_data *__rte_restrict txq,
+		  struct mlx5_txq_local *__rte_restrict loc,
+		  struct mlx5_wqe *__rte_restrict wqe,
 		  unsigned int vlan,
 		  unsigned int inlen,
 		  unsigned int tso,
 		  unsigned int olx)
 {
-	struct mlx5_wqe_eseg *restrict es = &wqe->eseg;
+	struct mlx5_wqe_eseg *__rte_restrict es = &wqe->eseg;
 	uint32_t csum;
 	uint8_t *psrc, *pdst;
 	unsigned int part;
@@ -2650,7 +2650,7 @@ mlx5_tx_eseg_data(struct mlx5_txq_data *restrict txq,
  */
 static __rte_always_inline unsigned int
 mlx5_tx_mseg_memcpy(uint8_t *pdst,
-		    struct mlx5_txq_local *restrict loc,
+		    struct mlx5_txq_local *__rte_restrict loc,
 		    unsigned int len,
 		    unsigned int must,
 		    unsigned int olx __rte_unused)
@@ -2747,15 +2747,15 @@ mlx5_tx_mseg_memcpy(uint8_t *pdst,
  *   wrapping check on its own).
  */
 static __rte_always_inline struct mlx5_wqe_dseg *
-mlx5_tx_eseg_mdat(struct mlx5_txq_data *restrict txq,
-		  struct mlx5_txq_local *restrict loc,
-		  struct mlx5_wqe *restrict wqe,
+mlx5_tx_eseg_mdat(struct mlx5_txq_data *__rte_restrict txq,
+		  struct mlx5_txq_local *__rte_restrict loc,
+		  struct mlx5_wqe *__rte_restrict wqe,
 		  unsigned int vlan,
 		  unsigned int inlen,
 		  unsigned int tso,
 		  unsigned int olx)
 {
-	struct mlx5_wqe_eseg *restrict es = &wqe->eseg;
+	struct mlx5_wqe_eseg *__rte_restrict es = &wqe->eseg;
 	uint32_t csum;
 	uint8_t *pdst;
 	unsigned int part, tlen = 0;
@@ -2851,9 +2851,9 @@ mlx5_tx_eseg_mdat(struct mlx5_txq_data *restrict txq,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_dseg_ptr(struct mlx5_txq_data *restrict txq,
-		 struct mlx5_txq_local *restrict loc,
-		 struct mlx5_wqe_dseg *restrict dseg,
+mlx5_tx_dseg_ptr(struct mlx5_txq_data *__rte_restrict txq,
+		 struct mlx5_txq_local *__rte_restrict loc,
+		 struct mlx5_wqe_dseg *__rte_restrict dseg,
 		 uint8_t *buf,
 		 unsigned int len,
 		 unsigned int olx __rte_unused)
@@ -2885,9 +2885,9 @@ mlx5_tx_dseg_ptr(struct mlx5_txq_data *restrict txq,
  *   compile time and may be used for optimization.
  */
 static __rte_always_inline void
-mlx5_tx_dseg_iptr(struct mlx5_txq_data *restrict txq,
-		  struct mlx5_txq_local *restrict loc,
-		  struct mlx5_wqe_dseg *restrict dseg,
+mlx5_tx_dseg_iptr(struct mlx5_txq_data *__rte_restrict txq,
+		  struct mlx5_txq_local *__rte_restrict loc,
+		  struct mlx5_wqe_dseg *__rte_restrict dseg,
 		  uint8_t *buf,
 		  unsigned int len,
 		  unsigned int olx __rte_unused)
@@ -2961,9 +2961,9 @@ mlx5_tx_dseg_iptr(struct mlx5_txq_data *restrict txq,
  *   last packet in the eMPW session.
  */
 static __rte_always_inline struct mlx5_wqe_dseg *
-mlx5_tx_dseg_empw(struct mlx5_txq_data *restrict txq,
-		  struct mlx5_txq_local *restrict loc __rte_unused,
-		  struct mlx5_wqe_dseg *restrict dseg,
+mlx5_tx_dseg_empw(struct mlx5_txq_data *__rte_restrict txq,
+		  struct mlx5_txq_local *__rte_restrict loc __rte_unused,
+		  struct mlx5_wqe_dseg *__rte_restrict dseg,
 		  uint8_t *buf,
 		  unsigned int len,
 		  unsigned int olx __rte_unused)
@@ -3024,9 +3024,9 @@ mlx5_tx_dseg_empw(struct mlx5_txq_data *restrict txq,
  *   Ring buffer wraparound check is needed.
  */
 static __rte_always_inline struct mlx5_wqe_dseg *
-mlx5_tx_dseg_vlan(struct mlx5_txq_data *restrict txq,
-		  struct mlx5_txq_local *restrict loc __rte_unused,
-		  struct mlx5_wqe_dseg *restrict dseg,
+mlx5_tx_dseg_vlan(struct mlx5_txq_data *__rte_restrict txq,
+		  struct mlx5_txq_local *__rte_restrict loc __rte_unused,
+		  struct mlx5_wqe_dseg *__rte_restrict dseg,
 		  uint8_t *buf,
 		  unsigned int len,
 		  unsigned int olx __rte_unused)
@@ -3112,15 +3112,15 @@ mlx5_tx_dseg_vlan(struct mlx5_txq_data *restrict txq,
  *   Actual size of built WQE in segments.
  */
 static __rte_always_inline unsigned int
-mlx5_tx_mseg_build(struct mlx5_txq_data *restrict txq,
-		   struct mlx5_txq_local *restrict loc,
-		   struct mlx5_wqe *restrict wqe,
+mlx5_tx_mseg_build(struct mlx5_txq_data *__rte_restrict txq,
+		   struct mlx5_txq_local *__rte_restrict loc,
+		   struct mlx5_wqe *__rte_restrict wqe,
 		   unsigned int vlan,
 		   unsigned int inlen,
 		   unsigned int tso,
 		   unsigned int olx __rte_unused)
 {
-	struct mlx5_wqe_dseg *restrict dseg;
+	struct mlx5_wqe_dseg *__rte_restrict dseg;
 	unsigned int ds;
 
 	MLX5_ASSERT((rte_pktmbuf_pkt_len(loc->mbuf) + vlan) >= inlen);
@@ -3225,11 +3225,11 @@ dseg_done:
  * Local context variables partially updated.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_packet_multi_tso(struct mlx5_txq_data *restrict txq,
-			struct mlx5_txq_local *restrict loc,
+mlx5_tx_packet_multi_tso(struct mlx5_txq_data *__rte_restrict txq,
+			struct mlx5_txq_local *__rte_restrict loc,
 			unsigned int olx)
 {
-	struct mlx5_wqe *restrict wqe;
+	struct mlx5_wqe *__rte_restrict wqe;
 	unsigned int ds, dlen, inlen, ntcp, vlan = 0;
 
 	/*
@@ -3314,12 +3314,12 @@ mlx5_tx_packet_multi_tso(struct mlx5_txq_data *restrict txq,
  * Local context variables partially updated.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_packet_multi_send(struct mlx5_txq_data *restrict txq,
-			  struct mlx5_txq_local *restrict loc,
+mlx5_tx_packet_multi_send(struct mlx5_txq_data *__rte_restrict txq,
+			  struct mlx5_txq_local *__rte_restrict loc,
 			  unsigned int olx)
 {
-	struct mlx5_wqe_dseg *restrict dseg;
-	struct mlx5_wqe *restrict wqe;
+	struct mlx5_wqe_dseg *__rte_restrict dseg;
+	struct mlx5_wqe *__rte_restrict wqe;
 	unsigned int ds, nseg;
 
 	MLX5_ASSERT(NB_SEGS(loc->mbuf) > 1);
@@ -3422,11 +3422,11 @@ mlx5_tx_packet_multi_send(struct mlx5_txq_data *restrict txq,
  * Local context variables partially updated.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_packet_multi_inline(struct mlx5_txq_data *restrict txq,
-			    struct mlx5_txq_local *restrict loc,
+mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
+			    struct mlx5_txq_local *__rte_restrict loc,
 			    unsigned int olx)
 {
-	struct mlx5_wqe *restrict wqe;
+	struct mlx5_wqe *__rte_restrict wqe;
 	unsigned int ds, inlen, dlen, vlan = 0;
 
 	MLX5_ASSERT(MLX5_TXOFF_CONFIG(INLINE));
@@ -3587,10 +3587,10 @@ do_align:
  * Local context variables updated.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_burst_mseg(struct mlx5_txq_data *restrict txq,
-		   struct rte_mbuf **restrict pkts,
+mlx5_tx_burst_mseg(struct mlx5_txq_data *__rte_restrict txq,
+		   struct rte_mbuf **__rte_restrict pkts,
 		   unsigned int pkts_n,
-		   struct mlx5_txq_local *restrict loc,
+		   struct mlx5_txq_local *__rte_restrict loc,
 		   unsigned int olx)
 {
 	MLX5_ASSERT(loc->elts_free && loc->wqe_free);
@@ -3676,10 +3676,10 @@ mlx5_tx_burst_mseg(struct mlx5_txq_data *restrict txq,
  * Local context variables updated.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_burst_tso(struct mlx5_txq_data *restrict txq,
-		  struct rte_mbuf **restrict pkts,
+mlx5_tx_burst_tso(struct mlx5_txq_data *__rte_restrict txq,
+		  struct rte_mbuf **__rte_restrict pkts,
 		  unsigned int pkts_n,
-		  struct mlx5_txq_local *restrict loc,
+		  struct mlx5_txq_local *__rte_restrict loc,
 		  unsigned int olx)
 {
 	MLX5_ASSERT(loc->elts_free && loc->wqe_free);
@@ -3687,8 +3687,8 @@ mlx5_tx_burst_tso(struct mlx5_txq_data *restrict txq,
 	pkts += loc->pkts_sent + 1;
 	pkts_n -= loc->pkts_sent;
 	for (;;) {
-		struct mlx5_wqe_dseg *restrict dseg;
-		struct mlx5_wqe *restrict wqe;
+		struct mlx5_wqe_dseg *__rte_restrict dseg;
+		struct mlx5_wqe *__rte_restrict wqe;
 		unsigned int ds, dlen, hlen, ntcp, vlan = 0;
 		uint8_t *dptr;
 
@@ -3800,8 +3800,8 @@ mlx5_tx_burst_tso(struct mlx5_txq_data *restrict txq,
  *  MLX5_TXCMP_CODE_EMPW - single-segment packet, use MPW.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_able_to_empw(struct mlx5_txq_data *restrict txq,
-		     struct mlx5_txq_local *restrict loc,
+mlx5_tx_able_to_empw(struct mlx5_txq_data *__rte_restrict txq,
+		     struct mlx5_txq_local *__rte_restrict loc,
 		     unsigned int olx,
 		     bool newp)
 {
@@ -3855,9 +3855,9 @@ mlx5_tx_able_to_empw(struct mlx5_txq_data *restrict txq,
  *  false - no match, eMPW should be restarted.
  */
 static __rte_always_inline bool
-mlx5_tx_match_empw(struct mlx5_txq_data *restrict txq __rte_unused,
-		   struct mlx5_wqe_eseg *restrict es,
-		   struct mlx5_txq_local *restrict loc,
+mlx5_tx_match_empw(struct mlx5_txq_data *__rte_restrict txq __rte_unused,
+		   struct mlx5_wqe_eseg *__rte_restrict es,
+		   struct mlx5_txq_local *__rte_restrict loc,
 		   uint32_t dlen,
 		   unsigned int olx)
 {
@@ -3909,8 +3909,8 @@ mlx5_tx_match_empw(struct mlx5_txq_data *restrict txq __rte_unused,
  *  false - no match, eMPW should be restarted.
  */
 static __rte_always_inline void
-mlx5_tx_sdone_empw(struct mlx5_txq_data *restrict txq,
-		   struct mlx5_txq_local *restrict loc,
+mlx5_tx_sdone_empw(struct mlx5_txq_data *__rte_restrict txq,
+		   struct mlx5_txq_local *__rte_restrict loc,
 		   unsigned int ds,
 		   unsigned int slen,
 		   unsigned int olx __rte_unused)
@@ -3954,11 +3954,11 @@ mlx5_tx_sdone_empw(struct mlx5_txq_data *restrict txq,
  *  false - no match, eMPW should be restarted.
  */
 static __rte_always_inline void
-mlx5_tx_idone_empw(struct mlx5_txq_data *restrict txq,
-		   struct mlx5_txq_local *restrict loc,
+mlx5_tx_idone_empw(struct mlx5_txq_data *__rte_restrict txq,
+		   struct mlx5_txq_local *__rte_restrict loc,
 		   unsigned int len,
 		   unsigned int slen,
-		   struct mlx5_wqe *restrict wqem,
+		   struct mlx5_wqe *__rte_restrict wqem,
 		   unsigned int olx __rte_unused)
 {
 	struct mlx5_wqe_dseg *dseg = &wqem->dseg[0];
@@ -4042,10 +4042,10 @@ mlx5_tx_idone_empw(struct mlx5_txq_data *restrict txq,
  * No VLAN insertion is supported.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_burst_empw_simple(struct mlx5_txq_data *restrict txq,
-			  struct rte_mbuf **restrict pkts,
+mlx5_tx_burst_empw_simple(struct mlx5_txq_data *__rte_restrict txq,
+			  struct rte_mbuf **__rte_restrict pkts,
 			  unsigned int pkts_n,
-			  struct mlx5_txq_local *restrict loc,
+			  struct mlx5_txq_local *__rte_restrict loc,
 			  unsigned int olx)
 {
 	/*
@@ -4061,8 +4061,8 @@ mlx5_tx_burst_empw_simple(struct mlx5_txq_data *restrict txq,
 	pkts += loc->pkts_sent + 1;
 	pkts_n -= loc->pkts_sent;
 	for (;;) {
-		struct mlx5_wqe_dseg *restrict dseg;
-		struct mlx5_wqe_eseg *restrict eseg;
+		struct mlx5_wqe_dseg *__rte_restrict dseg;
+		struct mlx5_wqe_eseg *__rte_restrict eseg;
 		enum mlx5_txcmp_code ret;
 		unsigned int part, loop;
 		unsigned int slen = 0;
@@ -4208,10 +4208,10 @@ next_empw:
  * with inlining, optionally supports VLAN insertion.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
-			  struct rte_mbuf **restrict pkts,
+mlx5_tx_burst_empw_inline(struct mlx5_txq_data *__rte_restrict txq,
+			  struct rte_mbuf **__rte_restrict pkts,
 			  unsigned int pkts_n,
-			  struct mlx5_txq_local *restrict loc,
+			  struct mlx5_txq_local *__rte_restrict loc,
 			  unsigned int olx)
 {
 	/*
@@ -4227,8 +4227,8 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *restrict txq,
 	pkts += loc->pkts_sent + 1;
 	pkts_n -= loc->pkts_sent;
 	for (;;) {
-		struct mlx5_wqe_dseg *restrict dseg;
-		struct mlx5_wqe *restrict wqem;
+		struct mlx5_wqe_dseg *__rte_restrict dseg;
+		struct mlx5_wqe *__rte_restrict wqem;
 		enum mlx5_txcmp_code ret;
 		unsigned int room, part, nlim;
 		unsigned int slen = 0;
@@ -4489,10 +4489,10 @@ next_mbuf:
  * Data inlining and VLAN insertion are supported.
  */
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
-			  struct rte_mbuf **restrict pkts,
+mlx5_tx_burst_single_send(struct mlx5_txq_data *__rte_restrict txq,
+			  struct rte_mbuf **__rte_restrict pkts,
 			  unsigned int pkts_n,
-			  struct mlx5_txq_local *restrict loc,
+			  struct mlx5_txq_local *__rte_restrict loc,
 			  unsigned int olx)
 {
 	/*
@@ -4504,7 +4504,7 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 	pkts += loc->pkts_sent + 1;
 	pkts_n -= loc->pkts_sent;
 	for (;;) {
-		struct mlx5_wqe *restrict wqe;
+		struct mlx5_wqe *__rte_restrict wqe;
 		enum mlx5_txcmp_code ret;
 
 		MLX5_ASSERT(NB_SEGS(loc->mbuf) == 1);
@@ -4602,7 +4602,7 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *restrict txq,
 				 * not contain inlined data for eMPW due to
 				 * segment shared for all packets.
 				 */
-				struct mlx5_wqe_dseg *restrict dseg;
+				struct mlx5_wqe_dseg *__rte_restrict dseg;
 				unsigned int ds;
 				uint8_t *dptr;
 
@@ -4765,10 +4765,10 @@ single_no_inline:
 }
 
 static __rte_always_inline enum mlx5_txcmp_code
-mlx5_tx_burst_single(struct mlx5_txq_data *restrict txq,
-		     struct rte_mbuf **restrict pkts,
+mlx5_tx_burst_single(struct mlx5_txq_data *__rte_restrict txq,
+		     struct rte_mbuf **__rte_restrict pkts,
 		     unsigned int pkts_n,
-		     struct mlx5_txq_local *restrict loc,
+		     struct mlx5_txq_local *__rte_restrict loc,
 		     unsigned int olx)
 {
 	enum mlx5_txcmp_code ret;
@@ -4819,8 +4819,8 @@ ordinary_send:
  *   Number of packets successfully transmitted (<= pkts_n).
  */
 static __rte_always_inline uint16_t
-mlx5_tx_burst_tmpl(struct mlx5_txq_data *restrict txq,
-		   struct rte_mbuf **restrict pkts,
+mlx5_tx_burst_tmpl(struct mlx5_txq_data *__rte_restrict txq,
+		   struct rte_mbuf **__rte_restrict pkts,
 		   uint16_t pkts_n,
 		   unsigned int olx)
 {
