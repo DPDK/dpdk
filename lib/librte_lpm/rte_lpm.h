@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2020 Arm Limited
  */
 
 #ifndef _RTE_LPM_H_
@@ -20,6 +21,7 @@
 #include <rte_memory.h>
 #include <rte_common.h>
 #include <rte_vect.h>
+#include <rte_rcu_qsbr.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,6 +63,17 @@ extern "C" {
 
 /** Bitmask used to indicate successful lookup */
 #define RTE_LPM_LOOKUP_SUCCESS          0x01000000
+
+/** @internal Default RCU defer queue entries to reclaim in one go. */
+#define RTE_LPM_RCU_DQ_RECLAIM_MAX	16
+
+/** RCU reclamation modes */
+enum rte_lpm_qsbr_mode {
+	/** Create defer queue for reclaim. */
+	RTE_LPM_QSBR_MODE_DQ = 0,
+	/** Use blocking mode reclaim. No defer queue created. */
+	RTE_LPM_QSBR_MODE_SYNC
+};
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 /** @internal Tbl24 entry structure. */
@@ -132,6 +145,22 @@ struct rte_lpm {
 	struct rte_lpm_rule *rules_tbl; /**< LPM rules. */
 };
 
+/** LPM RCU QSBR configuration structure. */
+struct rte_lpm_rcu_config {
+	struct rte_rcu_qsbr *v;	/* RCU QSBR variable. */
+	/* Mode of RCU QSBR. RTE_LPM_QSBR_MODE_xxx
+	 * '0' for default: create defer queue for reclaim.
+	 */
+	enum rte_lpm_qsbr_mode mode;
+	uint32_t dq_size;	/* RCU defer queue size.
+				 * default: lpm->number_tbl8s.
+				 */
+	uint32_t reclaim_thd;	/* Threshold to trigger auto reclaim. */
+	uint32_t reclaim_max;	/* Max entries to reclaim in one go.
+				 * default: RTE_LPM_RCU_DQ_RECLAIM_MAX.
+				 */
+};
+
 /**
  * Create an LPM object.
  *
@@ -178,6 +207,30 @@ rte_lpm_find_existing(const char *name);
  */
 void
 rte_lpm_free(struct rte_lpm *lpm);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Associate RCU QSBR variable with an LPM object.
+ *
+ * @param lpm
+ *   the lpm object to add RCU QSBR
+ * @param cfg
+ *   RCU QSBR configuration
+ * @param dq
+ *   handler of created RCU QSBR defer queue
+ * @return
+ *   On success - 0
+ *   On error - 1 with error code set in rte_errno.
+ *   Possible rte_errno codes are:
+ *   - EINVAL - invalid pointer
+ *   - EEXIST - already added QSBR
+ *   - ENOMEM - memory allocation failure
+ */
+__rte_experimental
+int rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg,
+	struct rte_rcu_qsbr_dq **dq);
 
 /**
  * Add a rule to the LPM table.

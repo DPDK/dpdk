@@ -21,3 +21,9 @@ DPDK_20.0 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_lpm_rcu_qsbr_add;
+};

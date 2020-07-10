@@ -8,7 +8,7 @@ LIB = librte_lpm.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
-LDLIBS += -lrte_eal -lrte_hash
+LDLIBS += -lrte_eal -lrte_hash -lrte_rcu
 
 EXPORT_MAP := rte_lpm_version.map
 
