@@ -723,7 +723,7 @@ static
 int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			    uint16_t nb_desc,
 			    unsigned int socket_id __rte_unused,
-			    const struct rte_eth_rxconf *rx_conf __rte_unused,
+			    const struct rte_eth_rxconf *rx_conf,
 			    struct rte_mempool *mp)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
@@ -741,6 +741,12 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		DPAA_PMD_ERR("%p: queue index out of range (%u >= %u)",
 		      (void *)dev, queue_idx, dev->data->nb_rx_queues);
 		return -rte_errno;
+	}
+
+	/* Rx deferred start is not supported */
+	if (rx_conf->rx_deferred_start) {
+		DPAA_PMD_ERR("%p:Rx deferred start not supported", (void *)dev);
+		return -EINVAL;
 	}
 
 	DPAA_PMD_INFO("Rx queue setup for queue index: %d fq_id (0x%x)",
@@ -1006,12 +1012,17 @@ static
 int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			    uint16_t nb_desc __rte_unused,
 		unsigned int socket_id __rte_unused,
-		const struct rte_eth_txconf *tx_conf __rte_unused)
+		const struct rte_eth_txconf *tx_conf)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
+	/* Tx deferred start is not supported */
+	if (tx_conf->tx_deferred_start) {
+		DPAA_PMD_ERR("%p:Tx deferred start not supported", (void *)dev);
+		return -EINVAL;
+	}
 	if (queue_idx >= dev->data->nb_tx_queues) {
 		rte_errno = EOVERFLOW;
 		DPAA_PMD_ERR("%p: queue index out of range (%u >= %u)",
