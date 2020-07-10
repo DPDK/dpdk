@@ -793,7 +793,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 static int
 dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t tx_queue_id,
-			 uint16_t nb_tx_desc __rte_unused,
+			 uint16_t nb_tx_desc,
 			 unsigned int socket_id __rte_unused,
 			 const struct rte_eth_txconf *tx_conf)
 {
@@ -873,11 +873,11 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		struct dpni_congestion_notification_cfg cong_notif_cfg = {0};
 
 		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_FRAMES;
-		cong_notif_cfg.threshold_entry = CONG_ENTER_TX_THRESHOLD;
+		cong_notif_cfg.threshold_entry = nb_tx_desc;
 		/* Notify that the queue is not congested when the data in
 		 * the queue is below this thershold.
 		 */
-		cong_notif_cfg.threshold_exit = CONG_EXIT_TX_THRESHOLD;
+		cong_notif_cfg.threshold_exit = nb_tx_desc - 24;
 		cong_notif_cfg.message_ctx = 0;
 		cong_notif_cfg.message_iova =
 				(size_t)DPAA2_VADDR_TO_IOVA(dpaa2_q->cscn);
