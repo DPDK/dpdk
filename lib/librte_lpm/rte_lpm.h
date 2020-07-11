@@ -218,8 +218,6 @@ rte_lpm_free(struct rte_lpm *lpm);
  *   the lpm object to add RCU QSBR
  * @param cfg
  *   RCU QSBR configuration
- * @param dq
- *   handler of created RCU QSBR defer queue
  * @return
  *   On success - 0
  *   On error - 1 with error code set in rte_errno.
@@ -229,8 +227,7 @@ rte_lpm_free(struct rte_lpm *lpm);
  *   - ENOMEM - memory allocation failure
  */
 __rte_experimental
-int rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg,
-	struct rte_rcu_qsbr_dq **dq);
+int rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg);
 
 /**
  * Add a rule to the LPM table.

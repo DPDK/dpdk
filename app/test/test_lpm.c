@@ -1308,12 +1308,12 @@ test19(void)
 	rcu_cfg.v = qsv;
 	/* Invalid QSBR mode */
 	rcu_cfg.mode = 2;
-	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL);
+	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg);
 	TEST_LPM_ASSERT(status != 0);
 
 	rcu_cfg.mode = RTE_LPM_QSBR_MODE_DQ;
 	/* Attach RCU QSBR to LPM table */
-	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL);
+	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg);
 	TEST_LPM_ASSERT(status == 0);
 
 	/* Create and attach another RCU QSBR to LPM table */
@@ -1323,7 +1323,7 @@ test19(void)
 
 	rcu_cfg.v = qsv2;
 	rcu_cfg.mode = RTE_LPM_QSBR_MODE_SYNC;
-	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL);
+	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg);
 	TEST_LPM_ASSERT(status != 0);
 
 	rte_lpm_free(lpm);
@@ -1379,7 +1379,7 @@ test20(void)
 	rcu_cfg.v = qsv;
 	rcu_cfg.mode = RTE_LPM_QSBR_MODE_DQ;
 	/* Attach RCU QSBR to LPM table */
-	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL);
+	status = rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg);
 	TEST_LPM_ASSERT(status == 0);
 
 	ip = RTE_IPV4(192, 0, 2, 100);
@@ -1510,7 +1510,7 @@ test21(void)
 	rcu_cfg.v = g_v;
 	rcu_cfg.mode = RTE_LPM_QSBR_MODE_SYNC;
 	/* Attach RCU QSBR to LPM table */
-	status = rte_lpm_rcu_qsbr_add(g_lpm, &rcu_cfg, NULL);
+	status = rte_lpm_rcu_qsbr_add(g_lpm, &rcu_cfg);
 	TEST_LPM_ASSERT(status == 0);
 
 	writer_done = 0;

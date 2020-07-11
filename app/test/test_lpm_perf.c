@@ -521,7 +521,7 @@ test_lpm_rcu_perf_multi_writer(void)
 
 	rcu_cfg.v = rv;
 	/* Assign the RCU variable to LPM */
-	if (rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL) != 0) {
+	if (rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg) != 0) {
 		printf("RCU variable assignment failed\n");
 		goto error;
 	}
@@ -674,7 +674,7 @@ test_lpm_rcu_perf(void)
 
 	rcu_cfg.v = rv;
 	/* Assign the RCU variable to LPM */
-	if (rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg, NULL) != 0) {
+	if (rte_lpm_rcu_qsbr_add(lpm, &rcu_cfg) != 0) {
 		printf("RCU variable assignment failed\n");
 		goto error;
 	}

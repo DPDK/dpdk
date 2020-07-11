@@ -288,8 +288,7 @@ __lpm_rcu_qsbr_free_resource(void *p, void *data, unsigned int n)
 /* Associate QSBR variable with an LPM object.
  */
 int
-rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg,
-	struct rte_rcu_qsbr_dq **dq)
+rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg)
 {
 	struct rte_rcu_qsbr_dq_parameters params = {0};
 	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
@@ -329,8 +328,6 @@ rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg,
 			RTE_LOG(ERR, LPM, "LPM defer queue creation failed\n");
 			return 1;
 		}
-		if (dq != NULL)
-			*dq = internal_lpm->dq;
 	} else {
 		rte_errno = EINVAL;
 		return 1;
