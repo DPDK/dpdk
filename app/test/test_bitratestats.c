@@ -32,11 +32,13 @@ test_stats_bitrate_create(void)
 	return TEST_SUCCESS;
 }
 
-/* To test free the resources from bitrate_reg test */
+/* To test free the resources from bitrate_create test */
 static int
 test_stats_bitrate_free(void)
 {
 	int ret = 0;
+
+	rte_stats_bitrate_free(bitrate_data);
 
 	ret = rte_metrics_deinit();
 	TEST_ASSERT(ret >= 0, "Test Failed: rte_metrics_deinit failed");

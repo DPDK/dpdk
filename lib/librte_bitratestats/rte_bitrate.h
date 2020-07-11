@@ -27,12 +27,20 @@ struct rte_stats_bitrates;
  */
 struct rte_stats_bitrates *rte_stats_bitrate_create(void);
 
+/**
+ * Free bitrate statistics structure
+ *
+ * @param bitrate_data
+ *   Pointer allocated by rte_stats_bitrate_create()
+ */
+__rte_experimental
+void rte_stats_bitrate_free(struct rte_stats_bitrates *bitrate_data);
 
 /**
  * Register bitrate statistics with the metric library.
  *
  * @param bitrate_data
- *   Pointer allocated by rte_stats_create()
+ *   Pointer allocated by rte_stats_bitrate_create()
  *
  * @return
  *   Zero on success

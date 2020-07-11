@@ -35,6 +35,12 @@ rte_stats_bitrate_create(void)
 		RTE_CACHE_LINE_SIZE);
 }
 
+void
+rte_stats_bitrate_free(struct rte_stats_bitrates *bitrate_data)
+{
+	rte_free(bitrate_data);
+}
+
 int
 rte_stats_bitrate_reg(struct rte_stats_bitrates *bitrate_data)
 {
