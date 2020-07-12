@@ -230,6 +230,15 @@ enum index {
 	ITEM_PFCP,
 	ITEM_PFCP_S_FIELD,
 	ITEM_PFCP_SEID,
+	ITEM_ECPRI,
+	ITEM_ECPRI_COMMON,
+	ITEM_ECPRI_COMMON_TYPE,
+	ITEM_ECPRI_COMMON_TYPE_IQ_DATA,
+	ITEM_ECPRI_COMMON_TYPE_RTC_CTRL,
+	ITEM_ECPRI_COMMON_TYPE_DLY_MSR,
+	ITEM_ECPRI_MSG_IQ_DATA_PCID,
+	ITEM_ECPRI_MSG_RTC_CTRL_RTCID,
+	ITEM_ECPRI_MSG_DLY_MSR_MSRID,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -791,6 +800,7 @@ static const enum index next_item[] = {
 	ITEM_ESP,
 	ITEM_AH,
 	ITEM_PFCP,
+	ITEM_ECPRI,
 	END_SET,
 	ZERO,
 };
@@ -1098,6 +1108,24 @@ static const enum index item_tag[] = {
 static const enum index item_l2tpv3oip[] = {
 	ITEM_L2TPV3OIP_SESSION_ID,
 	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ecpri[] = {
+	ITEM_ECPRI_COMMON,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ecpri_common[] = {
+	ITEM_ECPRI_COMMON_TYPE,
+	ZERO,
+};
+
+static const enum index item_ecpri_common_type[] = {
+	ITEM_ECPRI_COMMON_TYPE_IQ_DATA,
+	ITEM_ECPRI_COMMON_TYPE_RTC_CTRL,
+	ITEM_ECPRI_COMMON_TYPE_DLY_MSR,
 	ZERO,
 };
 
@@ -1409,6 +1437,9 @@ static int parse_vc_spec(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
 static int parse_vc_conf(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
+static int parse_vc_item_ecpri_type(struct context *, const struct token *,
+				    const char *, unsigned int,
+				    void *, unsigned int);
 static int parse_vc_action_rss(struct context *, const struct token *,
 			       const char *, unsigned int, void *,
 			       unsigned int);
@@ -2802,6 +2833,66 @@ static const struct token token_list[] = {
 		.next = NEXT(item_pfcp, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_pfcp, seid)),
 	},
+	[ITEM_ECPRI] = {
+		.name = "ecpri",
+		.help = "match eCPRI header",
+		.priv = PRIV_ITEM(ECPRI, sizeof(struct rte_flow_item_ecpri)),
+		.next = NEXT(item_ecpri),
+		.call = parse_vc,
+	},
+	[ITEM_ECPRI_COMMON] = {
+		.name = "common",
+		.help = "eCPRI common header",
+		.next = NEXT(item_ecpri_common),
+	},
+	[ITEM_ECPRI_COMMON_TYPE] = {
+		.name = "type",
+		.help = "type of common header",
+		.next = NEXT(item_ecpri_common_type),
+		.args = ARGS(ARG_ENTRY_HTON(struct rte_flow_item_ecpri)),
+	},
+	[ITEM_ECPRI_COMMON_TYPE_IQ_DATA] = {
+		.name = "iq_data",
+		.help = "Type #0: IQ Data",
+		.next = NEXT(NEXT_ENTRY(ITEM_ECPRI_MSG_IQ_DATA_PCID,
+					ITEM_NEXT)),
+		.call = parse_vc_item_ecpri_type,
+	},
+	[ITEM_ECPRI_MSG_IQ_DATA_PCID] = {
+		.name = "pc_id",
+		.help = "Physical Channel ID",
+		.next = NEXT(item_ecpri, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ecpri,
+				hdr.type0.pc_id)),
+	},
+	[ITEM_ECPRI_COMMON_TYPE_RTC_CTRL] = {
+		.name = "rtc_ctrl",
+		.help = "Type #2: Real-Time Control Data",
+		.next = NEXT(NEXT_ENTRY(ITEM_ECPRI_MSG_RTC_CTRL_RTCID,
+					ITEM_NEXT)),
+		.call = parse_vc_item_ecpri_type,
+	},
+	[ITEM_ECPRI_MSG_RTC_CTRL_RTCID] = {
+		.name = "rtc_id",
+		.help = "Real-Time Control Data ID",
+		.next = NEXT(item_ecpri, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ecpri,
+				hdr.type2.rtc_id)),
+	},
+	[ITEM_ECPRI_COMMON_TYPE_DLY_MSR] = {
+		.name = "delay_measure",
+		.help = "Type #5: One-Way Delay Measurement",
+		.next = NEXT(NEXT_ENTRY(ITEM_ECPRI_MSG_DLY_MSR_MSRID,
+					ITEM_NEXT)),
+		.call = parse_vc_item_ecpri_type,
+	},
+	[ITEM_ECPRI_MSG_DLY_MSR_MSRID] = {
+		.name = "msr_id",
+		.help = "Measurement ID",
+		.next = NEXT(item_ecpri, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ecpri,
+				hdr.type5.msr_id)),
+	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
@@ -4121,6 +4212,59 @@ parse_vc_conf(struct context *ctx, const struct token *token,
 	/* Point to selected object. */
 	ctx->object = out->args.vc.data;
 	ctx->objmask = NULL;
+	return len;
+}
+
+/** Parse eCPRI common header type field. */
+static int
+parse_vc_item_ecpri_type(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len,
+			 void *buf, unsigned int size)
+{
+	struct rte_flow_item_ecpri *ecpri;
+	struct rte_flow_item_ecpri *ecpri_mask;
+	struct rte_flow_item *item;
+	uint32_t data_size;
+	uint8_t msg_type;
+	struct buffer *out = buf;
+	const struct arg *arg;
+
+	(void)size;
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	switch (ctx->curr) {
+	case ITEM_ECPRI_COMMON_TYPE_IQ_DATA:
+		msg_type = RTE_ECPRI_MSG_TYPE_IQ_DATA;
+		break;
+	case ITEM_ECPRI_COMMON_TYPE_RTC_CTRL:
+		msg_type = RTE_ECPRI_MSG_TYPE_RTC_CTRL;
+		break;
+	case ITEM_ECPRI_COMMON_TYPE_DLY_MSR:
+		msg_type = RTE_ECPRI_MSG_TYPE_DLY_MSR;
+		break;
+	default:
+		return -1;
+	}
+	if (!ctx->object)
+		return len;
+	arg = pop_args(ctx);
+	if (!arg)
+		return -1;
+	ecpri = (struct rte_flow_item_ecpri *)out->args.vc.data;
+	ecpri->hdr.common.type = msg_type;
+	data_size = ctx->objdata / 3; /* spec, last, mask */
+	ecpri_mask = (struct rte_flow_item_ecpri *)(out->args.vc.data +
+						    (data_size * 2));
+	ecpri_mask->hdr.common.type = 0xFF;
+	if (arg->hton) {
+		ecpri->hdr.common.u32 = rte_cpu_to_be_32(ecpri->hdr.common.u32);
+		ecpri_mask->hdr.common.u32 =
+				rte_cpu_to_be_32(ecpri_mask->hdr.common.u32);
+	}
+	item = &out->args.vc.pattern[out->args.vc.pattern_n - 1];
+	item->spec = ecpri;
+	item->mask = ecpri_mask;
 	return len;
 }
 
