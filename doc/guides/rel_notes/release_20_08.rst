@@ -81,6 +81,10 @@ New Features
   Added the RegEx library which provides an API for offload of regular
   expressions search operations to hardware or software accelerator devices.
 
+* **Added eCPRI protocol support in rte_flow.**
+
+  The ``ECPRI`` item has been added to support eCPRI packet offloading for
+  5G network.
 
 * **Introduced send packet scheduling on the timestamps.**
 

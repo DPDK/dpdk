@@ -1362,6 +1362,14 @@ Matches a PFCP Header.
 - ``seid``: session endpoint identifier.
 - Default ``mask`` matches s_field and seid.
 
+Item: ``ECPRI``
+^^^^^^^^^^^^^^^
+
+Matches a eCPRI header.
+
+- ``hdr``: eCPRI header definition (``rte_ecpri.h``).
+- Default ``mask`` matches nothing, for all eCPRI messages.
+
 Actions
 ~~~~~~~
 

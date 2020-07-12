@@ -307,6 +307,7 @@ struct rte_vlan_hdr {
 #define RTE_ETHER_TYPE_LLDP 0x88CC /**< LLDP Protocol. */
 #define RTE_ETHER_TYPE_MPLS 0x8847 /**< MPLS ethertype. */
 #define RTE_ETHER_TYPE_MPLSM 0x8848 /**< MPLS multicast ethertype. */
+#define RTE_ETHER_TYPE_ECPRI 0xAEFE /**< eCPRI ethertype (.1Q supported). */
 
 /**
  * Extract VLAN tag information into mbuf

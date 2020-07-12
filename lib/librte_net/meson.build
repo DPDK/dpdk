@@ -15,7 +15,8 @@ headers = files('rte_ip.h',
 	'rte_net.h',
 	'rte_net_crc.h',
 	'rte_mpls.h',
-	'rte_higig.h')
+	'rte_higig.h',
+	'rte_ecpri.h')
 
 sources = files('rte_arp.c', 'rte_ether.c', 'rte_net.c', 'rte_net_crc.c')
 deps += ['mbuf']
