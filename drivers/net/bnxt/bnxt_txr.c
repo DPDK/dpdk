@@ -132,8 +132,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				PKT_TX_TUNNEL_GRE | PKT_TX_TUNNEL_VXLAN |
 				PKT_TX_TUNNEL_GENEVE | PKT_TX_IEEE1588_TMST |
 				PKT_TX_QINQ_PKT) ||
-	     txq->bp->ulp_ctx->cfg_data->tx_cfa_action ||
-	     txq->vfr_tx_cfa_action)
+	     (BNXT_TRUFLOW_EN(txq->bp) &&
+	      (txq->bp->ulp_ctx->cfg_data->tx_cfa_action ||
+	       txq->vfr_tx_cfa_action)))
 		long_bd = true;
 
 	nr_bds = long_bd + tx_pkt->nb_segs;
