@@ -16,10 +16,6 @@
 
 int mlx5_common_logtype;
 
-#ifdef MLX5_GLUE
-const struct mlx5_glue *mlx5_glue;
-#endif
-
 uint8_t haswell_broadwell_cpu;
 
 static int
