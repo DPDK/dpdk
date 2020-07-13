@@ -11,6 +11,13 @@ here.
 Deprecation Notices
 -------------------
 
+* make: Support for building DPDK with "make" has been deprecated and
+  support will be removed in the 20.11 release. From 20.11 onwards, DPDK
+  should be built using meson and ninja. For basic instructions see the
+  `Quick-start Guide <https://core.dpdk.org/doc/quick-start/>`_ on the
+  website or the `Getting Started Guide
+  <https://doc.dpdk.org/guides/linux_gsg/build_dpdk.html>`_ document.
+
 * meson: The minimum supported version of meson for configuring and building
   DPDK will be increased to v0.47.1 (from 0.41) from DPDK 19.05 onwards. For
   those users with a version earlier than 0.47.1, an updated copy of meson
