@@ -658,7 +658,7 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	struct qat_device_info *qat_dev_instance =
 			&qat_pci_devs[qat_pci_dev->qat_dev_id];
 	if (qat_pci_dev->qat_dev_gen == QAT_GEN3) {
-		QAT_LOG(ERR, "Compression PMD not supported on QAT P5xxx");
+		QAT_LOG(ERR, "Compression PMD not supported on QAT c4xxx");
 		return 0;
 	}
 
