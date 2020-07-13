@@ -129,6 +129,10 @@ struct iavf_info {
 	bool link_up;
 	uint32_t link_speed;
 
+	/* Multicast addrs */
+	struct rte_ether_addr mc_addrs[IAVF_NUM_MACADDR_MAX];
+	uint16_t mc_addrs_num;   /* Multicast mac addresses number */
+
 	struct iavf_vsi vsi;
 	bool vf_reset;
 	uint64_t flags;
@@ -272,4 +276,7 @@ int iavf_fdir_check(struct iavf_adapter *adapter,
 		struct iavf_fdir_conf *filter);
 int iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 			 struct virtchnl_rss_cfg *rss_cfg, bool add);
+int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
+			struct rte_ether_addr *mc_addrs,
+			uint32_t mc_addrs_num, bool add);
 #endif /* _IAVF_ETHDEV_H_ */

@@ -73,6 +73,9 @@ static int iavf_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
 		     enum rte_filter_op filter_op,
 		     void *arg);
+static int iavf_set_mc_addr_list(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mc_addrs,
+			uint32_t mc_addrs_num);
 
 static const struct rte_pci_id pci_id_iavf_map[] = {
 	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_ADAPTIVE_VF) },
@@ -96,6 +99,7 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.allmulticast_disable       = iavf_dev_allmulticast_disable,
 	.mac_addr_add               = iavf_dev_add_mac_addr,
 	.mac_addr_remove            = iavf_dev_del_mac_addr,
+	.set_mc_addr_list			= iavf_set_mc_addr_list,
 	.vlan_filter_set            = iavf_dev_vlan_filter_set,
 	.vlan_offload_set           = iavf_dev_vlan_offload_set,
 	.rx_queue_start             = iavf_dev_rx_queue_start,
@@ -121,6 +125,35 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.rx_queue_intr_disable      = iavf_dev_rx_queue_intr_disable,
 	.filter_ctrl                = iavf_dev_filter_ctrl,
 };
+
+static int
+iavf_set_mc_addr_list(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mc_addrs,
+			uint32_t mc_addrs_num)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	int err;
+
+	/* flush previous addresses */
+	err = iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
+					false);
+	if (err)
+		return err;
+
+	vf->mc_addrs_num = 0;
+
+	/* add new ones */
+	err = iavf_add_del_mc_addr_list(adapter, mc_addrs, mc_addrs_num, true);
+	if (err)
+		return err;
+
+	vf->mc_addrs_num = mc_addrs_num;
+	memcpy(vf->mc_addrs, mc_addrs, mc_addrs_num * sizeof(*mc_addrs));
+
+	return 0;
+}
 
 static int
 iavf_init_rss(struct iavf_adapter *adapter)
@@ -451,6 +484,10 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	/* Set all mac addrs */
 	iavf_add_del_all_mac_addr(adapter, true);
 
+	/* Set all multicast addresses */
+	iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
+				  true);
+
 	if (iavf_start_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "enable queues failed");
 		goto err_mac;
@@ -467,6 +504,7 @@ err_queue:
 static void
 iavf_dev_stop(struct rte_eth_dev *dev)
 {
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
@@ -488,6 +526,11 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 
 	/* remove all mac addrs */
 	iavf_add_del_all_mac_addr(adapter, false);
+
+	/* remove all multicast addresses */
+	iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
+				  false);
+
 	adapter->stopped = 1;
 }
 

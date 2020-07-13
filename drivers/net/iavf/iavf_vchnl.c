@@ -1075,3 +1075,59 @@ iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 
 	return err;
 }
+
+int
+iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
+			struct rte_ether_addr *mc_addrs,
+			uint32_t mc_addrs_num, bool add)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	uint8_t cmd_buffer[sizeof(struct virtchnl_ether_addr_list) +
+		(IAVF_NUM_MACADDR_MAX * sizeof(struct virtchnl_ether_addr))];
+	struct virtchnl_ether_addr_list *list;
+	struct iavf_cmd_info args;
+	uint32_t i;
+	int err;
+
+	if (mc_addrs == NULL || mc_addrs_num == 0)
+		return 0;
+
+	if (mc_addrs_num > IAVF_NUM_MACADDR_MAX)
+		return -EINVAL;
+
+	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
+	list->vsi_id = vf->vsi_res->vsi_id;
+	list->num_elements = mc_addrs_num;
+
+	for (i = 0; i < mc_addrs_num; i++) {
+		if (!IAVF_IS_MULTICAST(mc_addrs[i].addr_bytes)) {
+			PMD_DRV_LOG(ERR, "Invalid mac:%x:%x:%x:%x:%x:%x",
+				    mc_addrs[i].addr_bytes[0],
+				    mc_addrs[i].addr_bytes[1],
+				    mc_addrs[i].addr_bytes[2],
+				    mc_addrs[i].addr_bytes[3],
+				    mc_addrs[i].addr_bytes[4],
+				    mc_addrs[i].addr_bytes[5]);
+			return -EINVAL;
+		}
+
+		memcpy(list->list[i].addr, mc_addrs[i].addr_bytes,
+			sizeof(list->list[i].addr));
+	}
+
+	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
+	args.in_args = cmd_buffer;
+	args.in_args_size = sizeof(struct virtchnl_ether_addr_list) +
+		i * sizeof(struct virtchnl_ether_addr);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	err = iavf_execute_vf_cmd(adapter, &args);
+
+	if (err) {
+		PMD_DRV_LOG(ERR, "fail to execute command %s",
+			add ? "OP_ADD_ETH_ADDR" : "OP_DEL_ETH_ADDR");
+		return err;
+	}
+
+	return 0;
+}
