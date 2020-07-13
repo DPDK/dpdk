@@ -3559,10 +3559,8 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 
 	/* don't do RSS for GTPU outer */
 	if (segs_cnt == ICE_RSS_OUTER_HEADERS &&
-	    (segs[segs_cnt - 1].hdrs & ICE_FLOW_SEG_HDR_GTPU)) {
-		printf("ignore gtpu\n");
+	    segs[segs_cnt - 1].hdrs & ICE_FLOW_SEG_HDR_GTPU)
 		return ICE_SUCCESS;
-	}
 
 	/* Search for a flow profile that has matching headers, hash fields
 	 * and has the input VSI associated to it. If found, no further
@@ -3714,15 +3712,15 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	if (!segs)
 		return ICE_ERR_NO_MEMORY;
 
-	if (segs_cnt == ICE_RSS_OUTER_HEADERS &&
-	    segs[segs_cnt - 1].hdrs & ICE_FLOW_SEG_HDR_GTPU)
-		return ICE_SUCCESS;
-
 	/* Construct the packet segment info from the hashed fields */
 	status = ice_flow_set_rss_seg_info(&segs[segs_cnt - 1], hashed_flds,
 					   addl_hdrs);
 	if (status)
 		goto out;
+
+	if (segs_cnt == ICE_RSS_OUTER_HEADERS &&
+	    segs[segs_cnt - 1].hdrs & ICE_FLOW_SEG_HDR_GTPU)
+		return ICE_SUCCESS;
 
 	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, segs_cnt,
 					vsi_handle,
