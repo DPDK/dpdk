@@ -133,6 +133,13 @@ Deprecation Notices
   to one it means it represents IV, when is set to zero it means J0 is used
   directly, in this case 16 bytes of J0 need to be passed.
 
+* rawdev: The rawdev APIs which take a device-specific structure as
+  parameter directly, or indirectly via a "private" pointer inside another
+  structure, will be modified to take an additional parameter of the
+  structure size. The affected APIs will include ``rte_rawdev_info_get``,
+  ``rte_rawdev_configure``, ``rte_rawdev_queue_conf_get`` and
+  ``rte_rawdev_queue_setup``.
+
 * sched: To allow more traffic classes, flexible mapping of pipe queues to
   traffic classes, and subport level configuration of pipes and queues
   changes will be made to macros, data structures and API functions defined
