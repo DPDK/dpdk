@@ -114,10 +114,9 @@ pkt_burst_5tuple_swap(struct fwd_stream *fs)
 	 */
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
 				 nb_pkt_per_burst);
+	inc_rx_burst_stats(fs, nb_rx);
 	if (unlikely(nb_rx == 0))
 		return;
-
-	inc_rx_burst_stats(fs, nb_rx);
 
 	fs->rx_packets += nb_rx;
 	txp = &ports[fs->tx_port];
