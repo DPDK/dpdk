@@ -254,7 +254,7 @@ vhost_user_sock(struct virtio_user_dev *dev,
 	struct vhost_user_msg msg;
 	struct vhost_vring_file *file = 0;
 	int need_reply = 0;
-	int has_reply_ack;
+	int has_reply_ack = 0;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num = 0;
 	int len;
