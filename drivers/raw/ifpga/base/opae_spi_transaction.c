@@ -166,7 +166,7 @@ static int byte_to_core_convert(struct spi_transaction_dev *dev,
 		current_byte = send_data[i];
 		switch (current_byte) {
 		case SPI_BYTE_IDLE:
-			*p++ = SPI_BYTE_IDLE;
+			*p++ = SPI_BYTE_ESC;
 			*p++ = xor_20(current_byte);
 			break;
 		case SPI_BYTE_ESC:
