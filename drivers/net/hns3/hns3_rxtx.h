@@ -256,6 +256,9 @@ struct hns3_rx_queue {
 	 */
 	uint16_t pvid_state;
 
+	/* 4 if DEV_RX_OFFLOAD_KEEP_CRC offload set, 0 otherwise */
+	uint8_t crc_len;
+
 	bool rx_deferred_start; /* don't start this queue in dev start */
 	bool configured;        /* indicate if rx queue has been configured */
 

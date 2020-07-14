@@ -4184,7 +4184,15 @@ hns3_cfg_mac_mode(struct hns3_hw *hw, bool enable)
 	hns3_set_bit(loop_en, HNS3_MAC_LINE_LP_B, 0);
 	hns3_set_bit(loop_en, HNS3_MAC_FCS_TX_B, val);
 	hns3_set_bit(loop_en, HNS3_MAC_RX_FCS_B, val);
-	hns3_set_bit(loop_en, HNS3_MAC_RX_FCS_STRIP_B, val);
+
+	/*
+	 * If DEV_RX_OFFLOAD_KEEP_CRC offload is set, MAC will not strip CRC
+	 * when receiving frames. Otherwise, CRC will be stripped.
+	 */
+	if (hw->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+		hns3_set_bit(loop_en, HNS3_MAC_RX_FCS_STRIP_B, 0);
+	else
+		hns3_set_bit(loop_en, HNS3_MAC_RX_FCS_STRIP_B, val);
 	hns3_set_bit(loop_en, HNS3_MAC_TX_OVERSIZE_TRUNCATE_B, val);
 	hns3_set_bit(loop_en, HNS3_MAC_RX_OVERSIZE_TRUNCATE_B, val);
 	hns3_set_bit(loop_en, HNS3_MAC_TX_UNDER_MIN_ERR_B, val);

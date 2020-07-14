@@ -1312,6 +1312,12 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->ol3_csum_erros = 0;
 	rxq->ol4_csum_erros = 0;
 
+	/* CRC len set here is used for amending packet length */
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+		rxq->crc_len = RTE_ETHER_CRC_LEN;
+	else
+		rxq->crc_len = 0;
+
 	rte_spinlock_lock(&hw->lock);
 	dev->data->rx_queues[idx] = rxq;
 	rte_spinlock_unlock(&hw->lock);
@@ -1578,6 +1584,23 @@ hns3_rxd_to_vlan_tci(struct hns3_rx_queue *rxq, struct rte_mbuf *mb,
 	}
 }
 
+static inline void
+recalculate_data_len(struct rte_mbuf *first_seg, struct rte_mbuf *last_seg,
+		    struct rte_mbuf *rxm, struct hns3_rx_queue *rxq,
+		    uint16_t data_len)
+{
+	uint8_t crc_len = rxq->crc_len;
+
+	if (data_len <= crc_len) {
+		rte_pktmbuf_free_seg(rxm);
+		first_seg->nb_segs--;
+		last_seg->data_len = (uint16_t)(last_seg->data_len -
+			(crc_len - data_len));
+		last_seg->next = NULL;
+	} else
+		rxm->data_len = (uint16_t)(data_len - crc_len);
+}
+
 uint16_t
 hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -1708,7 +1731,11 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxdp->rx.bd_base_info = 0;
 		rxdp->addr = dma_addr;
 
-		/* Load remained descriptor data and extract necessary fields */
+		/*
+		 * Load remained descriptor data and extract necessary fields.
+		 * Data size from buffer description may contains CRC len,
+		 * packet len should subtract it.
+		 */
 		data_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.size));
 		l234_info = rte_le_to_cpu_32(rxd.rx.l234_info);
 		ol_info = rte_le_to_cpu_32(rxd.rx.ol_info);
@@ -1729,9 +1756,31 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			continue;
 		}
 
-		/* The last buffer of the received packet */
+		/*
+		 * The last buffer of the received packet. packet len from
+		 * buffer description may contains CRC len, packet len should
+		 * subtract it, same as data len.
+		 */
 		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.pkt_len));
 		first_seg->pkt_len = pkt_len;
+
+		/*
+		 * This is the last buffer of the received packet. If the CRC
+		 * is not stripped by the hardware:
+		 *  - Subtract the CRC length from the total packet length.
+		 *  - If the last buffer only contains the whole CRC or a part
+		 *  of it, free the mbuf associated to the last buffer. If part
+		 *  of the CRC is also contained in the previous mbuf, subtract
+		 *  the length of that CRC part from the data length of the
+		 *  previous mbuf.
+		 */
+		rxm->next = NULL;
+		if (unlikely(rxq->crc_len > 0)) {
+			first_seg->pkt_len -= rxq->crc_len;
+			recalculate_data_len(first_seg, last_seg, rxm, rxq,
+				data_len);
+		}
+
 		first_seg->port = rxq->port_id;
 		first_seg->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
 		first_seg->ol_flags = PKT_RX_RSS_HASH;
@@ -1740,7 +1789,6 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				rte_le_to_cpu_32(rxd.rx.fd_id);
 			first_seg->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 		}
-		rxm->next = NULL;
 
 		gro_size = hns3_get_field(bd_base_info, HNS3_RXD_GRO_SIZE_M,
 					  HNS3_RXD_GRO_SIZE_S);
