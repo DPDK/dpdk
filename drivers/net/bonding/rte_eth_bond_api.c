@@ -167,7 +167,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 
 	ret = rte_vdev_init(name, devargs);
 	if (ret)
-		return -ENOMEM;
+		return ret;
 
 	ret = rte_eth_dev_get_port_by_name(name, &port_id);
 	RTE_ASSERT(!ret);
