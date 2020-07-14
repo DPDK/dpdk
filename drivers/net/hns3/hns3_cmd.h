@@ -622,6 +622,7 @@ struct hns3_config_mac_mode_cmd {
 #define HNS3_CFG_SPEED_40G		3
 #define HNS3_CFG_SPEED_50G		4
 #define HNS3_CFG_SPEED_100G		5
+#define HNS3_CFG_SPEED_200G		8
 
 #define HNS3_CFG_SPEED_S		0
 #define HNS3_CFG_SPEED_M		GENMASK(5, 0)

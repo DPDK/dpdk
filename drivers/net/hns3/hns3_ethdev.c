@@ -2560,6 +2560,7 @@ hns3_dev_link_update(struct rte_eth_dev *eth_dev,
 	case ETH_SPEED_NUM_40G:
 	case ETH_SPEED_NUM_50G:
 	case ETH_SPEED_NUM_100G:
+	case ETH_SPEED_NUM_200G:
 		new_link.link_speed = mac->link_speed;
 		break;
 	default:
@@ -2789,6 +2790,9 @@ hns3_parse_speed(int speed_cmd, uint32_t *speed)
 	case HNS3_CFG_SPEED_100G:
 		*speed = ETH_SPEED_NUM_100G;
 		break;
+	case HNS3_CFG_SPEED_200G:
+		*speed = ETH_SPEED_NUM_200G;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2811,7 +2815,8 @@ hns3_get_capability(struct hns3_hw *hw)
 
 	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
 	    device_id == HNS3_DEV_ID_50GE_RDMA ||
-	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC)
+	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC ||
+	    device_id == HNS3_DEV_ID_200G_RDMA)
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
 
 	/* Get PCI revision id */
@@ -3026,6 +3031,10 @@ hns3_cfg_mac_speed_dup_hw(struct hns3_hw *hw, uint32_t speed, uint8_t duplex)
 	case ETH_SPEED_NUM_100G:
 		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
 			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_100G);
+		break;
+	case ETH_SPEED_NUM_200G:
+		hns3_set_field(req->speed_dup, HNS3_CFG_SPEED_M,
+			       HNS3_CFG_SPEED_S, HNS3_CFG_SPEED_200G);
 		break;
 	default:
 		PMD_INIT_LOG(ERR, "invalid speed (%u)", speed);
@@ -5589,6 +5598,7 @@ static const struct rte_pci_id pci_id_hns3_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HNS3_DEV_ID_25GE_RDMA) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HNS3_DEV_ID_50GE_RDMA) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HNS3_DEV_ID_100G_RDMA_MACSEC) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HNS3_DEV_ID_200G_RDMA) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
