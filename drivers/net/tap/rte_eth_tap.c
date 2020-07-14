@@ -134,7 +134,7 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive)
 #ifdef IFF_MULTI_QUEUE
 	unsigned int features;
 #endif
-	int fd;
+	int fd, signo, flags;
 
 	memset(&ifr, 0, sizeof(struct ifreq));
 
@@ -199,52 +199,87 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive)
 		}
 	}
 
+	flags = fcntl(fd, F_GETFL);
+	if (flags == -1) {
+		TAP_LOG(WARNING,
+			"Unable to get %s current flags\n",
+			ifr.ifr_name);
+		goto error;
+	}
+
 	/* Always set the file descriptor to non-blocking */
-	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
 		TAP_LOG(WARNING,
 			"Unable to set %s to nonblocking: %s",
 			ifr.ifr_name, strerror(errno));
 		goto error;
 	}
 
-	/* Set up trigger to optimize empty Rx bursts */
-	errno = 0;
-	do {
+	/* Find a free realtime signal */
+	for (signo = SIGRTMIN + 1; signo < SIGRTMAX; signo++) {
 		struct sigaction sa;
-		int flags = fcntl(fd, F_GETFL);
 
-		if (flags == -1 || sigaction(SIGIO, NULL, &sa) == -1)
-			break;
-		if (sa.sa_handler != tap_trigger_cb) {
-			/*
-			 * Make sure SIGIO is not already taken. This is done
-			 * as late as possible to leave the application a
-			 * chance to set up its own signal handler first.
-			 */
-			if (sa.sa_handler != SIG_IGN &&
-			    sa.sa_handler != SIG_DFL) {
-				errno = EBUSY;
-				break;
-			}
-			sa = (struct sigaction){
-				.sa_flags = SA_RESTART,
-				.sa_handler = tap_trigger_cb,
-			};
-			if (sigaction(SIGIO, &sa, NULL) == -1)
-				break;
+		if (sigaction(signo, NULL, &sa) == -1) {
+			TAP_LOG(WARNING,
+				"Unable to get current rt-signal %d handler",
+				signo);
+			goto error;
 		}
-		/* Enable SIGIO on file descriptor */
-		fcntl(fd, F_SETFL, flags | O_ASYNC);
-		fcntl(fd, F_SETOWN, getpid());
-	} while (0);
 
-	if (errno) {
-		/* Disable trigger globally in case of error */
-		tap_trigger = 0;
-		TAP_LOG(WARNING, "Rx trigger disabled: %s",
-			strerror(errno));
+		/* Already have the handler we want on this signal  */
+		if (sa.sa_handler == tap_trigger_cb)
+			break;
+
+		/* Is handler in use by application */
+		if (sa.sa_handler != SIG_DFL) {
+			TAP_LOG(DEBUG,
+				"Skipping used rt-signal %d", signo);
+			continue;
+		}
+
+		sa = (struct sigaction) {
+			.sa_flags = SA_RESTART,
+			.sa_handler = tap_trigger_cb,
+		};
+
+		if (sigaction(signo, &sa, NULL) == -1) {
+			TAP_LOG(WARNING,
+				"Unable to set rt-signal %d handler\n", signo);
+			goto error;
+		}
+
+		/* Found a good signal to use */
+		TAP_LOG(DEBUG,
+			"Using rt-signal %d", signo);
+		break;
 	}
 
+	if (signo == SIGRTMAX) {
+		TAP_LOG(WARNING, "All rt-signals are in use\n");
+
+		/* Disable trigger globally in case of error */
+		tap_trigger = 0;
+		TAP_LOG(NOTICE, "No Rx trigger signal available\n");
+	} else {
+		/* Enable signal on file descriptor */
+		if (fcntl(fd, F_SETSIG, signo) < 0) {
+			TAP_LOG(WARNING, "Unable to set signo %d for fd %d: %s",
+				signo, fd, strerror(errno));
+			goto error;
+		}
+		if (fcntl(fd, F_SETFL, flags | O_ASYNC) < 0) {
+			TAP_LOG(WARNING, "Unable to set fcntl flags: %s",
+				strerror(errno));
+			goto error;
+		}
+
+		if (fcntl(fd, F_SETOWN, getpid()) < 0) {
+			TAP_LOG(WARNING, "Unable to set fcntl owner: %s",
+				strerror(errno));
+			goto error;
+		}
+	}
 	return fd;
 
 error:
