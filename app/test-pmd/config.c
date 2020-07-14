@@ -3686,6 +3686,12 @@ set_record_core_cycles(uint8_t on_off)
 	record_core_cycles = on_off;
 }
 
+void
+set_record_burst_stats(uint8_t on_off)
+{
+	record_burst_stats = on_off;
+}
+
 static inline void
 print_fdir_mask(struct rte_eth_fdir_masks *mask)
 {

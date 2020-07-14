@@ -117,9 +117,7 @@ pkt_burst_5tuple_swap(struct fwd_stream *fs)
 	if (unlikely(nb_rx == 0))
 		return;
 
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
-#endif
+	inc_rx_burst_stats(fs, nb_rx);
 
 	fs->rx_packets += nb_rx;
 	txp = &ports[fs->tx_port];
@@ -178,9 +176,7 @@ pkt_burst_5tuple_swap(struct fwd_stream *fs)
 		}
 	}
 	fs->tx_packets += nb_tx;
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-	fs->tx_burst_stats.pkt_burst_spread[nb_tx]++;
-#endif
+	inc_tx_burst_stats(fs, nb_tx);
 	if (unlikely(nb_tx < nb_rx)) {
 		fs->fwd_dropped += (nb_rx - nb_tx);
 		do {

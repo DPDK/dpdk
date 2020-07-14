@@ -188,9 +188,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	}
 	fs->tx_packets += nb_tx;
 
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-	fs->tx_burst_stats.pkt_burst_spread[nb_tx]++;
-#endif
+	inc_tx_burst_stats(fs, nb_tx);
 	if (unlikely(nb_tx < nb_pkt)) {
 		/* Back out the flow counter. */
 		next_flow -= (nb_pkt - nb_tx);

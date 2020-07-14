@@ -374,9 +374,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	if (txonly_multi_flow)
 		RTE_PER_LCORE(_ip_var) -= nb_pkt - nb_tx;
 
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-	fs->tx_burst_stats.pkt_burst_spread[nb_tx]++;
-#endif
+	inc_tx_burst_stats(fs, nb_tx);
 	if (unlikely(nb_tx < nb_pkt)) {
 		if (verbose_level > 0 && fs->fwd_dropped == 0)
 			printf("port %d tx_queue %d - drop "

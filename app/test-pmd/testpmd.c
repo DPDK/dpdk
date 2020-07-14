@@ -480,6 +480,11 @@ uint8_t xstats_hide_zero;
  */
 uint8_t record_core_cycles;
 
+/*
+ * Display of RX and TX bursts disabled by default
+ */
+uint8_t record_burst_stats;
+
 unsigned int num_sockets = 0;
 unsigned int socket_ids[RTE_MAX_NUMA_NODES];
 
@@ -1684,7 +1689,6 @@ init_fwd_streams(void)
 	return 0;
 }
 
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 static void
 pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 {
@@ -1751,7 +1755,6 @@ pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 		sburstp += burst_percent[i];
 	}
 }
-#endif /* RTE_TEST_PMD_RECORD_BURST_STATS */
 
 static void
 fwd_stream_stats_display(streamid_t stream_id)
@@ -1782,10 +1785,10 @@ fwd_stream_stats_display(streamid_t stream_id)
 		printf("\n");
 	}
 
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-	pkt_burst_stats_display("RX", &fs->rx_burst_stats);
-	pkt_burst_stats_display("TX", &fs->tx_burst_stats);
-#endif
+	if (record_burst_stats) {
+		pkt_burst_stats_display("RX", &fs->rx_burst_stats);
+		pkt_burst_stats_display("TX", &fs->tx_burst_stats);
+	}
 }
 
 void
@@ -1915,14 +1918,14 @@ fwd_stats_display(void)
 			       stats.opackets + ports_stats[pt_id].tx_dropped);
 		}
 
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-		if (ports_stats[pt_id].rx_stream)
-			pkt_burst_stats_display("RX",
-				&ports_stats[pt_id].rx_stream->rx_burst_stats);
-		if (ports_stats[pt_id].tx_stream)
-			pkt_burst_stats_display("TX",
-				&ports_stats[pt_id].tx_stream->tx_burst_stats);
-#endif
+		if (record_burst_stats) {
+			if (ports_stats[pt_id].rx_stream)
+				pkt_burst_stats_display("RX",
+					&ports_stats[pt_id].rx_stream->rx_burst_stats);
+			if (ports_stats[pt_id].tx_stream)
+				pkt_burst_stats_display("TX",
+					&ports_stats[pt_id].tx_stream->tx_burst_stats);
+		}
 
 		if (port->rx_queue_stats_mapping_enabled) {
 			printf("\n");
@@ -2004,10 +2007,8 @@ fwd_stats_reset(void)
 		fs->rx_bad_l4_csum = 0;
 		fs->rx_bad_outer_l4_csum = 0;
 
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 		memset(&fs->rx_burst_stats, 0, sizeof(fs->rx_burst_stats));
 		memset(&fs->tx_burst_stats, 0, sizeof(fs->tx_burst_stats));
-#endif
 		fs->core_cycles = 0;
 	}
 }

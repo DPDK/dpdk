@@ -70,7 +70,8 @@ usage(char* progname)
 	       "--rxpt= | --rxht= | --rxwt= | --rxfreet= | "
 	       "--txpt= | --txht= | --txwt= | --txfreet= | "
 	       "--txrst= | --tx-offloads= | | --rx-offloads= | "
-	       "--vxlan-gpe-port= | --record-core-cycles]\n",
+	       "--vxlan-gpe-port= | --record-core-cycles | "
+	       "--record-burst-stats]\n",
 	       progname);
 #ifdef RTE_LIBRTE_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
@@ -217,6 +218,7 @@ usage(char* progname)
 	printf("  --rx-mq-mode=0xX: hexadecimal bitmask of RX mq mode can be "
 	       "enabled\n");
 	printf("  --record-core-cycles: enable measurement of CPU cycles.\n");
+	printf("  --record-burst-stats: enable display of RX and TX bursts.\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -679,6 +681,7 @@ launch_args_parse(int argc, char** argv)
 		{ "no-iova-contig",             0, 0, 0 },
 		{ "rx-mq-mode",                 1, 0, 0 },
 		{ "record-core-cycles",         0, 0, 0 },
+		{ "record-burst-stats",         0, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1385,6 +1388,8 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "record-core-cycles"))
 				record_core_cycles = 1;
+			if (!strcmp(lgopts[opt_idx].name, "record-burst-stats"))
+				record_burst_stats = 1;
 			break;
 		case 'h':
 			usage(argv[0]);

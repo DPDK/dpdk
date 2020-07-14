@@ -532,6 +532,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set record-core-cycles on|off\n"
 			"    Set the option to enable measurement of CPU cycles.\n"
 
+			"set record-burst-stats on|off\n"
+			"    Set the option to enable display of RX and TX bursts.\n"
+
 			"set port (port_id) vf (vf_id) rx|tx on|off\n"
 			"    Enable/Disable a VF receive/tranmit from a port\n\n"
 
@@ -8376,6 +8379,48 @@ cmdline_parse_inst_t cmd_set_record_core_cycles = {
 		(void *)&cmd_set_record_core_cycles_keyword,
 		(void *)&cmd_set_record_core_cycles_name,
 		(void *)&cmd_set_record_core_cycles_on_off,
+		NULL,
+	},
+};
+
+/* *** SET OPTION TO ENABLE DISPLAY OF RX AND TX BURSTS *** */
+struct cmd_set_record_burst_stats_result {
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t name;
+	cmdline_fixed_string_t on_off;
+};
+
+static void
+cmd_set_record_burst_stats_parsed(void *parsed_result,
+			__rte_unused struct cmdline *cl,
+			__rte_unused void *data)
+{
+	struct cmd_set_record_burst_stats_result *res;
+	uint16_t on_off = 0;
+
+	res = parsed_result;
+	on_off = !strcmp(res->on_off, "on") ? 1 : 0;
+	set_record_burst_stats(on_off);
+}
+
+cmdline_parse_token_string_t cmd_set_record_burst_stats_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_record_burst_stats_result,
+				 keyword, "set");
+cmdline_parse_token_string_t cmd_set_record_burst_stats_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_record_burst_stats_result,
+				 name, "record-burst-stats");
+cmdline_parse_token_string_t cmd_set_record_burst_stats_on_off =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_record_burst_stats_result,
+				 on_off, "on#off");
+
+cmdline_parse_inst_t cmd_set_record_burst_stats = {
+	.f = cmd_set_record_burst_stats_parsed,
+	.data = NULL,
+	.help_str = "set record-burst-stats on|off",
+	.tokens = {
+		(void *)&cmd_set_record_burst_stats_keyword,
+		(void *)&cmd_set_record_burst_stats_name,
+		(void *)&cmd_set_record_burst_stats_on_off,
 		NULL,
 	},
 };
@@ -19533,6 +19578,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_qmap,
 	(cmdline_parse_inst_t *)&cmd_set_xstats_hide_zero,
 	(cmdline_parse_inst_t *)&cmd_set_record_core_cycles,
+	(cmdline_parse_inst_t *)&cmd_set_record_burst_stats,
 	(cmdline_parse_inst_t *)&cmd_operate_port,
 	(cmdline_parse_inst_t *)&cmd_operate_specific_port,
 	(cmdline_parse_inst_t *)&cmd_operate_attach_port,

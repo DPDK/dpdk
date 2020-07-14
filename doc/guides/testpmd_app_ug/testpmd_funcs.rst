@@ -725,6 +725,21 @@ Where:
 
 This is equivalent to the ``--record-core-cycles command-line`` option.
 
+set record-burst-stats
+~~~~~~~~~~~~~~~~~~~~~~
+
+Set the displaying of RX and TX bursts::
+
+   testpmd> set record-burst-stats (on|off)
+
+Where:
+
+* ``on`` enables display of RX and TX bursts.
+
+* ``off`` disables display of RX and TX bursts.
+
+This is equivalent to the ``--record-burst-stats command-line`` option.
+
 set burst
 ~~~~~~~~~
 
