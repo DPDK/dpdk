@@ -423,6 +423,8 @@ described below:
    0.01 but will need adjustment for different workloads
 
    This parameter can be used multiple times for different sets of cores.
+   The branch ratio mechanism can also be useful for non-PMD cores and
+   hyper-threaded environments where C-States are disabled.
 
 
 Compiling and Running the Guest Applications

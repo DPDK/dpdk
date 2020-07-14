@@ -96,11 +96,11 @@ apply_policy(int core)
 	g_branch_misses = miss_diff;
 
 	if (hits_diff < (INTERVAL*100)) {
-		/* Likely no workload running on this core. Skip. */
-		return -1.0;
+		/* Likely no workload running on this core. */
+		ratio = 0.0;
+	} else {
+		ratio = (float)miss_diff * (float)100 / (float)hits_diff;
 	}
-
-	ratio = (float)miss_diff * (float)100 / (float)hits_diff;
 
 	/*
 	 * Store the last few directions that the ratio indicates
