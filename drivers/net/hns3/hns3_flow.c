@@ -1486,16 +1486,15 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 	}
 
 	/* Filter the unsupported flow types */
-	flow_types = rss_flow_conf.types & HNS3_ETH_RSS_SUPPORT;
+	flow_types = conf->conf.types ?
+		     rss_flow_conf.types & HNS3_ETH_RSS_SUPPORT :
+		     hw->rss_info.conf.types;
 	if (flow_types != rss_flow_conf.types)
 		hns3_warn(hw, "modified RSS types based on hardware support, "
 			      "requested:%" PRIx64 " configured:%" PRIx64,
 			  rss_flow_conf.types, flow_types);
 	/* Update the useful flow types */
 	rss_flow_conf.types = flow_types;
-
-	if ((rss_flow_conf.types & ETH_RSS_PROTO_MASK) == 0)
-		return hns3_disable_rss(hw);
 
 	rss_info = &hw->rss_info;
 	if (!add) {
