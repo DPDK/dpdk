@@ -60,7 +60,7 @@ parse_set(const char *input, uint16_t set[], unsigned int num)
 				min = idx;
 			else /* avoid continuous '-' */
 				return -1;
-		} else if ((*end == ',') || (*end == '\0')) {
+		} else if ((*end == ',') || (*end == ':') || (*end == '\0')) {
 			max = idx;
 
 			if (min == num)
@@ -75,7 +75,45 @@ parse_set(const char *input, uint16_t set[], unsigned int num)
 			return -1;
 
 		str = end + 1;
-	} while (*end != '\0');
+	} while ((*end != '\0') && (*end != ':'));
+
+	return str - input;
+}
+
+int
+parse_branch_ratio(const char *input, float *branch_ratio)
+{
+	const char *str = input;
+	char *end = NULL;
+
+	while (isblank(*str))
+		str++;
+
+	if (*str == '\0')
+		return -1;
+
+	/* Go straight to the ':' separator if present */
+	while ((*str != '\0') && (*str != ':'))
+		str++;
+
+	/* Branch ratio not specified in args so leave it at default setting */
+	if (*str == '\0')
+		return 0;
+
+	/* Confirm ':' separator present */
+	if (*str != ':')
+		return -1;
+
+	str++;
+	errno = 0;
+	*branch_ratio = strtof(str, &end);
+	if (errno || end == NULL)
+		return -1;
+
+	if (*end != '\0')
+		return -1;
+
+	str = end + 1;
 
 	return str - input;
 }

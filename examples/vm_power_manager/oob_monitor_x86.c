@@ -109,7 +109,7 @@ apply_policy(int core)
 	 * down. Each core_details struct has it's own array.
 	 */
 	freq_window_idx = ci->cd[core].freq_window_idx;
-	if (ratio > ci->branch_ratio_threshold)
+	if (ratio > ci->cd[core].branch_ratio_threshold)
 		ci->cd[core].freq_directions[freq_window_idx] = 1;
 	else
 		ci->cd[core].freq_directions[freq_window_idx] = 0;

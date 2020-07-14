@@ -26,12 +26,12 @@ struct core_details {
 	uint16_t freq_directions[FREQ_WINDOW_SIZE];
 	uint16_t freq_window_idx;
 	uint16_t freq_state;
+	float branch_ratio_threshold;
 };
 
 struct core_info {
 	uint16_t core_count;
 	struct core_details *cd;
-	float branch_ratio_threshold;
 };
 
 #define BRANCH_RATIO_THRESHOLD 0.1

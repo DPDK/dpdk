@@ -165,15 +165,14 @@ parse_args(int argc, char **argv)
 	static struct option lgopts[] = {
 		{ "mac-updating", no_argument, 0, 1},
 		{ "no-mac-updating", no_argument, 0, 0},
-		{ "core-list", optional_argument, 0, 'l'},
+		{ "core-branch-ratio", optional_argument, 0, 'b'},
 		{ "port-list", optional_argument, 0, 'p'},
-		{ "branch-ratio", optional_argument, 0, 'b'},
 		{NULL, 0, 0, 0}
 	};
 	argvopt = argv;
 	ci = get_core_info();
 
-	while ((opt = getopt_long(argc, argvopt, "l:p:q:T:b:",
+	while ((opt = getopt_long(argc, argvopt, "p:q:T:b:",
 				  lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -185,7 +184,8 @@ parse_args(int argc, char **argv)
 				return -1;
 			}
 			break;
-		case 'l':
+		case 'b':
+			branch_ratio = BRANCH_RATIO_THRESHOLD;
 			oob_enable = malloc(ci->core_count * sizeof(uint16_t));
 			if (oob_enable == NULL) {
 				printf("Error - Unable to allocate memory\n");
@@ -193,31 +193,36 @@ parse_args(int argc, char **argv)
 			}
 			cnt = parse_set(optarg, oob_enable, ci->core_count);
 			if (cnt < 0) {
-				printf("Invalid core-list - [%s]\n",
+				printf("Invalid core-list section in "
+				       "core-branch-ratio matrix - [%s]\n",
 						optarg);
 				free(oob_enable);
 				break;
 			}
-			for (i = 0; i < ci->core_count; i++) {
-				if (oob_enable[i]) {
-					printf("***Using core %d\n", i);
-					ci->cd[i].oob_enabled = 1;
-					ci->cd[i].global_enabled_cpus = 1;
-				}
+			cnt = parse_branch_ratio(optarg, &branch_ratio);
+			if (cnt < 0) {
+				printf("Invalid branch-ratio section in "
+				       "core-branch-ratio matrix - [%s]\n",
+						optarg);
+				free(oob_enable);
+				break;
 			}
-			free(oob_enable);
-			break;
-		case 'b':
-			branch_ratio = 0.0;
-			if (strlen(optarg))
-				branch_ratio = atof(optarg);
-			if (branch_ratio <= 0.0) {
+			if (branch_ratio <= 0.0 || branch_ratio > 100.0) {
 				printf("invalid branch ratio specified\n");
 				return -1;
 			}
-			ci->branch_ratio_threshold = branch_ratio;
-			printf("***Setting branch ratio to %f\n",
-					branch_ratio);
+			for (i = 0; i < ci->core_count; i++) {
+				if (oob_enable[i]) {
+					printf("***Using core %d "
+					       "with branch ratio %f\n",
+					       i, branch_ratio);
+					ci->cd[i].oob_enabled = 1;
+					ci->cd[i].global_enabled_cpus = 1;
+					ci->cd[i].branch_ratio_threshold =
+								branch_ratio;
+				}
+			}
+			free(oob_enable);
 			break;
 		/* long options */
 		case 0:

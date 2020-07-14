@@ -410,19 +410,19 @@ There are a couple of command line parameters for enabling the out-of-band
 monitoring of branch ratios on cores doing busy polling using PMDs as
 described below:
 
-``--core-list {list of cores}``
+``--core-branch-ratio {list of cores}:{branch ratio for listed cores}``
    Specify the list of cores to monitor the ratio of branch misses
    to branch hits.  A tightly-polling PMD thread has a very low
    branch ratio, therefore the core frequency scales down to the
    minimum allowed value. On receiving packets, the code path changes,
    causing the branch ratio to increase. When the ratio goes above
    the ratio threshold, the core frequency scales up to the maximum
-   allowed value.
+   allowed value. The specified branch-ratio is a floating point number
+   that identifies the threshold at which to scale up or down for the
+   elements of the core-list. If not included the default branch ratio of
+   0.01 but will need adjustment for different workloads
 
-``--branch-ratio {ratio}``
-   Specify a floating-point number that identifies the threshold at which
-   to scale up or down for the given workload. The default branch ratio
-   is 0.01 and needs adjustment for different workloads.
+   This parameter can be used multiple times for different sets of cores.
 
 
 Compiling and Running the Guest Applications
