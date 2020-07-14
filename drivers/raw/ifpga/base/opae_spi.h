@@ -153,6 +153,7 @@ int spi_reg_read(struct altera_spi_device *dev, u32 reg, u32 *val);
 
 #define NIOS_INIT		0x1000
 #define REQ_FEC_MODE		GENMASK(23, 8)
+#define REQ_FEC_MODE_SHIFT      8
 #define FEC_MODE_NO		0x0
 #define FEC_MODE_KR		0x5555
 #define FEC_MODE_RS		0xaaaa

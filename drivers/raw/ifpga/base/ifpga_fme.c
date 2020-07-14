@@ -979,28 +979,32 @@ struct ifpga_feature_ops fme_spi_master_ops = {
 static int nios_spi_wait_init_done(struct altera_spi_device *dev)
 {
 	u32 val = 0;
-	unsigned long timeout = msecs_to_timer_cycles(10000);
+	unsigned long timeout = rte_get_timer_cycles() +
+			msecs_to_timer_cycles(10000);
 	unsigned long ticks;
 	int major_version;
+	int fecmode = FEC_MODE_NO;
 
 	if (spi_reg_read(dev, NIOS_VERSION, &val))
 		return -EIO;
 
-	major_version = (val >> NIOS_VERSION_MAJOR_SHIFT) &
-		NIOS_VERSION_MAJOR;
-	dev_debug(dev, "A10 NIOS FW version %d\n", major_version);
+	major_version =
+		(val & NIOS_VERSION_MAJOR) >> NIOS_VERSION_MAJOR_SHIFT;
+	dev_info(dev, "A10 NIOS FW version %d\n", major_version);
 
 	if (major_version >= 3) {
 		/* read NIOS_INIT to check if PKVL INIT done or not */
 		if (spi_reg_read(dev, NIOS_INIT, &val))
 			return -EIO;
 
+		dev_debug(dev, "read NIOS_INIT: 0x%x\n", val);
+
 		/* check if PKVLs are initialized already */
 		if (val & NIOS_INIT_DONE || val & NIOS_INIT_START)
 			goto nios_init_done;
 
 		/* start to config the default FEC mode */
-		val = NIOS_INIT_START;
+		val = fecmode | NIOS_INIT_START;
 
 		if (spi_reg_write(dev, NIOS_INIT, val))
 			return -EIO;
@@ -1010,14 +1014,23 @@ nios_init_done:
 	do {
 		if (spi_reg_read(dev, NIOS_INIT, &val))
 			return -EIO;
-		if (val)
+		if (val & NIOS_INIT_DONE)
 			break;
 
 		ticks = rte_get_timer_cycles();
 		if (time_after(ticks, timeout))
 			return -ETIMEDOUT;
 		msleep(100);
-	} while (!val);
+	} while (1);
+
+	/* get the fecmode */
+	if (spi_reg_read(dev, NIOS_INIT, &val))
+		return -EIO;
+	dev_debug(dev, "read NIOS_INIT: 0x%x\n", val);
+	fecmode = (val & REQ_FEC_MODE) >> REQ_FEC_MODE_SHIFT;
+	dev_info(dev, "fecmode: 0x%x, %s\n", fecmode,
+			(fecmode == FEC_MODE_KR) ? "kr" :
+			((fecmode == FEC_MODE_RS) ? "rs" : "no"));
 
 	return 0;
 }
