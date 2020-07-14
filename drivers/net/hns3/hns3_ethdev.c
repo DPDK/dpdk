@@ -2823,6 +2823,9 @@ hns3_get_capability(struct hns3_hw *hw)
 	}
 	hw->revision = revision;
 
+	if (revision >= PCI_REVISION_ID_HIP09_A)
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_COPPER_B, 1);
+
 	return 0;
 }
 
@@ -2840,7 +2843,8 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 		return ret;
 	}
 
-	if (cfg.media_type == HNS3_MEDIA_TYPE_COPPER) {
+	if (cfg.media_type == HNS3_MEDIA_TYPE_COPPER &&
+	    !hns3_dev_copper_supported(hw)) {
 		PMD_INIT_LOG(ERR, "media type is copper, not supported.");
 		return -EOPNOTSUPP;
 	}

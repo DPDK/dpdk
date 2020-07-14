@@ -30,6 +30,9 @@
 #define HNS3_PCI_REVISION_ID			0x08
 #define HNS3_PCI_REVISION_ID_LEN		1
 
+#define PCI_REVISION_ID_HIP08_B			0x21
+#define PCI_REVISION_ID_HIP09_A			0x30
+
 #define HNS3_PF_FUNC_ID			0
 #define HNS3_1ST_VF_FUNC_ID		1
 
@@ -530,9 +533,13 @@ struct hns3_adapter {
 };
 
 #define HNS3_DEV_SUPPORT_DCB_B			0x0
+#define HNS3_DEV_SUPPORT_COPPER_B		0x1
 
 #define hns3_dev_dcb_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
+
+#define hns3_dev_copper_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_COPPER_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)adapter)->hw)
