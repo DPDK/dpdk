@@ -28,12 +28,27 @@ struct perf_lcore_params {
 static struct perf_lcore_params prf_lc_prms[MAX_LCORE_PARAMS];
 static uint16_t nb_prf_lc_prms;
 
+static int
+is_hp_core(unsigned int lcore)
+{
+	struct rte_power_core_capabilities caps;
+	int ret;
+
+	/* do we have power management enabled? */
+	if (rte_power_get_env() == PM_ENV_NOT_SET) {
+		/* there's no power management, so just mark it as high perf */
+		return 1;
+	}
+	ret = rte_power_get_capabilities(lcore, &caps);
+	return ret == 0 && caps.turbo;
+}
+
 int
 update_lcore_params(void)
 {
 	uint8_t non_perf_lcores[RTE_MAX_LCORE];
 	uint16_t nb_non_perf_lcores = 0;
-	int i, j, ret;
+	int i, j;
 
 	/* if perf-config option was not used do nothing */
 	if (nb_prf_lc_prms == 0)
@@ -42,13 +57,9 @@ update_lcore_params(void)
 	/* if high-perf-cores option was not used query every available core */
 	if (nb_hp_lcores == 0) {
 		for (i = 0; i < RTE_MAX_LCORE; i++) {
-			if (rte_lcore_is_enabled(i)) {
-				struct rte_power_core_capabilities caps;
-				ret = rte_power_get_capabilities(i, &caps);
-				if (ret == 0 && caps.turbo) {
-					hp_lcores[nb_hp_lcores] = i;
-					nb_hp_lcores++;
-				}
+			if (rte_lcore_is_enabled(i) && is_hp_core(i)) {
+				hp_lcores[nb_hp_lcores] = i;
+				nb_hp_lcores++;
 			}
 		}
 	}
