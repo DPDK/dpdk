@@ -117,6 +117,9 @@ Deprecation Notices
   experimental in v20.11 DPDK release. For more details, please see `the thread
   <https://mails.dpdk.org/archives/dev/2020-April/164970.html>`_.
 
+* pmd_dpaa: The API ``rte_pmd_dpaa_set_tx_loopback`` will have extended
+  ``port_id`` definition from ``uint8_t`` to ``uint16_t``.
+
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,
   ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal
