@@ -635,7 +635,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 				RTE_MIN((size_t)mem_size, max_alloc_size),
 				mp->socket_id, mz_flags, align);
 
-			if (mz == NULL && rte_errno != ENOMEM)
+			if (mz != NULL || rte_errno != ENOMEM)
 				break;
 
 			max_alloc_size = RTE_MIN(max_alloc_size,
