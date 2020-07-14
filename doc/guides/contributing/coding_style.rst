@@ -54,8 +54,13 @@ To document a public API, a doxygen-like format must be used: refer to :ref:`dox
 License Header
 ~~~~~~~~~~~~~~
 
-Each file should begin with a special comment containing the appropriate copyright and license for the file.
-Generally this is the BSD License, except for code for Linux Kernel modules.
+Each file must begin with a special comment containing the
+`Software Package Data Exchange (SPDX) License Identfier <https://spdx.org/using-spdx-license-identifier>`_.
+
+Generally this is the BSD License, except for code granted special exceptions.
+The SPDX licences identifier is sufficient, a file should not contain
+an additional text version of the license (boilerplate).
+
 After any copyright header, a blank line should be left before any other contents, e.g. include statements in a C file.
 
 C Preprocessor Directives
