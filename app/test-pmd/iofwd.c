@@ -50,16 +50,9 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint32_t retry;
+	uint64_t start_tsc = 0;
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	uint64_t start_tsc;
-	uint64_t end_tsc;
-	uint64_t core_cycles;
-#endif
-
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	start_tsc = rte_rdtsc();
-#endif
+	get_start_cycles(&start_tsc);
 
 	/*
 	 * Receive a burst of packets and forward them.
@@ -96,11 +89,8 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 			rte_pktmbuf_free(pkts_burst[nb_tx]);
 		} while (++nb_tx < nb_rx);
 	}
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	end_tsc = rte_rdtsc();
-	core_cycles = (end_tsc - start_tsc);
-	fs->core_cycles = (uint64_t) (fs->core_cycles + core_cycles);
-#endif
+
+	get_end_cycles(fs, start_tsc);
 }
 
 struct fwd_engine io_fwd_engine = {

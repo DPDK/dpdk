@@ -3680,6 +3680,12 @@ set_xstats_hide_zero(uint8_t on_off)
 	xstats_hide_zero = on_off;
 }
 
+void
+set_record_core_cycles(uint8_t on_off)
+{
+	record_core_cycles = on_off;
+}
+
 static inline void
 print_fdir_mask(struct rte_eth_fdir_masks *mask)
 {

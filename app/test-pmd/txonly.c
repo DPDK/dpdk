@@ -299,15 +299,9 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint32_t retry;
 	uint64_t ol_flags = 0;
 	uint64_t tx_offloads;
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	uint64_t start_tsc;
-	uint64_t end_tsc;
-	uint64_t core_cycles;
-#endif
+	uint64_t start_tsc = 0;
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	start_tsc = rte_rdtsc();
-#endif
+	get_start_cycles(&start_tsc);
 
 	mbp = current_fwd_lcore()->mbp;
 	txp = &ports[fs->tx_port];
@@ -396,11 +390,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		} while (++nb_tx < nb_pkt);
 	}
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	end_tsc = rte_rdtsc();
-	core_cycles = (end_tsc - start_tsc);
-	fs->core_cycles = (uint64_t) (fs->core_cycles + core_cycles);
-#endif
+	get_end_cycles(fs, start_tsc);
 }
 
 static void

@@ -710,6 +710,21 @@ Set the forwarding ports hexadecimal mask::
 
 This is equivalent to the ``--portmask`` command-line option.
 
+set record-core-cycles
+~~~~~~~~~~~~~~~~~~~~~~
+
+Set the recording of CPU cycles::
+
+   testpmd> set record-core-cycles (on|off)
+
+Where:
+
+* ``on`` enables measurement of CPU cycles per packet.
+
+* ``off`` disables measurement of CPU cycles per packet.
+
+This is equivalent to the ``--record-core-cycles command-line`` option.
+
 set burst
 ~~~~~~~~~
 

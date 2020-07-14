@@ -489,3 +489,7 @@ The command line options are:
     The default value is 0x7::
 
        ETH_MQ_RX_RSS_FLAG | ETH_MQ_RX_DCB_FLAG | ETH_MQ_RX_VMDQ_FLAG
+
+*   ``--record-core-cycles``
+
+    Enable measurement of CPU cycles per packet.

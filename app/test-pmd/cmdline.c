@@ -529,6 +529,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set the option to hide the zero values"
 			" for xstats display.\n"
 
+			"set record-core-cycles on|off\n"
+			"    Set the option to enable measurement of CPU cycles.\n"
+
 			"set port (port_id) vf (vf_id) rx|tx on|off\n"
 			"    Enable/Disable a VF receive/tranmit from a port\n\n"
 
@@ -8331,6 +8334,48 @@ cmdline_parse_inst_t cmd_set_xstats_hide_zero = {
 		(void *)&cmd_set_xstats_hide_zero_keyword,
 		(void *)&cmd_set_xstats_hide_zero_name,
 		(void *)&cmd_set_xstats_hide_zero_on_off,
+		NULL,
+	},
+};
+
+/* *** SET OPTION TO ENABLE MEASUREMENT OF CPU CYCLES *** */
+struct cmd_set_record_core_cycles_result {
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t name;
+	cmdline_fixed_string_t on_off;
+};
+
+static void
+cmd_set_record_core_cycles_parsed(void *parsed_result,
+			__rte_unused struct cmdline *cl,
+			__rte_unused void *data)
+{
+	struct cmd_set_record_core_cycles_result *res;
+	uint16_t on_off = 0;
+
+	res = parsed_result;
+	on_off = !strcmp(res->on_off, "on") ? 1 : 0;
+	set_record_core_cycles(on_off);
+}
+
+cmdline_parse_token_string_t cmd_set_record_core_cycles_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_record_core_cycles_result,
+				 keyword, "set");
+cmdline_parse_token_string_t cmd_set_record_core_cycles_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_record_core_cycles_result,
+				 name, "record-core-cycles");
+cmdline_parse_token_string_t cmd_set_record_core_cycles_on_off =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_record_core_cycles_result,
+				 on_off, "on#off");
+
+cmdline_parse_inst_t cmd_set_record_core_cycles = {
+	.f = cmd_set_record_core_cycles_parsed,
+	.data = NULL,
+	.help_str = "set record-core-cycles on|off",
+	.tokens = {
+		(void *)&cmd_set_record_core_cycles_keyword,
+		(void *)&cmd_set_record_core_cycles_name,
+		(void *)&cmd_set_record_core_cycles_on_off,
 		NULL,
 	},
 };
@@ -19487,6 +19532,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_fwd_eth_peer,
 	(cmdline_parse_inst_t *)&cmd_set_qmap,
 	(cmdline_parse_inst_t *)&cmd_set_xstats_hide_zero,
+	(cmdline_parse_inst_t *)&cmd_set_record_core_cycles,
 	(cmdline_parse_inst_t *)&cmd_operate_port,
 	(cmdline_parse_inst_t *)&cmd_operate_specific_port,
 	(cmdline_parse_inst_t *)&cmd_operate_attach_port,

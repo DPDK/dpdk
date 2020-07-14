@@ -129,9 +129,7 @@ struct fwd_stream {
 	uint64_t rx_bad_outer_l4_csum;
 	/**< received packets has bad outer l4 checksum */
 	unsigned int gro_times;	/**< GRO operation times */
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t     core_cycles; /**< used for RX and TX processing */
-#endif
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	struct pkt_burst_stats rx_burst_stats;
 	struct pkt_burst_stats tx_burst_stats;
@@ -301,6 +299,7 @@ extern uint16_t nb_rx_queue_stats_mappings;
 extern uint8_t xstats_hide_zero; /**< Hide zero values for xstats display */
 
 /* globals used for configuration */
+extern uint8_t record_core_cycles; /**< Enables measurement of CPU cycles */
 extern uint16_t verbose_level; /**< Drives messages being displayed, if any. */
 extern int testpmd_logtype; /**< Log type for testpmd logs */
 extern uint8_t  interactive;
@@ -681,6 +680,20 @@ port_pci_reg_write(struct rte_port *port, uint32_t reg_off, uint32_t reg_v)
 #define port_id_pci_reg_write(pt_id, reg_off, reg_value) \
 	port_pci_reg_write(&ports[(pt_id)], (reg_off), (reg_value))
 
+static inline void
+get_start_cycles(uint64_t *start_tsc)
+{
+	if (record_core_cycles)
+		*start_tsc = rte_rdtsc();
+}
+
+static inline void
+get_end_cycles(struct fwd_stream *fs, uint64_t start_tsc)
+{
+	if (record_core_cycles)
+		fs->core_cycles += rte_rdtsc() - start_tsc;
+}
+
 /* Prototypes */
 unsigned int parse_item_list(char* str, const char* item_name,
 			unsigned int max_items,
@@ -772,6 +785,7 @@ void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_va
 
 void set_xstats_hide_zero(uint8_t on_off);
 
+void set_record_core_cycles(uint8_t on_off);
 void set_verbose_level(uint16_t vb_level);
 void set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs);
 void show_tx_pkt_segments(void);

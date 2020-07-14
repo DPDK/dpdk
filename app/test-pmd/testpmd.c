@@ -475,6 +475,11 @@ uint16_t nb_rx_queue_stats_mappings = 0;
  */
 uint8_t xstats_hide_zero;
 
+/*
+ * Measure of CPU cycles disabled by default
+ */
+uint8_t record_core_cycles;
+
 unsigned int num_sockets = 0;
 unsigned int socket_ids[RTE_MAX_NUMA_NODES];
 
@@ -1800,9 +1805,7 @@ fwd_stats_display(void)
 	uint64_t total_tx_dropped = 0;
 	uint64_t total_rx_nombuf = 0;
 	struct rte_eth_stats stats;
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t fwd_cycles = 0;
-#endif
 	uint64_t total_recv = 0;
 	uint64_t total_xmit = 0;
 	struct rte_port *port;
@@ -1830,9 +1833,8 @@ fwd_stats_display(void)
 		ports_stats[fs->rx_port].rx_bad_outer_l4_csum +=
 				fs->rx_bad_outer_l4_csum;
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-		fwd_cycles += fs->core_cycles;
-#endif
+		if (record_core_cycles)
+			fwd_cycles += fs->core_cycles;
 	}
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
 		uint8_t j;
@@ -1961,24 +1963,24 @@ fwd_stats_display(void)
 	printf("  %s++++++++++++++++++++++++++++++++++++++++++++++"
 	       "%s\n",
 	       acc_stats_border, acc_stats_border);
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
+	if (record_core_cycles) {
 #define CYC_PER_MHZ 1E6
-	if (total_recv > 0 || total_xmit > 0) {
-		uint64_t total_pkts = 0;
-		if (strcmp(cur_fwd_eng->fwd_mode_name, "txonly") == 0 ||
-		    strcmp(cur_fwd_eng->fwd_mode_name, "flowgen") == 0)
-			total_pkts = total_xmit;
-		else
-			total_pkts = total_recv;
+		if (total_recv > 0 || total_xmit > 0) {
+			uint64_t total_pkts = 0;
+			if (strcmp(cur_fwd_eng->fwd_mode_name, "txonly") == 0 ||
+			    strcmp(cur_fwd_eng->fwd_mode_name, "flowgen") == 0)
+				total_pkts = total_xmit;
+			else
+				total_pkts = total_recv;
 
-		printf("\n  CPU cycles/packet=%.2F (total cycles="
-		       "%"PRIu64" / total %s packets=%"PRIu64") at %"PRIu64
-		       " MHz Clock\n",
-		       (double) fwd_cycles / total_pkts,
-		       fwd_cycles, cur_fwd_eng->fwd_mode_name, total_pkts,
-		       (uint64_t)(rte_get_tsc_hz() / CYC_PER_MHZ));
+			printf("\n  CPU cycles/packet=%.2F (total cycles="
+			       "%"PRIu64" / total %s packets=%"PRIu64") at %"PRIu64
+			       " MHz Clock\n",
+			       (double) fwd_cycles / total_pkts,
+			       fwd_cycles, cur_fwd_eng->fwd_mode_name, total_pkts,
+			       (uint64_t)(rte_get_tsc_hz() / CYC_PER_MHZ));
+		}
 	}
-#endif
 }
 
 void
@@ -2006,9 +2008,7 @@ fwd_stats_reset(void)
 		memset(&fs->rx_burst_stats, 0, sizeof(fs->rx_burst_stats));
 		memset(&fs->tx_burst_stats, 0, sizeof(fs->tx_burst_stats));
 #endif
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 		fs->core_cycles = 0;
-#endif
 	}
 }
 

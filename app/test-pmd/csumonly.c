@@ -789,15 +789,9 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint16_t nb_segments = 0;
 	int ret;
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	uint64_t start_tsc;
-	uint64_t end_tsc;
-	uint64_t core_cycles;
-#endif
+	uint64_t start_tsc = 0;
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	start_tsc = rte_rdtsc();
-#endif
+	get_start_cycles(&start_tsc);
 
 	/* receive a burst of packet */
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
@@ -1098,11 +1092,7 @@ tunnel_update:
 		} while (++nb_tx < nb_rx);
 	}
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	end_tsc = rte_rdtsc();
-	core_cycles = (end_tsc - start_tsc);
-	fs->core_cycles = (uint64_t) (fs->core_cycles + core_cycles);
-#endif
+	get_end_cycles(fs, start_tsc);
 }
 
 struct fwd_engine csum_fwd_engine = {
