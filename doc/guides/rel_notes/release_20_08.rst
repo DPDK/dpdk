@@ -69,6 +69,12 @@ New Features
   barriers. rte_*mb APIs, for ARMv8 platforms, are changed to use DMB
   instruction to reflect this.
 
+* **Added support for RTS and HTS modes into mempool ring driver.**
+
+  Added ability to select new ring synchronisation modes:
+  ``relaxed tail sync (ring_mt_rts)`` and ``head/tail sync (ring_mt_hts)``
+  via mempool ops API.
+
 * **Added the support for vfio-pci new VF token interface.**
 
   From Linux 5.7, vfio-pci supports to bind both SR-IOV PF and the created VFs,

@@ -26,6 +26,22 @@ common_ring_sp_enqueue(struct rte_mempool *mp, void * const *obj_table,
 }
 
 static int
+rts_ring_mp_enqueue(struct rte_mempool *mp, void * const *obj_table,
+	unsigned int n)
+{
+	return rte_ring_mp_rts_enqueue_bulk(mp->pool_data,
+			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
+}
+
+static int
+hts_ring_mp_enqueue(struct rte_mempool *mp, void * const *obj_table,
+	unsigned int n)
+{
+	return rte_ring_mp_hts_enqueue_bulk(mp->pool_data,
+			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
+}
+
+static int
 common_ring_mc_dequeue(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
 	return rte_ring_mc_dequeue_bulk(mp->pool_data,
@@ -39,17 +55,30 @@ common_ring_sc_dequeue(struct rte_mempool *mp, void **obj_table, unsigned n)
 			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
 }
 
+static int
+rts_ring_mc_dequeue(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	return rte_ring_mc_rts_dequeue_bulk(mp->pool_data,
+			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
+}
+
+static int
+hts_ring_mc_dequeue(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	return rte_ring_mc_hts_dequeue_bulk(mp->pool_data,
+			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
+}
+
 static unsigned
 common_ring_get_count(const struct rte_mempool *mp)
 {
 	return rte_ring_count(mp->pool_data);
 }
 
-
 static int
-common_ring_alloc(struct rte_mempool *mp)
+ring_alloc(struct rte_mempool *mp, uint32_t rg_flags)
 {
-	int rg_flags = 0, ret;
+	int ret;
 	char rg_name[RTE_RING_NAMESIZE];
 	struct rte_ring *r;
 
@@ -59,12 +88,6 @@ common_ring_alloc(struct rte_mempool *mp)
 		rte_errno = ENAMETOOLONG;
 		return -rte_errno;
 	}
-
-	/* ring flags */
-	if (mp->flags & MEMPOOL_F_SP_PUT)
-		rg_flags |= RING_F_SP_ENQ;
-	if (mp->flags & MEMPOOL_F_SC_GET)
-		rg_flags |= RING_F_SC_DEQ;
 
 	/*
 	 * Allocate the ring that will be used to store objects.
@@ -80,6 +103,31 @@ common_ring_alloc(struct rte_mempool *mp)
 	mp->pool_data = r;
 
 	return 0;
+}
+
+static int
+common_ring_alloc(struct rte_mempool *mp)
+{
+	uint32_t rg_flags = 0;
+
+	if (mp->flags & MEMPOOL_F_SP_PUT)
+		rg_flags |= RING_F_SP_ENQ;
+	if (mp->flags & MEMPOOL_F_SC_GET)
+		rg_flags |= RING_F_SC_DEQ;
+
+	return ring_alloc(mp, rg_flags);
+}
+
+static int
+rts_ring_alloc(struct rte_mempool *mp)
+{
+	return ring_alloc(mp, RING_F_MP_RTS_ENQ | RING_F_MC_RTS_DEQ);
+}
+
+static int
+hts_ring_alloc(struct rte_mempool *mp)
+{
+	return ring_alloc(mp, RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ);
 }
 
 static void
@@ -130,7 +178,29 @@ static const struct rte_mempool_ops ops_sp_mc = {
 	.get_count = common_ring_get_count,
 };
 
+/* ops for mempool with ring in MT_RTS sync mode */
+static const struct rte_mempool_ops ops_mt_rts = {
+	.name = "ring_mt_rts",
+	.alloc = rts_ring_alloc,
+	.free = common_ring_free,
+	.enqueue = rts_ring_mp_enqueue,
+	.dequeue = rts_ring_mc_dequeue,
+	.get_count = common_ring_get_count,
+};
+
+/* ops for mempool with ring in MT_HTS sync mode */
+static const struct rte_mempool_ops ops_mt_hts = {
+	.name = "ring_mt_hts",
+	.alloc = hts_ring_alloc,
+	.free = common_ring_free,
+	.enqueue = hts_ring_mp_enqueue,
+	.dequeue = hts_ring_mc_dequeue,
+	.get_count = common_ring_get_count,
+};
+
 MEMPOOL_REGISTER_OPS(ops_mp_mc);
 MEMPOOL_REGISTER_OPS(ops_sp_sc);
 MEMPOOL_REGISTER_OPS(ops_mp_sc);
 MEMPOOL_REGISTER_OPS(ops_sp_mc);
+MEMPOOL_REGISTER_OPS(ops_mt_rts);
+MEMPOOL_REGISTER_OPS(ops_mt_hts);

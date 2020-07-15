@@ -359,6 +359,8 @@ That should help users to configure ring in the most suitable way for his
 specific usage scenarios.
 Currently supported modes:
 
+.. _Ring_Library_MPMC_Mode:
+
 MP/MC (default one)
 ~~~~~~~~~~~~~~~~~~~
 
@@ -369,10 +371,14 @@ per core) this is usually the most suitable and fastest synchronization mode.
 As a well known limitation - it can perform quite pure on some overcommitted
 scenarios.
 
+.. _Ring_Library_SPSC_Mode:
+
 SP/SC
 ~~~~~
 Single-producer (/single-consumer) mode. In this mode only one thread at a time
 is allowed to enqueue (/dequeue) objects to (/from) the ring.
+
+.. _Ring_Library_MT_RTS_Mode:
 
 MP_RTS/MC_RTS
 ~~~~~~~~~~~~~
@@ -389,6 +395,8 @@ To achieve that RTS requires 2 64-bit CAS for each enqueue(/dequeue) operation:
 one for head update, second for tail update.
 In comparison the original MP/MC algorithm requires one 32-bit CAS
 for head update and waiting/spinning on tail value.
+
+.. _Ring_Library_MT_HTS_Mode:
 
 MP_HTS/MC_HTS
 ~~~~~~~~~~~~~
