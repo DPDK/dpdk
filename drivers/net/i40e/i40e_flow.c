@@ -4851,11 +4851,12 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_rss *rss;
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_queue_regions *info = &pf->queue_region;
 	struct i40e_rte_flow_rss_conf *rss_config =
 			&filter->rss_conf;
 	struct i40e_rte_flow_rss_conf *rss_info = &pf->rss_info;
-	uint16_t i, j, n, tmp, nb_types;
+	uint16_t i, j, n, m, tmp, nb_types;
 	uint32_t index = 0;
 	uint64_t hf_bit = 1;
 
@@ -4887,6 +4888,24 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 			I40E_FILTER_PCTYPE_L2_PAYLOAD},
 	};
 
+	static const struct {
+		uint64_t rss_type;
+		enum i40e_filter_pctype pctype;
+	} pctype_match_table_x722[] = {
+		{ETH_RSS_NONFRAG_IPV4_TCP,
+			I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK},
+		{ETH_RSS_NONFRAG_IPV4_UDP,
+			I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP},
+		{ETH_RSS_NONFRAG_IPV4_UDP,
+			I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP},
+		{ETH_RSS_NONFRAG_IPV6_TCP,
+			I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK},
+		{ETH_RSS_NONFRAG_IPV6_UDP,
+			I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP},
+		{ETH_RSS_NONFRAG_IPV6_UDP,
+			I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP},
+	};
+
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	rss = act->conf;
 
@@ -4912,6 +4931,18 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 				break;
 			}
 		}
+
+		if (hw->mac.type == I40E_MAC_X722)
+			for (j = 0; j < RTE_DIM(pctype_match_table_x722); j++) {
+				if (rss->types &
+				    pctype_match_table_x722[j].rss_type) {
+					m = conf_info->region[0].flowtype_num;
+					conf_info->region[0].hw_flowtype[m] =
+						pctype_match_table_x722[j].pctype;
+					conf_info->region[0].flowtype_num++;
+					conf_info->queue_region_number = 1;
+				}
+			}
 	}
 
 	/**
@@ -5009,9 +5040,9 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 					info->region[i].user_priority_num++;
 				}
 
-				j = info->region[i].flowtype_num;
-				tmp = conf_info->region[n].hw_flowtype[0];
-				if (conf_info->region[n].flowtype_num) {
+				for (m = 0; m < conf_info->region[n].flowtype_num; m++) {
+					j = info->region[i].flowtype_num;
+					tmp = conf_info->region[n].hw_flowtype[m];
 					info->region[i].hw_flowtype[j] = tmp;
 					info->region[i].flowtype_num++;
 				}
@@ -5024,9 +5055,9 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 					info->region[i].user_priority_num++;
 				}
 
-				j = info->region[i].flowtype_num;
-				tmp = conf_info->region[n].hw_flowtype[0];
-				if (conf_info->region[n].flowtype_num) {
+				for (m = 0; m < conf_info->region[n].flowtype_num; m++) {
+					j = info->region[i].flowtype_num;
+					tmp = conf_info->region[n].hw_flowtype[m];
 					info->region[i].hw_flowtype[j] = tmp;
 					info->region[i].flowtype_num++;
 				}
