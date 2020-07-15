@@ -183,6 +183,8 @@
 
 /* The default memory allocator used in PMD. */
 #define MLX5_SYS_MEM_EN "sys_mem_en"
+/* Decap will be used or not. */
+#define MLX5_DECAP_EN "decap_en"
 
 static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
 
@@ -1544,6 +1546,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->reclaim_mode = tmp;
 	} else if (strcmp(MLX5_SYS_MEM_EN, key) == 0) {
 		config->sys_mem_en = !!tmp;
+	} else if (strcmp(MLX5_DECAP_EN, key) == 0) {
+		config->decap_en = !!tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -1603,6 +1607,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_HP_BUF_SIZE,
 		MLX5_RECLAIM_MEM,
 		MLX5_SYS_MEM_EN,
+		MLX5_DECAP_EN,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;

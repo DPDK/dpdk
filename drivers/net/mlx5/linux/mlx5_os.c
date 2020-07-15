@@ -776,8 +776,6 @@ err_secondary:
 		(config.hw_vlan_strip ? "" : "not "));
 	config.hw_fcs_strip = !!(sh->device_attr.raw_packet_caps &
 				 IBV_RAW_PACKET_CAP_SCATTER_FCS);
-	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
-		(config.hw_fcs_strip ? "" : "not "));
 #if defined(HAVE_IBV_WQ_FLAG_RX_END_PADDING)
 	hw_padding = !!sh->device_attr.rx_pad_end_addr_align;
 #elif defined(HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING)
@@ -959,6 +957,15 @@ err_secondary:
 				config.rt_timestamp = 1;
 		}
 	}
+	/*
+	 * If HW has bug working with tunnel packet decapsulation and
+	 * scatter FCS, and decapsulation is needed, clear the hw_fcs_strip
+	 * bit. Then DEV_RX_OFFLOAD_KEEP_CRC bit will not be set anymore.
+	 */
+	if (config.hca_attr.scatter_fcs_w_decap_disable && config.decap_en)
+		config.hw_fcs_strip = 0;
+	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
+		(config.hw_fcs_strip ? "" : "not "));
 	if (config.mprq.enabled && mprq) {
 		if (config.mprq.stride_num_n &&
 		    (config.mprq.stride_num_n > mprq_max_stride_num_n ||
@@ -1732,6 +1739,7 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		},
 		.dv_esw_en = 1,
 		.dv_flow_en = 1,
+		.decap_en = 1,
 		.log_hp_size = MLX5_ARG_UNSET,
 	};
 	/* Device specific configuration. */

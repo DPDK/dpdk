@@ -929,6 +929,15 @@ Driver options
 
   By default, the PMD will set this value to 0.
 
+- ``decap_en`` parameter [int]
+
+  Some devices do not support FCS (frame checksum) scattering for
+  tunnel-decapsulated packets.
+  If set to 0, this option forces the FCS feature and rejects tunnel
+  decapsulation in the flow engine for such devices.
+
+  By default, the PMD will set this value to 1.
+
 .. _mlx5_firmware_config:
 
 Firmware configuration

@@ -2429,6 +2429,11 @@ flow_dv_validate_action_decap(struct rte_eth_dev *dev,
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (priv->config.hca_attr.scatter_fcs_w_decap_disable &&
+	    !priv->config.decap_en)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "decap is not enabled");
 	if (action_flags & MLX5_FLOW_XCAP_ACTIONS)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
