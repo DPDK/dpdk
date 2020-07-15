@@ -12,6 +12,11 @@
 #include "tfp.h"
 #include "ulp_port_db.h"
 
+/* Local defines for the parsing functions */
+#define ULP_VLAN_PRIORITY_SHIFT		13 /* First 3 bits */
+#define ULP_VLAN_PRIORITY_MASK		0x700
+#define ULP_VLAN_TAG_MASK		0xFFF /* Last 12 bits*/
+
 /* Utility function to skip the void items. */
 static inline int32_t
 ulp_rte_item_skip_void(const struct rte_flow_item **item, uint32_t increment)
@@ -545,8 +550,8 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 	 */
 	if (vlan_spec) {
 		vlan_tag = ntohs(vlan_spec->tci);
-		priority = htons(vlan_tag >> 13);
-		vlan_tag &= 0xfff;
+		priority = htons(vlan_tag >> ULP_VLAN_PRIORITY_SHIFT);
+		vlan_tag &= ULP_VLAN_TAG_MASK;
 		vlan_tag = htons(vlan_tag);
 
 		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
@@ -562,16 +567,27 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 
 	if (vlan_mask) {
 		vlan_tag = ntohs(vlan_mask->tci);
-		priority = htons(vlan_tag >> 13);
+		priority = htons(vlan_tag >> ULP_VLAN_PRIORITY_SHIFT);
 		vlan_tag &= 0xfff;
+
+		/*
+		 * the storage for priority and vlan tag is 2 bytes
+		 * The mask of priority which is 3 bits if it is all 1's
+		 * then make the rest bits 13 bits as 1's
+		 * so that it is matched as exact match.
+		 */
+		if (priority == ULP_VLAN_PRIORITY_MASK)
+			priority |= ~ULP_VLAN_PRIORITY_MASK;
+		if (vlan_tag == ULP_VLAN_TAG_MASK)
+			vlan_tag |= ~ULP_VLAN_TAG_MASK;
 		vlan_tag = htons(vlan_tag);
 
-		field = &params->hdr_field[idx];
-		memcpy(field->mask, &priority, field->size);
-		field++;
-		memcpy(field->mask, &vlan_tag, field->size);
-		field++;
-		memcpy(field->mask, &vlan_mask->inner_type, field->size);
+		ulp_rte_prsr_mask_copy(params, &idx, &priority,
+				       sizeof(priority));
+		ulp_rte_prsr_mask_copy(params, &idx, &vlan_tag,
+				       sizeof(vlan_tag));
+		ulp_rte_prsr_mask_copy(params, &idx, &vlan_mask->inner_type,
+				       sizeof(vlan_mask->inner_type));
 	}
 	/* Set the vlan index to new incremented value */
 	params->vlan_idx += BNXT_ULP_PROTO_HDR_S_VLAN_NUM;
