@@ -418,6 +418,82 @@ ulp_blob_pad_push(struct ulp_blob *blob,
 	return datalen;
 }
 
+/* Get data from src and put into dst using little-endian format */
+static void
+ulp_bs_get_lsb(uint8_t *src, uint16_t bitpos, uint8_t bitlen, uint8_t *dst)
+{
+	uint8_t bitoffs = bitpos % ULP_BLOB_BYTE;
+	uint16_t index  = ULP_BITS_2_BYTE_NR(bitpos);
+	uint8_t mask, partial, shift;
+
+	shift = bitoffs;
+	partial = ULP_BLOB_BYTE - bitoffs;
+	if (bitoffs + bitlen <= ULP_BLOB_BYTE) {
+		mask = ((1 << bitlen) - 1) << shift;
+		*dst = (src[index] & mask) >> shift;
+	} else {
+		mask = ((1 << partial) - 1) << shift;
+		*dst = (src[index] & mask) >> shift;
+		index++;
+		partial = bitlen - partial;
+		mask = ((1 << partial) - 1);
+		*dst |= (src[index] & mask) << (ULP_BLOB_BYTE - bitoffs);
+	}
+}
+
+/* Assuming that src is in little-Endian Format */
+static void
+ulp_bs_pull_lsb(uint8_t *src, uint8_t *dst, uint32_t size,
+		uint32_t offset, uint32_t len)
+{
+	uint32_t idx;
+	uint32_t cnt = ULP_BITS_2_BYTE_NR(len);
+
+	/* iterate bytewise to get data */
+	for (idx = 0; idx < cnt; idx++) {
+		ulp_bs_get_lsb(src, offset, ULP_BLOB_BYTE,
+			       &dst[size - 1 - idx]);
+		offset += ULP_BLOB_BYTE;
+		len -= ULP_BLOB_BYTE;
+	}
+
+	/* Extract the last reminder data that is not 8 byte boundary */
+	if (len)
+		ulp_bs_get_lsb(src, offset, len, &dst[size - 1 - idx]);
+}
+
+/*
+ * Extract data from the binary blob using given offset.
+ *
+ * blob [in] The blob that data is extracted from. The blob must
+ * be initialized prior to pulling data.
+ *
+ * data [in] A pointer to put the data.
+ * data_size [in] size of the data buffer in bytes.
+ *offset [in] - Offset in the blob to extract the data in bits format.
+ * len [in] The number of bits to be pulled from the blob.
+ *
+ * Output: zero on success, -1 on failure
+ */
+int32_t
+ulp_blob_pull(struct ulp_blob *blob, uint8_t *data, uint32_t data_size,
+	      uint16_t offset, uint16_t len)
+{
+	/* validate the arguments */
+	if (!blob || (offset + len) > blob->bitlen ||
+	    ULP_BYTE_2_BITS(data_size) < len) {
+		BNXT_TF_DBG(ERR, "invalid argument\n");
+		return -1; /* failure */
+	}
+
+	if (blob->byte_order == BNXT_ULP_BYTE_ORDER_BE) {
+		BNXT_TF_DBG(ERR, "Big endian pull not implemented\n");
+		return -1; /* failure */
+	}
+	ulp_bs_pull_lsb(blob->data, data, data_size, offset, len);
+	return 0;
+}
+
 /*
  * Get the data portion of the binary blob.
  *

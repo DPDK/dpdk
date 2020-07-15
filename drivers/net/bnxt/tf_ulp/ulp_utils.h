@@ -229,6 +229,23 @@ ulp_blob_data_get(struct ulp_blob *blob,
 		  uint16_t *datalen);
 
 /*
+ * Extract data from the binary blob using given offset.
+ *
+ * blob [in] The blob that data is extracted from. The blob must
+ * be initialized prior to pulling data.
+ *
+ * data [in] A pointer to put the data.
+ * data_size [in] size of the data buffer in bytes.
+ *offset [in] - Offset in the blob to extract the data in bits format.
+ * len [in] The number of bits to be pulled from the blob.
+ *
+ * Output: zero on success, -1 on failure
+ */
+int32_t
+ulp_blob_pull(struct ulp_blob *blob, uint8_t *data, uint32_t data_size,
+	      uint16_t offset, uint16_t len);
+
+/*
  * Adds pad to an initialized blob at the current offset
  *
  * blob [in] The blob that data is added to.  The blob must
