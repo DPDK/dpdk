@@ -189,6 +189,26 @@ bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params)
 	    match_port_type == BNXT_ULP_INTF_TYPE_VF_REP)
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_VF_TO_VF, 1);
 
+	/* Update the decrement ttl computational fields */
+	if (ULP_BITMAP_ISSET(params->act_bitmap.bits,
+			     BNXT_ULP_ACTION_BIT_DEC_TTL)) {
+		/*
+		 * Check that vxlan proto is included and vxlan decap
+		 * action is not set then decrement tunnel ttl.
+		 * Similarly add GRE and NVGRE in future.
+		 */
+		if ((ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
+				      BNXT_ULP_HDR_BIT_T_VXLAN) &&
+		    !ULP_BITMAP_ISSET(params->act_bitmap.bits,
+				      BNXT_ULP_ACTION_BIT_VXLAN_DECAP))) {
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_ACT_T_DEC_TTL, 1);
+		} else {
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_ACT_DEC_TTL, 1);
+		}
+	}
+
 	/* TBD: Handle the flow rejection scenarios */
 	return 0;
 }
@@ -1813,4 +1833,14 @@ ulp_rte_set_tp_dst_act_handler(const struct rte_flow_action *action_item,
 
 	BNXT_TF_DBG(ERR, "Parse Error: set tp src arg is invalid\n");
 	return BNXT_TF_RC_ERROR;
+}
+
+/* Function to handle the parsing of RTE Flow action dec ttl.*/
+int32_t
+ulp_rte_dec_ttl_act_handler(const struct rte_flow_action *act __rte_unused,
+			    struct ulp_rte_parser_params *params)
+{
+	/* Update the act_bitmap with dec ttl */
+	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACTION_BIT_DEC_TTL);
+	return BNXT_TF_RC_SUCCESS;
 }
