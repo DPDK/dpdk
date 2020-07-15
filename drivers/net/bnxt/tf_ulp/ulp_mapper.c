@@ -16,6 +16,7 @@
 #include "ulp_mark_mgr.h"
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
+#include "tf_util.h"
 
 static struct bnxt_ulp_glb_resource_info *
 ulp_mapper_glb_resource_info_list_get(uint32_t *num_entries)
@@ -677,6 +678,98 @@ error:
 	return rc;
 }
 
+/*
+ * Process the identifier instruction and extract it from result blob.
+ * Increment the identifier reference count and store it in the flow database.
+ */
+static int32_t
+ulp_mapper_ident_extract(struct bnxt_ulp_mapper_parms *parms,
+			 struct bnxt_ulp_mapper_tbl_info *tbl,
+			 struct bnxt_ulp_mapper_ident_info *ident,
+			 struct ulp_blob *res_blob)
+{
+	struct ulp_flow_db_res_params	fid_parms;
+	uint64_t id = 0;
+	uint32_t idx;
+	struct tf_search_identifier_parms sparms = { 0 };
+	struct tf_free_identifier_parms free_parms = { 0 };
+	struct tf *tfp;
+	int rc;
+
+	/* Get the tfp from ulp context */
+	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx);
+	if (!tfp) {
+		BNXT_TF_DBG(ERR, "Failed to get tf pointer\n");
+		return -EINVAL;
+	}
+
+	/* Extract the index from the result blob */
+	rc = ulp_blob_pull(res_blob, (uint8_t *)&idx, sizeof(idx),
+			   ident->ident_bit_pos, ident->ident_bit_size);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to extract identifier from blob\n");
+		return -EIO;
+	}
+
+	/* populate the search params and search identifier shadow table */
+	sparms.ident_type = ident->ident_type;
+	sparms.dir = tbl->direction;
+	/* convert the idx into cpu format */
+	sparms.search_id = tfp_be_to_cpu_32(idx);
+
+	/* Search identifier also increase the reference count */
+	rc = tf_search_identifier(tfp, &sparms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Search ident %s:%x failed.\n",
+			    tf_dir_2_str(sparms.dir),
+			    sparms.search_id);
+		return rc;
+	}
+	BNXT_TF_DBG(INFO, "Search ident %s:%x.success.\n",
+		    tf_dir_2_str(sparms.dir),
+		    sparms.search_id);
+
+	/* Write it to the regfile */
+	id = (uint64_t)tfp_cpu_to_be_64(sparms.search_id);
+	if (!ulp_regfile_write(parms->regfile, ident->regfile_idx, id)) {
+		BNXT_TF_DBG(ERR, "Regfile[%d] write failed.\n", idx);
+		rc = -EINVAL;
+		/* Need to free the identifier, so goto error */
+		goto error;
+	}
+
+	/* Link the resource to the flow in the flow db */
+	memset(&fid_parms, 0, sizeof(fid_parms));
+	fid_parms.direction = tbl->direction;
+	fid_parms.resource_func = ident->resource_func;
+	fid_parms.resource_type = ident->ident_type;
+	fid_parms.resource_hndl = sparms.search_id;
+	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
+	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
+				      parms->tbl_idx,
+				      parms->fid,
+				      &fid_parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to link res to flow rc = %d\n",
+			    rc);
+		/* Need to free the identifier, so goto error */
+		goto error;
+	}
+
+	return 0;
+
+error:
+	/* Need to free the identifier */
+	free_parms.dir = tbl->direction;
+	free_parms.ident_type = ident->ident_type;
+	free_parms.id = sparms.search_id;
+	(void)tf_free_identifier(tfp, &free_parms);
+	BNXT_TF_DBG(ERR, "Ident extract failed for %s:%s:%x\n",
+		    ident->description,
+		    tf_dir_2_str(tbl->direction), sparms.search_id);
+	return rc;
+}
+
 static int32_t
 ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 				enum tf_dir dir,
@@ -1204,6 +1297,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct tf_free_tcam_entry_parms free_parms	= { 0 };
 	uint32_t hit = 0;
 	uint16_t tmplen = 0;
+	struct ulp_blob res_blob;
 
 	/* Skip this if was handled by the cache. */
 	if (parms->tcam_tbl_opc == BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_SKIP) {
@@ -1379,9 +1473,23 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			goto error;
 
 	} else {
-		BNXT_TF_DBG(ERR, "Not supporting search before alloc now\n");
-		rc = -EINVAL;
-		goto error;
+		struct bnxt_ulp_mapper_ident_info *idents;
+		uint32_t num_idents;
+
+		/*
+		 * Extract the listed identifiers from the result field,
+		 * no need to allocate them.
+		 */
+		idents = ulp_mapper_ident_fields_get(tbl, &num_idents);
+		for (i = 0; i < num_idents; i++) {
+			rc = ulp_mapper_ident_extract(parms, tbl,
+						      &idents[i], &res_blob);
+			if (rc) {
+				BNXT_TF_DBG(ERR,
+					    "Error in ident extraction\n");
+				goto error;
+			}
+		}
 	}
 
 	/*
