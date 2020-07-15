@@ -296,7 +296,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set txtimes (x, y)\n"
 			"    Set the scheduling on timestamps"
-			" timings for the TXOMLY mode\n\n"
+			" timings for the TXONLY mode\n\n"
 
 			"set corelist (x[,y]*)\n"
 			"    Set the list of forwarding cores.\n\n"

@@ -757,7 +757,7 @@ where:
 * ``intra`` is the delay between the packets within the burst specified
   in the device clock units. The number of packets in the burst is defined
   by regular burst setting. If ``intra`` parameter is zero no timestamps
-  provided in the packets excepting  the first one in the burst.
+  provided in the packets excepting the first one in the burst.
 
 As the result the bursts of packet will be transmitted with specific
 delays between the packets within the burst and specific delay between
