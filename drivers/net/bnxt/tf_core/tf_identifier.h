@@ -66,6 +66,37 @@ struct tf_ident_free_parms {
 	 * [in] ID to free
 	 */
 	uint16_t id;
+	/**
+	 * (experimental)
+	 * [out] Current refcnt after free
+	 */
+	uint32_t *ref_cnt;
+};
+
+/**
+ * Identifier search parameter definition
+ */
+struct tf_ident_search_parms {
+	/**
+	 * [in]  receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Identifier type
+	 */
+	enum tf_identifier_type type;
+	/**
+	 * [in] Identifier data to search for
+	 */
+	uint16_t search_id;
+	/**
+	 * [out] Set if matching identifier found
+	 */
+	bool *hit;
+	/**
+	 * [out] Current ref count after allocation
+	 */
+	uint32_t *ref_cnt;
 };
 
 /**
@@ -143,5 +174,21 @@ int tf_ident_alloc(struct tf *tfp,
  */
 int tf_ident_free(struct tf *tfp,
 		  struct tf_ident_free_parms *parms);
+
+/**
+ * Search a single identifier type.
+ *
+ * [in] tfp
+ *   Pointer to TF handle, used for HCAPI communication
+ *
+ * [in] parms
+ *   Pointer to parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_ident_search(struct tf *tfp,
+		    struct tf_ident_search_parms *parms);
 
 #endif /* _TF_IDENTIFIER_H_ */

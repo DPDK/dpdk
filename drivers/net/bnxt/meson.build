@@ -46,7 +46,7 @@ sources = files('bnxt_cpr.c',
 	'tf_core/ll.c',
 	'tf_core/tf_global_cfg.c',
 	'tf_core/tf_em_host.c',
-	'tf_ulp/ulp_fc_mgr.c',
+	'tf_core/tf_shadow_identifier.c',
 
 	'hcapi/hcapi_cfa_p4.c',
 
@@ -63,6 +63,7 @@ sources = files('bnxt_cpr.c',
 	'tf_ulp/bnxt_ulp_flow.c',
 	'tf_ulp/ulp_port_db.c',
 	'tf_ulp/ulp_def_rules.c',
+	'tf_ulp/ulp_fc_mgr.c',
 
 	'rte_pmd_bnxt.c')
 

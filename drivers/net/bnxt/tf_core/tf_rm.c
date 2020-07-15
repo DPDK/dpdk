@@ -755,6 +755,7 @@ tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 	}
 
 	*parms->index = index;
+	*parms->base_index = id;
 
 	return rc;
 }
@@ -841,6 +842,7 @@ tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms)
 	if (rc)
 		return rc;
 
+	*parms->base_index = adj_index;
 	*parms->allocated = ba_inuse(rm_db->db[parms->db_index].pool,
 				     adj_index);
 

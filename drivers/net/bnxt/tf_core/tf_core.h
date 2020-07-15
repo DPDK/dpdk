@@ -695,9 +695,9 @@ struct tf_alloc_identifier_parms {
 	 */
 	enum tf_identifier_type ident_type;
 	/**
-	 * [out] Identifier allocated
+	 * [out] Allocated identifier
 	 */
-	uint16_t id;
+	uint32_t id;
 };
 
 /**
@@ -715,7 +715,38 @@ struct tf_free_identifier_parms {
 	/**
 	 * [in] ID to free
 	 */
-	uint16_t id;
+	uint32_t id;
+	/**
+	 * (experimental)
+	 * [out] Current refcnt after free
+	 */
+	uint32_t ref_cnt;
+};
+
+/**
+ * tf_search_identifier parameter definition (experimental)
+ */
+struct tf_search_identifier_parms {
+	/**
+	 * [in]	 receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Identifier type
+	 */
+	enum tf_identifier_type ident_type;
+	/**
+	 * [in] Identifier data to search for
+	 */
+	uint32_t search_id;
+	/**
+	 * [out] Set if matching identifier found
+	 */
+	bool hit;
+	/**
+	 * [out] Current ref count after allocation
+	 */
+	uint32_t ref_cnt;
 };
 
 /**
@@ -723,6 +754,9 @@ struct tf_free_identifier_parms {
  *
  * TruFlow core will allocate a free id from the per identifier resource type
  * pool reserved for the session during tf_open().  No firmware is involved.
+ *
+ * If shadow copy is enabled, the internal ref_cnt is set to 1 in the
+ * shadow table for a newly allocated resource.
  *
  * Returns success or failure code.
  */
@@ -736,10 +770,40 @@ int tf_alloc_identifier(struct tf *tfp,
  * reserved for the session.  No firmware is involved.  During tf_close, the
  * complete pool is returned to the firmware.
  *
+ * additional operation (experimental)
+ * Decrement reference count.  Only release resource once refcnt goes to 0 if
+ * shadow copy is enabled.
+ *
  * Returns success or failure code.
  */
 int tf_free_identifier(struct tf *tfp,
 		       struct tf_free_identifier_parms *parms);
+
+/**
+ * Search identifier resource (experimental)
+ *
+ * If the shadow copy is enabled search_id is used to search for a matching
+ * entry in the shadow table.  The shadow table consists of an array of
+ * reference counts indexed by identifier.  If a matching entry is found hit is
+ * set to TRUE, refcnt is increased by 1 and returned.  Otherwise, hit is
+ * set to false and refcnt is set to 0.
+ *
+ * TODO: we may need a per table internal shadow copy enable flag to stage
+ * the shadow table implementation.  We do not need the shadow table for other
+ * tables at this time so we may only want to enable the identifier shadow.
+ *
+ * TODO: remove this pseudocode below added to show that if search fails
+ * we shouldn't allocate a new entry but return.
+ *
+ * identifier alloc (search_en=1)
+ * if (ident is allocated and ref_cnt >=1)
+ *      return ident - hit is set, incr refcnt
+ * else (not found)
+ *      return
+ *
+ */
+int tf_search_identifier(struct tf *tfp,
+			 struct tf_search_identifier_parms *parms);
 
 /**
  * @page dram_table DRAM Table Scope Interface

@@ -199,6 +199,26 @@ struct tf_dev_ops {
 				 struct tf_ident_free_parms *parms);
 
 	/**
+	 * Search of an identifier element.
+	 *
+	 * This API search the specified identifier element from a
+	 * device specific identifier shadow DB. The allocated element
+	 * is returned.
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] parms
+	 *   Pointer to identifier search parameters
+	 *
+	 * Returns
+	 *   - (0) if successful.
+	 *   - (-EINVAL) on failure.
+	 */
+	int (*tf_dev_search_ident)(struct tf *tfp,
+				   struct tf_ident_search_parms *parms);
+
+	/**
 	 * Allocation of a table type element.
 	 *
 	 * This API allocates the specified table type element from a

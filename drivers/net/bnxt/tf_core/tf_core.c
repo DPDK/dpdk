@@ -534,10 +534,71 @@ tf_free_identifier(struct tf *tfp,
 	fparms.dir = parms->dir;
 	fparms.type = parms->ident_type;
 	fparms.id = parms->id;
+	fparms.ref_cnt = &parms->ref_cnt;
 	rc = dev->ops->tf_dev_free_ident(tfp, &fparms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "%s: Identifier free failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	return 0;
+}
+
+int
+tf_search_identifier(struct tf *tfp,
+		     struct tf_search_identifier_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_ident_search_parms sparms;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Can't do static initialization due to UT enum check */
+	memset(&sparms, 0, sizeof(struct tf_ident_search_parms));
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_search_ident == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	sparms.dir = parms->dir;
+	sparms.type = parms->ident_type;
+	sparms.search_id = parms->search_id;
+	sparms.hit = &parms->hit;
+	sparms.ref_cnt = &parms->ref_cnt;
+	rc = dev->ops->tf_dev_search_ident(tfp, &sparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Identifier search failed, rc:%s\n",
 			    tf_dir_2_str(parms->dir),
 			    strerror(-rc));
 		return rc;

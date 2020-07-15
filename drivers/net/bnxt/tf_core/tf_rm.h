@@ -204,6 +204,10 @@ struct tf_rm_allocate_parms {
 	 *              available index)
 	 */
 	uint32_t priority;
+	/**
+	 * [in] Pointer to the allocated index before adjusted.
+	 */
+	uint32_t *base_index;
 };
 
 /**
@@ -246,6 +250,10 @@ struct tf_rm_is_allocated_parms {
 	 * [in] Pointer to flag that indicates the state of the query
 	 */
 	int *allocated;
+	/**
+	 * [in] Pointer to the allocated index before adjusted.
+	 */
+	uint32_t *base_index;
 };
 
 /**
