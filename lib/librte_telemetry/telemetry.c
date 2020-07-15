@@ -23,6 +23,7 @@
 #define MAX_CMD_LEN 56
 #define MAX_HELP_LEN 64
 #define MAX_OUTPUT_LEN (1024 * 16)
+#define MAX_CONNECTIONS 10
 
 static void *
 client_handler(void *socket);
@@ -37,6 +38,7 @@ struct socket {
 	int sock;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)];
 	handler fn;
+	uint16_t *num_clients;
 };
 static struct socket v2_socket; /* socket for v2 telemetry */
 static struct socket v1_socket; /* socket for v1 telemetry */
@@ -46,6 +48,7 @@ static struct cmd_callback callbacks[TELEMETRY_MAX_CALLBACKS];
 static int num_callbacks; /* How many commands are registered */
 /* Used when accessing or modifying list of command callbacks */
 static rte_spinlock_t callback_sl = RTE_SPINLOCK_INITIALIZER;
+static uint16_t v2_clients;
 
 int
 rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
@@ -263,6 +266,7 @@ client_handler(void *sock_id)
 		bytes = read(s, buffer, sizeof(buffer) - 1);
 	}
 	close(s);
+	__atomic_sub_fetch(&v2_clients, 1, __ATOMIC_RELAXED);
 	return NULL;
 }
 
@@ -278,6 +282,16 @@ socket_listener(void *socket)
 				sizeof(telemetry_log_error),
 				"Error with accept, telemetry thread quitting");
 			return NULL;
+		}
+		if (s->num_clients != NULL) {
+			uint16_t conns = __atomic_load_n(s->num_clients,
+					__ATOMIC_RELAXED);
+			if (conns >= MAX_CONNECTIONS) {
+				close(s_accepted);
+				continue;
+			}
+			__atomic_add_fetch(s->num_clients, 1,
+					__ATOMIC_RELAXED);
 		}
 		pthread_create(&th, NULL, s->fn, (void *)(uintptr_t)s_accepted);
 		pthread_detach(th);
@@ -373,6 +387,7 @@ telemetry_v2_init(const char *runtime_dir, rte_cpuset_t *cpuset)
 {
 	pthread_t t_new;
 
+	v2_socket.num_clients = &v2_clients;
 	rte_telemetry_register_cmd("/", list_commands,
 			"Returns list of available commands, Takes no parameters");
 	rte_telemetry_register_cmd("/info", json_info,
