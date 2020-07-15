@@ -9,7 +9,6 @@
 #include "tf_core.h"
 #include "tf_session.h"
 
-
 /**
  * Function to search for table scope control block structure
  * with specified table scope ID.
@@ -22,6 +21,32 @@
  *   table scope control block struct not found
  */
 struct tf_tbl_scope_cb *tbl_scope_cb_find(uint32_t tbl_scope_id);
+
+/**
+ * Table Scope Allocate
+ *
+ * Allocate a table scope
+ *
+ * [in/out] pointer to tbl_scope_id
+ *
+ * Returns:
+ *  0 - success
+ *  -EINVAL - error
+ */
+int tf_tbl_scope_alloc(uint32_t *tbl_scope_id);
+
+/**
+ * Table Scope Free
+ *
+ * Free a table scope
+ *
+ * [in] tbl_scope_id to free
+ *
+ * Returns:
+ *  0 - success
+ *  -EINVAL - error
+ */
+int tf_tbl_scope_free(uint32_t tbl_scope_id);
 
 /**
  * Create and initialize a stack to use for action entries

@@ -44,6 +44,28 @@ static enum tf_mem_type mem_type;
 /** Table scope array */
 struct tf_tbl_scope_cb tbl_scopes[TF_NUM_TBL_SCOPE];
 
+/** Table scope reversal table
+ *
+ * Table scope are allocated from 15 to 0 within HCAPI RM.  Because of the
+ * association between PFs and legacy table scopes, reverse table scope ids.
+ * 15 indicates 0, 14 indicates 1, etc... The application will only see the 0
+ * based number.  The firmware will only use the 0 based number.  Only HCAPI RM
+ * and Truflow RM believe the number is 15.  When HCAPI RM support allocation
+ * from low to high is supported, this adjust function can be removed.
+ */
+const uint32_t tbl_scope_reverse[TF_NUM_TBL_SCOPE] = {
+	15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+
+static uint32_t
+tf_tbl_scope_adjust(uint32_t tbl_scope_id)
+{
+	if (tbl_scope_id < TF_NUM_TBL_SCOPE)
+		return tbl_scope_reverse[tbl_scope_id];
+	else
+		return TF_TBL_SCOPE_INVALID;
+};
+
+
 /* API defined in tf_em.h */
 struct tf_tbl_scope_cb *
 tbl_scope_cb_find(uint32_t tbl_scope_id)
@@ -51,11 +73,17 @@ tbl_scope_cb_find(uint32_t tbl_scope_id)
 	int i;
 	struct tf_rm_is_allocated_parms parms;
 	int allocated;
+	uint32_t rm_tbl_scope_id;
+
+	rm_tbl_scope_id = tf_tbl_scope_adjust(tbl_scope_id);
+
+	if (rm_tbl_scope_id == TF_TBL_SCOPE_INVALID)
+		return NULL;
 
 	/* Check that id is valid */
 	parms.rm_db = eem_db[TF_DIR_RX];
 	parms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-	parms.index = tbl_scope_id;
+	parms.index = rm_tbl_scope_id;
 	parms.allocated = &allocated;
 
 	i = tf_rm_is_allocated(&parms);
@@ -70,6 +98,61 @@ tbl_scope_cb_find(uint32_t tbl_scope_id)
 
 	return NULL;
 }
+
+int tf_tbl_scope_alloc(uint32_t *tbl_scope_id)
+{
+	int rc;
+	struct tf_rm_allocate_parms parms = { 0 };
+	uint32_t rm_tbl_scope_id;
+	uint32_t usr_tbl_scope_id = TF_TBL_SCOPE_INVALID;
+
+	/* Get Table Scope control block from the session pool */
+	parms.rm_db = eem_db[TF_DIR_RX];
+	parms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
+	parms.index = &rm_tbl_scope_id;
+
+	rc = tf_rm_allocate(&parms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Failed to allocate table scope rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	usr_tbl_scope_id = tf_tbl_scope_adjust(rm_tbl_scope_id);
+
+	if (usr_tbl_scope_id == TF_TBL_SCOPE_INVALID) {
+		TFP_DRV_LOG(ERR,
+			    "Invalid table scope allocated id:%d\n",
+			    (int)rm_tbl_scope_id);
+		return -EINVAL;
+	}
+	*tbl_scope_id = usr_tbl_scope_id;
+	return 0;
+};
+
+int tf_tbl_scope_free(uint32_t tbl_scope_id)
+{
+	struct tf_rm_free_parms parms = { 0 };
+	uint32_t rm_tbl_scope_id;
+	uint32_t rc;
+
+	rm_tbl_scope_id = tf_tbl_scope_adjust(tbl_scope_id);
+
+	if (rm_tbl_scope_id == TF_TBL_SCOPE_INVALID) {
+		TFP_DRV_LOG(ERR,
+			    "Invalid table scope allocated id:%d\n",
+			    (int)tbl_scope_id);
+		return -EINVAL;
+	}
+
+	parms.rm_db = eem_db[TF_DIR_RX];
+	parms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
+	parms.index = rm_tbl_scope_id;
+
+	rc = tf_rm_free(&parms);
+	return rc;
+};
 
 int
 tf_create_tbl_pool_external(enum tf_dir dir,
@@ -706,9 +789,17 @@ tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 
 		if (rc) {
 			struct tf_rm_free_parms fparms = { 0 };
+			uint32_t rm_tbl_scope_id;
 
 			TFP_DRV_LOG(ERR,
 				    "System alloc mmap failed\n");
+
+			rm_tbl_scope_id =
+				tf_tbl_scope_adjust(parms->tbl_scope_id);
+
+			if (rm_tbl_scope_id == TF_TBL_SCOPE_INVALID)
+				return -EINVAL;
+
 			/* Free Table control block */
 			fparms.rm_db = eem_db[TF_DIR_RX];
 			fparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
@@ -1043,13 +1134,24 @@ int tf_tbl_ext_common_set(struct tf *tfp,
 
 		if (rc) {
 			struct tf_rm_free_parms fparms = { 0 };
+			uint32_t rm_tbl_scope_id;
+
+			/* TODO: support allocation of table scope from
+			 * min in HCAPI RM.  For now call adjust function
+			 * on value obtained from RM.
+			 */
+			rm_tbl_scope_id =
+				tf_tbl_scope_adjust(parms->tbl_scope_id);
+
+			if (rm_tbl_scope_id == TF_TBL_SCOPE_INVALID)
+				return -EINVAL;
 
 			TFP_DRV_LOG(ERR,
 				    "System alloc mmap failed\n");
 			/* Free Table control block */
 			fparms.rm_db = eem_db[TF_DIR_RX];
 			fparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-			fparms.index = parms->tbl_scope_id;
+			fparms.index = rm_tbl_scope_id;
 			tf_rm_free(&fparms);
 			return -EINVAL;
 		}

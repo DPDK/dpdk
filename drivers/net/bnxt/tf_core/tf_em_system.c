@@ -364,9 +364,7 @@ tf_em_ext_alloc(struct tf *tfp,
 	int rc;
 	struct tf_session *tfs;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
-	struct tf_rm_allocate_parms aparms = { 0 };
 	struct tf_free_tbl_scope_parms free_parms;
-	struct tf_rm_free_parms fparms = { 0 };
 	int dir;
 	int i;
 	struct hcapi_cfa_em_table *em_tables;
@@ -382,10 +380,7 @@ tf_em_ext_alloc(struct tf *tfp,
 		return rc;
 	}
 
-	aparms.rm_db = eem_db[TF_DIR_RX];
-	aparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-	aparms.index = (uint32_t *)&parms->tbl_scope_id;
-	rc = tf_rm_allocate(&aparms);
+	rc = tf_tbl_scope_alloc(&parms->tbl_scope_id);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "Failed to allocate table scope\n");
@@ -473,10 +468,7 @@ cleanup_full:
 
 cleanup:
 	/* Free Table control block */
-	fparms.rm_db = eem_db[TF_DIR_RX];
-	fparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-	fparms.index = parms->tbl_scope_id;
-	tf_rm_free(&fparms);
+	tf_tbl_scope_free(parms->tbl_scope_id);
 	return -EINVAL;
 }
 
@@ -488,7 +480,6 @@ tf_em_ext_free(struct tf *tfp,
 	struct tf_session *tfs;
 	struct tf_tbl_scope_cb *tbl_scope_cb;
 	int dir;
-	struct tf_rm_free_parms aparms = { 0 };
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -503,11 +494,7 @@ tf_em_ext_free(struct tf *tfp,
 
 	tbl_scope_cb = &tbl_scopes[parms->tbl_scope_id];
 
-		/* Free Table control block */
-	aparms.rm_db = eem_db[TF_DIR_RX];
-	aparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-	aparms.index = parms->tbl_scope_id;
-	rc = tf_rm_free(&aparms);
+	rc = tf_tbl_scope_free(parms->tbl_scope_id);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
 			    "Failed to free table scope\n");
