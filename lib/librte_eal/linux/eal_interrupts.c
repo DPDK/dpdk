@@ -1241,7 +1241,7 @@ eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
 		events[count].status        = RTE_EPOLL_VALID;
 		events[count].fd            = rev->fd;
 		events[count].epfd          = rev->epfd;
-		events[count].epdata.event  = rev->epdata.event;
+		events[count].epdata.event  = evs[i].events;
 		events[count].epdata.data   = rev->epdata.data;
 		if (rev->epdata.cb_fun)
 			rev->epdata.cb_fun(rev->fd,
