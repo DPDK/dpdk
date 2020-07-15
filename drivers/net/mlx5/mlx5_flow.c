@@ -2876,10 +2876,10 @@ flow_check_meter_action(const struct rte_flow_action actions[], uint32_t *mtr)
 }
 
 /**
- * Check if the flow should be splited due to hairpin.
+ * Check if the flow should be split due to hairpin.
  * The reason for the split is that in current HW we can't
- * support encap on Rx, so if a flow have encap we move it
- * to Tx.
+ * support encap and push-vlan on Rx, so if a flow contains
+ * these actions we move it to Tx.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -2899,7 +2899,7 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 {
 	int queue_action = 0;
 	int action_n = 0;
-	int encap = 0;
+	int split = 0;
 	const struct rte_flow_action_queue *queue;
 	const struct rte_flow_action_rss *rss;
 	const struct rte_flow_action_raw_encap *raw_encap;
@@ -2930,7 +2930,10 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
-			encap = 1;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+			split++;
 			action_n++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
@@ -2938,7 +2941,7 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 			if (raw_encap->size >
 			    (sizeof(struct rte_flow_item_eth) +
 			     sizeof(struct rte_flow_item_ipv4)))
-				encap = 1;
+				split++;
 			action_n++;
 			break;
 		default:
@@ -2946,7 +2949,7 @@ flow_check_hairpin_split(struct rte_eth_dev *dev,
 			break;
 		}
 	}
-	if (encap == 1 && queue_action)
+	if (split && queue_action)
 		return action_n;
 	return 0;
 }
@@ -3388,7 +3391,8 @@ flow_mreg_update_copy_table(struct rte_eth_dev *dev,
 
 /**
  * Split the hairpin flow.
- * Since HW can't support encap on Rx we move the encap to Tx.
+ * Since HW can't support encap and push-vlan on Rx, we move these
+ * actions to Tx.
  * If the count action is after the encap then we also
  * move the count action. in this case the count will also measure
  * the outer bytes.
@@ -3432,6 +3436,9 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
 			rte_memcpy(actions_tx, actions,
 			       sizeof(struct rte_flow_action));
 			actions_tx++;

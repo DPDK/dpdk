@@ -1951,22 +1951,11 @@ flow_dv_validate_action_push_vlan(struct rte_eth_dev *dev,
 	const struct rte_flow_action_of_push_vlan *push_vlan = action->conf;
 	const struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (!attr->transfer && attr->ingress)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-					  NULL,
-					  "push VLAN action not supported for "
-					  "ingress");
 	if (push_vlan->ethertype != RTE_BE16(RTE_ETHER_TYPE_VLAN) &&
 	    push_vlan->ethertype != RTE_BE16(RTE_ETHER_TYPE_QINQ))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "invalid vlan ethertype");
-	if (action_flags & MLX5_FLOW_VLAN_ACTIONS)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "no support for multiple VLAN "
-					  "actions");
 	if (action_flags & MLX5_FLOW_ACTION_PORT_ID)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -5691,21 +5680,38 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  actions,
 						  "no fate action is found");
 	}
-	/* Continue validation for Xcap actions.*/
-	if ((action_flags & MLX5_FLOW_XCAP_ACTIONS) && (queue_index == 0xFFFF ||
-	    mlx5_rxq_get_type(dev, queue_index) != MLX5_RXQ_TYPE_HAIRPIN)) {
+	/* Continue validation for Xcap and VLAN actions.*/
+	if ((action_flags & (MLX5_FLOW_XCAP_ACTIONS |
+			     MLX5_FLOW_VLAN_ACTIONS)) &&
+	    (queue_index == 0xFFFF ||
+	     mlx5_rxq_get_type(dev, queue_index) != MLX5_RXQ_TYPE_HAIRPIN)) {
 		if ((action_flags & MLX5_FLOW_XCAP_ACTIONS) ==
 		    MLX5_FLOW_XCAP_ACTIONS)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "encap and decap "
 						  "combination aren't supported");
-		if (!attr->transfer && attr->ingress && (action_flags &
-							MLX5_FLOW_ACTION_ENCAP))
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  NULL, "encap is not supported"
-						  " for ingress traffic");
+		if (!attr->transfer && attr->ingress) {
+			if (action_flags & MLX5_FLOW_ACTION_ENCAP)
+				return rte_flow_error_set
+						(error, ENOTSUP,
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 NULL, "encap is not supported"
+						 " for ingress traffic");
+			else if (action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN)
+				return rte_flow_error_set
+						(error, ENOTSUP,
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 NULL, "push VLAN action not "
+						 "supported for ingress");
+			else if ((action_flags & MLX5_FLOW_VLAN_ACTIONS) ==
+					MLX5_FLOW_VLAN_ACTIONS)
+				return rte_flow_error_set
+						(error, ENOTSUP,
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 NULL, "no support for "
+						 "multiple VLAN actions");
+		}
 	}
 	/* Hairpin flow will add one more TAG action. */
 	if (hairpin > 0)
