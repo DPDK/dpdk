@@ -704,6 +704,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					      log_max_static_sq_wq);
 	attr->dev_freq_khz = MLX5_GET(cmd_hca_cap, hcattr,
 				      device_frequency_khz);
+	attr->scatter_fcs_w_decap_disable =
+		MLX5_GET(cmd_hca_cap, hcattr, scatter_fcs_w_decap_disable);
 	attr->regex = MLX5_GET(cmd_hca_cap, hcattr, regexp);
 	attr->regexp_num_of_engines = MLX5_GET(cmd_hca_cap, hcattr,
 					       regexp_num_of_engines);

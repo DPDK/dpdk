@@ -297,6 +297,12 @@ Limitations
 
     Other TCP packets (e.g. with MPLS label) received on Rx queue with LRO enabled, will be received with bad checksum.
 
+- CRC:
+
+  - ``DEV_RX_OFFLOAD_KEEP_CRC`` cannot be supported with decapsulation
+    for some NICs (such as ConnectX-6 Dx and BlueField 2).
+    The capability bit ``scatter_fcs_w_decap_disable`` shows NIC support.
+
 Statistics
 ----------
 
