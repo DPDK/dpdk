@@ -350,12 +350,9 @@ tf_tbl_bulk_get(struct tf *tfp,
 		struct tf_tbl_get_bulk_parms *parms)
 {
 	int rc;
-	int i;
 	uint16_t hcapi_type;
-	uint32_t idx;
-	int allocated = 0;
-	struct tf_rm_is_allocated_parms aparms = { 0 };
 	struct tf_rm_get_hcapi_parms hparms = { 0 };
+	struct tf_rm_check_indexes_in_range_parms cparms = { 0 };
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -366,26 +363,23 @@ tf_tbl_bulk_get(struct tf *tfp,
 
 		return -EINVAL;
 	}
-	/* Verify that the entries has been previously allocated */
-	aparms.rm_db = tbl_db[parms->dir];
-	aparms.db_index = parms->type;
-	aparms.allocated = &allocated;
-	idx = parms->starting_idx;
-	for (i = 0; i < parms->num_entries; i++) {
-		aparms.index = idx;
-		rc = tf_rm_is_allocated(&aparms);
-		if (rc)
-			return rc;
 
-		if (allocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
-			TFP_DRV_LOG(ERR,
-				    "%s, Invalid or not allocated index, type:%d, idx:%d\n",
-				    tf_dir_2_str(parms->dir),
-				    parms->type,
-				    idx);
-			return -EINVAL;
-		}
-		idx++;
+	/* Verify that the entries are in the range of reserved resources. */
+	cparms.rm_db = tbl_db[parms->dir];
+	cparms.db_index = parms->type;
+	cparms.starting_index = parms->starting_idx;
+	cparms.num_entries = parms->num_entries;
+
+	rc = tf_rm_check_indexes_in_range(&cparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s, Invalid or %d index starting from %d"
+			    " not in range, type:%d",
+			    tf_dir_2_str(parms->dir),
+			    parms->starting_idx,
+			    parms->num_entries,
+			    parms->type);
+		return rc;
 	}
 
 	hparms.rm_db = tbl_db[parms->dir];

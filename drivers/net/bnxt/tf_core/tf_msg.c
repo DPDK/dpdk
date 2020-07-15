@@ -143,7 +143,8 @@ tf_msg_session_open(struct tf *tfp,
 		return rc;
 
 	*fw_session_id = (uint8_t)tfp_le_to_cpu_32(resp.fw_session_id);
-	*fw_session_client_id = (uint8_t)tfp_le_to_cpu_32(resp.fw_session_id);
+	*fw_session_client_id =
+		(uint8_t)tfp_le_to_cpu_32(resp.fw_session_client_id);
 
 	return rc;
 }

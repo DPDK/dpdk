@@ -755,7 +755,8 @@ tf_rm_allocate(struct tf_rm_allocate_parms *parms)
 	}
 
 	*parms->index = index;
-	*parms->base_index = id;
+	if (parms->base_index)
+		*parms->base_index = id;
 
 	return rc;
 }
@@ -842,7 +843,8 @@ tf_rm_is_allocated(struct tf_rm_is_allocated_parms *parms)
 	if (rc)
 		return rc;
 
-	*parms->base_index = adj_index;
+	if (parms->base_index)
+		*parms->base_index = adj_index;
 	*parms->allocated = ba_inuse(rm_db->db[parms->db_index].pool,
 				     adj_index);
 
@@ -921,4 +923,43 @@ tf_rm_get_inuse_count(struct tf_rm_get_inuse_count_parms *parms)
 
 	return rc;
 
+}
+
+int
+tf_rm_check_indexes_in_range(struct tf_rm_check_indexes_in_range_parms *parms)
+{
+	struct tf_rm_new_db *rm_db;
+	enum tf_rm_elem_cfg_type cfg_type;
+	uint32_t base_index;
+	uint32_t stride;
+	int rc = 0;
+
+	TF_CHECK_PARMS2(parms, parms->rm_db);
+
+	rm_db = (struct tf_rm_new_db *)parms->rm_db;
+	cfg_type = rm_db->db[parms->db_index].cfg_type;
+
+	/* Bail out if not controlled by RM */
+	if (cfg_type != TF_RM_ELEM_CFG_HCAPI_BA)
+		return -ENOTSUP;
+
+	/* Bail out if the pool is not valid, should never happen */
+	if (rm_db->db[parms->db_index].pool == NULL) {
+		rc = -ENOTSUP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Invalid pool for this type:%d, rc:%s\n",
+			    tf_dir_2_str(rm_db->dir),
+			    parms->db_index,
+			    strerror(-rc));
+		return rc;
+	}
+
+	base_index = rm_db->db[parms->db_index].alloc.entry.start;
+	stride = rm_db->db[parms->db_index].alloc.entry.stride;
+
+	if (parms->starting_index < base_index ||
+	    parms->starting_index + parms->num_entries > base_index + stride)
+		return -EINVAL;
+
+	return rc;
 }

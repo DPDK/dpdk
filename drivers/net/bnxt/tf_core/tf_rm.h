@@ -315,6 +315,29 @@ struct tf_rm_get_inuse_count_parms {
 };
 
 /**
+ * Check if the indexes are in the range of reserved resource
+ */
+struct tf_rm_check_indexes_in_range_parms {
+	/**
+	 * [in] RM DB Handle
+	 */
+	void *rm_db;
+	/**
+	 * [in] DB Index, indicates which DB entry to perform the
+	 * action on.
+	 */
+	uint16_t db_index;
+	/**
+	 * [in] Starting index
+	 */
+	uint16_t starting_index;
+	/**
+	 * [in] number of entries
+	 */
+	uint16_t num_entries;
+};
+
+/**
  * @page rm Resource Manager
  *
  * @ref tf_rm_create_db
@@ -461,5 +484,19 @@ int tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms);
  *   - (-EINVAL) on failure.
  */
 int tf_rm_get_inuse_count(struct tf_rm_get_inuse_count_parms *parms);
+
+/**
+ * Check if the requested indexes are in the range of reserved resource.
+ *
+ * [in] parms
+ *   Pointer to get inuse parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int
+tf_rm_check_indexes_in_range(struct tf_rm_check_indexes_in_range_parms *parms);
+
 
 #endif /* TF_RM_NEW_H_ */

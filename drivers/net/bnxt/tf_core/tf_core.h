@@ -1426,10 +1426,12 @@ struct tf_bulk_get_tbl_entry_parms {
 /**
  * Bulk get index table entry
  *
- * Used to retrieve a previous set index table entry.
+ * Used to retrieve a set of index table entries.
  *
- * Reads and compares with the shadow table copy (if enabled) (only
- * for internal objects).
+ * Entries within the range may not have been allocated using
+ * tf_alloc_tbl_entry() at the time of access. But the range must
+ * be within the bounds determined from tf_open_session() for the
+ * given table type.  Currently, this is only used for collecting statistics.
  *
  * Returns success or failure code. Failure will be returned if the
  * provided data buffer is too small for the data type requested.
