@@ -2166,10 +2166,20 @@ mlx5_os_read_dev_stat(struct mlx5_priv *priv, const char *ctr_name,
 
 	if (priv->sh) {
 		MKSTR(path, "%s/ports/%d/hw_counters/%s",
-			  priv->sh->ibdev_path,
-			  priv->dev_port,
-			  ctr_name);
+		      priv->sh->ibdev_path,
+		      priv->dev_port,
+		      ctr_name);
 		fd = open(path, O_RDONLY);
+		/*
+		 * in switchdev the file location is not per port
+		 * but rather in <ibdev_path>/hw_counters/<file_name>.
+		 */
+		if (fd == -1) {
+			MKSTR(path1, "%s/hw_counters/%s",
+			      priv->sh->ibdev_path,
+			      ctr_name);
+			fd = open(path1, O_RDONLY);
+		}
 		if (fd != -1) {
 			char buf[21] = {'\0'};
 			ssize_t n = read(fd, buf, sizeof(buf));
