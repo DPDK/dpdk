@@ -9,6 +9,16 @@
 #include "tf_core.h"
 #include "tf_session.h"
 
+#ifdef TF_USE_SYSTEM_MEM
+/**
+ * Select EEM sysmem mmap export to be done at init
+ * or on the first write to EEM.
+ */
+#define TF_EM_SYSMEM_DELAY_EXPORT 1
+#else
+#define TF_EM_SYSMEM_DELAY_EXPORT 0
+#endif
+
 #define SUPPORT_CFA_HW_P4 1
 #define SUPPORT_CFA_HW_P58 0
 #define SUPPORT_CFA_HW_P59 0
@@ -482,4 +492,5 @@ int
 tf_em_ext_system_bind(struct tf *tfp,
 		      struct tf_em_cfg_parms *parms);
 
+int offload_system_mmap(struct tf_tbl_scope_cb *tbl_scope_cb);
 #endif /* _TF_EM_H_ */

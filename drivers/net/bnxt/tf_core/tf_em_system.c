@@ -272,8 +272,7 @@ tf_prepare_dmabuf_bnxt_lfc_device(struct tf_tbl_scope_cb *tbl_scope_cb)
 	return 0;
 }
 
-static int
-offload_system_mmap(struct tf_tbl_scope_cb *tbl_scope_cb)
+int offload_system_mmap(struct tf_tbl_scope_cb *tbl_scope_cb)
 {
 	int rc;
 	int dmabuf_fd;
@@ -455,6 +454,7 @@ tf_em_ext_alloc(struct tf *tfp,
 		}
 	}
 
+#if (TF_EM_SYSMEM_DELAY_EXPORT == 0)
 	rc = offload_system_mmap(tbl_scope_cb);
 
 	if (rc) {
@@ -462,6 +462,7 @@ tf_em_ext_alloc(struct tf *tfp,
 			    "System alloc mmap failed\n");
 		goto cleanup_full;
 	}
+#endif
 
 	return rc;
 
@@ -527,6 +528,7 @@ tf_em_ext_free(struct tf *tfp,
 	}
 
 	tf_dmabuf_free(tfp, tbl_scope_cb);
+	tbl_scope_cb->valid = false;
 
 	return rc;
 }

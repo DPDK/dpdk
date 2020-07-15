@@ -179,7 +179,7 @@ tf_em_insert_int_entry(struct tf *tfp,
 		return -1;
 
 	PMD_DRV_LOG
-		  (ERR,
+		  (DEBUG,
 		   "%s, Internal entry @ Index:%d rptr_index:0x%x rptr_entry:0x%x num_of_entries:%d\n",
 		   tf_dir_2_str(parms->dir),
 		   index,
