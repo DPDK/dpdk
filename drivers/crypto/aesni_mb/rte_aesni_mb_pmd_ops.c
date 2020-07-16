@@ -875,14 +875,15 @@ aesni_mb_pmd_sec_sess_create(void *dev, struct rte_security_session_conf *conf,
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	int ret;
 
+	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL ||
+			conf->protocol != RTE_SECURITY_PROTOCOL_DOCSIS) {
+		AESNI_MB_LOG(ERR, "Invalid security protocol");
+		return -EINVAL;
+	}
+
 	if (rte_mempool_get(mempool, &sess_private_data)) {
 		AESNI_MB_LOG(ERR, "Couldn't get object from session mempool");
 		return -ENOMEM;
-	}
-
-	if (conf->protocol != RTE_SECURITY_PROTOCOL_DOCSIS) {
-		AESNI_MB_LOG(ERR, "Invalid security protocol");
-		return -EINVAL;
 	}
 
 	ret = aesni_mb_set_docsis_sec_session_parameters(cdev, conf,
