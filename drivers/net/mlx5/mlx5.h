@@ -568,6 +568,8 @@ struct mlx5_dev_txpp {
 	struct mlx5dv_devx_event_channel *echan; /* Event Channel. */
 	struct mlx5_txpp_wq clock_queue; /* Clock Queue. */
 	struct mlx5_txpp_wq rearm_queue; /* Clock Queue. */
+	struct mlx5dv_pp *pp; /* Packet pacing context. */
+	uint16_t pp_id; /* Packet pacing context index. */
 };
 
 /*

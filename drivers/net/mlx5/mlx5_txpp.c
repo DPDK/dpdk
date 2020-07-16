@@ -6,6 +6,7 @@
 #include <rte_interrupts.h>
 #include <rte_alarm.h>
 #include <rte_malloc.h>
+#include <rte_cycles.h>
 
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
@@ -46,6 +47,69 @@ mlx5_txpp_create_eqn(struct mlx5_dev_ctx_shared *sh)
 		return -rte_errno;
 	}
 	return 0;
+}
+
+static void
+mlx5_txpp_free_pp_index(struct mlx5_dev_ctx_shared *sh)
+{
+	if (sh->txpp.pp) {
+		mlx5_glue->dv_free_pp(sh->txpp.pp);
+		sh->txpp.pp = NULL;
+		sh->txpp.pp_id = 0;
+	}
+}
+
+/* Allocate Packet Pacing index from kernel via mlx5dv call. */
+static int
+mlx5_txpp_alloc_pp_index(struct mlx5_dev_ctx_shared *sh)
+{
+#ifdef HAVE_MLX5DV_PP_ALLOC
+	uint32_t pp[MLX5_ST_SZ_DW(set_pp_rate_limit_context)];
+	uint64_t rate;
+
+	MLX5_ASSERT(!sh->txpp.pp);
+	memset(&pp, 0, sizeof(pp));
+	rate = NS_PER_S / sh->txpp.tick;
+	if (rate * sh->txpp.tick != NS_PER_S)
+		DRV_LOG(WARNING, "Packet pacing frequency is not precise.");
+	if (sh->txpp.test) {
+		uint32_t len;
+
+		len = RTE_MAX(MLX5_TXPP_TEST_PKT_SIZE,
+			      (size_t)RTE_ETHER_MIN_LEN);
+		MLX5_SET(set_pp_rate_limit_context, &pp,
+			 burst_upper_bound, len);
+		MLX5_SET(set_pp_rate_limit_context, &pp,
+			 typical_packet_size, len);
+		/* Convert packets per second into kilobits. */
+		rate = (rate * len) / (1000ul / CHAR_BIT);
+		DRV_LOG(INFO, "Packet pacing rate set to %" PRIu64, rate);
+	}
+	MLX5_SET(set_pp_rate_limit_context, &pp, rate_limit, rate);
+	MLX5_SET(set_pp_rate_limit_context, &pp, rate_mode,
+		 sh->txpp.test ? MLX5_DATA_RATE : MLX5_WQE_RATE);
+	sh->txpp.pp = mlx5_glue->dv_alloc_pp
+				(sh->ctx, sizeof(pp), &pp,
+				 MLX5DV_PP_ALLOC_FLAGS_DEDICATED_INDEX);
+	if (sh->txpp.pp == NULL) {
+		DRV_LOG(ERR, "Failed to allocate packet pacing index.");
+		rte_errno = errno;
+		return -errno;
+	}
+	if (!sh->txpp.pp->index) {
+		DRV_LOG(ERR, "Zero packet pacing index allocated.");
+		mlx5_txpp_free_pp_index(sh);
+		rte_errno = ENOTSUP;
+		return -ENOTSUP;
+	}
+	sh->txpp.pp_id = sh->txpp.pp->index;
+	return 0;
+#else
+	RTE_SET_USED(sh);
+	DRV_LOG(ERR, "Allocating pacing index is not supported.");
+	rte_errno = ENOTSUP;
+	return -ENOTSUP;
+#endif
 }
 
 static void
@@ -457,6 +521,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	}
 	sq_attr.state = MLX5_SQC_STATE_RST;
 	sq_attr.cqn = wq->cq->id;
+	sq_attr.packet_pacing_rate_limit_index = sh->txpp.pp_id;
 	sq_attr.wq_attr.cd_slave = 1;
 	sq_attr.wq_attr.uar_page = sh->tx_uar->page_id;
 	sq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
@@ -503,6 +568,7 @@ error:
  * - Clock CQ/SQ
  * - Rearm CQ/SQ
  * - attaches rearm interrupt handler
+ * - starts Clock Queue
  *
  * Returns 0 on success, negative otherwise
  */
@@ -520,6 +586,9 @@ mlx5_txpp_create(struct mlx5_dev_ctx_shared *sh, struct mlx5_priv *priv)
 	ret = mlx5_txpp_create_eqn(sh);
 	if (ret)
 		goto exit;
+	ret = mlx5_txpp_alloc_pp_index(sh);
+	if (ret)
+		goto exit;
 	ret = mlx5_txpp_create_clock_queue(sh);
 	if (ret)
 		goto exit;
@@ -530,6 +599,7 @@ exit:
 	if (ret) {
 		mlx5_txpp_destroy_rearm_queue(sh);
 		mlx5_txpp_destroy_clock_queue(sh);
+		mlx5_txpp_free_pp_index(sh);
 		mlx5_txpp_destroy_eqn(sh);
 		sh->txpp.tick = 0;
 		sh->txpp.test = 0;
@@ -550,6 +620,7 @@ mlx5_txpp_destroy(struct mlx5_dev_ctx_shared *sh)
 {
 	mlx5_txpp_destroy_rearm_queue(sh);
 	mlx5_txpp_destroy_clock_queue(sh);
+	mlx5_txpp_free_pp_index(sh);
 	mlx5_txpp_destroy_eqn(sh);
 	sh->txpp.tick = 0;
 	sh->txpp.test = 0;
