@@ -108,18 +108,18 @@ qat_crc_generate(struct qat_sym_session *ctx,
 			struct rte_crypto_op *op)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
-	uint32_t *crc, crc_length;
+	uint32_t *crc, crc_data_len;
 	uint8_t *crc_data;
 
 	if (ctx->qat_dir == ICP_QAT_HW_CIPHER_ENCRYPT &&
 			sym_op->auth.data.length != 0) {
 
-		crc_length = sym_op->auth.data.length;
+		crc_data_len = sym_op->auth.data.length;
 		crc_data = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
 				sym_op->auth.data.offset);
-		crc = (uint32_t *)(crc_data + crc_length);
+		crc = (uint32_t *)(crc_data + crc_data_len);
 
-		*crc = rte_net_crc_calc(crc_data, crc_length,
+		*crc = rte_net_crc_calc(crc_data, crc_data_len,
 				RTE_NET_CRC32_ETH);
 	}
 }
