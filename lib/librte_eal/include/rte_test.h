@@ -18,7 +18,7 @@
 
 #define RTE_TEST_ASSERT(cond, msg, ...) do {                                  \
 	if (!(cond)) {                                                        \
-		RTE_LOG(DEBUG, EAL, "Test assert %s line %d failed: "         \
+		RTE_LOG(ERR, EAL, "Test assert %s line %d failed: "           \
 				msg "\n", __func__, __LINE__, ##__VA_ARGS__); \
 		RTE_TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);         \
 		return -1;                                                    \
