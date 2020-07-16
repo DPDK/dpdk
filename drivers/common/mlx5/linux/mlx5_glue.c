@@ -1195,7 +1195,6 @@ mlx5_glue_dv_free_var(struct mlx5dv_var *var)
 #endif
 }
 
-
 static void
 mlx5_glue_dr_reclaim_domain_memory(void *domain, uint32_t enable)
 {
@@ -1204,6 +1203,34 @@ mlx5_glue_dr_reclaim_domain_memory(void *domain, uint32_t enable)
 #else
 	(void)(enable);
 	(void)(domain);
+#endif
+}
+
+static struct mlx5dv_pp *
+mlx5_glue_dv_alloc_pp(struct ibv_context *context,
+		      size_t pp_context_sz,
+		      const void *pp_context,
+		      uint32_t flags)
+{
+#ifdef HAVE_MLX5DV_PP_ALLOC
+	return mlx5dv_pp_alloc(context, pp_context_sz, pp_context, flags);
+#else
+	RTE_SET_USED(context);
+	RTE_SET_USED(pp_context_sz);
+	RTE_SET_USED(pp_context);
+	RTE_SET_USED(flags);
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static void
+mlx5_glue_dv_free_pp(struct mlx5dv_pp *pp)
+{
+#ifdef HAVE_MLX5DV_PP_ALLOC
+	mlx5dv_pp_free(pp);
+#else
+	RTE_SET_USED(pp);
 #endif
 }
 
@@ -1319,4 +1346,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.devx_free_uar = mlx5_glue_devx_free_uar,
 	.dv_alloc_var = mlx5_glue_dv_alloc_var,
 	.dv_free_var = mlx5_glue_dv_free_var,
+	.dv_alloc_pp = mlx5_glue_dv_alloc_pp,
+	.dv_free_pp = mlx5_glue_dv_free_pp,
 };

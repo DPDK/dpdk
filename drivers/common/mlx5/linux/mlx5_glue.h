@@ -304,6 +304,11 @@ struct mlx5_glue {
 			 struct mlx5dv_devx_async_event_hdr *event_data,
 			 size_t event_resp_len);
 	void (*dr_reclaim_domain_memory)(void *domain, uint32_t enable);
+	struct mlx5dv_pp *(*dv_alloc_pp)(struct ibv_context *context,
+					 size_t pp_context_sz,
+					 const void *pp_context,
+					 uint32_t flags);
+	void (*dv_free_pp)(struct mlx5dv_pp *pp);
 };
 
 extern const struct mlx5_glue *mlx5_glue;

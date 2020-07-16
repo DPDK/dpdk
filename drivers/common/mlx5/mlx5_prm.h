@@ -41,6 +41,10 @@
 /* Invalidate a CQE. */
 #define MLX5_CQE_INVALIDATE (MLX5_CQE_INVALID << 4)
 
+/* Hardware index widths. */
+#define MLX5_CQ_INDEX_WIDTH 24
+#define MLX5_WQ_INDEX_WIDTH 16
+
 /* WQE Segment sizes in bytes. */
 #define MLX5_WSEG_SIZE 16u
 #define MLX5_WQE_CSEG_SIZE sizeof(struct mlx5_wqe_cseg)
@@ -126,7 +130,17 @@
 				  MLX5_ESEG_MIN_INLINE_SIZE)
 
 /* Missed in mlv5dv.h, should define here. */
+#ifndef HAVE_MLX5_OPCODE_ENHANCED_MPSW
 #define MLX5_OPCODE_ENHANCED_MPSW 0x29u
+#endif
+
+#ifndef HAVE_MLX5_OPCODE_SEND_EN
+#define MLX5_OPCODE_SEND_EN 0x17u
+#endif
+
+#ifndef HAVE_MLX5_OPCODE_WAIT
+#define MLX5_OPCODE_WAIT 0x0fu
+#endif
 
 /* CQE value to inform that VLAN is stripped. */
 #define MLX5_CQE_VLAN_STRIPPED (1u << 0)
@@ -255,6 +269,9 @@
 /* The alignment needed for WQ buffer. */
 #define MLX5_WQE_BUF_ALIGNMENT sysconf(_SC_PAGESIZE)
 
+/* The alignment needed for CQ buffer. */
+#define MLX5_CQE_BUF_ALIGNMENT sysconf(_SC_PAGESIZE)
+
 /* Completion mode. */
 enum mlx5_completion_mode {
 	MLX5_COMP_ONLY_ERR = 0x0,
@@ -314,6 +331,13 @@ struct mlx5_wqe_eseg {
 	};
 } __rte_packed;
 
+struct mlx5_wqe_qseg {
+	uint32_t reserved0;
+	uint32_t reserved1;
+	uint32_t max_index;
+	uint32_t qpn_cqn;
+} __rte_packed;
+
 /* The title WQEBB, header of WQE. */
 struct mlx5_wqe {
 	union {
@@ -366,6 +390,14 @@ struct mlx5_cqe {
 	uint32_t flow_table_metadata;
 	uint8_t rsvd4[4];
 	uint32_t byte_cnt;
+	uint64_t timestamp;
+	uint32_t sop_drop_qpn;
+	uint16_t wqe_counter;
+	uint8_t rsvd5;
+	uint8_t op_own;
+};
+
+struct mlx5_cqe_ts {
 	uint64_t timestamp;
 	uint32_t sop_drop_qpn;
 	uint16_t wqe_counter;
@@ -1042,7 +1074,9 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 reserved_at_40[0x40];
 	u8 log_max_srq_sz[0x8];
 	u8 log_max_qp_sz[0x8];
-	u8 reserved_at_90[0xb];
+	u8 reserved_at_90[0x9];
+	u8 wqe_index_ignore_cap[0x1];
+	u8 dynamic_qp_allocation[0x1];
 	u8 log_max_qp[0x5];
 	u8 regexp[0x1];
 	u8 reserved_at_a1[0x3];
@@ -1073,9 +1107,12 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 umr_extended_translation_offset[0x1];
 	u8 null_mkey[0x1];
 	u8 log_max_klm_list_size[0x6];
-	u8 reserved_at_120[0xa];
+	u8 non_wire_sq[0x1];
+	u8 reserved_at_121[0x9];
 	u8 log_max_ra_req_dc[0x6];
-	u8 reserved_at_130[0xa];
+	u8 reserved_at_130[0x3];
+	u8 log_max_static_sq_wq[0x5];
+	u8 reserved_at_138[0x2];
 	u8 log_max_ra_res_dc[0x6];
 	u8 reserved_at_140[0xa];
 	u8 log_max_ra_req_qp[0x6];
@@ -1326,7 +1363,8 @@ struct mlx5_ifc_qos_cap_bits {
 	u8 reserved_at_8[0x8];
 	u8 log_max_flow_meter[0x8];
 	u8 flow_meter_reg_id[0x8];
-	u8 reserved_at_25[0x8];
+	u8 wqe_rate_pp[0x1];
+	u8 reserved_at_25[0x7];
 	u8 flow_meter_reg_share[0x1];
 	u8 reserved_at_2e[0x17];
 	u8 packet_pacing_max_rate[0x20];
@@ -1890,7 +1928,9 @@ struct mlx5_ifc_sqc_bits {
 	u8 reg_umr[0x1];
 	u8 allow_swp[0x1];
 	u8 hairpin[0x1];
-	u8 reserved_at_f[0x11];
+	u8 non_wire[0x1];
+	u8 static_sq_wq[0x1];
+	u8 reserved_at_11[0xf];
 	u8 reserved_at_20[0x8];
 	u8 user_index[0x18];
 	u8 reserved_at_40[0x8];
@@ -1988,6 +2028,11 @@ struct mlx5_ifc_flow_meter_parameters_bits {
 	u8         eir_exponent[0x5];
 	u8         eir_mantissa[0x8];
 	u8         reserved_at_8[0x60];		// 14h-1Ch
+};
+
+enum {
+	MLX5_CQE_SIZE_64B = 0x0,
+	MLX5_CQE_SIZE_128B = 0x1,
 };
 
 struct mlx5_ifc_cqc_bits {
@@ -2539,6 +2584,20 @@ struct mlx5_ifc_query_qp_in_bits {
 	u8 reserved_at_40[0x8];
 	u8 qpn[0x18];
 	u8 reserved_at_60[0x20];
+};
+
+enum {
+	MLX5_DATA_RATE = 0x0,
+	MLX5_WQE_RATE = 0x1,
+};
+
+struct mlx5_ifc_set_pp_rate_limit_context_bits {
+	u8 rate_limit[0x20];
+	u8 burst_upper_bound[0x20];
+	u8 reserved_at_40[0xC];
+	u8 rate_mode[0x4];
+	u8 typical_packet_size[0x10];
+	u8 reserved_at_60[0x120];
 };
 
 struct regexp_params_field_select_bits {

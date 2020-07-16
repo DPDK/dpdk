@@ -172,6 +172,16 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		func mlx5dv_devx_qp_query \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_MLX5DV_DEVX_UAR_OFFSET \
+		infiniband/mlx5dv.h \
+		field "struct mlx5dv_devx_uar.mmap_off" \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_MLX5DV_PP_ALLOC \
+		infiniband/mlx5dv.h \
+		func mlx5dv_pp_alloc \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_MLX5DV_DR_ACTION_DEST_DEVX_TIR \
 		infiniband/mlx5dv.h \
 		func mlx5dv_dr_action_create_dest_devx_tir \
@@ -205,6 +215,21 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		HAVE_MLX5DV_DR_MEM_RECLAIM \
 		infiniband/mlx5dv.h \
 		func mlx5dv_dr_domain_set_reclaim_device_memory \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_MLX5_OPCODE_ENHANCED_MPSW \
+		infiniband/mlx5dv.h \
+		enum MLX5_OPCODE_ENHANCED_MPSW \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_MLX5_OPCODE_SEND_EN \
+		infiniband/mlx5dv.h \
+		enum MLX5_OPCODE_SEND_EN \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_MLX5_OPCODE_WAIT \
+		infiniband/mlx5dv.h \
+		enum MLX5_OPCODE_WAIT \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_ETHTOOL_LINK_MODE_25G \

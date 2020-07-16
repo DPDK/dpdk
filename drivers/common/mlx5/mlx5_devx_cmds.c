@@ -467,6 +467,14 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->vdpa.queue_counters_valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 							general_obj_types) &
 				  MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS);
+	attr->wqe_index_ignore = MLX5_GET(cmd_hca_cap, hcattr,
+					  wqe_index_ignore_cap);
+	attr->cross_channel = MLX5_GET(cmd_hca_cap, hcattr, cd);
+	attr->non_wire_sq = MLX5_GET(cmd_hca_cap, hcattr, non_wire_sq);
+	attr->log_max_static_sq_wq = MLX5_GET(cmd_hca_cap, hcattr,
+					      log_max_static_sq_wq);
+	attr->dev_freq_khz = MLX5_GET(cmd_hca_cap, hcattr,
+				      device_frequency_khz);
 	attr->regex = MLX5_GET(cmd_hca_cap, hcattr, regexp);
 	attr->regexp_num_of_engines = MLX5_GET(cmd_hca_cap, hcattr,
 					       regexp_num_of_engines);
@@ -490,9 +498,13 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		attr->qos.log_max_flow_meter =
 				MLX5_GET(qos_cap, hcattr, log_max_flow_meter);
 		attr->qos.flow_meter_reg_c_ids =
-			MLX5_GET(qos_cap, hcattr, flow_meter_reg_id);
+				MLX5_GET(qos_cap, hcattr, flow_meter_reg_id);
 		attr->qos.flow_meter_reg_share =
-			MLX5_GET(qos_cap, hcattr, flow_meter_reg_share);
+				MLX5_GET(qos_cap, hcattr, flow_meter_reg_share);
+		attr->qos.packet_pacing =
+				MLX5_GET(qos_cap, hcattr, packet_pacing);
+		attr->qos.wqe_rate_pp =
+				MLX5_GET(qos_cap, hcattr, wqe_rate_pp);
 	}
 	if (attr->vdpa.valid)
 		mlx5_devx_cmd_query_hca_vdpa_attr(ctx, &attr->vdpa);
@@ -974,6 +986,8 @@ mlx5_devx_cmd_create_sq(void *ctx,
 	MLX5_SET(sqc, sq_ctx, reg_umr, sq_attr->reg_umr);
 	MLX5_SET(sqc, sq_ctx, allow_swp, sq_attr->allow_swp);
 	MLX5_SET(sqc, sq_ctx, hairpin, sq_attr->hairpin);
+	MLX5_SET(sqc, sq_ctx, non_wire, sq_attr->non_wire);
+	MLX5_SET(sqc, sq_ctx, static_sq_wq, sq_attr->static_sq_wq);
 	MLX5_SET(sqc, sq_ctx, user_index, sq_attr->user_index);
 	MLX5_SET(sqc, sq_ctx, cqn, sq_attr->cqn);
 	MLX5_SET(sqc, sq_ctx, packet_pacing_rate_limit_index,
@@ -1188,6 +1202,7 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	} else {
 		MLX5_SET64(cqc, cqctx, dbr_addr, attr->db_addr);
 	}
+	MLX5_SET(cqc, cqctx, cqe_sz, attr->cqe_size);
 	MLX5_SET(cqc, cqctx, cc, attr->use_first_only);
 	MLX5_SET(cqc, cqctx, oi, attr->overrun_ignore);
 	MLX5_SET(cqc, cqctx, log_cq_size, attr->log_cq_size);

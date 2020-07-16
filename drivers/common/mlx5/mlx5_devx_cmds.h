@@ -29,6 +29,8 @@ struct mlx5_devx_mkey_attr {
 struct mlx5_hca_qos_attr {
 	uint32_t sup:1;	/* Whether QOS is supported. */
 	uint32_t srtcm_sup:1; /* Whether srTCM mode is supported. */
+	uint32_t packet_pacing:1; /* Packet pacing is supported. */
+	uint32_t wqe_rate_pp:1; /* Packet pacing WQE rate mode. */
 	uint32_t flow_meter_reg_share:1;
 	/* Whether reg_c share is supported. */
 	uint8_t log_max_flow_meter;
@@ -90,6 +92,11 @@ struct mlx5_hca_attr {
 	uint32_t vhca_id:16;
 	uint32_t relaxed_ordering_write:1;
 	uint32_t relaxed_ordering_read:1;
+	uint32_t wqe_index_ignore:1;
+	uint32_t cross_channel:1;
+	uint32_t non_wire_sq:1; /* SQ with non-wire ops is supported. */
+	uint32_t log_max_static_sq_wq:5; /* Static WQE size SQ. */
+	uint32_t dev_freq_khz; /* Timestamp counter frequency, kHz. */
 	uint32_t regex:1;
 	uint32_t regexp_num_of_engines;
 	struct mlx5_hca_qos_attr qos;
@@ -209,6 +216,8 @@ struct mlx5_devx_create_sq_attr {
 	uint32_t reg_umr:1;
 	uint32_t allow_swp:1;
 	uint32_t hairpin:1;
+	uint32_t non_wire:1;
+	uint32_t static_sq_wq:1;
 	uint32_t user_index:24;
 	uint32_t cqn:24;
 	uint32_t packet_pacing_rate_limit_index:16;
@@ -232,6 +241,7 @@ struct mlx5_devx_cq_attr {
 	uint32_t db_umem_valid:1;
 	uint32_t use_first_only:1;
 	uint32_t overrun_ignore:1;
+	uint32_t cqe_size:3;
 	uint32_t log_cq_size:5;
 	uint32_t log_page_size:5;
 	uint32_t uar_page_id;
