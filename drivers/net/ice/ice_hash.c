@@ -994,7 +994,9 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 	enum rte_flow_action_type action_type;
 	const struct rte_flow_action_rss *rss;
 	const struct rte_flow_action *action;
-	uint64_t combine_type;
+	uint64_t rss_attr_src_dst;
+	uint64_t rss_attr_l3_pre;
+	uint64_t rss_attr_all;
 	uint64_t rss_type;
 	uint16_t i;
 
@@ -1046,18 +1048,41 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 			 */
 			rss_type = rte_eth_rss_hf_refine(rss_type);
 
-			combine_type = ETH_RSS_L2_SRC_ONLY |
-					ETH_RSS_L2_DST_ONLY |
-					RTE_ETH_RSS_L3_PRE32    |
-					RTE_ETH_RSS_L3_PRE48    |
-					RTE_ETH_RSS_L3_PRE64    |
-					ETH_RSS_L3_SRC_ONLY |
-					ETH_RSS_L3_DST_ONLY |
-					ETH_RSS_L4_SRC_ONLY |
-					ETH_RSS_L4_DST_ONLY;
+			rss_attr_src_dst = ETH_RSS_L2_SRC_ONLY |
+					   ETH_RSS_L2_DST_ONLY |
+					   ETH_RSS_L3_SRC_ONLY |
+					   ETH_RSS_L3_DST_ONLY |
+					   ETH_RSS_L4_SRC_ONLY |
+					   ETH_RSS_L4_DST_ONLY;
+
+			rss_attr_l3_pre = RTE_ETH_RSS_L3_PRE32 |
+					  RTE_ETH_RSS_L3_PRE48 |
+					  RTE_ETH_RSS_L3_PRE64;
+
+			rss_attr_all = rss_attr_src_dst | rss_attr_l3_pre;
+
+			/* Check if only SRC/DST_ONLY or ipv6 prefix exists. */
+			if ((rss_type & ~rss_attr_all) == 0)
+				return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"invalid rss types");
+
+			/**
+			 * Check if SRC/DST_ONLY is set for SYMMETRIC_TOEPLITZ
+			 * hash function.
+			 */
+			if (rss->func ==
+				RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) {
+				if (rss_type & rss_attr_src_dst)
+					return rte_flow_error_set(error,
+						ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						action,
+						"invalid rss types");
+			}
 
 			/* Check if rss types match pattern. */
-			if (rss_type & ~combine_type & ~m->eth_rss_hint) {
+			if (rss_type & ~rss_attr_all & ~m->eth_rss_hint) {
 				return rte_flow_error_set(error,
 				ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 				action, "Not supported RSS types");
