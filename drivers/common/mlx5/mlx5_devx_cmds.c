@@ -12,6 +12,67 @@
 
 
 /**
+ * Perform read access to the registers. Reads data from register
+ * and writes ones to the specified buffer.
+ *
+ * @param[in] ctx
+ *   Context returned from mlx5 open_device() glue function.
+ * @param[in] reg_id
+ *   Register identifier according to the PRM.
+ * @param[in] arg
+ *   Register access auxiliary parameter according to the PRM.
+ * @param[out] data
+ *   Pointer to the buffer to store read data.
+ * @param[in] dw_cnt
+ *   Buffer size in double words.
+ *
+ * @return
+ *   0 on success, a negative value otherwise.
+ */
+int
+mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id, uint32_t arg,
+			    uint32_t *data, uint32_t dw_cnt)
+{
+	uint32_t in[MLX5_ST_SZ_DW(access_register_in)]   = {0};
+	uint32_t out[MLX5_ST_SZ_DW(access_register_out) +
+		     MLX5_ACCESS_REGISTER_DATA_DWORD_MAX] = {0};
+	int status, rc;
+
+	MLX5_ASSERT(data && dw_cnt);
+	MLX5_ASSERT(dw_cnt <= MLX5_ACCESS_REGISTER_DATA_DWORD_MAX);
+	if (dw_cnt  > MLX5_ACCESS_REGISTER_DATA_DWORD_MAX) {
+		DRV_LOG(ERR, "Not enough  buffer for register read data");
+		return -1;
+	}
+	MLX5_SET(access_register_in, in, opcode,
+		 MLX5_CMD_OP_ACCESS_REGISTER_USER);
+	MLX5_SET(access_register_in, in, op_mod,
+					MLX5_ACCESS_REGISTER_IN_OP_MOD_READ);
+	MLX5_SET(access_register_in, in, register_id, reg_id);
+	MLX5_SET(access_register_in, in, argument, arg);
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out,
+					 MLX5_ST_SZ_DW(access_register_out) *
+					 sizeof(uint32_t) + dw_cnt);
+	if (rc)
+		goto error;
+	status = MLX5_GET(access_register_out, out, status);
+	if (status) {
+		int syndrome = MLX5_GET(access_register_out, out, syndrome);
+
+		DRV_LOG(DEBUG, "Failed to access NIC register 0x%X, "
+			       "status %x, syndrome = %x",
+			       reg_id, status, syndrome);
+		return -1;
+	}
+	memcpy(data, &out[MLX5_ST_SZ_DW(access_register_out)],
+	       dw_cnt * sizeof(uint32_t));
+	return 0;
+error:
+	rc = (rc > 0) ? -rc : rc;
+	return rc;
+}
+
+/**
  * Allocate flow counters via devx interface.
  *
  * @param[in] ctx

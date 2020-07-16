@@ -822,6 +822,7 @@ enum {
 	MLX5_CMD_OP_SUSPEND_QP = 0x50F,
 	MLX5_CMD_OP_RESUME_QP = 0x510,
 	MLX5_CMD_OP_QUERY_NIC_VPORT_CONTEXT = 0x754,
+	MLX5_CMD_OP_ACCESS_REGISTER = 0x805,
 	MLX5_CMD_OP_ALLOC_TRANSPORT_DOMAIN = 0x816,
 	MLX5_CMD_OP_CREATE_TIR = 0x900,
 	MLX5_CMD_OP_CREATE_SQ = 0X904,
@@ -841,6 +842,7 @@ enum {
 	MLX5_CMD_QUERY_REGEX_PARAMS = 0xb05,
 	MLX5_CMD_SET_REGEX_REGISTERS = 0xb06,
 	MLX5_CMD_QUERY_REGEX_REGISTERS = 0xb07,
+	MLX5_CMD_OP_ACCESS_REGISTER_USER = 0xb0c,
 };
 
 enum {
@@ -2599,6 +2601,57 @@ struct mlx5_ifc_set_pp_rate_limit_context_bits {
 	u8 typical_packet_size[0x10];
 	u8 reserved_at_60[0x120];
 };
+
+#define MLX5_ACCESS_REGISTER_DATA_DWORD_MAX 8u
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+struct mlx5_ifc_access_register_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+	u8 register_data[0][0x20];
+};
+
+struct mlx5_ifc_access_register_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_at_10[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x10];
+	u8 register_id[0x10];
+	u8 argument[0x20];
+	u8 register_data[0][0x20];
+};
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
+
+enum {
+	MLX5_ACCESS_REGISTER_IN_OP_MOD_WRITE  = 0x0,
+	MLX5_ACCESS_REGISTER_IN_OP_MOD_READ   = 0x1,
+};
+
+enum {
+	MLX5_REGISTER_ID_MTUTC  = 0x9055,
+};
+
+struct mlx5_ifc_register_mtutc_bits {
+	u8 time_stamp_mode[0x2];
+	u8 time_stamp_state[0x2];
+	u8 reserved_at_4[0x18];
+	u8 operation[0x4];
+	u8 freq_adjustment[0x20];
+	u8 reserved_at_40[0x40];
+	u8 utc_sec[0x20];
+	u8 utc_nsec[0x20];
+	u8 time_adjustment[0x20];
+};
+
+#define MLX5_MTUTC_TIMESTAMP_MODE_INTERNAL_TIMER 0
+#define MLX5_MTUTC_TIMESTAMP_MODE_REAL_TIME 1
 
 struct regexp_params_field_select_bits {
 	u8 reserved_at_0[0x1e];

@@ -34,6 +34,7 @@ INTERNAL {
 	mlx5_devx_cmd_query_hca_attr;
 	mlx5_devx_cmd_query_virtio_q_counters;
 	mlx5_devx_cmd_query_virtq;
+	mlx5_devx_cmd_register_read;
 	mlx5_devx_get_out_command_status;
 
 	mlx5_get_ifname_sysfs;
