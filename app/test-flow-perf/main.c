@@ -59,7 +59,7 @@ static struct rte_mempool *mbuf_mp;
 static uint32_t nb_lcores;
 static uint32_t flows_count;
 static uint32_t iterations_number;
-static uint32_t hairpinq;
+static uint32_t hairpin_queues_num; /* total hairpin q number - default: 0 */
 static uint32_t nb_lcores;
 
 #define MAX_PKT_BURST    32
@@ -323,7 +323,7 @@ args_parse(int argc, char **argv)
 	flow_items = 0;
 	flow_actions = 0;
 	flow_attrs = 0;
-	hairpinq = 0;
+	hairpin_queues_num = 0;
 	argvopt = argv;
 
 	printf(":: Flow -> ");
@@ -358,7 +358,7 @@ args_parse(int argc, char **argv)
 					"hairpin-rss") == 0) {
 				n = atoi(optarg);
 				if (n > 0)
-					hairpinq = n;
+					hairpin_queues_num = n;
 				else
 					rte_exit(EXIT_SUCCESS,
 						"Hairpin queues should be > 0\n");
@@ -370,7 +370,7 @@ args_parse(int argc, char **argv)
 					"hairpin-queue") == 0) {
 				n = atoi(optarg);
 				if (n > 0)
-					hairpinq = n;
+					hairpin_queues_num = n;
 				else
 					rte_exit(EXIT_SUCCESS,
 						"Hairpin queues should be > 0\n");
@@ -604,7 +604,8 @@ flows_handler(void)
 		for (i = 0; i < flows_count; i++) {
 			flow = generate_flow(port_id, flow_group,
 				flow_attrs, flow_items, flow_actions,
-				JUMP_ACTION_TABLE, i, hairpinq, &error);
+				JUMP_ACTION_TABLE, i,
+				hairpin_queues_num, &error);
 
 			if (force_quit)
 				i = flows_count;
@@ -929,7 +930,7 @@ init_port(void)
 {
 	int ret;
 	uint16_t std_queue;
-	uint16_t hairpin_q;
+	uint16_t hairpin_queue;
 	uint16_t port_id;
 	uint16_t nr_ports;
 	uint16_t nr_queues;
@@ -947,8 +948,8 @@ init_port(void)
 	struct rte_eth_dev_info dev_info;
 
 	nr_queues = RXQ_NUM;
-	if (hairpinq != 0)
-		nr_queues = RXQ_NUM + hairpinq;
+	if (hairpin_queues_num != 0)
+		nr_queues = RXQ_NUM + hairpin_queues_num;
 
 	nr_ports = rte_eth_dev_count_avail();
 	if (nr_ports == 0)
@@ -1011,15 +1012,20 @@ init_port(void)
 				":: promiscuous mode enable failed: err=%s, port=%u\n",
 				rte_strerror(-ret), port_id);
 
-		if (hairpinq != 0) {
-			for (hairpin_q = RXQ_NUM, std_queue = 0;
-					std_queue < nr_queues;
-					hairpin_q++, std_queue++) {
+		if (hairpin_queues_num != 0) {
+			/*
+			 * Configure peer which represents hairpin Tx.
+			 * Hairpin queue numbers start after standard queues
+			 * (RXQ_NUM and TXQ_NUM).
+			 */
+			for (hairpin_queue = RXQ_NUM, std_queue = 0;
+					hairpin_queue < nr_queues;
+					hairpin_queue++, std_queue++) {
 				hairpin_conf.peers[0].port = port_id;
 				hairpin_conf.peers[0].queue =
 					std_queue + TXQ_NUM;
 				ret = rte_eth_rx_hairpin_queue_setup(
-						port_id, hairpin_q,
+						port_id, hairpin_queue,
 						NR_RXD, &hairpin_conf);
 				if (ret != 0)
 					rte_exit(EXIT_FAILURE,
@@ -1027,14 +1033,14 @@ init_port(void)
 						ret, port_id);
 			}
 
-			for (hairpin_q = TXQ_NUM, std_queue = 0;
-					std_queue < nr_queues;
-					hairpin_q++, std_queue++) {
+			for (hairpin_queue = TXQ_NUM, std_queue = 0;
+					hairpin_queue < nr_queues;
+					hairpin_queue++, std_queue++) {
 				hairpin_conf.peers[0].port = port_id;
 				hairpin_conf.peers[0].queue =
 					std_queue + RXQ_NUM;
 				ret = rte_eth_tx_hairpin_queue_setup(
-						port_id, hairpin_q,
+						port_id, hairpin_queue,
 						NR_TXD, &hairpin_conf);
 				if (ret != 0)
 					rte_exit(EXIT_FAILURE,
