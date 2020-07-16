@@ -120,6 +120,19 @@
 #define MLX5_TXQ_MAX_INLINE_LEN "txq_max_inline_len"
 
 /*
+ * Device parameter to enable Tx scheduling on timestamps
+ * and specify the packet pacing granularity in nanoseconds.
+ */
+#define MLX5_TX_PP "tx_pp"
+
+/*
+ * Device parameter to specify skew in nanoseconds on Tx datapath,
+ * it represents the time between SQ start WQE processing and
+ * appearing actual packet data on the wire.
+ */
+#define MLX5_TX_SKEW "tx_skew"
+
+/*
  * Device parameter to enable hardware Tx vector.
  * Deprecated, ignored (no vectorized Tx routines anymore).
  */
@@ -1271,18 +1284,26 @@ static int
 mlx5_args_check(const char *key, const char *val, void *opaque)
 {
 	struct mlx5_dev_config *config = opaque;
-	unsigned long tmp;
+	unsigned long mod;
+	signed long tmp;
 
 	/* No-op, port representors are processed in mlx5_dev_spawn(). */
 	if (!strcmp(MLX5_REPRESENTOR, key))
 		return 0;
 	errno = 0;
-	tmp = strtoul(val, NULL, 0);
+	tmp = strtol(val, NULL, 0);
 	if (errno) {
 		rte_errno = errno;
 		DRV_LOG(WARNING, "%s: \"%s\" is not a valid integer", key, val);
 		return -rte_errno;
 	}
+	if (tmp < 0 && strcmp(MLX5_TX_PP, key) && strcmp(MLX5_TX_SKEW, key)) {
+		/* Negative values are acceptable for some keys only. */
+		rte_errno = EINVAL;
+		DRV_LOG(WARNING, "%s: invalid negative value \"%s\"", key, val);
+		return -rte_errno;
+	}
+	mod = tmp >= 0 ? tmp : -tmp;
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
 		config->cqe_comp = !!tmp;
 	} else if (strcmp(MLX5_RXQ_CQE_PAD_EN, key) == 0) {
@@ -1333,6 +1354,15 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->txq_inline_mpw = tmp;
 	} else if (strcmp(MLX5_TX_VEC_EN, key) == 0) {
 		DRV_LOG(WARNING, "%s: deprecated parameter, ignored", key);
+	} else if (strcmp(MLX5_TX_PP, key) == 0) {
+		if (!mod) {
+			DRV_LOG(ERR, "Zero Tx packet pacing parameter");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		config->tx_pp = tmp;
+	} else if (strcmp(MLX5_TX_SKEW, key) == 0) {
+		config->tx_skew = tmp;
 	} else if (strcmp(MLX5_RX_VEC_EN, key) == 0) {
 		config->rx_vec_en = !!tmp;
 	} else if (strcmp(MLX5_L3_VXLAN_EN, key) == 0) {
@@ -1415,6 +1445,8 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_TXQ_MPW_HDR_DSEG_EN,
 		MLX5_TXQ_MAX_INLINE_LEN,
 		MLX5_TX_DB_NC,
+		MLX5_TX_PP,
+		MLX5_TX_SKEW,
 		MLX5_TX_VEC_EN,
 		MLX5_RX_VEC_EN,
 		MLX5_L3_VXLAN_EN,
@@ -1693,7 +1725,8 @@ rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n)
 {
 	static const char *const dynf_names[] = {
 		RTE_PMD_MLX5_FINE_GRANULARITY_INLINE,
-		RTE_MBUF_DYNFLAG_METADATA_NAME
+		RTE_MBUF_DYNFLAG_METADATA_NAME,
+		RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME
 	};
 	unsigned int i;
 

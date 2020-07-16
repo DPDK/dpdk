@@ -241,6 +241,24 @@ Limitations
   reduce the requested Tx size or adjust data inline settings with
   ``txq_inline_max`` and ``txq_inline_mpw`` devargs keys.
 
+- To provide the packet send scheduling on mbuf timestamps the ``tx_pp``
+  parameter should be specified, RTE_MBUF_DYNFIELD_TIMESTAMP_NAME and
+  RTE_MBUF_DYNFLAG_TIMESTAMP_NAME should be registered by application.
+  When PMD sees the RTE_MBUF_DYNFLAG_TIMESTAMP_NAME set on the packet
+  being sent it tries to synchronize the time of packet appearing on
+  the wire with the specified packet timestamp. It the specified one
+  is in the past it should be ignored, if one is in the distant future
+  it should be capped with some reasonable value (in range of seconds).
+  These specific cases ("too late" and "distant future") can be optionally
+  reported via device xstats to assist applications to detect the
+  time-related problems.
+
+  There is no any packet reordering according timestamps is supposed,
+  neither within packet burst, nor between packets, it is an entirely
+  application responsibility to generate packets and its timestamps
+  in desired order. The timestamps can be put only in the first packet
+  in the burst providing the entire burst scheduling.
+
 - E-Switch decapsulation Flow:
 
   - can be applied to PF port only.
@@ -699,6 +717,25 @@ Driver options
   If ``tx_db_nc`` is omitted or set to zero, the preset (if any) environment
   variable "MLX5_SHUT_UP_BF" value is used. If there is no "MLX5_SHUT_UP_BF",
   the default ``tx_db_nc`` value is zero for ARM64 hosts and one for others.
+
+- ``tx_pp`` parameter [int]
+
+  If a nonzero value is specified the driver creates all necessary internal
+  objects to provide accurate packet send scheduling on mbuf timestamps.
+  The positive value specifies the scheduling granularity in nanoseconds,
+  the packet send will be accurate up to specified digits. The allowed range is
+  from 500 to 1 million of nanoseconds. The negative value specifies the module
+  of granularity and engages the special test mode the check the schedule rate.
+  By default (if the ``tx_pp`` is not specified) send scheduling on timestamps
+  feature is disabled.
+
+- ``tx_skew`` parameter [int]
+
+  The parameter adjusts the send packet scheduling on timestamps and represents
+  the average delay between beginning of the transmitting descriptor processing
+  by the hardware and appearance of actual packet data on the wire. The value
+  should be provided in nanoseconds and is valid only if ``tx_pp`` parameter is
+  specified. The default value is zero.
 
 - ``tx_vec_en`` parameter [int]
 

@@ -879,6 +879,69 @@ err_secondary:
 		}
 #endif
 	}
+	if (config.tx_pp) {
+		DRV_LOG(DEBUG, "Timestamp counter frequency %u kHz",
+			config.hca_attr.dev_freq_khz);
+		DRV_LOG(DEBUG, "Packet pacing is %ssupported",
+			config.hca_attr.qos.packet_pacing ? "" : "not ");
+		DRV_LOG(DEBUG, "Cross channel ops are %ssupported",
+			config.hca_attr.cross_channel ? "" : "not ");
+		DRV_LOG(DEBUG, "WQE index ignore is %ssupported",
+			config.hca_attr.wqe_index_ignore ? "" : "not ");
+		DRV_LOG(DEBUG, "Non-wire SQ feature is %ssupported",
+			config.hca_attr.non_wire_sq ? "" : "not ");
+		DRV_LOG(DEBUG, "Static WQE SQ feature is %ssupported (%d)",
+			config.hca_attr.log_max_static_sq_wq ? "" : "not ",
+			config.hca_attr.log_max_static_sq_wq);
+		DRV_LOG(DEBUG, "WQE rate PP mode is %ssupported",
+			config.hca_attr.qos.wqe_rate_pp ? "" : "not ");
+		if (!config.devx) {
+			DRV_LOG(ERR, "DevX is required for packet pacing");
+			err = ENODEV;
+			goto error;
+		}
+		if (!config.hca_attr.qos.packet_pacing) {
+			DRV_LOG(ERR, "Packet pacing is not supported");
+			err = ENODEV;
+			goto error;
+		}
+		if (!config.hca_attr.cross_channel) {
+			DRV_LOG(ERR, "Cross channel operations are"
+				     " required for packet pacing");
+			err = ENODEV;
+			goto error;
+		}
+		if (!config.hca_attr.wqe_index_ignore) {
+			DRV_LOG(ERR, "WQE index ignore feature is"
+				     " required for packet pacing");
+			err = ENODEV;
+			goto error;
+		}
+		if (!config.hca_attr.non_wire_sq) {
+			DRV_LOG(ERR, "Non-wire SQ feature is"
+				     " required for packet pacing");
+			err = ENODEV;
+			goto error;
+		}
+		if (!config.hca_attr.log_max_static_sq_wq) {
+			DRV_LOG(ERR, "Static WQE SQ feature is"
+				     " required for packet pacing");
+			err = ENODEV;
+			goto error;
+		}
+		if (!config.hca_attr.qos.wqe_rate_pp) {
+			DRV_LOG(ERR, "WQE rate mode is required"
+				     " for packet pacing");
+			err = ENODEV;
+			goto error;
+		}
+#ifndef HAVE_MLX5DV_DEVX_UAR_OFFSET
+		DRV_LOG(ERR, "DevX does not provide UAR offset,"
+			     " can't create queues for packet pacing");
+		err = ENODEV;
+		goto error;
+#endif
+	}
 	if (config.mprq.enabled && mprq) {
 		if (config.mprq.stride_num_n &&
 		    (config.mprq.stride_num_n > mprq_max_stride_num_n ||
