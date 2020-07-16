@@ -1997,7 +1997,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->rxq.elts_n])(tmpl + 1);
 #ifndef RTE_ARCH_64
-	tmpl->rxq.uar_lock_cq = &priv->uar_lock_cq;
+	tmpl->rxq.uar_lock_cq = &priv->sh->uar_lock_cq;
 #endif
 	tmpl->rxq.idx = idx;
 	rte_atomic32_inc(&tmpl->refcnt);

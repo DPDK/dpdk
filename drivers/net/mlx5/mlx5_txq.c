@@ -355,7 +355,7 @@ txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl)
 	/* Assign an UAR lock according to UAR page number */
 	lock_idx = (txq_ctrl->uar_mmap_offset / page_size) &
 		   MLX5_UAR_PAGE_NUM_MASK;
-	txq_ctrl->txq.uar_lock = &priv->uar_lock[lock_idx];
+	txq_ctrl->txq.uar_lock = &priv->sh->uar_lock[lock_idx];
 #endif
 }
 

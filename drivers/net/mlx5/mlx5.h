@@ -559,6 +559,11 @@ struct mlx5_dev_ctx_shared {
 	void *fdb_domain; /* FDB Direct Rules name space handle. */
 	void *rx_domain; /* RX Direct Rules name space handle. */
 	void *tx_domain; /* TX Direct Rules name space handle. */
+#ifndef RTE_ARCH_64
+	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
+	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
+	/* UAR same-page access control required in 32bit implementations. */
+#endif
 	struct mlx5_hlist *flow_tbls;
 	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
@@ -673,11 +678,6 @@ struct mlx5_priv {
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */
 	struct mlx5_mtr_profiles flow_meter_profiles; /* MTR profile list. */
 	struct mlx5_flow_meters flow_meters; /* MTR list. */
-#ifndef RTE_ARCH_64
-	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
-	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
-	/* UAR same-page access control required in 32bit implementations. */
-#endif
 	uint8_t skip_default_rss_reta; /* Skip configuration of default reta. */
 	uint8_t fdb_def_rule; /* Whether fdb jump to table 1 is configured. */
 	struct mlx5_mp_id mp_id; /* ID of a multi-process process */

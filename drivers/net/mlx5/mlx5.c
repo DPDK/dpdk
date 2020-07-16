@@ -717,6 +717,12 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		err = ENOMEM;
 		goto error;
 	}
+#ifndef RTE_ARCH_64
+	/* Initialize UAR access locks for 32bit implementations. */
+	rte_spinlock_init(&sh->uar_lock_cq);
+	for (i = 0; i < MLX5_UAR_PAGE_NUM_MAX; i++)
+		rte_spinlock_init(&sh->uar_lock[i]);
+#endif
 	/*
 	 * Once the device is added to the list of memory event
 	 * callback, its global MR cache table cannot be expanded
