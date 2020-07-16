@@ -172,6 +172,7 @@
 #define MLX5_TXDB_HEURISTIC 2
 
 /* Tx accurate scheduling on timestamps parameters. */
+#define MLX5_TXPP_WAIT_INIT_TS 1000ul /* How long to wait timestamp. */
 #define MLX5_TXPP_CLKQ_SIZE 1
 #define MLX5_TXPP_REARM	((1UL << MLX5_WQ_INDEX_WIDTH) / 4)
 #define MLX5_TXPP_REARM_SQ_SIZE (((1UL << MLX5_CQ_INDEX_WIDTH) / \

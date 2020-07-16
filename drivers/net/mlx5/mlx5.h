@@ -555,6 +555,12 @@ struct mlx5_txpp_wq {
 	volatile uint32_t *sq_dbrec;
 };
 
+/* Tx packet pacing internal timestamp. */
+struct mlx5_txpp_ts {
+	rte_atomic64_t ci_ts;
+	rte_atomic64_t ts;
+};
+
 /* Tx packet pacing structure. */
 struct mlx5_dev_txpp {
 	pthread_mutex_t mutex; /* Pacing create/destroy mutex. */
@@ -570,6 +576,15 @@ struct mlx5_dev_txpp {
 	struct mlx5_txpp_wq rearm_queue; /* Clock Queue. */
 	struct mlx5dv_pp *pp; /* Packet pacing context. */
 	uint16_t pp_id; /* Packet pacing context index. */
+	uint16_t ts_n; /* Number of captured timestamps. */
+	uint16_t ts_p; /* Pointer to statisticks timestamp. */
+	struct mlx5_txpp_ts *tsa; /* Timestamps sliding window stats. */
+	struct mlx5_txpp_ts ts; /* Cached completion id/timestamp. */
+	uint32_t sync_lost:1; /* ci/timestamp synchronization lost. */
+	/* Statistics counters. */
+	rte_atomic32_t err_miss_int; /* Missed service interrupt. */
+	rte_atomic32_t err_rearm_queue; /* Rearm Queue errors. */
+	rte_atomic32_t err_clock_queue; /* Clock Queue errors. */
 };
 
 /*
@@ -993,5 +1008,6 @@ void mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
 
 int mlx5_txpp_start(struct rte_eth_dev *dev);
 void mlx5_txpp_stop(struct rte_eth_dev *dev);
+void mlx5_txpp_interrupt_handler(void *cb_arg);
 
 #endif /* RTE_PMD_MLX5_H_ */

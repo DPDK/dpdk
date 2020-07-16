@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2020 Mellanox Technologies, Ltd
  */
+#include <fcntl.h>
+#include <stdint.h>
+
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
 #include <rte_interrupts.h>
@@ -144,6 +147,33 @@ mlx5_txpp_destroy_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	struct mlx5_txpp_wq *wq = &sh->txpp.clock_queue;
 
 	mlx5_txpp_destroy_send_queue(wq);
+	if (sh->txpp.tsa) {
+		rte_free(sh->txpp.tsa);
+		sh->txpp.tsa = NULL;
+	}
+}
+
+static void
+mlx5_txpp_doorbell_rearm_queue(struct mlx5_dev_ctx_shared *sh, uint16_t ci)
+{
+	struct mlx5_txpp_wq *wq = &sh->txpp.rearm_queue;
+	union {
+		uint32_t w32[2];
+		uint64_t w64;
+	} cs;
+
+	wq->sq_ci = ci + 1;
+	cs.w32[0] = rte_cpu_to_be_32(rte_be_to_cpu_32
+		   (wq->wqes[ci & (wq->sq_size - 1)].ctrl[0]) | (ci - 1) << 8);
+	cs.w32[1] = wq->wqes[ci & (wq->sq_size - 1)].ctrl[1];
+	/* Update SQ doorbell record with new SQ ci. */
+	rte_compiler_barrier();
+	*wq->sq_dbrec = rte_cpu_to_be_32(wq->sq_ci);
+	/* Make sure the doorbell record is updated. */
+	rte_wmb();
+	/* Write to doorbel register to start processing. */
+	__mlx5_uar_write64_relaxed(cs.w64, sh->tx_uar->reg_addr, NULL);
+	rte_wmb();
 }
 
 static void
@@ -433,6 +463,16 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	uint32_t umem_size, umem_dbrec;
 	int ret;
 
+	sh->txpp.tsa = rte_zmalloc_socket(__func__,
+					   MLX5_TXPP_REARM_SQ_SIZE *
+					   sizeof(struct mlx5_txpp_ts),
+					   0, sh->numa_node);
+	if (!sh->txpp.tsa) {
+		DRV_LOG(ERR, "Failed to allocate memory for CQ stats.");
+		return -ENOMEM;
+	}
+	sh->txpp.ts_p = 0;
+	sh->txpp.ts_n = 0;
 	/* Allocate memory buffer for CQEs and doorbell record. */
 	umem_size = sizeof(struct mlx5_cqe) * MLX5_TXPP_CLKQ_SIZE;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
@@ -562,6 +602,299 @@ error:
 	return ret;
 }
 
+/* Enable notification from the Rearm Queue CQ. */
+static inline void
+mlx5_txpp_cq_arm(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_txpp_wq *aq = &sh->txpp.rearm_queue;
+	uint32_t arm_sn = aq->arm_sn << MLX5_CQ_SQN_OFFSET;
+	uint32_t db_hi = arm_sn | MLX5_CQ_DBR_CMD_ALL | aq->cq_ci;
+	uint64_t db_be = rte_cpu_to_be_64(((uint64_t)db_hi << 32) | aq->cq->id);
+	uint32_t *addr = RTE_PTR_ADD(sh->tx_uar->base_addr, MLX5_CQ_DOORBELL);
+
+	rte_compiler_barrier();
+	aq->cq_dbrec[MLX5_CQ_ARM_DB] = rte_cpu_to_be_32(db_hi);
+	rte_wmb();
+#ifdef RTE_ARCH_64
+	*(uint64_t *)addr = db_be;
+#else
+	*(uint32_t *)addr = db_be;
+	rte_io_wmb();
+	*((uint32_t *)addr + 1) = db_be >> 32;
+#endif
+	aq->arm_sn++;
+}
+
+static inline void
+mlx5_atomic_read_cqe(rte_int128_t *from, rte_int128_t *ts)
+{
+	/*
+	 * The only CQE of Clock Queue is being continuously
+	 * update by hardware with soecified rate. We have to
+	 * read timestump and WQE completion index atomically.
+	 */
+#if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_ARM64)
+	rte_int128_t src;
+
+	memset(&src, 0, sizeof(src));
+	*ts = src;
+	/* if (*from == *ts) *from = *src else *ts = *from; */
+	rte_atomic128_cmp_exchange(from, ts, &src, 0,
+				   __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+#else
+	rte_atomic64_t *cqe = (rte_atomic64_t *)from;
+
+	/* Power architecture does not support 16B compare-and-swap. */
+	for (;;) {
+		int64_t tm, op;
+		int64_t *ps;
+
+		rte_compiler_barrier();
+		tm = rte_atomic64_read(cqe + 0);
+		op = rte_atomic64_read(cqe + 1);
+		rte_compiler_barrier();
+		if (tm != rte_atomic64_read(cqe + 0))
+			continue;
+		if (op != rte_atomic64_read(cqe + 1))
+			continue;
+		ps = (int64_t *)ts;
+		ps[0] = tm;
+		ps[1] = op;
+		return;
+	}
+#endif
+}
+
+/* Stores timestamp in the cache structure to share data with datapath. */
+static inline void
+mlx5_txpp_cache_timestamp(struct mlx5_dev_ctx_shared *sh,
+			   uint64_t ts, uint64_t ci)
+{
+	ci = ci << (64 - MLX5_CQ_INDEX_WIDTH);
+	ci |= (ts << MLX5_CQ_INDEX_WIDTH) >> MLX5_CQ_INDEX_WIDTH;
+	rte_compiler_barrier();
+	rte_atomic64_set(&sh->txpp.ts.ts, ts);
+	rte_atomic64_set(&sh->txpp.ts.ci_ts, ci);
+	rte_wmb();
+}
+
+/* Reads timestamp from Clock Queue CQE and stores in the cache. */
+static inline void
+mlx5_txpp_update_timestamp(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_txpp_wq *wq = &sh->txpp.clock_queue;
+	struct mlx5_cqe *cqe = (struct mlx5_cqe *)(uintptr_t)wq->cqes;
+	union {
+		rte_int128_t u128;
+		struct mlx5_cqe_ts cts;
+	} to;
+	uint64_t ts;
+	uint16_t ci;
+
+	static_assert(sizeof(struct mlx5_cqe_ts) == sizeof(rte_int128_t),
+		      "Wrong timestamp CQE part size");
+	mlx5_atomic_read_cqe((rte_int128_t *)&cqe->timestamp, &to.u128);
+	if (to.cts.op_own >> 4) {
+		DRV_LOG(DEBUG, "Clock Queue error sync lost.");
+		rte_atomic32_inc(&sh->txpp.err_clock_queue);
+		sh->txpp.sync_lost = 1;
+		return;
+	}
+	ci = rte_be_to_cpu_16(to.cts.wqe_counter);
+	ts = rte_be_to_cpu_64(to.cts.timestamp);
+	ts = mlx5_txpp_convert_rx_ts(sh, ts);
+	wq->cq_ci += (ci - wq->sq_ci) & UINT16_MAX;
+	wq->sq_ci = ci;
+	mlx5_txpp_cache_timestamp(sh, ts, wq->cq_ci);
+}
+
+/* Waits for the first completion on Clock Queue to init timestamp. */
+static inline void
+mlx5_txpp_init_timestamp(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_txpp_wq *wq = &sh->txpp.clock_queue;
+	uint32_t wait;
+
+	sh->txpp.ts_p = 0;
+	sh->txpp.ts_n = 0;
+	for (wait = 0; wait < MLX5_TXPP_WAIT_INIT_TS; wait++) {
+		struct timespec onems;
+
+		mlx5_txpp_update_timestamp(sh);
+		if (wq->sq_ci)
+			return;
+		/* Wait one millisecond and try again. */
+		onems.tv_sec = 0;
+		onems.tv_nsec = NS_PER_S / MS_PER_S;
+		nanosleep(&onems, 0);
+	}
+	DRV_LOG(ERR, "Unable to initialize timestamp.");
+	sh->txpp.sync_lost = 1;
+}
+
+#ifdef HAVE_IBV_DEVX_EVENT
+/* Gather statistics for timestamp from Clock Queue CQE. */
+static inline void
+mlx5_txpp_gather_timestamp(struct mlx5_dev_ctx_shared *sh)
+{
+	/* Check whether we have a valid timestamp. */
+	if (!sh->txpp.clock_queue.sq_ci && !sh->txpp.ts_n)
+		return;
+	MLX5_ASSERT(sh->txpp.ts_p < MLX5_TXPP_REARM_SQ_SIZE);
+	sh->txpp.tsa[sh->txpp.ts_p] = sh->txpp.ts;
+	if (++sh->txpp.ts_p >= MLX5_TXPP_REARM_SQ_SIZE)
+		sh->txpp.ts_p = 0;
+	if (sh->txpp.ts_n < MLX5_TXPP_REARM_SQ_SIZE)
+		++sh->txpp.ts_n;
+}
+
+/* Handles Rearm Queue completions in periodic service. */
+static __rte_always_inline void
+mlx5_txpp_handle_rearm_queue(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_txpp_wq *wq = &sh->txpp.rearm_queue;
+	uint32_t cq_ci = wq->cq_ci;
+	bool error = false;
+	int ret;
+
+	do {
+		volatile struct mlx5_cqe *cqe;
+
+		cqe = &wq->cqes[cq_ci & (MLX5_TXPP_REARM_CQ_SIZE - 1)];
+		ret = check_cqe(cqe, MLX5_TXPP_REARM_CQ_SIZE, cq_ci);
+		switch (ret) {
+		case MLX5_CQE_STATUS_ERR:
+			error = true;
+			++cq_ci;
+			break;
+		case MLX5_CQE_STATUS_SW_OWN:
+			wq->sq_ci += 2;
+			++cq_ci;
+			break;
+		case MLX5_CQE_STATUS_HW_OWN:
+			break;
+		default:
+			MLX5_ASSERT(false);
+			break;
+		}
+	} while (ret != MLX5_CQE_STATUS_HW_OWN);
+	if (likely(cq_ci != wq->cq_ci)) {
+		/* Check whether we have missed interrupts. */
+		if (cq_ci - wq->cq_ci != 1) {
+			DRV_LOG(DEBUG, "Rearm Queue missed interrupt.");
+			rte_atomic32_inc(&sh->txpp.err_miss_int);
+			/* Check sync lost on wqe index. */
+			if (cq_ci - wq->cq_ci >=
+				(((1UL << MLX5_WQ_INDEX_WIDTH) /
+				  MLX5_TXPP_REARM) - 1))
+				error = 1;
+		}
+		/* Update doorbell record to notify hardware. */
+		rte_compiler_barrier();
+		*wq->cq_dbrec = rte_cpu_to_be_32(cq_ci);
+		rte_wmb();
+		wq->cq_ci = cq_ci;
+		/* Fire new requests to Rearm Queue. */
+		if (error) {
+			DRV_LOG(DEBUG, "Rearm Queue error sync lost.");
+			rte_atomic32_inc(&sh->txpp.err_rearm_queue);
+			sh->txpp.sync_lost = 1;
+		}
+	}
+}
+
+/* Handles Clock Queue completions in periodic service. */
+static __rte_always_inline void
+mlx5_txpp_handle_clock_queue(struct mlx5_dev_ctx_shared *sh)
+{
+	mlx5_txpp_update_timestamp(sh);
+	mlx5_txpp_gather_timestamp(sh);
+}
+#endif
+
+/* Invoked periodically on Rearm Queue completions. */
+void
+mlx5_txpp_interrupt_handler(void *cb_arg)
+{
+#ifndef HAVE_IBV_DEVX_EVENT
+	RTE_SET_USED(cb_arg);
+	return;
+#else
+	struct mlx5_dev_ctx_shared *sh = cb_arg;
+	union {
+		struct mlx5dv_devx_async_event_hdr event_resp;
+		uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr) + 128];
+	} out;
+
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	/* Process events in the loop. Only rearm completions are expected. */
+	while (mlx5_glue->devx_get_event
+				(sh->txpp.echan,
+				 &out.event_resp,
+				 sizeof(out.buf)) >=
+				 (ssize_t)sizeof(out.event_resp.cookie)) {
+		mlx5_txpp_handle_rearm_queue(sh);
+		mlx5_txpp_handle_clock_queue(sh);
+		mlx5_txpp_cq_arm(sh);
+		mlx5_txpp_doorbell_rearm_queue
+					(sh, sh->txpp.rearm_queue.sq_ci - 1);
+	}
+#endif /* HAVE_IBV_DEVX_ASYNC */
+}
+
+static void
+mlx5_txpp_stop_service(struct mlx5_dev_ctx_shared *sh)
+{
+	if (!sh->txpp.intr_handle.fd)
+		return;
+	mlx5_intr_callback_unregister(&sh->txpp.intr_handle,
+				      mlx5_txpp_interrupt_handler, sh);
+	sh->txpp.intr_handle.fd = 0;
+}
+
+/* Attach interrupt handler and fires first request to Rearm Queue. */
+static int
+mlx5_txpp_start_service(struct mlx5_dev_ctx_shared *sh)
+{
+	uint16_t event_nums[1] = {0};
+	int flags;
+	int ret;
+
+	/* Attach interrupt handler to process Rearm Queue completions. */
+	flags = fcntl(sh->txpp.echan->fd, F_GETFL);
+	ret = fcntl(sh->txpp.echan->fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to change event channel FD.");
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	memset(&sh->txpp.intr_handle, 0, sizeof(sh->txpp.intr_handle));
+	sh->txpp.intr_handle.fd = sh->txpp.echan->fd;
+	sh->txpp.intr_handle.type = RTE_INTR_HANDLE_EXT;
+	if (rte_intr_callback_register(&sh->txpp.intr_handle,
+				       mlx5_txpp_interrupt_handler, sh)) {
+		sh->txpp.intr_handle.fd = 0;
+		DRV_LOG(ERR, "Failed to register CQE interrupt %d.", rte_errno);
+		return -rte_errno;
+	}
+	/* Subscribe CQ event to the event channel controlled by the driver. */
+	ret = mlx5_glue->devx_subscribe_devx_event(sh->txpp.echan,
+						   sh->txpp.rearm_queue.cq->obj,
+						   sizeof(event_nums),
+						   event_nums, 0);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to subscribe CQE event.");
+		rte_errno = errno;
+		return -errno;
+	}
+	/* Enable interrupts in the CQ. */
+	mlx5_txpp_cq_arm(sh);
+	/* Fire the first request on Rearm Queue. */
+	mlx5_txpp_doorbell_rearm_queue(sh, sh->txpp.rearm_queue.sq_size - 1);
+	mlx5_txpp_init_timestamp(sh);
+	return 0;
+}
+
 /*
  * The routine initializes the packet pacing infrastructure:
  * - allocates PP context
@@ -595,8 +928,12 @@ mlx5_txpp_create(struct mlx5_dev_ctx_shared *sh, struct mlx5_priv *priv)
 	ret = mlx5_txpp_create_rearm_queue(sh);
 	if (ret)
 		goto exit;
+	ret = mlx5_txpp_start_service(sh);
+	if (ret)
+		goto exit;
 exit:
 	if (ret) {
+		mlx5_txpp_stop_service(sh);
 		mlx5_txpp_destroy_rearm_queue(sh);
 		mlx5_txpp_destroy_clock_queue(sh);
 		mlx5_txpp_free_pp_index(sh);
@@ -618,6 +955,7 @@ exit:
 static void
 mlx5_txpp_destroy(struct mlx5_dev_ctx_shared *sh)
 {
+	mlx5_txpp_stop_service(sh);
 	mlx5_txpp_destroy_rearm_queue(sh);
 	mlx5_txpp_destroy_clock_queue(sh);
 	mlx5_txpp_free_pp_index(sh);

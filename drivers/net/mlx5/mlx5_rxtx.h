@@ -30,6 +30,7 @@
 #include <rte_io.h>
 #include <rte_bus_pci.h>
 #include <rte_malloc.h>
+#include <rte_cycles.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_prm.h>
@@ -693,6 +694,25 @@ static __rte_always_inline void
 mlx5_tx_dbrec(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe)
 {
 	mlx5_tx_dbrec_cond_wmb(txq, wqe, 1);
+}
+
+/**
+ * Convert timestamp from HW format to linear counter
+ * from Packet Pacing Clock Queue CQE timestamp format.
+ *
+ * @param sh
+ *   Pointer to the device shared context. Might be needed
+ *   to convert according current device configuration.
+ * @param ts
+ *   Timestamp from CQE to convert.
+ * @return
+ *   UTC in nanoseconds
+ */
+static __rte_always_inline uint64_t
+mlx5_txpp_convert_rx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t ts)
+{
+	RTE_SET_USED(sh);
+	return (ts & UINT32_MAX) + (ts >> 32) * NS_PER_S;
 }
 
 #endif /* RTE_PMD_MLX5_RXTX_H_ */
