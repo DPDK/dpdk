@@ -5,6 +5,8 @@
 #ifndef __OTX2_CRYPTODEV_SEC_H__
 #define __OTX2_CRYPTODEV_SEC_H__
 
+#include <rte_cryptodev.h>
+
 #include "otx2_ipsec_po.h"
 
 struct otx2_sec_session_ipsec_lp {
@@ -54,5 +56,9 @@ struct otx2_sec_session_ipsec_lp {
 	/** Auth IV length in bytes */
 	uint8_t auth_iv_length;
 };
+
+int otx2_crypto_sec_ctx_create(struct rte_cryptodev *crypto_dev);
+
+void otx2_crypto_sec_ctx_destroy(struct rte_cryptodev *crypto_dev);
 
 #endif /* __OTX2_CRYPTODEV_SEC_H__ */

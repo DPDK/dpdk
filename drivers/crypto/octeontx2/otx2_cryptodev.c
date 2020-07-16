@@ -17,6 +17,7 @@
 #include "otx2_cryptodev_capabilities.h"
 #include "otx2_cryptodev_mbox.h"
 #include "otx2_cryptodev_ops.h"
+#include "otx2_cryptodev_sec.h"
 #include "otx2_dev.h"
 
 /* CPT common headers */
@@ -103,6 +104,11 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	otx2_crypto_capabilities_init(vf->hw_caps);
 
+	/* Create security ctx */
+	ret = otx2_crypto_sec_ctx_create(dev);
+	if (ret)
+		goto otx2_dev_fini;
+
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			     RTE_CRYPTODEV_FF_HW_ACCELERATED |
 			     RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
@@ -111,7 +117,8 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			     RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
 			     RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
 			     RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT |
-			     RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
+			     RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
+			     RTE_CRYPTODEV_FF_SECURITY;
 
 	return 0;
 
@@ -139,6 +146,9 @@ otx2_cpt_pci_remove(struct rte_pci_device *pci_dev)
 	dev = rte_cryptodev_pmd_get_named_dev(name);
 	if (dev == NULL)
 		return -ENODEV;
+
+	/* Destroy security ctx */
+	otx2_crypto_sec_ctx_destroy(dev);
 
 	return rte_cryptodev_pmd_destroy(dev);
 }

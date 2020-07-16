@@ -17,7 +17,8 @@ sources = files('otx2_cryptodev.c',
 		'otx2_cryptodev_capabilities.c',
 		'otx2_cryptodev_hw_access.c',
 		'otx2_cryptodev_mbox.c',
-		'otx2_cryptodev_ops.c')
+		'otx2_cryptodev_ops.c',
+		'otx2_cryptodev_sec.c')
 
 extra_flags = []
 # This integrated controller runs only on a arm64 machine, remove 32bit warnings
