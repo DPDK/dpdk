@@ -6,6 +6,7 @@
 #define _OTX2_CRYPTODEV_H_
 
 #include "cpt_common.h"
+#include "cpt_hw_types.h"
 
 #include "otx2_dev.h"
 
@@ -31,6 +32,13 @@ struct otx2_cpt_vf {
 	/**< Are error interrupts registered? */
 	union cpt_eng_caps hw_caps[CPT_MAX_ENG_TYPES];
 	/**< CPT device capabilities */
+};
+
+struct cpt_meta_info {
+	uint64_t deq_op_info[4];
+	uint64_t comp_code_sz;
+	union cpt_res_s cpt_res __rte_aligned(16);
+	struct cpt_request_info cpt_req __rte_aligned(8);
 };
 
 #define CPT_LOGTYPE otx2_cpt_logtype

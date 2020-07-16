@@ -194,7 +194,10 @@ New Features
 
 * **Updated the OCTEON TX2 crypto PMD.**
 
-  Added Chacha20-Poly1305 AEAD algorithm support in OCTEON TX2 crypto PMD.
+  * Added Chacha20-Poly1305 AEAD algorithm support in OCTEON TX2 crypto PMD.
+
+  * Updated the OCTEON TX2 crypto PMD to support ``rte_security`` lookaside
+    protocol offload for IPsec.
 
 * **Added support for BPF_ABS/BPF_IND load instructions.**
 

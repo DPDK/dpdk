@@ -13,8 +13,10 @@
 #include "otx2_cryptodev_hw_access.h"
 #include "otx2_cryptodev_mbox.h"
 #include "otx2_cryptodev_ops.h"
+#include "otx2_ipsec_po_ops.h"
 #include "otx2_mbox.h"
 #include "otx2_sec_idev.h"
+#include "otx2_security.h"
 
 #include "cpt_hw_types.h"
 #include "cpt_pmd_logs.h"
@@ -607,6 +609,36 @@ otx2_cpt_enqueue_sym(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 }
 
 static __rte_always_inline int __rte_hot
+otx2_cpt_enqueue_sec(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
+		     struct pending_queue *pend_q)
+{
+	struct otx2_sec_session_ipsec_lp *sess;
+	struct otx2_ipsec_po_sa_ctl *ctl_wrd;
+	struct otx2_sec_session *priv;
+	struct cpt_request_info *req;
+	int ret;
+
+	priv = get_sec_session_private_data(op->sym->sec_session);
+	sess = &priv->ipsec.lp;
+
+	ctl_wrd = &sess->in_sa.ctl;
+
+	if (ctl_wrd->direction == OTX2_IPSEC_PO_SA_DIRECTION_OUTBOUND)
+		ret = process_outb_sa(op, sess, &qp->meta_info, (void **)&req);
+	else
+		ret = process_inb_sa(op, sess, &qp->meta_info, (void **)&req);
+
+	if (unlikely(ret)) {
+		otx2_err("Crypto req : op %p, ret 0x%x", op, ret);
+		return ret;
+	}
+
+	ret = otx2_cpt_enqueue_req(qp, pend_q, req);
+
+	return ret;
+}
+
+static __rte_always_inline int __rte_hot
 otx2_cpt_enqueue_sym_sessless(struct otx2_cpt_qp *qp, struct rte_crypto_op *op,
 			      struct pending_queue *pend_q)
 {
@@ -659,7 +691,9 @@ otx2_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	for (count = 0; count < nb_ops; count++) {
 		op = ops[count];
 		if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
-			if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+			if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
+				ret = otx2_cpt_enqueue_sec(qp, op, pend_q);
+			else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
 				ret = otx2_cpt_enqueue_sym(qp, op, pend_q);
 			else
 				ret = otx2_cpt_enqueue_sym_sessless(qp, op,
@@ -801,11 +835,48 @@ otx2_cpt_asym_post_process(struct rte_crypto_op *cop,
 	}
 }
 
+static void
+otx2_cpt_sec_post_process(struct rte_crypto_op *cop, uintptr_t *rsp)
+{
+	struct cpt_request_info *req = (struct cpt_request_info *)rsp[2];
+	vq_cmd_word0_t *word0 = (vq_cmd_word0_t *)&req->ist.ei0;
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	struct rte_mbuf *m = sym_op->m_src;
+	struct rte_ipv4_hdr *ip;
+	uint16_t m_len;
+	int mdata_len;
+	char *data;
+
+	mdata_len = (int)rsp[3];
+	rte_pktmbuf_trim(m, mdata_len);
+
+	if ((word0->s.opcode & 0xff) == OTX2_IPSEC_PO_PROCESS_IPSEC_INB) {
+		data = rte_pktmbuf_mtod(m, char *);
+		ip = (struct rte_ipv4_hdr *)(data + OTX2_IPSEC_PO_INB_RPTR_HDR);
+
+		m_len = rte_be_to_cpu_16(ip->total_length);
+
+		m->data_len = m_len;
+		m->pkt_len = m_len;
+		m->data_off += OTX2_IPSEC_PO_INB_RPTR_HDR;
+	}
+}
+
 static inline void
 otx2_cpt_dequeue_post_process(struct otx2_cpt_qp *qp, struct rte_crypto_op *cop,
 			      uintptr_t *rsp, uint8_t cc)
 {
 	if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+		if (cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+			if (likely(cc == OTX2_IPSEC_PO_CC_SUCCESS)) {
+				otx2_cpt_sec_post_process(cop, rsp);
+				cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+			} else
+				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+
+			return;
+		}
+
 		if (likely(cc == NO_ERR)) {
 			/* Verify authentication data if required */
 			if (unlikely(rsp[2]))

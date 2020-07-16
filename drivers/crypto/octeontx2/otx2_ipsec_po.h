@@ -22,6 +22,8 @@
 #define OTX2_IPSEC_PO_PROCESS_IPSEC_OUTB   0x23
 #define OTX2_IPSEC_PO_PROCESS_IPSEC_INB    0x24
 
+#define OTX2_IPSEC_PO_INB_RPTR_HDR         0x8
+
 enum otx2_ipsec_po_comp_e {
 	OTX2_IPSEC_PO_CC_SUCCESS = 0x00,
 	OTX2_IPSEC_PO_CC_AUTH_UNSUPPORTED = 0xB0,
@@ -84,6 +86,12 @@ enum {
 enum {
 	OTX2_IPSEC_PO_SA_ENCAP_NONE = 0,
 	OTX2_IPSEC_PO_SA_ENCAP_UDP = 1,
+};
+
+struct otx2_ipsec_po_out_hdr {
+	uint32_t ip_id;
+	uint32_t seq;
+	uint8_t iv[16];
 };
 
 union otx2_ipsec_po_bit_perfect_iv {
