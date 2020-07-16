@@ -1058,3 +1058,58 @@ mlx5_txpp_stop(struct rte_eth_dev *dev)
 	MLX5_ASSERT(!ret);
 	RTE_SET_USED(ret);
 }
+
+/*
+ * Read the current clock counter of an Ethernet device
+ *
+ * This returns the current raw clock value of an Ethernet device. It is
+ * a raw amount of ticks, with no given time reference.
+ * The value returned here is from the same clock than the one
+ * filling timestamp field of Rx/Tx packets when using hardware timestamp
+ * offload. Therefore it can be used to compute a precise conversion of
+ * the device clock to the real time.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param clock
+ *   Pointer to the uint64_t that holds the raw clock value.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -ENOTSUP: The function is not supported in this mode. Requires
+ *     packet pacing module configured and started (tx_pp devarg)
+ */
+int
+mlx5_txpp_read_clock(struct rte_eth_dev *dev, uint64_t *timestamp)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	int ret;
+
+	if (sh->txpp.refcnt) {
+		struct mlx5_txpp_wq *wq = &sh->txpp.clock_queue;
+		struct mlx5_cqe *cqe = (struct mlx5_cqe *)(uintptr_t)wq->cqes;
+		union {
+			rte_int128_t u128;
+			struct mlx5_cqe_ts cts;
+		} to;
+		uint64_t ts;
+
+		mlx5_atomic_read_cqe((rte_int128_t *)&cqe->timestamp, &to.u128);
+		if (to.cts.op_own >> 4) {
+			DRV_LOG(DEBUG, "Clock Queue error sync lost.");
+			rte_atomic32_inc(&sh->txpp.err_clock_queue);
+			sh->txpp.sync_lost = 1;
+			return -EIO;
+		}
+		ts = rte_be_to_cpu_64(to.cts.timestamp);
+		ts = mlx5_txpp_convert_rx_ts(sh, ts);
+		*timestamp = ts;
+		return 0;
+	}
+	/* Not supported in isolated mode - kernel does not see the CQEs. */
+	if (priv->isolated || rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -ENOTSUP;
+	ret = mlx5_read_clock(dev, timestamp);
+	return ret;
+}
