@@ -107,7 +107,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 				"Test Skipped.\n");
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
 				"SKIPPED");
-			return 0;
+			return TEST_SKIPPED;
 		}
 	}
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SG) {
@@ -120,7 +120,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 					"Test Skipped.\n");
 				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
 					"SKIPPED");
-				return 0;
+				return TEST_SKIPPED;
 			}
 		} else {
 			if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
@@ -129,7 +129,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 					"Test Skipped.\n");
 				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
 					"SKIPPED");
-				return 0;
+				return TEST_SKIPPED;
 			}
 		}
 
@@ -146,7 +146,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 				"Test Skipped.\n");
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
 				"SKIPPED");
-			return 0;
+			return TEST_SKIPPED;
 		}
 	}
 
@@ -163,7 +163,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			"Device does not support this algorithm."
 			"Test Skipped.\n");
 		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "SKIPPED");
-		return 0;
+		return TEST_SKIPPED;
 	}
 
 	/* preparing data */
@@ -435,6 +435,7 @@ iterate:
 				init_xform, sess_priv_mpool);
 		if (status == -ENOTSUP) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "UNSUPPORTED");
+			status = TEST_SKIPPED;
 			goto error_exit;
 		}
 		if (!sess || status < 0) {
@@ -780,9 +781,8 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		printf("  %u) TestCase %s %s\n", test_index ++,
 			tc->test_descr, test_msg);
 
-		if (status != TEST_SUCCESS) {
-			if (overall_status == TEST_SUCCESS)
-				overall_status = status;
+		if (status == TEST_FAILED) {
+			overall_status = status;
 
 			if (tc->feature_mask & BLOCKCIPHER_TEST_FEATURE_STOPPER)
 				break;
