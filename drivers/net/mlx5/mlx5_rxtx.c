@@ -944,43 +944,79 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 		struct mlx5_txq_data *txq = (*priv->txqs)[sm->queue_id];
 		struct mlx5_txq_ctrl *txq_ctrl =
 			container_of(txq, struct mlx5_txq_ctrl, txq);
-		struct ibv_qp_attr mod = {
-			.qp_state = IBV_QPS_RESET,
-			.port_num = (uint8_t)priv->dev_port,
-		};
-		struct ibv_qp *qp = txq_ctrl->obj->qp;
 
-		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
-		if (ret) {
-			DRV_LOG(ERR, "Cannot change the Tx QP state to RESET "
-				"%s", strerror(errno));
-			rte_errno = errno;
-			return ret;
-		}
-		mod.qp_state = IBV_QPS_INIT;
-		ret = mlx5_glue->modify_qp(qp, &mod,
-					   (IBV_QP_STATE | IBV_QP_PORT));
-		if (ret) {
-			DRV_LOG(ERR, "Cannot change Tx QP state to INIT %s",
-				strerror(errno));
-			rte_errno = errno;
-			return ret;
-		}
-		mod.qp_state = IBV_QPS_RTR;
-		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
-		if (ret) {
-			DRV_LOG(ERR, "Cannot change Tx QP state to RTR %s",
-				strerror(errno));
-			rte_errno = errno;
-			return ret;
-		}
-		mod.qp_state = IBV_QPS_RTS;
-		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
-		if (ret) {
-			DRV_LOG(ERR, "Cannot change Tx QP state to RTS %s",
-				strerror(errno));
-			rte_errno = errno;
-			return ret;
+		if (txq_ctrl->obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_SQ) {
+			struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
+
+			/* Change queue state to reset. */
+			msq_attr.sq_state = MLX5_SQC_STATE_ERR;
+			msq_attr.state = MLX5_SQC_STATE_RST;
+			ret = mlx5_devx_cmd_modify_sq(txq_ctrl->obj->sq_devx,
+						      &msq_attr);
+			if (ret) {
+				DRV_LOG(ERR, "Cannot change the "
+					"Tx QP state to RESET %s",
+					strerror(errno));
+				rte_errno = errno;
+				return ret;
+			}
+			/* Change queue state to ready. */
+			msq_attr.sq_state = MLX5_SQC_STATE_RST;
+			msq_attr.state = MLX5_SQC_STATE_RDY;
+			ret = mlx5_devx_cmd_modify_sq(txq_ctrl->obj->sq_devx,
+						      &msq_attr);
+			if (ret) {
+				DRV_LOG(ERR, "Cannot change the "
+					"Tx QP state to READY %s",
+					strerror(errno));
+				rte_errno = errno;
+				return ret;
+			}
+		} else {
+			struct ibv_qp_attr mod = {
+				.qp_state = IBV_QPS_RESET,
+				.port_num = (uint8_t)priv->dev_port,
+			};
+			struct ibv_qp *qp = txq_ctrl->obj->qp;
+
+			MLX5_ASSERT
+				(txq_ctrl->obj->type == MLX5_TXQ_OBJ_TYPE_IBV);
+
+			ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+			if (ret) {
+				DRV_LOG(ERR, "Cannot change the "
+					"Tx QP state to RESET %s",
+					strerror(errno));
+				rte_errno = errno;
+				return ret;
+			}
+			mod.qp_state = IBV_QPS_INIT;
+			ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+			if (ret) {
+				DRV_LOG(ERR, "Cannot change the "
+					"Tx QP state to INIT %s",
+					strerror(errno));
+				rte_errno = errno;
+				return ret;
+			}
+			mod.qp_state = IBV_QPS_RTR;
+			ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+			if (ret) {
+				DRV_LOG(ERR, "Cannot change the "
+					"Tx QP state to RTR %s",
+					strerror(errno));
+				rte_errno = errno;
+				return ret;
+			}
+			mod.qp_state = IBV_QPS_RTS;
+			ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+			if (ret) {
+				DRV_LOG(ERR, "Cannot change the "
+					"Tx QP state to RTS %s",
+					strerror(errno));
+				rte_errno = errno;
+				return ret;
+			}
 		}
 	}
 	return 0;

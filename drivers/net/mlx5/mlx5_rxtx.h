@@ -323,6 +323,7 @@ struct mlx5_txq_data {
 
 enum mlx5_txq_obj_type {
 	MLX5_TXQ_OBJ_TYPE_IBV,		/* mlx5_txq_obj with ibv_wq. */
+	MLX5_TXQ_OBJ_TYPE_DEVX_SQ,	/* mlx5_txq_obj with mlx5_devx_sq. */
 	MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN,
 	/* mlx5_txq_obj with mlx5_devx_tq and hairpin support. */
 };
@@ -348,6 +349,19 @@ struct mlx5_txq_obj {
 			struct mlx5_devx_obj *sq;
 			/* DevX object for Sx queue. */
 			struct mlx5_devx_obj *tis; /* The TIS object. */
+		};
+		struct {
+			struct rte_eth_dev *dev;
+			struct mlx5_devx_obj *cq_devx;
+			struct mlx5dv_devx_umem *cq_umem;
+			void *cq_buf;
+			int64_t cq_dbrec_offset;
+			struct mlx5_devx_dbr_page *cq_dbrec_page;
+			struct mlx5_devx_obj *sq_devx;
+			struct mlx5dv_devx_umem *sq_umem;
+			void *sq_buf;
+			int64_t sq_dbrec_offset;
+			struct mlx5_devx_dbr_page *sq_dbrec_page;
 		};
 	};
 };

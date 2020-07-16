@@ -59,7 +59,9 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 		} else {
 			txq_alloc_elts(txq_ctrl);
 			txq_ctrl->obj = mlx5_txq_obj_new
-				(dev, i, MLX5_TXQ_OBJ_TYPE_IBV);
+				(dev, i, priv->txpp_en ?
+				MLX5_TXQ_OBJ_TYPE_DEVX_SQ :
+				MLX5_TXQ_OBJ_TYPE_IBV);
 		}
 		if (!txq_ctrl->obj) {
 			rte_errno = ENOMEM;
