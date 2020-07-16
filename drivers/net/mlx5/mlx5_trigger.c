@@ -331,6 +331,8 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	}
 	/* Set a mask and offset of dynamic metadata flows into Rx queues*/
 	mlx5_flow_rxq_dynf_metadata_set(dev);
+	/* Set a mask and offset of scheduling on timestamp into Tx queues*/
+	mlx5_txq_dynf_timestamp_set(dev);
 	/*
 	 * In non-cached mode, it only needs to start the default mreg copy
 	 * action and no flow created by application exists anymore.

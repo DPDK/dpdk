@@ -313,6 +313,9 @@ struct mlx5_txq_data {
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
 	uint16_t port_id; /* Port ID of device. */
 	uint16_t idx; /* Queue index. */
+	uint64_t ts_mask; /* Timestamp flag dynamic mask. */
+	int32_t ts_offset; /* Timestamp field dynamic offset. */
+	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t *uar_lock;
@@ -468,6 +471,7 @@ int mlx5_txq_verify(struct rte_eth_dev *dev);
 void txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl);
 void txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl);
 uint64_t mlx5_get_tx_port_offloads(struct rte_eth_dev *dev);
+void mlx5_txq_dynf_timestamp_set(struct rte_eth_dev *dev);
 
 /* mlx5_rxtx.c */
 

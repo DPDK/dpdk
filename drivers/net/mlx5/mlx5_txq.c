@@ -1785,3 +1785,35 @@ mlx5_txq_verify(struct rte_eth_dev *dev)
 	}
 	return ret;
 }
+
+/**
+ * Set the Tx queue dynamic timestamp (mask and offset)
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ */
+void
+mlx5_txq_dynf_timestamp_set(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_txq_data *data;
+	int off, nbit;
+	unsigned int i;
+	uint64_t mask = 0;
+
+	nbit = rte_mbuf_dynflag_lookup
+				(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL);
+	off = rte_mbuf_dynfield_lookup
+				(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL);
+	if (nbit > 0 && off >= 0 && sh->txpp.refcnt)
+		mask = 1ULL << nbit;
+	for (i = 0; i != priv->txqs_n; ++i) {
+		data = (*priv->txqs)[i];
+		if (!data)
+			continue;
+		data->sh = sh;
+		data->ts_mask = mask;
+		data->ts_offset = off;
+	}
+}
