@@ -21,15 +21,6 @@
 #include "otx2_sec_idev.h"
 #include "otx2_security.h"
 
-#define AH_HDR_LEN	12
-#define AES_GCM_IV_LEN	8
-#define AES_GCM_MAC_LEN	16
-#define AES_CBC_IV_LEN	16
-#define SHA1_HMAC_LEN	12
-
-#define AES_GCM_ROUNDUP_BYTE_LEN	4
-#define AES_CBC_ROUNDUP_BYTE_LEN	16
-
 struct eth_sec_tag_const {
 	RTE_STD_C11
 	union {
@@ -238,7 +229,7 @@ ipsec_sa_const_set(struct rte_security_ipsec_xform *ipsec,
 		sess->partial_len += sizeof(struct rte_esp_hdr);
 		sess->roundup_len = sizeof(struct rte_esp_tail);
 	} else if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_AH) {
-		sess->partial_len += AH_HDR_LEN;
+		sess->partial_len += OTX2_SEC_AH_HDR_LEN;
 	} else {
 		return -EINVAL;
 	}
@@ -248,9 +239,9 @@ ipsec_sa_const_set(struct rte_security_ipsec_xform *ipsec,
 
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
-			sess->partial_len += AES_GCM_IV_LEN;
-			sess->partial_len += AES_GCM_MAC_LEN;
-			sess->roundup_byte = AES_GCM_ROUNDUP_BYTE_LEN;
+			sess->partial_len += OTX2_SEC_AES_GCM_IV_LEN;
+			sess->partial_len += OTX2_SEC_AES_GCM_MAC_LEN;
+			sess->roundup_byte = OTX2_SEC_AES_GCM_ROUNDUP_BYTE_LEN;
 		}
 		return 0;
 	}
@@ -265,14 +256,14 @@ ipsec_sa_const_set(struct rte_security_ipsec_xform *ipsec,
 		return -EINVAL;
 	}
 	if (cipher_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
-		sess->partial_len += AES_CBC_IV_LEN;
-		sess->roundup_byte = AES_CBC_ROUNDUP_BYTE_LEN;
+		sess->partial_len += OTX2_SEC_AES_CBC_IV_LEN;
+		sess->roundup_byte = OTX2_SEC_AES_CBC_ROUNDUP_BYTE_LEN;
 	} else {
 		return -EINVAL;
 	}
 
 	if (auth_xform->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC)
-		sess->partial_len += SHA1_HMAC_LEN;
+		sess->partial_len += OTX2_SEC_SHA1_HMAC_LEN;
 	else
 		return -EINVAL;
 
