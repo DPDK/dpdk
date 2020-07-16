@@ -15,6 +15,17 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_common_os.h"
 
+static const char * const mlx5_txpp_stat_names[] = {
+	"txpp_err_miss_int", /* Missed service interrupt. */
+	"txpp_err_rearm_queue",	/* Rearm Queue errors. */
+	"txpp_err_clock_queue", /* Clock Queue errors. */
+	"txpp_err_ts_past", /* Timestamp in the past. */
+	"txpp_err_ts_future", /* Timestamp in the distant future. */
+	"txpp_jitter", /* Timestamp jitter (one Clock Queue completion). */
+	"txpp_wander", /* Timestamp jitter (half of Clock Queue completions). */
+	"txpp_sync_lost", /* Scheduling synchronization lost. */
+};
+
 /* Destroy Event Queue Notification Channel. */
 static void
 mlx5_txpp_destroy_eqn(struct mlx5_dev_ctx_shared *sh)
@@ -1112,4 +1123,213 @@ mlx5_txpp_read_clock(struct rte_eth_dev *dev, uint64_t *timestamp)
 		return -ENOTSUP;
 	ret = mlx5_read_clock(dev, timestamp);
 	return ret;
+}
+
+/**
+ * DPDK callback to clear device extended statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success and stats is reset, negative errno value otherwise and
+ *   rte_errno is set.
+ */
+int mlx5_txpp_xstats_reset(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+
+	rte_atomic32_set(&sh->txpp.err_miss_int, 0);
+	rte_atomic32_set(&sh->txpp.err_rearm_queue, 0);
+	rte_atomic32_set(&sh->txpp.err_clock_queue, 0);
+	rte_atomic32_set(&sh->txpp.err_ts_past, 0);
+	rte_atomic32_set(&sh->txpp.err_ts_future, 0);
+	return 0;
+}
+
+/**
+ * Routine to retrieve names of extended device statistics
+ * for packet send scheduling. It appends the specific stats names
+ * after the parts filled by preceding modules (eth stats, etc.)
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] xstats_names
+ *   Buffer to insert names into.
+ * @param n
+ *   Number of names.
+ * @param n_used
+ *   Number of names filled by preceding statistics modules.
+ *
+ * @return
+ *   Number of xstats names.
+ */
+int mlx5_txpp_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
+			       struct rte_eth_xstat_name *xstats_names,
+			       unsigned int n, unsigned int n_used)
+{
+	unsigned int n_txpp = RTE_DIM(mlx5_txpp_stat_names);
+	unsigned int i;
+
+	if (n >= n_used + n_txpp && xstats_names) {
+		for (i = 0; i < n_txpp; ++i) {
+			strncpy(xstats_names[i + n_used].name,
+				mlx5_txpp_stat_names[i],
+				RTE_ETH_XSTATS_NAME_SIZE);
+			xstats_names[i + n_used].name
+					[RTE_ETH_XSTATS_NAME_SIZE - 1] = 0;
+		}
+	}
+	return n_used + n_txpp;
+}
+
+static inline void
+mlx5_txpp_read_tsa(struct mlx5_dev_txpp *txpp,
+		   struct mlx5_txpp_ts *tsa, uint16_t idx)
+{
+	do {
+		int64_t ts, ci;
+
+		ts = rte_atomic64_read(&txpp->tsa[idx].ts);
+		ci = rte_atomic64_read(&txpp->tsa[idx].ci_ts);
+		rte_compiler_barrier();
+		if ((ci ^ ts) << MLX5_CQ_INDEX_WIDTH != 0)
+			continue;
+		if (rte_atomic64_read(&txpp->tsa[idx].ts) != ts)
+			continue;
+		if (rte_atomic64_read(&txpp->tsa[idx].ci_ts) != ci)
+			continue;
+		rte_atomic64_set(&tsa->ts, ts);
+		rte_atomic64_set(&tsa->ci_ts, ci);
+		return;
+	} while (true);
+}
+
+/*
+ * Jitter reflects the clock change between
+ * neighbours Clock Queue completions.
+ */
+static uint64_t
+mlx5_txpp_xstats_jitter(struct mlx5_dev_txpp *txpp)
+{
+	struct mlx5_txpp_ts tsa0, tsa1;
+	int64_t dts, dci;
+	uint16_t ts_p;
+
+	if (txpp->ts_n < 2) {
+		/* No gathered enough reports yet. */
+		return 0;
+	}
+	do {
+		int ts_0, ts_1;
+
+		ts_p = txpp->ts_p;
+		rte_compiler_barrier();
+		ts_0 = ts_p - 2;
+		if (ts_0 < 0)
+			ts_0 += MLX5_TXPP_REARM_SQ_SIZE;
+		ts_1 = ts_p - 1;
+		if (ts_1 < 0)
+			ts_1 += MLX5_TXPP_REARM_SQ_SIZE;
+		mlx5_txpp_read_tsa(txpp, &tsa0, ts_0);
+		mlx5_txpp_read_tsa(txpp, &tsa1, ts_1);
+		rte_compiler_barrier();
+	} while (ts_p != txpp->ts_p);
+	/* We have two neighbor reports, calculate the jitter. */
+	dts = rte_atomic64_read(&tsa1.ts) - rte_atomic64_read(&tsa0.ts);
+	dci = (rte_atomic64_read(&tsa1.ci_ts) >> (64 - MLX5_CQ_INDEX_WIDTH)) -
+	      (rte_atomic64_read(&tsa0.ci_ts) >> (64 - MLX5_CQ_INDEX_WIDTH));
+	if (dci < 0)
+		dci += 1 << MLX5_CQ_INDEX_WIDTH;
+	dci *= txpp->tick;
+	return (dts > dci) ? dts - dci : dci - dts;
+}
+
+/*
+ * Wander reflects the long-term clock change
+ * over the entire length of all Clock Queue completions.
+ */
+static uint64_t
+mlx5_txpp_xstats_wander(struct mlx5_dev_txpp *txpp)
+{
+	struct mlx5_txpp_ts tsa0, tsa1;
+	int64_t dts, dci;
+	uint16_t ts_p;
+
+	if (txpp->ts_n < MLX5_TXPP_REARM_SQ_SIZE) {
+		/* No gathered enough reports yet. */
+		return 0;
+	}
+	do {
+		int ts_0, ts_1;
+
+		ts_p = txpp->ts_p;
+		rte_compiler_barrier();
+		ts_0 = ts_p - MLX5_TXPP_REARM_SQ_SIZE / 2 - 1;
+		if (ts_0 < 0)
+			ts_0 += MLX5_TXPP_REARM_SQ_SIZE;
+		ts_1 = ts_p - 1;
+		if (ts_1 < 0)
+			ts_1 += MLX5_TXPP_REARM_SQ_SIZE;
+		mlx5_txpp_read_tsa(txpp, &tsa0, ts_0);
+		mlx5_txpp_read_tsa(txpp, &tsa1, ts_1);
+		rte_compiler_barrier();
+	} while (ts_p != txpp->ts_p);
+	/* We have two neighbor reports, calculate the jitter. */
+	dts = rte_atomic64_read(&tsa1.ts) - rte_atomic64_read(&tsa0.ts);
+	dci = (rte_atomic64_read(&tsa1.ci_ts) >> (64 - MLX5_CQ_INDEX_WIDTH)) -
+	      (rte_atomic64_read(&tsa0.ci_ts) >> (64 - MLX5_CQ_INDEX_WIDTH));
+	dci += 1 << MLX5_CQ_INDEX_WIDTH;
+	dci *= txpp->tick;
+	return (dts > dci) ? dts - dci : dci - dts;
+}
+
+/**
+ * Routine to retrieve extended device statistics
+ * for packet send scheduling. It appends the specific statistics
+ * after the parts filled by preceding modules (eth stats, etc.)
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] stats
+ *   Pointer to rte extended stats table.
+ * @param n
+ *   The size of the stats table.
+ * @param n_used
+ *   Number of stats filled by preceding statistics modules.
+ *
+ * @return
+ *   Number of extended stats on success and stats is filled,
+ *   negative on error and rte_errno is set.
+ */
+int
+mlx5_txpp_xstats_get(struct rte_eth_dev *dev,
+		     struct rte_eth_xstat *stats,
+		     unsigned int n, unsigned int n_used)
+{
+	unsigned int n_txpp = RTE_DIM(mlx5_txpp_stat_names);
+
+	if (n >= n_used + n_txpp && stats) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		struct mlx5_dev_ctx_shared *sh = priv->sh;
+		unsigned int i;
+
+		for (i = 0; i < n_txpp; ++i)
+			stats[n_used + i].id = n_used + i;
+		stats[n_used + 0].value =
+				rte_atomic32_read(&sh->txpp.err_miss_int);
+		stats[n_used + 1].value =
+				rte_atomic32_read(&sh->txpp.err_rearm_queue);
+		stats[n_used + 2].value =
+				rte_atomic32_read(&sh->txpp.err_clock_queue);
+		stats[n_used + 3].value =
+				rte_atomic32_read(&sh->txpp.err_ts_past);
+		stats[n_used + 4].value =
+				rte_atomic32_read(&sh->txpp.err_ts_future);
+		stats[n_used + 5].value = mlx5_txpp_xstats_jitter(&sh->txpp);
+		stats[n_used + 6].value = mlx5_txpp_xstats_wander(&sh->txpp);
+		stats[n_used + 7].value = sh->txpp.sync_lost;
+	}
+	return n_used + n_txpp;
 }

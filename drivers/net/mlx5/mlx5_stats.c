@@ -75,6 +75,7 @@ mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 			}
 		}
 	}
+	mlx5_stats_n = mlx5_txpp_xstats_get(dev, stats, n, mlx5_stats_n);
 	return mlx5_stats_n;
 }
 
@@ -237,7 +238,7 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 		xstats_ctrl->base[i] = counters[i];
 		xstats_ctrl->hw_stats[i] = 0;
 	}
-
+	mlx5_txpp_xstats_reset(dev);
 	return 0;
 }
 
@@ -255,7 +256,7 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
  *   Number of xstats names.
  */
 int
-mlx5_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
+mlx5_xstats_get_names(struct rte_eth_dev *dev,
 		      struct rte_eth_xstat_name *xstats_names, unsigned int n)
 {
 	unsigned int i;
@@ -271,5 +272,7 @@ mlx5_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 			xstats_names[i].name[RTE_ETH_XSTATS_NAME_SIZE - 1] = 0;
 		}
 	}
+	mlx5_xstats_n = mlx5_txpp_xstats_get_names(dev, xstats_names,
+						   n, mlx5_xstats_n);
 	return mlx5_xstats_n;
 }
