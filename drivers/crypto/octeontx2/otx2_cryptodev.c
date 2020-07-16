@@ -101,6 +101,8 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto otx2_dev_fini;
 	}
 
+	otx2_crypto_capabilities_init(vf->hw_caps);
+
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			     RTE_CRYPTODEV_FF_HW_ACCELERATED |
 			     RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |

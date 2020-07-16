@@ -17,10 +17,16 @@ enum otx2_cpt_egrp {
 };
 
 /*
+ * Initialize crypto capabilities for the device
+ *
+ */
+void otx2_crypto_capabilities_init(union cpt_eng_caps *hw_caps);
+
+/*
  * Get capabilities list for the device
  *
  */
 const struct rte_cryptodev_capabilities *
-otx2_cpt_capabilities_get(union cpt_eng_caps *hw_caps);
+otx2_cpt_capabilities_get(void);
 
 #endif /* _OTX2_CRYPTODEV_CAPABILITIES_H_ */

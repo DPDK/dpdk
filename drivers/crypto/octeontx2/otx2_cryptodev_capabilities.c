@@ -737,10 +737,9 @@ cpt_caps_add(const struct rte_cryptodev_capabilities *caps, int nb_caps)
 	cur_pos += nb_caps;
 }
 
-const struct rte_cryptodev_capabilities *
-otx2_cpt_capabilities_get(union cpt_eng_caps *hw_caps)
+void
+otx2_crypto_capabilities_init(union cpt_eng_caps *hw_caps)
 {
-
 	CPT_CAPS_ADD(hw_caps, mul);
 	CPT_CAPS_ADD(hw_caps, sha1_sha2);
 	CPT_CAPS_ADD(hw_caps, chacha20);
@@ -751,6 +750,10 @@ otx2_cpt_capabilities_get(union cpt_eng_caps *hw_caps)
 
 	cpt_caps_add(caps_null, RTE_DIM(caps_null));
 	cpt_caps_add(caps_end, RTE_DIM(caps_end));
+}
 
+const struct rte_cryptodev_capabilities *
+otx2_cpt_capabilities_get(void)
+{
 	return otx2_cpt_caps;
 }
