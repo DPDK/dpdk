@@ -48,6 +48,10 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 			} else
 				buf_sz = options->test_buffer_size;
 
+			sym_op->m_src->buf_len = options->segment_sz;
+			sym_op->m_src->data_len = buf_sz;
+			sym_op->m_src->pkt_len = buf_sz;
+
 			/* DOCSIS header is not CRC'ed */
 			sym_op->auth.data.offset = options->docsis_hdr_sz;
 			sym_op->auth.data.length = buf_sz -
