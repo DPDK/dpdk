@@ -11,6 +11,7 @@ LIB = librte_pmd_mlx5.a
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_rxq.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_txq.c
+SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_txpp.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_rxtx.c
 ifneq ($(filter y,$(CONFIG_RTE_ARCH_X86_64) \
 			$(CONFIG_RTE_ARCH_PPC_64) \

@@ -767,6 +767,7 @@ exit:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	return sh;
 error:
+	pthread_mutex_destroy(&sh->txpp.mutex);
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	MLX5_ASSERT(sh);
 	if (sh->cnt_id_tbl) {
@@ -856,6 +857,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
 	if (sh->flow_id_pool)
 		mlx5_flow_id_pool_release(sh->flow_id_pool);
+	pthread_mutex_destroy(&sh->txpp.mutex);
 	rte_free(sh);
 exit:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);

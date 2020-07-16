@@ -26,6 +26,7 @@ sources = files(
 	'mlx5_stats.c',
 	'mlx5_trigger.c',
 	'mlx5_txq.c',
+	'mlx5_txpp.c',
 	'mlx5_vlan.c',
 	'mlx5_utils.c',
 )

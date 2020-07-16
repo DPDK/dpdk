@@ -288,25 +288,29 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			return -rte_errno;
 		}
 	}
+	ret = mlx5_txpp_start(dev);
+	if (ret) {
+		DRV_LOG(ERR, "port %u Tx packet pacing init failed: %s",
+			dev->data->port_id, strerror(rte_errno));
+		goto error;
+	}
 	ret = mlx5_txq_start(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u Tx queue allocation failed: %s",
 			dev->data->port_id, strerror(rte_errno));
-		return -rte_errno;
+		goto error;
 	}
 	ret = mlx5_rxq_start(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u Rx queue allocation failed: %s",
 			dev->data->port_id, strerror(rte_errno));
-		mlx5_txq_stop(dev);
-		return -rte_errno;
+		goto error;
 	}
 	ret = mlx5_hairpin_bind(dev);
 	if (ret) {
 		DRV_LOG(ERR, "port %u hairpin binding failed: %s",
 			dev->data->port_id, strerror(rte_errno));
-		mlx5_txq_stop(dev);
-		return -rte_errno;
+		goto error;
 	}
 	/* Set started flag here for the following steps like control flow. */
 	dev->data->dev_started = 1;
@@ -362,6 +366,7 @@ error:
 	mlx5_traffic_disable(dev);
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
+	mlx5_txpp_stop(dev); /* Stop last. */
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 }
@@ -398,6 +403,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	priv->sh->port[priv->dev_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
+	mlx5_txpp_stop(dev);
 }
 
 /**

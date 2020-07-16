@@ -171,6 +171,13 @@
 #define MLX5_TXDB_NCACHED 1
 #define MLX5_TXDB_HEURISTIC 2
 
+/* Tx accurate scheduling on timestamps parameters. */
+#define MLX5_TXPP_CLKQ_SIZE 1
+/* The minimal size test packet to put into one WQE, padded by HW. */
+#define MLX5_TXPP_TEST_PKT_SIZE (sizeof(struct rte_ether_hdr) +	\
+				 sizeof(struct rte_ipv4_hdr))
+
+
 /* Size of the simple hash table for metadata register table. */
 #define MLX5_FLOW_MREG_HTABLE_SZ 4096
 #define MLX5_FLOW_MREG_HNAME "MARK_COPY_TABLE"

@@ -531,6 +531,44 @@ struct mlx5_flow_id_pool {
 	uint32_t max_id; /**< Maximum id can be allocated from the pool. */
 };
 
+/* Tx pacing queue structure - for Clock and Rearm queues. */
+struct mlx5_txpp_wq {
+	/* Completion Queue related data.*/
+	struct mlx5_devx_obj *cq;
+	struct mlx5dv_devx_umem *cq_umem;
+	union {
+		volatile void *cq_buf;
+		volatile struct mlx5_cqe *cqes;
+	};
+	volatile uint32_t *cq_dbrec;
+	uint32_t cq_ci:24;
+	uint32_t arm_sn:2;
+	/* Send Queue related data.*/
+	struct mlx5_devx_obj *sq;
+	struct mlx5dv_devx_umem *sq_umem;
+	union {
+		volatile void *sq_buf;
+		volatile struct mlx5_wqe *wqes;
+	};
+	uint16_t sq_size; /* Number of WQEs in the queue. */
+	uint16_t sq_ci; /* Next WQE to execute. */
+	volatile uint32_t *sq_dbrec;
+};
+
+/* Tx packet pacing structure. */
+struct mlx5_dev_txpp {
+	pthread_mutex_t mutex; /* Pacing create/destroy mutex. */
+	uint32_t refcnt; /* Pacing reference counter. */
+	uint32_t freq; /* Timestamp frequency, Hz. */
+	uint32_t tick; /* Completion tick duration in nanoseconds. */
+	uint32_t test; /* Packet pacing test mode. */
+	int32_t skew; /* Scheduling skew. */
+	uint32_t eqn; /* Event Queue number. */
+	struct rte_intr_handle intr_handle; /* Periodic interrupt. */
+	struct mlx5dv_devx_event_channel *echan; /* Event Channel. */
+	struct mlx5_txpp_wq clock_queue; /* Clock Queue. */
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -547,9 +585,12 @@ struct mlx5_dev_ctx_shared {
 	char ibdev_name[DEV_SYSFS_NAME_MAX]; /* SYSFS dev name. */
 	char ibdev_path[DEV_SYSFS_PATH_MAX]; /* SYSFS dev path for secondary */
 	struct mlx5_dev_attr device_attr; /* Device properties. */
+	int numa_node; /* Numa node of backing physical device. */
 	LIST_ENTRY(mlx5_dev_ctx_shared) mem_event_cb;
 	/**< Called by memory event callback. */
 	struct mlx5_mr_share_cache share_cache;
+	/* Packet pacing related structure. */
+	struct mlx5_dev_txpp txpp;
 	/* Shared DV/DR flow data section. */
 	pthread_mutex_t dv_mutex; /* DV context mutex. */
 	uint32_t dv_meta_mask; /* flow META metadata supported mask. */
@@ -622,6 +663,7 @@ struct mlx5_priv {
 	unsigned int representor:1; /* Device is a port representor. */
 	unsigned int master:1; /* Device is a E-Switch master. */
 	unsigned int dr_shared:1; /* DV/DR data is shared. */
+	unsigned int txpp_en:1; /* Tx packet pacing enabled. */
 	unsigned int counter_fallback:1; /* Use counter fallback management. */
 	unsigned int mtr_en:1; /* Whether support meter. */
 	unsigned int mtr_reg_share:1; /* Whether support meter REG_C share. */
@@ -944,4 +986,9 @@ int mlx5_os_get_stats_n(struct rte_eth_dev *dev);
 void mlx5_os_stats_init(struct rte_eth_dev *dev);
 void mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
 			   mlx5_dereg_mr_t *dereg_mr_cb);
+/* mlx5_txpp.c */
+
+int mlx5_txpp_start(struct rte_eth_dev *dev);
+void mlx5_txpp_stop(struct rte_eth_dev *dev);
+
 #endif /* RTE_PMD_MLX5_H_ */
