@@ -7073,7 +7073,8 @@ test_authenticated_encryption(const struct aead_test_data *tdata)
 
 #ifdef RTE_LIBRTE_SECURITY
 static int
-security_proto_supported(enum rte_security_session_protocol proto)
+security_proto_supported(enum rte_security_session_action_type action,
+	enum rte_security_session_protocol proto)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 
@@ -7093,7 +7094,8 @@ security_proto_supported(enum rte_security_session_protocol proto)
 
 	while ((capability = &capabilities[i++])->action !=
 			RTE_SECURITY_ACTION_TYPE_NONE) {
-		if (capability->protocol == proto)
+		if (capability->action == action &&
+				capability->protocol == proto)
 			return 0;
 	}
 
@@ -7125,7 +7127,7 @@ test_pdcp_proto(int i, int oop,
 	/* Verify the capabilities */
 	struct rte_security_capability_idx sec_cap_idx;
 
-	sec_cap_idx.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+	sec_cap_idx.action = ut_params->type;
 	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_PDCP;
 	sec_cap_idx.pdcp.domain = pdcp_test_params[i].domain;
 	if (rte_security_capability_get(ctx, &sec_cap_idx) == NULL)
@@ -7150,9 +7152,6 @@ test_pdcp_proto(int i, int oop,
 		ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 		rte_pktmbuf_append(ut_params->obuf, output_vec_len);
 	}
-
-	/* Set crypto type as IPSEC */
-	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
 
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -7181,7 +7180,7 @@ test_pdcp_proto(int i, int oop,
 	}
 
 	struct rte_security_session_conf sess_conf = {
-		.action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.action_type = ut_params->type,
 		.protocol = RTE_SECURITY_PROTOCOL_PDCP,
 		{.pdcp = {
 			.bearer = pdcp_test_bearer[i],
@@ -7315,7 +7314,7 @@ test_pdcp_proto_SGL(int i, int oop,
 	/* Verify the capabilities */
 	struct rte_security_capability_idx sec_cap_idx;
 
-	sec_cap_idx.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+	sec_cap_idx.action = ut_params->type;
 	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_PDCP;
 	sec_cap_idx.pdcp.domain = pdcp_test_params[i].domain;
 	if (rte_security_capability_get(ctx, &sec_cap_idx) == NULL)
@@ -7425,8 +7424,6 @@ test_pdcp_proto_SGL(int i, int oop,
 		ut_params->obuf->nb_segs = segs;
 	}
 
-	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
-
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.cipher.algo = pdcp_test_params[i].cipher_alg;
@@ -7452,7 +7449,7 @@ test_pdcp_proto_SGL(int i, int oop,
 	}
 
 	struct rte_security_session_conf sess_conf = {
-		.action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.action_type = ut_params->type,
 		.protocol = RTE_SECURITY_PROTOCOL_PDCP,
 		{.pdcp = {
 			.bearer = pdcp_test_bearer[i],
@@ -7711,6 +7708,7 @@ static int
 test_PDCP_PROTO_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_cryptodev_info dev_info;
 	int status;
 
@@ -7720,7 +7718,13 @@ test_PDCP_PROTO_all(void)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_SECURITY))
 		return -ENOTSUP;
 
-	if (security_proto_supported(RTE_SECURITY_PROTOCOL_PDCP) < 0)
+	/* Set action type */
+	ut_params->type = gbl_action_type == RTE_SECURITY_ACTION_TYPE_NONE ?
+		RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL :
+		gbl_action_type;
+
+	if (security_proto_supported(ut_params->type,
+			RTE_SECURITY_PROTOCOL_PDCP) < 0)
 		return -ENOTSUP;
 
 	status = test_PDCP_PROTO_cplane_encap_all();
@@ -7760,7 +7764,7 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 	const struct rte_cryptodev_symmetric_capability *sym_cap;
 	int j = 0;
 
-	sec_cap_idx.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+	sec_cap_idx.action = ut_params->type;
 	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_DOCSIS;
 	sec_cap_idx.docsis.direction = RTE_SECURITY_DOCSIS_UPLINK;
 
@@ -7795,9 +7799,6 @@ test_docsis_proto_uplink(int i, struct docsis_test_data *d_td)
 			d_td->ciphertext.len);
 
 	memcpy(ciphertext, d_td->ciphertext.data, d_td->ciphertext.len);
-
-	/* Set session action type */
-	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
 
 	/* Setup cipher session parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -7938,7 +7939,7 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 	const struct rte_cryptodev_symmetric_capability *sym_cap;
 	int j = 0;
 
-	sec_cap_idx.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
+	sec_cap_idx.action = ut_params->type;
 	sec_cap_idx.protocol = RTE_SECURITY_PROTOCOL_DOCSIS;
 	sec_cap_idx.docsis.direction = RTE_SECURITY_DOCSIS_DOWNLINK;
 
@@ -7973,9 +7974,6 @@ test_docsis_proto_downlink(int i, struct docsis_test_data *d_td)
 			d_td->plaintext.len);
 
 	memcpy(plaintext, d_td->plaintext.data, d_td->plaintext.len);
-
-	/* Set session action type */
-	ut_params->type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL;
 
 	/* Setup cipher session parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -8192,6 +8190,7 @@ static int
 test_DOCSIS_PROTO_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_cryptodev_info dev_info;
 	int status;
 
@@ -8201,7 +8200,13 @@ test_DOCSIS_PROTO_all(void)
 	if (!(feat_flags & RTE_CRYPTODEV_FF_SECURITY))
 		return -ENOTSUP;
 
-	if (security_proto_supported(RTE_SECURITY_PROTOCOL_DOCSIS) < 0)
+	/* Set action type */
+	ut_params->type = gbl_action_type == RTE_SECURITY_ACTION_TYPE_NONE ?
+		RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL :
+		gbl_action_type;
+
+	if (security_proto_supported(ut_params->type,
+			RTE_SECURITY_PROTOCOL_DOCSIS) < 0)
 		return -ENOTSUP;
 
 	status = test_DOCSIS_PROTO_uplink_all();
