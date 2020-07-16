@@ -134,6 +134,8 @@ Limitations
   protocol.
 * ``RTE_CRYPTO_CIPHER_DES_DOCSISBPI`` is not supported for combined Crypto-CRC
   DOCSIS security protocol.
+* Multi-segment buffers are not supported for combined Crypto-CRC DOCSIS
+  security protocol.
 
 Extra notes on KASUMI F9
 ~~~~~~~~~~~~~~~~~~~~~~~~

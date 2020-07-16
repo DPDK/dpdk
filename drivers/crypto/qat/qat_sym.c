@@ -284,13 +284,15 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			/* DOCSIS processing */
 #ifdef RTE_LIBRTE_SECURITY
 			if (is_docsis_sec) {
-				/* Check for OOP */
-				if (unlikely((op->sym->m_dst != NULL) &&
+				/* Check for OOP or multi-segment buffers */
+				if (unlikely(((op->sym->m_dst != NULL) &&
 						(op->sym->m_dst !=
-						op->sym->m_src))) {
+						op->sym->m_src)) ||
+						op->sym->m_src->nb_segs > 1)) {
 					QAT_DP_LOG(ERR,
-						"OOP not supported for DOCSIS "
-						"security");
+						"OOP and/or multi-segment "
+						"buffers are not supported for "
+						"DOCSIS security");
 					op->status =
 					RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 					return -EINVAL;
