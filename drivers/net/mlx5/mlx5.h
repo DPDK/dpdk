@@ -586,6 +586,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_devx_obj *tis; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_flow_id_pool *flow_id_pool; /* Flow ID pool. */
+	struct mlx5dv_devx_uar *tx_uar; /* Tx/packer pacing shared UAR. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
