@@ -2404,6 +2404,37 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
 }
 
 /**
+ * Build the Synchronize Queue Segment with specified completion index.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param loc
+ *   Pointer to burst routine local context.
+ * @param wqe
+ *   Pointer to WQE to fill with built Control Segment.
+ * @param wci
+ *   Completion index in Clock Queue to wait.
+ * @param olx
+ *   Configured Tx offloads mask. It is fully defined at
+ *   compile time and may be used for optimization.
+ */
+static __rte_always_inline void
+mlx5_tx_wseg_init(struct mlx5_txq_data *restrict txq,
+		  struct mlx5_txq_local *restrict loc __rte_unused,
+		  struct mlx5_wqe *restrict wqe,
+		  unsigned int wci,
+		  unsigned int olx __rte_unused)
+{
+	struct mlx5_wqe_qseg *qs;
+
+	qs = RTE_PTR_ADD(wqe, MLX5_WSEG_SIZE);
+	qs->max_index = rte_cpu_to_be_32(wci);
+	qs->qpn_cqn = rte_cpu_to_be_32(txq->sh->txpp.clock_queue.cq->id);
+	qs->reserved0 = RTE_BE32(0);
+	qs->reserved1 = RTE_BE32(0);
+}
+
+/**
  * Build the Ethernet Segment without inlined data.
  * Supports Software Parser, Checksums and VLAN
  * insertion Tx offload features.
@@ -3241,6 +3272,59 @@ dseg_done:
 }
 
 /**
+ * The routine checks timestamp flag in the current packet,
+ * and push WAIT WQE into the queue if scheduling is required.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param loc
+ *   Pointer to burst routine local context.
+ * @param olx
+ *   Configured Tx offloads mask. It is fully defined at
+ *   compile time and may be used for optimization.
+ *
+ * @return
+ *   MLX5_TXCMP_CODE_EXIT - sending is done or impossible.
+ *   MLX5_TXCMP_CODE_SINGLE - continue processing with the packet.
+ *   MLX5_TXCMP_CODE_MULTI - the WAIT inserted, continue processing.
+ * Local context variables partially updated.
+ */
+static __rte_always_inline enum mlx5_txcmp_code
+mlx5_tx_schedule_send(struct mlx5_txq_data *restrict txq,
+		      struct mlx5_txq_local *restrict loc,
+		      unsigned int olx)
+{
+	if (MLX5_TXOFF_CONFIG(TXPP) &&
+	    loc->mbuf->ol_flags & txq->ts_mask) {
+		struct mlx5_wqe *wqe;
+		uint64_t ts;
+		int32_t wci;
+
+		/*
+		 * Estimate the required space quickly and roughly.
+		 * We would like to ensure the packet can be pushed
+		 * to the queue and we won't get the orphan WAIT WQE.
+		 */
+		if (loc->wqe_free <= MLX5_WQE_SIZE_MAX / MLX5_WQE_SIZE ||
+		    loc->elts_free < NB_SEGS(loc->mbuf))
+			return MLX5_TXCMP_CODE_EXIT;
+		/* Convert the timestamp into completion to wait. */
+		ts = *RTE_MBUF_DYNFIELD(loc->mbuf, txq->ts_offset, uint64_t *);
+		wci = mlx5_txpp_convert_tx_ts(txq->sh, ts);
+		if (unlikely(wci < 0))
+			return MLX5_TXCMP_CODE_SINGLE;
+		/* Build the WAIT WQE with specified completion. */
+		wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
+		mlx5_tx_cseg_init(txq, loc, wqe, 2, MLX5_OPCODE_WAIT, olx);
+		mlx5_tx_wseg_init(txq, loc, wqe, wci, olx);
+		++txq->wqe_ci;
+		--loc->wqe_free;
+		return MLX5_TXCMP_CODE_MULTI;
+	}
+	return MLX5_TXCMP_CODE_SINGLE;
+}
+
+/**
  * Tx one packet function for multi-segment TSO. Supports all
  * types of Tx offloads, uses MLX5_OPCODE_TSO to build WQEs,
  * sends one packet per WQE.
@@ -3269,6 +3353,16 @@ mlx5_tx_packet_multi_tso(struct mlx5_txq_data *__rte_restrict txq,
 	struct mlx5_wqe *__rte_restrict wqe;
 	unsigned int ds, dlen, inlen, ntcp, vlan = 0;
 
+	if (MLX5_TXOFF_CONFIG(TXPP)) {
+		enum mlx5_txcmp_code wret;
+
+		/* Generate WAIT for scheduling if requested. */
+		wret = mlx5_tx_schedule_send(txq, loc, olx);
+		if (wret == MLX5_TXCMP_CODE_EXIT)
+			return MLX5_TXCMP_CODE_EXIT;
+		if (wret == MLX5_TXCMP_CODE_ERROR)
+			return MLX5_TXCMP_CODE_ERROR;
+	}
 	/*
 	 * Calculate data length to be inlined to estimate
 	 * the required space in WQE ring buffer.
@@ -3360,6 +3454,16 @@ mlx5_tx_packet_multi_send(struct mlx5_txq_data *__rte_restrict txq,
 	unsigned int ds, nseg;
 
 	MLX5_ASSERT(NB_SEGS(loc->mbuf) > 1);
+	if (MLX5_TXOFF_CONFIG(TXPP)) {
+		enum mlx5_txcmp_code wret;
+
+		/* Generate WAIT for scheduling if requested. */
+		wret = mlx5_tx_schedule_send(txq, loc, olx);
+		if (wret == MLX5_TXCMP_CODE_EXIT)
+			return MLX5_TXCMP_CODE_EXIT;
+		if (wret == MLX5_TXCMP_CODE_ERROR)
+			return MLX5_TXCMP_CODE_ERROR;
+	}
 	/*
 	 * No inline at all, it means the CPU cycles saving
 	 * is prioritized at configuration, we should not
@@ -3468,6 +3572,16 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 
 	MLX5_ASSERT(MLX5_TXOFF_CONFIG(INLINE));
 	MLX5_ASSERT(NB_SEGS(loc->mbuf) > 1);
+	if (MLX5_TXOFF_CONFIG(TXPP)) {
+		enum mlx5_txcmp_code wret;
+
+		/* Generate WAIT for scheduling if requested. */
+		wret = mlx5_tx_schedule_send(txq, loc, olx);
+		if (wret == MLX5_TXCMP_CODE_EXIT)
+			return MLX5_TXCMP_CODE_EXIT;
+		if (wret == MLX5_TXCMP_CODE_ERROR)
+			return MLX5_TXCMP_CODE_ERROR;
+	}
 	/*
 	 * First calculate data length to be inlined
 	 * to estimate the required space for WQE.
@@ -3730,6 +3844,16 @@ mlx5_tx_burst_tso(struct mlx5_txq_data *__rte_restrict txq,
 		uint8_t *dptr;
 
 		MLX5_ASSERT(NB_SEGS(loc->mbuf) == 1);
+		if (MLX5_TXOFF_CONFIG(TXPP)) {
+			enum mlx5_txcmp_code wret;
+
+			/* Generate WAIT for scheduling if requested. */
+			wret = mlx5_tx_schedule_send(txq, loc, olx);
+			if (wret == MLX5_TXCMP_CODE_EXIT)
+				return MLX5_TXCMP_CODE_EXIT;
+			if (wret == MLX5_TXCMP_CODE_ERROR)
+				return MLX5_TXCMP_CODE_ERROR;
+		}
 		dlen = rte_pktmbuf_data_len(loc->mbuf);
 		if (MLX5_TXOFF_CONFIG(VLAN) &&
 		    loc->mbuf->ol_flags & PKT_TX_VLAN_PKT) {
@@ -3892,7 +4016,7 @@ mlx5_tx_able_to_empw(struct mlx5_txq_data *__rte_restrict txq,
  *  false - no match, eMPW should be restarted.
  */
 static __rte_always_inline bool
-mlx5_tx_match_empw(struct mlx5_txq_data *__rte_restrict txq __rte_unused,
+mlx5_tx_match_empw(struct mlx5_txq_data *__rte_restrict txq,
 		   struct mlx5_wqe_eseg *__rte_restrict es,
 		   struct mlx5_txq_local *__rte_restrict loc,
 		   uint32_t dlen,
@@ -3921,6 +4045,10 @@ mlx5_tx_match_empw(struct mlx5_txq_data *__rte_restrict txq __rte_unused,
 	/* There must be no VLAN packets in eMPW loop. */
 	if (MLX5_TXOFF_CONFIG(VLAN))
 		MLX5_ASSERT(!(loc->mbuf->ol_flags & PKT_TX_VLAN_PKT));
+	/* Check if the scheduling is requested. */
+	if (MLX5_TXOFF_CONFIG(TXPP) &&
+	    loc->mbuf->ol_flags & txq->ts_mask)
+		return false;
 	return true;
 }
 
@@ -4106,6 +4234,16 @@ mlx5_tx_burst_empw_simple(struct mlx5_txq_data *__rte_restrict txq,
 
 next_empw:
 		MLX5_ASSERT(NB_SEGS(loc->mbuf) == 1);
+		if (MLX5_TXOFF_CONFIG(TXPP)) {
+			enum mlx5_txcmp_code wret;
+
+			/* Generate WAIT for scheduling if requested. */
+			wret = mlx5_tx_schedule_send(txq, loc, olx);
+			if (wret == MLX5_TXCMP_CODE_EXIT)
+				return MLX5_TXCMP_CODE_EXIT;
+			if (wret == MLX5_TXCMP_CODE_ERROR)
+				return MLX5_TXCMP_CODE_ERROR;
+		}
 		part = RTE_MIN(pkts_n, MLX5_TXOFF_CONFIG(MPW) ?
 				       MLX5_MPW_MAX_PACKETS :
 				       MLX5_EMPW_MAX_PACKETS);
@@ -4201,6 +4339,7 @@ next_empw:
 			 * - metadata value
 			 * - software parser settings
 			 * - packets length (legacy MPW only)
+			 * - scheduling is not required
 			 */
 			if (!mlx5_tx_match_empw(txq, eseg, loc, dlen, olx)) {
 				MLX5_ASSERT(loop);
@@ -4271,6 +4410,16 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *__rte_restrict txq,
 		unsigned int slen = 0;
 
 		MLX5_ASSERT(NB_SEGS(loc->mbuf) == 1);
+		if (MLX5_TXOFF_CONFIG(TXPP)) {
+			enum mlx5_txcmp_code wret;
+
+			/* Generate WAIT for scheduling if requested. */
+			wret = mlx5_tx_schedule_send(txq, loc, olx);
+			if (wret == MLX5_TXCMP_CODE_EXIT)
+				return MLX5_TXCMP_CODE_EXIT;
+			if (wret == MLX5_TXCMP_CODE_ERROR)
+				return MLX5_TXCMP_CODE_ERROR;
+		}
 		/*
 		 * Limits the amount of packets in one WQE
 		 * to improve CQE latency generation.
@@ -4496,6 +4645,7 @@ next_mbuf:
 			 * - metadata value
 			 * - software parser settings
 			 * - packets length (legacy MPW only)
+			 * - scheduling is not required
 			 */
 			if (!mlx5_tx_match_empw(txq, &wqem->eseg,
 						loc, dlen, olx))
@@ -4545,6 +4695,16 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *__rte_restrict txq,
 		enum mlx5_txcmp_code ret;
 
 		MLX5_ASSERT(NB_SEGS(loc->mbuf) == 1);
+		if (MLX5_TXOFF_CONFIG(TXPP)) {
+			enum mlx5_txcmp_code wret;
+
+			/* Generate WAIT for scheduling if requested. */
+			wret = mlx5_tx_schedule_send(txq, loc, olx);
+			if (wret == MLX5_TXCMP_CODE_EXIT)
+				return MLX5_TXCMP_CODE_EXIT;
+			if (wret == MLX5_TXCMP_CODE_ERROR)
+				return MLX5_TXCMP_CODE_ERROR;
+		}
 		if (MLX5_TXOFF_CONFIG(INLINE)) {
 			unsigned int inlen, vlan = 0;
 
