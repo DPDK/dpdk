@@ -2972,3 +2972,27 @@ mlx5_hrxq_drop_release(struct rte_eth_dev *dev)
 		priv->drop_queue.hrxq = NULL;
 	}
 }
+
+
+/**
+ * Set the Rx queue timestamp conversion parameters
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ */
+void
+mlx5_rxq_timestamp_set(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_rxq_data *data;
+	unsigned int i;
+
+	for (i = 0; i != priv->rxqs_n; ++i) {
+		if (!(*priv->rxqs)[i])
+			continue;
+		data = (*priv->rxqs)[i];
+		data->sh = sh;
+		data->rt_timestamp = priv->config.rt_timestamp;
+	}
+}

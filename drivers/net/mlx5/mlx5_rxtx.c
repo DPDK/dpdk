@@ -1389,7 +1389,11 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 		pkt->vlan_tci = rte_be_to_cpu_16(cqe->vlan_info);
 	}
 	if (rxq->hw_timestamp) {
-		pkt->timestamp = rte_be_to_cpu_64(cqe->timestamp);
+		uint64_t ts = rte_be_to_cpu_64(cqe->timestamp);
+
+		if (rxq->rt_timestamp)
+			ts = mlx5_txpp_convert_rx_ts(rxq->sh, ts);
+		pkt->timestamp = ts;
 		pkt->ol_flags |= PKT_RX_TIMESTAMP;
 	}
 }

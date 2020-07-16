@@ -694,22 +694,44 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		rxq_cq_to_ptype_oflags_v(rxq, ptype_info, flow_tag,
 					 opcode, &elts[pos]);
 		if (rxq->hw_timestamp) {
-			elts[pos]->timestamp =
-				rte_be_to_cpu_64(
-					container_of(p0, struct mlx5_cqe,
-						     pkt_info)->timestamp);
-			elts[pos + 1]->timestamp =
-				rte_be_to_cpu_64(
-					container_of(p1, struct mlx5_cqe,
-						     pkt_info)->timestamp);
-			elts[pos + 2]->timestamp =
-				rte_be_to_cpu_64(
-					container_of(p2, struct mlx5_cqe,
-						     pkt_info)->timestamp);
-			elts[pos + 3]->timestamp =
-				rte_be_to_cpu_64(
-					container_of(p3, struct mlx5_cqe,
-						     pkt_info)->timestamp);
+			if (rxq->rt_timestamp) {
+				struct mlx5_dev_ctx_shared *sh = rxq->sh;
+				uint64_t ts;
+
+				ts = rte_be_to_cpu_64
+					(container_of(p0, struct mlx5_cqe,
+						      pkt_info)->timestamp);
+				elts[pos]->timestamp =
+					mlx5_txpp_convert_rx_ts(sh, ts);
+				ts = rte_be_to_cpu_64
+					(container_of(p1, struct mlx5_cqe,
+						      pkt_info)->timestamp);
+				elts[pos + 1]->timestamp =
+					mlx5_txpp_convert_rx_ts(sh, ts);
+				ts = rte_be_to_cpu_64
+					(container_of(p2, struct mlx5_cqe,
+						      pkt_info)->timestamp);
+				elts[pos + 2]->timestamp =
+					mlx5_txpp_convert_rx_ts(sh, ts);
+				ts = rte_be_to_cpu_64
+					(container_of(p3, struct mlx5_cqe,
+						      pkt_info)->timestamp);
+				elts[pos + 3]->timestamp =
+					mlx5_txpp_convert_rx_ts(sh, ts);
+			} else {
+				elts[pos]->timestamp = rte_be_to_cpu_64
+					(container_of(p0, struct mlx5_cqe,
+						      pkt_info)->timestamp);
+				elts[pos + 1]->timestamp = rte_be_to_cpu_64
+					(container_of(p1, struct mlx5_cqe,
+						      pkt_info)->timestamp);
+				elts[pos + 2]->timestamp = rte_be_to_cpu_64
+					(container_of(p2, struct mlx5_cqe,
+						      pkt_info)->timestamp);
+				elts[pos + 3]->timestamp = rte_be_to_cpu_64
+					(container_of(p3, struct mlx5_cqe,
+						      pkt_info)->timestamp);
+			}
 		}
 		if (!!rxq->flow_meta_mask) {
 			/* This code is subject for futher optimization. */

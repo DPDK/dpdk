@@ -109,6 +109,7 @@ enum mlx5_rxq_err_state {
 struct mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int hw_timestamp:1; /* Enable HW timestamp. */
+	unsigned int rt_timestamp:1; /* Realtime timestamp format. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
 	unsigned int crc_present:1; /* CRC must be subtracted. */
 	unsigned int sges_n:3; /* Log 2 of SGEs (max buffers per packet). */
@@ -148,6 +149,7 @@ struct mlx5_rxq_data {
 	struct rte_mempool *mp;
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
 	struct mlx5_mprq_buf *mprq_repl; /* Stashed mbuf for replenish. */
+	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	uint16_t idx; /* Queue index. */
 	struct mlx5_rxq_stats stats;
 	rte_xmm_t mbuf_initializer; /* Default rearm/flags for vectorized Rx. */
@@ -442,6 +444,8 @@ struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
 void mlx5_hrxq_drop_release(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_port_offloads(void);
 uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
+void mlx5_rxq_timestamp_set(struct rte_eth_dev *dev);
+
 
 /* mlx5_txq.c */
 

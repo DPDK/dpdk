@@ -655,14 +655,32 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		/* D.5 fill in mbuf - rearm_data and packet_type. */
 		rxq_cq_to_ptype_oflags_v(rxq, cqes, opcode, &pkts[pos]);
 		if (rxq->hw_timestamp) {
-			pkts[pos]->timestamp =
-				rte_be_to_cpu_64(cq[pos].timestamp);
-			pkts[pos + 1]->timestamp =
-				rte_be_to_cpu_64(cq[pos + p1].timestamp);
-			pkts[pos + 2]->timestamp =
-				rte_be_to_cpu_64(cq[pos + p2].timestamp);
-			pkts[pos + 3]->timestamp =
-				rte_be_to_cpu_64(cq[pos + p3].timestamp);
+			if (rxq->rt_timestamp) {
+				struct mlx5_dev_ctx_shared *sh = rxq->sh;
+				uint64_t ts;
+
+				ts = rte_be_to_cpu_64(cq[pos].timestamp);
+				pkts[pos]->timestamp =
+					mlx5_txpp_convert_rx_ts(sh, ts);
+				ts = rte_be_to_cpu_64(cq[pos + p1].timestamp);
+				pkts[pos + 1]->timestamp =
+					mlx5_txpp_convert_rx_ts(sh, ts);
+				ts = rte_be_to_cpu_64(cq[pos + p2].timestamp);
+				pkts[pos + 2]->timestamp =
+					mlx5_txpp_convert_rx_ts(sh, ts);
+				ts = rte_be_to_cpu_64(cq[pos + p3].timestamp);
+				pkts[pos + 3]->timestamp =
+					mlx5_txpp_convert_rx_ts(sh, ts);
+			} else {
+				pkts[pos]->timestamp = rte_be_to_cpu_64
+						(cq[pos].timestamp);
+				pkts[pos + 1]->timestamp = rte_be_to_cpu_64
+						(cq[pos + p1].timestamp);
+				pkts[pos + 2]->timestamp = rte_be_to_cpu_64
+						(cq[pos + p2].timestamp);
+				pkts[pos + 3]->timestamp = rte_be_to_cpu_64
+						(cq[pos + p3].timestamp);
+			}
 		}
 		if (rxq->dynf_meta) {
 			/* This code is subject for futher optimization. */
