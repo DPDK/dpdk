@@ -719,4 +719,59 @@ mlx5_txpp_convert_rx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t ts)
 	return (ts & UINT32_MAX) + (ts >> 32) * NS_PER_S;
 }
 
+/**
+ * Convert timestamp from mbuf format to linear counter
+ * of Clock Queue completions (24 bits)
+ *
+ * @param sh
+ *   Pointer to the device shared context to fetch Tx
+ *   packet pacing timestamp and parameters.
+ * @param ts
+ *   Timestamp from mbuf to convert.
+ * @return
+ *   positive or zero value - completion ID to wait
+ *   negative value - conversion error
+ */
+static __rte_always_inline int32_t
+mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
+{
+	uint64_t ts, ci;
+	uint32_t tick;
+
+	do {
+		/*
+		 * Read atomically two uint64_t fields and compare lsb bits.
+		 * It there is no match - the timestamp was updated in
+		 * the service thread, data should be re-read.
+		 */
+		rte_compiler_barrier();
+		ci = rte_atomic64_read(&sh->txpp.ts.ci_ts);
+		ts = rte_atomic64_read(&sh->txpp.ts.ts);
+		rte_compiler_barrier();
+		if (!((ts ^ ci) << (64 - MLX5_CQ_INDEX_WIDTH)))
+			break;
+	} while (true);
+	/* Perform the skew correction, positive value to send earlier. */
+	mts -= sh->txpp.skew;
+	mts -= ts;
+	if (unlikely(mts >= UINT64_MAX / 2)) {
+		/* We have negative integer, mts is in the past. */
+		rte_atomic32_inc(&sh->txpp.err_ts_past);
+		return -1;
+	}
+	tick = sh->txpp.tick;
+	MLX5_ASSERT(tick);
+	/* Convert delta to completions, round up. */
+	mts = (mts + tick - 1) / tick;
+	if (unlikely(mts >= (1 << MLX5_CQ_INDEX_WIDTH) / 2 - 1)) {
+		/* We have mts is too distant future. */
+		rte_atomic32_inc(&sh->txpp.err_ts_future);
+		return -1;
+	}
+	mts <<= 64 - MLX5_CQ_INDEX_WIDTH;
+	ci += mts;
+	ci >>= 64 - MLX5_CQ_INDEX_WIDTH;
+	return ci;
+}
+
 #endif /* RTE_PMD_MLX5_RXTX_H_ */

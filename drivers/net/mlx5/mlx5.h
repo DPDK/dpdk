@@ -585,6 +585,8 @@ struct mlx5_dev_txpp {
 	rte_atomic32_t err_miss_int; /* Missed service interrupt. */
 	rte_atomic32_t err_rearm_queue; /* Rearm Queue errors. */
 	rte_atomic32_t err_clock_queue; /* Clock Queue errors. */
+	rte_atomic32_t err_ts_past; /* Timestamp in the past. */
+	rte_atomic32_t err_ts_future; /* Timestamp in the distant future. */
 };
 
 /*

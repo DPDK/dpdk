@@ -860,6 +860,11 @@ mlx5_txpp_start_service(struct mlx5_dev_ctx_shared *sh)
 	int flags;
 	int ret;
 
+	rte_atomic32_set(&sh->txpp.err_miss_int, 0);
+	rte_atomic32_set(&sh->txpp.err_rearm_queue, 0);
+	rte_atomic32_set(&sh->txpp.err_clock_queue, 0);
+	rte_atomic32_set(&sh->txpp.err_ts_past, 0);
+	rte_atomic32_set(&sh->txpp.err_ts_future, 0);
 	/* Attach interrupt handler to process Rearm Queue completions. */
 	flags = fcntl(sh->txpp.echan->fd, F_GETFL);
 	ret = fcntl(sh->txpp.echan->fd, F_SETFL, flags | O_NONBLOCK);
