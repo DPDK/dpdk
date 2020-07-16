@@ -2162,6 +2162,9 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 	struct rte_crypto_sym_xform *xform = NULL;
 	struct qat_sym_session *session = session_private;
 
+	/* Clear the session */
+	memset(session, 0, qat_sym_session_get_private_size(dev));
+
 	ret = qat_sec_session_check_docsis(conf);
 	if (ret) {
 		QAT_LOG(ERR, "Unsupported DOCSIS security configuration");
@@ -2184,23 +2187,17 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 
 	session->min_qat_dev_gen = QAT_GEN1;
 
-	/* Get requested QAT command id */
+	/* Get requested QAT command id - should be cipher */
 	qat_cmd_id = qat_get_cmd_id(xform);
-	if (qat_cmd_id < 0 || qat_cmd_id >= ICP_QAT_FW_LA_CMD_DELIMITER) {
+	if (qat_cmd_id != ICP_QAT_FW_LA_CMD_CIPHER) {
 		QAT_LOG(ERR, "Unsupported xform chain requested");
 		return -ENOTSUP;
 	}
 	session->qat_cmd = (enum icp_qat_fw_la_cmd_id)qat_cmd_id;
-	switch (session->qat_cmd) {
-	case ICP_QAT_FW_LA_CMD_CIPHER:
-		ret = qat_sym_session_configure_cipher(dev, xform, session);
-		if (ret < 0)
-			return ret;
-		break;
-	default:
-		QAT_LOG(ERR, "Unsupported Service %u", session->qat_cmd);
-		return -ENOTSUP;
-	}
+
+	ret = qat_sym_session_configure_cipher(dev, xform, session);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
@@ -2215,14 +2212,15 @@ qat_security_session_create(void *dev,
 	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
 	int ret;
 
+	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL ||
+			conf->protocol != RTE_SECURITY_PROTOCOL_DOCSIS) {
+		QAT_LOG(ERR, "Invalid security protocol");
+		return -EINVAL;
+	}
+
 	if (rte_mempool_get(mempool, &sess_private_data)) {
 		QAT_LOG(ERR, "Couldn't get object from session mempool");
 		return -ENOMEM;
-	}
-
-	if (conf->protocol != RTE_SECURITY_PROTOCOL_DOCSIS) {
-		QAT_LOG(ERR, "Invalid security protocol");
-		return -EINVAL;
 	}
 
 	ret = qat_sec_session_set_docsis_parameters(cdev, conf,
