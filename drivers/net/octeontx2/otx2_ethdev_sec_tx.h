@@ -9,6 +9,7 @@
 #include <rte_mbuf.h>
 
 #include "otx2_ethdev_sec.h"
+#include "otx2_security.h"
 
 struct otx2_ipsec_fp_out_hdr {
 	uint32_t ip_id;

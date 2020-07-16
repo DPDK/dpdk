@@ -19,6 +19,7 @@
 #include "otx2_ethdev_sec.h"
 #include "otx2_ipsec_fp.h"
 #include "otx2_sec_idev.h"
+#include "otx2_security.h"
 
 #define AH_HDR_LEN	12
 #define AES_GCM_IV_LEN	8

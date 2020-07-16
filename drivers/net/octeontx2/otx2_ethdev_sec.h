@@ -116,16 +116,6 @@ struct otx2_sec_session_ipsec_ip {
 	struct otx2_cpt_qp *qp;
 };
 
-struct otx2_sec_session_ipsec {
-	struct otx2_sec_session_ipsec_ip ip;
-};
-
-struct otx2_sec_session {
-	struct otx2_sec_session_ipsec ipsec;
-	void *userdata;
-	/**< Userdata registered by the application */
-} __rte_cache_aligned;
-
 int otx2_eth_sec_ctx_create(struct rte_eth_dev *eth_dev);
 
 void otx2_eth_sec_ctx_destroy(struct rte_eth_dev *eth_dev);
