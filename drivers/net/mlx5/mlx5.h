@@ -567,6 +567,7 @@ struct mlx5_dev_txpp {
 	struct rte_intr_handle intr_handle; /* Periodic interrupt. */
 	struct mlx5dv_devx_event_channel *echan; /* Event Channel. */
 	struct mlx5_txpp_wq clock_queue; /* Clock Queue. */
+	struct mlx5_txpp_wq rearm_queue; /* Clock Queue. */
 };
 
 /*
