@@ -1102,7 +1102,8 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 
 			/* update hash field for nat-t esp. */
 			if (rss_type == ETH_RSS_ESP &&
-			    (m->eth_rss_hint & ETH_RSS_NONFRAG_IPV4_UDP)) {
+			    (m->eth_rss_hint & ETH_RSS_NONFRAG_IPV4_UDP ||
+			     m->eth_rss_hint & ETH_RSS_NONFRAG_IPV6_UDP)) {
 				hash_meta->hash_flds &=
 				~(BIT_ULL(ICE_FLOW_FIELD_IDX_ESP_SPI));
 				hash_meta->hash_flds |=
