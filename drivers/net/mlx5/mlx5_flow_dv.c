@@ -20,6 +20,7 @@
 #include <rte_vxlan.h>
 #include <rte_gtp.h>
 #include <rte_eal_paging.h>
+#include <rte_mpls.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -2866,7 +2867,7 @@ flow_dv_push_vlan_action_resource_register
 	return 0;
 }
 /**
- * Get the size of specific rte_flow_item_type
+ * Get the size of specific rte_flow_item_type hdr size
  *
  * @param[in] item_type
  *   Tested rte_flow_item_type.
@@ -2875,43 +2876,39 @@ flow_dv_push_vlan_action_resource_register
  *   sizeof struct item_type, 0 if void or irrelevant.
  */
 static size_t
-flow_dv_get_item_len(const enum rte_flow_item_type item_type)
+flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type)
 {
 	size_t retval;
 
 	switch (item_type) {
 	case RTE_FLOW_ITEM_TYPE_ETH:
-		retval = sizeof(struct rte_flow_item_eth);
+		retval = sizeof(struct rte_ether_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VLAN:
-		retval = sizeof(struct rte_flow_item_vlan);
+		retval = sizeof(struct rte_vlan_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV4:
-		retval = sizeof(struct rte_flow_item_ipv4);
+		retval = sizeof(struct rte_ipv4_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV6:
-		retval = sizeof(struct rte_flow_item_ipv6);
+		retval = sizeof(struct rte_ipv6_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_UDP:
-		retval = sizeof(struct rte_flow_item_udp);
+		retval = sizeof(struct rte_udp_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_TCP:
-		retval = sizeof(struct rte_flow_item_tcp);
+		retval = sizeof(struct rte_tcp_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
-		retval = sizeof(struct rte_flow_item_vxlan);
+	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+		retval = sizeof(struct rte_vxlan_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_GRE:
-		retval = sizeof(struct rte_flow_item_gre);
-		break;
 	case RTE_FLOW_ITEM_TYPE_NVGRE:
-		retval = sizeof(struct rte_flow_item_nvgre);
-		break;
-	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-		retval = sizeof(struct rte_flow_item_vxlan_gpe);
+		retval = sizeof(struct rte_gre_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_MPLS:
-		retval = sizeof(struct rte_flow_item_mpls);
+		retval = sizeof(struct rte_mpls_hdr);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VOID: /* Fall through. */
 	default:
@@ -2964,7 +2961,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL, "invalid empty data");
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-		len = flow_dv_get_item_len(items->type);
+		len = flow_dv_get_item_hdr_len(items->type);
 		if (len + temp_size > MLX5_ENCAP_MAX_LEN)
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
