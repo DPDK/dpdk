@@ -119,6 +119,8 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 			     DEV_TX_OFFLOAD_TCP_CKSUM);
 	if (config->tso)
 		offloads |= DEV_TX_OFFLOAD_TCP_TSO;
+	if (config->tx_pp)
+		offloads |= DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP;
 	if (config->swp) {
 		if (config->hw_csum)
 			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;

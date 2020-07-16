@@ -66,6 +66,7 @@ enum mlx5_txcmp_code {
 #define MLX5_TXOFF_CONFIG_METADATA (1u << 6) /* Flow metadata. */
 #define MLX5_TXOFF_CONFIG_EMPW (1u << 8) /* Enhanced MPW supported.*/
 #define MLX5_TXOFF_CONFIG_MPW (1u << 9) /* Legacy MPW supported.*/
+#define MLX5_TXOFF_CONFIG_TXPP (1u << 10) /* Scheduling on timestamp.*/
 
 /* The most common offloads groups. */
 #define MLX5_TXOFF_CONFIG_NONE 0
@@ -5268,6 +5269,45 @@ MLX5_TXOFF_DECL(iv,
 		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
 		MLX5_TXOFF_CONFIG_METADATA)
 
+/* Generate routines with timestamp scheduling. */
+MLX5_TXOFF_DECL(full_ts_nompw,
+		MLX5_TXOFF_CONFIG_FULL | MLX5_TXOFF_CONFIG_TXPP)
+
+MLX5_TXOFF_DECL(full_ts_nompwi,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP | MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_VLAN | MLX5_TXOFF_CONFIG_METADATA |
+		MLX5_TXOFF_CONFIG_TXPP)
+
+MLX5_TXOFF_DECL(full_ts,
+		MLX5_TXOFF_CONFIG_FULL | MLX5_TXOFF_CONFIG_TXPP |
+		MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(full_ts_noi,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP | MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_VLAN | MLX5_TXOFF_CONFIG_METADATA |
+		MLX5_TXOFF_CONFIG_TXPP | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(none_ts,
+		MLX5_TXOFF_CONFIG_NONE | MLX5_TXOFF_CONFIG_TXPP |
+		MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(mdi_ts,
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_METADATA |
+		MLX5_TXOFF_CONFIG_TXPP | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(mti_ts,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_METADATA |
+		MLX5_TXOFF_CONFIG_TXPP | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_DECL(mtiv_ts,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_TXPP |
+		MLX5_TXOFF_CONFIG_EMPW)
+
 /*
  * Generate routines with Legacy Multi-Packet Write support.
  * This mode is supported by ConnectX-4 Lx only and imposes
@@ -5371,6 +5411,44 @@ MLX5_TXOFF_INFO(v_empw,
 MLX5_TXOFF_INFO(iv_empw,
 		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
 		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(full_ts_nompw,
+		MLX5_TXOFF_CONFIG_FULL | MLX5_TXOFF_CONFIG_TXPP)
+
+MLX5_TXOFF_INFO(full_ts_nompwi,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP | MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_VLAN | MLX5_TXOFF_CONFIG_METADATA |
+		MLX5_TXOFF_CONFIG_TXPP)
+
+MLX5_TXOFF_INFO(full_ts,
+		MLX5_TXOFF_CONFIG_FULL | MLX5_TXOFF_CONFIG_TXPP |
+		MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(full_ts_noi,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_SWP | MLX5_TXOFF_CONFIG_CSUM |
+		MLX5_TXOFF_CONFIG_VLAN | MLX5_TXOFF_CONFIG_METADATA |
+		MLX5_TXOFF_CONFIG_TXPP | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(none_ts,
+		MLX5_TXOFF_CONFIG_NONE | MLX5_TXOFF_CONFIG_TXPP |
+		MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(mdi_ts,
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_METADATA |
+		MLX5_TXOFF_CONFIG_TXPP | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(mti_ts,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_METADATA |
+		MLX5_TXOFF_CONFIG_TXPP | MLX5_TXOFF_CONFIG_EMPW)
+
+MLX5_TXOFF_INFO(mtiv_ts,
+		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
+		MLX5_TXOFF_CONFIG_INLINE | MLX5_TXOFF_CONFIG_VLAN |
+		MLX5_TXOFF_CONFIG_METADATA | MLX5_TXOFF_CONFIG_TXPP |
+		MLX5_TXOFF_CONFIG_EMPW)
 
 MLX5_TXOFF_INFO(full,
 		MLX5_TXOFF_CONFIG_MULTI | MLX5_TXOFF_CONFIG_TSO |
@@ -5518,6 +5596,14 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		/* We should support VLAN insertion. */
 		olx |= MLX5_TXOFF_CONFIG_VLAN;
 	}
+	if (tx_offloads & DEV_TX_OFFLOAD_SEND_ON_TIMESTAMP &&
+	    rte_mbuf_dynflag_lookup
+			(RTE_MBUF_DYNFLAG_TX_TIMESTAMP_NAME, NULL) > 0 &&
+	    rte_mbuf_dynfield_lookup
+			(RTE_MBUF_DYNFIELD_TIMESTAMP_NAME, NULL) > 0) {
+		/* Offload configured, dynamic entities registered. */
+		olx |= MLX5_TXOFF_CONFIG_TXPP;
+	}
 	if (priv->txqs_n && (*priv->txqs)[0]) {
 		struct mlx5_txq_data *txd = (*priv->txqs)[0];
 
@@ -5587,6 +5673,9 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		if ((olx ^ tmp) & MLX5_TXOFF_CONFIG_INLINE)
 			/* Do not enable inlining if not configured. */
 			continue;
+		if ((olx ^ tmp) & MLX5_TXOFF_CONFIG_TXPP)
+			/* Do not enable scheduling if not configured. */
+			continue;
 		/*
 		 * Some routine meets the requirements.
 		 * Check whether it has minimal amount
@@ -5631,6 +5720,8 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		DRV_LOG(DEBUG, "\tVLANI (VLAN insertion)");
 	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_METADATA)
 		DRV_LOG(DEBUG, "\tMETAD (tx Flow metadata)");
+	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_TXPP)
+		DRV_LOG(DEBUG, "\tMETAD (tx Scheduling)");
 	if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_EMPW) {
 		if (txoff_func[m].olx & MLX5_TXOFF_CONFIG_MPW)
 			DRV_LOG(DEBUG, "\tMPW   (Legacy MPW)");
@@ -5705,7 +5796,7 @@ mlx5_tx_burst_mode_get(struct rte_eth_dev *dev,
 		if (pkt_burst == txoff_func[i].func) {
 			olx = txoff_func[i].olx;
 			snprintf(mode->info, sizeof(mode->info),
-				 "%s%s%s%s%s%s%s%s",
+				 "%s%s%s%s%s%s%s%s%s",
 				 (olx & MLX5_TXOFF_CONFIG_EMPW) ?
 				 ((olx & MLX5_TXOFF_CONFIG_MPW) ?
 				 "Legacy MPW" : "Enhanced MPW") : "No MPW",
@@ -5722,7 +5813,9 @@ mlx5_tx_burst_mode_get(struct rte_eth_dev *dev,
 				 (olx & MLX5_TXOFF_CONFIG_VLAN) ?
 				 " + VLAN" : "",
 				 (olx & MLX5_TXOFF_CONFIG_METADATA) ?
-				 " + METADATA" : "");
+				 " + METADATA" : "",
+				 (olx & MLX5_TXOFF_CONFIG_TXPP) ?
+				 " + TXPP" : "");
 			return 0;
 		}
 	}
