@@ -631,7 +631,7 @@ testsuite_teardown(void)
 }
 
 static int
-ut_setup(void)
+dev_configure_and_start(uint64_t ff_disable)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -643,7 +643,7 @@ ut_setup(void)
 
 	/* Reconfigure device to default parameters */
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
-	ts_params->conf.ff_disable = RTE_CRYPTODEV_FF_SECURITY;
+	ts_params->conf.ff_disable = ff_disable;
 	ts_params->qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
 	ts_params->qp_conf.mp_session = ts_params->session_mpool;
 	ts_params->qp_conf.mp_session_private = ts_params->session_priv_mpool;
@@ -671,6 +671,20 @@ ut_setup(void)
 			ts_params->valid_devs[0]);
 
 	return TEST_SUCCESS;
+}
+
+static int
+ut_setup(void)
+{
+	/* Configure and start the device with security feature disabled */
+	return dev_configure_and_start(RTE_CRYPTODEV_FF_SECURITY);
+}
+
+static int
+ut_setup_security(void)
+{
+	/* Configure and start the device with no features disabled */
+	return dev_configure_and_start(0);
 }
 
 static void
@@ -12538,9 +12552,9 @@ static struct unit_test_suite cryptodev_testsuite  = {
 			test_verify_auth_aes_cmac_cipher_null_test_case_1),
 
 #ifdef RTE_LIBRTE_SECURITY
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_security, ut_teardown,
 			test_PDCP_PROTO_all),
-		TEST_CASE_ST(ut_setup, ut_teardown,
+		TEST_CASE_ST(ut_setup_security, ut_teardown,
 			test_DOCSIS_PROTO_all),
 #endif
 		TEST_CASES_END() /**< NULL terminate unit test array */
