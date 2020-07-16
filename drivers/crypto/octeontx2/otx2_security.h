@@ -5,10 +5,12 @@
 #ifndef __OTX2_SECURITY_H__
 #define __OTX2_SECURITY_H__
 
+#include "otx2_cryptodev_sec.h"
 #include "otx2_ethdev_sec.h"
 
 union otx2_sec_session_ipsec {
 	struct otx2_sec_session_ipsec_ip ip;
+	struct otx2_sec_session_ipsec_lp lp;
 };
 
 struct otx2_sec_session {

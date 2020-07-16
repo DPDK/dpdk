@@ -8,6 +8,7 @@
 #include <rte_ethdev.h>
 
 #include "otx2_ipsec_fp.h"
+#include "otx2_ipsec_po.h"
 
 #define OTX2_CPT_RES_ALIGN		16
 #define OTX2_NIX_SEND_DESC_ALIGN	16
