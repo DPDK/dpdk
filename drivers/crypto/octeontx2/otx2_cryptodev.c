@@ -103,6 +103,7 @@ otx2_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 
 	otx2_crypto_capabilities_init(vf->hw_caps);
+	otx2_crypto_sec_capabilities_init(vf->hw_caps);
 
 	/* Create security ctx */
 	ret = otx2_crypto_sec_ctx_create(dev);

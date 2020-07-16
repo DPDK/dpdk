@@ -29,4 +29,17 @@ void otx2_crypto_capabilities_init(union cpt_eng_caps *hw_caps);
 const struct rte_cryptodev_capabilities *
 otx2_cpt_capabilities_get(void);
 
+/*
+ * Initialize security capabilities for the device
+ *
+ */
+void otx2_crypto_sec_capabilities_init(union cpt_eng_caps *hw_caps);
+
+/*
+ * Get security capabilities list for the device
+ *
+ */
+const struct rte_security_capability *
+otx2_crypto_sec_capabilities_get(void *device __rte_unused);
+
 #endif /* _OTX2_CRYPTODEV_CAPABILITIES_H_ */

@@ -3,7 +3,9 @@
  */
 
 #include <rte_cryptodev.h>
+#include <rte_security.h>
 
+#include "otx2_cryptodev.h"
 #include "otx2_cryptodev_capabilities.h"
 #include "otx2_mbox.h"
 
@@ -26,9 +28,18 @@
 		cpt_caps_add(caps_##name, RTE_DIM(caps_##name));	\
 } while (0)
 
+#define SEC_CAPS_ADD(hw_caps, name) do {				\
+	enum otx2_cpt_egrp egrp;					\
+	CPT_EGRP_GET(hw_caps, name, &egrp);				\
+	if (egrp < OTX2_CPT_EGRP_MAX)					\
+		sec_caps_add(sec_caps_##name, RTE_DIM(sec_caps_##name));\
+} while (0)
+
 #define OTX2_CPT_MAX_CAPS 34
+#define OTX2_SEC_MAX_CAPS 4
 
 static struct rte_cryptodev_capabilities otx2_cpt_caps[OTX2_CPT_MAX_CAPS];
+static struct rte_cryptodev_capabilities otx2_cpt_sec_caps[OTX2_SEC_MAX_CAPS];
 
 static const struct rte_cryptodev_capabilities caps_mul[] = {
 	{	/* RSA */
@@ -725,6 +736,70 @@ static const struct rte_cryptodev_capabilities caps_end[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
+static const struct rte_cryptodev_capabilities sec_caps_aes[] = {
+	{	/* AES GCM */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD,
+			{.aead = {
+				.algo = RTE_CRYPTO_AEAD_AES_GCM,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.aad_size = {
+					.min = 8,
+					.max = 12,
+					.increment = 4
+				},
+				.iv_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+};
+
+static const struct rte_security_capability
+otx2_crypto_sec_capabilities[] = {
+	{	/* IPsec Lookaside Protocol ESP Tunnel Ingress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = otx2_cpt_sec_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+	},
+	{	/* IPsec Lookaside Protocol ESP Tunnel Egress */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
+		.ipsec = {
+			.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP,
+			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
+			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
+			.options = { 0 }
+		},
+		.crypto_capabilities = otx2_cpt_sec_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+	},
+	{
+		.action = RTE_SECURITY_ACTION_TYPE_NONE
+	}
+};
+
 static void
 cpt_caps_add(const struct rte_cryptodev_capabilities *caps, int nb_caps)
 {
@@ -756,4 +831,30 @@ const struct rte_cryptodev_capabilities *
 otx2_cpt_capabilities_get(void)
 {
 	return otx2_cpt_caps;
+}
+
+static void
+sec_caps_add(const struct rte_cryptodev_capabilities *caps, int nb_caps)
+{
+	static int cur_pos;
+
+	if (cur_pos + nb_caps > OTX2_SEC_MAX_CAPS)
+		return;
+
+	memcpy(&otx2_cpt_sec_caps[cur_pos], caps, nb_caps * sizeof(caps[0]));
+	cur_pos += nb_caps;
+}
+
+void
+otx2_crypto_sec_capabilities_init(union cpt_eng_caps *hw_caps)
+{
+	SEC_CAPS_ADD(hw_caps, aes);
+
+	sec_caps_add(caps_end, RTE_DIM(caps_end));
+}
+
+const struct rte_security_capability *
+otx2_crypto_sec_capabilities_get(void *device __rte_unused)
+{
+	return otx2_crypto_sec_capabilities;
 }

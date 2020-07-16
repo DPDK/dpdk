@@ -7,6 +7,8 @@
 #include <rte_security.h>
 #include <rte_security_driver.h>
 
+#include "otx2_cryptodev.h"
+#include "otx2_cryptodev_capabilities.h"
 #include "otx2_cryptodev_sec.h"
 
 static struct rte_security_ops otx2_crypto_sec_ops = {
@@ -15,7 +17,7 @@ static struct rte_security_ops otx2_crypto_sec_ops = {
 	.session_get_size	= NULL,
 	.set_pkt_metadata	= NULL,
 	.get_userdata		= NULL,
-	.capabilities_get	= NULL
+	.capabilities_get	= otx2_crypto_sec_capabilities_get
 };
 
 int
