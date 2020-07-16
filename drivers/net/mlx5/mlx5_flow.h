@@ -510,6 +510,10 @@ struct mlx5_flow_rss_desc {
 	uint16_t queue[]; /**< Destination queues to redirect traffic to. */
 };
 
+/* PMD flow priority for tunnel */
+#define MLX5_TUNNEL_PRIO_GET(rss_desc) \
+	((rss_desc)->level >= 2 ? MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4)
+
 
 /** Device flow handle structure for DV mode only. */
 struct mlx5_flow_handle_dv {
