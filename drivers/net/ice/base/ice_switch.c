@@ -1069,7 +1069,7 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid)
 				non_tun_valid = true;
 		}
 
-		if (j >= ICE_PROFID_IPV4_GTPC_TEID &&
+		if (j >= ICE_PROFID_IPV4_GTPU_EH_IPV4_OTHER &&
 		    j <= ICE_PROFID_IPV6_GTPU_IPV6_OTHER)
 			gtp_valid = true;
 
@@ -1136,7 +1136,7 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid)
 					tun_type = ICE_SW_TUN_PPPOE_IPV6_TCP;
 					break;
 				case ICE_PROFID_PPPOE_IPV6_UDP:
-					tun_type = ICE_SW_TUN_PPPOE_IPV4_UDP;
+					tun_type = ICE_SW_TUN_PPPOE_IPV6_UDP;
 					break;
 				case ICE_PROFID_PPPOE_IPV6_OTHER:
 					tun_type = ICE_SW_TUN_PPPOE_IPV6;
