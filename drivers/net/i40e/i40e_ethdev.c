@@ -26,6 +26,7 @@
 #include <rte_dev.h>
 #include <rte_tailq.h>
 #include <rte_hash_crc.h>
+#include <rte_bitmap.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_prototype.h"
@@ -1045,8 +1046,11 @@ static int
 i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
 	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	uint32_t alloc = hw->func_caps.fd_filters_guaranteed;
+	uint32_t best = hw->func_caps.fd_filters_best_effort;
 	int ret;
 
 	struct rte_hash_parameters fdir_hash_params = {
@@ -1067,6 +1071,7 @@ i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
 		return -EINVAL;
 	}
+
 	fdir_info->hash_map = rte_zmalloc("i40e_fdir_hash_map",
 					  sizeof(struct i40e_fdir_filter *) *
 					  I40E_MAX_FDIR_FILTER_NUM,
@@ -1077,6 +1082,15 @@ i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
 		ret = -ENOMEM;
 		goto err_fdir_hash_map_alloc;
 	}
+
+	fdir_info->fdir_space_size = alloc + best;
+	fdir_info->fdir_actual_cnt = 0;
+	fdir_info->fdir_guarantee_total_space = alloc;
+	fdir_info->fdir_guarantee_free_space =
+		fdir_info->fdir_guarantee_total_space;
+
+	PMD_DRV_LOG(INFO, "FDIR guarantee space: %u, best_effort space %u.", alloc, best);
+
 	return 0;
 
 err_fdir_hash_map_alloc:
@@ -1099,6 +1113,30 @@ i40e_init_customized_info(struct i40e_pf *pf)
 
 	pf->gtp_support = false;
 	pf->esp_support = false;
+}
+
+static void
+i40e_init_filter_invalidation(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	uint32_t glqf_ctl_reg = 0;
+
+	glqf_ctl_reg = i40e_read_rx_ctl(hw, I40E_GLQF_CTL);
+	if (!pf->support_multi_driver) {
+		fdir_info->fdir_invalprio = 1;
+		glqf_ctl_reg |= I40E_GLQF_CTL_INVALPRIO_MASK;
+		PMD_DRV_LOG(INFO, "FDIR INVALPRIO set to guaranteed first");
+		i40e_write_rx_ctl(hw, I40E_GLQF_CTL, glqf_ctl_reg);
+	} else {
+		if (glqf_ctl_reg & I40E_GLQF_CTL_INVALPRIO_MASK) {
+			fdir_info->fdir_invalprio = 1;
+			PMD_DRV_LOG(INFO, "FDIR INVALPRIO is: guaranteed first");
+		} else {
+			fdir_info->fdir_invalprio = 0;
+			PMD_DRV_LOG(INFO, "FDIR INVALPRIO is: shared first");
+		}
+	}
 }
 
 void
@@ -1653,6 +1691,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 
 	/* Initialize customized information */
 	i40e_init_customized_info(pf);
+
+	/* Initialize the filter invalidation configuration */
+	i40e_init_filter_invalidation(pf);
 
 	ret = i40e_init_ethtype_filter_list(dev);
 	if (ret < 0)

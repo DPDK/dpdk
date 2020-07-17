@@ -698,6 +698,30 @@ struct i40e_fdir_info {
 	struct i40e_fdir_filter **hash_map;
 	struct rte_hash *hash_table;
 
+	/*
+	 * Priority ordering at filter invalidation(destroying a flow) between
+	 * "best effort" space and "guaranteed" space.
+	 *
+	 * 0 = At filter invalidation, the hardware first tries to increment the
+	 * "best effort" space. The "guaranteed" space is incremented only when
+	 * the global "best effort" space is at it max value or the "best effort"
+	 * space of the PF is at its max value.
+	 * 1 = At filter invalidation, the hardware first tries to increment its
+	 * "guaranteed" space. The "best effort" space is incremented only when
+	 * it is already at its max value.
+	 */
+	uint32_t fdir_invalprio;
+	/* the total size of the fdir, this number is the sum of the guaranteed +
+	 * shared space
+	 */
+	uint32_t fdir_space_size;
+	/* the actual number of the fdir rules in hardware, initialized as 0 */
+	uint32_t fdir_actual_cnt;
+	/* the free guaranteed space of the fdir */
+	uint32_t fdir_guarantee_free_space;
+	/* the fdir total guaranteed space */
+	uint32_t fdir_guarantee_total_space;
+
 	/* Mark if flex pit and mask is set */
 	bool flex_pit_flag[I40E_MAX_FLXPLD_LAYER];
 	bool flex_mask_flag[I40E_FILTER_PCTYPE_MAX];
@@ -1335,8 +1359,8 @@ int i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 			     const struct rte_eth_fdir_filter *filter,
 			     bool add);
 int i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
-				  const struct i40e_fdir_filter_conf *filter,
-				  bool add);
+			      const struct i40e_fdir_filter_conf *filter,
+			      bool add);
 int i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			       struct rte_eth_tunnel_filter_conf *tunnel_filter,
 			       uint8_t add);

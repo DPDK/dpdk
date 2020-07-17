@@ -2989,6 +2989,7 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 
 	txq->tx_ring_phys_addr = tz->iova;
 	txq->tx_ring = (struct i40e_tx_desc *)tz->addr;
+
 	/*
 	 * don't need to allocate software ring and reset for the fdir
 	 * program queue just set the queue has been configured.

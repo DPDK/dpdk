@@ -21,6 +21,7 @@
 #include <rte_tcp.h>
 #include <rte_sctp.h>
 #include <rte_hash_crc.h>
+#include <rte_bitmap.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_type.h"
@@ -244,6 +245,10 @@ i40e_fdir_setup(struct i40e_pf *pf)
 	pf->fdir.dma_addr = mz->iova;
 
 	pf->fdir.match_counter_index = I40E_COUNTER_INDEX_FDIR(hw->pf_id);
+	pf->fdir.fdir_actual_cnt = 0;
+	pf->fdir.fdir_guarantee_free_space =
+		pf->fdir.fdir_guarantee_total_space;
+
 	PMD_DRV_LOG(INFO, "FDIR setup successfully, with programming queue %u.",
 		    vsi->base_queue);
 	return I40E_SUCCESS;
@@ -1762,6 +1767,11 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	}
 
 	if (add) {
+		fdir_info->fdir_actual_cnt++;
+		if (fdir_info->fdir_invalprio == 1 &&
+				fdir_info->fdir_guarantee_free_space > 0)
+			fdir_info->fdir_guarantee_free_space--;
+
 		fdir_filter = rte_zmalloc("fdir_filter",
 					  sizeof(*fdir_filter), 0);
 		if (fdir_filter == NULL) {
@@ -1774,6 +1784,12 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 		if (ret < 0)
 			rte_free(fdir_filter);
 	} else {
+		fdir_info->fdir_actual_cnt--;
+		if (fdir_info->fdir_invalprio == 1 &&
+				fdir_info->fdir_guarantee_free_space <
+				fdir_info->fdir_guarantee_total_space)
+			fdir_info->fdir_guarantee_free_space++;
+
 		ret = i40e_sw_fdir_filter_del(pf, &node->fdir.input);
 	}
 
