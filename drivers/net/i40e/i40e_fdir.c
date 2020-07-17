@@ -180,6 +180,7 @@ i40e_fdir_setup(struct i40e_pf *pf)
 		PMD_DRV_LOG(INFO, "FDIR initialization has been done.");
 		return I40E_SUCCESS;
 	}
+
 	/* make new FDIR VSI */
 	vsi = i40e_vsi_setup(pf, I40E_VSI_FDIR, pf->main_vsi, 0);
 	if (!vsi) {
@@ -1570,6 +1571,7 @@ static int
 i40e_sw_fdir_filter_insert(struct i40e_pf *pf, struct i40e_fdir_filter *filter)
 {
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_fdir_filter *hash_filter;
 	int ret;
 
 	if (filter->fdir.input.flow_ext.pkt_template)
@@ -1585,9 +1587,14 @@ i40e_sw_fdir_filter_insert(struct i40e_pf *pf, struct i40e_fdir_filter *filter)
 			    ret);
 		return ret;
 	}
-	fdir_info->hash_map[ret] = filter;
 
-	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, filter, rules);
+	if (fdir_info->hash_map[ret])
+		return -1;
+
+	hash_filter = &fdir_info->fdir_filter_array[ret];
+	rte_memcpy(hash_filter, filter, sizeof(*filter));
+	fdir_info->hash_map[ret] = hash_filter;
+	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, hash_filter, rules);
 
 	return 0;
 }
@@ -1616,9 +1623,55 @@ i40e_sw_fdir_filter_del(struct i40e_pf *pf, struct i40e_fdir_input *input)
 	fdir_info->hash_map[ret] = NULL;
 
 	TAILQ_REMOVE(&fdir_info->fdir_list, filter, rules);
-	rte_free(filter);
 
 	return 0;
+}
+
+struct rte_flow *
+i40e_fdir_entry_pool_get(struct i40e_fdir_info *fdir_info)
+{
+	struct rte_flow *flow = NULL;
+	uint64_t slab = 0;
+	uint32_t pos = 0;
+	uint32_t i = 0;
+	int ret;
+
+	if (fdir_info->fdir_actual_cnt >=
+			fdir_info->fdir_space_size) {
+		PMD_DRV_LOG(ERR, "Fdir space full");
+		return NULL;
+	}
+
+	ret = rte_bitmap_scan(fdir_info->fdir_flow_pool.bitmap, &pos,
+			&slab);
+
+	/* normally this won't happen as the fdir_actual_cnt should be
+	 * same with the number of the set bits in fdir_flow_pool,
+	 * but anyway handle this error condition here for safe
+	 */
+	if (ret == 0) {
+		PMD_DRV_LOG(ERR, "fdir_actual_cnt out of sync");
+		return NULL;
+	}
+
+	i = rte_bsf64(slab);
+	pos += i;
+	rte_bitmap_clear(fdir_info->fdir_flow_pool.bitmap, pos);
+	flow = &fdir_info->fdir_flow_pool.pool[pos].flow;
+
+	memset(flow, 0, sizeof(struct rte_flow));
+
+	return flow;
+}
+
+void
+i40e_fdir_entry_pool_put(struct i40e_fdir_info *fdir_info,
+		struct rte_flow *flow)
+{
+	struct i40e_fdir_entry *f;
+
+	f = FLOW_TO_FLOW_BITMAP(flow);
+	rte_bitmap_set(fdir_info->fdir_flow_pool.bitmap, f->idx);
 }
 
 /*
@@ -1699,7 +1752,7 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	unsigned char *pkt = (unsigned char *)pf->fdir.prg_pkt;
 	enum i40e_filter_pctype pctype;
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	struct i40e_fdir_filter *fdir_filter, *node;
+	struct i40e_fdir_filter *node;
 	struct i40e_fdir_filter check_filter; /* Check if the filter exists */
 	int ret = 0;
 
@@ -1732,25 +1785,36 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	/* Check if there is the filter in SW list */
 	memset(&check_filter, 0, sizeof(check_filter));
 	i40e_fdir_filter_convert(filter, &check_filter);
-	node = i40e_sw_fdir_filter_lookup(fdir_info, &check_filter.fdir.input);
-	if (add && node) {
-		PMD_DRV_LOG(ERR,
-			    "Conflict with existing flow director rules!");
-		return -EINVAL;
-	}
 
-	if (!add && !node) {
-		PMD_DRV_LOG(ERR,
-			    "There's no corresponding flow firector filter!");
-		return -EINVAL;
+	if (add) {
+		ret = i40e_sw_fdir_filter_insert(pf, &check_filter);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR,
+				    "Conflict with existing flow director rules!");
+			return -EINVAL;
+		}
+	} else {
+		node = i40e_sw_fdir_filter_lookup(fdir_info,
+				&check_filter.fdir.input);
+		if (!node) {
+			PMD_DRV_LOG(ERR,
+				    "There's no corresponding flow firector filter!");
+			return -EINVAL;
+		}
+
+		ret = i40e_sw_fdir_filter_del(pf, &node->fdir.input);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR,
+					"Error deleting fdir rule from hash table!");
+			return -EINVAL;
+		}
 	}
 
 	memset(pkt, 0, I40E_FDIR_PKT_LEN);
-
 	ret = i40e_flow_fdir_construct_pkt(pf, &filter->input, pkt);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "construct packet for fdir fails.");
-		return ret;
+		goto error_op;
 	}
 
 	if (hw->mac.type == I40E_MAC_X722) {
@@ -1763,7 +1827,7 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "fdir programming fails for PCTYPE(%u).",
 			    pctype);
-		return ret;
+		goto error_op;
 	}
 
 	if (add) {
@@ -1771,27 +1835,22 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 		if (fdir_info->fdir_invalprio == 1 &&
 				fdir_info->fdir_guarantee_free_space > 0)
 			fdir_info->fdir_guarantee_free_space--;
-
-		fdir_filter = rte_zmalloc("fdir_filter",
-					  sizeof(*fdir_filter), 0);
-		if (fdir_filter == NULL) {
-			PMD_DRV_LOG(ERR, "Failed to alloc memory.");
-			return -ENOMEM;
-		}
-
-		rte_memcpy(fdir_filter, &check_filter, sizeof(check_filter));
-		ret = i40e_sw_fdir_filter_insert(pf, fdir_filter);
-		if (ret < 0)
-			rte_free(fdir_filter);
 	} else {
 		fdir_info->fdir_actual_cnt--;
 		if (fdir_info->fdir_invalprio == 1 &&
 				fdir_info->fdir_guarantee_free_space <
 				fdir_info->fdir_guarantee_total_space)
 			fdir_info->fdir_guarantee_free_space++;
-
-		ret = i40e_sw_fdir_filter_del(pf, &node->fdir.input);
 	}
+
+	return ret;
+
+error_op:
+	/* roll back */
+	if (add)
+		i40e_sw_fdir_filter_del(pf, &check_filter.fdir.input);
+	else
+		i40e_sw_fdir_filter_insert(pf, &check_filter);
 
 	return ret;
 }

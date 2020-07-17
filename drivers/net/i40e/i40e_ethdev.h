@@ -264,6 +264,15 @@ enum i40e_flxpld_layer_idx {
 #define I40E_DEFAULT_DCB_APP_NUM    1
 #define I40E_DEFAULT_DCB_APP_PRIO   3
 
+/*
+ * Struct to store flow created.
+ */
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) node;
+	enum rte_filter_type filter_type;
+	void *rule;
+};
+
 /**
  * The overhead from MTU to max frame size.
  * Considering QinQ packet, the VLAN tag needs to be counted twice.
@@ -674,6 +683,23 @@ struct i40e_fdir_filter {
 	struct i40e_fdir_filter_conf fdir;
 };
 
+/* fdir memory pool entry */
+struct i40e_fdir_entry {
+	struct rte_flow flow;
+	uint32_t idx;
+};
+
+/* pre-allocated fdir memory pool */
+struct i40e_fdir_flow_pool {
+	/* a bitmap to manage the fdir pool */
+	struct rte_bitmap *bitmap;
+	/* the size the pool is pf->fdir->fdir_space_size */
+	struct i40e_fdir_entry *pool;
+};
+
+#define FLOW_TO_FLOW_BITMAP(f) \
+	container_of((f), struct i40e_fdir_entry, flow)
+
 TAILQ_HEAD(i40e_fdir_filter_list, i40e_fdir_filter);
 /*
  *  A structure used to define fields of a FDIR related info.
@@ -697,6 +723,8 @@ struct i40e_fdir_info {
 	struct i40e_fdir_filter_list fdir_list;
 	struct i40e_fdir_filter **hash_map;
 	struct rte_hash *hash_table;
+	/* An array to store the inserted rules input */
+	struct i40e_fdir_filter *fdir_filter_array;
 
 	/*
 	 * Priority ordering at filter invalidation(destroying a flow) between
@@ -721,6 +749,8 @@ struct i40e_fdir_info {
 	uint32_t fdir_guarantee_free_space;
 	/* the fdir total guaranteed space */
 	uint32_t fdir_guarantee_total_space;
+	/* the pre-allocated pool of the rte_flow */
+	struct i40e_fdir_flow_pool fdir_flow_pool;
 
 	/* Mark if flex pit and mask is set */
 	bool flex_pit_flag[I40E_MAX_FLXPLD_LAYER];
@@ -917,15 +947,6 @@ struct i40e_mirror_rule {
 };
 
 TAILQ_HEAD(i40e_mirror_rule_list, i40e_mirror_rule);
-
-/*
- * Struct to store flow created.
- */
-struct rte_flow {
-	TAILQ_ENTRY(rte_flow) node;
-	enum rte_filter_type filter_type;
-	void *rule;
-};
 
 TAILQ_HEAD(i40e_flow_list, rte_flow);
 
@@ -1358,6 +1379,10 @@ int i40e_ethertype_filter_set(struct i40e_pf *pf,
 int i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 			     const struct rte_eth_fdir_filter *filter,
 			     bool add);
+struct rte_flow *
+i40e_fdir_entry_pool_get(struct i40e_fdir_info *fdir_info);
+void i40e_fdir_entry_pool_put(struct i40e_fdir_info *fdir_info,
+		struct rte_flow *flow);
 int i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 			      const struct i40e_fdir_filter_conf *filter,
 			      bool add);
