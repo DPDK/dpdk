@@ -787,6 +787,18 @@ struct mlx5_ifc_fte_match_set_misc3_bits {
 	u8 reserved_at_170[0x90];
 };
 
+struct mlx5_ifc_fte_match_set_misc4_bits {
+	u8 prog_sample_field_value_0[0x20];
+	u8 prog_sample_field_id_0[0x20];
+	u8 prog_sample_field_value_1[0x20];
+	u8 prog_sample_field_id_1[0x20];
+	u8 prog_sample_field_value_2[0x20];
+	u8 prog_sample_field_id_2[0x20];
+	u8 prog_sample_field_value_3[0x20];
+	u8 prog_sample_field_id_3[0x20];
+	u8 reserved_at_100[0x100];
+};
+
 /* Flow matcher. */
 struct mlx5_ifc_fte_match_param_bits {
 	struct mlx5_ifc_fte_match_set_lyr_2_4_bits outer_headers;
@@ -794,6 +806,7 @@ struct mlx5_ifc_fte_match_param_bits {
 	struct mlx5_ifc_fte_match_set_lyr_2_4_bits inner_headers;
 	struct mlx5_ifc_fte_match_set_misc2_bits misc_parameters_2;
 	struct mlx5_ifc_fte_match_set_misc3_bits misc_parameters_3;
+	struct mlx5_ifc_fte_match_set_misc4_bits misc_parameters_4;
 };
 
 enum {
@@ -801,7 +814,8 @@ enum {
 	MLX5_MATCH_CRITERIA_ENABLE_MISC_BIT,
 	MLX5_MATCH_CRITERIA_ENABLE_INNER_BIT,
 	MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT,
-	MLX5_MATCH_CRITERIA_ENABLE_MISC3_BIT
+	MLX5_MATCH_CRITERIA_ENABLE_MISC3_BIT,
+	MLX5_MATCH_CRITERIA_ENABLE_MISC4_BIT,
 };
 
 enum {

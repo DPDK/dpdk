@@ -5759,7 +5759,15 @@ flow_dv_prepare(struct rte_eth_dev *dev,
 	dev_flow = &((struct mlx5_flow *)priv->inter_flows)[priv->flow_idx++];
 	dev_flow->handle = dev_handle;
 	dev_flow->handle_idx = handle_idx;
-	dev_flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param);
+	/*
+	 * In some old rdma-core releases, before continuing, a check of the
+	 * length of matching parameter will be done at first. It needs to use
+	 * the length without misc4 param. If the flow has misc4 support, then
+	 * the length needs to be adjusted accordingly. Each param member is
+	 * aligned with a 64B boundary naturally.
+	 */
+	dev_flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param) -
+				  MLX5_ST_SZ_BYTES(fte_match_set_misc4);
 	/*
 	 * The matching value needs to be cleared to 0 before using. In the
 	 * past, it will be automatically cleared when using rte_*alloc
@@ -7259,6 +7267,90 @@ flow_dv_translate_item_gtp(void *matcher, void *key,
 		 rte_be_to_cpu_32(gtp_v->teid & gtp_m->teid));
 }
 
+/**
+ * Add eCPRI item to matcher and to the value.
+ *
+ * @param[in] dev
+ *   The devich to configure through.
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] samples
+ *   Sample IDs to be used in the matching.
+ */
+static void
+flow_dv_translate_item_ecpri(struct rte_eth_dev *dev, void *matcher,
+			     void *key, const struct rte_flow_item *item)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item_ecpri *ecpri_m = item->mask;
+	const struct rte_flow_item_ecpri *ecpri_v = item->spec;
+	void *misc4_m = MLX5_ADDR_OF(fte_match_param, matcher,
+				     misc_parameters_4);
+	void *misc4_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_4);
+	uint32_t *samples;
+	void *dw_m;
+	void *dw_v;
+
+	if (!ecpri_v)
+		return;
+	if (!ecpri_m)
+		ecpri_m = &rte_flow_item_ecpri_mask;
+	/*
+	 * Maximal four DW samples are supported in a single matching now.
+	 * Two are used now for a eCPRI matching:
+	 * 1. Type: one byte, mask should be 0x00ff0000 in network order
+	 * 2. ID of a message: one or two bytes, mask 0xffff0000 or 0xff000000
+	 *    if any.
+	 */
+	if (!ecpri_m->hdr.common.u32)
+		return;
+	samples = priv->sh->fp[MLX5_FLEX_PARSER_ECPRI_0].ids;
+	/* Need to take the whole DW as the mask to fill the entry. */
+	dw_m = MLX5_ADDR_OF(fte_match_set_misc4, misc4_m,
+			    prog_sample_field_value_0);
+	dw_v = MLX5_ADDR_OF(fte_match_set_misc4, misc4_v,
+			    prog_sample_field_value_0);
+	/* Already big endian (network order) in the header. */
+	*(uint32_t *)dw_m = ecpri_m->hdr.common.u32;
+	*(uint32_t *)dw_v = ecpri_v->hdr.common.u32;
+	/* Sample#0, used for matching type, offset 0. */
+	MLX5_SET(fte_match_set_misc4, misc4_m,
+		 prog_sample_field_id_0, samples[0]);
+	/* It makes no sense to set the sample ID in the mask field. */
+	MLX5_SET(fte_match_set_misc4, misc4_v,
+		 prog_sample_field_id_0, samples[0]);
+	/*
+	 * Checking if message body part needs to be matched.
+	 * Some wildcard rules only matching type field should be supported.
+	 */
+	if (ecpri_m->hdr.dummy[0]) {
+		switch (ecpri_v->hdr.common.type) {
+		case RTE_ECPRI_MSG_TYPE_IQ_DATA:
+		case RTE_ECPRI_MSG_TYPE_RTC_CTRL:
+		case RTE_ECPRI_MSG_TYPE_DLY_MSR:
+			dw_m = MLX5_ADDR_OF(fte_match_set_misc4, misc4_m,
+					    prog_sample_field_value_1);
+			dw_v = MLX5_ADDR_OF(fte_match_set_misc4, misc4_v,
+					    prog_sample_field_value_1);
+			*(uint32_t *)dw_m = ecpri_m->hdr.dummy[0];
+			*(uint32_t *)dw_v = ecpri_v->hdr.dummy[0];
+			/* Sample#1, to match message body, offset 4. */
+			MLX5_SET(fte_match_set_misc4, misc4_m,
+				 prog_sample_field_id_1, samples[1]);
+			MLX5_SET(fte_match_set_misc4, misc4_v,
+				 prog_sample_field_id_1, samples[1]);
+			break;
+		default:
+			/* Others, do not match any sample ID. */
+			break;
+		}
+	}
+}
+
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
 
 #define HEADER_IS_ZERO(match_criteria, headers)				     \
@@ -7294,6 +7386,9 @@ flow_dv_matcher_enable(uint32_t *match_criteria)
 	match_criteria_enable |=
 		(!HEADER_IS_ZERO(match_criteria, misc_parameters_3)) <<
 		MLX5_MATCH_CRITERIA_ENABLE_MISC3_BIT;
+	match_criteria_enable |=
+		(!HEADER_IS_ZERO(match_criteria, misc_parameters_4)) <<
+		MLX5_MATCH_CRITERIA_ENABLE_MISC4_BIT;
 	return match_criteria_enable;
 }
 
@@ -7892,7 +7987,8 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 	uint64_t priority = attr->priority;
 	struct mlx5_flow_dv_matcher matcher = {
 		.mask = {
-			.size = sizeof(matcher.mask.buf),
+			.size = sizeof(matcher.mask.buf) -
+				MLX5_ST_SZ_BYTES(fte_match_set_misc4),
 		},
 	};
 	int actions_n = 0;
@@ -8572,6 +8668,25 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			matcher.priority = rss_desc->level >= 2 ?
 				    MLX5_PRIORITY_MAP_L2 : MLX5_PRIORITY_MAP_L4;
 			last_item = MLX5_FLOW_LAYER_GTP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ECPRI:
+			if (!mlx5_flex_parser_ecpri_exist(dev)) {
+				ret = mlx5_flex_parser_ecpri_alloc(dev);
+				if (ret)
+					return rte_flow_error_set
+						(error, ret,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						NULL,
+						"cannot create eCPRI parser");
+			}
+			/* Adjust the length matcher and device flow value. */
+			matcher.mask.size = MLX5_ST_SZ_BYTES(fte_match_param);
+			dev_flow->dv.value.size =
+					MLX5_ST_SZ_BYTES(fte_match_param);
+			flow_dv_translate_item_ecpri(dev, match_mask,
+						     match_value, items);
+			/* No other protocol should follow eCPRI layer. */
+			last_item = MLX5_FLOW_LAYER_ECPRI;
 			break;
 		default:
 			break;

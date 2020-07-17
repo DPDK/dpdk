@@ -590,6 +590,20 @@ struct mlx5_dev_txpp {
 	rte_atomic32_t err_ts_future; /* Timestamp in the distant future. */
 };
 
+/* Supported flex parser profile ID. */
+enum mlx5_flex_parser_profile_id {
+	MLX5_FLEX_PARSER_ECPRI_0 = 0,
+	MLX5_FLEX_PARSER_MAX = 8,
+};
+
+/* Sample ID information of flex parser structure. */
+struct mlx5_flex_parser_profiles {
+	uint32_t num;		/* Actual number of samples. */
+	uint32_t ids[8];	/* Sample IDs for this profile. */
+	uint8_t offset[8];      /* Bytes offset of each parser. */
+	void *obj;		/* Flex parser node object. */
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -649,6 +663,8 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_flow_id_pool *flow_id_pool; /* Flow ID pool. */
 	struct mlx5dv_devx_uar *tx_uar; /* Tx/packer pacing shared UAR. */
+	struct mlx5_flex_parser_profiles fp[MLX5_FLEX_PARSER_MAX];
+	/* Flex parser profiles information. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -784,6 +800,8 @@ int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
 int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
 			 struct rte_eth_hairpin_cap *cap);
+bool mlx5_flex_parser_ecpri_exist(struct rte_eth_dev *dev);
+int mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev);
 
 /* mlx5_ethdev.c */
 
