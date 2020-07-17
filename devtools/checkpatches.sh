@@ -77,6 +77,39 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# refrain from new additions of 16/32/64 bits rte_atomicNN_xxx()
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="rte_atomic[0-9][0-9]_.*\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using rte_atomicNN_xxx' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# refrain from new additions of rte_smp_[r/w]mb()
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="rte_smp_(r|w)?mb\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using rte_smp_[r/w]mb' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# refrain from using compiler __sync_xxx builtins
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="__sync_.*\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __sync_xxx builtins' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# refrain from using compiler __atomic_thread_fence()
+	# It should be avoided on x86 for SMP case.
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="__atomic_thread_fence\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __atomic_thread_fence' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# svg figures must be included with wildcard extension
 	# because of png conversion for pdf docs
 	awk -v FOLDERS='doc' \
