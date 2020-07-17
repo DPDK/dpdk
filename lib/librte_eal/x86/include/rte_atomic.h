@@ -83,6 +83,22 @@ rte_smp_mb(void)
 
 #define rte_cio_rmb() rte_compiler_barrier()
 
+/**
+ * Synchronization fence between threads based on the specified memory order.
+ *
+ * On x86 the __atomic_thread_fence(__ATOMIC_SEQ_CST) generates full 'mfence'
+ * which is quite expensive. The optimized implementation of rte_smp_mb is
+ * used instead.
+ */
+static __rte_always_inline void
+rte_atomic_thread_fence(int memory_order)
+{
+	if (memory_order == __ATOMIC_SEQ_CST)
+		rte_smp_mb();
+	else
+		__atomic_thread_fence(memory_order);
+}
+
 /*------------------------- 16 bit atomic operations -------------------------*/
 
 #ifndef RTE_FORCE_INTRINSICS

@@ -158,6 +158,11 @@ static inline void rte_cio_rmb(void);
 	asm volatile ("" : : : "memory");	\
 } while(0)
 
+/**
+ * Synchronization fence between threads based on the specified memory order.
+ */
+static inline void rte_atomic_thread_fence(int memory_order);
+
 /*------------------------- 16 bit atomic operations -------------------------*/
 
 /**
