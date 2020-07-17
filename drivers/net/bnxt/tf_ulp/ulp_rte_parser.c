@@ -16,6 +16,7 @@
 #define ULP_VLAN_PRIORITY_SHIFT		13 /* First 3 bits */
 #define ULP_VLAN_PRIORITY_MASK		0x700
 #define ULP_VLAN_TAG_MASK		0xFFF /* Last 12 bits*/
+#define ULP_UDP_PORT_VXLAN		4789
 
 /* Utility function to skip the void items. */
 static inline int32_t
@@ -208,6 +209,9 @@ bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params)
 					    BNXT_ULP_CF_IDX_ACT_DEC_TTL, 1);
 		}
 	}
+
+	/* Merge the hdr_fp_bit into the proto header bit */
+	params->hdr_bitmap.bits |= params->hdr_fp_bit.bits;
 
 	/* TBD: Handle the flow rejection scenarios */
 	return 0;
@@ -493,6 +497,34 @@ ulp_rte_phy_port_hdr_handler(const struct rte_flow_item *item,
 	return BNXT_TF_RC_SUCCESS;
 }
 
+/* Function to handle the update of proto header based on field values */
+static void
+ulp_rte_l2_proto_type_update(struct ulp_rte_parser_params *param,
+			     uint16_t type, uint32_t in_flag)
+{
+	if (type == tfp_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
+		if (in_flag) {
+			ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_I_IPV4);
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_I_L3, 1);
+		} else {
+			ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_O_IPV4);
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_O_L3, 1);
+		}
+	} else if (type == tfp_cpu_to_be_16(RTE_ETHER_TYPE_IPV6))  {
+		if (in_flag) {
+			ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_I_IPV6);
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_I_L3, 1);
+		} else {
+			ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_O_IPV6);
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_O_L3, 1);
+		}
+	}
+}
+
 /* Function to handle the parsing of RTE Flow item Ethernet Header. */
 int32_t
 ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
@@ -502,8 +534,9 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 	const struct rte_flow_item_eth *eth_mask = item->mask;
 	struct ulp_rte_hdr_field *field;
 	uint32_t idx = params->field_idx;
-	uint64_t set_flag = 0;
 	uint32_t size;
+	uint16_t eth_type = 0;
+	uint32_t inner_flag = 0;
 
 	/*
 	 * Copy the rte_flow_item for eth into hdr_field using ethernet
@@ -521,6 +554,7 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(field,
 						&eth_spec->type,
 						sizeof(eth_spec->type));
+		eth_type = eth_spec->type;
 	}
 	if (eth_mask) {
 		ulp_rte_prsr_mask_copy(params, &idx, eth_mask->dst.addr_bytes,
@@ -535,17 +569,15 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 	params->vlan_idx = params->field_idx;
 	params->field_idx += BNXT_ULP_PROTO_HDR_VLAN_NUM;
 
-	/* Update the hdr_bitmap with BNXT_ULP_HDR_PROTO_I_ETH */
-	set_flag = ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
-				    BNXT_ULP_HDR_BIT_O_ETH);
-	if (set_flag)
+	/* Update the protocol hdr bitmap */
+	if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_ETH)) {
 		ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_I_ETH);
-	else
-		ULP_BITMAP_RESET(params->hdr_bitmap.bits,
-				 BNXT_ULP_HDR_BIT_I_ETH);
-
-	/* update the hdr_bitmap with BNXT_ULP_HDR_PROTO_O_ETH */
-	ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_ETH);
+		inner_flag = 1;
+	} else {
+		ULP_BITMAP_SET(params->hdr_bitmap.bits, BNXT_ULP_HDR_BIT_O_ETH);
+	}
+	/* Update the field protocol hdr bitmap */
+	ulp_rte_l2_proto_type_update(params, eth_type, inner_flag);
 
 	return BNXT_TF_RC_SUCCESS;
 }
@@ -563,6 +595,8 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 	uint16_t vlan_tag, priority;
 	uint32_t outer_vtag_num;
 	uint32_t inner_vtag_num;
+	uint16_t eth_type = 0;
+	uint32_t inner_flag = 0;
 
 	/*
 	 * Copy the rte_flow_item for vlan into hdr_field using Vlan
@@ -583,6 +617,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(field,
 						&vlan_spec->inner_type,
 						sizeof(vlan_spec->inner_type));
+		eth_type = vlan_spec->inner_type;
 	}
 
 	if (vlan_mask) {
@@ -653,6 +688,7 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_ONE_VTAG, 1);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_IO_VLAN);
+		inner_flag = 1;
 	} else if (ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_O_ETH) &&
 		   ULP_BITMAP_ISSET(hdr_bit->bits, BNXT_ULP_HDR_BIT_I_ETH) &&
 		   inner_vtag_num == 1) {
@@ -664,11 +700,42 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_ONE_VTAG, 0);
 		ULP_BITMAP_SET(params->hdr_bitmap.bits,
 			       BNXT_ULP_HDR_BIT_II_VLAN);
+		inner_flag = 1;
 	} else {
 		BNXT_TF_DBG(ERR, "Error Parsing:Vlan hdr found withtout eth\n");
 		return BNXT_TF_RC_ERROR;
 	}
+	/* Update the field protocol hdr bitmap */
+	ulp_rte_l2_proto_type_update(params, eth_type, inner_flag);
 	return BNXT_TF_RC_SUCCESS;
+}
+
+/* Function to handle the update of proto header based on field values */
+static void
+ulp_rte_l3_proto_type_update(struct ulp_rte_parser_params *param,
+			     uint8_t proto, uint32_t in_flag)
+{
+	if (proto == IPPROTO_UDP) {
+		if (in_flag) {
+			ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_I_UDP);
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_I_L4, 1);
+		} else {
+			ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_O_UDP);
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_O_L4, 1);
+		}
+	} else if (proto == IPPROTO_TCP) {
+		if (in_flag) {
+			ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_I_TCP);
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_I_L4, 1);
+		} else {
+			ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_O_TCP);
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_O_L4, 1);
+		}
+	}
 }
 
 /* Function to handle the parsing of RTE Flow item IPV4 Header. */
@@ -682,11 +749,14 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = params->field_idx;
 	uint32_t size;
-	uint32_t inner_l3, outer_l3;
+	uint8_t proto = 0;
+	uint32_t inner_flag = 0;
+	uint32_t cnt;
 
-	inner_l3 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_I_L3);
-	if (inner_l3) {
-		BNXT_TF_DBG(ERR, "Parse Error:Third L3 header not supported\n");
+	/* validate there are no 3rd L3 header */
+	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L3_HDR_CNT);
+	if (cnt == 2) {
+		BNXT_TF_DBG(ERR, "Parse Err:Third L3 header not supported\n");
 		return BNXT_TF_RC_ERROR;
 	}
 
@@ -723,6 +793,7 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(field,
 						&ipv4_spec->hdr.next_proto_id,
 						size);
+		proto = ipv4_spec->hdr.next_proto_id;
 		size = sizeof(ipv4_spec->hdr.hdr_checksum);
 		field = ulp_rte_parser_fld_copy(field,
 						&ipv4_spec->hdr.hdr_checksum,
@@ -782,18 +853,19 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 	params->field_idx += BNXT_ULP_PROTO_HDR_IPV4_NUM;
 
 	/* Set the ipv4 header bitmap and computed l3 header bitmaps */
-	outer_l3 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_O_L3);
-	if (outer_l3 ||
-	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV4) ||
+	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV4) ||
 	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_IPV4);
-		inner_l3++;
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3, inner_l3);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3, 1);
+		inner_flag = 1;
 	} else {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV4);
-		outer_l3++;
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, outer_l3);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
+
+	/* Update the field protocol hdr bitmap */
+	ulp_rte_l3_proto_type_update(params, proto, inner_flag);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_HDR_CNT, ++cnt);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -808,12 +880,15 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = params->field_idx;
 	uint32_t size;
-	uint32_t inner_l3, outer_l3;
 	uint32_t vtcf, vtcf_mask;
+	uint8_t proto = 0;
+	uint32_t inner_flag = 0;
+	uint32_t cnt;
 
-	inner_l3 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_I_L3);
-	if (inner_l3) {
-		BNXT_TF_DBG(ERR, "Parse Error: 3'rd L3 header not supported\n");
+	/* validate there are no 3rd L3 header */
+	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L3_HDR_CNT);
+	if (cnt == 2) {
+		BNXT_TF_DBG(ERR, "Parse Err:Third L3 header not supported\n");
 		return BNXT_TF_RC_ERROR;
 	}
 
@@ -847,6 +922,7 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(field,
 						&ipv6_spec->hdr.proto,
 						size);
+		proto = ipv6_spec->hdr.proto;
 		size = sizeof(ipv6_spec->hdr.hop_limits);
 		field = ulp_rte_parser_fld_copy(field,
 						&ipv6_spec->hdr.hop_limits,
@@ -899,17 +975,31 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 	params->field_idx += BNXT_ULP_PROTO_HDR_IPV6_NUM;
 
 	/* Set the ipv6 header bitmap and computed l3 header bitmaps */
-	outer_l3 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_O_L3);
-	if (outer_l3 ||
-	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV4) ||
+	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV4) ||
 	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_IPV6);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L3, 1);
+		inner_flag = 1;
 	} else {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_IPV6);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L3, 1);
 	}
+
+	/* Update the field protocol hdr bitmap */
+	ulp_rte_l3_proto_type_update(params, proto, inner_flag);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_HDR_CNT, ++cnt);
+
 	return BNXT_TF_RC_SUCCESS;
+}
+
+/* Function to handle the update of proto header based on field values */
+static void
+ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *param,
+			     uint16_t dst_port)
+{
+	if (dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN))
+		ULP_BITMAP_SET(param->hdr_fp_bit.bits,
+			       BNXT_ULP_HDR_BIT_T_VXLAN);
 }
 
 /* Function to handle the parsing of RTE Flow item UDP Header. */
@@ -923,10 +1013,11 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = params->field_idx;
 	uint32_t size;
-	uint32_t inner_l4, outer_l4;
+	uint16_t dst_port = 0;
+	uint32_t cnt;
 
-	inner_l4 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_I_L4);
-	if (inner_l4) {
+	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L4_HDR_CNT);
+	if (cnt == 2) {
 		BNXT_TF_DBG(ERR, "Parse Err:Third L4 header not supported\n");
 		return BNXT_TF_RC_ERROR;
 	}
@@ -944,6 +1035,7 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(field,
 						&udp_spec->hdr.dst_port,
 						size);
+		dst_port = udp_spec->hdr.dst_port;
 		size = sizeof(udp_spec->hdr.dgram_len);
 		field = ulp_rte_parser_fld_copy(field,
 						&udp_spec->hdr.dgram_len,
@@ -972,16 +1064,17 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 	params->field_idx += BNXT_ULP_PROTO_HDR_UDP_NUM;
 
 	/* Set the udp header bitmap and computed l4 header bitmaps */
-	outer_l4 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_O_L4);
-	if (outer_l4 ||
-	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP) ||
+	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP) ||
 	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_UDP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
 	} else {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
+		/* Update the field protocol hdr bitmap */
+		ulp_rte_l4_proto_type_update(params, dst_port);
 	}
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L4_HDR_CNT, ++cnt);
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -996,11 +1089,11 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
 	uint32_t idx = params->field_idx;
 	uint32_t size;
-	uint32_t inner_l4, outer_l4;
+	uint32_t cnt;
 
-	inner_l4 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_I_L4);
-	if (inner_l4) {
-		BNXT_TF_DBG(ERR, "Parse Error:Third L4 header not supported\n");
+	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L4_HDR_CNT);
+	if (cnt == 2) {
+		BNXT_TF_DBG(ERR, "Parse Err:Third L4 header not supported\n");
 		return BNXT_TF_RC_ERROR;
 	}
 
@@ -1082,9 +1175,7 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 	params->field_idx += BNXT_ULP_PROTO_HDR_TCP_NUM;
 
 	/* Set the udp header bitmap and computed l4 header bitmaps */
-	outer_l4 = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_O_L4);
-	if (outer_l4 ||
-	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP) ||
+	if (ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_UDP) ||
 	    ULP_BITMAP_ISSET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP)) {
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_TCP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_I_L4, 1);
@@ -1092,6 +1183,7 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_TCP);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4, 1);
 	}
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L4_HDR_CNT, ++cnt);
 	return BNXT_TF_RC_SUCCESS;
 }
 
