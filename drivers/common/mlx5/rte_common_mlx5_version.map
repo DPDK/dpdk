@@ -11,6 +11,7 @@ INTERNAL {
 	mlx5_dev_to_pci_addr;
 
 	mlx5_devx_cmd_create_cq;
+	mlx5_devx_cmd_create_flex_parser;
 	mlx5_devx_cmd_create_qp;
 	mlx5_devx_cmd_create_rq;
 	mlx5_devx_cmd_create_rqt;
@@ -32,6 +33,7 @@ INTERNAL {
 	mlx5_devx_cmd_modify_virtq;
 	mlx5_devx_cmd_qp_query_tis_td;
 	mlx5_devx_cmd_query_hca_attr;
+	mlx5_devx_cmd_query_parse_samples;
 	mlx5_devx_cmd_query_virtio_q_counters;
 	mlx5_devx_cmd_query_virtq;
 	mlx5_devx_cmd_register_read;

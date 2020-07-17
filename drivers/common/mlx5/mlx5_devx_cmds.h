@@ -70,6 +70,7 @@ struct mlx5_hca_attr {
 	uint32_t eswitch_manager:1;
 	uint32_t flow_counters_dump:1;
 	uint32_t log_max_rqt_size:5;
+	uint32_t parse_graph_flex_node:1;
 	uint8_t flow_counter_bulk_alloc_bitmap;
 	uint32_t eth_net_offloads:1;
 	uint32_t eth_virt:1;
@@ -428,6 +429,13 @@ int mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp,
 __rte_internal
 int mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 			     struct mlx5_devx_rqt_attr *rqt_attr);
+__rte_internal
+int mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
+				      uint32_t ids[], uint32_t num);
+
+__rte_internal
+struct mlx5_devx_obj *mlx5_devx_cmd_create_flex_parser(void *ctx,
+					struct mlx5_devx_graph_node_attr *data);
 
 __rte_internal
 int mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id,

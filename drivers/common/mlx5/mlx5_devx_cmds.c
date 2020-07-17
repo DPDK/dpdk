@@ -457,6 +457,167 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 	}
 }
 
+int
+mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
+				  uint32_t ids[], uint32_t num)
+{
+	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(create_flex_parser_out)] = {0};
+	void *hdr = MLX5_ADDR_OF(create_flex_parser_out, in, hdr);
+	void *flex = MLX5_ADDR_OF(create_flex_parser_out, out, flex);
+	void *sample = MLX5_ADDR_OF(parse_graph_flex, flex, sample_table);
+	int ret;
+	uint32_t idx = 0;
+	uint32_t i;
+
+	if (num > MLX5_GRAPH_NODE_SAMPLE_NUM) {
+		rte_errno = EINVAL;
+		DRV_LOG(ERR, "Too many sample IDs to be fetched.");
+		return -rte_errno;
+	}
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_QUERY_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_id, flex_obj->id);
+	ret = mlx5_glue->devx_obj_query(flex_obj->obj, in, sizeof(in),
+					out, sizeof(out));
+	if (ret) {
+		rte_errno = ret;
+		DRV_LOG(ERR, "Failed to query sample IDs with object %p.",
+			(void *)flex_obj);
+		return -rte_errno;
+	}
+	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+		void *s_off = (void *)((char *)sample + i *
+			      MLX5_ST_SZ_BYTES(parse_graph_flow_match_sample));
+		uint32_t en;
+
+		en = MLX5_GET(parse_graph_flow_match_sample, s_off,
+			      flow_match_sample_en);
+		if (!en)
+			continue;
+		ids[idx++] = MLX5_GET(parse_graph_flow_match_sample, s_off,
+				  flow_match_sample_field_id);
+	}
+	if (num != idx) {
+		rte_errno = EINVAL;
+		DRV_LOG(ERR, "Number of sample IDs are not as expected.");
+		return -rte_errno;
+	}
+	return ret;
+}
+
+
+struct mlx5_devx_obj *
+mlx5_devx_cmd_create_flex_parser(void *ctx,
+			      struct mlx5_devx_graph_node_attr *data)
+{
+	uint32_t in[MLX5_ST_SZ_DW(create_flex_parser_in)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
+	void *hdr = MLX5_ADDR_OF(create_flex_parser_in, in, hdr);
+	void *flex = MLX5_ADDR_OF(create_flex_parser_in, in, flex);
+	void *sample = MLX5_ADDR_OF(parse_graph_flex, flex, sample_table);
+	void *in_arc = MLX5_ADDR_OF(parse_graph_flex, flex, input_arc);
+	void *out_arc = MLX5_ADDR_OF(parse_graph_flex, flex, output_arc);
+	struct mlx5_devx_obj *parse_flex_obj = NULL;
+	uint32_t i;
+
+	parse_flex_obj = rte_calloc(__func__, 1, sizeof(*parse_flex_obj), 0);
+	if (!parse_flex_obj) {
+		DRV_LOG(ERR, "Failed to allocate flex parser data");
+		rte_errno = ENOMEM;
+		rte_free(in);
+		return NULL;
+	}
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH);
+	MLX5_SET(parse_graph_flex, flex, header_length_mode,
+		 data->header_length_mode);
+	MLX5_SET(parse_graph_flex, flex, header_length_base_value,
+		 data->header_length_base_value);
+	MLX5_SET(parse_graph_flex, flex, header_length_field_offset,
+		 data->header_length_field_offset);
+	MLX5_SET(parse_graph_flex, flex, header_length_field_shift,
+		 data->header_length_field_shift);
+	MLX5_SET(parse_graph_flex, flex, header_length_field_mask,
+		 data->header_length_field_mask);
+	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+		struct mlx5_devx_match_sample_attr *s = &data->sample[i];
+		void *s_off = (void *)((char *)sample + i *
+			      MLX5_ST_SZ_BYTES(parse_graph_flow_match_sample));
+
+		if (!s->flow_match_sample_en)
+			continue;
+		MLX5_SET(parse_graph_flow_match_sample, s_off,
+			 flow_match_sample_en, !!s->flow_match_sample_en);
+		MLX5_SET(parse_graph_flow_match_sample, s_off,
+			 flow_match_sample_field_offset,
+			 s->flow_match_sample_field_offset);
+		MLX5_SET(parse_graph_flow_match_sample, s_off,
+			 flow_match_sample_offset_mode,
+			 s->flow_match_sample_offset_mode);
+		MLX5_SET(parse_graph_flow_match_sample, s_off,
+			 flow_match_sample_field_offset_mask,
+			 s->flow_match_sample_field_offset_mask);
+		MLX5_SET(parse_graph_flow_match_sample, s_off,
+			 flow_match_sample_field_offset_shift,
+			 s->flow_match_sample_field_offset_shift);
+		MLX5_SET(parse_graph_flow_match_sample, s_off,
+			 flow_match_sample_field_base_offset,
+			 s->flow_match_sample_field_base_offset);
+		MLX5_SET(parse_graph_flow_match_sample, s_off,
+			 flow_match_sample_tunnel_mode,
+			 s->flow_match_sample_tunnel_mode);
+	}
+	for (i = 0; i < MLX5_GRAPH_NODE_ARC_NUM; i++) {
+		struct mlx5_devx_graph_arc_attr *ia = &data->in[i];
+		struct mlx5_devx_graph_arc_attr *oa = &data->out[i];
+		void *in_off = (void *)((char *)in_arc + i *
+			      MLX5_ST_SZ_BYTES(parse_graph_arc));
+		void *out_off = (void *)((char *)out_arc + i *
+			      MLX5_ST_SZ_BYTES(parse_graph_arc));
+
+		if (ia->arc_parse_graph_node != 0) {
+			MLX5_SET(parse_graph_arc, in_off,
+				 compare_condition_value,
+				 ia->compare_condition_value);
+			MLX5_SET(parse_graph_arc, in_off, start_inner_tunnel,
+				 ia->start_inner_tunnel);
+			MLX5_SET(parse_graph_arc, in_off, arc_parse_graph_node,
+				 ia->arc_parse_graph_node);
+			MLX5_SET(parse_graph_arc, in_off,
+				 parse_graph_node_handle,
+				 ia->parse_graph_node_handle);
+		}
+		if (oa->arc_parse_graph_node != 0) {
+			MLX5_SET(parse_graph_arc, out_off,
+				 compare_condition_value,
+				 oa->compare_condition_value);
+			MLX5_SET(parse_graph_arc, out_off, start_inner_tunnel,
+				 oa->start_inner_tunnel);
+			MLX5_SET(parse_graph_arc, out_off, arc_parse_graph_node,
+				 oa->arc_parse_graph_node);
+			MLX5_SET(parse_graph_arc, out_off,
+				 parse_graph_node_handle,
+				 oa->parse_graph_node_handle);
+		}
+	}
+	parse_flex_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in),
+							 out, sizeof(out));
+	if (!parse_flex_obj->obj) {
+		rte_errno = errno;
+		DRV_LOG(ERR, "Failed to create FLEX PARSE GRAPH object "
+			"by using DevX.");
+		rte_free(parse_flex_obj);
+		return NULL;
+	}
+	parse_flex_obj->id = MLX5_GET(general_obj_out_cmd_hdr, out, obj_id);
+	return parse_flex_obj;
+}
+
 /**
  * Query HCA attributes.
  * Using those attributes we can check on run time if the device
@@ -528,6 +689,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->vdpa.queue_counters_valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
 							general_obj_types) &
 				  MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS);
+	attr->parse_graph_flex_node = !!(MLX5_GET64(cmd_hca_cap, hcattr,
+					 general_obj_types) &
+			      MLX5_GENERAL_OBJ_TYPES_CAP_PARSE_GRAPH_FLEX_NODE);
 	attr->wqe_index_ignore = MLX5_GET(cmd_hca_cap, hcattr,
 					  wqe_index_ignore_cap);
 	attr->cross_channel = MLX5_GET(cmd_hca_cap, hcattr, cd);
@@ -1102,7 +1266,7 @@ mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
 	if (ret) {
 		DRV_LOG(ERR, "Failed to modify SQ using DevX");
 		rte_errno = errno;
-		return -errno;
+		return -rte_errno;
 	}
 	return ret;
 }
@@ -1416,7 +1580,7 @@ mlx5_devx_cmd_modify_virtq(struct mlx5_devx_obj *virtq_obj,
 	if (ret) {
 		DRV_LOG(ERR, "Failed to modify VIRTQ using DevX.");
 		rte_errno = errno;
-		return -errno;
+		return -rte_errno;
 	}
 	return ret;
 }
@@ -1619,7 +1783,7 @@ mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp, uint32_t qp_st_mod_op,
 	if (ret) {
 		DRV_LOG(ERR, "Failed to modify QP using DevX.");
 		rte_errno = errno;
-		return -errno;
+		return -rte_errno;
 	}
 	return ret;
 }

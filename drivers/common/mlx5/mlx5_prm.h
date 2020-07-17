@@ -1045,10 +1045,9 @@ enum {
 	MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION = 0x13 << 1,
 };
 
-enum {
-	MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q = (1ULL << 0xd),
-	MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS = (1ULL << 0x1c),
-};
+#define MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q			(1ULL << 0xd)
+#define MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS		(1ULL << 0x1c)
+#define MLX5_GENERAL_OBJ_TYPES_CAP_PARSE_GRAPH_FLEX_NODE	(1ULL << 0x22)
 
 enum {
 	MLX5_HCA_CAP_OPMOD_GET_MAX   = 0,
@@ -2124,6 +2123,7 @@ struct mlx5_ifc_create_cq_in_bits {
 enum {
 	MLX5_GENERAL_OBJ_TYPE_VIRTQ = 0x000d,
 	MLX5_GENERAL_OBJ_TYPE_VIRTIO_Q_COUNTERS = 0x001c,
+	MLX5_GENERAL_OBJ_TYPE_FLEX_PARSE_GRAPH = 0x0022,
 };
 
 struct mlx5_ifc_general_obj_in_cmd_hdr_bits {
@@ -2666,6 +2666,67 @@ struct mlx5_ifc_register_mtutc_bits {
 
 #define MLX5_MTUTC_TIMESTAMP_MODE_INTERNAL_TIMER 0
 #define MLX5_MTUTC_TIMESTAMP_MODE_REAL_TIME 1
+
+struct mlx5_ifc_parse_graph_arc_bits {
+	u8 start_inner_tunnel[0x1];
+	u8 reserved_at_1[0x7];
+	u8 arc_parse_graph_node[0x8];
+	u8 compare_condition_value[0x10];
+	u8 parse_graph_node_handle[0x20];
+	u8 reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_parse_graph_flow_match_sample_bits {
+	u8 flow_match_sample_en[0x1];
+	u8 reserved_at_1[0x3];
+	u8 flow_match_sample_offset_mode[0x4];
+	u8 reserved_at_5[0x8];
+	u8 flow_match_sample_field_offset[0x10];
+	u8 reserved_at_32[0x4];
+	u8 flow_match_sample_field_offset_shift[0x4];
+	u8 flow_match_sample_field_base_offset[0x8];
+	u8 reserved_at_48[0xd];
+	u8 flow_match_sample_tunnel_mode[0x3];
+	u8 flow_match_sample_field_offset_mask[0x20];
+	u8 flow_match_sample_field_id[0x20];
+};
+
+struct mlx5_ifc_parse_graph_flex_bits {
+	u8 modify_field_select[0x40];
+	u8 reserved_at_64[0x20];
+	u8 header_length_base_value[0x10];
+	u8 reserved_at_112[0x4];
+	u8 header_length_field_shift[0x4];
+	u8 reserved_at_120[0x4];
+	u8 header_length_mode[0x4];
+	u8 header_length_field_offset[0x10];
+	u8 next_header_field_offset[0x10];
+	u8 reserved_at_160[0x1b];
+	u8 next_header_field_size[0x5];
+	u8 header_length_field_mask[0x20];
+	u8 reserved_at_224[0x20];
+	struct mlx5_ifc_parse_graph_flow_match_sample_bits sample_table[0x8];
+	struct mlx5_ifc_parse_graph_arc_bits input_arc[0x8];
+	struct mlx5_ifc_parse_graph_arc_bits output_arc[0x8];
+};
+
+struct mlx5_ifc_create_flex_parser_in_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_parse_graph_flex_bits flex;
+};
+
+struct mlx5_ifc_create_flex_parser_out_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_parse_graph_flex_bits flex;
+};
+
+struct mlx5_ifc_parse_graph_flex_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+	struct mlx5_ifc_parse_graph_flex_bits capability;
+};
 
 struct regexp_params_field_select_bits {
 	u8 reserved_at_0[0x1e];
