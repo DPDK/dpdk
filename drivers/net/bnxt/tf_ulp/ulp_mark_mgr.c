@@ -120,9 +120,11 @@ gfid_not_required:
 	return 0;
 
 mem_error:
-	rte_free(mark_tbl->gfid_tbl);
-	rte_free(mark_tbl->lfid_tbl);
-	rte_free(mark_tbl);
+	if (mark_tbl) {
+		rte_free(mark_tbl->gfid_tbl);
+		rte_free(mark_tbl->lfid_tbl);
+		rte_free(mark_tbl);
+	}
 	BNXT_TF_DBG(DEBUG, "Failed to allocate memory for mark mgr\n");
 	return -ENOMEM;
 }
