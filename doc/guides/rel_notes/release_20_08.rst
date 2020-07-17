@@ -228,6 +228,12 @@ New Features
   See the :doc:`../sample_app_ug/l2_forward_real_virtual` for more
   details of this parameter usage.
 
+* **Updated ipsec-secgw sample application.**
+
+  Added ``rte_flow`` based rules, which allows hardware parsing and steering
+  of ingress packets to specific NIC queues.
+  See the :doc:`../sample_app_ug/ipsec_secgw` for more details.
+
 
 Removed Items
 -------------

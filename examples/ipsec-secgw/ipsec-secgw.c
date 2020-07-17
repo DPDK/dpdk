@@ -50,6 +50,7 @@
 #include <rte_alarm.h>
 
 #include "event_helper.h"
+#include "flow.h"
 #include "ipsec.h"
 #include "ipsec_worker.h"
 #include "parser.h"
@@ -2979,6 +2980,8 @@ main(int32_t argc, char **argv)
 			rt_init(&socket_ctx[socket_id], socket_id);
 		}
 	}
+
+	flow_init();
 
 	check_all_ports_link_status(enabled_port_mask);
 

@@ -11,6 +11,7 @@
 #include <cmdline_socket.h>
 #include <cmdline.h>
 
+#include "flow.h"
 #include "ipsec.h"
 #include "parser.h"
 
@@ -484,6 +485,49 @@ cmdline_parse_inst_t cfg_rt_add_rule = {
 	},
 };
 
+/* flow add parse */
+struct cfg_flow_add_cfg_item {
+	cmdline_fixed_string_t flow_keyword;
+	cmdline_multi_string_t multi_string;
+};
+
+static void
+cfg_flow_add_cfg_item_parsed(void *parsed_result,
+	__rte_unused struct cmdline *cl, void *data)
+{
+	struct cfg_flow_add_cfg_item *params = parsed_result;
+	char *tokens[32];
+	uint32_t n_tokens = RTE_DIM(tokens);
+	struct parse_status *status = (struct parse_status *)data;
+
+	APP_CHECK(parse_tokenize_string(
+		params->multi_string, tokens, &n_tokens) == 0,
+		status, "too many arguments\n");
+	if (status->status < 0)
+		return;
+
+	parse_flow_tokens(tokens, n_tokens, status);
+}
+
+static cmdline_parse_token_string_t cfg_flow_add_flow_str =
+	TOKEN_STRING_INITIALIZER(struct cfg_flow_add_cfg_item,
+		flow_keyword, "flow");
+
+static cmdline_parse_token_string_t cfg_flow_add_multi_str =
+	TOKEN_STRING_INITIALIZER(struct cfg_flow_add_cfg_item, multi_string,
+		TOKEN_STRING_MULTI);
+
+cmdline_parse_inst_t cfg_flow_add_rule = {
+	.f = cfg_flow_add_cfg_item_parsed,
+	.data = NULL,
+	.help_str = "",
+	.tokens = {
+		(void *) &cfg_flow_add_flow_str,
+		(void *) &cfg_flow_add_multi_str,
+		NULL,
+	},
+};
+
 /* neigh add parse */
 struct cfg_neigh_add_item {
 	cmdline_fixed_string_t neigh;
@@ -538,6 +582,7 @@ cmdline_parse_ctx_t ipsec_ctx[] = {
 	(cmdline_parse_inst_t *)&cfg_sp_add_rule,
 	(cmdline_parse_inst_t *)&cfg_sa_add_rule,
 	(cmdline_parse_inst_t *)&cfg_rt_add_rule,
+	(cmdline_parse_inst_t *)&cfg_flow_add_rule,
 	(cmdline_parse_inst_t *)&cfg_neigh_add_rule,
 	NULL,
 };
@@ -564,6 +609,7 @@ parse_cfg_file(const char *cfg_filename)
 	cfg_sp_add_rule.data = &status;
 	cfg_sa_add_rule.data = &status;
 	cfg_rt_add_rule.data = &status;
+	cfg_flow_add_rule.data = &status;
 	cfg_neigh_add_rule.data = &status;
 
 	do {

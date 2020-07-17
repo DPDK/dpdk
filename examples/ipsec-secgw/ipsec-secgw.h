@@ -38,6 +38,13 @@
 	((uint64_t)(a) & 0xff))
 #endif
 
+#define uint32_t_to_char(ip, a, b, c, d) do {\
+		*a = (uint8_t)(ip >> 24 & 0xff);\
+		*b = (uint8_t)(ip >> 16 & 0xff);\
+		*c = (uint8_t)(ip >> 8 & 0xff);\
+		*d = (uint8_t)(ip & 0xff);\
+	} while (0)
+
 #define ETHADDR(a, b, c, d, e, f) (__BYTES_TO_UINT64(a, b, c, d, e, f, 0, 0))
 
 struct traffic_type {

@@ -2,12 +2,13 @@
  * Copyright(c) 2016 Intel Corporation
  */
 
+#ifndef __PARSER_H
+#define __PARSER_H
+
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-
-#ifndef __PARSER_H
-#define __PARSER_H
+#include <string.h>
 
 struct parse_status {
 	int status;

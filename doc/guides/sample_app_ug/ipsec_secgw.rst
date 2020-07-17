@@ -348,7 +348,7 @@ Configurations
 --------------
 
 The following sections provide the syntax of configurations to initialize
-your SP, SA, Routing and Neighbour tables.
+your SP, SA, Routing, Flow and Neighbour tables.
 Configurations shall be specified in the configuration file to be passed to
 the application. The file is then parsed by the application. The successful
 parsing will result in the appropriate rules being applied to the tables
@@ -369,7 +369,7 @@ General rule syntax
 
 The parse treats one line in the configuration file as one configuration
 item (unless the line concatenation symbol exists). Every configuration
-item shall follow the syntax of either SP, SA, Routing or Neighbour
+item shall follow the syntax of either SP, SA, Routing, Flow or Neighbour
 rules specified below.
 
 The configuration parser supports the following special symbols:
@@ -807,6 +807,80 @@ Example SP rules:
     rt ipv4 dst 172.16.1.5/32 port 0
 
     rt ipv6 dst 1111:1111:1111:1111:1111:1111:1111:5555/116 port 0
+
+Flow rule syntax
+^^^^^^^^^^^^^^^^
+
+Flow rule enables the usage of hardware classification capabilities to match specific
+ingress traffic and redirect the packets to the specified queue. This feature is
+optional and relies on hardware ``rte_flow`` support.
+
+The flow rule syntax is shown as follows:
+
+.. code-block:: console
+
+    flow <ip_ver> <src_ip> <dst_ip> <port> <queue>
+
+
+where each options means:
+
+``<ip_ver>``
+
+ * IP protocol version
+
+ * Optional: No
+
+ * Available options:
+
+   * *ipv4*: IP protocol version 4
+   * *ipv6*: IP protocol version 6
+
+``<src_ip>``
+
+ * The source IP address and mask
+
+ * Optional: Yes, default address 0.0.0.0 and mask of 0 will be used
+
+ * Syntax:
+
+   * *src X.X.X.X/Y* for IPv4
+   * *src XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX/Y* for IPv6
+
+``<dst_ip>``
+
+ * The destination IP address and mask
+
+ * Optional: Yes, default address 0.0.0.0 and mask of 0 will be used
+
+ * Syntax:
+
+   * *dst X.X.X.X/Y* for IPv4
+   * *dst XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX/Y* for IPv6
+
+``<port>``
+
+ * The traffic input port id
+
+ * Optional: yes, default input port 0 will be used
+
+ * Syntax: *port X*
+
+``<queue>``
+
+ * The traffic input queue id
+
+ * Optional: yes, default input queue 0 will be used
+
+ * Syntax: *queue X*
+
+Example flow rules:
+
+.. code-block:: console
+
+    flow ipv4 dst 172.16.1.5/32 port 0 queue 0
+
+    flow ipv6 dst 1111:1111:1111:1111:1111:1111:1111:5555/116 port 1 queue 0
+
 
 Neighbour rule syntax
 ^^^^^^^^^^^^^^^^^^^^^
