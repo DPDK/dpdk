@@ -129,6 +129,12 @@ Deprecation Notices
   in "rte_sched.h". These changes are aligned to improvements suggested in the
   RFC https://mails.dpdk.org/archives/dev/2018-November/120035.html.
 
+* mbuf: ``refcnt_atomic`` member in structures ``rte_mbuf`` and
+  ``rte_mbuf_ext_shared_info`` is of type ``rte_atomic16_t``. Due to adoption
+  of C11 atomic builtins it will be of type ``uint16_t``. ``refcnt_atomic``
+  will be removed in 20.11. It will be replaced with ``refcnt`` of type
+  ``uint16_t``.
+
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
 
