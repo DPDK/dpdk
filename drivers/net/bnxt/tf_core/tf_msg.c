@@ -28,7 +28,6 @@
  */
 #define TF_MSG_SET_GLOBAL_CFG_DATA_SIZE  16
 #define TF_MSG_EM_INSERT_KEY_SIZE        64
-#define TF_MSG_TCAM_SET_DEV_DATA_SIZE    88
 #define TF_MSG_TBL_TYPE_SET_DATA_SIZE    88
 
 /* Compile check - Catch any msg changes that we depend on, like the
