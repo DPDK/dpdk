@@ -315,8 +315,8 @@ static int ulp_get_single_flow_stat(struct tf *tfp,
 	/* TBD - Get PKT/BYTE COUNT SHIFT/MASK from Template */
 	sw_cntr_indx = hw_cntr_id - fc_info->shadow_hw_tbl[dir].start_idx;
 	sw_acc_tbl_entry = &fc_info->sw_acc_tbl[dir][sw_cntr_indx];
-	sw_acc_tbl_entry->pkt_count += FLOW_CNTR_PKTS(stats, dparms);
-	sw_acc_tbl_entry->byte_count += FLOW_CNTR_BYTES(stats, dparms);
+	sw_acc_tbl_entry->pkt_count = FLOW_CNTR_PKTS(stats, dparms);
+	sw_acc_tbl_entry->byte_count = FLOW_CNTR_BYTES(stats, dparms);
 
 	return rc;
 }
