@@ -71,7 +71,7 @@ struct tf_tbl_scope_cb *
 tbl_scope_cb_find(uint32_t tbl_scope_id)
 {
 	int i;
-	struct tf_rm_is_allocated_parms parms;
+	struct tf_rm_is_allocated_parms parms = { 0 };
 	int allocated;
 	uint32_t rm_tbl_scope_id;
 
