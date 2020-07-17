@@ -8671,10 +8671,11 @@ __flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_ECPRI:
 			if (!mlx5_flex_parser_ecpri_exist(dev)) {
+				/* Create it only the first time to be used. */
 				ret = mlx5_flex_parser_ecpri_alloc(dev);
 				if (ret)
 					return rte_flow_error_set
-						(error, ret,
+						(error, -ret,
 						RTE_FLOW_ERROR_TYPE_ITEM,
 						NULL,
 						"cannot create eCPRI parser");

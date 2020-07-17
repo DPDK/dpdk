@@ -643,9 +643,69 @@ mlx5_flex_parser_ecpri_alloc(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flex_parser_profiles *prf =
 				&priv->sh->fp[MLX5_FLEX_PARSER_ECPRI_0];
+	struct mlx5_devx_graph_node_attr node = {
+		.modify_field_select = 0,
+	};
+	uint32_t ids[8];
+	int ret;
 
-	(void)prf;
+	node.header_length_mode = MLX5_GRAPH_NODE_LEN_FIXED;
+	/* 8 bytes now: 4B common header + 4B message body header. */
+	node.header_length_base_value = 0x8;
+	/* After MAC layer: Ether / VLAN. */
+	node.in[0].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_MAC;
+	/* Type of compared condition should be 0xAEFE in the L2 layer. */
+	node.in[0].compare_condition_value = RTE_ETHER_TYPE_ECPRI;
+	/* Sample #0: type in common header. */
+	node.sample[0].flow_match_sample_en = 1;
+	/* Fixed offset. */
+	node.sample[0].flow_match_sample_offset_mode = 0x0;
+	/* Only the 2nd byte will be used. */
+	node.sample[0].flow_match_sample_field_base_offset = 0x0;
+	/* Sample #1: message payload. */
+	node.sample[1].flow_match_sample_en = 1;
+	/* Fixed offset. */
+	node.sample[1].flow_match_sample_offset_mode = 0x0;
+	/*
+	 * Only the first two bytes will be used right now, and its offset will
+	 * start after the common header that with the length of a DW(u32).
+	 */
+	node.sample[1].flow_match_sample_field_base_offset = sizeof(uint32_t);
+	prf->obj = mlx5_devx_cmd_create_flex_parser(priv->sh->ctx, &node);
+	if (!prf->obj) {
+		DRV_LOG(ERR, "Failed to create flex parser node object.");
+		return (rte_errno == 0) ? -ENODEV : -rte_errno;
+	}
+	prf->num = 2;
+	ret = mlx5_devx_cmd_query_parse_samples(prf->obj, ids, prf->num);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to query sample IDs.");
+		return (rte_errno == 0) ? -ENODEV : -rte_errno;
+	}
+	prf->offset[0] = 0x0;
+	prf->offset[1] = sizeof(uint32_t);
+	prf->ids[0] = ids[0];
+	prf->ids[1] = ids[1];
 	return 0;
+}
+
+/*
+ * Destroy the flex parser node, including the parser itself, input / output
+ * arcs and DW samples. Resources could be reused then.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mlx5_flex_parser_ecpri_release(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flex_parser_profiles *prf =
+				&priv->sh->fp[MLX5_FLEX_PARSER_ECPRI_0];
+
+	if (prf->obj)
+		mlx5_devx_cmd_destroy(prf->obj);
+	prf->obj = NULL;
 }
 
 /**
@@ -1231,6 +1291,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	rte_wmb();
 	/* Disable datapath on secondary process. */
 	mlx5_mp_req_stop_rxtx(dev);
+	/* Free the eCPRI flex parser resource. */
+	mlx5_flex_parser_ecpri_release(dev);
 	if (priv->rxqs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */
 		usleep(1000);

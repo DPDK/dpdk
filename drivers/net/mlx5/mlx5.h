@@ -1025,6 +1025,7 @@ int mlx5_os_get_stats_n(struct rte_eth_dev *dev);
 void mlx5_os_stats_init(struct rte_eth_dev *dev);
 void mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
 			   mlx5_dereg_mr_t *dereg_mr_cb);
+
 /* mlx5_txpp.c */
 
 int mlx5_txpp_start(struct rte_eth_dev *dev);
