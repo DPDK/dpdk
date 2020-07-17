@@ -311,6 +311,50 @@ struct mlx5_devx_virtio_q_couners_attr {
 	uint32_t invalid_buffer;
 };
 
+/*
+ * graph flow match sample attributes structure,
+ * used by flex parser operations.
+ */
+struct mlx5_devx_match_sample_attr {
+	uint32_t flow_match_sample_en:1;
+	uint32_t flow_match_sample_field_offset:16;
+	uint32_t flow_match_sample_offset_mode:4;
+	uint32_t flow_match_sample_field_offset_mask;
+	uint32_t flow_match_sample_field_offset_shift:4;
+	uint32_t flow_match_sample_field_base_offset:8;
+	uint32_t flow_match_sample_tunnel_mode:3;
+	uint32_t flow_match_sample_field_id;
+};
+
+/* graph node arc attributes structure, used by flex parser operations. */
+struct mlx5_devx_graph_arc_attr {
+	uint32_t compare_condition_value:16;
+	uint32_t start_inner_tunnel:1;
+	uint32_t arc_parse_graph_node:8;
+	uint32_t parse_graph_node_handle;
+};
+
+/* Maximal number of samples per graph node. */
+#define MLX5_GRAPH_NODE_SAMPLE_NUM 8
+
+/* Maximal number of input/output arcs per graph node. */
+#define MLX5_GRAPH_NODE_ARC_NUM 8
+
+/* parse graph node attributes structure, used by flex parser operations. */
+struct mlx5_devx_graph_node_attr {
+	uint32_t modify_field_select;
+	uint32_t header_length_mode:4;
+	uint32_t header_length_base_value:16;
+	uint32_t header_length_field_shift:4;
+	uint32_t header_length_field_offset:16;
+	uint32_t header_length_field_mask;
+	struct mlx5_devx_match_sample_attr sample[MLX5_GRAPH_NODE_SAMPLE_NUM];
+	uint32_t next_header_field_offset:16;
+	uint32_t next_header_field_size:5;
+	struct mlx5_devx_graph_arc_attr in[MLX5_GRAPH_NODE_ARC_NUM];
+	struct mlx5_devx_graph_arc_attr out[MLX5_GRAPH_NODE_ARC_NUM];
+};
+
 /* mlx5_devx_cmds.c */
 
 __rte_internal

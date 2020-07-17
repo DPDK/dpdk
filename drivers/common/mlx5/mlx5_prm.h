@@ -2793,6 +2793,36 @@ enum {
 /* The bits meter color use. */
 #define MLX5_MTR_COLOR_BITS 8
 
+/* Length mode of dynamic flex parser graph node. */
+enum mlx5_parse_graph_node_len_mode {
+	MLX5_GRAPH_NODE_LEN_FIXED = 0x0,
+	MLX5_GRAPH_NODE_LEN_FIELD = 0x1,
+	MLX5_GRAPH_NODE_LEN_BITMASK = 0x2,
+};
+
+/* Offset mode of the samples of flex parser. */
+enum mlx5_parse_graph_flow_match_sample_offset_mode {
+	MLX5_GRAPH_SAMPLE_OFFSET_FIXED = 0x0,
+	MLX5_GRAPH_SAMPLE_OFFSET_FIELD = 0x1,
+	MLX5_GRAPH_SAMPLE_OFFSET_BITMASK = 0x2,
+};
+
+/* Node index for an input / output arc of the flex parser graph. */
+enum mlx5_parse_graph_arc_node_index {
+	MLX5_GRAPH_ARC_NODE_NULL = 0x0,
+	MLX5_GRAPH_ARC_NODE_HEAD = 0x1,
+	MLX5_GRAPH_ARC_NODE_MAC = 0x2,
+	MLX5_GRAPH_ARC_NODE_IP = 0x3,
+	MLX5_GRAPH_ARC_NODE_GRE = 0x4,
+	MLX5_GRAPH_ARC_NODE_UDP = 0x5,
+	MLX5_GRAPH_ARC_NODE_MPLS = 0x6,
+	MLX5_GRAPH_ARC_NODE_TCP = 0x7,
+	MLX5_GRAPH_ARC_NODE_VXLAN_GPE = 0x8,
+	MLX5_GRAPH_ARC_NODE_GENEVE = 0x9,
+	MLX5_GRAPH_ARC_NODE_IPSEC_ESP = 0xa,
+	MLX5_GRAPH_ARC_NODE_PROGRAMMABLE = 0x1f,
+};
+
 /**
  * Convert a user mark to flow mark.
  *

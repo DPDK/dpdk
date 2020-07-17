@@ -600,7 +600,7 @@ enum mlx5_flex_parser_profile_id {
 struct mlx5_flex_parser_profiles {
 	uint32_t num;		/* Actual number of samples. */
 	uint32_t ids[8];	/* Sample IDs for this profile. */
-	uint8_t offset[8];      /* Bytes offset of each parser. */
+	uint8_t offset[8];	/* Bytes offset of each parser. */
 	void *obj;		/* Flex parser node object. */
 };
 
