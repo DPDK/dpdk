@@ -162,7 +162,13 @@ enum tf_identifier_type {
 	 *  and can be used in WC TCAM or EM keys to virtualize further
 	 *  lookups.
 	 */
-	TF_IDENT_TYPE_L2_CTXT,
+	TF_IDENT_TYPE_L2_CTXT_HIGH,
+	/**
+	 *  The L2 Context is returned from the L2 Ctxt TCAM lookup
+	 *  and can be used in WC TCAM or EM keys to virtualize further
+	 *  lookups.
+	 */
+	TF_IDENT_TYPE_L2_CTXT_LOW,
 	/**
 	 *  The WC profile func is returned from the L2 Ctxt TCAM lookup
 	 *  to enable virtualization of the profile TCAM.
@@ -270,7 +276,9 @@ enum tf_tbl_type {
  */
 enum tf_tcam_tbl_type {
 	/** L2 Context TCAM */
-	TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
+	/** L2 Context TCAM */
+	TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
 	/** Profile TCAM */
 	TF_TCAM_TBL_TYPE_PROF_TCAM,
 	/** Wildcard TCAM */

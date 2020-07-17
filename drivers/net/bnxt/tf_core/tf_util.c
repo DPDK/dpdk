@@ -24,8 +24,10 @@ const char *
 tf_ident_2_str(enum tf_identifier_type id_type)
 {
 	switch (id_type) {
-	case TF_IDENT_TYPE_L2_CTXT:
-		return "l2_ctxt_remap";
+	case TF_IDENT_TYPE_L2_CTXT_HIGH:
+		return "l2_ctxt_remap_high";
+	case TF_IDENT_TYPE_L2_CTXT_LOW:
+		return "l2_ctxt_remap_low";
 	case TF_IDENT_TYPE_PROF_FUNC:
 		return "prof_func";
 	case TF_IDENT_TYPE_WC_PROF:
@@ -43,8 +45,10 @@ const char *
 tf_tcam_tbl_2_str(enum tf_tcam_tbl_type tcam_type)
 {
 	switch (tcam_type) {
-	case TF_TCAM_TBL_TYPE_L2_CTXT_TCAM:
-		return "l2_ctxt_tcam";
+	case TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH:
+		return "l2_ctxt_tcam_high";
+	case TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW:
+		return "l2_ctxt_tcam_low";
 	case TF_TCAM_TBL_TYPE_PROF_TCAM:
 		return "prof_tcam";
 	case TF_TCAM_TBL_TYPE_WC_TCAM:

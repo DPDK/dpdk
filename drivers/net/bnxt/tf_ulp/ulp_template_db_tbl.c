@@ -345,13 +345,13 @@ struct bnxt_ulp_glb_resource_info ulp_glb_resource_tbl[] = {
 	},
 	[2] = {
 		.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-		.resource_type           = TF_IDENT_TYPE_L2_CTXT,
+		.resource_type           = TF_IDENT_TYPE_L2_CTXT_HIGH,
 		.glb_regfile_index = BNXT_ULP_GLB_REGFILE_INDEX_GLB_L2_CNTXT_ID,
 		.direction               = TF_DIR_RX
 	},
 	[3] = {
 		.resource_func           = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-		.resource_type           = TF_IDENT_TYPE_L2_CTXT,
+		.resource_type           = TF_IDENT_TYPE_L2_CTXT_HIGH,
 		.glb_regfile_index = BNXT_ULP_GLB_REGFILE_INDEX_GLB_L2_CNTXT_ID,
 		.direction               = TF_DIR_TX
 	},

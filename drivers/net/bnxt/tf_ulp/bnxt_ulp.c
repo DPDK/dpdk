@@ -86,7 +86,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 	resources = &params.resources;
 	/** RX **/
 	/* Identifiers */
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT] = 16;
+	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 16;
 	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_WC_PROF] = 8;
 	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 8;
 	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_EM_PROF] = 8;
@@ -96,7 +96,8 @@ ulp_ctx_session_open(struct bnxt *bp,
 	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_STATS_64] = 720;
 
 	/* TCAMs */
-	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM] = 16;
+	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
+									16;
 	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 8;
 	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 416;
 
@@ -108,7 +109,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 
 	/** TX **/
 	/* Identifiers */
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT] = 8;
+	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 8;
 	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_WC_PROF] = 8;
 	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 8;
 	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_EM_PROF] = 8;
@@ -122,7 +123,8 @@ ulp_ctx_session_open(struct bnxt *bp,
 	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 16;
 
 	/* TCAMs */
-	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM] = 8;
+	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
+									8;
 	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 8;
 	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 8;
 

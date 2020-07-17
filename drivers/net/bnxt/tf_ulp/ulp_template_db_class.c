@@ -162,7 +162,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -217,7 +217,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -264,7 +264,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -297,7 +297,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -316,7 +316,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -335,7 +335,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -390,7 +390,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -437,7 +437,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -470,7 +470,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -489,7 +489,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -522,7 +522,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
 	.direction = TF_DIR_RX,
@@ -539,7 +539,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -611,7 +611,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
 	.direction = TF_DIR_RX,
@@ -628,7 +628,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_RX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -700,7 +700,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CACHE_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_CACHE_TYPE_L2_CNTXT_TCAM,
 	.direction = TF_DIR_TX,
@@ -717,7 +717,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_TCAM_TABLE,
-	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM,
+	.resource_type = TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
 	.direction = TF_DIR_TX,
 	.priority = BNXT_ULP_PRIORITY_LEVEL_0,
 	.srch_b4_alloc = BNXT_ULP_SEARCH_BEFORE_ALLOC_NO,
@@ -5295,7 +5295,7 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
@@ -5309,7 +5309,7 @@ struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
@@ -5323,7 +5323,7 @@ struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
 	.ident_bit_pos = 0
