@@ -1227,11 +1227,17 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
 					  "rss action not supported for "
 					  "egress");
-	if (rss->level > 1 &&  !tunnel)
+	if (rss->level > 1 && !tunnel)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
 					  "inner RSS is not supported for "
 					  "non-tunnel flows");
+	if ((item_flags & MLX5_FLOW_LAYER_ECPRI) &&
+	    !(item_flags & MLX5_FLOW_LAYER_INNER_L4_UDP)) {
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
+					  "RSS on eCPRI is not supported now");
+	}
 	return 0;
 }
 
@@ -1597,6 +1603,10 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
  *   Item specification.
  * @param[in] item_flags
  *   Bit-fields that holds the items detected until now.
+ * @param[in] last_item
+ *   Previous validated item in the pattern items.
+ * @param[in] ether_type
+ *   Type in the ethernet layer header (including dot1q).
  * @param[in] acc_mask
  *   Acceptable mask, if NULL default internal default mask
  *   will be used to check whether item fields are supported.
@@ -1695,6 +1705,10 @@ mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
  *   Item specification.
  * @param[in] item_flags
  *   Bit-fields that holds the items detected until now.
+ * @param[in] last_item
+ *   Previous validated item in the pattern items.
+ * @param[in] ether_type
+ *   Type in the ethernet layer header (including dot1q).
  * @param[in] acc_mask
  *   Acceptable mask, if NULL default internal default mask
  *   will be used to check whether item fields are supported.
@@ -2355,6 +2369,97 @@ mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
 	if (ret < 0)
 		return ret;
 	return 0;
+}
+
+/**
+ * Validate eCPRI item.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[in] last_item
+ *   Previous validated item in the pattern items.
+ * @param[in] ether_type
+ *   Type in the ethernet layer header (including dot1q).
+ * @param[in] acc_mask
+ *   Acceptable mask, if NULL default internal default mask
+ *   will be used to check whether item fields are supported.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
+			      uint64_t item_flags,
+			      uint64_t last_item,
+			      uint16_t ether_type,
+			      const struct rte_flow_item_ecpri *acc_mask,
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ecpri *mask = item->mask;
+	const struct rte_flow_item_ecpri nic_mask = {
+		.hdr = {
+			.common = {
+				.u32 =
+				RTE_BE32(((const struct rte_ecpri_common_hdr) {
+					.type = 0xFF,
+					}).u32),
+			},
+			.dummy[0] = 0xFFFFFFFF,
+		},
+	};
+	const uint64_t outer_l2_vlan = (MLX5_FLOW_LAYER_OUTER_L2 |
+					MLX5_FLOW_LAYER_OUTER_VLAN);
+	struct rte_flow_item_ecpri mask_lo;
+
+	if ((last_item & outer_l2_vlan) && ether_type &&
+	    ether_type != RTE_ETHER_TYPE_ECPRI)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "eCPRI cannot follow L2/VLAN layer "
+					  "which ether type is not 0xAEFE.");
+	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "eCPRI with tunnel is not supported "
+					  "right now.");
+	if (item_flags & MLX5_FLOW_LAYER_OUTER_L3)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple L3 layers not supported");
+	else if (item_flags & MLX5_FLOW_LAYER_OUTER_L4_TCP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "eCPRI cannot follow a TCP layer.");
+	/* In specification, eCPRI could be over UDP layer. */
+	else if (item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "eCPRI over UDP layer is not yet "
+					  "supported right now.");
+	/* Mask for type field in common header could be zero. */
+	if (!mask)
+		mask = &rte_flow_item_ecpri_mask;
+	mask_lo.hdr.common.u32 = rte_be_to_cpu_32(mask->hdr.common.u32);
+	/* Input mask is in big-endian format. */
+	if (mask_lo.hdr.common.type != 0 && mask_lo.hdr.common.type != 0xff)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "partial mask is not supported "
+					  "for protocol");
+	else if (mask_lo.hdr.common.type == 0 && mask->hdr.dummy[0] != 0)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "message header mask must be after "
+					  "a type mask");
+	return mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+					 acc_mask ? (const uint8_t *)acc_mask
+						  : (const uint8_t *)&nic_mask,
+					 sizeof(struct rte_flow_item_ecpri),
+					 error);
 }
 
 /* Allocate unique ID for the split Q/RSS subflows. */

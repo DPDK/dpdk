@@ -128,6 +128,9 @@ enum mlx5_feature_name {
 /* Pattern tunnel Layer bits (continued). */
 #define MLX5_FLOW_LAYER_GTP (1u << 28)
 
+/* Pattern eCPRI Layer bit. */
+#define MLX5_FLOW_LAYER_ECPRI (UINT64_C(1) << 29)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -1027,6 +1030,12 @@ int mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 				   uint64_t item_flags,
 				   struct rte_eth_dev *dev,
 				   struct rte_flow_error *error);
+int mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
+				  uint64_t item_flags,
+				  uint64_t last_item,
+				  uint16_t ether_type,
+				  const struct rte_flow_item_ecpri *acc_mask,
+				  struct rte_flow_error *error);
 struct mlx5_meter_domains_infos *mlx5_flow_create_mtr_tbls
 					(struct rte_eth_dev *dev,
 					 const struct mlx5_flow_meter *fm);

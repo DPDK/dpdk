@@ -4923,6 +4923,17 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			.hop_limits = 0xff,
 		},
 	};
+	const struct rte_flow_item_ecpri nic_ecpri_mask = {
+		.hdr = {
+			.common = {
+				.u32 =
+				RTE_BE32(((const struct rte_ecpri_common_hdr) {
+					.type = 0xFF,
+					}).u32),
+			},
+			.dummy[0] = 0xffffffff,
+		},
+	};
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_config *dev_conf = &priv->config;
 	uint16_t queue_index = 0xFFFF;
@@ -5172,6 +5183,17 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_LAYER_GTP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ECPRI:
+			/* Capacity will be checked in the translate stage. */
+			ret = mlx5_flow_validate_item_ecpri(items, item_flags,
+							    last_item,
+							    ether_type,
+							    &nic_ecpri_mask,
+							    error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_LAYER_ECPRI;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -5882,6 +5904,7 @@ flow_dv_translate_item_eth(void *matcher, void *key,
 	 * Set match on ethertype only if ETH header is not followed by VLAN.
 	 * HW is optimized for IPv4/IPv6. In such cases, avoid setting
 	 * ethertype, and use ip_version field instead.
+	 * eCPRI over Ether layer will use type value 0xAEFE.
 	 */
 	if (eth_v->type == RTE_BE16(RTE_ETHER_TYPE_IPV4) &&
 	    eth_m->type == 0xFFFF) {
