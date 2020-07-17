@@ -130,6 +130,7 @@ New Features
 
   * Added new PMD devarg ``reclaim_mem_mode``.
   * Added new devarg ``lacp_by_user``.
+  * Added support for eCPRI protocol offloading.
 
 * **Added vDPA device APIs to query virtio queue statistics.**
 

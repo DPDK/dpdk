@@ -993,6 +993,11 @@ Below are some firmware configurations listed.
 
    FLEX_PARSER_PROFILE_ENABLE=3
 
+- enable eCPRI flow matching::
+
+   FLEX_PARSER_PROFILE_ENABLE=4
+   PROG_PARSE_GRAPH=1
+
 Prerequisites
 -------------
 
