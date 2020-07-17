@@ -739,20 +739,12 @@ fslmc_process_mcp(struct rte_dpaa2_device *dev)
 {
 	int ret;
 	intptr_t v_addr;
-	char *dev_name = NULL;
 	struct fsl_mc_io dpmng  = {0};
 	struct mc_version mc_ver_info = {0};
 
 	rte_mcp_ptr_list = malloc(sizeof(void *) * (MC_PORTAL_INDEX + 1));
 	if (!rte_mcp_ptr_list) {
 		DPAA2_BUS_ERR("Unable to allocate MC portal memory");
-		ret = -ENOMEM;
-		goto cleanup;
-	}
-
-	dev_name = strdup(dev->device.name);
-	if (!dev_name) {
-		DPAA2_BUS_ERR("Unable to allocate MC device name memory");
 		ret = -ENOMEM;
 		goto cleanup;
 	}
@@ -793,13 +785,9 @@ fslmc_process_mcp(struct rte_dpaa2_device *dev)
 	}
 	rte_mcp_ptr_list[MC_PORTAL_INDEX] = (void *)v_addr;
 
-	free(dev_name);
 	return 0;
 
 cleanup:
-	if (dev_name)
-		free(dev_name);
-
 	if (rte_mcp_ptr_list) {
 		free(rte_mcp_ptr_list);
 		rte_mcp_ptr_list = NULL;
