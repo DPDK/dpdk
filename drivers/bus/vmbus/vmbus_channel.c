@@ -214,7 +214,7 @@ void rte_vmbus_chan_signal_read(struct vmbus_channel *chan, uint32_t bytes_read)
 		return;
 
 	/* Make sure reading of pending happens after new read index */
-	rte_mb();
+	rte_smp_mb();
 
 	pending_sz = rbr->vbr->pending_send;
 	if (!pending_sz)
