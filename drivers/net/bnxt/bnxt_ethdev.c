@@ -1404,8 +1404,7 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	bnxt_cancel_fc_thread(bp);
 
 	if (BNXT_TRUFLOW_EN(bp)) {
-		if (bp->rep_info != NULL)
-			bnxt_destroy_df_rules(bp);
+		bnxt_destroy_df_rules(bp);
 		bnxt_ulp_deinit(bp);
 	}
 
@@ -1657,7 +1656,7 @@ static int bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	if (rc != 0)
 		vnic->flags = old_flags;
 
-	if (BNXT_TRUFLOW_EN(bp) && bp->rep_info != NULL)
+	if (BNXT_TRUFLOW_EN(bp))
 		bnxt_create_df_rules(bp);
 
 	return rc;
