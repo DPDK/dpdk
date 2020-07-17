@@ -92,10 +92,8 @@ tf_tbl_type_2_str(enum tf_tbl_type tbl_type)
 		return "NAT Source Port";
 	case TF_TBL_TYPE_ACT_MODIFY_DPORT:
 		return "NAT Destination Port";
-	case TF_TBL_TYPE_ACT_MODIFY_IPV4_SRC:
-		return "NAT IPv4 Source";
-	case TF_TBL_TYPE_ACT_MODIFY_IPV4_DEST:
-		return "NAT IPv4 Destination";
+	case TF_TBL_TYPE_ACT_MODIFY_IPV4:
+		return "NAT IPv4";
 	case TF_TBL_TYPE_METER_PROF:
 		return "Meter Profile";
 	case TF_TBL_TYPE_METER_INST:

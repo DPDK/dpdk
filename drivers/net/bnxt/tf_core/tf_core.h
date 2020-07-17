@@ -228,9 +228,7 @@ enum tf_tbl_type {
 	/** Wh+/SR Action Modify L4 Dest Port */
 	TF_TBL_TYPE_ACT_MODIFY_DPORT,
 	/** Wh+/SR Action Modify IPv4 Source */
-	TF_TBL_TYPE_ACT_MODIFY_IPV4_SRC,
-	/** Wh+/SR Action _Modify L4 Dest Port */
-	TF_TBL_TYPE_ACT_MODIFY_IPV4_DEST,
+	TF_TBL_TYPE_ACT_MODIFY_IPV4,
 	/** Meter Profiles */
 	TF_TBL_TYPE_METER_PROF,
 	/** Meter Instance */
