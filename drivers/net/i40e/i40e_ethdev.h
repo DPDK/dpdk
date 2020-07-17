@@ -1321,6 +1321,7 @@ void i40e_pf_enable_irq0(struct i40e_hw *hw);
 int i40e_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 void i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t itr_idx);
 void i40e_vsi_queues_unbind_intr(struct i40e_vsi *vsi);
+void i40e_vsi_disable_queues_intr(struct i40e_vsi *vsi);
 int i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
 			   struct i40e_vsi_vlan_pvid_info *info);
 int i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on);
@@ -1330,6 +1331,7 @@ uint64_t i40e_parse_hena(const struct i40e_adapter *adapter, uint64_t flags);
 enum i40e_status_code i40e_fdir_setup_tx_resources(struct i40e_pf *pf);
 enum i40e_status_code i40e_fdir_setup_rx_resources(struct i40e_pf *pf);
 int i40e_fdir_setup(struct i40e_pf *pf);
+void i40e_vsi_enable_queues_intr(struct i40e_vsi *vsi);
 const struct rte_memzone *i40e_memzone_reserve(const char *name,
 					uint32_t len,
 					int socket_id);

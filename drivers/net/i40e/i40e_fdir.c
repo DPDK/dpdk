@@ -231,6 +231,11 @@ i40e_fdir_setup(struct i40e_pf *pf)
 		goto fail_mem;
 	}
 
+	/* enable FDIR MSIX interrupt */
+	vsi->nb_used_qps = 1;
+	i40e_vsi_queues_bind_intr(vsi, I40E_ITR_INDEX_NONE);
+	i40e_vsi_enable_queues_intr(vsi);
+
 	/* reserve memory for the fdir programming packet */
 	snprintf(z_name, sizeof(z_name), "%s_%s_%d",
 			eth_dev->device->driver->name,
@@ -287,12 +292,18 @@ i40e_fdir_teardown(struct i40e_pf *pf)
 	vsi = pf->fdir.fdir_vsi;
 	if (!vsi)
 		return;
+
+	/* disable FDIR MSIX interrupt */
+	i40e_vsi_queues_unbind_intr(vsi);
+	i40e_vsi_disable_queues_intr(vsi);
+
 	int err = i40e_switch_tx_queue(hw, vsi->base_queue, FALSE);
 	if (err)
 		PMD_DRV_LOG(DEBUG, "Failed to do FDIR TX switch off");
 	err = i40e_switch_rx_queue(hw, vsi->base_queue, FALSE);
 	if (err)
 		PMD_DRV_LOG(DEBUG, "Failed to do FDIR RX switch off");
+
 	i40e_dev_rx_queue_release(pf->fdir.rxq);
 	rte_eth_dma_zone_free(dev, "fdir_rx_ring", pf->fdir.rxq->queue_id);
 	pf->fdir.rxq = NULL;
