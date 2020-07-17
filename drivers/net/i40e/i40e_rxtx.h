@@ -24,6 +24,9 @@
 #define	I40E_MIN_RING_DESC	64
 #define	I40E_MAX_RING_DESC	4096
 
+#define I40E_FDIR_NUM_TX_DESC   (I40E_FDIR_PRG_PKT_CNT << 1)
+#define I40E_FDIR_NUM_RX_DESC   (I40E_FDIR_PRG_PKT_CNT << 1)
+
 #define I40E_MIN_TSO_MSS          256
 #define I40E_MAX_TSO_MSS          9674
 

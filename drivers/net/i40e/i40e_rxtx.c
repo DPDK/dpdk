@@ -2940,16 +2940,13 @@ i40e_dev_free_queues(struct rte_eth_dev *dev)
 	}
 }
 
-#define I40E_FDIR_NUM_TX_DESC  I40E_MIN_RING_DESC
-#define I40E_FDIR_NUM_RX_DESC  I40E_MIN_RING_DESC
-
 enum i40e_status_code
 i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 {
 	struct i40e_tx_queue *txq;
 	const struct rte_memzone *tz = NULL;
-	uint32_t ring_size;
 	struct rte_eth_dev *dev;
+	uint32_t ring_size;
 
 	if (!pf) {
 		PMD_DRV_LOG(ERR, "PF is not available");
@@ -2996,6 +2993,7 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 	 */
 	txq->q_set = TRUE;
 	pf->fdir.txq = txq;
+	pf->fdir.txq_available_buf_count = I40E_FDIR_PRG_PKT_CNT;
 
 	return I40E_SUCCESS;
 }

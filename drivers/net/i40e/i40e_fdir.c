@@ -100,7 +100,7 @@ static int
 i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 				  enum i40e_filter_pctype pctype,
 				  const struct i40e_fdir_filter_conf *filter,
-				  bool add);
+				  bool add, bool wait_status);
 
 static int
 i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
@@ -164,6 +164,7 @@ i40e_fdir_setup(struct i40e_pf *pf)
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz = NULL;
 	struct rte_eth_dev *eth_dev = pf->adapter->eth_dev;
+	uint16_t i;
 
 	if ((pf->flags & I40E_FLAG_FDIR) == 0) {
 		PMD_INIT_LOG(ERR, "HW doesn't support FDIR");
@@ -235,15 +236,21 @@ i40e_fdir_setup(struct i40e_pf *pf)
 			eth_dev->device->driver->name,
 			I40E_FDIR_MZ_NAME,
 			eth_dev->data->port_id);
-	mz = i40e_memzone_reserve(z_name, I40E_FDIR_PKT_LEN, SOCKET_ID_ANY);
+	mz = i40e_memzone_reserve(z_name, I40E_FDIR_PKT_LEN *
+			I40E_FDIR_PRG_PKT_CNT, SOCKET_ID_ANY);
 	if (!mz) {
 		PMD_DRV_LOG(ERR, "Cannot init memzone for "
 				 "flow director program packet.");
 		err = I40E_ERR_NO_MEMORY;
 		goto fail_mem;
 	}
-	pf->fdir.prg_pkt = mz->addr;
-	pf->fdir.dma_addr = mz->iova;
+
+	for (i = 0; i < I40E_FDIR_PRG_PKT_CNT; i++) {
+		pf->fdir.prg_pkt[i] = (uint8_t *)mz->addr +
+			I40E_FDIR_PKT_LEN * i;
+		pf->fdir.dma_addr[i] = mz->iova +
+			I40E_FDIR_PKT_LEN * i;
+	}
 
 	pf->fdir.match_counter_index = I40E_COUNTER_INDEX_FDIR(hw->pf_id);
 	pf->fdir.fdir_actual_cnt = 0;
@@ -1531,6 +1538,17 @@ i40e_check_fdir_programming_status(struct i40e_rx_queue *rxq)
 	return ret;
 }
 
+static inline void
+i40e_fdir_programming_status_cleanup(struct i40e_rx_queue *rxq)
+{
+	uint16_t retry_count = 0;
+
+	/* capture the previous error report(if any) from rx ring */
+	while ((i40e_check_fdir_programming_status(rxq) < 0) &&
+			(++retry_count < I40E_FDIR_NUM_RX_DESC))
+		PMD_DRV_LOG(INFO, "error report captured.");
+}
+
 static int
 i40e_fdir_filter_convert(const struct i40e_fdir_filter_conf *input,
 			 struct i40e_fdir_filter *filter)
@@ -1687,7 +1705,7 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	unsigned char *pkt = (unsigned char *)pf->fdir.prg_pkt;
+	unsigned char *pkt = (unsigned char *)pf->fdir.prg_pkt[0];
 	enum i40e_filter_pctype pctype;
 	int ret = 0;
 
@@ -1736,6 +1754,45 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static inline unsigned char *
+i40e_find_available_buffer(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_tx_queue *txq = pf->fdir.txq;
+
+	/* no available buffer
+	 * search for more available buffers from the current
+	 * descriptor, until an unavailable one
+	 */
+	if (fdir_info->txq_available_buf_count <= 0) {
+		uint16_t tmp_tail;
+		volatile struct i40e_tx_desc *tmp_txdp;
+
+		tmp_tail = txq->tx_tail;
+		tmp_txdp = &txq->tx_ring[tmp_tail + 1];
+
+		do {
+			if ((tmp_txdp->cmd_type_offset_bsz &
+					rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) ==
+					rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
+				fdir_info->txq_available_buf_count++;
+			else
+				break;
+
+			tmp_tail += 2;
+			if (tmp_tail >= txq->nb_tx_desc)
+				tmp_tail = 0;
+		} while (tmp_tail != txq->tx_tail);
+	}
+
+	if (fdir_info->txq_available_buf_count > 0)
+		fdir_info->txq_available_buf_count--;
+	else
+		return NULL;
+	return (unsigned char *)fdir_info->prg_pkt[txq->tx_tail >> 1];
+}
+
 /**
  * i40e_flow_add_del_fdir_filter - add or remove a flow director filter.
  * @pf: board private structure
@@ -1749,11 +1806,12 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	unsigned char *pkt = (unsigned char *)pf->fdir.prg_pkt;
+	unsigned char *pkt = NULL;
 	enum i40e_filter_pctype pctype;
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
 	struct i40e_fdir_filter *node;
 	struct i40e_fdir_filter check_filter; /* Check if the filter exists */
+	bool wait_status = true;
 	int ret = 0;
 
 	if (pf->fdir.fdir_vsi == NULL) {
@@ -1793,6 +1851,10 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 				    "Conflict with existing flow director rules!");
 			return -EINVAL;
 		}
+
+		if (fdir_info->fdir_invalprio == 1 &&
+				fdir_info->fdir_guarantee_free_space > 0)
+			wait_status = false;
 	} else {
 		node = i40e_sw_fdir_filter_lookup(fdir_info,
 				&check_filter.fdir.input);
@@ -1808,7 +1870,15 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 					"Error deleting fdir rule from hash table!");
 			return -EINVAL;
 		}
+
+		if (fdir_info->fdir_invalprio == 1)
+			wait_status = false;
 	}
+
+	/* find a buffer to store the pkt */
+	pkt = i40e_find_available_buffer(dev);
+	if (pkt == NULL)
+		goto error_op;
 
 	memset(pkt, 0, I40E_FDIR_PKT_LEN);
 	ret = i40e_flow_fdir_construct_pkt(pf, &filter->input, pkt);
@@ -1823,7 +1893,8 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 			hw, I40E_GLQF_FD_PCTYPES((int)pctype));
 	}
 
-	ret = i40e_flow_fdir_filter_programming(pf, pctype, filter, add);
+	ret = i40e_flow_fdir_filter_programming(pf, pctype, filter, add,
+			wait_status);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "fdir programming fails for PCTYPE(%u).",
 			    pctype);
@@ -1953,7 +2024,7 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
 
 	PMD_DRV_LOG(INFO, "filling transmit descriptor.");
 	txdp = &(txq->tx_ring[txq->tx_tail + 1]);
-	txdp->buffer_addr = rte_cpu_to_le_64(pf->fdir.dma_addr);
+	txdp->buffer_addr = rte_cpu_to_le_64(pf->fdir.dma_addr[0]);
 	td_cmd = I40E_TX_DESC_CMD_EOP |
 		 I40E_TX_DESC_CMD_RS  |
 		 I40E_TX_DESC_CMD_DUMMY;
@@ -2003,7 +2074,7 @@ static int
 i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 				  enum i40e_filter_pctype pctype,
 				  const struct i40e_fdir_filter_conf *filter,
-				  bool add)
+				  bool add, bool wait_status)
 {
 	struct i40e_tx_queue *txq = pf->fdir.txq;
 	struct i40e_rx_queue *rxq = pf->fdir.rxq;
@@ -2011,8 +2082,9 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 	volatile struct i40e_tx_desc *txdp;
 	volatile struct i40e_filter_program_desc *fdirdp;
 	uint32_t td_cmd;
-	uint16_t vsi_id, i;
+	uint16_t vsi_id;
 	uint8_t dest;
+	uint32_t i;
 
 	PMD_DRV_LOG(INFO, "filling filter programming descriptor.");
 	fdirdp = (volatile struct i40e_filter_program_desc *)
@@ -2087,7 +2159,8 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 
 	PMD_DRV_LOG(INFO, "filling transmit descriptor.");
 	txdp = &txq->tx_ring[txq->tx_tail + 1];
-	txdp->buffer_addr = rte_cpu_to_le_64(pf->fdir.dma_addr);
+	txdp->buffer_addr = rte_cpu_to_le_64(pf->fdir.dma_addr[txq->tx_tail >> 1]);
+
 	td_cmd = I40E_TX_DESC_CMD_EOP |
 		 I40E_TX_DESC_CMD_RS  |
 		 I40E_TX_DESC_CMD_DUMMY;
@@ -2100,25 +2173,32 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 		txq->tx_tail = 0;
 	/* Update the tx tail register */
 	rte_wmb();
+
+	/* fdir program rx queue cleanup */
+	i40e_fdir_programming_status_cleanup(rxq);
+
 	I40E_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
-	for (i = 0; i < I40E_FDIR_MAX_WAIT_US; i++) {
-		if ((txdp->cmd_type_offset_bsz &
-				rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) ==
-				rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
-			break;
-		rte_delay_us(1);
-	}
-	if (i >= I40E_FDIR_MAX_WAIT_US) {
-		PMD_DRV_LOG(ERR,
-		    "Failed to program FDIR filter: time out to get DD on tx queue.");
-		return -ETIMEDOUT;
-	}
-	/* totally delay 10 ms to check programming status*/
-	rte_delay_us(I40E_FDIR_MAX_WAIT_US);
-	if (i40e_check_fdir_programming_status(rxq) < 0) {
-		PMD_DRV_LOG(ERR,
-		    "Failed to program FDIR filter: programming status reported.");
-		return -ETIMEDOUT;
+
+	if (wait_status) {
+		for (i = 0; i < I40E_FDIR_MAX_WAIT_US; i++) {
+			if ((txdp->cmd_type_offset_bsz &
+					rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) ==
+					rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
+				break;
+			rte_delay_us(1);
+		}
+		if (i >= I40E_FDIR_MAX_WAIT_US) {
+			PMD_DRV_LOG(ERR,
+			    "Failed to program FDIR filter: time out to get DD on tx queue.");
+			return -ETIMEDOUT;
+		}
+		/* totally delay 10 ms to check programming status*/
+		rte_delay_us(I40E_FDIR_MAX_WAIT_US);
+		if (i40e_check_fdir_programming_status(rxq) < 0) {
+			PMD_DRV_LOG(ERR,
+			    "Failed to program FDIR filter: programming status reported.");
+			return -ETIMEDOUT;
+		}
 	}
 
 	return 0;

@@ -264,6 +264,8 @@ enum i40e_flxpld_layer_idx {
 #define I40E_DEFAULT_DCB_APP_NUM    1
 #define I40E_DEFAULT_DCB_APP_PRIO   3
 
+#define I40E_FDIR_PRG_PKT_CNT       128
+
 /*
  * Struct to store flow created.
  */
@@ -709,8 +711,14 @@ struct i40e_fdir_info {
 	uint16_t match_counter_index;  /* Statistic counter index used for fdir*/
 	struct i40e_tx_queue *txq;
 	struct i40e_rx_queue *rxq;
-	void *prg_pkt;                 /* memory for fdir program packet */
-	uint64_t dma_addr;             /* physic address of packet memory*/
+	void *prg_pkt[I40E_FDIR_PRG_PKT_CNT];     /* memory for fdir program packet */
+	uint64_t dma_addr[I40E_FDIR_PRG_PKT_CNT]; /* physic address of packet memory*/
+	/*
+	 * txq available buffer counter, indicates how many available buffers
+	 * for fdir programming, initialized as I40E_FDIR_PRG_PKT_CNT
+	 */
+	int txq_available_buf_count;
+
 	/* input set bits for each pctype */
 	uint64_t input_set[I40E_FILTER_PCTYPE_MAX];
 	/*
