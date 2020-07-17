@@ -361,6 +361,7 @@ ulp_ctx_init(struct bnxt *bp,
 	bp->ulp_ctx->cfg_data = ulp_data;
 	session->cfg_data = ulp_data;
 	ulp_data->ref_cnt++;
+	ulp_data->ulp_flags |= BNXT_ULP_VF_REP_ENABLED;
 
 	/* Open the ulp session. */
 	rc = ulp_ctx_session_open(bp, session);
@@ -1008,4 +1009,16 @@ bnxt_ulp_cntxt_ptr2_fc_info_get(struct bnxt_ulp_context *ulp_ctx)
 		return NULL;
 
 	return ulp_ctx->cfg_data->fc_info;
+}
+
+/* Function to get the ulp flags from the ulp context. */
+int32_t
+bnxt_ulp_cntxt_ptr2_ulp_flags_get(struct bnxt_ulp_context *ulp_ctx,
+				  uint32_t *flags)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -1;
+
+	*flags =  ulp_ctx->cfg_data->ulp_flags;
+	return 0;
 }

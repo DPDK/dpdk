@@ -309,7 +309,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	struct ulp_rte_act_prop		act_prop;
 	struct ulp_rte_act_bitmap	act = { 0 };
 	struct bnxt_ulp_context		*ulp_ctx;
-	uint32_t type;
+	uint32_t type, ulp_flags = 0;
 	int rc;
 
 	memset(&mapper_params, 0, sizeof(mapper_params));
@@ -328,6 +328,15 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 				 "Failed to create default flow.\n");
 		return -EINVAL;
 	}
+
+	/* update the vf rep flag */
+	if (bnxt_ulp_cntxt_ptr2_ulp_flags_get(ulp_ctx, &ulp_flags)) {
+		BNXT_TF_DBG(ERR, "Error in getting ULP context flags\n");
+		return -EINVAL;
+	}
+	if (ULP_VF_REP_IS_ENABLED(ulp_flags))
+		ULP_COMP_FLD_IDX_WR(&mapper_params,
+				    BNXT_ULP_CF_IDX_VFR_MODE, 1);
 
 	type = param_list->type;
 	while (type != BNXT_ULP_DF_PARAM_TYPE_LAST) {

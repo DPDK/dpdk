@@ -14,6 +14,10 @@
 
 #include "ulp_template_db_enum.h"
 
+/* defines for the ulp_flags */
+#define BNXT_ULP_VF_REP_ENABLED		0x1
+#define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
+
 struct bnxt_ulp_data {
 	uint32_t			tbl_scope_id;
 	struct bnxt_ulp_mark_tbl	*mark_tbl;
@@ -23,6 +27,7 @@ struct bnxt_ulp_data {
 	void				*mapper_data;
 	struct bnxt_ulp_port_db		*port_db;
 	struct bnxt_ulp_fc_info		*fc_info;
+	uint32_t			ulp_flags;
 	uint32_t			port_to_app_flow_id;
 	uint32_t			app_to_port_flow_id;
 	uint32_t			tx_cfa_action;
@@ -161,5 +166,9 @@ bnxt_ulp_cntxt_ptr2_fc_info_set(struct bnxt_ulp_context *ulp_ctx,
 
 struct bnxt_ulp_fc_info *
 bnxt_ulp_cntxt_ptr2_fc_info_get(struct bnxt_ulp_context *ulp_ctx);
+
+int32_t
+bnxt_ulp_cntxt_ptr2_ulp_flags_get(struct bnxt_ulp_context *ulp_ctx,
+				  uint32_t *flags);
 
 #endif /* _BNXT_ULP_H_ */
