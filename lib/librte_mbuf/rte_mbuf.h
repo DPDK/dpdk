@@ -37,7 +37,6 @@
 #include <rte_config.h>
 #include <rte_mempool.h>
 #include <rte_memory.h>
-#include <rte_atomic.h>
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
 #include <rte_byteorder.h>
@@ -365,7 +364,7 @@ rte_pktmbuf_priv_flags(struct rte_mempool *mp)
 static inline uint16_t
 rte_mbuf_refcnt_read(const struct rte_mbuf *m)
 {
-	return (uint16_t)(rte_atomic16_read(&m->refcnt_atomic));
+	return __atomic_load_n(&m->refcnt, __ATOMIC_RELAXED);
 }
 
 /**
@@ -378,14 +377,15 @@ rte_mbuf_refcnt_read(const struct rte_mbuf *m)
 static inline void
 rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 {
-	rte_atomic16_set(&m->refcnt_atomic, (int16_t)new_value);
+	__atomic_store_n(&m->refcnt, new_value, __ATOMIC_RELAXED);
 }
 
 /* internal */
 static inline uint16_t
 __rte_mbuf_refcnt_update(struct rte_mbuf *m, int16_t value)
 {
-	return (uint16_t)(rte_atomic16_add_return(&m->refcnt_atomic, value));
+	return __atomic_add_fetch(&m->refcnt, (uint16_t)value,
+				 __ATOMIC_ACQ_REL);
 }
 
 /**
@@ -466,7 +466,7 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 static inline uint16_t
 rte_mbuf_ext_refcnt_read(const struct rte_mbuf_ext_shared_info *shinfo)
 {
-	return (uint16_t)(rte_atomic16_read(&shinfo->refcnt_atomic));
+	return __atomic_load_n(&shinfo->refcnt, __ATOMIC_RELAXED);
 }
 
 /**
@@ -481,7 +481,7 @@ static inline void
 rte_mbuf_ext_refcnt_set(struct rte_mbuf_ext_shared_info *shinfo,
 	uint16_t new_value)
 {
-	rte_atomic16_set(&shinfo->refcnt_atomic, (int16_t)new_value);
+	__atomic_store_n(&shinfo->refcnt, new_value, __ATOMIC_RELAXED);
 }
 
 /**
@@ -505,7 +505,8 @@ rte_mbuf_ext_refcnt_update(struct rte_mbuf_ext_shared_info *shinfo,
 		return (uint16_t)value;
 	}
 
-	return (uint16_t)rte_atomic16_add_return(&shinfo->refcnt_atomic, value);
+	return __atomic_add_fetch(&shinfo->refcnt, (uint16_t)value,
+				 __ATOMIC_ACQ_REL);
 }
 
 /** Mbuf prefetch */
@@ -1304,8 +1305,8 @@ static inline int __rte_pktmbuf_pinned_extbuf_decref(struct rte_mbuf *m)
 	 * Direct usage of add primitive to avoid
 	 * duplication of comparing with one.
 	 */
-	if (likely(rte_atomic16_add_return
-			(&shinfo->refcnt_atomic, -1)))
+	if (likely(__atomic_add_fetch(&shinfo->refcnt, (uint16_t)-1,
+				     __ATOMIC_ACQ_REL)))
 		return 1;
 
 	/* Reinitialize counter before mbuf freeing. */

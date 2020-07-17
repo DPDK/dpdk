@@ -52,6 +52,10 @@
 [suppress_type]
         type_kind = struct
         name = rte_epoll_event
+; Ignore updates of rte_mbuf_ext_shared_info refcnt_atomic
+[suppress_type]
+        name = rte_mbuf_ext_shared_info
+        has_data_member_inserted_between = {offset_of(refcnt_atomic), offset_of(refcnt_atomic)}
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ; Temporary exceptions till DPDK 20.11

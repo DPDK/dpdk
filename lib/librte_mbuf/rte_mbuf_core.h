@@ -679,7 +679,11 @@ typedef void (*rte_mbuf_extbuf_free_callback_t)(void *addr, void *opaque);
 struct rte_mbuf_ext_shared_info {
 	rte_mbuf_extbuf_free_callback_t free_cb; /**< Free callback function */
 	void *fcb_opaque;                        /**< Free callback argument */
-	rte_atomic16_t refcnt_atomic;        /**< Atomically accessed refcnt */
+	RTE_STD_C11
+	union {
+		rte_atomic16_t refcnt_atomic; /**< Atomically accessed refcnt */
+		uint16_t refcnt;
+	};
 };
 
 /**< Maximum number of nb_segs allowed. */
