@@ -356,16 +356,28 @@ rx_machine(struct bond_dev_private *internals, uint16_t slave_id,
 
 		timer_set(&port->current_while_timer, timeout);
 		ACTOR_STATE_CLR(port, EXPIRED);
+		SM_FLAG_CLR(port, EXPIRED);
 		return; /* No state change */
 	}
 
 	/* If CURRENT state timer is not running (stopped or expired)
 	 * transit to EXPIRED state from DISABLED or CURRENT */
 	if (!timer_is_running(&port->current_while_timer)) {
-		ACTOR_STATE_SET(port, EXPIRED);
-		PARTNER_STATE_CLR(port, SYNCHRONIZATION);
-		PARTNER_STATE_SET(port, LACP_SHORT_TIMEOUT);
-		timer_set(&port->current_while_timer, internals->mode4.short_timeout);
+		if (SM_FLAG(port, EXPIRED)) {
+			port->selected = UNSELECTED;
+			memcpy(&port->partner, &port->partner_admin,
+				sizeof(struct port_params));
+			record_default(port);
+			ACTOR_STATE_CLR(port, EXPIRED);
+			timer_cancel(&port->current_while_timer);
+		} else {
+			SM_FLAG_SET(port, EXPIRED);
+			ACTOR_STATE_SET(port, EXPIRED);
+			PARTNER_STATE_CLR(port, SYNCHRONIZATION);
+			PARTNER_STATE_SET(port, LACP_SHORT_TIMEOUT);
+			timer_set(&port->current_while_timer,
+				internals->mode4.short_timeout);
+		}
 	}
 }
 
@@ -1021,6 +1033,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 	port->actor.port_number = rte_cpu_to_be_16(slave_id + 1);
 
 	memcpy(&port->partner, &initial, sizeof(struct port_params));
+	memcpy(&port->partner_admin, &initial, sizeof(struct port_params));
 
 	/* default states */
 	port->actor_state = STATE_AGGREGATION | STATE_LACP_ACTIVE | STATE_DEFAULTED;

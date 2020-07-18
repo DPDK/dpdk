@@ -50,6 +50,7 @@
 #define SM_FLAGS_MOVED                      0x0100
 #define SM_FLAGS_PARTNER_SHORT_TIMEOUT      0x0200
 #define SM_FLAGS_NTT                        0x0400
+#define SM_FLAGS_EXPIRED                    0x0800
 
 #define BOND_LINK_FULL_DUPLEX_KEY           0x01
 #define BOND_LINK_SPEED_KEY_10M             0x02
@@ -103,6 +104,8 @@ struct port {
 
 	/** The operational Partner's port parameters */
 	struct port_params partner;
+	/** Partner administrative parameter values */
+	struct port_params partner_admin;
 
 	/* Additional port parameters not listed in documentation */
 	/** State machine flags */
