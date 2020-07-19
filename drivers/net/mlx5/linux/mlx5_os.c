@@ -68,6 +68,30 @@
 #endif
 
 /**
+ * Get MAC address by querying netdevice.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[out] mac
+ *   MAC address output buffer.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
+{
+	struct ifreq request;
+	int ret;
+
+	ret = mlx5_ifreq(dev, SIOCGIFHWADDR, &request);
+	if (ret)
+		return ret;
+	memcpy(mac, request.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
+	return 0;
+}
+
+/**
  * Get mlx5 device attributes. The glue function query_device_ex() is called
  * with out parameter of type 'struct ibv_device_attr_ex *'. Then fill in mlx5
  * device attributes from the glue out parameter.
@@ -2363,6 +2387,79 @@ mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
 {
 	*reg_mr_cb = mlx5_verbs_ops.reg_mr;
 	*dereg_mr_cb = mlx5_verbs_ops.dereg_mr;
+}
+
+/**
+ * Remove a MAC address from device
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param index
+ *   MAC address index.
+ */
+void
+mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const int vf = priv->config.vf;
+
+	if (vf)
+		mlx5_nl_mac_addr_remove(priv->nl_socket_route,
+					mlx5_ifindex(dev), priv->mac_own,
+					&dev->data->mac_addrs[index], index);
+}
+
+/**
+ * Adds a MAC address to the device
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ * @param index
+ *   MAC address index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise
+ */
+int
+mlx5_os_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
+		     uint32_t index)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const int vf = priv->config.vf;
+	int ret = 0;
+
+	if (vf)
+		ret = mlx5_nl_mac_addr_add(priv->nl_socket_route,
+					   mlx5_ifindex(dev), priv->mac_own,
+					   mac, index);
+	return ret;
+}
+
+/**
+ * Modify a VF MAC address
+ *
+ * @param priv
+ *   Pointer to device private data.
+ * @param mac_addr
+ *   MAC address to modify into.
+ * @param iface_idx
+ *   Net device interface index
+ * @param vf_index
+ *   VF index
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise
+ */
+int
+mlx5_os_vf_mac_addr_modify(struct mlx5_priv *priv,
+			   unsigned int iface_idx,
+			   struct rte_ether_addr *mac_addr,
+			   int vf_index)
+{
+	return mlx5_nl_vf_mac_addr_modify
+		(priv->nl_socket_route, iface_idx, mac_addr, vf_index);
 }
 
 const struct eth_dev_ops mlx5_os_dev_ops = {

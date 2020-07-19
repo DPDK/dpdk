@@ -861,7 +861,6 @@ int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
 
 /* mlx5_mac.c */
 
-int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 void mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 int mlx5_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		      uint32_t index, uint32_t vmdq);
@@ -1026,6 +1025,12 @@ int mlx5_os_get_stats_n(struct rte_eth_dev *dev);
 void mlx5_os_stats_init(struct rte_eth_dev *dev);
 void mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
 			   mlx5_dereg_mr_t *dereg_mr_cb);
+void mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
+int mlx5_os_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
+			 uint32_t index);
+int mlx5_os_vf_mac_addr_modify(struct mlx5_priv *priv, unsigned int iface_idx,
+			       struct rte_ether_addr *mac_addr,
+			       int vf_index);
 
 /* mlx5_txpp.c */
 
