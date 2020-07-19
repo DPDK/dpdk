@@ -927,7 +927,6 @@ int mlx5_traffic_restart(struct rte_eth_dev *dev);
 
 int mlx5_flow_discover_mreg_c(struct rte_eth_dev *eth_dev);
 bool mlx5_flow_ext_mreg_supported(struct rte_eth_dev *dev);
-int mlx5_flow_discover_priorities(struct rte_eth_dev *dev);
 void mlx5_flow_print(struct rte_flow *flow);
 int mlx5_flow_validate(struct rte_eth_dev *dev,
 		       const struct rte_flow_attr *attr,

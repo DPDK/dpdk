@@ -38,6 +38,118 @@
 #define VERBS_SPEC_INNER(item_flags) \
 	(!!((item_flags) & MLX5_FLOW_LAYER_TUNNEL) ? IBV_FLOW_SPEC_INNER : 0)
 
+/* Map of Verbs to Flow priority with 8 Verbs priorities. */
+static const uint32_t priority_map_3[][MLX5_PRIORITY_MAP_MAX] = {
+	{ 0, 1, 2 }, { 2, 3, 4 }, { 5, 6, 7 },
+};
+
+/* Map of Verbs to Flow priority with 16 Verbs priorities. */
+static const uint32_t priority_map_5[][MLX5_PRIORITY_MAP_MAX] = {
+	{ 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 },
+	{ 9, 10, 11 }, { 12, 13, 14 },
+};
+
+/**
+ * Discover the maximum number of priority available.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   number of supported flow priority on success, a negative errno
+ *   value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct {
+		struct ibv_flow_attr attr;
+		struct ibv_flow_spec_eth eth;
+		struct ibv_flow_spec_action_drop drop;
+	} flow_attr = {
+		.attr = {
+			.num_of_specs = 2,
+			.port = (uint8_t)priv->dev_port,
+		},
+		.eth = {
+			.type = IBV_FLOW_SPEC_ETH,
+			.size = sizeof(struct ibv_flow_spec_eth),
+		},
+		.drop = {
+			.size = sizeof(struct ibv_flow_spec_action_drop),
+			.type = IBV_FLOW_SPEC_ACTION_DROP,
+		},
+	};
+	struct ibv_flow *flow;
+	struct mlx5_hrxq *drop = mlx5_hrxq_drop_new(dev);
+	uint16_t vprio[] = { 8, 16 };
+	int i;
+	int priority = 0;
+
+	if (!drop) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	for (i = 0; i != RTE_DIM(vprio); i++) {
+		flow_attr.attr.priority = vprio[i] - 1;
+		flow = mlx5_glue->create_flow(drop->qp, &flow_attr.attr);
+		if (!flow)
+			break;
+		claim_zero(mlx5_glue->destroy_flow(flow));
+		priority = vprio[i];
+	}
+	mlx5_hrxq_drop_release(dev);
+	switch (priority) {
+	case 8:
+		priority = RTE_DIM(priority_map_3);
+		break;
+	case 16:
+		priority = RTE_DIM(priority_map_5);
+		break;
+	default:
+		rte_errno = ENOTSUP;
+		DRV_LOG(ERR,
+			"port %u verbs maximum priority: %d expected 8/16",
+			dev->data->port_id, priority);
+		return -rte_errno;
+	}
+	DRV_LOG(INFO, "port %u flow maximum priority: %d",
+		dev->data->port_id, priority);
+	return priority;
+}
+
+/**
+ * Adjust flow priority based on the highest layer and the request priority.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] priority
+ *   The rule base priority.
+ * @param[in] subpriority
+ *   The priority based on the items.
+ *
+ * @return
+ *   The new priority.
+ */
+uint32_t
+mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
+				   uint32_t subpriority)
+{
+	uint32_t res = 0;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	switch (priv->config.flow_prio) {
+	case RTE_DIM(priority_map_3):
+		res = priority_map_3[priority][subpriority];
+		break;
+	case RTE_DIM(priority_map_5):
+		res = priority_map_5[priority][subpriority];
+		break;
+	}
+	return  res;
+}
+
 /**
  * Get Verbs flow counter by index.
  *

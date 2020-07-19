@@ -922,6 +922,7 @@ int mlx5_flow_group_to_table(const struct rte_flow_attr *attributes,
 uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow_rss_desc *rss_desc,
 				     int tunnel, uint64_t layer_types,
 				     uint64_t hash_fields);
+int mlx5_flow_discover_priorities(struct rte_eth_dev *dev);
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);
 int mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
