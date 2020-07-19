@@ -67,6 +67,14 @@
 #define MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP (1 << 4)
 #endif
 
+static const char *MZ_MLX5_PMD_SHARED_DATA = "mlx5_pmd_shared_data";
+
+/* Spinlock for mlx5_shared_data allocation. */
+static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
+
+/* Process local data for secondary processes. */
+static struct mlx5_local_data mlx5_local_data;
+
 /**
  * Get mlx5 device attributes. The glue function query_device_ex() is called
  * with out parameter of type 'struct ibv_device_attr_ex *'. Then fill in mlx5
@@ -354,6 +362,109 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 		sh->tag_table = NULL;
 	}
 	mlx5_free_table_hash_list(priv);
+}
+
+/**
+ * Initialize shared data between primary and secondary process.
+ *
+ * A memzone is reserved by primary process and secondary processes attach to
+ * the memzone.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_init_shared_data(void)
+{
+	const struct rte_memzone *mz;
+	int ret = 0;
+
+	rte_spinlock_lock(&mlx5_shared_data_lock);
+	if (mlx5_shared_data == NULL) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* Allocate shared memory. */
+			mz = rte_memzone_reserve(MZ_MLX5_PMD_SHARED_DATA,
+						 sizeof(*mlx5_shared_data),
+						 SOCKET_ID_ANY, 0);
+			if (mz == NULL) {
+				DRV_LOG(ERR,
+					"Cannot allocate mlx5 shared data");
+				ret = -rte_errno;
+				goto error;
+			}
+			mlx5_shared_data = mz->addr;
+			memset(mlx5_shared_data, 0, sizeof(*mlx5_shared_data));
+			rte_spinlock_init(&mlx5_shared_data->lock);
+		} else {
+			/* Lookup allocated shared memory. */
+			mz = rte_memzone_lookup(MZ_MLX5_PMD_SHARED_DATA);
+			if (mz == NULL) {
+				DRV_LOG(ERR,
+					"Cannot attach mlx5 shared data");
+				ret = -rte_errno;
+				goto error;
+			}
+			mlx5_shared_data = mz->addr;
+			memset(&mlx5_local_data, 0, sizeof(mlx5_local_data));
+		}
+	}
+error:
+	rte_spinlock_unlock(&mlx5_shared_data_lock);
+	return ret;
+}
+
+/**
+ * PMD global initialization.
+ *
+ * Independent from individual device, this function initializes global
+ * per-PMD data structures distinguishing primary and secondary processes.
+ * Hence, each initialization is called once per a process.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_init_once(void)
+{
+	struct mlx5_shared_data *sd;
+	struct mlx5_local_data *ld = &mlx5_local_data;
+	int ret = 0;
+
+	if (mlx5_init_shared_data())
+		return -rte_errno;
+	sd = mlx5_shared_data;
+	MLX5_ASSERT(sd);
+	rte_spinlock_lock(&sd->lock);
+	switch (rte_eal_process_type()) {
+	case RTE_PROC_PRIMARY:
+		if (sd->init_done)
+			break;
+		LIST_INIT(&sd->mem_event_cb_list);
+		rte_rwlock_init(&sd->mem_event_rwlock);
+		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
+						mlx5_mr_mem_event_cb, NULL);
+		ret = mlx5_mp_init_primary(MLX5_MP_NAME,
+					   mlx5_mp_os_primary_handle);
+		if (ret)
+			goto out;
+		sd->init_done = true;
+		break;
+	case RTE_PROC_SECONDARY:
+		if (ld->init_done)
+			break;
+		ret = mlx5_mp_init_secondary(MLX5_MP_NAME,
+					     mlx5_mp_os_secondary_handle);
+		if (ret)
+			goto out;
+		++sd->secondary_cnt;
+		ld->init_done = true;
+		break;
+	default:
+		break;
+	}
+out:
+	rte_spinlock_unlock(&sd->lock);
+	return ret;
 }
 
 /**

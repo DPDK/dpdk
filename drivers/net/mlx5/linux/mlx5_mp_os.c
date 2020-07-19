@@ -19,7 +19,7 @@
 #include "mlx5_utils.h"
 
 int
-mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
+mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 {
 	struct rte_mp_msg mp_res;
 	struct mlx5_mp_param *res = (struct mlx5_mp_param *)mp_res.param;
@@ -84,7 +84,7 @@ mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
+mlx5_mp_os_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 {
 	struct rte_mp_msg mp_res;
 	struct mlx5_mp_param *res = (struct mlx5_mp_param *)mp_res.param;
@@ -193,7 +193,7 @@ exit:
  *   Pointer to Ethernet structure.
  */
 void
-mlx5_mp_req_start_rxtx(struct rte_eth_dev *dev)
+mlx5_mp_os_req_start_rxtx(struct rte_eth_dev *dev)
 {
 	mp_req_on_rxtx(dev, MLX5_MP_REQ_START_RXTX);
 }
@@ -206,7 +206,7 @@ mlx5_mp_req_start_rxtx(struct rte_eth_dev *dev)
  *   Pointer to Ethernet structure.
  */
 void
-mlx5_mp_req_stop_rxtx(struct rte_eth_dev *dev)
+mlx5_mp_os_req_stop_rxtx(struct rte_eth_dev *dev)
 {
 	mp_req_on_rxtx(dev, MLX5_MP_REQ_STOP_RXTX);
 }

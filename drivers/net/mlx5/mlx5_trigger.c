@@ -350,7 +350,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = mlx5_select_tx_function(dev);
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
 	/* Enable datapath on secondary process. */
-	mlx5_mp_req_start_rxtx(dev);
+	mlx5_mp_os_req_start_rxtx(dev);
 	if (priv->sh->intr_handle.fd >= 0) {
 		priv->sh->port[priv->dev_port - 1].ih_port_id =
 					(uint32_t)dev->data->port_id;
@@ -396,7 +396,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = removed_tx_burst;
 	rte_wmb();
 	/* Disable datapath on secondary process. */
-	mlx5_mp_req_stop_rxtx(dev);
+	mlx5_mp_os_req_stop_rxtx(dev);
 	usleep(1000 * priv->rxqs_n);
 	DRV_LOG(DEBUG, "port %u stopping device", dev->data->port_id);
 	mlx5_flow_stop_default(dev);

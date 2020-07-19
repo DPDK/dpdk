@@ -794,7 +794,6 @@ void mlx5_set_min_inline(struct mlx5_dev_spawn_data *spawn,
 void mlx5_set_metadata_mask(struct rte_eth_dev *dev);
 int mlx5_dev_check_sibling_config(struct mlx5_priv *priv,
 				  struct mlx5_dev_config *config);
-int mlx5_init_once(void);
 int mlx5_dev_configure(struct rte_eth_dev *dev);
 int mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
 int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
@@ -979,11 +978,13 @@ void mlx5_flow_rxq_dynf_metadata_set(struct rte_eth_dev *dev);
 int mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
 
-/* mlx5_mp.c */
-int mlx5_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer);
-int mlx5_mp_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer);
-void mlx5_mp_req_start_rxtx(struct rte_eth_dev *dev);
-void mlx5_mp_req_stop_rxtx(struct rte_eth_dev *dev);
+/* mlx5_mp_os.c */
+int mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg,
+			      const void *peer);
+int mlx5_mp_os_secondary_handle(const struct rte_mp_msg *mp_msg,
+				const void *peer);
+void mlx5_mp_os_req_start_rxtx(struct rte_eth_dev *dev);
+void mlx5_mp_os_req_stop_rxtx(struct rte_eth_dev *dev);
 
 /* mlx5_socket.c */
 
