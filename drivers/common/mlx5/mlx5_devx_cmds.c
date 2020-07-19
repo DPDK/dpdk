@@ -1449,6 +1449,9 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 		 MLX5_ADAPTER_PAGE_SHIFT);
 	MLX5_SET(cqc, cqctx, c_eqn, attr->eqn);
 	MLX5_SET(cqc, cqctx, uar_page, attr->uar_page_id);
+	MLX5_SET(cqc, cqctx, cqe_comp_en, attr->cqe_comp_en);
+	MLX5_SET(cqc, cqctx, mini_cqe_res_format, attr->mini_cqe_res_format);
+	MLX5_SET(cqc, cqctx, cqe_sz, attr->cqe_size);
 	if (attr->q_umem_valid) {
 		MLX5_SET(create_cq_in, in, cq_umem_valid, attr->q_umem_valid);
 		MLX5_SET(create_cq_in, in, cq_umem_id, attr->q_umem_id);
