@@ -738,7 +738,6 @@ struct mlx5_priv {
 	LIST_HEAD(ind_tables, mlx5_ind_table_obj) ind_tbls;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
-	struct ibv_flow_action *verbs_action;
 	/**< Verbs modify header action object. */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint8_t max_lro_msg_size;
@@ -821,10 +820,8 @@ int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
 
 int mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE]);
 unsigned int mlx5_ifindex(const struct rte_eth_dev *dev);
-int mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr);
+int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
-int mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep,
-		   unsigned int flags);
 int mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
 int mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete);
@@ -858,6 +855,11 @@ int mlx5_get_module_info(struct rte_eth_dev *dev,
 int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 			   struct rte_dev_eeprom_info *info);
 int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
+int mlx5_os_read_dev_stat(struct mlx5_priv *priv,
+			  const char *ctr_name, uint64_t *stat);
+int mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats);
+int mlx5_os_get_stats_n(struct rte_eth_dev *dev);
+void mlx5_os_stats_init(struct rte_eth_dev *dev);
 
 /* mlx5_mac.c */
 
@@ -1018,11 +1020,6 @@ int mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		       struct rte_pci_device *pci_dev);
 void mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh);
 void mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh);
-int mlx5_os_read_dev_stat(struct mlx5_priv *priv,
-			  const char *ctr_name, uint64_t *stat);
-int mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats);
-int mlx5_os_get_stats_n(struct rte_eth_dev *dev);
-void mlx5_os_stats_init(struct rte_eth_dev *dev);
 void mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb,
 			   mlx5_dereg_mr_t *dereg_mr_cb);
 void mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
