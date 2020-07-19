@@ -143,7 +143,7 @@ struct mlx5_rxq_data {
 	struct mlx5_rxq_stats stats;
 	rte_xmm_t mbuf_initializer; /* Default rearm/flags for vectorized Rx. */
 	struct rte_mbuf fake_mbuf; /* elts padding for vectorized Rx. */
-	void *cq_uar; /* CQ user access region. */
+	void *cq_uar; /* Verbs CQ user access region. */
 	uint32_t cqn; /* CQ number. */
 	uint8_t cq_arm_sn; /* CQ arm seq number. */
 #ifndef RTE_ARCH_64
@@ -173,14 +173,21 @@ struct mlx5_rxq_obj {
 	LIST_ENTRY(mlx5_rxq_obj) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_rxq_ctrl *rxq_ctrl; /* Back pointer to parent. */
-	struct ibv_cq *cq; /* Completion Queue. */
 	enum mlx5_rxq_obj_type type;
+	int fd; /* File descriptor for event channel */
 	RTE_STD_C11
 	union {
-		struct ibv_wq *wq; /* Work Queue. */
-		struct mlx5_devx_obj *rq; /* DevX object for Rx Queue. */
+		struct {
+			struct ibv_wq *wq; /* Work Queue. */
+			struct ibv_cq *ibv_cq; /* Completion Queue. */
+			struct ibv_comp_channel *ibv_channel;
+		};
+		struct {
+			struct mlx5_devx_obj *rq; /* DevX Rx Queue object. */
+			struct mlx5_devx_obj *devx_cq; /* DevX CQ object. */
+			struct mlx5dv_devx_event_channel *devx_channel;
+		};
 	};
-	struct ibv_comp_channel *channel;
 };
 
 /* RX queue control descriptor. */
@@ -193,14 +200,20 @@ struct mlx5_rxq_ctrl {
 	enum mlx5_rxq_type type; /* Rxq type. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
-	unsigned int dbr_umem_id_valid:1; /* dbr_umem_id holds a valid value. */
+	unsigned int rq_dbr_umem_id_valid:1;
+	unsigned int cq_dbr_umem_id_valid:1;
 	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
 	uint32_t wqn; /* WQ number. */
 	uint16_t dump_file_n; /* Number of dump files. */
-	uint32_t dbr_umem_id; /* Storing door-bell information, */
-	uint64_t dbr_offset;  /* needed when freeing door-bell. */
+	uint32_t rq_dbr_umem_id;
+	uint64_t rq_dbr_offset;
+	/* Storing RQ door-bell information, needed when freeing door-bell. */
+	uint32_t cq_dbr_umem_id;
+	uint64_t cq_dbr_offset;
+	/* Storing CQ door-bell information, needed when freeing door-bell. */
 	struct mlx5dv_devx_umem *wq_umem; /* WQ buffer registration info. */
+	struct mlx5dv_devx_umem *cq_umem; /* CQ buffer registration info. */
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 };
 

@@ -813,6 +813,12 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 			err = ENOMEM;
 			goto error;
 		}
+		sh->devx_rx_uar = mlx5_glue->devx_alloc_uar(sh->ctx, 0);
+		if (!sh->devx_rx_uar) {
+			DRV_LOG(ERR, "Failed to allocate Rx DevX UAR.");
+			err = ENOMEM;
+			goto error;
+		}
 	}
 	sh->flow_id_pool = mlx5_flow_id_pool_alloc
 					((1 << HAIRPIN_FLOW_ID_BITS) - 1);
@@ -880,6 +886,8 @@ error:
 		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
+	if (sh->devx_rx_uar)
+		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
 	if (sh->pd)
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
 	if (sh->ctx)
@@ -951,6 +959,8 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
+	if (sh->devx_rx_uar)
+		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
 	if (sh->ctx)
 		claim_zero(mlx5_glue->close_device(sh->ctx));
 	if (sh->flow_id_pool)

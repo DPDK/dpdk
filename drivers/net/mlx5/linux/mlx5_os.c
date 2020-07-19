@@ -66,6 +66,27 @@ static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 static struct mlx5_local_data mlx5_local_data;
 
 /**
+ * Set the completion channel file descriptor interrupt as non-blocking.
+ *
+ * @param[in] rxq_obj
+ *   Pointer to RQ channel object, which includes the channel fd
+ *
+ * @param[out] fd
+ *   The file descriptor (representing the intetrrupt) used in this channel.
+ *
+ * @return
+ *   0 on successfully setting the fd to non-blocking, non-zero otherwise.
+ */
+int
+mlx5_os_set_nonblock_channel_fd(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL);
+	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+/**
  * Get mlx5 device attributes. The glue function query_device_ex() is called
  * with out parameter of type 'struct ibv_device_attr_ex *'. Then fill in mlx5
  * device attributes from the glue out parameter.

@@ -657,6 +657,7 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5dv_devx_uar *tx_uar; /* Tx/packer pacing shared UAR. */
 	struct mlx5_flex_parser_profiles fp[MLX5_FLEX_PARSER_MAX];
 	/* Flex parser profiles information. */
+	struct mlx5dv_devx_uar *devx_rx_uar; /* DevX UAR for Rx. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -1014,6 +1015,7 @@ int mlx5_os_vf_mac_addr_modify(struct mlx5_priv *priv, unsigned int iface_idx,
 			       int vf_index);
 int mlx5_os_set_promisc(struct rte_eth_dev *dev, int enable);
 int mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable);
+int mlx5_os_set_nonblock_channel_fd(int fd);
 
 /* mlx5_txpp.c */
 
