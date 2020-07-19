@@ -129,6 +129,264 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 	return offloads;
 }
 
+/* Fetches and drops all SW-owned and error CQEs to synchronize CQ. */
+static void
+txq_sync_cq(struct mlx5_txq_data *txq)
+{
+	volatile struct mlx5_cqe *cqe;
+	int ret, i;
+
+	i = txq->cqe_s;
+	do {
+		cqe = &txq->cqes[txq->cq_ci & txq->cqe_m];
+		ret = check_cqe(cqe, txq->cqe_s, txq->cq_ci);
+		if (unlikely(ret != MLX5_CQE_STATUS_SW_OWN)) {
+			if (likely(ret != MLX5_CQE_STATUS_ERR)) {
+				/* No new CQEs in completion queue. */
+				MLX5_ASSERT(ret == MLX5_CQE_STATUS_HW_OWN);
+				break;
+			}
+		}
+		++txq->cq_ci;
+	} while (--i);
+	/* Move all CQEs to HW ownership. */
+	for (i = 0; i < txq->cqe_s; i++) {
+		cqe = &txq->cqes[i];
+		cqe->op_own = MLX5_CQE_INVALIDATE;
+	}
+	/* Resync CQE and WQE (WQ in reset state). */
+	rte_cio_wmb();
+	*txq->cq_db = rte_cpu_to_be_32(txq->cq_ci);
+	rte_cio_wmb();
+}
+
+/**
+ * Tx queue stop. Device queue goes to the idle state,
+ * all involved mbufs are freed from elts/WQ.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   Tx queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_tx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_data *txq = (*priv->txqs)[idx];
+	struct mlx5_txq_ctrl *txq_ctrl =
+			container_of(txq, struct mlx5_txq_ctrl, txq);
+	int ret;
+
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	/* Move QP to RESET state. */
+	if (txq_ctrl->obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_SQ) {
+		struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
+
+		/* Change queue state to reset with DevX. */
+		msq_attr.sq_state = MLX5_SQC_STATE_RDY;
+		msq_attr.state = MLX5_SQC_STATE_RST;
+		ret = mlx5_devx_cmd_modify_sq(txq_ctrl->obj->sq_devx,
+					      &msq_attr);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change the "
+				"Tx QP state to RESET %s",
+				strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+	} else {
+		struct ibv_qp_attr mod = {
+			.qp_state = IBV_QPS_RESET,
+			.port_num = (uint8_t)priv->dev_port,
+		};
+		struct ibv_qp *qp = txq_ctrl->obj->qp;
+
+		/* Change queue state to reset with Verbs. */
+		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change the Tx QP state to RESET "
+				"%s", strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+	}
+	/* Handle all send completions. */
+	txq_sync_cq(txq);
+	/* Free elts stored in the SQ. */
+	txq_free_elts(txq_ctrl);
+	/* Prevent writing new pkts to SQ by setting no free WQE.*/
+	txq->wqe_ci = txq->wqe_s;
+	txq->wqe_pi = 0;
+	txq->elts_comp = 0;
+	/* Set the actual queue state. */
+	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
+/**
+ * Tx queue stop. Device queue goes to the idle state,
+ * all involved mbufs are freed from elts/WQ.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   Tx queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_tx_queue_stop(struct rte_eth_dev *dev, uint16_t idx)
+{
+	int ret;
+
+	if (dev->data->tx_queue_state[idx] == RTE_ETH_QUEUE_STATE_HAIRPIN) {
+		DRV_LOG(ERR, "Hairpin queue can't be stopped");
+		rte_errno = EINVAL;
+		return -EINVAL;
+	}
+	if (dev->data->tx_queue_state[idx] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+	if (rte_eal_process_type() ==  RTE_PROC_SECONDARY) {
+		ret = mlx5_mp_os_req_queue_control(dev, idx,
+						   MLX5_MP_REQ_QUEUE_TX_STOP);
+	} else {
+		ret = mlx5_tx_queue_stop_primary(dev, idx);
+	}
+	return ret;
+}
+
+/**
+ * Rx queue start. Device queue goes to the ready state,
+ * all required mbufs are allocated and WQ is replenished.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_tx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_data *txq = (*priv->txqs)[idx];
+	struct mlx5_txq_ctrl *txq_ctrl =
+			container_of(txq, struct mlx5_txq_ctrl, txq);
+	int ret;
+
+	MLX5_ASSERT(rte_eal_process_type() ==  RTE_PROC_PRIMARY);
+	if (txq_ctrl->obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_SQ) {
+		struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
+		struct mlx5_txq_obj *obj = txq_ctrl->obj;
+
+		msq_attr.sq_state = MLX5_SQC_STATE_RDY;
+		msq_attr.state = MLX5_SQC_STATE_RST;
+		ret = mlx5_devx_cmd_modify_sq(obj->sq_devx, &msq_attr);
+		if (ret) {
+			rte_errno = errno;
+			DRV_LOG(ERR,
+				"Cannot change the Tx QP state to RESET "
+				"%s", strerror(errno));
+			return ret;
+		}
+		msq_attr.sq_state = MLX5_SQC_STATE_RST;
+		msq_attr.state = MLX5_SQC_STATE_RDY;
+		ret = mlx5_devx_cmd_modify_sq(obj->sq_devx, &msq_attr);
+		if (ret) {
+			rte_errno = errno;
+			DRV_LOG(ERR,
+				"Cannot change the Tx QP state to READY "
+				"%s", strerror(errno));
+			return ret;
+		}
+	} else {
+		struct ibv_qp_attr mod = {
+			.qp_state = IBV_QPS_RESET,
+			.port_num = (uint8_t)priv->dev_port,
+		};
+		struct ibv_qp *qp = txq_ctrl->obj->qp;
+
+		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change the Tx QP state to RESET "
+				"%s", strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+		mod.qp_state = IBV_QPS_INIT;
+		ret = mlx5_glue->modify_qp(qp, &mod,
+					   (IBV_QP_STATE | IBV_QP_PORT));
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change Tx QP state to INIT %s",
+				strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+		mod.qp_state = IBV_QPS_RTR;
+		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change Tx QP state to RTR %s",
+				strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+		mod.qp_state = IBV_QPS_RTS;
+		ret = mlx5_glue->modify_qp(qp, &mod, IBV_QP_STATE);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change Tx QP state to RTS %s",
+				strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+	}
+	txq_ctrl->txq.wqe_ci = 0;
+	txq_ctrl->txq.wqe_pi = 0;
+	txq_ctrl->txq.elts_comp = 0;
+	/* Set the actual queue state. */
+	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
+	return 0;
+}
+
+/**
+ * Rx queue start. Device queue goes to the ready state,
+ * all required mbufs are allocated and WQ is replenished.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_tx_queue_start(struct rte_eth_dev *dev, uint16_t idx)
+{
+	int ret;
+
+	if (dev->data->tx_queue_state[idx] == RTE_ETH_QUEUE_STATE_HAIRPIN) {
+		DRV_LOG(ERR, "Hairpin queue can't be started");
+		rte_errno = EINVAL;
+		return -EINVAL;
+	}
+	if (dev->data->tx_queue_state[idx] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+	if (rte_eal_process_type() ==  RTE_PROC_SECONDARY) {
+		ret = mlx5_mp_os_req_queue_control(dev, idx,
+						   MLX5_MP_REQ_QUEUE_TX_START);
+	} else {
+		ret = mlx5_tx_queue_start_primary(dev, idx);
+	}
+	return ret;
+}
+
 /**
  * Tx queue presetup checks.
  *
@@ -218,6 +476,7 @@ mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	DRV_LOG(DEBUG, "port %u adding Tx queue %u to list",
 		dev->data->port_id, idx);
 	(*priv->txqs)[idx] = &txq_ctrl->txq;
+	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 }
 
@@ -268,6 +527,7 @@ mlx5_tx_hairpin_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 	DRV_LOG(DEBUG, "port %u adding Tx queue %u to list",
 		dev->data->port_id, idx);
 	(*priv->txqs)[idx] = &txq_ctrl->txq;
+	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_HAIRPIN;
 	return 0;
 }
 
@@ -1747,6 +2007,7 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 		LIST_REMOVE(txq, next);
 		mlx5_free(txq);
 		(*priv->txqs)[idx] = NULL;
+		dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
 		return 0;
 	}
 	return 1;

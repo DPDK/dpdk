@@ -404,6 +404,10 @@ int mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq);
 int mlx5_mprq_enabled(struct rte_eth_dev *dev);
 int mlx5_mprq_free_mp(struct rte_eth_dev *dev);
 int mlx5_mprq_alloc_mp(struct rte_eth_dev *dev);
+int mlx5_rx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id);
+int mlx5_rx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id);
+int mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t queue_id);
+int mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t queue_id);
 int mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			unsigned int socket, const struct rte_eth_rxconf *conf,
 			struct rte_mempool *mp);
@@ -451,6 +455,10 @@ void mlx5_rxq_timestamp_set(struct rte_eth_dev *dev);
 
 /* mlx5_txq.c */
 
+int mlx5_tx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id);
+int mlx5_tx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id);
+int mlx5_tx_queue_start_primary(struct rte_eth_dev *dev, uint16_t queue_id);
+int mlx5_tx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t queue_id);
 int mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			unsigned int socket, const struct rte_eth_txconf *conf);
 int mlx5_tx_hairpin_queue_setup

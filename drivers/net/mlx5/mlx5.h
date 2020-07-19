@@ -970,12 +970,15 @@ int mlx5_flow_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 			uint32_t nb_contexts, struct rte_flow_error *error);
 
 /* mlx5_mp_os.c */
+
 int mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg,
 			      const void *peer);
 int mlx5_mp_os_secondary_handle(const struct rte_mp_msg *mp_msg,
 				const void *peer);
 void mlx5_mp_os_req_start_rxtx(struct rte_eth_dev *dev);
 void mlx5_mp_os_req_stop_rxtx(struct rte_eth_dev *dev);
+int mlx5_mp_os_req_queue_control(struct rte_eth_dev *dev, uint16_t queue_id,
+				 enum mlx5_mp_req_type req_type);
 
 /* mlx5_socket.c */
 

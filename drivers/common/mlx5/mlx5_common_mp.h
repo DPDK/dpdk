@@ -17,12 +17,20 @@ enum mlx5_mp_req_type {
 	MLX5_MP_REQ_START_RXTX,
 	MLX5_MP_REQ_STOP_RXTX,
 	MLX5_MP_REQ_QUEUE_STATE_MODIFY,
+	MLX5_MP_REQ_QUEUE_RX_STOP,
+	MLX5_MP_REQ_QUEUE_RX_START,
+	MLX5_MP_REQ_QUEUE_TX_STOP,
+	MLX5_MP_REQ_QUEUE_TX_START,
 };
 
 struct mlx5_mp_arg_queue_state_modify {
 	uint8_t is_wq; /* Set if WQ. */
 	uint16_t queue_id; /* DPDK queue ID. */
 	enum ibv_wq_state state; /* WQ requested state. */
+};
+
+struct mlx5_mp_arg_queue_id {
+	uint16_t queue_id; /* DPDK queue ID. */
 };
 
 /* Pameters for IPC. */
@@ -35,6 +43,8 @@ struct mlx5_mp_param {
 		uintptr_t addr; /* MLX5_MP_REQ_CREATE_MR */
 		struct mlx5_mp_arg_queue_state_modify state_modify;
 		/* MLX5_MP_REQ_QUEUE_STATE_MODIFY */
+		struct mlx5_mp_arg_queue_id queue_id;
+		/* MLX5_MP_REQ_QUEUE_RX/TX_START/STOP */
 	} args;
 };
 

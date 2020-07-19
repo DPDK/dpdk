@@ -63,6 +63,30 @@ mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 					(dev, &param->args.state_modify);
 		ret = rte_mp_reply(&mp_res, peer);
 		break;
+	case MLX5_MP_REQ_QUEUE_RX_STOP:
+		mp_init_msg(&priv->mp_id, &mp_res, param->type);
+		res->result = mlx5_rx_queue_stop_primary
+					(dev, param->args.queue_id.queue_id);
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
+	case MLX5_MP_REQ_QUEUE_RX_START:
+		mp_init_msg(&priv->mp_id, &mp_res, param->type);
+		res->result = mlx5_rx_queue_start_primary
+					(dev, param->args.queue_id.queue_id);
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
+	case MLX5_MP_REQ_QUEUE_TX_STOP:
+		mp_init_msg(&priv->mp_id, &mp_res, param->type);
+		res->result = mlx5_tx_queue_stop_primary
+					(dev, param->args.queue_id.queue_id);
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
+	case MLX5_MP_REQ_QUEUE_TX_START:
+		mp_init_msg(&priv->mp_id, &mp_res, param->type);
+		res->result = mlx5_tx_queue_start_primary
+					(dev, param->args.queue_id.queue_id);
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
 	default:
 		rte_errno = EINVAL;
 		DRV_LOG(ERR, "port %u invalid mp request type",
@@ -86,7 +110,7 @@ mlx5_mp_os_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 int
 mlx5_mp_os_secondary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 {
-	struct rte_mp_msg mp_res;
+struct rte_mp_msg mp_res;
 	struct mlx5_mp_param *res = (struct mlx5_mp_param *)mp_res.param;
 	const struct mlx5_mp_param *param =
 		(const struct mlx5_mp_param *)mp_msg->param;
@@ -209,4 +233,52 @@ void
 mlx5_mp_os_req_stop_rxtx(struct rte_eth_dev *dev)
 {
 	mp_req_on_rxtx(dev, MLX5_MP_REQ_STOP_RXTX);
+}
+
+/**
+ * Request Verbs Rx/Tx queue stop or start to the primary process.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet structure.
+ * @param queue_id
+ *   Queue ID to control.
+ * @param req_type
+ *   request type
+ *     MLX5_MP_REQ_QUEUE_RX_START - start Rx queue
+ *     MLX5_MP_REQ_QUEUE_TX_START - stop Tx queue
+ *     MLX5_MP_REQ_QUEUE_RX_STOP - stop Rx queue
+ *     MLX5_MP_REQ_QUEUE_TX_STOP - stop Tx queue
+ * @return
+ *   0 on success, a negative errno value otherwise and
+ *     rte_errno is set.
+ */
+int
+mlx5_mp_os_req_queue_control(struct rte_eth_dev *dev, uint16_t queue_id,
+			  enum mlx5_mp_req_type req_type)
+{
+	struct rte_mp_msg mp_req;
+	struct rte_mp_msg *mp_res;
+	struct rte_mp_reply mp_rep;
+	struct mlx5_mp_param *req = (struct mlx5_mp_param *)mp_req.param;
+	struct mlx5_mp_param *res;
+	struct timespec ts = {.tv_sec = MLX5_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
+	struct mlx5_priv *priv;
+	int ret;
+
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	priv = dev->data->dev_private;
+	mp_init_msg(&priv->mp_id, &mp_req, req_type);
+	req->args.queue_id.queue_id = queue_id;
+	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
+	if (ret) {
+		DRV_LOG(ERR, "port %u request to primary process failed",
+			dev->data->port_id);
+		return -rte_errno;
+	}
+	MLX5_ASSERT(mp_rep.nb_received == 1);
+	mp_res = &mp_rep.msgs[0];
+	res = (struct mlx5_mp_param *)mp_res->param;
+	ret = res->result;
+	free(mp_rep.msgs);
+	return ret;
 }

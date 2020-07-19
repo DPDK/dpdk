@@ -431,6 +431,244 @@ mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
 	return (rte_atomic32_read(&rxq_ctrl->refcnt) == 1);
 }
 
+/* Fetches and drops all SW-owned and error CQEs to synchronize CQ. */
+static void
+rxq_sync_cq(struct mlx5_rxq_data *rxq)
+{
+	const uint16_t cqe_n = 1 << rxq->cqe_n;
+	const uint16_t cqe_mask = cqe_n - 1;
+	volatile struct mlx5_cqe *cqe;
+	int ret, i;
+
+	i = cqe_n;
+	do {
+		cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
+		ret = check_cqe(cqe, cqe_n, rxq->cq_ci);
+		if (ret == MLX5_CQE_STATUS_HW_OWN)
+			break;
+		if (ret == MLX5_CQE_STATUS_ERR) {
+			rxq->cq_ci++;
+			continue;
+		}
+		MLX5_ASSERT(ret == MLX5_CQE_STATUS_SW_OWN);
+		if (MLX5_CQE_FORMAT(cqe->op_own) != MLX5_COMPRESSED) {
+			rxq->cq_ci++;
+			continue;
+		}
+		/* Compute the next non compressed CQE. */
+		rxq->cq_ci += rte_be_to_cpu_32(cqe->byte_cnt);
+
+	} while (--i);
+	/* Move all CQEs to HW ownership, including possible MiniCQEs. */
+	for (i = 0; i < cqe_n; i++) {
+		cqe = &(*rxq->cqes)[i];
+		cqe->op_own = MLX5_CQE_INVALIDATE;
+	}
+	/* Resync CQE and WQE (WQ in RESET state). */
+	rte_cio_wmb();
+	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
+	rte_cio_wmb();
+	*rxq->rq_db = rte_cpu_to_be_32(0);
+	rte_cio_wmb();
+}
+
+/**
+ * Rx queue stop. Device queue goes to the RESET state,
+ * all involved mbufs are freed from WQ.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	int ret;
+
+	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
+		struct ibv_wq_attr mod = {
+			.attr_mask = IBV_WQ_ATTR_STATE,
+			.wq_state = IBV_WQS_RESET,
+		};
+
+		ret = mlx5_glue->modify_wq(rxq_ctrl->obj->wq, &mod);
+	} else { /* rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ. */
+		struct mlx5_devx_modify_rq_attr rq_attr;
+
+		memset(&rq_attr, 0, sizeof(rq_attr));
+		rq_attr.rq_state = MLX5_RQC_STATE_RST;
+		rq_attr.state = MLX5_RQC_STATE_RDY;
+		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
+	}
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change Rx WQ state to RESET:  %s",
+			strerror(errno));
+		rte_errno = errno;
+		return ret;
+	}
+	/* Remove all processes CQEs. */
+	rxq_sync_cq(rxq);
+	/* Free all involved mbufs. */
+	rxq_free_elts(rxq_ctrl);
+	/* Set the actual queue state. */
+	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
+/**
+ * Rx queue stop. Device queue goes to the RESET state,
+ * all involved mbufs are freed from WQ.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_rx_queue_stop(struct rte_eth_dev *dev, uint16_t idx)
+{
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	int ret;
+
+	if (dev->data->rx_queue_state[idx] == RTE_ETH_QUEUE_STATE_HAIRPIN) {
+		DRV_LOG(ERR, "Hairpin queue can't be stopped");
+		rte_errno = EINVAL;
+		return -EINVAL;
+	}
+	if (dev->data->rx_queue_state[idx] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+	/*
+	 * Vectorized Rx burst requires the CQ and RQ indices
+	 * synchronized, that might be broken on RQ restart
+	 * and cause Rx malfunction, so queue stopping is
+	 * not supported if vectorized Rx burst is engaged.
+	 * The routine pointer depends on the process
+	 * type, should perform check there.
+	 */
+	if (pkt_burst == mlx5_rx_burst) {
+		DRV_LOG(ERR, "Rx queue stop is not supported "
+			"for vectorized Rx");
+		rte_errno = EINVAL;
+		return -EINVAL;
+	}
+	if (rte_eal_process_type() ==  RTE_PROC_SECONDARY) {
+		ret = mlx5_mp_os_req_queue_control(dev, idx,
+						   MLX5_MP_REQ_QUEUE_RX_STOP);
+	} else {
+		ret = mlx5_rx_queue_stop_primary(dev, idx);
+	}
+	return ret;
+}
+
+/**
+ * Rx queue start. Device queue goes to the ready state,
+ * all required mbufs are allocated and WQ is replenished.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	int ret;
+
+	MLX5_ASSERT(rte_eal_process_type() ==  RTE_PROC_PRIMARY);
+	/* Allocate needed buffers. */
+	ret = rxq_alloc_elts(rxq_ctrl);
+	if (ret) {
+		DRV_LOG(ERR, "Cannot reallocate buffers for Rx WQ");
+		rte_errno = errno;
+		return ret;
+	}
+	rte_cio_wmb();
+	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
+	rte_cio_wmb();
+	/* Reset RQ consumer before moving queue ro READY state. */
+	*rxq->rq_db = rte_cpu_to_be_32(0);
+	rte_cio_wmb();
+	if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
+		struct ibv_wq_attr mod = {
+			.attr_mask = IBV_WQ_ATTR_STATE,
+			.wq_state = IBV_WQS_RDY,
+		};
+
+		ret = mlx5_glue->modify_wq(rxq_ctrl->obj->wq, &mod);
+	} else { /* rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ. */
+		struct mlx5_devx_modify_rq_attr rq_attr;
+
+		memset(&rq_attr, 0, sizeof(rq_attr));
+		rq_attr.rq_state = MLX5_RQC_STATE_RDY;
+		rq_attr.state = MLX5_RQC_STATE_RST;
+		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
+	}
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change Rx WQ state to READY:  %s",
+			strerror(errno));
+		rte_errno = errno;
+		return ret;
+	}
+	/* Reinitialize RQ - set WQEs. */
+	mlx5_rxq_initialize(rxq);
+	rxq->err_state = MLX5_RXQ_ERR_STATE_NO_ERROR;
+	/* Set actual queue state. */
+	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
+	return 0;
+}
+
+/**
+ * Rx queue start. Device queue goes to the ready state,
+ * all required mbufs are allocated and WQ is replenished.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_rx_queue_start(struct rte_eth_dev *dev, uint16_t idx)
+{
+	int ret;
+
+	if (dev->data->rx_queue_state[idx] == RTE_ETH_QUEUE_STATE_HAIRPIN) {
+		DRV_LOG(ERR, "Hairpin queue can't be started");
+		rte_errno = EINVAL;
+		return -EINVAL;
+	}
+	if (dev->data->rx_queue_state[idx] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+	if (rte_eal_process_type() ==  RTE_PROC_SECONDARY) {
+		ret = mlx5_mp_os_req_queue_control(dev, idx,
+						   MLX5_MP_REQ_QUEUE_RX_START);
+	} else {
+		ret = mlx5_rx_queue_start_primary(dev, idx);
+	}
+	return ret;
+}
+
 /**
  * Rx queue presetup checks.
  *
@@ -1479,6 +1717,7 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
+	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_HAIRPIN;
 	return tmpl;
 }
 
@@ -1690,6 +1929,7 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
+	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return tmpl;
 error:
 	if (tmpl) {
