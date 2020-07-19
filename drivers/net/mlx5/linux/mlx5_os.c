@@ -2462,6 +2462,46 @@ mlx5_os_vf_mac_addr_modify(struct mlx5_priv *priv,
 		(priv->nl_socket_route, iface_idx, mac_addr, vf_index);
 }
 
+/**
+ * Set device promiscuous mode
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param enable
+ *   0 - promiscuous is disabled, otherwise - enabled
+ *
+ * @return
+ *   0 on success, a negative error value otherwise
+ */
+int
+mlx5_os_set_promisc(struct rte_eth_dev *dev, int enable)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return mlx5_nl_promisc(priv->nl_socket_route,
+			       mlx5_ifindex(dev), !!enable);
+}
+
+/**
+ * Set device promiscuous mode
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param enable
+ *   0 - all multicase is disabled, otherwise - enabled
+ *
+ * @return
+ *   0 on success, a negative error value otherwise
+ */
+int
+mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return mlx5_nl_allmulti(priv->nl_socket_route,
+				mlx5_ifindex(dev), !!enable);
+}
+
 const struct eth_dev_ops mlx5_os_dev_ops = {
 	.dev_configure = mlx5_dev_configure,
 	.dev_start = mlx5_dev_start,
