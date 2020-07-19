@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <net/if.h>
-#include <sys/mman.h>
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
 #include <linux/ethtool.h>
@@ -37,6 +36,7 @@
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
 #include <rte_alarm.h>
+#include <rte_eal_paging.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -134,7 +134,7 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
  * Verbs callback to allocate a memory. This function should allocate the space
  * according to the size provided residing inside a huge page.
  * Please note that all allocation must respect the alignment from libmlx5
- * (i.e. currently sysconf(_SC_PAGESIZE)).
+ * (i.e. currently rte_mem_page_size()).
  *
  * @param[in] size
  *   The size in bytes of the memory to allocate.
@@ -149,8 +149,13 @@ mlx5_alloc_verbs_buf(size_t size, void *data)
 {
 	struct mlx5_priv *priv = data;
 	void *ret;
-	size_t alignment = sysconf(_SC_PAGESIZE);
 	unsigned int socket = SOCKET_ID_ANY;
+	size_t alignment = rte_mem_page_size();
+	if (alignment == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
 
 	if (priv->verbs_alloc_ctx.type == MLX5_VERBS_ALLOC_TYPE_TX_QUEUE) {
 		const struct mlx5_txq_ctrl *ctrl = priv->verbs_alloc_ctx.obj;

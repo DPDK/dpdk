@@ -10,6 +10,7 @@
 #include <rte_alarm.h>
 #include <rte_malloc.h>
 #include <rte_cycles.h>
+#include <rte_eal_paging.h>
 
 #include <mlx5_malloc.h>
 
@@ -249,10 +250,15 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
 	struct mlx5_devx_cq_attr cq_attr = { 0 };
 	struct mlx5_txpp_wq *wq = &sh->txpp.rearm_queue;
-	size_t page_size = sysconf(_SC_PAGESIZE);
+	size_t page_size;
 	uint32_t umem_size, umem_dbrec;
 	int ret;
 
+	page_size = rte_mem_page_size();
+	if (page_size == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		return -ENOMEM;
+	}
 	/* Allocate memory buffer for CQEs and doorbell record. */
 	umem_size = sizeof(struct mlx5_cqe) * MLX5_TXPP_REARM_CQ_SIZE;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
@@ -472,10 +478,15 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
 	struct mlx5_devx_cq_attr cq_attr = { 0 };
 	struct mlx5_txpp_wq *wq = &sh->txpp.clock_queue;
-	size_t page_size = sysconf(_SC_PAGESIZE);
+	size_t page_size;
 	uint32_t umem_size, umem_dbrec;
 	int ret;
 
+	page_size = rte_mem_page_size();
+	if (page_size == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		return -ENOMEM;
+	}
 	sh->txpp.tsa = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
 				   MLX5_TXPP_REARM_SQ_SIZE *
 				   sizeof(struct mlx5_txpp_ts),

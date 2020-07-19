@@ -5,6 +5,7 @@
 
 #include <rte_errno.h>
 #include <rte_malloc.h>
+#include <rte_eal_paging.h>
 
 #include "mlx5_prm.h"
 #include "mlx5_devx_cmds.h"
@@ -222,7 +223,13 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 		return NULL;
 	}
 	memset(in, 0, in_size_dw * 4);
-	pgsize = sysconf(_SC_PAGESIZE);
+	pgsize = rte_mem_page_size();
+	if (pgsize == (size_t)-1) {
+		mlx5_free(mkey);
+		DRV_LOG(ERR, "Failed to get page size");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
 	MLX5_SET(create_mkey_in, in, opcode, MLX5_CMD_OP_CREATE_MKEY);
 	mkc = MLX5_ADDR_OF(create_mkey_in, in, memory_key_mkey_entry);
 	if (klm_num > 0) {

@@ -29,6 +29,7 @@
 #include <rte_gre.h>
 #include <rte_vxlan.h>
 #include <rte_gtp.h>
+#include <rte_eal_paging.h>
 
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
@@ -4182,7 +4183,13 @@ flow_dv_create_counter_stat_mem_mng(struct rte_eth_dev *dev, int raws_n)
 			MLX5_COUNTERS_PER_POOL +
 			sizeof(struct mlx5_counter_stats_raw)) * raws_n +
 			sizeof(struct mlx5_counter_stats_mem_mng);
-	uint8_t *mem = mlx5_malloc(MLX5_MEM_ZERO, size, sysconf(_SC_PAGESIZE),
+	size_t pgsize = rte_mem_page_size();
+	if (pgsize == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	uint8_t *mem = mlx5_malloc(MLX5_MEM_ZERO, size, pgsize,
 				  SOCKET_ID_ANY);
 	int i;
 

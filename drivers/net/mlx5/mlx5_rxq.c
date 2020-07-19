@@ -28,6 +28,7 @@
 #include <rte_interrupts.h>
 #include <rte_debug.h>
 #include <rte_io.h>
+#include <rte_eal_paging.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -1233,8 +1234,14 @@ mlx5_devx_rq_new(struct rte_eth_dev *dev, uint16_t idx, uint32_t cqn)
 	/* Calculate and allocate WQ memory space. */
 	wqe_size = 1 << log_wqe_size; /* round up power of two.*/
 	wq_size = wqe_n * wqe_size;
+	size_t alignment = MLX5_WQE_BUF_ALIGNMENT;
+	if (alignment == (size_t)-1) {
+		DRV_LOG(ERR, "Failed to get mem page size");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
 	buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, wq_size,
-			  MLX5_WQE_BUF_ALIGNMENT, rxq_ctrl->socket);
+			  alignment, rxq_ctrl->socket);
 	if (!buf)
 		return NULL;
 	rxq_data->wqes = buf;
