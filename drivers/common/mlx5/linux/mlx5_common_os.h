@@ -15,12 +15,7 @@
 #include <rte_devargs.h>
 
 #include "mlx5_autoconf.h"
-#ifdef HAVE_INFINIBAND_VERBS_H
-#include <infiniband/verbs.h>
-#endif
-#ifdef HAVE_INFINIBAND_MLX5DV_H
-#include <infiniband/mlx5dv.h>
-#endif
+#include "mlx5_glue.h"
 
 /**
  * Get device name. Given an ibv_device pointer - return a

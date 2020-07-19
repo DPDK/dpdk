@@ -6,16 +6,7 @@
 #ifndef RTE_PMD_MLX5_COMMON_MP_H_
 #define RTE_PMD_MLX5_COMMON_MP_H_
 
-/* Verbs header. */
-/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#include <infiniband/verbs.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
-
+#include <mlx5_glue.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
 

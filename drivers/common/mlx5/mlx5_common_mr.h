@@ -10,21 +10,12 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
-/* Verbs header. */
-/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#include <infiniband/verbs.h>
-#include <infiniband/mlx5dv.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
 
 #include <rte_rwlock.h>
 #include <rte_bitmap.h>
 #include <rte_memory.h>
 
+#include "mlx5_glue.h"
 #include "mlx5_common_mp.h"
 
 /* Size of per-queue MR cache array for linear search. */

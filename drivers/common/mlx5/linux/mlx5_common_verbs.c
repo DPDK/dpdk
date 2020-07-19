@@ -10,22 +10,7 @@
 #include <sys/mman.h>
 #include <inttypes.h>
 
-/* Verbs header. */
-/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
 #include "mlx5_autoconf.h"
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#ifdef HAVE_INFINIBAND_VERBS_H
-#include <infiniband/verbs.h>
-#endif
-#ifdef HAVE_INFINIBAND_MLX5DV_H
-#include <infiniband/mlx5dv.h>
-#endif
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
-
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>

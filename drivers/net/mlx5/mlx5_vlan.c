@@ -8,23 +8,6 @@
 #include <stdint.h>
 #include <unistd.h>
 
-
-/*
- * Not needed by this file; included to work around the lack of off_t
- * definition for mlx5dv.h with unpatched rdma-core versions.
- */
-#include <sys/types.h>
-
-/* Verbs headers do not support -pedantic. */
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#include <infiniband/mlx5dv.h>
-#include <infiniband/verbs.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
-
 #include <rte_ethdev_driver.h>
 #include <rte_common.h>
 #include <rte_malloc.h>

@@ -3,21 +3,12 @@
  * Copyright 2016 Mellanox Technologies, Ltd
  */
 
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#include <infiniband/verbs.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
-
 #include <rte_eal_memconfig.h>
 #include <rte_mempool.h>
 #include <rte_malloc.h>
 #include <rte_rwlock.h>
 #include <rte_bus_pci.h>
 
-#include <mlx5_glue.h>
 #include <mlx5_common_mp.h>
 #include <mlx5_common_mr.h>
 

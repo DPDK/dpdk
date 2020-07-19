@@ -6,21 +6,12 @@
 #ifndef RTE_PMD_MLX5_PRM_H_
 #define RTE_PMD_MLX5_PRM_H_
 
-/* Verbs header. */
-/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#include <infiniband/mlx5dv.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
-
 #include <unistd.h>
 
 #include <rte_vect.h>
 #include <rte_byteorder.h>
 
+#include <mlx5_glue.h>
 #include "mlx5_autoconf.h"
 
 /* RSS hash key size. */

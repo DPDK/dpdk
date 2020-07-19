@@ -11,20 +11,11 @@
 #include <stdint.h>
 #include <string.h>
 
-/* Verbs header. */
-/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-#include <infiniband/verbs.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
-
 #include <rte_atomic.h>
 #include <rte_alarm.h>
 #include <rte_mtr.h>
 
+#include <mlx5_glue.h>
 #include <mlx5_prm.h>
 
 #include "mlx5.h"
