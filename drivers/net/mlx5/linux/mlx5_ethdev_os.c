@@ -973,6 +973,57 @@ mlx5_is_removed(struct rte_eth_dev *dev)
 }
 
 /**
+ * Analyze gathered port parameters via sysfs to recognize master
+ * and representor devices for E-Switch configuration.
+ *
+ * @param[in] device_dir
+ *   flag of presence of "device" directory under port device key.
+ * @param[inout] switch_info
+ *   Port information, including port name as a number and port name
+ *   type if recognized
+ *
+ * @return
+ *   master and representor flags are set in switch_info according to
+ *   recognized parameters (if any).
+ */
+static void
+mlx5_sysfs_check_switch_info(bool device_dir,
+			     struct mlx5_switch_info *switch_info)
+{
+	switch (switch_info->name_type) {
+	case MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN:
+		/*
+		 * Name is not recognized, assume the master,
+		 * check the device directory presence.
+		 */
+		switch_info->master = device_dir;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_NOTSET:
+		/*
+		 * Name is not set, this assumes the legacy naming
+		 * schema for master, just check if there is
+		 * a device directory.
+		 */
+		switch_info->master = device_dir;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
+		/* New uplink naming schema recognized. */
+		switch_info->master = 1;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_LEGACY:
+		/* Legacy representors naming schema. */
+		switch_info->representor = !device_dir;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_PFHPF:
+		/* Fallthrough */
+	case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
+		/* New representors naming schema. */
+		switch_info->representor = 1;
+		break;
+	}
+}
+
+/**
  * Get switch information associated with network interface.
  *
  * @param ifindex
@@ -1048,57 +1099,6 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 		return -rte_errno;
 	}
 	return 0;
-}
-
-/**
- * Analyze gathered port parameters via sysfs to recognize master
- * and representor devices for E-Switch configuration.
- *
- * @param[in] device_dir
- *   flag of presence of "device" directory under port device key.
- * @param[inout] switch_info
- *   Port information, including port name as a number and port name
- *   type if recognized
- *
- * @return
- *   master and representor flags are set in switch_info according to
- *   recognized parameters (if any).
- */
-void
-mlx5_sysfs_check_switch_info(bool device_dir,
-			     struct mlx5_switch_info *switch_info)
-{
-	switch (switch_info->name_type) {
-	case MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN:
-		/*
-		 * Name is not recognized, assume the master,
-		 * check the device directory presence.
-		 */
-		switch_info->master = device_dir;
-		break;
-	case MLX5_PHYS_PORT_NAME_TYPE_NOTSET:
-		/*
-		 * Name is not set, this assumes the legacy naming
-		 * schema for master, just check if there is
-		 * a device directory.
-		 */
-		switch_info->master = device_dir;
-		break;
-	case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
-		/* New uplink naming schema recognized. */
-		switch_info->master = 1;
-		break;
-	case MLX5_PHYS_PORT_NAME_TYPE_LEGACY:
-		/* Legacy representors naming schema. */
-		switch_info->representor = !device_dir;
-		break;
-	case MLX5_PHYS_PORT_NAME_TYPE_PFHPF:
-		/* Fallthrough */
-	case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
-		/* New representors naming schema. */
-		switch_info->representor = 1;
-		break;
-	}
 }
 
 /**

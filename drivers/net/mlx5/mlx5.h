@@ -815,6 +815,10 @@ const uint32_t *mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
 			 struct rte_eth_hairpin_cap *cap);
+eth_rx_burst_t mlx5_select_rx_function(struct rte_eth_dev *dev);
+struct mlx5_priv *mlx5_port_to_eswitch_info(uint16_t port, bool valid);
+struct mlx5_priv *mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev);
+int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
 
 /* mlx5_ethdev_os.c */
 
@@ -825,27 +829,17 @@ int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
 int mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
 int mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete);
-int mlx5_force_link_status_change(struct rte_eth_dev *dev, int status);
 int mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev,
 			   struct rte_eth_fc_conf *fc_conf);
 int mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev,
 			   struct rte_eth_fc_conf *fc_conf);
-void mlx5_dev_link_status_handler(void *arg);
 void mlx5_dev_interrupt_handler(void *arg);
 void mlx5_dev_interrupt_handler_devx(void *arg);
-void mlx5_dev_interrupt_handler_uninstall(struct rte_eth_dev *dev);
-void mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev);
 int mlx5_set_link_down(struct rte_eth_dev *dev);
 int mlx5_set_link_up(struct rte_eth_dev *dev);
 int mlx5_is_removed(struct rte_eth_dev *dev);
-eth_tx_burst_t mlx5_select_tx_function(struct rte_eth_dev *dev);
-eth_rx_burst_t mlx5_select_rx_function(struct rte_eth_dev *dev);
-struct mlx5_priv *mlx5_port_to_eswitch_info(uint16_t port, bool valid);
-struct mlx5_priv *mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev);
 int mlx5_sysfs_switch_info(unsigned int ifindex,
 			   struct mlx5_switch_info *info);
-void mlx5_sysfs_check_switch_info(bool device_dir,
-				  struct mlx5_switch_info *switch_info);
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 void mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
@@ -854,7 +848,6 @@ int mlx5_get_module_info(struct rte_eth_dev *dev,
 			 struct rte_eth_dev_module_info *modinfo);
 int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 			   struct rte_dev_eeprom_info *info);
-int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
 int mlx5_os_read_dev_stat(struct mlx5_priv *priv,
 			  const char *ctr_name, uint64_t *stat);
 int mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats);
@@ -1044,5 +1037,9 @@ int mlx5_txpp_xstats_get_names(struct rte_eth_dev *dev,
 			       struct rte_eth_xstat_name *xstats_names,
 			       unsigned int n, unsigned int n_used);
 void mlx5_txpp_interrupt_handler(void *cb_arg);
+
+/* mlx5_rxtx.c */
+
+eth_tx_burst_t mlx5_select_tx_function(struct rte_eth_dev *dev);
 
 #endif /* RTE_PMD_MLX5_H_ */
