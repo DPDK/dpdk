@@ -1881,9 +1881,6 @@ cryptodev_aesni_mb_create(const char *name,
 	struct aesni_mb_private *internals;
 	enum aesni_mb_vector_mode vector_mode;
 	MB_MGR *mb_mgr;
-#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
-	struct rte_security_ctx *security_instance;
-#endif
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
@@ -1912,13 +1909,10 @@ cryptodev_aesni_mb_create(const char *name,
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_SESSIONLESS
-#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
-			| RTE_CRYPTODEV_FF_SECURITY
-#endif
-			;
+			RTE_CRYPTODEV_FF_SYM_SESSIONLESS;
 
 #ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+	struct rte_security_ctx *security_instance;
 	security_instance = rte_malloc("aesni_mb_sec",
 				sizeof(struct rte_security_ctx),
 				RTE_CACHE_LINE_SIZE);
@@ -1932,6 +1926,7 @@ cryptodev_aesni_mb_create(const char *name,
 	security_instance->ops = rte_aesni_mb_pmd_sec_ops;
 	security_instance->sess_cnt = 0;
 	dev->security_ctx = security_instance;
+	dev->feature_flags |= RTE_CRYPTODEV_FF_SECURITY;
 #endif
 
 	/* Check CPU for support for AES instruction set */
@@ -1944,6 +1939,10 @@ cryptodev_aesni_mb_create(const char *name,
 
 	mb_mgr = alloc_init_mb_mgr(vector_mode);
 	if (mb_mgr == NULL) {
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
+		rte_free(dev->security_ctx);
+		dev->security_ctx = NULL;
+#endif
 		rte_cryptodev_pmd_destroy(dev);
 		return -ENOMEM;
 	}
@@ -2011,8 +2010,9 @@ cryptodev_aesni_mb_remove(struct rte_vdev_device *vdev)
 		RTE_PER_LCORE(sync_mb_mgr) = NULL;
 	}
 
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
 	rte_free(cryptodev->security_ctx);
+	cryptodev->security_ctx = NULL;
 #endif
 
 	return rte_cryptodev_pmd_destroy(cryptodev);
