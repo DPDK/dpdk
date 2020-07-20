@@ -120,6 +120,7 @@ regex_ctrl_create_cq(struct mlx5_regex_priv *priv, struct mlx5_regex_cq *cq)
 	cq->cqe_umem = mlx5_glue->devx_umem_reg(priv->ctx, buf,
 						sizeof(struct mlx5_cqe) *
 						cq_size, 7);
+	cq->ci = 0;
 	if (!cq->cqe_umem) {
 		DRV_LOG(ERR, "Can't register cqe mem.");
 		rte_errno  = ENOMEM;

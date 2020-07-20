@@ -409,6 +409,12 @@ struct mlx5_ifc_regexp_metadata_bits {
 	uint8_t reserved[0x80];
 };
 
+struct mlx5_ifc_regexp_match_tuple_bits {
+	uint8_t length[0x10];
+	uint8_t start_ptr[0x10];
+	uint8_t rule_id[0x20];
+};
+
 /* Adding direct verbs to data-path. */
 
 /* CQ sequence number mask. */
@@ -605,6 +611,10 @@ typedef uint8_t u8;
 				  __mlx5_16_bit_off(typ, fld))); \
 	} while (0)
 
+#define MLX5_GET_VOLATILE(typ, p, fld) \
+	((rte_be_to_cpu_32(*((volatile __be32 *)(p) +\
+	__mlx5_dw_off(typ, fld))) >> __mlx5_dw_bit_off(typ, fld)) & \
+	__mlx5_mask(typ, fld))
 #define MLX5_GET(typ, p, fld) \
 	((rte_be_to_cpu_32(*((__be32 *)(p) +\
 	__mlx5_dw_off(typ, fld))) >> __mlx5_dw_bit_off(typ, fld)) & \

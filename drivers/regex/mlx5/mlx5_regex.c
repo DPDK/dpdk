@@ -166,6 +166,7 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	priv->regexdev->dev_ops = &mlx5_regexdev_ops;
 	priv->regexdev->enqueue = mlx5_regexdev_enqueue;
+	priv->regexdev->dequeue = mlx5_regexdev_dequeue;
 	priv->regexdev->device = (struct rte_device *)pci_dev;
 	priv->regexdev->data->dev_private = priv;
 	priv->regexdev->state = RTE_REGEXDEV_READY;
