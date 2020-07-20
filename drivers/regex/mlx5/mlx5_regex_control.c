@@ -363,6 +363,8 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 			goto error;
 		}
 	}
+
+	mlx5_regexdev_setup_fastpath(priv, qp_ind);
 	return 0;
 
 error:

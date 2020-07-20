@@ -373,6 +373,42 @@ struct mlx5_cqe {
 	uint8_t op_own;
 };
 
+/* MMO metadata segment */
+
+#define	MLX5_OPCODE_MMO	0x2f
+#define	MLX5_OPC_MOD_MMO_REGEX 0x4
+
+struct mlx5_wqe_metadata_seg {
+	uint32_t mmo_control_31_0; /* mmo_control_63_32 is in ctrl_seg.imm */
+	uint32_t lkey;
+	uint64_t addr;
+};
+
+struct mlx5_ifc_regexp_mmo_control_bits {
+	uint8_t reserved_at_31[0x2];
+	uint8_t le[0x1];
+	uint8_t reserved_at_28[0x1];
+	uint8_t subset_id_0[0xc];
+	uint8_t reserved_at_16[0x4];
+	uint8_t subset_id_1[0xc];
+	uint8_t ctrl[0x4];
+	uint8_t subset_id_2[0xc];
+	uint8_t reserved_at_16_1[0x4];
+	uint8_t subset_id_3[0xc];
+};
+
+struct mlx5_ifc_regexp_metadata_bits {
+	uint8_t rof_version[0x10];
+	uint8_t latency_count[0x10];
+	uint8_t instruction_count[0x10];
+	uint8_t primary_thread_count[0x10];
+	uint8_t match_count[0x8];
+	uint8_t detected_match_count[0x8];
+	uint8_t status[0x10];
+	uint8_t job_id[0x20];
+	uint8_t reserved[0x80];
+};
+
 /* Adding direct verbs to data-path. */
 
 /* CQ sequence number mask. */
