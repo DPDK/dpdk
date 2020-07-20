@@ -23,6 +23,7 @@ int mlx5_regex_logtype;
 
 const struct rte_regexdev_ops mlx5_regexdev_ops = {
 	.dev_info_get = mlx5_regex_info_get,
+	.dev_configure = mlx5_regex_configure,
 };
 
 static struct ibv_device *
@@ -143,6 +144,7 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->regexdev->dev_ops = &mlx5_regexdev_ops;
 	priv->regexdev->device = (struct rte_device *)pci_dev;
 	priv->regexdev->data->dev_private = priv;
+	priv->regexdev->state = RTE_REGEXDEV_READY;
 	return 0;
 
 error:
