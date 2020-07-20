@@ -10,7 +10,7 @@ LIB_GLUE_BASE = librte_pmd_mlx5_glue.so
 LIB_GLUE_VERSION = 20.02.0
 
 # Sources.
-ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)),y)
+ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)$(CONFIG_RTE_LIBRTE_MLX5_REGEX_PMD)),y)
 ifneq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 SRCS-y += linux/mlx5_glue.c
 endif
@@ -344,7 +344,7 @@ mlx5_autoconf.h: mlx5_autoconf.h.new
 		cmp '$<' '$@' $(AUTOCONF_OUTPUT) || \
 		mv '$<' '$@'
 
-ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)),y)
+ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)$(CONFIG_RTE_LIBRTE_MLX5_REGEX_PMD)),y)
 $(SRCS-y:.c=.o): mlx5_autoconf.h
 endif
 

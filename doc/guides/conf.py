@@ -47,7 +47,7 @@ release = version
 master_doc = 'index'
 
 # Maximum feature description string length
-feature_str_len = 25
+feature_str_len = 30
 
 # Figures, tables and code-blocks automatically numbered if they have caption
 numfig = True
@@ -408,6 +408,11 @@ def setup(app):
     generate_overview_table(table_file, 1,
                             'Features',
                             'Features availability in compression drivers',
+                            'Feature')
+    table_file = dirname(__file__) + '/regexdevs/overview_feature_table.txt'
+    generate_overview_table(table_file, 1,
+                            'Features',
+                            'Features availability in regex drivers',
                             'Feature')
     table_file = dirname(__file__) + '/vdpadevs/overview_feature_table.txt'
     generate_overview_table(table_file, 1,

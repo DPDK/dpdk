@@ -375,6 +375,11 @@ CONFIG_RTE_LIBRTE_MLX5_PMD=n
 CONFIG_RTE_LIBRTE_MLX5_DEBUG=n
 
 #
+# Compile regex-oriented Mellanox PMD
+#
+CONFIG_RTE_LIBRTE_MLX5_REGEX_PMD=n
+
+#
 # Compile vdpa-oriented Mellanox ConnectX-6 & BlueField (MLX5) PMD
 #
 CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD=n

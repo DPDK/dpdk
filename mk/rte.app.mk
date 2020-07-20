@@ -201,11 +201,12 @@ endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_LIO_PMD)        += -lrte_pmd_lio
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_MEMIF)      += -lrte_pmd_memif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -lrte_pmd_mlx4
-ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)),y)
+ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)$(CONFIG_RTE_LIBRTE_MLX5_REGEX_PMD)),y)
 _LDLIBS-y                                   += -lrte_common_mlx5
 endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_PMD)       += -lrte_pmd_mlx5
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)  += -lrte_pmd_mlx5_vdpa
+_LDLIBS-$(CONFIG_RTE_LIBRTE_MLX5_REGEX_PMD)  += -lrte_pmd_mlx5_regex
 ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 _LDLIBS-y                                   += -ldl
 else ifeq ($(CONFIG_RTE_IBVERBS_LINK_STATIC),y)
@@ -214,7 +215,7 @@ _LDLIBS-y                                   += --no-whole-archive
 _LDLIBS-y                                   += $(LIBS_IBVERBS_STATIC)
 _LDLIBS-y                                   += --whole-archive
 else
-ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)),y)
+ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)$(CONFIG_RTE_LIBRTE_MLX5_REGEX_PMD)),y)
 _LDLIBS-y                                   += -libverbs -lmlx5
 endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MLX4_PMD)       += -libverbs -lmlx4

@@ -454,6 +454,7 @@ RegEx API - EXPERIMENTAL
 M: Ori Kam <orika@mellanox.com>
 F: lib/librte_regexdev/
 F: doc/guides/prog_guide/regexdev.rst
+F: doc/guides/regexdevs/features/default.ini
 
 Eventdev API
 M: Jerin Jacob <jerinj@marvell.com>
@@ -1126,6 +1127,16 @@ M: Sunila Sahu <ssahu@marvell.com>
 F: drivers/compress/zlib/
 F: doc/guides/compressdevs/zlib.rst
 F: doc/guides/compressdevs/features/zlib.ini
+
+
+RegEx Drivers
+-------------
+
+Mellanox mlx5
+M: Ori Kam <orika@mellanox.com>
+F: drivers/regex/mlx5/
+F: doc/guides/regexdevs/mlx5.rst
+F: doc/guides/regexdevs/features/mlx5.ini
 
 
 vDPA Drivers
