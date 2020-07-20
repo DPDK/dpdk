@@ -23,10 +23,11 @@
 #include "mlx5_rxp.h"
 #include "mlx5_regex.h"
 
+#define MLX5_REGEX_MAX_WQE_INDEX 0xffff
 #define MLX5_REGEX_METADATA_SIZE 64
 #define MLX5_REGEX_MAX_INPUT (1 << 14)
 #define MLX5_REGEX_MAX_OUTPUT (1 << 11)
-
+#define MLX5_REGEX_WQE_CTRL_OFFSET 12
 #define MLX5_REGEX_WQE_METADATA_OFFSET 16
 #define MLX5_REGEX_WQE_GATHER_OFFSET 32
 #define MLX5_REGEX_WQE_SCATTER_OFFSET 48
@@ -62,6 +63,120 @@ set_metadata_seg(struct mlx5_wqe_metadata_seg *seg,
 	seg->mmo_control_31_0 = htobe32(mmo_control_31_0);
 	seg->lkey = rte_cpu_to_be_32(lkey);
 	seg->addr = rte_cpu_to_be_64(address);
+}
+
+static inline void
+set_regex_ctrl_seg(void *seg, uint8_t le, uint16_t subset_id0,
+		   uint16_t subset_id1, uint16_t subset_id2,
+		   uint16_t subset_id3, uint8_t ctrl)
+{
+	MLX5_SET(regexp_mmo_control, seg, le, le);
+	MLX5_SET(regexp_mmo_control, seg, ctrl, ctrl);
+	MLX5_SET(regexp_mmo_control, seg, subset_id_0, subset_id0);
+	MLX5_SET(regexp_mmo_control, seg, subset_id_1, subset_id1);
+	MLX5_SET(regexp_mmo_control, seg, subset_id_2, subset_id2);
+	MLX5_SET(regexp_mmo_control, seg, subset_id_3, subset_id3);
+}
+
+static inline void
+set_wqe_ctrl_seg(struct mlx5_wqe_ctrl_seg *seg, uint16_t pi, uint8_t opcode,
+		 uint8_t opmod, uint32_t qp_num, uint8_t fm_ce_se, uint8_t ds,
+		 uint8_t signature, uint32_t imm)
+{
+	seg->opmod_idx_opcode = rte_cpu_to_be_32(((uint32_t)opmod << 24) |
+						 ((uint32_t)pi << 8) |
+						 opcode);
+	seg->qpn_ds = rte_cpu_to_be_32((qp_num << 8) | ds);
+	seg->fm_ce_se = fm_ce_se;
+	seg->signature = signature;
+	seg->imm = imm;
+}
+
+static inline void
+prep_one(struct mlx5_regex_sq *sq, struct rte_regex_ops *op,
+	 struct mlx5_regex_job *job)
+{
+	size_t wqe_offset = (sq->pi & (sq_size_get(sq) - 1)) * MLX5_SEND_WQE_BB;
+	uint8_t *wqe = (uint8_t *)sq->wqe + wqe_offset;
+	int ds = 4; /*  ctrl + meta + input + output */
+
+	memcpy(job->input,
+		rte_pktmbuf_mtod(op->mbuf, void *),
+		rte_pktmbuf_data_len(op->mbuf));
+	set_wqe_ctrl_seg((struct mlx5_wqe_ctrl_seg *)wqe, sq->pi,
+			 MLX5_OPCODE_MMO, MLX5_OPC_MOD_MMO_REGEX, sq->obj->id,
+			 0, ds, 0, 0);
+	set_regex_ctrl_seg(wqe + 12, 0, op->group_id0, op->group_id1,
+			   op->group_id2,
+			   op->group_id3, 0);
+	struct mlx5_wqe_data_seg *input_seg =
+		(struct mlx5_wqe_data_seg *)(wqe +
+					     MLX5_REGEX_WQE_GATHER_OFFSET);
+	input_seg->byte_count =
+		rte_cpu_to_be_32(rte_pktmbuf_data_len(op->mbuf));
+	job->user_id = op->user_id;
+	sq->db_pi = sq->pi;
+	sq->pi = (sq->pi + 1) & MLX5_REGEX_MAX_WQE_INDEX;
+}
+
+static inline void
+send_doorbell(struct mlx5dv_devx_uar *uar, struct mlx5_regex_sq *sq)
+{
+	size_t wqe_offset = (sq->db_pi & (sq_size_get(sq) - 1)) *
+		MLX5_SEND_WQE_BB;
+	uint8_t *wqe = (uint8_t *)sq->wqe + wqe_offset;
+	((struct mlx5_wqe_ctrl_seg *)wqe)->fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;
+	uint64_t *doorbell_addr =
+		(uint64_t *)((uint8_t *)uar->base_addr + 0x800);
+	rte_cio_wmb();
+	sq->dbr[MLX5_SND_DBR] = rte_cpu_to_be_32((sq->db_pi + 1) &
+						 MLX5_REGEX_MAX_WQE_INDEX);
+	rte_wmb();
+	*doorbell_addr = *(volatile uint64_t *)wqe;
+	rte_wmb();
+}
+
+static inline int
+can_send(struct mlx5_regex_sq *sq) {
+	return unlikely(sq->ci > sq->pi) ?
+			MLX5_REGEX_MAX_WQE_INDEX + sq->pi - sq->ci <
+			sq_size_get(sq) :
+			sq->pi - sq->ci < sq_size_get(sq);
+}
+
+static inline uint32_t
+job_id_get(uint32_t qid, size_t sq_size, size_t index) {
+	return qid * sq_size + index % sq_size;
+}
+
+uint16_t
+mlx5_regexdev_enqueue(struct rte_regexdev *dev, uint16_t qp_id,
+		      struct rte_regex_ops **ops, uint16_t nb_ops)
+{
+	struct mlx5_regex_priv *priv = dev->data->dev_private;
+	struct mlx5_regex_qp *queue = &priv->qps[qp_id];
+	struct mlx5_regex_sq *sq;
+	size_t sqid, job_id, i = 0;
+
+	while ((sqid = ffs(queue->free_sqs))) {
+		sqid--; /* ffs returns 1 for bit 0 */
+		sq = &queue->sqs[sqid];
+		while (can_send(sq)) {
+			job_id = job_id_get(sqid, sq_size_get(sq), sq->pi);
+			prep_one(sq, ops[i], &queue->jobs[job_id]);
+			i++;
+			if (unlikely(i == nb_ops)) {
+				send_doorbell(priv->uar, sq);
+				goto out;
+			}
+		}
+		queue->free_sqs &= ~(1 << sqid);
+		send_doorbell(priv->uar, sq);
+	}
+
+out:
+	queue->pi += i;
+	return i;
 }
 
 static void

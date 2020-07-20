@@ -219,6 +219,8 @@ regex_ctrl_create_sq(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
 	sq->wqe = buf;
 	sq->wqe_umem = mlx5_glue->devx_umem_reg(priv->ctx, buf, 64 * sq_size,
 						7);
+	sq->ci = 0;
+	sq->pi = 0;
 	if (!sq->wqe_umem) {
 		DRV_LOG(ERR, "Can't register wqe mem.");
 		rte_errno  = ENOMEM;
