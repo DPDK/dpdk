@@ -759,6 +759,10 @@ enum {
 	MLX5_CMD_OP_CREATE_GENERAL_OBJECT = 0xa00,
 	MLX5_CMD_OP_MODIFY_GENERAL_OBJECT = 0xa01,
 	MLX5_CMD_OP_QUERY_GENERAL_OBJECT = 0xa02,
+	MLX5_CMD_SET_REGEX_PARAMS = 0xb04,
+	MLX5_CMD_QUERY_REGEX_PARAMS = 0xb05,
+	MLX5_CMD_SET_REGEX_REGISTERS = 0xb06,
+	MLX5_CMD_QUERY_REGEX_REGISTERS = 0xb07,
 };
 
 enum {
@@ -2489,6 +2493,93 @@ struct mlx5_ifc_query_qp_in_bits {
 	u8 reserved_at_40[0x8];
 	u8 qpn[0x18];
 	u8 reserved_at_60[0x20];
+};
+
+struct regexp_params_field_select_bits {
+	u8 reserved_at_0[0x1e];
+	u8 stop_engine[0x1];
+	u8 db_umem_id[0x1];
+};
+
+struct mlx5_ifc_regexp_params_bits {
+	u8 reserved_at_0[0x1f];
+	u8 stop_engine[0x1];
+	u8 db_umem_id[0x20];
+	u8 db_umem_offset[0x40];
+	u8 reserved_at_80[0x100];
+};
+
+struct mlx5_ifc_set_regexp_params_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x18];
+	u8 engine_id[0x8];
+	struct regexp_params_field_select_bits field_select;
+	struct mlx5_ifc_regexp_params_bits regexp_params;
+};
+
+struct mlx5_ifc_set_regexp_params_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_18[0x40];
+};
+
+struct mlx5_ifc_query_regexp_params_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x18];
+	u8 engine_id[0x8];
+	u8 reserved[0x20];
+};
+
+struct mlx5_ifc_query_regexp_params_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved[0x40];
+	struct mlx5_ifc_regexp_params_bits regexp_params;
+};
+
+struct mlx5_ifc_set_regexp_register_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x18];
+	u8 engine_id[0x8];
+	u8 register_address[0x20];
+	u8 register_data[0x20];
+	u8 reserved[0x40];
+};
+
+struct mlx5_ifc_set_regexp_register_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved[0x40];
+};
+
+struct mlx5_ifc_query_regexp_register_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x18];
+	u8 engine_id[0x8];
+	u8 register_address[0x20];
+};
+
+struct mlx5_ifc_query_regexp_register_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved[0x20];
+	u8 register_data[0x20];
 };
 
 /* CQE format mask. */

@@ -17,6 +17,7 @@
 
 #include "mlx5_regex.h"
 #include "mlx5_regex_utils.h"
+#include "mlx5_rxp_csrs.h"
 
 int mlx5_regex_logtype;
 
@@ -50,6 +51,28 @@ mlx5_regex_get_ib_device_match(struct rte_pci_addr *addr)
 		rte_errno = ENOENT;
 	mlx5_glue->free_device_list(ibv_list);
 	return ibv_match;
+}
+static int
+mlx5_regex_engines_status(struct ibv_context *ctx, int num_engines)
+{
+	uint32_t fpga_ident = 0;
+	int err;
+	int i;
+
+	for (i = 0; i < num_engines; i++) {
+		err = mlx5_devx_regex_register_read(ctx, i,
+						    MLX5_RXP_CSR_IDENTIFIER,
+						    &fpga_ident);
+		fpga_ident = (fpga_ident & (0x0000FFFF));
+		if (err || fpga_ident != MLX5_RXP_IDENTIFIER) {
+			DRV_LOG(ERR, "Failed setup RXP %d err %d database "
+				"memory 0x%x", i, err, fpga_ident);
+			if (!err)
+				err = EINVAL;
+			return err;
+		}
+	}
+	return 0;
 }
 
 static void
@@ -95,6 +118,11 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "Not enough capabilities to support RegEx, maybe "
 			"old FW/OFED version?");
 		rte_errno = ENOTSUP;
+		goto error;
+	}
+	if (mlx5_regex_engines_status(ctx, 2)) {
+		DRV_LOG(ERR, "RegEx engine error.");
+		rte_errno = ENOMEM;
 		goto error;
 	}
 	priv = rte_zmalloc("mlx5 regex device private", sizeof(*priv),
