@@ -105,6 +105,9 @@ regex_ctrl_create_cq(struct mlx5_regex_priv *priv, struct mlx5_regex_cq *cq)
 		goto error;
 	}
 	cq->dbr_umem = mlx5_os_get_umem_id(dbr_page->umem);
+	cq->dbr = (uint32_t *)((uintptr_t)dbr_page->dbrs +
+			       (uintptr_t)cq->dbr_offset);
+
 	buf = rte_calloc(NULL, 1, sizeof(struct mlx5_cqe) * cq_size, 4096);
 	if (!buf) {
 		DRV_LOG(ERR, "Can't allocate cqe buffer.");
@@ -145,6 +148,170 @@ error:
 	return -rte_errno;
 }
 
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+static int
+regex_get_pdn(void *pd, uint32_t *pdn)
+{
+	struct mlx5dv_obj obj;
+	struct mlx5dv_pd pd_info;
+	int ret = 0;
+
+	obj.pd.in = pd;
+	obj.pd.out = &pd_info;
+	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_PD);
+	if (ret) {
+		DRV_LOG(DEBUG, "Fail to get PD object info");
+		return ret;
+	}
+	*pdn = pd_info.pdn;
+	return 0;
+}
+#endif
+
+/**
+ * create the SQ object.
+ *
+ * @param priv
+ *   Pointer to the priv object.
+ * @param qp
+ *   Pointer to the QP element
+ * @param q_ind
+ *   The index of the queue.
+ * @param log_nb_desc
+ *   Log 2 of the number of descriptors to be used.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+regex_ctrl_create_sq(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
+		     uint16_t q_ind, uint16_t log_nb_desc)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	struct mlx5_devx_create_sq_attr attr = { 0 };
+	struct mlx5_devx_modify_sq_attr modify_attr = { 0 };
+	struct mlx5_devx_wq_attr *wq_attr = &attr.wq_attr;
+	struct mlx5_devx_dbr_page *dbr_page = NULL;
+	struct mlx5_regex_sq *sq = &qp->sqs[q_ind];
+	void *buf = NULL;
+	uint32_t sq_size;
+	uint32_t pd_num = 0;
+	int ret;
+
+	sq->log_nb_desc = log_nb_desc;
+	sq_size = 1 << sq->log_nb_desc;
+	sq->dbr_offset = mlx5_get_dbr(priv->ctx, &priv->dbrpgs, &dbr_page);
+	if (sq->dbr_offset < 0) {
+		DRV_LOG(ERR, "Can't allocate sq door bell record.");
+		rte_errno  = ENOMEM;
+		goto error;
+	}
+	sq->dbr_umem = mlx5_os_get_umem_id(dbr_page->umem);
+	sq->dbr = (uint32_t *)((uintptr_t)dbr_page->dbrs +
+			       (uintptr_t)sq->dbr_offset);
+
+	buf = rte_calloc(NULL, 1, 64 * sq_size, 4096);
+	if (!buf) {
+		DRV_LOG(ERR, "Can't allocate wqe buffer.");
+		rte_errno  = ENOMEM;
+		goto error;
+	}
+	sq->wqe = buf;
+	sq->wqe_umem = mlx5_glue->devx_umem_reg(priv->ctx, buf, 64 * sq_size,
+						7);
+	if (!sq->wqe_umem) {
+		DRV_LOG(ERR, "Can't register wqe mem.");
+		rte_errno  = ENOMEM;
+		goto error;
+	}
+	attr.state = MLX5_SQC_STATE_RST;
+	attr.tis_lst_sz = 0;
+	attr.tis_num = 0;
+	attr.user_index = q_ind;
+	attr.cqn = qp->cq.obj->id;
+	wq_attr->uar_page = priv->uar->page_id;
+	regex_get_pdn(priv->pd, &pd_num);
+	wq_attr->pd = pd_num;
+	wq_attr->wq_type = MLX5_WQ_TYPE_CYCLIC;
+	wq_attr->dbr_umem_id = sq->dbr_umem;
+	wq_attr->dbr_addr = sq->dbr_offset;
+	wq_attr->dbr_umem_valid = 1;
+	wq_attr->wq_umem_id = mlx5_os_get_umem_id(sq->wqe_umem);
+	wq_attr->wq_umem_offset = 0;
+	wq_attr->wq_umem_valid = 1;
+	wq_attr->log_wq_stride = 6;
+	wq_attr->log_wq_sz = sq->log_nb_desc;
+	sq->obj = mlx5_devx_cmd_create_sq(priv->ctx, &attr);
+	if (!sq->obj) {
+		DRV_LOG(ERR, "Can't create sq object.");
+		rte_errno  = ENOMEM;
+		goto error;
+	}
+	modify_attr.state = MLX5_SQC_STATE_RDY;
+	ret = mlx5_devx_cmd_modify_sq(sq->obj, &modify_attr);
+	if (ret) {
+		DRV_LOG(ERR, "Can't change sq state to ready.");
+		rte_errno  = ENOMEM;
+		goto error;
+	}
+
+	return 0;
+error:
+	if (sq->wqe_umem)
+		mlx5_glue->devx_umem_dereg(sq->wqe_umem);
+	if (buf)
+		rte_free(buf);
+	if (sq->dbr_offset)
+		mlx5_release_dbr(&priv->dbrpgs, sq->dbr_umem, sq->dbr_offset);
+	return -rte_errno;
+#else
+	(void)priv;
+	(void)qp;
+	(void)q_ind;
+	(void)log_nb_desc;
+	DRV_LOG(ERR, "Cannot get pdn - no DV support.");
+	return -ENOTSUP;
+#endif
+}
+
+/**
+ * Destroy the SQ object.
+ *
+ * @param priv
+ *   Pointer to the priv object.
+ * @param qp
+ *   Pointer to the QP element
+ * @param q_ind
+ *   The index of the queue.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+regex_ctrl_destroy_sq(struct mlx5_regex_priv *priv, struct mlx5_regex_qp *qp,
+		      uint16_t q_ind)
+{
+	struct mlx5_regex_sq *sq = &qp->sqs[q_ind];
+
+	if (sq->wqe_umem) {
+		mlx5_glue->devx_umem_dereg(sq->wqe_umem);
+		sq->wqe_umem = NULL;
+	}
+	if (sq->wqe) {
+		rte_free((void *)(uintptr_t)sq->wqe);
+		sq->wqe = NULL;
+	}
+	if (sq->dbr_offset) {
+		mlx5_release_dbr(&priv->dbrpgs, sq->dbr_umem, sq->dbr_offset);
+		sq->dbr_offset = -1;
+	}
+	if (sq->obj) {
+		mlx5_devx_cmd_destroy(sq->obj);
+		sq->obj = NULL;
+	}
+	return 0;
+}
+
 /**
  * Setup the qp.
  *
@@ -164,7 +331,9 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 {
 	struct mlx5_regex_priv *priv = dev->data->dev_private;
 	struct mlx5_regex_qp *qp;
+	int i;
 	int ret;
+	uint16_t log_desc;
 
 	qp = &priv->qps[qp_ind];
 	qp->flags = cfg->qp_conf_flags;
@@ -181,15 +350,25 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 		rte_errno  = ENOMEM;
 		return -rte_errno;
 	}
+	log_desc = rte_log2_u32(qp->nb_desc / qp->nb_obj);
 	ret = regex_ctrl_create_cq(priv, &qp->cq);
 	if (ret) {
 		DRV_LOG(ERR, "Can't create cq.");
 		goto error;
 	}
+	for (i = 0; i < qp->nb_obj; i++) {
+		ret = regex_ctrl_create_sq(priv, qp, i, log_desc);
+		if (ret) {
+			DRV_LOG(ERR, "Can't create sq.");
+			goto error;
+		}
+	}
 	return 0;
 
 error:
 	regex_ctrl_destroy_cq(priv, &qp->cq);
+	for (i = 0; i < qp->nb_obj; i++)
+		ret = regex_ctrl_destroy_sq(priv, qp, i);
 	return -rte_errno;
 
 }

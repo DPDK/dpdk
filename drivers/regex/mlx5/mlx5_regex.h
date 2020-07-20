@@ -21,6 +21,7 @@ struct mlx5_regex_sq {
 	uint32_t dbr_umem; /* Door bell record umem id. */
 	uint8_t *wqe; /* The SQ ring buffer. */
 	struct mlx5dv_devx_umem *wqe_umem; /* SQ buffer umem. */
+	uint32_t *dbr;
 };
 
 struct mlx5_regex_cq {
@@ -30,6 +31,7 @@ struct mlx5_regex_cq {
 	uint32_t dbr_umem; /* Door bell record umem id. */
 	volatile struct mlx5_cqe *cqe; /* The CQ ring buffer. */
 	struct mlx5dv_devx_umem *cqe_umem; /* CQ buffer umem. */
+	uint32_t *dbr;
 };
 
 struct mlx5_regex_qp {
