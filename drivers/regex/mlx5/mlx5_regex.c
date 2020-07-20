@@ -24,6 +24,7 @@ int mlx5_regex_logtype;
 const struct rte_regexdev_ops mlx5_regexdev_ops = {
 	.dev_info_get = mlx5_regex_info_get,
 	.dev_configure = mlx5_regex_configure,
+	.dev_db_import = mlx5_regex_rules_db_import,
 };
 
 static struct ibv_device *
@@ -134,11 +135,32 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto error;
 	}
 	priv->ctx = ctx;
+	priv->nb_engines = 2; /* attr.regexp_num_of_engines */
+	/* Default RXP programming mode to Shared. */
+	priv->prog_mode = MLX5_RXP_SHARED_PROG_MODE;
 	mlx5_regex_get_name(name, pci_dev);
 	priv->regexdev = rte_regexdev_register(name);
 	if (priv->regexdev == NULL) {
 		DRV_LOG(ERR, "Failed to register RegEx device.");
 		rte_errno = rte_errno ? rte_errno : EINVAL;
+		goto error;
+	}
+	ret = mlx5_glue->devx_query_eqn(ctx, 0, &priv->eqn);
+	if (ret) {
+		DRV_LOG(ERR, "can't query event queue number.");
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	priv->uar = mlx5_glue->devx_alloc_uar(ctx, 0);
+	if (!priv->uar) {
+		DRV_LOG(ERR, "can't allocate uar.");
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	priv->pd = mlx5_glue->alloc_pd(ctx);
+	if (!priv->pd) {
+		DRV_LOG(ERR, "can't allocate pd.");
+		rte_errno = ENOMEM;
 		goto error;
 	}
 	priv->regexdev->dev_ops = &mlx5_regexdev_ops;
@@ -148,6 +170,12 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	return 0;
 
 error:
+	if (priv->pd)
+		mlx5_glue->dealloc_pd(priv->pd);
+	if (priv->uar)
+		mlx5_glue->devx_free_uar(priv->uar);
+	if (priv->regexdev)
+		rte_regexdev_unregister(priv->regexdev);
 	if (ctx)
 		mlx5_glue->close_device(ctx);
 	if (priv)
@@ -168,6 +196,12 @@ mlx5_regex_pci_remove(struct rte_pci_device *pci_dev)
 		return 0;
 	priv = dev->data->dev_private;
 	if (priv) {
+		if (priv->pd)
+			mlx5_glue->dealloc_pd(priv->pd);
+		if (priv->uar)
+			mlx5_glue->devx_free_uar(priv->uar);
+		if (priv->regexdev)
+			rte_regexdev_unregister(priv->regexdev);
 		if (priv->ctx)
 			mlx5_glue->close_device(priv->ctx);
 		if (priv->regexdev)
