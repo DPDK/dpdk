@@ -310,7 +310,7 @@ int
 qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		struct qat_dev_cmd_param *qat_dev_cmd_param __rte_unused)
 {
-	int i = 0;
+	int i = 0, ret = 0;
 	struct qat_device_info *qat_dev_instance =
 			&qat_pci_devs[qat_pci_dev->qat_dev_id];
 
@@ -346,10 +346,6 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		}
 	}
 
-#ifdef RTE_LIBRTE_SECURITY
-	struct rte_security_ctx *security_instance;
-#endif
-
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
 	QAT_LOG(DEBUG, "Creating QAT SYM device %s", name);
@@ -381,8 +377,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED |
-			RTE_CRYPTODEV_FF_SECURITY;
+			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -392,19 +387,21 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 			qat_pci_dev->qat_dev_gen);
 
 #ifdef RTE_LIBRTE_SECURITY
+	struct rte_security_ctx *security_instance;
 	security_instance = rte_malloc("qat_sec",
 				sizeof(struct rte_security_ctx),
 				RTE_CACHE_LINE_SIZE);
 	if (security_instance == NULL) {
 		QAT_LOG(ERR, "rte_security_ctx memory alloc failed");
-		rte_cryptodev_pmd_destroy(cryptodev);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto error;
 	}
 
 	security_instance->device = (void *)cryptodev;
 	security_instance->ops = &security_qat_ops;
 	security_instance->sess_cnt = 0;
 	cryptodev->security_ctx = security_instance;
+	cryptodev->feature_flags |= RTE_CRYPTODEV_FF_SECURITY;
 #endif
 
 	internals = cryptodev->data->dev_private;
@@ -428,10 +425,8 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 		QAT_LOG(DEBUG,
 			"QAT gen %d capabilities unknown",
 			qat_pci_dev->qat_dev_gen);
-		rte_cryptodev_pmd_destroy(cryptodev);
-		memset(&qat_dev_instance->sym_rte_dev, 0,
-			sizeof(qat_dev_instance->sym_rte_dev));
-		return -(EINVAL);
+		ret = -(EINVAL);
+		goto error;
 	}
 
 	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
@@ -442,12 +437,11 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	}
 	if (internals->capa_mz == NULL) {
 		QAT_LOG(DEBUG,
-			"Error allocating memzone for capabilities, destroying PMD for %s",
+			"Error allocating memzone for capabilities, destroying "
+			"PMD for %s",
 			name);
-		rte_cryptodev_pmd_destroy(cryptodev);
-		memset(&qat_dev_instance->sym_rte_dev, 0,
-			sizeof(qat_dev_instance->sym_rte_dev));
-		return -EFAULT;
+		ret = -EFAULT;
+		goto error;
 	}
 
 	memcpy(internals->capa_mz->addr, capabilities, capa_size);
@@ -467,6 +461,17 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 			cryptodev->data->name, internals->sym_dev_id);
 
 	return 0;
+
+error:
+#ifdef RTE_LIBRTE_SECURITY
+	rte_free(cryptodev->security_ctx);
+	cryptodev->security_ctx = NULL;
+#endif
+	rte_cryptodev_pmd_destroy(cryptodev);
+	memset(&qat_dev_instance->sym_rte_dev, 0,
+		sizeof(qat_dev_instance->sym_rte_dev));
+
+	return ret;
 }
 
 int
@@ -485,6 +490,7 @@ qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 	cryptodev = rte_cryptodev_pmd_get_dev(qat_pci_dev->sym_dev->sym_dev_id);
 #ifdef RTE_LIBRTE_SECURITY
 	rte_free(cryptodev->security_ctx);
+	cryptodev->security_ctx = NULL;
 #endif
 	rte_cryptodev_pmd_destroy(cryptodev);
 	qat_pci_devs[qat_pci_dev->qat_dev_id].sym_rte_dev.name = NULL;
