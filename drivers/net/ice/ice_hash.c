@@ -996,6 +996,7 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 	const struct rte_flow_action *action;
 	uint64_t rss_attr_src_dst;
 	uint64_t rss_attr_l3_pre;
+	uint64_t rss_attr_symm;
 	uint64_t rss_attr_all;
 	uint64_t rss_type;
 	uint16_t i;
@@ -1059,6 +1060,15 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 					  RTE_ETH_RSS_L3_PRE48 |
 					  RTE_ETH_RSS_L3_PRE64;
 
+			rss_attr_symm = ETH_RSS_IPV4 |
+					ETH_RSS_NONFRAG_IPV4_UDP |
+					ETH_RSS_NONFRAG_IPV4_TCP |
+					ETH_RSS_NONFRAG_IPV4_SCTP |
+					ETH_RSS_IPV6 |
+					ETH_RSS_NONFRAG_IPV6_UDP |
+					ETH_RSS_NONFRAG_IPV6_TCP |
+					ETH_RSS_NONFRAG_IPV6_SCTP;
+
 			rss_attr_all = rss_attr_src_dst | rss_attr_l3_pre;
 
 			/* Check if only SRC/DST_ONLY or ipv6 prefix exists. */
@@ -1073,7 +1083,8 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 			 */
 			if (rss->func ==
 				RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) {
-				if (rss_type & rss_attr_src_dst)
+				if (rss_type & (rss_attr_src_dst |
+						~rss_attr_symm))
 					return rte_flow_error_set(error,
 						ENOTSUP,
 						RTE_FLOW_ERROR_TYPE_ACTION,
