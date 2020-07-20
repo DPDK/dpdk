@@ -80,6 +80,11 @@ struct mlx5_regex_priv {
 	struct mlx5_dbr_page_list dbrpgs; /* Door-bell pages. */
 };
 
+/* mlx5_regex.c */
+int mlx5_regex_start(struct rte_regexdev *dev);
+int mlx5_regex_stop(struct rte_regexdev *dev);
+int mlx5_regex_close(struct rte_regexdev *dev);
+
 /* mlx5_rxp.c */
 int mlx5_regex_info_get(struct rte_regexdev *dev,
 			struct rte_regexdev_info *info);

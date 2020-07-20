@@ -26,7 +26,28 @@ const struct rte_regexdev_ops mlx5_regexdev_ops = {
 	.dev_configure = mlx5_regex_configure,
 	.dev_db_import = mlx5_regex_rules_db_import,
 	.dev_qp_setup = mlx5_regex_qp_setup,
+	.dev_start = mlx5_regex_start,
+	.dev_stop = mlx5_regex_stop,
+	.dev_close = mlx5_regex_close,
 };
+
+int
+mlx5_regex_start(struct rte_regexdev *dev __rte_unused)
+{
+	return 0;
+}
+
+int
+mlx5_regex_stop(struct rte_regexdev *dev __rte_unused)
+{
+	return 0;
+}
+
+int
+mlx5_regex_close(struct rte_regexdev *dev __rte_unused)
+{
+	return 0;
+}
 
 static struct ibv_device *
 mlx5_regex_get_ib_device_match(struct rte_pci_addr *addr)
