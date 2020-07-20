@@ -527,6 +527,9 @@ test_missing_c_flag(void)
 	const char * const argv29[] = { prgname, prefix, mp_flag,
 				 "--lcores",
 				 "0-1,2@(5-7),(3-5)@(0,2),(0,6),7"};
+	/* check an invalid cpu value >= CPU_SETSIZE */
+	const char * const argv30[] = { prgname, prefix, mp_flag,
+				 "--lcores", "3@" RTE_STR(CPU_SETSIZE) };
 
 	if (launch_proc(argv2) != 0) {
 		printf("Error - "
@@ -576,7 +579,7 @@ test_missing_c_flag(void)
 	    launch_proc(argv22) == 0 || launch_proc(argv23) == 0 ||
 	    launch_proc(argv24) == 0 || launch_proc(argv25) == 0 ||
 	    launch_proc(argv26) == 0 || launch_proc(argv27) == 0 ||
-	    launch_proc(argv28) == 0) {
+	    launch_proc(argv28) == 0 || launch_proc(argv30) == 0) {
 		printf("Error - "
 		       "process ran without error with invalid --lcore flag\n");
 		return -1;
