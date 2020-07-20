@@ -16,6 +16,7 @@ CFLAGS += -g
 CFLAGS += -I$(RTE_SDK)/drivers/common/mlx5
 CFLAGS += -I$(BUILDDIR)/drivers/common/mlx5
 CFLAGS += -I$(RTE_SDK)/drivers/common/mlx5/linux
+CFLAGS += -I$(BUILDDIR)/drivers/common/mlx5/linux
 CFLAGS += -D_BSD_SOURCE
 CFLAGS += -D_DEFAULT_SOURCE
 CFLAGS += -D_XOPEN_SOURCE=600
@@ -26,6 +27,7 @@ LDLIBS += -lm
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_regexdev
 LDLIBS += -lrte_kvargs
 LDLIBS += -lrte_bus_pci
+LDLIBS += -lrte_pci
 
 # A few warnings cannot be avoided in external headers.
 CFLAGS += -Wno-error=cast-qual

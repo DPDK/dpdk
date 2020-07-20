@@ -994,9 +994,14 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 log_max_qp_sz[0x8];
 	u8 reserved_at_90[0xb];
 	u8 log_max_qp[0x5];
-	u8 reserved_at_a0[0xb];
+	u8 regexp[0x1];
+	u8 reserved_at_a1[0x3];
+	u8 regexp_num_of_engines[0x4];
+	u8 reserved_at_a8[0x3];
 	u8 log_max_srq[0x5];
-	u8 reserved_at_b0[0x10];
+	u8 reserved_at_b0[0x3];
+	u8 regexp_log_crspace_size[0x5];
+	u8 reserved_at_b8[0x8];
 	u8 reserved_at_c0[0x8];
 	u8 log_max_cq_sz[0x8];
 	u8 reserved_at_d0[0xb];
