@@ -13,6 +13,7 @@ sources = files(
 	'mlx5_regex.c',
 	'mlx5_rxp.c',
 	'mlx5_regex_devx.c',
+	'mlx5_regex_control.c',
 )
 cflags_options = [
 	'-std=c11',

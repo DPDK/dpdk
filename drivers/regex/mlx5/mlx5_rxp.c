@@ -118,6 +118,7 @@ mlx5_regex_info_get(struct rte_regexdev *dev __rte_unused,
 	info->max_queue_pairs = 1;
 	info->regexdev_capa = RTE_REGEXDEV_SUPP_PCRE_GREEDY_F;
 	info->rule_flags = 0;
+	info->max_queue_pairs = 10;
 	return 0;
 }
 

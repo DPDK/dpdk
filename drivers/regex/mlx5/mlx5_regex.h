@@ -19,7 +19,7 @@ struct mlx5_regex_sq {
 	struct mlx5_devx_obj *obj; /* The SQ DevX object. */
 	int64_t dbr_offset; /* Door bell record offset. */
 	uint32_t dbr_umem; /* Door bell record umem id. */
-	volatile struct mlx5_cqe *wqe; /* The SQ ring buffer. */
+	uint8_t *wqe; /* The SQ ring buffer. */
 	struct mlx5dv_devx_umem *wqe_umem; /* SQ buffer umem. */
 };
 
@@ -62,10 +62,10 @@ struct mlx5_regex_priv {
 	struct mlx5_regex_db db[MLX5_RXP_MAX_ENGINES +
 				MLX5_RXP_EM_COUNT];
 	uint32_t nb_engines; /* Number of RegEx engines. */
-	struct mlx5_dbr_page_list dbrpgs; /* Door-bell pages. */
 	uint32_t eqn; /* EQ number. */
 	struct mlx5dv_devx_uar *uar; /* UAR object. */
 	struct ibv_pd *pd;
+	struct mlx5_dbr_page_list dbrpgs; /* Door-bell pages. */
 };
 
 /* mlx5_rxp.c */

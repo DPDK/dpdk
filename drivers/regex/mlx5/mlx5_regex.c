@@ -25,6 +25,7 @@ const struct rte_regexdev_ops mlx5_regexdev_ops = {
 	.dev_info_get = mlx5_regex_info_get,
 	.dev_configure = mlx5_regex_configure,
 	.dev_db_import = mlx5_regex_rules_db_import,
+	.dev_qp_setup = mlx5_regex_qp_setup,
 };
 
 static struct ibv_device *
