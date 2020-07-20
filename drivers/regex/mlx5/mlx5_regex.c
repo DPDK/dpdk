@@ -20,7 +20,9 @@
 
 int mlx5_regex_logtype;
 
-static const struct rte_regexdev_ops mlx5_regexdev_ops = {0};
+const struct rte_regexdev_ops mlx5_regexdev_ops = {
+	.dev_info_get = mlx5_regex_info_get,
+};
 
 static struct ibv_device *
 mlx5_regex_get_ib_device_match(struct rte_pci_addr *addr)

@@ -11,4 +11,9 @@ struct mlx5_regex_priv {
 	struct rte_pci_device *pci_dev;
 	struct rte_regexdev *regexdev; /* Pointer to the RegEx dev. */
 };
+
+/* mlx5_rxp.c */
+int mlx5_regex_info_get(struct rte_regexdev *dev,
+			struct rte_regexdev_info *info);
+
 #endif /* MLX5_REGEX_H */

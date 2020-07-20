@@ -11,6 +11,7 @@ fmt_name = 'mlx5_regex'
 deps += ['common_mlx5', 'bus_pci', 'eal', 'regexdev']
 sources = files(
 	'mlx5_regex.c',
+	'mlx5_rxp.c',
 )
 cflags_options = [
 	'-std=c11',
