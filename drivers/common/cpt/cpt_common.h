@@ -76,6 +76,6 @@ struct cpt_request_info {
 	/** Control path fields */
 	uint64_t time_out;
 	uint8_t extra_time;
-} __rte_cache_aligned;
+} __rte_aligned(8);
 
 #endif /* _CPT_COMMON_H_ */
