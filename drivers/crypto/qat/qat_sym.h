@@ -158,6 +158,57 @@ qat_crc_verify(struct qat_sym_session *ctx, struct rte_crypto_op *op)
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	}
 }
+
+static inline void
+qat_crc_generate(struct qat_sym_session *ctx,
+			struct rte_crypto_op *op)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	uint32_t *crc, crc_data_len;
+	uint8_t *crc_data;
+
+	if (ctx->qat_dir == ICP_QAT_HW_CIPHER_ENCRYPT &&
+			sym_op->auth.data.length != 0 &&
+			sym_op->m_src->nb_segs == 1) {
+
+		crc_data_len = sym_op->auth.data.length;
+		crc_data = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
+				sym_op->auth.data.offset);
+		crc = (uint32_t *)(crc_data + crc_data_len);
+		*crc = rte_net_crc_calc(crc_data, crc_data_len,
+				RTE_NET_CRC32_ETH);
+	}
+}
+
+static inline void
+qat_sym_preprocess_requests(void **ops, uint16_t nb_ops)
+{
+	struct rte_crypto_op *op;
+	struct qat_sym_session *ctx;
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		op = (struct rte_crypto_op *)ops[i];
+
+		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+			ctx = (struct qat_sym_session *)
+				get_sec_session_private_data(
+					op->sym->sec_session);
+
+			if (ctx == NULL || ctx->bpi_ctx == NULL)
+				continue;
+
+			qat_crc_generate(ctx, op);
+		}
+	}
+}
+#else
+
+static inline void
+qat_sym_preprocess_requests(void **ops __rte_unused,
+				uint16_t nb_ops __rte_unused)
+{
+}
 #endif
 
 static inline void
@@ -214,6 +265,12 @@ qat_sym_process_response(void **op, uint8_t *resp)
 	*op = (void *)rx_op;
 }
 #else
+
+static inline void
+qat_sym_preprocess_requests(void **ops __rte_unused,
+				uint16_t nb_ops __rte_unused)
+{
+}
 
 static inline void
 qat_sym_process_response(void **op __rte_unused, uint8_t *resp __rte_unused)
