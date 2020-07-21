@@ -124,7 +124,6 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	}
 
 	qat_qp_conf.hw = qp_hw_data;
-	qat_qp_conf.build_request = qat_comp_build_request;
 	qat_qp_conf.cookie_size = sizeof(struct qat_comp_op_cookie);
 	qat_qp_conf.nb_descriptors = max_inflight_ops;
 	qat_qp_conf.socket_id = socket_id;

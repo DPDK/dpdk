@@ -292,7 +292,6 @@ int qat_qp_setup(struct qat_pci_device *qat_dev,
 	}
 
 	qp->qat_dev_gen = qat_dev->qat_dev_gen;
-	qp->build_request = qat_qp_conf->build_request;
 	qp->service_type = qat_qp_conf->hw->service_type;
 	qp->qat_dev = qat_dev;
 

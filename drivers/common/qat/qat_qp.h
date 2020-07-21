@@ -14,11 +14,6 @@ struct qat_pci_device;
 
 #define QAT_QP_MIN_INFL_THRESHOLD	256
 
-typedef int (*build_request_t)(void *op,
-		uint8_t *req, void *op_cookie,
-		enum qat_device_gen qat_dev_gen);
-/**< Build a request from an op. */
-
 /**
  * Structure with data needed for creation of queue pair.
  */
@@ -30,6 +25,7 @@ struct qat_qp_hw_data {
 	uint16_t tx_msg_size;
 	uint16_t rx_msg_size;
 };
+
 /**
  * Structure with data needed for creation of queue pair.
  */
@@ -38,7 +34,6 @@ struct qat_qp_config {
 	uint32_t nb_descriptors;
 	uint32_t cookie_size;
 	int socket_id;
-	build_request_t build_request;
 	const char *service_str;
 };
 
@@ -73,7 +68,6 @@ struct qat_qp {
 	void **op_cookies;
 	uint32_t nb_descriptors;
 	enum qat_device_gen qat_dev_gen;
-	build_request_t build_request;
 	enum qat_service_type service_type;
 	struct qat_pci_device *qat_dev;
 	/**< qat device this qp is on */
