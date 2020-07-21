@@ -12,13 +12,10 @@
 #include <stdbool.h>
 
 #include <rte_byteorder.h>
-#include <rte_mbuf_ptype.h>
 #include <rte_mbuf.h>
 #include <rte_io.h>
 
-#include "efx.h"
 #include "efx_types.h"
-#include "efx_regs.h"
 #include "efx_regs_ef10.h"
 
 #include "sfc_tweak.h"
