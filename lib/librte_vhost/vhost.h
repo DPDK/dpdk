@@ -46,6 +46,8 @@
 
 #define MAX_PKT_BURST 32
 
+#define ASYNC_MAX_POLL_SEG 255
+
 #define VHOST_MAX_ASYNC_IT (MAX_PKT_BURST * 2)
 #define VHOST_MAX_ASYNC_VEC (BUF_VECTOR_MAX * 2)
 
@@ -225,6 +227,7 @@ struct vhost_virtqueue {
 	uint64_t	*async_pending_info;
 	uint16_t	async_pkts_idx;
 	uint16_t	async_pkts_inflight_n;
+	uint16_t	async_last_seg_n;
 
 	/* vq async features */
 	bool		async_inorder;
