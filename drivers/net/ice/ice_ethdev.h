@@ -133,6 +133,9 @@
 #define ICE_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + ICE_VLAN_TAG_SIZE * 2)
 
+#define ICE_RXTX_BYTES_HIGH(bytes) ((bytes) & ~ICE_40_BIT_MASK)
+#define ICE_RXTX_BYTES_LOW(bytes) ((bytes) & ICE_40_BIT_MASK)
+
 /* DDP package type */
 enum ice_pkg_type {
 	ICE_PKG_TYPE_UNKNOWN,
@@ -248,6 +251,8 @@ struct ice_vsi {
 	struct ice_eth_stats eth_stats_offset;
 	struct ice_eth_stats eth_stats;
 	bool offset_loaded;
+	uint64_t old_rx_bytes;
+	uint64_t old_tx_bytes;
 };
 
 enum proto_xtr_type {
@@ -391,6 +396,8 @@ struct ice_pf {
 	struct ice_parser_list perm_parser_list;
 	struct ice_parser_list dist_parser_list;
 	bool init_link_up;
+	uint64_t old_rx_bytes;
+	uint64_t old_tx_bytes;
 };
 
 #define ICE_MAX_QUEUE_NUM  2048
