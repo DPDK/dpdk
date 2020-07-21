@@ -1067,7 +1067,7 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 
 	file = fopen(phys_port_name, "rb");
 	if (file != NULL) {
-		ret = fscanf(file, "%s", port_name);
+		ret = fscanf(file, "%" RTE_STR(IF_NAMESIZE) "s", port_name);
 		fclose(file);
 		if (ret == 1)
 			mlx5_translate_port_name(port_name, &data);
