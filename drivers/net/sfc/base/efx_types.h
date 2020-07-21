@@ -10,6 +10,7 @@
 #define	_SYS_EFX_TYPES_H
 
 #include "efsys.h"
+#include "efx_annote.h"
 
 #ifdef	__cplusplus
 extern "C" {
