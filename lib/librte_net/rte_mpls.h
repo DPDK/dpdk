@@ -21,6 +21,7 @@ extern "C" {
 /**
  * MPLS header.
  */
+__extension__
 struct rte_mpls_hdr {
 	uint16_t tag_msb;   /**< Label(msb). */
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
