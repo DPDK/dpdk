@@ -3011,7 +3011,7 @@ flow_mreg_add_copy_action(struct rte_eth_dev *dev, uint32_t mark_id,
 	};
 	struct mlx5_flow_action_copy_mreg cp_mreg = {
 		.dst = REG_B,
-		.src = 0,
+		.src = REG_NONE,
 	};
 	struct rte_flow_action_jump jump = {
 		.group = MLX5_FLOW_MREG_ACT_TABLE_GROUP,
@@ -4067,7 +4067,7 @@ flow_create_split_metadata(struct rte_eth_dev *dev,
 		/* Internal PMD action to set register. */
 		struct mlx5_rte_flow_item_tag q_tag_spec = {
 			.data = qrss_id,
-			.id = 0,
+			.id = REG_NONE,
 		};
 		struct rte_flow_item q_items[] = {
 			{
