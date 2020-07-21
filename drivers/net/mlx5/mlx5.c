@@ -939,6 +939,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	mlx5_mr_release_cache(&sh->share_cache);
 	/* Remove context from the global device list. */
 	LIST_REMOVE(sh, next);
+	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	/*
 	 *  Ensure there is no async event handler installed.
 	 *  Only primary process handles async device events.
@@ -968,6 +969,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		mlx5_flow_id_pool_release(sh->flow_id_pool);
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	mlx5_free(sh);
+	return;
 exit:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 }
