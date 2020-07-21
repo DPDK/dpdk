@@ -139,10 +139,12 @@ mlx5_vdpa_rss_flows_create(struct mlx5_vdpa_priv *priv)
 		uint32_t buf[MLX5_ST_SZ_DW(fte_match_param)];
 		/**< Matcher value. This value is used as the mask or a key. */
 	} matcher_mask = {
-				.size = sizeof(matcher_mask.buf),
+				.size = sizeof(matcher_mask.buf) -
+					MLX5_ST_SZ_BYTES(fte_match_set_misc4),
 			},
 	  matcher_value = {
-				.size = sizeof(matcher_value.buf),
+				.size = sizeof(matcher_value.buf) -
+					MLX5_ST_SZ_BYTES(fte_match_set_misc4),
 			};
 	struct mlx5dv_flow_matcher_attr dv_attr = {
 		.type = IBV_FLOW_ATTR_NORMAL,
