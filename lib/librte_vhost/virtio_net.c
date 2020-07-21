@@ -1689,9 +1689,11 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 
 	if (n_pkts_put) {
 		vq->async_pkts_inflight_n -= n_pkts_put;
-		__atomic_add_fetch(&vq->used->idx, n_descs, __ATOMIC_RELEASE);
-
-		vhost_vring_call_split(dev, vq);
+		if (likely(vq->enabled && vq->access_ok)) {
+			__atomic_add_fetch(&vq->used->idx,
+					n_descs, __ATOMIC_RELEASE);
+			vhost_vring_call_split(dev, vq);
+		}
 	}
 
 	if (start_idx + n_pkts_put <= vq_size) {
