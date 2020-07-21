@@ -1635,6 +1635,9 @@ uint16_t rte_vhost_poll_enqueue_completed(int vid, uint16_t queue_id,
 	uint16_t start_idx, pkts_idx, vq_size;
 	uint64_t *async_pending_info;
 
+	if (!dev)
+		return 0;
+
 	VHOST_LOG_DATA(DEBUG, "(%d) %s\n", dev->vid, __func__);
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
 		VHOST_LOG_DATA(ERR, "(%d) %s: invalid virtqueue idx %d.\n",
