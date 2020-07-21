@@ -3518,7 +3518,6 @@ flow_hairpin_split(struct rte_eth_dev *dev,
 	tag_item->data = UINT32_MAX;
 	tag_item->id = UINT16_MAX;
 	item->mask = tag_item;
-	addr += sizeof(struct mlx5_rte_flow_item_tag);
 	item->last = NULL;
 	item++;
 	item->type = RTE_FLOW_ITEM_TYPE_END;
