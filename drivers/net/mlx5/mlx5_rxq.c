@@ -1188,10 +1188,8 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
 		ret = mlx5_glue->get_cq_event(rxq_obj->ibv_channel, &ev_cq,
 					      &ev_ctx);
-		if (ret || ev_cq != rxq_obj->ibv_cq) {
-			rte_errno = EINVAL;
+		if (ret < 0 || ev_cq != rxq_obj->ibv_cq)
 			goto exit;
-		}
 		mlx5_glue->ack_cq_events(rxq_obj->ibv_cq, 1);
 	} else if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
 #ifdef HAVE_IBV_DEVX_EVENT
@@ -1200,22 +1198,29 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		ret = mlx5_glue->devx_get_event
 				(rxq_obj->devx_channel, event_data,
 				 sizeof(struct mlx5dv_devx_async_event_hdr));
-		if (ret <= 0 || event_data->cookie !=
-				(uint64_t)(uintptr_t)rxq_obj->devx_cq) {
-			rte_errno = EINVAL;
+		if (ret < 0 || event_data->cookie !=
+				(uint64_t)(uintptr_t)rxq_obj->devx_cq)
 			goto exit;
-		}
 #endif /* HAVE_IBV_DEVX_EVENT */
 	}
 	rxq_data->cq_arm_sn++;
 	mlx5_rxq_obj_release(rxq_obj);
 	return 0;
 exit:
+	/**
+	 * For ret < 0 save the errno (may be EAGAIN which means the get_event
+	 * function was called before receiving one).
+	 */
+	if (ret < 0)
+		rte_errno = errno;
+	else
+		rte_errno = EINVAL;
 	ret = rte_errno; /* Save rte_errno before cleanup. */
 	if (rxq_obj)
 		mlx5_rxq_obj_release(rxq_obj);
-	DRV_LOG(WARNING, "port %u unable to disable interrupt on Rx queue %d",
-		dev->data->port_id, rx_queue_id);
+	if (ret != EAGAIN)
+		DRV_LOG(WARNING, "port %u unable to disable interrupt on Rx queue %d",
+			dev->data->port_id, rx_queue_id);
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 }
