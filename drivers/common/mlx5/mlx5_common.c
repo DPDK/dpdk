@@ -198,7 +198,7 @@ mlx5_get_dbr(void *ctx,  struct mlx5_dbr_page_list *head,
 	page->dbr_bitmap[i] |= (UINT64_C(1) << j);
 	page->dbr_count++;
 	*dbr_page = page;
-	return (((i * 64) + j) * sizeof(uint64_t));
+	return (i * CHAR_BIT * sizeof(uint64_t) + j) * MLX5_DBR_SIZE;
 }
 
 /**

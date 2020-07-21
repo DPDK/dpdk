@@ -215,10 +215,12 @@ enum mlx5_class {
 	MLX5_CLASS_REGEX = RTE_BIT64(2),
 };
 
-#define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
-#define MLX5_DBR_SIZE 8
-#define MLX5_DBR_PER_PAGE (MLX5_DBR_PAGE_SIZE / MLX5_DBR_SIZE)
-#define MLX5_DBR_BITMAP_SIZE (MLX5_DBR_PER_PAGE / 64)
+#define MLX5_DBR_SIZE RTE_CACHE_LINE_SIZE
+#define MLX5_DBR_PER_PAGE 64
+/* Must be >= CHAR_BIT * sizeof(uint64_t) */
+#define MLX5_DBR_PAGE_SIZE (MLX5_DBR_PER_PAGE * MLX5_DBR_SIZE)
+/* Page size must be >= 512. */
+#define MLX5_DBR_BITMAP_SIZE (MLX5_DBR_PER_PAGE / (CHAR_BIT * sizeof(uint64_t)))
 
 struct mlx5_devx_dbr_page {
 	/* Door-bell records, must be first member in structure. */
