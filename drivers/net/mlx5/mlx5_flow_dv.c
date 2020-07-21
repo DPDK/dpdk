@@ -1152,8 +1152,7 @@ flow_dv_convert_action_mark(struct rte_eth_dev *dev,
 		.mask = &mask,
 	};
 	struct field_modify_info reg_c_x[] = {
-		{4, 0, 0}, /* dynamic instead of MLX5_MODI_META_REG_C_1. */
-		{0, 0, 0},
+		[1] = {0, 0, 0},
 	};
 	int reg;
 
@@ -1173,7 +1172,7 @@ flow_dv_convert_action_mark(struct rte_eth_dev *dev,
 		mask = rte_cpu_to_be_32(mask) & msk_c0;
 		mask = rte_cpu_to_be_32(mask << shl_c0);
 	}
-	reg_c_x[0].id = reg_to_field[reg];
+	reg_c_x[0] = (struct field_modify_info){4, 0, reg_to_field[reg]};
 	return flow_dv_convert_modify_action(&item, reg_c_x, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
