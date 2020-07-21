@@ -94,6 +94,7 @@ struct vhost_queue {
 	struct rte_mempool *mb_pool;
 	uint16_t port;
 	uint16_t virtqueue_id;
+	bool intr_en;
 	struct vhost_stats stats;
 };
 
@@ -546,6 +547,8 @@ eth_rxq_intr_enable(struct rte_eth_dev *dev, uint16_t qid)
 	rte_vhost_enable_guest_notification(vq->vid, (qid << 1) + 1, 1);
 	rte_wmb();
 
+	vq->intr_en = true;
+
 	return ret;
 }
 
@@ -570,6 +573,8 @@ eth_rxq_intr_disable(struct rte_eth_dev *dev, uint16_t qid)
 	VHOST_LOG(INFO, "Disable interrupt for rxq%d\n", qid);
 	rte_vhost_enable_guest_notification(vq->vid, (qid << 1) + 1, 0);
 	rte_wmb();
+
+	vq->intr_en = false;
 
 	return 0;
 }
@@ -831,6 +836,45 @@ destroy_device(int vid)
 }
 
 static int
+vring_conf_update(int vid, struct rte_eth_dev *eth_dev, uint16_t vring_id)
+{
+	struct rte_eth_conf *dev_conf = &eth_dev->data->dev_conf;
+	struct pmd_internal *internal = eth_dev->data->dev_private;
+	struct rte_vhost_vring vring;
+	struct vhost_queue *vq;
+	int rx_idx = vring_id % 2 ? (vring_id - 1) >> 1 : -1;
+	int ret = 0;
+
+	/*
+	 * The vring kickfd may be changed after the new device notification.
+	 * Update it when the vring state is updated.
+	 */
+	if (rx_idx >= 0 && rx_idx < eth_dev->data->nb_rx_queues &&
+	    rte_atomic32_read(&internal->dev_attached) &&
+	    rte_atomic32_read(&internal->started) &&
+	    dev_conf->intr_conf.rxq) {
+		vq = eth_dev->data->rx_queues[rx_idx];
+		ret = rte_vhost_get_vhost_vring(vid, vring_id, &vring);
+		if (!ret) {
+			if (vring.kickfd !=
+			    eth_dev->intr_handle->efds[rx_idx]) {
+				VHOST_LOG(INFO,
+					  "kickfd for rxq-%d was changed.\n",
+					  rx_idx);
+				eth_dev->intr_handle->efds[rx_idx] =
+								   vring.kickfd;
+			}
+
+			rte_vhost_enable_guest_notification(vid, vring_id,
+							    vq->intr_en);
+			rte_wmb();
+		}
+	}
+
+	return ret;
+}
+
+static int
 vring_state_changed(int vid, uint16_t vring, int enable)
 {
 	struct rte_vhost_vring_state *state;
@@ -848,6 +892,11 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 	eth_dev = list->eth_dev;
 	/* won't be NULL */
 	state = vring_states[eth_dev->data->port_id];
+
+	if (enable && vring_conf_update(vid, eth_dev, vring))
+		VHOST_LOG(INFO, "Failed to update vring-%d configuration.\n",
+			  (int)vring);
+
 	rte_spinlock_lock(&state->lock);
 	if (state->cur[vring] == enable) {
 		rte_spinlock_unlock(&state->lock);
