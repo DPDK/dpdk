@@ -1637,8 +1637,10 @@ uint64_t
 igb_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 {
 	uint64_t rx_offload_capa;
+	struct e1000_hw *hw;
 
-	RTE_SET_USED(dev);
+	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP  |
 			  DEV_RX_OFFLOAD_VLAN_FILTER |
 			  DEV_RX_OFFLOAD_IPV4_CKSUM  |
@@ -1648,6 +1650,11 @@ igb_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 			  DEV_RX_OFFLOAD_KEEP_CRC    |
 			  DEV_RX_OFFLOAD_SCATTER     |
 			  DEV_RX_OFFLOAD_RSS_HASH;
+
+	if (hw->mac.type == e1000_i350 ||
+	    hw->mac.type == e1000_i210 ||
+	    hw->mac.type == e1000_i211)
+		rx_offload_capa |= DEV_RX_OFFLOAD_VLAN_EXTEND;
 
 	return rx_offload_capa;
 }
