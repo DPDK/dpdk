@@ -1030,6 +1030,9 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 
 	sfc_adapter_lock(sa);
 
+	if (rte_is_same_ether_addr(mac_addr, &port->default_mac_addr))
+		goto unlock;
+
 	/*
 	 * Copy the address to the device private data so that
 	 * it could be recalled in the case of adapter restart.
