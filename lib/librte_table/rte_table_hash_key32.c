@@ -33,6 +33,7 @@
 
 #endif
 
+#ifdef RTE_ARCH_64
 struct rte_bucket_4_32 {
 	/* Cache line 0 */
 	uint64_t signature[4 + 1];
@@ -46,6 +47,22 @@ struct rte_bucket_4_32 {
 	/* Cache line 3 */
 	uint8_t data[0];
 };
+#else
+struct rte_bucket_4_32 {
+	/* Cache line 0 */
+	uint64_t signature[4 + 1];
+	uint64_t lru_list;
+	struct rte_bucket_4_32 *next;
+	uint32_t pad;
+	uint64_t next_valid;
+
+	/* Cache lines 1 and 2 */
+	uint64_t key[4][4];
+
+	/* Cache line 3 */
+	uint8_t data[0];
+};
+#endif
 
 struct rte_table_hash {
 	struct rte_table_stats stats;
