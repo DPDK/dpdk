@@ -124,6 +124,14 @@ New Features
 
   * Added support for VLAN push and pop flow actions.
 
+* **Updated Hisilicon hns3 driver.**
+
+  * Added support for 200G speed rate.
+  * Added support for copper media type.
+  * Added support for keeping CRC.
+  * Added support for LRO.
+  * Added support for setting VF PVID by PF driver.
+
 * **Updated Mellanox mlx5 net driver and common layer.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:
