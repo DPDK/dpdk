@@ -89,6 +89,13 @@ New Features
 
   Added Mellanox RegEx PMD, allowing to offload RegEx searches.
 
+* **Added vhost async data path APIs.**
+
+  4 new APIs have been added to enable vhost async data path, including:
+
+  * Async device channel register/unregister APIs
+  * Async packets enqueue/completion APIs (only split ring was implemented)
+
 * **Added eCPRI protocol support in rte_flow.**
 
   The ``ECPRI`` item has been added to support eCPRI packet offloading for
