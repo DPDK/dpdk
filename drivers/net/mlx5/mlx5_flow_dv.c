@@ -4405,39 +4405,6 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 }
 
 /**
- * Update the minimum dcs-id for aged or no-aged counter pool.
- *
- * @param[in] dev
- *   Pointer to the Ethernet device structure.
- * @param[in] pool
- *   Current counter pool.
- * @param[in] batch
- *   Whether the pool is for counter that was allocated by batch command.
- * @param[in] age
- *   Whether the counter is for aging.
- */
-static void
-flow_dv_counter_update_min_dcs(struct rte_eth_dev *dev,
-			struct mlx5_flow_counter_pool *pool,
-			uint32_t batch, uint32_t age)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_counter_pool *other;
-	struct mlx5_pools_container *cont;
-
-	cont = MLX5_CNT_CONTAINER(priv->sh, batch, (age ^ 0x1));
-	other = flow_dv_find_pool_by_id(cont, pool->min_dcs->id);
-	if (!other)
-		return;
-	if (pool->min_dcs->id < other->min_dcs->id) {
-		rte_atomic64_set(&other->a64_dcs,
-			rte_atomic64_read(&pool->a64_dcs));
-	} else {
-		rte_atomic64_set(&pool->a64_dcs,
-			rte_atomic64_read(&other->a64_dcs));
-	}
-}
-/**
  * Prepare a new counter and/or a new counter pool.
  *
  * @param[in] dev
@@ -4464,31 +4431,50 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 	struct mlx5_counters tmp_tq;
 	struct mlx5_devx_obj *dcs = NULL;
 	struct mlx5_flow_counter *cnt;
+	uint32_t add2other;
 	uint32_t i;
 
 	cont = MLX5_CNT_CONTAINER(priv->sh, batch, age);
 	if (!batch) {
+retry:
+		add2other = 0;
 		/* bulk_bitmap must be 0 for single counter allocation. */
 		dcs = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, 0);
 		if (!dcs)
 			return NULL;
 		pool = flow_dv_find_pool_by_id(cont, dcs->id);
+		/* Check if counter belongs to exist pool ID range. */
 		if (!pool) {
-			pool = flow_dv_pool_create(dev, dcs, batch, age);
-			if (!pool) {
-				mlx5_devx_cmd_destroy(dcs);
-				return NULL;
+			pool = flow_dv_find_pool_by_id
+			       (MLX5_CNT_CONTAINER
+			       (priv->sh, batch, (age ^ 0x1)), dcs->id);
+			/*
+			 * Pool eixsts, counter will be added to the other
+			 * container, need to reallocate it later.
+			 */
+			if (pool) {
+				add2other = 1;
+			} else {
+				pool = flow_dv_pool_create(dev, dcs, batch,
+							   age);
+				if (!pool) {
+					mlx5_devx_cmd_destroy(dcs);
+					return NULL;
+				}
 			}
-		} else if (dcs->id < pool->min_dcs->id) {
+		}
+		if (dcs->id < pool->min_dcs->id)
 			rte_atomic64_set(&pool->a64_dcs,
 					 (int64_t)(uintptr_t)dcs);
-		}
-		flow_dv_counter_update_min_dcs(dev,
-						pool, batch, age);
 		i = dcs->id % MLX5_COUNTERS_PER_POOL;
 		cnt = MLX5_POOL_GET_CNT(pool, i);
 		cnt->pool = pool;
 		MLX5_GET_POOL_CNT_EXT(pool, i)->dcs = dcs;
+		if (add2other) {
+			TAILQ_INSERT_TAIL(&pool->counters[pool->query_gen],
+					  cnt, next);
+			goto retry;
+		}
 		*cnt_free = cnt;
 		return pool;
 	}
@@ -9982,3 +9968,4 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
+
