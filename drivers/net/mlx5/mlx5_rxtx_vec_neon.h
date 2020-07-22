@@ -145,6 +145,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 				    -1UL << ((mcqe_n - pos) *
 					     sizeof(uint16_t) * 8) : 0);
 #endif
+
 		for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
 			if (likely(pos + i < mcqe_n))
 				rte_prefetch0((void *)(cq + pos + i));
@@ -227,6 +228,8 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		pos += MLX5_VPMD_DESCS_PER_LOOP;
 		/* Move to next CQE and invalidate consumed CQEs. */
 		if (!(pos & 0x7) && pos < mcqe_n) {
+			if (pos + 8 < mcqe_n)
+				rte_prefetch0((void *)(cq + pos + 8));
 			mcq = (void *)&(cq + pos)->pkt_info;
 			for (i = 0; i < 8; ++i)
 				cq[inv++].op_own = MLX5_CQE_INVALIDATE;
