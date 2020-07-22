@@ -4405,6 +4405,66 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 }
 
 /**
+ * Restore skipped counters in the pool.
+ *
+ * As counter pool query requires the first counter dcs
+ * ID start with 4 alinged, if the pool counters with
+ * min_dcs ID are not aligned with 4, the counters will
+ * be skipped.
+ * Once other min_dcs ID less than these skipped counter
+ * dcs ID appears, the skipped counters will be safe to
+ * use.
+ * Should be called when min_dcs is updated.
+ *
+ * @param[in] pool
+ *   Current counter pool.
+ * @param[in] last_min_dcs
+ *   Last min_dcs.
+ */
+static void
+flow_dv_counter_restore(struct mlx5_flow_counter_pool *pool,
+			struct mlx5_devx_obj *last_min_dcs)
+{
+	struct mlx5_flow_counter_ext *cnt_ext;
+	uint32_t offset, new_offset;
+	uint32_t skip_cnt = 0;
+	uint32_t i;
+
+	if (!pool->skip_cnt)
+		return;
+	/*
+	 * If last min_dcs is not valid. The skipped counter may even after
+	 * last min_dcs, set the offset to the whole pool.
+	 */
+	if (last_min_dcs->id & (MLX5_CNT_BATCH_QUERY_ID_ALIGNMENT - 1))
+		offset = MLX5_COUNTERS_PER_POOL;
+	else
+		offset = last_min_dcs->id % MLX5_COUNTERS_PER_POOL;
+	new_offset = pool->min_dcs->id % MLX5_COUNTERS_PER_POOL;
+	/*
+	 * Check the counters from 1 to the last_min_dcs range. Counters
+	 * before new min_dcs indicates pool still has skipped counters.
+	 * Counters be skipped after new min_dcs will be ready to use.
+	 * Offset 0 counter must be empty or min_dcs, start from 1.
+	 */
+	for (i = 1; i < offset; i++) {
+		cnt_ext = MLX5_GET_POOL_CNT_EXT(pool, i);
+		if (cnt_ext->skipped) {
+			if (i > new_offset) {
+				cnt_ext->skipped = 0;
+				TAILQ_INSERT_TAIL
+					(&pool->counters[pool->query_gen],
+					 MLX5_POOL_GET_CNT(pool, i), next);
+			} else {
+				skip_cnt++;
+			}
+		}
+	}
+	if (!skip_cnt)
+		pool->skip_cnt = 0;
+}
+
+/**
  * Prepare a new counter and/or a new counter pool.
  *
  * @param[in] dev
@@ -4429,6 +4489,7 @@ flow_dv_counter_pool_prepare(struct rte_eth_dev *dev,
 	struct mlx5_pools_container *cont;
 	struct mlx5_flow_counter_pool *pool;
 	struct mlx5_counters tmp_tq;
+	struct mlx5_devx_obj *last_min_dcs;
 	struct mlx5_devx_obj *dcs = NULL;
 	struct mlx5_flow_counter *cnt;
 	uint32_t add2other;
@@ -4463,13 +4524,44 @@ retry:
 				}
 			}
 		}
-		if (dcs->id < pool->min_dcs->id)
+		if ((dcs->id < pool->min_dcs->id ||
+		    pool->min_dcs->id &
+		    (MLX5_CNT_BATCH_QUERY_ID_ALIGNMENT - 1)) &&
+		    !(dcs->id & (MLX5_CNT_BATCH_QUERY_ID_ALIGNMENT - 1))) {
+			/*
+			 * Update the pool min_dcs only if current dcs is
+			 * valid and exist min_dcs is not valid or greater
+			 * than new dcs.
+			 */
+			last_min_dcs = pool->min_dcs;
 			rte_atomic64_set(&pool->a64_dcs,
 					 (int64_t)(uintptr_t)dcs);
+			/*
+			 * Restore any skipped counters if the new min_dcs
+			 * ID is smaller or min_dcs is not valid.
+			 */
+			if (dcs->id < last_min_dcs->id ||
+			    last_min_dcs->id &
+			    (MLX5_CNT_BATCH_QUERY_ID_ALIGNMENT - 1))
+				flow_dv_counter_restore(pool, last_min_dcs);
+		}
 		i = dcs->id % MLX5_COUNTERS_PER_POOL;
 		cnt = MLX5_POOL_GET_CNT(pool, i);
 		cnt->pool = pool;
 		MLX5_GET_POOL_CNT_EXT(pool, i)->dcs = dcs;
+		/*
+		 * If min_dcs is not valid, it means the new allocated dcs
+		 * also fail to become the valid min_dcs, just skip it.
+		 * Or if min_dcs is valid, and new dcs ID is smaller than
+		 * min_dcs, but not become the min_dcs, also skip it.
+		 */
+		if (pool->min_dcs->id &
+		    (MLX5_CNT_BATCH_QUERY_ID_ALIGNMENT - 1) ||
+		    dcs->id < pool->min_dcs->id) {
+			MLX5_GET_POOL_CNT_EXT(pool, i)->skipped = 1;
+			pool->skip_cnt = 1;
+			goto retry;
+		}
 		if (add2other) {
 			TAILQ_INSERT_TAIL(&pool->counters[pool->query_gen],
 					  cnt, next);

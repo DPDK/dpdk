@@ -868,6 +868,9 @@ enum {
  */
 #define MLX5_CNT_BATCH_OFFSET 0x800000
 
+/* The counter batch query requires ID align with 4. */
+#define MLX5_CNT_BATCH_QUERY_ID_ALIGNMENT 4
+
 /* Flow counters. */
 struct mlx5_ifc_alloc_flow_counter_out_bits {
 	u8         status[0x8];

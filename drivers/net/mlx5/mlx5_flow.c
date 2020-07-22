@@ -5974,6 +5974,11 @@ next_container:
 		goto set_alarm;
 	dcs = (struct mlx5_devx_obj *)(uintptr_t)rte_atomic64_read
 							      (&pool->a64_dcs);
+	if (dcs->id & (MLX5_CNT_BATCH_QUERY_ID_ALIGNMENT - 1)) {
+		/* Pool without valid counter. */
+		pool->raw_hw = NULL;
+		goto next_pool;
+	}
 	offset = batch ? 0 : dcs->id % MLX5_COUNTERS_PER_POOL;
 	/*
 	 * Identify the counters released between query trigger and query
@@ -5998,6 +6003,7 @@ next_container:
 	pool->raw_hw->min_dcs_id = dcs->id;
 	LIST_REMOVE(pool->raw_hw, next);
 	sh->cmng.pending_queries++;
+next_pool:
 	pool_index++;
 	if (pool_index >= rte_atomic16_read(&cont->n_valid)) {
 		batch ^= 0x1;
