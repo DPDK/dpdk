@@ -151,6 +151,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	unsigned int no_free_on_del = 0;
 	uint32_t *ext_bkt_to_free = NULL;
 	uint32_t *tbl_chng_cnt = NULL;
+	struct lcore_cache *local_free_slots = NULL;
 	unsigned int readwrite_concur_lf_support = 0;
 	uint32_t i;
 
@@ -383,9 +384,13 @@ rte_hash_create(const struct rte_hash_parameters *params)
 #endif
 
 	if (use_local_cache) {
-		h->local_free_slots = rte_zmalloc_socket(NULL,
+		local_free_slots = rte_zmalloc_socket(NULL,
 				sizeof(struct lcore_cache) * RTE_MAX_LCORE,
 				RTE_CACHE_LINE_SIZE, params->socket_id);
+		if (local_free_slots == NULL) {
+			RTE_LOG(ERR, HASH, "local free slots memory allocation failed\n");
+			goto err_unlock;
+		}
 	}
 
 	/* Default hash function */
@@ -416,6 +421,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	*h->tbl_chng_cnt = 0;
 	h->hw_trans_mem_support = hw_trans_mem_support;
 	h->use_local_cache = use_local_cache;
+	h->local_free_slots = local_free_slots;
 	h->readwrite_concur_support = readwrite_concur_support;
 	h->ext_table_support = ext_table_support;
 	h->writer_takes_lock = writer_takes_lock;
@@ -461,6 +467,7 @@ err:
 	rte_ring_free(r);
 	rte_ring_free(r_ext);
 	rte_free(te);
+	rte_free(local_free_slots);
 	rte_free(h);
 	rte_free(buckets);
 	rte_free(buckets_ext);
