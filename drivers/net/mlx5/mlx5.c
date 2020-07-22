@@ -707,6 +707,141 @@ mlx5_flex_parser_ecpri_release(struct rte_eth_dev *dev)
 	prf->obj = NULL;
 }
 
+/*
+ * Allocate Rx and Tx UARs in robust fashion.
+ * This routine handles the following UAR allocation issues:
+ *
+ *  - tries to allocate the UAR with the most appropriate memory
+ *    mapping type from the ones supported by the host
+ *
+ *  - tries to allocate the UAR with non-NULL base address
+ *    OFED 5.0.x and Upstream rdma_core before v29 returned the NULL as
+ *    UAR base address if UAR was not the first object in the UAR page.
+ *    It caused the PMD failure and we should try to get another UAR
+ *    till we get the first one with non-NULL base address returned.
+ */
+static int
+mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
+		     const struct mlx5_dev_config *config)
+{
+	uint32_t uar_mapping, retry;
+	int err = 0;
+
+	for (retry = 0; retry < MLX5_ALLOC_UAR_RETRY; ++retry) {
+#ifdef MLX5DV_UAR_ALLOC_TYPE_NC
+		/* Control the mapping type according to the settings. */
+		uar_mapping = (config->dbnc == MLX5_TXDB_NCACHED) ?
+			      MLX5DV_UAR_ALLOC_TYPE_NC :
+			      MLX5DV_UAR_ALLOC_TYPE_BF;
+#else
+		RTE_SET_USED(config);
+		/*
+		 * It seems we have no way to control the memory mapping type
+		 * for the UAR, the default "Write-Combining" type is supposed.
+		 * The UAR initialization on queue creation queries the
+		 * actual mapping type done by Verbs/kernel and setups the
+		 * PMD datapath accordingly.
+		 */
+		uar_mapping = 0;
+#endif
+		sh->tx_uar = mlx5_glue->devx_alloc_uar(sh->ctx, uar_mapping);
+#ifdef MLX5DV_UAR_ALLOC_TYPE_NC
+		if (!sh->tx_uar &&
+		    uar_mapping == MLX5DV_UAR_ALLOC_TYPE_BF) {
+			if (config->dbnc == MLX5_TXDB_CACHED ||
+			    config->dbnc == MLX5_TXDB_HEURISTIC)
+				DRV_LOG(WARNING, "Devarg tx_db_nc setting "
+						 "is not supported by DevX");
+			/*
+			 * In some environments like virtual machine
+			 * the Write Combining mapped might be not supported
+			 * and UAR allocation fails. We try "Non-Cached"
+			 * mapping for the case. The tx_burst routines take
+			 * the UAR mapping type into account on UAR setup
+			 * on queue creation.
+			 */
+			DRV_LOG(WARNING, "Failed to allocate Tx DevX UAR (BF)");
+			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_NC;
+			sh->tx_uar = mlx5_glue->devx_alloc_uar
+							(sh->ctx, uar_mapping);
+		} else if (!sh->tx_uar &&
+			   uar_mapping == MLX5DV_UAR_ALLOC_TYPE_NC) {
+			if (config->dbnc == MLX5_TXDB_NCACHED)
+				DRV_LOG(WARNING, "Devarg tx_db_nc settings "
+						 "is not supported by DevX");
+			/*
+			 * If Verbs/kernel does not support "Non-Cached"
+			 * try the "Write-Combining".
+			 */
+			DRV_LOG(WARNING, "Failed to allocate Tx DevX UAR (NC)");
+			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_BF;
+			sh->tx_uar = mlx5_glue->devx_alloc_uar
+							(sh->ctx, uar_mapping);
+		}
+#endif
+		if (!sh->tx_uar) {
+			DRV_LOG(ERR, "Failed to allocate Tx DevX UAR (BF/NC)");
+			err = ENOMEM;
+			goto exit;
+		}
+		if (sh->tx_uar->base_addr)
+			break;
+		/*
+		 * The UARs are allocated by rdma_core within the
+		 * IB device context, on context closure all UARs
+		 * will be freed, should be no memory/object leakage.
+		 */
+		DRV_LOG(WARNING, "Retrying to allocate Tx DevX UAR");
+		sh->tx_uar = NULL;
+	}
+	/* Check whether we finally succeeded with valid UAR allocation. */
+	if (!sh->tx_uar) {
+		DRV_LOG(ERR, "Failed to allocate Tx DevX UAR (NULL base)");
+		err = ENOMEM;
+		goto exit;
+	}
+	for (retry = 0; retry < MLX5_ALLOC_UAR_RETRY; ++retry) {
+		uar_mapping = 0;
+		sh->devx_rx_uar = mlx5_glue->devx_alloc_uar
+							(sh->ctx, uar_mapping);
+#ifdef MLX5DV_UAR_ALLOC_TYPE_NC
+		if (!sh->devx_rx_uar &&
+		    uar_mapping == MLX5DV_UAR_ALLOC_TYPE_BF) {
+			/*
+			 * Rx UAR is used to control interrupts only,
+			 * should be no datapath noticeable impact,
+			 * can try "Non-Cached" mapping safely.
+			 */
+			DRV_LOG(WARNING, "Failed to allocate Rx DevX UAR (BF)");
+			uar_mapping = MLX5DV_UAR_ALLOC_TYPE_NC;
+			sh->devx_rx_uar = mlx5_glue->devx_alloc_uar
+							(sh->ctx, uar_mapping);
+		}
+#endif
+		if (!sh->devx_rx_uar) {
+			DRV_LOG(ERR, "Failed to allocate Rx DevX UAR (BF/NC)");
+			err = ENOMEM;
+			goto exit;
+		}
+		if (sh->devx_rx_uar->base_addr)
+			break;
+		/*
+		 * The UARs are allocated by rdma_core within the
+		 * IB device context, on context closure all UARs
+		 * will be freed, should be no memory/object leakage.
+		 */
+		DRV_LOG(WARNING, "Retrying to allocate Rx DevX UAR");
+		sh->devx_rx_uar = NULL;
+	}
+	/* Check whether we finally succeeded with valid UAR allocation. */
+	if (!sh->devx_rx_uar) {
+		DRV_LOG(ERR, "Failed to allocate Rx DevX UAR (NULL base)");
+		err = ENOMEM;
+	}
+exit:
+	return err;
+}
+
 /**
  * Allocate shared device context. If there is multiport device the
  * master and representors will share this context, if there is single
@@ -808,18 +943,11 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 			err = ENOMEM;
 			goto error;
 		}
-		sh->tx_uar = mlx5_glue->devx_alloc_uar(sh->ctx, 0);
-		if (!sh->tx_uar) {
-			DRV_LOG(ERR, "Failed to allocate DevX UAR.");
-			err = ENOMEM;
+		err = mlx5_alloc_rxtx_uars(sh, config);
+		if (err)
 			goto error;
-		}
-		sh->devx_rx_uar = mlx5_glue->devx_alloc_uar(sh->ctx, 0);
-		if (!sh->devx_rx_uar) {
-			DRV_LOG(ERR, "Failed to allocate Rx DevX UAR.");
-			err = ENOMEM;
-			goto error;
-		}
+		MLX5_ASSERT(sh->tx_uar && sh->tx_uar->base_addr);
+		MLX5_ASSERT(sh->devx_rx_uar && sh->devx_rx_uar->base_addr);
 	}
 	sh->flow_id_pool = mlx5_flow_id_pool_alloc
 					((1 << HAIRPIN_FLOW_ID_BITS) - 1);
@@ -875,20 +1003,16 @@ error:
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	MLX5_ASSERT(sh);
-	if (sh->cnt_id_tbl) {
+	if (sh->cnt_id_tbl)
 		mlx5_l3t_destroy(sh->cnt_id_tbl);
-		sh->cnt_id_tbl = NULL;
-	}
-	if (sh->tx_uar) {
-		mlx5_glue->devx_free_uar(sh->tx_uar);
-		sh->tx_uar = NULL;
-	}
 	if (sh->tis)
 		claim_zero(mlx5_devx_cmd_destroy(sh->tis));
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 	if (sh->devx_rx_uar)
 		mlx5_glue->devx_free_uar(sh->devx_rx_uar);
+	if (sh->tx_uar)
+		mlx5_glue->devx_free_uar(sh->tx_uar);
 	if (sh->pd)
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
 	if (sh->ctx)
