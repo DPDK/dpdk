@@ -8,8 +8,6 @@
 
 #include "tf_core.h"
 
-struct tf;
-
 /**
  * The Shadow Table module provides shadow DB handling for table based
  * TF types. A shadow DB provides the capability that allows for reuse
@@ -32,19 +30,22 @@ struct tf;
  */
 struct tf_shadow_tbl_cfg_parms {
 	/**
-	 * TF Table type
-	 */
-	enum tf_tbl_type type;
-
-	/**
-	 * Number of entries the Shadow DB needs to hold
+	 * [in] The number of elements in the alloc_cnt and base_addr
+	 * For now, it should always be equal to TF_TBL_TYPE_MAX
 	 */
 	int num_entries;
 
 	/**
-	 * Element width for this table type
+	 * [in] Resource allocation count array
+	 * This array content originates from the tf_session_resources
+	 * that is passed in on session open
+	 * Array size is TF_TBL_TYPE_MAX
 	 */
-	int element_width;
+	uint16_t *alloc_cnt;
+	/**
+	 * [in] The base index for each table
+	 */
+	uint16_t base_addr[TF_TBL_TYPE_MAX];
 };
 
 /**
@@ -52,17 +53,17 @@ struct tf_shadow_tbl_cfg_parms {
  */
 struct tf_shadow_tbl_create_db_parms {
 	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
 	 * [in] Configuration information for the shadow db
 	 */
 	struct tf_shadow_tbl_cfg_parms *cfg;
 	/**
-	 * [in] Number of elements in the parms structure
-	 */
-	uint16_t num_elements;
-	/**
 	 * [out] Shadow table DB handle
 	 */
-	void *tf_shadow_tbl_db;
+	void **shadow_db;
 };
 
 /**
@@ -70,9 +71,9 @@ struct tf_shadow_tbl_create_db_parms {
  */
 struct tf_shadow_tbl_free_db_parms {
 	/**
-	 * Shadow table DB handle
+	 * [in] Shadow table DB handle
 	 */
-	void *tf_shadow_tbl_db;
+	void *shadow_db;
 };
 
 /**
@@ -82,27 +83,49 @@ struct tf_shadow_tbl_search_parms {
 	/**
 	 * [in] Shadow table DB handle
 	 */
-	void *tf_shadow_tbl_db;
+	void *shadow_db;
 	/**
-	 * [in] Table type
+	 * [in,out] The search parms from tf core
 	 */
-	enum tf_tbl_type type;
-	/**
-	 * [in] Pointer to entry blob value in remap table to match
-	 */
-	uint8_t *entry;
-	/**
-	 * [in] Size of the entry blob passed in bytes
-	 */
-	uint16_t entry_sz;
-	/**
-	 * [out] Index of the found element returned if hit
-	 */
-	uint16_t *index;
+	struct tf_tbl_alloc_search_parms *sparms;
 	/**
 	 * [out] Reference count incremented if hit
 	 */
-	uint16_t *ref_cnt;
+	uint32_t hb_handle;
+};
+
+/**
+ * Shadow Table bind index parameters
+ */
+struct tf_shadow_tbl_bind_index_parms {
+	/**
+	 * [in] Shadow tcam DB handle
+	 */
+	void *shadow_db;
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
+	 */
+	enum tf_tbl_type type;
+	/**
+	 * [in] index of the entry to program
+	 */
+	uint16_t idx;
+	/**
+	 * [in] struct containing key
+	 */
+	uint8_t *data;
+	/**
+	 * [in] data size in bytes
+	 */
+	uint16_t data_sz_in_bytes;
+	/**
+	 * [in] The hash bucket handled returned from the search
+	 */
+	uint32_t hb_handle;
 };
 
 /**
@@ -112,27 +135,11 @@ struct tf_shadow_tbl_insert_parms {
 	/**
 	 * [in] Shadow table DB handle
 	 */
-	void *tf_shadow_tbl_db;
+	void *shadow_db;
 	/**
-	 * [in] Tbl type
+	 * [in] The insert parms from tf core
 	 */
-	enum tf_tbl_type type;
-	/**
-	 * [in] Pointer to entry blob value in remap table to match
-	 */
-	uint8_t *entry;
-	/**
-	 * [in] Size of the entry blob passed in bytes
-	 */
-	uint16_t entry_sz;
-	/**
-	 * [in] Entry to update
-	 */
-	uint16_t index;
-	/**
-	 * [out] Reference count after insert
-	 */
-	uint16_t *ref_cnt;
+	struct tf_tbl_set_parms *sparms;
 };
 
 /**
@@ -142,19 +149,11 @@ struct tf_shadow_tbl_remove_parms {
 	/**
 	 * [in] Shadow table DB handle
 	 */
-	void *tf_shadow_tbl_db;
+	void *shadow_db;
 	/**
-	 * [in] Tbl type
+	 * [in] The free parms from tf core
 	 */
-	enum tf_tbl_type type;
-	/**
-	 * [in] Entry to update
-	 */
-	uint16_t index;
-	/**
-	 * [out] Reference count after removal
-	 */
-	uint16_t *ref_cnt;
+	struct tf_tbl_free_parms *fparms;
 };
 
 /**
@@ -206,8 +205,25 @@ int tf_shadow_tbl_free_db(struct tf_shadow_tbl_free_db_parms *parms);
  * Returns
  *   - (0) if successful, element was found.
  *   - (-EINVAL) on failure.
+ *
+ * If there is a miss, but there is room for insertion, the hb_handle returned
+ * is used for insertion during the bind index API
  */
 int tf_shadow_tbl_search(struct tf_shadow_tbl_search_parms *parms);
+
+/**
+ * Bind Shadow table db hash and result tables with result from search/alloc
+ *
+ * [in] parms
+ *   Pointer to the search parameters
+ *
+ * Returns
+ *   - (0) if successful
+ *   - (-EINVAL) on failure.
+ *
+ * This is only called after a MISS in the search returns a hb_handle
+ */
+int tf_shadow_tbl_bind_index(struct tf_shadow_tbl_bind_index_parms *parms);
 
 /**
  * Inserts an element into the Shadow table DB. Will fail if the

@@ -144,29 +144,31 @@ struct tf_tbl_alloc_search_parms {
 	 */
 	uint32_t tbl_scope_id;
 	/**
-	 * [in] Enable search for matching entry. If the table type is
-	 * internal the shadow copy will be searched before
-	 * alloc. Session must be configured with shadow copy enabled.
-	 */
-	uint8_t search_enable;
-	/**
-	 * [in] Result data to search for (if search_enable)
+	 * [in] Result data to search for
 	 */
 	uint8_t *result;
 	/**
-	 * [in] Result data size in bytes (if search_enable)
+	 * [in] Result data size in bytes
 	 */
 	uint16_t result_sz_in_bytes;
+	/**
+	 * [in] Whether or not to allocate on MISS, 1 is allocate.
+	 */
+	uint8_t alloc;
 	/**
 	 * [out] If search_enable, set if matching entry found
 	 */
 	uint8_t hit;
 	/**
-	 * [out] Current ref count after allocation (if search_enable)
+	 * [out] The status of the search (REJECT, MISS, HIT)
+	 */
+	enum tf_search_status search_status;
+	/**
+	 * [out] Current ref count after allocation
 	 */
 	uint16_t ref_cnt;
 	/**
-	 * [out] Idx of allocated entry or found entry (if search_enable)
+	 * [out] Idx of allocated entry or found entry
 	 */
 	uint32_t idx;
 };

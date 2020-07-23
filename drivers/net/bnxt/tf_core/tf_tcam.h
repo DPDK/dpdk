@@ -134,7 +134,7 @@ struct tf_tcam_alloc_search_parms {
 	/**
 	 * [out] Search result status (hit, miss, reject)
 	 */
-	enum tf_tcam_search_status search_status;
+	enum tf_search_status search_status;
 	/**
 	 * [out] Current refcnt after allocation
 	 */

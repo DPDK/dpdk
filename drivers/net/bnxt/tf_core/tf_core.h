@@ -291,9 +291,9 @@ enum tf_tcam_tbl_type {
 };
 
 /**
- * TCAM SEARCH STATUS
+ * SEARCH STATUS
  */
-enum tf_tcam_search_status {
+enum tf_search_status {
 	/** The entry was not found, but an idx was allocated if requested. */
 	MISS,
 	/** The entry was found, and the result/idx are valid */
@@ -1011,7 +1011,7 @@ struct tf_search_tcam_entry_parms {
 	/**
 	 * [out] Search result status (hit, miss, reject)
 	 */
-	enum tf_tcam_search_status search_status;
+	enum tf_search_status search_status;
 	/**
 	 * [out] Current refcnt after allocation
 	 */
@@ -1284,6 +1284,79 @@ int tf_free_tcam_entry(struct tf *tfp,
  *
  * @ref tf_bulk_get_tbl_entry
  */
+
+/**
+ * tf_alloc_tbl_entry parameter definition
+ */
+struct tf_search_tbl_entry_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] Type of the allocation
+	 */
+	enum tf_tbl_type type;
+	/**
+	 * [in] Table scope identifier (ignored unless TF_TBL_TYPE_EXT)
+	 */
+	uint32_t tbl_scope_id;
+	/**
+	 * [in] Result data to search for
+	 */
+	uint8_t *result;
+	/**
+	 * [in] Result data size in bytes
+	 */
+	uint16_t result_sz_in_bytes;
+	/**
+	 * [in] Allocate on miss.
+	 */
+	uint8_t alloc;
+	/**
+	 * [out] Set if matching entry found
+	 */
+	uint8_t hit;
+	/**
+	 * [out] Search result status (hit, miss, reject)
+	 */
+	enum tf_search_status search_status;
+	/**
+	 * [out] Current ref count after allocation
+	 */
+	uint16_t ref_cnt;
+	/**
+	 * [out] Idx of allocated entry or found entry
+	 */
+	uint32_t idx;
+};
+
+/**
+ * search Table Entry (experimental)
+ *
+ * This function searches the shadow copy of an index table for a matching
+ * entry.  The result data must match for hit to be set.  Only TruFlow core
+ * data is accessed.  If shadow_copy is not enabled, an error is returned.
+ *
+ * Implementation:
+ *
+ * A hash is performed on the result data and mappe3d to a shadow copy entry
+ * where the result is populated.  If the result matches the entry, hit is set,
+ * ref_cnt is incremented (if alloc), and the search status indicates what
+ * action the caller can take regarding setting the entry.
+ *
+ * search status should be used as follows:
+ * - On MISS, the caller should set the result into the returned index.
+ *
+ * - On REJECT, the caller should reject the flow since there are no resources.
+ *
+ * - On Hit, the matching index is returned to the caller.  Additionally, the
+ *   ref_cnt is updated.
+ *
+ * Also returns success or failure code.
+ */
+int tf_search_tbl_entry(struct tf *tfp,
+			struct tf_search_tbl_entry_parms *parms);
 
 /**
  * tf_alloc_tbl_entry parameter definition

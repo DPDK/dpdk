@@ -373,6 +373,12 @@ tf_shadow_tcam_clear_hash_entry(struct tf_shadow_tcam_ctxt *ctxt,
 	case 3:
 		*bucket = TF_SHADOW_TCAM_BE2_MASK_CLEAR(*bucket);
 		break;
+	default:
+		/*
+		 * Since the BE_GET masks non-inclusive bits, this will not
+		 * happen.
+		 */
+		break;
 	}
 }
 
