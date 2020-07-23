@@ -690,7 +690,7 @@ ulp_mapper_ident_extract(struct bnxt_ulp_mapper_parms *parms,
 {
 	struct ulp_flow_db_res_params	fid_parms;
 	uint64_t id = 0;
-	uint32_t idx;
+	uint32_t idx = 0;
 	struct tf_search_identifier_parms sparms = { 0 };
 	struct tf_free_identifier_parms free_parms = { 0 };
 	struct tf *tfp;
@@ -1292,12 +1292,13 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct tf *tfp;
 	int32_t rc, trc;
 	struct tf_alloc_tcam_entry_parms aparms		= { 0 };
+	struct tf_search_tcam_entry_parms searchparms   = { 0 };
 	struct tf_set_tcam_entry_parms sparms		= { 0 };
 	struct ulp_flow_db_res_params	fid_parms	= { 0 };
 	struct tf_free_tcam_entry_parms free_parms	= { 0 };
 	uint32_t hit = 0;
 	uint16_t tmplen = 0;
-	struct ulp_blob res_blob;
+	uint16_t idx;
 
 	/* Skip this if was handled by the cache. */
 	if (parms->tcam_tbl_opc == BNXT_ULP_MAPPER_TCAM_TBL_OPC_CACHE_SKIP) {
@@ -1352,37 +1353,72 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 	}
 
-	aparms.dir		= tbl->direction;
-	aparms.tcam_tbl_type	= tbl->resource_type;
-	aparms.search_enable	= tbl->srch_b4_alloc;
-	aparms.key_sz_in_bits	= tbl->key_bit_size;
-	aparms.key		= ulp_blob_data_get(&key, &tmplen);
-	if (tbl->key_bit_size != tmplen) {
-		BNXT_TF_DBG(ERR, "Key len (%d) != Expected (%d)\n",
-			    tmplen, tbl->key_bit_size);
-		return -EINVAL;
+	if (!tbl->srch_b4_alloc) {
+		/*
+		 * No search for re-use is requested, so simply allocate the
+		 * tcam index.
+		 */
+		aparms.dir		= tbl->direction;
+		aparms.tcam_tbl_type	= tbl->resource_type;
+		aparms.search_enable	= tbl->srch_b4_alloc;
+		aparms.key_sz_in_bits	= tbl->key_bit_size;
+		aparms.key		= ulp_blob_data_get(&key, &tmplen);
+		if (tbl->key_bit_size != tmplen) {
+			BNXT_TF_DBG(ERR, "Key len (%d) != Expected (%d)\n",
+				    tmplen, tbl->key_bit_size);
+			return -EINVAL;
+		}
+
+		aparms.mask		= ulp_blob_data_get(&mask, &tmplen);
+		if (tbl->key_bit_size != tmplen) {
+			BNXT_TF_DBG(ERR, "Mask len (%d) != Expected (%d)\n",
+				    tmplen, tbl->key_bit_size);
+			return -EINVAL;
+		}
+
+		aparms.priority		= tbl->priority;
+
+		/*
+		 * All failures after this succeeds require the entry to be
+		 * freed. cannot return directly on failure, but needs to goto
+		 * error.
+		 */
+		rc = tf_alloc_tcam_entry(tfp, &aparms);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "tcam alloc failed rc=%d.\n", rc);
+			return rc;
+		}
+		idx = aparms.idx;
+		hit = aparms.hit;
+	} else {
+		/*
+		 * Searching before allocation to see if we already have an
+		 * entry.  This allows re-use of a constrained resource.
+		 */
+		searchparms.dir = tbl->direction;
+		searchparms.tcam_tbl_type = tbl->resource_type;
+		searchparms.key = ulp_blob_data_get(&key, &tmplen);
+		searchparms.key_sz_in_bits = tbl->key_bit_size;
+		searchparms.mask = ulp_blob_data_get(&mask, &tmplen);
+		searchparms.priority = tbl->priority;
+		searchparms.alloc = 1;
+		searchparms.result = ulp_blob_data_get(&data, &tmplen);
+		searchparms.result_sz_in_bits = tbl->result_bit_size;
+
+		rc = tf_search_tcam_entry(tfp, &searchparms);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "tcam search failed rc=%d\n", rc);
+			return rc;
+		}
+
+		/* Successful search, check the result */
+		if (searchparms.search_status == REJECT) {
+			BNXT_TF_DBG(ERR, "tcam alloc rejected\n");
+			return -ENOMEM;
+		}
+		idx = searchparms.idx;
+		hit = searchparms.hit;
 	}
-
-	aparms.mask		= ulp_blob_data_get(&mask, &tmplen);
-	if (tbl->key_bit_size != tmplen) {
-		BNXT_TF_DBG(ERR, "Mask len (%d) != Expected (%d)\n",
-			    tmplen, tbl->key_bit_size);
-		return -EINVAL;
-	}
-
-	aparms.priority		= tbl->priority;
-
-	/*
-	 * All failures after this succeeds require the entry to be freed.
-	 * cannot return directly on failure, but needs to goto error
-	 */
-	rc = tf_alloc_tcam_entry(tfp, &aparms);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "tcam alloc failed rc=%d.\n", rc);
-		return rc;
-	}
-
-	hit = aparms.hit;
 
 	/* Build the result */
 	if (!tbl->srch_b4_alloc || !hit) {
@@ -1430,9 +1466,9 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			}
 		}
 
-		sparms.dir		= aparms.dir;
-		sparms.tcam_tbl_type	= aparms.tcam_tbl_type;
-		sparms.idx		= aparms.idx;
+		sparms.dir		= tbl->direction;
+		sparms.tcam_tbl_type	= tbl->resource_type;
+		sparms.idx		= idx;
 		/* Already verified the key/mask lengths */
 		sparms.key		= ulp_blob_data_get(&key, &tmplen);
 		sparms.mask		= ulp_blob_data_get(&mask, &tmplen);
@@ -1464,7 +1500,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 				rc = -EINVAL;
 				goto error;
 			}
-			parms->cache_ptr->tcam_idx = aparms.idx;
+			parms->cache_ptr->tcam_idx = idx;
 		}
 
 		/* Mark action */
@@ -1483,7 +1519,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		idents = ulp_mapper_ident_fields_get(tbl, &num_idents);
 		for (i = 0; i < num_idents; i++) {
 			rc = ulp_mapper_ident_extract(parms, tbl,
-						      &idents[i], &res_blob);
+						      &idents[i], &data);
 			if (rc) {
 				BNXT_TF_DBG(ERR,
 					    "Error in ident extraction\n");
@@ -1501,7 +1537,7 @@ ulp_mapper_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		fid_parms.resource_func	= tbl->resource_func;
 		fid_parms.resource_type	= tbl->resource_type;
 		fid_parms.critical_resource = tbl->critical_resource;
-		fid_parms.resource_hndl	= aparms.idx;
+		fid_parms.resource_hndl	= idx;
 		rc = ulp_flow_db_resource_add(parms->ulp_ctx,
 					      parms->tbl_idx,
 					      parms->fid,
