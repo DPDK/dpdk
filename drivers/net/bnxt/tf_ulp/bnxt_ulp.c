@@ -81,7 +81,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 		return rc;
 	}
 
-	params.shadow_copy = false;
+	params.shadow_copy = true;
 	params.device_type = TF_DEVICE_TYPE_WH;
 	resources = &params.resources;
 	/** RX **/
