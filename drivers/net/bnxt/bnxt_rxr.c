@@ -485,6 +485,9 @@ bnxt_ulp_set_mark_in_mbuf(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
 	rc = ulp_mark_db_mark_get(bp->ulp_ctx, gfid,
 				  cfa_code, vfr_flag, &mark_id);
 	if (!rc) {
+		/* VF to VFR Rx path. So, skip mark_id injection in mbuf */
+		if (vfr_flag && *vfr_flag)
+			return mark_id;
 		/* Got the mark, write it to the mbuf and return */
 		mbuf->hash.fdir.hi = mark_id;
 		mbuf->udata64 = (cfa_code & 0xffffffffull) << 32;
