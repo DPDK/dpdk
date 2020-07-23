@@ -23,6 +23,10 @@ extern "C" {
 #include <rte_mbuf.h>
 #include <rte_byteorder.h>
 
+#ifdef RTE_EXEC_ENV_WINDOWS /* Workaround conflict with rte_ether_hdr. */
+#undef s_addr /* Defined in winsock2.h included in windows.h. */
+#endif
+
 #define RTE_ETHER_ADDR_LEN  6 /**< Length of Ethernet address. */
 #define RTE_ETHER_TYPE_LEN  2 /**< Length of Ethernet type field. */
 #define RTE_ETHER_CRC_LEN   4 /**< Length of Ethernet CRC. */
