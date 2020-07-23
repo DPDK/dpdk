@@ -5839,10 +5839,14 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ret = i40e_res_pool_alloc(&pf->msix_pool, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "VSI %d get heap failed %d", vsi->seid, ret);
-			goto fail_queue_alloc;
+			if (type != I40E_VSI_FDIR)
+				goto fail_queue_alloc;
+			vsi->msix_intr = 0;
+			vsi->nb_msix = 0;
+		} else {
+			vsi->msix_intr = ret;
+			vsi->nb_msix = 1;
 		}
-		vsi->msix_intr = ret;
-		vsi->nb_msix = 1;
 	} else {
 		vsi->msix_intr = 0;
 		vsi->nb_msix = 0;
