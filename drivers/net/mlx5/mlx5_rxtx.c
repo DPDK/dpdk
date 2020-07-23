@@ -4739,6 +4739,8 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *__rte_restrict txq,
 					      txq->inlen_mode) ||
 					    (MLX5_TXOFF_CONFIG(MPW) &&
 					     txq->inlen_mode)) {
+						if (inlen <= txq->inlen_send)
+							goto single_inline;
 						/*
 						 * The hardware requires the
 						 * minimal inline data header.
@@ -4755,6 +4757,7 @@ mlx5_tx_burst_single_send(struct mlx5_txq_data *__rte_restrict txq,
 					}
 					goto single_no_inline;
 				}
+single_inline:
 				/*
 				 * Completely inlined packet data WQE:
 				 * - Control Segment, SEND opcode
