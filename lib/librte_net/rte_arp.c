@@ -2,9 +2,8 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#include <arpa/inet.h>
-
 #include <rte_arp.h>
+#include <rte_byteorder.h>
 
 #define RARP_PKT_SIZE	64
 struct rte_mbuf *
@@ -32,15 +31,15 @@ rte_net_make_rarp_packet(struct rte_mempool *mpool,
 	/* Ethernet header. */
 	memset(eth_hdr->d_addr.addr_bytes, 0xff, RTE_ETHER_ADDR_LEN);
 	rte_ether_addr_copy(mac, &eth_hdr->s_addr);
-	eth_hdr->ether_type = htons(RTE_ETHER_TYPE_RARP);
+	eth_hdr->ether_type = RTE_BE16(RTE_ETHER_TYPE_RARP);
 
 	/* RARP header. */
 	rarp = (struct rte_arp_hdr *)(eth_hdr + 1);
-	rarp->arp_hardware = htons(RTE_ARP_HRD_ETHER);
-	rarp->arp_protocol = htons(RTE_ETHER_TYPE_IPV4);
+	rarp->arp_hardware = RTE_BE16(RTE_ARP_HRD_ETHER);
+	rarp->arp_protocol = RTE_BE16(RTE_ETHER_TYPE_IPV4);
 	rarp->arp_hlen = RTE_ETHER_ADDR_LEN;
 	rarp->arp_plen = 4;
-	rarp->arp_opcode  = htons(RTE_ARP_OP_REVREQUEST);
+	rarp->arp_opcode  = RTE_BE16(RTE_ARP_OP_REVREQUEST);
 
 	rte_ether_addr_copy(mac, &rarp->arp_data.arp_sha);
 	rte_ether_addr_copy(mac, &rarp->arp_data.arp_tha);
