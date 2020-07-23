@@ -4160,6 +4160,9 @@ iavf_hash_parse_action(const struct rte_flow_action actions[],
 			    RTE_ETH_HASH_FUNCTION_SIMPLE_XOR){
 				rss_meta->rss_algorithm =
 					VIRTCHNL_RSS_ALG_XOR_ASYMMETRIC;
+				return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"function simple_xor is not supported");
 			} else if (rss->func ==
 				   RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) {
 				rss_meta->rss_algorithm =
