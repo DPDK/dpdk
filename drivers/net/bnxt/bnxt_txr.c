@@ -133,8 +133,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				PKT_TX_TUNNEL_GENEVE | PKT_TX_IEEE1588_TMST |
 				PKT_TX_QINQ_PKT) ||
 	     (BNXT_TRUFLOW_EN(txq->bp) &&
-	      (txq->bp->ulp_ctx->cfg_data->tx_cfa_action ||
-	       txq->vfr_tx_cfa_action)))
+	      (txq->bp->tx_cfa_action || txq->vfr_tx_cfa_action)))
 		long_bd = true;
 
 	nr_bds = long_bd + tx_pkt->nb_segs;
@@ -192,8 +191,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			if (txq->vfr_tx_cfa_action)
 				cfa_action = txq->vfr_tx_cfa_action;
 			else
-				cfa_action =
-				      txq->bp->ulp_ctx->cfg_data->tx_cfa_action;
+				cfa_action = txq->bp->tx_cfa_action;
 		}
 
 		/* HW can accelerate only outer vlan in QinQ mode */

@@ -9,9 +9,9 @@
 #include <rte_flow_driver.h>
 #include <rte_tailq.h>
 
+#include "bnxt.h"
 #include "bnxt_ulp.h"
 #include "bnxt_tf_common.h"
-#include "bnxt.h"
 #include "tf_core.h"
 #include "tf_ext_flow_handle.h"
 
@@ -381,6 +381,7 @@ ulp_ctx_init(struct bnxt *bp,
 		(void)ulp_ctx_deinit(bp, session);
 		return rc;
 	}
+
 	bnxt_ulp_cntxt_tfp_set(bp->ulp_ctx, session->g_tfp);
 	return rc;
 }
@@ -654,6 +655,9 @@ bnxt_ulp_init(struct bnxt *bp)
 	bool init;
 	int rc;
 
+	if (!BNXT_TRUFLOW_EN(bp))
+		return 0;
+
 	if (bp->ulp_ctx) {
 		BNXT_TF_DBG(DEBUG, "ulp ctx already allocated\n");
 		return -EINVAL;
@@ -822,6 +826,9 @@ bnxt_ulp_deinit(struct bnxt *bp)
 	struct rte_pci_device		*pci_dev;
 	struct rte_pci_addr		*pci_addr;
 
+	if (!BNXT_TRUFLOW_EN(bp))
+		return;
+
 	/* Get the session first */
 	pci_dev = RTE_DEV_TO_PCI(bp->eth_dev->device);
 	pci_addr = &pci_dev->addr;
@@ -832,6 +839,9 @@ bnxt_ulp_deinit(struct bnxt *bp)
 	/* session not found then just exit */
 	if (!session)
 		return;
+
+	/* clean up default flows */
+	bnxt_ulp_destroy_df_rules(bp, true);
 
 	/* clean up regular flows */
 	ulp_flow_db_flush_flows(bp->ulp_ctx, BNXT_ULP_REGULAR_FLOW_TABLE);

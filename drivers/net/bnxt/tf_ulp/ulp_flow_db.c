@@ -962,7 +962,7 @@ ulp_flow_db_resource_hndl_get(struct bnxt_ulp_context *ulp_ctx,
 int32_t
 ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint32_t flow_id,
-				   uint32_t *cfa_action)
+				   uint16_t *cfa_action)
 {
 	uint8_t sub_type = BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_VFR_CFA_ACTION;
 	uint64_t hndl;

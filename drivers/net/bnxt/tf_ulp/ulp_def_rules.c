@@ -392,3 +392,119 @@ ulp_default_flow_destroy(struct rte_eth_dev *eth_dev, uint32_t flow_id)
 
 	return rc;
 }
+
+void
+bnxt_ulp_destroy_df_rules(struct bnxt *bp, bool global)
+{
+	struct bnxt_ulp_df_rule_info *info;
+	uint8_t port_id;
+
+	if (!BNXT_TRUFLOW_EN(bp) ||
+	    BNXT_ETH_DEV_IS_REPRESENTOR(bp->eth_dev))
+		return;
+
+	if (!bp->ulp_ctx || !bp->ulp_ctx->cfg_data)
+		return;
+
+	/* Delete default rules per port */
+	if (!global) {
+		port_id = bp->eth_dev->data->port_id;
+		info = &bp->ulp_ctx->cfg_data->df_rule_info[port_id];
+		if (!info->valid)
+			return;
+
+		ulp_default_flow_destroy(bp->eth_dev,
+					 info->port_to_app_flow_id);
+		ulp_default_flow_destroy(bp->eth_dev,
+					 info->app_to_port_flow_id);
+		info->valid = false;
+		return;
+	}
+
+	/* Delete default rules for all ports */
+	for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
+		info = &bp->ulp_ctx->cfg_data->df_rule_info[port_id];
+		if (!info->valid)
+			continue;
+
+		ulp_default_flow_destroy(bp->eth_dev,
+					 info->port_to_app_flow_id);
+		ulp_default_flow_destroy(bp->eth_dev,
+					 info->app_to_port_flow_id);
+		info->valid = false;
+	}
+}
+
+static int32_t
+bnxt_create_port_app_df_rule(struct bnxt *bp, uint8_t flow_type,
+			     uint32_t *flow_id)
+{
+	uint16_t port_id = bp->eth_dev->data->port_id;
+	struct ulp_tlv_param param_list[] = {
+		{
+			.type = BNXT_ULP_DF_PARAM_TYPE_DEV_PORT_ID,
+			.length = 2,
+			.value = {(port_id >> 8) & 0xff, port_id & 0xff}
+		},
+		{
+			.type = BNXT_ULP_DF_PARAM_TYPE_LAST,
+			.length = 0,
+			.value = {0}
+		}
+	};
+
+	return ulp_default_flow_create(bp->eth_dev, param_list, flow_type,
+				       flow_id);
+}
+
+int32_t
+bnxt_ulp_create_df_rules(struct bnxt *bp)
+{
+	struct bnxt_ulp_df_rule_info *info;
+	uint8_t port_id;
+	int rc;
+
+	if (!BNXT_TRUFLOW_EN(bp) ||
+	    BNXT_ETH_DEV_IS_REPRESENTOR(bp->eth_dev))
+		return 0;
+
+	port_id = bp->eth_dev->data->port_id;
+	info = &bp->ulp_ctx->cfg_data->df_rule_info[port_id];
+	BNXT_TF_DBG(INFO, "*** creating port to app default rule ***\n");
+	rc = bnxt_create_port_app_df_rule(bp, BNXT_ULP_DF_TPL_PORT_TO_VS,
+					  &info->port_to_app_flow_id);
+	if (rc) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to create port to app default rule\n");
+		return rc;
+	}
+	BNXT_TF_DBG(INFO, "*** created port to app default rule ***\n");
+
+	bp->tx_cfa_action = 0;
+	BNXT_TF_DBG(INFO, "*** creating app to port default rule ***\n");
+	rc = bnxt_create_port_app_df_rule(bp, BNXT_ULP_DF_TPL_VS_TO_PORT,
+					  &info->app_to_port_flow_id);
+	if (rc) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to create app to port default rule\n");
+		goto port_to_app_free;
+	}
+
+	rc = ulp_default_flow_db_cfa_action_get(bp->ulp_ctx,
+						info->app_to_port_flow_id,
+						&bp->tx_cfa_action);
+	if (rc)
+		goto app_to_port_free;
+
+	info->valid = true;
+	BNXT_TF_DBG(INFO, "*** created app to port default rule ***\n");
+	return 0;
+
+app_to_port_free:
+	ulp_default_flow_destroy(bp->eth_dev, info->app_to_port_flow_id);
+port_to_app_free:
+	ulp_default_flow_destroy(bp->eth_dev, info->port_to_app_flow_id);
+	info->valid = false;
+
+	return rc;
+}

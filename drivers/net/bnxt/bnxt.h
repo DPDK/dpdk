@@ -784,6 +784,7 @@ struct bnxt {
 	struct bnxt_flow_stat_info *flow_stat;
 	uint8_t			flow_xstat;
 	uint16_t		max_num_kflows;
+	uint16_t		tx_cfa_action;
 };
 
 #define BNXT_FC_TIMER	1 /* Timer freq in Sec Flow Counters */
@@ -797,7 +798,7 @@ struct bnxt_vf_representor {
 	uint16_t		fw_fid;
 	uint16_t		dflt_vnic_id;
 	uint16_t		svif;
-	uint32_t		vfr_tx_cfa_action;
+	uint16_t		vfr_tx_cfa_action;
 	uint16_t		rx_cfa_code;
 	uint32_t		rep2vf_flow_id;
 	uint32_t		vf2rep_flow_id;
@@ -872,6 +873,8 @@ extern int bnxt_logtype_driver;
 extern const struct rte_flow_ops bnxt_ulp_rte_flow_ops;
 int32_t bnxt_ulp_init(struct bnxt *bp);
 void bnxt_ulp_deinit(struct bnxt *bp);
+int32_t bnxt_ulp_create_df_rules(struct bnxt *bp);
+void bnxt_ulp_destroy_df_rules(struct bnxt *bp, bool global);
 
 uint16_t bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif,

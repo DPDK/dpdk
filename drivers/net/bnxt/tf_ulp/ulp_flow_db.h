@@ -234,7 +234,7 @@ ulp_flow_db_validate_flow_func(struct bnxt_ulp_context *ulp_ctx,
 int32_t
 ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint32_t flow_id,
-				   uint32_t *cfa_action);
+				   uint16_t *cfa_action);
 
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 /*
