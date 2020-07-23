@@ -736,20 +736,20 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 						      pkt_info)->timestamp);
 			}
 		}
-		if (!!rxq->flow_meta_mask) {
+		if (rxq->dynf_meta) {
 			/* This code is subject for futher optimization. */
 			int32_t offs = rxq->flow_meta_offset;
 
 			*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *) =
 				container_of(p0, struct mlx5_cqe,
 					     pkt_info)->flow_table_metadata;
-			*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *) =
+			*RTE_MBUF_DYNFIELD(pkts[pos + 1], offs, uint32_t *) =
 				container_of(p1, struct mlx5_cqe,
 					     pkt_info)->flow_table_metadata;
-			*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *) =
+			*RTE_MBUF_DYNFIELD(pkts[pos + 2], offs, uint32_t *) =
 				container_of(p2, struct mlx5_cqe,
 					     pkt_info)->flow_table_metadata;
-			*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *) =
+			*RTE_MBUF_DYNFIELD(pkts[pos + 3], offs, uint32_t *) =
 				container_of(p3, struct mlx5_cqe,
 					     pkt_info)->flow_table_metadata;
 			if (*RTE_MBUF_DYNFIELD(pkts[pos], offs, uint32_t *))
