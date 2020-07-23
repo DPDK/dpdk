@@ -597,6 +597,52 @@ ulp_session_deinit(struct bnxt_ulp_session_state *session)
 }
 
 /*
+ * Internal api to enable NAT feature.
+ * Set set_flag to 1 to set the value or zero to reset the value.
+ * returns 0 on success.
+ */
+static int32_t
+bnxt_ulp_global_cfg_update(struct bnxt *bp,
+			   enum tf_dir dir,
+			   enum tf_global_config_type type,
+			   uint32_t offset,
+			   uint32_t value,
+			   uint32_t set_flag)
+{
+	uint32_t global_cfg = 0;
+	int rc;
+	struct tf_global_cfg_parms parms;
+
+	/* Initialize the params */
+	parms.dir = dir,
+	parms.type = type,
+	parms.offset = offset,
+	parms.config = (uint8_t *)&global_cfg,
+	parms.config_sz_in_bytes = sizeof(global_cfg);
+
+	rc = tf_get_global_cfg(&bp->tfp, &parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to get global cfg 0x%x rc:%d\n",
+			    type, rc);
+		return rc;
+	}
+
+	if (set_flag)
+		global_cfg |= value;
+	else
+		global_cfg &= ~value;
+
+	/* SET the register RE_CFA_REG_ACT_TECT */
+	rc = tf_set_global_cfg(&bp->tfp, &parms);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to set global cfg 0x%x rc:%d\n",
+			    type, rc);
+		return rc;
+	}
+	return rc;
+}
+
+/*
  * When a port is initialized by dpdk. This functions is called
  * and this function initializes the ULP context and rest of the
  * infrastructure associated with it.
@@ -732,6 +778,29 @@ bnxt_ulp_init(struct bnxt *bp)
 		goto jump_to_error;
 	}
 
+	/*
+	 * Enable NAT feature. Set the global configuration register
+	 * Tunnel encap to enable NAT with the reuse of existing inner
+	 * L2 header smac and dmac
+	 */
+	rc = bnxt_ulp_global_cfg_update(bp, TF_DIR_RX, TF_TUNNEL_ENCAP,
+					TF_TUNNEL_ENCAP_NAT,
+					(BNXT_ULP_NAT_INNER_L2_HEADER_SMAC |
+					BNXT_ULP_NAT_INNER_L2_HEADER_DMAC), 1);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to set rx global configuration\n");
+		goto jump_to_error;
+	}
+
+	rc = bnxt_ulp_global_cfg_update(bp, TF_DIR_TX, TF_TUNNEL_ENCAP,
+					TF_TUNNEL_ENCAP_NAT,
+					(BNXT_ULP_NAT_INNER_L2_HEADER_SMAC |
+					BNXT_ULP_NAT_INNER_L2_HEADER_DMAC), 1);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to set tx global configuration\n");
+		goto jump_to_error;
+	}
+
 	return rc;
 
 jump_to_error:
@@ -784,6 +853,19 @@ bnxt_ulp_deinit(struct bnxt *bp)
 
 	/* Delete the Port database */
 	ulp_port_db_deinit(bp->ulp_ctx);
+
+	/* Disable NAT feature */
+	(void)bnxt_ulp_global_cfg_update(bp, TF_DIR_RX, TF_TUNNEL_ENCAP,
+					 TF_TUNNEL_ENCAP_NAT,
+					 (BNXT_ULP_NAT_INNER_L2_HEADER_SMAC |
+					  BNXT_ULP_NAT_INNER_L2_HEADER_DMAC),
+					 0);
+
+	(void)bnxt_ulp_global_cfg_update(bp, TF_DIR_TX, TF_TUNNEL_ENCAP,
+					 TF_TUNNEL_ENCAP_NAT,
+					 (BNXT_ULP_NAT_INNER_L2_HEADER_SMAC |
+					  BNXT_ULP_NAT_INNER_L2_HEADER_DMAC),
+					 0);
 
 	/* Delete the ulp context and tf session */
 	ulp_ctx_detach(bp, session);
@@ -942,6 +1024,7 @@ bnxt_ulp_eth_dev_ptr2_cntxt_get(struct rte_eth_dev	*dev)
 
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(dev)) {
 		struct bnxt_vf_representor *vfr = dev->data->dev_private;
+
 		bp = vfr->parent_dev->data->dev_private;
 	}
 

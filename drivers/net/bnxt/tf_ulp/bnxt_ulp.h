@@ -14,6 +14,10 @@
 
 #include "ulp_template_db_enum.h"
 
+/* NAT defines to reuse existing inner L2 SMAC and DMAC */
+#define BNXT_ULP_NAT_INNER_L2_HEADER_SMAC	0x2000
+#define BNXT_ULP_NAT_INNER_L2_HEADER_DMAC	0x100
+
 /* defines for the ulp_flags */
 #define BNXT_ULP_VF_REP_ENABLED		0x1
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
