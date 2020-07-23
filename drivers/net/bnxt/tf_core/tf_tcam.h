@@ -104,19 +104,19 @@ struct tf_tcam_alloc_search_parms {
 	 */
 	enum tf_tcam_tbl_type type;
 	/**
-	 * [in] Enable search for matching entry
+	 * [in] Type of HCAPI
 	 */
-	uint8_t search_enable;
+	uint16_t hcapi_type;
 	/**
-	 * [in] Key data to match on (if search)
+	 * [in] Key data to match on
 	 */
 	uint8_t *key;
 	/**
-	 * [in] key size (if search)
+	 * [in] key size in bits
 	 */
 	uint16_t key_size;
 	/**
-	 * [in] Mask data to match on (if search)
+	 * [in] Mask data to match on
 	 */
 	uint8_t *mask;
 	/**
@@ -124,16 +124,31 @@ struct tf_tcam_alloc_search_parms {
 	 */
 	uint32_t priority;
 	/**
-	 * [out] If search, set if matching entry found
+	 * [in] Allocate on miss.
+	 */
+	uint8_t alloc;
+	/**
+	 * [out] Set if matching entry found
 	 */
 	uint8_t hit;
+	/**
+	 * [out] Search result status (hit, miss, reject)
+	 */
+	enum tf_tcam_search_status search_status;
 	/**
 	 * [out] Current refcnt after allocation
 	 */
 	uint16_t ref_cnt;
 	/**
-	 * [out] Idx allocated
-	 *
+	 * [in,out] The result data from the search is copied here
+	 */
+	uint8_t *result;
+	/**
+	 * [in,out] result size in bits for the result data
+	 */
+	uint16_t result_size;
+	/**
+	 * [out] Index found
 	 */
 	uint16_t idx;
 };

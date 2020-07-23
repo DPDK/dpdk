@@ -608,6 +608,79 @@ tf_search_identifier(struct tf *tfp,
 }
 
 int
+tf_search_tcam_entry(struct tf *tfp,
+		     struct tf_search_tcam_entry_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	struct tf_tcam_alloc_search_parms sparms;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	memset(&sparms, 0, sizeof(struct tf_tcam_alloc_search_parms));
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (dev->ops->tf_dev_alloc_search_tcam == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	sparms.dir = parms->dir;
+	sparms.type = parms->tcam_tbl_type;
+	sparms.key = parms->key;
+	sparms.key_size = TF_BITS2BYTES_WORD_ALIGN(parms->key_sz_in_bits);
+	sparms.mask = parms->mask;
+	sparms.priority = parms->priority;
+	sparms.alloc = parms->alloc;
+
+	/* Result is an in/out and so no need to copy during outputs */
+	sparms.result = parms->result;
+	sparms.result_size =
+		TF_BITS2BYTES_WORD_ALIGN(parms->result_sz_in_bits);
+
+	rc = dev->ops->tf_dev_alloc_search_tcam(tfp, &sparms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: TCAM allocation failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Copy the outputs */
+	parms->hit = sparms.hit;
+	parms->search_status = sparms.search_status;
+	parms->ref_cnt = sparms.ref_cnt;
+	parms->idx = sparms.idx;
+
+	return 0;
+}
+
+int
 tf_alloc_tcam_entry(struct tf *tfp,
 		    struct tf_alloc_tcam_entry_parms *parms)
 {

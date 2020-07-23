@@ -291,6 +291,18 @@ enum tf_tcam_tbl_type {
 };
 
 /**
+ * TCAM SEARCH STATUS
+ */
+enum tf_tcam_search_status {
+	/** The entry was not found, but an idx was allocated if requested. */
+	MISS,
+	/** The entry was found, and the result/idx are valid */
+	HIT,
+	/** The entry was not found and the table is full */
+	REJECT
+};
+
+/**
  * EM Resources
  * These defines are provisioned during
  * tf_open_session()
@@ -949,6 +961,8 @@ int tf_free_tbl_scope(struct tf *tfp,
 /**
  * @page tcam TCAM Access
  *
+ * @ref tf_search_tcam_entry
+ *
  * @ref tf_alloc_tcam_entry
  *
  * @ref tf_set_tcam_entry
@@ -958,6 +972,93 @@ int tf_free_tbl_scope(struct tf *tfp,
  * @ref tf_free_tcam_entry
  */
 
+/**
+ * tf_search_tcam_entry parameter definition (experimental)
+ */
+struct tf_search_tcam_entry_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
+	 */
+	enum tf_tcam_tbl_type tcam_tbl_type;
+	/**
+	 * [in] Key data to match on
+	 */
+	uint8_t *key;
+	/**
+	 * [in] key size in bits
+	 */
+	uint16_t key_sz_in_bits;
+	/**
+	 * [in] Mask data to match on
+	 */
+	uint8_t *mask;
+	/**
+	 * [in] Priority of entry requested (definition TBD)
+	 */
+	uint32_t priority;
+	/**
+	 * [in] Allocate on miss.
+	 */
+	uint8_t alloc;
+	/**
+	 * [out] Set if matching entry found
+	 */
+	uint8_t hit;
+	/**
+	 * [out] Search result status (hit, miss, reject)
+	 */
+	enum tf_tcam_search_status search_status;
+	/**
+	 * [out] Current refcnt after allocation
+	 */
+	uint16_t ref_cnt;
+	/**
+	 * [in out] The result data from the search is copied here
+	 */
+	uint8_t *result;
+	/**
+	 * [in out] result size in bits for the result data
+	 */
+	uint16_t result_sz_in_bits;
+	/**
+	 * [out] Index found
+	 */
+	uint16_t idx;
+};
+
+/**
+ * search TCAM entry (experimental)
+ *
+ * Search for a TCAM entry
+ *
+ * This function searches the shadow copy of the TCAM table for a matching
+ * entry.  Key and mask must match for hit to be set.  Only TruFlow core data
+ * is accessed.  If shadow_copy is not enabled, an error is returned.
+ *
+ * Implementation:
+ *
+ * A hash is performed on the key/mask data and mapped to a shadow copy entry
+ * where the full key/mask is populated.  If the full key/mask matches the
+ * entry, hit is set, ref_cnt is incremented, and search_status indicates what
+ * action the caller can take regarding setting the entry.
+ *
+ * search_status should be used as follows:
+ * - On Miss, the caller should create a result and call tf_set_tcam_entry with
+ * returned index.
+ *
+ * - On Reject, the hash table is full and the entry cannot be added.
+ *
+ * - On Hit, the result data is returned to the caller.  Additionally, the
+ * ref_cnt is updated.
+ *
+ * Also returns success or failure code.
+ */
+int tf_search_tcam_entry(struct tf *tfp,
+			 struct tf_search_tcam_entry_parms *parms);
 
 /**
  * tf_alloc_tcam_entry parameter definition

@@ -8,232 +8,188 @@
 
 #include "tf_core.h"
 
-struct tf;
-
 /**
- * The Shadow tcam module provides shadow DB handling for tcam based
- * TF types. A shadow DB provides the capability that allows for reuse
- * of TF resources.
+ * Shadow DB configuration information
  *
- * A Shadow tcam DB is intended to be used by the Tcam module only.
- */
-
-/**
- * Shadow DB configuration information for a single tcam type.
- *
- * During Device initialization the HCAPI device specifics are learned
- * and as well as the RM DB creation. From that those initial steps
- * this structure can be populated.
- *
- * NOTE:
- * If used in an array of tcam types then such array must be ordered
- * by the TF type is represents.
+ * The shadow configuration is for all tcam table types for a direction
  */
 struct tf_shadow_tcam_cfg_parms {
 	/**
-	 * TF tcam type
-	 */
-	enum tf_tcam_tbl_type type;
-
-	/**
-	 * Number of entries the Shadow DB needs to hold
+	 * [in] The number of elements in the alloc_cnt and base_addr
+	 * For now, it should always be equal to TF_TCAM_TBL_TYPE_MAX
 	 */
 	int num_entries;
-
 	/**
-	 * Element width for this table type
+	 * [in] Resource allocation count array
+	 * This array content originates from the tf_session_resources
+	 * that is passed in on session open
+	 * Array size is TF_TCAM_TBL_TYPE_MAX
 	 */
-	int element_width;
+	uint16_t *alloc_cnt;
+	/**
+	 * [in] The base index for each tcam table
+	 */
+	uint16_t base_addr[TF_TCAM_TBL_TYPE_MAX];
 };
 
 /**
- * Shadow tcam DB creation parameters
+ * Shadow TCAM  DB creation parameters.  The shadow db for this direction
+ * is returned
  */
 struct tf_shadow_tcam_create_db_parms {
+	/**
+	 * [in] Receive or transmit direction
+	 */
+	enum tf_dir dir;
 	/**
 	 * [in] Configuration information for the shadow db
 	 */
 	struct tf_shadow_tcam_cfg_parms *cfg;
 	/**
-	 * [in] Number of elements in the parms structure
-	 */
-	uint16_t num_elements;
-	/**
 	 * [out] Shadow tcam DB handle
 	 */
-	void *tf_shadow_tcam_db;
+	void **shadow_db;
 };
 
 /**
- * Shadow tcam DB free parameters
+ * Create the shadow db for a single direction
+ *
+ * The returned shadow db must be free using the free db API when no longer
+ * needed
+ */
+int
+tf_shadow_tcam_create_db(struct tf_shadow_tcam_create_db_parms *parms);
+
+/**
+ * Shadow TCAM free parameters
  */
 struct tf_shadow_tcam_free_db_parms {
 	/**
-	 * Shadow tcam DB handle
+	 * [in] Shadow tcam DB handle
 	 */
-	void *tf_shadow_tcam_db;
+	void *shadow_db;
 };
 
 /**
- * Shadow tcam search parameters
+ * Free all resources associated with the shadow db
  */
-struct tf_shadow_tcam_search_parms {
+int
+tf_shadow_tcam_free_db(struct tf_shadow_tcam_free_db_parms *parms);
+
+/**
+ * Shadow TCAM bind index parameters
+ */
+struct tf_shadow_tcam_bind_index_parms {
 	/**
 	 * [in] Shadow tcam DB handle
 	 */
-	void *tf_shadow_tcam_db;
+	void *shadow_db;
 	/**
-	 * [in] TCAM tbl type
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] TCAM table type
 	 */
 	enum tf_tcam_tbl_type type;
 	/**
-	 * [in] Pointer to entry blob value in remap table to match
+	 * [in] index of the entry to program
 	 */
-	uint8_t *entry;
+	uint16_t idx;
 	/**
-	 * [in] Size of the entry blob passed in bytes
+	 * [in] struct containing key
 	 */
-	uint16_t entry_sz;
+	uint8_t *key;
 	/**
-	 * [out] Index of the found element returned if hit
+	 * [in] struct containing mask fields
 	 */
-	uint16_t *index;
+	uint8_t *mask;
 	/**
-	 * [out] Reference count incremented if hit
+	 * [in] key size in bits (if search)
 	 */
-	uint16_t *ref_cnt;
+	uint16_t key_size;
+	/**
+	 * [in] The hash bucket handled returned from the search
+	 */
+	uint32_t hb_handle;
 };
 
 /**
- * Shadow tcam insert parameters
+ * Binds the allocated tcam index with the hash and shadow tables
  */
-struct tf_shadow_tcam_insert_parms {
+int
+tf_shadow_tcam_bind_index(struct tf_shadow_tcam_bind_index_parms *parms);
+
+/**
+ * Shadow TCAM insert parameters
+ */
+struct	tf_shadow_tcam_insert_parms {
 	/**
 	 * [in] Shadow tcam DB handle
 	 */
-	void *tf_shadow_tcam_db;
+	void *shadow_db;
 	/**
-	 * [in] TCAM tbl type
+	 * [in] The set parms from tf core
 	 */
-	enum tf_tcam_tbl_type type;
-	/**
-	 * [in] Pointer to entry blob value in remap table to match
-	 */
-	uint8_t *entry;
-	/**
-	 * [in] Size of the entry blob passed in bytes
-	 */
-	uint16_t entry_sz;
-	/**
-	 * [in] Entry to update
-	 */
-	uint16_t index;
-	/**
-	 * [out] Reference count after insert
-	 */
-	uint16_t *ref_cnt;
+	struct tf_tcam_set_parms *sparms;
 };
 
 /**
- * Shadow tcam remove parameters
+ * Set the entry into the tcam manager hash and shadow tables
+ *
+ * The search must have been used prior to setting the entry so that the
+ * hash has been calculated and duplicate entries will not be added
+ */
+int
+tf_shadow_tcam_insert(struct tf_shadow_tcam_insert_parms *parms);
+
+/**
+ * Shadow TCAM remove parameters
  */
 struct tf_shadow_tcam_remove_parms {
 	/**
 	 * [in] Shadow tcam DB handle
 	 */
-	void *tf_shadow_tcam_db;
+	void *shadow_db;
 	/**
-	 * [in] TCAM tbl type
+	 * [in,out] The set parms from tf core
 	 */
-	enum tf_tcam_tbl_type type;
-	/**
-	 * [in] Entry to update
-	 */
-	uint16_t index;
-	/**
-	 * [out] Reference count after removal
-	 */
-	uint16_t *ref_cnt;
+	struct tf_tcam_free_parms *fparms;
 };
 
 /**
- * @page shadow_tcam Shadow tcam DB
+ * Remove the entry from the tcam hash and shadow tables
  *
- * @ref tf_shadow_tcam_create_db
- *
- * @ref tf_shadow_tcam_free_db
- *
- * @reg tf_shadow_tcam_search
- *
- * @reg tf_shadow_tcam_insert
- *
- * @reg tf_shadow_tcam_remove
+ * The search must have been used prior to setting the entry so that the
+ * hash has been calculated and duplicate entries will not be added
  */
+int
+tf_shadow_tcam_remove(struct tf_shadow_tcam_remove_parms *parms);
 
 /**
- * Creates and fills a Shadow tcam DB. The DB is indexed per the
- * parms structure.
- *
- * [in] parms
- *   Pointer to create db parameters
- *
- * Returns
- *   - (0) if successful.
- *   - (-EINVAL) on failure.
+ * Shadow TCAM search parameters
  */
-int tf_shadow_tcam_create_db(struct tf_shadow_tcam_create_db_parms *parms);
+struct tf_shadow_tcam_search_parms {
+	/**
+	 * [in] Shadow tcam DB handle
+	 */
+	void *shadow_db;
+	/**
+	 * [in,out] The search parameters from tf core
+	 */
+	struct tf_tcam_alloc_search_parms *sparms;
+	/**
+	 * [out] The hash handle to use for the set
+	 */
+	uint32_t hb_handle;
+};
 
 /**
- * Closes the Shadow tcam DB and frees all allocated
- * resources per the associated database.
+ * Search for an entry in the tcam hash/shadow tables
  *
- * [in] parms
- *   Pointer to the free DB parameters
- *
- * Returns
- *   - (0) if successful.
- *   - (-EINVAL) on failure.
+ * If there is a miss, but there is room for insertion, the hb_handle returned
+ * is used for insertion during the bind index API
  */
-int tf_shadow_tcam_free_db(struct tf_shadow_tcam_free_db_parms *parms);
-
-/**
- * Search Shadow tcam db for matching result
- *
- * [in] parms
- *   Pointer to the search parameters
- *
- * Returns
- *   - (0) if successful, element was found.
- *   - (-EINVAL) on failure.
- */
-int tf_shadow_tcam_search(struct tf_shadow_tcam_search_parms *parms);
-
-/**
- * Inserts an element into the Shadow tcam DB. Will fail if the
- * elements ref_count is different from 0. Ref_count after insert will
- * be incremented.
- *
- * [in] parms
- *   Pointer to insert parameters
- *
- * Returns
- *   - (0) if successful.
- *   - (-EINVAL) on failure.
- */
-int tf_shadow_tcam_insert(struct tf_shadow_tcam_insert_parms *parms);
-
-/**
- * Removes an element from the Shadow tcam DB. Will fail if the
- * elements ref_count is 0. Ref_count after removal will be
- * decremented.
- *
- * [in] parms
- *   Pointer to remove parameter
- *
- * Returns
- *   - (0) if successful.
- *   - (-EINVAL) on failure.
- */
-int tf_shadow_tcam_remove(struct tf_shadow_tcam_remove_parms *parms);
-
-#endif /* _TF_SHADOW_TCAM_H_ */
+int
+tf_shadow_tcam_search(struct tf_shadow_tcam_search_parms *parms);
+#endif
