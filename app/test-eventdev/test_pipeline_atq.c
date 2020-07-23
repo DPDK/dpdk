@@ -495,6 +495,8 @@ pipeline_atq_capability_check(struct evt_options *opt)
 			evt_nr_active_lcores(opt->wlcores),
 			dev_info.max_event_ports);
 	}
+	if (!evt_has_all_types_queue(opt->dev_id))
+		return false;
 
 	return true;
 }
