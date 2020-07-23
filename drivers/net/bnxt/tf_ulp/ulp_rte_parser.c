@@ -709,8 +709,13 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 			vlan_tag |= ~ULP_VLAN_TAG_MASK;
 		vlan_tag = htons(vlan_tag);
 
-		ulp_rte_prsr_mask_copy(params, &idx, &priority,
-				       sizeof(priority));
+		/*
+		 * The priority field is ignored since OVS is setting it as
+		 * wild card match and it is not supported. This is a work
+		 * around and shall be addressed in the future.
+		 */
+		idx += 1;
+
 		ulp_rte_prsr_mask_copy(params, &idx, &vlan_tag,
 				       sizeof(vlan_tag));
 		ulp_rte_prsr_mask_copy(params, &idx, &vlan_mask->inner_type,
@@ -883,18 +888,12 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		ulp_rte_prsr_mask_copy(params, &idx,
 				       &ipv4_mask->hdr.version_ihl,
 				       sizeof(ipv4_mask->hdr.version_ihl));
-#ifdef ULP_DONT_IGNORE_TOS
-		ulp_rte_prsr_mask_copy(params, &idx,
-				       &ipv4_mask->hdr.type_of_service,
-				       sizeof(ipv4_mask->hdr.type_of_service));
-#else
 		/*
 		 * The tos field is ignored since OVS is setting it as wild card
 		 * match and it is not supported. This is a work around and
 		 * shall be addressed in the future.
 		 */
 		idx += 1;
-#endif
 
 		ulp_rte_prsr_mask_copy(params, &idx,
 				       &ipv4_mask->hdr.total_length,
