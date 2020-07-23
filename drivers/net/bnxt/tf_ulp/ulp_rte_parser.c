@@ -159,6 +159,43 @@ bnxt_ulp_rte_parser_act_parse(const struct rte_flow_action actions[],
 }
 
 /*
+ * Function to handle the post processing of the computed
+ * fields for the interface.
+ */
+static void
+bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
+{
+	uint32_t ifindex;
+	uint16_t port_id, parif;
+	enum bnxt_ulp_direction_type dir;
+
+	/* get the direction details */
+	dir = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_DIRECTION);
+
+	if (dir == BNXT_ULP_DIR_INGRESS) {
+		/* read the port id details */
+		port_id = ULP_COMP_FLD_IDX_RD(params,
+					      BNXT_ULP_CF_IDX_INCOMING_IF);
+		if (ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx,
+						      port_id,
+						      &ifindex)) {
+			BNXT_TF_DBG(ERR, "ParseErr:Portid is not valid\n");
+			return;
+		}
+		/* Set port PARIF */
+		if (ulp_port_db_parif_get(params->ulp_ctx, ifindex,
+					  BNXT_ULP_PHY_PORT_PARIF, &parif)) {
+			BNXT_TF_DBG(ERR, "ParseErr:ifindex is not valid\n");
+			return;
+		}
+		/* Parif needs to be reset to a free partition */
+		parif += BNXT_ULP_FREE_PARIF_BASE;
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_PHY_PORT_PARIF,
+				    parif);
+	}
+}
+
+/*
  * Function to handle the post processing of the parsing details
  */
 int32_t
@@ -212,6 +249,9 @@ bnxt_ulp_rte_parser_post_process(struct ulp_rte_parser_params *params)
 
 	/* Merge the hdr_fp_bit into the proto header bit */
 	params->hdr_bitmap.bits |= params->hdr_fp_bit.bits;
+
+	/* Update the computed interface parameters */
+	bnxt_ulp_comp_fld_intf_update(params);
 
 	/* TBD: Handle the flow rejection scenarios */
 	return 0;

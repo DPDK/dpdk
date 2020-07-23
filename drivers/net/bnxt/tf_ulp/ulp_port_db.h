@@ -10,6 +10,7 @@
 
 #define BNXT_PORT_DB_MAX_INTF_LIST		256
 #define BNXT_PORT_DB_MAX_FUNC			2048
+#define BNXT_ULP_FREE_PARIF_BASE		11
 
 enum bnxt_ulp_svif_type {
 	BNXT_ULP_DRV_FUNC_SVIF = 0,

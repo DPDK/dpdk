@@ -12,8 +12,6 @@
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 
-#define BNXT_ULP_FREE_PARIF_BASE 11
-
 struct bnxt_ulp_def_param_handler {
 	int32_t (*vfr_func)(struct bnxt_ulp_context *ulp_ctx,
 			    struct ulp_tlv_param *param,
@@ -85,6 +83,8 @@ ulp_set_parif_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 
 	if (parif_type == BNXT_ULP_PHY_PORT_PARIF) {
 		idx = BNXT_ULP_CF_IDX_PHY_PORT_PARIF;
+		/* Parif needs to be reset to a free partition */
+		parif += BNXT_ULP_FREE_PARIF_BASE;
 	} else if (parif_type == BNXT_ULP_DRV_FUNC_PARIF) {
 		idx = BNXT_ULP_CF_IDX_DRV_FUNC_PARIF;
 		/* Parif needs to be reset to a free partition */
