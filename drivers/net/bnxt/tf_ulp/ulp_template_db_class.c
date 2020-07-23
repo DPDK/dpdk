@@ -17241,7 +17241,63 @@ struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
-	.ident_bit_pos = 54
+	.ident_bit_pos = 0
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.ident_type = TF_IDENT_TYPE_EM_PROF,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
+	.ident_bit_size = 10,
+	.ident_bit_pos = 0
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
+	.ident_bit_size = 10,
+	.ident_bit_pos = 0
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.ident_type = TF_IDENT_TYPE_EM_PROF,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
+	.ident_bit_size = 10,
+	.ident_bit_pos = 0
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
+	.ident_bit_size = 10,
+	.ident_bit_pos = 0
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.ident_type = TF_IDENT_TYPE_EM_PROF,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
+	.ident_bit_size = 10,
+	.ident_bit_pos = 0
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
+	.ident_bit_size = 10,
+	.ident_bit_pos = 0
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.ident_type = TF_IDENT_TYPE_EM_PROF,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
+	.ident_bit_size = 10,
+	.ident_bit_pos = 0
+	},
+	{
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
+	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
+	.ident_bit_size = 10,
+	.ident_bit_pos = 0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -17311,7 +17367,7 @@ struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
-	.ident_bit_pos = 54
+	.ident_bit_pos = 0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -17325,63 +17381,7 @@ struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
-	.ident_bit_pos = 54
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_EM_PROF,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
-	.ident_bit_size = 10,
 	.ident_bit_pos = 0
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
-	.ident_bit_size = 10,
-	.ident_bit_pos = 54
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_EM_PROF,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
-	.ident_bit_size = 10,
-	.ident_bit_pos = 0
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
-	.ident_bit_size = 10,
-	.ident_bit_pos = 54
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_EM_PROF,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
-	.ident_bit_size = 10,
-	.ident_bit_pos = 0
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
-	.ident_bit_size = 10,
-	.ident_bit_pos = 54
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_EM_PROF,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_EM_PROFILE_ID_0,
-	.ident_bit_size = 10,
-	.ident_bit_pos = 0
-	},
-	{
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
-	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
-	.ident_bit_size = 10,
-	.ident_bit_pos = 54
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
@@ -17451,7 +17451,7 @@ struct bnxt_ulp_mapper_ident_info ulp_ident_list[] = {
 	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
 	.regfile_idx = BNXT_ULP_REGFILE_INDEX_L2_CNTXT_ID_0,
 	.ident_bit_size = 10,
-	.ident_bit_pos = 54
+	.ident_bit_pos = 0
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
