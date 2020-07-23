@@ -1764,9 +1764,10 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct ulp_blob	data;
 	uint64_t idx = 0;
 	uint16_t tmplen;
-	uint32_t i, num_flds;
+	uint32_t i, num_flds, index, hit;
 	int32_t rc = 0, trc = 0;
 	struct tf_alloc_tbl_entry_parms	aparms = { 0 };
+	struct tf_search_tbl_entry_parms srchparms = { 0 };
 	struct tf_set_tbl_entry_parms	sparms = { 0 };
 	struct tf_free_tbl_entry_parms	free_parms = { 0 };
 	uint32_t tbl_scope_id;
@@ -1868,33 +1869,59 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return 0; /* success */
 	}
 
+	index = 0;
+	hit = 0;
 	/* Perform the tf table allocation by filling the alloc params */
-	aparms.dir		= tbl->direction;
-	aparms.type		= tbl->resource_type;
-	aparms.search_enable	= tbl->srch_b4_alloc;
-	aparms.result		= ulp_blob_data_get(&data, &tmplen);
-	aparms.result_sz_in_bytes = ULP_BITS_2_BYTE(tmplen);
-	aparms.tbl_scope_id	= tbl_scope_id;
+	if (tbl->srch_b4_alloc) {
+		memset(&srchparms, 0, sizeof(srchparms));
+		srchparms.dir = tbl->direction;
+		srchparms.type = tbl->resource_type;
+		srchparms.alloc	= 1;
+		srchparms.result = ulp_blob_data_get(&data, &tmplen);
+		srchparms.result_sz_in_bytes = ULP_BITS_2_BYTE(tmplen);
+		srchparms.tbl_scope_id = tbl_scope_id;
+		rc = tf_search_tbl_entry(tfp, &srchparms);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Alloc table[%s][%s] failed rc=%d\n",
+				    tf_tbl_type_2_str(tbl->resource_type),
+				    tf_dir_2_str(tbl->direction), rc);
+			return rc;
+		}
+		if (srchparms.search_status == REJECT) {
+			BNXT_TF_DBG(ERR, "Alloc table[%s][%s] rejected.\n",
+				    tf_tbl_type_2_str(tbl->resource_type),
+				    tf_dir_2_str(tbl->direction));
+			return -ENOMEM;
+		}
+		index = srchparms.idx;
+		hit = srchparms.hit;
+	} else {
+		aparms.dir		= tbl->direction;
+		aparms.type		= tbl->resource_type;
+		aparms.search_enable	= tbl->srch_b4_alloc;
+		aparms.result		= ulp_blob_data_get(&data, &tmplen);
+		aparms.result_sz_in_bytes = ULP_BITS_2_BYTE(tmplen);
+		aparms.tbl_scope_id	= tbl_scope_id;
 
-	/* All failures after the alloc succeeds require a free */
-	rc = tf_alloc_tbl_entry(tfp, &aparms);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Alloc table[%d][%s] failed rc=%d\n",
-			    aparms.type,
-			    (aparms.dir == TF_DIR_RX) ? "RX" : "TX",
-			    rc);
-		return rc;
+		/* All failures after the alloc succeeds require a free */
+		rc = tf_alloc_tbl_entry(tfp, &aparms);
+		if (rc) {
+			BNXT_TF_DBG(ERR, "Alloc table[%s][%s] failed rc=%d\n",
+				    tf_tbl_type_2_str(tbl->resource_type),
+				    tf_dir_2_str(tbl->direction), rc);
+			return rc;
+		}
+		index = aparms.idx;
 	}
-
 	/*
 	 * calculate the idx for the result record, for external EM the offset
 	 * needs to be shifted accordingly. If external non-inline table types
 	 * are used then need to revisit this logic.
 	 */
-	if (aparms.type == TF_TBL_TYPE_EXT)
-		idx = TF_ACT_REC_OFFSET_2_PTR(aparms.idx);
+	if (tbl->resource_type == TF_TBL_TYPE_EXT)
+		idx = TF_ACT_REC_OFFSET_2_PTR(index);
 	else
-		idx = aparms.idx;
+		idx = index;
 
 	/* Always storing values in Regfile in BE */
 	idx = tfp_cpu_to_be_64(idx);
@@ -1908,12 +1935,12 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* Perform the tf table set by filling the set params */
-	if (!tbl->srch_b4_alloc || !aparms.hit) {
+	if (!tbl->srch_b4_alloc || !hit) {
 		sparms.dir		= tbl->direction;
 		sparms.type		= tbl->resource_type;
 		sparms.data		= ulp_blob_data_get(&data, &tmplen);
 		sparms.data_sz_in_bytes = ULP_BITS_2_BYTE(tmplen);
-		sparms.idx		= aparms.idx;
+		sparms.idx		= index;
 		sparms.tbl_scope_id	= tbl_scope_id;
 
 		rc = tf_set_tbl_entry(tfp, &sparms);
@@ -1933,7 +1960,7 @@ ulp_mapper_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_func	= tbl->resource_func;
 	fid_parms.resource_type	= tbl->resource_type;
 	fid_parms.resource_sub_type = tbl->resource_sub_type;
-	fid_parms.resource_hndl	= aparms.idx;
+	fid_parms.resource_hndl	= index;
 	fid_parms.critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
 
 	rc = ulp_flow_db_resource_add(parms->ulp_ctx,
@@ -1960,7 +1987,7 @@ error:
 	 */
 	free_parms.dir	= tbl->direction;
 	free_parms.type	= tbl->resource_type;
-	free_parms.idx	= aparms.idx;
+	free_parms.idx	= index;
 	free_parms.tbl_scope_id = tbl_scope_id;
 
 	trc = tf_free_tbl_entry(tfp, &free_parms);
