@@ -2117,7 +2117,7 @@ __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
 	I40E_WRITE_FLUSH(hw);
 }
 
-void
+int
 i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t itr_idx)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
@@ -2137,10 +2137,14 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t itr_idx)
 
 	/* VF bind interrupt */
 	if (vsi->type == I40E_VSI_SRIOV) {
+		if (vsi->nb_msix == 0) {
+			PMD_DRV_LOG(ERR, "No msix resource");
+			return -EINVAL;
+		}
 		__vsi_queues_bind_intr(vsi, msix_vect,
 				       vsi->base_queue, vsi->nb_qps,
 				       itr_idx);
-		return;
+		return 0;
 	}
 
 	/* PF & VMDq bind interrupt */
@@ -2157,7 +2161,10 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t itr_idx)
 	}
 
 	for (i = 0; i < vsi->nb_used_qps; i++) {
-		if (nb_msix <= 1) {
+		if (vsi->nb_msix == 0) {
+			PMD_DRV_LOG(ERR, "No msix resource");
+			return -EINVAL;
+		} else if (nb_msix <= 1) {
 			if (!rte_intr_allow_others(intr_handle))
 				/* allow to share MISC_VEC_ID */
 				msix_vect = I40E_MISC_VEC_ID;
@@ -2182,6 +2189,8 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t itr_idx)
 		msix_vect++;
 		nb_msix--;
 	}
+
+	return 0;
 }
 
 void
@@ -2422,14 +2431,18 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	/* Map queues with MSIX interrupt */
 	main_vsi->nb_used_qps = dev->data->nb_rx_queues -
 		pf->nb_cfg_vmdq_vsi * RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
-	i40e_vsi_queues_bind_intr(main_vsi, I40E_ITR_INDEX_DEFAULT);
+	ret = i40e_vsi_queues_bind_intr(main_vsi, I40E_ITR_INDEX_DEFAULT);
+	if (ret < 0)
+		return ret;
 	i40e_vsi_enable_queues_intr(main_vsi);
 
 	/* Map VMDQ VSI queues with MSIX interrupt */
 	for (i = 0; i < pf->nb_cfg_vmdq_vsi; i++) {
 		pf->vmdq[i].vsi->nb_used_qps = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
-		i40e_vsi_queues_bind_intr(pf->vmdq[i].vsi,
-					  I40E_ITR_INDEX_DEFAULT);
+		ret = i40e_vsi_queues_bind_intr(pf->vmdq[i].vsi,
+						I40E_ITR_INDEX_DEFAULT);
+		if (ret < 0)
+			return ret;
 		i40e_vsi_enable_queues_intr(pf->vmdq[i].vsi);
 	}
 
