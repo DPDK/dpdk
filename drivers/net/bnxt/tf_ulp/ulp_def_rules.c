@@ -81,17 +81,12 @@ ulp_set_parif_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 	if (rc)
 		return rc;
 
-	if (parif_type == BNXT_ULP_PHY_PORT_PARIF) {
+	if (parif_type == BNXT_ULP_PHY_PORT_PARIF)
 		idx = BNXT_ULP_CF_IDX_PHY_PORT_PARIF;
-		/* Parif needs to be reset to a free partition */
-		parif += BNXT_ULP_FREE_PARIF_BASE;
-	} else if (parif_type == BNXT_ULP_DRV_FUNC_PARIF) {
+	else if (parif_type == BNXT_ULP_DRV_FUNC_PARIF)
 		idx = BNXT_ULP_CF_IDX_DRV_FUNC_PARIF;
-		/* Parif needs to be reset to a free partition */
-		parif += BNXT_ULP_FREE_PARIF_BASE;
-	} else {
+	else
 		idx = BNXT_ULP_CF_IDX_VF_FUNC_PARIF;
-	}
 
 	ULP_COMP_FLD_IDX_WR(mapper_params, idx, parif);
 

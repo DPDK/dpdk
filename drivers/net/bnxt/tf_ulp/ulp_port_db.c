@@ -372,6 +372,8 @@ ulp_port_db_parif_get(struct bnxt_ulp_context *ulp_ctxt,
 		phy_port_id = port_db->ulp_func_id_tbl[func_id].phy_port_id;
 		*parif = port_db->phy_port_list[phy_port_id].port_parif;
 	}
+	/* Parif needs to be reset to a free partition */
+	*parif += BNXT_ULP_FREE_PARIF_BASE;
 
 	return 0;
 }

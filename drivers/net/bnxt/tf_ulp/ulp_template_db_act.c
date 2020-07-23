@@ -1808,11 +1808,19 @@ struct bnxt_ulp_mapper_result_field_info ulp_act_result_field_list[] = {
 	},
 	{
 	.field_bit_size = 4,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_IF_ACT_BIT_THEN_CONST_ELSE_CONST,
 	.result_operand = {
-		BNXT_ULP_SYM_DECAP_FUNC_THRU_TUN,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+		((uint64_t)BNXT_ULP_ACTION_BIT_VXLAN_DECAP >> 56) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_VXLAN_DECAP >> 48) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_VXLAN_DECAP >> 40) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_VXLAN_DECAP >> 32) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_VXLAN_DECAP >> 24) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_VXLAN_DECAP >> 16) & 0xff,
+		((uint64_t)BNXT_ULP_ACTION_BIT_VXLAN_DECAP >> 8) & 0xff,
+		(uint64_t)BNXT_ULP_ACTION_BIT_VXLAN_DECAP & 0xff,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+	.result_operand_true = {0x0a, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 12,

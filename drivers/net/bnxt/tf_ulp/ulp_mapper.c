@@ -998,6 +998,41 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
+	case BNXT_ULP_MAPPER_OPC_IF_COMP_FIELD_THEN_CF_ELSE_CF:
+		if (!ulp_operand_read(fld->result_operand,
+				      (uint8_t *)&idx,
+				      sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "%s key operand read failed.\n", name);
+			return -EINVAL;
+		}
+		idx = tfp_be_to_cpu_16(idx);
+		if (idx >= BNXT_ULP_CF_IDX_LAST) {
+			BNXT_TF_DBG(ERR, "%s invalid index %u\n", name, idx);
+			return -EINVAL;
+		}
+		/* check if the computed field is set */
+		if (ULP_COMP_FLD_IDX_RD(parms, idx))
+			val = fld->result_operand_true;
+		else
+			val = fld->result_operand_false;
+
+		/* read the appropriate computed field */
+		if (!ulp_operand_read(val, (uint8_t *)&idx, sizeof(uint16_t))) {
+			BNXT_TF_DBG(ERR, "%s val operand read failed\n", name);
+			return -EINVAL;
+		}
+		idx = tfp_be_to_cpu_16(idx);
+		if (idx >= BNXT_ULP_CF_IDX_LAST) {
+			BNXT_TF_DBG(ERR, "%s invalid index %u\n", name, idx);
+			return -EINVAL;
+		}
+		val = ulp_blob_push_32(blob, &parms->comp_fld[idx],
+				       fld->field_bit_size);
+		if (!val) {
+			BNXT_TF_DBG(ERR, "%s push to key blob failed\n", name);
+			return -EINVAL;
+		}
+		break;
 	default:
 		BNXT_TF_DBG(ERR, "invalid result mapper opcode 0x%x\n",
 			    fld->result_opcode);

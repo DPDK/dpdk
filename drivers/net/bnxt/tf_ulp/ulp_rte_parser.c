@@ -167,31 +167,63 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 {
 	uint32_t ifindex;
 	uint16_t port_id, parif;
+	uint32_t mtype;
 	enum bnxt_ulp_direction_type dir;
 
 	/* get the direction details */
 	dir = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_DIRECTION);
 
+	/* read the port id details */
+	port_id = ULP_COMP_FLD_IDX_RD(params,
+				      BNXT_ULP_CF_IDX_INCOMING_IF);
+	if (ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx,
+					      port_id,
+					      &ifindex)) {
+		BNXT_TF_DBG(ERR, "ParseErr:Portid is not valid\n");
+		return;
+	}
+
 	if (dir == BNXT_ULP_DIR_INGRESS) {
-		/* read the port id details */
-		port_id = ULP_COMP_FLD_IDX_RD(params,
-					      BNXT_ULP_CF_IDX_INCOMING_IF);
-		if (ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx,
-						      port_id,
-						      &ifindex)) {
-			BNXT_TF_DBG(ERR, "ParseErr:Portid is not valid\n");
-			return;
-		}
 		/* Set port PARIF */
 		if (ulp_port_db_parif_get(params->ulp_ctx, ifindex,
 					  BNXT_ULP_PHY_PORT_PARIF, &parif)) {
 			BNXT_TF_DBG(ERR, "ParseErr:ifindex is not valid\n");
 			return;
 		}
-		/* Parif needs to be reset to a free partition */
-		parif += BNXT_ULP_FREE_PARIF_BASE;
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_PHY_PORT_PARIF,
 				    parif);
+	} else {
+		/* Get the match port type */
+		mtype = ULP_COMP_FLD_IDX_RD(params,
+					    BNXT_ULP_CF_IDX_MATCH_PORT_TYPE);
+		if (mtype == BNXT_ULP_INTF_TYPE_VF_REP) {
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_MATCH_PORT_IS_VFREP,
+					    1);
+			/* Set VF func PARIF */
+			if (ulp_port_db_parif_get(params->ulp_ctx, ifindex,
+						  BNXT_ULP_VF_FUNC_PARIF,
+						  &parif)) {
+				BNXT_TF_DBG(ERR,
+					    "ParseErr:ifindex is not valid\n");
+				return;
+			}
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_VF_FUNC_PARIF,
+					    parif);
+		} else {
+			/* Set DRV func PARIF */
+			if (ulp_port_db_parif_get(params->ulp_ctx, ifindex,
+						  BNXT_ULP_DRV_FUNC_PARIF,
+						  &parif)) {
+				BNXT_TF_DBG(ERR,
+					    "ParseErr:ifindex is not valid\n");
+				return;
+			}
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_DRV_FUNC_PARIF,
+					    parif);
+		}
 	}
 }
 
