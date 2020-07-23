@@ -278,4 +278,6 @@ int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp);
 int bnxt_hwrm_oem_cmd(struct bnxt *bp, uint32_t entry_num);
 int bnxt_clear_one_vnic_filter(struct bnxt *bp,
 			       struct bnxt_filter_info *filter);
+int bnxt_hwrm_cfa_vfr_alloc(struct bnxt *bp, uint16_t vf_idx);
+int bnxt_hwrm_cfa_vfr_free(struct bnxt *bp, uint16_t vf_idx);
 #endif

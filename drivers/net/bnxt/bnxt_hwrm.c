@@ -5486,6 +5486,55 @@ int bnxt_hwrm_cfa_counter_qstats(struct bnxt *bp,
 	return 0;
 }
 
+int bnxt_hwrm_cfa_vfr_alloc(struct bnxt *bp, uint16_t vf_idx)
+{
+	struct hwrm_cfa_vfr_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_cfa_vfr_alloc_input req = {0};
+	int rc;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_VFR_ALLOC, BNXT_USE_CHIMP_MB);
+	req.vf_id = rte_cpu_to_le_16(vf_idx);
+	snprintf(req.vfr_name, sizeof(req.vfr_name), "%svfr%d",
+		 bp->eth_dev->data->name, vf_idx);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+
+	HWRM_UNLOCK();
+	PMD_DRV_LOG(DEBUG, "VFR %d allocated\n", vf_idx);
+	return rc;
+}
+
+int bnxt_hwrm_cfa_vfr_free(struct bnxt *bp, uint16_t vf_idx)
+{
+	struct hwrm_cfa_vfr_free_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_cfa_vfr_free_input req = {0};
+	int rc;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_VFR_FREE, BNXT_USE_CHIMP_MB);
+	req.vf_id = rte_cpu_to_le_16(vf_idx);
+	snprintf(req.vfr_name, sizeof(req.vfr_name), "%svfr%d",
+		 bp->eth_dev->data->name, vf_idx);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+	PMD_DRV_LOG(DEBUG, "VFR %d freed\n", vf_idx);
+	return rc;
+}
+
 #ifdef RTE_LIBRTE_BNXT_PMD_SYSTEM
 int
 bnxt_hwrm_oem_cmd(struct bnxt *bp, uint32_t entry_num)

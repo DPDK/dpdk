@@ -272,7 +272,7 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	if (rc) {
 		BNXT_TF_DBG(DEBUG,
 			    "Default flow rule creation for VFR->VF failed!\n");
-		return -EIO;
+		goto err;
 	}
 
 	BNXT_TF_DBG(DEBUG, "*** Default flow rule created for VFR->VF! ***\n");
@@ -283,7 +283,7 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	if (rc) {
 		BNXT_TF_DBG(DEBUG,
 			    "Failed to get action_ptr for VFR->VF dflt rule\n");
-		return -EIO;
+		goto rep2vf_free;
 	}
 	BNXT_TF_DBG(DEBUG, "tx_cfa_action = %d\n", vfr->vfr_tx_cfa_action);
 	rc = ulp_default_flow_create(parent_dev, param_list,
@@ -292,13 +292,24 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	if (rc) {
 		BNXT_TF_DBG(DEBUG,
 			    "Default flow rule creation for VF->VFR failed!\n");
-		return -EIO;
+		goto rep2vf_free;
 	}
 
 	BNXT_TF_DBG(DEBUG, "*** Default flow rule created for VF->VFR! ***\n");
 	BNXT_TF_DBG(DEBUG, "vfr2rep_flow_id = %d\n", vfr->vf2rep_flow_id);
 
+	rc = bnxt_hwrm_cfa_vfr_alloc(parent_bp, vfr->vf_id);
+	if (rc)
+		goto vf2rep_free;
+
 	return 0;
+
+vf2rep_free:
+	ulp_default_flow_destroy(vfr->parent_dev, vfr->vf2rep_flow_id);
+rep2vf_free:
+	ulp_default_flow_destroy(vfr->parent_dev, vfr->rep2vf_flow_id);
+err:
+	return -EIO;
 }
 
 static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
@@ -413,6 +424,8 @@ static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
 		    vfr->vf_id);
 	vfr->vfr_tx_cfa_action = 0;
 	vfr->rx_cfa_code = 0;
+
+	rc = bnxt_hwrm_cfa_vfr_free(parent_bp, vfr->vf_id);
 
 	return rc;
 }

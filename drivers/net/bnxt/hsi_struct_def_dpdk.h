@@ -35127,6 +35127,144 @@ struct hwrm_cfa_pair_info_output {
 	uint8_t	valid;
 } __rte_packed;
 
+/**********************
+ * hwrm_cfa_vfr_alloc *
+ **********************/
+
+
+/* hwrm_cfa_vfr_alloc_input (size:448b/56B) */
+struct hwrm_cfa_vfr_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_id;
+	/*
+	 * This field is reserved for the future use.
+	 * It shall be set to 0.
+	 */
+	uint16_t	reserved;
+	uint8_t	unused_0[4];
+	/* VF Representor name (32 byte string). */
+	char	vfr_name[32];
+} __rte_packed;
+
+/* hwrm_cfa_vfr_alloc_output (size:128b/16B) */
+struct hwrm_cfa_vfr_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Rx CFA code. */
+	uint16_t	rx_cfa_code;
+	/* Tx CFA action. */
+	uint16_t	tx_cfa_action;
+	uint8_t	unused_0[3];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/*********************
+ * hwrm_cfa_vfr_free *
+ *********************/
+
+
+/* hwrm_cfa_vfr_free_input (size:448b/56B) */
+struct hwrm_cfa_vfr_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* VF Representor name (32 byte string). */
+	char		vfr_name[32];
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_id;
+	uint16_t	reserved;
+	uint8_t		unused_0[4];
+} __rte_packed;
+
+/* hwrm_cfa_vfr_free_output (size:128b/16B) */
+struct hwrm_cfa_vfr_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+
+
 /***************************************
  * hwrm_cfa_redirect_query_tunnel_type *
  ***************************************/
