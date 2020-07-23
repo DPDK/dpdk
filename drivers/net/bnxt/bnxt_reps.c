@@ -230,6 +230,9 @@ int bnxt_vf_rep_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_compl)
 	int rc;
 
 	parent_bp = rep->parent_dev->data->dev_private;
+	if (!parent_bp)
+		return 0;
+
 	rc = bnxt_link_update_op(parent_bp->eth_dev, wait_to_compl);
 
 	/* Link state. Inherited from PF or trusted VF */
@@ -324,7 +327,7 @@ static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	}
 
 	/* Check if representor has been already allocated in FW */
-	if (vfr->vfr_tx_cfa_action && vfr->rx_cfa_code)
+	if (vfr->vfr_tx_cfa_action)
 		return 0;
 
 	/*
@@ -406,9 +409,11 @@ static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
 	}
 
 	parent_bp = vfr->parent_dev->data->dev_private;
+	if (!parent_bp)
+		return 0;
 
 	/* Check if representor has been already freed in FW */
-	if (!vfr->vfr_tx_cfa_action && !vfr->rx_cfa_code)
+	if (!vfr->vfr_tx_cfa_action)
 		return 0;
 
 	rc = bnxt_tf_vfr_free(vfr);
@@ -419,11 +424,9 @@ static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
 		return rc;
 	}
 
-	parent_bp->cfa_code_map[vfr->rx_cfa_code] = BNXT_VF_IDX_INVALID;
 	PMD_DRV_LOG(DEBUG, "freed representor %d in FW\n",
 		    vfr->vf_id);
 	vfr->vfr_tx_cfa_action = 0;
-	vfr->rx_cfa_code = 0;
 
 	rc = bnxt_hwrm_cfa_vfr_free(parent_bp, vfr->vf_id);
 
@@ -456,7 +459,6 @@ int bnxt_vf_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt_vf_representor *rep_bp = eth_dev->data->dev_private;
 	struct bnxt *parent_bp;
-	uint16_t max_vnics, i, j, vpool, vrxq;
 	unsigned int max_rx_rings;
 	int rc = 0;
 
@@ -476,7 +478,6 @@ int bnxt_vf_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->max_tx_queues = max_rx_rings;
 	dev_info->reta_size = bnxt_rss_hash_tbl_size(parent_bp);
 	dev_info->hash_key_size = 40;
-	max_vnics = parent_bp->max_vnics;
 
 	/* MTU specifics */
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
@@ -491,68 +492,6 @@ int bnxt_vf_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
 	dev_info->tx_offload_capa = BNXT_DEV_TX_OFFLOAD_SUPPORT;
 	dev_info->flow_type_rss_offloads = BNXT_ETH_RSS_SUPPORT;
-
-	/* *INDENT-OFF* */
-	dev_info->default_rxconf = (struct rte_eth_rxconf) {
-		.rx_thresh = {
-			.pthresh = 8,
-			.hthresh = 8,
-			.wthresh = 0,
-		},
-		.rx_free_thresh = 32,
-		/* If no descriptors available, pkts are dropped by default */
-		.rx_drop_en = 1,
-	};
-
-	dev_info->default_txconf = (struct rte_eth_txconf) {
-		.tx_thresh = {
-			.pthresh = 32,
-			.hthresh = 0,
-			.wthresh = 0,
-		},
-		.tx_free_thresh = 32,
-		.tx_rs_thresh = 32,
-	};
-	eth_dev->data->dev_conf.intr_conf.lsc = 1;
-
-	eth_dev->data->dev_conf.intr_conf.rxq = 1;
-	dev_info->rx_desc_lim.nb_min = BNXT_MIN_RING_DESC;
-	dev_info->rx_desc_lim.nb_max = BNXT_MAX_RX_RING_DESC;
-	dev_info->tx_desc_lim.nb_min = BNXT_MIN_RING_DESC;
-	dev_info->tx_desc_lim.nb_max = BNXT_MAX_TX_RING_DESC;
-
-	/* *INDENT-ON* */
-
-	/*
-	 * TODO: default_rxconf, default_txconf, rx_desc_lim, and tx_desc_lim
-	 *       need further investigation.
-	 */
-
-	/* VMDq resources */
-	vpool = 64; /* ETH_64_POOLS */
-	vrxq = 128; /* ETH_VMDQ_DCB_NUM_QUEUES */
-	for (i = 0; i < 4; vpool >>= 1, i++) {
-		if (max_vnics > vpool) {
-			for (j = 0; j < 5; vrxq >>= 1, j++) {
-				if (dev_info->max_rx_queues > vrxq) {
-					if (vpool > vrxq)
-						vpool = vrxq;
-					goto found;
-				}
-			}
-			/* Not enough resources to support VMDq */
-			break;
-		}
-	}
-	/* Not enough resources to support VMDq */
-	vpool = 0;
-	vrxq = 0;
-found:
-	dev_info->max_vmdq_pools = vpool;
-	dev_info->vmdq_queue_num = vrxq;
-
-	dev_info->vmdq_pool_base = 0;
-	dev_info->vmdq_queue_base = 0;
 
 	return 0;
 }

@@ -688,6 +688,52 @@ optimizes flow insertions and deletions.
 This is a tech preview feature, and is disabled by default. It can be enabled
 using bnxt devargs. For ex: "-w 0000:0d:00.0,host-based-truflow=1”.
 
+Notes
+-----
+
+- On stopping a device port, all the flows created on a port by the
+  application will be flushed from the hardware and any tables maintained
+  by the PMD. After stopping the device port, all flows on the port become
+  invalid and are not represented in the system anymore.
+  Instead of destroying or flushing such flows an application should discard
+  all references to these flows and re-create the flows as required after the
+  port is restarted.
+
+- While an application is free to use the group id attribute to group flows
+  together using a specific criteria, the BNXT PMD currently associates this
+  group id to a VNIC id. One such case is grouping of flows which are filtered
+  on the same source or destination MAC address. This allows packets of such
+  flows to be directed to one or more queues associated with the VNIC id.
+  This implementation is supported only when TRUFLOW functionality is disabled.
+
+Note: A VNIC represents a virtual interface in the hardware. It is a resource
+in the RX path of the chip and is used to setup various target actions such as
+RSS, MAC filtering etc. for the physical function in use.
+
+Virtual Function Port Representors
+----------------------------------
+The BNXT PMD supports the creation of VF port representors for the control
+and monitoring of BNXT virtual function devices. Each port representor
+corresponds to a single virtual function of that device that is connected to a
+VF. When there is no hardware flow offload, each packet transmitted by the VF
+will be received by the corresponding representor. Similarly each packet that is
+sent to a representor will be received by the VF. Applications can take
+advantage of this feature when SRIOV is enabled. The representor will allow the
+first packet that is transmitted by the VF to be received by the DPDK
+application which can then decide if the flow should be offloaded to the
+hardware. Once the flow is offloaded in the hardware, any packet matching the
+flow will be received by the VF while the DPDK application will not receive it
+any more. The BNXT PMD supports creation and handling of the port representors
+when the PMD is initialized on a PF or trusted-VF. The user can specify the list
+of VF IDs of the VFs for which the representors are needed by using the
+``devargs`` option ``representor``.::
+
+  -w DBDF,representor=[0,1,4]
+
+Note that currently hot-plugging of representor ports is not supported so all
+the required representors must be specified on the creation of the PF or the
+trusted VF.
+
 Application Support
 -------------------
 

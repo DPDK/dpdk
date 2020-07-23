@@ -799,7 +799,6 @@ struct bnxt_vf_representor {
 	uint16_t		dflt_vnic_id;
 	uint16_t		svif;
 	uint16_t		vfr_tx_cfa_action;
-	uint16_t		rx_cfa_code;
 	uint32_t		rep2vf_flow_id;
 	uint32_t		vf2rep_flow_id;
 	/* Private data store of associated PF/Trusted VF */
