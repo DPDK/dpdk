@@ -119,6 +119,7 @@ New Features
   * Added vector mode support for ARM CPUs.
   * Added support for VLAN push and pop actions.
   * Added support for NAT action items.
+  * Added TruFlow hash API for common hash uses across TruFlow core functions.
 
 * **Updated Cisco enic driver.**
 

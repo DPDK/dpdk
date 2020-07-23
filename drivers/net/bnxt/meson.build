@@ -47,6 +47,7 @@ sources = files('bnxt_cpr.c',
 	'tf_core/tf_global_cfg.c',
 	'tf_core/tf_em_host.c',
 	'tf_core/tf_shadow_identifier.c',
+	'tf_core/tf_hash.c',
 
 	'hcapi/hcapi_cfa_p4.c',
 

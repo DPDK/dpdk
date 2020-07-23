@@ -32,3 +32,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_util.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_if_tbl.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_global_cfg.c
 SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_shadow_identifier.c
+SRCS-$(CONFIG_RTE_LIBRTE_BNXT_PMD) += tf_core/tf_hash.c
