@@ -235,6 +235,11 @@ vhost_user_notify_queue_state(struct virtio_net *dev, uint16_t index,
 			      int enable)
 {
 	struct rte_vdpa_device *vdpa_dev = dev->vdpa_dev;
+	struct vhost_virtqueue *vq = dev->virtqueue[index];
+
+	/* Configure guest notifications on enable */
+	if (enable && vq->notif_enable != VIRTIO_UNINITIALIZED_NOTIF)
+		vhost_enable_guest_notification(dev, vq, vq->notif_enable);
 
 	if (vdpa_dev && vdpa_dev->ops->set_vring_state)
 		vdpa_dev->ops->set_vring_state(dev->vid, index, enable);
@@ -1640,8 +1645,8 @@ vhost_user_set_vring_call(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	vq = dev->virtqueue[file.index];
 
 	if (vq->ready) {
-		vhost_user_notify_queue_state(dev, file.index, 0);
 		vq->ready = 0;
+		vhost_user_notify_queue_state(dev, file.index, 0);
 	}
 
 	if (vq->callfd >= 0)
@@ -1903,8 +1908,8 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	}
 
 	if (vq->ready) {
-		vhost_user_notify_queue_state(dev, file.index, 0);
 		vq->ready = 0;
+		vhost_user_notify_queue_state(dev, file.index, 0);
 	}
 
 	if (vq->kickfd >= 0)
@@ -2917,8 +2922,8 @@ skip_to_post_handle:
 		bool cur_ready = vq_is_ready(dev, vq);
 
 		if (cur_ready != (vq && vq->ready)) {
-			vhost_user_notify_queue_state(dev, i, cur_ready);
 			vq->ready = cur_ready;
+			vhost_user_notify_queue_state(dev, i, cur_ready);
 		}
 	}
 

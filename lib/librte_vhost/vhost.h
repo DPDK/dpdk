@@ -164,6 +164,9 @@ struct vhost_virtqueue {
 	int			enabled;
 	int			access_ok;
 	int			ready;
+	int			notif_enable;
+#define VIRTIO_UNINITIALIZED_NOTIF	(-1)
+
 	rte_spinlock_t		access_lock;
 
 	/* Used to notify the guest (trigger interrupt) */
@@ -668,6 +671,8 @@ void vhost_enable_dequeue_zero_copy(int vid);
 void vhost_set_builtin_virtio_net(int vid, bool enable);
 void vhost_enable_extbuf(int vid);
 void vhost_enable_linearbuf(int vid);
+int vhost_enable_guest_notification(struct virtio_net *dev,
+		struct vhost_virtqueue *vq, int enable);
 
 struct vhost_device_ops const *vhost_driver_callback_get(const char *path);
 

@@ -534,6 +534,7 @@ init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 
 	vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 	vq->callfd = VIRTIO_UNINITIALIZED_EVENTFD;
+	vq->notif_enable = VIRTIO_UNINITIALIZED_NOTIF;
 
 	vhost_user_iotlb_init(dev, vring_idx);
 	/* Backends are set to -1 indicating an inactive device. */
@@ -1312,6 +1313,23 @@ vhost_enable_notify_packed(struct virtio_net *dev,
 }
 
 int
+vhost_enable_guest_notification(struct virtio_net *dev,
+		struct vhost_virtqueue *vq, int enable)
+{
+	/*
+	 * If the virtqueue is not ready yet, it will be applied
+	 * when it will become ready.
+	 */
+	if (!vq->ready)
+		return 0;
+
+	if (vq_is_packed(dev))
+		return vhost_enable_notify_packed(dev, vq, enable);
+	else
+		return vhost_enable_notify_split(dev, vq, enable);
+}
+
+int
 rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 {
 	struct virtio_net *dev = get_device(vid);
@@ -1325,10 +1343,8 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 
 	rte_spinlock_lock(&vq->access_lock);
 
-	if (vq_is_packed(dev))
-		ret = vhost_enable_notify_packed(dev, vq, enable);
-	else
-		ret = vhost_enable_notify_split(dev, vq, enable);
+	vq->notif_enable = enable;
+	ret = vhost_enable_guest_notification(dev, vq, enable);
 
 	rte_spinlock_unlock(&vq->access_lock);
 
