@@ -4372,7 +4372,7 @@ static int bnxt_restore_mac_filters(struct bnxt *bp)
 	uint16_t i;
 	int rc;
 
-	if (BNXT_VF(bp) & !BNXT_VF_IS_TRUSTED(bp))
+	if (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp))
 		return 0;
 
 	rc = bnxt_dev_info_get_op(dev, &dev_info);
