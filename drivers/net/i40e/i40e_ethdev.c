@@ -302,7 +302,6 @@ static int i40e_dev_init_vlan(struct rte_eth_dev *dev);
 static int i40e_veb_release(struct i40e_veb *veb);
 static struct i40e_veb *i40e_veb_setup(struct i40e_pf *pf,
 						struct i40e_vsi *vsi);
-static int i40e_pf_config_mq_rx(struct i40e_pf *pf);
 static int i40e_vsi_config_double_vlan(struct i40e_vsi *vsi, int on);
 static inline int i40e_find_all_mac_for_vlan(struct i40e_vsi *vsi,
 					     struct i40e_macvlan_filter *mv_f,
@@ -398,6 +397,7 @@ static void i40e_ethertype_filter_restore(struct i40e_pf *pf);
 static void i40e_tunnel_filter_restore(struct i40e_pf *pf);
 static void i40e_filter_restore(struct i40e_pf *pf);
 static void i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev);
+static int i40e_pf_config_rss(struct i40e_pf *pf);
 
 static const char *const valid_keys[] = {
 	ETH_I40E_FLOATING_VEB_ARG,
@@ -1954,8 +1954,6 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 		goto err;
 
 	/* VMDQ setup.
-	 *  Needs to move VMDQ setting out of i40e_pf_config_mq_rx() as VMDQ and
-	 *  RSS setting have different requirements.
 	 *  General PMD driver call sequence are NIC init, configure,
 	 *  rx/tx_queue_setup and dev_start. In rx/tx_queue_setup() function, it
 	 *  will try to lookup the VSI that specific queue belongs to if VMDQ
@@ -6495,7 +6493,7 @@ i40e_dev_rx_init(struct i40e_pf *pf)
 	uint16_t i;
 	struct i40e_rx_queue *rxq;
 
-	i40e_pf_config_mq_rx(pf);
+	i40e_pf_config_rss(pf);
 	for (i = 0; i < data->nb_rx_queues; i++) {
 		rxq = data->rx_queues[i];
 		if (!rxq || !rxq->q_set)
@@ -9001,6 +8999,7 @@ i40e_pf_calc_configured_queues_num(struct i40e_pf *pf)
 static int
 i40e_pf_config_rss(struct i40e_pf *pf)
 {
+	enum rte_eth_rx_mq_mode mq_mode = pf->dev_data->dev_conf.rxmode.mq_mode;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct rte_eth_rss_conf rss_conf;
 	uint32_t i, lut = 0;
@@ -9039,7 +9038,8 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 	}
 
 	rss_conf = pf->dev_data->dev_conf.rx_adv_conf.rss_conf;
-	if ((rss_conf.rss_hf & pf->adapter->flow_types_mask) == 0) {
+	if ((rss_conf.rss_hf & pf->adapter->flow_types_mask) == 0 ||
+	    !(mq_mode & ETH_MQ_RX_RSS_FLAG)) {
 		i40e_pf_disable_rss(pf);
 		return 0;
 	}
@@ -9208,21 +9208,6 @@ i40e_tunnel_filter_handle(struct rte_eth_dev *dev,
 		ret = I40E_ERR_PARAM;
 		break;
 	}
-
-	return ret;
-}
-
-static int
-i40e_pf_config_mq_rx(struct i40e_pf *pf)
-{
-	int ret = 0;
-	enum rte_eth_rx_mq_mode mq_mode = pf->dev_data->dev_conf.rxmode.mq_mode;
-
-	/* RSS setup */
-	if (mq_mode & ETH_MQ_RX_RSS_FLAG)
-		ret = i40e_pf_config_rss(pf);
-	else
-		i40e_pf_disable_rss(pf);
 
 	return ret;
 }
