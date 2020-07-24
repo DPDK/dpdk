@@ -47,6 +47,7 @@ struct pmd_queue {
 
 struct pmd_internals {
 	struct rte_kni *kni;
+	uint16_t port_id;
 	int is_kni_started;
 
 	pthread_t thread;
@@ -78,8 +79,11 @@ eth_kni_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	struct pmd_queue *kni_q = q;
 	struct rte_kni *kni = kni_q->internals->kni;
 	uint16_t nb_pkts;
+	int i;
 
 	nb_pkts = rte_kni_rx_burst(kni, bufs, nb_bufs);
+	for (i = 0; i < nb_pkts; i++)
+		bufs[i]->port = kni_q->internals->port_id;
 
 	kni_q->rx.pkts += nb_pkts;
 
@@ -372,6 +376,7 @@ eth_kni_create(struct rte_vdev_device *vdev,
 		return NULL;
 
 	internals = eth_dev->data->dev_private;
+	internals->port_id = eth_dev->data->port_id;
 	data = eth_dev->data;
 	data->nb_rx_queues = 1;
 	data->nb_tx_queues = 1;
