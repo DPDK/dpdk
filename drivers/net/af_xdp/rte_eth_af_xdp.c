@@ -688,7 +688,6 @@ static void
 xdp_umem_destroy(struct xsk_umem_info *umem)
 {
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-	rte_mempool_free(umem->mb_pool);
 	umem->mb_pool = NULL;
 #else
 	rte_memzone_free(umem->mz);
