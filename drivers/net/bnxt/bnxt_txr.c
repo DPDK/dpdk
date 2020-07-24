@@ -111,7 +111,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	uint32_t outer_tpid_bd = 0;
 	struct tx_bd_long *txbd;
 	struct tx_bd_long_hi *txbd1 = NULL;
-	uint32_t vlan_tag_flags, cfa_action;
+	uint32_t vlan_tag_flags;
 	bool long_bd = false;
 	unsigned short nr_bds = 0;
 	struct rte_mbuf *m_seg;
@@ -187,13 +187,6 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		txbd->flags_type |= TX_BD_LONG_TYPE_TX_BD_LONG;
 		vlan_tag_flags = 0;
 
-		if (BNXT_TRUFLOW_EN(txq->bp)) {
-			if (txq->vfr_tx_cfa_action)
-				cfa_action = txq->vfr_tx_cfa_action;
-			else
-				cfa_action = txq->bp->tx_cfa_action;
-		}
-
 		/* HW can accelerate only outer vlan in QinQ mode */
 		if (tx_buf->mbuf->ol_flags & PKT_TX_QINQ_PKT) {
 			vlan_tag_flags = TX_BD_LONG_CFA_META_KEY_VLAN_TAG |
@@ -222,8 +215,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		txbd1->lflags = 0;
 		txbd1->cfa_meta = vlan_tag_flags;
 
-		if (BNXT_TRUFLOW_EN(txq->bp))
-			txbd1->cfa_action = cfa_action;
+		if (txq->vfr_tx_cfa_action)
+			txbd1->cfa_action = txq->vfr_tx_cfa_action;
+		else
+			txbd1->cfa_action = txq->bp->tx_cfa_action;
 
 		if (tx_pkt->ol_flags & PKT_TX_TCP_SEG) {
 			uint16_t hdr_size;
