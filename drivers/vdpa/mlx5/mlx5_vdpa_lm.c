@@ -19,9 +19,13 @@ mlx5_vdpa_logging_enable(struct mlx5_vdpa_priv *priv, int enable)
 
 	for (i = 0; i < priv->nr_virtqs; ++i) {
 		attr.queue_index = i;
-		if (!priv->virtqs[i].virtq ||
-		    mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq, &attr)) {
-			DRV_LOG(ERR, "Failed to modify virtq %d logging.", i);
+		if (!priv->virtqs[i].virtq) {
+			DRV_LOG(DEBUG, "virtq %d is invalid for dirty bitmap "
+				"enabling.", i);
+		} else if (mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq,
+			   &attr)) {
+			DRV_LOG(ERR, "Failed to modify virtq %d for dirty "
+				"bitmap enabling.", i);
 			return -1;
 		}
 	}
@@ -69,9 +73,11 @@ mlx5_vdpa_dirty_bitmap_set(struct mlx5_vdpa_priv *priv, uint64_t log_base,
 	attr.dirty_bitmap_mkey = mr->mkey->id;
 	for (i = 0; i < priv->nr_virtqs; ++i) {
 		attr.queue_index = i;
-		if (!priv->virtqs[i].virtq ||
-		    mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq, &attr)) {
-			DRV_LOG(ERR, "Failed to modify virtq %d for lm.", i);
+		if (!priv->virtqs[i].virtq) {
+			DRV_LOG(DEBUG, "virtq %d is invalid for LM.", i);
+		} else if (mlx5_devx_cmd_modify_virtq(priv->virtqs[i].virtq,
+						      &attr)) {
+			DRV_LOG(ERR, "Failed to modify virtq %d for LM.", i);
 			goto err;
 		}
 	}
@@ -104,15 +110,15 @@ mlx5_vdpa_lm_log(struct mlx5_vdpa_priv *priv)
 	if (!RTE_VHOST_NEED_LOG(features))
 		return 0;
 	for (i = 0; i < priv->nr_virtqs; ++i) {
-		if (priv->virtqs[i].virtq) {
+		if (!priv->virtqs[i].virtq) {
+			DRV_LOG(DEBUG, "virtq %d is invalid for LM log.", i);
+		} else {
 			ret = mlx5_vdpa_virtq_stop(priv, i);
 			if (ret) {
-				DRV_LOG(ERR, "Failed to stop virtq %d.", i);
+				DRV_LOG(ERR, "Failed to stop virtq %d for LM "
+					"log.", i);
 				return -1;
 			}
-		} else {
-			DRV_LOG(ERR, "virtq %d is not created.", i);
-			return -1;
 		}
 		rte_vhost_log_used_vring(priv->vid, i, 0,
 			      MLX5_VDPA_USED_RING_LEN(priv->virtqs[i].vq_size));
