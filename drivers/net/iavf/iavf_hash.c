@@ -3991,6 +3991,18 @@ struct virtchnl_proto_hdrs *iavf_hash_default_hdrs[] = {
 	&hdrs_hint_ipv6_udp,
 	&hdrs_hint_ipv6_tcp,
 	&hdrs_hint_ipv6_sctp,
+	&hdrs_hint_ipv4_gtpu_ip,
+	&hdrs_hint_ipv4_udp_gtpu_ip,
+	&hdrs_hint_ipv4_tcp_gtpu_ip,
+	&hdrs_hint_ipv4_gtpu_eh,
+	&hdrs_hint_ipv4_udp_gtpu_eh,
+	&hdrs_hint_ipv4_tcp_gtpu_eh,
+	&hdrs_hint_ipv6_gtpu_ip,
+	&hdrs_hint_ipv6_udp_gtpu_ip,
+	&hdrs_hint_ipv6_tcp_gtpu_ip,
+	&hdrs_hint_ipv6_gtpu_eh,
+	&hdrs_hint_ipv6_udp_gtpu_eh,
+	&hdrs_hint_ipv6_tcp_gtpu_eh,
 };
 
 static struct iavf_flow_engine iavf_hash_engine = {
