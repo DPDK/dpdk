@@ -48,6 +48,8 @@
 #define ETH_I40E_VF_MSG_CFG		"vf_msg_cfg"
 
 #define I40E_CLEAR_PXE_WAIT_MS     200
+#define I40E_VSI_TSR_QINQ_STRIP		0x4010
+#define I40E_VSI_TSR(_i)	(0x00050800 + ((_i) * 4))
 
 /* Maximun number of capability elements */
 #define I40E_MAX_CAP_ELE_NUM       128
@@ -3979,6 +3981,39 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/* Configure outer vlan stripping on or off in QinQ mode */
+static int
+i40e_vsi_config_outer_vlan_stripping(struct i40e_vsi *vsi, bool on)
+{
+	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
+	int ret = I40E_SUCCESS;
+	uint32_t reg;
+
+	if (vsi->vsi_id >= I40E_MAX_NUM_VSIS) {
+		PMD_DRV_LOG(ERR, "VSI ID exceeds the maximum");
+		return -EINVAL;
+	}
+
+	/* Configure for outer VLAN RX stripping */
+	reg = I40E_READ_REG(hw, I40E_VSI_TSR(vsi->vsi_id));
+
+	if (on)
+		reg |= I40E_VSI_TSR_QINQ_STRIP;
+	else
+		reg &= ~I40E_VSI_TSR_QINQ_STRIP;
+
+	ret = i40e_aq_debug_write_register(hw,
+						   I40E_VSI_TSR(vsi->vsi_id),
+						   reg, NULL);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to update VSI_TSR[%d]",
+				    vsi->vsi_id);
+		return I40E_ERR_CONFIG;
+	}
+
+	return ret;
+}
+
 static int
 i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
@@ -4013,6 +4048,14 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		}
 		else
 			i40e_vsi_config_double_vlan(vsi, FALSE);
+	}
+
+	if (mask & ETH_QINQ_STRIP_MASK) {
+		/* Enable or disable outer VLAN stripping */
+		if (rxmode->offloads & DEV_RX_OFFLOAD_QINQ_STRIP)
+			i40e_vsi_config_outer_vlan_stripping(vsi, TRUE);
+		else
+			i40e_vsi_config_outer_vlan_stripping(vsi, FALSE);
 	}
 
 	return 0;
@@ -6193,6 +6236,7 @@ i40e_dev_init_vlan(struct rte_eth_dev *dev)
 
 	/* Apply vlan offload setting */
 	mask = ETH_VLAN_STRIP_MASK |
+	       ETH_QINQ_STRIP_MASK |
 	       ETH_VLAN_FILTER_MASK |
 	       ETH_VLAN_EXTEND_MASK;
 	ret = i40e_vlan_offload_set(dev, mask);
@@ -10874,7 +10918,6 @@ i40e_configure_registers(struct i40e_hw *hw)
 	}
 }
 
-#define I40E_VSI_TSR(_i)            (0x00050800 + ((_i) * 4))
 #define I40E_VSI_TSR_QINQ_CONFIG    0xc030
 #define I40E_VSI_L2TAGSTXVALID(_i)  (0x00042800 + ((_i) * 4))
 #define I40E_VSI_L2TAGSTXVALID_QINQ 0xab
