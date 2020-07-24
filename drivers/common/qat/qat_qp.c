@@ -581,7 +581,7 @@ qat_enqueue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	register struct qat_queue *queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
 	register uint32_t nb_ops_sent = 0;
-	register int ret;
+	register int ret = -1;
 	uint16_t nb_ops_possible = nb_ops;
 	register uint8_t *base_addr;
 	register uint32_t tail;
