@@ -8,6 +8,11 @@
 #define RX_BUF_LEN_16K			16384
 #define RX_BUF_LEN_1_5K			1536
 
+/* vhd type */
+#define HINIC_VHD_TYPE_0B		2
+#define HINIC_VHD_TYPE_10B		1
+#define HINIC_VHD_TYPE_12B		0
+
 #define HINIC_Q_CTXT_MAX		42
 
 /* performance: ci addr RTE_CACHE_SIZE(64B) alignment */

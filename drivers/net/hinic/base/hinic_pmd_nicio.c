@@ -578,7 +578,7 @@ int hinic_init_qp_ctxts(struct hinic_hwdev *hwdev)
 	rx_buf_sz = nic_io->rq_buf_size;
 
 	/* update rx buf size to function table */
-	err = hinic_set_rx_vhd_mode(hwdev, 0, rx_buf_sz);
+	err = hinic_set_rx_vhd_mode(hwdev, HINIC_VHD_TYPE_0B, rx_buf_sz);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Set rx vhd mode failed, rc: %d", err);
 		return err;
