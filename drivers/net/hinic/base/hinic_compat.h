@@ -166,16 +166,17 @@ static inline u32 readl(const volatile void *addr)
 #define spin_lock(spinlock_prt)		rte_spinlock_lock(spinlock_prt)
 #define spin_unlock(spinlock_prt)	rte_spinlock_unlock(spinlock_prt)
 
-static inline unsigned long get_timeofday_ms(void)
+static inline unsigned long clock_gettime_ms(void)
 {
-	struct timeval tv;
+	struct timespec tv;
 
-	(void)gettimeofday(&tv, NULL);
+	(void)clock_gettime(CLOCK_MONOTONIC, &tv);
 
-	return (unsigned long)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+	return (unsigned long)tv.tv_sec * 1000 +
+	       (unsigned long)tv.tv_nsec / 1000000;
 }
 
-#define jiffies	get_timeofday_ms()
+#define jiffies	clock_gettime_ms()
 #define msecs_to_jiffies(ms)	(ms)
 #define time_before(now, end)	((now) < (end))
 
