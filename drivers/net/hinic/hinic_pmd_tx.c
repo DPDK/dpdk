@@ -38,9 +38,6 @@
 #define HINIC_TSO_PKT_MAX_SGE			127	/* tso max sge 127 */
 #define HINIC_TSO_SEG_NUM_INVALID(num)		((num) > HINIC_TSO_PKT_MAX_SGE)
 
-#define HINIC_TX_OUTER_CHECKSUM_FLAG_SET       1
-#define HINIC_TX_OUTER_CHECKSUM_FLAG_NO_SET    0
-
 /* sizeof(struct hinic_sq_bufdesc) == 16, shift 4 */
 #define HINIC_BUF_DESC_SIZE(nr_descs)	(SIZE_8BYTES(((u32)nr_descs) << 4))
 
@@ -671,7 +668,7 @@ static inline void hinic_xmit_mbuf_cleanup(struct hinic_txq *txq)
 
 static inline struct hinic_sq_wqe *
 hinic_get_sq_wqe(struct hinic_txq *txq, int wqebb_cnt,
-		struct hinic_wqe_info *wqe_info)
+		 struct hinic_wqe_info *wqe_info)
 {
 	u32 cur_pi, end_pi;
 	u16 remain_wqebbs;
@@ -758,36 +755,33 @@ hinic_ipv6_phdr_cksum(const struct rte_ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 	return __rte_raw_cksum_reduce(sum);
 }
 
-static inline void
-hinic_get_pld_offset(struct rte_mbuf *m, struct hinic_tx_offload_info *off_info,
-		     int outer_cs_flag)
+static inline void hinic_get_outer_cs_pld_offset(struct rte_mbuf *m,
+					struct hinic_tx_offload_info *off_info)
 {
 	uint64_t ol_flags = m->ol_flags;
 
-	if (outer_cs_flag == 1) {
-		if ((ol_flags & PKT_TX_UDP_CKSUM) == PKT_TX_UDP_CKSUM) {
-			off_info->payload_offset = m->outer_l2_len +
-				m->outer_l3_len + m->l2_len + m->l3_len;
-		} else if ((ol_flags & PKT_TX_TCP_CKSUM) ||
-				(ol_flags & PKT_TX_TCP_SEG)) {
-			off_info->payload_offset = m->outer_l2_len +
-					m->outer_l3_len + m->l2_len +
-					m->l3_len + m->l4_len;
-		}
-	} else {
-		if ((ol_flags & PKT_TX_UDP_CKSUM) == PKT_TX_UDP_CKSUM) {
-			off_info->payload_offset = m->l2_len + m->l3_len;
-		} else if ((ol_flags & PKT_TX_TCP_CKSUM) ||
-			(ol_flags & PKT_TX_TCP_SEG)) {
-			off_info->payload_offset = m->l2_len + m->l3_len +
-						   m->l4_len;
-		}
-	}
+	if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM)
+		off_info->payload_offset = m->outer_l2_len + m->outer_l3_len +
+					   m->l2_len + m->l3_len;
+	else if ((ol_flags & PKT_TX_TCP_CKSUM) || (ol_flags & PKT_TX_TCP_SEG))
+		off_info->payload_offset = m->outer_l2_len + m->outer_l3_len +
+					   m->l2_len + m->l3_len + m->l4_len;
 }
 
-static inline void
-hinic_analyze_tx_info(struct rte_mbuf *mbuf,
-		      struct hinic_tx_offload_info *off_info)
+static inline void hinic_get_pld_offset(struct rte_mbuf *m,
+					struct hinic_tx_offload_info *off_info)
+{
+	uint64_t ol_flags = m->ol_flags;
+
+	if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM)
+		off_info->payload_offset = m->l2_len + m->l3_len;
+	else if ((ol_flags & PKT_TX_TCP_CKSUM) || (ol_flags & PKT_TX_TCP_SEG))
+		off_info->payload_offset = m->l2_len + m->l3_len +
+					   m->l4_len;
+}
+
+static inline void hinic_analyze_tx_info(struct rte_mbuf *mbuf,
+					 struct hinic_tx_offload_info *off_info)
 {
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_vlan_hdr *vlan_hdr;
@@ -817,17 +811,164 @@ hinic_analyze_tx_info(struct rte_mbuf *mbuf,
 	}
 }
 
-static inline int
-hinic_tx_offload_pkt_prepare(struct rte_mbuf *m,
-				struct hinic_tx_offload_info *off_info)
+static inline void hinic_analyze_outer_ip_vxlan(struct rte_mbuf *mbuf,
+					struct hinic_tx_offload_info *off_info)
+{
+	struct rte_ether_hdr *eth_hdr;
+	struct rte_vlan_hdr *vlan_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_udp_hdr *udp_hdr;
+	u16 eth_type = 0;
+
+	eth_hdr = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
+	eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
+
+	if (eth_type == RTE_ETHER_TYPE_VLAN) {
+		vlan_hdr = (struct rte_vlan_hdr *)(eth_hdr + 1);
+		eth_type = rte_be_to_cpu_16(vlan_hdr->eth_proto);
+	}
+
+	if (eth_type == RTE_ETHER_TYPE_IPV4) {
+		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv4_hdr *,
+						   mbuf->outer_l2_len);
+		off_info->outer_l3_type = IPV4_PKT_WITH_CHKSUM_OFFLOAD;
+		ipv4_hdr->hdr_checksum = 0;
+
+		udp_hdr = (struct rte_udp_hdr *)((char *)ipv4_hdr +
+						 mbuf->outer_l3_len);
+		udp_hdr->dgram_cksum = 0;
+	} else if (eth_type == RTE_ETHER_TYPE_IPV6) {
+		off_info->outer_l3_type = IPV6_PKT;
+
+		udp_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_udp_hdr *,
+						  (mbuf->outer_l2_len +
+						   mbuf->outer_l3_len));
+		udp_hdr->dgram_cksum = 0;
+	}
+}
+
+static inline uint8_t hinic_analyze_l3_type(struct rte_mbuf *mbuf)
+{
+	uint8_t l3_type;
+	uint64_t ol_flags = mbuf->ol_flags;
+
+	if (ol_flags & PKT_TX_IPV4)
+		l3_type = (ol_flags & PKT_TX_IP_CKSUM) ?
+			  IPV4_PKT_WITH_CHKSUM_OFFLOAD :
+			  IPV4_PKT_NO_CHKSUM_OFFLOAD;
+	else if (ol_flags & PKT_TX_IPV6)
+		l3_type = IPV6_PKT;
+	else
+		l3_type = UNKNOWN_L3TYPE;
+
+	return l3_type;
+}
+
+static inline void hinic_calculate_tcp_checksum(struct rte_mbuf *mbuf,
+					struct hinic_tx_offload_info *off_info,
+					uint64_t inner_l3_offset)
 {
 	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr;
 	struct rte_tcp_hdr *tcp_hdr;
+	uint64_t ol_flags = mbuf->ol_flags;
+
+	if (ol_flags & PKT_TX_IPV4) {
+		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv4_hdr *,
+						   inner_l3_offset);
+
+		if (ol_flags & PKT_TX_IP_CKSUM)
+			ipv4_hdr->hdr_checksum = 0;
+
+		tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr +
+						 mbuf->l3_len);
+		tcp_hdr->cksum = hinic_ipv4_phdr_cksum(ipv4_hdr, ol_flags);
+	} else {
+		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv6_hdr *,
+						   inner_l3_offset);
+		tcp_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_tcp_hdr *,
+						  (inner_l3_offset +
+						   mbuf->l3_len));
+		tcp_hdr->cksum = hinic_ipv6_phdr_cksum(ipv6_hdr, ol_flags);
+	}
+
+	off_info->inner_l4_type = TCP_OFFLOAD_ENABLE;
+	off_info->inner_l4_tcp_udp = 1;
+}
+
+static inline void hinic_calculate_udp_checksum(struct rte_mbuf *mbuf,
+					struct hinic_tx_offload_info *off_info,
+					uint64_t inner_l3_offset)
+{
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	struct rte_udp_hdr *udp_hdr;
-	struct rte_ether_hdr *eth_hdr;
-	struct rte_vlan_hdr *vlan_hdr;
-	u16 eth_type = 0;
+	uint64_t ol_flags = mbuf->ol_flags;
+
+	if (ol_flags & PKT_TX_IPV4) {
+		ipv4_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv4_hdr *,
+						   inner_l3_offset);
+
+		if (ol_flags & PKT_TX_IP_CKSUM)
+			ipv4_hdr->hdr_checksum = 0;
+
+		udp_hdr = (struct rte_udp_hdr *)((char *)ipv4_hdr +
+						 mbuf->l3_len);
+		udp_hdr->dgram_cksum = hinic_ipv4_phdr_cksum(ipv4_hdr,
+							     ol_flags);
+	} else {
+		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_ipv6_hdr *,
+						   inner_l3_offset);
+
+		udp_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_udp_hdr *,
+						  (inner_l3_offset +
+						   mbuf->l3_len));
+		udp_hdr->dgram_cksum = hinic_ipv6_phdr_cksum(ipv6_hdr,
+							     ol_flags);
+	}
+
+	off_info->inner_l4_type = UDP_OFFLOAD_ENABLE;
+	off_info->inner_l4_tcp_udp = 1;
+}
+
+static inline void
+hinic_calculate_sctp_checksum(struct hinic_tx_offload_info *off_info)
+{
+	off_info->inner_l4_type = SCTP_OFFLOAD_ENABLE;
+	off_info->inner_l4_tcp_udp = 0;
+	off_info->inner_l4_len = sizeof(struct rte_sctp_hdr);
+}
+
+static inline void hinic_calculate_checksum(struct rte_mbuf *mbuf,
+					struct hinic_tx_offload_info *off_info,
+					uint64_t inner_l3_offset)
+{
+	uint64_t ol_flags = mbuf->ol_flags;
+
+	switch (ol_flags & PKT_TX_L4_MASK) {
+	case PKT_TX_UDP_CKSUM:
+		hinic_calculate_udp_checksum(mbuf, off_info, inner_l3_offset);
+		break;
+
+	case PKT_TX_TCP_CKSUM:
+		hinic_calculate_tcp_checksum(mbuf, off_info, inner_l3_offset);
+		break;
+
+	case PKT_TX_SCTP_CKSUM:
+		hinic_calculate_sctp_checksum(off_info);
+		break;
+
+	default:
+		if (ol_flags & PKT_TX_TCP_SEG)
+			hinic_calculate_tcp_checksum(mbuf, off_info,
+						     inner_l3_offset);
+		break;
+	}
+}
+
+static inline int hinic_tx_offload_pkt_prepare(struct rte_mbuf *m,
+					struct hinic_tx_offload_info *off_info)
+{
 	uint64_t inner_l3_offset;
 	uint64_t ol_flags = m->ol_flags;
 
@@ -836,8 +977,8 @@ hinic_tx_offload_pkt_prepare(struct rte_mbuf *m,
 		return 0;
 
 	/* Support only vxlan offload */
-	if ((ol_flags & PKT_TX_TUNNEL_MASK) &&
-	    !(ol_flags & PKT_TX_TUNNEL_VXLAN))
+	if (unlikely((ol_flags & PKT_TX_TUNNEL_MASK) &&
+	    !(ol_flags & PKT_TX_TUNNEL_VXLAN)))
 		return -ENOTSUP;
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
@@ -846,169 +987,61 @@ hinic_tx_offload_pkt_prepare(struct rte_mbuf *m,
 #endif
 
 	if (ol_flags & PKT_TX_TUNNEL_VXLAN) {
+		off_info->tunnel_type = TUNNEL_UDP_NO_CSUM;
+
+		/* inner_l4_tcp_udp csum should be set to calculate outer
+		 * udp checksum when vxlan packets without inner l3 and l4
+		 */
+		off_info->inner_l4_tcp_udp = 1;
+
 		if ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
 		    (ol_flags & PKT_TX_OUTER_IPV6) ||
 		    (ol_flags & PKT_TX_TCP_SEG)) {
 			inner_l3_offset = m->l2_len + m->outer_l2_len +
-				m->outer_l3_len;
+					  m->outer_l3_len;
 			off_info->outer_l2_len = m->outer_l2_len;
 			off_info->outer_l3_len = m->outer_l3_len;
 			/* just support vxlan tunneling pkt */
 			off_info->inner_l2_len = m->l2_len - VXLANLEN -
-				sizeof(*udp_hdr);
-			off_info->inner_l3_len = m->l3_len;
-			off_info->inner_l4_len = m->l4_len;
+						 sizeof(struct rte_udp_hdr);
 			off_info->tunnel_length = m->l2_len;
-			off_info->tunnel_type = TUNNEL_UDP_NO_CSUM;
 
-			hinic_get_pld_offset(m, off_info,
-					     HINIC_TX_OUTER_CHECKSUM_FLAG_SET);
+			hinic_analyze_outer_ip_vxlan(m, off_info);
+
+			hinic_get_outer_cs_pld_offset(m, off_info);
 		} else {
 			inner_l3_offset = m->l2_len;
 			hinic_analyze_tx_info(m, off_info);
 			/* just support vxlan tunneling pkt */
 			off_info->inner_l2_len = m->l2_len - VXLANLEN -
-				sizeof(*udp_hdr) - off_info->outer_l2_len -
-				off_info->outer_l3_len;
-			off_info->inner_l3_len = m->l3_len;
-			off_info->inner_l4_len = m->l4_len;
+						 sizeof(struct rte_udp_hdr) -
+						 off_info->outer_l2_len -
+						 off_info->outer_l3_len;
 			off_info->tunnel_length = m->l2_len -
-				off_info->outer_l2_len - off_info->outer_l3_len;
-			off_info->tunnel_type = TUNNEL_UDP_NO_CSUM;
+						  off_info->outer_l2_len -
+						  off_info->outer_l3_len;
+			off_info->outer_l3_type = IPV4_PKT_NO_CHKSUM_OFFLOAD;
 
-			hinic_get_pld_offset(m, off_info,
-				HINIC_TX_OUTER_CHECKSUM_FLAG_NO_SET);
+			hinic_get_pld_offset(m, off_info);
 		}
 	} else {
 		inner_l3_offset = m->l2_len;
 		off_info->inner_l2_len = m->l2_len;
-		off_info->inner_l3_len = m->l3_len;
-		off_info->inner_l4_len = m->l4_len;
 		off_info->tunnel_type = NOT_TUNNEL;
 
-		hinic_get_pld_offset(m, off_info,
-				     HINIC_TX_OUTER_CHECKSUM_FLAG_NO_SET);
+		hinic_get_pld_offset(m, off_info);
 	}
 
 	/* invalid udp or tcp header */
 	if (unlikely(off_info->payload_offset > MAX_PLD_OFFSET))
 		return -EINVAL;
 
-	/* Process outter udp pseudo-header checksum */
-	if ((ol_flags & PKT_TX_TUNNEL_VXLAN) && ((ol_flags & PKT_TX_TCP_SEG) ||
-			(ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
-			(ol_flags & PKT_TX_OUTER_IPV6))) {
-
-		/* inner_l4_tcp_udp csum should be setted to calculate outter
-		 * udp checksum when vxlan packets without inner l3 and l4
-		 */
-		off_info->inner_l4_tcp_udp = 1;
-
-		eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-		eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
-
-		if (eth_type == RTE_ETHER_TYPE_VLAN) {
-			vlan_hdr = (struct rte_vlan_hdr *)(eth_hdr + 1);
-			eth_type = rte_be_to_cpu_16(vlan_hdr->eth_proto);
-		}
-
-		if (eth_type == RTE_ETHER_TYPE_IPV4) {
-			ipv4_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
-						m->outer_l2_len);
-			off_info->outer_l3_type = IPV4_PKT_WITH_CHKSUM_OFFLOAD;
-			ipv4_hdr->hdr_checksum = 0;
-
-			udp_hdr = (struct rte_udp_hdr *)((char *)ipv4_hdr +
-							m->outer_l3_len);
-			udp_hdr->dgram_cksum = 0;
-		} else if (eth_type == RTE_ETHER_TYPE_IPV6) {
-			off_info->outer_l3_type = IPV6_PKT;
-			ipv6_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
-						m->outer_l2_len);
-
-			udp_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
-						(m->outer_l2_len +
-						m->outer_l3_len));
-			udp_hdr->dgram_cksum = 0;
-		}
-	} else if (ol_flags & PKT_TX_OUTER_IPV4) {
-		off_info->tunnel_type = TUNNEL_UDP_NO_CSUM;
-		off_info->inner_l4_tcp_udp = 1;
-		off_info->outer_l3_type = IPV4_PKT_NO_CHKSUM_OFFLOAD;
-	}
-
-	if (ol_flags & PKT_TX_IPV4)
-		off_info->inner_l3_type = (ol_flags & PKT_TX_IP_CKSUM) ?
-					IPV4_PKT_WITH_CHKSUM_OFFLOAD :
-					IPV4_PKT_NO_CHKSUM_OFFLOAD;
-	else if (ol_flags & PKT_TX_IPV6)
-		off_info->inner_l3_type = IPV6_PKT;
+	off_info->inner_l3_len = m->l3_len;
+	off_info->inner_l4_len = m->l4_len;
+	off_info->inner_l3_type = hinic_analyze_l3_type(m);
 
 	/* Process the pseudo-header checksum */
-	if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM) {
-		if (ol_flags & PKT_TX_IPV4) {
-			ipv4_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
-						inner_l3_offset);
-
-			if (ol_flags & PKT_TX_IP_CKSUM)
-				ipv4_hdr->hdr_checksum = 0;
-
-			udp_hdr = (struct rte_udp_hdr *)((char *)ipv4_hdr +
-								m->l3_len);
-			udp_hdr->dgram_cksum =
-				hinic_ipv4_phdr_cksum(ipv4_hdr, ol_flags);
-		} else {
-			ipv6_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
-						inner_l3_offset);
-
-			udp_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
-						(inner_l3_offset + m->l3_len));
-			udp_hdr->dgram_cksum =
-				hinic_ipv6_phdr_cksum(ipv6_hdr, ol_flags);
-		}
-
-		off_info->inner_l4_type = UDP_OFFLOAD_ENABLE;
-		off_info->inner_l4_tcp_udp = 1;
-	} else if (((ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM) ||
-			(ol_flags & PKT_TX_TCP_SEG)) {
-		if (ol_flags & PKT_TX_IPV4) {
-			ipv4_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
-						inner_l3_offset);
-
-			if (ol_flags & PKT_TX_IP_CKSUM)
-				ipv4_hdr->hdr_checksum = 0;
-
-			/* non-TSO tcp */
-			tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr +
-								m->l3_len);
-			tcp_hdr->cksum =
-				hinic_ipv4_phdr_cksum(ipv4_hdr, ol_flags);
-		} else {
-			ipv6_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
-						inner_l3_offset);
-			/* non-TSO tcp */
-			tcp_hdr =
-			rte_pktmbuf_mtod_offset(m, struct rte_tcp_hdr *,
-						(inner_l3_offset + m->l3_len));
-			tcp_hdr->cksum =
-				hinic_ipv6_phdr_cksum(ipv6_hdr, ol_flags);
-		}
-
-		off_info->inner_l4_type = TCP_OFFLOAD_ENABLE;
-		off_info->inner_l4_tcp_udp = 1;
-	} else if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_SCTP_CKSUM) {
-		off_info->inner_l4_type = SCTP_OFFLOAD_ENABLE;
-		off_info->inner_l4_tcp_udp = 0;
-		off_info->inner_l4_len = sizeof(struct rte_sctp_hdr);
-	}
+	hinic_calculate_checksum(m, off_info, inner_l3_offset);
 
 	return 0;
 }
