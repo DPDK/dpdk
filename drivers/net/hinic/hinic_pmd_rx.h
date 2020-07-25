@@ -35,7 +35,11 @@ struct hinic_rq_cqe {
 	u32 rss_hash;
 
 	u32 rsvd[4];
+#if defined(RTE_ARCH_ARM64)
 } __rte_cache_aligned;
+#else
+};
+#endif
 
 struct hinic_rq_cqe_sect {
 	struct hinic_sge	sge;
