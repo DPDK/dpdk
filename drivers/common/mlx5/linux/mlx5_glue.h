@@ -185,11 +185,11 @@ struct mlx5_glue {
 	void *(*dr_create_flow_action_dest_flow_tbl)(void *tbl);
 	void *(*dr_create_flow_action_dest_port)(void *domain,
 						 uint32_t port);
-	void *(*dr_create_flow_action_drop)();
+	void *(*dr_create_flow_action_drop)(void);
 	void *(*dr_create_flow_action_push_vlan)
 					(struct mlx5dv_dr_domain *domain,
 					 rte_be32_t vlan_tag);
-	void *(*dr_create_flow_action_pop_vlan)();
+	void *(*dr_create_flow_action_pop_vlan)(void);
 	void *(*dr_create_flow_tbl)(void *domain, uint32_t level);
 	int (*dr_destroy_flow_tbl)(void *tbl);
 	void *(*dr_create_domain)(struct ibv_context *ctx,
