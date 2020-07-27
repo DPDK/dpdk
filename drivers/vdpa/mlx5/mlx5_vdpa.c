@@ -680,11 +680,6 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_hca_attr attr;
 	int ret;
 
-	if (mlx5_class_get(pci_dev->device.devargs) != MLX5_CLASS_VDPA) {
-		DRV_LOG(DEBUG, "Skip probing - should be probed by other mlx5"
-			" driver.");
-		return 1;
-	}
 	ibv = mlx5_vdpa_get_ib_device_match(&pci_dev->addr);
 	if (!ibv) {
 		DRV_LOG(ERR, "No matching IB device for PCI slot "

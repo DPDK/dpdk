@@ -1522,11 +1522,6 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_dev_config dev_config;
 	int ret;
 
-	if (mlx5_class_get(pci_dev->device.devargs) != MLX5_CLASS_NET) {
-		DRV_LOG(DEBUG, "Skip probing - should be probed by other mlx5"
-			" driver.");
-		return 1;
-	}
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		mlx5_pmd_socket_init();
 	ret = mlx5_init_once();

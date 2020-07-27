@@ -1,9 +1,8 @@
 INTERNAL {
 	global:
 
-	mlx5_class_get;
-
 	mlx5_common_init;
+
 	mlx5_common_verbs_reg_mr;
 	mlx5_common_verbs_dereg_mr;
 

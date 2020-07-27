@@ -246,8 +246,6 @@ struct mlx5_klm {
 LIST_HEAD(mlx5_dbr_page_list, mlx5_devx_dbr_page);
 
 __rte_internal
-enum mlx5_class mlx5_class_get(struct rte_devargs *devargs);
-__rte_internal
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 void mlx5_glue_constructor(void);
