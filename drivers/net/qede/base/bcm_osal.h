@@ -81,9 +81,8 @@ typedef intptr_t osal_int_ptr_t;
 
 #define DELAY(x) rte_delay_us(x)
 #define usec_delay(x) DELAY(x)
-#define msec_delay(x) DELAY(1000 * (x))
 #define OSAL_UDELAY(time) usec_delay(time)
-#define OSAL_MSLEEP(time) msec_delay(time)
+#define OSAL_MSLEEP(time) rte_delay_us_sleep(1000 * (time))
 
 /* Memory allocations and deallocations */
 
