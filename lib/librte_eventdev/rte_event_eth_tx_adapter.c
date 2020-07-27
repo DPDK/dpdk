@@ -734,6 +734,8 @@ txa_service_queue_add(uint8_t id,
 
 		qdone = rte_zmalloc(txa->mem_name,
 				nb_queues * sizeof(*qdone), 0);
+		if (qdone == NULL)
+			return -ENOMEM;
 		j = 0;
 		for (i = 0; i < nb_queues; i++) {
 			if (txa_service_is_queue_added(txa, eth_dev, i))
