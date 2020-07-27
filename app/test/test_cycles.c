@@ -79,8 +79,14 @@ REGISTER_TEST_COMMAND(cycles_autotest, test_cycles);
 static int
 test_delay_us_sleep(void)
 {
+	int rv;
+
 	rte_delay_us_callback_register(rte_delay_us_sleep);
-	return check_wait_one_second();
+	rv = check_wait_one_second();
+	/* restore original delay function */
+	rte_delay_us_callback_register(rte_delay_us_block);
+
+	return rv;
 }
 
 REGISTER_TEST_COMMAND(delay_us_sleep_autotest, test_delay_us_sleep);
