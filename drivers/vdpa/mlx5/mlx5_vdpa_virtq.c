@@ -482,6 +482,13 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
 		DRV_LOG(INFO, "Virtq %d was modified, recreate it.", index);
 	}
 	if (virtq->virtq) {
+		virtq->enable = 0;
+		if (is_virtq_recvq(virtq->index, priv->nr_virtqs)) {
+			ret = mlx5_vdpa_steer_update(priv);
+			if (ret)
+				DRV_LOG(WARNING, "Failed to disable steering "
+					"for virtq %d.", index);
+		}
 		ret = mlx5_vdpa_virtq_stop(priv, index);
 		if (ret)
 			DRV_LOG(WARNING, "Failed to stop virtq %d.", index);
@@ -493,14 +500,12 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
 			DRV_LOG(ERR, "Failed to setup virtq %d.", index);
 			return ret;
 		}
-	}
-	virtq->enable = !!enable;
-	if (is_virtq_recvq(virtq->index, priv->nr_virtqs)) {
-		/* Need to add received virtq to the RQT table of the TIRs. */
-		ret = mlx5_vdpa_steer_update(priv);
-		if (ret) {
-			virtq->enable = !enable;
-			return ret;
+		virtq->enable = 1;
+		if (is_virtq_recvq(virtq->index, priv->nr_virtqs)) {
+			ret = mlx5_vdpa_steer_update(priv);
+			if (ret)
+				DRV_LOG(WARNING, "Failed to enable steering "
+					"for virtq %d.", index);
 		}
 	}
 	return 0;
