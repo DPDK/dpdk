@@ -121,7 +121,7 @@ static int
 mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 		    int callfd, struct mlx5_vdpa_cq *cq)
 {
-	struct mlx5_devx_cq_attr attr;
+	struct mlx5_devx_cq_attr attr = {0};
 	size_t pgsize = sysconf(_SC_PAGESIZE);
 	uint32_t umem_size;
 	uint16_t event_nums[1] = {0};
