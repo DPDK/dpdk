@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
-# Defines the order in which the drivers are buit.
-dpdk_driver_classes = [
+# Defines the order of dependencies evaluation
+subdirs = [
 	'common',
 	'bus',
 	'mempool', # depends on common and bus.
@@ -27,7 +27,7 @@ if cc.has_argument('-Wno-format-truncation')
 	default_cflags += '-Wno-format-truncation'
 endif
 
-foreach class:dpdk_driver_classes
+foreach subpath:subdirs
 	drivers = []
 	std_deps = []
 	config_flag_fmt = '' # format string used to set the value in dpdk_conf
@@ -35,8 +35,22 @@ foreach class:dpdk_driver_classes
 	                     # the library, the dependency and to find the
 	                     # version file for linking
 
-	subdir(class)
-	class_drivers = []
+	# subpath can be either "class" or "class/driver"
+	if subpath.contains('/')
+		driver_path = subpath.split('/')
+		class = driver_path[0]
+		drivers += driver_path[1]
+	else
+		class = subpath
+		subdir(class)
+	endif
+
+	# save class name on first occurrence
+	if not dpdk_driver_classes.contains(class)
+		dpdk_driver_classes += class
+	endif
+	# get already enabled drivers of the same class
+	enabled_drivers = get_variable(class + '_drivers', [])
 
 	foreach drv:drivers
 		drv_path = join_paths(class, drv)
@@ -96,7 +110,7 @@ foreach class:dpdk_driver_classes
 						'_disable_reason', reason)
 			endif
 		else
-			class_drivers += name
+			enabled_drivers += name
 
 			if fmt_name == ''
 				fmt_name = name
@@ -203,5 +217,5 @@ foreach class:dpdk_driver_classes
 		endif # build
 	endforeach
 
-	set_variable(class + '_drivers', class_drivers)
+	set_variable(class + '_drivers', enabled_drivers)
 endforeach
