@@ -17,6 +17,22 @@
 #include <rte_debug.h>
 #include <rte_compat.h>
 
+/**
+ * Get the uint64_t value for a specified bit set.
+ *
+ * @param nr
+ *   The bit number in range of 0 to 63.
+ */
+#define RTE_BIT64(nr) (UINT64_C(1) << (nr))
+
+/**
+ * Get the uint32_t value for a specified bit set.
+ *
+ * @param nr
+ *   The bit number in range of 0 to 31.
+ */
+#define RTE_BIT32(nr) (UINT32_C(1) << (nr))
+
 /*------------------------ 32-bit relaxed operations ------------------------*/
 
 /**
@@ -59,7 +75,7 @@ rte_bit_relaxed_set32(unsigned int nr, volatile uint32_t *addr)
 {
 	RTE_ASSERT(nr < 32);
 
-	uint32_t mask = UINT32_C(1) << nr;
+	uint32_t mask = RTE_BIT32(nr);
 	*addr = (*addr) | mask;
 }
 
@@ -80,7 +96,7 @@ rte_bit_relaxed_clear32(unsigned int nr, volatile uint32_t *addr)
 {
 	RTE_ASSERT(nr < 32);
 
-	uint32_t mask = UINT32_C(1) << nr;
+	uint32_t mask = RTE_BIT32(nr);
 	*addr = (*addr) & (~mask);
 }
 
@@ -104,7 +120,7 @@ rte_bit_relaxed_test_and_set32(unsigned int nr, volatile uint32_t *addr)
 {
 	RTE_ASSERT(nr < 32);
 
-	uint32_t mask = UINT32_C(1) << nr;
+	uint32_t mask = RTE_BIT32(nr);
 	uint32_t val = *addr;
 	*addr = val | mask;
 	return val & mask;
@@ -130,7 +146,7 @@ rte_bit_relaxed_test_and_clear32(unsigned int nr, volatile uint32_t *addr)
 {
 	RTE_ASSERT(nr < 32);
 
-	uint32_t mask = UINT32_C(1) << nr;
+	uint32_t mask = RTE_BIT32(nr);
 	uint32_t val = *addr;
 	*addr = val & (~mask);
 	return val & mask;
@@ -157,7 +173,7 @@ rte_bit_relaxed_get64(unsigned int nr, volatile uint64_t *addr)
 {
 	RTE_ASSERT(nr < 64);
 
-	uint64_t mask = UINT64_C(1) << nr;
+	uint64_t mask = RTE_BIT64(nr);
 	return (*addr) & mask;
 }
 
@@ -178,7 +194,7 @@ rte_bit_relaxed_set64(unsigned int nr, volatile uint64_t *addr)
 {
 	RTE_ASSERT(nr < 64);
 
-	uint64_t mask = UINT64_C(1) << nr;
+	uint64_t mask = RTE_BIT64(nr);
 	(*addr) = (*addr) | mask;
 }
 
@@ -199,7 +215,7 @@ rte_bit_relaxed_clear64(unsigned int nr, volatile uint64_t *addr)
 {
 	RTE_ASSERT(nr < 64);
 
-	uint64_t mask = UINT64_C(1) << nr;
+	uint64_t mask = RTE_BIT64(nr);
 	*addr = (*addr) & (~mask);
 }
 
@@ -223,7 +239,7 @@ rte_bit_relaxed_test_and_set64(unsigned int nr, volatile uint64_t *addr)
 {
 	RTE_ASSERT(nr < 64);
 
-	uint64_t mask = UINT64_C(1) << nr;
+	uint64_t mask = RTE_BIT64(nr);
 	uint64_t val = *addr;
 	*addr = val | mask;
 	return val;
@@ -249,7 +265,7 @@ rte_bit_relaxed_test_and_clear64(unsigned int nr, volatile uint64_t *addr)
 {
 	RTE_ASSERT(nr < 64);
 
-	uint64_t mask = UINT64_C(1) << nr;
+	uint64_t mask = RTE_BIT64(nr);
 	uint64_t val = *addr;
 	*addr = val & (~mask);
 	return val & mask;
