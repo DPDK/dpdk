@@ -197,9 +197,9 @@ New Features
 
 * **Updated the QuickAssist Technology (QAT) PMD.**
 
-  * Added support for lookaside protocol offload for DOCSIS through the
-    ``rte_security`` API.
-  * Added Chacha20-Poly1305 AEAD algorithm.
+  * Added support for lookaside protocol offload in QAT crypto PMD
+    for DOCSIS through the ``rte_security`` API.
+  * Added Chacha20-Poly1305 AEAD algorithm in QAT crypto PMD.
   * Improved handling of multi process in QAT crypto and compression PMDs.
   * Added support for Intel GEN2 QuickAssist device 200xx
     (PF Did 0x18ee, VF Did 0x18ef).
