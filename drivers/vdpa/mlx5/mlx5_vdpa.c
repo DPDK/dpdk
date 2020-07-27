@@ -846,6 +846,7 @@ RTE_LOG_REGISTER(mlx5_vdpa_logtype, pmd.vdpa.mlx5, NOTICE)
  */
 RTE_INIT(rte_mlx5_vdpa_init)
 {
+	mlx5_common_init();
 	if (mlx5_glue)
 		rte_pci_register(&mlx5_vdpa_driver);
 }

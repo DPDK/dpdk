@@ -86,12 +86,21 @@ RTE_INIT_PRIO(mlx5_log_init, LOG)
 		rte_log_set_level(mlx5_common_logtype, RTE_LOG_NOTICE);
 }
 
+static bool mlx5_common_initialized;
+
 /**
- * Initialization routine for run-time dependency on glue library.
+ * One time innitialization routine for run-time dependency on glue library
+ * for multiple PMDs. Each mlx5 PMD that depends on mlx5_common module,
+ * must invoke in its constructor.
  */
-RTE_INIT_PRIO(mlx5_glue_init, CLASS)
+void
+mlx5_common_init(void)
 {
+	if (mlx5_common_initialized)
+		return;
+
 	mlx5_glue_constructor();
+	mlx5_common_initialized = true;
 }
 
 /**

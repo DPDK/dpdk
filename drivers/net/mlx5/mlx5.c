@@ -1985,6 +1985,7 @@ RTE_LOG_REGISTER(mlx5_logtype, pmd.net.mlx5, NOTICE)
  */
 RTE_INIT(rte_mlx5_pmd_init)
 {
+	mlx5_common_init();
 	/* Build the static tables for Verbs conversion. */
 	mlx5_set_ptype_table();
 	mlx5_set_cksum_table();

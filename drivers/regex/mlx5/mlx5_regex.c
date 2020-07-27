@@ -258,6 +258,7 @@ static struct rte_pci_driver mlx5_regex_driver = {
 
 RTE_INIT(rte_mlx5_regex_init)
 {
+	mlx5_common_init();
 	if (mlx5_glue)
 		rte_pci_register(&mlx5_regex_driver);
 }
