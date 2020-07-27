@@ -14,6 +14,7 @@
 #include "mlx5_common_os.h"
 #include "mlx5_common_utils.h"
 #include "mlx5_malloc.h"
+#include "mlx5_common_pci.h"
 
 int mlx5_common_logtype;
 
@@ -100,6 +101,7 @@ mlx5_common_init(void)
 		return;
 
 	mlx5_glue_constructor();
+	mlx5_common_pci_init();
 	mlx5_common_initialized = true;
 }
 

@@ -5,6 +5,7 @@
 subdirs = [
 	'common',
 	'bus',
+	'common/mlx5', # depends on bus.
 	'mempool', # depends on common and bus.
 	'net',     # depends on common, bus, mempool
 	'raw',     # depends on common, bus and net.

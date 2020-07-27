@@ -91,5 +91,7 @@ INTERNAL {
 	mlx5_malloc;
 	mlx5_realloc;
 	mlx5_free;
+
+	mlx5_pci_driver_register;
 };
 

@@ -124,10 +124,11 @@ New Features
 
   * Added support for VLAN push and pop flow actions.
 
-* **Updated Mellanox mlx5 driver.**
+* **Updated Mellanox mlx5 net driver and common layer.**
 
   Updated Mellanox mlx5 driver with new features and improvements, including:
 
+  * Added mlx5 PCI layer to share a PCI device among multiple PMDs.
   * Added new PMD devarg ``reclaim_mem_mode``.
   * Added new devarg ``lacp_by_user``.
   * Added support for eCPRI protocol offloading.

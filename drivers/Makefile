@@ -8,8 +8,12 @@ DIRS-y += bus
 DEPDIRS-bus := common
 DIRS-y += mempool
 DEPDIRS-mempool := common bus
+ifeq ($(findstring y,$(CONFIG_RTE_LIBRTE_MLX5_PMD)$(CONFIG_RTE_LIBRTE_MLX5_VDPA_PMD)$(CONFIG_RTE_LIBRTE_MLX5_REGEX_PMD)),y)
+DIRS-y += common/mlx5
+DEPDIRS-common/mlx5 := bus
+endif
 DIRS-y += net
-DEPDIRS-net := common bus mempool
+DEPDIRS-net := common bus mempool common/mlx5
 DIRS-$(CONFIG_RTE_LIBRTE_BBDEV) += baseband
 DEPDIRS-baseband := common bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
@@ -19,9 +23,9 @@ DEPDIRS-common/qat := bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_COMPRESSDEV) += compress
 DEPDIRS-compress := bus mempool
 DIRS-$(CONFIG_RTE_LIBRTE_REGEXDEV) += regex
-DEPDIRS-regex := common bus
+DEPDIRS-regex := common bus common/mlx5
 DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += vdpa
-DEPDIRS-vdpa := common bus mempool
+DEPDIRS-vdpa := common bus mempool common/mlx5
 DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += event
 DEPDIRS-event := common bus mempool net crypto
 DIRS-$(CONFIG_RTE_LIBRTE_RAWDEV) += raw

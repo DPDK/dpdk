@@ -22,6 +22,7 @@ SRCS-y += linux/mlx5_common_verbs.c
 SRCS-y += mlx5_common_mp.c
 SRCS-y += mlx5_common_mr.c
 SRCS-y += mlx5_malloc.c
+SRCS-y += mlx5_common_pci.c
 ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 INSTALL-y-lib += $(LIB_GLUE)
 endif
@@ -51,6 +52,7 @@ LDLIBS += -libverbs -lmlx5
 endif
 
 LDLIBS += -lrte_eal -lrte_pci -lrte_kvargs -lrte_net
+LDLIBS += -lrte_bus_pci
 
 # A few warnings cannot be avoided in external headers.
 CFLAGS += -Wno-error=cast-qual -UPEDANTIC

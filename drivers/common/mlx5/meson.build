@@ -1,19 +1,22 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2019 Mellanox Technologies, Ltd
 
-if not (is_linux or is_windows)
+if not is_linux
 	build = false
-	reason = 'only supported on Linux and Windows'
+	reason = 'only supported on Linux'
 	subdir_done()
 endif
 
-deps += ['hash', 'pci', 'net', 'eal', 'kvargs']
+config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
+driver_name_fmt = 'rte_common_@0@'
+deps += ['hash', 'pci', 'bus_pci', 'net', 'eal', 'kvargs']
 sources += files(
 	'mlx5_devx_cmds.c',
 	'mlx5_common.c',
 	'mlx5_common_mp.c',
 	'mlx5_common_mr.c',
 	'mlx5_malloc.c',
+	'mlx5_common_pci.c',
 )
 
 cflags_options = [
