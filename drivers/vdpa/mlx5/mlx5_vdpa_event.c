@@ -172,17 +172,6 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 		rte_errno = errno;
 		goto error;
 	}
-	if (callfd != -1 &&
-	    priv->event_mode != MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT) {
-		ret = mlx5_glue->devx_subscribe_devx_event_fd(priv->eventc,
-							      callfd,
-							      cq->cq->obj, 0);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to subscribe CQE event fd.");
-			rte_errno = errno;
-			goto error;
-		}
-	}
 	cq->callfd = callfd;
 	/* Init CQ to ones to be in HW owner in the start. */
 	cq->cqes[0].op_own = MLX5_CQE_OWNER_MASK;
@@ -352,11 +341,11 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 						   struct mlx5_vdpa_virtq, eqp);
 
 		mlx5_vdpa_cq_poll(cq);
+		/* Notify guest for descs consuming. */
+		if (cq->callfd != -1)
+			eventfd_write(cq->callfd, (eventfd_t)1);
 		if (priv->event_mode == MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT) {
 			mlx5_vdpa_cq_arm(priv, cq);
-			/* Notify guest for descs consuming. */
-			if (cq->callfd != -1)
-				eventfd_write(cq->callfd, (eventfd_t)1);
 			return;
 		}
 		/* Don't arm again - timer will take control. */
