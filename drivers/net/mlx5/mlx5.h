@@ -119,7 +119,6 @@ struct mlx5_local_data {
 };
 
 extern struct mlx5_shared_data *mlx5_shared_data;
-extern struct rte_pci_driver mlx5_driver;
 
 /* Dev ops structs */
 extern const struct eth_dev_ops mlx5_os_dev_ops;

@@ -30,6 +30,7 @@
 #include <mlx5_common.h>
 #include <mlx5_common_os.h>
 #include <mlx5_common_mp.h>
+#include <mlx5_common_pci.h>
 #include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
@@ -1965,16 +1966,19 @@ static const struct rte_pci_id mlx5_pci_id_map[] = {
 	}
 };
 
-struct rte_pci_driver mlx5_driver = {
-	.driver = {
-		.name = MLX5_DRIVER_NAME
+static struct mlx5_pci_driver mlx5_driver = {
+	.driver_class = MLX5_CLASS_NET,
+	.pci_driver = {
+		.driver = {
+			.name = MLX5_DRIVER_NAME,
+		},
+		.id_table = mlx5_pci_id_map,
+		.probe = mlx5_os_pci_probe,
+		.remove = mlx5_pci_remove,
+		.dma_map = mlx5_dma_map,
+		.dma_unmap = mlx5_dma_unmap,
+		.drv_flags = PCI_DRV_FLAGS,
 	},
-	.id_table = mlx5_pci_id_map,
-	.probe = mlx5_os_pci_probe,
-	.remove = mlx5_pci_remove,
-	.dma_map = mlx5_dma_map,
-	.dma_unmap = mlx5_dma_unmap,
-	.drv_flags = PCI_DRV_FLAGS,
 };
 
 /* Initialize driver log type. */
@@ -1991,7 +1995,7 @@ RTE_INIT(rte_mlx5_pmd_init)
 	mlx5_set_cksum_table();
 	mlx5_set_swp_types_table();
 	if (mlx5_glue)
-		rte_pci_register(&mlx5_driver);
+		mlx5_pci_driver_register(&mlx5_driver);
 }
 
 RTE_PMD_EXPORT_NAME(net_mlx5, __COUNTER__);

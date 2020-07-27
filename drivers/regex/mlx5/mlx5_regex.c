@@ -5,12 +5,12 @@
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_errno.h>
-#include <rte_bus_pci.h>
 #include <rte_pci.h>
 #include <rte_regexdev.h>
 #include <rte_regexdev_core.h>
 #include <rte_regexdev_driver.h>
 
+#include <mlx5_common_pci.h>
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
@@ -246,21 +246,24 @@ static const struct rte_pci_id mlx5_regex_pci_id_map[] = {
 	}
 };
 
-static struct rte_pci_driver mlx5_regex_driver = {
-	.driver = {
-		.name = "mlx5_regex",
+static struct mlx5_pci_driver mlx5_regex_driver = {
+	.driver_class = MLX5_CLASS_REGEX,
+	.pci_driver = {
+		.driver = {
+			.name = "mlx5_regex",
+		},
+		.id_table = mlx5_regex_pci_id_map,
+		.probe = mlx5_regex_pci_probe,
+		.remove = mlx5_regex_pci_remove,
+		.drv_flags = 0,
 	},
-	.id_table = mlx5_regex_pci_id_map,
-	.probe = mlx5_regex_pci_probe,
-	.remove = mlx5_regex_pci_remove,
-	.drv_flags = 0,
 };
 
 RTE_INIT(rte_mlx5_regex_init)
 {
 	mlx5_common_init();
 	if (mlx5_glue)
-		rte_pci_register(&mlx5_regex_driver);
+		mlx5_pci_driver_register(&mlx5_regex_driver);
 }
 
 RTE_LOG_REGISTER(mlx5_regex_logtype, pmd.regex.mlx5, NOTICE)

@@ -1535,7 +1535,6 @@ mlx5_os_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			strerror(rte_errno));
 		return -rte_errno;
 	}
-	MLX5_ASSERT(pci_drv == &mlx5_driver);
 	errno = 0;
 	ibv_list = mlx5_glue->get_device_list(&ret);
 	if (!ibv_list) {

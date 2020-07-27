@@ -8,7 +8,7 @@ if not is_linux
 endif
 
 fmt_name = 'mlx5_vdpa'
-deps += ['hash', 'common_mlx5', 'vhost', 'pci', 'bus_pci', 'eal', 'sched']
+deps += ['hash', 'common_mlx5', 'vhost', 'pci', 'eal', 'sched']
 sources = files(
 	'mlx5_vdpa.c',
 	'mlx5_vdpa_mem.c',

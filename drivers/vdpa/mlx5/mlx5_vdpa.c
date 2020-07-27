@@ -11,12 +11,12 @@
 #include <rte_malloc.h>
 #include <rte_log.h>
 #include <rte_errno.h>
-#include <rte_bus_pci.h>
 #include <rte_pci.h>
 #include <rte_string_fns.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
+#include <mlx5_common_pci.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
 #include <mlx5_nl.h>
@@ -657,7 +657,7 @@ mlx5_vdpa_config_get(struct rte_devargs *devargs, struct mlx5_vdpa_priv *priv)
 }
 
 /**
- * DPDK callback to register a PCI device.
+ * DPDK callback to register a mlx5 PCI device.
  *
  * This function spawns vdpa device out of a given PCI device.
  *
@@ -829,14 +829,17 @@ static const struct rte_pci_id mlx5_vdpa_pci_id_map[] = {
 	}
 };
 
-static struct rte_pci_driver mlx5_vdpa_driver = {
-	.driver = {
-		.name = "mlx5_vdpa",
+static struct mlx5_pci_driver mlx5_vdpa_driver = {
+	.driver_class = MLX5_CLASS_VDPA,
+	.pci_driver = {
+		.driver = {
+			.name = "mlx5_vdpa",
+		},
+		.id_table = mlx5_vdpa_pci_id_map,
+		.probe = mlx5_vdpa_pci_probe,
+		.remove = mlx5_vdpa_pci_remove,
+		.drv_flags = 0,
 	},
-	.id_table = mlx5_vdpa_pci_id_map,
-	.probe = mlx5_vdpa_pci_probe,
-	.remove = mlx5_vdpa_pci_remove,
-	.drv_flags = 0,
 };
 
 RTE_LOG_REGISTER(mlx5_vdpa_logtype, pmd.vdpa.mlx5, NOTICE)
@@ -848,7 +851,7 @@ RTE_INIT(rte_mlx5_vdpa_init)
 {
 	mlx5_common_init();
 	if (mlx5_glue)
-		rte_pci_register(&mlx5_vdpa_driver);
+		mlx5_pci_driver_register(&mlx5_vdpa_driver);
 }
 
 RTE_PMD_EXPORT_NAME(net_mlx5_vdpa, __COUNTER__);
