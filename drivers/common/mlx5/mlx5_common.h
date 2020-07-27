@@ -13,6 +13,7 @@
 #include <rte_log.h>
 #include <rte_kvargs.h>
 #include <rte_devargs.h>
+#include <rte_bitops.h>
 
 #include "mlx5_prm.h"
 #include "mlx5_devx_cmds.h"
@@ -208,10 +209,10 @@ int mlx5_get_ifname_sysfs(const char *ibdev_path, char *ifname);
 #define MLX5_CLASS_ARG_NAME "class"
 
 enum mlx5_class {
-	MLX5_CLASS_NET,
-	MLX5_CLASS_VDPA,
-	MLX5_CLASS_REGEX,
 	MLX5_CLASS_INVALID,
+	MLX5_CLASS_NET = RTE_BIT64(0),
+	MLX5_CLASS_VDPA = RTE_BIT64(1),
+	MLX5_CLASS_REGEX = RTE_BIT64(2),
 };
 
 #define MLX5_DBR_PAGE_SIZE 4096 /* Must be >= 512. */
