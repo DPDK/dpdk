@@ -1193,12 +1193,16 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		mlx5_glue->ack_cq_events(rxq_obj->ibv_cq, 1);
 	} else if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
 #ifdef HAVE_IBV_DEVX_EVENT
-		struct mlx5dv_devx_async_event_hdr *event_data = NULL;
+		union {
+			struct mlx5dv_devx_async_event_hdr event_resp;
+			uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr)
+				    + 128];
+		} out;
 
 		ret = mlx5_glue->devx_get_event
-				(rxq_obj->devx_channel, event_data,
-				 sizeof(struct mlx5dv_devx_async_event_hdr));
-		if (ret < 0 || event_data->cookie !=
+				(rxq_obj->devx_channel, &out.event_resp,
+				 sizeof(out.buf));
+		if (ret < 0 || out.event_resp.cookie !=
 				(uint64_t)(uintptr_t)rxq_obj->devx_cq)
 			goto exit;
 #endif /* HAVE_IBV_DEVX_EVENT */
@@ -1646,6 +1650,8 @@ mlx5_devx_cq_new(struct rte_eth_dev *dev, unsigned int cqe_n, uint16_t idx,
 	memset((void *)(uintptr_t)rxq_data->cqes, 0xFF, cq_size);
 	return cq_obj;
 error:
+	if (cq_obj)
+		mlx5_devx_cmd_destroy(cq_obj);
 	rxq_release_devx_cq_resources(rxq_ctrl);
 	return NULL;
 }
