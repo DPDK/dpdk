@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2018-2020 Intel Corporation
  */
 
 #include <rte_string_fns.h>
@@ -52,6 +52,9 @@ static const struct rte_pci_id pci_id_qat_map[] = {
 		},
 		{
 			RTE_PCI_DEVICE(0x8086, 0x6f55),
+		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x18ef),
 		},
 		{
 			RTE_PCI_DEVICE(0x8086, 0x18a1),
@@ -223,6 +226,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 	case 0x37c9:
 	case 0x19e3:
 	case 0x6f55:
+	case 0x18ef:
 		qat_dev->qat_dev_gen = QAT_GEN2;
 		break;
 	case 0x18a1:
