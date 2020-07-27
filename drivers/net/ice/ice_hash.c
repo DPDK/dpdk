@@ -1012,6 +1012,7 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 	enum rte_flow_action_type action_type;
 	const struct rte_flow_action_rss *rss;
 	const struct rte_flow_action *action;
+	bool hash_map_found = false;
 	uint64_t rss_attr_src_dst;
 	uint64_t rss_attr_l3_pre;
 	uint64_t rss_attr_symm;
@@ -1125,8 +1126,16 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 				if (rss_type == ht_map->hash_type) {
 					hash_meta->hash_flds =
 							ht_map->hash_flds;
+					hash_map_found = true;
 					break;
 				}
+			}
+
+			if (pattern_match_item->pattern_list !=
+			    pattern_empty && !hash_map_found) {
+				return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"Not supported flow");
 			}
 
 			/* update hash field for nat-t esp. */
