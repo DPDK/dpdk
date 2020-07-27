@@ -2,17 +2,19 @@
 # Copyright(c) 2017-2019 Intel Corporation
 
 # Defines the order in which the drivers are buit.
-dpdk_driver_classes = ['common',
-	       'bus',
-	       'mempool', # depends on common and bus.
-	       'net',     # depends on common, bus, mempool
-	       'raw',     # depends on common, bus and net.
-	       'crypto',  # depends on common, bus and mempool (net in future).
-	       'compress', # depends on common, bus, mempool.
-	       'regex', # depends on common, bus, regexdev.
-	       'vdpa',    # depends on common, bus and mempool.
-	       'event',   # depends on common, bus, mempool and net.
-	       'baseband'] # depends on common and bus.
+dpdk_driver_classes = [
+	'common',
+	'bus',
+	'mempool', # depends on common and bus.
+	'net',     # depends on common, bus, mempool
+	'raw',     # depends on common, bus and net.
+	'crypto',  # depends on common, bus and mempool (net in future).
+	'compress', # depends on common, bus, mempool.
+	'regex', # depends on common, bus, regexdev.
+	'vdpa',    # depends on common, bus and mempool.
+	'event',   # depends on common, bus, mempool and net.
+	'baseband', # depends on common and bus.
+]
 
 disabled_drivers = run_command(list_dir_globs, get_option('disable_drivers'),
 		).stdout().split()
