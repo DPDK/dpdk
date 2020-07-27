@@ -1406,6 +1406,8 @@ struct i40e_aqc_cloud_filters_element_data {
 #define I40E_AQC_ADD_CLOUD_FILTER_IMAC			0x000A
 #define I40E_AQC_ADD_CLOUD_FILTER_OMAC_TEN_ID_IMAC	0x000B
 #define I40E_AQC_ADD_CLOUD_FILTER_IIP			0x000C
+#define I40E_AQC_ADD_CLOUD_FILTER_OIP1			0x0010
+#define I40E_AQC_ADD_CLOUD_FILTER_OIP2			0x0012
 /* 0x000D reserved */
 /* 0x000E reserved */
 /* 0x000F reserved */
