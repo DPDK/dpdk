@@ -137,17 +137,17 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (ret) {
 		DRV_LOG(ERR, "Unable to read HCA capabilities.");
 		rte_errno = ENOTSUP;
-		goto error;
+		goto dev_error;
 	} else if (!attr.regex || attr.regexp_num_of_engines == 0) {
 		DRV_LOG(ERR, "Not enough capabilities to support RegEx, maybe "
 			"old FW/OFED version?");
 		rte_errno = ENOTSUP;
-		goto error;
+		goto dev_error;
 	}
 	if (mlx5_regex_engines_status(ctx, 2)) {
 		DRV_LOG(ERR, "RegEx engine error.");
 		rte_errno = ENOMEM;
-		goto error;
+		goto dev_error;
 	}
 	priv = rte_zmalloc("mlx5 regex device private", sizeof(*priv),
 			   RTE_CACHE_LINE_SIZE);
@@ -200,6 +200,7 @@ error:
 		mlx5_glue->devx_free_uar(priv->uar);
 	if (priv->regexdev)
 		rte_regexdev_unregister(priv->regexdev);
+dev_error:
 	if (ctx)
 		mlx5_glue->close_device(ctx);
 	if (priv)
