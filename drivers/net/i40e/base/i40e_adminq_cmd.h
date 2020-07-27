@@ -240,7 +240,7 @@ enum i40e_admin_queue_opc {
 	i40e_aqc_opc_nvm_update			= 0x0703,
 	i40e_aqc_opc_nvm_config_read		= 0x0704,
 	i40e_aqc_opc_nvm_config_write		= 0x0705,
-	i40e_aqc_opc_nvm_progress		= 0x0706,
+	i40e_aqc_opc_nvm_update_in_process	= 0x0706,
 	i40e_aqc_opc_oem_post_update		= 0x0720,
 	i40e_aqc_opc_thermal_sensor		= 0x0721,
 
@@ -2399,6 +2399,16 @@ struct i40e_aqc_nvm_config_data_feature {
 };
 
 I40E_CHECK_STRUCT_LEN(0x6, i40e_aqc_nvm_config_data_feature);
+
+/* NVM Update in Process (direct 0x0706) */
+struct i40e_aqc_nvm_update_in_process {
+	u8	command;
+#define I40E_AQ_UPDATE_FLOW_END			0x0
+#define I40E_AQ_UPDATE_FLOW_START		0x1
+	u8	reserved[15];
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_nvm_update_in_process);
 
 struct i40e_aqc_nvm_config_data_immediate_field {
 	__le32 field_id;

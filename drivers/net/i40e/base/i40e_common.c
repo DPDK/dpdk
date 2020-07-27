@@ -3687,6 +3687,37 @@ enum i40e_status_code i40e_aq_write_nvm_config(struct i40e_hw *hw,
 }
 
 /**
+ * i40e_aq_nvm_update_in_process
+ * @hw: pointer to the hw struct
+ * @update_flow_state: True indicates that update flow starts, false that ends
+ * @cmd_details: pointer to command details structure or NULL
+ *
+ * Indicate NVM update in process.
+ **/
+enum i40e_status_code
+i40e_aq_nvm_update_in_process(struct i40e_hw *hw,
+			      bool update_flow_state,
+			      struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_nvm_update_in_process *cmd =
+		(struct i40e_aqc_nvm_update_in_process *)&desc.params.raw;
+	enum i40e_status_code status;
+
+	i40e_fill_default_direct_cmd_desc(&desc,
+					  i40e_aqc_opc_nvm_update_in_process);
+
+	cmd->command = I40E_AQ_UPDATE_FLOW_END;
+
+	if (update_flow_state)
+		cmd->command |= I40E_AQ_UPDATE_FLOW_START;
+
+	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
+
+	return status;
+}
+
+/**
  * i40e_aq_oem_post_update - triggers an OEM specific flow after update
  * @hw: pointer to the hw struct
  * @buff: buffer for result
@@ -4254,28 +4285,6 @@ enum i40e_status_code i40e_aq_rearrange_nvm(struct i40e_hw *hw,
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
 i40e_aq_rearrange_nvm_exit:
-	return status;
-}
-
-/**
- * i40e_aq_nvm_progress
- * @hw: pointer to the hw struct
- * @progress: pointer to progress returned from AQ
- * @cmd_details: pointer to command details structure or NULL
- *
- * Gets progress of flash rearrangement process
- **/
-enum i40e_status_code i40e_aq_nvm_progress(struct i40e_hw *hw, u8 *progress,
-				struct i40e_asq_cmd_details *cmd_details)
-{
-	enum i40e_status_code status;
-	struct i40e_aq_desc desc;
-
-	DEBUGFUNC("i40e_aq_nvm_progress");
-
-	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_nvm_progress);
-	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
-	*progress = desc.params.raw[0];
 	return status;
 }
 
