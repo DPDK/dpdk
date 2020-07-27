@@ -583,7 +583,7 @@ def display_devices(title, dev_list, extra_params=None):
     strings.sort()
     print("\n".join(strings))  # print one per line
 
-def show_device_status(devices_type, device_name):
+def show_device_status(devices_type, device_name, if_field=False):
     global dpdk_drivers
     kernel_drv = []
     dpdk_drv = []
@@ -615,8 +615,11 @@ def show_device_status(devices_type, device_name):
         display_devices("%s devices using DPDK-compatible driver" % device_name,
                         dpdk_drv, "drv=%(Driver_str)s unused=%(Module_str)s")
     if len(kernel_drv) != 0:
+        if_text = ""
+        if if_field:
+            if_text = "if=%(Interface)s "
         display_devices("%s devices using kernel driver" % device_name, kernel_drv,
-                        "if=%(Interface)s drv=%(Driver_str)s "
+                        if_text + "drv=%(Driver_str)s "
                         "unused=%(Module_str)s %(Active)s")
     if len(no_drv) != 0:
         display_devices("Other %s devices" % device_name, no_drv,
@@ -628,7 +631,7 @@ def show_status():
     kernel driver or to no driver'''
 
     if status_dev == "net" or status_dev == "all":
-        show_device_status(network_devices, "Network")
+        show_device_status(network_devices, "Network", if_field=True)
 
     if status_dev == "baseband" or status_dev == "all":
         show_device_status(baseband_devices, "Baseband")
