@@ -425,6 +425,7 @@ struct i40e_hw_capabilities {
 	u32 enabled_tcmap;
 	u32 maxtc;
 	u64 wr_csr_prot;
+	bool dis_unused_ports;
 	bool apm_wol_support;
 	enum i40e_acpi_programming_method acpi_prog_method;
 	bool proxy_support;

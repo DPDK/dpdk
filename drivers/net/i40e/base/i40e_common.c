@@ -4021,6 +4021,12 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 				   "HW Capability: wr_csr_prot = 0x%llX\n\n",
 				   (p->wr_csr_prot & 0xffff));
 			break;
+		case I40E_AQ_CAP_ID_DIS_UNUSED_PORTS:
+			p->dis_unused_ports = (bool)number;
+			i40e_debug(hw, I40E_DEBUG_INIT,
+				   "HW Capability: dis_unused_ports = %d\n\n",
+				   p->dis_unused_ports);
+			break;
 		case I40E_AQ_CAP_ID_NVM_MGMT:
 			if (number & I40E_NVM_MGMT_SEC_REV_DISABLED)
 				p->sec_rev_disabled = true;
