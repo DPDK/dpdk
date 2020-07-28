@@ -51,12 +51,9 @@ mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 {
-	uint32_t lcore;
-
 	if (priv->eventc)
 		return 0;
-	lcore = (uint32_t)rte_lcore_to_cpu_id(-1);
-	if (mlx5_glue->devx_query_eqn(priv->ctx, lcore, &priv->eqn)) {
+	if (mlx5_glue->devx_query_eqn(priv->ctx, 0, &priv->eqn)) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to query EQ number %d.", rte_errno);
 		return -1;
