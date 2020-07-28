@@ -15,7 +15,6 @@
 			RTE_STR(CRYPTODEV_NAME_ARMV8_CRYPTO_PMD), \
 			__func__, __LINE__, ## args)
 
-#ifdef RTE_LIBRTE_ARMV8_CRYPTO_DEBUG
 #define ARMV8_CRYPTO_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
 			RTE_STR(CRYPTODEV_NAME_ARMV8_CRYPTO_PMD), \
@@ -29,16 +28,10 @@
 #define ARMV8_CRYPTO_ASSERT(con)				\
 do {								\
 	if (!(con)) {						\
-		rte_panic("%s(): "				\
-		    con "condition failed, line %u", __func__);	\
+		rte_panic("condition failed, line %u",		\
+			__LINE__);				\
 	}							\
 } while (0)
-
-#else
-#define ARMV8_CRYPTO_LOG_INFO(fmt, args...)
-#define ARMV8_CRYPTO_LOG_DBG(fmt, args...)
-#define ARMV8_CRYPTO_ASSERT(con)
-#endif
 
 #define NBBY		8		/* Number of bits in a byte */
 #define BYTE_LENGTH(x)	((x) / NBBY)	/* Number of bytes in x (round down) */
