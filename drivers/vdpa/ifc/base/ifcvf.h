@@ -115,6 +115,7 @@ struct vring_info {
 	u16 size;
 	u16 last_avail_idx;
 	u16 last_used_idx;
+	bool enable;
 };
 
 struct ifcvf_hw {

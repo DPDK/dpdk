@@ -49,6 +49,7 @@ static const char * const ifcvf_valid_arguments[] = {
 struct ifcvf_internal {
 	struct rte_pci_device *pdev;
 	struct ifcvf_hw hw;
+	int configured;
 	int vfio_container_fd;
 	int vfio_group_fd;
 	int vfio_dev_fd;
@@ -897,6 +898,7 @@ ifcvf_dev_config(int vid)
 		DRV_LOG(NOTICE, "vDPA (%s): software relay is used.",
 				vdev->device->name);
 
+	internal->configured = 1;
 	return 0;
 }
 
@@ -935,6 +937,7 @@ ifcvf_dev_close(int vid)
 		update_datapath(internal);
 	}
 
+	internal->configured = 0;
 	return 0;
 }
 
@@ -1084,13 +1087,61 @@ ifcvf_get_protocol_features(struct rte_vdpa_device *vdev, uint64_t *features)
 	return 0;
 }
 
+static int
+ifcvf_set_vring_state(int vid, int vring, int state)
+{
+	struct rte_vdpa_device *vdev;
+	struct internal_list *list;
+	struct ifcvf_internal *internal;
+	struct ifcvf_hw *hw;
+	struct ifcvf_pci_common_cfg *cfg;
+	int ret = 0;
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	list = find_internal_resource_by_vdev(vdev);
+	if (list == NULL) {
+		DRV_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -1;
+	}
+
+	internal = list->internal;
+	if (vring < 0 || vring >= internal->max_queues * 2) {
+		DRV_LOG(ERR, "Vring index %d not correct", vring);
+		return -1;
+	}
+
+	hw = &internal->hw;
+	if (!internal->configured)
+		goto exit;
+
+	cfg = hw->common_cfg;
+	IFCVF_WRITE_REG16(vring, &cfg->queue_select);
+	IFCVF_WRITE_REG16(!!state, &cfg->queue_enable);
+
+	if (!state && hw->vring[vring].enable) {
+		ret = vdpa_disable_vfio_intr(internal);
+		if (ret)
+			return ret;
+	}
+
+	if (state && !hw->vring[vring].enable) {
+		ret = vdpa_enable_vfio_intr(internal, 0);
+		if (ret)
+			return ret;
+	}
+
+exit:
+	hw->vring[vring].enable = !!state;
+	return 0;
+}
+
 static struct rte_vdpa_dev_ops ifcvf_ops = {
 	.get_queue_num = ifcvf_get_queue_num,
 	.get_features = ifcvf_get_vdpa_features,
 	.get_protocol_features = ifcvf_get_protocol_features,
 	.dev_conf = ifcvf_dev_config,
 	.dev_close = ifcvf_dev_close,
-	.set_vring_state = NULL,
+	.set_vring_state = ifcvf_set_vring_state,
 	.set_features = ifcvf_set_features,
 	.migration_done = NULL,
 	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
@@ -1170,6 +1221,7 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto error;
 	}
 
+	internal->configured = 0;
 	internal->max_queues = IFCVF_MAX_QUEUES;
 	features = ifcvf_get_features(&internal->hw);
 	internal->features = (features &
