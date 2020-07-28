@@ -30,14 +30,6 @@ extern int crypto_armv8_log_type;
 			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
 			__func__, __LINE__, ## args)
 
-#define ARMV8_CRYPTO_ASSERT(con)				\
-do {								\
-	if (!(con)) {						\
-		rte_panic("condition failed, line %u",		\
-			__LINE__);				\
-	}							\
-} while (0)
-
 #define NBBY		8		/* Number of bits in a byte */
 #define BYTE_LENGTH(x)	((x) / NBBY)	/* Number of bytes in x (round down) */
 
