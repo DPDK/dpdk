@@ -205,7 +205,7 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 			}
 			r = recv(dev->vhostfd, buf, 128, MSG_PEEK);
 			if (r == 0 || (r < 0 && errno != EAGAIN)) {
-				dev->status &= (~VIRTIO_NET_S_LINK_UP);
+				dev->net_status &= (~VIRTIO_NET_S_LINK_UP);
 				PMD_DRV_LOG(ERR, "virtio-user port %u is down",
 					    hw->port_id);
 
@@ -217,7 +217,7 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 						  virtio_user_delayed_handler,
 						  (void *)hw);
 			} else {
-				dev->status |= VIRTIO_NET_S_LINK_UP;
+				dev->net_status |= VIRTIO_NET_S_LINK_UP;
 			}
 			if (fcntl(dev->vhostfd, F_SETFL,
 					flags & ~O_NONBLOCK) == -1) {
@@ -225,12 +225,12 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 				return;
 			}
 		} else if (dev->is_server) {
-			dev->status &= (~VIRTIO_NET_S_LINK_UP);
+			dev->net_status &= (~VIRTIO_NET_S_LINK_UP);
 			if (virtio_user_server_reconnect(dev) >= 0)
-				dev->status |= VIRTIO_NET_S_LINK_UP;
+				dev->net_status |= VIRTIO_NET_S_LINK_UP;
 		}
 
-		*(uint16_t *)dst = dev->status;
+		*(uint16_t *)dst = dev->net_status;
 	}
 
 	if (offset == offsetof(struct virtio_net_config, max_virtqueue_pairs))

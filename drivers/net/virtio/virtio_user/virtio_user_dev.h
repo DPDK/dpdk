@@ -44,6 +44,7 @@ struct virtio_user_dev {
 					    * (Vhost-user only)
 					    */
 	uint8_t		status;
+	uint16_t	net_status;
 	uint16_t	port_id;
 	uint8_t		mac_addr[RTE_ETHER_ADDR_LEN];
 	char		path[PATH_MAX];
