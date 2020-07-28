@@ -479,6 +479,8 @@ struct ice_hash_match_type ice_hash_type_list[] = {
 		BIT_ULL(ICE_FLOW_FIELD_IDX_L2TPV3_SESS_ID)},
 	{ETH_RSS_PFCP,
 		BIT_ULL(ICE_FLOW_FIELD_IDX_PFCP_SEID)},
+	{ETH_RSS_GTPU,
+		BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_IP_TEID)},
 	/* IPV4 */
 	{ETH_RSS_IPV4 | ETH_RSS_L3_SRC_ONLY,
 		BIT_ULL(ICE_FLOW_FIELD_IDX_IPV4_SA)},
@@ -1148,21 +1150,25 @@ ice_hash_parse_action(struct ice_pattern_match_item *pattern_match_item,
 				BIT_ULL(ICE_FLOW_FIELD_IDX_NAT_T_ESP_SPI);
 			}
 
-			/* update hash field for gtpu-ip and gtpu-eh. */
-			if (rss_type != ETH_RSS_GTPU)
-				break;
-			else if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_IP)
-				hash_meta->hash_flds |=
-				BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_IP_TEID);
-			else if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_EH)
+			/* update hash field for gtpu eh/gtpu dwn/gtpu up. */
+			if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_EH) {
+				hash_meta->hash_flds &=
+				~(BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_IP_TEID));
 				hash_meta->hash_flds |=
 				BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_EH_TEID);
-			else if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_DWN)
+			} else if (hash_meta->pkt_hdr &
+				   ICE_FLOW_SEG_HDR_GTPU_DWN) {
+				hash_meta->hash_flds &=
+				~(BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_IP_TEID));
 				hash_meta->hash_flds |=
 				BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_DWN_TEID);
-			else if (hash_meta->pkt_hdr & ICE_FLOW_SEG_HDR_GTPU_UP)
+			} else if (hash_meta->pkt_hdr &
+				   ICE_FLOW_SEG_HDR_GTPU_UP) {
+				hash_meta->hash_flds &=
+				~(BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_IP_TEID));
 				hash_meta->hash_flds |=
 				BIT_ULL(ICE_FLOW_FIELD_IDX_GTPU_UP_TEID);
+			}
 
 			break;
 
