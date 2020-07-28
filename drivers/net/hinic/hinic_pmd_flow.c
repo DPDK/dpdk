@@ -2977,6 +2977,10 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 		if (!ret) {
 			ntuple_filter_ptr = rte_zmalloc("hinic_ntuple_filter",
 				sizeof(struct hinic_ntuple_filter_ele), 0);
+			if (ntuple_filter_ptr == NULL) {
+				PMD_DRV_LOG(ERR, "Failed to allocate ntuple_filter_ptr");
+				goto out;
+			}
 			rte_memcpy(&ntuple_filter_ptr->filter_info,
 				   &ntuple_filter,
 				   sizeof(struct rte_eth_ntuple_filter));
@@ -3003,6 +3007,10 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 			ethertype_filter_ptr =
 				rte_zmalloc("hinic_ethertype_filter",
 				sizeof(struct hinic_ethertype_filter_ele), 0);
+			if (ethertype_filter_ptr == NULL) {
+				PMD_DRV_LOG(ERR, "Failed to allocate ethertype_filter_ptr");
+				goto out;
+			}
 			rte_memcpy(&ethertype_filter_ptr->filter_info,
 				&ethertype_filter,
 				sizeof(struct rte_eth_ethertype_filter));
@@ -3036,6 +3044,10 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 		if (!ret) {
 			fdir_rule_ptr = rte_zmalloc("hinic_fdir_rule",
 				sizeof(struct hinic_fdir_rule_ele), 0);
+			if (fdir_rule_ptr == NULL) {
+				PMD_DRV_LOG(ERR, "Failed to allocate fdir_rule_ptr");
+				goto out;
+			}
 			rte_memcpy(&fdir_rule_ptr->filter_info, &fdir_rule,
 				sizeof(struct hinic_fdir_rule));
 			TAILQ_INSERT_TAIL(&nic_dev->filter_fdir_rule_list,
