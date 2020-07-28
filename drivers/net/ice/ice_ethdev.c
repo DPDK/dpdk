@@ -2707,13 +2707,24 @@ static int ice_init_rss(struct ice_pf *pf)
 		return 0;
 	}
 
-	if (!vsi->rss_key)
+	if (!vsi->rss_key) {
 		vsi->rss_key = rte_zmalloc(NULL,
 					   vsi->rss_key_size, 0);
-	if (!vsi->rss_lut)
+		if (vsi->rss_key == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to allocate memory for rss_key");
+			return -ENOMEM;
+		}
+	}
+	if (!vsi->rss_lut) {
 		vsi->rss_lut = rte_zmalloc(NULL,
 					   vsi->rss_lut_size, 0);
-
+		if (vsi->rss_lut == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to allocate memory for rss_key");
+			rte_free(vsi->rss_key);
+			vsi->rss_key = NULL;
+			return -ENOMEM;
+		}
+	}
 	/* configure RSS key */
 	if (!rss_conf->rss_key) {
 		/* Calculate the default hash key */
@@ -2727,7 +2738,7 @@ static int ice_init_rss(struct ice_pf *pf)
 	rte_memcpy(key.standard_rss_key, vsi->rss_key, vsi->rss_key_size);
 	ret = ice_aq_set_rss_key(hw, vsi->idx, &key);
 	if (ret)
-		return -EINVAL;
+		goto out;
 
 	/* init RSS LUT table */
 	for (i = 0; i < vsi->rss_lut_size; i++)
@@ -2737,7 +2748,7 @@ static int ice_init_rss(struct ice_pf *pf)
 				 ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF,
 				 vsi->rss_lut, vsi->rss_lut_size);
 	if (ret)
-		return -EINVAL;
+		goto out;
 
 	/* Enable registers for symmetric_toeplitz function. */
 	reg = ICE_READ_REG(hw, VSIQF_HASH_CTL(vsi->vsi_id));
@@ -2749,6 +2760,12 @@ static int ice_init_rss(struct ice_pf *pf)
 	ice_rss_hash_set(pf, rss_conf->rss_hf);
 
 	return 0;
+out:
+	rte_free(vsi->rss_key);
+	vsi->rss_key = NULL;
+	rte_free(vsi->rss_lut);
+	vsi->rss_lut = NULL;
+	return -EINVAL;
 }
 
 static int
