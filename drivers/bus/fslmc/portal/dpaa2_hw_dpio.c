@@ -528,8 +528,13 @@ dpaa2_create_dpio_device(int vdev_fd,
 
 err:
 	if (dpio_dev->dpio) {
-		dpio_disable(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
-		dpio_close(dpio_dev->dpio, CMD_PRI_LOW,  dpio_dev->token);
+		if (dpio_dev->token) {
+			dpio_disable(dpio_dev->dpio, CMD_PRI_LOW,
+				     dpio_dev->token);
+			dpio_close(dpio_dev->dpio, CMD_PRI_LOW,
+				   dpio_dev->token);
+		}
+
 		rte_free(dpio_dev->eqresp);
 		rte_free(dpio_dev->dpio);
 	}
