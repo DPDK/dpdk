@@ -1277,7 +1277,7 @@ ice_hash_create(struct ice_adapter *ad,
 			(hash_function ==
 				RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ);
 
-		ret = ice_add_rss_cfg(hw, vsi->idx,
+		ret = ice_add_rss_cfg_wrap(pf, vsi->idx,
 				filter_ptr->rss_cfg.hashed_flds,
 				filter_ptr->rss_cfg.packet_hdr,
 				filter_ptr->rss_cfg.symm);
@@ -1321,7 +1321,7 @@ ice_hash_destroy(struct ice_adapter *ad,
 			(1 << VSIQF_HASH_CTL_HASH_SCHEME_S);
 		ICE_WRITE_REG(hw, VSIQF_HASH_CTL(vsi->vsi_id), reg);
 	} else {
-		ret = ice_rem_rss_cfg(hw, vsi->idx,
+		ret = ice_rem_rss_cfg_wrap(pf, vsi->idx,
 				filter_ptr->rss_cfg.hashed_flds,
 				filter_ptr->rss_cfg.packet_hdr);
 		/* Fixme: Ignore the error if a rule does not exist.
