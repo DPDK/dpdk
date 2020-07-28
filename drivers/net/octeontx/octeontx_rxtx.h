@@ -337,8 +337,7 @@ __octeontx_xmit_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 		__mempool_check_cookies(tx_pkt->pool, (void **)&tx_pkt,
 					1, 0);
 	/* Get the gaura Id */
-	gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)
-					      tx_pkt->pool->pool_id);
+	gaura_id = octeontx_fpa_bufpool_gaura((uintptr_t)tx_pkt->pool->pool_id);
 
 	/* Setup PKO_SEND_BUFLINK_S */
 	cmd_buf[nb_desc++] = PKO_SEND_BUFLINK_SUBDC |
@@ -373,7 +372,7 @@ __octeontx_xmit_mseg_prepare(struct rte_mbuf *tx_pkt, uint64_t *cmd_buf,
 		/* To handle case where mbufs belong to diff pools, like
 		 * fragmentation
 		 */
-		gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)
+		gaura_id = octeontx_fpa_bufpool_gaura((uintptr_t)
 						      tx_pkt->pool->pool_id);
 
 		/* Setup PKO_SEND_GATHER_S */
