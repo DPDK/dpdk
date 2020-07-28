@@ -1872,7 +1872,7 @@ i40e_fdir_memory_cleanup(struct i40e_pf *pf)
 	if (fdir_info->hash_table)
 		rte_hash_free(fdir_info->hash_table);
 	if (fdir_info->fdir_flow_pool.bitmap)
-		rte_bitmap_free(fdir_info->fdir_flow_pool.bitmap);
+		rte_free(fdir_info->fdir_flow_pool.bitmap);
 	if (fdir_info->fdir_flow_pool.pool)
 		rte_free(fdir_info->fdir_flow_pool.pool);
 	if (fdir_info->fdir_filter_array)
