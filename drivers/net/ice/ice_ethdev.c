@@ -2280,9 +2280,10 @@ ice_release_vsi(struct ice_vsi *vsi)
 	struct ice_hw *hw;
 	struct ice_vsi_ctx vsi_ctx;
 	enum ice_status ret;
+	int error = 0;
 
 	if (!vsi)
-		return 0;
+		return error;
 
 	hw = ICE_VSI_TO_HW(vsi);
 
@@ -2295,12 +2296,13 @@ ice_release_vsi(struct ice_vsi *vsi)
 	ret = ice_free_vsi(hw, vsi->idx, &vsi_ctx, false, NULL);
 	if (ret != ICE_SUCCESS) {
 		PMD_INIT_LOG(ERR, "Failed to free vsi by aq, %u", vsi->vsi_id);
-		rte_free(vsi);
-		return -1;
+		error = -1;
 	}
 
+	rte_free(vsi->rss_lut);
+	rte_free(vsi->rss_key);
 	rte_free(vsi);
-	return 0;
+	return error;
 }
 
 void
