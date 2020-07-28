@@ -9,15 +9,6 @@
 #include "tf_core.h"
 #include "tf_session.h"
 
-#ifdef TF_USE_SYSTEM_MEM
-/**
- * Select EEM sysmem mmap export to be done at init
- * or on the first write to EEM.
- */
-#define TF_EM_SYSMEM_DELAY_EXPORT 1
-#else
-#define TF_EM_SYSMEM_DELAY_EXPORT 0
-#endif
 
 #define SUPPORT_CFA_HW_P4 1
 #define SUPPORT_CFA_HW_P58 0
@@ -85,13 +76,8 @@
 /*
  * System memory always uses 4K pages
  */
-#ifdef TF_USE_SYSTEM_MEM
-#define TF_EM_PAGE_SIZE (1 << TF_EM_PAGE_SIZE_4K)
-#define TF_EM_PAGE_ALIGNMENT (1 << TF_EM_PAGE_SIZE_4K)
-#else
 #define TF_EM_PAGE_SIZE	(1 << TF_EM_PAGE_SHIFT)
 #define TF_EM_PAGE_ALIGNMENT (1 << TF_EM_PAGE_SHIFT)
-#endif
 
 /*
  * Used to build GFID:
@@ -176,13 +162,9 @@ struct tf_em_cfg_parms {
  *
  * @ref tf_em_ext_common_unbind
  *
- * @ref tf_em_ext_host_alloc
+ * @ref tf_em_ext_alloc
  *
- * @ref tf_em_ext_host_free
- *
- * @ref tf_em_ext_system_alloc
- *
- * @ref tf_em_ext_system_free
+ * @ref tf_em_ext_free
  *
  * @ref tf_em_ext_common_free
  *

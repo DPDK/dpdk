@@ -783,34 +783,6 @@ tf_insert_eem_entry(struct tf_tbl_scope_cb *tbl_scope_cb,
 	uint64_t big_hash;
 	int rc;
 
-#if (TF_EM_SYSMEM_DELAY_EXPORT == 1)
-	if (!tbl_scope_cb->valid) {
-		rc = offload_system_mmap(tbl_scope_cb);
-
-		if (rc) {
-			struct tf_rm_free_parms fparms = { 0 };
-			uint32_t rm_tbl_scope_id;
-
-			TFP_DRV_LOG(ERR,
-				    "System alloc mmap failed\n");
-
-			rm_tbl_scope_id =
-				tf_tbl_scope_adjust(parms->tbl_scope_id);
-
-			if (rm_tbl_scope_id == TF_TBL_SCOPE_INVALID)
-				return -EINVAL;
-
-			/* Free Table control block */
-			fparms.rm_db = eem_db[TF_DIR_RX];
-			fparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-			fparms.index = parms->tbl_scope_id;
-			tf_rm_free(&fparms);
-			return -EINVAL;
-		}
-
-		tbl_scope_cb->valid = true;
-	}
-#endif
 	/* Get mask to use on hash */
 	mask = tf_em_get_key_mask(tbl_scope_cb->em_ctx_info[parms->dir].em_tables[TF_KEY0_TABLE].num_entries);
 
@@ -1127,38 +1099,6 @@ int tf_tbl_ext_common_set(struct tf *tfp,
 			    tf_dir_2_str(parms->dir));
 		return -EINVAL;
 	}
-
-#if (TF_EM_SYSMEM_DELAY_EXPORT == 1)
-	if (!tbl_scope_cb->valid) {
-		rc = offload_system_mmap(tbl_scope_cb);
-
-		if (rc) {
-			struct tf_rm_free_parms fparms = { 0 };
-			uint32_t rm_tbl_scope_id;
-
-			/* TODO: support allocation of table scope from
-			 * min in HCAPI RM.  For now call adjust function
-			 * on value obtained from RM.
-			 */
-			rm_tbl_scope_id =
-				tf_tbl_scope_adjust(parms->tbl_scope_id);
-
-			if (rm_tbl_scope_id == TF_TBL_SCOPE_INVALID)
-				return -EINVAL;
-
-			TFP_DRV_LOG(ERR,
-				    "System alloc mmap failed\n");
-			/* Free Table control block */
-			fparms.rm_db = eem_db[TF_DIR_RX];
-			fparms.db_index = TF_EM_TBL_TYPE_TBL_SCOPE;
-			fparms.index = rm_tbl_scope_id;
-			tf_rm_free(&fparms);
-			return -EINVAL;
-		}
-
-		tbl_scope_cb->valid = true;
-	}
-#endif
 
 	op.opcode = HCAPI_CFA_HWOPS_PUT;
 	key_tbl.base0 =
