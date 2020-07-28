@@ -146,6 +146,12 @@ struct ssovf_evdev {
 	uint32_t min_deq_timeout_ns;
 	uint32_t max_deq_timeout_ns;
 	int32_t max_num_events;
+	uint32_t available_events;
+	uint16_t rxq_pools;
+	uint64_t *rxq_pool_array;
+	uint8_t *rxq_pool_rcnt;
+	uint16_t tim_ring_cnt;
+	uint16_t *tim_ring_ids;
 } __rte_cache_aligned;
 
 /* Event port aka HWS */

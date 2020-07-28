@@ -140,9 +140,22 @@ follows:
 When timvf is used as Event timer adapter event schedule type
 ``RTE_SCHED_TYPE_PARALLEL`` is not supported.
 
-Max mempool size
-~~~~~~~~~~~~~~~~
+Max number of events
+~~~~~~~~~~~~~~~~~~~~
 
-Max mempool size when using OCTEON TX Eventdev (SSO) should be limited to 128K.
-When running dpdk-test-eventdev on OCTEON TX the application can limit the
-number of mbufs by using the option ``--pool_sz 131072``
+Max number of events in OCTEON TX Eventdev (SSO) are only limited by DRAM size
+and they can be configured by passing limits to kernel bootargs as follows:
+
+.. code-block:: console
+
+        ssopf.max_events=4194304
+
+The same can be verified by looking at the following sysfs entry:
+
+.. code-block:: console
+
+        # cat /sys/module/ssopf/parameters/max_events
+        4194304
+
+The maximum number of events that can be added to SSO by the event adapters such
+as (Rx/Timer) should be limited to the above configured value.

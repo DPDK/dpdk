@@ -175,6 +175,7 @@ struct timvf_ring {
 	void *bkt_pos;
 	uint64_t max_tout;
 	uint64_t nb_chunks;
+	uint64_t nb_timers;
 	enum timvf_clk_src clk_src;
 	uint16_t tim_ring_id;
 } __rte_cache_aligned;
@@ -217,5 +218,6 @@ uint16_t timvf_timer_arm_tmo_brst_stats(
 		struct rte_event_timer **tim, const uint64_t timeout_tick,
 		const uint16_t nb_timers);
 void timvf_set_chunk_refill(struct timvf_ring * const timr, uint8_t use_fpa);
+void timvf_set_eventdevice(struct rte_eventdev *dev);
 
 #endif /* __TIMVF_EVDEV_H__ */
