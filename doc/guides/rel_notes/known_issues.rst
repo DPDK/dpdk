@@ -888,3 +888,24 @@ Unsuitable IOVA mode may be picked as the default
 
 **Driver/Module**:
    ALL.
+
+Vhost multi-queue reconnection failed with QEMU version >= 4.2.0
+----------------------------------------------------------------
+
+**Description**
+   It's a QEMU regression bug (bad commit: c6beefd674ff). QEMU only saves
+   acked features for one vhost-net when vhost quits. When vhost reconnects
+   to virtio-net/virtio-pmd in multi-queue situations, the features been
+   set multiple times are not consistent.
+
+**Implication**
+   Vhost cannot reconnect back to virtio-net/virtio-pmd normally.
+
+**Resolution/Workaround**:
+   It is possible to filter the incorrect acked features at vhost-user side.
+
+**Affected Environment/Platform**:
+   ALL.
+
+**Driver/Module**:
+   Virtual Device Poll Mode Driver (PMD).
