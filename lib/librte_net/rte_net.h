@@ -125,7 +125,7 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 	 * Mainly it is required to avoid fragmented headers check if
 	 * no offloads are requested.
 	 */
-	if (!(ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)))
+	if (!(ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK | PKT_TX_TCP_SEG)))
 		return 0;
 
 	if (ol_flags & (PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IPV6))
