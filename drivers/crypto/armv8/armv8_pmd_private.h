@@ -10,19 +10,24 @@
 #define CRYPTODEV_NAME_ARMV8_PMD	crypto_armv8
 /**< ARMv8 Crypto PMD device name */
 
-#define ARMV8_CRYPTO_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_ARMV8_CRYPTO_PMD), \
+extern int crypto_armv8_log_type;
+
+#define ARMV8_CRYPTO_LOG_ERR(fmt, args...)			\
+	rte_log(RTE_LOG_ERR, crypto_armv8_log_type,		\
+			"[%s] %s() line %u: " fmt "\n",		\
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
 			__func__, __LINE__, ## args)
 
-#define ARMV8_CRYPTO_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_ARMV8_CRYPTO_PMD), \
+#define ARMV8_CRYPTO_LOG_INFO(fmt, args...)			\
+	rte_log(RTE_LOG_INFO, crypto_armv8_log_type,		\
+			"[%s] %s() line %u: " fmt "\n",		\
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
 			__func__, __LINE__, ## args)
 
-#define ARMV8_CRYPTO_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_ARMV8_CRYPTO_PMD), \
+#define ARMV8_CRYPTO_LOG_DBG(fmt, args...)			\
+	rte_log(RTE_LOG_DEBUG, crypto_armv8_log_type,		\
+			"[%s] %s() line %u: " fmt "\n",		\
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
 			__func__, __LINE__, ## args)
 
 #define ARMV8_CRYPTO_ASSERT(con)				\
