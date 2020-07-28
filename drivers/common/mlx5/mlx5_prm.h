@@ -2784,7 +2784,7 @@ struct mlx5_ifc_set_regexp_register_in_bits {
 	u8 engine_id[0x8];
 	u8 register_address[0x20];
 	u8 register_data[0x20];
-	u8 reserved[0x40];
+	u8 reserved[0x60];
 };
 
 struct mlx5_ifc_set_regexp_register_out_bits {
