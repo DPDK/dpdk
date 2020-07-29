@@ -187,6 +187,11 @@ Deprecation Notices
 * pmd_dpaa: The API ``rte_pmd_dpaa_set_tx_loopback`` will have extended
   ``port_id`` definition from ``uint8_t`` to ``uint16_t``.
 
+* cryptodev: ``RTE_CRYPTO_AEAD_LIST_END`` from ``enum rte_crypto_aead_algorithm``,
+  ``RTE_CRYPTO_CIPHER_LIST_END`` from ``enum rte_crypto_cipher_algorithm`` and
+  ``RTE_CRYPTO_AUTH_LIST_END`` from ``enum rte_crypto_auth_algorithm``
+  will be removed.
+
 * cryptodev: support for using IV with all sizes is added, J0 still can
   be used but only when IV length in following structs ``rte_crypto_auth_xform``,
   ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal
