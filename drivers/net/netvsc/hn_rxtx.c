@@ -1421,11 +1421,12 @@ static int hn_xmit_sg(struct hn_tx_queue *txq,
 	hn_rndis_dump(txd->rndis_pkt);
 
 	/* pass IOVA of rndis header in first segment */
-	addr = rte_malloc_virt2iova(txd->rndis_pkt);
+	addr = rte_malloc_virt2iova(txq->tx_rndis);
 	if (unlikely(addr == RTE_BAD_IOVA)) {
 		PMD_DRV_LOG(ERR, "RNDIS transmit can not get iova");
 		return -EINVAL;
 	}
+	addr = addr + ((char *)txd->rndis_pkt - (char *)txq->tx_rndis);
 
 	sg[0].page = addr / PAGE_SIZE;
 	sg[0].ofs = addr & PAGE_MASK;
