@@ -790,7 +790,7 @@ mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
 {
 	int i;
 
-	if (n <= 0 || n >= MLX5_MAX_MAC_ADDRESSES)
+	if (n <= 0 || n > MLX5_MAX_MAC_ADDRESSES)
 		return;
 
 	for (i = n - 1; i >= 0; --i) {
