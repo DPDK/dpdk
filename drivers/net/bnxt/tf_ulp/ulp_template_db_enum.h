@@ -132,7 +132,8 @@ enum bnxt_ulp_cf_idx {
 	BNXT_ULP_CF_IDX_L3_HDR_CNT = 40,
 	BNXT_ULP_CF_IDX_L4_HDR_CNT = 41,
 	BNXT_ULP_CF_IDX_VFR_MODE = 42,
-	BNXT_ULP_CF_IDX_LAST = 43
+	BNXT_ULP_CF_IDX_LOOPBACK_PARIF = 43,
+	BNXT_ULP_CF_IDX_LAST = 44
 };
 
 enum bnxt_ulp_cond_opcode {

@@ -211,6 +211,12 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 			ULP_COMP_FLD_IDX_WR(params,
 					    BNXT_ULP_CF_IDX_VF_FUNC_PARIF,
 					    parif);
+
+			/* populate the loopback parif */
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_LOOPBACK_PARIF,
+					    BNXT_ULP_SYM_VF_FUNC_PARIF);
+
 		} else {
 			/* Set DRV func PARIF */
 			if (ulp_port_db_parif_get(params->ulp_ctx, ifindex,
