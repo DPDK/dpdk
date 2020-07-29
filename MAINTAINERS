@@ -453,6 +453,7 @@ F: doc/guides/compressdevs/features/default.ini
 RegEx API - EXPERIMENTAL
 M: Ori Kam <orika@mellanox.com>
 F: lib/librte_regexdev/
+F: app/test-regex/
 F: doc/guides/prog_guide/regexdev.rst
 F: doc/guides/regexdevs/features/default.ini
 

@@ -18,6 +18,7 @@ apps = [
 	'test-flow-perf',
 	'test-pipeline',
 	'test-pmd',
+	'test-regex',
 	'test-sad']
 
 # for BSD only
