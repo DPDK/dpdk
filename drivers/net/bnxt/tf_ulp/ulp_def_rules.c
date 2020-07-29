@@ -465,7 +465,7 @@ bnxt_ulp_create_df_rules(struct bnxt *bp)
 	int rc;
 
 	if (!BNXT_TRUFLOW_EN(bp) ||
-	    BNXT_ETH_DEV_IS_REPRESENTOR(bp->eth_dev))
+	    BNXT_ETH_DEV_IS_REPRESENTOR(bp->eth_dev) || !bp->ulp_ctx)
 		return 0;
 
 	port_id = bp->eth_dev->data->port_id;

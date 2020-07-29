@@ -319,11 +319,19 @@ static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 {
 	int rc = 0;
 	struct bnxt_vf_representor *vfr = vfr_ethdev->data->dev_private;
+	struct bnxt *parent_bp;
 
 	if (!vfr || !vfr->parent_dev) {
 		PMD_DRV_LOG(ERR,
 			    "No memory allocated for representor\n");
 		return -ENOMEM;
+	}
+
+	parent_bp = vfr->parent_dev->data->dev_private;
+	if (parent_bp && !parent_bp->ulp_ctx) {
+		PMD_DRV_LOG(ERR,
+			    "ulp context not allocated for parent\n");
+		return -EIO;
 	}
 
 	/* Check if representor has been already allocated in FW */
@@ -534,6 +542,11 @@ int bnxt_vf_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
+	if (!parent_bp->rx_queues) {
+		PMD_DRV_LOG(ERR, "Parent Rx qs not configured yet\n");
+		return -EINVAL;
+	}
+
 	parent_rxq = parent_bp->rx_queues[queue_idx];
 	if (!parent_rxq) {
 		PMD_DRV_LOG(ERR, "Parent RxQ has not been configured yet\n");
@@ -625,6 +638,11 @@ int bnxt_vf_rep_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	if (!nb_desc || nb_desc > MAX_TX_DESC_CNT) {
 		PMD_DRV_LOG(ERR, "nb_desc %d is invalid", nb_desc);
+		return -EINVAL;
+	}
+
+	if (!parent_bp->tx_queues) {
+		PMD_DRV_LOG(ERR, "Parent Tx qs not configured yet\n");
 		return -EINVAL;
 	}
 

@@ -884,6 +884,8 @@ bnxt_ulp_deinit(struct bnxt *bp)
 	ulp_session_deinit(session);
 
 	rte_free(bp->ulp_ctx);
+
+	bp->ulp_ctx = NULL;
 }
 
 /* Function to set the Mark DB into the context */
