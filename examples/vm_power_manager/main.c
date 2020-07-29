@@ -206,6 +206,7 @@ parse_args(int argc, char **argv)
 			}
 			if (branch_ratio <= 0.0 || branch_ratio > 100.0) {
 				printf("invalid branch ratio specified\n");
+				free(oob_enable);
 				return -1;
 			}
 			for (i = 0; i < ci->core_count; i++) {
