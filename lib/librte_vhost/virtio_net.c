@@ -980,6 +980,7 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct batch_copy_elem *batch_copy = vq->batch_copy_elems;
 	struct virtio_net_hdr_mrg_rxbuf tmp_hdr, *hdr = NULL;
 	int error = 0;
+	uint64_t mapped_len;
 
 	uint32_t tlen = 0;
 	int tvec_idx = 0;
@@ -1072,24 +1073,31 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 		cpy_len = RTE_MIN(buf_avail, mbuf_avail);
 
-		if (unlikely(cpy_len >= cpy_threshold)) {
-			hpa = (void *)(uintptr_t)gpa_to_hpa(dev,
-					buf_iova + buf_offset, cpy_len);
+		while (unlikely(cpy_len && cpy_len >= cpy_threshold)) {
+			hpa = (void *)(uintptr_t)gpa_to_first_hpa(dev,
+					buf_iova + buf_offset,
+					cpy_len, &mapped_len);
 
-			if (unlikely(!hpa)) {
-				error = -1;
-				goto out;
-			}
+			if (unlikely(!hpa || mapped_len < cpy_threshold))
+				break;
 
 			async_fill_vec(src_iovec + tvec_idx,
 				(void *)(uintptr_t)rte_pktmbuf_iova_offset(m,
-						mbuf_offset), cpy_len);
+				mbuf_offset), (size_t)mapped_len);
 
-			async_fill_vec(dst_iovec + tvec_idx, hpa, cpy_len);
+			async_fill_vec(dst_iovec + tvec_idx,
+					hpa, (size_t)mapped_len);
 
-			tlen += cpy_len;
+			tlen += (uint32_t)mapped_len;
+			cpy_len -= (uint32_t)mapped_len;
+			mbuf_avail  -= (uint32_t)mapped_len;
+			mbuf_offset += (uint32_t)mapped_len;
+			buf_avail  -= (uint32_t)mapped_len;
+			buf_offset += (uint32_t)mapped_len;
 			tvec_idx++;
-		} else {
+		}
+
+		if (likely(cpy_len)) {
 			if (unlikely(vq->batch_copy_nb_elems >= vq->size)) {
 				rte_memcpy(
 				(void *)((uintptr_t)(buf_addr + buf_offset)),
@@ -1110,12 +1118,13 @@ async_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 					cpy_len;
 				vq->batch_copy_nb_elems++;
 			}
+
+			mbuf_avail  -= cpy_len;
+			mbuf_offset += cpy_len;
+			buf_avail  -= cpy_len;
+			buf_offset += cpy_len;
 		}
 
-		mbuf_avail  -= cpy_len;
-		mbuf_offset += cpy_len;
-		buf_avail  -= cpy_len;
-		buf_offset += cpy_len;
 	}
 
 out:

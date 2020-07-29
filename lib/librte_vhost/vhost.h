@@ -619,6 +619,56 @@ gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
 	return 0;
 }
 
+static __rte_always_inline rte_iova_t
+gpa_to_first_hpa(struct virtio_net *dev, uint64_t gpa,
+	uint64_t gpa_size, uint64_t *hpa_size)
+{
+	uint32_t i;
+	struct guest_page *page;
+	struct guest_page key;
+
+	*hpa_size = gpa_size;
+	if (dev->nr_guest_pages >= VHOST_BINARY_SEARCH_THRESH) {
+		key.guest_phys_addr = gpa & ~(dev->guest_pages[0].size - 1);
+		page = bsearch(&key, dev->guest_pages, dev->nr_guest_pages,
+			       sizeof(struct guest_page), guest_page_addrcmp);
+		if (page) {
+			if (gpa + gpa_size <=
+					page->guest_phys_addr + page->size) {
+				return gpa - page->guest_phys_addr +
+					page->host_phys_addr;
+			} else if (gpa < page->guest_phys_addr +
+						page->size) {
+				*hpa_size = page->guest_phys_addr +
+					page->size - gpa;
+				return gpa - page->guest_phys_addr +
+					page->host_phys_addr;
+			}
+		}
+	} else {
+		for (i = 0; i < dev->nr_guest_pages; i++) {
+			page = &dev->guest_pages[i];
+
+			if (gpa >= page->guest_phys_addr) {
+				if (gpa + gpa_size <=
+					page->guest_phys_addr + page->size) {
+					return gpa - page->guest_phys_addr +
+						page->host_phys_addr;
+				} else if (gpa < page->guest_phys_addr +
+							page->size) {
+					*hpa_size = page->guest_phys_addr +
+						page->size - gpa;
+					return gpa - page->guest_phys_addr +
+						page->host_phys_addr;
+				}
+			}
+		}
+	}
+
+	*hpa_size = 0;
+	return 0;
+}
+
 static __rte_always_inline uint64_t
 hva_to_gpa(struct virtio_net *dev, uint64_t vva, uint64_t len)
 {
