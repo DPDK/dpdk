@@ -145,10 +145,7 @@ send_doorbell(struct mlx5dv_devx_uar *uar, struct mlx5_regex_sq *sq)
 
 static inline int
 can_send(struct mlx5_regex_sq *sq) {
-	return unlikely(sq->ci > sq->pi) ?
-			MLX5_REGEX_MAX_WQE_INDEX + sq->pi - sq->ci <
-			sq_size_get(sq) :
-			sq->pi - sq->ci < sq_size_get(sq);
+	return ((uint16_t)(sq->pi - sq->ci) < sq_size_get(sq));
 }
 
 static inline uint32_t
