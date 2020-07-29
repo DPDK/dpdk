@@ -311,6 +311,12 @@ Deprecation Notices
   in "rte_sched.h". These changes are aligned to improvements suggested in the
   RFC https://mails.dpdk.org/archives/dev/2018-November/120035.html.
 
+* sched: To allow dynamic configuration of the subport bandwidth profile,
+  changes will be made to data structures ``rte_sched_subport_params``,
+  ``rte_sched_port_params`` and new data structure, API functions will be
+  defined in ``rte_sched.h``. These changes are aligned as suggested in the
+  RFC https://mails.dpdk.org/archives/dev/2020-July/175161.html
+
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
 
