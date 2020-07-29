@@ -147,6 +147,23 @@
 #define BNXT_CMPL_AGGR_DMA_TMR_DURING_INT	50
 #define BNXT_NUM_CMPL_DMA_AGGR_DURING_INT	12
 
+#define	BNXT_DEFAULT_VNIC_STATE_MASK			\
+	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_MASK
+#define	BNXT_DEFAULT_VNIC_STATE_SFT			\
+	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_SFT
+#define	BNXT_DEFAULT_VNIC_ALLOC				\
+	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_DEF_VNIC_ALLOC
+#define	BNXT_DEFAULT_VNIC_FREE				\
+	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_DEF_VNIC_STATE_DEF_VNIC_FREE
+#define	BNXT_DEFAULT_VNIC_CHANGE_PF_ID_MASK		\
+	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_PF_ID_MASK
+#define	BNXT_DEFAULT_VNIC_CHANGE_PF_ID_SFT		\
+	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_PF_ID_SFT
+#define	BNXT_DEFAULT_VNIC_CHANGE_VF_ID_MASK		\
+	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_VF_ID_MASK
+#define	BNXT_DEFAULT_VNIC_CHANGE_VF_ID_SFT		\
+	HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_VF_ID_SFT
+
 struct bnxt_led_info {
 	uint8_t	     num_leds;
 	uint8_t      led_id;
@@ -498,6 +515,8 @@ struct bnxt_mark_info {
 struct bnxt_rep_info {
 	struct rte_eth_dev	*vfr_eth_dev;
 	pthread_mutex_t		vfr_lock;
+	pthread_mutex_t		vfr_start_lock;
+	bool			conduit_valid;
 };
 
 /* address space location of register */
@@ -796,6 +815,7 @@ struct bnxt_vf_representor {
 	uint16_t		switch_domain_id;
 	uint16_t		vf_id;
 	uint16_t		fw_fid;
+#define	BNXT_DFLT_VNIC_ID_INVALID	0xFFFF
 	uint16_t		dflt_vnic_id;
 	uint16_t		svif;
 	uint16_t		vfr_tx_cfa_action;
@@ -884,6 +904,7 @@ uint16_t bnxt_get_phy_port_id(uint16_t port);
 uint16_t bnxt_get_vport(uint16_t port);
 enum bnxt_ulp_intf_type
 bnxt_get_interface_type(uint16_t port);
+int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev);
 
 void bnxt_cancel_fc_thread(struct bnxt *bp);
 void bnxt_flow_cnt_alarm_cb(void *arg);

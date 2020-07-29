@@ -46,6 +46,54 @@ void bnxt_wait_for_device_shutdown(struct bnxt *bp)
 	} while (timeout);
 }
 
+static void
+bnxt_process_default_vnic_change(struct bnxt *bp,
+				 struct hwrm_async_event_cmpl *async_cmp)
+{
+	uint16_t fid, vnic_state, parent_id, vf_fid, vf_id;
+	struct bnxt_vf_representor *vf_rep_bp;
+	struct rte_eth_dev *eth_dev;
+	bool vfr_found = false;
+	uint32_t event_data;
+
+	if (!BNXT_TRUFLOW_EN(bp))
+		return;
+
+	PMD_DRV_LOG(INFO, "Default vnic change async event received\n");
+	event_data = rte_le_to_cpu_32(async_cmp->event_data1);
+
+	vnic_state = (event_data & BNXT_DEFAULT_VNIC_STATE_MASK) >>
+			BNXT_DEFAULT_VNIC_STATE_SFT;
+	if (vnic_state != BNXT_DEFAULT_VNIC_ALLOC)
+		return;
+
+	parent_id = (event_data & BNXT_DEFAULT_VNIC_CHANGE_PF_ID_MASK) >>
+			BNXT_DEFAULT_VNIC_CHANGE_PF_ID_SFT;
+	fid = BNXT_PF(bp) ? bp->fw_fid : bp->parent->fid;
+	if (parent_id != fid || !bp->rep_info)
+		return;
+
+	vf_fid = (event_data & BNXT_DEFAULT_VNIC_CHANGE_VF_ID_MASK) >>
+			BNXT_DEFAULT_VNIC_CHANGE_VF_ID_SFT;
+	PMD_DRV_LOG(INFO, "async event received vf_id 0x%x\n", vf_fid);
+
+	for (vf_id = 0; vf_id < BNXT_MAX_VF_REPS; vf_id++) {
+		eth_dev = bp->rep_info[vf_id].vfr_eth_dev;
+		if (!eth_dev)
+			continue;
+		vf_rep_bp = eth_dev->data->dev_private;
+		if (vf_rep_bp &&
+		    vf_rep_bp->fw_fid == vf_fid) {
+			vfr_found = true;
+			break;
+		}
+	}
+	if (!vfr_found)
+		return;
+
+	bnxt_vf_rep_dev_start_op(eth_dev);
+}
+
 /*
  * Async event handling
  */
@@ -143,6 +191,9 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		PMD_DRV_LOG(INFO, "DNC event: evt_data1 %#x evt_data2 %#x\n",
 			    rte_le_to_cpu_32(async_cmp->event_data1),
 			    rte_le_to_cpu_32(async_cmp->event_data2));
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE:
+		bnxt_process_default_vnic_change(bp, async_cmp);
 		break;
 	default:
 		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);

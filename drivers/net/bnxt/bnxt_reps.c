@@ -135,6 +135,32 @@ bnxt_vf_rep_tx_burst(void *tx_queue,
 	return rc;
 }
 
+static int
+bnxt_get_dflt_vnic_svif(struct bnxt *bp, struct bnxt_vf_representor *vf_rep_bp)
+{
+	struct bnxt_rep_info *rep_info;
+	int rc;
+
+	rc = bnxt_hwrm_get_dflt_vnic_svif(bp, vf_rep_bp->fw_fid,
+					  &vf_rep_bp->dflt_vnic_id,
+					  &vf_rep_bp->svif);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Failed to get default vnic id of VF\n");
+		vf_rep_bp->dflt_vnic_id = BNXT_DFLT_VNIC_ID_INVALID;
+		vf_rep_bp->svif = BNXT_SVIF_INVALID;
+	} else {
+		PMD_DRV_LOG(INFO, "vf_rep->dflt_vnic_id = %d\n",
+				vf_rep_bp->dflt_vnic_id);
+	}
+	if (vf_rep_bp->dflt_vnic_id != BNXT_DFLT_VNIC_ID_INVALID &&
+	    vf_rep_bp->svif != BNXT_SVIF_INVALID) {
+		rep_info = &bp->rep_info[vf_rep_bp->vf_id];
+		rep_info->conduit_valid = true;
+	}
+
+	return rc;
+}
+
 int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params)
 {
 	struct bnxt_vf_representor *vf_rep_bp = eth_dev->data->dev_private;
@@ -142,7 +168,6 @@ int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params)
 				 (struct bnxt_vf_representor *)params;
 	struct rte_eth_link *link;
 	struct bnxt *parent_bp;
-	int rc = 0;
 
 	vf_rep_bp->vf_id = rep_params->vf_id;
 	vf_rep_bp->switch_domain_id = rep_params->switch_domain_id;
@@ -172,17 +197,6 @@ int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params)
 	eth_dev->data->dev_link.link_status = link->link_status;
 	eth_dev->data->dev_link.link_autoneg = link->link_autoneg;
 
-	vf_rep_bp->fw_fid = rep_params->vf_id + parent_bp->first_vf_id;
-	PMD_DRV_LOG(INFO, "vf_rep->fw_fid = %d\n", vf_rep_bp->fw_fid);
-	rc = bnxt_hwrm_get_dflt_vnic_svif(parent_bp, vf_rep_bp->fw_fid,
-					  &vf_rep_bp->dflt_vnic_id,
-					  &vf_rep_bp->svif);
-	if (rc)
-		PMD_DRV_LOG(ERR, "Failed to get default vnic id of VF\n");
-	else
-		PMD_DRV_LOG(INFO, "vf_rep->dflt_vnic_id = %d\n",
-			    vf_rep_bp->dflt_vnic_id);
-
 	PMD_DRV_LOG(INFO, "calling bnxt_print_link_info\n");
 	bnxt_print_link_info(eth_dev);
 
@@ -193,6 +207,9 @@ int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params)
 	PMD_DRV_LOG(INFO,
 		    "Switch domain id %d: Representor Device %d init done\n",
 		    vf_rep_bp->switch_domain_id, vf_rep_bp->vf_id);
+
+	vf_rep_bp->fw_fid = rep_params->vf_id + parent_bp->first_vf_id;
+	PMD_DRV_LOG(INFO, "vf_rep->fw_fid = %d\n", vf_rep_bp->fw_fid);
 
 	return 0;
 }
@@ -369,21 +386,36 @@ static void bnxt_vf_rep_free_rx_mbufs(struct bnxt_vf_representor *rep_bp)
 int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt_vf_representor *rep_bp = eth_dev->data->dev_private;
+	struct bnxt_rep_info *rep_info;
+	struct bnxt *parent_bp;
 	int rc;
 
+	parent_bp = rep_bp->parent_dev->data->dev_private;
+	rep_info = &parent_bp->rep_info[rep_bp->vf_id];
+
+	pthread_mutex_lock(&rep_info->vfr_start_lock);
+	if (rep_info->conduit_valid) {
+		pthread_mutex_unlock(&rep_info->vfr_start_lock);
+		return 0;
+	}
+	rc = bnxt_get_dflt_vnic_svif(parent_bp, rep_bp);
+	if (rc || !rep_info->conduit_valid) {
+		pthread_mutex_unlock(&rep_info->vfr_start_lock);
+		return rc;
+	}
+	pthread_mutex_unlock(&rep_info->vfr_start_lock);
+
 	rc = bnxt_vfr_alloc(eth_dev);
-
-	if (!rc) {
-		eth_dev->rx_pkt_burst = &bnxt_vf_rep_rx_burst;
-		eth_dev->tx_pkt_burst = &bnxt_vf_rep_tx_burst;
-
-		bnxt_vf_rep_link_update_op(eth_dev, 1);
-	} else {
+	if (rc) {
 		eth_dev->data->dev_link.link_status = 0;
 		bnxt_vf_rep_free_rx_mbufs(rep_bp);
+		return rc;
 	}
+	eth_dev->rx_pkt_burst = &bnxt_vf_rep_rx_burst;
+	eth_dev->tx_pkt_burst = &bnxt_vf_rep_tx_burst;
+	bnxt_vf_rep_link_update_op(eth_dev, 1);
 
-	return rc;
+	return 0;
 }
 
 static int bnxt_tf_vfr_free(struct bnxt_vf_representor *vfr)
