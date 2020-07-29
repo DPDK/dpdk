@@ -1067,9 +1067,10 @@ err_secondary:
 	if (config->devx) {
 		uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
 
-		err = mlx5_devx_cmd_register_read
-			(sh->ctx, MLX5_REGISTER_ID_MTUTC, 0,
-			reg, MLX5_ST_SZ_DW(register_mtutc));
+		err = config->hca_attr.access_register_user ?
+			mlx5_devx_cmd_register_read
+				(sh->ctx, MLX5_REGISTER_ID_MTUTC, 0,
+				reg, MLX5_ST_SZ_DW(register_mtutc)) : ENOTSUP;
 		if (!err) {
 			uint32_t ts_mode;
 

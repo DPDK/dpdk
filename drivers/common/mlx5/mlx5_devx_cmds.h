@@ -93,6 +93,7 @@ struct mlx5_hca_attr {
 	uint32_t vhca_id:16;
 	uint32_t relaxed_ordering_write:1;
 	uint32_t relaxed_ordering_read:1;
+	uint32_t access_register_user:1;
 	uint32_t wqe_index_ignore:1;
 	uint32_t cross_channel:1;
 	uint32_t non_wire_sq:1; /* SQ with non-wire ops is supported. */

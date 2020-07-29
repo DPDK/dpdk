@@ -688,6 +688,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			relaxed_ordering_write);
 	attr->relaxed_ordering_read = MLX5_GET(cmd_hca_cap, hcattr,
 			relaxed_ordering_read);
+	attr->access_register_user = MLX5_GET(cmd_hca_cap, hcattr,
+			access_register_user);
 	attr->eth_net_offloads = MLX5_GET(cmd_hca_cap, hcattr,
 					  eth_net_offloads);
 	attr->eth_virt = MLX5_GET(cmd_hca_cap, hcattr, eth_virt);
