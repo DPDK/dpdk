@@ -2371,6 +2371,28 @@ ice_calc_pkt_desc(struct rte_mbuf *tx_pkt)
 	return count;
 }
 
+/* Calculate TCP header length for PKT_TX_TCP_CKSUM if not provided */
+static inline uint16_t
+ice_calc_pkt_tcp_hdr(struct rte_mbuf *tx_pkt, union ice_tx_offload tx_offload)
+{
+	uint16_t tcpoff = tx_offload.l2_len + tx_offload.l3_len;
+	const struct rte_tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr _tcp_hdr;
+
+	if (tcpoff + sizeof(struct rte_tcp_hdr) < tx_pkt->data_len) {
+		tcp_hdr = rte_pktmbuf_mtod_offset(tx_pkt, struct rte_tcp_hdr *,
+						  tcpoff);
+
+		return (tcp_hdr->data_off & 0xf0) >> 2;
+	}
+
+	tcp_hdr = rte_pktmbuf_read(tx_pkt, tcpoff, sizeof(_tcp_hdr), &_tcp_hdr);
+	if (tcp_hdr)
+		return (tcp_hdr->data_off & 0xf0) >> 2;
+	else
+		return 0;
+}
+
 uint16_t
 ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -2468,6 +2490,11 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Enable checksum offloading */
 		if (ol_flags & ICE_TX_CKSUM_OFFLOAD_MASK) {
+			if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM &&
+			    !tx_offload.l4_len)
+				tx_offload.l4_len =
+				     ice_calc_pkt_tcp_hdr(tx_pkt, tx_offload);
+
 			ice_txd_enable_checksum(ol_flags, &td_cmd,
 						&td_offset, tx_offload);
 		}
