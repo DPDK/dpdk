@@ -51,6 +51,9 @@
 		} \
 } while (0)
 
+/* macros used for rounding frequency to nearest 100000 */
+#define FREQ_ROUNDING_DELTA 50000
+#define ROUND_FREQ_TO_N_100000 100000
 
 #define POWER_CONVERT_TO_DECIMAL 10
 #define BUS_FREQ     100000
@@ -531,6 +534,57 @@ out:
 	return ret;
 }
 
+static int
+power_get_cur_idx(struct pstate_power_info *pi)
+{
+	FILE *f_cur;
+	int ret = -1;
+	char *p_cur;
+	char buf_cur[BUFSIZ];
+	char fullpath_cur[PATH_MAX];
+	char *s_cur;
+	uint32_t sys_cur_freq = 0;
+	unsigned int i;
+
+	snprintf(fullpath_cur, sizeof(fullpath_cur),
+			POWER_SYSFILE_CUR_FREQ,
+			pi->lcore_id);
+	f_cur = fopen(fullpath_cur, "r");
+	FOPEN_OR_ERR_RET(f_cur, ret);
+
+	/* initialize the cur_idx to matching current frequency freq index */
+	s_cur = fgets(buf_cur, sizeof(buf_cur), f_cur);
+	FOPS_OR_NULL_GOTO(s_cur, fail);
+
+	p_cur = strchr(buf_cur, '\n');
+	if (p_cur != NULL)
+		*p_cur = 0;
+	sys_cur_freq = strtoul(buf_cur, &p_cur, POWER_CONVERT_TO_DECIMAL);
+
+	/* convert the frequency to nearest 100000 value
+	 * Ex: if sys_cur_freq=1396789 then freq_conv=1400000
+	 * Ex: if sys_cur_freq=800030 then freq_conv=800000
+	 * Ex: if sys_cur_freq=800030 then freq_conv=800000
+	 */
+	unsigned int freq_conv = 0;
+	freq_conv = (sys_cur_freq + FREQ_ROUNDING_DELTA)
+				/ ROUND_FREQ_TO_N_100000;
+	freq_conv = freq_conv * ROUND_FREQ_TO_N_100000;
+
+	for (i = 0; i < pi->nb_freqs; i++) {
+		if (freq_conv == pi->freqs[i]) {
+			pi->curr_idx = i;
+			break;
+		}
+	}
+
+	fclose(f_cur);
+	return 0;
+fail:
+	fclose(f_cur);
+	return ret;
+}
+
 int
 power_pstate_cpufreq_check_supported(void)
 {
@@ -586,6 +640,11 @@ power_pstate_cpufreq_init(unsigned int lcore_id)
 		goto fail;
 	}
 
+	if (power_get_cur_idx(pi) < 0) {
+		RTE_LOG(ERR, POWER, "Cannot get current frequency "
+				"index of lcore %u\n", lcore_id);
+		goto fail;
+	}
 
 	/* Set freq to max by default */
 	if (power_pstate_cpufreq_freq_max(lcore_id) < 0) {
