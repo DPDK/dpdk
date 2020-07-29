@@ -55,9 +55,12 @@ RTE_DEFINE_PER_LCORE(uint8_t, _ip_var); /**< IP address variation */
 static struct rte_udp_hdr pkt_udp_hdr; /**< UDP header of tx packets. */
 RTE_DEFINE_PER_LCORE(uint64_t, timestamp_qskew);
 					/**< Timestamp offset per queue */
+RTE_DEFINE_PER_LCORE(uint32_t, timestamp_idone); /**< Timestamp init done. */
+
 static uint64_t timestamp_mask; /**< Timestamp dynamic flag mask */
 static int32_t timestamp_off; /**< Timestamp dynamic field offset */
 static bool timestamp_enable; /**< Timestamp enable */
+static uint32_t timestamp_init_req; /**< Timestamp initialization request. */
 static uint64_t timestamp_initial[RTE_MAX_ETHPORTS];
 
 static void
@@ -229,7 +232,8 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 			rte_be64_t ts;
 		} timestamp_mark;
 
-		if (unlikely(!skew)) {
+		if (unlikely(timestamp_init_req !=
+				RTE_PER_LCORE(timestamp_idone))) {
 			struct rte_eth_dev *dev = &rte_eth_devices[fs->tx_port];
 			unsigned int txqs_n = dev->data->nb_tx_queues;
 			uint64_t phase = tx_pkt_times_inter * fs->tx_queue /
@@ -241,6 +245,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 			skew = timestamp_initial[fs->tx_port] +
 			       tx_pkt_times_inter + phase;
 			RTE_PER_LCORE(timestamp_qskew) = skew;
+			RTE_PER_LCORE(timestamp_idone) = timestamp_init_req;
 		}
 		timestamp_mark.pkt_idx = rte_cpu_to_be_16(idx);
 		timestamp_mark.queue_idx = rte_cpu_to_be_16(fs->tx_queue);
@@ -426,6 +431,10 @@ tx_only_begin(portid_t pi)
 			   timestamp_mask &&
 			   timestamp_off >= 0 &&
 			   !rte_eth_read_clock(pi, &timestamp_initial[pi]);
+	if (timestamp_enable)
+		timestamp_init_req++;
+	/* Make sure all settings are visible on forwarding cores.*/
+	rte_wmb();
 }
 
 struct fwd_engine tx_only_engine = {
