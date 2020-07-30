@@ -755,7 +755,7 @@ test_device_configure_invalid_dev_id(void)
 			"Need at least %d devices for test", 1);
 
 	/* valid dev_id values */
-	dev_id = ts_params->valid_devs[ts_params->valid_dev_count - 1];
+	dev_id = ts_params->valid_devs[0];
 
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(dev_id);
