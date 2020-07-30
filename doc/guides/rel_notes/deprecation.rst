@@ -187,6 +187,13 @@ Deprecation Notices
 * pmd_dpaa: The API ``rte_pmd_dpaa_set_tx_loopback`` will have extended
   ``port_id`` definition from ``uint8_t`` to ``uint16_t``.
 
+* security: The API ``rte_security_session_create`` takes only single mempool
+  for session and session private data. So the application need to create
+  mempool for twice the number of sessions needed and will also lead to
+  wastage of memory as session private data need more memory compared to session.
+  Hence the API will be modified to take two mempool pointers - one for session
+  and one for private data.
+
 * cryptodev: ``RTE_CRYPTO_AEAD_LIST_END`` from ``enum rte_crypto_aead_algorithm``,
   ``RTE_CRYPTO_CIPHER_LIST_END`` from ``enum rte_crypto_cipher_algorithm`` and
   ``RTE_CRYPTO_AUTH_LIST_END`` from ``enum rte_crypto_auth_algorithm``
