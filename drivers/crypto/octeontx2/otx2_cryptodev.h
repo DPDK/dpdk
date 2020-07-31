@@ -15,6 +15,7 @@
 
 #define OTX2_CPT_MAX_LFS		64
 #define OTX2_CPT_MAX_QUEUES_PER_VF	64
+#define OTX2_CPT_PMD_VERSION		3
 
 /**
  * Device private data
