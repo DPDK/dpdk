@@ -1242,6 +1242,8 @@ struct cpt_rd_wr_reg_msg {
 	uint64_t __otx2_io *ret_val;
 	uint64_t __otx2_io val;
 	uint8_t __otx2_io is_write;
+	/* BLKADDR_CPT0/BLKADDR_CPT1 or 0 for BLKADDR_CPT0 */
+	uint8_t __otx2_io blkaddr;
 };
 
 struct cpt_set_crypto_grp_req_msg {
@@ -1253,11 +1255,14 @@ struct cpt_lf_alloc_req_msg {
 	struct mbox_msghdr hdr;
 	uint16_t __otx2_io nix_pf_func;
 	uint16_t __otx2_io sso_pf_func;
+	uint16_t __otx2_io eng_grpmask;
+	/* BLKADDR_CPT0/BLKADDR_CPT1 or 0 for BLKADDR_CPT0 */
+	uint8_t __otx2_io blkaddr;
 };
 
 struct cpt_lf_alloc_rsp_msg {
 	struct mbox_msghdr hdr;
-	uint8_t __otx2_io crypto_eng_grp;
+	uint16_t __otx2_io eng_grpmsk;
 };
 
 #define CPT_INLINE_INBOUND	0
