@@ -265,6 +265,20 @@ LIST_HEAD(mlx5_hlist_head, mlx5_hlist_entry);
 /** Type of function that is used to handle the data before freeing. */
 typedef void (*mlx5_hlist_destroy_callback_fn)(void *p, void *ctx);
 
+/**
+ * Type of function for user defined matching.
+ *
+ * @param entry
+ *   The entry in the list.
+ * @param ctx
+ *   The pointer to new entry context.
+ *
+ * @return
+ *   0 if matching, -1 otherwise.
+ */
+typedef int (*mlx5_hlist_match_callback_fn)(struct mlx5_hlist_entry *entry,
+					     void *ctx);
+
 /** hash list table structure */
 struct mlx5_hlist {
 	char name[MLX5_HLIST_NAMESIZE]; /**< Name of the hash list. */
@@ -321,6 +335,49 @@ struct mlx5_hlist_entry *mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key);
  *   - -EEXIST if the entry is already inserted.
  */
 int mlx5_hlist_insert(struct mlx5_hlist *h, struct mlx5_hlist_entry *entry);
+
+/**
+ * Extended routine to search an entry matching the context with
+ * user defined match function.
+ *
+ * @param h
+ *   Pointer to the hast list table.
+ * @param key
+ *   Key for the searching entry.
+ * @param cb
+ *   Callback function to match the node with context.
+ * @param ctx
+ *   Common context parameter used by callback function.
+ *
+ * @return
+ *   Pointer of the hlist entry if found, NULL otherwise.
+ */
+struct mlx5_hlist_entry *mlx5_hlist_lookup_ex(struct mlx5_hlist *h,
+					      uint64_t key,
+					      mlx5_hlist_match_callback_fn cb,
+					      void *ctx);
+
+/**
+ * Extended routine to insert an entry to the list with key collisions.
+ *
+ * For the list have key collision, the extra user defined match function
+ * allows node with same key will be inserted.
+ *
+ * @param h
+ *   Pointer to the hast list table.
+ * @param entry
+ *   Entry to be inserted into the hash list table.
+ * @param cb
+ *   Callback function to match the node with context.
+ * @param ctx
+ *   Common context parameter used by callback function.
+ *
+ * @return
+ *   - zero for success.
+ *   - -EEXIST if the entry is already inserted.
+ */
+int mlx5_hlist_insert_ex(struct mlx5_hlist *h, struct mlx5_hlist_entry *entry,
+			 mlx5_hlist_match_callback_fn cb, void *ctx);
 
 /**
  * Remove an entry from the hash list table. User should guarantee the validity
