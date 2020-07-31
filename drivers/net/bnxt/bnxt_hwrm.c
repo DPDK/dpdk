@@ -711,8 +711,12 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		if (new_max_vfs != bp->pf->max_vfs) {
 			if (bp->pf->vf_info)
 				bnxt_hwrm_free_vf_info(bp);
-			bp->pf->vf_info = rte_malloc("bnxt_vf_info",
+			bp->pf->vf_info = rte_zmalloc("bnxt_vf_info",
 			    sizeof(bp->pf->vf_info[0]) * new_max_vfs, 0);
+			if (bp->pf->vf_info == NULL) {
+				PMD_DRV_LOG(ERR, "Alloc vf info fail\n");
+				return -ENOMEM;
+			}
 			bp->pf->max_vfs = new_max_vfs;
 			for (i = 0; i < new_max_vfs; i++) {
 				bp->pf->vf_info[i].fid =
