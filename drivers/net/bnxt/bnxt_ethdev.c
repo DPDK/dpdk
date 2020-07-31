@@ -1360,8 +1360,7 @@ static void bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
 	bp->rx_mem_zone = NULL;
 
-	rte_free(bp->pf->vf_info);
-	bp->pf->vf_info = NULL;
+	bnxt_hwrm_free_vf_info(bp);
 
 	rte_free(bp->grp_info);
 	bp->grp_info = NULL;

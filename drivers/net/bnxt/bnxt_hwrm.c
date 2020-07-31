@@ -670,6 +670,20 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 	return 0;
 }
 
+void bnxt_hwrm_free_vf_info(struct bnxt *bp)
+{
+	int i;
+
+	for (i = 0; i < bp->pf->max_vfs; i++) {
+		rte_free(bp->pf->vf_info[i].vlan_table);
+		bp->pf->vf_info[i].vlan_table = NULL;
+		rte_free(bp->pf->vf_info[i].vlan_as_table);
+		bp->pf->vf_info[i].vlan_as_table = NULL;
+	}
+	rte_free(bp->pf->vf_info);
+	bp->pf->vf_info = NULL;
+}
+
 static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 {
 	int rc = 0;
@@ -696,7 +710,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		new_max_vfs = bp->pdev->max_vfs;
 		if (new_max_vfs != bp->pf->max_vfs) {
 			if (bp->pf->vf_info)
-				rte_free(bp->pf->vf_info);
+				bnxt_hwrm_free_vf_info(bp);
 			bp->pf->vf_info = rte_malloc("bnxt_vf_info",
 			    sizeof(bp->pf->vf_info[0]) * new_max_vfs, 0);
 			bp->pf->max_vfs = new_max_vfs;
