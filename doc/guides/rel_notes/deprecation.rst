@@ -92,6 +92,27 @@ Deprecation Notices
   will be removed as it gave no useful abstracted information to the
   applications and had no user (neither internal nor external).
 
+* mbuf: Some fields will be converted to dynamic API in DPDK 20.11
+  in order to reserve more space for the dynamic fields, as explained in
+  `this presentation <https://www.youtube.com/watch?v=Ttl6MlhmzWY>`_.
+  The following static fields will be moved as dynamic:
+
+  - ``timestamp``
+  - ``userdata`` / ``udata64``
+  - ``seqn``
+
+  As a consequence, the layout of the ``struct rte_mbuf`` will be re-arranged,
+  avoiding impact on vectorized implementation of the driver datapaths,
+  while evaluating performance gains of a better use of the first cache line.
+
+  The deprecated unioned fields ``buf_physaddr`` and ``refcnt_atomic``
+  (as explained below) will be removed in DPDK 20.11.
+
+* mbuf: ``refcnt_atomic`` member in structures ``rte_mbuf`` and
+  ``rte_mbuf_ext_shared_info`` is of type ``rte_atomic16_t``.
+  Due to adoption of C11 atomic builtins, the field ``refcnt_atomic``
+  will be replaced with ``refcnt`` of type ``uint16_t`` in DPDK 20.11.
+
 * ethdev: Split the ``struct eth_dev_ops`` struct to hide it as much as possible
   will be done in 20.11.
   Currently the ``struct eth_dev_ops`` struct is accessible by the application
@@ -176,12 +197,6 @@ Deprecation Notices
   changes will be made to macros, data structures and API functions defined
   in "rte_sched.h". These changes are aligned to improvements suggested in the
   RFC https://mails.dpdk.org/archives/dev/2018-November/120035.html.
-
-* mbuf: ``refcnt_atomic`` member in structures ``rte_mbuf`` and
-  ``rte_mbuf_ext_shared_info`` is of type ``rte_atomic16_t``. Due to adoption
-  of C11 atomic builtins it will be of type ``uint16_t``. ``refcnt_atomic``
-  will be removed in 20.11. It will be replaced with ``refcnt`` of type
-  ``uint16_t``.
 
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
