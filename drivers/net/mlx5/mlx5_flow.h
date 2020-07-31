@@ -427,7 +427,7 @@ struct mlx5_flow_dv_tag_resource {
 
 /* Modify resource structure */
 struct mlx5_flow_dv_modify_hdr_resource {
-	LIST_ENTRY(mlx5_flow_dv_modify_hdr_resource) next;
+	struct mlx5_hlist_entry entry;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
 	void *action;
@@ -437,6 +437,17 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	uint64_t flags; /**< Flags for RDMA API. */
 	struct mlx5_modification_cmd actions[];
 	/**< Modification actions. */
+};
+
+/* Modify resource key of the hash organization. */
+union mlx5_flow_modify_hdr_key {
+	struct {
+		uint32_t ft_type:8;	/**< Flow table type, Rx or Tx. */
+		uint32_t actions_num:5;	/**< Number of modification actions. */
+		uint32_t group:19;	/**< Flow group id. */
+		uint32_t cksum;		/**< Actions check sum. */
+	};
+	uint64_t v64;			/**< full 64bits value of key */
 };
 
 /* Jump action resource structure. */

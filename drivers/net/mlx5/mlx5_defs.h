@@ -187,6 +187,9 @@
 #define MLX5_FLOW_MREG_HNAME "MARK_COPY_TABLE"
 #define MLX5_DEFAULT_COPY_ID UINT32_MAX
 
+/* Size of the simple hash table for header modify table. */
+#define MLX5_FLOW_HDR_MODIFY_HTABLE_SZ (1 << 16)
+
 /* Hairpin TX/RX queue configuration parameters. */
 #define MLX5_HAIRPIN_QUEUE_STRIDE 6
 #define MLX5_HAIRPIN_JUMBO_LOG_SIZE (14 + 2)

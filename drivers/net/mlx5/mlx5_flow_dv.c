@@ -3958,6 +3958,40 @@ flow_dv_validate_action_modify_ipv6_dscp(const uint64_t action_flags,
 }
 
 /**
+ * Match modify-header resource.
+ *
+ * @param entry
+ *   Pointer to exist resource entry object.
+ * @param ctx
+ *   Pointer to new modify-header resource.
+ *
+ * @return
+ *   0 on matching, -1 otherwise.
+ */
+static int
+flow_dv_modify_hdr_resource_match(struct mlx5_hlist_entry *entry, void *ctx)
+{
+	struct mlx5_flow_dv_modify_hdr_resource *resource;
+	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
+	uint32_t actions_len;
+
+	resource = (struct mlx5_flow_dv_modify_hdr_resource *)ctx;
+	cache_resource = container_of(entry,
+				      struct mlx5_flow_dv_modify_hdr_resource,
+				      entry);
+	actions_len = resource->actions_num * sizeof(resource->actions[0]);
+	if (resource->entry.key == cache_resource->entry.key &&
+	    resource->ft_type == cache_resource->ft_type &&
+	    resource->actions_num == cache_resource->actions_num &&
+	    resource->flags == cache_resource->flags &&
+	    !memcmp((const void *)resource->actions,
+		    (const void *)cache_resource->actions,
+		    actions_len))
+		return 0;
+	return -1;
+}
+
+/**
  * Find existing modify-header resource or create and register a new one.
  *
  * @param dev[in, out]
@@ -3984,6 +4018,15 @@ flow_dv_modify_hdr_resource_register
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
 	struct mlx5dv_dr_domain *ns;
 	uint32_t actions_len;
+	struct mlx5_hlist_entry *entry;
+	union mlx5_flow_modify_hdr_key hdr_mod_key = {
+		{
+			.ft_type = resource->ft_type,
+			.actions_num = resource->actions_num,
+			.group = dev_flow->dv.group,
+			.cksum = 0,
+		}
+	};
 	int ret;
 
 	resource->flags = dev_flow->dv.group ? 0 :
@@ -4001,20 +4044,22 @@ flow_dv_modify_hdr_resource_register
 		ns = sh->rx_domain;
 	/* Lookup a matching resource from cache. */
 	actions_len = resource->actions_num * sizeof(resource->actions[0]);
-	LIST_FOREACH(cache_resource, &sh->modify_cmds, next) {
-		if (resource->ft_type == cache_resource->ft_type &&
-		    resource->actions_num == cache_resource->actions_num &&
-		    resource->flags == cache_resource->flags &&
-		    !memcmp((const void *)resource->actions,
-			    (const void *)cache_resource->actions,
-			    actions_len)) {
-			DRV_LOG(DEBUG, "modify-header resource %p: refcnt %d++",
-				(void *)cache_resource,
-				rte_atomic32_read(&cache_resource->refcnt));
-			rte_atomic32_inc(&cache_resource->refcnt);
-			dev_flow->handle->dvh.modify_hdr = cache_resource;
-			return 0;
-		}
+	hdr_mod_key.cksum = __rte_raw_cksum(resource->actions, actions_len, 0);
+	resource->entry.key = hdr_mod_key.v64;
+	entry = mlx5_hlist_lookup_ex(sh->modify_cmds, resource->entry.key,
+				     flow_dv_modify_hdr_resource_match,
+				     (void *)resource);
+	if (entry) {
+		cache_resource = container_of(entry,
+					struct mlx5_flow_dv_modify_hdr_resource,
+					entry);
+		DRV_LOG(DEBUG, "modify-header resource %p: refcnt %d++",
+			(void *)cache_resource,
+			rte_atomic32_read(&cache_resource->refcnt));
+		rte_atomic32_inc(&cache_resource->refcnt);
+		dev_flow->handle->dvh.modify_hdr = cache_resource;
+		return 0;
+
 	}
 	/* Register new modify-header resource. */
 	cache_resource = mlx5_malloc(MLX5_MEM_ZERO,
@@ -4037,7 +4082,16 @@ flow_dv_modify_hdr_resource_register
 	}
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
-	LIST_INSERT_HEAD(&sh->modify_cmds, cache_resource, next);
+	if (mlx5_hlist_insert_ex(sh->modify_cmds, &cache_resource->entry,
+				 flow_dv_modify_hdr_resource_match,
+				 (void *)cache_resource)) {
+		claim_zero(mlx5_flow_os_destroy_flow_action
+						(cache_resource->action));
+		mlx5_free(cache_resource);
+		return rte_flow_error_set(error, EEXIST,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "action exist");
+	}
 	dev_flow->handle->dvh.modify_hdr = cache_resource;
 	DRV_LOG(DEBUG, "new modify-header resource %p: refcnt %d++",
 		(void *)cache_resource,
@@ -9122,6 +9176,8 @@ flow_dv_default_miss_resource_release(struct rte_eth_dev *dev)
 /**
  * Release a modify-header resource.
  *
+ * @param dev
+ *   Pointer to Ethernet device.
  * @param handle
  *   Pointer to mlx5_flow_handle.
  *
@@ -9129,8 +9185,10 @@ flow_dv_default_miss_resource_release(struct rte_eth_dev *dev)
  *   1 while a reference on it exists, 0 when freed.
  */
 static int
-flow_dv_modify_hdr_resource_release(struct mlx5_flow_handle *handle)
+flow_dv_modify_hdr_resource_release(struct rte_eth_dev *dev,
+				    struct mlx5_flow_handle *handle)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource =
 							handle->dvh.modify_hdr;
 
@@ -9141,7 +9199,8 @@ flow_dv_modify_hdr_resource_release(struct mlx5_flow_handle *handle)
 	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
 		claim_zero(mlx5_flow_os_destroy_flow_action
 						(cache_resource->action));
-		LIST_REMOVE(cache_resource, next);
+		mlx5_hlist_remove(priv->sh->modify_cmds,
+				  &cache_resource->entry);
 		mlx5_free(cache_resource);
 		DRV_LOG(DEBUG, "modify-header resource %p: removed",
 			(void *)cache_resource);
@@ -9351,7 +9410,7 @@ __flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		if (dev_handle->dvh.rix_encap_decap)
 			flow_dv_encap_decap_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.modify_hdr)
-			flow_dv_modify_hdr_resource_release(dev_handle);
+			flow_dv_modify_hdr_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.rix_push_vlan)
 			flow_dv_push_vlan_action_resource_release(dev,
 								  dev_handle);
