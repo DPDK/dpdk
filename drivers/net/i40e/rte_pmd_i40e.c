@@ -2169,7 +2169,6 @@ static int check_invalid_pkt_type(uint32_t pkt_type)
 	    tnl != RTE_PTYPE_TUNNEL_VXLAN &&
 	    tnl != RTE_PTYPE_TUNNEL_NVGRE &&
 	    tnl != RTE_PTYPE_TUNNEL_GENEVE &&
-	    tnl != RTE_PTYPE_TUNNEL_GRENAT &&
 	    tnl != RTE_PTYPE_TUNNEL_GTPC &&
 	    tnl != RTE_PTYPE_TUNNEL_GTPU &&
 	    tnl != RTE_PTYPE_TUNNEL_L2TP &&
