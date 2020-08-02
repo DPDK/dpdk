@@ -2935,7 +2935,8 @@ bond_ethdev_rss_reta_update(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	 /* Copy RETA table */
-	reta_count = reta_size / RTE_RETA_GROUP_SIZE;
+	reta_count = (reta_size + RTE_RETA_GROUP_SIZE - 1) /
+			RTE_RETA_GROUP_SIZE;
 
 	for (i = 0; i < reta_count; i++) {
 		internals->reta_conf[i].mask = reta_conf[i].mask;
