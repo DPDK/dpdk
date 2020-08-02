@@ -206,11 +206,13 @@ hn_chim_uninit(struct rte_eth_dev *dev)
 static uint32_t hn_chim_alloc(struct hn_data *hv)
 {
 	uint32_t index = NVS_CHIM_IDX_INVALID;
-	uint64_t slab;
+	uint64_t slab = 0;
 
 	rte_spinlock_lock(&hv->chim_lock);
-	if (rte_bitmap_scan(hv->chim_bmap, &index, &slab))
+	if (rte_bitmap_scan(hv->chim_bmap, &index, &slab)) {
+		index += rte_bsf64(slab);
 		rte_bitmap_clear(hv->chim_bmap, index);
+	}
 	rte_spinlock_unlock(&hv->chim_lock);
 
 	return index;
