@@ -133,6 +133,7 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct mlx5_vdpa_priv *priv =
 		mlx5_vdpa_find_priv_resource_by_vdev(vdev);
+	int ret;
 
 	if (priv == NULL) {
 		DRV_LOG(ERR, "Invalid vDPA device: %s.", vdev->device->name);
@@ -142,7 +143,10 @@ mlx5_vdpa_set_vring_state(int vid, int vring, int state)
 		DRV_LOG(ERR, "Too big vring id: %d.", vring);
 		return -E2BIG;
 	}
-	return mlx5_vdpa_virtq_enable(priv, vring, state);
+	pthread_mutex_lock(&priv->vq_config_lock);
+	ret = mlx5_vdpa_virtq_enable(priv, vring, state);
+	pthread_mutex_unlock(&priv->vq_config_lock);
+	return ret;
 }
 
 static int
@@ -742,6 +746,7 @@ mlx5_vdpa_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	mlx5_vdpa_config_get(pci_dev->device.devargs, priv);
 	SLIST_INIT(&priv->mr_list);
+	pthread_mutex_init(&priv->vq_config_lock, NULL);
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
@@ -793,6 +798,7 @@ mlx5_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 			priv->var = NULL;
 		}
 		mlx5_glue->close_device(priv->ctx);
+		pthread_mutex_destroy(&priv->vq_config_lock);
 		rte_free(priv);
 	}
 	return 0;

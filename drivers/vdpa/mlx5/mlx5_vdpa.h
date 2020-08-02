@@ -120,6 +120,7 @@ enum {
 struct mlx5_vdpa_priv {
 	TAILQ_ENTRY(mlx5_vdpa_priv) next;
 	uint8_t configured;
+	pthread_mutex_t vq_config_lock;
 	uint64_t last_traffic_tic;
 	pthread_t timer_tid;
 	pthread_mutex_t timer_lock;

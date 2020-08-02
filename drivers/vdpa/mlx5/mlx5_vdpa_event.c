@@ -274,6 +274,7 @@ mlx5_vdpa_poll_handle(void *arg)
 								 priv->event_us;
 	while (1) {
 		max = 0;
+		pthread_mutex_lock(&priv->vq_config_lock);
 		for (i = 0; i < priv->nr_virtqs; i++) {
 			cq = &priv->virtqs[i].eqp.cq;
 			if (cq->cq && !cq->armed) {
@@ -297,6 +298,7 @@ mlx5_vdpa_poll_handle(void *arg)
 				DRV_LOG(DEBUG, "Device %s traffic was stopped.",
 					priv->vdev->device->name);
 				mlx5_vdpa_arm_all_cqs(priv);
+				pthread_mutex_unlock(&priv->vq_config_lock);
 				pthread_mutex_lock(&priv->timer_lock);
 				priv->timer_on = 0;
 				while (!priv->timer_on)
@@ -312,6 +314,7 @@ mlx5_vdpa_poll_handle(void *arg)
 		} else {
 			priv->last_traffic_tic = current_tic;
 		}
+		pthread_mutex_unlock(&priv->vq_config_lock);
 		mlx5_vdpa_timer_sleep(priv, max);
 	}
 	return NULL;
@@ -327,6 +330,7 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 		uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr) + 128];
 	} out;
 
+	pthread_mutex_lock(&priv->vq_config_lock);
 	while (mlx5_glue->devx_get_event(priv->eventc, &out.event_resp,
 					 sizeof(out.buf)) >=
 				       (ssize_t)sizeof(out.event_resp.cookie)) {
@@ -337,12 +341,15 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 		struct mlx5_vdpa_virtq *virtq = container_of(eqp,
 						   struct mlx5_vdpa_virtq, eqp);
 
+		if (!virtq->enable)
+			continue;
 		mlx5_vdpa_cq_poll(cq);
 		/* Notify guest for descs consuming. */
 		if (cq->callfd != -1)
 			eventfd_write(cq->callfd, (eventfd_t)1);
 		if (priv->event_mode == MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT) {
 			mlx5_vdpa_cq_arm(priv, cq);
+			pthread_mutex_unlock(&priv->vq_config_lock);
 			return;
 		}
 		/* Don't arm again - timer will take control. */
@@ -363,6 +370,7 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 		pthread_cond_signal(&priv->timer_cond);
 	}
 	pthread_mutex_unlock(&priv->timer_lock);
+	pthread_mutex_unlock(&priv->vq_config_lock);
 }
 
 int
