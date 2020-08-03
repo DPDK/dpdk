@@ -127,8 +127,7 @@ Deprecation Notices
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,
   HASH and L2_TUNNEL, is superseded by the generic flow API (rte_flow) in
   PMDs that implement the latter.
-  Target release for removal of the legacy API will be defined once most
-  PMDs have switched to rte_flow.
+  The legacy API will be removed in DPDK 20.11.
 
 * ethdev: Update API functions returning ``void`` to return ``int`` with
   negative errno values to indicate various error conditions (e.g.
