@@ -86,6 +86,7 @@ struct mlx5_vdpa_virtq {
 	uint16_t index;
 	uint16_t vq_size;
 	uint8_t notifier_state;
+	bool stopped;
 	struct mlx5_vdpa_priv *priv;
 	struct mlx5_devx_obj *virtq;
 	struct mlx5_devx_obj *counters;

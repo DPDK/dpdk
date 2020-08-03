@@ -72,8 +72,13 @@ mlx5_vdpa_virtq_unset(struct mlx5_vdpa_virtq *virtq)
 		}
 		virtq->intr_handle.fd = -1;
 	}
-	if (virtq->virtq)
+	if (virtq->virtq) {
+		ret = mlx5_vdpa_virtq_stop(virtq->priv, virtq->index);
+		if (ret)
+			DRV_LOG(WARNING, "Failed to stop virtq %d.",
+				virtq->index);
 		claim_zero(mlx5_devx_cmd_destroy(virtq->virtq));
+	}
 	virtq->virtq = NULL;
 	for (i = 0; i < RTE_DIM(virtq->umems); ++i) {
 		if (virtq->umems[i].obj)
@@ -135,10 +140,14 @@ mlx5_vdpa_virtq_stop(struct mlx5_vdpa_priv *priv, int index)
 {
 	struct mlx5_devx_virtq_attr attr = {0};
 	struct mlx5_vdpa_virtq *virtq = &priv->virtqs[index];
-	int ret = mlx5_vdpa_virtq_modify(virtq, 0);
+	int ret;
 
+	if (virtq->stopped)
+		return 0;
+	ret = mlx5_vdpa_virtq_modify(virtq, 0);
 	if (ret)
 		return -1;
+	virtq->stopped = true;
 	if (mlx5_devx_cmd_query_virtq(virtq->virtq, &attr)) {
 		DRV_LOG(ERR, "Failed to query virtq %d.", index);
 		return -1;
@@ -323,6 +332,7 @@ mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index)
 				virtq->intr_handle.fd, index);
 		}
 	}
+	virtq->stopped = false;
 	DRV_LOG(DEBUG, "vid %u virtq %u was created successfully.", priv->vid,
 		index);
 	return 0;
@@ -489,9 +499,6 @@ mlx5_vdpa_virtq_enable(struct mlx5_vdpa_priv *priv, int index, int enable)
 				DRV_LOG(WARNING, "Failed to disable steering "
 					"for virtq %d.", index);
 		}
-		ret = mlx5_vdpa_virtq_stop(priv, index);
-		if (ret)
-			DRV_LOG(WARNING, "Failed to stop virtq %d.", index);
 		mlx5_vdpa_virtq_unset(virtq);
 	}
 	if (enable) {
