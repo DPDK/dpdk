@@ -151,6 +151,19 @@ Deprecation Notices
   to one it means it represents IV, when is set to zero it means J0 is used
   directly, in this case 16 bytes of J0 need to be passed.
 
+* eventdev: Following structures will be modified to support DLB PMD
+  and future extensions:
+
+  - ``rte_event_dev_info``
+  - ``rte_event_dev_config``
+  - ``rte_event_port_conf``
+
+  Patches containing justification, documentation, and proposed modifications
+  can be found at:
+
+  - https://patches.dpdk.org/patch/71457/
+  - https://patches.dpdk.org/patch/71456/
+
 * rawdev: The rawdev APIs which take a device-specific structure as
   parameter directly, or indirectly via a "private" pointer inside another
   structure, will be modified to take an additional parameter of the
