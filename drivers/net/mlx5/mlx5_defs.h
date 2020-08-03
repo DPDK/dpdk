@@ -202,9 +202,7 @@
  * UAR base address if UAR was not the first object in the UAR page.
  * It caused the PMD failure and we should try to get another UAR
  * till we get the first one with non-NULL base address returned.
- * Should follow the rdma_core internal (not exported) definition
- * MLX5_NUM_NON_FP_BFREGS_PER_UAR.
  */
-#define MLX5_ALLOC_UAR_RETRY 2
+#define MLX5_ALLOC_UAR_RETRY 32
 
 #endif /* RTE_PMD_MLX5_DEFS_H_ */
