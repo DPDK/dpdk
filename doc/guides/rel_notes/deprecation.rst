@@ -184,6 +184,11 @@ Deprecation Notices
   or absence of a VLAN header following the current header, as proposed in RFC
   https://mails.dpdk.org/archives/dev/2020-August/177536.html.
 
+* ethdev: The ``struct rte_flow_item_ipv6`` struct will be modified to include
+  additional values, indicating existence or absence of IPv6 extension headers
+  following the IPv6 header, as proposed in RFC
+  https://mails.dpdk.org/archives/dev/2020-August/177257.html.
+
 * ethdev: Some internal APIs for driver usage are exported in the .map file.
   Now DPDK has ``__rte_internal`` marker so we can mark internal APIs and move
   them to the INTERNAL block in .map. Although these APIs are internal it will
