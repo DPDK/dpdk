@@ -252,6 +252,12 @@ Deprecation Notices
 * pmd_dpaa: The API ``rte_pmd_dpaa_set_tx_loopback`` will have extended
   ``port_id`` definition from ``uint8_t`` to ``uint16_t``.
 
+* vhost: Vhost-user dequeue zero-copy support will be removed in 20.11.
+  The only known user is OVS where the feature is still experimental,
+  and has not received any update for 2.5 years.
+  This feature faces reliability issues and is often conflicting with
+  new features being implemented.
+
 * security: The API ``rte_security_session_create`` takes only single mempool
   for session and session private data. So the application need to create
   mempool for twice the number of sessions needed and will also lead to
