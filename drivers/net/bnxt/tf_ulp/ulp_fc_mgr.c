@@ -339,7 +339,7 @@ ulp_fc_mgr_alarm_cb(void *arg)
 	struct bnxt_ulp_fc_info *ulp_fc_info;
 	struct bnxt_ulp_device_params *dparms;
 	struct tf *tfp;
-	uint32_t dev_id, hw_cntr_id = 0;
+	uint32_t dev_id, hw_cntr_id = 0, num_entries = 0;
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
 	if (!ulp_fc_info)
@@ -384,8 +384,9 @@ ulp_fc_mgr_alarm_cb(void *arg)
 			break;
 	}
 	*/
+	num_entries = dparms->flow_count_db_entries / 2;
 	for (i = 0; i < TF_DIR_MAX; i++) {
-		for (j = 0; j < ulp_fc_info->num_entries; j++) {
+		for (j = 0; j < num_entries; j++) {
 			if (!ulp_fc_info->sw_acc_tbl[i][j].valid)
 				continue;
 			hw_cntr_id = ulp_fc_info->sw_acc_tbl[i][j].hw_cntr_id;
@@ -551,7 +552,7 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 	struct ulp_flow_db_res_params params;
 	enum tf_dir dir;
 	uint32_t hw_cntr_id = 0, sw_cntr_idx = 0;
-	struct sw_acc_counter sw_acc_tbl_entry;
+	struct sw_acc_counter *sw_acc_tbl_entry;
 	bool found_cntr_resource = false;
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
@@ -584,13 +585,21 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 		hw_cntr_id = params.resource_hndl;
 		sw_cntr_idx = hw_cntr_id -
 				ulp_fc_info->shadow_hw_tbl[dir].start_idx;
-		sw_acc_tbl_entry = ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx];
+		sw_acc_tbl_entry = &ulp_fc_info->sw_acc_tbl[dir][sw_cntr_idx];
 		if (params.resource_sub_type ==
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_INT_COUNT) {
-			count->hits_set = 1;
-			count->bytes_set = 1;
-			count->hits = sw_acc_tbl_entry.pkt_count;
-			count->bytes = sw_acc_tbl_entry.byte_count;
+			pthread_mutex_lock(&ulp_fc_info->fc_lock);
+			if (sw_acc_tbl_entry->pkt_count) {
+				count->hits_set = 1;
+				count->bytes_set = 1;
+				count->hits = sw_acc_tbl_entry->pkt_count;
+				count->bytes = sw_acc_tbl_entry->byte_count;
+			}
+			if (count->reset) {
+				sw_acc_tbl_entry->pkt_count = 0;
+				sw_acc_tbl_entry->byte_count = 0;
+			}
+			pthread_mutex_unlock(&ulp_fc_info->fc_lock);
 		} else {
 			/* TBD: Handle External counters */
 			rc = -EINVAL;
