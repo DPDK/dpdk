@@ -74,6 +74,13 @@ Deprecation Notices
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
 
+* pci: The ``rte_kernel_driver`` enum defined in rte_dev.h will be made private
+  to the PCI subsystem as it is used only by the PCI bus driver and PCI
+  drivers.
+  The associated field ``kdrv`` in the ethdev ``rte_eth_dev_data`` structure
+  will be removed as it gave no useful abstracted information to the
+  applications and had no user (neither internal nor external).
+
 * ethdev: Split the ``struct eth_dev_ops`` struct to hide it as much as possible
   will be done in 20.11.
   Currently the ``struct eth_dev_ops`` struct is accessible by the application
