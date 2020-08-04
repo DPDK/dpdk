@@ -137,6 +137,12 @@ Deprecation Notices
   - ``rte_eth_dev_stop``
   - ``rte_eth_dev_close``
 
+* ethdev: The temporary flag RTE_ETH_DEV_CLOSE_REMOVE will be removed in 20.11.
+  As a consequence, the new behaviour introduced in 18.11 will be effective
+  for all drivers: generic port resources are freed on close operation.
+  Private resources are expected to be released in the ``dev_close`` callback.
+  More details in http://inbox.dpdk.org/dev/5248162.j6AOsuQRmx@thomas/
+
 * ethdev: New offload flags ``DEV_RX_OFFLOAD_FLOW_MARK`` will be added in 19.11.
   This will allow application to enable or disable PMDs from updating
   ``rte_mbuf::hash::fdir``.
