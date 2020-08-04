@@ -924,7 +924,6 @@ struct rte_eth_txmode {
 	 */
 	uint64_t offloads;
 
-	/* For i40e specifically */
 	uint16_t pvid;
 	__extension__
 	uint8_t hw_vlan_reject_tagged : 1,
@@ -2846,7 +2845,6 @@ int rte_eth_dev_vlan_filter(uint16_t port_id, uint16_t vlan_id, int on);
 
 /**
  * Enable/Disable hardware VLAN Strip by a rx queue of an Ethernet device.
- * 82599/X540/X550 can support VLAN stripping at the rx queue level
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -2868,8 +2866,7 @@ int rte_eth_dev_set_vlan_strip_on_queue(uint16_t port_id, uint16_t rx_queue_id,
 
 /**
  * Set the Outer VLAN Ether Type by an Ethernet device, it can be inserted to
- * the VLAN Header. This is a register setup available on some Intel NIC, not
- * but all, please check the data sheet for availability.
+ * the VLAN header.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -2888,12 +2885,7 @@ int rte_eth_dev_set_vlan_ether_type(uint16_t port_id,
 				    uint16_t tag_type);
 
 /**
- * Set VLAN offload configuration on an Ethernet device
- * Enable/Disable Extended VLAN by an Ethernet device, This is a register setup
- * available on some Intel NIC, not but all, please check the data sheet for
- * availability.
- * Enable/Disable VLAN Strip can be done on rx queue for certain NIC, but here
- * the configuration is applied on the port level.
+ * Set VLAN offload configuration on an Ethernet device.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
