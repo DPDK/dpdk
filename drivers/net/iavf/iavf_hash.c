@@ -3639,18 +3639,6 @@ struct virtchnl_proto_hdrs *iavf_hash_default_hdrs[] = {
 	&hdrs_hint_ipv6_udp,
 	&hdrs_hint_ipv6_tcp,
 	&hdrs_hint_ipv6_sctp,
-	&hdrs_hint_ipv4_gtpu_ip,
-	&hdrs_hint_ipv4_udp_gtpu_ip,
-	&hdrs_hint_ipv4_tcp_gtpu_ip,
-	&hdrs_hint_ipv4_gtpu_eh,
-	&hdrs_hint_ipv4_udp_gtpu_eh,
-	&hdrs_hint_ipv4_tcp_gtpu_eh,
-	&hdrs_hint_ipv6_gtpu_ip,
-	&hdrs_hint_ipv6_udp_gtpu_ip,
-	&hdrs_hint_ipv6_tcp_gtpu_ip,
-	&hdrs_hint_ipv6_gtpu_eh,
-	&hdrs_hint_ipv6_udp_gtpu_eh,
-	&hdrs_hint_ipv6_tcp_gtpu_eh,
 };
 
 static struct iavf_flow_engine iavf_hash_engine = {
@@ -3676,7 +3664,6 @@ iavf_hash_default_set(struct iavf_adapter *ad, bool add)
 {
 	struct virtchnl_rss_cfg *rss_cfg;
 	uint16_t i;
-	int ret;
 
 	rss_cfg = rte_zmalloc("iavf rss rule",
 			      sizeof(struct virtchnl_rss_cfg), 0);
@@ -3687,16 +3674,10 @@ iavf_hash_default_set(struct iavf_adapter *ad, bool add)
 		rss_cfg->proto_hdrs = *iavf_hash_default_hdrs[i];
 		rss_cfg->rss_algorithm = VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC;
 
-		ret = iavf_add_del_rss_cfg(ad, rss_cfg, add);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "fail to %s RSS configure",
-				    add ? "add" : "delete");
-			rte_free(rss_cfg);
-			return ret;
-		}
+		iavf_add_del_rss_cfg(ad, rss_cfg, add);
 	}
 
-	return ret;
+	return 0;
 }
 
 RTE_INIT(iavf_hash_engine_init)
