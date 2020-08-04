@@ -34,6 +34,9 @@ Deprecation Notices
   remove it from the externally visible ABI and allow it to be updated in the
   future.
 
+* eal: The ``rte_dev_event`` structure will be made private to the EAL as no
+  public API makes use of it.
+
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
   in DPDK. DPDK will adopt C11 atomic operations semantics and provide wrappers
