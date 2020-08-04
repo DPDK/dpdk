@@ -232,3 +232,8 @@ Deprecation Notices
   Python 2 support will be completely removed in 20.11.
   In 20.08, explicit deprecation warnings will be displayed when running
   scripts with Python 2.
+
+* dpdk-setup.sh: This old script relies on deprecated stuff, and especially
+  ``make``. Given environments are too much variables for such a simple script,
+  it will be removed in DPDK 20.11.
+  Some useful parts may be converted into specific scripts.
