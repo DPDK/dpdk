@@ -1354,12 +1354,13 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 	PMD_INIT_LOG(DEBUG, "features after negotiate = %" PRIx64,
 		hw->guest_features);
 
-	if (hw->modern) {
-		if (!vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
-			PMD_INIT_LOG(ERR,
-				"VIRTIO_F_VERSION_1 features is not enabled.");
-			return -1;
-		}
+	if (hw->modern && !vtpci_with_feature(hw, VIRTIO_F_VERSION_1)) {
+		PMD_INIT_LOG(ERR,
+			"VIRTIO_F_VERSION_1 features is not enabled.");
+		return -1;
+	}
+
+	if (hw->modern || hw->virtio_user_dev) {
 		vtpci_set_status(hw, VIRTIO_CONFIG_STATUS_FEATURES_OK);
 		if (!(vtpci_get_status(hw) & VIRTIO_CONFIG_STATUS_FEATURES_OK)) {
 			PMD_INIT_LOG(ERR,
