@@ -163,6 +163,11 @@ Deprecation Notices
   In 19.11 PMDs will still update the field even when the offload is not
   enabled.
 
+* ethdev: Add new fields to ``rte_eth_rxconf`` to configure the receiving
+  queues to split ingress packets into multiple segments according to the
+  specified lengths into the buffers allocated from the specified
+  memory pools. The backward compatibility to existing API is preserved.
+
 * ethdev: ``rx_descriptor_done`` dev_ops and ``rte_eth_rx_descriptor_done``
   will be deprecated in 20.11 and will be removed in 21.11.
   Existing ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
