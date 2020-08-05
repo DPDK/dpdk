@@ -244,6 +244,8 @@ const char * const vhost_msg_strings[] = {
 	[VHOST_USER_SET_VRING_ENABLE] = "VHOST_SET_VRING_ENABLE",
 	[VHOST_USER_GET_PROTOCOL_FEATURES] = "VHOST_USER_GET_PROTOCOL_FEATURES",
 	[VHOST_USER_SET_PROTOCOL_FEATURES] = "VHOST_USER_SET_PROTOCOL_FEATURES",
+	[VHOST_USER_SET_STATUS] = "VHOST_SET_STATUS",
+	[VHOST_USER_GET_STATUS] = "VHOST_GET_STATUS",
 };
 
 static int
@@ -280,6 +282,14 @@ vhost_user_sock(struct virtio_user_dev *dev,
 		need_reply = 1;
 		break;
 
+	case VHOST_USER_SET_STATUS:
+		if (!(dev->protocol_features &
+				(1ULL << VHOST_USER_PROTOCOL_F_STATUS)))
+			return 0;
+
+		if (has_reply_ack)
+			msg.flags |= VHOST_USER_NEED_REPLY_MASK;
+		/* Fallthrough */
 	case VHOST_USER_SET_FEATURES:
 	case VHOST_USER_SET_PROTOCOL_FEATURES:
 	case VHOST_USER_SET_LOG_BASE:

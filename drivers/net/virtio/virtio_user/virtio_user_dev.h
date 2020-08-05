@@ -72,4 +72,5 @@ void virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx);
 void virtio_user_handle_cq_packed(struct virtio_user_dev *dev,
 				  uint16_t queue_idx);
 uint8_t virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs);
+int virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status);
 #endif

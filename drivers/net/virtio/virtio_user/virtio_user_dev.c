@@ -424,7 +424,8 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 
 #define VIRTIO_USER_SUPPORTED_PROTOCOL_FEATURES		\
 	(1ULL << VHOST_USER_PROTOCOL_F_MQ |		\
-	 1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK)
+	 1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK |	\
+	 1ULL << VHOST_USER_PROTOCOL_F_STATUS)
 
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
@@ -782,4 +783,27 @@ virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx)
 
 		__atomic_add_fetch(&vring->used->idx, 1, __ATOMIC_RELAXED);
 	}
+}
+
+int
+virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status)
+{
+	int ret;
+	uint64_t arg = status;
+
+	/* Vhost-user only for now */
+	if (!is_vhost_user_by_type(dev->path))
+		return 0;
+
+	if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_STATUS)))
+		return 0;
+
+	ret = dev->ops->send_request(dev, VHOST_USER_SET_STATUS, &arg);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "VHOST_USER_SET_STATUS failed (%d): %s", ret,
+			     strerror(errno));
+		return -1;
+	}
+
+	return 0;
 }
