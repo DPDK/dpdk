@@ -24,6 +24,11 @@ Deprecation Notices
   can be got using the ``pip``, or ``pip3``, tool for downloading python
   packages.
 
+* build macros: The macros defining RTE_MACHINE_CPUFLAG_* will be removed
+  from the build. The information provided by these macros is available
+  through standard compiler macros. For example, RTE_MACHINE_CPUFLAG_SSE3
+  duplicates the compiler-provided macro __SSE3__.
+
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
