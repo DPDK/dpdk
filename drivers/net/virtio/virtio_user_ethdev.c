@@ -280,6 +280,8 @@ virtio_user_get_status(struct virtio_hw *hw)
 {
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
+	virtio_user_update_status(dev);
+
 	return dev->status;
 }
 

@@ -807,3 +807,47 @@ virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status)
 
 	return 0;
 }
+
+int
+virtio_user_update_status(struct virtio_user_dev *dev)
+{
+	uint64_t ret;
+	int err;
+
+	/* Vhost-user only for now */
+	if (!is_vhost_user_by_type(dev->path))
+		return 0;
+
+	if (!(dev->protocol_features & (1UL << VHOST_USER_PROTOCOL_F_STATUS)))
+		return 0;
+
+	err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS, &ret);
+	if (err) {
+		PMD_INIT_LOG(ERR, "VHOST_USER_GET_STATUS failed (%d): %s", err,
+			     strerror(errno));
+		return -1;
+	}
+	if (ret > UINT8_MAX) {
+		PMD_INIT_LOG(ERR, "Invalid VHOST_USER_GET_STATUS response 0x%" PRIx64 "\n", ret);
+		return -1;
+	}
+
+	dev->status = ret;
+	PMD_INIT_LOG(DEBUG, "Updated Device Status(0x%08x):\n"
+			"\t-RESET: %u\n"
+			"\t-ACKNOWLEDGE: %u\n"
+			"\t-DRIVER: %u\n"
+			"\t-DRIVER_OK: %u\n"
+			"\t-FEATURES_OK: %u\n"
+			"\t-DEVICE_NEED_RESET: %u\n"
+			"\t-FAILED: %u\n",
+			dev->status,
+			(dev->status == VIRTIO_CONFIG_STATUS_RESET),
+			!!(dev->status & VIRTIO_CONFIG_STATUS_ACK),
+			!!(dev->status & VIRTIO_CONFIG_STATUS_DRIVER),
+			!!(dev->status & VIRTIO_CONFIG_STATUS_DRIVER_OK),
+			!!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK),
+			!!(dev->status & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET),
+			!!(dev->status & VIRTIO_CONFIG_STATUS_FAILED));
+	return 0;
+}
