@@ -19,6 +19,9 @@
 #include "mlx5_regex_utils.h"
 #include "mlx5_rxp_csrs.h"
 
+#define MLX5_REGEX_DRIVER_NAME regex_mlx5
+#define MLX5_REGEX_LOG_NAME    pmd.regex.mlx5
+
 int mlx5_regex_logtype;
 
 const struct rte_regexdev_ops mlx5_regexdev_ops = {
@@ -250,7 +253,7 @@ static struct mlx5_pci_driver mlx5_regex_driver = {
 	.driver_class = MLX5_CLASS_REGEX,
 	.pci_driver = {
 		.driver = {
-			.name = "mlx5_regex",
+			.name = RTE_STR(MLX5_REGEX_DRIVER_NAME),
 		},
 		.id_table = mlx5_regex_pci_id_map,
 		.probe = mlx5_regex_pci_probe,
@@ -266,7 +269,7 @@ RTE_INIT(rte_mlx5_regex_init)
 		mlx5_pci_driver_register(&mlx5_regex_driver);
 }
 
-RTE_LOG_REGISTER(mlx5_regex_logtype, pmd.regex.mlx5, NOTICE)
-RTE_PMD_EXPORT_NAME(net_mlx5_regex, __COUNTER__);
-RTE_PMD_REGISTER_PCI_TABLE(net_mlx5_regex, mlx5_regex_pci_id_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_mlx5_regex, "* ib_uverbs & mlx5_core & mlx5_ib");
+RTE_LOG_REGISTER(mlx5_regex_logtype, MLX5_REGEX_LOG_NAME, NOTICE)
+RTE_PMD_EXPORT_NAME(MLX5_REGEX_DRIVER_NAME, __COUNTER__);
+RTE_PMD_REGISTER_PCI_TABLE(MLX5_REGEX_DRIVER_NAME, mlx5_regex_pci_id_map);
+RTE_PMD_REGISTER_KMOD_DEP(MLX5_REGEX_DRIVER_NAME, "* ib_uverbs & mlx5_core & mlx5_ib");
