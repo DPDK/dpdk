@@ -145,9 +145,9 @@ New Features
   Updated Mellanox mlx5 driver with new features and improvements, including:
 
   * Added mlx5 PCI layer to share a PCI device among multiple PMDs.
-  * Added new PMD devarg ``reclaim_mem_mode``.
-  * Added new devarg ``lacp_by_user``.
   * Added support for eCPRI protocol offloading.
+  * Added devargs options ``reclaim_mem_mode``, ``sys_mem_en``,
+    ``lacp_by_user`` and ``decap_en``.
 
 * **Added vDPA device APIs to query virtio queue statistics.**
 
