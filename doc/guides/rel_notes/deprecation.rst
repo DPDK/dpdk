@@ -27,6 +27,25 @@ Deprecation Notices
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
+* eal: To be more inclusive in choice of naming, the DPDK project
+  will replace uses of master/slave in the API's and command line arguments.
+
+  References to master/slave in relation to lcore will be renamed
+  to initial/worker.  The function ``rte_get_master_lcore()``
+  will be renamed to ``rte_get_initial_lcore()``.
+  For the 20.11 release, both names will be present and the
+  old function will be marked with the deprecated tag.
+  The old function will be removed in a future version.
+
+  The iterator for worker lcores will also change:
+  ``RTE_LCORE_FOREACH_SLAVE`` will be replaced with
+  ``RTE_LCORE_FOREACH_WORKER``.
+
+  The ``master-lcore`` argument to testpmd will be replaced
+  with ``initial-lcore``. The old ``master-lcore`` argument
+  will produce a runtime notification in 20.11 release, and
+  be removed completely in a future release.
+
 * eal: The function ``rte_eal_remote_launch`` will return new error codes
   after read or write error on the pipe, instead of calling ``rte_panic``.
 
