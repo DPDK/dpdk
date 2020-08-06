@@ -331,6 +331,11 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **mlx5 PMD does not work on Power 9 with OFED 5.1-0.6.6.0.**
+
+  Consider using the newer OFED releases, the previous
+  OFED 5.0-2.1.8.0, or upstream rdma-core library v29 and above.
+
 
 Tested Platforms
 ----------------
@@ -489,4 +494,4 @@ Tested Platforms
 
   * OFED:
 
-    * MLNX_OFED 5.1-0.6.6.0
+    * MLNX_OFED 5.0-2.1.8.0
