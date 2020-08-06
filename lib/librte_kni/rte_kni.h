@@ -212,7 +212,7 @@ const char *rte_kni_get_name(const struct rte_kni *kni);
 
 /**
  * Register KNI request handling for a specified port,and it can
- * be called by master process or slave process.
+ * be called by primary process or secondary process.
  *
  * @param kni
  *  pointer to struct rte_kni.
