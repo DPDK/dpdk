@@ -3379,8 +3379,7 @@ int rte_eth_dev_priority_flow_ctrl_set(uint16_t port_id,
 				struct rte_eth_pfc_conf *pfc_conf);
 
 /**
- * Add a MAC address to an internal array of addresses used to enable whitelist
- * filtering to accept packets only if the destination MAC address matches.
+ * Add a MAC address to the set used for filtering incoming packets.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
