@@ -61,8 +61,8 @@ rather than subsequently in the forwarding threads.
 However, the DPDK performs checks to ensure that libraries are only initialized once.
 If initialization is attempted more than once, an error is returned.
 
-In the multi-process case, the configuration information of shared memory will only be initialized by the master process.
-Thereafter, both master and secondary processes can allocate/release any objects of memory that finally rely on rte_malloc or memzones.
+In the multi-process case, the configuration information of shared memory will only be initialized by the primary process.
+Thereafter, both primary and secondary processes can allocate/release any objects of memory that finally rely on rte_malloc or memzones.
 
 Interrupt Thread
 ----------------
