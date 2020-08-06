@@ -554,7 +554,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			}
 
 			/* Check if VNI is masked. */
-			if (vxlan_spec && vxlan_mask) {
+			if (vxlan_mask != NULL) {
 				vni_masked =
 					!!memcmp(vxlan_mask->vni, vni_mask,
 						 RTE_DIM(vni_mask));
