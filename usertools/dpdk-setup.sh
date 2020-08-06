@@ -592,6 +592,10 @@ while [ "$QUIT" == "0" ]; do
 	echo "[$OPTION_NUM] Exit Script"
 	OPTIONS[$OPTION_NUM]="quit"
 	echo ""
+	echo '--------------------------------------------------'
+	echo 'WARNING: This tool will be removed from DPDK 20.11'
+	echo '--------------------------------------------------'
+	echo
 	echo -n "Option: "
 	read our_entry
 	echo ""
