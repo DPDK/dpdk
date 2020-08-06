@@ -96,6 +96,18 @@ New Features
   * Async device channel register/unregister APIs
   * Async packets enqueue/completion APIs (only split ring was implemented)
 
+* **Added vDPA device APIs to query virtio queue statistics.**
+
+  A new 3 APIs has been added to query virtio queue statistics, to get their
+  names and to reset them by a vDPA device.
+
+* **Updated Mellanox mlx5 vDPA driver.**
+
+  Updated Mellanox mlx5 vDPA driver with new features, including:
+
+  * Added support for virtio queue statistics.
+  * Added support for MTU update.
+
 * **Added eCPRI protocol support in rte_flow.**
 
   The ``ECPRI`` item has been added to support eCPRI packet offloading for
@@ -103,9 +115,9 @@ New Features
 
 * **Introduced send packet scheduling on the timestamps.**
 
-   Added the new mbuf dynamic field and flag to provide timestamp on what packet
-   transmitting can be synchronized. The device Tx offload flag is added to
-   indicate the PMD supports send scheduling.
+  Added the new mbuf dynamic field and flag to provide timestamp on what packet
+  transmitting can be synchronized. The device Tx offload flag is added to
+  indicate the PMD supports send scheduling.
 
 * **Updated PCAP driver.**
 
@@ -140,31 +152,6 @@ New Features
   * Added support for LRO.
   * Added support for setting VF PVID by PF driver.
 
-* **Updated Mellanox mlx5 net driver and common layer.**
-
-  Updated Mellanox mlx5 driver with new features and improvements, including:
-
-  * Added mlx5 PCI layer to share a PCI device among multiple PMDs.
-  * Added support for eCPRI protocol offloading.
-  * Added devargs options ``reclaim_mem_mode``, ``sys_mem_en``,
-    ``lacp_by_user`` and ``decap_en``.
-
-* **Added vDPA device APIs to query virtio queue statistics.**
-
-     A new 3 APIs has been added to query virtio queue statistics, to get their
-     names and to reset them by a vDPA device.
-
-* **Updated Mellanox mlx5 vDPA driver.**
-
-  Updated Mellanox mlx5 vDPA driver with new features, including:
-
-  * Added support for virtio queue statistics.
-  * Added support for MTU update.
-
-* **Updated Marvell octeontx2 ethdev PMD.**
-
-  Updated Marvell octeontx2 driver with cn98xx support.
-
 * **Updated the Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:
@@ -196,6 +183,19 @@ New Features
   Updated the Intel ixgbe driver with new features and improvements, including:
 
   * Re-implemented get_fdir_info and get_fdir_stat in private API.
+
+* **Updated Marvell octeontx2 ethdev PMD.**
+
+  Updated Marvell octeontx2 driver with cn98xx support.
+
+* **Updated Mellanox mlx5 net driver and common layer.**
+
+  Updated Mellanox mlx5 driver with new features and improvements, including:
+
+  * Added mlx5 PCI layer to share a PCI device among multiple PMDs.
+  * Added support for eCPRI protocol offloading.
+  * Added devargs options ``reclaim_mem_mode``, ``sys_mem_en``,
+    ``lacp_by_user`` and ``decap_en``.
 
 * **Updated NXP dpaa ethdev PMD.**
 
