@@ -179,6 +179,11 @@ Deprecation Notices
   as deprecated in DPDK 20.11, along with the associated macros ``ETH_MIRROR_*``.
   This API will be fully removed in DPDK 21.11.
 
+* ethdev: The ``struct rte_flow_item_eth`` and ``struct rte_flow_item_vlan``
+  structs will be modified, to include an additional value, indicating existence
+  or absence of a VLAN header following the current header, as proposed in RFC
+  https://mails.dpdk.org/archives/dev/2020-August/177536.html.
+
 * ethdev: Some internal APIs for driver usage are exported in the .map file.
   Now DPDK has ``__rte_internal`` marker so we can mark internal APIs and move
   them to the INTERNAL block in .map. Although these APIs are internal it will
