@@ -171,6 +171,16 @@ New Features
 
   * Added support for DCF datapath configuration.
   * Added support for more PPPoE packet type for switch filter.
+  * Added RSS support for IPv6 32bit, 48bit, 64bit prefix.
+  * Added RSS support for GTPU, L2TP, ESP, AH, PFCP and PPPoE.
+  * Added support for FDIR filter by GTPU outer IPv4 and IPv6.
+
+ * **Updated Intel iavf driver.**
+
+  Updated iavf PMD with new features and improvements, including:
+
+  * Added support for FDIR filter by GTPU outer IPv4 and IPv6.
+  * Added IPv6 RSS support for GTPU.
 
 * **Updated Intel i40e driver.**
 
