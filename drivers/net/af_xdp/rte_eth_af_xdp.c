@@ -236,7 +236,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	if (rte_pktmbuf_alloc_bulk(umem->mb_pool, fq_bufs, nb_pkts)) {
 		AF_XDP_LOG(DEBUG,
 			"Failed to get enough buffers for fq.\n");
-		return -1;
+		return 0;
 	}
 
 	rcvd = xsk_ring_cons__peek(rx, nb_pkts, &idx_rx);
