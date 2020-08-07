@@ -215,6 +215,11 @@ Deprecation Notices
   specified lengths into the buffers allocated from the specified
   memory pools. The backward compatibility to existing API is preserved.
 
+* ethdev: The ``struct rte_eth_rxq_info`` will be modified to include
+  a new optional field, indicating the buffer size used in receiving packets
+  for HW. This change is planned for 20.11. For more details:
+  https://mails.dpdk.org/archives/dev/2020-July/176135.html.
+
 * ethdev: ``rx_descriptor_done`` dev_ops and ``rte_eth_rx_descriptor_done``
   will be deprecated in 20.11 and will be removed in 21.11.
   Existing ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
