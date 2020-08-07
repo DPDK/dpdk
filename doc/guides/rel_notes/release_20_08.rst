@@ -59,28 +59,28 @@ New Features
 * **Added non-EAL threads registration API.**
 
   Added a new API to register non-EAL threads as lcores. This can be used by
-  applications to have its threads known of DPDK without suffering from the
+  applications to have its threads known to DPDK without suffering from the
   non-EAL previous limitations in terms of performance.
 
-* **rte_*mb APIs are updated to use DMB instruction for ARMv8.**
+* **rte_*mb APIs are updated to use the DMB instruction for ARMv8.**
 
   ARMv8 memory model has been strengthened to require other-multi-copy
-  atomicity. This allows for using DMB instruction instead of DSB for IO
-  barriers. rte_*mb APIs, for ARMv8 platforms, are changed to use DMB
+  atomicity. This allows for using the DMB instruction instead of DSB for IO
+  barriers. The rte_*mb APIs, for ARMv8 platforms, have changed to use the DMB
   instruction to reflect this.
 
 * **Added support for RTS and HTS modes into mempool ring driver.**
 
-  Added ability to select new ring synchronisation modes:
+  Added the ability to select new ring synchronisation modes:
   ``relaxed tail sync (ring_mt_rts)`` and ``head/tail sync (ring_mt_hts)``
-  via mempool ops API.
+  via the mempool ops API.
 
 * **Added the support for vfio-pci new VF token interface.**
 
-  From Linux 5.7, vfio-pci supports to bind both SR-IOV PF and the created VFs,
-  it uses a shared VF token (UUID) to represent the collaboration between PF
-  and VFs. Update DPDK PCI driver to gain the access to the PF and VFs devices
-  by appending the VF token parameter.
+  From Linux 5.7, vfio-pci supports to bind both SR-IOV PF and the created
+  VFs, where it uses a shared VF token (UUID) to represent the collaboration
+  between PF and VFs. The DPDK PCI driver has been updated to gain the access
+  to the PF and VFs devices by appending the VF token parameter.
 
 * **Added the RegEx Library, a generic RegEx service library.**
 
@@ -93,13 +93,13 @@ New Features
 
   4 new APIs have been added to enable vhost async data path, including:
 
-  * Async device channel register/unregister APIs
-  * Async packets enqueue/completion APIs (only split ring was implemented)
+  * Async device channel register/unregister APIs.
+  * Async packets enqueue/completion APIs (only split ring was implemented).
 
 * **Added vDPA device APIs to query virtio queue statistics.**
 
-  A new 3 APIs has been added to query virtio queue statistics, to get their
-  names and to reset them by a vDPA device.
+  Added new vDPA APIs to query virtio queue statistics, to get their names and
+  to reset them.
 
 * **Updated Mellanox mlx5 vDPA driver.**
 
@@ -113,11 +113,11 @@ New Features
   The ``ECPRI`` item has been added to support eCPRI packet offloading for
   5G network.
 
-* **Introduced send packet scheduling on the timestamps.**
+* **Introduced send packet scheduling based on timestamps.**
 
-  Added the new mbuf dynamic field and flag to provide timestamp on what packet
-  transmitting can be synchronized. The device Tx offload flag is added to
-  indicate the PMD supports send scheduling.
+  Added a new mbuf dynamic field and flag to provide a timestamp on which
+  packet transmitting can be synchronized. A device Tx offload flag has been
+  added to indicate the PMD supports send scheduling.
 
 * **Updated PCAP driver.**
 
@@ -152,7 +152,7 @@ New Features
   * Added support for LRO.
   * Added support for setting VF PVID by PF driver.
 
-* **Updated the Intel ice driver.**
+* **Updated Intel ice driver.**
 
   Updated the Intel ice driver with new features and improvements, including:
 
@@ -162,7 +162,7 @@ New Features
   * Added RSS support for GTPU, L2TP, ESP, AH, PFCP and PPPoE.
   * Added support for FDIR filter by GTPU outer IPv4 and IPv6.
 
- * **Updated Intel iavf driver.**
+* **Updated Intel iavf driver.**
 
   Updated iavf PMD with new features and improvements, including:
 
@@ -174,15 +174,15 @@ New Features
   Updated i40e PMD with new features and improvements, including:
 
   * Supported cloud filter for IPv4/6_TCP/UDP/SCTP with SRC port only or DST port only.
-  * Re-implemented get_fdir_info and get_fdir_stat in private API.
-  * Re-implemented set_gre_key_len in private API.
+  * Re-implemented ``get_fdir_info`` and ``get_fdir_stat`` in private API.
+  * Re-implemented ``set_gre_key_len`` in private API.
   * Added support for flow query RSS.
 
-* **Updated the Intel ixgbe driver.**
+* **Updated Intel ixgbe driver.**
 
   Updated the Intel ixgbe driver with new features and improvements, including:
 
-  * Re-implemented get_fdir_info and get_fdir_stat in private API.
+  * Re-implemented ``get_fdir_info`` and ``get_fdir_stat`` in private API.
 
 * **Updated Marvell octeontx2 ethdev PMD.**
 
@@ -201,15 +201,15 @@ New Features
 
   Updated the NXP dpaa ethdev with new features and improvements, including:
 
-  * Added support for link status and interrupt
-  * Added support to use datapath APIs from non-EAL pthread
+  * Added support for link status and interrupt.
+  * Added support to use datapath APIs from non-EAL pthread.
 
 * **Updated NXP dpaa2 ethdev PMD.**
 
   Updated the NXP dpaa2 ethdev with new features and improvements, including:
 
-  * Added support to use datapath APIs from non-EAL pthread
-  * Added support for dynamic flow management
+  * Added support to use datapath APIs from non-EAL pthread.
+  * Added support for dynamic flow management.
 
 * **Added DOCSIS protocol to rte_security.**
 
@@ -228,7 +228,7 @@ New Features
   * Added Chacha20-Poly1305 AEAD algorithm in QAT crypto PMD.
   * Improved handling of multi process in QAT crypto and compression PMDs.
   * Added support for Intel GEN2 QuickAssist device 200xx
-    (PF Did 0x18ee, VF Did 0x18ef).
+    (PF device id 0x18ee, VF device id 0x18ef).
 
 * **Updated the OCTEON TX2 crypto PMD.**
 
