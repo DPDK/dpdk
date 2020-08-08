@@ -1105,6 +1105,9 @@ tap_dev_close(struct rte_eth_dev *dev)
 				&internals->remote_initial_flags);
 	}
 
+	rte_mempool_free(internals->gso_ctx_mp);
+	internals->gso_ctx_mp = NULL;
+
 	if (internals->ka_fd != -1) {
 		close(internals->ka_fd);
 		internals->ka_fd = -1;
@@ -1352,26 +1355,31 @@ tap_gso_ctx_setup(struct rte_gso_ctx *gso_ctx, struct rte_eth_dev *dev)
 {
 	uint32_t gso_types;
 	char pool_name[64];
-
-	/*
-	 * Create private mbuf pool with TAP_GSO_MBUF_SEG_SIZE bytes
-	 * size per mbuf use this pool for both direct and indirect mbufs
-	 */
-
-	struct rte_mempool *mp;      /* Mempool for GSO packets */
+	struct pmd_internals *pmd = dev->data->dev_private;
+	int ret;
 
 	/* initialize GSO context */
 	gso_types = DEV_TX_OFFLOAD_TCP_TSO;
-	snprintf(pool_name, sizeof(pool_name), "mp_%s", dev->device->name);
-	mp = rte_mempool_lookup((const char *)pool_name);
-	if (!mp) {
-		mp = rte_pktmbuf_pool_create(pool_name, TAP_GSO_MBUFS_NUM,
-			TAP_GSO_MBUF_CACHE_SIZE, 0,
+	if (!pmd->gso_ctx_mp) {
+		/*
+		 * Create private mbuf pool with TAP_GSO_MBUF_SEG_SIZE
+		 * bytes size per mbuf use this pool for both direct and
+		 * indirect mbufs
+		 */
+		ret = snprintf(pool_name, sizeof(pool_name), "mp_%s",
+				dev->device->name);
+		if (ret < 0 || ret >= (int)sizeof(pool_name)) {
+			TAP_LOG(ERR,
+				"%s: failed to create mbuf pool name for device %s,"
+				"device name too long or output error, ret: %d\n",
+				pmd->name, dev->device->name, ret);
+			return -ENAMETOOLONG;
+		}
+		pmd->gso_ctx_mp = rte_pktmbuf_pool_create(pool_name,
+			TAP_GSO_MBUFS_NUM, TAP_GSO_MBUF_CACHE_SIZE, 0,
 			RTE_PKTMBUF_HEADROOM + TAP_GSO_MBUF_SEG_SIZE,
 			SOCKET_ID_ANY);
-		if (!mp) {
-			struct pmd_internals *pmd = dev->data->dev_private;
-
+		if (!pmd->gso_ctx_mp) {
 			TAP_LOG(ERR,
 				"%s: failed to create mbuf pool for device %s\n",
 				pmd->name, dev->device->name);
@@ -1379,8 +1387,8 @@ tap_gso_ctx_setup(struct rte_gso_ctx *gso_ctx, struct rte_eth_dev *dev)
 		}
 	}
 
-	gso_ctx->direct_pool = mp;
-	gso_ctx->indirect_pool = mp;
+	gso_ctx->direct_pool = pmd->gso_ctx_mp;
+	gso_ctx->indirect_pool = pmd->gso_ctx_mp;
 	gso_ctx->gso_types = gso_types;
 	gso_ctx->gso_size = 0; /* gso_size is set in tx_burst() per packet */
 	gso_ctx->flag = 0;
@@ -1877,6 +1885,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	pmd->type = type;
 	pmd->ka_fd = -1;
 	pmd->nlsk_fd = -1;
+	pmd->gso_ctx_mp = NULL;
 
 	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (pmd->ioctl_sock == -1) {
