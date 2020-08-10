@@ -484,7 +484,8 @@ Checking ABI compatibility
 By default, ABI compatibility checks are disabled.
 
 To enable them, a reference version must be selected via the environment
-variable ``DPDK_ABI_REF_VERSION``.
+variable ``DPDK_ABI_REF_VERSION``. Contributors should ordinarily reference the
+git tag of the most recent release of DPDK in ``DPDK_ABI_REF_VERSION``.
 
 The ``devtools/test-meson-builds.sh`` script then build this reference version
 in a temporary directory and store the results in a subfolder of the current
