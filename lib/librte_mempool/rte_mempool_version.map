@@ -1,4 +1,4 @@
-DPDK_20.0 {
+DPDK_21 {
 	global:
 
 	rte_mempool_audit;
@@ -31,12 +31,12 @@ DPDK_20.0 {
 	local: *;
 };
 
-DPDK_21 {
+DPDK_20.0 {
 	global:
 
 	rte_mempool_populate_iova;
 	rte_mempool_populate_virt;
-} DPDK_20.0;
+};
 
 EXPERIMENTAL {
 	global:

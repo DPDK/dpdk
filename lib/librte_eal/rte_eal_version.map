@@ -1,4 +1,4 @@
-DPDK_20.0 {
+DPDK_21 {
 	global:
 
 	__rte_panic;
@@ -6,6 +6,7 @@ DPDK_20.0 {
 	eal_timer_source;
 	per_lcore__lcore_id;
 	per_lcore__rte_errno;
+	per_lcore__thread_id;
 	rte_bus_dump;
 	rte_bus_find;
 	rte_bus_find_by_device;
@@ -220,13 +221,6 @@ DPDK_20.0 {
 
 	local: *;
 };
-
-DPDK_21 {
-	global:
-
-	per_lcore__thread_id;
-
-} DPDK_20.0;
 
 EXPERIMENTAL {
 	global:

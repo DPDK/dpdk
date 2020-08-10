@@ -29,10 +29,7 @@ abi_version = run_command(find_program('cat', 'more'),
 # and have the soname be all but the final part of the abi_version.
 # e.g. v20.1 => librte_foo.so.20.1
 #    sonames => librte_foo.so.20
-# e.g. v20.0.1 => librte_foo.so.20.0.1
-#      sonames => librte_foo.so.20.0
-abi_va = abi_version.split('.')
-so_version = abi_va.length() == 2 ? abi_va[0] : abi_va[0] + '.' + abi_va[1]
+so_version = abi_version.split('.')[0]
 
 # extract all version information into the build configuration
 dpdk_conf.set('RTE_VER_YEAR', pver.get(0).to_int())

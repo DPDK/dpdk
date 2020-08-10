@@ -1,4 +1,4 @@
-DPDK_20.0 {
+DPDK_21 {
 	global:
 
 	_rte_eth_dev_callback_process;

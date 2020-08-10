@@ -1,4 +1,4 @@
-DPDK_20.0 {
+DPDK_21 {
 	global:
 
 	rte_pmd_ixgbe_bypass_event_show;

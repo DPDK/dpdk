@@ -1,10 +1,10 @@
-DPDK_20.0 {
+DPDK_21 {
 	local: *;
 };
 
 EXPERIMENTAL {
-        global:
+	global:
 
-        # added in 20.02
+	# added in 20.02
 	rte_pmd_mlx5_get_dyn_flag_names;
 };

@@ -1,24 +1,18 @@
-DPDK_20.0 {
+DPDK_21 {
 	global:
 
 	rte_meter_srtcm_config;
 	rte_meter_srtcm_profile_config;
 	rte_meter_trtcm_config;
 	rte_meter_trtcm_profile_config;
+	rte_meter_trtcm_rfc4115_config;
+	rte_meter_trtcm_rfc4115_profile_config;
 
 	local: *;
 };
 
-DPDK_21 {
-	global:
-
-	rte_meter_trtcm_rfc4115_config;
-	rte_meter_trtcm_rfc4115_profile_config;
-
-} DPDK_20.0;
-
 EXPERIMENTAL {
-       global:
+	global:
 
 	rte_meter_trtcm_rfc4115_config;
 	rte_meter_trtcm_rfc4115_profile_config;
