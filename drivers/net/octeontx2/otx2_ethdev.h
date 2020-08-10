@@ -437,6 +437,8 @@ int otx2_nix_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 /* MTU */
 int otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
 int otx2_nix_recalc_mtu(struct rte_eth_dev *eth_dev);
+void otx2_nix_enable_mseg_on_jumbo(struct otx2_eth_rxq *rxq);
+
 
 /* Link */
 void otx2_nix_toggle_flag_link_cfg(struct otx2_eth_dev *dev, bool set);

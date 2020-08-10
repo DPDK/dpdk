@@ -657,6 +657,9 @@ otx2_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t rq,
 		}
 	}
 
+	/* Setup scatter mode if needed by jumbo */
+	otx2_nix_enable_mseg_on_jumbo(rxq);
+
 	return 0;
 
 free_rxq:
@@ -876,6 +879,33 @@ nix_sqb_unlock(struct rte_mempool *mp)
 	}
 
 	return 0;
+}
+
+void
+otx2_nix_enable_mseg_on_jumbo(struct otx2_eth_rxq *rxq)
+{
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	struct rte_eth_dev *eth_dev;
+	struct otx2_eth_dev *dev;
+	uint32_t buffsz;
+
+	eth_dev = rxq->eth_dev;
+	dev = otx2_eth_pmd_priv(eth_dev);
+
+	/* Get rx buffer size */
+	mbp_priv = rte_mempool_get_priv(rxq->pool);
+	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+
+	if (eth_dev->data->dev_conf.rxmode.max_rx_pkt_len > buffsz) {
+		dev->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
+		dev->tx_offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+
+		/* Setting up the rx[tx]_offload_flags due to change
+		 * in rx[tx]_offloads.
+		 */
+		dev->rx_offload_flags |= nix_rx_offload_flags(eth_dev);
+		dev->tx_offload_flags |= nix_tx_offload_flags(eth_dev);
+	}
 }
 
 static int

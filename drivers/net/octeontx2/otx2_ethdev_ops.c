@@ -72,22 +72,15 @@ otx2_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 int
 otx2_nix_recalc_mtu(struct rte_eth_dev *eth_dev)
 {
-	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct rte_eth_dev_data *data = eth_dev->data;
-	struct rte_pktmbuf_pool_private *mbp_priv;
 	struct otx2_eth_rxq *rxq;
-	uint32_t buffsz;
 	uint16_t mtu;
 	int rc;
 
-	/* Get rx buffer size */
 	rxq = data->rx_queues[0];
-	mbp_priv = rte_mempool_get_priv(rxq->pool);
-	buffsz = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
 
 	/* Setup scatter mode if needed by jumbo */
-	if (data->dev_conf.rxmode.max_rx_pkt_len > buffsz)
-		dev->rx_offloads |= DEV_RX_OFFLOAD_SCATTER;
+	otx2_nix_enable_mseg_on_jumbo(rxq);
 
 	/* Setup MTU based on max_rx_pkt_len */
 	mtu = data->dev_conf.rxmode.max_rx_pkt_len - NIX_L2_OVERHEAD;
