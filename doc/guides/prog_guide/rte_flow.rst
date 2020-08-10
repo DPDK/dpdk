@@ -1735,6 +1735,19 @@ unspecified "best-effort" settings from the underlying PMD, which depending
 on the flow rule, may result in anything ranging from empty (single queue)
 to all-inclusive RSS.
 
+If non-applicable for matching packets RSS types are requested,
+these RSS types are simply ignored. For example, it happens if:
+
+- Hashing of both TCP and UDP ports is requested
+  (only one can be present in a packet).
+
+- Requested RSS types contradict to flow rule pattern
+  (e.g. pattern has UDP item, but RSS types contain TCP).
+
+If requested RSS hash types are not supported by the Ethernet device at all
+(not reported in ``dev_info.flow_tpe_rss_offloads``),
+the flow creation will fail.
+
 Note: RSS hash result is stored in the ``hash.rss`` mbuf field which
 overlaps ``hash.fdir.lo``. Since `Action: MARK`_ sets the ``hash.fdir.hi``
 field only, both can be requested simultaneously.
