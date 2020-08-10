@@ -2531,6 +2531,7 @@ vhost_user_set_status(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	}
 
 	VHOST_LOG_CONFIG(INFO, "New device status(0x%08x):\n"
+			"\t-RESET: %u\n"
 			"\t-ACKNOWLEDGE: %u\n"
 			"\t-DRIVER: %u\n"
 			"\t-FEATURES_OK: %u\n"
@@ -2538,6 +2539,7 @@ vhost_user_set_status(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			"\t-DEVICE_NEED_RESET: %u\n"
 			"\t-FAILED: %u\n",
 			dev->status,
+			(dev->status == VIRTIO_DEVICE_STATUS_RESET),
 			!!(dev->status & VIRTIO_DEVICE_STATUS_ACK),
 			!!(dev->status & VIRTIO_DEVICE_STATUS_DRIVER),
 			!!(dev->status & VIRTIO_DEVICE_STATUS_FEATURES_OK),

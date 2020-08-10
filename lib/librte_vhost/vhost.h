@@ -239,6 +239,7 @@ struct vhost_virtqueue {
 } __rte_cache_aligned;
 
 /* Virtio device status as per Virtio specification */
+#define VIRTIO_DEVICE_STATUS_RESET		0x00
 #define VIRTIO_DEVICE_STATUS_ACK		0x01
 #define VIRTIO_DEVICE_STATUS_DRIVER		0x02
 #define VIRTIO_DEVICE_STATUS_DRIVER_OK		0x04
