@@ -83,13 +83,15 @@ struct hn_rx_queue {
 	struct hn_stats stats;
 
 	void *event_buf;
+	struct hn_rx_bufinfo *rxbuf_info;
+	rte_atomic32_t  rxbuf_outstanding;
 };
 
 
 /* multi-packet data from host */
 struct hn_rx_bufinfo {
 	struct vmbus_channel *chan;
-	struct hn_data *hv;
+	struct hn_rx_queue *rxq;
 	uint64_t	xactid;
 	struct rte_mbuf_ext_shared_info shinfo;
 } __rte_cache_aligned;
@@ -111,9 +113,7 @@ struct hn_data {
 	uint32_t	link_speed;
 
 	struct rte_mem_resource *rxbuf_res;	/* UIO resource for Rx */
-	struct hn_rx_bufinfo *rxbuf_info;
 	uint32_t	rxbuf_section_cnt;	/* # of Rx sections */
-	rte_atomic32_t	rxbuf_outstanding;
 	uint16_t	max_queues;		/* Max available queues */
 	uint16_t	num_queues;
 	uint64_t	rss_offloads;

@@ -524,21 +524,21 @@ next:
 static void hn_rx_buf_free_cb(void *buf __rte_unused, void *opaque)
 {
 	struct hn_rx_bufinfo *rxb = opaque;
-	struct hn_data *hv = rxb->hv;
+	struct hn_rx_queue *rxq = rxb->rxq;
 
-	rte_atomic32_dec(&hv->rxbuf_outstanding);
+	rte_atomic32_dec(&rxq->rxbuf_outstanding);
 	hn_nvs_ack_rxbuf(rxb->chan, rxb->xactid);
 }
 
-static struct hn_rx_bufinfo *hn_rx_buf_init(const struct hn_rx_queue *rxq,
+static struct hn_rx_bufinfo *hn_rx_buf_init(struct hn_rx_queue *rxq,
 					    const struct vmbus_chanpkt_rxbuf *pkt)
 {
 	struct hn_rx_bufinfo *rxb;
 
-	rxb = rxq->hv->rxbuf_info + pkt->hdr.xactid;
+	rxb = rxq->rxbuf_info + pkt->hdr.xactid;
 	rxb->chan = rxq->chan;
 	rxb->xactid = pkt->hdr.xactid;
-	rxb->hv = rxq->hv;
+	rxb->rxq = rxq;
 
 	rxb->shinfo.free_cb = hn_rx_buf_free_cb;
 	rxb->shinfo.fcb_opaque = rxb;
@@ -568,7 +568,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 	 * some space available in receive area for later packets.
 	 */
 	if (dlen >= HN_RXCOPY_THRESHOLD &&
-	    (uint32_t)rte_atomic32_read(&hv->rxbuf_outstanding) <
+	    (uint32_t)rte_atomic32_read(&rxq->rxbuf_outstanding) <
 			hv->rxbuf_section_cnt / 2) {
 		struct rte_mbuf_ext_shared_info *shinfo;
 		const void *rxbuf;
@@ -585,7 +585,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 
 		/* shinfo is already set to 1 by the caller */
 		if (rte_mbuf_ext_refcnt_update(shinfo, 1) == 2)
-			rte_atomic32_inc(&hv->rxbuf_outstanding);
+			rte_atomic32_inc(&rxq->rxbuf_outstanding);
 
 		rte_pktmbuf_attach_extbuf(m, data, iova,
 					  dlen + headroom, shinfo);
@@ -888,6 +888,23 @@ struct hn_rx_queue *hn_rx_queue_alloc(struct hn_data *hv,
 		return NULL;
 	}
 
+	/* setup rxbuf_info for non-primary queue */
+	if (queue_id) {
+		rxq->rxbuf_info = rte_calloc("HN_RXBUF_INFO",
+					hv->rxbuf_section_cnt,
+					sizeof(*rxq->rxbuf_info),
+					RTE_CACHE_LINE_SIZE);
+
+		if (!rxq->rxbuf_info) {
+			PMD_DRV_LOG(ERR,
+				"Could not allocate rxbuf info for queue %d\n",
+				queue_id);
+			rte_free(rxq->event_buf);
+			rte_free(rxq);
+			return NULL;
+		}
+	}
+
 	return rxq;
 }
 
@@ -953,6 +970,7 @@ hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 fail:
 	rte_ring_free(rxq->rx_ring);
+	rte_free(rxq->rxbuf_info);
 	rte_free(rxq->event_buf);
 	rte_free(rxq);
 	return error;
@@ -975,6 +993,7 @@ hn_rx_queue_free(struct hn_rx_queue *rxq, bool keep_primary)
 	if (keep_primary && rxq == rxq->hv->primary)
 		return;
 
+	rte_free(rxq->rxbuf_info);
 	rte_free(rxq->event_buf);
 	rte_free(rxq);
 }
