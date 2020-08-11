@@ -30,6 +30,7 @@ EXPORTS
 	rte_eal_using_phys_addrs
 	rte_free
 	rte_hexdump
+	rte_intr_rx_ctl
 	rte_log_register
 	rte_log_register_type_and_pick_level
 	rte_log_set_level
