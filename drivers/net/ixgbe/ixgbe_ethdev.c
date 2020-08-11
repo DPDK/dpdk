@@ -4298,11 +4298,7 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	switch (link_speed) {
 	default:
 	case IXGBE_LINK_SPEED_UNKNOWN:
-		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
-			hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)
-			link.link_speed = ETH_SPEED_NUM_10M;
-		else
-			link.link_speed = ETH_SPEED_NUM_100M;
+		link.link_speed = ETH_SPEED_NUM_UNKNOWN;
 		break;
 
 	case IXGBE_LINK_SPEED_10_FULL:
