@@ -3669,8 +3669,11 @@ ice_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		link.link_speed = ETH_SPEED_NUM_100G;
 		break;
 	case ICE_AQ_LINK_SPEED_UNKNOWN:
-	default:
 		PMD_DRV_LOG(ERR, "Unknown link speed");
+		link.link_speed = ETH_SPEED_NUM_UNKNOWN;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "None link speed");
 		link.link_speed = ETH_SPEED_NUM_NONE;
 		break;
 	}
