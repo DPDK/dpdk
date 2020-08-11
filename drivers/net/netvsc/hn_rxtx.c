@@ -419,8 +419,10 @@ hn_nvs_send_completed(struct rte_eth_dev *dev, uint16_t queue_id,
 		++txq->stats.errors;
 	}
 
-	if (txd->chim_index != NVS_CHIM_IDX_INVALID)
+	if (txd->chim_index != NVS_CHIM_IDX_INVALID) {
 		hn_chim_free(hv, txd->chim_index);
+		txd->chim_index = NVS_CHIM_IDX_INVALID;
+	}
 
 	rte_pktmbuf_free(txd->m);
 	hn_txd_put(txq, txd);
