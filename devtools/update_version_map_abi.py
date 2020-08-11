@@ -105,9 +105,9 @@ def __parse_map_file(f_in):
     return has_stable, stable_lines, experimental_lines, internal_lines
 
 
-def __generate_stable_abi(f_out, abi_version, lines):
+def __generate_stable_abi(f_out, abi_major, lines):
     # print ABI version header
-    print("DPDK_{} {{".format(abi_version), file=f_out)
+    print("DPDK_{} {{".format(abi_major), file=f_out)
 
     # print global section if it exists
     if lines:
@@ -186,6 +186,7 @@ def __main():
               file=sys.stderr)
         arg_parser.print_help()
         sys.exit(1)
+    abi_major = parsed.abi_version.split('.')[0]
 
     with open(parsed.map_file) as f_in:
         has_stable, stable_lines, experimental_lines, internal_lines = __parse_map_file(f_in)
@@ -193,7 +194,7 @@ def __main():
     with open(parsed.map_file, 'w') as f_out:
         need_newline = has_stable and experimental_lines
         if has_stable:
-            __generate_stable_abi(f_out, parsed.abi_version, stable_lines)
+            __generate_stable_abi(f_out, abi_major, stable_lines)
         if need_newline:
             # separate sections with a newline
             print(file=f_out)
