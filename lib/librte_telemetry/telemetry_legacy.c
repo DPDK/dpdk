@@ -2,10 +2,12 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <pthread.h>
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 /* we won't link against libbsd, so just always use DPDKs-specific strlcpy */
 #undef RTE_USE_LIBBSD
@@ -77,15 +79,18 @@ static int
 register_client(const char *cmd __rte_unused, const char *params,
 		char *buffer __rte_unused, int buf_len __rte_unused)
 {
+#ifndef RTE_EXEC_ENV_WINDOWS
 	pthread_t th;
 	char data[BUF_SIZE];
 	int fd;
 	struct sockaddr_un addrs;
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 	if (!strchr(params, ':')) {
 		fprintf(stderr, "Invalid data\n");
 		return -1;
 	}
+#ifndef RTE_EXEC_ENV_WINDOWS
 	strlcpy(data, strchr(params, ':'), sizeof(data));
 	memcpy(data, &data[strlen(":\"")], strlen(data));
 	if (!strchr(data, '\"')) {
@@ -109,8 +114,11 @@ register_client(const char *cmd __rte_unused, const char *params,
 	}
 	pthread_create(&th, NULL, &legacy_client_handler,
 			(void *)(uintptr_t)fd);
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 	return 0;
 }
+
+#ifndef RTE_EXEC_ENV_WINDOWS
 
 static int
 send_error_response(int s, int err)
@@ -239,3 +247,5 @@ legacy_client_handler(void *sock_id)
 	close(s);
 	return NULL;
 }
+
+#endif /* !RTE_EXEC_ENV_WINDOWS */

@@ -38,6 +38,7 @@ libraries = [
 if is_windows
 	libraries = [
 		'kvargs',
+		'telemetry',
 		'eal',
 		'ring',
 		'mempool', 'mbuf', 'net', 'pci',

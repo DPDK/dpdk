@@ -3,6 +3,7 @@
  */
 
 #include <stdint.h>
+#include <sched.h>
 #include <rte_compat.h>
 
 #ifndef _RTE_TELEMETRY_H_

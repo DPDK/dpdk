@@ -2,11 +2,13 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <dlfcn.h>
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 /* we won't link against libbsd, so just always use DPDKs-specific strlcpy */
 #undef RTE_USE_LIBBSD
@@ -25,8 +27,10 @@
 #define MAX_OUTPUT_LEN (1024 * 16)
 #define MAX_CONNECTIONS 10
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 static void *
 client_handler(void *socket);
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 struct cmd_callback {
 	char cmd[MAX_CMD_LEN];
@@ -34,6 +38,7 @@ struct cmd_callback {
 	char help[MAX_HELP_LEN];
 };
 
+#ifndef RTE_EXEC_ENV_WINDOWS
 struct socket {
 	int sock;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)];
@@ -42,13 +47,16 @@ struct socket {
 };
 static struct socket v2_socket; /* socket for v2 telemetry */
 static struct socket v1_socket; /* socket for v1 telemetry */
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 static char telemetry_log_error[1024]; /* Will contain error on init failure */
 /* list of command callbacks, with one command registered by default */
 static struct cmd_callback callbacks[TELEMETRY_MAX_CALLBACKS];
 static int num_callbacks; /* How many commands are registered */
 /* Used when accessing or modifying list of command callbacks */
 static rte_spinlock_t callback_sl = RTE_SPINLOCK_INITIALIZER;
+#ifndef RTE_EXEC_ENV_WINDOWS
 static uint16_t v2_clients;
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
 int
 rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
@@ -77,6 +85,8 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
 
 	return 0;
 }
+
+#ifndef RTE_EXEC_ENV_WINDOWS
 
 static int
 list_commands(const char *cmd __rte_unused, const char *params __rte_unused,
@@ -412,10 +422,13 @@ telemetry_v2_init(const char *runtime_dir, rte_cpuset_t *cpuset)
 	return 0;
 }
 
+#endif /* !RTE_EXEC_ENV_WINDOWS */
+
 int32_t
 rte_telemetry_init(const char *runtime_dir, rte_cpuset_t *cpuset,
 		const char **err_str)
 {
+#ifndef RTE_EXEC_ENV_WINDOWS
 	if (telemetry_v2_init(runtime_dir, cpuset) != 0) {
 		*err_str = telemetry_log_error;
 		return -1;
@@ -423,5 +436,14 @@ rte_telemetry_init(const char *runtime_dir, rte_cpuset_t *cpuset,
 	if (telemetry_legacy_init(runtime_dir, cpuset) != 0) {
 		*err_str = telemetry_log_error;
 	}
+#else /* RTE_EXEC_ENV_WINDOWS */
+	RTE_SET_USED(runtime_dir);
+	RTE_SET_USED(cpuset);
+	RTE_SET_USED(err_str);
+
+	snprintf(telemetry_log_error, sizeof(telemetry_log_error),
+		"DPDK Telemetry is not supported on Windows.");
+#endif /* RTE_EXEC_ENV_WINDOWS */
+
 	return 0;
 }
