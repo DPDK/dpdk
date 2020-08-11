@@ -89,7 +89,6 @@ DPDK_21 {
 	rte_eth_iterator_next;
 	rte_eth_led_off;
 	rte_eth_led_on;
-	rte_eth_link;
 	rte_eth_link_get;
 	rte_eth_link_get_nowait;
 	rte_eth_macaddr_get;
@@ -104,7 +103,6 @@ DPDK_21 {
 	rte_eth_rx_queue_setup;
 	rte_eth_set_queue_rate_limit;
 	rte_eth_speed_bitflag;
-	rte_eth_stats;
 	rte_eth_stats_get;
 	rte_eth_stats_reset;
 	rte_eth_timesync_adjust_time;
