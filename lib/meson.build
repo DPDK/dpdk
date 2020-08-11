@@ -41,7 +41,7 @@ if is_windows
 		'telemetry',
 		'eal',
 		'ring',
-		'mempool', 'mbuf', 'net', 'pci',
+		'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci',
 	] # only supported libraries for windows
 endif
 
