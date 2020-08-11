@@ -1405,6 +1405,11 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->eth_dev = eth_dev;
 	adapter->stopped = 1;
 
+	/* Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	if (iavf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
 		return -1;
@@ -1459,6 +1464,7 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	iavf_dev_stop(dev);
 	iavf_flow_flush(dev, NULL);
@@ -1471,20 +1477,21 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(intr_handle,
 				     iavf_dev_interrupt_handler, dev);
 	iavf_disable_irq0(hw);
-}
-
-static int
-iavf_dev_uninit(struct rte_eth_dev *dev)
-{
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
 
 	dev->dev_ops = NULL;
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
-	iavf_dev_close(dev);
+
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
+		if (vf->rss_lut) {
+			rte_free(vf->rss_lut);
+			vf->rss_lut = NULL;
+		}
+		if (vf->rss_key) {
+			rte_free(vf->rss_key);
+			vf->rss_key = NULL;
+		}
+	}
 
 	rte_free(vf->vf_res);
 	vf->vsi_res = NULL;
@@ -1492,15 +1499,15 @@ iavf_dev_uninit(struct rte_eth_dev *dev)
 
 	rte_free(vf->aq_resp);
 	vf->aq_resp = NULL;
+}
 
-	if (vf->rss_lut) {
-		rte_free(vf->rss_lut);
-		vf->rss_lut = NULL;
-	}
-	if (vf->rss_key) {
-		rte_free(vf->rss_key);
-		vf->rss_key = NULL;
-	}
+static int
+iavf_dev_uninit(struct rte_eth_dev *dev)
+{
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
+
+	iavf_dev_close(dev);
 
 	return 0;
 }
