@@ -27,18 +27,6 @@ vmbus_sync_set_bit(volatile uint32_t *addr, uint32_t mask)
 }
 
 static inline void
-vmbus_send_interrupt(const struct rte_vmbus_device *dev, uint32_t relid)
-{
-	uint32_t *int_addr;
-	uint32_t int_mask;
-
-	int_addr = dev->int_page + relid / 32;
-	int_mask = 1u << (relid % 32);
-
-	vmbus_sync_set_bit(int_addr, int_mask);
-}
-
-static inline void
 vmbus_set_monitor(const struct rte_vmbus_device *dev, uint32_t monitor_id)
 {
 	uint32_t *monitor_addr, monitor_mask;
@@ -55,7 +43,6 @@ static void
 vmbus_set_event(const struct rte_vmbus_device *dev,
 		const struct vmbus_channel *chan)
 {
-	vmbus_send_interrupt(dev, chan->relid);
 	vmbus_set_monitor(dev, chan->monitor_id);
 }
 
