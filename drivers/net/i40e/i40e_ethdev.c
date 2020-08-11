@@ -3014,7 +3014,10 @@ update_link_aq(struct i40e_hw *hw, struct rte_eth_link *link,
 		link->link_speed = ETH_SPEED_NUM_40G;
 		break;
 	default:
-		link->link_speed = ETH_SPEED_NUM_NONE;
+		if (link->link_status)
+			link->link_speed = ETH_SPEED_NUM_UNKNOWN;
+		else
+			link->link_speed = ETH_SPEED_NUM_NONE;
 		break;
 	}
 }
