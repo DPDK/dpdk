@@ -45,7 +45,7 @@ M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 
 Next-net-mlx Tree
-M: Raslan Darawsheh <rasland@mellanox.com>
+M: Raslan Darawsheh <rasland@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
 
 Next-virtio Tree
@@ -373,7 +373,7 @@ F: devtools/test-null.sh
 F: doc/guides/prog_guide/switch_representation.rst
 
 Flow API
-M: Ori Kam <orika@mellanox.com>
+M: Ori Kam <orika@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/cmdline_flow.c
 F: doc/guides/prog_guide/rte_flow.rst
@@ -427,7 +427,7 @@ F: doc/guides/prog_guide/compressdev.rst
 F: doc/guides/compressdevs/features/default.ini
 
 RegEx API - EXPERIMENTAL
-M: Ori Kam <orika@mellanox.com>
+M: Ori Kam <orika@nvidia.com>
 F: lib/librte_regexdev/
 F: app/test-regex/
 F: doc/guides/prog_guide/regexdev.rst
@@ -749,17 +749,17 @@ F: drivers/common/octeontx2/otx2_sec*
 F: drivers/net/octeontx2/otx2_ethdev_sec*
 
 Mellanox mlx4
-M: Matan Azrad <matan@mellanox.com>
-M: Shahaf Shuler <shahafs@mellanox.com>
+M: Matan Azrad <matan@nvidia.com>
+M: Shahaf Shuler <shahafs@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
 F: doc/guides/nics/features/mlx4.ini
 
 Mellanox mlx5
-M: Matan Azrad <matan@mellanox.com>
-M: Shahaf Shuler <shahafs@mellanox.com>
-M: Viacheslav Ovsiienko <viacheslavo@mellanox.com>
+M: Matan Azrad <matan@nvidia.com>
+M: Shahaf Shuler <shahafs@nvidia.com>
+M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/common/mlx5/
 F: drivers/net/mlx5/
@@ -768,7 +768,7 @@ F: doc/guides/nics/mlx5.rst
 F: doc/guides/nics/features/mlx5.ini
 
 Microsoft vdev_netvsc - EXPERIMENTAL
-M: Matan Azrad <matan@mellanox.com>
+M: Matan Azrad <matan@nvidia.com>
 F: drivers/net/vdev_netvsc/
 F: doc/guides/nics/vdev_netvsc.rst
 
@@ -1113,7 +1113,7 @@ RegEx Drivers
 -------------
 
 Mellanox mlx5
-M: Ori Kam <orika@mellanox.com>
+M: Ori Kam <orika@nvidia.com>
 F: drivers/regex/mlx5/
 F: doc/guides/regexdevs/mlx5.rst
 F: doc/guides/regexdevs/features/mlx5.ini
@@ -1130,8 +1130,8 @@ F: doc/guides/vdpadevs/ifc.rst
 F: doc/guides/vdpadevs/features/ifcvf.ini
 
 Mellanox mlx5 vDPA
-M: Matan Azrad <matan@mellanox.com>
-M: Viacheslav Ovsiienko <viacheslavo@mellanox.com>
+M: Matan Azrad <matan@nvidia.com>
+M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
 F: drivers/vdpa/mlx5/
 F: doc/guides/vdpadevs/mlx5.rst
 F: doc/guides/vdpadevs/features/mlx5.ini
@@ -1529,7 +1529,7 @@ F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
 Flow performance tool
-M: Wisam Jaddo <wisamm@mellanox.com>
+M: Wisam Jaddo <wisamm@nvidia.com>
 F: app/test-flow-perf/
 F: doc/guides/tools/flow-perf.rst
 
@@ -1569,7 +1569,7 @@ M: Marko Kovacevic <marko.kovacevic@intel.com>
 F: examples/fips_validation/
 F: doc/guides/sample_app_ug/fips_validation.rst
 
-M: Ori Kam <orika@mellanox.com>
+M: Ori Kam <orika@nvidia.com>
 F: examples/flow_filtering/
 F: doc/guides/sample_app_ug/flow_filtering.rst
 
