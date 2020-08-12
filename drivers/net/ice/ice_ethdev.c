@@ -47,6 +47,8 @@ struct proto_xtr_ol_flag {
 	bool required;
 };
 
+static bool ice_proto_xtr_hw_support[PROTO_XTR_MAX];
+
 static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 	[PROTO_XTR_VLAN] = {
 		.param = { .name = "ice_dynflag_proto_xtr_vlan" },
@@ -536,25 +538,36 @@ handle_proto_xtr_arg(__rte_unused const char *key, const char *value,
 	return 0;
 }
 
-static bool
-ice_proto_xtr_support(struct ice_hw *hw)
+static void
+ice_check_proto_xtr_support(struct ice_hw *hw)
 {
 #define FLX_REG(val, fld, idx) \
 	(((val) & GLFLXP_RXDID_FLX_WRD_##idx##_##fld##_M) >> \
 	 GLFLXP_RXDID_FLX_WRD_##idx##_##fld##_S)
 	static struct {
 		uint32_t rxdid;
-		uint16_t protid_0;
-		uint16_t protid_1;
+		uint8_t opcode;
+		uint8_t protid_0;
+		uint8_t protid_1;
 	} xtr_sets[] = {
-		{ ICE_RXDID_COMMS_AUX_VLAN, ICE_PROT_EVLAN_O, ICE_PROT_VLAN_O },
-		{ ICE_RXDID_COMMS_AUX_IPV4, ICE_PROT_IPV4_OF_OR_S,
-		  ICE_PROT_IPV4_OF_OR_S },
-		{ ICE_RXDID_COMMS_AUX_IPV6, ICE_PROT_IPV6_OF_OR_S,
-		  ICE_PROT_IPV6_OF_OR_S },
-		{ ICE_RXDID_COMMS_AUX_IPV6_FLOW, ICE_PROT_IPV6_OF_OR_S,
-		  ICE_PROT_IPV6_OF_OR_S },
-		{ ICE_RXDID_COMMS_AUX_TCP, ICE_PROT_TCP_IL, ICE_PROT_ID_INVAL },
+		[PROTO_XTR_VLAN] = { ICE_RXDID_COMMS_AUX_VLAN,
+				     ICE_RX_OPC_EXTRACT,
+				     ICE_PROT_EVLAN_O, ICE_PROT_VLAN_O},
+		[PROTO_XTR_IPV4] = { ICE_RXDID_COMMS_AUX_IPV4,
+				     ICE_RX_OPC_EXTRACT,
+				     ICE_PROT_IPV4_OF_OR_S,
+				     ICE_PROT_IPV4_OF_OR_S },
+		[PROTO_XTR_IPV6] = { ICE_RXDID_COMMS_AUX_IPV6,
+				     ICE_RX_OPC_EXTRACT,
+				     ICE_PROT_IPV6_OF_OR_S,
+				     ICE_PROT_IPV6_OF_OR_S },
+		[PROTO_XTR_IPV6_FLOW] = { ICE_RXDID_COMMS_AUX_IPV6_FLOW,
+					  ICE_RX_OPC_EXTRACT,
+					  ICE_PROT_IPV6_OF_OR_S,
+					  ICE_PROT_IPV6_OF_OR_S },
+		[PROTO_XTR_TCP] = { ICE_RXDID_COMMS_AUX_TCP,
+				    ICE_RX_OPC_EXTRACT,
+				    ICE_PROT_TCP_IL, ICE_PROT_ID_INVAL },
 	};
 	uint32_t i;
 
@@ -565,21 +578,19 @@ ice_proto_xtr_support(struct ice_hw *hw)
 		if (xtr_sets[i].protid_0 != ICE_PROT_ID_INVAL) {
 			v = ICE_READ_REG(hw, GLFLXP_RXDID_FLX_WRD_4(rxdid));
 
-			if (FLX_REG(v, PROT_MDID, 4) != xtr_sets[i].protid_0 ||
-			    FLX_REG(v, RXDID_OPCODE, 4) != ICE_RX_OPC_EXTRACT)
-				return false;
+			if (FLX_REG(v, PROT_MDID, 4) == xtr_sets[i].protid_0 &&
+			    FLX_REG(v, RXDID_OPCODE, 4) == xtr_sets[i].opcode)
+				ice_proto_xtr_hw_support[i] = true;
 		}
 
 		if (xtr_sets[i].protid_1 != ICE_PROT_ID_INVAL) {
 			v = ICE_READ_REG(hw, GLFLXP_RXDID_FLX_WRD_5(rxdid));
 
-			if (FLX_REG(v, PROT_MDID, 5) != xtr_sets[i].protid_1 ||
-			    FLX_REG(v, RXDID_OPCODE, 5) != ICE_RX_OPC_EXTRACT)
-				return false;
+			if (FLX_REG(v, PROT_MDID, 5) == xtr_sets[i].protid_1 &&
+			    FLX_REG(v, RXDID_OPCODE, 5) == xtr_sets[i].opcode)
+				ice_proto_xtr_hw_support[i] = true;
 		}
 	}
-
-	return true;
 }
 
 static int
@@ -1416,11 +1427,6 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 	int offset;
 	uint16_t i;
 
-	if (!ice_proto_xtr_support(hw)) {
-		PMD_DRV_LOG(NOTICE, "Protocol extraction is not supported");
-		return;
-	}
-
 	pf->proto_xtr = rte_zmalloc(NULL, pf->lan_nb_qps, 0);
 	if (unlikely(pf->proto_xtr == NULL)) {
 		PMD_DRV_LOG(ERR, "No memory for setting up protocol extraction table");
@@ -1443,6 +1449,8 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 	if (likely(!proto_xtr_enable))
 		return;
 
+	ice_check_proto_xtr_support(hw);
+
 	offset = rte_mbuf_dynfield_register(&ice_proto_xtr_metadata_param);
 	if (unlikely(offset == -1)) {
 		PMD_DRV_LOG(ERR,
@@ -1461,6 +1469,14 @@ ice_init_proto_xtr(struct rte_eth_dev *dev)
 
 		if (!ol_flag->required)
 			continue;
+
+		if (!ice_proto_xtr_hw_support[i]) {
+			PMD_DRV_LOG(ERR,
+				    "Protocol extraction type %u is not supported in hardware",
+				    i);
+			rte_net_ice_dynfield_proto_xtr_metadata_offs = -1;
+			break;
+		}
 
 		offset = rte_mbuf_dynflag_register(&ol_flag->param);
 		if (unlikely(offset == -1)) {
