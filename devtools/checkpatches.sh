@@ -45,7 +45,7 @@ print_usage () {
 
 	The patches to check can be from stdin, files specified on the command line,
 	latest git commits limited with -n option, or commits in the git range
-	specified with -r option (default: "origin/master..").
+	specified with -r option (default: "origin/main..").
 	END_OF_HELP
 }
 
@@ -200,7 +200,7 @@ check_internal_tags() { # <patch>
 }
 
 number=0
-range='origin/master..'
+range='origin/main..'
 quiet=false
 verbose=false
 while getopts hn:qr:v ARG ; do

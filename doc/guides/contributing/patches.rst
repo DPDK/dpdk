@@ -118,7 +118,8 @@ The proposer should justify the need for a new sub-tree and should have demonstr
 The maintainer should be confirmed by an ``ack`` from an existing tree maintainer.
 Disagreements on trees or maintainers can be brought to the Technical Board.
 
-The backup maintainer for the master tree should be selected from the existing sub-tree maintainers from the project.
+The backup maintainer for the main tree should be selected
+from the existing sub-tree maintainers of the project.
 The backup maintainer for a sub-tree should be selected from among the component maintainers within that sub-tree.
 
 
@@ -319,7 +320,7 @@ For example::
 Patch for Stable Releases
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All fix patches to the master branch that are candidates for backporting
+All fix patches to the main branch that are candidates for backporting
 should also be CCed to the `stable@dpdk.org <https://mails.dpdk.org/listinfo/stable>`_
 mailing list.
 In the commit message body the Cc: stable@dpdk.org should be inserted as follows::

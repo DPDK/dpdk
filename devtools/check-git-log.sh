@@ -16,7 +16,7 @@ print_usage () {
 	by latest git commits limited with -n option, or commits in the git
 	range specified with -r option.
 	e.g. To check only the last commit, ‘-n1’ or ‘-r@~..’ is used.
-	If no range provided, default is origin/master..HEAD.
+	If no range provided, default is origin/main..HEAD.
 	END_OF_HELP
 }
 
@@ -27,7 +27,7 @@ selfdir=$(dirname $(readlink -f $0))
 # and allows for specifying the patches to check by passing -nX or -r range.
 # The old format allows for specifying patches by passing -X or range
 # as the first argument.
-range=${1:-origin/master..}
+range=${1:-origin/main..}
 
 if [ "$range" = '--help' ] ; then
 	print_usage
