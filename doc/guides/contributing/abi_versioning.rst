@@ -673,9 +673,9 @@ symbols.
  -BIND_DEFAULT_SYMBOL(rte_acl_create, _v20, 20);
  +BIND_DEFAULT_SYMBOL(rte_acl_create, _v21, 21);
 
-Lastly, any VERSION_SYMBOL macros that point to the old version node should be
-removed, taking care to keep, where need old code in place to support newer
-versions of the symbol.
+Lastly, any VERSION_SYMBOL macros that point to the old version nodes
+should be removed, taking care to preserve any code that is shared
+with the new version node.
 
 
 Running the ABI Validator

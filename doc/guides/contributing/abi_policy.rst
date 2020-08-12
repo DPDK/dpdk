@@ -14,8 +14,8 @@ General Guidelines
 ------------------
 
 #. Major ABI versions are declared no more frequently than yearly. Compatibility
-   with the major ABI version is mandatory in subsequent releases until a new
-   major ABI version is declared.
+   with the major ABI version is mandatory in subsequent releases until a
+   :ref:`new major ABI version <new_abi_version>` is declared.
 #. Major ABI versions are usually but not always declared aligned with a
    :ref:`LTS release <stable_lts_releases>`.
 #. The ABI version is managed at a project level in DPDK, and is reflected in
@@ -35,12 +35,6 @@ General Guidelines
 
 .. note::
 
-   In 2019, the DPDK community stated its intention to move to ABI stable
-   releases, over a number of release cycles. This change begins with
-   maintaining ABI stability through one year of DPDK releases starting from
-   DPDK 19.11. This policy will be reviewed in 2020, with intention of
-   lengthening the stability period. Additional implementation detail can be
-   found in the :ref:`release notes <20_02_abi_changes>`.
    Please note that this policy does not currently apply to the
    :doc:`Windows build <../windows_gsg/intro>`.
 
@@ -287,6 +281,35 @@ added to the Release Notes:
   and no backwards compatibility is planned due to the extensive nature of
   these changes. Binaries using this library built prior to ABI version 21 will
   require updating and recompilation.
+
+
+.. _new_abi_version:
+
+New ABI versions
+------------------
+
+A new ABI version may be declared aligned with a given release.
+The requirement to preserve compatibility with the previous major ABI version
+is then dropped for the duration of this release cycle.
+This is commonly known as the *ABI breakage window*,
+and some amended rules apply during this cycle:
+
+ * The requirement to preserve compatibility with the previous major ABI
+   version, as described in the section :ref:`abi_changes` does not apply.
+ * Contributors of compatibility preserving code in previous releases,
+   are now required to remove this compatibility code,
+   as described in the section :ref:`abi_changes`.
+ * Symbol versioning references to the old ABI version are updated
+   to reference the new ABI version,
+   as described in the section :ref:`deprecating_entire_abi`.
+ * Contributors of aliases to experimental in previous releases,
+   as described in section :ref:`aliasing_experimental_symbols`,
+   are now required to remove these aliases.
+ * Finally, the *ABI breakage window* is *not* permission to circumvent
+   the other aspects of the procedures to make ABI changes
+   described in :ref:`abi_changes`, that is, 3 ACKs of the requirement
+   to break the ABI and the observance of a deprecation notice
+   are still considered mandatory.
 
 .. _experimental_apis:
 
