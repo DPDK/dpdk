@@ -298,13 +298,14 @@ RTE_DECLARE_PER_LCORE(void *, trace_mem);
 static __rte_always_inline void *
 __rte_trace_mem_get(uint64_t in)
 {
-	struct __rte_trace_header *trace = RTE_PER_LCORE(trace_mem);
+	struct __rte_trace_header *trace =
+		(struct __rte_trace_header *)(RTE_PER_LCORE(trace_mem));
 	const uint16_t sz = in & __RTE_TRACE_FIELD_SIZE_MASK;
 
 	/* Trace memory is not initialized for this thread */
 	if (unlikely(trace == NULL)) {
 		__rte_trace_mem_per_thread_alloc();
-		trace = RTE_PER_LCORE(trace_mem);
+		trace = (struct __rte_trace_header *)(RTE_PER_LCORE(trace_mem));
 		if (unlikely(trace == NULL))
 			return NULL;
 	}
