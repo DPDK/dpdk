@@ -61,14 +61,6 @@ Next-eventdev Tree
 M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 
-Next-qos Tree
-M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
-T: git://dpdk.org/next/dpdk-next-qos
-
-Next-pipeline Tree
-M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
-T: git://dpdk.org/next/dpdk-next-pipeline
-
 Stable Branches
 M: Luca Boccassi <bluca@debian.org>
 M: Kevin Traynor <ktraynor@redhat.com>
@@ -408,12 +400,12 @@ F: lib/librte_ethdev/rte_flow*
 
 Traffic Management API - EXPERIMENTAL
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
-T: git://dpdk.org/next/dpdk-next-qos
+T: git://dpdk.org/next/dpdk-next-net
 F: lib/librte_ethdev/rte_tm*
 
 Traffic Metering and Policing API - EXPERIMENTAL
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
-T: git://dpdk.org/next/dpdk-next-qos
+T: git://dpdk.org/next/dpdk-next-net
 F: lib/librte_ethdev/rte_mtr*
 
 Baseband API - EXPERIMENTAL
@@ -1331,7 +1323,6 @@ F: doc/guides/sample_app_ug/packet_ordering.rst
 Hierarchical scheduler
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 M: Jasvinder Singh <jasvinder.singh@intel.com>
-T: git://dpdk.org/next/dpdk-next-qos
 F: lib/librte_sched/
 F: doc/guides/prog_guide/qos_framework.rst
 F: app/test/test_red.c
@@ -1351,7 +1342,6 @@ F: doc/guides/tools/pdump.rst
 Packet Framework
 ----------------
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
-T: git://dpdk.org/next/dpdk-next-pipeline
 F: lib/librte_pipeline/
 F: lib/librte_port/
 F: lib/librte_table/
@@ -1419,7 +1409,6 @@ F: app/test-fib/
 
 Traffic metering
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
-T: git://dpdk.org/next/dpdk-next-qos
 F: lib/librte_meter/
 F: doc/guides/sample_app_ug/qos_scheduler.rst
 F: app/test/test_meter.c
