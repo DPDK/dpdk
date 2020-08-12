@@ -322,8 +322,10 @@ stack_thread_push_pop(__rte_unused void *args)
 static int
 test_stack_multithreaded(uint32_t flags)
 {
+	unsigned int lcore_id;
 	struct rte_stack *s;
 	rte_atomic64_t size;
+	int result = 0;
 
 	if (rte_lcore_count() < 2) {
 		printf("Not enough cores for test_stack_multithreaded, expecting at least 2\n");
@@ -346,10 +348,14 @@ test_stack_multithreaded(uint32_t flags)
 
 	if (rte_eal_mp_remote_launch(stack_thread_push_pop, NULL, CALL_MASTER))
 		rte_panic("Failed to launch tests\n");
-	rte_eal_mp_wait_lcore();
+
+	RTE_LCORE_FOREACH(lcore_id) {
+		if (rte_eal_wait_lcore(lcore_id) < 0)
+			result = -1;
+	}
 
 	rte_stack_free(s);
-	return 0;
+	return result;
 }
 
 static int
