@@ -273,7 +273,6 @@ test_free_null(void)
 
 struct test_args {
 	struct rte_stack *s;
-	rte_atomic64_t *sz;
 };
 
 static struct test_args thread_test_args;
@@ -285,21 +284,9 @@ stack_thread_push_pop(__rte_unused void *args)
 	int i;
 
 	for (i = 0; i < NUM_ITERS_PER_THREAD; i++) {
-		unsigned int success, num;
+		unsigned int num;
 
-		/* Reserve up to min(MAX_BULK, available slots) stack entries,
-		 * then push and pop those stack entries.
-		 */
-		do {
-			uint64_t sz = rte_atomic64_read(thread_test_args.sz);
-			volatile uint64_t *sz_addr;
-
-			sz_addr = (volatile uint64_t *)thread_test_args.sz;
-
-			num = RTE_MIN(rte_rand() % MAX_BULK, STACK_SIZE - sz);
-
-			success = rte_atomic64_cmpset(sz_addr, sz, sz + num);
-		} while (success == 0);
+		num = rte_rand() % MAX_BULK;
 
 		if (rte_stack_push(thread_test_args.s, obj_table, num) != num) {
 			printf("[%s():%u] Failed to push %u pointers\n",
@@ -312,8 +299,6 @@ stack_thread_push_pop(__rte_unused void *args)
 			       __func__, __LINE__, num);
 			return -1;
 		}
-
-		rte_atomic64_sub(thread_test_args.sz, num);
 	}
 
 	return 0;
@@ -324,7 +309,6 @@ test_stack_multithreaded(uint32_t flags)
 {
 	unsigned int lcore_id;
 	struct rte_stack *s;
-	rte_atomic64_t size;
 	int result = 0;
 
 	if (rte_lcore_count() < 2) {
@@ -335,16 +319,14 @@ test_stack_multithreaded(uint32_t flags)
 	printf("[%s():%u] Running with %u lcores\n",
 	       __func__, __LINE__, rte_lcore_count());
 
-	s = rte_stack_create("test", STACK_SIZE, rte_socket_id(), flags);
+	s = rte_stack_create("test", MAX_BULK * rte_lcore_count(), rte_socket_id(), flags);
 	if (s == NULL) {
 		printf("[%s():%u] Failed to create a stack\n",
 		       __func__, __LINE__);
 		return -1;
 	}
 
-	rte_atomic64_init(&size);
 	thread_test_args.s = s;
-	thread_test_args.sz = &size;
 
 	if (rte_eal_mp_remote_launch(stack_thread_push_pop, NULL, CALL_MASTER))
 		rte_panic("Failed to launch tests\n");
