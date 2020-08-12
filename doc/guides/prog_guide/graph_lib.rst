@@ -392,4 +392,3 @@ null
 ~~~~
 This node ignores the set of objects passed to it and reports that all are
 processed.
-

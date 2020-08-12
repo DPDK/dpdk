@@ -155,9 +155,9 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
 #. Start testpmd, automatically probing the device 84:00.0 and using it with
    the fail-safe.
- 
+
    .. code-block:: console
- 
+
       $RTE_TARGET/build/app/testpmd -c 0xff -n 4 \
          --vdev 'net_failsafe0,dev(0000:84:00.0),dev(net_ring0)' -- -i
 

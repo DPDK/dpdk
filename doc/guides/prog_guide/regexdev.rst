@@ -174,4 +174,3 @@ the ``nb_ops`` and ``ops`` parameters are now used to specify the max processed
 operations the user wishes to retrieve and the location in which to store them.
 The API call returns the actual number of processed operations returned, this
 can never be larger than ``nb_ops``.
-

@@ -205,4 +205,3 @@ To generate the statistics output, use the following command:
 
 Please note that the statistics output will appear on the terminal where the vmdq_app is running,
 rather than the terminal from which the HUP signal was sent.
-
