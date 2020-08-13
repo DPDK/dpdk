@@ -238,6 +238,9 @@ otx2_rss_ethdev_to_nix(struct otx2_eth_dev *dev, uint64_t ethdev_rss,
 		flowkey_cfg |= FLOW_KEY_TYPE_CH_LEN_90B;
 	}
 
+	if (ethdev_rss & ETH_RSS_C_VLAN)
+		flowkey_cfg |= FLOW_KEY_TYPE_VLAN;
+
 	if (ethdev_rss & ETH_RSS_L3_SRC_ONLY)
 		flowkey_cfg |= FLOW_KEY_TYPE_L3_SRC;
 
