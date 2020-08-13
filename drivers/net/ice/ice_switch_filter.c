@@ -1405,6 +1405,16 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 		case RTE_FLOW_ACTION_TYPE_VF:
 			rule_info->sw_act.fltr_act = ICE_FWD_TO_VSI;
 			act_vf = action->conf;
+
+			if (act_vf->id >= ad->real_hw.num_vfs &&
+				!act_vf->original) {
+				rte_flow_error_set(error,
+					EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					actions,
+					"Invalid vf id");
+				return -rte_errno;
+			}
+
 			if (act_vf->original)
 				rule_info->sw_act.vsi_handle =
 					ad->real_hw.avf.bus.func;
@@ -1415,7 +1425,7 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 			rte_flow_error_set(error,
 					   EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 					   actions,
-					   "Invalid action type or queue number");
+					   "Invalid action type");
 			return -rte_errno;
 		}
 	}
@@ -1467,11 +1477,11 @@ ice_switch_parse_action(struct ice_pf *pf,
 			if ((act_qgrop->queue[0] +
 				act_qgrop->queue_num) >
 				dev->data->nb_rx_queues)
-				goto error;
+				goto error1;
 			for (i = 0; i < act_qgrop->queue_num - 1; i++)
 				if (act_qgrop->queue[i + 1] !=
 					act_qgrop->queue[i] + 1)
-					goto error;
+					goto error2;
 			rule_info->sw_act.qgrp_size =
 				act_qgrop->queue_num;
 			break;
@@ -1510,6 +1520,20 @@ error:
 		EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 		actions,
 		"Invalid action type or queue number");
+	return -rte_errno;
+
+error1:
+	rte_flow_error_set(error,
+		EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+		actions,
+		"Invalid queue region indexes");
+	return -rte_errno;
+
+error2:
+	rte_flow_error_set(error,
+		EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+		actions,
+		"Discontinuous queue region");
 	return -rte_errno;
 }
 
@@ -1654,12 +1678,8 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	rule_info.tun_type = tun_type;
 
 	ret = ice_switch_check_action(actions, error);
-	if (ret) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Invalid input action number");
+	if (ret)
 		goto error;
-	}
 
 	if (ad->hw.dcf_enabled)
 		ret = ice_switch_parse_dcf_action((void *)ad, actions, error,
@@ -1667,12 +1687,8 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	else
 		ret = ice_switch_parse_action(pf, actions, error, &rule_info);
 
-	if (ret) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Invalid input action");
+	if (ret)
 		goto error;
-	}
 
 	if (meta) {
 		*meta = sw_meta_ptr;
