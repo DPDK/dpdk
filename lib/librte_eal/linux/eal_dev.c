@@ -234,8 +234,7 @@ dev_uev_handler(__rte_unused void *param)
 
 	ret = dev_uev_parse(buf, &uevent, EAL_UEV_MSG_LEN);
 	if (ret < 0) {
-		RTE_LOG(DEBUG, EAL, "It is not an valid event "
-			"that need to be handle.\n");
+		RTE_LOG(DEBUG, EAL, "Ignoring uevent '%s'\n", buf);
 		return;
 	}
 
