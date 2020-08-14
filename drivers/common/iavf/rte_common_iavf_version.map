@@ -1,4 +1,4 @@
-DPDK_21 {
+INTERNAL {
 	global:
 
 	iavf_aq_send_msg_to_pf;

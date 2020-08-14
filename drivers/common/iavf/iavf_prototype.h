@@ -17,7 +17,9 @@
  */
 
 /* adminq functions */
+__rte_internal
 enum iavf_status iavf_init_adminq(struct iavf_hw *hw);
+__rte_internal
 enum iavf_status iavf_shutdown_adminq(struct iavf_hw *hw);
 enum iavf_status iavf_init_asq(struct iavf_hw *hw);
 enum iavf_status iavf_init_arq(struct iavf_hw *hw);
@@ -30,6 +32,7 @@ void iavf_free_adminq_asq(struct iavf_hw *hw);
 void iavf_free_adminq_arq(struct iavf_hw *hw);
 enum iavf_status iavf_validate_mac_addr(u8 *mac_addr);
 void iavf_adminq_init_ring_data(struct iavf_hw *hw);
+__rte_internal
 enum iavf_status iavf_clean_arq_element(struct iavf_hw *hw,
 					struct iavf_arq_event_info *e,
 					u16 *events_pending);
@@ -61,6 +64,7 @@ enum iavf_status iavf_aq_set_rss_key(struct iavf_hw *hw,
 const char *iavf_aq_str(struct iavf_hw *hw, enum iavf_admin_queue_err aq_err);
 const char *iavf_stat_str(struct iavf_hw *hw, enum iavf_status stat_err);
 
+__rte_internal
 enum iavf_status iavf_set_mac_type(struct iavf_hw *hw);
 
 extern struct iavf_rx_ptype_decoded iavf_ptype_lookup[];
@@ -76,9 +80,11 @@ void iavf_acquire_spinlock(struct iavf_spinlock *sp);
 void iavf_release_spinlock(struct iavf_spinlock *sp);
 void iavf_destroy_spinlock(struct iavf_spinlock *sp);
 
+__rte_internal
 void iavf_vf_parse_hw_config(struct iavf_hw *hw,
 			     struct virtchnl_vf_resource *msg);
 enum iavf_status iavf_vf_reset(struct iavf_hw *hw);
+__rte_internal
 enum iavf_status iavf_aq_send_msg_to_pf(struct iavf_hw *hw,
 				enum virtchnl_ops v_opcode,
 				enum iavf_status v_retval,
