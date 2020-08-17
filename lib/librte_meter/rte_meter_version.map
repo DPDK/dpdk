@@ -10,10 +10,3 @@ DPDK_21 {
 
 	local: *;
 };
-
-EXPERIMENTAL {
-	global:
-
-	rte_meter_trtcm_rfc4115_config;
-	rte_meter_trtcm_rfc4115_profile_config;
-};
