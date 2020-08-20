@@ -15531,6 +15531,18 @@ struct hwrm_port_phy_cfg_input {
 	 */
 	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_TX_LPI_TIMER \
 		UINT32_C(0x400)
+	/*
+	 * This bit must be '1' for the force_pam4_link_speed field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_FORCE_PAM4_LINK_SPEED \
+		UINT32_C(0x800)
+	/*
+	 * This bit must be '1' for the auto_pam4_link_speed_mask field to
+	 * be configured.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_PAM4_LINK_SPEED_MASK \
+		UINT32_C(0x1000)
 	/* Port ID of port that is to be configured. */
 	uint16_t	port_id;
 	/*
@@ -15559,8 +15571,6 @@ struct hwrm_port_phy_cfg_input {
 	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_50GB  UINT32_C(0x1f4)
 	/* 100Gb link speed */
 	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100GB UINT32_C(0x3e8)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_200GB UINT32_C(0x7d0)
 	/* 10Mb link speed */
 	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_10MB  UINT32_C(0xffff)
 	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_LAST \
@@ -15585,8 +15595,9 @@ struct hwrm_port_phy_cfg_input {
 	 */
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_ONE_OR_BELOW UINT32_C(0x3)
 	/*
-	 * Select the speeds based on the corresponding link speed mask value
-	 * that is provided.
+	 * Select the speeds based on the corresponding link speed mask values
+	 * that are provided. The included speeds are specified in the
+	 * auto_link_speed and auto_pam4_link_speed fields.
 	 */
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK   UINT32_C(0x4)
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_LAST \
@@ -15665,8 +15676,6 @@ struct hwrm_port_phy_cfg_input {
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_50GB  UINT32_C(0x1f4)
 	/* 100Gb link speed */
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_100GB UINT32_C(0x3e8)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_200GB UINT32_C(0x7d0)
 	/* 10Mb link speed */
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_10MB  UINT32_C(0xffff)
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_LAST \
@@ -15719,9 +15728,6 @@ struct hwrm_port_phy_cfg_input {
 	/* 10Mb link speed (Full-duplex) */
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_10MB \
 		UINT32_C(0x2000)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_200GB \
-		UINT32_C(0x4000)
 	/* This value controls the wirespeed feature. */
 	uint8_t	wirespeed;
 	/* Wirespeed feature is disabled. */
@@ -15832,7 +15838,15 @@ struct hwrm_port_phy_cfg_input {
 	uint32_t	tx_lpi_timer;
 	#define HWRM_PORT_PHY_CFG_INPUT_TX_LPI_TIMER_MASK UINT32_C(0xffffff)
 	#define HWRM_PORT_PHY_CFG_INPUT_TX_LPI_TIMER_SFT 0
-	uint32_t	unused_3;
+	/* This field specifies which PAM4 speeds are enabled for auto mode. */
+	uint16_t	auto_link_pam4_speed_mask;
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_PAM4_SPEED_MASK_50G \
+		UINT32_C(0x1)
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_PAM4_SPEED_MASK_100G \
+		UINT32_C(0x2)
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_PAM4_SPEED_MASK_200G \
+		UINT32_C(0x4)
+	uint8_t	unused_2[2];
 } __rte_packed;
 
 /* hwrm_port_phy_cfg_output (size:128b/16B) */
@@ -15925,7 +15939,7 @@ struct hwrm_port_phy_qcfg_input {
 	uint8_t	unused_0[6];
 } __rte_packed;
 
-/* hwrm_port_phy_qcfg_output (size:768b/96B) */
+/* hwrm_port_phy_qcfg_output (size:832b/104B) */
 struct hwrm_port_phy_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -15945,8 +15959,22 @@ struct hwrm_port_phy_qcfg_output {
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_LINK    UINT32_C(0x2)
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_LAST \
 		HWRM_PORT_PHY_QCFG_OUTPUT_LINK_LINK
-	uint8_t	unused_0;
-	/* This value indicates the current link speed of the connection. */
+	/*
+	 * This value indicates the current link signaling mode of the
+	 * connection.
+	 */
+	uint8_t	link_signal_mode;
+	/* NRZ signaling */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SIGNAL_MODE_NRZ  UINT32_C(0x0)
+	/* PAM4 signaling */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SIGNAL_MODE_PAM4 UINT32_C(0x1)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SIGNAL_MODE_LAST \
+		HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SIGNAL_MODE_PAM4
+	/*
+	 * This value indicates the current link speed of the connection.
+	 * The link_signal_mode field indicates if the link is using
+	 * NRZ or PAM4 signaling.
+	 */
 	uint16_t	link_speed;
 	/* 100Mb link speed */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100MB UINT32_C(0x1)
@@ -16003,7 +16031,7 @@ struct hwrm_port_phy_qcfg_output {
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_PAUSE_RX     UINT32_C(0x2)
 	/*
 	 * The supported speeds for the port. This is a bit mask.
-	 * For each speed that is supported, the corrresponding
+	 * For each speed that is supported, the corresponding
 	 * bit will be set to '1'.
 	 */
 	uint16_t	support_speeds;
@@ -16049,9 +16077,6 @@ struct hwrm_port_phy_qcfg_output {
 	/* 10Mb link speed (Full-duplex) */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_10MB \
 		UINT32_C(0x2000)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_200GB \
-		UINT32_C(0x4000)
 	/*
 	 * Current setting of forced link speed.
 	 * When the link speed is not being forced, this
@@ -16081,9 +16106,6 @@ struct hwrm_port_phy_qcfg_output {
 	/* 100Gb link speed */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_100GB \
 		UINT32_C(0x3e8)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_200GB \
-		UINT32_C(0x7d0)
 	/* 10Mb link speed */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEED_10MB \
 		UINT32_C(0xffff)
@@ -16170,8 +16192,6 @@ struct hwrm_port_phy_qcfg_output {
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_50GB  UINT32_C(0x1f4)
 	/* 100Gb link speed */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_100GB UINT32_C(0x3e8)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_200GB UINT32_C(0x7d0)
 	/* 10Mb link speed */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_10MB \
 		UINT32_C(0xffff)
@@ -16227,9 +16247,6 @@ struct hwrm_port_phy_qcfg_output {
 	/* 10Mb link speed (Full-duplex) */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_10MB \
 		UINT32_C(0x2000)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEED_MASK_200GB \
-		UINT32_C(0x4000)
 	/* Current setting for wirespeed. */
 	uint8_t	wirespeed;
 	/* Wirespeed feature is disabled. */
@@ -16836,7 +16853,64 @@ struct hwrm_port_phy_qcfg_output {
 	 * part number is not available.
 	 */
 	char	phy_vendor_partnumber[16];
-	uint8_t	unused_2[7];
+	/*
+	 * The supported PAM4 speeds for the port. This is a bit mask.
+	 * For each speed that is supported, the corresponding
+	 * bit will be set to '1'.
+	 */
+	uint16_t	support_pam4_speeds;
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_50G \
+		UINT32_C(0x1)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_100G \
+		UINT32_C(0x2)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_200G \
+		UINT32_C(0x4)
+	/*
+	 * Current setting of forced PAM4 link speed.
+	 * When the link speed is not being forced, this
+	 * value shall be set to 0.
+	 */
+	uint16_t	force_pam4_link_speed;
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_PAM4_LINK_SPEED_50GB \
+		UINT32_C(0x1f4)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_PAM4_LINK_SPEED_100GB \
+		UINT32_C(0x3e8)
+	/* 200Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_PAM4_LINK_SPEED_200GB \
+		UINT32_C(0x7d0)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_PAM4_LINK_SPEED_LAST \
+		HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_PAM4_LINK_SPEED_200GB
+	/*
+	 * Current setting for auto_pam4_link_speed_mask that is used to
+	 * advertise speeds during autonegotiation.
+	 * This field is only valid when auto_mode is set to "mask".
+	 * The speeds specified in this field shall be a subset of
+	 * supported speeds on this port.
+	 */
+	uint16_t	auto_pam4_link_speed_mask;
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_PAM4_LINK_SPEED_MASK_50G \
+		UINT32_C(0x1)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_PAM4_LINK_SPEED_MASK_100G \
+		UINT32_C(0x2)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_PAM4_LINK_SPEED_MASK_200G \
+		UINT32_C(0x4)
+	/*
+	 * The advertised PAM4 speeds for the port by the link partner.
+	 * Each advertised speed will be set to '1'.
+	 */
+	uint16_t	link_partner_pam4_adv_speeds;
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_PAM4_ADV_SPEEDS_50GB \
+		UINT32_C(0x1)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_PAM4_ADV_SPEEDS_100GB \
+		UINT32_C(0x2)
+	/* 200Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_PARTNER_PAM4_ADV_SPEEDS_200GB \
+		UINT32_C(0x4)
+	uint8_t	unused_0[7];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -19228,7 +19302,7 @@ struct hwrm_port_phy_qcaps_input {
 	uint8_t	unused_0[6];
 } __rte_packed;
 
-/* hwrm_port_phy_qcaps_output (size:192b/24B) */
+/* hwrm_port_phy_qcaps_output (size:256b/32B) */
 struct hwrm_port_phy_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -19348,9 +19422,6 @@ struct hwrm_port_phy_qcaps_output {
 	/* 10Mb link speed (Full-duplex) */
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS_FORCE_MODE_10MB \
 		UINT32_C(0x2000)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS_FORCE_MODE_200GB \
-		UINT32_C(0x4000)
 	/*
 	 * This is a bit mask to indicate what speeds are supported
 	 * for autonegotiation on this link.
@@ -19400,9 +19471,6 @@ struct hwrm_port_phy_qcaps_output {
 	/* 10Mb link speed (Full-duplex) */
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS_AUTO_MODE_10MB \
 		UINT32_C(0x2000)
-	/* 200Gb link speed */
-	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS_AUTO_MODE_200GB \
-		UINT32_C(0x4000)
 	/*
 	 * This is a bit mask to indicate what speeds are supported
 	 * for EEE on this link.
@@ -19458,15 +19526,43 @@ struct hwrm_port_phy_qcaps_output {
 		UINT32_C(0xffffff)
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_TX_LPI_TIMER_HIGH_SFT 0
 	/*
+	 * Reserved field. The HWRM shall set this field to 0.
+	 * An HWRM client shall ignore this field.
+	 */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_RSVD_MASK \
+		UINT32_C(0xff000000)
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_RSVD_SFT              24
+	/*
+	 * This field is used to advertise which PAM4 speeds are supported
+	 * in auto mode.
+	 */
+	uint16_t	supported_pam4_speeds_auto_mode;
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_PAM4_SPEEDS_AUTO_MODE_50G \
+		UINT32_C(0x1)
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_PAM4_SPEEDS_AUTO_MODE_100G \
+		UINT32_C(0x2)
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_PAM4_SPEEDS_AUTO_MODE_200G \
+		UINT32_C(0x4)
+	/*
+	 * This field is used to advertise which PAM4 speeds are supported
+	 * in forced mode.
+	 */
+	uint16_t	supported_pam4_speeds_force_mode;
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_PAM4_SPEEDS_FORCE_MODE_50G \
+		UINT32_C(0x1)
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_PAM4_SPEEDS_FORCE_MODE_100G \
+		UINT32_C(0x2)
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_PAM4_SPEEDS_FORCE_MODE_200G \
+		UINT32_C(0x4)
+	uint8_t	unused_0[3];
+	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
 	 * to indicate that the output has been completely written.
 	 * When writing a command completion or response to an internal processor,
 	 * the order of writes has to be such that this field is written last.
 	 */
-	#define HWRM_PORT_PHY_QCAPS_OUTPUT_VALID_MASK \
-		UINT32_C(0xff000000)
-	#define HWRM_PORT_PHY_QCAPS_OUTPUT_VALID_SFT             24
+	uint8_t	valid;
 } __rte_packed;
 
 /****************************

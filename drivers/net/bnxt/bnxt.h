@@ -292,6 +292,13 @@ struct bnxt_link_info {
 	uint32_t		preemphasis;
 	uint8_t			phy_type;
 	uint8_t			media_type;
+	uint16_t		support_auto_speeds;
+	uint8_t			link_signal_mode;
+	uint16_t		force_pam4_link_speed;
+	uint16_t		support_pam4_speeds;
+	uint16_t		auto_pam4_link_speeds;
+	uint16_t		support_pam4_auto_speeds;
+	uint8_t			req_signal_mode;
 };
 
 #define BNXT_COS_QUEUE_COUNT	8

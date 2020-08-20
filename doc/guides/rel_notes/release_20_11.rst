@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Broadcom bnxt driver.**
+
+  Updated the Broadcom bnxt driver with new features and improvements, including:
+
+  * Added support for 200G PAM4 link speed.
+
 * **Updated Cisco enic driver.**
 
   * Added support for VF representors with single-queue Tx/Rx and flow API

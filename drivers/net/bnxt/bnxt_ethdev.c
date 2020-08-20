@@ -864,7 +864,11 @@ uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 		speed_capa |= ETH_LINK_SPEED_50G;
 	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100GB)
 		speed_capa |= ETH_LINK_SPEED_100G;
-	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_200GB)
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_50G)
+		speed_capa |= ETH_LINK_SPEED_50G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_100G)
+		speed_capa |= ETH_LINK_SPEED_100G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_200G)
 		speed_capa |= ETH_LINK_SPEED_200G;
 
 	if (bp->link_info->auto_mode ==

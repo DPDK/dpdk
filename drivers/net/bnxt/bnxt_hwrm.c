@@ -1260,16 +1260,24 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 		}
 
 		req.flags = rte_cpu_to_le_32(conf->phy_flags);
-		req.force_link_speed = rte_cpu_to_le_16(conf->link_speed);
-		enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
 		/*
 		 * Note, ChiMP FW 20.2.1 and 20.2.2 return an error when we set
 		 * any auto mode, even "none".
 		 */
 		if (!conf->link_speed) {
 			/* No speeds specified. Enable AutoNeg - all speeds */
+			enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
 			req.auto_mode =
 				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_ALL_SPEEDS;
+		} else {
+			if (bp->link_info->link_signal_mode) {
+				enables |=
+				HWRM_PORT_PHY_CFG_IN_EN_FORCE_PAM4_LINK_SPEED;
+				req.force_pam4_link_speed =
+					rte_cpu_to_le_16(conf->link_speed);
+			}
+			req.force_link_speed =
+					rte_cpu_to_le_16(conf->link_speed);
 		}
 		/* AutoNeg - Advertise speeds specified. */
 		if (conf->auto_link_speed_mask &&
@@ -1278,9 +1286,20 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
 			req.auto_link_speed_mask =
 				conf->auto_link_speed_mask;
-			enables |=
-			HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED_MASK;
+			if (conf->auto_pam4_link_speeds) {
+				enables |=
+				HWRM_PORT_PHY_CFG_IN_EN_AUTO_PAM4_LINK_SPD_MASK;
+				req.auto_link_pam4_speed_mask =
+					conf->auto_pam4_link_speeds;
+			} else {
+				enables |=
+				HWRM_PORT_PHY_CFG_IN_EN_AUTO_LINK_SPEED_MASK;
+			}
 		}
+		if (conf->auto_link_speed &&
+		!(conf->phy_flags & HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE))
+			enables |=
+				HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED;
 
 		req.auto_duplex = conf->duplex;
 		enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_DUPLEX;
@@ -1340,7 +1359,13 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 	link_info->phy_ver[0] = resp->phy_maj;
 	link_info->phy_ver[1] = resp->phy_min;
 	link_info->phy_ver[2] = resp->phy_bld;
-
+	link_info->link_signal_mode = rte_le_to_cpu_16(resp->link_signal_mode);
+	link_info->force_pam4_link_speed =
+			rte_le_to_cpu_16(resp->force_pam4_link_speed);
+	link_info->support_pam4_speeds =
+			rte_le_to_cpu_16(resp->support_pam4_speeds);
+	link_info->auto_pam4_link_speeds =
+			rte_le_to_cpu_16(resp->auto_pam4_link_speed_mask);
 	HWRM_UNLOCK();
 
 	PMD_DRV_LOG(DEBUG, "Link Speed:%d,Auto:%d:%x:%x,Support:%x,Force:%x\n",
@@ -1355,6 +1380,7 @@ int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp)
 	int rc = 0;
 	struct hwrm_port_phy_qcaps_input req = {0};
 	struct hwrm_port_phy_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_link_info *link_info = bp->link_info;
 
 	if (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp))
 		return 0;
@@ -1366,6 +1392,12 @@ int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp)
 	HWRM_CHECK_RESULT();
 
 	bp->port_cnt = resp->port_cnt;
+	if (resp->supported_speeds_auto_mode)
+		link_info->support_auto_speeds =
+			rte_le_to_cpu_16(resp->supported_speeds_auto_mode);
+	if (resp->supported_pam4_speeds_auto_mode)
+		link_info->support_pam4_auto_speeds =
+			rte_le_to_cpu_16(resp->supported_pam4_speeds_auto_mode);
 
 	HWRM_UNLOCK();
 
@@ -2773,10 +2805,11 @@ static uint16_t bnxt_parse_eth_link_duplex(uint32_t conf_link_speed)
 
 static uint16_t bnxt_check_eth_link_autoneg(uint32_t conf_link)
 {
-	return (conf_link & ETH_LINK_SPEED_FIXED) ? 0 : 1;
+	return !conf_link;
 }
 
-static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed)
+static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
+					  uint16_t pam4_link)
 {
 	uint16_t eth_link_speed = 0;
 
@@ -2815,16 +2848,18 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed)
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_40GB;
 		break;
 	case ETH_LINK_SPEED_50G:
-		eth_link_speed =
+		eth_link_speed = pam4_link ?
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_50GB :
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_50GB;
 		break;
 	case ETH_LINK_SPEED_100G:
-		eth_link_speed =
+		eth_link_speed = pam4_link ?
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_100GB :
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100GB;
 		break;
 	case ETH_LINK_SPEED_200G:
 		eth_link_speed =
-			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_200GB;
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB;
 		break;
 	default:
 		PMD_DRV_LOG(ERR,
@@ -2911,7 +2946,7 @@ bnxt_parse_eth_link_speed_mask(struct bnxt *bp, uint32_t link_speed)
 	if (link_speed & ETH_LINK_SPEED_100G)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100GB;
 	if (link_speed & ETH_LINK_SPEED_200G)
-		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_200GB;
+		ret |= HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_200GB;
 	return ret;
 }
 
@@ -2985,12 +3020,16 @@ int bnxt_get_hwrm_link_config(struct bnxt *bp, struct rte_eth_link *link)
 	int rc = 0;
 	struct bnxt_link_info *link_info = bp->link_info;
 
+	rc = bnxt_hwrm_port_phy_qcaps(bp);
+	if (rc)
+		PMD_DRV_LOG(ERR, "Get link config failed with rc %d\n", rc);
+
 	rc = bnxt_hwrm_port_phy_qcfg(bp, link_info);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			"Get link config failed with rc %d\n", rc);
+		PMD_DRV_LOG(ERR, "Get link config failed with rc %d\n", rc);
 		goto exit;
 	}
+
 	if (link_info->link_speed)
 		link->link_speed =
 			bnxt_parse_hw_link_speed(link_info->link_speed);
@@ -3035,7 +3074,8 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		autoneg = 0;
 	}
 
-	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds);
+	speed = bnxt_parse_eth_link_speed(dev_conf->link_speeds,
+					  bp->link_info->link_signal_mode);
 	link_req.phy_flags = HWRM_PORT_PHY_CFG_INPUT_FLAGS_RESET_PHY;
 	/* Autoneg can be done only when the FW allows.
 	 * When user configures fixed speed of 40G and later changes to
@@ -3066,6 +3106,15 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		/* If user wants a particular speed try that first. */
 		if (speed)
 			link_req.link_speed = speed;
+		else if (bp->link_info->force_pam4_link_speed)
+			link_req.link_speed =
+				bp->link_info->force_pam4_link_speed;
+		else if (bp->link_info->auto_pam4_link_speeds)
+			link_req.link_speed =
+				bp->link_info->auto_pam4_link_speeds;
+		else if (bp->link_info->support_pam4_speeds)
+			link_req.link_speed =
+				bp->link_info->support_pam4_speeds;
 		else if (bp->link_info->force_link_speed)
 			link_req.link_speed = bp->link_info->force_link_speed;
 		else
