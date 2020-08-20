@@ -13,7 +13,7 @@ optimized libraries to appear as virtual bbdev devices.
 The functional scope of the BBDEV library are those functions in relation to
 the 3GPP Layer 1 signal processing (channel coding, modulation, ...).
 
-The framework currently only supports Turbo Code FEC function.
+The framework currently only supports FEC function.
 
 
 Design Principles
@@ -927,9 +927,11 @@ given below.
 +--------------------------------------------------------------------+
 |RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION                                |
 | Set if a device supports input/output HARQ compression             |
+| Data is packed as 6 bits by dropping and saturating the MSBs       |
 +--------------------------------------------------------------------+
 |RTE_BBDEV_LDPC_LLR_COMPRESSION                                      |
 | Set if a device supports input LLR compression                     |
+| Data is packed as 6 bits by dropping and saturating the MSBs       |
 +--------------------------------------------------------------------+
 |RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE                       |
 | Set if a device supports HARQ input to device's internal memory    |
