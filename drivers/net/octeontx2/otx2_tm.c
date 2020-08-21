@@ -581,8 +581,9 @@ populate_tm_reg(struct otx2_eth_dev *dev,
 		 * smaller
 		 */
 		reg[k] = NIX_AF_SMQX_CFG(schq);
-		regval[k] = BIT_ULL(50) | NIX_MIN_HW_FRS;
-		regval_mask[k] = ~(BIT_ULL(50) | 0x7f);
+		regval[k] = BIT_ULL(50) | ((uint64_t)NIX_MAX_VTAG_INS << 36) |
+			NIX_MIN_HW_FRS;
+		regval_mask[k] = ~(BIT_ULL(50) | (0x7ULL << 36) | 0x7f);
 		k++;
 
 		/* Parent and schedule conf */
