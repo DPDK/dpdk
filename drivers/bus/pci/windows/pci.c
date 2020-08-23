@@ -270,17 +270,18 @@ static int
 parse_pci_hardware_id(const char *buf, struct rte_pci_id *pci_id)
 {
 	int ids = 0;
-	uint16_t vendor_id, device_id, subvendor_id = 0;
+	uint16_t vendor_id, device_id;
+	uint32_t subvendor_id = 0;
 
-	ids = sscanf_s(buf, "PCI\\VEN_%x&DEV_%x&SUBSYS_%x", &vendor_id,
-		&device_id, &subvendor_id);
+	ids = sscanf_s(buf, "PCI\\VEN_%" PRIx16 "&DEV_%" PRIx16 "&SUBSYS_%"
+		PRIx32, &vendor_id, &device_id, &subvendor_id);
 	if (ids != 3)
 		return -1;
 
 	pci_id->vendor_id = vendor_id;
 	pci_id->device_id = device_id;
-	pci_id->subsystem_vendor_id = subvendor_id >> 16;
-	pci_id->subsystem_device_id = subvendor_id & 0xffff;
+	pci_id->subsystem_device_id = subvendor_id >> 16;
+	pci_id->subsystem_vendor_id = subvendor_id & 0xffff;
 	return 0;
 }
 
