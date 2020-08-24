@@ -916,20 +916,7 @@ otx2_flow_mcam_alloc_and_write(struct rte_flow *flow, struct otx2_mbox *mbox,
 		(flow->nix_intf == OTX2_INTF_RX) ? NPC_MCAM_RX : NPC_MCAM_TX;
 	req->enable_entry = 1;
 	req->entry_data.action = flow->npc_action;
-
-	/*
-	 * DPDK sets vtag action on per interface basis, not
-	 * per flow basis. It is a matter of how we decide to support
-	 * this pmd specific behavior. There are two ways:
-	 *	1. Inherit the vtag action from the one configured
-	 *	   for this interface. This can be read from the
-	 *	   vtag_action configured for default mcam entry of
-	 *	   this pf_func.
-	 *	2. Do not support vtag action with rte_flow.
-	 *
-	 * Second approach is used now.
-	 */
-	req->entry_data.vtag_action = 0ULL;
+	req->entry_data.vtag_action = flow->vtag_action;
 
 	for (idx = 0; idx < OTX2_MAX_MCAM_WIDTH_DWORDS; idx++) {
 		req->entry_data.kw[idx] = flow->mcam_data[idx];

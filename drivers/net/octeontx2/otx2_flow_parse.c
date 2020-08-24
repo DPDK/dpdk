@@ -813,6 +813,7 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 	const struct rte_flow_action_mark *act_mark;
 	const struct rte_flow_action_queue *act_q;
 	const struct rte_flow_action_vf *vf_act;
+	bool vlan_insert_action = false;
 	const char *errmsg = NULL;
 	int sel_act, req_act = 0;
 	uint16_t pf_func, vf_id;
@@ -932,6 +933,18 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 			req_act |= OTX2_FLOW_ACT_SEC;
 			rq = 0;
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			req_act |= OTX2_FLOW_ACT_VLAN_INSERT;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			req_act |= OTX2_FLOW_ACT_VLAN_STRIP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			req_act |= OTX2_FLOW_ACT_VLAN_ETHTYPE_INSERT;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+			req_act |= OTX2_FLOW_ACT_VLAN_PCP_INSERT;
+			break;
 		default:
 			errmsg = "Unsupported action specified";
 			errcode = ENOTSUP;
@@ -939,20 +952,46 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 		}
 	}
 
+	if (req_act &
+	    (OTX2_FLOW_ACT_VLAN_INSERT | OTX2_FLOW_ACT_VLAN_ETHTYPE_INSERT |
+	     OTX2_FLOW_ACT_VLAN_PCP_INSERT))
+		vlan_insert_action = true;
+
+	if ((req_act &
+	     (OTX2_FLOW_ACT_VLAN_INSERT | OTX2_FLOW_ACT_VLAN_ETHTYPE_INSERT |
+	      OTX2_FLOW_ACT_VLAN_PCP_INSERT)) ==
+	    OTX2_FLOW_ACT_VLAN_PCP_INSERT) {
+		errmsg = " PCP insert action can't be supported alone";
+		errcode = ENOTSUP;
+		goto err_exit;
+	}
+
+	/* Both STRIP and INSERT actions are not supported */
+	if (vlan_insert_action && (req_act & OTX2_FLOW_ACT_VLAN_STRIP)) {
+		errmsg = "Both VLAN insert and strip actions not supported"
+			" together";
+		errcode = ENOTSUP;
+		goto err_exit;
+	}
+
 	/* Check if actions specified are compatible */
 	if (attr->egress) {
-		/* Only DROP/COUNT is supported */
-		if (!(req_act & OTX2_FLOW_ACT_DROP)) {
-			errmsg = "DROP is required action for egress";
-			errcode = EINVAL;
-			goto err_exit;
-		} else if (req_act & ~(OTX2_FLOW_ACT_DROP |
-				       OTX2_FLOW_ACT_COUNT)) {
-			errmsg = "Unsupported action specified";
+		if (req_act & OTX2_FLOW_ACT_VLAN_STRIP) {
+			errmsg = "VLAN pop action is not supported on Egress";
 			errcode = ENOTSUP;
 			goto err_exit;
 		}
-		flow->npc_action = NIX_TX_ACTIONOP_DROP;
+
+		if (req_act & OTX2_FLOW_ACT_DROP) {
+			flow->npc_action = NIX_TX_ACTIONOP_DROP;
+		} else if ((req_act & OTX2_FLOW_ACT_COUNT) ||
+			   vlan_insert_action) {
+			flow->npc_action = NIX_TX_ACTIONOP_UCAST_DEFAULT;
+		} else {
+			errmsg = "Unsupported action for egress";
+			errcode = EINVAL;
+			goto err_exit;
+		}
 		goto set_pf_func;
 	}
 
@@ -985,8 +1024,20 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 		goto err_exit;
 	}
 
+	if (vlan_insert_action) {
+		errmsg = "VLAN push/Insert action is not supported on Ingress";
+		errcode = ENOTSUP;
+		goto err_exit;
+	}
+
+	if (req_act & OTX2_FLOW_ACT_VLAN_STRIP)
+		npc->vtag_actions++;
+
+	/* Only VLAN action is provided */
+	if (req_act == OTX2_FLOW_ACT_VLAN_STRIP)
+		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 	/* Set NIX_RX_ACTIONOP */
-	if (req_act & (OTX2_FLOW_ACT_PF | OTX2_FLOW_ACT_VF)) {
+	else if (req_act & (OTX2_FLOW_ACT_PF | OTX2_FLOW_ACT_VF)) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 		if (req_act & OTX2_FLOW_ACT_QUEUE)
 			flow->npc_action |= (uint64_t)rq << 20;
@@ -1029,6 +1080,11 @@ otx2_flow_parse_actions(struct rte_eth_dev *dev,
 	if (rte_atomic32_read(&npc->mark_actions) == 1) {
 		hw->rx_offload_flags |=
 			NIX_RX_OFFLOAD_MARK_UPDATE_F;
+		otx2_eth_set_rx_function(dev);
+	}
+
+	if (npc->vtag_actions == 1) {
+		hw->rx_offload_flags |= NIX_RX_OFFLOAD_VLAN_STRIP_F;
 		otx2_eth_set_rx_function(dev);
 	}
 

@@ -55,6 +55,10 @@ enum {
 #define OTX2_FLOW_ACT_COUNT   (1 << 7)
 #define OTX2_FLOW_ACT_PF      (1 << 8)
 #define OTX2_FLOW_ACT_VF      (1 << 9)
+#define OTX2_FLOW_ACT_VLAN_STRIP (1 << 10)
+#define OTX2_FLOW_ACT_VLAN_INSERT (1 << 11)
+#define OTX2_FLOW_ACT_VLAN_ETHTYPE_INSERT (1 << 12)
+#define OTX2_FLOW_ACT_VLAN_PCP_INSERT (1 << 13)
 
 /* terminating actions */
 #define OTX2_FLOW_ACT_TERM    (OTX2_FLOW_ACT_DROP  | \
@@ -154,6 +158,7 @@ struct rte_flow {
 	uint64_t mcam_data[OTX2_MAX_MCAM_WIDTH_DWORDS];
 	uint64_t mcam_mask[OTX2_MAX_MCAM_WIDTH_DWORDS];
 	uint64_t npc_action;
+	uint64_t vtag_action;
 	TAILQ_ENTRY(rte_flow) next;
 };
 
@@ -162,6 +167,7 @@ TAILQ_HEAD(otx2_flow_list, rte_flow);
 /* Accessed from ethdev private - otx2_eth_dev */
 struct otx2_npc_flow_info {
 	rte_atomic32_t mark_actions;
+	uint32_t vtag_actions;
 	uint32_t keyx_supp_nmask[NPC_MAX_INTF];/* nibble mask */
 	uint32_t keyx_len[NPC_MAX_INTF];	/* per intf key len in bits */
 	uint32_t datax_len[NPC_MAX_INTF];	/* per intf data len in bits */
