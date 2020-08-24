@@ -4670,6 +4670,14 @@ rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 		return -EINVAL;
 	}
 
+	if (dev->data->rx_queues[queue_id] == NULL) {
+		RTE_ETHDEV_LOG(ERR,
+			       "Rx queue %"PRIu16" of device with port_id=%"
+			       PRIu16" has not been setup\n",
+			       queue_id, port_id);
+		return -EINVAL;
+	}
+
 	if (rte_eth_dev_is_rx_hairpin_queue(dev, queue_id)) {
 		RTE_ETHDEV_LOG(INFO,
 			"Can't get hairpin Rx queue %"PRIu16" info of device with port_id=%"PRIu16"\n",
@@ -4698,6 +4706,14 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	dev = &rte_eth_devices[port_id];
 	if (queue_id >= dev->data->nb_tx_queues) {
 		RTE_ETHDEV_LOG(ERR, "Invalid TX queue_id=%u\n", queue_id);
+		return -EINVAL;
+	}
+
+	if (dev->data->tx_queues[queue_id] == NULL) {
+		RTE_ETHDEV_LOG(ERR,
+			       "Tx queue %"PRIu16" of device with port_id=%"
+			       PRIu16" has not been setup\n",
+			       queue_id, port_id);
 		return -EINVAL;
 	}
 
