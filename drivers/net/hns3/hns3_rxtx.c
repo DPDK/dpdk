@@ -2820,3 +2820,34 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 		eth_dev->tx_pkt_prepare = hns3_dummy_rxtx_burst;
 	}
 }
+
+void
+hns3_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		  struct rte_eth_rxq_info *qinfo)
+{
+	struct hns3_rx_queue *rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+
+	/*
+	 * If there are no available Rx buffer descriptors, incoming packets
+	 * are always dropped by hardware based on hns3 network engine.
+	 */
+	qinfo->conf.rx_drop_en = 1;
+	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
+	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
+	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
+}
+
+void
+hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		  struct rte_eth_txq_info *qinfo)
+{
+	struct hns3_tx_queue *txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
+	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+}

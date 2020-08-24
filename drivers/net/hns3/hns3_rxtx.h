@@ -402,5 +402,8 @@ int hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 int hns3_config_gro(struct hns3_hw *hw, bool en);
 int hns3_restore_gro_conf(struct hns3_hw *hw);
 void hns3_update_all_queues_pvid_state(struct hns3_hw *hw);
-
+void hns3_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		       struct rte_eth_rxq_info *qinfo);
+void hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		       struct rte_eth_txq_info *qinfo);
 #endif /* _HNS3_RXTX_H_ */
