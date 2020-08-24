@@ -2351,6 +2351,8 @@ hinic_add_del_ethertype_filter(struct rte_eth_dev *dev,
 		ethertype_filter.pkt_proto = filter->ether_type;
 		i = hinic_ethertype_filter_lookup(filter_info,
 						&ethertype_filter);
+		if (i < 0)
+			return -EINVAL;
 
 		if ((filter_info->type_mask & (1 << i))) {
 			filter_info->pkt_filters[i].enable = FALSE;
