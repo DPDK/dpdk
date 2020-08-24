@@ -8,7 +8,9 @@ import sys
 import os
 import getopt
 import subprocess
+from glob import glob
 from os.path import exists, abspath, dirname, basename
+from os.path import join as path_join
 
 if sys.version_info.major < 3:
     print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
@@ -89,6 +91,8 @@ Usage:
 where DEVICE1, DEVICE2 etc, are specified via PCI "domain:bus:slot.func" syntax
 or "bus:slot.func" syntax. For devices bound to Linux kernel drivers, they may
 also be referred to by Linux interface name e.g. eth0, eth1, em0, em1, etc.
+If devices are specified using PCI <domain:>bus:device:func format, then
+shell wildcards and ranges may be used, e.g. 80:04.*, 80:04.[0-3]
 
 Options:
     --help, --usage:
@@ -144,6 +148,9 @@ To unbind 0000:01:00.0 from using any driver
 
 To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
         %(argv0)s -b ixgbe 02:00.0 02:00.1
+
+To bind all functions on device 0000:02:00 to ixgbe kernel driver
+        %(argv0)s -b ixgbe 02:00.*
 
     """ % locals())  # replace items from local variables
 
@@ -651,6 +658,19 @@ def show_status():
     if status_dev == "misc" or status_dev == "all":
         show_device_status(misc_devices, "Misc (rawdev)")
 
+
+def pci_glob(arg):
+    '''Returns a list containing either:
+    * List of PCI B:D:F matching arg, using shell wildcards e.g. 80:04.*
+    * Only the passed arg if matching list is empty'''
+    sysfs_path = "/sys/bus/pci/devices"
+    for _glob in [arg, '0000:' + arg]:
+        paths = [basename(path) for path in glob(path_join(sysfs_path, _glob))]
+        if paths:
+            return paths
+    return [arg]
+
+
 def parse_args():
     '''Parses the command-line arguments given by the user and takes the
     appropriate action for each'''
@@ -692,6 +712,11 @@ def parse_args():
             else:
                 b_flag = arg
 
+    # resolve any PCI globs in the args
+    new_args = []
+    for arg in args:
+        new_args.extend(pci_glob(arg))
+    args = new_args
 
 def do_arg_actions():
     '''do the actual action requested by the user'''
