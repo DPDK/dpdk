@@ -1251,6 +1251,12 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		return -EINVAL;
 	}
 
+	if (conf->rx_drop_en == 0)
+		hns3_warn(hw, "if there are no available Rx descriptors,"
+			  "incoming packets are always dropped. input parameter"
+			  " conf->rx_drop_en(%u) is uneffective.",
+			  conf->rx_drop_en);
+
 	if (dev->data->rx_queues[idx]) {
 		hns3_rx_queue_release(dev->data->rx_queues[idx]);
 		dev->data->rx_queues[idx] = NULL;
