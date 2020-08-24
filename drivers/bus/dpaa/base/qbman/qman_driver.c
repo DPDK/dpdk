@@ -189,8 +189,6 @@ struct qman_portal *fsl_qman_fq_portal_create(int *fd)
 	*fd = q_fd;
 	return portal;
 err:
-	if (portal)
-		qman_free_global_portal(portal);
 	if (q_fd)
 		close(q_fd);
 	process_portal_unmap(&q_map.addr);
