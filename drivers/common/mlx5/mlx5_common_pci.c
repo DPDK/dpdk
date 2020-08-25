@@ -72,6 +72,7 @@ bus_cmdline_options_handler(__rte_unused const char *key,
 	int class_val;
 	char *found;
 	char *nstr;
+	char *refstr = NULL;
 
 	*ret = 0;
 	nstr = strdup(class_names);
@@ -80,21 +81,22 @@ bus_cmdline_options_handler(__rte_unused const char *key,
 		return *ret;
 	}
 	nstr_org = nstr;
-	while (nstr) {
+	found = strtok_r(nstr, ":", &refstr);
+	if (!found)
+		goto err;
+	do {
 		/* Extract each individual class name. Multiple
 		 * class key,value is supplied as class=net:vdpa:foo:bar.
 		 */
-		found = strsep(&nstr, ":");
-		if (!found)
-			continue;
-		/* Check if its a valid class. */
 		class_val = class_name_to_value(found);
+		/* Check if its a valid class. */
 		if (class_val < 0) {
 			*ret = -EINVAL;
 			goto err;
 		}
 		*ret |= class_val;
-	}
+		found = strtok_r(NULL, ":", &refstr);
+	} while (found);
 err:
 	free(nstr_org);
 	if (*ret < 0)
