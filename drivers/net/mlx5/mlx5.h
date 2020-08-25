@@ -853,8 +853,6 @@ void mlx5_os_stats_init(struct rte_eth_dev *dev);
 void mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 int mlx5_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		      uint32_t index, uint32_t vmdq);
-struct mlx5_nl_vlan_vmwa_context *mlx5_vlan_vmwa_init
-				    (struct rte_eth_dev *dev, uint32_t ifindex);
 int mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int mlx5_set_mc_addr_list(struct rte_eth_dev *dev,
 			struct rte_ether_addr *mc_addr_set,
@@ -897,11 +895,15 @@ int mlx5_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 int mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 void mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on);
 int mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask);
-void mlx5_vlan_vmwa_exit(struct mlx5_nl_vlan_vmwa_context *ctx);
+
+/* mlx5_vlan_os.c */
+
+void mlx5_vlan_vmwa_exit(void *ctx);
 void mlx5_vlan_vmwa_release(struct rte_eth_dev *dev,
 			    struct mlx5_vf_vlan *vf_vlan);
 void mlx5_vlan_vmwa_acquire(struct rte_eth_dev *dev,
 			    struct mlx5_vf_vlan *vf_vlan);
+void *mlx5_vlan_vmwa_init(struct rte_eth_dev *dev, uint32_t ifindex);
 
 /* mlx5_trigger.c */
 
