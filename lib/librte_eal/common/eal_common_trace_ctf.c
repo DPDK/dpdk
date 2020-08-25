@@ -83,6 +83,11 @@ meta_data_type_emit(char **meta, int *offset)
 		"typealias integer {size = 32; base = x;} := long;\n"
 #endif
 		"typealias integer {size = 8; signed = false; encoding = ASCII; } := string_bounded_t;\n\n"
+#ifdef RTE_ARCH_64
+		"typealias integer {size = 64; base = x;} := size_t;\n"
+#else
+		"typealias integer {size = 32; base = x;} := size_t;\n"
+#endif
 		"typealias floating_point {\n"
 		"    exp_dig = 8;\n"
 		"    mant_dig = 24;\n"
