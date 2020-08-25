@@ -693,7 +693,7 @@ hns3vf_bind_ring_with_vector(struct hns3_hw *hw, uint8_t vector_id,
 static int
 hns3vf_init_ring_with_vector(struct hns3_hw *hw)
 {
-	uint8_t vec;
+	uint16_t vec;
 	int ret;
 	int i;
 
@@ -704,27 +704,23 @@ hns3vf_init_ring_with_vector(struct hns3_hw *hw)
 	 * vector. In the initialization clearing the all hardware mapping
 	 * relationship configurations between queues and interrupt vectors is
 	 * needed, so some error caused by the residual configurations, such as
-	 * the unexpected Tx interrupt, can be avoid. Because of the hardware
-	 * constraints in hns3 hardware engine, we have to implement clearing
-	 * the mapping relationship configurations by binding all queues to the
-	 * last interrupt vector and reserving the last interrupt vector. This
-	 * method results in a decrease of the maximum queues when upper
-	 * applications call the rte_eth_dev_configure API function to enable
-	 * Rx interrupt.
+	 * the unexpected Tx interrupt, can be avoid.
 	 */
 	vec = hw->num_msi - 1; /* vector 0 for misc interrupt, not for queue */
-	/* vec - 1: the last interrupt is reserved */
-	hw->intr_tqps_num = vec > hw->tqps_num ? hw->tqps_num : vec - 1;
+	if (hw->intr.mapping_mode == HNS3_INTR_MAPPING_VEC_RSV_ONE)
+		vec = vec - 1; /* the last interrupt is reserved */
+	hw->intr_tqps_num = RTE_MIN(vec, hw->tqps_num);
 	for (i = 0; i < hw->intr_tqps_num; i++) {
 		/*
-		 * Set gap limiter and rate limiter configuration of queue's
-		 * interrupt.
+		 * Set gap limiter/rate limiter/quanity limiter algorithm
+		 * configuration for interrupt coalesce of queue's interrupt.
 		 */
 		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_RX,
 				       HNS3_TQP_INTR_GL_DEFAULT);
 		hns3_set_queue_intr_gl(hw, i, HNS3_RING_GL_TX,
 				       HNS3_TQP_INTR_GL_DEFAULT);
 		hns3_set_queue_intr_rl(hw, i, HNS3_TQP_INTR_RL_DEFAULT);
+		hns3_set_queue_intr_ql(hw, i, HNS3_TQP_INTR_QL_DEFAULT);
 
 		ret = hns3vf_bind_ring_with_vector(hw, vec, false,
 						   HNS3_RING_TYPE_TX, i);
@@ -1134,6 +1130,9 @@ hns3vf_get_capability(struct hns3_hw *hw)
 
 	if (revision < PCI_REVISION_ID_HIP09_A) {
 		hns3vf_set_default_dev_specifications(hw);
+		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
+		hw->intr.coalesce_mode = HNS3_INTR_COALESCE_NON_QL;
+		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
 		return 0;
 	}
 
@@ -1144,6 +1143,10 @@ hns3vf_get_capability(struct hns3_hw *hw)
 			     ret);
 		return ret;
 	}
+
+	hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_ALL;
+	hw->intr.coalesce_mode = HNS3_INTR_COALESCE_QL;
+	hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_1US;
 
 	return 0;
 }
@@ -1616,7 +1619,7 @@ hns3_query_vf_resource(struct hns3_hw *hw)
 
 	req = (struct hns3_vf_res_cmd *)desc.data;
 	num_msi = hns3_get_field(rte_le_to_cpu_16(req->vf_intr_vector_number),
-				 HNS3_VEC_NUM_M, HNS3_VEC_NUM_S);
+				 HNS3_VF_VEC_NUM_M, HNS3_VF_VEC_NUM_S);
 	if (num_msi < HNS3_MIN_VECTOR_NUM) {
 		hns3_err(hw, "Just %u msi resources, not enough for vf(min:%d)",
 			 num_msi, HNS3_MIN_VECTOR_NUM);

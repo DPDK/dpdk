@@ -92,13 +92,17 @@
 #define HNS3_TQP_INTR_GL1_REG			0x20200
 #define HNS3_TQP_INTR_GL2_REG			0x20300
 #define HNS3_TQP_INTR_RL_REG			0x20900
+#define HNS3_TQP_INTR_TX_QL_REG			0x20e00
+#define HNS3_TQP_INTR_RX_QL_REG			0x20f00
 
 #define HNS3_TQP_INTR_REG_SIZE			4
 #define HNS3_TQP_INTR_GL_MAX			0x1FE0
 #define HNS3_TQP_INTR_GL_DEFAULT		20
+#define HNS3_TQP_INTR_GL_UNIT_1US		BIT(31)
 #define HNS3_TQP_INTR_RL_MAX			0xEC
 #define HNS3_TQP_INTR_RL_ENABLE_MASK		0x40
 #define HNS3_TQP_INTR_RL_DEFAULT		0
+#define HNS3_TQP_INTR_QL_DEFAULT		0
 
 /* gl_usec convert to hardware count, as writing each 1 represents 2us */
 #define HNS3_GL_USEC_TO_REG(gl_usec)		((gl_usec) >> 1)

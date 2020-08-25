@@ -359,6 +359,59 @@ struct hns3_reset_data {
 	struct hns3_wait_data *wait_data;
 };
 
+#define HNS3_INTR_MAPPING_VEC_RSV_ONE		0
+#define HNS3_INTR_MAPPING_VEC_ALL		1
+
+#define HNS3_INTR_COALESCE_NON_QL		0
+#define HNS3_INTR_COALESCE_QL			1
+
+#define HNS3_INTR_COALESCE_GL_UINT_2US		0
+#define HNS3_INTR_COALESCE_GL_UINT_1US		1
+
+struct hns3_queue_intr {
+	/*
+	 * interrupt mapping mode.
+	 * value range:
+	 *      HNS3_INTR_MAPPING_VEC_RSV_ONE/HNS3_INTR_MAPPING_VEC_ALL
+	 *
+	 *  - HNS3_INTR_MAPPING_VEC_RSV_ONE
+	 *     For some versions of hardware network engine, because of the
+	 *     hardware constraint, we need implement clearing the mapping
+	 *     relationship configurations by binding all queues to the last
+	 *     interrupt vector and reserving the last interrupt vector. This
+	 *     method results in a decrease of the maximum queues when upper
+	 *     applications call the rte_eth_dev_configure API function to
+	 *     enable Rx interrupt.
+	 *
+	 *  - HNS3_INTR_MAPPING_VEC_ALL
+	 *     PMD driver can map/unmmap all interrupt vectors with queues When
+	 *     Rx interrupt in enabled.
+	 */
+	uint8_t mapping_mode;
+	/*
+	 * interrupt coalesce mode.
+	 * value range:
+	 *      HNS3_INTR_COALESCE_NON_QL/HNS3_INTR_COALESCE_QL
+	 *
+	 *  - HNS3_INTR_COALESCE_NON_QL
+	 *     For some versions of hardware network engine, hardware doesn't
+	 *     support QL(quanity limiter) algorithm for interrupt coalesce
+	 *     of queue's interrupt.
+	 *
+	 *  - HNS3_INTR_COALESCE_QL
+	 *     In this mode, hardware support QL(quanity limiter) algorithm for
+	 *     interrupt coalesce of queue's interrupt.
+	 */
+	uint8_t coalesce_mode;
+	/*
+	 * The unit of GL(gap limiter) configuration for interrupt coalesce of
+	 * queue's interrupt.
+	 * value range:
+	 *      HNS3_INTR_COALESCE_GL_UINT_2US/HNS3_INTR_COALESCE_GL_UINT_1US
+	 */
+	uint8_t gl_unit;
+};
+
 struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
@@ -411,6 +464,9 @@ struct hns3_hw {
 
 	uint32_t capability;
 	uint32_t max_tm_rate;
+
+	struct hns3_queue_intr intr;
+
 	uint8_t max_non_tso_bd_num; /* max BD number of one non-TSO packet */
 
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;

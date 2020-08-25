@@ -368,21 +368,25 @@ struct hns3_func_status_cmd {
 	uint8_t rsv[2];
 };
 
-#define HNS3_VEC_NUM_S		0
-#define HNS3_VEC_NUM_M		GENMASK(7, 0)
+#define HNS3_PF_VEC_NUM_S	0
+#define HNS3_PF_VEC_NUM_M	GENMASK(15, 0)
 #define HNS3_MIN_VECTOR_NUM	2 /* one for msi-x, another for IO */
 struct hns3_pf_res_cmd {
 	uint16_t tqp_num;
 	uint16_t buf_size;
 	uint16_t msixcap_localid_ba_nic;
-	uint16_t msixcap_localid_ba_rocee;
-	uint16_t pf_intr_vector_number;
+	uint16_t nic_pf_intr_vector_number;
+	uint16_t roce_pf_intr_vector_number;
 	uint16_t pf_own_fun_number;
 	uint16_t tx_buf_size;
 	uint16_t dv_buf_size;
-	uint32_t rsv[2];
+	uint16_t tqp_num_ext;
+	uint16_t roh_pf_intr_vector_number;
+	uint32_t rsv[1];
 };
 
+#define HNS3_VF_VEC_NUM_S	0
+#define HNS3_VF_VEC_NUM_M	GENMASK(7, 0)
 struct hns3_vf_res_cmd {
 	uint16_t tqp_num;
 	uint16_t reserved;

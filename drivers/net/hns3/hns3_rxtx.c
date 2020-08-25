@@ -536,7 +536,10 @@ hns3_set_queue_intr_gl(struct hns3_hw *hw, uint16_t queue_id,
 		return;
 
 	addr = offset[gl_idx] + queue_id * HNS3_TQP_INTR_REG_SIZE;
-	value = HNS3_GL_USEC_TO_REG(gl_value);
+	if (hw->intr.gl_unit == HNS3_INTR_COALESCE_GL_UINT_1US)
+		value = gl_value | HNS3_TQP_INTR_GL_UNIT_1US;
+	else
+		value = HNS3_GL_USEC_TO_REG(gl_value);
 
 	hns3_write_dev(hw, addr, value);
 }
@@ -555,6 +558,21 @@ hns3_set_queue_intr_rl(struct hns3_hw *hw, uint16_t queue_id, uint16_t rl_value)
 		value |= HNS3_TQP_INTR_RL_ENABLE_MASK;
 
 	hns3_write_dev(hw, addr, value);
+}
+
+void
+hns3_set_queue_intr_ql(struct hns3_hw *hw, uint16_t queue_id, uint16_t ql_value)
+{
+	uint32_t addr;
+
+	if (hw->intr.coalesce_mode == HNS3_INTR_COALESCE_NON_QL)
+		return;
+
+	addr = HNS3_TQP_INTR_TX_QL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	hns3_write_dev(hw, addr, ql_value);
+
+	addr = HNS3_TQP_INTR_RX_QL_REG + queue_id * HNS3_TQP_INTR_REG_SIZE;
+	hns3_write_dev(hw, addr, ql_value);
 }
 
 static void
