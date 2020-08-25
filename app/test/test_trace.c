@@ -166,6 +166,7 @@ test_generic_trace_points(void)
 	rte_eal_trace_generic_double(20000.5000004);
 	rte_eal_trace_generic_ptr(&tmp);
 	rte_eal_trace_generic_str("my string");
+	rte_eal_trace_generic_size_t(sizeof(void *));
 	RTE_EAL_TRACE_GENERIC_FUNC;
 
 	return TEST_SUCCESS;

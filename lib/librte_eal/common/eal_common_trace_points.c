@@ -36,6 +36,8 @@ RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_ptr,
 	lib.eal.generic.ptr)
 RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_str,
 	lib.eal.generic.string)
+RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_size_t,
+	lib.eal.generic.size_t)
 RTE_TRACE_POINT_REGISTER(rte_eal_trace_generic_func,
 	lib.eal.generic.func)
 

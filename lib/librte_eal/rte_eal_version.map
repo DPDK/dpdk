@@ -397,6 +397,9 @@ EXPERIMENTAL {
 	rte_service_lcore_may_be_active;
 	rte_thread_register;
 	rte_thread_unregister;
+
+	# added in 20.11
+	__rte_eal_trace_generic_size_t;
 };
 
 INTERNAL {

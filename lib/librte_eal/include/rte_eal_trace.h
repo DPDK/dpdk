@@ -130,6 +130,12 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_eal_trace_generic_size_t,
+	RTE_TRACE_POINT_ARGS(size_t sz),
+	rte_trace_point_emit_size_t(sz);
+)
+
+RTE_TRACE_POINT(
 	rte_eal_trace_generic_func,
 	RTE_TRACE_POINT_ARGS(const char *func),
 	rte_trace_point_emit_string(func);
