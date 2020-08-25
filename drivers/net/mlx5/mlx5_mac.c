@@ -9,8 +9,6 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <netinet/in.h>
-#include <sys/ioctl.h>
-#include <arpa/inet.h>
 
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>

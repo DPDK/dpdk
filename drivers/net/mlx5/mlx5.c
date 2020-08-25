@@ -9,7 +9,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <sys/mman.h>
 #include <linux/rtnetlink.h>
 
 #include <rte_malloc.h>
