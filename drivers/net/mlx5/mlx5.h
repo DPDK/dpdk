@@ -676,6 +676,11 @@ TAILQ_HEAD(mlx5_flow_meters, mlx5_flow_meter);
 #define MLX5_PROC_PRIV(port_id) \
 	((struct mlx5_proc_priv *)rte_eth_devices[port_id].process_private)
 
+/* HW objects operations structure. */
+struct mlx5_obj_ops {
+	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
+};
+
 struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared device context. */
@@ -719,6 +724,7 @@ struct mlx5_priv {
 	void *rss_desc; /* Intermediate rss description resources. */
 	int flow_idx; /* Intermediate device flow index. */
 	int flow_nested_idx; /* Intermediate device flow index, nested. */
+	struct mlx5_obj_ops *obj_ops; /* HW objects operations. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
 	uint32_t hrxqs; /* Verbs Hash Rx queues. */

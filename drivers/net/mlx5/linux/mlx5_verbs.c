@@ -19,6 +19,7 @@
 #include <mlx5_glue.h>
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>
+#include <mlx5_rxtx.h>
 #include <mlx5_verbs.h>
 /**
  * Register mr. Given protection domain pointer, pointer to addr and length
@@ -60,4 +61,31 @@ mlx5_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
 const struct mlx5_verbs_ops mlx5_verbs_ops = {
 	.reg_mr = mlx5_reg_mr,
 	.dereg_mr = mlx5_dereg_mr,
+};
+
+/**
+ * Modify Rx WQ vlan stripping offload
+ *
+ * @param rxq_obj
+ *   Rx queue object.
+ *
+ * @return 0 on success, non-0 otherwise
+ */
+static int
+mlx5_rxq_obj_modify_wq_vlan_strip(struct mlx5_rxq_obj *rxq_obj, int on)
+{
+	uint16_t vlan_offloads =
+		(on ? IBV_WQ_FLAGS_CVLAN_STRIPPING : 0) |
+		0;
+	struct ibv_wq_attr mod;
+	mod = (struct ibv_wq_attr){
+		.attr_mask = IBV_WQ_ATTR_FLAGS,
+		.flags_mask = IBV_WQ_FLAGS_CVLAN_STRIPPING,
+		.flags = vlan_offloads,
+	};
+	return mlx5_glue->modify_wq(rxq_obj->wq, &mod);
+}
+
+struct mlx5_obj_ops ibv_obj_ops = {
+	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_wq_vlan_strip,
 };
