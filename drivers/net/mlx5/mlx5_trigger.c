@@ -153,7 +153,8 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		if (!rxq_ctrl->obj)
 			goto error;
 		if (obj_type == MLX5_RXQ_OBJ_TYPE_IBV)
-			rxq_ctrl->wqn = rxq_ctrl->obj->wq->wq_num;
+			rxq_ctrl->wqn =
+				((struct ibv_wq *)(rxq_ctrl->obj->wq))->wq_num;
 		else if (obj_type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ)
 			rxq_ctrl->wqn = rxq_ctrl->obj->rq->id;
 	}

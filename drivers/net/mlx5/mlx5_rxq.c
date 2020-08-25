@@ -1790,7 +1790,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 				rte_errno = ENOMEM;
 				goto error;
 			}
-			tmpl->fd = tmpl->ibv_channel->fd;
+			tmpl->fd = ((struct ibv_comp_channel *)
+					(tmpl->ibv_channel))->fd;
 		} else if (tmpl->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
 			int devx_ev_flag =
 			  MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA;
@@ -3299,7 +3300,7 @@ mlx5_ind_table_obj_drop_new(struct rte_eth_dev *dev)
 		(priv->sh->ctx,
 		 &(struct ibv_rwq_ind_table_init_attr){
 			.log_ind_tbl_size = 0,
-			.ind_tbl = &rxq->wq,
+			.ind_tbl = (struct ibv_wq **)&rxq->wq,
 			.comp_mask = 0,
 		 });
 	if (!tmpl.ind_table) {

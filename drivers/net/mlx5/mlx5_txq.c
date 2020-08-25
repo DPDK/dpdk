@@ -1317,7 +1317,7 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	txq_data->cqe_n = log2above(cq_info.cqe_cnt);
 	txq_data->cqe_s = 1 << txq_data->cqe_n;
 	txq_data->cqe_m = txq_data->cqe_s - 1;
-	txq_data->qp_num_8s = tmpl.qp->qp_num << 8;
+	txq_data->qp_num_8s = ((struct ibv_qp *)tmpl.qp)->qp_num << 8;
 	txq_data->wqes = qp.sq.buf;
 	txq_data->wqe_n = log2above(qp.sq.wqe_cnt);
 	txq_data->wqe_s = 1 << txq_data->wqe_n;

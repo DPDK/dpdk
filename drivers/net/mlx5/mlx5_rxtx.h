@@ -178,9 +178,9 @@ struct mlx5_rxq_obj {
 	RTE_STD_C11
 	union {
 		struct {
-			struct ibv_wq *wq; /* Work Queue. */
-			struct ibv_cq *ibv_cq; /* Completion Queue. */
-			struct ibv_comp_channel *ibv_channel;
+			void *wq; /* Work Queue. */
+			void *ibv_cq; /* Completion Queue. */
+			void *ibv_channel;
 		};
 		struct {
 			struct mlx5_devx_obj *rq; /* DevX Rx Queue object. */
@@ -229,7 +229,7 @@ struct mlx5_ind_table_obj {
 	enum mlx5_ind_tbl_type type;
 	RTE_STD_C11
 	union {
-		struct ibv_rwq_ind_table *ind_table; /**< Indirection table. */
+		void *ind_table; /**< Indirection table. */
 		struct mlx5_devx_obj *rqt; /* DevX RQT object. */
 	};
 	uint32_t queues_n; /**< Number of queues in the list. */
@@ -243,7 +243,7 @@ struct mlx5_hrxq {
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
 	RTE_STD_C11
 	union {
-		struct ibv_qp *qp; /* Verbs queue pair. */
+		void *qp; /* Verbs queue pair. */
 		struct mlx5_devx_obj *tir; /* DevX TIR object. */
 	};
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -350,8 +350,8 @@ struct mlx5_txq_obj {
 	RTE_STD_C11
 	union {
 		struct {
-			struct ibv_cq *cq; /* Completion Queue. */
-			struct ibv_qp *qp; /* Queue Pair. */
+			void *cq; /* Completion Queue. */
+			void *qp; /* Queue Pair. */
 		};
 		struct {
 			struct mlx5_devx_obj *sq;
