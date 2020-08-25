@@ -35,10 +35,6 @@ extern int mlx5_logtype;
 		__VA_ARGS__ PMD_DRV_LOG_STRIP PMD_DRV_LOG_OPAREN, \
 		PMD_DRV_LOG_CPAREN)
 
-#define INFO(...) DRV_LOG(INFO, __VA_ARGS__)
-#define WARN(...) DRV_LOG(WARNING, __VA_ARGS__)
-#define ERROR(...) DRV_LOG(ERR, __VA_ARGS__)
-
 /* Convenience macros for accessing mbuf fields. */
 #define NEXT(m) ((m)->next)
 #define DATA_LEN(m) ((m)->data_len)
