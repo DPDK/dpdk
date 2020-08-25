@@ -9,7 +9,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <linux/rtnetlink.h>
 
 #include <rte_malloc.h>
 #include <rte_ethdev_driver.h>
@@ -1406,9 +1405,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->reta_idx != NULL)
 		mlx5_free(priv->reta_idx);
 	if (priv->config.vf)
-		mlx5_nl_mac_addr_flush(priv->nl_socket_route, mlx5_ifindex(dev),
-				       dev->data->mac_addrs,
-				       MLX5_MAX_MAC_ADDRESSES, priv->mac_own);
+		mlx5_os_mac_addr_flush(dev);
 	if (priv->nl_socket_route >= 0)
 		close(priv->nl_socket_route);
 	if (priv->nl_socket_rdma >= 0)
@@ -1446,7 +1443,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	/*
 	 * Free the shared context in last turn, because the cleanup
 	 * routines above may use some shared fields, like
-	 * mlx5_nl_mac_addr_flush() uses ibdev_path for retrieveing
+	 * mlx5_os_mac_addr_flush() uses ibdev_path for retrieveing
 	 * ifindex if Netlink fails.
 	 */
 	mlx5_free_shared_dev_ctx(priv->sh);

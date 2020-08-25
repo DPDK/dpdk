@@ -45,6 +45,7 @@
 #include "mlx5_flow.h"
 #include "rte_pmd_mlx5.h"
 #include "mlx5_verbs.h"
+#include "mlx5_nl.h"
 
 #define MLX5_TAGS_HLIST_ARRAY_SIZE 8192
 
@@ -2330,6 +2331,23 @@ mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable)
 
 	return mlx5_nl_allmulti(priv->nl_socket_route,
 				mlx5_ifindex(dev), !!enable);
+}
+
+/**
+ * Flush device MAC addresses
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ */
+void
+mlx5_os_mac_addr_flush(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	mlx5_nl_mac_addr_flush(priv->nl_socket_route, mlx5_ifindex(dev),
+			       dev->data->mac_addrs,
+			       MLX5_MAX_MAC_ADDRESSES, priv->mac_own);
 }
 
 const struct eth_dev_ops mlx5_os_dev_ops = {

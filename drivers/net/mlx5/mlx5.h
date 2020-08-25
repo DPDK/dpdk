@@ -24,7 +24,6 @@
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
-#include <mlx5_nl.h>
 #include <mlx5_common_mp.h>
 #include <mlx5_common_mr.h>
 
@@ -1018,6 +1017,7 @@ int mlx5_os_vf_mac_addr_modify(struct mlx5_priv *priv, unsigned int iface_idx,
 int mlx5_os_set_promisc(struct rte_eth_dev *dev, int enable);
 int mlx5_os_set_allmulti(struct rte_eth_dev *dev, int enable);
 int mlx5_os_set_nonblock_channel_fd(int fd);
+void mlx5_os_mac_addr_flush(struct rte_eth_dev *dev);
 
 /* mlx5_txpp.c */
 
