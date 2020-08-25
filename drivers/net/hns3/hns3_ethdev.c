@@ -5574,6 +5574,8 @@ static int
 hns3_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_ether_addr *eth_addr;
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
@@ -5646,6 +5648,15 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_rte_zmalloc;
 	}
 
+	eth_addr = (struct rte_ether_addr *)hw->mac.mac_addr;
+	if (!rte_is_valid_assigned_ether_addr(eth_addr)) {
+		rte_eth_random_addr(hw->mac.mac_addr);
+		rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+				(struct rte_ether_addr *)hw->mac.mac_addr);
+		hns3_warn(hw, "default mac_addr from firmware is an invalid "
+			  "unicast address, using random MAC address %s",
+			  mac_str);
+	}
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.mac_addr,
 			    &eth_dev->data->mac_addrs[0]);
 

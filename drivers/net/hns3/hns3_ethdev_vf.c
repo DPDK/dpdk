@@ -1748,21 +1748,6 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 	}
 
-	/*
-	 * The hns3 PF ethdev driver in kernel support setting VF MAC address
-	 * on the host by "ip link set ..." command. To avoid some incorrect
-	 * scenes, for example, hns3 VF PMD driver fails to receive and send
-	 * packets after user configure the MAC address by using the
-	 * "ip link set ..." command, hns3 VF PMD driver keep the same MAC
-	 * address strategy as the hns3 kernel ethdev driver in the
-	 * initialization. If user configure a MAC address by the ip command
-	 * for VF device, then hns3 VF PMD driver will start with it, otherwise
-	 * start with a random MAC address in the initialization.
-	 */
-	ret = rte_is_zero_ether_addr((struct rte_ether_addr *)hw->mac.mac_addr);
-	if (ret)
-		rte_eth_random_addr(hw->mac.mac_addr);
-
 	ret = hns3vf_clear_vport_list(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to clear tbl list: %d", ret);
@@ -2644,8 +2629,22 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_rte_zmalloc;
 	}
 
+	/*
+	 * The hns3 PF ethdev driver in kernel support setting VF MAC address
+	 * on the host by "ip link set ..." command. To avoid some incorrect
+	 * scenes, for example, hns3 VF PMD driver fails to receive and send
+	 * packets after user configure the MAC address by using the
+	 * "ip link set ..." command, hns3 VF PMD driver keep the same MAC
+	 * address strategy as the hns3 kernel ethdev driver in the
+	 * initialization. If user configure a MAC address by the ip command
+	 * for VF device, then hns3 VF PMD driver will start with it, otherwise
+	 * start with a random MAC address in the initialization.
+	 */
+	if (rte_is_zero_ether_addr((struct rte_ether_addr *)hw->mac.mac_addr))
+		rte_eth_random_addr(hw->mac.mac_addr);
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.mac_addr,
 			    &eth_dev->data->mac_addrs[0]);
+
 	hw->adapter_state = HNS3_NIC_INITIALIZED;
 	/*
 	 * Pass the information to the rte_eth_dev_close() that it should also
