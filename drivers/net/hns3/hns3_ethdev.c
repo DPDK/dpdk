@@ -3285,7 +3285,7 @@ hns3_is_rx_buf_ok(struct hns3_hw *hw, struct hns3_pkt_buf_alloc *buf_alloc,
 					+ pf->dv_buf_size;
 
 	shared_buf_tc = tc_num * aligned_mps + aligned_mps;
-	shared_std = roundup(max_t(uint32_t, shared_buf_min, shared_buf_tc),
+	shared_std = roundup(RTE_MAX(shared_buf_min, shared_buf_tc),
 			     HNS3_BUF_SIZE_UNIT);
 
 	rx_priv = hns3_get_rx_priv_buff_alloced(buf_alloc);
@@ -3315,8 +3315,7 @@ hns3_is_rx_buf_ok(struct hns3_hw *hw, struct hns3_pkt_buf_alloc *buf_alloc,
 		if (tc_num)
 			hi_thrd = hi_thrd / tc_num;
 
-		hi_thrd = max_t(uint32_t, hi_thrd,
-				HNS3_BUF_MUL_BY * aligned_mps);
+		hi_thrd = RTE_MAX(hi_thrd, HNS3_BUF_MUL_BY * aligned_mps);
 		hi_thrd = rounddown(hi_thrd, HNS3_BUF_SIZE_UNIT);
 		lo_thrd = hi_thrd - aligned_mps / HNS3_BUF_DIV_BY;
 	} else {

@@ -708,11 +708,6 @@ struct hns3_adapter {
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
-#define max_t(type, x, y) ({                    \
-	type __max1 = (x);                      \
-	type __max2 = (y);                      \
-	__max1 > __max2 ? __max1 : __max2; })
-
 static inline void hns3_write_reg(void *base, uint32_t reg, uint32_t value)
 {
 	rte_write32(value, (volatile void *)((char *)base + reg));
