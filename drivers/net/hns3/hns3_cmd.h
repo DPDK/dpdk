@@ -100,7 +100,6 @@ enum hns3_opcode_type {
 	HNS3_OPC_QUERY_LINK_STATUS      = 0x0307,
 	HNS3_OPC_CONFIG_MAX_FRM_SIZE    = 0x0308,
 	HNS3_OPC_CONFIG_SPEED_DUP       = 0x0309,
-	HNS3_MAC_COMMON_INT_EN          = 0x030E,
 
 	/* PFC/Pause commands */
 	HNS3_OPC_CFG_MAC_PAUSE_EN       = 0x0701,
@@ -153,10 +152,6 @@ enum hns3_opcode_type {
 	HNS3_OPC_RX_COM_THRD_ALLOC      = 0x0904,
 	HNS3_OPC_RX_COM_WL_ALLOC        = 0x0905,
 
-	/* SSU module INT commands */
-	HNS3_SSU_ECC_INT_CMD            = 0x0989,
-	HNS3_SSU_COMMON_INT_CMD         = 0x098C,
-
 	/* TQP management command */
 	HNS3_OPC_SET_TQP_MAP            = 0x0A01,
 
@@ -165,11 +160,6 @@ enum hns3_opcode_type {
 	HNS3_OPC_QUERY_RX_STATUS        = 0x0B13,
 	HNS3_OPC_CFG_COM_TQP_QUEUE      = 0x0B20,
 	HNS3_OPC_RESET_TQP_QUEUE        = 0x0B22,
-
-	/* PPU module intr commands */
-	HNS3_PPU_MPF_ECC_INT_CMD        = 0x0B40,
-	HNS3_PPU_MPF_OTHER_INT_CMD      = 0x0B41,
-	HNS3_PPU_PF_OTHER_INT_CMD       = 0x0B42,
 
 	/* TSO command */
 	HNS3_OPC_TSO_GENERIC_CONFIG     = 0x0C01,
@@ -216,17 +206,30 @@ enum hns3_opcode_type {
 	HNS3_OPC_SFP_GET_SPEED          = 0x7104,
 
 	/* Interrupts commands */
-	HNS3_OPC_ADD_RING_TO_VECTOR	= 0x1503,
-	HNS3_OPC_DEL_RING_TO_VECTOR	= 0x1504,
+	HNS3_OPC_ADD_RING_TO_VECTOR     = 0x1503,
+	HNS3_OPC_DEL_RING_TO_VECTOR     = 0x1504,
 
 	/* Error INT commands */
-	HNS3_QUERY_MSIX_INT_STS_BD_NUM          = 0x1513,
-	HNS3_QUERY_CLEAR_ALL_MPF_MSIX_INT       = 0x1514,
-	HNS3_QUERY_CLEAR_ALL_PF_MSIX_INT        = 0x1515,
-
-	/* PPP module intr commands */
-	HNS3_PPP_CMD0_INT_CMD                   = 0x2100,
-	HNS3_PPP_CMD1_INT_CMD                   = 0x2101,
+	HNS3_OPC_MAC_COMMON_INT_EN              = 0x030E,
+	HNS3_OPC_TM_SCH_ECC_INT_EN              = 0x0829,
+	HNS3_OPC_SSU_ECC_INT_CMD                = 0x0989,
+	HNS3_OPC_SSU_COMMON_INT_CMD             = 0x098C,
+	HNS3_OPC_PPU_MPF_ECC_INT_CMD            = 0x0B40,
+	HNS3_OPC_PPU_MPF_OTHER_INT_CMD          = 0x0B41,
+	HNS3_OPC_PPU_PF_OTHER_INT_CMD           = 0x0B42,
+	HNS3_OPC_COMMON_ECC_INT_CFG             = 0x1505,
+	HNS3_OPC_QUERY_RAS_INT_STS_BD_NUM       = 0x1510,
+	HNS3_OPC_QUERY_CLEAR_MPF_RAS_INT        = 0x1511,
+	HNS3_OPC_QUERY_CLEAR_PF_RAS_INT         = 0x1512,
+	HNS3_OPC_QUERY_MSIX_INT_STS_BD_NUM      = 0x1513,
+	HNS3_OPC_QUERY_CLEAR_ALL_MPF_MSIX_INT   = 0x1514,
+	HNS3_OPC_QUERY_CLEAR_ALL_PF_MSIX_INT    = 0x1515,
+	HNS3_OPC_IGU_EGU_TNL_INT_EN             = 0x1803,
+	HNS3_OPC_IGU_COMMON_INT_EN              = 0x1806,
+	HNS3_OPC_TM_QCN_MEM_INT_CFG             = 0x1A14,
+	HNS3_OPC_PPP_CMD0_INT_CMD               = 0x2100,
+	HNS3_OPC_PPP_CMD1_INT_CMD               = 0x2101,
+	HNS3_OPC_NCSI_INT_EN                    = 0x2401,
 };
 
 #define HNS3_CMD_FLAG_IN	BIT(0)
@@ -235,6 +238,11 @@ enum hns3_opcode_type {
 #define HNS3_CMD_FLAG_WR	BIT(3)
 #define HNS3_CMD_FLAG_NO_INTR	BIT(4)
 #define HNS3_CMD_FLAG_ERR_INTR	BIT(5)
+
+#define HNS3_MPF_RAS_INT_MIN_BD_NUM	10
+#define HNS3_PF_RAS_INT_MIN_BD_NUM	4
+#define HNS3_MPF_MSIX_INT_MIN_BD_NUM	10
+#define HNS3_PF_MSIX_INT_MIN_BD_NUM	4
 
 #define HNS3_BUF_SIZE_UNIT	256
 #define HNS3_BUF_MUL_BY		2

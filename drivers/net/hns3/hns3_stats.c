@@ -189,15 +189,61 @@ static const struct hns3_xstats_name_offset hns3_mac_strings[] = {
 
 static const struct hns3_xstats_name_offset hns3_error_int_stats_strings[] = {
 	{"MAC_AFIFO_TNL_INT_R",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(mac_afifo_tnl_intr_cnt)},
-	{"PPU_MPF_ABNORMAL_INT_ST2",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abnormal_intr_st2_cnt)},
-	{"SSU_PORT_BASED_ERR_INT",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_port_based_pf_intr_cnt)},
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(mac_afifo_tnl_int_cnt)},
+	{"PPU_MPF_ABNORMAL_INT_ST2_MSIX",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abn_int_st2_msix_cnt)},
+	{"SSU_PORT_BASED_ERR_INT_MSIX",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_port_based_pf_int_cnt)},
 	{"PPP_PF_ABNORMAL_INT_ST0",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppp_pf_abnormal_intr_cnt)},
-	{"PPU_PF_ABNORMAL_INT_ST",
-		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_pf_abnormal_intr_cnt)}
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppp_pf_abnormal_int_cnt)},
+	{"PPU_PF_ABNORMAL_INT_ST_MSIX",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_pf_abnormal_int_msix_cnt)},
+	{"IMP_TCM_ECC_INT_STS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(imp_tcm_ecc_int_cnt)},
+	{"CMDQ_MEM_ECC_INT_STS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(cmdq_mem_ecc_int_cnt)},
+	{"IMP_RD_POISON_INT_STS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(imp_rd_poison_int_cnt)},
+	{"TQP_INT_ECC_INT_STS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(tqp_int_ecc_int_cnt)},
+	{"MSIX_ECC_INT_STS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(msix_ecc_int_cnt)},
+	{"SSU_ECC_MULTI_BIT_INT_0",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_ecc_multi_bit_int_0_cnt)},
+	{"SSU_ECC_MULTI_BIT_INT_1",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_ecc_multi_bit_int_1_cnt)},
+	{"SSU_COMMON_ERR_INT",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_common_ecc_int_cnt)},
+	{"IGU_INT_STS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(igu_int_cnt)},
+	{"PPP_MPF_ABNORMAL_INT_ST1",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppp_mpf_abnormal_int_st1_cnt)},
+	{"PPP_MPF_ABNORMAL_INT_ST3",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppp_mpf_abnormal_int_st3_cnt)},
+	{"PPU_MPF_ABNORMAL_INT_ST1",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abnormal_int_st1_cnt)},
+	{"PPU_MPF_ABNORMAL_INT_ST2_RAS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abn_int_st2_ras_cnt)},
+	{"PPU_MPF_ABNORMAL_INT_ST3",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_mpf_abnormal_int_st3_cnt)},
+	{"TM_SCH_RINT",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(tm_sch_int_cnt)},
+	{"QCN_FIFO_RINT",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(qcn_fifo_int_cnt)},
+	{"QCN_ECC_RINT",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(qcn_ecc_int_cnt)},
+	{"NCSI_ECC_INT_RPT",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ncsi_ecc_int_cnt)},
+	{"SSU_PORT_BASED_ERR_INT_RAS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_port_based_err_int_cnt)},
+	{"SSU_FIFO_OVERFLOW_INT",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_fifo_overflow_int_cnt)},
+	{"SSU_ETS_TCG_INT",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ssu_ets_tcg_int_cnt)},
+	{"IGU_EGU_TNL_INT_STS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(igu_egu_tnl_int_cnt)},
+	{"PPU_PF_ABNORMAL_INT_ST_RAS",
+		HNS3_ERR_INT_STATS_FIELD_OFFSET(ppu_pf_abnormal_int_ras_cnt)},
 };
 
 /* The statistic of reset */
@@ -643,6 +689,22 @@ hns3_get_queue_stats(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		}
 	}
 
+}
+
+void
+hns3_error_int_stats_add(struct hns3_adapter *hns, const char *err)
+{
+	struct hns3_pf *pf = &hns->pf;
+	uint16_t i;
+	char *addr;
+
+	for (i = 0; i < HNS3_NUM_ERROR_INT_XSTATS; i++) {
+		if (strcmp(hns3_error_int_stats_strings[i].name, err) == 0) {
+			addr = (char *)&pf->abn_int_stats +
+				hns3_error_int_stats_strings[i].offset;
+			*(uint64_t *)addr += 1;
+		}
+	}
 }
 
 /*

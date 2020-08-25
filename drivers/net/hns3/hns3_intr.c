@@ -20,13 +20,6 @@
 
 #define SWITCH_CONTEXT_US	10
 
-/* offset in MSIX bd */
-#define MAC_ERROR_OFFSET	1
-#define PPP_PF_ERROR_OFFSET	2
-#define PPU_PF_ERROR_OFFSET	3
-#define RCB_ERROR_OFFSET	5
-#define RCB_ERROR_STATUS_OFFSET	2
-
 #define HNS3_CHECK_MERGE_CNT(val)			\
 	do {						\
 		if (val)				\
@@ -34,11 +27,11 @@
 	} while (0)
 
 static const char *reset_string[HNS3_MAX_RESET] = {
-	"none",	"vf_func", "vf_pf_func", "vf_full", "flr",
+	"none", "vf_func", "vf_pf_func", "vf_full", "flr",
 	"vf_global", "pf_func", "global", "IMP",
 };
 
-const struct hns3_hw_error mac_afifo_tnl_int[] = {
+static const struct hns3_hw_error mac_afifo_tnl_int[] = {
 	{ .int_msk = BIT(0), .msg = "egu_cge_afifo_ecc_1bit_err",
 	  .reset_level = HNS3_NONE_RESET },
 	{ .int_msk = BIT(1), .msg = "egu_cge_afifo_ecc_mbit_err",
@@ -71,7 +64,14 @@ const struct hns3_hw_error mac_afifo_tnl_int[] = {
 	  .reset_level = HNS3_NONE_RESET}
 };
 
-const struct hns3_hw_error ppu_mpf_abnormal_int_st2[] = {
+static const struct hns3_hw_error ppu_mpf_abnormal_int_st1[] = {
+	{ .int_msk = 0xFFFFFFFF, .msg = "rpu_rx_pkt_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ppu_mpf_abnormal_int_st2_ras[] = {
 	{ .int_msk = BIT(13), .msg = "rpu_rx_pkt_bit32_ecc_mbit_err",
 	  .reset_level = HNS3_GLOBAL_RESET },
 	{ .int_msk = BIT(14), .msg = "rpu_rx_pkt_bit33_ecc_mbit_err",
@@ -102,10 +102,6 @@ const struct hns3_hw_error ppu_mpf_abnormal_int_st2[] = {
 	  .reset_level = HNS3_GLOBAL_RESET },
 	{ .int_msk = BIT(27), .msg = "wr_bus_err",
 	  .reset_level = HNS3_GLOBAL_RESET },
-	{ .int_msk = BIT(28), .msg = "reg_search_miss",
-	  .reset_level = HNS3_GLOBAL_RESET },
-	{ .int_msk = BIT(29), .msg = "rx_q_search_miss",
-	  .reset_level = HNS3_NONE_RESET },
 	{ .int_msk = BIT(30), .msg = "ooo_ecc_err_detect",
 	  .reset_level = HNS3_NONE_RESET },
 	{ .int_msk = BIT(31), .msg = "ooo_ecc_err_multpl",
@@ -114,18 +110,23 @@ const struct hns3_hw_error ppu_mpf_abnormal_int_st2[] = {
 	  .reset_level = HNS3_NONE_RESET}
 };
 
-const struct hns3_hw_error ssu_port_based_pf_int[] = {
-	{ .int_msk = BIT(0), .msg = "roc_pkt_without_key_port",
-	  .reset_level = HNS3_GLOBAL_RESET },
-	{ .int_msk = BIT(9), .msg = "low_water_line_err_port",
+static const struct hns3_hw_error ppu_mpf_abnormal_int_st2_msix[] = {
+	{ .int_msk = BIT(29), .msg = "rx_q_search_miss",
 	  .reset_level = HNS3_NONE_RESET },
-	{ .int_msk = BIT(10), .msg = "hi_water_line_err_port",
-	  .reset_level = HNS3_GLOBAL_RESET },
 	{ .int_msk = 0, .msg = NULL,
 	  .reset_level = HNS3_NONE_RESET}
 };
 
-const struct hns3_hw_error ppp_pf_abnormal_int[] = {
+static const struct hns3_hw_error ssu_port_based_pf_int[] = {
+	{ .int_msk = BIT(0), .msg = "roc_pkt_without_key_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(9), .msg = "low_water_line_err_port",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ppp_pf_abnormal_int[] = {
 	{ .int_msk = BIT(0), .msg = "tx_vlan_tag_err",
 	  .reset_level = HNS3_NONE_RESET },
 	{ .int_msk = BIT(1), .msg = "rss_list_tc_unassigned_queue_err",
@@ -134,22 +135,711 @@ const struct hns3_hw_error ppp_pf_abnormal_int[] = {
 	  .reset_level = HNS3_NONE_RESET}
 };
 
-const struct hns3_hw_error ppu_pf_abnormal_int[] = {
+static const struct hns3_hw_error ppu_pf_abnormal_int_ras[] = {
+	{ .int_msk = BIT(3), .msg = "tx_rd_fbd_poison",
+	  .reset_level = HNS3_FUNC_RESET },
+	{ .int_msk = BIT(4), .msg = "rx_rd_ebd_poison",
+	  .reset_level = HNS3_FUNC_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ppu_pf_abnormal_int_msix[] = {
 	{ .int_msk = BIT(0), .msg = "over_8bd_no_fe",
 	  .reset_level = HNS3_FUNC_RESET },
 	{ .int_msk = BIT(1), .msg = "tso_mss_cmp_min_err",
 	  .reset_level = HNS3_NONE_RESET },
 	{ .int_msk = BIT(2), .msg = "tso_mss_cmp_max_err",
 	  .reset_level = HNS3_NONE_RESET },
-	{ .int_msk = BIT(3), .msg = "tx_rd_fbd_poison",
-	  .reset_level = HNS3_FUNC_RESET },
-	{ .int_msk = BIT(4), .msg = "rx_rd_ebd_poison",
-	  .reset_level = HNS3_FUNC_RESET },
 	{ .int_msk = BIT(5), .msg = "buf_wait_timeout",
 	  .reset_level = HNS3_NONE_RESET },
 	{ .int_msk = 0, .msg = NULL,
 	  .reset_level = HNS3_NONE_RESET}
 };
+
+static const struct hns3_hw_error imp_tcm_ecc_int[] = {
+	{ .int_msk = BIT(1), .msg = "imp_itcm0_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(3), .msg = "imp_itcm1_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(5), .msg = "imp_itcm2_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(7), .msg = "imp_itcm3_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(9), .msg = "imp_dtcm0_mem0_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(11), .msg = "imp_dtcm0_mem1_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(13), .msg = "imp_dtcm1_mem0_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(15), .msg = "imp_dtcm1_mem1_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(17), .msg = "imp_itcm4_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error cmdq_mem_ecc_int[] = {
+	{ .int_msk = BIT(1), .msg = "cmdq_nic_rx_depth_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(3), .msg = "cmdq_nic_tx_depth_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(5), .msg = "cmdq_nic_rx_tail_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(7), .msg = "cmdq_nic_tx_tail_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(9), .msg = "cmdq_nic_rx_head_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(11), .msg = "cmdq_nic_tx_head_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(13), .msg = "cmdq_nic_rx_addr_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(15), .msg = "cmdq_nic_tx_addr_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error tqp_int_ecc_int[] = {
+	{ .int_msk = BIT(6), .msg = "tqp_int_cfg_even_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(7), .msg = "tqp_int_cfg_odd_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(8), .msg = "tqp_int_ctrl_even_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(9), .msg = "tqp_int_ctrl_odd_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(10), .msg = "tx_que_scan_int_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(11), .msg = "rx_que_scan_int_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error imp_rd_poison_int[] = {
+	{ .int_msk = BIT(0), .msg = "imp_rd_poison_int",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+#define HNS3_SSU_MEM_ECC_ERR(x) \
+	{ .int_msk = BIT(x), .msg = "ssu_mem" #x "_ecc_mbit_err", \
+	  .reset_level = HNS3_GLOBAL_RESET }
+
+static const struct hns3_hw_error ssu_ecc_multi_bit_int_0[] = {
+	HNS3_SSU_MEM_ECC_ERR(0),
+	HNS3_SSU_MEM_ECC_ERR(1),
+	HNS3_SSU_MEM_ECC_ERR(2),
+	HNS3_SSU_MEM_ECC_ERR(3),
+	HNS3_SSU_MEM_ECC_ERR(4),
+	HNS3_SSU_MEM_ECC_ERR(5),
+	HNS3_SSU_MEM_ECC_ERR(6),
+	HNS3_SSU_MEM_ECC_ERR(7),
+	HNS3_SSU_MEM_ECC_ERR(8),
+	HNS3_SSU_MEM_ECC_ERR(9),
+	HNS3_SSU_MEM_ECC_ERR(10),
+	HNS3_SSU_MEM_ECC_ERR(11),
+	HNS3_SSU_MEM_ECC_ERR(12),
+	HNS3_SSU_MEM_ECC_ERR(13),
+	HNS3_SSU_MEM_ECC_ERR(14),
+	HNS3_SSU_MEM_ECC_ERR(15),
+	HNS3_SSU_MEM_ECC_ERR(16),
+	HNS3_SSU_MEM_ECC_ERR(17),
+	HNS3_SSU_MEM_ECC_ERR(18),
+	HNS3_SSU_MEM_ECC_ERR(19),
+	HNS3_SSU_MEM_ECC_ERR(20),
+	HNS3_SSU_MEM_ECC_ERR(21),
+	HNS3_SSU_MEM_ECC_ERR(22),
+	HNS3_SSU_MEM_ECC_ERR(23),
+	HNS3_SSU_MEM_ECC_ERR(24),
+	HNS3_SSU_MEM_ECC_ERR(25),
+	HNS3_SSU_MEM_ECC_ERR(26),
+	HNS3_SSU_MEM_ECC_ERR(27),
+	HNS3_SSU_MEM_ECC_ERR(28),
+	HNS3_SSU_MEM_ECC_ERR(29),
+	HNS3_SSU_MEM_ECC_ERR(30),
+	HNS3_SSU_MEM_ECC_ERR(31),
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ssu_ecc_multi_bit_int_1[] = {
+	{ .int_msk = BIT(0), .msg = "ssu_mem32_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ssu_common_ecc_int[] = {
+	{ .int_msk = BIT(0), .msg = "buf_sum_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(1), .msg = "ppp_mb_num_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = BIT(2), .msg = "ppp_mbid_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "ppp_rlt_mac_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(4), .msg = "ppp_rlt_host_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "cks_edit_position_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(6), .msg = "cks_edit_condition_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(7), .msg = "vlan_edit_condition_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(8), .msg = "vlan_num_ot_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(9), .msg = "vlan_num_in_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error igu_int[] = {
+	{ .int_msk = BIT(0), .msg = "igu_rx_buf0_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "igu_rx_buf1_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error msix_ecc_int[] = {
+	{ .int_msk = BIT(1), .msg = "msix_nic_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ppp_mpf_abnormal_int_st1[] = {
+	{ .int_msk = BIT(0), .msg = "vf_vlan_ad_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(1), .msg = "umv_mcast_group_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "umv_key_mem0_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "umv_key_mem1_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(4), .msg = "umv_key_mem2_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "umv_key_mem3_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(6), .msg = "umv_ad_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(7), .msg = "rss_tc_mode_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(8), .msg = "rss_idt_mem0_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(9), .msg = "rss_idt_mem1_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(10), .msg = "rss_idt_mem2_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(11), .msg = "rss_idt_mem3_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(12), .msg = "rss_idt_mem4_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(13), .msg = "rss_idt_mem5_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(14), .msg = "rss_idt_mem6_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(15), .msg = "rss_idt_mem7_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(16), .msg = "rss_idt_mem8_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(17), .msg = "rss_idt_mem9_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(18), .msg = "rss_idt_mem10_ecc_m1bit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(19), .msg = "rss_idt_mem11_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(20), .msg = "rss_idt_mem12_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(21), .msg = "rss_idt_mem13_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(22), .msg = "rss_idt_mem14_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(23), .msg = "rss_idt_mem15_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(24), .msg = "port_vlan_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(25), .msg = "mcast_linear_table_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(26), .msg = "mcast_result_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(27), .msg = "flow_director_ad_mem0_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(28), .msg = "flow_director_ad_mem1_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(29), .msg = "rx_vlan_tag_memory_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(30), .msg = "Tx_UP_mapping_config_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ppp_mpf_abnormal_int_st3[] = {
+	{ .int_msk = BIT(0), .msg = "hfs_fifo_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(1), .msg = "rslt_descr_fifo_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "tx_vlan_tag_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "FD_CN0_memory_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(4), .msg = "FD_CN1_memory_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "GRO_AD_memory_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ppu_mpf_abnormal_int_st3[] = {
+	{ .int_msk = BIT(4), .msg = "gro_bd_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "gro_context_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(6), .msg = "rx_stash_cfg_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(7), .msg = "axi_rd_fbd_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error tm_sch_int[] = {
+	{ .int_msk = BIT(1), .msg = "tm_sch_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "tm_sch_port_shap_sub_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "tm_sch_port_shap_sub_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(4), .msg = "tm_sch_pg_pshap_sub_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "tm_sch_pg_pshap_sub_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(6), .msg = "tm_sch_pg_cshap_sub_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(7), .msg = "tm_sch_pg_cshap_sub_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(8), .msg = "tm_sch_pri_pshap_sub_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(9), .msg = "tm_sch_pri_pshap_sub_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(10), .msg = "tm_sch_pri_cshap_sub_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(11), .msg = "tm_sch_pri_cshap_sub_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(12), .msg = "tm_sch_port_shap_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(13), .msg = "tm_sch_port_shap_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(14), .msg = "tm_sch_pg_pshap_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(15), .msg = "tm_sch_pg_pshap_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(16), .msg = "tm_sch_pg_cshap_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(17), .msg = "tm_sch_pg_cshap_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(18), .msg = "tm_sch_pri_pshap_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(19), .msg = "tm_sch_pri_pshap_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(20), .msg = "tm_sch_pri_cshap_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(21), .msg = "tm_sch_pri_cshap_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(22), .msg = "tm_sch_rq_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(23), .msg = "tm_sch_rq_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(24), .msg = "tm_sch_nq_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(25), .msg = "tm_sch_nq_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(26), .msg = "tm_sch_roce_up_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(27), .msg = "tm_sch_roce_up_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(28), .msg = "tm_sch_rcb_byte_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(29), .msg = "tm_sch_rcb_byte_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(30), .msg = "tm_sch_ssu_byte_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(31), .msg = "tm_sch_ssu_byte_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error qcn_fifo_int[] = {
+	{ .int_msk = BIT(0), .msg = "qcn_shap_gp0_sch_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(1), .msg = "qcn_shap_gp0_sch_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "qcn_shap_gp1_sch_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "qcn_shap_gp1_sch_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(4), .msg = "qcn_shap_gp2_sch_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "qcn_shap_gp2_sch_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(6), .msg = "qcn_shap_gp3_sch_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(7), .msg = "qcn_shap_gp3_sch_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(8), .msg = "qcn_shap_gp0_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(9), .msg = "qcn_shap_gp0_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(10), .msg = "qcn_shap_gp1_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(11), .msg = "qcn_shap_gp1_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(12), .msg = "qcn_shap_gp2_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(13), .msg = "qcn_shap_gp2_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(14), .msg = "qcn_shap_gp3_offset_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(15), .msg = "qcn_shap_gp3_offset_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(16), .msg = "qcn_byte_info_fifo_rd_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(17), .msg = "qcn_byte_info_fifo_wr_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error qcn_ecc_int[] = {
+	{ .int_msk = BIT(1), .msg = "qcn_byte_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "qcn_time_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "qcn_fb_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(7), .msg = "qcn_link_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(9), .msg = "qcn_rate_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(11), .msg = "qcn_tmplt_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(13), .msg = "qcn_shap_cfg_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(15), .msg = "qcn_gp0_barrel_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(17), .msg = "qcn_gp1_barrel_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(19), .msg = "qcn_gp2_barrel_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(21), .msg = "qcn_gp3_barral_mem_ecc_mbit_err",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ncsi_ecc_int[] = {
+	{ .int_msk = BIT(1), .msg = "ncsi_tx_ecc_mbit_err",
+	  .reset_level = HNS3_NONE_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ssu_fifo_overflow_int[] = {
+	{ .int_msk = BIT(0), .msg = "ig_mac_inf_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(1), .msg = "ig_host_inf_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "ig_roc_buf_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "ig_host_data_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(4), .msg = "ig_host_key_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "tx_qcn_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(6), .msg = "rx_qcn_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(7), .msg = "tx_pf_rd_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(8), .msg = "rx_pf_rd_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(9), .msg = "qm_eof_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(10), .msg = "mb_rlt_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(11), .msg = "dup_uncopy_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(12), .msg = "dup_cnt_rd_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(13), .msg = "dup_cnt_drop_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(14), .msg = "dup_cnt_wrb_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(15), .msg = "host_cmd_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(16), .msg = "mac_cmd_fifo_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(17), .msg = "host_cmd_bitmap_empty_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(18), .msg = "mac_cmd_bitmap_empty_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(19), .msg = "dup_bitmap_empty_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(20), .msg = "out_queue_bitmap_empty_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(21), .msg = "bank2_bitmap_empty_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(22), .msg = "bank1_bitmap_empty_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(23), .msg = "bank0_bitmap_empty_int",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ssu_ets_tcg_int[] = {
+	{ .int_msk = BIT(0), .msg = "ets_rd_int_rx_tcg",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(1), .msg = "ets_wr_int_rx_tcg",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "ets_rd_int_tx_tcg",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "ets_wr_int_tx_tcg",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error igu_egu_tnl_int[] = {
+	{ .int_msk = BIT(0), .msg = "rx_buf_overflow",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(1), .msg = "rx_stp_fifo_overflow",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "rx_stp_fifo_underflow",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "tx_buf_overflow",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(4), .msg = "tx_buf_underrun",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "rx_stp_buf_overflow",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error ssu_port_based_err_int[] = {
+	{ .int_msk = BIT(0), .msg = "roc_pkt_without_key_port",
+	  .reset_level = HNS3_FUNC_RESET },
+	{ .int_msk = BIT(1), .msg = "tpu_pkt_without_key_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(2), .msg = "igu_pkt_without_key_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(3), .msg = "roc_eof_mis_match_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(4), .msg = "tpu_eof_mis_match_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(5), .msg = "igu_eof_mis_match_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(6), .msg = "roc_sof_mis_match_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(7), .msg = "tpu_sof_mis_match_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(8), .msg = "igu_sof_mis_match_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(11), .msg = "ets_rd_int_rx_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(12), .msg = "ets_wr_int_rx_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(13), .msg = "ets_rd_int_tx_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = BIT(14), .msg = "ets_wr_int_tx_port",
+	  .reset_level = HNS3_GLOBAL_RESET },
+	{ .int_msk = 0, .msg = NULL,
+	  .reset_level = HNS3_NONE_RESET}
+};
+
+static const struct hns3_hw_error_desc mpf_ras_err_tbl[] = {
+	{ .desc_offset = 0, .data_offset = 0,
+	  .msg = "IMP_TCM_ECC_INT_STS",
+	  .hw_err = imp_tcm_ecc_int },
+	{ .desc_offset = 0, .data_offset = 1,
+	  .msg = "CMDQ_MEM_ECC_INT_STS",
+	  .hw_err = cmdq_mem_ecc_int },
+	{ .desc_offset = 0, .data_offset = 2,
+	  .msg = "IMP_RD_POISON_INT_STS",
+	  .hw_err = imp_rd_poison_int },
+	{ .desc_offset = 0, .data_offset = 3,
+	  .msg = "TQP_INT_ECC_INT_STS",
+	  .hw_err = tqp_int_ecc_int },
+	{ .desc_offset = 0, .data_offset = 4,
+	  .msg = "MSIX_ECC_INT_STS",
+	  .hw_err = msix_ecc_int },
+	{ .desc_offset = 2, .data_offset = 2,
+	  .msg = "SSU_ECC_MULTI_BIT_INT_0",
+	  .hw_err = ssu_ecc_multi_bit_int_0 },
+	{ .desc_offset = 2, .data_offset = 3,
+	  .msg = "SSU_ECC_MULTI_BIT_INT_1",
+	  .hw_err = ssu_ecc_multi_bit_int_1 },
+	{ .desc_offset = 2, .data_offset = 4,
+	  .msg = "SSU_COMMON_ERR_INT",
+	  .hw_err = ssu_common_ecc_int },
+	{ .desc_offset = 3, .data_offset = 0,
+	  .msg = "IGU_INT_STS",
+	  .hw_err = igu_int },
+	{ .desc_offset = 4, .data_offset = 1,
+	  .msg = "PPP_MPF_ABNORMAL_INT_ST1",
+	  .hw_err = ppp_mpf_abnormal_int_st1 },
+	{ .desc_offset = 4, .data_offset = 3,
+	  .msg = "PPP_MPF_ABNORMAL_INT_ST3",
+	  .hw_err = ppp_mpf_abnormal_int_st3 },
+	{ .desc_offset = 5, .data_offset = 1,
+	  .msg = "PPU_MPF_ABNORMAL_INT_ST1",
+	  .hw_err = ppu_mpf_abnormal_int_st1 },
+	{ .desc_offset = 5, .data_offset = 2,
+	  .msg = "PPU_MPF_ABNORMAL_INT_ST2_RAS",
+	  .hw_err = ppu_mpf_abnormal_int_st2_ras },
+	{ .desc_offset = 5, .data_offset = 3,
+	  .msg = "PPU_MPF_ABNORMAL_INT_ST3",
+	  .hw_err = ppu_mpf_abnormal_int_st3 },
+	{ .desc_offset = 6, .data_offset = 0,
+	  .msg = "TM_SCH_RINT",
+	  .hw_err = tm_sch_int },
+	{ .desc_offset = 7, .data_offset = 0,
+	  .msg = "QCN_FIFO_RINT",
+	  .hw_err = qcn_fifo_int },
+	{ .desc_offset = 7, .data_offset = 1,
+	  .msg = "QCN_ECC_RINT",
+	  .hw_err = qcn_ecc_int },
+	{ .desc_offset = 9, .data_offset = 0,
+	  .msg = "NCSI_ECC_INT_RPT",
+	  .hw_err = ncsi_ecc_int },
+	{ .desc_offset = 0, .data_offset = 0,
+	  .msg = NULL,
+	  .hw_err = NULL }
+};
+
+static const struct hns3_hw_error_desc pf_ras_err_tbl[] = {
+	{ .desc_offset = 0, .data_offset = 0,
+	  .msg = "SSU_PORT_BASED_ERR_INT_RAS",
+	  .hw_err = ssu_port_based_err_int },
+	{ .desc_offset = 0, .data_offset = 1,
+	  .msg = "SSU_FIFO_OVERFLOW_INT",
+	  .hw_err = ssu_fifo_overflow_int },
+	{ .desc_offset = 0, .data_offset = 2,
+	  .msg = "SSU_ETS_TCG_INT",
+	  .hw_err = ssu_ets_tcg_int },
+	{ .desc_offset = 1, .data_offset = 0,
+	  .msg = "IGU_EGU_TNL_INT_STS",
+	  .hw_err = igu_egu_tnl_int },
+	{ .desc_offset = 3, .data_offset = 0,
+	  .msg = "PPU_PF_ABNORMAL_INT_ST_RAS",
+	  .hw_err = ppu_pf_abnormal_int_ras },
+	{ .desc_offset = 0, .data_offset = 0,
+	  .msg = NULL,
+	  .hw_err = NULL }
+};
+
+static const struct hns3_hw_error_desc mpf_msix_err_tbl[] = {
+	{ .desc_offset = 1, .data_offset = 0,
+	  .msg = "MAC_AFIFO_TNL_INT_R",
+	  .hw_err = mac_afifo_tnl_int },
+	{ .desc_offset = 5, .data_offset = 2,
+	  .msg = "PPU_MPF_ABNORMAL_INT_ST2_MSIX",
+	  .hw_err = ppu_mpf_abnormal_int_st2_msix },
+	{ .desc_offset = 0, .data_offset = 0,
+	  .msg = NULL,
+	  .hw_err = NULL }
+};
+
+static const struct hns3_hw_error_desc pf_msix_err_tbl[] = {
+	{ .desc_offset = 0, .data_offset = 0,
+	  .msg = "SSU_PORT_BASED_ERR_INT_MSIX",
+	  .hw_err = ssu_port_based_pf_int },
+	{ .desc_offset = 2, .data_offset = 0,
+	  .msg = "PPP_PF_ABNORMAL_INT_ST0",
+	  .hw_err = ppp_pf_abnormal_int },
+	{ .desc_offset = 3, .data_offset = 0,
+	  .msg = "PPU_PF_ABNORMAL_INT_ST_MSIX",
+	  .hw_err = ppu_pf_abnormal_int_msix },
+	{ .desc_offset = 0, .data_offset = 0,
+	  .msg = NULL,
+	  .hw_err = NULL }
+};
+
+enum hns3_hw_err_type {
+	MPF_MSIX_ERR,
+	PF_MSIX_ERR,
+	MPF_RAS_ERR,
+	PF_RAS_ERR,
+};
+
+static int
+hns3_config_ncsi_hw_err_int(struct hns3_adapter *hns, bool en)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	/* configure NCSI error interrupts */
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_NCSI_INT_EN, false);
+	if (en)
+		desc.data[0] = rte_cpu_to_le_32(HNS3_NCSI_ERR_INT_EN);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "fail to %s NCSI error interrupts, ret = %d",
+			 en ? "enable" : "disable", ret);
+
+	return ret;
+}
+
+static int
+enable_igu_egu_err_intr(struct hns3_adapter *hns, bool en)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	/* configure IGU,EGU error interrupts */
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_IGU_COMMON_INT_EN, false);
+	if (en)
+		desc.data[0] = rte_cpu_to_le_32(HNS3_IGU_ERR_INT_ENABLE);
+	else
+		desc.data[0] = rte_cpu_to_le_32(HNS3_IGU_ERR_INT_DISABLE);
+
+	desc.data[1] = rte_cpu_to_le_32(HNS3_IGU_ERR_INT_EN_MASK);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "fail to %s IGU common interrupts, ret = %d",
+			 en ? "enable" : "disable", ret);
+		return ret;
+	}
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_IGU_EGU_TNL_INT_EN, false);
+	if (en)
+		desc.data[0] = rte_cpu_to_le_32(HNS3_IGU_TNL_ERR_INT_EN);
+
+	desc.data[1] = rte_cpu_to_le_32(HNS3_IGU_TNL_ERR_INT_EN_MASK);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "fail to %s IGU-EGU TNL interrupts, ret = %d",
+			 en ? "enable" : "disable", ret);
+		return ret;
+	}
+
+	return hns3_config_ncsi_hw_err_int(hns, en);
+}
 
 static int
 config_ppp_err_intr(struct hns3_adapter *hns, uint32_t cmd, bool en)
@@ -163,7 +853,7 @@ config_ppp_err_intr(struct hns3_adapter *hns, uint32_t cmd, bool en)
 	desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
 	hns3_cmd_setup_basic_desc(&desc[1], cmd, false);
 
-	if (cmd == HNS3_PPP_CMD0_INT_CMD) {
+	if (cmd == HNS3_OPC_PPP_CMD0_INT_CMD) {
 		if (en) {
 			desc[0].data[0] =
 				rte_cpu_to_le_32(HNS3_PPP_MPF_ECC_ERR_INT0_EN);
@@ -179,7 +869,7 @@ config_ppp_err_intr(struct hns3_adapter *hns, uint32_t cmd, bool en)
 			rte_cpu_to_le_32(HNS3_PPP_MPF_ECC_ERR_INT1_EN_MASK);
 		desc[1].data[2] =
 			rte_cpu_to_le_32(HNS3_PPP_PF_ERR_INT_EN_MASK);
-	} else if (cmd == HNS3_PPP_CMD1_INT_CMD) {
+	} else if (cmd == HNS3_OPC_PPP_CMD1_INT_CMD) {
 		if (en) {
 			desc[0].data[0] =
 				rte_cpu_to_le_32(HNS3_PPP_MPF_ECC_ERR_INT2_EN);
@@ -195,7 +885,8 @@ config_ppp_err_intr(struct hns3_adapter *hns, uint32_t cmd, bool en)
 
 	ret = hns3_cmd_send(hw, &desc[0], 2);
 	if (ret)
-		hns3_err(hw, "fail to configure PPP error int: %d", ret);
+		hns3_err(hw, "fail to %s PPP error int, ret = %d",
+		en ? "enable" : "disable", ret);
 
 	return ret;
 }
@@ -205,11 +896,11 @@ enable_ppp_err_intr(struct hns3_adapter *hns, bool en)
 {
 	int ret;
 
-	ret = config_ppp_err_intr(hns, HNS3_PPP_CMD0_INT_CMD, en);
+	ret = config_ppp_err_intr(hns, HNS3_OPC_PPP_CMD0_INT_CMD, en);
 	if (ret)
 		return ret;
 
-	return config_ppp_err_intr(hns, HNS3_PPP_CMD1_INT_CMD, en);
+	return config_ppp_err_intr(hns, HNS3_OPC_PPP_CMD1_INT_CMD, en);
 }
 
 static int
@@ -220,9 +911,9 @@ enable_ssu_err_intr(struct hns3_adapter *hns, bool en)
 	int ret;
 
 	/* configure SSU ecc error interrupts */
-	hns3_cmd_setup_basic_desc(&desc[0], HNS3_SSU_ECC_INT_CMD, false);
+	hns3_cmd_setup_basic_desc(&desc[0], HNS3_OPC_SSU_ECC_INT_CMD, false);
 	desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-	hns3_cmd_setup_basic_desc(&desc[1], HNS3_SSU_ECC_INT_CMD, false);
+	hns3_cmd_setup_basic_desc(&desc[1], HNS3_OPC_SSU_ECC_INT_CMD, false);
 	if (en) {
 		desc[0].data[0] =
 			rte_cpu_to_le_32(HNS3_SSU_1BIT_ECC_ERR_INT_EN);
@@ -239,15 +930,15 @@ enable_ssu_err_intr(struct hns3_adapter *hns, bool en)
 
 	ret = hns3_cmd_send(hw, &desc[0], 2);
 	if (ret) {
-		hns3_err(hw, "fail to configure SSU ECC error interrupt: %d",
-			 ret);
+		hns3_err(hw, "fail to %s SSU ECC error interrupt, ret = %d",
+			 en ? "enable" : "disable", ret);
 		return ret;
 	}
 
 	/* configure SSU common error interrupts */
-	hns3_cmd_setup_basic_desc(&desc[0], HNS3_SSU_COMMON_INT_CMD, false);
+	hns3_cmd_setup_basic_desc(&desc[0], HNS3_OPC_SSU_COMMON_INT_CMD, false);
 	desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-	hns3_cmd_setup_basic_desc(&desc[1], HNS3_SSU_COMMON_INT_CMD, false);
+	hns3_cmd_setup_basic_desc(&desc[1], HNS3_OPC_SSU_COMMON_INT_CMD, false);
 
 	if (en) {
 		desc[0].data[0] = rte_cpu_to_le_32(HNS3_SSU_COMMON_INT_EN);
@@ -264,8 +955,8 @@ enable_ssu_err_intr(struct hns3_adapter *hns, bool en)
 
 	ret = hns3_cmd_send(hw, &desc[0], 2);
 	if (ret)
-		hns3_err(hw, "fail to configure SSU COMMON error intr: %d",
-			 ret);
+		hns3_err(hw, "fail to %s SSU COMMON error intr, ret = %d",
+			 en ? "enable" : "disable", ret);
 
 	return ret;
 }
@@ -279,7 +970,7 @@ config_ppu_err_intrs(struct hns3_adapter *hns, uint32_t cmd, bool en)
 
 	/* configure PPU error interrupts */
 	switch (cmd) {
-	case HNS3_PPU_MPF_ECC_INT_CMD:
+	case HNS3_OPC_PPU_MPF_ECC_INT_CMD:
 		hns3_cmd_setup_basic_desc(&desc[0], cmd, false);
 		desc[0].flag |= HNS3_CMD_FLAG_NEXT;
 		hns3_cmd_setup_basic_desc(&desc[1], cmd, false);
@@ -296,14 +987,14 @@ config_ppu_err_intrs(struct hns3_adapter *hns, uint32_t cmd, bool en)
 		desc[1].data[3] |= HNS3_PPU_MPF_ABNORMAL_INT3_EN_MASK;
 		num = 2;
 		break;
-	case HNS3_PPU_MPF_OTHER_INT_CMD:
+	case HNS3_OPC_PPU_MPF_OTHER_INT_CMD:
 		hns3_cmd_setup_basic_desc(&desc[0], cmd, false);
 		if (en)
 			desc[0].data[0] = HNS3_PPU_MPF_ABNORMAL_INT2_EN2;
 
 		desc[0].data[2] = HNS3_PPU_MPF_ABNORMAL_INT2_EN2_MASK;
 		break;
-	case HNS3_PPU_PF_OTHER_INT_CMD:
+	case HNS3_OPC_PPU_PF_OTHER_INT_CMD:
 		hns3_cmd_setup_basic_desc(&desc[0], cmd, false);
 		if (en)
 			desc[0].data[0] = HNS3_PPU_PF_ABNORMAL_INT_EN;
@@ -326,24 +1017,104 @@ enable_ppu_err_intr(struct hns3_adapter *hns, bool en)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	ret = config_ppu_err_intrs(hns, HNS3_PPU_MPF_ECC_INT_CMD, en);
+	ret = config_ppu_err_intrs(hns, HNS3_OPC_PPU_MPF_ECC_INT_CMD, en);
 	if (ret) {
-		hns3_err(hw, "fail to configure PPU MPF ECC error intr: %d",
-			 ret);
+		hns3_err(hw, "fail to %s PPU MPF ECC error intr, ret = %d",
+			 en ? "enable" : "disable", ret);
 		return ret;
 	}
 
-	ret = config_ppu_err_intrs(hns, HNS3_PPU_MPF_OTHER_INT_CMD, en);
+	ret = config_ppu_err_intrs(hns, HNS3_OPC_PPU_MPF_OTHER_INT_CMD, en);
 	if (ret) {
-		hns3_err(hw, "fail to configure PPU MPF other intr: %d",
-			 ret);
+		hns3_err(hw, "fail to %s PPU MPF other intr, ret = %d",
+			 en ? "enable" : "disable", ret);
 		return ret;
 	}
 
-	ret = config_ppu_err_intrs(hns, HNS3_PPU_PF_OTHER_INT_CMD, en);
+	ret = config_ppu_err_intrs(hns, HNS3_OPC_PPU_PF_OTHER_INT_CMD, en);
 	if (ret)
-		hns3_err(hw, "fail to configure PPU PF error interrupts: %d",
-			 ret);
+		hns3_err(hw, "fail to %s PPU PF error interrupts, ret = %d",
+			 en ? "enable" : "disable", ret);
+	return ret;
+}
+
+static int
+enable_tm_err_intr(struct hns3_adapter *hns, bool en)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_cmd_desc desc;
+	int ret;
+
+	/* configure TM SCH error interrupts */
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_TM_SCH_ECC_INT_EN, false);
+	if (en)
+		desc.data[0] = rte_cpu_to_le_32(HNS3_TM_SCH_ECC_ERR_INT_EN);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "fail to %s TM SCH interrupts, ret = %d",
+			 en ? "enable" : "disable", ret);
+		return ret;
+	}
+
+	/* configure TM QCN hw errors */
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_TM_QCN_MEM_INT_CFG, true);
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "fail to read TM QCN CFG status, ret = %d\n", ret);
+		return ret;
+	}
+
+	hns3_cmd_reuse_desc(&desc, false);
+	if (en)
+		desc.data[1] = rte_cpu_to_le_32(HNS3_TM_QCN_MEM_ERR_INT_EN);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "fail to %s TM QCN mem errors, ret = %d\n",
+			 en ? "enable" : "disable", ret);
+
+	return ret;
+}
+
+static int
+enable_common_err_intr(struct hns3_adapter *hns, bool en)
+{
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_cmd_desc desc[2];
+	int ret;
+
+	/* configure common error interrupts */
+	hns3_cmd_setup_basic_desc(&desc[0], HNS3_OPC_COMMON_ECC_INT_CFG, false);
+	desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+	hns3_cmd_setup_basic_desc(&desc[1], HNS3_OPC_COMMON_ECC_INT_CFG, false);
+
+	if (en) {
+		desc[0].data[0] =
+			rte_cpu_to_le_32(HNS3_IMP_TCM_ECC_ERR_INT_EN);
+		desc[0].data[2] =
+			rte_cpu_to_le_32(HNS3_CMDQ_NIC_ECC_ERR_INT_EN);
+		desc[0].data[3] =
+			rte_cpu_to_le_32(HNS3_IMP_RD_POISON_ERR_INT_EN);
+		desc[0].data[4] =
+			rte_cpu_to_le_32(HNS3_TQP_ECC_ERR_INT_EN |
+					 HNS3_MSIX_SRAM_ECC_ERR_INT_EN);
+		desc[0].data[5] =
+			rte_cpu_to_le_32(HNS3_IMP_ITCM4_ECC_ERR_INT_EN);
+	}
+
+	desc[1].data[0] = rte_cpu_to_le_32(HNS3_IMP_TCM_ECC_ERR_INT_EN_MASK);
+	desc[1].data[2] = rte_cpu_to_le_32(HNS3_CMDQ_NIC_ECC_ERR_INT_EN_MASK);
+	desc[1].data[3] = rte_cpu_to_le_32(HNS3_IMP_RD_POISON_ERR_INT_EN_MASK);
+	desc[1].data[4] = rte_cpu_to_le_32(HNS3_TQP_ECC_ERR_INT_EN_MASK |
+				      HNS3_MSIX_SRAM_ECC_ERR_INT_EN_MASK);
+	desc[1].data[5] = rte_cpu_to_le_32(HNS3_IMP_ITCM4_ECC_ERR_INT_EN_MASK);
+
+	ret = hns3_cmd_send(hw, &desc[0], RTE_DIM(desc));
+	if (ret)
+		hns3_err(hw, "fail to %s common err interrupts, ret = %d\n",
+			 en ? "enable" : "disable", ret);
+
 	return ret;
 }
 
@@ -355,7 +1126,7 @@ enable_mac_err_intr(struct hns3_adapter *hns, bool en)
 	int ret;
 
 	/* configure MAC common error interrupts */
-	hns3_cmd_setup_basic_desc(&desc, HNS3_MAC_COMMON_INT_EN, false);
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MAC_COMMON_INT_EN, false);
 	if (en)
 		desc.data[0] = rte_cpu_to_le_32(HNS3_MAC_COMMON_ERR_INT_EN);
 
@@ -363,13 +1134,17 @@ enable_mac_err_intr(struct hns3_adapter *hns, bool en)
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
-		hns3_err(hw, "fail to configure MAC COMMON error intr: %d",
-			 ret);
+		hns3_err(hw, "fail to %s MAC COMMON error intr: %d",
+			 en ? "enable" : "disable", ret);
 
 	return ret;
 }
 
 static const struct hns3_hw_blk hw_blk[] = {
+	{
+		.name = "IGU_EGU",
+		.enable_err_intr = enable_igu_egu_err_intr,
+	},
 	{
 		.name = "PPP",
 		.enable_err_intr = enable_ppp_err_intr,
@@ -381,6 +1156,14 @@ static const struct hns3_hw_blk hw_blk[] = {
 	{
 		.name = "PPU",
 		.enable_err_intr = enable_ppu_err_intr,
+	},
+	{
+		.name = "TM",
+		.enable_err_intr = enable_tm_err_intr,
+	},
+	{
+		.name = "COMMON",
+		.enable_err_intr = enable_common_err_intr,
 	},
 	{
 		.name = "MAC",
@@ -426,6 +1209,7 @@ hns3_find_highest_level(struct hns3_adapter *hns, const char *reg,
 				reset_level = err->reset_level;
 				need_reset = true;
 			}
+			hns3_error_int_stats_add(hns, reg);
 		}
 		err++;
 	}
@@ -436,82 +1220,45 @@ hns3_find_highest_level(struct hns3_adapter *hns, const char *reg,
 }
 
 static int
-query_num_bds_in_msix(struct hns3_hw *hw, struct hns3_cmd_desc *desc_bd)
+query_num_bds(struct hns3_hw *hw, bool is_ras, uint32_t *mpf_bd_num,
+	      uint32_t *pf_bd_num)
 {
+	uint32_t mpf_min_bd_num, pf_min_bd_num;
+	uint32_t mpf_bd_num_val, pf_bd_num_val;
+	enum hns3_opcode_type opcode;
+	struct hns3_cmd_desc desc;
 	int ret;
 
-	hns3_cmd_setup_basic_desc(desc_bd, HNS3_QUERY_MSIX_INT_STS_BD_NUM,
-				  true);
-	ret = hns3_cmd_send(hw, desc_bd, 1);
-	if (ret)
-		hns3_err(hw, "query num bds in msix failed: %d", ret);
+	if (is_ras) {
+		opcode = HNS3_OPC_QUERY_RAS_INT_STS_BD_NUM;
+		mpf_min_bd_num = HNS3_MPF_RAS_INT_MIN_BD_NUM;
+		pf_min_bd_num = HNS3_PF_RAS_INT_MIN_BD_NUM;
+	} else {
+		opcode = HNS3_OPC_QUERY_MSIX_INT_STS_BD_NUM;
+		mpf_min_bd_num = HNS3_MPF_MSIX_INT_MIN_BD_NUM;
+		pf_min_bd_num = HNS3_PF_MSIX_INT_MIN_BD_NUM;
+	}
 
-	return ret;
-}
+	hns3_cmd_setup_basic_desc(&desc, opcode, true);
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "query num bds in msix failed, ret = %d", ret);
+		return ret;
+	}
 
-static int
-query_all_mpf_msix_err(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
-		       uint32_t mpf_bd_num)
-{
-	int ret;
+	mpf_bd_num_val = rte_le_to_cpu_32(desc.data[0]);
+	pf_bd_num_val = rte_le_to_cpu_32(desc.data[1]);
+	if (mpf_bd_num_val < mpf_min_bd_num || pf_bd_num_val < pf_min_bd_num) {
+		hns3_err(hw, "error bd num: mpf(%u), min_mpf(%u), "
+			 "pf(%u), min_pf(%u)\n", mpf_bd_num_val, mpf_min_bd_num,
+			 pf_bd_num_val, pf_min_bd_num);
+		return -EINVAL;
+	}
 
-	hns3_cmd_setup_basic_desc(desc, HNS3_QUERY_CLEAR_ALL_MPF_MSIX_INT,
-				  true);
-	desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+	*mpf_bd_num = mpf_bd_num_val;
+	*pf_bd_num = pf_bd_num_val;
 
-	ret = hns3_cmd_send(hw, &desc[0], mpf_bd_num);
-	if (ret)
-		hns3_err(hw, "query all mpf msix err failed: %d", ret);
-
-	return ret;
-}
-
-static int
-clear_all_mpf_msix_err(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
-		       uint32_t mpf_bd_num)
-{
-	int ret;
-
-	hns3_cmd_reuse_desc(desc, false);
-	desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-
-	ret = hns3_cmd_send(hw, desc, mpf_bd_num);
-	if (ret)
-		hns3_err(hw, "clear all mpf msix err failed: %d", ret);
-
-	return ret;
-}
-
-static int
-query_all_pf_msix_err(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
-		      uint32_t pf_bd_num)
-{
-	int ret;
-
-	hns3_cmd_setup_basic_desc(desc, HNS3_QUERY_CLEAR_ALL_PF_MSIX_INT, true);
-	desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-
-	ret = hns3_cmd_send(hw, desc, pf_bd_num);
-	if (ret)
-		hns3_err(hw, "query all pf msix int cmd failed: %d", ret);
-
-	return ret;
-}
-
-static int
-clear_all_pf_msix_err(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
-		      uint32_t pf_bd_num)
-{
-	int ret;
-
-	hns3_cmd_reuse_desc(desc, false);
-	desc[0].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-
-	ret = hns3_cmd_send(hw, desc, pf_bd_num);
-	if (ret)
-		hns3_err(hw, "clear all pf msix err failed: %d", ret);
-
-	return ret;
+	return 0;
 }
 
 void
@@ -533,127 +1280,188 @@ hns3_intr_unregister(const struct rte_intr_handle *hdl,
 	} while (retry_cnt++ < HNS3_INTR_UNREG_FAIL_RETRY_CNT);
 }
 
+static uint32_t
+hns3_get_hw_error_status(struct hns3_cmd_desc *desc, uint8_t desc_offset,
+			 uint8_t data_offset)
+{
+	uint32_t status;
+	uint32_t *desc_data;
+
+	if (desc_offset == 0)
+		status = rte_le_to_cpu_32(desc[desc_offset].data[data_offset]);
+	else {
+		desc_data = (uint32_t *)&desc[desc_offset];
+		status = rte_le_to_cpu_32(*(desc_data + data_offset));
+	}
+
+	return status;
+}
+
+static int
+hns3_handle_hw_error(struct hns3_adapter *hns, struct hns3_cmd_desc *desc,
+		     int num, uint64_t *levels, enum hns3_hw_err_type err_type)
+{
+	const struct hns3_hw_error_desc *err = pf_ras_err_tbl;
+	enum hns3_opcode_type opcode;
+	enum hns3_reset_level req_level;
+	struct hns3_hw *hw = &hns->hw;
+	uint32_t status;
+	int ret;
+
+	switch (err_type) {
+	case MPF_MSIX_ERR:
+		err = mpf_msix_err_tbl;
+		opcode = HNS3_OPC_QUERY_CLEAR_ALL_MPF_MSIX_INT;
+		break;
+	case PF_MSIX_ERR:
+		err = pf_msix_err_tbl;
+		opcode = HNS3_OPC_QUERY_CLEAR_ALL_PF_MSIX_INT;
+		break;
+	case MPF_RAS_ERR:
+		err = mpf_ras_err_tbl;
+		opcode = HNS3_OPC_QUERY_CLEAR_MPF_RAS_INT;
+		break;
+	case PF_RAS_ERR:
+		err = pf_ras_err_tbl;
+		opcode = HNS3_OPC_QUERY_CLEAR_PF_RAS_INT;
+		break;
+	default:
+		hns3_err(hw, "error hardware err_type = %d\n", err_type);
+		return -EINVAL;
+	}
+
+	/* query all hardware errors */
+	hns3_cmd_setup_basic_desc(&desc[0], opcode, true);
+	ret = hns3_cmd_send(hw, &desc[0], num);
+	if (ret) {
+		hns3_err(hw, "query hw err int 0x%x cmd failed, ret = %d\n",
+			 opcode, ret);
+		return ret;
+	}
+
+	/* traverses the error table and process based on the error type */
+	while (err->msg) {
+		status = hns3_get_hw_error_status(desc, err->desc_offset,
+						  err->data_offset);
+		if (status) {
+			/*
+			 * set the reset_level or non_reset flag based on
+			 * the error type and add error statistics. here just
+			 * set the flag, the actual reset action is in
+			 * hns3_msix_process.
+			 */
+			req_level = hns3_find_highest_level(hns, err->msg,
+							    err->hw_err,
+							    status);
+			hns3_atomic_set_bit(req_level, levels);
+		}
+		err++;
+	}
+
+	/* clear all hardware errors */
+	hns3_cmd_reuse_desc(&desc[0], false);
+	ret = hns3_cmd_send(hw, &desc[0], num);
+	if (ret)
+		hns3_err(hw, "clear all hw err int cmd failed, ret = %d\n",
+			 ret);
+
+	return ret;
+}
+
 void
 hns3_handle_msix_error(struct hns3_adapter *hns, uint64_t *levels)
 {
 	uint32_t mpf_bd_num, pf_bd_num, bd_num;
-	enum hns3_reset_level req_level;
 	struct hns3_hw *hw = &hns->hw;
-	struct hns3_pf *pf = &hns->pf;
-	struct hns3_cmd_desc desc_bd;
 	struct hns3_cmd_desc *desc;
-	uint32_t *desc_data;
-	uint32_t status;
 	int ret;
 
 	/* query the number of bds for the MSIx int status */
-	ret = query_num_bds_in_msix(hw, &desc_bd);
+	ret = query_num_bds(hw, false, &mpf_bd_num, &pf_bd_num);
 	if (ret) {
-		hns3_err(hw, "fail to query msix int status bd num: %d", ret);
+		hns3_err(hw, "fail to query msix int status bd num: ret = %d",
+			 ret);
 		return;
 	}
 
-	mpf_bd_num = rte_le_to_cpu_32(desc_bd.data[0]);
-	pf_bd_num = rte_le_to_cpu_32(desc_bd.data[1]);
-	bd_num = max_t(uint32_t, mpf_bd_num, pf_bd_num);
-	if (bd_num < RCB_ERROR_OFFSET) {
-		hns3_err(hw, "bd_num is less than RCB_ERROR_OFFSET: %u",
-			 bd_num);
-		return;
-	}
-
+	bd_num = RTE_MAX(mpf_bd_num, pf_bd_num);
 	desc = rte_zmalloc(NULL, bd_num * sizeof(struct hns3_cmd_desc), 0);
 	if (desc == NULL) {
-		hns3_err(hw, "fail to zmalloc desc");
+		hns3_err(hw,
+			 "fail to zmalloc desc for handling msix error, size = %zu",
+			 bd_num * sizeof(struct hns3_cmd_desc));
 		return;
 	}
 
-	/* query all main PF MSIx errors */
-	ret = query_all_mpf_msix_err(hw, &desc[0], mpf_bd_num);
+	/* handle all main PF MSIx errors */
+	ret = hns3_handle_hw_error(hns, desc, mpf_bd_num, levels, MPF_MSIX_ERR);
 	if (ret) {
-		hns3_err(hw, "query all mpf msix int cmd failed: %d", ret);
+		hns3_err(hw, "fail to handle all main pf msix errors, ret = %d",
+			 ret);
 		goto out;
 	}
 
-	/* log MAC errors */
-	desc_data = (uint32_t *)&desc[MAC_ERROR_OFFSET];
-	status = rte_le_to_cpu_32(*desc_data);
-	if (status) {
-		req_level = hns3_find_highest_level(hns, "MAC_AFIFO_TNL_INT_R",
-						    mac_afifo_tnl_int,
-						    status);
-		hns3_atomic_set_bit(req_level, levels);
-		pf->abn_int_stats.mac_afifo_tnl_intr_cnt++;
-	}
-
-	/* log PPU(RCB) errors */
-	desc_data = (uint32_t *)&desc[RCB_ERROR_OFFSET];
-	status = rte_le_to_cpu_32(*(desc_data + RCB_ERROR_STATUS_OFFSET)) &
-			HNS3_PPU_MPF_INT_ST2_MSIX_MASK;
-	if (status) {
-		req_level = hns3_find_highest_level(hns,
-						    "PPU_MPF_ABNORMAL_INT_ST2",
-						    ppu_mpf_abnormal_int_st2,
-						    status);
-		hns3_atomic_set_bit(req_level, levels);
-		pf->abn_int_stats.ppu_mpf_abnormal_intr_st2_cnt++;
-	}
-
-	/* clear all main PF MSIx errors */
-	ret = clear_all_mpf_msix_err(hw, desc, mpf_bd_num);
-	if (ret) {
-		hns3_err(hw, "clear all mpf msix int cmd failed: %d", ret);
-		goto out;
-	}
-
-	/* query all PF MSIx errors */
 	memset(desc, 0, bd_num * sizeof(struct hns3_cmd_desc));
-	ret = query_all_pf_msix_err(hw, &desc[0], pf_bd_num);
+
+	/* handle all PF MSIx errors */
+	ret = hns3_handle_hw_error(hns, desc, pf_bd_num, levels, PF_MSIX_ERR);
 	if (ret) {
-		hns3_err(hw, "query all pf msix int cmd failed (%d)", ret);
+		hns3_err(hw, "fail to handle all pf msix errors, ret = %d",
+			 ret);
 		goto out;
 	}
 
-	/* log SSU PF errors */
-	status = rte_le_to_cpu_32(desc[0].data[0]) &
-		 HNS3_SSU_PORT_INT_MSIX_MASK;
-	if (status) {
-		req_level = hns3_find_highest_level(hns,
-						    "SSU_PORT_BASED_ERR_INT",
-						    ssu_port_based_pf_int,
-						    status);
-		hns3_atomic_set_bit(req_level, levels);
-		pf->abn_int_stats.ssu_port_based_pf_intr_cnt++;
+out:
+	rte_free(desc);
+}
+
+void
+hns3_handle_ras_error(struct hns3_adapter *hns, uint64_t *levels)
+{
+	uint32_t mpf_bd_num, pf_bd_num, bd_num;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_cmd_desc *desc;
+	uint32_t status;
+	int ret;
+
+	status = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
+	if ((status & HNS3_RAS_REG_NFE_MASK) == 0)
+		return;
+
+	/* query the number of bds for the RAS int status */
+	ret = query_num_bds(hw, true, &mpf_bd_num, &pf_bd_num);
+	if (ret) {
+		hns3_err(hw, "fail to query ras int status bd num: ret = %d",
+			 ret);
+		return;
 	}
 
-	/* log PPP PF errors */
-	desc_data = (uint32_t *)&desc[PPP_PF_ERROR_OFFSET];
-	status = rte_le_to_cpu_32(*desc_data);
-	if (status) {
-		req_level = hns3_find_highest_level(hns,
-						    "PPP_PF_ABNORMAL_INT_ST0",
-						    ppp_pf_abnormal_int,
-						    status);
-		hns3_atomic_set_bit(req_level, levels);
-		pf->abn_int_stats.ppp_pf_abnormal_intr_cnt++;
+	bd_num = RTE_MAX(mpf_bd_num, pf_bd_num);
+	desc = rte_zmalloc(NULL, bd_num * sizeof(struct hns3_cmd_desc), 0);
+	if (desc == NULL) {
+		hns3_err(hw,
+			 "fail to zmalloc desc for handing ras error, size = %zu",
+			 bd_num * sizeof(struct hns3_cmd_desc));
+		return;
 	}
 
-	/* log PPU(RCB) PF errors */
-	desc_data = (uint32_t *)&desc[PPU_PF_ERROR_OFFSET];
-	status = rte_le_to_cpu_32(*desc_data) & HNS3_PPU_PF_INT_MSIX_MASK;
-	if (status) {
-		req_level = hns3_find_highest_level(hns,
-						    "PPU_PF_ABNORMAL_INT_ST",
-						    ppu_pf_abnormal_int,
-						    status);
-		hns3_atomic_set_bit(req_level, levels);
-		pf->abn_int_stats.ppu_pf_abnormal_intr_cnt++;
+	/* handle all main PF RAS errors */
+	ret = hns3_handle_hw_error(hns, desc, mpf_bd_num, levels, MPF_RAS_ERR);
+	if (ret) {
+		hns3_err(hw, "fail to handle all main pf ras errors, ret = %d",
+			 ret);
+		goto out;
 	}
 
-	/* clear all PF MSIx errors */
-	ret = clear_all_pf_msix_err(hw, desc, pf_bd_num);
-	if (ret)
-		hns3_err(hw, "clear all pf msix int cmd failed: %d", ret);
+	memset(desc, 0, bd_num * sizeof(struct hns3_cmd_desc));
+
+	/* handle all PF RAS errors */
+	ret = hns3_handle_hw_error(hns, desc, pf_bd_num, levels, PF_RAS_ERR);
+	if (ret) {
+		hns3_err(hw, "fail to handle all pf ras errors, ret = %d", ret);
+		goto out;
+	}
+
 out:
 	rte_free(desc);
 }

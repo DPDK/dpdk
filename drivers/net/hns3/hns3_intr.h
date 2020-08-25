@@ -19,6 +19,22 @@
 #define HNS3_MAC_COMMON_ERR_INT_EN		0x107FF
 #define HNS3_MAC_COMMON_ERR_INT_EN_MASK		0x107FF
 
+#define HNS3_IMP_TCM_ECC_ERR_INT_EN		0xFFFF0000
+#define HNS3_IMP_TCM_ECC_ERR_INT_EN_MASK	0xFFFF0000
+#define HNS3_IMP_ITCM4_ECC_ERR_INT_EN		0x300
+#define HNS3_IMP_ITCM4_ECC_ERR_INT_EN_MASK	0x300
+#define HNS3_IMP_RD_POISON_ERR_INT_EN		0x0100
+#define HNS3_IMP_RD_POISON_ERR_INT_EN_MASK	0x0100
+
+#define HNS3_CMDQ_NIC_ECC_ERR_INT_EN		0xFFFF
+#define HNS3_CMDQ_NIC_ECC_ERR_INT_EN_MASK	0xFFFF
+
+#define HNS3_TQP_ECC_ERR_INT_EN			0x0FFF
+#define HNS3_TQP_ECC_ERR_INT_EN_MASK		0x0FFF
+
+#define HNS3_MSIX_SRAM_ECC_ERR_INT_EN		0x0F000000
+#define HNS3_MSIX_SRAM_ECC_ERR_INT_EN_MASK	0x0F000000
+
 #define HNS3_PPU_MPF_ABNORMAL_INT0_EN		GENMASK(31, 0)
 #define HNS3_PPU_MPF_ABNORMAL_INT0_EN_MASK	GENMASK(31, 0)
 #define HNS3_PPU_MPF_ABNORMAL_INT1_EN		GENMASK(31, 0)
@@ -31,8 +47,6 @@
 #define HNS3_PPU_MPF_ABNORMAL_INT3_EN_MASK	GENMASK(23, 16)
 #define HNS3_PPU_PF_ABNORMAL_INT_EN		GENMASK(5, 0)
 #define HNS3_PPU_PF_ABNORMAL_INT_EN_MASK	GENMASK(5, 0)
-#define HNS3_PPU_PF_INT_MSIX_MASK		0x27
-#define HNS3_PPU_MPF_INT_ST2_MSIX_MASK		GENMASK(29, 28)
 
 #define HNS3_SSU_1BIT_ECC_ERR_INT_EN		GENMASK(31, 0)
 #define HNS3_SSU_1BIT_ECC_ERR_INT_EN_MASK	GENMASK(31, 0)
@@ -46,8 +60,17 @@
 #define HNS3_SSU_PORT_BASED_ERR_INT_EN_MASK	0x0BFF0000
 #define HNS3_SSU_FIFO_OVERFLOW_ERR_INT_EN	GENMASK(23, 0)
 #define HNS3_SSU_FIFO_OVERFLOW_ERR_INT_EN_MASK	GENMASK(23, 0)
-#define HNS3_SSU_COMMON_ERR_INT_MASK		GENMASK(9, 0)
-#define HNS3_SSU_PORT_INT_MSIX_MASK		0x7BFF
+
+#define HNS3_IGU_ERR_INT_ENABLE			0x0000066F
+#define HNS3_IGU_ERR_INT_DISABLE		0x00000660
+#define HNS3_IGU_ERR_INT_EN_MASK		0x000F
+#define HNS3_IGU_TNL_ERR_INT_EN			0x0002AABF
+#define HNS3_IGU_TNL_ERR_INT_EN_MASK		0x003F
+
+#define HNS3_NCSI_ERR_INT_EN			0x3
+
+#define HNS3_TM_SCH_ECC_ERR_INT_EN		0x3
+#define HNS3_TM_QCN_MEM_ERR_INT_EN		0xFFFFFF
 
 #define HNS3_RESET_PROCESS_MS			200
 
@@ -62,8 +85,17 @@ struct hns3_hw_error {
 	enum hns3_reset_level reset_level;
 };
 
+struct hns3_hw_error_desc {
+	uint8_t desc_offset;
+	uint8_t data_offset;
+	const char *msg;
+	const struct hns3_hw_error *hw_err;
+};
+
 int hns3_enable_hw_error_intr(struct hns3_adapter *hns, bool state);
 void hns3_handle_msix_error(struct hns3_adapter *hns, uint64_t *levels);
+void hns3_handle_ras_error(struct hns3_adapter *hns, uint64_t *levels);
+
 void hns3_intr_unregister(const struct rte_intr_handle *hdl,
 			  rte_intr_callback_fn cb_fn, void *cb_arg);
 void hns3_notify_reset_ready(struct hns3_hw *hw, bool enable);

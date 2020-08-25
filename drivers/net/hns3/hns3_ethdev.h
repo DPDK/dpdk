@@ -491,11 +491,35 @@ struct hns3_hw {
 #define HNS3_FLAG_VNET_BASE_SCH_MODE		2
 
 struct hns3_err_msix_intr_stats {
-	uint64_t mac_afifo_tnl_intr_cnt;
-	uint64_t ppu_mpf_abnormal_intr_st2_cnt;
-	uint64_t ssu_port_based_pf_intr_cnt;
-	uint64_t ppp_pf_abnormal_intr_cnt;
-	uint64_t ppu_pf_abnormal_intr_cnt;
+	uint64_t mac_afifo_tnl_int_cnt;
+	uint64_t ppu_mpf_abn_int_st2_msix_cnt;
+	uint64_t ssu_port_based_pf_int_cnt;
+	uint64_t ppp_pf_abnormal_int_cnt;
+	uint64_t ppu_pf_abnormal_int_msix_cnt;
+
+	uint64_t imp_tcm_ecc_int_cnt;
+	uint64_t cmdq_mem_ecc_int_cnt;
+	uint64_t imp_rd_poison_int_cnt;
+	uint64_t tqp_int_ecc_int_cnt;
+	uint64_t msix_ecc_int_cnt;
+	uint64_t ssu_ecc_multi_bit_int_0_cnt;
+	uint64_t ssu_ecc_multi_bit_int_1_cnt;
+	uint64_t ssu_common_ecc_int_cnt;
+	uint64_t igu_int_cnt;
+	uint64_t ppp_mpf_abnormal_int_st1_cnt;
+	uint64_t ppp_mpf_abnormal_int_st3_cnt;
+	uint64_t ppu_mpf_abnormal_int_st1_cnt;
+	uint64_t ppu_mpf_abn_int_st2_ras_cnt;
+	uint64_t ppu_mpf_abnormal_int_st3_cnt;
+	uint64_t tm_sch_int_cnt;
+	uint64_t qcn_fifo_int_cnt;
+	uint64_t qcn_ecc_int_cnt;
+	uint64_t ncsi_ecc_int_cnt;
+	uint64_t ssu_port_based_err_int_cnt;
+	uint64_t ssu_fifo_overflow_int_cnt;
+	uint64_t ssu_ets_tcg_int_cnt;
+	uint64_t igu_egu_tnl_int_cnt;
+	uint64_t ppu_pf_abnormal_int_ras_cnt;
 };
 
 /* vlan entry information. */

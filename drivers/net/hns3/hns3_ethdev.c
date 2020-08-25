@@ -56,6 +56,9 @@
 #define HNS3_FUN_RST_ING_B		0
 
 #define HNS3_VECTOR0_IMP_RESET_INT_B	1
+#define HNS3_VECTOR0_IMP_CMDQ_ERR_B	4U
+#define HNS3_VECTOR0_IMP_RD_POISON_B	5U
+#define HNS3_VECTOR0_ALL_MSIX_ERR_B	6U
 
 #define HNS3_RESET_WAIT_MS	100
 #define HNS3_RESET_WAIT_CNT	200
@@ -97,12 +100,14 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 	struct hns3_hw *hw = &hns->hw;
 	uint32_t vector0_int_stats;
 	uint32_t cmdq_src_val;
+	uint32_t hw_err_src_reg;
 	uint32_t val;
 	enum hns3_evt_cause ret;
 
 	/* fetch the events from their corresponding regs */
 	vector0_int_stats = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
 	cmdq_src_val = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
+	hw_err_src_reg = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
 
 	/*
 	 * Assumption: If by any chance reset and mailbox events are reported
@@ -145,8 +150,9 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 	}
 
 	/* check for vector0 msix event source */
-	if (vector0_int_stats & HNS3_VECTOR0_REG_MSIX_MASK) {
-		val = vector0_int_stats;
+	if (vector0_int_stats & HNS3_VECTOR0_REG_MSIX_MASK ||
+	    hw_err_src_reg & HNS3_RAS_REG_NFE_MASK) {
+		val = vector0_int_stats | hw_err_src_reg;
 		ret = HNS3_VECTOR0_EVENT_ERR;
 		goto out;
 	}
@@ -159,9 +165,9 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 		goto out;
 	}
 
-	if (clearval && (vector0_int_stats || cmdq_src_val))
-		hns3_warn(hw, "surprise irq ector0_int_stats:0x%x cmdq_src_val:0x%x",
-			  vector0_int_stats, cmdq_src_val);
+	if (clearval && (vector0_int_stats || cmdq_src_val || hw_err_src_reg))
+		hns3_warn(hw, "vector0_int_stats:0x%x cmdq_src_val:0x%x hw_err_src_reg:0x%x",
+			  vector0_int_stats, cmdq_src_val, hw_err_src_reg);
 	val = vector0_int_stats;
 	ret = HNS3_VECTOR0_EVENT_OTHER;
 out:
@@ -215,11 +221,14 @@ hns3_interrupt_handler(void *param)
 
 	/* vector 0 interrupt is shared with reset and mailbox source events. */
 	if (event_cause == HNS3_VECTOR0_EVENT_ERR) {
+		hns3_warn(hw, "Received err interrupt");
 		hns3_handle_msix_error(hns, &hw->reset.request);
+		hns3_handle_ras_error(hns, &hw->reset.request);
 		hns3_schedule_reset(hns);
-	} else if (event_cause == HNS3_VECTOR0_EVENT_RST)
+	} else if (event_cause == HNS3_VECTOR0_EVENT_RST) {
+		hns3_warn(hw, "Received reset interrupt");
 		hns3_schedule_reset(hns);
-	else if (event_cause == HNS3_VECTOR0_EVENT_MBX)
+	} else if (event_cause == HNS3_VECTOR0_EVENT_MBX)
 		hns3_dev_handle_mbx_msg(hw);
 	else
 		hns3_err(hw, "Received unknown event");
@@ -4425,6 +4434,24 @@ hns3_clear_hw(struct hns3_hw *hw)
 	return 0;
 }
 
+static void
+hns3_config_all_msix_error(struct hns3_hw *hw, bool enable)
+{
+	uint32_t val;
+
+	/*
+	 * The new firmware support report more hardware error types by
+	 * msix mode. These errors are defined as RAS errors in hardware
+	 * and belong to a different type from the MSI-x errors processed
+	 * by the network driver.
+	 *
+	 * Network driver should open the new error report on initialition
+	 */
+	val = hns3_read_dev(hw, HNS3_VECTOR0_OTER_EN_REG);
+	hns3_set_bit(val, HNS3_VECTOR0_ALL_MSIX_ERR_B, enable ? 1 : 0);
+	hns3_write_dev(hw, HNS3_VECTOR0_OTER_EN_REG, val);
+}
+
 static int
 hns3_init_pf(struct rte_eth_dev *eth_dev)
 {
@@ -4466,6 +4493,8 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(ERR, "failed to clear hardware: %d", ret);
 		goto err_cmd_init;
 	}
+
+	hns3_config_all_msix_error(hw, true);
 
 	ret = rte_intr_callback_register(&pci_dev->intr_handle,
 					 hns3_interrupt_handler,
@@ -4550,6 +4579,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	rte_intr_disable(&pci_dev->intr_handle);
 	hns3_intr_unregister(&pci_dev->intr_handle, hns3_interrupt_handler,
 			     eth_dev);
+	hns3_config_all_msix_error(hw, false);
 	hns3_cmd_uninit(hw);
 	hns3_cmd_destroy_queue(hw);
 	hw->io_base = NULL;
@@ -5234,6 +5264,28 @@ hns3_get_reset_level(struct hns3_adapter *hns, uint64_t *levels)
 	return reset_level;
 }
 
+static void
+hns3_record_imp_error(struct hns3_adapter *hns)
+{
+	struct hns3_hw *hw = &hns->hw;
+	uint32_t reg_val;
+
+	reg_val = hns3_read_dev(hw, HNS3_VECTOR0_OTER_EN_REG);
+	if (hns3_get_bit(reg_val, HNS3_VECTOR0_IMP_RD_POISON_B)) {
+		hns3_warn(hw, "Detected IMP RD poison!");
+		hns3_error_int_stats_add(hns, "IMP_RD_POISON_INT_STS");
+		hns3_set_bit(reg_val, HNS3_VECTOR0_IMP_RD_POISON_B, 0);
+		hns3_write_dev(hw, HNS3_VECTOR0_OTER_EN_REG, reg_val);
+	}
+
+	if (hns3_get_bit(reg_val, HNS3_VECTOR0_IMP_CMDQ_ERR_B)) {
+		hns3_warn(hw, "Detected IMP CMDQ error!");
+		hns3_error_int_stats_add(hns, "CMDQ_MEM_ECC_INT_STS");
+		hns3_set_bit(reg_val, HNS3_VECTOR0_IMP_CMDQ_ERR_B, 0);
+		hns3_write_dev(hw, HNS3_VECTOR0_OTER_EN_REG, reg_val);
+	}
+}
+
 static int
 hns3_prepare_reset(struct hns3_adapter *hns)
 {
@@ -5257,6 +5309,7 @@ hns3_prepare_reset(struct hns3_adapter *hns)
 		hw->reset.stats.request_cnt++;
 		break;
 	case HNS3_IMP_RESET:
+		hns3_record_imp_error(hns);
 		reg_val = hns3_read_dev(hw, HNS3_VECTOR0_OTER_EN_REG);
 		hns3_write_dev(hw, HNS3_VECTOR0_OTER_EN_REG, reg_val |
 			       BIT(HNS3_VECTOR0_IMP_RESET_INT_B));
