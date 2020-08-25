@@ -58,7 +58,8 @@
 #define HNS3_MAX_MTU	(HNS3_MAX_FRAME_LEN - HNS3_ETH_OVERHEAD)
 #define HNS3_DEFAULT_MTU		1500UL
 #define HNS3_DEFAULT_FRAME_LEN		(HNS3_DEFAULT_MTU + HNS3_ETH_OVERHEAD)
-#define HNS3_MIN_PKT_SIZE		60
+#define HNS3_HIP08_MIN_TX_PKT_LEN	33
+#define HNS3_HIP09_MIN_TX_PKT_LEN	9
 
 #define HNS3_4_TCS			4
 #define HNS3_8_TCS			8
@@ -464,6 +465,11 @@ struct hns3_hw {
 
 	uint32_t capability;
 	uint32_t max_tm_rate;
+	/*
+	 * The minimum length of the packet supported by hardware in the Tx
+	 * direction.
+	 */
+	uint32_t min_tx_pkt_len;
 
 	struct hns3_queue_intr intr;
 

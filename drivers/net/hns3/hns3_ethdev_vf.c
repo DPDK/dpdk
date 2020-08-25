@@ -1133,6 +1133,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
 		hw->intr.coalesce_mode = HNS3_INTR_COALESCE_NON_QL;
 		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
+		hw->min_tx_pkt_len = HNS3_HIP08_MIN_TX_PKT_LEN;
 		return 0;
 	}
 
@@ -1147,6 +1148,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 	hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_ALL;
 	hw->intr.coalesce_mode = HNS3_INTR_COALESCE_QL;
 	hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_1US;
+	hw->min_tx_pkt_len = HNS3_HIP09_MIN_TX_PKT_LEN;
 
 	return 0;
 }

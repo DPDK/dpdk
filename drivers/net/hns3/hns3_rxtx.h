@@ -291,6 +291,12 @@ struct hns3_tx_queue {
 	 */
 	uint16_t pvid_state;
 
+	/*
+	 * The minimum length of the packet supported by hardware in the Tx
+	 * direction.
+	 */
+	uint32_t min_tx_pkt_len;
+
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool configured;        /* indicate if tx queue has been configured */
 
@@ -333,7 +339,8 @@ struct hns3_tx_queue {
 	 *
 	 * - pkt_padding_fail_cnt
 	 *     Total count which the packet length is less than minimum packet
-	 *     size HNS3_MIN_PKT_SIZE and fail to be appended with 0.
+	 *     length(struct hns3_tx_queue::min_tx_pkt_len) supported by
+	 *     hardware in Tx direction and fail to be appended with 0.
 	 */
 	uint64_t over_length_pkt_cnt;
 	uint64_t exceed_limit_bd_pkt_cnt;

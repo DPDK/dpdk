@@ -1915,6 +1915,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
+	txq->min_tx_pkt_len = hw->min_tx_pkt_len;
 	txq->over_length_pkt_cnt = 0;
 	txq->exceed_limit_bd_pkt_cnt = 0;
 	txq->exceed_limit_bd_reassem_fail = 0;
@@ -2743,14 +2744,16 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/*
-		 * If packet length is less than minimum packet size, driver
-		 * need to pad it.
+		 * If packet length is less than minimum packet length supported
+		 * by hardware in Tx direction, driver need to pad it to avoid
+		 * error.
 		 */
-		if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) < HNS3_MIN_PKT_SIZE)) {
+		if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) <
+						txq->min_tx_pkt_len)) {
 			uint16_t add_len;
 			char *appended;
 
-			add_len = HNS3_MIN_PKT_SIZE -
+			add_len = txq->min_tx_pkt_len -
 					 rte_pktmbuf_pkt_len(tx_pkt);
 			appended = rte_pktmbuf_append(tx_pkt, add_len);
 			if (appended == NULL) {
