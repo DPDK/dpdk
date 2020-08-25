@@ -41,6 +41,8 @@
 #define HNS3_FD_AD_WR_RULE_ID_B	0
 #define HNS3_FD_AD_RULE_ID_S		1
 #define HNS3_FD_AD_RULE_ID_M		GENMASK(13, 1)
+#define HNS3_FD_AD_COUNTER_HIGH_BIT     7
+#define HNS3_FD_AD_COUNTER_HIGH_BIT_B   26
 
 enum HNS3_PORT_TYPE {
 	HOST_PORT,
@@ -424,6 +426,9 @@ static int hns3_fd_ad_config(struct hns3_hw *hw, int loc,
 		     action->write_rule_id_to_bd);
 	hns3_set_field(ad_data, HNS3_FD_AD_RULE_ID_M, HNS3_FD_AD_RULE_ID_S,
 		       action->rule_id);
+	/* set extend bit if counter_id is in [128 ~ 255] */
+	if (action->counter_id & BIT(HNS3_FD_AD_COUNTER_HIGH_BIT))
+		hns3_set_bit(ad_data, HNS3_FD_AD_COUNTER_HIGH_BIT_B, 1);
 	ad_data <<= HNS3_FD_AD_DATA_S;
 	hns3_set_bit(ad_data, HNS3_FD_AD_DROP_B, action->drop_packet);
 	hns3_set_bit(ad_data, HNS3_FD_AD_DIRECT_QID_B,
