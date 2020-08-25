@@ -29,6 +29,6 @@
  *   - (-EINVAL) if bad parameter.
  */
 int
-rte_pmd_dpaa_set_tx_loopback(uint8_t port, uint8_t on);
+rte_pmd_dpaa_set_tx_loopback(uint16_t port, uint8_t on);
 
 #endif /* _PMD_DPAA_H_ */
