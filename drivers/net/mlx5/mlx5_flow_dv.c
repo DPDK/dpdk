@@ -945,7 +945,7 @@ flow_dv_convert_action_modify_tcp_ack
 }
 
 static enum mlx5_modification_field reg_to_field[] = {
-	[REG_NONE] = MLX5_MODI_OUT_NONE,
+	[REG_NON] = MLX5_MODI_OUT_NONE,
 	[REG_A] = MLX5_MODI_META_DATA_REG_A,
 	[REG_B] = MLX5_MODI_META_DATA_REG_B,
 	[REG_C_0] = MLX5_MODI_META_REG_C_0,
@@ -985,7 +985,7 @@ flow_dv_convert_action_set_reg
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "too many items to modify");
-	MLX5_ASSERT(conf->id != REG_NONE);
+	MLX5_ASSERT(conf->id != REG_NON);
 	MLX5_ASSERT(conf->id < RTE_DIM(reg_to_field));
 	actions[i] = (struct mlx5_modification_cmd) {
 		.action_type = MLX5_MODIFICATION_TYPE_SET,
@@ -1035,7 +1035,7 @@ flow_dv_convert_action_set_tag
 	ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, conf->index, error);
 	if (ret < 0)
 		return ret;
-	MLX5_ASSERT(ret != REG_NONE);
+	MLX5_ASSERT(ret != REG_NON);
 	MLX5_ASSERT((unsigned int)ret < RTE_DIM(reg_to_field));
 	reg_type = reg_to_field[ret];
 	MLX5_ASSERT(reg_type > 0);
@@ -1558,7 +1558,7 @@ flow_dv_validate_item_tag(struct rte_eth_dev *dev,
 	ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, spec->index, error);
 	if (ret < 0)
 		return ret;
-	MLX5_ASSERT(ret != REG_NONE);
+	MLX5_ASSERT(ret != REG_NON);
 	return 0;
 }
 

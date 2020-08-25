@@ -539,7 +539,7 @@ enum mlx5_modification_field {
 #define MLX5_MREG_C_NUM (MLX5_MODI_META_REG_C_7 - MLX5_MODI_META_REG_C_0 + 1)
 
 enum modify_reg {
-	REG_NONE = 0,
+	REG_NON = 0,
 	REG_A,
 	REG_B,
 	REG_C_0,
