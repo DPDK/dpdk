@@ -1221,6 +1221,7 @@ error:
 void
 mlx5_flow_meter_detach(struct mlx5_flow_meter *fm)
 {
+#ifdef HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER
 	MLX5_ASSERT(fm->ref_cnt);
 	if (--fm->ref_cnt)
 		return;
@@ -1230,6 +1231,9 @@ mlx5_flow_meter_detach(struct mlx5_flow_meter *fm)
 	fm->ingress = 0;
 	fm->egress = 0;
 	fm->transfer = 0;
+#else
+	(void)fm;
+#endif
 }
 
 /**
