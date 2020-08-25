@@ -19,7 +19,6 @@
 #define HNS3_SHAPER_BS_U_DEF	5
 #define HNS3_SHAPER_BS_S_DEF	20
 #define BW_MAX_PERCENT		100
-#define HNS3_ETHER_MAX_RATE	100000
 
 /*
  * hns3_shaper_para_calc: calculate ir parameter for the shaper

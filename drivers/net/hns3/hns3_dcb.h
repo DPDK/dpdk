@@ -5,6 +5,8 @@
 #ifndef _HNS3_DCB_H_
 #define _HNS3_DCB_H_
 
+#define HNS3_ETHER_MAX_RATE		100000
+
 /* MAC Pause */
 #define HNS3_TX_MAC_PAUSE_EN_MSK	BIT(0)
 #define HNS3_RX_MAC_PAUSE_EN_MSK	BIT(1)

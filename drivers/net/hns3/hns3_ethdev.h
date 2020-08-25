@@ -381,6 +381,8 @@ struct hns3_hw {
 	uint16_t rss_size_max;      /* HW defined max RSS task queue */
 	uint16_t num_tx_desc;       /* desc num of per tx queue */
 	uint16_t num_rx_desc;       /* desc num of per rx queue */
+	uint32_t mng_entry_num;     /* number of manager table entry */
+	uint32_t mac_entry_num;     /* number of mac-vlan table entry */
 
 	struct rte_ether_addr mc_addrs[HNS3_MC_MACADDR_NUM];
 	int mc_addrs_num; /* Multicast mac addresses number */
@@ -388,6 +390,8 @@ struct hns3_hw {
 	/* The configuration info of RSS */
 	struct hns3_rss_conf rss_info;
 	bool rss_dis_flag; /* disable rss flag. true: disable, false: enable */
+	uint16_t rss_ind_tbl_size;
+	uint16_t rss_key_size;
 
 	uint8_t num_tc;             /* Total number of enabled TCs */
 	uint8_t hw_tc_map;
@@ -406,6 +410,8 @@ struct hns3_hw {
 	uint16_t tx_qnum_per_tc;    /* TX queue number per TC */
 
 	uint32_t capability;
+	uint32_t max_tm_rate;
+	uint8_t max_non_tso_bd_num; /* max BD number of one non-TSO packet */
 
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;
 	/*

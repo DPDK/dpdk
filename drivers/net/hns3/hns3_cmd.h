@@ -93,6 +93,8 @@ enum hns3_opcode_type {
 	HNS3_OPC_QUERY_32_BIT_REG       = 0x0041,
 	HNS3_OPC_QUERY_64_BIT_REG       = 0x0042,
 
+	HNS3_OPC_QUERY_DEV_SPECS        = 0x0050,
+
 	/* MAC command */
 	HNS3_OPC_CONFIG_MAC_MODE        = 0x0301,
 	HNS3_OPC_QUERY_LINK_STATUS      = 0x0307,
@@ -803,6 +805,19 @@ struct hns3_reset_cmd {
 	uint8_t mac_func_reset;
 	uint8_t fun_reset_vfid;
 	uint8_t rsv[22];
+};
+
+#define HNS3_QUERY_DEV_SPECS_BD_NUM		4
+struct hns3_dev_specs_0_cmd {
+	uint32_t rsv0;
+	uint32_t mac_entry_num;
+	uint32_t mng_entry_num;
+	uint16_t rss_ind_tbl_size;
+	uint16_t rss_key_size;
+	uint16_t intr_ql_max;
+	uint8_t max_non_tso_bd_num;
+	uint8_t rsv1;
+	uint32_t max_tm_rate;
 };
 
 #define HNS3_MAX_TQP_NUM_PER_FUNC	64
