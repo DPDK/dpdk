@@ -51,6 +51,8 @@ mlx5_vdpa_event_qp_global_release(struct mlx5_vdpa_priv *priv)
 static int
 mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 {
+	int flags, ret;
+
 	if (priv->eventc)
 		return 0;
 	if (mlx5_glue->devx_query_eqn(priv->ctx, 0, &priv->eqn)) {
@@ -64,6 +66,12 @@ mlx5_vdpa_event_qp_global_prepare(struct mlx5_vdpa_priv *priv)
 		rte_errno = errno;
 		DRV_LOG(ERR, "Failed to create event channel %d.",
 			rte_errno);
+		goto error;
+	}
+	flags = fcntl(priv->eventc->fd, F_GETFL);
+	ret = fcntl(priv->eventc->fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret) {
+		DRV_LOG(ERR, "Failed to change event channel FD.");
 		goto error;
 	}
 	priv->uar = mlx5_glue->devx_alloc_uar(priv->ctx, 0);
@@ -376,7 +384,6 @@ mlx5_vdpa_interrupt_handler(void *cb_arg)
 int
 mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 {
-	int flags;
 	int ret;
 
 	if (!priv->eventc)
@@ -392,12 +399,6 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 			DRV_LOG(ERR, "Failed to create timer thread.");
 			return -1;
 		}
-	}
-	flags = fcntl(priv->eventc->fd, F_GETFL);
-	ret = fcntl(priv->eventc->fd, F_SETFL, flags | O_NONBLOCK);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to change event channel FD.");
-		goto error;
 	}
 	priv->intr_handle.fd = priv->eventc->fd;
 	priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
