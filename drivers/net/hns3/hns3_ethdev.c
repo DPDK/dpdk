@@ -2837,9 +2837,6 @@ hns3_get_capability(struct hns3_hw *hw)
 	}
 	hw->revision = revision;
 
-	if (revision >= PCI_REVISION_ID_HIP09_A)
-		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_COPPER_B, 1);
-
 	return 0;
 }
 

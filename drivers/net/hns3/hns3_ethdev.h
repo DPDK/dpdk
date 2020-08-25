@@ -535,12 +535,41 @@ struct hns3_adapter {
 
 #define HNS3_DEV_SUPPORT_DCB_B			0x0
 #define HNS3_DEV_SUPPORT_COPPER_B		0x1
+#define HNS3_DEV_SUPPORT_UDP_GSO_B		0x2
+#define HNS3_DEV_SUPPORT_ADQ_B			0x3
+#define HNS3_DEV_SUPPORT_PTP_B			0x4
+#define HNS3_DEV_SUPPORT_TX_PUSH_B		0x5
+#define HNS3_DEV_SUPPORT_INDEP_TXRX_B		0x6
+#define HNS3_DEV_SUPPORT_STASH_B		0x7
 
 #define hns3_dev_dcb_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
 
+/* Support copper media type */
 #define hns3_dev_copper_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_COPPER_B)
+
+/* Support UDP GSO offload */
+#define hns3_dev_udp_gso_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_UDP_GSO_B)
+
+/* Support Application Device Queue */
+#define hns3_dev_adq_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_ADQ_B)
+
+/* Support PTP timestamp offload */
+#define hns3_dev_ptp_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_PTP_B)
+
+#define hns3_dev_tx_push_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_TX_PUSH_B)
+
+/* Support to Independently enable/disable/reset Tx or Rx queues */
+#define hns3_dev_indep_txrx_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_INDEP_TXRX_B)
+
+#define hns3_dev_stash_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_STASH_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)adapter)->hw)

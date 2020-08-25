@@ -264,9 +264,26 @@ struct hns3_rx_priv_buff_cmd {
 #define HNS3_FW_VERSION_BYTE1_M		GENMASK(15, 8)
 #define HNS3_FW_VERSION_BYTE0_S		0
 #define HNS3_FW_VERSION_BYTE0_M		GENMASK(7, 0)
+
+enum HNS3_CAPS_BITS {
+	HNS3_CAPS_UDP_GSO_B,
+	HNS3_CAPS_ATR_B,
+	HNS3_CAPS_ADQ_B,
+	HNS3_CAPS_PTP_B,
+	HNS3_CAPS_INT_QL_B,
+	HNS3_CAPS_SIMPLE_BD_B,
+	HNS3_CAPS_TX_PUSH_B,
+	HNS3_CAPS_PHY_IMP_B,
+	HNS3_CAPS_TQP_TXRX_INDEP_B,
+	HNS3_CAPS_HW_PAD_B,
+	HNS3_CAPS_STASH_B,
+};
+#define HNS3_QUERY_CAP_LENGTH		3
 struct hns3_query_version_cmd {
 	uint32_t firmware;
-	uint32_t firmware_rsv[5];
+	uint32_t hardware;
+	uint32_t rsv;
+	uint32_t caps[HNS3_QUERY_CAP_LENGTH]; /* capabilities of device */
 };
 
 #define HNS3_RX_PRIV_EN_B	15
