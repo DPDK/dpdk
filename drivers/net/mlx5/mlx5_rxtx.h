@@ -185,7 +185,7 @@ struct mlx5_rxq_obj {
 		struct {
 			struct mlx5_devx_obj *rq; /* DevX Rx Queue object. */
 			struct mlx5_devx_obj *devx_cq; /* DevX CQ object. */
-			struct mlx5dv_devx_event_channel *devx_channel;
+			void *devx_channel;
 		};
 	};
 };
@@ -212,8 +212,8 @@ struct mlx5_rxq_ctrl {
 	uint32_t cq_dbr_umem_id;
 	uint64_t cq_dbr_offset;
 	/* Storing CQ door-bell information, needed when freeing door-bell. */
-	struct mlx5dv_devx_umem *wq_umem; /* WQ buffer registration info. */
-	struct mlx5dv_devx_umem *cq_umem; /* CQ buffer registration info. */
+	void *wq_umem; /* WQ buffer registration info. */
+	void *cq_umem; /* CQ buffer registration info. */
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 };
 
@@ -361,12 +361,12 @@ struct mlx5_txq_obj {
 		struct {
 			struct rte_eth_dev *dev;
 			struct mlx5_devx_obj *cq_devx;
-			struct mlx5dv_devx_umem *cq_umem;
+			void *cq_umem;
 			void *cq_buf;
 			int64_t cq_dbrec_offset;
 			struct mlx5_devx_dbr_page *cq_dbrec_page;
 			struct mlx5_devx_obj *sq_devx;
-			struct mlx5dv_devx_umem *sq_umem;
+			void *sq_umem;
 			void *sq_buf;
 			int64_t sq_dbrec_offset;
 			struct mlx5_devx_dbr_page *sq_dbrec_page;

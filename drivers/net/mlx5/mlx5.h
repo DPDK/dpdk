@@ -527,7 +527,7 @@ struct mlx5_flow_id_pool {
 struct mlx5_txpp_wq {
 	/* Completion Queue related data.*/
 	struct mlx5_devx_obj *cq;
-	struct mlx5dv_devx_umem *cq_umem;
+	void *cq_umem;
 	union {
 		volatile void *cq_buf;
 		volatile struct mlx5_cqe *cqes;
@@ -537,7 +537,7 @@ struct mlx5_txpp_wq {
 	uint32_t arm_sn:2;
 	/* Send Queue related data.*/
 	struct mlx5_devx_obj *sq;
-	struct mlx5dv_devx_umem *sq_umem;
+	void *sq_umem;
 	union {
 		volatile void *sq_buf;
 		volatile struct mlx5_wqe *wqes;
@@ -563,10 +563,10 @@ struct mlx5_dev_txpp {
 	int32_t skew; /* Scheduling skew. */
 	uint32_t eqn; /* Event Queue number. */
 	struct rte_intr_handle intr_handle; /* Periodic interrupt. */
-	struct mlx5dv_devx_event_channel *echan; /* Event Channel. */
+	void *echan; /* Event Channel. */
 	struct mlx5_txpp_wq clock_queue; /* Clock Queue. */
 	struct mlx5_txpp_wq rearm_queue; /* Clock Queue. */
-	struct mlx5dv_pp *pp; /* Packet pacing context. */
+	void *pp; /* Packet pacing context. */
 	uint16_t pp_id; /* Packet pacing context index. */
 	uint16_t ts_n; /* Number of captured timestamps. */
 	uint16_t ts_p; /* Pointer to statisticks timestamp. */
@@ -653,10 +653,10 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_devx_obj *tis; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
 	struct mlx5_flow_id_pool *flow_id_pool; /* Flow ID pool. */
-	struct mlx5dv_devx_uar *tx_uar; /* Tx/packer pacing shared UAR. */
+	void *tx_uar; /* Tx/packet pacing shared UAR. */
 	struct mlx5_flex_parser_profiles fp[MLX5_FLEX_PARSER_MAX];
 	/* Flex parser profiles information. */
-	struct mlx5dv_devx_uar *devx_rx_uar; /* DevX UAR for Rx. */
+	void *devx_rx_uar; /* DevX UAR for Rx. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 

@@ -723,6 +723,7 @@ mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
 {
 	uint32_t uar_mapping, retry;
 	int err = 0;
+	void *base_addr;
 
 	for (retry = 0; retry < MLX5_ALLOC_UAR_RETRY; ++retry) {
 #ifdef MLX5DV_UAR_ALLOC_TYPE_NC
@@ -781,7 +782,8 @@ mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
 			err = ENOMEM;
 			goto exit;
 		}
-		if (sh->tx_uar->base_addr)
+		base_addr = mlx5_os_get_devx_uar_base_addr(sh->tx_uar);
+		if (base_addr)
 			break;
 		/*
 		 * The UARs are allocated by rdma_core within the
@@ -820,7 +822,8 @@ mlx5_alloc_rxtx_uars(struct mlx5_dev_ctx_shared *sh,
 			err = ENOMEM;
 			goto exit;
 		}
-		if (sh->devx_rx_uar->base_addr)
+		base_addr = mlx5_os_get_devx_uar_base_addr(sh->devx_rx_uar);
+		if (base_addr)
 			break;
 		/*
 		 * The UARs are allocated by rdma_core within the
@@ -943,8 +946,11 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		err = mlx5_alloc_rxtx_uars(sh, config);
 		if (err)
 			goto error;
-		MLX5_ASSERT(sh->tx_uar && sh->tx_uar->base_addr);
-		MLX5_ASSERT(sh->devx_rx_uar && sh->devx_rx_uar->base_addr);
+		MLX5_ASSERT(sh->tx_uar);
+		MLX5_ASSERT(mlx5_os_get_devx_uar_base_addr(sh->tx_uar));
+
+		MLX5_ASSERT(sh->devx_rx_uar);
+		MLX5_ASSERT(mlx5_os_get_devx_uar_base_addr(sh->devx_rx_uar));
 	}
 	sh->flow_id_pool = mlx5_flow_id_pool_alloc
 					((1 << HAIRPIN_FLOW_ID_BITS) - 1);

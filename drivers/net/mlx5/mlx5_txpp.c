@@ -113,13 +113,13 @@ mlx5_txpp_alloc_pp_index(struct mlx5_dev_ctx_shared *sh)
 		rte_errno = errno;
 		return -errno;
 	}
-	if (!sh->txpp.pp->index) {
+	if (!((struct mlx5dv_pp *)sh->txpp.pp)->index) {
 		DRV_LOG(ERR, "Zero packet pacing index allocated.");
 		mlx5_txpp_free_pp_index(sh);
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
 	}
-	sh->txpp.pp_id = sh->txpp.pp->index;
+	sh->txpp.pp_id = ((struct mlx5dv_pp *)(sh->txpp.pp))->index;
 	return 0;
 #else
 	RTE_SET_USED(sh);
@@ -175,6 +175,7 @@ mlx5_txpp_doorbell_rearm_queue(struct mlx5_dev_ctx_shared *sh, uint16_t ci)
 		uint32_t w32[2];
 		uint64_t w64;
 	} cs;
+	void *reg_addr;
 
 	wq->sq_ci = ci + 1;
 	cs.w32[0] = rte_cpu_to_be_32(rte_be_to_cpu_32
@@ -186,7 +187,8 @@ mlx5_txpp_doorbell_rearm_queue(struct mlx5_dev_ctx_shared *sh, uint16_t ci)
 	/* Make sure the doorbell record is updated. */
 	rte_wmb();
 	/* Write to doorbel register to start processing. */
-	__mlx5_uar_write64_relaxed(cs.w64, sh->tx_uar->reg_addr, NULL);
+	reg_addr = mlx5_os_get_devx_uar_reg_addr(sh->tx_uar);
+	__mlx5_uar_write64_relaxed(cs.w64, reg_addr, NULL);
 	rte_wmb();
 }
 
@@ -282,7 +284,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	/* Create completion queue object for Rearm Queue. */
 	cq_attr.cqe_size = (sizeof(struct mlx5_cqe) == 128) ?
 			    MLX5_CQE_SIZE_128B : MLX5_CQE_SIZE_64B;
-	cq_attr.uar_page_id = sh->tx_uar->page_id;
+	cq_attr.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
 	cq_attr.eqn = sh->txpp.eqn;
 	cq_attr.q_umem_valid = 1;
 	cq_attr.q_umem_offset = 0;
@@ -335,7 +337,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	sq_attr.tis_num = sh->tis->id;
 	sq_attr.cqn = wq->cq->id;
 	sq_attr.cd_master = 1;
-	sq_attr.wq_attr.uar_page = sh->tx_uar->page_id;
+	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
 	sq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
 	sq_attr.wq_attr.pd = sh->pdn;
 	sq_attr.wq_attr.log_wq_stride = rte_log2_u32(MLX5_WQE_SIZE);
@@ -522,14 +524,14 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 			    MLX5_CQE_SIZE_128B : MLX5_CQE_SIZE_64B;
 	cq_attr.use_first_only = 1;
 	cq_attr.overrun_ignore = 1;
-	cq_attr.uar_page_id = sh->tx_uar->page_id;
+	cq_attr.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
 	cq_attr.eqn = sh->txpp.eqn;
 	cq_attr.q_umem_valid = 1;
 	cq_attr.q_umem_offset = 0;
-	cq_attr.q_umem_id = wq->cq_umem->umem_id;
+	cq_attr.q_umem_id = mlx5_os_get_umem_id(wq->cq_umem);
 	cq_attr.db_umem_valid = 1;
 	cq_attr.db_umem_offset = umem_dbrec;
-	cq_attr.db_umem_id = wq->cq_umem->umem_id;
+	cq_attr.db_umem_id = mlx5_os_get_umem_id(wq->cq_umem);
 	cq_attr.log_cq_size = rte_log2_u32(MLX5_TXPP_CLKQ_SIZE);
 	cq_attr.log_page_size = rte_log2_u32(page_size);
 	wq->cq = mlx5_devx_cmd_create_cq(sh->ctx, &cq_attr);
@@ -587,16 +589,16 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	sq_attr.cqn = wq->cq->id;
 	sq_attr.packet_pacing_rate_limit_index = sh->txpp.pp_id;
 	sq_attr.wq_attr.cd_slave = 1;
-	sq_attr.wq_attr.uar_page = sh->tx_uar->page_id;
+	sq_attr.wq_attr.uar_page = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
 	sq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
 	sq_attr.wq_attr.pd = sh->pdn;
 	sq_attr.wq_attr.log_wq_stride = rte_log2_u32(MLX5_WQE_SIZE);
 	sq_attr.wq_attr.log_wq_sz = rte_log2_u32(wq->sq_size);
 	sq_attr.wq_attr.dbr_umem_valid = 1;
 	sq_attr.wq_attr.dbr_addr = umem_dbrec;
-	sq_attr.wq_attr.dbr_umem_id = wq->sq_umem->umem_id;
+	sq_attr.wq_attr.dbr_umem_id = mlx5_os_get_umem_id(wq->sq_umem);
 	sq_attr.wq_attr.wq_umem_valid = 1;
-	sq_attr.wq_attr.wq_umem_id = wq->sq_umem->umem_id;
+	sq_attr.wq_attr.wq_umem_id = mlx5_os_get_umem_id(wq->sq_umem);
 	/* umem_offset must be zero for static_sq_wq queue. */
 	sq_attr.wq_attr.wq_umem_offset = 0;
 	wq->sq = mlx5_devx_cmd_create_sq(sh->ctx, &sq_attr);
@@ -630,11 +632,14 @@ error:
 static inline void
 mlx5_txpp_cq_arm(struct mlx5_dev_ctx_shared *sh)
 {
+	void *base_addr;
+
 	struct mlx5_txpp_wq *aq = &sh->txpp.rearm_queue;
 	uint32_t arm_sn = aq->arm_sn << MLX5_CQ_SQN_OFFSET;
 	uint32_t db_hi = arm_sn | MLX5_CQ_DBR_CMD_ALL | aq->cq_ci;
 	uint64_t db_be = rte_cpu_to_be_64(((uint64_t)db_hi << 32) | aq->cq->id);
-	uint32_t *addr = RTE_PTR_ADD(sh->tx_uar->base_addr, MLX5_CQ_DOORBELL);
+	base_addr = mlx5_os_get_devx_uar_base_addr(sh->tx_uar);
+	uint32_t *addr = RTE_PTR_ADD(base_addr, MLX5_CQ_DOORBELL);
 
 	rte_compiler_barrier();
 	aq->cq_dbrec[MLX5_CQ_ARM_DB] = rte_cpu_to_be_32(db_hi);
@@ -881,8 +886,8 @@ static int
 mlx5_txpp_start_service(struct mlx5_dev_ctx_shared *sh)
 {
 	uint16_t event_nums[1] = {0};
-	int flags;
 	int ret;
+	int fd;
 
 	rte_atomic32_set(&sh->txpp.err_miss_int, 0);
 	rte_atomic32_set(&sh->txpp.err_rearm_queue, 0);
@@ -890,15 +895,16 @@ mlx5_txpp_start_service(struct mlx5_dev_ctx_shared *sh)
 	rte_atomic32_set(&sh->txpp.err_ts_past, 0);
 	rte_atomic32_set(&sh->txpp.err_ts_future, 0);
 	/* Attach interrupt handler to process Rearm Queue completions. */
-	flags = fcntl(sh->txpp.echan->fd, F_GETFL);
-	ret = fcntl(sh->txpp.echan->fd, F_SETFL, flags | O_NONBLOCK);
+	fd = mlx5_os_get_devx_channel_fd(sh->txpp.echan);
+	ret = mlx5_os_set_nonblock_channel_fd(fd);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to change event channel FD.");
 		rte_errno = errno;
 		return -rte_errno;
 	}
 	memset(&sh->txpp.intr_handle, 0, sizeof(sh->txpp.intr_handle));
-	sh->txpp.intr_handle.fd = sh->txpp.echan->fd;
+	fd = mlx5_os_get_devx_channel_fd(sh->txpp.echan);
+	sh->txpp.intr_handle.fd = fd;
 	sh->txpp.intr_handle.type = RTE_INTR_HANDLE_EXT;
 	if (rte_intr_callback_register(&sh->txpp.intr_handle,
 				       mlx5_txpp_interrupt_handler, sh)) {

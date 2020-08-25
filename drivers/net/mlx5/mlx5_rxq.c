@@ -1444,7 +1444,7 @@ mlx5_devx_wq_attr_fill(struct mlx5_priv *priv, struct mlx5_rxq_ctrl *rxq_ctrl,
 	wq_attr->dbr_addr = rxq_ctrl->rq_dbr_offset;
 	wq_attr->dbr_umem_id = rxq_ctrl->rq_dbr_umem_id;
 	wq_attr->dbr_umem_valid = 1;
-	wq_attr->wq_umem_id = rxq_ctrl->wq_umem->umem_id;
+	wq_attr->wq_umem_id = mlx5_os_get_umem_id(rxq_ctrl->wq_umem);
 	wq_attr->wq_umem_valid = 1;
 }
 
@@ -1620,8 +1620,9 @@ mlx5_devx_cq_new(struct rte_eth_dev *dev, unsigned int cqe_n, uint16_t idx,
 		DRV_LOG(ERR, "Failed to register umem for CQ.");
 		goto error;
 	}
-	cq_attr.uar_page_id = priv->sh->devx_rx_uar->page_id;
-	cq_attr.q_umem_id = rxq_ctrl->cq_umem->umem_id;
+	cq_attr.uar_page_id =
+		mlx5_os_get_devx_uar_page_id(priv->sh->devx_rx_uar);
+	cq_attr.q_umem_id = mlx5_os_get_umem_id(rxq_ctrl->cq_umem);
 	cq_attr.q_umem_valid = 1;
 	cq_attr.log_cq_size = log_cqe_n;
 	cq_attr.log_page_size = rte_log2_u32(page_size);
@@ -1805,7 +1806,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 					rte_errno);
 				goto error;
 			}
-			tmpl->fd = tmpl->devx_channel->fd;
+			tmpl->fd =
+				mlx5_os_get_devx_channel_fd(tmpl->devx_channel);
 		}
 	}
 	if (mlx5_rxq_mprq_enabled(rxq_data))
@@ -1897,7 +1899,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		rxq_data->cq_db =
 			(uint32_t *)((uintptr_t)dbr_page->dbrs +
 				     (uintptr_t)rxq_ctrl->cq_dbr_offset);
-		rxq_data->cq_uar = priv->sh->devx_rx_uar->base_addr;
+		rxq_data->cq_uar =
+			mlx5_os_get_devx_uar_base_addr(priv->sh->devx_rx_uar);
 		/* Create CQ using DevX API. */
 		tmpl->devx_cq = mlx5_devx_cq_new(dev, cqe_n, idx, tmpl);
 		if (!tmpl->devx_cq) {
