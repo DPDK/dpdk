@@ -608,7 +608,7 @@ typedef uint8_t u8;
 #define MLX5_SET(typ, p, fld, v) \
 	do { \
 		u32 _v = v; \
-		*((__be32 *)(p) + __mlx5_dw_off(typ, fld)) = \
+		*((rte_be32_t *)(p) + __mlx5_dw_off(typ, fld)) = \
 		rte_cpu_to_be_32((rte_be_to_cpu_32(*((u32 *)(p) + \
 				  __mlx5_dw_off(typ, fld))) & \
 				  (~__mlx5_dw_mask(typ, fld))) | \
@@ -619,15 +619,15 @@ typedef uint8_t u8;
 #define MLX5_SET64(typ, p, fld, v) \
 	do { \
 		MLX5_ASSERT(__mlx5_bit_sz(typ, fld) == 64); \
-		*((__be64 *)(p) + __mlx5_64_off(typ, fld)) = \
+		*((rte_be64_t *)(p) + __mlx5_64_off(typ, fld)) = \
 			rte_cpu_to_be_64(v); \
 	} while (0)
 
 #define MLX5_SET16(typ, p, fld, v) \
 	do { \
 		u16 _v = v; \
-		*((__be16 *)(p) + __mlx5_16_off(typ, fld)) = \
-		rte_cpu_to_be_16((rte_be_to_cpu_16(*((__be16 *)(p) + \
+		*((rte_be16_t *)(p) + __mlx5_16_off(typ, fld)) = \
+		rte_cpu_to_be_16((rte_be_to_cpu_16(*((rte_be16_t *)(p) + \
 				  __mlx5_16_off(typ, fld))) & \
 				  (~__mlx5_16_mask(typ, fld))) | \
 				 (((_v) & __mlx5_mask16(typ, fld)) << \
@@ -639,14 +639,14 @@ typedef uint8_t u8;
 	__mlx5_dw_off(typ, fld))) >> __mlx5_dw_bit_off(typ, fld)) & \
 	__mlx5_mask(typ, fld))
 #define MLX5_GET(typ, p, fld) \
-	((rte_be_to_cpu_32(*((__be32 *)(p) +\
+	((rte_be_to_cpu_32(*((rte_be32_t *)(p) +\
 	__mlx5_dw_off(typ, fld))) >> __mlx5_dw_bit_off(typ, fld)) & \
 	__mlx5_mask(typ, fld))
 #define MLX5_GET16(typ, p, fld) \
-	((rte_be_to_cpu_16(*((__be16 *)(p) + \
+	((rte_be_to_cpu_16(*((rte_be16_t *)(p) + \
 	  __mlx5_16_off(typ, fld))) >> __mlx5_16_bit_off(typ, fld)) & \
 	 __mlx5_mask16(typ, fld))
-#define MLX5_GET64(typ, p, fld) rte_be_to_cpu_64(*((__be64 *)(p) + \
+#define MLX5_GET64(typ, p, fld) rte_be_to_cpu_64(*((rte_be64_t *)(p) + \
 						   __mlx5_64_off(typ, fld)))
 #define MLX5_FLD_SZ_BYTES(typ, fld) (__mlx5_bit_sz(typ, fld) / 8)
 
