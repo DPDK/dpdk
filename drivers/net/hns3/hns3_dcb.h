@@ -26,16 +26,19 @@ enum hns3_shap_bucket {
 struct hns3_priority_weight_cmd {
 	uint8_t pri_id;
 	uint8_t dwrr;
+	uint8_t rsvd[22];
 };
 
 struct hns3_qs_weight_cmd {
 	uint16_t qs_id;
 	uint8_t dwrr;
+	uint8_t rsvd[21];
 };
 
 struct hns3_pg_weight_cmd {
 	uint8_t pg_id;
 	uint8_t dwrr;
+	uint8_t rsvd[22];
 };
 
 struct hns3_ets_tc_weight_cmd {
@@ -50,6 +53,7 @@ struct hns3_qs_to_pri_link_cmd {
 	uint8_t priority;
 #define HNS3_DCB_QS_PRI_LINK_VLD_MSK	BIT(0)
 	uint8_t link_vld;
+	uint8_t rsvd1[18];
 };
 
 struct hns3_nq_to_qs_link_cmd {
@@ -57,6 +61,7 @@ struct hns3_nq_to_qs_link_cmd {
 	uint16_t rsvd;
 #define HNS3_DCB_Q_QS_LINK_VLD_MSK	BIT(10)
 	uint16_t qset_id;
+	uint8_t rsvd1[18];
 };
 
 #define HNS3_DCB_SHAP_IR_B_MSK  GENMASK(7, 0)
@@ -74,12 +79,14 @@ struct hns3_pri_shapping_cmd {
 	uint8_t pri_id;
 	uint8_t rsvd[3];
 	uint32_t pri_shapping_para;
+	uint32_t rsvd1[4];
 };
 
 struct hns3_pg_shapping_cmd {
 	uint8_t pg_id;
 	uint8_t rsvd[3];
 	uint32_t pg_shapping_para;
+	uint32_t rsvd1[4];
 };
 
 #define HNS3_BP_GRP_NUM		32
@@ -92,16 +99,18 @@ struct hns3_bp_to_qs_map_cmd {
 	uint8_t rsvd[2];
 	uint8_t qs_group_id;
 	uint32_t qs_bit_map;
-	uint32_t rsvd1;
+	uint32_t rsvd1[4];
 };
 
 struct hns3_pfc_en_cmd {
 	uint8_t tx_rx_en_bitmap;
 	uint8_t pri_en_bitmap;
+	uint8_t rsvd[22];
 };
 
 struct hns3_port_shapping_cmd {
 	uint32_t port_shapping_para;
+	uint32_t rsvd[5];
 };
 
 struct hns3_cfg_pause_param_cmd {
@@ -119,6 +128,7 @@ struct hns3_pg_to_pri_link_cmd {
 	uint8_t pg_id;
 	uint8_t rsvd1[3];
 	uint8_t pri_bit_map;
+	uint8_t rsvd2[19];
 };
 
 enum hns3_shaper_level {
