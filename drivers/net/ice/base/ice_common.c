@@ -1942,13 +1942,11 @@ ice_parse_vsi_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
  * ice_parse_fdir_func_caps - Parse ICE_AQC_CAPS_FD function caps
  * @hw: pointer to the HW struct
  * @func_p: pointer to function capabilities structure
- * @cap: pointer to the capability element to parse
  *
  * Extract function capabilities for ICE_AQC_CAPS_FD.
  */
 static void
-ice_parse_fdir_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
-			 struct ice_aqc_list_caps_elem *cap)
+ice_parse_fdir_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p)
 {
 	u32 reg_val, val;
 
@@ -2006,7 +2004,7 @@ ice_parse_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
 			ice_parse_vsi_func_caps(hw, func_p, &cap_resp[i]);
 			break;
 		case ICE_AQC_CAPS_FD:
-			ice_parse_fdir_func_caps(hw, func_p, &cap_resp[i]);
+			ice_parse_fdir_func_caps(hw, func_p);
 			break;
 		default:
 			/* Don't list common capabilities as unknown */
