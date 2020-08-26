@@ -149,10 +149,8 @@ static enum ice_status ice_acl_init_tbl(struct ice_hw *hw)
 	u16 idx;
 
 	tbl = hw->acl_tbl;
-	if (!tbl) {
-		status = ICE_ERR_CFG;
-		return status;
-	}
+	if (!tbl)
+		return ICE_ERR_CFG;
 
 	ice_memset(&buf, 0, sizeof(buf), ICE_NONDMA_MEM);
 	ice_memset(&act_buf, 0, sizeof(act_buf), ICE_NONDMA_MEM);
@@ -526,7 +524,7 @@ ice_acl_alloc_partition(struct ice_hw *hw, struct ice_acl_scen *req)
 			break;
 		}
 
-		row = (dir > 0) ? (row + width) : (row - width);
+		row = dir > 0 ? row + width : row - width;
 		if (row > hw->acl_tbl->last_tcam ||
 		    row < hw->acl_tbl->first_tcam) {
 			/* All rows have been checked. Increment 'off' that
@@ -668,8 +666,7 @@ static void
 ice_acl_assign_act_mem_for_scen(struct ice_acl_tbl *tbl,
 				struct ice_acl_scen *scen,
 				struct ice_aqc_acl_scen *scen_buf,
-				u8 current_tcam_idx,
-				u8 target_tcam_idx)
+				u8 current_tcam_idx, u8 target_tcam_idx)
 {
 	u8 i;
 
@@ -761,10 +758,8 @@ ice_acl_create_scen(struct ice_hw *hw, u16 match_width, u16 num_entries,
 	scen->num_entry = num_entries;
 
 	status = ice_acl_alloc_partition(hw, scen);
-	if (status) {
-		ice_free(hw, scen);
-		return status;
-	}
+	if (status)
+		goto out;
 
 	ice_memset(&scen_buf, 0, sizeof(scen_buf), ICE_NONDMA_MEM);
 
@@ -829,14 +824,17 @@ ice_acl_create_scen(struct ice_hw *hw, u16 match_width, u16 num_entries,
 	if (status) {
 		ice_debug(hw, ICE_DBG_ACL, "AQ allocation of ACL scenario failed. status: %d\n",
 			  status);
-		ice_free(hw, scen);
-		return status;
+		goto out;
 	}
 
 	scen->id = *scen_id;
 	ice_acl_commit_partition(hw, scen, false);
 	ice_acl_init_entry(scen);
 	LIST_ADD(&scen->list_entry, &hw->acl_tbl->scens);
+
+out:
+	if (status)
+		ice_free(hw, scen);
 
 	return status;
 }
