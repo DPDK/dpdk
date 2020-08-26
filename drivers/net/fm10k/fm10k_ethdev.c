@@ -3083,7 +3083,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	hw->hw_addr = (void *)pdev->mem_resource[0].addr;
 	if (hw->hw_addr == NULL) {
 		PMD_INIT_LOG(ERR, "Bad mem resource."
-			" Try to blacklist unused devices.");
+			" Try to refuse unused devices.");
 		return -EIO;
 	}
 
