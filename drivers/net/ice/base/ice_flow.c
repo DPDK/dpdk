@@ -1712,8 +1712,8 @@ ice_flow_acl_is_prof_in_use(struct ice_hw *hw, struct ice_flow_prof *prof,
 	    buf->pf_scenario_num[6] == ICE_ACL_INVALID_SCEN &&
 	    buf->pf_scenario_num[7] == ICE_ACL_INVALID_SCEN)
 		return ICE_SUCCESS;
-	else
-		return ICE_ERR_IN_USE;
+
+	return ICE_ERR_IN_USE;
 }
 
 /**
@@ -2861,7 +2861,6 @@ ice_flow_acl_add_scen_entry_sync(struct ice_hw *hw, struct ice_flow_prof *prof,
 	 */
 	exist = ice_flow_acl_find_scen_entry_cond(prof, e, &do_chg_action,
 						  &do_add_entry, &do_rem_entry);
-
 	if (do_rem_entry) {
 		status = ice_flow_rem_entry_sync(hw, ICE_BLK_ACL, exist);
 		if (status)
@@ -2869,8 +2868,11 @@ ice_flow_acl_add_scen_entry_sync(struct ice_hw *hw, struct ice_flow_prof *prof,
 	}
 
 	/* Prepare the result action buffer */
-	acts = (struct ice_acl_act_entry *)ice_calloc
-		(hw, e->entry_sz, sizeof(struct ice_acl_act_entry));
+	acts = (struct ice_acl_act_entry *)
+		ice_calloc(hw, e->entry_sz, sizeof(struct ice_acl_act_entry));
+	if (!acts)
+		return ICE_ERR_NO_MEMORY;
+
 	for (i = 0; i < e->acts_cnt; i++)
 		ice_memcpy(&acts[i], &e->acts[i].data.acl_act,
 			   sizeof(struct ice_acl_act_entry),
@@ -2937,8 +2939,7 @@ ice_flow_acl_add_scen_entry_sync(struct ice_hw *hw, struct ice_flow_prof *prof,
 		*(entry) = exist;
 	}
 out:
-	if (acts)
-		ice_free(hw, acts);
+	ice_free(hw, acts);
 
 	return status;
 }
