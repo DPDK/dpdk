@@ -5932,7 +5932,6 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
 	ice_declare_bitmap(possible_idx, ICE_MAX_FV_WORDS);
 	ice_declare_bitmap(recipes, ICE_MAX_NUM_RECIPES);
 	ice_declare_bitmap(used_idx, ICE_MAX_FV_WORDS);
-	u16 count = 0;
 	u16 bit;
 
 	ice_zero_bitmap(possible_idx, ICE_MAX_FV_WORDS);
@@ -5971,15 +5970,7 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
 	ice_xor_bitmap(free_idx, used_idx, possible_idx, ICE_MAX_FV_WORDS);
 
 	/* return number of free indexes */
-	count = 0;
-	bit = 0;
-	while (ICE_MAX_FV_WORDS >
-	       (bit = ice_find_next_bit(free_idx, ICE_MAX_FV_WORDS, bit))) {
-		count++;
-		bit++;
-	}
-
-	return count;
+	return (u16)ice_bitmap_hweight(free_idx, ICE_MAX_FV_WORDS);
 }
 
 /**

@@ -395,6 +395,29 @@ ice_bitmap_set(ice_bitmap_t *dst, u16 pos, u16 num_bits)
 }
 
 /**
+ * ice_bitmap_hweight - hamming weight of bitmap
+ * @bm: bitmap pointer
+ * @size: size of bitmap (in bits)
+ *
+ * This function determines the number of set bits in a bitmap.
+ * Note that this function assumes it is operating on a bitmap declared using
+ * ice_declare_bitmap.
+ */
+static inline int
+ice_bitmap_hweight(ice_bitmap_t *bm, u16 size)
+{
+	int count = 0;
+	u16 bit = 0;
+
+	while (size > (bit = ice_find_next_bit(bm, size, bit))) {
+		count++;
+		bit++;
+	}
+
+	return count;
+}
+
+/**
  * ice_cmp_bitmaps - compares two bitmaps.
  * @bmp1: the bitmap to compare
  * @bmp2: the bitmap to compare with bmp1
