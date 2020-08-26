@@ -64,7 +64,14 @@ rte_mcslock_lock(rte_mcslock_t **msl, rte_mcslock_t *me)
 		 */
 		return;
 	}
-	__atomic_store_n(&prev->next, me, __ATOMIC_RELAXED);
+	/* The store to me->next above should also complete before the node is
+	 * visible to predecessor thread releasing the lock. Hence, the store
+	 * prev->next also requires release semantics. Note that, for example,
+	 * on ARM, the release semantics in the exchange operation is not
+	 * strong as a release fence and is not sufficient to enforce the
+	 * desired order here.
+	 */
+	__atomic_store_n(&prev->next, me, __ATOMIC_RELEASE);
 
 	/* The while-load of me->locked should not move above the previous
 	 * store to prev->next. Otherwise it will cause a deadlock. Need a
