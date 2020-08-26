@@ -4665,50 +4665,42 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 			byte++;
 			continue;
 		}
+
 		/* Examine 8 bits per byte */
-		for (bit = 0; bit < 8; bit++) {
-			if (ptypes[byte] & BIT(bit)) {
-				u16 ptype;
-				u8 ptg;
-				u8 m;
+		ice_for_each_set_bit(bit, (ice_bitmap_t *)&ptypes[byte],
+				     BITS_PER_BYTE) {
+			u16 ptype;
+			u8 ptg;
 
-				ptype = byte * BITS_PER_BYTE + bit;
+			ptype = byte * BITS_PER_BYTE + bit;
 
-				/* The package should place all ptypes in a
-				 * non-zero PTG, so the following call should
-				 * never fail.
+			/* The package should place all ptypes in a non-zero
+			 * PTG, so the following call should never fail.
+			 */
+			if (ice_ptg_find_ptype(hw, blk, ptype, &ptg))
+				continue;
+
+			/* If PTG is already added, skip and continue */
+			if (ice_is_bit_set(ptgs_used, ptg))
+				continue;
+
+			ice_set_bit(ptg, ptgs_used);
+			/* Check to see there are any attributes for this
+			 * ptype, and add them if found.
+			 */
+			status = ice_add_prof_attrib(prof, ptg, ptype, attr,
+						     attr_cnt);
+			if (status == ICE_ERR_MAX_LIMIT)
+				break;
+			if (status) {
+				/* This is simple a ptype/PTG with no
+				 * attribute
 				 */
-				if (ice_ptg_find_ptype(hw, blk, ptype, &ptg))
-					continue;
+				prof->ptg[prof->ptg_cnt] = ptg;
+				prof->attr[prof->ptg_cnt].flags = 0;
+				prof->attr[prof->ptg_cnt].mask = 0;
 
-				/* If PTG is already added, skip and continue */
-				if (ice_is_bit_set(ptgs_used, ptg))
-					continue;
-
-				ice_set_bit(ptg, ptgs_used);
-				/* Check to see there are any attributes for
-				 * this ptype, and add them if found.
-				 */
-				status = ice_add_prof_attrib(prof, ptg, ptype,
-							     attr, attr_cnt);
-				if (status == ICE_ERR_MAX_LIMIT)
-					break;
-				if (status) {
-					/* This is simple a ptype/PTG with no
-					 * attribute
-					 */
-					prof->ptg[prof->ptg_cnt] = ptg;
-					prof->attr[prof->ptg_cnt].flags = 0;
-					prof->attr[prof->ptg_cnt].mask = 0;
-
-					if (++prof->ptg_cnt >=
-					    ICE_MAX_PTG_PER_PROFILE)
-						break;
-				}
-
-				/* nothing left in byte, then exit */
-				m = ~(u8)((1 << (bit + 1)) - 1);
-				if (!(ptypes[byte] & m))
+				if (++prof->ptg_cnt >= ICE_MAX_PTG_PER_PROFILE)
 					break;
 			}
 		}

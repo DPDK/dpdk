@@ -1374,9 +1374,8 @@ static void ice_get_recp_to_prof_map(struct ice_hw *hw)
 			continue;
 		ice_cp_bitmap(profile_to_recipe[i], r_bitmap,
 			      ICE_MAX_NUM_RECIPES);
-		for (j = 0; j < ICE_MAX_NUM_RECIPES; j++)
-			if (ice_is_bit_set(r_bitmap, j))
-				ice_set_bit(i, recipe_to_profile[j]);
+		ice_for_each_set_bit(j, r_bitmap, ICE_MAX_NUM_RECIPES)
+			ice_set_bit(i, recipe_to_profile[j]);
 	}
 }
 
@@ -5946,26 +5945,21 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
 	 * the set of recipes that our recipe may collide with. Also, determine
 	 * what possible result indexes are usable given this set of profiles.
 	 */
-	bit = 0;
-	while (ICE_MAX_NUM_PROFILES >
-	       (bit = ice_find_next_bit(profiles, ICE_MAX_NUM_PROFILES, bit))) {
+	ice_for_each_set_bit(bit, profiles, ICE_MAX_NUM_PROFILES) {
 		ice_or_bitmap(recipes, recipes, profile_to_recipe[bit],
 			      ICE_MAX_NUM_RECIPES);
 		ice_and_bitmap(possible_idx, possible_idx,
 			       hw->switch_info->prof_res_bm[bit],
 			       ICE_MAX_FV_WORDS);
-		bit++;
 	}
 
 	/* For each recipe that our new recipe may collide with, determine
 	 * which indexes have been used.
 	 */
-	for (bit = 0; bit < ICE_MAX_NUM_RECIPES; bit++)
-		if (ice_is_bit_set(recipes, bit)) {
-			ice_or_bitmap(used_idx, used_idx,
-				      hw->switch_info->recp_list[bit].res_idxs,
-				      ICE_MAX_FV_WORDS);
-		}
+	ice_for_each_set_bit(bit, recipes, ICE_MAX_NUM_RECIPES)
+		ice_or_bitmap(used_idx, used_idx,
+			      hw->switch_info->recp_list[bit].res_idxs,
+			      ICE_MAX_FV_WORDS);
 
 	ice_xor_bitmap(free_idx, used_idx, possible_idx, ICE_MAX_FV_WORDS);
 
@@ -6650,18 +6644,17 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	if (LIST_EMPTY(&rm->fv_list)) {
 		u16 j;
 
-		for (j = 0; j < ICE_MAX_NUM_PROFILES; j++)
-			if (ice_is_bit_set(fv_bitmap, j)) {
-				struct ice_sw_fv_list_entry *fvl;
+		ice_for_each_set_bit(j, fv_bitmap, ICE_MAX_NUM_PROFILES) {
+			struct ice_sw_fv_list_entry *fvl;
 
-				fvl = (struct ice_sw_fv_list_entry *)
-					ice_malloc(hw, sizeof(*fvl));
-				if (!fvl)
-					goto err_unroll;
-				fvl->fv_ptr = NULL;
-				fvl->profile_id = j;
-				LIST_ADD(&fvl->list_entry, &rm->fv_list);
-			}
+			fvl = (struct ice_sw_fv_list_entry *)
+				ice_malloc(hw, sizeof(*fvl));
+			if (!fvl)
+				goto err_unroll;
+			fvl->fv_ptr = NULL;
+			fvl->profile_id = j;
+			LIST_ADD(&fvl->list_entry, &rm->fv_list);
+		}
 	}
 
 	/* get bitmap of all profiles the recipe will be associated with */
@@ -6716,10 +6709,9 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 			      ICE_MAX_NUM_RECIPES);
 
 		/* Update recipe to profile bitmap array */
-		for (j = 0; j < ICE_MAX_NUM_RECIPES; j++)
-			if (ice_is_bit_set(r_bitmap, j))
-				ice_set_bit((u16)fvit->profile_id,
-					    recipe_to_profile[j]);
+		ice_for_each_set_bit(j, rm->r_bitmap, ICE_MAX_NUM_RECIPES)
+			ice_set_bit((u16)fvit->profile_id,
+				    recipe_to_profile[j]);
 	}
 
 	*rid = rm->root_rid;
@@ -7909,6 +7901,7 @@ ice_replay_fltr(struct ice_hw *hw, u8 recp_id, struct LIST_HEAD_TYPE *list_head)
 	LIST_FOR_EACH_ENTRY(itr, &l_head, ice_fltr_mgmt_list_entry,
 			    list_entry) {
 		struct ice_fltr_list_entry f_entry;
+		u16 vsi_handle;
 
 		f_entry.fltr_info = itr->fltr_info;
 		if (itr->vsi_count < 2 && recp_id != ICE_SW_LKUP_VLAN) {
@@ -7920,12 +7913,8 @@ ice_replay_fltr(struct ice_hw *hw, u8 recp_id, struct LIST_HEAD_TYPE *list_head)
 		}
 
 		/* Add a filter per VSI separately */
-		while (1) {
-			u16 vsi_handle;
-
-			vsi_handle =
-				ice_find_first_bit(itr->vsi_list_info->vsi_map,
-						   ICE_MAX_VSI);
+		ice_for_each_set_bit(vsi_handle, itr->vsi_list_info->vsi_map,
+				     ICE_MAX_VSI) {
 			if (!ice_is_vsi_valid(hw, vsi_handle))
 				break;
 

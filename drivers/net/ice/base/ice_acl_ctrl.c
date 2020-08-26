@@ -1028,9 +1028,8 @@ ice_acl_prog_act(struct ice_hw *hw, struct ice_acl_scen *scen,
 	entry_tcam = ICE_ACL_TBL_TCAM_IDX(scen->start);
 	idx = ICE_ACL_TBL_TCAM_ENTRY_IDX(scen->start + entry_idx);
 
-	i = ice_find_first_bit(scen->act_mem_bitmap,
-			       ICE_AQC_MAX_ACTION_MEMORIES);
-	while (i < ICE_AQC_MAX_ACTION_MEMORIES) {
+	ice_for_each_set_bit(i, scen->act_mem_bitmap,
+			     ICE_AQC_MAX_ACTION_MEMORIES) {
 		struct ice_acl_act_mem *mem = &hw->acl_tbl->act_mems[i];
 
 		if (actx_idx >= acts_cnt)
@@ -1057,9 +1056,6 @@ ice_acl_prog_act(struct ice_hw *hw, struct ice_acl_scen *scen,
 			}
 			actx_idx++;
 		}
-
-		i = ice_find_next_bit(scen->act_mem_bitmap,
-				      ICE_AQC_MAX_ACTION_MEMORIES, i + 1);
 	}
 
 	if (!status && actx_idx < acts_cnt)
@@ -1111,9 +1107,9 @@ ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx)
 	}
 
 	ice_memset(&act_buf, 0, sizeof(act_buf), ICE_NONDMA_MEM);
-	i = ice_find_first_bit(scen->act_mem_bitmap,
-			       ICE_AQC_MAX_ACTION_MEMORIES);
-	while (i < ICE_AQC_MAX_ACTION_MEMORIES) {
+
+	ice_for_each_set_bit(i, scen->act_mem_bitmap,
+			     ICE_AQC_MAX_ACTION_MEMORIES) {
 		struct ice_acl_act_mem *mem = &hw->acl_tbl->act_mems[i];
 
 		if (mem->member_of_tcam >= entry_tcam &&
@@ -1126,9 +1122,6 @@ ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx)
 					  "program actpair failed.status: %d\n",
 					  status);
 		}
-
-		i = ice_find_next_bit(scen->act_mem_bitmap,
-				      ICE_AQC_MAX_ACTION_MEMORIES, i + 1);
 	}
 
 	ice_acl_scen_free_entry_idx(scen, entry_idx);

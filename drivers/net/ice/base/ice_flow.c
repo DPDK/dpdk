@@ -1340,16 +1340,12 @@ ice_flow_create_xtrct_seq(struct ice_hw *hw,
 		u64 match = params->prof->segs[i].match;
 		enum ice_flow_field j;
 
-		for (j = 0; j < ICE_FLOW_FIELD_IDX_MAX && match; j++) {
-			const u64 bit = BIT_ULL(j);
-
-			if (match & bit) {
-				status = ice_flow_xtract_fld(hw, params, i, j,
-							     match);
-				if (status)
-					return status;
-				match &= ~bit;
-			}
+		ice_for_each_set_bit(j, (ice_bitmap_t *)&match,
+				     ICE_FLOW_FIELD_IDX_MAX) {
+			status = ice_flow_xtract_fld(hw, params, i, j, match);
+			if (status)
+				return status;
+			ice_clear_bit(j, (ice_bitmap_t *)&match);
 		}
 
 		/* Process raw matching bytes */
@@ -1406,17 +1402,12 @@ ice_flow_acl_def_entry_frmt(struct ice_flow_prof_params *params)
 
 	for (i = 0; i < params->prof->segs_cnt; i++) {
 		struct ice_flow_seg_info *seg = &params->prof->segs[i];
-		u64 match = seg->match;
 		u8 j;
 
-		for (j = 0; j < ICE_FLOW_FIELD_IDX_MAX && match; j++) {
-			struct ice_flow_fld_info *fld;
-			const u64 bit = BIT_ULL(j);
+		ice_for_each_set_bit(j, (ice_bitmap_t *)&seg->match,
+				     ICE_FLOW_FIELD_IDX_MAX) {
+			struct ice_flow_fld_info *fld = &seg->fields[j];
 
-			if (!(match & bit))
-				continue;
-
-			fld = &seg->fields[j];
 			fld->entry.mask = ICE_FLOW_FLD_OFF_INVAL;
 
 			if (fld->type == ICE_FLOW_FLD_TYPE_RANGE) {
@@ -1448,8 +1439,6 @@ ice_flow_acl_def_entry_frmt(struct ice_flow_prof_params *params)
 				fld->entry.val = index;
 				index += fld->entry.last;
 			}
-
-			match &= ~bit;
 		}
 
 		for (j = 0; j < seg->raws_cnt; j++) {
@@ -2028,25 +2017,18 @@ ice_flow_acl_set_xtrct_seq(struct ice_hw *hw, struct ice_flow_prof *prof)
 
 		for (i = 0; i < prof->segs_cnt; i++) {
 			struct ice_flow_seg_info *seg = &prof->segs[i];
-			u64 match = seg->match;
 			u16 j;
 
-			for (j = 0; j < ICE_FLOW_FIELD_IDX_MAX && match; j++) {
-				const u64 bit = BIT_ULL(j);
-
-				if (!(match & bit))
-					continue;
-
+			ice_for_each_set_bit(j, (ice_bitmap_t *)&seg->match,
+					     ICE_FLOW_FIELD_IDX_MAX) {
 				info = &seg->fields[j];
 
 				if (info->type == ICE_FLOW_FLD_TYPE_RANGE)
 					buf.word_selection[info->entry.val] =
-								info->xtrct.idx;
+						info->xtrct.idx;
 				else
 					ice_flow_acl_set_xtrct_seq_fld(&buf,
 								       info);
-
-				match &= ~bit;
 			}
 
 			for (j = 0; j < seg->raws_cnt; j++) {
@@ -2549,17 +2531,11 @@ ice_flow_acl_frmt_entry(struct ice_hw *hw, struct ice_flow_prof *prof,
 
 	for (i = 0; i < prof->segs_cnt; i++) {
 		struct ice_flow_seg_info *seg = &prof->segs[i];
-		u64 match = seg->match;
-		u16 j;
+		u8 j;
 
-		for (j = 0; j < ICE_FLOW_FIELD_IDX_MAX && match; j++) {
-			struct ice_flow_fld_info *info;
-			const u64 bit = BIT_ULL(j);
-
-			if (!(match & bit))
-				continue;
-
-			info = &seg->fields[j];
+		ice_for_each_set_bit(j, (ice_bitmap_t *)&seg->match,
+				     ICE_FLOW_FIELD_IDX_MAX) {
+			struct ice_flow_fld_info *info = &seg->fields[j];
 
 			if (info->type == ICE_FLOW_FLD_TYPE_RANGE)
 				ice_flow_acl_frmt_entry_range(j, info,
@@ -2568,8 +2544,6 @@ ice_flow_acl_frmt_entry(struct ice_hw *hw, struct ice_flow_prof *prof,
 			else
 				ice_flow_acl_frmt_entry_fld(j, info, buf,
 							    dontcare, data);
-
-			match &= ~bit;
 		}
 
 		for (j = 0; j < seg->raws_cnt; j++) {
@@ -3271,20 +3245,15 @@ static enum ice_status
 ice_flow_set_rss_seg_info(struct ice_flow_seg_info *segs, u64 hash_fields,
 			  u32 flow_hdr)
 {
-	u64 val = hash_fields;
+	u64 val;
 	u8 i;
 
-	for (i = 0; val && i < ICE_FLOW_FIELD_IDX_MAX; i++) {
-		u64 bit = BIT_ULL(i);
+	ice_for_each_set_bit(i, (ice_bitmap_t *)&hash_fields,
+			     ICE_FLOW_FIELD_IDX_MAX)
+		ice_flow_set_fld(segs, (enum ice_flow_field)i,
+				 ICE_FLOW_FLD_OFF_INVAL, ICE_FLOW_FLD_OFF_INVAL,
+				 ICE_FLOW_FLD_OFF_INVAL, false);
 
-		if (val & bit) {
-			ice_flow_set_fld(segs, (enum ice_flow_field)i,
-					 ICE_FLOW_FLD_OFF_INVAL,
-					 ICE_FLOW_FLD_OFF_INVAL,
-					 ICE_FLOW_FLD_OFF_INVAL, false);
-			val &= ~bit;
-		}
-	}
 	ICE_FLOW_SET_HDRS(segs, flow_hdr);
 
 	if (segs->hdrs & ~ICE_FLOW_RSS_SEG_HDR_VAL_MASKS &

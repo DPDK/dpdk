@@ -346,6 +346,11 @@ static inline u16 ice_find_first_bit(const ice_bitmap_t *bitmap, u16 size)
 	return ice_find_next_bit(bitmap, size, 0);
 }
 
+#define ice_for_each_set_bit(_bitpos, _addr, _maxlen)	\
+	for ((_bitpos) = ice_find_first_bit((_addr), (_maxlen)); \
+	     (_bitpos) < (_maxlen); \
+	     (_bitpos) = ice_find_next_bit((_addr), (_maxlen), (_bitpos) + 1))
+
 /**
  * ice_is_any_bit_set - Return true of any bit in the bitmap is set
  * @bitmap: the bitmap to check
