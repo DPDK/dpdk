@@ -727,15 +727,15 @@ ice_sched_del_rl_profile(struct ice_hw *hw,
 static void ice_sched_clear_rl_prof(struct ice_port_info *pi)
 {
 	u16 ln;
+	struct ice_hw *hw = pi->hw;
 
-	for (ln = 0; ln < pi->hw->num_tx_sched_layers; ln++) {
+	for (ln = 0; ln < hw->num_tx_sched_layers; ln++) {
 		struct ice_aqc_rl_profile_info *rl_prof_elem;
 		struct ice_aqc_rl_profile_info *rl_prof_tmp;
 
 		LIST_FOR_EACH_ENTRY_SAFE(rl_prof_elem, rl_prof_tmp,
-					 &pi->rl_prof_list[ln],
+					 &hw->rl_prof_list[ln],
 					 ice_aqc_rl_profile_info, list_entry) {
-			struct ice_hw *hw = pi->hw;
 			enum ice_status status;
 
 			rl_prof_elem->prof_id_ref = 0;
@@ -1260,7 +1260,7 @@ enum ice_status ice_sched_init_port(struct ice_port_info *pi)
 	pi->port_state = ICE_SCHED_PORT_STATE_READY;
 	ice_init_lock(&pi->sched_lock);
 	for (i = 0; i < ICE_AQC_TOPO_MAX_LEVEL_NUM; i++)
-		INIT_LIST_HEAD(&pi->rl_prof_list[i]);
+		INIT_LIST_HEAD(&hw->rl_prof_list[i]);
 
 err_init_port:
 	if (status && pi->root) {
@@ -2868,24 +2868,24 @@ ice_sched_assoc_vsi_to_agg(struct ice_port_info *pi, u32 agg_id,
 
 /**
  * ice_sched_rm_unused_rl_prof - remove unused RL profile
- * @pi: port information structure
+ * @hw: pointer to the hardware structure
  *
  * This function removes unused rate limit profiles from the HW and
  * SW DB. The caller needs to hold scheduler lock.
  */
-static void ice_sched_rm_unused_rl_prof(struct ice_port_info *pi)
+static void ice_sched_rm_unused_rl_prof(struct ice_hw *hw)
 {
 	u16 ln;
 
-	for (ln = 0; ln < pi->hw->num_tx_sched_layers; ln++) {
+	for (ln = 0; ln < hw->num_tx_sched_layers; ln++) {
 		struct ice_aqc_rl_profile_info *rl_prof_elem;
 		struct ice_aqc_rl_profile_info *rl_prof_tmp;
 
 		LIST_FOR_EACH_ENTRY_SAFE(rl_prof_elem, rl_prof_tmp,
-					 &pi->rl_prof_list[ln],
+					 &hw->rl_prof_list[ln],
 					 ice_aqc_rl_profile_info, list_entry) {
-			if (!ice_sched_del_rl_profile(pi->hw, rl_prof_elem))
-				ice_debug(pi->hw, ICE_DBG_SCHED, "Removed rl profile\n");
+			if (!ice_sched_del_rl_profile(hw, rl_prof_elem))
+				ice_debug(hw, ICE_DBG_SCHED, "Removed rl profile\n");
 		}
 	}
 }
@@ -3031,7 +3031,7 @@ enum ice_status ice_rm_agg_cfg(struct ice_port_info *pi, u32 agg_id)
 	ice_free(pi->hw, agg_info);
 
 	/* Remove unused RL profile IDs from HW and SW DB */
-	ice_sched_rm_unused_rl_prof(pi);
+	ice_sched_rm_unused_rl_prof(pi->hw);
 
 exit_ice_rm_agg_cfg:
 	ice_release_lock(&pi->sched_lock);
@@ -3852,7 +3852,7 @@ ice_sched_bw_to_rl_profile(struct ice_hw *hw, u32 bw,
 
 /**
  * ice_sched_add_rl_profile - add RL profile
- * @pi: port information structure
+ * @hw: pointer to the hardware structure
  * @rl_type: type of rate limit BW - min, max, or shared
  * @bw: bandwidth in Kbps - Kilo bits per sec
  * @layer_num: specifies in which layer to create profile
@@ -3864,14 +3864,13 @@ ice_sched_bw_to_rl_profile(struct ice_hw *hw, u32 bw,
  * The caller needs to hold the scheduler lock.
  */
 static struct ice_aqc_rl_profile_info *
-ice_sched_add_rl_profile(struct ice_port_info *pi,
-			 enum ice_rl_type rl_type, u32 bw, u8 layer_num)
+ice_sched_add_rl_profile(struct ice_hw *hw, enum ice_rl_type rl_type,
+			 u32 bw, u8 layer_num)
 {
 	struct ice_aqc_rl_profile_info *rl_prof_elem;
 	u16 profiles_added = 0, num_profiles = 1;
 	struct ice_aqc_rl_profile_elem *buf;
 	enum ice_status status;
-	struct ice_hw *hw;
 	u8 profile_type;
 
 	if (layer_num >= ICE_AQC_TOPO_MAX_LEVEL_NUM)
@@ -3890,10 +3889,9 @@ ice_sched_add_rl_profile(struct ice_port_info *pi,
 		return NULL;
 	}
 
-	if (!pi)
+	if (!hw)
 		return NULL;
-	hw = pi->hw;
-	LIST_FOR_EACH_ENTRY(rl_prof_elem, &pi->rl_prof_list[layer_num],
+	LIST_FOR_EACH_ENTRY(rl_prof_elem, &hw->rl_prof_list[layer_num],
 			    ice_aqc_rl_profile_info, list_entry)
 		if ((rl_prof_elem->profile.flags & ICE_AQC_RL_PROFILE_TYPE_M) ==
 		    profile_type && rl_prof_elem->bw == bw)
@@ -3926,7 +3924,7 @@ ice_sched_add_rl_profile(struct ice_port_info *pi,
 
 	/* Good entry - add in the list */
 	rl_prof_elem->prof_id_ref = 0;
-	LIST_ADD(&rl_prof_elem->list_entry, &pi->rl_prof_list[layer_num]);
+	LIST_ADD(&rl_prof_elem->list_entry, &hw->rl_prof_list[layer_num]);
 	return rl_prof_elem;
 
 exit_add_rl_prof:
@@ -4105,7 +4103,7 @@ ice_sched_get_srl_node(struct ice_sched_node *node, u8 srl_layer)
 
 /**
  * ice_sched_rm_rl_profile - remove RL profile ID
- * @pi: port information structure
+ * @hw: pointer to the hardware structure
  * @layer_num: layer number where profiles are saved
  * @profile_type: profile type like EIR, CIR, or SRL
  * @profile_id: profile ID to remove
@@ -4115,7 +4113,7 @@ ice_sched_get_srl_node(struct ice_sched_node *node, u8 srl_layer)
  * scheduler lock.
  */
 static enum ice_status
-ice_sched_rm_rl_profile(struct ice_port_info *pi, u8 layer_num, u8 profile_type,
+ice_sched_rm_rl_profile(struct ice_hw *hw, u8 layer_num, u8 profile_type,
 			u16 profile_id)
 {
 	struct ice_aqc_rl_profile_info *rl_prof_elem;
@@ -4124,7 +4122,7 @@ ice_sched_rm_rl_profile(struct ice_port_info *pi, u8 layer_num, u8 profile_type,
 	if (layer_num >= ICE_AQC_TOPO_MAX_LEVEL_NUM)
 		return ICE_ERR_PARAM;
 	/* Check the existing list for RL profile */
-	LIST_FOR_EACH_ENTRY(rl_prof_elem, &pi->rl_prof_list[layer_num],
+	LIST_FOR_EACH_ENTRY(rl_prof_elem, &hw->rl_prof_list[layer_num],
 			    ice_aqc_rl_profile_info, list_entry)
 		if ((rl_prof_elem->profile.flags & ICE_AQC_RL_PROFILE_TYPE_M) ==
 		    profile_type &&
@@ -4134,9 +4132,9 @@ ice_sched_rm_rl_profile(struct ice_port_info *pi, u8 layer_num, u8 profile_type,
 				rl_prof_elem->prof_id_ref--;
 
 			/* Remove old profile ID from database */
-			status = ice_sched_del_rl_profile(pi->hw, rl_prof_elem);
+			status = ice_sched_del_rl_profile(hw, rl_prof_elem);
 			if (status && status != ICE_ERR_IN_USE)
-				ice_debug(pi->hw, ICE_DBG_SCHED, "Remove rl profile failed\n");
+				ice_debug(hw, ICE_DBG_SCHED, "Remove rl profile failed\n");
 			break;
 		}
 	if (status == ICE_ERR_IN_USE)
@@ -4196,7 +4194,7 @@ ice_sched_set_node_bw_dflt(struct ice_port_info *pi,
 	    old_id == ICE_SCHED_INVAL_PROF_ID)
 		return ICE_SUCCESS;
 
-	return ice_sched_rm_rl_profile(pi, layer_num, profile_type, old_id);
+	return ice_sched_rm_rl_profile(hw, layer_num, profile_type, old_id);
 }
 
 /**
@@ -4265,7 +4263,7 @@ ice_sched_set_node_bw(struct ice_port_info *pi, struct ice_sched_node *node,
 	struct ice_hw *hw = pi->hw;
 	u16 old_id, rl_prof_id;
 
-	rl_prof_info = ice_sched_add_rl_profile(pi, rl_type, bw, layer_num);
+	rl_prof_info = ice_sched_add_rl_profile(hw, rl_type, bw, layer_num);
 	if (!rl_prof_info)
 		return status;
 
@@ -4287,7 +4285,7 @@ ice_sched_set_node_bw(struct ice_port_info *pi, struct ice_sched_node *node,
 	    old_id == ICE_SCHED_INVAL_PROF_ID || old_id == rl_prof_id)
 		return ICE_SUCCESS;
 
-	return ice_sched_rm_rl_profile(pi, layer_num,
+	return ice_sched_rm_rl_profile(hw, layer_num,
 				       rl_prof_info->profile.flags &
 				       ICE_AQC_RL_PROFILE_TYPE_M, old_id);
 }
@@ -4316,7 +4314,7 @@ ice_sched_set_node_bw_lmt(struct ice_port_info *pi, struct ice_sched_node *node,
 		return ICE_ERR_PARAM;
 	hw = pi->hw;
 	/* Remove unused RL profile IDs from HW and SW DB */
-	ice_sched_rm_unused_rl_prof(pi);
+	ice_sched_rm_unused_rl_prof(hw);
 	layer_num = ice_sched_get_rl_prof_layer(pi, rl_type,
 						node->tx_sched_layer);
 	if (layer_num >= hw->num_tx_sched_layers)
