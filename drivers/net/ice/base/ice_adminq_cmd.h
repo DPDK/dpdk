@@ -224,13 +224,6 @@ struct ice_aqc_get_sw_cfg_resp_elem {
 #define ICE_AQC_GET_SW_CONF_RESP_IS_VF		BIT(15)
 };
 
-/* The response buffer is as follows. Note that the length of the
- * elements array varies with the length of the command response.
- */
-struct ice_aqc_get_sw_cfg_resp {
-	struct ice_aqc_get_sw_cfg_resp_elem elements[1];
-};
-
 /* These resource type defines are used for all switch resource
  * commands where a resource type is required, such as:
  * Get Resource Allocation command (indirect 0x0204)
@@ -294,15 +287,6 @@ struct ice_aqc_get_res_resp_elem {
 	__le16 total_free; /* Resources un-allocated/not reserved by any PF */
 };
 
-/* Buffer for Get Resource command */
-struct ice_aqc_get_res_resp {
-	/* Number of resource entries to be calculated using
-	 * datalen/sizeof(struct ice_aqc_cmd_resp)).
-	 * Value of 'datalen' gets updated as part of response.
-	 */
-	struct ice_aqc_get_res_resp_elem elem[1];
-};
-
 /* Allocate Resources command (indirect 0x0208)
  * Free Resources command (indirect 0x0209)
  */
@@ -348,10 +332,6 @@ struct ice_aqc_get_allocd_res_desc {
 	} ops;
 	__le32 addr_high;
 	__le32 addr_low;
-};
-
-struct ice_aqc_get_allocd_res_desc_resp {
-	struct ice_aqc_res_elem elem[1];
 };
 
 /* Add VSI (indirect 0x0210)
@@ -729,13 +709,6 @@ struct ice_aqc_recipe_data_elem {
 	u8 rsvd2[20];
 };
 
-/* This struct contains a number of entries as per the
- * num_sub_recipes in the command
- */
-struct ice_aqc_add_get_recipe_data {
-	struct ice_aqc_recipe_data_elem recipe[1];
-};
-
 /* Set/Get Recipes to Profile Association (direct 0x0291/0x0293) */
 struct ice_aqc_recipe_to_profile {
 	__le16 profile_id;
@@ -757,7 +730,6 @@ struct ice_aqc_sw_rules {
 	__le32 addr_low;
 };
 
-#pragma pack(1)
 /* Add/Update/Get/Remove lookup Rx/Tx command/response entry
  * This structures describes the lookup rules and associated actions. "index"
  * is returned as part of a response to a successful Add command, and can be
@@ -842,7 +814,6 @@ struct ice_sw_rule_lkup_rx_tx {
 	__le16 hdr_len;
 	u8 hdr[1];
 };
-#pragma pack()
 
 /* Add/Update/Remove large action command/response entry
  * "index" is returned as part of a response to a successful Add command, and
@@ -851,7 +822,6 @@ struct ice_sw_rule_lkup_rx_tx {
 struct ice_sw_rule_lg_act {
 	__le16 index; /* Index in large action table */
 	__le16 size;
-	__le32 act[1]; /* array of size for actions */
 	/* Max number of large actions */
 #define ICE_MAX_LG_ACT	4
 	/* Bit 0:1 - Action type */
@@ -902,6 +872,7 @@ struct ice_sw_rule_lg_act {
 #define ICE_LG_ACT_STAT_COUNT		0x7
 #define ICE_LG_ACT_STAT_COUNT_S		3
 #define ICE_LG_ACT_STAT_COUNT_M		(0x7F << ICE_LG_ACT_STAT_COUNT_S)
+	__le32 act[1]; /* array of size for actions */
 };
 
 /* Add/Update/Remove VSI list command/response entry
@@ -1009,14 +980,6 @@ struct ice_aqc_sched_elem_cmd {
 	__le32 addr_low;
 };
 
-/* This is the buffer for:
- * Suspend Nodes (indirect 0x0409)
- * Resume Nodes (indirect 0x040A)
- */
-struct ice_aqc_suspend_resume_elem {
-	__le32 teid[1];
-};
-
 struct ice_aqc_txsched_move_grp_info_hdr {
 	__le32 src_parent_teid;
 	__le32 dest_parent_teid;
@@ -1079,14 +1042,6 @@ struct ice_aqc_txsched_topo_grp_info_hdr {
 
 struct ice_aqc_add_elem {
 	struct ice_aqc_txsched_topo_grp_info_hdr hdr;
-	struct ice_aqc_txsched_elem_data generic[1];
-};
-
-struct ice_aqc_conf_elem {
-	struct ice_aqc_txsched_elem_data generic[1];
-};
-
-struct ice_aqc_get_elem {
 	struct ice_aqc_txsched_elem_data generic[1];
 };
 
@@ -1161,10 +1116,6 @@ struct ice_aqc_rl_profile_elem {
 	__le16 rl_encode;
 };
 
-struct ice_aqc_rl_profile_generic_elem {
-	struct ice_aqc_rl_profile_elem generic[1];
-};
-
 /* Configure L2 Node CGD (indirect 0x0414)
  * This indirect command allows configuring a congestion domain for given L2
  * node TEIDs in the scheduler topology.
@@ -1180,10 +1131,6 @@ struct ice_aqc_cfg_l2_node_cgd_elem {
 	__le32 node_teid;
 	u8 cgd;
 	u8 reserved[3];
-};
-
-struct ice_aqc_cfg_l2_node_cgd_data {
-	struct ice_aqc_cfg_l2_node_cgd_elem elem[1];
 };
 
 /* Query Scheduler Resource Allocation (indirect 0x0412)
@@ -2512,23 +2459,21 @@ struct ice_aqc_dis_txqs {
  * added before the start of the next group, to allow correct
  * alignment of the parent_teid field.
  */
+#pragma pack(1)
 struct ice_aqc_dis_txq_item {
 	__le32 parent_teid;
 	u8 num_qs;
 	u8 rsvd;
 	/* The length of the q_id array varies according to num_qs */
-	__le16 q_id[1];
-	/* This only applies from F8 onward */
 #define ICE_AQC_Q_DIS_BUF_ELEM_TYPE_S		15
 #define ICE_AQC_Q_DIS_BUF_ELEM_TYPE_LAN_Q	\
 			(0 << ICE_AQC_Q_DIS_BUF_ELEM_TYPE_S)
 #define ICE_AQC_Q_DIS_BUF_ELEM_TYPE_RDMA_QSET	\
 			(1 << ICE_AQC_Q_DIS_BUF_ELEM_TYPE_S)
+	__le16 q_id[1];
 };
 
-struct ice_aqc_dis_txq {
-	struct ice_aqc_dis_txq_item qgrps[1];
-};
+#pragma pack()
 
 /* Tx LAN Queues Cleanup Event (0x0C31) */
 struct ice_aqc_txqs_cleanup {

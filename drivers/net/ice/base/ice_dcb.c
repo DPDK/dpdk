@@ -1328,7 +1328,7 @@ ice_update_port_tc_tree_cfg(struct ice_port_info *pi,
 			    struct ice_aqc_port_ets_elem *buf)
 {
 	struct ice_sched_node *node, *tc_node;
-	struct ice_aqc_get_elem elem;
+	struct ice_aqc_txsched_elem_data elem;
 	enum ice_status status = ICE_SUCCESS;
 	u32 teid1, teid2;
 	u8 i, j;
@@ -1370,7 +1370,7 @@ ice_update_port_tc_tree_cfg(struct ice_port_info *pi,
 		/* new TC */
 		status = ice_sched_query_elem(pi->hw, teid2, &elem);
 		if (!status)
-			status = ice_sched_add_node(pi, 1, &elem.generic[0]);
+			status = ice_sched_add_node(pi, 1, &elem);
 		if (status)
 			break;
 		/* update the TC number */

@@ -130,7 +130,7 @@ ice_aqc_send_sched_elem_cmd(struct ice_hw *hw, enum ice_adminq_opc cmd_opc,
  */
 enum ice_status
 ice_aq_query_sched_elems(struct ice_hw *hw, u16 elems_req,
-			 struct ice_aqc_get_elem *buf, u16 buf_size,
+			 struct ice_aqc_txsched_elem_data *buf, u16 buf_size,
 			 u16 *elems_ret, struct ice_sq_cd *cd)
 {
 	return ice_aqc_send_sched_elem_cmd(hw, ice_aqc_opc_get_sched_elems,
@@ -150,8 +150,8 @@ enum ice_status
 ice_sched_add_node(struct ice_port_info *pi, u8 layer,
 		   struct ice_aqc_txsched_elem_data *info)
 {
+	struct ice_aqc_txsched_elem_data elem;
 	struct ice_sched_node *parent;
-	struct ice_aqc_get_elem elem;
 	struct ice_sched_node *node;
 	enum ice_status status;
 	struct ice_hw *hw;
@@ -194,7 +194,7 @@ ice_sched_add_node(struct ice_port_info *pi, u8 layer,
 	node->parent = parent;
 	node->tx_sched_layer = layer;
 	parent->children[parent->num_children++] = node;
-	node->info = elem.generic[0];
+	node->info = elem;
 	return ICE_SUCCESS;
 }
 
@@ -422,7 +422,7 @@ ice_aq_add_sched_elems(struct ice_hw *hw, u16 grps_req,
  */
 static enum ice_status
 ice_aq_cfg_sched_elems(struct ice_hw *hw, u16 elems_req,
-		       struct ice_aqc_conf_elem *buf, u16 buf_size,
+		       struct ice_aqc_txsched_elem_data *buf, u16 buf_size,
 		       u16 *elems_cfgd, struct ice_sq_cd *cd)
 {
 	return ice_aqc_send_sched_elem_cmd(hw, ice_aqc_opc_cfg_sched_elems,
@@ -463,8 +463,7 @@ ice_aq_move_sched_elems(struct ice_hw *hw, u16 grps_req,
  * Suspend scheduling elements (0x0409)
  */
 static enum ice_status
-ice_aq_suspend_sched_elems(struct ice_hw *hw, u16 elems_req,
-			   struct ice_aqc_suspend_resume_elem *buf,
+ice_aq_suspend_sched_elems(struct ice_hw *hw, u16 elems_req, __le32 *buf,
 			   u16 buf_size, u16 *elems_ret, struct ice_sq_cd *cd)
 {
 	return ice_aqc_send_sched_elem_cmd(hw, ice_aqc_opc_suspend_sched_elems,
@@ -484,8 +483,7 @@ ice_aq_suspend_sched_elems(struct ice_hw *hw, u16 elems_req,
  * resume scheduling elements (0x040A)
  */
 static enum ice_status
-ice_aq_resume_sched_elems(struct ice_hw *hw, u16 elems_req,
-			  struct ice_aqc_suspend_resume_elem *buf,
+ice_aq_resume_sched_elems(struct ice_hw *hw, u16 elems_req, __le32 *buf,
 			  u16 buf_size, u16 *elems_ret, struct ice_sq_cd *cd)
 {
 	return ice_aqc_send_sched_elem_cmd(hw, ice_aqc_opc_resume_sched_elems,
@@ -526,18 +524,17 @@ static enum ice_status
 ice_sched_suspend_resume_elems(struct ice_hw *hw, u8 num_nodes, u32 *node_teids,
 			       bool suspend)
 {
-	struct ice_aqc_suspend_resume_elem *buf;
 	u16 i, buf_size, num_elem_ret = 0;
 	enum ice_status status;
+	__le32 *buf;
 
 	buf_size = sizeof(*buf) * num_nodes;
-	buf = (struct ice_aqc_suspend_resume_elem *)
-		ice_malloc(hw, buf_size);
+	buf = (__le32 *)ice_malloc(hw, buf_size);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;
 
 	for (i = 0; i < num_nodes; i++)
-		buf->teid[i] = CPU_TO_LE32(node_teids[i]);
+		buf[i] = CPU_TO_LE32(node_teids[i]);
 
 	if (suspend)
 		status = ice_aq_suspend_sched_elems(hw, num_nodes, buf,
@@ -610,7 +607,7 @@ ice_alloc_lan_q_ctx(struct ice_hw *hw, u16 vsi_handle, u8 tc, u16 new_numqs)
  */
 static enum ice_status
 ice_aq_rl_profile(struct ice_hw *hw, enum ice_adminq_opc opcode,
-		  u16 num_profiles, struct ice_aqc_rl_profile_generic_elem *buf,
+		  u16 num_profiles, struct ice_aqc_rl_profile_elem *buf,
 		  u16 buf_size, u16 *num_processed, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_rl_profile *cmd;
@@ -641,13 +638,11 @@ ice_aq_rl_profile(struct ice_hw *hw, enum ice_adminq_opc opcode,
  */
 static enum ice_status
 ice_aq_add_rl_profile(struct ice_hw *hw, u16 num_profiles,
-		      struct ice_aqc_rl_profile_generic_elem *buf,
-		      u16 buf_size, u16 *num_profiles_added,
-		      struct ice_sq_cd *cd)
+		      struct ice_aqc_rl_profile_elem *buf, u16 buf_size,
+		      u16 *num_profiles_added, struct ice_sq_cd *cd)
 {
-	return ice_aq_rl_profile(hw, ice_aqc_opc_add_rl_profiles,
-				 num_profiles, buf,
-				 buf_size, num_profiles_added, cd);
+	return ice_aq_rl_profile(hw, ice_aqc_opc_add_rl_profiles, num_profiles,
+				 buf, buf_size, num_profiles_added, cd);
 }
 
 /**
@@ -662,8 +657,8 @@ ice_aq_add_rl_profile(struct ice_hw *hw, u16 num_profiles,
  */
 enum ice_status
 ice_aq_query_rl_profile(struct ice_hw *hw, u16 num_profiles,
-			struct ice_aqc_rl_profile_generic_elem *buf,
-			u16 buf_size, struct ice_sq_cd *cd)
+			struct ice_aqc_rl_profile_elem *buf, u16 buf_size,
+			struct ice_sq_cd *cd)
 {
 	return ice_aq_rl_profile(hw, ice_aqc_opc_query_rl_profiles,
 				 num_profiles, buf, buf_size, NULL, cd);
@@ -682,13 +677,12 @@ ice_aq_query_rl_profile(struct ice_hw *hw, u16 num_profiles,
  */
 static enum ice_status
 ice_aq_remove_rl_profile(struct ice_hw *hw, u16 num_profiles,
-			 struct ice_aqc_rl_profile_generic_elem *buf,
-			 u16 buf_size, u16 *num_profiles_removed,
-			 struct ice_sq_cd *cd)
+			 struct ice_aqc_rl_profile_elem *buf, u16 buf_size,
+			 u16 *num_profiles_removed, struct ice_sq_cd *cd)
 {
 	return ice_aq_rl_profile(hw, ice_aqc_opc_remove_rl_profiles,
-				 num_profiles, buf,
-				 buf_size, num_profiles_removed, cd);
+				 num_profiles, buf, buf_size,
+				 num_profiles_removed, cd);
 }
 
 /**
@@ -704,7 +698,7 @@ static enum ice_status
 ice_sched_del_rl_profile(struct ice_hw *hw,
 			 struct ice_aqc_rl_profile_info *rl_info)
 {
-	struct ice_aqc_rl_profile_generic_elem *buf;
+	struct ice_aqc_rl_profile_elem *buf;
 	u16 num_profiles_removed;
 	enum ice_status status;
 	u16 num_profiles = 1;
@@ -713,8 +707,7 @@ ice_sched_del_rl_profile(struct ice_hw *hw,
 		return ICE_ERR_IN_USE;
 
 	/* Safe to remove profile ID */
-	buf = (struct ice_aqc_rl_profile_generic_elem *)
-		&rl_info->profile;
+	buf = &rl_info->profile;
 	status = ice_aq_remove_rl_profile(hw, num_profiles, buf, sizeof(*buf),
 					  &num_profiles_removed, NULL);
 	if (status || num_profiles_removed != num_profiles)
@@ -860,7 +853,7 @@ void ice_sched_cleanup_all(struct ice_hw *hw)
  */
 enum ice_status
 ice_aq_cfg_l2_node_cgd(struct ice_hw *hw, u16 num_l2_nodes,
-		       struct ice_aqc_cfg_l2_node_cgd_data *buf,
+		       struct ice_aqc_cfg_l2_node_cgd_elem *buf,
 		       u16 buf_size, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_cfg_l2_node_cgd *cmd;
@@ -1602,7 +1595,7 @@ ice_sched_get_agg_node(struct ice_port_info *pi, struct ice_sched_node *tc_node,
  */
 static bool ice_sched_check_node(struct ice_hw *hw, struct ice_sched_node *node)
 {
-	struct ice_aqc_get_elem buf;
+	struct ice_aqc_txsched_elem_data buf;
 	enum ice_status status;
 	u32 node_teid;
 
@@ -1611,7 +1604,7 @@ static bool ice_sched_check_node(struct ice_hw *hw, struct ice_sched_node *node)
 	if (status != ICE_SUCCESS)
 		return false;
 
-	if (memcmp(buf.generic, &node->info, sizeof(*buf.generic))) {
+	if (memcmp(&buf, &node->info, sizeof(buf))) {
 		ice_debug(hw, ICE_DBG_SCHED, "Node mismatch for teid=0x%x\n",
 			  node_teid);
 		return false;
@@ -2140,7 +2133,7 @@ bool ice_sched_is_tree_balanced(struct ice_hw *hw, struct ice_sched_node *node)
  */
 enum ice_status
 ice_aq_query_node_to_root(struct ice_hw *hw, u32 node_teid,
-			  struct ice_aqc_get_elem *buf, u16 buf_size,
+			  struct ice_aqc_txsched_elem_data *buf, u16 buf_size,
 			  struct ice_sq_cd *cd)
 {
 	struct ice_aqc_query_node_to_root *cmd;
@@ -2904,7 +2897,7 @@ static void ice_sched_rm_unused_rl_prof(struct ice_port_info *pi)
  * @node: pointer to node
  * @info: node info to update
  *
- * It updates the HW DB, and local SW DB of node. It updates the scheduling
+ * Update the HW DB, and local SW DB of node. Update the scheduling
  * parameters of node from argument info data buffer (Info->data buf) and
  * returns success or error on config sched element failure. The caller
  * needs to hold scheduler lock.
@@ -2913,18 +2906,18 @@ static enum ice_status
 ice_sched_update_elem(struct ice_hw *hw, struct ice_sched_node *node,
 		      struct ice_aqc_txsched_elem_data *info)
 {
-	struct ice_aqc_conf_elem buf;
+	struct ice_aqc_txsched_elem_data buf;
 	enum ice_status status;
 	u16 elem_cfgd = 0;
 	u16 num_elems = 1;
 
-	buf.generic[0] = *info;
+	buf = *info;
 	/* Parent TEID is reserved field in this aq call */
-	buf.generic[0].parent_teid = 0;
+	buf.parent_teid = 0;
 	/* Element type is reserved field in this aq call */
-	buf.generic[0].data.elem_type = 0;
+	buf.data.elem_type = 0;
 	/* Flags is reserved field in this aq call */
-	buf.generic[0].data.flags = 0;
+	buf.data.flags = 0;
 
 	/* Update HW DB */
 	/* Configure element node */
@@ -3875,9 +3868,9 @@ static struct ice_aqc_rl_profile_info *
 ice_sched_add_rl_profile(struct ice_port_info *pi,
 			 enum ice_rl_type rl_type, u32 bw, u8 layer_num)
 {
-	struct ice_aqc_rl_profile_generic_elem *buf;
 	struct ice_aqc_rl_profile_info *rl_prof_elem;
 	u16 profiles_added = 0, num_profiles = 1;
+	struct ice_aqc_rl_profile_elem *buf;
 	enum ice_status status;
 	struct ice_hw *hw;
 	u8 profile_type;
@@ -3926,8 +3919,7 @@ ice_sched_add_rl_profile(struct ice_port_info *pi,
 	rl_prof_elem->profile.max_burst_size = CPU_TO_LE16(hw->max_burst_size);
 
 	/* Create new entry in HW DB */
-	buf = (struct ice_aqc_rl_profile_generic_elem *)
-		&rl_prof_elem->profile;
+	buf = &rl_prof_elem->profile;
 	status = ice_aq_add_rl_profile(hw, num_profiles, buf, sizeof(*buf),
 				       &profiles_added, NULL);
 	if (status || profiles_added != num_profiles)

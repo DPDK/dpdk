@@ -2053,7 +2053,7 @@ ice_get_hw_res(struct ice_hw *hw, uint16_t res_type,
 		uint16_t num, uint16_t desc_id,
 		uint16_t *prof_buf, uint16_t *num_prof)
 {
-	struct ice_aqc_get_allocd_res_desc_resp *resp_buf;
+	struct ice_aqc_res_elem *resp_buf;
 	int ret;
 	uint16_t buf_len;
 	bool res_shared = 1;
@@ -2062,7 +2062,7 @@ ice_get_hw_res(struct ice_hw *hw, uint16_t res_type,
 	struct ice_aqc_get_allocd_res_desc *cmd =
 			&aq_desc.params.get_res_desc;
 
-	buf_len = sizeof(resp_buf->elem) * num;
+	buf_len = sizeof(*resp_buf) * num;
 	resp_buf = ice_malloc(hw, buf_len);
 	if (!resp_buf)
 		return -ENOMEM;
@@ -2081,7 +2081,7 @@ ice_get_hw_res(struct ice_hw *hw, uint16_t res_type,
 	else
 		goto exit;
 
-	ice_memcpy(prof_buf, resp_buf->elem, sizeof(resp_buf->elem) *
+	ice_memcpy(prof_buf, resp_buf, sizeof(*resp_buf) *
 			(*num_prof), ICE_NONDMA_TO_NONDMA);
 
 exit:
