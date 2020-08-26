@@ -8114,13 +8114,12 @@ ice_rem_adv_rule_by_id(struct ice_hw *hw,
  */
 enum ice_status ice_rem_adv_rule_for_vsi(struct ice_hw *hw, u16 vsi_handle)
 {
-	struct ice_adv_fltr_mgmt_list_entry *list_itr;
+	struct ice_adv_fltr_mgmt_list_entry *list_itr, *tmp_entry;
 	struct ice_vsi_list_map_info *map_info;
 	struct LIST_HEAD_TYPE *list_head;
 	struct ice_adv_rule_info rinfo;
 	struct ice_switch_info *sw;
 	enum ice_status status;
-	u16 vsi_list_id = 0;
 	u8 rid;
 
 	sw = hw->switch_info;
@@ -8129,22 +8128,31 @@ enum ice_status ice_rem_adv_rule_for_vsi(struct ice_hw *hw, u16 vsi_handle)
 			continue;
 		if (!sw->recp_list[rid].adv_rule)
 			continue;
+
 		list_head = &sw->recp_list[rid].filt_rules;
-		map_info = NULL;
-		LIST_FOR_EACH_ENTRY(list_itr, list_head,
-				    ice_adv_fltr_mgmt_list_entry, list_entry) {
-			map_info = ice_find_vsi_list_entry(&sw->recp_list[rid],
-							   vsi_handle,
-							   &vsi_list_id);
-			if (!map_info)
-				continue;
+		LIST_FOR_EACH_ENTRY_SAFE(list_itr, tmp_entry, list_head,
+					 ice_adv_fltr_mgmt_list_entry,
+					 list_entry) {
 			rinfo = list_itr->rule_info;
+
+			if (rinfo.sw_act.fltr_act == ICE_FWD_TO_VSI_LIST) {
+				map_info = list_itr->vsi_list_info;
+				if (!map_info)
+					continue;
+
+				if (!ice_is_bit_set(map_info->vsi_map,
+						    vsi_handle))
+					continue;
+			} else if (rinfo.sw_act.vsi_handle != vsi_handle) {
+				continue;
+			}
+
 			rinfo.sw_act.vsi_handle = vsi_handle;
 			status = ice_rem_adv_rule(hw, list_itr->lkups,
 						  list_itr->lkups_cnt, &rinfo);
+
 			if (status)
 				return status;
-			map_info = NULL;
 		}
 	}
 	return ICE_SUCCESS;
