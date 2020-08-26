@@ -629,7 +629,7 @@ ice_nvm_access_get_features(struct ice_nvm_access_cmd *cmd,
 {
 	/* The provided data_size must be at least as large as our NVM
 	 * features structure. A larger size should not be treated as an
-	 * error, to allow future extensions to to the features structure to
+	 * error, to allow future extensions to the features structure to
 	 * work on older drivers.
 	 */
 	if (cmd->data_size < sizeof(struct ice_nvm_features))

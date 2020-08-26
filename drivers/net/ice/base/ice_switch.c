@@ -2367,7 +2367,7 @@ ice_aq_alloc_free_vsi_list_exit:
  * @hw: pointer to the HW struct
  * @bcast_thresh: represents the upper threshold for broadcast storm control
  * @mcast_thresh: represents the upper threshold for multicast storm control
- * @ctl_bitmask: storm control control knobs
+ * @ctl_bitmask: storm control knobs
  *
  * Sets the storm control configuration (0x0280)
  */
@@ -2394,7 +2394,7 @@ ice_aq_set_storm_ctrl(struct ice_hw *hw, u32 bcast_thresh, u32 mcast_thresh,
  * @hw: pointer to the HW struct
  * @bcast_thresh: represents the upper threshold for broadcast storm control
  * @mcast_thresh: represents the upper threshold for multicast storm control
- * @ctl_bitmask: storm control control knobs
+ * @ctl_bitmask: storm control knobs
  *
  * Gets the storm control configuration (0x0281)
  */

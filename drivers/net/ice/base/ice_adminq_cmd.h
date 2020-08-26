@@ -2130,7 +2130,7 @@ struct ice_aqc_acl_update_query_scen {
  */
 struct ice_aqc_acl_scen {
 	struct {
-		/* Byte [x] selection for the TCAM key. This value must be set
+		/* Byte [x] selection for the TCAM key. This value must be
 		 * set to 0x0 for unusued TCAM.
 		 * Only Bit 6..0 is used in each byte and MSB is reserved
 		 */

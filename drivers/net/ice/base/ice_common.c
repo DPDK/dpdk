@@ -2084,7 +2084,7 @@ ice_parse_fdir_dev_caps(struct ice_hw *hw, struct ice_hw_dev_caps *dev_p,
  * @cap_count: the number of capabilities
  *
  * Helper device to parse device (0x000B) capabilities list. For
- * capabilities shared between device and device, this relies on
+ * capabilities shared between device and function, this relies on
  * ice_parse_common_caps.
  *
  * Loop through the list of provided capabilities and extract the relevant
