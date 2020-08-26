@@ -1642,6 +1642,30 @@ ice_dealloc_flow_entry(struct ice_hw *hw, struct ice_flow_entry *entry)
 	ice_free(hw, entry);
 }
 
+/**
+ * ice_flow_get_hw_prof - return the HW profile for a specific profile ID handle
+ * @hw: pointer to the HW struct
+ * @blk: classification stage
+ * @prof_id: the profile ID handle
+ * @hw_prof_id: pointer to variable to receive the HW profile ID
+ */
+enum ice_status
+ice_flow_get_hw_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
+		     u8 *hw_prof_id)
+{
+	enum ice_status status = ICE_ERR_DOES_NOT_EXIST;
+	struct ice_prof_map *map;
+
+	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
+	map = ice_search_prof_id(hw, blk, prof_id);
+	if (map) {
+		*hw_prof_id = map->prof_id;
+		status = ICE_SUCCESS;
+	}
+	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
+	return status;
+}
+
 #define ICE_ACL_INVALID_SCEN	0x3f
 
 /**
@@ -2229,30 +2253,6 @@ ice_flow_rem_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id)
 out:
 	ice_release_lock(&hw->fl_profs_locks[blk]);
 
-	return status;
-}
-
-/**
- * ice_flow_get_hw_prof - return the HW profile for a specific profile ID handle
- * @hw: pointer to the HW struct
- * @blk: classification stage
- * @prof_id: the profile ID handle
- * @hw_prof_id: pointer to variable to receive the HW profile ID
- */
-enum ice_status
-ice_flow_get_hw_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
-		     u8 *hw_prof_id)
-{
-	enum ice_status status = ICE_ERR_DOES_NOT_EXIST;
-	struct ice_prof_map *map;
-
-	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
-	map = ice_search_prof_id(hw, blk, prof_id);
-	if (map) {
-		*hw_prof_id = map->prof_id;
-		status = ICE_SUCCESS;
-	}
-	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
 	return status;
 }
 
