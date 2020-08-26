@@ -12,9 +12,6 @@ the Intel Ethernet Controller E810.
 Prerequisites
 -------------
 
-- The E810 is currently in sampling state only. To obtain early samples and/or get further information
-  about kernel drivers, firmware and DDP support, please speak to your Intel representative.
-
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
 - To get better performance on Intel platforms, please follow the "How to get best performance with NICs on Intel platforms"
@@ -322,8 +319,3 @@ is stored in ``ice_adapter->active_pkg_type``.
 
 A symbolic link to the DDP package file is also ok. The same package
 file is used by both the kernel driver and the DPDK PMD.
-
-limitation
-~~~~~~~~~~
-
-Ice code released is for evaluation only currently.
