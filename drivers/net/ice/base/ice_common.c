@@ -2754,36 +2754,39 @@ static enum ice_status
 ice_cfg_phy_fc(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 	       enum ice_fc_mode req_mode)
 {
-	struct ice_aqc_get_phy_caps_data *pcaps = NULL;
 	struct ice_phy_cache_mode_data cache_data;
-	enum ice_status status = ICE_SUCCESS;
 	u8 pause_mask = 0x0;
 
 	if (!pi || !cfg)
 		return ICE_ERR_BAD_PTR;
 
-	pcaps = (struct ice_aqc_get_phy_caps_data *)
-		ice_malloc(pi->hw, sizeof(*pcaps));
-	if (!pcaps)
-		return ICE_ERR_NO_MEMORY;
-
-	/* Cache user FC request */
-	cache_data.data.curr_user_fc_req = req_mode;
-	ice_cache_phy_user_req(pi, cache_data, ICE_FC_MODE);
-
 	switch (req_mode) {
 	case ICE_FC_AUTO:
+	{
+		struct ice_aqc_get_phy_caps_data *pcaps;
+		enum ice_status status;
+
+		pcaps = (struct ice_aqc_get_phy_caps_data *)
+			ice_malloc(pi->hw, sizeof(*pcaps));
+		if (!pcaps)
+			return ICE_ERR_NO_MEMORY;
+
 		/* Query the value of FC that both the NIC and attached media
 		 * can do.
 		 */
 		status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP,
 					     pcaps, NULL);
-		if (status)
-			goto out;
+		if (status) {
+			ice_free(pi->hw, pcaps);
+			return status;
+		}
 
 		pause_mask |= pcaps->caps & ICE_AQC_PHY_EN_TX_LINK_PAUSE;
 		pause_mask |= pcaps->caps & ICE_AQC_PHY_EN_RX_LINK_PAUSE;
+
+		ice_free(pi->hw, pcaps);
 		break;
+	}
 	case ICE_FC_FULL:
 		pause_mask |= ICE_AQC_PHY_EN_TX_LINK_PAUSE;
 		pause_mask |= ICE_AQC_PHY_EN_RX_LINK_PAUSE;
@@ -2805,9 +2808,11 @@ ice_cfg_phy_fc(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 	/* set the new capabilities */
 	cfg->caps |= pause_mask;
 
-out:
-	ice_free(pi->hw, pcaps);
-	return status;
+	/* Cache user FC request */
+	cache_data.data.curr_user_fc_req = req_mode;
+	ice_cache_phy_user_req(pi, cache_data, ICE_FC_MODE);
+
+	return ICE_SUCCESS;
 }
 
 /**
