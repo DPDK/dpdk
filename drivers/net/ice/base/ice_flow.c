@@ -1815,52 +1815,57 @@ ice_flow_add_prof_sync(struct ice_hw *hw, enum ice_block blk,
 		       struct ice_flow_action *acts, u8 acts_cnt,
 		       struct ice_flow_prof **prof)
 {
-	struct ice_flow_prof_params params;
+	struct ice_flow_prof_params *params;
 	enum ice_status status;
 	u8 i;
 
 	if (!prof || (acts_cnt && !acts))
 		return ICE_ERR_BAD_PTR;
 
-	ice_memset(&params, 0, sizeof(params), ICE_NONDMA_MEM);
-	params.prof = (struct ice_flow_prof *)
-		ice_malloc(hw, sizeof(*params.prof));
-	if (!params.prof)
+	params = (struct ice_flow_prof_params *)ice_malloc(hw, sizeof(*params));
+	if (!params)
 		return ICE_ERR_NO_MEMORY;
+
+	params->prof = (struct ice_flow_prof *)
+		ice_malloc(hw, sizeof(*params->prof));
+	if (!params->prof) {
+		status = ICE_ERR_NO_MEMORY;
+		goto free_params;
+	}
 
 	/* initialize extraction sequence to all invalid (0xff) */
 	for (i = 0; i < ICE_MAX_FV_WORDS; i++) {
-		params.es[i].prot_id = ICE_PROT_INVALID;
-		params.es[i].off = ICE_FV_OFFSET_INVAL;
+		params->es[i].prot_id = ICE_PROT_INVALID;
+		params->es[i].off = ICE_FV_OFFSET_INVAL;
 	}
 
-	params.blk = blk;
-	params.prof->id = prof_id;
-	params.prof->dir = dir;
-	params.prof->segs_cnt = segs_cnt;
+	params->blk = blk;
+	params->prof->id = prof_id;
+	params->prof->dir = dir;
+	params->prof->segs_cnt = segs_cnt;
 
 	/* Make a copy of the segments that need to be persistent in the flow
 	 * profile instance
 	 */
 	for (i = 0; i < segs_cnt; i++)
-		ice_memcpy(&params.prof->segs[i], &segs[i], sizeof(*segs),
+		ice_memcpy(&params->prof->segs[i], &segs[i], sizeof(*segs),
 			   ICE_NONDMA_TO_NONDMA);
 
 	/* Make a copy of the actions that need to be persistent in the flow
 	 * profile instance.
 	 */
 	if (acts_cnt) {
-		params.prof->acts = (struct ice_flow_action *)
+		params->prof->acts = (struct ice_flow_action *)
 			ice_memdup(hw, acts, acts_cnt * sizeof(*acts),
 				   ICE_NONDMA_TO_NONDMA);
 
-		if (!params.prof->acts) {
+		if (!params->prof->acts) {
 			status = ICE_ERR_NO_MEMORY;
 			goto out;
 		}
 	}
 
-	status = ice_flow_proc_segs(hw, &params);
+	status = ice_flow_proc_segs(hw, params);
 	if (status) {
 		ice_debug(hw, ICE_DBG_FLOW,
 			  "Error processing a flow's packet segments\n");
@@ -1868,24 +1873,26 @@ ice_flow_add_prof_sync(struct ice_hw *hw, enum ice_block blk,
 	}
 
 	/* Add a HW profile for this flow profile */
-	status = ice_add_prof(hw, blk, prof_id, (u8 *)params.ptypes,
-			      params.attr, params.attr_cnt, params.es,
-			      params.mask);
+	status = ice_add_prof(hw, blk, prof_id, (u8 *)params->ptypes,
+			      params->attr, params->attr_cnt, params->es,
+			      params->mask);
 	if (status) {
 		ice_debug(hw, ICE_DBG_FLOW, "Error adding a HW flow profile\n");
 		goto out;
 	}
 
-	INIT_LIST_HEAD(&params.prof->entries);
-	ice_init_lock(&params.prof->entries_lock);
-	*prof = params.prof;
+	INIT_LIST_HEAD(&params->prof->entries);
+	ice_init_lock(&params->prof->entries_lock);
+	*prof = params->prof;
 
 out:
 	if (status) {
-		if (params.prof->acts)
-			ice_free(hw, params.prof->acts);
-		ice_free(hw, params.prof);
+		if (params->prof->acts)
+			ice_free(hw, params->prof->acts);
+		ice_free(hw, params->prof);
 	}
+free_params:
+	ice_free(hw, params);
 
 	return status;
 }
