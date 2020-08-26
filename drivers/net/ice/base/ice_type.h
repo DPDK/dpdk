@@ -1122,4 +1122,8 @@ enum ice_sw_fwd_act_type {
 #define GLPCI_LBARCTRL_VF_PE_DB_SIZE_8KB 0x1
 #define GLPCI_LBARCTRL_VF_PE_DB_SIZE_64KB 0x2
 
+/* AQ API version for LLDP_FILTER_CONTROL */
+#define ICE_FW_API_LLDP_FLTR_MAJ	1
+#define ICE_FW_API_LLDP_FLTR_MIN	7
+#define ICE_FW_API_LLDP_FLTR_PATCH	1
 #endif /* _ICE_TYPE_H_ */
