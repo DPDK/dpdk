@@ -2267,7 +2267,7 @@ ice_sched_move_nodes(struct ice_port_info *pi, struct ice_sched_node *parent,
 		return ICE_ERR_PARAM;
 
 	/* Does parent have enough space */
-	if (parent->num_children + num_items >=
+	if (parent->num_children + num_items >
 	    hw->max_children[parent->tx_sched_layer])
 		return ICE_ERR_AQ_FULL;
 
@@ -2334,6 +2334,10 @@ ice_sched_move_vsi_to_agg(struct ice_port_info *pi, u16 vsi_handle, u32 agg_id,
 	vsi_node = ice_sched_get_vsi_node(pi, tc_node, vsi_handle);
 	if (!vsi_node)
 		return ICE_ERR_DOES_NOT_EXIST;
+
+	/* Is this VSI already part of given aggregator? */
+	if (ice_sched_find_node_in_subtree(pi->hw, agg_node, vsi_node))
+		return ICE_SUCCESS;
 
 	aggl = ice_sched_get_agg_layer(pi->hw);
 	vsil = ice_sched_get_vsi_layer(pi->hw);
