@@ -103,17 +103,11 @@
 #define ICE_IEEE_APP_TLV_LEN		11
 
 #pragma pack(1)
-/* IEEE 802.1AB LLDP TLV structure */
-struct ice_lldp_generic_tlv {
-	__be16 typelen;
-	u8 tlvinfo[1];
-};
-
 /* IEEE 802.1AB LLDP Organization specific TLV */
 struct ice_lldp_org_tlv {
 	__be16 typelen;
 	__be32 ouisubtype;
-	u8 tlvinfo[1];
+	u8 tlvinfo[STRUCT_HACK_VAR_LEN];
 };
 #pragma pack()
 
@@ -136,7 +130,7 @@ struct ice_cee_feat_tlv {
 #define ICE_CEE_FEAT_TLV_WILLING_M	0x40
 #define ICE_CEE_FEAT_TLV_ERR_M		0x20
 	u8 subtype;
-	u8 tlvinfo[1];
+	u8 tlvinfo[STRUCT_HACK_VAR_LEN];
 };
 
 #pragma pack(1)

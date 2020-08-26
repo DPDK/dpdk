@@ -1739,9 +1739,8 @@ ice_alloc_hw_res(struct ice_hw *hw, u16 type, u16 num, bool btm, u16 *res)
 	enum ice_status status;
 	u16 buf_len;
 
-	buf_len = ice_struct_size(buf, elem, num - 1);
-	buf = (struct ice_aqc_alloc_free_res_elem *)
-		ice_malloc(hw, buf_len);
+	buf_len = ice_struct_size(buf, elem, num);
+	buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;
 
@@ -1757,7 +1756,7 @@ ice_alloc_hw_res(struct ice_hw *hw, u16 type, u16 num, bool btm, u16 *res)
 	if (status)
 		goto ice_alloc_res_exit;
 
-	ice_memcpy(res, buf->elem, sizeof(buf->elem) * num,
+	ice_memcpy(res, buf->elem, sizeof(*buf->elem) * num,
 		   ICE_NONDMA_TO_NONDMA);
 
 ice_alloc_res_exit:
@@ -1778,7 +1777,7 @@ enum ice_status ice_free_hw_res(struct ice_hw *hw, u16 type, u16 num, u16 *res)
 	enum ice_status status;
 	u16 buf_len;
 
-	buf_len = ice_struct_size(buf, elem, num - 1);
+	buf_len = ice_struct_size(buf, elem, num);
 	buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;
@@ -1786,7 +1785,7 @@ enum ice_status ice_free_hw_res(struct ice_hw *hw, u16 type, u16 num, u16 *res)
 	/* Prepare buffer to free resource. */
 	buf->num_elems = CPU_TO_LE16(num);
 	buf->res_type = CPU_TO_LE16(type);
-	ice_memcpy(buf->elem, res, sizeof(buf->elem) * num,
+	ice_memcpy(buf->elem, res, sizeof(*buf->elem) * num,
 		   ICE_NONDMA_TO_NONDMA);
 
 	status = ice_aq_alloc_free_res(hw, num, buf, buf_len,
@@ -3474,10 +3473,10 @@ ice_aq_add_lan_txq(struct ice_hw *hw, u8 num_qgrps,
 		   struct ice_aqc_add_tx_qgrp *qg_list, u16 buf_size,
 		   struct ice_sq_cd *cd)
 {
-	u16 i, sum_header_size, sum_q_size = 0;
 	struct ice_aqc_add_tx_qgrp *list;
 	struct ice_aqc_add_txqs *cmd;
 	struct ice_aq_desc desc;
+	u16 i, sum_size = 0;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
@@ -3491,18 +3490,13 @@ ice_aq_add_lan_txq(struct ice_hw *hw, u8 num_qgrps,
 	if (num_qgrps > ICE_LAN_TXQ_MAX_QGRPS)
 		return ICE_ERR_PARAM;
 
-	sum_header_size = num_qgrps *
-		(sizeof(*qg_list) - sizeof(*qg_list->txqs));
-
-	list = qg_list;
-	for (i = 0; i < num_qgrps; i++) {
-		struct ice_aqc_add_txqs_perq *q = list->txqs;
-
-		sum_q_size += list->num_txqs * sizeof(*q);
-		list = (struct ice_aqc_add_tx_qgrp *)(q + list->num_txqs);
+	for (i = 0, list = qg_list; i < num_qgrps; i++) {
+		sum_size += ice_struct_size(list, txqs, list->num_txqs);
+		list = (struct ice_aqc_add_tx_qgrp *)(list->txqs +
+						      list->num_txqs);
 	}
 
-	if (buf_size != (sum_header_size + sum_q_size))
+	if (buf_size != sum_size)
 		return ICE_ERR_PARAM;
 
 	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
@@ -3530,6 +3524,7 @@ ice_aq_dis_lan_txq(struct ice_hw *hw, u8 num_qgrps,
 		   enum ice_disq_rst_src rst_src, u16 vmvf_num,
 		   struct ice_sq_cd *cd)
 {
+	struct ice_aqc_dis_txq_item *item;
 	struct ice_aqc_dis_txqs *cmd;
 	struct ice_aq_desc desc;
 	enum ice_status status;
@@ -3573,16 +3568,16 @@ ice_aq_dis_lan_txq(struct ice_hw *hw, u8 num_qgrps,
 	 */
 	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
 
-	for (i = 0; i < num_qgrps; ++i) {
-		/* Calculate the size taken up by the queue IDs in this group */
-		sz += qg_list[i].num_qs * sizeof(qg_list[i].q_id);
-
-		/* Add the size of the group header */
-		sz += sizeof(qg_list[i]) - sizeof(qg_list[i].q_id);
+	for (i = 0, item = qg_list; i < num_qgrps; i++) {
+		u16 item_size = ice_struct_size(item, q_id, item->num_qs);
 
 		/* If the num of queues is even, add 2 bytes of padding */
-		if ((qg_list[i].num_qs % 2) == 0)
-			sz += 2;
+		if ((item->num_qs % 2) == 0)
+			item_size += 2;
+
+		sz += item_size;
+
+		item = (struct ice_aqc_dis_txq_item *)((u8 *)item + item_size);
 	}
 
 	if (buf_size != sz)
@@ -4268,12 +4263,15 @@ ice_dis_vsi_txq(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u8 num_queues,
 		struct ice_sq_cd *cd)
 {
 	enum ice_status status = ICE_ERR_DOES_NOT_EXIST;
-	struct ice_aqc_dis_txq_item qg_list;
+	struct ice_aqc_dis_txq_item *qg_list;
 	struct ice_q_ctx *q_ctx;
-	u16 i;
+	struct ice_hw *hw;
+	u16 i, buf_size;
 
 	if (!pi || pi->port_state != ICE_SCHED_PORT_STATE_READY)
 		return ICE_ERR_CFG;
+
+	hw = pi->hw;
 
 	if (!num_queues) {
 		/* if queue is disabled already yet the disable queue command
@@ -4281,10 +4279,15 @@ ice_dis_vsi_txq(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u8 num_queues,
 		 * ice_aq_dis_lan_txq without any queue information
 		 */
 		if (rst_src)
-			return ice_aq_dis_lan_txq(pi->hw, 0, NULL, 0, rst_src,
+			return ice_aq_dis_lan_txq(hw, 0, NULL, 0, rst_src,
 						  vmvf_num, NULL);
 		return ICE_ERR_CFG;
 	}
+
+	buf_size = ice_struct_size(qg_list, q_id, 1);
+	qg_list = (struct ice_aqc_dis_txq_item *)ice_malloc(hw, buf_size);
+	if (!qg_list)
+		return ICE_ERR_NO_MEMORY;
 
 	ice_acquire_lock(&pi->sched_lock);
 
@@ -4294,23 +4297,22 @@ ice_dis_vsi_txq(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u8 num_queues,
 		node = ice_sched_find_node_by_teid(pi->root, q_teids[i]);
 		if (!node)
 			continue;
-		q_ctx = ice_get_lan_q_ctx(pi->hw, vsi_handle, tc, q_handles[i]);
+		q_ctx = ice_get_lan_q_ctx(hw, vsi_handle, tc, q_handles[i]);
 		if (!q_ctx) {
-			ice_debug(pi->hw, ICE_DBG_SCHED, "invalid queue handle%d\n",
+			ice_debug(hw, ICE_DBG_SCHED, "invalid queue handle%d\n",
 				  q_handles[i]);
 			continue;
 		}
 		if (q_ctx->q_handle != q_handles[i]) {
-			ice_debug(pi->hw, ICE_DBG_SCHED, "Err:handles %d %d\n",
+			ice_debug(hw, ICE_DBG_SCHED, "Err:handles %d %d\n",
 				  q_ctx->q_handle, q_handles[i]);
 			continue;
 		}
-		qg_list.parent_teid = node->info.parent_teid;
-		qg_list.num_qs = 1;
-		qg_list.q_id[0] = CPU_TO_LE16(q_ids[i]);
-		status = ice_aq_dis_lan_txq(pi->hw, 1, &qg_list,
-					    sizeof(qg_list), rst_src, vmvf_num,
-					    cd);
+		qg_list->parent_teid = node->info.parent_teid;
+		qg_list->num_qs = 1;
+		qg_list->q_id[0] = CPU_TO_LE16(q_ids[i]);
+		status = ice_aq_dis_lan_txq(hw, 1, qg_list, buf_size, rst_src,
+					    vmvf_num, cd);
 
 		if (status != ICE_SUCCESS)
 			break;
@@ -4318,6 +4320,7 @@ ice_dis_vsi_txq(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u8 num_queues,
 		q_ctx->q_handle = ICE_INVAL_Q_HANDLE;
 	}
 	ice_release_lock(&pi->sched_lock);
+	ice_free(hw, qg_list);
 	return status;
 }
 

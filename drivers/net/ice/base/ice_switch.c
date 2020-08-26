@@ -1478,9 +1478,8 @@ ice_alloc_sw(struct ice_hw *hw, bool ena_stats, bool shared_res, u16 *sw_id,
 	enum ice_status status;
 	u16 buf_len;
 
-	buf_len = sizeof(*sw_buf);
-	sw_buf = (struct ice_aqc_alloc_free_res_elem *)
-		   ice_malloc(hw, buf_len);
+	buf_len = ice_struct_size(sw_buf, elem, 1);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!sw_buf)
 		return ICE_ERR_NO_MEMORY;
 
@@ -1560,9 +1559,8 @@ enum ice_status ice_free_sw(struct ice_hw *hw, u16 sw_id, u16 counter_id)
 	enum ice_status status, ret_status;
 	u16 buf_len;
 
-	buf_len = sizeof(*sw_buf);
-	sw_buf = (struct ice_aqc_alloc_free_res_elem *)
-		   ice_malloc(hw, buf_len);
+	buf_len = ice_struct_size(sw_buf, elem, 1);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!sw_buf)
 		return ICE_ERR_NO_MEMORY;
 
@@ -2103,9 +2101,8 @@ ice_aq_alloc_free_vsi_list(struct ice_hw *hw, u16 *vsi_list_id,
 	enum ice_status status;
 	u16 buf_len;
 
-	buf_len = sizeof(*sw_buf);
-	sw_buf = (struct ice_aqc_alloc_free_res_elem *)
-		ice_malloc(hw, buf_len);
+	buf_len = ice_struct_size(sw_buf, elem, 1);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!sw_buf)
 		return ICE_ERR_NO_MEMORY;
 	sw_buf->num_elems = CPU_TO_LE16(1);
@@ -2387,7 +2384,7 @@ enum ice_status ice_alloc_recipe(struct ice_hw *hw, u16 *rid)
 	enum ice_status status;
 	u16 buf_len;
 
-	buf_len = sizeof(*sw_buf);
+	buf_len = ice_struct_size(sw_buf, elem, 1);
 	sw_buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!sw_buf)
 		return ICE_ERR_NO_MEMORY;
@@ -5253,9 +5250,8 @@ ice_alloc_res_cntr(struct ice_hw *hw, u8 type, u8 alloc_shared, u16 num_items,
 	u16 buf_len;
 
 	/* Allocate resource */
-	buf_len = sizeof(*buf);
-	buf = (struct ice_aqc_alloc_free_res_elem *)
-		ice_malloc(hw, buf_len);
+	buf_len = ice_struct_size(buf, elem, 1);
+	buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;
 
@@ -5292,9 +5288,8 @@ ice_free_res_cntr(struct ice_hw *hw, u8 type, u8 alloc_shared, u16 num_items,
 	u16 buf_len;
 
 	/* Free resource */
-	buf_len = sizeof(*buf);
-	buf = (struct ice_aqc_alloc_free_res_elem *)
-		ice_malloc(hw, buf_len);
+	buf_len = ice_struct_size(buf, elem, 1);
+	buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;
 
@@ -5354,9 +5349,8 @@ ice_alloc_res_lg_act(struct ice_hw *hw, u16 *l_id, u16 num_acts)
 		return ICE_ERR_PARAM;
 
 	/* Allocate resource for large action */
-	buf_len = sizeof(*sw_buf);
-	sw_buf = (struct ice_aqc_alloc_free_res_elem *)
-		ice_malloc(hw, buf_len);
+	buf_len = ice_struct_size(sw_buf, elem, 1);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
 	if (!sw_buf)
 		return ICE_ERR_NO_MEMORY;
 

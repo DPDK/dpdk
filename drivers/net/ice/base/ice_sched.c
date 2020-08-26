@@ -237,7 +237,7 @@ ice_sched_remove_elems(struct ice_hw *hw, struct ice_sched_node *parent,
 	enum ice_status status;
 	u16 buf_size;
 
-	buf_size = sizeof(*buf) + sizeof(u32) * (num_nodes - 1);
+	buf_size = ice_struct_size(buf, teid, num_nodes);
 	buf = (struct ice_aqc_delete_elem *)ice_malloc(hw, buf_size);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;
@@ -892,7 +892,7 @@ ice_sched_add_elems(struct ice_port_info *pi, struct ice_sched_node *tc_node,
 	u16 buf_size;
 	u32 teid;
 
-	buf_size = ice_struct_size(buf, generic, num_nodes - 1);
+	buf_size = ice_struct_size(buf, generic, num_nodes);
 	buf = (struct ice_aqc_add_elem *)ice_malloc(hw, buf_size);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;
@@ -2260,6 +2260,7 @@ ice_sched_move_nodes(struct ice_port_info *pi, struct ice_sched_node *parent,
 	struct ice_sched_node *node;
 	u16 i, grps_movd = 0;
 	struct ice_hw *hw;
+	u16 buf_len;
 
 	hw = pi->hw;
 
@@ -2271,7 +2272,8 @@ ice_sched_move_nodes(struct ice_port_info *pi, struct ice_sched_node *parent,
 	    hw->max_children[parent->tx_sched_layer])
 		return ICE_ERR_AQ_FULL;
 
-	buf = (struct ice_aqc_move_elem *)ice_malloc(hw, sizeof(*buf));
+	buf_len = ice_struct_size(buf, teid, 1);
+	buf = (struct ice_aqc_move_elem *)ice_malloc(hw, buf_len);
 	if (!buf)
 		return ICE_ERR_NO_MEMORY;
 
@@ -2286,7 +2288,7 @@ ice_sched_move_nodes(struct ice_port_info *pi, struct ice_sched_node *parent,
 		buf->hdr.dest_parent_teid = parent->info.node_teid;
 		buf->teid[0] = node->info.node_teid;
 		buf->hdr.num_elems = CPU_TO_LE16(1);
-		status = ice_aq_move_sched_elems(hw, 1, buf, sizeof(*buf),
+		status = ice_aq_move_sched_elems(hw, 1, buf, buf_len,
 						 &grps_movd, NULL);
 		if (status && grps_movd != 1) {
 			status = ICE_ERR_CFG;

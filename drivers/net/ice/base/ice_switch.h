@@ -45,25 +45,17 @@
 
 #define DUMMY_ETH_HDR_LEN		16
 #define ICE_SW_RULE_RX_TX_ETH_HDR_SIZE \
-	(sizeof(struct ice_aqc_sw_rules_elem) - \
-	 FIELD_SIZEOF(struct ice_aqc_sw_rules_elem, pdata) + \
-	 sizeof(struct ice_sw_rule_lkup_rx_tx) + DUMMY_ETH_HDR_LEN - 1)
+	(offsetof(struct ice_aqc_sw_rules_elem, pdata.lkup_tx_rx.hdr) + \
+	 (DUMMY_ETH_HDR_LEN * \
+	  sizeof(((struct ice_sw_rule_lkup_rx_tx *)0)->hdr[0])))
 #define ICE_SW_RULE_RX_TX_NO_HDR_SIZE \
-	(sizeof(struct ice_aqc_sw_rules_elem) - \
-	 FIELD_SIZEOF(struct ice_aqc_sw_rules_elem, pdata) + \
-	 sizeof(struct ice_sw_rule_lkup_rx_tx) - 1)
+	(offsetof(struct ice_aqc_sw_rules_elem, pdata.lkup_tx_rx.hdr))
 #define ICE_SW_RULE_LG_ACT_SIZE(n) \
-	(sizeof(struct ice_aqc_sw_rules_elem) - \
-	 FIELD_SIZEOF(struct ice_aqc_sw_rules_elem, pdata) + \
-	 sizeof(struct ice_sw_rule_lg_act) - \
-	 FIELD_SIZEOF(struct ice_sw_rule_lg_act, act) + \
-	 ((n) * FIELD_SIZEOF(struct ice_sw_rule_lg_act, act)))
+	(offsetof(struct ice_aqc_sw_rules_elem, pdata.lg_act.act) + \
+	 ((n) * sizeof(((struct ice_sw_rule_lg_act *)0)->act[0])))
 #define ICE_SW_RULE_VSI_LIST_SIZE(n) \
-	(sizeof(struct ice_aqc_sw_rules_elem) - \
-	 FIELD_SIZEOF(struct ice_aqc_sw_rules_elem, pdata) + \
-	 sizeof(struct ice_sw_rule_vsi_list) - \
-	 FIELD_SIZEOF(struct ice_sw_rule_vsi_list, vsi) + \
-	 ((n) * FIELD_SIZEOF(struct ice_sw_rule_vsi_list, vsi)))
+	(offsetof(struct ice_aqc_sw_rules_elem, pdata.vsi_list.vsi) + \
+	 ((n) * sizeof(((struct ice_sw_rule_vsi_list *)0)->vsi[0])))
 
 /* Worst case buffer length for ice_aqc_opc_get_res_alloc */
 #define ICE_MAX_RES_TYPES 0x80

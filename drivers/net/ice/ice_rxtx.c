@@ -459,8 +459,9 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	int err;
 	struct ice_vsi *vsi;
 	struct ice_hw *hw;
-	struct ice_aqc_add_tx_qgrp txq_elem;
+	struct ice_aqc_add_tx_qgrp *txq_elem;
 	struct ice_tlan_ctx tx_ctx;
+	int buf_len;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -477,13 +478,17 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
+	buf_len = ice_struct_size(txq_elem, txqs, 1);
+	txq_elem = ice_malloc(hw, buf_len);
+	if (!txq_elem)
+		return -ENOMEM;
+
 	vsi = txq->vsi;
 	hw = ICE_VSI_TO_HW(vsi);
 
-	memset(&txq_elem, 0, sizeof(txq_elem));
 	memset(&tx_ctx, 0, sizeof(tx_ctx));
-	txq_elem.num_txqs = 1;
-	txq_elem.txqs[0].txq_id = rte_cpu_to_le_16(txq->reg_idx);
+	txq_elem->num_txqs = 1;
+	txq_elem->txqs[0].txq_id = rte_cpu_to_le_16(txq->reg_idx);
 
 	tx_ctx.base = txq->tx_ring_dma / ICE_QUEUE_BASE_ADDR_UNIT;
 	tx_ctx.qlen = txq->nb_tx_desc;
@@ -495,7 +500,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	tx_ctx.tso_qnum = txq->reg_idx; /* index for tso state structure */
 	tx_ctx.legacy_int = 1; /* Legacy or Advanced Host Interface */
 
-	ice_set_ctx(hw, (uint8_t *)&tx_ctx, txq_elem.txqs[0].txq_ctx,
+	ice_set_ctx(hw, (uint8_t *)&tx_ctx, txq_elem->txqs[0].txq_ctx,
 		    ice_tlan_ctx_info);
 
 	txq->qtx_tail = hw->hw_addr + QTX_COMM_DBELL(txq->reg_idx);
@@ -505,15 +510,18 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	/* Fix me, we assume TC always 0 here */
 	err = ice_ena_vsi_txq(hw->port_info, vsi->idx, 0, tx_queue_id, 1,
-			&txq_elem, sizeof(txq_elem), NULL);
+			txq_elem, buf_len, NULL);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to add lan txq");
+		rte_free(txq_elem);
 		return -EIO;
 	}
 	/* store the schedule node id */
-	txq->q_teid = txq_elem.txqs[0].q_teid;
+	txq->q_teid = txq_elem->txqs[0].q_teid;
 
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	rte_free(txq_elem);
 	return 0;
 }
 
@@ -637,8 +645,9 @@ ice_fdir_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	int err;
 	struct ice_vsi *vsi;
 	struct ice_hw *hw;
-	struct ice_aqc_add_tx_qgrp txq_elem;
+	struct ice_aqc_add_tx_qgrp *txq_elem;
 	struct ice_tlan_ctx tx_ctx;
+	int buf_len;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -649,13 +658,17 @@ ice_fdir_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
+	buf_len = ice_struct_size(txq_elem, txqs, 1);
+	txq_elem = ice_malloc(hw, buf_len);
+	if (!txq_elem)
+		return -ENOMEM;
+
 	vsi = txq->vsi;
 	hw = ICE_VSI_TO_HW(vsi);
 
-	memset(&txq_elem, 0, sizeof(txq_elem));
 	memset(&tx_ctx, 0, sizeof(tx_ctx));
-	txq_elem.num_txqs = 1;
-	txq_elem.txqs[0].txq_id = rte_cpu_to_le_16(txq->reg_idx);
+	txq_elem->num_txqs = 1;
+	txq_elem->txqs[0].txq_id = rte_cpu_to_le_16(txq->reg_idx);
 
 	tx_ctx.base = txq->tx_ring_dma / ICE_QUEUE_BASE_ADDR_UNIT;
 	tx_ctx.qlen = txq->nb_tx_desc;
@@ -667,7 +680,7 @@ ice_fdir_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	tx_ctx.tso_qnum = txq->reg_idx; /* index for tso state structure */
 	tx_ctx.legacy_int = 1; /* Legacy or Advanced Host Interface */
 
-	ice_set_ctx(hw, (uint8_t *)&tx_ctx, txq_elem.txqs[0].txq_ctx,
+	ice_set_ctx(hw, (uint8_t *)&tx_ctx, txq_elem->txqs[0].txq_ctx,
 		    ice_tlan_ctx_info);
 
 	txq->qtx_tail = hw->hw_addr + QTX_COMM_DBELL(txq->reg_idx);
@@ -677,14 +690,16 @@ ice_fdir_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	/* Fix me, we assume TC always 0 here */
 	err = ice_ena_vsi_txq(hw->port_info, vsi->idx, 0, tx_queue_id, 1,
-			      &txq_elem, sizeof(txq_elem), NULL);
+			      txq_elem, buf_len, NULL);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to add FDIR txq");
+		rte_free(txq_elem);
 		return -EIO;
 	}
 	/* store the schedule node id */
-	txq->q_teid = txq_elem.txqs[0].q_teid;
+	txq->q_teid = txq_elem->txqs[0].q_teid;
 
+	rte_free(txq_elem);
 	return 0;
 }
 

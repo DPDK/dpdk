@@ -34,6 +34,13 @@
 
 #define IS_ASCII(_ch)	((_ch) < 0x80)
 
+#define STRUCT_HACK_VAR_LEN
+/**
+ * ice_struct_size - size of struct with C99 flexible array member
+ * @ptr: pointer to structure
+ * @field: flexible array member (last member of the structure)
+ * @num: number of elements of that flexible array member
+ */
 #define ice_struct_size(ptr, field, num) \
 	(sizeof(*(ptr)) + sizeof(*(ptr)->field) * (num))
 

@@ -312,7 +312,7 @@ struct ice_aqc_alloc_free_res_elem {
 #define ICE_AQC_RES_TYPE_VSI_PRUNE_LIST_M	\
 				(0xF << ICE_AQC_RES_TYPE_VSI_PRUNE_LIST_S)
 	__le16 num_elems;
-	struct ice_aqc_res_elem elem[1];
+	struct ice_aqc_res_elem elem[STRUCT_HACK_VAR_LEN];
 };
 
 /* Get Allocated Resource Descriptors Command (indirect 0x020A) */
@@ -812,7 +812,7 @@ struct ice_sw_rule_lkup_rx_tx {
 	 * lookup-type
 	 */
 	__le16 hdr_len;
-	u8 hdr[1];
+	u8 hdr[STRUCT_HACK_VAR_LEN];
 };
 
 /* Add/Update/Remove large action command/response entry
@@ -872,7 +872,7 @@ struct ice_sw_rule_lg_act {
 #define ICE_LG_ACT_STAT_COUNT		0x7
 #define ICE_LG_ACT_STAT_COUNT_S		3
 #define ICE_LG_ACT_STAT_COUNT_M		(0x7F << ICE_LG_ACT_STAT_COUNT_S)
-	__le32 act[1]; /* array of size for actions */
+	__le32 act[STRUCT_HACK_VAR_LEN]; /* array of size for actions */
 };
 
 /* Add/Update/Remove VSI list command/response entry
@@ -882,7 +882,7 @@ struct ice_sw_rule_lg_act {
 struct ice_sw_rule_vsi_list {
 	__le16 index; /* Index of VSI/Prune list */
 	__le16 number_vsi;
-	__le16 vsi[1]; /* Array of number_vsi VSI numbers */
+	__le16 vsi[STRUCT_HACK_VAR_LEN]; /* Array of number_vsi VSI numbers */
 };
 
 #pragma pack(1)
@@ -989,7 +989,7 @@ struct ice_aqc_txsched_move_grp_info_hdr {
 
 struct ice_aqc_move_elem {
 	struct ice_aqc_txsched_move_grp_info_hdr hdr;
-	__le32 teid[1];
+	__le32 teid[STRUCT_HACK_VAR_LEN];
 };
 
 struct ice_aqc_elem_info_bw {
@@ -1042,7 +1042,7 @@ struct ice_aqc_txsched_topo_grp_info_hdr {
 
 struct ice_aqc_add_elem {
 	struct ice_aqc_txsched_topo_grp_info_hdr hdr;
-	struct ice_aqc_txsched_elem_data generic[1];
+	struct ice_aqc_txsched_elem_data generic[STRUCT_HACK_VAR_LEN];
 };
 
 struct ice_aqc_get_topo_elem {
@@ -1053,7 +1053,7 @@ struct ice_aqc_get_topo_elem {
 
 struct ice_aqc_delete_elem {
 	struct ice_aqc_txsched_topo_grp_info_hdr hdr;
-	__le32 teid[1];
+	__le32 teid[STRUCT_HACK_VAR_LEN];
 };
 
 /* Query Port ETS (indirect 0x040E)
@@ -2426,7 +2426,7 @@ struct ice_aqc_add_tx_qgrp {
 	__le32 parent_teid;
 	u8 num_txqs;
 	u8 rsvd[3];
-	struct ice_aqc_add_txqs_perq txqs[1];
+	struct ice_aqc_add_txqs_perq txqs[STRUCT_HACK_VAR_LEN];
 };
 
 /* Disable Tx LAN Queues (indirect 0x0C31) */
@@ -2470,7 +2470,7 @@ struct ice_aqc_dis_txq_item {
 			(0 << ICE_AQC_Q_DIS_BUF_ELEM_TYPE_S)
 #define ICE_AQC_Q_DIS_BUF_ELEM_TYPE_RDMA_QSET	\
 			(1 << ICE_AQC_Q_DIS_BUF_ELEM_TYPE_S)
-	__le16 q_id[1];
+	__le16 q_id[STRUCT_HACK_VAR_LEN];
 };
 
 #pragma pack()
@@ -2514,7 +2514,7 @@ struct ice_aqc_move_txqs_elem {
 struct ice_aqc_move_txqs_data {
 	__le32 src_teid;
 	__le32 dest_teid;
-	struct ice_aqc_move_txqs_elem txqs[1];
+	struct ice_aqc_move_txqs_elem txqs[STRUCT_HACK_VAR_LEN];
 };
 
 /* Download Package (indirect 0x0C40) */
@@ -2567,7 +2567,7 @@ struct ice_aqc_get_pkg_info {
 /* Get Package Info List response buffer format (0x0C43) */
 struct ice_aqc_get_pkg_info_resp {
 	__le32 count;
-	struct ice_aqc_get_pkg_info pkg_info[1];
+	struct ice_aqc_get_pkg_info pkg_info[STRUCT_HACK_VAR_LEN];
 };
 
 /* Driver Shared Parameters (direct, 0x0C90) */
