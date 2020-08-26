@@ -102,7 +102,7 @@ Runtime Config Options
   The grouping ``()`` can be omitted for single element group. If no queues are
   specified, PMD will use this protocol extraction type for all queues.
 
-  Protocol is : ``vlan, ipv4, ipv6, ipv6_flow, tcp``.
+  Protocol is : ``vlan, ipv4, ipv6, ipv6_flow, tcp, ip_offset``.
 
   .. code-block:: console
 
@@ -182,6 +182,18 @@ Runtime Config Options
   TCPHDR1 - TCP header word 6, "Data Offset" and "Flags" fields.
 
   TCPHDR2 - Reserved
+
+  .. table:: Protocol extraction : ``ip_offset``
+
+   +----------------------------+----------------------------+
+   |           IPHDR2           |           IPHDR1           |
+   +============================+============================+
+   |       IPv6 HDR Offset      |       IPv4 HDR Offset      |
+   +----------------------------+----------------------------+
+
+  IPHDR1 - Outer/Single IPv4 Header offset.
+
+  IPHDR2 - Outer/Single IPv6 Header offset.
 
   Use ``rte_net_ice_dynf_proto_xtr_metadata_get`` to access the protocol
   extraction metadata, and use ``RTE_PKT_RX_DYNF_PROTO_XTR_*`` to get the

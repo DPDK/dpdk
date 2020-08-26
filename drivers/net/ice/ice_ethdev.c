@@ -65,6 +65,9 @@ static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 	[PROTO_XTR_TCP] = {
 		.param = { .name = "ice_dynflag_proto_xtr_tcp" },
 		.ol_flag = &rte_net_ice_dynflag_proto_xtr_tcp_mask },
+	[PROTO_XTR_IP_OFFSET] = {
+		.param = { .name = "ice_dynflag_proto_xtr_ip_offset" },
+		.ol_flag = &rte_net_ice_dynflag_proto_xtr_ip_offset_mask },
 };
 
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
@@ -323,6 +326,7 @@ lookup_proto_xtr_type(const char *xtr_name)
 		{ "ipv6",      PROTO_XTR_IPV6      },
 		{ "ipv6_flow", PROTO_XTR_IPV6_FLOW },
 		{ "tcp",       PROTO_XTR_TCP       },
+		{ "ip_offset", PROTO_XTR_IP_OFFSET },
 	};
 	uint32_t i;
 
@@ -568,6 +572,10 @@ ice_check_proto_xtr_support(struct ice_hw *hw)
 		[PROTO_XTR_TCP] = { ICE_RXDID_COMMS_AUX_TCP,
 				    ICE_RX_OPC_EXTRACT,
 				    ICE_PROT_TCP_IL, ICE_PROT_ID_INVAL },
+		[PROTO_XTR_IP_OFFSET] = { ICE_RXDID_COMMS_AUX_IP_OFFSET,
+					  ICE_RX_OPC_PROTID,
+					  ICE_PROT_IPV4_OF_OR_S,
+					  ICE_PROT_IPV6_OF_OR_S },
 	};
 	uint32_t i;
 
@@ -5145,7 +5153,7 @@ RTE_PMD_REGISTER_PCI(net_ice, rte_ice_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ice, pci_id_ice_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ice, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ice,
-			      ICE_PROTO_XTR_ARG "=[queue:]<vlan|ipv4|ipv6|ipv6_flow|tcp>"
+			      ICE_PROTO_XTR_ARG "=[queue:]<vlan|ipv4|ipv6|ipv6_flow|tcp|ip_offset>"
 			      ICE_SAFE_MODE_SUPPORT_ARG "=<0|1>"
 			      ICE_PIPELINE_MODE_SUPPORT_ARG "=<0|1>"
 			      ICE_FLOW_MARK_SUPPORT_ARG "=<0|1>");

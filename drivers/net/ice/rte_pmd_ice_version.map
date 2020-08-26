@@ -12,4 +12,5 @@ EXPERIMENTAL {
 	rte_net_ice_dynflag_proto_xtr_ipv6_mask;
 	rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
 	rte_net_ice_dynflag_proto_xtr_tcp_mask;
+	rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
 };

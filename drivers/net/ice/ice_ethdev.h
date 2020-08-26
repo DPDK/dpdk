@@ -262,6 +262,7 @@ enum proto_xtr_type {
 	PROTO_XTR_IPV6,
 	PROTO_XTR_IPV6_FLOW,
 	PROTO_XTR_TCP,
+	PROTO_XTR_IP_OFFSET,
 	PROTO_XTR_MAX /* The last one */
 };
 

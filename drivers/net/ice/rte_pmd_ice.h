@@ -78,6 +78,8 @@ union rte_net_ice_proto_xtr_metadata {
 			 doff:4;
 		uint16_t rsvd;
 	} tcp;
+
+	uint32_t ip_ofs;
 };
 
 /* Offset of mbuf dynamic field for protocol extraction data */
@@ -89,6 +91,7 @@ extern uint64_t rte_net_ice_dynflag_proto_xtr_ipv4_mask;
 extern uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_mask;
 extern uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
 extern uint64_t rte_net_ice_dynflag_proto_xtr_tcp_mask;
+extern uint64_t rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
 
 /**
  * The mbuf dynamic field pointer for protocol extraction metadata.
@@ -132,6 +135,13 @@ extern uint64_t rte_net_ice_dynflag_proto_xtr_tcp_mask;
  */
 #define RTE_PKT_RX_DYNF_PROTO_XTR_TCP \
 	(rte_net_ice_dynflag_proto_xtr_tcp_mask)
+
+/**
+ * The mbuf dynamic flag for IP_OFFSET extraction metadata, it is valid
+ * when dev_args 'proto_xtr' has 'ip_offset' specified.
+ */
+#define RTE_PKT_RX_DYNF_PROTO_XTR_IP_OFFSET \
+	(rte_net_ice_dynflag_proto_xtr_ip_offset_mask)
 
 /**
  * Check if mbuf dynamic field for protocol extraction metadata is registered.
@@ -222,6 +232,9 @@ rte_net_ice_dump_proto_xtr_metadata(struct rte_mbuf *m)
 		       data.tcp.rst ? "R" : "",
 		       data.tcp.syn ? "S" : "",
 		       data.tcp.fin ? "F" : "");
+	else if (m->ol_flags & RTE_PKT_RX_DYNF_PROTO_XTR_IP_OFFSET)
+		printf(" - Protocol Offset:ip_offset=%u",
+		       data.ip_ofs);
 }
 
 #ifdef __cplusplus

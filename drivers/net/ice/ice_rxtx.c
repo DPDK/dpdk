@@ -23,27 +23,40 @@ uint64_t rte_net_ice_dynflag_proto_xtr_ipv4_mask;
 uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_mask;
 uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
 uint64_t rte_net_ice_dynflag_proto_xtr_tcp_mask;
+uint64_t rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
 
 static inline uint64_t
-ice_rxdid_to_proto_xtr_ol_flag(uint8_t rxdid)
+ice_rxdid_to_proto_xtr_ol_flag(uint8_t rxdid, bool *chk_valid)
 {
-	static uint64_t *ol_flag_map[] = {
-		[ICE_RXDID_COMMS_AUX_VLAN] =
-				&rte_net_ice_dynflag_proto_xtr_vlan_mask,
-		[ICE_RXDID_COMMS_AUX_IPV4] =
-				&rte_net_ice_dynflag_proto_xtr_ipv4_mask,
-		[ICE_RXDID_COMMS_AUX_IPV6] =
-				&rte_net_ice_dynflag_proto_xtr_ipv6_mask,
-		[ICE_RXDID_COMMS_AUX_IPV6_FLOW] =
-				&rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask,
-		[ICE_RXDID_COMMS_AUX_TCP] =
-				&rte_net_ice_dynflag_proto_xtr_tcp_mask,
+	static struct {
+		uint64_t *ol_flag;
+		bool chk_valid;
+	} ol_flag_map[] = {
+		[ICE_RXDID_COMMS_AUX_VLAN] = {
+			&rte_net_ice_dynflag_proto_xtr_vlan_mask, true },
+		[ICE_RXDID_COMMS_AUX_IPV4] = {
+			&rte_net_ice_dynflag_proto_xtr_ipv4_mask, true },
+		[ICE_RXDID_COMMS_AUX_IPV6] = {
+			&rte_net_ice_dynflag_proto_xtr_ipv6_mask, true },
+		[ICE_RXDID_COMMS_AUX_IPV6_FLOW] = {
+			&rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask, true },
+		[ICE_RXDID_COMMS_AUX_TCP] = {
+			&rte_net_ice_dynflag_proto_xtr_tcp_mask, true },
+		[ICE_RXDID_COMMS_AUX_IP_OFFSET] = {
+			&rte_net_ice_dynflag_proto_xtr_ip_offset_mask, false },
 	};
 	uint64_t *ol_flag;
 
-	ol_flag = rxdid < RTE_DIM(ol_flag_map) ? ol_flag_map[rxdid] : NULL;
+	if (rxdid < RTE_DIM(ol_flag_map)) {
+		ol_flag = ol_flag_map[rxdid].ol_flag;
+		if (!ol_flag)
+			return 0ULL;
 
-	return ol_flag != NULL ? *ol_flag : 0ULL;
+		*chk_valid = ol_flag_map[rxdid].chk_valid;
+		return *ol_flag;
+	}
+
+	return 0ULL;
 }
 
 static inline uint8_t
@@ -56,6 +69,7 @@ ice_proto_xtr_type_to_rxdid(uint8_t xtr_type)
 		[PROTO_XTR_IPV6]      = ICE_RXDID_COMMS_AUX_IPV6,
 		[PROTO_XTR_IPV6_FLOW] = ICE_RXDID_COMMS_AUX_IPV6_FLOW,
 		[PROTO_XTR_TCP]       = ICE_RXDID_COMMS_AUX_TCP,
+		[PROTO_XTR_IP_OFFSET] = ICE_RXDID_COMMS_AUX_IP_OFFSET,
 	};
 
 	return xtr_type < RTE_DIM(rxdid_map) ?
@@ -1312,23 +1326,32 @@ ice_rxd_to_proto_xtr(struct rte_mbuf *mb,
 		     volatile struct ice_32b_rx_flex_desc_comms *desc)
 {
 	uint16_t stat_err = rte_le_to_cpu_16(desc->status_error1);
-	uint32_t metadata;
+	uint32_t metadata = 0;
 	uint64_t ol_flag;
+	bool chk_valid;
 
-	if (unlikely(!(stat_err & ICE_RX_PROTO_XTR_VALID)))
-		return;
-
-	ol_flag = ice_rxdid_to_proto_xtr_ol_flag(desc->rxdid);
+	ol_flag = ice_rxdid_to_proto_xtr_ol_flag(desc->rxdid, &chk_valid);
 	if (unlikely(!ol_flag))
 		return;
 
+	if (chk_valid) {
+		if (stat_err & (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD4_VALID_S))
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux0);
+
+		if (stat_err & (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD5_VALID_S))
+			metadata |=
+				rte_le_to_cpu_16(desc->flex_ts.flex.aux1) << 16;
+	} else {
+		if (rte_le_to_cpu_16(desc->flex_ts.flex.aux0) != 0xFFFF)
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux0);
+		else if (rte_le_to_cpu_16(desc->flex_ts.flex.aux1) != 0xFFFF)
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux1);
+	}
+
+	if (!metadata)
+		return;
+
 	mb->ol_flags |= ol_flag;
-
-	metadata = stat_err & (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD4_VALID_S) ?
-				rte_le_to_cpu_16(desc->flex_ts.flex.aux0) : 0;
-
-	if (likely(stat_err & (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD5_VALID_S)))
-		metadata |= rte_le_to_cpu_16(desc->flex_ts.flex.aux1) << 16;
 
 	*RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(mb) = metadata;
 }
