@@ -842,6 +842,51 @@ ice_acl_create_scen(struct ice_hw *hw, u16 match_width, u16 num_entries,
 }
 
 /**
+ * ice_acl_destroy_scen - Destroy an ACL scenario
+ * @hw: pointer to the HW struct
+ * @scen_id: ID of the remove scenario
+ */
+static enum ice_status ice_acl_destroy_scen(struct ice_hw *hw, u16 scen_id)
+{
+	struct ice_acl_scen *scen, *tmp_scen;
+	struct ice_flow_prof *p, *tmp;
+	enum ice_status status;
+
+	if (!hw->acl_tbl)
+		return ICE_ERR_DOES_NOT_EXIST;
+
+	/* Remove profiles that use "scen_id" scenario */
+	LIST_FOR_EACH_ENTRY_SAFE(p, tmp, &hw->fl_profs[ICE_BLK_ACL],
+				 ice_flow_prof, l_entry)
+		if (p->cfg.scen && p->cfg.scen->id == scen_id) {
+			status = ice_flow_rem_prof(hw, ICE_BLK_ACL, p->id);
+			if (status) {
+				ice_debug(hw, ICE_DBG_ACL, "ice_flow_rem_prof failed. status: %d\n",
+					  status);
+				return status;
+			}
+		}
+
+	/* Call the AQ command to destroy the targeted scenario */
+	status = ice_aq_dealloc_acl_scen(hw, scen_id, NULL);
+	if (status) {
+		ice_debug(hw, ICE_DBG_ACL, "AQ de-allocation of scenario failed. status: %d\n",
+			  status);
+		return status;
+	}
+
+	/* Remove scenario from hw->acl_tbl->scens */
+	LIST_FOR_EACH_ENTRY_SAFE(scen, tmp_scen, &hw->acl_tbl->scens,
+				 ice_acl_scen, list_entry)
+		if (scen->id == scen_id) {
+			LIST_DEL(&scen->list_entry);
+			ice_free(hw, scen);
+		}
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_acl_destroy_tbl - Destroy a previously created LEM table for ACL
  * @hw: pointer to the HW struct
  */
@@ -1116,53 +1161,5 @@ ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx)
 
 	ice_acl_scen_free_entry_idx(scen, entry_idx);
 
-	return status;
-}
-
-/**
- * ice_acl_destroy_scen - Destroy an ACL scenario
- * @hw: pointer to the HW struct
- * @scen_id: ID of the remove scenario
- */
-enum ice_status ice_acl_destroy_scen(struct ice_hw *hw, u16 scen_id)
-{
-	struct ice_acl_scen *scen, *tmp_scen;
-	struct ice_flow_prof *p, *tmp;
-	enum ice_status status;
-
-	if (!hw->acl_tbl)
-		return ICE_ERR_DOES_NOT_EXIST;
-
-	/* Remove profiles that use "scen_id" scenario */
-	LIST_FOR_EACH_ENTRY_SAFE(p, tmp, &hw->fl_profs[ICE_BLK_ACL],
-				 ice_flow_prof, l_entry)
-		if (p->cfg.scen && p->cfg.scen->id == scen_id) {
-			status = ice_flow_rem_prof(hw, ICE_BLK_ACL, p->id);
-			if (status) {
-				ice_debug(hw, ICE_DBG_ACL,
-					  "ice_flow_rem_prof failed. status: %d\n",
-					  status);
-				goto exit;
-			}
-		}
-
-	/* Call the AQ command to destroy the targeted scenario */
-	status = ice_aq_dealloc_acl_scen(hw, scen_id, NULL);
-
-	if (status) {
-		ice_debug(hw, ICE_DBG_ACL,
-			  "AQ de-allocation of scenario failed. status: %d\n",
-			  status);
-		goto exit;
-	}
-
-	/* Remove scenario from hw->acl_tbl->scens */
-	LIST_FOR_EACH_ENTRY_SAFE(scen, tmp_scen, &hw->acl_tbl->scens,
-				 ice_acl_scen, list_entry)
-		if (scen->id == scen_id) {
-			LIST_DEL(&scen->list_entry);
-			ice_free(hw, scen);
-		}
-exit:
 	return status;
 }

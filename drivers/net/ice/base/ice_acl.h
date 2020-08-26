@@ -132,7 +132,6 @@ enum ice_status ice_acl_destroy_tbl(struct ice_hw *hw);
 enum ice_status
 ice_acl_create_scen(struct ice_hw *hw, u16 match_width, u16 num_entries,
 		    u16 *scen_id);
-enum ice_status ice_acl_destroy_scen(struct ice_hw *hw, u16 scen_id);
 enum ice_status
 ice_aq_alloc_acl_tbl(struct ice_hw *hw, struct ice_acl_alloc_tbl *tbl,
 		     struct ice_sq_cd *cd);
