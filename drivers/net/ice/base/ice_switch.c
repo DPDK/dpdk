@@ -5774,7 +5774,7 @@ ice_fill_valid_words(struct ice_adv_lkup_elem *rule,
 			lkup_exts->fv_words[word].prot_id =
 				ice_prot_id_tbl[rule->type].protocol_id;
 			lkup_exts->field_mask[word] =
-				BE16_TO_CPU(((__be16 *)&rule->m_u)[j]);
+				BE16_TO_CPU(((_FORCE_ __be16 *)&rule->m_u)[j]);
 			word++;
 		}
 

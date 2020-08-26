@@ -138,7 +138,7 @@ ice_read_sr_word_aq(struct ice_hw *hw, u16 offset, u16 *data)
 	 * boundary
 	 */
 	status = ice_read_flat_nvm(hw, offset * sizeof(u16), &bytes,
-				   (u8 *)&data_local, true);
+				   (_FORCE_ u8 *)&data_local, true);
 	if (status)
 		return status;
 
