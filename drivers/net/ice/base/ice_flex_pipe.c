@@ -3908,11 +3908,19 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 		es->ref_count = (u16 *)
 			ice_calloc(hw, es->count, sizeof(*es->ref_count));
 
+		if (!es->ref_count)
+			goto err;
+
 		es->written = (u8 *)
 			ice_calloc(hw, es->count, sizeof(*es->written));
+
+		if (!es->written)
+			goto err;
+
 		es->mask_ena = (u32 *)
 			ice_calloc(hw, es->count, sizeof(*es->mask_ena));
-		if (!es->ref_count)
+
+		if (!es->mask_ena)
 			goto err;
 	}
 	return ICE_SUCCESS;
