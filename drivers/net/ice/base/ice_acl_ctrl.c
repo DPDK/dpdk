@@ -354,7 +354,6 @@ ice_acl_create_tbl(struct ice_hw *hw, struct ice_acl_tbl_params *params)
 
 	/* call the AQ command to create the ACL table with these values */
 	status = ice_aq_alloc_acl_tbl(hw, &tbl_alloc, NULL);
-
 	if (status) {
 		if (LE16_TO_CPU(tbl_alloc.buf.resp_buf.alloc_id) <
 		    ICE_AQC_ALLOC_ID_LESS_THAN_4K)
@@ -415,8 +414,7 @@ ice_acl_create_tbl(struct ice_hw *hw, struct ice_acl_tbl_params *params)
 		(tbl->last_entry / ICE_ACL_ENTRY_ALLOC_UNIT);
 
 	/* Indicate available entries in the table */
-	for (i = first_e; i <= last_e; i++)
-		ice_set_bit(i, tbl->avail);
+	ice_bitmap_set(tbl->avail, first_e, last_e - first_e + 1);
 
 	INIT_LIST_HEAD(&tbl->scens);
 out:

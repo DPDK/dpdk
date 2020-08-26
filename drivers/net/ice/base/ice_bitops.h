@@ -376,6 +376,25 @@ static inline void ice_cp_bitmap(ice_bitmap_t *dst, ice_bitmap_t *src, u16 size)
 }
 
 /**
+ * ice_bitmap_set - set a number of bits in bitmap from a starting position
+ * @dst: bitmap destination
+ * @pos: first bit position to set
+ * @num_bits: number of bits to set
+ *
+ * This function sets bits in a bitmap from pos to (pos + num_bits) - 1.
+ * Note that this function assumes it is operating on a bitmap declared using
+ * ice_declare_bitmap.
+ */
+static inline void
+ice_bitmap_set(ice_bitmap_t *dst, u16 pos, u16 num_bits)
+{
+	u16 i;
+
+	for (i = pos; i < num_bits; i++)
+		ice_set_bit(i, dst);
+}
+
+/**
  * ice_cmp_bitmaps - compares two bitmaps.
  * @bmp1: the bitmap to compare
  * @bmp2: the bitmap to compare with bmp1

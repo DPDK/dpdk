@@ -1580,18 +1580,13 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type req_profs,
 	struct ice_seg *ice_seg;
 	struct ice_fv *fv;
 
-	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
-
 	if (req_profs == ICE_PROF_ALL) {
-		u16 i;
-
-		for (i = 0; i < ICE_MAX_NUM_PROFILES; i++)
-			ice_set_bit(i, bm);
+		ice_bitmap_set(bm, 0, ICE_MAX_NUM_PROFILES);
 		return;
 	}
 
+	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
 	ice_zero_bitmap(bm, ICE_MAX_NUM_PROFILES);
-
 	ice_seg = hw->seg;
 	do {
 		enum ice_prof_type prof_type;
