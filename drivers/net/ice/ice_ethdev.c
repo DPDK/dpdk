@@ -4410,15 +4410,15 @@ ice_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 	u16 build;
 	int ret;
 
-	ver = hw->nvm.orom.major;
-	patch = hw->nvm.orom.patch;
-	build = hw->nvm.orom.build;
+	ver = hw->flash.orom.major;
+	patch = hw->flash.orom.patch;
+	build = hw->flash.orom.build;
 
 	ret = snprintf(fw_version, fw_size,
 			"%x.%02x 0x%08x %d.%d.%d",
-			hw->nvm.major_ver,
-			hw->nvm.minor_ver,
-			hw->nvm.eetrack,
+			hw->flash.nvm.major,
+			hw->flash.nvm.minor,
+			hw->flash.nvm.eetrack,
 			ver, build, patch);
 
 	/* add the size of '\0' */
@@ -4516,7 +4516,7 @@ ice_get_eeprom_length(struct rte_eth_dev *dev)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	return hw->nvm.flash_size;
+	return hw->flash.flash_size;
 }
 
 static int

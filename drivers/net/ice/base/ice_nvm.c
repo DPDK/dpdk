@@ -77,7 +77,7 @@ ice_read_flat_nvm(struct ice_hw *hw, u32 offset, u32 *length, u8 *data,
 	*length = 0;
 
 	/* Verify the length of the read if this is for the Shadow RAM */
-	if (read_shadow_ram && ((offset + inlen) > (hw->nvm.sr_words * 2u))) {
+	if (read_shadow_ram && ((offset + inlen) > (hw->flash.sr_words * 2u))) {
 		ice_debug(hw, ICE_DBG_NVM, "NVM error: requested data is beyond Shadow RAM limit\n");
 		return ICE_ERR_PARAM;
 	}
@@ -190,7 +190,7 @@ ice_acquire_nvm(struct ice_hw *hw, enum ice_aq_res_access_type access)
 {
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
-	if (hw->nvm.blank_nvm_mode)
+	if (hw->flash.blank_nvm_mode)
 		return ICE_SUCCESS;
 
 	return ice_acquire_res(hw, ICE_NVM_RES_ID, access, ICE_NVM_TIMEOUT);
@@ -206,7 +206,7 @@ void ice_release_nvm(struct ice_hw *hw)
 {
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
-	if (hw->nvm.blank_nvm_mode)
+	if (hw->flash.blank_nvm_mode)
 		return;
 
 	ice_release_res(hw, ICE_NVM_RES_ID);
@@ -359,16 +359,55 @@ ice_read_pba_string(struct ice_hw *hw, u8 *pba_num, u32 pba_num_size)
 }
 
 /**
+ * ice_get_nvm_ver_info - Read NVM version information
+ * @hw: pointer to the HW struct
+ * @nvm: pointer to NVM info structure
+ *
+ * Read the NVM EETRACK ID and map version of the main NVM image bank, filling
+ * in the nvm info structure.
+ */
+static enum ice_status
+ice_get_nvm_ver_info(struct ice_hw *hw, struct ice_nvm_info *nvm)
+{
+	u16 eetrack_lo, eetrack_hi, ver;
+	enum ice_status status;
+
+	status = ice_read_sr_word(hw, ICE_SR_NVM_DEV_STARTER_VER, &ver);
+	if (status) {
+		ice_debug(hw, ICE_DBG_NVM, "Failed to read DEV starter version.\n");
+		return status;
+	}
+	nvm->major = (ver & ICE_NVM_VER_HI_MASK) >> ICE_NVM_VER_HI_SHIFT;
+	nvm->minor = (ver & ICE_NVM_VER_LO_MASK) >> ICE_NVM_VER_LO_SHIFT;
+
+	status = ice_read_sr_word(hw, ICE_SR_NVM_EETRACK_LO, &eetrack_lo);
+	if (status) {
+		ice_debug(hw, ICE_DBG_NVM, "Failed to read EETRACK lo.\n");
+		return status;
+	}
+	status = ice_read_sr_word(hw, ICE_SR_NVM_EETRACK_HI, &eetrack_hi);
+	if (status) {
+		ice_debug(hw, ICE_DBG_NVM, "Failed to read EETRACK hi.\n");
+		return status;
+	}
+
+	nvm->eetrack = (eetrack_hi << 16) | eetrack_lo;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_get_orom_ver_info - Read Option ROM version information
  * @hw: pointer to the HW struct
+ * @orom: pointer to Option ROM info structure
  *
  * Read the Combo Image version data from the Boot Configuration TLV and fill
  * in the option ROM version data.
  */
-static enum ice_status ice_get_orom_ver_info(struct ice_hw *hw)
+static enum ice_status
+ice_get_orom_ver_info(struct ice_hw *hw, struct ice_orom_info *orom)
 {
 	u16 combo_hi, combo_lo, boot_cfg_tlv, boot_cfg_tlv_len;
-	struct ice_orom_info *orom = &hw->nvm.orom;
 	enum ice_status status;
 	u32 combo_ver;
 
@@ -455,7 +494,7 @@ static enum ice_status ice_discover_flash_size(struct ice_hw *hw)
 
 	ice_debug(hw, ICE_DBG_NVM, "Predicted flash size is %u bytes\n", max_size);
 
-	hw->nvm.flash_size = max_size;
+	hw->flash.flash_size = max_size;
 
 err_read_flat_nvm:
 	ice_release_nvm(hw);
@@ -472,8 +511,7 @@ err_read_flat_nvm:
  */
 enum ice_status ice_init_nvm(struct ice_hw *hw)
 {
-	struct ice_nvm_info *nvm = &hw->nvm;
-	u16 eetrack_lo, eetrack_hi, ver;
+	struct ice_flash_info *flash = &hw->flash;
 	enum ice_status status;
 	u32 fla, gens_stat;
 	u8 sr_size;
@@ -487,70 +525,32 @@ enum ice_status ice_init_nvm(struct ice_hw *hw)
 	sr_size = (gens_stat & GLNVM_GENS_SR_SIZE_M) >> GLNVM_GENS_SR_SIZE_S;
 
 	/* Switching to words (sr_size contains power of 2) */
-	nvm->sr_words = BIT(sr_size) * ICE_SR_WORDS_IN_1KB;
+	flash->sr_words = BIT(sr_size) * ICE_SR_WORDS_IN_1KB;
 
 	/* Check if we are in the normal or blank NVM programming mode */
 	fla = rd32(hw, GLNVM_FLA);
 	if (fla & GLNVM_FLA_LOCKED_M) { /* Normal programming mode */
-		nvm->blank_nvm_mode = false;
+		flash->blank_nvm_mode = false;
 	} else {
 		/* Blank programming mode */
-		nvm->blank_nvm_mode = true;
+		flash->blank_nvm_mode = true;
 		ice_debug(hw, ICE_DBG_NVM, "NVM init error: unsupported blank mode.\n");
 		return ICE_ERR_NVM_BLANK_MODE;
 	}
 
-	status = ice_read_sr_word(hw, ICE_SR_NVM_DEV_STARTER_VER, &ver);
-	if (status) {
-		ice_debug(hw, ICE_DBG_INIT,
-			  "Failed to read DEV starter version.\n");
-		return status;
-	}
-	nvm->major_ver = (ver & ICE_NVM_VER_HI_MASK) >> ICE_NVM_VER_HI_SHIFT;
-	nvm->minor_ver = (ver & ICE_NVM_VER_LO_MASK) >> ICE_NVM_VER_LO_SHIFT;
-
-	status = ice_read_sr_word(hw, ICE_SR_NVM_EETRACK_LO, &eetrack_lo);
-	if (status) {
-		ice_debug(hw, ICE_DBG_INIT, "Failed to read EETRACK lo.\n");
-		return status;
-	}
-	status = ice_read_sr_word(hw, ICE_SR_NVM_EETRACK_HI, &eetrack_hi);
-	if (status) {
-		ice_debug(hw, ICE_DBG_INIT, "Failed to read EETRACK hi.\n");
-		return status;
-	}
-
-	nvm->eetrack = (eetrack_hi << 16) | eetrack_lo;
-
 	status = ice_discover_flash_size(hw);
 	if (status) {
-		ice_debug(hw, ICE_DBG_NVM,
-			  "NVM init error: failed to discover flash size.\n");
+		ice_debug(hw, ICE_DBG_NVM, "NVM init error: failed to discover flash size.\n");
 		return status;
 	}
 
-	switch (hw->device_id) {
-	/* the following devices do not have boot_cfg_tlv yet */
-	case ICE_DEV_ID_E822C_BACKPLANE:
-	case ICE_DEV_ID_E822C_QSFP:
-	case ICE_DEV_ID_E822C_10G_BASE_T:
-	case ICE_DEV_ID_E822C_SGMII:
-	case ICE_DEV_ID_E822C_SFP:
-	case ICE_DEV_ID_E822L_BACKPLANE:
-	case ICE_DEV_ID_E822L_SFP:
-	case ICE_DEV_ID_E822L_10G_BASE_T:
-	case ICE_DEV_ID_E822L_SGMII:
-	case ICE_DEV_ID_E823L_BACKPLANE:
-	case ICE_DEV_ID_E823L_SFP:
-	case ICE_DEV_ID_E823L_10G_BASE_T:
-	case ICE_DEV_ID_E823L_1GBE:
-	case ICE_DEV_ID_E823L_QSFP:
+	status = ice_get_nvm_ver_info(hw, &flash->nvm);
+	if (status) {
+		ice_debug(hw, ICE_DBG_INIT, "Failed to read NVM info.\n");
 		return status;
-	default:
-		break;
 	}
 
-	status = ice_get_orom_ver_info(hw);
+	status = ice_get_orom_ver_info(hw, &flash->orom);
 	if (status) {
 		ice_debug(hw, ICE_DBG_INIT, "Failed to read Option ROM info.\n");
 		return status;

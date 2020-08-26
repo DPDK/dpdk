@@ -675,13 +675,14 @@ static void ice_get_itr_intrl_gran(struct ice_hw *hw)
 void ice_print_rollback_msg(struct ice_hw *hw)
 {
 	char nvm_str[ICE_NVM_VER_LEN] = { 0 };
-	struct ice_nvm_info *nvm = &hw->nvm;
 	struct ice_orom_info *orom;
+	struct ice_nvm_info *nvm;
 
-	orom = &nvm->orom;
+	orom = &hw->flash.orom;
+	nvm = &hw->flash.nvm;
 
 	SNPRINTF(nvm_str, sizeof(nvm_str), "%x.%02x 0x%x %d.%d.%d",
-		 nvm->major_ver, nvm->minor_ver, nvm->eetrack, orom->major,
+		 nvm->major, nvm->minor, nvm->eetrack, orom->major,
 		 orom->build, orom->patch);
 	ice_warn(hw,
 		 "Firmware rollback mode detected. Current version is NVM: %s, FW: %d.%d. Device may exhibit limited functionality. Refer to the Intel(R) Ethernet Adapters and Devices User Guide for details on firmware rollback mode\n",
