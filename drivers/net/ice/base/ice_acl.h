@@ -172,9 +172,6 @@ enum ice_status
 ice_aq_dealloc_acl_cntrs(struct ice_hw *hw, struct ice_acl_cntrs *cntrs,
 			 struct ice_sq_cd *cd);
 enum ice_status
-ice_aq_query_acl_cntrs(struct ice_hw *hw, u8 bank, u16 index, u64 *cntr_val,
-		       struct ice_sq_cd *cd);
-enum ice_status
 ice_prog_acl_prof_ranges(struct ice_hw *hw, u8 prof_id,
 			 struct ice_aqc_acl_profile_ranges *buf,
 			 struct ice_sq_cd *cd);

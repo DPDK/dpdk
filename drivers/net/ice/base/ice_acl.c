@@ -435,42 +435,6 @@ ice_aq_dealloc_acl_cntrs(struct ice_hw *hw, struct ice_acl_cntrs *cntrs,
 }
 
 /**
- * ice_aq_query_acl_cntrs - query ACL counter
- * @hw: pointer to the HW struct
- * @bank: queries counter bank
- * @index: queried counter index
- * @cntr_val: pointer to counter or packet counter value
- * @cd: pointer to command details structure or NULL
- *
- * Query ACL counter (direct 0x0C27)
- */
-enum ice_status
-ice_aq_query_acl_cntrs(struct ice_hw *hw, u8 bank, u16 index, u64 *cntr_val,
-		       struct ice_sq_cd *cd)
-{
-	struct ice_aqc_acl_query_counter *cmd;
-	struct ice_aq_desc desc;
-	enum ice_status status;
-
-	if (!cntr_val)
-		return ICE_ERR_PARAM;
-
-	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_query_acl_counter);
-	cmd = &desc.params.query_counter;
-	cmd->counter_index = CPU_TO_LE16(index);
-	cmd->counter_bank = bank;
-	status = ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
-	if (!status) {
-		__le64 resp_val = 0;
-
-		ice_memcpy(&resp_val, cmd->ops.resp.val,
-			   sizeof(cmd->ops.resp.val), ICE_NONDMA_TO_NONDMA);
-		*cntr_val = LE64_TO_CPU(resp_val);
-	}
-	return status;
-}
-
-/**
  * ice_prog_acl_prof_ranges - program ACL profile ranges
  * @hw: pointer to the HW struct
  * @prof_id: programmed or updated profile ID
