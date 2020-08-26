@@ -2818,7 +2818,7 @@ ice_flow_acl_add_scen_entry_sync(struct ice_hw *hw, struct ice_flow_prof *prof,
 	if (!entry || !(*entry) || !prof)
 		return ICE_ERR_BAD_PTR;
 
-	e = *(entry);
+	e = *entry;
 
 	do_chg_rng_chk = false;
 	if (e->range_buf) {
@@ -3236,8 +3236,7 @@ ice_flow_add_fld_raw(struct ice_flow_seg_info *seg, u16 off, u8 len,
 	(ICE_FLOW_SEG_HDR_IPV4 | ICE_FLOW_SEG_HDR_IPV6)
 
 #define ICE_FLOW_RSS_SEG_HDR_L4_MASKS \
-	(ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_UDP | \
-	 ICE_FLOW_SEG_HDR_SCTP)
+	(ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_SCTP)
 
 #define ICE_FLOW_RSS_SEG_HDR_VAL_MASKS \
 	(ICE_FLOW_RSS_SEG_HDR_L2_MASKS | \
@@ -3573,7 +3572,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	if (status)
 		goto exit;
 
-	/* don't do RSS for GTPU outer */
+	/* Don't do RSS for GTPU Outer */
 	if (segs_cnt == ICE_RSS_OUTER_HEADERS &&
 	    segs[segs_cnt - 1].hdrs & ICE_FLOW_SEG_HDR_GTPU) {
 		status = ICE_SUCCESS;
@@ -3696,7 +3695,6 @@ ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	ice_acquire_lock(&hw->rss_locks);
 	status = ice_add_rss_cfg_sync(hw, vsi_handle, hashed_flds, addl_hdrs,
 				      ICE_RSS_OUTER_HEADERS, symm);
-
 	if (!status)
 		status = ice_add_rss_cfg_sync(hw, vsi_handle, hashed_flds,
 					      addl_hdrs, ICE_RSS_INNER_HEADERS,
@@ -3736,6 +3734,7 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	if (status)
 		goto out;
 
+	/* Don't do RSS for GTPU Outer */
 	if (segs_cnt == ICE_RSS_OUTER_HEADERS &&
 	    segs[segs_cnt - 1].hdrs & ICE_FLOW_SEG_HDR_GTPU) {
 		status = ICE_SUCCESS;
