@@ -1435,14 +1435,14 @@ ice_sched_find_node_in_subtree(struct ice_hw *hw, struct ice_sched_node *base,
 }
 
 /**
- * ice_sched_get_free_qgrp - Scan all Q group siblings and find a free node
+ * ice_sched_get_free_qgrp - Scan all queue group siblings and find a free node
  * @pi: port information structure
  * @vsi_node: software VSI handle
- * @qgrp_node: first Q group node identified for scanning
+ * @qgrp_node: first queue group node identified for scanning
  * @owner: LAN or RDMA
  *
- * This function retrieves a free LAN or RDMA Q group node by scanning
- * qgrp_node and its siblings for the Q group with the fewest number
+ * This function retrieves a free LAN or RDMA queue group node by scanning
+ * qgrp_node and its siblings for the queue group with the fewest number
  * of queues currently assigned.
  */
 static struct ice_sched_node *
@@ -1459,17 +1459,17 @@ ice_sched_get_free_qgrp(struct ice_port_info *pi,
 	if (!min_children)
 		return qgrp_node;
 	min_qgrp = qgrp_node;
-	/* scan all Q groups until find a node which has less than the
-	 * minimum number of children. This way all Q group nodes get
+	/* scan all queue groups until find a node which has less than the
+	 * minimum number of children. This way all queue group nodes get
 	 * equal number of shares and active. The bandwidth will be equally
-	 * distributed across all Qs.
+	 * distributed across all queues.
 	 */
 	while (qgrp_node) {
 		/* make sure the qgroup node is part of the VSI subtree */
 		if (ice_sched_find_node_in_subtree(pi->hw, vsi_node, qgrp_node))
 			if (qgrp_node->num_children < min_children &&
 			    qgrp_node->owner == owner) {
-				/* replace the new min Q group node */
+				/* replace the new min queue group node */
 				min_qgrp = qgrp_node;
 				min_children = min_qgrp->num_children;
 				/* break if it has no children, */

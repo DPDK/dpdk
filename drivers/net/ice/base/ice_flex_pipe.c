@@ -5228,7 +5228,7 @@ ice_prof_tcam_ena_dis(struct ice_hw *hw, enum ice_block blk, bool enable,
 
 	/* for re-enabling, reallocate a TCAM */
 	/* for entries with empty attribute masks, allocate entry from
-	 * the bottom of the tcam table; otherwise, allocate from the
+	 * the bottom of the TCAM table; otherwise, allocate from the
 	 * top of the table in order to give it higher priority
 	 */
 	status = ice_alloc_tcam_ent(hw, blk, tcam->attr.mask == 0,
@@ -5439,7 +5439,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 
 		/* allocate the TCAM entry index */
 		/* for entries with empty attribute masks, allocate entry from
-		 * the bottom of the tcam table; otherwise, allocate from the
+		 * the bottom of the TCAM table; otherwise, allocate from the
 		 * top of the table in order to give it higher priority
 		 */
 		status = ice_alloc_tcam_ent(hw, blk, map->attr[i].mask == 0,
@@ -5872,7 +5872,7 @@ ice_rem_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 
 			if (last_profile) {
 				/* If there are no profiles left for this VSIG,
-				 * then simply remove the the VSIG.
+				 * then simply remove the VSIG.
 				 */
 				status = ice_rem_vsig(hw, blk, vsig, &chg);
 				if (status)
