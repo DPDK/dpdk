@@ -1591,7 +1591,7 @@ static void ice_get_recp_to_prof_map(struct ice_hw *hw)
 	ice_declare_bitmap(r_bitmap, ICE_MAX_NUM_RECIPES);
 	u16 i;
 
-	for (i = 0; i < ICE_MAX_NUM_PROFILES; i++) {
+	for (i = 0; i < hw->switch_info->max_used_prof_index + 1; i++) {
 		u16 j;
 
 		ice_zero_bitmap(profile_to_recipe[i], ICE_MAX_NUM_RECIPES);

@@ -792,6 +792,7 @@ struct ice_switch_info {
 	struct LIST_HEAD_TYPE vsi_list_map_head;
 	struct ice_sw_recipe *recp_list;
 	u16 prof_res_bm_init;
+	u16 max_used_prof_index;
 
 	ice_declare_bitmap(prof_res_bm[ICE_MAX_NUM_PROFILES], ICE_MAX_FV_WORDS);
 };
