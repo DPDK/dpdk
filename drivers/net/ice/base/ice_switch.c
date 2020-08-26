@@ -1823,8 +1823,7 @@ enum ice_status ice_free_sw(struct ice_hw *hw, u16 sw_id, u16 counter_id)
 	status = ice_aq_alloc_free_res(hw, 1, counter_buf, buf_len,
 				       ice_aqc_opc_free_res, NULL);
 	if (status) {
-		ice_debug(hw, ICE_DBG_SW,
-			  "VEB counter resource could not be freed\n");
+		ice_debug(hw, ICE_DBG_SW, "VEB counter resource could not be freed\n");
 		ret_status = status;
 	}
 
@@ -2218,8 +2217,7 @@ ice_aq_add_update_mir_rule(struct ice_hw *hw, u16 rule_type, u16 dest_vsi,
 			return ICE_ERR_PARAM;
 		break;
 	default:
-		ice_debug(hw, ICE_DBG_SW,
-			  "Error due to unsupported rule_type %u\n", rule_type);
+		ice_debug(hw, ICE_DBG_SW, "Error due to unsupported rule_type %u\n", rule_type);
 		return ICE_ERR_OUT_OF_RANGE;
 	}
 
@@ -2241,8 +2239,7 @@ ice_aq_add_update_mir_rule(struct ice_hw *hw, u16 rule_type, u16 dest_vsi,
 			 * than ICE_MAX_VSI, if not return with error.
 			 */
 			if (id >= ICE_MAX_VSI) {
-				ice_debug(hw, ICE_DBG_SW,
-					  "Error VSI index (%u) out-of-range\n",
+				ice_debug(hw, ICE_DBG_SW, "Error VSI index (%u) out-of-range\n",
 					  id);
 				ice_free(hw, mr_list);
 				return ICE_ERR_OUT_OF_RANGE;
@@ -2649,8 +2646,7 @@ ice_init_port_info(struct ice_port_info *pi, u16 vsi_port_num, u8 type,
 		pi->dflt_rx_vsi_num = ICE_DFLT_VSI_INVAL;
 		break;
 	default:
-		ice_debug(pi->hw, ICE_DBG_SW,
-			  "incorrect VSI/port type received\n");
+		ice_debug(pi->hw, ICE_DBG_SW, "incorrect VSI/port type received\n");
 		break;
 	}
 }
@@ -2714,8 +2710,7 @@ enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw)
 			case ICE_AQC_GET_SW_CONF_RESP_PHYS_PORT:
 			case ICE_AQC_GET_SW_CONF_RESP_VIRT_PORT:
 				if (j == num_total_ports) {
-					ice_debug(hw, ICE_DBG_SW,
-						  "more ports than expected\n");
+					ice_debug(hw, ICE_DBG_SW, "more ports than expected\n");
 					status = ICE_ERR_CFG;
 					goto out;
 				}
@@ -3709,8 +3704,7 @@ ice_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 		tmp_fltr_info.vsi_handle = rem_vsi_handle;
 		status = ice_update_pkt_fwd_rule(hw, &tmp_fltr_info);
 		if (status) {
-			ice_debug(hw, ICE_DBG_SW,
-				  "Failed to update pkt fwd rule to FWD_TO_VSI on HW VSI %d, error %d\n",
+			ice_debug(hw, ICE_DBG_SW, "Failed to update pkt fwd rule to FWD_TO_VSI on HW VSI %d, error %d\n",
 				  tmp_fltr_info.fwd_id.hw_vsi_id, status);
 			return status;
 		}
@@ -3726,8 +3720,7 @@ ice_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 		/* Remove the VSI list since it is no longer used */
 		status = ice_remove_vsi_list_rule(hw, vsi_list_id, lkup_type);
 		if (status) {
-			ice_debug(hw, ICE_DBG_SW,
-				  "Failed to remove VSI list %d, error %d\n",
+			ice_debug(hw, ICE_DBG_SW, "Failed to remove VSI list %d, error %d\n",
 				  vsi_list_id, status);
 			return status;
 		}
@@ -4188,8 +4181,7 @@ ice_add_vlan_internal(struct ice_hw *hw, struct ice_sw_recipe *recp_list,
 		 */
 		if (v_list_itr->vsi_count > 1 &&
 		    v_list_itr->vsi_list_info->ref_cnt > 1) {
-			ice_debug(hw, ICE_DBG_SW,
-				  "Invalid configuration: Optimization to reuse VSI list with more than one VSI is not being done yet\n");
+			ice_debug(hw, ICE_DBG_SW, "Invalid configuration: Optimization to reuse VSI list with more than one VSI is not being done yet\n");
 			status = ICE_ERR_CFG;
 			goto exit;
 		}
@@ -5403,8 +5395,7 @@ ice_remove_vsi_lkup_fltr(struct ice_hw *hw, u16 vsi_handle,
 		ice_remove_eth_mac(hw, &remove_list_head);
 		break;
 	case ICE_SW_LKUP_DFLT:
-		ice_debug(hw, ICE_DBG_SW,
-			  "Remove filters for this lookup type hasn't been implemented yet\n");
+		ice_debug(hw, ICE_DBG_SW, "Remove filters for this lookup type hasn't been implemented yet\n");
 		break;
 	case ICE_SW_LKUP_LAST:
 		ice_debug(hw, ICE_DBG_SW, "Unsupported lookup type\n");
@@ -5526,8 +5517,7 @@ ice_free_res_cntr(struct ice_hw *hw, u8 type, u8 alloc_shared, u16 num_items,
 	status = ice_aq_alloc_free_res(hw, 1, buf, buf_len,
 				       ice_aqc_opc_free_res, NULL);
 	if (status)
-		ice_debug(hw, ICE_DBG_SW,
-			  "counter resource could not be freed\n");
+		ice_debug(hw, ICE_DBG_SW, "counter resource could not be freed\n");
 
 	ice_free(hw, buf);
 	return status;
@@ -6306,8 +6296,7 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 			 * that can be used.
 			 */
 			if (chain_idx >= ICE_MAX_FV_WORDS) {
-				ice_debug(hw, ICE_DBG_SW,
-					  "No chain index available\n");
+				ice_debug(hw, ICE_DBG_SW, "No chain index available\n");
 				status = ICE_ERR_MAX_LIMIT;
 				goto err_unroll;
 			}
@@ -7948,8 +7937,7 @@ ice_adv_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 		 */
 		status = ice_update_pkt_fwd_rule(hw, &tmp_fltr);
 		if (status) {
-			ice_debug(hw, ICE_DBG_SW,
-				  "Failed to update pkt fwd rule to FWD_TO_VSI on HW VSI %d, error %d\n",
+			ice_debug(hw, ICE_DBG_SW, "Failed to update pkt fwd rule to FWD_TO_VSI on HW VSI %d, error %d\n",
 				  tmp_fltr.fwd_id.hw_vsi_id, status);
 			return status;
 		}
@@ -7958,8 +7946,7 @@ ice_adv_rem_update_vsi_list(struct ice_hw *hw, u16 vsi_handle,
 		/* Remove the VSI list since it is no longer used */
 		status = ice_remove_vsi_list_rule(hw, vsi_list_id, lkup_type);
 		if (status) {
-			ice_debug(hw, ICE_DBG_SW,
-				  "Failed to remove VSI list %d, error %d\n",
+			ice_debug(hw, ICE_DBG_SW, "Failed to remove VSI list %d, error %d\n",
 				  vsi_list_id, status);
 			return status;
 		}

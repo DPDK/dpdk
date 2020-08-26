@@ -357,12 +357,10 @@ ice_acl_create_tbl(struct ice_hw *hw, struct ice_acl_tbl_params *params)
 	if (status) {
 		if (LE16_TO_CPU(tbl_alloc.buf.resp_buf.alloc_id) <
 		    ICE_AQC_ALLOC_ID_LESS_THAN_4K)
-			ice_debug(hw, ICE_DBG_ACL,
-				  "Alloc ACL table failed. Unavailable resource.\n");
+			ice_debug(hw, ICE_DBG_ACL, "Alloc ACL table failed. Unavailable resource.\n");
 		else
-			ice_debug(hw, ICE_DBG_ACL,
-				  "AQ allocation of ACL failed with error. status: %d\n",
-				   status);
+			ice_debug(hw, ICE_DBG_ACL, "AQ allocation of ACL failed with error. status: %d\n",
+				  status);
 		return status;
 	}
 
@@ -402,8 +400,7 @@ ice_acl_create_tbl(struct ice_hw *hw, struct ice_acl_tbl_params *params)
 	if (status) {
 		ice_free(hw, tbl);
 		hw->acl_tbl = NULL;
-		ice_debug(hw, ICE_DBG_ACL,
-			  "Initialization of TCAM entries failed. status: %d\n",
+		ice_debug(hw, ICE_DBG_ACL, "Initialization of TCAM entries failed. status: %d\n",
 			  status);
 		goto out;
 	}
@@ -830,8 +827,7 @@ ice_acl_create_scen(struct ice_hw *hw, u16 match_width, u16 num_entries,
 
 	status = ice_aq_alloc_acl_scen(hw, scen_id, &scen_buf, NULL);
 	if (status) {
-		ice_debug(hw, ICE_DBG_ACL,
-			  "AQ allocation of ACL scenario failed. status: %d\n",
+		ice_debug(hw, ICE_DBG_ACL, "AQ allocation of ACL scenario failed. status: %d\n",
 			  status);
 		ice_free(hw, scen);
 		return status;
@@ -898,10 +894,8 @@ enum ice_status ice_acl_destroy_tbl(struct ice_hw *hw)
 
 	/* call the AQ command to destroy the ACL table */
 	status = ice_aq_dealloc_acl_tbl(hw, hw->acl_tbl->id, &resp_buf, NULL);
-
 	if (status) {
-		ice_debug(hw, ICE_DBG_ACL,
-			  "AQ de-allocation of ACL failed. status: %d\n",
+		ice_debug(hw, ICE_DBG_ACL, "AQ de-allocation of ACL failed. status: %d\n",
 			  status);
 		return status;
 	}
@@ -977,8 +971,7 @@ ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
 		status = ice_aq_program_acl_entry(hw, entry_tcam + offset, idx,
 						  &buf, NULL);
 		if (status) {
-			ice_debug(hw, ICE_DBG_ACL,
-				  "aq program acl entry failed status: %d\n",
+			ice_debug(hw, ICE_DBG_ACL, "aq program acl entry failed status: %d\n",
 				  status);
 			goto out;
 		}
@@ -1049,8 +1042,7 @@ ice_acl_prog_act(struct ice_hw *hw, struct ice_acl_scen *scen,
 			status = ice_aq_program_actpair(hw, i, idx, &act_buf,
 							NULL);
 			if (status) {
-				ice_debug(hw, ICE_DBG_ACL,
-					  "program actpair failed status: %d\n",
+				ice_debug(hw, ICE_DBG_ACL, "program actpair failed status: %d\n",
 					  status);
 				break;
 			}
@@ -1101,8 +1093,7 @@ ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx)
 		status = ice_aq_program_acl_entry(hw, entry_tcam + i, idx, &buf,
 						  NULL);
 		if (status)
-			ice_debug(hw, ICE_DBG_ACL,
-				  "AQ program ACL entry failed status: %d\n",
+			ice_debug(hw, ICE_DBG_ACL, "AQ program ACL entry failed status: %d\n",
 				  status);
 	}
 
@@ -1118,8 +1109,7 @@ ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx)
 			status = ice_aq_program_actpair(hw, i, idx, &act_buf,
 							NULL);
 			if (status)
-				ice_debug(hw, ICE_DBG_ACL,
-					  "program actpair failed.status: %d\n",
+				ice_debug(hw, ICE_DBG_ACL, "program actpair failed status: %d\n",
 					  status);
 		}
 	}
