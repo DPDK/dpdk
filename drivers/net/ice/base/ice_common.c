@@ -2749,6 +2749,12 @@ enum ice_fec_mode ice_caps_to_fec_mode(u8 caps, u8 fec_options)
 	return ICE_FEC_NONE;
 }
 
+/**
+ * ice_cfg_phy_fc - Configure PHY FC data based on FC mode
+ * @pi: port information structure
+ * @cfg: PHY configuration data to set FC mode
+ * @req_mode: FC mode to configure
+ */
 static enum ice_status
 ice_cfg_phy_fc(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 	       enum ice_fc_mode req_mode)
