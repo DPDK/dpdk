@@ -5382,6 +5382,26 @@ void ice_sched_replay_agg_vsi_preinit(struct ice_hw *hw)
 }
 
 /**
+ * ice_sched_replay_root_node_bw - replay root node BW
+ * @pi: port information structure
+ *
+ * Replay root node BW settings.
+ */
+enum ice_status ice_sched_replay_root_node_bw(struct ice_port_info *pi)
+{
+	enum ice_status status = ICE_SUCCESS;
+
+	if (!pi->hw)
+		return ICE_ERR_PARAM;
+	ice_acquire_lock(&pi->sched_lock);
+
+	status = ice_sched_replay_node_bw(pi->hw, pi->root,
+					  &pi->root_node_bw_t_info);
+	ice_release_lock(&pi->sched_lock);
+	return status;
+}
+
+/**
  * ice_sched_replay_tc_node_bw - replay TC node(s) BW
  * @pi: port information structure
  *

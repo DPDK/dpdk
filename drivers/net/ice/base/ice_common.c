@@ -4382,6 +4382,7 @@ static bool ice_is_main_vsi(struct ice_hw *hw, u16 vsi_handle)
 static enum ice_status
 ice_replay_pre_init(struct ice_hw *hw, struct ice_switch_info *sw)
 {
+	enum ice_status status;
 	u8 i;
 
 	/* Delete old entries from replay filter list head if there is any */
@@ -4394,6 +4395,10 @@ ice_replay_pre_init(struct ice_hw *hw, struct ice_switch_info *sw)
 		LIST_REPLACE_INIT(&sw->recp_list[i].filt_rules,
 				  &sw->recp_list[i].filt_replay_rules);
 	ice_sched_replay_agg_vsi_preinit(hw);
+
+	status = ice_sched_replay_root_node_bw(hw->port_info);
+	if (status)
+		return status;
 
 	return ice_sched_replay_tc_node_bw(hw->port_info);
 }
