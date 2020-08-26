@@ -1202,6 +1202,153 @@ static const u8 dummy_ipv6_l2tpv3_pkt[] = {
 	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
 };
 
+static const struct ice_dummy_pkt_offsets dummy_qinq_ipv4_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_VLAN_EX,		14 },
+	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_IPV4_OFOS,	22 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_qinq_ipv4_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x91, 0x00,
+
+	0x00, 0x00, 0x81, 0x00, /* ICE_VLAN_EX 14 */
+	0x00, 0x00, 0x08, 0x00, /* ICE_VLAN_OFOS 18 */
+
+	0x45, 0x00, 0x00, 0x1c, /* ICE_IPV4_OFOS 22 */
+	0x00, 0x01, 0x00, 0x00,
+	0x00, 0x11, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_UDP_ILOS 42 */
+	0x00, 0x08, 0x00, 0x00,
+
+	0x00, 0x00,	/* 2 bytes for 4 byte alignment */
+};
+
+static const struct ice_dummy_pkt_offsets dummy_qinq_ipv6_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_VLAN_EX,		14 },
+	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_IPV6_OFOS,	22 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_qinq_ipv6_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x91, 0x00,
+
+	0x00, 0x00, 0x81, 0x00, /* ICE_VLAN_EX 14 */
+	0x00, 0x00, 0x86, 0xDD, /* ICE_VLAN_OFOS 18 */
+
+	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 22 */
+	0x00, 0x10, 0x11, 0x00, /* Next header UDP */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* ICE_UDP_ILOS 62 */
+	0x00, 0x10, 0x00, 0x00,
+
+	0x00, 0x00, 0x00, 0x00, /* needed for ESP packets */
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00,	/* 2 bytes for 4 byte alignment */
+};
+
+static const struct ice_dummy_pkt_offsets dummy_qinq_pppoe_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_VLAN_EX,		14 },
+	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_PPPOE,		22 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const
+struct ice_dummy_pkt_offsets dummy_qinq_pppoe_ipv4_packet_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_VLAN_EX,		14 },
+	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_PPPOE,		22 },
+	{ ICE_IPV4_OFOS,	30 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_qinq_pppoe_ipv4_pkt[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x91, 0x00,
+
+	0x00, 0x00, 0x81, 0x00, /* ICE_VLAN_EX 14 */
+	0x00, 0x00, 0x88, 0x64, /* ICE_VLAN_OFOS 18 */
+
+	0x11, 0x00, 0x00, 0x00, /* ICE_PPPOE 22 */
+	0x00, 0x16,
+
+	0x00, 0x21,		/* PPP Link Layer 28 */
+
+	0x45, 0x00, 0x00, 0x14, /* ICE_IPV4_IL 30 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00,	/* 2 bytes for 4 byte alignment */
+};
+
+static const
+struct ice_dummy_pkt_offsets dummy_qinq_pppoe_packet_ipv6_offsets[] = {
+	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
+	{ ICE_VLAN_EX,		14},
+	{ ICE_VLAN_OFOS,	18 },
+	{ ICE_PPPOE,		22 },
+	{ ICE_IPV6_OFOS,	30 },
+	{ ICE_PROTOCOL_LAST,	0 },
+};
+
+static const u8 dummy_qinq_pppoe_ipv6_packet[] = {
+	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x91, 0x00,		/* ICE_ETYPE_OL 12 */
+
+	0x00, 0x00, 0x81, 0x00, /* ICE_VLAN_EX 14 */
+	0x00, 0x00, 0x88, 0x64, /* ICE_VLAN_OFOS 18 */
+
+	0x11, 0x00, 0x00, 0x00, /* ICE_PPPOE 22 */
+	0x00, 0x2a,
+
+	0x00, 0x57,		/* PPP Link Layer 28*/
+
+	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_OFOS 30 */
+	0x00, 0x00, 0x3b, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+
+	0x00, 0x00,		/* 2 bytes for 4 bytes alignment */
+};
+
 /* this is a recipe to profile association bitmap */
 static ice_declare_bitmap(recipe_to_profile[ICE_MAX_NUM_RECIPES],
 			  ICE_MAX_NUM_PROFILES);
@@ -1229,13 +1376,13 @@ static void ice_collect_result_idx(struct ice_aqc_recipe_data_elem *buf,
  * ice_get_tun_type_for_recipe - get tunnel type for the recipe
  * @rid: recipe ID that we are populating
  */
-static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid)
+static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid, bool vlan)
 {
 	u8 vxlan_profile[12] = {10, 11, 12, 16, 17, 18, 22, 23, 24, 25, 26, 27};
 	u8 gre_profile[12] = {13, 14, 15, 19, 20, 21, 28, 29, 30, 31, 32, 33};
 	u8 pppoe_profile[7] = {34, 35, 36, 37, 38, 39, 40};
 	u8 non_tun_profile[6] = {4, 5, 6, 7, 8, 9};
-	enum ice_sw_tunnel_type tun_type = ICE_NON_TUN;
+	enum ice_sw_tunnel_type tun_type;
 	u16 i, j, profile_num = 0;
 	bool non_tun_valid = false;
 	bool pppoe_valid = false;
@@ -1416,6 +1563,19 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid)
 		}
 	}
 
+	if (vlan && tun_type == ICE_SW_TUN_PPPOE)
+		tun_type = ICE_SW_TUN_PPPOE_QINQ;
+	else if (vlan && tun_type == ICE_SW_TUN_PPPOE_IPV6)
+		tun_type = ICE_SW_TUN_PPPOE_IPV6_QINQ;
+	else if (vlan && tun_type == ICE_SW_TUN_PPPOE_IPV4)
+		tun_type = ICE_SW_TUN_PPPOE_IPV4_QINQ;
+	else if (vlan && tun_type == ICE_SW_TUN_PPPOE_PAY)
+		tun_type = ICE_SW_TUN_PPPOE_PAY_QINQ;
+	else if (vlan && tun_type == ICE_SW_TUN_AND_NON_TUN)
+		tun_type = ICE_SW_TUN_AND_NON_TUN_QINQ;
+	else if (vlan && tun_type == ICE_NON_TUN)
+		tun_type = ICE_NON_TUN_QINQ;
+
 	return tun_type;
 }
 
@@ -1440,6 +1600,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	struct ice_prot_lkup_ext *lkup_exts;
 	enum ice_status status;
 	u8 fv_word_idx = 0;
+	bool vlan = false;
 	u16 sub_recps;
 
 	ice_zero_bitmap(result_bm, ICE_MAX_FV_WORDS);
@@ -1528,6 +1689,9 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 			lkup_exts->fv_words[fv_word_idx].off = off;
 			lkup_exts->field_mask[fv_word_idx] =
 				rg_entry->fv_mask[i];
+			if (prot == ICE_META_DATA_ID_HW &&
+			    off == ICE_TUN_FLAG_MDID_OFF)
+				vlan = true;
 			fv_word_idx++;
 		}
 		/* populate rg_list with the data from the child entry of this
@@ -1562,7 +1726,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	lkup_exts->n_val_words = fv_word_idx;
 	recps[rid].big_recp = (num_recps > 1);
 	recps[rid].n_grp_count = (u8)num_recps;
-	recps[rid].tun_type = ice_get_tun_type_for_recipe(rid);
+	recps[rid].tun_type = ice_get_tun_type_for_recipe(rid, vlan);
 	recps[rid].root_buf = (struct ice_aqc_recipe_data_elem *)
 		ice_memdup(hw, tmp, recps[rid].n_grp_count *
 			   sizeof(*recps[rid].root_buf), ICE_NONDMA_TO_NONDMA);
@@ -2726,7 +2890,7 @@ enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw)
 	} while (req_desc && !status);
 
 out:
-	ice_free(hw, (void *)rbuf);
+	ice_free(hw, rbuf);
 	return status;
 }
 
@@ -2982,8 +3146,7 @@ ice_add_marker_act(struct ice_hw *hw, struct ice_fltr_mgmt_list_entry *m_ent,
 		m_ent->fltr_info.fwd_id.hw_vsi_id;
 
 	act = ICE_LG_ACT_VSI_FORWARDING | ICE_LG_ACT_VALID_BIT;
-	act |= (id << ICE_LG_ACT_VSI_LIST_ID_S) &
-		ICE_LG_ACT_VSI_LIST_ID_M;
+	act |= (id << ICE_LG_ACT_VSI_LIST_ID_S) & ICE_LG_ACT_VSI_LIST_ID_M;
 	if (m_ent->vsi_count > 1)
 		act |= ICE_LG_ACT_VSI_LIST;
 	lg_act->pdata.lg_act.act[0] = CPU_TO_LE32(act);
@@ -3064,13 +3227,11 @@ ice_add_counter_act(struct ice_hw *hw, struct ice_fltr_mgmt_list_entry *m_ent,
 	 */
 	lg_act_size = (u16)ICE_SW_RULE_LG_ACT_SIZE(num_acts);
 	rules_size = lg_act_size + ICE_SW_RULE_RX_TX_ETH_HDR_SIZE;
-	lg_act = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw,
-								 rules_size);
+	lg_act = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw, rules_size);
 	if (!lg_act)
 		return ICE_ERR_NO_MEMORY;
 
-	rx_tx = (struct ice_aqc_sw_rules_elem *)
-		((u8 *)lg_act + lg_act_size);
+	rx_tx = (struct ice_aqc_sw_rules_elem *)((u8 *)lg_act + lg_act_size);
 
 	/* Fill in the first switch rule i.e. large action */
 	lg_act->type = CPU_TO_LE16(ICE_AQC_SW_RULES_T_LG_ACT);
@@ -4525,7 +4686,8 @@ ice_cfg_dflt_vsi(struct ice_port_info *pi, u16 vsi_handle, bool set,
 	hw_vsi_id = ice_get_hw_vsi_num(hw, vsi_handle);
 
 	s_rule_size = set ? ICE_SW_RULE_RX_TX_ETH_HDR_SIZE :
-			    ICE_SW_RULE_RX_TX_NO_HDR_SIZE;
+		ICE_SW_RULE_RX_TX_NO_HDR_SIZE;
+
 	s_rule = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw, s_rule_size);
 	if (!s_rule)
 		return ICE_ERR_NO_MEMORY;
@@ -5825,6 +5987,7 @@ static const struct ice_prot_ext_tbl_entry ice_prot_ext[ICE_PROTOCOL_LAST] = {
 	{ ICE_AH,		{ 0, 2, 4, 6, 8, 10 } },
 	{ ICE_NAT_T,		{ 8, 10, 12, 14 } },
 	{ ICE_GTP_NO_PAY,	{ 8, 10, 12, 14 } },
+	{ ICE_VLAN_EX,		{ 0, 2 } },
 };
 
 /* The following table describes preferred grouping of recipes.
@@ -5858,6 +6021,7 @@ static const struct ice_protocol_entry ice_prot_id_tbl[ICE_PROTOCOL_LAST] = {
 	{ ICE_AH,		ICE_AH_HW },
 	{ ICE_NAT_T,		ICE_UDP_ILOS_HW },
 	{ ICE_GTP_NO_PAY,	ICE_UDP_ILOS_HW },
+	{ ICE_VLAN_EX,		ICE_VLAN_OF_HW },
 };
 
 /**
@@ -6569,6 +6733,12 @@ static bool ice_tun_type_match_word(enum ice_sw_tunnel_type tun_type, u16 *mask)
 	case ICE_SW_TUN_NVGRE:
 	case ICE_SW_TUN_UDP:
 	case ICE_ALL_TUNNELS:
+	case ICE_SW_TUN_AND_NON_TUN_QINQ:
+	case ICE_NON_TUN_QINQ:
+	case ICE_SW_TUN_PPPOE_QINQ:
+	case ICE_SW_TUN_PPPOE_PAY_QINQ:
+	case ICE_SW_TUN_PPPOE_IPV4_QINQ:
+	case ICE_SW_TUN_PPPOE_IPV6_QINQ:
 		*mask = ICE_TUN_FLAG_MASK;
 		return true;
 
@@ -6627,6 +6797,7 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 
 	switch (rinfo->tun_type) {
 	case ICE_NON_TUN:
+	case ICE_NON_TUN_QINQ:
 		prof_type = ICE_PROF_NON_TUN;
 		break;
 	case ICE_ALL_TUNNELS:
@@ -6645,12 +6816,15 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		prof_type = ICE_PROF_TUN_GRE;
 		break;
 	case ICE_SW_TUN_PPPOE:
+	case ICE_SW_TUN_PPPOE_QINQ:
 		prof_type = ICE_PROF_TUN_PPPOE;
 		break;
 	case ICE_SW_TUN_PPPOE_PAY:
+	case ICE_SW_TUN_PPPOE_PAY_QINQ:
 		ice_set_bit(ICE_PROFID_PPPOE_PAY, bm);
 		return;
 	case ICE_SW_TUN_PPPOE_IPV4:
+	case ICE_SW_TUN_PPPOE_IPV4_QINQ:
 		ice_set_bit(ICE_PROFID_PPPOE_IPV4_OTHER, bm);
 		ice_set_bit(ICE_PROFID_PPPOE_IPV4_UDP, bm);
 		ice_set_bit(ICE_PROFID_PPPOE_IPV4_TCP, bm);
@@ -6662,6 +6836,7 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		ice_set_bit(ICE_PROFID_PPPOE_IPV4_UDP, bm);
 		return;
 	case ICE_SW_TUN_PPPOE_IPV6:
+	case ICE_SW_TUN_PPPOE_IPV6_QINQ:
 		ice_set_bit(ICE_PROFID_PPPOE_IPV6_OTHER, bm);
 		ice_set_bit(ICE_PROFID_PPPOE_IPV6_UDP, bm);
 		ice_set_bit(ICE_PROFID_PPPOE_IPV6_TCP, bm);
@@ -6757,6 +6932,7 @@ ice_get_compat_fv_bitmap(struct ice_hw *hw, struct ice_adv_rule_info *rinfo,
 		ice_set_bit(ICE_PROFID_IPV6_GTPU_IPV6_TCP, bm);
 		return;
 	case ICE_SW_TUN_AND_NON_TUN:
+	case ICE_SW_TUN_AND_NON_TUN_QINQ:
 	default:
 		prof_type = ICE_PROF_ALL;
 		break;
@@ -7044,6 +7220,38 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			 lkups[i].m_u.ipv4_hdr.protocol ==
 				0xFF)
 			tcp = true;
+	}
+
+	if ((tun_type == ICE_SW_TUN_AND_NON_TUN_QINQ ||
+	     tun_type == ICE_NON_TUN_QINQ) && ipv6) {
+		*pkt = dummy_qinq_ipv6_pkt;
+		*pkt_len = sizeof(dummy_qinq_ipv6_pkt);
+		*offsets = dummy_qinq_ipv6_packet_offsets;
+		return;
+	} else if (tun_type == ICE_SW_TUN_AND_NON_TUN_QINQ ||
+			   tun_type == ICE_NON_TUN_QINQ) {
+		*pkt = dummy_qinq_ipv4_pkt;
+		*pkt_len = sizeof(dummy_qinq_ipv4_pkt);
+		*offsets = dummy_qinq_ipv4_packet_offsets;
+		return;
+	}
+
+	if (tun_type == ICE_SW_TUN_PPPOE_IPV6_QINQ) {
+		*pkt = dummy_qinq_pppoe_ipv6_packet;
+		*pkt_len = sizeof(dummy_qinq_pppoe_ipv6_packet);
+		*offsets = dummy_qinq_pppoe_packet_ipv6_offsets;
+		return;
+	} else if (tun_type == ICE_SW_TUN_PPPOE_IPV4_QINQ) {
+		*pkt = dummy_qinq_pppoe_ipv4_pkt;
+		*pkt_len = sizeof(dummy_qinq_pppoe_ipv4_pkt);
+		*offsets = dummy_qinq_pppoe_ipv4_packet_offsets;
+		return;
+	} else if (tun_type == ICE_SW_TUN_PPPOE_QINQ ||
+			tun_type == ICE_SW_TUN_PPPOE_PAY_QINQ) {
+		*pkt = dummy_qinq_pppoe_ipv4_pkt;
+		*pkt_len = sizeof(dummy_qinq_pppoe_ipv4_pkt);
+		*offsets = dummy_qinq_pppoe_packet_offsets;
+		return;
 	}
 
 	if (tun_type == ICE_SW_TUN_IPV4_GTPU_NO_PAY) {
@@ -7364,6 +7572,7 @@ ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			len = sizeof(struct ice_ethtype_hdr);
 			break;
 		case ICE_VLAN_OFOS:
+		case ICE_VLAN_EX:
 			len = sizeof(struct ice_vlan_hdr);
 			break;
 		case ICE_IPV4_OFOS:
@@ -8038,9 +8247,8 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		u16 rule_buf_sz;
 
 		rule_buf_sz = ICE_SW_RULE_RX_TX_NO_HDR_SIZE;
-		s_rule =
-			(struct ice_aqc_sw_rules_elem *)ice_malloc(hw,
-								   rule_buf_sz);
+		s_rule = (struct ice_aqc_sw_rules_elem *)
+			ice_malloc(hw, rule_buf_sz);
 		if (!s_rule)
 			return ICE_ERR_NO_MEMORY;
 		s_rule->pdata.lkup_tx_rx.act = 0;
