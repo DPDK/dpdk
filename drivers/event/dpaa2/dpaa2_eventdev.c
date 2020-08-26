@@ -569,14 +569,14 @@ dpaa2_eventdev_port_release(void *port)
 
 	EVENTDEV_INIT_FUNC_TRACE();
 
+	if (portal == NULL)
+		return;
+
 	/* TODO: Cleanup is required when ports are in linked state. */
 	if (portal->is_port_linked)
 		DPAA2_EVENTDEV_WARN("Event port must be unlinked before release");
 
-	if (portal)
-		rte_free(portal);
-
-	portal = NULL;
+	rte_free(portal);
 }
 
 static int
