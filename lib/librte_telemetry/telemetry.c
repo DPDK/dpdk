@@ -258,7 +258,7 @@ client_handler(void *sock_id)
 	while (bytes > 0) {
 		buffer[bytes] = 0;
 		const char *cmd = strtok(buffer, ",");
-		const char *param = strtok(NULL, ",");
+		const char *param = strtok(NULL, "\0");
 		telemetry_cb fn = unknown_command;
 		int i;
 

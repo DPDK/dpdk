@@ -5324,11 +5324,15 @@ handle_port_xstats(const char *cmd __rte_unused,
 	struct rte_eth_xstat_name *xstat_names;
 	int port_id, num_xstats;
 	int i, ret;
+	char *end_param;
 
 	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
 		return -1;
 
-	port_id = atoi(params);
+	port_id = strtoul(params, &end_param, 0);
+	if (*end_param != '\0')
+		RTE_ETHDEV_LOG(NOTICE,
+			"Extra parameters passed to ethdev telemetry command, ignoring");
 	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
 
@@ -5370,11 +5374,15 @@ handle_port_link_status(const char *cmd __rte_unused,
 	static const char *status_str = "status";
 	int ret, port_id;
 	struct rte_eth_link link;
+	char *end_param;
 
 	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
 		return -1;
 
-	port_id = atoi(params);
+	port_id = strtoul(params, &end_param, 0);
+	if (*end_param != '\0')
+		RTE_ETHDEV_LOG(NOTICE,
+			"Extra parameters passed to ethdev telemetry command, ignoring");
 	if (!rte_eth_dev_is_valid_port(port_id))
 		return -1;
 
