@@ -245,6 +245,11 @@ otx2_flow_parse_le(struct otx2_parse_state *pst)
 		info.len = sizeof(struct rte_flow_item_vxlan);
 		lt = NPC_LT_LE_VXLAN;
 		break;
+	case RTE_FLOW_ITEM_TYPE_ESP:
+		lt = NPC_LT_LE_ESP;
+		info.def_mask = &rte_flow_item_esp_mask;
+		info.len = sizeof(struct rte_flow_item_esp);
+		break;
 	case RTE_FLOW_ITEM_TYPE_GTPC:
 		lflags = NPC_F_UDP_GTP_GTPC;
 		info.def_mask = &rte_flow_item_gtp_mask;
@@ -440,11 +445,6 @@ otx2_flow_parse_ld(struct otx2_parse_state *pst)
 		lt = NPC_LT_LD_SCTP;
 		info.def_mask = &rte_flow_item_sctp_mask;
 		info.len = sizeof(struct rte_flow_item_sctp);
-		break;
-	case RTE_FLOW_ITEM_TYPE_ESP:
-		lt = NPC_LT_LD_ESP;
-		info.def_mask = &rte_flow_item_esp_mask;
-		info.len = sizeof(struct rte_flow_item_esp);
 		break;
 	case RTE_FLOW_ITEM_TYPE_GRE:
 		lt = NPC_LT_LD_GRE;

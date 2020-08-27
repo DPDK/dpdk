@@ -225,7 +225,6 @@ enum npc_kpu_ld_ltype {
 	NPC_LT_LD_SCTP,
 	NPC_LT_LD_ICMP6,
 	NPC_LT_LD_IGMP = 8,
-	NPC_LT_LD_ESP,
 	NPC_LT_LD_AH,
 	NPC_LT_LD_GRE,
 	NPC_LT_LD_NVGRE,
@@ -237,6 +236,7 @@ enum npc_kpu_ld_ltype {
 enum npc_kpu_le_ltype {
 	NPC_LT_LE_VXLAN = 1,
 	NPC_LT_LE_GENEVE,
+	NPC_LT_LE_ESP,
 	NPC_LT_LE_GTPU = 4,
 	NPC_LT_LE_VXLANGPE,
 	NPC_LT_LE_GTPC,
