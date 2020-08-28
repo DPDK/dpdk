@@ -81,6 +81,10 @@
 #define BROADCOM_DEV_ID_58808		0x16f0
 #define BROADCOM_DEV_ID_58802_VF	0xd800
 
+#define BROADCOM_DEV_957508_N2100	0x5208
+#define IS_BNXT_DEV_957508_N2100(bp)	\
+	((bp)->pdev->id.subsystem_device_id == BROADCOM_DEV_957508_N2100)
+
 #define BNXT_MAX_MTU		9574
 #define VLAN_TAG_SIZE		4
 #define BNXT_NUM_VLANS		2

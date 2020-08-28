@@ -605,9 +605,35 @@ static int bnxt_init_ctx_mem(struct bnxt *bp)
 	return rc;
 }
 
-static int bnxt_init_chip(struct bnxt *bp)
+static int bnxt_update_phy_setting(struct bnxt *bp)
 {
 	struct rte_eth_link new;
+	int rc;
+
+	rc = bnxt_get_hwrm_link_config(bp, &new);
+	if (rc) {
+		PMD_DRV_LOG(ERR, "Failed to get link settings\n");
+		return rc;
+	}
+
+	/*
+	 * On BCM957508-N2100 adapters, FW will not allow any user other
+	 * than BMC to shutdown the port. bnxt_get_hwrm_link_config() call
+	 * always returns link up. Force phy update always in that case.
+	 */
+	if (!new.link_status || IS_BNXT_DEV_957508_N2100(bp)) {
+		rc = bnxt_set_hwrm_link_config(bp, true);
+		if (rc) {
+			PMD_DRV_LOG(ERR, "Failed to update PHY settings\n");
+			return rc;
+		}
+	}
+
+	return rc;
+}
+
+static int bnxt_init_chip(struct bnxt *bp)
+{
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
@@ -737,21 +763,9 @@ skip_cosq_cfg:
 		goto err_free;
 #endif
 
-	rc = bnxt_get_hwrm_link_config(bp, &new);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "HWRM Get link config failure rc: %x\n", rc);
+	rc = bnxt_update_phy_setting(bp);
+	if (rc)
 		goto err_free;
-	}
-
-	if (!bp->link_info->link_up) {
-		rc = bnxt_set_hwrm_link_config(bp, true);
-		if (rc) {
-			PMD_DRV_LOG(ERR,
-				"HWRM link config failure rc: %x\n", rc);
-			goto err_free;
-		}
-	}
-	bnxt_print_link_info(bp->eth_dev);
 
 	bp->mark_table = rte_zmalloc("bnxt_mark_table", BNXT_MARK_TABLE_SZ, 0);
 	if (!bp->mark_table)
