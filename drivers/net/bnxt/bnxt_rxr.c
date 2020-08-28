@@ -962,6 +962,7 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	ring->bd_dma = rxr->rx_desc_mapping;
 	ring->vmem_size = ring->ring_size * sizeof(struct bnxt_sw_rx_bd);
 	ring->vmem = (void **)&rxr->rx_buf_ring;
+	ring->fw_ring_id = INVALID_HW_RING_ID;
 
 	cpr = rte_zmalloc_socket("bnxt_rx_ring",
 				 sizeof(struct bnxt_cp_ring_info),
@@ -983,6 +984,7 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	ring->bd_dma = cpr->cp_desc_mapping;
 	ring->vmem_size = 0;
 	ring->vmem = NULL;
+	ring->fw_ring_id = INVALID_HW_RING_ID;
 
 	/* Allocate Aggregator rings */
 	ring = rte_zmalloc_socket("bnxt_rx_ring_struct",
@@ -998,6 +1000,7 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	ring->bd_dma = rxr->ag_desc_mapping;
 	ring->vmem_size = ring->ring_size * sizeof(struct bnxt_sw_rx_bd);
 	ring->vmem = (void **)&rxr->ag_buf_ring;
+	ring->fw_ring_id = INVALID_HW_RING_ID;
 
 	return 0;
 }
