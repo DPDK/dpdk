@@ -530,6 +530,9 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 
 	HWRM_PREP(&req, HWRM_CFA_L2_FILTER_ALLOC, BNXT_USE_CHIMP_MB);
 
+	/* PMD does not support XDP and RoCE */
+	filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_XDP_DISABLE |
+			HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_TRAFFIC_L2;
 	req.flags = rte_cpu_to_le_32(filter->flags);
 
 	enables = filter->enables |
