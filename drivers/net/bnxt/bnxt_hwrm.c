@@ -3620,17 +3620,19 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 
 	HWRM_PREP(&req, HWRM_TUNNEL_DST_PORT_ALLOC, BNXT_USE_CHIMP_MB);
 	req.tunnel_type = tunnel_type;
-	req.tunnel_dst_port_val = port;
+	req.tunnel_dst_port_val = rte_cpu_to_be_16(port);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
 
 	switch (tunnel_type) {
 	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN:
-		bp->vxlan_fw_dst_port_id = resp->tunnel_dst_port_id;
+		bp->vxlan_fw_dst_port_id =
+			rte_le_to_cpu_16(resp->tunnel_dst_port_id);
 		bp->vxlan_port = port;
 		break;
 	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GENEVE:
-		bp->geneve_fw_dst_port_id = resp->tunnel_dst_port_id;
+		bp->geneve_fw_dst_port_id =
+			rte_le_to_cpu_16(resp->tunnel_dst_port_id);
 		bp->geneve_port = port;
 		break;
 	default:
