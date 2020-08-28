@@ -90,6 +90,12 @@ jobs:
   - env: DEF_LIB="shared" RUN_TESTS=1
     arch: arm64
     compiler: gcc
+  - env: DEF_LIB="shared" RUN_TESTS=1
+    dist: focal
+    arch: arm64-graviton2
+    virt: vm
+    group: edge
+    compiler: gcc
   - env: DEF_LIB="shared" BUILD_DOCS=1
     arch: arm64
     compiler: gcc
@@ -104,4 +110,10 @@ jobs:
     compiler: clang
   - env: DEF_LIB="shared" RUN_TESTS=1
     arch: arm64
+    compiler: clang
+  - env: DEF_LIB="shared" RUN_TESTS=1
+    dist: focal
+    arch: arm64-graviton2
+    virt: vm
+    group: edge
     compiler: clang
