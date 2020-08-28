@@ -311,7 +311,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	if (queue_idx >= BNXT_MAX_RINGS(bp)) {
+	if (queue_idx >= bnxt_max_rings(bp)) {
 		PMD_DRV_LOG(ERR,
 			"Cannot create Rx ring %d. Only %d rings available\n",
 			queue_idx, bp->max_rx_rings);
@@ -364,8 +364,9 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	eth_dev->data->rx_queues[queue_idx] = rxq;
 	/* Allocate RX ring hardware descriptors */
-	if (bnxt_alloc_rings(bp, queue_idx, NULL, rxq, rxq->cp_ring, NULL,
-			     "rxr")) {
+	rc = bnxt_alloc_rings(bp, queue_idx, NULL, rxq, rxq->cp_ring, NULL,
+			     "rxr");
+	if (rc) {
 		PMD_DRV_LOG(ERR,
 			    "ring_dma_zone_reserve for rx_ring failed!\n");
 		goto err;

@@ -752,19 +752,6 @@ struct bnxt {
 	uint16_t		max_tx_rings;
 	uint16_t		max_rx_rings;
 #define MAX_STINGRAY_RINGS		128U
-/* For sake of symmetry, max Tx rings == max Rx rings, one stat ctx for each */
-#define BNXT_MAX_RX_RINGS(bp) \
-	(BNXT_STINGRAY(bp) ? RTE_MIN(RTE_MIN(bp->max_rx_rings / 2U, \
-					     MAX_STINGRAY_RINGS), \
-				     bp->max_stat_ctx / 2U) : \
-				RTE_MIN(bp->max_rx_rings / 2U, \
-					bp->max_stat_ctx / 2U))
-#define BNXT_MAX_TX_RINGS(bp) \
-	(RTE_MIN((bp)->max_tx_rings, BNXT_MAX_RX_RINGS(bp)))
-
-#define BNXT_MAX_RINGS(bp) \
-	(RTE_MIN((((bp)->max_cp_rings - BNXT_NUM_ASYNC_CPR(bp)) / 2U), \
-		 BNXT_MAX_TX_RINGS(bp)))
 
 #define BNXT_MAX_VF_REP_RINGS	8
 
@@ -822,6 +809,34 @@ struct bnxt {
 	uint16_t		max_num_kflows;
 	uint16_t		tx_cfa_action;
 };
+
+static
+inline uint16_t bnxt_max_rings(struct bnxt *bp)
+{
+	uint16_t max_tx_rings = bp->max_tx_rings;
+	uint16_t max_rx_rings = bp->max_rx_rings;
+	uint16_t max_cp_rings = bp->max_cp_rings;
+	uint16_t max_rings;
+
+	/* For the sake of symmetry:
+	 * max Tx rings == max Rx rings, one stat ctx for each.
+	 */
+	if (BNXT_STINGRAY(bp)) {
+		max_rx_rings = RTE_MIN(RTE_MIN(max_rx_rings / 2U,
+					       MAX_STINGRAY_RINGS),
+				       bp->max_stat_ctx / 2U);
+	} else {
+		max_rx_rings = RTE_MIN(max_rx_rings / 2U,
+				       bp->max_stat_ctx / 2U);
+	}
+
+	max_tx_rings = RTE_MIN(max_tx_rings, max_rx_rings);
+	if (max_cp_rings > BNXT_NUM_ASYNC_CPR(bp))
+		max_cp_rings -= BNXT_NUM_ASYNC_CPR(bp);
+	max_rings = RTE_MIN(max_cp_rings / 2U, max_tx_rings);
+
+	return max_rings;
+}
 
 #define BNXT_FC_TIMER	1 /* Timer freq in Sec Flow Counters */
 
