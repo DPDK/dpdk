@@ -920,7 +920,7 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	if (BNXT_PF(bp))
 		dev_info->max_vfs = pdev->max_vfs;
 
-	max_rx_rings = BNXT_MAX_RINGS(bp);
+	max_rx_rings = bnxt_max_rings(bp);
 	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
 	dev_info->max_rx_queues = max_rx_rings;
 	dev_info->max_tx_queues = max_rx_rings;
