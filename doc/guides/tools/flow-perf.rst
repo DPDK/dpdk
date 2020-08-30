@@ -316,3 +316,11 @@ Actions:
 	Add raw decap action to all flows actions.
 	Data is the data needed to be decaped, with fixed values.
 	Example: raw-decap=ether,ipv4,gre
+
+*	``--vxlan-encap``
+	Add vxlan encap action to all flows actions.
+	Data to encap is fixed with pattern: ether,ipv4,udp,vxlan,
+	all encapped items have fixed values.
+
+*	``--vxlan-decap``
+	Add vxlan decap action to all flows actions.

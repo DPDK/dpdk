@@ -180,6 +180,10 @@ usage(char *progname)
 	printf("  --raw-decap=<data>: add raw decap action to flow actions\n"
 		"Data is the data needed to be decaped\n"
 		"Example: raw-decap=ether,ipv4,udp,vxlan\n");
+	printf("  --vxlan-encap: add vxlan-encap action to flow actions\n"
+		"Encapped data is fixed with pattern: ether,ipv4,udp,vxlan\n"
+		"With fixed values\n");
+	printf("  --vxlan-decap: add vxlan_decap action to flow actions\n");
 }
 
 static void
@@ -484,6 +488,22 @@ args_parse(int argc, char **argv)
 			.map = &flow_actions[0],
 			.map_idx = &actions_idx
 		},
+		{
+			.str = "vxlan-encap",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "vxlan-decap",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_VXLAN_DECAP
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
 	};
 
 	static const struct option lgopts[] = {
@@ -544,6 +564,8 @@ args_parse(int argc, char **argv)
 		{ "flag",                       0, 0, 0 },
 		{ "raw-encap",                  1, 0, 0 },
 		{ "raw-decap",                  1, 0, 0 },
+		{ "vxlan-encap",                0, 0, 0 },
+		{ "vxlan-decap",                0, 0, 0 },
 	};
 
 	hairpin_queues_num = 0;

@@ -17,6 +17,7 @@
 #include "flow_gen.h"
 #include "config.h"
 
+
 /* Storage for additional parameters for actions */
 struct additional_para {
 	uint16_t queue;
@@ -750,6 +751,57 @@ add_raw_decap(struct rte_flow_action *actions,
 	actions[actions_counter].conf = &action_decap_data->conf;
 }
 
+static void
+add_vxlan_encap(struct rte_flow_action *actions,
+	uint8_t actions_counter,
+	__rte_unused struct additional_para para)
+{
+	static struct rte_flow_action_vxlan_encap vxlan_encap;
+	static struct rte_flow_item items[5];
+	static struct rte_flow_item_eth item_eth;
+	static struct rte_flow_item_ipv4 item_ipv4;
+	static struct rte_flow_item_udp item_udp;
+	static struct rte_flow_item_vxlan item_vxlan;
+
+	items[0].spec = &item_eth;
+	items[0].mask = &item_eth;
+	items[0].type = RTE_FLOW_ITEM_TYPE_ETH;
+
+	item_ipv4.hdr.src_addr = RTE_IPV4(127, 0, 0, 1);
+	item_ipv4.hdr.dst_addr = RTE_IPV4(255, 255, 255, 255);
+	item_ipv4.hdr.version_ihl = RTE_IPV4_VHL_DEF;
+	items[1].spec = &item_ipv4;
+	items[1].mask = &item_ipv4;
+	items[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
+
+
+	item_udp.hdr.dst_port = RTE_BE16(RTE_VXLAN_DEFAULT_PORT);
+	items[2].spec = &item_udp;
+	items[2].mask = &item_udp;
+	items[2].type = RTE_FLOW_ITEM_TYPE_UDP;
+
+
+	item_vxlan.vni[2] = 1;
+	items[3].spec = &item_vxlan;
+	items[3].mask = &item_vxlan;
+	items[3].type = RTE_FLOW_ITEM_TYPE_VXLAN;
+
+	items[4].type = RTE_FLOW_ITEM_TYPE_END;
+
+	vxlan_encap.definition = items;
+
+	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP;
+	actions[actions_counter].conf = &vxlan_encap;
+}
+
+static void
+add_vxlan_decap(struct rte_flow_action *actions,
+	uint8_t actions_counter,
+	__rte_unused struct additional_para para)
+{
+	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
+}
+
 void
 fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	uint32_t counter, uint16_t next_table, uint16_t hairpinq,
@@ -948,6 +1000,18 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 				RTE_FLOW_ACTION_TYPE_RAW_DECAP
 			),
 			.funct = add_raw_decap,
+		},
+		{
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
+			),
+			.funct = add_vxlan_encap,
+		},
+		{
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_VXLAN_DECAP
+			),
+			.funct = add_vxlan_decap,
 		},
 	};
 

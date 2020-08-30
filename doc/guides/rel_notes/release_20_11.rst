@@ -65,6 +65,7 @@ New Features
   * Added header modify actions.
   * Added flag action.
   * Added raw encap/decap actions.
+  * Added VXLAN encap/decap actions.
 
 
 Removed Items
