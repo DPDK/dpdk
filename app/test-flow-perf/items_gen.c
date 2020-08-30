@@ -312,10 +312,10 @@ add_meta_tag(struct rte_flow_item *items,
 
 void
 fill_items(struct rte_flow_item *items,
-	uint64_t flow_items, uint32_t outer_ip_src)
+	uint64_t *flow_items, uint32_t outer_ip_src)
 {
 	uint8_t items_counter = 0;
-	uint8_t i;
+	uint8_t i, j;
 	struct additional_para additional_para_data = {
 		.src_ip = outer_ip_src,
 	};
@@ -328,7 +328,7 @@ fill_items(struct rte_flow_item *items,
 			uint8_t items_counter,
 			struct additional_para para
 			);
-	} flows_items[] = {
+	} items_list[] = {
 		{
 			.mask = RTE_FLOW_ITEM_TYPE_META,
 			.funct = add_meta_data,
@@ -384,13 +384,19 @@ fill_items(struct rte_flow_item *items,
 
 	};
 
-	for (i = 0; i < RTE_DIM(flows_items); i++) {
-		if ((flow_items & FLOW_ITEM_MASK(flows_items[i].mask)) == 0)
-			continue;
-		flows_items[i].funct(
-			items, items_counter++,
-			additional_para_data
-		);
+	for (j = 0; j < MAX_ITEMS_NUM; j++) {
+		if (flow_items[j] == 0)
+			break;
+		for (i = 0; i < RTE_DIM(items_list); i++) {
+			if ((flow_items[j] &
+				FLOW_ITEM_MASK(items_list[i].mask)) == 0)
+				continue;
+			items_list[i].funct(
+				items, items_counter++,
+				additional_para_data
+			);
+			break;
+		}
 	}
 
 	items[items_counter].type = RTE_FLOW_ITEM_TYPE_END;

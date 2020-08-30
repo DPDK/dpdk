@@ -16,20 +16,18 @@ After that the application will start producing rules with same pattern
 but increasing the outer IP source address by 1 each time, thus it will
 give different flow each time, and all other items will have open masks.
 
+The application also provide the ability to measure rte flow deletion rate,
+in addition to memory consumption before and after the flows creation.
+
+The app supports single and multi core performance measurements.
+
 
 Known Limitations
 -----------------
 
 The current version has limitations which can be removed in future:
 
-* Support outer items up to tunnel layer only.
 * Single core insertion only.
-* Only one instance of same action can be added in one rule.
-
-The application also provide the ability to measure rte flow deletion rate,
-in addition to memory consumption before and after the flows creation.
-
-The app supports single and multi core performance measurements.
 
 
 Compiling the Application

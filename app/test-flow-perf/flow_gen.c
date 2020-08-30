@@ -18,23 +18,28 @@
 
 static void
 fill_attributes(struct rte_flow_attr *attr,
-	uint64_t flow_attrs, uint16_t group)
+	uint64_t *flow_attrs, uint16_t group)
 {
-	if (flow_attrs & INGRESS)
-		attr->ingress = 1;
-	if (flow_attrs & EGRESS)
-		attr->egress = 1;
-	if (flow_attrs & TRANSFER)
-		attr->transfer = 1;
+	uint8_t i;
+	for (i = 0; i < MAX_ATTRS_NUM; i++) {
+		if (flow_attrs[i] == 0)
+			break;
+		if (flow_attrs[i] & INGRESS)
+			attr->ingress = 1;
+		else if (flow_attrs[i] & EGRESS)
+			attr->egress = 1;
+		else if (flow_attrs[i] & TRANSFER)
+			attr->transfer = 1;
+	}
 	attr->group = group;
 }
 
 struct rte_flow *
 generate_flow(uint16_t port_id,
 	uint16_t group,
-	uint64_t flow_attrs,
-	uint64_t flow_items,
-	uint64_t flow_actions,
+	uint64_t *flow_attrs,
+	uint64_t *flow_items,
+	uint64_t *flow_actions,
 	uint16_t next_table,
 	uint32_t outer_ip_src,
 	uint16_t hairpinq,

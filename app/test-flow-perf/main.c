@@ -45,9 +45,10 @@
 struct rte_flow *flow;
 static uint8_t flow_group;
 
-static uint64_t flow_items;
-static uint64_t flow_actions;
-static uint64_t flow_attrs;
+static uint64_t flow_items[MAX_ITEMS_NUM];
+static uint64_t flow_actions[MAX_ACTIONS_NUM];
+static uint64_t flow_attrs[MAX_ATTRS_NUM];
+static uint8_t items_idx, actions_idx, attrs_idx;
 
 static volatile bool force_quit;
 static bool dump_iterations;
@@ -150,132 +151,159 @@ args_parse(int argc, char **argv)
 	static const struct option_dict {
 		const char *str;
 		const uint64_t mask;
-		uint64_t *bitmap;
+		uint64_t *map;
+		uint8_t *map_idx;
+
 	} flow_options[] = {
 		{
 			.str = "ether",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ETH),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "ipv4",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "ipv6",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "vlan",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VLAN),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "tcp",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_TCP),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "udp",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "vxlan",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "vxlan-gpe",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN_GPE),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "gre",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "geneve",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GENEVE),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "gtp",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GTP),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "meta",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_META),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "tag",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_TAG),
-			.bitmap = &flow_items
+			.map = &flow_items[0],
+			.map_idx = &items_idx
 		},
 		{
 			.str = "ingress",
 			.mask = INGRESS,
-			.bitmap = &flow_attrs
+			.map = &flow_attrs[0],
+			.map_idx = &attrs_idx
 		},
 		{
 			.str = "egress",
 			.mask = EGRESS,
-			.bitmap = &flow_attrs
+			.map = &flow_attrs[0],
+			.map_idx = &attrs_idx
 		},
 		{
 			.str = "transfer",
 			.mask = TRANSFER,
-			.bitmap = &flow_attrs
+			.map = &flow_attrs[0],
+			.map_idx = &attrs_idx
 		},
 		{
 			.str = "port-id",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_PORT_ID),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		},
 		{
 			.str = "rss",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_RSS),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		},
 		{
 			.str = "queue",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_QUEUE),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		},
 		{
 			.str = "jump",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_JUMP),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		},
 		{
 			.str = "mark",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_MARK),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		},
 		{
 			.str = "count",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_COUNT),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		},
 		{
 			.str = "set-meta",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_META),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		},
 		{
 			.str = "set-tag",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_TAG),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		},
 		{
 			.str = "drop",
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_DROP),
-			.bitmap = &flow_actions
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
 		}
 	};
 
@@ -320,9 +348,6 @@ args_parse(int argc, char **argv)
 		{ "hairpin-rss",                1, 0, 0 },
 	};
 
-	flow_items = 0;
-	flow_actions = 0;
-	flow_attrs = 0;
 	hairpin_queues_num = 0;
 	argvopt = argv;
 
@@ -349,7 +374,8 @@ args_parse(int argc, char **argv)
 			for (i = 0; i < RTE_DIM(flow_options); i++)
 				if (strcmp(lgopts[opt_idx].name,
 						flow_options[i].str) == 0) {
-					*flow_options[i].bitmap |=
+					flow_options[i].map[
+					(*flow_options[i].map_idx)++] =
 						flow_options[i].mask;
 					printf("%s / ", flow_options[i].str);
 				}
@@ -363,7 +389,8 @@ args_parse(int argc, char **argv)
 					rte_exit(EXIT_SUCCESS,
 						"Hairpin queues should be > 0\n");
 
-				flow_actions |= HAIRPIN_RSS_ACTION;
+				flow_actions[actions_idx++] =
+					HAIRPIN_RSS_ACTION;
 				printf("hairpin-rss / ");
 			}
 			if (strcmp(lgopts[opt_idx].name,
@@ -375,7 +402,8 @@ args_parse(int argc, char **argv)
 					rte_exit(EXIT_SUCCESS,
 						"Hairpin queues should be > 0\n");
 
-				flow_actions |= HAIRPIN_QUEUE_ACTION;
+				flow_actions[actions_idx++] =
+					HAIRPIN_QUEUE_ACTION;
 				printf("hairpin-queue / ");
 			}
 
@@ -558,6 +586,11 @@ flows_handler(void)
 	int port_id;
 	int iter_id;
 	uint32_t flow_index;
+	uint64_t global_items[MAX_ITEMS_NUM] = { 0 };
+	uint64_t global_actions[MAX_ACTIONS_NUM] = { 0 };
+
+	global_items[0] = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ETH);
+	global_actions[0] = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_JUMP);
 
 	nr_ports = rte_eth_dev_count_avail();
 
@@ -587,8 +620,7 @@ flows_handler(void)
 			 *
 			 */
 			flow = generate_flow(port_id, 0, flow_attrs,
-				FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ETH),
-				FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_JUMP),
+				global_items, global_actions,
 				flow_group, 0, 0, &error);
 
 			if (flow == NULL) {

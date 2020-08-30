@@ -26,9 +26,9 @@
 struct rte_flow *
 generate_flow(uint16_t port_id,
 	uint16_t group,
-	uint64_t flow_attrs,
-	uint64_t flow_items,
-	uint64_t flow_actions,
+	uint64_t *flow_attrs,
+	uint64_t *flow_items,
+	uint64_t *flow_actions,
 	uint16_t next_table,
 	uint32_t outer_ip_src,
 	uint16_t hairpinq,

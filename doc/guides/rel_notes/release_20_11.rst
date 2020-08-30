@@ -55,6 +55,14 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Extended flow-perf application.**
+
+  * Started supporting user order instead of bit mask:
+    Now the user can create any structure of rte_flow
+    using flow performance application with any order,
+    moreover the app also now starts to support inner
+    items matching as well.
+
 
 Removed Items
 -------------

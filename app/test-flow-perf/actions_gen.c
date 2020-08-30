@@ -182,14 +182,14 @@ add_count(struct rte_flow_action *actions,
 }
 
 void
-fill_actions(struct rte_flow_action *actions, uint64_t flow_actions,
+fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	uint32_t counter, uint16_t next_table, uint16_t hairpinq)
 {
 	struct additional_para additional_para_data;
 	uint8_t actions_counter = 0;
 	uint16_t hairpin_queues[hairpinq];
 	uint16_t queues[RXQ_NUM];
-	uint16_t i;
+	uint16_t i, j;
 
 	for (i = 0; i < RXQ_NUM; i++)
 		queues[i] = i;
@@ -217,7 +217,7 @@ fill_actions(struct rte_flow_action *actions, uint64_t flow_actions,
 			uint8_t actions_counter,
 			struct additional_para para
 			);
-	} flows_actions[] = {
+	} actions_list[] = {
 		{
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_MARK),
 			.funct = add_mark,
@@ -264,13 +264,19 @@ fill_actions(struct rte_flow_action *actions, uint64_t flow_actions,
 		},
 	};
 
-	for (i = 0; i < RTE_DIM(flows_actions); i++) {
-		if ((flow_actions & flows_actions[i].mask) == 0)
-			continue;
-		flows_actions[i].funct(
-			actions, actions_counter++,
-			additional_para_data
-		);
+	for (j = 0; j < MAX_ACTIONS_NUM; j++) {
+		if (flow_actions[j] == 0)
+			break;
+		for (i = 0; i < RTE_DIM(actions_list); i++) {
+			if ((flow_actions[j] &
+				actions_list[i].mask) == 0)
+				continue;
+			actions_list[i].funct(
+				actions, actions_counter++,
+				additional_para_data
+			);
+			break;
+		}
 	}
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_END;
 }
