@@ -86,6 +86,12 @@ flags_octeontx2_extra = [
 	['RTE_ARM_FEATURE_ATOMICS', true],
 	['RTE_EAL_IGB_UIO', false],
 	['RTE_USE_C11_MEM_MODEL', true]]
+	
+flags_n1generic_extra = [
+	['RTE_MACHINE', '"neoverse-n1generic"'],
+	['RTE_MAX_NUMA_NODES', 1],
+	['RTE_MAX_LCORE', 64],
+	{'RTE_MAX_MEM_MB', 1048576]]
 
 machine_args_generic = [
 	['default', ['-march=armv8-a+crc']],
@@ -97,7 +103,7 @@ machine_args_generic = [
 	['0xd09', ['-mcpu=cortex-a73']],
 	['0xd0a', ['-mcpu=cortex-a75']],
 	['0xd0b', ['-mcpu=cortex-a76']],
-	['0xd0c', ['-march=armv8.2-a+crc+crypto', '-mcpu=neoverse-n1'], flags_n1sdp_extra]]
+	['0xd0c', ['-march=armv8.2-a+crypto+rcpc', '-mcpu=neoverse-n1'], flags_n1generic_extra]]
 
 machine_args_cavium = [
 	['default', ['-march=armv8-a+crc+crypto','-mcpu=thunderx']],
