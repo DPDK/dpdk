@@ -91,7 +91,7 @@ flags_n1generic_extra = [
 	['RTE_MACHINE', '"neoverse-n1generic"'],
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_MAX_LCORE', 64],
-	{'RTE_MAX_MEM_MB', 1048576]]
+	['RTE_MAX_MEM_MB', 1048576]]
 
 machine_args_generic = [
 	['default', ['-march=armv8-a+crc']],
