@@ -47,6 +47,18 @@ DPDK can be configured, built and installed on your system using the tools
 
 DPDK Configuration
 ~~~~~~~~~~~~~~~~~~
+As prerequisite, make sure *meson* and *ninja* python packages are installed, and make sure *python* command is available (Many modern linux distrubtions would offer *python3* as default and *python* is unrecognized command):
+
+.. code-block:: console
+
+     sudo pip3 install meson ninja
+     
+     # if *python* not available by default, install *python-is-python3*
+     # Ubuntu/Debian:
+     sudo apt install python-is-python3
+     # Redhat/Centos/AmazonLinux
+     sudo yum install python-is-python3
+     
 
 To configure a DPDK build use:
 
