@@ -53,6 +53,7 @@ static uint64_t flow_actions[MAX_ACTIONS_NUM];
 static uint64_t flow_attrs[MAX_ATTRS_NUM];
 static uint8_t items_idx, actions_idx, attrs_idx;
 
+static uint64_t ports_mask;
 static volatile bool force_quit;
 static bool dump_iterations;
 static bool delete_flag;
@@ -106,6 +107,7 @@ usage(char *progname)
 	printf("  --dump-socket-mem: To dump all socket memory\n");
 	printf("  --enable-fwd: To enable packets forwarding"
 		" after insertion\n");
+	printf("  --portmask=N: hexadecimal bitmask of ports used\n");
 
 	printf("To set flow attributes:\n");
 	printf("  --ingress: set ingress attribute in flows\n");
@@ -189,8 +191,10 @@ usage(char *progname)
 static void
 args_parse(int argc, char **argv)
 {
+	uint64_t pm;
 	char **argvopt;
 	char *token;
+	char *end;
 	int n, opt;
 	int opt_idx;
 	size_t i;
@@ -514,6 +518,7 @@ args_parse(int argc, char **argv)
 		{ "deletion-rate",              0, 0, 0 },
 		{ "dump-socket-mem",            0, 0, 0 },
 		{ "enable-fwd",                 0, 0, 0 },
+		{ "portmask",                   1, 0, 0 },
 		/* Attributes */
 		{ "ingress",                    0, 0, 0 },
 		{ "egress",                     0, 0, 0 },
@@ -567,6 +572,9 @@ args_parse(int argc, char **argv)
 		{ "vxlan-encap",                0, 0, 0 },
 		{ "vxlan-decap",                0, 0, 0 },
 	};
+
+	RTE_ETH_FOREACH_DEV(i)
+		ports_mask |= 1 << i;
 
 	hairpin_queues_num = 0;
 	argvopt = argv;
@@ -703,6 +711,15 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name,
 					"enable-fwd") == 0)
 				enable_fwd = true;
+			if (strcmp(lgopts[opt_idx].name,
+					"portmask") == 0) {
+				/* parse hexadecimal string */
+				end = NULL;
+				pm = strtoull(optarg, &end, 16);
+				if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
+					rte_exit(EXIT_FAILURE, "Invalid fwd port mask\n");
+				ports_mask = pm;
+			}
 			break;
 		default:
 			fprintf(stderr, "Invalid option: %s\n", argv[optind]);
@@ -880,6 +897,9 @@ flows_handler(void)
 		rte_exit(EXIT_FAILURE, "No Memory available!");
 
 	for (port_id = 0; port_id < nr_ports; port_id++) {
+		/* If port outside portmask */
+		if (!((ports_mask >> port_id) & 0x1))
+			continue;
 		cpu_time_used = 0;
 		flow_index = 0;
 		if (flow_group > 0) {

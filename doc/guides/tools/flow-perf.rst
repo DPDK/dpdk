@@ -84,6 +84,9 @@ The command line options are:
 *	``--enable-fwd``
 	Enable packets forwarding after insertion/deletion operations.
 
+*	``--portmask=N``
+	hexadecimal bitmask of ports to be used.
+
 
 Attributes:
 
