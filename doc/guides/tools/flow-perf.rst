@@ -175,6 +175,12 @@ Items:
 	under ``TAG_INDEX`` with full mask, default value = 0.
 	Other fields are open mask.
 
+*	``--icmpv4``
+	Add icmpv4 item to all flows items, This item have open mask.
+
+*	``--icmpv6``
+	Add icmpv6 item to all flows items, This item have open mask.
+
 
 Actions:
 

@@ -130,6 +130,8 @@ usage(char *progname)
 	printf("  --gtp: add gtp layer in flow items\n");
 	printf("  --meta: add meta layer in flow items\n");
 	printf("  --tag: add tag layer in flow items\n");
+	printf("  --icmpv4: add icmpv4 layer in flow items\n");
+	printf("  --icmpv6: add icmpv6 layer in flow items\n");
 
 	printf("To set flow actions:\n");
 	printf("  --port-id: add port-id action in flow actions\n");
@@ -281,6 +283,18 @@ args_parse(int argc, char **argv)
 		{
 			.str = "tag",
 			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_TAG),
+			.map = &flow_items[0],
+			.map_idx = &items_idx
+		},
+		{
+			.str = "icmpv4",
+			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ICMP),
+			.map = &flow_items[0],
+			.map_idx = &items_idx
+		},
+		{
+			.str = "icmpv6",
+			.mask = FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ICMP6),
 			.map = &flow_items[0],
 			.map_idx = &items_idx
 		},
@@ -538,6 +552,8 @@ args_parse(int argc, char **argv)
 		{ "gtp",                        0, 0, 0 },
 		{ "meta",                       0, 0, 0 },
 		{ "tag",                        0, 0, 0 },
+		{ "icmpv4",                     0, 0, 0 },
+		{ "icmpv6",                     0, 0, 0 },
 		/* Actions */
 		{ "port-id",                    0, 0, 0 },
 		{ "rss",                        0, 0, 0 },

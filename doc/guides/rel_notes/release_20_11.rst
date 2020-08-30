@@ -66,6 +66,7 @@ New Features
   * Added flag action.
   * Added raw encap/decap actions.
   * Added VXLAN encap/decap actions.
+  * Added ICMP and ICMP6 matching items.
   * Added option to set port mask for insertion/deletion:
     ``--portmask=N``
     where N represents the hexadecimal bitmask of ports used.

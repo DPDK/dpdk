@@ -310,6 +310,38 @@ add_meta_tag(struct rte_flow_item *items,
 	items[items_counter].mask = &tag_mask;
 }
 
+static void
+add_icmpv4(struct rte_flow_item *items,
+	uint8_t items_counter,
+	__rte_unused struct additional_para para)
+{
+	static struct rte_flow_item_icmp icmpv4_spec;
+	static struct rte_flow_item_icmp icmpv4_mask;
+
+	memset(&icmpv4_spec, 0, sizeof(struct rte_flow_item_icmp));
+	memset(&icmpv4_mask, 0, sizeof(struct rte_flow_item_icmp));
+
+	items[items_counter].type = RTE_FLOW_ITEM_TYPE_ICMP;
+	items[items_counter].spec = &icmpv4_spec;
+	items[items_counter].mask = &icmpv4_mask;
+}
+
+static void
+add_icmpv6(struct rte_flow_item *items,
+	uint8_t items_counter,
+	__rte_unused struct additional_para para)
+{
+	static struct rte_flow_item_icmp6 icmpv6_spec;
+	static struct rte_flow_item_icmp6 icmpv6_mask;
+
+	memset(&icmpv6_spec, 0, sizeof(struct rte_flow_item_icmp6));
+	memset(&icmpv6_mask, 0, sizeof(struct rte_flow_item_icmp6));
+
+	items[items_counter].type = RTE_FLOW_ITEM_TYPE_ICMP6;
+	items[items_counter].spec = &icmpv6_spec;
+	items[items_counter].mask = &icmpv6_mask;
+}
+
 void
 fill_items(struct rte_flow_item *items,
 	uint64_t *flow_items, uint32_t outer_ip_src)
@@ -381,7 +413,14 @@ fill_items(struct rte_flow_item *items,
 			.mask = RTE_FLOW_ITEM_TYPE_GTP,
 			.funct = add_gtp,
 		},
-
+		{
+			.mask = RTE_FLOW_ITEM_TYPE_ICMP,
+			.funct = add_icmpv4,
+		},
+		{
+			.mask = RTE_FLOW_ITEM_TYPE_ICMP6,
+			.funct = add_icmpv6,
+		},
 	};
 
 	for (j = 0; j < MAX_ITEMS_NUM; j++) {
