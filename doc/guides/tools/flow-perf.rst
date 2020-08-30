@@ -18,7 +18,7 @@ give different flow each time, and all other items will have open masks.
 
 
 Known Limitations
-=================
+-----------------
 
 The current version has limitations which can be removed in future:
 
@@ -33,7 +33,7 @@ The app supports single and multi core performance measurements.
 
 
 Compiling the Application
-=========================
+-------------------------
 
 The ``test-flow-perf`` application is compiled as part of the main compilation
 of the DPDK libraries and tools.
@@ -42,10 +42,10 @@ Refer to the DPDK Getting Started Guides for details.
 
 
 Running the Application
-=======================
+-----------------------
 
 EAL Command-line Options
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Please refer to :doc:`EAL parameters (Linux) <../linux_gsg/linux_eal_parameters>`
 or :doc:`EAL parameters (FreeBSD) <../freebsd_gsg/freebsd_eal_parameters>` for
@@ -53,7 +53,7 @@ a list of available EAL command-line options.
 
 
 Flow Performance Options
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following are the command-line options for the flow performance application.
 They must be separated from the EAL options, shown in the previous section,
