@@ -64,7 +64,7 @@ add_ipv4(struct rte_flow_item *items,
 	memset(&ipv4_spec, 0, sizeof(struct rte_flow_item_ipv4));
 	memset(&ipv4_mask, 0, sizeof(struct rte_flow_item_ipv4));
 
-	ipv4_spec.hdr.src_addr = para.src_ip;
+	ipv4_spec.hdr.src_addr = RTE_BE32(para.src_ip);
 	ipv4_mask.hdr.src_addr = RTE_BE32(0xffffffff);
 
 	items[items_counter].type = RTE_FLOW_ITEM_TYPE_IPV4;
