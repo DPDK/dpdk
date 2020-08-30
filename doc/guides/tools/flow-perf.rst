@@ -244,3 +244,62 @@ Actions:
 	Add hairpin RSS action to all flows actions.
 	The queues in RSS action will be all hairpin queues configured
 	in the app.
+
+*	``--set-src-mac``
+	Add set source mac action to all flows actions.
+	The mac to be set is random each flow.
+
+*	``--set-dst-mac``
+	Add set destination mac action to all flows actions.
+	The mac to be set is random each flow.
+
+*	``-set-src-ipv4``
+	Add set source ipv4 action to all flows actions.
+	The ipv4 header to be set is random each flow.
+
+*	``--set-dst-ipv4``
+	Add set destination ipv4 action to all flows actions.
+	The ipv4 header to be set is random each flow.
+
+*	``--set-src-ipv6``
+	Add set source ipv6 action to all flows actions.
+	The ipv6 header to be set is random each flow.
+
+*	``--set-dst-ipv6``
+	Add set destination ipv6 action to all flows actions.
+	The ipv6 header to be set is random each flow.
+
+*	``--set-src-tp``
+	Add set source tp action to all flows actions.
+	The tp sport header to be set is random each flow.
+
+*	``--set-dst-tp``
+	Add set destination tp action to all flows actions.
+	The tp dport header to be set is random each flow.
+
+*	``--inc-tcp-ack``
+	Add increment TCP acknowledgment by one to all flows actions.
+
+*	``--dec-tcp-ack``
+	Add decrement TCP acknowledgment by one to all flows actions.
+
+*	``--inc-tcp-seq``
+	Add increment TCP sequence by one to all flows actions.
+
+*	``--dec-tcp-seq``
+	Add decrement TCP sequence by one to all flows actions.
+
+*	``--set-ttl``
+	Add set IP ttl action to all flows actions.
+	The ttl value to be set is random each flow.
+
+*	``--dec-ttl``
+	Add decrement IP ttl by one to all flows actions.
+
+*	``--set-ipv4-dscp``
+	Add set IPv4 dscp action to all flows actions.
+	The dscp value to be is random each flow.
+
+*	``--set-ipv6-dscp``
+	Add set IPv6 dscp action to all flows actions.
+	The dscp value to be is random each flow.

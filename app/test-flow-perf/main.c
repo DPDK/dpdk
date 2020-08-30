@@ -138,6 +138,38 @@ usage(char *progname)
 	printf("  --drop: add drop action in flow actions\n");
 	printf("  --hairpin-queue=N: add hairpin-queue action in flow actions\n");
 	printf("  --hairpin-rss=N: add hairpin-rss action in flow actions\n");
+	printf("  --set-src-mac: add set src mac action to flow actions\n"
+		"Src mac to be set is random each flow\n");
+	printf("  --set-dst-mac: add set dst mac action to flow actions\n"
+		 "Dst mac to be set is random each flow\n");
+	printf("  --set-src-ipv4: add set src ipv4 action to flow actions\n"
+		"Src ipv4 to be set is random each flow\n");
+	printf("  --set-dst-ipv4 add set dst ipv4 action to flow actions\n"
+		"Dst ipv4 to be set is random each flow\n");
+	printf("  --set-src-ipv6: add set src ipv6 action to flow actions\n"
+		"Src ipv6 to be set is random each flow\n");
+	printf("  --set-dst-ipv6: add set dst ipv6 action to flow actions\n"
+		"Dst ipv6 to be set is random each flow\n");
+	printf("  --set-src-tp: add set src tp action to flow actions\n"
+		"Src tp to be set is random each flow\n");
+	printf("  --set-dst-tp: add set dst tp action to flow actions\n"
+		"Dst tp to be set is random each flow\n");
+	printf("  --inc-tcp-ack: add inc tcp ack action to flow actions\n"
+		"tcp ack will be increments by 1\n");
+	printf("  --dec-tcp-ack: add dec tcp ack action to flow actions\n"
+		"tcp ack will be decrements by 1\n");
+	printf("  --inc-tcp-seq: add inc tcp seq action to flow actions\n"
+		"tcp seq will be increments by 1\n");
+	printf("  --dec-tcp-seq: add dec tcp seq action to flow actions\n"
+		"tcp seq will be decrements by 1\n");
+	printf("  --set-ttl: add set ttl action to flow actions\n"
+		"L3 ttl to be set is random each flow\n");
+	printf("  --dec-ttl: add dec ttl action to flow actions\n"
+		"L3 ttl will be decrements by 1\n");
+	printf("  --set-ipv4-dscp: add set ipv4 dscp action to flow actions\n"
+		"ipv4 dscp value to be set is random each flow\n");
+	printf("  --set-ipv6-dscp: add set ipv6 dscp action to flow actions\n"
+		"ipv6 dscp value to be set is random each flow\n");
 }
 
 static void
@@ -304,7 +336,135 @@ args_parse(int argc, char **argv)
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_DROP),
 			.map = &flow_actions[0],
 			.map_idx = &actions_idx
-		}
+		},
+		{
+			.str = "set-src-mac",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_MAC_SRC
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-dst-mac",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_MAC_DST
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-src-ipv4",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-dst-ipv4",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_IPV4_DST
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-src-ipv6",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-dst-ipv6",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_IPV6_DST
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-src-tp",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_TP_SRC
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-dst-tp",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_TP_DST
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "inc-tcp-ack",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_INC_TCP_ACK
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "dec-tcp-ack",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "inc-tcp-seq",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "dec-tcp-seq",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-ttl",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_TTL
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "dec-ttl",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_DEC_TTL
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-ipv4-dscp",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
+		{
+			.str = "set-ipv6-dscp",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
 	};
 
 	static const struct option lgopts[] = {
@@ -346,6 +506,22 @@ args_parse(int argc, char **argv)
 		{ "drop",                       0, 0, 0 },
 		{ "hairpin-queue",              1, 0, 0 },
 		{ "hairpin-rss",                1, 0, 0 },
+		{ "set-src-mac",                0, 0, 0 },
+		{ "set-dst-mac",                0, 0, 0 },
+		{ "set-src-ipv4",               0, 0, 0 },
+		{ "set-dst-ipv4",               0, 0, 0 },
+		{ "set-src-ipv6",               0, 0, 0 },
+		{ "set-dst-ipv6",               0, 0, 0 },
+		{ "set-src-tp",                 0, 0, 0 },
+		{ "set-dst-tp",                 0, 0, 0 },
+		{ "inc-tcp-ack",                0, 0, 0 },
+		{ "dec-tcp-ack",                0, 0, 0 },
+		{ "inc-tcp-seq",                0, 0, 0 },
+		{ "dec-tcp-seq",                0, 0, 0 },
+		{ "set-ttl",                    0, 0, 0 },
+		{ "dec-ttl",                    0, 0, 0 },
+		{ "set-ipv4-dscp",              0, 0, 0 },
+		{ "set-ipv6-dscp",              0, 0, 0 },
 	};
 
 	hairpin_queues_num = 0;
@@ -368,7 +544,7 @@ args_parse(int argc, char **argv)
 				else
 					rte_exit(EXIT_SUCCESS,
 						"flow group should be >= 0\n");
-				printf("group %d ", flow_group);
+				printf("group %d / ", flow_group);
 			}
 
 			for (i = 0; i < RTE_DIM(flow_options); i++)

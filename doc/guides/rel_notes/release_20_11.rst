@@ -62,6 +62,7 @@ New Features
     using flow performance application with any order,
     moreover the app also now starts to support inner
     items matching as well.
+  * Added header modify actions.
 
 
 Removed Items
