@@ -23,7 +23,6 @@
 #define META_DATA 1
 #define TAG_INDEX 0
 #define PORT_ID_DST 1
-#define MARK_ID 1
 #define TEID_VALUE 1
 
 /* Flow items/acctions max size */

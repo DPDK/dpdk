@@ -54,12 +54,14 @@ struct action_rss_data {
 static void
 add_mark(struct rte_flow_action *actions,
 	uint8_t actions_counter,
-	__rte_unused struct additional_para para)
+	struct additional_para para)
 {
 	static struct rte_flow_action_mark mark_action;
+	uint32_t counter = para.counter;
 
 	do {
-		mark_action.id = MARK_ID;
+		/* Random values from 1 to 256 */
+		mark_action.id = (counter % 255) + 1;
 	} while (0);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_MARK;
