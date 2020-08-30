@@ -10,6 +10,8 @@
 #include <rte_malloc.h>
 #include <rte_flow.h>
 #include <rte_ethdev.h>
+#include <rte_vxlan.h>
+#include <rte_gtp.h>
 
 #include "actions_gen.h"
 #include "flow_gen.h"
@@ -22,6 +24,23 @@ struct additional_para {
 	uint16_t *queues;
 	uint16_t queues_number;
 	uint32_t counter;
+	uint64_t encap_data;
+	uint64_t decap_data;
+};
+
+/* Storage for struct rte_flow_action_raw_encap including external data. */
+struct action_raw_encap_data {
+	struct rte_flow_action_raw_encap conf;
+	uint8_t data[128];
+	uint8_t preserve[128];
+	uint16_t idx;
+};
+
+/* Storage for struct rte_flow_action_raw_decap including external data. */
+struct action_raw_decap_data {
+	struct rte_flow_action_raw_decap conf;
+	uint8_t data[128];
+	uint16_t idx;
 };
 
 /* Storage for struct rte_flow_action_rss including external data. */
@@ -437,9 +456,304 @@ add_flag(struct rte_flow_action *actions,
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_FLAG;
 }
 
+static void
+add_ether_header(uint8_t **header, uint64_t data,
+	__rte_unused struct additional_para para)
+{
+	struct rte_flow_item_eth eth_item;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_ETH)))
+		return;
+
+	memset(&eth_item, 0, sizeof(struct rte_flow_item_eth));
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VLAN))
+		eth_item.type = RTE_BE16(RTE_ETHER_TYPE_VLAN);
+	else if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4))
+		eth_item.type = RTE_BE16(RTE_ETHER_TYPE_IPV4);
+	else if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6))
+		eth_item.type = RTE_BE16(RTE_ETHER_TYPE_IPV6);
+	memcpy(*header, &eth_item, sizeof(eth_item));
+	*header += sizeof(eth_item);
+}
+
+static void
+add_vlan_header(uint8_t **header, uint64_t data,
+	__rte_unused struct additional_para para)
+{
+	struct rte_flow_item_vlan vlan_item;
+	uint16_t vlan_value;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VLAN)))
+		return;
+
+	vlan_value = VLAN_VALUE;
+
+	memset(&vlan_item, 0, sizeof(struct rte_flow_item_vlan));
+	vlan_item.tci = RTE_BE16(vlan_value);
+
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4))
+		vlan_item.inner_type = RTE_BE16(RTE_ETHER_TYPE_IPV4);
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6))
+		vlan_item.inner_type = RTE_BE16(RTE_ETHER_TYPE_IPV6);
+	memcpy(*header, &vlan_item, sizeof(vlan_item));
+	*header += sizeof(vlan_item);
+}
+
+static void
+add_ipv4_header(uint8_t **header, uint64_t data,
+	struct additional_para para)
+{
+	struct rte_flow_item_ipv4 ipv4_item;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4)))
+		return;
+
+	memset(&ipv4_item, 0, sizeof(struct rte_flow_item_ipv4));
+	ipv4_item.hdr.src_addr = RTE_IPV4(127, 0, 0, 1);
+	ipv4_item.hdr.dst_addr = RTE_BE32(para.counter);
+	ipv4_item.hdr.version_ihl = RTE_IPV4_VHL_DEF;
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP))
+		ipv4_item.hdr.next_proto_id = RTE_IP_TYPE_UDP;
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE))
+		ipv4_item.hdr.next_proto_id = RTE_IP_TYPE_GRE;
+	memcpy(*header, &ipv4_item, sizeof(ipv4_item));
+	*header += sizeof(ipv4_item);
+}
+
+static void
+add_ipv6_header(uint8_t **header, uint64_t data,
+	__rte_unused struct additional_para para)
+{
+	struct rte_flow_item_ipv6 ipv6_item;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV6)))
+		return;
+
+	memset(&ipv6_item, 0, sizeof(struct rte_flow_item_ipv6));
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP))
+		ipv6_item.hdr.proto = RTE_IP_TYPE_UDP;
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE))
+		ipv6_item.hdr.proto = RTE_IP_TYPE_GRE;
+	memcpy(*header, &ipv6_item, sizeof(ipv6_item));
+	*header += sizeof(ipv6_item);
+}
+
+static void
+add_udp_header(uint8_t **header, uint64_t data,
+	__rte_unused struct additional_para para)
+{
+	struct rte_flow_item_udp udp_item;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP)))
+		return;
+
+	memset(&udp_item, 0, sizeof(struct rte_flow_item_udp));
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN))
+		udp_item.hdr.dst_port = RTE_BE16(RTE_VXLAN_DEFAULT_PORT);
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN_GPE))
+		udp_item.hdr.dst_port = RTE_BE16(RTE_VXLAN_GPE_UDP_PORT);
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GENEVE))
+		udp_item.hdr.dst_port = RTE_BE16(RTE_GENEVE_UDP_PORT);
+	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GTP))
+		udp_item.hdr.dst_port = RTE_BE16(RTE_GTPU_UDP_PORT);
+	 memcpy(*header, &udp_item, sizeof(udp_item));
+	 *header += sizeof(udp_item);
+}
+
+static void
+add_vxlan_header(uint8_t **header, uint64_t data,
+	struct additional_para para)
+{
+	struct rte_flow_item_vxlan vxlan_item;
+	uint32_t vni_value = para.counter;
+	uint8_t i;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN)))
+		return;
+
+	memset(&vxlan_item, 0, sizeof(struct rte_flow_item_vxlan));
+
+	for (i = 0; i < 3; i++)
+		vxlan_item.vni[2 - i] = vni_value >> (i * 8);
+	vxlan_item.flags = 0x8;
+
+	memcpy(*header, &vxlan_item, sizeof(vxlan_item));
+	*header += sizeof(vxlan_item);
+}
+
+static void
+add_vxlan_gpe_header(uint8_t **header, uint64_t data,
+	struct additional_para para)
+{
+	struct rte_flow_item_vxlan_gpe vxlan_gpe_item;
+	uint32_t vni_value = para.counter;
+	uint8_t i;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN_GPE)))
+		return;
+
+	memset(&vxlan_gpe_item, 0, sizeof(struct rte_flow_item_vxlan_gpe));
+
+	for (i = 0; i < 3; i++)
+		vxlan_gpe_item.vni[2 - i] = vni_value >> (i * 8);
+	vxlan_gpe_item.flags = 0x0c;
+
+	memcpy(*header, &vxlan_gpe_item, sizeof(vxlan_gpe_item));
+	*header += sizeof(vxlan_gpe_item);
+}
+
+static void
+add_gre_header(uint8_t **header, uint64_t data,
+	__rte_unused struct additional_para para)
+{
+	struct rte_flow_item_gre gre_item;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GRE)))
+		return;
+
+	memset(&gre_item, 0, sizeof(struct rte_flow_item_gre));
+
+	gre_item.protocol = RTE_BE16(RTE_ETHER_TYPE_TEB);
+
+	memcpy(*header, &gre_item, sizeof(gre_item));
+	*header += sizeof(gre_item);
+}
+
+static void
+add_geneve_header(uint8_t **header, uint64_t data,
+	struct additional_para para)
+{
+	struct rte_flow_item_geneve geneve_item;
+	uint32_t vni_value = para.counter;
+	uint8_t i;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GENEVE)))
+		return;
+
+	memset(&geneve_item, 0, sizeof(struct rte_flow_item_geneve));
+
+	for (i = 0; i < 3; i++)
+		geneve_item.vni[2 - i] = vni_value >> (i * 8);
+
+	memcpy(*header, &geneve_item, sizeof(geneve_item));
+	*header += sizeof(geneve_item);
+}
+
+static void
+add_gtp_header(uint8_t **header, uint64_t data,
+	struct additional_para para)
+{
+	struct rte_flow_item_gtp gtp_item;
+
+	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GTP)))
+		return;
+
+	memset(&gtp_item, 0, sizeof(struct rte_flow_item_gtp));
+
+	gtp_item.teid = RTE_BE32(para.counter);
+	gtp_item.msg_type = 255;
+
+	memcpy(*header, &gtp_item, sizeof(gtp_item));
+	*header += sizeof(gtp_item);
+}
+
+static const struct encap_decap_headers {
+	void (*funct)(
+		uint8_t **header,
+		uint64_t data,
+		struct additional_para para
+		);
+} headers[] = {
+	{.funct = add_ether_header},
+	{.funct = add_vlan_header},
+	{.funct = add_ipv4_header},
+	{.funct = add_ipv6_header},
+	{.funct = add_udp_header},
+	{.funct = add_vxlan_header},
+	{.funct = add_vxlan_gpe_header},
+	{.funct = add_gre_header},
+	{.funct = add_geneve_header},
+	{.funct = add_gtp_header},
+};
+
+static void
+add_raw_encap(struct rte_flow_action *actions,
+	uint8_t actions_counter,
+	struct additional_para para)
+{
+	static struct action_raw_encap_data *action_encap_data;
+	uint64_t encap_data = para.encap_data;
+	uint8_t *header;
+	uint8_t i;
+
+	/* Avoid double allocation. */
+	if (action_encap_data == NULL)
+		action_encap_data = rte_malloc("encap_data",
+			sizeof(struct action_raw_encap_data), 0);
+
+	/* Check if allocation failed. */
+	if (action_encap_data == NULL)
+		rte_exit(EXIT_FAILURE, "No Memory available!");
+
+	*action_encap_data = (struct action_raw_encap_data) {
+		.conf = (struct rte_flow_action_raw_encap) {
+			.data = action_encap_data->data,
+		},
+			.data = {},
+	};
+	header = action_encap_data->data;
+
+	for (i = 0; i < RTE_DIM(headers); i++)
+		headers[i].funct(&header, encap_data, para);
+
+	action_encap_data->conf.size = header -
+		action_encap_data->data;
+
+	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_RAW_ENCAP;
+	actions[actions_counter].conf = &action_encap_data->conf;
+}
+
+static void
+add_raw_decap(struct rte_flow_action *actions,
+	uint8_t actions_counter,
+	struct additional_para para)
+{
+	static struct action_raw_decap_data *action_decap_data;
+	uint64_t decap_data = para.decap_data;
+	uint8_t *header;
+	uint8_t i;
+
+	/* Avoid double allocation. */
+	if (action_decap_data == NULL)
+		action_decap_data = rte_malloc("decap_data",
+			sizeof(struct action_raw_decap_data), 0);
+
+	/* Check if allocation failed. */
+	if (action_decap_data == NULL)
+		rte_exit(EXIT_FAILURE, "No Memory available!");
+
+	*action_decap_data = (struct action_raw_decap_data) {
+		.conf = (struct rte_flow_action_raw_decap) {
+			.data = action_decap_data->data,
+		},
+			.data = {},
+	};
+	header = action_decap_data->data;
+
+	for (i = 0; i < RTE_DIM(headers); i++)
+		headers[i].funct(&header, decap_data, para);
+
+	action_decap_data->conf.size = header -
+		action_decap_data->data;
+
+	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_RAW_DECAP;
+	actions[actions_counter].conf = &action_decap_data->conf;
+}
+
 void
 fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
-	uint32_t counter, uint16_t next_table, uint16_t hairpinq)
+	uint32_t counter, uint16_t next_table, uint16_t hairpinq,
+	uint64_t encap_data, uint64_t decap_data)
 {
 	struct additional_para additional_para_data;
 	uint8_t actions_counter = 0;
@@ -459,6 +773,8 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 		.queues = queues,
 		.queues_number = RXQ_NUM,
 		.counter = counter,
+		.encap_data = encap_data,
+		.decap_data = decap_data,
 	};
 
 	if (hairpinq != 0) {
@@ -620,6 +936,18 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 		{
 			.mask = HAIRPIN_RSS_ACTION,
 			.funct = add_rss,
+		},
+		{
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_RAW_ENCAP
+			),
+			.funct = add_raw_encap,
+		},
+		{
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_RAW_DECAP
+			),
+			.funct = add_raw_decap,
 		},
 	};
 

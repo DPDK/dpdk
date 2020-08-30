@@ -12,7 +12,13 @@
 
 #include "config.h"
 
+#define RTE_IP_TYPE_UDP	17
+#define RTE_IP_TYPE_GRE	47
+#define RTE_VXLAN_GPE_UDP_PORT 250
+#define RTE_GENEVE_UDP_PORT 6081
+
 void fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
-	uint32_t counter, uint16_t next_table, uint16_t hairpinq);
+	uint32_t counter, uint16_t next_table, uint16_t hairpinq,
+	uint64_t encap_data, uint64_t decap_data);
 
 #endif /* FLOW_PERF_ACTION_GEN */

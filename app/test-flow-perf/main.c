@@ -45,6 +45,9 @@
 struct rte_flow *flow;
 static uint8_t flow_group;
 
+static uint64_t encap_data;
+static uint64_t decap_data;
+
 static uint64_t flow_items[MAX_ITEMS_NUM];
 static uint64_t flow_actions[MAX_ACTIONS_NUM];
 static uint64_t flow_attrs[MAX_ATTRS_NUM];
@@ -171,12 +174,19 @@ usage(char *progname)
 	printf("  --set-ipv6-dscp: add set ipv6 dscp action to flow actions\n"
 		"ipv6 dscp value to be set is random each flow\n");
 	printf("  --flag: add flag action to flow actions\n");
+	printf("  --raw-encap=<data>: add raw encap action to flow actions\n"
+		"Data is the data needed to be encaped\n"
+		"Example: raw-encap=ether,ipv4,udp,vxlan\n");
+	printf("  --raw-decap=<data>: add raw decap action to flow actions\n"
+		"Data is the data needed to be decaped\n"
+		"Example: raw-decap=ether,ipv4,udp,vxlan\n");
 }
 
 static void
 args_parse(int argc, char **argv)
 {
 	char **argvopt;
+	char *token;
 	int n, opt;
 	int opt_idx;
 	size_t i;
@@ -532,6 +542,8 @@ args_parse(int argc, char **argv)
 		{ "set-ipv4-dscp",              0, 0, 0 },
 		{ "set-ipv6-dscp",              0, 0, 0 },
 		{ "flag",                       0, 0, 0 },
+		{ "raw-encap",                  1, 0, 0 },
+		{ "raw-decap",                  1, 0, 0 },
 	};
 
 	hairpin_queues_num = 0;
@@ -593,6 +605,58 @@ args_parse(int argc, char **argv)
 				printf("hairpin-queue / ");
 			}
 
+			if (strcmp(lgopts[opt_idx].name, "raw-encap") == 0) {
+				printf("raw-encap ");
+				flow_actions[actions_idx++] =
+					FLOW_ITEM_MASK(
+						RTE_FLOW_ACTION_TYPE_RAW_ENCAP
+					);
+
+				token = strtok(optarg, ",");
+				while (token != NULL) {
+					for (i = 0; i < RTE_DIM(flow_options); i++) {
+						if (strcmp(flow_options[i].str, token) == 0) {
+							printf("%s,", token);
+							encap_data |= flow_options[i].mask;
+							break;
+						}
+						/* Reached last item with no match */
+						if (i == (RTE_DIM(flow_options) - 1)) {
+							fprintf(stderr, "Invalid encap item: %s\n", token);
+							usage(argv[0]);
+							rte_exit(EXIT_SUCCESS, "Invalid encap item\n");
+						}
+					}
+					token = strtok(NULL, ",");
+				}
+				printf(" / ");
+			}
+			if (strcmp(lgopts[opt_idx].name, "raw-decap") == 0) {
+				printf("raw-decap ");
+				flow_actions[actions_idx++] =
+					FLOW_ITEM_MASK(
+						RTE_FLOW_ACTION_TYPE_RAW_DECAP
+					);
+
+				token = strtok(optarg, ",");
+				while (token != NULL) {
+					for (i = 0; i < RTE_DIM(flow_options); i++) {
+						if (strcmp(flow_options[i].str, token) == 0) {
+							printf("%s,", token);
+							encap_data |= flow_options[i].mask;
+							break;
+						}
+						/* Reached last item with no match */
+						if (i == (RTE_DIM(flow_options) - 1)) {
+							fprintf(stderr, "Invalid decap item: %s\n", token);
+							usage(argv[0]);
+							rte_exit(EXIT_SUCCESS, "Invalid decap item\n");
+						}
+					}
+					token = strtok(NULL, ",");
+				}
+				printf(" / ");
+			}
 			/* Control */
 			if (strcmp(lgopts[opt_idx].name,
 					"flows-count") == 0) {
@@ -807,7 +871,7 @@ flows_handler(void)
 			 */
 			flow = generate_flow(port_id, 0, flow_attrs,
 				global_items, global_actions,
-				flow_group, 0, 0, &error);
+				flow_group, 0, 0, 0, 0, &error);
 
 			if (flow == NULL) {
 				print_flow_error(error);
@@ -823,7 +887,9 @@ flows_handler(void)
 			flow = generate_flow(port_id, flow_group,
 				flow_attrs, flow_items, flow_actions,
 				JUMP_ACTION_TABLE, i,
-				hairpin_queues_num, &error);
+				hairpin_queues_num,
+				encap_data, decap_data,
+				&error);
 
 			if (force_quit)
 				i = flows_count;

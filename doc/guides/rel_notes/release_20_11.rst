@@ -64,6 +64,7 @@ New Features
     items matching as well.
   * Added header modify actions.
   * Added flag action.
+  * Added raw encap/decap actions.
 
 
 Removed Items

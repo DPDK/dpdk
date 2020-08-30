@@ -306,3 +306,13 @@ Actions:
 
 *	``--flag``
 	Add flag action to all flows actions.
+
+*	``--raw-encap=<DATA>``
+	Add raw encap action to all flows actions.
+	Data is the data needed to be encaped, with fixed values.
+	Example: raw-encap=ether,ipv4,udp,vxlan
+
+*	``--raw-decap=<DATA>``
+	Add raw decap action to all flows actions.
+	Data is the data needed to be decaped, with fixed values.
+	Example: raw-decap=ether,ipv4,gre
