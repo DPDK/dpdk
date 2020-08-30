@@ -63,6 +63,7 @@ New Features
     moreover the app also now starts to support inner
     items matching as well.
   * Added header modify actions.
+  * Added flag action.
 
 
 Removed Items

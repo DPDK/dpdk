@@ -170,6 +170,7 @@ usage(char *progname)
 		"ipv4 dscp value to be set is random each flow\n");
 	printf("  --set-ipv6-dscp: add set ipv6 dscp action to flow actions\n"
 		"ipv6 dscp value to be set is random each flow\n");
+	printf("  --flag: add flag action to flow actions\n");
 }
 
 static void
@@ -465,6 +466,14 @@ args_parse(int argc, char **argv)
 			.map = &flow_actions[0],
 			.map_idx = &actions_idx
 		},
+		{
+			.str = "flag",
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_FLAG
+			),
+			.map = &flow_actions[0],
+			.map_idx = &actions_idx
+		},
 	};
 
 	static const struct option lgopts[] = {
@@ -522,6 +531,7 @@ args_parse(int argc, char **argv)
 		{ "dec-ttl",                    0, 0, 0 },
 		{ "set-ipv4-dscp",              0, 0, 0 },
 		{ "set-ipv6-dscp",              0, 0, 0 },
+		{ "flag",                       0, 0, 0 },
 	};
 
 	hairpin_queues_num = 0;

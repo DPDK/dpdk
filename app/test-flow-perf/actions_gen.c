@@ -428,6 +428,14 @@ add_set_ipv6_dscp(struct rte_flow_action *actions,
 	actions[actions_counter].conf = &set_dscp;
 }
 
+static void
+add_flag(struct rte_flow_action *actions,
+	uint8_t actions_counter,
+	__rte_unused struct additional_para para)
+{
+	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_FLAG;
+}
+
 void
 fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 	uint32_t counter, uint16_t next_table, uint16_t hairpinq)
@@ -481,6 +489,12 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 		{
 			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_TAG),
 			.funct = add_set_tag,
+		},
+		{
+			.mask = FLOW_ACTION_MASK(
+				RTE_FLOW_ACTION_TYPE_FLAG
+			),
+			.funct = add_flag,
 		},
 		{
 			.mask = FLOW_ACTION_MASK(

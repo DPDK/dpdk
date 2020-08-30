@@ -303,3 +303,6 @@ Actions:
 *	``--set-ipv6-dscp``
 	Add set IPv6 dscp action to all flows actions.
 	The dscp value to be is random each flow.
+
+*	``--flag``
+	Add flag action to all flows actions.
