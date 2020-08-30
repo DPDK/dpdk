@@ -86,8 +86,9 @@ add_rss(struct rte_flow_action *actions,
 
 	uint16_t queue;
 
-	rss_data = rte_malloc("rss_data",
-		sizeof(struct action_rss_data), 0);
+	if (rss_data == NULL)
+		rss_data = rte_malloc("rss_data",
+			sizeof(struct action_rss_data), 0);
 
 	if (rss_data == NULL)
 		rte_exit(EXIT_FAILURE, "No Memory available!");
