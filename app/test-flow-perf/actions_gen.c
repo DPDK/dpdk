@@ -219,39 +219,39 @@ fill_actions(struct rte_flow_action *actions, uint64_t flow_actions,
 			);
 	} flows_actions[] = {
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_MARK),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_MARK),
 			.funct = add_mark,
 		},
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_COUNT),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_COUNT),
 			.funct = add_count,
 		},
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_SET_META),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_META),
 			.funct = add_set_meta,
 		},
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_SET_TAG),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_SET_TAG),
 			.funct = add_set_tag,
 		},
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_QUEUE),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_QUEUE),
 			.funct = add_queue,
 		},
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_RSS),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_RSS),
 			.funct = add_rss,
 		},
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_JUMP),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_JUMP),
 			.funct = add_jump,
 		},
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_PORT_ID),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_PORT_ID),
 			.funct = add_port_id
 		},
 		{
-			.mask = FLOW_ITEM_MASK(RTE_FLOW_ACTION_TYPE_DROP),
+			.mask = FLOW_ACTION_MASK(RTE_FLOW_ACTION_TYPE_DROP),
 			.funct = add_drop,
 		},
 		{
