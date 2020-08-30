@@ -214,6 +214,10 @@ add_set_src_mac(struct rte_flow_action *actions,
 	uint32_t mac = para.counter;
 	uint16_t i;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		mac = 1;
+
 	/* Mac address to be set is random each time */
 	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
 		set_mac.mac_addr[i] = mac & 0xff;
@@ -233,6 +237,10 @@ add_set_dst_mac(struct rte_flow_action *actions,
 	uint32_t mac = para.counter;
 	uint16_t i;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		mac = 1;
+
 	/* Mac address to be set is random each time */
 	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
 		set_mac.mac_addr[i] = mac & 0xff;
@@ -249,9 +257,14 @@ add_set_src_ipv4(struct rte_flow_action *actions,
 	__rte_unused struct additional_para para)
 {
 	static struct rte_flow_action_set_ipv4 set_ipv4;
+	uint32_t ip = para.counter;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ip = 1;
 
 	/* IPv4 value to be set is random each time */
-	set_ipv4.ipv4_addr = RTE_BE32(para.counter + 1);
+	set_ipv4.ipv4_addr = RTE_BE32(ip + 1);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC;
 	actions[actions_counter].conf = &set_ipv4;
@@ -263,9 +276,14 @@ add_set_dst_ipv4(struct rte_flow_action *actions,
 	__rte_unused struct additional_para para)
 {
 	static struct rte_flow_action_set_ipv4 set_ipv4;
+	uint32_t ip = para.counter;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ip = 1;
 
 	/* IPv4 value to be set is random each time */
-	set_ipv4.ipv4_addr = RTE_BE32(para.counter + 1);
+	set_ipv4.ipv4_addr = RTE_BE32(ip + 1);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_SET_IPV4_DST;
 	actions[actions_counter].conf = &set_ipv4;
@@ -279,6 +297,10 @@ add_set_src_ipv6(struct rte_flow_action *actions,
 	static struct rte_flow_action_set_ipv6 set_ipv6;
 	uint32_t ipv6 = para.counter;
 	uint8_t i;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ipv6 = 1;
 
 	/* IPv6 value to set is random each time */
 	for (i = 0; i < 16; i++) {
@@ -299,6 +321,10 @@ add_set_dst_ipv6(struct rte_flow_action *actions,
 	uint32_t ipv6 = para.counter;
 	uint8_t i;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ipv6 = 1;
+
 	/* IPv6 value to set is random each time */
 	for (i = 0; i < 16; i++) {
 		set_ipv6.ipv6_addr[i] = ipv6 & 0xff;
@@ -317,9 +343,12 @@ add_set_src_tp(struct rte_flow_action *actions,
 	static struct rte_flow_action_set_tp set_tp;
 	uint32_t tp = para.counter;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		tp = 100;
+
 	/* TP src port is random each time */
-	if (tp > 0xffff)
-		tp = tp >> 16;
+	tp = tp % 0xffff;
 
 	set_tp.port = RTE_BE16(tp & 0xffff);
 
@@ -334,6 +363,10 @@ add_set_dst_tp(struct rte_flow_action *actions,
 {
 	static struct rte_flow_action_set_tp set_tp;
 	uint32_t tp = para.counter;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		tp = 100;
 
 	/* TP src port is random each time */
 	if (tp > 0xffff)
@@ -350,7 +383,14 @@ add_inc_tcp_ack(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static rte_be32_t value = RTE_BE32(1);
+	static rte_be32_t value;
+	uint32_t ack_value = para.counter;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ack_value = 1;
+
+	value = RTE_BE32(ack_value);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_INC_TCP_ACK;
 	actions[actions_counter].conf = &value;
@@ -361,7 +401,14 @@ add_dec_tcp_ack(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static rte_be32_t value = RTE_BE32(1);
+	static rte_be32_t value;
+	uint32_t ack_value = para.counter;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ack_value = 1;
+
+	value = RTE_BE32(ack_value);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_DEC_TCP_ACK;
 	actions[actions_counter].conf = &value;
@@ -372,7 +419,14 @@ add_inc_tcp_seq(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static rte_be32_t value = RTE_BE32(1);
+	static rte_be32_t value;
+	uint32_t seq_value = para.counter;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		seq_value = 1;
+
+	value = RTE_BE32(seq_value);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_INC_TCP_SEQ;
 	actions[actions_counter].conf = &value;
@@ -383,7 +437,14 @@ add_dec_tcp_seq(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static rte_be32_t value = RTE_BE32(1);
+	static rte_be32_t value;
+	uint32_t seq_value = para.counter;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		seq_value = 1;
+
+	value	= RTE_BE32(seq_value);
 
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_DEC_TCP_SEQ;
 	actions[actions_counter].conf = &value;
@@ -397,9 +458,12 @@ add_set_ttl(struct rte_flow_action *actions,
 	static struct rte_flow_action_set_ttl set_ttl;
 	uint32_t ttl_value = para.counter;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ttl_value = 1;
+
 	/* Set ttl to random value each time */
-	while (ttl_value > 0xff)
-		ttl_value = ttl_value >> 8;
+	ttl_value = ttl_value % 0xff;
 
 	set_ttl.ttl_value = ttl_value;
 
@@ -423,9 +487,12 @@ add_set_ipv4_dscp(struct rte_flow_action *actions,
 	static struct rte_flow_action_set_dscp set_dscp;
 	uint32_t dscp_value = para.counter;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		dscp_value = 1;
+
 	/* Set dscp to random value each time */
-	while (dscp_value > 0xff)
-		dscp_value = dscp_value >> 8;
+	dscp_value = dscp_value % 0xff;
 
 	set_dscp.dscp = dscp_value;
 
@@ -441,9 +508,12 @@ add_set_ipv6_dscp(struct rte_flow_action *actions,
 	static struct rte_flow_action_set_dscp set_dscp;
 	uint32_t dscp_value = para.counter;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		dscp_value = 1;
+
 	/* Set dscp to random value each time */
-	while (dscp_value > 0xff)
-		dscp_value = dscp_value >> 8;
+	dscp_value = dscp_value % 0xff;
 
 	set_dscp.dscp = dscp_value;
 
@@ -507,13 +577,18 @@ add_ipv4_header(uint8_t **header, uint64_t data,
 	struct additional_para para)
 {
 	struct rte_flow_item_ipv4 ipv4_item;
+	uint32_t ip_dst = para.counter;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_IPV4)))
 		return;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ip_dst = 1;
+
 	memset(&ipv4_item, 0, sizeof(struct rte_flow_item_ipv4));
 	ipv4_item.hdr.src_addr = RTE_IPV4(127, 0, 0, 1);
-	ipv4_item.hdr.dst_addr = RTE_BE32(para.counter);
+	ipv4_item.hdr.dst_addr = RTE_BE32(ip_dst);
 	ipv4_item.hdr.version_ihl = RTE_IPV4_VHL_DEF;
 	if (data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_UDP))
 		ipv4_item.hdr.next_proto_id = RTE_IP_TYPE_UDP;
@@ -574,6 +649,10 @@ add_vxlan_header(uint8_t **header, uint64_t data,
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN)))
 		return;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		vni_value = 1;
+
 	memset(&vxlan_item, 0, sizeof(struct rte_flow_item_vxlan));
 
 	for (i = 0; i < 3; i++)
@@ -594,6 +673,10 @@ add_vxlan_gpe_header(uint8_t **header, uint64_t data,
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_VXLAN_GPE)))
 		return;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		vni_value = 1;
 
 	memset(&vxlan_gpe_item, 0, sizeof(struct rte_flow_item_vxlan_gpe));
 
@@ -633,6 +716,10 @@ add_geneve_header(uint8_t **header, uint64_t data,
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GENEVE)))
 		return;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		vni_value = 1;
+
 	memset(&geneve_item, 0, sizeof(struct rte_flow_item_geneve));
 
 	for (i = 0; i < 3; i++)
@@ -647,13 +734,18 @@ add_gtp_header(uint8_t **header, uint64_t data,
 	struct additional_para para)
 {
 	struct rte_flow_item_gtp gtp_item;
+	uint32_t teid_value = para.counter;
 
 	if (!(data & FLOW_ITEM_MASK(RTE_FLOW_ITEM_TYPE_GTP)))
 		return;
 
+	/* Fixed value */
+	if (FIXED_VALUES)
+		teid_value = 1;
+
 	memset(&gtp_item, 0, sizeof(struct rte_flow_item_gtp));
 
-	gtp_item.teid = RTE_BE32(para.counter);
+	gtp_item.teid = RTE_BE32(teid_value);
 	gtp_item.msg_type = 255;
 
 	memcpy(*header, &gtp_item, sizeof(gtp_item));
@@ -764,13 +856,18 @@ add_vxlan_encap(struct rte_flow_action *actions,
 	static struct rte_flow_item_ipv4 item_ipv4;
 	static struct rte_flow_item_udp item_udp;
 	static struct rte_flow_item_vxlan item_vxlan;
+	uint32_t ip_dst = para.counter;
+
+	/* Fixed value */
+	if (FIXED_VALUES)
+		ip_dst = 1;
 
 	items[0].spec = &item_eth;
 	items[0].mask = &item_eth;
 	items[0].type = RTE_FLOW_ITEM_TYPE_ETH;
 
 	item_ipv4.hdr.src_addr = RTE_IPV4(127, 0, 0, 1);
-	item_ipv4.hdr.dst_addr = RTE_IPV4(255, 255, 255, 255);
+	item_ipv4.hdr.dst_addr = RTE_BE32(ip_dst);
 	item_ipv4.hdr.version_ihl = RTE_IPV4_VHL_DEF;
 	items[1].spec = &item_ipv4;
 	items[1].mask = &item_ipv4;

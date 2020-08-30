@@ -16,6 +16,12 @@
 #define NR_RXD  256
 #define NR_TXD  256
 
+/* This is used for encap/decap & header modify actions.
+ * When it's 1: it means all actions have fixed values.
+ * When it's 0: it means all actions will have different values.
+ */
+#define FIXED_VALUES 1
+
 /* Items/Actions parameters */
 #define JUMP_ACTION_TABLE 2
 #define VLAN_VALUE 1
