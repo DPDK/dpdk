@@ -674,8 +674,8 @@ process_op(struct armv8_crypto_qp *qp, struct rte_crypto_op *op,
 		memset(op->sym->session, 0,
 			rte_cryptodev_sym_get_existing_header_session_size(
 				op->sym->session));
-		rte_mempool_put(qp->sess_mp, sess);
-		rte_mempool_put(qp->sess_mp_priv, op->sym->session);
+		rte_mempool_put(qp->sess_mp_priv, sess);
+		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}
 
