@@ -12590,23 +12590,6 @@ static struct unit_test_suite cryptodev_caam_jr_testsuite  = {
 	}
 };
 
-static struct unit_test_suite cryptodev_armv8_testsuite  = {
-	.suite_name = "Crypto Device ARMv8 Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
-	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-
-		/** Negative tests */
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			auth_decryption_AES128CBC_HMAC_SHA1_fail_data_corrupt),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt),
-
-		TEST_CASES_END() /**< NULL terminate unit test array */
-	}
-};
-
 static struct unit_test_suite cryptodev_mrvl_testsuite  = {
 	.suite_name = "Crypto Device Marvell Component Test Suite",
 	.setup = testsuite_setup,
@@ -12842,7 +12825,7 @@ test_cryptodev_armv8(void)
 		return TEST_SKIPPED;
 	}
 
-	return unit_test_suite_runner(&cryptodev_armv8_testsuite);
+	return unit_test_suite_runner(&cryptodev_testsuite);
 }
 
 static int
