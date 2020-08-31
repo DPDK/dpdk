@@ -9326,9 +9326,7 @@ test_stats(void)
 		"rte_cryptodev_stats_get invalid Param failed");
 
 	/* Test expected values */
-	ut_setup();
 	test_AES_CBC_HMAC_SHA1_encrypt_digest();
-	ut_teardown();
 	TEST_ASSERT_SUCCESS(rte_cryptodev_stats_get(ts_params->valid_devs[0],
 			&stats),
 		"rte_cryptodev_stats_get failed");
