@@ -321,8 +321,7 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 			IOTLB_CACHE_SIZE, sizeof(struct vhost_iotlb_entry), 0,
 			0, 0, NULL, NULL, NULL, socket,
 			MEMPOOL_F_NO_CACHE_ALIGN |
-			MEMPOOL_F_SP_PUT |
-			MEMPOOL_F_SC_GET);
+			MEMPOOL_F_SP_PUT);
 	if (!vq->iotlb_pool) {
 		VHOST_LOG_CONFIG(ERR,
 				"Failed to create IOTLB cache pool (%s)\n",
