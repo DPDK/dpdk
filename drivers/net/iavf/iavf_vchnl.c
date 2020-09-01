@@ -53,8 +53,11 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 		    opcode, vf->cmd_retval);
 
 	if (opcode != vf->pend_cmd) {
-		PMD_DRV_LOG(WARNING, "command mismatch, expect %u, get %u",
-			    vf->pend_cmd, opcode);
+		if (opcode != VIRTCHNL_OP_EVENT) {
+			PMD_DRV_LOG(WARNING,
+				    "command mismatch, expect %u, get %u",
+				    vf->pend_cmd, opcode);
+		}
 		return IAVF_ERR_OPCODE_MISMATCH;
 	}
 
