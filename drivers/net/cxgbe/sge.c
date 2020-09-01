@@ -1423,14 +1423,16 @@ int t4_mgmt_tx(struct sge_ctrl_txq *q, struct rte_mbuf *mbuf)
 
 /**
  * alloc_ring - allocate resources for an SGE descriptor ring
- * @dev: the PCI device's core device
+ * @dev: the port associated with the queue
+ * @z_name: memzone's name
+ * @queue_id: queue index
+ * @socket_id: preferred socket id for memory allocations
  * @nelem: the number of descriptors
  * @elem_size: the size of each descriptor
+ * @stat_size: extra space in HW ring for status information
  * @sw_size: the size of the SW state associated with each ring element
  * @phys: the physical address of the allocated ring
  * @metadata: address of the array holding the SW state for the ring
- * @stat_size: extra space in HW ring for status information
- * @node: preferred node for memory allocations
  *
  * Allocates resources for an SGE descriptor ring, such as Tx queues,
  * free buffer lists, or response queues.  Each SGE ring requires
@@ -1440,39 +1442,34 @@ int t4_mgmt_tx(struct sge_ctrl_txq *q, struct rte_mbuf *mbuf)
  * of the function), the bus address of the HW ring, and the address
  * of the SW ring.
  */
-static void *alloc_ring(size_t nelem, size_t elem_size,
-			size_t sw_size, dma_addr_t *phys, void *metadata,
-			size_t stat_size, __rte_unused uint16_t queue_id,
-			int socket_id, const char *z_name,
-			const char *z_name_sw)
+static void *alloc_ring(struct rte_eth_dev *dev, const char *z_name,
+			uint16_t queue_id, int socket_id, size_t nelem,
+			size_t elem_size, size_t stat_size, size_t sw_size,
+			dma_addr_t *phys, void *metadata)
 {
 	size_t len = CXGBE_MAX_RING_DESC_SIZE * elem_size + stat_size;
+	char z_name_sw[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *tz;
 	void *s = NULL;
+
+	snprintf(z_name_sw, sizeof(z_name_sw), "eth_p%d_q%d_%s_sw_ring",
+		 dev->data->port_id, queue_id, z_name);
 
 	dev_debug(adapter, "%s: nelem = %zu; elem_size = %zu; sw_size = %zu; "
 		  "stat_size = %zu; queue_id = %u; socket_id = %d; z_name = %s;"
 		  " z_name_sw = %s\n", __func__, nelem, elem_size, sw_size,
 		  stat_size, queue_id, socket_id, z_name, z_name_sw);
 
-	tz = rte_memzone_lookup(z_name);
-	if (tz) {
-		dev_debug(adapter, "%s: tz exists...returning existing..\n",
-			  __func__);
-		goto alloc_sw_ring;
-	}
-
 	/*
 	 * Allocate TX/RX ring hardware descriptors. A memzone large enough to
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	tz = rte_memzone_reserve_aligned(z_name, len, socket_id,
-			RTE_MEMZONE_IOVA_CONTIG, 4096);
+	tz = rte_eth_dma_zone_reserve(dev, z_name, queue_id, len, 4096,
+				      socket_id);
 	if (!tz)
 		return NULL;
 
-alloc_sw_ring:
 	memset(tz->addr, 0, len);
 	if (sw_size) {
 		s = rte_zmalloc_socket(z_name_sw, nelem * sw_size,
@@ -1788,21 +1785,15 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	struct fw_iq_cmd c;
 	struct sge *s = &adap->sge;
 	struct port_info *pi = eth_dev->data->dev_private;
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	char z_name_sw[RTE_MEMZONE_NAMESIZE];
 	unsigned int nb_refill;
 	u8 pciechan;
 
 	/* Size needs to be multiple of 16, including status entry. */
 	iq->size = cxgbe_roundup(iq->size, 16);
 
-	snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
-			eth_dev->data->port_id, queue_id,
-			fwevtq ? "fwq_ring" : "rx_ring");
-	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
-
-	iq->desc = alloc_ring(iq->size, iq->iqe_len, 0, &iq->phys_addr, NULL, 0,
-			      queue_id, socket_id, z_name, z_name_sw);
+	iq->desc = alloc_ring(eth_dev, fwevtq ? "fwq_ring" : "rx_ring",
+			      queue_id, socket_id, iq->size, iq->iqe_len,
+			      0, 0, &iq->phys_addr, NULL);
 	if (!iq->desc)
 		return -ENOMEM;
 
@@ -1860,18 +1851,14 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 			fl->size = s->fl_starve_thres - 1 + 2 * 8;
 		fl->size = cxgbe_roundup(fl->size, 8);
 
-		snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
-				eth_dev->data->port_id, queue_id,
-				fwevtq ? "fwq_ring" : "fl_ring");
-		snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
-
-		fl->desc = alloc_ring(fl->size, sizeof(__be64),
+		fl->desc = alloc_ring(eth_dev, "fl_ring", queue_id, socket_id,
+				      fl->size, sizeof(__be64), s->stat_len,
 				      sizeof(struct rx_sw_desc),
-				      &fl->addr, &fl->sdesc, s->stat_len,
-				      queue_id, socket_id, z_name, z_name_sw);
-
-		if (!fl->desc)
-			goto fl_nomem;
+				      &fl->addr, &fl->sdesc);
+		if (!fl->desc) {
+			ret = -ENOMEM;
+			goto err;
+		}
 
 		flsz = fl->size / 8 + s->stat_len / sizeof(struct tx_desc);
 		c.iqns_to_fl0congen |=
@@ -1991,8 +1978,6 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 refill_fl_err:
 	t4_iq_free(adap, adap->mbox, adap->pf, 0, FW_IQ_TYPE_FL_INT_CAP,
 		   iq->cntxt_id, fl->cntxt_id, 0xffff);
-fl_nomem:
-	ret = -ENOMEM;
 err:
 	iq->cntxt_id = 0;
 	iq->abs_id = 0;
@@ -2058,21 +2043,15 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 	struct fw_eq_eth_cmd c;
 	struct sge *s = &adap->sge;
 	struct port_info *pi = eth_dev->data->dev_private;
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	char z_name_sw[RTE_MEMZONE_NAMESIZE];
 	u8 pciechan;
 
 	/* Add status entries */
 	nentries = txq->q.size + s->stat_len / sizeof(struct tx_desc);
 
-	snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
-			eth_dev->data->port_id, queue_id, "tx_ring");
-	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
-
-	txq->q.desc = alloc_ring(txq->q.size, sizeof(struct tx_desc),
-				 sizeof(struct tx_sw_desc), &txq->q.phys_addr,
-				 &txq->q.sdesc, s->stat_len, queue_id,
-				 socket_id, z_name, z_name_sw);
+	txq->q.desc = alloc_ring(eth_dev, "tx_ring", queue_id, socket_id,
+				 txq->q.size, sizeof(struct tx_desc),
+				 s->stat_len, sizeof(struct tx_sw_desc),
+				 &txq->q.phys_addr, &txq->q.sdesc);
 	if (!txq->q.desc)
 		return -ENOMEM;
 
@@ -2137,20 +2116,13 @@ int t4_sge_alloc_ctrl_txq(struct adapter *adap, struct sge_ctrl_txq *txq,
 	struct fw_eq_ctrl_cmd c;
 	struct sge *s = &adap->sge;
 	struct port_info *pi = eth_dev->data->dev_private;
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	char z_name_sw[RTE_MEMZONE_NAMESIZE];
 
 	/* Add status entries */
 	nentries = txq->q.size + s->stat_len / sizeof(struct tx_desc);
 
-	snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
-			eth_dev->data->port_id, queue_id, "ctrl_tx_ring");
-	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
-
-	txq->q.desc = alloc_ring(txq->q.size, sizeof(struct tx_desc),
-				 0, &txq->q.phys_addr,
-				 NULL, 0, queue_id,
-				 socket_id, z_name, z_name_sw);
+	txq->q.desc = alloc_ring(eth_dev, "ctrl_tx_ring", queue_id,
+				 socket_id, txq->q.size, sizeof(struct tx_desc),
+				 0, 0, &txq->q.phys_addr, NULL);
 	if (!txq->q.desc)
 		return -ENOMEM;
 
@@ -2262,6 +2234,36 @@ void t4_sge_eth_txq_release(struct adapter *adap, struct sge_eth_txq *txq)
 	}
 }
 
+void t4_sge_eth_release_queues(struct port_info *pi)
+{
+	struct adapter *adap = pi->adapter;
+	struct sge_eth_rxq *rxq;
+	struct sge_eth_txq *txq;
+	unsigned int i;
+
+	rxq = &adap->sge.ethrxq[pi->first_qset];
+	/* clean up Ethernet Tx/Rx queues */
+	for (i = 0; i < pi->n_rx_qsets; i++, rxq++) {
+		/* Free only the queues allocated */
+		if (rxq->rspq.desc) {
+			t4_sge_eth_rxq_release(adap, rxq);
+			rte_eth_dma_zone_free(rxq->rspq.eth_dev, "fl_ring", i);
+			rte_eth_dma_zone_free(rxq->rspq.eth_dev, "rx_ring", i);
+			rxq->rspq.eth_dev = NULL;
+		}
+	}
+
+	txq = &adap->sge.ethtxq[pi->first_qset];
+	for (i = 0; i < pi->n_tx_qsets; i++, txq++) {
+		/* Free only the queues allocated */
+		if (txq->q.desc) {
+			t4_sge_eth_txq_release(adap, txq);
+			rte_eth_dma_zone_free(txq->eth_dev, "tx_ring", i);
+			txq->eth_dev = NULL;
+		}
+	}
+}
+
 void t4_sge_tx_monitor_start(struct adapter *adap)
 {
 	rte_eal_alarm_set(50, tx_timer_cb, (void *)adap);
@@ -2281,21 +2283,6 @@ void t4_sge_tx_monitor_stop(struct adapter *adap)
 void t4_free_sge_resources(struct adapter *adap)
 {
 	unsigned int i;
-	struct sge_eth_rxq *rxq = &adap->sge.ethrxq[0];
-	struct sge_eth_txq *txq = &adap->sge.ethtxq[0];
-
-	/* clean up Ethernet Tx/Rx queues */
-	for (i = 0; i < adap->sge.max_ethqsets; i++, rxq++, txq++) {
-		/* Free only the queues allocated */
-		if (rxq->rspq.desc) {
-			t4_sge_eth_rxq_release(adap, rxq);
-			rxq->rspq.eth_dev = NULL;
-		}
-		if (txq->q.desc) {
-			t4_sge_eth_txq_release(adap, txq);
-			txq->eth_dev = NULL;
-		}
-	}
 
 	/* clean up control Tx queues */
 	for (i = 0; i < ARRAY_SIZE(adap->sge.ctrlq); i++) {
@@ -2305,12 +2292,17 @@ void t4_free_sge_resources(struct adapter *adap)
 			reclaim_completed_tx_imm(&cq->q);
 			t4_ctrl_eq_free(adap, adap->mbox, adap->pf, 0,
 					cq->q.cntxt_id);
+			rte_eth_dma_zone_free(adap->eth_dev, "ctrl_tx_ring", i);
+			rte_mempool_free(cq->mb_pool);
 			free_txq(&cq->q);
 		}
 	}
 
-	if (adap->sge.fw_evtq.desc)
+	/* clean up firmware event queue */
+	if (adap->sge.fw_evtq.desc) {
 		free_rspq_fl(adap, &adap->sge.fw_evtq, NULL);
+		rte_eth_dma_zone_free(adap->eth_dev, "fwq_ring", 0);
+	}
 }
 
 /**

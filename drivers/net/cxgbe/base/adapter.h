@@ -825,6 +825,7 @@ int t4_sge_eth_rxq_start(struct adapter *adap, struct sge_rspq *rq);
 int t4_sge_eth_rxq_stop(struct adapter *adap, struct sge_rspq *rq);
 void t4_sge_eth_rxq_release(struct adapter *adap, struct sge_eth_rxq *rxq);
 void t4_sge_eth_clear_queues(struct port_info *pi);
+void t4_sge_eth_release_queues(struct port_info *pi);
 int cxgb4_set_rspq_intr_params(struct sge_rspq *q, unsigned int us,
 			       unsigned int cnt);
 int cxgbe_poll(struct sge_rspq *q, struct rte_mbuf **rx_pkts,

@@ -330,12 +330,7 @@ void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
 		return;
 
 	cxgbe_down(pi);
-
-	/*
-	 *  We clear queues only if both tx and rx path of the port
-	 *  have been disabled
-	 */
-	t4_sge_eth_clear_queues(pi);
+	t4_sge_eth_release_queues(pi);
 }
 
 /* Start the device.
