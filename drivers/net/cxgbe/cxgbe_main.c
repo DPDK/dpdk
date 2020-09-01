@@ -1975,9 +1975,6 @@ int cxgbe_down(struct port_info *pi)
  */
 void cxgbe_close(struct adapter *adapter)
 {
-	struct port_info *pi;
-	int i;
-
 	if (adapter->flags & FULL_INIT_DONE) {
 		tid_free(&adapter->tids);
 		t4_cleanup_mpstcam(adapter);
@@ -1988,13 +1985,6 @@ void cxgbe_close(struct adapter *adapter)
 			t4_intr_disable(adapter);
 		t4_sge_tx_monitor_stop(adapter);
 		t4_free_sge_resources(adapter);
-		for_each_port(adapter, i) {
-			pi = adap2pinfo(adapter, i);
-			if (pi->viid != 0)
-				t4_free_vi(adapter, adapter->mbox,
-					   adapter->pf, 0, pi->viid);
-			rte_eth_dev_release_port(pi->eth_dev);
-		}
 		adapter->flags &= ~FULL_INIT_DONE;
 	}
 
@@ -2155,6 +2145,8 @@ allocate_mac:
 			err = -1;
 			goto out_free;
 		}
+
+		pi->eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 		if (i > 0) {
 			/* First port will be notified by upper layer */

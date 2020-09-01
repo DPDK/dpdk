@@ -321,16 +321,34 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
  */
 void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
 {
-	struct port_info *pi = eth_dev->data->dev_private;
+	struct port_info *temp_pi, *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
+	u8 i;
 
 	CXGBE_FUNC_TRACE();
 
 	if (!(adapter->flags & FULL_INIT_DONE))
 		return;
 
+	if (!pi->viid)
+		return;
+
 	cxgbe_down(pi);
 	t4_sge_eth_release_queues(pi);
+	t4_free_vi(adapter, adapter->mbox, adapter->pf, 0, pi->viid);
+	pi->viid = 0;
+
+	/* Free up the adapter-wide resources only after all the ports
+	 * under this PF have been closed.
+	 */
+	for_each_port(adapter, i) {
+		temp_pi = adap2pinfo(adapter, i);
+		if (temp_pi->viid)
+			return;
+	}
+
+	cxgbe_close(adapter);
+	rte_free(adapter);
 }
 
 /* Start the device.
@@ -1208,11 +1226,13 @@ out_free_adapter:
 
 static int eth_cxgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct port_info *pi = eth_dev->data->dev_private;
-	struct adapter *adap = pi->adapter;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	uint16_t port_id;
 
 	/* Free up other ports and all resources */
-	cxgbe_close(adap);
+	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device)
+		rte_eth_dev_close(port_id);
+
 	return 0;
 }
 

@@ -181,11 +181,13 @@ out_free_adapter:
 
 static int eth_cxgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct port_info *pi = eth_dev->data->dev_private;
-	struct adapter *adap = pi->adapter;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	uint16_t port_id;
 
 	/* Free up other ports and all resources */
-	cxgbe_close(adap);
+	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device)
+		rte_eth_dev_close(port_id);
+
 	return 0;
 }
 
