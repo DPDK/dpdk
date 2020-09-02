@@ -109,6 +109,8 @@ int mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 
 /* mlx5_regex_fastpath.c */
 int mlx5_regexdev_setup_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id);
+void mlx5_regexdev_teardown_fastpath(struct mlx5_regex_priv *priv,
+				     uint32_t qp_id);
 uint16_t mlx5_regexdev_enqueue(struct rte_regexdev *dev, uint16_t qp_id,
 		       struct rte_regex_ops **ops, uint16_t nb_ops);
 uint16_t mlx5_regexdev_dequeue(struct rte_regexdev *dev, uint16_t qp_id,

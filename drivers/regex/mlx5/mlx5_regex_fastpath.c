@@ -407,8 +407,39 @@ mlx5_regexdev_setup_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id)
 	if (!qp->jobs)
 		return -ENOMEM;
 	err = setup_buffers(qp, priv->pd);
-	if (err)
+	if (err) {
+		rte_free(qp->jobs);
 		return err;
+	}
 	setup_sqs(qp);
 	return 0;
+}
+
+static void
+free_buffers(struct mlx5_regex_qp *qp)
+{
+	if (qp->metadata) {
+		mlx5_glue->dereg_mr(qp->metadata);
+		rte_free(qp->metadata->addr);
+	}
+	if (qp->inputs) {
+		mlx5_glue->dereg_mr(qp->inputs);
+		rte_free(qp->inputs->addr);
+	}
+	if (qp->outputs) {
+		mlx5_glue->dereg_mr(qp->outputs);
+		rte_free(qp->outputs->addr);
+	}
+}
+
+void
+mlx5_regexdev_teardown_fastpath(struct mlx5_regex_priv *priv, uint32_t qp_id)
+{
+	struct mlx5_regex_qp *qp = &priv->qps[qp_id];
+
+	if (qp) {
+		free_buffers(qp);
+		if (qp->jobs)
+			rte_free(qp->jobs);
+	}
 }

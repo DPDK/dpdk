@@ -357,23 +357,29 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 	ret = regex_ctrl_create_cq(priv, &qp->cq);
 	if (ret) {
 		DRV_LOG(ERR, "Can't create cq.");
-		goto error;
+		goto err_cq;
 	}
 	for (i = 0; i < qp->nb_obj; i++) {
 		ret = regex_ctrl_create_sq(priv, qp, i, log_desc);
 		if (ret) {
 			DRV_LOG(ERR, "Can't create sq.");
-			goto error;
+			goto err_sq;
 		}
 	}
 
-	mlx5_regexdev_setup_fastpath(priv, qp_ind);
+	ret = mlx5_regexdev_setup_fastpath(priv, qp_ind);
+	if (ret) {
+		DRV_LOG(ERR, "Fail to setup fastpath.");
+		goto err_fp;
+	}
 	return 0;
 
-error:
-	regex_ctrl_destroy_cq(priv, &qp->cq);
+err_fp:
 	for (i = 0; i < qp->nb_obj; i++)
 		ret = regex_ctrl_destroy_sq(priv, qp, i);
-	return -rte_errno;
-
+err_sq:
+	regex_ctrl_destroy_cq(priv, &qp->cq);
+err_cq:
+	rte_free(qp->sqs);
+	return ret;
 }
