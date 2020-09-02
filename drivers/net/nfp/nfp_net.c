@@ -1250,6 +1250,20 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.tx_rs_thresh = DEFAULT_TX_RSBIT_THRESH,
 	};
 
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = NFP_NET_MAX_RX_DESC,
+		.nb_min = NFP_NET_MIN_RX_DESC,
+		.nb_align = NFP_ALIGN_RING_DESC,
+	};
+
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = NFP_NET_MAX_TX_DESC,
+		.nb_min = NFP_NET_MIN_TX_DESC,
+		.nb_align = NFP_ALIGN_RING_DESC,
+		.nb_seg_max = NFP_TX_MAX_SEG,
+		.nb_mtu_seg_max = NFP_TX_MAX_MTU_SEG,
+	};
+
 	dev_info->flow_type_rss_offloads = ETH_RSS_IPV4 |
 					   ETH_RSS_NONFRAG_IPV4_TCP |
 					   ETH_RSS_NONFRAG_IPV4_UDP |
@@ -1513,15 +1527,17 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	const struct rte_memzone *tz;
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_hw *hw;
+	uint32_t rx_desc_sz;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* Validating number of descriptors */
-	if (((nb_desc * sizeof(struct nfp_net_rx_desc)) % 128) != 0 ||
-	    (nb_desc > NFP_NET_MAX_RX_DESC) ||
-	    (nb_desc < NFP_NET_MIN_RX_DESC)) {
+	rx_desc_sz = nb_desc * sizeof(struct nfp_net_rx_desc);
+	if (rx_desc_sz % NFP_ALIGN_RING_DESC != 0 ||
+	    nb_desc > NFP_NET_MAX_RX_DESC ||
+	    nb_desc < NFP_NET_MIN_RX_DESC) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}
@@ -1660,15 +1676,17 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	struct nfp_net_txq *txq;
 	uint16_t tx_free_thresh;
 	struct nfp_net_hw *hw;
+	uint32_t tx_desc_sz;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* Validating number of descriptors */
-	if (((nb_desc * sizeof(struct nfp_net_tx_desc)) % 128) != 0 ||
-	    (nb_desc > NFP_NET_MAX_TX_DESC) ||
-	    (nb_desc < NFP_NET_MIN_TX_DESC)) {
+	tx_desc_sz = nb_desc * sizeof(struct nfp_net_tx_desc);
+	if (tx_desc_sz % NFP_ALIGN_RING_DESC != 0 ||
+	    nb_desc > NFP_NET_MAX_TX_DESC ||
+	    nb_desc < NFP_NET_MIN_TX_DESC) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}

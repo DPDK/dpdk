@@ -33,6 +33,12 @@ struct nfp_net_adapter;
 #define NFP_NET_MAX_RX_DESC (32 * 1024)
 #define NFP_NET_MIN_RX_DESC 64
 
+/* Descriptor alignment */
+#define NFP_ALIGN_RING_DESC 128
+
+#define NFP_TX_MAX_SEG     UINT8_MAX
+#define NFP_TX_MAX_MTU_SEG 8
+
 /* Bar allocation */
 #define NFP_NET_CRTL_BAR        0
 #define NFP_NET_TX_BAR          2
