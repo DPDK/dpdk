@@ -616,7 +616,7 @@ launch_args_parse(int argc, char** argv)
 #ifdef RTE_LIBRTE_LATENCY_STATS
 		{ "latencystats",               1, 0, 0 },
 #endif
-#ifdef RTE_LIBRTE_BITRATE
+#ifdef RTE_LIBRTE_BITRATESTATS
 		{ "bitrate-stats",              1, 0, 0 },
 #endif
 		{ "disable-crc-strip",          0, 0, 0 },
@@ -991,7 +991,7 @@ launch_args_parse(int argc, char** argv)
 						 " must be >= 0\n", n);
 			}
 #endif
-#ifdef RTE_LIBRTE_BITRATE
+#ifdef RTE_LIBRTE_BITRATESTATS
 			if (!strcmp(lgopts[opt_idx].name, "bitrate-stats")) {
 				n = atoi(optarg);
 				if (n >= 0) {
