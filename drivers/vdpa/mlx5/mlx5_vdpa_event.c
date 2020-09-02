@@ -213,8 +213,6 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_cq *cq)
 	comp = (cur_wqe_counter + 1u - next_wqe_counter) & cq_mask;
 	if (comp) {
 		cq->cq_ci += comp;
-		MLX5_ASSERT(!!(cq->cq_ci & cq_size) ==
-			    MLX5_CQE_OWNER(last_word.op_own));
 		MLX5_ASSERT(MLX5_CQE_OPCODE(last_word.op_own) !=
 			    MLX5_CQE_INVALID);
 		if (unlikely(!(MLX5_CQE_OPCODE(last_word.op_own) ==
