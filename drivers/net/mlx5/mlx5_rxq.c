@@ -347,7 +347,7 @@ rxq_free_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
  * @param rxq_ctrl
  *   Pointer to RX queue structure.
  */
-void
+static void
 rxq_free_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	if (mlx5_rxq_mprq_enabled(&rxq_ctrl->rxq))
@@ -1651,10 +1651,14 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 		return 1;
 	if (rxq_ctrl->obj) {
 		priv->obj_ops->rxq_obj_release(rxq_ctrl->obj);
+		LIST_REMOVE(rxq_ctrl->obj, next);
+		mlx5_free(rxq_ctrl->obj);
 		rxq_ctrl->obj = NULL;
 	}
-	if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
+	if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD) {
 		mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
+		rxq_free_elts(rxq_ctrl);
+	}
 	LIST_REMOVE(rxq_ctrl, next);
 	mlx5_free(rxq_ctrl);
 	(*priv->rxqs)[idx] = NULL;

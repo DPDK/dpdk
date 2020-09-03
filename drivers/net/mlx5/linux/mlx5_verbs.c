@@ -268,9 +268,9 @@ mlx5_ibv_wq_new(struct rte_eth_dev *dev, struct mlx5_priv *priv,
  *   Queue index in DPDK Rx queue array.
  *
  * @return
- *   The Verbs object initialized, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct mlx5_rxq_obj *
+static int
 mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -280,24 +280,16 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct ibv_wq_attr mod;
 	unsigned int cqe_n;
 	unsigned int wqe_n = 1 << rxq_data->elts_n;
-	struct mlx5_rxq_obj *tmpl = NULL;
+	struct mlx5_rxq_obj *tmpl = rxq_ctrl->obj;
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_rwq rwq;
 	int ret = 0;
 	struct mlx5dv_obj obj;
 
 	MLX5_ASSERT(rxq_data);
-	MLX5_ASSERT(!rxq_ctrl->obj);
+	MLX5_ASSERT(tmpl);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_RX_QUEUE;
 	priv->verbs_alloc_ctx.obj = rxq_ctrl;
-	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
-			   rxq_ctrl->socket);
-	if (!tmpl) {
-		DRV_LOG(ERR, "port %u Rx queue %u cannot allocate resources",
-			dev->data->port_id, rxq_data->idx);
-		rte_errno = ENOMEM;
-		goto error;
-	}
 	tmpl->type = MLX5_RXQ_OBJ_TYPE_IBV;
 	tmpl->rxq_ctrl = rxq_ctrl;
 	if (rxq_ctrl->irq) {
@@ -315,10 +307,6 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		cqe_n = wqe_n * (1 << rxq_data->strd_num_n) - 1;
 	else
 		cqe_n = wqe_n - 1;
-	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
-		dev->data->port_id, priv->sh->device_attr.max_qp_wr);
-	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
-		dev->data->port_id, priv->sh->device_attr.max_sge);
 	/* Create CQ using Verbs API. */
 	tmpl->ibv_cq = mlx5_ibv_cq_new(dev, priv, rxq_data, cqe_n, tmpl);
 	if (!tmpl->ibv_cq) {
@@ -381,28 +369,21 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cq_arm_sn = 0;
 	mlx5_rxq_initialize(rxq_data);
 	rxq_data->cq_ci = 0;
-	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
-		idx, (void *)&tmpl);
-	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	rxq_ctrl->wqn = ((struct ibv_wq *)(tmpl->wq))->wq_num;
-	return tmpl;
+	return 0;
 error:
-	if (tmpl) {
-		ret = rte_errno; /* Save rte_errno before cleanup. */
-		if (tmpl->wq)
-			claim_zero(mlx5_glue->destroy_wq(tmpl->wq));
-		if (tmpl->ibv_cq)
-			claim_zero(mlx5_glue->destroy_cq(tmpl->ibv_cq));
-		if (tmpl->ibv_channel)
-			claim_zero(mlx5_glue->destroy_comp_channel
-							(tmpl->ibv_channel));
-		mlx5_free(tmpl);
-		rte_errno = ret; /* Restore rte_errno. */
-	}
+	ret = rte_errno; /* Save rte_errno before cleanup. */
+	if (tmpl->wq)
+		claim_zero(mlx5_glue->destroy_wq(tmpl->wq));
+	if (tmpl->ibv_cq)
+		claim_zero(mlx5_glue->destroy_cq(tmpl->ibv_cq));
+	if (tmpl->ibv_channel)
+		claim_zero(mlx5_glue->destroy_comp_channel(tmpl->ibv_channel));
+	rte_errno = ret; /* Restore rte_errno. */
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
-	return NULL;
+	return -rte_errno;
 }
 
 /**
@@ -417,14 +398,11 @@ mlx5_rxq_ibv_obj_release(struct mlx5_rxq_obj *rxq_obj)
 	MLX5_ASSERT(rxq_obj);
 	MLX5_ASSERT(rxq_obj->wq);
 	MLX5_ASSERT(rxq_obj->ibv_cq);
-	rxq_free_elts(rxq_obj->rxq_ctrl);
 	claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
 	claim_zero(mlx5_glue->destroy_cq(rxq_obj->ibv_cq));
 	if (rxq_obj->ibv_channel)
 		claim_zero(mlx5_glue->destroy_comp_channel
 							(rxq_obj->ibv_channel));
-	LIST_REMOVE(rxq_obj, next);
-	mlx5_free(rxq_obj);
 }
 
 /**

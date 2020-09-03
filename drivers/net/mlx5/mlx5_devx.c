@@ -116,7 +116,6 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_obj *rxq_obj)
 		mlx5_rxq_obj_hairpin_release(rxq_obj);
 	} else {
 		MLX5_ASSERT(rxq_obj->devx_cq);
-		rxq_free_elts(rxq_obj->rxq_ctrl);
 		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
 		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->devx_cq));
 		claim_zero(mlx5_release_dbr(&priv->dbrpgs,
@@ -131,8 +130,6 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_obj *rxq_obj)
 		rxq_release_devx_rq_resources(rxq_obj->rxq_ctrl);
 		rxq_release_devx_cq_resources(rxq_obj->rxq_ctrl);
 	}
-	LIST_REMOVE(rxq_obj, next);
-	mlx5_free(rxq_obj);
 }
 
 /**
@@ -435,9 +432,9 @@ error:
  *   Queue index in DPDK Rx queue array.
  *
  * @return
- *   The hairpin DevX object initialized, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct mlx5_rxq_obj *
+static int
 mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -445,19 +442,11 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	struct mlx5_devx_create_rq_attr attr = { 0 };
-	struct mlx5_rxq_obj *tmpl = NULL;
+	struct mlx5_rxq_obj *tmpl = rxq_ctrl->obj;
 	uint32_t max_wq_data;
 
 	MLX5_ASSERT(rxq_data);
-	MLX5_ASSERT(!rxq_ctrl->obj);
-	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
-			   rxq_ctrl->socket);
-	if (!tmpl) {
-		DRV_LOG(ERR, "port %u Rx queue %u cannot allocate resources",
-			dev->data->port_id, rxq_data->idx);
-		rte_errno = ENOMEM;
-		return NULL;
-	}
+	MLX5_ASSERT(tmpl);
 	tmpl->type = MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN;
 	tmpl->rxq_ctrl = rxq_ctrl;
 	attr.hairpin = 1;
@@ -468,9 +457,8 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 			DRV_LOG(ERR, "Total data size %u power of 2 is "
 				"too large for hairpin.",
 				priv->config.log_hp_size);
-			mlx5_free(tmpl);
 			rte_errno = ERANGE;
-			return NULL;
+			return -rte_errno;
 		}
 		attr.wq_attr.log_hairpin_data_sz = priv->config.log_hp_size;
 	} else {
@@ -488,15 +476,11 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 		DRV_LOG(ERR,
 			"Port %u Rx hairpin queue %u can't create rq object.",
 			dev->data->port_id, idx);
-		mlx5_free(tmpl);
 		rte_errno = errno;
-		return NULL;
+		return -rte_errno;
 	}
-	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
-		idx, (void *)&tmpl);
-	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_HAIRPIN;
-	return tmpl;
+	return 0;
 }
 
 /**
@@ -508,9 +492,9 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
  *   Queue index in DPDK Rx queue array.
  *
  * @return
- *   The DevX object initialized, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct mlx5_rxq_obj *
+static int
 mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -519,7 +503,7 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	unsigned int cqe_n;
 	unsigned int wqe_n = 1 << rxq_data->elts_n;
-	struct mlx5_rxq_obj *tmpl = NULL;
+	struct mlx5_rxq_obj *tmpl = rxq_ctrl->obj;
 	struct mlx5_devx_modify_rq_attr rq_attr = { 0 };
 	struct mlx5_devx_dbr_page *cq_dbr_page = NULL;
 	struct mlx5_devx_dbr_page *rq_dbr_page = NULL;
@@ -527,17 +511,9 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	int ret = 0;
 
 	MLX5_ASSERT(rxq_data);
-	MLX5_ASSERT(!rxq_ctrl->obj);
+	MLX5_ASSERT(tmpl);
 	if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
 		return mlx5_rxq_obj_hairpin_new(dev, idx);
-	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
-			   rxq_ctrl->socket);
-	if (!tmpl) {
-		DRV_LOG(ERR, "port %u Rx queue %u cannot allocate resources",
-			dev->data->port_id, rxq_data->idx);
-		rte_errno = ENOMEM;
-		goto error;
-	}
 	tmpl->type = MLX5_RXQ_OBJ_TYPE_DEVX_RQ;
 	tmpl->rxq_ctrl = rxq_ctrl;
 	if (rxq_ctrl->irq) {
@@ -559,10 +535,6 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		cqe_n = wqe_n * (1 << rxq_data->strd_num_n) - 1;
 	else
 		cqe_n = wqe_n - 1;
-	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
-		dev->data->port_id, priv->sh->device_attr.max_qp_wr);
-	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
-		dev->data->port_id, priv->sh->device_attr.max_sge);
 	/* Allocate CQ door-bell. */
 	dbr_offset = mlx5_get_dbr(priv->sh->ctx, &priv->dbrpgs, &cq_dbr_page);
 	if (dbr_offset < 0) {
@@ -608,25 +580,17 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cq_arm_sn = 0;
 	mlx5_rxq_initialize(rxq_data);
 	rxq_data->cq_ci = 0;
-	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
-		idx, (void *)&tmpl);
-	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	rxq_ctrl->wqn = tmpl->rq->id;
-	return tmpl;
+	return 0;
 error:
-	if (tmpl) {
-		ret = rte_errno; /* Save rte_errno before cleanup. */
-		if (tmpl->rq)
-			claim_zero(mlx5_devx_cmd_destroy(tmpl->rq));
-		if (tmpl->devx_cq)
-			claim_zero(mlx5_devx_cmd_destroy(tmpl->devx_cq));
-		if (tmpl->devx_channel)
-			mlx5_glue->devx_destroy_event_channel
-							(tmpl->devx_channel);
-		mlx5_free(tmpl);
-		rte_errno = ret; /* Restore rte_errno. */
-	}
+	ret = rte_errno; /* Save rte_errno before cleanup. */
+	if (tmpl->rq)
+		claim_zero(mlx5_devx_cmd_destroy(tmpl->rq));
+	if (tmpl->devx_cq)
+		claim_zero(mlx5_devx_cmd_destroy(tmpl->devx_cq));
+	if (tmpl->devx_channel)
+		mlx5_glue->devx_destroy_event_channel(tmpl->devx_channel);
 	if (rq_dbr_page)
 		claim_zero(mlx5_release_dbr(&priv->dbrpgs,
 					    rxq_ctrl->rq_dbr_umem_id,
@@ -637,7 +601,8 @@ error:
 					    rxq_ctrl->cq_dbr_offset));
 	rxq_release_devx_rq_resources(rxq_ctrl);
 	rxq_release_devx_cq_resources(rxq_ctrl);
-	return NULL;
+	rte_errno = ret; /* Restore rte_errno. */
+	return -rte_errno;
 }
 
 struct mlx5_obj_ops devx_obj_ops = {
