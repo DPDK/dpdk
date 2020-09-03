@@ -1811,7 +1811,7 @@ mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
  * @return
  *   The Verbs/DevX object initialized, NULL otherwise and rte_errno is set.
  */
-struct mlx5_ind_table_obj *
+static struct mlx5_ind_table_obj *
 mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		       uint32_t queues_n)
 {
@@ -1935,6 +1935,74 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hrxq_idx)
 	}
 	claim_nonzero(mlx5_ind_table_obj_release(dev, hrxq->ind_table));
 	return 1;
+}
+
+/**
+ * Create an Rx Hash queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param rss_key
+ *   RSS key for the Rx hash queue.
+ * @param rss_key_len
+ *   RSS key length.
+ * @param hash_fields
+ *   Verbs protocol hash field to make the RSS on.
+ * @param queues
+ *   Queues entering in hash queue. In case of empty hash_fields only the
+ *   first queue index will be taken for the indirection table.
+ * @param queues_n
+ *   Number of queues.
+ * @param tunnel
+ *   Tunnel type.
+ *
+ * @return
+ *   The DevX object initialized index, 0 otherwise and rte_errno is set.
+ */
+uint32_t
+mlx5_hrxq_new(struct rte_eth_dev *dev,
+	      const uint8_t *rss_key, uint32_t rss_key_len,
+	      uint64_t hash_fields,
+	      const uint16_t *queues, uint32_t queues_n,
+	      int tunnel __rte_unused)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = NULL;
+	uint32_t hrxq_idx = 0;
+	struct mlx5_ind_table_obj *ind_tbl;
+	int ret;
+
+	queues_n = hash_fields ? queues_n : 1;
+	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
+	if (!ind_tbl)
+		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n);
+	if (!ind_tbl) {
+		rte_errno = ENOMEM;
+		return 0;
+	}
+	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
+	if (!hrxq)
+		goto error;
+	hrxq->ind_table = ind_tbl;
+	hrxq->rss_key_len = rss_key_len;
+	hrxq->hash_fields = hash_fields;
+	memcpy(hrxq->rss_key, rss_key, rss_key_len);
+	ret = priv->obj_ops->hrxq_new(dev, hrxq, tunnel);
+	if (ret < 0) {
+		rte_errno = errno;
+		goto error;
+	}
+	rte_atomic32_inc(&hrxq->refcnt);
+	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs, hrxq_idx,
+		     hrxq, next);
+	return hrxq_idx;
+error:
+	ret = rte_errno; /* Save rte_errno before cleanup. */
+	mlx5_ind_table_obj_release(dev, ind_tbl);
+	if (hrxq)
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
+	rte_errno = ret; /* Restore rte_errno. */
+	return 0;
 }
 
 /**

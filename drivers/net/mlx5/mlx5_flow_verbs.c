@@ -1986,7 +1986,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						 rss_desc->queue,
 						 rss_desc->queue_num);
 			if (!hrxq_idx)
-				hrxq_idx = priv->obj_ops->hrxq_new
+				hrxq_idx = mlx5_hrxq_new
 						(dev, rss_desc->key,
 						 MLX5_RSS_HASH_KEY_LEN,
 						 dev_flow->hash_fields,
@@ -1995,7 +1995,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						 !!(handle->layers &
 						 MLX5_FLOW_LAYER_TUNNEL));
 			hrxq = mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_HRXQ],
-					 hrxq_idx);
+					      hrxq_idx);
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,

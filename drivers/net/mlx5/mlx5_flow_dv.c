@@ -8949,7 +8949,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						 rss_desc->queue,
 						 rss_desc->queue_num);
 			if (!hrxq_idx) {
-				hrxq_idx = priv->obj_ops->hrxq_new
+				hrxq_idx = mlx5_hrxq_new
 						(dev, rss_desc->key,
 						 MLX5_RSS_HASH_KEY_LEN,
 						 dev_flow->hash_fields,

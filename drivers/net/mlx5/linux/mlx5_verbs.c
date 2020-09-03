@@ -502,45 +502,24 @@ mlx5_ibv_ind_table_destroy(struct mlx5_ind_table_obj *ind_tbl)
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param rss_key
- *   RSS key for the Rx hash queue.
- * @param rss_key_len
- *   RSS key length.
- * @param hash_fields
- *   Verbs protocol hash field to make the RSS on.
- * @param queues
- *   Queues entering in hash queue. In case of empty hash_fields only the
- *   first queue index will be taken for the indirection table.
- * @param queues_n
- *   Number of queues.
+ * @param hrxq
+ *   Pointer to Rx Hash queue.
  * @param tunnel
  *   Tunnel type.
  *
  * @return
- *   The Verbs object initialized index, 0 otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static uint32_t
-mlx5_ibv_hrxq_new(struct rte_eth_dev *dev,
-		  const uint8_t *rss_key, uint32_t rss_key_len,
-		  uint64_t hash_fields,
-		  const uint16_t *queues, uint32_t queues_n,
+static int
+mlx5_ibv_hrxq_new(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 		  int tunnel __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hrxq *hrxq = NULL;
-	uint32_t hrxq_idx = 0;
 	struct ibv_qp *qp = NULL;
-	struct mlx5_ind_table_obj *ind_tbl;
+	struct mlx5_ind_table_obj *ind_tbl = hrxq->ind_table;
+	const uint8_t *rss_key = hrxq->rss_key;
+	uint64_t hash_fields = hrxq->hash_fields;
 	int err;
-
-	queues_n = hash_fields ? queues_n : 1;
-	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
-	if (!ind_tbl)
-		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n);
-	if (!ind_tbl) {
-		rte_errno = ENOMEM;
-		return 0;
-	}
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	struct mlx5dv_qp_init_attr qp_init_attr;
 
@@ -570,7 +549,7 @@ mlx5_ibv_hrxq_new(struct rte_eth_dev *dev,
 				.rx_hash_conf = (struct ibv_rx_hash_conf){
 					.rx_hash_function =
 						IBV_RX_HASH_FUNC_TOEPLITZ,
-					.rx_hash_key_len = rss_key_len,
+					.rx_hash_key_len = hrxq->rss_key_len,
 					.rx_hash_key =
 						(void *)(uintptr_t)rss_key,
 					.rx_hash_fields_mask = hash_fields,
@@ -591,7 +570,7 @@ mlx5_ibv_hrxq_new(struct rte_eth_dev *dev,
 				.rx_hash_conf = (struct ibv_rx_hash_conf){
 					.rx_hash_function =
 						IBV_RX_HASH_FUNC_TOEPLITZ,
-					.rx_hash_key_len = rss_key_len,
+					.rx_hash_key_len = hrxq->rss_key_len,
 					.rx_hash_key =
 						(void *)(uintptr_t)rss_key,
 					.rx_hash_fields_mask = hash_fields,
@@ -604,10 +583,6 @@ mlx5_ibv_hrxq_new(struct rte_eth_dev *dev,
 		rte_errno = errno;
 		goto error;
 	}
-	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
-	if (!hrxq)
-		goto error;
-	hrxq->ind_table = ind_tbl;
 	hrxq->qp = qp;
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	hrxq->action = mlx5_glue->dv_create_flow_action_dest_ibv_qp(hrxq->qp);
@@ -616,22 +591,13 @@ mlx5_ibv_hrxq_new(struct rte_eth_dev *dev,
 		goto error;
 	}
 #endif
-	hrxq->rss_key_len = rss_key_len;
-	hrxq->hash_fields = hash_fields;
-	memcpy(hrxq->rss_key, rss_key, rss_key_len);
-	rte_atomic32_inc(&hrxq->refcnt);
-	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs, hrxq_idx,
-		     hrxq, next);
-	return hrxq_idx;
+	return 0;
 error:
 	err = rte_errno; /* Save rte_errno before cleanup. */
-	mlx5_ind_table_obj_release(dev, ind_tbl);
 	if (qp)
 		claim_zero(mlx5_glue->destroy_qp(qp));
-	if (hrxq)
-		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
 	rte_errno = err; /* Restore rte_errno. */
-	return 0;
+	return -rte_errno;
 }
 
 /**

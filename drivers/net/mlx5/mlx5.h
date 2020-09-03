@@ -745,10 +745,8 @@ struct mlx5_obj_ops {
 	int (*ind_table_new)(struct rte_eth_dev *dev, const unsigned int log_n,
 			     struct mlx5_ind_table_obj *ind_tbl);
 	void (*ind_table_destroy)(struct mlx5_ind_table_obj *ind_tbl);
-	uint32_t (*hrxq_new)(struct rte_eth_dev *dev, const uint8_t *rss_key,
-			     uint32_t rss_key_len, uint64_t hash_fields,
-			     const uint16_t *queues, uint32_t queues_n,
-			     int tunnel __rte_unused);
+	int (*hrxq_new)(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
+			int tunnel __rte_unused);
 	void (*hrxq_destroy)(struct mlx5_hrxq *hrxq);
 };
 
