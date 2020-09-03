@@ -1,18 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2010-2014 Intel Corporation
+# Copyright(c) 2010-2020 Intel Corporation
 
-ifneq ($(shell pkg-config --atleast-version=0.9.3 libvirt; echo $$?), 0)
-$(error vm_power_manager requires libvirt >= 0.9.3)
-else
-
-ifeq ($(RTE_SDK),)
-$(error "Please define RTE_SDK environment variable")
+# Build using pkg-config variables if possible
+ifneq ($(shell pkg-config --exists libdpdk && echo 0),0)
+$(error "no installation of DPDK found")
 endif
-
-# Default target, detect a build directory, by looking for a path with a .config
-RTE_TARGET ?= $(notdir $(abspath $(dir $(firstword $(wildcard $(RTE_SDK)/*/.config)))))
-
-include $(RTE_SDK)/mk/rte.vars.mk
 
 # binary name
 APP = vm_power_mgr
@@ -20,46 +12,50 @@ APP = vm_power_mgr
 # all source are stored in SRCS-y
 SRCS-y := main.c vm_power_cli.c power_manager.c channel_manager.c
 SRCS-y += channel_monitor.c parse.c
-ifeq ($(CONFIG_RTE_ARCH_X86_64),y)
+ifeq ($(shell uname -m),x86_64)
 SRCS-y += oob_monitor_x86.c
 else
 SRCS-y += oob_monitor_nop.c
 endif
 
-CFLAGS += -O3 -I$(RTE_SDK)/lib/librte_power/
-CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
+all: shared
+.PHONY: shared static
+shared: build/$(APP)-shared
+	ln -sf $(APP)-shared build/$(APP)
+static: build/$(APP)-static
+	ln -sf $(APP)-static build/$(APP)
 
-LDLIBS += -lvirt
+PKGCONF ?= pkg-config
 
-JANSSON := $(shell pkg-config --exists jansson; echo $$?)
+PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
+CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
+LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
+LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
+
+ifneq ($(shell $(PKGCONF) --atleast-version=0.9.3 libvirt; echo $$?), 0)
+$(error vm_power_manager requires libvirt >= 0.9.3)
+endif
+LDFLAGS += $(shell $(PKGCONF) --libs libvirt)
+
+JANSSON := $(shell $(PKGCONF) --exists jansson; echo $$?)
 ifeq ($(JANSSON), 0)
-LDLIBS += $(shell pkg-config --libs jansson)
+LDFLAGS += $(shell $(PKGCONF) --libs jansson)
 CFLAGS += -DUSE_JANSSON
 endif
 
-ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+# for shared library builds, we need to explicitly link these PMDs
+LDFLAGS_SHARED += -lrte_pmd_ixgbe -lrte_pmd_i40e -lrte_pmd_bnxt
 
-ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
-LDLIBS += -lrte_pmd_ixgbe
-endif
+build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
-ifeq ($(CONFIG_RTE_LIBRTE_I40E_PMD),y)
-LDLIBS += -lrte_pmd_i40e
-endif
+build/$(APP)-static: $(SRCS-y) Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
-ifeq ($(CONFIG_RTE_LIBRTE_BNXT_PMD),y)
-LDLIBS += -lrte_pmd_bnxt
-endif
+build:
+	@mkdir -p $@
 
-endif
-
-# workaround for a gcc bug with noreturn attribute
-# http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
-ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
-CFLAGS_main.o += -Wno-return-type
-endif
-
-include $(RTE_SDK)/mk/rte.extapp.mk
-
-endif # libvirt check
+.PHONY: clean
+clean:
+	rm -f build/$(APP) build/$(APP)-static build/$(APP)-shared
+	test -d build && rmdir -p build || true
