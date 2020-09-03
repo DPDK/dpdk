@@ -792,21 +792,21 @@ mlx5_devx_tir_destroy(struct mlx5_hrxq *hrxq)
 }
 
 /**
- * Create a drop Rx Hash queue.
+ * Create a DevX drop action for Rx Hash queue.
  *
  * @param dev
  *   Pointer to Ethernet device.
  *
  * @return
- *   The DevX object initialized, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct mlx5_hrxq *
-mlx5_devx_hrxq_drop_new(struct rte_eth_dev *dev)
+static int
+mlx5_devx_drop_action_create(struct rte_eth_dev *dev)
 {
 	(void)dev;
 	DRV_LOG(ERR, "DevX drop action is not supported yet");
 	rte_errno = ENOTSUP;
-	return NULL;
+	return -rte_errno;
 }
 
 /**
@@ -816,7 +816,7 @@ mlx5_devx_hrxq_drop_new(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device.
  */
 static void
-mlx5_devx_hrxq_drop_release(struct rte_eth_dev *dev)
+mlx5_devx_drop_action_destroy(struct rte_eth_dev *dev)
 {
 	(void)dev;
 	DRV_LOG(ERR, "DevX drop action is not supported yet");
@@ -833,6 +833,6 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.ind_table_destroy = mlx5_devx_ind_table_destroy,
 	.hrxq_new = mlx5_devx_hrxq_new,
 	.hrxq_destroy = mlx5_devx_tir_destroy,
-	.hrxq_drop_new = mlx5_devx_hrxq_drop_new,
-	.hrxq_drop_release = mlx5_devx_hrxq_drop_release,
+	.drop_action_create = mlx5_devx_drop_action_create,
+	.drop_action_destroy = mlx5_devx_drop_action_destroy,
 };

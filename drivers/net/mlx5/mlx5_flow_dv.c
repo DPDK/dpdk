@@ -8917,7 +8917,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				dv->actions[n++] = priv->sh->esw_drop_action;
 			} else {
 				struct mlx5_hrxq *drop_hrxq;
-				drop_hrxq = priv->obj_ops.hrxq_drop_new(dev);
+				drop_hrxq = mlx5_drop_action_create(dev);
 				if (!drop_hrxq) {
 					rte_flow_error_set
 						(error, errno,
@@ -8928,7 +8928,7 @@ __flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				}
 				/*
 				 * Drop queues will be released by the specify
-				 * mlx5_hrxq_drop_release() function. Assign
+				 * mlx5_drop_action_destroy() function. Assign
 				 * the special index to hrxq to mark the queue
 				 * has been allocated.
 				 */
@@ -9013,7 +9013,7 @@ error_default_miss:
 		/* hrxq is union, don't clear it if the flag is not set. */
 		if (dh->rix_hrxq) {
 			if (dh->fate_action == MLX5_FLOW_FATE_DROP) {
-				priv->obj_ops.hrxq_drop_release(dev);
+				mlx5_drop_action_destroy(dev);
 				dh->rix_hrxq = 0;
 			} else if (dh->fate_action == MLX5_FLOW_FATE_QUEUE) {
 				mlx5_hrxq_release(dev, dh->rix_hrxq);
@@ -9303,13 +9303,11 @@ static void
 flow_dv_fate_resource_release(struct rte_eth_dev *dev,
 			       struct mlx5_flow_handle *handle)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-
 	if (!handle->rix_fate)
 		return;
 	switch (handle->fate_action) {
 	case MLX5_FLOW_FATE_DROP:
-		priv->obj_ops.hrxq_drop_release(dev);
+		mlx5_drop_action_destroy(dev);
 		break;
 	case MLX5_FLOW_FATE_QUEUE:
 		mlx5_hrxq_release(dev, handle->rix_hrxq);

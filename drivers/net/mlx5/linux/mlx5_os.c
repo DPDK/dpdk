@@ -1269,8 +1269,10 @@ err_secondary:
 	}
 	if (config->devx && config->dv_flow_en) {
 		priv->obj_ops = devx_obj_ops;
-		priv->obj_ops.hrxq_drop_new = ibv_obj_ops.hrxq_drop_new;
-		priv->obj_ops.hrxq_drop_release = ibv_obj_ops.hrxq_drop_release;
+		priv->obj_ops.drop_action_create =
+						ibv_obj_ops.drop_action_create;
+		priv->obj_ops.drop_action_destroy =
+						ibv_obj_ops.drop_action_destroy;
 	} else {
 		priv->obj_ops = ibv_obj_ops;
 	}

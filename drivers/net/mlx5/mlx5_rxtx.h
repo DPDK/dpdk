@@ -382,8 +382,8 @@ uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
 int mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hxrq_idx);
 int mlx5_hrxq_verify(struct rte_eth_dev *dev);
 enum mlx5_rxq_type mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx);
-struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
-void mlx5_hrxq_drop_release(struct rte_eth_dev *dev);
+struct mlx5_hrxq *mlx5_drop_action_create(struct rte_eth_dev *dev);
+void mlx5_drop_action_destroy(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_port_offloads(void);
 uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
 void mlx5_rxq_timestamp_set(struct rte_eth_dev *dev);

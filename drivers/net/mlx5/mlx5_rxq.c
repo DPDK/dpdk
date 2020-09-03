@@ -2006,6 +2006,78 @@ error:
 }
 
 /**
+ * Create a drop Rx Hash queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   The Verbs/DevX object initialized, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_hrxq *
+mlx5_drop_action_create(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = NULL;
+	int ret;
+
+	if (priv->drop_queue.hrxq) {
+		rte_atomic32_inc(&priv->drop_queue.hrxq->refcnt);
+		return priv->drop_queue.hrxq;
+	}
+	hrxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hrxq), 0, SOCKET_ID_ANY);
+	if (!hrxq) {
+		DRV_LOG(WARNING,
+			"Port %u cannot allocate memory for drop queue.",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	priv->drop_queue.hrxq = hrxq;
+	hrxq->ind_table = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hrxq->ind_table),
+				      0, SOCKET_ID_ANY);
+	if (!hrxq->ind_table) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	ret = priv->obj_ops.drop_action_create(dev);
+	if (ret < 0)
+		goto error;
+	rte_atomic32_set(&hrxq->refcnt, 1);
+	return hrxq;
+error:
+	if (hrxq) {
+		if (hrxq->ind_table)
+			mlx5_free(hrxq->ind_table);
+		priv->drop_queue.hrxq = NULL;
+		mlx5_free(hrxq);
+	}
+	return NULL;
+}
+
+/**
+ * Release a drop hash Rx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_drop_action_destroy(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
+
+	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
+		priv->obj_ops.drop_action_destroy(dev);
+		mlx5_free(priv->drop_queue.rxq);
+		mlx5_free(hrxq->ind_table);
+		mlx5_free(hrxq);
+		priv->drop_queue.rxq = NULL;
+		priv->drop_queue.hrxq = NULL;
+	}
+}
+
+/**
  * Verify the Rx Queue list is empty
  *
  * @param dev

@@ -748,8 +748,8 @@ struct mlx5_obj_ops {
 	int (*hrxq_new)(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 			int tunnel __rte_unused);
 	void (*hrxq_destroy)(struct mlx5_hrxq *hrxq);
-	struct mlx5_hrxq *(*hrxq_drop_new)(struct rte_eth_dev *dev);
-	void (*hrxq_drop_release)(struct rte_eth_dev *dev);
+	int (*drop_action_create)(struct rte_eth_dev *dev);
+	void (*drop_action_destroy)(struct rte_eth_dev *dev);
 };
 
 struct mlx5_priv {
