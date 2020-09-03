@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -422,9 +423,30 @@ exit:
 	return -rte_errno;
 }
 
+/**
+ * Modifies the attributes for the specified WQ.
+ *
+ * @param rxq_obj
+ *   Verbs Rx queue object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_ibv_modify_wq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
+{
+	struct ibv_wq_attr mod = {
+		.attr_mask = IBV_WQ_ATTR_STATE,
+		.wq_state = is_start ? IBV_WQS_RDY : IBV_WQS_RESET,
+	};
+
+	return mlx5_glue->modify_wq(rxq_obj->wq, &mod);
+}
+
 struct mlx5_obj_ops ibv_obj_ops = {
 	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_wq_vlan_strip,
 	.rxq_obj_new = mlx5_rxq_ibv_obj_new,
 	.rxq_event_get = mlx5_rx_ibv_get_event,
+	.rxq_obj_modify = mlx5_ibv_modify_wq,
 	.rxq_obj_release = mlx5_rxq_ibv_obj_release,
 };

@@ -709,6 +709,7 @@ struct mlx5_obj_ops {
 	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
 	int (*rxq_obj_new)(struct rte_eth_dev *dev, uint16_t idx);
 	int (*rxq_event_get)(struct mlx5_rxq_obj *rxq_obj);
+	int (*rxq_obj_modify)(struct mlx5_rxq_obj *rxq_obj, bool is_start);
 	void (*rxq_obj_release)(struct mlx5_rxq_obj *rxq_obj);
 };
 

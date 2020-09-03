@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
 #include <sys/queue.h>
@@ -140,6 +141,31 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_obj *rxq_obj)
 		rxq_release_devx_rq_resources(rxq_obj->rxq_ctrl);
 		rxq_release_devx_cq_resources(rxq_obj->rxq_ctrl);
 	}
+}
+
+/**
+ * Modify RQ using DevX API.
+ *
+ * @param rxq_obj
+ *   DevX Rx queue object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_devx_modify_rq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
+{
+	struct mlx5_devx_modify_rq_attr rq_attr;
+
+	memset(&rq_attr, 0, sizeof(rq_attr));
+	if (is_start) {
+		rq_attr.rq_state = MLX5_RQC_STATE_RST;
+		rq_attr.state = MLX5_RQC_STATE_RDY;
+	} else {
+		rq_attr.rq_state = MLX5_RQC_STATE_RDY;
+		rq_attr.state = MLX5_RQC_STATE_RST;
+	}
+	return mlx5_devx_cmd_modify_rq(rxq_obj->rq, &rq_attr);
 }
 
 /**
@@ -605,5 +631,6 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_rq_vlan_strip,
 	.rxq_obj_new = mlx5_rxq_devx_obj_new,
 	.rxq_event_get = mlx5_rx_devx_get_event,
+	.rxq_obj_modify = mlx5_devx_modify_rq,
 	.rxq_obj_release = mlx5_rxq_devx_obj_release,
 };

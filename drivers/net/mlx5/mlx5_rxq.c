@@ -516,21 +516,7 @@ mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
 	int ret;
 
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
-		struct ibv_wq_attr mod = {
-			.attr_mask = IBV_WQ_ATTR_STATE,
-			.wq_state = IBV_WQS_RESET,
-		};
-
-		ret = mlx5_glue->modify_wq(rxq_ctrl->obj->wq, &mod);
-	} else { /* rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ. */
-		struct mlx5_devx_modify_rq_attr rq_attr;
-
-		memset(&rq_attr, 0, sizeof(rq_attr));
-		rq_attr.rq_state = MLX5_RQC_STATE_RDY;
-		rq_attr.state = MLX5_RQC_STATE_RST;
-		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
-	}
+	ret = priv->obj_ops->rxq_obj_modify(rxq_ctrl->obj, false);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to RESET:  %s",
 			strerror(errno));
@@ -629,21 +615,7 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 	/* Reset RQ consumer before moving queue to READY state. */
 	*rxq->rq_db = rte_cpu_to_be_32(0);
 	rte_cio_wmb();
-	if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
-		struct ibv_wq_attr mod = {
-			.attr_mask = IBV_WQ_ATTR_STATE,
-			.wq_state = IBV_WQS_RDY,
-		};
-
-		ret = mlx5_glue->modify_wq(rxq_ctrl->obj->wq, &mod);
-	} else { /* rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ. */
-		struct mlx5_devx_modify_rq_attr rq_attr;
-
-		memset(&rq_attr, 0, sizeof(rq_attr));
-		rq_attr.rq_state = MLX5_RQC_STATE_RST;
-		rq_attr.state = MLX5_RQC_STATE_RDY;
-		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
-	}
+	ret = priv->obj_ops->rxq_obj_modify(rxq_ctrl->obj, true);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to READY:  %s",
 			strerror(errno));
