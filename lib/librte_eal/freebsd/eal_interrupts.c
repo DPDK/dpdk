@@ -685,6 +685,18 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 }
 
 int
+rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
+			     int maxevents, int timeout)
+{
+	RTE_SET_USED(epfd);
+	RTE_SET_USED(events);
+	RTE_SET_USED(maxevents);
+	RTE_SET_USED(timeout);
+
+	return -ENOTSUP;
+}
+
+int
 rte_epoll_ctl(int epfd, int op, int fd, struct rte_epoll_event *event)
 {
 	RTE_SET_USED(epfd);

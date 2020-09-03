@@ -1275,9 +1275,9 @@ rte_intr_tls_epfd(void)
 	return RTE_PER_LCORE(_epfd);
 }
 
-int
-rte_epoll_wait(int epfd, struct rte_epoll_event *events,
-	       int maxevents, int timeout)
+static int
+eal_epoll_wait(int epfd, struct rte_epoll_event *events,
+	       int maxevents, int timeout, bool interruptible)
 {
 	struct epoll_event evs[maxevents];
 	int rc;
@@ -1298,8 +1298,12 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 			rc = eal_epoll_process_event(evs, rc, events);
 			break;
 		} else if (rc < 0) {
-			if (errno == EINTR)
-				continue;
+			if (errno == EINTR) {
+				if (interruptible)
+					return -1;
+				else
+					continue;
+			}
 			/* epoll_wait fail */
 			RTE_LOG(ERR, EAL, "epoll_wait returns with fail %s\n",
 				strerror(errno));
@@ -1312,6 +1316,20 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 	}
 
 	return rc;
+}
+
+int
+rte_epoll_wait(int epfd, struct rte_epoll_event *events,
+	       int maxevents, int timeout)
+{
+	return eal_epoll_wait(epfd, events, maxevents, timeout, false);
+}
+
+int
+rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
+			     int maxevents, int timeout)
+{
+	return eal_epoll_wait(epfd, events, maxevents, timeout, true);
 }
 
 static inline void
