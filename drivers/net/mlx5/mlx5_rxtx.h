@@ -68,7 +68,7 @@ struct rxq_zip {
 /* Multi-Packet RQ buffer header. */
 struct mlx5_mprq_buf {
 	struct rte_mempool *mp;
-	rte_atomic16_t refcnt; /* Atomically accessed refcnt. */
+	uint16_t refcnt; /* Atomically accessed refcnt. */
 	uint8_t pad[RTE_PKTMBUF_HEADROOM]; /* Headroom for the first packet. */
 	struct rte_mbuf_ext_shared_info shinfos[];
 	/*

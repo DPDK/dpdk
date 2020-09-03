@@ -1090,7 +1090,7 @@ mlx5_mprq_buf_init(struct rte_mempool *mp, void *opaque_arg,
 
 	memset(_m, 0, sizeof(*buf));
 	buf->mp = mp;
-	rte_atomic16_set(&buf->refcnt, 1);
+	__atomic_store_n(&buf->refcnt, 1, __ATOMIC_RELAXED);
 	for (j = 0; j != strd_n; ++j) {
 		shinfo = &buf->shinfos[j];
 		shinfo->free_cb = mlx5_mprq_buf_free_cb;

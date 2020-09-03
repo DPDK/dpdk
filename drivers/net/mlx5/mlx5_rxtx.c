@@ -1626,10 +1626,11 @@ mlx5_mprq_buf_free_cb(void *addr __rte_unused, void *opaque)
 {
 	struct mlx5_mprq_buf *buf = opaque;
 
-	if (rte_atomic16_read(&buf->refcnt) == 1) {
+	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) == 1) {
 		rte_mempool_put(buf->mp, buf);
-	} else if (rte_atomic16_add_return(&buf->refcnt, -1) == 0) {
-		rte_atomic16_set(&buf->refcnt, 1);
+	} else if (unlikely(__atomic_sub_fetch(&buf->refcnt, 1,
+					       __ATOMIC_RELAXED) == 0)) {
+		__atomic_store_n(&buf->refcnt, 1, __ATOMIC_RELAXED);
 		rte_mempool_put(buf->mp, buf);
 	}
 }
@@ -1709,7 +1710,8 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 		if (consumed_strd == strd_n) {
 			/* Replace WQE only if the buffer is still in use. */
-			if (rte_atomic16_read(&buf->refcnt) > 1) {
+			if (__atomic_load_n(&buf->refcnt,
+					    __ATOMIC_RELAXED) > 1) {
 				mprq_buf_replace(rxq, rq_ci & wq_mask, strd_n);
 				/* Release the old buffer. */
 				mlx5_mprq_buf_free(buf);
@@ -1821,9 +1823,9 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			void *buf_addr;
 
 			/* Increment the refcnt of the whole chunk. */
-			rte_atomic16_add_return(&buf->refcnt, 1);
-			MLX5_ASSERT((uint16_t)rte_atomic16_read(&buf->refcnt) <=
-				    strd_n + 1);
+			__atomic_add_fetch(&buf->refcnt, 1, __ATOMIC_RELAXED);
+			MLX5_ASSERT(__atomic_load_n(&buf->refcnt,
+				    __ATOMIC_RELAXED) <= strd_n + 1);
 			buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
 			/*
 			 * MLX5 device doesn't use iova but it is necessary in a
