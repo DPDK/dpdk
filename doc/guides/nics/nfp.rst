@@ -102,22 +102,39 @@ directory per firmware application. Options 1 and 2 for firmware filenames allow
 more than one SmartNIC, same type of SmartNIC or different ones, and to upload a
 different firmware to each SmartNIC.
 
+   .. Note::
+      Currently the NFP PMD supports using the PF with Agilio Basic Firmware. See
+      https://help.netronome.com/support/solutions for more information on the
+      various firmwares supported by the Netronome Agilio CX smartNIC.
 
 PF multiport support
 --------------------
 
-Some NFP cards support several physical ports with just one single PCI device.
-The DPDK core is designed with a 1:1 relationship between PCI devices and DPDK
-ports, so NFP PMD PF support requires handling the multiport case specifically.
-During NFP PF initialization, the PMD will extract the information about the
-number of PF ports from the firmware and will create as many DPDK ports as
-needed.
+The NFP PMD can work with up to 8 ports on the same PF device. The number of
+available ports is firmware and hardware dependent, and the driver looks for a
+firmware symbol during initialization to know how many can be used.
 
-Because the unusual relationship between a single PCI device and several DPDK
-ports, there are some limitations when using more than one PF DPDK port: there
-is no support for RX interrupts and it is not possible either to use those PF
-ports with the device hotplug functionality.
+DPDK apps work with ports, and a port is usually a PF or a VF PCI device.
+However, with the NFP PF multiport there is just one PF PCI device. Supporting
+this particular configuration requires the PMD to create ports in a special way,
+although once they are created, DPDK apps should be able to use them as normal
+PCI ports.
 
+NFP ports belonging to same PF can be seen inside PMD initialization with a
+suffix added to the PCI ID: wwww:xx:yy.z_port_n. For example, a PF with PCI ID
+0000:03:00.0 and four ports is seen by the PMD code as:
+
+   .. code-block:: console
+
+      0000:03:00.0_port_0
+      0000:03:00.0_port_1
+      0000:03:00.0_port_2
+      0000:03:00.0_port_3
+
+   .. Note::
+
+      There are some limitations with multiport support: RX interrupts and
+      device hot-plugging are not supported.
 
 PF multiprocess support
 -----------------------
