@@ -8,7 +8,9 @@ APP = l2fwd-cat
 SRCS-y := l2fwd-cat.c cat.c
 
 # Build using pkg-config variables if possible
-ifeq ($(shell pkg-config --exists libdpdk && echo 0),0)
+ifneq ($(shell pkg-config --exists libdpdk && echo 0),0)
+$(error "no installation of DPDK found")
+endif
 
 all: shared
 .PHONY: shared static
@@ -39,37 +41,3 @@ build:
 clean:
 	rm -f build/$(APP) build/$(APP)-static build/$(APP)-shared
 	test -d build && rmdir -p build || true
-
-else # Build using legacy build system
-
-ifeq ($(RTE_SDK),)
-$(error "Please define RTE_SDK environment variable")
-endif
-
-ifeq ($(PQOS_INSTALL_PATH),)
-$(error "Please define PQOS_INSTALL_PATH environment variable")
-endif
-
-# Default target, detect a build directory, by looking for a path with a .config
-RTE_TARGET ?= $(notdir $(abspath $(dir $(firstword $(wildcard $(RTE_SDK)/*/.config)))))
-
-include $(RTE_SDK)/mk/rte.vars.mk
-
-CFLAGS += $(WERROR_FLAGS)
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-
-# workaround for a gcc bug with noreturn attribute
-# http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
-ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
-CFLAGS_main.o += -Wno-return-type
-endif
-
-EXTRA_CFLAGS += -O3 -g -Wfatal-errors
-
-CFLAGS += -I$(PQOS_INSTALL_PATH)/../include
-
-LDLIBS += -L$(PQOS_INSTALL_PATH)
-LDLIBS += -lpqos
-
-include $(RTE_SDK)/mk/rte.extapp.mk
-endif

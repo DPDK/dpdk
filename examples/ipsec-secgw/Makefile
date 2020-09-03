@@ -23,7 +23,9 @@ SRCS-y += flow.c
 CFLAGS += -gdwarf-2
 
 # Build using pkg-config variables if possible
-ifeq ($(shell pkg-config --exists libdpdk && echo 0),0)
+ifneq ($(shell pkg-config --exists libdpdk && echo 0),0)
+$(error "no installation of DPDK found")
+endif
 
 all: shared
 .PHONY: shared static
@@ -54,35 +56,3 @@ build:
 clean:
 	rm -f build/$(APP) build/$(APP)-static build/$(APP)-shared
 	test -d build && rmdir -p build || true
-
-else
-
-ifeq ($(RTE_SDK),)
-$(error "Please define RTE_SDK environment variable")
-endif
-
-# Default target, detect a build directory, by looking for a path with a .config
-RTE_TARGET ?= $(notdir $(abspath $(dir $(firstword $(wildcard $(RTE_SDK)/*/.config)))))
-
-include $(RTE_SDK)/mk/rte.vars.mk
-
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(CONFIG_RTE_LIBRTE_IPSEC),y)
-$(error "RTE_LIBRTE_IPSEC is required to build ipsec-secgw")
-endif
-endif
-
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-CFLAGS += -O3 -gdwarf-2
-CFLAGS += $(WERROR_FLAGS)
-ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
-CFLAGS_sa.o += -diag-disable=vec
-endif
-
-ifeq ($(DEBUG),1)
-CFLAGS += -DIPSEC_DEBUG -fstack-protector-all -O0
-endif
-
-include $(RTE_SDK)/mk/rte.extapp.mk
-
-endif

@@ -21,7 +21,9 @@ SRCS-y += tmgr.c
 SRCS-y += cryptodev.c
 
 # Build using pkg-config variables if possible
-ifeq ($(shell pkg-config --exists libdpdk && echo 0),0)
+ifneq ($(shell pkg-config --exists libdpdk && echo 0),0)
+$(error "no installation of DPDK found")
+endif
 
 all: shared
 .PHONY: shared static
@@ -57,35 +59,3 @@ build:
 clean:
 	rm -f build/$(APP)* build/*.o
 	test -d build && rmdir -p build || true
-
-else
-
-ifeq ($(RTE_SDK),)
-$(error "Please define RTE_SDK environment variable")
-endif
-
-# Default target, detect a build directory, by looking for a path with a .config
-RTE_TARGET ?= $(notdir $(abspath $(dir $(firstword $(wildcard $(RTE_SDK)/*/.config)))))
-
-include $(RTE_SDK)/mk/rte.vars.mk
-
-ifneq ($(CONFIG_RTE_EXEC_ENV_LINUX),y)
-$(info This application can only operate in a linux environment, \
-please change the definition of the RTE_TARGET environment variable)
-all:
-clean:
-else
-
-INC += $(sort $(wildcard *.h))
-
-SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := $(SRCS-y)
-
-CFLAGS += -DALLOW_EXPERIMENTAL_API
-CFLAGS += -I$(SRCDIR)
-CFLAGS += -O3
-CFLAGS += $(WERROR_FLAGS)
-
-include $(RTE_SDK)/mk/rte.extapp.mk
-
-endif
-endif
