@@ -371,6 +371,7 @@ extern uint8_t rss_hash_default_key[];
 int mlx5_check_mprq_support(struct rte_eth_dev *dev);
 int mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq);
 int mlx5_mprq_enabled(struct rte_eth_dev *dev);
+unsigned int mlx5_rxq_cqe_num(struct mlx5_rxq_data *rxq_data);
 int mlx5_mprq_free_mp(struct rte_eth_dev *dev);
 int mlx5_mprq_alloc_mp(struct rte_eth_dev *dev);
 int mlx5_rx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id);

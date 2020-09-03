@@ -123,6 +123,28 @@ mlx5_mprq_enabled(struct rte_eth_dev *dev)
 }
 
 /**
+ * Calculate the number of CQEs in CQ for the Rx queue.
+ *
+ *  @param rxq_data
+ *     Pointer to receive queue structure.
+ *
+ * @return
+ *   Number of CQEs in CQ.
+ */
+unsigned int
+mlx5_rxq_cqe_num(struct mlx5_rxq_data *rxq_data)
+{
+	unsigned int cqe_n;
+	unsigned int wqe_n = 1 << rxq_data->elts_n;
+
+	if (mlx5_rxq_mprq_enabled(rxq_data))
+		cqe_n = wqe_n * (1 << rxq_data->strd_num_n) - 1;
+	else
+		cqe_n = wqe_n - 1;
+	return cqe_n;
+}
+
+/**
  * Allocate RX queue elements for Multi-Packet RQ.
  *
  * @param rxq_ctrl

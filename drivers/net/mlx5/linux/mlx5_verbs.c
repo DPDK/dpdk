@@ -95,23 +95,21 @@ mlx5_rxq_obj_modify_wq_vlan_strip(struct mlx5_rxq_obj *rxq_obj, int on)
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param priv
- *   Pointer to device private data.
- * @param rxq_data
- *   Pointer to Rx queue data.
- * @param cqe_n
- *   Number of CQEs in CQ.
- * @param rxq_obj
- *   Pointer to Rx queue object data.
+ * @param idx
+ *   Queue index in DPDK Rx queue array.
  *
  * @return
- *   The Verbs object initialized, NULL otherwise and rte_errno is set.
+ *   The Verbs CQ object initialized, NULL otherwise and rte_errno is set.
  */
 static struct ibv_cq *
-mlx5_ibv_cq_new(struct rte_eth_dev *dev, struct mlx5_priv *priv,
-		struct mlx5_rxq_data *rxq_data,
-		unsigned int cqe_n, struct mlx5_rxq_obj *rxq_obj)
+mlx5_rxq_ibv_cq_create(struct rte_eth_dev *dev, uint16_t idx)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_obj *rxq_obj = rxq_ctrl->obj;
+	unsigned int cqe_n = mlx5_rxq_cqe_num(rxq_data);
 	struct {
 		struct ibv_cq_init_attr_ex ibv;
 		struct mlx5dv_cq_init_attr mlx5;
@@ -164,25 +162,21 @@ mlx5_ibv_cq_new(struct rte_eth_dev *dev, struct mlx5_priv *priv,
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param priv
- *   Pointer to device private data.
- * @param rxq_data
- *   Pointer to Rx queue data.
  * @param idx
  *   Queue index in DPDK Rx queue array.
- * @param wqe_n
- *   Number of WQEs in WQ.
- * @param rxq_obj
- *   Pointer to Rx queue object data.
  *
  * @return
- *   The Verbs object initialized, NULL otherwise and rte_errno is set.
+ *   The Verbs WQ object initialized, NULL otherwise and rte_errno is set.
  */
 static struct ibv_wq *
-mlx5_ibv_wq_new(struct rte_eth_dev *dev, struct mlx5_priv *priv,
-		struct mlx5_rxq_data *rxq_data, uint16_t idx,
-		unsigned int wqe_n, struct mlx5_rxq_obj *rxq_obj)
+mlx5_rxq_ibv_wq_create(struct rte_eth_dev *dev, uint16_t idx)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_rxq_obj *rxq_obj = rxq_ctrl->obj;
+	unsigned int wqe_n = 1 << rxq_data->elts_n;
 	struct {
 		struct ibv_wq_init_attr ibv;
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
@@ -278,8 +272,6 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	struct ibv_wq_attr mod;
-	unsigned int cqe_n;
-	unsigned int wqe_n = 1 << rxq_data->elts_n;
 	struct mlx5_rxq_obj *tmpl = rxq_ctrl->obj;
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_rwq rwq;
@@ -303,12 +295,8 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		}
 		tmpl->fd = ((struct ibv_comp_channel *)(tmpl->ibv_channel))->fd;
 	}
-	if (mlx5_rxq_mprq_enabled(rxq_data))
-		cqe_n = wqe_n * (1 << rxq_data->strd_num_n) - 1;
-	else
-		cqe_n = wqe_n - 1;
 	/* Create CQ using Verbs API. */
-	tmpl->ibv_cq = mlx5_ibv_cq_new(dev, priv, rxq_data, cqe_n, tmpl);
+	tmpl->ibv_cq = mlx5_rxq_ibv_cq_create(dev, idx);
 	if (!tmpl->ibv_cq) {
 		DRV_LOG(ERR, "Port %u Rx queue %u CQ creation failure.",
 			dev->data->port_id, idx);
@@ -337,7 +325,7 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cq_uar = cq_info.cq_uar;
 	rxq_data->cqn = cq_info.cqn;
 	/* Create WQ (RQ) using Verbs API. */
-	tmpl->wq = mlx5_ibv_wq_new(dev, priv, rxq_data, idx, wqe_n, tmpl);
+	tmpl->wq = mlx5_rxq_ibv_wq_create(dev, idx);
 	if (!tmpl->wq) {
 		DRV_LOG(ERR, "Port %u Rx queue %u WQ creation failure.",
 			dev->data->port_id, idx);
