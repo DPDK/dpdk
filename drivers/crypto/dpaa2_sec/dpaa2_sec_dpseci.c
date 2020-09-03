@@ -2962,7 +2962,8 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		}
 
 		bufsize = cnstr_shdsc_ipsec_new_encap(priv->flc_desc[0].desc,
-				1, 0, SHR_SERIAL, &encap_pdb,
+				1, 0, (rta_sec_era >= RTA_SEC_ERA_10) ?
+				SHR_WAIT : SHR_SERIAL, &encap_pdb,
 				hdr, &cipherdata, &authdata);
 	} else if (ipsec_xform->direction ==
 			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
@@ -3027,7 +3028,8 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		}
 		session->dir = DIR_DEC;
 		bufsize = cnstr_shdsc_ipsec_new_decap(priv->flc_desc[0].desc,
-				1, 0, SHR_SERIAL,
+				1, 0, (rta_sec_era >= RTA_SEC_ERA_10) ?
+				SHR_WAIT : SHR_SERIAL,
 				&decap_pdb, &cipherdata, &authdata);
 	} else
 		goto out;
