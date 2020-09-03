@@ -155,38 +155,10 @@ struct mlx5_rxq_data {
 	int32_t flow_meta_offset;
 } __rte_cache_aligned;
 
-enum mlx5_rxq_obj_type {
-	MLX5_RXQ_OBJ_TYPE_IBV,		/* mlx5_rxq_obj with ibv_wq. */
-	MLX5_RXQ_OBJ_TYPE_DEVX_RQ,	/* mlx5_rxq_obj with mlx5_devx_rq. */
-	MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN,
-	/* mlx5_rxq_obj with mlx5_devx_rq and hairpin support. */
-};
-
 enum mlx5_rxq_type {
 	MLX5_RXQ_TYPE_STANDARD, /* Standard Rx queue. */
 	MLX5_RXQ_TYPE_HAIRPIN, /* Hairpin Rx queue. */
 	MLX5_RXQ_TYPE_UNDEFINED,
-};
-
-/* Verbs/DevX Rx queue elements. */
-struct mlx5_rxq_obj {
-	LIST_ENTRY(mlx5_rxq_obj) next; /* Pointer to the next element. */
-	struct mlx5_rxq_ctrl *rxq_ctrl; /* Back pointer to parent. */
-	enum mlx5_rxq_obj_type type;
-	int fd; /* File descriptor for event channel */
-	RTE_STD_C11
-	union {
-		struct {
-			void *wq; /* Work Queue. */
-			void *ibv_cq; /* Completion Queue. */
-			void *ibv_channel;
-		};
-		struct {
-			struct mlx5_devx_obj *rq; /* DevX Rx Queue object. */
-			struct mlx5_devx_obj *devx_cq; /* DevX CQ object. */
-			void *devx_channel;
-		};
-	};
 };
 
 /* RX queue control descriptor. */
@@ -416,8 +388,6 @@ int mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev);
 void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-struct mlx5_rxq_obj *mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
-				      enum mlx5_rxq_obj_type type);
 int mlx5_rxq_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
@@ -430,6 +400,7 @@ struct mlx5_rxq_ctrl *mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
+void rxq_free_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
 int mlx5_ind_table_obj_verify(struct rte_eth_dev *dev);
 uint32_t mlx5_hrxq_new(struct rte_eth_dev *dev,
 		       const uint8_t *rss_key, uint32_t rss_key_len,

@@ -676,9 +676,40 @@ TAILQ_HEAD(mlx5_flow_meters, mlx5_flow_meter);
 #define MLX5_PROC_PRIV(port_id) \
 	((struct mlx5_proc_priv *)rte_eth_devices[port_id].process_private)
 
+enum mlx5_rxq_obj_type {
+	MLX5_RXQ_OBJ_TYPE_IBV,          /* mlx5_rxq_obj with ibv_wq. */
+	MLX5_RXQ_OBJ_TYPE_DEVX_RQ,      /* mlx5_rxq_obj with mlx5_devx_rq. */
+	MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN,
+	/* mlx5_rxq_obj with mlx5_devx_rq and hairpin support. */
+};
+
+/* Verbs/DevX Rx queue elements. */
+struct mlx5_rxq_obj {
+	LIST_ENTRY(mlx5_rxq_obj) next; /* Pointer to the next element. */
+	struct mlx5_rxq_ctrl *rxq_ctrl; /* Back pointer to parent. */
+	enum mlx5_rxq_obj_type type;
+	int fd; /* File descriptor for event channel */
+	RTE_STD_C11
+	union {
+		struct {
+			void *wq; /* Work Queue. */
+			void *ibv_cq; /* Completion Queue. */
+			void *ibv_channel;
+		};
+		struct {
+			struct mlx5_devx_obj *rq; /* DevX Rx Queue object. */
+			struct mlx5_devx_obj *devx_cq; /* DevX CQ object. */
+			void *devx_channel;
+		};
+	};
+};
+
 /* HW objects operations structure. */
 struct mlx5_obj_ops {
 	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
+	struct mlx5_rxq_obj *(*rxq_obj_new)(struct rte_eth_dev *dev,
+					    uint16_t idx);
+	void (*rxq_obj_release)(struct mlx5_rxq_obj *rxq_obj);
 };
 
 struct mlx5_priv {

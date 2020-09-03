@@ -28,6 +28,7 @@ sources = files(
 	'mlx5_txpp.c',
 	'mlx5_vlan.c',
 	'mlx5_utils.c',
+	'mlx5_devx.c',
 )
 if (dpdk_conf.has('RTE_ARCH_X86_64')
 	or dpdk_conf.has('RTE_ARCH_ARM64')

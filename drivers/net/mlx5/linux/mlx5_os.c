@@ -46,6 +46,7 @@
 #include "rte_pmd_mlx5.h"
 #include "mlx5_verbs.h"
 #include "mlx5_nl.h"
+#include "mlx5_devx.h"
 
 #define MLX5_TAGS_HLIST_ARRAY_SIZE 8192
 
@@ -1322,6 +1323,10 @@ err_secondary:
 			goto error;
 		}
 	}
+	if (config->devx && config->dv_flow_en)
+		priv->obj_ops = &devx_obj_ops;
+	else
+		priv->obj_ops = &ibv_obj_ops;
 	return eth_dev;
 error:
 	if (priv) {
