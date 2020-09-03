@@ -109,6 +109,7 @@ DPDK_21 {
 	rte_log_dump;
 	rte_log_get_global_level;
 	rte_log_get_level;
+	rte_log_get_stream;
 	rte_log_register;
 	rte_log_set_global_level;
 	rte_log_set_level;
@@ -330,7 +331,6 @@ EXPERIMENTAL {
 	rte_rand_max;
 
 	# added in 19.11
-	rte_log_get_stream;
 	rte_mcfg_get_single_file_segments;
 
 	# added in 20.02
