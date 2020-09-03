@@ -3489,7 +3489,7 @@ void dpaa2_sec_stats_get(struct rte_cryptodev *dev,
 			 struct rte_cryptodev_stats *stats)
 {
 	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
-	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
+	struct fsl_mc_io dpseci;
 	struct dpseci_sec_counters counters = {0};
 	struct dpaa2_sec_qp **qp = (struct dpaa2_sec_qp **)
 					dev->data->queue_pairs;
@@ -3512,7 +3512,12 @@ void dpaa2_sec_stats_get(struct rte_cryptodev *dev,
 		stats->dequeue_err_count += qp[i]->rx_vq.err_pkts;
 	}
 
-	ret = dpseci_get_sec_counters(dpseci, CMD_PRI_LOW, priv->token,
+	/* In case as secondary process access stats, MCP portal in priv-hw
+	 * may have primary process address. Need the secondary process
+	 * based MCP portal address for this object.
+	 */
+	dpseci.regs = dpaa2_get_mcp_ptr(MC_PORTAL_INDEX);
+	ret = dpseci_get_sec_counters(&dpseci, CMD_PRI_LOW, priv->token,
 				      &counters);
 	if (ret) {
 		DPAA2_SEC_ERR("SEC counters failed");
