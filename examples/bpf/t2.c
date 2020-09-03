@@ -9,8 +9,10 @@
  * (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED).
  * Doesn't touch contents of packet data.
  * To compile:
- * clang -O2 -I${RTE_SDK}/${RTE_TARGET}/include \
- * -target bpf -Wno-int-to-void-pointer-cast -c t2.c
+ * clang -O2 -target bpf -Wno-int-to-void-pointer-cast -c t2.c
+ *
+ * NOTE: if DPDK is not installed system-wide, add compiler flag with path
+ * to DPDK rte_mbuf.h file, e.g. "clang -I/path/to/dpdk/headers -O2 ..."
  */
 
 #include <stdint.h>

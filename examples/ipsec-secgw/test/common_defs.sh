@@ -34,8 +34,8 @@ LOCAL_IPV4=192.168.31.92
 REMOTE_IPV6=fd12:3456:789a:0031:0000:0000:0000:0014
 LOCAL_IPV6=fd12:3456:789a:0031:0000:0000:0000:0092
 
-DPDK_PATH=${RTE_SDK:-${PWD}}
-DPDK_BUILD=${RTE_TARGET:-x86_64-native-linux-gcc}
+DPDK_PATH=${PWD}
+DPDK_BUILD="build"
 DPDK_VARS=""
 
 # by default ipsec-secgw can't deal with multi-segment packets
