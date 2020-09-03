@@ -171,7 +171,6 @@ enum mlx5_rxq_type {
 /* Verbs/DevX Rx queue elements. */
 struct mlx5_rxq_obj {
 	LIST_ENTRY(mlx5_rxq_obj) next; /* Pointer to the next element. */
-	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_rxq_ctrl *rxq_ctrl; /* Back pointer to parent. */
 	enum mlx5_rxq_obj_type type;
 	int fd; /* File descriptor for event channel */

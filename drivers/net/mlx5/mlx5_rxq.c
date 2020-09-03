@@ -832,34 +832,6 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 }
 
 /**
- * Get an Rx queue Verbs/DevX object.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param idx
- *   Queue index in DPDK Rx queue array
- *
- * @return
- *   The Verbs/DevX object if it exists.
- */
-static struct mlx5_rxq_obj *
-mlx5_rxq_obj_get(struct rte_eth_dev *dev, uint16_t idx)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl;
-
-	if (idx >= priv->rxqs_n)
-		return NULL;
-	if (!rxq_data)
-		return NULL;
-	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-	if (rxq_ctrl->obj)
-		rte_atomic32_inc(&rxq_ctrl->obj->refcnt);
-	return rxq_ctrl->obj;
-}
-
-/**
  * Release the resources allocated for an RQ DevX object.
  *
  * @param rxq_ctrl
@@ -920,57 +892,50 @@ rxq_obj_hairpin_release(struct mlx5_rxq_obj *rxq_obj)
  *
  * @param rxq_obj
  *   Verbs/DevX Rx queue object.
- *
- * @return
- *   1 while a reference on it exists, 0 when freed.
  */
-static int
+static void
 mlx5_rxq_obj_release(struct mlx5_rxq_obj *rxq_obj)
 {
 	struct mlx5_priv *priv = rxq_obj->rxq_ctrl->priv;
 	struct mlx5_rxq_ctrl *rxq_ctrl = rxq_obj->rxq_ctrl;
 
 	MLX5_ASSERT(rxq_obj);
-	if (rte_atomic32_dec_and_test(&rxq_obj->refcnt)) {
-		switch (rxq_obj->type) {
-		case MLX5_RXQ_OBJ_TYPE_IBV:
-			MLX5_ASSERT(rxq_obj->wq);
-			MLX5_ASSERT(rxq_obj->ibv_cq);
-			rxq_free_elts(rxq_ctrl);
-			claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
-			claim_zero(mlx5_glue->destroy_cq(rxq_obj->ibv_cq));
-			if (rxq_obj->ibv_channel)
-				claim_zero(mlx5_glue->destroy_comp_channel
-					   (rxq_obj->ibv_channel));
-			break;
-		case MLX5_RXQ_OBJ_TYPE_DEVX_RQ:
-			MLX5_ASSERT(rxq_obj->rq);
-			MLX5_ASSERT(rxq_obj->devx_cq);
-			rxq_free_elts(rxq_ctrl);
-			claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
-			claim_zero(mlx5_devx_cmd_destroy(rxq_obj->devx_cq));
-			claim_zero(mlx5_release_dbr(&priv->dbrpgs,
-						    rxq_ctrl->rq_dbr_umem_id,
-						    rxq_ctrl->rq_dbr_offset));
-			claim_zero(mlx5_release_dbr(&priv->dbrpgs,
-						    rxq_ctrl->cq_dbr_umem_id,
-						    rxq_ctrl->cq_dbr_offset));
-			if (rxq_obj->devx_channel)
-				mlx5_glue->devx_destroy_event_channel
+	switch (rxq_obj->type) {
+	case MLX5_RXQ_OBJ_TYPE_IBV:
+		MLX5_ASSERT(rxq_obj->wq);
+		MLX5_ASSERT(rxq_obj->ibv_cq);
+		rxq_free_elts(rxq_ctrl);
+		claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
+		claim_zero(mlx5_glue->destroy_cq(rxq_obj->ibv_cq));
+		if (rxq_obj->ibv_channel)
+			claim_zero(mlx5_glue->destroy_comp_channel
+							(rxq_obj->ibv_channel));
+		break;
+	case MLX5_RXQ_OBJ_TYPE_DEVX_RQ:
+		MLX5_ASSERT(rxq_obj->rq);
+		MLX5_ASSERT(rxq_obj->devx_cq);
+		rxq_free_elts(rxq_ctrl);
+		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
+		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->devx_cq));
+		claim_zero(mlx5_release_dbr(&priv->dbrpgs,
+					    rxq_ctrl->rq_dbr_umem_id,
+					    rxq_ctrl->rq_dbr_offset));
+		claim_zero(mlx5_release_dbr(&priv->dbrpgs,
+					    rxq_ctrl->cq_dbr_umem_id,
+					    rxq_ctrl->cq_dbr_offset));
+		if (rxq_obj->devx_channel)
+			mlx5_glue->devx_destroy_event_channel
 							(rxq_obj->devx_channel);
-			rxq_release_devx_rq_resources(rxq_ctrl);
-			rxq_release_devx_cq_resources(rxq_ctrl);
-			break;
-		case MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN:
-			MLX5_ASSERT(rxq_obj->rq);
-			rxq_obj_hairpin_release(rxq_obj);
-			break;
-		}
-		LIST_REMOVE(rxq_obj, next);
-		mlx5_free(rxq_obj);
-		return 0;
+		rxq_release_devx_rq_resources(rxq_ctrl);
+		rxq_release_devx_cq_resources(rxq_ctrl);
+		break;
+	case MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN:
+		MLX5_ASSERT(rxq_obj->rq);
+		rxq_obj_hairpin_release(rxq_obj);
+		break;
 	}
-	return 1;
+	LIST_REMOVE(rxq_obj, next);
+	mlx5_free(rxq_obj);
 }
 
 /**
@@ -1009,7 +974,8 @@ mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev)
 	intr_handle->type = RTE_INTR_HANDLE_EXT;
 	for (i = 0; i != n; ++i) {
 		/* This rxq obj must not be released in this function. */
-		struct mlx5_rxq_obj *rxq_obj = mlx5_rxq_obj_get(dev, i);
+		struct mlx5_rxq_ctrl *rxq_ctrl = mlx5_rxq_get(dev, i);
+		struct mlx5_rxq_obj *rxq_obj = rxq_ctrl ? rxq_ctrl->obj : NULL;
 		int rc;
 
 		/* Skip queues that cannot request interrupts. */
@@ -1019,6 +985,9 @@ mlx5_rx_intr_vec_enable(struct rte_eth_dev *dev)
 			intr_handle->intr_vec[i] =
 				RTE_INTR_VEC_RXTX_OFFSET +
 				RTE_MAX_RXTX_INTR_VEC_ID;
+			/* Decrease the rxq_ctrl's refcnt */
+			if (rxq_ctrl)
+				mlx5_rxq_release(dev, i);
 			continue;
 		}
 		if (count >= RTE_MAX_RXTX_INTR_VEC_ID) {
@@ -1073,9 +1042,6 @@ mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev)
 	if (!intr_handle->intr_vec)
 		goto free;
 	for (i = 0; i != n; ++i) {
-		struct mlx5_rxq_ctrl *rxq_ctrl;
-		struct mlx5_rxq_data *rxq_data;
-
 		if (intr_handle->intr_vec[i] == RTE_INTR_VEC_RXTX_OFFSET +
 		    RTE_MAX_RXTX_INTR_VEC_ID)
 			continue;
@@ -1083,10 +1049,7 @@ mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev)
 		 * Need to access directly the queue to release the reference
 		 * kept in mlx5_rx_intr_vec_enable().
 		 */
-		rxq_data = (*priv->rxqs)[i];
-		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-		if (rxq_ctrl->obj)
-			mlx5_rxq_obj_release(rxq_ctrl->obj);
+		mlx5_rxq_release(dev, i);
 	}
 free:
 	rte_intr_free_epoll_fd(intr_handle);
@@ -1135,28 +1098,23 @@ mlx5_arm_cq(struct mlx5_rxq_data *rxq, int sq_n_rxq)
 int
 mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq_data;
 	struct mlx5_rxq_ctrl *rxq_ctrl;
 
-	rxq_data = (*priv->rxqs)[rx_queue_id];
-	if (!rxq_data) {
-		rte_errno = EINVAL;
-		return -rte_errno;
-	}
-	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	rxq_ctrl = mlx5_rxq_get(dev, rx_queue_id);
+	if (!rxq_ctrl)
+		goto error;
 	if (rxq_ctrl->irq) {
-		struct mlx5_rxq_obj *rxq_obj;
-
-		rxq_obj = mlx5_rxq_obj_get(dev, rx_queue_id);
-		if (!rxq_obj) {
-			rte_errno = EINVAL;
-			return -rte_errno;
+		if (!rxq_ctrl->obj) {
+			mlx5_rxq_release(dev, rx_queue_id);
+			goto error;
 		}
-		mlx5_arm_cq(rxq_data, rxq_data->cq_arm_sn);
-		mlx5_rxq_obj_release(rxq_obj);
+		mlx5_arm_cq(&rxq_ctrl->rxq, rxq_ctrl->rxq.cq_arm_sn);
 	}
+	mlx5_rxq_release(dev, rx_queue_id);
 	return 0;
+error:
+	rte_errno = EINVAL;
+	return -rte_errno;
 }
 
 /**
@@ -1173,32 +1131,29 @@ mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq_data;
 	struct mlx5_rxq_ctrl *rxq_ctrl;
 	struct mlx5_rxq_obj *rxq_obj = NULL;
 	struct ibv_cq *ev_cq;
 	void *ev_ctx;
-	int ret;
+	int ret = 0;
 
-	rxq_data = (*priv->rxqs)[rx_queue_id];
-	if (!rxq_data) {
+	rxq_ctrl = mlx5_rxq_get(dev, rx_queue_id);
+	if (!rxq_ctrl) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-	if (!rxq_ctrl->irq)
+	if (!rxq_ctrl->irq) {
+		mlx5_rxq_release(dev, rx_queue_id);
 		return 0;
-	rxq_obj = mlx5_rxq_obj_get(dev, rx_queue_id);
-	if (!rxq_obj) {
-		rte_errno = EINVAL;
-		return -rte_errno;
 	}
+	rxq_obj = rxq_ctrl->obj;
+	if (!rxq_obj)
+		goto error;
 	if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
 		ret = mlx5_glue->get_cq_event(rxq_obj->ibv_channel, &ev_cq,
 					      &ev_ctx);
 		if (ret < 0 || ev_cq != rxq_obj->ibv_cq)
-			goto exit;
+			goto error;
 		mlx5_glue->ack_cq_events(rxq_obj->ibv_cq, 1);
 	} else if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
 #ifdef HAVE_IBV_DEVX_EVENT
@@ -1213,13 +1168,13 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 				 sizeof(out.buf));
 		if (ret < 0 || out.event_resp.cookie !=
 				(uint64_t)(uintptr_t)rxq_obj->devx_cq)
-			goto exit;
+			goto error;
 #endif /* HAVE_IBV_DEVX_EVENT */
 	}
-	rxq_data->cq_arm_sn++;
-	mlx5_rxq_obj_release(rxq_obj);
+	rxq_ctrl->rxq.cq_arm_sn++;
+	mlx5_rxq_release(dev, rx_queue_id);
 	return 0;
-exit:
+error:
 	/**
 	 * For ret < 0 save the errno (may be EAGAIN which means the get_event
 	 * function was called before receiving one).
@@ -1229,8 +1184,7 @@ exit:
 	else
 		rte_errno = EINVAL;
 	ret = rte_errno; /* Save rte_errno before cleanup. */
-	if (rxq_obj)
-		mlx5_rxq_obj_release(rxq_obj);
+	mlx5_rxq_release(dev, rx_queue_id);
 	if (ret != EAGAIN)
 		DRV_LOG(WARNING, "port %u unable to disable interrupt on Rx queue %d",
 			dev->data->port_id, rx_queue_id);
@@ -1729,7 +1683,6 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	}
 	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
 		idx, (void *)&tmpl);
-	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_HAIRPIN;
 	return tmpl;
@@ -1944,7 +1897,6 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	rxq_data->cq_ci = 0;
 	DRV_LOG(DEBUG, "port %u rxq %u updated with %p", dev->data->port_id,
 		idx, (void *)&tmpl);
-	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return tmpl;
@@ -2546,13 +2498,11 @@ struct mlx5_rxq_ctrl *
 mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
 	struct mlx5_rxq_ctrl *rxq_ctrl = NULL;
 
-	if ((*priv->rxqs)[idx]) {
-		rxq_ctrl = container_of((*priv->rxqs)[idx],
-					struct mlx5_rxq_ctrl,
-					rxq);
-		mlx5_rxq_obj_get(dev, idx);
+	if (rxq_data) {
+		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 		rte_atomic32_inc(&rxq_ctrl->refcnt);
 	}
 	return rxq_ctrl;
@@ -2578,18 +2528,18 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->rxqs)[idx])
 		return 0;
 	rxq_ctrl = container_of((*priv->rxqs)[idx], struct mlx5_rxq_ctrl, rxq);
-	MLX5_ASSERT(rxq_ctrl->priv);
-	if (rxq_ctrl->obj && !mlx5_rxq_obj_release(rxq_ctrl->obj))
+	if (!rte_atomic32_dec_and_test(&rxq_ctrl->refcnt))
+		return 1;
+	if (rxq_ctrl->obj) {
+		mlx5_rxq_obj_release(rxq_ctrl->obj);
 		rxq_ctrl->obj = NULL;
-	if (rte_atomic32_dec_and_test(&rxq_ctrl->refcnt)) {
-		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
-			mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
-		LIST_REMOVE(rxq_ctrl, next);
-		mlx5_free(rxq_ctrl);
-		(*priv->rxqs)[idx] = NULL;
-		return 0;
 	}
-	return 1;
+	if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
+		mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
+	LIST_REMOVE(rxq_ctrl, next);
+	mlx5_free(rxq_ctrl);
+	(*priv->rxqs)[idx] = NULL;
+	return 0;
 }
 
 /**
