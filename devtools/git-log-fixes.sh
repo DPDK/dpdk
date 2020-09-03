@@ -50,7 +50,7 @@ commit_version () # <hash>
 		head -n1)
 	if [ -z "$tag" ] ; then
 		# before -rc1 tag of release in progress
-		make showversion | cut -d'.' -f-2
+		cat VERSION | cut -d'.' -f-2
 	else
 		echo $tag | sed 's,^v,,' | sed 's,-rc.*,,'
 	fi

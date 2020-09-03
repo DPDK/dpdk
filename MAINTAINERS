@@ -90,8 +90,6 @@ F: devtools/checkpatches.sh
 F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
-F: devtools/test-build.sh
-F: devtools/test-meson-builds.sh
 F: devtools/words-case.txt
 F: license/
 F: .editorconfig
@@ -100,18 +98,12 @@ F: .editorconfig
 Build System
 ------------
 M: Thomas Monjalon <thomas@monjalon.net>
-F: GNUmakefile
 F: Makefile
 F: config/
-F: mk/
 F: buildtools/auto-config-h.sh
 F: buildtools/gen-build-mk.sh
 F: buildtools/gen-config-h.sh
 F: buildtools/relpath.sh
-F: doc/build-sdk-quick.txt
-F: doc/guides/prog_guide/build_app.rst
-F: doc/guides/prog_guide/dev_kit_*
-F: doc/guides/prog_guide/ext_app_lib_make_help.rst
 
 Meson build
 M: Bruce Richardson <bruce.richardson@intel.com>
@@ -124,6 +116,7 @@ F: buildtools/gen-pmdinfo-cfile.sh
 F: buildtools/list-dir-globs.py
 F: buildtools/pkg-config/
 F: buildtools/symlink-drivers-solibs.sh
+F: devtools/test-meson-builds.sh
 
 Public CI
 M: Aaron Conole <aconole@redhat.com>
@@ -354,7 +347,6 @@ Memory pool
 M: Olivier Matz <olivier.matz@6wind.com>
 M: Andrew Rybchenko <arybchenko@solarflare.com>
 F: lib/librte_mempool/
-F: drivers/mempool/Makefile
 F: drivers/mempool/ring/
 F: doc/guides/prog_guide/mempool_lib.rst
 F: app/test/test_mempool*
@@ -1519,7 +1511,6 @@ Test Applications
 -----------------
 
 Unit tests framework
-F: app/test/Makefile
 F: app/test/autotest*
 F: app/test/commands.c
 F: app/test/get-coremask.sh

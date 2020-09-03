@@ -34,7 +34,7 @@ The following is a list of DPDK documents in the suggested reading order:
         specifically in a Linux* application (linux) environment
 
     *   The content of the DPDK, the build system
-        (including the commands that can be used in the root DPDK Makefile to build the development kit and an application)
+        (including the commands that can be used in the root DPDK to build the development kit and an application)
         and guidelines for porting an application
 
     *   Optimizations used in the software and those that should be considered for new development

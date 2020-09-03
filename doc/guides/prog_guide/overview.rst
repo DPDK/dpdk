@@ -18,7 +18,7 @@ The framework creates a set of libraries for specific environments
 through the creation of an Environment Abstraction Layer (EAL),
 which may be specific to a mode of the Intel® architecture (32-bit or 64-bit),
 Linux* user space compilers or a specific platform.
-These environments are created through the use of make files and configuration files.
+These environments are created through the use of meson files and configuration files.
 Once the EAL library is created, the user may link with the library to create their own applications.
 Other libraries, outside of EAL, including the Hash,
 Longest Prefix Match (LPM) and rings libraries are also provided.
@@ -38,21 +38,13 @@ Development Environment
 -----------------------
 
 The DPDK project installation requires Linux and the associated toolchain,
-such as one or more compilers, assembler, make utility,
+such as one or more compilers, assembler, meson utility,
 editor and various libraries to create the DPDK components and libraries.
 
 Once these libraries are created for the specific environment and architecture,
 they may then be used to create the user's data plane application.
 
 When creating applications for the Linux user space, the glibc library is used.
-For DPDK applications, two environmental variables (RTE_SDK and RTE_TARGET)
-must be configured before compiling the applications.
-The following are examples of how the variables can be set:
-
-.. code-block:: console
-
-    export RTE_SDK=/home/user/DPDK
-    export RTE_TARGET=x86_64-native-linux-gcc
 
 See the *DPDK Getting Started Guide* for information on setting up the development environment.
 

@@ -15,56 +15,7 @@ It also provides a pointer to where sample applications are stored.
 Compiling a Sample Application
 ------------------------------
 
-Once an DPDK target environment directory has been created (such as ``x86_64-native-linux-gcc``),
-it contains all libraries and header files required to build an application.
-
-When compiling an application in the Linux* environment on the DPDK, the following variables must be exported:
-
-* ``RTE_SDK`` - Points to the DPDK installation directory.
-
-* ``RTE_TARGET`` - Points to the DPDK target environment directory.
-
-The following is an example of creating the ``helloworld`` application, which runs in the DPDK Linux environment.
-This example may be found in the ``${RTE_SDK}/examples`` directory.
-
-The directory contains the ``main.c`` file. This file, when combined with the libraries in the DPDK target environment,
-calls the various functions to initialize the DPDK environment,
-then launches an entry point (dispatch application) for each core to be utilized.
-By default, the binary is generated in the build directory.
-
-.. code-block:: console
-
-    cd examples/helloworld/
-    export RTE_SDK=$HOME/DPDK
-    export RTE_TARGET=x86_64-native-linux-gcc
-
-    make
-        CC main.o
-        LD helloworld
-        INSTALL-APP helloworld
-        INSTALL-MAP helloworld.map
-
-    ls build/app
-        helloworld helloworld.map
-
-.. note::
-
-    In the above example, ``helloworld`` was in the directory structure of the DPDK.
-    However, it could have been located outside the directory structure to keep the DPDK structure intact.
-    In the following case, the ``helloworld`` application is copied to a new directory as a new starting point.
-
-    .. code-block:: console
-
-       export RTE_SDK=/home/user/DPDK
-       cp -r $(RTE_SDK)/examples/helloworld my_rte_app
-       cd my_rte_app/
-       export RTE_TARGET=x86_64-native-linux-gcc
-
-       make
-         CC main.o
-         LD helloworld
-         INSTALL-APP helloworld
-         INSTALL-MAP helloworld.map
+Please refer to :ref:`building_app_using_installed_dpdk` for detail on compiling sample apps.
 
 Running a Sample Application
 ----------------------------

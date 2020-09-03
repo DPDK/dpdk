@@ -773,52 +773,12 @@ The ``pep8`` tool can be used for testing compliance with the guidelines.
 Integrating with the Build System
 ---------------------------------
 
-DPDK supports being built in two different ways:
+DPDK is built using the tools ``meson`` and ``ninja``.
 
-* using ``make`` - or more specifically "GNU make", i.e. ``gmake`` on FreeBSD
-* using the tools ``meson`` and ``ninja``
-
-Any new library or driver to be integrated into DPDK should support being
-built with both systems. While building using ``make`` is a legacy approach, and
-most build-system enhancements are being done using ``meson`` and ``ninja``
-there are no plans at this time to deprecate the legacy ``make`` build system.
-
-Therefore all new component additions should include both a ``Makefile`` and a
-``meson.build`` file, and should be added to the component lists in both the
-``Makefile`` and ``meson.build`` files in the relevant top-level directory:
+Therefore all new component additions should include a ``meson.build`` file,
+and should be added to the component lists in the ``meson.build`` files in the
+relevant top-level directory:
 either ``lib`` directory or a ``driver`` subdirectory.
-
-Makefile Contents
-~~~~~~~~~~~~~~~~~
-
-The ``Makefile`` for the component should be of the following format, where
-``<name>`` corresponds to the name of the library in question, e.g. hash,
-lpm, etc. For drivers, the same format of Makefile is used.
-
-.. code-block:: none
-
-	# pull in basic DPDK definitions, including whether library is to be
-	# built or not
-	include $(RTE_SDK)/mk/rte.vars.mk
-
-	# library name
-	LIB = librte_<name>.a
-
-	# any library cflags needed. Generally add "-O3 $(WERROR_FLAGS)"
-	CFLAGS += -O3
-	CFLAGS += $(WERROR_FLAGS)
-
-	# the symbol version information for the library
-	EXPORT_MAP := rte_<name>_version.map
-
-	# all source filenames are stored in SRCS-y
-	SRCS-$(CONFIG_RTE_LIBRTE_<NAME>) += rte_<name>.c
-
-	# install includes
-	SYMLINK-$(CONFIG_RTE_LIBRTE_<NAME>)-include += rte_<name>.h
-
-	# pull in rules to build the library
-	include $(RTE_SDK)/mk/rte.lib.mk
 
 Meson Build File Contents - Libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -37,7 +37,7 @@ Compilation of the DPDK
     The setup commands and installed packages needed on various systems may be different.
     For details on Linux distributions and the versions tested, please consult the DPDK Release Notes.
 
-*   General development tools including ``make``, and a supported C compiler such as ``gcc`` (version 4.9+) or ``clang`` (version 3.4+).
+*   General development tools including a supported C compiler such as gcc (version 4.9+) or clang (version 3.4+).
 
     * For RHEL/Fedora systems these can be installed using ``dnf groupinstall "Development Tools"``
 
@@ -82,12 +82,8 @@ Compilation of the DPDK
 **Additional Libraries**
 
 A number of DPDK components, such as libraries and poll-mode drivers (PMDs) have additional dependencies.
-For DPDK builds using meson, the presence or absence of these dependencies will be
-automatically detected enabling or disabling the relevant components appropriately.
-
-For builds using make, these components are disabled in the default configuration and
-need to be enabled manually by changing the relevant setting to "y" in the build configuration file
-i.e. the ``.config`` file in the build folder.
+For DPDK builds, the presence or absence of these dependencies will be automatically detected
+enabling or disabling the relevant components appropriately.
 
 In each case, the relevant library development package (``-devel`` or ``-dev``) is needed to build the DPDK components.
 

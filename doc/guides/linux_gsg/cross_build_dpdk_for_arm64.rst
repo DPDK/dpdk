@@ -67,7 +67,7 @@ Augment the cross toolchain with NUMA support
 
 .. note::
 
-   This way is optional, an alternative is to use extra CFLAGS and LDFLAGS, depicted in :ref:`configure_and_cross_compile_dpdk_build` below.
+   This way is optional, an alternative is to use extra CFLAGS and LDFLAGS.
 
 Copy the NUMA header files and lib to the cross compiler's directories:
 
@@ -79,8 +79,8 @@ Copy the NUMA header files and lib to the cross compiler's directories:
 
 .. _configure_and_cross_compile_dpdk_build:
 
-Cross Compiling DPDK using Meson
---------------------------------
+Cross Compiling DPDK
+--------------------
 
 Meson depends on pkgconfig to find the dependencies.
 The package ``pkg-config-aarch64-linux-gnu`` is required for aarch64.
@@ -99,45 +99,3 @@ command::
 
 	meson arm64-build --cross-file config/arm/arm64_armv8_linux_gcc
 	ninja -C arm64-build
-
-Configure and Cross Compile DPDK using Make
--------------------------------------------
-To configure a build, choose one of the target configurations, like arm64-dpaa-linux-gcc and arm64-thunderx-linux-gcc.
-
-.. code-block:: console
-
-   make config T=arm64-armv8a-linux-gcc
-
-To cross-compile, without compiling the kernel modules, use the following command:
-
-.. code-block:: console
-
-   make -j CROSS=aarch64-linux-gnu- CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n
-
-To cross-compile, including the kernel modules, the kernel source tree needs to be specified by setting
-RTE_KERNELDIR:
-
-.. code-block:: console
-
-   make -j CROSS=aarch64-linux-gnu- RTE_KERNELDIR=<kernel_src_rootdir> CROSS_COMPILE=aarch64-linux-gnu-
-
-To compile for non-NUMA targets, without compiling the kernel modules, use the following command:
-
-.. code-block:: console
-
-   make -j CROSS=aarch64-linux-gnu- CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n CONFIG_RTE_LIBRTE_VHOST_NUMA=n CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES=n
-
-.. note::
-
-   1. EXTRA_CFLAGS and EXTRA_LDFLAGS should be added to include the NUMA headers and link the library respectively,
-   if the above step :ref:`augment_the_cross_toolchain_with_numa_support` was skipped therefore the toolchain was not
-   augmented with NUMA support.
-
-   2. "-isystem <numa_install_dir>/include" should be add to EXTRA_CFLAGS, otherwise the numa.h file will get a lot of compiling
-   errors of Werror=cast-qual, Werror=strict-prototypes and Werror=old-style-definition.
-
-   An example is given below:
-
-   .. code-block:: console
-
-      make -j CROSS=aarch64-linux-gnu- CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n EXTRA_CFLAGS="-isystem <numa_install_dir>/include" EXTRA_LDFLAGS="-L<numa_install_dir>/lib -lnuma"

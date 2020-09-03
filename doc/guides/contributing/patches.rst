@@ -464,55 +464,6 @@ and the -r option allows the user specify a ``git log`` range.
 Checking Compilation
 --------------------
 
-Makefile System
-~~~~~~~~~~~~~~~
-
-Compilation of patches and changes should be tested using the ``test-build.sh`` script in the ``devtools``
-directory of the DPDK repo::
-
-  devtools/test-build.sh x86_64-native-linux-gcc+next+shared
-
-The script usage is::
-
-   test-build.sh [-h] [-jX] [-s] [config1 [config2] ...]]
-
-Where:
-
-* ``-h``: help, usage.
-* ``-jX``: use X parallel jobs in "make".
-* ``-s``: short test with only first config and without examples/doc.
-* ``config``: default config name plus config switches delimited with a ``+`` sign.
-
-Examples of configs are::
-
-   x86_64-native-linux-gcc
-   x86_64-native-linux-gcc+next+shared
-   x86_64-native-linux-clang+shared
-
-The builds can be modified via the following environmental variables:
-
-* ``DPDK_BUILD_TEST_CONFIGS`` (target1+option1+option2 target2)
-* ``DPDK_BUILD_TEST_DIR``
-* ``DPDK_DEP_CFLAGS``
-* ``DPDK_DEP_LDFLAGS``
-* ``DPDK_DEP_PCAP`` (y/[n])
-* ``DPDK_NOTIFY`` (notify-send)
-
-These can be set from the command line or in the config files shown above in the :ref:`contrib_checkpatch`.
-
-The recommended configurations and options to test compilation prior to submitting patches are::
-
-   x86_64-native-linux-gcc+shared+next
-   x86_64-native-linux-clang+shared
-   i686-native-linux-gcc
-
-   export DPDK_DEP_ZLIB=y
-   export DPDK_DEP_PCAP=y
-   export DPDK_DEP_SSL=y
-
-Meson System
-~~~~~~~~~~~~
-
 Compilation of patches is to be tested with ``devtools/test-meson-builds.sh`` script.
 
 The script internally checks for dependencies, then builds for several

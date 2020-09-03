@@ -31,7 +31,7 @@ The DPDK is composed of several directories:
 
 *   examples: Source code of DPDK application examples
 
-*   config, buildtools, mk: Framework-related makefiles, scripts and configuration
+*   config, buildtools: Framework-related scripts and configuration
 
 Compiling and Installing DPDK System-wide
 -----------------------------------------
@@ -39,11 +39,6 @@ Compiling and Installing DPDK System-wide
 DPDK can be configured, built and installed on your system using the tools
 ``meson`` and ``ninja``.
 
-.. note::
-
-  The older makefile-based build system used in older DPDK releases is
-  still present and its use is described in section
-  `Installation of DPDK Target Environment using Make`_.
 
 DPDK Configuration
 ~~~~~~~~~~~~~~~~~~
@@ -156,64 +151,3 @@ build system is shown below:
    dpdk = dependency('libdpdk')
    sources = files('main.c')
    executable('dpdk-app', sources, dependencies: dpdk)
-
-
-Installation of DPDK Target Environment using Make
---------------------------------------------------
-
-.. note::
-
-   The building of DPDK using make will be deprecated in a future release. It
-   is therefore recommended that DPDK installation is done using meson and
-   ninja as described above.
-
-Get a native target environment automatically::
-
-   make defconfig O=mybuild
-
-.. note::
-
-    Within the configuration files, the ``RTE_MACHINE`` configuration value is set to native,
-    which means that the compiled software is tuned for the platform on which it is built.
-
-Or get a specific target environment::
-
-   make config T=x86_64-native-linux-gcc O=mybuild
-
-The format of a DPDK target is "ARCH-MACHINE-EXECENV-TOOLCHAIN".
-Available targets can be found with::
-
-   make help
-
-Customize the target configuration in the generated ``.config`` file.
-Example for enabling the pcap PMD::
-
-   sed -ri 's,(PMD_PCAP=).*,\1y,' mybuild/.config
-
-Compile the target::
-
-   make -j4 O=mybuild
-
-.. warning::
-
-    Any kernel modules to be used, e.g. ``igb_uio``, ``kni``, must be compiled with the
-    same kernel as the one running on the target.
-    If the DPDK is not being built on the target machine,
-    the ``RTE_KERNELDIR`` environment variable should be used to point the compilation at a copy of the kernel version to be used on the target machine.
-
-Install the target in a separate directory::
-
-   make install O=mybuild DESTDIR=myinstall prefix=
-
-The environment is ready to build a DPDK application::
-
-   RTE_SDK=$(pwd)/myinstall/share/dpdk RTE_TARGET=x86_64-native-linux-gcc make -C myapp
-
-In addition, the make clean command can be used to remove any existing compiled files for a subsequent full, clean rebuild of the code.
-
-Browsing the Installed DPDK Environment Target
-----------------------------------------------
-
-Once a target is created it contains all libraries, including poll-mode drivers, and header files for the DPDK environment that are required to build customer applications.
-In addition, the test applications are built under the app directory, which may be used for testing.
-A kmod  directory is also present that contains kernel modules which may be loaded if needed.
