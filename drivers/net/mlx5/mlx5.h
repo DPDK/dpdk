@@ -723,6 +723,24 @@ struct mlx5_ind_table_obj {
 	uint16_t queues[]; /**< Queue list. */
 };
 
+/* Hash Rx queue. */
+struct mlx5_hrxq {
+	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */
+	rte_atomic32_t refcnt; /* Reference counter. */
+	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
+	RTE_STD_C11
+	union {
+		void *qp; /* Verbs queue pair. */
+		struct mlx5_devx_obj *tir; /* DevX TIR object. */
+	};
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	void *action; /* DV QP action pointer. */
+#endif
+	uint64_t hash_fields; /* Verbs Hash fields. */
+	uint32_t rss_key_len; /* Hash key length in bytes. */
+	uint8_t rss_key[]; /* Hash key. */
+};
+
 /* HW objects operations structure. */
 struct mlx5_obj_ops {
 	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
@@ -734,6 +752,11 @@ struct mlx5_obj_ops {
 							const uint16_t *queues,
 							uint32_t queues_n);
 	void (*ind_table_obj_destroy)(struct mlx5_ind_table_obj *ind_tbl);
+	uint32_t (*hrxq_new)(struct rte_eth_dev *dev, const uint8_t *rss_key,
+			     uint32_t rss_key_len, uint64_t hash_fields,
+			     const uint16_t *queues, uint32_t queues_n,
+			     int tunnel __rte_unused);
+	void (*hrxq_destroy)(struct mlx5_hrxq *hrxq);
 };
 
 struct mlx5_priv {

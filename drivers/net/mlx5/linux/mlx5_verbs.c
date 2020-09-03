@@ -516,6 +516,156 @@ mlx5_ibv_ind_table_obj_destroy(struct mlx5_ind_table_obj *ind_tbl)
 	claim_zero(mlx5_glue->destroy_rwq_ind_table(ind_tbl->ind_table));
 }
 
+/**
+ * Create an Rx Hash queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param rss_key
+ *   RSS key for the Rx hash queue.
+ * @param rss_key_len
+ *   RSS key length.
+ * @param hash_fields
+ *   Verbs protocol hash field to make the RSS on.
+ * @param queues
+ *   Queues entering in hash queue. In case of empty hash_fields only the
+ *   first queue index will be taken for the indirection table.
+ * @param queues_n
+ *   Number of queues.
+ * @param tunnel
+ *   Tunnel type.
+ *
+ * @return
+ *   The Verbs object initialized index, 0 otherwise and rte_errno is set.
+ */
+static uint32_t
+mlx5_ibv_hrxq_new(struct rte_eth_dev *dev,
+		  const uint8_t *rss_key, uint32_t rss_key_len,
+		  uint64_t hash_fields,
+		  const uint16_t *queues, uint32_t queues_n,
+		  int tunnel __rte_unused)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = NULL;
+	uint32_t hrxq_idx = 0;
+	struct ibv_qp *qp = NULL;
+	struct mlx5_ind_table_obj *ind_tbl;
+	int err;
+
+	queues_n = hash_fields ? queues_n : 1;
+	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
+	if (!ind_tbl)
+		ind_tbl = priv->obj_ops->ind_table_obj_new(dev, queues,
+							   queues_n);
+	if (!ind_tbl) {
+		rte_errno = ENOMEM;
+		return 0;
+	}
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	struct mlx5dv_qp_init_attr qp_init_attr;
+
+	memset(&qp_init_attr, 0, sizeof(qp_init_attr));
+	if (tunnel) {
+		qp_init_attr.comp_mask =
+				       MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+		qp_init_attr.create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS;
+	}
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	if (dev->data->dev_conf.lpbk_mode) {
+		/* Allow packet sent from NIC loop back w/o source MAC check. */
+		qp_init_attr.comp_mask |=
+				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+		qp_init_attr.create_flags |=
+				MLX5DV_QP_CREATE_TIR_ALLOW_SELF_LOOPBACK_UC;
+	}
+#endif
+	qp = mlx5_glue->dv_create_qp
+			(priv->sh->ctx,
+			 &(struct ibv_qp_init_attr_ex){
+				.qp_type = IBV_QPT_RAW_PACKET,
+				.comp_mask =
+					IBV_QP_INIT_ATTR_PD |
+					IBV_QP_INIT_ATTR_IND_TABLE |
+					IBV_QP_INIT_ATTR_RX_HASH,
+				.rx_hash_conf = (struct ibv_rx_hash_conf){
+					.rx_hash_function =
+						IBV_RX_HASH_FUNC_TOEPLITZ,
+					.rx_hash_key_len = rss_key_len,
+					.rx_hash_key =
+						(void *)(uintptr_t)rss_key,
+					.rx_hash_fields_mask = hash_fields,
+				},
+				.rwq_ind_tbl = ind_tbl->ind_table,
+				.pd = priv->sh->pd,
+			  },
+			  &qp_init_attr);
+#else
+	qp = mlx5_glue->create_qp_ex
+			(priv->sh->ctx,
+			 &(struct ibv_qp_init_attr_ex){
+				.qp_type = IBV_QPT_RAW_PACKET,
+				.comp_mask =
+					IBV_QP_INIT_ATTR_PD |
+					IBV_QP_INIT_ATTR_IND_TABLE |
+					IBV_QP_INIT_ATTR_RX_HASH,
+				.rx_hash_conf = (struct ibv_rx_hash_conf){
+					.rx_hash_function =
+						IBV_RX_HASH_FUNC_TOEPLITZ,
+					.rx_hash_key_len = rss_key_len,
+					.rx_hash_key =
+						(void *)(uintptr_t)rss_key,
+					.rx_hash_fields_mask = hash_fields,
+				},
+				.rwq_ind_tbl = ind_tbl->ind_table,
+				.pd = priv->sh->pd,
+			 });
+#endif
+	if (!qp) {
+		rte_errno = errno;
+		goto error;
+	}
+	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
+	if (!hrxq)
+		goto error;
+	hrxq->ind_table = ind_tbl;
+	hrxq->qp = qp;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	hrxq->action = mlx5_glue->dv_create_flow_action_dest_ibv_qp(hrxq->qp);
+	if (!hrxq->action) {
+		rte_errno = errno;
+		goto error;
+	}
+#endif
+	hrxq->rss_key_len = rss_key_len;
+	hrxq->hash_fields = hash_fields;
+	memcpy(hrxq->rss_key, rss_key, rss_key_len);
+	rte_atomic32_inc(&hrxq->refcnt);
+	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs, hrxq_idx,
+		     hrxq, next);
+	return hrxq_idx;
+error:
+	err = rte_errno; /* Save rte_errno before cleanup. */
+	mlx5_ind_table_obj_release(dev, ind_tbl);
+	if (qp)
+		claim_zero(mlx5_glue->destroy_qp(qp));
+	if (hrxq)
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
+	rte_errno = err; /* Restore rte_errno. */
+	return 0;
+}
+
+/**
+ * Destroy a Verbs queue pair.
+ *
+ * @param hrxq
+ *   Hash Rx queue to release its qp.
+ */
+static void
+mlx5_ibv_qp_destroy(struct mlx5_hrxq *hrxq)
+{
+	claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
+}
+
 struct mlx5_obj_ops ibv_obj_ops = {
 	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_wq_vlan_strip,
 	.rxq_obj_new = mlx5_rxq_ibv_obj_new,
@@ -524,4 +674,6 @@ struct mlx5_obj_ops ibv_obj_ops = {
 	.rxq_obj_release = mlx5_rxq_ibv_obj_release,
 	.ind_table_obj_new = mlx5_ibv_ind_table_obj_new,
 	.ind_table_obj_destroy = mlx5_ibv_ind_table_obj_destroy,
+	.hrxq_new = mlx5_ibv_hrxq_new,
+	.hrxq_destroy = mlx5_ibv_qp_destroy,
 };

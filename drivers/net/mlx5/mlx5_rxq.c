@@ -20,7 +20,6 @@
 #include <rte_eal_paging.h>
 
 #include <mlx5_glue.h>
-#include <mlx5_devx_cmds.h>
 #include <mlx5_malloc.h>
 
 #include "mlx5_defs.h"
@@ -28,7 +27,6 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 #include "mlx5_autoconf.h"
-#include "mlx5_flow.h"
 
 
 /* Default RSS hash key also used for ConnectX-3. */
@@ -1721,7 +1719,7 @@ mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx)
  * @return
  *   An indirection table if found.
  */
-static struct mlx5_ind_table_obj *
+struct mlx5_ind_table_obj *
 mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
 		       uint32_t queues_n)
 {
@@ -1756,7 +1754,7 @@ mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
  * @return
  *   1 while a reference on it exists, 0 when freed.
  */
-static int
+int
 mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 			   struct mlx5_ind_table_obj *ind_tbl)
 {
@@ -1798,238 +1796,6 @@ mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
 		++ret;
 	}
 	return ret;
-}
-
-/**
- * Create an Rx Hash queue.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param rss_key
- *   RSS key for the Rx hash queue.
- * @param rss_key_len
- *   RSS key length.
- * @param hash_fields
- *   Verbs protocol hash field to make the RSS on.
- * @param queues
- *   Queues entering in hash queue. In case of empty hash_fields only the
- *   first queue index will be taken for the indirection table.
- * @param queues_n
- *   Number of queues.
- * @param tunnel
- *   Tunnel type.
- *
- * @return
- *   The Verbs/DevX object initialised index, 0 otherwise and rte_errno is set.
- */
-uint32_t
-mlx5_hrxq_new(struct rte_eth_dev *dev,
-	      const uint8_t *rss_key, uint32_t rss_key_len,
-	      uint64_t hash_fields,
-	      const uint16_t *queues, uint32_t queues_n,
-	      int tunnel __rte_unused)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hrxq *hrxq = NULL;
-	uint32_t hrxq_idx = 0;
-	struct ibv_qp *qp = NULL;
-	struct mlx5_ind_table_obj *ind_tbl;
-	int err;
-	struct mlx5_devx_obj *tir = NULL;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[queues[0]];
-	struct mlx5_rxq_ctrl *rxq_ctrl =
-		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-
-	queues_n = hash_fields ? queues_n : 1;
-	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
-	if (!ind_tbl)
-		ind_tbl = priv->obj_ops->ind_table_obj_new(dev, queues,
-							   queues_n);
-	if (!ind_tbl) {
-		rte_errno = ENOMEM;
-		return 0;
-	}
-	if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV) {
-#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-		struct mlx5dv_qp_init_attr qp_init_attr;
-
-		memset(&qp_init_attr, 0, sizeof(qp_init_attr));
-		if (tunnel) {
-			qp_init_attr.comp_mask =
-				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
-			qp_init_attr.create_flags =
-				MLX5DV_QP_CREATE_TUNNEL_OFFLOADS;
-		}
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		if (dev->data->dev_conf.lpbk_mode) {
-			/*
-			 * Allow packet sent from NIC loop back
-			 * w/o source MAC check.
-			 */
-			qp_init_attr.comp_mask |=
-				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
-			qp_init_attr.create_flags |=
-				MLX5DV_QP_CREATE_TIR_ALLOW_SELF_LOOPBACK_UC;
-		}
-#endif
-		qp = mlx5_glue->dv_create_qp
-			(priv->sh->ctx,
-			 &(struct ibv_qp_init_attr_ex){
-				.qp_type = IBV_QPT_RAW_PACKET,
-				.comp_mask =
-					IBV_QP_INIT_ATTR_PD |
-					IBV_QP_INIT_ATTR_IND_TABLE |
-					IBV_QP_INIT_ATTR_RX_HASH,
-				.rx_hash_conf = (struct ibv_rx_hash_conf){
-					.rx_hash_function =
-						IBV_RX_HASH_FUNC_TOEPLITZ,
-					.rx_hash_key_len = rss_key_len,
-					.rx_hash_key =
-						(void *)(uintptr_t)rss_key,
-					.rx_hash_fields_mask = hash_fields,
-				},
-				.rwq_ind_tbl = ind_tbl->ind_table,
-				.pd = priv->sh->pd,
-			  },
-			  &qp_init_attr);
-#else
-		qp = mlx5_glue->create_qp_ex
-			(priv->sh->ctx,
-			 &(struct ibv_qp_init_attr_ex){
-				.qp_type = IBV_QPT_RAW_PACKET,
-				.comp_mask =
-					IBV_QP_INIT_ATTR_PD |
-					IBV_QP_INIT_ATTR_IND_TABLE |
-					IBV_QP_INIT_ATTR_RX_HASH,
-				.rx_hash_conf = (struct ibv_rx_hash_conf){
-					.rx_hash_function =
-						IBV_RX_HASH_FUNC_TOEPLITZ,
-					.rx_hash_key_len = rss_key_len,
-					.rx_hash_key =
-						(void *)(uintptr_t)rss_key,
-					.rx_hash_fields_mask = hash_fields,
-				},
-				.rwq_ind_tbl = ind_tbl->ind_table,
-				.pd = priv->sh->pd,
-			 });
-#endif
-		if (!qp) {
-			rte_errno = errno;
-			goto error;
-		}
-	} else { /* ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX */
-		struct mlx5_devx_tir_attr tir_attr;
-		uint32_t i;
-		uint32_t lro = 1;
-
-		/* Enable TIR LRO only if all the queues were configured for. */
-		for (i = 0; i < queues_n; ++i) {
-			if (!(*priv->rxqs)[queues[i]]->lro) {
-				lro = 0;
-				break;
-			}
-		}
-		memset(&tir_attr, 0, sizeof(tir_attr));
-		tir_attr.disp_type = MLX5_TIRC_DISP_TYPE_INDIRECT;
-		tir_attr.rx_hash_fn = MLX5_RX_HASH_FN_TOEPLITZ;
-		tir_attr.tunneled_offload_en = !!tunnel;
-		/* If needed, translate hash_fields bitmap to PRM format. */
-		if (hash_fields) {
-#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-			struct mlx5_rx_hash_field_select *rx_hash_field_select =
-					hash_fields & IBV_RX_HASH_INNER ?
-					&tir_attr.rx_hash_field_selector_inner :
-					&tir_attr.rx_hash_field_selector_outer;
-#else
-			struct mlx5_rx_hash_field_select *rx_hash_field_select =
-					&tir_attr.rx_hash_field_selector_outer;
-#endif
-			/* 1 bit: 0: IPv4, 1: IPv6. */
-			rx_hash_field_select->l3_prot_type =
-				!!(hash_fields & MLX5_IPV6_IBV_RX_HASH);
-			/* 1 bit: 0: TCP, 1: UDP. */
-			rx_hash_field_select->l4_prot_type =
-				!!(hash_fields & MLX5_UDP_IBV_RX_HASH);
-			/* Bitmask which sets which fields to use in RX Hash. */
-			rx_hash_field_select->selected_fields =
-			((!!(hash_fields & MLX5_L3_SRC_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_SRC_IP) |
-			(!!(hash_fields & MLX5_L3_DST_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_DST_IP |
-			(!!(hash_fields & MLX5_L4_SRC_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_SPORT |
-			(!!(hash_fields & MLX5_L4_DST_IBV_RX_HASH)) <<
-			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_DPORT;
-		}
-		if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN)
-			tir_attr.transport_domain = priv->sh->td->id;
-		else
-			tir_attr.transport_domain = priv->sh->tdn;
-		memcpy(tir_attr.rx_hash_toeplitz_key, rss_key,
-		       MLX5_RSS_HASH_KEY_LEN);
-		tir_attr.indirect_table = ind_tbl->rqt->id;
-		if (dev->data->dev_conf.lpbk_mode)
-			tir_attr.self_lb_block =
-					MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
-		if (lro) {
-			tir_attr.lro_timeout_period_usecs =
-					priv->config.lro.timeout;
-			tir_attr.lro_max_msg_sz = priv->max_lro_msg_size;
-			tir_attr.lro_enable_mask =
-					MLX5_TIRC_LRO_ENABLE_MASK_IPV4_LRO |
-					MLX5_TIRC_LRO_ENABLE_MASK_IPV6_LRO;
-		}
-		tir = mlx5_devx_cmd_create_tir(priv->sh->ctx, &tir_attr);
-		if (!tir) {
-			DRV_LOG(ERR, "port %u cannot create DevX TIR",
-				dev->data->port_id);
-			rte_errno = errno;
-			goto error;
-		}
-	}
-	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
-	if (!hrxq)
-		goto error;
-	hrxq->ind_table = ind_tbl;
-	if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV) {
-		hrxq->qp = qp;
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		hrxq->action =
-			mlx5_glue->dv_create_flow_action_dest_ibv_qp(hrxq->qp);
-		if (!hrxq->action) {
-			rte_errno = errno;
-			goto error;
-		}
-#endif
-	} else { /* ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX */
-		hrxq->tir = tir;
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		hrxq->action = mlx5_glue->dv_create_flow_action_dest_devx_tir
-							(hrxq->tir->obj);
-		if (!hrxq->action) {
-			rte_errno = errno;
-			goto error;
-		}
-#endif
-	}
-	hrxq->rss_key_len = rss_key_len;
-	hrxq->hash_fields = hash_fields;
-	memcpy(hrxq->rss_key, rss_key, rss_key_len);
-	rte_atomic32_inc(&hrxq->refcnt);
-	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs, hrxq_idx,
-		     hrxq, next);
-	return hrxq_idx;
-error:
-	err = rte_errno; /* Save rte_errno before cleanup. */
-	mlx5_ind_table_obj_release(dev, ind_tbl);
-	if (qp)
-		claim_zero(mlx5_glue->destroy_qp(qp));
-	else if (tir)
-		claim_zero(mlx5_devx_cmd_destroy(tir));
-	if (hrxq)
-		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
-	rte_errno = err; /* Restore rte_errno. */
-	return 0;
 }
 
 /**
@@ -2106,10 +1872,7 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hrxq_idx)
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
-		if (hrxq->ind_table->type == MLX5_IND_TBL_TYPE_IBV)
-			claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
-		else /* hrxq->ind_table->type == MLX5_IND_TBL_TYPE_DEVX */
-			claim_zero(mlx5_devx_cmd_destroy(hrxq->tir));
+		priv->obj_ops->hrxq_destroy(hrxq);
 		mlx5_ind_table_obj_release(dev, hrxq->ind_table);
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs,
 			     hrxq_idx, hrxq, next);

@@ -694,6 +694,159 @@ mlx5_devx_ind_table_obj_destroy(struct mlx5_ind_table_obj *ind_tbl)
 	claim_zero(mlx5_devx_cmd_destroy(ind_tbl->rqt));
 }
 
+/**
+ * Create an Rx Hash queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param rss_key
+ *   RSS key for the Rx hash queue.
+ * @param rss_key_len
+ *   RSS key length.
+ * @param hash_fields
+ *   Verbs protocol hash field to make the RSS on.
+ * @param queues
+ *   Queues entering in hash queue. In case of empty hash_fields only the
+ *   first queue index will be taken for the indirection table.
+ * @param queues_n
+ *   Number of queues.
+ * @param tunnel
+ *   Tunnel type.
+ *
+ * @return
+ *   The DevX object initialized index, 0 otherwise and rte_errno is set.
+ */
+static uint32_t
+mlx5_devx_hrxq_new(struct rte_eth_dev *dev,
+		   const uint8_t *rss_key, uint32_t rss_key_len,
+		   uint64_t hash_fields,
+		   const uint16_t *queues, uint32_t queues_n,
+		   int tunnel __rte_unused)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = NULL;
+	uint32_t hrxq_idx = 0;
+	struct mlx5_ind_table_obj *ind_tbl;
+	struct mlx5_devx_obj *tir = NULL;
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[queues[0]];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	struct mlx5_devx_tir_attr tir_attr;
+	int err;
+	uint32_t i;
+	bool lro = true;
+
+	queues_n = hash_fields ? queues_n : 1;
+	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
+	if (!ind_tbl)
+		ind_tbl = priv->obj_ops->ind_table_obj_new(dev, queues,
+							   queues_n);
+	if (!ind_tbl) {
+		rte_errno = ENOMEM;
+		return 0;
+	}
+	/* Enable TIR LRO only if all the queues were configured for. */
+	for (i = 0; i < queues_n; ++i) {
+		if (!(*priv->rxqs)[queues[i]]->lro) {
+			lro = false;
+			break;
+		}
+	}
+	memset(&tir_attr, 0, sizeof(tir_attr));
+	tir_attr.disp_type = MLX5_TIRC_DISP_TYPE_INDIRECT;
+	tir_attr.rx_hash_fn = MLX5_RX_HASH_FN_TOEPLITZ;
+	tir_attr.tunneled_offload_en = !!tunnel;
+	/* If needed, translate hash_fields bitmap to PRM format. */
+	if (hash_fields) {
+		struct mlx5_rx_hash_field_select *rx_hash_field_select = NULL;
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+		rx_hash_field_select = hash_fields & IBV_RX_HASH_INNER ?
+				       &tir_attr.rx_hash_field_selector_inner :
+				       &tir_attr.rx_hash_field_selector_outer;
+#else
+		rx_hash_field_select = &tir_attr.rx_hash_field_selector_outer;
+#endif
+		/* 1 bit: 0: IPv4, 1: IPv6. */
+		rx_hash_field_select->l3_prot_type =
+					!!(hash_fields & MLX5_IPV6_IBV_RX_HASH);
+		/* 1 bit: 0: TCP, 1: UDP. */
+		rx_hash_field_select->l4_prot_type =
+					 !!(hash_fields & MLX5_UDP_IBV_RX_HASH);
+		/* Bitmask which sets which fields to use in RX Hash. */
+		rx_hash_field_select->selected_fields =
+			((!!(hash_fields & MLX5_L3_SRC_IBV_RX_HASH)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_SRC_IP) |
+			(!!(hash_fields & MLX5_L3_DST_IBV_RX_HASH)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_DST_IP |
+			(!!(hash_fields & MLX5_L4_SRC_IBV_RX_HASH)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_SPORT |
+			(!!(hash_fields & MLX5_L4_DST_IBV_RX_HASH)) <<
+			 MLX5_RX_HASH_FIELD_SELECT_SELECTED_FIELDS_L4_DPORT;
+	}
+	if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
+		tir_attr.transport_domain = priv->sh->td->id;
+	else
+		tir_attr.transport_domain = priv->sh->tdn;
+	memcpy(tir_attr.rx_hash_toeplitz_key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+	tir_attr.indirect_table = ind_tbl->rqt->id;
+	if (dev->data->dev_conf.lpbk_mode)
+		tir_attr.self_lb_block = MLX5_TIRC_SELF_LB_BLOCK_BLOCK_UNICAST;
+	if (lro) {
+		tir_attr.lro_timeout_period_usecs = priv->config.lro.timeout;
+		tir_attr.lro_max_msg_sz = priv->max_lro_msg_size;
+		tir_attr.lro_enable_mask = MLX5_TIRC_LRO_ENABLE_MASK_IPV4_LRO |
+					   MLX5_TIRC_LRO_ENABLE_MASK_IPV6_LRO;
+	}
+	tir = mlx5_devx_cmd_create_tir(priv->sh->ctx, &tir_attr);
+	if (!tir) {
+		DRV_LOG(ERR, "Port %u cannot create DevX TIR.",
+			dev->data->port_id);
+		rte_errno = errno;
+		goto error;
+	}
+	hrxq = mlx5_ipool_zmalloc(priv->sh->ipool[MLX5_IPOOL_HRXQ], &hrxq_idx);
+	if (!hrxq)
+		goto error;
+	hrxq->ind_table = ind_tbl;
+	hrxq->tir = tir;
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	hrxq->action = mlx5_glue->dv_create_flow_action_dest_devx_tir
+							       (hrxq->tir->obj);
+	if (!hrxq->action) {
+		rte_errno = errno;
+		goto error;
+	}
+#endif
+	hrxq->rss_key_len = rss_key_len;
+	hrxq->hash_fields = hash_fields;
+	memcpy(hrxq->rss_key, rss_key, rss_key_len);
+	rte_atomic32_inc(&hrxq->refcnt);
+	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs, hrxq_idx,
+		     hrxq, next);
+	return hrxq_idx;
+error:
+	err = rte_errno; /* Save rte_errno before cleanup. */
+	mlx5_ind_table_obj_release(dev, ind_tbl);
+	if (tir)
+		claim_zero(mlx5_devx_cmd_destroy(tir));
+	if (hrxq)
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
+	rte_errno = err; /* Restore rte_errno. */
+	return 0;
+}
+
+/**
+ * Destroy a DevX TIR object.
+ *
+ * @param hrxq
+ *   Hash Rx queue to release its tir.
+ */
+static void
+mlx5_devx_tir_destroy(struct mlx5_hrxq *hrxq)
+{
+	claim_zero(mlx5_devx_cmd_destroy(hrxq->tir));
+}
+
 struct mlx5_obj_ops devx_obj_ops = {
 	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_rq_vlan_strip,
 	.rxq_obj_new = mlx5_rxq_devx_obj_new,
@@ -702,4 +855,6 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.rxq_obj_release = mlx5_rxq_devx_obj_release,
 	.ind_table_obj_new = mlx5_devx_ind_table_obj_new,
 	.ind_table_obj_destroy = mlx5_devx_ind_table_obj_destroy,
+	.hrxq_new = mlx5_devx_hrxq_new,
+	.hrxq_destroy = mlx5_devx_tir_destroy,
 };

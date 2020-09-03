@@ -186,24 +186,6 @@ struct mlx5_rxq_ctrl {
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 };
 
-/* Hash Rx queue. */
-struct mlx5_hrxq {
-	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */
-	rte_atomic32_t refcnt; /* Reference counter. */
-	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
-	RTE_STD_C11
-	union {
-		void *qp; /* Verbs queue pair. */
-		struct mlx5_devx_obj *tir; /* DevX TIR object. */
-	};
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	void *action; /* DV QP action pointer. */
-#endif
-	uint64_t hash_fields; /* Verbs Hash fields. */
-	uint32_t rss_key_len; /* Hash key length in bytes. */
-	uint8_t rss_key[]; /* Hash key. */
-};
-
 /* TX queue send local data. */
 __extension__
 struct mlx5_txq_local {
@@ -383,11 +365,11 @@ int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
 int mlx5_ind_table_obj_verify(struct rte_eth_dev *dev);
-uint32_t mlx5_hrxq_new(struct rte_eth_dev *dev,
-		       const uint8_t *rss_key, uint32_t rss_key_len,
-		       uint64_t hash_fields,
-		       const uint16_t *queues, uint32_t queues_n,
-		       int tunnel __rte_unused);
+struct mlx5_ind_table_obj *mlx5_ind_table_obj_get(struct rte_eth_dev *dev,
+						  const uint16_t *queues,
+						  uint32_t queues_n);
+int mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
+			       struct mlx5_ind_table_obj *ind_tbl);
 uint32_t mlx5_hrxq_get(struct rte_eth_dev *dev,
 		       const uint8_t *rss_key, uint32_t rss_key_len,
 		       uint64_t hash_fields,
