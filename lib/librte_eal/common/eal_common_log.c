@@ -17,11 +17,21 @@
 
 #include "eal_private.h"
 
-/* global log structure */
-struct rte_logs rte_logs = {
+struct rte_log_dynamic_type {
+	const char *name;
+	uint32_t loglevel;
+};
+
+/** The rte_log structure. */
+static struct rte_logs {
+	uint32_t type;  /**< Bitfield with enabled logs. */
+	uint32_t level; /**< Log level. */
+	FILE *file;     /**< Output file set by rte_openlog_stream, or NULL. */
+	size_t dynamic_types_len;
+	struct rte_log_dynamic_type *dynamic_types;
+} rte_logs = {
 	.type = ~0,
 	.level = RTE_LOG_DEBUG,
-	.file = NULL,
 };
 
 struct rte_eal_opt_loglevel {
@@ -51,11 +61,6 @@ static FILE *default_log_stream;
 struct log_cur_msg {
 	uint32_t loglevel; /**< log level - see rte_log.h */
 	uint32_t logtype;  /**< log type  - see rte_log.h */
-};
-
-struct rte_log_dynamic_type {
-	const char *name;
-	uint32_t loglevel;
 };
 
  /* per core log */

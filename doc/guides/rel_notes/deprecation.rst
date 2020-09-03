@@ -70,10 +70,6 @@ Deprecation Notices
 * eal: The function ``rte_eal_remote_launch`` will return new error codes
   after read or write error on the pipe, instead of calling ``rte_panic``.
 
-* eal: The ``rte_logs`` struct and global symbol will be made private to
-  remove it from the externally visible ABI and allow it to be updated in the
-  future.
-
 * eal: The ``rte_dev_event`` structure will be made private to the EAL as no
   public API makes use of it.
 

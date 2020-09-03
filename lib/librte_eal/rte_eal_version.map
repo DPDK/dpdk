@@ -115,7 +115,6 @@ DPDK_21 {
 	rte_log_set_level;
 	rte_log_set_level_pattern;
 	rte_log_set_level_regexp;
-	rte_logs;
 	rte_malloc;
 	rte_malloc_dump_stats;
 	rte_malloc_get_socket_stats;
