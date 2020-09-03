@@ -164,6 +164,10 @@ New Features
   Added a symmetric crypto PMD for Broadcom FlexSparc crypto units.
   See :doc:`../cryptodevs/bcmfs` guide for more details on this new PMD.
 
+* **Updated DPAA2_SEC crypto PMD.**
+
+  * Added DES-CBC support for cipher_only, chain and ipsec protocol.
+
 * **Updated Marvell NITROX symmetric crypto PMD.**
 
   * Added AES-GCM support.

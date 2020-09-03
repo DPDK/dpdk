@@ -1878,19 +1878,19 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 						session->iv.length,
 						session->dir);
 		break;
-	case RTE_CRYPTO_CIPHER_AES_CTR:
-		cipherdata.algtype = OP_ALG_ALGSEL_AES;
-		cipherdata.algmode = OP_ALG_AAI_CTR;
-		session->cipher_alg = RTE_CRYPTO_CIPHER_AES_CTR;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
+		cipherdata.algtype = OP_ALG_ALGSEL_DES;
+		cipherdata.algmode = OP_ALG_AAI_CBC;
+		session->cipher_alg = RTE_CRYPTO_CIPHER_DES_CBC;
 		bufsize = cnstr_shdsc_blkcipher(priv->flc_desc[0].desc, 1, 0,
 						SHR_NEVER, &cipherdata,
 						session->iv.length,
 						session->dir);
 		break;
-	case RTE_CRYPTO_CIPHER_3DES_CTR:
-		cipherdata.algtype = OP_ALG_ALGSEL_3DES;
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		cipherdata.algtype = OP_ALG_ALGSEL_AES;
 		cipherdata.algmode = OP_ALG_AAI_CTR;
-		session->cipher_alg = RTE_CRYPTO_CIPHER_3DES_CTR;
+		session->cipher_alg = RTE_CRYPTO_CIPHER_AES_CTR;
 		bufsize = cnstr_shdsc_blkcipher(priv->flc_desc[0].desc, 1, 0,
 						SHR_NEVER, &cipherdata,
 						session->iv.length,
@@ -1914,6 +1914,7 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_AES_F8:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
+	case RTE_CRYPTO_CIPHER_3DES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_XTS:
 	case RTE_CRYPTO_CIPHER_ARC4:
 	case RTE_CRYPTO_CIPHER_NULL:
@@ -2391,6 +2392,11 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 		cipherdata.algmode = OP_ALG_AAI_CBC;
 		session->cipher_alg = RTE_CRYPTO_CIPHER_3DES_CBC;
 		break;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
+		cipherdata.algtype = OP_ALG_ALGSEL_DES;
+		cipherdata.algmode = OP_ALG_AAI_CBC;
+		session->cipher_alg = RTE_CRYPTO_CIPHER_DES_CBC;
+		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 		cipherdata.algtype = OP_ALG_ALGSEL_AES;
 		cipherdata.algmode = OP_ALG_AAI_CTR;
@@ -2400,6 +2406,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
 	case RTE_CRYPTO_CIPHER_NULL:
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
+	case RTE_CRYPTO_CIPHER_3DES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
 		DPAA2_SEC_ERR("Crypto: Unsupported Cipher alg %u",
@@ -2731,6 +2738,10 @@ dpaa2_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 		cipherdata->algtype = OP_PCL_IPSEC_3DES;
 		cipherdata->algmode = OP_ALG_AAI_CBC;
 		break;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
+		cipherdata->algtype = OP_PCL_IPSEC_DES;
+		cipherdata->algmode = OP_ALG_AAI_CBC;
+		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 		cipherdata->algtype = OP_PCL_IPSEC_AES_CTR;
 		cipherdata->algmode = OP_ALG_AAI_CTR;
@@ -2741,6 +2752,7 @@ dpaa2_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
 	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
+	case RTE_CRYPTO_CIPHER_3DES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
 		DPAA2_SEC_ERR("Crypto: Unsupported Cipher alg %u",
