@@ -167,6 +167,8 @@ New Features
 * **Updated DPAA2_SEC crypto PMD.**
 
   * Added DES-CBC support for cipher_only, chain and ipsec protocol.
+  * Added support for non-HMAC auth algorithms
+    (MD5, SHA1, SHA224, SHA256, SHA384, SHA512).
 
 * **Updated Marvell NITROX symmetric crypto PMD.**
 

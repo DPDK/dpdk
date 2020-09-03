@@ -1978,21 +1978,23 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 	flc = &priv->flc_desc[DESC_INITFINAL].flc;
 
 	session->ctxt_type = DPAA2_SEC_AUTH;
-	session->auth_key.data = rte_zmalloc(NULL, xform->auth.key.length,
-			RTE_CACHE_LINE_SIZE);
-	if (session->auth_key.data == NULL) {
-		DPAA2_SEC_ERR("Unable to allocate memory for auth key");
-		rte_free(priv);
-		return -ENOMEM;
-	}
 	session->auth_key.length = xform->auth.key.length;
-
-	memcpy(session->auth_key.data, xform->auth.key.data,
-	       xform->auth.key.length);
-	authdata.key = (size_t)session->auth_key.data;
+	if (xform->auth.key.length) {
+		session->auth_key.data = rte_zmalloc(NULL,
+			xform->auth.key.length,
+			RTE_CACHE_LINE_SIZE);
+		if (session->auth_key.data == NULL) {
+			DPAA2_SEC_ERR("Unable to allocate memory for auth key");
+			rte_free(priv);
+			return -ENOMEM;
+		}
+		memcpy(session->auth_key.data, xform->auth.key.data,
+		       xform->auth.key.length);
+		authdata.key = (size_t)session->auth_key.data;
+		authdata.key_enc_flags = 0;
+		authdata.key_type = RTA_DATA_IMM;
+	}
 	authdata.keylen = session->auth_key.length;
-	authdata.key_enc_flags = 0;
-	authdata.key_type = RTA_DATA_IMM;
 
 	session->digest_length = xform->auth.digest_length;
 	session->dir = (xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE) ?
@@ -2075,18 +2077,66 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 					   !session->dir,
 					   session->digest_length);
 		break;
-	case RTE_CRYPTO_AUTH_KASUMI_F9:
-	case RTE_CRYPTO_AUTH_NULL:
 	case RTE_CRYPTO_AUTH_SHA1:
-	case RTE_CRYPTO_AUTH_SHA256:
-	case RTE_CRYPTO_AUTH_SHA512:
-	case RTE_CRYPTO_AUTH_SHA224:
-	case RTE_CRYPTO_AUTH_SHA384:
+		authdata.algtype = OP_ALG_ALGSEL_SHA1;
+		authdata.algmode = OP_ALG_AAI_HASH;
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA1;
+		bufsize = cnstr_shdsc_hash(priv->flc_desc[DESC_INITFINAL].desc,
+					   1, 0, SHR_NEVER, &authdata,
+					   !session->dir,
+					   session->digest_length);
+		break;
 	case RTE_CRYPTO_AUTH_MD5:
+		authdata.algtype = OP_ALG_ALGSEL_MD5;
+		authdata.algmode = OP_ALG_AAI_HASH;
+		session->auth_alg = RTE_CRYPTO_AUTH_MD5;
+		bufsize = cnstr_shdsc_hash(priv->flc_desc[DESC_INITFINAL].desc,
+					   1, 0, SHR_NEVER, &authdata,
+					   !session->dir,
+					   session->digest_length);
+		break;
+	case RTE_CRYPTO_AUTH_SHA256:
+		authdata.algtype = OP_ALG_ALGSEL_SHA256;
+		authdata.algmode = OP_ALG_AAI_HASH;
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA256;
+		bufsize = cnstr_shdsc_hash(priv->flc_desc[DESC_INITFINAL].desc,
+					   1, 0, SHR_NEVER, &authdata,
+					   !session->dir,
+					   session->digest_length);
+		break;
+	case RTE_CRYPTO_AUTH_SHA384:
+		authdata.algtype = OP_ALG_ALGSEL_SHA384;
+		authdata.algmode = OP_ALG_AAI_HASH;
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA384;
+		bufsize = cnstr_shdsc_hash(priv->flc_desc[DESC_INITFINAL].desc,
+					   1, 0, SHR_NEVER, &authdata,
+					   !session->dir,
+					   session->digest_length);
+		break;
+	case RTE_CRYPTO_AUTH_SHA512:
+		authdata.algtype = OP_ALG_ALGSEL_SHA512;
+		authdata.algmode = OP_ALG_AAI_HASH;
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA512;
+		bufsize = cnstr_shdsc_hash(priv->flc_desc[DESC_INITFINAL].desc,
+					   1, 0, SHR_NEVER, &authdata,
+					   !session->dir,
+					   session->digest_length);
+		break;
+	case RTE_CRYPTO_AUTH_SHA224:
+		authdata.algtype = OP_ALG_ALGSEL_SHA224;
+		authdata.algmode = OP_ALG_AAI_HASH;
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA224;
+		bufsize = cnstr_shdsc_hash(priv->flc_desc[DESC_INITFINAL].desc,
+					   1, 0, SHR_NEVER, &authdata,
+					   !session->dir,
+					   session->digest_length);
+		break;
 	case RTE_CRYPTO_AUTH_AES_GMAC:
 	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
+	case RTE_CRYPTO_AUTH_KASUMI_F9:
+	case RTE_CRYPTO_AUTH_NULL:
 		DPAA2_SEC_ERR("Crypto: Unsupported auth alg %un",
 			      xform->auth.algo);
 		ret = -ENOTSUP;
