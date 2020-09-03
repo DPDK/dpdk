@@ -639,7 +639,6 @@ mlx5_devx_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	ind_tbl->type = MLX5_IND_TBL_TYPE_DEVX;
 	rqt_attr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rqt_attr) +
 			      rqt_n * sizeof(uint32_t), 0, SOCKET_ID_ANY);
 	if (!rqt_attr) {

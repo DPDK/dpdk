@@ -470,7 +470,6 @@ mlx5_ibv_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	ind_tbl->type = MLX5_IND_TBL_TYPE_IBV;
 	for (i = 0; i != queues_n; ++i) {
 		struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev, queues[i]);
 		if (!rxq)
