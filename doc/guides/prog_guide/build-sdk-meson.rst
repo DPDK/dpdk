@@ -102,14 +102,17 @@ Examples of setting some of the same options using meson configure::
 
 	meson configure -Denable_trace_fp=true
 
-NOTE: once meson has been run to configure a build in a directory, it
-cannot be run again on the same directory. Instead ``meson configure``
-should be used to change the build settings within the directory, and when
-``ninja`` is called to do the build itself, it will trigger the necessary
-re-scan from meson.
+.. note::
 
-NOTE: machine=default uses a config that works on all supported architectures
-regardless of the capabilities of the machine where the build is happening.
+        once meson has been run to configure a build in a directory, it
+        cannot be run again on the same directory. Instead ``meson configure``
+        should be used to change the build settings within the directory, and when
+        ``ninja`` is called to do the build itself, it will trigger the necessary
+        re-scan from meson.
+
+.. note::
+        machine=default uses a config that works on all supported architectures
+        regardless of the capabilities of the machine where the build is happening.
 
 As well as those settings taken from ``meson configure``, other options
 such as the compiler to use can be passed via environment variables. For
@@ -117,9 +120,11 @@ example::
 
 	CC=clang meson clang-build
 
-NOTE: for more comprehensive overriding of compilers or other environment
-settings, the tools for cross-compilation may be considered. However, for
-basic overriding of the compiler etc., the above form works as expected.
+.. note::
+
+        for more comprehensive overriding of compilers or other environment
+        settings, the tools for cross-compilation may be considered. However, for
+        basic overriding of the compiler etc., the above form works as expected.
 
 
 Performing the Build
