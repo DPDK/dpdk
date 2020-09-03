@@ -1381,13 +1381,16 @@ i40evf_handle_pf_event(struct rte_eth_dev *dev, uint8_t *msg,
 	switch (pf_msg->event) {
 	case VIRTCHNL_EVENT_RESET_IMPENDING:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
-					      NULL);
+		_rte_eth_dev_callback_process(dev,
+				RTE_ETH_EVENT_INTR_RESET, NULL);
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
 		vf->link_up = pf_msg->event_data.link_event.link_status;
 		vf->link_speed = pf_msg->event_data.link_event.link_speed;
+		i40evf_dev_link_update(dev, 0);
+		_rte_eth_dev_callback_process(dev,
+				RTE_ETH_EVENT_INTR_LSC, NULL);
 		break;
 	case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event");
@@ -1609,7 +1612,7 @@ static int eth_i40evf_pci_remove(struct rte_pci_device *pci_dev)
  */
 static struct rte_pci_driver rte_i40evf_pmd = {
 	.id_table = pci_id_i40evf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_i40evf_pci_probe,
 	.remove = eth_i40evf_pci_remove,
 };
@@ -1634,6 +1637,9 @@ i40evf_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_vec_allowed = true;
 	ad->tx_simple_allowed = true;
 	ad->tx_vec_allowed = true;
+
+	dev->data->dev_conf.intr_conf.lsc =
+		!!(dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC);
 
 	if (num_queue_pairs > vf->vsi_res->num_queue_pairs) {
 		struct i40e_hw *hw;
