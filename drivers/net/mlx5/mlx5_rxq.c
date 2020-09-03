@@ -2873,7 +2873,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	      int tunnel __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hrxq *hrxq;
+	struct mlx5_hrxq *hrxq = NULL;
 	uint32_t hrxq_idx = 0;
 	struct ibv_qp *qp = NULL;
 	struct mlx5_ind_table_obj *ind_tbl;
@@ -3074,6 +3074,8 @@ error:
 		claim_zero(mlx5_glue->destroy_qp(qp));
 	else if (tir)
 		claim_zero(mlx5_devx_cmd_destroy(tir));
+	if (hrxq)
+		mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq_idx);
 	rte_errno = err; /* Restore rte_errno. */
 	return 0;
 }
