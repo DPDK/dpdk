@@ -100,10 +100,6 @@ Build System
 M: Thomas Monjalon <thomas@monjalon.net>
 F: Makefile
 F: config/
-F: buildtools/auto-config-h.sh
-F: buildtools/gen-build-mk.sh
-F: buildtools/gen-config-h.sh
-F: buildtools/relpath.sh
 
 Meson build
 M: Bruce Richardson <bruce.richardson@intel.com>
