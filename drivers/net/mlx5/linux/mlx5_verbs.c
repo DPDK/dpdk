@@ -427,8 +427,38 @@ mlx5_rxq_ibv_obj_release(struct mlx5_rxq_obj *rxq_obj)
 	mlx5_free(rxq_obj);
 }
 
+/**
+ * Get event for an Rx verbs queue object.
+ *
+ * @param rxq_obj
+ *   Verbs Rx queue object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_rx_ibv_get_event(struct mlx5_rxq_obj *rxq_obj)
+{
+	struct ibv_cq *ev_cq;
+	void *ev_ctx;
+	int ret = mlx5_glue->get_cq_event(rxq_obj->ibv_channel,
+					  &ev_cq, &ev_ctx);
+
+	if (ret < 0 || ev_cq != rxq_obj->ibv_cq)
+		goto exit;
+	mlx5_glue->ack_cq_events(rxq_obj->ibv_cq, 1);
+	return 0;
+exit:
+	if (ret < 0)
+		rte_errno = errno;
+	else
+		rte_errno = EINVAL;
+	return -rte_errno;
+}
+
 struct mlx5_obj_ops ibv_obj_ops = {
 	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_wq_vlan_strip,
 	.rxq_obj_new = mlx5_rxq_ibv_obj_new,
+	.rxq_event_get = mlx5_rx_ibv_get_event,
 	.rxq_obj_release = mlx5_rxq_ibv_obj_release,
 };

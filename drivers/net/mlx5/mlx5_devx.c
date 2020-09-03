@@ -136,6 +136,43 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_obj *rxq_obj)
 }
 
 /**
+ * Get event for an Rx DevX queue object.
+ *
+ * @param rxq_obj
+ *   DevX Rx queue object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_rx_devx_get_event(struct mlx5_rxq_obj *rxq_obj)
+{
+#ifdef HAVE_IBV_DEVX_EVENT
+	union {
+		struct mlx5dv_devx_async_event_hdr event_resp;
+		uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr) + 128];
+	} out;
+	int ret = mlx5_glue->devx_get_event(rxq_obj->devx_channel,
+					    &out.event_resp,
+					    sizeof(out.buf));
+
+	if (ret < 0) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	if (out.event_resp.cookie != (uint64_t)(uintptr_t)rxq_obj->devx_cq) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	return 0;
+#else
+	(void)rxq_obj;
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+#endif /* HAVE_IBV_DEVX_EVENT */
+}
+
+/**
  * Fill common fields of create RQ attributes structure.
  *
  * @param rxq_data
@@ -606,5 +643,6 @@ error:
 struct mlx5_obj_ops devx_obj_ops = {
 	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_rq_vlan_strip,
 	.rxq_obj_new = mlx5_rxq_devx_obj_new,
+	.rxq_event_get = mlx5_rx_devx_get_event,
 	.rxq_obj_release = mlx5_rxq_devx_obj_release,
 };

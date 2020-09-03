@@ -1024,10 +1024,8 @@ error:
 int
 mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *rxq_ctrl;
-	struct mlx5_rxq_obj *rxq_obj = NULL;
-	struct ibv_cq *ev_cq;
-	void *ev_ctx;
 	int ret = 0;
 
 	rxq_ctrl = mlx5_rxq_get(dev, rx_queue_id);
@@ -1035,42 +1033,20 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	if (!rxq_ctrl->irq) {
-		mlx5_rxq_release(dev, rx_queue_id);
-		return 0;
-	}
-	rxq_obj = rxq_ctrl->obj;
-	if (!rxq_obj)
+	if (!rxq_ctrl->obj)
 		goto error;
-	if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
-		ret = mlx5_glue->get_cq_event(rxq_obj->ibv_channel, &ev_cq,
-					      &ev_ctx);
-		if (ret < 0 || ev_cq != rxq_obj->ibv_cq)
+	if (rxq_ctrl->irq) {
+		ret = priv->obj_ops->rxq_event_get(rxq_ctrl->obj);
+		if (ret < 0)
 			goto error;
-		mlx5_glue->ack_cq_events(rxq_obj->ibv_cq, 1);
-	} else if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
-#ifdef HAVE_IBV_DEVX_EVENT
-		union {
-			struct mlx5dv_devx_async_event_hdr event_resp;
-			uint8_t buf[sizeof(struct mlx5dv_devx_async_event_hdr)
-				    + 128];
-		} out;
-
-		ret = mlx5_glue->devx_get_event
-				(rxq_obj->devx_channel, &out.event_resp,
-				 sizeof(out.buf));
-		if (ret < 0 || out.event_resp.cookie !=
-				(uint64_t)(uintptr_t)rxq_obj->devx_cq)
-			goto error;
-#endif /* HAVE_IBV_DEVX_EVENT */
+		rxq_ctrl->rxq.cq_arm_sn++;
 	}
-	rxq_ctrl->rxq.cq_arm_sn++;
 	mlx5_rxq_release(dev, rx_queue_id);
 	return 0;
 error:
 	/**
-	 * For ret < 0 save the errno (may be EAGAIN which means the get_event
-	 * function was called before receiving one).
+	 * The ret variable may be EAGAIN which means the get_event function was
+	 * called before receiving one.
 	 */
 	if (ret < 0)
 		rte_errno = errno;
