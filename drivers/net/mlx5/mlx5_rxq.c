@@ -927,13 +927,16 @@ rxq_obj_hairpin_release(struct mlx5_rxq_obj *rxq_obj)
 static int
 mlx5_rxq_obj_release(struct mlx5_rxq_obj *rxq_obj)
 {
+	struct mlx5_priv *priv = rxq_obj->rxq_ctrl->priv;
+	struct mlx5_rxq_ctrl *rxq_ctrl = rxq_obj->rxq_ctrl;
+
 	MLX5_ASSERT(rxq_obj);
 	if (rte_atomic32_dec_and_test(&rxq_obj->refcnt)) {
 		switch (rxq_obj->type) {
 		case MLX5_RXQ_OBJ_TYPE_IBV:
 			MLX5_ASSERT(rxq_obj->wq);
 			MLX5_ASSERT(rxq_obj->ibv_cq);
-			rxq_free_elts(rxq_obj->rxq_ctrl);
+			rxq_free_elts(rxq_ctrl);
 			claim_zero(mlx5_glue->destroy_wq(rxq_obj->wq));
 			claim_zero(mlx5_glue->destroy_cq(rxq_obj->ibv_cq));
 			if (rxq_obj->ibv_channel)
@@ -943,14 +946,20 @@ mlx5_rxq_obj_release(struct mlx5_rxq_obj *rxq_obj)
 		case MLX5_RXQ_OBJ_TYPE_DEVX_RQ:
 			MLX5_ASSERT(rxq_obj->rq);
 			MLX5_ASSERT(rxq_obj->devx_cq);
-			rxq_free_elts(rxq_obj->rxq_ctrl);
+			rxq_free_elts(rxq_ctrl);
 			claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
 			claim_zero(mlx5_devx_cmd_destroy(rxq_obj->devx_cq));
+			claim_zero(mlx5_release_dbr(&priv->dbrpgs,
+						    rxq_ctrl->rq_dbr_umem_id,
+						    rxq_ctrl->rq_dbr_offset));
+			claim_zero(mlx5_release_dbr(&priv->dbrpgs,
+						    rxq_ctrl->cq_dbr_umem_id,
+						    rxq_ctrl->cq_dbr_offset));
 			if (rxq_obj->devx_channel)
 				mlx5_glue->devx_destroy_event_channel
 							(rxq_obj->devx_channel);
-			rxq_release_devx_rq_resources(rxq_obj->rxq_ctrl);
-			rxq_release_devx_cq_resources(rxq_obj->rxq_ctrl);
+			rxq_release_devx_rq_resources(rxq_ctrl);
+			rxq_release_devx_cq_resources(rxq_ctrl);
 			break;
 		case MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN:
 			MLX5_ASSERT(rxq_obj->rq);
@@ -1264,8 +1273,7 @@ mlx5_ibv_cq_new(struct rte_eth_dev *dev, struct mlx5_priv *priv,
 	cq_attr.mlx5 = (struct mlx5dv_cq_init_attr){
 		.comp_mask = 0,
 	};
-	if (priv->config.cqe_comp && !rxq_data->hw_timestamp &&
-	    !rxq_data->lro) {
+	if (priv->config.cqe_comp && !rxq_data->hw_timestamp) {
 		cq_attr.mlx5.comp_mask |=
 				MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
@@ -1286,10 +1294,6 @@ mlx5_ibv_cq_new(struct rte_eth_dev *dev, struct mlx5_priv *priv,
 		DRV_LOG(DEBUG,
 			"port %u Rx CQE compression is disabled for HW"
 			" timestamp",
-			dev->data->port_id);
-	} else if (priv->config.cqe_comp && rxq_data->lro) {
-		DRV_LOG(DEBUG,
-			"port %u Rx CQE compression is disabled for LRO",
 			dev->data->port_id);
 	}
 #ifdef HAVE_IBV_MLX5_MOD_CQE_128B_PAD
@@ -1628,7 +1632,7 @@ mlx5_devx_cq_new(struct rte_eth_dev *dev, unsigned int cqe_n, uint16_t idx,
 	cq_attr.log_page_size = rte_log2_u32(page_size);
 	cq_attr.db_umem_offset = rxq_ctrl->cq_dbr_offset;
 	cq_attr.db_umem_id = rxq_ctrl->cq_dbr_umem_id;
-	cq_attr.db_umem_valid = rxq_ctrl->cq_dbr_umem_id_valid;
+	cq_attr.db_umem_valid = 1;
 	cq_obj = mlx5_devx_cmd_create_cq(priv->sh->ctx, &cq_attr);
 	if (!cq_obj)
 		goto error;
@@ -1684,8 +1688,7 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
 			   rxq_ctrl->socket);
 	if (!tmpl) {
-		DRV_LOG(ERR,
-			"port %u Rx queue %u cannot allocate verbs resources",
+		DRV_LOG(ERR, "port %u Rx queue %u cannot allocate resources",
 			dev->data->port_id, rxq_data->idx);
 		rte_errno = ENOMEM;
 		return NULL;
@@ -1728,7 +1731,6 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 		idx, (void *)&tmpl);
 	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
-	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_HAIRPIN;
 	return tmpl;
 }
@@ -1758,6 +1760,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	unsigned int cqe_n;
 	unsigned int wqe_n = 1 << rxq_data->elts_n;
 	struct mlx5_rxq_obj *tmpl = NULL;
+	struct mlx5_devx_dbr_page *cq_dbr_page = NULL;
+	struct mlx5_devx_dbr_page *rq_dbr_page = NULL;
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_rwq rwq;
 	int ret = 0;
@@ -1767,13 +1771,10 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	MLX5_ASSERT(!rxq_ctrl->obj);
 	if (type == MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN)
 		return mlx5_rxq_obj_hairpin_new(dev, idx);
-	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_RX_QUEUE;
-	priv->verbs_alloc_ctx.obj = rxq_ctrl;
 	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
 			   rxq_ctrl->socket);
 	if (!tmpl) {
-		DRV_LOG(ERR,
-			"port %u Rx queue %u cannot allocate resources",
+		DRV_LOG(ERR, "port %u Rx queue %u cannot allocate resources",
 			dev->data->port_id, rxq_data->idx);
 		rte_errno = ENOMEM;
 		goto error;
@@ -1820,6 +1821,8 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
 		dev->data->port_id, priv->sh->device_attr.max_sge);
 	if (tmpl->type == MLX5_RXQ_OBJ_TYPE_IBV) {
+		priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_RX_QUEUE;
+		priv->verbs_alloc_ctx.obj = rxq_ctrl;
 		/* Create CQ using Verbs API. */
 		tmpl->ibv_cq = mlx5_ibv_cq_new(dev, priv, rxq_data, cqe_n,
 					       tmpl);
@@ -1882,23 +1885,23 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		}
 		rxq_data->wqes = rwq.buf;
 		rxq_data->rq_db = rwq.dbrec;
+		priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	} else if (tmpl->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
 		struct mlx5_devx_modify_rq_attr rq_attr = { 0 };
-		struct mlx5_devx_dbr_page *dbr_page;
 		int64_t dbr_offset;
 
 		/* Allocate CQ door-bell. */
 		dbr_offset = mlx5_get_dbr(priv->sh->ctx, &priv->dbrpgs,
-					  &dbr_page);
+					  &cq_dbr_page);
 		if (dbr_offset < 0) {
 			DRV_LOG(ERR, "Failed to allocate CQ door-bell.");
 			goto error;
 		}
 		rxq_ctrl->cq_dbr_offset = dbr_offset;
-		rxq_ctrl->cq_dbr_umem_id = mlx5_os_get_umem_id(dbr_page->umem);
-		rxq_ctrl->cq_dbr_umem_id_valid = 1;
+		rxq_ctrl->cq_dbr_umem_id =
+					mlx5_os_get_umem_id(cq_dbr_page->umem);
 		rxq_data->cq_db =
-			(uint32_t *)((uintptr_t)dbr_page->dbrs +
+			(uint32_t *)((uintptr_t)cq_dbr_page->dbrs +
 				     (uintptr_t)rxq_ctrl->cq_dbr_offset);
 		rxq_data->cq_uar =
 			mlx5_os_get_devx_uar_base_addr(priv->sh->devx_rx_uar);
@@ -1910,16 +1913,16 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		}
 		/* Allocate RQ door-bell. */
 		dbr_offset = mlx5_get_dbr(priv->sh->ctx, &priv->dbrpgs,
-					  &dbr_page);
+					  &rq_dbr_page);
 		if (dbr_offset < 0) {
 			DRV_LOG(ERR, "Failed to allocate RQ door-bell.");
 			goto error;
 		}
 		rxq_ctrl->rq_dbr_offset = dbr_offset;
-		rxq_ctrl->rq_dbr_umem_id = mlx5_os_get_umem_id(dbr_page->umem);
-		rxq_ctrl->rq_dbr_umem_id_valid = 1;
+		rxq_ctrl->rq_dbr_umem_id =
+					mlx5_os_get_umem_id(rq_dbr_page->umem);
 		rxq_data->rq_db =
-			(uint32_t *)((uintptr_t)dbr_page->dbrs +
+			(uint32_t *)((uintptr_t)rq_dbr_page->dbrs +
 				     (uintptr_t)rxq_ctrl->rq_dbr_offset);
 		/* Create RQ using DevX API. */
 		tmpl->rq = mlx5_devx_rq_new(dev, idx, tmpl->devx_cq->id);
@@ -1943,7 +1946,6 @@ mlx5_rxq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		idx, (void *)&tmpl);
 	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->rxqsobj, tmpl, next);
-	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return tmpl;
 error:
@@ -1957,6 +1959,7 @@ error:
 			if (tmpl->ibv_channel)
 				claim_zero(mlx5_glue->destroy_comp_channel
 							(tmpl->ibv_channel));
+			priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 		} else if (tmpl->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ) {
 			if (tmpl->rq)
 				claim_zero(mlx5_devx_cmd_destroy(tmpl->rq));
@@ -1966,6 +1969,16 @@ error:
 			if (tmpl->devx_channel)
 				mlx5_glue->devx_destroy_event_channel
 							(tmpl->devx_channel);
+			if (rq_dbr_page)
+				claim_zero(mlx5_release_dbr
+						     (&priv->dbrpgs,
+						      rxq_ctrl->rq_dbr_umem_id,
+						      rxq_ctrl->rq_dbr_offset));
+			if (cq_dbr_page)
+				claim_zero(mlx5_release_dbr
+						     (&priv->dbrpgs,
+						      rxq_ctrl->cq_dbr_umem_id,
+						      rxq_ctrl->cq_dbr_offset));
 		}
 		mlx5_free(tmpl);
 		rte_errno = ret; /* Restore rte_errno. */
@@ -1974,7 +1987,6 @@ error:
 		rxq_release_devx_rq_resources(rxq_ctrl);
 		rxq_release_devx_cq_resources(rxq_ctrl);
 	}
-	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return NULL;
 }
 
@@ -2570,14 +2582,6 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (rxq_ctrl->obj && !mlx5_rxq_obj_release(rxq_ctrl->obj))
 		rxq_ctrl->obj = NULL;
 	if (rte_atomic32_dec_and_test(&rxq_ctrl->refcnt)) {
-		if (rxq_ctrl->rq_dbr_umem_id_valid)
-			claim_zero(mlx5_release_dbr(&priv->dbrpgs,
-						    rxq_ctrl->rq_dbr_umem_id,
-						    rxq_ctrl->rq_dbr_offset));
-		if (rxq_ctrl->cq_dbr_umem_id_valid)
-			claim_zero(mlx5_release_dbr(&priv->dbrpgs,
-						    rxq_ctrl->cq_dbr_umem_id,
-						    rxq_ctrl->cq_dbr_offset));
 		if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
 			mlx5_mr_btree_free(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
 		LIST_REMOVE(rxq_ctrl, next);
