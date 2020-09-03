@@ -704,6 +704,25 @@ struct mlx5_rxq_obj {
 	};
 };
 
+enum mlx5_ind_tbl_type {
+	MLX5_IND_TBL_TYPE_IBV,
+	MLX5_IND_TBL_TYPE_DEVX,
+};
+
+/* Indirection table. */
+struct mlx5_ind_table_obj {
+	LIST_ENTRY(mlx5_ind_table_obj) next; /* Pointer to the next element. */
+	rte_atomic32_t refcnt; /* Reference counter. */
+	enum mlx5_ind_tbl_type type;
+	RTE_STD_C11
+	union {
+		void *ind_table; /**< Indirection table. */
+		struct mlx5_devx_obj *rqt; /* DevX RQT object. */
+	};
+	uint32_t queues_n; /**< Number of queues in the list. */
+	uint16_t queues[]; /**< Queue list. */
+};
+
 /* HW objects operations structure. */
 struct mlx5_obj_ops {
 	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
@@ -711,6 +730,10 @@ struct mlx5_obj_ops {
 	int (*rxq_event_get)(struct mlx5_rxq_obj *rxq_obj);
 	int (*rxq_obj_modify)(struct mlx5_rxq_obj *rxq_obj, bool is_start);
 	void (*rxq_obj_release)(struct mlx5_rxq_obj *rxq_obj);
+	struct mlx5_ind_table_obj *(*ind_table_obj_new)(struct rte_eth_dev *dev,
+							const uint16_t *queues,
+							uint32_t queues_n);
+	void (*ind_table_obj_destroy)(struct mlx5_ind_table_obj *ind_tbl);
 };
 
 struct mlx5_priv {

@@ -186,25 +186,6 @@ struct mlx5_rxq_ctrl {
 	struct rte_eth_hairpin_conf hairpin_conf; /* Hairpin configuration. */
 };
 
-enum mlx5_ind_tbl_type {
-	MLX5_IND_TBL_TYPE_IBV,
-	MLX5_IND_TBL_TYPE_DEVX,
-};
-
-/* Indirection table. */
-struct mlx5_ind_table_obj {
-	LIST_ENTRY(mlx5_ind_table_obj) next; /* Pointer to the next element. */
-	rte_atomic32_t refcnt; /* Reference counter. */
-	enum mlx5_ind_tbl_type type;
-	RTE_STD_C11
-	union {
-		void *ind_table; /**< Indirection table. */
-		struct mlx5_devx_obj *rqt; /* DevX RQT object. */
-	};
-	uint32_t queues_n; /**< Number of queues in the list. */
-	uint16_t queues[]; /**< Queue list. */
-};
-
 /* Hash Rx queue. */
 struct mlx5_hrxq {
 	ILIST_ENTRY(uint32_t)next; /* Index to the next element. */

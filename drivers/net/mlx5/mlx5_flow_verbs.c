@@ -1981,10 +1981,10 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 			MLX5_ASSERT(rss_desc->queue_num);
 			hrxq_idx = mlx5_hrxq_get(dev, rss_desc->key,
-					     MLX5_RSS_HASH_KEY_LEN,
-					     dev_flow->hash_fields,
-					     rss_desc->queue,
-					     rss_desc->queue_num);
+						 MLX5_RSS_HASH_KEY_LEN,
+						 dev_flow->hash_fields,
+						 rss_desc->queue,
+						 rss_desc->queue_num);
 			if (!hrxq_idx)
 				hrxq_idx = mlx5_hrxq_new(dev, rss_desc->key,
 						MLX5_RSS_HASH_KEY_LEN,

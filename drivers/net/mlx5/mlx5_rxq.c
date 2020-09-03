@@ -25,7 +25,6 @@
 
 #include "mlx5_defs.h"
 #include "mlx5.h"
-#include "mlx5_common_os.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 #include "mlx5_autoconf.h"
@@ -1710,115 +1709,6 @@ mlx5_rxq_get_type(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
- * Create an indirection table.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param queues
- *   Queues entering in the indirection table.
- * @param queues_n
- *   Number of queues in the array.
- *
- * @return
- *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
- */
-static struct mlx5_ind_table_obj *
-mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
-		       uint32_t queues_n, enum mlx5_ind_tbl_type type)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_obj *ind_tbl;
-	unsigned int i = 0, j = 0, k = 0;
-
-	ind_tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ind_tbl) +
-			      queues_n * sizeof(uint16_t), 0, SOCKET_ID_ANY);
-	if (!ind_tbl) {
-		rte_errno = ENOMEM;
-		return NULL;
-	}
-	ind_tbl->type = type;
-	if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV) {
-		const unsigned int wq_n = rte_is_power_of_2(queues_n) ?
-			log2above(queues_n) :
-			log2above(priv->config.ind_table_max_size);
-		struct ibv_wq *wq[1 << wq_n];
-
-		for (i = 0; i != queues_n; ++i) {
-			struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev,
-								 queues[i]);
-			if (!rxq)
-				goto error;
-			wq[i] = rxq->obj->wq;
-			ind_tbl->queues[i] = queues[i];
-		}
-		ind_tbl->queues_n = queues_n;
-		/* Finalise indirection table. */
-		k = i; /* Retain value of i for use in error case. */
-		for (j = 0; k != (unsigned int)(1 << wq_n); ++k, ++j)
-			wq[k] = wq[j];
-		ind_tbl->ind_table = mlx5_glue->create_rwq_ind_table
-			(priv->sh->ctx,
-			 &(struct ibv_rwq_ind_table_init_attr){
-				.log_ind_tbl_size = wq_n,
-				.ind_tbl = wq,
-				.comp_mask = 0,
-			});
-		if (!ind_tbl->ind_table) {
-			rte_errno = errno;
-			goto error;
-		}
-	} else { /* ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX */
-		struct mlx5_devx_rqt_attr *rqt_attr = NULL;
-		const unsigned int rqt_n =
-			1 << (rte_is_power_of_2(queues_n) ?
-			      log2above(queues_n) :
-			      log2above(priv->config.ind_table_max_size));
-
-		rqt_attr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rqt_attr) +
-				      rqt_n * sizeof(uint32_t), 0,
-				      SOCKET_ID_ANY);
-		if (!rqt_attr) {
-			DRV_LOG(ERR, "port %u cannot allocate RQT resources",
-				dev->data->port_id);
-			rte_errno = ENOMEM;
-			goto error;
-		}
-		rqt_attr->rqt_max_size = priv->config.ind_table_max_size;
-		rqt_attr->rqt_actual_size = rqt_n;
-		for (i = 0; i != queues_n; ++i) {
-			struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev,
-								 queues[i]);
-			if (!rxq)
-				goto error;
-			rqt_attr->rq_list[i] = rxq->obj->rq->id;
-			ind_tbl->queues[i] = queues[i];
-		}
-		k = i; /* Retain value of i for use in error case. */
-		for (j = 0; k != rqt_n; ++k, ++j)
-			rqt_attr->rq_list[k] = rqt_attr->rq_list[j];
-		ind_tbl->rqt = mlx5_devx_cmd_create_rqt(priv->sh->ctx,
-							rqt_attr);
-		mlx5_free(rqt_attr);
-		if (!ind_tbl->rqt) {
-			DRV_LOG(ERR, "port %u cannot create DevX RQT",
-				dev->data->port_id);
-			rte_errno = errno;
-			goto error;
-		}
-		ind_tbl->queues_n = queues_n;
-	}
-	rte_atomic32_inc(&ind_tbl->refcnt);
-	LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
-	return ind_tbl;
-error:
-	for (j = 0; j < i; j++)
-		mlx5_rxq_release(dev, ind_tbl->queues[j]);
-	mlx5_free(ind_tbl);
-	DEBUG("port %u cannot create indirection table", dev->data->port_id);
-	return NULL;
-}
-
-/**
  * Get an indirection table.
  *
  * @param dev
@@ -1870,15 +1760,11 @@ static int
 mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 			   struct mlx5_ind_table_obj *ind_tbl)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
-	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt)) {
-		if (ind_tbl->type == MLX5_IND_TBL_TYPE_IBV)
-			claim_zero(mlx5_glue->destroy_rwq_ind_table
-							(ind_tbl->ind_table));
-		else if (ind_tbl->type == MLX5_IND_TBL_TYPE_DEVX)
-			claim_zero(mlx5_devx_cmd_destroy(ind_tbl->rqt));
-	}
+	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt))
+		priv->obj_ops->ind_table_obj_destroy(ind_tbl);
 	for (i = 0; i != ind_tbl->queues_n; ++i)
 		claim_nonzero(mlx5_rxq_release(dev, ind_tbl->queues[i]));
 	if (!rte_atomic32_read(&ind_tbl->refcnt)) {
@@ -1956,13 +1842,9 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 
 	queues_n = hash_fields ? queues_n : 1;
 	ind_tbl = mlx5_ind_table_obj_get(dev, queues, queues_n);
-	if (!ind_tbl) {
-		enum mlx5_ind_tbl_type type;
-
-		type = rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV ?
-				MLX5_IND_TBL_TYPE_IBV : MLX5_IND_TBL_TYPE_DEVX;
-		ind_tbl = mlx5_ind_table_obj_new(dev, queues, queues_n, type);
-	}
+	if (!ind_tbl)
+		ind_tbl = priv->obj_ops->ind_table_obj_new(dev, queues,
+							   queues_n);
 	if (!ind_tbl) {
 		rte_errno = ENOMEM;
 		return 0;
@@ -2062,7 +1944,6 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			struct mlx5_rx_hash_field_select *rx_hash_field_select =
 					&tir_attr.rx_hash_field_selector_outer;
 #endif
-
 			/* 1 bit: 0: IPv4, 1: IPv6. */
 			rx_hash_field_select->l3_prot_type =
 				!!(hash_fields & MLX5_IPV6_IBV_RX_HASH);

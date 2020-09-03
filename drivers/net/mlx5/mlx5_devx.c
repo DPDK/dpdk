@@ -22,6 +22,7 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 #include "mlx5_devx.h"
+#include "mlx5_flow.h"
 
 
 /**
@@ -607,10 +608,98 @@ error:
 	return -rte_errno;
 }
 
+/**
+ * Create an indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queues
+ *   Queues entering in the indirection table.
+ * @param queues_n
+ *   Number of queues in the array.
+ *
+ * @return
+ *   The DevX object initialized, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_ind_table_obj *
+mlx5_devx_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
+			    uint32_t queues_n)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ind_table_obj *ind_tbl;
+	struct mlx5_devx_rqt_attr *rqt_attr = NULL;
+	const unsigned int rqt_n = 1 << (rte_is_power_of_2(queues_n) ?
+				   log2above(queues_n) :
+				   log2above(priv->config.ind_table_max_size));
+	unsigned int i = 0, j = 0, k = 0;
+
+	ind_tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ind_tbl) +
+			      queues_n * sizeof(uint16_t), 0, SOCKET_ID_ANY);
+	if (!ind_tbl) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	ind_tbl->type = MLX5_IND_TBL_TYPE_DEVX;
+	rqt_attr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rqt_attr) +
+			      rqt_n * sizeof(uint32_t), 0, SOCKET_ID_ANY);
+	if (!rqt_attr) {
+		DRV_LOG(ERR, "Port %u cannot allocate RQT resources.",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	rqt_attr->rqt_max_size = priv->config.ind_table_max_size;
+	rqt_attr->rqt_actual_size = rqt_n;
+	for (i = 0; i != queues_n; ++i) {
+		struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev, queues[i]);
+		if (!rxq) {
+			mlx5_free(rqt_attr);
+			goto error;
+		}
+		rqt_attr->rq_list[i] = rxq->obj->rq->id;
+		ind_tbl->queues[i] = queues[i];
+	}
+	k = i; /* Retain value of i for use in error case. */
+	for (j = 0; k != rqt_n; ++k, ++j)
+		rqt_attr->rq_list[k] = rqt_attr->rq_list[j];
+	ind_tbl->rqt = mlx5_devx_cmd_create_rqt(priv->sh->ctx, rqt_attr);
+	mlx5_free(rqt_attr);
+	if (!ind_tbl->rqt) {
+		DRV_LOG(ERR, "Port %u cannot create DevX RQT.",
+			dev->data->port_id);
+		rte_errno = errno;
+		goto error;
+	}
+	ind_tbl->queues_n = queues_n;
+	rte_atomic32_inc(&ind_tbl->refcnt);
+	LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
+	return ind_tbl;
+error:
+	for (j = 0; j < i; j++)
+		mlx5_rxq_release(dev, ind_tbl->queues[j]);
+	mlx5_free(ind_tbl);
+	DEBUG("Port %u cannot create indirection table.", dev->data->port_id);
+	return NULL;
+}
+
+/**
+ * Destroy the DevX RQT object.
+ *
+ * @param ind_table
+ *   Indirection table to release.
+ */
+static void
+mlx5_devx_ind_table_obj_destroy(struct mlx5_ind_table_obj *ind_tbl)
+{
+	claim_zero(mlx5_devx_cmd_destroy(ind_tbl->rqt));
+}
+
 struct mlx5_obj_ops devx_obj_ops = {
 	.rxq_obj_modify_vlan_strip = mlx5_rxq_obj_modify_rq_vlan_strip,
 	.rxq_obj_new = mlx5_rxq_devx_obj_new,
 	.rxq_event_get = mlx5_rx_devx_get_event,
 	.rxq_obj_modify = mlx5_devx_modify_rq,
 	.rxq_obj_release = mlx5_rxq_devx_obj_release,
+	.ind_table_obj_new = mlx5_devx_ind_table_obj_new,
+	.ind_table_obj_destroy = mlx5_devx_ind_table_obj_destroy,
 };
