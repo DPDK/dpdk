@@ -505,8 +505,8 @@ mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
 		struct mlx5_devx_modify_rq_attr rq_attr;
 
 		memset(&rq_attr, 0, sizeof(rq_attr));
-		rq_attr.rq_state = MLX5_RQC_STATE_RST;
-		rq_attr.state = MLX5_RQC_STATE_RDY;
+		rq_attr.rq_state = MLX5_RQC_STATE_RDY;
+		rq_attr.state = MLX5_RQC_STATE_RST;
 		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
 	}
 	if (ret) {
@@ -604,7 +604,7 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 	rte_cio_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	rte_cio_wmb();
-	/* Reset RQ consumer before moving queue ro READY state. */
+	/* Reset RQ consumer before moving queue to READY state. */
 	*rxq->rq_db = rte_cpu_to_be_32(0);
 	rte_cio_wmb();
 	if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
@@ -618,8 +618,8 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 		struct mlx5_devx_modify_rq_attr rq_attr;
 
 		memset(&rq_attr, 0, sizeof(rq_attr));
-		rq_attr.rq_state = MLX5_RQC_STATE_RDY;
-		rq_attr.state = MLX5_RQC_STATE_RST;
+		rq_attr.rq_state = MLX5_RQC_STATE_RST;
+		rq_attr.state = MLX5_RQC_STATE_RDY;
 		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
 	}
 	if (ret) {
