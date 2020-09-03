@@ -3501,7 +3501,7 @@ void dpaa2_sec_stats_get(struct rte_cryptodev *dev,
 		return;
 	}
 	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
-		if (qp[i] == NULL) {
+		if (qp == NULL || qp[i] == NULL) {
 			DPAA2_SEC_DEBUG("Uninitialised queue pair");
 			continue;
 		}
