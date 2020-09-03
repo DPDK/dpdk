@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2010-2014 Intel Corporation
+# Copyright(c) 2010-2020 Intel Corporation
 
-.error Error please compile using GNU Make (gmake)
+.PHONY: all
+all:
+	@echo "To build DPDK please use meson and ninja as described at"
+	@echo "    https://core.dpdk.org/doc/quick-start/"
