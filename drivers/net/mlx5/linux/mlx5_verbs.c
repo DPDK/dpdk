@@ -88,6 +88,27 @@ mlx5_rxq_obj_modify_wq_vlan_strip(struct mlx5_rxq_obj *rxq_obj, int on)
 		.flags_mask = IBV_WQ_FLAGS_CVLAN_STRIPPING,
 		.flags = vlan_offloads,
 	};
+
+	return mlx5_glue->modify_wq(rxq_obj->wq, &mod);
+}
+
+/**
+ * Modifies the attributes for the specified WQ.
+ *
+ * @param rxq_obj
+ *   Verbs Rx queue object.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_ibv_modify_wq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
+{
+	struct ibv_wq_attr mod = {
+		.attr_mask = IBV_WQ_ATTR_STATE,
+		.wq_state = is_start ? IBV_WQS_RDY : IBV_WQS_RESET,
+	};
+
 	return mlx5_glue->modify_wq(rxq_obj->wq, &mod);
 }
 
@@ -272,7 +293,6 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-	struct ibv_wq_attr mod;
 	struct mlx5_rxq_obj *tmpl = rxq_ctrl->obj;
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_rwq rwq;
@@ -334,11 +354,7 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	/* Change queue state to ready. */
-	mod = (struct ibv_wq_attr){
-		.attr_mask = IBV_WQ_ATTR_STATE,
-		.wq_state = IBV_WQS_RDY,
-	};
-	ret = mlx5_glue->modify_wq(tmpl->wq, &mod);
+	ret = mlx5_ibv_modify_wq(tmpl, true);
 	if (ret) {
 		DRV_LOG(ERR,
 			"Port %u Rx queue %u WQ state to IBV_WQS_RDY failed.",
@@ -421,26 +437,6 @@ exit:
 	else
 		rte_errno = EINVAL;
 	return -rte_errno;
-}
-
-/**
- * Modifies the attributes for the specified WQ.
- *
- * @param rxq_obj
- *   Verbs Rx queue object.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx5_ibv_modify_wq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
-{
-	struct ibv_wq_attr mod = {
-		.attr_mask = IBV_WQ_ATTR_STATE,
-		.wq_state = is_start ? IBV_WQS_RDY : IBV_WQS_RESET,
-	};
-
-	return mlx5_glue->modify_wq(rxq_obj->wq, &mod);
 }
 
 struct mlx5_obj_ops ibv_obj_ops = {
