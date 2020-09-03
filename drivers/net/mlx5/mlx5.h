@@ -742,10 +742,9 @@ struct mlx5_obj_ops {
 	int (*rxq_event_get)(struct mlx5_rxq_obj *rxq_obj);
 	int (*rxq_obj_modify)(struct mlx5_rxq_obj *rxq_obj, bool is_start);
 	void (*rxq_obj_release)(struct mlx5_rxq_obj *rxq_obj);
-	struct mlx5_ind_table_obj *(*ind_table_obj_new)(struct rte_eth_dev *dev,
-							const uint16_t *queues,
-							uint32_t queues_n);
-	void (*ind_table_obj_destroy)(struct mlx5_ind_table_obj *ind_tbl);
+	int (*ind_table_new)(struct rte_eth_dev *dev, const unsigned int log_n,
+			     struct mlx5_ind_table_obj *ind_tbl);
+	void (*ind_table_destroy)(struct mlx5_ind_table_obj *ind_tbl);
 	uint32_t (*hrxq_new)(struct rte_eth_dev *dev, const uint8_t *rss_key,
 			     uint32_t rss_key_len, uint64_t hash_fields,
 			     const uint16_t *queues, uint32_t queues_n,

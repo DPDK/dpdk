@@ -1762,7 +1762,7 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 	unsigned int i;
 
 	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt))
-		priv->obj_ops->ind_table_obj_destroy(ind_tbl);
+		priv->obj_ops->ind_table_destroy(ind_tbl);
 	for (i = 0; i != ind_tbl->queues_n; ++i)
 		claim_nonzero(mlx5_rxq_release(dev, ind_tbl->queues[i]));
 	if (!rte_atomic32_read(&ind_tbl->refcnt)) {
@@ -1796,6 +1796,60 @@ mlx5_ind_table_obj_verify(struct rte_eth_dev *dev)
 		++ret;
 	}
 	return ret;
+}
+
+/**
+ * Create an indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queues
+ *   Queues entering in the indirection table.
+ * @param queues_n
+ *   Number of queues in the array.
+ *
+ * @return
+ *   The Verbs/DevX object initialized, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_ind_table_obj *
+mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
+		       uint32_t queues_n)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ind_table_obj *ind_tbl;
+	const unsigned int n = rte_is_power_of_2(queues_n) ?
+			       log2above(queues_n) :
+			       log2above(priv->config.ind_table_max_size);
+	unsigned int i, j;
+	int ret;
+
+	ind_tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ind_tbl) +
+			      queues_n * sizeof(uint16_t), 0, SOCKET_ID_ANY);
+	if (!ind_tbl) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	ind_tbl->queues_n = queues_n;
+	for (i = 0; i != queues_n; ++i) {
+		struct mlx5_rxq_ctrl *rxq = mlx5_rxq_get(dev, queues[i]);
+		if (!rxq)
+			goto error;
+		ind_tbl->queues[i] = queues[i];
+	}
+	ret = priv->obj_ops->ind_table_new(dev, n, ind_tbl);
+	if (ret < 0)
+		goto error;
+	rte_atomic32_inc(&ind_tbl->refcnt);
+	LIST_INSERT_HEAD(&priv->ind_tbls, ind_tbl, next);
+	return ind_tbl;
+error:
+	ret = rte_errno;
+	for (j = 0; j < i; j++)
+		mlx5_rxq_release(dev, ind_tbl->queues[j]);
+	rte_errno = ret;
+	mlx5_free(ind_tbl);
+	DEBUG("Port %u cannot create indirection table.", dev->data->port_id);
+	return NULL;
 }
 
 /**

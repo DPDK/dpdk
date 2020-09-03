@@ -365,6 +365,9 @@ int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
 int mlx5_ind_table_obj_verify(struct rte_eth_dev *dev);
+struct mlx5_ind_table_obj *mlx5_ind_table_obj_new(struct rte_eth_dev *dev,
+						  const uint16_t *queues,
+						  uint32_t queues_n);
 struct mlx5_ind_table_obj *mlx5_ind_table_obj_get(struct rte_eth_dev *dev,
 						  const uint16_t *queues,
 						  uint32_t queues_n);
