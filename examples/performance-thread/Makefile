@@ -1,21 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2015 Intel Corporation
+# Copyright(c) 2015-2020 Intel Corporation
 
-ifeq ($(RTE_SDK),)
-$(error "Please define RTE_SDK environment variable")
-endif
+subdirs := l3fwd-thread pthread_shim
 
-# Default target, detect a build directory, by looking for a path with a .config
-RTE_TARGET ?= $(notdir $(abspath $(dir $(firstword $(wildcard $(RTE_SDK)/*/.config)))))
+.PHONY: all static shared clean $(subdirs)
+all static shared clean: $(subdirs)
 
-include $(RTE_SDK)/mk/rte.vars.mk
-
-ifeq ($(filter y,$(CONFIG_RTE_ARCH_X86_64) $(CONFIG_RTE_ARCH_ARM64)),)
+ifeq ($(filter $(shell uname -m),x86_64 arm64),)
 $(error This application is only supported for x86_64 and arm64 targets)
 endif
 
-DIRS-y += l3fwd-thread
-DIRS-y += pthread_shim
-
-
-include $(RTE_SDK)/mk/rte.extsubdir.mk
+$(subdirs):
+	$(MAKE) -C $@ $(MAKECMDGOALS)
