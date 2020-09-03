@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016,2019 NXP
+ * Copyright 2016,2019-2020 NXP
  *
  */
 
@@ -120,7 +120,14 @@
 /* IPSec ESP Decap PDB options */
 
 /**
+ * PDBOPTS_ESP_ARS_MASK_ERA10 - antireplay window mask
+ * for SEC_ERA >= 10
+ */
+#define PDBOPTS_ESP_ARS_MASK_ERA10	0xc8
+
+/**
  * PDBOPTS_ESP_ARS_MASK - antireplay window mask
+ * for SEC_ERA < 10
  */
 #define PDBOPTS_ESP_ARS_MASK	0xc0
 
@@ -140,6 +147,27 @@
  * Valid only for IPsec new mode.
  */
 #define PDBOPTS_ESP_ARS128	0x80
+
+/**
+ * PDBOPTS_ESP_ARS256 - 256-entry antireplay window
+ *
+ * Valid only for IPsec new mode.
+ */
+#define PDBOPTS_ESP_ARS256	0x08
+
+/**
+ * PDBOPTS_ESP_ARS512 - 512-entry antireplay window
+ *
+ * Valid only for IPsec new mode.
+ */
+#define PDBOPTS_ESP_ARS512	0x48
+
+/**
+ * PDBOPTS_ESP_ARS1024 - 1024-entry antireplay window
+ *
+ * Valid only for IPsec new mode.
+ */
+#define PDBOPTS_ESP_ARS1024	0x88
 
 /**
  * PDBOPTS_ESP_ARS32 - 32-entry antireplay window
@@ -439,7 +467,7 @@ struct ipsec_decap_pdb {
 	};
 	uint32_t seq_num_ext_hi;
 	uint32_t seq_num;
-	uint32_t anti_replay[4];
+	uint32_t anti_replay[32];
 };
 
 static inline unsigned int
@@ -449,6 +477,7 @@ __rta_copy_ipsec_decap_pdb(struct program *program,
 {
 	unsigned int start_pc = program->current_pc;
 	unsigned int i, ars;
+	uint8_t mask;
 
 	__rta_out32(program, pdb->options);
 
@@ -486,7 +515,20 @@ __rta_copy_ipsec_decap_pdb(struct program *program,
 	__rta_out32(program, pdb->seq_num_ext_hi);
 	__rta_out32(program, pdb->seq_num);
 
-	switch (pdb->options & PDBOPTS_ESP_ARS_MASK) {
+	if (rta_sec_era < RTA_SEC_ERA_10)
+		mask = PDBOPTS_ESP_ARS_MASK;
+	else
+		mask = PDBOPTS_ESP_ARS_MASK_ERA10;
+	switch (pdb->options & mask) {
+	case PDBOPTS_ESP_ARS1024:
+		ars = 32;
+		break;
+	case PDBOPTS_ESP_ARS512:
+		ars = 16;
+		break;
+	case PDBOPTS_ESP_ARS256:
+		ars = 8;
+		break;
 	case PDBOPTS_ESP_ARS128:
 		ars = 4;
 		break;

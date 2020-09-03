@@ -2995,6 +2995,10 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			uint32_t win_sz;
 			win_sz = rte_align32pow2(ipsec_xform->replay_win_sz);
 
+			if (rta_sec_era < RTA_SEC_ERA_10 && win_sz > 128) {
+				DPAA2_SEC_INFO("Max Anti replay Win sz = 128");
+				win_sz = 128;
+			}
 			switch (win_sz) {
 			case 1:
 			case 2:
@@ -3007,6 +3011,16 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			case 64:
 				decap_pdb.options |= PDBOPTS_ESP_ARS64;
 				break;
+			case 256:
+				decap_pdb.options |= PDBOPTS_ESP_ARS256;
+				break;
+			case 512:
+				decap_pdb.options |= PDBOPTS_ESP_ARS512;
+				break;
+			case 1024:
+				decap_pdb.options |= PDBOPTS_ESP_ARS1024;
+				break;
+			case 128:
 			default:
 				decap_pdb.options |= PDBOPTS_ESP_ARS128;
 			}
