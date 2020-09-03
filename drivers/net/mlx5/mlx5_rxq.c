@@ -513,7 +513,7 @@ mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
 	int ret;
 
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	ret = priv->obj_ops->rxq_obj_modify(rxq_ctrl->obj, false);
+	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, false);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to RESET:  %s",
 			strerror(errno));
@@ -612,7 +612,7 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 	/* Reset RQ consumer before moving queue to READY state. */
 	*rxq->rq_db = rte_cpu_to_be_32(0);
 	rte_cio_wmb();
-	ret = priv->obj_ops->rxq_obj_modify(rxq_ctrl->obj, true);
+	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, true);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to READY:  %s",
 			strerror(errno));
@@ -1027,7 +1027,7 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (!rxq_ctrl->obj)
 		goto error;
 	if (rxq_ctrl->irq) {
-		ret = priv->obj_ops->rxq_event_get(rxq_ctrl->obj);
+		ret = priv->obj_ops.rxq_event_get(rxq_ctrl->obj);
 		if (ret < 0)
 			goto error;
 		rxq_ctrl->rxq.cq_arm_sn++;
@@ -1641,7 +1641,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (!rte_atomic32_dec_and_test(&rxq_ctrl->refcnt))
 		return 1;
 	if (rxq_ctrl->obj) {
-		priv->obj_ops->rxq_obj_release(rxq_ctrl->obj);
+		priv->obj_ops.rxq_obj_release(rxq_ctrl->obj);
 		LIST_REMOVE(rxq_ctrl->obj, next);
 		mlx5_free(rxq_ctrl->obj);
 		rxq_ctrl->obj = NULL;
@@ -1762,7 +1762,7 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 	unsigned int i;
 
 	if (rte_atomic32_dec_and_test(&ind_tbl->refcnt))
-		priv->obj_ops->ind_table_destroy(ind_tbl);
+		priv->obj_ops.ind_table_destroy(ind_tbl);
 	for (i = 0; i != ind_tbl->queues_n; ++i)
 		claim_nonzero(mlx5_rxq_release(dev, ind_tbl->queues[i]));
 	if (!rte_atomic32_read(&ind_tbl->refcnt)) {
@@ -1836,7 +1836,7 @@ mlx5_ind_table_obj_new(struct rte_eth_dev *dev, const uint16_t *queues,
 			goto error;
 		ind_tbl->queues[i] = queues[i];
 	}
-	ret = priv->obj_ops->ind_table_new(dev, n, ind_tbl);
+	ret = priv->obj_ops.ind_table_new(dev, n, ind_tbl);
 	if (ret < 0)
 		goto error;
 	rte_atomic32_inc(&ind_tbl->refcnt);
@@ -1926,7 +1926,7 @@ mlx5_hrxq_release(struct rte_eth_dev *dev, uint32_t hrxq_idx)
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
-		priv->obj_ops->hrxq_destroy(hrxq);
+		priv->obj_ops.hrxq_destroy(hrxq);
 		mlx5_ind_table_obj_release(dev, hrxq->ind_table);
 		ILIST_REMOVE(priv->sh->ipool[MLX5_IPOOL_HRXQ], &priv->hrxqs,
 			     hrxq_idx, hrxq, next);
@@ -1987,7 +1987,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	hrxq->rss_key_len = rss_key_len;
 	hrxq->hash_fields = hash_fields;
 	memcpy(hrxq->rss_key, rss_key, rss_key_len);
-	ret = priv->obj_ops->hrxq_new(dev, hrxq, tunnel);
+	ret = priv->obj_ops.hrxq_new(dev, hrxq, tunnel);
 	if (ret < 0) {
 		rte_errno = errno;
 		goto error;
@@ -2031,261 +2031,6 @@ mlx5_hrxq_verify(struct rte_eth_dev *dev)
 	}
 	return ret;
 }
-
-/**
- * Create a drop Rx queue Verbs/DevX object.
- *
- * @param dev
- *   Pointer to Ethernet device.
- *
- * @return
- *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
- */
-static struct mlx5_rxq_obj *
-mlx5_rxq_obj_drop_new(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct ibv_context *ctx = priv->sh->ctx;
-	struct ibv_cq *cq;
-	struct ibv_wq *wq = NULL;
-	struct mlx5_rxq_obj *rxq;
-
-	if (priv->drop_queue.rxq)
-		return priv->drop_queue.rxq;
-	cq = mlx5_glue->create_cq(ctx, 1, NULL, NULL, 0);
-	if (!cq) {
-		DEBUG("port %u cannot allocate CQ for drop queue",
-		      dev->data->port_id);
-		rte_errno = errno;
-		goto error;
-	}
-	wq = mlx5_glue->create_wq(ctx,
-		 &(struct ibv_wq_init_attr){
-			.wq_type = IBV_WQT_RQ,
-			.max_wr = 1,
-			.max_sge = 1,
-			.pd = priv->sh->pd,
-			.cq = cq,
-		 });
-	if (!wq) {
-		DEBUG("port %u cannot allocate WQ for drop queue",
-		      dev->data->port_id);
-		rte_errno = errno;
-		goto error;
-	}
-	rxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq), 0, SOCKET_ID_ANY);
-	if (!rxq) {
-		DEBUG("port %u cannot allocate drop Rx queue memory",
-		      dev->data->port_id);
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	rxq->ibv_cq = cq;
-	rxq->wq = wq;
-	priv->drop_queue.rxq = rxq;
-	return rxq;
-error:
-	if (wq)
-		claim_zero(mlx5_glue->destroy_wq(wq));
-	if (cq)
-		claim_zero(mlx5_glue->destroy_cq(cq));
-	return NULL;
-}
-
-/**
- * Release a drop Rx queue Verbs/DevX object.
- *
- * @param dev
- *   Pointer to Ethernet device.
- *
- * @return
- *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
- */
-static void
-mlx5_rxq_obj_drop_release(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_obj *rxq = priv->drop_queue.rxq;
-
-	if (rxq->wq)
-		claim_zero(mlx5_glue->destroy_wq(rxq->wq));
-	if (rxq->ibv_cq)
-		claim_zero(mlx5_glue->destroy_cq(rxq->ibv_cq));
-	mlx5_free(rxq);
-	priv->drop_queue.rxq = NULL;
-}
-
-/**
- * Create a drop indirection table.
- *
- * @param dev
- *   Pointer to Ethernet device.
- *
- * @return
- *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
- */
-static struct mlx5_ind_table_obj *
-mlx5_ind_table_obj_drop_new(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_obj *ind_tbl;
-	struct mlx5_rxq_obj *rxq;
-	struct mlx5_ind_table_obj tmpl;
-
-	rxq = mlx5_rxq_obj_drop_new(dev);
-	if (!rxq)
-		return NULL;
-	tmpl.ind_table = mlx5_glue->create_rwq_ind_table
-		(priv->sh->ctx,
-		 &(struct ibv_rwq_ind_table_init_attr){
-			.log_ind_tbl_size = 0,
-			.ind_tbl = (struct ibv_wq **)&rxq->wq,
-			.comp_mask = 0,
-		 });
-	if (!tmpl.ind_table) {
-		DEBUG("port %u cannot allocate indirection table for drop"
-		      " queue",
-		      dev->data->port_id);
-		rte_errno = errno;
-		goto error;
-	}
-	ind_tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*ind_tbl), 0,
-			      SOCKET_ID_ANY);
-	if (!ind_tbl) {
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	ind_tbl->ind_table = tmpl.ind_table;
-	return ind_tbl;
-error:
-	mlx5_rxq_obj_drop_release(dev);
-	return NULL;
-}
-
-/**
- * Release a drop indirection table.
- *
- * @param dev
- *   Pointer to Ethernet device.
- */
-static void
-mlx5_ind_table_obj_drop_release(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_obj *ind_tbl = priv->drop_queue.hrxq->ind_table;
-
-	claim_zero(mlx5_glue->destroy_rwq_ind_table(ind_tbl->ind_table));
-	mlx5_rxq_obj_drop_release(dev);
-	mlx5_free(ind_tbl);
-	priv->drop_queue.hrxq->ind_table = NULL;
-}
-
-/**
- * Create a drop Rx Hash queue.
- *
- * @param dev
- *   Pointer to Ethernet device.
- *
- * @return
- *   The Verbs/DevX object initialised, NULL otherwise and rte_errno is set.
- */
-struct mlx5_hrxq *
-mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ind_table_obj *ind_tbl = NULL;
-	struct ibv_qp *qp = NULL;
-	struct mlx5_hrxq *hrxq = NULL;
-
-	if (priv->drop_queue.hrxq) {
-		rte_atomic32_inc(&priv->drop_queue.hrxq->refcnt);
-		return priv->drop_queue.hrxq;
-	}
-	hrxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hrxq), 0, SOCKET_ID_ANY);
-	if (!hrxq) {
-		DRV_LOG(WARNING,
-			"port %u cannot allocate memory for drop queue",
-			dev->data->port_id);
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	priv->drop_queue.hrxq = hrxq;
-	ind_tbl = mlx5_ind_table_obj_drop_new(dev);
-	if (!ind_tbl)
-		goto error;
-	hrxq->ind_table = ind_tbl;
-	qp = mlx5_glue->create_qp_ex(priv->sh->ctx,
-		 &(struct ibv_qp_init_attr_ex){
-			.qp_type = IBV_QPT_RAW_PACKET,
-			.comp_mask =
-				IBV_QP_INIT_ATTR_PD |
-				IBV_QP_INIT_ATTR_IND_TABLE |
-				IBV_QP_INIT_ATTR_RX_HASH,
-			.rx_hash_conf = (struct ibv_rx_hash_conf){
-				.rx_hash_function =
-					IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = MLX5_RSS_HASH_KEY_LEN,
-				.rx_hash_key = rss_hash_default_key,
-				.rx_hash_fields_mask = 0,
-				},
-			.rwq_ind_tbl = ind_tbl->ind_table,
-			.pd = priv->sh->pd
-		 });
-	if (!qp) {
-		DEBUG("port %u cannot allocate QP for drop queue",
-		      dev->data->port_id);
-		rte_errno = errno;
-		goto error;
-	}
-	hrxq->qp = qp;
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	hrxq->action = mlx5_glue->dv_create_flow_action_dest_ibv_qp(hrxq->qp);
-	if (!hrxq->action) {
-		rte_errno = errno;
-		goto error;
-	}
-#endif
-	rte_atomic32_set(&hrxq->refcnt, 1);
-	return hrxq;
-error:
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	if (hrxq && hrxq->action)
-		mlx5_glue->destroy_flow_action(hrxq->action);
-#endif
-	if (qp)
-		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
-	if (ind_tbl)
-		mlx5_ind_table_obj_drop_release(dev);
-	if (hrxq) {
-		priv->drop_queue.hrxq = NULL;
-		mlx5_free(hrxq);
-	}
-	return NULL;
-}
-
-/**
- * Release a drop hash Rx queue.
- *
- * @param dev
- *   Pointer to Ethernet device.
- */
-void
-mlx5_hrxq_drop_release(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
-
-	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		mlx5_glue->destroy_flow_action(hrxq->action);
-#endif
-		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
-		mlx5_ind_table_obj_drop_release(dev);
-		mlx5_free(hrxq);
-		priv->drop_queue.hrxq = NULL;
-	}
-}
-
 
 /**
  * Set the Rx queue timestamp conversion parameters

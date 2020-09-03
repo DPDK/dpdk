@@ -748,6 +748,8 @@ struct mlx5_obj_ops {
 	int (*hrxq_new)(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq,
 			int tunnel __rte_unused);
 	void (*hrxq_destroy)(struct mlx5_hrxq *hrxq);
+	struct mlx5_hrxq *(*hrxq_drop_new)(struct rte_eth_dev *dev);
+	void (*hrxq_drop_release)(struct rte_eth_dev *dev);
 };
 
 struct mlx5_priv {
@@ -793,7 +795,7 @@ struct mlx5_priv {
 	void *rss_desc; /* Intermediate rss description resources. */
 	int flow_idx; /* Intermediate device flow index. */
 	int flow_nested_idx; /* Intermediate device flow index, nested. */
-	struct mlx5_obj_ops *obj_ops; /* HW objects operations. */
+	struct mlx5_obj_ops obj_ops; /* HW objects operations. */
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqobj, mlx5_rxq_obj) rxqsobj; /* Verbs/DevX Rx queues. */
 	uint32_t hrxqs; /* Verbs Hash Rx queues. */

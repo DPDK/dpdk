@@ -72,7 +72,7 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 		},
 	};
 	struct ibv_flow *flow;
-	struct mlx5_hrxq *drop = mlx5_hrxq_drop_new(dev);
+	struct mlx5_hrxq *drop = priv->obj_ops.hrxq_drop_new(dev);
 	uint16_t vprio[] = { 8, 16 };
 	int i;
 	int priority = 0;
@@ -89,7 +89,7 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 		claim_zero(mlx5_glue->destroy_flow(flow));
 		priority = vprio[i];
 	}
-	mlx5_hrxq_drop_release(dev);
+	priv->obj_ops.hrxq_drop_release(dev);
 	switch (priority) {
 	case 8:
 		priority = RTE_DIM(priority_map_3);
@@ -1889,7 +1889,7 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 		/* hrxq is union, don't touch it only the flag is set. */
 		if (handle->rix_hrxq) {
 			if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
-				mlx5_hrxq_drop_release(dev);
+				priv->obj_ops.hrxq_drop_release(dev);
 				handle->rix_hrxq = 0;
 			} else if (handle->fate_action ==
 				   MLX5_FLOW_FATE_QUEUE) {
@@ -1965,7 +1965,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		dev_flow = &((struct mlx5_flow *)priv->inter_flows)[idx];
 		handle = dev_flow->handle;
 		if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
-			hrxq = mlx5_hrxq_drop_new(dev);
+			hrxq = priv->obj_ops.hrxq_drop_new(dev);
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, errno,
@@ -2034,7 +2034,7 @@ error:
 		/* hrxq is union, don't touch it only the flag is set. */
 		if (handle->rix_hrxq) {
 			if (handle->fate_action == MLX5_FLOW_FATE_DROP) {
-				mlx5_hrxq_drop_release(dev);
+				priv->obj_ops.hrxq_drop_release(dev);
 				handle->rix_hrxq = 0;
 			} else if (handle->fate_action ==
 				   MLX5_FLOW_FATE_QUEUE) {

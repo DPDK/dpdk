@@ -114,7 +114,7 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 		rxq->vlan_strip = !!on;
 		return;
 	}
-	ret = priv->obj_ops->rxq_obj_modify_vlan_strip(rxq_ctrl->obj, on);
+	ret = priv->obj_ops.rxq_obj_modify_vlan_strip(rxq_ctrl->obj, on);
 	if (ret) {
 		DRV_LOG(ERR, "port %u failed to modify object %d stripping "
 			"mode: %s", dev->data->port_id,

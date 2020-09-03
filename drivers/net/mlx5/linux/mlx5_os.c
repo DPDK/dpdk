@@ -1267,6 +1267,13 @@ err_secondary:
 			goto error;
 		}
 	}
+	if (config->devx && config->dv_flow_en) {
+		priv->obj_ops = devx_obj_ops;
+		priv->obj_ops.hrxq_drop_new = ibv_obj_ops.hrxq_drop_new;
+		priv->obj_ops.hrxq_drop_release = ibv_obj_ops.hrxq_drop_release;
+	} else {
+		priv->obj_ops = ibv_obj_ops;
+	}
 	/* Supported Verbs flow priority number detection. */
 	err = mlx5_flow_discover_priorities(eth_dev);
 	if (err < 0) {
@@ -1323,10 +1330,6 @@ err_secondary:
 			goto error;
 		}
 	}
-	if (config->devx && config->dv_flow_en)
-		priv->obj_ops = &devx_obj_ops;
-	else
-		priv->obj_ops = &ibv_obj_ops;
 	return eth_dev;
 error:
 	if (priv) {
