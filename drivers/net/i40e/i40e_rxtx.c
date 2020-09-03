@@ -3438,7 +3438,6 @@ i40e_set_default_pctype_table(struct rte_eth_dev *dev)
 }
 
 #ifndef RTE_LIBRTE_I40E_INC_VECTOR
-/* Stubs needed for linkage when CONFIG_RTE_LIBRTE_I40E_INC_VECTOR is set to 'n' */
 int
 i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev __rte_unused *dev)
 {

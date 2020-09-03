@@ -1,9 +1,0 @@
-# SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2015 Cavium, Inc
-#
-
-#include "common_armv8a_linux"
-
-CONFIG_RTE_TOOLCHAIN="gcc"
-CONFIG_RTE_TOOLCHAIN_GCC=y
-CONFIG_RTE_MAX_LCORE=256

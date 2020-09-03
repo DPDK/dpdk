@@ -94,18 +94,12 @@ F: devtools/words-case.txt
 F: license/
 F: .editorconfig
 
-
 Build System
-------------
-M: Thomas Monjalon <thomas@monjalon.net>
-F: Makefile
-F: config/
-
-Meson build
 M: Bruce Richardson <bruce.richardson@intel.com>
+F: Makefile
 F: meson.build
 F: meson_options.txt
-F: config/rte_config.h
+F: config/
 F: buildtools/binutils-avx512-check.sh
 F: buildtools/call-sphinx-build.py
 F: buildtools/gen-pmdinfo-cfile.sh

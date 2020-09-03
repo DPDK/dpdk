@@ -34,7 +34,6 @@
  * This code tries to determine if the PCI device is bound to VFIO driver,
  * and initialize it (map BARs, set up interrupts) if that's the case.
  *
- * This file is only compiled if CONFIG_RTE_EAL_VFIO is set to "y".
  */
 
 #ifdef VFIO_PRESENT
