@@ -9,6 +9,7 @@ deps += ['mempool_dpaa']
 
 sources = files('dpaa_ethdev.c',
 		'fmlib/fm_lib.c',
+		'fmlib/fm_vsp.c',
 		'dpaa_rxtx.c')
 
 if cc.has_argument('-Wno-pointer-arith')
