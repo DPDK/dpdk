@@ -469,7 +469,8 @@ i40evf_get_vf_resource(struct rte_eth_dev *dev)
 		       VIRTCHNL_VF_OFFLOAD_RSS_AQ |
 		       VIRTCHNL_VF_OFFLOAD_RSS_REG |
 		       VIRTCHNL_VF_OFFLOAD_VLAN |
-		       VIRTCHNL_VF_OFFLOAD_RX_POLLING;
+		       VIRTCHNL_VF_OFFLOAD_RX_POLLING |
+		       VIRTCHNL_VF_CAP_ADV_LINK_SPEED;
 		args.in_args = (uint8_t *)&caps;
 		args.in_args_size = sizeof(caps);
 	} else {
@@ -1386,8 +1387,47 @@ i40evf_handle_pf_event(struct rte_eth_dev *dev, uint8_t *msg,
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
-		vf->link_up = pf_msg->event_data.link_event.link_status;
-		vf->link_speed = pf_msg->event_data.link_event.link_speed;
+
+		if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_ADV_LINK_SPEED) {
+			vf->link_up =
+				pf_msg->event_data.link_event_adv.link_status;
+
+			switch (pf_msg->event_data.link_event_adv.link_speed) {
+			case ETH_SPEED_NUM_100M:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_100MB;
+				break;
+			case ETH_SPEED_NUM_1G:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_1GB;
+				break;
+			case ETH_SPEED_NUM_2_5G:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_2_5GB;
+				break;
+			case ETH_SPEED_NUM_5G:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_5GB;
+				break;
+			case ETH_SPEED_NUM_10G:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_10GB;
+				break;
+			case ETH_SPEED_NUM_20G:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_20GB;
+				break;
+			case ETH_SPEED_NUM_25G:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_25GB;
+				break;
+			case ETH_SPEED_NUM_40G:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_40GB;
+				break;
+			default:
+				vf->link_speed = VIRTCHNL_LINK_SPEED_UNKNOWN;
+				break;
+			}
+		} else {
+			vf->link_up =
+				pf_msg->event_data.link_event.link_status;
+			vf->link_speed =
+				pf_msg->event_data.link_event.link_speed;
+		}
+
 		i40evf_dev_link_update(dev, 0);
 		_rte_eth_dev_callback_process(dev,
 				RTE_ETH_EVENT_INTR_LSC, NULL);
