@@ -722,6 +722,55 @@ static int dpaa_eth_multicast_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void dpaa_fman_if_pool_setup(struct rte_eth_dev *dev)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct fman_if_ic_params icp;
+	uint32_t fd_offset;
+	uint32_t bp_size;
+
+	memset(&icp, 0, sizeof(icp));
+	/* set ICEOF for to the default value , which is 0*/
+	icp.iciof = DEFAULT_ICIOF;
+	icp.iceof = DEFAULT_RX_ICEOF;
+	icp.icsz = DEFAULT_ICSZ;
+	fman_if_set_ic_params(dev->process_private, &icp);
+
+	fd_offset = RTE_PKTMBUF_HEADROOM + DPAA_HW_BUF_RESERVE;
+	fman_if_set_fdoff(dev->process_private, fd_offset);
+
+	/* Buffer pool size should be equal to Dataroom Size*/
+	bp_size = rte_pktmbuf_data_room_size(dpaa_intf->bp_info->mp);
+
+	fman_if_set_bp(dev->process_private,
+		       dpaa_intf->bp_info->mp->size,
+		       dpaa_intf->bp_info->bpid, bp_size);
+}
+
+static inline int dpaa_eth_rx_queue_bp_check(struct rte_eth_dev *dev,
+					     int8_t vsp_id, uint32_t bpid)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct fman_if *fif = dev->process_private;
+
+	if (fif->num_profiles) {
+		if (vsp_id < 0)
+			vsp_id = fif->base_profile_id;
+	} else {
+		if (vsp_id < 0)
+			vsp_id = 0;
+	}
+
+	if (dpaa_intf->vsp_bpid[vsp_id] &&
+		bpid != dpaa_intf->vsp_bpid[vsp_id]) {
+		DPAA_PMD_ERR("Various MPs are assigned to RXQs with same VSP");
+
+		return -1;
+	}
+
+	return 0;
+}
+
 static
 int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			    uint16_t nb_desc,
@@ -757,6 +806,20 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	DPAA_PMD_INFO("Rx queue setup for queue index: %d fq_id (0x%x)",
 			queue_idx, rxq->fqid);
 
+	if (!fif->num_profiles) {
+		if (dpaa_intf->bp_info && dpaa_intf->bp_info->bp &&
+			dpaa_intf->bp_info->mp != mp) {
+			DPAA_PMD_WARN("Multiple pools on same interface not"
+				      " supported");
+			return -EINVAL;
+		}
+	} else {
+		if (dpaa_eth_rx_queue_bp_check(dev, rxq->vsp_id,
+			DPAA_MEMPOOL_TO_POOL_INFO(mp)->bpid)) {
+			return -EINVAL;
+		}
+	}
+
 	/* Max packet can fit in single buffer */
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <= buffsz) {
 		;
@@ -779,36 +842,40 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		     buffsz - RTE_PKTMBUF_HEADROOM);
 	}
 
-	if (!dpaa_intf->bp_info || dpaa_intf->bp_info->mp != mp) {
-		struct fman_if_ic_params icp;
-		uint32_t fd_offset;
-		uint32_t bp_size;
+	dpaa_intf->bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
 
-		if (!mp->pool_data) {
-			DPAA_PMD_ERR("Not an offloaded buffer pool!");
-			return -1;
+	/* For shared interface, it's done in kernel, skip.*/
+	if (!fif->is_shared_mac)
+		dpaa_fman_if_pool_setup(dev);
+
+	if (fif->num_profiles) {
+		int8_t vsp_id = rxq->vsp_id;
+
+		if (vsp_id >= 0) {
+			ret = dpaa_port_vsp_update(dpaa_intf, fmc_q, vsp_id,
+					DPAA_MEMPOOL_TO_POOL_INFO(mp)->bpid,
+					fif);
+			if (ret) {
+				DPAA_PMD_ERR("dpaa_port_vsp_update failed");
+				return ret;
+			}
+		} else {
+			DPAA_PMD_INFO("Base profile is associated to"
+				" RXQ fqid:%d\r\n", rxq->fqid);
+			if (fif->is_shared_mac) {
+				DPAA_PMD_ERR("Fatal: Base profile is associated"
+					     " to shared interface on DPDK.");
+				return -EINVAL;
+			}
+			dpaa_intf->vsp_bpid[fif->base_profile_id] =
+				DPAA_MEMPOOL_TO_POOL_INFO(mp)->bpid;
 		}
-		dpaa_intf->bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
-
-		memset(&icp, 0, sizeof(icp));
-		/* set ICEOF for to the default value , which is 0*/
-		icp.iciof = DEFAULT_ICIOF;
-		icp.iceof = DEFAULT_RX_ICEOF;
-		icp.icsz = DEFAULT_ICSZ;
-		fman_if_set_ic_params(fif, &icp);
-
-		fd_offset = RTE_PKTMBUF_HEADROOM + DPAA_HW_BUF_RESERVE;
-		fman_if_set_fdoff(fif, fd_offset);
-
-		/* Buffer pool size should be equal to Dataroom Size*/
-		bp_size = rte_pktmbuf_data_room_size(mp);
-		fman_if_set_bp(fif, mp->size,
-			       dpaa_intf->bp_info->bpid, bp_size);
-		dpaa_intf->valid = 1;
-		DPAA_PMD_DEBUG("if:%s fd_offset = %d offset = %d",
-				dpaa_intf->name, fd_offset,
-				fman_if_get_fdoff(fif));
+	} else {
+		dpaa_intf->vsp_bpid[0] =
+			DPAA_MEMPOOL_TO_POOL_INFO(mp)->bpid;
 	}
+
+	dpaa_intf->valid = 1;
 	DPAA_PMD_DEBUG("if:%s sg_on = %d, max_frm =%d", dpaa_intf->name,
 		fman_if_get_sg_enable(fif),
 		dev->data->dev_conf.rxmode.max_rx_pkt_len);
@@ -1605,6 +1672,8 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	uint32_t cgrid[DPAA_MAX_NUM_PCD_QUEUES];
 	uint32_t cgrid_tx[MAX_DPAA_CORES];
 	uint32_t dev_rx_fqids[DPAA_MAX_NUM_PCD_QUEUES];
+	int8_t dev_vspids[DPAA_MAX_NUM_PCD_QUEUES];
+	int8_t vsp_id = -1;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1623,6 +1692,8 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	memset((char *)dev_rx_fqids, 0,
 		sizeof(uint32_t) * DPAA_MAX_NUM_PCD_QUEUES);
+
+	memset(dev_vspids, -1, DPAA_MAX_NUM_PCD_QUEUES);
 
 	/* Initialize Rx FQ's */
 	if (default_q) {
@@ -1703,6 +1774,8 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		else
 			fqid = dev_rx_fqids[loop];
 
+		vsp_id = dev_vspids[loop];
+
 		if (dpaa_intf->cgr_rx)
 			dpaa_intf->cgr_rx[loop].cgrid = cgrid[loop];
 
@@ -1711,6 +1784,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 			fqid);
 		if (ret)
 			goto free_rx;
+		dpaa_intf->rx_queues[loop].vsp_id = vsp_id;
 		dpaa_intf->rx_queues[loop].dpaa_intf = dpaa_intf;
 	}
 	dpaa_intf->nb_rx_queues = num_rx_fqs;
@@ -2051,6 +2125,11 @@ static void __attribute__((destructor(102))) dpaa_finish(void)
 					if (dpaa_fm_deconfig(dpaa_intf, fif))
 						DPAA_PMD_WARN("DPAA FM "
 							"deconfig failed\n");
+				if (fif->num_profiles) {
+					if (dpaa_port_vsp_cleanup(dpaa_intf,
+								  fif))
+						DPAA_PMD_WARN("DPAA FM vsp cleanup failed\n");
+				}
 			}
 		}
 		if (is_global_init)

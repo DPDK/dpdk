@@ -1229,6 +1229,7 @@ struct qman_fq {
 
 	int q_fd;
 	u16 ch_id;
+	int8_t vsp_id;
 	u8 cgr_groupid;
 	u8 is_static:4;
 	u8 qp_initialized:4;
