@@ -1020,9 +1020,6 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	old_addr = (struct rte_ether_addr *)hw->mac.addr;
 	perm_addr = (struct rte_ether_addr *)hw->mac.perm_addr;
 
-	if (rte_is_same_ether_addr(mac_addr, old_addr))
-		return 0;
-
 	/* If the MAC address is configured by host, skip the setting */
 	if (rte_is_valid_assigned_ether_addr(perm_addr))
 		return -EPERM;
