@@ -320,6 +320,8 @@ struct fman_if {
 	struct rte_ether_addr mac_addr;
 	/* The Qman channel to schedule Tx FQs to */
 	u16 tx_channel_id;
+
+	uint8_t is_shared_mac;
 	/* The hard-coded FQIDs for this interface. Note: this doesn't cover
 	 * the PCD nor the "Rx default" FQIDs, which are configured via FMC
 	 * and its XML-based configuration.

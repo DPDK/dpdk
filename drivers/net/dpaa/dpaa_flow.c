@@ -736,6 +736,14 @@ int dpaa_fm_deconfig(struct dpaa_if *dpaa_intf,
 	}
 	dpaa_intf->netenv_handle = NULL;
 
+	if (fif && fif->is_shared_mac) {
+		ret = fm_port_enable(dpaa_intf->port_handle);
+		if (ret != E_OK) {
+			DPAA_PMD_ERR("shared mac re-enable failed");
+			return ret;
+		}
+	}
+
 	/* FM PORT Close */
 	fm_port_close(dpaa_intf->port_handle);
 	dpaa_intf->port_handle = NULL;
@@ -785,10 +793,12 @@ int dpaa_fm_config(struct rte_eth_dev *dev, uint64_t req_dist_set)
 		}
 	}
 	/* Set default netenv and scheme */
-	ret = set_default_scheme(dpaa_intf);
-	if (ret) {
-		DPAA_PMD_ERR("Set PCD NetEnv and Scheme: Failed");
-		goto unset_pcd_netenv_scheme1;
+	if (!fif->is_shared_mac) {
+		ret = set_default_scheme(dpaa_intf);
+		if (ret) {
+			DPAA_PMD_ERR("Set PCD NetEnv and Scheme: Failed");
+			goto unset_pcd_netenv_scheme1;
+		}
 	}
 
 	/* Set Port PCD */

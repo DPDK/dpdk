@@ -351,7 +351,8 @@ static void dpaa_eth_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	fman_if_disable_rx(fif);
+	if (!fif->is_shared_mac)
+		fman_if_disable_rx(fif);
 	dev->tx_pkt_burst = dpaa_eth_tx_drop_all;
 }
 
@@ -1807,19 +1808,21 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		fman_intf->mac_addr.addr_bytes[4],
 		fman_intf->mac_addr.addr_bytes[5]);
 
-
-	/* Disable RX mode */
-	fman_if_discard_rx_errors(fman_intf);
-	fman_if_disable_rx(fman_intf);
-	/* Disable promiscuous mode */
-	fman_if_promiscuous_disable(fman_intf);
-	/* Disable multicast */
-	fman_if_reset_mcast_filter_table(fman_intf);
-	/* Reset interface statistics */
-	fman_if_stats_reset(fman_intf);
-	/* Disable SG by default */
-	fman_if_set_sg(fman_intf, 0);
-	fman_if_set_maxfrm(fman_intf, RTE_ETHER_MAX_LEN + VLAN_TAG_SIZE);
+	if (!fman_intf->is_shared_mac) {
+		/* Disable RX mode */
+		fman_if_discard_rx_errors(fman_intf);
+		fman_if_disable_rx(fman_intf);
+		/* Disable promiscuous mode */
+		fman_if_promiscuous_disable(fman_intf);
+		/* Disable multicast */
+		fman_if_reset_mcast_filter_table(fman_intf);
+		/* Reset interface statistics */
+		fman_if_stats_reset(fman_intf);
+		/* Disable SG by default */
+		fman_if_set_sg(fman_intf, 0);
+		fman_if_set_maxfrm(fman_intf,
+				   RTE_ETHER_MAX_LEN + VLAN_TAG_SIZE);
+	}
 
 	return 0;
 

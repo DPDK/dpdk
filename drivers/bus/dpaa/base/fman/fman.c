@@ -167,12 +167,20 @@ fman_if_init(const struct device_node *dpa_node)
 	const char *mname, *fname;
 	const char *dname = dpa_node->full_name;
 	size_t lenp;
-	int _errno;
+	int _errno, is_shared = 0;
 	const char *char_prop;
 	uint32_t na;
 
 	if (of_device_is_available(dpa_node) == false)
 		return 0;
+
+	if (!of_device_is_compatible(dpa_node, "fsl,dpa-ethernet-init") &&
+		!of_device_is_compatible(dpa_node, "fsl,dpa-ethernet-shared")) {
+		return 0;
+	}
+
+	if (of_device_is_compatible(dpa_node, "fsl,dpa-ethernet-shared"))
+		is_shared = 1;
 
 	rprop = "fsl,qman-frame-queues-rx";
 	mprop = "fsl,fman-mac";
@@ -387,7 +395,7 @@ fman_if_init(const struct device_node *dpa_node)
 		goto err;
 	}
 
-	assert(lenp == (4 * sizeof(phandle)));
+	assert(lenp >= (4 * sizeof(phandle)));
 
 	na = of_n_addr_cells(mac_node);
 	/* Get rid of endianness (issues). Convert to host byte order */
@@ -408,7 +416,7 @@ fman_if_init(const struct device_node *dpa_node)
 		goto err;
 	}
 
-	assert(lenp == (4 * sizeof(phandle)));
+	assert(lenp >= (4 * sizeof(phandle)));
 	/*TODO: Fix for other cases also */
 	na = of_n_addr_cells(mac_node);
 	/* Get rid of endianness (issues). Convert to host byte order */
@@ -508,6 +516,9 @@ fman_if_init(const struct device_node *dpa_node)
 		pools_phandle++;
 	}
 
+	if (is_shared)
+		__if->__if.is_shared_mac = 1;
+
 	/* Parsing of the network interface is complete, add it to the list */
 	DPAA_BUS_LOG(DEBUG, "Found %s, Tx Channel = %x, FMAN = %x,"
 		    "Port ID = %x",
@@ -524,7 +535,7 @@ err:
 int
 fman_init(void)
 {
-	const struct device_node *dpa_node;
+	const struct device_node *dpa_node, *parent_node;
 	int _errno;
 
 	/* If multiple dependencies try to initialise the Fman driver, don't
@@ -539,7 +550,13 @@ fman_init(void)
 		return fman_ccsr_map_fd;
 	}
 
-	for_each_compatible_node(dpa_node, NULL, "fsl,dpa-ethernet-init") {
+	parent_node = of_find_compatible_node(NULL, NULL, "fsl,dpaa");
+	if (!parent_node) {
+		DPAA_BUS_LOG(ERR, "Unable to find fsl,dpaa node");
+		return -ENODEV;
+	}
+
+	for_each_child_node(parent_node, dpa_node) {
 		_errno = fman_if_init(dpa_node);
 		if (_errno) {
 			FMAN_ERR(_errno, "if_init(%s)\n", dpa_node->full_name);
