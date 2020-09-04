@@ -259,6 +259,16 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 		dev->data->scattered_rx = 1;
 	}
 
+	if (!(default_q || fmc_q)) {
+		if (dpaa_fm_config(dev,
+			eth_conf->rx_adv_conf.rss_conf.rss_hf)) {
+			dpaa_write_fm_config_to_file();
+			DPAA_PMD_ERR("FM port configuration: Failed\n");
+			return -1;
+		}
+		dpaa_write_fm_config_to_file();
+	}
+
 	/* if the interrupts were configured on this devices*/
 	if (intr_handle && intr_handle->fd) {
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
@@ -333,6 +343,9 @@ static int dpaa_eth_dev_start(struct rte_eth_dev *dev)
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (!(default_q || fmc_q))
+		dpaa_write_fm_config_to_file();
 
 	/* Change tx callback to the real one */
 	if (dpaa_intf->cgr_tx)
@@ -1699,7 +1712,18 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	if (default_q) {
 		num_rx_fqs = DPAA_DEFAULT_NUM_PCD_QUEUES;
 	} else if (fmc_q) {
-		num_rx_fqs = 1;
+		num_rx_fqs = dpaa_port_fmc_init(fman_intf, dev_rx_fqids,
+						dev_vspids,
+						DPAA_MAX_NUM_PCD_QUEUES);
+		if (num_rx_fqs < 0) {
+			DPAA_PMD_ERR("%s FMC initializes failed!",
+				dpaa_intf->name);
+			goto free_rx;
+		}
+		if (!num_rx_fqs) {
+			DPAA_PMD_WARN("%s is not configured by FMC.",
+				dpaa_intf->name);
+		}
 	} else {
 		/* FMCLESS mode, load balance to multiple cores.*/
 		num_rx_fqs = rte_lcore_count();
