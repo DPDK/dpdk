@@ -39,6 +39,7 @@
 
 #include <dpaa_ethdev.h>
 #include <dpaa_rxtx.h>
+#include <dpaa_flow.h>
 #include <rte_pmd_dpaa.h>
 
 #include <fsl_usd.h>
@@ -76,6 +77,7 @@ static uint64_t dev_tx_offloads_nodis =
 
 /* Keep track of whether QMAN and BMAN have been globally initialized */
 static int is_global_init;
+static int fmc_q = 1;	/* Indicates the use of static fmc for distribution */
 static int default_q;	/* use default queue - FMC is not executed*/
 /* At present we only allow up to 4 push mode queues as default - as each of
  * this queue need dedicated portal and we are short of portals.
@@ -1418,16 +1420,15 @@ static int dpaa_rx_queue_init(struct qman_fq *fq, struct qman_cgr *cgr_rx,
 		}
 	};
 
-	if (fqid) {
+	if (fmc_q || default_q) {
 		ret = qman_reserve_fqid(fqid);
 		if (ret) {
-			DPAA_PMD_ERR("reserve rx fqid 0x%x failed with ret: %d",
+			DPAA_PMD_ERR("reserve rx fqid 0x%x failed, ret: %d",
 				     fqid, ret);
 			return -EINVAL;
 		}
-	} else {
-		flags |= QMAN_FQ_FLAG_DYNAMIC_FQID;
 	}
+
 	DPAA_PMD_DEBUG("creating rx fq %p, fqid 0x%x", fq, fqid);
 	ret = qman_create_fq(fqid, flags, fq);
 	if (ret) {
@@ -1602,7 +1603,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	struct fman_if_bpool *bp, *tmp_bp;
 	uint32_t cgrid[DPAA_MAX_NUM_PCD_QUEUES];
 	uint32_t cgrid_tx[MAX_DPAA_CORES];
-	char eth_buf[RTE_ETHER_ADDR_FMT_SIZE];
+	uint32_t dev_rx_fqids[DPAA_MAX_NUM_PCD_QUEUES];
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1619,30 +1620,36 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	dpaa_intf->ifid = dev_id;
 	dpaa_intf->cfg = cfg;
 
+	memset((char *)dev_rx_fqids, 0,
+		sizeof(uint32_t) * DPAA_MAX_NUM_PCD_QUEUES);
+
 	/* Initialize Rx FQ's */
 	if (default_q) {
 		num_rx_fqs = DPAA_DEFAULT_NUM_PCD_QUEUES;
+	} else if (fmc_q) {
+		num_rx_fqs = 1;
 	} else {
-		if (getenv("DPAA_NUM_RX_QUEUES"))
-			num_rx_fqs = atoi(getenv("DPAA_NUM_RX_QUEUES"));
-		else
-			num_rx_fqs = DPAA_DEFAULT_NUM_PCD_QUEUES;
+		/* FMCLESS mode, load balance to multiple cores.*/
+		num_rx_fqs = rte_lcore_count();
 	}
-
 
 	/* Each device can not have more than DPAA_MAX_NUM_PCD_QUEUES RX
 	 * queues.
 	 */
-	if (num_rx_fqs <= 0 || num_rx_fqs > DPAA_MAX_NUM_PCD_QUEUES) {
+	if (num_rx_fqs < 0 || num_rx_fqs > DPAA_MAX_NUM_PCD_QUEUES) {
 		DPAA_PMD_ERR("Invalid number of RX queues\n");
 		return -EINVAL;
 	}
 
-	dpaa_intf->rx_queues = rte_zmalloc(NULL,
-		sizeof(struct qman_fq) * num_rx_fqs, MAX_CACHELINE);
-	if (!dpaa_intf->rx_queues) {
-		DPAA_PMD_ERR("Failed to alloc mem for RX queues\n");
-		return -ENOMEM;
+	if (num_rx_fqs > 0) {
+		dpaa_intf->rx_queues = rte_zmalloc(NULL,
+			sizeof(struct qman_fq) * num_rx_fqs, MAX_CACHELINE);
+		if (!dpaa_intf->rx_queues) {
+			DPAA_PMD_ERR("Failed to alloc mem for RX queues\n");
+			return -ENOMEM;
+		}
+	} else {
+		dpaa_intf->rx_queues = NULL;
 	}
 
 	memset(cgrid, 0, sizeof(cgrid));
@@ -1661,7 +1668,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* If congestion control is enabled globally*/
-	if (td_threshold) {
+	if (num_rx_fqs > 0 && td_threshold) {
 		dpaa_intf->cgr_rx = rte_zmalloc(NULL,
 			sizeof(struct qman_cgr) * num_rx_fqs, MAX_CACHELINE);
 		if (!dpaa_intf->cgr_rx) {
@@ -1680,12 +1687,20 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		dpaa_intf->cgr_rx = NULL;
 	}
 
+	if (!fmc_q && !default_q) {
+		ret = qman_alloc_fqid_range(dev_rx_fqids, num_rx_fqs,
+					    num_rx_fqs, 0);
+		if (ret < 0) {
+			DPAA_PMD_ERR("Failed to alloc rx fqid's\n");
+			goto free_rx;
+		}
+	}
+
 	for (loop = 0; loop < num_rx_fqs; loop++) {
 		if (default_q)
 			fqid = cfg->rx_def;
 		else
-			fqid = DPAA_PCD_FQID_START + fman_intf->mac_idx *
-				DPAA_PCD_FQID_MULTIPLIER + loop;
+			fqid = dev_rx_fqids[loop];
 
 		if (dpaa_intf->cgr_rx)
 			dpaa_intf->cgr_rx[loop].cgrid = cgrid[loop];
@@ -1782,9 +1797,16 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* copy the primary mac address */
 	rte_ether_addr_copy(&fman_intf->mac_addr, &eth_dev->data->mac_addrs[0]);
-	rte_ether_format_addr(eth_buf, sizeof(eth_buf), &fman_intf->mac_addr);
 
-	DPAA_PMD_INFO("net: dpaa: %s: %s", dpaa_device->name, eth_buf);
+	RTE_LOG(INFO, PMD, "net: dpaa: %s: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		dpaa_device->name,
+		fman_intf->mac_addr.addr_bytes[0],
+		fman_intf->mac_addr.addr_bytes[1],
+		fman_intf->mac_addr.addr_bytes[2],
+		fman_intf->mac_addr.addr_bytes[3],
+		fman_intf->mac_addr.addr_bytes[4],
+		fman_intf->mac_addr.addr_bytes[5]);
+
 
 	/* Disable RX mode */
 	fman_if_discard_rx_errors(fman_intf);
@@ -1831,6 +1853,12 @@ dpaa_dev_uninit(struct rte_eth_dev *dev)
 		return -1;
 	}
 
+	/* DPAA FM deconfig */
+	if (!(default_q || fmc_q)) {
+		if (dpaa_fm_deconfig(dpaa_intf, dev->process_private))
+			DPAA_PMD_WARN("DPAA FM deconfig failed\n");
+	}
+
 	dpaa_eth_dev_close(dev);
 
 	/* release configuration memory */
@@ -1874,7 +1902,7 @@ dpaa_dev_uninit(struct rte_eth_dev *dev)
 }
 
 static int
-rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
+rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 	       struct rte_dpaa_device *dpaa_dev)
 {
 	int diag;
@@ -1918,6 +1946,13 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		if (access("/tmp/fmc.bin", F_OK) == -1) {
 			DPAA_PMD_INFO("* FMC not configured.Enabling default mode");
 			default_q = 1;
+		}
+
+		if (!(default_q || fmc_q)) {
+			if (dpaa_fm_init()) {
+				DPAA_PMD_ERR("FM init failed\n");
+				return -1;
+			}
 		}
 
 		/* disabling the default push mode for LS1043 */
@@ -1991,6 +2026,38 @@ rte_dpaa_remove(struct rte_dpaa_device *dpaa_dev)
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;
+}
+
+static void __attribute__((destructor(102))) dpaa_finish(void)
+{
+	/* For secondary, primary will do all the cleanup */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
+	if (!(default_q || fmc_q)) {
+		unsigned int i;
+
+		for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+			if (rte_eth_devices[i].dev_ops == &dpaa_devops) {
+				struct rte_eth_dev *dev = &rte_eth_devices[i];
+				struct dpaa_if *dpaa_intf =
+					dev->data->dev_private;
+				struct fman_if *fif =
+					dev->process_private;
+				if (dpaa_intf->port_handle)
+					if (dpaa_fm_deconfig(dpaa_intf, fif))
+						DPAA_PMD_WARN("DPAA FM "
+							"deconfig failed\n");
+			}
+		}
+		if (is_global_init)
+			if (dpaa_fm_term())
+				DPAA_PMD_WARN("DPAA FM term failed\n");
+
+		is_global_init = 0;
+
+		DPAA_PMD_INFO("DPAA fman cleaned up");
+	}
 }
 
 static struct rte_dpaa_driver rte_dpaa_pmd = {

@@ -1896,6 +1896,7 @@ int qman_enqueue_orp(struct qman_fq *fq, const struct qm_fd *fd, u32 flags,
  * FQs than requested (though alignment will be as requested). If @partial is
  * zero, the return value will either be 'count' or negative.
  */
+__rte_internal
 int qman_alloc_fqid_range(u32 *result, u32 count, u32 align, int partial);
 static inline int qman_alloc_fqid(u32 *result)
 {

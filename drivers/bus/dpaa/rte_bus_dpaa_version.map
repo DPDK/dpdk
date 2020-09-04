@@ -49,6 +49,7 @@ INTERNAL {
 	netcfg_release;
 	per_lcore_dpaa_io;
 	qman_alloc_cgrid_range;
+	qman_alloc_fqid_range;
 	qman_alloc_pool_range;
 	qman_clear_irq;
 	qman_create_cgr;
