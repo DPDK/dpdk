@@ -58,17 +58,28 @@ compatible board:
 
 4. **FMC Tool**
 
-   Before any DPDK application can be executed, the Frame Manager Configuration
-   Tool (FMC) need to be executed to set the configurations of the queues. This
+   If one is planning to use more than 1 Recv queue and hardware capability to
+   parse, classify and distribute the packets, the Frame Manager Configuration
+   Tool (FMC) need to be executed to set the configurations of the queues before
+   running the DPAA based DPDK application. This setting is persistent, the
+   configuration will remain in the hardware till it is re-configured. This
    includes the queue state, RSS and other policies.
    This tool can be obtained from `NXP (Freescale) Public Git Repository <https://source.codeaurora.org/external/qoriq/qoriq-components/fmc>`_.
 
    This tool needs configuration files which are available in the
    :ref:`DPDK Extra Scripts <extra_scripts>`, described below for DPDK usages.
 
-As an alternative method, DPAA PMD can also be executed using images provided
-as part of SDK from NXP. The SDK includes all the above prerequisites necessary
-to bring up a DPAA board.
+   Note that DPAA PMD can also be executed using images provided
+   as part of SDK from NXP. The SDK includes all the above prerequisites
+   necessary (i.e. fmc tool) to bring up a DPAA board.
+
+   As an alternate method, DPAA PMDs starting from DPDK 20.11 also support the
+   fmlib library integration. The driver will detect about any existing FMC
+   based config (if /tmp/fmc.bin is present). DPAA FMD will be used only if no
+   previous fmc config is existing.
+
+   Note that fmlib based integratin rely on underlying fmd driver in kernel,
+   which is available as part of NXP kernel or NXP SDK.
 
 The following dependencies are not part of DPDK and must be installed
 separately:

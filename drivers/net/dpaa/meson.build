@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2018 NXP
+# Copyright 2018-2020 NXP
 
 if not is_linux
 	build = false
@@ -8,6 +8,7 @@ endif
 deps += ['mempool_dpaa']
 
 sources = files('dpaa_ethdev.c',
+		'fmlib/fm_lib.c',
 		'dpaa_rxtx.c')
 
 if cc.has_argument('-Wno-pointer-arith')

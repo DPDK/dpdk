@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright 2017 NXP
+    Copyright 2017,2020 NXP
 
 
 DPAA Poll Mode Driver
@@ -21,6 +21,7 @@ Contents summary
 
 - DPAA overview
 - DPAA driver architecture overview
+- FMAN configuration tools and library
 
 .. _dpaa_overview:
 
@@ -284,6 +285,59 @@ for details.
       Port 1 Link Up - speed 10000 Mbps - full-duplex
       Done
       testpmd>
+
+FMAN Config
+-----------
+
+Frame Manager is also responsible for parser, classify and distribute
+functionality in the DPAA.
+
+   FMAN supports:
+   Packet parsing at wire speed. It supports standard protocols parsing and
+   identification by HW (VLAN/IP/UDP/TCP/SCTP/PPPoE/PPP/MPLS/GRE/IPSec).
+   It supports non-standard UDF header parsing for custom protocols.
+   Classification / Distribution: Coarse classification based on Key generation
+   Hash and exact match lookup
+
+FMC - FMAN Configuration Tool
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   This tool is available in User Space. The tool is used to configure FMAN
+   Physical (MAC) or Ephemeral (OH)ports for Parse/Classify/distribute.
+   The PCDs can be hash based where a set of fields are key input for hash
+   generation within FMAN keygen. The hash value is used to generate a FQID for
+   frame. There is a provision to setup exact match lookup too where field
+   values within a packet drives corresponding FQID.
+   Currently it works on XML file inputs.
+
+   Limitations:
+   1.For Dynamic Configuration change, currently no support is available.
+   E.g. enable/disable a port, a operator (set of VLANs and associate rules).
+
+   2.During FMC configuration, port for which policy is being configured is
+   brought down and the policy is flushed on port before new policy is updated
+   for the port. Support is required to add/append/delete etc.
+
+   3.FMC, being a separate user-space application, needs to be invoked from
+   Shell.
+
+
+   The details can be found in FMC Doc at:
+   `Frame Mnager Configuration Tool <https://www.nxp.com/docs/en/application-note/AN4760.pdf>`_.
+
+FMLIB
+~~~~~
+   The Frame Manager library provides an API on top of the Frame Manager driver
+   ioctl calls, that provides a user space application with a simple way to
+   configure driver parameters and PCD (parse - classify - distribute) rules.
+
+   This is an alternate to the FMC based configuration. This library provides
+   direct ioctl based interfaces for FMAN configuration as used by the FMC tool
+   as well. This helps in overcoming the main limitaiton of FMC - i.e. lack
+   of dynamic configuration.
+
+   The location for the fmd driver as used by FMLIB and FMC is as follows:
+   `Kernel FMD Driver
+   <https://source.codeaurora.org/external/qoriq/qoriq-components/linux/tree/drivers/net/ethernet/freescale/sdk_fman?h=linux-4.19-rt>`_.
 
 Limitations
 -----------
