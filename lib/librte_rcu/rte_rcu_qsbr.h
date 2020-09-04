@@ -552,7 +552,7 @@ rte_rcu_qsbr_quiescent(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		__atomic_store_n(&v->qsbr_cnt[thread_id].cnt,
 					 t, __ATOMIC_RELEASE);
 
-	__RTE_RCU_DP_LOG(DEBUG, "%s: update: token = %"PRIu64", Thread ID = %d",
+	__RTE_RCU_DP_LOG(DEBUG, "%s: update: token = %" PRIu64 ", Thread ID = %d",
 		__func__, t, thread_id);
 }
 
@@ -580,13 +580,13 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 		while (bmap) {
 			j = __builtin_ctzl(bmap);
 			__RTE_RCU_DP_LOG(DEBUG,
-				"%s: check: token = %"PRIu64", wait = %d, Bit Map = 0x%"PRIx64", Thread ID = %d",
+				"%s: check: token = %" PRIu64 ", wait = %d, Bit Map = 0x%" PRIx64 ", Thread ID = %d",
 				__func__, t, wait, bmap, id + j);
 			c = __atomic_load_n(
 					&v->qsbr_cnt[id + j].cnt,
 					__ATOMIC_ACQUIRE);
 			__RTE_RCU_DP_LOG(DEBUG,
-				"%s: status: token = %"PRIu64", wait = %d, Thread QS cnt = %"PRIu64", Thread ID = %d",
+				"%s: status: token = %" PRIu64 ", wait = %d, Thread QS cnt = %" PRIu64 ", Thread ID = %d",
 				__func__, t, wait, c, id+j);
 
 			/* Counter is not checked for wrap-around condition
@@ -643,12 +643,12 @@ __rte_rcu_qsbr_check_all(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 
 	for (i = 0, cnt = v->qsbr_cnt; i < v->max_threads; i++, cnt++) {
 		__RTE_RCU_DP_LOG(DEBUG,
-			"%s: check: token = %"PRIu64", wait = %d, Thread ID = %d",
+			"%s: check: token = %" PRIu64 ", wait = %d, Thread ID = %d",
 			__func__, t, wait, i);
 		while (1) {
 			c = __atomic_load_n(&cnt->cnt, __ATOMIC_ACQUIRE);
 			__RTE_RCU_DP_LOG(DEBUG,
-				"%s: status: token = %"PRIu64", wait = %d, Thread QS cnt = %"PRIu64", Thread ID = %d",
+				"%s: status: token = %" PRIu64 ", wait = %d, Thread QS cnt = %" PRIu64 ", Thread ID = %d",
 				__func__, t, wait, c, i);
 
 			/* Counter is not checked for wrap-around condition
@@ -725,10 +725,10 @@ rte_rcu_qsbr_check(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 	/* Check if all the readers have already acknowledged this token */
 	if (likely(t <= v->acked_token)) {
 		__RTE_RCU_DP_LOG(DEBUG,
-			"%s: check: token = %"PRIu64", wait = %d",
+			"%s: check: token = %" PRIu64 ", wait = %d",
 			__func__, t, wait);
 		__RTE_RCU_DP_LOG(DEBUG,
-			"%s: status: least acked token = %"PRIu64"",
+			"%s: status: least acked token = %" PRIu64,
 			__func__, v->acked_token);
 		return 1;
 	}

@@ -244,10 +244,10 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 
 	fprintf(f, "\n");
 
-	fprintf(f, "  Token = %"PRIu64"\n",
+	fprintf(f, "  Token = %" PRIu64 "\n",
 			__atomic_load_n(&v->token, __ATOMIC_ACQUIRE));
 
-	fprintf(f, "  Least Acknowledged Token = %"PRIu64"\n",
+	fprintf(f, "  Least Acknowledged Token = %" PRIu64 "\n",
 			__atomic_load_n(&v->acked_token, __ATOMIC_ACQUIRE));
 
 	fprintf(f, "Quiescent State Counts for readers:\n");
@@ -257,7 +257,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 		while (bmap) {
 			t = __builtin_ctzl(bmap);
-			fprintf(f, "thread ID = %u, count = %"PRIu64", lock count = %u\n",
+			fprintf(f, "thread ID = %u, count = %" PRIu64 ", lock count = %u\n",
 				id + t,
 				__atomic_load_n(
 					&v->qsbr_cnt[id + t].cnt,
@@ -402,7 +402,7 @@ int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 		 * other issues.
 		 */
 		rte_log(RTE_LOG_INFO, rte_rcu_log_type,
-			"%s(): Skipped enqueuing token = %"PRIu64"\n",
+			"%s(): Skipped enqueuing token = %" PRIu64 "\n",
 			__func__, dq_elem->token);
 
 		rte_errno = ENOSPC;
@@ -410,7 +410,8 @@ int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 	}
 
 	rte_log(RTE_LOG_INFO, rte_rcu_log_type,
-		"%s(): Enqueued token = %"PRIu64"\n", __func__, dq_elem->token);
+		"%s(): Enqueued token = %" PRIu64 "\n",
+		__func__, dq_elem->token);
 
 	return 0;
 }
@@ -449,7 +450,7 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 		rte_ring_dequeue_elem_finish(dq->r, 1);
 
 		rte_log(RTE_LOG_INFO, rte_rcu_log_type,
-			"%s(): Reclaimed token = %"PRIu64"\n",
+			"%s(): Reclaimed token = %" PRIu64 "\n",
 			__func__, dq_elem->token);
 
 		dq->free_fn(dq->p, dq_elem->elem, 1);
