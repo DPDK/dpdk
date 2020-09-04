@@ -321,6 +321,9 @@ struct fman_if {
 	/* The Qman channel to schedule Tx FQs to */
 	u16 tx_channel_id;
 
+	uint8_t base_profile_id;
+	uint8_t num_profiles;
+
 	uint8_t is_shared_mac;
 	/* The hard-coded FQIDs for this interface. Note: this doesn't cover
 	 * the PCD nor the "Rx default" FQIDs, which are configured via FMC
