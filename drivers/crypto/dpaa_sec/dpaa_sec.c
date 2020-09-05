@@ -2949,7 +2949,8 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	session->pdcp.hfn = pdcp_xform->hfn;
 	session->pdcp.hfn_threshold = pdcp_xform->hfn_threshold;
 	session->pdcp.hfn_ovd = pdcp_xform->hfn_ovrd;
-	session->pdcp.hfn_ovd_offset = cipher_xform->iv.offset;
+	if (cipher_xform)
+		session->pdcp.hfn_ovd_offset = cipher_xform->iv.offset;
 
 	rte_spinlock_lock(&dev_priv->lock);
 	for (i = 0; i < MAX_DPAA_CORES; i++) {
