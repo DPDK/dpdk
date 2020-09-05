@@ -44,8 +44,6 @@ bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 	uint8_t que;
 
 	vfr_eth_dev = &rte_eth_devices[port_id];
-	if (!vfr_eth_dev)
-		return 1;
 	vfr_bp = vfr_eth_dev->data->dev_private;
 	/* If rxq_id happens to be > max rep_queue, use rxq0 */
 	que = queue_id < BNXT_MAX_VF_REP_RINGS ? queue_id : 0;
