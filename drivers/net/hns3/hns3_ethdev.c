@@ -1410,7 +1410,7 @@ hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mac_vlan_tbl_entry_cmd req;
 	struct hns3_pf *pf = &hns->pf;
-	struct hns3_cmd_desc desc;
+	struct hns3_cmd_desc desc[3];
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	uint16_t egress_port = 0;
 	uint8_t vf_id;
@@ -1444,7 +1444,7 @@ hns3_add_uc_addr_common(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 	 * it if the entry is inexistent. Repeated unicast entry
 	 * is not allowed in the mac vlan table.
 	 */
-	ret = hns3_lookup_mac_vlan_tbl(hw, &req, &desc, false);
+	ret = hns3_lookup_mac_vlan_tbl(hw, &req, desc, false);
 	if (ret == -ENOENT) {
 		if (!hns3_is_umv_space_full(hw)) {
 			ret = hns3_add_mac_vlan_tbl(hw, &req, NULL);
