@@ -20,11 +20,11 @@ extern "C" {
  */
 struct rte_net_hdr_lens {
 	uint8_t l2_len;
-	uint8_t l3_len;
-	uint8_t l4_len;
-	uint8_t tunnel_len;
 	uint8_t inner_l2_len;
-	uint8_t inner_l3_len;
+	uint16_t l3_len;
+	uint16_t inner_l3_len;
+	uint16_t tunnel_len;
+	uint8_t l4_len;
 	uint8_t inner_l4_len;
 };
 
