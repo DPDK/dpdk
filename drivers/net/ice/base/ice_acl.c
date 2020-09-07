@@ -288,7 +288,7 @@ ice_acl_prof_aq_send(struct ice_hw *hw, u16 opc, u8 prof_id,
 }
 
 /**
- * ice_prgm_acl_prof_extrt - program ACL profile extraction sequence
+ * ice_prgm_acl_prof_xtrct - program ACL profile extraction sequence
  * @hw: pointer to the HW struct
  * @prof_id: profile ID
  * @buf: ptr to buffer
@@ -297,7 +297,7 @@ ice_acl_prof_aq_send(struct ice_hw *hw, u16 opc, u8 prof_id,
  * Program ACL profile extraction (indirect 0x0C1D)
  */
 enum ice_status
-ice_prgm_acl_prof_extrt(struct ice_hw *hw, u8 prof_id,
+ice_prgm_acl_prof_xtrct(struct ice_hw *hw, u8 prof_id,
 			struct ice_aqc_acl_prof_generic_frmt *buf,
 			struct ice_sq_cd *cd)
 {

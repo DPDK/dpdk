@@ -158,7 +158,7 @@ ice_aq_query_actpair(struct ice_hw *hw, u8 act_mem_idx, u16 act_entry_idx,
 		     struct ice_aqc_actpair *buf, struct ice_sq_cd *cd);
 enum ice_status ice_aq_dealloc_acl_res(struct ice_hw *hw, struct ice_sq_cd *cd);
 enum ice_status
-ice_prgm_acl_prof_extrt(struct ice_hw *hw, u8 prof_id,
+ice_prgm_acl_prof_xtrct(struct ice_hw *hw, u8 prof_id,
 			struct ice_aqc_acl_prof_generic_frmt *buf,
 			struct ice_sq_cd *cd);
 enum ice_status

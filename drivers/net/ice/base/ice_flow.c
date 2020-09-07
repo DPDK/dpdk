@@ -1780,7 +1780,7 @@ ice_flow_acl_disassoc_scen(struct ice_hw *hw, struct ice_flow_prof *prof)
 
 	/* Clear scenario for this PF */
 	buf.pf_scenario_num[hw->pf_id] = ICE_ACL_INVALID_SCEN;
-	status = ice_prgm_acl_prof_extrt(hw, prof_id, &buf, NULL);
+	status = ice_prgm_acl_prof_xtrct(hw, prof_id, &buf, NULL);
 
 	return status;
 }
@@ -2082,7 +2082,7 @@ ice_flow_acl_set_xtrct_seq(struct ice_hw *hw, struct ice_flow_prof *prof)
 
 	/* Update the current PF */
 	buf.pf_scenario_num[hw->pf_id] = (u8)prof->cfg.scen->id;
-	status = ice_prgm_acl_prof_extrt(hw, prof_id, &buf, NULL);
+	status = ice_prgm_acl_prof_xtrct(hw, prof_id, &buf, NULL);
 
 	return status;
 }
@@ -2510,7 +2510,6 @@ ice_flow_acl_frmt_entry(struct ice_hw *hw, struct ice_flow_prof *prof,
 	e->acts = (struct ice_flow_action *)
 		ice_memdup(hw, acts, acts_cnt * sizeof(*acts),
 			   ICE_NONDMA_TO_NONDMA);
-
 	if (!e->acts)
 		goto out;
 
