@@ -2852,16 +2852,7 @@ ice_sched_assoc_vsi_to_agg(struct ice_port_info *pi, u32 agg_id,
 		if (status)
 			break;
 
-		if (agg_id != ICE_DFLT_AGG_ID)
-			ice_set_bit(tc, agg_vsi_info->tc_bitmap);
-		else
-			ice_clear_bit(tc, agg_vsi_info->tc_bitmap);
-	}
-	/* If VSI moved back to default aggregator, delete agg_vsi_info. */
-	if (!ice_is_any_bit_set(agg_vsi_info->tc_bitmap,
-				ICE_MAX_TRAFFIC_CLASS)) {
-		LIST_DEL(&agg_vsi_info->list_entry);
-		ice_free(hw, agg_vsi_info);
+		ice_set_bit(tc, agg_vsi_info->tc_bitmap);
 	}
 	return status;
 }
