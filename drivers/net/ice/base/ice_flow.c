@@ -1089,7 +1089,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		 */
 		if (fld == ICE_FLOW_FIELD_IDX_IPV4_TTL)
 			sib = ICE_FLOW_FIELD_IDX_IPV4_PROT;
-		else if (fld == ICE_FLOW_FIELD_IDX_IPV4_PROT)
+		else
 			sib = ICE_FLOW_FIELD_IDX_IPV4_TTL;
 
 		/* If the sibling field is also included, that field's
@@ -1108,7 +1108,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		 */
 		if (fld == ICE_FLOW_FIELD_IDX_IPV6_TTL)
 			sib = ICE_FLOW_FIELD_IDX_IPV6_PROT;
-		else if (fld == ICE_FLOW_FIELD_IDX_IPV6_PROT)
+		else
 			sib = ICE_FLOW_FIELD_IDX_IPV6_TTL;
 
 		/* If the sibling field is also included, that field's
