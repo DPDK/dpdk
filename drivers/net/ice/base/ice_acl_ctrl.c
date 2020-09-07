@@ -25,19 +25,21 @@ static void ice_acl_init_entry(struct ice_acl_scen *scen)
 	 * normal priority: start from the highest index, 50% of total entries
 	 * high priority: start from the lowest index, 25% of total entries
 	 */
-	scen->first_idx[ICE_LOW] = scen->num_entry - 1;
-	scen->first_idx[ICE_NORMAL] = scen->num_entry - scen->num_entry / 4 - 1;
-	scen->first_idx[ICE_HIGH] = 0;
+	scen->first_idx[ICE_ACL_PRIO_LOW] = scen->num_entry - 1;
+	scen->first_idx[ICE_ACL_PRIO_NORMAL] = scen->num_entry -
+		scen->num_entry / 4 - 1;
+	scen->first_idx[ICE_ACL_PRIO_HIGH] = 0;
 
-	scen->last_idx[ICE_LOW] = scen->num_entry - scen->num_entry / 4;
-	scen->last_idx[ICE_NORMAL] = scen->num_entry / 4;
-	scen->last_idx[ICE_HIGH] = scen->num_entry / 4 - 1;
+	scen->last_idx[ICE_ACL_PRIO_LOW] = scen->num_entry -
+		scen->num_entry / 4;
+	scen->last_idx[ICE_ACL_PRIO_NORMAL] = scen->num_entry / 4;
+	scen->last_idx[ICE_ACL_PRIO_HIGH] = scen->num_entry / 4 - 1;
 }
 
 /**
  * ice_acl_scen_assign_entry_idx
  * @scen: pointer to the scenario struct
- * @prior: the priority of the flow entry being allocated
+ * @prio: the priority of the flow entry being allocated
  *
  * To find the index of an available entry in scenario
  *
@@ -46,16 +48,16 @@ static void ice_acl_init_entry(struct ice_acl_scen *scen)
  */
 static u16
 ice_acl_scen_assign_entry_idx(struct ice_acl_scen *scen,
-			      enum ice_acl_entry_prior prior)
+			      enum ice_acl_entry_prio prio)
 {
 	u16 first_idx, last_idx, i;
 	s8 step;
 
-	if (prior >= ICE_MAX_PRIOR)
+	if (prio >= ICE_ACL_MAX_PRIO)
 		return ICE_ACL_SCEN_ENTRY_INVAL;
 
-	first_idx = scen->first_idx[prior];
-	last_idx = scen->last_idx[prior];
+	first_idx = scen->first_idx[prio];
+	last_idx = scen->last_idx[prio];
 	step = first_idx <= last_idx ? 1 : -1;
 
 	for (i = first_idx; i != last_idx + step; i += step)
@@ -953,7 +955,7 @@ enum ice_status ice_acl_destroy_tbl(struct ice_hw *hw)
  * ice_acl_add_entry - Add a flow entry to an ACL scenario
  * @hw: pointer to the HW struct
  * @scen: scenario to add the entry to
- * @prior: priority level of the entry being added
+ * @prio: priority level of the entry being added
  * @keys: buffer of the value of the key to be programmed to the ACL entry
  * @inverts: buffer of the value of the key inverts to be programmed
  * @acts: pointer to a buffer containing formatted actions
@@ -967,7 +969,7 @@ enum ice_status ice_acl_destroy_tbl(struct ice_hw *hw)
  */
 enum ice_status
 ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
-		  enum ice_acl_entry_prior prior, u8 *keys, u8 *inverts,
+		  enum ice_acl_entry_prio prio, u8 *keys, u8 *inverts,
 		  struct ice_acl_act_entry *acts, u8 acts_cnt, u16 *entry_idx)
 {
 	u8 i, entry_tcam, num_cscd, offset;
@@ -978,7 +980,7 @@ ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
 	if (!scen)
 		return ICE_ERR_DOES_NOT_EXIST;
 
-	*entry_idx = ice_acl_scen_assign_entry_idx(scen, prior);
+	*entry_idx = ice_acl_scen_assign_entry_idx(scen, prio);
 	if (*entry_idx >= scen->num_entry) {
 		*entry_idx = 0;
 		return ICE_ERR_MAX_LIMIT;

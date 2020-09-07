@@ -2715,30 +2715,30 @@ ice_flow_acl_find_scen_entry_cond(struct ice_flow_prof *prof,
 }
 
 /**
- * ice_flow_acl_convert_to_acl_prior - Convert to ACL priority
+ * ice_flow_acl_convert_to_acl_prio - Convert to ACL priority
  * @p: flow priority
  */
-static enum ice_acl_entry_prior
-ice_flow_acl_convert_to_acl_prior(enum ice_flow_priority p)
+static enum ice_acl_entry_prio
+ice_flow_acl_convert_to_acl_prio(enum ice_flow_priority p)
 {
-	enum ice_acl_entry_prior acl_prior;
+	enum ice_acl_entry_prio acl_prio;
 
 	switch (p) {
 	case ICE_FLOW_PRIO_LOW:
-		acl_prior = ICE_LOW;
+		acl_prio = ICE_ACL_PRIO_LOW;
 		break;
 	case ICE_FLOW_PRIO_NORMAL:
-		acl_prior = ICE_NORMAL;
+		acl_prio = ICE_ACL_PRIO_NORMAL;
 		break;
 	case ICE_FLOW_PRIO_HIGH:
-		acl_prior = ICE_HIGH;
+		acl_prio = ICE_ACL_PRIO_HIGH;
 		break;
 	default:
-		acl_prior = ICE_NORMAL;
+		acl_prio = ICE_ACL_PRIO_NORMAL;
 		break;
 	}
 
-	return acl_prior;
+	return acl_prio;
 }
 
 /**
@@ -2878,15 +2878,15 @@ ice_flow_acl_add_scen_entry_sync(struct ice_hw *hw, struct ice_flow_prof *prof,
 			   ICE_NONDMA_TO_NONDMA);
 
 	if (do_add_entry) {
-		enum ice_acl_entry_prior prior;
+		enum ice_acl_entry_prio prio;
 		u8 *keys, *inverts;
 		u16 entry_idx;
 
 		keys = (u8 *)e->entry;
 		inverts = keys + (e->entry_sz / 2);
-		prior = ice_flow_acl_convert_to_acl_prior(e->priority);
+		prio = ice_flow_acl_convert_to_acl_prio(e->priority);
 
-		status = ice_acl_add_entry(hw, prof->cfg.scen, prior, keys,
+		status = ice_acl_add_entry(hw, prof->cfg.scen, prio, keys,
 					   inverts, acts, e->acts_cnt,
 					   &entry_idx);
 		if (status)
@@ -2904,7 +2904,6 @@ ice_flow_acl_add_scen_entry_sync(struct ice_hw *hw, struct ice_flow_prof *prof,
 			exist->acts = (struct ice_flow_action *)
 				ice_calloc(hw, exist->acts_cnt,
 					   sizeof(struct ice_flow_action));
-
 			if (!exist->acts) {
 				status = ICE_ERR_NO_MEMORY;
 				goto out;

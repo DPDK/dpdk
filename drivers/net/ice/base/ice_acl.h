@@ -47,11 +47,11 @@ struct ice_acl_tbl {
 };
 
 #define ICE_MAX_ACL_TCAM_ENTRY (ICE_AQC_ACL_TCAM_DEPTH * ICE_AQC_ACL_SLICES)
-enum ice_acl_entry_prior {
-	ICE_LOW = 0,
-	ICE_NORMAL,
-	ICE_HIGH,
-	ICE_MAX_PRIOR
+enum ice_acl_entry_prio {
+	ICE_ACL_PRIO_LOW = 0,
+	ICE_ACL_PRIO_NORMAL,
+	ICE_ACL_PRIO_HIGH,
+	ICE_ACL_MAX_PRIO
 };
 
 /* Scenario structure
@@ -74,8 +74,8 @@ struct ice_acl_scen {
 	 * be available in this scenario
 	 */
 	ice_declare_bitmap(entry_bitmap, ICE_MAX_ACL_TCAM_ENTRY);
-	u16 first_idx[ICE_MAX_PRIOR];
-	u16 last_idx[ICE_MAX_PRIOR];
+	u16 first_idx[ICE_ACL_MAX_PRIO];
+	u16 last_idx[ICE_ACL_MAX_PRIO];
 
 	u16 id;
 	u16 start;	/* Number of entry from the start of the parent table */
@@ -192,7 +192,7 @@ ice_aq_query_acl_scen(struct ice_hw *hw, u16 scen_id,
 		      struct ice_aqc_acl_scen *buf, struct ice_sq_cd *cd);
 enum ice_status
 ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
-		  enum ice_acl_entry_prior prior, u8 *keys, u8 *inverts,
+		  enum ice_acl_entry_prio prio, u8 *keys, u8 *inverts,
 		  struct ice_acl_act_entry *acts, u8 acts_cnt, u16 *entry_idx);
 enum ice_status
 ice_acl_prog_act(struct ice_hw *hw, struct ice_acl_scen *scen,
