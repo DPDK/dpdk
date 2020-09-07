@@ -64,8 +64,6 @@ The process should start successfully and display a command prompt as follows:
     EAL: Virtual area found at 0x7ff200000000 (size = 0x40000000)
     ...
 
-    EAL: check igb_uio module
-    EAL: check module finished
     EAL: Master core 0 is ready (tid=54e41820)
     EAL: Core 1 is ready (tid=53b32700)
 

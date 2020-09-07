@@ -642,9 +642,8 @@ Install the DPDK igb_uio driver, bind the VF PCI Device id to it and use lspci
 to confirm the VF devices are now in use by igb_uio kernel driver,
 e.g. for the C62x device::
 
-    cd to the top-level DPDK directory
     modprobe uio
-    insmod ./build/kmod/igb_uio.ko
+    insmod igb_uio.ko
     echo "8086 37c9" > /sys/bus/pci/drivers/igb_uio/new_id
     lspci -vvd:37c9
 

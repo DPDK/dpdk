@@ -155,4 +155,5 @@ This results in pass-through of the DMAR (DMA Remapping) lookup in the host.
 Also, if ``INTEL_IOMMU_DEFAULT_ON`` is not set in the kernel, the ``intel_iommu=on`` kernel parameter must be used too.
 This ensures that the Intel IOMMU is being initialized as expected.
 
-Please note that while using ``iommu=pt`` is compulsory for ``igb_uio driver``, the ``vfio-pci`` driver can actually work with both ``iommu=pt`` and ``iommu=on``.
+Please note that while using ``iommu=pt`` is compulsory for ``igb_uio`` driver,
+the ``vfio-pci`` driver can actually work with both ``iommu=pt`` and ``iommu=on``.

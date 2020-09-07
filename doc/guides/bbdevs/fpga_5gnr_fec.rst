@@ -93,8 +93,7 @@ the UIO driver by repeating this command for every function.
 
 .. code-block:: console
 
-  cd <dpdk-top-level-directory>
-  insmod ./build/kmod/igb_uio.ko
+  insmod igb_uio.ko
   echo "8086 0d8f" > /sys/bus/pci/drivers/igb_uio/new_id
   lspci -vd8086:0d8f
 

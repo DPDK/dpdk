@@ -290,7 +290,6 @@ F: doc/guides/linux_gsg/
 
 Linux UIO
 M: Ferruh Yigit <ferruh.yigit@intel.com>
-F: kernel/linux/igb_uio/
 F: drivers/bus/pci/linux/*uio*
 
 Linux VFIO

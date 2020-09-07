@@ -69,7 +69,7 @@ This section demonstrates how to setup and run ``testpmd`` in Linux.
    .. code-block:: console
 
       modprobe uio
-      insmod ./x86_64-native-linux-gcc/kmod/igb_uio.ko
+      insmod igb_uio.ko
 
    or
 

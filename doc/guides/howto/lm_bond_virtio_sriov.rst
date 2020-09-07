@@ -591,7 +591,7 @@ Set up DPDK in the Virtual Machine
    rmmod virtio-pci ixgbevf
 
    modprobe uio
-   insmod /root/dpdk/<build_dir>/kernel/linux/igb_uio/igb_uio.ko
+   insmod igb_uio.ko
 
    /root/dpdk/usertools/dpdk-devbind.py -b igb_uio 0000:00:03.0
    /root/dpdk/usertools/dpdk-devbind.py -b igb_uio 0000:00:04.0

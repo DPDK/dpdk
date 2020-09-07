@@ -75,9 +75,8 @@ Initialization
 Bind the CCP devices to DPDK UIO driver module before running the CCP PMD stack.
 e.g. for the 0x1456 device::
 
-	cd to the top-level DPDK directory
 	modprobe uio
-	insmod ./build/kmod/igb_uio.ko
+	insmod igb_uio.ko
 	echo "1022 1456" > /sys/bus/pci/drivers/igb_uio/new_id
 
 Another way to bind the CCP devices to DPDK UIO driver is by using the ``dpdk-devbind.py`` script.

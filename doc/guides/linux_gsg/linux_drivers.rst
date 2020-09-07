@@ -27,33 +27,20 @@ can provide the uio capability. This module can be loaded using the command:
 
     ``uio_pci_generic`` module doesn't support the creation of virtual functions.
 
-As an alternative to the ``uio_pci_generic``, the DPDK also includes the igb_uio
-module which can be found in the kernel/linux subdirectory referred to above. It can
-be loaded as shown below:
+As an alternative to the ``uio_pci_generic``, there is the ``igb_uio`` module
+which can be found in the repository `dpdk-kmods <http://git.dpdk.org/dpdk-kmods>`_.
+It can be loaded as shown below:
 
 .. code-block:: console
 
     sudo modprobe uio
-    sudo insmod <build_dir>/kernel/linux/igb_uio/igb_uio.ko
-
-.. note::
-
-   Building DPDK Linux kernel modules is disabled by default starting from DPDK 20.02.
-   To enable them again, the config option "enable_kmods" needs to be set
-   in the meson build configuration.
-   See :ref:`adjusting_build_options` for details on how to set/clear build options.
-   It is planned to move ``igb_uio`` module to a different git repository.
-
-.. note::
-
-    For some devices which lack support for legacy interrupts, e.g. virtual function
-    (VF) devices, the ``igb_uio`` module may be needed in place of ``uio_pci_generic``.
+    sudo insmod igb_uio.ko
 
 .. note::
 
    If UEFI secure boot is enabled, the Linux kernel may disallow the use of
    UIO on the system. Therefore, devices for use by DPDK should be bound to the
-   ``vfio-pci`` kernel module rather than ``igb_uio`` or ``uio_pci_generic``.
+   ``vfio-pci`` kernel module rather than any UIO-based module.
    For more details see :ref:`linux_gsg_binding_kernel` below.
 
 .. note::

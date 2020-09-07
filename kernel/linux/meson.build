@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-subdirs = ['igb_uio', 'kni']
+subdirs = ['kni']
 
 # if we are cross-compiling we need kernel_dir specified
 if get_option('kernel_dir') == '' and meson.is_cross_build()
