@@ -28,66 +28,15 @@
 
 extern int ark_logtype;
 
-#define PMD_DRV_LOG(level, fmt, args...)	\
-	rte_log(RTE_LOG_ ##level, ark_logtype, fmt, ## args)
-
-/* Conditional trace definitions */
-#define ARK_TRACE_ON(level, fmt, args...) \
-	PMD_DRV_LOG(level, fmt, ## args)
-
-/* This pattern allows compiler check arguments even if disabled  */
-#define ARK_TRACE_OFF(level, fmt, args...)			\
-	do {							\
-		if (0)						\
-			PMD_DRV_LOG(level, fmt, ## args);	\
-	} while (0)
-
-/* tracing including the function name */
-#define ARK_FUNC_ON(level, fmt, args...) \
-	PMD_DRV_LOG(level, "%s(): " fmt, __func__, ## args)
-
-/* tracing including the function name */
-#define ARK_FUNC_OFF(level, fmt, args...)				\
-	do {								\
-		if (0)							\
-			PMD_DRV_LOG(level, "%s(): " fmt, __func__, ## args); \
-	} while (0)
+#define ARK_PMD_LOG(level, fmt, args...)	\
+	rte_log(RTE_LOG_ ##level, ark_logtype, "ARK: " fmt, ## args)
 
 
-/* Debug macro for tracing full behavior, function tracing and messages*/
-#ifdef RTE_LIBRTE_ARK_DEBUG_TRACE
-#define PMD_FUNC_LOG(level, fmt, ...) ARK_FUNC_ON(level, fmt, ##__VA_ARGS__)
-#define PMD_DEBUG_LOG(level, fmt, ...) ARK_TRACE_ON(level, fmt, ##__VA_ARGS__)
+/* Debug macro to enable core debug code */
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+#define ARK_DEBUG_CORE 1
 #else
-#define PMD_FUNC_LOG(level, fmt, ...) ARK_FUNC_OFF(level, fmt, ##__VA_ARGS__)
-#define PMD_DEBUG_LOG(level, fmt, ...) ARK_TRACE_OFF(level, fmt, ##__VA_ARGS__)
-#endif
-
-
-/* Debug macro for reporting FPGA statistics */
-#ifdef RTE_LIBRTE_ARK_DEBUG_STATS
-#define PMD_STATS_LOG(level, fmt, ...) ARK_TRACE_ON(level, fmt, ##__VA_ARGS__)
-#else
-#define PMD_STATS_LOG(level, fmt, ...)  ARK_TRACE_OFF(level, fmt, ##__VA_ARGS__)
-#endif
-
-
-/* Debug macro for RX path */
-#ifdef RTE_LIBRTE_ARK_DEBUG_RX
-#define ARK_RX_DEBUG 1
-#define PMD_RX_LOG(level, fmt, ...)  ARK_TRACE_ON(level, fmt, ##__VA_ARGS__)
-#else
-#define ARK_RX_DEBUG 0
-#define PMD_RX_LOG(level, fmt, ...)  ARK_TRACE_OFF(level, fmt, ##__VA_ARGS__)
-#endif
-
-/* Debug macro for TX path */
-#ifdef RTE_LIBRTE_ARK_DEBUG_TX
-#define ARK_TX_DEBUG       1
-#define PMD_TX_LOG(level, fmt, ...)  ARK_TRACE_ON(level, fmt, ##__VA_ARGS__)
-#else
-#define ARK_TX_DEBUG       0
-#define PMD_TX_LOG(level, fmt, ...)  ARK_TRACE_OFF(level, fmt, ##__VA_ARGS__)
+#define ARK_DEBUG_CORE 0
 #endif
 
 #endif

@@ -23,7 +23,7 @@ void
 ark_rqp_dump(struct ark_rqpace_t *rqp)
 {
 	if (rqp->err_count_other != 0)
-		PMD_DRV_LOG(ERR,
+		ARK_PMD_LOG(ERR,
 			    "RQP Errors noted: ctrl: %d cplh_hmax %d cpld_max %d"
 			    ARK_SU32
 			    ARK_SU32 "\n",
@@ -31,7 +31,7 @@ ark_rqp_dump(struct ark_rqpace_t *rqp)
 			    "Error Count", rqp->err_cnt,
 			    "Error General", rqp->err_count_other);
 
-	PMD_STATS_LOG(INFO, "RQP Dump: ctrl: %d cplh_hmax %d cpld_max %d"
+	ARK_PMD_LOG(INFO, "RQP Dump: ctrl: %d cplh_hmax %d cpld_max %d"
 		      ARK_SU32
 		      ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32
 		      ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32

@@ -11,14 +11,14 @@ int
 ark_udm_verify(struct ark_udm_t *udm)
 {
 	if (sizeof(struct ark_udm_t) != ARK_UDM_EXPECT_SIZE) {
-		PMD_DRV_LOG(ERR,
+		ARK_PMD_LOG(ERR,
 			    "ARK: UDM structure looks incorrect %d vs %zd\n",
 			    ARK_UDM_EXPECT_SIZE, sizeof(struct ark_udm_t));
 		return -1;
 	}
 
 	if (udm->setup.const0 != ARK_UDM_CONST) {
-		PMD_DRV_LOG(ERR,
+		ARK_PMD_LOG(ERR,
 			    "ARK: UDM module not found as expected 0x%08x\n",
 			    udm->setup.const0);
 		return -1;
@@ -49,13 +49,13 @@ ark_udm_reset(struct ark_udm_t *udm)
 
 	status = ark_udm_stop(udm, 1);
 	if (status != 0) {
-		PMD_DEBUG_LOG(INFO, "%s  stop failed  doing forced reset\n",
+		ARK_PMD_LOG(NOTICE, "%s  stop failed  doing forced reset\n",
 			      __func__);
 		udm->cfg.command = 4;
 		usleep(10);
 		udm->cfg.command = 3;
 		status = ark_udm_stop(udm, 0);
-		PMD_DEBUG_LOG(INFO, "%s  stop status %d post failure"
+		ARK_PMD_LOG(INFO, "%s  stop status %d post failure"
 			      " and forced reset\n",
 			      __func__, status);
 	} else {
@@ -125,7 +125,7 @@ ark_udm_packets(struct ark_udm_t *udm)
 void
 ark_udm_dump_stats(struct ark_udm_t *udm, const char *msg)
 {
-	PMD_STATS_LOG(INFO, "UDM Stats: %s"
+	ARK_PMD_LOG(INFO, "UDM Stats: %s"
 		      ARK_SU64 ARK_SU64 ARK_SU64 ARK_SU64 ARK_SU64 "\n",
 		      msg,
 		      "Pkts Received", udm->stats.rx_packet_count,
@@ -138,7 +138,7 @@ ark_udm_dump_stats(struct ark_udm_t *udm, const char *msg)
 void
 ark_udm_dump_queue_stats(struct ark_udm_t *udm, const char *msg, uint16_t qid)
 {
-	PMD_STATS_LOG(INFO, "UDM Queue %3u Stats: %s"
+	ARK_PMD_LOG(INFO, "UDM Queue %3u Stats: %s"
 		      ARK_SU64 ARK_SU64
 		      ARK_SU64 ARK_SU64
 		      ARK_SU64 "\n",
@@ -153,14 +153,14 @@ ark_udm_dump_queue_stats(struct ark_udm_t *udm, const char *msg, uint16_t qid)
 void
 ark_udm_dump(struct ark_udm_t *udm, const char *msg)
 {
-	PMD_DEBUG_LOG(DEBUG, "UDM Dump: %s Stopped: %d\n", msg,
+	ARK_PMD_LOG(DEBUG, "UDM Dump: %s Stopped: %d\n", msg,
 		      udm->cfg.stop_flushed);
 }
 
 void
 ark_udm_dump_setup(struct ark_udm_t *udm, uint16_t q_id)
 {
-	PMD_DEBUG_LOG(DEBUG, "UDM Setup Q: %u"
+	ARK_PMD_LOG(DEBUG, "UDM Setup Q: %u"
 		      ARK_SU64X ARK_SU32 "\n",
 		      q_id,
 		      "hw_prod_addr", udm->rt_cfg.hw_prod_addr,
@@ -172,7 +172,7 @@ ark_udm_dump_perf(struct ark_udm_t *udm, const char *msg)
 {
 	struct ark_udm_pcibp_t *bp = &udm->pcibp;
 
-	PMD_STATS_LOG(INFO, "UDM Performance %s"
+	ARK_PMD_LOG(INFO, "UDM Performance %s"
 		      ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32 ARK_SU32
 		      "\n",
 		      msg,

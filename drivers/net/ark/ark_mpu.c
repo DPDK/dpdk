@@ -28,7 +28,7 @@ ark_mpu_verify(struct ark_mpu_t *mpu, uint32_t obj_size)
 	if ((mpu->id.idnum != 0x2055504d) ||
 	    (mpu->hw.obj_size != obj_size) ||
 	    (version != 0x00003100)) {
-		PMD_DRV_LOG(ERR,
+		ARK_PMD_LOG(ERR,
 			    "   MPU module not found as expected %08x"
 			    " \"%c%c%c%c %c%c%c%c\"\n",
 			    mpu->id.idnum,
@@ -36,7 +36,7 @@ ark_mpu_verify(struct ark_mpu_t *mpu, uint32_t obj_size)
 			    mpu->id.id[2], mpu->id.id[3],
 			    mpu->id.ver[0], mpu->id.ver[1],
 			    mpu->id.ver[2], mpu->id.ver[3]);
-		PMD_DRV_LOG(ERR,
+		ARK_PMD_LOG(ERR,
 			    "   MPU HW num_queues: %u hw_depth %u,"
 			    " obj_size: %u, obj_per_mrr: %u"
 			    " Expected size %u\n",
@@ -95,7 +95,7 @@ ark_mpu_configure(struct ark_mpu_t *mpu, rte_iova_t ring, uint32_t ring_size,
 	ark_mpu_reset(mpu);
 
 	if (!rte_is_power_of_2(ring_size)) {
-		PMD_DRV_LOG(ERR, "ARK: Invalid ring size for MPU %d\n",
+		ARK_PMD_LOG(ERR, "Invalid ring size for MPU %d\n",
 			    ring_size);
 		return -1;
 	}
@@ -114,37 +114,21 @@ void
 ark_mpu_dump(struct ark_mpu_t *mpu, const char *code, uint16_t qid)
 {
 	/* DUMP to see that we have started */
-	PMD_DEBUG_LOG(DEBUG, "MPU: %s Q: %3u sw_prod %u, hw_cons: %u\n",
+	ARK_PMD_LOG(DEBUG, "MPU: %s Q: %3u sw_prod %u, hw_cons: %u\n",
 		      code, qid,
 		      mpu->cfg.sw_prod_index, mpu->cfg.hw_cons_index);
-	PMD_DEBUG_LOG(DEBUG, "MPU: %s state: %d count %d, reserved %d"
-		      " data 0x%08x_%08x 0x%08x_%08x\n",
+	ARK_PMD_LOG(DEBUG, "MPU: %s state: %d count %d, reserved %d"
+		      "\n",
 		      code,
 		      mpu->debug.state, mpu->debug.count,
-		      mpu->debug.reserved,
-		      mpu->debug.peek[1],
-		      mpu->debug.peek[0],
-		      mpu->debug.peek[3],
-		      mpu->debug.peek[2]
-		      );
-	PMD_STATS_LOG(INFO, "MPU: %s Q: %3u"
-		      ARK_SU64 ARK_SU64 ARK_SU64 ARK_SU64
-		      ARK_SU64 ARK_SU64 ARK_SU64 "\n",
-		      code, qid,
-		      "PCI Request:", mpu->stats.pci_request,
-		      "Queue_empty", mpu->stats.q_empty,
-		      "Queue_q1", mpu->stats.q_q1,
-		      "Queue_q2", mpu->stats.q_q2,
-		      "Queue_q3", mpu->stats.q_q3,
-		      "Queue_q4", mpu->stats.q_q4,
-		      "Queue_full", mpu->stats.q_full
+		      mpu->debug.reserved
 		      );
 }
 
 void
 ark_mpu_dump_setup(struct ark_mpu_t *mpu, uint16_t q_id)
 {
-	PMD_DEBUG_LOG(DEBUG, "MPU Setup Q: %u"
+	ARK_PMD_LOG(DEBUG, "MPU Setup Q: %u"
 		      ARK_SU64X "\n",
 		      q_id,
 		      "ring_base", mpu->cfg.ring_base
