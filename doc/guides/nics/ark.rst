@@ -129,8 +129,10 @@ Configuration Information
    * **CONFIG_RTE_LIBRTE_ARK_PMD** (default y): Enables or disables inclusion
      of the ARK PMD driver in the DPDK compilation.
 
-   * **CONFIG_RTE_LIBRTE_ARK_PAD_TX** (default y):  When enabled TX
-     packets are padded to 60 bytes to support downstream MACS.
+   * **RTE_LIBRTE_ARK_MIN_TX_PKTLEN** (default 0): Sets the minimum
+     packet length for tx packets to the FPGA.  Packets less than this
+     length are padded to meet the requirement. This allows padding to
+     be offloaded or remain in host software.
 
 
 Building DPDK
@@ -143,6 +145,13 @@ By default the ARK PMD library will be built into the DPDK library.
 
 For configuring and using UIO and VFIO frameworks, please also refer :ref:`the
 documentation that comes with DPDK suite <linux_gsg>`.
+
+To build with a non-zero minimum tx packet length, set the above macro in your
+CFLAGS environment prior to the meson build step. I.e.,
+
+    export CFLAGS="-DRTE_LIBRTE_ARK_MIN_TX_PKTLEN=60"
+    meson build
+
 
 Supported ARK RTL PCIe Instances
 --------------------------------

@@ -8,14 +8,6 @@
 #include <inttypes.h>
 #include <rte_log.h>
 
-
-/* Configuration option to pad TX packets to 60 bytes */
-#ifdef RTE_LIBRTE_ARK_PAD_TX
-#define ARK_TX_PAD_TO_60   1
-#else
-#define ARK_TX_PAD_TO_60   0
-#endif
-
 /* system camel case definition changed to upper case */
 #define PRIU32 PRIu32
 #define PRIU64 PRIu64
