@@ -133,9 +133,6 @@ struct rte_timer
 #endif
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Allocate a timer data instance in shared memory to track a set of pending
  * timer lists.
  *
@@ -147,13 +144,9 @@ struct rte_timer
  *   - 0: Success
  *   - -ENOSPC: maximum number of timer data instances already allocated
  */
-__rte_experimental
 int rte_timer_data_alloc(uint32_t *id_ptr);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Deallocate a timer data instance.
  *
  * @param id
@@ -163,7 +156,6 @@ int rte_timer_data_alloc(uint32_t *id_ptr);
  *   - 0: Success
  *   - -EINVAL: invalid timer data instance identifier
  */
-__rte_experimental
 int rte_timer_data_dealloc(uint32_t id);
 
 /**
@@ -183,12 +175,8 @@ int rte_timer_data_dealloc(uint32_t id);
 int rte_timer_subsystem_init(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Free timer subsystem resources.
  */
-__rte_experimental
 void rte_timer_subsystem_finalize(void);
 
 /**
@@ -376,9 +364,6 @@ int rte_timer_manage(void);
 int rte_timer_dump_stats(FILE *f);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * This function is the same as rte_timer_reset(), except that it allows a
  * caller to specify the rte_timer_data instance containing the list to which
  * the timer should be added.
@@ -413,16 +398,12 @@ int rte_timer_dump_stats(FILE *f);
  *   - (-1): Timer is in the RUNNING or CONFIG state.
  *   - -EINVAL: invalid timer_data_id
  */
-__rte_experimental
 int
 rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
 		    uint64_t ticks, enum rte_timer_type type,
 		    unsigned int tim_lcore, rte_timer_cb_t fct, void *arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * This function is the same as rte_timer_stop(), except that it allows a
  * caller to specify the rte_timer_data instance containing the list from which
  * this timer should be removed.
@@ -439,7 +420,6 @@ rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
  *   - (-1): The timer is in the RUNNING or CONFIG state.
  *   - -EINVAL: invalid timer_data_id
  */
-__rte_experimental
 int
 rte_timer_alt_stop(uint32_t timer_data_id, struct rte_timer *tim);
 
@@ -449,9 +429,6 @@ rte_timer_alt_stop(uint32_t timer_data_id, struct rte_timer *tim);
 typedef void (*rte_timer_alt_manage_cb_t)(struct rte_timer *tim);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Manage a set of timer lists and execute the specified callback function for
  * all expired timers. This function is similar to rte_timer_manage(), except
  * that it allows a caller to specify the timer_data instance that should
@@ -476,7 +453,6 @@ typedef void (*rte_timer_alt_manage_cb_t)(struct rte_timer *tim);
  *   - 0: success
  *   - -EINVAL: invalid timer_data_id
  */
-__rte_experimental
 int
 rte_timer_alt_manage(uint32_t timer_data_id, unsigned int *poll_lcores,
 		     int n_poll_lcores, rte_timer_alt_manage_cb_t f);
@@ -487,9 +463,6 @@ rte_timer_alt_manage(uint32_t timer_data_id, unsigned int *poll_lcores,
 typedef void (*rte_timer_stop_all_cb_t)(struct rte_timer *tim, void *arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Walk the pending timer lists for the specified lcore IDs, and for each timer
  * that is encountered, stop it and call the specified callback function to
  * process it further.
@@ -509,15 +482,11 @@ typedef void (*rte_timer_stop_all_cb_t)(struct rte_timer *tim, void *arg);
  *   - 0: success
  *   - EINVAL: invalid timer_data_id
  */
-__rte_experimental
 int
 rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
 		   int nb_walk_lcores, rte_timer_stop_all_cb_t f, void *f_arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * This function is the same as rte_timer_dump_stats(), except that it allows
  * the caller to specify the rte_timer_data instance that should be used.
  *
@@ -532,7 +501,6 @@ rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
  *   - 0: success
  *   - -EINVAL: invalid timer_data_id
  */
-__rte_experimental
 int
 rte_timer_alt_dump_stats(uint32_t timer_data_id, FILE *f);
 
