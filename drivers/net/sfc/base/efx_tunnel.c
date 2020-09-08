@@ -421,7 +421,7 @@ ef10_tunnel_reconfigure(
 {
 	efx_tunnel_cfg_t *etcp = &enp->en_tunnel_cfg;
 	efx_rc_t rc;
-	boolean_t resetting;
+	boolean_t resetting = B_FALSE;
 	efsys_lock_state_t state;
 	efx_tunnel_cfg_t etc;
 
@@ -446,8 +446,14 @@ ef10_tunnel_reconfigure(
 		 */
 		rc = efx_mcdi_set_tunnel_encap_udp_ports(enp, &etc, B_FALSE,
 		    &resetting);
-		if (rc != 0)
-			goto fail2;
+		if (rc != 0) {
+			/*
+			 * Do not fail if the access is denied when no
+			 * tunnel encap UDP ports are configured.
+			 */
+			if (rc != EACCES || etc.etc_udp_entries_num != 0)
+				goto fail2;
+		}
 
 		/*
 		 * Although the caller should be able to handle MC reboot,
