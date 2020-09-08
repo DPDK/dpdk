@@ -14,16 +14,16 @@ allocation for the peer to access and read/write allocated memory from peer.
 Also, the PMD allows to use doorbell registers to notify the peer and share
 some information by using scratchpad registers.
 
-BIOS setting on Intel Skylake
------------------------------
+BIOS setting on Intel Xeon
+--------------------------
 
-Intel Non-transparent Bridge needs special BIOS setting. Since the PMD only
-supports Intel Skylake platform, introduce BIOS setting here. The referencce
-is https://www.intel.com/content/dam/support/us/en/documents/server-products/Intel_Xeon_Processor_Scalable_Family_BIOS_User_Guide.pdf
+Intel Non-transparent Bridge needs special BIOS setting. The referencce for
+Skylake is https://www.intel.com/content/dam/support/us/en/documents/server-products/Intel_Xeon_Processor_Scalable_Family_BIOS_User_Guide.pdf
 
 - Set the needed PCIe port as NTB to NTB mode on both hosts.
-- Enable NTB bars and set bar size of bar 23 and bar 45 as 12-29 (2K-512M)
-  on both hosts. Note that bar size on both hosts should be the same.
+- Enable NTB bars and set bar size of bar 23 and bar 45 as 12-29 (4K-512M)
+  on both hosts (for Ice Lake, bar size can be set as 12-51, namely 4K-128PB).
+  Note that bar size on both hosts should be the same.
 - Disable split bars for both hosts.
 - Set crosslink control override as DSD/USP on one host, USD/DSP on
   another host.
@@ -151,4 +151,4 @@ like the following:
 Limitation
 ----------
 
-- This PMD only supports Intel Skylake platform.
+- This PMD only supports Intel Skylake and Ice Lake platforms.

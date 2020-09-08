@@ -80,6 +80,10 @@ New Features
   * Changed default link speed to unknown.
   * Added support for 200G link speed.
 
+* **Added Ice Lake (Gen4) support for Intel NTB.**
+
+  Added NTB device support (4th generation) for Intel Ice Lake platform.
+
 * **Extended flow-perf application.**
 
   * Started supporting user order instead of bit mask:
