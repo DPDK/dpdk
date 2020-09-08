@@ -134,6 +134,7 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 		printf("Line %d: Error, not all packets flushed. "
 				"Expected %u, got %u\n",
 				__LINE__, BURST, total_packet_count());
+		rte_mempool_put_bulk(p, (void *)bufs, BURST);
 		return -1;
 	}
 
@@ -160,6 +161,7 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 			printf("Line %d: Error, not all packets flushed. "
 					"Expected %u, got %u\n",
 					__LINE__, BURST, total_packet_count());
+			rte_mempool_put_bulk(p, (void *)bufs, BURST);
 			return -1;
 		}
 
@@ -188,6 +190,7 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 		printf("Line %d: Error, not all packets flushed. "
 				"Expected %u, got %u\n",
 				__LINE__, BURST, total_packet_count());
+		rte_mempool_put_bulk(p, (void *)bufs, BURST);
 		return -1;
 	}
 
@@ -243,6 +246,7 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 	if (num_returned != BIG_BATCH) {
 		printf("line %d: Missing packets, expected %d\n",
 				__LINE__, num_returned);
+		rte_mempool_put_bulk(p, (void *)many_bufs, BIG_BATCH);
 		return -1;
 	}
 
@@ -257,6 +261,7 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 
 		if (j == BIG_BATCH) {
 			printf("Error: could not find source packet #%u\n", i);
+			rte_mempool_put_bulk(p, (void *)many_bufs, BIG_BATCH);
 			return -1;
 		}
 	}
