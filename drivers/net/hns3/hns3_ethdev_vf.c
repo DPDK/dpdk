@@ -915,7 +915,6 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_RX_OFFLOAD_JUMBO_FRAME |
 				 DEV_RX_OFFLOAD_RSS_HASH |
 				 DEV_RX_OFFLOAD_TCP_LRO);
-	info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 	info->tx_offload_capa = (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 				 DEV_TX_OFFLOAD_IPV4_CKSUM |
 				 DEV_TX_OFFLOAD_TCP_CKSUM |
@@ -926,7 +925,7 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 				 DEV_TX_OFFLOAD_GRE_TNL_TSO |
 				 DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
-				 info->tx_queue_offload_capa |
+				 DEV_TX_OFFLOAD_MBUF_FAST_FREE |
 				 hns3_txvlan_cap_get(hw));
 
 	info->rx_desc_lim = (struct rte_eth_desc_lim) {
