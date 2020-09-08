@@ -666,7 +666,7 @@ static void hn_rndis_rx_data(struct hn_rx_queue *rxq,
 			     struct hn_rx_bufinfo *rxb,
 			     void *data, uint32_t dlen)
 {
-	unsigned int data_off, data_len, total_len;
+	unsigned int data_off, data_len;
 	unsigned int pktinfo_off, pktinfo_len;
 	const struct rndis_packet_msg *pkt = data;
 	struct hn_rxinfo info = {
@@ -712,8 +712,8 @@ static void hn_rndis_rx_data(struct hn_rx_queue *rxq,
 			goto error;
 	}
 
-	if (__builtin_add_overflow(data_off, data_len, &total_len) ||
-	    total_len > pkt->len)
+	/* overflow check */
+	if (data_len > data_len + data_off || data_len + data_off > pkt->len)
 		goto error;
 
 	if (unlikely(data_len < RTE_ETHER_HDR_LEN))
