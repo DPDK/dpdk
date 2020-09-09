@@ -2870,7 +2870,7 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 			return RTE_ETH_RX_DESC_DONE;
 	}
 	rx_buf = rxr->rx_buf_ring[cons];
-	if (rx_buf == NULL)
+	if (rx_buf == NULL || rx_buf == &rxq->fake_mbuf)
 		return RTE_ETH_RX_DESC_UNAVAIL;
 
 

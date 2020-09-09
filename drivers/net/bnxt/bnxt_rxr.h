@@ -167,6 +167,9 @@ static inline uint16_t bnxt_tpa_start_agg_id(struct bnxt *bp,
 
 #define BNXT_RX_POST_THRESH	32
 
+/* Number of descriptors to process per inner loop in vector mode. */
+#define RTE_BNXT_DESCS_PER_LOOP		4U
+
 enum pkt_hash_types {
 	PKT_HASH_TYPE_NONE,	/* Undefined type */
 	PKT_HASH_TYPE_L2,	/* Input: src_MAC, dest_MAC */

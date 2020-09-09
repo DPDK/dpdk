@@ -931,7 +931,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			struct rte_mbuf **rx_buf = &rxr->rx_buf_ring[i];
 
 			/* Buffer already allocated for this index. */
-			if (*rx_buf != NULL)
+			if (*rx_buf != NULL && *rx_buf != &rxq->fake_mbuf)
 				continue;
 
 			/* This slot is empty. Alloc buffer for Rx */
@@ -1025,7 +1025,11 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	ring->ring_mask = ring->ring_size - 1;
 	ring->bd = (void *)rxr->rx_desc_ring;
 	ring->bd_dma = rxr->rx_desc_mapping;
-	ring->vmem_size = ring->ring_size * sizeof(struct rte_mbuf *);
+
+	/* Allocate extra rx ring entries for vector rx. */
+	ring->vmem_size = sizeof(struct rte_mbuf *) *
+				(ring->ring_size + RTE_BNXT_DESCS_PER_LOOP);
+
 	ring->vmem = (void **)&rxr->rx_buf_ring;
 	ring->fw_ring_id = INVALID_HW_RING_ID;
 
@@ -1134,6 +1138,12 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 		}
 		rxr->rx_prod = prod;
 		prod = RING_NEXT(rxr->rx_ring_struct, prod);
+	}
+
+	/* Initialize dummy mbuf pointers for vector mode rx. */
+	for (i = ring->ring_size;
+	     i < ring->ring_size + RTE_BNXT_DESCS_PER_LOOP; i++) {
+		rxr->rx_buf_ring[i] = &rxq->fake_mbuf;
 	}
 
 	ring = rxr->ag_ring_struct;

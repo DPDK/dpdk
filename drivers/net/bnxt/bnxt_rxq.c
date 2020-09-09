@@ -211,7 +211,8 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 		for (i = 0;
 		     i < rxq->rx_ring->rx_ring_struct->ring_size; i++) {
 			if (sw_ring[i]) {
-				rte_pktmbuf_free_seg(sw_ring[i]);
+				if (sw_ring[i] != &rxq->fake_mbuf)
+					rte_pktmbuf_free_seg(sw_ring[i]);
 				sw_ring[i] = NULL;
 			}
 		}

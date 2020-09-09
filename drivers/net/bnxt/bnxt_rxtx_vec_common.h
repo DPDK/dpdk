@@ -9,8 +9,6 @@
 #include "bnxt_rxq.h"
 #include "bnxt_rxr.h"
 
-#define RTE_BNXT_DESCS_PER_LOOP		4U
-
 #define TX_BD_FLAGS_CMPL ((1 << TX_BD_LONG_FLAGS_BD_CNT_SFT) | \
 			  TX_BD_SHORT_FLAGS_COAL_NOW | \
 			  TX_BD_SHORT_TYPE_TX_BD_SHORT | \
@@ -73,6 +71,8 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 	if (rte_mempool_get_bulk(rxq->mb_pool, (void *)rx_bufs, nb) < 0) {
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed += nb;
 
+		for (i = 0; i < nb; i++)
+			rx_bufs[i] = &rxq->fake_mbuf;
 		return;
 	}
 
