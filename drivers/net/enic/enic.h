@@ -106,7 +106,6 @@ struct rte_flow {
 
 /* Per-instance private data structure */
 struct enic {
-	struct enic *next;
 	struct rte_pci_device *pdev;
 	struct vnic_enet_config config;
 	struct vnic_dev_bar bar0;
@@ -296,10 +295,6 @@ static inline unsigned int enic_vnic_rq_count(struct enic *enic)
 
 static inline unsigned int enic_cq_rq(__rte_unused struct enic *enic, unsigned int rq)
 {
-	/* Scatter rx uses two receive queues together with one
-	 * completion queue, so the completion queue number is no
-	 * longer the same as the rq number.
-	 */
 	return rq;
 }
 
