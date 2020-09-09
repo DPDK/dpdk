@@ -1295,6 +1295,8 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	eth_dev->data->dev_started = 0;
+	eth_dev->data->scattered_rx = 0;
+
 	/* Prevent crashes when queues are still in use */
 	eth_dev->rx_pkt_burst = &bnxt_dummy_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_dummy_xmit_pkts;
@@ -2693,14 +2695,12 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	new_pkt_size = new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
 		       VLAN_TAG_SIZE * BNXT_NUM_VLANS;
 
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/*
-	 * If vector-mode tx/rx is active, disallow any MTU change that would
-	 * require scattered receive support.
+	 * Disallow any MTU change that would require scattered receive support
+	 * if it is not already enabled.
 	 */
 	if (eth_dev->data->dev_started &&
-	    (eth_dev->rx_pkt_burst == bnxt_recv_pkts_vec ||
-	     eth_dev->tx_pkt_burst == bnxt_xmit_pkts_vec) &&
+	    !eth_dev->data->scattered_rx &&
 	    (new_pkt_size >
 	     eth_dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
 		PMD_DRV_LOG(ERR,
@@ -2708,7 +2708,6 @@ int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		PMD_DRV_LOG(ERR, "Stop port before changing MTU.\n");
 		return -EINVAL;
 	}
-#endif
 
 	if (new_mtu > RTE_ETHER_MTU) {
 		bp->flags |= BNXT_FLAG_JUMBO;
