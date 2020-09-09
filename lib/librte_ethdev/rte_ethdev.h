@@ -4567,6 +4567,7 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
  *  - (-ENODEV) if *port_id* invalid.
  *  - (-ENOTSUP) if the device does not support this function
  */
+__rte_deprecated
 static inline int
 rte_eth_rx_descriptor_done(uint16_t port_id, uint16_t queue_id, uint16_t offset)
 {

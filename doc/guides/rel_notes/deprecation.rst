@@ -181,7 +181,7 @@ Deprecation Notices
   https://mails.dpdk.org/archives/dev/2020-July/176135.html.
 
 * ethdev: ``rx_descriptor_done`` dev_ops and ``rte_eth_rx_descriptor_done``
-  will be deprecated in 20.11 and will be removed in 21.11.
+  will be removed in 21.11.
   Existing ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
   APIs can be used as replacement.
 

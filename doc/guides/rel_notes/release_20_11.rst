@@ -124,6 +124,8 @@ API Changes
 * ethdev: Removed the ``kdrv`` field in the ethdev ``rte_eth_dev_data``
   structure as it gave no useful abstracted information to the applications.
 
+* ethdev: ``rte_eth_rx_descriptor_done()`` API has been deprecated.
+
 * rawdev: Added a structure size parameter to the functions
   ``rte_rawdev_queue_setup()``, ``rte_rawdev_queue_conf_get()``,
   ``rte_rawdev_info_get()`` and ``rte_rawdev_configure()``,
