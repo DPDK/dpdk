@@ -43,15 +43,19 @@ hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
 
 	if (rxq->rx_rearm_nb == 0) {
 		for (i = 0; i < rxq->nb_rx_desc; i++) {
-			if (rxq->sw_ring[i].mbuf != NULL)
+			if (rxq->sw_ring[i].mbuf != NULL) {
 				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+				rxq->sw_ring[i].mbuf = NULL;
+			}
 		}
 	} else {
 		for (i = rxq->next_to_use;
 		     i != rxq->rx_rearm_start;
 		     i = (i + 1) % rxq->nb_rx_desc) {
-			if (rxq->sw_ring[i].mbuf != NULL)
+			if (rxq->sw_ring[i].mbuf != NULL) {
 				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+				rxq->sw_ring[i].mbuf = NULL;
+			}
 		}
 	}
 
@@ -2368,37 +2372,24 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 	}
 }
 
-static int
-hns3_tx_alloc_mbufs(struct hns3_tx_queue *txq, struct rte_mempool *mb_pool,
-		    uint16_t nb_new_buf, struct rte_mbuf **alloc_mbuf)
+static inline int
+hns3_tx_alloc_mbufs(struct rte_mempool *mb_pool, uint16_t nb_new_buf,
+			struct rte_mbuf **alloc_mbuf)
 {
-	struct rte_mbuf *new_mbuf = NULL;
-	struct rte_eth_dev *dev;
-	struct rte_mbuf *temp;
-	struct hns3_hw *hw;
+#define MAX_NON_TSO_BD_PER_PKT 18
+	struct rte_mbuf *pkt_segs[MAX_NON_TSO_BD_PER_PKT];
 	uint16_t i;
 
 	/* Allocate enough mbufs */
-	for (i = 0; i < nb_new_buf; i++) {
-		temp = rte_pktmbuf_alloc(mb_pool);
-		if (unlikely(temp == NULL)) {
-			dev = &rte_eth_devices[txq->port_id];
-			hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-			hns3_err(hw, "Failed to alloc TX mbuf port_id=%d,"
-				     "queue_id=%d in reassemble tx pkts.",
-				     txq->port_id, txq->queue_id);
-			rte_pktmbuf_free(new_mbuf);
-			return -ENOMEM;
-		}
-		temp->next = new_mbuf;
-		new_mbuf = temp;
-	}
-
-	if (new_mbuf == NULL)
+	if (rte_mempool_get_bulk(mb_pool, (void **)pkt_segs, nb_new_buf))
 		return -ENOMEM;
 
-	new_mbuf->nb_segs = nb_new_buf;
-	*alloc_mbuf = new_mbuf;
+	for (i = 0; i < nb_new_buf - 1; i++)
+		pkt_segs[i]->next = pkt_segs[i + 1];
+
+	pkt_segs[nb_new_buf - 1]->next = NULL;
+	pkt_segs[0]->nb_segs = nb_new_buf;
+	*alloc_mbuf = pkt_segs[0];
 
 	return 0;
 }
@@ -2418,10 +2409,8 @@ hns3_pktmbuf_copy_hdr(struct rte_mbuf *new_pkt, struct rte_mbuf *old_pkt)
 }
 
 static int
-hns3_reassemble_tx_pkts(void *tx_queue, struct rte_mbuf *tx_pkt,
-			struct rte_mbuf **new_pkt)
+hns3_reassemble_tx_pkts(struct rte_mbuf *tx_pkt, struct rte_mbuf **new_pkt)
 {
-	struct hns3_tx_queue *txq = tx_queue;
 	struct rte_mempool *mb_pool;
 	struct rte_mbuf *new_mbuf;
 	struct rte_mbuf *temp_new;
@@ -2433,7 +2422,6 @@ hns3_reassemble_tx_pkts(void *tx_queue, struct rte_mbuf *tx_pkt,
 	uint16_t len_s;
 	uint16_t len_d;
 	uint16_t len;
-	uint16_t i;
 	int ret;
 	char *s;
 	char *d;
@@ -2449,7 +2437,7 @@ hns3_reassemble_tx_pkts(void *tx_queue, struct rte_mbuf *tx_pkt,
 		last_buf_len = buf_size;
 
 	/* Allocate enough mbufs */
-	ret = hns3_tx_alloc_mbufs(txq, mb_pool, nb_new_buf, &new_mbuf);
+	ret = hns3_tx_alloc_mbufs(mb_pool, nb_new_buf, &new_mbuf);
 	if (ret)
 		return ret;
 
@@ -2458,12 +2446,9 @@ hns3_reassemble_tx_pkts(void *tx_queue, struct rte_mbuf *tx_pkt,
 	s = rte_pktmbuf_mtod(temp, char *);
 	len_s = rte_pktmbuf_data_len(temp);
 	temp_new = new_mbuf;
-	for (i = 0; i < nb_new_buf; i++) {
+	while (temp != NULL && temp_new != NULL) {
 		d = rte_pktmbuf_mtod(temp_new, char *);
-		if (i < nb_new_buf - 1)
-			buf_len = buf_size;
-		else
-			buf_len = last_buf_len;
+		buf_len = temp_new->next == NULL ? last_buf_len : buf_size;
 		len_d = buf_len;
 
 		while (len_d) {
@@ -2924,7 +2909,7 @@ hns3_check_non_tso_pkt(uint16_t nb_buf, struct rte_mbuf **m_seg,
 
 	if (unlikely(nb_buf > HNS3_MAX_NON_TSO_BD_PER_PKT)) {
 		txq->exceed_limit_bd_pkt_cnt++;
-		ret = hns3_reassemble_tx_pkts(txq, tx_pkt, &new_pkt);
+		ret = hns3_reassemble_tx_pkts(tx_pkt, &new_pkt);
 		if (ret) {
 			txq->exceed_limit_bd_reassem_fail++;
 			return ret;
