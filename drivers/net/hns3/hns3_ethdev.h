@@ -708,14 +708,39 @@ struct hns3_adapter {
 
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
+/*
+ * Because hardware always access register in little-endian mode based on hns3
+ * network engine, so driver should also call rte_cpu_to_le_32 to convert data
+ * in little-endian mode before writing register and call rte_le_to_cpu_32 to
+ * convert data after reading from register.
+ *
+ * Here the driver encapsulates the data conversion operation in the register
+ * read/write operation function as below:
+ *   hns3_write_reg
+ *   hns3_write_reg_opt
+ *   hns3_read_reg
+ * Therefore, when calling these functions, conversion is not required again.
+ */
 static inline void hns3_write_reg(void *base, uint32_t reg, uint32_t value)
 {
-	rte_write32(value, (volatile void *)((char *)base + reg));
+	rte_write32(rte_cpu_to_le_32(value),
+		    (volatile void *)((char *)base + reg));
+}
+
+/*
+ * The optimized function for writing registers used in the '.rx_pkt_burst' and
+ * '.tx_pkt_burst' ops implementation function.
+ */
+static inline void hns3_write_reg_opt(volatile void *addr, uint32_t value)
+{
+	rte_io_wmb();
+	rte_write32_relaxed(rte_cpu_to_le_32(value), addr);
 }
 
 static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
 {
-	return rte_read32((volatile void *)((char *)base + reg));
+	uint32_t read_val = rte_read32((volatile void *)((char *)base + reg));
+	return rte_le_to_cpu_32(read_val);
 }
 
 #define hns3_write_dev(a, reg, value) \

@@ -1323,6 +1323,8 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->configured = true;
 	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
+	rxq->io_head_reg = (volatile void *)((char *)rxq->io_base +
+			   HNS3_RING_RX_HEAD_REG);
 	rxq->rx_buf_len = rx_buf_size;
 	rxq->l2_errors = 0;
 	rxq->pkt_len_errors = 0;
@@ -1470,16 +1472,6 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		return ptypes;
 
 	return NULL;
-}
-
-static void
-hns3_clean_rx_buffers(struct hns3_rx_queue *rxq, int count)
-{
-	rxq->next_to_use += count;
-	if (rxq->next_to_use >= rxq->nb_rx_desc)
-		rxq->next_to_use -= rxq->nb_rx_desc;
-
-	hns3_write_dev(rxq, HNS3_RING_RX_HEAD_REG, count);
 }
 
 static int
@@ -1844,7 +1836,7 @@ pkt_err:
 
 	rxq->rx_free_hold += nb_rx_bd;
 	if (rxq->rx_free_hold > rxq->rx_free_thresh) {
-		hns3_clean_rx_buffers(rxq, rxq->rx_free_hold);
+		hns3_write_reg_opt(rxq->io_head_reg, rxq->rx_free_hold);
 		rxq->rx_free_hold = 0;
 	}
 

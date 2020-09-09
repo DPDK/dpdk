@@ -231,6 +231,7 @@ struct hns3_entry {
 
 struct hns3_rx_queue {
 	void *io_base;
+	volatile void *io_head_reg;
 	struct hns3_adapter *hns;
 	struct rte_mempool *mb_pool;
 	struct hns3_desc *rx_ring;
