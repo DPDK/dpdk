@@ -608,7 +608,8 @@ int enic_enable(struct enic *enic)
 		dev_warning(enic, "Init of hash table for clsf failed."\
 			"Flow director feature will not work\n");
 
-	if (enic_fm_init(enic))
+	/* Initialize flowman if not already initialized during probe */
+	if (enic->fm == NULL && enic_fm_init(enic))
 		dev_warning(enic, "Init of flowman failed.\n");
 
 	for (index = 0; index < enic->rq_count; index++) {
@@ -1268,6 +1269,18 @@ int enic_setup_finish(struct enic *enic)
 {
 	enic_init_soft_stats(enic);
 
+	/* switchdev: enable promisc mode on PF */
+	if (enic->switchdev_mode) {
+		vnic_dev_packet_filter(enic->vdev,
+				       0 /* directed  */,
+				       0 /* multicast */,
+				       0 /* broadcast */,
+				       1 /* promisc   */,
+				       0 /* allmulti  */);
+		enic->promisc = 1;
+		enic->allmulti = 0;
+		return 0;
+	}
 	/* Default conf */
 	vnic_dev_packet_filter(enic->vdev,
 		1 /* directed  */,
@@ -1393,6 +1406,11 @@ int enic_set_vlan_strip(struct enic *enic)
 
 int enic_add_packet_filter(struct enic *enic)
 {
+	/* switchdev ignores packet filters */
+	if (enic->switchdev_mode) {
+		ENICPMD_LOG(DEBUG, " switchdev: ignore packet filter");
+		return 0;
+	}
 	/* Args -> directed, multicast, broadcast, promisc, allmulti */
 	return vnic_dev_packet_filter(enic->vdev, 1, 1, 1,
 		enic->promisc, enic->allmulti);
@@ -1785,8 +1803,24 @@ static int enic_dev_init(struct enic *enic)
 		}
 	}
 
+	if (enic_fm_init(enic))
+		dev_warning(enic, "Init of flowman failed.\n");
 	return 0;
 
+}
+
+static void lock_devcmd(void *priv)
+{
+	struct enic *enic = priv;
+
+	rte_spinlock_lock(&enic->devcmd_lock);
+}
+
+static void unlock_devcmd(void *priv)
+{
+	struct enic *enic = priv;
+
+	rte_spinlock_unlock(&enic->devcmd_lock);
 }
 
 int enic_probe(struct enic *enic)
@@ -1864,6 +1898,11 @@ int enic_probe(struct enic *enic)
 		goto err_out_dev_close;
 	}
 
+	/* Use a PF spinlock to serialize devcmd from PF and VF representors */
+	if (enic->switchdev_mode) {
+		rte_spinlock_init(&enic->devcmd_lock);
+		vnic_register_lock(enic->vdev, lock_devcmd, unlock_devcmd);
+	}
 	return 0;
 
 err_out_dev_close:

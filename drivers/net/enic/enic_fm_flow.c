@@ -1073,7 +1073,8 @@ enic_fm_find_vnic(struct enic *enic, const struct rte_pci_addr *addr,
 	args[1] = bdf;
 	rc = vnic_dev_flowman_cmd(enic->vdev, args, 2);
 	if (rc != 0) {
-		ENICPMD_LOG(ERR, "allocating counters rc=%d", rc);
+		/* Expected to fail if BDF is not on the adapter */
+		ENICPMD_LOG(DEBUG, "cannot find vnic handle: rc=%d", rc);
 		return rc;
 	}
 	*handle = args[0];
@@ -2520,6 +2521,58 @@ enic_fm_destroy(struct enic *enic)
 	fm->cmd.va = NULL;
 	free(fm);
 	enic->fm = NULL;
+}
+
+int
+enic_fm_allocate_switch_domain(struct enic *pf)
+{
+	const struct rte_pci_addr *cur_a, *prev_a;
+	struct rte_eth_dev *dev;
+	struct enic *cur, *prev;
+	uint16_t domain_id;
+	uint64_t vnic_h;
+	uint16_t pid;
+	int ret;
+
+	ENICPMD_FUNC_TRACE();
+	if (enic_is_vf_rep(pf))
+		return -EINVAL;
+	cur = pf;
+	cur_a = &RTE_ETH_DEV_TO_PCI(cur->rte_dev)->addr;
+	/* Go through ports and find another PF that is on the same adapter */
+	RTE_ETH_FOREACH_DEV(pid) {
+		dev = &rte_eth_devices[pid];
+		if (!dev_is_enic(dev))
+			continue;
+		if (dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+			continue;
+		if (dev == cur->rte_dev)
+			continue;
+		/* dev is another PF. Is it on the same adapter? */
+		prev = pmd_priv(dev);
+		prev_a = &RTE_ETH_DEV_TO_PCI(dev)->addr;
+		if (!enic_fm_find_vnic(cur, prev_a, &vnic_h)) {
+			ENICPMD_LOG(DEBUG, "Port %u (PF BDF %x:%x:%x) and port %u (PF BDF %x:%x:%x domain %u) are on the same VIC",
+				cur->rte_dev->data->port_id,
+				cur_a->bus, cur_a->devid, cur_a->function,
+				dev->data->port_id,
+				prev_a->bus, prev_a->devid, prev_a->function,
+				prev->switch_domain_id);
+			cur->switch_domain_id = prev->switch_domain_id;
+			return 0;
+		}
+	}
+	ret = rte_eth_switch_domain_alloc(&domain_id);
+	if (ret) {
+		ENICPMD_LOG(WARNING, "failed to allocate switch domain for device %d",
+			    ret);
+	}
+	cur->switch_domain_id = domain_id;
+	ENICPMD_LOG(DEBUG, "Port %u (PF BDF %x:%x:%x) is the 1st PF on the VIC. Allocated switch domain id %u",
+		    cur->rte_dev->data->port_id,
+		    cur_a->bus, cur_a->devid, cur_a->function,
+		    domain_id);
+	return ret;
 }
 
 const struct rte_flow_ops enic_fm_flow_ops = {

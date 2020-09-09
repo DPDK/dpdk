@@ -210,7 +210,37 @@ struct enic {
 
 	/* Flow manager API */
 	struct enic_flowman *fm;
+	/* switchdev */
+	uint8_t switchdev_mode;
+	uint16_t switch_domain_id;
+	uint16_t max_vf_id;
+	/*
+	 * Lock to serialize devcmds from PF, VF representors as they all share
+	 * the same PF devcmd instance in firmware.
+	 */
+	rte_spinlock_t devcmd_lock;
 };
+
+struct enic_vf_representor {
+	struct enic enic;
+	struct vnic_enet_config config;
+	struct rte_eth_dev *eth_dev;
+	struct rte_ether_addr mac_addr;
+	struct rte_pci_addr bdf;
+	struct enic *pf;
+	uint16_t switch_domain_id;
+	uint16_t vf_id;
+	int allmulti;
+	int promisc;
+};
+
+#define VF_ENIC_TO_VF_REP(vf_enic) \
+	container_of(vf_enic, struct enic_vf_representor, enic)
+
+static inline int enic_is_vf_rep(struct enic *enic)
+{
+	return !!(enic->rte_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR);
+}
 
 /* Compute ethdev's max packet size from MTU */
 static inline uint32_t enic_mtu_to_max_rx_pktlen(uint32_t mtu)
@@ -364,6 +394,10 @@ void enic_pick_rx_handler(struct rte_eth_dev *eth_dev);
 void enic_pick_tx_handler(struct rte_eth_dev *eth_dev);
 void enic_fdir_info(struct enic *enic);
 void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
+int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params);
+int enic_vf_representor_uninit(struct rte_eth_dev *ethdev);
+int enic_fm_allocate_switch_domain(struct enic *pf);
 extern const struct rte_flow_ops enic_flow_ops;
 extern const struct rte_flow_ops enic_fm_flow_ops;
+
 #endif /* _ENIC_H_ */

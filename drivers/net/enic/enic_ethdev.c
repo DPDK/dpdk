@@ -68,6 +68,7 @@ static const struct vic_speed_capa {
 #define ENIC_DEVARG_ENABLE_AVX2_RX "enable-avx2-rx"
 #define ENIC_DEVARG_GENEVE_OPT "geneve-opt"
 #define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
+#define ENIC_DEVARG_REPRESENTOR "representor"
 
 RTE_LOG_REGISTER(enic_pmd_logtype, pmd.net.enic, INFO);
 
@@ -1234,6 +1235,7 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 		ENIC_DEVARG_ENABLE_AVX2_RX,
 		ENIC_DEVARG_GENEVE_OPT,
 		ENIC_DEVARG_IG_VLAN_REWRITE,
+		ENIC_DEVARG_REPRESENTOR,
 		NULL};
 	struct enic *enic = pmd_priv(dev);
 	struct rte_kvargs *kvlist;
@@ -1264,10 +1266,9 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	return 0;
 }
 
-/* Initialize the driver
- * It returns 0 on success.
- */
-static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
+/* Initialize the driver for PF */
+static int eth_enic_dev_init(struct rte_eth_dev *eth_dev,
+			     void *init_params __rte_unused)
 {
 	struct rte_pci_device *pdev;
 	struct rte_pci_addr *addr;
@@ -1275,7 +1276,6 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 	int err;
 
 	ENICPMD_FUNC_TRACE();
-
 	eth_dev->dev_ops = &enicpmd_eth_dev_ops;
 	eth_dev->rx_queue_count = enicpmd_dev_rx_queue_count;
 	eth_dev->rx_pkt_burst = &enic_recv_pkts;
@@ -1304,19 +1304,108 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 	err = enic_check_devargs(eth_dev);
 	if (err)
 		return err;
-	return enic_probe(enic);
+	err = enic_probe(enic);
+	if (!err && enic->fm) {
+		err = enic_fm_allocate_switch_domain(enic);
+		if (err)
+			ENICPMD_LOG(ERR, "failed to allocate switch domain id");
+	}
+	return err;
+}
+
+static int eth_enic_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct enic *enic = pmd_priv(eth_dev);
+	int err;
+
+	ENICPMD_FUNC_TRACE();
+	eth_dev->device = NULL;
+	eth_dev->intr_handle = NULL;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+	err = rte_eth_switch_domain_free(enic->switch_domain_id);
+	if (err)
+		ENICPMD_LOG(WARNING, "failed to free switch domain: %d", err);
+	return 0;
 }
 
 static int eth_enic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct enic),
-		eth_enicpmd_dev_init);
+	char name[RTE_ETH_NAME_MAX_LEN];
+	struct rte_eth_devargs eth_da = { .nb_representor_ports = 0 };
+	struct rte_eth_dev *pf_ethdev;
+	struct enic *pf_enic;
+	int i, retval;
+
+	ENICPMD_FUNC_TRACE();
+	if (pci_dev->device.devargs) {
+		retval = rte_eth_devargs_parse(pci_dev->device.devargs->args,
+				&eth_da);
+		if (retval)
+			return retval;
+	}
+	retval = rte_eth_dev_create(&pci_dev->device, pci_dev->device.name,
+		sizeof(struct enic),
+		eth_dev_pci_specific_init, pci_dev,
+		eth_enic_dev_init, NULL);
+	if (retval || eth_da.nb_representor_ports < 1)
+		return retval;
+
+	/* Probe VF representor */
+	pf_ethdev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (pf_ethdev == NULL)
+		return -ENODEV;
+	/* Representors require flowman */
+	pf_enic = pmd_priv(pf_ethdev);
+	if (pf_enic->fm == NULL) {
+		ENICPMD_LOG(ERR, "VF representors require flowman");
+		return -ENOTSUP;
+	}
+	/*
+	 * For now representors imply switchdev, as firmware does not support
+	 * legacy mode SR-IOV
+	 */
+	pf_enic->switchdev_mode = 1;
+	/* Calculate max VF ID before initializing representor*/
+	pf_enic->max_vf_id = 0;
+	for (i = 0; i < eth_da.nb_representor_ports; i++) {
+		pf_enic->max_vf_id = RTE_MAX(pf_enic->max_vf_id,
+					     eth_da.representor_ports[i]);
+	}
+	for (i = 0; i < eth_da.nb_representor_ports; i++) {
+		struct enic_vf_representor representor;
+
+		representor.vf_id = eth_da.representor_ports[i];
+				representor.switch_domain_id =
+			pmd_priv(pf_ethdev)->switch_domain_id;
+		representor.pf = pmd_priv(pf_ethdev);
+		snprintf(name, sizeof(name), "net_%s_representor_%d",
+			pci_dev->device.name, eth_da.representor_ports[i]);
+		retval = rte_eth_dev_create(&pci_dev->device, name,
+			sizeof(struct enic_vf_representor), NULL, NULL,
+			enic_vf_representor_init, &representor);
+		if (retval) {
+			ENICPMD_LOG(ERR, "failed to create enic vf representor %s",
+				    name);
+			return retval;
+		}
+	}
+	return 0;
 }
 
 static int eth_enic_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+	struct rte_eth_dev *ethdev;
+
+	ENICPMD_FUNC_TRACE();
+	ethdev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (!ethdev)
+		return -ENODEV;
+	if (ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+		return rte_eth_dev_destroy(ethdev, enic_vf_representor_uninit);
+	else
+		return rte_eth_dev_destroy(ethdev, eth_enic_dev_uninit);
 }
 
 static struct rte_pci_driver rte_enic_pmd = {
