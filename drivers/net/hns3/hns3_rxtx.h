@@ -17,6 +17,18 @@
 #define HNS3_DEFAULT_TX_RS_THRESH	32
 #define HNS3_TX_FAST_FREE_AHEAD		64
 
+#define HNS3_DEFAULT_RX_BURST		32
+#if (HNS3_DEFAULT_RX_BURST > 64)
+#error "PMD HNS3: HNS3_DEFAULT_RX_BURST must <= 64\n"
+#endif
+#define HNS3_DEFAULT_DESCS_PER_LOOP	4
+#define HNS3_SVE_DEFAULT_DESCS_PER_LOOP	8
+#if (HNS3_DEFAULT_DESCS_PER_LOOP > HNS3_SVE_DEFAULT_DESCS_PER_LOOP)
+#define HNS3_VECTOR_RX_OFFSET_TABLE_LEN	HNS3_DEFAULT_DESCS_PER_LOOP
+#else
+#define HNS3_VECTOR_RX_OFFSET_TABLE_LEN	HNS3_SVE_DEFAULT_DESCS_PER_LOOP
+#endif
+#define HNS3_DEFAULT_RXQ_REARM_THRESH	64
 #define HNS3_UINT8_BIT			8
 #define HNS3_UINT16_BIT			16
 #define HNS3_UINT32_BIT			32
@@ -236,7 +248,13 @@ struct hns3_desc {
 					uint16_t ot_vlan_tag;
 				};
 			};
-			uint32_t bd_base_info;
+			union {
+				uint32_t bd_base_info;
+				struct {
+					uint16_t bdtype_vld_udp0;
+					uint16_t fe_lum_crcp_l3l4p;
+				};
+			};
 		} rx;
 	};
 } __rte_packed;
@@ -270,7 +288,8 @@ struct hns3_rx_queue {
 	uint16_t rx_free_thresh;
 	uint16_t next_to_use;    /* index of next BD to be polled */
 	uint16_t rx_free_hold;   /* num of BDs waited to passed to hardware */
-
+	uint16_t rx_rearm_start; /* index of BD that driver re-arming from */
+	uint16_t rx_rearm_nb;    /* number of remaining BDs to be re-armed */
 	/*
 	 * port based vlan configuration state.
 	 * value range: HNS3_PORT_BASE_VLAN_DISABLE / HNS3_PORT_BASE_VLAN_ENABLE
@@ -292,6 +311,11 @@ struct hns3_rx_queue {
 
 	struct rte_mbuf *bulk_mbuf[HNS3_BULK_ALLOC_MBUF_NUM];
 	uint16_t bulk_mbuf_num;
+
+	/* offset_table: used for vector, to solve execute re-order problem */
+	uint8_t offset_table[HNS3_VECTOR_RX_OFFSET_TABLE_LEN + 1];
+	uint64_t mbuf_initializer; /* value to init mbufs used with vector rx */
+	struct rte_mbuf fake_mbuf; /* fake mbuf used with vector rx */
 };
 
 struct hns3_tx_queue {
@@ -554,6 +578,8 @@ int hns3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 void hns3_enable_all_queues(struct hns3_hw *hw, bool en);
 int hns3_start_queues(struct hns3_adapter *hns, bool reset_queue);
 int hns3_stop_queues(struct hns3_adapter *hns, bool reset_queue);
+int hns3_rxq_iterate(struct rte_eth_dev *dev,
+		 int (*callback)(struct hns3_rx_queue *, void *), void *arg);
 void hns3_dev_release_mbufs(struct hns3_adapter *hns);
 int hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 			unsigned int socket, const struct rte_eth_rxconf *conf,
@@ -564,9 +590,12 @@ uint16_t hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
 uint16_t hns3_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts);
+uint16_t hns3_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+			    uint16_t nb_pkts);
 int hns3_rx_burst_mode_get(struct rte_eth_dev *dev,
 			   __rte_unused uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
+int hns3_rx_check_vec_support(struct rte_eth_dev *dev);
 uint16_t hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 uint16_t hns3_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -594,7 +623,9 @@ int hns3_restore_gro_conf(struct hns3_hw *hw);
 void hns3_update_all_queues_pvid_state(struct hns3_hw *hw);
 void hns3_rx_scattered_reset(struct rte_eth_dev *dev);
 void hns3_rx_scattered_calc(struct rte_eth_dev *dev);
+int hns3_rx_check_vec_support(struct rte_eth_dev *dev);
 int hns3_tx_check_vec_support(struct rte_eth_dev *dev);
+void hns3_rxq_vec_setup(struct hns3_rx_queue *rxq);
 void hns3_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_rxq_info *qinfo);
 void hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,

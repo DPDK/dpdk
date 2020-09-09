@@ -41,9 +41,19 @@ hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
 	if (rxq->sw_ring == NULL)
 		return;
 
-	for (i = 0; i < rxq->nb_rx_desc; i++)
-		if (rxq->sw_ring[i].mbuf)
-			rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+	if (rxq->rx_rearm_nb == 0) {
+		for (i = 0; i < rxq->nb_rx_desc; i++) {
+			if (rxq->sw_ring[i].mbuf != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+		}
+	} else {
+		for (i = rxq->next_to_use;
+		     i != rxq->rx_rearm_start;
+		     i = (i + 1) % rxq->nb_rx_desc) {
+			if (rxq->sw_ring[i].mbuf != NULL)
+				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+		}
+	}
 
 	for (i = 0; i < rxq->bulk_mbuf_num; i++)
 		rte_pktmbuf_free_seg(rxq->bulk_mbuf[i]);
@@ -661,10 +671,13 @@ hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 	}
 
 	rxq->next_to_use = 0;
+	rxq->rx_rearm_start = 0;
 	rxq->rx_free_hold = 0;
+	rxq->rx_rearm_nb = 0;
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 	hns3_init_rx_queue_hw(rxq);
+	hns3_rxq_vec_setup(rxq);
 
 	return 0;
 }
@@ -678,6 +691,8 @@ hns3_fake_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 	rxq = (struct hns3_rx_queue *)hw->fkq_data.rx_queues[idx];
 	rxq->next_to_use = 0;
 	rxq->rx_free_hold = 0;
+	rxq->rx_rearm_start = 0;
+	rxq->rx_rearm_nb = 0;
 	hns3_init_rx_queue_hw(rxq);
 }
 
@@ -860,6 +875,40 @@ hns3_stop_queues(struct hns3_adapter *hns, bool reset_queue)
 	return 0;
 }
 
+/*
+ * Iterate over all Rx Queue, and call the callback() function for each Rx
+ * queue.
+ *
+ * @param[in] dev
+ *   The target eth dev.
+ * @param[in] callback
+ *   The function to call for each queue.
+ *   if callback function return nonzero will stop iterate and return it's value
+ * @param[in] arg
+ *   The arguments to provide the callback function with.
+ *
+ * @return
+ *   0 on success, otherwise with errno set.
+ */
+int
+hns3_rxq_iterate(struct rte_eth_dev *dev,
+		 int (*callback)(struct hns3_rx_queue *, void *), void *arg)
+{
+	uint32_t i;
+	int ret;
+
+	if (dev->data->rx_queues == NULL)
+		return -EINVAL;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		ret = callback(dev->data->rx_queues[i], arg);
+		if (ret != 0)
+			return ret;
+	}
+
+	return 0;
+}
+
 static void*
 hns3_alloc_rxq_and_dma_zone(struct rte_eth_dev *dev,
 			    struct hns3_queue_info *q_info)
@@ -880,7 +929,13 @@ hns3_alloc_rxq_and_dma_zone(struct rte_eth_dev *dev,
 	/* Allocate rx ring hardware descriptors. */
 	rxq->queue_id = q_info->idx;
 	rxq->nb_rx_desc = q_info->nb_desc;
-	rx_desc = rxq->nb_rx_desc * sizeof(struct hns3_desc);
+
+	/*
+	 * Allocate a litter more memory because rx vector functions
+	 * don't check boundaries each time.
+	 */
+	rx_desc = (rxq->nb_rx_desc + HNS3_DEFAULT_RX_BURST) *
+			sizeof(struct hns3_desc);
 	rx_mz = rte_eth_dma_zone_reserve(dev, q_info->ring_name, q_info->idx,
 					 rx_desc, HNS3_RING_BASE_ALIGN,
 					 q_info->socket_id);
@@ -1329,7 +1384,8 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		conf->rx_free_thresh : HNS3_DEFAULT_RX_FREE_THRESH;
 	rxq->rx_deferred_start = conf->rx_deferred_start;
 
-	rx_entry_len = sizeof(struct hns3_entry) * rxq->nb_rx_desc;
+	rx_entry_len = (rxq->nb_rx_desc + HNS3_DEFAULT_RX_BURST) *
+			sizeof(struct hns3_entry);
 	rxq->sw_ring = rte_zmalloc_socket("hns3 RX sw ring", rx_entry_len,
 					  RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq->sw_ring == NULL) {
@@ -1340,6 +1396,8 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 
 	rxq->next_to_use = 0;
 	rxq->rx_free_hold = 0;
+	rxq->rx_rearm_start = 0;
+	rxq->rx_rearm_nb = 0;
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 	rxq->port_id = dev->data->port_id;
@@ -1431,7 +1489,8 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	};
 
 	if (dev->rx_pkt_burst == hns3_recv_pkts ||
-	    dev->rx_pkt_burst == hns3_recv_scattered_pkts)
+	    dev->rx_pkt_burst == hns3_recv_scattered_pkts ||
+	    dev->rx_pkt_burst == hns3_recv_pkts_vec)
 		return ptypes;
 
 	return NULL;
@@ -1915,6 +1974,25 @@ pkt_err:
 	return nb_rx;
 }
 
+void __rte_weak
+hns3_rxq_vec_setup(__rte_unused struct hns3_rx_queue *rxq)
+{
+}
+
+int __rte_weak
+hns3_rx_check_vec_support(__rte_unused struct rte_eth_dev *dev)
+{
+	return -ENOTSUP;
+}
+
+uint16_t __rte_weak
+hns3_recv_pkts_vec(__rte_unused void *tx_queue,
+		   __rte_unused struct rte_mbuf **tx_pkts,
+		   __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
 int
 hns3_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		       struct rte_eth_burst_mode *mode)
@@ -1925,6 +2003,7 @@ hns3_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 	} burst_infos[] = {
 		{ hns3_recv_pkts,		"Scalar" },
 		{ hns3_recv_scattered_pkts,	"Scalar Scattered" },
+		{ hns3_recv_pkts_vec,		"Vector Neon" },
 	};
 
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
@@ -1948,6 +2027,9 @@ hns3_get_rx_function(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	uint64_t offloads = dev->data->dev_conf.rxmode.offloads;
+
+	if (hns->rx_vec_allowed && hns3_rx_check_vec_support(dev) == 0)
+		return hns3_recv_pkts_vec;
 
 	if (hns->rx_simple_allowed && !dev->data->scattered_rx &&
 	    (offloads & DEV_RX_OFFLOAD_TCP_LRO) == 0)

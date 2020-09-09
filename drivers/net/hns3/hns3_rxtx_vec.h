@@ -54,4 +54,24 @@ hns3_tx_free_buffers(struct hns3_tx_queue *txq)
 	if (txq->next_to_clean >= txq->nb_tx_desc)
 		txq->next_to_clean = 0;
 }
+
+static inline uint16_t
+hns3_rx_reassemble_pkts(struct rte_mbuf **rx_pkts,
+			uint16_t nb_pkts,
+			uint64_t pkt_err_mask)
+{
+	uint16_t count, i;
+	uint64_t mask;
+
+	count = 0;
+	for (i = 0; i < nb_pkts; i++) {
+		mask = ((uint64_t)1u) << i;
+		if (pkt_err_mask & mask)
+			rte_pktmbuf_free_seg(rx_pkts[i]);
+		else
+			rx_pkts[count++] = rx_pkts[i];
+	}
+
+	return count;
+}
 #endif /* _HNS3_RXTX_VEC_H_ */

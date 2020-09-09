@@ -2352,6 +2352,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 		goto cfg_err;
 
 	hns->rx_simple_allowed = true;
+	hns->rx_vec_allowed = true;
 	hns->tx_simple_allowed = true;
 	hns->tx_vec_allowed = true;
 

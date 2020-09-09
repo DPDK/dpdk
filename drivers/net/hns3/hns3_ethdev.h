@@ -643,6 +643,7 @@ struct hns3_adapter {
 	};
 
 	bool rx_simple_allowed;
+	bool rx_vec_allowed;
 	bool tx_simple_allowed;
 	bool tx_vec_allowed;
 
