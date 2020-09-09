@@ -151,9 +151,14 @@ static void *
 mlx5_alloc_align(size_t size, unsigned int align, unsigned int zero)
 {
 	void *buf;
-	buf = memalign(align, size);
-	if (!buf) {
-		DRV_LOG(ERR, "Couldn't allocate buf.\n");
+	int ret;
+
+	ret = posix_memalign(&buf, align, size);
+	if (ret) {
+		DRV_LOG(ERR,
+			"Couldn't allocate buf size=%zu align=%u. Err=%d\n",
+			size, align, ret);
+
 		return NULL;
 	}
 	if (zero)
@@ -190,7 +195,7 @@ mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
 		return addr;
 	}
 	/* The memory will be allocated from system. */
-	if (align)
+	if (align > MLX5_MALLOC_ALIGNMENT)
 		addr = mlx5_alloc_align(size, align, !!(flags & MLX5_MEM_ZERO));
 	else if (flags & MLX5_MEM_ZERO)
 		addr = calloc(1, size);

@@ -9,6 +9,14 @@
 extern "C" {
 #endif
 
+#ifndef MLX5_MALLOC_ALIGNMENT
+#ifndef RTE_ARCH_64
+#define MLX5_MALLOC_ALIGNMENT 8
+#else
+#define MLX5_MALLOC_ALIGNMENT 16
+#endif
+#endif
+
 enum mlx5_mem_flags {
 	MLX5_MEM_ANY = 0,
 	/* Memory will be allocated dpends on sys_mem_en. */
