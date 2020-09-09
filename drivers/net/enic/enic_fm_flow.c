@@ -97,6 +97,8 @@ struct enic_fm_flow {
 	uint64_t action_handle;
 	struct enic_fm_counter *counter;
 	struct enic_fm_fet *fet;
+	/* Auto-added steer action for hairpin flows (e.g. vnic->vnic) */
+	struct enic_fm_flow *hairpin_steer_flow;
 };
 
 struct enic_fm_jump_flow {
@@ -166,6 +168,9 @@ struct enic_flowman {
 	int action_op_count;
 	/* Tags used for representor flows */
 	uint8_t vf_rep_tag;
+	/* For auto-added steer action for hairpin */
+	int need_hairpin_steer;
+	uint64_t hairpin_steer_vnic_h;
 };
 
 static int enic_fm_tbl_free(struct enic_flowman *fm, uint64_t handle);
@@ -244,6 +249,7 @@ static const enum rte_flow_action_type enic_fm_supported_eg_actions[] = {
 	RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN,
 	RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP,
 	RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID,
+	RTE_FLOW_ACTION_TYPE_PORT_ID,
 	RTE_FLOW_ACTION_TYPE_PASSTHRU,
 	RTE_FLOW_ACTION_TYPE_VOID,
 	RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP,
@@ -1120,6 +1126,68 @@ enic_fm_find_vnic(struct enic *enic, const struct rte_pci_addr *addr,
 	return 0;
 }
 
+/*
+ * Egress: target port should be either PF uplink or VF.
+ * Supported cases
+ * 1. VF egress -> PF uplink
+ *   PF may be this VF's PF, or another PF, as long as they are on the same VIC.
+ * 2. VF egress -> VF
+ *
+ * Unsupported cases
+ * 1. PF egress -> VF
+ *   App should be using representor to pass packets to VF
+ */
+static int
+vf_egress_port_id_action(struct enic_flowman *fm,
+			 struct rte_eth_dev *dst_dev,
+			 uint64_t dst_vnic_h,
+			 struct fm_action_op *fm_op,
+			 struct rte_flow_error *error)
+{
+	struct enic *src_enic, *dst_enic;
+	struct enic_vf_representor *vf;
+	uint8_t uif;
+	int ret;
+
+	ENICPMD_FUNC_TRACE();
+	src_enic = fm->user_enic;
+	dst_enic = pmd_priv(dst_dev);
+	if (!(src_enic->rte_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)) {
+		return rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			NULL, "source port is not VF representor");
+	}
+
+	/* VF -> PF uplink. dst is not VF representor */
+	if (!(dst_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)) {
+		/* PF is the VF's PF? Then nothing to do */
+		vf = VF_ENIC_TO_VF_REP(src_enic);
+		if (vf->pf == dst_enic) {
+			ENICPMD_LOG(DEBUG, "destination port is VF's PF");
+			return 0;
+		}
+		/* If not, steer to the remote PF's uplink */
+		uif = dst_enic->fm_vnic_uif;
+		ENICPMD_LOG(DEBUG, "steer to uplink %u", uif);
+		memset(fm_op, 0, sizeof(*fm_op));
+		fm_op->fa_op = FMOP_SET_EGPORT;
+		fm_op->set_egport.egport = uif;
+		ret = enic_fm_append_action_op(fm, fm_op, error);
+		return ret;
+	}
+
+	/* VF -> VF loopback. Hairpin and steer to vnic */
+	memset(fm_op, 0, sizeof(*fm_op));
+	fm_op->fa_op = FMOP_EG_HAIRPIN;
+	ret = enic_fm_append_action_op(fm, fm_op, error);
+	if (ret)
+		return ret;
+	ENICPMD_LOG(DEBUG, "egress hairpin");
+	fm->hairpin_steer_vnic_h = dst_vnic_h;
+	fm->need_hairpin_steer = 1;
+	return 0;
+}
+
 /* Translate flow actions to flowman TCAM entry actions */
 static int
 enic_fm_copy_action(struct enic_flowman *fm,
@@ -1311,6 +1379,10 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			const struct rte_flow_action_port_id *port;
 			struct rte_eth_dev *dev;
 
+			if (!ingress && (overlap & PORT_ID)) {
+				ENICPMD_LOG(DEBUG, "cannot have multiple egress PORT_ID actions");
+				goto unsupported;
+			}
 			port = actions->conf;
 			if (port->original) {
 				vnic_h = enic->fm_vnic_handle; /* This port */
@@ -1340,6 +1412,13 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			 * Ingress. Nothing more to do. We add an implicit
 			 * steer at the end if needed.
 			 */
+			if (ingress)
+				break;
+			/* Egress */
+			ret = vf_egress_port_id_action(fm, dev, vnic_h, &fm_op,
+				error);
+			if (ret)
+				return ret;
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP: {
@@ -1921,9 +2000,15 @@ __enic_fm_flow_free(struct enic_flowman *fm, struct enic_fm_flow *fm_flow)
 static void
 enic_fm_flow_free(struct enic_flowman *fm, struct rte_flow *flow)
 {
+	struct enic_fm_flow *steer = flow->fm->hairpin_steer_flow;
+
 	if (flow->fm->fet && flow->fm->fet->default_key)
 		remove_jump_flow(fm, flow);
 	__enic_fm_flow_free(fm, flow->fm);
+	if (steer) {
+		__enic_fm_flow_free(fm, steer);
+		free(steer);
+	}
 	free(flow->fm);
 	free(flow);
 }
@@ -2174,11 +2259,71 @@ convert_jump_flows(struct enic_flowman *fm, struct enic_fm_fet *fet,
 	}
 }
 
+static int
+add_hairpin_steer(struct enic_flowman *fm, struct rte_flow *flow,
+		  struct rte_flow_error *error)
+{
+	struct fm_tcam_match_entry *fm_tcam_entry;
+	struct enic_fm_flow *fm_flow;
+	struct fm_action *fm_action;
+	struct fm_action_op fm_op;
+	int ret;
+
+	ENICPMD_FUNC_TRACE();
+	fm_flow = calloc(1, sizeof(*fm_flow));
+	if (fm_flow == NULL) {
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+			NULL, "enic: cannot allocate rte_flow");
+		return -ENOMEM;
+	}
+	/* Original egress hairpin flow */
+	fm_tcam_entry = &fm->tcam_entry;
+	fm_action = &fm->action;
+	/* Use the match pattern of the egress flow as is, without counters */
+	fm_tcam_entry->ftm_flags &= ~FMEF_COUNTER;
+	/* The only action is steer to vnic */
+	fm->action_op_count = 0;
+	memset(fm_action, 0, sizeof(*fm_action));
+	memset(&fm_op, 0, sizeof(fm_op));
+	/* Always to queue 0 for now */
+	fm_op.fa_op = FMOP_RQ_STEER;
+	fm_op.rq_steer.rq_index = 0;
+	fm_op.rq_steer.vnic_handle = fm->hairpin_steer_vnic_h;
+	ret = enic_fm_append_action_op(fm, &fm_op, error);
+	if (ret)
+		goto error_with_flow;
+	ENICPMD_LOG(DEBUG, "add steer op");
+	/* Add required END */
+	memset(&fm_op, 0, sizeof(fm_op));
+	fm_op.fa_op = FMOP_END;
+	ret = enic_fm_append_action_op(fm, &fm_op, error);
+	if (ret)
+		goto error_with_flow;
+	/* Add the ingress flow */
+	fm_flow->action_handle = FM_INVALID_HANDLE;
+	fm_flow->entry_handle = FM_INVALID_HANDLE;
+	ret = __enic_fm_flow_add_entry(fm, fm_flow, fm_tcam_entry, fm_action,
+				       FM_TCAM_RTE_GROUP, 1 /* ingress */, error);
+	if (ret) {
+		ENICPMD_LOG(ERR, "cannot add hairpin-steer flow");
+		goto error_with_flow;
+	}
+	/* The new flow is now the egress flow's paired flow */
+	flow->fm->hairpin_steer_flow = fm_flow;
+	return 0;
+
+error_with_flow:
+	free(fm_flow);
+	return ret;
+}
+
 static void
 enic_fm_open_scratch(struct enic_flowman *fm)
 {
 	fm->action_op_count = 0;
 	fm->fet = NULL;
+	fm->need_hairpin_steer = 0;
+	fm->hairpin_steer_vnic_h = 0;
 	memset(&fm->tcam_entry, 0, sizeof(fm->tcam_entry));
 	memset(&fm->action, 0, sizeof(fm->action));
 }
@@ -2326,6 +2471,15 @@ enic_fm_flow_create(struct rte_eth_dev *dev,
 	flow = enic_fm_flow_add_entry(fm, fm_tcam_entry, fm_action,
 				      attrs, error);
 	if (flow) {
+		/* Add ingress rule that pairs with hairpin rule */
+		if (fm->need_hairpin_steer) {
+			ret = add_hairpin_steer(fm, flow, error);
+			if (ret) {
+				enic_fm_flow_free(fm, flow);
+				flow = NULL;
+				goto error_with_scratch;
+			}
+		}
 		LIST_INSERT_HEAD(&enic->flows, flow, next);
 		fet = flow->fm->fet;
 		if (fet && fet->default_key) {

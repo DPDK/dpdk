@@ -58,6 +58,7 @@ New Features
 * **Updated Cisco enic driver.**
 
   * Added support for VF representors with single-queue Tx/Rx and flow API
+  * Added support for egress PORT_ID action
 
 * **Extended flow-perf application.**
 
