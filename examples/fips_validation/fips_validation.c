@@ -92,6 +92,15 @@ error_exit:
 	return -ENOMEM;
 }
 
+static void
+fips_test_parse_version(void)
+{
+	int len = strlen(info.vec[0]);
+	char *ptr = info.vec[0];
+
+	info.version = strtof(ptr + len - 4, NULL);
+}
+
 static int
 fips_test_parse_header(void)
 {
@@ -106,7 +115,10 @@ fips_test_parse_header(void)
 	if (ret < 0)
 		return ret;
 
-	for (i = 0; i < info.nb_vec_lines; i++) {
+	if (info.nb_vec_lines)
+		fips_test_parse_version();
+
+	for (i = 1; i < info.nb_vec_lines; i++) {
 		if (!algo_parsed) {
 			if (strstr(info.vec[i], "AESVS")) {
 				algo_parsed = 1;
@@ -352,6 +364,8 @@ fips_test_parse_one_case(void)
 	uint32_t interim_cnt = 0;
 	int ret;
 
+	info.vec_start_off = 0;
+
 	if (info.interim_callbacks) {
 		for (i = 0; i < info.nb_vec_lines; i++) {
 			is_interim = 0;
@@ -373,16 +387,23 @@ fips_test_parse_one_case(void)
 		}
 	}
 
-	info.vec_start_off = interim_cnt;
-
 	if (interim_cnt) {
-		for (i = 0; i < interim_cnt; i++)
-			fprintf(info.fp_wr, "%s\n", info.vec[i]);
-		fprintf(info.fp_wr, "\n");
+		if (info.version == 21.4f) {
+			for (i = 0; i < interim_cnt; i++)
+				fprintf(info.fp_wr, "%s\n", info.vec[i]);
+			fprintf(info.fp_wr, "\n");
 
-		if (info.nb_vec_lines == interim_cnt)
+			if (info.nb_vec_lines == interim_cnt)
+				return 1;
+		} else {
+			for (i = 0; i < info.nb_vec_lines; i++)
+				fprintf(info.fp_wr, "%s\n", info.vec[i]);
+			fprintf(info.fp_wr, "\n");
 			return 1;
+		}
 	}
+
+	info.vec_start_off = interim_cnt;
 
 	for (i = info.vec_start_off; i < info.nb_vec_lines; i++) {
 		for (j = 0; info.callbacks[j].key != NULL; j++)
@@ -648,7 +669,7 @@ update_info_vec(uint32_t count)
 
 	cb = &info.writeback_callbacks[0];
 
-	if (!(strstr(info.vec[0], cb->key))) {
+	if ((info.version == 21.4f) && (!(strstr(info.vec[0], cb->key)))) {
 		fprintf(info.fp_wr, "%s%u\n", cb->key, count);
 		i = 0;
 	} else {
@@ -656,9 +677,8 @@ update_info_vec(uint32_t count)
 				count);
 		i = 1;
 	}
-	snprintf(info.vec[0], strlen(info.vec[0]) + 4, "%s%u", cb->key, count);
 
-	for (i = 1; i < info.nb_vec_lines; i++) {
+	for (; i < info.nb_vec_lines; i++) {
 		for (j = 1; info.writeback_callbacks[j].key != NULL; j++) {
 			cb = &info.writeback_callbacks[j];
 			if (strstr(info.vec[i], cb->key)) {

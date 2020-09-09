@@ -166,6 +166,7 @@ struct fips_test_interim_info {
 	uint32_t nb_vec_lines;
 	char device_name[MAX_STRING_SIZE];
 	char file_name[MAX_FILE_NAME_SIZE];
+	float version;
 
 	union {
 		struct aesavs_interim_data aes_data;

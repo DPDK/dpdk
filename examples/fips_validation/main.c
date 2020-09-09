@@ -1088,10 +1088,12 @@ fips_mct_tdes_test(void)
 	int test_mode = info.interim_info.tdes_data.test_mode;
 
 	for (i = 0; i < TDES_EXTERN_ITER; i++) {
-		if (i == 0) {
+		if ((i == 0) && (info.version == 21.4f)) {
 			if (!(strstr(info.vec[0], "COUNT")))
 				fprintf(info.fp_wr, "%s%u\n", "COUNT = ", 0);
-		} else
+		}
+
+		if (i != 0)
 			update_info_vec(i);
 
 		fips_test_write_one_case();
