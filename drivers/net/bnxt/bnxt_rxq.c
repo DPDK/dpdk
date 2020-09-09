@@ -197,7 +197,7 @@ err_out:
 
 void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 {
-	struct bnxt_sw_rx_bd *sw_ring;
+	struct rte_mbuf **sw_ring;
 	struct bnxt_tpa_info *tpa_info;
 	uint16_t i;
 
@@ -210,9 +210,9 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 	if (sw_ring) {
 		for (i = 0;
 		     i < rxq->rx_ring->rx_ring_struct->ring_size; i++) {
-			if (sw_ring[i].mbuf) {
-				rte_pktmbuf_free_seg(sw_ring[i].mbuf);
-				sw_ring[i].mbuf = NULL;
+			if (sw_ring[i]) {
+				rte_pktmbuf_free_seg(sw_ring[i]);
+				sw_ring[i] = NULL;
 			}
 		}
 	}
@@ -221,9 +221,9 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 	if (sw_ring) {
 		for (i = 0;
 		     i < rxq->rx_ring->ag_ring_struct->ring_size; i++) {
-			if (sw_ring[i].mbuf) {
-				rte_pktmbuf_free_seg(sw_ring[i].mbuf);
-				sw_ring[i].mbuf = NULL;
+			if (sw_ring[i]) {
+				rte_pktmbuf_free_seg(sw_ring[i]);
+				sw_ring[i] = NULL;
 			}
 		}
 	}

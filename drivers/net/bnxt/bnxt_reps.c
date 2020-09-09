@@ -35,7 +35,7 @@ static const struct eth_dev_ops bnxt_vf_rep_dev_ops = {
 uint16_t
 bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 {
-	struct bnxt_sw_rx_bd *prod_rx_buf;
+	struct rte_mbuf **prod_rx_buf;
 	struct bnxt_rx_ring_info *rep_rxr;
 	struct bnxt_rx_queue *rep_rxq;
 	struct rte_eth_dev *vfr_eth_dev;
@@ -52,10 +52,9 @@ bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 	mask = rep_rxr->rx_ring_struct->ring_mask;
 
 	/* Put this mbuf on the RxQ of the Representor */
-	prod_rx_buf =
-		&rep_rxr->rx_buf_ring[rep_rxr->rx_prod++ & mask];
-	if (!prod_rx_buf->mbuf) {
-		prod_rx_buf->mbuf = mbuf;
+	prod_rx_buf = &rep_rxr->rx_buf_ring[rep_rxr->rx_prod++ & mask];
+	if (!*prod_rx_buf) {
+		*prod_rx_buf = mbuf;
 		vfr_bp->rx_bytes[que] += mbuf->pkt_len;
 		vfr_bp->rx_pkts[que]++;
 	} else {
@@ -73,7 +72,7 @@ bnxt_vf_rep_rx_burst(void *rx_queue,
 		     uint16_t nb_pkts)
 {
 	struct bnxt_rx_queue *rxq = rx_queue;
-	struct bnxt_sw_rx_bd *cons_rx_buf;
+	struct rte_mbuf **cons_rx_buf;
 	struct bnxt_rx_ring_info *rxr;
 	uint16_t nb_rx_pkts = 0;
 	uint16_t mask, i;
@@ -85,11 +84,11 @@ bnxt_vf_rep_rx_burst(void *rx_queue,
 	mask = rxr->rx_ring_struct->ring_mask;
 	for (i = 0; i < nb_pkts; i++) {
 		cons_rx_buf = &rxr->rx_buf_ring[rxr->rx_cons & mask];
-		if (!cons_rx_buf->mbuf)
+		if (*cons_rx_buf == NULL)
 			return nb_rx_pkts;
-		rx_pkts[nb_rx_pkts] = cons_rx_buf->mbuf;
+		rx_pkts[nb_rx_pkts] = *cons_rx_buf;
 		rx_pkts[nb_rx_pkts]->port = rxq->port_id;
-		cons_rx_buf->mbuf = NULL;
+		*cons_rx_buf = NULL;
 		nb_rx_pkts++;
 		rxr->rx_cons++;
 	}
@@ -557,7 +556,7 @@ int bnxt_vf_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *parent_bp = rep_bp->parent_dev->data->dev_private;
 	struct bnxt_rx_queue *parent_rxq;
 	struct bnxt_rx_queue *rxq;
-	struct bnxt_sw_rx_bd *buf_ring;
+	struct rte_mbuf **buf_ring;
 	int rc = 0;
 
 	if (queue_idx >= BNXT_MAX_VF_REP_RINGS) {
@@ -609,7 +608,7 @@ int bnxt_vf_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		goto out;
 
 	buf_ring = rte_zmalloc_socket("bnxt_rx_vfr_buf_ring",
-				      sizeof(struct bnxt_sw_rx_bd) *
+				      sizeof(struct rte_mbuf *) *
 				      rxq->rx_ring->rx_ring_struct->ring_size,
 				      RTE_CACHE_LINE_SIZE, socket_id);
 	if (!buf_ring) {

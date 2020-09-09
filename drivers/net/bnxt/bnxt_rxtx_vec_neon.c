@@ -29,7 +29,7 @@ static inline void
 bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 {
 	struct rx_prod_pkt_bd *rxbds = &rxr->rx_desc_ring[rxq->rxrearm_start];
-	struct bnxt_sw_rx_bd *rx_bufs = &rxr->rx_buf_ring[rxq->rxrearm_start];
+	struct rte_mbuf **rx_bufs = &rxr->rx_buf_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
 	int i;
 
@@ -51,8 +51,8 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 		uint64x2_t buf_addr0, buf_addr1;
 		uint64x2_t rxbd0, rxbd1;
 
-		mb0 = rx_bufs[0].mbuf;
-		mb1 = rx_bufs[1].mbuf;
+		mb0 = rx_bufs[0];
+		mb1 = rx_bufs[1];
 
 		/* Load address fields from both mbufs */
 		buf_addr0 = vld1q_u64((uint64_t *)&mb0->buf_addr);
@@ -260,9 +260,9 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			raw_cons = tmp_raw_cons;
 			cons = rxcmp->opaque;
 
-			mbuf = rxr->rx_buf_ring[cons].mbuf;
+			mbuf = rxr->rx_buf_ring[cons];
 			rte_prefetch0(mbuf);
-			rxr->rx_buf_ring[cons].mbuf = NULL;
+			rxr->rx_buf_ring[cons] = NULL;
 
 			/* Set constant fields from mbuf initializer. */
 			vst1q_u64((uint64_t *)&mbuf->rearm_data, mbuf_init);

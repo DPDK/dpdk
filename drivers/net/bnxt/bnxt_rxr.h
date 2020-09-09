@@ -181,10 +181,6 @@ struct bnxt_tpa_info {
 	struct rx_tpa_v2_abuf_cmpl	agg_arr[TPA_MAX_NUM_SEGS];
 };
 
-struct bnxt_sw_rx_bd {
-	struct rte_mbuf		*mbuf; /* data associated with RX descriptor */
-};
-
 struct bnxt_rx_ring_info {
 	uint16_t		rx_prod;
 	uint16_t		ag_prod;
@@ -194,8 +190,8 @@ struct bnxt_rx_ring_info {
 
 	struct rx_prod_pkt_bd	*rx_desc_ring;
 	struct rx_prod_pkt_bd	*ag_desc_ring;
-	struct bnxt_sw_rx_bd	*rx_buf_ring; /* sw ring */
-	struct bnxt_sw_rx_bd	*ag_buf_ring; /* sw ring */
+	struct rte_mbuf		**rx_buf_ring; /* sw ring */
+	struct rte_mbuf		**ag_buf_ring; /* sw ring */
 
 	rte_iova_t		rx_desc_mapping;
 	rte_iova_t		ag_desc_mapping;

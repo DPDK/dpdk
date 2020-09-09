@@ -251,7 +251,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			rx_ring->vmem =
 			    (void **)((char *)mz->addr + rx_vmem_start);
 			rx_ring_info->rx_buf_ring =
-			    (struct bnxt_sw_rx_bd *)rx_ring->vmem;
+			    (struct rte_mbuf **)rx_ring->vmem;
 		}
 
 		rx_ring = rx_ring_info->ag_ring_struct;
@@ -269,7 +269,7 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			rx_ring->vmem =
 			    (void **)((char *)mz->addr + ag_vmem_start);
 			rx_ring_info->ag_buf_ring =
-			    (struct bnxt_sw_rx_bd *)rx_ring->vmem;
+			    (struct rte_mbuf **)rx_ring->vmem;
 		}
 
 		rx_ring_info->ag_bitmap =

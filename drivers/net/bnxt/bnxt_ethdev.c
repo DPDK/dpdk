@@ -2841,7 +2841,7 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 	struct bnxt_rx_queue *rxq = (struct bnxt_rx_queue *)rx_queue;
 	struct bnxt_rx_ring_info *rxr;
 	struct bnxt_cp_ring_info *cpr;
-	struct bnxt_sw_rx_bd *rx_buf;
+	struct rte_mbuf *rx_buf;
 	struct rx_pkt_cmpl *rxcmp;
 	uint32_t cons, cp_cons;
 	int rc;
@@ -2870,8 +2870,8 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 		if (CMPL_VALID(rxcmp, !cpr->valid))
 			return RTE_ETH_RX_DESC_DONE;
 	}
-	rx_buf = &rxr->rx_buf_ring[cons];
-	if (rx_buf->mbuf == NULL)
+	rx_buf = rxr->rx_buf_ring[cons];
+	if (rx_buf == NULL)
 		return RTE_ETH_RX_DESC_UNAVAIL;
 
 

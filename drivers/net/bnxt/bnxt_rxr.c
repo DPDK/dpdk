@@ -42,7 +42,7 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 				     uint16_t prod)
 {
 	struct rx_prod_pkt_bd *rxbd = &rxr->rx_desc_ring[prod];
-	struct bnxt_sw_rx_bd *rx_buf = &rxr->rx_buf_ring[prod];
+	struct rte_mbuf **rx_buf = &rxr->rx_buf_ring[prod];
 	struct rte_mbuf *mbuf;
 
 	mbuf = __bnxt_alloc_rx_data(rxq->mb_pool);
@@ -51,7 +51,7 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 		return -ENOMEM;
 	}
 
-	rx_buf->mbuf = mbuf;
+	*rx_buf = mbuf;
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 
 	rxbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
@@ -64,7 +64,7 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 				     uint16_t prod)
 {
 	struct rx_prod_pkt_bd *rxbd = &rxr->ag_desc_ring[prod];
-	struct bnxt_sw_rx_bd *rx_buf = &rxr->ag_buf_ring[prod];
+	struct rte_mbuf **rx_buf = &rxr->ag_buf_ring[prod];
 	struct rte_mbuf *mbuf;
 
 	if (rxbd == NULL) {
@@ -83,7 +83,7 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 		return -ENOMEM;
 	}
 
-	rx_buf->mbuf = mbuf;
+	*rx_buf = mbuf;
 	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 
 	rxbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
@@ -95,15 +95,15 @@ static inline void bnxt_reuse_rx_mbuf(struct bnxt_rx_ring_info *rxr,
 			       struct rte_mbuf *mbuf)
 {
 	uint16_t prod = RING_NEXT(rxr->rx_ring_struct, rxr->rx_prod);
-	struct bnxt_sw_rx_bd *prod_rx_buf;
+	struct rte_mbuf **prod_rx_buf;
 	struct rx_prod_pkt_bd *prod_bd;
 
 	prod_rx_buf = &rxr->rx_buf_ring[prod];
 
-	RTE_ASSERT(prod_rx_buf->mbuf == NULL);
+	RTE_ASSERT(*prod_rx_buf == NULL);
 	RTE_ASSERT(mbuf != NULL);
 
-	prod_rx_buf->mbuf = mbuf;
+	*prod_rx_buf = mbuf;
 
 	prod_bd = &rxr->rx_desc_ring[prod];
 
@@ -116,13 +116,14 @@ static inline
 struct rte_mbuf *bnxt_consume_rx_buf(struct bnxt_rx_ring_info *rxr,
 				     uint16_t cons)
 {
-	struct bnxt_sw_rx_bd *cons_rx_buf;
+	struct rte_mbuf **cons_rx_buf;
 	struct rte_mbuf *mbuf;
 
 	cons_rx_buf = &rxr->rx_buf_ring[cons];
-	RTE_ASSERT(cons_rx_buf->mbuf != NULL);
-	mbuf = cons_rx_buf->mbuf;
-	cons_rx_buf->mbuf = NULL;
+	RTE_ASSERT(*cons_rx_buf != NULL);
+	mbuf = *cons_rx_buf;
+	*cons_rx_buf = NULL;
+
 	return mbuf;
 }
 
@@ -226,7 +227,7 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 	bool is_thor_tpa = tpa_info && BNXT_CHIP_THOR(rxq->bp);
 
 	for (i = 0; i < agg_buf; i++) {
-		struct bnxt_sw_rx_bd *ag_buf;
+		struct rte_mbuf **ag_buf;
 		struct rte_mbuf *ag_mbuf;
 
 		if (is_thor_tpa) {
@@ -245,7 +246,7 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 		ag_cons = rxcmp->opaque;
 		RTE_ASSERT(ag_cons <= rxr->ag_ring_struct->ring_mask);
 		ag_buf = &rxr->ag_buf_ring[ag_cons];
-		ag_mbuf = ag_buf->mbuf;
+		ag_mbuf = *ag_buf;
 		RTE_ASSERT(ag_mbuf != NULL);
 
 		ag_mbuf->data_len = rte_le_to_cpu_16(rxcmp->len);
@@ -256,7 +257,7 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 		last->next = ag_mbuf;
 		last = ag_mbuf;
 
-		ag_buf->mbuf = NULL;
+		*ag_buf = NULL;
 
 		/*
 		 * As aggregation buffer consumed out of order in TPA module,
@@ -866,10 +867,10 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		for (; cnt;
 			i = RING_NEXT(rxr->rx_ring_struct, i), cnt--) {
-			struct bnxt_sw_rx_bd *rx_buf = &rxr->rx_buf_ring[i];
+			struct rte_mbuf **rx_buf = &rxr->rx_buf_ring[i];
 
 			/* Buffer already allocated for this index. */
-			if (rx_buf->mbuf != NULL)
+			if (*rx_buf != NULL)
 				continue;
 
 			/* This slot is empty. Alloc buffer for Rx */
@@ -960,7 +961,7 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	ring->ring_mask = ring->ring_size - 1;
 	ring->bd = (void *)rxr->rx_desc_ring;
 	ring->bd_dma = rxr->rx_desc_mapping;
-	ring->vmem_size = ring->ring_size * sizeof(struct bnxt_sw_rx_bd);
+	ring->vmem_size = ring->ring_size * sizeof(struct rte_mbuf *);
 	ring->vmem = (void **)&rxr->rx_buf_ring;
 	ring->fw_ring_id = INVALID_HW_RING_ID;
 
@@ -998,7 +999,7 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	ring->ring_mask = ring->ring_size - 1;
 	ring->bd = (void *)rxr->ag_desc_ring;
 	ring->bd_dma = rxr->ag_desc_mapping;
-	ring->vmem_size = ring->ring_size * sizeof(struct bnxt_sw_rx_bd);
+	ring->vmem_size = ring->ring_size * sizeof(struct rte_mbuf *);
 	ring->vmem = (void **)&rxr->ag_buf_ring;
 	ring->fw_ring_id = INVALID_HW_RING_ID;
 
@@ -1039,7 +1040,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 
 	prod = rxr->rx_prod;
 	for (i = 0; i < ring->ring_size; i++) {
-		if (unlikely(!rxr->rx_buf_ring[i].mbuf)) {
+		if (unlikely(!rxr->rx_buf_ring[i])) {
 			if (bnxt_alloc_rx_data(rxq, rxr, prod) != 0) {
 				PMD_DRV_LOG(WARNING,
 					    "init'ed rx ring %d with %d/%d mbufs only\n",
@@ -1057,7 +1058,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	prod = rxr->ag_prod;
 
 	for (i = 0; i < ring->ring_size; i++) {
-		if (unlikely(!rxr->ag_buf_ring[i].mbuf)) {
+		if (unlikely(!rxr->ag_buf_ring[i])) {
 			if (bnxt_alloc_ag_data(rxq, rxr, prod) != 0) {
 				PMD_DRV_LOG(WARNING,
 					    "init'ed AG ring %d with %d/%d mbufs only\n",
