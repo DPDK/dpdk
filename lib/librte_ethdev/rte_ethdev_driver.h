@@ -759,6 +759,7 @@ int rte_eth_dev_is_tx_hairpin_queue(struct rte_eth_dev *dev, uint16_t queue_id);
  * @return
  *   - The pointer to the ethdev slot, on success. NULL on error
  */
+__rte_internal
 struct rte_eth_dev *rte_eth_dev_allocated(const char *name);
 
 /**
@@ -770,6 +771,7 @@ struct rte_eth_dev *rte_eth_dev_allocated(const char *name);
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
+__rte_internal
 struct rte_eth_dev *rte_eth_dev_allocate(const char *name);
 
 /**
@@ -783,6 +785,7 @@ struct rte_eth_dev *rte_eth_dev_allocate(const char *name);
  *        device.
  *   - Error: Null pointer.
  */
+__rte_internal
 struct rte_eth_dev *rte_eth_dev_attach_secondary(const char *name);
 
 /**
@@ -801,6 +804,7 @@ struct rte_eth_dev *rte_eth_dev_attach_secondary(const char *name);
  * @return
  *   - 0 on success, negative on error
  */
+__rte_internal
 int rte_eth_dev_release_port(struct rte_eth_dev *eth_dev);
 
 /**
@@ -814,6 +818,7 @@ int rte_eth_dev_release_port(struct rte_eth_dev *eth_dev);
  * @return
  *  void
  */
+__rte_internal
 void _rte_eth_dev_reset(struct rte_eth_dev *dev);
 
 /**
@@ -833,6 +838,7 @@ void _rte_eth_dev_reset(struct rte_eth_dev *dev);
  * @return
  *  int
  */
+__rte_internal
 int _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 		enum rte_eth_event_type event, void *ret_param);
 
@@ -848,6 +854,7 @@ int _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
  * @param dev
  *  New ethdev port.
  */
+__rte_internal
 void rte_eth_dev_probing_finish(struct rte_eth_dev *dev);
 
 /**
@@ -869,6 +876,7 @@ void rte_eth_dev_probing_finish(struct rte_eth_dev *dev);
  * @param socket_id
  *   The *socket_id* argument is the socket identifier in case of NUMA.
  */
+__rte_internal
 const struct rte_memzone *
 rte_eth_dma_zone_reserve(const struct rte_eth_dev *eth_dev, const char *name,
 			 uint16_t queue_id, size_t size,
@@ -955,9 +963,6 @@ rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Allocate an unique switch domain identifier.
  *
  * A pool of switch domain identifiers which can be allocated on request. This
@@ -971,14 +976,11 @@ rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
  * @return
  *   Negative errno value on error, 0 on success.
  */
-__rte_experimental
+__rte_internal
 int
 rte_eth_switch_domain_alloc(uint16_t *domain_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Free switch domain.
  *
  * Return a switch domain identifier to the pool of free identifiers after it is
@@ -990,7 +992,7 @@ rte_eth_switch_domain_alloc(uint16_t *domain_id);
  * @return
  *   Negative errno value on error, 0 on success.
  */
-__rte_experimental
+__rte_internal
 int
 rte_eth_switch_domain_free(uint16_t domain_id);
 
@@ -1007,9 +1009,6 @@ struct rte_eth_devargs {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * PMD helper function to parse ethdev arguments
  *
  * @param devargs
@@ -1020,7 +1019,7 @@ struct rte_eth_devargs {
  * @return
  *   Negative errno value on error, 0 on success.
  */
-__rte_experimental
+__rte_internal
 int
 rte_eth_devargs_parse(const char *devargs, struct rte_eth_devargs *eth_devargs);
 
@@ -1030,9 +1029,6 @@ typedef int (*ethdev_bus_specific_init)(struct rte_eth_dev *ethdev,
 	void *bus_specific_init_params);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * PMD helper function for the creation of a new ethdev ports.
  *
  * @param device
@@ -1053,7 +1049,7 @@ typedef int (*ethdev_bus_specific_init)(struct rte_eth_dev *ethdev,
  * @return
  *   Negative errno value on error, 0 on success.
  */
-__rte_experimental
+__rte_internal
 int
 rte_eth_dev_create(struct rte_device *device, const char *name,
 	size_t priv_data_size,
@@ -1064,9 +1060,6 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 typedef int (*ethdev_uninit_t)(struct rte_eth_dev *ethdev);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * PMD helper function for cleaning up the resources of a ethdev port on it's
  * destruction.
  *
@@ -1078,7 +1071,7 @@ typedef int (*ethdev_uninit_t)(struct rte_eth_dev *ethdev);
  * @return
  *   Negative errno value on error, 0 on success.
  */
-__rte_experimental
+__rte_internal
 int
 rte_eth_dev_destroy(struct rte_eth_dev *ethdev, ethdev_uninit_t ethdev_uninit);
 

@@ -193,12 +193,6 @@ Deprecation Notices
   following the IPv6 header, as proposed in RFC
   https://mails.dpdk.org/archives/dev/2020-August/177257.html.
 
-* ethdev: Some internal APIs for driver usage are exported in the .map file.
-  Now DPDK has ``__rte_internal`` marker so we can mark internal APIs and move
-  them to the INTERNAL block in .map. Although these APIs are internal it will
-  break the ABI checks, that is why change is planned for 20.11.
-  The list of internal APIs are mainly ones listed in ``rte_ethdev_driver.h``.
-
 * pmd_dpaa: The API ``rte_pmd_dpaa_set_tx_loopback`` will have extended
   ``port_id`` definition from ``uint8_t`` to ``uint16_t``.
 

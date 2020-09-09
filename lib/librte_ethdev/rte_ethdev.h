@@ -1724,8 +1724,7 @@ rte_eth_find_next_of(uint16_t port_id_start,
  */
 __rte_experimental
 uint16_t
-rte_eth_find_next_sibling(uint16_t port_id_start,
-		uint16_t ref_port_id);
+rte_eth_find_next_sibling(uint16_t port_id_start, uint16_t ref_port_id);
 
 /**
  * Macro to iterate over all ethdev ports sharing the same rte_device

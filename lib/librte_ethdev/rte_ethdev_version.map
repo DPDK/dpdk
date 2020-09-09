@@ -1,8 +1,6 @@
 DPDK_21 {
 	global:
 
-	_rte_eth_dev_callback_process;
-	_rte_eth_dev_reset;
 	rte_eth_add_first_rx_callback;
 	rte_eth_add_rx_callback;
 	rte_eth_add_tx_callback;
@@ -10,9 +8,6 @@ DPDK_21 {
 	rte_eth_allmulticast_enable;
 	rte_eth_allmulticast_get;
 	rte_eth_dev_adjust_nb_rx_tx_desc;
-	rte_eth_dev_allocate;
-	rte_eth_dev_allocated;
-	rte_eth_dev_attach_secondary;
 	rte_eth_dev_callback_register;
 	rte_eth_dev_callback_unregister;
 	rte_eth_dev_close;
@@ -44,8 +39,6 @@ DPDK_21 {
 	rte_eth_dev_mac_addr_remove;
 	rte_eth_dev_pool_ops_supported;
 	rte_eth_dev_priority_flow_ctrl_set;
-	rte_eth_dev_probing_finish;
-	rte_eth_dev_release_port;
 	rte_eth_dev_reset;
 	rte_eth_dev_rss_hash_conf_get;
 	rte_eth_dev_rss_hash_update;
@@ -81,7 +74,6 @@ DPDK_21 {
 	rte_eth_dev_udp_tunnel_port_delete;
 	rte_eth_dev_vlan_filter;
 	rte_eth_devices;
-	rte_eth_dma_zone_reserve;
 	rte_eth_find_next;
 	rte_eth_find_next_owned_by;
 	rte_eth_iterator_cleanup;
@@ -163,16 +155,8 @@ EXPERIMENTAL {
 	rte_eth_dev_owner_unset;
 
 	# added in 18.05
-	rte_eth_dev_create;
-	rte_eth_dev_destroy;
 	rte_eth_dev_get_module_eeprom;
 	rte_eth_dev_get_module_info;
-	rte_eth_devargs_parse;
-	rte_eth_switch_domain_alloc;
-	rte_eth_switch_domain_free;
-
-	# added in 18.08
-	rte_flow_expand_rss;
 
 	# added in 18.11
 	rte_eth_dev_rx_intr_ctl_q_get_fd;
@@ -246,5 +230,19 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 
+	_rte_eth_dev_callback_process;
+	_rte_eth_dev_reset;
+	rte_eth_dev_allocate;
+	rte_eth_dev_allocated;
+	rte_eth_dev_attach_secondary;
+	rte_eth_dev_create;
+	rte_eth_dev_destroy;
+	rte_eth_dev_probing_finish;
+	rte_eth_dev_release_port;
+	rte_eth_devargs_parse;
 	rte_eth_dma_zone_free;
+	rte_eth_dma_zone_reserve;
+	rte_eth_switch_domain_alloc;
+	rte_eth_switch_domain_free;
+	rte_flow_expand_rss;
 };

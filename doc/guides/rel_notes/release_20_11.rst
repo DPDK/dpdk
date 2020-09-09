@@ -166,6 +166,8 @@ ABI Changes
   * ``struct eth_dev_ops`` is no more accessible by applications,
     which was already internal data structure.
 
+  * ``ethdev`` internal functions are marked with ``__rte_internal`` tag.
+
 
 Known Issues
 ------------
