@@ -392,8 +392,11 @@ enic_fm_copy_item_vlan(struct copy_item_args *arg)
 	eth_mask = (void *)&fm_mask->l2.eth;
 	eth_val = (void *)&fm_data->l2.eth;
 
-	/* Outer TPID cannot be matched */
-	if (eth_mask->ether_type)
+	/*
+	 * Outer TPID cannot be matched. If inner_type is 0, use what is
+	 * in the eth header.
+	 */
+	if (eth_mask->ether_type && mask->inner_type)
 		return -ENOTSUP;
 
 	/*
@@ -401,8 +404,10 @@ enic_fm_copy_item_vlan(struct copy_item_args *arg)
 	 * L2, regardless of vlan stripping settings. So, the inner type
 	 * from vlan becomes the ether type of the eth header.
 	 */
-	eth_mask->ether_type = mask->inner_type;
-	eth_val->ether_type = spec->inner_type;
+	if (mask->inner_type) {
+		eth_mask->ether_type = mask->inner_type;
+		eth_val->ether_type = spec->inner_type;
+	}
 	fm_data->fk_header_select |= FKH_ETHER | FKH_QTAG;
 	fm_mask->fk_header_select |= FKH_ETHER | FKH_QTAG;
 	fm_data->fk_vlan = rte_be_to_cpu_16(spec->tci);
