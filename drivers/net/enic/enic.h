@@ -101,6 +101,7 @@ struct rte_flow {
 	struct filter_v2 enic_filter;
 	/* Data for flow manager based flow (enic_fm_flow.c) */
 	struct enic_fm_flow *fm;
+	int internal;
 };
 
 /* Per-instance private data structure */
@@ -210,6 +211,8 @@ struct enic {
 
 	/* Flow manager API */
 	struct enic_flowman *fm;
+	uint64_t fm_vnic_handle;
+	uint32_t fm_vnic_uif;
 	/* switchdev */
 	uint8_t switchdev_mode;
 	uint16_t switch_domain_id;
@@ -241,6 +244,9 @@ struct enic_vf_representor {
 	uint16_t pf_wq_cq_idx;   /* CQ for WQ */
 	uint16_t pf_rq_sop_idx;  /* SOP RQ dedicated to VF rep */
 	uint16_t pf_rq_data_idx; /* Data RQ */
+	/* Representor flows managed by flowman */
+	struct rte_flow *vf2rep_flow[2];
+	struct rte_flow *rep2vf_flow[2];
 };
 
 #define VF_ENIC_TO_VF_REP(vf_enic) \
@@ -467,6 +473,8 @@ void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
 int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params);
 int enic_vf_representor_uninit(struct rte_eth_dev *ethdev);
 int enic_fm_allocate_switch_domain(struct enic *pf);
+int enic_fm_add_rep2vf_flow(struct enic_vf_representor *vf);
+int enic_fm_add_vf2rep_flow(struct enic_vf_representor *vf);
 int enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq);
 void enic_rxmbuf_queue_release(struct enic *enic, struct vnic_rq *rq);
 void enic_free_wq_buf(struct rte_mbuf **buf);
