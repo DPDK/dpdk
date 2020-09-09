@@ -2352,6 +2352,7 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 		goto cfg_err;
 
 	hns->rx_simple_allowed = true;
+	hns->tx_simple_allowed = true;
 	hns3_init_rx_ptype_tble(dev);
 	hw->adapter_state = HNS3_NIC_CONFIGURED;
 
@@ -2509,6 +2510,10 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 		 * engine.
 		 */
 		.rx_drop_en = 1,
+		.offloads = 0,
+	};
+	info->default_txconf = (struct rte_eth_txconf) {
+		.tx_rs_thresh = HNS3_DEFAULT_TX_RS_THRESH,
 		.offloads = 0,
 	};
 
@@ -5544,6 +5549,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.rxq_info_get           = hns3_rxq_info_get,
 	.txq_info_get           = hns3_txq_info_get,
 	.rx_burst_mode_get      = hns3_rx_burst_mode_get,
+	.tx_burst_mode_get      = hns3_tx_burst_mode_get,
 	.flow_ctrl_get          = hns3_flow_ctrl_get,
 	.flow_ctrl_set          = hns3_flow_ctrl_set,
 	.priority_flow_ctrl_set = hns3_priority_flow_ctrl_set,

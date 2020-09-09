@@ -13,6 +13,9 @@
 #define HNS3_BULK_ALLOC_MBUF_NUM	32
 
 #define HNS3_DEFAULT_RX_FREE_THRESH	32
+#define HNS3_DEFAULT_TX_FREE_THRESH	32
+#define HNS3_DEFAULT_TX_RS_THRESH	32
+#define HNS3_TX_FAST_FREE_AHEAD		64
 
 #define HNS3_512_BD_BUF_SIZE	512
 #define HNS3_1K_BD_BUF_SIZE	1024
@@ -282,6 +285,7 @@ struct hns3_rx_queue {
 
 struct hns3_tx_queue {
 	void *io_base;
+	volatile void *io_tail_reg;
 	struct hns3_adapter *hns;
 	struct hns3_desc *tx_ring;
 	uint64_t tx_ring_phys_addr; /* TX ring DMA address */
@@ -291,9 +295,31 @@ struct hns3_tx_queue {
 	uint16_t queue_id;
 	uint16_t port_id;
 	uint16_t nb_tx_desc;
+	/*
+	 * index of next BD whose corresponding rte_mbuf can be released by
+	 * driver.
+	 */
 	uint16_t next_to_clean;
+	/* index of next BD to be filled by driver to send packet */
 	uint16_t next_to_use;
+	/* num of remaining BDs ready to be filled by driver to send packet */
 	uint16_t tx_bd_ready;
+
+	/* threshold for free tx buffer if available BDs less than this value */
+	uint16_t tx_free_thresh;
+
+	/*
+	 * For better performance in tx datapath, releasing mbuf in batches is
+	 * required.
+	 * Only checking the VLD bit of the last descriptor in a batch of the
+	 * thresh descriptors does not mean that these descriptors are all sent
+	 * by hardware successfully. So we need to check that the VLD bits of
+	 * all descriptors are cleared. and then free all mbufs in the batch.
+	 * - tx_rs_thresh
+	 *   Number of mbufs released at a time.
+
+	 */
+	uint16_t tx_rs_thresh;
 
 	/*
 	 * port based vlan configuration state.
@@ -359,6 +385,9 @@ struct hns3_tx_queue {
 	uint64_t queue_full_cnt;
 	uint64_t pkt_padding_fail_cnt;
 };
+
+#define HNS3_GET_TX_QUEUE_PEND_BD_NUM(txq) \
+		((txq)->nb_tx_desc - 1 - (txq)->tx_bd_ready)
 
 struct hns3_queue_info {
 	const char *type;   /* point to queue memory name */
@@ -525,8 +554,13 @@ int hns3_rx_burst_mode_get(struct rte_eth_dev *dev,
 			   struct rte_eth_burst_mode *mode);
 uint16_t hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
+uint16_t hns3_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
+			       uint16_t nb_pkts);
 uint16_t hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
+int hns3_tx_burst_mode_get(struct rte_eth_dev *dev,
+			   __rte_unused uint16_t queue_id,
+			   struct rte_eth_burst_mode *mode);
 const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 void hns3_init_rx_ptype_tble(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);

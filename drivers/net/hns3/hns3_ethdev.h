@@ -643,6 +643,7 @@ struct hns3_adapter {
 	};
 
 	bool rx_simple_allowed;
+	bool tx_simple_allowed;
 	struct hns3_ptype_table ptype_tbl __rte_cache_min_aligned;
 };
 

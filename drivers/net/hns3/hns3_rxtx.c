@@ -1952,27 +1952,72 @@ hns3_get_rx_function(struct rte_eth_dev *dev)
 
 	return hns3_recv_scattered_pkts;
 }
+
+static int
+hns3_tx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_txconf *conf,
+			 uint16_t nb_desc, uint16_t *tx_rs_thresh,
+			 uint16_t *tx_free_thresh, uint16_t idx)
+{
+#define HNS3_TX_RS_FREE_THRESH_GAP	8
+	uint16_t rs_thresh, free_thresh, fast_free_thresh;
+
+	if (nb_desc > HNS3_MAX_RING_DESC || nb_desc < HNS3_MIN_RING_DESC ||
+	    nb_desc % HNS3_ALIGN_RING_DESC) {
+		hns3_err(hw, "number (%u) of tx descriptors is invalid",
+			 nb_desc);
+		return -EINVAL;
+	}
+
+	rs_thresh = (conf->tx_rs_thresh > 0) ?
+			conf->tx_rs_thresh : HNS3_DEFAULT_TX_RS_THRESH;
+	free_thresh = (conf->tx_free_thresh > 0) ?
+			conf->tx_free_thresh : HNS3_DEFAULT_TX_FREE_THRESH;
+	if (rs_thresh + free_thresh > nb_desc || nb_desc % rs_thresh ||
+	    rs_thresh >= nb_desc - HNS3_TX_RS_FREE_THRESH_GAP ||
+	    free_thresh >= nb_desc - HNS3_TX_RS_FREE_THRESH_GAP) {
+		hns3_err(hw, "tx_rs_thresh (%d) tx_free_thresh (%d) nb_desc "
+			 "(%d) of tx descriptors for port=%d queue=%d check "
+			 "fail!",
+			 rs_thresh, free_thresh, nb_desc, hw->data->port_id,
+			 idx);
+		return -EINVAL;
+	}
+
+	if (conf->tx_free_thresh == 0) {
+		/* Fast free Tx memory buffer to improve cache hit rate */
+		fast_free_thresh = nb_desc - rs_thresh;
+		if (fast_free_thresh >=
+		    HNS3_TX_FAST_FREE_AHEAD + HNS3_DEFAULT_TX_FREE_THRESH)
+			free_thresh = fast_free_thresh -
+					HNS3_TX_FAST_FREE_AHEAD;
+	}
+
+	*tx_rs_thresh = rs_thresh;
+	*tx_free_thresh = free_thresh;
+	return 0;
+}
+
 int
 hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		    unsigned int socket_id, const struct rte_eth_txconf *conf)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
+	uint16_t tx_rs_thresh, tx_free_thresh;
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_queue_info q_info;
 	struct hns3_tx_queue *txq;
 	int tx_entry_len;
+	int ret;
 
 	if (dev->data->dev_started) {
 		hns3_err(hw, "tx_queue_setup after dev_start no supported");
 		return -EINVAL;
 	}
 
-	if (nb_desc > HNS3_MAX_RING_DESC || nb_desc < HNS3_MIN_RING_DESC ||
-	    nb_desc % HNS3_ALIGN_RING_DESC) {
-		hns3_err(hw, "Number (%u) of tx descriptors is invalid",
-			    nb_desc);
-		return -EINVAL;
-	}
+	ret = hns3_tx_queue_conf_check(hw, conf, nb_desc,
+				       &tx_rs_thresh, &tx_free_thresh, idx);
+	if (ret)
+		return ret;
 
 	if (dev->data->tx_queues[idx] != NULL) {
 		hns3_tx_queue_release(dev->data->tx_queues[idx]);
@@ -2005,11 +2050,15 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->next_to_use = 0;
 	txq->next_to_clean = 0;
 	txq->tx_bd_ready = txq->nb_tx_desc - 1;
+	txq->tx_free_thresh = tx_free_thresh;
+	txq->tx_rs_thresh = tx_rs_thresh;
 	txq->port_id = dev->data->port_id;
 	txq->pvid_state = hw->port_base_vlan_cfg.state;
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
+	txq->io_tail_reg = (volatile void *)((char *)txq->io_base +
+					     HNS3_RING_TX_TAIL_REG);
 	txq->min_tx_pkt_len = hw->min_tx_pkt_len;
 	txq->over_length_pkt_cnt = 0;
 	txq->exceed_limit_bd_pkt_cnt = 0;
@@ -2022,12 +2071,6 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
-}
-
-static inline void
-hns3_queue_xmit(struct hns3_tx_queue *txq, uint32_t buf_num)
-{
-	hns3_write_dev(txq, HNS3_RING_TX_TAIL_REG, buf_num);
 }
 
 static void
@@ -2798,6 +2841,154 @@ hns3_check_non_tso_pkt(uint16_t nb_buf, struct rte_mbuf **m_seg,
 	return 0;
 }
 
+static inline void
+hns3_tx_free_buffer_simple(struct hns3_tx_queue *txq)
+{
+	struct hns3_entry *tx_entry;
+	struct hns3_desc *desc;
+	uint16_t tx_next_clean;
+	int i;
+
+	while (1) {
+		if (HNS3_GET_TX_QUEUE_PEND_BD_NUM(txq) < txq->tx_rs_thresh)
+			break;
+
+		/*
+		 * All mbufs can be released only when the VLD bits of all
+		 * descriptors in a batch are cleared.
+		 */
+		tx_next_clean = (txq->next_to_clean + txq->tx_rs_thresh - 1) %
+				txq->nb_tx_desc;
+		desc = &txq->tx_ring[tx_next_clean];
+		for (i = 0; i < txq->tx_rs_thresh; i++) {
+			if (rte_le_to_cpu_16(desc->tx.tp_fe_sc_vld_ra_ri) &
+					BIT(HNS3_TXD_VLD_B))
+				return;
+			desc--;
+		}
+
+		tx_entry = &txq->sw_ring[txq->next_to_clean];
+
+		for (i = 0; i < txq->tx_rs_thresh; i++)
+			rte_prefetch0((tx_entry + i)->mbuf);
+		for (i = 0; i < txq->tx_rs_thresh; i++, tx_entry++) {
+			rte_mempool_put(tx_entry->mbuf->pool, tx_entry->mbuf);
+			tx_entry->mbuf = NULL;
+		}
+
+		txq->next_to_clean = (tx_next_clean + 1) % txq->nb_tx_desc;
+		txq->tx_bd_ready += txq->tx_rs_thresh;
+	}
+}
+
+static inline void
+hns3_tx_backup_1mbuf(struct hns3_entry *tx_entry, struct rte_mbuf **pkts)
+{
+	tx_entry->mbuf = pkts[0];
+}
+
+static inline void
+hns3_tx_backup_4mbuf(struct hns3_entry *tx_entry, struct rte_mbuf **pkts)
+{
+	hns3_tx_backup_1mbuf(&tx_entry[0], &pkts[0]);
+	hns3_tx_backup_1mbuf(&tx_entry[1], &pkts[1]);
+	hns3_tx_backup_1mbuf(&tx_entry[2], &pkts[2]);
+	hns3_tx_backup_1mbuf(&tx_entry[3], &pkts[3]);
+}
+
+static inline void
+hns3_tx_setup_4bd(struct hns3_desc *txdp, struct rte_mbuf **pkts)
+{
+#define PER_LOOP_NUM	4
+	const uint16_t bd_flag = BIT(HNS3_TXD_VLD_B) | BIT(HNS3_TXD_FE_B);
+	uint64_t dma_addr;
+	uint32_t i;
+
+	for (i = 0; i < PER_LOOP_NUM; i++, txdp++, pkts++) {
+		dma_addr = rte_mbuf_data_iova(*pkts);
+		txdp->addr = rte_cpu_to_le_64(dma_addr);
+		txdp->tx.send_size = rte_cpu_to_le_16((*pkts)->data_len);
+		txdp->tx.paylen = 0;
+		txdp->tx.type_cs_vlan_tso_len = 0;
+		txdp->tx.ol_type_vlan_len_msec = 0;
+		txdp->tx.tp_fe_sc_vld_ra_ri = rte_cpu_to_le_16(bd_flag);
+	}
+}
+
+static inline void
+hns3_tx_setup_1bd(struct hns3_desc *txdp, struct rte_mbuf **pkts)
+{
+	const uint16_t bd_flag = BIT(HNS3_TXD_VLD_B) | BIT(HNS3_TXD_FE_B);
+	uint64_t dma_addr;
+
+	dma_addr = rte_mbuf_data_iova(*pkts);
+	txdp->addr = rte_cpu_to_le_64(dma_addr);
+	txdp->tx.send_size = rte_cpu_to_le_16((*pkts)->data_len);
+	txdp->tx.paylen = 0;
+	txdp->tx.type_cs_vlan_tso_len = 0;
+	txdp->tx.ol_type_vlan_len_msec = 0;
+	txdp->tx.tp_fe_sc_vld_ra_ri = rte_cpu_to_le_16(bd_flag);
+}
+
+static inline void
+hns3_tx_fill_hw_ring(struct hns3_tx_queue *txq,
+		     struct rte_mbuf **pkts,
+		     uint16_t nb_pkts)
+{
+#define PER_LOOP_NUM	4
+#define PER_LOOP_MASK	(PER_LOOP_NUM - 1)
+	struct hns3_desc *txdp = &txq->tx_ring[txq->next_to_use];
+	struct hns3_entry *tx_entry = &txq->sw_ring[txq->next_to_use];
+	const uint32_t mainpart = (nb_pkts & ((uint32_t)~PER_LOOP_MASK));
+	const uint32_t leftover = (nb_pkts & ((uint32_t)PER_LOOP_MASK));
+	uint32_t i;
+
+	for (i = 0; i < mainpart; i += PER_LOOP_NUM) {
+		hns3_tx_backup_4mbuf(tx_entry + i, pkts + i);
+		hns3_tx_setup_4bd(txdp + i, pkts + i);
+	}
+	if (unlikely(leftover > 0)) {
+		for (i = 0; i < leftover; i++) {
+			hns3_tx_backup_1mbuf(tx_entry + mainpart + i,
+					     pkts + mainpart + i);
+			hns3_tx_setup_1bd(txdp + mainpart + i,
+					  pkts + mainpart + i);
+		}
+	}
+}
+
+uint16_t
+hns3_xmit_pkts_simple(void *tx_queue,
+		      struct rte_mbuf **tx_pkts,
+		      uint16_t nb_pkts)
+{
+	struct hns3_tx_queue *txq = tx_queue;
+	uint16_t nb_tx = 0;
+
+	hns3_tx_free_buffer_simple(txq);
+
+	nb_pkts = RTE_MIN(txq->tx_bd_ready, nb_pkts);
+	if (unlikely(nb_pkts == 0)) {
+		if (txq->tx_bd_ready == 0)
+			txq->queue_full_cnt++;
+		return 0;
+	}
+
+	txq->tx_bd_ready -= nb_pkts;
+	if (txq->next_to_use + nb_pkts > txq->nb_tx_desc) {
+		nb_tx = txq->nb_tx_desc - txq->next_to_use;
+		hns3_tx_fill_hw_ring(txq, tx_pkts, nb_tx);
+		txq->next_to_use = 0;
+	}
+
+	hns3_tx_fill_hw_ring(txq, tx_pkts + nb_tx, nb_pkts - nb_tx);
+	txq->next_to_use += nb_pkts - nb_tx;
+
+	hns3_write_reg_opt(txq->io_tail_reg, nb_pkts);
+
+	return nb_pkts;
+}
+
 uint16_t
 hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -2909,9 +3100,45 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 end_of_tx:
 
 	if (likely(nb_tx))
-		hns3_queue_xmit(txq, nb_hold);
+		hns3_write_reg_opt(txq->io_tail_reg, nb_hold);
 
 	return nb_tx;
+}
+
+int
+hns3_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
+		       struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	const char *info = NULL;
+
+	if (pkt_burst == hns3_xmit_pkts_simple)
+		info = "Scalar Simple";
+	else if (pkt_burst == hns3_xmit_pkts)
+		info = "Scalar";
+
+	if (info == NULL)
+		return -EINVAL;
+
+	snprintf(mode->info, sizeof(mode->info), "%s", info);
+
+	return 0;
+}
+
+static eth_tx_burst_t
+hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
+{
+	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
+	struct hns3_adapter *hns = dev->data->dev_private;
+
+	if (hns->tx_simple_allowed &&
+	    offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)) {
+		*prep = NULL;
+		return hns3_xmit_pkts_simple;
+	}
+
+	*prep = hns3_prep_pkts;
+	return hns3_xmit_pkts;
 }
 
 static uint16_t
@@ -2925,12 +3152,13 @@ hns3_dummy_rxtx_burst(void *dpdk_txq __rte_unused,
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	eth_tx_prep_t prep = NULL;
 
 	if (hns->hw.adapter_state == HNS3_NIC_STARTED &&
 	    rte_atomic16_read(&hns->hw.reset.resetting) == 0) {
 		eth_dev->rx_pkt_burst = hns3_get_rx_function(eth_dev);
-		eth_dev->tx_pkt_burst = hns3_xmit_pkts;
-		eth_dev->tx_pkt_prepare = hns3_prep_pkts;
+		eth_dev->tx_pkt_burst = hns3_get_tx_function(eth_dev, &prep);
+		eth_dev->tx_pkt_prepare = prep;
 	} else {
 		eth_dev->rx_pkt_burst = hns3_dummy_rxtx_burst;
 		eth_dev->tx_pkt_burst = hns3_dummy_rxtx_burst;
@@ -2966,5 +3194,7 @@ hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->nb_desc = txq->nb_tx_desc;
 	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
+	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
+	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
