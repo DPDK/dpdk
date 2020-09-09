@@ -123,14 +123,6 @@ Deprecation Notices
   avoiding impact on vectorized implementation of the driver datapaths,
   while evaluating performance gains of a better use of the first cache line.
 
-* ethdev: Split the ``struct eth_dev_ops`` struct to hide it as much as possible
-  will be done in 20.11.
-  Currently the ``struct eth_dev_ops`` struct is accessible by the application
-  because some inline functions, like ``rte_eth_tx_descriptor_status()``,
-  access the struct directly.
-  The struct will be separate in two, the ops used by inline functions will be
-  moved next to Rx/Tx burst functions, rest of the ``struct eth_dev_ops`` struct
-  will be moved to header file for drivers to hide it from applications.
 
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well

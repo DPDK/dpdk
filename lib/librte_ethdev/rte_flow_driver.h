@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include "rte_ethdev.h"
+#include "rte_ethdev_driver.h"
 #include "rte_flow.h"
 
 #ifdef __cplusplus

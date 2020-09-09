@@ -163,6 +163,9 @@ ABI Changes
     * ``eth_rx_descriptor_status_t rx_descriptor_status;``
     * ``eth_tx_descriptor_status_t tx_descriptor_status;``
 
+  * ``struct eth_dev_ops`` is no more accessible by applications,
+    which was already internal data structure.
+
 
 Known Issues
 ------------
