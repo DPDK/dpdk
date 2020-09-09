@@ -214,6 +214,10 @@ struct enic {
 	uint8_t switchdev_mode;
 	uint16_t switch_domain_id;
 	uint16_t max_vf_id;
+	/* Number of queues needed for VF representor paths */
+	uint32_t vf_required_wq;
+	uint32_t vf_required_cq;
+	uint32_t vf_required_rq;
 	/*
 	 * Lock to serialize devcmds from PF, VF representors as they all share
 	 * the same PF devcmd instance in firmware.
@@ -232,6 +236,11 @@ struct enic_vf_representor {
 	uint16_t vf_id;
 	int allmulti;
 	int promisc;
+	/* Representor path uses PF queues. These are reserved during init */
+	uint16_t pf_wq_idx;      /* WQ dedicated to VF rep */
+	uint16_t pf_wq_cq_idx;   /* CQ for WQ */
+	uint16_t pf_rq_sop_idx;  /* SOP RQ dedicated to VF rep */
+	uint16_t pf_rq_data_idx; /* Data RQ */
 };
 
 #define VF_ENIC_TO_VF_REP(vf_enic) \
@@ -291,6 +300,67 @@ static inline unsigned int enic_cq_rq(__rte_unused struct enic *enic, unsigned i
 static inline unsigned int enic_cq_wq(struct enic *enic, unsigned int wq)
 {
 	return enic->rq_count + wq;
+}
+
+/*
+ * WQ, RQ, CQ allocation scheme. Firmware gives the driver an array of
+ * WQs, an array of RQs, and an array of CQs. Fow now, these are
+ * statically allocated between PF app send/receive queues and VF
+ * representor app send/receive queues. VF representor supports only 1
+ * send and 1 receive queue. The number of PF app queue is not known
+ * until the queue setup time.
+ *
+ * R = number of receive queues for PF app
+ * S = number of send queues for PF app
+ * V = number of VF representors
+ *
+ * wI = WQ for PF app send queue I
+ * rI = SOP RQ for PF app receive queue I
+ * dI = Data RQ for rI
+ * cwI = CQ for wI
+ * crI = CQ for rI
+ * vwI = WQ for VF representor send queue I
+ * vrI = SOP RQ for VF representor receive queue I
+ * vdI = Data RQ for vrI
+ * vcwI = CQ for vwI
+ * vcrI = CQ for vrI
+ *
+ * WQ array: | w0 |..| wS-1 |..| vwV-1 |..| vw0 |
+ *             ^         ^         ^         ^
+ *    index    0        S-1       W-V       W-1    W=len(WQ array)
+ *
+ * RQ array: | r0  |..| rR-1  |d0 |..|dR-1|  ..|vdV-1 |..| vd0 |vrV-1 |..|vr0 |
+ *             ^         ^     ^       ^         ^          ^     ^        ^
+ *    index    0        R-1    R      2R-1      X-2V    X-(V+1)  X-V      X-1
+ * X=len(RQ array)
+ *
+ * CQ array: | cr0 |..| crR-1 |cw0|..|cwS-1|..|vcwV-1|..| vcw0|vcrV-1|..|vcr0|..
+ *              ^         ^     ^       ^        ^         ^      ^        ^
+ *    index     0        R-1    R     R+S-1     X-2V    X-(V+1)  X-V      X-1
+ * X is not a typo. It really is len(RQ array) to accommodate enic_cq_rq() used
+ * throughout RX handlers. The current scheme requires
+ * len(CQ array) >= len(RQ array).
+ */
+
+static inline unsigned int vf_wq_cq_idx(struct enic_vf_representor *vf)
+{
+	/* rq is not a typo. index(vcwI) coincides with index(vdI) */
+	return vf->pf->conf_rq_count - (vf->pf->max_vf_id + vf->vf_id + 2);
+}
+
+static inline unsigned int vf_wq_idx(struct enic_vf_representor *vf)
+{
+	return vf->pf->conf_wq_count - vf->vf_id - 1;
+}
+
+static inline unsigned int vf_rq_sop_idx(struct enic_vf_representor *vf)
+{
+	return vf->pf->conf_rq_count - vf->vf_id - 1;
+}
+
+static inline unsigned int vf_rq_data_idx(struct enic_vf_representor *vf)
+{
+	return vf->pf->conf_rq_count - (vf->pf->max_vf_id + vf->vf_id + 2);
 }
 
 static inline struct enic *pmd_priv(struct rte_eth_dev *eth_dev)
@@ -397,6 +467,10 @@ void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
 int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params);
 int enic_vf_representor_uninit(struct rte_eth_dev *ethdev);
 int enic_fm_allocate_switch_domain(struct enic *pf);
+int enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq);
+void enic_rxmbuf_queue_release(struct enic *enic, struct vnic_rq *rq);
+void enic_free_wq_buf(struct rte_mbuf **buf);
+void enic_free_rq_buf(struct rte_mbuf **mbuf);
 extern const struct rte_flow_ops enic_flow_ops;
 extern const struct rte_flow_ops enic_fm_flow_ops;
 

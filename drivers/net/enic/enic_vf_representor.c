@@ -24,57 +24,96 @@
 #include "vnic_wq.h"
 #include "vnic_rq.h"
 
-static uint16_t enic_vf_recv_pkts(void *rx_queue __rte_unused,
-				  struct rte_mbuf **rx_pkts __rte_unused,
-				  uint16_t nb_pkts __rte_unused)
+static uint16_t enic_vf_recv_pkts(void *rx_queue,
+				  struct rte_mbuf **rx_pkts,
+				  uint16_t nb_pkts)
 {
-	return 0;
+	return enic_recv_pkts(rx_queue, rx_pkts, nb_pkts);
 }
 
-static uint16_t enic_vf_xmit_pkts(void *tx_queue __rte_unused,
-				  struct rte_mbuf **tx_pkts __rte_unused,
-				  uint16_t nb_pkts __rte_unused)
+static uint16_t enic_vf_xmit_pkts(void *tx_queue,
+				  struct rte_mbuf **tx_pkts,
+				  uint16_t nb_pkts)
 {
-	return 0;
+	return enic_xmit_pkts(tx_queue, tx_pkts, nb_pkts);
 }
 
-static int enic_vf_dev_tx_queue_setup(struct rte_eth_dev *eth_dev __rte_unused,
-	uint16_t queue_idx __rte_unused,
-	uint16_t nb_desc __rte_unused,
-	unsigned int socket_id __rte_unused,
-	const struct rte_eth_txconf *tx_conf __rte_unused)
+static int enic_vf_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
+	uint16_t queue_idx,
+	uint16_t nb_desc,
+	unsigned int socket_id,
+	const struct rte_eth_txconf *tx_conf)
 {
+	struct enic_vf_representor *vf;
+	struct vnic_wq *wq;
+	struct enic *pf;
+	int err;
+
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -E_RTE_SECONDARY;
+	/* Only one queue now */
+	if (queue_idx != 0)
+		return -EINVAL;
+	vf = eth_dev->data->dev_private;
+	pf = vf->pf;
+	wq = &pf->wq[vf->pf_wq_idx];
+	wq->offloads = tx_conf->offloads |
+		eth_dev->data->dev_conf.txmode.offloads;
+	eth_dev->data->tx_queues[0] = (void *)wq;
+	/* Pass vf not pf because of cq index calculation. See enic_alloc_wq */
+	err = enic_alloc_wq(&vf->enic, queue_idx, socket_id, nb_desc);
+	if (err) {
+		ENICPMD_LOG(ERR, "error in allocating wq\n");
+		return err;
+	}
 	return 0;
 }
 
-static void enic_vf_dev_tx_queue_release(void *txq __rte_unused)
+static void enic_vf_dev_tx_queue_release(void *txq)
 {
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
+	enic_free_wq(txq);
 }
 
-static int enic_vf_dev_rx_queue_setup(struct rte_eth_dev *eth_dev __rte_unused,
-	uint16_t queue_idx __rte_unused,
-	uint16_t nb_desc __rte_unused,
-	unsigned int socket_id __rte_unused,
-	const struct rte_eth_rxconf *rx_conf __rte_unused,
-	struct rte_mempool *mp __rte_unused)
+static int enic_vf_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
+	uint16_t queue_idx,
+	uint16_t nb_desc,
+	unsigned int socket_id,
+	const struct rte_eth_rxconf *rx_conf,
+	struct rte_mempool *mp)
 {
+	struct enic_vf_representor *vf;
+	struct enic *pf;
+	int ret;
+
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -E_RTE_SECONDARY;
+	/* Only 1 queue now */
+	if (queue_idx != 0)
+		return -EINVAL;
+	vf = eth_dev->data->dev_private;
+	pf = vf->pf;
+	eth_dev->data->rx_queues[queue_idx] =
+		(void *)&pf->rq[vf->pf_rq_sop_idx];
+	ret = enic_alloc_rq(&vf->enic, queue_idx, socket_id, mp, nb_desc,
+			    rx_conf->rx_free_thresh);
+	if (ret) {
+		ENICPMD_LOG(ERR, "error in allocating rq\n");
+		return ret;
+	}
 	return 0;
 }
 
-static void enic_vf_dev_rx_queue_release(void *rxq __rte_unused)
+static void enic_vf_dev_rx_queue_release(void *rxq)
 {
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
+	enic_free_rq(rxq);
 }
 
 static int enic_vf_dev_configure(struct rte_eth_dev *eth_dev __rte_unused)
@@ -88,6 +127,9 @@ static int enic_vf_dev_configure(struct rte_eth_dev *eth_dev __rte_unused)
 static int enic_vf_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct enic_vf_representor *vf;
+	struct vnic_rq *data_rq;
+	int index, cq_idx;
+	struct enic *pf;
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
@@ -95,6 +137,7 @@ static int enic_vf_dev_start(struct rte_eth_dev *eth_dev)
 		return -E_RTE_SECONDARY;
 
 	vf = eth_dev->data->dev_private;
+	pf = vf->pf;
 	/* Remove all packet filters so no ingress packets go to VF.
 	 * When PF enables switchdev, it will ensure packet filters
 	 * are removed.  So, this is not technically needed.
@@ -105,14 +148,90 @@ static int enic_vf_dev_start(struct rte_eth_dev *eth_dev)
 		ENICPMD_LOG(ERR, "Cannot clear packet filters");
 		return ret;
 	}
+
+	/* Start WQ: see enic_init_vnic_resources */
+	index = vf->pf_wq_idx;
+	cq_idx = vf->pf_wq_cq_idx;
+	vnic_wq_init(&pf->wq[index], cq_idx, 1, 0);
+	vnic_cq_init(&pf->cq[cq_idx],
+		     0 /* flow_control_enable */,
+		     1 /* color_enable */,
+		     0 /* cq_head */,
+		     0 /* cq_tail */,
+		     1 /* cq_tail_color */,
+		     0 /* interrupt_enable */,
+		     0 /* cq_entry_enable */,
+		     1 /* cq_message_enable */,
+		     0 /* interrupt offset */,
+		     (uint64_t)pf->wq[index].cqmsg_rz->iova);
+	/* enic_start_wq */
+	vnic_wq_enable(&pf->wq[index]);
+	eth_dev->data->tx_queue_state[0] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	/* Start RQ: see enic_init_vnic_resources */
+	index = vf->pf_rq_sop_idx;
+	cq_idx = enic_cq_rq(vf->pf, index);
+	vnic_rq_init(&pf->rq[index], cq_idx, 1, 0);
+	data_rq = &pf->rq[vf->pf_rq_data_idx];
+	if (data_rq->in_use)
+		vnic_rq_init(data_rq, cq_idx, 1, 0);
+	vnic_cq_init(&pf->cq[cq_idx],
+		     0 /* flow_control_enable */,
+		     1 /* color_enable */,
+		     0 /* cq_head */,
+		     0 /* cq_tail */,
+		     1 /* cq_tail_color */,
+		     0,
+		     1 /* cq_entry_enable */,
+		     0 /* cq_message_enable */,
+		     0,
+		     0 /* cq_message_addr */);
+	/* enic_enable */
+	ret = enic_alloc_rx_queue_mbufs(pf, &pf->rq[index]);
+	if (ret) {
+		ENICPMD_LOG(ERR, "Failed to alloc sop RX queue mbufs\n");
+		return ret;
+	}
+	ret = enic_alloc_rx_queue_mbufs(pf, data_rq);
+	if (ret) {
+		/* Release the allocated mbufs for the sop rq*/
+		enic_rxmbuf_queue_release(pf, &pf->rq[index]);
+		ENICPMD_LOG(ERR, "Failed to alloc data RX queue mbufs\n");
+		return ret;
+	}
+	enic_start_rq(pf, vf->pf_rq_sop_idx);
+	eth_dev->data->tx_queue_state[0] = RTE_ETH_QUEUE_STATE_STARTED;
+	eth_dev->data->rx_queue_state[0] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 }
 
-static void enic_vf_dev_stop(struct rte_eth_dev *eth_dev __rte_unused)
+static void enic_vf_dev_stop(struct rte_eth_dev *eth_dev)
 {
+	struct enic_vf_representor *vf;
+	struct vnic_rq *rq;
+	struct enic *pf;
+
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
+	/* Undo dev_start. Disable/clean WQ */
+	vf = eth_dev->data->dev_private;
+	pf = vf->pf;
+	vnic_wq_disable(&pf->wq[vf->pf_wq_idx]);
+	vnic_wq_clean(&pf->wq[vf->pf_wq_idx], enic_free_wq_buf);
+	vnic_cq_clean(&pf->cq[vf->pf_wq_cq_idx]);
+	/* Disable/clean RQ */
+	rq = &pf->rq[vf->pf_rq_sop_idx];
+	vnic_rq_disable(rq);
+	vnic_rq_clean(rq, enic_free_rq_buf);
+	rq = &pf->rq[vf->pf_rq_data_idx];
+	if (rq->in_use) {
+		vnic_rq_disable(rq);
+		vnic_rq_clean(rq, enic_free_rq_buf);
+	}
+	vnic_cq_clean(&pf->cq[enic_cq_rq(vf->pf, vf->pf_rq_sop_idx)]);
+	eth_dev->data->tx_queue_state[0] = RTE_ETH_QUEUE_STATE_STOPPED;
+	eth_dev->data->rx_queue_state[0] = RTE_ETH_QUEUE_STATE_STOPPED;
 }
 
 /*
@@ -354,6 +473,31 @@ int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params)
 	vf->enic.switchdev_mode = pf->switchdev_mode;
 	/* Only switchdev is supported now */
 	RTE_ASSERT(vf->enic.switchdev_mode);
+	/* Allocate WQ, RQ, CQ for the representor */
+	vf->pf_wq_idx = vf_wq_idx(vf);
+	vf->pf_wq_cq_idx = vf_wq_cq_idx(vf);
+	vf->pf_rq_sop_idx = vf_rq_sop_idx(vf);
+	vf->pf_rq_data_idx = vf_rq_data_idx(vf);
+	/* Remove these assertions once queue allocation has an easy-to-use
+	 * allocator API instead of index number calculations used throughout
+	 * the driver..
+	 */
+	RTE_ASSERT(enic_cq_rq(pf, vf->pf_rq_sop_idx) == vf->pf_rq_sop_idx);
+	RTE_ASSERT(enic_rte_rq_idx_to_sop_idx(vf->pf_rq_sop_idx) ==
+		   vf->pf_rq_sop_idx);
+	/* RX handlers use enic_cq_rq(sop) to get CQ, so do not save it */
+	pf->vf_required_wq++;
+	pf->vf_required_rq += 2; /* sop and data */
+	pf->vf_required_cq += 2; /* 1 for rq sop and 1 for wq */
+	ENICPMD_LOG(DEBUG, "vf_id %u wq %u rq_sop %u rq_data %u wq_cq %u rq_cq %u",
+		vf->vf_id, vf->pf_wq_idx, vf->pf_rq_sop_idx, vf->pf_rq_data_idx,
+		vf->pf_wq_cq_idx, enic_cq_rq(pf, vf->pf_rq_sop_idx));
+	if (enic_cq_rq(pf, vf->pf_rq_sop_idx) >= pf->conf_cq_count) {
+		ENICPMD_LOG(ERR, "Insufficient CQs. Please ensure number of CQs (%u)"
+			    " >= number of RQs (%u) in CIMC or UCSM",
+			    pf->conf_cq_count, pf->conf_rq_count);
+		return -EINVAL;
+	}
 
 	/* Check for non-existent VFs */
 	pdev = RTE_ETH_DEV_TO_PCI(pf->rte_dev);
