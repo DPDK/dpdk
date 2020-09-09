@@ -2615,46 +2615,62 @@ bnxt_txq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
 
+static const struct {
+	eth_rx_burst_t pkt_burst;
+	const char *info;
+} bnxt_rx_burst_info[] = {
+	{bnxt_recv_pkts,	"Scalar"},
+#if defined(RTE_ARCH_X86)
+	{bnxt_recv_pkts_vec,	"Vector SSE"},
+#elif defined(RTE_ARCH_ARM64)
+	{bnxt_recv_pkts_vec,	"Vector Neon"},
+#endif
+};
+
 static int
 bnxt_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		       struct rte_eth_burst_mode *mode)
 {
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	size_t i;
 
-	if (pkt_burst == bnxt_recv_pkts) {
-		snprintf(mode->info, sizeof(mode->info), "%s",
-			 "Scalar");
-		return 0;
+	for (i = 0; i < RTE_DIM(bnxt_rx_burst_info); i++) {
+		if (pkt_burst == bnxt_rx_burst_info[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 bnxt_rx_burst_info[i].info);
+			return 0;
+		}
 	}
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-	if (pkt_burst == bnxt_recv_pkts_vec) {
-		snprintf(mode->info, sizeof(mode->info), "%s",
-			 "Vector SSE");
-		return 0;
-	}
-#endif
 
 	return -EINVAL;
 }
+
+static const struct {
+	eth_tx_burst_t pkt_burst;
+	const char *info;
+} bnxt_tx_burst_info[] = {
+	{bnxt_xmit_pkts,	"Scalar"},
+#if defined(RTE_ARCH_X86)
+	{bnxt_xmit_pkts_vec,	"Vector SSE"},
+#elif defined(RTE_ARCH_ARM64)
+	{bnxt_xmit_pkts_vec,	"Vector Neon"},
+#endif
+};
 
 static int
 bnxt_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		       struct rte_eth_burst_mode *mode)
 {
 	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	size_t i;
 
-	if (pkt_burst == bnxt_xmit_pkts) {
-		snprintf(mode->info, sizeof(mode->info), "%s",
-			 "Scalar");
-		return 0;
+	for (i = 0; i < RTE_DIM(bnxt_tx_burst_info); i++) {
+		if (pkt_burst == bnxt_tx_burst_info[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 bnxt_tx_burst_info[i].info);
+			return 0;
+		}
 	}
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-	if (pkt_burst == bnxt_xmit_pkts_vec) {
-		snprintf(mode->info, sizeof(mode->info), "%s",
-			 "Vector SSE");
-		return 0;
-	}
-#endif
 
 	return -EINVAL;
 }
