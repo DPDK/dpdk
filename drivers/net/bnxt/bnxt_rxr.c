@@ -406,6 +406,95 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 	return bnxt_ptype_table[index];
 }
 
+uint32_t
+bnxt_ol_flags_table[BNXT_OL_FLAGS_TBL_DIM] __rte_cache_aligned;
+
+uint32_t
+bnxt_ol_flags_err_table[BNXT_OL_FLAGS_ERR_TBL_DIM] __rte_cache_aligned;
+
+static void __rte_cold
+bnxt_init_ol_flags_tables(void)
+{
+	static bool initialized;
+	uint32_t *pt;
+	int i;
+
+	if (initialized)
+		return;
+
+	/* Initialize ol_flags table. */
+	pt = bnxt_ol_flags_table;
+	for (i = 0; i < BNXT_OL_FLAGS_TBL_DIM; i++) {
+		pt[i] = 0;
+		if (i & RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN)
+			pt[i] |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+
+		if (i & RX_PKT_CMPL_FLAGS2_IP_CS_CALC)
+			pt[i] |= PKT_RX_IP_CKSUM_GOOD;
+
+		if (i & RX_PKT_CMPL_FLAGS2_L4_CS_CALC)
+			pt[i] |= PKT_RX_L4_CKSUM_GOOD;
+
+		if (i & RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC)
+			pt[i] |= PKT_RX_OUTER_L4_CKSUM_GOOD;
+	}
+
+	/* Initialize checksum error table. */
+	pt = bnxt_ol_flags_err_table;
+	for (i = 0; i < BNXT_OL_FLAGS_ERR_TBL_DIM; i++) {
+		pt[i] = 0;
+		if (i & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR >> 4))
+			pt[i] |= PKT_RX_IP_CKSUM_BAD;
+
+		if (i & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR >> 4))
+			pt[i] |= PKT_RX_L4_CKSUM_BAD;
+
+		if (i & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR >> 4))
+			pt[i] |= PKT_RX_EIP_CKSUM_BAD;
+
+		if (i & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR >> 4))
+			pt[i] |= PKT_RX_OUTER_L4_CKSUM_BAD;
+	}
+
+	initialized = true;
+}
+
+static void
+bnxt_set_ol_flags(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1,
+		  struct rte_mbuf *mbuf)
+{
+	uint16_t flags_type, errors, flags;
+	uint64_t ol_flags;
+
+	flags_type = rte_le_to_cpu_16(rxcmp->flags_type);
+
+	flags = rte_le_to_cpu_32(rxcmp1->flags2) &
+				(RX_PKT_CMPL_FLAGS2_IP_CS_CALC |
+				 RX_PKT_CMPL_FLAGS2_L4_CS_CALC |
+				 RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC |
+				 RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC |
+				 RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN);
+
+	errors = rte_le_to_cpu_16(rxcmp1->errors_v2) &
+				(RX_PKT_CMPL_ERRORS_IP_CS_ERROR |
+				 RX_PKT_CMPL_ERRORS_L4_CS_ERROR |
+				 RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR |
+				 RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR);
+	errors = (errors >> 4) & flags;
+
+	ol_flags = bnxt_ol_flags_table[flags & ~errors];
+
+	if (errors)
+		ol_flags |= bnxt_ol_flags_err_table[errors];
+
+	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
+		mbuf->hash.rss = rte_le_to_cpu_32(rxcmp->rss_hash);
+		ol_flags |= PKT_RX_RSS_HASH;
+	}
+
+	mbuf->ol_flags = ol_flags;
+}
+
 #ifdef RTE_LIBRTE_IEEE1588
 static void
 bnxt_get_rx_ts_thor(struct bnxt *bp, uint32_t rx_ts_cmpl)
@@ -583,8 +672,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	int rc = 0;
 	uint8_t agg_buf = 0;
 	uint16_t cmp_type;
-	uint32_t flags2_f = 0, vfr_flag = 0, mark_id = 0;
-	uint16_t flags_type;
+	uint32_t vfr_flag = 0, mark_id = 0;
 	struct bnxt *bp = rxq->bp;
 
 	rxcmp = (struct rx_pkt_cmpl *)
@@ -653,13 +741,17 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->pkt_len = rxcmp->len;
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
-	mbuf->ol_flags = 0;
 
-	flags_type = rte_le_to_cpu_16(rxcmp->flags_type);
-	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID) {
-		mbuf->hash.rss = rxcmp->rss_hash;
-		mbuf->ol_flags |= PKT_RX_RSS_HASH;
+	bnxt_set_ol_flags(rxcmp, rxcmp1, mbuf);
+
+#ifdef RTE_LIBRTE_IEEE1588
+	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
+		      RX_PKT_CMPL_FLAGS_MASK) ==
+		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP)) {
+		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
+		bnxt_get_rx_ts_thor(rxq->bp, rxcmp1->reorder);
 	}
+#endif
 
 	if (BNXT_TRUFLOW_EN(bp))
 		mark_id = bnxt_ulp_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf,
@@ -667,65 +759,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	else
 		bnxt_set_mark_in_mbuf(rxq->bp, rxcmp1, mbuf);
 
-#ifdef RTE_LIBRTE_IEEE1588
-	if (unlikely((flags_type & RX_PKT_CMPL_FLAGS_MASK) ==
-		     RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP)) {
-		mbuf->ol_flags |= PKT_RX_IEEE1588_PTP | PKT_RX_IEEE1588_TMST;
-		bnxt_get_rx_ts_thor(rxq->bp, rxcmp1->reorder);
-	}
-#endif
 	if (agg_buf)
 		bnxt_rx_pages(rxq, mbuf, &tmp_raw_cons, agg_buf, NULL);
-
-	if (rxcmp1->flags2 & RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN) {
-		mbuf->vlan_tci = rxcmp1->metadata &
-			(RX_PKT_CMPL_METADATA_VID_MASK |
-			RX_PKT_CMPL_METADATA_DE |
-			RX_PKT_CMPL_METADATA_PRI_MASK);
-		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
-	}
-
-	flags2_f = flags2_0xf(rxcmp1);
-	/* IP Checksum */
-	if (likely(IS_IP_NONTUNNEL_PKT(flags2_f))) {
-		if (unlikely(RX_CMP_IP_CS_ERROR(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-		else if (unlikely(RX_CMP_IP_CS_UNKNOWN(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
-		else
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-	} else if (IS_IP_TUNNEL_PKT(flags2_f)) {
-		if (unlikely(RX_CMP_IP_OUTER_CS_ERROR(rxcmp1) ||
-			     RX_CMP_IP_CS_ERROR(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-		else if (unlikely(RX_CMP_IP_CS_UNKNOWN(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
-		else
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-	}
-
-	/* L4 Checksum */
-	if (likely(IS_L4_NONTUNNEL_PKT(flags2_f))) {
-		if (unlikely(RX_CMP_L4_INNER_CS_ERR2(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-	} else if (IS_L4_TUNNEL_PKT(flags2_f)) {
-		if (unlikely(RX_CMP_L4_INNER_CS_ERR2(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-		if (unlikely(RX_CMP_L4_OUTER_CS_ERR2(rxcmp1))) {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
-		} else if (unlikely(IS_L4_TUNNEL_PKT_ONLY_INNER_L4_CS
-				    (flags2_f))) {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_UNKNOWN;
-		} else {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
-		}
-	} else if (unlikely(RX_CMP_L4_CS_UNKNOWN(rxcmp1))) {
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
-	}
 
 	mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
 
@@ -1074,6 +1109,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 
 	/* Initialize packet type table. */
 	bnxt_init_ptype_table();
+
+	/* Initialize offload flags parsing table. */
+	bnxt_init_ol_flags_tables();
 
 	size = rte_pktmbuf_data_room_size(rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
 	size = RTE_MIN(BNXT_MAX_PKT_LEN, size);

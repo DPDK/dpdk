@@ -120,50 +120,28 @@ bnxt_parse_pkt_type(__m128i mm_rxcmp, __m128i mm_rxcmp1)
 	return _mm_set_epi32(0, 0, 0, bnxt_ptype_table[index]);
 }
 
-static void
-bnxt_parse_csum(struct rte_mbuf *mbuf, struct rx_pkt_cmpl_hi *rxcmp1)
+static __m128i
+bnxt_set_ol_flags(__m128i mm_rxcmp, __m128i mm_rxcmp1)
 {
-	uint32_t flags;
+	uint16_t flags_type, errors, flags;
+	uint32_t ol_flags;
 
-	flags = flags2_0xf(rxcmp1);
-	/* IP Checksum */
-	if (likely(IS_IP_NONTUNNEL_PKT(flags))) {
-		if (unlikely(RX_CMP_IP_CS_ERROR(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-	} else if (IS_IP_TUNNEL_PKT(flags)) {
-		if (unlikely(RX_CMP_IP_OUTER_CS_ERROR(rxcmp1) ||
-			     RX_CMP_IP_CS_ERROR(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-	} else if (unlikely(RX_CMP_IP_CS_UNKNOWN(rxcmp1))) {
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
-	}
+	/* Extract rxcmp1->flags2. */
+	flags = _mm_extract_epi32(mm_rxcmp1, 0) & 0x1F;
+	/* Extract rxcmp->flags_type. */
+	flags_type = _mm_extract_epi16(mm_rxcmp, 0);
+	/* Extract rxcmp1->errors_v2. */
+	errors = (_mm_extract_epi16(mm_rxcmp1, 4) >> 4) & flags & 0xF;
 
-	/* L4 Checksum */
-	if (likely(IS_L4_NONTUNNEL_PKT(flags))) {
-		if (unlikely(RX_CMP_L4_INNER_CS_ERR2(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-	} else if (IS_L4_TUNNEL_PKT(flags)) {
-		if (unlikely(RX_CMP_L4_INNER_CS_ERR2(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-		if (unlikely(RX_CMP_L4_OUTER_CS_ERR2(rxcmp1))) {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
-		} else if (unlikely(IS_L4_TUNNEL_PKT_ONLY_INNER_L4_CS
-				    (flags))) {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_UNKNOWN;
-		} else {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
-		}
-	} else if (unlikely(RX_CMP_L4_CS_UNKNOWN(rxcmp1))) {
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
-	}
+	ol_flags = bnxt_ol_flags_table[flags & ~errors];
+
+	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID)
+		ol_flags |= PKT_RX_RSS_HASH;
+
+	if (errors)
+		ol_flags |= bnxt_ol_flags_err_table[errors];
+
+	return _mm_set_epi64x(ol_flags, 0);
 }
 
 uint16_t
@@ -208,7 +186,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		struct rx_pkt_cmpl_hi *rxcmp1;
 		struct rte_mbuf *mbuf;
-		__m128i mm_rxcmp, mm_rxcmp1, pkt_mb, ptype;
+		__m128i mm_rxcmp, mm_rxcmp1, pkt_mb, ptype, rearm;
 
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 
@@ -225,35 +203,31 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		cons = rxcmp->opaque;
 
 		mbuf = rxr->rx_buf_ring[cons];
-		rte_prefetch0(mbuf);
 		rxr->rx_buf_ring[cons] = NULL;
 
-		/* Set constant fields from mbuf initializer. */
-		_mm_store_si128((__m128i *)&mbuf->rearm_data, mbuf_init);
+		/* Set fields from mbuf initializer and ol_flags. */
+		rearm = _mm_or_si128(mbuf_init,
+				     bnxt_set_ol_flags(mm_rxcmp, mm_rxcmp1));
+		_mm_store_si128((__m128i *)&mbuf->rearm_data, rearm);
 
 		/* Set mbuf pkt_len, data_len, and rss_hash fields. */
 		pkt_mb = _mm_shuffle_epi8(mm_rxcmp, shuf_msk);
+
+		/* Set packet type. */
 		ptype = bnxt_parse_pkt_type(mm_rxcmp, mm_rxcmp1);
 		pkt_mb = _mm_blend_epi16(pkt_mb, ptype, 0x3);
 
+		/*
+		 * Shift vlan_tci from completion metadata field left six
+		 * bytes and blend into mbuf->rx_descriptor_fields1 to set
+		 * mbuf->vlan_tci.
+		 */
+		pkt_mb = _mm_blend_epi16(pkt_mb,
+					 _mm_slli_si128(mm_rxcmp1, 6), 0x20);
+
+		/* Store descriptor fields. */
 		_mm_storeu_si128((void *)&mbuf->rx_descriptor_fields1, pkt_mb);
 
-		rte_compiler_barrier();
-
-		if (rxcmp->flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID)
-			mbuf->ol_flags |= PKT_RX_RSS_HASH;
-
-		if (rxcmp1->flags2 &
-		    RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN) {
-			mbuf->vlan_tci = rxcmp1->metadata &
-				(RX_PKT_CMPL_METADATA_VID_MASK |
-				RX_PKT_CMPL_METADATA_DE |
-				RX_PKT_CMPL_METADATA_PRI_MASK);
-			mbuf->ol_flags |=
-				PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
-		}
-
-		bnxt_parse_csum(mbuf, rxcmp1);
 		rx_pkts[nb_rx_pkts++] = mbuf;
 	}
 

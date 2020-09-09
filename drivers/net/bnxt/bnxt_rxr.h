@@ -240,4 +240,10 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 
 #define BNXT_PTYPE_TBL_DIM	128
 extern uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM];
+
+#define BNXT_OL_FLAGS_TBL_DIM	32
+extern uint32_t bnxt_ol_flags_table[BNXT_OL_FLAGS_TBL_DIM];
+
+#define BNXT_OL_FLAGS_ERR_TBL_DIM 16
+extern uint32_t bnxt_ol_flags_err_table[BNXT_OL_FLAGS_ERR_TBL_DIM];
 #endif

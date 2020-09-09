@@ -116,50 +116,28 @@ bnxt_parse_pkt_type(uint32x4_t mm_rxcmp, uint32x4_t mm_rxcmp1)
 	return bnxt_ptype_table[index];
 }
 
-static void
-bnxt_parse_csum(struct rte_mbuf *mbuf, struct rx_pkt_cmpl_hi *rxcmp1)
+static uint32_t
+bnxt_set_ol_flags(uint32x4_t mm_rxcmp, uint32x4_t mm_rxcmp1)
 {
-	uint32_t flags;
+	uint16_t flags_type, errors, flags;
+	uint32_t ol_flags;
 
-	flags = flags2_0xf(rxcmp1);
-	/* IP Checksum */
-	if (likely(IS_IP_NONTUNNEL_PKT(flags))) {
-		if (unlikely(RX_CMP_IP_CS_ERROR(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-	} else if (IS_IP_TUNNEL_PKT(flags)) {
-		if (unlikely(RX_CMP_IP_OUTER_CS_ERROR(rxcmp1) ||
-			     RX_CMP_IP_CS_ERROR(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-	} else if (unlikely(RX_CMP_IP_CS_UNKNOWN(rxcmp1))) {
-		mbuf->ol_flags |= PKT_RX_IP_CKSUM_UNKNOWN;
-	}
+	/* Extract rxcmp1->flags2. */
+	flags = vgetq_lane_u32(mm_rxcmp1, 0) & 0x1F;
+	/* Extract rxcmp->flags_type. */
+	flags_type = vgetq_lane_u32(mm_rxcmp, 0);
+	/* Extract rxcmp1->errors_v2. */
+	errors = (vgetq_lane_u32(mm_rxcmp1, 2) >> 4) & flags & 0xF;
 
-	/* L4 Checksum */
-	if (likely(IS_L4_NONTUNNEL_PKT(flags))) {
-		if (unlikely(RX_CMP_L4_INNER_CS_ERR2(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-	} else if (IS_L4_TUNNEL_PKT(flags)) {
-		if (unlikely(RX_CMP_L4_INNER_CS_ERR2(rxcmp1)))
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-		else
-			mbuf->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-		if (unlikely(RX_CMP_L4_OUTER_CS_ERR2(rxcmp1))) {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
-		} else if (unlikely(IS_L4_TUNNEL_PKT_ONLY_INNER_L4_CS
-				    (flags))) {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_UNKNOWN;
-		} else {
-			mbuf->ol_flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
-		}
-	} else if (unlikely(RX_CMP_L4_CS_UNKNOWN(rxcmp1))) {
-		mbuf->ol_flags |= PKT_RX_L4_CKSUM_UNKNOWN;
-	}
+	ol_flags = bnxt_ol_flags_table[flags & ~errors];
+
+	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID)
+		ol_flags |= PKT_RX_RSS_HASH;
+
+	if (errors)
+		ol_flags |= bnxt_ol_flags_err_table[errors];
+
+	return ol_flags;
 }
 
 uint16_t
@@ -202,10 +180,12 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		uint32x4_t mm_rxcmp, mm_rxcmp1;
 		struct rx_pkt_cmpl_hi *rxcmp1;
+		uint32x4_t pkt_mb, rearm;
+		uint32_t ptype, ol_flags;
 		struct rte_mbuf *mbuf;
-		uint32x4_t pkt_mb;
+		uint16_t vlan_tci;
+		uint16x8_t tmp16;
 		uint8x16_t tmp;
-		uint32_t ptype;
 
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 
@@ -224,33 +204,30 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rte_prefetch0(mbuf);
 		rxr->rx_buf_ring[cons] = NULL;
 
-		/* Set constant fields from mbuf initializer. */
-		vst1q_u64((uint64_t *)&mbuf->rearm_data, mbuf_init);
+		/* Set fields from mbuf initializer and ol_flags. */
+		ol_flags = bnxt_set_ol_flags(mm_rxcmp, mm_rxcmp1);
+		rearm = vsetq_lane_u32(ol_flags,
+				       vreinterpretq_u32_u64(mbuf_init), 2);
+		vst1q_u32((uint32_t *)&mbuf->rearm_data, rearm);
 
 		/* Set mbuf pkt_len, data_len, and rss_hash fields. */
 		tmp = vqtbl1q_u8(vreinterpretq_u8_u32(mm_rxcmp), shuf_msk);
 		pkt_mb = vreinterpretq_u32_u8(tmp);
+
+		/* Set packet type. */
 		ptype = bnxt_parse_pkt_type(mm_rxcmp, mm_rxcmp1);
 		pkt_mb = vsetq_lane_u32(ptype, pkt_mb, 0);
 
+		/* Set vlan_tci. */
+		vlan_tci = vgetq_lane_u32(mm_rxcmp1, 1);
+		tmp16 = vsetq_lane_u16(vlan_tci,
+				       vreinterpretq_u16_u32(pkt_mb),
+				       5);
+		pkt_mb = vreinterpretq_u32_u16(tmp16);
+
+		/* Store descriptor fields. */
 		vst1q_u32((uint32_t *)&mbuf->rx_descriptor_fields1, pkt_mb);
 
-		rte_compiler_barrier();
-
-		if (rxcmp->flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID)
-			mbuf->ol_flags |= PKT_RX_RSS_HASH;
-
-		if (rxcmp1->flags2 &
-		    RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN) {
-			mbuf->vlan_tci = rxcmp1->metadata &
-				(RX_PKT_CMPL_METADATA_VID_MASK |
-				RX_PKT_CMPL_METADATA_DE |
-				RX_PKT_CMPL_METADATA_PRI_MASK);
-			mbuf->ol_flags |=
-				PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
-		}
-
-		bnxt_parse_csum(mbuf, rxcmp1);
 		rx_pkts[nb_rx_pkts++] = mbuf;
 	}
 
