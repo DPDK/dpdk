@@ -2029,7 +2029,6 @@ static const struct eth_dev_ops nicvf_eth_dev_ops = {
 	.tx_queue_stop            = nicvf_dev_tx_queue_stop,
 	.rx_queue_setup           = nicvf_dev_rx_queue_setup,
 	.rx_queue_release         = nicvf_dev_rx_queue_release,
-	.rx_queue_count           = nicvf_dev_rx_queue_count,
 	.tx_queue_setup           = nicvf_dev_tx_queue_setup,
 	.tx_queue_release         = nicvf_dev_tx_queue_release,
 	.dev_set_link_up          = nicvf_dev_set_link_up,
@@ -2134,6 +2133,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &nicvf_eth_dev_ops;
+	eth_dev->rx_queue_count = nicvf_dev_rx_queue_count;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {

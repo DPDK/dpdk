@@ -132,7 +132,6 @@ static const struct eth_dev_ops ark_eth_dev_ops = {
 	.dev_infos_get = eth_ark_dev_info_get,
 
 	.rx_queue_setup = eth_ark_dev_rx_queue_setup,
-	.rx_queue_count = eth_ark_dev_rx_queue_count,
 	.tx_queue_setup = eth_ark_tx_queue_setup,
 
 	.link_update = eth_ark_dev_link_update,
@@ -318,6 +317,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 		return -1;
 
 	dev->dev_ops = &ark_eth_dev_ops;
+	dev->rx_queue_count = eth_ark_dev_rx_queue_count;
 
 	dev->data->mac_addrs = rte_zmalloc("ark", RTE_ETHER_ADDR_LEN, 0);
 	if (!dev->data->mac_addrs) {

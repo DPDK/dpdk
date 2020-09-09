@@ -1385,7 +1385,6 @@ static const struct eth_dev_ops ops = {
 	.rx_queue_release = eth_queue_release,
 	.tx_queue_release = eth_queue_release,
 	.tx_done_cleanup = eth_tx_done_cleanup,
-	.rx_queue_count = eth_rx_queue_count,
 	.link_update = eth_link_update,
 	.stats_get = eth_stats_get,
 	.stats_reset = eth_stats_reset,
@@ -1447,6 +1446,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	data->all_multicast = 1;
 
 	eth_dev->dev_ops = &ops;
+	eth_dev->rx_queue_count = eth_rx_queue_count;
 
 	/* finally assign rx and tx ops */
 	eth_dev->rx_pkt_burst = eth_vhost_rx;

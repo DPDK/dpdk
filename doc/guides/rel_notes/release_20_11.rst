@@ -153,6 +153,16 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* ``ethdev`` changes
+
+  * Following device operation function pointers moved
+    from ``struct eth_dev_ops`` to ``struct rte_eth_dev``:
+
+    * ``eth_rx_queue_count_t       rx_queue_count;``
+    * ``eth_rx_descriptor_done_t   rx_descriptor_done;``
+    * ``eth_rx_descriptor_status_t rx_descriptor_status;``
+    * ``eth_tx_descriptor_status_t tx_descriptor_status;``
+
 
 Known Issues
 ------------

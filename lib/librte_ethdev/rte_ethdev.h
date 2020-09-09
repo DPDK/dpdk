@@ -4545,11 +4545,11 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 	dev = &rte_eth_devices[port_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, -ENOTSUP);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_queue_count, -ENOTSUP);
 	if (queue_id >= dev->data->nb_rx_queues)
 		return -EINVAL;
 
-	return (int)(*dev->dev_ops->rx_queue_count)(dev, queue_id);
+	return (int)(*dev->rx_queue_count)(dev, queue_id);
 }
 
 /**
@@ -4573,9 +4573,8 @@ rte_eth_rx_descriptor_done(uint16_t port_id, uint16_t queue_id, uint16_t offset)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_done, -ENOTSUP);
-	return (*dev->dev_ops->rx_descriptor_done)( \
-		dev->data->rx_queues[queue_id], offset);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_descriptor_done, -ENOTSUP);
+	return (*dev->rx_descriptor_done)(dev->data->rx_queues[queue_id], offset);
 }
 
 #define RTE_ETH_RX_DESC_AVAIL    0 /**< Desc available for hw. */
@@ -4630,10 +4629,10 @@ rte_eth_rx_descriptor_status(uint16_t port_id, uint16_t queue_id,
 	if (queue_id >= dev->data->nb_rx_queues)
 		return -ENODEV;
 #endif
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_status, -ENOTSUP);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->rx_descriptor_status, -ENOTSUP);
 	rxq = dev->data->rx_queues[queue_id];
 
-	return (*dev->dev_ops->rx_descriptor_status)(rxq, offset);
+	return (*dev->rx_descriptor_status)(rxq, offset);
 }
 
 #define RTE_ETH_TX_DESC_FULL    0 /**< Desc filled for hw, waiting xmit. */
@@ -4687,10 +4686,10 @@ static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
 	if (queue_id >= dev->data->nb_tx_queues)
 		return -ENODEV;
 #endif
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_descriptor_status, -ENOTSUP);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->tx_descriptor_status, -ENOTSUP);
 	txq = dev->data->tx_queues[queue_id];
 
-	return (*dev->dev_ops->tx_descriptor_status)(txq, offset);
+	return (*dev->tx_descriptor_status)(txq, offset);
 }
 
 /**

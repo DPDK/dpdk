@@ -5131,6 +5131,10 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 		dev->dev_ops = &mlx5_os_dev_ops_isolate;
 	else
 		dev->dev_ops = &mlx5_os_dev_ops;
+
+	dev->rx_descriptor_status = mlx5_rx_descriptor_status;
+	dev->tx_descriptor_status = mlx5_tx_descriptor_status;
+
 	return 0;
 }
 

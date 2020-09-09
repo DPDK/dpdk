@@ -2855,10 +2855,6 @@ static const struct eth_dev_ops fm10k_eth_dev_ops = {
 	.rx_queue_release	= fm10k_rx_queue_release,
 	.tx_queue_setup		= fm10k_tx_queue_setup,
 	.tx_queue_release	= fm10k_tx_queue_release,
-	.rx_queue_count		= fm10k_dev_rx_queue_count,
-	.rx_descriptor_done	= fm10k_dev_rx_descriptor_done,
-	.rx_descriptor_status = fm10k_dev_rx_descriptor_status,
-	.tx_descriptor_status = fm10k_dev_tx_descriptor_status,
 	.rx_queue_intr_enable	= fm10k_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable	= fm10k_dev_rx_queue_intr_disable,
 	.reta_update		= fm10k_reta_update,
@@ -3055,6 +3051,10 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	dev->dev_ops = &fm10k_eth_dev_ops;
+	dev->rx_queue_count = fm10k_dev_rx_queue_count;
+	dev->rx_descriptor_done	= fm10k_dev_rx_descriptor_done;
+	dev->rx_descriptor_status = fm10k_dev_rx_descriptor_status;
+	dev->tx_descriptor_status = fm10k_dev_tx_descriptor_status;
 	dev->rx_pkt_burst = &fm10k_recv_pkts;
 	dev->tx_pkt_burst = &fm10k_xmit_pkts;
 	dev->tx_pkt_prepare = &fm10k_prep_pkts;

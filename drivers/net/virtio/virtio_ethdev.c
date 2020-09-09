@@ -920,7 +920,6 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.rx_queue_intr_enable    = virtio_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable   = virtio_dev_rx_queue_intr_disable,
 	.rx_queue_release        = virtio_dev_queue_release,
-	.rx_descriptor_done      = virtio_dev_rx_queue_done,
 	.tx_queue_setup          = virtio_dev_tx_queue_setup,
 	.tx_queue_release        = virtio_dev_queue_release,
 	/* collect stats per queue */
@@ -1903,6 +1902,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
+	eth_dev->rx_descriptor_done = virtio_dev_rx_queue_done;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		if (!hw->virtio_user_dev) {

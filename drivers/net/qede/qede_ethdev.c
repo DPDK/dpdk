@@ -2386,7 +2386,6 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_infos_get = qede_dev_info_get,
 	.rx_queue_setup = qede_rx_queue_setup,
 	.rx_queue_release = qede_rx_queue_release,
-	.rx_descriptor_status = qede_rx_descriptor_status,
 	.tx_queue_setup = qede_tx_queue_setup,
 	.tx_queue_release = qede_tx_queue_release,
 	.dev_start = qede_dev_start,
@@ -2431,7 +2430,6 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.dev_infos_get = qede_dev_info_get,
 	.rx_queue_setup = qede_rx_queue_setup,
 	.rx_queue_release = qede_rx_queue_release,
-	.rx_descriptor_status = qede_rx_descriptor_status,
 	.tx_queue_setup = qede_tx_queue_setup,
 	.tx_queue_release = qede_tx_queue_release,
 	.dev_start = qede_dev_start,
@@ -2670,6 +2668,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	}
 
 	eth_dev->dev_ops = (is_vf) ? &qede_eth_vf_dev_ops : &qede_eth_dev_ops;
+	eth_dev->rx_descriptor_status = qede_rx_descriptor_status;
 
 	adapter->num_tx_queues = 0;
 	adapter->num_rx_queues = 0;

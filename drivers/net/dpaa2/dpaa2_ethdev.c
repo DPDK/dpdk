@@ -2331,7 +2331,6 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.tx_queue_release  = dpaa2_dev_tx_queue_release,
 	.rx_burst_mode_get = dpaa2_dev_rx_burst_mode_get,
 	.tx_burst_mode_get = dpaa2_dev_tx_burst_mode_get,
-	.rx_queue_count       = dpaa2_dev_rx_queue_count,
 	.flow_ctrl_get	      = dpaa2_flow_ctrl_get,
 	.flow_ctrl_set	      = dpaa2_flow_ctrl_set,
 	.mac_addr_add         = dpaa2_dev_add_mac_addr,
@@ -2486,6 +2485,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		 * plugged.
 		 */
 		eth_dev->dev_ops = &dpaa2_ethdev_ops;
+		eth_dev->rx_queue_count = dpaa2_dev_rx_queue_count;
 		if (dpaa2_get_devargs(dev->devargs, DRIVER_LOOPBACK_MODE))
 			eth_dev->rx_pkt_burst = dpaa2_dev_loopback_rx;
 		else if (dpaa2_get_devargs(dev->devargs,

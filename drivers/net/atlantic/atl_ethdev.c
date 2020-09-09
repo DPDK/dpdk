@@ -313,10 +313,6 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.rx_queue_intr_enable = atl_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = atl_dev_rx_queue_intr_disable,
 
-	.rx_queue_count       = atl_rx_queue_count,
-	.rx_descriptor_status = atl_dev_rx_descriptor_status,
-	.tx_descriptor_status = atl_dev_tx_descriptor_status,
-
 	/* EEPROM */
 	.get_eeprom_length    = atl_dev_get_eeprom_length,
 	.get_eeprom           = atl_dev_get_eeprom,
@@ -373,6 +369,11 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &atl_eth_dev_ops;
+
+	eth_dev->rx_queue_count       = atl_rx_queue_count;
+	eth_dev->rx_descriptor_status = atl_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = atl_dev_tx_descriptor_status;
+
 	eth_dev->rx_pkt_burst = &atl_recv_pkts;
 	eth_dev->tx_pkt_burst = &atl_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &atl_prep_pkts;

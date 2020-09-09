@@ -224,8 +224,6 @@ static const struct eth_dev_ops axgbe_eth_dev_ops = {
 	.rxq_info_get                 = axgbe_rxq_info_get,
 	.txq_info_get                 = axgbe_txq_info_get,
 	.dev_supported_ptypes_get     = axgbe_dev_supported_ptypes_get,
-	.rx_descriptor_status         = axgbe_dev_rx_descriptor_status,
-	.tx_descriptor_status         = axgbe_dev_tx_descriptor_status,
 	.mtu_set		= axgb_mtu_set,
 };
 
@@ -1631,6 +1629,9 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	eth_dev->dev_ops = &axgbe_eth_dev_ops;
+
+	eth_dev->rx_descriptor_status = axgbe_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = axgbe_dev_tx_descriptor_status;
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary

@@ -1141,8 +1141,6 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.tx_queue_stop        = enicpmd_dev_tx_queue_stop,
 	.rx_queue_setup       = enicpmd_dev_rx_queue_setup,
 	.rx_queue_release     = enicpmd_dev_rx_queue_release,
-	.rx_queue_count       = enicpmd_dev_rx_queue_count,
-	.rx_descriptor_done   = NULL,
 	.tx_queue_setup       = enicpmd_dev_tx_queue_setup,
 	.tx_queue_release     = enicpmd_dev_tx_queue_release,
 	.rx_queue_intr_enable = enicpmd_dev_rx_queue_intr_enable,
@@ -1279,6 +1277,7 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 	ENICPMD_FUNC_TRACE();
 
 	eth_dev->dev_ops = &enicpmd_eth_dev_ops;
+	eth_dev->rx_queue_count = enicpmd_dev_rx_queue_count;
 	eth_dev->rx_pkt_burst = &enic_recv_pkts;
 	eth_dev->tx_pkt_burst = &enic_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &enic_prep_pkts;

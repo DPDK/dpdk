@@ -176,10 +176,6 @@ static const struct eth_dev_ops eth_em_ops = {
 	.vlan_offload_set     = eth_em_vlan_offload_set,
 	.rx_queue_setup       = eth_em_rx_queue_setup,
 	.rx_queue_release     = eth_em_rx_queue_release,
-	.rx_queue_count       = eth_em_rx_queue_count,
-	.rx_descriptor_done   = eth_em_rx_descriptor_done,
-	.rx_descriptor_status = eth_em_rx_descriptor_status,
-	.tx_descriptor_status = eth_em_tx_descriptor_status,
 	.tx_queue_setup       = eth_em_tx_queue_setup,
 	.tx_queue_release     = eth_em_tx_queue_release,
 	.rx_queue_intr_enable = eth_em_rx_queue_intr_enable,
@@ -250,6 +246,10 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 		E1000_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
 
 	eth_dev->dev_ops = &eth_em_ops;
+	eth_dev->rx_queue_count = eth_em_rx_queue_count;
+	eth_dev->rx_descriptor_done   = eth_em_rx_descriptor_done;
+	eth_dev->rx_descriptor_status = eth_em_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = eth_em_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = (eth_rx_burst_t)&eth_em_recv_pkts;
 	eth_dev->tx_pkt_burst = (eth_tx_burst_t)&eth_em_xmit_pkts;
 	eth_dev->tx_pkt_prepare = (eth_tx_prep_t)&eth_em_prep_pkts;

@@ -545,10 +545,6 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.rx_queue_intr_enable = ixgbe_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = ixgbe_dev_rx_queue_intr_disable,
 	.rx_queue_release     = ixgbe_dev_rx_queue_release,
-	.rx_queue_count       = ixgbe_dev_rx_queue_count,
-	.rx_descriptor_done   = ixgbe_dev_rx_descriptor_done,
-	.rx_descriptor_status = ixgbe_dev_rx_descriptor_status,
-	.tx_descriptor_status = ixgbe_dev_tx_descriptor_status,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
 	.tx_queue_release     = ixgbe_dev_tx_queue_release,
 	.dev_led_on           = ixgbe_dev_led_on,
@@ -622,9 +618,6 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.vlan_offload_set     = ixgbevf_vlan_offload_set,
 	.rx_queue_setup       = ixgbe_dev_rx_queue_setup,
 	.rx_queue_release     = ixgbe_dev_rx_queue_release,
-	.rx_descriptor_done   = ixgbe_dev_rx_descriptor_done,
-	.rx_descriptor_status = ixgbe_dev_rx_descriptor_status,
-	.tx_descriptor_status = ixgbe_dev_tx_descriptor_status,
 	.tx_queue_setup       = ixgbe_dev_tx_queue_setup,
 	.tx_queue_release     = ixgbe_dev_tx_queue_release,
 	.rx_queue_intr_enable = ixgbevf_dev_rx_queue_intr_enable,
@@ -1091,6 +1084,10 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	ixgbe_dev_macsec_setting_reset(eth_dev);
 
 	eth_dev->dev_ops = &ixgbe_eth_dev_ops;
+	eth_dev->rx_queue_count       = ixgbe_dev_rx_queue_count;
+	eth_dev->rx_descriptor_done   = ixgbe_dev_rx_descriptor_done;
+	eth_dev->rx_descriptor_status = ixgbe_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = ixgbe_dev_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &ixgbe_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &ixgbe_prep_pkts;
@@ -1570,6 +1567,9 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &ixgbevf_eth_dev_ops;
+	eth_dev->rx_descriptor_done   = ixgbe_dev_rx_descriptor_done;
+	eth_dev->rx_descriptor_status = ixgbe_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = ixgbe_dev_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &ixgbe_xmit_pkts;
 

@@ -205,9 +205,6 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.tx_burst_mode_get            = ice_tx_burst_mode_get,
 	.get_eeprom_length            = ice_get_eeprom_length,
 	.get_eeprom                   = ice_get_eeprom,
-	.rx_queue_count               = ice_rx_queue_count,
-	.rx_descriptor_status         = ice_rx_descriptor_status,
-	.tx_descriptor_status         = ice_tx_descriptor_status,
 	.stats_get                    = ice_stats_get,
 	.stats_reset                  = ice_stats_reset,
 	.xstats_get                   = ice_xstats_get,
@@ -2163,6 +2160,9 @@ ice_dev_init(struct rte_eth_dev *dev)
 	int ret;
 
 	dev->dev_ops = &ice_eth_dev_ops;
+	dev->rx_queue_count = ice_rx_queue_count;
+	dev->rx_descriptor_status = ice_rx_descriptor_status;
+	dev->tx_descriptor_status = ice_tx_descriptor_status;
 	dev->rx_pkt_burst = ice_recv_pkts;
 	dev->tx_pkt_burst = ice_xmit_pkts;
 	dev->tx_pkt_prepare = ice_prep_pkts;

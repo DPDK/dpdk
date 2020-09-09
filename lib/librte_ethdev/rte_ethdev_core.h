@@ -660,13 +660,6 @@ struct eth_dev_ops {
 	eth_queue_stop_t           tx_queue_stop; /**< Stop TX for a queue. */
 	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue. */
 	eth_queue_release_t        rx_queue_release; /**< Release RX queue. */
-	eth_rx_queue_count_t       rx_queue_count;
-	/**< Get the number of used RX descriptors. */
-	eth_rx_descriptor_done_t   rx_descriptor_done; /**< Check rxd DD bit. */
-	eth_rx_descriptor_status_t rx_descriptor_status;
-	/**< Check the status of a Rx descriptor. */
-	eth_tx_descriptor_status_t tx_descriptor_status;
-	/**< Check the status of a Tx descriptor. */
 	/*
 	 * Static inline functions use functions ABOVE this comment.
 	 * New dev_ops functions should be added BELOW to avoid breaking ABI.
@@ -782,6 +775,12 @@ struct rte_eth_dev {
 	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
 	eth_tx_prep_t tx_pkt_prepare; /**< Pointer to PMD transmit prepare function. */
+
+	eth_rx_queue_count_t       rx_queue_count; /**< Get the number of used RX descriptors. */
+	eth_rx_descriptor_done_t   rx_descriptor_done;   /**< Check rxd DD bit. */
+	eth_rx_descriptor_status_t rx_descriptor_status; /**< Check the status of a Rx descriptor. */
+	eth_tx_descriptor_status_t tx_descriptor_status; /**< Check the status of a Tx descriptor. */
+
 	/**
 	 * Next two fields are per-device data but *data is shared between
 	 * primary and secondary processes and *process_private is per-process

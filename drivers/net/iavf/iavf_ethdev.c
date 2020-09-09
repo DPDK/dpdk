@@ -117,9 +117,6 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.rss_hash_conf_get          = iavf_dev_rss_hash_conf_get,
 	.rxq_info_get               = iavf_dev_rxq_info_get,
 	.txq_info_get               = iavf_dev_txq_info_get,
-	.rx_queue_count             = iavf_dev_rxq_count,
-	.rx_descriptor_status       = iavf_dev_rx_desc_status,
-	.tx_descriptor_status       = iavf_dev_tx_desc_status,
 	.mtu_set                    = iavf_dev_mtu_set,
 	.rx_queue_intr_enable       = iavf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable      = iavf_dev_rx_queue_intr_disable,
@@ -1383,6 +1380,9 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* assign ops func pointer */
 	eth_dev->dev_ops = &iavf_eth_dev_ops;
+	eth_dev->rx_queue_count = iavf_dev_rxq_count;
+	eth_dev->rx_descriptor_status = iavf_dev_rx_desc_status;
+	eth_dev->tx_descriptor_status = iavf_dev_tx_desc_status;
 	eth_dev->rx_pkt_burst = &iavf_recv_pkts;
 	eth_dev->tx_pkt_burst = &iavf_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &iavf_prep_pkts;

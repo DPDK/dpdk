@@ -4246,9 +4246,6 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.dev_led_off = bnxt_dev_led_off_op,
 	.xstats_get_by_id = bnxt_dev_xstats_get_by_id_op,
 	.xstats_get_names_by_id = bnxt_dev_xstats_get_names_by_id_op,
-	.rx_queue_count = bnxt_rx_queue_count_op,
-	.rx_descriptor_status = bnxt_rx_descriptor_status_op,
-	.tx_descriptor_status = bnxt_tx_descriptor_status_op,
 	.rx_queue_start = bnxt_rx_queue_start,
 	.rx_queue_stop = bnxt_rx_queue_stop,
 	.tx_queue_start = bnxt_tx_queue_start,
@@ -5681,6 +5678,9 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 		PMD_DRV_LOG(INFO, "%s\n", bnxt_version);
 
 	eth_dev->dev_ops = &bnxt_dev_ops;
+	eth_dev->rx_queue_count = bnxt_rx_queue_count_op;
+	eth_dev->rx_descriptor_status = bnxt_rx_descriptor_status_op;
+	eth_dev->tx_descriptor_status = bnxt_tx_descriptor_status_op;
 	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
 

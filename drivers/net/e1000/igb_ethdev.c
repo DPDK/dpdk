@@ -380,10 +380,6 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.rx_queue_intr_enable = eth_igb_rx_queue_intr_enable,
 	.rx_queue_intr_disable = eth_igb_rx_queue_intr_disable,
 	.rx_queue_release     = eth_igb_rx_queue_release,
-	.rx_queue_count       = eth_igb_rx_queue_count,
-	.rx_descriptor_done   = eth_igb_rx_descriptor_done,
-	.rx_descriptor_status = eth_igb_rx_descriptor_status,
-	.tx_descriptor_status = eth_igb_tx_descriptor_status,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
 	.tx_done_cleanup      = eth_igb_tx_done_cleanup,
@@ -441,9 +437,6 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.dev_supported_ptypes_get = eth_igb_supported_ptypes_get,
 	.rx_queue_setup       = eth_igb_rx_queue_setup,
 	.rx_queue_release     = eth_igb_rx_queue_release,
-	.rx_descriptor_done   = eth_igb_rx_descriptor_done,
-	.rx_descriptor_status = eth_igb_rx_descriptor_status,
-	.tx_descriptor_status = eth_igb_tx_descriptor_status,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
 	.tx_done_cleanup      = eth_igb_tx_done_cleanup,
@@ -754,6 +747,10 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	uint32_t ctrl_ext;
 
 	eth_dev->dev_ops = &eth_igb_ops;
+	eth_dev->rx_queue_count = eth_igb_rx_queue_count;
+	eth_dev->rx_descriptor_done   = eth_igb_rx_descriptor_done;
+	eth_dev->rx_descriptor_status = eth_igb_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = eth_igb_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &eth_igb_recv_pkts;
 	eth_dev->tx_pkt_burst = &eth_igb_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &eth_igb_prep_pkts;
@@ -949,6 +946,9 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &igbvf_eth_dev_ops;
+	eth_dev->rx_descriptor_done   = eth_igb_rx_descriptor_done;
+	eth_dev->rx_descriptor_status = eth_igb_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = eth_igb_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &eth_igb_recv_pkts;
 	eth_dev->tx_pkt_burst = &eth_igb_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &eth_igb_prep_pkts;

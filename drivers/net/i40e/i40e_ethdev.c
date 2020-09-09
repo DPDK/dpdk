@@ -474,10 +474,6 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.rx_queue_intr_enable         = i40e_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable        = i40e_dev_rx_queue_intr_disable,
 	.rx_queue_release             = i40e_dev_rx_queue_release,
-	.rx_queue_count               = i40e_dev_rx_queue_count,
-	.rx_descriptor_done           = i40e_dev_rx_descriptor_done,
-	.rx_descriptor_status         = i40e_dev_rx_descriptor_status,
-	.tx_descriptor_status         = i40e_dev_tx_descriptor_status,
 	.tx_queue_setup               = i40e_dev_tx_queue_setup,
 	.tx_queue_release             = i40e_dev_tx_queue_release,
 	.dev_led_on                   = i40e_dev_led_on,
@@ -1448,6 +1444,10 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 
 	dev->dev_ops = &i40e_eth_dev_ops;
+	dev->rx_queue_count = i40e_dev_rx_queue_count;
+	dev->rx_descriptor_done = i40e_dev_rx_descriptor_done;
+	dev->rx_descriptor_status = i40e_dev_rx_descriptor_status;
+	dev->tx_descriptor_status = i40e_dev_tx_descriptor_status;
 	dev->rx_pkt_burst = i40e_recv_pkts;
 	dev->tx_pkt_burst = i40e_xmit_pkts;
 	dev->tx_pkt_prepare = i40e_prep_pkts;

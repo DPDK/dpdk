@@ -646,9 +646,9 @@ used, status can be "Available", "Done" or "Unavailable". When
 ``rx_descriptor_done`` is used, status can be "DD bit is set" or "DD bit is
 not set".
 
-* **[implements] eth_dev_ops**: ``rx_descriptor_status``.
+* **[implements] rte_eth_dev**: ``rx_descriptor_status``.
 * **[related]    API**: ``rte_eth_rx_descriptor_status()``.
-* **[implements] eth_dev_ops**: ``rx_descriptor_done``.
+* **[implements] rte_eth_dev**: ``rx_descriptor_done``.
 * **[related]    API**: ``rte_eth_rx_descriptor_done()``.
 
 
@@ -660,7 +660,7 @@ Tx descriptor status
 Supports checking the status of a Tx descriptor. Status can be "Full", "Done"
 or "Unavailable."
 
-* **[implements] eth_dev_ops**: ``tx_descriptor_status``.
+* **[implements] rte_eth_dev**: ``tx_descriptor_status``.
 * **[related]    API**: ``rte_eth_tx_descriptor_status()``.
 
 

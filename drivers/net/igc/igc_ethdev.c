@@ -272,10 +272,6 @@ static const struct eth_dev_ops eth_igc_ops = {
 
 	.rx_queue_setup		= eth_igc_rx_queue_setup,
 	.rx_queue_release	= eth_igc_rx_queue_release,
-	.rx_queue_count		= eth_igc_rx_queue_count,
-	.rx_descriptor_done	= eth_igc_rx_descriptor_done,
-	.rx_descriptor_status	= eth_igc_rx_descriptor_status,
-	.tx_descriptor_status	= eth_igc_tx_descriptor_status,
 	.tx_queue_setup		= eth_igc_tx_queue_setup,
 	.tx_queue_release	= eth_igc_tx_queue_release,
 	.tx_done_cleanup	= eth_igc_tx_done_cleanup,
@@ -1227,6 +1223,10 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 	dev->dev_ops = &eth_igc_ops;
+	dev->rx_descriptor_done	= eth_igc_rx_descriptor_done;
+	dev->rx_queue_count = eth_igc_rx_queue_count;
+	dev->rx_descriptor_status = eth_igc_rx_descriptor_status;
+	dev->tx_descriptor_status = eth_igc_tx_descriptor_status;
 
 	/*
 	 * for secondary processes, we don't initialize any further as primary

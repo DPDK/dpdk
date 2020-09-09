@@ -199,12 +199,8 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.rx_queue_release     = i40e_dev_rx_queue_release,
 	.rx_queue_intr_enable = i40evf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = i40evf_dev_rx_queue_intr_disable,
-	.rx_descriptor_done   = i40e_dev_rx_descriptor_done,
-	.rx_descriptor_status = i40e_dev_rx_descriptor_status,
-	.tx_descriptor_status = i40e_dev_tx_descriptor_status,
 	.tx_queue_setup       = i40e_dev_tx_queue_setup,
 	.tx_queue_release     = i40e_dev_tx_queue_release,
-	.rx_queue_count       = i40e_dev_rx_queue_count,
 	.rxq_info_get         = i40e_rxq_info_get,
 	.txq_info_get         = i40e_txq_info_get,
 	.mac_addr_add	      = i40evf_add_mac_addr,
@@ -1561,6 +1557,10 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* assign ops func pointer */
 	eth_dev->dev_ops = &i40evf_eth_dev_ops;
+	eth_dev->rx_queue_count       = i40e_dev_rx_queue_count;
+	eth_dev->rx_descriptor_done   = i40e_dev_rx_descriptor_done;
+	eth_dev->rx_descriptor_status = i40e_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = i40e_dev_tx_descriptor_status;
 	eth_dev->rx_pkt_burst = &i40e_recv_pkts;
 	eth_dev->tx_pkt_burst = &i40e_xmit_pkts;
 

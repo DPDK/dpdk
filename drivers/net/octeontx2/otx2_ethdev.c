@@ -2272,10 +2272,6 @@ static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.txq_info_get             = otx2_nix_txq_info_get,
 	.rx_burst_mode_get        = otx2_rx_burst_mode_get,
 	.tx_burst_mode_get        = otx2_tx_burst_mode_get,
-	.rx_queue_count           = otx2_nix_rx_queue_count,
-	.rx_descriptor_done       = otx2_nix_rx_descriptor_done,
-	.rx_descriptor_status     = otx2_nix_rx_descriptor_status,
-	.tx_descriptor_status     = otx2_nix_tx_descriptor_status,
 	.tx_done_cleanup          = otx2_nix_tx_done_cleanup,
 	.set_queue_rate_limit     = otx2_nix_tm_set_queue_rate_limit,
 	.pool_ops_supported       = otx2_nix_pool_ops_supported,
@@ -2382,6 +2378,10 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	int rc, max_entries;
 
 	eth_dev->dev_ops = &otx2_eth_dev_ops;
+	eth_dev->rx_descriptor_done = otx2_nix_rx_descriptor_done;
+	eth_dev->rx_queue_count = otx2_nix_rx_queue_count;
+	eth_dev->rx_descriptor_status = otx2_nix_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = otx2_nix_tx_descriptor_status;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {

@@ -1421,7 +1421,6 @@ static struct eth_dev_ops dpaa_devops = {
 	.tx_queue_setup		  = dpaa_eth_tx_queue_setup,
 	.rx_queue_release	  = dpaa_eth_rx_queue_release,
 	.tx_queue_release	  = dpaa_eth_tx_queue_release,
-	.rx_queue_count		  = dpaa_dev_rx_queue_count,
 	.rx_burst_mode_get	  = dpaa_dev_rx_burst_mode_get,
 	.tx_burst_mode_get	  = dpaa_dev_tx_burst_mode_get,
 	.rxq_info_get		  = dpaa_rxq_info_get,
@@ -1917,6 +1916,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Populate ethdev structure */
 	eth_dev->dev_ops = &dpaa_devops;
+	eth_dev->rx_queue_count = dpaa_dev_rx_queue_count;
 	eth_dev->rx_pkt_burst = dpaa_eth_queue_rx;
 	eth_dev->tx_pkt_burst = dpaa_eth_tx_drop_all;
 
