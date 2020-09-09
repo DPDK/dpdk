@@ -452,9 +452,10 @@ rte_qdma_reset(void)
 	/* In case there are pending jobs on any VQ, return -EBUSY */
 	for (i = 0; i < qdma_dev.max_vqs; i++) {
 		if (qdma_vqs[i].in_use && (qdma_vqs[i].num_enqueues !=
-		    qdma_vqs[i].num_dequeues))
+		    qdma_vqs[i].num_dequeues)) {
 			DPAA2_QDMA_ERR("Jobs are still pending on VQ: %d", i);
 			return -EBUSY;
+		}
 	}
 
 	/* Reset HW queues */
