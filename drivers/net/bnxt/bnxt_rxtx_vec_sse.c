@@ -210,7 +210,6 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint32_t cons;
 	int nb_rx_pkts = 0;
 	struct rx_pkt_cmpl *rxcmp;
-	bool evt = false;
 	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
 	const __m128i shuf_msk =
 		_mm_set_epi8(15, 14, 13, 12,          /* rss */
@@ -218,6 +217,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			     3, 2,                    /* data_len */
 			     0xFF, 0xFF, 3, 2,        /* pkt_len */
 			     0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
+	int i;
 
 	/* If Rx Q was stopped return */
 	if (unlikely(!rxq->rx_started))
@@ -238,83 +238,65 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		return 0;
 
 	/* Handle RX burst request */
-	while (1) {
+	for (i = 0; i < nb_pkts; i++) {
+		struct rx_pkt_cmpl_hi *rxcmp1;
+		struct rte_mbuf *mbuf;
+		__m128i mm_rxcmp, pkt_mb;
+
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 
 		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
+		rxcmp1 = (struct rx_pkt_cmpl_hi *)&cpr->cp_desc_ring[cons + 1];
 
-		if (!CMP_VALID(rxcmp, raw_cons, cpr->cp_ring_struct))
+		if (!CMP_VALID(rxcmp1, raw_cons + 1, cpr->cp_ring_struct))
 			break;
 
-		if (likely(CMP_TYPE(rxcmp) == RX_PKT_CMPL_TYPE_RX_L2)) {
-			struct rx_pkt_cmpl_hi *rxcmp1;
-			uint32_t tmp_raw_cons;
-			uint16_t cp_cons;
-			struct rte_mbuf *mbuf;
-			__m128i mm_rxcmp, pkt_mb;
+		raw_cons += 2;
+		cons = rxcmp->opaque;
 
-			tmp_raw_cons = NEXT_RAW_CMP(raw_cons);
-			cp_cons = RING_CMP(cpr->cp_ring_struct, tmp_raw_cons);
-			rxcmp1 = (struct rx_pkt_cmpl_hi *)
-						&cpr->cp_desc_ring[cp_cons];
+		mbuf = rxr->rx_buf_ring[cons];
+		rte_prefetch0(mbuf);
+		rxr->rx_buf_ring[cons] = NULL;
 
-			if (!CMP_VALID(rxcmp1, tmp_raw_cons,
-				       cpr->cp_ring_struct))
-				break;
+		/* Set constant fields from mbuf initializer. */
+		_mm_store_si128((__m128i *)&mbuf->rearm_data, mbuf_init);
 
-			raw_cons = tmp_raw_cons;
-			cons = rxcmp->opaque;
+		/* Set mbuf pkt_len, data_len, and rss_hash fields. */
+		mm_rxcmp = _mm_load_si128((__m128i *)rxcmp);
+		pkt_mb = _mm_shuffle_epi8(mm_rxcmp, shuf_msk);
+		_mm_storeu_si128((void *)&mbuf->rx_descriptor_fields1, pkt_mb);
 
-			mbuf = rxr->rx_buf_ring[cons];
-			rte_prefetch0(mbuf);
-			rxr->rx_buf_ring[cons] = NULL;
+		rte_compiler_barrier();
 
-			/* Set constant fields from mbuf initializer. */
-			_mm_store_si128((__m128i *)&mbuf->rearm_data,
-					mbuf_init);
+		if (rxcmp->flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID)
+			mbuf->ol_flags |= PKT_RX_RSS_HASH;
 
-			/* Set mbuf pkt_len, data_len, and rss_hash fields. */
-			mm_rxcmp = _mm_load_si128((__m128i *)rxcmp);
-			pkt_mb = _mm_shuffle_epi8(mm_rxcmp, shuf_msk);
-			_mm_storeu_si128((void *)&mbuf->rx_descriptor_fields1,
-					 pkt_mb);
-
-			rte_compiler_barrier();
-
-			if (rxcmp->flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID)
-				mbuf->ol_flags |= PKT_RX_RSS_HASH;
-
-			if (rxcmp1->flags2 &
-			    RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN) {
-				mbuf->vlan_tci = rxcmp1->metadata &
-					(RX_PKT_CMPL_METADATA_VID_MASK |
-					RX_PKT_CMPL_METADATA_DE |
-					RX_PKT_CMPL_METADATA_PRI_MASK);
-				mbuf->ol_flags |=
-					PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
-			}
-
-			bnxt_parse_csum(mbuf, rxcmp1);
-			mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
-
-			rx_pkts[nb_rx_pkts++] = mbuf;
-		} else if (!BNXT_NUM_ASYNC_CPR(rxq->bp)) {
-			evt =
-			bnxt_event_hwrm_resp_handler(rxq->bp,
-						     (struct cmpl_base *)rxcmp);
+		if (rxcmp1->flags2 &
+		    RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN) {
+			mbuf->vlan_tci = rxcmp1->metadata &
+				(RX_PKT_CMPL_METADATA_VID_MASK |
+				RX_PKT_CMPL_METADATA_DE |
+				RX_PKT_CMPL_METADATA_PRI_MASK);
+			mbuf->ol_flags |=
+				PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		}
 
-		raw_cons = NEXT_RAW_CMP(raw_cons);
-		if (nb_rx_pkts == nb_pkts || evt)
-			break;
-	}
-	rxr->rx_prod = RING_ADV(rxr->rx_ring_struct, rxr->rx_prod, nb_rx_pkts);
+		bnxt_parse_csum(mbuf, rxcmp1);
+		mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
 
-	rxq->rxrearm_nb += nb_rx_pkts;
-	cpr->cp_raw_cons = raw_cons;
-	cpr->valid = !!(cpr->cp_raw_cons & cpr->cp_ring_struct->ring_size);
-	if (nb_rx_pkts || evt)
+		rx_pkts[nb_rx_pkts++] = mbuf;
+	}
+
+	if (nb_rx_pkts) {
+		rxr->rx_prod =
+			RING_ADV(rxr->rx_ring_struct, rxr->rx_prod, nb_rx_pkts);
+
+		rxq->rxrearm_nb += nb_rx_pkts;
+		cpr->cp_raw_cons = raw_cons;
+		cpr->valid =
+			!!(cpr->cp_raw_cons & cpr->cp_ring_struct->ring_size);
 		bnxt_db_cq(cpr);
+	}
 
 	return nb_rx_pkts;
 }

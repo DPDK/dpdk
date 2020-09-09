@@ -1114,7 +1114,7 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 		DEV_RX_OFFLOAD_RSS_HASH |
 		DEV_RX_OFFLOAD_VLAN_FILTER)) &&
-	    !BNXT_TRUFLOW_EN(bp)) {
+	    !BNXT_TRUFLOW_EN(bp) && BNXT_NUM_ASYNC_CPR(bp)) {
 		PMD_DRV_LOG(INFO, "Using vector mode receive for port %d\n",
 			    eth_dev->data->port_id);
 		bp->flags |= BNXT_FLAG_RX_VECTOR_PKT_MODE;

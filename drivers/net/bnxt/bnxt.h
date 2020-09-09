@@ -119,18 +119,17 @@
 	(BNXT_CHIP_THOR(bp) ? TPA_MAX_SEGS_TH : \
 			      TPA_MAX_SEGS)
 
-#ifdef RTE_ARCH_ARM64
-#define BNXT_NUM_ASYNC_CPR(bp) (BNXT_STINGRAY(bp) ? 0 : 1)
+/*
+ * Define the number of async completion rings to be used. Set to zero for
+ * configurations in which the maximum number of packet completion rings
+ * for packet completions is desired or when async completion handling
+ * cannot be interrupt-driven.
+ */
+#ifdef RTE_EXEC_ENV_FREEBSD
+/* In FreeBSD OS, nic_uio driver does not support interrupts */
+#define BNXT_NUM_ASYNC_CPR(bp) 0
 #else
 #define BNXT_NUM_ASYNC_CPR(bp) 1
-#endif
-
-/* In FreeBSD OS, nic_uio driver does not support interrupts */
-#ifdef RTE_EXEC_ENV_FREEBSD
-#ifdef BNXT_NUM_ASYNC_CPR
-#undef BNXT_NUM_ASYNC_CPR
-#endif
-#define BNXT_NUM_ASYNC_CPR(bp)	0
 #endif
 
 #define BNXT_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
