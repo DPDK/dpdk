@@ -28,3 +28,7 @@ sources = files('hns3_cmd.c',
 	'hns3_mp.c')
 
 deps += ['hash']
+
+if arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
+	sources += files('hns3_rxtx_vec.c')
+endif

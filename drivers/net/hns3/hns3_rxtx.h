@@ -17,6 +17,10 @@
 #define HNS3_DEFAULT_TX_RS_THRESH	32
 #define HNS3_TX_FAST_FREE_AHEAD		64
 
+#define HNS3_UINT8_BIT			8
+#define HNS3_UINT16_BIT			16
+#define HNS3_UINT32_BIT			32
+
 #define HNS3_512_BD_BUF_SIZE	512
 #define HNS3_1K_BD_BUF_SIZE	1024
 #define HNS3_2K_BD_BUF_SIZE	2048
@@ -131,6 +135,13 @@
 #define HNS3_L2_LEN_UNIT			1UL
 #define HNS3_L3_LEN_UNIT			2UL
 #define HNS3_L4_LEN_UNIT			2UL
+
+#define HNS3_TXD_DEFAULT_BDTYPE		0
+#define HNS3_TXD_VLD_CMD		(0x1 << HNS3_TXD_VLD_B)
+#define HNS3_TXD_FE_CMD			(0x1 << HNS3_TXD_FE_B)
+#define HNS3_TXD_DEFAULT_VLD_FE_BDTYPE		\
+		(HNS3_TXD_VLD_CMD | HNS3_TXD_FE_CMD | HNS3_TXD_DEFAULT_BDTYPE)
+#define HNS3_TXD_SEND_SIZE_SHIFT	16
 
 enum hns3_pkt_l2t_type {
 	HNS3_L2_TYPE_UNICAST,
@@ -317,9 +328,13 @@ struct hns3_tx_queue {
 	 * all descriptors are cleared. and then free all mbufs in the batch.
 	 * - tx_rs_thresh
 	 *   Number of mbufs released at a time.
-
+	 *
+	 * - free
+	 *   Tx mbuf free array used for preserving temporarily address of mbuf
+	 *   released back to mempool, when releasing mbuf in batches.
 	 */
 	uint16_t tx_rs_thresh;
+	struct rte_mbuf **free;
 
 	/*
 	 * port based vlan configuration state.
@@ -558,6 +573,8 @@ uint16_t hns3_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts);
 uint16_t hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
+uint16_t hns3_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+							uint16_t nb_pkts);
 int hns3_tx_burst_mode_get(struct rte_eth_dev *dev,
 			   __rte_unused uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
@@ -577,6 +594,7 @@ int hns3_restore_gro_conf(struct hns3_hw *hw);
 void hns3_update_all_queues_pvid_state(struct hns3_hw *hw);
 void hns3_rx_scattered_reset(struct rte_eth_dev *dev);
 void hns3_rx_scattered_calc(struct rte_eth_dev *dev);
+int hns3_tx_check_vec_support(struct rte_eth_dev *dev);
 void hns3_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_rxq_info *qinfo);
 void hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,

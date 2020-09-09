@@ -95,6 +95,8 @@ hns3_tx_queue_release(void *queue)
 			rte_memzone_free(txq->mz);
 		if (txq->sw_ring)
 			rte_free(txq->sw_ring);
+		if (txq->free)
+			rte_free(txq->free);
 		rte_free(txq);
 	}
 }
@@ -1020,6 +1022,7 @@ hns3_fake_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 
 	/* Don't need alloc sw_ring, because upper applications don't use it */
 	txq->sw_ring = NULL;
+	txq->free = NULL;
 
 	txq->hns = hns;
 	txq->tx_deferred_start = false;
@@ -2052,6 +2055,15 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->tx_bd_ready = txq->nb_tx_desc - 1;
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->tx_rs_thresh = tx_rs_thresh;
+	txq->free = rte_zmalloc_socket("hns3 TX mbuf free array",
+				sizeof(struct rte_mbuf *) * txq->tx_rs_thresh,
+				RTE_CACHE_LINE_SIZE, socket_id);
+	if (!txq->free) {
+		hns3_err(hw, "failed to allocate tx mbuf free array!");
+		hns3_tx_queue_release(txq);
+		return -ENOMEM;
+	}
+
 	txq->port_id = dev->data->port_id;
 	txq->pvid_state = hw->port_base_vlan_cfg.state;
 	txq->configured = true;
@@ -3105,6 +3117,20 @@ end_of_tx:
 	return nb_tx;
 }
 
+int __rte_weak
+hns3_tx_check_vec_support(__rte_unused struct rte_eth_dev *dev)
+{
+	return -ENOTSUP;
+}
+
+uint16_t __rte_weak
+hns3_xmit_pkts_vec(__rte_unused void *tx_queue,
+		   __rte_unused struct rte_mbuf **tx_pkts,
+		   __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
 int
 hns3_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		       struct rte_eth_burst_mode *mode)
@@ -3116,6 +3142,8 @@ hns3_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		info = "Scalar Simple";
 	else if (pkt_burst == hns3_xmit_pkts)
 		info = "Scalar";
+	else if (pkt_burst == hns3_xmit_pkts_vec)
+		info = "Vector Neon";
 
 	if (info == NULL)
 		return -EINVAL;
@@ -3130,6 +3158,11 @@ hns3_get_tx_function(struct rte_eth_dev *dev, eth_tx_prep_t *prep)
 {
 	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 	struct hns3_adapter *hns = dev->data->dev_private;
+
+	if (hns->tx_vec_allowed && hns3_tx_check_vec_support(dev) == 0) {
+		*prep = NULL;
+		return hns3_xmit_pkts_vec;
+	}
 
 	if (hns->tx_simple_allowed &&
 	    offloads == (offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)) {
