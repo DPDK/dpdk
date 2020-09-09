@@ -262,6 +262,12 @@ int rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
  *   The callback function of the timer.
  * @param arg
  *   The user argument of the callback function.
+ *
+ * @note
+ *   This API should not be called inside a timer's callback function to
+ *   reset another timer; doing so could hang in certain scenarios. Instead,
+ *   the rte_timer_reset() API can be called directly and its return code
+ *   can be checked for success or failure.
  */
 void
 rte_timer_reset_sync(struct rte_timer *tim, uint64_t ticks,
@@ -301,6 +307,12 @@ int rte_timer_stop(struct rte_timer *tim);
  *
  * @param tim
  *   The timer handle.
+ *
+ * @note
+ *   This API should not be called inside a timer's callback function to
+ *   stop another timer; doing so could hang in certain scenarios. Instead, the
+ *   rte_timer_stop() API can be called directly and its return code can
+ *   be checked for success or failure.
  */
 void rte_timer_stop_sync(struct rte_timer *tim);
 
