@@ -80,6 +80,8 @@ void vnic_register_cbacks(struct vnic_dev *vdev,
 	void (*free_consistent)(void *priv,
 		size_t size, void *vaddr,
 		dma_addr_t dma_handle));
+void vnic_register_lock(struct vnic_dev *vdev, void (*lock)(void *priv),
+	void (*unlock)(void *priv));
 void __iomem *vnic_dev_get_res(struct vnic_dev *vdev, enum vnic_res_type type,
 	unsigned int index);
 dma_addr_t vnic_dev_get_res_bus_addr(struct vnic_dev *vdev,
@@ -172,6 +174,8 @@ struct vnic_dev *vnic_dev_register(struct vnic_dev *vdev,
 	void *priv, struct rte_pci_device *pdev, struct vnic_dev_bar *bar,
 	unsigned int num_bars);
 struct rte_pci_device *vnic_dev_get_pdev(struct vnic_dev *vdev);
+struct vnic_dev *vnic_vf_rep_register(void *priv, struct vnic_dev *pf_vdev,
+	int vf_id);
 int vnic_dev_alloc_stats_mem(struct vnic_dev *vdev);
 int vnic_dev_cmd_init(struct vnic_dev *vdev, int fallback);
 int vnic_dev_get_size(void);
