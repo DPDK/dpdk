@@ -871,6 +871,25 @@ hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EIO;
 	}
 
+	/*
+	 * when Rx of scattered packets is off, we have some possibility of
+	 * using vector Rx process function or simple Rx functions in hns3 PMD
+	 * driver. If the input MTU is increased and the maximum length of
+	 * received packets is greater than the length of a buffer for Rx
+	 * packet, the hardware network engine needs to use multiple BDs and
+	 * buffers to store these packets. This will cause problems when still
+	 * using vector Rx process function or simple Rx function to receiving
+	 * packets. So, when Rx of scattered packets is off and device is
+	 * started, it is not permitted to increase MTU so that the maximum
+	 * length of Rx packets is greater than Rx buffer length.
+	 */
+	if (dev->data->dev_started && !dev->data->scattered_rx &&
+	    frame_size > hw->rx_buf_len) {
+		hns3_err(hw, "failed to set mtu because current is "
+			"not scattered rx mode");
+		return -EOPNOTSUPP;
+	}
+
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3vf_config_mtu(hw, mtu);
 	if (ret) {
