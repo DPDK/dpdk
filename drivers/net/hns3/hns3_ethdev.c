@@ -2351,6 +2351,8 @@ hns3_dev_configure(struct rte_eth_dev *dev)
 	if (ret)
 		goto cfg_err;
 
+	hns->rx_simple_allowed = true;
+	hns3_init_rx_ptype_tble(dev);
 	hw->adapter_state = HNS3_NIC_CONFIGURED;
 
 	return 0;
@@ -4745,6 +4747,7 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
 
+	hns3_rx_scattered_calc(dev);
 	hns3_set_rxtx_function(dev);
 	hns3_mp_req_start_rxtx(dev);
 	rte_eal_alarm_set(HNS3_SERVICE_INTERVAL, hns3_service_handler, dev);
@@ -4843,6 +4846,7 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 		hns3_dev_release_mbufs(hns);
 		hw->adapter_state = HNS3_NIC_CONFIGURED;
 	}
+	hns3_rx_scattered_reset(dev);
 	rte_eal_alarm_cancel(hns3_service_handler, dev);
 	rte_spinlock_unlock(&hw->lock);
 }
@@ -5513,6 +5517,7 @@ hns3_reset_service(void *param)
 }
 
 static const struct eth_dev_ops hns3_eth_dev_ops = {
+	.dev_configure      = hns3_dev_configure,
 	.dev_start          = hns3_dev_start,
 	.dev_stop           = hns3_dev_stop,
 	.dev_close          = hns3_dev_close,
@@ -5538,7 +5543,7 @@ static const struct eth_dev_ops hns3_eth_dev_ops = {
 	.rx_queue_intr_disable  = hns3_dev_rx_queue_intr_disable,
 	.rxq_info_get           = hns3_rxq_info_get,
 	.txq_info_get           = hns3_txq_info_get,
-	.dev_configure          = hns3_dev_configure,
+	.rx_burst_mode_get      = hns3_rx_burst_mode_get,
 	.flow_ctrl_get          = hns3_flow_ctrl_get,
 	.flow_ctrl_set          = hns3_flow_ctrl_set,
 	.priority_flow_ctrl_set = hns3_priority_flow_ctrl_set,

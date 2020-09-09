@@ -433,6 +433,7 @@ struct hns3_hw {
 	uint16_t tqps_num;          /* num task queue pairs of this function */
 	uint16_t intr_tqps_num;     /* num queue pairs mapping interrupt */
 	uint16_t rss_size_max;      /* HW defined max RSS task queue */
+	uint16_t rx_buf_len;        /* hold min hardware rx buf len */
 	uint16_t num_tx_desc;       /* desc num of per tx queue */
 	uint16_t num_rx_desc;       /* desc num of per rx queue */
 	uint32_t mng_entry_num;     /* number of manager table entry */
@@ -575,6 +576,23 @@ struct hns3_mp_param {
 /* Key string for IPC. */
 #define HNS3_MP_NAME "net_hns3_mp"
 
+#define HNS3_L2TBL_NUM	4
+#define HNS3_L3TBL_NUM	16
+#define HNS3_L4TBL_NUM	16
+#define HNS3_OL3TBL_NUM	16
+#define HNS3_OL4TBL_NUM	16
+
+struct hns3_ptype_table {
+	uint32_t l2table[HNS3_L2TBL_NUM];
+	uint32_t l3table[HNS3_L3TBL_NUM];
+	uint32_t l4table[HNS3_L4TBL_NUM];
+	uint32_t inner_l2table[HNS3_L2TBL_NUM];
+	uint32_t inner_l3table[HNS3_L3TBL_NUM];
+	uint32_t inner_l4table[HNS3_L4TBL_NUM];
+	uint32_t ol3table[HNS3_OL3TBL_NUM];
+	uint32_t ol4table[HNS3_OL4TBL_NUM];
+};
+
 struct hns3_pf {
 	struct hns3_adapter *adapter;
 	bool is_main_pf;
@@ -623,6 +641,9 @@ struct hns3_adapter {
 		struct hns3_pf pf;
 		struct hns3_vf vf;
 	};
+
+	bool rx_simple_allowed;
+	struct hns3_ptype_table ptype_tbl __rte_cache_min_aligned;
 };
 
 #define HNS3_DEV_SUPPORT_DCB_B			0x0

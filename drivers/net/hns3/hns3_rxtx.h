@@ -10,6 +10,8 @@
 #define HNS3_DEFAULT_RING_DESC  1024
 #define	HNS3_ALIGN_RING_DESC	32
 #define HNS3_RING_BASE_ALIGN	128
+#define HNS3_BULK_ALLOC_MBUF_NUM	32
+
 #define HNS3_DEFAULT_RX_FREE_THRESH	32
 
 #define HNS3_512_BD_BUF_SIZE	512
@@ -46,7 +48,7 @@
 #define HNS3_RXD_L2E_B				16
 #define HNS3_RXD_L3E_B				17
 #define HNS3_RXD_L4E_B				18
-#define HNS3_RXD_TRUNCAT_B			19
+#define HNS3_RXD_TRUNCATE_B			19
 #define HNS3_RXD_HOI_B				20
 #define HNS3_RXD_DOI_B				21
 #define HNS3_RXD_OL3E_B				22
@@ -233,6 +235,7 @@ struct hns3_rx_queue {
 	void *io_base;
 	volatile void *io_head_reg;
 	struct hns3_adapter *hns;
+	struct hns3_ptype_table *ptype_tbl;
 	struct rte_mempool *mb_pool;
 	struct hns3_desc *rx_ring;
 	uint64_t rx_ring_phys_addr; /* RX ring DMA address */
@@ -245,13 +248,13 @@ struct hns3_rx_queue {
 	uint16_t queue_id;
 	uint16_t port_id;
 	uint16_t nb_rx_desc;
-	uint16_t next_to_use;
 	uint16_t rx_buf_len;
 	/*
 	 * threshold for the number of BDs waited to passed to hardware. If the
 	 * number exceeds the threshold, driver will pass these BDs to hardware.
 	 */
 	uint16_t rx_free_thresh;
+	uint16_t next_to_use;    /* index of next BD to be polled */
 	uint16_t rx_free_hold;   /* num of BDs waited to passed to hardware */
 
 	/*
@@ -268,10 +271,13 @@ struct hns3_rx_queue {
 
 	uint64_t l2_errors;
 	uint64_t pkt_len_errors;
-	uint64_t l3_csum_erros;
-	uint64_t l4_csum_erros;
-	uint64_t ol3_csum_erros;
-	uint64_t ol4_csum_erros;
+	uint64_t l3_csum_errors;
+	uint64_t l4_csum_errors;
+	uint64_t ol3_csum_errors;
+	uint64_t ol4_csum_errors;
+
+	struct rte_mbuf *bulk_mbuf[HNS3_BULK_ALLOC_MBUF_NUM];
+	uint16_t bulk_mbuf_num;
 };
 
 struct hns3_tx_queue {
@@ -380,6 +386,120 @@ enum hns3_cksum_status {
 	HNS3_OUTER_L4_CKSUM_ERR = 8
 };
 
+static inline int
+hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
+		   uint32_t bd_base_info, uint32_t l234_info,
+		   uint32_t *cksum_err)
+{
+#define L2E_TRUNC_ERR_FLAG	(BIT(HNS3_RXD_L2E_B) | \
+				 BIT(HNS3_RXD_TRUNCATE_B))
+#define CHECKSUM_ERR_FLAG	(BIT(HNS3_RXD_L3E_B) | \
+				 BIT(HNS3_RXD_L4E_B) | \
+				 BIT(HNS3_RXD_OL3E_B) | \
+				 BIT(HNS3_RXD_OL4E_B))
+
+	uint32_t tmp = 0;
+
+	/*
+	 * If packet len bigger than mtu when recv with no-scattered algorithm,
+	 * the first n bd will without FE bit, we need process this sisution.
+	 * Note: we don't need add statistic counter because latest BD which
+	 *       with FE bit will mark HNS3_RXD_L2E_B bit.
+	 */
+	if (unlikely((bd_base_info & BIT(HNS3_RXD_FE_B)) == 0))
+		return -EINVAL;
+
+	if (unlikely((l234_info & L2E_TRUNC_ERR_FLAG) || rxm->pkt_len == 0)) {
+		if (l234_info & BIT(HNS3_RXD_L2E_B))
+			rxq->l2_errors++;
+		else
+			rxq->pkt_len_errors++;
+		return -EINVAL;
+	}
+
+	if (bd_base_info & BIT(HNS3_RXD_L3L4P_B)) {
+		if (likely((l234_info & CHECKSUM_ERR_FLAG) == 0)) {
+			*cksum_err = 0;
+			return 0;
+		}
+
+		if (unlikely(l234_info & BIT(HNS3_RXD_L3E_B))) {
+			rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			rxq->l3_csum_errors++;
+			tmp |= HNS3_L3_CKSUM_ERR;
+		}
+
+		if (unlikely(l234_info & BIT(HNS3_RXD_L4E_B))) {
+			rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			rxq->l4_csum_errors++;
+			tmp |= HNS3_L4_CKSUM_ERR;
+		}
+
+		if (unlikely(l234_info & BIT(HNS3_RXD_OL3E_B))) {
+			rxq->ol3_csum_errors++;
+			tmp |= HNS3_OUTER_L3_CKSUM_ERR;
+		}
+
+		if (unlikely(l234_info & BIT(HNS3_RXD_OL4E_B))) {
+			rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
+			rxq->ol4_csum_errors++;
+			tmp |= HNS3_OUTER_L4_CKSUM_ERR;
+		}
+	}
+	*cksum_err = tmp;
+
+	return 0;
+}
+
+static inline void
+hns3_rx_set_cksum_flag(struct rte_mbuf *rxm, const uint64_t packet_type,
+		       const uint32_t cksum_err)
+{
+	if (unlikely((packet_type & RTE_PTYPE_TUNNEL_MASK))) {
+		if (likely(packet_type & RTE_PTYPE_INNER_L3_MASK) &&
+		    (cksum_err & HNS3_L3_CKSUM_ERR) == 0)
+			rxm->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+		if (likely(packet_type & RTE_PTYPE_INNER_L4_MASK) &&
+		    (cksum_err & HNS3_L4_CKSUM_ERR) == 0)
+			rxm->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		if (likely(packet_type & RTE_PTYPE_L4_MASK) &&
+		    (cksum_err & HNS3_OUTER_L4_CKSUM_ERR) == 0)
+			rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
+	} else {
+		if (likely(packet_type & RTE_PTYPE_L3_MASK) &&
+		    (cksum_err & HNS3_L3_CKSUM_ERR) == 0)
+			rxm->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+		if (likely(packet_type & RTE_PTYPE_L4_MASK) &&
+		    (cksum_err & HNS3_L4_CKSUM_ERR) == 0)
+			rxm->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+	}
+}
+
+static inline uint32_t
+hns3_rx_calc_ptype(struct hns3_rx_queue *rxq, const uint32_t l234_info,
+		   const uint32_t ol_info)
+{
+	const struct hns3_ptype_table *const ptype_tbl = rxq->ptype_tbl;
+	uint32_t l2id, l3id, l4id;
+	uint32_t ol3id, ol4id;
+
+	ol4id = hns3_get_field(ol_info, HNS3_RXD_OL4ID_M, HNS3_RXD_OL4ID_S);
+	ol3id = hns3_get_field(ol_info, HNS3_RXD_OL3ID_M, HNS3_RXD_OL3ID_S);
+	l2id = hns3_get_field(l234_info, HNS3_RXD_STRP_TAGP_M,
+			      HNS3_RXD_STRP_TAGP_S);
+	l3id = hns3_get_field(l234_info, HNS3_RXD_L3ID_M, HNS3_RXD_L3ID_S);
+	l4id = hns3_get_field(l234_info, HNS3_RXD_L4ID_M, HNS3_RXD_L4ID_S);
+
+	if (unlikely(ptype_tbl->ol4table[ol4id]))
+		return ptype_tbl->inner_l2table[l2id] |
+			ptype_tbl->inner_l3table[l3id] |
+			ptype_tbl->inner_l4table[l4id] |
+			ptype_tbl->ol3table[ol3id] | ptype_tbl->ol4table[ol4id];
+	else
+		return ptype_tbl->l2table[l2id] | ptype_tbl->l3table[l3id] |
+			ptype_tbl->l4table[l4id];
+}
+
 void hns3_dev_rx_queue_release(void *queue);
 void hns3_dev_tx_queue_release(void *queue);
 void hns3_free_all_queues(struct rte_eth_dev *dev);
@@ -398,11 +518,17 @@ int hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 			unsigned int socket, const struct rte_eth_txconf *conf);
 uint16_t hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
+uint16_t hns3_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+				  uint16_t nb_pkts);
+int hns3_rx_burst_mode_get(struct rte_eth_dev *dev,
+			   __rte_unused uint16_t queue_id,
+			   struct rte_eth_burst_mode *mode);
 uint16_t hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 uint16_t hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+void hns3_init_rx_ptype_tble(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);
 void hns3_set_queue_intr_gl(struct hns3_hw *hw, uint16_t queue_id,
 			    uint8_t gl_idx, uint16_t gl_value);
@@ -415,6 +541,8 @@ int hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 int hns3_config_gro(struct hns3_hw *hw, bool en);
 int hns3_restore_gro_conf(struct hns3_hw *hw);
 void hns3_update_all_queues_pvid_state(struct hns3_hw *hw);
+void hns3_rx_scattered_reset(struct rte_eth_dev *dev);
+void hns3_rx_scattered_calc(struct rte_eth_dev *dev);
 void hns3_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_rxq_info *qinfo);
 void hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,

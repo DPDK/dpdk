@@ -271,13 +271,13 @@ static const struct hns3_xstats_name_offset hns3_rx_bd_error_strings[] = {
 	{"L2_RX_ERRORS",
 		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(l2_errors)},
 	{"RX_L3_CHECKSUM_ERRORS",
-		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(l3_csum_erros)},
+		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(l3_csum_errors)},
 	{"RX_L4_CHECKSUM_ERRORS",
-		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(l4_csum_erros)},
+		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(l4_csum_errors)},
 	{"RX_OL3_CHECKSUM_ERRORS",
-		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(ol3_csum_erros)},
+		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(ol3_csum_errors)},
 	{"RX_OL4_CHECKSUM_ERRORS",
-		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(ol4_csum_erros)}
+		HNS3_RX_BD_ERROR_STATS_FIELD_OFFSET(ol4_csum_errors)}
 };
 
 /* The statistic of the Tx errors */
@@ -594,10 +594,10 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		if (rxq) {
 			rxq->pkt_len_errors = 0;
 			rxq->l2_errors = 0;
-			rxq->l3_csum_erros = 0;
-			rxq->l4_csum_erros = 0;
-			rxq->ol3_csum_erros = 0;
-			rxq->ol4_csum_erros = 0;
+			rxq->l3_csum_errors = 0;
+			rxq->l4_csum_errors = 0;
+			rxq->ol3_csum_errors = 0;
+			rxq->ol4_csum_errors = 0;
 		}
 	}
 

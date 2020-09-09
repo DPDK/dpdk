@@ -30,7 +30,7 @@
 #include "hns3_logs.h"
 
 #define HNS3_CFG_DESC_NUM(num)	((num) / 8 - 1)
-#define DEFAULT_RX_FREE_THRESH	32
+#define HNS3_RX_RING_PREFETCTH_MASK	3
 
 static void
 hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
@@ -38,13 +38,20 @@ hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
 	uint16_t i;
 
 	/* Note: Fake rx queue will not enter here */
-	if (rxq->sw_ring) {
-		for (i = 0; i < rxq->nb_rx_desc; i++) {
-			if (rxq->sw_ring[i].mbuf) {
-				rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
-				rxq->sw_ring[i].mbuf = NULL;
-			}
-		}
+	if (rxq->sw_ring == NULL)
+		return;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++)
+		if (rxq->sw_ring[i].mbuf)
+			rte_pktmbuf_free_seg(rxq->sw_ring[i].mbuf);
+
+	for (i = 0; i < rxq->bulk_mbuf_num; i++)
+		rte_pktmbuf_free_seg(rxq->bulk_mbuf[i]);
+	rxq->bulk_mbuf_num = 0;
+
+	if (rxq->pkt_first_seg) {
+		rte_pktmbuf_free(rxq->pkt_first_seg);
+		rxq->pkt_first_seg = NULL;
 	}
 }
 
@@ -653,6 +660,8 @@ hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 
 	rxq->next_to_use = 0;
 	rxq->rx_free_hold = 0;
+	rxq->pkt_first_seg = NULL;
+	rxq->pkt_last_seg = NULL;
 	hns3_init_rx_queue_hw(rxq);
 
 	return 0;
@@ -1243,6 +1252,33 @@ hns3_rx_buf_len_calc(struct rte_mempool *mp, uint16_t *rx_buf_len)
 	return 0;
 }
 
+static int
+hns3_rx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_rxconf *conf,
+			 struct rte_mempool *mp, uint16_t nb_desc,
+			 uint16_t *buf_size)
+{
+	if (nb_desc > HNS3_MAX_RING_DESC || nb_desc < HNS3_MIN_RING_DESC ||
+	    nb_desc % HNS3_ALIGN_RING_DESC) {
+		hns3_err(hw, "Number (%u) of rx descriptors is invalid",
+			 nb_desc);
+		return -EINVAL;
+	}
+
+	if (conf->rx_drop_en == 0)
+		hns3_warn(hw, "if no descriptors available, packets are always "
+			  "dropped and rx_drop_en (1) is fixed on");
+
+	if (hns3_rx_buf_len_calc(mp, buf_size)) {
+		hns3_err(hw, "rxq mbufs' data room size (%u) is not enough! "
+				"minimal data room size (%u).",
+				rte_pktmbuf_data_room_size(mp),
+				HNS3_MIN_BD_BUF_SIZE + RTE_PKTMBUF_HEADROOM);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int
 hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		    unsigned int socket_id, const struct rte_eth_rxconf *conf,
@@ -1254,24 +1290,16 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	struct hns3_rx_queue *rxq;
 	uint16_t rx_buf_size;
 	int rx_entry_len;
+	int ret;
 
 	if (dev->data->dev_started) {
 		hns3_err(hw, "rx_queue_setup after dev_start no supported");
 		return -EINVAL;
 	}
 
-	if (nb_desc > HNS3_MAX_RING_DESC || nb_desc < HNS3_MIN_RING_DESC ||
-	    nb_desc % HNS3_ALIGN_RING_DESC) {
-		hns3_err(hw, "Number (%u) of rx descriptors is invalid",
-			 nb_desc);
-		return -EINVAL;
-	}
-
-	if (conf->rx_drop_en == 0)
-		hns3_warn(hw, "if there are no available Rx descriptors,"
-			  "incoming packets are always dropped. input parameter"
-			  " conf->rx_drop_en(%u) is uneffective.",
-			  conf->rx_drop_en);
+	ret = hns3_rx_queue_conf_check(hw, conf, mp, nb_desc, &rx_buf_size);
+	if (ret)
+		return ret;
 
 	if (dev->data->rx_queues[idx]) {
 		hns3_rx_queue_release(dev->data->rx_queues[idx]);
@@ -1284,14 +1312,6 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	q_info.type = "hns3 RX queue";
 	q_info.ring_name = "rx_ring";
 
-	if (hns3_rx_buf_len_calc(mp, &rx_buf_size)) {
-		hns3_err(hw, "rxq mbufs' data room size:%u is not enough! "
-				"minimal data room size:%u.",
-				rte_pktmbuf_data_room_size(mp),
-				HNS3_MIN_BD_BUF_SIZE + RTE_PKTMBUF_HEADROOM);
-		return -EINVAL;
-	}
-
 	rxq = hns3_alloc_rxq_and_dma_zone(dev, &q_info);
 	if (rxq == NULL) {
 		hns3_err(hw,
@@ -1300,6 +1320,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	}
 
 	rxq->hns = hns;
+	rxq->ptype_tbl = &hns->ptype_tbl;
 	rxq->mb_pool = mp;
 	rxq->rx_free_thresh = (conf->rx_free_thresh > 0) ?
 		conf->rx_free_thresh : HNS3_DEFAULT_RX_FREE_THRESH;
@@ -1328,16 +1349,18 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->rx_buf_len = rx_buf_size;
 	rxq->l2_errors = 0;
 	rxq->pkt_len_errors = 0;
-	rxq->l3_csum_erros = 0;
-	rxq->l4_csum_erros = 0;
-	rxq->ol3_csum_erros = 0;
-	rxq->ol4_csum_erros = 0;
+	rxq->l3_csum_errors = 0;
+	rxq->l4_csum_errors = 0;
+	rxq->ol3_csum_errors = 0;
+	rxq->ol4_csum_errors = 0;
 
 	/* CRC len set here is used for amending packet length */
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
+
+	rxq->bulk_mbuf_num = 0;
 
 	rte_spinlock_lock(&hw->lock);
 	dev->data->rx_queues[idx] = rxq;
@@ -1346,104 +1369,40 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	return 0;
 }
 
-static inline uint32_t
-rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint32_t ol_info)
+void
+hns3_rx_scattered_reset(struct rte_eth_dev *dev)
 {
-#define HNS3_L2TBL_NUM	4
-#define HNS3_L3TBL_NUM	16
-#define HNS3_L4TBL_NUM	16
-#define HNS3_OL3TBL_NUM	16
-#define HNS3_OL4TBL_NUM	16
-	uint32_t pkt_type = 0;
-	uint32_t l2id, l3id, l4id;
-	uint32_t ol3id, ol4id;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
 
-	static const uint32_t l2table[HNS3_L2TBL_NUM] = {
-		RTE_PTYPE_L2_ETHER,
-		RTE_PTYPE_L2_ETHER_QINQ,
-		RTE_PTYPE_L2_ETHER_VLAN,
-		RTE_PTYPE_L2_ETHER_VLAN
-	};
+	hw->rx_buf_len = 0;
+	dev->data->scattered_rx = false;
+}
 
-	static const uint32_t l3table[HNS3_L3TBL_NUM] = {
-		RTE_PTYPE_L3_IPV4,
-		RTE_PTYPE_L3_IPV6,
-		RTE_PTYPE_L2_ETHER_ARP,
-		RTE_PTYPE_L2_ETHER,
-		RTE_PTYPE_L3_IPV4_EXT,
-		RTE_PTYPE_L3_IPV6_EXT,
-		RTE_PTYPE_L2_ETHER_LLDP,
-		0, 0, 0, 0, 0, 0, 0, 0, 0
-	};
+void
+hns3_rx_scattered_calc(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_hw *hw = &hns->hw;
+	struct hns3_rx_queue *rxq;
+	uint32_t queue_id;
 
-	static const uint32_t l4table[HNS3_L4TBL_NUM] = {
-		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_L4_TCP,
-		RTE_PTYPE_TUNNEL_GRE,
-		RTE_PTYPE_L4_SCTP,
-		RTE_PTYPE_L4_IGMP,
-		RTE_PTYPE_L4_ICMP,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-	};
+	if (dev->data->rx_queues == NULL)
+		return;
 
-	static const uint32_t inner_l2table[HNS3_L2TBL_NUM] = {
-		RTE_PTYPE_INNER_L2_ETHER,
-		RTE_PTYPE_INNER_L2_ETHER_VLAN,
-		RTE_PTYPE_INNER_L2_ETHER_QINQ,
-		0
-	};
+	for (queue_id = 0; queue_id < dev->data->nb_rx_queues; queue_id++) {
+		rxq = dev->data->rx_queues[queue_id];
+		if (hw->rx_buf_len == 0)
+			hw->rx_buf_len = rxq->rx_buf_len;
+		else
+			hw->rx_buf_len = RTE_MIN(hw->rx_buf_len,
+						 rxq->rx_buf_len);
+	}
 
-	static const uint32_t inner_l3table[HNS3_L3TBL_NUM] = {
-		RTE_PTYPE_INNER_L3_IPV4,
-		RTE_PTYPE_INNER_L3_IPV6,
-		0,
-		RTE_PTYPE_INNER_L2_ETHER,
-		RTE_PTYPE_INNER_L3_IPV4_EXT,
-		RTE_PTYPE_INNER_L3_IPV6_EXT,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-	};
-
-	static const uint32_t inner_l4table[HNS3_L4TBL_NUM] = {
-		RTE_PTYPE_INNER_L4_UDP,
-		RTE_PTYPE_INNER_L4_TCP,
-		RTE_PTYPE_TUNNEL_GRE,
-		RTE_PTYPE_INNER_L4_SCTP,
-		RTE_PTYPE_L4_IGMP,
-		RTE_PTYPE_INNER_L4_ICMP,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-	};
-
-	static const uint32_t ol3table[HNS3_OL3TBL_NUM] = {
-		RTE_PTYPE_L3_IPV4,
-		RTE_PTYPE_L3_IPV6,
-		0, 0,
-		RTE_PTYPE_L3_IPV4_EXT,
-		RTE_PTYPE_L3_IPV6_EXT,
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		RTE_PTYPE_UNKNOWN
-	};
-
-	static const uint32_t ol4table[HNS3_OL4TBL_NUM] = {
-		0,
-		RTE_PTYPE_TUNNEL_VXLAN,
-		RTE_PTYPE_TUNNEL_NVGRE,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-	};
-
-	l2id = hns3_get_field(pkt_info, HNS3_RXD_STRP_TAGP_M,
-			      HNS3_RXD_STRP_TAGP_S);
-	l3id = hns3_get_field(pkt_info, HNS3_RXD_L3ID_M, HNS3_RXD_L3ID_S);
-	l4id = hns3_get_field(pkt_info, HNS3_RXD_L4ID_M, HNS3_RXD_L4ID_S);
-	ol3id = hns3_get_field(ol_info, HNS3_RXD_OL3ID_M, HNS3_RXD_OL3ID_S);
-	ol4id = hns3_get_field(ol_info, HNS3_RXD_OL4ID_M, HNS3_RXD_OL4ID_S);
-
-	if (ol4table[ol4id])
-		pkt_type |= (inner_l2table[l2id] | inner_l3table[l3id] |
-			     inner_l4table[l4id] | ol3table[ol3id] |
-			     ol4table[ol4id]);
-	else
-		pkt_type |= (l2table[l2id] | l3table[l3id] | l4table[l4id]);
-	return pkt_type;
+	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_SCATTER ||
+	    dev_conf->rxmode.max_rx_pkt_len > hw->rx_buf_len)
+		dev->data->scattered_rx = true;
 }
 
 const uint32_t *
@@ -1468,81 +1427,69 @@ hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_UNKNOWN
 	};
 
-	if (dev->rx_pkt_burst == hns3_recv_pkts)
+	if (dev->rx_pkt_burst == hns3_recv_pkts ||
+	    dev->rx_pkt_burst == hns3_recv_scattered_pkts)
 		return ptypes;
 
 	return NULL;
 }
 
-static int
-hns3_handle_bdinfo(struct hns3_rx_queue *rxq, struct rte_mbuf *rxm,
-		   uint32_t bd_base_info, uint32_t l234_info,
-		   uint32_t *cksum_err)
+void
+hns3_init_rx_ptype_tble(struct rte_eth_dev *dev)
 {
-	uint32_t tmp = 0;
+	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_ptype_table *tbl = &hns->ptype_tbl;
 
-	if (unlikely(l234_info & BIT(HNS3_RXD_L2E_B))) {
-		rxq->l2_errors++;
-		return -EINVAL;
-	}
+	memset(tbl, 0, sizeof(*tbl));
 
-	if (unlikely(rxm->pkt_len == 0 ||
-		(l234_info & BIT(HNS3_RXD_TRUNCAT_B)))) {
-		rxq->pkt_len_errors++;
-		return -EINVAL;
-	}
+	tbl->l2table[0] = RTE_PTYPE_L2_ETHER;
+	tbl->l2table[1] = RTE_PTYPE_L2_ETHER_QINQ;
+	tbl->l2table[2] = RTE_PTYPE_L2_ETHER_VLAN;
+	tbl->l2table[3] = RTE_PTYPE_L2_ETHER_VLAN;
 
-	if (bd_base_info & BIT(HNS3_RXD_L3L4P_B)) {
-		if (unlikely(l234_info & BIT(HNS3_RXD_L3E_B))) {
-			rxm->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-			rxq->l3_csum_erros++;
-			tmp |= HNS3_L3_CKSUM_ERR;
-		}
+	tbl->l3table[0] = RTE_PTYPE_L3_IPV4;
+	tbl->l3table[1] = RTE_PTYPE_L3_IPV6;
+	tbl->l3table[2] = RTE_PTYPE_L2_ETHER_ARP;
+	tbl->l3table[3] = RTE_PTYPE_L2_ETHER;
+	tbl->l3table[4] = RTE_PTYPE_L3_IPV4_EXT;
+	tbl->l3table[5] = RTE_PTYPE_L3_IPV6_EXT;
+	tbl->l3table[6] = RTE_PTYPE_L2_ETHER_LLDP;
 
-		if (unlikely(l234_info & BIT(HNS3_RXD_L4E_B))) {
-			rxm->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-			rxq->l4_csum_erros++;
-			tmp |= HNS3_L4_CKSUM_ERR;
-		}
+	tbl->l4table[0] = RTE_PTYPE_L4_UDP;
+	tbl->l4table[1] = RTE_PTYPE_L4_TCP;
+	tbl->l4table[2] = RTE_PTYPE_TUNNEL_GRE;
+	tbl->l4table[3] = RTE_PTYPE_L4_SCTP;
+	tbl->l4table[4] = RTE_PTYPE_L4_IGMP;
+	tbl->l4table[5] = RTE_PTYPE_L4_ICMP;
 
-		if (unlikely(l234_info & BIT(HNS3_RXD_OL3E_B))) {
-			rxq->ol3_csum_erros++;
-			tmp |= HNS3_OUTER_L3_CKSUM_ERR;
-		}
+	tbl->inner_l2table[0] = RTE_PTYPE_INNER_L2_ETHER;
+	tbl->inner_l2table[1] = RTE_PTYPE_INNER_L2_ETHER_VLAN;
+	tbl->inner_l2table[2] = RTE_PTYPE_INNER_L2_ETHER_QINQ;
 
-		if (unlikely(l234_info & BIT(HNS3_RXD_OL4E_B))) {
-			rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_BAD;
-			rxq->ol4_csum_erros++;
-			tmp |= HNS3_OUTER_L4_CKSUM_ERR;
-		}
-	}
-	*cksum_err = tmp;
+	tbl->inner_l3table[0] = RTE_PTYPE_INNER_L3_IPV4;
+	tbl->inner_l3table[1] = RTE_PTYPE_INNER_L3_IPV6;
+	tbl->inner_l3table[2] = 0;
+	tbl->inner_l3table[3] = RTE_PTYPE_INNER_L2_ETHER;
+	tbl->inner_l3table[4] = RTE_PTYPE_INNER_L3_IPV4_EXT;
+	tbl->inner_l3table[5] = RTE_PTYPE_INNER_L3_IPV6_EXT;
 
-	return 0;
-}
+	tbl->inner_l4table[0] = RTE_PTYPE_INNER_L4_UDP;
+	tbl->inner_l4table[1] = RTE_PTYPE_INNER_L4_TCP;
+	tbl->inner_l4table[2] = RTE_PTYPE_TUNNEL_GRE;
+	tbl->inner_l4table[3] = RTE_PTYPE_INNER_L4_SCTP;
+	tbl->inner_l4table[4] = RTE_PTYPE_L4_IGMP;
+	tbl->inner_l4table[5] = RTE_PTYPE_INNER_L4_ICMP;
 
-static void
-hns3_rx_set_cksum_flag(struct rte_mbuf *rxm, uint64_t packet_type,
-		       const uint32_t cksum_err)
-{
-	if (unlikely((packet_type & RTE_PTYPE_TUNNEL_MASK))) {
-		if (likely(packet_type & RTE_PTYPE_INNER_L3_MASK) &&
-		    (cksum_err & HNS3_L3_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-		if (likely(packet_type & RTE_PTYPE_INNER_L4_MASK) &&
-		    (cksum_err & HNS3_L4_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-		if (likely(packet_type & RTE_PTYPE_L4_MASK) &&
-		    (cksum_err & HNS3_OUTER_L4_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_OUTER_L4_CKSUM_GOOD;
-	} else {
-		if (likely(packet_type & RTE_PTYPE_L3_MASK) &&
-		    (cksum_err & HNS3_L3_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
-		if (likely(packet_type & RTE_PTYPE_L4_MASK) &&
-		    (cksum_err & HNS3_L4_CKSUM_ERR) == 0)
-			rxm->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
-	}
+	tbl->ol3table[0] = RTE_PTYPE_L3_IPV4;
+	tbl->ol3table[1] = RTE_PTYPE_L3_IPV6;
+	tbl->ol3table[2] = 0;
+	tbl->ol3table[3] = 0;
+	tbl->ol3table[4] = RTE_PTYPE_L3_IPV4_EXT;
+	tbl->ol3table[5] = RTE_PTYPE_L3_IPV6_EXT;
+
+	tbl->ol4table[0] = 0;
+	tbl->ol4table[1] = RTE_PTYPE_TUNNEL_VXLAN;
+	tbl->ol4table[2] = RTE_PTYPE_TUNNEL_NVGRE;
 }
 
 static inline void
@@ -1612,8 +1559,138 @@ recalculate_data_len(struct rte_mbuf *first_seg, struct rte_mbuf *last_seg,
 		rxm->data_len = (uint16_t)(data_len - crc_len);
 }
 
+static inline struct rte_mbuf *
+hns3_rx_alloc_buffer(struct hns3_rx_queue *rxq)
+{
+	int ret;
+
+	if (likely(rxq->bulk_mbuf_num > 0))
+		return rxq->bulk_mbuf[--rxq->bulk_mbuf_num];
+
+	ret = rte_mempool_get_bulk(rxq->mb_pool, (void **)rxq->bulk_mbuf,
+				   HNS3_BULK_ALLOC_MBUF_NUM);
+	if (likely(ret == 0)) {
+		rxq->bulk_mbuf_num = HNS3_BULK_ALLOC_MBUF_NUM;
+		return rxq->bulk_mbuf[--rxq->bulk_mbuf_num];
+	} else
+		return rte_mbuf_raw_alloc(rxq->mb_pool);
+}
+
 uint16_t
 hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	volatile struct hns3_desc *rx_ring;  /* RX ring (desc) */
+	volatile struct hns3_desc *rxdp;     /* pointer of the current desc */
+	struct hns3_rx_queue *rxq;      /* RX queue */
+	struct hns3_entry *sw_ring;
+	struct hns3_entry *rxe;
+	struct hns3_desc rxd;
+	struct rte_mbuf *nmb;           /* pointer of the new mbuf */
+	struct rte_mbuf *rxm;
+	uint32_t bd_base_info;
+	uint32_t cksum_err;
+	uint32_t l234_info;
+	uint32_t ol_info;
+	uint64_t dma_addr;
+	uint16_t nb_rx_bd;
+	uint16_t nb_rx;
+	uint16_t rx_id;
+	int ret;
+
+	nb_rx = 0;
+	nb_rx_bd = 0;
+	rxq = rx_queue;
+	rx_ring = rxq->rx_ring;
+	sw_ring = rxq->sw_ring;
+	rx_id = rxq->next_to_use;
+
+	while (nb_rx < nb_pkts) {
+		rxdp = &rx_ring[rx_id];
+		bd_base_info = rte_le_to_cpu_32(rxdp->rx.bd_base_info);
+		if (unlikely(!(bd_base_info & BIT(HNS3_RXD_VLD_B))))
+			break;
+
+		rxd = rxdp[(bd_base_info & (1u << HNS3_RXD_VLD_B)) -
+			   (1u << HNS3_RXD_VLD_B)];
+
+		nmb = hns3_rx_alloc_buffer(rxq);
+		if (unlikely(nmb == NULL)) {
+			uint16_t port_id;
+
+			port_id = rxq->port_id;
+			rte_eth_devices[port_id].data->rx_mbuf_alloc_failed++;
+			break;
+		}
+
+		nb_rx_bd++;
+		rxe = &sw_ring[rx_id];
+		rx_id++;
+		if (unlikely(rx_id == rxq->nb_rx_desc))
+			rx_id = 0;
+
+		rte_prefetch0(sw_ring[rx_id].mbuf);
+		if ((rx_id & HNS3_RX_RING_PREFETCTH_MASK) == 0) {
+			rte_prefetch0(&rx_ring[rx_id]);
+			rte_prefetch0(&sw_ring[rx_id]);
+		}
+
+		rxm = rxe->mbuf;
+		rxe->mbuf = nmb;
+
+		dma_addr = rte_mbuf_data_iova_default(nmb);
+		rxdp->addr = rte_cpu_to_le_64(dma_addr);
+		rxdp->rx.bd_base_info = 0;
+
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rxm->pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.pkt_len)) -
+				rxq->crc_len;
+		rxm->data_len = rxm->pkt_len;
+		rxm->port = rxq->port_id;
+		rxm->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
+		rxm->ol_flags = PKT_RX_RSS_HASH;
+		if (unlikely(bd_base_info & BIT(HNS3_RXD_LUM_B))) {
+			rxm->hash.fdir.hi =
+				rte_le_to_cpu_16(rxd.rx.fd_id);
+			rxm->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		}
+		rxm->nb_segs = 1;
+		rxm->next = NULL;
+
+		/* Load remained descriptor data and extract necessary fields */
+		l234_info = rte_le_to_cpu_32(rxd.rx.l234_info);
+		ol_info = rte_le_to_cpu_32(rxd.rx.ol_info);
+		ret = hns3_handle_bdinfo(rxq, rxm, bd_base_info,
+					 l234_info, &cksum_err);
+		if (unlikely(ret))
+			goto pkt_err;
+
+		rxm->packet_type = hns3_rx_calc_ptype(rxq, l234_info, ol_info);
+
+		if (likely(bd_base_info & BIT(HNS3_RXD_L3L4P_B)))
+			hns3_rx_set_cksum_flag(rxm, rxm->packet_type,
+					       cksum_err);
+		hns3_rxd_to_vlan_tci(rxq, rxm, l234_info, &rxd);
+
+		rx_pkts[nb_rx++] = rxm;
+		continue;
+pkt_err:
+		rte_pktmbuf_free(rxm);
+	}
+
+	rxq->next_to_use = rx_id;
+	rxq->rx_free_hold += nb_rx_bd;
+	if (rxq->rx_free_hold > rxq->rx_free_thresh) {
+		hns3_write_reg_opt(rxq->io_head_reg, rxq->rx_free_hold);
+		rxq->rx_free_hold = 0;
+	}
+
+	return nb_rx;
+}
+
+uint16_t
+hns3_recv_scattered_pkts(void *rx_queue,
+			 struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
 {
 	volatile struct hns3_desc *rx_ring;  /* RX ring (desc) */
 	volatile struct hns3_desc *rxdp;     /* pointer of the current desc */
@@ -1632,9 +1709,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint32_t gro_size;
 	uint32_t ol_info;
 	uint64_t dma_addr;
-	uint16_t data_len;
 	uint16_t nb_rx_bd;
-	uint16_t pkt_len;
 	uint16_t nb_rx;
 	uint16_t rx_id;
 	int ret;
@@ -1652,8 +1727,9 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
 		bd_base_info = rte_le_to_cpu_32(rxdp->rx.bd_base_info);
-		if (unlikely(!hns3_get_bit(bd_base_info, HNS3_RXD_VLD_B)))
+		if (unlikely(!(bd_base_info & BIT(HNS3_RXD_VLD_B))))
 			break;
+
 		/*
 		 * The interactive process between software and hardware of
 		 * receiving a new packet in hns3 network engine:
@@ -1716,7 +1792,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxd = rxdp[(bd_base_info & (1u << HNS3_RXD_VLD_B)) -
 			   (1u << HNS3_RXD_VLD_B)];
 
-		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+		nmb = hns3_rx_alloc_buffer(rxq);
 		if (unlikely(nmb == NULL)) {
 			dev = &rte_eth_devices[rxq->port_id];
 			dev->data->rx_mbuf_alloc_failed++;
@@ -1730,7 +1806,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rx_id = 0;
 
 		rte_prefetch0(sw_ring[rx_id].mbuf);
-		if ((rx_id & 0x3) == 0) {
+		if ((rx_id & HNS3_RX_RING_PREFETCTH_MASK) == 0) {
 			rte_prefetch0(&rx_ring[rx_id]);
 			rte_prefetch0(&sw_ring[rx_id]);
 		}
@@ -1742,15 +1818,6 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxdp->rx.bd_base_info = 0;
 		rxdp->addr = dma_addr;
 
-		/*
-		 * Load remained descriptor data and extract necessary fields.
-		 * Data size from buffer description may contains CRC len,
-		 * packet len should subtract it.
-		 */
-		data_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.size));
-		l234_info = rte_le_to_cpu_32(rxd.rx.l234_info);
-		ol_info = rte_le_to_cpu_32(rxd.rx.ol_info);
-
 		if (first_seg == NULL) {
 			first_seg = rxm;
 			first_seg->nb_segs = 1;
@@ -1760,10 +1827,11 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
-		rxm->data_len = data_len;
+		rxm->data_len = rte_le_to_cpu_16(rxd.rx.size);
 
-		if (!hns3_get_bit(bd_base_info, HNS3_RXD_FE_B)) {
+		if (!(bd_base_info & BIT(HNS3_RXD_FE_B))) {
 			last_seg = rxm;
+			rxm->next = NULL;
 			continue;
 		}
 
@@ -1772,8 +1840,7 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * buffer description may contains CRC len, packet len should
 		 * subtract it, same as data len.
 		 */
-		pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.pkt_len));
-		first_seg->pkt_len = pkt_len;
+		first_seg->pkt_len = rte_le_to_cpu_16(rxd.rx.pkt_len);
 
 		/*
 		 * This is the last buffer of the received packet. If the CRC
@@ -1789,15 +1856,15 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (unlikely(rxq->crc_len > 0)) {
 			first_seg->pkt_len -= rxq->crc_len;
 			recalculate_data_len(first_seg, last_seg, rxm, rxq,
-				data_len);
+				rxm->data_len);
 		}
 
 		first_seg->port = rxq->port_id;
 		first_seg->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
 		first_seg->ol_flags = PKT_RX_RSS_HASH;
-		if (unlikely(hns3_get_bit(bd_base_info, HNS3_RXD_LUM_B))) {
+		if (unlikely(bd_base_info & BIT(HNS3_RXD_LUM_B))) {
 			first_seg->hash.fdir.hi =
-				rte_le_to_cpu_32(rxd.rx.fd_id);
+				rte_le_to_cpu_16(rxd.rx.fd_id);
 			first_seg->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 		}
 
@@ -1808,13 +1875,15 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			first_seg->tso_segsz = gro_size;
 		}
 
+		l234_info = rte_le_to_cpu_32(rxd.rx.l234_info);
+		ol_info = rte_le_to_cpu_32(rxd.rx.ol_info);
 		ret = hns3_handle_bdinfo(rxq, first_seg, bd_base_info,
 					 l234_info, &cksum_err);
 		if (unlikely(ret))
 			goto pkt_err;
 
-		first_seg->packet_type = rxd_pkt_info_to_pkt_type(l234_info,
-								  ol_info);
+		first_seg->packet_type = hns3_rx_calc_ptype(rxq,
+						l234_info, ol_info);
 
 		if (bd_base_info & BIT(HNS3_RXD_L3L4P_B))
 			hns3_rx_set_cksum_flag(first_seg,
@@ -1843,6 +1912,46 @@ pkt_err:
 	return nb_rx;
 }
 
+int
+hns3_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
+		       struct rte_eth_burst_mode *mode)
+{
+	static const struct {
+		eth_rx_burst_t pkt_burst;
+		const char *info;
+	} burst_infos[] = {
+		{ hns3_recv_pkts,		"Scalar" },
+		{ hns3_recv_scattered_pkts,	"Scalar Scattered" },
+	};
+
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	int ret = -EINVAL;
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(burst_infos); i++) {
+		if (pkt_burst == burst_infos[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 burst_infos[i].info);
+			ret = 0;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static eth_rx_burst_t
+hns3_get_rx_function(struct rte_eth_dev *dev)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	uint64_t offloads = dev->data->dev_conf.rxmode.offloads;
+
+	if (hns->rx_simple_allowed && !dev->data->scattered_rx &&
+	    (offloads & DEV_RX_OFFLOAD_TCP_LRO) == 0)
+		return hns3_recv_pkts;
+
+	return hns3_recv_scattered_pkts;
+}
 int
 hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		    unsigned int socket_id, const struct rte_eth_txconf *conf)
@@ -1932,7 +2041,8 @@ hns3_tx_free_useless_buffer(struct hns3_tx_queue *txq)
 	struct hns3_desc *desc = &txq->tx_ring[tx_next_clean];
 	struct rte_mbuf *mbuf;
 
-	while ((!hns3_get_bit(desc->tx.tp_fe_sc_vld_ra_ri, HNS3_TXD_VLD_B)) &&
+	while ((!(desc->tx.tp_fe_sc_vld_ra_ri &
+		rte_cpu_to_le_16(BIT(HNS3_TXD_VLD_B)))) &&
 		tx_next_use != tx_next_clean) {
 		mbuf = tx_bak_pkt->mbuf;
 		if (mbuf) {
@@ -2818,7 +2928,7 @@ void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 
 	if (hns->hw.adapter_state == HNS3_NIC_STARTED &&
 	    rte_atomic16_read(&hns->hw.reset.resetting) == 0) {
-		eth_dev->rx_pkt_burst = hns3_recv_pkts;
+		eth_dev->rx_pkt_burst = hns3_get_rx_function(eth_dev);
 		eth_dev->tx_pkt_burst = hns3_xmit_pkts;
 		eth_dev->tx_pkt_prepare = hns3_prep_pkts;
 	} else {
