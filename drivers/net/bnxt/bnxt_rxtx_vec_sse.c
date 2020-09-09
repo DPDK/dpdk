@@ -17,9 +17,6 @@
 #include "bnxt.h"
 #include "bnxt_cpr.h"
 #include "bnxt_ring.h"
-#include "bnxt_rxr.h"
-#include "bnxt_rxq.h"
-#include "hsi_struct_def_dpdk.h"
 #include "bnxt_rxtx_vec_common.h"
 
 #include "bnxt_txq.h"
@@ -35,23 +32,27 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 	struct rx_prod_pkt_bd *rxbds = &rxr->rx_desc_ring[rxq->rxrearm_start];
 	struct rte_mbuf **rx_bufs = &rxr->rx_buf_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
-	int i;
+	int nb, i;
 
 	const __m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM, 0);
 	const __m128i addrmask = _mm_set_epi64x(UINT64_MAX, 0);
 
-	/* Pull RTE_BNXT_RXQ_REARM_THRESH more mbufs into the software ring */
-	if (rte_mempool_get_bulk(rxq->mb_pool,
-				 (void *)rx_bufs,
-				 RTE_BNXT_RXQ_REARM_THRESH) < 0) {
-		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-			RTE_BNXT_RXQ_REARM_THRESH;
+	/*
+	 * Number of mbufs to allocate must be a multiple of two. The
+	 * allocation must not go past the end of the ring.
+	 */
+	nb = RTE_MIN(rxq->rxrearm_nb & ~0x1,
+		     rxq->nb_rx_desc - rxq->rxrearm_start);
+
+	/* Allocate new mbufs into the software ring */
+	if (rte_mempool_get_bulk(rxq->mb_pool, (void *)rx_bufs, nb) < 0) {
+		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed += nb;
 
 		return;
 	}
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
-	for (i = 0; i < RTE_BNXT_RXQ_REARM_THRESH; i += 2, rx_bufs += 2) {
+	for (i = 0; i < nb; i += 2, rx_bufs += 2) {
 		__m128i buf_addr0, buf_addr1;
 		__m128i rxbd0, rxbd1;
 
@@ -87,12 +88,12 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 		_mm_store_si128((__m128i *)(rxbds++), rxbd1);
 	}
 
-	rxq->rxrearm_start += RTE_BNXT_RXQ_REARM_THRESH;
+	rxq->rxrearm_start += nb;
 	bnxt_db_write(&rxr->rx_db, rxq->rxrearm_start - 1);
 	if (rxq->rxrearm_start >= rxq->nb_rx_desc)
 		rxq->rxrearm_start = 0;
 
-	rxq->rxrearm_nb -= RTE_BNXT_RXQ_REARM_THRESH;
+	rxq->rxrearm_nb -= nb;
 }
 
 static uint32_t
@@ -223,7 +224,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	if (unlikely(!rxq->rx_started))
 		return 0;
 
-	if (rxq->rxrearm_nb >= RTE_BNXT_RXQ_REARM_THRESH)
+	if (rxq->rxrearm_nb >= rxq->rx_free_thresh)
 		bnxt_rxq_rearm(rxq, rxr);
 
 	/* Return no more than RTE_BNXT_MAX_RX_BURST per call. */

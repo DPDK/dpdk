@@ -5,11 +5,11 @@
 
 #ifndef _BNXT_RXTX_VEC_COMMON_H_
 #define _BNXT_RXTX_VEC_COMMON_H_
+#include "hsi_struct_def_dpdk.h"
+#include "bnxt_rxq.h"
+#include "bnxt_rxr.h"
 
-#define RTE_BNXT_MAX_RX_BURST		32
-#define RTE_BNXT_MAX_TX_BURST		32
-#define RTE_BNXT_RXQ_REARM_THRESH	32
-#define RTE_BNXT_DESCS_PER_LOOP		4
+#define RTE_BNXT_DESCS_PER_LOOP		4U
 
 #define TX_BD_FLAGS_CMPL ((1 << TX_BD_LONG_FLAGS_BD_CNT_SFT) | \
 			  TX_BD_SHORT_FLAGS_COAL_NOW | \

@@ -305,7 +305,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-	if (!nb_desc || nb_desc > MAX_RX_DESC_CNT) {
+	if (nb_desc < BNXT_MIN_RING_DESC || nb_desc > MAX_RX_DESC_CNT) {
 		PMD_DRV_LOG(ERR, "nb_desc %d is invalid\n", nb_desc);
 		rc = -EINVAL;
 		goto out;
@@ -326,7 +326,8 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq->bp = bp;
 	rxq->mb_pool = mp;
 	rxq->nb_rx_desc = nb_desc;
-	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
+	rxq->rx_free_thresh =
+		RTE_MIN(rte_align32pow2(nb_desc) / 4, RTE_BNXT_MAX_RX_BURST);
 
 	PMD_DRV_LOG(DEBUG, "RX Buf MTU %d\n", eth_dev->data->mtu);
 
