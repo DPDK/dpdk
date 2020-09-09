@@ -547,7 +547,7 @@ mlx5_rx_queue_stop(struct rte_eth_dev *dev, uint16_t idx)
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
 	int ret;
 
-	if (dev->data->rx_queue_state[idx] == RTE_ETH_QUEUE_STATE_HAIRPIN) {
+	if (rte_eth_dev_is_rx_hairpin_queue(dev, idx)) {
 		DRV_LOG(ERR, "Hairpin queue can't be stopped");
 		rte_errno = EINVAL;
 		return -EINVAL;
@@ -644,7 +644,7 @@ mlx5_rx_queue_start(struct rte_eth_dev *dev, uint16_t idx)
 {
 	int ret;
 
-	if (dev->data->rx_queue_state[idx] == RTE_ETH_QUEUE_STATE_HAIRPIN) {
+	if (rte_eth_dev_is_rx_hairpin_queue(dev, idx)) {
 		DRV_LOG(ERR, "Hairpin queue can't be started");
 		rte_errno = EINVAL;
 		return -EINVAL;

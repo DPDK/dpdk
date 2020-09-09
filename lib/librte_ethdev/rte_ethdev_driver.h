@@ -734,6 +734,7 @@ struct eth_dev_ops {
  * @return
  *   - (1) if the queue is hairpin queue, 0 otherwise.
  */
+__rte_internal
 int rte_eth_dev_is_rx_hairpin_queue(struct rte_eth_dev *dev, uint16_t queue_id);
 
 /**
@@ -748,6 +749,7 @@ int rte_eth_dev_is_rx_hairpin_queue(struct rte_eth_dev *dev, uint16_t queue_id);
  * @return
  *   - (1) if the queue is hairpin queue, 0 otherwise.
  */
+__rte_internal
 int rte_eth_dev_is_tx_hairpin_queue(struct rte_eth_dev *dev, uint16_t queue_id);
 
 /**
