@@ -316,13 +316,14 @@ bnxt_tx_cmp_vec(struct bnxt_tx_queue *txq, int nr_pkts)
 	struct rte_mbuf **free = txq->free;
 	uint16_t cons = txr->tx_cons;
 	unsigned int blk = 0;
+	uint32_t ring_mask = txr->tx_ring_struct->ring_mask;
 
 	while (nr_pkts--) {
 		struct bnxt_sw_tx_bd *tx_buf;
 		struct rte_mbuf *mbuf;
 
 		tx_buf = &txr->tx_buf_ring[cons];
-		cons = RING_NEXT(txr->tx_ring_struct, cons);
+		cons = (cons + 1) & ring_mask;
 		mbuf = rte_pktmbuf_prefree_seg(tx_buf->mbuf);
 		if (unlikely(mbuf == NULL))
 			continue;
@@ -376,17 +377,39 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 	}
 }
 
+static inline void
+bnxt_xmit_one(struct rte_mbuf *mbuf, struct tx_bd_long *txbd,
+	      struct bnxt_sw_tx_bd *tx_buf)
+{
+	__m128i desc;
+
+	tx_buf->mbuf = mbuf;
+	tx_buf->nr_bds = 1;
+
+	desc = _mm_set_epi64x(mbuf->buf_iova + mbuf->data_off,
+			      bnxt_xmit_flags_len(mbuf->data_len,
+						  TX_BD_FLAGS_NOCMPL));
+	desc = _mm_blend_epi16(desc, _mm_set_epi16(0, 0, 0, 0, 0, 0,
+						   mbuf->data_len, 0), 0x02);
+	_mm_store_si128((void *)txbd, desc);
+}
+
 static uint16_t
-bnxt_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+bnxt_xmit_fixed_burst_vec(struct bnxt_tx_queue *txq, struct rte_mbuf **tx_pkts,
 			  uint16_t nb_pkts)
 {
-	struct bnxt_tx_queue *txq = tx_queue;
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
-	uint16_t prod = txr->tx_prod;
-	struct rte_mbuf *tx_mbuf;
-	struct tx_bd_long *txbd = NULL;
+	uint16_t tx_prod = txr->tx_prod;
+	struct tx_bd_long *txbd;
 	struct bnxt_sw_tx_bd *tx_buf;
 	uint16_t to_send;
+
+	txbd = &txr->tx_desc_ring[tx_prod];
+	tx_buf = &txr->tx_buf_ring[tx_prod];
+
+	/* Prefetch next transmit buffer descriptors. */
+	rte_prefetch0(txbd);
+	rte_prefetch0(txbd + 3);
 
 	nb_pkts = RTE_MIN(nb_pkts, bnxt_tx_avail(txq));
 
@@ -395,33 +418,35 @@ bnxt_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Handle TX burst request */
 	to_send = nb_pkts;
+	while (to_send >= RTE_BNXT_DESCS_PER_LOOP) {
+		/* Prefetch next transmit buffer descriptors. */
+		rte_prefetch0(txbd + 4);
+		rte_prefetch0(txbd + 7);
+
+		bnxt_xmit_one(tx_pkts[0], txbd++, tx_buf++);
+		bnxt_xmit_one(tx_pkts[1], txbd++, tx_buf++);
+		bnxt_xmit_one(tx_pkts[2], txbd++, tx_buf++);
+		bnxt_xmit_one(tx_pkts[3], txbd++, tx_buf++);
+
+		to_send -= RTE_BNXT_DESCS_PER_LOOP;
+		tx_pkts += RTE_BNXT_DESCS_PER_LOOP;
+	}
+
 	while (to_send) {
-		tx_mbuf = *tx_pkts++;
-		rte_prefetch0(tx_mbuf);
-
-		tx_buf = &txr->tx_buf_ring[prod];
-		tx_buf->mbuf = tx_mbuf;
-		tx_buf->nr_bds = 1;
-
-		txbd = &txr->tx_desc_ring[prod];
-		txbd->address = tx_mbuf->buf_iova + tx_mbuf->data_off;
-		txbd->len = tx_mbuf->data_len;
-		txbd->flags_type = bnxt_xmit_flags_len(tx_mbuf->data_len,
-						       TX_BD_FLAGS_NOCMPL);
-		prod = RING_NEXT(txr->tx_ring_struct, prod);
+		bnxt_xmit_one(tx_pkts[0], txbd++, tx_buf++);
 		to_send--;
+		tx_pkts++;
 	}
 
-	/* Request a completion for last packet in burst */
-	if (txbd) {
-		txbd->opaque = nb_pkts;
-		txbd->flags_type &= ~TX_BD_LONG_FLAGS_NO_CMPL;
-	}
-
+	/* Request a completion for the final packet of burst. */
 	rte_compiler_barrier();
-	bnxt_db_write(&txr->tx_db, prod);
+	txbd[-1].opaque = nb_pkts;
+	txbd[-1].flags_type &= ~TX_BD_LONG_FLAGS_NO_CMPL;
 
-	txr->tx_prod = prod;
+	tx_prod = RING_ADV(txr->tx_ring_struct, tx_prod, nb_pkts);
+	bnxt_db_write(&txr->tx_db, tx_prod);
+
+	txr->tx_prod = tx_prod;
 
 	return nb_pkts;
 }
@@ -432,6 +457,8 @@ bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	int nb_sent = 0;
 	struct bnxt_tx_queue *txq = tx_queue;
+	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	uint16_t ring_size = txr->tx_ring_struct->ring_size;
 
 	/* Tx queue was stopped; wait for it to be restarted */
 	if (unlikely(!txq->tx_started)) {
@@ -446,10 +473,19 @@ bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	while (nb_pkts) {
 		uint16_t ret, num;
 
+		/*
+		 * Ensure that no more than RTE_BNXT_MAX_TX_BURST packets
+		 * are transmitted before the next completion.
+		 */
 		num = RTE_MIN(nb_pkts, RTE_BNXT_MAX_TX_BURST);
-		ret = bnxt_xmit_fixed_burst_vec(tx_queue,
-						&tx_pkts[nb_sent],
-						num);
+
+		/*
+		 * Ensure that a ring wrap does not occur within a call to
+		 * bnxt_xmit_fixed_burst_vec().
+		 */
+		num = RTE_MIN(num,
+			      ring_size - (txr->tx_prod & (ring_size - 1)));
+		ret = bnxt_xmit_fixed_burst_vec(txq, &tx_pkts[nb_sent], num);
 		nb_sent += ret;
 		nb_pkts -= ret;
 		if (ret < num)
