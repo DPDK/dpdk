@@ -923,6 +923,20 @@ enic_fm_append_action_op(struct enic_flowman *fm,
 	return 0;
 }
 
+static struct fm_action_op *
+find_prev_action_op(struct enic_flowman *fm, uint32_t opcode)
+{
+	struct fm_action_op *op;
+	int i;
+
+	for (i = 0; i < fm->action_op_count; i++) {
+		op = &fm->action.fma_action_ops[i];
+		if (op->fa_op == opcode)
+			return op;
+	}
+	return NULL;
+}
+
 /* NIC requires that 1st steer appear before decap.
  * Correct example: steer, decap, steer, steer, ...
  */
@@ -938,7 +952,8 @@ enic_fm_reorder_action_op(struct enic_flowman *fm)
 	steer = NULL;
 	decap = NULL;
 	while (op->fa_op != FMOP_END) {
-		if (!decap && op->fa_op == FMOP_DECAP_NOSTRIP)
+		if (!decap && (op->fa_op == FMOP_DECAP_NOSTRIP ||
+			       op->fa_op == FMOP_DECAP_STRIP))
 			decap = op;
 		else if (!steer && op->fa_op == FMOP_RQ_STEER)
 			steer = op;
@@ -1472,6 +1487,19 @@ enic_fm_copy_action(struct enic_flowman *fm,
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN: {
+			struct fm_action_op *decap;
+
+			/*
+			 * If decap-nostrip appears before pop vlan, this pop
+			 * applies to the inner packet vlan. Turn it into
+			 * decap-strip.
+			 */
+			decap = find_prev_action_op(fm, FMOP_DECAP_NOSTRIP);
+			if (decap) {
+				ENICPMD_LOG(DEBUG, "pop-vlan inner: decap-nostrip => decap-strip");
+				decap->fa_op = FMOP_DECAP_STRIP;
+				break;
+			}
 			memset(&fm_op, 0, sizeof(fm_op));
 			fm_op.fa_op = FMOP_POP_VLAN;
 			ret = enic_fm_append_action_op(fm, &fm_op, error);

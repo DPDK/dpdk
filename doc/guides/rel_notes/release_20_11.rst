@@ -60,6 +60,7 @@ New Features
   * Added support for VF representors with single-queue Tx/Rx and flow API
   * Added support for egress PORT_ID action
   * Added support for non-zero priorities for group 0 flows
+  * Added support for VXLAN decap combined with VLAN pop
 
 * **Extended flow-perf application.**
 
