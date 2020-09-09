@@ -652,8 +652,7 @@ hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 	}
 
 	rxq->next_to_use = 0;
-	rxq->next_to_clean = 0;
-	rxq->nb_rx_hold = 0;
+	rxq->rx_free_hold = 0;
 	hns3_init_rx_queue_hw(rxq);
 
 	return 0;
@@ -667,8 +666,7 @@ hns3_fake_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 
 	rxq = (struct hns3_rx_queue *)hw->fkq_data.rx_queues[idx];
 	rxq->next_to_use = 0;
-	rxq->next_to_clean = 0;
-	rxq->nb_rx_hold = 0;
+	rxq->rx_free_hold = 0;
 	hns3_init_rx_queue_hw(rxq);
 }
 
@@ -1303,10 +1301,8 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 
 	rxq->hns = hns;
 	rxq->mb_pool = mp;
-	if (conf->rx_free_thresh <= 0)
-		rxq->rx_free_thresh = DEFAULT_RX_FREE_THRESH;
-	else
-		rxq->rx_free_thresh = conf->rx_free_thresh;
+	rxq->rx_free_thresh = (conf->rx_free_thresh > 0) ?
+		conf->rx_free_thresh : HNS3_DEFAULT_RX_FREE_THRESH;
 	rxq->rx_deferred_start = conf->rx_deferred_start;
 
 	rx_entry_len = sizeof(struct hns3_entry) * rxq->nb_rx_desc;
@@ -1319,8 +1315,7 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	}
 
 	rxq->next_to_use = 0;
-	rxq->next_to_clean = 0;
-	rxq->nb_rx_hold = 0;
+	rxq->rx_free_hold = 0;
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 	rxq->port_id = dev->data->port_id;
@@ -1656,11 +1651,11 @@ hns3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	nb_rx_bd = 0;
 	rxq = rx_queue;
 
-	rx_id = rxq->next_to_clean;
+	rx_id = rxq->next_to_use;
 	rx_ring = rxq->rx_ring;
+	sw_ring = rxq->sw_ring;
 	first_seg = rxq->pkt_first_seg;
 	last_seg = rxq->pkt_last_seg;
-	sw_ring = rxq->sw_ring;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -1843,16 +1838,15 @@ pkt_err:
 		first_seg = NULL;
 	}
 
-	rxq->next_to_clean = rx_id;
+	rxq->next_to_use = rx_id;
 	rxq->pkt_first_seg = first_seg;
 	rxq->pkt_last_seg = last_seg;
 
-	nb_rx_bd = nb_rx_bd + rxq->nb_rx_hold;
-	if (nb_rx_bd > rxq->rx_free_thresh) {
-		hns3_clean_rx_buffers(rxq, nb_rx_bd);
-		nb_rx_bd = 0;
+	rxq->rx_free_hold += nb_rx_bd;
+	if (rxq->rx_free_hold > rxq->rx_free_thresh) {
+		hns3_clean_rx_buffers(rxq, rxq->rx_free_hold);
+		rxq->rx_free_hold = 0;
 	}
-	rxq->nb_rx_hold = nb_rx_bd;
 
 	return nb_rx;
 }

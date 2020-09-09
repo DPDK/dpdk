@@ -943,12 +943,14 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	};
 
 	info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = HNS3_DEFAULT_RX_FREE_THRESH,
 		/*
 		 * If there are no available Rx buffer descriptors, incoming
 		 * packets are always dropped by hardware based on hns3 network
 		 * engine.
 		 */
 		.rx_drop_en = 1,
+		.offloads = 0,
 	};
 
 	info->vmdq_queue_num = 0;

@@ -10,6 +10,7 @@
 #define HNS3_DEFAULT_RING_DESC  1024
 #define	HNS3_ALIGN_RING_DESC	32
 #define HNS3_RING_BASE_ALIGN	128
+#define HNS3_DEFAULT_RX_FREE_THRESH	32
 
 #define HNS3_512_BD_BUF_SIZE	512
 #define HNS3_1K_BD_BUF_SIZE	1024
@@ -243,12 +244,14 @@ struct hns3_rx_queue {
 	uint16_t queue_id;
 	uint16_t port_id;
 	uint16_t nb_rx_desc;
-	uint16_t nb_rx_hold;
-	uint16_t rx_tail;
-	uint16_t next_to_clean;
 	uint16_t next_to_use;
 	uint16_t rx_buf_len;
+	/*
+	 * threshold for the number of BDs waited to passed to hardware. If the
+	 * number exceeds the threshold, driver will pass these BDs to hardware.
+	 */
 	uint16_t rx_free_thresh;
+	uint16_t rx_free_hold;   /* num of BDs waited to passed to hardware */
 
 	/*
 	 * port based vlan configuration state.
