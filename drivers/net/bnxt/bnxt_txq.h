@@ -7,7 +7,7 @@
 #define _BNXT_TXQ_H_
 
 /* Maximum transmit burst for vector mode.  */
-#define RTE_BNXT_MAX_TX_BURST		32U
+#define RTE_BNXT_MAX_TX_BURST		64U
 
 struct bnxt_tx_ring_info;
 struct bnxt_cp_ring_info;

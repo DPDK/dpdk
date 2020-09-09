@@ -7,7 +7,7 @@
 #define _BNXT_RQX_H_
 
 /* Maximum receive burst supported in vector mode. */
-#define RTE_BNXT_MAX_RX_BURST		32U
+#define RTE_BNXT_MAX_RX_BURST		64U
 
 struct bnxt;
 struct bnxt_rx_ring_info;
