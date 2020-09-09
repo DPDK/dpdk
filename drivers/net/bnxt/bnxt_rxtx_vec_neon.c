@@ -93,61 +93,27 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 }
 
 static uint32_t
-bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
+bnxt_parse_pkt_type(uint32x4_t mm_rxcmp, uint32x4_t mm_rxcmp1)
 {
-	uint32_t l3, pkt_type = 0;
-	uint32_t t_ipcs = 0, ip6 = 0, vlan = 0;
-	uint32_t flags_type;
+	uint32_t flags_type, flags2;
+	uint8_t index;
 
-	vlan = !!(rxcmp1->flags2 &
-		rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN));
-	pkt_type |= vlan ? RTE_PTYPE_L2_ETHER_VLAN : RTE_PTYPE_L2_ETHER;
+	flags_type = vgetq_lane_u32(mm_rxcmp, 0);
+	flags2 = (uint16_t)vgetq_lane_u32(mm_rxcmp1, 0);
 
-	t_ipcs = !!(rxcmp1->flags2 &
-		rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC));
-	ip6 = !!(rxcmp1->flags2 &
-		 rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_IP_TYPE));
+	/*
+	 * Index format:
+	 *     bit 0: RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC
+	 *     bit 1: RX_CMPL_FLAGS2_IP_TYPE
+	 *     bit 2: RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN
+	 *     bits 3-6: RX_PKT_CMPL_FLAGS_ITYPE
+	 */
+	index = ((flags_type & RX_PKT_CMPL_FLAGS_ITYPE_MASK) >> 9) |
+		((flags2 & (RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN |
+			   RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC)) >> 2) |
+		((flags2 & RX_PKT_CMPL_FLAGS2_IP_TYPE) >> 7);
 
-	flags_type = rxcmp->flags_type &
-		rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS_ITYPE_MASK);
-
-	if (!t_ipcs && !ip6)
-		l3 = RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-	else if (!t_ipcs && ip6)
-		l3 = RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
-	else if (t_ipcs && !ip6)
-		l3 = RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
-	else
-		l3 = RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
-
-	switch (flags_type) {
-	case RTE_LE32(RX_PKT_CMPL_FLAGS_ITYPE_ICMP):
-		if (!t_ipcs)
-			pkt_type |= l3 | RTE_PTYPE_L4_ICMP;
-		else
-			pkt_type |= l3 | RTE_PTYPE_INNER_L4_ICMP;
-		break;
-
-	case RTE_LE32(RX_PKT_CMPL_FLAGS_ITYPE_TCP):
-		if (!t_ipcs)
-			pkt_type |= l3 | RTE_PTYPE_L4_TCP;
-		else
-			pkt_type |= l3 | RTE_PTYPE_INNER_L4_TCP;
-		break;
-
-	case RTE_LE32(RX_PKT_CMPL_FLAGS_ITYPE_UDP):
-		if (!t_ipcs)
-			pkt_type |= l3 | RTE_PTYPE_L4_UDP;
-		else
-			pkt_type |= l3 | RTE_PTYPE_INNER_L4_UDP;
-		break;
-
-	case RTE_LE32(RX_PKT_CMPL_FLAGS_ITYPE_IP):
-		pkt_type |= l3;
-		break;
-	}
-
-	return pkt_type;
+	return bnxt_ptype_table[index];
 }
 
 static void
@@ -234,10 +200,12 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	/* Handle RX burst request */
 	for (i = 0; i < nb_pkts; i++) {
+		uint32x4_t mm_rxcmp, mm_rxcmp1;
 		struct rx_pkt_cmpl_hi *rxcmp1;
 		struct rte_mbuf *mbuf;
-		uint64x2_t mm_rxcmp;
-		uint8x16_t pkt_mb;
+		uint32x4_t pkt_mb;
+		uint8x16_t tmp;
+		uint32_t ptype;
 
 		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
 
@@ -247,6 +215,8 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		if (!CMP_VALID(rxcmp1, raw_cons + 1, cpr->cp_ring_struct))
 			break;
 
+		mm_rxcmp = vld1q_u32((uint32_t *)rxcmp);
+		mm_rxcmp1 = vld1q_u32((uint32_t *)rxcmp);
 		raw_cons += 2;
 		cons = rxcmp->opaque;
 
@@ -258,10 +228,12 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		vst1q_u64((uint64_t *)&mbuf->rearm_data, mbuf_init);
 
 		/* Set mbuf pkt_len, data_len, and rss_hash fields. */
-		mm_rxcmp = vld1q_u64((uint64_t *)rxcmp);
-		pkt_mb = vqtbl1q_u8(vreinterpretq_u8_u64(mm_rxcmp), shuf_msk);
-		vst1q_u64((uint64_t *)&mbuf->rx_descriptor_fields1,
-			  vreinterpretq_u64_u8(pkt_mb));
+		tmp = vqtbl1q_u8(vreinterpretq_u8_u32(mm_rxcmp), shuf_msk);
+		pkt_mb = vreinterpretq_u32_u8(tmp);
+		ptype = bnxt_parse_pkt_type(mm_rxcmp, mm_rxcmp1);
+		pkt_mb = vsetq_lane_u32(ptype, pkt_mb, 0);
+
+		vst1q_u32((uint32_t *)&mbuf->rx_descriptor_fields1, pkt_mb);
 
 		rte_compiler_barrier();
 
@@ -279,8 +251,6 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		bnxt_parse_csum(mbuf, rxcmp1);
-		mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
-
 		rx_pkts[nb_rx_pkts++] = mbuf;
 	}
 

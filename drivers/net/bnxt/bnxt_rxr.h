@@ -238,4 +238,6 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 #define BNXT_CFA_META_EEM_TCAM_SHIFT		31
 #define BNXT_CFA_META_EM_TEST(x) ((x) >> BNXT_CFA_META_EEM_TCAM_SHIFT)
 
+#define BNXT_PTYPE_TBL_DIM	128
+extern uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM];
 #endif
