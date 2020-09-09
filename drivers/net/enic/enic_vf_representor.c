@@ -124,6 +124,33 @@ static int enic_vf_dev_configure(struct rte_eth_dev *eth_dev __rte_unused)
 	return 0;
 }
 
+static int
+setup_rep_vf_fwd(struct enic_vf_representor *vf)
+{
+	int ret;
+
+	ENICPMD_FUNC_TRACE();
+	/* Representor -> VF rule
+	 * Egress packets from this representor are on the representor's WQ.
+	 * So, loop back that WQ to VF.
+	 */
+	ret = enic_fm_add_rep2vf_flow(vf);
+	if (ret) {
+		ENICPMD_LOG(ERR, "Cannot create representor->VF flow");
+		return ret;
+	}
+	/* VF -> representor rule
+	 * Packets from VF loop back to the representor, unless they match
+	 * user-added flows.
+	 */
+	ret = enic_fm_add_vf2rep_flow(vf);
+	if (ret) {
+		ENICPMD_LOG(ERR, "Cannot create VF->representor flow");
+		return ret;
+	}
+	return 0;
+}
+
 static int enic_vf_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct enic_vf_representor *vf;
@@ -138,6 +165,16 @@ static int enic_vf_dev_start(struct rte_eth_dev *eth_dev)
 
 	vf = eth_dev->data->dev_private;
 	pf = vf->pf;
+	/* Get representor flowman for flow API and representor path */
+	ret = enic_fm_init(&vf->enic);
+	if (ret)
+		return ret;
+	/* Set up implicit flow rules to forward between representor and VF */
+	ret = setup_rep_vf_fwd(vf);
+	if (ret) {
+		ENICPMD_LOG(ERR, "Cannot set up representor-VF flows");
+		return ret;
+	}
 	/* Remove all packet filters so no ingress packets go to VF.
 	 * When PF enables switchdev, it will ensure packet filters
 	 * are removed.  So, this is not technically needed.
@@ -232,6 +269,8 @@ static void enic_vf_dev_stop(struct rte_eth_dev *eth_dev)
 	vnic_cq_clean(&pf->cq[enic_cq_rq(vf->pf, vf->pf_rq_sop_idx)]);
 	eth_dev->data->tx_queue_state[0] = RTE_ETH_QUEUE_STATE_STOPPED;
 	eth_dev->data->rx_queue_state[0] = RTE_ETH_QUEUE_STATE_STOPPED;
+	/* Clean up representor flowman */
+	enic_fm_destroy(&vf->enic);
 }
 
 /*
@@ -243,6 +282,126 @@ static void enic_vf_dev_close(struct rte_eth_dev *eth_dev __rte_unused)
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
+}
+
+static int
+adjust_flow_attr(const struct rte_flow_attr *attrs,
+		 struct rte_flow_attr *vf_attrs,
+		 struct rte_flow_error *error)
+{
+	if (!attrs) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ATTR,
+				NULL, "no attribute specified");
+	}
+	/*
+	 * Swap ingress and egress as the firmware view of direction
+	 * is the opposite of the representor.
+	 */
+	*vf_attrs = *attrs;
+	if (attrs->ingress && !attrs->egress) {
+		vf_attrs->ingress = 0;
+		vf_attrs->egress = 1;
+		return 0;
+	}
+	return rte_flow_error_set(error, ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+			"representor only supports ingress");
+}
+
+static int
+enic_vf_flow_validate(struct rte_eth_dev *dev,
+		      const struct rte_flow_attr *attrs,
+		      const struct rte_flow_item pattern[],
+		      const struct rte_flow_action actions[],
+		      struct rte_flow_error *error)
+{
+	struct rte_flow_attr vf_attrs;
+	int ret;
+
+	ret = adjust_flow_attr(attrs, &vf_attrs, error);
+	if (ret)
+		return ret;
+	attrs = &vf_attrs;
+	return enic_fm_flow_ops.validate(dev, attrs, pattern, actions, error);
+}
+
+static struct rte_flow *
+enic_vf_flow_create(struct rte_eth_dev *dev,
+		    const struct rte_flow_attr *attrs,
+		    const struct rte_flow_item pattern[],
+		    const struct rte_flow_action actions[],
+		    struct rte_flow_error *error)
+{
+	struct rte_flow_attr vf_attrs;
+
+	if (adjust_flow_attr(attrs, &vf_attrs, error))
+		return NULL;
+	attrs = &vf_attrs;
+	return enic_fm_flow_ops.create(dev, attrs, pattern, actions, error);
+}
+
+static int
+enic_vf_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
+		     struct rte_flow_error *error)
+{
+	return enic_fm_flow_ops.destroy(dev, flow, error);
+}
+
+static int
+enic_vf_flow_query(struct rte_eth_dev *dev,
+		   struct rte_flow *flow,
+		   const struct rte_flow_action *actions,
+		   void *data,
+		   struct rte_flow_error *error)
+{
+	return enic_fm_flow_ops.query(dev, flow, actions, data, error);
+}
+
+static int
+enic_vf_flow_flush(struct rte_eth_dev *dev,
+		   struct rte_flow_error *error)
+{
+	return enic_fm_flow_ops.flush(dev, error);
+}
+
+static const struct rte_flow_ops enic_vf_flow_ops = {
+	.validate = enic_vf_flow_validate,
+	.create = enic_vf_flow_create,
+	.destroy = enic_vf_flow_destroy,
+	.flush = enic_vf_flow_flush,
+	.query = enic_vf_flow_query,
+};
+
+static int
+enic_vf_filter_ctrl(struct rte_eth_dev *eth_dev,
+		    enum rte_filter_type filter_type,
+		    enum rte_filter_op filter_op,
+		    void *arg)
+{
+	struct enic_vf_representor *vf;
+	int ret = 0;
+
+	ENICPMD_FUNC_TRACE();
+	vf = eth_dev->data->dev_private;
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		if (vf->enic.flow_filter_mode == FILTER_FLOWMAN) {
+			*(const void **)arg = &enic_vf_flow_ops;
+		} else {
+			ENICPMD_LOG(WARNING, "VF representors require flowman support for rte_flow API");
+			ret = -EINVAL;
+		}
+		break;
+	default:
+		ENICPMD_LOG(WARNING, "Filter type (%d) not supported",
+			    filter_type);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
 }
 
 static int enic_vf_link_update(struct rte_eth_dev *eth_dev,
@@ -404,6 +563,7 @@ static const struct eth_dev_ops enic_vf_representor_dev_ops = {
 	.dev_start            = enic_vf_dev_start,
 	.dev_stop             = enic_vf_dev_stop,
 	.dev_close            = enic_vf_dev_close,
+	.filter_ctrl          = enic_vf_filter_ctrl,
 	.link_update          = enic_vf_link_update,
 	.promiscuous_enable   = enic_vf_promiscuous_enable,
 	.promiscuous_disable  = enic_vf_promiscuous_disable,

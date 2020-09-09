@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Cisco enic driver.**
+
+  * Added support for VF representors with single-queue Tx/Rx and flow API
+
 * **Extended flow-perf application.**
 
   * Started supporting user order instead of bit mask:
