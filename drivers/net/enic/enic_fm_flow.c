@@ -1712,9 +1712,10 @@ enic_fm_dump_tcam_match(const struct fm_tcam_match_entry *match,
 	memset(buf, 0, sizeof(buf));
 	__enic_fm_dump_tcam_match(&match->ftm_mask.fk_hdrset[0],
 				  buf, sizeof(buf));
-	ENICPMD_LOG(DEBUG, " TCAM %s Outer: %s %scounter",
+	ENICPMD_LOG(DEBUG, " TCAM %s Outer: %s %scounter position %u",
 		    (ingress) ? "IG" : "EG", buf,
-		    (match->ftm_flags & FMEF_COUNTER) ? "" : "no ");
+		    (match->ftm_flags & FMEF_COUNTER) ? "" : "no ",
+		    match->ftm_position);
 	memset(buf, 0, sizeof(buf));
 	__enic_fm_dump_tcam_match(&match->ftm_mask.fk_hdrset[1],
 				  buf, sizeof(buf));
@@ -1761,11 +1762,11 @@ enic_fm_flow_parse(struct enic_flowman *fm,
 	}
 
 	if (attrs) {
-		if (attrs->priority) {
+		if (attrs->group != FM_TCAM_RTE_GROUP && attrs->priority) {
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 					   NULL,
-					   "priorities are not supported");
+					   "priorities are not supported for non-default (0) groups");
 			return -rte_errno;
 		} else if (!fm->owner_enic->switchdev_mode && attrs->transfer) {
 			rte_flow_error_set(error, ENOTSUP,
@@ -2193,6 +2194,7 @@ enic_fm_flow_add_entry(struct enic_flowman *fm,
 	struct rte_flow *flow;
 
 	ENICPMD_FUNC_TRACE();
+	match_in->ftm_position = attrs->priority;
 	enic_fm_dump_tcam_entry(match_in, action_in, attrs->ingress);
 	flow = calloc(1, sizeof(*flow));
 	fm_flow = calloc(1, sizeof(*fm_flow));
