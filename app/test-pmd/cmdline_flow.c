@@ -143,6 +143,8 @@ enum index {
 	ITEM_ICMP,
 	ITEM_ICMP_TYPE,
 	ITEM_ICMP_CODE,
+	ITEM_ICMP_IDENT,
+	ITEM_ICMP_SEQ,
 	ITEM_UDP,
 	ITEM_UDP_SRC,
 	ITEM_UDP_DST,
@@ -893,6 +895,8 @@ static const enum index item_ipv6[] = {
 static const enum index item_icmp[] = {
 	ITEM_ICMP_TYPE,
 	ITEM_ICMP_CODE,
+	ITEM_ICMP_IDENT,
+	ITEM_ICMP_SEQ,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2192,6 +2196,20 @@ static const struct token token_list[] = {
 		.next = NEXT(item_icmp, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp,
 					     hdr.icmp_code)),
+	},
+	[ITEM_ICMP_IDENT] = {
+		.name = "ident",
+		.help = "ICMP packet identifier",
+		.next = NEXT(item_icmp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp,
+					     hdr.icmp_ident)),
+	},
+	[ITEM_ICMP_SEQ] = {
+		.name = "seq",
+		.help = "ICMP packet sequence number",
+		.next = NEXT(item_icmp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_icmp,
+					     hdr.icmp_seq_nb)),
 	},
 	[ITEM_UDP] = {
 		.name = "udp",
