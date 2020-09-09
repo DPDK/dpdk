@@ -1065,8 +1065,7 @@ dpaa2_interrupt_handler(void *param)
 		clear = DPNI_IRQ_EVENT_LINK_CHANGED;
 		dpaa2_dev_link_update(dev, 0);
 		/* calling all the apps registered for link status event */
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-					      NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 out:
 	ret = dpni_clear_irq_status(dpni, CMD_PRI_LOW, priv->token,

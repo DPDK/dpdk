@@ -2621,7 +2621,7 @@ fm10k_dev_interrupt_handler_pf(void *param)
 					true);
 
 			dev_info->sm_down = 0;
-			_rte_eth_dev_callback_process(dev,
+			rte_eth_dev_callback_process(dev,
 					RTE_ETH_EVENT_INTR_LSC,
 					NULL);
 		}
@@ -2635,8 +2635,7 @@ fm10k_dev_interrupt_handler_pf(void *param)
 	if (err == FM10K_ERR_RESET_REQUESTED) {
 		PMD_INIT_LOG(INFO, "INT: Switch is down");
 		dev_info->sm_down = 1;
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-				NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 
 	/* Handle SRAM error */
@@ -2703,8 +2702,7 @@ fm10k_dev_interrupt_handler_vf(void *param)
 
 		/* Setting reset flag */
 		dev_info->sm_down = 1;
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-				NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 
 	if (dev_info->sm_down == 1 &&
@@ -2732,8 +2730,7 @@ fm10k_dev_interrupt_handler_vf(void *param)
 		fm10k_vlan_filter_set(dev, hw->mac.default_vid, true);
 
 		dev_info->sm_down = 0;
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-				NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 
 	/* Re-enable interrupt from device side */

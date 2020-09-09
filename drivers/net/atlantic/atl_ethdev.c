@@ -1395,8 +1395,7 @@ atl_dev_interrupt_action(struct rte_eth_dev *dev,
 	/* Notify userapp if link status changed */
 	if (!atl_dev_link_update(dev, 0)) {
 		atl_dev_link_status_print(dev);
-		_rte_eth_dev_callback_process(dev,
-			RTE_ETH_EVENT_INTR_LSC, NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	} else {
 		if (hw->aq_fw_ops->send_macsec_req == NULL)
 			goto done;
@@ -1422,7 +1421,7 @@ atl_dev_interrupt_action(struct rte_eth_dev *dev,
 		    resp.stats.egress_expired ||
 		    resp.stats.ingress_expired) {
 			PMD_DRV_LOG(INFO, "RTE_ETH_EVENT_MACSEC");
-			_rte_eth_dev_callback_process(dev,
+			rte_eth_dev_callback_process(dev,
 				RTE_ETH_EVENT_MACSEC, NULL);
 		}
 	}

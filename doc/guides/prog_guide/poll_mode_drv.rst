@@ -600,9 +600,9 @@ thread safety all these operations should be called from the same thread.
 For example when PF is reset, the PF sends a message to notify VFs of
 this event and also trigger an interrupt to VFs. Then in the interrupt
 service routine the VFs detects this notification message and calls
-_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET, NULL).
+rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET, NULL).
 This means that a PF reset triggers an RTE_ETH_EVENT_INTR_RESET
-event within VFs. The function _rte_eth_dev_callback_process() will
+event within VFs. The function rte_eth_dev_callback_process() will
 call the registered callback function. The callback function can trigger
 the application to handle all operations the VF reset requires including
 stopping Rx/Tx queues and calling rte_eth_dev_reset().

@@ -821,7 +821,7 @@ int rte_eth_dev_release_port(struct rte_eth_dev *eth_dev);
  *  void
  */
 __rte_internal
-void _rte_eth_dev_reset(struct rte_eth_dev *dev);
+void rte_eth_dev_internal_reset(struct rte_eth_dev *dev);
 
 /**
  * @internal Executes all the user application registered callbacks for
@@ -841,7 +841,7 @@ void _rte_eth_dev_reset(struct rte_eth_dev *dev);
  *  int
  */
 __rte_internal
-int _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
+int rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 		enum rte_eth_event_type event, void *ret_param);
 
 /**

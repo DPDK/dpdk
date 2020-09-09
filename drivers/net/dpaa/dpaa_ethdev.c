@@ -335,7 +335,7 @@ static void dpaa_interrupt_handler(void *param)
 	if (bytes_read < 0)
 		DPAA_PMD_ERR("Error reading eventfd\n");
 	dpaa_eth_link_update(dev, 0);
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 static int dpaa_eth_dev_start(struct rte_eth_dev *dev)

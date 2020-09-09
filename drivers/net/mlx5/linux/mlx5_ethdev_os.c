@@ -732,7 +732,7 @@ mlx5_dev_interrupt_device_fatal(struct mlx5_dev_ctx_shared *sh)
 		dev = &rte_eth_devices[sh->port[i].ih_port_id];
 		MLX5_ASSERT(dev);
 		if (dev->data->dev_conf.intr_conf.rmv)
-			_rte_eth_dev_callback_process
+			rte_eth_dev_callback_process
 				(dev, RTE_ETH_EVENT_INTR_RMV, NULL);
 	}
 }
@@ -808,7 +808,7 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 				usleep(0);
 				continue;
 			}
-			_rte_eth_dev_callback_process
+			rte_eth_dev_callback_process
 				(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 			continue;
 		}

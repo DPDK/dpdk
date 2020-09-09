@@ -1879,7 +1879,7 @@ slave_remove(struct bond_dev_private *internals,
 	internals->slave_count--;
 
 	/* force reconfiguration of slave interfaces */
-	_rte_eth_dev_reset(slave_eth_dev);
+	rte_eth_dev_internal_reset(slave_eth_dev);
 }
 
 static void
@@ -2765,7 +2765,7 @@ bond_ethdev_delayed_lsc_propagation(void *arg)
 	if (arg == NULL)
 		return;
 
-	_rte_eth_dev_callback_process((struct rte_eth_dev *)arg,
+	rte_eth_dev_callback_process((struct rte_eth_dev *)arg,
 			RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
@@ -2900,7 +2900,7 @@ link_update:
 						bond_ethdev_delayed_lsc_propagation,
 						(void *)bonded_eth_dev);
 			else
-				_rte_eth_dev_callback_process(bonded_eth_dev,
+				rte_eth_dev_callback_process(bonded_eth_dev,
 						RTE_ETH_EVENT_INTR_LSC,
 						NULL);
 
@@ -2910,7 +2910,7 @@ link_update:
 						bond_ethdev_delayed_lsc_propagation,
 						(void *)bonded_eth_dev);
 			else
-				_rte_eth_dev_callback_process(bonded_eth_dev,
+				rte_eth_dev_callback_process(bonded_eth_dev,
 						RTE_ETH_EVENT_INTR_LSC,
 						NULL);
 		}

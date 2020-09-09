@@ -650,8 +650,7 @@ void qed_link_update(struct ecore_hwfn *hwfn)
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)qdev->ethdev;
 
 	if (!qede_link_update(dev, 0))
-		_rte_eth_dev_callback_process(dev,
-					      RTE_ETH_EVENT_INTR_LSC, NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 static int qed_drain(struct ecore_dev *edev)

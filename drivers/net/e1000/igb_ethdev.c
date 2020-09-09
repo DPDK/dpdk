@@ -2920,8 +2920,7 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev,
 			     pci_dev->addr.bus,
 			     pci_dev->addr.devid,
 			     pci_dev->addr.function);
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-					      NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 
 	return 0;
@@ -2983,8 +2982,8 @@ void igbvf_mbx_process(struct rte_eth_dev *dev)
 		/* dummy mbx read to ack pf */
 		if (mbx->ops.read(hw, &in_msg, 1, 0))
 			return;
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
-					      NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
+					     NULL);
 	}
 }
 

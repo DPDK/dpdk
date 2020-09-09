@@ -1528,9 +1528,9 @@ out:
 	new.link_speed != eth_dev->data->dev_link.link_speed) {
 		rte_eth_linkstatus_set(eth_dev, &new);
 
-		_rte_eth_dev_callback_process(eth_dev,
-					      RTE_ETH_EVENT_INTR_LSC,
-					      NULL);
+		rte_eth_dev_callback_process(eth_dev,
+					     RTE_ETH_EVENT_INTR_LSC,
+					     NULL);
 
 		bnxt_print_link_info(eth_dev);
 	}

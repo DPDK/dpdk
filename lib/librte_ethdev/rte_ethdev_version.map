@@ -230,17 +230,17 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 
-	_rte_eth_dev_callback_process;
-	_rte_eth_dev_reset;
 	rte_eth_dev_allocate;
 	rte_eth_dev_allocated;
 	rte_eth_dev_attach_secondary;
+	rte_eth_dev_callback_process;
 	rte_eth_dev_create;
 	rte_eth_dev_destroy;
 	rte_eth_dev_is_rx_hairpin_queue;
 	rte_eth_dev_is_tx_hairpin_queue;
 	rte_eth_dev_probing_finish;
 	rte_eth_dev_release_port;
+	rte_eth_dev_internal_reset;
 	rte_eth_devargs_parse;
 	rte_eth_dma_zone_free;
 	rte_eth_dma_zone_reserve;

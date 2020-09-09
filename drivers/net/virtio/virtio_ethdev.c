@@ -1489,9 +1489,9 @@ virtio_interrupt_handler(void *param)
 
 	if (isr & VIRTIO_PCI_ISR_CONFIG) {
 		if (virtio_dev_link_update(dev, 0) == 0)
-			_rte_eth_dev_callback_process(dev,
-						      RTE_ETH_EVENT_INTR_LSC,
-						      NULL);
+			rte_eth_dev_callback_process(dev,
+						     RTE_ETH_EVENT_INTR_LSC,
+						     NULL);
 
 		if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 			vtpci_read_dev_config(hw,

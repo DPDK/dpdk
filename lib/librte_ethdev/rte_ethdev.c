@@ -549,7 +549,7 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 	rte_eth_dev_shared_data_prepare();
 
 	if (eth_dev->state != RTE_ETH_DEV_UNUSED)
-		_rte_eth_dev_callback_process(eth_dev,
+		rte_eth_dev_callback_process(eth_dev,
 				RTE_ETH_EVENT_DESTROY, NULL);
 
 	rte_spinlock_lock(&rte_eth_dev_shared_data->ownership_lock);
@@ -1486,7 +1486,7 @@ rollback:
 }
 
 void
-_rte_eth_dev_reset(struct rte_eth_dev *dev)
+rte_eth_dev_internal_reset(struct rte_eth_dev *dev)
 {
 	if (dev->data->dev_started) {
 		RTE_ETHDEV_LOG(ERR, "Port %u must be stopped to allow reset\n",
@@ -4090,7 +4090,7 @@ rte_eth_dev_callback_unregister(uint16_t port_id,
 }
 
 int
-_rte_eth_dev_callback_process(struct rte_eth_dev *dev,
+rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 	enum rte_eth_event_type event, void *ret_param)
 {
 	struct rte_eth_dev_callback *cb_lst;
@@ -4122,7 +4122,7 @@ rte_eth_dev_probing_finish(struct rte_eth_dev *dev)
 	if (dev == NULL)
 		return;
 
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_NEW, NULL);
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_NEW, NULL);
 
 	dev->state = RTE_ETH_DEV_ATTACHED;
 }

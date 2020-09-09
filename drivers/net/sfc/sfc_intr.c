@@ -89,9 +89,9 @@ exit:
 		sfc_notice(sa, "link status change event: link %s",
 			 sa->eth_dev->data->dev_link.link_status ?
 			 "UP" : "DOWN");
-		_rte_eth_dev_callback_process(sa->eth_dev,
-					      RTE_ETH_EVENT_INTR_LSC,
-					      NULL);
+		rte_eth_dev_callback_process(sa->eth_dev,
+					     RTE_ETH_EVENT_INTR_LSC,
+					     NULL);
 	}
 }
 
@@ -131,9 +131,9 @@ sfc_intr_message_handler(void *cb_arg)
 exit:
 	if (lsc_seq != sa->port.lsc_seq) {
 		sfc_notice(sa, "link status change event");
-		_rte_eth_dev_callback_process(sa->eth_dev,
-					      RTE_ETH_EVENT_INTR_LSC,
-					      NULL);
+		rte_eth_dev_callback_process(sa->eth_dev,
+					     RTE_ETH_EVENT_INTR_LSC,
+					     NULL);
 	}
 }
 

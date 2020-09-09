@@ -1621,7 +1621,7 @@ static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
 
 	if (unlikely(adapter->trigger_reset)) {
 		PMD_DRV_LOG(ERR, "Trigger reset is on\n");
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
 			NULL);
 	}
 }
@@ -2867,7 +2867,7 @@ static void ena_update_on_link_change(void *adapter_data,
 	adapter->link_status = status;
 
 	ena_link_update(eth_dev, 0);
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 static void ena_notification(void *data,

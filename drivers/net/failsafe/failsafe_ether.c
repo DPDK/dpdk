@@ -602,9 +602,9 @@ failsafe_eth_lsc_event_callback(uint16_t port_id __rte_unused,
 	ret = dev->dev_ops->link_update(dev, 0);
 	/* We must pass on the LSC event */
 	if (ret)
-		return _rte_eth_dev_callback_process(dev,
-						     RTE_ETH_EVENT_INTR_LSC,
-						     NULL);
+		return rte_eth_dev_callback_process(dev,
+						    RTE_ETH_EVENT_INTR_LSC,
+						    NULL);
 	else
 		return 0;
 }

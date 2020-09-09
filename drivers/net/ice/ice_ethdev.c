@@ -1314,7 +1314,7 @@ ice_handle_aq_msg(struct rte_eth_dev *dev)
 		case ice_aqc_opc_get_link_status:
 			ret = ice_link_update(dev, 0);
 			if (!ret)
-				_rte_eth_dev_callback_process
+				rte_eth_dev_callback_process
 					(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 			break;
 		default:
@@ -1379,7 +1379,7 @@ ice_interrupt_handler(void *param)
 		PMD_DRV_LOG(INFO, "OICR: link state change event");
 		ret = ice_link_update(dev, 0);
 		if (!ret)
-			_rte_eth_dev_callback_process
+			rte_eth_dev_callback_process
 				(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 #endif

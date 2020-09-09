@@ -124,9 +124,9 @@ mlx4_link_status_alarm(struct mlx4_priv *priv)
 	MLX4_ASSERT(priv->intr_alarm == 1);
 	priv->intr_alarm = 0;
 	if (intr_conf->lsc && !mlx4_link_status_check(priv))
-		_rte_eth_dev_callback_process(ETH_DEV(priv),
-					      RTE_ETH_EVENT_INTR_LSC,
-					      NULL);
+		rte_eth_dev_callback_process(ETH_DEV(priv),
+					     RTE_ETH_EVENT_INTR_LSC,
+					     NULL);
 }
 
 /**
@@ -207,8 +207,8 @@ mlx4_interrupt_handler(struct mlx4_priv *priv)
 	}
 	for (i = 0; i != RTE_DIM(caught); ++i)
 		if (caught[i])
-			_rte_eth_dev_callback_process(ETH_DEV(priv), type[i],
-						      NULL);
+			rte_eth_dev_callback_process(ETH_DEV(priv), type[i],
+						     NULL);
 }
 
 /**

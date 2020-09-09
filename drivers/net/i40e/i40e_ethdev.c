@@ -6846,7 +6846,7 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 		case i40e_aqc_opc_get_link_status:
 			ret = i40e_dev_link_update(dev, 0);
 			if (!ret)
-				_rte_eth_dev_callback_process(dev,
+				rte_eth_dev_callback_process(dev,
 					RTE_ETH_EVENT_INTR_LSC, NULL);
 			break;
 		default:

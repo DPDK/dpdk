@@ -832,7 +832,7 @@ new_device(int vid)
 
 	VHOST_LOG(INFO, "Vhost device %d created\n", vid);
 
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 
 	return 0;
 }
@@ -889,7 +889,7 @@ destroy_device(int vid)
 	VHOST_LOG(INFO, "Vhost device %d destroyed\n", vid);
 	eth_vhost_uninstall_intr(eth_dev);
 
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
 static int
@@ -968,7 +968,7 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 	VHOST_LOG(INFO, "vring%u is %s\n",
 			vring, enable ? "enabled" : "disabled");
 
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_QUEUE_STATE, NULL);
+	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_QUEUE_STATE, NULL);
 
 	return 0;
 }

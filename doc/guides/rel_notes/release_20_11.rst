@@ -126,6 +126,11 @@ API Changes
 
 * ethdev: ``rte_eth_rx_descriptor_done()`` API has been deprecated.
 
+* Renamed internal ethdev APIs:
+
+  * ``_rte_eth_dev_callback_process()`` -> ``rte_eth_dev_callback_process()``
+  * ``_rte_eth_dev_reset`` -> ``rte_eth_dev_internal_reset()``
+
 * rawdev: Added a structure size parameter to the functions
   ``rte_rawdev_queue_setup()``, ``rte_rawdev_queue_conf_get()``,
   ``rte_rawdev_info_get()`` and ``rte_rawdev_configure()``,

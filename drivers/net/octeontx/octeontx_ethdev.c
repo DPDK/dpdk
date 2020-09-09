@@ -227,9 +227,9 @@ octeontx_link_status_poll(void *arg)
 			octeontx_link_status_update(nic, &link);
 			octeontx_link_status_print(dev, &link);
 			rte_eth_linkstatus_set(dev, &link);
-			_rte_eth_dev_callback_process(dev,
-						      RTE_ETH_EVENT_INTR_LSC,
-						      NULL);
+			rte_eth_dev_callback_process(dev,
+						     RTE_ETH_EVENT_INTR_LSC,
+						     NULL);
 		}
 	}
 

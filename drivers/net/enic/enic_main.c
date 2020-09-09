@@ -445,7 +445,7 @@ enic_intr_handler(void *arg)
 	vnic_intr_return_all_credits(&enic->intr[ENICPMD_LSC_INTR_OFFSET]);
 
 	enic_link_update(dev);
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	enic_log_q_error(enic);
 	/* Re-enable irq in case of INTx */
 	rte_intr_ack(&enic->pdev->intr_handle);

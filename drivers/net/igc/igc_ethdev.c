@@ -540,8 +540,7 @@ eth_igc_interrupt_action(struct rte_eth_dev *dev)
 				pci_dev->addr.bus,
 				pci_dev->addr.devid,
 				pci_dev->addr.function);
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
-				NULL);
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 	}
 }
 

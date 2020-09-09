@@ -83,9 +83,9 @@ nicvf_interrupt(void *arg)
 			nicvf_link_status_update(nic, &link);
 			rte_eth_linkstatus_set(dev, &link);
 
-			_rte_eth_dev_callback_process(dev,
-						      RTE_ETH_EVENT_INTR_LSC,
-						      NULL);
+			rte_eth_dev_callback_process(dev,
+						     RTE_ETH_EVENT_INTR_LSC,
+						     NULL);
 		}
 	}
 
