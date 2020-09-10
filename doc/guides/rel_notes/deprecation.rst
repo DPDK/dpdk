@@ -207,13 +207,6 @@ Deprecation Notices
   break the ABI checks, that is why change is planned for 20.11.
   The list of internal APIs are mainly ones listed in ``rte_ethdev_driver.h``.
 
-* traffic manager: All traffic manager API's in ``rte_tm.h`` were mistakenly made
-  ABI stable in the v19.11 release. The TM maintainer and other contributors have
-  agreed to keep the TM APIs as experimental in expectation of additional spec
-  improvements. Therefore, all APIs in ``rte_tm.h`` will be marked back as
-  experimental in v20.11 DPDK release. For more details, please see `the thread
-  <https://mails.dpdk.org/archives/dev/2020-April/164970.html>`_.
-
 * pmd_dpaa: The API ``rte_pmd_dpaa_set_tx_loopback`` will have extended
   ``port_id`` definition from ``uint8_t`` to ``uint16_t``.
 
