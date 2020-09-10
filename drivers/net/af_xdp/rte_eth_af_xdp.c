@@ -746,12 +746,17 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 }
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-static inline uint64_t get_base_addr(struct rte_mempool *mp)
+static inline uint64_t get_base_addr(struct rte_mempool *mp, uint64_t *align)
 {
 	struct rte_mempool_memhdr *memhdr;
+	uint64_t memhdr_addr, aligned_addr;
 
 	memhdr = STAILQ_FIRST(&mp->mem_list);
-	return (uint64_t)memhdr->addr & ~(getpagesize() - 1);
+	memhdr_addr = (uint64_t)memhdr->addr;
+	aligned_addr = memhdr_addr & ~(getpagesize() - 1);
+	*align = memhdr_addr - aligned_addr;
+
+	return aligned_addr;
 }
 
 static struct
@@ -766,6 +771,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals __rte_unused,
 		.flags = XDP_UMEM_UNALIGNED_CHUNK_FLAG};
 	void *base_addr = NULL;
 	struct rte_mempool *mb_pool = rxq->mb_pool;
+	uint64_t umem_size, align = 0;
 
 	usr_config.frame_size = rte_mempool_calc_obj_size(mb_pool->elt_size,
 								mb_pool->flags,
@@ -782,12 +788,11 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals __rte_unused,
 	}
 
 	umem->mb_pool = mb_pool;
-	base_addr = (void *)get_base_addr(mb_pool);
+	base_addr = (void *)get_base_addr(mb_pool, &align);
+	umem_size = mb_pool->populated_size * usr_config.frame_size + align;
 
-	ret = xsk_umem__create(&umem->umem, base_addr,
-			       mb_pool->populated_size * usr_config.frame_size,
-			       &umem->fq, &umem->cq,
-			       &usr_config);
+	ret = xsk_umem__create(&umem->umem, base_addr, umem_size,
+			       &umem->fq, &umem->cq, &usr_config);
 
 	if (ret) {
 		AF_XDP_LOG(ERR, "Failed to create umem");
