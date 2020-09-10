@@ -78,7 +78,8 @@ rte_rawdev_socket_id(uint16_t dev_id)
 }
 
 int
-rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info)
+rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
+		size_t dev_private_size)
 {
 	struct rte_rawdev *rawdev;
 
@@ -89,7 +90,8 @@ rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info)
 
 	if (dev_info->dev_private != NULL) {
 		RTE_FUNC_PTR_OR_ERR_RET(*rawdev->dev_ops->dev_info_get, -ENOTSUP);
-		(*rawdev->dev_ops->dev_info_get)(rawdev, dev_info->dev_private);
+		(*rawdev->dev_ops->dev_info_get)(rawdev, dev_info->dev_private,
+				dev_private_size);
 	}
 
 	dev_info->driver_name = rawdev->driver_name;

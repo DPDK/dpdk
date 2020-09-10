@@ -1389,7 +1389,7 @@ main(int argc, char **argv)
 	rte_rawdev_set_attr(dev_id, NTB_QUEUE_NUM_NAME, num_queues);
 	printf("Set queue number as %u.\n", num_queues);
 	ntb_rawdev_info.dev_private = (rte_rawdev_obj_t)(&ntb_info);
-	rte_rawdev_info_get(dev_id, &ntb_rawdev_info);
+	rte_rawdev_info_get(dev_id, &ntb_rawdev_info, sizeof(ntb_info));
 
 	nb_mbuf = nb_desc * num_queues * 2 * 2 + rte_lcore_count() *
 		  MEMPOOL_CACHE_SIZE;

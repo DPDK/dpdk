@@ -265,7 +265,7 @@ functions:
                 do {
                     if (rdev_id == rte_rawdev_count())
                         goto end;
-                    rte_rawdev_info_get(rdev_id++, &rdev_info);
+                    rte_rawdev_info_get(rdev_id++, &rdev_info, 0);
                 } while (strcmp(rdev_info.driver_name,
                     IOAT_PMD_RAWDEV_NAME_STR) != 0);
 

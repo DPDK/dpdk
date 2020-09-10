@@ -106,12 +106,12 @@ test_rawdev_info_get(void)
 	struct rte_rawdev_info rdev_info = {0};
 	struct skeleton_rawdev_conf skel_conf = {0};
 
-	ret = rte_rawdev_info_get(test_dev_id, NULL);
+	ret = rte_rawdev_info_get(test_dev_id, NULL, 0);
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
 	rdev_info.dev_private = &skel_conf;
 
-	ret = rte_rawdev_info_get(test_dev_id, &rdev_info);
+	ret = rte_rawdev_info_get(test_dev_id, &rdev_info, sizeof(skel_conf));
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to get raw dev info");
 
 	return TEST_SUCCESS;
@@ -142,7 +142,8 @@ test_rawdev_configure(void)
 
 	rdev_info.dev_private = &rdev_conf_get;
 	ret = rte_rawdev_info_get(test_dev_id,
-				  (rte_rawdev_obj_t)&rdev_info);
+				  (rte_rawdev_obj_t)&rdev_info,
+				  sizeof(rdev_conf_get));
 	RTE_TEST_ASSERT_SUCCESS(ret,
 				"Failed to obtain rawdev configuration (%d)",
 				ret);
@@ -170,7 +171,8 @@ test_rawdev_queue_default_conf_get(void)
 	/* Get the current configuration */
 	rdev_info.dev_private = &rdev_conf_get;
 	ret = rte_rawdev_info_get(test_dev_id,
-				  (rte_rawdev_obj_t)&rdev_info);
+				  (rte_rawdev_obj_t)&rdev_info,
+				  sizeof(rdev_conf_get));
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain rawdev configuration (%d)",
 				ret);
 
@@ -218,7 +220,8 @@ test_rawdev_queue_setup(void)
 	/* Get the current configuration */
 	rdev_info.dev_private = &rdev_conf_get;
 	ret = rte_rawdev_info_get(test_dev_id,
-				  (rte_rawdev_obj_t)&rdev_info);
+				  (rte_rawdev_obj_t)&rdev_info,
+				  sizeof(rdev_conf_get));
 	RTE_TEST_ASSERT_SUCCESS(ret,
 				"Failed to obtain rawdev configuration (%d)",
 				ret);
@@ -327,7 +330,8 @@ test_rawdev_start_stop(void)
 	dummy_firmware = NULL;
 
 	rte_rawdev_start(test_dev_id);
-	ret = rte_rawdev_info_get(test_dev_id, (rte_rawdev_obj_t)&rdev_info);
+	ret = rte_rawdev_info_get(test_dev_id, (rte_rawdev_obj_t)&rdev_info,
+			sizeof(rdev_conf_get));
 	RTE_TEST_ASSERT_SUCCESS(ret,
 				"Failed to obtain rawdev configuration (%d)",
 				ret);
@@ -336,7 +340,8 @@ test_rawdev_start_stop(void)
 			      rdev_conf_get.device_state);
 
 	rte_rawdev_stop(test_dev_id);
-	ret = rte_rawdev_info_get(test_dev_id, (rte_rawdev_obj_t)&rdev_info);
+	ret = rte_rawdev_info_get(test_dev_id, (rte_rawdev_obj_t)&rdev_info,
+			sizeof(rdev_conf_get));
 	RTE_TEST_ASSERT_SUCCESS(ret,
 				"Failed to obtain rawdev configuration (%d)",
 				ret);

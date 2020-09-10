@@ -801,10 +801,16 @@ end_of_rx:
 }
 
 static void
-ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info)
+ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
+		size_t dev_info_size)
 {
 	struct ntb_hw *hw = dev->dev_private;
 	struct ntb_dev_info *info = dev_info;
+
+	if (dev_info_size != sizeof(*info)) {
+		NTB_LOG(ERR, "Invalid size parameter to %s", __func__);
+		return;
+	}
 
 	info->mw_cnt = hw->mw_cnt;
 	info->mw_size = hw->mw_size;

@@ -162,7 +162,7 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 	afu_dev->id.port      = afu_pr_conf.afu_id.port;
 
 	if (rawdev->dev_ops && rawdev->dev_ops->dev_info_get)
-		rawdev->dev_ops->dev_info_get(rawdev, afu_dev);
+		rawdev->dev_ops->dev_info_get(rawdev, afu_dev, sizeof(*afu_dev));
 
 	if (rawdev->dev_ops &&
 		rawdev->dev_ops->dev_start &&

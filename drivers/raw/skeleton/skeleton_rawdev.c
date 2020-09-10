@@ -42,14 +42,15 @@ static struct queue_buffers queue_buf[SKELETON_MAX_QUEUES] = {};
 static void clear_queue_bufs(int queue_id);
 
 static void skeleton_rawdev_info_get(struct rte_rawdev *dev,
-				     rte_rawdev_obj_t dev_info)
+				     rte_rawdev_obj_t dev_info,
+				     size_t dev_info_size)
 {
 	struct skeleton_rawdev *skeldev;
 	struct skeleton_rawdev_conf *skeldev_conf;
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	if (!dev_info) {
+	if (!dev_info || dev_info_size != sizeof(*skeldev_conf)) {
 		SKELETON_PMD_ERR("Invalid request");
 		return;
 	}

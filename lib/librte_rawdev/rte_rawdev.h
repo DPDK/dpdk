@@ -82,13 +82,20 @@ struct rte_rawdev_info;
  *   will be returned. This can be used to safely query the type of a rawdev
  *   instance without needing to know the size of the private data to return.
  *
+ * @param dev_private_size
+ *   The length of the memory space pointed to by dev_private in dev_info.
+ *   This should be set to the size of the expected private structure to be
+ *   returned, and may be checked by drivers to ensure the expected struct
+ *   type is provided.
+ *
  * @return
  *   - 0: Success, driver updates the contextual information of the raw device
  *   - <0: Error code returned by the driver info get function.
  *
  */
 int
-rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info);
+rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
+		size_t dev_private_size);
 
 /**
  * Configure a raw device.

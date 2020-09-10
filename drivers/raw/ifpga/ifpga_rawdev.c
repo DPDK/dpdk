@@ -605,7 +605,8 @@ ifpga_fill_afu_dev(struct opae_accelerator *acc,
 
 static void
 ifpga_rawdev_info_get(struct rte_rawdev *dev,
-				     rte_rawdev_obj_t dev_info)
+		      rte_rawdev_obj_t dev_info,
+		      size_t dev_info_size)
 {
 	struct opae_adapter *adapter;
 	struct opae_accelerator *acc;
@@ -617,7 +618,7 @@ ifpga_rawdev_info_get(struct rte_rawdev *dev,
 
 	IFPGA_RAWDEV_PMD_FUNC_TRACE();
 
-	if (!dev_info) {
+	if (!dev_info || dev_info_size != sizeof(*afu_dev)) {
 		IFPGA_RAWDEV_PMD_ERR("Invalid request");
 		return;
 	}

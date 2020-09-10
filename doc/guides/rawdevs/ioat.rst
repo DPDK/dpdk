@@ -107,7 +107,7 @@ rawdev device for use by an application:
 
         for (i = 0; i < count && !found; i++) {
                 struct rte_rawdev_info info = { .dev_private = NULL };
-                found = (rte_rawdev_info_get(i, &info) == 0 &&
+                found = (rte_rawdev_info_get(i, &info, 0) == 0 &&
                                 strcmp(info.driver_name,
                                                 IOAT_PMD_RAWDEV_NAME_STR) == 0);
         }

@@ -84,6 +84,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* rawdev: Added a structure size parameter to the function
+  ``rte_rawdev_info_get()``,
+  allowing limited driver type-checking and ABI compatibility.
+
 
 ABI Changes
 -----------

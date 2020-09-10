@@ -34,7 +34,7 @@ test_rawdev_selftest_ioat(void)
 
 	for (i = 0; i < count; i++) {
 		struct rte_rawdev_info info = { .dev_private = NULL };
-		if (rte_rawdev_info_get(i, &info) == 0 &&
+		if (rte_rawdev_info_get(i, &info, 0) == 0 &&
 				strstr(info.driver_name, "ioat") != NULL)
 			return rte_rawdev_selftest(i) == 0 ?
 					TEST_SUCCESS : TEST_FAILED;

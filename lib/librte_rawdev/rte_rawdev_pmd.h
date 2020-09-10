@@ -138,12 +138,15 @@ rte_rawdev_pmd_is_valid_dev(uint8_t dev_id)
  *   Raw device pointer
  * @param dev_info
  *   Raw device information structure
+ * @param dev_private_size
+ *   The size of the structure pointed to by dev_info->dev_private
  *
  * @return
  *   Returns 0 on success
  */
 typedef void (*rawdev_info_get_t)(struct rte_rawdev *dev,
-				  rte_rawdev_obj_t dev_info);
+				  rte_rawdev_obj_t dev_info,
+				  size_t dev_private_size);
 
 /**
  * Configure a device.

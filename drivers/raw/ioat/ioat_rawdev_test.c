@@ -148,7 +148,7 @@ ioat_rawdev_test(uint16_t dev_id)
 	unsigned int nb_xstats;
 	unsigned int i;
 
-	rte_rawdev_info_get(dev_id, &info);
+	rte_rawdev_info_get(dev_id, &info, sizeof(p));
 	if (p.ring_size != expected_ring_size) {
 		printf("Error, initial ring size is not as expected (Actual: %d, Expected: %d)\n",
 				(int)p.ring_size, expected_ring_size);
@@ -160,7 +160,7 @@ ioat_rawdev_test(uint16_t dev_id)
 		printf("Error with rte_rawdev_configure()\n");
 		return -1;
 	}
-	rte_rawdev_info_get(dev_id, &info);
+	rte_rawdev_info_get(dev_id, &info, sizeof(p));
 	if (p.ring_size != IOAT_TEST_RINGSIZE) {
 		printf("Error, ring size is not %d (%d)\n",
 				IOAT_TEST_RINGSIZE, (int)p.ring_size);
