@@ -146,9 +146,8 @@ rte_rawdev_queue_conf_get(uint16_t dev_id,
 	dev = &rte_rawdevs[dev_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_def_conf, -ENOTSUP);
-	(*dev->dev_ops->queue_def_conf)(dev, queue_id, queue_conf,
+	return (*dev->dev_ops->queue_def_conf)(dev, queue_id, queue_conf,
 			queue_conf_size);
-	return 0;
 }
 
 int

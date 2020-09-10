@@ -246,7 +246,7 @@ ntb_dev_intr_handler(void *param)
 	}
 }
 
-static void
+static int
 ntb_queue_conf_get(struct rte_rawdev *dev,
 		   uint16_t queue_id,
 		   rte_rawdev_obj_t queue_conf,
@@ -256,11 +256,13 @@ ntb_queue_conf_get(struct rte_rawdev *dev,
 	struct ntb_hw *hw = dev->dev_private;
 
 	if (conf_size != sizeof(*q_conf))
-		return;
+		return -EINVAL;
 
 	q_conf->tx_free_thresh = hw->tx_queues[queue_id]->tx_free_thresh;
 	q_conf->nb_desc = hw->rx_queues[queue_id]->nb_rx_desc;
 	q_conf->rx_mp = hw->rx_queues[queue_id]->mpool;
+
+	return 0;
 }
 
 static void
