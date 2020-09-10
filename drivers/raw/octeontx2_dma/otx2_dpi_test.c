@@ -182,7 +182,8 @@ test_otx2_dma_rawdev(uint16_t val)
 	/* Configure rawdev ports */
 	conf.chunk_pool = dpi_create_mempool();
 	rdev_info.dev_private = &conf;
-	ret = rte_rawdev_configure(i, (rte_rawdev_obj_t)&rdev_info);
+	ret = rte_rawdev_configure(i, (rte_rawdev_obj_t)&rdev_info,
+			sizeof(conf));
 	if (ret) {
 		otx2_dpi_dbg("Unable to configure DPIVF %d", i);
 		return -ENODEV;

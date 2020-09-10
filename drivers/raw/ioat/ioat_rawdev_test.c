@@ -156,7 +156,7 @@ ioat_rawdev_test(uint16_t dev_id)
 	}
 
 	p.ring_size = IOAT_TEST_RINGSIZE;
-	if (rte_rawdev_configure(dev_id, &info) != 0) {
+	if (rte_rawdev_configure(dev_id, &info, sizeof(p)) != 0) {
 		printf("Error with rte_rawdev_configure()\n");
 		return -1;
 	}

@@ -104,7 +104,8 @@ rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
 }
 
 int
-rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf)
+rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
+		size_t dev_private_size)
 {
 	struct rte_rawdev *dev;
 	int diag;
@@ -123,7 +124,8 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf)
 	}
 
 	/* Configure the device */
-	diag = (*dev->dev_ops->dev_configure)(dev, dev_conf->dev_private);
+	diag = (*dev->dev_ops->dev_configure)(dev, dev_conf->dev_private,
+			dev_private_size);
 	if (diag != 0)
 		RTE_RDEV_ERR("dev%d dev_configure = %d", dev_id, diag);
 	else

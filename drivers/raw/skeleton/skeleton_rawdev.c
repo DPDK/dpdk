@@ -68,7 +68,8 @@ static int skeleton_rawdev_info_get(struct rte_rawdev *dev,
 }
 
 static int skeleton_rawdev_configure(const struct rte_rawdev *dev,
-				     rte_rawdev_obj_t config)
+				     rte_rawdev_obj_t config,
+				     size_t config_size)
 {
 	struct skeleton_rawdev *skeldev;
 	struct skeleton_rawdev_conf *skeldev_conf;
@@ -77,7 +78,7 @@ static int skeleton_rawdev_configure(const struct rte_rawdev *dev,
 
 	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
 
-	if (!config) {
+	if (config == NULL || config_size != sizeof(*skeldev_conf)) {
 		SKELETON_PMD_ERR("Invalid configuration");
 		return -EINVAL;
 	}

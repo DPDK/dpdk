@@ -126,7 +126,7 @@ test_rawdev_configure(void)
 	struct skeleton_rawdev_conf rdev_conf_get = {0};
 
 	/* Check invalid configuration */
-	ret = rte_rawdev_configure(test_dev_id, NULL);
+	ret = rte_rawdev_configure(test_dev_id, NULL, 0);
 	RTE_TEST_ASSERT(ret == -EINVAL,
 			"Null configure; Expected -EINVAL, got %d", ret);
 
@@ -137,7 +137,8 @@ test_rawdev_configure(void)
 
 	rdev_info.dev_private = &rdev_conf_set;
 	ret = rte_rawdev_configure(test_dev_id,
-				   (rte_rawdev_obj_t)&rdev_info);
+				   (rte_rawdev_obj_t)&rdev_info,
+				   sizeof(rdev_conf_set));
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to configure rawdev (%d)", ret);
 
 	rdev_info.dev_private = &rdev_conf_get;

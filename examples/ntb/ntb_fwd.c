@@ -1401,7 +1401,7 @@ main(int argc, char **argv)
 	ntb_conf.num_queues = num_queues;
 	ntb_conf.queue_size = nb_desc;
 	ntb_rawdev_conf.dev_private = (rte_rawdev_obj_t)(&ntb_conf);
-	ret = rte_rawdev_configure(dev_id, &ntb_rawdev_conf);
+	ret = rte_rawdev_configure(dev_id, &ntb_rawdev_conf, sizeof(ntb_conf));
 	if (ret)
 		rte_exit(EXIT_FAILURE, "Can't config ntb dev: err=%d, "
 			"port=%u\n", ret, dev_id);

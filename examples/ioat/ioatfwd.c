@@ -734,7 +734,7 @@ configure_rawdev_queue(uint32_t dev_id)
 	struct rte_ioat_rawdev_config dev_config = { .ring_size = ring_size };
 	struct rte_rawdev_info info = { .dev_private = &dev_config };
 
-	if (rte_rawdev_configure(dev_id, &info) != 0) {
+	if (rte_rawdev_configure(dev_id, &info, sizeof(dev_config)) != 0) {
 		rte_exit(EXIT_FAILURE,
 			"Error with rte_rawdev_configure()\n");
 	}

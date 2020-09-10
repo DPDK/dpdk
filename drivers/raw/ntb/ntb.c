@@ -837,12 +837,16 @@ ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 }
 
 static int
-ntb_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
+ntb_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config,
+		size_t config_size)
 {
 	struct ntb_dev_config *conf = config;
 	struct ntb_hw *hw = dev->dev_private;
 	uint32_t xstats_num;
 	int ret;
+
+	if (conf == NULL || config_size != sizeof(*conf))
+		return -EINVAL;
 
 	hw->queue_pairs	= conf->num_queues;
 	hw->queue_size = conf->queue_size;

@@ -160,7 +160,8 @@ typedef int (*rawdev_info_get_t)(struct rte_rawdev *dev,
  *   Returns 0 on success
  */
 typedef int (*rawdev_configure_t)(const struct rte_rawdev *dev,
-				  rte_rawdev_obj_t config);
+				  rte_rawdev_obj_t config,
+				  size_t config_size);
 
 /**
  * Start a configured device.

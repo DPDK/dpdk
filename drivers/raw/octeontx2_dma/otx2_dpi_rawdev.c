@@ -294,7 +294,8 @@ otx2_dpi_rawdev_reset(struct rte_rawdev *dev)
 }
 
 static int
-otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
+otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config,
+		size_t config_size)
 {
 	struct dpi_rawdev_conf_s *conf = config;
 	struct dpi_vf_s *dpivf = NULL;
@@ -302,8 +303,8 @@ otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 	uintptr_t pool;
 	uint32_t gaura;
 
-	if (conf == NULL) {
-		otx2_dpi_dbg("NULL configuration");
+	if (conf == NULL || config_size != sizeof(*conf)) {
+		otx2_dpi_dbg("NULL or invalid configuration");
 		return -EINVAL;
 	}
 	dpivf = (struct dpi_vf_s *)dev->dev_private;

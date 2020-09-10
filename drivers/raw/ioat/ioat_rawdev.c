@@ -39,7 +39,8 @@ RTE_LOG_REGISTER(ioat_pmd_logtype, rawdev.ioat, INFO);
 #define COMPLETION_SZ sizeof(__m128i)
 
 static int
-ioat_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
+ioat_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config,
+		size_t config_size)
 {
 	struct rte_ioat_rawdev_config *params = config;
 	struct rte_ioat_rawdev *ioat = dev->dev_private;
@@ -49,7 +50,7 @@ ioat_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config)
 	if (dev->started)
 		return -EBUSY;
 
-	if (params == NULL)
+	if (params == NULL || config_size != sizeof(*params))
 		return -EINVAL;
 
 	if (params->ring_size > 4096 || params->ring_size < 64 ||

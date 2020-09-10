@@ -108,7 +108,7 @@ sdp_rawdev_selftest(uint16_t dev_id)
 
 	dev_info.dev_private = &app_info;
 
-	ret = rte_rawdev_configure(dev_id, &dev_info);
+	ret = rte_rawdev_configure(dev_id, &dev_info, sizeof(app_info));
 	if (ret) {
 		otx2_err("Unable to configure SDP_VF %d", dev_id);
 		rte_mempool_free(ioq_mpool);

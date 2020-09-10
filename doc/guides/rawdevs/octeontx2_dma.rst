@@ -92,7 +92,7 @@ The following code shows how the device is configured
    rte_mempool_set_ops_byname(conf.chunk_pool, rte_mbuf_platform_mempool_ops(), NULL);
    rte_mempool_populate_default(conf.chunk_pool);
 
-   rte_rawdev_configure(dev_id, (rte_rawdev_obj_t)&rdev_info);
+   rte_rawdev_configure(dev_id, (rte_rawdev_obj_t)&rdev_info, sizeof(conf));
 
 Performing Data Transfer
 ------------------------

@@ -66,7 +66,8 @@ The following code shows how the device is configured
    struct rte_rawdev_info rdev_info = {.dev_private = &config};
    config.enqdeq_mpool = (void *)rte_mempool_create(...);
 
-   rte_rawdev_configure(dev_id, (rte_rawdev_obj_t)&rdev_info);
+   rte_rawdev_configure(dev_id, (rte_rawdev_obj_t)&rdev_info,
+                        sizeof(config));
 
 Performing Data Transfer
 ------------------------

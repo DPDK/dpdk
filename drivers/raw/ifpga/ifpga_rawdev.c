@@ -684,7 +684,8 @@ ifpga_rawdev_info_get(struct rte_rawdev *dev,
 
 static int
 ifpga_rawdev_configure(const struct rte_rawdev *dev,
-		rte_rawdev_obj_t config)
+		rte_rawdev_obj_t config,
+		size_t config_size __rte_unused)
 {
 	IFPGA_RAWDEV_PMD_FUNC_TRACE();
 
