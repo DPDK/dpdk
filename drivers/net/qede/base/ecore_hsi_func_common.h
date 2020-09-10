@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2016 - 2020 Cavium Inc.
+ * All rights reserved.
+ * www.cavium.com
+ */
+
 #ifndef _HSI_FUNC_COMMON_H
 #define _HSI_FUNC_COMMON_H
 
