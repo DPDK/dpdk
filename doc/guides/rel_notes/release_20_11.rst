@@ -213,6 +213,8 @@ API Changes
   using the ``rawdev_autotest`` command in the ``dpdk-test`` binary. This
   command now calls the self-test function for each rawdev found on the
   system, and does not require a specific command per device type.
+  Following this change, the ``ioat_rawdev_autotest`` command has been
+  removed as no longer needed.
 
 * stack: the experimental tag has been dropped from the stack library, and its
   interfaces are considered stable as of DPDK 20.11.
