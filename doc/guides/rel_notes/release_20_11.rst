@@ -209,6 +209,11 @@ API Changes
   and the function ``rte_rawdev_queue_conf_get()``
   from ``void`` to ``int`` allowing the return of error codes from drivers.
 
+* rawdev: The running of a drivers ``selftest()`` function can now be done
+  using the ``rawdev_autotest`` command in the ``dpdk-test`` binary. This
+  command now calls the self-test function for each rawdev found on the
+  system, and does not require a specific command per device type.
+
 * stack: the experimental tag has been dropped from the stack library, and its
   interfaces are considered stable as of DPDK 20.11.
 
