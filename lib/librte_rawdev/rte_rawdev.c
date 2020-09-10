@@ -398,20 +398,21 @@ rte_rawdev_start(uint16_t dev_id)
 
 	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_rawdevs[dev_id];
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_start, -ENOTSUP);
-
 	if (dev->started != 0) {
 		RTE_RDEV_ERR("Device with dev_id=%" PRIu8 "already started",
 			     dev_id);
 		return 0;
 	}
 
+	if (dev->dev_ops->dev_start == NULL)
+		goto mark_started;
+
 	diag = (*dev->dev_ops->dev_start)(dev);
-	if (diag == 0)
-		dev->started = 1;
-	else
+	if (diag != 0)
 		return diag;
 
+mark_started:
+	dev->started = 1;
 	return 0;
 }
 
@@ -425,15 +426,18 @@ rte_rawdev_stop(uint16_t dev_id)
 	RTE_RAWDEV_VALID_DEVID_OR_RET(dev_id);
 	dev = &rte_rawdevs[dev_id];
 
-	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_stop);
-
 	if (dev->started == 0) {
 		RTE_RDEV_ERR("Device with dev_id=%" PRIu8 "already stopped",
 			dev_id);
 		return;
 	}
 
+	if (dev->dev_ops->dev_stop == NULL)
+		goto mark_stopped;
+
 	(*dev->dev_ops->dev_stop)(dev);
+
+mark_stopped:
 	dev->started = 0;
 }
 
