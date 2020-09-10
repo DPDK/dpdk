@@ -1411,7 +1411,8 @@ main(int argc, char **argv)
 	ntb_q_conf.rx_mp = mbuf_pool;
 	for (i = 0; i < num_queues; i++) {
 		/* Setup rawdev queue */
-		ret = rte_rawdev_queue_setup(dev_id, i, &ntb_q_conf);
+		ret = rte_rawdev_queue_setup(dev_id, i, &ntb_q_conf,
+				sizeof(ntb_q_conf));
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE,
 				"Failed to setup ntb queue %u.\n", i);

@@ -218,7 +218,8 @@ typedef int (*rawdev_reset_t)(struct rte_rawdev *dev);
  */
 typedef void (*rawdev_queue_conf_get_t)(struct rte_rawdev *dev,
 					uint16_t queue_id,
-					rte_rawdev_obj_t queue_conf);
+					rte_rawdev_obj_t queue_conf,
+					size_t queue_conf_size);
 
 /**
  * Setup an raw queue.
@@ -235,7 +236,8 @@ typedef void (*rawdev_queue_conf_get_t)(struct rte_rawdev *dev,
  */
 typedef int (*rawdev_queue_setup_t)(struct rte_rawdev *dev,
 				    uint16_t queue_id,
-				    rte_rawdev_obj_t queue_conf);
+				    rte_rawdev_obj_t queue_conf,
+				    size_t queue_conf_size);
 
 /**
  * Release resources allocated by given raw queue.

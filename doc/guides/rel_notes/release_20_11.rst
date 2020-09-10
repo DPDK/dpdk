@@ -85,6 +85,7 @@ API Changes
    =======================================================
 
 * rawdev: Added a structure size parameter to the functions
+  ``rte_rawdev_queue_setup()``, ``rte_rawdev_queue_conf_get()``,
   ``rte_rawdev_info_get()`` and ``rte_rawdev_configure()``,
   allowing limited driver type-checking and ABI compatibility.
 

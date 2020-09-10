@@ -185,7 +185,7 @@ test_rawdev_queue_default_conf_get(void)
 	 * depth = DEF_DEPTH
 	 */
 	for (i = 0; i < rdev_conf_get.num_queues; i++) {
-		rte_rawdev_queue_conf_get(test_dev_id, i, &q);
+		rte_rawdev_queue_conf_get(test_dev_id, i, &q, sizeof(q));
 		RTE_TEST_ASSERT_EQUAL(q.depth, SKELETON_QUEUE_DEF_DEPTH,
 				      "Invalid default depth of queue (%d)",
 				      q.depth);
@@ -235,11 +235,11 @@ test_rawdev_queue_setup(void)
 	/* Modify the queue depth for Queue 0 and attach it */
 	qset.depth = 15;
 	qset.state = SKELETON_QUEUE_ATTACH;
-	ret = rte_rawdev_queue_setup(test_dev_id, 0, &qset);
+	ret = rte_rawdev_queue_setup(test_dev_id, 0, &qset, sizeof(qset));
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup queue (%d)", ret);
 
 	/* Now, fetching the queue 0 should show depth as 15 */
-	ret = rte_rawdev_queue_conf_get(test_dev_id, 0, &qget);
+	ret = rte_rawdev_queue_conf_get(test_dev_id, 0, &qget, sizeof(qget));
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to get queue config (%d)", ret);
 
 	RTE_TEST_ASSERT_EQUAL(qset.depth, qget.depth,
@@ -263,7 +263,7 @@ test_rawdev_queue_release(void)
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to release queue 0; (%d)", ret);
 
 	/* Now, fetching the queue 0 should show depth as default */
-	ret = rte_rawdev_queue_conf_get(test_dev_id, 0, &qget);
+	ret = rte_rawdev_queue_conf_get(test_dev_id, 0, &qget, sizeof(qget));
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to get queue config (%d)", ret);
 
 	RTE_TEST_ASSERT_EQUAL(qget.depth, SKELETON_QUEUE_DEF_DEPTH,

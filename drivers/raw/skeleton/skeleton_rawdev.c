@@ -222,14 +222,16 @@ static int skeleton_rawdev_reset(struct rte_rawdev *dev)
 
 static void skeleton_rawdev_queue_def_conf(struct rte_rawdev *dev,
 					   uint16_t queue_id,
-					   rte_rawdev_obj_t queue_conf)
+					   rte_rawdev_obj_t queue_conf,
+					   size_t conf_size)
 {
 	struct skeleton_rawdev *skeldev;
 	struct skeleton_rawdev_queue *skelq;
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	if (!dev || !queue_conf)
+	if (!dev || !queue_conf ||
+			conf_size != sizeof(struct skeleton_rawdev_queue))
 		return;
 
 	skeldev = skeleton_rawdev_get_priv(dev);
@@ -252,7 +254,8 @@ clear_queue_bufs(int queue_id)
 
 static int skeleton_rawdev_queue_setup(struct rte_rawdev *dev,
 				       uint16_t queue_id,
-				       rte_rawdev_obj_t queue_conf)
+				       rte_rawdev_obj_t queue_conf,
+				       size_t conf_size)
 {
 	int ret = 0;
 	struct skeleton_rawdev *skeldev;
@@ -260,7 +263,8 @@ static int skeleton_rawdev_queue_setup(struct rte_rawdev *dev,
 
 	SKELETON_PMD_FUNC_TRACE();
 
-	if (!dev || !queue_conf)
+	if (!dev || !queue_conf ||
+			conf_size != sizeof(struct skeleton_rawdev_queue))
 		return -EINVAL;
 
 	skeldev = skeleton_rawdev_get_priv(dev);

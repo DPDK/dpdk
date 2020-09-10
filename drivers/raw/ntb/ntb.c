@@ -249,10 +249,14 @@ ntb_dev_intr_handler(void *param)
 static void
 ntb_queue_conf_get(struct rte_rawdev *dev,
 		   uint16_t queue_id,
-		   rte_rawdev_obj_t queue_conf)
+		   rte_rawdev_obj_t queue_conf,
+		   size_t conf_size)
 {
 	struct ntb_queue_conf *q_conf = queue_conf;
 	struct ntb_hw *hw = dev->dev_private;
+
+	if (conf_size != sizeof(*q_conf))
+		return;
 
 	q_conf->tx_free_thresh = hw->tx_queues[queue_id]->tx_free_thresh;
 	q_conf->nb_desc = hw->rx_queues[queue_id]->nb_rx_desc;
@@ -294,11 +298,15 @@ ntb_rxq_release(struct ntb_rx_queue *rxq)
 static int
 ntb_rxq_setup(struct rte_rawdev *dev,
 	      uint16_t qp_id,
-	      rte_rawdev_obj_t queue_conf)
+	      rte_rawdev_obj_t queue_conf,
+	      size_t conf_size)
 {
 	struct ntb_queue_conf *rxq_conf = queue_conf;
 	struct ntb_hw *hw = dev->dev_private;
 	struct ntb_rx_queue *rxq;
+
+	if (conf_size != sizeof(*rxq_conf))
+		return -EINVAL;
 
 	/* Allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket("ntb rx queue",
@@ -375,12 +383,16 @@ ntb_txq_release(struct ntb_tx_queue *txq)
 static int
 ntb_txq_setup(struct rte_rawdev *dev,
 	      uint16_t qp_id,
-	      rte_rawdev_obj_t queue_conf)
+	      rte_rawdev_obj_t queue_conf,
+	      size_t conf_size)
 {
 	struct ntb_queue_conf *txq_conf = queue_conf;
 	struct ntb_hw *hw = dev->dev_private;
 	struct ntb_tx_queue *txq;
 	uint16_t i, prev;
+
+	if (conf_size != sizeof(*txq_conf))
+		return -EINVAL;
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("ntb tx queue",
@@ -439,7 +451,8 @@ ntb_txq_setup(struct rte_rawdev *dev,
 static int
 ntb_queue_setup(struct rte_rawdev *dev,
 		uint16_t queue_id,
-		rte_rawdev_obj_t queue_conf)
+		rte_rawdev_obj_t queue_conf,
+		size_t conf_size)
 {
 	struct ntb_hw *hw = dev->dev_private;
 	int ret;
@@ -447,11 +460,11 @@ ntb_queue_setup(struct rte_rawdev *dev,
 	if (queue_id >= hw->queue_pairs)
 		return -EINVAL;
 
-	ret = ntb_txq_setup(dev, queue_id, queue_conf);
+	ret = ntb_txq_setup(dev, queue_id, queue_conf, conf_size);
 	if (ret < 0)
 		return ret;
 
-	ret = ntb_rxq_setup(dev, queue_id, queue_conf);
+	ret = ntb_rxq_setup(dev, queue_id, queue_conf, conf_size);
 
 	return ret;
 }

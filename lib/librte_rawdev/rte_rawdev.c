@@ -137,7 +137,8 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
 int
 rte_rawdev_queue_conf_get(uint16_t dev_id,
 			  uint16_t queue_id,
-			  rte_rawdev_obj_t queue_conf)
+			  rte_rawdev_obj_t queue_conf,
+			  size_t queue_conf_size)
 {
 	struct rte_rawdev *dev;
 
@@ -145,14 +146,16 @@ rte_rawdev_queue_conf_get(uint16_t dev_id,
 	dev = &rte_rawdevs[dev_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_def_conf, -ENOTSUP);
-	(*dev->dev_ops->queue_def_conf)(dev, queue_id, queue_conf);
+	(*dev->dev_ops->queue_def_conf)(dev, queue_id, queue_conf,
+			queue_conf_size);
 	return 0;
 }
 
 int
 rte_rawdev_queue_setup(uint16_t dev_id,
 		       uint16_t queue_id,
-		       rte_rawdev_obj_t queue_conf)
+		       rte_rawdev_obj_t queue_conf,
+		       size_t queue_conf_size)
 {
 	struct rte_rawdev *dev;
 
@@ -160,7 +163,8 @@ rte_rawdev_queue_setup(uint16_t dev_id,
 	dev = &rte_rawdevs[dev_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_setup, -ENOTSUP);
-	return (*dev->dev_ops->queue_setup)(dev, queue_id, queue_conf);
+	return (*dev->dev_ops->queue_setup)(dev, queue_id, queue_conf,
+			queue_conf_size);
 }
 
 int
