@@ -329,6 +329,21 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 		fd = fd_list[list_idx].fds[seg_idx];
 
 		if (fd < 0) {
+			/* A primary process is the only one creating these
+			 * files. If there is a leftover that was not cleaned
+			 * by clear_hugedir(), we must *now* make sure to drop
+			 * the file or we will remap old stuff while the rest
+			 * of the code is built on the assumption that a new
+			 * page is clean.
+			 */
+			if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
+					unlink(path) == -1 &&
+					errno != ENOENT) {
+				RTE_LOG(DEBUG, EAL, "%s(): could not remove '%s': %s\n",
+					__func__, path, strerror(errno));
+				return -1;
+			}
+
 			fd = open(path, O_CREAT | O_RDWR, 0600);
 			if (fd < 0) {
 				RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n",
