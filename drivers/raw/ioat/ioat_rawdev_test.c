@@ -8,10 +8,13 @@
 #include "rte_rawdev.h"
 #include "rte_ioat_rawdev.h"
 
+#define MAX_SUPPORTED_RAWDEVS 64
+#define TEST_SKIPPED 77
+
 int ioat_rawdev_test(uint16_t dev_id); /* pre-define to keep compiler happy */
 
 static struct rte_mempool *pool;
-static unsigned short expected_ring_size;
+static unsigned short expected_ring_size[MAX_SUPPORTED_RAWDEVS];
 
 static int
 test_enqueue_copies(int dev_id)
@@ -148,10 +151,16 @@ ioat_rawdev_test(uint16_t dev_id)
 	unsigned int nb_xstats;
 	unsigned int i;
 
+	if (dev_id >= MAX_SUPPORTED_RAWDEVS) {
+		printf("Skipping test. Cannot test rawdevs with id's greater than %d\n",
+				MAX_SUPPORTED_RAWDEVS);
+		return TEST_SKIPPED;
+	}
+
 	rte_rawdev_info_get(dev_id, &info, sizeof(p));
-	if (p.ring_size != expected_ring_size) {
+	if (p.ring_size != expected_ring_size[dev_id]) {
 		printf("Error, initial ring size is not as expected (Actual: %d, Expected: %d)\n",
-				(int)p.ring_size, expected_ring_size);
+				(int)p.ring_size, expected_ring_size[dev_id]);
 		return -1;
 	}
 
@@ -166,7 +175,7 @@ ioat_rawdev_test(uint16_t dev_id)
 				IOAT_TEST_RINGSIZE, (int)p.ring_size);
 		return -1;
 	}
-	expected_ring_size = p.ring_size;
+	expected_ring_size[dev_id] = p.ring_size;
 
 	if (rte_rawdev_start(dev_id) != 0) {
 		printf("Error with rte_rawdev_start()\n");
