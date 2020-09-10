@@ -88,6 +88,9 @@ API Changes
   ``rte_rawdev_info_get()``,
   allowing limited driver type-checking and ABI compatibility.
 
+* rawdev: Changed the return type of the function ``rte_dev_info_get()``
+  from ``void`` to ``int`` allowing the return of error codes from drivers.
+
 
 ABI Changes
 -----------

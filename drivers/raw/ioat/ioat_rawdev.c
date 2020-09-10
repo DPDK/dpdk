@@ -110,15 +110,18 @@ ioat_dev_stop(struct rte_rawdev *dev)
 	RTE_SET_USED(dev);
 }
 
-static void
+static int
 ioat_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 		size_t dev_info_size)
 {
 	struct rte_ioat_rawdev_config *cfg = dev_info;
 	struct rte_ioat_rawdev *ioat = dev->dev_private;
 
-	if (cfg != NULL && dev_info_size == sizeof(*cfg))
-		cfg->ring_size = ioat->ring_size;
+	if (dev_info == NULL || dev_info_size != sizeof(*cfg))
+		return -EINVAL;
+
+	cfg->ring_size = ioat->ring_size;
+	return 0;
 }
 
 static const char * const xstat_names[] = {

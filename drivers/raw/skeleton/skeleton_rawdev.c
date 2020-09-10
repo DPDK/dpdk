@@ -41,7 +41,7 @@ struct queue_buffers {
 static struct queue_buffers queue_buf[SKELETON_MAX_QUEUES] = {};
 static void clear_queue_bufs(int queue_id);
 
-static void skeleton_rawdev_info_get(struct rte_rawdev *dev,
+static int skeleton_rawdev_info_get(struct rte_rawdev *dev,
 				     rte_rawdev_obj_t dev_info,
 				     size_t dev_info_size)
 {
@@ -52,7 +52,7 @@ static void skeleton_rawdev_info_get(struct rte_rawdev *dev,
 
 	if (!dev_info || dev_info_size != sizeof(*skeldev_conf)) {
 		SKELETON_PMD_ERR("Invalid request");
-		return;
+		return -EINVAL;
 	}
 
 	skeldev = skeleton_rawdev_get_priv(dev);
@@ -63,6 +63,8 @@ static void skeleton_rawdev_info_get(struct rte_rawdev *dev,
 	skeldev_conf->capabilities = skeldev->capabilities;
 	skeldev_conf->device_state = skeldev->device_state;
 	skeldev_conf->firmware_state = skeldev->fw.firmware_state;
+
+	return 0;
 }
 
 static int skeleton_rawdev_configure(const struct rte_rawdev *dev,

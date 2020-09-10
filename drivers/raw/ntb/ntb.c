@@ -800,7 +800,7 @@ end_of_rx:
 	return nb_rx;
 }
 
-static void
+static int
 ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 		size_t dev_info_size)
 {
@@ -809,7 +809,7 @@ ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 
 	if (dev_info_size != sizeof(*info)) {
 		NTB_LOG(ERR, "Invalid size parameter to %s", __func__);
-		return;
+		return -EINVAL;
 	}
 
 	info->mw_cnt = hw->mw_cnt;
@@ -824,7 +824,7 @@ ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 
 	if (!hw->queue_size || !hw->queue_pairs) {
 		NTB_LOG(ERR, "No queue size and queue num assigned.");
-		return;
+		return -EAGAIN;
 	}
 
 	hw->hdr_size_per_queue = RTE_ALIGN(sizeof(struct ntb_header) +
@@ -832,6 +832,8 @@ ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 				hw->queue_size * sizeof(struct ntb_used),
 				RTE_CACHE_LINE_SIZE);
 	info->ntb_hdr_size = hw->hdr_size_per_queue * hw->queue_pairs;
+
+	return 0;
 }
 
 static int

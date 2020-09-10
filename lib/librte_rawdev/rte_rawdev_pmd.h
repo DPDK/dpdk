@@ -142,9 +142,9 @@ rte_rawdev_pmd_is_valid_dev(uint8_t dev_id)
  *   The size of the structure pointed to by dev_info->dev_private
  *
  * @return
- *   Returns 0 on success
+ *   Returns 0 on success, negative error code on failure
  */
-typedef void (*rawdev_info_get_t)(struct rte_rawdev *dev,
+typedef int (*rawdev_info_get_t)(struct rte_rawdev *dev,
 				  rte_rawdev_obj_t dev_info,
 				  size_t dev_private_size);
 
