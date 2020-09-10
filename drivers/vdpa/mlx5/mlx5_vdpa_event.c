@@ -180,7 +180,7 @@ mlx5_vdpa_cq_create(struct mlx5_vdpa_priv *priv, uint16_t log_desc_n,
 	cq->callfd = callfd;
 	/* Init CQ to ones to be in HW owner in the start. */
 	cq->cqes[0].op_own = MLX5_CQE_OWNER_MASK;
-	cq->cqes[0].wqe_counter = rte_cpu_to_be_16(cq_size - 1);
+	cq->cqes[0].wqe_counter = rte_cpu_to_be_16(UINT16_MAX);
 	/* First arming. */
 	mlx5_vdpa_cq_arm(priv, cq);
 	return 0;
@@ -195,7 +195,6 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_cq *cq)
 	struct mlx5_vdpa_event_qp *eqp =
 				container_of(cq, struct mlx5_vdpa_event_qp, cq);
 	const unsigned int cq_size = 1 << cq->log_desc_n;
-	const unsigned int cq_mask = cq_size - 1;
 	union {
 		struct {
 			uint16_t wqe_counter;
@@ -204,13 +203,13 @@ mlx5_vdpa_cq_poll(struct mlx5_vdpa_cq *cq)
 		};
 		uint32_t word;
 	} last_word;
-	uint16_t next_wqe_counter = cq->cq_ci & cq_mask;
+	uint16_t next_wqe_counter = cq->cq_ci;
 	uint16_t cur_wqe_counter;
 	uint16_t comp;
 
 	last_word.word = rte_read32(&cq->cqes[0].wqe_counter);
 	cur_wqe_counter = rte_be_to_cpu_16(last_word.wqe_counter);
-	comp = (cur_wqe_counter + 1u - next_wqe_counter) & cq_mask;
+	comp = cur_wqe_counter + (uint16_t)1 - next_wqe_counter;
 	if (comp) {
 		cq->cq_ci += comp;
 		MLX5_ASSERT(MLX5_CQE_OPCODE(last_word.op_own) !=
