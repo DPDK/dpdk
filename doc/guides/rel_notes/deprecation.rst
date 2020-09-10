@@ -294,13 +294,6 @@ Deprecation Notices
   - https://patches.dpdk.org/patch/71457/
   - https://patches.dpdk.org/patch/71456/
 
-* rawdev: The rawdev APIs which take a device-specific structure as
-  parameter directly, or indirectly via a "private" pointer inside another
-  structure, will be modified to take an additional parameter of the
-  structure size. The affected APIs will include ``rte_rawdev_info_get``,
-  ``rte_rawdev_configure``, ``rte_rawdev_queue_conf_get`` and
-  ``rte_rawdev_queue_setup``.
-
 * acl: ``RTE_ACL_CLASSIFY_NUM`` enum value will be removed.
   This enum value is not used inside DPDK, while it prevents to add new
   classify algorithms without causing an ABI breakage.
