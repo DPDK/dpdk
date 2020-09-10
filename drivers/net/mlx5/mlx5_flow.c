@@ -6590,6 +6590,11 @@ mlx5_flow_dev_dump(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 
+	if (!priv->config.dv_flow_en) {
+		if (fputs("device dv flow disabled\n", file) <= 0)
+			return -errno;
+		return -ENOTSUP;
+	}
 	return mlx5_devx_cmd_flow_dump(sh->fdb_domain, sh->rx_domain,
 				       sh->tx_domain, file);
 }
