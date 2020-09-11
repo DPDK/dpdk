@@ -47,6 +47,7 @@ struct bnxt_ulp_data {
 	uint32_t			dev_id; /* Hardware device id */
 	uint32_t			ref_cnt;
 	struct bnxt_ulp_flow_db		*flow_db;
+	pthread_mutex_t			flow_db_lock;
 	void				*mapper_data;
 	struct bnxt_ulp_port_db		*port_db;
 	struct bnxt_ulp_fc_info		*fc_info;
@@ -195,5 +196,11 @@ bnxt_ulp_get_df_rule_info(uint8_t port_id, struct bnxt_ulp_context *ulp_ctx,
 struct bnxt_ulp_vfr_rule_info*
 bnxt_ulp_cntxt_ptr2_ulp_vfr_info_get(struct bnxt_ulp_context *ulp_ctx,
 				     uint32_t port_id);
+
+int32_t
+bnxt_ulp_cntxt_acquire_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
+
+void
+bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx);
 
 #endif /* _BNXT_ULP_H_ */

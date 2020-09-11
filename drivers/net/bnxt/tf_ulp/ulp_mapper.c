@@ -2668,12 +2668,21 @@ int32_t
 ulp_mapper_flow_destroy(struct bnxt_ulp_context	*ulp_ctx, uint32_t fid,
 			enum bnxt_ulp_flow_db_tables flow_tbl_type)
 {
+	int32_t rc;
+
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR, "Invalid parms, unable to free flow\n");
 		return -EINVAL;
 	}
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
+		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		return -EINVAL;
+	}
 
-	return ulp_mapper_resources_free(ulp_ctx, fid, flow_tbl_type);
+	rc = ulp_mapper_resources_free(ulp_ctx, fid, flow_tbl_type);
+	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
+	return rc;
+
 }
 
 /* Function to handle the default global templates that are allocated during
@@ -2838,6 +2847,12 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
+	/* Protect flow creation */
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
+		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		return -EINVAL;
+	}
+
 	/* Allocate a Flow ID for attaching all resources for the flow to.
 	 * Once allocated, all errors have to walk the list of resources and
 	 * free each of them.
@@ -2848,6 +2863,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 				   &parms.fid);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
+		bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 		return rc;
 	}
 
@@ -2871,10 +2887,12 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	*flowid = parms.fid;
+	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	return rc;
 
 flow_error:
+	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 	/* Free all resources that were allocated during flow creation */
 	trc = ulp_mapper_flow_destroy(ulp_ctx, parms.fid,
 				      BNXT_ULP_REGULAR_FLOW_TABLE);

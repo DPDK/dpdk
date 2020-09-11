@@ -727,6 +727,9 @@ bnxt_ulp_deinit(struct bnxt *bp,
 					 TF_TUNNEL_ENCAP_NAT,
 					 BNXT_ULP_NAT_OUTER_MOST_FLAGS, 0);
 
+	/* free the flow db lock */
+	pthread_mutex_destroy(&bp->ulp_ctx->cfg_data->flow_db_lock);
+
 	/* Delete the ulp context and tf session and free the ulp context */
 	ulp_ctx_deinit(bp, session);
 	BNXT_TF_DBG(DEBUG, "ulp ctx has been deinitialized\n");
@@ -747,6 +750,12 @@ bnxt_ulp_init(struct bnxt *bp,
 	rc = ulp_ctx_init(bp, session);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to create the ulp context\n");
+		goto jump_to_error;
+	}
+
+	rc = pthread_mutex_init(&bp->ulp_ctx->cfg_data->flow_db_lock, NULL);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to initialize flow db lock\n");
 		goto jump_to_error;
 	}
 
@@ -1234,4 +1243,28 @@ bnxt_ulp_cntxt_ptr2_ulp_vfr_info_get(struct bnxt_ulp_context *ulp_ctx,
 		return NULL;
 
 	return &ulp_ctx->cfg_data->vfr_rule_info[port_id];
+}
+
+/* Function to acquire the flow database lock from the ulp context. */
+int32_t
+bnxt_ulp_cntxt_acquire_fdb_lock(struct bnxt_ulp_context	*ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -1;
+
+	if (pthread_mutex_lock(&ulp_ctx->cfg_data->flow_db_lock)) {
+		BNXT_TF_DBG(ERR, "unable to acquire fdb lock\n");
+		return -1;
+	}
+	return 0;
+}
+
+/* Function to release the flow database lock from the ulp context. */
+void
+bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return;
+
+	pthread_mutex_unlock(&ulp_ctx->cfg_data->flow_db_lock);
 }
