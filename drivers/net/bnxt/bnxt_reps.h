@@ -12,6 +12,13 @@
 #define BNXT_MAX_CFA_CODE               65536
 #define BNXT_VF_IDX_INVALID             0xffff
 
+/* Switchdev Port ID Mapping (Per switch domain id).
+ * Lower 15 bits map the VFs (VF_ID). Upper bit maps the PF.
+ */
+#define	BNXT_SWITCH_PORT_ID_PF		0x8000
+#define	BNXT_SWITCH_PORT_ID_TRUSTED_VF	0x0
+#define BNXT_SWITCH_PORT_ID_VF_MASK	0x7FFF
+
 uint16_t
 bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf);
 int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params);

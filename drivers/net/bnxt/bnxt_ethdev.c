@@ -908,6 +908,14 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->tx_desc_lim.nb_min = BNXT_MIN_RING_DESC;
 	dev_info->tx_desc_lim.nb_max = BNXT_MAX_TX_RING_DESC;
 
+	if (BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp)) {
+		dev_info->switch_info.name = eth_dev->device->name;
+		dev_info->switch_info.domain_id = bp->switch_domain_id;
+		dev_info->switch_info.port_id =
+				BNXT_PF(bp) ? BNXT_SWITCH_PORT_ID_PF :
+				    BNXT_SWITCH_PORT_ID_TRUSTED_VF;
+	}
+
 	/* *INDENT-ON* */
 
 	/*
