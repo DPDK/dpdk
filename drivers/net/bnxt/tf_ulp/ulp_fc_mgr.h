@@ -38,6 +38,7 @@ struct hw_fc_mem_info {
 	 */
 	void *mem_pa;
 	uint32_t start_idx;
+	bool start_idx_is_set;
 };
 
 struct bnxt_ulp_fc_info {

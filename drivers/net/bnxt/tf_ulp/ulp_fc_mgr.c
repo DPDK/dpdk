@@ -431,8 +431,7 @@ bool ulp_fc_mgr_start_idx_isset(struct bnxt_ulp_context *ctxt, enum tf_dir dir)
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
 
-	/* Assuming start_idx of 0 is invalid */
-	return (ulp_fc_info->shadow_hw_tbl[dir].start_idx != 0);
+	return ulp_fc_info->shadow_hw_tbl[dir].start_idx_is_set;
 }
 
 /*
@@ -456,9 +455,10 @@ int32_t ulp_fc_mgr_start_idx_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
 	if (!ulp_fc_info)
 		return -EIO;
 
-	/* Assuming that 0 is an invalid counter ID ? */
-	if (ulp_fc_info->shadow_hw_tbl[dir].start_idx == 0)
+	if (!ulp_fc_info->shadow_hw_tbl[dir].start_idx_is_set) {
 		ulp_fc_info->shadow_hw_tbl[dir].start_idx = start_idx;
+		ulp_fc_info->shadow_hw_tbl[dir].start_idx_is_set = true;
+	}
 
 	return 0;
 }
