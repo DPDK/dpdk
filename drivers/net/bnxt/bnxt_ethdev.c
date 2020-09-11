@@ -1252,9 +1252,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
 
-	pthread_mutex_lock(&bp->def_cp_lock);
 	bnxt_schedule_fw_health_check(bp);
-	pthread_mutex_unlock(&bp->def_cp_lock);
 
 	return 0;
 
@@ -4675,17 +4673,22 @@ void bnxt_schedule_fw_health_check(struct bnxt *bp)
 {
 	uint32_t polling_freq;
 
+	pthread_mutex_lock(&bp->health_check_lock);
+
 	if (!bnxt_is_recovery_enabled(bp))
-		return;
+		goto done;
 
 	if (bp->flags & BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED)
-		return;
+		goto done;
 
 	polling_freq = bp->recovery_info->driver_polling_freq;
 
 	rte_eal_alarm_set(US_PER_MS * polling_freq,
 			  bnxt_check_fw_health, (void *)bp);
 	bp->flags |= BNXT_FLAG_FW_HEALTH_CHECK_SCHEDULED;
+
+done:
+	pthread_mutex_unlock(&bp->health_check_lock);
 }
 
 static void bnxt_cancel_fw_health_check(struct bnxt *bp)
@@ -5473,6 +5476,10 @@ bnxt_init_locks(struct bnxt *bp)
 	err = pthread_mutex_init(&bp->def_cp_lock, NULL);
 	if (err)
 		PMD_DRV_LOG(ERR, "Unable to initialize def_cp_lock\n");
+
+	err = pthread_mutex_init(&bp->health_check_lock, NULL);
+	if (err)
+		PMD_DRV_LOG(ERR, "Unable to initialize health_check_lock\n");
 	return err;
 }
 
@@ -5884,6 +5891,7 @@ bnxt_uninit_locks(struct bnxt *bp)
 {
 	pthread_mutex_destroy(&bp->flow_lock);
 	pthread_mutex_destroy(&bp->def_cp_lock);
+	pthread_mutex_destroy(&bp->health_check_lock);
 	if (bp->rep_info) {
 		pthread_mutex_destroy(&bp->rep_info->vfr_lock);
 		pthread_mutex_destroy(&bp->rep_info->vfr_start_lock);
