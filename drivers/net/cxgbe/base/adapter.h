@@ -162,6 +162,7 @@ struct sge_eth_rx_stats {	/* Ethernet rx queue statistics */
 };
 
 struct sge_eth_rxq {                /* a SW Ethernet Rx queue */
+	unsigned int flags;         /* flags for state of the queue */
 	struct sge_rspq rspq;
 	struct sge_fl fl;
 	struct sge_eth_rx_stats stats;
@@ -199,8 +200,12 @@ struct tx_sw_desc {                /* SW state per Tx descriptor */
 	struct tx_eth_coal_desc coalesce;
 };
 
-enum {
+enum cxgbe_txq_state {
 	EQ_STOPPED = (1 << 0),
+};
+
+enum cxgbe_rxq_state {
+	IQ_STOPPED = (1 << 0),
 };
 
 struct eth_coalesce {
@@ -821,8 +826,8 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *rspq, bool fwevtq,
 int t4_sge_eth_txq_start(struct sge_eth_txq *txq);
 int t4_sge_eth_txq_stop(struct sge_eth_txq *txq);
 void t4_sge_eth_txq_release(struct adapter *adap, struct sge_eth_txq *txq);
-int t4_sge_eth_rxq_start(struct adapter *adap, struct sge_rspq *rq);
-int t4_sge_eth_rxq_stop(struct adapter *adap, struct sge_rspq *rq);
+int t4_sge_eth_rxq_start(struct adapter *adap, struct sge_eth_rxq *rxq);
+int t4_sge_eth_rxq_stop(struct adapter *adap, struct sge_eth_rxq *rxq);
 void t4_sge_eth_rxq_release(struct adapter *adap, struct sge_eth_rxq *rxq);
 void t4_sge_eth_clear_queues(struct port_info *pi);
 void t4_sge_eth_release_queues(struct port_info *pi);

@@ -1694,6 +1694,11 @@ int cxgbe_poll(struct sge_rspq *q, struct rte_mbuf **rx_pkts,
 	unsigned int params;
 	u32 val;
 
+	if (unlikely(rxq->flags & IQ_STOPPED)) {
+		*work_done = 0;
+		return 0;
+	}
+
 	*work_done = process_responses(q, budget, rx_pkts);
 
 	if (*work_done) {
@@ -1754,22 +1759,22 @@ static void __iomem *bar2_address(struct adapter *adapter, unsigned int qid,
 	return adapter->bar2 + bar2_qoffset;
 }
 
-int t4_sge_eth_rxq_start(struct adapter *adap, struct sge_rspq *rq)
+int t4_sge_eth_rxq_start(struct adapter *adap, struct sge_eth_rxq *rxq)
 {
-	struct sge_eth_rxq *rxq = container_of(rq, struct sge_eth_rxq, rspq);
 	unsigned int fl_id = rxq->fl.size ? rxq->fl.cntxt_id : 0xffff;
 
+	rxq->flags &= ~IQ_STOPPED;
 	return t4_iq_start_stop(adap, adap->mbox, true, adap->pf, 0,
-				rq->cntxt_id, fl_id, 0xffff);
+				rxq->rspq.cntxt_id, fl_id, 0xffff);
 }
 
-int t4_sge_eth_rxq_stop(struct adapter *adap, struct sge_rspq *rq)
+int t4_sge_eth_rxq_stop(struct adapter *adap, struct sge_eth_rxq *rxq)
 {
-	struct sge_eth_rxq *rxq = container_of(rq, struct sge_eth_rxq, rspq);
 	unsigned int fl_id = rxq->fl.size ? rxq->fl.cntxt_id : 0xffff;
 
+	rxq->flags |= IQ_STOPPED;
 	return t4_iq_start_stop(adap, adap->mbox, false, adap->pf, 0,
-				rq->cntxt_id, fl_id, 0xffff);
+				rxq->rspq.cntxt_id, fl_id, 0xffff);
 }
 
 /*
@@ -1949,7 +1954,8 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	 * simple (and hopefully less wrong).
 	 */
 	if (is_pf4(adap) && !is_t4(adap->params.chip) && cong >= 0) {
-		u32 param, val;
+		u8 cng_ch_bits_log = adap->params.arch.cng_ch_bits_log;
+		u32 param, val, ch_map = 0;
 		int i;
 
 		param = (V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DMAQ) |
@@ -1962,9 +1968,9 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 					X_CONMCTXT_CNGTPMODE_CHANNEL);
 			for (i = 0; i < 4; i++) {
 				if (cong & (1 << i))
-					val |= V_CONMCTXT_CNGCHMAP(1 <<
-								   (i << 2));
+					ch_map |= 1 << (i << cng_ch_bits_log);
 			}
+			val |= V_CONMCTXT_CNGCHMAP(ch_map);
 		}
 		ret = t4_set_params(adap, adap->mbox, adap->pf, 0, 1,
 				    &param, &val);
@@ -2201,7 +2207,7 @@ void t4_sge_eth_clear_queues(struct port_info *pi)
 	rxq = &adap->sge.ethrxq[pi->first_rxqset];
 	for (i = 0; i < pi->n_rx_qsets; i++, rxq++) {
 		if (rxq->rspq.desc)
-			t4_sge_eth_rxq_stop(adap, &rxq->rspq);
+			t4_sge_eth_rxq_stop(adap, rxq);
 	}
 
 	txq = &adap->sge.ethtxq[pi->first_txqset];
@@ -2220,7 +2226,7 @@ void t4_sge_eth_clear_queues(struct port_info *pi)
 void t4_sge_eth_rxq_release(struct adapter *adap, struct sge_eth_rxq *rxq)
 {
 	if (rxq->rspq.desc) {
-		t4_sge_eth_rxq_stop(adap, &rxq->rspq);
+		t4_sge_eth_rxq_stop(adap, rxq);
 		free_rspq_fl(adap, &rxq->rspq, rxq->fl.size ? &rxq->fl : NULL);
 	}
 }

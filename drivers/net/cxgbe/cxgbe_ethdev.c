@@ -562,17 +562,16 @@ void cxgbe_dev_tx_queue_release(void *q)
 
 int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
-	int ret;
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adap = pi->adapter;
-	struct sge_rspq *q;
+	struct sge_eth_rxq *rxq;
+	int ret;
 
 	dev_debug(adapter, "%s: pi->port_id = %d; rx_queue_id = %d\n",
 		  __func__, pi->port_id, rx_queue_id);
 
-	q = eth_dev->data->rx_queues[rx_queue_id];
-
-	ret = t4_sge_eth_rxq_start(adap, q);
+	rxq = eth_dev->data->rx_queues[rx_queue_id];
+	ret = t4_sge_eth_rxq_start(adap, rxq);
 	if (ret == 0)
 		eth_dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
@@ -581,16 +580,16 @@ int cxgbe_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 
 int cxgbe_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
-	int ret;
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adap = pi->adapter;
-	struct sge_rspq *q;
+	struct sge_eth_rxq *rxq;
+	int ret;
 
 	dev_debug(adapter, "%s: pi->port_id = %d; rx_queue_id = %d\n",
 		  __func__, pi->port_id, rx_queue_id);
 
-	q = eth_dev->data->rx_queues[rx_queue_id];
-	ret = t4_sge_eth_rxq_stop(adap, q);
+	rxq = eth_dev->data->rx_queues[rx_queue_id];
+	ret = t4_sge_eth_rxq_stop(adap, rxq);
 	if (ret == 0)
 		eth_dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
