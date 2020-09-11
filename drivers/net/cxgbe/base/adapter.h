@@ -19,7 +19,6 @@
 #include "t4_regs_values.h"
 
 enum {
-	MAX_ETH_QSETS = 64,           /* # of Ethernet Tx/Rx queue sets */
 	MAX_CTRL_QUEUES = NCHAN,      /* # of control Tx queues */
 };
 
@@ -47,9 +46,10 @@ struct port_info {
 	u8     pidx;			/* port index for this PF */
 	u8     tx_chan;                 /* associated channel */
 
-	u8     n_rx_qsets;              /* # of rx qsets */
-	u8     n_tx_qsets;              /* # of tx qsets */
-	u8     first_qset;              /* index of first qset */
+	u16    n_rx_qsets;              /* # of rx qsets */
+	u16    n_tx_qsets;              /* # of tx qsets */
+	u16    first_rxqset;            /* index of first rxqset */
+	u16    first_txqset;            /* index of first txqset */
 
 	u16    *rss;                    /* rss table */
 	u8     rss_mode;                /* rss mode */
@@ -274,8 +274,8 @@ struct sge_ctrl_txq {                /* State for an SGE control Tx queue */
 } __rte_cache_aligned;
 
 struct sge {
-	struct sge_eth_txq ethtxq[MAX_ETH_QSETS];
-	struct sge_eth_rxq ethrxq[MAX_ETH_QSETS];
+	struct sge_eth_txq *ethtxq;
+	struct sge_eth_rxq *ethrxq;
 	struct sge_rspq fw_evtq __rte_cache_aligned;
 	struct sge_ctrl_txq ctrlq[MAX_CTRL_QUEUES];
 

@@ -218,6 +218,7 @@ struct rss_params {
  */
 struct pf_resources {
 	unsigned int neq;      /* N egress Qs */
+	unsigned int nethctrl; /* N egress ETH or CTRL Qs */
 	unsigned int niqflint; /* N ingress Qs/w free list(s) & intr */
 };
 

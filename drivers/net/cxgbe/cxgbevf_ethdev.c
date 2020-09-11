@@ -55,7 +55,7 @@ static int cxgbevf_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 	for (i = 0; i < pi->n_rx_qsets; i++) {
 		struct sge_eth_rxq *rxq =
-			&s->ethrxq[pi->first_qset + i];
+			&s->ethrxq[pi->first_rxqset + i];
 
 		eth_stats->q_ipackets[i] = rxq->stats.pkts;
 		eth_stats->q_ibytes[i] = rxq->stats.rx_bytes;
@@ -65,7 +65,7 @@ static int cxgbevf_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 	for (i = 0; i < pi->n_tx_qsets; i++) {
 		struct sge_eth_txq *txq =
-			&s->ethtxq[pi->first_qset + i];
+			&s->ethtxq[pi->first_txqset + i];
 
 		eth_stats->q_opackets[i] = txq->stats.pkts;
 		eth_stats->q_obytes[i] = txq->stats.tx_bytes;

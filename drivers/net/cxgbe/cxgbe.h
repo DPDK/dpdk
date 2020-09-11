@@ -98,7 +98,8 @@ int cxgbe_poll_for_completion(struct sge_rspq *q, unsigned int us,
 int cxgbe_link_start(struct port_info *pi);
 int cxgbe_setup_sge_fwevtq(struct adapter *adapter);
 int cxgbe_setup_sge_ctrl_txq(struct adapter *adapter);
-void cxgbe_cfg_queues(struct rte_eth_dev *eth_dev);
+int cxgbe_cfg_queues(struct rte_eth_dev *eth_dev);
+void cxgbe_cfg_queues_free(struct adapter *adapter);
 int cxgbe_cfg_queue_count(struct rte_eth_dev *eth_dev);
 int cxgbe_init_rss(struct adapter *adap);
 int cxgbe_setup_rss(struct port_info *pi);

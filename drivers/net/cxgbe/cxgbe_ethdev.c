@@ -116,7 +116,6 @@ int cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
-	int max_queues = adapter->sge.max_ethqsets / adapter->params.nports;
 
 	static const struct rte_eth_desc_lim cxgbe_desc_lim = {
 		.nb_max = CXGBE_MAX_RING_DESC_SIZE,
@@ -126,8 +125,8 @@ int cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 
 	device_info->min_rx_bufsize = CXGBE_MIN_RX_BUFSIZE;
 	device_info->max_rx_pktlen = CXGBE_MAX_RX_PKTLEN;
-	device_info->max_rx_queues = max_queues;
-	device_info->max_tx_queues = max_queues;
+	device_info->max_rx_queues = adapter->sge.max_ethqsets;
+	device_info->max_tx_queues = adapter->sge.max_ethqsets;
 	device_info->max_mac_addrs = 1;
 	/* XXX: For now we support one MAC/port */
 	device_info->max_vfs = adapter->params.arch.vfcount;
@@ -501,13 +500,14 @@ int cxgbe_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
 	struct sge *s = &adapter->sge;
-	struct sge_eth_txq *txq = &s->ethtxq[pi->first_qset + queue_idx];
-	int err = 0;
 	unsigned int temp_nb_desc;
+	struct sge_eth_txq *txq;
+	int err = 0;
 
+	txq = &s->ethtxq[pi->first_txqset + queue_idx];
 	dev_debug(adapter, "%s: eth_dev->data->nb_tx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; pi->first_qset = %u\n",
 		  __func__, eth_dev->data->nb_tx_queues, queue_idx, nb_desc,
-		  socket_id, pi->first_qset);
+		  socket_id, pi->first_txqset);
 
 	/*  Free up the existing queue  */
 	if (eth_dev->data->tx_queues[queue_idx]) {
@@ -603,16 +603,16 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 			     const struct rte_eth_rxconf *rx_conf __rte_unused,
 			     struct rte_mempool *mp)
 {
+	unsigned int pkt_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
-	struct sge *s = &adapter->sge;
-	struct sge_eth_rxq *rxq = &s->ethrxq[pi->first_qset + queue_idx];
-	int err = 0;
-	int msi_idx = 0;
-	unsigned int temp_nb_desc;
 	struct rte_eth_dev_info dev_info;
-	unsigned int pkt_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	struct sge *s = &adapter->sge;
+	unsigned int temp_nb_desc;
+	int err = 0, msi_idx = 0;
+	struct sge_eth_rxq *rxq;
 
+	rxq = &s->ethrxq[pi->first_rxqset + queue_idx];
 	dev_debug(adapter, "%s: eth_dev->data->nb_rx_queues = %d; queue_idx = %d; nb_desc = %d; socket_id = %d; mp = %p\n",
 		  __func__, eth_dev->data->nb_rx_queues, queue_idx, nb_desc,
 		  socket_id, mp);
@@ -685,11 +685,10 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 void cxgbe_dev_rx_queue_release(void *q)
 {
 	struct sge_eth_rxq *rxq = (struct sge_eth_rxq *)q;
-	struct sge_rspq *rq = &rxq->rspq;
 
-	if (rq) {
+	if (rxq) {
 		struct port_info *pi = (struct port_info *)
-				       (rq->eth_dev->data->dev_private);
+				       (rxq->rspq.eth_dev->data->dev_private);
 		struct adapter *adap = pi->adapter;
 
 		dev_debug(adapter, "%s: pi->port_id = %d; rx_queue_id = %d\n",
@@ -729,7 +728,7 @@ static int cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 	for (i = 0; i < pi->n_rx_qsets; i++) {
 		struct sge_eth_rxq *rxq =
-			&s->ethrxq[pi->first_qset + i];
+			&s->ethrxq[pi->first_rxqset + i];
 
 		eth_stats->q_ipackets[i] = rxq->stats.pkts;
 		eth_stats->q_ibytes[i] = rxq->stats.rx_bytes;
@@ -739,7 +738,7 @@ static int cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 	for (i = 0; i < pi->n_tx_qsets; i++) {
 		struct sge_eth_txq *txq =
-			&s->ethtxq[pi->first_qset + i];
+			&s->ethtxq[pi->first_txqset + i];
 
 		eth_stats->q_opackets[i] = txq->stats.pkts;
 		eth_stats->q_obytes[i] = txq->stats.tx_bytes;
@@ -760,14 +759,14 @@ static int cxgbe_dev_stats_reset(struct rte_eth_dev *eth_dev)
 	cxgbe_stats_reset(pi);
 	for (i = 0; i < pi->n_rx_qsets; i++) {
 		struct sge_eth_rxq *rxq =
-			&s->ethrxq[pi->first_qset + i];
+			&s->ethrxq[pi->first_rxqset + i];
 
 		rxq->stats.pkts = 0;
 		rxq->stats.rx_bytes = 0;
 	}
 	for (i = 0; i < pi->n_tx_qsets; i++) {
 		struct sge_eth_txq *txq =
-			&s->ethtxq[pi->first_qset + i];
+			&s->ethtxq[pi->first_txqset + i];
 
 		txq->stats.pkts = 0;
 		txq->stats.tx_bytes = 0;

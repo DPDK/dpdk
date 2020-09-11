@@ -526,22 +526,6 @@ static int tid_init(struct tid_info *t)
 	return 0;
 }
 
-static inline bool is_x_1g_port(const struct link_config *lc)
-{
-	return (lc->pcaps & FW_PORT_CAP32_SPEED_1G) != 0;
-}
-
-static inline bool is_x_10g_port(const struct link_config *lc)
-{
-	unsigned int speeds, high_speeds;
-
-	speeds = V_FW_PORT_CAP32_SPEED(G_FW_PORT_CAP32_SPEED(lc->pcaps));
-	high_speeds = speeds &
-		      ~(FW_PORT_CAP32_SPEED_100M | FW_PORT_CAP32_SPEED_1G);
-
-	return high_speeds != 0;
-}
-
 static inline void init_rspq(struct adapter *adap, struct sge_rspq *q,
 		      unsigned int us, unsigned int cnt,
 		      unsigned int size, unsigned int iqe_size)
@@ -554,20 +538,35 @@ static inline void init_rspq(struct adapter *adap, struct sge_rspq *q,
 
 int cxgbe_cfg_queue_count(struct rte_eth_dev *eth_dev)
 {
-	struct port_info *pi = eth_dev->data->dev_private;
+	struct port_info *temp_pi, *pi = eth_dev->data->dev_private;
 	struct adapter *adap = pi->adapter;
+	u16 first_txq = 0, first_rxq = 0;
 	struct sge *s = &adap->sge;
-	unsigned int max_queues = s->max_ethqsets / adap->params.nports;
+	u16 i, max_rxqs, max_txqs;
+
+	max_rxqs = s->max_ethqsets;
+	max_txqs = s->max_ethqsets;
+	for_each_port(adap, i) {
+		temp_pi = adap2pinfo(adap, i);
+		if (i == pi->port_id)
+			break;
+
+		if (max_rxqs <= temp_pi->n_rx_qsets ||
+		    max_txqs <= temp_pi->n_tx_qsets)
+			return -ENOMEM;
+
+		first_rxq += temp_pi->n_rx_qsets;
+		first_txq += temp_pi->n_tx_qsets;
+		max_rxqs -= temp_pi->n_rx_qsets;
+		max_txqs -= temp_pi->n_tx_qsets;
+	}
 
 	if ((eth_dev->data->nb_rx_queues < 1) ||
 	    (eth_dev->data->nb_tx_queues < 1))
 		return -EINVAL;
 
-	if ((eth_dev->data->nb_rx_queues > max_queues) ||
-	    (eth_dev->data->nb_tx_queues > max_queues))
-		return -EINVAL;
-
-	if (eth_dev->data->nb_rx_queues > pi->rss_size)
+	if (eth_dev->data->nb_rx_queues > max_rxqs ||
+	    eth_dev->data->nb_tx_queues > max_txqs)
 		return -EINVAL;
 
 	/* We must configure RSS, since config has changed*/
@@ -575,68 +574,66 @@ int cxgbe_cfg_queue_count(struct rte_eth_dev *eth_dev)
 
 	pi->n_rx_qsets = eth_dev->data->nb_rx_queues;
 	pi->n_tx_qsets = eth_dev->data->nb_tx_queues;
+	pi->first_rxqset = first_rxq;
+	pi->first_txqset = first_txq;
 
 	return 0;
 }
 
-void cxgbe_cfg_queues(struct rte_eth_dev *eth_dev)
+void cxgbe_cfg_queues_free(struct adapter *adap)
+{
+	if (adap->sge.ethtxq) {
+		rte_free(adap->sge.ethtxq);
+		adap->sge.ethtxq = NULL;
+	}
+
+	if (adap->sge.ethrxq) {
+		rte_free(adap->sge.ethrxq);
+		adap->sge.ethrxq = NULL;
+	}
+
+	adap->flags &= ~CFG_QUEUES;
+}
+
+int cxgbe_cfg_queues(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adap = pi->adapter;
 	struct sge *s = &adap->sge;
-	unsigned int i, nb_ports = 0, qidx = 0;
-	unsigned int q_per_port = 0;
+	u16 i;
 
 	if (!(adap->flags & CFG_QUEUES)) {
-		for_each_port(adap, i) {
-			struct port_info *tpi = adap2pinfo(adap, i);
+		s->ethrxq = rte_calloc_socket(NULL, s->max_ethqsets,
+					      sizeof(struct sge_eth_rxq), 0,
+					      rte_socket_id());
+		if (!s->ethrxq)
+			return -ENOMEM;
 
-			nb_ports += (is_x_10g_port(&tpi->link_cfg)) ||
-				     is_x_1g_port(&tpi->link_cfg) ? 1 : 0;
+		s->ethtxq = rte_calloc_socket(NULL, s->max_ethqsets,
+					      sizeof(struct sge_eth_txq), 0,
+					      rte_socket_id());
+		if (!s->ethtxq) {
+			rte_free(s->ethrxq);
+			s->ethrxq = NULL;
+			return -ENOMEM;
 		}
 
-		/*
-		 * We default up to # of cores queues per 1G/10G port.
-		 */
-		if (nb_ports)
-			q_per_port = (s->max_ethqsets -
-				     (adap->params.nports - nb_ports)) /
-				     nb_ports;
-
-		if (q_per_port > rte_lcore_count())
-			q_per_port = rte_lcore_count();
-
-		for_each_port(adap, i) {
-			struct port_info *pi = adap2pinfo(adap, i);
-
-			pi->first_qset = qidx;
-
-			/* Initially n_rx_qsets == n_tx_qsets */
-			pi->n_rx_qsets = (is_x_10g_port(&pi->link_cfg) ||
-					  is_x_1g_port(&pi->link_cfg)) ?
-					  q_per_port : 1;
-			pi->n_tx_qsets = pi->n_rx_qsets;
-
-			if (pi->n_rx_qsets > pi->rss_size)
-				pi->n_rx_qsets = pi->rss_size;
-
-			qidx += pi->n_rx_qsets;
-		}
-
-		for (i = 0; i < ARRAY_SIZE(s->ethrxq); i++) {
+		for (i = 0; i < s->max_ethqsets; i++) {
 			struct sge_eth_rxq *r = &s->ethrxq[i];
+			struct sge_eth_txq *t = &s->ethtxq[i];
 
 			init_rspq(adap, &r->rspq, 5, 32, 1024, 64);
 			r->usembufs = 1;
 			r->fl.size = (r->usembufs ? 1024 : 72);
-		}
 
-		for (i = 0; i < ARRAY_SIZE(s->ethtxq); i++)
-			s->ethtxq[i].q.size = 1024;
+			t->q.size = 1024;
+		}
 
 		init_rspq(adap, &adap->sge.fw_evtq, 0, 0, 1024, 64);
 		adap->flags |= CFG_QUEUES;
 	}
+
+	return 0;
 }
 
 void cxgbe_stats_get(struct port_info *pi, struct port_stats *stats)
@@ -1043,34 +1040,31 @@ static void configure_pcie_ext_tag(struct adapter *adapter)
 /* Figure out how many Queue Sets we can support */
 void cxgbe_configure_max_ethqsets(struct adapter *adapter)
 {
-	unsigned int ethqsets;
+	unsigned int ethqsets, reserved;
 
-	/*
-	 * We need to reserve an Ingress Queue for the Asynchronous Firmware
-	 * Event Queue.
+	/* We need to reserve an Ingress Queue for the Asynchronous Firmware
+	 * Event Queue and 1 Control Queue per port.
 	 *
 	 * For each Queue Set, we'll need the ability to allocate two Egress
 	 * Contexts -- one for the Ingress Queue Free List and one for the TX
 	 * Ethernet Queue.
 	 */
+	reserved = max(adapter->params.nports, 1);
 	if (is_pf4(adapter)) {
 		struct pf_resources *pfres = &adapter->params.pfres;
 
-		ethqsets = pfres->niqflint - 1;
-		if (pfres->neq < ethqsets * 2)
+		ethqsets = min(pfres->niqflint, pfres->nethctrl);
+		if (ethqsets > (pfres->neq / 2))
 			ethqsets = pfres->neq / 2;
 	} else {
 		struct vf_resources *vfres = &adapter->params.vfres;
 
-		ethqsets = vfres->niqflint - 1;
-		if (vfres->nethctrl != ethqsets)
-			ethqsets = min(vfres->nethctrl, ethqsets);
-		if (vfres->neq < ethqsets * 2)
+		ethqsets = min(vfres->niqflint, vfres->nethctrl);
+		if (ethqsets > (vfres->neq / 2))
 			ethqsets = vfres->neq / 2;
 	}
 
-	if (ethqsets > MAX_ETH_QSETS)
-		ethqsets = MAX_ETH_QSETS;
+	ethqsets -= reserved;
 	adapter->sge.max_ethqsets = ethqsets;
 }
 
@@ -1707,7 +1701,7 @@ int cxgbe_write_rss_conf(const struct port_info *pi, uint64_t rss_hf)
 			 F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN |
 			 F_FW_RSS_VI_CONFIG_CMD_UDPEN;
 
-	rxq = &adapter->sge.ethrxq[pi->first_qset];
+	rxq = &adapter->sge.ethrxq[pi->first_rxqset];
 	rss = rxq[0].rspq.abs_id;
 
 	/* If Tunnel All Lookup isn't specified in the global RSS
@@ -1738,7 +1732,7 @@ int cxgbe_write_rss(const struct port_info *pi, const u16 *queues)
 	/*  Should never be called before setting up sge eth rx queues */
 	BUG_ON(!(adapter->flags & FULL_INIT_DONE));
 
-	rxq = &adapter->sge.ethrxq[pi->first_qset];
+	rxq = &adapter->sge.ethrxq[pi->first_rxqset];
 	rss = rte_zmalloc(NULL, pi->rss_size * sizeof(u16), 0);
 	if (!rss)
 		return -ENOMEM;
@@ -1810,7 +1804,7 @@ void cxgbe_enable_rx_queues(struct port_info *pi)
 	unsigned int i;
 
 	for (i = 0; i < pi->n_rx_qsets; i++)
-		enable_rx(adap, &s->ethrxq[pi->first_qset + i].rspq);
+		enable_rx(adap, &s->ethrxq[pi->first_rxqset + i].rspq);
 }
 
 /**
@@ -1988,6 +1982,8 @@ void cxgbe_close(struct adapter *adapter)
 		adapter->flags &= ~FULL_INIT_DONE;
 	}
 
+	cxgbe_cfg_queues_free(adapter);
+
 	if (is_pf4(adapter) && (adapter->flags & FW_OK))
 		t4_fw_bye(adapter, adapter->mbox);
 }
@@ -2163,7 +2159,9 @@ allocate_mac:
 		}
 	}
 
-	cxgbe_cfg_queues(adapter->eth_dev);
+	err = cxgbe_cfg_queues(adapter->eth_dev);
+	if (err)
+		goto out_free;
 
 	cxgbe_print_adapter_info(adapter);
 	cxgbe_print_port_info(adapter);
@@ -2222,6 +2220,8 @@ allocate_mac:
 	return 0;
 
 out_free:
+	cxgbe_cfg_queues_free(adapter);
+
 	for_each_port(adapter, i) {
 		pi = adap2pinfo(adapter, i);
 		if (pi->viid != 0)

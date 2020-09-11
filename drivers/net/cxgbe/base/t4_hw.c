@@ -2517,6 +2517,10 @@ int t4_get_pfres(struct adapter *adapter)
 
 	word = be32_to_cpu(rpl.type_to_neq);
 	pfres->neq = G_FW_PFVF_CMD_NEQ(word);
+
+	word = be32_to_cpu(rpl.r_caps_to_nethctrl);
+	pfres->nethctrl = G_FW_PFVF_CMD_NETHCTRL(word);
+
 	return 0;
 }
 

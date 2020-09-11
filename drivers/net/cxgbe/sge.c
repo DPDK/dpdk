@@ -2193,15 +2193,18 @@ static void free_rspq_fl(struct adapter *adap, struct sge_rspq *rq,
  */
 void t4_sge_eth_clear_queues(struct port_info *pi)
 {
-	int i;
 	struct adapter *adap = pi->adapter;
-	struct sge_eth_rxq *rxq = &adap->sge.ethrxq[pi->first_qset];
-	struct sge_eth_txq *txq = &adap->sge.ethtxq[pi->first_qset];
+	struct sge_eth_rxq *rxq;
+	struct sge_eth_txq *txq;
+	int i;
 
+	rxq = &adap->sge.ethrxq[pi->first_rxqset];
 	for (i = 0; i < pi->n_rx_qsets; i++, rxq++) {
 		if (rxq->rspq.desc)
 			t4_sge_eth_rxq_stop(adap, &rxq->rspq);
 	}
+
+	txq = &adap->sge.ethtxq[pi->first_txqset];
 	for (i = 0; i < pi->n_tx_qsets; i++, txq++) {
 		if (txq->q.desc) {
 			struct sge_txq *q = &txq->q;
@@ -2241,7 +2244,7 @@ void t4_sge_eth_release_queues(struct port_info *pi)
 	struct sge_eth_txq *txq;
 	unsigned int i;
 
-	rxq = &adap->sge.ethrxq[pi->first_qset];
+	rxq = &adap->sge.ethrxq[pi->first_rxqset];
 	/* clean up Ethernet Tx/Rx queues */
 	for (i = 0; i < pi->n_rx_qsets; i++, rxq++) {
 		/* Free only the queues allocated */
@@ -2253,7 +2256,7 @@ void t4_sge_eth_release_queues(struct port_info *pi)
 		}
 	}
 
-	txq = &adap->sge.ethtxq[pi->first_qset];
+	txq = &adap->sge.ethtxq[pi->first_txqset];
 	for (i = 0; i < pi->n_tx_qsets; i++, txq++) {
 		/* Free only the queues allocated */
 		if (txq->q.desc) {
