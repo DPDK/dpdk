@@ -28,7 +28,7 @@ typedef union rte_xmm {
 	double   pd[XMM_SIZE / sizeof(double)];
 } __rte_aligned(16) rte_xmm_t;
 
-#ifdef RTE_ARCH_ARM
+#if defined(RTE_ARCH_ARM) && defined(RTE_ARCH_32)
 /* NEON intrinsic vqtbl1q_u8() is not supported in ARMv7-A(AArch32) */
 static __inline uint8x16_t
 vqtbl1q_u8(uint8x16_t a, uint8x16_t b)
@@ -62,7 +62,7 @@ vaddvq_u16(uint16x8_t a)
 
 #endif
 
-#if defined(RTE_ARCH_ARM) || \
+#if (defined(RTE_ARCH_ARM) && defined(RTE_ARCH_32)) || \
 (defined(RTE_ARCH_ARM64) && RTE_CC_IS_GNU && (GCC_VERSION < 70000))
 /* NEON intrinsic vcopyq_laneq_u32() is not supported in ARMv7-A(AArch32)
  * On AArch64, this intrinsic is supported since GCC version 7.

@@ -27,7 +27,7 @@ if dpdk_conf.has('RTE_ARCH_X86')
 		cflags += '-DCC_AVX2_SUPPORT'
 	endif
 
-elif dpdk_conf.has('RTE_ARCH_ARM') or dpdk_conf.has('RTE_ARCH_ARM64')
+elif dpdk_conf.has('RTE_ARCH_ARM')
 	cflags += '-flax-vector-conversions'
 	sources += files('acl_run_neon.c')
 elif dpdk_conf.has('RTE_ARCH_PPC_64')

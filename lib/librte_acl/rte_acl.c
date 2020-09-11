@@ -45,7 +45,6 @@ rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 #endif
 
 #ifndef RTE_ARCH_ARM
-#ifndef RTE_ARCH_ARM64
 int
 rte_acl_classify_neon(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
@@ -55,7 +54,6 @@ rte_acl_classify_neon(__rte_unused const struct rte_acl_ctx *ctx,
 {
 	return -ENOTSUP;
 }
-#endif
 #endif
 
 #ifndef RTE_ARCH_PPC_64

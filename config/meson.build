@@ -104,6 +104,7 @@ dpdk_conf.set_quoted('RTE_TOOLCHAIN', toolchain)
 dpdk_conf.set('RTE_TOOLCHAIN_' + toolchain.to_upper(), 1)
 
 dpdk_conf.set('RTE_ARCH_64', cc.sizeof('void *') == 8)
+dpdk_conf.set('RTE_ARCH_32', cc.sizeof('void *') == 4)
 
 if not is_windows
 	add_project_link_arguments('-Wl,--no-as-needed', language: 'c')

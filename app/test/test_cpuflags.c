@@ -86,7 +86,7 @@ test_cpuflags(void)
 	CHECK_FOR_FLAG(RTE_CPUFLAG_ICACHE_SNOOP);
 #endif
 
-#if defined(RTE_ARCH_ARM)
+#if defined(RTE_ARCH_ARM) && defined(RTE_ARCH_32)
 	printf("Check for NEON:\t\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_NEON);
 #endif

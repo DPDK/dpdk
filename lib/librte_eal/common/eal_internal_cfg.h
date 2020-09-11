@@ -15,7 +15,7 @@
 
 #include "eal_thread.h"
 
-#if defined(RTE_ARCH_ARM) || defined(RTE_ARCH_ARM64)
+#if defined(RTE_ARCH_ARM)
 #define MAX_HUGEPAGE_SIZES 4  /**< support up to 4 page sizes */
 #else
 #define MAX_HUGEPAGE_SIZES 3  /**< support up to 3 page sizes */

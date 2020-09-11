@@ -128,11 +128,11 @@ impl_0x56 = ['Marvell ARMADA', flags_armada, machine_args_generic]
 impl_0x69 = ['Intel', flags_generic, machine_args_generic]
 impl_dpaa = ['NXP DPAA', flags_dpaa, machine_args_generic]
 
+dpdk_conf.set('RTE_ARCH_ARM', 1)
 dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
-if not dpdk_conf.get('RTE_ARCH_64')
+if dpdk_conf.get('RTE_ARCH_32')
 	dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
-	dpdk_conf.set('RTE_ARCH_ARM', 1)
 	dpdk_conf.set('RTE_ARCH_ARMv7', 1)
 	# the minimum architecture supported, armv7-a, needs the following,
 	# mk/machine/armv7a/rte.vars.mk sets it too
