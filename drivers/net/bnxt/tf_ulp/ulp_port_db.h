@@ -259,4 +259,17 @@ int32_t
 ulp_port_db_dev_func_id_to_ulp_index(struct bnxt_ulp_context *ulp_ctxt,
 				     uint32_t func_id, uint32_t *ifindex);
 
+/*
+ * Api to get the function id for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * func_id [out] the function id of the given ifindex.
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_func_id_get(struct bnxt_ulp_context *ulp_ctxt,
+			     uint16_t port_id, uint16_t *func_id);
+
 #endif /* _ULP_PORT_DB_H_ */

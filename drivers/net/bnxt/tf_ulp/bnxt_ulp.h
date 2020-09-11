@@ -83,12 +83,9 @@ struct ulp_tlv_param {
 /*
  * Allow the deletion of context only for the bnxt device that
  * created the session
- * TBD - The implementation of the function should change to
- * using the reference count once tf_session_attach functionality
- * is fixed.
  */
 bool
-ulp_ctx_deinit_allowed(void *bp);
+ulp_ctx_deinit_allowed(struct bnxt_ulp_context *ulp_ctx);
 
 /* Function to set the device id of the hardware. */
 int32_t

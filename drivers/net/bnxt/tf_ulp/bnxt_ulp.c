@@ -35,14 +35,12 @@ static pthread_mutex_t bnxt_ulp_global_mutex = PTHREAD_MUTEX_INITIALIZER;
  * created the session.
  */
 bool
-ulp_ctx_deinit_allowed(void *ptr)
+ulp_ctx_deinit_allowed(struct bnxt_ulp_context *ulp_ctx)
 {
-	struct bnxt *bp = (struct bnxt *)ptr;
-
-	if (!bp || !bp->ulp_ctx || !bp->ulp_ctx->cfg_data)
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
 		return false;
 
-	if (!bp->ulp_ctx->cfg_data->ref_cnt) {
+	if (!ulp_ctx->cfg_data->ref_cnt) {
 		BNXT_TF_DBG(DEBUG, "ulp ctx shall initiate deinit\n");
 		return true;
 	}
@@ -629,9 +627,14 @@ bnxt_ulp_flush_port_flows(struct bnxt *bp)
 {
 	uint16_t func_id;
 
-	func_id = bnxt_get_fw_func_id(bp->eth_dev->data->port_id,
-				      BNXT_ULP_INTF_TYPE_INVALID);
-	ulp_flow_db_function_flow_flush(bp->ulp_ctx, func_id);
+	/* it is assumed that port is either TVF or PF */
+	if (ulp_port_db_port_func_id_get(bp->ulp_ctx,
+					 bp->eth_dev->data->port_id,
+					 &func_id)) {
+		BNXT_TF_DBG(ERR, "Invalid argument\n");
+		return;
+	}
+	(void)ulp_flow_db_function_flow_flush(bp->ulp_ctx, func_id);
 }
 
 /* Internal function to delete the VFR default flows */

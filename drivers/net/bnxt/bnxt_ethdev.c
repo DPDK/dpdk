@@ -3723,6 +3723,7 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(dev)) {
 		struct bnxt_vf_representor *vfr = dev->data->dev_private;
 		bp = vfr->parent_dev->data->dev_private;
+		/* parent is deleted while children are still valid */
 		if (!bp)
 			return -EIO;
 	}
