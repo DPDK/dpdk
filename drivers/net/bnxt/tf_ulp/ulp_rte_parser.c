@@ -603,6 +603,19 @@ ulp_rte_l2_proto_type_update(struct ulp_rte_parser_params *param,
 	}
 }
 
+/* Internal Function to identify broadcast or multicast packets */
+static int32_t
+ulp_rte_parser_is_bcmc_addr(const struct rte_ether_addr *eth_addr)
+{
+	if (rte_is_multicast_ether_addr(eth_addr) ||
+	    rte_is_broadcast_ether_addr(eth_addr)) {
+		BNXT_TF_DBG(DEBUG,
+			    "No support for bcast or mcast addr offload\n");
+		return 1;
+	}
+	return 0;
+}
+
 /* Function to handle the parsing of RTE Flow item Ethernet Header. */
 int32_t
 ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
@@ -625,10 +638,18 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 		field = ulp_rte_parser_fld_copy(&params->hdr_field[idx],
 						eth_spec->dst.addr_bytes,
 						size);
+		/* Todo: work around to avoid multicast and broadcast addr */
+		if (ulp_rte_parser_is_bcmc_addr(&eth_spec->dst))
+			return BNXT_TF_RC_PARSE_ERR;
+
 		size = sizeof(eth_spec->src.addr_bytes);
 		field = ulp_rte_parser_fld_copy(field,
 						eth_spec->src.addr_bytes,
 						size);
+		/* Todo: work around to avoid multicast and broadcast addr */
+		if (ulp_rte_parser_is_bcmc_addr(&eth_spec->src))
+			return BNXT_TF_RC_PARSE_ERR;
+
 		field = ulp_rte_parser_fld_copy(field,
 						&eth_spec->type,
 						sizeof(eth_spec->type));
