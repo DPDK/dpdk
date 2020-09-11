@@ -87,19 +87,19 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	uint32_t class_id, act_tmpl;
 	struct rte_flow *flow_id;
 	uint32_t fid;
-	int ret;
+	int ret = BNXT_TF_RC_ERROR;
 
 	if (bnxt_ulp_flow_validate_args(attr,
 					pattern, actions,
 					error) == BNXT_TF_RC_ERROR) {
 		BNXT_TF_DBG(ERR, "Invalid arguments being passed\n");
-		return NULL;
+		goto parse_error;
 	}
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
-		return NULL;
+		goto parse_error;
 	}
 
 	/* Initialize the parser params */
@@ -173,20 +173,20 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 {
 	struct ulp_rte_parser_params		params;
 	uint32_t class_id, act_tmpl;
-	int ret;
+	int ret = BNXT_TF_RC_ERROR;
 	struct bnxt_ulp_context *ulp_ctx;
 
 	if (bnxt_ulp_flow_validate_args(attr,
 					pattern, actions,
 					error) == BNXT_TF_RC_ERROR) {
 		BNXT_TF_DBG(ERR, "Invalid arguments being passed\n");
-		return -EINVAL;
+		goto parse_error;
 	}
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
 		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
-		return -EINVAL;
+		goto parse_error;
 	}
 
 	/* Initialize the parser params */
@@ -289,11 +289,8 @@ bnxt_ulp_flow_flush(struct rte_eth_dev *eth_dev,
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to flush flow.");
-		return -EINVAL;
+		BNXT_TF_DBG(DEBUG, "ULP context is not initialized\n");
+		return ret;
 	}
 	bp = eth_dev->data->dev_private;
 

@@ -822,8 +822,7 @@ struct bnxt_vf_representor {
 	uint16_t		dflt_vnic_id;
 	uint16_t		svif;
 	uint16_t		vfr_tx_cfa_action;
-	uint32_t		rep2vf_flow_id;
-	uint32_t		vf2rep_flow_id;
+	uint32_t		dpdk_port_id;
 	/* Private data store of associated PF/Trusted VF */
 	struct rte_eth_dev	*parent_dev;
 	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];
@@ -893,11 +892,14 @@ extern int bnxt_logtype_driver;
 	  PMD_DRV_LOG_RAW(level, fmt, ## args)
 
 extern const struct rte_flow_ops bnxt_ulp_rte_flow_ops;
-int32_t bnxt_ulp_init(struct bnxt *bp);
-void bnxt_ulp_deinit(struct bnxt *bp);
+int32_t bnxt_ulp_port_init(struct bnxt *bp);
+void bnxt_ulp_port_deinit(struct bnxt *bp);
 int32_t bnxt_ulp_create_df_rules(struct bnxt *bp);
 void bnxt_ulp_destroy_df_rules(struct bnxt *bp, bool global);
-
+int32_t
+bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev);
+int32_t
+bnxt_ulp_delete_vfr_default_rules(struct bnxt_vf_representor *vfr);
 uint16_t bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif,
 		       enum bnxt_ulp_intf_type type);

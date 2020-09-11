@@ -28,6 +28,13 @@ struct bnxt_ulp_df_rule_info {
 	uint8_t				valid;
 };
 
+struct bnxt_ulp_vfr_rule_info {
+	uint32_t			rep2vf_flow_id;
+	uint32_t			vf2rep_flow_id;
+	uint16_t			parent_port_id;
+	uint8_t				valid;
+};
+
 struct bnxt_ulp_data {
 	uint32_t			tbl_scope_id;
 	struct bnxt_ulp_mark_tbl	*mark_tbl;
@@ -38,12 +45,12 @@ struct bnxt_ulp_data {
 	struct bnxt_ulp_port_db		*port_db;
 	struct bnxt_ulp_fc_info		*fc_info;
 	uint32_t			ulp_flags;
-	struct bnxt_ulp_df_rule_info   df_rule_info[RTE_MAX_ETHPORTS];
+	struct bnxt_ulp_df_rule_info	df_rule_info[RTE_MAX_ETHPORTS];
+	struct bnxt_ulp_vfr_rule_info	vfr_rule_info[RTE_MAX_ETHPORTS];
 };
 
 struct bnxt_ulp_context {
 	struct bnxt_ulp_data	*cfg_data;
-	/* TBD The tfp should be removed once tf_attach is implemented. */
 	struct tf		*g_tfp;
 };
 
@@ -58,7 +65,6 @@ struct bnxt_ulp_session_state {
 	pthread_mutex_t				bnxt_ulp_mutex;
 	struct bnxt_ulp_pci_info		pci_info;
 	struct bnxt_ulp_data			*cfg_data;
-	/* TBD The tfp should be removed once tf_attach is implemented. */
 	struct tf				*g_tfp;
 	uint32_t				session_opened;
 };
@@ -182,5 +188,9 @@ bnxt_ulp_cntxt_ptr2_ulp_flags_get(struct bnxt_ulp_context *ulp_ctx,
 int32_t
 bnxt_ulp_get_df_rule_info(uint8_t port_id, struct bnxt_ulp_context *ulp_ctx,
 			  struct bnxt_ulp_df_rule_info *info);
+
+struct bnxt_ulp_vfr_rule_info*
+bnxt_ulp_cntxt_ptr2_ulp_vfr_info_get(struct bnxt_ulp_context *ulp_ctx,
+				     uint32_t port_id);
 
 #endif /* _BNXT_ULP_H_ */

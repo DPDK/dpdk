@@ -1236,14 +1236,17 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto error;
 
+	/* Initialize bnxt ULP port details */
+	rc = bnxt_ulp_port_init(bp);
+	if (rc)
+		goto error;
+
 	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
 
 	pthread_mutex_lock(&bp->def_cp_lock);
 	bnxt_schedule_fw_health_check(bp);
 	pthread_mutex_unlock(&bp->def_cp_lock);
-
-	bnxt_ulp_init(bp);
 
 	return 0;
 
@@ -1306,8 +1309,8 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
 
-	bnxt_ulp_destroy_df_rules(bp, false);
-	bnxt_ulp_deinit(bp);
+	/* delete the bnxt ULP port details */
+	bnxt_ulp_port_deinit(bp);
 
 	bnxt_cancel_fw_health_check(bp);
 
@@ -1600,8 +1603,6 @@ static int bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 	if (rc != 0)
 		vnic->flags = old_flags;
-
-	bnxt_ulp_create_df_rules(bp);
 
 	return rc;
 }
@@ -3716,9 +3717,14 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 	struct bnxt *bp = dev->data->dev_private;
 	int ret = 0;
 
+	if (!bp)
+		return -EIO;
+
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(dev)) {
 		struct bnxt_vf_representor *vfr = dev->data->dev_private;
 		bp = vfr->parent_dev->data->dev_private;
+		if (!bp)
+			return -EIO;
 	}
 
 	ret = is_bnxt_in_error(bp);

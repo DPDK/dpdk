@@ -351,10 +351,8 @@ int32_t	ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt)
 	struct bnxt_ulp_flow_db			*flow_db;
 
 	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
-	if (!flow_db) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+	if (!flow_db)
 		return -EINVAL;
-	}
 
 	/* Detach the flow database from the ulp context. */
 	bnxt_ulp_cntxt_ptr2_flow_db_set(ulp_ctxt, NULL);

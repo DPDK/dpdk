@@ -267,66 +267,37 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	struct bnxt_vf_representor *vfr = vfr_ethdev->data->dev_private;
 	struct rte_eth_dev *parent_dev = vfr->parent_dev;
 	struct bnxt *parent_bp = parent_dev->data->dev_private;
-	uint16_t vfr_port_id = vfr_ethdev->data->port_id;
-	struct ulp_tlv_param param_list[] = {
-		{
-			.type = BNXT_ULP_DF_PARAM_TYPE_DEV_PORT_ID,
-			.length = 2,
-			.value = {(vfr_port_id >> 8) & 0xff, vfr_port_id & 0xff}
-		},
-		{
-			.type = BNXT_ULP_DF_PARAM_TYPE_LAST,
-			.length = 0,
-			.value = {0}
-		}
-	};
 
-	ulp_port_db_dev_port_intf_update(parent_bp->ulp_ctx, vfr_ethdev);
-
-	rc = ulp_default_flow_create(parent_dev, param_list,
-				     BNXT_ULP_DF_TPL_VFREP_TO_VF,
-				     &vfr->rep2vf_flow_id);
-	if (rc) {
-		BNXT_TF_DBG(DEBUG,
-			    "Default flow rule creation for VFR->VF failed!\n");
-		goto err;
+	if (!parent_bp || !parent_bp->ulp_ctx) {
+		BNXT_TF_DBG(ERR, "Invalid arguments\n");
+		return 0;
 	}
 
-	BNXT_TF_DBG(DEBUG, "*** Default flow rule created for VFR->VF! ***\n");
-	BNXT_TF_DBG(DEBUG, "rep2vf_flow_id = %d\n", vfr->rep2vf_flow_id);
-	rc = ulp_default_flow_db_cfa_action_get(parent_bp->ulp_ctx,
-						vfr->rep2vf_flow_id,
-						&vfr->vfr_tx_cfa_action);
+	/* Update the ULP portdata base with the new VFR interface */
+	rc = ulp_port_db_dev_port_intf_update(parent_bp->ulp_ctx, vfr_ethdev);
 	if (rc) {
-		BNXT_TF_DBG(DEBUG,
-			    "Failed to get action_ptr for VFR->VF dflt rule\n");
-		goto rep2vf_free;
-	}
-	BNXT_TF_DBG(DEBUG, "tx_cfa_action = %d\n", vfr->vfr_tx_cfa_action);
-	rc = ulp_default_flow_create(parent_dev, param_list,
-				     BNXT_ULP_DF_TPL_VF_TO_VFREP,
-				     &vfr->vf2rep_flow_id);
-	if (rc) {
-		BNXT_TF_DBG(DEBUG,
-			    "Default flow rule creation for VF->VFR failed!\n");
-		goto rep2vf_free;
+		BNXT_TF_DBG(ERR, "Failed to update ulp port details vfr:%u\n",
+			    vfr->vf_id);
+		return rc;
 	}
 
-	BNXT_TF_DBG(DEBUG, "*** Default flow rule created for VF->VFR! ***\n");
-	BNXT_TF_DBG(DEBUG, "vfr2rep_flow_id = %d\n", vfr->vf2rep_flow_id);
-
+	/* Create the default rules for the VFR */
+	rc = bnxt_ulp_create_vfr_default_rules(vfr_ethdev);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed to create VFR default rules vfr:%u\n",
+			    vfr->vf_id);
+		return rc;
+	}
+	/* update the port id so you can backtrack to ethdev */
+	vfr->dpdk_port_id = vfr_ethdev->data->port_id;
 	rc = bnxt_hwrm_cfa_vfr_alloc(parent_bp, vfr->vf_id);
-	if (rc)
-		goto vf2rep_free;
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Failed in hwrm vfr alloc vfr:%u rc=%d\n",
+			    vfr->vf_id, rc);
+		(void)bnxt_ulp_delete_vfr_default_rules(vfr);
+	}
 
-	return 0;
-
-vf2rep_free:
-	ulp_default_flow_destroy(vfr->parent_dev, vfr->vf2rep_flow_id);
-rep2vf_free:
-	ulp_default_flow_destroy(vfr->parent_dev, vfr->rep2vf_flow_id);
-err:
-	return -EIO;
+	return rc;
 }
 
 static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
@@ -337,7 +308,7 @@ static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 
 	if (!vfr || !vfr->parent_dev) {
 		PMD_DRV_LOG(ERR,
-			    "No memory allocated for representor\n");
+				"No memory allocated for representor\n");
 		return -ENOMEM;
 	}
 
@@ -391,14 +362,12 @@ int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 	rep_info = &parent_bp->rep_info[rep_bp->vf_id];
 
 	pthread_mutex_lock(&rep_info->vfr_start_lock);
-	if (rep_info->conduit_valid) {
-		pthread_mutex_unlock(&rep_info->vfr_start_lock);
-		return 0;
-	}
-	rc = bnxt_get_dflt_vnic_svif(parent_bp, rep_bp);
-	if (rc || !rep_info->conduit_valid) {
-		pthread_mutex_unlock(&rep_info->vfr_start_lock);
-		return rc;
+	if (!rep_info->conduit_valid) {
+		rc = bnxt_get_dflt_vnic_svif(parent_bp, rep_bp);
+		if (rc || !rep_info->conduit_valid) {
+			pthread_mutex_unlock(&rep_info->vfr_start_lock);
+			return rc;
+		}
 	}
 	pthread_mutex_unlock(&rep_info->vfr_start_lock);
 
@@ -417,21 +386,7 @@ int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 
 static int bnxt_tf_vfr_free(struct bnxt_vf_representor *vfr)
 {
-	int rc = 0;
-
-	rc = ulp_default_flow_destroy(vfr->parent_dev,
-				      vfr->rep2vf_flow_id);
-	if (rc)
-		PMD_DRV_LOG(ERR,
-			    "default flow destroy failed rep2vf flowid: %d\n",
-			    vfr->rep2vf_flow_id);
-	rc = ulp_default_flow_destroy(vfr->parent_dev,
-				      vfr->vf2rep_flow_id);
-	if (rc)
-		PMD_DRV_LOG(ERR,
-			    "default flow destroy failed vf2rep flowid: %d\n",
-			    vfr->vf2rep_flow_id);
-	return 0;
+	return bnxt_ulp_delete_vfr_default_rules(vfr);
 }
 
 static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
@@ -458,7 +413,6 @@ static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
 		PMD_DRV_LOG(ERR,
 			    "Failed to free representor %d in FW\n",
 			    vfr->vf_id);
-		return rc;
 	}
 
 	PMD_DRV_LOG(DEBUG, "freed representor %d in FW\n",
