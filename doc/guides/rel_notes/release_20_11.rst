@@ -84,6 +84,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* mbuf: Removed the unioned field ``refcnt_atomic`` from
+  the structures ``rte_mbuf`` and ``rte_mbuf_ext_shared_info``.
+  The field ``refcnt`` is remaining from the old unions.
+
 * rawdev: Added a structure size parameter to the functions
   ``rte_rawdev_queue_setup()``, ``rte_rawdev_queue_conf_get()``,
   ``rte_rawdev_info_get()`` and ``rte_rawdev_configure()``,

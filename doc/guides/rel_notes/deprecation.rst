@@ -148,13 +148,7 @@ Deprecation Notices
   avoiding impact on vectorized implementation of the driver datapaths,
   while evaluating performance gains of a better use of the first cache line.
 
-  The deprecated unioned fields ``buf_physaddr`` and ``refcnt_atomic``
-  (as explained below) will be removed in DPDK 20.11.
-
-* mbuf: ``refcnt_atomic`` member in structures ``rte_mbuf`` and
-  ``rte_mbuf_ext_shared_info`` is of type ``rte_atomic16_t``.
-  Due to adoption of C11 atomic builtins, the field ``refcnt_atomic``
-  will be replaced with ``refcnt`` of type ``uint16_t`` in DPDK 20.11.
+  The deprecated unioned field ``buf_physaddr`` will be removed in DPDK 20.11.
 
 * ethdev: Split the ``struct eth_dev_ops`` struct to hide it as much as possible
   will be done in 20.11.
