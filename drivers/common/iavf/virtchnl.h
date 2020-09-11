@@ -254,10 +254,11 @@ VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_vsi_resource);
 #define VIRTCHNL_VF_OFFLOAD_ADQ			0X00800000
 #define VIRTCHNL_VF_OFFLOAD_ADQ_V2		0X01000000
 #define VIRTCHNL_VF_OFFLOAD_USO			0X02000000
-#define VIRTCHNL_VF_CAP_DCF			0X40000000
 #define VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC	0X04000000
 #define VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF		0X08000000
 #define VIRTCHNL_VF_OFFLOAD_FDIR_PF		0X10000000
+	/* 0X20000000 is reserved */
+#define VIRTCHNL_VF_CAP_DCF			0X40000000
 	/* 0X80000000 is reserved */
 
 /* Define below the capability flags that are not offloads */
@@ -690,7 +691,7 @@ struct virtchnl_dcf_vsi_map {
 	u16 num_vfs;	/* The actual number of VFs allocated */
 #define VIRTCHNL_DCF_VF_VSI_ID_S	0
 #define VIRTCHNL_DCF_VF_VSI_ID_M	(0xFFF << VIRTCHNL_DCF_VF_VSI_ID_S)
-#define VIRTCHNL_DCF_VF_VSI_VALID	(1 << 15)
+#define VIRTCHNL_DCF_VF_VSI_VALID	BIT(15)
 	u16 vf_vsi[1];
 };
 
@@ -1299,13 +1300,10 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		/* These two opcodes are specific to handle the AdminQ command,
 		 * so the validation needs to be done in PF's context.
 		 */
-		return 0;
+		valid_len = msglen;
+		break;
 	case VIRTCHNL_OP_DCF_DISABLE:
 	case VIRTCHNL_OP_DCF_GET_VSI_MAP:
-		/* The two opcodes are required by DCF without message buffer,
-		 * so the valid length keeps the default value 0.
-		 */
-		break;
 	case VIRTCHNL_OP_DCF_GET_PKG_INFO:
 		break;
 	case VIRTCHNL_OP_GET_SUPPORTED_RXDIDS:
