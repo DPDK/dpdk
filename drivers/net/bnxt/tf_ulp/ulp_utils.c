@@ -546,8 +546,8 @@ ulp_blob_encap_swap_idx_set(struct ulp_blob *blob)
 void
 ulp_blob_perform_encap_swap(struct ulp_blob *blob)
 {
-	uint32_t		i, idx = 0, end_idx = 0;
-	uint8_t		temp_val_1, temp_val_2;
+	uint32_t i, idx = 0, end_idx = 0, roundoff;
+	uint8_t temp_val_1, temp_val_2;
 
 	/* validate the arguments */
 	if (!blob) {
@@ -556,7 +556,11 @@ ulp_blob_perform_encap_swap(struct ulp_blob *blob)
 	}
 	idx = ULP_BITS_2_BYTE_NR(blob->encap_swap_idx);
 	end_idx = ULP_BITS_2_BYTE(blob->write_idx);
-
+	roundoff = ULP_BYTE_2_BITS(ULP_BITS_2_BYTE(end_idx));
+	if (roundoff > end_idx) {
+		blob->write_idx += ULP_BYTE_2_BITS(roundoff - end_idx);
+		end_idx = roundoff;
+	}
 	while (idx <= end_idx) {
 		for (i = 0; i < 4; i = i + 2) {
 			temp_val_1 = blob->data[idx + i];
@@ -631,20 +635,35 @@ ulp_operand_read(uint8_t *operand,
  * dst [out] The destination buffer
  * src [in] The source buffer dst
  * size[in] size of the buffer.
+ * align[in] The alignment is either 8 or 16.
  */
 void
 ulp_encap_buffer_copy(uint8_t *dst,
 		      const uint8_t *src,
-		      uint16_t size)
+		      uint16_t size,
+		      uint16_t align)
 {
-	uint16_t	idx = 0;
+	uint16_t	idx, tmp_size = 0;
 
-	/* copy 2 bytes at a time. Write MSB to LSB */
-	while ((idx + sizeof(uint16_t)) <= size) {
-		memcpy(&dst[idx], &src[size - idx - sizeof(uint16_t)],
-		       sizeof(uint16_t));
-		idx += sizeof(uint16_t);
-	}
+	do {
+		dst += tmp_size;
+		src += tmp_size;
+		idx = 0;
+		if (size > align) {
+			tmp_size = align;
+			size -= align;
+		} else {
+			tmp_size = size;
+			size = 0;
+		}
+		/* copy 2 bytes at a time. Write MSB to LSB */
+		while ((idx + sizeof(uint16_t)) <= tmp_size) {
+			memcpy(&dst[idx],
+			       &src[tmp_size - idx - sizeof(uint16_t)],
+			       sizeof(uint16_t));
+			idx += sizeof(uint16_t);
+		}
+	} while (size);
 }
 
 /*

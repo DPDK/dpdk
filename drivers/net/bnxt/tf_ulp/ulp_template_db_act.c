@@ -1036,7 +1036,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
+	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV6,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_NORMAL,
 	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD_IS_SET,

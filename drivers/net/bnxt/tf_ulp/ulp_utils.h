@@ -9,6 +9,9 @@
 #include "bnxt.h"
 #include "ulp_template_db_enum.h"
 
+#define ULP_BUFFER_ALIGN_8_BYTE		8
+#define ULP_BUFFER_ALIGN_16_BYTE	16
+
 /*
  * Macros for bitmap sets and gets
  * These macros can be used if the val are power of 2.
@@ -315,11 +318,13 @@ ulp_operand_read(uint8_t *operand,
  * dst [out] The destination buffer
  * src [in] The source buffer dst
  * size[in] size of the buffer.
+ * align[in] The alignment is either 8 or 16.
  */
 void
 ulp_encap_buffer_copy(uint8_t *dst,
 		      const uint8_t *src,
-		      uint16_t size);
+		      uint16_t size,
+		      uint16_t align);
 
 /*
  * Check the buffer is empty

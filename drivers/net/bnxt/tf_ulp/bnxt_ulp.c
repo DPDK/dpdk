@@ -149,6 +149,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 
 	/* SP */
 	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = 488;
+	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = 511;
 
 	rc = tf_open_session(&bp->tfp, &params);
 	if (rc) {

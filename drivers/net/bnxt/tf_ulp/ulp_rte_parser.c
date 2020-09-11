@@ -78,6 +78,16 @@ ulp_rte_prsr_mask_copy(struct ulp_rte_parser_params *params,
 	*idx = *idx + 1;
 }
 
+/* Utility function to ignore field masks items */
+static void
+ulp_rte_prsr_mask_ignore(struct ulp_rte_parser_params *params __rte_unused,
+			 uint32_t *idx,
+			 const void *buffer __rte_unused,
+			 uint32_t size __rte_unused)
+{
+	*idx = *idx + 1;
+}
+
 /*
  * Function to handle the parsing of RTE Flows and placing
  * the RTE flow items into the ulp structures.
@@ -741,7 +751,8 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		 * wild card match and it is not supported. This is a work
 		 * around and shall be addressed in the future.
 		 */
-		idx += 1;
+		ulp_rte_prsr_mask_ignore(params, &idx, &priority,
+					 sizeof(priority));
 
 		ulp_rte_prsr_mask_copy(params, &idx, &vlan_tag,
 				       sizeof(vlan_tag));
@@ -920,7 +931,10 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		 * match and it is not supported. This is a work around and
 		 * shall be addressed in the future.
 		 */
-		idx += 1;
+		ulp_rte_prsr_mask_ignore(params, &idx,
+					 &ipv4_mask->hdr.type_of_service,
+					 sizeof(ipv4_mask->hdr.type_of_service)
+					 );
 
 		ulp_rte_prsr_mask_copy(params, &idx,
 				       &ipv4_mask->hdr.total_length,
@@ -1041,17 +1055,17 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 		ulp_rte_prsr_mask_copy(params, &idx,
 				       &vtcf_mask,
 				       size);
-
+		/*
+		 * The TC and flow label field are ignored since OVS is
+		 * setting it for match and it is not supported.
+		 * This is a work around and
+		 * shall be addressed in the future.
+		 */
 		vtcf_mask = BNXT_ULP_GET_IPV6_TC(ipv6_mask->hdr.vtc_flow);
-		ulp_rte_prsr_mask_copy(params, &idx,
-				       &vtcf_mask,
-				       size);
-
+		ulp_rte_prsr_mask_ignore(params, &idx, &vtcf_mask, size);
 		vtcf_mask =
 			BNXT_ULP_GET_IPV6_FLOWLABEL(ipv6_mask->hdr.vtc_flow);
-		ulp_rte_prsr_mask_copy(params, &idx,
-				       &vtcf_mask,
-				       size);
+		ulp_rte_prsr_mask_ignore(params, &idx, &vtcf_mask, size);
 
 		ulp_rte_prsr_mask_copy(params, &idx,
 				       &ipv6_mask->hdr.payload_len,
@@ -1414,8 +1428,12 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	/* IP header per byte - ver/hlen, TOS, ID, ID, FRAG, FRAG, TTL, PROTO */
 	const uint8_t def_ipv4_hdr[] = {0x45, 0x00, 0x00, 0x01, 0x00,
 				    0x00, 0x40, 0x11};
+	/* IPv6 header per byte - vtc-flow,flow,zero,nexthdr-ttl */
+	const uint8_t def_ipv6_hdr[] = {0x60, 0x00, 0x00, 0x01, 0x00,
+				0x00, 0x11, 0xf6};
 	struct ulp_rte_act_bitmap *act = &params->act_bitmap;
 	struct ulp_rte_act_prop *ap = &params->act_prop;
+	const uint8_t *tmp_buff;
 
 	vxlan_encap = action_item->conf;
 	if (!vxlan_encap) {
@@ -1441,12 +1459,14 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_DMAC];
 	ulp_encap_buffer_copy(buff,
 			      eth_spec->dst.addr_bytes,
-			      BNXT_ULP_ACT_PROP_SZ_ENCAP_L2_DMAC);
+			      BNXT_ULP_ACT_PROP_SZ_ENCAP_L2_DMAC,
+			      ULP_BUFFER_ALIGN_8_BYTE);
 
 	buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_L2_SMAC];
 	ulp_encap_buffer_copy(buff,
 			      eth_spec->src.addr_bytes,
-			      BNXT_ULP_ACT_PROP_SZ_ENCAP_L2_SMAC);
+			      BNXT_ULP_ACT_PROP_SZ_ENCAP_L2_SMAC,
+			      ULP_BUFFER_ALIGN_8_BYTE);
 
 	/* Goto the next item */
 	if (!ulp_rte_item_skip_void(&item, 1))
@@ -1458,7 +1478,8 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG];
 		ulp_encap_buffer_copy(buff,
 				      item->spec,
-				      sizeof(struct rte_flow_item_vlan));
+				      sizeof(struct rte_flow_item_vlan),
+				      ULP_BUFFER_ALIGN_8_BYTE);
 
 		if (!ulp_rte_item_skip_void(&item, 1))
 			return BNXT_TF_RC_ERROR;
@@ -1499,32 +1520,41 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 			ulp_encap_buffer_copy(buff,
 					      def_ipv4_hdr,
 					      BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS +
-					      BNXT_ULP_ENCAP_IPV4_ID_PROTO);
+					      BNXT_ULP_ENCAP_IPV4_ID_PROTO,
+					      ULP_BUFFER_ALIGN_8_BYTE);
 		} else {
-			const uint8_t *tmp_buff;
-
+			/* Total length being ignored in the ip hdr. */
 			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP];
 			tmp_buff = (const uint8_t *)&ipv4_spec->hdr.packet_id;
 			ulp_encap_buffer_copy(buff,
 					      tmp_buff,
-					      BNXT_ULP_ENCAP_IPV4_ID_PROTO);
+					      BNXT_ULP_ENCAP_IPV4_ID_PROTO,
+					      ULP_BUFFER_ALIGN_8_BYTE);
 			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
 			     BNXT_ULP_ENCAP_IPV4_ID_PROTO];
 			ulp_encap_buffer_copy(buff,
 					      &ipv4_spec->hdr.version_ihl,
-					      BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS);
+					      BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS,
+					      ULP_BUFFER_ALIGN_8_BYTE);
 		}
+
+		/* Update the dst ip address in ip encap buffer */
 		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
 		    BNXT_ULP_ENCAP_IPV4_VER_HLEN_TOS +
 		    BNXT_ULP_ENCAP_IPV4_ID_PROTO];
 		ulp_encap_buffer_copy(buff,
 				      (const uint8_t *)&ipv4_spec->hdr.dst_addr,
-				      BNXT_ULP_ENCAP_IPV4_DEST_IP);
+				      sizeof(ipv4_spec->hdr.dst_addr),
+				      ULP_BUFFER_ALIGN_8_BYTE);
 
-		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC];
+		/* Update the src ip address */
+		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC +
+			BNXT_ULP_ACT_PROP_SZ_ENCAP_IP_SRC -
+			sizeof(ipv4_spec->hdr.src_addr)];
 		ulp_encap_buffer_copy(buff,
 				      (const uint8_t *)&ipv4_spec->hdr.src_addr,
-				      BNXT_ULP_ACT_PROP_SZ_ENCAP_IP_SRC);
+				      sizeof(ipv4_spec->hdr.src_addr),
+				      ULP_BUFFER_ALIGN_8_BYTE);
 
 		/* Update the ip size details */
 		ip_size = tfp_cpu_to_be_32(ip_size);
@@ -1546,9 +1576,46 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 		ipv6_spec = item->spec;
 		ip_size = BNXT_ULP_ENCAP_IPV6_SIZE;
 
-		/* copy the ipv4 details */
-		memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP],
-		       ipv6_spec, BNXT_ULP_ENCAP_IPV6_SIZE);
+		/* copy the ipv6 details */
+		tmp_buff = (const uint8_t *)&ipv6_spec->hdr.vtc_flow;
+		if (ulp_buffer_is_empty(tmp_buff,
+					BNXT_ULP_ENCAP_IPV6_VTC_FLOW)) {
+			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP];
+			ulp_encap_buffer_copy(buff,
+					      def_ipv6_hdr,
+					      sizeof(def_ipv6_hdr),
+					      ULP_BUFFER_ALIGN_8_BYTE);
+		} else {
+			/* The payload length being ignored in the ip hdr. */
+			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP];
+			tmp_buff = (const uint8_t *)&ipv6_spec->hdr.proto;
+			ulp_encap_buffer_copy(buff,
+					      tmp_buff,
+					      BNXT_ULP_ENCAP_IPV6_PROTO_TTL,
+					      ULP_BUFFER_ALIGN_8_BYTE);
+			buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
+				BNXT_ULP_ENCAP_IPV6_PROTO_TTL +
+				BNXT_ULP_ENCAP_IPV6_DO];
+			tmp_buff = (const uint8_t *)&ipv6_spec->hdr.vtc_flow;
+			ulp_encap_buffer_copy(buff,
+					      tmp_buff,
+					      BNXT_ULP_ENCAP_IPV6_VTC_FLOW,
+					      ULP_BUFFER_ALIGN_8_BYTE);
+		}
+		/* Update the dst ip address in ip encap buffer */
+		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP +
+			sizeof(def_ipv6_hdr)];
+		ulp_encap_buffer_copy(buff,
+				      (const uint8_t *)ipv6_spec->hdr.dst_addr,
+				      sizeof(ipv6_spec->hdr.dst_addr),
+				      ULP_BUFFER_ALIGN_8_BYTE);
+
+		/* Update the src ip address */
+		buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_IP_SRC];
+		ulp_encap_buffer_copy(buff,
+				      (const uint8_t *)ipv6_spec->hdr.src_addr,
+				      sizeof(ipv6_spec->hdr.src_addr),
+				      ULP_BUFFER_ALIGN_16_BYTE);
 
 		/* Update the ip size details */
 		ip_size = tfp_cpu_to_be_32(ip_size);
@@ -1578,7 +1645,8 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	}
 	/* copy the udp details */
 	ulp_encap_buffer_copy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_UDP],
-			      item->spec, BNXT_ULP_ENCAP_UDP_SIZE);
+			      item->spec, BNXT_ULP_ENCAP_UDP_SIZE,
+			      ULP_BUFFER_ALIGN_8_BYTE);
 
 	if (!ulp_rte_item_skip_void(&item, 1))
 		return BNXT_TF_RC_ERROR;
@@ -1592,9 +1660,17 @@ ulp_rte_vxlan_encap_act_handler(const struct rte_flow_action *action_item,
 	/* copy the vxlan details */
 	memcpy(&vxlan_spec, item->spec, vxlan_size);
 	vxlan_spec.flags = 0x08;
-	ulp_encap_buffer_copy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN],
-			      (const uint8_t *)&vxlan_spec,
-			      vxlan_size);
+	buff = &ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN];
+	if (ip_type == rte_cpu_to_be_32(BNXT_ULP_ETH_IPV4)) {
+		ulp_encap_buffer_copy(buff, (const uint8_t *)&vxlan_spec,
+				      vxlan_size, ULP_BUFFER_ALIGN_8_BYTE);
+	} else {
+		ulp_encap_buffer_copy(buff, (const uint8_t *)&vxlan_spec,
+				      vxlan_size / 2, ULP_BUFFER_ALIGN_8_BYTE);
+		ulp_encap_buffer_copy(buff + (vxlan_size / 2),
+				      (const uint8_t *)&vxlan_spec.vni,
+				      vxlan_size / 2, ULP_BUFFER_ALIGN_8_BYTE);
+	}
 	vxlan_size = tfp_cpu_to_be_32(vxlan_size);
 	memcpy(&ap->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_TUN_SZ],
 	       &vxlan_size, sizeof(uint32_t));
