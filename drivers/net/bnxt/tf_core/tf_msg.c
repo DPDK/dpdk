@@ -1250,8 +1250,8 @@ tf_msg_get_if_tbl_entry(struct tf *tfp,
 {
 	int rc = 0;
 	struct tfp_send_msg_parms parms = { 0 };
-	tf_if_tbl_get_input_t req = { 0 };
-	tf_if_tbl_get_output_t resp;
+	struct hwrm_tf_if_tbl_get_input req = { 0 };
+	struct hwrm_tf_if_tbl_get_output resp = { 0 };
 	uint32_t flags = 0;
 	struct tf_session *tfs;
 
@@ -1265,25 +1265,26 @@ tf_msg_get_if_tbl_entry(struct tf *tfp,
 		return rc;
 	}
 
-	flags = (params->dir == TF_DIR_TX ? TF_IF_TBL_GET_INPUT_FLAGS_DIR_TX :
-		 TF_IF_TBL_GET_INPUT_FLAGS_DIR_RX);
+	flags = (params->dir == TF_DIR_TX ?
+		HWRM_TF_IF_TBL_GET_INPUT_FLAGS_DIR_TX :
+		HWRM_TF_IF_TBL_GET_INPUT_FLAGS_DIR_RX);
 
 	/* Populate the request */
 	req.fw_session_id =
 		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
 	req.flags = flags;
-	req.tf_if_tbl_type = params->hcapi_type;
-	req.idx = tfp_cpu_to_le_16(params->idx);
-	req.data_sz_in_bytes = tfp_cpu_to_le_16(params->data_sz_in_bytes);
+	req.type = params->hcapi_type;
+	req.index = tfp_cpu_to_le_16(params->idx);
+	req.size = tfp_cpu_to_le_16(params->data_sz_in_bytes);
 
-	MSG_PREP(parms,
-		 TF_KONG_MB,
-		 HWRM_TF,
-		 HWRM_TFT_IF_TBL_GET,
-		 req,
-		 resp);
+	parms.tf_type = HWRM_TF_IF_TBL_GET;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
 
-	rc = tfp_send_msg_tunneled(tfp, &parms);
+	rc = tfp_send_msg_direct(tfp, &parms);
 
 	if (rc != 0)
 		return rc;
@@ -1291,7 +1292,7 @@ tf_msg_get_if_tbl_entry(struct tf *tfp,
 	if (parms.tf_resp_code != 0)
 		return tfp_le_to_cpu_32(parms.tf_resp_code);
 
-	tfp_memcpy(&params->data[0], resp.data, req.data_sz_in_bytes);
+	tfp_memcpy(&params->data[0], resp.data, req.size);
 
 	return tfp_le_to_cpu_32(parms.tf_resp_code);
 }
@@ -1302,7 +1303,8 @@ tf_msg_set_if_tbl_entry(struct tf *tfp,
 {
 	int rc = 0;
 	struct tfp_send_msg_parms parms = { 0 };
-	tf_if_tbl_set_input_t req = { 0 };
+	struct hwrm_tf_if_tbl_set_input req = { 0 };
+	struct hwrm_tf_if_tbl_get_output resp = { 0 };
 	uint32_t flags = 0;
 	struct tf_session *tfs;
 
@@ -1317,25 +1319,27 @@ tf_msg_set_if_tbl_entry(struct tf *tfp,
 	}
 
 
-	flags = (params->dir == TF_DIR_TX ? TF_IF_TBL_SET_INPUT_FLAGS_DIR_TX :
-		 TF_IF_TBL_SET_INPUT_FLAGS_DIR_RX);
+	flags = (params->dir == TF_DIR_TX ?
+		HWRM_TF_IF_TBL_SET_INPUT_FLAGS_DIR_TX :
+		HWRM_TF_IF_TBL_SET_INPUT_FLAGS_DIR_RX);
 
 	/* Populate the request */
 	req.fw_session_id =
 		tfp_cpu_to_le_32(tfs->session_id.internal.fw_session_id);
 	req.flags = flags;
-	req.tf_if_tbl_type = params->hcapi_type;
-	req.idx = tfp_cpu_to_le_32(params->idx);
-	req.data_sz_in_bytes = tfp_cpu_to_le_32(params->data_sz_in_bytes);
+	req.type = params->hcapi_type;
+	req.index = tfp_cpu_to_le_32(params->idx);
+	req.size = tfp_cpu_to_le_32(params->data_sz_in_bytes);
 	tfp_memcpy(&req.data[0], params->data, params->data_sz_in_bytes);
 
-	MSG_PREP_NO_RESP(parms,
-			 TF_KONG_MB,
-			 HWRM_TF,
-			 HWRM_TFT_IF_TBL_SET,
-			 req);
+	parms.tf_type = HWRM_TF_IF_TBL_SET;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = TF_KONG_MB;
 
-	rc = tfp_send_msg_tunneled(tfp, &parms);
+	rc = tfp_send_msg_direct(tfp, &parms);
 
 	if (rc != 0)
 		return rc;
