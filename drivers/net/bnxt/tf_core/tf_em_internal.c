@@ -175,8 +175,11 @@ tf_em_insert_int_entry(struct tf *tfp,
 					     &rptr_index,
 					     &rptr_entry,
 					     &num_of_entries);
-	if (rc)
+	if (rc) {
+		/* Free the allocated index before returning */
+		stack_push(pool, index);
 		return -1;
+	}
 
 	PMD_DRV_LOG
 		  (DEBUG,
