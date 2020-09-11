@@ -224,6 +224,7 @@ struct iavf_hw_capabilities {
 	u32 num_tx_qp;
 	u32 base_queue;
 	u32 num_msix_vectors_vf;
+	u32 max_mtu;
 	bool apm_wol_support;
 	enum iavf_acpi_programming_method acpi_prog_method;
 	bool proxy_support;

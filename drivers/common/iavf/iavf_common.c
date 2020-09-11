@@ -975,6 +975,7 @@ void iavf_vf_parse_hw_config(struct iavf_hw *hw,
 	hw->dev_caps.num_msix_vectors_vf = msg->max_vectors;
 	hw->dev_caps.dcb = msg->vf_cap_flags &
 			   VIRTCHNL_VF_OFFLOAD_L2;
+	hw->dev_caps.max_mtu = msg->max_mtu;
 	for (i = 0; i < msg->num_vsis; i++) {
 		if (vsi_res->vsi_type == VIRTCHNL_VSI_SRIOV) {
 			iavf_memcpy(hw->mac.perm_addr,
