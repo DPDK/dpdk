@@ -795,26 +795,25 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		goto rx;
 	}
 	rxr->rx_prod = prod;
+
+	if (BNXT_TRUFLOW_EN(bp) && (BNXT_VF_IS_TRUSTED(bp) || BNXT_PF(bp)) &&
+	    vfr_flag) {
+		bnxt_vfr_recv(mark_id, rxq->queue_id, mbuf);
+		/* Now return an error so that nb_rx_pkts is not
+		 * incremented.
+		 * This packet was meant to be given to the representor.
+		 * So no need to account the packet and give it to
+		 * parent Rx burst function.
+		 */
+		rc = -ENODEV;
+		goto next_rx;
+	}
 	/*
 	 * All MBUFs are allocated with the same size under DPDK,
 	 * no optimization for rx_copy_thresh
 	 */
 rx:
 	*rx_pkt = mbuf;
-
-	if (BNXT_TRUFLOW_EN(bp) &&
-	    (BNXT_VF_IS_TRUSTED(bp) || BNXT_PF(bp)) &&
-	    vfr_flag) {
-		if (!bnxt_vfr_recv(mark_id, rxq->queue_id, mbuf)) {
-			/* Now return an error so that nb_rx_pkts is not
-			 * incremented.
-			 * This packet was meant to be given to the representor.
-			 * So no need to account the packet and give it to
-			 * parent Rx burst function.
-			 */
-			rc = -ENODEV;
-		}
-	}
 
 next_rx:
 
