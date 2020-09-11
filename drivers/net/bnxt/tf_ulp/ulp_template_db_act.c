@@ -36,7 +36,7 @@ uint16_t ulp_act_sig_tbl[BNXT_ULP_ACT_SIG_TBL_MAX_SZ] = {
 	[BNXT_ULP_ACT_HID_0020] = 25,
 	[BNXT_ULP_ACT_HID_0901] = 26,
 	[BNXT_ULP_ACT_HID_0121] = 27,
-	[BNXT_ULP_ACT_HID_0004] = 28,
+	[BNXT_ULP_ACT_HID_0006] = 28,
 	[BNXT_ULP_ACT_HID_0804] = 29,
 	[BNXT_ULP_ACT_HID_0105] = 30,
 	[BNXT_ULP_ACT_HID_0024] = 31,
@@ -332,9 +332,10 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	.act_tid = 2
 	},
 	[28] = {
-	.act_hid = BNXT_ULP_ACT_HID_0004,
+	.act_hid = BNXT_ULP_ACT_HID_0006,
 	.act_sig = { .bits =
 		BNXT_ULP_ACTION_BIT_COUNT |
+		BNXT_ULP_ACTION_BIT_DROP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 2
 	},
