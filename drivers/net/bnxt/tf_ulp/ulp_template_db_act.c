@@ -1036,7 +1036,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_act_tbl_list[] = {
 	},
 	{
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
-	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV6,
+	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TYPE_NORMAL,
 	.cond_opcode = BNXT_ULP_COND_OPCODE_COMP_FIELD_IS_SET,
@@ -1434,21 +1434,11 @@ struct bnxt_ulp_mapper_result_field_info ulp_act_result_field_list[] = {
 	},
 	{
 	.field_bit_size = 4,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_IF_HDR_BIT_THEN_CONST_ELSE_CONST,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.result_operand = {
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	.result_operand_true = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	.result_operand_false = {0x0b, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+		BNXT_ULP_SYM_DECAP_FUNC_THRU_L2,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 12,
@@ -2346,21 +2336,11 @@ struct bnxt_ulp_mapper_result_field_info ulp_act_result_field_list[] = {
 	},
 	{
 	.field_bit_size = 4,
-	.result_opcode = BNXT_ULP_MAPPER_OPC_IF_HDR_BIT_THEN_CONST_ELSE_CONST,
+	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.result_operand = {
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 56) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 48) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 40) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 32) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 24) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 16) & 0xff,
-		((uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN >> 8) & 0xff,
-		(uint64_t)BNXT_ULP_HDR_BIT_T_VXLAN & 0xff,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	.result_operand_true = {0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	.result_operand_false = {0x0b, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+		BNXT_ULP_SYM_DECAP_FUNC_THRU_L2,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 12,
