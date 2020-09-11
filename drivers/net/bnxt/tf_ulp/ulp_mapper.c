@@ -783,6 +783,7 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 	uint32_t val_size = 0, field_size = 0;
 	uint64_t act_bit;
 	uint8_t act_val;
+	uint64_t hdr_bit;
 
 	switch (fld->result_opcode) {
 	case BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT:
@@ -1030,6 +1031,26 @@ ulp_mapper_result_field_process(struct bnxt_ulp_mapper_parms *parms,
 				       fld->field_bit_size);
 		if (!val) {
 			BNXT_TF_DBG(ERR, "%s push to key blob failed\n", name);
+			return -EINVAL;
+		}
+		break;
+	case BNXT_ULP_MAPPER_OPC_IF_HDR_BIT_THEN_CONST_ELSE_CONST:
+		if (!ulp_operand_read(fld->result_operand,
+				      (uint8_t *)&hdr_bit, sizeof(uint64_t))) {
+			BNXT_TF_DBG(ERR, "%s operand read failed\n", name);
+			return -EINVAL;
+		}
+		hdr_bit = tfp_be_to_cpu_64(hdr_bit);
+		if (ULP_BITMAP_ISSET(parms->hdr_bitmap->bits, hdr_bit)) {
+			/* Header bit is set so consider operand_true */
+			val = fld->result_operand_true;
+		} else {
+			/* Header bit is not set, use the operand false */
+			val = fld->result_operand_false;
+		}
+		if (!ulp_blob_push(blob, val, fld->field_bit_size)) {
+			BNXT_TF_DBG(ERR, "%s failed to add field\n",
+				    name);
 			return -EINVAL;
 		}
 		break;

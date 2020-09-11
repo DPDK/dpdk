@@ -721,15 +721,11 @@ bnxt_ulp_deinit(struct bnxt *bp,
 	/* Disable NAT feature */
 	(void)bnxt_ulp_global_cfg_update(bp, TF_DIR_RX, TF_TUNNEL_ENCAP,
 					 TF_TUNNEL_ENCAP_NAT,
-					 (BNXT_ULP_NAT_INNER_L2_HEADER_SMAC |
-					  BNXT_ULP_NAT_INNER_L2_HEADER_DMAC),
-					 0);
+					 BNXT_ULP_NAT_OUTER_MOST_FLAGS, 0);
 
 	(void)bnxt_ulp_global_cfg_update(bp, TF_DIR_TX, TF_TUNNEL_ENCAP,
 					 TF_TUNNEL_ENCAP_NAT,
-					 (BNXT_ULP_NAT_INNER_L2_HEADER_SMAC |
-					  BNXT_ULP_NAT_INNER_L2_HEADER_DMAC),
-					 0);
+					 BNXT_ULP_NAT_OUTER_MOST_FLAGS, 0);
 
 	/* Delete the ulp context and tf session and free the ulp context */
 	ulp_ctx_deinit(bp, session);
@@ -808,8 +804,7 @@ bnxt_ulp_init(struct bnxt *bp,
 	 */
 	rc = bnxt_ulp_global_cfg_update(bp, TF_DIR_RX, TF_TUNNEL_ENCAP,
 					TF_TUNNEL_ENCAP_NAT,
-					(BNXT_ULP_NAT_INNER_L2_HEADER_SMAC |
-					BNXT_ULP_NAT_INNER_L2_HEADER_DMAC), 1);
+					BNXT_ULP_NAT_OUTER_MOST_FLAGS, 1);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to set rx global configuration\n");
 		goto jump_to_error;
@@ -817,8 +812,7 @@ bnxt_ulp_init(struct bnxt *bp,
 
 	rc = bnxt_ulp_global_cfg_update(bp, TF_DIR_TX, TF_TUNNEL_ENCAP,
 					TF_TUNNEL_ENCAP_NAT,
-					(BNXT_ULP_NAT_INNER_L2_HEADER_SMAC |
-					BNXT_ULP_NAT_INNER_L2_HEADER_DMAC), 1);
+					BNXT_ULP_NAT_OUTER_MOST_FLAGS, 1);
 	if (rc) {
 		BNXT_TF_DBG(ERR, "Failed to set tx global configuration\n");
 		goto jump_to_error;
