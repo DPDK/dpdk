@@ -140,6 +140,7 @@ int cxgbe_mpstcam_modify(struct port_info *pi, int idx, const u8 *addr)
 	/* idx can now be different from what user provided */
 	entry = &mpstcam->entry[idx];
 	memcpy(entry->eth_addr, addr, RTE_ETHER_ADDR_LEN);
+	memset(entry->mask, ~0, RTE_ETHER_ADDR_LEN);
 	/* NOTE: we have considered the case that idx returned by t4_change_mac
 	 * will be different from the user provided value only if user
 	 * provided value is -1
