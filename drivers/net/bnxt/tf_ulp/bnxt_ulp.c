@@ -97,7 +97,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
 
 	/* ENCAP */
-	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 16;
+	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 255;
 	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 63;
 
 	/* TCAMs */
@@ -130,6 +130,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 	/* ENCAP */
 	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_64B] = 511;
 	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 200;
+	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 255;
 
 	/* TCAMs */
 	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH] =

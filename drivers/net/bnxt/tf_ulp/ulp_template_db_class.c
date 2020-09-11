@@ -4528,8 +4528,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_RX,
 	.key_start_idx = 722,
-	.blob_key_bit_size = 392,
-	.key_bit_size = 392,
+	.blob_key_bit_size = 200,
+	.key_bit_size = 200,
 	.key_num_fields = 11,
 	.result_start_idx = 558,
 	.result_bit_size = 64,
@@ -4600,8 +4600,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_RX,
 	.key_start_idx = 791,
-	.blob_key_bit_size = 392,
-	.key_bit_size = 392,
+	.blob_key_bit_size = 200,
+	.key_bit_size = 200,
 	.key_num_fields = 11,
 	.result_start_idx = 589,
 	.result_bit_size = 64,
@@ -5100,8 +5100,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_class_tbl_list[] = {
 	.resource_type = TF_MEM_INTERNAL,
 	.direction = TF_DIR_TX,
 	.key_start_idx = 1209,
-	.blob_key_bit_size = 392,
-	.key_bit_size = 392,
+	.blob_key_bit_size = 200,
+	.key_bit_size = 200,
 	.key_num_fields = 11,
 	.result_start_idx = 779,
 	.result_bit_size = 64,
@@ -10173,7 +10173,7 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
-	.field_bit_size = 128,
+	.field_bit_size = 32,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
 	.spec_operand = {
@@ -10183,7 +10183,7 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
-	.field_bit_size = 128,
+	.field_bit_size = 32,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
 	.spec_operand = {
@@ -10664,7 +10664,7 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
-	.field_bit_size = 128,
+	.field_bit_size = 32,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
 	.spec_operand = {
@@ -10674,7 +10674,7 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
-	.field_bit_size = 128,
+	.field_bit_size = 32,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
 	.spec_operand = {
@@ -11279,6 +11279,11 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 	},
 	{
 	.field_bit_size = 12,
+	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
+	},
+	{
+	.field_bit_size = 12,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
 	.mask_operand = {
 		(BNXT_ULP_HF17_IDX_OO_VLAN_VID >> 8) & 0xff,
@@ -11291,11 +11296,6 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 		BNXT_ULP_HF17_IDX_OO_VLAN_VID & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	},
-	{
-	.field_bit_size = 12,
-	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO
 	},
 	{
 	.field_bit_size = 48,
@@ -13056,11 +13056,12 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 	{
 	.field_bit_size = 8,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
-	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
+	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
 	.spec_operand = {
-		BNXT_ULP_SYM_IP_PROTO_UDP,
+		(BNXT_ULP_HF20_IDX_O_IPV6_PROTO_ID >> 8) & 0xff,
+		BNXT_ULP_HF20_IDX_O_IPV6_PROTO_ID & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
 	.field_bit_size = 128,
@@ -13531,7 +13532,7 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
-	.field_bit_size = 128,
+	.field_bit_size = 32,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
 	.spec_operand = {
@@ -13541,7 +13542,7 @@ struct bnxt_ulp_mapper_class_key_field_info ulp_class_key_field_list[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
-	.field_bit_size = 128,
+	.field_bit_size = 32,
 	.mask_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_ZERO,
 	.spec_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_HDR_FIELD,
 	.spec_operand = {
@@ -17380,7 +17381,7 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 	{
 	.field_bit_size = 5,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
-	.result_operand = {0x19, 0x00, 0x00, 0x00, 0x00, 0x00,
+	.result_operand = {0x15, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
@@ -17431,8 +17432,8 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 	.field_bit_size = 9,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.result_operand = {
-		(0x0185 >> 8) & 0xff,
-		0x0185 & 0xff,
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -17558,7 +17559,7 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 	{
 	.field_bit_size = 5,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
-	.result_operand = {0x19, 0x00, 0x00, 0x00, 0x00, 0x00,
+	.result_operand = {0x15, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
@@ -17609,8 +17610,8 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 	.field_bit_size = 9,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.result_operand = {
-		(0x0185 >> 8) & 0xff,
-		0x0185 & 0xff,
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
@@ -18722,7 +18723,7 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 	{
 	.field_bit_size = 5,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
-	.result_operand = {0x19, 0x00, 0x00, 0x00, 0x00, 0x00,
+	.result_operand = {0x15, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
 	{
@@ -18773,8 +18774,8 @@ struct bnxt_ulp_mapper_result_field_info ulp_class_result_field_list[] = {
 	.field_bit_size = 9,
 	.result_opcode = BNXT_ULP_MAPPER_OPC_SET_TO_CONSTANT,
 	.result_operand = {
-		(0x0185 >> 8) & 0xff,
-		0x0185 & 0xff,
+		(0x00c5 >> 8) & 0xff,
+		0x00c5 & 0xff,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	},
