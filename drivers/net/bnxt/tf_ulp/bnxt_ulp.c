@@ -85,9 +85,9 @@ ulp_ctx_session_open(struct bnxt *bp,
 	/* Identifiers */
 	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 422;
 	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 6;
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_WC_PROF] = 8;
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 8;
-	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_EM_PROF] = 8;
+	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_WC_PROF] = 192;
+	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 64;
+	resources->ident_cnt[TF_DIR_RX].cnt[TF_IDENT_TYPE_EM_PROF] = 192;
 
 	/* Table Types */
 	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
@@ -95,7 +95,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_MODIFY_IPV4] = 1023;
 
 	/* ENCAP */
-	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 255;
+	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 511;
 	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 63;
 
 	/* TCAMs */
@@ -103,22 +103,25 @@ ulp_ctx_session_open(struct bnxt *bp,
 		422;
 	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] =
 		6;
-	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 8;
+	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 960;
 	resources->tcam_cnt[TF_DIR_RX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 88;
 
 	/* EM */
-	resources->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 13176;
+	resources->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 13168;
 
 	/* EEM */
 	resources->em_cnt[TF_DIR_RX].cnt[TF_EM_TBL_TYPE_TBL_SCOPE] = 1;
 
+	/* SP */
+	resources->tbl_cnt[TF_DIR_RX].cnt[TF_TBL_TYPE_ACT_SP_SMAC] = 255;
+
 	/** TX **/
 	/* Identifiers */
 	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_HIGH] = 292;
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 144;
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_WC_PROF] = 8;
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 8;
-	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_EM_PROF] = 8;
+	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_L2_CTXT_LOW] = 148;
+	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_WC_PROF] = 192;
+	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_PROF_FUNC] = 64;
+	resources->ident_cnt[TF_DIR_TX].cnt[TF_IDENT_TYPE_EM_PROF] = 192;
 
 	/* Table Types */
 	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_FULL_ACT_RECORD] = 8192;
@@ -127,7 +130,7 @@ ulp_ctx_session_open(struct bnxt *bp,
 
 	/* ENCAP */
 	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_64B] = 511;
-	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 200;
+	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_16B] = 223;
 	resources->tbl_cnt[TF_DIR_TX].cnt[TF_TBL_TYPE_ACT_ENCAP_8B] = 255;
 
 	/* TCAMs */
@@ -135,8 +138,8 @@ ulp_ctx_session_open(struct bnxt *bp,
 		292;
 	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW] =
 		144;
-	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 8;
-	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 8;
+	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_PROF_TCAM] = 960;
+	resources->tcam_cnt[TF_DIR_TX].cnt[TF_TCAM_TBL_TYPE_WC_TCAM] = 928;
 
 	/* EM */
 	resources->em_cnt[TF_DIR_TX].cnt[TF_EM_TBL_TYPE_EM_RECORD] = 15232;
