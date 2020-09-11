@@ -152,6 +152,10 @@ New Features
     ``--portmask=N``
     where N represents the hexadecimal bitmask of ports used.
 
+* **Added support for AES-ECB in aesni_mb crypto PMD.**
+
+  * Added support for AES-ECB 128, 192 and 256 in aesni_mb PMD.
+
 * **Added Intel ACC100 bbdev PMD.**
 
   Added a new ``acc100`` bbdev driver for the Intel\ |reg| ACC100 accelerator

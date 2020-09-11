@@ -429,6 +429,12 @@ aesni_mb_set_session_cipher_parameters(const MB_MGR *mb_mgr,
 		sess->cipher.mode = DES3;
 		is_3DES = 1;
 		break;
+#if IMB_VERSION(0, 53, 0) <= IMB_VERSION_NUM
+	case RTE_CRYPTO_CIPHER_AES_ECB:
+		sess->cipher.mode = ECB;
+		is_aes = 1;
+		break;
+#endif
 	default:
 		AESNI_MB_LOG(ERR, "Unsupported cipher mode parameter");
 		return -ENOTSUP;
