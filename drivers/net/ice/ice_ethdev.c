@@ -4415,7 +4415,7 @@ ice_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 	build = hw->nvm.orom.build;
 
 	ret = snprintf(fw_version, fw_size,
-			"%d.%d 0x%08x %d.%d.%d",
+			"%x.%02x 0x%08x %d.%d.%d",
 			hw->nvm.major_ver,
 			hw->nvm.minor_ver,
 			hw->nvm.eetrack,
