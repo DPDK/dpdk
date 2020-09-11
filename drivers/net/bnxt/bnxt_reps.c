@@ -45,9 +45,12 @@ bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 
 	vfr_eth_dev = &rte_eth_devices[port_id];
 	vfr_bp = vfr_eth_dev->data->dev_private;
-	/* If rxq_id happens to be > max rep_queue, use rxq0 */
-	que = queue_id < BNXT_MAX_VF_REP_RINGS ? queue_id : 0;
+	/* If rxq_id happens to be > nr_rings, use ring 0 */
+	que = queue_id < vfr_bp->rx_nr_rings ? queue_id : 0;
 	rep_rxq = vfr_bp->rx_queues[que];
+	/* Ideally should not happen now, paranoid check */
+	if (!rep_rxq)
+		return 1;
 	rep_rxr = rep_rxq->rx_ring;
 	mask = rep_rxr->rx_ring_struct->ring_mask;
 
