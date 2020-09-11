@@ -134,7 +134,7 @@ struct iavf_info {
 	uint16_t mc_addrs_num;   /* Multicast mac addresses number */
 
 	struct iavf_vsi vsi;
-	bool vf_reset;
+	bool vf_reset;	/* true for VF reset pending, false for no VF reset */
 	uint64_t flags;
 
 	uint8_t *rss_lut;

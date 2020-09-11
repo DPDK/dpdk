@@ -457,6 +457,9 @@ iavf_hash_init(struct iavf_adapter *ad)
 	struct iavf_flow_parser *parser;
 	int ret;
 
+	if (vf->vf_reset)
+		return -EIO;
+
 	if (!vf->vf_res)
 		return -EINVAL;
 
@@ -967,6 +970,11 @@ iavf_hash_destroy(__rte_unused struct iavf_adapter *ad,
 static void
 iavf_hash_uninit(struct iavf_adapter *ad)
 {
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
+
+	if (vf->vf_reset)
+		return;
+
 	if (iavf_hash_default_set(ad, false))
 		PMD_DRV_LOG(ERR, "fail to delete default RSS");
 

@@ -76,6 +76,9 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 	if (_atomic_set_cmd(vf, args->ops))
 		return -1;
 
+	if (vf->vf_reset)
+		return -EIO;
+
 	ret = iavf_aq_send_msg_to_pf(hw, args->ops, IAVF_SUCCESS,
 				    args->in_args, args->in_args_size, NULL);
 	if (ret) {
