@@ -166,6 +166,7 @@ int bnxt_vf_representor_init(struct rte_eth_dev *eth_dev, void *params)
 	struct rte_eth_link *link;
 	struct bnxt *parent_bp;
 
+	PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR init\n", eth_dev->data->port_id);
 	vf_rep_bp->vf_id = rep_params->vf_id;
 	vf_rep_bp->switch_domain_id = rep_params->switch_domain_id;
 	vf_rep_bp->parent_dev = rep_params->parent_dev;
@@ -216,15 +217,18 @@ int bnxt_vf_representor_uninit(struct rte_eth_dev *eth_dev)
 	struct bnxt *parent_bp;
 	struct bnxt_vf_representor *rep =
 		(struct bnxt_vf_representor *)eth_dev->data->dev_private;
-
 	uint16_t vf_id;
 
+	PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR uninit\n", eth_dev->data->port_id);
 	eth_dev->data->mac_addrs = NULL;
 	eth_dev->dev_ops = NULL;
 
 	parent_bp = rep->parent_dev->data->dev_private;
-	if (!parent_bp)
+	if (!parent_bp) {
+		PMD_DRV_LOG(DEBUG, "BNXT Port:%d already freed\n",
+			    eth_dev->data->port_id);
 		return 0;
+	}
 
 	parent_bp->num_reps--;
 	vf_id = rep->vf_id;
@@ -296,7 +300,8 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 			    vfr->vf_id, rc);
 		(void)bnxt_ulp_delete_vfr_default_rules(vfr);
 	}
-
+	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR created and initialized\n",
+		    vfr->dpdk_port_id);
 	return rc;
 }
 
@@ -361,6 +366,7 @@ int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 	parent_bp = rep_bp->parent_dev->data->dev_private;
 	rep_info = &parent_bp->rep_info[rep_bp->vf_id];
 
+	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR start\n", eth_dev->data->port_id);
 	pthread_mutex_lock(&rep_info->vfr_start_lock);
 	if (!rep_info->conduit_valid) {
 		rc = bnxt_get_dflt_vnic_svif(parent_bp, rep_bp);
@@ -386,6 +392,7 @@ int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 
 static int bnxt_tf_vfr_free(struct bnxt_vf_representor *vfr)
 {
+	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR ulp free\n", vfr->dpdk_port_id);
 	return bnxt_ulp_delete_vfr_default_rules(vfr);
 }
 
@@ -401,8 +408,11 @@ static int bnxt_vfr_free(struct bnxt_vf_representor *vfr)
 	}
 
 	parent_bp = vfr->parent_dev->data->dev_private;
-	if (!parent_bp)
+	if (!parent_bp) {
+		PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR already freed\n",
+			    vfr->dpdk_port_id);
 		return 0;
+	}
 
 	/* Check if representor has been already freed in FW */
 	if (!vfr->vfr_tx_cfa_action)
@@ -432,6 +442,8 @@ void bnxt_vf_rep_dev_stop_op(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = &bnxt_dummy_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_dummy_xmit_pkts;
 
+	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR stop\n", eth_dev->data->port_id);
+
 	bnxt_vfr_free(vfr_bp);
 
 	if (eth_dev->data->dev_started)
@@ -442,6 +454,7 @@ void bnxt_vf_rep_dev_stop_op(struct rte_eth_dev *eth_dev)
 
 void bnxt_vf_rep_dev_close_op(struct rte_eth_dev *eth_dev)
 {
+	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR close\n", eth_dev->data->port_id);
 	bnxt_vf_representor_uninit(eth_dev);
 }
 
@@ -720,4 +733,21 @@ int bnxt_vf_rep_stats_reset_op(struct rte_eth_dev *eth_dev)
 		rep_bp->rx_drop_pkts[i] = 0;
 	}
 	return 0;
+}
+
+void bnxt_vf_rep_stop_all(struct bnxt *bp)
+{
+	uint16_t vf_id;
+	struct rte_eth_dev *rep_eth_dev;
+
+	/* No vfrep ports just exit */
+	if (!bp->rep_info)
+		return;
+
+	for (vf_id = 0; vf_id < BNXT_MAX_VF_REPS; vf_id++) {
+		rep_eth_dev = bp->rep_info[vf_id].vfr_eth_dev;
+		if (!rep_eth_dev)
+			continue;
+		bnxt_vf_rep_dev_stop_op(rep_eth_dev);
+	}
 }

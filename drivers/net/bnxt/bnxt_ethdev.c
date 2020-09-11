@@ -1309,6 +1309,9 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
 
+	/* Stop the child representors for this device */
+	bnxt_vf_rep_stop_all(bp);
+
 	/* delete the bnxt ULP port details */
 	bnxt_ulp_port_deinit(bp);
 
@@ -3724,8 +3727,13 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 		struct bnxt_vf_representor *vfr = dev->data->dev_private;
 		bp = vfr->parent_dev->data->dev_private;
 		/* parent is deleted while children are still valid */
-		if (!bp)
+		if (!bp) {
+			PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR Error %d:%d\n",
+				    dev->data->port_id,
+				    filter_type,
+				    filter_op);
 			return -EIO;
+		}
 	}
 
 	ret = is_bnxt_in_error(bp);
@@ -5927,8 +5935,12 @@ static int bnxt_pci_remove_dev_with_reps(struct rte_eth_dev *eth_dev)
 		vf_rep_eth_dev = bp->rep_info[i].vfr_eth_dev;
 		if (!vf_rep_eth_dev)
 			continue;
+		PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR pci remove\n",
+			    vf_rep_eth_dev->data->port_id);
 		rte_eth_dev_destroy(vf_rep_eth_dev, bnxt_vf_representor_uninit);
 	}
+	PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci remove\n",
+		    eth_dev->data->port_id);
 	ret = rte_eth_dev_destroy(eth_dev, bnxt_dev_uninit);
 
 	return ret;
@@ -6055,6 +6067,8 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 				ret = -ENODEV;
 				return ret;
 			}
+			PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR pci probe\n",
+				    backing_eth_dev->data->port_id);
 			backing_bp->rep_info[representor.vf_id].vfr_eth_dev =
 				vf_rep_eth_dev;
 			backing_bp->num_reps++;
@@ -6103,7 +6117,8 @@ static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 		backing_eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
 	}
-
+	PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci probe\n",
+		    backing_eth_dev->data->port_id);
 	/* probe representor ports now */
 	ret = bnxt_rep_port_probe(pci_dev, eth_da, backing_eth_dev);
 
@@ -6122,6 +6137,7 @@ static int bnxt_pci_remove(struct rte_pci_device *pci_dev)
 			   * +ve value will at least help in proper cleanup
 			   */
 
+	PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci remove\n", eth_dev->data->port_id);
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		if (eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
 			return rte_eth_dev_destroy(eth_dev,

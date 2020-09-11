@@ -42,4 +42,5 @@ void bnxt_vf_rep_dev_close_op(struct rte_eth_dev *eth_dev);
 int bnxt_vf_rep_stats_get_op(struct rte_eth_dev *eth_dev,
 			     struct rte_eth_stats *stats);
 int bnxt_vf_rep_stats_reset_op(struct rte_eth_dev *eth_dev);
+void bnxt_vf_rep_stop_all(struct bnxt *bp);
 #endif /* _BNXT_REPS_H_ */

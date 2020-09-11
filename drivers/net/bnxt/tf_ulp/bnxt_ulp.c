@@ -905,7 +905,7 @@ bnxt_ulp_port_init(struct bnxt *bp)
 	}
 	/* create the default rules */
 	bnxt_ulp_create_df_rules(bp);
-	BNXT_TF_DBG(DEBUG, "ULP Port:%d created and initialized\n",
+	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port init\n",
 		    bp->eth_dev->data->port_id);
 	return rc;
 
@@ -940,7 +940,7 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 		return;
 	}
 
-	BNXT_TF_DBG(DEBUG, "ULP Port:%d destroyed\n",
+	BNXT_TF_DBG(DEBUG, "BNXT Port:%d ULP port deinit\n",
 		    bp->eth_dev->data->port_id);
 
 	/* Get the session details  */
