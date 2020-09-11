@@ -1421,7 +1421,7 @@ M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_kvargs/
 F: app/test/test_kvargs.c
 
-RCU - EXPERIMENTAL
+RCU
 M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
 F: lib/librte_rcu/
 F: app/test/test_rcu*
