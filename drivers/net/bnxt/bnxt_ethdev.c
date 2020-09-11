@@ -6014,7 +6014,7 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 		return -EINVAL;
 	}
 
-	if (num_rep > RTE_MAX_ETHPORTS) {
+	if (num_rep >= RTE_MAX_ETHPORTS) {
 		PMD_DRV_LOG(ERR,
 			    "nb_representor_ports = %d > %d MAX ETHPORTS\n",
 			    num_rep, RTE_MAX_ETHPORTS);
@@ -6057,27 +6057,35 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 					 NULL, NULL,
 					 bnxt_vf_representor_init,
 					 &representor);
-
-		if (!ret) {
-			vf_rep_eth_dev = rte_eth_dev_allocated(name);
-			if (!vf_rep_eth_dev) {
-				PMD_DRV_LOG(ERR, "Failed to find the eth_dev"
-					    " for VF-Rep: %s.", name);
-				bnxt_pci_remove_dev_with_reps(backing_eth_dev);
-				ret = -ENODEV;
-				return ret;
-			}
-			PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR pci probe\n",
-				    backing_eth_dev->data->port_id);
-			backing_bp->rep_info[representor.vf_id].vfr_eth_dev =
-				vf_rep_eth_dev;
-			backing_bp->num_reps++;
-		} else {
+		if (ret) {
 			PMD_DRV_LOG(ERR, "failed to create bnxt vf "
 				    "representor %s.", name);
-			bnxt_pci_remove_dev_with_reps(backing_eth_dev);
+			goto err;
 		}
+
+		vf_rep_eth_dev = rte_eth_dev_allocated(name);
+		if (!vf_rep_eth_dev) {
+			PMD_DRV_LOG(ERR, "Failed to find the eth_dev"
+				    " for VF-Rep: %s.", name);
+			ret = -ENODEV;
+			goto err;
+		}
+
+		PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR pci probe\n",
+				backing_eth_dev->data->port_id);
+		backing_bp->rep_info[representor.vf_id].vfr_eth_dev =
+							 vf_rep_eth_dev;
+		backing_bp->num_reps++;
 	}
+
+	return 0;
+
+err:
+	/* If num_rep > 1, then rollback already created
+	 * ports, since we'll be failing the probe anyway
+	 */
+	if (num_rep > 1)
+		bnxt_pci_remove_dev_with_reps(backing_eth_dev);
 
 	return ret;
 }
