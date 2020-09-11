@@ -923,6 +923,69 @@ static int cxgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int cxgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
+				     struct rte_eth_rss_reta_entry64 *reta_conf,
+				     uint16_t reta_size)
+{
+	struct port_info *pi = dev->data->dev_private;
+	struct adapter *adapter = pi->adapter;
+	u16 i, idx, shift, *rss;
+	int ret;
+
+	if (!(adapter->flags & FULL_INIT_DONE))
+		return -ENOMEM;
+
+	if (!reta_size || reta_size > pi->rss_size)
+		return -EINVAL;
+
+	rss = rte_calloc(NULL, pi->rss_size, sizeof(u16), 0);
+	if (!rss)
+		return -ENOMEM;
+
+	rte_memcpy(rss, pi->rss, pi->rss_size * sizeof(u16));
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (!(reta_conf[idx].mask & (1ULL << shift)))
+			continue;
+
+		rss[i] = reta_conf[idx].reta[shift];
+	}
+
+	ret = cxgbe_write_rss(pi, rss);
+	if (!ret)
+		rte_memcpy(pi->rss, rss, pi->rss_size * sizeof(u16));
+
+	rte_free(rss);
+	return ret;
+}
+
+static int cxgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
+				    struct rte_eth_rss_reta_entry64 *reta_conf,
+				    uint16_t reta_size)
+{
+	struct port_info *pi = dev->data->dev_private;
+	struct adapter *adapter = pi->adapter;
+	u16 i, idx, shift;
+
+	if (!(adapter->flags & FULL_INIT_DONE))
+		return -ENOMEM;
+
+	if (!reta_size || reta_size > pi->rss_size)
+		return -EINVAL;
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (!(reta_conf[idx].mask & (1ULL << shift)))
+			continue;
+
+		reta_conf[idx].reta[shift] = pi->rss[i];
+	}
+
+	return 0;
+}
+
 static int cxgbe_get_eeprom_length(struct rte_eth_dev *dev)
 {
 	RTE_SET_USED(dev);
@@ -1142,6 +1205,8 @@ static const struct eth_dev_ops cxgbe_eth_dev_ops = {
 	.rss_hash_update	= cxgbe_dev_rss_hash_update,
 	.rss_hash_conf_get	= cxgbe_dev_rss_hash_conf_get,
 	.mac_addr_set		= cxgbe_mac_addr_set,
+	.reta_update            = cxgbe_dev_rss_reta_update,
+	.reta_query             = cxgbe_dev_rss_reta_query,
 };
 
 /*
