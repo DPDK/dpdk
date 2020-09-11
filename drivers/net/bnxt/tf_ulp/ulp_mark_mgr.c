@@ -194,18 +194,12 @@ ulp_mark_db_mark_get(struct bnxt_ulp_context *ctxt,
 		    ULP_MARK_DB_ENTRY_IS_INVALID(&mtbl->gfid_tbl[idx]))
 			return -EINVAL;
 
-		BNXT_TF_DBG(DEBUG, "Get GFID[0x%0x] = 0x%0x\n",
-			    idx, mtbl->gfid_tbl[idx].mark_id);
-
 		*vfr_flag = ULP_MARK_DB_ENTRY_IS_VFR_ID(&mtbl->gfid_tbl[idx]);
 		*mark = mtbl->gfid_tbl[idx].mark_id;
 	} else {
 		if (idx >= mtbl->lfid_num_entries ||
 		    ULP_MARK_DB_ENTRY_IS_INVALID(&mtbl->lfid_tbl[idx]))
 			return -EINVAL;
-
-		BNXT_TF_DBG(DEBUG, "Get LFID[0x%0x] = 0x%0x\n",
-			    idx, mtbl->lfid_tbl[idx].mark_id);
 
 		*vfr_flag = ULP_MARK_DB_ENTRY_IS_VFR_ID(&mtbl->lfid_tbl[idx]);
 		*mark = mtbl->lfid_tbl[idx].mark_id;

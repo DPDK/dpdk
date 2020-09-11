@@ -1343,15 +1343,10 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 
 	HWRM_UNLOCK();
 
-	PMD_DRV_LOG(DEBUG, "Link Speed %d\n", link_info->link_speed);
-	PMD_DRV_LOG(DEBUG, "Auto Mode %d\n", link_info->auto_mode);
-	PMD_DRV_LOG(DEBUG, "Support Speeds %x\n", link_info->support_speeds);
-	PMD_DRV_LOG(DEBUG, "Auto Link Speed %x\n", link_info->auto_link_speed);
-	PMD_DRV_LOG(DEBUG, "Auto Link Speed Mask %x\n",
-		    link_info->auto_link_speed_mask);
-	PMD_DRV_LOG(DEBUG, "Forced Link Speed %x\n",
-		    link_info->force_link_speed);
-
+	PMD_DRV_LOG(DEBUG, "Link Speed:%d,Auto:%d:%x:%x,Support:%x,Force:%x\n",
+		    link_info->link_speed, link_info->auto_mode,
+		    link_info->auto_link_speed, link_info->auto_link_speed_mask,
+		    link_info->support_speeds, link_info->force_link_speed);
 	return rc;
 }
 
