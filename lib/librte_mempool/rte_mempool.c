@@ -1275,6 +1275,7 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 
 	fprintf(f, "mempool <%s>@%p\n", mp->name, mp);
 	fprintf(f, "  flags=%x\n", mp->flags);
+	fprintf(f, "  socket_id=%d\n", mp->socket_id);
 	fprintf(f, "  pool=%p\n", mp->pool_data);
 	fprintf(f, "  iova=0x%" PRIx64 "\n", mp->mz->iova);
 	fprintf(f, "  nb_mem_chunks=%u\n", mp->nb_mem_chunks);
