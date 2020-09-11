@@ -81,6 +81,15 @@ void bnxt_free_all_filters(struct bnxt *bp)
 	struct bnxt_filter_info *filter, *temp_filter;
 	unsigned int i;
 
+	for (i = 0; i < bp->pf->max_vfs; i++) {
+		STAILQ_FOREACH(filter, &bp->pf->vf_info[i].filter, next) {
+			bnxt_hwrm_clear_l2_filter(bp, filter);
+		}
+	}
+
+	if (bp->vnic_info == NULL)
+		return;
+
 	for (i = 0; i < bp->nr_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		filter = STAILQ_FIRST(&vnic->filter);
@@ -95,11 +104,6 @@ void bnxt_free_all_filters(struct bnxt *bp)
 		STAILQ_INIT(&vnic->filter);
 	}
 
-	for (i = 0; i < bp->pf->max_vfs; i++) {
-		STAILQ_FOREACH(filter, &bp->pf->vf_info[i].filter, next) {
-			bnxt_hwrm_clear_l2_filter(bp, filter);
-		}
-	}
 }
 
 void bnxt_free_filter_mem(struct bnxt *bp)

@@ -78,6 +78,9 @@ void bnxt_free_all_vnics(struct bnxt *bp)
 	struct bnxt_vnic_info *vnic;
 	unsigned int i;
 
+	if (bp->vnic_info == NULL)
+		return;
+
 	for (i = 0; i < bp->max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		STAILQ_INSERT_TAIL(&bp->free_vnic_list, vnic, next);
