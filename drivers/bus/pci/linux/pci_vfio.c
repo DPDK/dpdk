@@ -1015,7 +1015,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 	}
 
 	TAILQ_REMOVE(vfio_res_list, vfio_res, next);
-
+	rte_free(vfio_res);
 	return 0;
 }
 
