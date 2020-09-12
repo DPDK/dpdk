@@ -6449,6 +6449,7 @@ enum i40e_status_code i40e_enable_eee(struct i40e_hw *hw, bool enable)
 
 	/* Cache current configuration */
 	config.phy_type = abilities.phy_type;
+	config.phy_type_ext = abilities.phy_type_ext;
 	config.link_speed = abilities.link_speed;
 	config.abilities = abilities.abilities |
 			   I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
