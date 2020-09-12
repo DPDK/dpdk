@@ -7098,15 +7098,23 @@ enum i40e_status_code i40e_get_phy_lpi_status(struct i40e_hw *hw,
 					      struct i40e_hw_port_stats *stat)
 {
 	enum i40e_status_code ret = I40E_SUCCESS;
+	bool eee_mrvl_phy;
+	bool eee_bcm_phy;
 	u32 val;
 
 	stat->rx_lpi_status = 0;
 	stat->tx_lpi_status = 0;
 
-	if ((hw->device_id == I40E_DEV_ID_10G_BASE_T_BC ||
-	     hw->device_id == I40E_DEV_ID_5G_BASE_T_BC) &&
-	    (hw->phy.link_info.link_speed == I40E_LINK_SPEED_2_5GB ||
-	     hw->phy.link_info.link_speed == I40E_LINK_SPEED_5GB)) {
+	eee_bcm_phy =
+		(hw->device_id == I40E_DEV_ID_10G_BASE_T_BC ||
+		 hw->device_id == I40E_DEV_ID_5G_BASE_T_BC) &&
+		(hw->phy.link_info.link_speed == I40E_LINK_SPEED_2_5GB ||
+		 hw->phy.link_info.link_speed == I40E_LINK_SPEED_5GB);
+	eee_mrvl_phy =
+		hw->device_id == I40E_DEV_ID_1G_BASE_T_X722;
+
+	if (eee_bcm_phy || eee_mrvl_phy) {
+		/* read Clause 45 PCS Status 1 register */
 		ret = i40e_aq_get_phy_register(hw,
 					       I40E_AQ_PHY_REG_ACCESS_EXTERNAL,
 					       I40E_BCM_PHY_PCS_STATUS1_PAGE,
