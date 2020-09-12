@@ -240,6 +240,10 @@ enum i40e_status_code i40e_aq_write_nvm_config(struct i40e_hw *hw,
 				u8 cmd_flags, void *data, u16 buf_size,
 				u16 element_count,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code
+i40e_aq_min_rollback_rev_update(struct i40e_hw *hw, u8 mode, u8 module,
+				u32 min_rrev,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_oem_post_update(struct i40e_hw *hw,
 				void *buff, u16 buff_size,
 				struct i40e_asq_cmd_details *cmd_details);

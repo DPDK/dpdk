@@ -241,6 +241,7 @@ enum i40e_admin_queue_opc {
 	i40e_aqc_opc_nvm_config_read		= 0x0704,
 	i40e_aqc_opc_nvm_config_write		= 0x0705,
 	i40e_aqc_opc_nvm_update_in_process	= 0x0706,
+	i40e_aqc_opc_rollback_revision_update	= 0x0707,
 	i40e_aqc_opc_oem_post_update		= 0x0720,
 	i40e_aqc_opc_thermal_sensor		= 0x0721,
 
@@ -2418,6 +2419,23 @@ struct i40e_aqc_nvm_config_data_immediate_field {
 };
 
 I40E_CHECK_STRUCT_LEN(0xc, i40e_aqc_nvm_config_data_immediate_field);
+
+/* Minimal Rollback Revision Update (direct 0x0707) */
+struct i40e_aqc_rollback_revision_update {
+	u8	optin_mode; /* bool */
+#define I40E_AQ_RREV_OPTION_MODE			0x01
+	u8	module_selected;
+#define I40E_AQ_RREV_MODULE_PCIE_ANALOG		0
+#define I40E_AQ_RREV_MODULE_PHY_ANALOG		1
+#define I40E_AQ_RREV_MODULE_OPTION_ROM		2
+#define I40E_AQ_RREV_MODULE_EMP_IMAGE		3
+#define I40E_AQ_RREV_MODULE_PE_IMAGE		4
+	u8	reserved1[2];
+	u32	min_rrev;
+	u8	reserved2[8];
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_rollback_revision_update);
 
 /* OEM Post Update (indirect 0x0720)
  * no command data struct used

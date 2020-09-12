@@ -3718,6 +3718,35 @@ i40e_aq_nvm_update_in_process(struct i40e_hw *hw,
 }
 
 /**
+ * i40e_aq_min_rollback_rev_update - triggers an ow after update
+ * @hw: pointer to the hw struct
+ * @mode: opt-in mode, 1b for single module update, 0b for bulk update
+ * @module: module to be updated. Ignored if mode is 0b
+ * @min_rrev: value of the new minimal version. Ignored if mode is 0b
+ * @cmd_details: pointer to command details structure or NULL
+ **/
+enum i40e_status_code
+i40e_aq_min_rollback_rev_update(struct i40e_hw *hw, u8 mode, u8 module,
+				u32 min_rrev,
+				struct i40e_asq_cmd_details *cmd_details)
+{
+	struct i40e_aq_desc desc;
+	struct i40e_aqc_rollback_revision_update *cmd =
+		(struct i40e_aqc_rollback_revision_update *)&desc.params.raw;
+	enum i40e_status_code status;
+
+	i40e_fill_default_direct_cmd_desc(&desc,
+		i40e_aqc_opc_rollback_revision_update);
+	cmd->optin_mode = mode;
+	cmd->module_selected = module;
+	cmd->min_rrev = min_rrev;
+
+	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
+
+	return status;
+}
+
+/**
  * i40e_aq_oem_post_update - triggers an OEM specific flow after update
  * @hw: pointer to the hw struct
  * @buff: buffer for result
