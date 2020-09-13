@@ -1272,7 +1272,7 @@ err_secondary:
 			goto error;
 		}
 	}
-	if (config->devx && config->dv_flow_en) {
+	if (config->devx && config->dv_flow_en && config->dest_tir) {
 		priv->obj_ops = devx_obj_ops;
 		priv->obj_ops.drop_action_create =
 						ibv_obj_ops.drop_action_create;
