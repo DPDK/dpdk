@@ -562,7 +562,7 @@ mlx5_rx_queue_stop(struct rte_eth_dev *dev, uint16_t idx)
 	 * The routine pointer depends on the process
 	 * type, should perform check there.
 	 */
-	if (pkt_burst == mlx5_rx_burst) {
+	if (pkt_burst == mlx5_rx_burst_vec) {
 		DRV_LOG(ERR, "Rx queue stop is not supported "
 			"for vectorized Rx");
 		rte_errno = EINVAL;
