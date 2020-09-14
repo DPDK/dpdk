@@ -97,6 +97,11 @@ API Changes
   The flag name ``MEMPOOL_F_NO_PHYS_CONTIG`` is removed,
   while the aliased flag ``MEMPOOL_F_NO_IOVA_CONTIG`` is kept.
 
+* mbuf: Removed the functions ``rte_mbuf_data_dma_addr*``
+  and the macros ``rte_pktmbuf_mtophys*``.
+  The same functionality is still available with the functions and macros
+  having ``iova`` in their names instead of ``dma_addr`` or ``mtophys``.
+
 * mbuf: Removed the unioned field ``refcnt_atomic`` from
   the structures ``rte_mbuf`` and ``rte_mbuf_ext_shared_info``.
   The field ``refcnt`` is remaining from the old unions.

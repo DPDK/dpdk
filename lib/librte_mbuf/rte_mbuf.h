@@ -151,13 +151,6 @@ rte_mbuf_data_iova(const struct rte_mbuf *mb)
 	return mb->buf_iova + mb->data_off;
 }
 
-__rte_deprecated
-static inline phys_addr_t
-rte_mbuf_data_dma_addr(const struct rte_mbuf *mb)
-{
-	return rte_mbuf_data_iova(mb);
-}
-
 /**
  * Return the default IO address of the beginning of the mbuf data
  *
@@ -174,13 +167,6 @@ static inline rte_iova_t
 rte_mbuf_data_iova_default(const struct rte_mbuf *mb)
 {
 	return mb->buf_iova + RTE_PKTMBUF_HEADROOM;
-}
-
-__rte_deprecated
-static inline phys_addr_t
-rte_mbuf_data_dma_addr_default(const struct rte_mbuf *mb)
-{
-	return rte_mbuf_data_iova_default(mb);
 }
 
 /**
@@ -1536,13 +1522,6 @@ static inline struct rte_mbuf *rte_pktmbuf_lastseg(struct rte_mbuf *m)
 		m = m->next;
 	return m;
 }
-
-/* deprecated */
-#define rte_pktmbuf_mtophys_offset(m, o) \
-	rte_pktmbuf_iova_offset(m, o)
-
-/* deprecated */
-#define rte_pktmbuf_mtophys(m) rte_pktmbuf_iova(m)
 
 /**
  * A macro that returns the length of the packet.

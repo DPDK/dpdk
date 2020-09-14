@@ -531,7 +531,7 @@ prepare_auth_op(void)
 
 	sym->auth.data.length = vec.pt.len;
 	sym->auth.digest.data = pt + vec.pt.len;
-	sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(
 			env.mbuf, vec.pt.len);
 
 	memcpy(pt, vec.pt.val, vec.pt.len);
@@ -584,7 +584,7 @@ prepare_aead_op(void)
 		memcpy(pt, vec.pt.val, vec.pt.len);
 		sym->aead.data.length = vec.pt.len;
 		sym->aead.digest.data = pt + vec.pt.len;
-		sym->aead.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+		sym->aead.digest.phys_addr = rte_pktmbuf_iova_offset(
 				env.mbuf, vec.pt.len);
 	} else {
 		uint8_t *ct;

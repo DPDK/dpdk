@@ -950,14 +950,14 @@ fpga_dma_desc_te_fill(struct rte_bbdev_enc_op *op,
 	desc->num_null = op->ldpc_enc.n_filler;
 	/* Set inbound data buffer address */
 	desc->in_addr_hi = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(input, in_offset) >> 32);
+			rte_pktmbuf_iova_offset(input, in_offset) >> 32);
 	desc->in_addr_lw = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(input, in_offset));
+			rte_pktmbuf_iova_offset(input, in_offset));
 
 	desc->out_addr_hi = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(output, out_offset) >> 32);
+			rte_pktmbuf_iova_offset(output, out_offset) >> 32);
 	desc->out_addr_lw = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(output, out_offset));
+			rte_pktmbuf_iova_offset(output, out_offset));
 	/* Save software context needed for dequeue */
 	desc->op_addr = op;
 	/* Set total number of CBs in an op */
@@ -998,9 +998,9 @@ fpga_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 	desc->error = 0;
 	/* Set inbound data buffer address */
 	desc->in_addr_hi = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(input, in_offset) >> 32);
+			rte_pktmbuf_iova_offset(input, in_offset) >> 32);
 	desc->in_addr_lw = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(input, in_offset));
+			rte_pktmbuf_iova_offset(input, in_offset));
 	desc->rm_e = op->ldpc_dec.cb_params.e;
 	desc->harq_input_length = harq_in_length;
 	desc->et_dis = !check_bit(op->ldpc_dec.op_flags,
@@ -1021,9 +1021,9 @@ fpga_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 	desc->max_iter = op->ldpc_dec.iter_max;
 	desc->qm_idx = op->ldpc_dec.q_m / 2;
 	desc->out_addr_hi = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(output, out_offset) >> 32);
+			rte_pktmbuf_iova_offset(output, out_offset) >> 32);
 	desc->out_addr_lw = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(output, out_offset));
+			rte_pktmbuf_iova_offset(output, out_offset));
 	/* Save software context needed for dequeue */
 	desc->op_addr = op;
 	/* Set total number of CBs in an op */

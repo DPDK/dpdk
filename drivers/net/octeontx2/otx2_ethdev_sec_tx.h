@@ -87,7 +87,7 @@ otx2_sec_event_tx(struct otx2_ssogws *ws, struct rte_event *ev,
 	 */
 	rte_pktmbuf_append(m, extend_tail);
 	data = rte_pktmbuf_prepend(m, extend_head);
-	data_addr = rte_pktmbuf_mtophys(m);
+	data_addr = rte_pktmbuf_iova(m);
 
 	/*
 	 * Move the Ethernet header, to insert otx2_ipsec_fp_out_hdr prior

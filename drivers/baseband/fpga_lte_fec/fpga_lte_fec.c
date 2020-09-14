@@ -1251,14 +1251,14 @@ fpga_dma_desc_te_fill(struct rte_bbdev_enc_op *op,
 	desc->offset = desc_offset;
 	/* Set inbound data buffer address */
 	desc->in_addr_hi = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(input, in_offset) >> 32);
+			rte_pktmbuf_iova_offset(input, in_offset) >> 32);
 	desc->in_addr_lw = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(input, in_offset));
+			rte_pktmbuf_iova_offset(input, in_offset));
 
 	desc->out_addr_hi = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(output, out_offset) >> 32);
+			rte_pktmbuf_iova_offset(output, out_offset) >> 32);
 	desc->out_addr_lw = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(output, out_offset));
+			rte_pktmbuf_iova_offset(output, out_offset));
 
 	/* Save software context needed for dequeue */
 	desc->op_addr = op;
@@ -1302,9 +1302,9 @@ fpga_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	desc->done = 0;
 	/* Set inbound data buffer address */
 	desc->in_addr_hi = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(input, in_offset) >> 32);
+			rte_pktmbuf_iova_offset(input, in_offset) >> 32);
 	desc->in_addr_lw = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(input, in_offset));
+			rte_pktmbuf_iova_offset(input, in_offset));
 	desc->in_len = in_length;
 	desc->k = k;
 	desc->crc_type = !check_bit(op->turbo_dec.op_flags,
@@ -1316,9 +1316,9 @@ fpga_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	desc->max_iter = op->turbo_dec.iter_max * 2;
 	desc->offset = desc_offset;
 	desc->out_addr_hi = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(output, out_offset) >> 32);
+			rte_pktmbuf_iova_offset(output, out_offset) >> 32);
 	desc->out_addr_lw = (uint32_t)(
-			rte_pktmbuf_mtophys_offset(output, out_offset));
+			rte_pktmbuf_iova_offset(output, out_offset));
 
 	/* Save software context needed for dequeue */
 	desc->op_addr = op;

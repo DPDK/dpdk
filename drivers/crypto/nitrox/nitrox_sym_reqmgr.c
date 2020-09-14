@@ -269,7 +269,7 @@ extract_cipher_auth_digest(struct nitrox_softreq *sr,
 	       op->sym->auth.data.length + digest->len))
 		return -EINVAL;
 
-	digest->iova = rte_pktmbuf_mtophys_offset(mdst,
+	digest->iova = rte_pktmbuf_iova_offset(mdst,
 					op->sym->auth.data.offset +
 					op->sym->auth.data.length);
 	digest->virt = rte_pktmbuf_mtod_offset(mdst, uint8_t *,
@@ -318,7 +318,7 @@ create_sglist_from_mbuf(struct nitrox_sgtable *sgtbl, struct rte_mbuf *mbuf,
 	if (datalen <= mlen)
 		mlen = datalen;
 	sglist[cnt].len = mlen;
-	sglist[cnt].iova = rte_pktmbuf_mtophys_offset(m, off);
+	sglist[cnt].iova = rte_pktmbuf_iova_offset(m, off);
 	sglist[cnt].virt = rte_pktmbuf_mtod_offset(m, uint8_t *, off);
 	sgtbl->total_bytes += mlen;
 	cnt++;
@@ -327,7 +327,7 @@ create_sglist_from_mbuf(struct nitrox_sgtable *sgtbl, struct rte_mbuf *mbuf,
 		mlen = rte_pktmbuf_data_len(m) < datalen ?
 			rte_pktmbuf_data_len(m) : datalen;
 		sglist[cnt].len = mlen;
-		sglist[cnt].iova = rte_pktmbuf_mtophys(m);
+		sglist[cnt].iova = rte_pktmbuf_iova(m);
 		sglist[cnt].virt = rte_pktmbuf_mtod(m, uint8_t *);
 		sgtbl->total_bytes += mlen;
 		cnt++;

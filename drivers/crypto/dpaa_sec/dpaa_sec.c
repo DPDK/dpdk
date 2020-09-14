@@ -748,7 +748,7 @@ build_auth_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		sg++;
 	}
 
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->offset = data_offset;
 
 	if (data_len <= (mbuf->data_len - data_offset)) {
@@ -761,7 +761,7 @@ build_auth_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		       (mbuf = mbuf->next)) {
 			cpu_to_hw_sg(sg);
 			sg++;
-			qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+			qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 			if (data_len > mbuf->data_len)
 				sg->length = mbuf->data_len;
 			else
@@ -866,7 +866,7 @@ build_auth_only(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		sg++;
 	}
 
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->offset = data_offset;
 	sg->length = data_len;
 
@@ -946,7 +946,7 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* 1st seg */
 	sg = &cf->sg[2];
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->length = mbuf->data_len - data_offset;
 	sg->offset = data_offset;
 
@@ -955,7 +955,7 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	while (mbuf) {
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 		sg->length = mbuf->data_len;
 		mbuf = mbuf->next;
 	}
@@ -980,7 +980,7 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* 1st seg */
 	sg++;
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->length = mbuf->data_len - data_offset;
 	sg->offset = data_offset;
 
@@ -989,7 +989,7 @@ build_cipher_only_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	while (mbuf) {
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 		sg->length = mbuf->data_len;
 		mbuf = mbuf->next;
 	}
@@ -1121,7 +1121,7 @@ build_cipher_auth_gcm_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	cpu_to_hw_sg(out_sg);
 
 	/* 1st seg */
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->length = mbuf->data_len - sym->aead.data.offset;
 	sg->offset = sym->aead.data.offset;
 
@@ -1130,7 +1130,7 @@ build_cipher_auth_gcm_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	while (mbuf) {
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 		sg->length = mbuf->data_len;
 		mbuf = mbuf->next;
 	}
@@ -1178,7 +1178,7 @@ build_cipher_auth_gcm_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* 3rd seg */
 	sg++;
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->length = mbuf->data_len - sym->aead.data.offset;
 	sg->offset = sym->aead.data.offset;
 
@@ -1187,7 +1187,7 @@ build_cipher_auth_gcm_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	while (mbuf) {
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 		sg->length = mbuf->data_len;
 		mbuf = mbuf->next;
 	}
@@ -1367,7 +1367,7 @@ build_cipher_auth_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	cpu_to_hw_sg(out_sg);
 
 	/* 1st seg */
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->length = mbuf->data_len - sym->auth.data.offset;
 	sg->offset = sym->auth.data.offset;
 
@@ -1376,7 +1376,7 @@ build_cipher_auth_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	while (mbuf) {
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 		sg->length = mbuf->data_len;
 		mbuf = mbuf->next;
 	}
@@ -1415,7 +1415,7 @@ build_cipher_auth_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* 2nd seg */
 	sg++;
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->length = mbuf->data_len - sym->auth.data.offset;
 	sg->offset = sym->auth.data.offset;
 
@@ -1424,7 +1424,7 @@ build_cipher_auth_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	while (mbuf) {
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 		sg->length = mbuf->data_len;
 		mbuf = mbuf->next;
 	}
@@ -1555,10 +1555,10 @@ build_proto(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	cf = &ctx->job;
 	ctx->op = op;
 
-	src_start_addr = rte_pktmbuf_mtophys(sym->m_src);
+	src_start_addr = rte_pktmbuf_iova(sym->m_src);
 
 	if (sym->m_dst)
-		dst_start_addr = rte_pktmbuf_mtophys(sym->m_dst);
+		dst_start_addr = rte_pktmbuf_iova(sym->m_dst);
 	else
 		dst_start_addr = src_start_addr;
 
@@ -1614,7 +1614,7 @@ build_proto_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 
 	/* 1st seg */
 	sg = &cf->sg[2];
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->offset = 0;
 
 	/* Successive segs */
@@ -1624,7 +1624,7 @@ build_proto_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 		mbuf = mbuf->next;
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 		sg->offset = 0;
 	}
 	sg->length = mbuf->buf_len - mbuf->data_off;
@@ -1646,7 +1646,7 @@ build_proto_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	qm_sg_entry_set64(in_sg, rte_dpaa_mem_vtop(sg));
 
 	/* 1st seg */
-	qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+	qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 	sg->length = mbuf->data_len;
 	sg->offset = 0;
 
@@ -1655,7 +1655,7 @@ build_proto_sg(struct rte_crypto_op *op, dpaa_sec_session *ses)
 	while (mbuf) {
 		cpu_to_hw_sg(sg);
 		sg++;
-		qm_sg_entry_set64(sg, rte_pktmbuf_mtophys(mbuf));
+		qm_sg_entry_set64(sg, rte_pktmbuf_iova(mbuf));
 		sg->length = mbuf->data_len;
 		sg->offset = 0;
 		in_len += sg->length;

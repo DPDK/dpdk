@@ -1571,7 +1571,7 @@ ccp_perform_hmac(struct rte_crypto_op *op,
 					 ccp_cryptodev_driver_id);
 	addr = session->auth.pre_compute;
 
-	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->auth.data.offset);
 	append_ptr = (void *)rte_pktmbuf_append(op->sym->m_src,
 						session->auth.ctx_len);
@@ -1743,7 +1743,7 @@ ccp_perform_sha(struct rte_crypto_op *op,
 					 op->sym->session,
 					ccp_cryptodev_driver_id);
 
-	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->auth.data.offset);
 
 	append_ptr = (void *)rte_pktmbuf_append(op->sym->m_src,
@@ -1832,7 +1832,7 @@ ccp_perform_sha3_hmac(struct rte_crypto_op *op,
 					 op->sym->session,
 					ccp_cryptodev_driver_id);
 
-	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->auth.data.offset);
 	append_ptr = (uint8_t *)rte_pktmbuf_append(op->sym->m_src,
 						session->auth.ctx_len);
@@ -1972,7 +1972,7 @@ ccp_perform_sha3(struct rte_crypto_op *op,
 					 op->sym->session,
 					ccp_cryptodev_driver_id);
 
-	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->auth.data.offset);
 	append_ptr = (uint8_t *)rte_pktmbuf_append(op->sym->m_src,
 						session->auth.ctx_len);
@@ -2041,7 +2041,7 @@ ccp_perform_aes_cmac(struct rte_crypto_op *op,
 					ccp_cryptodev_driver_id);
 	key_addr = rte_mem_virt2phy(session->auth.key_ccp);
 
-	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->auth.data.offset);
 	append_ptr = (uint8_t *)rte_pktmbuf_append(op->sym->m_src,
 						session->auth.ctx_len);
@@ -2221,10 +2221,10 @@ ccp_perform_aes(struct rte_crypto_op *op,
 
 	desc = &cmd_q->qbase_desc[cmd_q->qidx];
 
-	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->cipher.data.offset);
 	if (likely(op->sym->m_dst != NULL))
-		dest_addr = rte_pktmbuf_mtophys_offset(op->sym->m_dst,
+		dest_addr = rte_pktmbuf_iova_offset(op->sym->m_dst,
 						op->sym->cipher.data.offset);
 	else
 		dest_addr = src_addr;
@@ -2303,11 +2303,11 @@ ccp_perform_3des(struct rte_crypto_op *op,
 		return -ENOTSUP;
 	}
 
-	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->cipher.data.offset);
 	if (unlikely(op->sym->m_dst != NULL))
 		dest_addr =
-			rte_pktmbuf_mtophys_offset(op->sym->m_dst,
+			rte_pktmbuf_iova_offset(op->sym->m_dst,
 						   op->sym->cipher.data.offset);
 	else
 		dest_addr = src_addr;
@@ -2385,10 +2385,10 @@ ccp_perform_aes_gcm(struct rte_crypto_op *op, struct ccp_queue *cmd_q)
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *, session->iv.offset);
 	key_addr = session->cipher.key_phys;
 
-	src_addr = rte_pktmbuf_mtophys_offset(op->sym->m_src,
+	src_addr = rte_pktmbuf_iova_offset(op->sym->m_src,
 					      op->sym->aead.data.offset);
 	if (unlikely(op->sym->m_dst != NULL))
-		dest_addr = rte_pktmbuf_mtophys_offset(op->sym->m_dst,
+		dest_addr = rte_pktmbuf_iova_offset(op->sym->m_dst,
 						op->sym->aead.data.offset);
 	else
 		dest_addr = src_addr;

@@ -305,9 +305,9 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 				comp_req->comp_pars.out_buffer_sz;
 
 		comp_req->comn_mid.src_data_addr =
-		    rte_pktmbuf_mtophys_offset(op->m_src, op->src.offset);
+		    rte_pktmbuf_iova_offset(op->m_src, op->src.offset);
 		comp_req->comn_mid.dest_data_addr =
-		    rte_pktmbuf_mtophys_offset(op->m_dst, op->dst.offset);
+		    rte_pktmbuf_iova_offset(op->m_dst, op->dst.offset);
 	}
 
 	if (unlikely(rte_pktmbuf_pkt_len(op->m_dst) < QAT_MIN_OUT_BUF_SIZE)) {

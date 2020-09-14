@@ -95,7 +95,7 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		axgbe_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
-	rxq->ring_phys_addr = (uint64_t)dma->phys_addr;
+	rxq->ring_phys_addr = (uint64_t)dma->iova;
 	rxq->desc = (volatile union axgbe_rx_desc *)dma->addr;
 	memset((void *)rxq->desc, 0, size);
 	/* Allocate software ring */
@@ -530,7 +530,7 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		return -ENOMEM;
 	}
 	memset(tz->addr, 0, tsize);
-	txq->ring_phys_addr = (uint64_t)tz->phys_addr;
+	txq->ring_phys_addr = (uint64_t)tz->iova;
 	txq->desc = tz->addr;
 	txq->queue_id = queue_idx;
 	txq->port_id = dev->data->port_id;

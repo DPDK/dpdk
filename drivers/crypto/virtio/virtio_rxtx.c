@@ -284,18 +284,18 @@ virtqueue_crypto_sym_enqueue_xmit(
 	}
 
 	/* indirect vring: src data */
-	desc[idx].addr = rte_pktmbuf_mtophys_offset(sym_op->m_src, 0);
+	desc[idx].addr = rte_pktmbuf_iova_offset(sym_op->m_src, 0);
 	desc[idx].len = (sym_op->cipher.data.offset
 		+ sym_op->cipher.data.length);
 	desc[idx++].flags = VRING_DESC_F_NEXT;
 
 	/* indirect vring: dst data */
 	if (sym_op->m_dst) {
-		desc[idx].addr = rte_pktmbuf_mtophys_offset(sym_op->m_dst, 0);
+		desc[idx].addr = rte_pktmbuf_iova_offset(sym_op->m_dst, 0);
 		desc[idx].len = (sym_op->cipher.data.offset
 			+ sym_op->cipher.data.length);
 	} else {
-		desc[idx].addr = rte_pktmbuf_mtophys_offset(sym_op->m_src, 0);
+		desc[idx].addr = rte_pktmbuf_iova_offset(sym_op->m_src, 0);
 		desc[idx].len = (sym_op->cipher.data.offset
 			+ sym_op->cipher.data.length);
 	}
