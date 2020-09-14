@@ -2583,25 +2583,52 @@ static int hinic_set_default_dcb_feature(struct hinic_nic_dev *nic_dev)
 					up_pgid, up_bw, up_strict);
 }
 
+static int hinic_pf_get_default_cos(struct hinic_hwdev *hwdev, u8 *cos_id)
+{
+	u8 default_cos = 0;
+	u8 valid_cos_bitmap;
+	u8 i;
+
+	valid_cos_bitmap = hwdev->cfg_mgmt->svc_cap.valid_cos_bitmap;
+	if (!valid_cos_bitmap) {
+		PMD_DRV_LOG(ERR, "PF has none cos to support\n");
+		return -EFAULT;
+	}
+
+	for (i = 0; i < NR_MAX_COS; i++) {
+		if (valid_cos_bitmap & BIT(i))
+			default_cos = i; /* Find max cos id as default cos */
+	}
+
+	*cos_id = default_cos;
+
+	return 0;
+}
+
 static int hinic_init_default_cos(struct hinic_nic_dev *nic_dev)
 {
 	u8 cos_id = 0;
 	int err;
 
 	if (!HINIC_IS_VF(nic_dev->hwdev)) {
-		nic_dev->default_cos =
-				(hinic_global_func_id(nic_dev->hwdev) +
-						DEFAULT_BASE_COS) % NR_MAX_COS;
+		err = hinic_pf_get_default_cos(nic_dev->hwdev, &cos_id);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Get PF default cos failed, err: %d",
+				    err);
+			return HINIC_ERROR;
+		}
 	} else {
 		err = hinic_vf_get_default_cos(nic_dev->hwdev, &cos_id);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Get VF default cos failed, err: %d",
-					err);
+				    err);
 			return HINIC_ERROR;
 		}
-
-		nic_dev->default_cos = cos_id;
 	}
+
+	nic_dev->default_cos = cos_id;
+
+	PMD_DRV_LOG(INFO, "Default cos %d", nic_dev->default_cos);
 
 	return 0;
 }

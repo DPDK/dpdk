@@ -54,6 +54,7 @@ struct service_cap {
 	u8 ep_id;
 	u8 intr_chip_en;
 	u8 max_cos_id;	/* PF/VF's max cos id */
+	u8 valid_cos_bitmap;
 	u8 er_id;	/* PF/VF's ER */
 	u8 port_id;	/* PF/VF's physical port */
 	u8 max_vf;	/* max VF number that PF supported */
