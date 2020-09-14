@@ -362,6 +362,9 @@ service_lcore_attr_get(void)
 			"Service core add did not return zero");
 	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(id, slcore_id, 1),
 			"Enabling valid service and core failed");
+	/* Ensure service is not active before starting */
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_may_be_active(slcore_id),
+			"Not-active service core reported as active");
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_start(slcore_id),
 			"Starting service core failed");
 
@@ -382,7 +385,23 @@ service_lcore_attr_get(void)
 			lcore_attr_id, &lcore_attr_value),
 			"Invalid lcore attr didn't return -EINVAL");
 
-	rte_service_lcore_stop(slcore_id);
+	/* Ensure service is active */
+	TEST_ASSERT_EQUAL(1, rte_service_lcore_may_be_active(slcore_id),
+			"Active service core reported as not-active");
+
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(id, slcore_id, 0),
+			"Disabling valid service and core failed");
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_stop(slcore_id),
+			"Failed to stop service lcore");
+
+	/* Wait until service lcore not active, or for 100x SERVICE_DELAY */
+	int i;
+	for (i = 0; rte_service_lcore_may_be_active(slcore_id) == 1 &&
+			i < 100; i++)
+		rte_delay_ms(SERVICE_DELAY);
+
+	TEST_ASSERT_EQUAL(0, rte_service_lcore_may_be_active(slcore_id),
+			  "Service lcore not stopped after waiting.");
 
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_attr_reset_all(slcore_id),
 			  "Valid lcore_attr_reset_all() didn't return success");
