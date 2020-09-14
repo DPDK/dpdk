@@ -91,6 +91,12 @@ API Changes
   the structures ``rte_memseg`` and ``rte_memzone``.
   The field ``iova`` is remaining from the old unions.
 
+* mempool: Removed the unioned fields ``phys_addr`` and ``physaddr`` from
+  the structures ``rte_mempool_memhdr`` and ``rte_mempool_objhdr``.
+  The field ``iova`` is remaining from the old unions.
+  The flag name ``MEMPOOL_F_NO_PHYS_CONTIG`` is removed,
+  while the aliased flag ``MEMPOOL_F_NO_IOVA_CONTIG`` is kept.
+
 * mbuf: Removed the unioned field ``refcnt_atomic`` from
   the structures ``rte_mbuf`` and ``rte_mbuf_ext_shared_info``.
   The field ``refcnt`` is remaining from the old unions.

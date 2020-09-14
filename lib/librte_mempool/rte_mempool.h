@@ -138,11 +138,7 @@ struct rte_mempool_objsz {
 struct rte_mempool_objhdr {
 	STAILQ_ENTRY(rte_mempool_objhdr) next; /**< Next in list. */
 	struct rte_mempool *mp;          /**< The mempool owning the object. */
-	RTE_STD_C11
-	union {
-		rte_iova_t iova;         /**< IO address of the object. */
-		phys_addr_t physaddr;    /**< deprecated - Physical address of the object. */
-	};
+	rte_iova_t iova;                 /**< IO address of the object. */
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	uint64_t cookie;                 /**< Debug cookie. */
 #endif
@@ -188,11 +184,7 @@ struct rte_mempool_memhdr {
 	STAILQ_ENTRY(rte_mempool_memhdr) next; /**< Next in list. */
 	struct rte_mempool *mp;  /**< The mempool owning the chunk */
 	void *addr;              /**< Virtual address of the chunk */
-	RTE_STD_C11
-	union {
-		rte_iova_t iova;       /**< IO address of the chunk */
-		phys_addr_t phys_addr; /**< Physical address of the chunk */
-	};
+	rte_iova_t iova;         /**< IO address of the chunk */
 	size_t len;              /**< length of the chunk */
 	rte_mempool_memchunk_free_cb_t *free_cb; /**< Free callback */
 	void *opaque;            /**< Argument passed to the free callback */
@@ -269,7 +261,6 @@ struct rte_mempool {
 #define MEMPOOL_F_SC_GET         0x0008 /**< Default get is "single-consumer".*/
 #define MEMPOOL_F_POOL_CREATED   0x0010 /**< Internal: pool is created. */
 #define MEMPOOL_F_NO_IOVA_CONTIG 0x0020 /**< Don't need IOVA contiguous objs. */
-#define MEMPOOL_F_NO_PHYS_CONTIG MEMPOOL_F_NO_IOVA_CONTIG /* deprecated */
 
 /**
  * @internal When debug is enabled, store some statistics.
