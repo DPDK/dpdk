@@ -943,30 +943,9 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 	}
 }
 
-static int
-ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
-			uint64_t input_set, enum ice_fdir_tunnel_type ttype)
+static void
+ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
 {
-	struct ice_flow_seg_info *seg;
-	struct ice_flow_seg_info *seg_tun = NULL;
-	enum ice_flow_field field[ICE_FLOW_FIELD_IDX_MAX];
-	bool is_tunnel;
-	int i, ret;
-
-	if (!input_set)
-		return -EINVAL;
-
-	seg = (struct ice_flow_seg_info *)
-		ice_malloc(hw, sizeof(*seg));
-	if (!seg) {
-		PMD_DRV_LOG(ERR, "No memory can be allocated");
-		return -ENOMEM;
-	}
-
-	for (i = 0; i < ICE_FLOW_FIELD_IDX_MAX; i++)
-		field[i] = ICE_FLOW_FIELD_IDX_MAX;
-	ice_fdir_input_set_parse(input_set, field);
-
 	switch (flow) {
 	case ICE_FLTR_PTYPE_NONF_IPV4_UDP:
 		ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP |
@@ -1038,6 +1017,34 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 		PMD_DRV_LOG(ERR, "not supported filter type.");
 		break;
 	}
+}
+
+static int
+ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
+			uint64_t input_set, enum ice_fdir_tunnel_type ttype)
+{
+	struct ice_flow_seg_info *seg;
+	struct ice_flow_seg_info *seg_tun = NULL;
+	enum ice_flow_field field[ICE_FLOW_FIELD_IDX_MAX];
+	bool is_tunnel;
+	int i, ret;
+
+	if (!input_set)
+		return -EINVAL;
+
+	seg = (struct ice_flow_seg_info *)
+		ice_malloc(hw, sizeof(*seg));
+	if (!seg) {
+		PMD_DRV_LOG(ERR, "No memory can be allocated");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < ICE_FLOW_FIELD_IDX_MAX; i++)
+		field[i] = ICE_FLOW_FIELD_IDX_MAX;
+
+	ice_fdir_input_set_parse(input_set, field);
+
+	ice_fdir_input_set_hdrs(flow, seg);
 
 	for (i = 0; field[i] != ICE_FLOW_FIELD_IDX_MAX; i++) {
 		ice_flow_set_fld(seg, field[i],
