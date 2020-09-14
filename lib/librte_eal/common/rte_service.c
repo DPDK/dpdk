@@ -65,6 +65,7 @@ struct core_state {
 	/* map of services IDs are run on this core */
 	uint64_t service_mask;
 	uint8_t runstate; /* running or stopped */
+	uint8_t thread_active; /* indicates when thread is in service_run() */
 	uint8_t is_service_core; /* set if core is currently a service core */
 	uint8_t service_active_on_lcore[RTE_SERVICE_NUM_MAX];
 	uint64_t loops;
@@ -457,6 +458,8 @@ service_runner_func(void *arg)
 	const int lcore = rte_lcore_id();
 	struct core_state *cs = &lcore_states[lcore];
 
+	__atomic_store_n(&cs->thread_active, 1, __ATOMIC_SEQ_CST);
+
 	/* runstate act as the guard variable. Use load-acquire
 	 * memory order here to synchronize with store-release
 	 * in runstate update functions.
@@ -475,7 +478,25 @@ service_runner_func(void *arg)
 		cs->loops++;
 	}
 
+	/* Use SEQ CST memory ordering to avoid any re-ordering around
+	 * this store, ensuring that once this store is visible, the service
+	 * lcore thread really is done in service cores code.
+	 */
+	__atomic_store_n(&cs->thread_active, 0, __ATOMIC_SEQ_CST);
 	return 0;
+}
+
+int32_t
+rte_service_lcore_may_be_active(uint32_t lcore)
+{
+	if (lcore >= RTE_MAX_LCORE || !lcore_states[lcore].is_service_core)
+		return -EINVAL;
+
+	/* Load thread_active using ACQUIRE to avoid instructions dependent on
+	 * the result being re-ordered before this load completes.
+	 */
+	return __atomic_load_n(&lcore_states[lcore].thread_active,
+			       __ATOMIC_ACQUIRE);
 }
 
 int32_t

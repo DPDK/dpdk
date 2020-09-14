@@ -249,7 +249,11 @@ int32_t rte_service_lcore_start(uint32_t lcore_id);
  * Stop a service core.
  *
  * Stopping a core makes the core become idle, but remains  assigned as a
- * service core.
+ * service core. Note that the service lcore thread may not have returned from
+ * the service it is running when this API returns.
+ *
+ * The *rte_service_lcore_may_be_active* API can be used to check if the
+ * service lcore is * still active.
  *
  * @retval 0 Success
  * @retval -EINVAL Invalid *lcore_id* provided
@@ -260,6 +264,22 @@ int32_t rte_service_lcore_start(uint32_t lcore_id);
  *          lcore.
  */
 int32_t rte_service_lcore_stop(uint32_t lcore_id);
+
+/**
+ * Reports if a service lcore is currently running.
+ *
+ * This function returns if the core has finished service cores code, and has
+ * returned to EAL control. If *rte_service_lcore_stop* has been called but
+ * the lcore has not returned to EAL yet, it might be required to wait and call
+ * this function again. The amount of time to wait before the core returns
+ * depends on the duration of the services being run.
+ *
+ * @retval 0 Service thread is not active, and lcore has been returned to EAL.
+ * @retval 1 Service thread is in the service core polling loop.
+ * @retval -EINVAL Invalid *lcore_id* provided.
+ */
+__rte_experimental
+int32_t rte_service_lcore_may_be_active(uint32_t lcore_id);
 
 /**
  * Adds lcore to the list of service cores.
