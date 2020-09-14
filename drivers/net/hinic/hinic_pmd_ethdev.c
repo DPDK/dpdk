@@ -1320,6 +1320,8 @@ hinic_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		return err;
 	}
 
+	dev->data->rx_mbuf_alloc_failed = 0;
+
 	/* rx queue stats */
 	q_num = (nic_dev->num_rq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
 			nic_dev->num_rq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
