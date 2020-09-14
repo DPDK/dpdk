@@ -287,6 +287,7 @@ struct ice_fdir_filter_conf {
 	struct rte_flow_action_count act_count;
 
 	uint64_t input_set;
+	uint64_t outer_input_set; /* only for tunnel packets outer fields */
 };
 
 #define ICE_MAX_FDIR_FILTER_NUM		(1024 * 16)

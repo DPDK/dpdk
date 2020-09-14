@@ -1021,51 +1021,53 @@ ice_fdir_input_set_hdrs(enum ice_fltr_ptype flow, struct ice_flow_seg_info *seg)
 
 static int
 ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
-			uint64_t input_set, enum ice_fdir_tunnel_type ttype)
+			uint64_t inner_input_set, uint64_t outer_input_set,
+			enum ice_fdir_tunnel_type ttype)
 {
 	struct ice_flow_seg_info *seg;
 	struct ice_flow_seg_info *seg_tun = NULL;
 	enum ice_flow_field field[ICE_FLOW_FIELD_IDX_MAX];
+	uint64_t input_set;
 	bool is_tunnel;
-	int i, ret;
+	int k, i, ret = 0;
 
-	if (!input_set)
+	if (!(inner_input_set | outer_input_set))
 		return -EINVAL;
 
-	seg = (struct ice_flow_seg_info *)
-		ice_malloc(hw, sizeof(*seg));
-	if (!seg) {
+	seg_tun = (struct ice_flow_seg_info *)
+		ice_malloc(hw, sizeof(*seg_tun) * ICE_FD_HW_SEG_MAX);
+	if (!seg_tun) {
 		PMD_DRV_LOG(ERR, "No memory can be allocated");
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < ICE_FLOW_FIELD_IDX_MAX; i++)
-		field[i] = ICE_FLOW_FIELD_IDX_MAX;
+	/* use seg_tun[1] to record tunnel inner part or non-tunnel */
+	for (k = 0; k <= ICE_FD_HW_SEG_TUN; k++) {
+		seg = &seg_tun[k];
+		input_set = (k == ICE_FD_HW_SEG_TUN) ? inner_input_set : outer_input_set;
+		if (input_set == 0)
+			continue;
 
-	ice_fdir_input_set_parse(input_set, field);
+		for (i = 0; i < ICE_FLOW_FIELD_IDX_MAX; i++)
+			field[i] = ICE_FLOW_FIELD_IDX_MAX;
 
-	ice_fdir_input_set_hdrs(flow, seg);
+		ice_fdir_input_set_parse(input_set, field);
 
-	for (i = 0; field[i] != ICE_FLOW_FIELD_IDX_MAX; i++) {
-		ice_flow_set_fld(seg, field[i],
-				 ICE_FLOW_FLD_OFF_INVAL,
-				 ICE_FLOW_FLD_OFF_INVAL,
-				 ICE_FLOW_FLD_OFF_INVAL, false);
+		ice_fdir_input_set_hdrs(flow, seg);
+
+		for (i = 0; field[i] != ICE_FLOW_FIELD_IDX_MAX; i++) {
+			ice_flow_set_fld(seg, field[i],
+					 ICE_FLOW_FLD_OFF_INVAL,
+					 ICE_FLOW_FLD_OFF_INVAL,
+					 ICE_FLOW_FLD_OFF_INVAL, false);
+		}
 	}
 
 	is_tunnel = ice_fdir_is_tunnel_profile(ttype);
 	if (!is_tunnel) {
 		ret = ice_fdir_hw_tbl_conf(pf, pf->main_vsi, pf->fdir.fdir_vsi,
-					   seg, flow, false);
+					   seg_tun + 1, flow, false);
 	} else {
-		seg_tun = (struct ice_flow_seg_info *)
-			ice_malloc(hw, sizeof(*seg) * ICE_FD_HW_SEG_MAX);
-		if (!seg_tun) {
-			PMD_DRV_LOG(ERR, "No memory can be allocated");
-			rte_free(seg);
-			return -ENOMEM;
-		}
-		rte_memcpy(&seg_tun[1], seg, sizeof(*seg));
 		ret = ice_fdir_hw_tbl_conf(pf, pf->main_vsi, pf->fdir.fdir_vsi,
 					   seg_tun, flow, true);
 	}
@@ -1073,9 +1075,7 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 	if (!ret) {
 		return ret;
 	} else if (ret < 0) {
-		rte_free(seg);
-		if (is_tunnel)
-			rte_free(seg_tun);
+		rte_free(seg_tun);
 		return (ret == -EEXIST) ? 0 : ret;
 	} else {
 		return ret;
@@ -1285,7 +1285,8 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 	is_tun = ice_fdir_is_tunnel_profile(filter->tunnel_type);
 
 	ret = ice_fdir_input_set_conf(pf, filter->input.flow_type,
-			filter->input_set, filter->tunnel_type);
+				      filter->input_set, filter->outer_input_set,
+				      filter->tunnel_type);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -2038,7 +2039,7 @@ ice_fdir_parse(struct ice_adapter *ad,
 	ret = ice_fdir_parse_pattern(ad, pattern, error, filter);
 	if (ret)
 		goto error;
-	input_set = filter->input_set;
+	input_set = filter->input_set | filter->outer_input_set;
 	if (!input_set || input_set & ~item->input_set_mask) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
