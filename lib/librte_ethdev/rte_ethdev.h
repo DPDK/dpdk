@@ -4803,6 +4803,10 @@ int rte_eth_dev_hairpin_capability_get(uint16_t port_id,
  * burst-oriented optimizations in both synchronous and asynchronous
  * packet processing environments with no overhead in both cases.
  *
+ * @note
+ *   Some drivers using vector instructions require that *nb_pkts* is
+ *   divisible by 4 or 8, depending on the driver implementation.
+ *
  * The rte_eth_rx_burst() function does not provide any error
  * notification to avoid the corresponding overhead. As a hint, the
  * upper-level application might check the status of the device link once
@@ -4819,6 +4823,7 @@ int rte_eth_dev_hairpin_capability_get(uint16_t port_id,
  *   must be large enough to store *nb_pkts* pointers in it.
  * @param nb_pkts
  *   The maximum number of packets to retrieve.
+ *   The value must be divisible by 8 in order to work with any driver.
  * @return
  *   The number of packets actually retrieved, which is the number
  *   of pointers to *rte_mbuf* structures effectively supplied to the
