@@ -132,6 +132,9 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 	VIRTCHNL_PROTO_HDR_PFCP, \
 	FIELD_SELECTOR(VIRTCHNL_PROTO_HDR_PFCP_SEID), {BUFF_NOUSED} }
 
+#define proto_hdr_gtpc { \
+	VIRTCHNL_PROTO_HDR_GTPC, 0, {BUFF_NOUSED} }
+
 #define TUNNEL_LEVEL_OUTER		0
 #define TUNNEL_LEVEL_INNER		1
 
@@ -256,6 +259,14 @@ struct virtchnl_proto_hdrs ipv6_pfcp_tmplt = {
 	TUNNEL_LEVEL_OUTER, 2, {proto_hdr_ipv6, proto_hdr_pfcp}
 };
 
+struct virtchnl_proto_hdrs ipv4_udp_gtpc_tmplt = {
+	TUNNEL_LEVEL_OUTER, 3, {proto_hdr_ipv4, proto_hdr_udp, proto_hdr_gtpc}
+};
+
+struct virtchnl_proto_hdrs ipv6_udp_gtpc_tmplt = {
+	TUNNEL_LEVEL_OUTER, 3, {proto_hdr_ipv6, proto_hdr_udp, proto_hdr_gtpc}
+};
+
 /* rss type super set */
 
 /* IPv4 outer */
@@ -365,6 +376,7 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv4_ah,			IAVF_RSS_TYPE_IPV4_AH,		&ipv4_ah_tmplt},
 	{iavf_pattern_eth_ipv4_l2tpv3,			IAVF_RSS_TYPE_IPV4_L2TPV3,	&ipv4_l2tpv3_tmplt},
 	{iavf_pattern_eth_ipv4_pfcp,			IAVF_RSS_TYPE_IPV4_PFCP,	&ipv4_pfcp_tmplt},
+	{iavf_pattern_eth_ipv4_gtpc,			ETH_RSS_IPV4,			&ipv4_udp_gtpc_tmplt},
 	/* IPv6 */
 	{iavf_pattern_eth_ipv6,				IAVF_RSS_TYPE_OUTER_IPV6,	&outer_ipv6_tmplt},
 	{iavf_pattern_eth_ipv6_udp,			IAVF_RSS_TYPE_OUTER_IPV6_UDP,	&outer_ipv6_udp_tmplt},
@@ -391,6 +403,7 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_ipv6_ah,			IAVF_RSS_TYPE_IPV6_AH,		&ipv6_ah_tmplt},
 	{iavf_pattern_eth_ipv6_l2tpv3,			IAVF_RSS_TYPE_IPV6_L2TPV3,	&ipv6_l2tpv3_tmplt},
 	{iavf_pattern_eth_ipv6_pfcp,			IAVF_RSS_TYPE_IPV6_PFCP,	&ipv6_pfcp_tmplt},
+	{iavf_pattern_eth_ipv6_gtpc,			ETH_RSS_IPV6,			&ipv6_udp_gtpc_tmplt},
 };
 
 struct virtchnl_proto_hdrs *iavf_hash_default_hdrs[] = {
