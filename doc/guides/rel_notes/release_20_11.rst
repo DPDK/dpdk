@@ -100,6 +100,8 @@ API Changes
   and the function ``rte_rawdev_queue_conf_get()``
   from ``void`` to ``int`` allowing the return of error codes from drivers.
 
+* bpf: ``RTE_BPF_XTYPE_NUM`` has been dropped from ``rte_bpf_xtype``.
+
 
 ABI Changes
 -----------

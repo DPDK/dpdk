@@ -10,10 +10,6 @@
  *
  * RTE BPF support.
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * librte_bpf provides a framework to load and execute eBPF bytecode
  * inside user-space dpdk based applications.
  * It supports basic set of features from eBPF spec
@@ -36,7 +32,7 @@ enum rte_bpf_arg_type {
 	RTE_BPF_ARG_RAW,        /**< scalar value */
 	RTE_BPF_ARG_PTR = 0x10, /**< pointer to data buffer */
 	RTE_BPF_ARG_PTR_MBUF,   /**< pointer to rte_mbuf */
-	RTE_BPF_ARG_RESERVED,   /**< reserved for internal use */
+	RTE_BPF_ARG_RESERVED    /**< reserved for internal use */
 };
 
 /**
@@ -63,8 +59,7 @@ struct rte_bpf_arg {
  */
 enum rte_bpf_xtype {
 	RTE_BPF_XTYPE_FUNC, /**< function */
-	RTE_BPF_XTYPE_VAR,  /**< variable */
-	RTE_BPF_XTYPE_NUM
+	RTE_BPF_XTYPE_VAR   /**< variable */
 };
 
 /**
@@ -117,7 +112,6 @@ struct rte_bpf;
  * @param bpf
  *   BPF handle to destroy.
  */
-__rte_experimental
 void
 rte_bpf_destroy(struct rte_bpf *bpf);
 
@@ -133,7 +127,6 @@ rte_bpf_destroy(struct rte_bpf *bpf);
  *   - EINVAL - invalid parameter passed to function
  *   - ENOMEM - can't reserve enough memory
  */
-__rte_experimental
 struct rte_bpf *
 rte_bpf_load(const struct rte_bpf_prm *prm);
 
@@ -157,7 +150,6 @@ rte_bpf_load(const struct rte_bpf_prm *prm);
  *   - EINVAL - invalid parameter passed to function
  *   - ENOMEM - can't reserve enough memory
  */
-__rte_experimental
 struct rte_bpf *
 rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 		const char *sname);
@@ -171,7 +163,6 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
  * @return
  *   BPF execution return value.
  */
-__rte_experimental
 uint64_t
 rte_bpf_exec(const struct rte_bpf *bpf, void *ctx);
 
@@ -189,7 +180,6 @@ rte_bpf_exec(const struct rte_bpf *bpf, void *ctx);
  * @return
  *   number of successfully processed inputs.
  */
-__rte_experimental
 uint32_t
 rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 		uint32_t num);
@@ -205,7 +195,6 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
  *   - -EINVAL if the parameters are invalid.
  *   - Zero if operation completed successfully.
  */
-__rte_experimental
 int
 rte_bpf_get_jit(const struct rte_bpf *bpf, struct rte_bpf_jit *jit);
 

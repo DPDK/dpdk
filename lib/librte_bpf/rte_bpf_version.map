@@ -1,4 +1,4 @@
-EXPERIMENTAL {
+DPDK_21 {
 	global:
 
 	rte_bpf_destroy;
