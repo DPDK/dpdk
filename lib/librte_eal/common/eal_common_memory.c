@@ -1002,6 +1002,60 @@ rte_extmem_detach(void *va_addr, size_t len)
 	return sync_memory(va_addr, len, false);
 }
 
+/* detach all EAL memory */
+int
+rte_eal_memory_detach(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	size_t page_sz = rte_mem_page_size();
+	unsigned int i;
+
+	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+
+	/* detach internal memory subsystem data first */
+	if (eal_memalloc_cleanup())
+		RTE_LOG(ERR, EAL, "Could not release memory subsystem data\n");
+
+	for (i = 0; i < RTE_DIM(mcfg->memsegs); i++) {
+		struct rte_memseg_list *msl = &mcfg->memsegs[i];
+
+		/* skip uninitialized segments */
+		if (msl->base_va == NULL)
+			continue;
+		/*
+		 * external segments are supposed to be detached at this point,
+		 * but if they aren't, we can't really do anything about it,
+		 * because if we skip them here, they'll become invalid after
+		 * we unmap the memconfig anyway. however, if this is externally
+		 * referenced memory, we have no business unmapping it.
+		 */
+		if (!msl->external)
+			if (rte_mem_unmap(msl->base_va, msl->len) != 0)
+				RTE_LOG(ERR, EAL, "Could not unmap memory: %s\n",
+						strerror(errno));
+
+		/*
+		 * we are detaching the fbarray rather than destroying because
+		 * other processes might still reference this fbarray, and we
+		 * have no way of knowing if they still do.
+		 */
+		if (rte_fbarray_detach(&msl->memseg_arr))
+			RTE_LOG(ERR, EAL, "Could not detach fbarray: %s\n",
+					rte_strerror(rte_errno));
+	}
+	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+
+	/*
+	 * we've detached the memseg lists, so we can unmap the shared mem
+	 * config - we can't zero it out because it might still be referenced
+	 * by other processes.
+	 */
+	rte_mem_unmap(mcfg, RTE_ALIGN(sizeof(*mcfg), page_sz));
+	rte_eal_get_configuration()->mem_config = NULL;
+
+	return 0;
+}
+
 /* init memory subsystem */
 int
 rte_eal_memory_init(void)

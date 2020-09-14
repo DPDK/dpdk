@@ -93,4 +93,7 @@ eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset);
 int
 eal_memalloc_init(void);
 
+int
+eal_memalloc_cleanup(void);
+
 #endif /* EAL_MEMALLOC_H */

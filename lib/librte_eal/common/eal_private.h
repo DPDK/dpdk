@@ -434,6 +434,13 @@ int rte_eal_hugepage_init(void);
 int rte_eal_hugepage_attach(void);
 
 /**
+ * Detaches all memory mappings from a process.
+ *
+ * This function is private to the EAL.
+ */
+int rte_eal_memory_detach(void);
+
+/**
  * Find a bus capable of identifying a device.
  *
  * @param str

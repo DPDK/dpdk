@@ -251,7 +251,8 @@ rte_eal_cleanup(void)
 {
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
-
+	/* after this point, any DPDK pointers will become dangling */
+	rte_eal_memory_detach();
 	eal_cleanup_config(internal_conf);
 	return 0;
 }

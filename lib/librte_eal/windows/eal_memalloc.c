@@ -438,6 +438,13 @@ eal_memalloc_sync_with_primary(void)
 }
 
 int
+eal_memalloc_cleanup(void)
+{
+	/* not implemented */
+	return 0;
+}
+
+int
 eal_memalloc_init(void)
 {
 	/* No action required. */

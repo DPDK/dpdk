@@ -1442,6 +1442,31 @@ secondary_msl_create_walk(const struct rte_memseg_list *msl,
 }
 
 static int
+secondary_msl_destroy_walk(const struct rte_memseg_list *msl,
+		void *arg __rte_unused)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *local_msl;
+	int msl_idx, ret;
+
+	if (msl->external)
+		return 0;
+
+	msl_idx = msl - mcfg->memsegs;
+	local_msl = &local_memsegs[msl_idx];
+
+	ret = rte_fbarray_destroy(&local_msl->memseg_arr);
+	if (ret < 0) {
+		RTE_LOG(ERR, EAL, "Cannot destroy local memory map\n");
+		return -1;
+	}
+	local_msl->base_va = NULL;
+	local_msl->len = 0;
+
+	return 0;
+}
+
+static int
 alloc_list(int list_idx, int len)
 {
 	int *data;
@@ -1474,6 +1499,34 @@ alloc_list(int list_idx, int len)
 }
 
 static int
+destroy_list(int list_idx)
+{
+	const struct internal_config *internal_conf =
+			eal_get_internal_configuration();
+
+	/* single-file segments mode does not need fd list */
+	if (!internal_conf->single_file_segments) {
+		int *fds = fd_list[list_idx].fds;
+		int i;
+		/* go through each fd and ensure it's closed */
+		for (i = 0; i < fd_list[list_idx].len; i++) {
+			if (fds[i] >= 0) {
+				close(fds[i]);
+				fds[i] = -1;
+			}
+		}
+		free(fds);
+		fd_list[list_idx].fds = NULL;
+		fd_list[list_idx].len = 0;
+	} else if (fd_list[list_idx].memseg_list_fd >= 0) {
+		close(fd_list[list_idx].memseg_list_fd);
+		fd_list[list_idx].count = 0;
+		fd_list[list_idx].memseg_list_fd = -1;
+	}
+	return 0;
+}
+
+static int
 fd_list_create_walk(const struct rte_memseg_list *msl,
 		void *arg __rte_unused)
 {
@@ -1488,6 +1541,20 @@ fd_list_create_walk(const struct rte_memseg_list *msl,
 	len = msl->memseg_arr.len;
 
 	return alloc_list(msl_idx, len);
+}
+
+static int
+fd_list_destroy_walk(const struct rte_memseg_list *msl, void *arg __rte_unused)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int msl_idx;
+
+	if (msl->external)
+		return 0;
+
+	msl_idx = msl - mcfg->memsegs;
+
+	return destroy_list(msl_idx);
 }
 
 int
@@ -1623,6 +1690,24 @@ eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
 			return -ENOENT;
 		*offset = 0;
 	}
+	return 0;
+}
+
+int
+eal_memalloc_cleanup(void)
+{
+	/* close all remaining fd's - these are per-process, so it's safe */
+	if (rte_memseg_list_walk_thread_unsafe(fd_list_destroy_walk, NULL))
+		return -1;
+
+	/* destroy the shadow page table if we're a secondary process */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		return 0;
+
+	if (rte_memseg_list_walk_thread_unsafe(secondary_msl_destroy_walk,
+			NULL))
+		return -1;
+
 	return 0;
 }
 

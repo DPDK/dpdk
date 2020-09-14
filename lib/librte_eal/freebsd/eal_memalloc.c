@@ -74,6 +74,11 @@ eal_memalloc_get_seg_fd_offset(int list_idx __rte_unused,
 	return -ENOTSUP;
 }
 
+int eal_memalloc_cleanup(void)
+{
+	return 0;
+}
+
 int
 eal_memalloc_init(void)
 {
