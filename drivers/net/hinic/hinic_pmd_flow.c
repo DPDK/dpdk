@@ -2809,8 +2809,12 @@ static int hinic_add_tcam_filter(struct rte_eth_dev *dev,
 
 		rc = hinic_set_fdir_tcam_rule_filter(nic_dev->hwdev, true);
 		if (rc && rc != HINIC_MGMT_CMD_UNSUPPORTED) {
-			(void)hinic_set_fdir_filter(nic_dev->hwdev, 0, 0, 0,
-						false);
+			/*
+			 * hinic supports two methods: linear table and tcam
+			 * table, if tcam filter enables failed but linear table
+			 * is ok, which also needs to enable filter, so for this
+			 * scene, driver should not close fdir switch.
+			 */
 			(void)hinic_del_tcam_rule(nic_dev->hwdev,
 						fdir_tcam_rule->index);
 			return rc;
