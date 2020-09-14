@@ -242,7 +242,7 @@ qat_comp_setup_inter_buffers(struct qat_comp_dev_private *comp_dev,
 	}
 
 	mz_start = (uint8_t *)memzone->addr;
-	mz_start_phys = memzone->phys_addr;
+	mz_start_phys = memzone->iova;
 	QAT_LOG(DEBUG, "Memzone %s: addr = %p, phys = 0x%"PRIx64
 			", size required %d, size created %zu",
 			inter_buff_mz_name, mz_start, mz_start_phys,

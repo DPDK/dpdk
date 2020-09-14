@@ -440,7 +440,7 @@ dpaax_memevent_walk_memsegs(const struct rte_memseg_list *msl __rte_unused,
 			    void *arg __rte_unused)
 {
 	DPAAX_DEBUG("Walking for %p (pa=%"PRIu64") and len %zu",
-		    ms->addr, ms->phys_addr, len);
+		    ms->addr, ms->iova, len);
 	dpaax_iova_table_update(rte_mem_virt2phy(ms->addr), ms->addr, len);
 	return 0;
 }

@@ -556,7 +556,7 @@ otx_cpt_get_resource(const struct rte_cryptodev *dev, uint8_t group,
 	}
 
 	mem = rz->addr;
-	dma_addr = rz->phys_addr;
+	dma_addr = rz->iova;
 	alloc_len = len;
 
 	memset(mem, 0, len);

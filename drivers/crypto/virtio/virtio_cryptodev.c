@@ -411,7 +411,7 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 	 * and only accepts 32 bit page frame number.
 	 * Check if the allocated physical memory exceeds 16TB.
 	 */
-	if ((mz->phys_addr + vq->vq_ring_size - 1)
+	if ((mz->iova + vq->vq_ring_size - 1)
 				>> (VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32)) {
 		VIRTIO_CRYPTO_INIT_LOG_ERR("vring address shouldn't be "
 					"above 16TB!");
@@ -420,10 +420,10 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 
 	memset(mz->addr, 0, sizeof(mz->len));
 	vq->mz = mz;
-	vq->vq_ring_mem = mz->phys_addr;
+	vq->vq_ring_mem = mz->iova;
 	vq->vq_ring_virt_mem = mz->addr;
 	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_ring_mem(physical): 0x%"PRIx64,
-					(uint64_t)mz->phys_addr);
+					(uint64_t)mz->iova);
 	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_ring_virt_mem: 0x%"PRIx64,
 					(uint64_t)(uintptr_t)mz->addr);
 

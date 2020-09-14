@@ -258,7 +258,7 @@ ice_alloc_dma_mem(__rte_unused struct ice_hw *hw,
 
 	mem->size = size;
 	mem->va = mz->addr;
-	mem->pa = mz->phys_addr;
+	mem->pa = mz->iova;
 	mem->zone = (const void *)mz;
 	PMD_DRV_LOG(DEBUG, "memzone %s allocated with physical address: "
 		    "%"PRIu64, mz->name, mem->pa);

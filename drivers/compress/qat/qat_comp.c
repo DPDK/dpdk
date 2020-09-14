@@ -957,7 +957,7 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 				ICP_QAT_FW_SLICE_XLAT);
 
 		comp_req->u1.xlt_pars.inter_buff_ptr =
-				interm_buff_mz->phys_addr;
+				interm_buff_mz->iova;
 	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG

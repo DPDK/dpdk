@@ -414,7 +414,7 @@ static inline phys_addr_t pfe_mem_vtop(uint64_t vaddr)
 
 	memseg = rte_mem_virt2memseg((void *)(uintptr_t)vaddr, NULL);
 	if (memseg)
-		return memseg->phys_addr + RTE_PTR_DIFF(vaddr, memseg->addr);
+		return memseg->iova + RTE_PTR_DIFF(vaddr, memseg->addr);
 
 	return (size_t)NULL;
 }

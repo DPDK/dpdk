@@ -546,7 +546,7 @@ ccp_add_device(struct ccp_device *dev, int type)
 						  cmd_q->qsize, SOCKET_ID_ANY);
 		cmd_q->qbase_addr = (void *)q_mz->addr;
 		cmd_q->qbase_desc = (void *)q_mz->addr;
-		cmd_q->qbase_phys_addr =  q_mz->phys_addr;
+		cmd_q->qbase_phys_addr =  q_mz->iova;
 
 		cmd_q->qcontrol = 0;
 		/* init control reg to zero */
