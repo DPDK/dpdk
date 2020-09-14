@@ -10,7 +10,6 @@
 
 /**
  * @file rte_ipsec_sad.h
- * @b EXPERIMENTAL: this API may change without prior notice
  *
  * RTE IPsec security association database (SAD) support.
  * Contains helper functions to lookup and maintain SAD
@@ -82,7 +81,6 @@ struct rte_ipsec_sad_conf {
  * @return
  *   0 on success, negative value otherwise
  */
-__rte_experimental
 int
 rte_ipsec_sad_add(struct rte_ipsec_sad *sad,
 	const union rte_ipsec_sad_key *key,
@@ -103,7 +101,6 @@ rte_ipsec_sad_add(struct rte_ipsec_sad *sad,
  * @return
  *   0 on success, negative value otherwise
  */
-__rte_experimental
 int
 rte_ipsec_sad_del(struct rte_ipsec_sad *sad,
 	const union rte_ipsec_sad_key *key,
@@ -119,7 +116,6 @@ rte_ipsec_sad_del(struct rte_ipsec_sad *sad,
  *  Handle to SAD object on success
  *  NULL otherwise with rte_errno set to an appropriate values.
  */
-__rte_experimental
 struct rte_ipsec_sad *
 rte_ipsec_sad_create(const char *name, const struct rte_ipsec_sad_conf *conf);
 
@@ -133,7 +129,6 @@ rte_ipsec_sad_create(const char *name, const struct rte_ipsec_sad_conf *conf);
  *  set appropriately. Possible rte_errno values include:
  *   - ENOENT - required entry not available to return.
  */
-__rte_experimental
 struct rte_ipsec_sad *
 rte_ipsec_sad_find_existing(const char *name);
 
@@ -145,7 +140,6 @@ rte_ipsec_sad_find_existing(const char *name);
  * @return
  *   None
  */
-__rte_experimental
 void
 rte_ipsec_sad_destroy(struct rte_ipsec_sad *sad);
 
@@ -165,7 +159,6 @@ rte_ipsec_sad_destroy(struct rte_ipsec_sad *sad);
  *  @return
  *   -EINVAL for incorrect arguments, otherwise number of successful lookups.
  */
-__rte_experimental
 int
 rte_ipsec_sad_lookup(const struct rte_ipsec_sad *sad,
 	const union rte_ipsec_sad_key *keys[],

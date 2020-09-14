@@ -1275,7 +1275,7 @@ M: Jiayu Hu <jiayu.hu@intel.com>
 F: lib/librte_gso/
 F: doc/guides/prog_guide/generic_segmentation_offload_lib.rst
 
-IPsec - EXPERIMENTAL
+IPsec
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_ipsec/

@@ -306,6 +306,9 @@ API Changes
 
 * vhost: Moved vDPA APIs from experimental to stable.
 
+* ipsec: ``RTE_SATP_LOG2_NUM`` has been dropped from ``enum`` and
+  subsequently moved ``rte_ipsec`` lib from experimental to stable.
+
 * rawdev: Added a structure size parameter to the functions
   ``rte_rawdev_queue_setup()``, ``rte_rawdev_queue_conf_get()``,
   ``rte_rawdev_info_get()`` and ``rte_rawdev_configure()``,

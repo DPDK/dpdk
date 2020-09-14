@@ -7,7 +7,6 @@
 
 /**
  * @file rte_ipsec_sa.h
- * @b EXPERIMENTAL: this API may change without prior notice
  *
  * Defines API to manage IPsec Security Association (SA) objects.
  */
@@ -90,8 +89,7 @@ enum {
 	RTE_SATP_LOG2_SQN = RTE_SATP_LOG2_MODE + 2,
 	RTE_SATP_LOG2_ESN,
 	RTE_SATP_LOG2_ECN,
-	RTE_SATP_LOG2_DSCP,
-	RTE_SATP_LOG2_NUM
+	RTE_SATP_LOG2_DSCP
 };
 
 #define RTE_IPSEC_SATP_IPV_MASK		(1ULL << RTE_SATP_LOG2_IPV)
@@ -132,7 +130,6 @@ enum {
  * @return
  *   SA type value.
  */
-__rte_experimental
 uint64_t
 rte_ipsec_sa_type(const struct rte_ipsec_sa *sa);
 
@@ -144,7 +141,6 @@ rte_ipsec_sa_type(const struct rte_ipsec_sa *sa);
  *   - Actual size required for SA with given parameters.
  *   - -EINVAL if the parameters are invalid.
  */
-__rte_experimental
 int
 rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm);
 
@@ -161,7 +157,6 @@ rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm);
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if the size of the provided buffer is not big enough.
  */
-__rte_experimental
 int
 rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	uint32_t size);
@@ -171,7 +166,6 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
  * @param sa
  *   Pointer to SA object to de-initialize.
  */
-__rte_experimental
 void
 rte_ipsec_sa_fini(struct rte_ipsec_sa *sa);
 
