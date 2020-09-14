@@ -47,7 +47,7 @@ iova2kva(struct kni_dev *kni, void *iova)
 static inline void *
 iova2data_kva(struct kni_dev *kni, struct rte_kni_mbuf *m)
 {
-	return phys_to_virt(iova_to_phys(kni->usr_tsk, m->buf_physaddr) +
+	return phys_to_virt(iova_to_phys(kni->usr_tsk, m->buf_iova) +
 			    m->data_off);
 }
 #endif
@@ -67,7 +67,7 @@ pa2va(void *pa, struct rte_kni_mbuf *m)
 
 	va = (void *)((unsigned long)pa +
 			(unsigned long)m->buf_addr -
-			(unsigned long)m->buf_physaddr);
+			(unsigned long)m->buf_iova);
 	return va;
 }
 
@@ -75,7 +75,7 @@ pa2va(void *pa, struct rte_kni_mbuf *m)
 static void *
 kva2data_kva(struct rte_kni_mbuf *m)
 {
-	return phys_to_virt(m->buf_physaddr + m->data_off);
+	return phys_to_virt(m->buf_iova + m->data_off);
 }
 
 static inline void *

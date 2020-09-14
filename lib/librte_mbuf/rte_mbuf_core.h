@@ -476,11 +476,7 @@ struct rte_mbuf {
 	 * same mbuf cacheline0 layout for 32-bit and 64-bit. This makes
 	 * working on vector drivers easier.
 	 */
-	RTE_STD_C11
-	union {
-		rte_iova_t buf_iova;
-		rte_iova_t buf_physaddr; /**< deprecated */
-	} __rte_aligned(sizeof(rte_iova_t));
+	rte_iova_t buf_iova __rte_aligned(sizeof(rte_iova_t));
 
 	/* next 8 bytes are initialised on RX descriptor rearm */
 	RTE_MARKER64 rearm_data;

@@ -102,6 +102,9 @@ API Changes
   The same functionality is still available with the functions and macros
   having ``iova`` in their names instead of ``dma_addr`` or ``mtophys``.
 
+* mbuf: Removed the unioned field ``buf_physaddr`` from ``rte_mbuf``.
+  The field ``buf_iova`` is remaining from the old union.
+
 * mbuf: Removed the unioned field ``refcnt_atomic`` from
   the structures ``rte_mbuf`` and ``rte_mbuf_ext_shared_info``.
   The field ``refcnt`` is remaining from the old unions.

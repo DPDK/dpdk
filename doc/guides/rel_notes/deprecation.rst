@@ -144,8 +144,6 @@ Deprecation Notices
   avoiding impact on vectorized implementation of the driver datapaths,
   while evaluating performance gains of a better use of the first cache line.
 
-  The deprecated unioned field ``buf_physaddr`` will be removed in DPDK 20.11.
-
 * ethdev: Split the ``struct eth_dev_ops`` struct to hide it as much as possible
   will be done in 20.11.
   Currently the ``struct eth_dev_ops`` struct is accessible by the application

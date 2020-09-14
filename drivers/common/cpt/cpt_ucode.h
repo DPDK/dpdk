@@ -2862,7 +2862,7 @@ alloc_op_meta(struct rte_mbuf *m_src,
 		tailroom = rte_pktmbuf_tailroom(m_src);
 		if (likely(tailroom > len + 8)) {
 			mdata = (uint8_t *)m_src->buf_addr + m_src->buf_len;
-			mphys = m_src->buf_physaddr + m_src->buf_len;
+			mphys = m_src->buf_iova + m_src->buf_len;
 			mdata -= len;
 			mphys -= len;
 			buf->vaddr = mdata;
