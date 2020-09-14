@@ -694,6 +694,7 @@ static int hinic_ntuple_item_check_end(const struct rte_flow_item *item,
 			item, "Not supported by ntuple filter");
 		return -rte_errno;
 	}
+
 	return 0;
 }
 
@@ -2981,6 +2982,8 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 				sizeof(struct hinic_ntuple_filter_ele), 0);
 			if (ntuple_filter_ptr == NULL) {
 				PMD_DRV_LOG(ERR, "Failed to allocate ntuple_filter_ptr");
+				(void)hinic_add_del_ntuple_filter(dev,
+							&ntuple_filter, FALSE);
 				goto out;
 			}
 			rte_memcpy(&ntuple_filter_ptr->filter_info,
@@ -3011,6 +3014,8 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 				sizeof(struct hinic_ethertype_filter_ele), 0);
 			if (ethertype_filter_ptr == NULL) {
 				PMD_DRV_LOG(ERR, "Failed to allocate ethertype_filter_ptr");
+				(void)hinic_add_del_ethertype_filter(dev,
+						&ethertype_filter, FALSE);
 				goto out;
 			}
 			rte_memcpy(&ethertype_filter_ptr->filter_info,
@@ -3034,11 +3039,10 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 				      actions, &fdir_rule, error);
 	if (!ret) {
 		if (fdir_rule.mode == HINIC_FDIR_MODE_NORMAL) {
-			ret = hinic_add_del_fdir_filter(dev,
-					&fdir_rule, TRUE);
+			ret = hinic_add_del_fdir_filter(dev, &fdir_rule, TRUE);
 		} else if (fdir_rule.mode == HINIC_FDIR_MODE_TCAM) {
-			ret = hinic_add_del_tcam_fdir_filter(dev,
-					&fdir_rule, TRUE);
+			ret = hinic_add_del_tcam_fdir_filter(dev, &fdir_rule,
+							     TRUE);
 		}  else {
 			PMD_DRV_LOG(INFO, "flow fdir rule create failed, rule mode wrong");
 			goto out;
@@ -3048,6 +3052,13 @@ static struct rte_flow *hinic_flow_create(struct rte_eth_dev *dev,
 				sizeof(struct hinic_fdir_rule_ele), 0);
 			if (fdir_rule_ptr == NULL) {
 				PMD_DRV_LOG(ERR, "Failed to allocate fdir_rule_ptr");
+				if (fdir_rule.mode == HINIC_FDIR_MODE_NORMAL)
+					hinic_add_del_fdir_filter(dev,
+						&fdir_rule, FALSE);
+				else if (fdir_rule.mode == HINIC_FDIR_MODE_TCAM)
+					hinic_add_del_tcam_fdir_filter(dev,
+						&fdir_rule, FALSE);
+
 				goto out;
 			}
 			rte_memcpy(&fdir_rule_ptr->filter_info, &fdir_rule,
