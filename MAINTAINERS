@@ -505,7 +505,7 @@ F: drivers/bus/ifpga/
 
 NXP buses
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
-M: Sachin Saxena <sachin.saxena@nxp.com>
+M: Sachin Saxena <sachin.saxena@oss.nxp.com>
 F: drivers/common/dpaax/
 F: drivers/bus/dpaa/
 F: drivers/bus/fslmc/
@@ -801,7 +801,7 @@ F: doc/guides/nics/features/nfp*.ini
 
 NXP dpaa
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
-M: Sachin Saxena <sachin.saxena@nxp.com>
+M: Sachin Saxena <sachin.saxena@oss.nxp.com>
 F: drivers/mempool/dpaa/
 F: drivers/net/dpaa/
 F: doc/guides/nics/dpaa.rst
@@ -809,7 +809,7 @@ F: doc/guides/nics/features/dpaa.ini
 
 NXP dpaa2
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
-M: Sachin Saxena <sachin.saxena@nxp.com>
+M: Sachin Saxena <sachin.saxena@oss.nxp.com>
 F: drivers/mempool/dpaa2/
 F: drivers/net/dpaa2/
 F: doc/guides/nics/dpaa2.rst
@@ -817,7 +817,7 @@ F: doc/guides/nics/features/dpaa2.ini
 
 NXP enetc
 M: Gagandeep Singh <g.singh@nxp.com>
-M: Sachin Saxena <sachin.saxena@nxp.com>
+M: Sachin Saxena <sachin.saxena@oss.nxp.com>
 F: drivers/net/enetc/
 F: doc/guides/nics/enetc.rst
 F: doc/guides/nics/features/enetc.ini
