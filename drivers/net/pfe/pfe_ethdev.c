@@ -427,9 +427,6 @@ static int
 pfe_eth_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
-	struct pfe_eth_priv_s *internals = dev->data->dev_private;
-
-	dev_info->if_index = internals->id;
 	dev_info->max_mac_addrs = PFE_MAX_MACS;
 	dev_info->max_rx_queues = dev->data->nb_rx_queues;
 	dev_info->max_tx_queues = dev->data->nb_tx_queues;
