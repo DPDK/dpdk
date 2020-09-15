@@ -273,7 +273,7 @@ print_link_info(struct link *link, char *out, size_t out_size)
 		"\n"
 		"%s: flags=<%s> mtu %u\n"
 		"\tether %02X:%02X:%02X:%02X:%02X:%02X rxqueues %u txqueues %u\n"
-		"\tport# %u  speed %u Mbps\n"
+		"\tport# %u  speed %s\n"
 		"\tRX packets %" PRIu64"  bytes %" PRIu64"\n"
 		"\tRX errors %" PRIu64"  missed %" PRIu64"  no-mbuf %" PRIu64"\n"
 		"\tTX packets %" PRIu64"  bytes %" PRIu64"\n"
@@ -287,7 +287,7 @@ print_link_info(struct link *link, char *out, size_t out_size)
 		link->n_rxq,
 		link->n_txq,
 		link->port_id,
-		eth_link.link_speed,
+		rte_eth_link_speed_to_str(eth_link.link_speed),
 		stats.ipackets,
 		stats.ibytes,
 		stats.ierrors,

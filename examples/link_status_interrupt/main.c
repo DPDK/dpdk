@@ -133,7 +133,7 @@ print_stats(void)
 		link_get_err = rte_eth_link_get_nowait(portid, &link);
 		printf("\nStatistics for port %u ------------------------------"
 			   "\nLink status: %25s"
-			   "\nLink speed: %26u"
+			   "\nLink speed: %26s"
 			   "\nLink duplex: %25s"
 			   "\nPackets sent: %24"PRIu64
 			   "\nPackets received: %20"PRIu64
@@ -141,8 +141,8 @@ print_stats(void)
 			   portid,
 			   link_get_err < 0 ? "Link get failed" :
 			   (link.link_status ? "Link up" : "Link down"),
-			   link_get_err < 0 ? 0 :
-					(unsigned int)link.link_speed,
+			   link_get_err < 0 ? "0" :
+			   rte_eth_link_speed_to_str(link.link_speed),
 			   link_get_err < 0 ? "Link get failed" :
 			   (link.link_duplex == ETH_LINK_FULL_DUPLEX ? \
 					"full-duplex" : "half-duplex"),
@@ -442,6 +442,7 @@ lsi_event_callback(uint16_t port_id, enum rte_eth_event_type type, void *param,
 {
 	struct rte_eth_link link;
 	int ret;
+	char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 
 	RTE_SET_USED(param);
 	RTE_SET_USED(ret_param);
@@ -454,13 +455,8 @@ lsi_event_callback(uint16_t port_id, enum rte_eth_event_type type, void *param,
 		       port_id, rte_strerror(-ret));
 		return ret;
 	}
-	if (link.link_status) {
-		printf("Port %d Link Up - speed %u Mbps - %s\n\n",
-				port_id, (unsigned)link.link_speed,
-			(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-				("full-duplex") : ("half-duplex"));
-	} else
-		printf("Port %d Link Down\n\n", port_id);
+	rte_eth_link_to_str(link_status_text, sizeof(link_status_text), &link);
+	printf("Port %d %s\n\n", port_id, link_status_text);
 
 	return 0;
 }
@@ -475,6 +471,7 @@ check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 	uint16_t portid;
 	struct rte_eth_link link;
 	int ret;
+	char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 
 	printf("\nChecking link status");
 	fflush(stdout);
@@ -494,14 +491,10 @@ check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 			}
 			/* print link status if flag set */
 			if (print_flag == 1) {
-				if (link.link_status)
-					printf(
-					"Port%d Link Up. Speed %u Mbps - %s\n",
-						portid, link.link_speed,
-				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-					("full-duplex") : ("half-duplex"));
-				else
-					printf("Port %d Link Down\n", portid);
+				rte_eth_link_to_str(link_status_text,
+					sizeof(link_status_text), &link);
+				printf("Port %d %s", portid,
+				       link_status_text);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */

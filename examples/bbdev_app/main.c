@@ -326,8 +326,10 @@ check_port_link_status(uint16_t port_id)
 			const char *dp = (link.link_duplex ==
 				ETH_LINK_FULL_DUPLEX) ?
 				"full-duplex" : "half-duplex";
-			printf("\nPort %u Link Up - speed %u Mbps - %s\n",
-				port_id, link.link_speed, dp);
+			printf("\nPort %u Link Up - speed %s - %s\n",
+				port_id,
+				rte_eth_link_speed_to_str(link.link_speed),
+				dp);
 			return 0;
 		}
 		printf(".");

@@ -661,6 +661,7 @@ check_all_ports_link_status(uint32_t port_mask)
 	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 	int ret;
+	char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 
 	printf("\nChecking link status\n");
 	fflush(stdout);
@@ -680,14 +681,10 @@ check_all_ports_link_status(uint32_t port_mask)
 			}
 			/* print link status if flag set */
 			if (print_flag == 1) {
-				if (link.link_status)
-					printf(
-					"Port%d Link Up - speed %uMbps - %s\n",
-						portid, link.link_speed,
-				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-					("full-duplex") : ("half-duplex"));
-				else
-					printf("Port %d Link Down\n", portid);
+				rte_eth_link_to_str(link_status_text,
+					sizeof(link_status_text), &link);
+				printf("Port %d %s\n", portid,
+					link_status_text);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
@@ -717,19 +714,15 @@ check_all_ports_link_status(uint32_t port_mask)
 static void
 log_link_state(struct rte_kni *kni, int prev, struct rte_eth_link *link)
 {
+	char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 	if (kni == NULL || link == NULL)
 		return;
 
-	if (prev == ETH_LINK_DOWN && link->link_status == ETH_LINK_UP) {
-		RTE_LOG(INFO, APP, "%s NIC Link is Up %d Mbps %s %s.\n",
+	rte_eth_link_to_str(link_status_text, sizeof(link_status_text), link);
+	if (prev != link->link_status)
+		RTE_LOG(INFO, APP, "%s NIC %s",
 			rte_kni_get_name(kni),
-			link->link_speed,
-			link->link_autoneg ?  "(AutoNeg)" : "(Fixed)",
-			link->link_duplex ?  "Full Duplex" : "Half Duplex");
-	} else if (prev == ETH_LINK_UP && link->link_status == ETH_LINK_DOWN) {
-		RTE_LOG(INFO, APP, "%s NIC Link is Down.\n",
-			rte_kni_get_name(kni));
-	}
+			link_status_text);
 }
 
 /*

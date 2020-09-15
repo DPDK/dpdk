@@ -76,6 +76,7 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 	uint16_t rx_size;
 	uint16_t tx_size;
 	struct rte_eth_conf local_port_conf = port_conf;
+	char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 
 	/* check if port already initialized (multistream configuration) */
 	if (app_inited_port_mask & (1u << portid))
@@ -160,14 +161,9 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 			 "rte_eth_link_get: err=%d, port=%u: %s\n",
 			 ret, portid, rte_strerror(-ret));
 
-	if (link.link_status) {
-		printf(" Link Up - speed %u Mbps - %s\n",
-			(uint32_t) link.link_speed,
-			(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-			("full-duplex") : ("half-duplex"));
-	} else {
-		printf(" Link Down\n");
-	}
+	rte_eth_link_to_str(link_status_text, sizeof(link_status_text), &link);
+	printf("%s\n", link_status_text);
+
 	ret = rte_eth_promiscuous_enable(portid);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE,

@@ -700,6 +700,7 @@ check_link_status(uint32_t port_mask)
 	uint16_t portid;
 	struct rte_eth_link link;
 	int ret, link_status = 0;
+	char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 
 	printf("\nChecking link status\n");
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -715,15 +716,12 @@ check_link_status(uint32_t port_mask)
 		}
 
 		/* Print link status */
-		if (link.link_status) {
-			printf(
-				"Port %d Link Up. Speed %u Mbps - %s\n",
-				portid, link.link_speed,
-				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
-				("full-duplex") : ("half-duplex"));
+		rte_eth_link_to_str(link_status_text,
+			sizeof(link_status_text), &link);
+		printf("Port %d %s\n", portid, link_status_text);
+
+		if (link.link_status)
 			link_status = 1;
-		} else
-			printf("Port %d Link Down\n", portid);
 	}
 	return link_status;
 }
