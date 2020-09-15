@@ -539,6 +539,9 @@ iavf_hash_parse_pattern(struct iavf_pattern_match_item *pattern_match_item,
 	return 0;
 }
 
+#define REFINE_PROTO_FLD(op, fld) \
+	VIRTCHNL_##op##_PROTO_HDR_FIELD(hdr, VIRTCHNL_PROTO_HDR_##fld)
+
 /* refine proto hdrs base on l2, l3, l4 rss type */
 static void
 iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
@@ -554,11 +557,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			if (!(rss_type & ETH_RSS_ETH))
 				hdr->field_selector = 0;
 			else if (rss_type & ETH_RSS_L2_SRC_ONLY)
-				VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-					VIRTCHNL_PROTO_HDR_ETH_DST);
+				REFINE_PROTO_FLD(DEL, ETH_DST);
 			else if (rss_type & ETH_RSS_L2_DST_ONLY)
-				VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-					VIRTCHNL_PROTO_HDR_ETH_SRC);
+				REFINE_PROTO_FLD(DEL, ETH_SRC);
 			break;
 		case VIRTCHNL_PROTO_HDR_IPV4:
 			if (rss_type &
@@ -567,11 +568,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			     ETH_RSS_NONFRAG_IPV4_TCP |
 			     ETH_RSS_NONFRAG_IPV4_SCTP)) {
 				if (rss_type & ETH_RSS_L3_SRC_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-						VIRTCHNL_PROTO_HDR_IPV4_DST);
+					REFINE_PROTO_FLD(DEL, IPV4_DST);
 				else if (rss_type & ETH_RSS_L3_DST_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-						VIRTCHNL_PROTO_HDR_IPV4_SRC);
+					REFINE_PROTO_FLD(DEL, IPV4_SRC);
 				else if (rss_type &
 					 (ETH_RSS_L4_SRC_ONLY |
 					  ETH_RSS_L4_DST_ONLY))
@@ -587,11 +586,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			     ETH_RSS_NONFRAG_IPV6_TCP |
 			     ETH_RSS_NONFRAG_IPV6_SCTP)) {
 				if (rss_type & ETH_RSS_L3_SRC_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-						VIRTCHNL_PROTO_HDR_IPV6_DST);
+					REFINE_PROTO_FLD(DEL, IPV6_DST);
 				else if (rss_type & ETH_RSS_L3_DST_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-						VIRTCHNL_PROTO_HDR_IPV6_SRC);
+					REFINE_PROTO_FLD(DEL, IPV6_SRC);
 				else if (rss_type &
 					 (ETH_RSS_L4_SRC_ONLY |
 					  ETH_RSS_L4_DST_ONLY))
@@ -605,11 +602,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			    (ETH_RSS_NONFRAG_IPV4_UDP |
 			     ETH_RSS_NONFRAG_IPV6_UDP)) {
 				if (rss_type & ETH_RSS_L4_SRC_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-					    VIRTCHNL_PROTO_HDR_UDP_DST_PORT);
+					REFINE_PROTO_FLD(DEL, UDP_DST_PORT);
 				else if (rss_type & ETH_RSS_L4_DST_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-					    VIRTCHNL_PROTO_HDR_UDP_SRC_PORT);
+					REFINE_PROTO_FLD(DEL, UDP_SRC_PORT);
 				else if (rss_type &
 					 (ETH_RSS_L3_SRC_ONLY |
 					  ETH_RSS_L3_DST_ONLY))
@@ -623,11 +618,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			    (ETH_RSS_NONFRAG_IPV4_TCP |
 			     ETH_RSS_NONFRAG_IPV6_TCP)) {
 				if (rss_type & ETH_RSS_L4_SRC_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-					    VIRTCHNL_PROTO_HDR_TCP_DST_PORT);
+					REFINE_PROTO_FLD(DEL, TCP_DST_PORT);
 				else if (rss_type & ETH_RSS_L4_DST_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-					    VIRTCHNL_PROTO_HDR_TCP_SRC_PORT);
+					REFINE_PROTO_FLD(DEL, TCP_SRC_PORT);
 				else if (rss_type &
 					 (ETH_RSS_L3_SRC_ONLY |
 					  ETH_RSS_L3_DST_ONLY))
@@ -641,11 +634,9 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 			    (ETH_RSS_NONFRAG_IPV4_SCTP |
 			     ETH_RSS_NONFRAG_IPV6_SCTP)) {
 				if (rss_type & ETH_RSS_L4_SRC_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-					    VIRTCHNL_PROTO_HDR_SCTP_DST_PORT);
+					REFINE_PROTO_FLD(DEL, SCTP_DST_PORT);
 				else if (rss_type & ETH_RSS_L4_DST_ONLY)
-					VIRTCHNL_DEL_PROTO_HDR_FIELD(hdr,
-					    VIRTCHNL_PROTO_HDR_TCP_SRC_PORT);
+					REFINE_PROTO_FLD(DEL, SCTP_SRC_PORT);
 				else if (rss_type &
 					 (ETH_RSS_L3_SRC_ONLY |
 					  ETH_RSS_L3_DST_ONLY))
@@ -699,8 +690,7 @@ iavf_refine_proto_hdrs_gtpu(struct virtchnl_proto_hdrs *proto_hdrs,
 		hdr = &proto_hdrs->proto_hdr[i];
 		switch (hdr->type) {
 		case VIRTCHNL_PROTO_HDR_GTPU_IP:
-			VIRTCHNL_ADD_PROTO_HDR_FIELD(hdr,
-				VIRTCHNL_PROTO_HDR_GTPU_IP_TEID);
+			REFINE_PROTO_FLD(ADD, GTPU_IP_TEID);
 			break;
 		default:
 			break;
