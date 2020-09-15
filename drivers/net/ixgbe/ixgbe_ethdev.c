@@ -5320,10 +5320,16 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	ixgbe_dev_wait_setup_link_complete(dev, 0);
 
 	err = hw->mac.ops.reset_hw(hw);
-	if (err) {
+
+	/**
+	 * In this case, reuses the MAC address assigned by VF
+	 * initialization.
+	 */
+	if (err != IXGBE_SUCCESS && err != IXGBE_ERR_INVALID_MAC_ADDR) {
 		PMD_INIT_LOG(ERR, "Unable to reset vf hardware (%d)", err);
 		return err;
 	}
+
 	hw->mac.get_link_status = true;
 
 	/* negotiate mailbox API version to use with the PF. */
