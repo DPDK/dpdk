@@ -672,6 +672,7 @@ show_port(void)
 		struct rte_eth_dev_info dev_info;
 		struct rte_eth_rxq_info queue_info;
 		struct rte_eth_rss_conf rss_conf;
+		char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 
 		memset(&rss_conf, 0, sizeof(rss_conf));
 
@@ -685,12 +686,10 @@ show_port(void)
 			printf("Link get failed (port %u): %s\n",
 			       i, rte_strerror(-ret));
 		} else {
-			printf("\t  -- link speed %d duplex %d,"
-					" auto neg %d status %d\n",
-					link.link_speed,
-					link.link_duplex,
-					link.link_autoneg,
-					link.link_status);
+			rte_eth_link_to_str(link_status_text,
+					sizeof(link_status_text),
+					&link);
+			printf("\t%s\n", link_status_text);
 		}
 		printf("\t  -- promiscuous (%d)\n",
 				rte_eth_promiscuous_get(i));

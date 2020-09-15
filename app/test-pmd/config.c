@@ -630,7 +630,7 @@ port_infos_display(portid_t port_id)
 		printf("\nmemory allocation on the socket: %u",port->socket_id);
 
 	printf("\nLink status: %s\n", (link.link_status) ? ("up") : ("down"));
-	printf("Link speed: %u Mbps\n", (unsigned) link.link_speed);
+	printf("Link speed: %s\n", rte_eth_link_speed_to_str(link.link_speed));
 	printf("Link duplex: %s\n", (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 	       ("full-duplex") : ("half-duplex"));
 
@@ -775,12 +775,12 @@ port_summary_display(portid_t port_id)
 	if (ret != 0)
 		return;
 
-	printf("%-4d %02X:%02X:%02X:%02X:%02X:%02X %-12s %-14s %-8s %uMbps\n",
+	printf("%-4d %02X:%02X:%02X:%02X:%02X:%02X %-12s %-14s %-8s %s\n",
 		port_id, mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
 		mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
 		mac_addr.addr_bytes[4], mac_addr.addr_bytes[5], name,
 		dev_info.driver_name, (link.link_status) ? ("up") : ("down"),
-		(unsigned int) link.link_speed);
+		rte_eth_link_speed_to_str(link.link_speed));
 }
 
 void
@@ -4032,7 +4032,8 @@ set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
 	ret = eth_link_get_nowait_print_err(port_id, &link);
 	if (ret < 0)
 		return 1;
-	if (rate > link.link_speed) {
+	if (link.link_speed != ETH_SPEED_NUM_UNKNOWN &&
+	    rate > link.link_speed) {
 		printf("Invalid rate value:%u bigger than link speed: %u\n",
 			rate, link.link_speed);
 		return 1;

@@ -158,6 +158,7 @@ An example callback function that has been written as indicated below.
     {
         struct rte_eth_link link;
         int ret;
+        char link_status[RTE_ETH_LINK_MAX_STR_LEN];
 
         RTE_SET_USED(param);
 
@@ -169,11 +170,10 @@ An example callback function that has been written as indicated below.
         if (ret < 0) {
             printf("Failed to get port %d link status: %s\n\n",
                    port_id, rte_strerror(-ret));
-        } else if (link.link_status) {
-            printf("Port %d Link Up - speed %u Mbps - %s\n\n", port_id, (unsigned)link.link_speed,
-                  (link.link_duplex == ETH_LINK_FULL_DUPLEX) ? ("full-duplex") : ("half-duplex"));
-        } else
-            printf("Port %d Link Down\n\n", port_id);
+        } else {
+            rte_eth_link_to_str(link_status, sizeof(link_status), &link);
+            printf("Port %d %s\n", port_id, link_status);
+        }
     }
 
 This function is called when a link status interrupt is present for the right port.

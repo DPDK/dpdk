@@ -155,7 +155,7 @@ static void
 app_ports_check_link(void)
 {
 	uint32_t all_ports_up, i;
-
+	char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 	all_ports_up = 1;
 
 	for (i = 0; i < app.n_ports; i++) {
@@ -173,12 +173,11 @@ app_ports_check_link(void)
 			all_ports_up = 0;
 			continue;
 		}
-
-		RTE_LOG(INFO, USER1, "Port %u (%u Gbps) %s\n",
+		rte_eth_link_to_str(link_status_text, sizeof(link_status_text),
+				    &link);
+		RTE_LOG(INFO, USER1, "Port %u %s\n",
 			port,
-			link.link_speed / 1000,
-			link.link_status ? "UP" : "DOWN");
-
+			link_status_text);
 		if (link.link_status == ETH_LINK_DOWN)
 			all_ports_up = 0;
 	}
