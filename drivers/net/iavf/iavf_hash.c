@@ -541,6 +541,11 @@ iavf_hash_parse_pattern(struct iavf_pattern_match_item *pattern_match_item,
 
 #define REFINE_PROTO_FLD(op, fld) \
 	VIRTCHNL_##op##_PROTO_HDR_FIELD(hdr, VIRTCHNL_PROTO_HDR_##fld)
+#define REPALCE_PROTO_FLD(fld_1, fld_2) \
+do { \
+	REFINE_PROTO_FLD(DEL, fld_1);	\
+	REFINE_PROTO_FLD(ADD, fld_2);	\
+} while (0)
 
 /* refine proto hdrs base on l2, l3, l4 rss type */
 static void
@@ -595,6 +600,14 @@ iavf_refine_proto_hdrs_l234(struct virtchnl_proto_hdrs *proto_hdrs,
 					hdr->field_selector = 0;
 			} else {
 				hdr->field_selector = 0;
+			}
+			if (rss_type & RTE_ETH_RSS_L3_PRE64) {
+				if (REFINE_PROTO_FLD(TEST, IPV6_SRC))
+					REPALCE_PROTO_FLD(IPV6_SRC,
+							  IPV6_PREFIX64_SRC);
+				if (REFINE_PROTO_FLD(TEST, IPV6_DST))
+					REPALCE_PROTO_FLD(IPV6_DST,
+							  IPV6_PREFIX64_DST);
 			}
 			break;
 		case VIRTCHNL_PROTO_HDR_UDP:
@@ -763,6 +776,16 @@ iavf_any_invalid_rss_type(uint64_t rss_type, uint64_t allow_rss_type)
 		if (__builtin_popcountll(rss_type & invalid_rss_comb[i]) > 1)
 			return true;
 	}
+
+	/* current ipv6 prefix only supports prefix 64 bits*/
+#define _invalid_prefix_ (RTE_ETH_RSS_L3_PRE32	| \
+			  RTE_ETH_RSS_L3_PRE40	| \
+			  RTE_ETH_RSS_L3_PRE48	| \
+			  RTE_ETH_RSS_L3_PRE56	| \
+			  RTE_ETH_RSS_L3_PRE96)
+
+	if (rss_type & _invalid_prefix_)
+		return true;
 
 	/* check not allowed RSS type */
 #define _RSS_ATTR_ (ETH_RSS_L3_SRC_ONLY		| \
