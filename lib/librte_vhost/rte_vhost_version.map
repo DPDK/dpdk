@@ -26,13 +26,10 @@ DPDK_21 {
 	rte_vhost_log_write;
 	rte_vhost_rx_queue_count;
 	rte_vhost_vring_call;
-
-	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
+	rte_vhost_get_log_base;
+	rte_vhost_get_vring_base;
+	rte_vhost_set_vring_base;
+	rte_vhost_host_notifier_ctrl;
 	rte_vdpa_register_device;
 	rte_vdpa_unregister_device;
 	rte_vdpa_get_stats_names;
@@ -42,19 +39,27 @@ EXPERIMENTAL {
 	rte_vhost_driver_detach_vdpa_device;
 	rte_vhost_driver_get_vdpa_device;
 	rte_vhost_get_vdpa_device;
+	rte_vdpa_find_device_by_name;
+	rte_vdpa_get_rte_device;
+	rte_vdpa_get_queue_num;
+	rte_vdpa_get_features;
+	rte_vdpa_get_protocol_features;
+	rte_vdpa_relay_vring_used;
+
+	local: *;
+};
+
+EXPERIMENTAL {
+	global:
+
 	rte_vhost_driver_get_protocol_features;
 	rte_vhost_driver_get_queue_num;
-	rte_vhost_get_log_base;
-	rte_vhost_get_vring_base;
-	rte_vhost_set_vring_base;
 	rte_vhost_crypto_create;
 	rte_vhost_crypto_free;
 	rte_vhost_crypto_fetch_requests;
 	rte_vhost_crypto_finalize_requests;
 	rte_vhost_crypto_set_zero_copy;
 	rte_vhost_va_from_guest_pa;
-	rte_vhost_host_notifier_ctrl;
-	rte_vdpa_relay_vring_used;
 	rte_vhost_extern_callback_register;
 	rte_vhost_driver_set_protocol_features;
 	rte_vhost_set_inflight_desc_split;
@@ -66,11 +71,6 @@ EXPERIMENTAL {
 	rte_vhost_get_vhost_ring_inflight;
 	rte_vhost_get_vring_base_from_inflight;
 	rte_vhost_slave_config_change;
-	rte_vdpa_find_device_by_name;
-	rte_vdpa_get_rte_device;
-	rte_vdpa_get_queue_num;
-	rte_vdpa_get_features;
-	rte_vdpa_get_protocol_features;
 	rte_vhost_async_channel_register;
 	rte_vhost_async_channel_unregister;
 	rte_vhost_submit_enqueue_burst;

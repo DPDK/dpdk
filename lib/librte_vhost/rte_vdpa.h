@@ -42,9 +42,6 @@ struct rte_vdpa_stat_name {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Find the device id of a vdpa device from its name
  *
  * @param name
@@ -52,14 +49,10 @@ struct rte_vdpa_stat_name {
  * @return
  *  vDPA device pointer on success, NULL on failure
  */
-__rte_experimental
 struct rte_vdpa_device *
 rte_vdpa_find_device_by_name(const char *name);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get the generic device from the vdpa device
  *
  * @param vdpa_dev
@@ -67,14 +60,10 @@ rte_vdpa_find_device_by_name(const char *name);
  * @return
  *  generic device pointer on success, NULL on failure
  */
-__rte_experimental
 struct rte_device *
 rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get number of queue pairs supported by the vDPA device
  *
  * @param dev
@@ -84,14 +73,10 @@ rte_vdpa_get_rte_device(struct rte_vdpa_device *vdpa_dev);
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vdpa_get_queue_num(struct rte_vdpa_device *dev, uint32_t *queue_num);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get the Virtio features supported by the vDPA device
  *
  * @param dev
@@ -101,14 +86,10 @@ rte_vdpa_get_queue_num(struct rte_vdpa_device *dev, uint32_t *queue_num);
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vdpa_get_features(struct rte_vdpa_device *dev, uint64_t *features);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get the Vhost-user protocol features supported by the vDPA device
  *
  * @param dev
@@ -118,14 +99,10 @@ rte_vdpa_get_features(struct rte_vdpa_device *dev, uint64_t *features);
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vdpa_get_protocol_features(struct rte_vdpa_device *dev, uint64_t *features);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Synchronize the used ring from mediated ring to guest, log dirty
  * page for each writeable buffer, caller should handle the used
  * ring logging before device stop.
@@ -139,14 +116,10 @@ rte_vdpa_get_protocol_features(struct rte_vdpa_device *dev, uint64_t *features);
  * @return
  *  number of synced used entries on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve names of statistics of a vDPA device.
  *
  * There is an assumption that 'stat_names' and 'stats' arrays are matched
@@ -166,16 +139,12 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m);
  *   A negative value on error, otherwise the number of entries filled in the
  *   stats name array.
  */
-__rte_experimental
 int
 rte_vdpa_get_stats_names(struct rte_vdpa_device *dev,
 		struct rte_vdpa_stat_name *stats_names,
 		unsigned int size);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve statistics of a vDPA device.
  *
  * There is an assumption that 'stat_names' and 'stats' arrays are matched
@@ -197,14 +166,10 @@ rte_vdpa_get_stats_names(struct rte_vdpa_device *dev,
  *   A negative value on error, otherwise the number of entries filled in the
  *   stats table.
  */
-__rte_experimental
 int
 rte_vdpa_get_stats(struct rte_vdpa_device *dev, uint16_t qid,
 		struct rte_vdpa_stat *stats, unsigned int n);
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Reset statistics of a vDPA device.
  *
  * @param dev
@@ -214,7 +179,6 @@ rte_vdpa_get_stats(struct rte_vdpa_device *dev, uint16_t qid,
  * @return
  *   0 on success, a negative value on error.
  */
-__rte_experimental
 int
 rte_vdpa_reset_stats(struct rte_vdpa_device *dev, uint16_t qid);
 #endif /* _RTE_VDPA_H_ */
