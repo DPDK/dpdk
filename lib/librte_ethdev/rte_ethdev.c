@@ -2384,6 +2384,43 @@ rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *eth_link)
 	return 0;
 }
 
+const char *
+rte_eth_link_speed_to_str(uint32_t link_speed)
+{
+	switch (link_speed) {
+	case ETH_SPEED_NUM_NONE: return "None";
+	case ETH_SPEED_NUM_10M:  return "10 Mbps";
+	case ETH_SPEED_NUM_100M: return "100 Mbps";
+	case ETH_SPEED_NUM_1G:   return "1 Gbps";
+	case ETH_SPEED_NUM_2_5G: return "2.5 Gbps";
+	case ETH_SPEED_NUM_5G:   return "5 Gbps";
+	case ETH_SPEED_NUM_10G:  return "10 Gbps";
+	case ETH_SPEED_NUM_20G:  return "20 Gbps";
+	case ETH_SPEED_NUM_25G:  return "25 Gbps";
+	case ETH_SPEED_NUM_40G:  return "40 Gbps";
+	case ETH_SPEED_NUM_50G:  return "50 Gbps";
+	case ETH_SPEED_NUM_56G:  return "56 Gbps";
+	case ETH_SPEED_NUM_100G: return "100 Gbps";
+	case ETH_SPEED_NUM_200G: return "200 Gbps";
+	case ETH_SPEED_NUM_UNKNOWN: return "Unknown";
+	default: return "Invalid";
+	}
+}
+
+int
+rte_eth_link_to_str(char *str, size_t len, const struct rte_eth_link *eth_link)
+{
+	if (eth_link->link_status == ETH_LINK_DOWN)
+		return snprintf(str, len, "Link down");
+	else
+		return snprintf(str, len, "Link up at %s %s %s",
+			rte_eth_link_speed_to_str(eth_link->link_speed),
+			(eth_link->link_duplex == ETH_LINK_FULL_DUPLEX) ?
+			"FDX" : "HDX",
+			(eth_link->link_autoneg == ETH_LINK_AUTONEG) ?
+			"Autoneg" : "Fixed");
+}
+
 int
 rte_eth_stats_get(uint16_t port_id, struct rte_eth_stats *stats)
 {

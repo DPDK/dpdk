@@ -323,6 +323,7 @@ struct rte_eth_link {
 #define ETH_LINK_UP          1 /**< Link is up (see link_status). */
 #define ETH_LINK_FIXED       0 /**< No autonegotiation (see link_autoneg). */
 #define ETH_LINK_AUTONEG     1 /**< Autonegotiated (see link_autoneg). */
+#define RTE_ETH_LINK_MAX_STR_LEN 40 /**< Max length of default link string. */
 
 /**
  * A structure used to configure the ring threshold registers of an RX/TX
@@ -2435,6 +2436,44 @@ int rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
  *   - (-ENODEV) if *port_id* invalid.
  */
 int rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * The function converts a link_speed to a string. It handles all special
+ * values like unknown or none speed.
+ *
+ * @param link_speed
+ *   link_speed of rte_eth_link struct
+ * @return
+ *   Link speed in textual format. It's pointer to immutable memory.
+ *   No free is required.
+ */
+__rte_experimental
+const char *rte_eth_link_speed_to_str(uint32_t speed_link);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * The function converts a rte_eth_link struct representing a link status to
+ * a string.
+ *
+ * @param str
+ *   A pointer to a string to be filled with textual representation of
+ *   device status. At least ETH_LINK_MAX_STR_LEN bytes should be allocated to
+ *   store default link status text.
+ * @param len
+ *   Length of available memory at 'str' string.
+ * @param eth_link
+ *   Link status returned by rte_eth_link_get function
+ * @return
+ *   Number of bytes written to str array.
+ */
+__rte_experimental
+int rte_eth_link_to_str(char *str, size_t len,
+			const struct rte_eth_link *eth_link);
 
 /**
  * Retrieve the general I/O statistics of an Ethernet device.

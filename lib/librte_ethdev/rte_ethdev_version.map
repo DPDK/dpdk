@@ -225,6 +225,10 @@ EXPERIMENTAL {
 	rte_tm_shared_wred_context_delete;
 	rte_tm_wred_profile_add;
 	rte_tm_wred_profile_delete;
+
+	# added in 20.11
+	rte_eth_link_speed_to_str;
+	rte_eth_link_to_str;
 };
 
 INTERNAL {
