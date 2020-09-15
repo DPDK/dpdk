@@ -1168,6 +1168,19 @@ err_secondary:
 	 */
 	MLX5_ASSERT(spawn->ifindex);
 	priv->if_index = spawn->ifindex;
+	if (priv->pf_bond >= 0 && priv->master) {
+		/* Get bond interface info */
+		err = mlx5_sysfs_bond_info(priv->if_index,
+				     &priv->bond_ifindex,
+				     priv->bond_name);
+		if (err)
+			DRV_LOG(ERR, "unable to get bond info: %s",
+				strerror(rte_errno));
+		else
+			DRV_LOG(INFO, "PF device %u, bond device %u(%s)",
+				priv->if_index, priv->bond_ifindex,
+				priv->bond_name);
+	}
 	eth_dev->data->dev_private = priv;
 	priv->dev_data = eth_dev->data;
 	eth_dev->data->mac_addrs = priv->mac;

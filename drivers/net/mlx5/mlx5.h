@@ -779,6 +779,8 @@ struct mlx5_priv {
 	int32_t representor_id; /* Port representor identifier. */
 	int32_t pf_bond; /* >=0 means PF index in bonding configuration. */
 	unsigned int if_index; /* Associated kernel network device index. */
+	uint32_t bond_ifindex; /**< Bond interface index. */
+	char bond_name[IF_NAMESIZE]; /**< Bond interface name. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
@@ -909,6 +911,8 @@ void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
 void mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
 				   rte_intr_callback_fn cb_fn, void *cb_arg);
+int mlx5_sysfs_bond_info(unsigned int pf_ifindex, unsigned int *ifindex,
+			 char *ifname);
 int mlx5_get_module_info(struct rte_eth_dev *dev,
 			 struct rte_eth_dev_module_info *modinfo);
 int mlx5_get_module_eeprom(struct rte_eth_dev *dev,

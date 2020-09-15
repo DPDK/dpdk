@@ -43,7 +43,7 @@ mlx5_ifindex(const struct rte_eth_dev *dev)
 
 	MLX5_ASSERT(priv);
 	MLX5_ASSERT(priv->if_index);
-	ifindex = priv->if_index;
+	ifindex = priv->bond_ifindex > 0 ? priv->bond_ifindex : priv->if_index;
 	if (!ifindex)
 		rte_errno = ENXIO;
 	return ifindex;
