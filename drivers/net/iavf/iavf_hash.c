@@ -359,6 +359,7 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_vlan_ipv4_udp,		IAVF_RSS_TYPE_VLAN_IPV4_UDP,	&outer_ipv4_udp_tmplt},
 	{iavf_pattern_eth_vlan_ipv4_tcp,		IAVF_RSS_TYPE_VLAN_IPV4_TCP,	&outer_ipv4_tcp_tmplt},
 	{iavf_pattern_eth_vlan_ipv4_sctp,		IAVF_RSS_TYPE_VLAN_IPV4_SCTP,	&outer_ipv4_sctp_tmplt},
+	{iavf_pattern_eth_ipv4_gtpu,			ETH_RSS_IPV4,			&outer_ipv4_udp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv4,		IAVF_RSS_TYPE_GTPU_IPV4,	&inner_ipv4_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv4_udp,		IAVF_RSS_TYPE_GTPU_IPV4_UDP,	&inner_ipv4_udp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv4_tcp,		IAVF_RSS_TYPE_GTPU_IPV4_TCP,	&inner_ipv4_tcp_tmplt},
@@ -386,6 +387,7 @@ static struct iavf_pattern_match_item iavf_hash_pattern_list[] = {
 	{iavf_pattern_eth_vlan_ipv6_udp,		IAVF_RSS_TYPE_VLAN_IPV6_UDP,	&outer_ipv6_udp_tmplt},
 	{iavf_pattern_eth_vlan_ipv6_tcp,		IAVF_RSS_TYPE_VLAN_IPV6_TCP,	&outer_ipv6_tcp_tmplt},
 	{iavf_pattern_eth_vlan_ipv6_sctp,		IAVF_RSS_TYPE_VLAN_IPV6_SCTP,	&outer_ipv6_sctp_tmplt},
+	{iavf_pattern_eth_ipv6_gtpu,			ETH_RSS_IPV6,			&outer_ipv6_udp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv6,		IAVF_RSS_TYPE_GTPU_IPV6,	&inner_ipv6_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv6_udp,		IAVF_RSS_TYPE_GTPU_IPV6_UDP,	&inner_ipv6_udp_tmplt},
 	{iavf_pattern_eth_ipv4_gtpu_ipv6_tcp,		IAVF_RSS_TYPE_GTPU_IPV6_TCP,	&inner_ipv6_tcp_tmplt},
@@ -714,22 +716,26 @@ iavf_refine_proto_hdrs_by_pattern(struct virtchnl_proto_hdrs *proto_hdrs,
 	struct virtchnl_proto_hdr *hdr2;
 	int i;
 
-	if (!(phint & IAVF_PHINT_GTPU_MSK) ||
-	    proto_hdrs->tunnel_level == 0)
+	if (!(phint & IAVF_PHINT_GTPU_MSK))
 		return;
 
-	/* shift headers 1 layer */
-	for (i = proto_hdrs->count; i > 0; i--) {
-		hdr1 = &proto_hdrs->proto_hdr[i];
-		hdr2 = &proto_hdrs->proto_hdr[i - 1];
+	if (proto_hdrs->tunnel_level == TUNNEL_LEVEL_INNER) {
+		/* shift headers 1 layer */
+		for (i = proto_hdrs->count; i > 0; i--) {
+			hdr1 = &proto_hdrs->proto_hdr[i];
+			hdr2 = &proto_hdrs->proto_hdr[i - 1];
 
-		*hdr1 = *hdr2;
+			*hdr1 = *hdr2;
+		}
+
+		/* adding gtpu header at layer 0 */
+		hdr1 = &proto_hdrs->proto_hdr[0];
+	} else {
+		hdr1 = &proto_hdrs->proto_hdr[proto_hdrs->count];
 	}
 
-	/* adding gtpu header at layer 0 */
-	proto_hdrs->count++;
-	hdr1 = &proto_hdrs->proto_hdr[0];
 	hdr1->field_selector = 0;
+	proto_hdrs->count++;
 
 	if (phint & IAVF_PHINT_GTPU_EH_DWN)
 		VIRTCHNL_SET_PROTO_HDR_TYPE(hdr1, GTPU_EH_PDU_DWN);
