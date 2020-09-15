@@ -166,6 +166,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port (info|stats|summary|xstats|fdir|stat_qmap|dcb_tc|cap) (port_id|all)\n"
 			"    Display information for port_id, or all.\n\n"
 
+			"show port port_id (module_eeprom|eeprom)\n"
+			"    Display the module EEPROM or EEPROM information for port_id.\n\n"
+
 			"show port X rss reta (size) (mask0,mask1,...)\n"
 			"    Display the rss redirection table entry indicated"
 			" by masks on port X. size is used to indicate the"
@@ -7705,6 +7708,51 @@ cmdline_parse_inst_t cmd_showdevice = {
 		NULL,
 	},
 };
+
+/* *** SHOW MODULE EEPROM/EEPROM port INFO *** */
+struct cmd_showeeprom_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	uint16_t portnum;
+	cmdline_fixed_string_t type;
+};
+
+static void cmd_showeeprom_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_showeeprom_result *res = parsed_result;
+
+	if (!strcmp(res->type, "eeprom"))
+		port_eeprom_display(res->portnum);
+	else if (!strcmp(res->type, "module_eeprom"))
+		port_module_eeprom_display(res->portnum);
+	else
+		printf("Unknown argument\n");
+}
+
+cmdline_parse_token_string_t cmd_showeeprom_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_showeeprom_result, show, "show");
+cmdline_parse_token_string_t cmd_showeeprom_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_showeeprom_result, port, "port");
+cmdline_parse_token_num_t cmd_showeeprom_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_showeeprom_result, portnum, UINT16);
+cmdline_parse_token_string_t cmd_showeeprom_type =
+	TOKEN_STRING_INITIALIZER(struct cmd_showeeprom_result, type, "module_eeprom#eeprom");
+
+cmdline_parse_inst_t cmd_showeeprom = {
+	.f = cmd_showeeprom_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> module_eeprom|eeprom",
+	.tokens = {
+		(void *)&cmd_showeeprom_show,
+		(void *)&cmd_showeeprom_port,
+		(void *)&cmd_showeeprom_portnum,
+		(void *)&cmd_showeeprom_type,
+		NULL,
+	},
+};
+
 /* *** SHOW QUEUE INFO *** */
 struct cmd_showqueue_result {
 	cmdline_fixed_string_t show;
@@ -19507,6 +19555,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_load_from_file,
 	(cmdline_parse_inst_t *)&cmd_showport,
 	(cmdline_parse_inst_t *)&cmd_showqueue,
+	(cmdline_parse_inst_t *)&cmd_showeeprom,
 	(cmdline_parse_inst_t *)&cmd_showportall,
 	(cmdline_parse_inst_t *)&cmd_showdevice,
 	(cmdline_parse_inst_t *)&cmd_showcfg,

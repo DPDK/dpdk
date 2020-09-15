@@ -49,6 +49,7 @@
 #include <rte_pmd_bnxt.h>
 #endif
 #include <rte_gro.h>
+#include <rte_hexdump.h>
 
 #include "testpmd.h"
 
@@ -783,6 +784,122 @@ port_summary_display(portid_t port_id)
 		mac_addr.addr_bytes[4], mac_addr.addr_bytes[5], name,
 		dev_info.driver_name, (link.link_status) ? ("up") : ("down"),
 		rte_eth_link_speed_to_str(link.link_speed));
+}
+
+void
+port_eeprom_display(portid_t port_id)
+{
+	struct rte_dev_eeprom_info einfo;
+	int ret;
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		print_valid_ports();
+		return;
+	}
+
+	int len_eeprom = rte_eth_dev_get_eeprom_length(port_id);
+	if (len_eeprom < 0) {
+		switch (len_eeprom) {
+		case -ENODEV:
+			printf("port index %d invalid\n", port_id);
+			break;
+		case -ENOTSUP:
+			printf("operation not supported by device\n");
+			break;
+		case -EIO:
+			printf("device is removed\n");
+			break;
+		default:
+			printf("Unable to get EEPROM: %d\n", len_eeprom);
+			break;
+		}
+		return;
+	}
+
+	char buf[len_eeprom];
+	einfo.offset = 0;
+	einfo.length = len_eeprom;
+	einfo.data = buf;
+
+	ret = rte_eth_dev_get_eeprom(port_id, &einfo);
+	if (ret != 0) {
+		switch (ret) {
+		case -ENODEV:
+			printf("port index %d invalid\n", port_id);
+			break;
+		case -ENOTSUP:
+			printf("operation not supported by device\n");
+			break;
+		case -EIO:
+			printf("device is removed\n");
+			break;
+		default:
+			printf("Unable to get EEPROM: %d\n", ret);
+			break;
+		}
+		return;
+	}
+	rte_hexdump(stdout, "hexdump", einfo.data, einfo.length);
+	printf("Finish -- Port: %d EEPROM length: %d bytes\n", port_id, len_eeprom);
+}
+
+void
+port_module_eeprom_display(portid_t port_id)
+{
+	struct rte_eth_dev_module_info minfo;
+	struct rte_dev_eeprom_info einfo;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		print_valid_ports();
+		return;
+	}
+
+
+	ret = rte_eth_dev_get_module_info(port_id, &minfo);
+	if (ret != 0) {
+		switch (ret) {
+		case -ENODEV:
+			printf("port index %d invalid\n", port_id);
+			break;
+		case -ENOTSUP:
+			printf("operation not supported by device\n");
+			break;
+		case -EIO:
+			printf("device is removed\n");
+			break;
+		default:
+			printf("Unable to get module EEPROM: %d\n", ret);
+			break;
+		}
+		return;
+	}
+
+	char buf[minfo.eeprom_len];
+	einfo.offset = 0;
+	einfo.length = minfo.eeprom_len;
+	einfo.data = buf;
+
+	ret = rte_eth_dev_get_module_eeprom(port_id, &einfo);
+	if (ret != 0) {
+		switch (ret) {
+		case -ENODEV:
+			printf("port index %d invalid\n", port_id);
+			break;
+		case -ENOTSUP:
+			printf("operation not supported by device\n");
+			break;
+		case -EIO:
+			printf("device is removed\n");
+			break;
+		default:
+			printf("Unable to get module EEPROM: %d\n", ret);
+			break;
+		}
+		return;
+	}
+
+	rte_hexdump(stdout, "hexdump", einfo.data, einfo.length);
+	printf("Finish -- Port: %d MODULE EEPROM length: %d bytes\n", port_id, einfo.length);
 }
 
 void

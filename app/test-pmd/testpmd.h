@@ -721,6 +721,8 @@ void nic_stats_mapping_display(portid_t port_id);
 void device_infos_display(const char *identifier);
 void port_infos_display(portid_t port_id);
 void port_summary_display(portid_t port_id);
+void port_eeprom_display(portid_t port_id);
+void port_module_eeprom_display(portid_t port_id);
 void port_summary_header_display(void);
 void port_offload_cap_display(portid_t port_id);
 void rx_queue_infos_display(portid_t port_idi, uint16_t queue_id);
