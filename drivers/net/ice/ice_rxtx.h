@@ -38,6 +38,8 @@
 
 #define ICE_FDIR_PKT_LEN	512
 
+#define ICE_RXDID_COMMS_OVS	22
+
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
 typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
 
@@ -133,6 +135,46 @@ union ice_tx_offload {
 		uint64_t outer_l2_len:8; /* outer L2 Header Length */
 		uint64_t outer_l3_len:16; /* outer L3 Header Length */
 	};
+};
+
+/* Rx Flex Descriptor for Comms Package Profile
+ * RxDID Profile ID 22 (swap Hash and FlowID)
+ * Flex-field 0: Flow ID lower 16-bits
+ * Flex-field 1: Flow ID upper 16-bits
+ * Flex-field 2: RSS hash lower 16-bits
+ * Flex-field 3: RSS hash upper 16-bits
+ * Flex-field 4: AUX0
+ * Flex-field 5: AUX1
+ */
+struct ice_32b_rx_flex_desc_comms_ovs {
+	/* Qword 0 */
+	u8 rxdid;
+	u8 mir_id_umb_cast;
+	__le16 ptype_flexi_flags0;
+	__le16 pkt_len;
+	__le16 hdr_len_sph_flex_flags1;
+
+	/* Qword 1 */
+	__le16 status_error0;
+	__le16 l2tag1;
+	__le32 flow_id;
+
+	/* Qword 2 */
+	__le16 status_error1;
+	u8 flexi_flags2;
+	u8 ts_low;
+	__le16 l2tag2_1st;
+	__le16 l2tag2_2nd;
+
+	/* Qword 3 */
+	__le32 rss_hash;
+	union {
+		struct {
+			__le16 aux0;
+			__le16 aux1;
+		} flex;
+		__le32 ts_high;
+	} flex_ts;
 };
 
 int ice_rx_queue_setup(struct rte_eth_dev *dev,

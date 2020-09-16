@@ -2147,6 +2147,24 @@ ice_rss_ctx_init(struct ice_pf *pf)
 	ICE_HASH_CFG_RESET(&pf->gtpu_hash_ctx.ipv6_tcp);
 }
 
+static uint64_t
+ice_get_supported_rxdid(struct ice_hw *hw)
+{
+	uint64_t supported_rxdid = 0; /* bitmap for supported RXDID */
+	uint32_t regval;
+	int i;
+
+	supported_rxdid |= BIT(ICE_RXDID_LEGACY_1);
+
+	for (i = ICE_RXDID_FLEX_NIC; i < ICE_FLEX_DESC_RXDID_MAX_NUM; i++) {
+		regval = ICE_READ_REG(hw, GLFLXP_RXDID_FLAGS(i, 0));
+		if ((regval >> GLFLXP_RXDID_FLAGS_FLEXIFLAG_4N_S)
+			& GLFLXP_RXDID_FLAGS_FLEXIFLAG_4N_M)
+			supported_rxdid |= BIT(i);
+	}
+	return supported_rxdid;
+}
+
 static int
 ice_dev_init(struct rte_eth_dev *dev)
 {
@@ -2297,6 +2315,8 @@ ice_dev_init(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Failed to reset fxp resource");
 		return ret;
 	}
+
+	pf->supported_rxdid = ice_get_supported_rxdid(hw);
 
 	return 0;
 

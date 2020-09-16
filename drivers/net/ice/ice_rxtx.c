@@ -63,7 +63,7 @@ static inline uint8_t
 ice_proto_xtr_type_to_rxdid(uint8_t xtr_type)
 {
 	static uint8_t rxdid_map[] = {
-		[PROTO_XTR_NONE]      = ICE_RXDID_COMMS_GENERIC,
+		[PROTO_XTR_NONE]      = ICE_RXDID_COMMS_OVS,
 		[PROTO_XTR_VLAN]      = ICE_RXDID_COMMS_AUX_VLAN,
 		[PROTO_XTR_IPV4]      = ICE_RXDID_COMMS_AUX_IPV4,
 		[PROTO_XTR_IPV6]      = ICE_RXDID_COMMS_AUX_IPV6,
@@ -73,7 +73,7 @@ ice_proto_xtr_type_to_rxdid(uint8_t xtr_type)
 	};
 
 	return xtr_type < RTE_DIM(rxdid_map) ?
-				rxdid_map[xtr_type] : ICE_RXDID_COMMS_GENERIC;
+				rxdid_map[xtr_type] : ICE_RXDID_COMMS_OVS;
 }
 
 static enum ice_status
@@ -81,12 +81,13 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 {
 	struct ice_vsi *vsi = rxq->vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_pf *pf = ICE_VSI_TO_PF(vsi);
 	struct rte_eth_dev *dev = ICE_VSI_TO_ETH_DEV(rxq->vsi);
 	struct ice_rlan_ctx rx_ctx;
 	enum ice_status err;
 	uint16_t buf_size, len;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
-	uint32_t rxdid = ICE_RXDID_COMMS_GENERIC;
+	uint32_t rxdid = ICE_RXDID_COMMS_OVS;
 	uint32_t regval;
 
 	/* Set buffer size as the head split is disabled. */
@@ -150,6 +151,12 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 
 	PMD_DRV_LOG(DEBUG, "Port (%u) - Rx queue (%u) is set with RXDID : %u",
 		    rxq->port_id, rxq->queue_id, rxdid);
+
+	if (!(pf->supported_rxdid & BIT(rxdid))) {
+		PMD_DRV_LOG(ERR, "currently package doesn't support RXDID (%u)",
+			    rxdid);
+		return -EINVAL;
+	}
 
 	/* Enable Flexible Descriptors in the queue context which
 	 * allows this driver to select a specific receive descriptor format
@@ -1338,7 +1345,7 @@ ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_flex_desc *rxdp)
 
 static void
 ice_rxd_to_proto_xtr(struct rte_mbuf *mb,
-		     volatile struct ice_32b_rx_flex_desc_comms *desc)
+		     volatile struct ice_32b_rx_flex_desc_comms_ovs *desc)
 {
 	uint16_t stat_err = rte_le_to_cpu_16(desc->status_error1);
 	uint32_t metadata = 0;
@@ -1376,8 +1383,9 @@ static inline void
 ice_rxd_to_pkt_fields(struct rte_mbuf *mb,
 		      volatile union ice_rx_flex_desc *rxdp)
 {
-	volatile struct ice_32b_rx_flex_desc_comms *desc =
-			(volatile struct ice_32b_rx_flex_desc_comms *)rxdp;
+	volatile struct ice_32b_rx_flex_desc_comms_ovs *desc =
+			(volatile struct ice_32b_rx_flex_desc_comms_ovs *)rxdp;
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 	uint16_t stat_err;
 
 	stat_err = rte_le_to_cpu_16(desc->status_error0);
@@ -1385,13 +1393,14 @@ ice_rxd_to_pkt_fields(struct rte_mbuf *mb,
 		mb->ol_flags |= PKT_RX_RSS_HASH;
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
+#endif
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 	if (desc->flow_id != 0xFFFFFFFF) {
 		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
 	}
 
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
 	if (unlikely(rte_net_ice_dynf_proto_xtr_metadata_avail()))
 		ice_rxd_to_proto_xtr(mb, desc);
 #endif

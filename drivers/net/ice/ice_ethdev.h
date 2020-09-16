@@ -136,6 +136,9 @@
 #define ICE_RXTX_BYTES_HIGH(bytes) ((bytes) & ~ICE_40_BIT_MASK)
 #define ICE_RXTX_BYTES_LOW(bytes) ((bytes) & ICE_40_BIT_MASK)
 
+/* Max number of flexible descriptor rxdid */
+#define ICE_FLEX_DESC_RXDID_MAX_NUM 64
+
 /* DDP package type */
 enum ice_pkg_type {
 	ICE_PKG_TYPE_UNKNOWN,
@@ -435,6 +438,7 @@ struct ice_pf {
 	bool init_link_up;
 	uint64_t old_rx_bytes;
 	uint64_t old_tx_bytes;
+	uint64_t supported_rxdid; /* bitmap for supported RXDID */
 };
 
 #define ICE_MAX_QUEUE_NUM  2048
