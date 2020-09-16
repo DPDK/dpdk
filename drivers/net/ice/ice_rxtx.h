@@ -70,6 +70,7 @@ struct ice_rx_queue {
 
 	uint8_t port_id; /* device port ID */
 	uint8_t crc_len; /* 0 if CRC stripped, 4 otherwise */
+	uint8_t fdir_enabled; /* 0 if FDIR disabled, 1 when enabled */
 	uint16_t queue_id; /* RX queue index */
 	uint16_t reg_idx; /* RX queue register index */
 	uint8_t drop_en; /* if not 0, set register bit */
@@ -244,5 +245,34 @@ uint16_t ice_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts);
 int ice_fdir_programming(struct ice_pf *pf, struct ice_fltr_desc *fdir_desc);
 int ice_tx_done_cleanup(void *txq, uint32_t free_cnt);
+
+#define FDIR_PARSING_ENABLE_PER_QUEUE(ad, on) do { \
+	int i; \
+	for (i = 0; i < (ad)->eth_dev->data->nb_rx_queues; i++) { \
+		struct ice_rx_queue *rxq = (ad)->eth_dev->data->rx_queues[i]; \
+		if (!rxq) \
+			continue; \
+		rxq->fdir_enabled = on; \
+	} \
+	PMD_DRV_LOG(DEBUG, "FDIR processing on RX set to %d", on); \
+} while (0)
+
+/* Enable/disable flow director parsing from Rx descriptor in data path. */
+static inline
+void ice_fdir_rx_parsing_enable(struct ice_adapter *ad, bool on)
+{
+	if (on) {
+		/* Enable flow director parsing from Rx descriptor */
+		FDIR_PARSING_ENABLE_PER_QUEUE(ad, on);
+		ad->fdir_ref_cnt++;
+	} else {
+		if (ad->fdir_ref_cnt >= 1) {
+			ad->fdir_ref_cnt--;
+
+			if (ad->fdir_ref_cnt == 0)
+				FDIR_PARSING_ENABLE_PER_QUEUE(ad, on);
+		}
+	}
+}
 
 #endif /* _ICE_RXTX_H_ */

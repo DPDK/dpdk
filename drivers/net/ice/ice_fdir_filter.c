@@ -1318,6 +1318,9 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		goto free_counter;
 	}
 
+	if (filter->mark_flag == 1)
+		ice_fdir_rx_parsing_enable(ad, 1);
+
 	rte_memcpy(entry, filter, sizeof(*entry));
 	ret = ice_fdir_entry_insert(pf, entry, &key);
 	if (ret) {
@@ -1390,6 +1393,10 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 	}
 
 	ice_fdir_cnt_update(pf, filter->input.flow_type, is_tun, false);
+
+	if (filter->mark_flag == 1)
+		ice_fdir_rx_parsing_enable(ad, 0);
+
 	flow->rule = NULL;
 
 	rte_free(filter);
@@ -1562,7 +1569,7 @@ ice_fdir_parse_action(struct ice_adapter *ad,
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			mark_num++;
-
+			filter->mark_flag = 1;
 			mark_spec = actions->conf;
 			filter->input.fltr_id = mark_spec->id;
 			filter->input.fdid_prio = ICE_FXD_FLTR_QW1_FDID_PRI_ONE;

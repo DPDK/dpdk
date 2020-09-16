@@ -291,6 +291,7 @@ struct ice_fdir_filter_conf {
 
 	uint64_t input_set;
 	uint64_t outer_input_set; /* only for tunnel packets outer fields */
+	uint32_t mark_flag;
 };
 
 #define ICE_MAX_FDIR_FILTER_NUM		(1024 * 16)
@@ -471,6 +472,7 @@ struct ice_adapter {
 	bool is_safe_mode;
 	struct ice_devargs devargs;
 	enum ice_pkg_type active_pkg_type; /* loaded ddp package type */
+	uint16_t fdir_ref_cnt;
 };
 
 struct ice_vsi_vlan_pvid_info {
