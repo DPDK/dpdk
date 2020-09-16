@@ -1040,7 +1040,7 @@ fips_generic_test(void)
 
 	ret = fips_run_test();
 	if (ret < 0) {
-		if (ret == -EPERM) {
+		if (ret == -EPERM || ret == -ENOTSUP) {
 			fprintf(info.fp_wr, "Bypass\n\n");
 			return 0;
 		}
@@ -1461,7 +1461,7 @@ fips_mct_sha_test(void)
 
 			ret = fips_run_test();
 			if (ret < 0) {
-				if (ret == -EPERM) {
+				if (ret == -EPERM || ret == -ENOTSUP) {
 					fprintf(info.fp_wr, "Bypass\n\n");
 					return 0;
 				}
