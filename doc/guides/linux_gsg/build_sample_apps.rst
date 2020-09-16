@@ -4,7 +4,7 @@
 Running Sample Applications
 ===========================
 
-The chapter describes how to compile and run applications in an DPDK environment.
+The chapter describes how to compile and run applications in a DPDK environment.
 It also provides a pointer to where sample applications are stored.
 
 .. note::
@@ -136,7 +136,7 @@ Each bit of the mask corresponds to the equivalent logical core number as report
 Since these logical core numbers, and their mapping to specific cores on specific NUMA sockets, can vary from platform to platform,
 it is recommended that the core layout for each platform be considered when choosing the coremask/corelist to use in each case.
 
-On initialization of the EAL layer by an DPDK application, the logical cores to be used and their socket location are displayed.
+On initialization of the EAL layer by a DPDK application, the logical cores to be used and their socket location are displayed.
 This information can also be determined for all cores on the system by examining the ``/proc/cpuinfo`` file, for example, by running cat ``/proc/cpuinfo``.
 The physical id attribute listed for each processor indicates the CPU socket to which it belongs.
 This can be useful when using other processors to understand the mapping of the logical cores to the sockets.

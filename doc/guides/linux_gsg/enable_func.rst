@@ -114,7 +114,7 @@ In addition, C3 and C6 should be enabled as well for power management. The path 
 Using Linux Core Isolation to Reduce Context Switches
 -----------------------------------------------------
 
-While the threads used by an DPDK application are pinned to logical cores on the system,
+While the threads used by a DPDK application are pinned to logical cores on the system,
 it is possible for the Linux scheduler to run other tasks on those cores also.
 To help prevent additional workloads from running on those cores,
 it is possible to use the ``isolcpus`` Linux kernel parameter to isolate them from the general Linux scheduler.

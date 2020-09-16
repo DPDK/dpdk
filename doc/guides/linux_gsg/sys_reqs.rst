@@ -97,7 +97,7 @@ e.g. :doc:`../nics/index`
 Running DPDK Applications
 -------------------------
 
-To run an DPDK application, some customization may be required on the target machine.
+To run a DPDK application, some customization may be required on the target machine.
 
 System Software
 ~~~~~~~~~~~~~~~

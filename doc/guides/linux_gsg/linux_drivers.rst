@@ -148,7 +148,7 @@ Binding and Unbinding Network Ports to/from the Kernel Modules
     PMDs Which use the bifurcated driver should not be unbind from their kernel drivers. this section is for PMDs which use the UIO or VFIO drivers.
 
 As of release 1.4, DPDK applications no longer automatically unbind all supported network ports from the kernel driver in use.
-Instead, in case the PMD being used use the UIO or VFIO drivers, all ports that are to be used by an DPDK application must be bound to the
+Instead, in case the PMD being used use the UIO or VFIO drivers, all ports that are to be used by a DPDK application must be bound to the
 ``uio_pci_generic``, ``igb_uio`` or ``vfio-pci`` module before the application is run.
 For such PMDs, any network ports under Linux* control will be ignored and cannot be used by the application.
 

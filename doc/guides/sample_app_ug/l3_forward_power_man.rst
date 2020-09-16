@@ -49,7 +49,7 @@ to set the CPUFreq governor and set the frequency of specific cores.
 
 This application includes a P-state power management algorithm to generate a frequency hint to be sent to CPUFreq.
 The algorithm uses the number of received and available Rx packets on recent polls to make a heuristic decision to scale frequency up/down.
-Specifically, some thresholds are checked to see whether a specific core running an DPDK polling thread needs to increase frequency
+Specifically, some thresholds are checked to see whether a specific core running a DPDK polling thread needs to increase frequency
 a step up based on the near to full trend of polled Rx queues.
 Also, it decreases frequency a step if packet processed per loop is far less than the expected threshold
 or the thread's sleeping time exceeds a threshold.

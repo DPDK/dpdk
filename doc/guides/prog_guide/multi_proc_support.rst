@@ -75,7 +75,7 @@ and point to the same objects, in both processes.
 
 
 The EAL also supports an auto-detection mode (set by EAL ``--proc-type=auto`` flag ),
-whereby an DPDK process is started as a secondary instance if a primary instance is already running.
+whereby a DPDK process is started as a secondary instance if a primary instance is already running.
 
 Deployment Models
 -----------------
