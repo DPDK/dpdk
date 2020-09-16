@@ -766,6 +766,47 @@ static uint64_t invalid_rss_comb[] = {
 	RTE_ETH_RSS_L3_PRE96
 };
 
+struct rss_attr_type {
+	uint64_t attr;
+	uint64_t type;
+};
+
+#define VALID_RSS_IPV4_L4	(ETH_RSS_NONFRAG_IPV4_UDP	| \
+				 ETH_RSS_NONFRAG_IPV4_TCP	| \
+				 ETH_RSS_NONFRAG_IPV4_SCTP)
+
+#define VALID_RSS_IPV6_L4	(ETH_RSS_NONFRAG_IPV6_UDP	| \
+				 ETH_RSS_NONFRAG_IPV6_TCP	| \
+				 ETH_RSS_NONFRAG_IPV6_SCTP)
+
+#define VALID_RSS_IPV4		(ETH_RSS_IPV4 | VALID_RSS_IPV4_L4)
+#define VALID_RSS_IPV6		(ETH_RSS_IPV6 | VALID_RSS_IPV6_L4)
+#define VALID_RSS_L3		(VALID_RSS_IPV4 | VALID_RSS_IPV6)
+#define VALID_RSS_L4		(VALID_RSS_IPV4_L4 | VALID_RSS_IPV6_L4)
+
+#define VALID_RSS_ATTR		(ETH_RSS_L3_SRC_ONLY	| \
+				 ETH_RSS_L3_DST_ONLY	| \
+				 ETH_RSS_L4_SRC_ONLY	| \
+				 ETH_RSS_L4_DST_ONLY	| \
+				 ETH_RSS_L2_SRC_ONLY	| \
+				 ETH_RSS_L2_DST_ONLY	| \
+				 RTE_ETH_RSS_L3_PRE64)
+
+#define INVALID_RSS_ATTR	(RTE_ETH_RSS_L3_PRE32	| \
+				 RTE_ETH_RSS_L3_PRE40	| \
+				 RTE_ETH_RSS_L3_PRE48	| \
+				 RTE_ETH_RSS_L3_PRE56	| \
+				 RTE_ETH_RSS_L3_PRE96)
+
+static struct rss_attr_type rss_attr_to_valid_type[] = {
+	{ETH_RSS_L2_SRC_ONLY | ETH_RSS_L2_DST_ONLY,	ETH_RSS_ETH},
+	{ETH_RSS_L3_SRC_ONLY | ETH_RSS_L3_DST_ONLY,	VALID_RSS_L3},
+	{ETH_RSS_L4_SRC_ONLY | ETH_RSS_L4_DST_ONLY,	VALID_RSS_L4},
+	/* current ipv6 prefix only supports prefix 64 bits*/
+	{RTE_ETH_RSS_L3_PRE64,				VALID_RSS_IPV6},
+	{INVALID_RSS_ATTR,				0}
+};
+
 static bool
 iavf_any_invalid_rss_type(uint64_t rss_type, uint64_t allow_rss_type)
 {
@@ -777,31 +818,16 @@ iavf_any_invalid_rss_type(uint64_t rss_type, uint64_t allow_rss_type)
 			return true;
 	}
 
-	/* current ipv6 prefix only supports prefix 64 bits*/
-#define _invalid_prefix_ (RTE_ETH_RSS_L3_PRE32	| \
-			  RTE_ETH_RSS_L3_PRE40	| \
-			  RTE_ETH_RSS_L3_PRE48	| \
-			  RTE_ETH_RSS_L3_PRE56	| \
-			  RTE_ETH_RSS_L3_PRE96)
+	/* check invalid RSS attribute */
+	for (i = 0; i < RTE_DIM(rss_attr_to_valid_type); i++) {
+		struct rss_attr_type *rat = &rss_attr_to_valid_type[i];
 
-	if (rss_type & _invalid_prefix_)
-		return true;
+		if (rat->attr & rss_type && !(rat->type & rss_type))
+			return true;
+	}
 
 	/* check not allowed RSS type */
-#define _RSS_ATTR_ (ETH_RSS_L3_SRC_ONLY		| \
-		    ETH_RSS_L3_DST_ONLY		| \
-		    ETH_RSS_L4_SRC_ONLY		| \
-		    ETH_RSS_L4_DST_ONLY		| \
-		    ETH_RSS_L2_SRC_ONLY		| \
-		    ETH_RSS_L2_DST_ONLY		| \
-		    RTE_ETH_RSS_L3_PRE32	| \
-		    RTE_ETH_RSS_L3_PRE40	| \
-		    RTE_ETH_RSS_L3_PRE48	| \
-		    RTE_ETH_RSS_L3_PRE56	| \
-		    RTE_ETH_RSS_L3_PRE64	| \
-		    RTE_ETH_RSS_L3_PRE96)
-
-	rss_type &= ~_RSS_ATTR_;
+	rss_type &= ~VALID_RSS_ATTR;
 
 	return ((rss_type & allow_rss_type) != rss_type);
 }
