@@ -35,6 +35,47 @@ gen_key_snow3g(const uint8_t *ck, uint32_t *keyx)
 	}
 }
 
+static __rte_always_inline int
+cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
+{
+	uint16_t mac_len = auth->digest_length;
+	int ret;
+
+	switch (auth->algo) {
+	case RTE_CRYPTO_AUTH_MD5:
+	case RTE_CRYPTO_AUTH_MD5_HMAC:
+		ret = (mac_len == 16) ? 0 : -1;
+		break;
+	case RTE_CRYPTO_AUTH_SHA1:
+	case RTE_CRYPTO_AUTH_SHA1_HMAC:
+		ret = (mac_len == 20) ? 0 : -1;
+		break;
+	case RTE_CRYPTO_AUTH_SHA224:
+	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+		ret = (mac_len == 28) ? 0 : -1;
+		break;
+	case RTE_CRYPTO_AUTH_SHA256:
+	case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		ret = (mac_len == 32) ? 0 : -1;
+		break;
+	case RTE_CRYPTO_AUTH_SHA384:
+	case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		ret = (mac_len == 48) ? 0 : -1;
+		break;
+	case RTE_CRYPTO_AUTH_SHA512:
+	case RTE_CRYPTO_AUTH_SHA512_HMAC:
+		ret = (mac_len == 64) ? 0 : -1;
+		break;
+	case RTE_CRYPTO_AUTH_NULL:
+		ret = 0;
+		break;
+	default:
+		ret = -1;
+	}
+
+	return ret;
+}
+
 static __rte_always_inline void
 cpt_fc_salt_update(void *ctx,
 		   uint8_t *salt)

@@ -427,6 +427,9 @@ typedef mc_hash_type_t auth_type_t;
 #define SESS_PRIV(__sess) \
 	(void *)((uint8_t *)__sess + sizeof(struct cpt_sess_misc))
 
+#define GET_SESS_FC_TYPE(__sess) \
+	(((struct cpt_ctx *)(SESS_PRIV(__sess)))->fc_type)
+
 /*
  * Get the session size
  *
