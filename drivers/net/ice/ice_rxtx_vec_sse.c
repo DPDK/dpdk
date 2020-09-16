@@ -10,6 +10,25 @@
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #endif
 
+static inline __m128i
+ice_flex_rxd_to_fdir_flags_vec(const __m128i fdir_id0_3)
+{
+#define FDID_MIS_MAGIC 0xFFFFFFFF
+	RTE_BUILD_BUG_ON(PKT_RX_FDIR != (1 << 2));
+	RTE_BUILD_BUG_ON(PKT_RX_FDIR_ID != (1 << 13));
+	const __m128i pkt_fdir_bit = _mm_set1_epi32(PKT_RX_FDIR |
+			PKT_RX_FDIR_ID);
+	/* desc->flow_id field == 0xFFFFFFFF means fdir mismatch */
+	const __m128i fdir_mis_mask = _mm_set1_epi32(FDID_MIS_MAGIC);
+	__m128i fdir_mask = _mm_cmpeq_epi32(fdir_id0_3,
+			fdir_mis_mask);
+	/* this XOR op results to bit-reverse the fdir_mask */
+	fdir_mask = _mm_xor_si128(fdir_mask, fdir_mis_mask);
+	const __m128i fdir_flags = _mm_and_si128(fdir_mask, pkt_fdir_bit);
+
+	return fdir_flags;
+}
+
 static inline void
 ice_rxq_rearm(struct ice_rx_queue *rxq)
 {
@@ -158,6 +177,36 @@ ice_rx_desc_to_olflags_v(struct ice_rx_queue *rxq, __m128i descs[4],
 
 	/* merge the flags */
 	flags = _mm_or_si128(flags, rss_vlan);
+
+	if (rxq->fdir_enabled) {
+		const __m128i fdir_id0_1 =
+			_mm_unpackhi_epi32(descs[0], descs[1]);
+
+		const __m128i fdir_id2_3 =
+			_mm_unpackhi_epi32(descs[2], descs[3]);
+
+		const __m128i fdir_id0_3 =
+			_mm_unpackhi_epi64(fdir_id0_1, fdir_id2_3);
+
+		const __m128i fdir_flags =
+			ice_flex_rxd_to_fdir_flags_vec(fdir_id0_3);
+
+		/* merge with fdir_flags */
+		flags = _mm_or_si128(flags, fdir_flags);
+
+		/* write fdir_id to mbuf */
+		rx_pkts[0]->hash.fdir.hi =
+			_mm_extract_epi32(fdir_id0_3, 0);
+
+		rx_pkts[1]->hash.fdir.hi =
+			_mm_extract_epi32(fdir_id0_3, 1);
+
+		rx_pkts[2]->hash.fdir.hi =
+			_mm_extract_epi32(fdir_id0_3, 2);
+
+		rx_pkts[3]->hash.fdir.hi =
+			_mm_extract_epi32(fdir_id0_3, 3);
+	} /* if() on fdir_enabled */
 
 	/**
 	 * At this point, we have the 4 sets of flags in the low 16-bits
