@@ -190,6 +190,9 @@
 /* Size of the simple hash table for header modify table. */
 #define MLX5_FLOW_HDR_MODIFY_HTABLE_SZ (1 << 16)
 
+/* Size of the simple hash table for encap decap table. */
+#define MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ (1 << 16)
+
 /* Hairpin TX/RX queue configuration parameters. */
 #define MLX5_HAIRPIN_QUEUE_STRIDE 6
 #define MLX5_HAIRPIN_JUMBO_LOG_SIZE (14 + 2)

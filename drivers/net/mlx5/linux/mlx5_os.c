@@ -250,6 +250,14 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		err = ENOMEM;
 		goto error;
 	}
+	snprintf(s, sizeof(s), "%s_encaps_decaps", sh->ibdev_name);
+	sh->encaps_decaps = mlx5_hlist_create(s,
+					      MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ);
+	if (!sh->encaps_decaps) {
+		DRV_LOG(ERR, "encap decap hash creation failed");
+		err = ENOMEM;
+		goto error;
+	}
 #ifdef HAVE_MLX5DV_DR
 	void *domain;
 
@@ -323,6 +331,10 @@ error:
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
 	}
+	if (sh->encaps_decaps) {
+		mlx5_hlist_destroy(sh->encaps_decaps, NULL, NULL);
+		sh->encaps_decaps = NULL;
+	}
 	if (sh->modify_cmds) {
 		mlx5_hlist_destroy(sh->modify_cmds, NULL, NULL);
 		sh->modify_cmds = NULL;
@@ -380,6 +392,10 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 	}
 	pthread_mutex_destroy(&sh->dv_mutex);
 #endif /* HAVE_MLX5DV_DR */
+	if (sh->encaps_decaps) {
+		mlx5_hlist_destroy(sh->encaps_decaps, NULL, NULL);
+		sh->encaps_decaps = NULL;
+	}
 	if (sh->modify_cmds) {
 		mlx5_hlist_destroy(sh->modify_cmds, NULL, NULL);
 		sh->modify_cmds = NULL;
