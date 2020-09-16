@@ -38,9 +38,6 @@
 #define CPT_BLOCK_TYPE1 0
 #define CPT_BLOCK_TYPE2 1
 
-#define CPT_BYTE_16		16
-#define CPT_BYTE_24		24
-#define CPT_BYTE_32		32
 #define CPT_MAX_SG_IN_OUT_CNT	32
 #define CPT_MAX_SG_CNT		(CPT_MAX_SG_IN_OUT_CNT/2)
 

@@ -47,9 +47,9 @@ static __rte_always_inline int
 cpt_fc_ciph_validate_key_aes(uint16_t key_len)
 {
 	switch (key_len) {
-	case CPT_BYTE_16:
-	case CPT_BYTE_24:
-	case CPT_BYTE_32:
+	case 16:
+	case 24:
+	case 32:
 		return 0;
 	default:
 		return -1;
@@ -82,7 +82,7 @@ cpt_fc_ciph_set_type(cipher_type_t type, struct cpt_ctx *ctx, uint16_t key_len)
 		break;
 	case AES_XTS:
 		key_len = key_len / 2;
-		if (unlikely(key_len == CPT_BYTE_24)) {
+		if (unlikely(key_len == 24)) {
 			CPT_LOG_DP_ERR("Invalid AES key len for XTS");
 			return -1;
 		}
@@ -128,13 +128,13 @@ cpt_fc_ciph_set_key_set_aes_key_type(mc_fc_context_t *fctx, uint16_t key_len)
 {
 	mc_aes_type_t aes_key_type = 0;
 	switch (key_len) {
-	case CPT_BYTE_16:
+	case 16:
 		aes_key_type = AES_128_BIT;
 		break;
-	case CPT_BYTE_24:
+	case 24:
 		aes_key_type = AES_192_BIT;
 		break;
-	case CPT_BYTE_32:
+	case 32:
 		aes_key_type = AES_256_BIT;
 		break;
 	default:
