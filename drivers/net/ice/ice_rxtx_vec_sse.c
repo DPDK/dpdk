@@ -237,10 +237,10 @@ static inline void
 ice_rx_desc_to_ptype_v(__m128i descs[4], struct rte_mbuf **rx_pkts,
 		       uint32_t *ptype_tbl)
 {
-	const __m128i ptype_mask = _mm_set_epi16(0, ICE_RX_FLEX_DESC_PTYPE_M,
-						 0, ICE_RX_FLEX_DESC_PTYPE_M,
-						 0, ICE_RX_FLEX_DESC_PTYPE_M,
-						 0, ICE_RX_FLEX_DESC_PTYPE_M);
+	const __m128i ptype_mask = _mm_set_epi16(ICE_RX_FLEX_DESC_PTYPE_M, 0,
+						 ICE_RX_FLEX_DESC_PTYPE_M, 0,
+						 ICE_RX_FLEX_DESC_PTYPE_M, 0,
+						 ICE_RX_FLEX_DESC_PTYPE_M, 0);
 	__m128i ptype_01 = _mm_unpacklo_epi32(descs[0], descs[1]);
 	__m128i ptype_23 = _mm_unpacklo_epi32(descs[2], descs[3]);
 	__m128i ptype_all = _mm_unpacklo_epi64(ptype_01, ptype_23);
