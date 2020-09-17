@@ -1701,7 +1701,7 @@ void ena_com_set_admin_polling_mode(struct ena_com_dev *ena_dev, bool polling)
 	ena_dev->admin_queue.polling = polling;
 }
 
-bool ena_com_get_admin_polling_mode(struct ena_com_dev * ena_dev)
+bool ena_com_get_admin_polling_mode(struct ena_com_dev *ena_dev)
 {
 	return ena_dev->admin_queue.polling;
 }
@@ -2958,8 +2958,8 @@ int ena_com_config_dev_mode(struct ena_com_dev *ena_dev,
 			    struct ena_admin_feature_llq_desc *llq_features,
 			    struct ena_llq_configurations *llq_default_cfg)
 {
+	struct ena_com_llq_info *llq_info = &ena_dev->llq_info;
 	int rc;
-	struct ena_com_llq_info *llq_info = &(ena_dev->llq_info);;
 
 	if (!llq_features->max_llq_num) {
 		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;

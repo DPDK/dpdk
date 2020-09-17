@@ -31,7 +31,7 @@
 #define ENA_INTR_INITIAL_RX_INTERVAL_USECS 0
 #define ENA_DEFAULT_INTR_DELAY_RESOLUTION 1
 
-#define ENA_HASH_KEY_SIZE				40
+#define ENA_HASH_KEY_SIZE 40
 
 #define ENA_HW_HINTS_NO_TIMEOUT 0xFFFF
 
@@ -744,7 +744,7 @@ int ena_com_set_hash_ctrl(struct ena_com_dev *ena_dev);
  *
  * Retrieve the hash control from the device.
  *
- * @note: If the caller called ena_com_fill_hash_ctrl but didn't flash
+ * @note: If the caller called ena_com_fill_hash_ctrl but didn't flush
  * it to the device, the new configuration will be lost.
  *
  * @return: 0 on Success and negative value otherwise.
