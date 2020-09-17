@@ -195,7 +195,7 @@ sfc_efx_mcdi_exception(void *arg, efx_mcdi_exception_t eme)
 	    (eme == EFX_MCDI_EXCEPTION_MC_REBOOT) ? "REBOOT" :
 	    (eme == EFX_MCDI_EXCEPTION_MC_BADASSERT) ? "BADASSERT" : "UNKNOWN");
 
-	sfc_schedule_restart(sa);
+	mcdi->ops->sched_restart(mcdi->ops_cookie);
 }
 
 #define SFC_MCDI_LOG_BUF_SIZE	128
@@ -285,7 +285,8 @@ sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
 	efx_mcdi_transport_t *emtp;
 	int rc;
 
-	if (ops->dma_alloc == NULL || ops->dma_free == NULL)
+	if (ops->dma_alloc == NULL || ops->dma_free == NULL ||
+	    ops->sched_restart == NULL)
 		return EINVAL;
 
 	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_UNINITIALIZED);
@@ -372,9 +373,19 @@ sfc_mcdi_dma_free(void *cookie, efsys_mem_t *esmp)
 	sfc_dma_free(sa, esmp);
 }
 
+static sfc_efx_mcdi_sched_restart_cb sfc_mcdi_sched_restart;
+static void
+sfc_mcdi_sched_restart(void *cookie)
+{
+	struct sfc_adapter *sa = cookie;
+
+	sfc_schedule_restart(sa);
+}
+
 static const struct sfc_efx_mcdi_ops sfc_mcdi_ops = {
 	.dma_alloc	= sfc_mcdi_dma_alloc,
 	.dma_free	= sfc_mcdi_dma_free,
+	.sched_restart	= sfc_mcdi_sched_restart,
 };
 
 int
