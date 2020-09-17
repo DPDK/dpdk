@@ -86,12 +86,14 @@ extern int ena_logtype_com;
 #define ENA_ASSERT(cond, format, arg...) do {} while (0)
 #endif
 
-#define ENA_MAX32(x, y) RTE_MAX((x), (y))
-#define ENA_MAX16(x, y) RTE_MAX((x), (y))
-#define ENA_MAX8(x, y) RTE_MAX((x), (y))
-#define ENA_MIN32(x, y) RTE_MIN((x), (y))
-#define ENA_MIN16(x, y) RTE_MIN((x), (y))
-#define ENA_MIN8(x, y) RTE_MIN((x), (y))
+#define ENA_MAX_T(type, x, y) RTE_MAX((type)(x), (type)(y))
+#define ENA_MAX32(x, y) ENA_MAX_T(uint32_t, (x), (y))
+#define ENA_MAX16(x, y) ENA_MAX_T(uint16_t, (x), (y))
+#define ENA_MAX8(x, y) ENA_MAX_T(uint8_t, (x), (y))
+#define ENA_MIN_T(type, x, y) RTE_MIN((type)(x), (type)(y))
+#define ENA_MIN32(x, y) ENA_MIN_T(uint32_t, (x), (y))
+#define ENA_MIN16(x, y) ENA_MIN_T(uint16_t, (x), (y))
+#define ENA_MIN8(x, y) ENA_MIN_T(uint8_t, (x), (y))
 
 #define BITS_PER_LONG_LONG (__SIZEOF_LONG_LONG__ * 8)
 #define U64_C(x) x ## ULL
