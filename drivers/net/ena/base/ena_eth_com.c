@@ -557,10 +557,15 @@ int ena_com_rx_pkt(struct ena_com_io_cq *io_cq,
 	ena_rx_ctx->pkt_offset = cdesc->offset;
 
 	do {
-		ena_buf->len = cdesc->length;
-		ena_buf->req_id = cdesc->req_id;
-		ena_buf++;
-	} while ((++i < nb_hw_desc) && (cdesc = ena_com_rx_cdesc_idx_to_ptr(io_cq, cdesc_idx + i)));
+		ena_buf[i].len = cdesc->length;
+		ena_buf[i].req_id = cdesc->req_id;
+
+		if (++i >= nb_hw_desc)
+			break;
+
+		cdesc = ena_com_rx_cdesc_idx_to_ptr(io_cq, cdesc_idx + i);
+
+	} while (1);
 
 	/* Update SQ head ptr */
 	io_sq->next_to_comp += nb_hw_desc;
