@@ -14,6 +14,7 @@
 #include "efx_regs_mcdi.h"
 
 #include "sfc.h"
+#include "sfc_debug.h"
 #include "sfc_log.h"
 #include "sfc_ev.h"
 

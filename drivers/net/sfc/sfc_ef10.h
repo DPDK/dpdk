@@ -10,6 +10,8 @@
 #ifndef _SFC_EF10_H
 #define _SFC_EF10_H
 
+#include "sfc_debug.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

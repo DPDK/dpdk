@@ -16,6 +16,8 @@
 #include "efx_regs.h"
 #include "efx_regs_ef10.h"
 
+#include "sfc_debug.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

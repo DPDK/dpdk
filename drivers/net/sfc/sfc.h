@@ -21,6 +21,7 @@
 
 #include "efx.h"
 
+#include "sfc_debug.h"
 #include "sfc_filter.h"
 
 #ifdef __cplusplus

@@ -18,6 +18,7 @@
 #include "efx_types.h"
 #include "efx_regs_ef10.h"
 
+#include "sfc_debug.h"
 #include "sfc_tweak.h"
 #include "sfc_dp_rx.h"
 #include "sfc_kvargs.h"

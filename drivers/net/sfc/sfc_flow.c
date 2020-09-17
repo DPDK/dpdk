@@ -18,6 +18,7 @@
 #include "efx.h"
 
 #include "sfc.h"
+#include "sfc_debug.h"
 #include "sfc_rx.h"
 #include "sfc_filter.h"
 #include "sfc_flow.h"
