@@ -1655,11 +1655,13 @@ void ena_com_admin_destroy(struct ena_com_dev *ena_dev)
 	struct ena_com_aenq *aenq = &ena_dev->aenq;
 	u16 size;
 
-	ENA_WAIT_EVENT_DESTROY(admin_queue->comp_ctx->wait_event);
-	if (admin_queue->comp_ctx)
+	if (admin_queue->comp_ctx) {
+		ENA_WAIT_EVENT_DESTROY(admin_queue->comp_ctx->wait_event);
 		ENA_MEM_FREE(ena_dev->dmadev,
 			     admin_queue->comp_ctx,
 			     (admin_queue->q_depth * sizeof(struct ena_comp_ctx)));
+	}
+
 	admin_queue->comp_ctx = NULL;
 	size = ADMIN_SQ_SIZE(admin_queue->q_depth);
 	if (sq->entries)
