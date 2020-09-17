@@ -131,7 +131,7 @@ TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
  *      The additional rte_mem_map() flags for the mapping range.
  * @return
  *   - On success, the function returns a pointer to the mapped area.
- *   - On error, MAP_FAILED is returned.
+ *   - On error, NULL is returned.
  */
 void *pci_map_resource(void *requested_addr, int fd, off_t offset,
 		size_t size, int additional_flags);
