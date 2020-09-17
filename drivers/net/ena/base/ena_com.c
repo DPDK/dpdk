@@ -2973,7 +2973,7 @@ int ena_com_config_dev_mode(struct ena_com_dev *ena_dev,
 	ena_dev->tx_max_header_size = llq_info->desc_list_entry_size -
 		(llq_info->descs_num_before_header * sizeof(struct ena_eth_io_tx_desc));
 
-	if (ena_dev->tx_max_header_size == 0) {
+	if (unlikely(ena_dev->tx_max_header_size == 0)) {
 		ena_trc_err("the size of the LLQ entry is smaller than needed\n");
 		return -EINVAL;
 	}
