@@ -13,6 +13,7 @@
 #include "efx_mcdi.h"
 #include "efx_regs_mcdi.h"
 
+#include "sfc_mcdi.h"
 #include "sfc.h"
 #include "sfc_debug.h"
 #include "sfc_log.h"

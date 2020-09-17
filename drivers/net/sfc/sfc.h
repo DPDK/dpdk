@@ -23,6 +23,7 @@
 
 #include "sfc_debug.h"
 #include "sfc_filter.h"
+#include "sfc_mcdi.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,25 +85,6 @@ enum sfc_dev_filter_mode {
 	SFC_DEV_FILTER_MODE_ALLMULTI,
 
 	SFC_DEV_FILTER_NMODES
-};
-
-enum sfc_mcdi_state {
-	SFC_MCDI_UNINITIALIZED = 0,
-	SFC_MCDI_INITIALIZED,
-	SFC_MCDI_BUSY,
-	SFC_MCDI_COMPLETED,
-
-	SFC_MCDI_NSTATES
-};
-
-struct sfc_mcdi {
-	rte_spinlock_t			lock;
-	efsys_mem_t			mem;
-	enum sfc_mcdi_state		state;
-	efx_mcdi_transport_t		transport;
-	uint32_t			logtype;
-	uint32_t			proxy_handle;
-	efx_rc_t			proxy_result;
 };
 
 struct sfc_intr {
@@ -383,9 +365,6 @@ int sfc_start(struct sfc_adapter *sa);
 void sfc_stop(struct sfc_adapter *sa);
 
 void sfc_schedule_restart(struct sfc_adapter *sa);
-
-int sfc_mcdi_init(struct sfc_adapter *sa);
-void sfc_mcdi_fini(struct sfc_adapter *sa);
 
 int sfc_configure(struct sfc_adapter *sa);
 void sfc_close(struct sfc_adapter *sa);
