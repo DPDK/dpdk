@@ -34,6 +34,7 @@ objs = [base_objs]
 
 sources = files(
 	'sfc_efx.c',
+	'sfc_efx_mcdi.c',
 )
 
 includes += include_directories('base')

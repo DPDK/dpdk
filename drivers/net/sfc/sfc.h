@@ -21,10 +21,11 @@
 
 #include "efx.h"
 
+#include "sfc_efx_mcdi.h"
+
 #include "sfc_debug.h"
 #include "sfc_log.h"
 #include "sfc_filter.h"
-#include "sfc_mcdi.h"
 
 #ifdef __cplusplus
 extern "C" {
