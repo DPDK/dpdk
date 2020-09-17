@@ -70,7 +70,7 @@ sfc_efx_mcdi_proxy_event_available(struct sfc_adapter *sa)
 
 	mcdi->proxy_handle = 0;
 	mcdi->proxy_result = ETIMEDOUT;
-	sfc_ev_mgmt_qpoll(sa);
+	mcdi->ops->mgmt_evq_poll(mcdi->ops_cookie);
 	if (mcdi->proxy_result != ETIMEDOUT)
 		return B_TRUE;
 
@@ -286,7 +286,7 @@ sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
 	int rc;
 
 	if (ops->dma_alloc == NULL || ops->dma_free == NULL ||
-	    ops->sched_restart == NULL)
+	    ops->sched_restart == NULL || ops->mgmt_evq_poll == NULL)
 		return EINVAL;
 
 	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_UNINITIALIZED);
@@ -382,10 +382,20 @@ sfc_mcdi_sched_restart(void *cookie)
 	sfc_schedule_restart(sa);
 }
 
+static sfc_efx_mcdi_mgmt_evq_poll_cb sfc_mcdi_mgmt_evq_poll;
+static void
+sfc_mcdi_mgmt_evq_poll(void *cookie)
+{
+	struct sfc_adapter *sa = cookie;
+
+	sfc_ev_mgmt_qpoll(sa);
+}
+
 static const struct sfc_efx_mcdi_ops sfc_mcdi_ops = {
 	.dma_alloc	= sfc_mcdi_dma_alloc,
 	.dma_free	= sfc_mcdi_dma_free,
 	.sched_restart	= sfc_mcdi_sched_restart,
+	.mgmt_evq_poll	= sfc_mcdi_mgmt_evq_poll,
 };
 
 int

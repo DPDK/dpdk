@@ -39,10 +39,13 @@ typedef void (sfc_efx_mcdi_dma_free_cb)(void *cookie, efsys_mem_t *esmp);
 
 typedef void (sfc_efx_mcdi_sched_restart_cb)(void *cookie);
 
+typedef void (sfc_efx_mcdi_mgmt_evq_poll_cb)(void *cookie);
+
 struct sfc_efx_mcdi_ops {
 	sfc_efx_mcdi_dma_alloc_cb	*dma_alloc;
 	sfc_efx_mcdi_dma_free_cb	*dma_free;
 	sfc_efx_mcdi_sched_restart_cb	*sched_restart;
+	sfc_efx_mcdi_mgmt_evq_poll_cb	*mgmt_evq_poll;
 };
 
 struct sfc_efx_mcdi {
