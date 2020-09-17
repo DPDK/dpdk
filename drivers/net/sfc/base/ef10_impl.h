@@ -91,15 +91,15 @@ extern "C" {
 
 /* EV */
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_ev_init(
 	__in		efx_nic_t *enp);
 
-			void
+extern			void
 ef10_ev_fini(
 	__in		efx_nic_t *enp);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_ev_qcreate(
 	__in		efx_nic_t *enp,
 	__in		unsigned int index,
@@ -110,85 +110,85 @@ ef10_ev_qcreate(
 	__in		uint32_t flags,
 	__in		efx_evq_t *eep);
 
-			void
+extern			void
 ef10_ev_qdestroy(
 	__in		efx_evq_t *eep);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_ev_qprime(
 	__in		efx_evq_t *eep,
 	__in		unsigned int count);
 
-			void
+extern			void
 ef10_ev_qpost(
 	__in	efx_evq_t *eep,
 	__in	uint16_t data);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_ev_qmoderate(
 	__in		efx_evq_t *eep,
 	__in		unsigned int us);
 
 #if EFSYS_OPT_QSTATS
-			void
+extern			void
 ef10_ev_qstats_update(
 	__in				efx_evq_t *eep,
 	__inout_ecount(EV_NQSTATS)	efsys_stat_t *stat);
 #endif /* EFSYS_OPT_QSTATS */
 
-		void
+extern			void
 ef10_ev_rxlabel_init(
 	__in		efx_evq_t *eep,
 	__in		efx_rxq_t *erp,
 	__in		unsigned int label,
 	__in		efx_rxq_type_t type);
 
-		void
+extern			void
 ef10_ev_rxlabel_fini(
 	__in		efx_evq_t *eep,
 	__in		unsigned int label);
 
 /* INTR */
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_intr_init(
 	__in		efx_nic_t *enp,
 	__in		efx_intr_type_t type,
 	__in		efsys_mem_t *esmp);
 
-			void
+extern			void
 ef10_intr_enable(
 	__in		efx_nic_t *enp);
 
-			void
+extern			void
 ef10_intr_disable(
 	__in		efx_nic_t *enp);
 
-			void
+extern			void
 ef10_intr_disable_unlocked(
 	__in		efx_nic_t *enp);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_intr_trigger(
 	__in		efx_nic_t *enp,
 	__in		unsigned int level);
 
-			void
+extern			void
 ef10_intr_status_line(
 	__in		efx_nic_t *enp,
 	__out		boolean_t *fatalp,
 	__out		uint32_t *qmaskp);
 
-			void
+extern			void
 ef10_intr_status_message(
 	__in		efx_nic_t *enp,
 	__in		unsigned int message,
 	__out		boolean_t *fatalp);
 
-			void
+extern			void
 ef10_intr_fatal(
 	__in		efx_nic_t *enp);
-			void
+extern			void
 ef10_intr_fini(
 	__in		efx_nic_t *enp);
 
@@ -1134,25 +1134,25 @@ typedef struct ef10_filter_table_s {
 	uint32_t		eft_encap_filter_count;
 } ef10_filter_table_t;
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_filter_init(
 	__in		efx_nic_t *enp);
 
-			void
+extern			void
 ef10_filter_fini(
 	__in		efx_nic_t *enp);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_filter_restore(
 	__in		efx_nic_t *enp);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_filter_add(
 	__in		efx_nic_t *enp,
 	__inout		efx_filter_spec_t *spec,
 	__in		enum efx_filter_replacement_policy_e policy);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_filter_delete(
 	__in		efx_nic_t *enp,
 	__inout		efx_filter_spec_t *spec);
@@ -1394,26 +1394,26 @@ ef10_proxy_auth_privilege_modify(
 	__in		uint32_t add_privileges_mask,
 	__in		uint32_t remove_privileges_mask);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_proxy_auth_set_privilege_mask(
 	__in		efx_nic_t *enp,
 	__in		uint32_t vf_index,
 	__in		uint32_t mask,
 	__in		uint32_t value);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_proxy_auth_complete_request(
 	__in		efx_nic_t *enp,
 	__in		uint32_t fn_index,
 	__in		uint32_t proxy_result,
 	__in		uint32_t handle);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_proxy_auth_exec_cmd(
 	__in		efx_nic_t *enp,
 	__inout		efx_proxy_cmd_params_t *paramsp);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 ef10_proxy_auth_get_privilege_mask(
 	__in		efx_nic_t *enp,
 	__in		uint32_t pf_index,

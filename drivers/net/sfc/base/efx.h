@@ -269,7 +269,7 @@ extern	__checkReturn	efx_rc_t
 efx_mcdi_reboot(
 	__in		efx_nic_t *enp);
 
-			void
+extern			void
 efx_mcdi_new_epoch(
 	__in		efx_nic_t *enp);
 
@@ -2346,7 +2346,7 @@ efx_rx_fini(
 	__in		efx_nic_t *enp);
 
 #if EFSYS_OPT_RX_SCATTER
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 efx_rx_scatter_enable(
 	__in		efx_nic_t *enp,
 	__in		unsigned int buf_size);
@@ -3244,7 +3244,7 @@ efx_lic_write_key(
 	__in			uint32_t length,
 	__out			uint32_t *lengthp);
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_lic_delete_key(
 	__in			efx_nic_t *enp,
 	__in_bcount(buffer_size)
@@ -3511,38 +3511,38 @@ efx_proxy_auth_configure(
 	__in		efx_nic_t *enp,
 	__in		efx_proxy_auth_config_t *configp);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 efx_proxy_auth_destroy(
 	__in		efx_nic_t *enp,
 	__in		uint32_t handled_privileges);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 efx_proxy_auth_complete_request(
 	__in		efx_nic_t *enp,
 	__in		uint32_t fn_index,
 	__in		uint32_t proxy_result,
 	__in		uint32_t handle);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 efx_proxy_auth_exec_cmd(
 	__in		efx_nic_t *enp,
 	__inout		efx_proxy_cmd_params_t *paramsp);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 efx_proxy_auth_set_privilege_mask(
 	__in		efx_nic_t *enp,
 	__in		uint32_t vf_index,
 	__in		uint32_t mask,
 	__in		uint32_t value);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 efx_proxy_auth_privilege_mask_get(
 	__in		efx_nic_t *enp,
 	__in		uint32_t pf_index,
 	__in		uint32_t vf_index,
 	__out		uint32_t *maskp);
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 efx_proxy_auth_privilege_modify(
 	__in		efx_nic_t *enp,
 	__in		uint32_t pf_index,

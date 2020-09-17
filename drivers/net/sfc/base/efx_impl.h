@@ -566,14 +566,14 @@ typedef struct efx_vpd_ops_s {
 
 #if EFSYS_OPT_VPD || EFSYS_OPT_NVRAM
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_partitions(
 	__in			efx_nic_t *enp,
 	__out_bcount(size)	caddr_t data,
 	__in			size_t size,
 	__out			unsigned int *npartnp);
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_metadata(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
@@ -582,18 +582,18 @@ efx_mcdi_nvram_metadata(
 	__out_bcount_opt(size)	char *descp,
 	__in			size_t size);
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_info(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
 	__out			efx_nvram_info_t *eni);
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_update_start(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn);
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_read(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
@@ -602,14 +602,14 @@ efx_mcdi_nvram_read(
 	__in			size_t size,
 	__in			uint32_t mode);
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_erase(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
 	__in			uint32_t offset,
 	__in			size_t size);
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_write(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
@@ -620,7 +620,7 @@ efx_mcdi_nvram_write(
 #define	EFX_NVRAM_UPDATE_FLAGS_BACKGROUND	0x00000001
 #define	EFX_NVRAM_UPDATE_FLAGS_POLL		0x00000002
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_update_finish(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
@@ -630,7 +630,7 @@ efx_mcdi_nvram_update_finish(
 
 #if EFSYS_OPT_DIAG
 
-	__checkReturn		efx_rc_t
+extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_test(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn);

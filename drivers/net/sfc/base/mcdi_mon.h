@@ -17,11 +17,11 @@ extern "C" {
 
 #if EFSYS_OPT_MON_STATS
 
-	__checkReturn	efx_rc_t
+extern	__checkReturn	efx_rc_t
 mcdi_mon_cfg_build(
     __in		efx_nic_t *enp);
 
-			void
+extern			void
 mcdi_mon_cfg_free(
 	__in		efx_nic_t *enp);
 
