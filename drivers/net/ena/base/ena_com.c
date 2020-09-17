@@ -1083,6 +1083,9 @@ static int ena_com_hash_key_allocate(struct ena_com_dev *ena_dev)
 {
 	struct ena_rss *rss = &ena_dev->rss;
 
+	if (!ena_com_check_supported_feature_id(ena_dev, ENA_ADMIN_RSS_HASH_FUNCTION))
+		return ENA_COM_UNSUPPORTED;
+
 	ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
 			       sizeof(*rss->hash_key),
 			       rss->hash_key,
@@ -2719,11 +2722,15 @@ int ena_com_rss_init(struct ena_com_dev *ena_dev, u16 indr_tbl_log_size)
 	if (unlikely(rc))
 		goto err_indr_tbl;
 
+	/* The following function might return unsupported in case the
+	 * device doesn't support setting the key / hash function. We can safely
+	 * ignore this error and have indirection table support only.
+	 */
 	rc = ena_com_hash_key_allocate(ena_dev);
-	if (unlikely(rc))
+	if (likely(!rc))
+		ena_com_hash_key_fill_default_key(ena_dev);
+	else if (rc != ENA_COM_UNSUPPORTED)
 		goto err_hash_key;
-
-	ena_com_hash_key_fill_default_key(ena_dev);
 
 	rc = ena_com_hash_ctrl_init(ena_dev);
 	if (unlikely(rc))
