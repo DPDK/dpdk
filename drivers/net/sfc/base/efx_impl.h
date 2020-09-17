@@ -279,6 +279,7 @@ typedef struct efx_filter_ops_s {
 				   uint8_t const *, uint32_t);
 } efx_filter_ops_t;
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_filter_reconfigure(
 	__in				efx_nic_t *enp,
@@ -464,6 +465,7 @@ typedef struct efx_filter_s {
 
 #if EFSYS_OPT_SIENA
 
+LIBEFX_INTERNAL
 extern			void
 siena_filter_tbl_clear(
 	__in		efx_nic_t *enp,
@@ -566,6 +568,7 @@ typedef struct efx_vpd_ops_s {
 
 #if EFSYS_OPT_VPD || EFSYS_OPT_NVRAM
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_partitions(
 	__in			efx_nic_t *enp,
@@ -573,6 +576,7 @@ efx_mcdi_nvram_partitions(
 	__in			size_t size,
 	__out			unsigned int *npartnp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_metadata(
 	__in			efx_nic_t *enp,
@@ -582,17 +586,20 @@ efx_mcdi_nvram_metadata(
 	__out_bcount_opt(size)	char *descp,
 	__in			size_t size);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_info(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn,
 	__out			efx_nvram_info_t *eni);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_update_start(
 	__in			efx_nic_t *enp,
 	__in			uint32_t partn);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_read(
 	__in			efx_nic_t *enp,
@@ -602,6 +609,7 @@ efx_mcdi_nvram_read(
 	__in			size_t size,
 	__in			uint32_t mode);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_erase(
 	__in			efx_nic_t *enp,
@@ -609,6 +617,7 @@ efx_mcdi_nvram_erase(
 	__in			uint32_t offset,
 	__in			size_t size);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_write(
 	__in			efx_nic_t *enp,
@@ -620,6 +629,7 @@ efx_mcdi_nvram_write(
 #define	EFX_NVRAM_UPDATE_FLAGS_BACKGROUND	0x00000001
 #define	EFX_NVRAM_UPDATE_FLAGS_POLL		0x00000002
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_update_finish(
 	__in			efx_nic_t *enp,
@@ -630,6 +640,7 @@ efx_mcdi_nvram_update_finish(
 
 #if EFSYS_OPT_DIAG
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_nvram_test(
 	__in			efx_nic_t *enp,
@@ -713,6 +724,7 @@ typedef struct efx_evb_ops_s {
 						efx_vport_id_t, efsys_mem_t *);
 } efx_evb_ops_t;
 
+LIBEFX_INTERNAL
 extern __checkReturn	boolean_t
 efx_is_zero_eth_addr(
 	__in_bcount(EFX_MAC_ADDR_LEN)	const uint8_t *addrp);
@@ -1286,10 +1298,12 @@ struct efx_txq_s {
 	_NOTE(CONSTANTCONDITION)					\
 	} while (B_FALSE)
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mac_select(
 	__in		efx_nic_t *enp);
 
+LIBEFX_INTERNAL
 extern	void
 efx_mac_multicast_hash_compute(
 	__in_ecount(6*count)		uint8_t const *addrs,
@@ -1297,10 +1311,12 @@ efx_mac_multicast_hash_compute(
 	__out				efx_oword_t *hash_low,
 	__out				efx_oword_t *hash_high);
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_phy_probe(
 	__in		efx_nic_t *enp);
 
+LIBEFX_INTERNAL
 extern			void
 efx_phy_unprobe(
 	__in		efx_nic_t *enp);
@@ -1309,24 +1325,28 @@ efx_phy_unprobe(
 
 /* VPD utility functions */
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_vpd_hunk_length(
 	__in_bcount(size)	caddr_t data,
 	__in			size_t size,
 	__out			size_t *lengthp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_vpd_hunk_verify(
 	__in_bcount(size)	caddr_t data,
 	__in			size_t size,
 	__out_opt		boolean_t *cksummedp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_vpd_hunk_reinit(
 	__in_bcount(size)	caddr_t data,
 	__in			size_t size,
 	__in			boolean_t wantpid);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_vpd_hunk_get(
 	__in_bcount(size)	caddr_t data,
@@ -1336,6 +1356,7 @@ efx_vpd_hunk_get(
 	__out			unsigned int *payloadp,
 	__out			uint8_t *paylenp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn			efx_rc_t
 efx_vpd_hunk_next(
 	__in_bcount(size)		caddr_t data,
@@ -1346,6 +1367,7 @@ efx_vpd_hunk_next(
 	__out_opt			uint8_t *paylenp,
 	__inout				unsigned int *contp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_vpd_hunk_set(
 	__in_bcount(size)	caddr_t data,
@@ -1356,6 +1378,7 @@ efx_vpd_hunk_set(
 
 #if EFSYS_OPT_MCDI
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_set_workaround(
 	__in			efx_nic_t *enp,
@@ -1363,6 +1386,7 @@ efx_mcdi_set_workaround(
 	__in			boolean_t enabled,
 	__out_opt		uint32_t *flagsp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_get_workarounds(
 	__in			efx_nic_t *enp,
@@ -1391,6 +1415,7 @@ typedef enum efx_stats_action_e {
 	EFX_STATS_DISABLE,
 } efx_stats_action_t;
 
+LIBEFX_INTERNAL
 extern					efx_rc_t
 efx_mac_stats_mask_add_ranges(
 	__inout_bcount(mask_size)	uint32_t *maskp,
@@ -1398,6 +1423,7 @@ efx_mac_stats_mask_add_ranges(
 	__in_ecount(rng_count)		const struct efx_mac_stats_range *rngp,
 	__in				unsigned int rng_count);
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_mac_stats(
 	__in		efx_nic_t *enp,

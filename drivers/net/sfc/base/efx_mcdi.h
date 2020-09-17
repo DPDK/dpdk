@@ -56,16 +56,19 @@ typedef struct efx_mcdi_iface_s {
 	uint32_t		emi_mc_reboot_status;
 } efx_mcdi_iface_t;
 
+LIBEFX_INTERNAL
 extern			void
 efx_mcdi_execute(
 	__in		efx_nic_t *enp,
 	__inout		efx_mcdi_req_t *emrp);
 
+LIBEFX_INTERNAL
 extern			void
 efx_mcdi_execute_quiet(
 	__in		efx_nic_t *enp,
 	__inout		efx_mcdi_req_t *emrp);
 
+LIBEFX_INTERNAL
 extern			void
 efx_mcdi_ev_cpl(
 	__in		efx_nic_t *enp,
@@ -81,6 +84,7 @@ efx_mcdi_get_proxy_handle(
 	__in		efx_mcdi_req_t *emrp,
 	__out		uint32_t *handlep);
 
+LIBEFX_INTERNAL
 extern			void
 efx_mcdi_ev_proxy_response(
 	__in		efx_nic_t *enp,
@@ -89,21 +93,25 @@ efx_mcdi_ev_proxy_response(
 #endif
 
 #if EFSYS_OPT_MCDI_PROXY_AUTH_SERVER
+LIBEFX_INTERNAL
 extern			void
 efx_mcdi_ev_proxy_request(
 	__in		efx_nic_t *enp,
 	__in		unsigned int index);
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
+LIBEFX_INTERNAL
 extern			void
 efx_mcdi_ev_death(
 	__in		efx_nic_t *enp,
 	__in		int rc);
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_request_errcode(
 	__in		unsigned int err);
 
+LIBEFX_INTERNAL
 extern			void
 efx_mcdi_raise_exception(
 	__in		efx_nic_t *enp,
@@ -116,6 +124,7 @@ typedef enum efx_mcdi_boot_e {
 	EFX_MCDI_BOOT_ROM,
 } efx_mcdi_boot_t;
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_version(
 	__in			efx_nic_t *enp,
@@ -123,6 +132,7 @@ efx_mcdi_version(
 	__out_opt		uint32_t *buildp,
 	__out_opt		efx_mcdi_boot_t *statusp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_get_capabilities(
 	__in		efx_nic_t *enp,
@@ -132,19 +142,23 @@ efx_mcdi_get_capabilities(
 	__out_opt	uint32_t *flags2p,
 	__out_opt	uint32_t *tso2ncp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_read_assertion(
 	__in			efx_nic_t *enp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_exit_assertion_handler(
 	__in			efx_nic_t *enp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_drv_attach(
 	__in			efx_nic_t *enp,
 	__in			boolean_t attach);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_get_board_cfg(
 	__in			efx_nic_t *enp,
@@ -152,25 +166,30 @@ efx_mcdi_get_board_cfg(
 	__out_opt		efx_dword_t *capabilitiesp,
 	__out_ecount_opt(6)	uint8_t mac_addrp[6]);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_get_phy_cfg(
 	__in			efx_nic_t *enp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_firmware_update_supported(
 	__in			efx_nic_t *enp,
 	__out			boolean_t *supportedp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_macaddr_change_supported(
 	__in			efx_nic_t *enp,
 	__out			boolean_t *supportedp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_link_control_supported(
 	__in			efx_nic_t *enp,
 	__out			boolean_t *supportedp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_mac_spoofing_supported(
 	__in			efx_nic_t *enp,
@@ -179,16 +198,19 @@ efx_mcdi_mac_spoofing_supported(
 
 #if EFSYS_OPT_BIST
 #if EFX_OPTS_EF10()
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_bist_enable_offline(
 	__in			efx_nic_t *enp);
 #endif /* EFX_OPTS_EF10() */
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_bist_start(
 	__in			efx_nic_t *enp,
 	__in			efx_bist_type_t type);
 #endif /* EFSYS_OPT_BIST */
 
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 efx_mcdi_get_resource_limits(
 	__in			efx_nic_t *enp,
@@ -196,19 +218,23 @@ efx_mcdi_get_resource_limits(
 	__out_opt		uint32_t *nrxqp,
 	__out_opt		uint32_t *ntxqp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_log_ctrl(
 	__in		efx_nic_t *enp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_mac_stats_clear(
 	__in		efx_nic_t *enp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_mac_stats_upload(
 	__in		efx_nic_t *enp,
 	__in		efsys_mem_t *esmp);
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_mac_stats_periodic(
 	__in		efx_nic_t *enp,
@@ -218,11 +244,13 @@ efx_mcdi_mac_stats_periodic(
 
 
 #if EFSYS_OPT_LOOPBACK
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_get_loopback_modes(
 	__in		efx_nic_t *enp);
 #endif /* EFSYS_OPT_LOOPBACK */
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 efx_mcdi_phy_module_get_info(
 	__in			efx_nic_t *enp,

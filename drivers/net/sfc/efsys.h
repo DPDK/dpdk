@@ -34,6 +34,7 @@ extern "C" {
 
 /* No specific decorations required since all functions are local now */
 #define LIBEFX_API
+#define LIBEFX_INTERNAL
 
 #define EFSYS_HAS_UINT64 1
 #define EFSYS_USE_UINT64 1

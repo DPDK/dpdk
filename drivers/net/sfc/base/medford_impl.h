@@ -27,6 +27,7 @@ extern "C" {
 #define	MEDFORD_MIN_PIO_ALLOC_SIZE	(MEDFORD_PIOBUF_SIZE / 32)
 
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 medford_board_cfg(
 	__in		efx_nic_t *enp);

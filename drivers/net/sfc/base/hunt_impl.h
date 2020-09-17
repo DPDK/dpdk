@@ -43,6 +43,7 @@ extern "C" {
 
 /* NIC */
 
+LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
 hunt_board_cfg(
 	__in		efx_nic_t *enp);

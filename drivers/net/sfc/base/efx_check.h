@@ -18,6 +18,10 @@
 # error "LIBEFX_API must be defined"
 #endif
 
+#ifndef LIBEFX_INTERNAL
+# error "LIBEFX_INTERNAL must be defined"
+#endif
+
 /*
  * Check that the efsys.h header in client code has a valid combination of
  * EFSYS_OPT_xxx options.
