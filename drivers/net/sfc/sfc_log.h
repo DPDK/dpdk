@@ -28,9 +28,6 @@ extern uint32_t sfc_logtype_driver;
 /** Device MCDI log type name prefix */
 #define SFC_LOGTYPE_MCDI_STR	SFC_LOGTYPE_PREFIX "mcdi"
 
-/** Level value used by MCDI log statements */
-#define SFC_LOG_LEVEL_MCDI	RTE_LOG_INFO
-
 /* Log PMD message, automatically add prefix and \n */
 #define SFC_LOG(sas, level, type, ...) \
 	do {								\
@@ -90,14 +87,6 @@ extern uint32_t sfc_logtype_driver;
 				RTE_FMT_HEAD(__VA_ARGS__ ,),		\
 				__func__,				\
 				RTE_FMT_TAIL(__VA_ARGS__ ,)));		\
-	} while (0)
-
-#define sfc_log_mcdi(sa, ...) \
-	do {								\
-		const struct sfc_adapter *_sa = (sa);			\
-									\
-		SFC_LOG(_sa->priv.shared, SFC_LOG_LEVEL_MCDI,		\
-			_sa->mcdi.logtype, __VA_ARGS__);		\
 	} while (0)
 
 

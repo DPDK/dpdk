@@ -23,6 +23,17 @@
 #define SFC_EFX_MCDI_POLL_INTERVAL_MAX_US	(US_PER_S / 10)	/* 100ms */
 #define SFC_EFX_MCDI_WATCHDOG_INTERVAL_US	(10 * US_PER_S)	/* 10s */
 
+/** Level value used by MCDI log statements */
+#define SFC_EFX_LOG_LEVEL_MCDI	RTE_LOG_INFO
+
+#define sfc_efx_log_mcdi(sa, ...) \
+	do {								\
+		const struct sfc_adapter *_sa = (sa);			\
+									\
+		SFC_LOG(_sa->priv.shared, SFC_EFX_LOG_LEVEL_MCDI,	\
+			_sa->mcdi.logtype, __VA_ARGS__);		\
+	} while (0)
+
 static void
 sfc_efx_mcdi_timeout(struct sfc_adapter *sa)
 {
@@ -178,7 +189,7 @@ sfc_efx_mcdi_do_log(const struct sfc_adapter *sa,
 			 * at the end which is required by netlogdecode.
 			 */
 			buffer[position] = '\0';
-			sfc_log_mcdi(sa, "%s \\", buffer);
+			sfc_efx_log_mcdi(sa, "%s \\", buffer);
 			/* Preserve prefix for the next log message */
 			position = pfxsize;
 		}
@@ -207,11 +218,11 @@ sfc_efx_mcdi_logger(void *arg, efx_log_msg_t type,
 	 *
 	 * To avoid wasting time, the actual level is examined in advance.
 	 */
-	if (rte_log_get_level(sa->mcdi.logtype) < (int)SFC_LOG_LEVEL_MCDI)
+	if (rte_log_get_level(sa->mcdi.logtype) < (int)SFC_EFX_LOG_LEVEL_MCDI)
 		return;
 
-	/* The format including prefix added by sfc_log_mcdi() is the format
-	 * consumed by the Solarflare netlogdecode tool.
+	/* The format including prefix added by sfc_efx_log_mcdi() is the
+	 * format consumed by the Solarflare netlogdecode tool.
 	 */
 	pfxsize = snprintf(buffer, sizeof(buffer), "MCDI RPC %s:",
 			   type == EFX_LOG_MCDI_REQUEST ? "REQ" :
@@ -222,7 +233,7 @@ sfc_efx_mcdi_logger(void *arg, efx_log_msg_t type,
 				    pfxsize, start);
 	if (start != pfxsize) {
 		buffer[start] = '\0';
-		sfc_log_mcdi(sa, "%s", buffer);
+		sfc_efx_log_mcdi(sa, "%s", buffer);
 	}
 }
 
