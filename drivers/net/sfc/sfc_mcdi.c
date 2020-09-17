@@ -33,6 +33,9 @@
 				RTE_FMT_TAIL(__VA_ARGS__,)));		\
 	} while (0)
 
+#define sfc_efx_mcdi_crit(mcdi, ...) \
+	sfc_efx_mcdi_log(mcdi, RTE_LOG_CRIT, __VA_ARGS__)
+
 #define sfc_efx_mcdi_err(mcdi, ...) \
 	sfc_efx_mcdi_log(mcdi, RTE_LOG_ERR, __VA_ARGS__)
 
@@ -55,7 +58,9 @@ sfc_efx_mcdi_timeout(struct sfc_adapter *sa)
 
 	sfc_efx_mcdi_warn(mcdi, "MC TIMEOUT");
 
-	sfc_panic(sa, "MCDI timeout handling is not implemented\n");
+	mcdi->state = SFC_EFX_MCDI_DEAD;
+	sfc_efx_mcdi_crit(mcdi,
+		"MCDI timeout handling is not implemented - NIC is unusable");
 }
 
 static inline boolean_t
@@ -123,6 +128,11 @@ sfc_efx_mcdi_execute(void *arg, efx_mcdi_req_t *emrp)
 	struct sfc_adapter *sa = (struct sfc_adapter *)arg;
 	struct sfc_efx_mcdi *mcdi = &sa->mcdi;
 	uint32_t proxy_handle;
+
+	if (mcdi->state == SFC_EFX_MCDI_DEAD) {
+		emrp->emr_rc = ENOEXEC;
+		return;
+	}
 
 	rte_spinlock_lock(&mcdi->lock);
 
@@ -325,7 +335,8 @@ sfc_efx_mcdi_fini(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 
 	rte_spinlock_lock(&mcdi->lock);
 
-	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_INITIALIZED);
+	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_INITIALIZED ||
+		   mcdi->state == SFC_EFX_MCDI_DEAD);
 	mcdi->state = SFC_EFX_MCDI_UNINITIALIZED;
 
 	sfc_efx_mcdi_info(mcdi, "fini MCDI");
