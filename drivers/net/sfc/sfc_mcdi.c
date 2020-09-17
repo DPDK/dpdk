@@ -75,6 +75,7 @@ sfc_efx_mcdi_proxy_event_available(struct sfc_adapter *sa)
 static void
 sfc_efx_mcdi_poll(struct sfc_adapter *sa, boolean_t proxy)
 {
+	struct sfc_efx_mcdi *mcdi = &sa->mcdi;
 	efx_nic_t *enp;
 	unsigned int delay_total;
 	unsigned int delay_us;
@@ -82,7 +83,7 @@ sfc_efx_mcdi_poll(struct sfc_adapter *sa, boolean_t proxy)
 
 	delay_total = 0;
 	delay_us = SFC_EFX_MCDI_POLL_INTERVAL_MIN_US;
-	enp = sa->nic;
+	enp = mcdi->nic;
 
 	do {
 		boolean_t poll_completed;
@@ -127,10 +128,10 @@ sfc_efx_mcdi_execute(void *arg, efx_mcdi_req_t *emrp)
 
 	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_INITIALIZED);
 
-	efx_mcdi_request_start(sa->nic, emrp, B_FALSE);
+	efx_mcdi_request_start(mcdi->nic, emrp, B_FALSE);
 	sfc_efx_mcdi_poll(sa, B_FALSE);
 
-	if (efx_mcdi_get_proxy_handle(sa->nic, emrp, &proxy_handle) == 0) {
+	if (efx_mcdi_get_proxy_handle(mcdi->nic, emrp, &proxy_handle) == 0) {
 		/*
 		 * Authorization is required for the MCDI request;
 		 * wait for an MCDI proxy response event to bring
@@ -148,7 +149,7 @@ sfc_efx_mcdi_execute(void *arg, efx_mcdi_req_t *emrp)
 			 * Authorization succeeded; re-issue the original
 			 * request and poll for an ordinary MCDI response
 			 */
-			efx_mcdi_request_start(sa->nic, emrp, B_FALSE);
+			efx_mcdi_request_start(mcdi->nic, emrp, B_FALSE);
 			sfc_efx_mcdi_poll(sa, B_FALSE);
 		} else {
 			emrp->emr_rc = mcdi->proxy_result;
@@ -267,7 +268,7 @@ sfc_efx_mcdi_ev_proxy_response(void *arg, uint32_t handle, efx_rc_t result)
 
 static int
 sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
-		  uint32_t logtype, const char *log_prefix)
+		  uint32_t logtype, const char *log_prefix, efx_nic_t *nic)
 {
 	size_t max_msg_size;
 	efx_mcdi_transport_t *emtp;
@@ -276,6 +277,8 @@ sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
 	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_UNINITIALIZED);
 
 	rte_spinlock_init(&mcdi->lock);
+
+	mcdi->nic = nic;
 
 	mcdi->state = SFC_EFX_MCDI_INITIALIZED;
 
@@ -298,7 +301,7 @@ sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
 	emtp->emt_ev_proxy_response = sfc_efx_mcdi_ev_proxy_response;
 
 	sfc_efx_mcdi_info(mcdi, "init MCDI");
-	rc = efx_mcdi_init(sa->nic, emtp);
+	rc = efx_mcdi_init(mcdi->nic, emtp);
 	if (rc != 0)
 		goto fail_mcdi_init;
 
@@ -326,7 +329,7 @@ sfc_efx_mcdi_fini(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 	mcdi->state = SFC_EFX_MCDI_UNINITIALIZED;
 
 	sfc_efx_mcdi_info(mcdi, "fini MCDI");
-	efx_mcdi_fini(sa->nic);
+	efx_mcdi_fini(mcdi->nic);
 	memset(emtp, 0, sizeof(*emtp));
 
 	rte_spinlock_unlock(&mcdi->lock);
@@ -346,7 +349,7 @@ sfc_mcdi_init(struct sfc_adapter *sa)
 				       RTE_LOG_NOTICE);
 
 	return sfc_efx_mcdi_init(sa, &sa->mcdi, logtype,
-				 sa->priv.shared->log_prefix);
+				 sa->priv.shared->log_prefix, sa->nic);
 }
 
 void

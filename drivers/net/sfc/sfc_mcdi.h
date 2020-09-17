@@ -33,6 +33,7 @@ enum sfc_efx_mcdi_state {
 
 struct sfc_efx_mcdi {
 	rte_spinlock_t			lock;
+	efx_nic_t			*nic;
 	efsys_mem_t			mem;
 	enum sfc_efx_mcdi_state		state;
 	efx_mcdi_transport_t		transport;
