@@ -610,13 +610,9 @@ static int ena_com_set_llq(struct ena_com_dev *ena_dev)
 	cmd.u.llq.desc_num_before_header_enabled = llq_info->descs_num_before_header;
 	cmd.u.llq.descriptors_stride_ctrl_enabled = llq_info->desc_stride_ctrl;
 
-	if (llq_info->disable_meta_caching)
-		cmd.u.llq.accel_mode.u.set.enabled_flags |=
-			BIT(ENA_ADMIN_DISABLE_META_CACHING);
-
-	if (llq_info->max_entries_in_tx_burst)
-		cmd.u.llq.accel_mode.u.set.enabled_flags |=
-			BIT(ENA_ADMIN_LIMIT_TX_BURST);
+	cmd.u.llq.accel_mode.u.set.enabled_flags =
+		BIT(ENA_ADMIN_DISABLE_META_CACHING) |
+		BIT(ENA_ADMIN_LIMIT_TX_BURST);
 
 	ret = ena_com_execute_admin_command(admin_queue,
 					    (struct ena_admin_aq_entry *)&cmd,
@@ -635,6 +631,7 @@ static int ena_com_config_llq_info(struct ena_com_dev *ena_dev,
 				   struct ena_llq_configurations *llq_default_cfg)
 {
 	struct ena_com_llq_info *llq_info = &ena_dev->llq_info;
+	struct ena_admin_accel_mode_get llq_accel_mode_get;
 	u16 supported_feat;
 	int rc;
 
@@ -738,13 +735,15 @@ static int ena_com_config_llq_info(struct ena_com_dev *ena_dev,
 			    llq_info->descs_num_before_header);
 	}
 	/* Check for accelerated queue supported */
-	llq_info->disable_meta_caching =
-		llq_features->accel_mode.u.get.supported_flags &
-		BIT(ENA_ADMIN_DISABLE_META_CACHING);
+	llq_accel_mode_get = llq_features->accel_mode.u.get;
 
-	if (llq_features->accel_mode.u.get.supported_flags & BIT(ENA_ADMIN_LIMIT_TX_BURST))
+	llq_info->disable_meta_caching =
+		!!(llq_accel_mode_get.supported_flags &
+		   BIT(ENA_ADMIN_DISABLE_META_CACHING));
+
+	if (llq_accel_mode_get.supported_flags & BIT(ENA_ADMIN_LIMIT_TX_BURST))
 		llq_info->max_entries_in_tx_burst =
-			llq_features->accel_mode.u.get.max_tx_burst_size /
+			llq_accel_mode_get.max_tx_burst_size /
 			llq_default_cfg->llq_ring_entry_size_value;
 
 	rc = ena_com_set_llq(ena_dev);
