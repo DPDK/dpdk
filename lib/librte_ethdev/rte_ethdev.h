@@ -553,6 +553,36 @@ struct rte_eth_rss_conf {
 #define RTE_ETH_RSS_L3_PRE64	   (1ULL << 53)
 #define RTE_ETH_RSS_L3_PRE96	   (1ULL << 52)
 
+/*
+ * Use the following macros to combine with the above layers
+ * to choose inner and outer layers or both for RSS computation.
+ * Bits 50 and 51 are reserved for this.
+ */
+
+/**
+ * level 0, requests the default behavior.
+ * Depending on the packet type, it can mean outermost, innermost,
+ * anything in between or even no RSS.
+ * It basically stands for the innermost encapsulation level RSS
+ * can be performed on according to PMD and device capabilities.
+ */
+#define ETH_RSS_LEVEL_PMD_DEFAULT       (0ULL << 50)
+
+/**
+ * level 1, requests RSS to be performed on the outermost packet
+ * encapsulation level.
+ */
+#define ETH_RSS_LEVEL_OUTERMOST         (1ULL << 50)
+
+/**
+ * level 2, requests RSS to be performed on the specified inner packet
+ * encapsulation level, from outermost to innermost (lower to higher values).
+ */
+#define ETH_RSS_LEVEL_INNERMOST         (2ULL << 50)
+#define ETH_RSS_LEVEL_MASK              (3ULL << 50)
+
+#define ETH_RSS_LEVEL(rss_hf) ((rss_hf & ETH_RSS_LEVEL_MASK) >> 50)
+
 /**
  * For input set change of hash filter, if SRC_ONLY and DST_ONLY of
  * the same level are used simultaneously, it is the same case as
