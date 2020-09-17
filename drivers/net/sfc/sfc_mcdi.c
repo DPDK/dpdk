@@ -23,21 +23,37 @@
 #define SFC_EFX_MCDI_POLL_INTERVAL_MAX_US	(US_PER_S / 10)	/* 100ms */
 #define SFC_EFX_MCDI_WATCHDOG_INTERVAL_US	(10 * US_PER_S)	/* 10s */
 
+#define sfc_efx_mcdi_log(mcdi, level, ...) \
+	do {								\
+		const struct sfc_efx_mcdi *_mcdi = (mcdi);		\
+									\
+		rte_log(level, _mcdi->logtype,				\
+			RTE_FMT("%s" RTE_FMT_HEAD(__VA_ARGS__ ,) "\n",	\
+				_mcdi->log_prefix,			\
+				RTE_FMT_TAIL(__VA_ARGS__,)));		\
+	} while (0)
+
+#define sfc_efx_mcdi_err(mcdi, ...) \
+	sfc_efx_mcdi_log(mcdi, RTE_LOG_ERR, __VA_ARGS__)
+
+#define sfc_efx_mcdi_warn(mcdi, ...) \
+	sfc_efx_mcdi_log(mcdi, RTE_LOG_WARNING, __VA_ARGS__)
+
+#define sfc_efx_mcdi_info(mcdi, ...) \
+	sfc_efx_mcdi_log(mcdi, RTE_LOG_INFO, __VA_ARGS__)
+
 /** Level value used by MCDI log statements */
 #define SFC_EFX_LOG_LEVEL_MCDI	RTE_LOG_INFO
 
-#define sfc_efx_log_mcdi(sa, ...) \
-	do {								\
-		const struct sfc_adapter *_sa = (sa);			\
-									\
-		SFC_LOG(_sa->priv.shared, SFC_EFX_LOG_LEVEL_MCDI,	\
-			_sa->mcdi.logtype, __VA_ARGS__);		\
-	} while (0)
+#define sfc_efx_log_mcdi(mcdi, ...) \
+	sfc_efx_mcdi_log(mcdi, SFC_EFX_LOG_LEVEL_MCDI, __VA_ARGS__)
 
 static void
 sfc_efx_mcdi_timeout(struct sfc_adapter *sa)
 {
-	sfc_warn(sa, "MC TIMEOUT");
+	struct sfc_efx_mcdi *mcdi = &sa->mcdi;
+
+	sfc_efx_mcdi_warn(mcdi, "MC TIMEOUT");
 
 	sfc_panic(sa, "MCDI timeout handling is not implemented\n");
 }
@@ -125,7 +141,7 @@ sfc_efx_mcdi_execute(void *arg, efx_mcdi_req_t *emrp)
 
 		if ((mcdi->proxy_handle != 0) &&
 		    (mcdi->proxy_handle != proxy_handle)) {
-			sfc_err(sa, "Unexpected MCDI proxy event");
+			sfc_efx_mcdi_err(mcdi, "Unexpected MCDI proxy event");
 			emrp->emr_rc = EFAULT;
 		} else if (mcdi->proxy_result == 0) {
 			/*
@@ -136,9 +152,9 @@ sfc_efx_mcdi_execute(void *arg, efx_mcdi_req_t *emrp)
 			sfc_efx_mcdi_poll(sa, B_FALSE);
 		} else {
 			emrp->emr_rc = mcdi->proxy_result;
-			sfc_err(sa, "MCDI proxy authorization failed "
-				    "(handle=%08x, result=%d)",
-				    proxy_handle, mcdi->proxy_result);
+			sfc_efx_mcdi_err(mcdi,
+				"MCDI proxy authorization failed (handle=%08x, result=%d)",
+				proxy_handle, mcdi->proxy_result);
 		}
 	}
 
@@ -162,8 +178,9 @@ static void
 sfc_efx_mcdi_exception(void *arg, efx_mcdi_exception_t eme)
 {
 	struct sfc_adapter *sa = (struct sfc_adapter *)arg;
+	struct sfc_efx_mcdi *mcdi  = &sa->mcdi;
 
-	sfc_warn(sa, "MC %s",
+	sfc_efx_mcdi_warn(mcdi, "MC %s",
 	    (eme == EFX_MCDI_EXCEPTION_MC_REBOOT) ? "REBOOT" :
 	    (eme == EFX_MCDI_EXCEPTION_MC_BADASSERT) ? "BADASSERT" : "UNKNOWN");
 
@@ -173,7 +190,7 @@ sfc_efx_mcdi_exception(void *arg, efx_mcdi_exception_t eme)
 #define SFC_MCDI_LOG_BUF_SIZE	128
 
 static size_t
-sfc_efx_mcdi_do_log(const struct sfc_adapter *sa,
+sfc_efx_mcdi_do_log(const struct sfc_efx_mcdi *mcdi,
 		char *buffer, void *data, size_t data_size,
 		size_t pfxsize, size_t position)
 {
@@ -189,7 +206,7 @@ sfc_efx_mcdi_do_log(const struct sfc_adapter *sa,
 			 * at the end which is required by netlogdecode.
 			 */
 			buffer[position] = '\0';
-			sfc_efx_log_mcdi(sa, "%s \\", buffer);
+			sfc_efx_log_mcdi(mcdi, "%s \\", buffer);
 			/* Preserve prefix for the next log message */
 			position = pfxsize;
 		}
@@ -207,6 +224,7 @@ sfc_efx_mcdi_logger(void *arg, efx_log_msg_t type,
 		void *data, size_t data_size)
 {
 	struct sfc_adapter *sa = (struct sfc_adapter *)arg;
+	struct sfc_efx_mcdi *mcdi = &sa->mcdi;
 	char buffer[SFC_MCDI_LOG_BUF_SIZE];
 	size_t pfxsize;
 	size_t start;
@@ -218,7 +236,7 @@ sfc_efx_mcdi_logger(void *arg, efx_log_msg_t type,
 	 *
 	 * To avoid wasting time, the actual level is examined in advance.
 	 */
-	if (rte_log_get_level(sa->mcdi.logtype) < (int)SFC_EFX_LOG_LEVEL_MCDI)
+	if (rte_log_get_level(mcdi->logtype) < (int)SFC_EFX_LOG_LEVEL_MCDI)
 		return;
 
 	/* The format including prefix added by sfc_efx_log_mcdi() is the
@@ -227,13 +245,13 @@ sfc_efx_mcdi_logger(void *arg, efx_log_msg_t type,
 	pfxsize = snprintf(buffer, sizeof(buffer), "MCDI RPC %s:",
 			   type == EFX_LOG_MCDI_REQUEST ? "REQ" :
 			   type == EFX_LOG_MCDI_RESPONSE ? "RESP" : "???");
-	start = sfc_efx_mcdi_do_log(sa, buffer, header, header_size,
+	start = sfc_efx_mcdi_do_log(mcdi, buffer, header, header_size,
 				    pfxsize, pfxsize);
-	start = sfc_efx_mcdi_do_log(sa, buffer, data, data_size,
+	start = sfc_efx_mcdi_do_log(mcdi, buffer, data, data_size,
 				    pfxsize, start);
 	if (start != pfxsize) {
 		buffer[start] = '\0';
-		sfc_efx_log_mcdi(sa, "%s", buffer);
+		sfc_efx_log_mcdi(mcdi, "%s", buffer);
 	}
 }
 
@@ -248,13 +266,12 @@ sfc_efx_mcdi_ev_proxy_response(void *arg, uint32_t handle, efx_rc_t result)
 }
 
 static int
-sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
+sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
+		  uint32_t logtype, const char *log_prefix)
 {
 	size_t max_msg_size;
 	efx_mcdi_transport_t *emtp;
 	int rc;
-
-	sfc_log_init(sa, "entry");
 
 	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_UNINITIALIZED);
 
@@ -262,15 +279,14 @@ sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 
 	mcdi->state = SFC_EFX_MCDI_INITIALIZED;
 
+	mcdi->logtype = logtype;
+	mcdi->log_prefix = log_prefix;
+
 	max_msg_size = sizeof(uint32_t) + MCDI_CTL_SDU_LEN_MAX_V2;
 	rc = sfc_dma_alloc(sa, "mcdi", 0, max_msg_size, sa->socket_id,
 			   &mcdi->mem);
 	if (rc != 0)
 		goto fail_dma_alloc;
-
-	mcdi->logtype = sfc_register_logtype(&sa->priv.shared->pci_addr,
-					     SFC_LOGTYPE_MCDI_STR,
-					     RTE_LOG_NOTICE);
 
 	emtp = &mcdi->transport;
 	emtp->emt_context = sa;
@@ -281,7 +297,7 @@ sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 	emtp->emt_logger = sfc_efx_mcdi_logger;
 	emtp->emt_ev_proxy_response = sfc_efx_mcdi_ev_proxy_response;
 
-	sfc_log_init(sa, "init MCDI");
+	sfc_efx_mcdi_info(mcdi, "init MCDI");
 	rc = efx_mcdi_init(sa->nic, emtp);
 	if (rc != 0)
 		goto fail_mcdi_init;
@@ -302,8 +318,6 @@ sfc_efx_mcdi_fini(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 {
 	efx_mcdi_transport_t *emtp;
 
-	sfc_log_init(sa, "entry");
-
 	emtp = &mcdi->transport;
 
 	rte_spinlock_lock(&mcdi->lock);
@@ -311,7 +325,7 @@ sfc_efx_mcdi_fini(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_INITIALIZED);
 	mcdi->state = SFC_EFX_MCDI_UNINITIALIZED;
 
-	sfc_log_init(sa, "fini MCDI");
+	sfc_efx_mcdi_info(mcdi, "fini MCDI");
 	efx_mcdi_fini(sa->nic);
 	memset(emtp, 0, sizeof(*emtp));
 
@@ -323,11 +337,21 @@ sfc_efx_mcdi_fini(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 int
 sfc_mcdi_init(struct sfc_adapter *sa)
 {
-	return sfc_efx_mcdi_init(sa, &sa->mcdi);
+	uint32_t logtype;
+
+	sfc_log_init(sa, "entry");
+
+	logtype = sfc_register_logtype(&sa->priv.shared->pci_addr,
+				       SFC_LOGTYPE_MCDI_STR,
+				       RTE_LOG_NOTICE);
+
+	return sfc_efx_mcdi_init(sa, &sa->mcdi, logtype,
+				 sa->priv.shared->log_prefix);
 }
 
 void
 sfc_mcdi_fini(struct sfc_adapter *sa)
 {
+	sfc_log_init(sa, "entry");
 	sfc_efx_mcdi_fini(sa, &sa->mcdi);
 }

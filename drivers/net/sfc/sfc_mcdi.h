@@ -39,6 +39,7 @@ struct sfc_efx_mcdi {
 	uint32_t			logtype;
 	uint32_t			proxy_handle;
 	efx_rc_t			proxy_result;
+	const char			*log_prefix;
 };
 
 #ifdef __cplusplus

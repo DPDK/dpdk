@@ -22,6 +22,7 @@
 #include "efx.h"
 
 #include "sfc_debug.h"
+#include "sfc_log.h"
 #include "sfc_filter.h"
 #include "sfc_mcdi.h"
 
@@ -170,6 +171,7 @@ struct sfc_adapter_shared {
 	boolean_t			isolated;
 	uint32_t			tunnel_encaps;
 
+	char				log_prefix[SFC_LOG_PREFIX_MAX];
 	struct rte_pci_addr		pci_addr;
 	uint16_t			port_id;
 

@@ -2136,6 +2136,7 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	int rc;
 	const efx_nic_cfg_t *encp;
 	const struct rte_ether_addr *from;
+	int ret;
 
 	sfc_register_dp();
 
@@ -2147,6 +2148,18 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 		return -sfc_eth_dev_secondary_init(dev, logtype_main);
 
 	/* Required for logging */
+	ret = snprintf(sas->log_prefix, sizeof(sas->log_prefix),
+			"PMD: sfc_efx " PCI_PRI_FMT " #%" PRIu16 ": ",
+			pci_dev->addr.domain, pci_dev->addr.bus,
+			pci_dev->addr.devid, pci_dev->addr.function,
+			dev->data->port_id);
+	if (ret < 0 || ret >= (int)sizeof(sas->log_prefix)) {
+		SFC_GENERIC_LOG(ERR,
+			"reserved log prefix is too short for " PCI_PRI_FMT,
+			pci_dev->addr.domain, pci_dev->addr.bus,
+			pci_dev->addr.devid, pci_dev->addr.function);
+		return -EINVAL;
+	}
 	sas->pci_addr = pci_dev->addr;
 	sas->port_id = dev->data->port_id;
 
