@@ -15,8 +15,6 @@ extern struct rte_pci_bus rte_pci_bus;
 struct rte_pci_driver;
 struct rte_pci_device;
 
-extern struct rte_pci_bus rte_pci_bus;
-
 /**
  * Scan the content of the PCI bus, and the devices in the devices
  * list
