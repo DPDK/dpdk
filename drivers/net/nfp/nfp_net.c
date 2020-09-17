@@ -3614,7 +3614,7 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * interface. Here we avoid this telling to the CPP init code to
 	 * use a lock file if UIO is being used.
 	 */
-	if (dev->kdrv == RTE_KDRV_VFIO)
+	if (dev->kdrv == RTE_PCI_KDRV_VFIO)
 		cpp = nfp_cpp_from_device_name(dev, 0);
 	else
 		cpp = nfp_cpp_from_device_name(dev, 1);

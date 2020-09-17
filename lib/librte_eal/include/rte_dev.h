@@ -55,18 +55,6 @@ typedef void (*rte_dev_event_cb_fn)(const char *device_name,
 } while (0)
 
 /**
- * Device driver.
- */
-enum rte_kernel_driver {
-	RTE_KDRV_UNKNOWN = 0,
-	RTE_KDRV_IGB_UIO,
-	RTE_KDRV_VFIO,
-	RTE_KDRV_UIO_GENERIC,
-	RTE_KDRV_NIC_UIO,
-	RTE_KDRV_NONE,
-};
-
-/**
  * Device policies.
  */
 enum rte_dev_policy {

@@ -124,10 +124,6 @@ Deprecation Notices
   With this removal, there won't be a need for the mentioned workaround which
   will be reverted.
 
-* pci: The ``rte_kernel_driver`` enum defined in rte_dev.h will be made private
-  to the PCI subsystem as it is used only by the PCI bus driver and PCI
-  drivers.
-
 * mbuf: Some fields will be converted to dynamic API in DPDK 20.11
   in order to reserve more space for the dynamic fields, as explained in
   `this presentation <https://www.youtube.com/watch?v=Ttl6MlhmzWY>`_.

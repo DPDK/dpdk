@@ -248,7 +248,7 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 		goto error;
 	}
 
-	if (dev->kdrv == RTE_KDRV_IGB_UIO)
+	if (dev->kdrv == RTE_PCI_KDRV_IGB_UIO)
 		dev->intr_handle.type = RTE_INTR_HANDLE_UIO;
 	else {
 		dev->intr_handle.type = RTE_INTR_HANDLE_UIO_INTX;

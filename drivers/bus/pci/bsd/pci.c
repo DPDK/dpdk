@@ -65,7 +65,7 @@ rte_pci_map_device(struct rte_pci_device *dev)
 
 	/* try mapping the NIC resources */
 	switch (dev->kdrv) {
-	case RTE_KDRV_NIC_UIO:
+	case RTE_PCI_KDRV_NIC_UIO:
 		/* map resources for devices that use uio */
 		ret = pci_uio_map_resource(dev);
 		break;
@@ -85,7 +85,7 @@ rte_pci_unmap_device(struct rte_pci_device *dev)
 {
 	/* try unmapping the NIC resources */
 	switch (dev->kdrv) {
-	case RTE_KDRV_NIC_UIO:
+	case RTE_PCI_KDRV_NIC_UIO:
 		/* unmap resources for devices that use uio */
 		pci_uio_unmap_resource(dev);
 		break;
@@ -255,7 +255,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	pci_name_set(dev);
 
 	/* FreeBSD has only one pass through driver */
-	dev->kdrv = RTE_KDRV_NIC_UIO;
+	dev->kdrv = RTE_PCI_KDRV_NIC_UIO;
 
 	/* parse resources */
 	switch (conf->pc_hdr & PCIM_HDRTYPE) {
@@ -395,8 +395,7 @@ enum rte_iova_mode
 pci_device_iova_mode(const struct rte_pci_driver *pdrv __rte_unused,
 		     const struct rte_pci_device *pdev)
 {
-	/* Supports only RTE_KDRV_NIC_UIO */
-	if (pdev->kdrv != RTE_KDRV_NIC_UIO)
+	if (pdev->kdrv != RTE_PCI_KDRV_NIC_UIO)
 		RTE_LOG(DEBUG, EAL, "Unsupported kernel driver? Defaulting to IOVA as 'PA'\n");
 
 	return RTE_IOVA_PA;
@@ -548,7 +547,7 @@ rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 
 	switch (dev->kdrv) {
 #if defined(RTE_ARCH_X86)
-	case RTE_KDRV_NIC_UIO:
+	case RTE_PCI_KDRV_NIC_UIO:
 		if (rte_eal_iopl_init() != 0) {
 			RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
 				__func__, dev->name);
@@ -606,7 +605,7 @@ rte_pci_ioport_read(struct rte_pci_ioport *p,
 		void *data, size_t len, off_t offset)
 {
 	switch (p->dev->kdrv) {
-	case RTE_KDRV_NIC_UIO:
+	case RTE_PCI_KDRV_NIC_UIO:
 		pci_uio_ioport_read(p, data, len, offset);
 		break;
 	default:
@@ -648,7 +647,7 @@ rte_pci_ioport_write(struct rte_pci_ioport *p,
 		const void *data, size_t len, off_t offset)
 {
 	switch (p->dev->kdrv) {
-	case RTE_KDRV_NIC_UIO:
+	case RTE_PCI_KDRV_NIC_UIO:
 		pci_uio_ioport_write(p, data, len, offset);
 		break;
 	default:
@@ -663,7 +662,7 @@ rte_pci_ioport_unmap(struct rte_pci_ioport *p)
 
 	switch (p->dev->kdrv) {
 #if defined(RTE_ARCH_X86)
-	case RTE_KDRV_NIC_UIO:
+	case RTE_PCI_KDRV_NIC_UIO:
 		ret = 0;
 		break;
 #endif

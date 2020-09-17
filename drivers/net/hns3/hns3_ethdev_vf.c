@@ -2425,8 +2425,8 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 		 * UIO enables msix by writing the pcie configuration space
 		 * vfio_pci enables msix in rte_intr_enable.
 		 */
-		if (pci_dev->kdrv == RTE_KDRV_IGB_UIO ||
-		    pci_dev->kdrv == RTE_KDRV_UIO_GENERIC) {
+		if (pci_dev->kdrv == RTE_PCI_KDRV_IGB_UIO ||
+		    pci_dev->kdrv == RTE_PCI_KDRV_UIO_GENERIC) {
 			if (hns3vf_enable_msix(pci_dev, true))
 				hns3_err(hw, "Failed to enable msix");
 		}

@@ -704,7 +704,7 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 	PMD_INIT_LOG(INFO, "trying with legacy virtio pci.");
 	if (rte_pci_ioport_map(dev, 0, VTPCI_IO(hw)) < 0) {
 		rte_pci_unmap_device(dev);
-		if (dev->kdrv == RTE_KDRV_UNKNOWN &&
+		if (dev->kdrv == RTE_PCI_KDRV_UNKNOWN &&
 		    (!dev->device.devargs ||
 		     dev->device.devargs->bus !=
 		     rte_bus_find_by_name("pci"))) {

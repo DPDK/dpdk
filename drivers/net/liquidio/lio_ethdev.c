@@ -1563,7 +1563,7 @@ lio_dev_close(struct rte_eth_dev *eth_dev)
 	/* Reset ioq regs */
 	lio_dev->fn_list.setup_device_regs(lio_dev);
 
-	if (lio_dev->pci_dev->kdrv == RTE_KDRV_IGB_UIO) {
+	if (lio_dev->pci_dev->kdrv == RTE_PCI_KDRV_IGB_UIO) {
 		cn23xx_vf_ask_pf_to_do_flr(lio_dev);
 		rte_delay_ms(LIO_PCI_FLR_WAIT);
 	}
@@ -2012,7 +2012,7 @@ lio_first_time_init(struct lio_device *lio_dev,
 		goto error;
 
 	/* Request and wait for device reset. */
-	if (pdev->kdrv == RTE_KDRV_IGB_UIO) {
+	if (pdev->kdrv == RTE_PCI_KDRV_IGB_UIO) {
 		cn23xx_vf_ask_pf_to_do_flr(lio_dev);
 		/* FLR wait time doubled as a precaution. */
 		rte_delay_ms(LIO_PCI_FLR_WAIT * 2);

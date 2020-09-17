@@ -465,7 +465,7 @@ pci_hot_unplug_handler(struct rte_device *dev)
 
 	switch (pdev->kdrv) {
 #ifdef HAVE_VFIO_DEV_REQ_INTERFACE
-	case RTE_KDRV_VFIO:
+	case RTE_PCI_KDRV_VFIO:
 		/*
 		 * vfio kernel module guaranty the pci device would not be
 		 * deleted until the user space release the resource, so no
@@ -476,9 +476,9 @@ pci_hot_unplug_handler(struct rte_device *dev)
 					       RTE_DEV_EVENT_REMOVE);
 		break;
 #endif
-	case RTE_KDRV_IGB_UIO:
-	case RTE_KDRV_UIO_GENERIC:
-	case RTE_KDRV_NIC_UIO:
+	case RTE_PCI_KDRV_IGB_UIO:
+	case RTE_PCI_KDRV_UIO_GENERIC:
+	case RTE_PCI_KDRV_NIC_UIO:
 		/* BARs resource is invalid, remap it to be safe. */
 		ret = pci_uio_remap_resource(pdev);
 		break;
@@ -552,7 +552,7 @@ pci_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 	 *  In case driver don't provides any specific mapping
 	 *  try fallback to VFIO.
 	 */
-	if (pdev->kdrv == RTE_KDRV_VFIO)
+	if (pdev->kdrv == RTE_PCI_KDRV_VFIO)
 		return rte_vfio_container_dma_map
 				(RTE_VFIO_DEFAULT_CONTAINER_FD, (uintptr_t)addr,
 				 iova, len);
@@ -575,7 +575,7 @@ pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 	 *  In case driver don't provides any specific mapping
 	 *  try fallback to VFIO.
 	 */
-	if (pdev->kdrv == RTE_KDRV_VFIO)
+	if (pdev->kdrv == RTE_PCI_KDRV_VFIO)
 		return rte_vfio_container_dma_unmap
 				(RTE_VFIO_DEFAULT_CONTAINER_FD, (uintptr_t)addr,
 				 iova, len);
@@ -622,8 +622,8 @@ rte_pci_get_iommu_class(void)
 			iommu_no_va = pci_device_iommu_support_va(dev)
 					? 0 : 1;
 
-		if (dev->kdrv == RTE_KDRV_UNKNOWN ||
-		    dev->kdrv == RTE_KDRV_NONE)
+		if (dev->kdrv == RTE_PCI_KDRV_UNKNOWN ||
+		    dev->kdrv == RTE_PCI_KDRV_NONE)
 			continue;
 		FOREACH_DRIVER_ON_PCIBUS(drv) {
 			enum rte_iova_mode dev_iova_mode;

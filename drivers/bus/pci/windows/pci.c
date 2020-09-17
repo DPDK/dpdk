@@ -211,7 +211,7 @@ get_device_resource_info(HDEVINFO dev_info,
 	BOOL  res;
 
 	switch (dev->kdrv) {
-	case RTE_KDRV_NONE:
+	case RTE_PCI_KDRV_NONE:
 		/* Get NUMA node using DEVPKEY_Device_Numa_Node */
 		res = SetupDiGetDevicePropertyW(dev_info, dev_info_data,
 			&DEVPKEY_Device_Numa_Node, &property_type,
@@ -223,7 +223,7 @@ get_device_resource_info(HDEVINFO dev_info,
 			return -1;
 		}
 		dev->device.numa_node = numa_node;
-		/* mem_resource - Unneeded for RTE_KDRV_NONE */
+		/* mem_resource - Unneeded for RTE_PCI_KDRV_NONE */
 		dev->mem_resource[0].phys_addr = 0;
 		dev->mem_resource[0].len = 0;
 		dev->mem_resource[0].addr = NULL;
@@ -292,7 +292,7 @@ get_kernel_driver_type(struct rte_pci_device *dev)
 	 * If another kernel driver is supported the relevant checking
 	 * functions should be here
 	 */
-	dev->kdrv = RTE_KDRV_NONE;
+	dev->kdrv = RTE_PCI_KDRV_NONE;
 }
 
 static int

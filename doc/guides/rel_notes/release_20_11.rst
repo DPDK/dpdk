@@ -109,6 +109,9 @@ API Changes
   the structures ``rte_mbuf`` and ``rte_mbuf_ext_shared_info``.
   The field ``refcnt`` is remaining from the old unions.
 
+* pci: Removed the ``rte_kernel_driver`` enum defined in rte_dev.h and
+  replaced with a private enum in the PCI subsystem.
+
 * ethdev: Removed the ``kdrv`` field in the ethdev ``rte_eth_dev_data``
   structure as it gave no useful abstracted information to the applications.
 
