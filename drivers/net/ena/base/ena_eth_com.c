@@ -268,6 +268,9 @@ static int ena_com_create_meta(struct ena_com_io_sq *io_sq,
 	struct ena_eth_io_tx_meta_desc *meta_desc = NULL;
 
 	meta_desc = get_sq_desc(io_sq);
+	if (unlikely(!meta_desc))
+		return ENA_COM_FAULT;
+
 	memset(meta_desc, 0x0, sizeof(struct ena_eth_io_tx_meta_desc));
 
 	meta_desc->len_ctrl |= ENA_ETH_IO_TX_META_DESC_META_DESC_MASK;
