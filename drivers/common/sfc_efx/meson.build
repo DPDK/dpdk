@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # Copyright(c) 2019-2020 Xilinx, Inc.
-# Copyright(c) 2016-2019 Solarflare Communications Inc.
 #
 # This software was jointly developed between OKTET Labs (under contract
 # for Solarflare) and Solarflare Communications, Inc.
@@ -12,9 +11,6 @@ if arch_subdir != 'x86' or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 extra_flags = []
-
-# Strict-aliasing rules are violated by rte_eth_link to uint64_t casts
-extra_flags += '-Wno-strict-aliasing'
 
 # Enable more warnings
 extra_flags += [
@@ -33,22 +29,11 @@ foreach flag: extra_flags
 	endif
 endforeach
 
-deps += ['common_sfc_efx']
+subdir('base')
+objs = [base_objs]
+
 sources = files(
-	'sfc_ethdev.c',
-	'sfc_kvargs.c',
-	'sfc.c',
-	'sfc_mcdi.c',
-	'sfc_intr.c',
-	'sfc_ev.c',
-	'sfc_port.c',
-	'sfc_rx.c',
-	'sfc_tx.c',
-	'sfc_tso.c',
-	'sfc_filter.c',
-	'sfc_flow.c',
-	'sfc_dp.c',
-	'sfc_ef10_rx.c',
-	'sfc_ef10_essb_rx.c',
-	'sfc_ef10_tx.c'
+	'sfc_efx.c',
 )
+
+includes += include_directories('base')

@@ -853,6 +853,7 @@ F: doc/guides/nics/features/qede*.ini
 
 Solarflare sfc_efx
 M: Andrew Rybchenko <arybchenko@solarflare.com>
+F: drivers/common/sfc_efx/
 F: drivers/net/sfc/
 F: doc/guides/nics/sfc_efx.rst
 F: doc/guides/nics/features/sfc_efx.ini

@@ -6,6 +6,6 @@ if is_windows
 endif
 
 std_deps = ['eal']
-drivers = ['cpt', 'dpaax', 'iavf', 'mvep', 'octeontx', 'octeontx2', 'qat']
+drivers = ['cpt', 'dpaax', 'iavf', 'mvep', 'octeontx', 'octeontx2', 'qat', 'sfc_efx']
 config_flag_fmt = 'RTE_LIBRTE_@0@_COMMON'
 driver_name_fmt = 'rte_common_@0@'

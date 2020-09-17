@@ -1,0 +1,182 @@
+INTERNAL {
+	global:
+
+	efx_crc32_calculate;
+
+	efx_ev_fini;
+	efx_ev_init;
+	efx_ev_qcreate;
+	efx_ev_qdestroy;
+	efx_ev_qmoderate;
+	efx_ev_qpending;
+	efx_ev_qpoll;
+	efx_ev_qpost;
+	efx_ev_qprime;
+	efx_ev_usecs_to_ticks;
+
+	efx_evq_nbufs;
+	efx_evq_size;
+
+	efx_family;
+
+	efx_filter_fini;
+	efx_filter_init;
+	efx_filter_insert;
+	efx_filter_remove;
+	efx_filter_restore;
+	efx_filter_spec_init_rx;
+	efx_filter_spec_init_tx;
+	efx_filter_spec_set_encap_type;
+	efx_filter_spec_set_eth_local;
+	efx_filter_spec_set_ether_type;
+	efx_filter_spec_set_geneve;
+	efx_filter_spec_set_ipv4_full;
+	efx_filter_spec_set_ipv4_local;
+	efx_filter_spec_set_mc_def;
+	efx_filter_spec_set_nvgre;
+	efx_filter_spec_set_rss_context;
+	efx_filter_spec_set_uc_def;
+	efx_filter_spec_set_vxlan;
+	efx_filter_supported_filters;
+
+	efx_hash_bytes;
+	efx_hash_dwords;
+
+	efx_intr_disable;
+	efx_intr_disable_unlocked;
+	efx_intr_enable;
+	efx_intr_fatal;
+	efx_intr_fini;
+	efx_intr_init;
+	efx_intr_status_line;
+	efx_intr_status_message;
+	efx_intr_trigger;
+
+	efx_loopback_mask;
+	efx_loopback_type_name;
+
+	efx_mac_addr_set;
+	efx_mac_drain;
+	efx_mac_fcntl_get;
+	efx_mac_fcntl_set;
+	efx_mac_filter_default_rxq_clear;
+	efx_mac_filter_default_rxq_set;
+	efx_mac_filter_get_all_ucast_mcast;
+	efx_mac_filter_set;
+	efx_mac_multicast_list_set;
+	efx_mac_pdu_get;
+	efx_mac_pdu_set;
+	efx_mac_stat_name;
+	efx_mac_stats_clear;
+	efx_mac_stats_get_mask;
+	efx_mac_stats_periodic;
+	efx_mac_stats_update;
+	efx_mac_stats_upload;
+	efx_mac_up;
+
+	efx_mcdi_fini;
+	efx_mcdi_get_proxy_handle;
+	efx_mcdi_get_timeout;
+	efx_mcdi_init;
+	efx_mcdi_new_epoch;
+	efx_mcdi_reboot;
+	efx_mcdi_request_abort;
+	efx_mcdi_request_poll;
+	efx_mcdi_request_start;
+
+	efx_mon_fini;
+	efx_mon_init;
+	efx_mon_name;
+
+	efx_nic_calculate_pcie_link_bandwidth;
+	efx_nic_cfg_get;
+	efx_nic_check_pcie_link_speed;
+	efx_nic_create;
+	efx_nic_destroy;
+	efx_nic_fini;
+	efx_nic_get_bar_region;
+	efx_nic_get_fw_subvariant;
+	efx_nic_get_fw_version;
+	efx_nic_get_vi_pool;
+	efx_nic_hw_unavailable;
+	efx_nic_init;
+	efx_nic_probe;
+	efx_nic_reset;
+	efx_nic_set_drv_limits;
+	efx_nic_set_drv_version;
+	efx_nic_set_fw_subvariant;
+	efx_nic_set_hw_unavailable;
+	efx_nic_unprobe;
+
+	efx_phy_adv_cap_get;
+	efx_phy_adv_cap_set;
+	efx_phy_fec_type_get;
+	efx_phy_link_state_get;
+	efx_phy_lp_cap_get;
+	efx_phy_media_type_get;
+	efx_phy_module_get_info;
+	efx_phy_oui_get;
+	efx_phy_verify;
+
+	efx_port_fini;
+	efx_port_init;
+	efx_port_loopback_set;
+	efx_port_poll;
+
+	efx_pseudo_hdr_hash_get;
+	efx_pseudo_hdr_pkt_length_get;
+
+	efx_rx_fini;
+	efx_rx_hash_default_support_get;
+	efx_rx_init;
+	efx_rx_qcreate;
+	efx_rx_qcreate_es_super_buffer;
+	efx_rx_qdestroy;
+	efx_rx_qenable;
+	efx_rx_qflush;
+	efx_rx_qpost;
+	efx_rx_qpush;
+	efx_rx_scale_context_alloc;
+	efx_rx_scale_context_free;
+	efx_rx_scale_default_support_get;
+	efx_rx_scale_hash_flags_get;
+	efx_rx_scale_key_set;
+	efx_rx_scale_mode_set;
+	efx_rx_scale_tbl_set;
+	efx_rxq_nbufs;
+	efx_rxq_size;
+
+	efx_sram_buf_tbl_clear;
+	efx_sram_buf_tbl_set;
+
+	efx_tunnel_config_clear;
+	efx_tunnel_config_udp_add;
+	efx_tunnel_config_udp_remove;
+	efx_tunnel_fini;
+	efx_tunnel_init;
+	efx_tunnel_reconfigure;
+
+	efx_tx_fini;
+	efx_tx_init;
+	efx_tx_qcreate;
+	efx_tx_qdesc_checksum_create;
+	efx_tx_qdesc_dma_create;
+	efx_tx_qdesc_post;
+	efx_tx_qdesc_tso_create;
+	efx_tx_qdesc_tso2_create;
+	efx_tx_qdesc_vlantci_create;
+	efx_tx_qdestroy;
+	efx_tx_qenable;
+	efx_tx_qflush;
+	efx_tx_qpace;
+	efx_tx_qpio_disable;
+	efx_tx_qpio_enable;
+	efx_tx_qpio_post;
+	efx_tx_qpio_write;
+	efx_tx_qpost;
+	efx_tx_qpush;
+	efx_txq_nbufs;
+	efx_txq_size;
+
+	local: *;
+};
