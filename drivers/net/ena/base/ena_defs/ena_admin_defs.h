@@ -95,6 +95,8 @@ enum ena_admin_completion_policy_type {
 enum ena_admin_get_stats_type {
 	ENA_ADMIN_GET_STATS_TYPE_BASIC              = 0,
 	ENA_ADMIN_GET_STATS_TYPE_EXTENDED           = 1,
+	/* extra HW stats for specific network interface */
+	ENA_ADMIN_GET_STATS_TYPE_ENI                = 2,
 };
 
 enum ena_admin_get_stats_scope {
@@ -388,10 +390,43 @@ struct ena_admin_basic_stats {
 	uint32_t tx_drops_high;
 };
 
+/* ENI Statistics Command. */
+struct ena_admin_eni_stats {
+	/* The number of packets shaped due to inbound aggregate BW
+	 * allowance being exceeded
+	 */
+	uint64_t bw_in_allowance_exceeded;
+
+	/* The number of packets shaped due to outbound aggregate BW
+	 * allowance being exceeded
+	 */
+	uint64_t bw_out_allowance_exceeded;
+
+	/* The number of packets shaped due to PPS allowance being exceeded */
+	uint64_t pps_allowance_exceeded;
+
+	/* The number of packets shaped due to connection tracking
+	 * allowance being exceeded and leading to failure in establishment
+	 * of new connections
+	 */
+	uint64_t conntrack_allowance_exceeded;
+
+	/* The number of packets shaped due to linklocal packet rate
+	 * allowance being exceeded
+	 */
+	uint64_t linklocal_allowance_exceeded;
+};
+
 struct ena_admin_acq_get_stats_resp {
 	struct ena_admin_acq_common_desc acq_common_desc;
 
-	struct ena_admin_basic_stats basic_stats;
+	union {
+		uint64_t raw[7];
+
+		struct ena_admin_basic_stats basic_stats;
+
+		struct ena_admin_eni_stats eni_stats;
+	} u;
 };
 
 struct ena_admin_get_set_feature_common_desc {
