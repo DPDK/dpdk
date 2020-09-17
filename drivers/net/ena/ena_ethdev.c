@@ -72,6 +72,9 @@ struct ena_stats {
 #define ENA_STAT_TX_ENTRY(stat) \
 	ENA_STAT_ENTRY(stat, tx)
 
+#define ENA_STAT_ENI_ENTRY(stat) \
+	ENA_STAT_ENTRY(stat, eni)
+
 #define ENA_STAT_GLOBAL_ENTRY(stat) \
 	ENA_STAT_ENTRY(stat, dev)
 
@@ -89,6 +92,14 @@ static const struct ena_stats ena_stats_global_strings[] = {
 	ENA_STAT_GLOBAL_ENTRY(dev_start),
 	ENA_STAT_GLOBAL_ENTRY(dev_stop),
 	ENA_STAT_GLOBAL_ENTRY(tx_drops),
+};
+
+static const struct ena_stats ena_stats_eni_strings[] = {
+	ENA_STAT_ENI_ENTRY(bw_in_allowance_exceeded),
+	ENA_STAT_ENI_ENTRY(bw_out_allowance_exceeded),
+	ENA_STAT_ENI_ENTRY(pps_allowance_exceeded),
+	ENA_STAT_ENI_ENTRY(conntrack_allowance_exceeded),
+	ENA_STAT_ENI_ENTRY(linklocal_allowance_exceeded),
 };
 
 static const struct ena_stats ena_stats_tx_strings[] = {
@@ -114,6 +125,7 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 };
 
 #define ENA_STATS_ARRAY_GLOBAL	ARRAY_SIZE(ena_stats_global_strings)
+#define ENA_STATS_ARRAY_ENI	ARRAY_SIZE(ena_stats_eni_strings)
 #define ENA_STATS_ARRAY_TX	ARRAY_SIZE(ena_stats_tx_strings)
 #define ENA_STATS_ARRAY_RX	ARRAY_SIZE(ena_stats_rx_strings)
 
@@ -233,6 +245,7 @@ static int ena_process_bool_devarg(const char *key,
 				   void *opaque);
 static int ena_parse_devargs(struct ena_adapter *adapter,
 			     struct rte_devargs *devargs);
+static int ena_copy_eni_stats(struct ena_adapter *adapter);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -451,7 +464,7 @@ err:
 /* This function calculates the number of xstats based on the current config */
 static unsigned int ena_xstats_calc_num(struct rte_eth_dev *dev)
 {
-	return ENA_STATS_ARRAY_GLOBAL +
+	return ENA_STATS_ARRAY_GLOBAL + ENA_STATS_ARRAY_ENI +
 		(dev->data->nb_tx_queues * ENA_STATS_ARRAY_TX) +
 		(dev->data->nb_rx_queues * ENA_STATS_ARRAY_RX);
 }
@@ -2608,6 +2621,31 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return sent_idx;
 }
 
+int ena_copy_eni_stats(struct ena_adapter *adapter)
+{
+	struct ena_admin_eni_stats admin_eni_stats;
+	int rc;
+
+	rte_spinlock_lock(&adapter->admin_lock);
+	rc = ena_com_get_eni_stats(&adapter->ena_dev, &admin_eni_stats);
+	rte_spinlock_unlock(&adapter->admin_lock);
+	if (rc != 0) {
+		if (rc == ENA_COM_UNSUPPORTED) {
+			PMD_DRV_LOG(DEBUG,
+				"Retrieving ENI metrics is not supported.\n");
+		} else {
+			PMD_DRV_LOG(WARNING,
+				"Failed to get ENI metrics: %d\n", rc);
+		}
+		return rc;
+	}
+
+	rte_memcpy(&adapter->eni_stats, &admin_eni_stats,
+		sizeof(struct ena_stats_eni));
+
+	return 0;
+}
+
 /**
  * DPDK callback to retrieve names of extended device statistics
  *
@@ -2634,6 +2672,10 @@ static int ena_xstats_get_names(struct rte_eth_dev *dev,
 	for (stat = 0; stat < ENA_STATS_ARRAY_GLOBAL; stat++, count++)
 		strcpy(xstats_names[count].name,
 			ena_stats_global_strings[stat].name);
+
+	for (stat = 0; stat < ENA_STATS_ARRAY_ENI; stat++, count++)
+		strcpy(xstats_names[count].name,
+			ena_stats_eni_strings[stat].name);
 
 	for (stat = 0; stat < ENA_STATS_ARRAY_RX; stat++)
 		for (i = 0; i < dev->data->nb_rx_queues; i++, count++)
@@ -2690,6 +2732,19 @@ static int ena_xstats_get(struct rte_eth_dev *dev,
 			((char *)stats_begin + stat_offset));
 	}
 
+	/* Even if the function below fails, we should copy previous (or initial
+	 * values) to keep structure of rte_eth_xstat consistent.
+	 */
+	ena_copy_eni_stats(adapter);
+	for (stat = 0; stat < ENA_STATS_ARRAY_ENI; stat++, count++) {
+		stat_offset = ena_stats_eni_strings[stat].stat_offset;
+		stats_begin = &adapter->eni_stats;
+
+		xstats[count].id = count;
+		xstats[count].value = *((uint64_t *)
+		    ((char *)stats_begin + stat_offset));
+	}
+
 	for (stat = 0; stat < ENA_STATS_ARRAY_RX; stat++) {
 		for (i = 0; i < dev->data->nb_rx_queues; i++, count++) {
 			stat_offset = ena_stats_rx_strings[stat].stat_offset;
@@ -2726,6 +2781,8 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 	unsigned int i;
 	int qid;
 	int valid = 0;
+	bool was_eni_copied = false;
+
 	for (i = 0; i < n; ++i) {
 		id = ids[i];
 		/* Check if id belongs to global statistics */
@@ -2735,8 +2792,24 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 			continue;
 		}
 
-		/* Check if id belongs to rx queue statistics */
+		/* Check if id belongs to ENI statistics */
 		id -= ENA_STATS_ARRAY_GLOBAL;
+		if (id < ENA_STATS_ARRAY_ENI) {
+			/* Avoid reading ENI stats multiple times in a single
+			 * function call, as it requires communication with the
+			 * admin queue.
+			 */
+			if (!was_eni_copied) {
+				was_eni_copied = true;
+				ena_copy_eni_stats(adapter);
+			}
+			values[i] = *((uint64_t *)&adapter->eni_stats + id);
+			++valid;
+			continue;
+		}
+
+		/* Check if id belongs to rx queue statistics */
+		id -= ENA_STATS_ARRAY_ENI;
 		rx_entries = ENA_STATS_ARRAY_RX * dev->data->nb_rx_queues;
 		if (id < rx_entries) {
 			qid = id % dev->data->nb_rx_queues;
