@@ -69,7 +69,10 @@ gso_udp4_segment(struct rte_mbuf *pkt,
 		return 1;
 	}
 
-	pyld_unit_size = gso_size - hdr_offset;
+	/* pyld_unit_size must be a multiple of 8 because frag_off
+	 * uses 8 bytes as unit.
+	 */
+	pyld_unit_size = (gso_size - hdr_offset) & ~7U;
 
 	/* Segment the payload */
 	ret = gso_do_segment(pkt, hdr_offset, pyld_unit_size, direct_pool,
