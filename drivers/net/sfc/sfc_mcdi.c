@@ -248,16 +248,13 @@ sfc_efx_mcdi_ev_proxy_response(void *arg, uint32_t handle, efx_rc_t result)
 }
 
 static int
-sfc_efx_mcdi_init(struct sfc_adapter *sa)
+sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 {
-	struct sfc_efx_mcdi *mcdi;
 	size_t max_msg_size;
 	efx_mcdi_transport_t *emtp;
 	int rc;
 
 	sfc_log_init(sa, "entry");
-
-	mcdi = &sa->mcdi;
 
 	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_UNINITIALIZED);
 
@@ -301,14 +298,12 @@ fail_dma_alloc:
 }
 
 static void
-sfc_efx_mcdi_fini(struct sfc_adapter *sa)
+sfc_efx_mcdi_fini(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 {
-	struct sfc_efx_mcdi *mcdi;
 	efx_mcdi_transport_t *emtp;
 
 	sfc_log_init(sa, "entry");
 
-	mcdi = &sa->mcdi;
 	emtp = &mcdi->transport;
 
 	rte_spinlock_lock(&mcdi->lock);
@@ -328,11 +323,11 @@ sfc_efx_mcdi_fini(struct sfc_adapter *sa)
 int
 sfc_mcdi_init(struct sfc_adapter *sa)
 {
-	return sfc_efx_mcdi_init(sa);
+	return sfc_efx_mcdi_init(sa, &sa->mcdi);
 }
 
 void
 sfc_mcdi_fini(struct sfc_adapter *sa)
 {
-	sfc_efx_mcdi_fini(sa);
+	sfc_efx_mcdi_fini(sa, &sa->mcdi);
 }
