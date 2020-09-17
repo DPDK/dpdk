@@ -220,7 +220,7 @@ struct sfc_adapter {
 	rte_spinlock_t			nic_lock;
 	rte_atomic32_t			restart_required;
 
-	struct sfc_mcdi			mcdi;
+	struct sfc_efx_mcdi		mcdi;
 	struct sfc_intr			intr;
 	struct sfc_port			port;
 	struct sfc_filter		filter;
@@ -365,6 +365,9 @@ int sfc_start(struct sfc_adapter *sa);
 void sfc_stop(struct sfc_adapter *sa);
 
 void sfc_schedule_restart(struct sfc_adapter *sa);
+
+int sfc_mcdi_init(struct sfc_adapter *sa);
+void sfc_mcdi_fini(struct sfc_adapter *sa);
 
 int sfc_configure(struct sfc_adapter *sa);
 void sfc_close(struct sfc_adapter *sa);

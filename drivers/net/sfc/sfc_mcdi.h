@@ -22,30 +22,24 @@
 extern "C" {
 #endif
 
-enum sfc_mcdi_state {
-	SFC_MCDI_UNINITIALIZED = 0,
-	SFC_MCDI_INITIALIZED,
-	SFC_MCDI_BUSY,
-	SFC_MCDI_COMPLETED,
+enum sfc_efx_mcdi_state {
+	SFC_EFX_MCDI_UNINITIALIZED = 0,
+	SFC_EFX_MCDI_INITIALIZED,
+	SFC_EFX_MCDI_BUSY,
+	SFC_EFX_MCDI_COMPLETED,
 
-	SFC_MCDI_NSTATES
+	SFC_EFX_MCDI_NSTATES
 };
 
-struct sfc_mcdi {
+struct sfc_efx_mcdi {
 	rte_spinlock_t			lock;
 	efsys_mem_t			mem;
-	enum sfc_mcdi_state		state;
+	enum sfc_efx_mcdi_state		state;
 	efx_mcdi_transport_t		transport;
 	uint32_t			logtype;
 	uint32_t			proxy_handle;
 	efx_rc_t			proxy_result;
 };
-
-
-struct sfc_adapter;
-
-int sfc_mcdi_init(struct sfc_adapter *sa);
-void sfc_mcdi_fini(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }
