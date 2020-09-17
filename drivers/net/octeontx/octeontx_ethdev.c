@@ -1363,7 +1363,6 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 
 	eth_dev->device = &dev->device;
 	eth_dev->intr_handle = NULL;
-	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->numa_node = dev->device.numa_node;
 
 	data->port_id = eth_dev->data->port_id;

@@ -127,9 +127,6 @@ Deprecation Notices
 * pci: The ``rte_kernel_driver`` enum defined in rte_dev.h will be made private
   to the PCI subsystem as it is used only by the PCI bus driver and PCI
   drivers.
-  The associated field ``kdrv`` in the ethdev ``rte_eth_dev_data`` structure
-  will be removed as it gave no useful abstracted information to the
-  applications and had no user (neither internal nor external).
 
 * mbuf: Some fields will be converted to dynamic API in DPDK 20.11
   in order to reserve more space for the dynamic fields, as explained in

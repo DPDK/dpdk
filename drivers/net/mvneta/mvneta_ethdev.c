@@ -827,7 +827,6 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
 	       req.ifr_addr.sa_data, RTE_ETHER_ADDR_LEN);
 
-	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->device = &vdev->device;
 	eth_dev->rx_pkt_burst = mvneta_rx_pkt_burst;
 	mvneta_set_tx_function(eth_dev);

@@ -109,6 +109,9 @@ API Changes
   the structures ``rte_mbuf`` and ``rte_mbuf_ext_shared_info``.
   The field ``refcnt`` is remaining from the old unions.
 
+* ethdev: Removed the ``kdrv`` field in the ethdev ``rte_eth_dev_data``
+  structure as it gave no useful abstracted information to the applications.
+
 * rawdev: Added a structure size parameter to the functions
   ``rte_rawdev_queue_setup()``, ``rte_rawdev_queue_conf_get()``,
   ``rte_rawdev_info_get()`` and ``rte_rawdev_configure()``,

@@ -326,7 +326,6 @@ do_eth_dev_ring_create(const char *name,
 	data->all_multicast = 1;
 
 	eth_dev->dev_ops = &ops;
-	data->kdrv = RTE_KDRV_NONE;
 	data->numa_node = numa_node;
 
 	/* finally assign rx and tx ops */

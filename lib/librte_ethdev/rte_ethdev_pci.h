@@ -67,7 +67,6 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
 		if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_RMV)
 			eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_RMV;
 
-		eth_dev->data->kdrv = pci_dev->kdrv;
 		eth_dev->data->numa_node = pci_dev->device.numa_node;
 	}
 }

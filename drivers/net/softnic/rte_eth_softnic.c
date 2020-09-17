@@ -391,7 +391,6 @@ pmd_ethdev_register(struct rte_vdev_device *vdev,
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	dev->data->mac_addrs = &eth_addr;
 	dev->data->promiscuous = 1;
-	dev->data->kdrv = RTE_KDRV_NONE;
 	dev->data->numa_node = params->cpu_id;
 
 	rte_eth_dev_probing_finish(dev);

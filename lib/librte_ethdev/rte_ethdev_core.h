@@ -866,7 +866,6 @@ struct rte_eth_dev_data {
 	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
 		/**< Queues state: HAIRPIN(2) / STARTED(1) / STOPPED(0). */
 	uint32_t dev_flags;             /**< Capabilities. */
-	enum rte_kernel_driver kdrv;    /**< Kernel driver passthrough. */
 	int numa_node;                  /**< NUMA node connection. */
 	struct rte_vlan_filter_conf vlan_filter_conf;
 			/**< VLAN filter configuration. */
