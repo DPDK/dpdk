@@ -800,7 +800,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"receive buffers available.\n\n"
 
 			"port config all rss (all|default|ip|tcp|udp|sctp|"
-			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|none|<flowtype_id>)\n"
+			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|none|level-default|"
+			"level-outer|level-inner|<flowtype_id>)\n"
 			"    Set the RSS mode.\n\n"
 
 			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
@@ -2346,7 +2347,16 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_GTPU;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
-	else if (!strcmp(res->value, "default"))
+	else if (!strcmp(res->value, "level-default")) {
+		rss_hf &= (~ETH_RSS_LEVEL_MASK);
+		rss_conf.rss_hf = (rss_hf | ETH_RSS_LEVEL_PMD_DEFAULT);
+	} else if (!strcmp(res->value, "level-outer")) {
+		rss_hf &= (~ETH_RSS_LEVEL_MASK);
+		rss_conf.rss_hf = (rss_hf | ETH_RSS_LEVEL_OUTERMOST);
+	} else if (!strcmp(res->value, "level-inner")) {
+		rss_hf &= (~ETH_RSS_LEVEL_MASK);
+		rss_conf.rss_hf = (rss_hf | ETH_RSS_LEVEL_INNERMOST);
+	} else if (!strcmp(res->value, "default"))
 		use_default = 1;
 	else if (isdigit(res->value[0]) && atoi(res->value) > 0 &&
 						atoi(res->value) < 64)
@@ -2405,7 +2415,8 @@ cmdline_parse_inst_t cmd_config_rss = {
 	.data = NULL,
 	.help_str = "port config all rss "
 		"all|default|eth|vlan|ip|tcp|udp|sctp|ether|port|vxlan|geneve|"
-		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|none|<flowtype_id>",
+		"nvgre|vxlan-gpe|l2tpv3|esp|ah|pfcp|none|level-default|"
+		"level-outer|level-inner|<flowtype_id>",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
 		(void *)&cmd_config_rss_keyword,
