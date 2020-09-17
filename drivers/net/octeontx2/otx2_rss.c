@@ -323,6 +323,7 @@ otx2_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
 			 struct rte_eth_rss_conf *rss_conf)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	uint8_t rss_hash_level;
 	uint32_t flowkey_cfg;
 	uint8_t alg_idx;
 	int rc;
@@ -339,7 +340,11 @@ otx2_nix_rss_hash_update(struct rte_eth_dev *eth_dev,
 		otx2_nix_rss_set_key(dev, rss_conf->rss_key,
 				     (uint32_t)rss_conf->rss_key_len);
 
-	flowkey_cfg = otx2_rss_ethdev_to_nix(dev, rss_conf->rss_hf, 0);
+	rss_hash_level = ETH_RSS_LEVEL(rss_conf->rss_hf);
+	if (rss_hash_level)
+		rss_hash_level -= 1;
+	flowkey_cfg =
+		otx2_rss_ethdev_to_nix(dev, rss_conf->rss_hf, rss_hash_level);
 
 	rc = otx2_rss_set_hf(dev, flowkey_cfg, &alg_idx,
 			     NIX_DEFAULT_RSS_CTX_GROUP,
@@ -375,6 +380,7 @@ otx2_nix_rss_config(struct rte_eth_dev *eth_dev)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	uint32_t idx, qcnt = eth_dev->data->nb_rx_queues;
+	uint8_t rss_hash_level;
 	uint32_t flowkey_cfg;
 	uint64_t rss_hf;
 	uint8_t alg_idx;
@@ -399,7 +405,10 @@ otx2_nix_rss_config(struct rte_eth_dev *eth_dev)
 	}
 
 	rss_hf = eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
-	flowkey_cfg = otx2_rss_ethdev_to_nix(dev, rss_hf, 0);
+	rss_hash_level = ETH_RSS_LEVEL(rss_hf);
+	if (rss_hash_level)
+		rss_hash_level -= 1;
+	flowkey_cfg = otx2_rss_ethdev_to_nix(dev, rss_hf, rss_hash_level);
 
 	rc = otx2_rss_set_hf(dev, flowkey_cfg, &alg_idx,
 			     NIX_DEFAULT_RSS_CTX_GROUP,
