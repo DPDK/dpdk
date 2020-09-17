@@ -25,6 +25,7 @@
 
 #include "eal_filesystem.h"
 #include "pci_init.h"
+#include "private.h"
 
 void *pci_map_addr = NULL;
 

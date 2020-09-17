@@ -112,6 +112,12 @@ API Changes
 * pci: Removed the ``rte_kernel_driver`` enum defined in rte_dev.h and
   replaced with a private enum in the PCI subsystem.
 
+* pci: Removed the PCI resources map API from the public API
+  (``pci_map_resource`` and ``pci_unmap_resource``) and moved it to the
+  PCI bus driver along with the PCI resources lists and associated structures
+  (``pci_map``, ``pci_msix_table``, ``mapped_pci_resource`` and
+  ``mapped_pci_res_list``).
+
 * ethdev: Removed the ``kdrv`` field in the ethdev ``rte_eth_dev_data``
   structure as it gave no useful abstracted information to the applications.
 

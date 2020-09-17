@@ -19,6 +19,7 @@
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
+#include <rte_eal_paging.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
@@ -79,6 +80,46 @@ pci_name_set(struct rte_pci_device *dev)
 		dev->device.name = dev->name;
 }
 
+/* map a particular resource from a file */
+void *
+pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
+		 int additional_flags)
+{
+	void *mapaddr;
+
+	/* Map the PCI memory resource of device */
+	mapaddr = rte_mem_map(requested_addr, size,
+		RTE_PROT_READ | RTE_PROT_WRITE,
+		RTE_MAP_SHARED | additional_flags, fd, offset);
+	if (mapaddr == NULL) {
+		RTE_LOG(ERR, EAL,
+			"%s(): cannot map resource(%d, %p, 0x%zx, 0x%llx): %s (%p)\n",
+			__func__, fd, requested_addr, size,
+			(unsigned long long)offset,
+			rte_strerror(rte_errno), mapaddr);
+		mapaddr = MAP_FAILED; /* API uses mmap error code */
+	} else
+		RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
+
+	return mapaddr;
+}
+
+/* unmap a particular resource */
+void
+pci_unmap_resource(void *requested_addr, size_t size)
+{
+	if (requested_addr == NULL)
+		return;
+
+	/* Unmap the PCI memory resource of device */
+	if (rte_mem_unmap(requested_addr, size)) {
+		RTE_LOG(ERR, EAL, "%s(): cannot mem unmap(%p, %#zx): %s\n",
+			__func__, requested_addr, size,
+			rte_strerror(rte_errno));
+	} else
+		RTE_LOG(DEBUG, EAL, "  PCI memory unmapped at %p\n",
+				requested_addr);
+}
 /*
  * Match the PCI Driver and Device using the ID Table
  */

@@ -65,42 +65,6 @@ struct rte_pci_addr {
 #define RTE_CLASS_ANY_ID (0xffffff)
 
 /**
- * A structure describing a PCI mapping.
- */
-struct pci_map {
-	void *addr;
-	char *path;
-	uint64_t offset;
-	uint64_t size;
-	uint64_t phaddr;
-};
-
-struct pci_msix_table {
-	int bar_index;
-	uint32_t offset;
-	uint32_t size;
-};
-
-/**
- * A structure describing a mapped PCI resource.
- * For multi-process we need to reproduce all PCI mappings in secondary
- * processes, so save them in a tailq.
- */
-struct mapped_pci_resource {
-	TAILQ_ENTRY(mapped_pci_resource) next;
-
-	struct rte_pci_addr pci_addr;
-	char path[PATH_MAX];
-	int nb_maps;
-	struct pci_map maps[PCI_MAX_RESOURCE];
-	struct pci_msix_table msix_table;
-};
-
-
-/** mapped pci device list */
-TAILQ_HEAD(mapped_pci_res_list, mapped_pci_resource);
-
-/**
  * Utility function to write a pci device name, this device name can later be
  * used to retrieve the corresponding rte_pci_addr using eal_parse_pci_*
  * BDF helpers.
@@ -144,36 +108,6 @@ int rte_pci_addr_cmp(const struct rte_pci_addr *addr,
  *	<0 otherwise
  */
 int rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr);
-
-/**
- * Map a particular resource from a file.
- *
- * @param requested_addr
- *      The starting address for the new mapping range.
- * @param fd
- *      The file descriptor.
- * @param offset
- *      The offset for the mapping range.
- * @param size
- *      The size for the mapping range.
- * @param additional_flags
- *      The additional flags for the mapping range.
- * @return
- *   - On success, the function returns a pointer to the mapped area.
- *   - On error, MAP_FAILED is returned.
- */
-void *pci_map_resource(void *requested_addr, int fd, off_t offset,
-		size_t size, int additional_flags);
-
-/**
- * Unmap a particular resource.
- *
- * @param requested_addr
- *      The address for the unmapping range.
- * @param size
- *      The size for the unmapping range.
- */
-void pci_unmap_resource(void *requested_addr, size_t size);
 
 #ifdef __cplusplus
 }
