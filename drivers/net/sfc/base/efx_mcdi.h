@@ -74,6 +74,7 @@ efx_mcdi_ev_cpl(
 	__in		int errcode);
 
 #if EFSYS_OPT_MCDI_PROXY_AUTH
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mcdi_get_proxy_handle(
 	__in		efx_nic_t *enp,

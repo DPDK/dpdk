@@ -10,6 +10,15 @@
 #include "efsys.h"
 
 /*
+ * LIBEFX_* defines may be used to put API functions into dedicated code
+ * section if required by driver development framework and conventions.
+ */
+
+#ifndef LIBEFX_API
+# error "LIBEFX_API must be defined"
+#endif
+
+/*
  * Check that the efsys.h header in client code has a valid combination of
  * EFSYS_OPT_xxx options.
  *

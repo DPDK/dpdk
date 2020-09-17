@@ -58,6 +58,7 @@ typedef enum efx_family_e {
 	EFX_FAMILY_NTYPES
 } efx_family_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_family(
 	__in		uint16_t venid,
@@ -120,6 +121,7 @@ enum {
 };
 
 /* Calculate the IEEE 802.3 CRC32 of a MAC addr */
+LIBEFX_API
 extern	__checkReturn		uint32_t
 efx_crc32_calculate(
 	__in			uint32_t crc_init,
@@ -135,6 +137,7 @@ typedef struct efx_rxq_s	efx_rxq_t;
 
 typedef struct efx_nic_s	efx_nic_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_create(
 	__in		efx_family_t family,
@@ -155,43 +158,52 @@ typedef enum efx_fw_variant_e {
 	EFX_FW_VARIANT_DONT_CARE = 0xffffffff
 } efx_fw_variant_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_probe(
 	__in		efx_nic_t *enp,
 	__in		efx_fw_variant_t efv);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_init(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_reset(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	boolean_t
 efx_nic_hw_unavailable(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_nic_set_hw_unavailable(
 	__in		efx_nic_t *enp);
 
 #if EFSYS_OPT_DIAG
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_register_test(
 	__in		efx_nic_t *enp);
 
 #endif	/* EFSYS_OPT_DIAG */
 
+LIBEFX_API
 extern		void
 efx_nic_fini(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern		void
 efx_nic_unprobe(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern		void
 efx_nic_destroy(
 	__in	efx_nic_t *enp);
@@ -207,12 +219,14 @@ typedef enum efx_pcie_link_performance_e {
 	EFX_PCIE_LINK_PERFORMANCE_OPTIMAL
 } efx_pcie_link_performance_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_calculate_pcie_link_bandwidth(
 	__in		uint32_t pcie_link_width,
 	__in		uint32_t pcie_link_gen,
 	__out		uint32_t *bandwidth_mbpsp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_check_pcie_link_speed(
 	__in		efx_nic_t *enp,
@@ -260,39 +274,47 @@ typedef struct efx_mcdi_transport_s {
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 } efx_mcdi_transport_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mcdi_init(
 	__in		efx_nic_t *enp,
 	__in		const efx_mcdi_transport_t *mtp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mcdi_reboot(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_mcdi_new_epoch(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_mcdi_get_timeout(
 	__in		efx_nic_t *enp,
 	__in		efx_mcdi_req_t *emrp,
 	__out		uint32_t *usec_timeoutp);
 
+LIBEFX_API
 extern			void
 efx_mcdi_request_start(
 	__in		efx_nic_t *enp,
 	__in		efx_mcdi_req_t *emrp,
 	__in		boolean_t ev_cpl);
 
+LIBEFX_API
 extern	__checkReturn	boolean_t
 efx_mcdi_request_poll(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	boolean_t
 efx_mcdi_request_abort(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_mcdi_fini(
 	__in		efx_nic_t *enp);
@@ -312,47 +334,56 @@ typedef enum efx_intr_type_e {
 
 #define	EFX_INTR_SIZE	(sizeof (efx_oword_t))
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_intr_init(
 	__in		efx_nic_t *enp,
 	__in		efx_intr_type_t type,
 	__in_opt	efsys_mem_t *esmp);
 
+LIBEFX_API
 extern			void
 efx_intr_enable(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_intr_disable(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_intr_disable_unlocked(
 	__in		efx_nic_t *enp);
 
 #define	EFX_INTR_NEVQS	32
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_intr_trigger(
 	__in		efx_nic_t *enp,
 	__in		unsigned int level);
 
+LIBEFX_API
 extern			void
 efx_intr_status_line(
 	__in		efx_nic_t *enp,
 	__out		boolean_t *fatalp,
 	__out		uint32_t *maskp);
 
+LIBEFX_API
 extern			void
 efx_intr_status_message(
 	__in		efx_nic_t *enp,
 	__in		unsigned int message,
 	__out		boolean_t *fatalp);
 
+LIBEFX_API
 extern			void
 efx_intr_fatal(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_intr_fini(
 	__in		efx_nic_t *enp);
@@ -521,21 +552,25 @@ typedef enum efx_link_mode_e {
 #define	EFX_MAC_PDU_MIN	60
 #define	EFX_MAC_PDU_MAX	EFX_MAC_PDU(EFX_MAC_SDU_MAX)
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mac_pdu_get(
 	__in		efx_nic_t *enp,
 	__out		size_t *pdu);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mac_pdu_set(
 	__in		efx_nic_t *enp,
 	__in		size_t pdu);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mac_addr_set(
 	__in		efx_nic_t *enp,
 	__in		uint8_t *addr);
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mac_filter_set(
 	__in				efx_nic_t *enp,
@@ -544,33 +579,39 @@ efx_mac_filter_set(
 	__in				boolean_t all_mulcst,
 	__in				boolean_t brdcst);
 
+LIBEFX_API
 extern					void
 efx_mac_filter_get_all_ucast_mcast(
 	__in				efx_nic_t *enp,
 	__out				boolean_t *all_unicst,
 	__out				boolean_t *all_mulcst);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mac_multicast_list_set(
 	__in				efx_nic_t *enp,
 	__in_ecount(6*count)		uint8_t const *addrs,
 	__in				int count);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mac_filter_default_rxq_set(
 	__in		efx_nic_t *enp,
 	__in		efx_rxq_t *erp,
 	__in		boolean_t using_rss);
 
+LIBEFX_API
 extern			void
 efx_mac_filter_default_rxq_clear(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mac_drain(
 	__in		efx_nic_t *enp,
 	__in		boolean_t enabled);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mac_up(
 	__in		efx_nic_t *enp,
@@ -579,12 +620,14 @@ efx_mac_up(
 #define	EFX_FCNTL_RESPOND	0x00000001
 #define	EFX_FCNTL_GENERATE	0x00000002
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mac_fcntl_set(
 	__in		efx_nic_t *enp,
 	__in		unsigned int fcntl,
 	__in		boolean_t autoneg);
 
+LIBEFX_API
 extern			void
 efx_mac_fcntl_get(
 	__in		efx_nic_t *enp,
@@ -596,6 +639,7 @@ efx_mac_fcntl_get(
 
 #if EFSYS_OPT_NAMES
 
+LIBEFX_API
 extern	__checkReturn			const char *
 efx_mac_stat_name(
 	__in				efx_nic_t *enp,
@@ -617,6 +661,7 @@ efx_mac_stat_name(
  * returned. EFX_MAC_STATS_MASK_NPAGES multiplied by size of the page
  * (which is sizeof (uint32_t)) is sufficient.
  */
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mac_stats_get_mask(
 	__in				efx_nic_t *enp,
@@ -628,6 +673,7 @@ efx_mac_stats_get_mask(
 	    (1ULL << ((_stat) & (EFX_MAC_STATS_MASK_BITS_PER_PAGE - 1))))
 
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mac_stats_clear(
 	__in				efx_nic_t *enp);
@@ -645,11 +691,13 @@ efx_mac_stats_clear(
  * Thus, drivers should zero this buffer before use, so that not-understood
  * statistics read back as zero.
  */
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mac_stats_upload(
 	__in				efx_nic_t *enp,
 	__in				efsys_mem_t *esmp);
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mac_stats_periodic(
 	__in				efx_nic_t *enp,
@@ -657,6 +705,7 @@ efx_mac_stats_periodic(
 	__in				uint16_t period_ms,
 	__in				boolean_t events);
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mac_stats_update(
 	__in				efx_nic_t *enp,
@@ -678,12 +727,14 @@ typedef enum efx_mon_type_e {
 
 #if EFSYS_OPT_NAMES
 
+LIBEFX_API
 extern		const char *
 efx_mon_name(
 	__in	efx_nic_t *enp);
 
 #endif	/* EFSYS_OPT_NAMES */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_mon_init(
 	__in		efx_nic_t *enp);
@@ -824,11 +875,13 @@ typedef enum efx_mon_stat_portmask_e {
 
 #if EFSYS_OPT_NAMES
 
+LIBEFX_API
 extern					const char *
 efx_mon_stat_name(
 	__in				efx_nic_t *enp,
 	__in				efx_mon_stat_t id);
 
+LIBEFX_API
 extern					const char *
 efx_mon_stat_description(
 	__in				efx_nic_t *enp,
@@ -836,27 +889,32 @@ efx_mon_stat_description(
 
 #endif	/* EFSYS_OPT_NAMES */
 
+LIBEFX_API
 extern	__checkReturn			boolean_t
 efx_mon_mcdi_to_efx_stat(
 	__in				int mcdi_index,
 	__out				efx_mon_stat_t *statp);
 
+LIBEFX_API
 extern	__checkReturn			boolean_t
 efx_mon_get_stat_unit(
 	__in				efx_mon_stat_t stat,
 	__out				efx_mon_stat_unit_t *unitp);
 
+LIBEFX_API
 extern	__checkReturn			boolean_t
 efx_mon_get_stat_portmap(
 	__in				efx_mon_stat_t stat,
 	__out				efx_mon_stat_portmask_t *maskp);
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mon_stats_update(
 	__in				efx_nic_t *enp,
 	__in				efsys_mem_t *esmp,
 	__inout_ecount(EFX_MON_NSTATS)	efx_mon_stat_value_t *values);
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mon_limits_update(
 	__in				efx_nic_t *enp,
@@ -864,12 +922,14 @@ efx_mon_limits_update(
 
 #endif	/* EFSYS_OPT_MON_STATS */
 
+LIBEFX_API
 extern		void
 efx_mon_fini(
 	__in	efx_nic_t *enp);
 
 /* PHY */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_phy_verify(
 	__in		efx_nic_t *enp);
@@ -884,6 +944,7 @@ typedef enum efx_phy_led_mode_e {
 	EFX_PHY_LED_NMODES
 } efx_phy_led_mode_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_phy_led_set(
 	__in	efx_nic_t *enp,
@@ -891,6 +952,7 @@ efx_phy_led_set(
 
 #endif	/* EFSYS_OPT_PHY_LED_CONTROL */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_port_init(
 	__in		efx_nic_t *enp);
@@ -947,11 +1009,13 @@ typedef enum efx_loopback_kind_e {
 	EFX_LOOPBACK_NKINDS
 } efx_loopback_kind_t;
 
+LIBEFX_API
 extern			void
 efx_loopback_mask(
 	__in	efx_loopback_kind_t loopback_kind,
 	__out	efx_qword_t *maskp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_port_loopback_set(
 	__in	efx_nic_t *enp,
@@ -960,6 +1024,7 @@ efx_port_loopback_set(
 
 #if EFSYS_OPT_NAMES
 
+LIBEFX_API
 extern	__checkReturn	const char *
 efx_loopback_type_name(
 	__in		efx_nic_t *enp,
@@ -969,11 +1034,13 @@ efx_loopback_type_name(
 
 #endif	/* EFSYS_OPT_LOOPBACK */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_port_poll(
 	__in		efx_nic_t *enp,
 	__out_opt	efx_link_mode_t	*link_modep);
 
+LIBEFX_API
 extern		void
 efx_port_fini(
 	__in	efx_nic_t *enp);
@@ -1009,22 +1076,26 @@ typedef enum efx_phy_cap_type_e {
 #define	EFX_PHY_CAP_DEFAULT	0x00000001
 #define	EFX_PHY_CAP_PERM	0x00000002
 
+LIBEFX_API
 extern		void
 efx_phy_adv_cap_get(
 	__in		efx_nic_t *enp,
 	__in		uint32_t flag,
 	__out		uint32_t *maskp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_phy_adv_cap_set(
 	__in		efx_nic_t *enp,
 	__in		uint32_t mask);
 
+LIBEFX_API
 extern			void
 efx_phy_lp_cap_get(
 	__in		efx_nic_t *enp,
 	__out		uint32_t *maskp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_phy_oui_get(
 	__in		efx_nic_t *enp,
@@ -1048,6 +1119,7 @@ typedef enum efx_phy_media_type_e {
  * the module, then this will be the media type of the module.
  * Otherwise it will be the media type of the port.
  */
+LIBEFX_API
 extern			void
 efx_phy_media_type_get(
 	__in		efx_nic_t *enp,
@@ -1080,6 +1152,7 @@ efx_phy_media_type_get(
 #define	EFX_PHY_MEDIA_INFO_MAX_OFFSET		0x100
 
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_phy_module_get_info(
 	__in			efx_nic_t *enp,
@@ -1145,6 +1218,7 @@ typedef enum efx_phy_stat_e {
 
 #if EFSYS_OPT_NAMES
 
+LIBEFX_API
 extern					const char *
 efx_phy_stat_name(
 	__in				efx_nic_t *enp,
@@ -1154,6 +1228,7 @@ efx_phy_stat_name(
 
 #define	EFX_PHY_STATS_SIZE 0x100
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_phy_stats_update(
 	__in				efx_nic_t *enp,
@@ -1217,15 +1292,18 @@ typedef enum efx_bist_value_e {
 	EFX_BIST_NVALUES,
 } efx_bist_value_t;
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_bist_enable_offline(
 	__in			efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_bist_start(
 	__in			efx_nic_t *enp,
 	__in			efx_bist_type_t type);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_bist_poll(
 	__in			efx_nic_t *enp,
@@ -1235,6 +1313,7 @@ efx_bist_poll(
 	__out_ecount_opt(count)	unsigned long *valuesp,
 	__in			size_t count);
 
+LIBEFX_API
 extern				void
 efx_bist_stop(
 	__in			efx_nic_t *enp,
@@ -1446,6 +1525,7 @@ typedef struct efx_nic_cfg_s {
 
 #define	EFX_PCI_VF_PARENT(_encp)	((_encp)->enc_pf)
 
+LIBEFX_API
 extern			const efx_nic_cfg_t *
 efx_nic_cfg_get(
 	__in		const efx_nic_t *enp);
@@ -1470,6 +1550,7 @@ typedef struct efx_nic_fw_info_s {
 	uint16_t	enfi_tx_dpcpu_fw_id;
 } efx_nic_fw_info_t;
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nic_get_fw_version(
 	__in			efx_nic_t *enp,
@@ -1491,6 +1572,7 @@ typedef struct efx_drv_limits_s {
 	uint32_t	edl_max_pio_alloc_count;
 } efx_drv_limits_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_set_drv_limits(
 	__inout		efx_nic_t *enp,
@@ -1503,6 +1585,7 @@ efx_nic_set_drv_limits(
  * should be advertised. It is valid to set the version string
  * only before efx_nic_probe() is called.
  */
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_set_drv_version(
 	__inout			efx_nic_t *enp,
@@ -1514,6 +1597,7 @@ typedef enum efx_nic_region_e {
 	EFX_REGION_PIO_WRITE_VI,	/* Memory BAR WC mapping */
 } efx_nic_region_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_get_bar_region(
 	__in		efx_nic_t *enp,
@@ -1521,6 +1605,7 @@ efx_nic_get_bar_region(
 	__out		uint32_t *offsetp,
 	__out		size_t *sizep);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_get_vi_pool(
 	__in		efx_nic_t *enp,
@@ -1550,33 +1635,39 @@ typedef struct efx_vpd_value_s {
 
 #define	EFX_VPD_KEYWORD(x, y) ((x) | ((y) << 8))
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_init(
 	__in			efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_size(
 	__in			efx_nic_t *enp,
 	__out			size_t *sizep);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_read(
 	__in			efx_nic_t *enp,
 	__out_bcount(size)	caddr_t data,
 	__in			size_t size);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_verify(
 	__in			efx_nic_t *enp,
 	__in_bcount(size)	caddr_t data,
 	__in			size_t size);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_reinit(
 	__in			efx_nic_t *enp,
 	__in_bcount(size)	caddr_t data,
 	__in			size_t size);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_get(
 	__in			efx_nic_t *enp,
@@ -1584,6 +1675,7 @@ efx_vpd_get(
 	__in			size_t size,
 	__inout			efx_vpd_value_t *evvp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_set(
 	__in			efx_nic_t *enp,
@@ -1591,6 +1683,7 @@ efx_vpd_set(
 	__in			size_t size,
 	__in			efx_vpd_value_t *evvp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_next(
 	__in			efx_nic_t *enp,
@@ -1599,12 +1692,14 @@ efx_vpd_next(
 	__out			efx_vpd_value_t *evvp,
 	__inout			unsigned int *contp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_vpd_write(
 	__in			efx_nic_t *enp,
 	__in_bcount(size)	caddr_t data,
 	__in			size_t size);
 
+LIBEFX_API
 extern				void
 efx_vpd_fini(
 	__in			efx_nic_t *enp);
@@ -1648,42 +1743,49 @@ typedef struct efx_nvram_info_s {
 
 #define	EFX_NVRAM_FLAG_READ_ONLY	(1 << 0)
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_init(
 	__in			efx_nic_t *enp);
 
 #if EFSYS_OPT_DIAG
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_test(
 	__in			efx_nic_t *enp);
 
 #endif	/* EFSYS_OPT_DIAG */
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_size(
 	__in			efx_nic_t *enp,
 	__in			efx_nvram_type_t type,
 	__out			size_t *sizep);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_info(
 	__in			efx_nic_t *enp,
 	__in			efx_nvram_type_t type,
 	__out			efx_nvram_info_t *enip);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_rw_start(
 	__in			efx_nic_t *enp,
 	__in			efx_nvram_type_t type,
 	__out_opt		size_t *pref_chunkp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_rw_finish(
 	__in			efx_nic_t *enp,
 	__in			efx_nvram_type_t type,
 	__out_opt		uint32_t *verify_resultp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_get_version(
 	__in			efx_nic_t *enp,
@@ -1691,6 +1793,7 @@ efx_nvram_get_version(
 	__out			uint32_t *subtypep,
 	__out_ecount(4)		uint16_t version[4]);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_read_chunk(
 	__in			efx_nic_t *enp,
@@ -1699,6 +1802,7 @@ efx_nvram_read_chunk(
 	__out_bcount(size)	caddr_t data,
 	__in			size_t size);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_read_backup(
 	__in			efx_nic_t *enp,
@@ -1707,12 +1811,14 @@ efx_nvram_read_backup(
 	__out_bcount(size)	caddr_t data,
 	__in			size_t size);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_set_version(
 	__in			efx_nic_t *enp,
 	__in			efx_nvram_type_t type,
 	__in_ecount(4)		uint16_t version[4]);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_validate(
 	__in			efx_nic_t *enp,
@@ -1720,11 +1826,13 @@ efx_nvram_validate(
 	__in_bcount(partn_size)	caddr_t partn_data,
 	__in			size_t partn_size);
 
+LIBEFX_API
 extern	 __checkReturn		efx_rc_t
 efx_nvram_erase(
 	__in			efx_nic_t *enp,
 	__in			efx_nvram_type_t type);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_nvram_write_chunk(
 	__in			efx_nic_t *enp,
@@ -1733,6 +1841,7 @@ efx_nvram_write_chunk(
 	__in_bcount(size)	caddr_t data,
 	__in			size_t size);
 
+LIBEFX_API
 extern				void
 efx_nvram_fini(
 	__in			efx_nic_t *enp);
@@ -1742,6 +1851,7 @@ efx_nvram_fini(
 #if EFSYS_OPT_BOOTCFG
 
 /* Report size and offset of bootcfg sector in NVRAM partition. */
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_bootcfg_sector_info(
 	__in			efx_nic_t *enp,
@@ -1754,6 +1864,7 @@ efx_bootcfg_sector_info(
  * Copy bootcfg sector data to a target buffer which may differ in size.
  * Optionally corrects format errors in source buffer.
  */
+LIBEFX_API
 extern				efx_rc_t
 efx_bootcfg_copy_sector(
 	__in			efx_nic_t *enp,
@@ -1764,12 +1875,14 @@ efx_bootcfg_copy_sector(
 	__in			size_t data_size,
 	__in			boolean_t handle_format_errors);
 
+LIBEFX_API
 extern				efx_rc_t
 efx_bootcfg_read(
 	__in			efx_nic_t *enp,
 	__out_bcount(size)	uint8_t *data,
 	__in			size_t size);
 
+LIBEFX_API
 extern				efx_rc_t
 efx_bootcfg_write(
 	__in			efx_nic_t *enp,
@@ -1807,17 +1920,20 @@ efx_bootcfg_write(
 #define	EFX_DHCP_ENCAP_OPT(encapsulator, encapsulated) \
   (uint16_t)(((encapsulator) << 8) | (encapsulated))
 
+LIBEFX_API
 extern	__checkReturn		uint8_t
 efx_dhcp_csum(
 	__in_bcount(size)	uint8_t const *data,
 	__in			size_t size);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_dhcp_verify(
 	__in_bcount(size)	uint8_t const *data,
 	__in			size_t size,
 	__out_opt		size_t *usedp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_dhcp_find_tag(
 	__in_bcount(buffer_length)	uint8_t *bufferp,
@@ -1826,6 +1942,7 @@ efx_dhcp_find_tag(
 	__deref_out			uint8_t **valuepp,
 	__out				size_t *value_lengthp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_dhcp_find_end(
 	__in_bcount(buffer_length)	uint8_t *bufferp,
@@ -1833,12 +1950,14 @@ efx_dhcp_find_end(
 	__deref_out			uint8_t **endpp);
 
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_dhcp_delete_tag(
 	__inout_bcount(buffer_length)	uint8_t *bufferp,
 	__in				size_t buffer_length,
 	__in				uint16_t opt);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_dhcp_add_tag(
 	__inout_bcount(buffer_length)	uint8_t *bufferp,
@@ -1847,6 +1966,7 @@ efx_dhcp_add_tag(
 	__in_bcount_opt(value_length)	uint8_t *valuep,
 	__in				size_t value_length);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_dhcp_update_tag(
 	__inout_bcount(buffer_length)	uint8_t *bufferp,
@@ -1931,12 +2051,14 @@ typedef struct efx_image_info_s {
 	efx_image_header_t *	eii_headerp;
 } efx_image_info_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_check_reflash_image(
 	__in		void			*bufferp,
 	__in		uint32_t		buffer_size,
 	__out		efx_image_info_t	*infop);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_build_signed_image_write_buffer(
 	__out_bcount(buffer_size)
@@ -1965,6 +2087,7 @@ typedef			void
 	__in		boolean_t negate,
 	__out		efx_qword_t *eqp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_sram_test(
 	__in		efx_nic_t *enp,
@@ -1972,6 +2095,7 @@ efx_sram_test(
 
 #endif	/* EFSYS_OPT_DIAG */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_sram_buf_tbl_set(
 	__in		efx_nic_t *enp,
@@ -1979,6 +2103,7 @@ efx_sram_buf_tbl_set(
 	__in		efsys_mem_t *esmp,
 	__in		size_t n);
 
+LIBEFX_API
 extern		void
 efx_sram_buf_tbl_clear(
 	__in	efx_nic_t *enp,
@@ -2042,19 +2167,23 @@ typedef enum efx_ev_qstat_e {
 
 #endif	/* EFSYS_OPT_QSTATS */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_ev_init(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern		void
 efx_ev_fini(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	size_t
 efx_evq_size(
 	__in	const efx_nic_t *enp,
 	__in	unsigned int ndescs);
 
+LIBEFX_API
 extern	__checkReturn	unsigned int
 efx_evq_nbufs(
 	__in	const efx_nic_t *enp,
@@ -2079,6 +2208,7 @@ efx_evq_nbufs(
  */
 #define	EFX_EVQ_FLAGS_NO_CONT_EV	(0x10)
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_ev_qcreate(
 	__in		efx_nic_t *enp,
@@ -2090,6 +2220,7 @@ efx_ev_qcreate(
 	__in		uint32_t flags,
 	__deref_out	efx_evq_t **eepp);
 
+LIBEFX_API
 extern		void
 efx_ev_qpost(
 	__in		efx_evq_t *eep,
@@ -2276,6 +2407,7 @@ typedef struct efx_ev_callbacks_s {
 #endif	/* EFSYS_OPT_MAC_STATS */
 } efx_ev_callbacks_t;
 
+LIBEFX_API
 extern	__checkReturn	boolean_t
 efx_ev_qpending(
 	__in		efx_evq_t *eep,
@@ -2283,6 +2415,7 @@ efx_ev_qpending(
 
 #if EFSYS_OPT_EV_PREFETCH
 
+LIBEFX_API
 extern			void
 efx_ev_qprefetch(
 	__in		efx_evq_t *eep,
@@ -2290,6 +2423,7 @@ efx_ev_qprefetch(
 
 #endif	/* EFSYS_OPT_EV_PREFETCH */
 
+LIBEFX_API
 extern			void
 efx_ev_qpoll(
 	__in		efx_evq_t *eep,
@@ -2297,17 +2431,20 @@ efx_ev_qpoll(
 	__in		const efx_ev_callbacks_t *eecp,
 	__in_opt	void *arg);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_ev_usecs_to_ticks(
 	__in		efx_nic_t *enp,
 	__in		unsigned int usecs,
 	__out		unsigned int *ticksp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_ev_qmoderate(
 	__in		efx_evq_t *eep,
 	__in		unsigned int us);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_ev_qprime(
 	__in		efx_evq_t *eep,
@@ -2317,6 +2454,7 @@ efx_ev_qprime(
 
 #if EFSYS_OPT_NAMES
 
+LIBEFX_API
 extern		const char *
 efx_ev_qstat_name(
 	__in	efx_nic_t *enp,
@@ -2324,6 +2462,7 @@ efx_ev_qstat_name(
 
 #endif	/* EFSYS_OPT_NAMES */
 
+LIBEFX_API
 extern					void
 efx_ev_qstats_update(
 	__in				efx_evq_t *eep,
@@ -2331,21 +2470,25 @@ efx_ev_qstats_update(
 
 #endif	/* EFSYS_OPT_QSTATS */
 
+LIBEFX_API
 extern		void
 efx_ev_qdestroy(
 	__in	efx_evq_t *eep);
 
 /* RX */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_init(
 	__inout		efx_nic_t *enp);
 
+LIBEFX_API
 extern		void
 efx_rx_fini(
 	__in		efx_nic_t *enp);
 
 #if EFSYS_OPT_RX_SCATTER
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_scatter_enable(
 	__in		efx_nic_t *enp,
@@ -2485,6 +2628,7 @@ typedef enum efx_rx_scale_context_type_e {
  */
 #define	EFX_RX_HASH_NFLAGS	(EFX_RX_NCLASSES * EFX_RX_CLASS_HASH_NTUPLES)
 
+LIBEFX_API
 extern	__checkReturn				efx_rc_t
 efx_rx_scale_hash_flags_get(
 	__in					efx_nic_t *enp,
@@ -2493,17 +2637,20 @@ efx_rx_scale_hash_flags_get(
 	__in					unsigned int max_nflags,
 	__out					unsigned int *nflagsp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_hash_default_support_get(
 	__in		efx_nic_t *enp,
 	__out		efx_rx_hash_support_t *supportp);
 
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_scale_default_support_get(
 	__in		efx_nic_t *enp,
 	__out		efx_rx_scale_context_type_t *typep);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_scale_context_alloc(
 	__in		efx_nic_t *enp,
@@ -2511,11 +2658,13 @@ efx_rx_scale_context_alloc(
 	__in		uint32_t num_queues,
 	__out		uint32_t *rss_contextp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_scale_context_free(
 	__in		efx_nic_t *enp,
 	__in		uint32_t rss_context);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_scale_mode_set(
 	__in	efx_nic_t *enp,
@@ -2524,6 +2673,7 @@ efx_rx_scale_mode_set(
 	__in	efx_rx_hash_type_t type,
 	__in	boolean_t insert);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_scale_tbl_set(
 	__in		efx_nic_t *enp,
@@ -2531,6 +2681,7 @@ efx_rx_scale_tbl_set(
 	__in_ecount(n)	unsigned int *table,
 	__in		size_t n);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_scale_key_set(
 	__in		efx_nic_t *enp,
@@ -2538,6 +2689,7 @@ efx_rx_scale_key_set(
 	__in_ecount(n)	uint8_t *key,
 	__in		size_t n);
 
+LIBEFX_API
 extern	__checkReturn	uint32_t
 efx_pseudo_hdr_hash_get(
 	__in		efx_rxq_t *erp,
@@ -2546,17 +2698,20 @@ efx_pseudo_hdr_hash_get(
 
 #endif	/* EFSYS_OPT_RX_SCALE */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_pseudo_hdr_pkt_length_get(
 	__in		efx_rxq_t *erp,
 	__in		uint8_t *buffer,
 	__out		uint16_t *pkt_lengthp);
 
+LIBEFX_API
 extern	__checkReturn	size_t
 efx_rxq_size(
 	__in	const efx_nic_t *enp,
 	__in	unsigned int ndescs);
 
+LIBEFX_API
 extern	__checkReturn	unsigned int
 efx_rxq_nbufs(
 	__in	const efx_nic_t *enp,
@@ -2587,6 +2742,7 @@ typedef enum efx_rxq_type_e {
  */
 #define	EFX_RXQ_FLAG_INNER_CLASSES	0x2
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_qcreate(
 	__in		efx_nic_t *enp,
@@ -2609,6 +2765,7 @@ efx_rx_qcreate(
 #define	EFX_RXQ_PACKED_STREAM_BUF_SIZE_128K	(128U * 1024)
 #define	EFX_RXQ_PACKED_STREAM_BUF_SIZE_64K	(64U * 1024)
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_qcreate_packed_stream(
 	__in		efx_nic_t *enp,
@@ -2627,6 +2784,7 @@ efx_rx_qcreate_packed_stream(
 /* Maximum head-of-line block timeout in nanoseconds */
 #define	EFX_RXQ_ES_SUPER_BUFFER_HOL_BLOCK_MAX	(400U * 1000 * 1000)
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_qcreate_es_super_buffer(
 	__in		efx_nic_t *enp,
@@ -2654,6 +2812,7 @@ typedef struct efx_desc_s {
 	efx_qword_t ed_eq;
 } efx_desc_t;
 
+LIBEFX_API
 extern				void
 efx_rx_qpost(
 	__in			efx_rxq_t *erp,
@@ -2663,6 +2822,7 @@ efx_rx_qpost(
 	__in			unsigned int completed,
 	__in			unsigned int added);
 
+LIBEFX_API
 extern		void
 efx_rx_qpush(
 	__in	efx_rxq_t *erp,
@@ -2671,10 +2831,12 @@ efx_rx_qpush(
 
 #if EFSYS_OPT_RX_PACKED_STREAM
 
+LIBEFX_API
 extern			void
 efx_rx_qpush_ps_credits(
 	__in		efx_rxq_t *erp);
 
+LIBEFX_API
 extern	__checkReturn	uint8_t *
 efx_rx_qps_packet_info(
 	__in		efx_rxq_t *erp,
@@ -2686,14 +2848,17 @@ efx_rx_qps_packet_info(
 	__out		uint32_t *timestamp);
 #endif
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_rx_qflush(
 	__in	efx_rxq_t *erp);
 
+LIBEFX_API
 extern		void
 efx_rx_qenable(
 	__in	efx_rxq_t *erp);
 
+LIBEFX_API
 extern		void
 efx_rx_qdestroy(
 	__in	efx_rxq_t *erp);
@@ -2715,19 +2880,23 @@ typedef enum efx_tx_qstat_e {
 
 #endif	/* EFSYS_OPT_QSTATS */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tx_init(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern		void
 efx_tx_fini(
 	__in	efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	size_t
 efx_txq_size(
 	__in	const efx_nic_t *enp,
 	__in	unsigned int ndescs);
 
+LIBEFX_API
 extern	__checkReturn	unsigned int
 efx_txq_nbufs(
 	__in	const efx_nic_t *enp,
@@ -2741,6 +2910,7 @@ efx_txq_nbufs(
 #define	EFX_TXQ_CKSUM_INNER_IPV4	0x0008
 #define	EFX_TXQ_CKSUM_INNER_TCPUDP	0x0010
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tx_qcreate(
 	__in		efx_nic_t *enp,
@@ -2754,6 +2924,7 @@ efx_tx_qcreate(
 	__deref_out	efx_txq_t **etpp,
 	__out		unsigned int *addedp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_tx_qpost(
 	__in			efx_txq_t *etp,
@@ -2762,33 +2933,40 @@ efx_tx_qpost(
 	__in			unsigned int completed,
 	__inout			unsigned int *addedp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tx_qpace(
 	__in		efx_txq_t *etp,
 	__in		unsigned int ns);
 
+LIBEFX_API
 extern			void
 efx_tx_qpush(
 	__in		efx_txq_t *etp,
 	__in		unsigned int added,
 	__in		unsigned int pushed);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tx_qflush(
 	__in		efx_txq_t *etp);
 
+LIBEFX_API
 extern			void
 efx_tx_qenable(
 	__in		efx_txq_t *etp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tx_qpio_enable(
 	__in		efx_txq_t *etp);
 
+LIBEFX_API
 extern			void
 efx_tx_qpio_disable(
 	__in		efx_txq_t *etp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tx_qpio_write(
 	__in			efx_txq_t *etp,
@@ -2796,6 +2974,7 @@ efx_tx_qpio_write(
 	__in			size_t buf_length,
 	__in			size_t pio_buf_offset);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tx_qpio_post(
 	__in			efx_txq_t *etp,
@@ -2803,6 +2982,7 @@ efx_tx_qpio_post(
 	__in			unsigned int completed,
 	__inout			unsigned int *addedp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tx_qdesc_post(
 	__in		efx_txq_t *etp,
@@ -2811,6 +2991,7 @@ efx_tx_qdesc_post(
 	__in		unsigned int completed,
 	__inout		unsigned int *addedp);
 
+LIBEFX_API
 extern	void
 efx_tx_qdesc_dma_create(
 	__in	efx_txq_t *etp,
@@ -2819,6 +3000,7 @@ efx_tx_qdesc_dma_create(
 	__in	boolean_t eop,
 	__out	efx_desc_t *edp);
 
+LIBEFX_API
 extern	void
 efx_tx_qdesc_tso_create(
 	__in	efx_txq_t *etp,
@@ -2833,6 +3015,7 @@ efx_tx_qdesc_tso_create(
 /* Maximum number of DMA segments per TSO packet (not superframe) */
 #define	EFX_TX_FATSOV2_DMA_SEGS_PER_PKT_MAX	24
 
+LIBEFX_API
 extern	void
 efx_tx_qdesc_tso2_create(
 	__in			efx_txq_t *etp,
@@ -2843,12 +3026,14 @@ efx_tx_qdesc_tso2_create(
 	__out_ecount(count)	efx_desc_t *edp,
 	__in			int count);
 
+LIBEFX_API
 extern	void
 efx_tx_qdesc_vlantci_create(
 	__in	efx_txq_t *etp,
 	__in	uint16_t tci,
 	__out	efx_desc_t *edp);
 
+LIBEFX_API
 extern	void
 efx_tx_qdesc_checksum_create(
 	__in	efx_txq_t *etp,
@@ -2859,6 +3044,7 @@ efx_tx_qdesc_checksum_create(
 
 #if EFSYS_OPT_NAMES
 
+LIBEFX_API
 extern		const char *
 efx_tx_qstat_name(
 	__in	efx_nic_t *etp,
@@ -2866,6 +3052,7 @@ efx_tx_qstat_name(
 
 #endif	/* EFSYS_OPT_NAMES */
 
+LIBEFX_API
 extern					void
 efx_tx_qstats_update(
 	__in				efx_txq_t *etp,
@@ -2873,6 +3060,7 @@ efx_tx_qstats_update(
 
 #endif	/* EFSYS_OPT_QSTATS */
 
+LIBEFX_API
 extern		void
 efx_tx_qdestroy(
 	__in	efx_txq_t *etp);
@@ -3004,28 +3192,34 @@ typedef struct efx_filter_spec_s {
 #define	EFX_FILTER_SPEC_RX_DMAQ_ID_DROP		0xfff
 #define	EFX_FILTER_SPEC_VID_UNSPEC		0xffff
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_init(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_filter_fini(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_insert(
 	__in		efx_nic_t *enp,
 	__inout		efx_filter_spec_t *spec);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_remove(
 	__in		efx_nic_t *enp,
 	__inout		efx_filter_spec_t *spec);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_restore(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_supported_filters(
 	__in				efx_nic_t *enp,
@@ -3033,6 +3227,7 @@ efx_filter_supported_filters(
 	__in				size_t buffer_length,
 	__out				size_t *list_lengthp);
 
+LIBEFX_API
 extern			void
 efx_filter_spec_init_rx(
 	__out		efx_filter_spec_t *spec,
@@ -3040,11 +3235,13 @@ efx_filter_spec_init_rx(
 	__in		efx_filter_flags_t flags,
 	__in		efx_rxq_t *erp);
 
+LIBEFX_API
 extern			void
 efx_filter_spec_init_tx(
 	__out		efx_filter_spec_t *spec,
 	__in		efx_txq_t *etp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_ipv4_local(
 	__inout		efx_filter_spec_t *spec,
@@ -3052,6 +3249,7 @@ efx_filter_spec_set_ipv4_local(
 	__in		uint32_t host,
 	__in		uint16_t port);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_ipv4_full(
 	__inout		efx_filter_spec_t *spec,
@@ -3061,21 +3259,25 @@ efx_filter_spec_set_ipv4_full(
 	__in		uint32_t rhost,
 	__in		uint16_t rport);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_eth_local(
 	__inout		efx_filter_spec_t *spec,
 	__in		uint16_t vid,
 	__in		const uint8_t *addr);
 
+LIBEFX_API
 extern			void
 efx_filter_spec_set_ether_type(
 	__inout		efx_filter_spec_t *spec,
 	__in		uint16_t ether_type);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_uc_def(
 	__inout		efx_filter_spec_t *spec);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_mc_def(
 	__inout		efx_filter_spec_t *spec);
@@ -3086,12 +3288,14 @@ typedef enum efx_filter_inner_frame_match_e {
 	EFX_FILTER_INNER_FRAME_MATCH_UNKNOWN_UCAST_DST
 } efx_filter_inner_frame_match_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_encap_type(
 	__inout		efx_filter_spec_t *spec,
 	__in		efx_tunnel_protocol_t encap_type,
 	__in		efx_filter_inner_frame_match_t inner_frame_match);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_vxlan(
 	__inout		efx_filter_spec_t *spec,
@@ -3099,6 +3303,7 @@ efx_filter_spec_set_vxlan(
 	__in		const uint8_t *inner_addr,
 	__in		const uint8_t *outer_addr);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_geneve(
 	__inout		efx_filter_spec_t *spec,
@@ -3106,6 +3311,7 @@ efx_filter_spec_set_geneve(
 	__in		const uint8_t *inner_addr,
 	__in		const uint8_t *outer_addr);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_nvgre(
 	__inout		efx_filter_spec_t *spec,
@@ -3114,6 +3320,7 @@ efx_filter_spec_set_nvgre(
 	__in		const uint8_t *outer_addr);
 
 #if EFSYS_OPT_RX_SCALE
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_filter_spec_set_rss_context(
 	__inout		efx_filter_spec_t *spec,
@@ -3123,12 +3330,14 @@ efx_filter_spec_set_rss_context(
 
 /* HASH */
 
+LIBEFX_API
 extern	__checkReturn		uint32_t
 efx_hash_dwords(
 	__in_ecount(count)	uint32_t const *input,
 	__in			size_t count,
 	__in			uint32_t init);
 
+LIBEFX_API
 extern	__checkReturn		uint32_t
 efx_hash_bytes(
 	__in_ecount(length)	uint8_t const *input,
@@ -3151,33 +3360,40 @@ typedef struct efx_key_stats_s {
 	uint32_t	eks_licensed_features_hi;
 } efx_key_stats_t;
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_lic_init(
 	__in			efx_nic_t *enp);
 
+LIBEFX_API
 extern				void
 efx_lic_fini(
 	__in			efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	boolean_t
 efx_lic_check_support(
 	__in			efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_lic_update_licenses(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_lic_get_key_stats(
 	__in		efx_nic_t *enp,
 	__out		efx_key_stats_t *ksp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_lic_app_state(
 	__in		efx_nic_t *enp,
 	__in		uint64_t app_id,
 	__out		boolean_t *licensedp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_lic_get_id(
 	__in		efx_nic_t *enp,
@@ -3187,6 +3403,7 @@ efx_lic_get_id(
 	__out_opt	uint8_t *bufferp);
 
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_lic_find_start(
 	__in			efx_nic_t *enp,
@@ -3195,6 +3412,7 @@ efx_lic_find_start(
 	__in			size_t buffer_size,
 	__out			uint32_t *startp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_lic_find_end(
 	__in			efx_nic_t *enp,
@@ -3204,6 +3422,7 @@ efx_lic_find_end(
 	__in			uint32_t offset,
 	__out			uint32_t *endp);
 
+LIBEFX_API
 extern	__checkReturn	__success(return != B_FALSE)	boolean_t
 efx_lic_find_key(
 	__in			efx_nic_t *enp,
@@ -3214,12 +3433,14 @@ efx_lic_find_key(
 	__out			uint32_t *startp,
 	__out			uint32_t *lengthp);
 
+LIBEFX_API
 extern	__checkReturn	__success(return != B_FALSE)	boolean_t
 efx_lic_validate_key(
 	__in			efx_nic_t *enp,
 	__in_bcount(length)	caddr_t keyp,
 	__in			uint32_t length);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_lic_read_key(
 	__in			efx_nic_t *enp,
@@ -3233,6 +3454,7 @@ efx_lic_read_key(
 	__in			size_t key_max_size,
 	__out			uint32_t *lengthp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_lic_write_key(
 	__in			efx_nic_t *enp,
@@ -3244,6 +3466,7 @@ efx_lic_write_key(
 	__in			uint32_t length,
 	__out			uint32_t *lengthp);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_lic_delete_key(
 	__in			efx_nic_t *enp,
@@ -3255,6 +3478,7 @@ efx_lic_delete_key(
 	__in			uint32_t end,
 	__out			uint32_t *deltap);
 
+LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_lic_create_partition(
 	__in			efx_nic_t *enp,
@@ -3275,10 +3499,12 @@ efx_lic_finish_partition(
 
 #if EFSYS_OPT_TUNNEL
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tunnel_init(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_tunnel_fini(
 	__in		efx_nic_t *enp);
@@ -3290,18 +3516,21 @@ efx_tunnel_fini(
  * The UDP port/protocol list is global.
  */
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tunnel_config_udp_add(
 	__in		efx_nic_t *enp,
 	__in		uint16_t port /* host/cpu-endian */,
 	__in		efx_tunnel_protocol_t protocol);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tunnel_config_udp_remove(
 	__in		efx_nic_t *enp,
 	__in		uint16_t port /* host/cpu-endian */,
 	__in		efx_tunnel_protocol_t protocol);
 
+LIBEFX_API
 extern			void
 efx_tunnel_config_clear(
 	__in		efx_nic_t *enp);
@@ -3312,6 +3541,7 @@ efx_tunnel_config_clear(
  * EAGAIN is returned if hardware will be reset (datapath and managment CPU
  * reboot).
  */
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_tunnel_reconfigure(
 	__in		efx_nic_t *enp);
@@ -3339,11 +3569,13 @@ typedef enum efx_nic_fw_subvariant_e {
 	EFX_NIC_FW_SUBVARIANT_NTYPES
 } efx_nic_fw_subvariant_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_get_fw_subvariant(
 	__in		efx_nic_t *enp,
 	__out		efx_nic_fw_subvariant_t *subvariantp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_nic_set_fw_subvariant(
 	__in		efx_nic_t *enp,
@@ -3357,6 +3589,7 @@ typedef enum efx_phy_fec_type_e {
 	EFX_PHY_FEC_RS
 } efx_phy_fec_type_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_phy_fec_type_get(
 	__in		efx_nic_t *enp,
@@ -3371,6 +3604,7 @@ typedef struct efx_phy_link_state_s {
 	efx_link_mode_t		epls_link_mode;
 } efx_phy_link_state_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_phy_link_state_get(
 	__in		efx_nic_t *enp,
@@ -3424,14 +3658,17 @@ typedef struct efx_vport_config_s {
 
 typedef	struct	efx_vswitch_s	efx_vswitch_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_evb_init(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_evb_fini(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_evb_vswitch_create(
 	__in				efx_nic_t *enp,
@@ -3439,11 +3676,13 @@ efx_evb_vswitch_create(
 	__inout_ecount(num_vports)	efx_vport_config_t *vport_configp,
 	__deref_out			efx_vswitch_t **evpp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_evb_vswitch_destroy(
 	__in				efx_nic_t *enp,
 	__in				efx_vswitch_t *evp);
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_evb_vport_mac_set(
 	__in				efx_nic_t *enp,
@@ -3451,6 +3690,7 @@ efx_evb_vport_mac_set(
 	__in				efx_vport_id_t vport_id,
 	__in_bcount(EFX_MAC_ADDR_LEN)	uint8_t *addrp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_evb_vport_vlan_set(
 	__in		efx_nic_t *enp,
@@ -3458,6 +3698,7 @@ efx_evb_vport_vlan_set(
 	__in		efx_vport_id_t vport_id,
 	__in		uint16_t vid);
 
+LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_evb_vport_reset(
 	__in				efx_nic_t *enp,
@@ -3467,6 +3708,7 @@ efx_evb_vport_reset(
 	__in				uint16_t vid,
 	__out				boolean_t *is_fn_resetp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_evb_vport_stats(
 	__in		efx_nic_t *enp,
@@ -3498,24 +3740,29 @@ typedef struct efx_proxy_cmd_params_s {
 	size_t		*response_size_actualp;
 } efx_proxy_cmd_params_t;
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_init(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern			void
 efx_proxy_auth_fini(
 	__in		efx_nic_t *enp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_configure(
 	__in		efx_nic_t *enp,
 	__in		efx_proxy_auth_config_t *configp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_destroy(
 	__in		efx_nic_t *enp,
 	__in		uint32_t handled_privileges);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_complete_request(
 	__in		efx_nic_t *enp,
@@ -3523,11 +3770,13 @@ efx_proxy_auth_complete_request(
 	__in		uint32_t proxy_result,
 	__in		uint32_t handle);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_exec_cmd(
 	__in		efx_nic_t *enp,
 	__inout		efx_proxy_cmd_params_t *paramsp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_set_privilege_mask(
 	__in		efx_nic_t *enp,
@@ -3535,6 +3784,7 @@ efx_proxy_auth_set_privilege_mask(
 	__in		uint32_t mask,
 	__in		uint32_t value);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_privilege_mask_get(
 	__in		efx_nic_t *enp,
@@ -3542,6 +3792,7 @@ efx_proxy_auth_privilege_mask_get(
 	__in		uint32_t vf_index,
 	__out		uint32_t *maskp);
 
+LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_proxy_auth_privilege_modify(
 	__in		efx_nic_t *enp,

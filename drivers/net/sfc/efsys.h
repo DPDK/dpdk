@@ -32,6 +32,9 @@
 extern "C" {
 #endif
 
+/* No specific decorations required since all functions are local now */
+#define LIBEFX_API
+
 #define EFSYS_HAS_UINT64 1
 #define EFSYS_USE_UINT64 1
 #define EFSYS_HAS_SSE2_M128 1
