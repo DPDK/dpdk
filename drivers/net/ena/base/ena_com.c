@@ -2115,9 +2115,7 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *dev, void *data)
 	mb();
 	ENA_REG_WRITE32_RELAXED(dev->bus, (u32)aenq->head,
 				dev->reg_bar + ENA_REGS_AENQ_HEAD_DB_OFF);
-#ifndef MMIOWB_NOT_DEFINED
 	mmiowb();
-#endif
 }
 
 int ena_com_dev_reset(struct ena_com_dev *ena_dev,
