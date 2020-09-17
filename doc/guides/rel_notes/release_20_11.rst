@@ -87,6 +87,9 @@ API Changes
 * eal: The ``rte_logs`` struct and global symbol was made private
   and is no longer part of the API.
 
+* eal: Made the ``rte_dev_event`` structure private to the EAL as no public API
+  used it.
+
 * mem: Removed the unioned field ``phys_addr`` from
   the structures ``rte_memseg`` and ``rte_memzone``.
   The field ``iova`` is remaining from the old unions.

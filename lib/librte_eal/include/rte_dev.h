@@ -33,12 +33,6 @@ enum rte_dev_event_type {
 	RTE_DEV_EVENT_MAX	/**< max value of this enum */
 };
 
-struct rte_dev_event {
-	enum rte_dev_event_type type;	/**< device event type */
-	int subsystem;			/**< subsystem id */
-	char *devname;			/**< device name */
-};
-
 typedef void (*rte_dev_event_cb_fn)(const char *device_name,
 					enum rte_dev_event_type event,
 					void *cb_arg);

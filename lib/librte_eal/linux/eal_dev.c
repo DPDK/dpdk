@@ -133,6 +133,12 @@ err:
 	return ret;
 }
 
+struct rte_dev_event {
+	enum rte_dev_event_type type;	/**< device event type */
+	int subsystem;			/**< subsystem id */
+	char *devname;			/**< device name */
+};
+
 static int
 dev_uev_parse(const char *buf, struct rte_dev_event *event, int length)
 {

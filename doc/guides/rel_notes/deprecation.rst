@@ -70,9 +70,6 @@ Deprecation Notices
 * eal: The function ``rte_eal_remote_launch`` will return new error codes
   after read or write error on the pipe, instead of calling ``rte_panic``.
 
-* eal: The ``rte_dev_event`` structure will be made private to the EAL as no
-  public API makes use of it.
-
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
   in DPDK. DPDK will adopt C11 atomic operations semantics and provide wrappers
