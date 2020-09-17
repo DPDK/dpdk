@@ -9,6 +9,8 @@
 #define ENA_ADMIN_EXTRA_PROPERTIES_STRING_LEN 32
 #define ENA_ADMIN_EXTRA_PROPERTIES_COUNT     32
 
+#define ENA_ADMIN_RSS_KEY_PARTS              10
+
 enum ena_admin_aq_opcode {
 	ENA_ADMIN_CREATE_SQ                         = 1,
 	ENA_ADMIN_DESTROY_SQ                        = 2,
@@ -732,7 +734,7 @@ struct ena_admin_feature_rss_flow_hash_control {
 
 	uint32_t reserved;
 
-	uint32_t key[10];
+	uint32_t key[ENA_ADMIN_RSS_KEY_PARTS];
 };
 
 struct ena_admin_feature_rss_flow_hash_function {
