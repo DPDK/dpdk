@@ -278,16 +278,22 @@ sfc_efx_mcdi_ev_proxy_response(void *arg, uint32_t handle, efx_rc_t result)
 
 static int
 sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
-		  uint32_t logtype, const char *log_prefix, efx_nic_t *nic)
+		  uint32_t logtype, const char *log_prefix, efx_nic_t *nic,
+		  const struct sfc_efx_mcdi_ops *ops, void *ops_cookie)
 {
 	size_t max_msg_size;
 	efx_mcdi_transport_t *emtp;
 	int rc;
 
+	if (ops->dma_alloc == NULL || ops->dma_free == NULL)
+		return EINVAL;
+
 	SFC_ASSERT(mcdi->state == SFC_EFX_MCDI_UNINITIALIZED);
 
 	rte_spinlock_init(&mcdi->lock);
 
+	mcdi->ops = ops;
+	mcdi->ops_cookie = ops_cookie;
 	mcdi->nic = nic;
 
 	mcdi->state = SFC_EFX_MCDI_INITIALIZED;
@@ -296,8 +302,7 @@ sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
 	mcdi->log_prefix = log_prefix;
 
 	max_msg_size = sizeof(uint32_t) + MCDI_CTL_SDU_LEN_MAX_V2;
-	rc = sfc_dma_alloc(sa, "mcdi", 0, max_msg_size, sa->socket_id,
-			   &mcdi->mem);
+	rc = ops->dma_alloc(ops_cookie, "mcdi", max_msg_size, &mcdi->mem);
 	if (rc != 0)
 		goto fail_dma_alloc;
 
@@ -319,7 +324,7 @@ sfc_efx_mcdi_init(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi,
 
 fail_mcdi_init:
 	memset(emtp, 0, sizeof(*emtp));
-	sfc_dma_free(sa, &mcdi->mem);
+	ops->dma_free(ops_cookie, &mcdi->mem);
 
 fail_dma_alloc:
 	mcdi->state = SFC_EFX_MCDI_UNINITIALIZED;
@@ -327,7 +332,7 @@ fail_dma_alloc:
 }
 
 static void
-sfc_efx_mcdi_fini(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
+sfc_efx_mcdi_fini(struct sfc_efx_mcdi *mcdi)
 {
 	efx_mcdi_transport_t *emtp;
 
@@ -345,8 +350,32 @@ sfc_efx_mcdi_fini(struct sfc_adapter *sa, struct sfc_efx_mcdi *mcdi)
 
 	rte_spinlock_unlock(&mcdi->lock);
 
-	sfc_dma_free(sa, &mcdi->mem);
+	mcdi->ops->dma_free(mcdi->ops_cookie, &mcdi->mem);
 }
+
+static sfc_efx_mcdi_dma_alloc_cb sfc_mcdi_dma_alloc;
+static int
+sfc_mcdi_dma_alloc(void *cookie, const char *name, size_t len,
+		   efsys_mem_t *esmp)
+{
+	const struct sfc_adapter *sa = cookie;
+
+	return sfc_dma_alloc(sa, name, 0, len, sa->socket_id, esmp);
+}
+
+static sfc_efx_mcdi_dma_free_cb sfc_mcdi_dma_free;
+static void
+sfc_mcdi_dma_free(void *cookie, efsys_mem_t *esmp)
+{
+	const struct sfc_adapter *sa = cookie;
+
+	sfc_dma_free(sa, esmp);
+}
+
+static const struct sfc_efx_mcdi_ops sfc_mcdi_ops = {
+	.dma_alloc	= sfc_mcdi_dma_alloc,
+	.dma_free	= sfc_mcdi_dma_free,
+};
 
 int
 sfc_mcdi_init(struct sfc_adapter *sa)
@@ -360,12 +389,13 @@ sfc_mcdi_init(struct sfc_adapter *sa)
 				       RTE_LOG_NOTICE);
 
 	return sfc_efx_mcdi_init(sa, &sa->mcdi, logtype,
-				 sa->priv.shared->log_prefix, sa->nic);
+				 sa->priv.shared->log_prefix, sa->nic,
+				 &sfc_mcdi_ops, sa);
 }
 
 void
 sfc_mcdi_fini(struct sfc_adapter *sa)
 {
 	sfc_log_init(sa, "entry");
-	sfc_efx_mcdi_fini(sa, &sa->mcdi);
+	sfc_efx_mcdi_fini(&sa->mcdi);
 }

@@ -32,8 +32,20 @@ enum sfc_efx_mcdi_state {
 	SFC_EFX_MCDI_NSTATES
 };
 
+typedef int (sfc_efx_mcdi_dma_alloc_cb)(void *cookie, const char *name,
+					  size_t len, efsys_mem_t *esmp);
+
+typedef void (sfc_efx_mcdi_dma_free_cb)(void *cookie, efsys_mem_t *esmp);
+
+struct sfc_efx_mcdi_ops {
+	sfc_efx_mcdi_dma_alloc_cb	*dma_alloc;
+	sfc_efx_mcdi_dma_free_cb	*dma_free;
+};
+
 struct sfc_efx_mcdi {
 	rte_spinlock_t			lock;
+	const struct sfc_efx_mcdi_ops	*ops;
+	void				*ops_cookie;
 	efx_nic_t			*nic;
 	efsys_mem_t			mem;
 	enum sfc_efx_mcdi_state		state;
