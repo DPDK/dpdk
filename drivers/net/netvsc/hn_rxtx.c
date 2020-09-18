@@ -160,8 +160,8 @@ static void hn_txd_init(struct rte_mempool *mp __rte_unused,
 
 	txd->queue_id = txq->queue_id;
 	txd->chim_index = NVS_CHIM_IDX_INVALID;
-	txd->rndis_pkt = (struct rndis_packet_msg *)(char *)txq->tx_rndis
-		+ idx * HN_RNDIS_PKT_ALIGNED;
+	txd->rndis_pkt = (struct rndis_packet_msg *)((char *)txq->tx_rndis
+		+ idx * HN_RNDIS_PKT_ALIGNED);
 }
 
 int
