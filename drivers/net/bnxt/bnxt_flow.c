@@ -1365,6 +1365,8 @@ use_vnic:
 		if (vnic->rx_queue_cnt > 1) {
 			vnic->hash_type =
 				bnxt_rte_to_hwrm_hash_types(rss->types);
+			vnic->hash_mode =
+			bnxt_rte_to_hwrm_hash_level(bp, rss->types, rss->level);
 
 			if (!rss->key_len) {
 				/* If hash key has not been specified,

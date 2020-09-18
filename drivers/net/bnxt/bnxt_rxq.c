@@ -172,9 +172,15 @@ out:
 			bp->flags &= ~BNXT_FLAG_UPDATE_HASH;
 
 		for (i = 0; i < bp->nr_vnics; i++) {
+			uint32_t lvl = ETH_RSS_LEVEL(rss->rss_hf);
+
 			vnic = &bp->vnic_info[i];
 			vnic->hash_type =
 				bnxt_rte_to_hwrm_hash_types(rss->rss_hf);
+			vnic->hash_mode =
+				bnxt_rte_to_hwrm_hash_level(bp,
+							    rss->rss_hf,
+							    lvl);
 
 			/*
 			 * Use the supplied key if the key length is

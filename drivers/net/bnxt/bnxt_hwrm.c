@@ -835,6 +835,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp)
 int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 {
 	int rc = 0;
+	uint32_t flags;
 	struct hwrm_vnic_qcaps_input req = {.req_type = 0 };
 	struct hwrm_vnic_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
 
@@ -846,11 +847,15 @@ int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
-	if (rte_le_to_cpu_32(resp->flags) &
-	    HWRM_VNIC_QCAPS_OUTPUT_FLAGS_COS_ASSIGNMENT_CAP) {
+	flags = rte_le_to_cpu_32(resp->flags);
+
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_COS_ASSIGNMENT_CAP) {
 		bp->vnic_cap_flags |= BNXT_VNIC_CAP_COS_CLASSIFY;
 		PMD_DRV_LOG(INFO, "CoS assignment capability enabled\n");
 	}
+
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_OUTERMOST_RSS_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_OUTER_RSS;
 
 	bp->max_tpa_v2 = rte_le_to_cpu_16(resp->max_aggs_supported);
 

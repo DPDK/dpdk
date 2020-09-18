@@ -60,6 +60,7 @@ New Features
   Updated the Broadcom bnxt driver with new features and improvements, including:
 
   * Added support for 200G PAM4 link speed.
+  * Added support for RSS hash level selection.
 
 * **Updated Cisco enic driver.**
 

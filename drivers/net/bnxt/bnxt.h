@@ -558,7 +558,8 @@ struct bnxt_rep_info {
 	ETH_RSS_NONFRAG_IPV4_UDP |	\
 	ETH_RSS_IPV6 |		\
 	ETH_RSS_NONFRAG_IPV6_TCP |	\
-	ETH_RSS_NONFRAG_IPV6_UDP)
+	ETH_RSS_NONFRAG_IPV6_UDP |	\
+	ETH_RSS_LEVEL_MASK)
 
 #define BNXT_DEV_TX_OFFLOAD_SUPPORT (DEV_TX_OFFLOAD_VLAN_INSERT | \
 				     DEV_TX_OFFLOAD_IPV4_CKSUM | \
@@ -671,6 +672,7 @@ struct bnxt {
 
 	uint32_t		vnic_cap_flags;
 #define BNXT_VNIC_CAP_COS_CLASSIFY	BIT(0)
+#define BNXT_VNIC_CAP_OUTER_RSS		BIT(1)
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	unsigned int		rx_num_qs_per_vnic;

@@ -1898,6 +1898,9 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	/* Update the default RSS VNIC(s) */
 	vnic = BNXT_GET_DEFAULT_VNIC(bp);
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_conf->rss_hf);
+	vnic->hash_mode =
+		bnxt_rte_to_hwrm_hash_level(bp, rss_conf->rss_hf,
+					    ETH_RSS_LEVEL(rss_conf->rss_hf));
 
 	/*
 	 * If hashkey is not specified, use the previously configured
@@ -1968,6 +1971,10 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 			hash_types &=
 				~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
 		}
+
+		rss_conf->rss_hf |=
+			bnxt_hwrm_to_rte_rss_level(bp, vnic->hash_mode);
+
 		if (hash_types) {
 			PMD_DRV_LOG(ERR,
 				"Unknown RSS config from firmware (%08x), RSS disabled",
