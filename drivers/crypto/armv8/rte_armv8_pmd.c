@@ -143,7 +143,8 @@ crypto_chain_order[] = {
 	crypto_func_tbl_t *func_tbl =					\
 				(crypto_chain_order[(order)])[(cop)];	\
 									\
-	((*func_tbl)[(calg)][(aalg)][KEYL(keyl)]);		\
+	((calg >= CRYPTO_CIPHER_MAX) || (aalg >= CRYPTO_AUTH_MAX)) ?	\
+		NULL : ((*func_tbl)[(calg)][(aalg)][KEYL(keyl)]);	\
 })
 
 /*----------------------------------------------------------------------------*/
@@ -188,7 +189,8 @@ crypto_key_sched_dir[] = {
 ({									\
 	crypto_key_sched_tbl_t *ks_tbl = crypto_key_sched_dir[(cop)];	\
 									\
-	((*ks_tbl)[(calg)][KEYL(keyl)]);				\
+	(calg >= CRYPTO_CIPHER_MAX) ?					\
+		NULL : ((*ks_tbl)[(calg)][KEYL(keyl)]);			\
 })
 
 /*----------------------------------------------------------------------------*/
@@ -436,7 +438,8 @@ armv8_crypto_set_session_chained_parameters(struct armv8_crypto_session *sess,
 		return -ENOTSUP;
 	}
 
-	if (unlikely(sess->crypto_func == NULL)) {
+	if (unlikely(sess->crypto_func == NULL ||
+		sess->cipher.key_sched == NULL)) {
 		/*
 		 * If we got here that means that there must be a bug
 		 * in the algorithms selection above. Nevertheless keep
