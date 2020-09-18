@@ -114,6 +114,7 @@ struct ice_buf_hdr {
 	(ent_sz))
 
 /* ice package section IDs */
+#define ICE_SID_METADATA		1
 #define ICE_SID_XLT0_SW			10
 #define ICE_SID_XLT_KEY_BUILDER_SW	11
 #define ICE_SID_XLT1_SW			12
@@ -341,6 +342,13 @@ struct ice_ptype_attrib_info {
 struct ice_ptype_attributes {
 	u16 ptype;
 	enum ice_ptype_attrib_type attrib;
+};
+
+struct ice_meta_sect {
+	struct ice_pkg_ver ver;
+#define ICE_META_SECT_NAME_SIZE	28
+	char name[ICE_META_SECT_NAME_SIZE];
+	__le32 track_id;
 };
 
 /* Packet Type Groups (PTG) - Inner Most fields (IM) */
