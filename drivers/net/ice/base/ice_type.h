@@ -509,11 +509,13 @@ struct ice_orom_info {
 	u8 major;			/* Major version of OROM */
 	u8 patch;			/* Patch version of OROM */
 	u16 build;			/* Build version of OROM */
+	u32 srev;			/* Security revision */
 };
 
 /* NVM version information */
 struct ice_nvm_info {
 	u32 eetrack;
+	u32 srev;
 	u8 major;
 	u8 minor;
 };
@@ -1116,6 +1118,13 @@ enum ice_sw_fwd_act_type {
 #define ICE_SR_IMMEDIATE_VALUES_PTR		0x4E
 #define ICE_SR_LINK_DEFAULT_OVERRIDE_PTR	0x134
 #define ICE_SR_POR_REGISTERS_AUTOLOAD_PTR	0x118
+
+/* CSS Header words */
+#define ICE_NVM_CSS_SREV_L			0x14
+#define ICE_NVM_CSS_SREV_H			0x15
+
+/* Size in bytes of Option ROM trailer */
+#define ICE_NVM_OROM_TRAILER_LENGTH		660
 
 /* Auxiliary field, mask and shift definition for Shadow RAM and NVM Flash */
 #define ICE_SR_VPD_SIZE_WORDS		512

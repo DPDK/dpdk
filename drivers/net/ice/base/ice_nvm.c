@@ -213,6 +213,107 @@ void ice_release_nvm(struct ice_hw *hw)
 }
 
 /**
+ * ice_read_flash_module - Read a word from one of the main NVM modules
+ * @hw: pointer to the HW structure
+ * @bank: which bank of the module to read
+ * @module: the module to read
+ * @offset: the offset into the module in words
+ * @data: storage for the word read from the flash
+ *
+ * Read a word from the specified bank of the module. The bank must be either
+ * the 1st or 2nd bank. The word will be read using flat NVM access, and
+ * relies on the hw->flash.banks data being setup by
+ * ice_determine_active_flash_banks() during initialization.
+ */
+static enum ice_status
+ice_read_flash_module(struct ice_hw *hw, enum ice_flash_bank bank, u16 module,
+		      u32 offset, u16 *data)
+{
+	struct ice_bank_info *banks = &hw->flash.banks;
+	u32 bytes = sizeof(u16);
+	enum ice_status status;
+	__le16 data_local;
+	bool second_bank;
+	u32 start;
+
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+
+	switch (bank) {
+	case ICE_1ST_FLASH_BANK:
+		second_bank = false;
+		break;
+	case ICE_2ND_FLASH_BANK:
+		second_bank = true;
+		break;
+	case ICE_INVALID_FLASH_BANK:
+	default:
+		ice_debug(hw, ICE_DBG_NVM, "Unexpected flash bank %u\n", bank);
+		return ICE_ERR_PARAM;
+	}
+
+	switch (module) {
+	case ICE_SR_1ST_NVM_BANK_PTR:
+		start = banks->nvm_ptr + (second_bank ? banks->nvm_size : 0);
+		break;
+	case ICE_SR_1ST_OROM_BANK_PTR:
+		start = banks->orom_ptr + (second_bank ? banks->orom_size : 0);
+		break;
+	case ICE_SR_NETLIST_BANK_PTR:
+		start = banks->netlist_ptr + (second_bank ? banks->netlist_size : 0);
+		break;
+	default:
+		ice_debug(hw, ICE_DBG_NVM, "Unexpected flash module 0x%04x\n", module);
+		return ICE_ERR_PARAM;
+	}
+
+	status = ice_acquire_nvm(hw, ICE_RES_READ);
+	if (status)
+		return status;
+
+	status = ice_read_flat_nvm(hw, start + offset * sizeof(u16), &bytes,
+				   (_FORCE_ u8 *)&data_local, false);
+	if (!status)
+		*data = LE16_TO_CPU(data_local);
+
+	ice_release_nvm(hw);
+
+	return status;
+}
+
+/**
+ * ice_read_active_nvm_module - Read from the active main NVM module
+ * @hw: pointer to the HW structure
+ * @offset: offset into the NVM module to read, in words
+ * @data: storage for returned word value
+ *
+ * Read the specified word from the active NVM module. This includes the CSS
+ * header at the start of the NVM module.
+ */
+static enum ice_status
+ice_read_active_nvm_module(struct ice_hw *hw, u32 offset, u16 *data)
+{
+	return ice_read_flash_module(hw, hw->flash.banks.nvm_bank,
+				     ICE_SR_1ST_NVM_BANK_PTR, offset, data);
+}
+
+/**
+ * ice_read_active_orom_module - Read from the active Option ROM module
+ * @hw: pointer to the HW structure
+ * @offset: offset into the OROM module to read, in words
+ * @data: storage for returned word value
+ *
+ * Read the specified word from the active Option ROM module of the flash.
+ * Note that unlike the NVM module, the CSS data is stored at the end of the
+ * module instead of at the beginning.
+ */
+static enum ice_status
+ice_read_active_orom_module(struct ice_hw *hw, u32 offset, u16 *data)
+{
+	return ice_read_flash_module(hw, hw->flash.banks.orom_bank,
+				     ICE_SR_1ST_OROM_BANK_PTR, offset, data);
+}
+
+/**
  * ice_read_sr_word - Reads Shadow RAM word and acquire NVM if necessary
  * @hw: pointer to the HW structure
  * @offset: offset of the Shadow RAM word to read (0x000000 - 0x001FFF)
@@ -359,6 +460,32 @@ ice_read_pba_string(struct ice_hw *hw, u8 *pba_num, u32 pba_num_size)
 }
 
 /**
+ * ice_get_nvm_srev - Read the security revision from the NVM CSS header
+ * @hw: pointer to the HW struct
+ * @srev: storage for security revision
+ *
+ * Read the security revision out of the CSS header of the active NVM module
+ * bank.
+ */
+static enum ice_status ice_get_nvm_srev(struct ice_hw *hw, u32 *srev)
+{
+	enum ice_status status;
+	u16 srev_l, srev_h;
+
+	status = ice_read_active_nvm_module(hw, ICE_NVM_CSS_SREV_L, &srev_l);
+	if (status)
+		return status;
+
+	status = ice_read_active_nvm_module(hw, ICE_NVM_CSS_SREV_H, &srev_h);
+	if (status)
+		return status;
+
+	*srev = srev_h << 16 | srev_l;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_get_nvm_ver_info - Read NVM version information
  * @hw: pointer to the HW struct
  * @nvm: pointer to NVM info structure
@@ -392,6 +519,49 @@ ice_get_nvm_ver_info(struct ice_hw *hw, struct ice_nvm_info *nvm)
 	}
 
 	nvm->eetrack = (eetrack_hi << 16) | eetrack_lo;
+
+	status = ice_get_nvm_srev(hw, &nvm->srev);
+	if (status)
+		ice_debug(hw, ICE_DBG_NVM, "Failed to read NVM security revision.\n");
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_get_orom_srev - Read the security revision from the OROM CSS header
+ * @hw: pointer to the HW struct
+ * @srev: storage for security revision
+ *
+ * Read the security revision out of the CSS header of the active OROM module
+ * bank.
+ */
+static enum ice_status ice_get_orom_srev(struct ice_hw *hw, u32 *srev)
+{
+	enum ice_status status;
+	u16 srev_l, srev_h;
+	u32 css_start;
+
+	if (hw->flash.banks.orom_size < ICE_NVM_OROM_TRAILER_LENGTH) {
+		ice_debug(hw, ICE_DBG_NVM, "Unexpected Option ROM Size of %u\n",
+			  hw->flash.banks.orom_size);
+		return ICE_ERR_CFG;
+	}
+
+	/* calculate how far into the Option ROM the CSS header starts. Note
+	 * that ice_read_active_orom_module takes a word offset so we need to
+	 * divide by 2 here.
+	 */
+	css_start = (hw->flash.banks.orom_size - ICE_NVM_OROM_TRAILER_LENGTH) / 2;
+
+	status = ice_read_active_orom_module(hw, css_start + ICE_NVM_CSS_SREV_L, &srev_l);
+	if (status)
+		return status;
+
+	status = ice_read_active_orom_module(hw, css_start + ICE_NVM_CSS_SREV_H, &srev_h);
+	if (status)
+		return status;
+
+	*srev = srev_h << 16 | srev_l;
 
 	return ICE_SUCCESS;
 }
@@ -447,6 +617,10 @@ ice_get_orom_ver_info(struct ice_hw *hw, struct ice_orom_info *orom)
 	orom->patch = (u8)(combo_ver & ICE_OROM_VER_PATCH_MASK);
 	orom->build = (u16)((combo_ver & ICE_OROM_VER_BUILD_MASK) >>
 			    ICE_OROM_VER_BUILD_SHIFT);
+
+	status = ice_get_orom_srev(hw, &orom->srev);
+	if (status)
+		ice_debug(hw, ICE_DBG_NVM, "Failed to read Option ROM security revision.\n");
 
 	return ICE_SUCCESS;
 }
