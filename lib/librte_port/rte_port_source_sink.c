@@ -116,7 +116,7 @@ pcap_source_load(struct rte_port_source *port,
 	}
 
 	for (i = 0; i < n_pkts; i++) {
-		pkt = pcap_next(pcap_handle, &pcap_hdr);
+		pcap_next(pcap_handle, &pcap_hdr);
 		port->pkt_len[i] = RTE_MIN(max_len, pcap_hdr.len);
 		pkt_len_aligns[i] = RTE_CACHE_LINE_ROUNDUP(
 			port->pkt_len[i]);
