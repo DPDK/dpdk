@@ -3366,8 +3366,7 @@ ice_create_vsi_list_map(struct ice_hw *hw, u16 *vsi_handle_arr, u16 num_vsi,
 	struct ice_vsi_list_map_info *v_map;
 	int i;
 
-	v_map = (struct ice_vsi_list_map_info *)ice_calloc(hw, 1,
-		sizeof(*v_map));
+	v_map = (struct ice_vsi_list_map_info *)ice_malloc(hw, sizeof(*v_map));
 	if (!v_map)
 		return NULL;
 
