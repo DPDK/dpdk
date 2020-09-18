@@ -617,7 +617,7 @@ main(int argc, char **argv)
 {
 	int ret;
 	struct rte_ipsec_sad *sad;
-	struct rte_ipsec_sad_conf conf;
+	struct rte_ipsec_sad_conf conf = {0};
 	unsigned int lcore_id;
 
 	ret = rte_eal_init(argc, argv);
