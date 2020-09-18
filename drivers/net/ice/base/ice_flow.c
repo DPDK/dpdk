@@ -299,7 +299,7 @@ static const u32 ice_ptypes_ipv6_il[] = {
 };
 
 /* Packet types for packets with an Outer/First/Single IPv4 header - no L4 */
-static const u32 ice_ipv4_ofos_no_l4[] = {
+static const u32 ice_ptypes_ipv4_ofos_no_l4[] = {
 	0x10C00000, 0x04000800, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x000cc000, 0x000002A0, 0x00000000,
@@ -311,7 +311,7 @@ static const u32 ice_ipv4_ofos_no_l4[] = {
 };
 
 /* Packet types for packets with an Innermost/Last IPv4 header - no L4 */
-static const u32 ice_ipv4_il_no_l4[] = {
+static const u32 ice_ptypes_ipv4_il_no_l4[] = {
 	0x60000000, 0x18043008, 0x80000002, 0x6010c021,
 	0x00000008, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00139800, 0x00000000,
@@ -323,7 +323,7 @@ static const u32 ice_ipv4_il_no_l4[] = {
 };
 
 /* Packet types for packets with an Outer/First/Single IPv6 header - no L4 */
-static const u32 ice_ipv6_ofos_no_l4[] = {
+static const u32 ice_ptypes_ipv6_ofos_no_l4[] = {
 	0x00000000, 0x00000000, 0x43000000, 0x10002000,
 	0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x02300000, 0x00000540, 0x00000000,
@@ -335,7 +335,7 @@ static const u32 ice_ipv6_ofos_no_l4[] = {
 };
 
 /* Packet types for packets with an Innermost/Last IPv6 header - no L4 */
-static const u32 ice_ipv6_il_no_l4[] = {
+static const u32 ice_ptypes_ipv6_il_no_l4[] = {
 	0x00000000, 0x02180430, 0x0000010c, 0x086010c0,
 	0x00000430, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x4e600000, 0x00000000,
@@ -853,8 +853,8 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				       ICE_FLOW_PTYPE_MAX);
 		} else if ((hdrs & ICE_FLOW_SEG_HDR_IPV4) &&
 			   !(hdrs & ICE_FLOW_SEG_HDRS_L4_MASK_NO_OTHER)) {
-			src = !i ? (const ice_bitmap_t *)ice_ipv4_ofos_no_l4 :
-				(const ice_bitmap_t *)ice_ipv4_il_no_l4;
+			src = !i ? (const ice_bitmap_t *)ice_ptypes_ipv4_ofos_no_l4 :
+				(const ice_bitmap_t *)ice_ptypes_ipv4_il_no_l4;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
 		} else if (hdrs & ICE_FLOW_SEG_HDR_IPV4) {
@@ -864,8 +864,8 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 				       ICE_FLOW_PTYPE_MAX);
 		} else if ((hdrs & ICE_FLOW_SEG_HDR_IPV6) &&
 			   !(hdrs & ICE_FLOW_SEG_HDRS_L4_MASK_NO_OTHER)) {
-			src = !i ? (const ice_bitmap_t *)ice_ipv6_ofos_no_l4 :
-				(const ice_bitmap_t *)ice_ipv6_il_no_l4;
+			src = !i ? (const ice_bitmap_t *)ice_ptypes_ipv6_ofos_no_l4 :
+				(const ice_bitmap_t *)ice_ptypes_ipv6_il_no_l4;
 			ice_and_bitmap(params->ptypes, params->ptypes, src,
 				       ICE_FLOW_PTYPE_MAX);
 		} else if (hdrs & ICE_FLOW_SEG_HDR_IPV6) {
