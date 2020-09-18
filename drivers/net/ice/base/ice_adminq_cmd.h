@@ -1442,6 +1442,10 @@ struct ice_aqc_get_link_status_data {
 #define ICE_AQ_LINK_TOPO_UNSUPP_MEDIA	BIT(7)
 	u8 link_cfg_err;
 #define ICE_AQ_LINK_CFG_ERR		BIT(0)
+#define ICE_AQ_LINK_ACT_PORT_OPT_INVAL	BIT(2)
+#define ICE_AQ_LINK_FEAT_ID_OR_CONFIG_ID_INVAL	BIT(3)
+#define ICE_AQ_LINK_TOPO_CRITICAL_SDP_ERR	BIT(4)
+#define ICE_AQ_LINK_MODULE_POWER_UNSUPPORTED	BIT(5)
 	u8 link_info;
 #define ICE_AQ_LINK_UP			BIT(0)	/* Link Status */
 #define ICE_AQ_LINK_FAULT		BIT(1)
@@ -1489,7 +1493,7 @@ struct ice_aqc_get_link_status_data {
 #define ICE_AQ_CFG_PACING_TYPE_FIXED	ICE_AQ_CFG_PACING_TYPE_M
 	/* External Device Power Ability */
 	u8 power_desc;
-#define ICE_AQ_PWR_CLASS_M		0x3
+#define ICE_AQ_PWR_CLASS_M		0x3F
 #define ICE_AQ_LINK_PWR_BASET_LOW_HIGH	0
 #define ICE_AQ_LINK_PWR_BASET_HIGH	1
 #define ICE_AQ_LINK_PWR_QSFP_CLASS_1	0
