@@ -28,11 +28,16 @@
 #define IAVF_PHINT_GTPU_EH			BIT_ULL(1)
 #define	IAVF_PHINT_GTPU_EH_DWN			BIT_ULL(2)
 #define	IAVF_PHINT_GTPU_EH_UP			BIT_ULL(3)
+#define IAVF_PHINT_OUTER_IPV4			BIT_ULL(4)
+#define IAVF_PHINT_OUTER_IPV6			BIT_ULL(5)
 
 #define IAVF_PHINT_GTPU_MSK	(IAVF_PHINT_GTPU	| \
 				 IAVF_PHINT_GTPU_EH	| \
 				 IAVF_PHINT_GTPU_EH_DWN	| \
 				 IAVF_PHINT_GTPU_EH_UP)
+
+#define IAVF_PHINT_LAYERS_MSK	(IAVF_PHINT_OUTER_IPV4	| \
+				 IAVF_PHINT_OUTER_IPV6)
 
 #define IAVF_GTPU_EH_DWNLINK	0
 #define IAVF_GTPU_EH_UPLINK	1
@@ -499,8 +504,7 @@ iavf_hash_init(struct iavf_adapter *ad)
 }
 
 static int
-iavf_hash_parse_pattern(struct iavf_pattern_match_item *pattern_match_item,
-			const struct rte_flow_item pattern[], uint64_t *phint,
+iavf_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 			struct rte_flow_error *error)
 {
 	const struct rte_flow_item *item = pattern;
@@ -515,6 +519,14 @@ iavf_hash_parse_pattern(struct iavf_pattern_match_item *pattern_match_item,
 		}
 
 		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			if (!(*phint & IAVF_PHINT_GTPU_MSK))
+				*phint |= IAVF_PHINT_OUTER_IPV4;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			if (!(*phint & IAVF_PHINT_GTPU_MSK))
+				*phint |= IAVF_PHINT_OUTER_IPV6;
+			break;
 		case RTE_FLOW_ITEM_TYPE_GTPU:
 			*phint |= IAVF_PHINT_GTPU;
 			break;
@@ -532,9 +544,6 @@ iavf_hash_parse_pattern(struct iavf_pattern_match_item *pattern_match_item,
 			break;
 		}
 	}
-
-	/* update and restore pattern hint */
-	*phint |= *(uint64_t *)(pattern_match_item->meta);
 
 	return 0;
 }
@@ -717,22 +726,39 @@ iavf_refine_proto_hdrs_by_pattern(struct virtchnl_proto_hdrs *proto_hdrs,
 {
 	struct virtchnl_proto_hdr *hdr1;
 	struct virtchnl_proto_hdr *hdr2;
-	int i;
+	int i, shift_count = 1;
 
 	if (!(phint & IAVF_PHINT_GTPU_MSK))
 		return;
 
-	if (proto_hdrs->tunnel_level == TUNNEL_LEVEL_INNER) {
-		/* shift headers 1 layer */
-		for (i = proto_hdrs->count; i > 0; i--) {
-			hdr1 = &proto_hdrs->proto_hdr[i];
-			hdr2 = &proto_hdrs->proto_hdr[i - 1];
+	if (phint & IAVF_PHINT_LAYERS_MSK)
+		shift_count++;
 
+	if (proto_hdrs->tunnel_level == TUNNEL_LEVEL_INNER) {
+		/* shift headers layer */
+		for (i = proto_hdrs->count - 1 + shift_count;
+		     i > shift_count - 1; i--) {
+			hdr1 = &proto_hdrs->proto_hdr[i];
+			hdr2 = &proto_hdrs->proto_hdr[i - shift_count];
 			*hdr1 = *hdr2;
 		}
 
-		/* adding gtpu header at layer 0 */
-		hdr1 = &proto_hdrs->proto_hdr[0];
+		if (shift_count == 1) {
+			/* adding gtpu header at layer 0 */
+			hdr1 = &proto_hdrs->proto_hdr[0];
+		} else {
+			/* adding gtpu header and outer ip header */
+			hdr1 = &proto_hdrs->proto_hdr[1];
+			hdr2 = &proto_hdrs->proto_hdr[0];
+			hdr2->field_selector = 0;
+			proto_hdrs->count++;
+			proto_hdrs->tunnel_level = TUNNEL_LEVEL_OUTER;
+
+			if (phint & IAVF_PHINT_OUTER_IPV4)
+				VIRTCHNL_SET_PROTO_HDR_TYPE(hdr2, IPV4);
+			else if (phint & IAVF_PHINT_OUTER_IPV6)
+				VIRTCHNL_SET_PROTO_HDR_TYPE(hdr2, IPV6);
+		}
 	} else {
 		hdr1 = &proto_hdrs->proto_hdr[proto_hdrs->count];
 	}
@@ -947,8 +973,7 @@ iavf_hash_parse_pattern_action(__rte_unused struct iavf_adapter *ad,
 		goto error;
 	}
 
-	ret = iavf_hash_parse_pattern(pattern_match_item, pattern, &phint,
-				      error);
+	ret = iavf_hash_parse_pattern(pattern, &phint, error);
 	if (ret)
 		goto error;
 
