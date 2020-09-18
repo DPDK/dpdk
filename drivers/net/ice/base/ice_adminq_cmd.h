@@ -1654,6 +1654,9 @@ struct ice_aqc_nvm {
 #define ICE_AQC_NVM_REVERT_LAST_ACTIV	BIT(6) /* Write Activate only */
 #define ICE_AQC_NVM_ACTIV_SEL_MASK	MAKEMASK(0x7, 3)
 #define ICE_AQC_NVM_FLASH_ONLY		BIT(7)
+#define ICE_AQC_NVM_POR_FLAG	0	/* Used by NVM Write completion on ARQ */
+#define ICE_AQC_NVM_PERST_FLAG	1
+#define ICE_AQC_NVM_EMPR_FLAG	2
 	__le16 module_typeid;
 	__le16 length;
 #define ICE_AQC_NVM_ERASE_LEN	0xFFFF
