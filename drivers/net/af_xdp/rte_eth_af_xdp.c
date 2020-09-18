@@ -304,6 +304,10 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint32_t free_thresh = fq->size >> 1;
 	struct rte_mbuf *mbufs[ETH_AF_XDP_RX_BATCH_SIZE];
 
+	if (xsk_prod_nb_free(fq, free_thresh) >= free_thresh)
+		(void)reserve_fill_queue(umem, ETH_AF_XDP_RX_BATCH_SIZE, NULL);
+
+
 	if (unlikely(rte_pktmbuf_alloc_bulk(rxq->mb_pool, mbufs, nb_pkts) != 0))
 		return 0;
 
@@ -316,9 +320,6 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		goto out;
 	}
-
-	if (xsk_prod_nb_free(fq, free_thresh) >= free_thresh)
-		(void)reserve_fill_queue(umem, ETH_AF_XDP_RX_BATCH_SIZE, NULL);
 
 	for (i = 0; i < rcvd; i++) {
 		const struct xdp_desc *desc;
