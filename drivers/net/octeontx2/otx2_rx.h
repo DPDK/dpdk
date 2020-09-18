@@ -9,6 +9,7 @@
 
 #include "otx2_common.h"
 #include "otx2_ethdev_sec.h"
+#include "otx2_ipsec_anti_replay.h"
 #include "otx2_ipsec_fp.h"
 
 /* Default mark value used when none is provided. */
@@ -243,6 +244,12 @@ nix_rx_sec_mbuf_update(const struct nix_cqe_hdr_s *cq, struct rte_mbuf *m,
 	m->udata64 = (uint64_t)sa->userdata;
 
 	data = rte_pktmbuf_mtod(m, char *);
+
+	if (sa->replay_win_sz) {
+		if (cpt_ipsec_antireplay_check(sa, data) < 0)
+			return PKT_RX_SEC_OFFLOAD | PKT_RX_SEC_OFFLOAD_FAILED;
+	}
+
 	memcpy(data + INLINE_INB_RPTR_HDR, data, RTE_ETHER_HDR_LEN);
 
 	m->data_off += INLINE_INB_RPTR_HDR;
