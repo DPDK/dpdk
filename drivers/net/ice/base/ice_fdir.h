@@ -181,6 +181,15 @@ struct ice_fdir_fltr {
 		struct ice_fdir_v6 v6;
 	} ip, mask;
 
+	/* for tunnel outer part */
+	union {
+		struct ice_fdir_v4 v4;
+		struct ice_fdir_v6 v6;
+	} ip_outer, mask_outer;
+
+	struct ice_fdir_extra ext_data_outer;
+	struct ice_fdir_extra ext_mask_outer;
+
 	struct ice_fdir_udp_gtp gtpu_data;
 	struct ice_fdir_udp_gtp gtpu_mask;
 
