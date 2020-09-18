@@ -5,6 +5,8 @@
 #ifndef __OTX2_SECURITY_H__
 #define __OTX2_SECURITY_H__
 
+#include <rte_security.h>
+
 #include "otx2_cryptodev_sec.h"
 #include "otx2_ethdev_sec.h"
 
@@ -20,6 +22,7 @@
 union otx2_sec_session_ipsec {
 	struct otx2_sec_session_ipsec_ip ip;
 	struct otx2_sec_session_ipsec_lp lp;
+	enum rte_security_ipsec_sa_direction dir;
 };
 
 struct otx2_sec_session {

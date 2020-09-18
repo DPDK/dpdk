@@ -360,6 +360,7 @@ eth_sec_ipsec_out_sess_create(struct rte_eth_dev *eth_dev,
 	struct otx2_cpt_qp *qp;
 
 	priv = get_sec_session_private_data(sec_sess);
+	priv->ipsec.dir = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	sess = &priv->ipsec.ip;
 
 	sa = &sess->out_sa;
@@ -482,6 +483,7 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 	ctl = &sa->ctl;
 
 	priv = get_sec_session_private_data(sec_sess);
+	priv->ipsec.dir = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 	sess = &priv->ipsec.ip;
 
 	if (ctl->valid) {
@@ -519,6 +521,8 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 
 	sa->userdata = priv->userdata;
 
+	sa->replay_win_sz = ipsec->replay_win_sz;
+
 	if (lookup_mem_sa_index_update(eth_dev, ipsec->spi, sa))
 		return -EINVAL;
 
@@ -533,7 +537,32 @@ eth_sec_ipsec_in_sess_create(struct rte_eth_dev *eth_dev,
 			return ret;
 		ret = hmac_init(ctl, qp, auth_key, auth_key_len, sa->hmac_key);
 		otx2_sec_idev_tx_cpt_qp_put(qp);
+		if (ret)
+			return ret;
 	}
+
+	if (sa->replay_win_sz) {
+		if (sa->replay_win_sz > OTX2_IPSEC_MAX_REPLAY_WIN_SZ) {
+			otx2_err("Replay window size is not supported");
+			return -ENOTSUP;
+		}
+		sa->replay = rte_zmalloc(NULL, sizeof(struct otx2_ipsec_replay),
+				0);
+		if (sa->replay == NULL)
+			return -ENOMEM;
+
+		rte_spinlock_init(&sa->replay->lock);
+		/*
+		 * Set window bottom to 1, base and top to size of
+		 * window
+		 */
+		sa->replay->winb = 1;
+		sa->replay->wint = sa->replay_win_sz;
+		sa->replay->base = sa->replay_win_sz;
+		sa->esn_low = 0;
+		sa->esn_hi = 0;
+	}
+
 	return ret;
 }
 
@@ -600,6 +629,15 @@ mempool_put:
 	return ret;
 }
 
+static void
+otx2_eth_sec_free_anti_replay(struct otx2_ipsec_fp_in_sa *sa)
+{
+	if (sa != NULL) {
+		if (sa->replay_win_sz && sa->replay)
+			rte_free(sa->replay);
+	}
+}
+
 static int
 otx2_eth_sec_session_destroy(void *device __rte_unused,
 			     struct rte_security_session *sess)
@@ -614,6 +652,10 @@ otx2_eth_sec_session_destroy(void *device __rte_unused,
 		return -EINVAL;
 
 	sess_ip = &priv->ipsec.ip;
+
+	/* Release the anti replay window */
+	if (priv->ipsec.dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+		otx2_eth_sec_free_anti_replay(sess_ip->in_sa);
 
 	/* Release CPT LF used for this session */
 	if (sess_ip->qp != NULL) {
