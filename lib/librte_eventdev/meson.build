@@ -27,3 +27,4 @@ headers = files('rte_eventdev.h',
 		'rte_event_crypto_adapter.h',
 		'rte_event_eth_tx_adapter.h')
 deps += ['ring', 'ethdev', 'hash', 'mempool', 'mbuf', 'timer', 'cryptodev']
+deps += ['telemetry']
