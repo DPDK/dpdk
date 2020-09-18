@@ -607,10 +607,10 @@ virtqueue_notify(struct virtqueue *vq)
 
 /* avoid write operation when necessary, to lessen cache issues */
 #define ASSIGN_UNLESS_EQUAL(var, val) do {	\
-	typeof(var) var_ = (var);		\
-	typeof(val) val_ = (val);		\
-	if ((var_) != (val_))			\
-		(var_) = (val_);		\
+	typeof(var) *const var_ = &(var);	\
+	typeof(val)  const val_ = (val);	\
+	if (*var_ != val_)			\
+		*var_ = val_;			\
 } while (0)
 
 #define virtqueue_clear_net_hdr(hdr) do {		\
