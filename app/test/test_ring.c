@@ -834,8 +834,13 @@ test_ring_basic_ex(void)
 			rte_ring_free_count(rp));
 
 		for (j = 0; j < RING_SIZE - 1; j++) {
-			test_ring_enqueue(rp, cur_src, esize[i], 1,
+			ret = test_ring_enqueue(rp, cur_src, esize[i], 1,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE);
+			if (ret != 0) {
+				printf("%s: rte_ring_enqueue fails\n",
+					__func__);
+				goto fail_test;
+			}
 			cur_src = test_ring_inc_ptr(cur_src, esize[i], 1);
 		}
 
@@ -846,8 +851,13 @@ test_ring_basic_ex(void)
 		}
 
 		for (j = 0; j < RING_SIZE - 1; j++) {
-			test_ring_dequeue(rp, cur_dst, esize[i], 1,
+			ret = test_ring_dequeue(rp, cur_dst, esize[i], 1,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE);
+			if (ret != 0) {
+				printf("%s: rte_ring_dequeue fails\n",
+					__func__);
+				goto fail_test;
+			}
 			cur_dst = test_ring_inc_ptr(cur_dst, esize[i], 1);
 		}
 
@@ -1001,10 +1011,18 @@ test_ring_with_exact_size(void)
 		 * than the standard ring. (16 vs 15 elements)
 		 */
 		for (j = 0; j < ring_sz - 1; j++) {
-			test_ring_enqueue(std_r, cur_src, esize[i], 1,
+			ret = test_ring_enqueue(std_r, cur_src, esize[i], 1,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE);
-			test_ring_enqueue(exact_sz_r, cur_src, esize[i], 1,
+			if (ret != 0) {
+				printf("%s: error, enqueue failed\n", __func__);
+				goto test_fail;
+			}
+			ret = test_ring_enqueue(exact_sz_r, cur_src, esize[i], 1,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE);
+			if (ret != 0) {
+				printf("%s: error, enqueue failed\n", __func__);
+				goto test_fail;
+			}
 			cur_src = test_ring_inc_ptr(cur_src, esize[i], 1);
 		}
 		ret = test_ring_enqueue(std_r, cur_src, esize[i], 1,
