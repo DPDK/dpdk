@@ -444,7 +444,12 @@ test_ring_burst_bulk_tests1(unsigned int test_idx)
 			TEST_RING_VERIFY(rte_ring_empty(r));
 
 			/* check data */
-			TEST_RING_VERIFY(memcmp(src, dst, rsz) == 0);
+			if (esize[i] == -1) {
+				TEST_RING_VERIFY(memcmp(src, dst,
+					rsz * sizeof(void *)) == 0);
+			} else
+				TEST_RING_VERIFY(memcmp(src, dst,
+					rsz * esize[i]) == 0);
 		}
 
 		/* Free memory before test completed */
@@ -538,9 +543,11 @@ test_ring_burst_bulk_tests2(unsigned int test_idx)
 		cur_dst = test_ring_inc_ptr(cur_dst, esize[i], MAX_BULK);
 
 		/* check data */
-		if (memcmp(src, dst, cur_dst - dst)) {
-			rte_hexdump(stdout, "src", src, cur_src - src);
-			rte_hexdump(stdout, "dst", dst, cur_dst - dst);
+		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
+			rte_hexdump(stdout, "src", src,
+					RTE_PTR_DIFF(cur_src, src));
+			rte_hexdump(stdout, "dst", dst,
+					RTE_PTR_DIFF(cur_dst, dst));
 			printf("data after dequeue is not the same\n");
 			goto fail;
 		}
@@ -614,9 +621,11 @@ test_ring_burst_bulk_tests3(unsigned int test_idx)
 		}
 
 		/* check data */
-		if (memcmp(src, dst, cur_dst - dst)) {
-			rte_hexdump(stdout, "src", src, cur_src - src);
-			rte_hexdump(stdout, "dst", dst, cur_dst - dst);
+		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
+			rte_hexdump(stdout, "src", src,
+					RTE_PTR_DIFF(cur_src, src));
+			rte_hexdump(stdout, "dst", dst,
+					RTE_PTR_DIFF(cur_dst, dst));
 			printf("data after dequeue is not the same\n");
 			goto fail;
 		}
@@ -747,9 +756,11 @@ test_ring_burst_bulk_tests4(unsigned int test_idx)
 			goto fail;
 
 		/* check data */
-		if (memcmp(src, dst, cur_dst - dst)) {
-			rte_hexdump(stdout, "src", src, cur_src - src);
-			rte_hexdump(stdout, "dst", dst, cur_dst - dst);
+		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
+			rte_hexdump(stdout, "src", src,
+					RTE_PTR_DIFF(cur_src, src));
+			rte_hexdump(stdout, "dst", dst,
+					RTE_PTR_DIFF(cur_dst, dst));
 			printf("data after dequeue is not the same\n");
 			goto fail;
 		}
