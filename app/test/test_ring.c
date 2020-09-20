@@ -811,7 +811,7 @@ test_ring_basic_ex(void)
 		printf("%u ring entries are now free\n",
 			rte_ring_free_count(rp));
 
-		for (j = 0; j < RING_SIZE; j++) {
+		for (j = 0; j < RING_SIZE - 1; j++) {
 			test_ring_enqueue(rp, obj, esize[i], 1,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE);
 		}
@@ -822,7 +822,7 @@ test_ring_basic_ex(void)
 			goto fail_test;
 		}
 
-		for (j = 0; j < RING_SIZE; j++) {
+		for (j = 0; j < RING_SIZE - 1; j++) {
 			test_ring_dequeue(rp, obj, esize[i], 1,
 				TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE);
 		}
