@@ -258,6 +258,21 @@ test_ring_mem_init(void *obj, unsigned int count, int esize)
 			((uint32_t *)obj)[i] = i;
 }
 
+static int
+test_ring_mem_cmp(void *src, void *dst, unsigned int size)
+{
+	int ret;
+
+	ret = memcmp(src, dst, size);
+	if (ret) {
+		rte_hexdump(stdout, "src", src, size);
+		rte_hexdump(stdout, "dst", dst, size);
+		printf("data after dequeue is not the same\n");
+	}
+
+	return ret;
+}
+
 static void
 test_ring_print_test_string(const char *istr, unsigned int api_type, int esize)
 {
@@ -383,7 +398,7 @@ test_ring_burst_bulk_tests1(unsigned int test_idx)
 	struct rte_ring *r;
 	void **src = NULL, **cur_src = NULL, **dst = NULL, **cur_dst = NULL;
 	int ret;
-	unsigned int i, j;
+	unsigned int i, j, temp_sz;
 	int rand;
 	const unsigned int rsz = RING_SIZE - 1;
 
@@ -444,12 +459,11 @@ test_ring_burst_bulk_tests1(unsigned int test_idx)
 			TEST_RING_VERIFY(rte_ring_empty(r));
 
 			/* check data */
-			if (esize[i] == -1) {
-				TEST_RING_VERIFY(memcmp(src, dst,
-					rsz * sizeof(void *)) == 0);
-			} else
-				TEST_RING_VERIFY(memcmp(src, dst,
-					rsz * esize[i]) == 0);
+			temp_sz = rsz * sizeof(void *);
+			if (esize[i] != -1)
+				temp_sz = rsz * esize[i];
+			TEST_RING_VERIFY(test_ring_mem_cmp(src, dst,
+						temp_sz) == 0);
 		}
 
 		/* Free memory before test completed */
@@ -543,14 +557,8 @@ test_ring_burst_bulk_tests2(unsigned int test_idx)
 		cur_dst = test_ring_inc_ptr(cur_dst, esize[i], MAX_BULK);
 
 		/* check data */
-		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
-			rte_hexdump(stdout, "src", src,
-					RTE_PTR_DIFF(cur_src, src));
-			rte_hexdump(stdout, "dst", dst,
-					RTE_PTR_DIFF(cur_dst, dst));
-			printf("data after dequeue is not the same\n");
+		if (test_ring_mem_cmp(src, dst, RTE_PTR_DIFF(cur_dst, dst)))
 			goto fail;
-		}
 
 		/* Free memory before test completed */
 		rte_ring_free(r);
@@ -621,14 +629,8 @@ test_ring_burst_bulk_tests3(unsigned int test_idx)
 		}
 
 		/* check data */
-		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
-			rte_hexdump(stdout, "src", src,
-					RTE_PTR_DIFF(cur_src, src));
-			rte_hexdump(stdout, "dst", dst,
-					RTE_PTR_DIFF(cur_dst, dst));
-			printf("data after dequeue is not the same\n");
+		if (test_ring_mem_cmp(src, dst, RTE_PTR_DIFF(cur_dst, dst)))
 			goto fail;
-		}
 
 		/* Free memory before test completed */
 		rte_ring_free(r);
@@ -756,14 +758,8 @@ test_ring_burst_bulk_tests4(unsigned int test_idx)
 			goto fail;
 
 		/* check data */
-		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
-			rte_hexdump(stdout, "src", src,
-					RTE_PTR_DIFF(cur_src, src));
-			rte_hexdump(stdout, "dst", dst,
-					RTE_PTR_DIFF(cur_dst, dst));
-			printf("data after dequeue is not the same\n");
+		if (test_ring_mem_cmp(src, dst, RTE_PTR_DIFF(cur_dst, dst)))
 			goto fail;
-		}
 
 		/* Free memory before test completed */
 		rte_ring_free(r);
@@ -868,12 +864,8 @@ test_ring_basic_ex(void)
 		}
 
 		/* check data */
-		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
-			rte_hexdump(stdout, "src", src, RTE_PTR_DIFF(cur_src, src));
-			rte_hexdump(stdout, "dst", dst, RTE_PTR_DIFF(cur_dst, dst));
-			printf("data after dequeue is not the same\n");
+		if (test_ring_mem_cmp(src, dst, RTE_PTR_DIFF(cur_dst, dst)))
 			goto fail_test;
-		}
 
 		/* Following tests use the configured flags to decide
 		 * SP/SC or MP/MC.
@@ -920,12 +912,8 @@ test_ring_basic_ex(void)
 		cur_dst = test_ring_inc_ptr(cur_dst, esize[i], 2);
 
 		/* check data */
-		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
-			rte_hexdump(stdout, "src", src, RTE_PTR_DIFF(cur_src, src));
-			rte_hexdump(stdout, "dst", dst, RTE_PTR_DIFF(cur_dst, dst));
-			printf("data after dequeue is not the same\n");
+		if (test_ring_mem_cmp(src, dst, RTE_PTR_DIFF(cur_dst, dst)))
 			goto fail_test;
-		}
 
 		rte_ring_free(rp);
 		rte_free(src);
@@ -1058,12 +1046,8 @@ test_ring_with_exact_size(void)
 		}
 
 		/* check data */
-		if (memcmp(src, dst, RTE_PTR_DIFF(cur_dst, dst))) {
-			rte_hexdump(stdout, "src", src, RTE_PTR_DIFF(cur_src, src));
-			rte_hexdump(stdout, "dst", dst, RTE_PTR_DIFF(cur_dst, dst));
-			printf("data after dequeue is not the same\n");
+		if (test_ring_mem_cmp(src, dst, RTE_PTR_DIFF(cur_dst, dst)))
 			goto test_fail;
-		}
 
 		rte_free(src_orig);
 		rte_free(dst_orig);
