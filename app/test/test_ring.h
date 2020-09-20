@@ -50,11 +50,11 @@ test_ring_enqueue(struct rte_ring *r, void **obj, int esize, unsigned int n,
 	if ((esize) == -1)
 		switch (api_type) {
 		case (TEST_RING_THREAD_DEF | TEST_RING_ELEM_SINGLE):
-			return rte_ring_enqueue(r, obj);
+			return rte_ring_enqueue(r, *obj);
 		case (TEST_RING_THREAD_SPSC | TEST_RING_ELEM_SINGLE):
-			return rte_ring_sp_enqueue(r, obj);
+			return rte_ring_sp_enqueue(r, *obj);
 		case (TEST_RING_THREAD_MPMC | TEST_RING_ELEM_SINGLE):
-			return rte_ring_mp_enqueue(r, obj);
+			return rte_ring_mp_enqueue(r, *obj);
 		case (TEST_RING_THREAD_DEF | TEST_RING_ELEM_BULK):
 			return rte_ring_enqueue_bulk(r, obj, n, NULL);
 		case (TEST_RING_THREAD_SPSC | TEST_RING_ELEM_BULK):
