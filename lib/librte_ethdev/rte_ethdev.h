@@ -1452,6 +1452,7 @@ struct rte_eth_rxq_info {
 	struct rte_eth_rxconf conf; /**< queue config parameters. */
 	uint8_t scattered_rx;       /**< scattered packets RX supported. */
 	uint16_t nb_desc;           /**< configured number of RXDs. */
+	uint16_t rx_buf_size;       /**< hardware receive buffer size. */
 } __rte_cache_min_aligned;
 
 /**

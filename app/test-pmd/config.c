@@ -452,6 +452,8 @@ rx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 		(qinfo.conf.rx_deferred_start != 0) ? "on" : "off");
 	printf("\nRX scattered packets: %s",
 		(qinfo.scattered_rx != 0) ? "on" : "off");
+	if (qinfo.rx_buf_size != 0)
+		printf("\nRX buffer size: %hu", qinfo.rx_buf_size);
 	printf("\nNumber of RXDs: %hu", qinfo.nb_desc);
 
 	if (rte_eth_rx_burst_mode_get(port_id, queue_id, &mode) == 0)

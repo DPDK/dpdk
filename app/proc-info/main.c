@@ -708,15 +708,20 @@ show_port(void)
 		for (j = 0; j < dev_info.nb_rx_queues; j++) {
 			ret = rte_eth_rx_queue_info_get(i, j, &queue_info);
 			if (ret == 0) {
-				printf("\t  -- queue %d rx scatter %d"
-						" descriptors %d"
-						" offloads 0x%"PRIx64
-						" mempool socket %d\n",
+				printf("\t  -- queue %u rx scatter %u"
+						" descriptors %u"
+						" offloads 0x%" PRIx64
+						" mempool socket %d",
 						j,
 						queue_info.scattered_rx,
 						queue_info.nb_desc,
 						queue_info.conf.offloads,
 						queue_info.mp->socket_id);
+
+				if (queue_info.rx_buf_size != 0)
+					printf(" rx buffer size %u",
+						queue_info.rx_buf_size);
+				printf("\n");
 			}
 		}
 
