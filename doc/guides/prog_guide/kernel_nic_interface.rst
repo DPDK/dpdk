@@ -65,7 +65,7 @@ disabled, and the default carrier state of KNI interfaces is set to *off*.
 
 .. code-block:: console
 
-    # insmod kmod/rte_kni.ko
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko
 
 .. _kni_loopback_mode:
 
@@ -77,14 +77,14 @@ by specifying the ``lo_mode`` parameter:
 
 .. code-block:: console
 
-    # insmod kmod/rte_kni.ko lo_mode=lo_mode_fifo
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko lo_mode=lo_mode_fifo
 
 The ``lo_mode_fifo`` loopback option will loop back ring enqueue/dequeue
 operations in kernel space.
 
 .. code-block:: console
 
-    # insmod kmod/rte_kni.ko lo_mode=lo_mode_fifo_skb
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko lo_mode=lo_mode_fifo_skb
 
 The ``lo_mode_fifo_skb`` loopback option will loop back ring enqueue/dequeue
 operations and sk buffer copies in kernel space.
@@ -105,7 +105,7 @@ Single kernel thread mode is enabled as follows:
 
 .. code-block:: console
 
-    # insmod kmod/rte_kni.ko kthread_mode=single
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko kthread_mode=single
 
 This mode will create only one kernel thread for all KNI interfaces to
 receive data on the kernel side.  By default, this kernel thread is not
@@ -122,7 +122,7 @@ kernel thread mode is enabled as follows:
 
 .. code-block:: console
 
-    # insmod kmod/rte_kni.ko kthread_mode=multiple
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko kthread_mode=multiple
 
 This mode will create a separate kernel thread for each KNI interface to
 receive data on the kernel side.  The core affinity of each ``kni_thread``
@@ -163,13 +163,13 @@ To set the default carrier state to *on*:
 
 .. code-block:: console
 
-    # insmod kmod/rte_kni.ko carrier=on
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko carrier=on
 
 To set the default carrier state to *off*:
 
 .. code-block:: console
 
-    # insmod kmod/rte_kni.ko carrier=off
+    # insmod <build_dir>/kernel/linux/kni/rte_kni.ko carrier=off
 
 If the ``carrier`` parameter is not specified, the default carrier state
 of KNI interfaces will be set to *off*.

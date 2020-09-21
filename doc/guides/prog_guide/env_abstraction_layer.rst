@@ -201,16 +201,16 @@ each segment is strictly one physical page. It is possible to change the amount
 of virtual memory being preallocated at startup by editing the following config
 variables:
 
-* ``CONFIG_RTE_MAX_MEMSEG_LISTS`` controls how many segment lists can DPDK have
-* ``CONFIG_RTE_MAX_MEM_MB_PER_LIST`` controls how much megabytes of memory each
+* ``RTE_MAX_MEMSEG_LISTS`` controls how many segment lists can DPDK have
+* ``RTE_MAX_MEM_MB_PER_LIST`` controls how much megabytes of memory each
   segment list can address
-* ``CONFIG_RTE_MAX_MEMSEG_PER_LIST`` controls how many segments each segment can
+* ``RTE_MAX_MEMSEG_PER_LIST`` controls how many segments each segment can
   have
-* ``CONFIG_RTE_MAX_MEMSEG_PER_TYPE`` controls how many segments each memory type
+* ``RTE_MAX_MEMSEG_PER_TYPE`` controls how many segments each memory type
   can have (where "type" is defined as "page size + NUMA node" combination)
-* ``CONFIG_RTE_MAX_MEM_MB_PER_TYPE`` controls how much megabytes of memory each
+* ``RTE_MAX_MEM_MB_PER_TYPE`` controls how much megabytes of memory each
   memory type can address
-* ``CONFIG_RTE_MAX_MEM_MB`` places a global maximum on the amount of memory
+* ``RTE_MAX_MEM_MB`` places a global maximum on the amount of memory
   DPDK can reserve
 
 Normally, these options do not need to be changed.
@@ -715,11 +715,6 @@ However, they can be used in configuration code.
 Refer to the rte_malloc() function description in the *DPDK API Reference*
 manual for more information.
 
-Cookies
-~~~~~~~
-
-When CONFIG_RTE_MALLOC_DEBUG is enabled, the allocated memory contains
-overwrite protection fields to help identify buffer overflows.
 
 Alignment and NUMA Constraints
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -135,8 +135,7 @@ In order to avoid performance impact in fast path code, the library introduced
 the user must use ``RTE_TRACE_POINT_FP`` instead of ``RTE_TRACE_POINT``.
 
 ``RTE_TRACE_POINT_FP`` is compiled out by default and it can be enabled using
-``CONFIG_RTE_ENABLE_TRACE_FP`` configuration parameter.
-The ``enable_trace_fp`` option shall be used for the same for meson build.
+the ``enable_trace_fp`` option for meson build.
 
 Event record mode
 -----------------

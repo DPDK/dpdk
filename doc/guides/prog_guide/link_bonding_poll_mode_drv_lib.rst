@@ -28,8 +28,9 @@ bonded device and its slave devices.
 .. note::
 
     The Link Bonding PMD Library is enabled by default in the build
-    configuration files, the library can be disabled by setting
-    ``CONFIG_RTE_LIBRTE_PMD_BOND=n`` and recompiling the DPDK.
+    configuration, the library can be disabled using the meson option
+    "-Ddisable_drivers=net/bond".
+
 
 Link Bonding Modes Overview
 ---------------------------
@@ -377,7 +378,7 @@ Device names and bonding options must be separated by commas as shown below:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -l 0-3 -n 4 --vdev 'net_bonding0,bond_opt0=..,bond opt1=..'--vdev 'net_bonding1,bond _opt0=..,bond_opt1=..'
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,bond_opt0=..,bond opt1=..'--vdev 'net_bonding1,bond _opt0=..,bond_opt1=..'
 
 Link Bonding EAL Options
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -477,22 +478,22 @@ Create a bonded device in round robin mode with two slaves specified by their PC
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,slave=0000:0a:00.01,slave=0000:04:00.00' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,slave=0000:0a:00.01,slave=0000:04:00.00' -- --port-topology=chained
 
 Create a bonded device in round robin mode with two slaves specified by their PCI address and an overriding MAC address:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,slave=0000:0a:00.01,slave=0000:04:00.00,mac=00:1e:67:1d:fd:1d' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,slave=0000:0a:00.01,slave=0000:04:00.00,mac=00:1e:67:1d:fd:1d' -- --port-topology=chained
 
 Create a bonded device in active backup mode with two slaves specified, and a primary slave specified by their PCI addresses:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=1,slave=0000:0a:00.01,slave=0000:04:00.00,primary=0000:0a:00.01' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=1,slave=0000:0a:00.01,slave=0000:04:00.00,primary=0000:0a:00.01' -- --port-topology=chained
 
 Create a bonded device in balance mode with two slaves specified by their PCI addresses, and a transmission policy of layer 3 + 4 forwarding:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=2,slave=0000:0a:00.01,slave=0000:04:00.00,xmit_policy=l34' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=2,slave=0000:0a:00.01,slave=0000:04:00.00,xmit_policy=l34' -- --port-topology=chained

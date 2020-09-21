@@ -26,17 +26,7 @@ need to explicitly initialize variable in order to silence the compiler.
 Please note that turning LTO on causes considerable extension of
 build time.
 
-When using make based build, link time optimization can be enabled for
-the whole DPDK by setting:
-
-.. code-block:: console
-
-    CONFIG_RTE_ENABLE_LTO=y
-
-in config file.
-
-For the meson based build it can be enabled by setting meson built-in
-'b_lto' option:
+Link time optimization can be enabled by setting meson built-in 'b_lto' option:
 
 .. code-block:: console
 

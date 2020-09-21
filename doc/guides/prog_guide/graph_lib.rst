@@ -45,13 +45,11 @@ Performance tuning parameters
 -----------------------------
 
 - Test with various burst size values (256, 128, 64, 32) using
-  CONFIG_RTE_GRAPH_BURST_SIZE config option.
+  RTE_GRAPH_BURST_SIZE config option.
   The testing shows, on x86 and arm64 servers, The sweet spot is 256 burst
   size. While on arm64 embedded SoCs, it is either 64 or 128.
-- Disable node statistics (using ``CONFIG_RTE_LIBRTE_GRAPH_STATS`` config option)
+- Disable node statistics (using ``RTE_LIBRTE_GRAPH_STATS`` config option)
   if not needed.
-- Use arm64 optimized memory copy for arm64 architecture by
-  selecting ``CONFIG_RTE_ARCH_ARM64_MEMCPY``.
 
 Programming model
 -----------------

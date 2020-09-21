@@ -17,14 +17,13 @@ This library is used by the :ref:`Mbuf Library <Mbuf_Library>`.
 Cookies
 -------
 
-In debug mode (CONFIG_RTE_LIBRTE_MEMPOOL_DEBUG is enabled), cookies are added at the beginning and end of allocated blocks.
+In debug mode, cookies are added at the beginning and end of allocated blocks.
 The allocated objects then contain overwrite protection fields to help debugging buffer overflows.
 
 Stats
 -----
 
-In debug mode (CONFIG_RTE_LIBRTE_MEMPOOL_DEBUG is enabled),
-statistics about get from/put in the pool are stored in the mempool structure.
+In debug mode, statistics about get from/put in the pool are stored in the mempool structure.
 Statistics are per-lcore to avoid concurrent access to statistics counters.
 
 Memory Alignment Constraints on x86 architecture
@@ -90,7 +89,7 @@ the speed at which a core can access its own cache for a specific memory pool wi
 The cache is composed of a small, per-core table of pointers and its length (used as a stack).
 This internal cache can be enabled or disabled at creation of the pool.
 
-The maximum size of the cache is static and is defined at compilation time (CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE).
+The maximum size of the cache is static and is defined at compilation time (RTE_MEMPOOL_CACHE_MAX_SIZE).
 
 :numref:`figure_mempool` shows a cache in operation.
 

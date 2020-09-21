@@ -33,14 +33,6 @@ Refer to the
 for details about application profiling.
 
 
-Profiling with VTune
-~~~~~~~~~~~~~~~~~~~~
-
-To allow VTune attaching to the DPDK application, reconfigure and recompile
-the DPDK with ``CONFIG_RTE_ETHDEV_RXTX_CALLBACKS`` and
-``CONFIG_RTE_ETHDEV_PROFILE_WITH_VTUNE`` enabled.
-
-
 Profiling on ARM64
 ------------------
 
@@ -76,8 +68,7 @@ cycle counter for user space access by configuring the PMU from the privileged
 mode (kernel space).
 
 By default the ``rte_rdtsc()`` implementation uses a portable ``cntvct_el0``
-scheme.  Application can choose the PMU based implementation with
-``CONFIG_RTE_ARM_EAL_RDTSC_USE_PMU``.
+scheme.
 
 The example below shows the steps to configure the PMU based cycle counter on
 an ARMv8 machine.
@@ -88,10 +79,8 @@ an ARMv8 machine.
     cd armv8_pmu_cycle_counter_el0
     make
     sudo insmod pmu_el0_cycle_counter.ko
-    cd $DPDK_DIR
-    make config T=arm64-armv8a-linux-gcc
-    echo "CONFIG_RTE_ARM_EAL_RDTSC_USE_PMU=y" >> build/.config
-    make
+
+Please refer to :doc:`../linux_gsg/build_dpdk` for details on compiling DPDK with meson.
 
 .. warning::
 

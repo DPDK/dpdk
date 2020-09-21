@@ -266,8 +266,8 @@ can be found in several of the sample applications, for example, the IPv4 Multic
 Debug
 -----
 
-In debug mode (CONFIG_RTE_MBUF_DEBUG is enabled),
-the functions of the mbuf library perform sanity checks before any operation (such as, buffer corruption, bad type, and so on).
+In debug mode, the functions of the mbuf library perform sanity checks before any operation (such as, buffer corruption,
+bad type, and so on).
 
 Use Cases
 ---------

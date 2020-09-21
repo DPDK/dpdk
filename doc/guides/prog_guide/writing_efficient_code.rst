@@ -258,8 +258,7 @@ For instance:
 Setting the Target CPU Type
 ---------------------------
 
-The DPDK supports CPU microarchitecture-specific optimizations by means of CONFIG_RTE_MACHINE option
-in the DPDK configuration file.
+The DPDK supports CPU microarchitecture-specific optimizations by means of RTE_MACHINE option.
 The degree of optimization depends on the compiler's ability to optimize for a specific microarchitecture,
 therefore it is preferable to use the latest compiler versions whenever possible.
 
