@@ -190,9 +190,11 @@ static int skeleton_rawdev_close(struct rte_rawdev *dev)
 		}
 		break;
 	case SKELETON_FW_READY:
+		SKELETON_PMD_DEBUG("Device already in stopped state");
+		break;
 	case SKELETON_FW_ERROR:
 	default:
-		SKELETON_PMD_DEBUG("Device already in stopped state");
+		SKELETON_PMD_DEBUG("Device in impossible state");
 		ret = -EINVAL;
 		break;
 	}
