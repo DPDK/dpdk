@@ -591,7 +591,7 @@ Set up DPDK in the Virtual Machine
    rmmod virtio-pci ixgbevf
 
    modprobe uio
-   insmod /root/dpdk/x86_64-default-linux-gcc/kmod/igb_uio.ko
+   insmod /root/dpdk/<build_dir>/kernel/linux/igb_uio/igb_uio.ko
 
    /root/dpdk/usertools/dpdk-devbind.py -b igb_uio 0000:00:03.0
    /root/dpdk/usertools/dpdk-devbind.py -b igb_uio 0000:00:04.0
@@ -613,7 +613,7 @@ Run testpmd in the Virtual Machine.
 
    # use for bonding of virtio and vf tests in VM
 
-   /root/dpdk/x86_64-default-linux-gcc/app/testpmd \
+   /root/dpdk/<build_dir>/app/dpdk-testpmd \
    -l 0-3 -n 4 --socket-mem 350 --  --i --port-topology=chained
 
 .. _lm_bond_virtio_sriov_switch_conf:

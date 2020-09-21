@@ -64,7 +64,7 @@ some minor changes.
 	FROM ubuntu:latest
 	WORKDIR /usr/src/dpdk
 	COPY . /usr/src/dpdk
-	ENV PATH "$PATH:/usr/src/dpdk/x86_64-native-linux-gcc/app/"
+	ENV PATH "$PATH:/usr/src/dpdk/<build_dir>/app/"
 	EOT
 
 #. Build a Docker image.
