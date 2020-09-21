@@ -42,6 +42,12 @@ static int
 testsuite_setup(void)
 {
 	uint8_t count;
+
+	total = 0;
+	passed = 0;
+	failed = 0;
+	unsupported = 0;
+
 	count = rte_rawdev_count();
 	if (!count) {
 		SKELDEV_TEST_INFO("\tNo existing rawdev; "
