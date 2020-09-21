@@ -12688,9 +12688,7 @@ test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check that both "
-		"CONFIG_RTE_LIBRTE_PMD_QAT and CONFIG_RTE_LIBRTE_PMD_QAT_SYM "
-		"are enabled in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "QAT PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12704,9 +12702,7 @@ test_cryptodev_virtio(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "VIRTIO PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "VIRTIO PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 
@@ -12720,9 +12716,7 @@ test_cryptodev_aesni_mb(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_AESNI_MB is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12739,9 +12733,7 @@ test_cryptodev_cpu_aesni_mb(void)
 			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_AESNI_MB is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12759,9 +12751,7 @@ test_cryptodev_openssl(void)
 			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OPENSSL PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_OPENSSL is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "OPENSSL PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12775,9 +12765,7 @@ test_cryptodev_aesni_gcm(void)
 			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_AESNI_GCM is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12794,9 +12782,7 @@ test_cryptodev_cpu_aesni_gcm(void)
 			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_AESNI_GCM is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12814,9 +12800,7 @@ test_cryptodev_null(void)
 			RTE_STR(CRYPTODEV_NAME_NULL_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "NULL PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_NULL is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "NULL PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12830,9 +12814,7 @@ test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "SNOW3G PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_SNOW3G is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "SNOW3G PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12846,9 +12828,7 @@ test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_KASUMI is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12862,9 +12842,7 @@ test_cryptodev_sw_zuc(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_ZUC_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_ZUC is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12878,9 +12856,7 @@ test_cryptodev_armv8(void)
 			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "ARMV8 PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_ARMV8 is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "ARMV8 PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12894,9 +12870,7 @@ test_cryptodev_mrvl(void)
 			RTE_STR(CRYPTODEV_NAME_MVSAM_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "MVSAM PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_MVSAM_CRYPTO is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "MVSAM PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12912,16 +12886,13 @@ test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "SCHEDULER PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_SCHEDULER is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "SCHEDULER PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
 	if (rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)) == -1) {
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
-			" enabled in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded.\n");
 		return TEST_SKIPPED;
 }
 	return unit_test_suite_runner(&cryptodev_scheduler_testsuite);
@@ -12938,9 +12909,7 @@ test_cryptodev_dpaa2_sec(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "DPAA2 SEC PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "DPAA2 SEC PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12954,9 +12923,7 @@ test_cryptodev_dpaa_sec(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "DPAA SEC PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_DPAA_SEC is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "DPAA SEC PMD must be loaded.\n");
 		return TEST_SKIPPED;
 	}
 
@@ -12970,9 +12937,7 @@ test_cryptodev_ccp(void)
 			RTE_STR(CRYPTODEV_NAME_CCP_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "CCP PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_CCP is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "CCP PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 
@@ -12985,10 +12950,7 @@ test_cryptodev_octeontx(void)
 	gbl_driver_id =	rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OCTEONTX PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO is "
-				"enabled in config file to run this "
-				"testsuite.\n");
+		RTE_LOG(ERR, USER1, "OCTEONTX PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 	return unit_test_suite_runner(&cryptodev_testsuite);
@@ -13000,10 +12962,7 @@ test_cryptodev_octeontx2(void)
 	gbl_driver_id =	rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OCTEON TX2 PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_CRYPTO is "
-				"enabled in config file to run this "
-				"testsuite.\n");
+		RTE_LOG(ERR, USER1, "OCTEON TX2 PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 	return unit_test_suite_runner(&cryptodev_testsuite);
@@ -13016,9 +12975,7 @@ test_cryptodev_caam_jr(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "CAAM_JR PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_CAAM_JR is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "CAAM_JR PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 
@@ -13032,9 +12989,7 @@ test_cryptodev_nitrox(void)
 			RTE_STR(CRYPTODEV_NAME_NITROX_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "NITROX PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_NITROX is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "NITROX PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 

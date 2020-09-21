@@ -2336,9 +2336,7 @@ test_cryptodev_openssl_asym(void)
 			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OPENSSL PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_OPENSSL is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "OPENSSL PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 
@@ -2352,9 +2350,7 @@ test_cryptodev_qat_asym(void)
 			RTE_STR(CRYPTODEV_NAME_QAT_ASYM_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check if "
-				    "CONFIG_RTE_LIBRTE_PMD_QAT_ASYM is enabled "
-				    "in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "QAT PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 
@@ -2367,10 +2363,7 @@ test_cryptodev_octeontx_asym(void)
 	gbl_driver_id = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OCTEONTX PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO is "
-				"enabled in config file to run this "
-				"testsuite.\n");
+		RTE_LOG(ERR, USER1, "OCTEONTX PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
@@ -2382,10 +2375,7 @@ test_cryptodev_octeontx2_asym(void)
 	gbl_driver_id = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX2_PMD));
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "OCTEONTX2 PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_OCTEONTX2_CRYPTO is "
-				"enabled in config file to run this "
-				"testsuite.\n");
+		RTE_LOG(ERR, USER1, "OCTEONTX2 PMD must be loaded.\n");
 		return TEST_FAILED;
 	}
 
