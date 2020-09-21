@@ -3275,6 +3275,8 @@ hns3_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->mp = rxq->mb_pool;
 	qinfo->nb_desc = rxq->nb_rx_desc;
 	qinfo->scattered_rx = dev->data->scattered_rx;
+	/* Report the HW Rx buffer length to user */
+	qinfo->rx_buf_size = rxq->rx_buf_len;
 
 	/*
 	 * If there are no available Rx buffer descriptors, incoming packets
