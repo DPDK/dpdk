@@ -28,18 +28,20 @@ can provide the uio capability. This module can be loaded using the command:
     ``uio_pci_generic`` module doesn't support the creation of virtual functions.
 
 As an alternative to the ``uio_pci_generic``, the DPDK also includes the igb_uio
-module which can be found in the kmod subdirectory referred to above. It can
+module which can be found in the kernel/linux subdirectory referred to above. It can
 be loaded as shown below:
 
 .. code-block:: console
 
     sudo modprobe uio
-    sudo insmod kmod/igb_uio.ko
+    sudo insmod <build_dir>/kernel/linux/igb_uio/igb_uio.ko
 
 .. note::
 
-   ``igb_uio`` module is disabled by default starting from ``DPDK v20.02``.
-   To build it, the config option ``CONFIG_RTE_EAL_IGB_UIO`` should be enabled.
+   Building DPDK Linux kernel modules is disabled by default starting from DPDK 20.02.
+   To enable them again, the config option "enable_kmods" needs to be set
+   in the meson build configuration.
+   See :ref:`adjusting_build_options` for details on how to set/clear build options.
    It is planned to move ``igb_uio`` module to a different git repository.
 
 .. note::
@@ -104,11 +106,11 @@ parameter ``--vfio-vf-token``.
     3. echo 2 > /sys/bus/pci/devices/0000:86:00.0/sriov_numvfs
 
     4. Start the PF:
-        ./x86_64-native-linux-gcc/app/testpmd -l 22-25 -n 4 -w 86:00.0 \
+        <build_dir>/app/dpdk-testpmd -l 22-25 -n 4 -w 86:00.0 \
          --vfio-vf-token=14d63f20-8445-11ea-8900-1f9ce7d5650d --file-prefix=pf -- -i
 
     5. Start the VF:
-        ./x86_64-native-linux-gcc/app/testpmd -l 26-29 -n 4 -w 86:02.0 \
+        <build_dir>/app/dpdk-testpmd -l 26-29 -n 4 -w 86:02.0 \
          --vfio-vf-token=14d63f20-8445-11ea-8900-1f9ce7d5650d --file-prefix=vf0 -- -i
 
 Also, to use VFIO, both kernel and BIOS must support and be configured to use IO virtualization (such as Intel® VT-d).

@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-Compiling and Running Sample Applications
-=========================================
+Running Sample Applications
+===========================
 
 The chapter describes how to compile and run applications in an DPDK environment.
 It also provides a pointer to where sample applications are stored.
@@ -119,7 +119,7 @@ Copy the DPDK application binary to your target, then run the application as fol
 (assuming the platform has four memory channels per processor socket,
 and that cores 0-3 are present and are to be used for running the application)::
 
-    ./helloworld -l 0-3 -n 4
+    ./dpdk-helloworld -l 0-3 -n 4
 
 .. note::
 
@@ -183,19 +183,7 @@ If the DPDK cannot allocate enough memory on each socket, the EAL initialization
 Additional Sample Applications
 ------------------------------
 
-Additional sample applications are included in the ${RTE_SDK}/examples directory.
+Additional sample applications are included in the DPDK examples directory.
 These sample applications may be built and run in a manner similar to that described in earlier sections in this manual.
 In addition, see the *DPDK Sample Applications User Guide* for a description of the application,
 specific instructions on compilation and execution and some explanation of the code.
-
-Additional Test Applications
-----------------------------
-
-In addition, there are two other applications that are built when the libraries are created.
-The source files for these are in the DPDK/app directory and are called test and testpmd.
-Once the libraries are created, they can be found in the build/app directory.
-
-*   The test application provides a variety of specific tests for the various functions in the DPDK.
-
-*   The testpmd application provides a number of different packet throughput tests and
-    examples of features such as how to use the Flow Director found in the Intel® 82599 10 Gigabit Ethernet Controller.

@@ -76,6 +76,7 @@ and the last step causing the dynamic loader `ld.so` to update its cache to take
    distributions, `/usr/local/lib` and `/usr/local/lib64` should be added
    to a file in `/etc/ld.so.conf.d/` before running `ldconfig`.
 
+.. _adjusting_build_options:
 
 Adjusting Build Options
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,6 +113,8 @@ dependencies are met on the current system are built.
 When `-Dexamples=all` is set as a meson option, meson will check each example application to see if it can be built,
 and add all which can be built to the list of tasks in the ninja build configuration file.
 
+.. _building_app_using_installed_dpdk:
+
 Building Applications Using Installed DPDK
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -135,7 +138,8 @@ and the sources for that build are stored in ``$(SRCS-y)``.
 
 .. note::
 
-   Unlike with the older make build system, the meson system is not
+   Unlike with the make build system present in older DPDK releases,
+   the meson system is not
    designed to be used directly from a build directory. Instead it is
    recommended that it be installed either system-wide or to a known
    location in the user's home directory. The install location can be set

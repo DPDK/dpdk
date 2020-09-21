@@ -43,11 +43,7 @@ Compilation of the DPDK
 
     * For Ubuntu/Debian systems these can be installed using ``apt install build-essential``
 
-*   Python, recommended version 3.5+.
-
-    * Python v3.5+ is needed to build DPDK using meson and ninja
-
-    * Python 2.7+ or 3.2+, to use various helper scripts included in the DPDK package.
+*   Python 3.5 or later.
 
 *   Meson (version 0.47.1+) and ninja
 
