@@ -157,7 +157,7 @@ iavf_init_rss(struct iavf_adapter *adapter)
 {
 	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct rte_eth_rss_conf *rss_conf;
-	uint8_t i, j, nb_q;
+	uint16_t i, j, nb_q;
 	int ret;
 
 	rss_conf = &adapter->eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
