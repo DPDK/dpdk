@@ -1896,7 +1896,7 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 
 /** List flow rules. */
 void
-port_flow_list(portid_t port_id, uint32_t n, const uint32_t group[n])
+port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group)
 {
 	struct rte_port *port;
 	struct port_flow *pf;
