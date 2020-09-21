@@ -643,7 +643,8 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	for (i = 0; i < RTE_DIM(bnxt_func_stats_strings); i++) {
 		xstats[count].id = count;
 		xstats[count].value =
-		rte_le_to_cpu_64(((uint64_t *)&func_qstats)[i]);
+			rte_le_to_cpu_64(*(uint64_t *)((char *)&func_qstats +
+					 bnxt_func_stats_strings[i].offset));
 		count++;
 	}
 
