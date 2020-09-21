@@ -77,7 +77,7 @@ if ((fend) == ELFDATA2LSB) \
 	___x = le##width##toh(x); \
 else \
 	___x = be##width##toh(x); \
-	___x; \
+___x; \
 })
 
 #define TO_NATIVE(fend, width, x) CONVERT_NATIVE(fend, width, x)
