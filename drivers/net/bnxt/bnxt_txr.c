@@ -216,6 +216,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 					&txr->tx_desc_ring[txr->tx_prod];
 		txbd1->lflags = 0;
 		txbd1->cfa_meta = vlan_tag_flags;
+		/* Legacy tx_bd_long_hi->mss =
+		 * tx_bd_long_hi->kid_or_ts_high_mss
+		 */
+		txbd1->kid_or_ts_high_mss = 0;
 
 		if (txq->vfr_tx_cfa_action)
 			txbd1->cfa_action = txq->vfr_tx_cfa_action;
@@ -235,91 +239,76 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				    tx_pkt->outer_l3_len : 0;
 			/* The hdr_size is multiple of 16bit units not 8bit.
 			 * Hence divide by 2.
+			 * Also legacy hdr_size = kid_or_ts_low_hdr_size.
 			 */
-			txbd1->hdr_size = hdr_size >> 1;
-			txbd1->mss = tx_pkt->tso_segsz;
-			RTE_VERIFY(txbd1->mss);
+			txbd1->kid_or_ts_low_hdr_size = hdr_size >> 1;
+			txbd1->kid_or_ts_high_mss = tx_pkt->tso_segsz;
+			RTE_VERIFY(txbd1->kid_or_ts_high_mss);
 
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_TCP_UDP_CKSUM) ==
 			   PKT_TX_OIP_IIP_TCP_UDP_CKSUM) {
 			/* Outer IP, Inner IP, Inner TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_TIP_IP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_TCP_CKSUM) ==
 			   PKT_TX_OIP_IIP_TCP_CKSUM) {
 			/* Outer IP, Inner IP, Inner TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_TIP_IP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_UDP_CKSUM) ==
 			   PKT_TX_OIP_IIP_UDP_CKSUM) {
 			/* Outer IP, Inner IP, Inner TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_TIP_IP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_IIP_TCP_UDP_CKSUM) ==
 			   PKT_TX_IIP_TCP_UDP_CKSUM) {
 			/* (Inner) IP, (Inner) TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_IP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_IIP_UDP_CKSUM) ==
 			   PKT_TX_IIP_UDP_CKSUM) {
 			/* (Inner) IP, (Inner) TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_IP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_IIP_TCP_CKSUM) ==
 			   PKT_TX_IIP_TCP_CKSUM) {
 			/* (Inner) IP, (Inner) TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_IP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_TCP_UDP_CKSUM) ==
 			   PKT_TX_OIP_TCP_UDP_CKSUM) {
 			/* Outer IP, (Inner) TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_TIP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_UDP_CKSUM) ==
 			   PKT_TX_OIP_UDP_CKSUM) {
 			/* Outer IP, (Inner) TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_TIP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_TCP_CKSUM) ==
 			   PKT_TX_OIP_TCP_CKSUM) {
 			/* Outer IP, (Inner) TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_FLG_TIP_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_CKSUM) ==
 			   PKT_TX_OIP_IIP_CKSUM) {
 			/* Outer IP, Inner IP CSO */
 			txbd1->lflags |= TX_BD_FLG_TIP_IP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_TCP_UDP_CKSUM) ==
 			   PKT_TX_TCP_UDP_CKSUM) {
 			/* TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_TCP_CKSUM) ==
 			   PKT_TX_TCP_CKSUM) {
 			/* TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_UDP_CKSUM) ==
 			   PKT_TX_UDP_CKSUM) {
 			/* TCP/UDP CSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_IP_CKSUM) ==
 			   PKT_TX_IP_CKSUM) {
 			/* IP CSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_IP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_OUTER_IP_CKSUM) ==
 			   PKT_TX_OUTER_IP_CKSUM) {
 			/* IP CSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_T_IP_CHKSUM;
-			txbd1->mss = 0;
 		} else if ((tx_pkt->ol_flags & PKT_TX_IEEE1588_TMST) ==
 			   PKT_TX_IEEE1588_TMST) {
 			/* PTP */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_STAMP;
-			txbd1->mss = 0;
 		}
 	} else {
 		txbd->flags_type |= TX_BD_SHORT_TYPE_TX_BD_SHORT;

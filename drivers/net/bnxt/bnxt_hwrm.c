@@ -1364,7 +1364,8 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 	link_info->phy_ver[0] = resp->phy_maj;
 	link_info->phy_ver[1] = resp->phy_min;
 	link_info->phy_ver[2] = resp->phy_bld;
-	link_info->link_signal_mode = rte_le_to_cpu_16(resp->link_signal_mode);
+	link_info->link_signal_mode =
+		rte_le_to_cpu_16(resp->active_fec_signal_mode);
 	link_info->force_pam4_link_speed =
 			rte_le_to_cpu_16(resp->force_pam4_link_speed);
 	link_info->support_pam4_speeds =
@@ -4011,8 +4012,8 @@ int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx,
 		stats->q_ibytes[idx] = rte_le_to_cpu_64(resp->rx_ucast_bytes);
 		stats->q_ibytes[idx] += rte_le_to_cpu_64(resp->rx_mcast_bytes);
 		stats->q_ibytes[idx] += rte_le_to_cpu_64(resp->rx_bcast_bytes);
-		stats->q_errors[idx] = rte_le_to_cpu_64(resp->rx_err_pkts);
-		stats->q_errors[idx] += rte_le_to_cpu_64(resp->rx_drop_pkts);
+		stats->q_errors[idx] = rte_le_to_cpu_64(resp->rx_discard_pkts);
+		stats->q_errors[idx] += rte_le_to_cpu_64(resp->rx_error_pkts);
 	} else {
 		stats->q_opackets[idx] = rte_le_to_cpu_64(resp->tx_ucast_pkts);
 		stats->q_opackets[idx] += rte_le_to_cpu_64(resp->tx_mcast_pkts);
