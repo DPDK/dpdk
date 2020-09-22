@@ -1839,8 +1839,8 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			ret = -ENOMEM;
 			goto err;
 		}
-		memcpy(&rss_filter_ptr->filter_info, rss_conf,
-			sizeof(struct hns3_rss_conf));
+		hns3_rss_conf_copy(&rss_filter_ptr->filter_info,
+				   &rss_conf->conf);
 		rss_filter_ptr->filter_info.valid = true;
 		TAILQ_INSERT_TAIL(&process_list->filter_rss_list,
 				  rss_filter_ptr, entries);
