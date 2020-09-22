@@ -90,16 +90,56 @@ net_addr_to_host(uint32_t *dst, const rte_be32_t *src, size_t len)
 		dst[i] = rte_be_to_cpu_32(src[i]);
 }
 
-static inline const struct rte_flow_action *
-find_rss_action(const struct rte_flow_action actions[])
+/*
+ * This function is used to find rss general action.
+ * 1. As we know RSS is used to spread packets among several queues, the flow
+ *    API provide the struct rte_flow_action_rss, user could config it's field
+ *    sush as: func/level/types/key/queue to control RSS function.
+ * 2. The flow API also support queue region configuration for hns3. It was
+ *    implemented by FDIR + RSS in hns3 hardware, user can create one FDIR rule
+ *    which action is RSS queues region.
+ * 3. When action is RSS, we use the following rule to distinguish:
+ *    Case 1: pattern have ETH and action's queue_num > 0, indicate it is queue
+ *            region configuration.
+ *    Case other: an rss general action.
+ */
+static const struct rte_flow_action *
+hns3_find_rss_general_action(const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[])
 {
-	const struct rte_flow_action *next = &actions[0];
+	const struct rte_flow_action *act = NULL;
+	const struct hns3_rss_conf *rss;
+	bool have_eth = false;
 
-	for (; next->type != RTE_FLOW_ACTION_TYPE_END; next++) {
-		if (next->type == RTE_FLOW_ACTION_TYPE_RSS)
-			return next;
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
+			act = actions;
+			break;
+		}
 	}
-	return NULL;
+	if (!act)
+		return NULL;
+
+	for (; pattern->type != RTE_FLOW_ITEM_TYPE_END; pattern++) {
+		if (pattern->type == RTE_FLOW_ITEM_TYPE_ETH) {
+			have_eth = true;
+			break;
+		}
+	}
+
+	rss = act->conf;
+	if (have_eth && rss->conf.queue_num) {
+		/*
+		 * Patter have ETH and action's queue_num > 0, indicate this is
+		 * queue region configuration.
+		 * Because queue region is implemented by FDIR + RSS in hns3
+		 * hardware, it need enter FDIR process, so here return NULL to
+		 * avoid enter RSS process.
+		 */
+		return NULL;
+	}
+
+	return act;
 }
 
 static inline struct hns3_flow_counter *
@@ -233,11 +273,53 @@ hns3_handle_action_queue(struct rte_eth_dev *dev,
 			  "available queue (%d) in driver.",
 			  queue->index, hw->used_rx_queues);
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "Invalid queue ID in PF");
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  action, "Invalid queue ID in PF");
 	}
 
 	rule->queue_id = queue->index;
+	rule->nb_queues = 1;
+	rule->action = HNS3_FD_ACTION_ACCEPT_PACKET;
+	return 0;
+}
+
+static int
+hns3_handle_action_queue_region(struct rte_eth_dev *dev,
+				const struct rte_flow_action *action,
+				struct hns3_fdir_rule *rule,
+				struct rte_flow_error *error)
+{
+	struct hns3_adapter *hns = dev->data->dev_private;
+	const struct rte_flow_action_rss *conf = action->conf;
+	struct hns3_hw *hw = &hns->hw;
+	uint16_t idx;
+
+	if (!hns3_dev_fd_queue_region_supported(hw))
+		return rte_flow_error_set(error, ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ACTION, action,
+			"Not support config queue region!");
+
+	if ((!rte_is_power_of_2(conf->queue_num)) ||
+		conf->queue_num > hw->rss_size_max ||
+		conf->queue[0] >= hw->used_rx_queues ||
+		conf->queue[0] + conf->queue_num > hw->used_rx_queues) {
+		return rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION_CONF, action,
+			"Invalid start queue ID and queue num! the start queue "
+			"ID must valid, the queue num must be power of 2 and "
+			"<= rss_size_max.");
+	}
+
+	for (idx = 1; idx < conf->queue_num; idx++) {
+		if (conf->queue[idx] != conf->queue[idx - 1] + 1)
+			return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF, action,
+				"Invalid queue ID sequence! the queue ID "
+				"must be continuous increment.");
+	}
+
+	rule->queue_id = conf->queue[0];
+	rule->nb_queues = conf->queue_num;
 	rule->action = HNS3_FD_ACTION_ACCEPT_PACKET;
 	return 0;
 }
@@ -273,6 +355,19 @@ hns3_handle_actions(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			rule->action = HNS3_FD_ACTION_DROP_PACKET;
+			break;
+		/*
+		 * Here RSS's real action is queue region.
+		 * Queue region is implemented by FDIR + RSS in hns3 hardware,
+		 * the FDIR's action is one queue region (start_queue_id and
+		 * queue_num), then RSS spread packets to the queue region by
+		 * RSS algorigthm.
+		 */
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			ret = hns3_handle_action_queue_region(dev, actions,
+							      rule, error);
+			if (ret)
+				return ret;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			mark =
@@ -1629,7 +1724,7 @@ hns3_flow_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	if (ret)
 		return ret;
 
-	if (find_rss_action(actions))
+	if (hns3_find_rss_general_action(pattern, actions))
 		return hns3_parse_rss_filter(dev, actions, error);
 
 	memset(&fdir_rule, 0, sizeof(struct hns3_fdir_rule));
@@ -1684,7 +1779,7 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	flow_node->flow = flow;
 	TAILQ_INSERT_TAIL(&process_list->flow_list, flow_node, entries);
 
-	act = find_rss_action(actions);
+	act = hns3_find_rss_general_action(pattern, actions);
 	if (act) {
 		rss_conf = act->conf;
 

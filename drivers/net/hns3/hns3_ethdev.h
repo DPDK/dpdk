@@ -719,7 +719,7 @@ struct hns3_adapter {
 #define HNS3_DEV_SUPPORT_DCB_B			0x0
 #define HNS3_DEV_SUPPORT_COPPER_B		0x1
 #define HNS3_DEV_SUPPORT_UDP_GSO_B		0x2
-#define HNS3_DEV_SUPPORT_ADQ_B			0x3
+#define HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B	0x3
 #define HNS3_DEV_SUPPORT_PTP_B			0x4
 #define HNS3_DEV_SUPPORT_TX_PUSH_B		0x5
 #define HNS3_DEV_SUPPORT_INDEP_TXRX_B		0x6
@@ -736,9 +736,9 @@ struct hns3_adapter {
 #define hns3_dev_udp_gso_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_UDP_GSO_B)
 
-/* Support Application Device Queue */
-#define hns3_dev_adq_supported(hw) \
-	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_ADQ_B)
+/* Support the queue region action rule of flow directory */
+#define hns3_dev_fd_queue_region_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B)
 
 /* Support PTP timestamp offload */
 #define hns3_dev_ptp_supported(hw) \

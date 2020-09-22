@@ -433,8 +433,9 @@ static void hns3_parse_capability(struct hns3_hw *hw,
 
 	if (hns3_get_bit(caps, HNS3_CAPS_UDP_GSO_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_UDP_GSO_B, 1);
-	if (hns3_get_bit(caps, HNS3_CAPS_ADQ_B))
-		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_ADQ_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_FD_QUEUE_REGION_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B,
+			     1);
 	if (hns3_get_bit(caps, HNS3_CAPS_PTP_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_PTP_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_TX_PUSH_B))

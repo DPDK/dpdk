@@ -104,8 +104,18 @@ struct hns3_fd_rule_tuples {
 struct hns3_fd_ad_data {
 	uint16_t ad_id;
 	uint8_t drop_packet;
-	uint8_t forward_to_direct_queue;
+	/*
+	 * equal 0 when action is drop.
+	 * index of queue when action is queue.
+	 * index of first queue of queue region when action is queue region.
+	 */
 	uint16_t queue_id;
+	/*
+	 * equal 0 when action is drop.
+	 * equal 1 when action is queue.
+	 * numbers of queues of queue region when action is queue region.
+	 */
+	uint16_t nb_queues;
 	uint8_t use_counter;
 	uint8_t counter_id;
 	uint8_t use_next_stage;
@@ -141,7 +151,18 @@ struct hns3_fdir_rule {
 	uint8_t action;
 	/* VF id, avaiblable when flags with HNS3_RULE_FLAG_VF_ID. */
 	uint8_t vf_id;
+	/*
+	 * equal 0 when action is drop.
+	 * index of queue when action is queue.
+	 * index of first queue of queue region when action is queue region.
+	 */
 	uint16_t queue_id;
+	/*
+	 * equal 0 when action is drop.
+	 * equal 1 when action is queue.
+	 * numbers of queues of queue region when action is queue region.
+	 */
+	uint16_t nb_queues;
 	uint16_t location;
 	struct rte_flow_action_count act_cnt;
 };
