@@ -2645,6 +2645,7 @@ bnxt_rxq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
 	qinfo->conf.rx_drop_en = rxq->drop_en;
 	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
+	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
 }
 
 static void
@@ -2668,6 +2669,7 @@ bnxt_txq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_rs_thresh = 0;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
 }
 
 static const struct {
