@@ -522,6 +522,31 @@ int bnxt_vf_rep_dev_configure_op(__rte_unused struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int bnxt_init_rep_rx_ring(struct bnxt_rx_queue *rxq,
+				 unsigned int socket_id)
+{
+	struct bnxt_rx_ring_info *rxr;
+	struct bnxt_ring *ring;
+
+	rxr = rte_zmalloc_socket("bnxt_rep_rx_ring",
+				 sizeof(struct bnxt_rx_ring_info),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (rxr == NULL)
+		return -ENOMEM;
+	rxq->rx_ring = rxr;
+
+	ring = rte_zmalloc_socket("bnxt_rep_rx_ring_struct",
+				  sizeof(struct bnxt_ring),
+				  RTE_CACHE_LINE_SIZE, socket_id);
+	if (ring == NULL)
+		return -ENOMEM;
+	rxr->rx_ring_struct = ring;
+	ring->ring_size = rte_align32pow2(rxq->nb_rx_desc);
+	ring->ring_mask = ring->ring_size - 1;
+
+	return 0;
+}
+
 int bnxt_vf_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			  uint16_t queue_idx,
 			  uint16_t nb_desc,
@@ -580,7 +605,7 @@ int bnxt_vf_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	rxq->nb_rx_desc = nb_desc;
 
-	rc = bnxt_init_rx_ring_struct(rxq, socket_id);
+	rc = bnxt_init_rep_rx_ring(rxq, socket_id);
 	if (rc)
 		goto out;
 
@@ -603,7 +628,7 @@ int bnxt_vf_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 out:
 	if (rxq)
-		bnxt_rx_queue_release_op(rxq);
+		bnxt_vf_rep_rx_queue_release_op(rxq);
 
 	return rc;
 }
@@ -618,8 +643,8 @@ void bnxt_vf_rep_rx_queue_release_op(void *rx_queue)
 	bnxt_rx_queue_release_mbufs(rxq);
 
 	bnxt_free_ring(rxq->rx_ring->rx_ring_struct);
-	bnxt_free_ring(rxq->rx_ring->ag_ring_struct);
-	bnxt_free_ring(rxq->cp_ring->cp_ring_struct);
+	rte_free(rxq->rx_ring->rx_ring_struct);
+	rte_free(rxq->rx_ring);
 
 	rte_free(rxq);
 }
