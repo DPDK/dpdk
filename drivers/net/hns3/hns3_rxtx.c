@@ -2181,6 +2181,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 					HNS3_PORT_BASE_VLAN_ENABLE;
 	else
 		txq->pvid_sw_shift_en = false;
+	txq->max_non_tso_bd_num = hw->max_non_tso_bd_num;
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
@@ -2438,7 +2439,8 @@ hns3_pktmbuf_copy_hdr(struct rte_mbuf *new_pkt, struct rte_mbuf *old_pkt)
 }
 
 static int
-hns3_reassemble_tx_pkts(struct rte_mbuf *tx_pkt, struct rte_mbuf **new_pkt)
+hns3_reassemble_tx_pkts(struct rte_mbuf *tx_pkt, struct rte_mbuf **new_pkt,
+				  uint8_t max_non_tso_bd_num)
 {
 	struct rte_mempool *mb_pool;
 	struct rte_mbuf *new_mbuf;
@@ -2458,7 +2460,7 @@ hns3_reassemble_tx_pkts(struct rte_mbuf *tx_pkt, struct rte_mbuf **new_pkt)
 	mb_pool = tx_pkt->pool;
 	buf_size = tx_pkt->buf_len - RTE_PKTMBUF_HEADROOM;
 	nb_new_buf = (rte_pktmbuf_pkt_len(tx_pkt) - 1) / buf_size + 1;
-	if (nb_new_buf > HNS3_MAX_NON_TSO_BD_PER_PKT)
+	if (nb_new_buf > max_non_tso_bd_num)
 		return -EINVAL;
 
 	last_buf_len = rte_pktmbuf_pkt_len(tx_pkt) % buf_size;
@@ -2690,7 +2692,8 @@ hns3_txd_enable_checksum(struct hns3_tx_queue *txq, uint16_t tx_desc_id,
 }
 
 static bool
-hns3_pkt_need_linearized(struct rte_mbuf *tx_pkts, uint32_t bd_num)
+hns3_pkt_need_linearized(struct rte_mbuf *tx_pkts, uint32_t bd_num,
+				 uint32_t max_non_tso_bd_num)
 {
 	struct rte_mbuf *m_first = tx_pkts;
 	struct rte_mbuf *m_last = tx_pkts;
@@ -2705,10 +2708,10 @@ hns3_pkt_need_linearized(struct rte_mbuf *tx_pkts, uint32_t bd_num)
 	 * frags greater than gso header len + mss, and the remaining 7
 	 * consecutive frags greater than MSS except the last 7 frags.
 	 */
-	if (bd_num <= HNS3_MAX_NON_TSO_BD_PER_PKT)
+	if (bd_num <= max_non_tso_bd_num)
 		return false;
 
-	for (i = 0; m_last && i < HNS3_MAX_NON_TSO_BD_PER_PKT - 1;
+	for (i = 0; m_last && i < max_non_tso_bd_num - 1;
 	     i++, m_last = m_last->next)
 		tot_len += m_last->data_len;
 
@@ -2726,7 +2729,7 @@ hns3_pkt_need_linearized(struct rte_mbuf *tx_pkts, uint32_t bd_num)
 	 * ensure the sum of the data length of every 7 consecutive buffer
 	 * is greater than mss except the last one.
 	 */
-	for (i = 0; m_last && i < bd_num - HNS3_MAX_NON_TSO_BD_PER_PKT; i++) {
+	for (i = 0; m_last && i < bd_num - max_non_tso_bd_num; i++) {
 		tot_len -= m_first->data_len;
 		tot_len += m_last->data_len;
 
@@ -2859,15 +2862,19 @@ uint16_t
 hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	       uint16_t nb_pkts)
 {
+	struct hns3_tx_queue *txq;
 	struct rte_mbuf *m;
 	uint16_t i;
 	int ret;
+
+	txq = (struct hns3_tx_queue *)tx_queue;
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
 
 		if (hns3_pkt_is_tso(m) &&
-		    (hns3_pkt_need_linearized(m, m->nb_segs) ||
+		    (hns3_pkt_need_linearized(m, m->nb_segs,
+					      txq->max_non_tso_bd_num) ||
 		     hns3_check_tso_pkt_valid(m))) {
 			rte_errno = EINVAL;
 			return i;
@@ -2880,7 +2887,7 @@ hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-		if (hns3_vld_vlan_chk(tx_queue, m)) {
+		if (hns3_vld_vlan_chk(txq, m)) {
 			rte_errno = EINVAL;
 			return i;
 		}
@@ -2921,6 +2928,7 @@ static int
 hns3_check_non_tso_pkt(uint16_t nb_buf, struct rte_mbuf **m_seg,
 		      struct rte_mbuf *tx_pkt, struct hns3_tx_queue *txq)
 {
+	uint8_t max_non_tso_bd_num;
 	struct rte_mbuf *new_pkt;
 	int ret;
 
@@ -2936,9 +2944,11 @@ hns3_check_non_tso_pkt(uint16_t nb_buf, struct rte_mbuf **m_seg,
 		return -EINVAL;
 	}
 
-	if (unlikely(nb_buf > HNS3_MAX_NON_TSO_BD_PER_PKT)) {
+	max_non_tso_bd_num = txq->max_non_tso_bd_num;
+	if (unlikely(nb_buf > max_non_tso_bd_num)) {
 		txq->exceed_limit_bd_pkt_cnt++;
-		ret = hns3_reassemble_tx_pkts(tx_pkt, &new_pkt);
+		ret = hns3_reassemble_tx_pkts(tx_pkt, &new_pkt,
+					      max_non_tso_bd_num);
 		if (ret) {
 			txq->exceed_limit_bd_reassem_fail++;
 			return ret;

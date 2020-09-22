@@ -372,6 +372,7 @@ struct hns3_tx_queue {
 	 */
 	uint32_t min_tx_pkt_len;
 
+	uint8_t max_non_tso_bd_num; /* max BD number of one non-TSO packet */
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool configured;        /* indicate if tx queue has been configured */
 	/*
