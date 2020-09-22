@@ -1618,6 +1618,9 @@ hns3_rxd_to_vlan_tci(struct hns3_rx_queue *rxq, struct rte_mbuf *mb,
 		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		mb->vlan_tci = rte_le_to_cpu_16(rxd->rx.ot_vlan_tag);
 		return;
+	default:
+		mb->vlan_tci = 0;
+		return;
 	}
 }
 
