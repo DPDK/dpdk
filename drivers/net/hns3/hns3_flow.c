@@ -1403,6 +1403,13 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION, act,
 					  "too many queues for RSS context");
 
+	if (rss->types & (ETH_RSS_L4_DST_ONLY | ETH_RSS_L4_SRC_ONLY) &&
+	    (rss->types & ETH_RSS_IP))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->types,
+					  "input RSS types are not supported");
+
 	act_index++;
 
 	/* Check if the next not void action is END */
@@ -1562,23 +1569,6 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 		    (void *)(uintptr_t)conf->conf.key : NULL,
 		.queue = conf->conf.queue,
 	};
-
-	/* The types is Unsupported by hns3' RSS */
-	if (!(rss_flow_conf.types & HNS3_ETH_RSS_SUPPORT) &&
-	    rss_flow_conf.types) {
-		hns3_err(hw,
-			 "Flow types(%" PRIx64 ") is unsupported by hns3's RSS",
-			 rss_flow_conf.types);
-		return -EINVAL;
-	}
-
-	if (rss_flow_conf.key_len &&
-	    rss_flow_conf.key_len > RTE_DIM(rss_info->key)) {
-		hns3_err(hw,
-			"input hash key(%u) greater than supported len(%zu)",
-			rss_flow_conf.key_len, RTE_DIM(rss_info->key));
-		return -EINVAL;
-	}
 
 	/* Filter the unsupported flow types */
 	flow_types = conf->conf.types ?
@@ -1755,7 +1745,7 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	struct hns3_fdir_rule fdir_rule;
 	int ret;
 
-	ret = hns3_flow_args_check(attr, pattern, actions, error);
+	ret = hns3_flow_validate(dev, attr, pattern, actions, error);
 	if (ret)
 		return NULL;
 
