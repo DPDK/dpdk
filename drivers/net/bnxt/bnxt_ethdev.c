@@ -929,8 +929,7 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 			.wthresh = 0,
 		},
 		.rx_free_thresh = 32,
-		/* If no descriptors available, pkts are dropped by default */
-		.rx_drop_en = 1,
+		.rx_drop_en = BNXT_DEFAULT_RX_DROP_EN,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -2644,7 +2643,7 @@ bnxt_rxq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->nb_desc = rxq->nb_rx_desc;
 
 	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
-	qinfo->conf.rx_drop_en = 0;
+	qinfo->conf.rx_drop_en = rxq->drop_en;
 	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
 }
 
