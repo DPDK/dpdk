@@ -416,6 +416,9 @@ struct hns3_queue_intr {
 	uint8_t gl_unit;
 };
 
+#define HNS3_TSO_SW_CAL_PSEUDO_H_CSUM		0
+#define HNS3_TSO_HW_CAL_PSEUDO_H_CSUM		1
+
 struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
@@ -476,7 +479,23 @@ struct hns3_hw {
 	uint32_t min_tx_pkt_len;
 
 	struct hns3_queue_intr intr;
-
+	/*
+	 * tso mode.
+	 * value range:
+	 *      HNS3_TSO_SW_CAL_PSEUDO_H_CSUM/HNS3_TSO_HW_CAL_PSEUDO_H_CSUM
+	 *
+	 *  - HNS3_TSO_SW_CAL_PSEUDO_H_CSUM
+	 *     In this mode, because of the hardware constraint, network driver
+	 *     software need erase the L4 len value of the TCP pseudo header
+	 *     and recalculate the TCP pseudo header checksum of packets that
+	 *     need TSO.
+	 *
+	 *  - HNS3_TSO_HW_CAL_PSEUDO_H_CSUM
+	 *     In this mode, hardware support recalculate the TCP pseudo header
+	 *     checksum of packets that need TSO, so network driver software
+	 *     not need to recalculate it.
+	 */
+	uint8_t tso_mode;
 	/*
 	 * vlan mode.
 	 * value range:

@@ -2188,6 +2188,7 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	txq->io_tail_reg = (volatile void *)((char *)txq->io_base +
 					     HNS3_RING_TX_TAIL_REG);
 	txq->min_tx_pkt_len = hw->min_tx_pkt_len;
+	txq->tso_mode = hw->tso_mode;
 	txq->over_length_pkt_cnt = 0;
 	txq->exceed_limit_bd_pkt_cnt = 0;
 	txq->exceed_limit_bd_reassem_fail = 0;
@@ -2858,47 +2859,66 @@ hns3_vld_vlan_chk(struct hns3_tx_queue *txq, struct rte_mbuf *m)
 }
 #endif
 
+static int
+hns3_prep_pkt_proc(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
+{
+	int ret;
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	ret = rte_validate_tx_offload(m);
+	if (ret != 0) {
+		rte_errno = -ret;
+		return ret;
+	}
+
+	ret = hns3_vld_vlan_chk(tx_queue, m);
+	if (ret != 0) {
+		rte_errno = EINVAL;
+		return ret;
+	}
+#endif
+	if (hns3_pkt_is_tso(m)) {
+		if (hns3_pkt_need_linearized(m, m->nb_segs,
+					     tx_queue->max_non_tso_bd_num) ||
+		    hns3_check_tso_pkt_valid(m)) {
+			rte_errno = EINVAL;
+			return -EINVAL;
+		}
+
+		if (tx_queue->tso_mode != HNS3_TSO_SW_CAL_PSEUDO_H_CSUM) {
+			/*
+			 * (tso mode != HNS3_TSO_SW_CAL_PSEUDO_H_CSUM) means
+			 * hardware support recalculate the TCP pseudo header
+			 * checksum of packets that need TSO, so network driver
+			 * software not need to recalculate it.
+			 */
+			hns3_outer_header_cksum_prepare(m);
+			return 0;
+		}
+	}
+
+	ret = rte_net_intel_cksum_prepare(m);
+	if (ret != 0) {
+		rte_errno = -ret;
+		return ret;
+	}
+
+	hns3_outer_header_cksum_prepare(m);
+
+	return 0;
+}
+
 uint16_t
 hns3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	       uint16_t nb_pkts)
 {
-	struct hns3_tx_queue *txq;
 	struct rte_mbuf *m;
 	uint16_t i;
-	int ret;
-
-	txq = (struct hns3_tx_queue *)tx_queue;
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
-
-		if (hns3_pkt_is_tso(m) &&
-		    (hns3_pkt_need_linearized(m, m->nb_segs,
-					      txq->max_non_tso_bd_num) ||
-		     hns3_check_tso_pkt_valid(m))) {
-			rte_errno = EINVAL;
+		if (hns3_prep_pkt_proc(tx_queue, m))
 			return i;
-		}
-
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-		ret = rte_validate_tx_offload(m);
-		if (ret != 0) {
-			rte_errno = -ret;
-			return i;
-		}
-
-		if (hns3_vld_vlan_chk(txq, m)) {
-			rte_errno = EINVAL;
-			return i;
-		}
-#endif
-		ret = rte_net_intel_cksum_prepare(m);
-		if (ret != 0) {
-			rte_errno = -ret;
-			return i;
-		}
-
-		hns3_outer_header_cksum_prepare(m);
 	}
 
 	return i;

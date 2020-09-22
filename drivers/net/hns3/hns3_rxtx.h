@@ -367,6 +367,23 @@ struct hns3_tx_queue {
 	struct rte_mbuf **free;
 
 	/*
+	 * tso mode.
+	 * value range:
+	 *      HNS3_TSO_SW_CAL_PSEUDO_H_CSUM/HNS3_TSO_HW_CAL_PSEUDO_H_CSUM
+	 *
+	 *  - HNS3_TSO_SW_CAL_PSEUDO_H_CSUM
+	 *     In this mode, because of the hardware constraint, network driver
+	 *     software need erase the L4 len value of the TCP pseudo header
+	 *     and recalculate the TCP pseudo header checksum of packets that
+	 *     need TSO.
+	 *
+	 *  - HNS3_TSO_HW_CAL_PSEUDO_H_CSUM
+	 *     In this mode, hardware support recalculate the TCP pseudo header
+	 *     checksum of packets that need TSO, so network driver software
+	 *     not need to recalculate it.
+	 */
+	uint8_t tso_mode;
+	/*
 	 * The minimum length of the packet supported by hardware in the Tx
 	 * direction.
 	 */
