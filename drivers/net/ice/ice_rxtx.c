@@ -25,40 +25,6 @@ uint64_t rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
 uint64_t rte_net_ice_dynflag_proto_xtr_tcp_mask;
 uint64_t rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
 
-static inline uint64_t
-ice_rxdid_to_proto_xtr_ol_flag(uint8_t rxdid, bool *chk_valid)
-{
-	static struct {
-		uint64_t *ol_flag;
-		bool chk_valid;
-	} ol_flag_map[] = {
-		[ICE_RXDID_COMMS_AUX_VLAN] = {
-			&rte_net_ice_dynflag_proto_xtr_vlan_mask, true },
-		[ICE_RXDID_COMMS_AUX_IPV4] = {
-			&rte_net_ice_dynflag_proto_xtr_ipv4_mask, true },
-		[ICE_RXDID_COMMS_AUX_IPV6] = {
-			&rte_net_ice_dynflag_proto_xtr_ipv6_mask, true },
-		[ICE_RXDID_COMMS_AUX_IPV6_FLOW] = {
-			&rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask, true },
-		[ICE_RXDID_COMMS_AUX_TCP] = {
-			&rte_net_ice_dynflag_proto_xtr_tcp_mask, true },
-		[ICE_RXDID_COMMS_AUX_IP_OFFSET] = {
-			&rte_net_ice_dynflag_proto_xtr_ip_offset_mask, false },
-	};
-	uint64_t *ol_flag;
-
-	if (rxdid < RTE_DIM(ol_flag_map)) {
-		ol_flag = ol_flag_map[rxdid].ol_flag;
-		if (!ol_flag)
-			return 0ULL;
-
-		*chk_valid = ol_flag_map[rxdid].chk_valid;
-		return *ol_flag;
-	}
-
-	return 0ULL;
-}
-
 static inline uint8_t
 ice_proto_xtr_type_to_rxdid(uint8_t xtr_type)
 {
@@ -74,6 +40,159 @@ ice_proto_xtr_type_to_rxdid(uint8_t xtr_type)
 
 	return xtr_type < RTE_DIM(rxdid_map) ?
 				rxdid_map[xtr_type] : ICE_RXDID_COMMS_OVS;
+}
+
+static inline void
+ice_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct ice_rx_queue *rxq,
+				   struct rte_mbuf *mb,
+				   volatile union ice_rx_flex_desc *rxdp)
+{
+	volatile struct ice_32b_rx_flex_desc_comms_ovs *desc =
+			(volatile struct ice_32b_rx_flex_desc_comms_ovs *)rxdp;
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	uint16_t stat_err;
+#endif
+
+	if (desc->flow_id != 0xFFFFFFFF) {
+		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
+	}
+
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	stat_err = rte_le_to_cpu_16(desc->status_error0);
+	if (likely(stat_err & (1 << ICE_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
+#endif
+}
+
+static inline void
+ice_rxd_to_pkt_fields_by_comms_aux_v1(struct ice_rx_queue *rxq,
+				      struct rte_mbuf *mb,
+				      volatile union ice_rx_flex_desc *rxdp)
+{
+	volatile struct ice_32b_rx_flex_desc_comms *desc =
+			(volatile struct ice_32b_rx_flex_desc_comms *)rxdp;
+	uint16_t stat_err;
+
+	stat_err = rte_le_to_cpu_16(desc->status_error0);
+	if (likely(stat_err & (1 << ICE_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
+
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	if (desc->flow_id != 0xFFFFFFFF) {
+		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
+	}
+
+	if (rxq->xtr_ol_flag) {
+		uint32_t metadata = 0;
+
+		stat_err = rte_le_to_cpu_16(desc->status_error1);
+
+		if (stat_err & (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD4_VALID_S))
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux0);
+
+		if (stat_err & (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD5_VALID_S))
+			metadata |=
+				rte_le_to_cpu_16(desc->flex_ts.flex.aux1) << 16;
+
+		if (metadata) {
+			mb->ol_flags |= rxq->xtr_ol_flag;
+
+			*RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(mb) = metadata;
+		}
+	}
+#endif
+}
+
+static inline void
+ice_rxd_to_pkt_fields_by_comms_aux_v2(struct ice_rx_queue *rxq,
+				      struct rte_mbuf *mb,
+				      volatile union ice_rx_flex_desc *rxdp)
+{
+	volatile struct ice_32b_rx_flex_desc_comms *desc =
+			(volatile struct ice_32b_rx_flex_desc_comms *)rxdp;
+	uint16_t stat_err;
+
+	stat_err = rte_le_to_cpu_16(desc->status_error0);
+	if (likely(stat_err & (1 << ICE_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
+		mb->ol_flags |= PKT_RX_RSS_HASH;
+		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
+	}
+
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	if (desc->flow_id != 0xFFFFFFFF) {
+		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
+	}
+
+	if (rxq->xtr_ol_flag) {
+		uint32_t metadata = 0;
+
+		if (desc->flex_ts.flex.aux0 != 0xFFFF)
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux0);
+		else if (desc->flex_ts.flex.aux1 != 0xFFFF)
+			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux1);
+
+		if (metadata) {
+			mb->ol_flags |= rxq->xtr_ol_flag;
+
+			*RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(mb) = metadata;
+		}
+	}
+#endif
+}
+
+static void
+ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
+{
+	switch (rxdid) {
+	case ICE_RXDID_COMMS_AUX_VLAN:
+		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_vlan_mask;
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+
+	case ICE_RXDID_COMMS_AUX_IPV4:
+		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv4_mask;
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+
+	case ICE_RXDID_COMMS_AUX_IPV6:
+		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv6_mask;
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+
+	case ICE_RXDID_COMMS_AUX_IPV6_FLOW:
+		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ipv6_flow_mask;
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+
+	case ICE_RXDID_COMMS_AUX_TCP:
+		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_tcp_mask;
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v1;
+		break;
+
+	case ICE_RXDID_COMMS_AUX_IP_OFFSET:
+		rxq->xtr_ol_flag = rte_net_ice_dynflag_proto_xtr_ip_offset_mask;
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_aux_v2;
+		break;
+
+	case ICE_RXDID_COMMS_OVS:
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_ovs;
+		break;
+
+	default:
+		/* update this according to the RXDID for PROTO_XTR_NONE */
+		rxq->rxd_to_pkt_fields = ice_rxd_to_pkt_fields_by_comms_ovs;
+		break;
+	}
+
+	if (!rte_net_ice_dynf_proto_xtr_metadata_avail())
+		rxq->xtr_ol_flag = 0;
 }
 
 static enum ice_status
@@ -157,6 +276,8 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 			    rxdid);
 		return -EINVAL;
 	}
+
+	ice_select_rxd_to_pkt_fields_handler(rxq, rxdid);
 
 	/* Enable Flexible Descriptors in the queue context which
 	 * allows this driver to select a specific receive descriptor format
@@ -1338,74 +1459,6 @@ ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_flex_desc *rxdp)
 		   mb->vlan_tci, mb->vlan_tci_outer);
 }
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-#define ICE_RX_PROTO_XTR_VALID \
-	((1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD4_VALID_S) | \
-	 (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD5_VALID_S))
-
-static void
-ice_rxd_to_proto_xtr(struct rte_mbuf *mb,
-		     volatile struct ice_32b_rx_flex_desc_comms_ovs *desc)
-{
-	uint16_t stat_err = rte_le_to_cpu_16(desc->status_error1);
-	uint32_t metadata = 0;
-	uint64_t ol_flag;
-	bool chk_valid;
-
-	ol_flag = ice_rxdid_to_proto_xtr_ol_flag(desc->rxdid, &chk_valid);
-	if (unlikely(!ol_flag))
-		return;
-
-	if (chk_valid) {
-		if (stat_err & (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD4_VALID_S))
-			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux0);
-
-		if (stat_err & (1 << ICE_RX_FLEX_DESC_STATUS1_XTRMD5_VALID_S))
-			metadata |=
-				rte_le_to_cpu_16(desc->flex_ts.flex.aux1) << 16;
-	} else {
-		if (rte_le_to_cpu_16(desc->flex_ts.flex.aux0) != 0xFFFF)
-			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux0);
-		else if (rte_le_to_cpu_16(desc->flex_ts.flex.aux1) != 0xFFFF)
-			metadata = rte_le_to_cpu_16(desc->flex_ts.flex.aux1);
-	}
-
-	if (!metadata)
-		return;
-
-	mb->ol_flags |= ol_flag;
-
-	*RTE_NET_ICE_DYNF_PROTO_XTR_METADATA(mb) = metadata;
-}
-#endif
-
-static inline void
-ice_rxd_to_pkt_fields(struct rte_mbuf *mb,
-		      volatile union ice_rx_flex_desc *rxdp)
-{
-	volatile struct ice_32b_rx_flex_desc_comms_ovs *desc =
-			(volatile struct ice_32b_rx_flex_desc_comms_ovs *)rxdp;
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-	uint16_t stat_err;
-
-	stat_err = rte_le_to_cpu_16(desc->status_error0);
-	if (likely(stat_err & (1 << ICE_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
-		mb->ol_flags |= PKT_RX_RSS_HASH;
-		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
-	}
-#endif
-
-	if (desc->flow_id != 0xFFFFFFFF) {
-		mb->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
-		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
-	}
-
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
-	if (unlikely(rte_net_ice_dynf_proto_xtr_metadata_avail()))
-		ice_rxd_to_proto_xtr(mb, desc);
-#endif
-}
-
 #define ICE_LOOK_AHEAD 8
 #if (ICE_LOOK_AHEAD != 8)
 #error "PMD ICE: ICE_LOOK_AHEAD must be 8\n"
@@ -1463,7 +1516,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 			mb->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
-			ice_rxd_to_pkt_fields(mb, &rxdp[j]);
+			rxq->rxd_to_pkt_fields(rxq, mb, &rxdp[j]);
 
 			mb->ol_flags |= pkt_flags;
 		}
@@ -1760,7 +1813,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 		first_seg->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		ice_rxd_to_vlan_tci(first_seg, &rxd);
-		ice_rxd_to_pkt_fields(first_seg, &rxd);
+		rxq->rxd_to_pkt_fields(rxq, first_seg, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 		first_seg->ol_flags |= pkt_flags;
 		/* Prefetch data of first segment, if configured to do so. */
@@ -2160,7 +2213,7 @@ ice_recv_pkts(void *rx_queue,
 		rxm->packet_type = ptype_tbl[ICE_RX_FLEX_DESC_PTYPE_M &
 			rte_le_to_cpu_16(rxd.wb.ptype_flex_flags0)];
 		ice_rxd_to_vlan_tci(rxm, &rxd);
-		ice_rxd_to_pkt_fields(rxm, &rxd);
+		rxq->rxd_to_pkt_fields(rxq, rxm, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
 		rxm->ol_flags |= pkt_flags;
 		/* copy old mbuf to rx_pkts */

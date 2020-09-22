@@ -42,6 +42,9 @@
 
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
 typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
+typedef void (*ice_rxd_to_pkt_fields_t)(struct ice_rx_queue *rxq,
+					struct rte_mbuf *mb,
+					volatile union ice_rx_flex_desc *rxdp);
 
 struct ice_rx_entry {
 	struct rte_mbuf *mbuf;
@@ -82,6 +85,8 @@ struct ice_rx_queue {
 	bool q_set; /* indicate if rx queue has been configured */
 	bool rx_deferred_start; /* don't start this queue in dev start */
 	uint8_t proto_xtr; /* Protocol extraction from flexible descriptor */
+	uint64_t xtr_ol_flag; /* Protocol extraction offload flag */
+	ice_rxd_to_pkt_fields_t rxd_to_pkt_fields; /* handle FlexiMD by RXDID */
 	ice_rx_release_mbufs_t rx_rel_mbufs;
 };
 
