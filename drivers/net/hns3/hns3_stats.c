@@ -703,6 +703,7 @@ hns3_error_int_stats_add(struct hns3_adapter *hns, const char *err)
 			addr = (char *)&pf->abn_int_stats +
 				hns3_error_int_stats_strings[i].offset;
 			*(uint64_t *)addr += 1;
+			break;
 		}
 	}
 }
