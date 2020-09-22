@@ -51,7 +51,7 @@ bnxt_process_default_vnic_change(struct bnxt *bp,
 				 struct hwrm_async_event_cmpl *async_cmp)
 {
 	uint16_t fid, vnic_state, parent_id, vf_fid, vf_id;
-	struct bnxt_vf_representor *vf_rep_bp;
+	struct bnxt_representor *vf_rep_bp;
 	struct rte_eth_dev *eth_dev;
 	bool vfr_found = false;
 	uint32_t event_data;
@@ -91,7 +91,7 @@ bnxt_process_default_vnic_change(struct bnxt *bp,
 	if (!vfr_found)
 		return;
 
-	bnxt_vf_rep_dev_start_op(eth_dev);
+	bnxt_rep_dev_start_op(eth_dev);
 }
 
 /*

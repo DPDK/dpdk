@@ -815,15 +815,26 @@ struct bnxt {
 /**
  * Structure to store private data for each VF representor instance
  */
-struct bnxt_vf_representor {
+struct bnxt_representor {
 	uint16_t		switch_domain_id;
 	uint16_t		vf_id;
+#define BNXT_REP_IS_PF		BIT(0)
+#define BNXT_REP_Q_R2F_VALID		BIT(1)
+#define BNXT_REP_Q_F2R_VALID		BIT(2)
+#define BNXT_REP_FC_R2F_VALID		BIT(3)
+#define BNXT_REP_FC_F2R_VALID		BIT(4)
+	uint32_t		flags;
 	uint16_t		fw_fid;
 #define	BNXT_DFLT_VNIC_ID_INVALID	0xFFFF
 	uint16_t		dflt_vnic_id;
 	uint16_t		svif;
 	uint16_t		vfr_tx_cfa_action;
 	uint32_t		dpdk_port_id;
+	uint32_t		rep_based_pf;
+	uint8_t			rep_q_r2f;
+	uint8_t			rep_q_f2r;
+	uint8_t			rep_fc_r2f;
+	uint8_t			rep_fc_f2r;
 	/* Private data store of associated PF/Trusted VF */
 	struct rte_eth_dev	*parent_dev;
 	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];
@@ -839,9 +850,11 @@ struct bnxt_vf_representor {
 	uint64_t                rx_drop_bytes[BNXT_MAX_VF_REP_RINGS];
 };
 
+#define BNXT_REP_PF(vfr_bp)	((vfr_bp)->flags & BNXT_REP_IS_PF)
+
 struct bnxt_vf_rep_tx_queue {
 	struct bnxt_tx_queue *txq;
-	struct bnxt_vf_representor *bp;
+	struct bnxt_representor *bp;
 };
 
 int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu);
@@ -900,7 +913,7 @@ void bnxt_ulp_destroy_df_rules(struct bnxt *bp, bool global);
 int32_t
 bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev);
 int32_t
-bnxt_ulp_delete_vfr_default_rules(struct bnxt_vf_representor *vfr);
+bnxt_ulp_delete_vfr_default_rules(struct bnxt_representor *vfr);
 uint16_t bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type);
 uint16_t bnxt_get_svif(uint16_t port_id, bool func_svif,
 		       enum bnxt_ulp_intf_type type);
@@ -910,7 +923,7 @@ uint16_t bnxt_get_phy_port_id(uint16_t port);
 uint16_t bnxt_get_vport(uint16_t port);
 enum bnxt_ulp_intf_type
 bnxt_get_interface_type(uint16_t port);
-int bnxt_vf_rep_dev_start_op(struct rte_eth_dev *eth_dev);
+int bnxt_rep_dev_start_op(struct rte_eth_dev *eth_dev);
 
 void bnxt_cancel_fc_thread(struct bnxt *bp);
 void bnxt_flow_cnt_alarm_cb(void *arg);

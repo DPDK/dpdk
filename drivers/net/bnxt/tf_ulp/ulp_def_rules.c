@@ -536,7 +536,7 @@ int32_t
 bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev)
 {
 	struct bnxt_ulp_vfr_rule_info *info;
-	struct bnxt_vf_representor *vfr = vfr_ethdev->data->dev_private;
+	struct bnxt_representor *vfr = vfr_ethdev->data->dev_private;
 	struct rte_eth_dev *parent_dev = vfr->parent_dev;
 	struct bnxt *bp = parent_dev->data->dev_private;
 	uint16_t vfr_port_id = vfr_ethdev->data->port_id;
@@ -596,7 +596,7 @@ error:
 }
 
 int32_t
-bnxt_ulp_delete_vfr_default_rules(struct bnxt_vf_representor *vfr)
+bnxt_ulp_delete_vfr_default_rules(struct bnxt_representor *vfr)
 {
 	struct bnxt_ulp_vfr_rule_info *info;
 	struct rte_eth_dev *parent_dev = vfr->parent_dev;

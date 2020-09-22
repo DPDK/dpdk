@@ -42895,4 +42895,252 @@ struct hwrm_cfa_counter_qstats_output {
 	uint8_t	valid;
 } __rte_packed;
 
+/***********************
+ * hwrm_cfa_pair_alloc *
+ ***********************/
+
+
+/* hwrm_cfa_pair_alloc_input (size:576b/72B) */
+struct hwrm_cfa_pair_alloc_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Pair mode (0-vf2fn, 1-rep2fn, 2-rep2rep, 3-proxy, 4-pfpair,
+	 *            5-rep2fn_mod, 6-rep2fn_modall, 7-rep2fn_truflow).
+	 */
+	uint16_t	pair_mode;
+	/* Pair between VF on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_VF2FN \
+		UINT32_C(0x0)
+	/* Pair between REP on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN \
+		UINT32_C(0x1)
+	/* Pair between REP on local host with REP on specified host. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2REP \
+		UINT32_C(0x2)
+	/* Pair for the proxy interface. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_PROXY \
+		UINT32_C(0x3)
+	/* Pair for the PF interface. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_PFPAIR \
+		UINT32_C(0x4)
+	/* Modify existing rep2fn pair and move pair to new PF. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN_MOD \
+		UINT32_C(0x5)
+	/* Modify existing rep2fn pairs paired with same PF and move pairs to new PF. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN_MODALL \
+		UINT32_C(0x6)
+	/* Truflow pair between REP on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN_TRUFLOW \
+		UINT32_C(0x7)
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_LAST \
+		HWRM_CFA_PAIR_ALLOC_INPUT_PAIR_MODE_REP2FN_TRUFLOW
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_a_id;
+	/* Logical Host (0xff-local host). */
+	uint8_t	host_b_id;
+	/* Logical PF (0xff-PF for command channel). */
+	uint8_t	pf_b_id;
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_b_id;
+	/* Loopback port (0xff-internal loopback), valid for mode-3. */
+	uint8_t	port_id;
+	/* Priority used for encap of loopback packets valid for mode-3. */
+	uint8_t	pri;
+	/* New PF for rep2fn modify, valid for mode 5. */
+	uint16_t	new_pf_fid;
+	uint32_t	enables;
+	/*
+	 * This bit must be '1' for the q_ab field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_Q_AB_VALID      UINT32_C(0x1)
+	/*
+	 * This bit must be '1' for the q_ba field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_Q_BA_VALID      UINT32_C(0x2)
+	/*
+	 * This bit must be '1' for the fc_ab field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_FC_AB_VALID     UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the fc_ba field to be
+	 * configured.
+	 */
+	#define HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_FC_BA_VALID     UINT32_C(0x8)
+	/* VF Pair name (32 byte string). */
+	char	pair_name[32];
+	/*
+	 * The q_ab value specifies the logical index of the TX/RX CoS
+	 * queue to be assigned for traffic in the A to B direction of
+	 * the interface pair. The default value is 0.
+	 */
+	uint8_t	q_ab;
+	/*
+	 * The q_ba value specifies the logical index of the TX/RX CoS
+	 * queue to be assigned for traffic in the B to A direction of
+	 * the interface pair. The default value is 1.
+	 */
+	uint8_t	q_ba;
+	/*
+	 * Specifies whether RX ring flow control is disabled (0) or enabled
+	 * (1) in the A to B direction. The default value is 0, meaning that
+	 * packets will be dropped when the B-side RX rings are full.
+	 */
+	uint8_t	fc_ab;
+	/*
+	 * Specifies whether RX ring flow control is disabled (0) or enabled
+	 * (1) in the B to A direction. The default value is 1, meaning that
+	 * the RX CoS queue will be flow controlled when the A-side RX rings
+	 * are full.
+	 */
+	uint8_t	fc_ba;
+	uint8_t	unused_1[4];
+} __rte_packed;
+
+/* hwrm_cfa_pair_alloc_output (size:192b/24B) */
+struct hwrm_cfa_pair_alloc_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* Only valid for modes 1 and 2. */
+	uint16_t	rx_cfa_code_a;
+	/* Only valid for modes 1 and 2. */
+	uint16_t	tx_cfa_action_a;
+	/* Only valid for mode 2. */
+	uint16_t	rx_cfa_code_b;
+	/* Only valid for mode 2. */
+	uint16_t	tx_cfa_action_b;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM. This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/**********************
+ * hwrm_cfa_pair_free *
+ **********************/
+
+
+/* hwrm_cfa_pair_free_input (size:448b/56B) */
+struct hwrm_cfa_pair_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* VF Pair name (32 byte string). */
+	char	pair_name[32];
+	/* Logical PF (0xff-PF for command channel). */
+	uint8_t	pf_b_id;
+	uint8_t	unused_0[3];
+	/* Logical VF number (range: 0 -> MAX_VFS -1). */
+	uint16_t	vf_id;
+	/*
+	 * Pair mode (0-vf2fn, 1-rep2fn, 2-rep2rep, 3-proxy, 4-pfpair,
+	 *            5-rep2fn_mod, 6-rep2fn_modall, 7-rep2fn_truflow).
+	 */
+	uint16_t	pair_mode;
+	/* Pair between VF on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_VF2FN          UINT32_C(0x0)
+	/* Pair between REP on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN         UINT32_C(0x1)
+	/* Pair between REP on local host with REP on specified host. */
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2REP        UINT32_C(0x2)
+	/* Pair for the proxy interface. */
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_PROXY          UINT32_C(0x3)
+	/* Pair for the PF interface. */
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_PFPAIR         UINT32_C(0x4)
+	/* Modify existing rep2fn pair and move pair to new PF. */
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_MOD     UINT32_C(0x5)
+	/* Modify existing rep2fn pairs paired with same PF and move pairs to new PF. */
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_MODALL  UINT32_C(0x6)
+	/* Truflow pair between REP on local host with PF or VF on specified host. */
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_TRUFLOW UINT32_C(0x7)
+	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_LAST \
+		HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_TRUFLOW
+} __rte_packed;
+
+/* hwrm_cfa_pair_free_output (size:128b/16B) */
+struct hwrm_cfa_pair_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM. This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */

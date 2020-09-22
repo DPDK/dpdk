@@ -99,12 +99,24 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 #define BNXT_DEVARG_FLOW_XSTAT	"flow-xstat"
 #define BNXT_DEVARG_MAX_NUM_KFLOWS  "max-num-kflows"
 #define BNXT_DEVARG_REPRESENTOR	"representor"
+#define BNXT_DEVARG_REP_BASED_PF  "rep-based-pf"
+#define BNXT_DEVARG_REP_IS_PF  "rep-is-pf"
+#define BNXT_DEVARG_REP_Q_R2F  "rep-q-r2f"
+#define BNXT_DEVARG_REP_Q_F2R  "rep-q-f2r"
+#define BNXT_DEVARG_REP_FC_R2F  "rep-fc-r2f"
+#define BNXT_DEVARG_REP_FC_F2R  "rep-fc-f2r"
 
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REPRESENTOR,
 	BNXT_DEVARG_TRUFLOW,
 	BNXT_DEVARG_FLOW_XSTAT,
 	BNXT_DEVARG_MAX_NUM_KFLOWS,
+	BNXT_DEVARG_REP_BASED_PF,
+	BNXT_DEVARG_REP_IS_PF,
+	BNXT_DEVARG_REP_Q_R2F,
+	BNXT_DEVARG_REP_Q_F2R,
+	BNXT_DEVARG_REP_FC_R2F,
+	BNXT_DEVARG_REP_FC_F2R,
 	NULL
 };
 
@@ -119,6 +131,36 @@ static const char *const bnxt_dev_args[] = {
  * flow_xstat == true to enable the feature
  */
 #define	BNXT_DEVARG_FLOW_XSTAT_INVALID(flow_xstat)	((flow_xstat) > 1)
+
+/*
+ * rep_is_pf == false to indicate VF representor
+ * rep_is_pf == true to indicate PF representor
+ */
+#define	BNXT_DEVARG_REP_IS_PF_INVALID(rep_is_pf)	((rep_is_pf) > 1)
+
+/*
+ * rep_based_pf == Physical index of the PF
+ */
+#define	BNXT_DEVARG_REP_BASED_PF_INVALID(rep_based_pf)	((rep_based_pf) > 15)
+/*
+ * rep_q_r2f == Logical COS Queue index for the rep to endpoint direction
+ */
+#define	BNXT_DEVARG_REP_Q_R2F_INVALID(rep_q_r2f)	((rep_q_r2f) > 3)
+
+/*
+ * rep_q_f2r == Logical COS Queue index for the endpoint to rep direction
+ */
+#define	BNXT_DEVARG_REP_Q_F2R_INVALID(rep_q_f2r)	((rep_q_f2r) > 3)
+
+/*
+ * rep_fc_r2f == Flow control for the representor to endpoint direction
+ */
+#define BNXT_DEVARG_REP_FC_R2F_INVALID(rep_fc_r2f)	((rep_fc_r2f) > 1)
+
+/*
+ * rep_fc_f2r == Flow control for the endpoint to representor direction
+ */
+#define BNXT_DEVARG_REP_FC_F2R_INVALID(rep_fc_f2r)	((rep_fc_f2r) > 1)
 
 /*
  * max_num_kflows must be >= 32
@@ -1316,7 +1358,7 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	rte_intr_disable(intr_handle);
 
 	/* Stop the child representors for this device */
-	bnxt_vf_rep_stop_all(bp);
+	bnxt_rep_stop_all(bp);
 
 	/* delete the bnxt ULP port details */
 	bnxt_ulp_port_deinit(bp);
@@ -3732,7 +3774,7 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev,
 		return -EIO;
 
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(dev)) {
-		struct bnxt_vf_representor *vfr = dev->data->dev_private;
+		struct bnxt_representor *vfr = dev->data->dev_private;
 		bp = vfr->parent_dev->data->dev_private;
 		/* parent is deleted while children are still valid */
 		if (!bp) {
@@ -5188,7 +5230,7 @@ bnxt_get_svif(uint16_t port_id, bool func_svif,
 
 	eth_dev = &rte_eth_devices[port_id];
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
-		struct bnxt_vf_representor *vfr = eth_dev->data->dev_private;
+		struct bnxt_representor *vfr = eth_dev->data->dev_private;
 		if (!vfr)
 			return 0;
 
@@ -5212,7 +5254,7 @@ bnxt_get_vnic_id(uint16_t port, enum bnxt_ulp_intf_type type)
 
 	eth_dev = &rte_eth_devices[port];
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
-		struct bnxt_vf_representor *vfr = eth_dev->data->dev_private;
+		struct bnxt_representor *vfr = eth_dev->data->dev_private;
 		if (!vfr)
 			return 0;
 
@@ -5237,7 +5279,7 @@ bnxt_get_fw_func_id(uint16_t port, enum bnxt_ulp_intf_type type)
 
 	eth_dev = &rte_eth_devices[port];
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
-		struct bnxt_vf_representor *vfr = eth_dev->data->dev_private;
+		struct bnxt_representor *vfr = eth_dev->data->dev_private;
 		if (!vfr)
 			return 0;
 
@@ -5276,7 +5318,7 @@ bnxt_get_interface_type(uint16_t port)
 uint16_t
 bnxt_get_phy_port_id(uint16_t port_id)
 {
-	struct bnxt_vf_representor *vfr;
+	struct bnxt_representor *vfr;
 	struct rte_eth_dev *eth_dev;
 	struct bnxt *bp;
 
@@ -5302,7 +5344,7 @@ bnxt_get_parif(uint16_t port_id, enum bnxt_ulp_intf_type type)
 
 	eth_dev = &rte_eth_devices[port_id];
 	if (BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)) {
-		struct bnxt_vf_representor *vfr = eth_dev->data->dev_private;
+		struct bnxt_representor *vfr = eth_dev->data->dev_private;
 		if (!vfr)
 			return 0;
 
@@ -5663,6 +5705,227 @@ bnxt_parse_devarg_max_num_kflows(__rte_unused const char *key,
 	return 0;
 }
 
+static int
+bnxt_parse_devarg_rep_is_pf(__rte_unused const char *key,
+			    const char *value, void *opaque_arg)
+{
+	struct bnxt_representor *vfr_bp = opaque_arg;
+	unsigned long rep_is_pf;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_is_pf devargs.\n");
+		return -EINVAL;
+	}
+
+	rep_is_pf = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (rep_is_pf == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_is_pf devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_REP_IS_PF_INVALID(rep_is_pf)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to rep_is_pf devargs.\n");
+		return -EINVAL;
+	}
+
+	vfr_bp->flags |= rep_is_pf;
+	if (BNXT_REP_PF(vfr_bp))
+		PMD_DRV_LOG(INFO, "PF representor\n");
+	else
+		PMD_DRV_LOG(INFO, "VF representor\n");
+
+	return 0;
+}
+
+static int
+bnxt_parse_devarg_rep_based_pf(__rte_unused const char *key,
+			       const char *value, void *opaque_arg)
+{
+	struct bnxt_representor *vfr_bp = opaque_arg;
+	unsigned long rep_based_pf;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_based_pf "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	rep_based_pf = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (rep_based_pf == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_based_pf "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_REP_BASED_PF_INVALID(rep_based_pf)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to rep_based_pf devargs.\n");
+		return -EINVAL;
+	}
+
+	vfr_bp->rep_based_pf = rep_based_pf;
+	PMD_DRV_LOG(INFO, "rep-based-pf = %d\n", vfr_bp->rep_based_pf);
+
+	return 0;
+}
+
+static int
+bnxt_parse_devarg_rep_q_r2f(__rte_unused const char *key,
+			    const char *value, void *opaque_arg)
+{
+	struct bnxt_representor *vfr_bp = opaque_arg;
+	unsigned long rep_q_r2f;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_q_r2f "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	rep_q_r2f = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (rep_q_r2f == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_q_r2f "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_REP_Q_R2F_INVALID(rep_q_r2f)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to rep_q_r2f devargs.\n");
+		return -EINVAL;
+	}
+
+	vfr_bp->rep_q_r2f = rep_q_r2f;
+	vfr_bp->flags |= BNXT_REP_Q_R2F_VALID;
+	PMD_DRV_LOG(INFO, "rep-q-r2f = %d\n", vfr_bp->rep_q_r2f);
+
+	return 0;
+}
+
+static int
+bnxt_parse_devarg_rep_q_f2r(__rte_unused const char *key,
+			    const char *value, void *opaque_arg)
+{
+	struct bnxt_representor *vfr_bp = opaque_arg;
+	unsigned long rep_q_f2r;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_q_f2r "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	rep_q_f2r = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (rep_q_f2r == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_q_f2r "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_REP_Q_F2R_INVALID(rep_q_f2r)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to rep_q_f2r devargs.\n");
+		return -EINVAL;
+	}
+
+	vfr_bp->rep_q_f2r = rep_q_f2r;
+	vfr_bp->flags |= BNXT_REP_Q_F2R_VALID;
+	PMD_DRV_LOG(INFO, "rep-q-f2r = %d\n", vfr_bp->rep_q_f2r);
+
+	return 0;
+}
+
+static int
+bnxt_parse_devarg_rep_fc_r2f(__rte_unused const char *key,
+			     const char *value, void *opaque_arg)
+{
+	struct bnxt_representor *vfr_bp = opaque_arg;
+	unsigned long rep_fc_r2f;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_fc_r2f "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	rep_fc_r2f = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (rep_fc_r2f == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_fc_r2f "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_REP_FC_R2F_INVALID(rep_fc_r2f)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to rep_fc_r2f devargs.\n");
+		return -EINVAL;
+	}
+
+	vfr_bp->flags |= BNXT_REP_FC_R2F_VALID;
+	vfr_bp->rep_fc_r2f = rep_fc_r2f;
+	PMD_DRV_LOG(INFO, "rep-fc-r2f = %lu\n", rep_fc_r2f);
+
+	return 0;
+}
+
+static int
+bnxt_parse_devarg_rep_fc_f2r(__rte_unused const char *key,
+			     const char *value, void *opaque_arg)
+{
+	struct bnxt_representor *vfr_bp = opaque_arg;
+	unsigned long rep_fc_f2r;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_fc_f2r "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	rep_fc_f2r = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (rep_fc_f2r == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to rep_fc_f2r "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_REP_FC_F2R_INVALID(rep_fc_f2r)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid value passed to rep_fc_f2r devargs.\n");
+		return -EINVAL;
+	}
+
+	vfr_bp->flags |= BNXT_REP_FC_F2R_VALID;
+	vfr_bp->rep_fc_f2r = rep_fc_f2r;
+	PMD_DRV_LOG(INFO, "rep-fc-f2r = %lu\n", rep_fc_f2r);
+
+	return 0;
+}
+
 static void
 bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 {
@@ -5959,7 +6222,7 @@ static int bnxt_pci_remove_dev_with_reps(struct rte_eth_dev *eth_dev)
 			continue;
 		PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR pci remove\n",
 			    vf_rep_eth_dev->data->port_id);
-		rte_eth_dev_destroy(vf_rep_eth_dev, bnxt_vf_representor_uninit);
+		rte_eth_dev_destroy(vf_rep_eth_dev, bnxt_representor_uninit);
 	}
 	PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci remove\n",
 		    eth_dev->data->port_id);
@@ -6021,13 +6284,15 @@ static int bnxt_init_rep_info(struct bnxt *bp)
 
 static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 			       struct rte_eth_devargs eth_da,
-			       struct rte_eth_dev *backing_eth_dev)
+			       struct rte_eth_dev *backing_eth_dev,
+			       const char *dev_args)
 {
 	struct rte_eth_dev *vf_rep_eth_dev;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct bnxt *backing_bp;
 	uint16_t num_rep;
 	int i, ret = 0;
+	struct rte_kvargs *kvlist;
 
 	num_rep = eth_da.nb_representor_ports;
 	if (num_rep > BNXT_MAX_VF_REPS) {
@@ -6058,7 +6323,7 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 		return 0;
 
 	for (i = 0; i < num_rep; i++) {
-		struct bnxt_vf_representor representor = {
+		struct bnxt_representor representor = {
 			.vf_id = eth_da.representor_ports[i],
 			.switch_domain_id = backing_bp->switch_domain_id,
 			.parent_dev = backing_eth_dev
@@ -6074,10 +6339,62 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 		snprintf(name, sizeof(name), "net_%s_representor_%d",
 			 pci_dev->device.name, eth_da.representor_ports[i]);
 
+		kvlist = rte_kvargs_parse(dev_args, bnxt_dev_args);
+		if (kvlist) {
+			/*
+			 * Handler for "rep_is_pf" devarg.
+			 * Invoked as for ex: "-w 000:00:0d.0,
+			 * rep-based-pf=<pf index> rep-is-pf=<VF=0 or PF=1>"
+			 */
+			rte_kvargs_process(kvlist, BNXT_DEVARG_REP_IS_PF,
+					   bnxt_parse_devarg_rep_is_pf,
+					   (void *)&representor);
+			/*
+			 * Handler for "rep_based_pf" devarg.
+			 * Invoked as for ex: "-w 000:00:0d.0,
+			 * rep-based-pf=<pf index> rep-is-pf=<VF=0 or PF=1>"
+			 */
+			rte_kvargs_process(kvlist, BNXT_DEVARG_REP_BASED_PF,
+					   bnxt_parse_devarg_rep_based_pf,
+					   (void *)&representor);
+			/*
+			 * Handler for "rep_based_pf" devarg.
+			 * Invoked as for ex: "-w 000:00:0d.0,
+			 * rep-based-pf=<pf index> rep-is-pf=<VF=0 or PF=1>"
+			 */
+			rte_kvargs_process(kvlist, BNXT_DEVARG_REP_Q_R2F,
+					   bnxt_parse_devarg_rep_q_r2f,
+					   (void *)&representor);
+			/*
+			 * Handler for "rep_based_pf" devarg.
+			 * Invoked as for ex: "-w 000:00:0d.0,
+			 * rep-based-pf=<pf index> rep-is-pf=<VF=0 or PF=1>"
+			 */
+			rte_kvargs_process(kvlist, BNXT_DEVARG_REP_Q_F2R,
+					   bnxt_parse_devarg_rep_q_f2r,
+					   (void *)&representor);
+			/*
+			 * Handler for "rep_based_pf" devarg.
+			 * Invoked as for ex: "-w 000:00:0d.0,
+			 * rep-based-pf=<pf index> rep-is-pf=<VF=0 or PF=1>"
+			 */
+			rte_kvargs_process(kvlist, BNXT_DEVARG_REP_FC_R2F,
+					   bnxt_parse_devarg_rep_fc_r2f,
+					   (void *)&representor);
+			/*
+			 * Handler for "rep_based_pf" devarg.
+			 * Invoked as for ex: "-w 000:00:0d.0,
+			 * rep-based-pf=<pf index> rep-is-pf=<VF=0 or PF=1>"
+			 */
+			rte_kvargs_process(kvlist, BNXT_DEVARG_REP_FC_F2R,
+					   bnxt_parse_devarg_rep_fc_f2r,
+					   (void *)&representor);
+		}
+
 		ret = rte_eth_dev_create(&pci_dev->device, name,
-					 sizeof(struct bnxt_vf_representor),
+					 sizeof(struct bnxt_representor),
 					 NULL, NULL,
-					 bnxt_vf_representor_init,
+					 bnxt_representor_init,
 					 &representor);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "failed to create bnxt vf "
@@ -6094,10 +6411,11 @@ static int bnxt_rep_port_probe(struct rte_pci_device *pci_dev,
 		}
 
 		PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR pci probe\n",
-				backing_eth_dev->data->port_id);
+			    backing_eth_dev->data->port_id);
 		backing_bp->rep_info[representor.vf_id].vfr_eth_dev =
 							 vf_rep_eth_dev;
 		backing_bp->num_reps++;
+
 	}
 
 	return 0;
@@ -6150,7 +6468,8 @@ static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci probe\n",
 		    backing_eth_dev->data->port_id);
 	/* probe representor ports now */
-	ret = bnxt_rep_port_probe(pci_dev, eth_da, backing_eth_dev);
+	ret = bnxt_rep_port_probe(pci_dev, eth_da, backing_eth_dev,
+				  pci_dev->device.devargs->args);
 
 	return ret;
 }
@@ -6171,7 +6490,7 @@ static int bnxt_pci_remove(struct rte_pci_device *pci_dev)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		if (eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
 			return rte_eth_dev_destroy(eth_dev,
-						   bnxt_vf_representor_uninit);
+						   bnxt_representor_uninit);
 		else
 			return rte_eth_dev_destroy(eth_dev,
 						   bnxt_dev_uninit);

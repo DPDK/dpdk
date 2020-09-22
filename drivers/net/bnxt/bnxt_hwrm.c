@@ -5556,3 +5556,98 @@ int bnxt_hwrm_cfa_vfr_free(struct bnxt *bp, uint16_t vf_idx)
 	PMD_DRV_LOG(DEBUG, "VFR %d freed\n", vf_idx);
 	return rc;
 }
+
+int bnxt_hwrm_first_vf_id_query(struct bnxt *bp, uint16_t fid,
+				uint16_t *first_vf_id)
+{
+	int rc = 0;
+	struct hwrm_func_qcaps_input req = {.req_type = 0 };
+	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(&req, HWRM_FUNC_QCAPS, BNXT_USE_CHIMP_MB);
+
+	req.fid = rte_cpu_to_le_16(fid);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+
+	if (first_vf_id)
+		*first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
+
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+int bnxt_hwrm_cfa_pair_alloc(struct bnxt *bp, struct bnxt_representor *rep_bp)
+{
+	struct hwrm_cfa_pair_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_cfa_pair_alloc_input req = {0};
+	int rc;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_PAIR_ALLOC, BNXT_USE_CHIMP_MB);
+	req.pair_mode = HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_TRUFLOW;
+	snprintf(req.pair_name, sizeof(req.pair_name), "%svfr%d",
+		 bp->eth_dev->data->name, rep_bp->vf_id);
+
+	req.pf_b_id = rte_cpu_to_le_32(rep_bp->rep_based_pf);
+	req.vf_b_id = rte_cpu_to_le_16(rep_bp->vf_id);
+	req.vf_a_id = rte_cpu_to_le_16(bp->fw_fid);
+	req.host_b_id = 1; /* TBD - Confirm if this is OK */
+
+	req.enables |= rep_bp->flags & BNXT_REP_Q_R2F_VALID ?
+			HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_Q_AB_VALID : 0;
+	req.enables |= rep_bp->flags & BNXT_REP_Q_F2R_VALID ?
+			HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_Q_BA_VALID : 0;
+	req.enables |= rep_bp->flags & BNXT_REP_FC_R2F_VALID ?
+			HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_FC_AB_VALID : 0;
+	req.enables |= rep_bp->flags & BNXT_REP_FC_F2R_VALID ?
+			HWRM_CFA_PAIR_ALLOC_INPUT_ENABLES_FC_BA_VALID : 0;
+
+	req.q_ab = rep_bp->rep_q_r2f;
+	req.q_ba = rep_bp->rep_q_f2r;
+	req.fc_ab = rep_bp->rep_fc_r2f;
+	req.fc_ba = rep_bp->rep_fc_f2r;
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+
+	HWRM_UNLOCK();
+	PMD_DRV_LOG(DEBUG, "%s %d allocated\n",
+		    BNXT_REP_PF(rep_bp) ? "PFR" : "VFR", rep_bp->vf_id);
+	return rc;
+}
+
+int bnxt_hwrm_cfa_pair_free(struct bnxt *bp, struct bnxt_representor *rep_bp)
+{
+	struct hwrm_cfa_pair_free_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_cfa_pair_free_input req = {0};
+	int rc;
+
+	if (!(BNXT_PF(bp) || BNXT_VF_IS_TRUSTED(bp))) {
+		PMD_DRV_LOG(DEBUG,
+			    "Not a PF or trusted VF. Command not supported\n");
+		return 0;
+	}
+
+	HWRM_PREP(&req, HWRM_CFA_PAIR_FREE, BNXT_USE_CHIMP_MB);
+	snprintf(req.pair_name, sizeof(req.pair_name), "%svfr%d",
+		 bp->eth_dev->data->name, rep_bp->vf_id);
+	req.pf_b_id = rte_cpu_to_le_32(rep_bp->rep_based_pf);
+	req.vf_id = rte_cpu_to_le_16(rep_bp->vf_id);
+	req.pair_mode = HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_TRUFLOW;
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+	PMD_DRV_LOG(DEBUG, "%s %d freed\n", BNXT_REP_PF(rep_bp) ? "PFR" : "VFR",
+		    rep_bp->vf_id);
+	return rc;
+}
