@@ -77,6 +77,7 @@ New Features
 * **Updated Virtio driver.**
 
   * Changed default link speed to unknown.
+  * Added support for 200G link speed.
 
 * **Extended flow-perf application.**
 
