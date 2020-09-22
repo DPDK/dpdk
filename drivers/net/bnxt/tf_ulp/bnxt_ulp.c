@@ -594,7 +594,7 @@ bnxt_ulp_global_cfg_update(struct bnxt *bp,
 {
 	uint32_t global_cfg = 0;
 	int rc;
-	struct tf_global_cfg_parms parms;
+	struct tf_global_cfg_parms parms = { 0 };
 
 	/* Initialize the params */
 	parms.dir = dir,
