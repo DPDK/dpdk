@@ -347,7 +347,7 @@ hns3_update_port_base_vlan_info(struct hns3_hw *hw,
 	 */
 	if (hw->port_base_vlan_cfg.state != new_pvid_state) {
 		hw->port_base_vlan_cfg.state = new_pvid_state;
-		hns3_update_all_queues_pvid_state(hw);
+		hns3_update_all_queues_pvid_proc_en(hw);
 	}
 }
 

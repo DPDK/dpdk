@@ -273,7 +273,6 @@ struct hns3_rx_queue {
 	uint64_t rx_ring_phys_addr; /* RX ring DMA address */
 	const struct rte_memzone *mz;
 	struct hns3_entry *sw_ring;
-
 	struct rte_mbuf *pkt_first_seg;
 	struct rte_mbuf *pkt_last_seg;
 
@@ -290,17 +289,24 @@ struct hns3_rx_queue {
 	uint16_t rx_free_hold;   /* num of BDs waited to passed to hardware */
 	uint16_t rx_rearm_start; /* index of BD that driver re-arming from */
 	uint16_t rx_rearm_nb;    /* number of remaining BDs to be re-armed */
-	/*
-	 * port based vlan configuration state.
-	 * value range: HNS3_PORT_BASE_VLAN_DISABLE / HNS3_PORT_BASE_VLAN_ENABLE
-	 */
-	uint16_t pvid_state;
 
 	/* 4 if DEV_RX_OFFLOAD_KEEP_CRC offload set, 0 otherwise */
 	uint8_t crc_len;
 
 	bool rx_deferred_start; /* don't start this queue in dev start */
 	bool configured;        /* indicate if rx queue has been configured */
+	/*
+	 * Indicate whether ignore the outer VLAN field in the Rx BD reported
+	 * by the Hardware. Because the outer VLAN is the PVID if the PVID is
+	 * set for some version of hardware network engine whose vlan mode is
+	 * HNS3_SW_SHIFT_AND_DISCARD_MODE, such as kunpeng 920. And this VLAN
+	 * should not be transitted to the upper-layer application. For hardware
+	 * network engine whose vlan mode is HNS3_HW_SHIFT_AND_DISCARD_MODE,
+	 * such as kunpeng 930, PVID will not be reported to the BDs. So, PMD
+	 * driver does not need to perform PVID-related operation in Rx. At this
+	 * point, the pvid_sw_discard_en will be false.
+	 */
+	bool pvid_sw_discard_en;
 
 	uint64_t l2_errors;
 	uint64_t pkt_len_errors;
@@ -361,12 +367,6 @@ struct hns3_tx_queue {
 	struct rte_mbuf **free;
 
 	/*
-	 * port based vlan configuration state.
-	 * value range: HNS3_PORT_BASE_VLAN_DISABLE / HNS3_PORT_BASE_VLAN_ENABLE
-	 */
-	uint16_t pvid_state;
-
-	/*
 	 * The minimum length of the packet supported by hardware in the Tx
 	 * direction.
 	 */
@@ -374,6 +374,19 @@ struct hns3_tx_queue {
 
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool configured;        /* indicate if tx queue has been configured */
+	/*
+	 * Indicate whether add the vlan_tci of the mbuf to the inner VLAN field
+	 * of Tx BD. Because the outer VLAN will always be the PVID when the
+	 * PVID is set and for some version of hardware network engine whose
+	 * vlan mode is HNS3_SW_SHIFT_AND_DISCARD_MODE, such as kunpeng 920, the
+	 * PVID will overwrite the outer VLAN field of Tx BD. For the hardware
+	 * network engine whose vlan mode is HNS3_HW_SHIFT_AND_DISCARD_MODE,
+	 * such as kunpeng 930, if the PVID is set, the hardware will shift the
+	 * VLAN field automatically. So, PMD driver does not need to do
+	 * PVID-related operations in Tx. And pvid_sw_shift_en will be false at
+	 * this point.
+	 */
+	bool pvid_sw_shift_en;
 
 	/*
 	 * The following items are used for the abnormal errors statistics in
@@ -620,7 +633,7 @@ int hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 				  uint16_t nb_tx_q);
 int hns3_config_gro(struct hns3_hw *hw, bool en);
 int hns3_restore_gro_conf(struct hns3_hw *hw);
-void hns3_update_all_queues_pvid_state(struct hns3_hw *hw);
+void hns3_update_all_queues_pvid_proc_en(struct hns3_hw *hw);
 void hns3_rx_scattered_reset(struct rte_eth_dev *dev);
 void hns3_rx_scattered_calc(struct rte_eth_dev *dev);
 int hns3_rx_check_vec_support(struct rte_eth_dev *dev);

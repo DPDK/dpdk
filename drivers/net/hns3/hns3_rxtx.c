@@ -339,26 +339,26 @@ hns3_init_tx_queue_hw(struct hns3_tx_queue *txq)
 }
 
 void
-hns3_update_all_queues_pvid_state(struct hns3_hw *hw)
+hns3_update_all_queues_pvid_proc_en(struct hns3_hw *hw)
 {
 	uint16_t nb_rx_q = hw->data->nb_rx_queues;
 	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	struct hns3_rx_queue *rxq;
 	struct hns3_tx_queue *txq;
-	int pvid_state;
+	bool pvid_en;
 	int i;
 
-	pvid_state = hw->port_base_vlan_cfg.state;
+	pvid_en = hw->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_ENABLE;
 	for (i = 0; i < hw->cfg_max_queues; i++) {
 		if (i < nb_rx_q) {
 			rxq = hw->data->rx_queues[i];
 			if (rxq != NULL)
-				rxq->pvid_state = pvid_state;
+				rxq->pvid_sw_discard_en = pvid_en;
 		}
 		if (i < nb_tx_q) {
 			txq = hw->data->tx_queues[i];
 			if (txq != NULL)
-				txq->pvid_state = pvid_state;
+				txq->pvid_sw_shift_en = pvid_en;
 		}
 	}
 }
@@ -1405,7 +1405,20 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 	rxq->port_id = dev->data->port_id;
-	rxq->pvid_state = hw->port_base_vlan_cfg.state;
+	/*
+	 * For hns3 PF device, if the VLAN mode is HW_SHIFT_AND_DISCARD_MODE,
+	 * the pvid_sw_discard_en in the queue struct should not be changed,
+	 * because PVID-related operations do not need to be processed by PMD
+	 * driver. For hns3 VF device, whether it needs to process PVID depends
+	 * on the configuration of PF kernel mode netdevice driver. And the
+	 * related PF configuration is delivered through the mailbox and finally
+	 * reflectd in port_base_vlan_cfg.
+	 */
+	if (hns->is_vf || hw->vlan_mode == HNS3_SW_SHIFT_AND_DISCARD_MODE)
+		rxq->pvid_sw_discard_en = hw->port_base_vlan_cfg.state ==
+				       HNS3_PORT_BASE_VLAN_ENABLE;
+	else
+		rxq->pvid_sw_discard_en = false;
 	rxq->configured = true;
 	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
@@ -1592,7 +1605,7 @@ hns3_rxd_to_vlan_tci(struct hns3_rx_queue *rxq, struct rte_mbuf *mb,
 	};
 	strip_status = hns3_get_field(l234_info, HNS3_RXD_STRP_TAGP_M,
 				      HNS3_RXD_STRP_TAGP_S);
-	report_mode = report_type[rxq->pvid_state][strip_status];
+	report_mode = report_type[rxq->pvid_sw_discard_en][strip_status];
 	switch (report_mode) {
 	case HNS3_NO_STRP_VLAN_VLD:
 		mb->vlan_tci = 0;
@@ -2151,7 +2164,20 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	}
 
 	txq->port_id = dev->data->port_id;
-	txq->pvid_state = hw->port_base_vlan_cfg.state;
+	/*
+	 * For hns3 PF device, if the VLAN mode is HW_SHIFT_AND_DISCARD_MODE,
+	 * the pvid_sw_shift_en in the queue struct should not be changed,
+	 * because PVID-related operations do not need to be processed by PMD
+	 * driver. For hns3 VF device, whether it needs to process PVID depends
+	 * on the configuration of PF kernel mode netdev driver. And the
+	 * related PF configuration is delivered through the mailbox and finally
+	 * reflectd in port_base_vlan_cfg.
+	 */
+	if (hns->is_vf || hw->vlan_mode == HNS3_SW_SHIFT_AND_DISCARD_MODE)
+		txq->pvid_sw_shift_en = hw->port_base_vlan_cfg.state ==
+					HNS3_PORT_BASE_VLAN_ENABLE;
+	else
+		txq->pvid_sw_shift_en = false;
 	txq->configured = true;
 	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
@@ -2352,7 +2378,7 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 	 * To avoid the VLAN of Tx descriptor is overwritten by PVID, it should
 	 * be added to the position close to the IP header when PVID is enabled.
 	 */
-	if (!txq->pvid_state && ol_flags & (PKT_TX_VLAN_PKT |
+	if (!txq->pvid_sw_shift_en && ol_flags & (PKT_TX_VLAN_PKT |
 				PKT_TX_QINQ_PKT)) {
 		desc->tx.ol_type_vlan_len_msec |=
 				rte_cpu_to_le_32(BIT(HNS3_TXD_OVLAN_B));
@@ -2365,7 +2391,7 @@ hns3_fill_first_desc(struct hns3_tx_queue *txq, struct hns3_desc *desc,
 	}
 
 	if (ol_flags & PKT_TX_QINQ_PKT ||
-	    ((ol_flags & PKT_TX_VLAN_PKT) && txq->pvid_state)) {
+	    ((ol_flags & PKT_TX_VLAN_PKT) && txq->pvid_sw_shift_en)) {
 		desc->tx.type_cs_vlan_tso_len |=
 					rte_cpu_to_le_32(BIT(HNS3_TXD_VLAN_B));
 		desc->tx.vlan_tag = rte_cpu_to_le_16(rxm->vlan_tci);
@@ -2791,7 +2817,7 @@ hns3_vld_vlan_chk(struct hns3_tx_queue *txq, struct rte_mbuf *m)
 	struct rte_ether_hdr *eh;
 	struct rte_vlan_hdr *vh;
 
-	if (!txq->pvid_state)
+	if (!txq->pvid_sw_shift_en)
 		return 0;
 
 	/*

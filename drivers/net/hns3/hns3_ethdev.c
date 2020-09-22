@@ -477,6 +477,11 @@ hns3_set_vlan_rx_offload_cfg(struct hns3_adapter *hns,
 	hns3_set_bit(req->vport_vlan_cfg, HNS3_SHOW_TAG2_EN_B,
 		     vcfg->vlan2_vlan_prionly ? 1 : 0);
 
+	/* firmwall will ignore this configuration for PCI_REVISION_ID_HIP08 */
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_DISCARD_TAG1_EN_B,
+		     vcfg->strip_tag1_discard_en ? 1 : 0);
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_DISCARD_TAG2_EN_B,
+		     vcfg->strip_tag2_discard_en ? 1 : 0);
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
 	 * driver, just need to configure parameters for PF vport.
@@ -518,11 +523,14 @@ hns3_en_hw_strip_rxvtag(struct hns3_adapter *hns, bool enable)
 	if (hw->port_base_vlan_cfg.state == HNS3_PORT_BASE_VLAN_DISABLE) {
 		rxvlan_cfg.strip_tag1_en = false;
 		rxvlan_cfg.strip_tag2_en = enable;
+		rxvlan_cfg.strip_tag2_discard_en = false;
 	} else {
 		rxvlan_cfg.strip_tag1_en = enable;
 		rxvlan_cfg.strip_tag2_en = true;
+		rxvlan_cfg.strip_tag2_discard_en = true;
 	}
 
+	rxvlan_cfg.strip_tag1_discard_en = false;
 	rxvlan_cfg.vlan1_vlan_prionly = false;
 	rxvlan_cfg.vlan2_vlan_prionly = false;
 	rxvlan_cfg.rx_vlan_offload_en = enable;
@@ -678,6 +686,10 @@ hns3_set_vlan_tx_offload_cfg(struct hns3_adapter *hns,
 		     vcfg->insert_tag2_en ? 1 : 0);
 	hns3_set_bit(req->vport_vlan_cfg, HNS3_CFG_NIC_ROCE_SEL_B, 0);
 
+	/* firmwall will ignore this configuration for PCI_REVISION_ID_HIP08 */
+	hns3_set_bit(req->vport_vlan_cfg, HNS3_TAG_SHIFT_MODE_EN_B,
+		     vcfg->tag_shift_mode_en ? 1 : 0);
+
 	/*
 	 * In current version VF is not supported when PF is driven by DPDK
 	 * driver, just need to configure parameters for PF vport.
@@ -707,7 +719,8 @@ hns3_vlan_txvlan_cfg(struct hns3_adapter *hns, uint16_t port_base_vlan_state,
 		txvlan_cfg.insert_tag1_en = false;
 		txvlan_cfg.default_tag1 = 0;
 	} else {
-		txvlan_cfg.accept_tag1 = false;
+		txvlan_cfg.accept_tag1 =
+			hw->vlan_mode == HNS3_HW_SHIFT_AND_DISCARD_MODE;
 		txvlan_cfg.insert_tag1_en = true;
 		txvlan_cfg.default_tag1 = pvid;
 	}
@@ -717,6 +730,7 @@ hns3_vlan_txvlan_cfg(struct hns3_adapter *hns, uint16_t port_base_vlan_state,
 	txvlan_cfg.accept_untag2 = true;
 	txvlan_cfg.insert_tag2_en = false;
 	txvlan_cfg.default_tag2 = 0;
+	txvlan_cfg.tag_shift_mode_en = true;
 
 	ret = hns3_set_vlan_tx_offload_cfg(hns, &txvlan_cfg);
 	if (ret) {
@@ -841,14 +855,17 @@ hns3_en_pvid_strip(struct hns3_adapter *hns, int on)
 	bool rx_strip_en;
 	int ret;
 
-	rx_strip_en = old_cfg->rx_vlan_offload_en ? true : false;
+	rx_strip_en = old_cfg->rx_vlan_offload_en;
 	if (on) {
 		rx_vlan_cfg.strip_tag1_en = rx_strip_en;
 		rx_vlan_cfg.strip_tag2_en = true;
+		rx_vlan_cfg.strip_tag2_discard_en = true;
 	} else {
 		rx_vlan_cfg.strip_tag1_en = false;
 		rx_vlan_cfg.strip_tag2_en = rx_strip_en;
+		rx_vlan_cfg.strip_tag2_discard_en = false;
 	}
+	rx_vlan_cfg.strip_tag1_discard_en = false;
 	rx_vlan_cfg.vlan1_vlan_prionly = false;
 	rx_vlan_cfg.vlan2_vlan_prionly = false;
 	rx_vlan_cfg.rx_vlan_offload_en = old_cfg->rx_vlan_offload_en;
@@ -940,9 +957,13 @@ hns3_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	rte_spinlock_unlock(&hw->lock);
 	if (ret)
 		return ret;
-
-	if (pvid_en_state_change)
-		hns3_update_all_queues_pvid_state(hw);
+	/*
+	 * Only in HNS3_SW_SHIFT_AND_MODE the PVID related operation in Tx/Rx
+	 * need be processed by PMD driver.
+	 */
+	if (pvid_en_state_change &&
+	    hw->vlan_mode == HNS3_SW_SHIFT_AND_DISCARD_MODE)
+		hns3_update_all_queues_pvid_proc_en(hw);
 
 	return 0;
 }
@@ -2904,6 +2925,7 @@ hns3_get_capability(struct hns3_hw *hw)
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
 		hw->intr.coalesce_mode = HNS3_INTR_COALESCE_NON_QL;
 		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
+		hw->vlan_mode = HNS3_SW_SHIFT_AND_DISCARD_MODE;
 		hw->min_tx_pkt_len = HNS3_HIP08_MIN_TX_PKT_LEN;
 		return 0;
 	}
@@ -2919,6 +2941,7 @@ hns3_get_capability(struct hns3_hw *hw)
 	hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_ALL;
 	hw->intr.coalesce_mode = HNS3_INTR_COALESCE_QL;
 	hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_1US;
+	hw->vlan_mode = HNS3_HW_SHIFT_AND_DISCARD_MODE;
 	hw->min_tx_pkt_len = HNS3_HIP09_MIN_TX_PKT_LEN;
 
 	return 0;

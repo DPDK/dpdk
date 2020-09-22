@@ -449,11 +449,14 @@ struct hns3_umv_spc_alc_cmd {
 #define HNS3_CFG_NIC_ROCE_SEL_B		4
 #define HNS3_ACCEPT_TAG2_B		5
 #define HNS3_ACCEPT_UNTAG2_B		6
+#define HNS3_TAG_SHIFT_MODE_EN_B	7
 
 #define HNS3_REM_TAG1_EN_B		0
 #define HNS3_REM_TAG2_EN_B		1
 #define HNS3_SHOW_TAG1_EN_B		2
 #define HNS3_SHOW_TAG2_EN_B		3
+#define HNS3_DISCARD_TAG1_EN_B		5
+#define HNS3_DISCARD_TAG2_EN_B		6
 
 /* Factor used to calculate offset and bitmap of VF num */
 #define HNS3_VF_NUM_PER_CMD             64
