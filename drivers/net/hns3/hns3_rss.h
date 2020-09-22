@@ -47,6 +47,7 @@ struct hns3_rss_conf {
 	struct hns3_rss_tuple_cfg rss_tuple_sets;
 	uint8_t rss_indirection_tbl[HNS3_RSS_IND_TBL_SIZE]; /* Shadow table */
 	uint16_t queue[HNS3_RSS_QUEUES_BUFFER_NUM]; /* Queues indices to use */
+	bool valid; /* check if RSS rule is valid */
 };
 
 #ifndef ilog2

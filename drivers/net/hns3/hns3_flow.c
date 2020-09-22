@@ -1560,7 +1560,9 @@ static int
 hns3_config_rss_filter(struct rte_eth_dev *dev,
 		       const struct hns3_rss_conf *conf, bool add)
 {
+	struct hns3_process_private *process_list = dev->process_private;
 	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rss_conf *rss_info;
 	uint64_t flow_types;
@@ -1591,28 +1593,27 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 
 	rss_info = &hw->rss_info;
 	if (!add) {
-		if (hns3_action_rss_same(&rss_info->conf, &rss_flow_conf)) {
-			ret = hns3_disable_rss(hw);
-			if (ret) {
-				hns3_err(hw, "RSS disable failed(%d)", ret);
-				return ret;
-			}
-
-			if (rss_flow_conf.queue_num) {
-				/*
-				 * Due the content of queue pointer have been
-				 * reset to 0, the rss_info->conf.queue should
-				 * be set NULL.
-				 */
-				rss_info->conf.queue = NULL;
-				rss_info->conf.queue_num = 0;
-			}
-
-			/* set RSS func invalid after flushed */
-			rss_info->conf.func = RTE_ETH_HASH_FUNCTION_MAX;
+		if (!conf->valid)
 			return 0;
+
+		ret = hns3_disable_rss(hw);
+		if (ret) {
+			hns3_err(hw, "RSS disable failed(%d)", ret);
+			return ret;
 		}
-		return -EINVAL;
+
+		if (rss_flow_conf.queue_num) {
+			/*
+			 * Due the content of queue pointer have been reset to
+			 * 0, the rss_info->conf.queue should be set NULL
+			 */
+			rss_info->conf.queue = NULL;
+			rss_info->conf.queue_num = 0;
+		}
+
+		/* set RSS func invalid after flushed */
+		rss_info->conf.func = RTE_ETH_HASH_FUNCTION_MAX;
+		return 0;
 	}
 
 	/* Get rx queues num */
@@ -1643,6 +1644,13 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 		goto rss_config_err;
 	}
 
+	/*
+	 * When create a new RSS rule, the old rule will be overlaid and set
+	 * invalid.
+	 */
+	TAILQ_FOREACH(rss_filter_ptr, &process_list->filter_rss_list, entries)
+		rss_filter_ptr->filter_info.valid = false;
+
 rss_config_err:
 	rte_spinlock_unlock(&hw->lock);
 
@@ -1653,10 +1661,36 @@ rss_config_err:
 static int
 hns3_clear_rss_filter(struct rte_eth_dev *dev)
 {
+	struct hns3_process_private *process_list = dev->process_private;
 	struct hns3_adapter *hns = dev->data->dev_private;
+	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_hw *hw = &hns->hw;
+	int rss_rule_succ_cnt = 0; /* count for success of clearing RSS rules */
+	int rss_rule_fail_cnt = 0; /* count for failure of clearing RSS rules */
+	int ret = 0;
 
-	return hns3_config_rss_filter(dev, &hw->rss_info, false);
+	rss_filter_ptr = TAILQ_FIRST(&process_list->filter_rss_list);
+	while (rss_filter_ptr) {
+		TAILQ_REMOVE(&process_list->filter_rss_list, rss_filter_ptr,
+			     entries);
+		ret = hns3_config_rss_filter(dev, &rss_filter_ptr->filter_info,
+					     false);
+		if (ret)
+			rss_rule_fail_cnt++;
+		else
+			rss_rule_succ_cnt++;
+		rte_free(rss_filter_ptr);
+		rss_filter_ptr = TAILQ_FIRST(&process_list->filter_rss_list);
+	}
+
+	if (rss_rule_fail_cnt) {
+		hns3_err(hw, "fail to delete all RSS filters, success num = %d "
+			     "fail num = %d", rss_rule_succ_cnt,
+			     rss_rule_fail_cnt);
+		ret = -EIO;
+	}
+
+	return ret;
 }
 
 /* Restore the rss filter */
@@ -1807,6 +1841,7 @@ hns3_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		}
 		memcpy(&rss_filter_ptr->filter_info, rss_conf,
 			sizeof(struct hns3_rss_conf));
+		rss_filter_ptr->filter_info.valid = true;
 		TAILQ_INSERT_TAIL(&process_list->filter_rss_list,
 				  rss_filter_ptr, entries);
 
@@ -1872,7 +1907,6 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct hns3_fdir_rule_ele *fdir_rule_ptr;
 	struct hns3_rss_conf_ele *rss_filter_ptr;
 	struct hns3_flow_mem *flow_node;
-	struct hns3_hw *hw = &hns->hw;
 	enum rte_filter_type filter_type;
 	struct hns3_fdir_rule fdir_rule;
 	int ret;
@@ -1902,7 +1936,8 @@ hns3_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 		break;
 	case RTE_ETH_FILTER_HASH:
 		rss_filter_ptr = (struct hns3_rss_conf_ele *)flow->rule;
-		ret = hns3_config_rss_filter(dev, &hw->rss_info, false);
+		ret = hns3_config_rss_filter(dev, &rss_filter_ptr->filter_info,
+					     false);
 		if (ret)
 			return rte_flow_error_set(error, EIO,
 						  RTE_FLOW_ERROR_TYPE_HANDLE,
