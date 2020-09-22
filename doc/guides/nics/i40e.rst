@@ -670,6 +670,15 @@ When a packet is over maximum frame size, the packet is dropped.
 However, the Rx statistics, when calling `rte_eth_stats_get` incorrectly
 shows it as received.
 
+RX/TX statistics may be incorrect when register overflowed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The rx_bytes/tx_bytes statistics register is 48 bit length.
+Although this limitation is enlarged to 64 bit length on the software side,
+but there is no way to detect if the overflow occurred more than once.
+So rx_bytes/tx_bytes statistics data is correct when statistics are
+updated at least once between two overflows.
+
 VF & TC max bandwidth setting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

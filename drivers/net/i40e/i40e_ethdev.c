@@ -3052,6 +3052,21 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static void
+i40e_stat_update_48_in_64(struct i40e_hw *hw, uint32_t hireg,
+			  uint32_t loreg, bool offset_loaded, uint64_t *offset,
+			  uint64_t *stat, uint64_t *prev_stat)
+{
+	i40e_stat_update_48(hw, hireg, loreg, offset_loaded, offset, stat);
+	/* enlarge the limitation when statistics counters overflowed */
+	if (offset_loaded) {
+		if (I40E_RXTX_BYTES_L_48_BIT(*prev_stat) > *stat)
+			*stat += (uint64_t)1 << I40E_48_BIT_WIDTH;
+		*stat += I40E_RXTX_BYTES_H_16_BIT(*prev_stat);
+	}
+	*prev_stat = *stat;
+}
+
 /* Get all the statistics of a VSI */
 void
 i40e_update_vsi_stats(struct i40e_vsi *vsi)
@@ -3061,9 +3076,9 @@ i40e_update_vsi_stats(struct i40e_vsi *vsi)
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	int idx = rte_le_to_cpu_16(vsi->info.stat_counter_idx);
 
-	i40e_stat_update_48(hw, I40E_GLV_GORCH(idx), I40E_GLV_GORCL(idx),
-			    vsi->offset_loaded, &oes->rx_bytes,
-			    &nes->rx_bytes);
+	i40e_stat_update_48_in_64(hw, I40E_GLV_GORCH(idx), I40E_GLV_GORCL(idx),
+				  vsi->offset_loaded, &oes->rx_bytes,
+				  &nes->rx_bytes, &vsi->prev_rx_bytes);
 	i40e_stat_update_48(hw, I40E_GLV_UPRCH(idx), I40E_GLV_UPRCL(idx),
 			    vsi->offset_loaded, &oes->rx_unicast,
 			    &nes->rx_unicast);
@@ -3084,9 +3099,9 @@ i40e_update_vsi_stats(struct i40e_vsi *vsi)
 	i40e_stat_update_32(hw, I40E_GLV_RUPP(idx), vsi->offset_loaded,
 			    &oes->rx_unknown_protocol,
 			    &nes->rx_unknown_protocol);
-	i40e_stat_update_48(hw, I40E_GLV_GOTCH(idx), I40E_GLV_GOTCL(idx),
-			    vsi->offset_loaded, &oes->tx_bytes,
-			    &nes->tx_bytes);
+	i40e_stat_update_48_in_64(hw, I40E_GLV_GOTCH(idx), I40E_GLV_GOTCL(idx),
+				  vsi->offset_loaded, &oes->tx_bytes,
+				  &nes->tx_bytes, &vsi->prev_tx_bytes);
 	i40e_stat_update_48(hw, I40E_GLV_UPTCH(idx), I40E_GLV_UPTCL(idx),
 			    vsi->offset_loaded, &oes->tx_unicast,
 			    &nes->tx_unicast);
@@ -3128,17 +3143,18 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 	struct i40e_hw_port_stats *os = &pf->stats_offset; /* old stats */
 
 	/* Get rx/tx bytes of internal transfer packets */
-	i40e_stat_update_48(hw, I40E_GLV_GORCH(hw->port),
-			I40E_GLV_GORCL(hw->port),
-			pf->offset_loaded,
-			&pf->internal_stats_offset.rx_bytes,
-			&pf->internal_stats.rx_bytes);
-
-	i40e_stat_update_48(hw, I40E_GLV_GOTCH(hw->port),
-			I40E_GLV_GOTCL(hw->port),
-			pf->offset_loaded,
-			&pf->internal_stats_offset.tx_bytes,
-			&pf->internal_stats.tx_bytes);
+	i40e_stat_update_48_in_64(hw, I40E_GLV_GORCH(hw->port),
+				  I40E_GLV_GORCL(hw->port),
+				  pf->offset_loaded,
+				  &pf->internal_stats_offset.rx_bytes,
+				  &pf->internal_stats.rx_bytes,
+				  &pf->internal_prev_rx_bytes);
+	i40e_stat_update_48_in_64(hw, I40E_GLV_GOTCH(hw->port),
+				  I40E_GLV_GOTCL(hw->port),
+				  pf->offset_loaded,
+				  &pf->internal_stats_offset.tx_bytes,
+				  &pf->internal_stats.tx_bytes,
+				  &pf->internal_prev_tx_bytes);
 	/* Get total internal rx packet count */
 	i40e_stat_update_48(hw, I40E_GLV_UPRCH(hw->port),
 			    I40E_GLV_UPRCL(hw->port),
@@ -3178,10 +3194,10 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 		pf->internal_stats.rx_broadcast) * RTE_ETHER_CRC_LEN;
 
 	/* Get statistics of struct i40e_eth_stats */
-	i40e_stat_update_48(hw, I40E_GLPRT_GORCH(hw->port),
-			    I40E_GLPRT_GORCL(hw->port),
-			    pf->offset_loaded, &os->eth.rx_bytes,
-			    &ns->eth.rx_bytes);
+	i40e_stat_update_48_in_64(hw, I40E_GLPRT_GORCH(hw->port),
+				  I40E_GLPRT_GORCL(hw->port),
+				  pf->offset_loaded, &os->eth.rx_bytes,
+				  &ns->eth.rx_bytes, &pf->prev_rx_bytes);
 	i40e_stat_update_48(hw, I40E_GLPRT_UPRCH(hw->port),
 			    I40E_GLPRT_UPRCL(hw->port),
 			    pf->offset_loaded, &os->eth.rx_unicast,
@@ -3236,10 +3252,10 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 			    pf->offset_loaded,
 			    &os->eth.rx_unknown_protocol,
 			    &ns->eth.rx_unknown_protocol);
-	i40e_stat_update_48(hw, I40E_GLPRT_GOTCH(hw->port),
-			    I40E_GLPRT_GOTCL(hw->port),
-			    pf->offset_loaded, &os->eth.tx_bytes,
-			    &ns->eth.tx_bytes);
+	i40e_stat_update_48_in_64(hw, I40E_GLPRT_GOTCH(hw->port),
+				  I40E_GLPRT_GOTCL(hw->port),
+				  pf->offset_loaded, &os->eth.tx_bytes,
+				  &ns->eth.tx_bytes, &pf->prev_tx_bytes);
 	i40e_stat_update_48(hw, I40E_GLPRT_UPTCH(hw->port),
 			    I40E_GLPRT_UPTCL(hw->port),
 			    pf->offset_loaded, &os->eth.tx_unicast,
