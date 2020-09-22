@@ -563,14 +563,7 @@ struct hns3_rss_generic_config_cmd {
 
 /* Configure the tuple selection for RSS hash input, opcode:0x0D02 */
 struct hns3_rss_input_tuple_cmd {
-	uint8_t ipv4_tcp_en;
-	uint8_t ipv4_udp_en;
-	uint8_t ipv4_sctp_en;
-	uint8_t ipv4_fragment_en;
-	uint8_t ipv6_tcp_en;
-	uint8_t ipv6_udp_en;
-	uint8_t ipv6_sctp_en;
-	uint8_t ipv6_fragment_en;
+	uint64_t tuple_field;
 	uint8_t rsv[16];
 };
 

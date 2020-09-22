@@ -17,7 +17,11 @@
 	ETH_RSS_NONFRAG_IPV6_TCP | \
 	ETH_RSS_NONFRAG_IPV6_UDP | \
 	ETH_RSS_NONFRAG_IPV6_SCTP | \
-	ETH_RSS_NONFRAG_IPV6_OTHER)
+	ETH_RSS_NONFRAG_IPV6_OTHER | \
+	ETH_RSS_L3_SRC_ONLY | \
+	ETH_RSS_L3_DST_ONLY | \
+	ETH_RSS_L4_SRC_ONLY | \
+	ETH_RSS_L4_DST_ONLY)
 
 #define HNS3_RSS_IND_TBL_SIZE	512 /* The size of hash lookup table */
 #define HNS3_RSS_KEY_SIZE	40
@@ -30,20 +34,8 @@
 #define HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP 2
 #define HNS3_RSS_HASH_ALGO_MASK		0xf
 
-#define HNS3_RSS_INPUT_TUPLE_OTHER	GENMASK(3, 0)
-#define HNS3_RSS_INPUT_TUPLE_SCTP	GENMASK(4, 0)
-#define HNS3_IP_FRAG_BIT_MASK		GENMASK(3, 2)
-#define HNS3_IP_OTHER_BIT_MASK		GENMASK(1, 0)
-
 struct hns3_rss_tuple_cfg {
-	uint8_t ipv4_tcp_en;      /* Bit8.0~8.3 */
-	uint8_t ipv4_udp_en;      /* Bit9.0~9.3 */
-	uint8_t ipv4_sctp_en;     /* Bit10.0~10.4 */
-	uint8_t ipv4_fragment_en; /* Bit11.0~11.3 */
-	uint8_t ipv6_tcp_en;      /* Bit12.0~12.3 */
-	uint8_t ipv6_udp_en;      /* Bit13.0~13.3 */
-	uint8_t ipv6_sctp_en;     /* Bit14.0~14.4 */
-	uint8_t ipv6_fragment_en; /* Bit15.0~15.3 */
+	uint64_t rss_tuple_fields;
 };
 
 #define HNS3_RSS_QUEUES_BUFFER_NUM	64 /* Same as the Max rx/tx queue num */
