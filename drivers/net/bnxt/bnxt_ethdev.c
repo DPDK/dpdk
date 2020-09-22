@@ -1323,7 +1323,9 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 
 	bnxt_cancel_fw_health_check(bp);
 
-	bnxt_dev_set_link_down_op(eth_dev);
+	/* Do not bring link down during reset recovery */
+	if (!is_bnxt_in_error(bp))
+		bnxt_dev_set_link_down_op(eth_dev);
 
 	/* Wait for link to be reset and the async notification to process.
 	 * During reset recovery, there is no need to wait and
@@ -4377,7 +4379,7 @@ static void bnxt_write_fw_reset_reg(struct bnxt *bp, uint32_t index)
 
 static void bnxt_dev_cleanup(struct bnxt *bp)
 {
-	bnxt_set_hwrm_link_config(bp, false);
+	bp->eth_dev->data->dev_link.link_status = 0;
 	bp->link_info->link_up = 0;
 	if (bp->eth_dev->data->dev_started)
 		bnxt_dev_stop_op(bp->eth_dev);
