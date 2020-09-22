@@ -526,7 +526,8 @@ static inline void hns3_fd_convert_int32(uint32_t key, uint32_t mask,
 	memcpy(val_y, &tmp_y_l, sizeof(tmp_y_l));
 }
 
-static bool hns3_fd_convert_tuple(uint32_t tuple, uint8_t *key_x,
+static bool hns3_fd_convert_tuple(struct hns3_hw *hw,
+				  uint32_t tuple, uint8_t *key_x,
 				  uint8_t *key_y, struct hns3_fdir_rule *rule)
 {
 	struct hns3_fdir_key_conf *key_conf;
@@ -602,6 +603,9 @@ static bool hns3_fd_convert_tuple(uint32_t tuple, uint8_t *key_x,
 		       key_conf->mask.ip_proto);
 		calc_y(*key_y, key_conf->spec.ip_proto,
 		       key_conf->mask.ip_proto);
+		break;
+	default:
+		hns3_warn(hw, "not support tuple of (%d)", tuple);
 		break;
 	}
 	return true;
@@ -710,7 +714,7 @@ static int hns3_config_key(struct hns3_adapter *hns,
 
 		tuple_size = tuple_key_info[i].key_length / HNS3_BITS_PER_BYTE;
 		if (key_cfg->tuple_active & BIT(i)) {
-			tuple_valid = hns3_fd_convert_tuple(i, cur_key_x,
+			tuple_valid = hns3_fd_convert_tuple(hw, i, cur_key_x,
 							    cur_key_y, rule);
 			if (tuple_valid) {
 				cur_key_x += tuple_size;
