@@ -1360,10 +1360,9 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 	uint16_t n;
 
 	NEXT_ITEM_OF_ACTION(act, actions, act_index);
-	/* Get configuration args from APP cmdline input */
 	rss = act->conf;
 
-	if (rss == NULL || rss->queue_num == 0) {
+	if (rss == NULL) {
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  act, "no valid queues");
@@ -1537,11 +1536,6 @@ hns3_update_indir_table(struct rte_eth_dev *dev,
 	uint8_t queue_id;
 	uint32_t i;
 
-	if (num == 0) {
-		hns3_err(hw, "No PF queues are configured to enable RSS");
-		return -ENOTSUP;
-	}
-
 	allow_rss_queues = RTE_MIN(dev->data->nb_rx_queues, hw->rss_size_max);
 	/* Fill in redirection table */
 	memcpy(indir_tbl, hw->rss_info.rss_indirection_tbl,
@@ -1632,10 +1626,11 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 	hns3_info(hw, "Max of contiguous %u PF queues are configured", num);
 
 	rte_spinlock_lock(&hw->lock);
-	/* Update redirection talbe of rss */
-	ret = hns3_update_indir_table(dev, &rss_flow_conf, num);
-	if (ret)
-		goto rss_config_err;
+	if (num) {
+		ret = hns3_update_indir_table(dev, &rss_flow_conf, num);
+		if (ret)
+			goto rss_config_err;
+	}
 
 	/* Set hash algorithm and flow types by the user's config */
 	ret = hns3_hw_rss_hash_set(hw, &rss_flow_conf);
@@ -1661,9 +1656,6 @@ hns3_clear_rss_filter(struct rte_eth_dev *dev)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
-	if (hw->rss_info.conf.queue_num == 0)
-		return 0;
-
 	return hns3_config_rss_filter(dev, &hw->rss_info, false);
 }
 
@@ -1673,9 +1665,6 @@ hns3_restore_rss_filter(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-
-	if (hw->rss_info.conf.queue_num == 0)
-		return 0;
 
 	/* When user flush all rules, it doesn't need to restore RSS rule */
 	if (hw->rss_info.conf.func == RTE_ETH_HASH_FUNCTION_MAX)
