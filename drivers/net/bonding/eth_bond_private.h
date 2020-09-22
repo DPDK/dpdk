@@ -50,6 +50,8 @@ extern const struct rte_flow_ops bond_flow_ops;
 /** Port Queue Mapping Structure */
 struct bond_rx_queue {
 	uint16_t queue_id;
+	/**< Next active_slave to poll */
+	uint16_t active_slave;
 	/**< Queue Id */
 	struct bond_dev_private *dev_private;
 	/**< Reference to eth_dev private structure */
@@ -132,7 +134,6 @@ struct bond_dev_private {
 	uint16_t nb_rx_queues;			/**< Total number of rx queues */
 	uint16_t nb_tx_queues;			/**< Total number of tx queues*/
 
-	uint16_t active_slave;		/**< Next active_slave to poll */
 	uint16_t active_slave_count;		/**< Number of active slaves */
 	uint16_t active_slaves[RTE_MAX_ETHPORTS];    /**< Active slave list */
 

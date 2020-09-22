@@ -69,7 +69,7 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
 	internals = bd_rx_q->dev_private;
 	slave_count = internals->active_slave_count;
-	active_slave = internals->active_slave;
+	active_slave = bd_rx_q->active_slave;
 
 	for (i = 0; i < slave_count && nb_pkts; i++) {
 		uint16_t num_rx_slave;
@@ -86,8 +86,8 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			active_slave = 0;
 	}
 
-	if (++internals->active_slave >= slave_count)
-		internals->active_slave = 0;
+	if (++bd_rx_q->active_slave >= slave_count)
+		bd_rx_q->active_slave = 0;
 	return num_rx_total;
 }
 
@@ -303,9 +303,9 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 	memcpy(slaves, internals->active_slaves,
 			sizeof(internals->active_slaves[0]) * slave_count);
 
-	idx = internals->active_slave;
+	idx = bd_rx_q->active_slave;
 	if (idx >= slave_count) {
-		internals->active_slave = 0;
+		bd_rx_q->active_slave = 0;
 		idx = 0;
 	}
 	for (i = 0; i < slave_count && num_rx_total < nb_pkts; i++) {
@@ -367,8 +367,8 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 			idx = 0;
 	}
 
-	if (++internals->active_slave >= slave_count)
-		internals->active_slave = 0;
+	if (++bd_rx_q->active_slave >= slave_count)
+		bd_rx_q->active_slave = 0;
 
 	return num_rx_total;
 }

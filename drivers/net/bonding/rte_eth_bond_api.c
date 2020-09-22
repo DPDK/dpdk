@@ -129,12 +129,6 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id)
 	RTE_ASSERT(active_count < RTE_DIM(internals->active_slaves));
 	internals->active_slave_count = active_count;
 
-	/* Resetting active_slave when reaches to max
-	 * no of slaves in active list
-	 */
-	if (internals->active_slave >= active_count)
-		internals->active_slave = 0;
-
 	if (eth_dev->data->dev_started) {
 		if (internals->mode == BONDING_MODE_8023AD) {
 			bond_mode_8023ad_start(eth_dev);
