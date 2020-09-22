@@ -275,6 +275,13 @@ enum hns3_reset_level {
 	 * Kernel PF driver use mailbox to inform DPDK VF to do reset, the value
 	 * of the reset level and the one defined in kernel driver should be
 	 * same.
+	 *
+	 * According to the protocol of PCIe, FLR to a PF resets the PF state as
+	 * well as the SR-IOV extended capability including VF Enable which
+	 * means that VFs no longer exist.
+	 *
+	 * In PF FLR, the register state of VF is not reliable, VF's driver
+	 * should not access the registers of the VF device.
 	 */
 	HNS3_VF_FULL_RESET = 3,
 	HNS3_FLR_RESET,     /* A VF perform FLR reset */
