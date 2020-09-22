@@ -52,7 +52,7 @@ static int page_getenum(size_t size)
 	if (size <= 1 << 30)
 		return 30;
 	PMD_DRV_LOG(ERR, "Page size %zu out of range\n", size);
-	return sizeof(void *) * 8 - 1;
+	return sizeof(int) * 8 - 1;
 }
 
 static int page_roundup(size_t size)
