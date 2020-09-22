@@ -1962,8 +1962,14 @@ hns3_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 		const struct rte_flow_action *actions, void *data,
 		struct rte_flow_error *error)
 {
+	struct rte_flow_action_rss *rss_conf;
+	struct hns3_rss_conf_ele *rss_rule;
 	struct rte_flow_query_count *qc;
 	int ret;
+
+	if (!flow->rule)
+		return rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_HANDLE, NULL, "invalid rule");
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
@@ -1975,13 +1981,24 @@ hns3_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 			if (ret)
 				return ret;
 			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			if (flow->filter_type != RTE_ETH_FILTER_HASH) {
+				return rte_flow_error_set(error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					actions, "action is not supported");
+			}
+			rss_conf = (struct rte_flow_action_rss *)data;
+			rss_rule = (struct hns3_rss_conf_ele *)flow->rule;
+			rte_memcpy(rss_conf, &rss_rule->filter_info.conf,
+				   sizeof(struct rte_flow_action_rss));
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  actions,
-						  "Query action only support count");
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				actions, "action is not supported");
 		}
 	}
+
 	return 0;
 }
 
