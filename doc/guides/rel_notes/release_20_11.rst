@@ -74,6 +74,10 @@ New Features
 
   * Added SR-IOV PF support
 
+* **Updated Virtio driver.**
+
+  * Changed default link speed to unknown.
+
 * **Extended flow-perf application.**
 
   * Started supporting user order instead of bit mask:

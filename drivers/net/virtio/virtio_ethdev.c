@@ -1670,7 +1670,6 @@ virtio_configure_intr(struct rte_eth_dev *dev)
 
 	return 0;
 }
-#define SPEED_UNKNOWN    0xffffffff
 #define DUPLEX_UNKNOWN   0xff
 /* reset device and renegotiate features if needed */
 static int
@@ -1727,7 +1726,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
 
-	if (hw->speed == SPEED_UNKNOWN) {
+	if (hw->speed == ETH_SPEED_NUM_UNKNOWN) {
 		if (vtpci_with_feature(hw, VIRTIO_NET_F_SPEED_DUPLEX)) {
 			config = &local_config;
 			vtpci_read_dev_config(hw,
@@ -1740,8 +1739,6 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 			hw->duplex = config->duplex;
 		}
 	}
-	if (hw->speed == SPEED_UNKNOWN)
-		hw->speed = ETH_SPEED_NUM_10G;
 	if (hw->duplex == DUPLEX_UNKNOWN)
 		hw->duplex = ETH_LINK_FULL_DUPLEX;
 	PMD_INIT_LOG(DEBUG, "link speed = %d, duplex = %d",
@@ -1893,7 +1890,7 @@ int
 eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
-	uint32_t speed = SPEED_UNKNOWN;
+	uint32_t speed = ETH_SPEED_NUM_UNKNOWN;
 	int vectorized = 0;
 	int ret;
 
@@ -2552,6 +2549,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 
 	if (!hw->started) {
 		link.link_status = ETH_LINK_DOWN;
+		link.link_speed = ETH_SPEED_NUM_NONE;
 	} else if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 		PMD_INIT_LOG(DEBUG, "Get link status from hw");
 		vtpci_read_dev_config(hw,
@@ -2559,6 +2557,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 				&status, sizeof(status));
 		if ((status & VIRTIO_NET_S_LINK_UP) == 0) {
 			link.link_status = ETH_LINK_DOWN;
+			link.link_speed = ETH_SPEED_NUM_NONE;
 			PMD_INIT_LOG(DEBUG, "Port %d is down",
 				     dev->data->port_id);
 		} else {
