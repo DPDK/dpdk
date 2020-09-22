@@ -5581,9 +5581,13 @@ bnxt_parse_devarg_truflow(__rte_unused const char *key,
 		return -EINVAL;
 	}
 
-	bp->flags |= BNXT_FLAG_TRUFLOW_EN;
-	if (BNXT_TRUFLOW_EN(bp))
+	if (truflow) {
+		bp->flags |= BNXT_FLAG_TRUFLOW_EN;
 		PMD_DRV_LOG(INFO, "Host-based truflow feature enabled.\n");
+	} else {
+		bp->flags &= ~BNXT_FLAG_TRUFLOW_EN;
+		PMD_DRV_LOG(INFO, "Host-based truflow feature disabled.\n");
+	}
 
 	return 0;
 }
