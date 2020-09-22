@@ -1293,10 +1293,24 @@ static bool
 hns3_action_rss_same(const struct rte_flow_action_rss *comp,
 		     const struct rte_flow_action_rss *with)
 {
-	return (comp->func == with->func &&
-		comp->level == with->level &&
-		comp->types == with->types &&
-		comp->key_len == with->key_len &&
+	bool func_is_same;
+
+	/*
+	 * When user flush all RSS rule, RSS func is set invalid with
+	 * RTE_ETH_HASH_FUNCTION_MAX. Then the user create a flow after
+	 * flushed, any validate RSS func is different with it before
+	 * flushed. Others, when user create an action RSS with RSS func
+	 * specified RTE_ETH_HASH_FUNCTION_DEFAULT, the func is the same
+	 * between continuous RSS flow.
+	 */
+	if (comp->func == RTE_ETH_HASH_FUNCTION_MAX)
+		func_is_same = false;
+	else
+		func_is_same = (with->func ? (comp->func == with->func) : true);
+
+	return (func_is_same &&
+		comp->types == (with->types & HNS3_ETH_RSS_SUPPORT) &&
+		comp->level == with->level && comp->key_len == with->key_len &&
 		comp->queue_num == with->queue_num &&
 		!memcmp(comp->key, with->key, with->key_len) &&
 		!memcmp(comp->queue, with->queue,
@@ -1589,7 +1603,19 @@ hns3_config_rss_filter(struct rte_eth_dev *dev,
 				hns3_err(hw, "RSS disable failed(%d)", ret);
 				return ret;
 			}
-			memset(rss_info, 0, sizeof(struct hns3_rss_conf));
+
+			if (rss_flow_conf.queue_num) {
+				/*
+				 * Due the content of queue pointer have been
+				 * reset to 0, the rss_info->conf.queue should
+				 * be set NULL.
+				 */
+				rss_info->conf.queue = NULL;
+				rss_info->conf.queue_num = 0;
+			}
+
+			/* set RSS func invalid after flushed */
+			rss_info->conf.func = RTE_ETH_HASH_FUNCTION_MAX;
 			return 0;
 		}
 		return -EINVAL;
@@ -1649,6 +1675,10 @@ hns3_restore_rss_filter(struct rte_eth_dev *dev)
 	struct hns3_hw *hw = &hns->hw;
 
 	if (hw->rss_info.conf.queue_num == 0)
+		return 0;
+
+	/* When user flush all rules, it doesn't need to restore RSS rule */
+	if (hw->rss_info.conf.func == RTE_ETH_HASH_FUNCTION_MAX)
 		return 0;
 
 	return hns3_config_rss_filter(dev, &hw->rss_info, true);
