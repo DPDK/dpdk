@@ -534,8 +534,8 @@ mode6_debug(const char __rte_unused *info,
 static uint16_t
 bond_ethdev_rx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
-	struct bond_tx_queue *bd_tx_q = (struct bond_tx_queue *)queue;
-	struct bond_dev_private *internals = bd_tx_q->dev_private;
+	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
+	struct bond_dev_private *internals = bd_rx_q->dev_private;
 	struct rte_ether_hdr *eth_h;
 	uint16_t ether_type, offset;
 	uint16_t nb_recv_pkts;
