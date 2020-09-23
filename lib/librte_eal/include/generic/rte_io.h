@@ -229,6 +229,40 @@ rte_write32(uint32_t value, volatile void *addr);
 static inline void
 rte_write64(uint64_t value, volatile void *addr);
 
+/**
+ * Write a 32-bit value to I/O device memory address addr using write
+ * combining memory write protocol. Depending on the platform write combining
+ * may not be available and/or may be treated as a hint and the behavior may
+ * fallback to a regular store.
+ *
+ * @param value
+ *  Value to write
+ * @param addr
+ *  I/O memory address to write the value to
+ */
+__rte_experimental
+static inline void
+rte_write32_wc(uint32_t value, volatile void *addr);
+
+/**
+ * Write a 32-bit value to I/O device memory address addr using write
+ * combining memory write protocol. Depending on the platform write combining
+ * may not be available and/or may be treated as a hint and the behavior may
+ * fallback to a regular store.
+ *
+ * The relaxed version does not have additional I/O memory barrier, useful in
+ * accessing the device registers of integrated controllers which implicitly
+ * strongly ordered with respect to memory access.
+ *
+ * @param value
+ *  Value to write
+ * @param addr
+ *  I/O memory address to write the value to
+ */
+__rte_experimental
+static inline void
+rte_write32_wc_relaxed(uint32_t value, volatile void *addr);
+
 #endif /* __DOXYGEN__ */
 
 #ifndef RTE_OVERRIDE_IO_H
@@ -344,6 +378,20 @@ rte_write64(uint64_t value, volatile void *addr)
 	rte_io_wmb();
 	rte_write64_relaxed(value, addr);
 }
+
+#ifndef RTE_NATIVE_WRITE32_WC
+static __rte_always_inline void
+rte_write32_wc(uint32_t value, volatile void *addr)
+{
+	rte_write32(value, addr);
+}
+
+static __rte_always_inline void
+rte_write32_wc_relaxed(uint32_t value, volatile void *addr)
+{
+	rte_write32_relaxed(value, addr);
+}
+#endif /* RTE_NATIVE_WRITE32_WC */
 
 #endif /* RTE_OVERRIDE_IO_H */
 

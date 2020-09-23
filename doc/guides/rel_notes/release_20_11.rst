@@ -55,6 +55,13 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added write combining store APIs.**
+
+  Added ``rte_write32_wc`` and ``rte_write32_wc_relaxed`` APIs
+  that enable write combining stores (depending on architecture).
+  The functions are provided as a generic stubs and
+  x86 specific implementation.
+
 * **Added the FEC API, for a generic FEC query and config.**
 
   Added the FEC API which provides functions for query FEC capabilities and
