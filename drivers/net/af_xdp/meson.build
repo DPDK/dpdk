@@ -10,6 +10,10 @@ endif
 
 if bpf_dep.found() and cc.has_header('bpf/xsk.h') and cc.has_header('linux/if_xdp.h')
 	ext_deps += bpf_dep
+	bpf_ver_dep = dependency('libbpf', version : '>=0.2.0', required: false)
+	if bpf_ver_dep.found()
+		dpdk_conf.set('RTE_LIBRTE_AF_XDP_PMD_SHARED_UMEM', 1)
+	endif
 else
 	build = false
 	reason = 'missing dependency, "libbpf"'

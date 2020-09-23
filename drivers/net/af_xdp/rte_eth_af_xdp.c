@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019 Intel Corporation.
+ * Copyright(c) 2019-2020 Intel Corporation.
  */
 #include <unistd.h>
 #include <errno.h>
@@ -37,6 +37,10 @@
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_ring.h>
+#include <rte_spinlock.h>
+
+#include "compat.h"
+
 
 #ifndef SOL_XDP
 #define SOL_XDP 283
@@ -67,13 +71,13 @@ RTE_LOG_REGISTER(af_xdp_logtype, pmd.net.af_xdp, NOTICE);
 
 
 struct xsk_umem_info {
-	struct xsk_ring_prod fq;
-	struct xsk_ring_cons cq;
 	struct xsk_umem *umem;
 	struct rte_ring *buf_ring;
 	const struct rte_memzone *mz;
 	struct rte_mempool *mb_pool;
 	void *buffer;
+	uint8_t refcnt;
+	uint32_t max_xsks;
 };
 
 struct rx_stats {
@@ -89,6 +93,9 @@ struct pkt_rx_queue {
 	struct rte_mempool *mb_pool;
 
 	struct rx_stats stats;
+
+	struct xsk_ring_prod fq;
+	struct xsk_ring_cons cq;
 
 	struct pkt_tx_queue *pair;
 	struct pollfd fds[1];
@@ -118,6 +125,7 @@ struct pmd_internals {
 	int queue_cnt;
 	int max_queue_cnt;
 	int combined_queue_cnt;
+	bool shared_umem;
 
 	struct rte_ether_addr eth_addr;
 
@@ -128,11 +136,13 @@ struct pmd_internals {
 #define ETH_AF_XDP_IFACE_ARG			"iface"
 #define ETH_AF_XDP_START_QUEUE_ARG		"start_queue"
 #define ETH_AF_XDP_QUEUE_COUNT_ARG		"queue_count"
+#define ETH_AF_XDP_SHARED_UMEM_ARG		"shared_umem"
 
 static const char * const valid_arguments[] = {
 	ETH_AF_XDP_IFACE_ARG,
 	ETH_AF_XDP_START_QUEUE_ARG,
 	ETH_AF_XDP_QUEUE_COUNT_ARG,
+	ETH_AF_XDP_SHARED_UMEM_ARG,
 	NULL
 };
 
@@ -143,12 +153,23 @@ static const struct rte_eth_link pmd_link = {
 	.link_autoneg = ETH_LINK_AUTONEG
 };
 
+/* List which tracks PMDs to facilitate sharing UMEMs across them. */
+struct internal_list {
+	TAILQ_ENTRY(internal_list) next;
+	struct rte_eth_dev *eth_dev;
+};
+
+TAILQ_HEAD(internal_list_head, internal_list);
+static struct internal_list_head internal_list =
+	TAILQ_HEAD_INITIALIZER(internal_list);
+
+static pthread_mutex_t internal_list_lock = PTHREAD_MUTEX_INITIALIZER;
+
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 static inline int
 reserve_fill_queue_zc(struct xsk_umem_info *umem, uint16_t reserve_size,
-		      struct rte_mbuf **bufs)
+		      struct rte_mbuf **bufs, struct xsk_ring_prod *fq)
 {
-	struct xsk_ring_prod *fq = &umem->fq;
 	uint32_t idx;
 	uint16_t i;
 
@@ -176,9 +197,9 @@ reserve_fill_queue_zc(struct xsk_umem_info *umem, uint16_t reserve_size,
 #else
 static inline int
 reserve_fill_queue_cp(struct xsk_umem_info *umem, uint16_t reserve_size,
-		      struct rte_mbuf **bufs __rte_unused)
+		      struct rte_mbuf **bufs __rte_unused,
+		      struct xsk_ring_prod *fq)
 {
-	struct xsk_ring_prod *fq = &umem->fq;
 	void *addrs[reserve_size];
 	uint32_t idx;
 	uint16_t i;
@@ -211,12 +232,12 @@ reserve_fill_queue_cp(struct xsk_umem_info *umem, uint16_t reserve_size,
 
 static inline int
 reserve_fill_queue(struct xsk_umem_info *umem, uint16_t reserve_size,
-		   struct rte_mbuf **bufs)
+		   struct rte_mbuf **bufs, struct xsk_ring_prod *fq)
 {
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-	return reserve_fill_queue_zc(umem, reserve_size, bufs);
+	return reserve_fill_queue_zc(umem, reserve_size, bufs, fq);
 #else
-	return reserve_fill_queue_cp(umem, reserve_size, bufs);
+	return reserve_fill_queue_cp(umem, reserve_size, bufs, fq);
 #endif
 }
 
@@ -226,6 +247,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct pkt_rx_queue *rxq = queue;
 	struct xsk_ring_cons *rx = &rxq->rx;
+	struct xsk_ring_prod *fq = &rxq->fq;
 	struct xsk_umem_info *umem = rxq->umem;
 	uint32_t idx_rx = 0;
 	unsigned long rx_bytes = 0;
@@ -243,7 +265,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	if (rcvd == 0) {
 #if defined(XDP_USE_NEED_WAKEUP)
-		if (xsk_ring_prod__needs_wakeup(&umem->fq))
+		if (xsk_ring_prod__needs_wakeup(fq))
 			(void)poll(rxq->fds, 1, 1000);
 #endif
 
@@ -277,7 +299,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	xsk_ring_cons__release(rx, rcvd);
 
-	(void)reserve_fill_queue(umem, rcvd, fq_bufs);
+	(void)reserve_fill_queue(umem, rcvd, fq_bufs, fq);
 
 	/* statistics */
 	rxq->stats.rx_pkts += rcvd;
@@ -297,7 +319,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct pkt_rx_queue *rxq = queue;
 	struct xsk_ring_cons *rx = &rxq->rx;
 	struct xsk_umem_info *umem = rxq->umem;
-	struct xsk_ring_prod *fq = &umem->fq;
+	struct xsk_ring_prod *fq = &rxq->fq;
 	uint32_t idx_rx = 0;
 	unsigned long rx_bytes = 0;
 	int rcvd, i;
@@ -305,8 +327,8 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct rte_mbuf *mbufs[ETH_AF_XDP_RX_BATCH_SIZE];
 
 	if (xsk_prod_nb_free(fq, free_thresh) >= free_thresh)
-		(void)reserve_fill_queue(umem, ETH_AF_XDP_RX_BATCH_SIZE, NULL);
-
+		(void)reserve_fill_queue(umem, ETH_AF_XDP_RX_BATCH_SIZE,
+					 NULL, fq);
 
 	if (unlikely(rte_pktmbuf_alloc_bulk(rxq->mb_pool, mbufs, nb_pkts) != 0))
 		return 0;
@@ -368,9 +390,8 @@ eth_af_xdp_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 }
 
 static void
-pull_umem_cq(struct xsk_umem_info *umem, int size)
+pull_umem_cq(struct xsk_umem_info *umem, int size, struct xsk_ring_cons *cq)
 {
-	struct xsk_ring_cons *cq = &umem->cq;
 	size_t i, n;
 	uint32_t idx_cq = 0;
 
@@ -393,11 +414,11 @@ pull_umem_cq(struct xsk_umem_info *umem, int size)
 }
 
 static void
-kick_tx(struct pkt_tx_queue *txq)
+kick_tx(struct pkt_tx_queue *txq, struct xsk_ring_cons *cq)
 {
 	struct xsk_umem_info *umem = txq->umem;
 
-	pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS);
+	pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS, cq);
 
 #if defined(XDP_USE_NEED_WAKEUP)
 	if (xsk_ring_prod__needs_wakeup(&txq->tx))
@@ -411,7 +432,8 @@ kick_tx(struct pkt_tx_queue *txq)
 			/* pull from completion queue to leave more space */
 			if (errno == EAGAIN)
 				pull_umem_cq(umem,
-					     XSK_RING_CONS__DEFAULT_NUM_DESCS);
+					     XSK_RING_CONS__DEFAULT_NUM_DESCS,
+					     cq);
 		}
 }
 
@@ -428,17 +450,18 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t count = 0;
 	struct xdp_desc *desc;
 	uint64_t addr, offset;
-	uint32_t free_thresh = umem->cq.size >> 1;
+	struct xsk_ring_cons *cq = &txq->pair->cq;
+	uint32_t free_thresh = cq->size >> 1;
 
-	if (xsk_cons_nb_avail(&umem->cq, free_thresh) >= free_thresh)
-		pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS);
+	if (xsk_cons_nb_avail(cq, free_thresh) >= free_thresh)
+		pull_umem_cq(umem, XSK_RING_CONS__DEFAULT_NUM_DESCS, cq);
 
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
 
 		if (mbuf->pool == umem->mb_pool) {
 			if (!xsk_ring_prod__reserve(&txq->tx, 1, &idx_tx)) {
-				kick_tx(txq);
+				kick_tx(txq, cq);
 				if (!xsk_ring_prod__reserve(&txq->tx, 1,
 							    &idx_tx))
 					goto out;
@@ -463,7 +486,7 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			if (!xsk_ring_prod__reserve(&txq->tx, 1, &idx_tx)) {
 				rte_pktmbuf_free(local_mbuf);
-				kick_tx(txq);
+				kick_tx(txq, cq);
 				goto out;
 			}
 
@@ -487,7 +510,7 @@ af_xdp_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		tx_bytes += mbuf->pkt_len;
 	}
 
-	kick_tx(txq);
+	kick_tx(txq, cq);
 
 out:
 	xsk_ring_prod__submit(&txq->tx, count);
@@ -509,10 +532,11 @@ af_xdp_tx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	unsigned long tx_bytes = 0;
 	int i;
 	uint32_t idx_tx;
+	struct xsk_ring_cons *cq = &txq->pair->cq;
 
 	nb_pkts = RTE_MIN(nb_pkts, ETH_AF_XDP_TX_BATCH_SIZE);
 
-	pull_umem_cq(umem, nb_pkts);
+	pull_umem_cq(umem, nb_pkts, cq);
 
 	nb_pkts = rte_ring_dequeue_bulk(umem->buf_ring, addrs,
 					nb_pkts, NULL);
@@ -520,7 +544,7 @@ af_xdp_tx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		return 0;
 
 	if (xsk_ring_prod__reserve(&txq->tx, nb_pkts, &idx_tx) != nb_pkts) {
-		kick_tx(txq);
+		kick_tx(txq, cq);
 		rte_ring_enqueue_bulk(umem->buf_ring, addrs, nb_pkts, NULL);
 		return 0;
 	}
@@ -543,7 +567,7 @@ af_xdp_tx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	xsk_ring_prod__submit(&txq->tx, nb_pkts);
 
-	kick_tx(txq);
+	kick_tx(txq, cq);
 
 	txq->stats.tx_pkts += nb_pkts;
 	txq->stats.tx_bytes += tx_bytes;
@@ -577,12 +601,100 @@ eth_dev_stop(struct rte_eth_dev *dev)
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 }
 
+/* Find ethdev in list */
+static inline struct internal_list *
+find_internal_resource(struct pmd_internals *port_int)
+{
+	int found = 0;
+	struct internal_list *list = NULL;
+
+	if (port_int == NULL)
+		return NULL;
+
+	pthread_mutex_lock(&internal_list_lock);
+
+	TAILQ_FOREACH(list, &internal_list, next) {
+		struct pmd_internals *list_int =
+				list->eth_dev->data->dev_private;
+		if (list_int == port_int) {
+			found = 1;
+			break;
+		}
+	}
+
+	pthread_mutex_unlock(&internal_list_lock);
+
+	if (!found)
+		return NULL;
+
+	return list;
+}
+
+/* Get a pointer to an existing UMEM which overlays the rxq's mb_pool */
+static inline struct xsk_umem_info *
+get_shared_umem(struct pkt_rx_queue *rxq) {
+	struct internal_list *list;
+	struct pmd_internals *internals;
+	int i = 0;
+	struct rte_mempool *mb_pool = rxq->mb_pool;
+
+	if (mb_pool == NULL)
+		return NULL;
+
+	pthread_mutex_lock(&internal_list_lock);
+
+	TAILQ_FOREACH(list, &internal_list, next) {
+		internals = list->eth_dev->data->dev_private;
+		for (i = 0; i < internals->queue_cnt; i++) {
+			struct pkt_rx_queue *list_rxq =
+						&internals->rx_queues[i];
+			if (rxq == list_rxq)
+				continue;
+			if (mb_pool == internals->rx_queues[i].mb_pool) {
+				if (__atomic_load_n(
+					&internals->rx_queues[i].umem->refcnt,
+							__ATOMIC_ACQUIRE)) {
+					pthread_mutex_unlock(
+							&internal_list_lock);
+					return internals->rx_queues[i].umem;
+				}
+			}
+		}
+	}
+
+	pthread_mutex_unlock(&internal_list_lock);
+
+	return NULL;
+}
+
 static int
 eth_dev_configure(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *internal = dev->data->dev_private;
+
 	/* rx/tx must be paired */
 	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues)
 		return -EINVAL;
+
+	if (internal->shared_umem) {
+		struct internal_list *list = NULL;
+		const char *name = dev->device->name;
+
+		/* Ensure PMD is not already inserted into the list */
+		list = find_internal_resource(internal);
+		if (list)
+			return 0;
+
+		list = rte_zmalloc_socket(name, sizeof(*list), 0,
+					dev->device->numa_node);
+		if (list == NULL)
+			return -1;
+
+		list->eth_dev = dev;
+		pthread_mutex_lock(&internal_list_lock);
+		TAILQ_INSERT_TAIL(&internal_list, list, next);
+		pthread_mutex_unlock(&internal_list_lock);
+	}
 
 	return 0;
 }
@@ -717,8 +829,12 @@ eth_dev_close(struct rte_eth_dev *dev)
 		if (rxq->umem == NULL)
 			break;
 		xsk_socket__delete(rxq->xsk);
-		(void)xsk_umem__delete(rxq->umem->umem);
-		xdp_umem_destroy(rxq->umem);
+
+		if (__atomic_sub_fetch(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE)
+				== 0) {
+			(void)xsk_umem__delete(rxq->umem->umem);
+			xdp_umem_destroy(rxq->umem);
+		}
 
 		/* free pkt_tx_queue */
 		rte_free(rxq->pair);
@@ -732,6 +848,19 @@ eth_dev_close(struct rte_eth_dev *dev)
 	dev->data->mac_addrs = NULL;
 
 	remove_xdp_program(internals);
+
+	if (internals->shared_umem) {
+		struct internal_list *list;
+
+		/* Remove ethdev from list used to track and share UMEMs */
+		list = find_internal_resource(internals);
+		if (list) {
+			pthread_mutex_lock(&internal_list_lock);
+			TAILQ_REMOVE(&internal_list, list, next);
+			pthread_mutex_unlock(&internal_list_lock);
+			rte_free(list);
+		}
+	}
 }
 
 static void
@@ -761,10 +890,10 @@ static inline uint64_t get_base_addr(struct rte_mempool *mp, uint64_t *align)
 }
 
 static struct
-xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals __rte_unused,
+xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 				  struct pkt_rx_queue *rxq)
 {
-	struct xsk_umem_info *umem;
+	struct xsk_umem_info *umem = NULL;
 	int ret;
 	struct xsk_umem_config usr_config = {
 		.fill_size = ETH_AF_XDP_DFLT_NUM_DESCS * 2,
@@ -774,32 +903,55 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals __rte_unused,
 	struct rte_mempool *mb_pool = rxq->mb_pool;
 	uint64_t umem_size, align = 0;
 
-	usr_config.frame_size = rte_mempool_calc_obj_size(mb_pool->elt_size,
-								mb_pool->flags,
-								NULL);
-	usr_config.frame_headroom = mb_pool->header_size +
-					sizeof(struct rte_mbuf) +
-					rte_pktmbuf_priv_size(mb_pool) +
-					RTE_PKTMBUF_HEADROOM;
+	if (internals->shared_umem) {
+		umem = get_shared_umem(rxq);
+		if (umem != NULL &&
+			__atomic_load_n(&umem->refcnt, __ATOMIC_ACQUIRE) <
+					umem->max_xsks) {
+			AF_XDP_LOG(INFO, "%s,qid%i sharing UMEM\n",
+					internals->if_name, rxq->xsk_queue_idx);
+			__atomic_fetch_add(&umem->refcnt, 1, __ATOMIC_ACQUIRE);
+		}
+	}
 
-	umem = rte_zmalloc_socket("umem", sizeof(*umem), 0, rte_socket_id());
 	if (umem == NULL) {
-		AF_XDP_LOG(ERR, "Failed to allocate umem info");
-		return NULL;
+		usr_config.frame_size =
+			rte_mempool_calc_obj_size(mb_pool->elt_size,
+						  mb_pool->flags, NULL);
+		usr_config.frame_headroom = mb_pool->header_size +
+						sizeof(struct rte_mbuf) +
+						rte_pktmbuf_priv_size(mb_pool) +
+						RTE_PKTMBUF_HEADROOM;
+
+		umem = rte_zmalloc_socket("umem", sizeof(*umem), 0,
+					  rte_socket_id());
+		if (umem == NULL) {
+			AF_XDP_LOG(ERR, "Failed to allocate umem info");
+			return NULL;
+		}
+
+		umem->mb_pool = mb_pool;
+		base_addr = (void *)get_base_addr(mb_pool, &align);
+		umem_size = mb_pool->populated_size * usr_config.frame_size +
+				align;
+
+		ret = xsk_umem__create(&umem->umem, base_addr, umem_size,
+				&rxq->fq, &rxq->cq, &usr_config);
+		if (ret) {
+			AF_XDP_LOG(ERR, "Failed to create umem");
+			goto err;
+		}
+		umem->buffer = base_addr;
+
+		if (internals->shared_umem) {
+			umem->max_xsks = mb_pool->populated_size /
+						ETH_AF_XDP_NUM_BUFFERS;
+			AF_XDP_LOG(INFO, "Max xsks for UMEM %s: %u\n",
+						mb_pool->name, umem->max_xsks);
+		}
+
+		__atomic_store_n(&umem->refcnt, 1, __ATOMIC_RELEASE);
 	}
-
-	umem->mb_pool = mb_pool;
-	base_addr = (void *)get_base_addr(mb_pool, &align);
-	umem_size = mb_pool->populated_size * usr_config.frame_size + align;
-
-	ret = xsk_umem__create(&umem->umem, base_addr, umem_size,
-			       &umem->fq, &umem->cq, &usr_config);
-
-	if (ret) {
-		AF_XDP_LOG(ERR, "Failed to create umem");
-		goto err;
-	}
-	umem->buffer = base_addr;
 
 #else
 static struct
@@ -852,7 +1004,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 
 	ret = xsk_umem__create(&umem->umem, mz->addr,
 			       ETH_AF_XDP_NUM_BUFFERS * ETH_AF_XDP_FRAME_SIZE,
-			       &umem->fq, &umem->cq,
+			       &rxq->fq, &rxq->cq,
 			       &usr_config);
 
 	if (ret) {
@@ -894,9 +1046,15 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	cfg.bind_flags |= XDP_USE_NEED_WAKEUP;
 #endif
 
-	ret = xsk_socket__create(&rxq->xsk, internals->if_name,
-			rxq->xsk_queue_idx, rxq->umem->umem, &rxq->rx,
-			&txq->tx, &cfg);
+	if (internals->shared_umem)
+		ret = create_shared_socket(&rxq->xsk, internals->if_name,
+				rxq->xsk_queue_idx, rxq->umem->umem, &rxq->rx,
+				&txq->tx, &rxq->fq, &rxq->cq, &cfg);
+	else
+		ret = xsk_socket__create(&rxq->xsk, internals->if_name,
+				rxq->xsk_queue_idx, rxq->umem->umem, &rxq->rx,
+				&txq->tx, &cfg);
+
 	if (ret) {
 		AF_XDP_LOG(ERR, "Failed to create xsk socket.\n");
 		goto err;
@@ -908,7 +1066,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 		goto err;
 	}
 #endif
-	ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs);
+	ret = reserve_fill_queue(rxq->umem, reserve_size, fq_bufs, &rxq->fq);
 	if (ret) {
 		xsk_socket__delete(rxq->xsk);
 		AF_XDP_LOG(ERR, "Failed to reserve fill queue.\n");
@@ -918,7 +1076,8 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	return 0;
 
 err:
-	xdp_umem_destroy(rxq->umem);
+	if (__atomic_sub_fetch(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) == 0)
+		xdp_umem_destroy(rxq->umem);
 
 	return ret;
 }
@@ -1148,7 +1307,7 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
 
 static int
 parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
-			int *queue_cnt)
+			int *queue_cnt, int *shared_umem)
 {
 	int ret;
 
@@ -1168,6 +1327,11 @@ parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 		ret = -EINVAL;
 		goto free_kvlist;
 	}
+
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_SHARED_UMEM_ARG,
+				&parse_integer_arg, shared_umem);
+	if (ret < 0)
+		goto free_kvlist;
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
@@ -1206,7 +1370,7 @@ error:
 
 static struct rte_eth_dev *
 init_internals(struct rte_vdev_device *dev, const char *if_name,
-			int start_queue_idx, int queue_cnt)
+			int start_queue_idx, int queue_cnt, int shared_umem)
 {
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
@@ -1222,6 +1386,15 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	internals->start_queue_idx = start_queue_idx;
 	internals->queue_cnt = queue_cnt;
 	strlcpy(internals->if_name, if_name, IFNAMSIZ);
+
+#ifndef ETH_AF_XDP_SHARED_UMEM
+	if (shared_umem) {
+		AF_XDP_LOG(ERR, "Shared UMEM feature not available. "
+				"Check kernel and libbpf version\n");
+		goto err_free_internals;
+	}
+#endif
+	internals->shared_umem = shared_umem;
 
 	if (xdp_get_channels_info(if_name, &internals->max_queue_cnt,
 				  &internals->combined_queue_cnt)) {
@@ -1298,6 +1471,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	char if_name[IFNAMSIZ] = {'\0'};
 	int xsk_start_queue_idx = ETH_AF_XDP_DFLT_START_QUEUE_IDX;
 	int xsk_queue_cnt = ETH_AF_XDP_DFLT_QUEUE_COUNT;
+	int shared_umem = 0;
 	struct rte_eth_dev *eth_dev = NULL;
 	const char *name;
 
@@ -1327,7 +1501,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 		dev->device.numa_node = rte_socket_id();
 
 	if (parse_parameters(kvlist, if_name, &xsk_start_queue_idx,
-			     &xsk_queue_cnt) < 0) {
+			     &xsk_queue_cnt, &shared_umem) < 0) {
 		AF_XDP_LOG(ERR, "Invalid kvargs value\n");
 		return -EINVAL;
 	}
@@ -1338,7 +1512,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	}
 
 	eth_dev = init_internals(dev, if_name, xsk_start_queue_idx,
-					xsk_queue_cnt);
+					xsk_queue_cnt, shared_umem);
 	if (eth_dev == NULL) {
 		AF_XDP_LOG(ERR, "Failed to init internals\n");
 		return -1;
@@ -1381,4 +1555,5 @@ RTE_PMD_REGISTER_VDEV(net_af_xdp, pmd_af_xdp_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
 			      "iface=<string> "
 			      "start_queue=<int> "
-			      "queue_count=<int> ");
+			      "queue_count=<int> "
+			      "shared_umem=<int> ");

@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2019 Intel Corporation.
+    Copyright(c) 2019-2020 Intel Corporation.
 
 AF_XDP Poll Mode Driver
 ==========================
@@ -32,6 +32,8 @@ The following options can be provided to set up an af_xdp port in DPDK.
 *   ``iface`` - name of the Kernel interface to attach to (required);
 *   ``start_queue`` - starting netdev queue id (optional, default 0);
 *   ``queue_count`` - total netdev queue number (optional, default 1);
+*   ``shared_umem`` - PMD will attempt to share UMEM with others (optional,
+    default 0);
 
 Prerequisites
 -------------
@@ -45,6 +47,8 @@ This is a Linux-specific PMD, thus the following prerequisites apply:
 *  A Kernel bound interface to attach to;
 *  For need_wakeup feature, it requires kernel version later than v5.3-rc1;
 *  For PMD zero copy, it requires kernel version later than v5.4-rc1;
+*  For shared_umem, it requires kernel version v5.10 or later and libbpf version
+   v0.2.0 or later.
 
 Set up an af_xdp interface
 -----------------------------
