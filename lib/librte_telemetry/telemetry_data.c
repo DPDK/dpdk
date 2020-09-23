@@ -14,6 +14,7 @@ rte_tel_data_start_array(struct rte_tel_data *d, enum rte_tel_value_type type)
 			RTE_TEL_ARRAY_STRING, /* RTE_TEL_STRING_VAL = 0 */
 			RTE_TEL_ARRAY_INT,    /* RTE_TEL_INT_VAL = 1 */
 			RTE_TEL_ARRAY_U64,    /* RTE_TEL_u64_VAL = 2 */
+			RTE_TEL_ARRAY_CONTAINER, /* RTE_TEL_CONTAINER = 3 */
 	};
 	d->type = array_types[type];
 	d->data_len = 0;
@@ -75,6 +76,23 @@ rte_tel_data_add_array_u64(struct rte_tel_data *d, uint64_t x)
 }
 
 int
+rte_tel_data_add_array_container(struct rte_tel_data *d,
+		struct rte_tel_data *val, int keep)
+{
+	if (d->type != RTE_TEL_ARRAY_CONTAINER ||
+			(val->type != RTE_TEL_ARRAY_U64
+			&& val->type != RTE_TEL_ARRAY_INT
+			&& val->type != RTE_TEL_ARRAY_STRING))
+		return -EINVAL;
+	if (d->data_len >= RTE_TEL_MAX_ARRAY_ENTRIES)
+		return -ENOSPC;
+
+	d->data.array[d->data_len].container.data = val;
+	d->data.array[d->data_len++].container.keep = !!keep;
+	return 0;
+}
+
+int
 rte_tel_data_add_dict_string(struct rte_tel_data *d, const char *name,
 		const char *val)
 {
@@ -127,4 +145,37 @@ rte_tel_data_add_dict_u64(struct rte_tel_data *d,
 	e->value.u64val = val;
 	const size_t bytes = strlcpy(e->name, name, RTE_TEL_MAX_STRING_LEN);
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
+}
+
+int
+rte_tel_data_add_dict_container(struct rte_tel_data *d, const char *name,
+		struct rte_tel_data *val, int keep)
+{
+	struct tel_dict_entry *e = &d->data.dict[d->data_len];
+
+	if (d->type != RTE_TEL_DICT || (val->type != RTE_TEL_ARRAY_U64
+			&& val->type != RTE_TEL_ARRAY_INT
+			&& val->type != RTE_TEL_ARRAY_STRING))
+		return -EINVAL;
+	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES)
+		return -ENOSPC;
+
+	d->data_len++;
+	e->type = RTE_TEL_CONTAINER;
+	e->value.container.data = val;
+	e->value.container.keep = !!keep;
+	const size_t bytes = strlcpy(e->name, name, RTE_TEL_MAX_STRING_LEN);
+	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
+}
+
+struct rte_tel_data *
+rte_tel_data_alloc(void)
+{
+	return malloc(sizeof(struct rte_tel_data));
+}
+
+void
+rte_tel_data_free(struct rte_tel_data *data)
+{
+	free(data);
 }

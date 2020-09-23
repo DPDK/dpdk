@@ -1,12 +1,16 @@
 EXPERIMENTAL {
 	global:
 
+	rte_tel_data_add_array_container;
 	rte_tel_data_add_array_int;
 	rte_tel_data_add_array_string;
 	rte_tel_data_add_array_u64;
+	rte_tel_data_add_dict_container;
 	rte_tel_data_add_dict_int;
 	rte_tel_data_add_dict_string;
 	rte_tel_data_add_dict_u64;
+	rte_tel_data_alloc;
+	rte_tel_data_free;
 	rte_tel_data_start_array;
 	rte_tel_data_start_dict;
 	rte_tel_data_string;
