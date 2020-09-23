@@ -760,7 +760,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (nb_hold > rxq->rx_free_thresh) {
 		rx_id = (uint16_t) ((rx_id == 0) ?
 			(rxq->nb_rx_desc - 1) : (rx_id - 1));
-		I40E_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		I40E_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
@@ -938,7 +938,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 	if (nb_hold > rxq->rx_free_thresh) {
 		rx_id = (uint16_t)(rx_id == 0 ?
 			(rxq->nb_rx_desc - 1) : (rx_id - 1));
-		I40E_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		I40E_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
@@ -1249,7 +1249,7 @@ end_of_tx:
 		   (unsigned) tx_id, (unsigned) nb_tx);
 
 	rte_io_wmb();
-	I40E_PCI_REG_WRITE_RELAXED(txq->qtx_tail, tx_id);
+	I40E_PCI_REG_WC_WRITE_RELAXED(txq->qtx_tail, tx_id);
 	txq->tx_tail = tx_id;
 
 	return nb_tx;
@@ -1400,7 +1400,7 @@ tx_xmit_pkts(struct i40e_tx_queue *txq,
 		txq->tx_tail = 0;
 
 	/* Update the tx tail register */
-	I40E_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+	I40E_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }
