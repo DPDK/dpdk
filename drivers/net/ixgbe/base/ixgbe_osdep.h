@@ -105,6 +105,12 @@ static inline uint32_t ixgbe_read_addr(volatile void* addr)
 #define IXGBE_PCI_REG_WRITE_RELAXED(reg, value)		\
 	rte_write32_relaxed((rte_cpu_to_le_32(value)), reg)
 
+#define IXGBE_PCI_REG_WC_WRITE(reg, value)			\
+	rte_write32_wc((rte_cpu_to_le_32(value)), reg)
+
+#define IXGBE_PCI_REG_WC_WRITE_RELAXED(reg, value)		\
+	rte_write32_wc_relaxed((rte_cpu_to_le_32(value)), reg)
+
 #define IXGBE_PCI_REG_ADDR(hw, reg) \
 	((volatile uint32_t *)((char *)(hw)->hw_addr + (reg)))
 

@@ -103,6 +103,10 @@ New Features
 
   Updated the Intel i40e driver to use write combining stores.
 
+* **Updated Intel ixgbe driver.**
+
+  Updated the Intel ixgbe driver to use write combining stores.
+
 * **Updated Intel qat driver.**
 
   Updated the Intel qat driver to use write combining stores.
