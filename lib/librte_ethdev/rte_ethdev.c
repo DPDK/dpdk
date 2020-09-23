@@ -5315,6 +5315,57 @@ handle_port_list(const char *cmd __rte_unused,
 	return 0;
 }
 
+static void
+add_port_queue_stats(struct rte_tel_data *d, uint64_t *q_stats,
+		const char *stat_name)
+{
+	int q;
+	struct rte_tel_data *q_data = rte_tel_data_alloc();
+	rte_tel_data_start_array(q_data, RTE_TEL_U64_VAL);
+	for (q = 0; q < RTE_ETHDEV_QUEUE_STAT_CNTRS; q++)
+		rte_tel_data_add_array_u64(q_data, q_stats[q]);
+	rte_tel_data_add_dict_container(d, stat_name, q_data, 0);
+}
+
+#define ADD_DICT_STAT(stats, s) rte_tel_data_add_dict_u64(d, #s, stats.s)
+
+static int
+handle_port_stats(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	struct rte_eth_stats stats;
+	int port_id, ret;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	port_id = atoi(params);
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -1;
+
+	ret = rte_eth_stats_get(port_id, &stats);
+	if (ret < 0)
+		return -1;
+
+	rte_tel_data_start_dict(d);
+	ADD_DICT_STAT(stats, ipackets);
+	ADD_DICT_STAT(stats, opackets);
+	ADD_DICT_STAT(stats, ibytes);
+	ADD_DICT_STAT(stats, obytes);
+	ADD_DICT_STAT(stats, imissed);
+	ADD_DICT_STAT(stats, ierrors);
+	ADD_DICT_STAT(stats, oerrors);
+	ADD_DICT_STAT(stats, rx_nombuf);
+	add_port_queue_stats(d, stats.q_ipackets, "q_ipackets");
+	add_port_queue_stats(d, stats.q_opackets, "q_opackets");
+	add_port_queue_stats(d, stats.q_ibytes, "q_ibytes");
+	add_port_queue_stats(d, stats.q_obytes, "q_obytes");
+	add_port_queue_stats(d, stats.q_errors, "q_errors");
+
+	return 0;
+}
+
 static int
 handle_port_xstats(const char *cmd __rte_unused,
 		const char *params,
@@ -5409,6 +5460,8 @@ RTE_INIT(ethdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/ethdev/list", handle_port_list,
 			"Returns list of available ethdev ports. Takes no parameters");
+	rte_telemetry_register_cmd("/ethdev/stats", handle_port_stats,
+			"Returns the common stats for a port. Parameters: int port_id");
 	rte_telemetry_register_cmd("/ethdev/xstats", handle_port_xstats,
 			"Returns the extended stats for a port. Parameters: int port_id");
 	rte_telemetry_register_cmd("/ethdev/link_status",
