@@ -107,7 +107,7 @@ otx2_cpt_enq_sa_write(struct otx2_sec_session_ipsec_lp *lp,
 	inst.u64[3] = 0;
 	inst.res_addr = rte_mempool_virt2iova(res);
 
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	do {
 		/* Copy CPT command to LMTLINE */
@@ -124,7 +124,7 @@ otx2_cpt_enq_sa_write(struct otx2_sec_session_ipsec_lp *lp,
 			otx2_err("Request timed out");
 			return -ETIMEDOUT;
 		}
-	    rte_cio_rmb();
+	    rte_io_rmb();
 	}
 
 	if (unlikely(res->compcode != CPT_9X_COMP_E_GOOD)) {

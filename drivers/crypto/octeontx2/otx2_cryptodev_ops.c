@@ -469,7 +469,7 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 		 * buffer immediately, a DMB is not required to push out
 		 * LMTSTs.
 		 */
-		rte_cio_wmb();
+		rte_io_wmb();
 		lmt_status = otx2_lmt_submit(qp->lf_nq_reg);
 	} while (lmt_status == 0);
 

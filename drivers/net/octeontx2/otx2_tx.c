@@ -39,7 +39,7 @@ nix_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	/* Lets commit any changes in the packet */
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	for (i = 0; i < pkts; i++) {
 		otx2_nix_xmit_prepare(tx_pkts[i], cmd, flags);
@@ -75,7 +75,7 @@ nix_xmit_pkts_mseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	/* Lets commit any changes in the packet */
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	for (i = 0; i < pkts; i++) {
 		otx2_nix_xmit_prepare(tx_pkts[i], cmd, flags);
@@ -128,7 +128,7 @@ nix_xmit_pkts_vector(void *tx_queue, struct rte_mbuf **tx_pkts,
 	txq->fc_cache_pkts -= pkts;
 
 	/* Lets commit any changes in the packet */
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	senddesc01_w0 = vld1q_dup_u64(&txq->cmd[0]);
 	senddesc23_w0 = senddesc01_w0;

@@ -82,7 +82,7 @@ void bnxt_free_rxtx_nq_ring(struct bnxt *bp);
 
 static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
 {
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	if (db->db_64)
 		rte_write64_relaxed(db->db_key64 | idx, db->doorbell);
@@ -96,7 +96,7 @@ static inline void bnxt_db_nq(struct bnxt_cp_ring_info *cpr)
 	if (unlikely(!cpr->cp_db.db_64))
 		return;
 
-	rte_cio_wmb();
+	rte_io_wmb();
 	rte_write64_relaxed(cpr->cp_db.db_key64 | DBR_TYPE_NQ |
 			    RING_CMP(cpr->cp_ring_struct, cpr->cp_raw_cons),
 			    cpr->cp_db.doorbell);
@@ -108,7 +108,7 @@ static inline void bnxt_db_nq_arm(struct bnxt_cp_ring_info *cpr)
 	if (unlikely(!cpr->cp_db.db_64))
 		return;
 
-	rte_cio_wmb();
+	rte_io_wmb();
 	rte_write64_relaxed(cpr->cp_db.db_key64 | DBR_TYPE_NQ_ARM |
 			    RING_CMP(cpr->cp_ring_struct, cpr->cp_raw_cons),
 			    cpr->cp_db.doorbell);

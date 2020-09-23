@@ -286,17 +286,17 @@ __sso_event_tx_adapter_enqueue(void *port, struct rte_event ev[],
 	switch (ev->sched_type) {
 	case SSO_SYNC_ORDERED:
 		ssows_swtag_norm(ws, ev->event, SSO_SYNC_ATOMIC);
-		rte_cio_wmb();
+		rte_io_wmb();
 		ssows_swtag_wait(ws);
 		break;
 	case SSO_SYNC_UNTAGGED:
 		ssows_swtag_full(ws, ev->u64, ev->event, SSO_SYNC_ATOMIC,
 				ev->queue_id);
-		rte_cio_wmb();
+		rte_io_wmb();
 		ssows_swtag_wait(ws);
 		break;
 	case SSO_SYNC_ATOMIC:
-		rte_cio_wmb();
+		rte_io_wmb();
 		break;
 	}
 

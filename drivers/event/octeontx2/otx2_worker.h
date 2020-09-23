@@ -256,7 +256,7 @@ otx2_ssogws_order(struct otx2_ssogws *ws, const uint8_t wait_flag)
 	if (wait_flag)
 		otx2_ssogws_head_wait(ws);
 
-	rte_cio_wmb();
+	rte_io_wmb();
 }
 
 static __rte_always_inline const struct otx2_eth_txq *

@@ -418,7 +418,7 @@ __octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct octeontx_txq *txq = tx_queue;
 	octeontx_dq_t *dq = &txq->dq;
 	uint16_t count = 0, nb_desc;
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	while (count < nb_pkts) {
 		if (unlikely(*((volatile int64_t *)dq->fc_status_va) < 0))

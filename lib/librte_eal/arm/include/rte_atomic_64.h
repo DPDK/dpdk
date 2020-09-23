@@ -37,10 +37,6 @@ extern "C" {
 
 #define rte_io_rmb() rte_rmb()
 
-#define rte_cio_wmb() rte_wmb()
-
-#define rte_cio_rmb() rte_rmb()
-
 static __rte_always_inline void
 rte_atomic_thread_fence(int memory_order)
 {

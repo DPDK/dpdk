@@ -2051,7 +2051,7 @@ e1000_flush_tx_ring(struct rte_eth_dev *dev)
 		tx_desc->lower.data = rte_cpu_to_le_32(txd_lower | size);
 		tx_desc->upper.data = 0;
 
-		rte_cio_wmb();
+		rte_io_wmb();
 		txq->tx_tail++;
 		if (txq->tx_tail == txq->nb_tx_desc)
 			txq->tx_tail = 0;

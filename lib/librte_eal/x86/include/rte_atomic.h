@@ -79,10 +79,6 @@ rte_smp_mb(void)
 
 #define rte_io_rmb() rte_compiler_barrier()
 
-#define rte_cio_wmb() rte_compiler_barrier()
-
-#define rte_cio_rmb() rte_compiler_barrier()
-
 /**
  * Synchronization fence between threads based on the specified memory order.
  *

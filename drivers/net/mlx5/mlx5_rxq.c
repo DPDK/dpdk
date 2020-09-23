@@ -484,11 +484,11 @@ rxq_sync_cq(struct mlx5_rxq_data *rxq)
 		cqe->op_own = MLX5_CQE_INVALIDATE;
 	}
 	/* Resync CQE and WQE (WQ in RESET state). */
-	rte_cio_wmb();
+	rte_io_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
-	rte_cio_wmb();
+	rte_io_wmb();
 	*rxq->rq_db = rte_cpu_to_be_32(0);
-	rte_cio_wmb();
+	rte_io_wmb();
 }
 
 /**
@@ -606,12 +606,12 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = errno;
 		return ret;
 	}
-	rte_cio_wmb();
+	rte_io_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
-	rte_cio_wmb();
-	/* Reset RQ consumer before moving queue to READY state. */
+	rte_io_wmb();
+	/* Reset RQ consumer before moving queue ro READY state. */
 	*rxq->rq_db = rte_cpu_to_be_32(0);
-	rte_cio_wmb();
+	rte_io_wmb();
 	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, true);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to READY:  %s",

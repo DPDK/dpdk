@@ -160,7 +160,7 @@ otx2_sec_event_tx(struct otx2_ssogws *ws, struct rte_event *ev,
 	sess->ip_id++;
 	sess->esn++;
 
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	do {
 		otx2_lmt_mov(sess->cpt_lmtline, &inst, 2);

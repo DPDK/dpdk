@@ -113,6 +113,9 @@ API Changes
 * eal: Made the ``rte_dev_event`` structure private to the EAL as no public API
   used it.
 
+* eal: ``rte_cio_rmb()`` and ``rte_cio_wmb()`` were deprecated since 20.08
+  and are removed in this release.
+
 * mem: Removed the unioned field ``phys_addr`` from
   the structures ``rte_memseg`` and ``rte_memzone``.
   The field ``iova`` is remaining from the old unions.

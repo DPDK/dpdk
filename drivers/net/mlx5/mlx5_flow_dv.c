@@ -4452,7 +4452,7 @@ flow_dv_pool_create(struct rte_eth_dev *dev, struct mlx5_devx_obj *dcs,
 		cont->last_pool_idx = pool->index;
 	}
 	/* Pool initialization must be updated before host thread access. */
-	rte_cio_wmb();
+	rte_io_wmb();
 	rte_atomic16_add(&cont->n_valid, 1);
 	return pool;
 }

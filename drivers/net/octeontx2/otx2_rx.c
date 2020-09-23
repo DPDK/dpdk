@@ -303,7 +303,7 @@ nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rxq->head = head;
 	rxq->available -= packets;
 
-	rte_cio_wmb();
+	rte_io_wmb();
 	/* Free all the CQs that we've processed */
 	otx2_write64((rxq->wdata | packets), rxq->cq_door);
 

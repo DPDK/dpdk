@@ -147,7 +147,7 @@ virtqueue_dequeue_burst_rx_packed(struct virtqueue *vq,
 
 	for (i = 0; i < num; i++) {
 		used_idx = vq->vq_used_cons_idx;
-		/* desc_is_used has a load-acquire or rte_cio_rmb inside
+		/* desc_is_used has a load-acquire or rte_io_rmb inside
 		 * and wait for used desc in virtqueue.
 		 */
 		if (!desc_is_used(&desc[used_idx], vq))

@@ -107,45 +107,6 @@ static inline void rte_io_wmb(void);
 static inline void rte_io_rmb(void);
 ///@}
 
-/** @name Coherent I/O Memory Barrier
- *
- * Coherent I/O memory barrier is a lightweight version of I/O memory
- * barriers which are system-wide data synchronization barriers. This
- * is for only coherent memory domain between lcore and I/O device but
- * it is same as the I/O memory barriers in most of architectures.
- * However, some architecture provides even lighter barriers which are
- * somewhere in between I/O memory barriers and SMP memory barriers.
- * For example, in case of ARMv8, DMB(data memory barrier) instruction
- * can have different shareability domains - inner-shareable and
- * outer-shareable. And inner-shareable DMB fits for SMP memory
- * barriers and outer-shareable DMB for coherent I/O memory barriers,
- * which acts on coherent memory.
- *
- * In most cases, I/O memory barriers are safer but if operations are
- * on coherent memory instead of incoherent MMIO region of a device,
- * then coherent I/O memory barriers can be used and this could bring
- * performance gain depending on architectures.
- */
-///@{
-/**
- * Write memory barrier for coherent memory between lcore and I/O device
- *
- * Guarantees that the STORE operations on coherent memory that
- * precede the rte_cio_wmb() call are visible to I/O device before the
- * STORE operations that follow it.
- */
-static inline void rte_cio_wmb(void);
-
-/**
- * Read memory barrier for coherent memory between lcore and I/O device
- *
- * Guarantees that the LOAD operations on coherent memory updated by
- * I/O device that precede the rte_cio_rmb() call are visible to CPU
- * before the LOAD operations that follow it.
- */
-static inline void rte_cio_rmb(void);
-///@}
-
 #endif /* __DOXYGEN__ */
 
 /**

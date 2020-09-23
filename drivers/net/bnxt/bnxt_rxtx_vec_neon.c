@@ -258,21 +258,21 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * reverse order to ensure consistent state.
 		 */
 		rxcmp1[3] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 7]);
-		rte_cio_rmb();
+		rte_io_rmb();
 		rxcmp[3] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 6]);
 
 		rxcmp1[2] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 5]);
-		rte_cio_rmb();
+		rte_io_rmb();
 		rxcmp[2] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 4]);
 
 		t1 = vreinterpretq_u64_u32(vzip2q_u32(rxcmp1[2], rxcmp1[3]));
 
 		rxcmp1[1] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 3]);
-		rte_cio_rmb();
+		rte_io_rmb();
 		rxcmp[1] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 2]);
 
 		rxcmp1[0] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 1]);
-		rte_cio_rmb();
+		rte_io_rmb();
 		rxcmp[0] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 0]);
 
 		t0 = vreinterpretq_u64_u32(vzip2q_u32(rxcmp1[0], rxcmp1[1]));

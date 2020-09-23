@@ -47,7 +47,7 @@ virtio_rmb(uint8_t weak_barriers)
 	if (weak_barriers)
 		rte_smp_rmb();
 	else
-		rte_cio_rmb();
+		rte_io_rmb();
 }
 
 static inline void
@@ -56,7 +56,7 @@ virtio_wmb(uint8_t weak_barriers)
 	if (weak_barriers)
 		rte_smp_wmb();
 	else
-		rte_cio_wmb();
+		rte_io_wmb();
 }
 
 static inline uint16_t
@@ -68,7 +68,7 @@ virtqueue_fetch_flags_packed(struct vring_packed_desc *dp,
 	if (weak_barriers) {
 /* x86 prefers to using rte_smp_rmb over __atomic_load_n as it reports
  * a better perf(~1.5%), which comes from the saved branch by the compiler.
- * The if and else branch are identical with the smp and cio barriers both
+ * The if and else branch are identical with the smp and io barriers both
  * defined as compiler barriers on x86.
  */
 #ifdef RTE_ARCH_X86_64
@@ -79,7 +79,7 @@ virtqueue_fetch_flags_packed(struct vring_packed_desc *dp,
 #endif
 	} else {
 		flags = dp->flags;
-		rte_cio_rmb();
+		rte_io_rmb();
 	}
 
 	return flags;
@@ -92,7 +92,7 @@ virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 	if (weak_barriers) {
 /* x86 prefers to using rte_smp_wmb over __atomic_store_n as it reports
  * a better perf(~1.5%), which comes from the saved branch by the compiler.
- * The if and else branch are identical with the smp and cio barriers both
+ * The if and else branch are identical with the smp and io barriers both
  * defined as compiler barriers on x86.
  */
 #ifdef RTE_ARCH_X86_64
@@ -102,7 +102,7 @@ virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 		__atomic_store_n(&dp->flags, flags, __ATOMIC_RELEASE);
 #endif
 	} else {
-		rte_cio_wmb();
+		rte_io_wmb();
 		dp->flags = flags;
 	}
 }
@@ -469,7 +469,7 @@ virtio_get_queue_type(struct virtio_hw *hw, uint16_t vtpci_queue_idx)
 		return VTNET_TQ;
 }
 
-/* virtqueue_nused has load-acquire or rte_cio_rmb insed */
+/* virtqueue_nused has load-acquire or rte_io_rmb insed */
 static inline uint16_t
 virtqueue_nused(const struct virtqueue *vq)
 {
@@ -480,7 +480,7 @@ virtqueue_nused(const struct virtqueue *vq)
 	 * x86 prefers to using rte_smp_rmb over __atomic_load_n as it
 	 * reports a slightly better perf, which comes from the saved
 	 * branch by the compiler.
-	 * The if and else branches are identical with the smp and cio
+	 * The if and else branches are identical with the smp and io
 	 * barriers both defined as compiler barriers on x86.
 	 */
 #ifdef RTE_ARCH_X86_64
@@ -492,7 +492,7 @@ virtqueue_nused(const struct virtqueue *vq)
 #endif
 	} else {
 		idx = vq->vq_split.ring.used->idx;
-		rte_cio_rmb();
+		rte_io_rmb();
 	}
 	return idx - vq->vq_used_cons_idx;
 }
@@ -510,7 +510,7 @@ vq_update_avail_idx(struct virtqueue *vq)
 	 * it reports a slightly better perf, which comes from the
 	 * saved branch by the compiler.
 	 * The if and else branches are identical with the smp and
-	 * cio barriers both defined as compiler barriers on x86.
+	 * io barriers both defined as compiler barriers on x86.
 	 */
 #ifdef RTE_ARCH_X86_64
 		rte_smp_wmb();
@@ -520,7 +520,7 @@ vq_update_avail_idx(struct virtqueue *vq)
 				 vq->vq_avail_idx, __ATOMIC_RELEASE);
 #endif
 	} else {
-		rte_cio_wmb();
+		rte_io_wmb();
 		vq->vq_split.ring.avail->idx = vq->vq_avail_idx;
 	}
 }
@@ -793,7 +793,7 @@ virtio_xmit_cleanup_inorder_packed(struct virtqueue *vq, int num)
 	struct vq_desc_extra *dxp;
 
 	used_idx = vq->vq_used_cons_idx;
-	/* desc_is_used has a load-acquire or rte_cio_rmb inside
+	/* desc_is_used has a load-acquire or rte_io_rmb inside
 	 * and wait for used desc in virtqueue.
 	 */
 	while (num > 0 && desc_is_used(&desc[used_idx], vq)) {
@@ -827,7 +827,7 @@ virtio_xmit_cleanup_normal_packed(struct virtqueue *vq, int num)
 	struct vq_desc_extra *dxp;
 
 	used_idx = vq->vq_used_cons_idx;
-	/* desc_is_used has a load-acquire or rte_cio_rmb inside
+	/* desc_is_used has a load-acquire or rte_io_rmb inside
 	 * and wait for used desc in virtqueue.
 	 */
 	while (num-- && desc_is_used(&desc[used_idx], vq)) {

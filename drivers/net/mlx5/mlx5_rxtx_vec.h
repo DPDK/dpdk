@@ -118,7 +118,7 @@ mlx5_rx_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq, uint16_t n)
 	elts_idx = rxq->rq_ci & q_mask;
 	for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
 		(*rxq->elts)[elts_idx + i] = &rxq->fake_mbuf;
-	rte_cio_wmb();
+	rte_io_wmb();
 	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 }
 

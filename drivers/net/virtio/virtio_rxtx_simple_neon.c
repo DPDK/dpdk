@@ -84,7 +84,7 @@ virtio_recv_pkts_vec(void *rx_queue,
 	if (unlikely(nb_pkts < RTE_VIRTIO_DESC_PER_LOOP))
 		return 0;
 
-	/* virtqueue_nused has a load-acquire or rte_cio_rmb inside */
+	/* virtqueue_nused has a load-acquire or rte_io_rmb inside */
 	nb_used = virtqueue_nused(vq);
 
 	if (unlikely(nb_used == 0))

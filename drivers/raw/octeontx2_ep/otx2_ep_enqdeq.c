@@ -475,7 +475,7 @@ sdp_ring_doorbell(struct sdp_device *sdpvf __rte_unused,
 	otx2_write64(iq->fill_cnt, iq->doorbell_reg);
 
 	/* Make sure doorbell writes observed by HW */
-	rte_cio_wmb();
+	rte_io_wmb();
 	iq->fill_cnt = 0;
 
 }
@@ -812,7 +812,7 @@ sdp_rawdev_dequeue(struct rte_rawdev *rawdev,
 
 	/* Ack the h/w with no# of pkts read by Host */
 	rte_write32(pkts, droq->pkts_sent_reg);
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	droq->last_pkt_count -= pkts;
 

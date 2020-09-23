@@ -312,7 +312,7 @@ hmac_init(struct otx2_ipsec_fp_sa_ctl *ctl, struct otx2_cpt_qp *qp,
 
 	timeout = rte_get_timer_cycles() + 5 * rte_get_timer_hz();
 
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	do {
 		otx2_lmt_mov(qp->lmtline, &inst, 2);

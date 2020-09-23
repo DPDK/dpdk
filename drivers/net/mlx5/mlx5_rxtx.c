@@ -873,7 +873,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 	};
 	/* Update doorbell counter. */
 	rxq->rq_ci = wqe_n >> rxq->sges_n;
-	rte_cio_wmb();
+	rte_io_wmb();
 	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 }
 
@@ -1113,15 +1113,15 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec)
 	case MLX5_RXQ_ERR_STATE_NEED_READY:
 		ret = check_cqe(u.cqe, cqe_n, rxq->cq_ci);
 		if (ret == MLX5_CQE_STATUS_HW_OWN) {
-			rte_cio_wmb();
+			rte_io_wmb();
 			*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
-			rte_cio_wmb();
+			rte_io_wmb();
 			/*
 			 * The RQ consumer index must be zeroed while moving
 			 * from RESET state to RDY state.
 			 */
 			*rxq->rq_db = rte_cpu_to_be_32(0);
-			rte_cio_wmb();
+			rte_io_wmb();
 			sm.is_wq = 1;
 			sm.queue_id = rxq->idx;
 			sm.state = IBV_WQS_RDY;
@@ -1515,9 +1515,9 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		return 0;
 	/* Update the consumer index. */
 	rxq->rq_ci = rq_ci >> sges_n;
-	rte_cio_wmb();
+	rte_io_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
-	rte_cio_wmb();
+	rte_io_wmb();
 	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	/* Increment packets counter. */
@@ -1893,11 +1893,11 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 out:
 	/* Update the consumer indexes. */
 	rxq->consumed_strd = consumed_strd;
-	rte_cio_wmb();
+	rte_io_wmb();
 	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	if (rq_ci != rxq->rq_ci) {
 		rxq->rq_ci = rq_ci;
-		rte_cio_wmb();
+		rte_io_wmb();
 		*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 	}
 #ifdef MLX5_PMD_SOFT_COUNTERS

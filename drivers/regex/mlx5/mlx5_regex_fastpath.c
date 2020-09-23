@@ -135,7 +135,7 @@ send_doorbell(struct mlx5dv_devx_uar *uar, struct mlx5_regex_sq *sq)
 	((struct mlx5_wqe_ctrl_seg *)wqe)->fm_ce_se = MLX5_WQE_CTRL_CQ_UPDATE;
 	uint64_t *doorbell_addr =
 		(uint64_t *)((uint8_t *)uar->base_addr + 0x800);
-	rte_cio_wmb();
+	rte_io_wmb();
 	sq->dbr[MLX5_SND_DBR] = rte_cpu_to_be_32((sq->db_pi + 1) &
 						 MLX5_REGEX_MAX_WQE_INDEX);
 	rte_wmb();
@@ -219,7 +219,7 @@ poll_one(struct mlx5_regex_cq *cq)
 
 	next_cqe_offset =  (cq->ci & (cq_size_get(cq) - 1));
 	cqe = (volatile struct mlx5_cqe *)(cq->cqe + next_cqe_offset);
-	rte_cio_wmb();
+	rte_io_wmb();
 
 	int ret = check_cqe(cqe, cq_size_get(cq), cq->ci);
 

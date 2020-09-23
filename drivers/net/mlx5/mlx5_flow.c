@@ -6118,7 +6118,7 @@ mlx5_flow_async_pool_query_handle(struct mlx5_dev_ctx_shared *sh,
 		pool->raw = pool->raw_hw;
 		rte_spinlock_unlock(&pool->sl);
 		/* Be sure the new raw counters data is updated in memory. */
-		rte_cio_wmb();
+		rte_io_wmb();
 		if (!TAILQ_EMPTY(&pool->counters[query_gen])) {
 			rte_spinlock_lock(&cont->csl);
 			TAILQ_CONCAT(&cont->counters,

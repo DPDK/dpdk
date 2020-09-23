@@ -155,9 +155,9 @@ txq_sync_cq(struct mlx5_txq_data *txq)
 		cqe->op_own = MLX5_CQE_INVALIDATE;
 	}
 	/* Resync CQE and WQE (WQ in reset state). */
-	rte_cio_wmb();
+	rte_io_wmb();
 	*txq->cq_db = rte_cpu_to_be_32(txq->cq_ci);
-	rte_cio_wmb();
+	rte_io_wmb();
 }
 
 /**

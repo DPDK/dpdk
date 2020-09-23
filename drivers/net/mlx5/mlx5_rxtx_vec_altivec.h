@@ -788,7 +788,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		/* B.2 copy mbuf pointers. */
 		*(vector unsigned char *)&pkts[pos] = mbp1;
 		*(vector unsigned char *)&pkts[pos + 2] = mbp2;
-		rte_cio_rmb();
+		rte_io_rmb();
 
 		/* C.1 load remaining CQE data and extract necessary fields. */
 		cqe_tmp2 = *(vector unsigned char *)
