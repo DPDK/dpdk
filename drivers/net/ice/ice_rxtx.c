@@ -1841,7 +1841,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 		rx_id = (uint16_t)(rx_id == 0 ?
 				   (rxq->nb_rx_desc - 1) : (rx_id - 1));
 		/* write TAIL register */
-		ICE_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		ICE_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
@@ -2231,7 +2231,7 @@ ice_recv_pkts(void *rx_queue,
 		rx_id = (uint16_t)(rx_id == 0 ?
 				   (rxq->nb_rx_desc - 1) : (rx_id - 1));
 		/* write TAIL register */
-		ICE_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		ICE_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
@@ -2946,7 +2946,7 @@ tx_xmit_pkts(struct ice_tx_queue *txq,
 		txq->tx_tail = 0;
 
 	/* Update the tx tail register */
-	ICE_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+	ICE_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }

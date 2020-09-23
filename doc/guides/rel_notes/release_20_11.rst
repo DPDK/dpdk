@@ -107,6 +107,10 @@ New Features
 
   Updated the Intel ixgbe driver to use write combining stores.
 
+* **Updated Intel ice driver.**
+
+  Updated the Intel ice driver to use write combining stores.
+
 * **Updated Intel qat driver.**
 
   Updated the Intel qat driver to use write combining stores.

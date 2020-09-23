@@ -165,6 +165,7 @@ do {									\
 #endif
 
 #define ICE_PCI_REG_WRITE(reg, value) writel(value, reg)
+#define ICE_PCI_REG_WC_WRITE(reg, value) rte_write32_wc(value, reg)
 
 #define ICE_READ_REG(hw, reg)         rd32(hw, reg)
 #define ICE_WRITE_REG(hw, reg, value) wr32(hw, reg, value)
