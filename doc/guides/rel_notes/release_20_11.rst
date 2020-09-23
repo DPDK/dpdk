@@ -103,6 +103,10 @@ New Features
 
   Updated the Intel i40e driver to use write combining stores.
 
+* **Updated Intel qat driver.**
+
+  Updated the Intel qat driver to use write combining stores.
+
 * **Added Ice Lake (Gen4) support for Intel NTB.**
 
   Added NTB device support (4th generation) for Intel Ice Lake platform.

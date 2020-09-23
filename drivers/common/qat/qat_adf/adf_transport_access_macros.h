@@ -9,6 +9,8 @@
 /* CSR write macro */
 #define ADF_CSR_WR(csrAddr, csrOffset, val)		\
 	rte_write32(val, (((uint8_t *)csrAddr) + csrOffset))
+#define ADF_CSR_WC_WR(csrAddr, csrOffset, val)		\
+	rte_write32_wc(val, (((uint8_t *)csrAddr) + csrOffset))
 
 /* CSR read macro */
 #define ADF_CSR_RD(csrAddr, csrOffset)			\
@@ -110,10 +112,10 @@ do { \
 		ADF_RING_CSR_RING_UBASE + (ring << 2), u_base);	\
 } while (0)
 #define WRITE_CSR_RING_HEAD(csr_base_addr, bank, ring, value) \
-	ADF_CSR_WR(csr_base_addr, (ADF_RING_BUNDLE_SIZE * bank) + \
+	ADF_CSR_WC_WR(csr_base_addr, (ADF_RING_BUNDLE_SIZE * bank) + \
 		ADF_RING_CSR_RING_HEAD + (ring << 2), value)
 #define WRITE_CSR_RING_TAIL(csr_base_addr, bank, ring, value) \
-	ADF_CSR_WR(csr_base_addr, (ADF_RING_BUNDLE_SIZE * bank) + \
+	ADF_CSR_WC_WR(csr_base_addr, (ADF_RING_BUNDLE_SIZE * bank) + \
 		ADF_RING_CSR_RING_TAIL + (ring << 2), value)
 #define WRITE_CSR_INT_SRCSEL(csr_base_addr, bank) \
 do { \
