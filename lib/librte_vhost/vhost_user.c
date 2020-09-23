@@ -1343,21 +1343,28 @@ vq_is_ready(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	       vq->enabled;
 }
 
-#define VIRTIO_DEV_NUM_VQS_TO_BE_READY 2u
+#define VIRTIO_BUILTIN_NUM_VQS_TO_BE_READY 2u
 
 static int
 virtio_is_ready(struct virtio_net *dev)
 {
 	struct vhost_virtqueue *vq;
-	uint32_t i;
+	uint32_t i, nr_vring = dev->nr_vring;
 
 	if (dev->flags & VIRTIO_DEV_READY)
 		return 1;
 
-	if (dev->nr_vring < VIRTIO_DEV_NUM_VQS_TO_BE_READY)
+	if (!dev->nr_vring)
 		return 0;
 
-	for (i = 0; i < VIRTIO_DEV_NUM_VQS_TO_BE_READY; i++) {
+	if (dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET) {
+		nr_vring = VIRTIO_BUILTIN_NUM_VQS_TO_BE_READY;
+
+		if (dev->nr_vring < nr_vring)
+			return 0;
+	}
+
+	for (i = 0; i < nr_vring; i++) {
 		vq = dev->virtqueue[i];
 
 		if (!vq_is_ready(dev, vq))
