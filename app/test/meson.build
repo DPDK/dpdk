@@ -171,6 +171,7 @@ test_deps = ['acl',
 	'ring',
 	'security',
 	'stack',
+	'telemetry',
 	'timer'
 ]
 
@@ -347,8 +348,8 @@ if dpdk_conf.has('RTE_LIBRTE_SKELETON_EVENTDEV_PMD')
 	test_deps += 'pmd_skeleton_event'
 endif
 if dpdk_conf.has('RTE_LIBRTE_TELEMETRY')
-	test_sources += 'test_telemetry_json.c'
-	fast_tests += [['telemetry_json_autotest', true]]
+	test_sources += ['test_telemetry_json.c', 'test_telemetry_data.c']
+	fast_tests += [['telemetry_json_autotest', true], ['telemetry_data_autotest', true]]
 endif
 
 # The following linkages of drivers are required because
