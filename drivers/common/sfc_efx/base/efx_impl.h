@@ -1439,6 +1439,7 @@ typedef struct efx_mcdi_init_rxq_params_s {
 	uint32_t	es_max_dma_len;
 	uint32_t	es_buf_stride;
 	uint32_t	hol_block_timeout;
+	uint32_t	prefix_id;
 } efx_mcdi_init_rxq_params_t;
 
 LIBEFX_INTERNAL
