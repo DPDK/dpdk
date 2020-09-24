@@ -20,6 +20,7 @@ rhead_pci_nic_membar_lookup(
 	size_t pci_capa_offset = 0;
 	boolean_t bar_found = B_FALSE;
 	efx_rc_t rc = ENOENT;
+	efsys_bar_t xil_eb;
 
 	/*
 	 * SF-119689-TC Riverhead Host Interface section 4.2.2. describes
@@ -50,13 +51,19 @@ rhead_pci_nic_membar_lookup(
 		}
 
 		xilinx_tbl_found = B_TRUE;
+
+		EFSYS_PCI_FIND_MEM_BAR(espcp, xilinx_tbl_bar, &xil_eb, &rc);
+		if (rc != 0)
+			goto fail2;
 	}
 
 	if (bar_found == B_FALSE)
-		goto fail2;
+		goto fail3;
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
