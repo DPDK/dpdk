@@ -920,8 +920,7 @@ static inline int
 rte_eth_linkstatus_set(struct rte_eth_dev *dev,
 		       const struct rte_eth_link *new_link)
 {
-	volatile uint64_t *dev_link
-		 = (volatile uint64_t *)&(dev->data->dev_link);
+	uint64_t *dev_link = (uint64_t *)&(dev->data->dev_link);
 	union {
 		uint64_t val64;
 		struct rte_eth_link link;
@@ -929,8 +928,8 @@ rte_eth_linkstatus_set(struct rte_eth_dev *dev,
 
 	RTE_BUILD_BUG_ON(sizeof(*new_link) != sizeof(uint64_t));
 
-	orig.val64 = rte_atomic64_exchange(dev_link,
-					   *(const uint64_t *)new_link);
+	orig.val64 = __atomic_exchange_n(dev_link, *(const uint64_t *)new_link,
+					__ATOMIC_SEQ_CST);
 
 	return (orig.link.link_status == new_link->link_status) ? -1 : 0;
 }
@@ -948,20 +947,12 @@ static inline void
 rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
 		       struct rte_eth_link *link)
 {
-	volatile uint64_t *src = (uint64_t *)&(dev->data->dev_link);
+	uint64_t *src = (uint64_t *)&(dev->data->dev_link);
 	uint64_t *dst = (uint64_t *)link;
 
 	RTE_BUILD_BUG_ON(sizeof(*link) != sizeof(uint64_t));
 
-#ifdef __LP64__
-	/* if cpu arch has 64 bit unsigned lon then implicitly atomic */
-	*dst = *src;
-#else
-	/* can't use rte_atomic64_read because it returns signed int */
-	do {
-		*dst = *src;
-	} while (!rte_atomic64_cmpset(src, *dst, *dst));
-#endif
+	*dst = __atomic_load_n(src, __ATOMIC_SEQ_CST);
 }
 
 /**
