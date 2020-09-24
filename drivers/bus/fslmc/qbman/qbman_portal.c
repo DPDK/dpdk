@@ -1201,6 +1201,8 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 				QBMAN_CENA_SWP_EQCR(eqcr_pi & half_mask));
 		memcpy(&p[1], &cl[1], 28);
 		memcpy(&p[8], &fd[i], sizeof(*fd));
+		p[0] = cl[0] | s->eqcr.pi_vb;
+
 		if (flags && (flags[i] & QBMAN_ENQUEUE_FLAG_DCA)) {
 			struct qbman_eq_desc *d = (struct qbman_eq_desc *)p;
 
@@ -1208,7 +1210,6 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 				((flags[i]) & QBMAN_EQCR_DCA_IDXMASK);
 		}
 		eqcr_pi++;
-		p[0] = cl[0] | s->eqcr.pi_vb;
 
 		if (!(eqcr_pi & half_mask))
 			s->eqcr.pi_vb ^= QB_VALID_BIT;
