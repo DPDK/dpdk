@@ -205,10 +205,12 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	uint64_t tx_offloads = eth_conf->txmode.offloads;
 	struct rte_device *rdev = dev->device;
+	struct rte_eth_link *link = &dev->data->dev_link;
 	struct rte_dpaa_device *dpaa_dev;
 	struct fman_if *fif = dev->process_private;
 	struct __fman_if *__fif;
 	struct rte_intr_handle *intr_handle;
+	int speed, duplex;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -292,6 +294,60 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 			dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
 		}
 	}
+
+	/* Wait for link status to get updated */
+	if (!link->link_status)
+		sleep(1);
+
+	/* Configure link only if link is UP*/
+	if (link->link_status) {
+		if (eth_conf->link_speeds == ETH_LINK_SPEED_AUTONEG) {
+			/* Start autoneg only if link is not in autoneg mode */
+			if (!link->link_autoneg)
+				dpaa_restart_link_autoneg(__fif->node_name);
+		} else if (eth_conf->link_speeds & ETH_LINK_SPEED_FIXED) {
+			switch (eth_conf->link_speeds & ~ETH_LINK_SPEED_FIXED) {
+			case ETH_LINK_SPEED_10M_HD:
+				speed = ETH_SPEED_NUM_10M;
+				duplex = ETH_LINK_HALF_DUPLEX;
+				break;
+			case ETH_LINK_SPEED_10M:
+				speed = ETH_SPEED_NUM_10M;
+				duplex = ETH_LINK_FULL_DUPLEX;
+				break;
+			case ETH_LINK_SPEED_100M_HD:
+				speed = ETH_SPEED_NUM_100M;
+				duplex = ETH_LINK_HALF_DUPLEX;
+				break;
+			case ETH_LINK_SPEED_100M:
+				speed = ETH_SPEED_NUM_100M;
+				duplex = ETH_LINK_FULL_DUPLEX;
+				break;
+			case ETH_LINK_SPEED_1G:
+				speed = ETH_SPEED_NUM_1G;
+				duplex = ETH_LINK_FULL_DUPLEX;
+				break;
+			case ETH_LINK_SPEED_2_5G:
+				speed = ETH_SPEED_NUM_2_5G;
+				duplex = ETH_LINK_FULL_DUPLEX;
+				break;
+			case ETH_LINK_SPEED_10G:
+				speed = ETH_SPEED_NUM_10G;
+				duplex = ETH_LINK_FULL_DUPLEX;
+				break;
+			default:
+				speed = ETH_SPEED_NUM_NONE;
+				duplex = ETH_LINK_FULL_DUPLEX;
+				break;
+			}
+			/* Set link speed */
+			dpaa_update_link_speed(__fif->node_name, speed, duplex);
+		} else {
+			/* Manual autoneg - custom advertisement speed. */
+			printf("Custom Advertisement speeds not supported\n");
+		}
+	}
+
 	return 0;
 }
 
@@ -377,6 +433,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	struct rte_device *rdev = dev->device;
 	struct rte_dpaa_device *dpaa_dev;
 	struct rte_intr_handle *intr_handle;
+	struct rte_eth_link *link = &dev->data->dev_link;
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
 	int loop;
 
@@ -401,6 +458,10 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	__fif = container_of(fif, struct __fman_if, __if);
 
 	dpaa_eth_dev_stop(dev);
+
+	/* Reset link to autoneg */
+	if (link->link_status && !link->link_autoneg)
+		dpaa_restart_link_autoneg(__fif->node_name);
 
 	if (intr_handle && intr_handle->fd &&
 	    dev->data->dev_conf.intr_conf.lsc != 0) {
@@ -500,12 +561,24 @@ static int dpaa_eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->flow_type_rss_offloads = DPAA_RSS_OFFLOAD_ALL;
 
 	if (fif->mac_type == fman_mac_1g) {
-		dev_info->speed_capa = ETH_LINK_SPEED_1G;
+		dev_info->speed_capa = ETH_LINK_SPEED_10M_HD
+					| ETH_LINK_SPEED_10M
+					| ETH_LINK_SPEED_100M_HD
+					| ETH_LINK_SPEED_100M
+					| ETH_LINK_SPEED_1G;
 	} else if (fif->mac_type == fman_mac_2_5g) {
-		dev_info->speed_capa = ETH_LINK_SPEED_1G
+		dev_info->speed_capa = ETH_LINK_SPEED_10M_HD
+					| ETH_LINK_SPEED_10M
+					| ETH_LINK_SPEED_100M_HD
+					| ETH_LINK_SPEED_100M
+					| ETH_LINK_SPEED_1G
 					| ETH_LINK_SPEED_2_5G;
 	} else if (fif->mac_type == fman_mac_10g) {
-		dev_info->speed_capa = ETH_LINK_SPEED_1G
+		dev_info->speed_capa = ETH_LINK_SPEED_10M_HD
+					| ETH_LINK_SPEED_10M
+					| ETH_LINK_SPEED_100M_HD
+					| ETH_LINK_SPEED_100M
+					| ETH_LINK_SPEED_1G
 					| ETH_LINK_SPEED_2_5G
 					| ETH_LINK_SPEED_10G;
 	} else {
@@ -602,31 +675,35 @@ static int dpaa_eth_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link *link = &dev->data->dev_link;
 	struct fman_if *fif = dev->process_private;
 	struct __fman_if *__fif = container_of(fif, struct __fman_if, __if);
-	int ret;
+	int ret, ioctl_version;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (fif->mac_type == fman_mac_1g)
-		link->link_speed = ETH_SPEED_NUM_1G;
-	else if (fif->mac_type == fman_mac_2_5g)
-		link->link_speed = ETH_SPEED_NUM_2_5G;
-	else if (fif->mac_type == fman_mac_10g)
-		link->link_speed = ETH_SPEED_NUM_10G;
-	else
-		DPAA_PMD_ERR("invalid link_speed: %s, %d",
-			     dpaa_intf->name, fif->mac_type);
+	ioctl_version = dpaa_get_ioctl_version_number();
+
 
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
-		ret = dpaa_get_link_status(__fif->node_name);
-		if (ret < 0)
+		ret = dpaa_get_link_status(__fif->node_name, link);
+		if (ret)
 			return ret;
-		link->link_status = ret;
 	} else {
 		link->link_status = dpaa_intf->valid;
 	}
 
-	link->link_duplex = ETH_LINK_FULL_DUPLEX;
-	link->link_autoneg = ETH_LINK_AUTONEG;
+	if (ioctl_version < 2) {
+		link->link_duplex = ETH_LINK_FULL_DUPLEX;
+		link->link_autoneg = ETH_LINK_AUTONEG;
+
+		if (fif->mac_type == fman_mac_1g)
+			link->link_speed = ETH_SPEED_NUM_1G;
+		else if (fif->mac_type == fman_mac_2_5g)
+			link->link_speed = ETH_SPEED_NUM_2_5G;
+		else if (fif->mac_type == fman_mac_10g)
+			link->link_speed = ETH_SPEED_NUM_10G;
+		else
+			DPAA_PMD_ERR("invalid link_speed: %s, %d",
+				     dpaa_intf->name, fif->mac_type);
+	}
 
 	DPAA_PMD_INFO("Port %d Link is %s\n", dev->data->port_id,
 		      link->link_status ? "Up" : "Down");

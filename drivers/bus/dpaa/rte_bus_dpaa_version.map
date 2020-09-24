@@ -8,10 +8,13 @@ INTERNAL {
 	bman_query_free_buffers;
 	bman_release;
 	bman_thread_irq;
+	dpaa_get_ioctl_version_number;
 	dpaa_get_eth_port_cfg;
 	dpaa_get_qm_channel_caam;
 	dpaa_get_qm_channel_pool;
 	dpaa_get_link_status;
+	dpaa_restart_link_autoneg;
+	dpaa_update_link_speed;
 	dpaa_intr_disable;
 	dpaa_intr_enable;
 	dpaa_svr_family;
