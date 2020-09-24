@@ -685,6 +685,7 @@ sfc_rss_attach(struct sfc_adapter *sa)
 	efx_intr_fini(sa->nic);
 
 	rte_memcpy(rss->key, default_rss_key, sizeof(rss->key));
+	rss->dummy_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 
 	return 0;
 

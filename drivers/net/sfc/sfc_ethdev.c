@@ -1544,7 +1544,14 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	unsigned int efx_hash_types;
+	uint32_t contexts[] = {EFX_RSS_CONTEXT_DEFAULT, rss->dummy_rss_context};
+	unsigned int n_contexts;
+	unsigned int mode_i = 0;
+	unsigned int key_i = 0;
+	unsigned int i = 0;
 	int rc = 0;
+
+	n_contexts = rss->dummy_rss_context == EFX_RSS_CONTEXT_DEFAULT ? 1 : 2;
 
 	if (sfc_sa2shared(sa)->isolated)
 		return -ENOTSUP;
@@ -1572,19 +1579,24 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (rc != 0)
 		goto fail_rx_hf_rte_to_efx;
 
-	rc = efx_rx_scale_mode_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
-				   rss->hash_alg, efx_hash_types, B_TRUE);
-	if (rc != 0)
-		goto fail_scale_mode_set;
+	for (mode_i = 0; mode_i < n_contexts; mode_i++) {
+		rc = efx_rx_scale_mode_set(sa->nic, contexts[mode_i],
+					   rss->hash_alg, efx_hash_types,
+					   B_TRUE);
+		if (rc != 0)
+			goto fail_scale_mode_set;
+	}
 
 	if (rss_conf->rss_key != NULL) {
 		if (sa->state == SFC_ADAPTER_STARTED) {
-			rc = efx_rx_scale_key_set(sa->nic,
-						  EFX_RSS_CONTEXT_DEFAULT,
-						  rss_conf->rss_key,
-						  sizeof(rss->key));
-			if (rc != 0)
-				goto fail_scale_key_set;
+			for (key_i = 0; key_i < n_contexts; key_i++) {
+				rc = efx_rx_scale_key_set(sa->nic,
+							  contexts[key_i],
+							  rss_conf->rss_key,
+							  sizeof(rss->key));
+				if (rc != 0)
+					goto fail_scale_key_set;
+			}
 		}
 
 		rte_memcpy(rss->key, rss_conf->rss_key, sizeof(rss->key));
@@ -1597,12 +1609,20 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 	return 0;
 
 fail_scale_key_set:
-	if (efx_rx_scale_mode_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
-				  EFX_RX_HASHALG_TOEPLITZ,
-				  rss->hash_types, B_TRUE) != 0)
-		sfc_err(sa, "failed to restore RSS mode");
+	for (i = 0; i < key_i; i++) {
+		if (efx_rx_scale_key_set(sa->nic, contexts[i], rss->key,
+					 sizeof(rss->key)) != 0)
+			sfc_err(sa, "failed to restore RSS key");
+	}
 
 fail_scale_mode_set:
+	for (i = 0; i < mode_i; i++) {
+		if (efx_rx_scale_mode_set(sa->nic, contexts[i],
+					  EFX_RX_HASHALG_TOEPLITZ,
+					  rss->hash_types, B_TRUE) != 0)
+			sfc_err(sa, "failed to restore RSS mode");
+	}
+
 fail_rx_hf_rte_to_efx:
 	sfc_adapter_unlock(sa);
 	return -rc;

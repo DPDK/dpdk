@@ -52,6 +52,8 @@ struct sfc_flow_spec_filter {
 	unsigned int count;
 	/* RSS toggle */
 	boolean_t rss;
+	/* RSS hash toggle */
+	boolean_t rss_hash_required;
 	/* RSS configuration */
 	struct sfc_flow_rss rss_conf;
 };

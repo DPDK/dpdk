@@ -1139,6 +1139,13 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq_info->refill_threshold =
 		RTE_MAX(rx_free_thresh, SFC_RX_REFILL_BULK);
 	rxq_info->refill_mb_pool = mb_pool;
+
+	if (rss->hash_support == EFX_RX_HASH_AVAILABLE && rss->channels > 0 &&
+	    (offloads & DEV_RX_OFFLOAD_RSS_HASH))
+		rxq_info->rxq_flags = SFC_RXQ_FLAG_RSS_HASH;
+	else
+		rxq_info->rxq_flags = 0;
+
 	rxq->buf_size = buf_size;
 
 	rc = sfc_dma_alloc(sa, "rxq", sw_index,
@@ -1154,11 +1161,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.buf_size = buf_size;
 	info.batch_max = encp->enc_rx_batch_max;
 	info.prefix_size = encp->enc_rx_prefix_size;
-
-	if (rss->hash_support == EFX_RX_HASH_AVAILABLE && rss->channels > 0 &&
-	    (offloads & DEV_RX_OFFLOAD_RSS_HASH))
-		info.flags |= SFC_RXQ_FLAG_RSS_HASH;
-
+	info.flags = rxq_info->rxq_flags;
 	info.rxq_entries = rxq_info->entries;
 	info.rxq_hw_ring = rxq->mem.esm_base;
 	info.evq_hw_index = sfc_evq_index_by_rxq_sw_index(sa, sw_index);

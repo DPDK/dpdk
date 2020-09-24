@@ -157,6 +157,8 @@ struct sfc_rss {
 	efx_rx_hash_type_t		hash_types;
 	unsigned int			tbl[EFX_RSS_TBL_SIZE];
 	uint8_t				key[EFX_RSS_KEY_SIZE];
+
+	uint32_t			dummy_rss_context;
 };
 
 /* Adapter private data shared by primary and secondary processes */

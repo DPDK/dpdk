@@ -115,6 +115,7 @@ struct sfc_rxq_info {
 	boolean_t		deferred_started;
 	unsigned int		refill_threshold;
 	struct rte_mempool	*refill_mb_pool;
+	unsigned int		rxq_flags;
 };
 
 struct sfc_rxq_info *sfc_rxq_info_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq);
