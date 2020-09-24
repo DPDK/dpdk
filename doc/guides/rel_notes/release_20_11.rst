@@ -84,6 +84,10 @@ New Features
 
   Added NTB device support (4th generation) for Intel Ice Lake platform.
 
+* **Added UDP/IPv4 GRO support for non-VxLAN packets.**
+
+  For non-VxLAN packets, added UDP/IPv4 support.
+
 * **Extended flow-perf application.**
 
   * Started supporting user order instead of bit mask:

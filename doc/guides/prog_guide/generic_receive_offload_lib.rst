@@ -30,9 +30,9 @@ assumes the packets are complete (i.e., MF==0 && frag_off==0), when IP
 fragmentation is possible (i.e., DF==0). Additionally, it complies RFC
 6864 to process the IPv4 ID field.
 
-Currently, the GRO library provides GRO supports for TCP/IPv4 packets and
-VxLAN packets which contain an outer IPv4 header and an inner TCP/IPv4
-packet.
+Currently, the GRO library provides GRO supports for TCP/IPv4 and UDP/IPv4
+packets as well as VxLAN packets which contain an outer IPv4 header and an
+inner TCP/IPv4 packet.
 
 Two Sets of API
 ---------------
