@@ -2867,6 +2867,139 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	efx_rc_t
+efx_mcdi_init_txq(
+	__in		efx_nic_t *enp,
+	__in		uint32_t ndescs,
+	__in		uint32_t target_evq,
+	__in		uint32_t label,
+	__in		uint32_t instance,
+	__in		uint16_t flags,
+	__in		efsys_mem_t *esmp)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+		MC_CMD_INIT_TXQ_IN_LEN(EF10_TXQ_MAXNBUFS),
+		MC_CMD_INIT_TXQ_OUT_LEN);
+	efx_qword_t *dma_addr;
+	uint64_t addr;
+	int npages;
+	int i;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT(EF10_TXQ_MAXNBUFS >=
+	    efx_txq_nbufs(enp, enp->en_nic_cfg.enc_txq_max_ndescs));
+
+	if ((esmp == NULL) ||
+	    (EFSYS_MEM_SIZE(esmp) < efx_txq_size(enp, ndescs))) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	npages = efx_txq_nbufs(enp, ndescs);
+	if (MC_CMD_INIT_TXQ_IN_LEN(npages) > sizeof (payload)) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	req.emr_cmd = MC_CMD_INIT_TXQ;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_INIT_TXQ_IN_LEN(npages);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_INIT_TXQ_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, INIT_TXQ_IN_SIZE, ndescs);
+	MCDI_IN_SET_DWORD(req, INIT_TXQ_IN_TARGET_EVQ, target_evq);
+	MCDI_IN_SET_DWORD(req, INIT_TXQ_IN_LABEL, label);
+	MCDI_IN_SET_DWORD(req, INIT_TXQ_IN_INSTANCE, instance);
+
+	MCDI_IN_POPULATE_DWORD_9(req, INIT_TXQ_IN_FLAGS,
+	    INIT_TXQ_IN_FLAG_BUFF_MODE, 0,
+	    INIT_TXQ_IN_FLAG_IP_CSUM_DIS,
+	    (flags & EFX_TXQ_CKSUM_IPV4) ? 0 : 1,
+	    INIT_TXQ_IN_FLAG_TCP_CSUM_DIS,
+	    (flags & EFX_TXQ_CKSUM_TCPUDP) ? 0 : 1,
+	    INIT_TXQ_EXT_IN_FLAG_INNER_IP_CSUM_EN,
+	    (flags & EFX_TXQ_CKSUM_INNER_IPV4) ? 1 : 0,
+	    INIT_TXQ_EXT_IN_FLAG_INNER_TCP_CSUM_EN,
+	    (flags & EFX_TXQ_CKSUM_INNER_TCPUDP) ? 1 : 0,
+	    INIT_TXQ_EXT_IN_FLAG_TSOV2_EN, (flags & EFX_TXQ_FATSOV2) ? 1 : 0,
+	    INIT_TXQ_IN_FLAG_TCP_UDP_ONLY, 0,
+	    INIT_TXQ_IN_CRC_MODE, 0,
+	    INIT_TXQ_IN_FLAG_TIMESTAMP, 0);
+
+	MCDI_IN_SET_DWORD(req, INIT_TXQ_IN_OWNER_ID, 0);
+	MCDI_IN_SET_DWORD(req, INIT_TXQ_IN_PORT_ID, enp->en_vport_id);
+
+	dma_addr = MCDI_IN2(req, efx_qword_t, INIT_TXQ_IN_DMA_ADDR);
+	addr = EFSYS_MEM_ADDR(esmp);
+
+	for (i = 0; i < npages; i++) {
+		EFX_POPULATE_QWORD_2(*dma_addr,
+		    EFX_DWORD_1, (uint32_t)(addr >> 32),
+		    EFX_DWORD_0, (uint32_t)(addr & 0xffffffff));
+
+		dma_addr++;
+		addr += EFX_BUF_SIZE;
+	}
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail3;
+	}
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+efx_mcdi_fini_txq(
+	__in		efx_nic_t *enp,
+	__in		uint32_t instance)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_FINI_TXQ_IN_LEN,
+		MC_CMD_FINI_TXQ_OUT_LEN);
+	efx_rc_t rc;
+
+	req.emr_cmd = MC_CMD_FINI_TXQ;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_FINI_TXQ_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_FINI_TXQ_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req, FINI_TXQ_IN_INSTANCE, instance);
+
+	efx_mcdi_execute_quiet(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	/*
+	 * EALREADY is not an error, but indicates that the MC has rebooted and
+	 * that the TXQ has already been destroyed.
+	 */
+	if (rc != EALREADY)
+		EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 #endif	/* EFX_OPTS_EF10() */
 
 #endif	/* EFSYS_OPT_MCDI */
