@@ -1922,6 +1922,39 @@ fail1:
 }
 
 static	__checkReturn	efx_rc_t
+efx_mcdi_entity_reset(
+	__in		efx_nic_t *enp)
+{
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_ENTITY_RESET_IN_LEN,
+		MC_CMD_ENTITY_RESET_OUT_LEN);
+	efx_rc_t rc;
+
+	req.emr_cmd = MC_CMD_ENTITY_RESET;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_ENTITY_RESET_IN_LEN;
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_ENTITY_RESET_OUT_LEN;
+
+	MCDI_IN_POPULATE_DWORD_1(req, ENTITY_RESET_IN_FLAG,
+	    ENTITY_RESET_IN_FUNCTION_RESOURCE_RESET, 1);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static	__checkReturn	efx_rc_t
 ef10_set_workaround_bug26807(
 	__in		efx_nic_t *enp)
 {
@@ -2203,9 +2236,6 @@ fail1:
 ef10_nic_reset(
 	__in		efx_nic_t *enp)
 {
-	efx_mcdi_req_t req;
-	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_ENTITY_RESET_IN_LEN,
-		MC_CMD_ENTITY_RESET_OUT_LEN);
 	efx_rc_t rc;
 
 	/* ef10_nic_reset() is called to recover from BADASSERT failures. */
@@ -2214,21 +2244,8 @@ ef10_nic_reset(
 	if ((rc = efx_mcdi_exit_assertion_handler(enp)) != 0)
 		goto fail2;
 
-	req.emr_cmd = MC_CMD_ENTITY_RESET;
-	req.emr_in_buf = payload;
-	req.emr_in_length = MC_CMD_ENTITY_RESET_IN_LEN;
-	req.emr_out_buf = payload;
-	req.emr_out_length = MC_CMD_ENTITY_RESET_OUT_LEN;
-
-	MCDI_IN_POPULATE_DWORD_1(req, ENTITY_RESET_IN_FLAG,
-	    ENTITY_RESET_IN_FUNCTION_RESOURCE_RESET, 1);
-
-	efx_mcdi_execute(enp, &req);
-
-	if (req.emr_rc != 0) {
-		rc = req.emr_rc;
+	if ((rc = efx_mcdi_entity_reset(enp)) != 0)
 		goto fail3;
-	}
 
 	/* Clear RX/TX DMA queue errors */
 	enp->en_reset_flags &= ~(EFX_RESET_RXQ_ERR | EFX_RESET_TXQ_ERR);
