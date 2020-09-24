@@ -66,10 +66,25 @@ rhead_ev_qcreate(
 	__in		uint32_t flags,
 	__in		efx_evq_t *eep)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	size_t desc_size;
 	uint32_t irq;
 	efx_rc_t rc;
 
 	_NOTE(ARGUNUSED(id))	/* buftbl id managed by MC */
+
+	desc_size = encp->enc_ev_desc_size;
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+	if (flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH)
+		desc_size = encp->enc_ev_ew_desc_size;
+#endif
+	EFSYS_ASSERT(desc_size != 0);
+
+	if (EFSYS_MEM_SIZE(esmp) < (ndescs * desc_size)) {
+		/* Buffer too small for event queue descriptors */
+		rc = EINVAL;
+		goto fail1;
+	}
 
 	/* Set up the handler table */
 	eep->ee_rx	= rhead_ev_rx_packets;
@@ -98,10 +113,12 @@ rhead_ev_qcreate(
 	rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, us, flags,
 	    B_FALSE);
 	if (rc != 0)
-		goto fail1;
+		goto fail2;
 
 	return (0);
 
+fail2:
+	EFSYS_PROBE(fail2);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 

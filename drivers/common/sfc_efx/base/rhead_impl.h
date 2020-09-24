@@ -32,6 +32,10 @@ extern "C" {
 #define	RHEAD_RXQ_DESC_SIZE	(sizeof (efx_qword_t))
 #define	RHEAD_TXQ_DESC_SIZE	(sizeof (efx_oword_t))
 
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+#define	RHEAD_EVQ_EW_DESC_SIZE	(sizeof (efx_xword_t))
+#endif
+
 
 /* NIC */
 

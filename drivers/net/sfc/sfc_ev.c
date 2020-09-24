@@ -600,7 +600,7 @@ sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index)
 
 	/* Clear all events */
 	(void)memset((void *)esmp->esm_base, 0xff,
-		     efx_evq_size(sa->nic, evq->entries));
+		     efx_evq_size(sa->nic, evq->entries, evq_flags));
 
 	if ((sa->intr.lsc_intr && hw_index == sa->mgmt_evq_index) ||
 	    (sa->intr.rxq_intr && evq->dp_rxq != NULL))
@@ -833,8 +833,8 @@ sfc_ev_qinit(struct sfc_adapter *sa,
 
 	/* Allocate DMA space */
 	rc = sfc_dma_alloc(sa, sfc_evq_type2str(type), type_index,
-			   efx_evq_size(sa->nic, evq->entries), socket_id,
-			   &evq->mem);
+			   efx_evq_size(sa->nic, evq->entries, sa->evq_flags),
+			   socket_id, &evq->mem);
 	if (rc != 0)
 		goto fail_dma_alloc;
 

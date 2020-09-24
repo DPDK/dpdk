@@ -1043,14 +1043,14 @@ ef10_get_datapath_caps(
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_GET_CAPABILITIES_IN_LEN,
-		MC_CMD_GET_CAPABILITIES_V5_OUT_LEN);
+		MC_CMD_GET_CAPABILITIES_V7_OUT_LEN);
 	efx_rc_t rc;
 
 	req.emr_cmd = MC_CMD_GET_CAPABILITIES;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_GET_CAPABILITIES_IN_LEN;
 	req.emr_out_buf = payload;
-	req.emr_out_length = MC_CMD_GET_CAPABILITIES_V5_OUT_LEN;
+	req.emr_out_length = MC_CMD_GET_CAPABILITIES_V7_OUT_LEN;
 
 	efx_mcdi_execute_quiet(enp, &req);
 
@@ -1072,6 +1072,11 @@ ef10_get_datapath_caps(
 	(((_req).emr_out_length_used >= MC_CMD_GET_CAPABILITIES_V2_OUT_LEN) && \
 	    (MCDI_OUT_DWORD((_req), GET_CAPABILITIES_V2_OUT_FLAGS2) &	\
 	    (1u << (MC_CMD_GET_CAPABILITIES_V2_OUT_ ## _flag ## _LBN))))
+
+#define	CAP_FLAGS3(_req, _flag)						\
+	(((_req).emr_out_length_used >= MC_CMD_GET_CAPABILITIES_V7_OUT_LEN) && \
+	    (MCDI_OUT_DWORD((_req), GET_CAPABILITIES_V7_OUT_FLAGS3) &	\
+	    (1u << (MC_CMD_GET_CAPABILITIES_V7_OUT_ ## _flag ## _LBN))))
 
 	/* Check if RXDP firmware inserts 14 byte prefix */
 	if (CAP_FLAGS1(req, RX_PREFIX_LEN_14))
@@ -1201,6 +1206,15 @@ ef10_get_datapath_caps(
 		encp->enc_init_evq_v2_supported = B_TRUE;
 	else
 		encp->enc_init_evq_v2_supported = B_FALSE;
+
+	/*
+	 * Check if firmware supports extended width event queues, which have
+	 * a different event descriptor layout.
+	 */
+	if (CAP_FLAGS3(req, EXTENDED_WIDTH_EVQS_SUPPORTED))
+		encp->enc_init_evq_extended_width_supported = B_TRUE;
+	else
+		encp->enc_init_evq_extended_width_supported = B_FALSE;
 
 	/*
 	 * Check if the NO_CONT_EV mode for RX events is supported.

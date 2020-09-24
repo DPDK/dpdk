@@ -2475,6 +2475,7 @@ efx_mcdi_init_evq(
 		MC_CMD_INIT_EVQ_V2_IN_LEN(INIT_EVQ_MAXNBUFS),
 		MC_CMD_INIT_EVQ_V2_OUT_LEN);
 	boolean_t interrupting;
+	int ev_extended_width;
 	int ev_cut_through;
 	int ev_merge;
 	unsigned int evq_type;
@@ -2484,7 +2485,7 @@ efx_mcdi_init_evq(
 	int i;
 	efx_rc_t rc;
 
-	npages = efx_evq_nbufs(enp, nevs);
+	npages = efx_evq_nbufs(enp, nevs, flags);
 	if (npages > INIT_EVQ_MAXNBUFS) {
 		rc = EINVAL;
 		goto fail1;
@@ -2558,14 +2559,27 @@ efx_mcdi_init_evq(
 		}
 	}
 
-	MCDI_IN_POPULATE_DWORD_7(req, INIT_EVQ_V2_IN_FLAGS,
+	/*
+	 * On EF100, extended width event queues have a different event
+	 * descriptor layout and are used to support descriptor proxy queues.
+	 */
+	ev_extended_width = 0;
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+	if (encp->enc_init_evq_extended_width_supported) {
+		if (flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH)
+			ev_extended_width = 1;
+	}
+#endif
+
+	MCDI_IN_POPULATE_DWORD_8(req, INIT_EVQ_V2_IN_FLAGS,
 	    INIT_EVQ_V2_IN_FLAG_INTERRUPTING, interrupting,
 	    INIT_EVQ_V2_IN_FLAG_RPTR_DOS, 0,
 	    INIT_EVQ_V2_IN_FLAG_INT_ARMD, 0,
 	    INIT_EVQ_V2_IN_FLAG_CUT_THRU, ev_cut_through,
 	    INIT_EVQ_V2_IN_FLAG_RX_MERGE, ev_merge,
 	    INIT_EVQ_V2_IN_FLAG_TX_MERGE, ev_merge,
-	    INIT_EVQ_V2_IN_FLAG_TYPE, evq_type);
+	    INIT_EVQ_V2_IN_FLAG_TYPE, evq_type,
+	    INIT_EVQ_V2_IN_FLAG_EXT_WIDTH, ev_extended_width);
 
 	/* If the value is zero then disable the timer */
 	if (us == 0) {

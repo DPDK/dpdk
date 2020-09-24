@@ -129,6 +129,12 @@ rhead_board_cfg(
 	encp->enc_evq_timer_quantum_ns = 0;
 	encp->enc_evq_timer_max_us = 0;
 
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+	encp->enc_ev_ew_desc_size = RHEAD_EVQ_EW_DESC_SIZE;
+#else
+	encp->enc_ev_ew_desc_size = 0;
+#endif
+
 	encp->enc_ev_desc_size = RHEAD_EVQ_DESC_SIZE;
 	encp->enc_rx_desc_size = RHEAD_RXQ_DESC_SIZE;
 	encp->enc_tx_desc_size = RHEAD_TXQ_DESC_SIZE;

@@ -201,19 +201,35 @@ fail1:
 	__checkReturn	size_t
 efx_evq_size(
 	__in	const efx_nic_t *enp,
-	__in	unsigned int ndescs)
+	__in	unsigned int ndescs,
+	__in	uint32_t flags)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	size_t desc_size;
 
-	return (ndescs * encp->enc_ev_desc_size);
+	desc_size = encp->enc_ev_desc_size;
+
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+	if (flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH)
+		desc_size = encp->enc_ev_ew_desc_size;
+#else
+	EFSYS_ASSERT((flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH) == 0);
+#endif
+
+	return (ndescs * desc_size);
 }
 
 	__checkReturn	unsigned int
 efx_evq_nbufs(
 	__in	const efx_nic_t *enp,
-	__in	unsigned int ndescs)
+	__in	unsigned int ndescs,
+	__in	uint32_t flags)
 {
-	return (EFX_DIV_ROUND_UP(efx_evq_size(enp, ndescs), EFX_BUF_SIZE));
+	size_t size;
+
+	size = efx_evq_size(enp, ndescs, flags);
+
+	return (EFX_DIV_ROUND_UP(size, EFX_BUF_SIZE));
 }
 
 		void
@@ -282,6 +298,13 @@ efx_ev_qcreate(
 		goto fail4;
 	}
 
+	if ((flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH) &&
+	    (encp->enc_ev_ew_desc_size == 0)) {
+		/* Extended width event descriptors are not supported. */
+		rc = EINVAL;
+		goto fail5;
+	}
+
 	EFSYS_ASSERT(ISP2(encp->enc_evq_max_nevs));
 	EFSYS_ASSERT(ISP2(encp->enc_evq_min_nevs));
 
@@ -289,14 +312,20 @@ efx_ev_qcreate(
 	    ndescs < encp->enc_evq_min_nevs ||
 	    ndescs > encp->enc_evq_max_nevs) {
 		rc = EINVAL;
-		goto fail5;
+		goto fail6;
+	}
+
+	if (EFSYS_MEM_SIZE(esmp) < (ndescs * encp->enc_ev_desc_size)) {
+		/* Buffer too small for event queue descriptors. */
+		rc = EINVAL;
+		goto fail7;
 	}
 
 	/* Allocate an EVQ object */
 	EFSYS_KMEM_ALLOC(enp->en_esip, sizeof (efx_evq_t), eep);
 	if (eep == NULL) {
 		rc = ENOMEM;
-		goto fail6;
+		goto fail8;
 	}
 
 	eep->ee_magic = EFX_EVQ_MAGIC;
@@ -319,16 +348,20 @@ efx_ev_qcreate(
 
 	if ((rc = eevop->eevo_qcreate(enp, index, esmp, ndescs, id, us, flags,
 	    eep)) != 0)
-		goto fail7;
+		goto fail9;
 
 	return (0);
 
-fail7:
-	EFSYS_PROBE(fail7);
+fail9:
+	EFSYS_PROBE(fail9);
 
 	*eepp = NULL;
 	enp->en_ev_qcount--;
 	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_evq_t), eep);
+fail8:
+	EFSYS_PROBE(fail8);
+fail7:
+	EFSYS_PROBE(fail7);
 fail6:
 	EFSYS_PROBE(fail6);
 fail5:
@@ -1254,6 +1287,8 @@ siena_ev_qcreate(
 	boolean_t notify_mode;
 
 	_NOTE(ARGUNUSED(esmp))
+
+	EFSYS_ASSERT((flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH) == 0);
 
 #if EFSYS_OPT_RX_SCALE
 	if (enp->en_intr.ei_type == EFX_INTR_LINE &&

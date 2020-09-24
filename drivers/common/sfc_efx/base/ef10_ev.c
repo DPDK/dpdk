@@ -127,6 +127,8 @@ ef10_ev_qcreate(
 
 	_NOTE(ARGUNUSED(id))	/* buftbl id managed by MC */
 
+	EFSYS_ASSERT((flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH) == 0);
+
 	/*
 	 * NO_CONT_EV mode is only requested from the firmware when creating
 	 * receive queues, but here it needs to be specified at event queue
