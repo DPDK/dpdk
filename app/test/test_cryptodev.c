@@ -12665,22 +12665,6 @@ static struct unit_test_suite cryptodev_ccp_testsuite  = {
 	}
 };
 
-static struct unit_test_suite cryptodev_nitrox_testsuite  = {
-	.suite_name = "Crypto NITROX Unit Test Suite",
-	.setup = testsuite_setup,
-	.teardown = testsuite_teardown,
-	.unit_test_cases = {
-		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_device_configure_invalid_dev_id),
-		TEST_CASE_ST(ut_setup, ut_teardown,
-				test_device_configure_invalid_queue_pair_ids),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_all),
-		TEST_CASE_ST(ut_setup, ut_teardown, test_3DES_chain_all),
-
-		TEST_CASES_END() /**< NULL terminate unit test array */
-	}
-};
-
 static int
 test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 {
@@ -12993,7 +12977,7 @@ test_cryptodev_nitrox(void)
 		return TEST_FAILED;
 	}
 
-	return unit_test_suite_runner(&cryptodev_nitrox_testsuite);
+	return unit_test_suite_runner(&cryptodev_testsuite);
 }
 
 REGISTER_TEST_COMMAND(cryptodev_qat_autotest, test_cryptodev_qat);
