@@ -68,6 +68,18 @@ static const efx_filter_ops_t	__efx_filter_ef10_ops = {
 };
 #endif /* EFX_OPTS_EF10() */
 
+#if EFSYS_OPT_RIVERHEAD
+static const efx_filter_ops_t	__efx_filter_rhead_ops = {
+	ef10_filter_init,		/* efo_init */
+	ef10_filter_fini,		/* efo_fini */
+	ef10_filter_restore,		/* efo_restore */
+	ef10_filter_add,		/* efo_add */
+	ef10_filter_delete,		/* efo_delete */
+	ef10_filter_supported_filters,	/* efo_supported_filters */
+	ef10_filter_reconfigure,	/* efo_reconfigure */
+};
+#endif /* EFSYS_OPT_RIVERHEAD */
+
 	__checkReturn	efx_rc_t
 efx_filter_insert(
 	__in		efx_nic_t *enp,
@@ -179,6 +191,12 @@ efx_filter_init(
 		efop = &__efx_filter_ef10_ops;
 		break;
 #endif /* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		efop = &__efx_filter_rhead_ops;
+		break;
+#endif /* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		EFSYS_ASSERT(0);
