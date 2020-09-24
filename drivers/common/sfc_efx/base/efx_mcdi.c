@@ -2688,14 +2688,7 @@ efx_mcdi_init_rxq(
 	__in		uint32_t label,
 	__in		uint32_t instance,
 	__in		efsys_mem_t *esmp,
-	__in		boolean_t disable_scatter,
-	__in		boolean_t want_inner_classes,
-	__in		uint32_t buf_size,
-	__in		uint32_t ps_bufsize,
-	__in		uint32_t es_bufs_per_desc,
-	__in		uint32_t es_max_dma_len,
-	__in		uint32_t es_buf_stride,
-	__in		uint32_t hol_block_timeout)
+	__in		const efx_mcdi_init_rxq_params_t *params)
 {
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	efx_mcdi_req_t req;
@@ -2719,21 +2712,21 @@ efx_mcdi_init_rxq(
 	}
 
 	no_cont_ev = (eep->ee_flags & EFX_EVQ_FLAGS_NO_CONT_EV);
-	if ((no_cont_ev == B_TRUE) && (disable_scatter == B_FALSE)) {
+	if ((no_cont_ev == B_TRUE) && (params->disable_scatter == B_FALSE)) {
 		/* TODO: Support scatter in NO_CONT_EV mode */
 		rc = EINVAL;
 		goto fail2;
 	}
 
-	if (ps_bufsize > 0)
+	if (params->ps_buf_size > 0)
 		dma_mode = MC_CMD_INIT_RXQ_EXT_IN_PACKED_STREAM;
-	else if (es_bufs_per_desc > 0)
+	else if (params->es_bufs_per_desc > 0)
 		dma_mode = MC_CMD_INIT_RXQ_V3_IN_EQUAL_STRIDE_SUPER_BUFFER;
 	else
 		dma_mode = MC_CMD_INIT_RXQ_EXT_IN_SINGLE_PACKET;
 
 	if (encp->enc_tunnel_encapsulations_supported != 0 &&
-	    !want_inner_classes) {
+	    !params->want_inner_classes) {
 		/*
 		 * WANT_OUTER_CLASSES can only be specified on hardware which
 		 * supports tunnel encapsulation offloads, even though it is
@@ -2768,31 +2761,31 @@ efx_mcdi_init_rxq(
 	    INIT_RXQ_EXT_IN_FLAG_TIMESTAMP, 0,
 	    INIT_RXQ_EXT_IN_CRC_MODE, 0,
 	    INIT_RXQ_EXT_IN_FLAG_PREFIX, 1,
-	    INIT_RXQ_EXT_IN_FLAG_DISABLE_SCATTER, disable_scatter,
+	    INIT_RXQ_EXT_IN_FLAG_DISABLE_SCATTER, params->disable_scatter,
 	    INIT_RXQ_EXT_IN_DMA_MODE,
 	    dma_mode,
-	    INIT_RXQ_EXT_IN_PACKED_STREAM_BUFF_SIZE, ps_bufsize,
+	    INIT_RXQ_EXT_IN_PACKED_STREAM_BUFF_SIZE, params->ps_buf_size,
 	    INIT_RXQ_EXT_IN_FLAG_WANT_OUTER_CLASSES, want_outer_classes,
 	    INIT_RXQ_EXT_IN_FLAG_NO_CONT_EV, no_cont_ev);
 	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_OWNER_ID, 0);
 	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_PORT_ID, enp->en_vport_id);
 
-	if (es_bufs_per_desc > 0) {
+	if (params->es_bufs_per_desc > 0) {
 		MCDI_IN_SET_DWORD(req,
 		    INIT_RXQ_V3_IN_ES_PACKET_BUFFERS_PER_BUCKET,
-		    es_bufs_per_desc);
+		    params->es_bufs_per_desc);
 		MCDI_IN_SET_DWORD(req,
-		    INIT_RXQ_V3_IN_ES_MAX_DMA_LEN, es_max_dma_len);
+		    INIT_RXQ_V3_IN_ES_MAX_DMA_LEN, params->es_max_dma_len);
 		MCDI_IN_SET_DWORD(req,
-		    INIT_RXQ_V3_IN_ES_PACKET_STRIDE, es_buf_stride);
+		    INIT_RXQ_V3_IN_ES_PACKET_STRIDE, params->es_buf_stride);
 		MCDI_IN_SET_DWORD(req,
 		    INIT_RXQ_V3_IN_ES_HEAD_OF_LINE_BLOCK_TIMEOUT,
-		    hol_block_timeout);
+		    params->hol_block_timeout);
 	}
 
 	if (encp->enc_init_rxq_with_buffer_size)
 		MCDI_IN_SET_DWORD(req, INIT_RXQ_V4_IN_BUFFER_SIZE_BYTES,
-		    buf_size);
+		    params->buf_size);
 
 	dma_addr = MCDI_IN2(req, efx_qword_t, INIT_RXQ_IN_DMA_ADDR);
 	addr = EFSYS_MEM_ADDR(esmp);
