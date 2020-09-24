@@ -16,6 +16,13 @@
  */
 #define	EFX_RHEAD_ALWAYS_INTERRUPTING_EVQ_INDEX	(0)
 
+static			boolean_t
+rhead_ev_dispatch(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eventp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+
 static	__checkReturn	boolean_t
 rhead_ev_rx_packets(
 	__in		efx_evq_t *eep,
@@ -181,6 +188,41 @@ rhead_ev_qpost(
 	EFSYS_ASSERT(B_FALSE);
 }
 
+static	__checkReturn	boolean_t
+rhead_ev_dispatch(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eventp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	boolean_t should_abort;
+	uint32_t code;
+
+	code = EFX_QWORD_FIELD(*eventp, ESF_GZ_E_TYPE);
+	switch (code) {
+	case ESE_GZ_EF100_EV_RX_PKTS:
+		should_abort = eep->ee_rx(eep, eventp, eecp, arg);
+		break;
+	case ESE_GZ_EF100_EV_TX_COMPLETION:
+		should_abort = eep->ee_tx(eep, eventp, eecp, arg);
+		break;
+	case ESE_GZ_EF100_EV_MCDI:
+		should_abort = eep->ee_mcdi(eep, eventp, eecp, arg);
+		break;
+	default:
+		EFSYS_PROBE3(bad_event, unsigned int, eep->ee_index,
+		    uint32_t, EFX_QWORD_FIELD(*eventp, EFX_DWORD_1),
+		    uint32_t, EFX_QWORD_FIELD(*eventp, EFX_DWORD_0));
+
+		EFSYS_ASSERT(eecp->eec_exception != NULL);
+		(void) eecp->eec_exception(arg, EFX_EXCEPTION_EV_ERROR, code);
+		should_abort = B_TRUE;
+		break;
+	}
+
+	return (should_abort);
+}
+
 /*
  * Poll event queue in batches. Size of the batch is equal to cache line
  * size divided by event size.
@@ -248,37 +290,12 @@ rhead_ev_qpoll(
 		/* Process the batch of events */
 		for (index = 0; index < total; ++index) {
 			boolean_t should_abort;
-			uint32_t code;
 
 			EFX_EV_QSTAT_INCR(eep, EV_ALL);
 
-			code = EFX_QWORD_FIELD(ev[index], ESF_GZ_E_TYPE);
-			switch (code) {
-			case ESE_GZ_EF100_EV_RX_PKTS:
-				should_abort = eep->ee_rx(eep,
-				    &(ev[index]), eecp, arg);
-				break;
-			case ESE_GZ_EF100_EV_TX_COMPLETION:
-				should_abort = eep->ee_tx(eep,
-				    &(ev[index]), eecp, arg);
-				break;
-			case ESE_GZ_EF100_EV_MCDI:
-				should_abort = eep->ee_mcdi(eep,
-				    &(ev[index]), eecp, arg);
-				break;
-			default:
-				EFSYS_PROBE3(bad_event,
-				    unsigned int, eep->ee_index,
-				    uint32_t,
-				    EFX_QWORD_FIELD(ev[index], EFX_DWORD_1),
-				    uint32_t,
-				    EFX_QWORD_FIELD(ev[index], EFX_DWORD_0));
+			should_abort =
+			    rhead_ev_dispatch(eep, &(ev[index]), eecp, arg);
 
-				EFSYS_ASSERT(eecp->eec_exception != NULL);
-				(void) eecp->eec_exception(arg,
-					EFX_EXCEPTION_EV_ERROR, code);
-				should_abort = B_TRUE;
-			}
 			if (should_abort) {
 				/* Ignore subsequent events */
 				total = index + 1;
@@ -322,6 +339,12 @@ rhead_ev_ew_dispatch(
 
 	code = EFX_XWORD_FIELD(*eventp, ESF_GZ_EV_256_EV32_TYPE);
 	switch (code) {
+	case ESE_GZ_EF100_EVEW_64BIT:
+		/* NOTE: ignore phase bit in encapsulated 64bit event. */
+		should_abort =
+		    rhead_ev_dispatch(eep, &eventp->ex_qword[0], eecp, arg);
+		break;
+
 	default:
 		/* Omit currently unused reserved bits from the probe. */
 		EFSYS_PROBE7(ew_bad_event, unsigned int, eep->ee_index,
