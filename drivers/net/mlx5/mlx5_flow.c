@@ -44,6 +44,331 @@ const struct mlx5_flow_driver_ops *flow_drv_ops[] = {
 	[MLX5_FLOW_TYPE_MAX] = &mlx5_flow_null_drv_ops
 };
 
+/** Helper macro to build input graph for mlx5_flow_expand_rss(). */
+#define MLX5_FLOW_EXPAND_RSS_NEXT(...) \
+	(const int []){ \
+		__VA_ARGS__, 0, \
+	}
+
+/** Node object of input graph for mlx5_flow_expand_rss(). */
+struct mlx5_flow_expand_node {
+	const int *const next;
+	/**<
+	 * List of next node indexes. Index 0 is interpreted as a terminator.
+	 */
+	const enum rte_flow_item_type type;
+	/**< Pattern item type of current node. */
+	uint64_t rss_types;
+	/**<
+	 * RSS types bit-field associated with this node
+	 * (see ETH_RSS_* definitions).
+	 */
+};
+
+/** Object returned by mlx5_flow_expand_rss(). */
+struct mlx5_flow_expand_rss {
+	uint32_t entries;
+	/**< Number of entries @p patterns and @p priorities. */
+	struct {
+		struct rte_flow_item *pattern; /**< Expanded pattern array. */
+		uint32_t priority; /**< Priority offset for each expansion. */
+	} entry[];
+};
+
+static enum rte_flow_item_type
+mlx5_flow_expand_rss_item_complete(const struct rte_flow_item *item)
+{
+	enum rte_flow_item_type ret = RTE_FLOW_ITEM_TYPE_VOID;
+	uint16_t ether_type = 0;
+	uint16_t ether_type_m;
+	uint8_t ip_next_proto = 0;
+	uint8_t ip_next_proto_m;
+
+	if (item == NULL || item->spec == NULL)
+		return ret;
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_ETH:
+		if (item->mask)
+			ether_type_m = ((const struct rte_flow_item_eth *)
+						(item->mask))->type;
+		else
+			ether_type_m = rte_flow_item_eth_mask.type;
+		if (ether_type_m != RTE_BE16(0xFFFF))
+			break;
+		ether_type = ((const struct rte_flow_item_eth *)
+				(item->spec))->type;
+		if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV4)
+			ret = RTE_FLOW_ITEM_TYPE_IPV4;
+		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV6)
+			ret = RTE_FLOW_ITEM_TYPE_IPV6;
+		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_VLAN)
+			ret = RTE_FLOW_ITEM_TYPE_VLAN;
+		else
+			ret = RTE_FLOW_ITEM_TYPE_END;
+		break;
+	case RTE_FLOW_ITEM_TYPE_VLAN:
+		if (item->mask)
+			ether_type_m = ((const struct rte_flow_item_vlan *)
+						(item->mask))->inner_type;
+		else
+			ether_type_m = rte_flow_item_vlan_mask.inner_type;
+		if (ether_type_m != RTE_BE16(0xFFFF))
+			break;
+		ether_type = ((const struct rte_flow_item_vlan *)
+				(item->spec))->inner_type;
+		if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV4)
+			ret = RTE_FLOW_ITEM_TYPE_IPV4;
+		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_IPV6)
+			ret = RTE_FLOW_ITEM_TYPE_IPV6;
+		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_VLAN)
+			ret = RTE_FLOW_ITEM_TYPE_VLAN;
+		else
+			ret = RTE_FLOW_ITEM_TYPE_END;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		if (item->mask)
+			ip_next_proto_m = ((const struct rte_flow_item_ipv4 *)
+					(item->mask))->hdr.next_proto_id;
+		else
+			ip_next_proto_m =
+				rte_flow_item_ipv4_mask.hdr.next_proto_id;
+		if (ip_next_proto_m != 0xFF)
+			break;
+		ip_next_proto = ((const struct rte_flow_item_ipv4 *)
+				(item->spec))->hdr.next_proto_id;
+		if (ip_next_proto == IPPROTO_UDP)
+			ret = RTE_FLOW_ITEM_TYPE_UDP;
+		else if (ip_next_proto == IPPROTO_TCP)
+			ret = RTE_FLOW_ITEM_TYPE_TCP;
+		else if (ip_next_proto == IPPROTO_IP)
+			ret = RTE_FLOW_ITEM_TYPE_IPV4;
+		else if (ip_next_proto == IPPROTO_IPV6)
+			ret = RTE_FLOW_ITEM_TYPE_IPV6;
+		else
+			ret = RTE_FLOW_ITEM_TYPE_END;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		if (item->mask)
+			ip_next_proto_m = ((const struct rte_flow_item_ipv6 *)
+						(item->mask))->hdr.proto;
+		else
+			ip_next_proto_m =
+				rte_flow_item_ipv6_mask.hdr.proto;
+		if (ip_next_proto_m != 0xFF)
+			break;
+		ip_next_proto = ((const struct rte_flow_item_ipv6 *)
+				(item->spec))->hdr.proto;
+		if (ip_next_proto == IPPROTO_UDP)
+			ret = RTE_FLOW_ITEM_TYPE_UDP;
+		else if (ip_next_proto == IPPROTO_TCP)
+			ret = RTE_FLOW_ITEM_TYPE_TCP;
+		else if (ip_next_proto == IPPROTO_IP)
+			ret = RTE_FLOW_ITEM_TYPE_IPV4;
+		else if (ip_next_proto == IPPROTO_IPV6)
+			ret = RTE_FLOW_ITEM_TYPE_IPV6;
+		else
+			ret = RTE_FLOW_ITEM_TYPE_END;
+		break;
+	default:
+		ret = RTE_FLOW_ITEM_TYPE_VOID;
+		break;
+	}
+	return ret;
+}
+
+/**
+ * Expand RSS flows into several possible flows according to the RSS hash
+ * fields requested and the driver capabilities.
+ *
+ * @param[out] buf
+ *   Buffer to store the result expansion.
+ * @param[in] size
+ *   Buffer size in bytes. If 0, @p buf can be NULL.
+ * @param[in] pattern
+ *   User flow pattern.
+ * @param[in] types
+ *   RSS types to expand (see ETH_RSS_* definitions).
+ * @param[in] graph
+ *   Input graph to expand @p pattern according to @p types.
+ * @param[in] graph_root_index
+ *   Index of root node in @p graph, typically 0.
+ *
+ * @return
+ *   A positive value representing the size of @p buf in bytes regardless of
+ *   @p size on success, a negative errno value otherwise and rte_errno is
+ *   set, the following errors are defined:
+ *
+ *   -E2BIG: graph-depth @p graph is too deep.
+ */
+static int
+mlx5_flow_expand_rss(struct mlx5_flow_expand_rss *buf, size_t size,
+		     const struct rte_flow_item *pattern, uint64_t types,
+		     const struct mlx5_flow_expand_node graph[],
+		     int graph_root_index)
+{
+	const int elt_n = 8;
+	const struct rte_flow_item *item;
+	const struct mlx5_flow_expand_node *node = &graph[graph_root_index];
+	const int *next_node;
+	const int *stack[elt_n];
+	int stack_pos = 0;
+	struct rte_flow_item flow_items[elt_n];
+	unsigned int i;
+	size_t lsize;
+	size_t user_pattern_size = 0;
+	void *addr = NULL;
+	const struct mlx5_flow_expand_node *next = NULL;
+	struct rte_flow_item missed_item;
+	int missed = 0;
+	int elt = 0;
+	const struct rte_flow_item *last_item = NULL;
+
+	memset(&missed_item, 0, sizeof(missed_item));
+	lsize = offsetof(struct mlx5_flow_expand_rss, entry) +
+		elt_n * sizeof(buf->entry[0]);
+	if (lsize <= size) {
+		buf->entry[0].priority = 0;
+		buf->entry[0].pattern = (void *)&buf->entry[elt_n];
+		buf->entries = 0;
+		addr = buf->entry[0].pattern;
+	}
+	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		if (item->type != RTE_FLOW_ITEM_TYPE_VOID)
+			last_item = item;
+		for (i = 0; node->next && node->next[i]; ++i) {
+			next = &graph[node->next[i]];
+			if (next->type == item->type)
+				break;
+		}
+		if (next)
+			node = next;
+		user_pattern_size += sizeof(*item);
+	}
+	user_pattern_size += sizeof(*item); /* Handle END item. */
+	lsize += user_pattern_size;
+	/* Copy the user pattern in the first entry of the buffer. */
+	if (lsize <= size) {
+		rte_memcpy(addr, pattern, user_pattern_size);
+		addr = (void *)(((uintptr_t)addr) + user_pattern_size);
+		buf->entries = 1;
+	}
+	/* Start expanding. */
+	memset(flow_items, 0, sizeof(flow_items));
+	user_pattern_size -= sizeof(*item);
+	/*
+	 * Check if the last valid item has spec set, need complete pattern,
+	 * and the pattern can be used for expansion.
+	 */
+	missed_item.type = mlx5_flow_expand_rss_item_complete(last_item);
+	if (missed_item.type == RTE_FLOW_ITEM_TYPE_END) {
+		/* Item type END indicates expansion is not required. */
+		return lsize;
+	}
+	if (missed_item.type != RTE_FLOW_ITEM_TYPE_VOID) {
+		next = NULL;
+		missed = 1;
+		for (i = 0; node->next && node->next[i]; ++i) {
+			next = &graph[node->next[i]];
+			if (next->type == missed_item.type) {
+				flow_items[0].type = missed_item.type;
+				flow_items[1].type = RTE_FLOW_ITEM_TYPE_END;
+				break;
+			}
+			next = NULL;
+		}
+	}
+	if (next && missed) {
+		elt = 2; /* missed item + item end. */
+		node = next;
+		lsize += elt * sizeof(*item) + user_pattern_size;
+		if ((node->rss_types & types) && lsize <= size) {
+			buf->entry[buf->entries].priority = 1;
+			buf->entry[buf->entries].pattern = addr;
+			buf->entries++;
+			rte_memcpy(addr, buf->entry[0].pattern,
+				   user_pattern_size);
+			addr = (void *)(((uintptr_t)addr) + user_pattern_size);
+			rte_memcpy(addr, flow_items, elt * sizeof(*item));
+			addr = (void *)(((uintptr_t)addr) +
+					elt * sizeof(*item));
+		}
+	}
+	memset(flow_items, 0, sizeof(flow_items));
+	next_node = node->next;
+	stack[stack_pos] = next_node;
+	node = next_node ? &graph[*next_node] : NULL;
+	while (node) {
+		flow_items[stack_pos].type = node->type;
+		if (node->rss_types & types) {
+			/*
+			 * compute the number of items to copy from the
+			 * expansion and copy it.
+			 * When the stack_pos is 0, there are 1 element in it,
+			 * plus the addition END item.
+			 */
+			elt = stack_pos + 2;
+			flow_items[stack_pos + 1].type = RTE_FLOW_ITEM_TYPE_END;
+			lsize += elt * sizeof(*item) + user_pattern_size;
+			if (lsize <= size) {
+				size_t n = elt * sizeof(*item);
+
+				buf->entry[buf->entries].priority =
+					stack_pos + 1 + missed;
+				buf->entry[buf->entries].pattern = addr;
+				buf->entries++;
+				rte_memcpy(addr, buf->entry[0].pattern,
+					   user_pattern_size);
+				addr = (void *)(((uintptr_t)addr) +
+						user_pattern_size);
+				rte_memcpy(addr, &missed_item,
+					   missed * sizeof(*item));
+				addr = (void *)(((uintptr_t)addr) +
+					missed * sizeof(*item));
+				rte_memcpy(addr, flow_items, n);
+				addr = (void *)(((uintptr_t)addr) + n);
+			}
+		}
+		/* Go deeper. */
+		if (node->next) {
+			next_node = node->next;
+			if (stack_pos++ == elt_n) {
+				rte_errno = E2BIG;
+				return -rte_errno;
+			}
+			stack[stack_pos] = next_node;
+		} else if (*(next_node + 1)) {
+			/* Follow up with the next possibility. */
+			++next_node;
+		} else {
+			/* Move to the next path. */
+			if (stack_pos)
+				next_node = stack[--stack_pos];
+			next_node++;
+			stack[stack_pos] = next_node;
+		}
+		node = *next_node ? &graph[*next_node] : NULL;
+	};
+	/* no expanded flows but we have missed item, create one rule for it */
+	if (buf->entries == 1 && missed != 0) {
+		elt = 2;
+		lsize += elt * sizeof(*item) + user_pattern_size;
+		if (lsize <= size) {
+			buf->entry[buf->entries].priority = 1;
+			buf->entry[buf->entries].pattern = addr;
+			buf->entries++;
+			flow_items[0].type = missed_item.type;
+			flow_items[1].type = RTE_FLOW_ITEM_TYPE_END;
+			rte_memcpy(addr, buf->entry[0].pattern,
+				   user_pattern_size);
+			addr = (void *)(((uintptr_t)addr) + user_pattern_size);
+			rte_memcpy(addr, flow_items, elt * sizeof(*item));
+			addr = (void *)(((uintptr_t)addr) +
+					elt * sizeof(*item));
+		}
+	}
+	return lsize;
+}
+
 enum mlx5_expansion {
 	MLX5_EXPANSION_ROOT,
 	MLX5_EXPANSION_ROOT_OUTER,
@@ -74,46 +399,47 @@ enum mlx5_expansion {
 };
 
 /** Supported expansion of items. */
-static const struct rte_flow_expand_node mlx5_support_expansion[] = {
+static const struct mlx5_flow_expand_node mlx5_support_expansion[] = {
 	[MLX5_EXPANSION_ROOT] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
-						 MLX5_EXPANSION_IPV4,
-						 MLX5_EXPANSION_IPV6),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
+						  MLX5_EXPANSION_IPV4,
+						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_END,
 	},
 	[MLX5_EXPANSION_ROOT_OUTER] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_ETH,
-						 MLX5_EXPANSION_OUTER_IPV4,
-						 MLX5_EXPANSION_OUTER_IPV6),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_ETH,
+						  MLX5_EXPANSION_OUTER_IPV4,
+						  MLX5_EXPANSION_OUTER_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_END,
 	},
 	[MLX5_EXPANSION_ROOT_ETH_VLAN] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH_VLAN),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH_VLAN),
 		.type = RTE_FLOW_ITEM_TYPE_END,
 	},
 	[MLX5_EXPANSION_ROOT_OUTER_ETH_VLAN] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_ETH_VLAN),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT
+						(MLX5_EXPANSION_OUTER_ETH_VLAN),
 		.type = RTE_FLOW_ITEM_TYPE_END,
 	},
 	[MLX5_EXPANSION_OUTER_ETH] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_IPV4,
-						 MLX5_EXPANSION_OUTER_IPV6,
-						 MLX5_EXPANSION_MPLS),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_IPV4,
+						  MLX5_EXPANSION_OUTER_IPV6,
+						  MLX5_EXPANSION_MPLS),
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 		.rss_types = 0,
 	},
 	[MLX5_EXPANSION_OUTER_ETH_VLAN] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_VLAN),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_VLAN),
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 		.rss_types = 0,
 	},
 	[MLX5_EXPANSION_OUTER_VLAN] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_IPV4,
-						 MLX5_EXPANSION_OUTER_IPV6),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_IPV4,
+						  MLX5_EXPANSION_OUTER_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_VLAN,
 	},
 	[MLX5_EXPANSION_OUTER_IPV4] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT
 			(MLX5_EXPANSION_OUTER_IPV4_UDP,
 			 MLX5_EXPANSION_OUTER_IPV4_TCP,
 			 MLX5_EXPANSION_GRE,
@@ -124,8 +450,8 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 			ETH_RSS_NONFRAG_IPV4_OTHER,
 	},
 	[MLX5_EXPANSION_OUTER_IPV4_UDP] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
-						 MLX5_EXPANSION_VXLAN_GPE),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
+						  MLX5_EXPANSION_VXLAN_GPE),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.rss_types = ETH_RSS_NONFRAG_IPV4_UDP,
 	},
@@ -134,7 +460,7 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 		.rss_types = ETH_RSS_NONFRAG_IPV4_TCP,
 	},
 	[MLX5_EXPANSION_OUTER_IPV6] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT
 			(MLX5_EXPANSION_OUTER_IPV6_UDP,
 			 MLX5_EXPANSION_OUTER_IPV6_TCP,
 			 MLX5_EXPANSION_IPV4,
@@ -144,8 +470,8 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 			ETH_RSS_NONFRAG_IPV6_OTHER,
 	},
 	[MLX5_EXPANSION_OUTER_IPV6_UDP] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
-						 MLX5_EXPANSION_VXLAN_GPE),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
+						  MLX5_EXPANSION_VXLAN_GPE),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.rss_types = ETH_RSS_NONFRAG_IPV6_UDP,
 	},
@@ -154,43 +480,43 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 		.rss_types = ETH_RSS_NONFRAG_IPV6_TCP,
 	},
 	[MLX5_EXPANSION_VXLAN] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
-						 MLX5_EXPANSION_IPV4,
-						 MLX5_EXPANSION_IPV6),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
+						  MLX5_EXPANSION_IPV4,
+						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
 	},
 	[MLX5_EXPANSION_VXLAN_GPE] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
-						 MLX5_EXPANSION_IPV4,
-						 MLX5_EXPANSION_IPV6),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
+						  MLX5_EXPANSION_IPV4,
+						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
 	},
 	[MLX5_EXPANSION_GRE] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4),
 		.type = RTE_FLOW_ITEM_TYPE_GRE,
 	},
 	[MLX5_EXPANSION_MPLS] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
-						 MLX5_EXPANSION_IPV6),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
+						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_MPLS,
 	},
 	[MLX5_EXPANSION_ETH] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
-						 MLX5_EXPANSION_IPV6),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
+						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 	},
 	[MLX5_EXPANSION_ETH_VLAN] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VLAN),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VLAN),
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 	},
 	[MLX5_EXPANSION_VLAN] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
-						 MLX5_EXPANSION_IPV6),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
+						  MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_VLAN,
 	},
 	[MLX5_EXPANSION_IPV4] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4_UDP,
-						 MLX5_EXPANSION_IPV4_TCP),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4_UDP,
+						  MLX5_EXPANSION_IPV4_TCP),
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
 		.rss_types = ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
 			ETH_RSS_NONFRAG_IPV4_OTHER,
@@ -204,8 +530,8 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 		.rss_types = ETH_RSS_NONFRAG_IPV4_TCP,
 	},
 	[MLX5_EXPANSION_IPV6] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV6_UDP,
-						 MLX5_EXPANSION_IPV6_TCP),
+		.next = MLX5_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV6_UDP,
+						  MLX5_EXPANSION_IPV6_TCP),
 		.type = RTE_FLOW_ITEM_TYPE_IPV6,
 		.rss_types = ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
 			ETH_RSS_NONFRAG_IPV6_OTHER,
@@ -4332,7 +4658,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 	struct mlx5_flow *dev_flow;
 	const struct rte_flow_action_rss *rss;
 	union {
-		struct rte_flow_expand_rss buf;
+		struct mlx5_flow_expand_rss buf;
 		uint8_t buffer[2048];
 	} expand_buffer;
 	union {
@@ -4347,7 +4673,7 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		struct rte_flow_item items[MLX5_MAX_SPLIT_ITEMS];
 		uint8_t buffer[2048];
 	} items_tx;
-	struct rte_flow_expand_rss *buf = &expand_buffer.buf;
+	struct mlx5_flow_expand_rss *buf = &expand_buffer.buf;
 	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
 					      priv->rss_desc)[!!priv->flow_idx];
 	const struct rte_flow_action *p_actions_rx = actions;
@@ -4399,10 +4725,9 @@ flow_list_create(struct rte_eth_dev *dev, uint32_t *list,
 		unsigned int graph_root;
 
 		graph_root = find_graph_root(items, rss->level);
-		ret = rte_flow_expand_rss(buf, sizeof(expand_buffer.buffer),
-					  items, rss->types,
-					  mlx5_support_expansion,
-					  graph_root);
+		ret = mlx5_flow_expand_rss(buf, sizeof(expand_buffer.buffer),
+					   items, rss->types,
+					   mlx5_support_expansion, graph_root);
 		MLX5_ASSERT(ret > 0 &&
 		       (unsigned int)ret < sizeof(expand_buffer.buffer));
 	} else {

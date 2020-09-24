@@ -250,5 +250,4 @@ INTERNAL {
 	rte_eth_dma_zone_reserve;
 	rte_eth_switch_domain_alloc;
 	rte_eth_switch_domain_free;
-	rte_flow_expand_rss;
 };
