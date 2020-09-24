@@ -19,16 +19,16 @@ extern "C" {
 /*
  * Bitfield access
  *
- * Solarflare NICs make extensive use of bitfields up to 128 bits
- * wide.  Since there is no native 128-bit datatype on most systems,
+ * Solarflare NICs make extensive use of bitfields up to 256 bits
+ * wide.  Since there is no native 256-bit datatype on most systems,
  * and since 64-bit datatypes are inefficient on 32-bit systems and
  * vice versa, we wrap accesses in a way that uses the most efficient
  * datatype.
  *
  * The NICs are PCI devices and therefore little-endian.  Since most
  * of the quantities that we deal with are DMAed to/from host memory,
- * we define	our datatypes (efx_oword_t, efx_qword_t and efx_dword_t)
- * to be little-endian.
+ * we define our datatypes (efx_xword_t, efx_oword_t, efx_qword_t and
+ * efx_dword_t) to be little-endian.
  *
  * In the less common case of using PIO for individual register
  * writes, we construct the little-endian datatype in host memory and
@@ -93,10 +93,22 @@ extern "C" {
 #define	EFX_DWORD_3_LBN 96
 #define	EFX_DWORD_3_WIDTH 32
 
+#define	EFX_DWORD_4_LBN 128
+#define	EFX_DWORD_4_WIDTH 32
+
+#define	EFX_DWORD_5_LBN 160
+#define	EFX_DWORD_5_WIDTH 32
+
+#define	EFX_DWORD_6_LBN 192
+#define	EFX_DWORD_6_WIDTH 32
+
+#define	EFX_DWORD_7_LBN 224
+#define	EFX_DWORD_7_WIDTH 32
+
 /*
- * There are intentionally no EFX_QWORD_0 or EFX_QWORD_1 field definitions
- * here as the implementaion of EFX_QWORD_FIELD and EFX_OWORD_FIELD do not
- * support field widths larger than 32 bits.
+ * There are intentionally no EFX_QWORD_<N> field definitions here as the
+ * implementation of EFX_QWORD_FIELD, EFX_OWORD_FIELD and EFX_XWORD_FIELD
+ * do not support field widths larger than 32 bits.
  */
 
 /* Specified attribute (i.e. LBN ow WIDTH) of the specified field */
@@ -220,6 +232,28 @@ typedef union efx_oword_u {
 	uint8_t eo_u8[16];
 } efx_oword_t;
 
+/*
+ * A hexaword (i.e. 256-bit) datatype
+ *
+ * This datatype is defined to be little-endian.
+ */
+typedef union efx_xword_u {
+	efx_byte_t ex_byte[32];
+	efx_word_t ex_word[16];
+	efx_dword_t ex_dword[8];
+	efx_qword_t ex_qword[4];
+	efx_oword_t ex_oword[2];
+#if EFSYS_HAS_SSE2_M128
+	__m128i ex_u128[2];
+#endif
+#if EFSYS_HAS_UINT64
+	uint64_t ex_u64[4];
+#endif
+	uint32_t ex_u32[8];
+	uint16_t ex_u16[16];
+	uint8_t ex_u8[32];
+} efx_xword_t;
+
 #pragma pack()
 
 #define	__SWAP16(_x)				\
@@ -295,6 +329,9 @@ typedef union efx_oword_u {
 /* Format string for printing an efx_oword_t */
 #define	EFX_OWORD_FMT "0x%08x:%08x:%08x:%08x"
 
+/* Format string for printing an efx_xword_t */
+#define	EFX_XWORD_FMT "0x%08x:%08x:%08x:%08x:%08x:%08x:%08x:%08x"
+
 /* Parameters for printing an efx_byte_t */
 #define	EFX_BYTE_VAL(_byte)					\
 	((unsigned int)__NATIVE_8((_byte).eb_u8[0]))
@@ -318,6 +355,17 @@ typedef union efx_oword_u {
 	((unsigned int)__LE_TO_CPU_32((_oword).eo_u32[2])),	\
 	((unsigned int)__LE_TO_CPU_32((_oword).eo_u32[1])),	\
 	((unsigned int)__LE_TO_CPU_32((_oword).eo_u32[0]))
+
+/* Parameters for printing an efx_xword_t */
+#define	EFX_XWORD_VAL(_xword)					\
+	((unsigned int)__LE_TO_CPU_32((_xword).ex_u32[7])),	\
+	((unsigned int)__LE_TO_CPU_32((_xword).ex_u32[6])),	\
+	((unsigned int)__LE_TO_CPU_32((_xword).ex_u32[5])),	\
+	((unsigned int)__LE_TO_CPU_32((_xword).ex_u32[4])),	\
+	((unsigned int)__LE_TO_CPU_32((_xword).ex_u32[3])),	\
+	((unsigned int)__LE_TO_CPU_32((_xword).ex_u32[2])),	\
+	((unsigned int)__LE_TO_CPU_32((_xword).ex_u32[1])),	\
+	((unsigned int)__LE_TO_CPU_32((_xword).ex_u32[0]))
 
 /*
  * Stop lint complaining about some shifts.
@@ -389,6 +437,34 @@ extern int fix_lint;
 #define	EFX_EXTRACT8(_element, _min, _max, _low, _high)			\
 	EFX_EXTRACT_NATIVE(__NATIVE_8(_element), _min, _max, _low, _high)
 
+#define	EFX_EXTRACT_XWORD64(_xword, _low, _high)			\
+	(EFX_EXTRACT64((_xword).ex_u64[0], FIX_LINT(0), FIX_LINT(63),	\
+	    _low, _high) |						\
+	EFX_EXTRACT64((_xword).ex_u64[1], FIX_LINT(64), FIX_LINT(127),	\
+	    _low, _high) |						\
+	EFX_EXTRACT64((_xword).ex_u64[2], FIX_LINT(128), FIX_LINT(191),	\
+	    _low, _high) |						\
+	EFX_EXTRACT64((_xword).ex_u64[3], FIX_LINT(192), FIX_LINT(255),	\
+	    _low, _high))
+
+#define	EFX_EXTRACT_XWORD32(_oword, _low, _high)			\
+	(EFX_EXTRACT32((_xword).ex_u32[0], FIX_LINT(0), FIX_LINT(31),	\
+	    _low, _high) |						\
+	EFX_EXTRACT32((_xword).ex_u32[1], FIX_LINT(32), FIX_LINT(63),	\
+	    _low, _high) |						\
+	EFX_EXTRACT32((_xword).ex_u32[2], FIX_LINT(64), FIX_LINT(95),	\
+	    _low, _high) |						\
+	EFX_EXTRACT32((_xword).ex_u32[3], FIX_LINT(96), FIX_LINT(127),	\
+	    _low, _high) |						\
+	EFX_EXTRACT32((_xword).ex_u32[4], FIX_LINT(128), FIX_LINT(159),	\
+	    _low, _high) |						\
+	EFX_EXTRACT32((_xword).ex_u32[5], FIX_LINT(160), FIX_LINT(191),	\
+	    _low, _high) |						\
+	EFX_EXTRACT32((_xword).ex_u32[6], FIX_LINT(192), FIX_LINT(223),	\
+	    _low, _high) |						\
+	EFX_EXTRACT32((_xword).ex_u32[7], FIX_LINT(224), FIX_LINT(255),	\
+	    _low, _high))
+
 #define	EFX_EXTRACT_OWORD64(_oword, _low, _high)			\
 	(EFX_EXTRACT64((_oword).eo_u64[0], FIX_LINT(0), FIX_LINT(63),	\
 	    _low, _high) |						\
@@ -428,6 +504,14 @@ extern int fix_lint;
 	    _low, _high))
 
 
+#define	EFX_XWORD_FIELD64(_xword, _field)				\
+	((uint32_t)EFX_EXTRACT_XWORD64(_xword, EFX_LOW_BIT(_field),	\
+	    EFX_HIGH_BIT(_field)) & EFX_MASK32(_field))
+
+#define	EFX_XWORD_FIELD32(_xword, _field)				\
+	(EFX_EXTRACT_XWORD32(_xword, EFX_LOW_BIT(_field),		\
+	    EFX_HIGH_BIT(_field)) & EFX_MASK32(_field))
+
 #define	EFX_OWORD_FIELD64(_oword, _field)				\
 	((uint32_t)EFX_EXTRACT_OWORD64(_oword, EFX_LOW_BIT(_field),	\
 	    EFX_HIGH_BIT(_field)) & EFX_MASK32(_field))
@@ -457,6 +541,22 @@ extern int fix_lint;
 	    EFX_HIGH_BIT(_field)) & EFX_MASK8(_field))
 
 
+#define	EFX_XWORD_IS_EQUAL64(_xword_a, _xword_b)			\
+	((_xword_a).ex_u64[0] == (_xword_b).ex_u64[0] &&		\
+	    (_xword_a).ex_u64[1] == (_xword_b).ex_u64[1] &&		\
+	    (_xword_a).ex_u64[2] == (_xword_b).ex_u64[2] &&		\
+	    (_xword_a).ex_u64[3] == (_xword_b).ex_u64[3])
+
+#define	EFX_XWORD_IS_EQUAL32(_xword_a, _xword_b)			\
+	((_xword_a).ex_u32[0] == (_xword_b).ex_u32[0] &&		\
+	    (_xword_a).ex_u32[1] == (_xword_b).ex_u32[1] &&		\
+	    (_xword_a).ex_u32[2] == (_xword_b).ex_u32[2] &&		\
+	    (_xword_a).ex_u32[3] == (_xword_b).ex_u32[3] &&		\
+	    (_xword_a).ex_u32[4] == (_xword_b).ex_u32[4] &&		\
+	    (_xword_a).ex_u32[5] == (_xword_b).ex_u32[5] &&		\
+	    (_xword_a).ex_u32[6] == (_xword_b).ex_u32[6] &&		\
+	    (_xword_a).ex_u32[7] == (_xword_b).ex_u32[7])
+
 #define	EFX_OWORD_IS_EQUAL64(_oword_a, _oword_b)			\
 	((_oword_a).eo_u64[0] == (_oword_b).eo_u64[0] &&		\
 	    (_oword_a).eo_u64[1] == (_oword_b).eo_u64[1])
@@ -484,6 +584,22 @@ extern int fix_lint;
 	((_byte_a).eb_u8[0] == (_byte_b).eb_u8[0])
 
 
+#define	EFX_XWORD_IS_ZERO64(_xword)					\
+	(((_xword).ex_u64[0] |						\
+	    (_xword).ex_u64[1] |					\
+	    (_xword).ex_u64[2] |					\
+	    (_xword).ex_u64[3]) == 0)
+
+#define	EFX_XWORD_IS_ZERO32(_xword)					\
+	(((_xword).ex_u32[0] |						\
+	    (_xword).ex_u32[1] |					\
+	    (_xword).ex_u32[2] |					\
+	    (_xword).ex_u32[3] |					\
+	    (_xword).ex_u32[4] |					\
+	    (_xword).ex_u32[5] |					\
+	    (_xword).ex_u32[6] |					\
+	    (_xword).ex_u32[7]) == 0)
+
 #define	EFX_OWORD_IS_ZERO64(_oword)					\
 	(((_oword).eo_u64[0] |						\
 	    (_oword).eo_u64[1]) == 0)
@@ -510,6 +626,22 @@ extern int fix_lint;
 #define	EFX_BYTE_IS_ZERO(_byte)						\
 	(((_byte).eb_u8[0]) == 0)
 
+
+#define	EFX_XWORD_IS_SET64(_xword)					\
+	(((_xword).ex_u64[0] &						\
+	    (_xword).ex_u64[1] &					\
+	    (_xword).ex_u64[2] &					\
+	    (_xword).ex_u64[3]) == ~((uint64_t)0))
+
+#define	EFX_XWORD_IS_SET32(_xword)					\
+	(((_xword).ex_u32[0] &						\
+	    (_xword).ex_u32[1] &					\
+	    (_xword).ex_u32[2] &					\
+	    (_xword).ex_u32[3] &					\
+	    (_xword).ex_u32[4] &					\
+	    (_xword).ex_u32[5] &					\
+	    (_xword).ex_u32[6] &					\
+	    (_xword).ex_u32[7]) == ~((uint32_t)0))
 
 #define	EFX_OWORD_IS_SET64(_oword)					\
 	(((_oword).eo_u64[0] &						\
@@ -668,6 +800,108 @@ extern int fix_lint;
 	    EFX_INSERT_FIELD_NATIVE8(_min, _max, _field9, _value9) |	\
 	    EFX_INSERT_FIELD_NATIVE8(_min, _max, _field10, _value10))
 
+#define	EFX_POPULATE_XWORD64(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
+	    _field7, _value7, _field8, _value8,	_field9, _value9,	\
+	    _field10, _value10)						\
+	do {								\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[0] = EFX_INSERT_FIELDS64(0, 63,		\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[1] = EFX_INSERT_FIELDS64(64, 127,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[2] = EFX_INSERT_FIELDS64(128, 191,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[3] = EFX_INSERT_FIELDS64(192, 255,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_POPULATE_XWORD32(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
+	    _field7, _value7, _field8, _value8,	_field9, _value9,	\
+	    _field10, _value10)						\
+	do {								\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[0] = EFX_INSERT_FIELDS32(0, 31,		\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[1] = EFX_INSERT_FIELDS32(32, 63,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[2] = EFX_INSERT_FIELDS32(64, 95,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[3] = EFX_INSERT_FIELDS32(96, 127,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[4] = EFX_INSERT_FIELDS32(128, 159,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[5] = EFX_INSERT_FIELDS32(160, 191,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[6] = EFX_INSERT_FIELDS32(192, 223,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[7] = EFX_INSERT_FIELDS32(224, 255,	\
+		    _field1, _value1, _field2, _value2,			\
+		    _field3, _value3, _field4, _value4,			\
+		    _field5, _value5, _field6, _value6,			\
+		    _field7, _value7, _field8, _value8,			\
+		    _field9, _value9, _field10, _value10);		\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
 #define	EFX_POPULATE_OWORD64(_oword,					\
 	    _field1, _value1, _field2, _value2, _field3, _value3,	\
 	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
@@ -814,6 +1048,82 @@ extern int fix_lint;
 		    _field9, _value9, _field10, _value10);		\
 	_NOTE(CONSTANTCONDITION)					\
 	} while (B_FALSE)
+
+/* Populate a hexaword field with various numbers of arguments */
+#define	EFX_POPULATE_XWORD_10 EFX_POPULATE_XWORD
+
+#define	EFX_POPULATE_XWORD_9(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
+	    _field7, _value7, _field8, _value8,	_field9, _value9)	\
+	EFX_POPULATE_XWORD_10(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
+	    _field7, _value7, _field8, _value8,	_field9, _value9)
+
+#define	EFX_POPULATE_XWORD_8(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
+	    _field7, _value7, _field8, _value8)				\
+	EFX_POPULATE_XWORD_9(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
+	    _field7, _value7, _field8, _value8)
+
+#define	EFX_POPULATE_XWORD_7(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
+	    _field7, _value7)						\
+	EFX_POPULATE_XWORD_8(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6,	\
+	    _field7, _value7)
+
+#define	EFX_POPULATE_XWORD_6(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6)	\
+	EFX_POPULATE_XWORD_7(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5,	_field6, _value6)
+
+#define	EFX_POPULATE_XWORD_5(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5)				\
+	EFX_POPULATE_XWORD_6(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4, _field5, _value5)
+
+#define	EFX_POPULATE_XWORD_4(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4)						\
+	EFX_POPULATE_XWORD_5(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1, _field2, _value2, _field3, _value3,	\
+	    _field4, _value4)
+
+#define	EFX_POPULATE_XWORD_3(_xword,					\
+	    _field1, _value1, _field2, _value2, _field3, _value3)	\
+	EFX_POPULATE_XWORD_4(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1, _field2, _value2, _field3, _value3)
+
+#define	EFX_POPULATE_XWORD_2(_xword,					\
+	    _field1, _value1, _field2, _value2)				\
+	EFX_POPULATE_XWORD_3(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1, _field2, _value2)
+
+#define	EFX_POPULATE_XWORD_1(_xword,					\
+	    _field1, _value1)						\
+	EFX_POPULATE_XWORD_2(_xword, EFX_DUMMY_FIELD, 0,		\
+	    _field1, _value1)
+
+#define	EFX_ZERO_XWORD(_xword)						\
+	EFX_POPULATE_XWORD_1(_xword, EFX_DUMMY_FIELD, 0)
+
+#define	EFX_SET_XWORD(_xword)						\
+	EFX_POPULATE_XWORD_8(_xword,					\
+	    EFX_DWORD_0, 0xffffffff, EFX_DWORD_1, 0xffffffff,		\
+	    EFX_DWORD_2, 0xffffffff, EFX_DWORD_3, 0xffffffff,		\
+	    EFX_DWORD_4, 0xffffffff, EFX_DWORD_5, 0xffffffff,		\
+	    EFX_DWORD_6, 0xffffffff, EFX_DWORD_7, 0xffffffff)
 
 /* Populate an octword field with various numbers of arguments */
 #define	EFX_POPULATE_OWORD_10 EFX_POPULATE_OWORD
@@ -1210,6 +1520,64 @@ extern int fix_lint;
 #define	EFX_INPLACE_MASK8(_min, _max, _field)				\
 	EFX_INSERT_FIELD8(_min, _max, _field, EFX_MASK8(_field))
 
+#define	EFX_SET_XWORD_FIELD64(_xword, _field, _value)			\
+	do {								\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[0] = (((_xword).ex_u64[0] &		\
+		    ~EFX_INPLACE_MASK64(0, 63, _field)) |		\
+		    EFX_INSERT_FIELD64(0, 63, _field, _value));		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[1] = (((_xword).ex_u64[1] &		\
+		    ~EFX_INPLACE_MASK64(64, 127, _field)) |		\
+		    EFX_INSERT_FIELD64(64, 127, _field, _value));	\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[2] = (((_xword).ex_u64[2] &		\
+		    ~EFX_INPLACE_MASK64(128, 191, _field)) |		\
+		    EFX_INSERT_FIELD64(128, 191, _field, _value));	\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[3] = (((_xword).ex_u64[3] &		\
+		    ~EFX_INPLACE_MASK64(192, 255, _field)) |		\
+		    EFX_INSERT_FIELD64(192, 255, _field, _value));	\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_SET_XWORD_FIELD32(_xword, _field, _value)			\
+	do {								\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[0] = (((_xword).ex_u32[0] &		\
+		    ~EFX_INPLACE_MASK32(0, 31, _field)) |		\
+		    EFX_INSERT_FIELD32(0, 31, _field, _value));		\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[1] = (((_xword).ex_u32[1] &		\
+		    ~EFX_INPLACE_MASK32(32, 63, _field)) |		\
+		    EFX_INSERT_FIELD32(32, 63, _field, _value));	\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[2] = (((_xword).ex_u32[2] &		\
+		    ~EFX_INPLACE_MASK32(64, 95, _field)) |		\
+		    EFX_INSERT_FIELD32(64, 95, _field, _value));	\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[3] = (((_xword).ex_u32[3] &		\
+		    ~EFX_INPLACE_MASK32(96, 127, _field)) |		\
+		    EFX_INSERT_FIELD32(96, 127, _field, _value));	\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[4] = (((_xword).ex_u32[4] &		\
+		    ~EFX_INPLACE_MASK32(128, 159, _field)) |		\
+		    EFX_INSERT_FIELD32(128, 159, _field, _value));	\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[5] = (((_xword).ex_u32[5] &		\
+		    ~EFX_INPLACE_MASK32(160, 191, _field)) |		\
+		    EFX_INSERT_FIELD32(160, 191, _field, _value));	\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[6] = (((_xword).ex_u32[6] &		\
+		    ~EFX_INPLACE_MASK32(192, 223, _field)) |		\
+		    EFX_INSERT_FIELD32(192, 223, _field, _value));	\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[7] = (((_xword).ex_u32[7] &		\
+		    ~EFX_INPLACE_MASK32(224, 255, _field)) |		\
+		    EFX_INSERT_FIELD32(224, 255, _field, _value));	\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
 #define	EFX_SET_OWORD_FIELD64(_oword, _field, _value)			\
 	do {								\
 		_NOTE(CONSTANTCONDITION)				\
@@ -1316,6 +1684,107 @@ extern int fix_lint;
 	(((_bit) >= (_base) && (_bit) < (_base) + 8) ?			\
 		(uint8_t)(1 << EFX_SSUB((_bit), (_base))) :		\
 		0U)
+
+#define	EFX_SET_XWORD_BIT64(_xword, _bit)				\
+	do {								\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[0] |=					\
+		    __CPU_TO_LE_64(EFX_SHIFT64(_bit, FIX_LINT(0)));	\
+		(_xword).ex_u64[1] |=					\
+		    __CPU_TO_LE_64(EFX_SHIFT64(_bit, FIX_LINT(64)));	\
+		(_xword).ex_u64[2] |=					\
+		    __CPU_TO_LE_64(EFX_SHIFT64(_bit, FIX_LINT(128)));	\
+		(_xword).ex_u64[3] |=					\
+		    __CPU_TO_LE_64(EFX_SHIFT64(_bit, FIX_LINT(192)));	\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_SET_XWORD_BIT32(_xword, _bit)				\
+	do {								\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[0] |=					\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(0)));	\
+		(_xword).ex_u32[1] |=					\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(32)));	\
+		(_xword).ex_u32[2] |=					\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(64)));	\
+		(_xword).ex_u32[3] |=					\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(96)));	\
+		(_xword).ex_u32[4] |=					\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(128)));	\
+		(_xword).ex_u32[5] |=					\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(160)));	\
+		(_xword).ex_u32[6] |=					\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(192)));	\
+		(_xword).ex_u32[7] |=					\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(224)));	\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_CLEAR_XWORD_BIT64(_xword, _bit)				\
+	do {								\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u64[0] &=					\
+		    __CPU_TO_LE_64(~EFX_SHIFT64(_bit, FIX_LINT(0)));	\
+		(_xword).ex_u64[1] &=					\
+		    __CPU_TO_LE_64(~EFX_SHIFT64(_bit, FIX_LINT(64)));	\
+		(_xword).ex_u64[2] &=					\
+		    __CPU_TO_LE_64(~EFX_SHIFT64(_bit, FIX_LINT(128)));	\
+		(_xword).ex_u64[3] &=					\
+		    __CPU_TO_LE_64(~EFX_SHIFT64(_bit, FIX_LINT(192)));	\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_CLEAR_XWORD_BIT32(_xword, _bit)				\
+	do {								\
+		_NOTE(CONSTANTCONDITION)				\
+		(_xword).ex_u32[0] &=					\
+		    __CPU_TO_LE_32(~EFX_SHIFT32(_bit, FIX_LINT(0)));	\
+		(_xword).ex_u32[1] &=					\
+		    __CPU_TO_LE_32(~EFX_SHIFT32(_bit, FIX_LINT(32)));	\
+		(_xword).ex_u32[2] &=					\
+		    __CPU_TO_LE_32(~EFX_SHIFT32(_bit, FIX_LINT(64)));	\
+		(_xword).ex_u32[3] &=					\
+		    __CPU_TO_LE_32(~EFX_SHIFT32(_bit, FIX_LINT(96)));	\
+		(_xword).ex_u32[4] &=					\
+		    __CPU_TO_LE_32(~EFX_SHIFT32(_bit, FIX_LINT(128)));	\
+		(_xword).ex_u32[5] &=					\
+		    __CPU_TO_LE_32(~EFX_SHIFT32(_bit, FIX_LINT(160)));	\
+		(_xword).ex_u32[6] &=					\
+		    __CPU_TO_LE_32(~EFX_SHIFT32(_bit, FIX_LINT(192)));	\
+		(_xword).ex_u32[7] &=					\
+		    __CPU_TO_LE_32(~EFX_SHIFT32(_bit, FIX_LINT(224)));	\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_TEST_XWORD_BIT64(_xword, _bit)				\
+	(((_xword).ex_u64[0] &						\
+		    __CPU_TO_LE_64(EFX_SHIFT64(_bit, FIX_LINT(0)))) ||	\
+	((_xword).ex_u64[1] &						\
+		    __CPU_TO_LE_64(EFX_SHIFT64(_bit, FIX_LINT(64)))) ||	\
+	((_xword).ex_u64[2] &						\
+		    __CPU_TO_LE_64(EFX_SHIFT64(_bit, FIX_LINT(128)))) ||\
+	((_xword).ex_u64[3] &						\
+		    __CPU_TO_LE_64(EFX_SHIFT64(_bit, FIX_LINT(192)))))
+
+#define	EFX_TEST_XWORD_BIT32(_xword, _bit)				\
+	(((_xword).ex_u32[0] &						\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(0)))) ||	\
+	((_xword).ex_u32[1] &						\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(32)))) ||	\
+	((_xword).ex_u32[2] &						\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(64)))) ||	\
+	((_xword).ex_u32[3] &						\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(96)))) ||	\
+	((_xword).ex_u32[4] &						\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(128)))) ||\
+	((_xword).ex_u32[5] &						\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(160)))) ||\
+	((_xword).ex_u32[6] &						\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(192)))) ||\
+	((_xword).ex_u32[7] &						\
+		    __CPU_TO_LE_32(EFX_SHIFT32(_bit, FIX_LINT(224)))))
+
 
 #define	EFX_SET_OWORD_BIT64(_oword, _bit)				\
 	do {								\
@@ -1486,6 +1955,50 @@ extern int fix_lint;
 		    __NATIVE_8(EFX_SHIFT8(_bit, FIX_LINT(0)))) != 0)
 
 
+#define	EFX_OR_XWORD64(_xword1, _xword2)				\
+	do {								\
+		(_xword1).ex_u64[0] |= (_xword2).ex_u64[0];		\
+		(_xword1).ex_u64[1] |= (_xword2).ex_u64[1];		\
+		(_xword1).ex_u64[2] |= (_xword2).ex_u64[2];		\
+		(_xword1).ex_u64[3] |= (_xword2).ex_u64[3];		\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_OR_XWORD32(_xword1, _xword2)				\
+	do {								\
+		(_xword1).ex_u32[0] |= (_xword2).ex_u32[0];		\
+		(_xword1).ex_u32[1] |= (_xword2).ex_u32[1];		\
+		(_xword1).ex_u32[2] |= (_xword2).ex_u32[2];		\
+		(_xword1).ex_u32[3] |= (_xword2).ex_u32[3];		\
+		(_xword1).ex_u32[4] |= (_xword2).ex_u32[4];		\
+		(_xword1).ex_u32[5] |= (_xword2).ex_u32[5];		\
+		(_xword1).ex_u32[6] |= (_xword2).ex_u32[6];		\
+		(_xword1).ex_u32[7] |= (_xword2).ex_u32[7];		\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_AND_XWORD64(_xword1, _xword2)				\
+	do {								\
+		(_xword1).ex_u64[0] &= (_xword2).ex_u64[0];		\
+		(_xword1).ex_u64[1] &= (_xword2).ex_u64[1];		\
+		(_xword1).ex_u64[2] &= (_xword2).ex_u64[2];		\
+		(_xword1).ex_u64[3] &= (_xword2).ex_u64[3];		\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_AND_XWORD32(_xword1, _xword2)				\
+	do {								\
+		(_xword1).ex_u32[0] &= (_xword2).ex_u32[0];		\
+		(_xword1).ex_u32[1] &= (_xword2).ex_u32[1];		\
+		(_xword1).ex_u32[2] &= (_xword2).ex_u32[2];		\
+		(_xword1).ex_u32[3] &= (_xword2).ex_u32[3];		\
+		(_xword1).ex_u32[4] &= (_xword2).ex_u32[4];		\
+		(_xword1).ex_u32[5] &= (_xword2).ex_u32[5];		\
+		(_xword1).ex_u32[6] &= (_xword2).ex_u32[6];		\
+		(_xword1).ex_u32[7] &= (_xword2).ex_u32[7];		\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
 #define	EFX_OR_OWORD64(_oword1, _oword2)				\
 	do {								\
 		(_oword1).eo_u64[0] |= (_oword2).eo_u64[0];		\
@@ -1580,53 +2093,102 @@ extern int fix_lint;
 	_NOTE(CONSTANTCONDITION)					\
 	} while (B_FALSE)
 
+
 #if EFSYS_USE_UINT64
+
+#define	EFX_XWORD_FIELD		EFX_XWORD_FIELD64
 #define	EFX_OWORD_FIELD		EFX_OWORD_FIELD64
 #define	EFX_QWORD_FIELD		EFX_QWORD_FIELD64
+
+#define	EFX_XWORD_IS_EQUAL	EFX_XWORD_IS_EQUAL64
 #define	EFX_OWORD_IS_EQUAL	EFX_OWORD_IS_EQUAL64
 #define	EFX_QWORD_IS_EQUAL	EFX_QWORD_IS_EQUAL64
+
+#define	EFX_XWORD_IS_ZERO	EFX_XWORD_IS_ZERO64
 #define	EFX_OWORD_IS_ZERO	EFX_OWORD_IS_ZERO64
 #define	EFX_QWORD_IS_ZERO	EFX_QWORD_IS_ZERO64
+
+#define	EFX_XWORD_IS_SET	EFX_XWORD_IS_SET64
 #define	EFX_OWORD_IS_SET	EFX_OWORD_IS_SET64
 #define	EFX_QWORD_IS_SET	EFX_QWORD_IS_SET64
+
+#define	EFX_POPULATE_XWORD	EFX_POPULATE_XWORD64
 #define	EFX_POPULATE_OWORD	EFX_POPULATE_OWORD64
 #define	EFX_POPULATE_QWORD	EFX_POPULATE_QWORD64
+
+#define	EFX_SET_XWORD_FIELD	EFX_SET_XWORD_FIELD64
 #define	EFX_SET_OWORD_FIELD	EFX_SET_OWORD_FIELD64
 #define	EFX_SET_QWORD_FIELD	EFX_SET_QWORD_FIELD64
+
+#define	EFX_SET_XWORD_BIT	EFX_SET_XWORD_BIT64
+#define	EFX_CLEAR_XWORD_BIT	EFX_CLEAR_XWORD_BIT64
+#define	EFX_TEST_XWORD_BIT	EFX_TEST_XWORD_BIT64
+
 #define	EFX_SET_OWORD_BIT	EFX_SET_OWORD_BIT64
 #define	EFX_CLEAR_OWORD_BIT	EFX_CLEAR_OWORD_BIT64
 #define	EFX_TEST_OWORD_BIT	EFX_TEST_OWORD_BIT64
+
 #define	EFX_SET_QWORD_BIT	EFX_SET_QWORD_BIT64
 #define	EFX_CLEAR_QWORD_BIT	EFX_CLEAR_QWORD_BIT64
 #define	EFX_TEST_QWORD_BIT	EFX_TEST_QWORD_BIT64
+
+#define	EFX_OR_XWORD		EFX_OR_XWORD64
+#define	EFX_AND_XWORD		EFX_AND_XWORD64
+
 #define	EFX_OR_OWORD		EFX_OR_OWORD64
 #define	EFX_AND_OWORD		EFX_AND_OWORD64
+
 #define	EFX_OR_QWORD		EFX_OR_QWORD64
 #define	EFX_AND_QWORD		EFX_AND_QWORD64
-#else
+
+#else /* EFSYS_USE_UINT64 */
+
+#define	EFX_XWORD_FIELD		EFX_XWORD_FIELD32
 #define	EFX_OWORD_FIELD		EFX_OWORD_FIELD32
 #define	EFX_QWORD_FIELD		EFX_QWORD_FIELD32
+
+#define	EFX_XWORD_IS_EQUAL	EFX_XWORD_IS_EQUAL32
 #define	EFX_OWORD_IS_EQUAL	EFX_OWORD_IS_EQUAL32
 #define	EFX_QWORD_IS_EQUAL	EFX_QWORD_IS_EQUAL32
+
+#define	EFX_XWORD_IS_ZERO	EFX_XWORD_IS_ZERO32
 #define	EFX_OWORD_IS_ZERO	EFX_OWORD_IS_ZERO32
 #define	EFX_QWORD_IS_ZERO	EFX_QWORD_IS_ZERO32
+
+#define	EFX_XWORD_IS_SET	EFX_XWORD_IS_SET32
 #define	EFX_OWORD_IS_SET	EFX_OWORD_IS_SET32
 #define	EFX_QWORD_IS_SET	EFX_QWORD_IS_SET32
+
+#define	EFX_POPULATE_XWORD	EFX_POPULATE_XWORD32
 #define	EFX_POPULATE_OWORD	EFX_POPULATE_OWORD32
 #define	EFX_POPULATE_QWORD	EFX_POPULATE_QWORD32
+
+#define	EFX_SET_XWORD_FIELD	EFX_SET_XWORD_FIELD32
 #define	EFX_SET_OWORD_FIELD	EFX_SET_OWORD_FIELD32
 #define	EFX_SET_QWORD_FIELD	EFX_SET_QWORD_FIELD32
+
+#define	EFX_SET_XWORD_BIT	EFX_SET_XWORD_BIT32
+#define	EFX_CLEAR_XWORD_BIT	EFX_CLEAR_XWORD_BIT32
+#define	EFX_TEST_XWORD_BIT	EFX_TEST_XWORD_BIT32
+
 #define	EFX_SET_OWORD_BIT	EFX_SET_OWORD_BIT32
 #define	EFX_CLEAR_OWORD_BIT	EFX_CLEAR_OWORD_BIT32
 #define	EFX_TEST_OWORD_BIT	EFX_TEST_OWORD_BIT32
+
 #define	EFX_SET_QWORD_BIT	EFX_SET_QWORD_BIT32
 #define	EFX_CLEAR_QWORD_BIT	EFX_CLEAR_QWORD_BIT32
 #define	EFX_TEST_QWORD_BIT	EFX_TEST_QWORD_BIT32
+
+#define	EFX_OR_XWORD		EFX_OR_XWORD32
+#define	EFX_AND_XWORD		EFX_AND_XWORD32
+
 #define	EFX_OR_OWORD		EFX_OR_OWORD32
 #define	EFX_AND_OWORD		EFX_AND_OWORD32
+
 #define	EFX_OR_QWORD		EFX_OR_QWORD32
 #define	EFX_AND_QWORD		EFX_AND_QWORD32
-#endif
+
+#endif /* EFSYS_USE_UINT64 */
 
 
 #ifdef	__cplusplus
