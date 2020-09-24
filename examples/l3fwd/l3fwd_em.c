@@ -28,7 +28,7 @@
 #include "l3fwd.h"
 #include "l3fwd_event.h"
 
-#if defined(RTE_ARCH_X86) || defined(RTE_MACHINE_CPUFLAG_CRC32)
+#if defined(RTE_ARCH_X86) || defined(__ARM_FEATURE_CRC32)
 #define EM_HASH_CRC 1
 #endif
 
@@ -215,7 +215,7 @@ static rte_xmm_t mask0;
 static rte_xmm_t mask1;
 static rte_xmm_t mask2;
 
-#if defined(RTE_MACHINE_CPUFLAG_SSE2)
+#if defined(__SSE2__)
 static inline xmm_t
 em_mask_key(void *key, xmm_t mask)
 {
@@ -223,7 +223,7 @@ em_mask_key(void *key, xmm_t mask)
 
 	return _mm_and_si128(data, mask);
 }
-#elif defined(RTE_MACHINE_CPUFLAG_NEON)
+#elif defined(__ARM_NEON)
 static inline xmm_t
 em_mask_key(void *key, xmm_t mask)
 {
@@ -231,7 +231,7 @@ em_mask_key(void *key, xmm_t mask)
 
 	return vandq_s32(data, mask);
 }
-#elif defined(RTE_MACHINE_CPUFLAG_ALTIVEC)
+#elif defined(__ALTIVEC__)
 static inline xmm_t
 em_mask_key(void *key, xmm_t mask)
 {
@@ -303,7 +303,7 @@ em_get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid, void *lookup_struct)
 	return (ret < 0) ? portid : ipv6_l3fwd_out_if[ret];
 }
 
-#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
+#if defined RTE_ARCH_X86 || defined __ARM_NEON
 #if defined(NO_HASH_MULTI_LOOKUP)
 #include "l3fwd_em_sequential.h"
 #else
@@ -685,7 +685,7 @@ em_main_loop(__rte_unused void *dummy)
 			if (nb_rx == 0)
 				continue;
 
-#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
+#if defined RTE_ARCH_X86 || defined __ARM_NEON
 			l3fwd_em_send_packets(nb_rx, pkts_burst,
 							portid, qconf);
 #else
@@ -723,7 +723,7 @@ em_event_loop_single(struct l3fwd_event_resources *evt_rsrc,
 
 		struct rte_mbuf *mbuf = ev.mbuf;
 
-#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
+#if defined RTE_ARCH_X86 || defined __ARM_NEON
 		mbuf->port = em_get_dst_port(lconf, mbuf, mbuf->port);
 		process_packet(mbuf, &mbuf->port);
 #else
@@ -784,7 +784,7 @@ em_event_loop_burst(struct l3fwd_event_resources *evt_rsrc,
 			continue;
 		}
 
-#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
+#if defined RTE_ARCH_X86 || defined __ARM_NEON
 		l3fwd_em_process_events(nb_deq, (struct rte_event **)&events,
 					lconf);
 #else

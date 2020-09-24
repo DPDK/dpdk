@@ -39,7 +39,7 @@
 #include "testpmd.h"
 #if defined(RTE_ARCH_X86)
 #include "macswap_sse.h"
-#elif defined(RTE_MACHINE_CPUFLAG_NEON)
+#elif defined(__ARM_NEON)
 #include "macswap_neon.h"
 #else
 #include "macswap.h"

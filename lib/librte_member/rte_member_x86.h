@@ -11,7 +11,7 @@ extern "C" {
 
 #include <x86intrin.h>
 
-#if defined(RTE_MACHINE_CPUFLAG_AVX2)
+#if defined(__AVX2__)
 
 static inline int
 update_entry_search_avx(uint32_t bucket_id, member_sig_t tmp_sig,

@@ -107,6 +107,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* build macros: The macros defining ``RTE_MACHINE_CPUFLAG_*`` are removed.
+  The information provided by these macros is available through standard
+  compiler macros.
+
 * eal: The ``rte_logs`` struct and global symbol was made private
   and is no longer part of the API.
 

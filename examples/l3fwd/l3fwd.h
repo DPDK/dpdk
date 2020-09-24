@@ -12,7 +12,7 @@
 
 #define RTE_LOGTYPE_L3FWD RTE_LOGTYPE_USER1
 
-#if !defined(NO_HASH_MULTI_LOOKUP) && defined(RTE_MACHINE_CPUFLAG_NEON)
+#if !defined(NO_HASH_MULTI_LOOKUP) && defined(__ARM_NEON)
 #define NO_HASH_MULTI_LOOKUP 1
 #endif
 

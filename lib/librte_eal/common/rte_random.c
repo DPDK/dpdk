@@ -2,7 +2,7 @@
  * Copyright(c) 2019 Ericsson AB
  */
 
-#ifdef RTE_MACHINE_CPUFLAG_RDSEED
+#ifdef __RDSEED__
 #include <x86intrin.h>
 #endif
 #include <stdlib.h>
@@ -188,7 +188,7 @@ __rte_random_initial_seed(void)
 	if (ge_rc == 0)
 		return ge_seed;
 #endif
-#ifdef RTE_MACHINE_CPUFLAG_RDSEED
+#ifdef __RDSEED__
 	unsigned int rdseed_low;
 	unsigned int rdseed_high;
 

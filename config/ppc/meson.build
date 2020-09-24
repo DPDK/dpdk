@@ -21,5 +21,3 @@ endif
 dpdk_conf.set('RTE_MAX_LCORE', 1536)
 dpdk_conf.set('RTE_MAX_NUMA_NODES', 32)
 dpdk_conf.set('RTE_CACHE_LINE_SIZE', 128)
-dpdk_conf.set('RTE_MACHINE_CPUFLAG_ALTIVEC', 1)
-dpdk_conf.set('RTE_MACHINE_CPUFLAG_VSX', 1)

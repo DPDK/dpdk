@@ -9,7 +9,7 @@
 #if defined RTE_ARCH_X86
 #include "l3fwd_sse.h"
 #include "l3fwd_em_hlm_sse.h"
-#elif defined RTE_MACHINE_CPUFLAG_NEON
+#elif defined __ARM_NEON
 #include "l3fwd_neon.h"
 #include "l3fwd_em_hlm_neon.h"
 #endif

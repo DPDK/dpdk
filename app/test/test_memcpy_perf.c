@@ -51,13 +51,13 @@ static size_t buf_sizes[TEST_VALUE_RANGE];
 #define TEST_BATCH_SIZE         100
 
 /* Data is aligned on this many bytes (power of 2) */
-#ifdef RTE_MACHINE_CPUFLAG_AVX512F
+#ifdef __AVX512F__
 #define ALIGNMENT_UNIT          64
-#elif defined RTE_MACHINE_CPUFLAG_AVX2
+#elif defined __AVX2__
 #define ALIGNMENT_UNIT          32
-#else /* RTE_MACHINE_CPUFLAG */
+#else
 #define ALIGNMENT_UNIT          16
-#endif /* RTE_MACHINE_CPUFLAG */
+#endif
 
 /*
  * Pointers used in performance tests. The two large buffers are for uncached

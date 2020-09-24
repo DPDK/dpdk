@@ -424,7 +424,7 @@ crc32c_sse42_u64(uint64_t data, uint64_t init_val)
 
 static uint8_t crc32_alg = CRC32_SW;
 
-#if defined(RTE_ARCH_ARM64) && defined(RTE_MACHINE_CPUFLAG_CRC32)
+#if defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_CRC32)
 #include "rte_crc_arm64.h"
 #else
 

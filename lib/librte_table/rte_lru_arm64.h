@@ -13,7 +13,7 @@ extern "C" {
 #include <rte_vect.h>
 
 #ifndef RTE_TABLE_HASH_LRU_STRATEGY
-#ifdef RTE_MACHINE_CPUFLAG_NEON
+#ifdef __ARM_NEON
 #define RTE_TABLE_HASH_LRU_STRATEGY                        3
 #else /* if no NEON, use simple scalar version */
 #define RTE_TABLE_HASH_LRU_STRATEGY                        1

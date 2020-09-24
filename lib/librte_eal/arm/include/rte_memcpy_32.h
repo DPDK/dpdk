@@ -16,7 +16,7 @@ extern "C" {
 
 #ifdef RTE_ARCH_ARM_NEON_MEMCPY
 
-#ifndef RTE_MACHINE_CPUFLAG_NEON
+#ifndef __ARM_NEON
 #error "Cannot optimize memcpy by NEON as the CPU seems to not support this"
 #endif
 

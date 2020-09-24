@@ -29,7 +29,7 @@
 
 #ifdef RTE_ARCH_X86
 #define SCHED_VECTOR_SSE4
-#elif defined(RTE_MACHINE_CPUFLAG_NEON)
+#elif defined(__ARM_NEON)
 #define SCHED_VECTOR_NEON
 #endif
 

@@ -208,20 +208,14 @@ message(machine_args)
 
 if (cc.get_define('__ARM_NEON', args: machine_args) != '' or
     cc.get_define('__aarch64__', args: machine_args) != '')
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_NEON', 1)
 	compile_time_cpuflags += ['RTE_CPUFLAG_NEON']
 endif
 
 if cc.get_define('__ARM_FEATURE_CRC32', args: machine_args) != ''
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_CRC32', 1)
 	compile_time_cpuflags += ['RTE_CPUFLAG_CRC32']
 endif
 
 if cc.get_define('__ARM_FEATURE_CRYPTO', args: machine_args) != ''
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_AES', 1)
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_PMULL', 1)
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_SHA1', 1)
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_SHA2', 1)
 	compile_time_cpuflags += ['RTE_CPUFLAG_AES', 'RTE_CPUFLAG_PMULL',
 	'RTE_CPUFLAG_SHA1', 'RTE_CPUFLAG_SHA2']
 endif

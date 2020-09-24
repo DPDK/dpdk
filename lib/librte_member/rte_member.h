@@ -68,7 +68,7 @@ typedef uint16_t member_set_t;
 #define RTE_MEMBER_NAMESIZE 32
 
 /** @internal Hash function used by membership library. */
-#if defined(RTE_ARCH_X86) || defined(RTE_MACHINE_CPUFLAG_CRC32)
+#if defined(RTE_ARCH_X86) || defined(__ARM_FEATURE_CRC32)
 #include <rte_hash_crc.h>
 #define MEMBER_HASH_FUNC       rte_hash_crc
 #else

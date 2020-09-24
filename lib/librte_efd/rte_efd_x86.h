@@ -19,7 +19,7 @@ efd_lookup_internal_avx2(const efd_hashfunc_t *group_hash_idx,
 		const efd_lookuptbl_t *group_lookup_table,
 		const uint32_t hash_val_a, const uint32_t hash_val_b)
 {
-#ifdef RTE_MACHINE_CPUFLAG_AVX2
+#ifdef __AVX2__
 	efd_value_t value = 0;
 	uint32_t i = 0;
 	__m256i vhash_val_a = _mm256_set1_epi32(hash_val_a);

@@ -163,7 +163,7 @@ lpm_get_dst_port_with_ipv4(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 
 #if defined(RTE_ARCH_X86)
 #include "l3fwd_lpm_sse.h"
-#elif defined RTE_MACHINE_CPUFLAG_NEON
+#elif defined __ARM_NEON
 #include "l3fwd_lpm_neon.h"
 #elif defined(RTE_ARCH_PPC_64)
 #include "l3fwd_lpm_altivec.h"
@@ -240,7 +240,7 @@ lpm_main_loop(__rte_unused void *dummy)
 			if (nb_rx == 0)
 				continue;
 
-#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON \
+#if defined RTE_ARCH_X86 || defined __ARM_NEON \
 			 || defined RTE_ARCH_PPC_64
 			l3fwd_lpm_send_packets(nb_rx, pkts_burst,
 						portid, qconf);
@@ -259,7 +259,7 @@ lpm_process_event_pkt(const struct lcore_conf *lconf, struct rte_mbuf *mbuf)
 {
 	mbuf->port = lpm_get_dst_port(lconf, mbuf, mbuf->port);
 
-#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON \
+#if defined RTE_ARCH_X86 || defined __ARM_NEON \
 	|| defined RTE_ARCH_PPC_64
 	process_packet(mbuf, &mbuf->port);
 #else

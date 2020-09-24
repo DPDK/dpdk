@@ -18,7 +18,6 @@ endif
 
 base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1', 'SSE4_2']
 foreach f:base_flags
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_' + f, 1)
 	compile_time_cpuflags += ['RTE_CPUFLAG_' + f]
 endforeach
 
@@ -32,7 +31,6 @@ foreach f:optional_flags
 		elif f == 'RDRND'
 			f = 'RDRAND'
 		endif
-		dpdk_conf.set('RTE_MACHINE_CPUFLAG_' + f, 1)
 		compile_time_cpuflags += ['RTE_CPUFLAG_' + f]
 	endif
 endforeach

@@ -45,7 +45,7 @@ extern "C" {
 static __rte_always_inline void *
 rte_memcpy(void *dst, const void *src, size_t n);
 
-#ifdef RTE_MACHINE_CPUFLAG_AVX512F
+#ifdef __AVX512F__
 
 #define ALIGNMENT_MASK 0x3F
 
@@ -286,7 +286,7 @@ COPY_BLOCK_128_BACK63:
 	goto COPY_BLOCK_128_BACK63;
 }
 
-#elif defined RTE_MACHINE_CPUFLAG_AVX2
+#elif defined __AVX2__
 
 #define ALIGNMENT_MASK 0x1F
 
@@ -479,7 +479,7 @@ COPY_BLOCK_128_BACK31:
 	goto COPY_BLOCK_128_BACK31;
 }
 
-#else /* RTE_MACHINE_CPUFLAG */
+#else /* __AVX512F__ */
 
 #define ALIGNMENT_MASK 0x0F
 
@@ -803,7 +803,7 @@ COPY_BLOCK_64_BACK15:
 	goto COPY_BLOCK_64_BACK15;
 }
 
-#endif /* RTE_MACHINE_CPUFLAG */
+#endif /* __AVX512F__ */
 
 static __rte_always_inline void *
 rte_memcpy_aligned(void *dst, const void *src, size_t n)
