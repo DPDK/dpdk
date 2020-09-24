@@ -1758,60 +1758,9 @@ fail1:
 }
 
 static	__checkReturn	efx_rc_t
-ef10_set_workaround_bug26807(
+efx_mcdi_nic_board_cfg(
 	__in		efx_nic_t *enp)
 {
-	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
-	uint32_t flags;
-	efx_rc_t rc;
-
-	/*
-	 * If the bug26807 workaround is enabled, then firmware has enabled
-	 * support for chained multicast filters. Firmware will reset (FLR)
-	 * functions which have filters in the hardware filter table when the
-	 * workaround is enabled/disabled.
-	 *
-	 * We must recheck if the workaround is enabled after inserting the
-	 * first hardware filter, in case it has been changed since this check.
-	 */
-	rc = efx_mcdi_set_workaround(enp, MC_CMD_WORKAROUND_BUG26807,
-	    B_TRUE, &flags);
-	if (rc == 0) {
-		encp->enc_bug26807_workaround = B_TRUE;
-		if (flags & (1 << MC_CMD_WORKAROUND_EXT_OUT_FLR_DONE_LBN)) {
-			/*
-			 * Other functions had installed filters before the
-			 * workaround was enabled, and they have been reset
-			 * by firmware.
-			 */
-			EFSYS_PROBE(bug26807_workaround_flr_done);
-			/* FIXME: bump MC warm boot count ? */
-		}
-	} else if (rc == EACCES) {
-		/*
-		 * Unprivileged functions cannot enable the workaround in older
-		 * firmware.
-		 */
-		encp->enc_bug26807_workaround = B_FALSE;
-	} else if ((rc == ENOTSUP) || (rc == ENOENT)) {
-		encp->enc_bug26807_workaround = B_FALSE;
-	} else {
-		goto fail1;
-	}
-
-	return (0);
-
-fail1:
-	EFSYS_PROBE1(fail1, efx_rc_t, rc);
-
-	return (rc);
-}
-
-static	__checkReturn	efx_rc_t
-ef10_nic_board_cfg(
-	__in		efx_nic_t *enp)
-{
-	const efx_nic_ops_t *enop = enp->en_enop;
 	efx_mcdi_iface_t *emip = &(enp->en_mcdi.em_emip);
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	ef10_link_state_t els;
@@ -1892,7 +1841,6 @@ ef10_nic_board_cfg(
 	}
 
 	encp->enc_board_type = board_type;
-	encp->enc_clk_mult = 1; /* not used for EF10 */
 
 	/* Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI */
 	if ((rc = efx_mcdi_get_phy_cfg(enp)) != 0)
@@ -1923,14 +1871,127 @@ ef10_nic_board_cfg(
 	if ((rc = ef10_get_datapath_caps(enp)) != 0)
 		goto fail9;
 
+	/* Get interrupt vector limits */
+	if ((rc = efx_mcdi_get_vector_cfg(enp, &base, &nvec, NULL)) != 0) {
+		if (EFX_PCI_FUNCTION_IS_PF(encp))
+			goto fail10;
+
+		/* Ignore error (cannot query vector limits from a VF). */
+		base = 0;
+		nvec = 1024;
+	}
+	encp->enc_intr_vec_base = base;
+	encp->enc_intr_limit = nvec;
+
+	/*
+	 * Get the current privilege mask. Note that this may be modified
+	 * dynamically, so this value is informational only. DO NOT use
+	 * the privilege mask to check for sufficient privileges, as that
+	 * can result in time-of-check/time-of-use bugs.
+	 */
+	if ((rc = ef10_get_privilege_mask(enp, &mask)) != 0)
+		goto fail11;
+	encp->enc_privilege_mask = mask;
+
+	return (0);
+
+fail11:
+	EFSYS_PROBE(fail11);
+fail10:
+	EFSYS_PROBE(fail10);
+fail9:
+	EFSYS_PROBE(fail9);
+fail8:
+	EFSYS_PROBE(fail8);
+fail7:
+	EFSYS_PROBE(fail7);
+fail6:
+	EFSYS_PROBE(fail6);
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static	__checkReturn	efx_rc_t
+ef10_set_workaround_bug26807(
+	__in		efx_nic_t *enp)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	uint32_t flags;
+	efx_rc_t rc;
+
+	/*
+	 * If the bug26807 workaround is enabled, then firmware has enabled
+	 * support for chained multicast filters. Firmware will reset (FLR)
+	 * functions which have filters in the hardware filter table when the
+	 * workaround is enabled/disabled.
+	 *
+	 * We must recheck if the workaround is enabled after inserting the
+	 * first hardware filter, in case it has been changed since this check.
+	 */
+	rc = efx_mcdi_set_workaround(enp, MC_CMD_WORKAROUND_BUG26807,
+	    B_TRUE, &flags);
+	if (rc == 0) {
+		encp->enc_bug26807_workaround = B_TRUE;
+		if (flags & (1 << MC_CMD_WORKAROUND_EXT_OUT_FLR_DONE_LBN)) {
+			/*
+			 * Other functions had installed filters before the
+			 * workaround was enabled, and they have been reset
+			 * by firmware.
+			 */
+			EFSYS_PROBE(bug26807_workaround_flr_done);
+			/* FIXME: bump MC warm boot count ? */
+		}
+	} else if (rc == EACCES) {
+		/*
+		 * Unprivileged functions cannot enable the workaround in older
+		 * firmware.
+		 */
+		encp->enc_bug26807_workaround = B_FALSE;
+	} else if ((rc == ENOTSUP) || (rc == ENOENT)) {
+		encp->enc_bug26807_workaround = B_FALSE;
+	} else {
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
+static	__checkReturn	efx_rc_t
+ef10_nic_board_cfg(
+	__in		efx_nic_t *enp)
+{
+	const efx_nic_ops_t *enop = enp->en_enop;
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	efx_rc_t rc;
+
+	if ((rc = efx_mcdi_nic_board_cfg(enp)) != 0)
+		goto fail1;
+
 	/*
 	 * Huntington RXDP firmware inserts a 0 or 14 byte prefix.
 	 * We only support the 14 byte prefix here.
 	 */
 	if (encp->enc_rx_prefix_size != 14) {
 		rc = ENOTSUP;
-		goto fail10;
+		goto fail2;
 	}
+
+	encp->enc_clk_mult = 1; /* not used for EF10 */
 
 	/* Alignment for WPTR updates */
 	encp->enc_rx_push_align = EF10_RX_WPTR_ALIGN;
@@ -1957,56 +2018,16 @@ ef10_nic_board_cfg(
 
 	encp->enc_buftbl_limit = UINT32_MAX;
 
-	/* Get interrupt vector limits */
-	if ((rc = efx_mcdi_get_vector_cfg(enp, &base, &nvec, NULL)) != 0) {
-		if (EFX_PCI_FUNCTION_IS_PF(encp))
-			goto fail11;
-
-		/* Ignore error (cannot query vector limits from a VF). */
-		base = 0;
-		nvec = 1024;
-	}
-	encp->enc_intr_vec_base = base;
-	encp->enc_intr_limit = nvec;
-
-	/*
-	 * Get the current privilege mask. Note that this may be modified
-	 * dynamically, so this value is informational only. DO NOT use
-	 * the privilege mask to check for sufficient privileges, as that
-	 * can result in time-of-check/time-of-use bugs.
-	 */
-	if ((rc = ef10_get_privilege_mask(enp, &mask)) != 0)
-		goto fail12;
-	encp->enc_privilege_mask = mask;
-
 	if ((rc = ef10_set_workaround_bug26807(enp)) != 0)
-		goto fail11;
+		goto fail3;
 
 	/* Get remaining controller-specific board config */
 	if ((rc = enop->eno_board_cfg(enp)) != 0)
 		if (rc != EACCES)
-			goto fail13;
+			goto fail4;
 
 	return (0);
 
-fail13:
-	EFSYS_PROBE(fail13);
-fail12:
-	EFSYS_PROBE(fail12);
-fail11:
-	EFSYS_PROBE(fail11);
-fail10:
-	EFSYS_PROBE(fail10);
-fail9:
-	EFSYS_PROBE(fail9);
-fail8:
-	EFSYS_PROBE(fail8);
-fail7:
-	EFSYS_PROBE(fail7);
-fail6:
-	EFSYS_PROBE(fail6);
-fail5:
-	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
