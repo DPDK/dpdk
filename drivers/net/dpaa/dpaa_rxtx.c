@@ -125,6 +125,9 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 
 	DPAA_DP_LOG(DEBUG, " Parsing mbuf: %p with annotations: %p", m, annot);
 
+	m->ol_flags = PKT_RX_RSS_HASH | PKT_RX_IP_CKSUM_GOOD |
+		PKT_RX_L4_CKSUM_GOOD;
+
 	switch (prs) {
 	case DPAA_PKT_TYPE_IPV4:
 		m->packet_type = RTE_PTYPE_L2_ETHER |
@@ -199,6 +202,16 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_SCTP;
 		break;
+	case DPAA_PKT_TYPE_IPV4_CSUM_ERR:
+	case DPAA_PKT_TYPE_IPV6_CSUM_ERR:
+		m->ol_flags = PKT_RX_RSS_HASH | PKT_RX_IP_CKSUM_BAD;
+		break;
+	case DPAA_PKT_TYPE_IPV4_TCP_CSUM_ERR:
+	case DPAA_PKT_TYPE_IPV6_TCP_CSUM_ERR:
+	case DPAA_PKT_TYPE_IPV4_UDP_CSUM_ERR:
+	case DPAA_PKT_TYPE_IPV6_UDP_CSUM_ERR:
+		m->ol_flags = PKT_RX_RSS_HASH | PKT_RX_L4_CKSUM_BAD;
+		break;
 	case DPAA_PKT_TYPE_NONE:
 		m->packet_type = 0;
 		break;
@@ -213,10 +226,6 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 
 	/* Set the hash values */
 	m->hash.rss = (uint32_t)(annot->hash);
-	/* All packets with Bad checksum are dropped by interface (and
-	 * corresponding notification issued to RX error queues).
-	 */
-	m->ol_flags = PKT_RX_RSS_HASH | PKT_RX_IP_CKSUM_GOOD;
 
 	/* Check if Vlan is present */
 	if (prs & DPAA_PARSE_VLAN_MASK)

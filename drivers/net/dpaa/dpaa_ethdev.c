@@ -1045,7 +1045,8 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				rxq->fqid, ret);
 		}
 	}
-
+	/* Enable main queue to receive error packets also by default */
+	fman_if_set_err_fqid(fif, rxq->fqid);
 	return 0;
 }
 
@@ -2007,13 +2008,10 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		fman_intf->mac_addr.addr_bytes[5]);
 
 	if (!fman_intf->is_shared_mac) {
-		/* Disable RX mode */
-#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+		/* Configure error packet handling */
 		fman_if_receive_rx_errors(fman_intf,
 			FM_FD_RX_STATUS_ERR_MASK);
-#else
-		fman_if_discard_rx_errors(fman_intf);
-#endif
+		/* Disable RX mode */
 		fman_if_disable_rx(fman_intf);
 		/* Disable promiscuous mode */
 		fman_if_promiscuous_disable(fman_intf);
