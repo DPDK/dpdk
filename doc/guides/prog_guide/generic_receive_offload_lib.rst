@@ -32,7 +32,7 @@ fragmentation is possible (i.e., DF==0). Additionally, it complies RFC
 
 Currently, the GRO library provides GRO supports for TCP/IPv4 and UDP/IPv4
 packets as well as VxLAN packets which contain an outer IPv4 header and an
-inner TCP/IPv4 packet.
+inner TCP/IPv4 or UDP/IPv4 packet.
 
 Two Sets of API
 ---------------

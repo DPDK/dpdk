@@ -11,6 +11,7 @@
 #include "gro_tcp4.h"
 #include "gro_udp4.h"
 #include "gro_vxlan_tcp4.h"
+#include "gro_vxlan_udp4.h"
 
 typedef void *(*gro_tbl_create_fn)(uint16_t socket_id,
 		uint16_t max_flow_num,
@@ -20,14 +21,14 @@ typedef uint32_t (*gro_tbl_pkt_count_fn)(void *tbl);
 
 static gro_tbl_create_fn tbl_create_fn[RTE_GRO_TYPE_MAX_NUM] = {
 		gro_tcp4_tbl_create, gro_vxlan_tcp4_tbl_create,
-		gro_udp4_tbl_create, NULL};
+		gro_udp4_tbl_create, gro_vxlan_udp4_tbl_create, NULL};
 static gro_tbl_destroy_fn tbl_destroy_fn[RTE_GRO_TYPE_MAX_NUM] = {
 			gro_tcp4_tbl_destroy, gro_vxlan_tcp4_tbl_destroy,
-			gro_udp4_tbl_destroy,
+			gro_udp4_tbl_destroy, gro_vxlan_udp4_tbl_destroy,
 			NULL};
 static gro_tbl_pkt_count_fn tbl_pkt_count_fn[RTE_GRO_TYPE_MAX_NUM] = {
 			gro_tcp4_tbl_pkt_count, gro_vxlan_tcp4_tbl_pkt_count,
-			gro_udp4_tbl_pkt_count,
+			gro_udp4_tbl_pkt_count, gro_vxlan_udp4_tbl_pkt_count,
 			NULL};
 
 #define IS_IPV4_TCP_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
@@ -47,6 +48,16 @@ static gro_tbl_pkt_count_fn tbl_pkt_count_fn[RTE_GRO_TYPE_MAX_NUM] = {
 		     RTE_PTYPE_INNER_L3_IPV4_EXT | \
 		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)) != 0))
 
+#define IS_IPV4_VXLAN_UDP4_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
+		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
+		((ptype & RTE_PTYPE_TUNNEL_VXLAN) == \
+		 RTE_PTYPE_TUNNEL_VXLAN) && \
+		 ((ptype & RTE_PTYPE_INNER_L4_UDP) == \
+		  RTE_PTYPE_INNER_L4_UDP) && \
+		  (((ptype & RTE_PTYPE_INNER_L3_MASK) & \
+		    (RTE_PTYPE_INNER_L3_IPV4 | \
+		     RTE_PTYPE_INNER_L3_IPV4_EXT | \
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)) != 0))
 
 /*
  * GRO context structure. It keeps the table structures, which are
@@ -137,19 +148,27 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 	struct gro_udp4_item udp_items[RTE_GRO_MAX_BURST_ITEM_NUM] = {{0} };
 
 	/* Allocate a reassembly table for VXLAN TCP GRO */
-	struct gro_vxlan_tcp4_tbl vxlan_tbl;
-	struct gro_vxlan_tcp4_flow vxlan_flows[RTE_GRO_MAX_BURST_ITEM_NUM];
-	struct gro_vxlan_tcp4_item vxlan_items[RTE_GRO_MAX_BURST_ITEM_NUM]
+	struct gro_vxlan_tcp4_tbl vxlan_tcp_tbl;
+	struct gro_vxlan_tcp4_flow vxlan_tcp_flows[RTE_GRO_MAX_BURST_ITEM_NUM];
+	struct gro_vxlan_tcp4_item vxlan_tcp_items[RTE_GRO_MAX_BURST_ITEM_NUM]
 			= {{{0}, 0, 0} };
+
+	/* Allocate a reassembly table for VXLAN UDP GRO */
+	struct gro_vxlan_udp4_tbl vxlan_udp_tbl;
+	struct gro_vxlan_udp4_flow vxlan_udp_flows[RTE_GRO_MAX_BURST_ITEM_NUM];
+	struct gro_vxlan_udp4_item vxlan_udp_items[RTE_GRO_MAX_BURST_ITEM_NUM]
+			= {{{0}} };
 
 	struct rte_mbuf *unprocess_pkts[nb_pkts];
 	uint32_t item_num;
 	int32_t ret;
 	uint16_t i, unprocess_num = 0, nb_after_gro = nb_pkts;
-	uint8_t do_tcp4_gro = 0, do_vxlan_gro = 0, do_udp4_gro = 0;
+	uint8_t do_tcp4_gro = 0, do_vxlan_tcp_gro = 0, do_udp4_gro = 0,
+		do_vxlan_udp_gro = 0;
 
 	if (unlikely((param->gro_types & (RTE_GRO_IPV4_VXLAN_TCP_IPV4 |
 					RTE_GRO_TCP_IPV4 |
+					RTE_GRO_IPV4_VXLAN_UDP_IPV4 |
 					RTE_GRO_UDP_IPV4)) == 0))
 		return nb_pkts;
 
@@ -160,15 +179,28 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 
 	if (param->gro_types & RTE_GRO_IPV4_VXLAN_TCP_IPV4) {
 		for (i = 0; i < item_num; i++)
-			vxlan_flows[i].start_index = INVALID_ARRAY_INDEX;
+			vxlan_tcp_flows[i].start_index = INVALID_ARRAY_INDEX;
 
-		vxlan_tbl.flows = vxlan_flows;
-		vxlan_tbl.items = vxlan_items;
-		vxlan_tbl.flow_num = 0;
-		vxlan_tbl.item_num = 0;
-		vxlan_tbl.max_flow_num = item_num;
-		vxlan_tbl.max_item_num = item_num;
-		do_vxlan_gro = 1;
+		vxlan_tcp_tbl.flows = vxlan_tcp_flows;
+		vxlan_tcp_tbl.items = vxlan_tcp_items;
+		vxlan_tcp_tbl.flow_num = 0;
+		vxlan_tcp_tbl.item_num = 0;
+		vxlan_tcp_tbl.max_flow_num = item_num;
+		vxlan_tcp_tbl.max_item_num = item_num;
+		do_vxlan_tcp_gro = 1;
+	}
+
+	if (param->gro_types & RTE_GRO_IPV4_VXLAN_UDP_IPV4) {
+		for (i = 0; i < item_num; i++)
+			vxlan_udp_flows[i].start_index = INVALID_ARRAY_INDEX;
+
+		vxlan_udp_tbl.flows = vxlan_udp_flows;
+		vxlan_udp_tbl.items = vxlan_udp_items;
+		vxlan_udp_tbl.flow_num = 0;
+		vxlan_udp_tbl.item_num = 0;
+		vxlan_udp_tbl.max_flow_num = item_num;
+		vxlan_udp_tbl.max_item_num = item_num;
+		do_vxlan_udp_gro = 1;
 	}
 
 	if (param->gro_types & RTE_GRO_TCP_IPV4) {
@@ -204,9 +236,18 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 		 * will be flushed from the tables.
 		 */
 		if (IS_IPV4_VXLAN_TCP4_PKT(pkts[i]->packet_type) &&
-				do_vxlan_gro) {
+				do_vxlan_tcp_gro) {
 			ret = gro_vxlan_tcp4_reassemble(pkts[i],
-							&vxlan_tbl, 0);
+							&vxlan_tcp_tbl, 0);
+			if (ret > 0)
+				/* Merge successfully */
+				nb_after_gro--;
+			else if (ret < 0)
+				unprocess_pkts[unprocess_num++] = pkts[i];
+		} else if (IS_IPV4_VXLAN_UDP4_PKT(pkts[i]->packet_type) &&
+				do_vxlan_udp_gro) {
+			ret = gro_vxlan_udp4_reassemble(pkts[i],
+							&vxlan_udp_tbl, 0);
 			if (ret > 0)
 				/* Merge successfully */
 				nb_after_gro--;
@@ -236,9 +277,15 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 		 || (unprocess_num < nb_pkts)) {
 		i = 0;
 		/* Flush all packets from the tables */
-		if (do_vxlan_gro) {
-			i = gro_vxlan_tcp4_tbl_timeout_flush(&vxlan_tbl,
+		if (do_vxlan_tcp_gro) {
+			i = gro_vxlan_tcp4_tbl_timeout_flush(&vxlan_tcp_tbl,
 					0, pkts, nb_pkts);
+		}
+
+		if (do_vxlan_udp_gro) {
+			i += gro_vxlan_udp4_tbl_timeout_flush(&vxlan_udp_tbl,
+					0, &pkts[i], nb_pkts - i);
+
 		}
 
 		if (do_tcp4_gro) {
@@ -269,33 +316,42 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 {
 	struct rte_mbuf *unprocess_pkts[nb_pkts];
 	struct gro_ctx *gro_ctx = ctx;
-	void *tcp_tbl, *udp_tbl, *vxlan_tbl;
+	void *tcp_tbl, *udp_tbl, *vxlan_tcp_tbl, *vxlan_udp_tbl;
 	uint64_t current_time;
 	uint16_t i, unprocess_num = 0;
-	uint8_t do_tcp4_gro, do_vxlan_gro, do_udp4_gro;
+	uint8_t do_tcp4_gro, do_vxlan_tcp_gro, do_udp4_gro, do_vxlan_udp_gro;
 
 	if (unlikely((gro_ctx->gro_types & (RTE_GRO_IPV4_VXLAN_TCP_IPV4 |
 					RTE_GRO_TCP_IPV4 |
+					RTE_GRO_IPV4_VXLAN_UDP_IPV4 |
 					RTE_GRO_UDP_IPV4)) == 0))
 		return nb_pkts;
 
 	tcp_tbl = gro_ctx->tbls[RTE_GRO_TCP_IPV4_INDEX];
-	vxlan_tbl = gro_ctx->tbls[RTE_GRO_IPV4_VXLAN_TCP_IPV4_INDEX];
+	vxlan_tcp_tbl = gro_ctx->tbls[RTE_GRO_IPV4_VXLAN_TCP_IPV4_INDEX];
 	udp_tbl = gro_ctx->tbls[RTE_GRO_UDP_IPV4_INDEX];
+	vxlan_udp_tbl = gro_ctx->tbls[RTE_GRO_IPV4_VXLAN_UDP_IPV4_INDEX];
 
 	do_tcp4_gro = (gro_ctx->gro_types & RTE_GRO_TCP_IPV4) ==
 		RTE_GRO_TCP_IPV4;
-	do_vxlan_gro = (gro_ctx->gro_types & RTE_GRO_IPV4_VXLAN_TCP_IPV4) ==
+	do_vxlan_tcp_gro = (gro_ctx->gro_types & RTE_GRO_IPV4_VXLAN_TCP_IPV4) ==
 		RTE_GRO_IPV4_VXLAN_TCP_IPV4;
 	do_udp4_gro = (gro_ctx->gro_types & RTE_GRO_UDP_IPV4) ==
 		RTE_GRO_UDP_IPV4;
+	do_vxlan_udp_gro = (gro_ctx->gro_types & RTE_GRO_IPV4_VXLAN_UDP_IPV4) ==
+		RTE_GRO_IPV4_VXLAN_UDP_IPV4;
 
 	current_time = rte_rdtsc();
 
 	for (i = 0; i < nb_pkts; i++) {
 		if (IS_IPV4_VXLAN_TCP4_PKT(pkts[i]->packet_type) &&
-				do_vxlan_gro) {
-			if (gro_vxlan_tcp4_reassemble(pkts[i], vxlan_tbl,
+				do_vxlan_tcp_gro) {
+			if (gro_vxlan_tcp4_reassemble(pkts[i], vxlan_tcp_tbl,
+						current_time) < 0)
+				unprocess_pkts[unprocess_num++] = pkts[i];
+		} else if (IS_IPV4_VXLAN_UDP4_PKT(pkts[i]->packet_type) &&
+				do_vxlan_udp_gro) {
+			if (gro_vxlan_udp4_reassemble(pkts[i], vxlan_udp_tbl,
 						current_time) < 0)
 				unprocess_pkts[unprocess_num++] = pkts[i];
 		} else if (IS_IPV4_TCP_PKT(pkts[i]->packet_type) &&
@@ -338,6 +394,13 @@ rte_gro_timeout_flush(void *ctx,
 		num = gro_vxlan_tcp4_tbl_timeout_flush(gro_ctx->tbls[
 				RTE_GRO_IPV4_VXLAN_TCP_IPV4_INDEX],
 				flush_timestamp, out, left_nb_out);
+		left_nb_out = max_nb_out - num;
+	}
+
+	if ((gro_types & RTE_GRO_IPV4_VXLAN_UDP_IPV4) && left_nb_out > 0) {
+		num += gro_vxlan_udp4_tbl_timeout_flush(gro_ctx->tbls[
+				RTE_GRO_IPV4_VXLAN_UDP_IPV4_INDEX],
+				flush_timestamp, &out[num], left_nb_out);
 		left_nb_out = max_nb_out - num;
 	}
 
