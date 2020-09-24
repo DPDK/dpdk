@@ -1031,10 +1031,6 @@ ef10_get_datapath_caps(
 		MC_CMD_GET_CAPABILITIES_V5_OUT_LEN);
 	efx_rc_t rc;
 
-	if ((rc = ef10_mcdi_get_pf_count(enp, &encp->enc_hw_pf_count)) != 0)
-		goto fail1;
-
-
 	req.emr_cmd = MC_CMD_GET_CAPABILITIES;
 	req.emr_in_buf = payload;
 	req.emr_in_length = MC_CMD_GET_CAPABILITIES_IN_LEN;
@@ -1045,12 +1041,12 @@ ef10_get_datapath_caps(
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail2;
+		goto fail1;
 	}
 
 	if (req.emr_out_length_used < MC_CMD_GET_CAPABILITIES_OUT_LEN) {
 		rc = EMSGSIZE;
-		goto fail3;
+		goto fail2;
 	}
 
 #define	CAP_FLAGS1(_req, _flag)						\
@@ -1344,7 +1340,7 @@ ef10_get_datapath_caps(
 
 		default:
 			rc = EINVAL;
-			goto fail4;
+			goto fail3;
 		}
 
 		/* Port numbers cannot contribute to the hash value */
@@ -1393,11 +1389,9 @@ ef10_get_datapath_caps(
 	return (0);
 
 #if EFSYS_OPT_RX_SCALE
-fail4:
-	EFSYS_PROBE(fail4);
-#endif /* EFSYS_OPT_RX_SCALE */
 fail3:
 	EFSYS_PROBE(fail3);
+#endif /* EFSYS_OPT_RX_SCALE */
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
@@ -1856,6 +1850,9 @@ ef10_nic_board_cfg(
 	encp->enc_pf = pf;
 	encp->enc_vf = vf;
 
+	if ((rc = ef10_mcdi_get_pf_count(enp, &encp->enc_hw_pf_count)) != 0)
+		goto fail4;
+
 	/* MAC address for this function */
 	if (EFX_PCI_FUNCTION_IS_PF(encp)) {
 		rc = efx_mcdi_get_mac_address_pf(enp, mac_addr);
@@ -1880,7 +1877,7 @@ ef10_nic_board_cfg(
 		rc = efx_mcdi_get_mac_address_vf(enp, mac_addr);
 	}
 	if (rc != 0)
-		goto fail4;
+		goto fail5;
 
 	EFX_MAC_ADDR_COPY(encp->enc_mac_addr, mac_addr);
 
@@ -1891,7 +1888,7 @@ ef10_nic_board_cfg(
 		if (rc == EACCES)
 			board_type = 0;
 		else
-			goto fail5;
+			goto fail6;
 	}
 
 	encp->enc_board_type = board_type;
@@ -1899,7 +1896,7 @@ ef10_nic_board_cfg(
 
 	/* Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI */
 	if ((rc = efx_mcdi_get_phy_cfg(enp)) != 0)
-		goto fail6;
+		goto fail7;
 
 	/*
 	 * Firmware with support for *_FEC capability bits does not
@@ -1918,13 +1915,13 @@ ef10_nic_board_cfg(
 
 	/* Obtain the default PHY advertised capabilities */
 	if ((rc = ef10_phy_get_link(enp, &els)) != 0)
-		goto fail7;
+		goto fail8;
 	epp->ep_default_adv_cap_mask = els.epls.epls_adv_cap_mask;
 	epp->ep_adv_cap_mask = els.epls.epls_adv_cap_mask;
 
 	/* Check capabilities of running datapath firmware */
 	if ((rc = ef10_get_datapath_caps(enp)) != 0)
-		goto fail8;
+		goto fail9;
 
 	/*
 	 * Huntington RXDP firmware inserts a 0 or 14 byte prefix.
@@ -1932,7 +1929,7 @@ ef10_nic_board_cfg(
 	 */
 	if (encp->enc_rx_prefix_size != 14) {
 		rc = ENOTSUP;
-		goto fail9;
+		goto fail10;
 	}
 
 	/* Alignment for WPTR updates */
@@ -1963,7 +1960,7 @@ ef10_nic_board_cfg(
 	/* Get interrupt vector limits */
 	if ((rc = efx_mcdi_get_vector_cfg(enp, &base, &nvec, NULL)) != 0) {
 		if (EFX_PCI_FUNCTION_IS_PF(encp))
-			goto fail10;
+			goto fail11;
 
 		/* Ignore error (cannot query vector limits from a VF). */
 		base = 0;
@@ -1979,7 +1976,7 @@ ef10_nic_board_cfg(
 	 * can result in time-of-check/time-of-use bugs.
 	 */
 	if ((rc = ef10_get_privilege_mask(enp, &mask)) != 0)
-		goto fail11;
+		goto fail12;
 	encp->enc_privilege_mask = mask;
 
 	if ((rc = ef10_set_workaround_bug26807(enp)) != 0)
@@ -1988,10 +1985,12 @@ ef10_nic_board_cfg(
 	/* Get remaining controller-specific board config */
 	if ((rc = enop->eno_board_cfg(enp)) != 0)
 		if (rc != EACCES)
-			goto fail12;
+			goto fail13;
 
 	return (0);
 
+fail13:
+	EFSYS_PROBE(fail13);
 fail12:
 	EFSYS_PROBE(fail12);
 fail11:
