@@ -2319,6 +2319,12 @@ typedef	__checkReturn	boolean_t
 	__in		uint32_t label,
 	__in		uint32_t id);
 
+typedef	__checkReturn	boolean_t
+(*efx_tx_ndescs_ev_t)(
+	__in_opt	void *arg,
+	__in		uint32_t label,
+	__in		unsigned int ndescs);
+
 #define	EFX_EXCEPTION_RX_RECOVERY	0x00000001
 #define	EFX_EXCEPTION_RX_DSC_ERROR	0x00000002
 #define	EFX_EXCEPTION_TX_DSC_ERROR	0x00000003
@@ -2406,6 +2412,7 @@ typedef struct efx_ev_callbacks_s {
 	efx_rx_ps_ev_t			eec_rx_ps;
 #endif
 	efx_tx_ev_t			eec_tx;
+	efx_tx_ndescs_ev_t		eec_tx_ndescs;
 	efx_exception_ev_t		eec_exception;
 	efx_rxq_flush_done_ev_t		eec_rxq_flush_done;
 	efx_rxq_flush_failed_ev_t	eec_rxq_flush_failed;

@@ -23,6 +23,13 @@ rhead_ev_rx_packets(
 	__in		const efx_ev_callbacks_t *eecp,
 	__in_opt	void *arg);
 
+static	__checkReturn	boolean_t
+rhead_ev_tx_completion(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eqp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+
 
 static	__checkReturn	boolean_t
 rhead_ev_mcdi(
@@ -66,7 +73,7 @@ rhead_ev_qcreate(
 
 	/* Set up the handler table */
 	eep->ee_rx	= rhead_ev_rx_packets;
-	eep->ee_tx	= NULL; /* FIXME */
+	eep->ee_tx	= rhead_ev_tx_completion;
 	eep->ee_driver	= NULL; /* FIXME */
 	eep->ee_drv_gen	= NULL; /* FIXME */
 	eep->ee_mcdi	= rhead_ev_mcdi;
@@ -212,6 +219,10 @@ rhead_ev_qpoll(
 				should_abort = eep->ee_rx(eep,
 				    &(ev[index]), eecp, arg);
 				break;
+			case ESE_GZ_EF100_EV_TX_COMPLETION:
+				should_abort = eep->ee_tx(eep,
+				    &(ev[index]), eecp, arg);
+				break;
 			case ESE_GZ_EF100_EV_MCDI:
 				should_abort = eep->ee_mcdi(eep,
 				    &(ev[index]), eecp, arg);
@@ -324,6 +335,44 @@ rhead_ev_rx_packets(
 	EFSYS_ASSERT(eecp->eec_rx_packets != NULL);
 	should_abort = eecp->eec_rx_packets(arg, label, num_packets,
 	    EFX_PKT_PREFIX_LEN);
+
+	return (should_abort);
+}
+
+static	__checkReturn	boolean_t
+rhead_ev_tx_completion(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eqp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	efx_nic_t *enp = eep->ee_enp;
+	uint32_t num_descs;
+	uint32_t label;
+	boolean_t should_abort;
+
+	EFX_EV_QSTAT_INCR(eep, EV_TX);
+
+	/* Discard events after RXQ/TXQ errors, or hardware not available */
+	if (enp->en_reset_flags &
+	    (EFX_RESET_RXQ_ERR | EFX_RESET_TXQ_ERR | EFX_RESET_HW_UNAVAIL))
+		return (B_FALSE);
+
+	label = EFX_QWORD_FIELD(*eqp, ESF_GZ_EV_TXCMPL_Q_LABEL);
+
+	/*
+	 * On EF100 the EV_TX event reports the number of completed Tx
+	 * descriptors (on EF10, the event reports the low bits of the
+	 * index of the last completed descriptor).
+	 * The client driver completion callback will compute the
+	 * descriptor index, so that is not needed here.
+	 */
+	num_descs = EFX_QWORD_FIELD(*eqp, ESF_GZ_EV_TXCMPL_NUM_DESC);
+
+	EFSYS_PROBE2(tx_ndescs, uint32_t, label, unsigned int, num_descs);
+
+	EFSYS_ASSERT(eecp->eec_tx_ndescs != NULL);
+	should_abort = eecp->eec_tx_ndescs(arg, label, num_descs);
 
 	return (should_abort);
 }
