@@ -670,6 +670,8 @@ show_port(void)
 		struct rte_eth_rxq_info queue_info;
 		struct rte_eth_rss_conf rss_conf;
 		char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
+		struct rte_eth_fc_conf fc_conf;
+		struct rte_ether_addr mac;
 
 		memset(&rss_conf, 0, sizeof(rss_conf));
 
@@ -677,7 +679,17 @@ show_port(void)
 		STATS_BDR_STR(5, bdr_str);
 		printf("  - generic config\n");
 
-		printf("\t  -- Socket %d\n", rte_eth_dev_socket_id(i));
+		ret = rte_eth_dev_info_get(i, &dev_info);
+		if (ret != 0) {
+			printf("Error during getting device info: %s\n",
+				strerror(-ret));
+			return;
+		}
+
+		printf("\t  -- driver %s device %s socket %d\n",
+		       dev_info.driver_name, dev_info.device->name,
+		       rte_eth_dev_socket_id(i));
+
 		ret = rte_eth_link_get(i, &link);
 		if (ret < 0) {
 			printf("Link get failed (port %u): %s\n",
@@ -688,32 +700,56 @@ show_port(void)
 					&link);
 			printf("\t%s\n", link_status_text);
 		}
-		printf("\t  -- promiscuous (%d)\n",
-				rte_eth_promiscuous_get(i));
+
+		ret = rte_eth_dev_flow_ctrl_get(i, &fc_conf);
+		if (ret == 0 && fc_conf.mode != RTE_FC_NONE)  {
+			printf("\t  -- flow control mode %s%s high %u low %u pause %u%s%s\n",
+			       fc_conf.mode == RTE_FC_RX_PAUSE ? "rx " :
+			       fc_conf.mode == RTE_FC_TX_PAUSE ? "tx " :
+			       fc_conf.mode == RTE_FC_FULL ? "full" : "???",
+			       fc_conf.autoneg ? " auto" : "",
+			       fc_conf.high_water,
+			       fc_conf.low_water,
+			       fc_conf.pause_time,
+			       fc_conf.send_xon ? " xon" : "",
+			       fc_conf.mac_ctrl_frame_fwd ? " mac_ctrl" : "");
+		}
+
+		ret = rte_eth_macaddr_get(i, &mac);
+		if (ret == 0) {
+			char ebuf[RTE_ETHER_ADDR_FMT_SIZE];
+			rte_ether_format_addr(ebuf, sizeof(ebuf), &mac);
+			printf("\t  -- mac %s\n", ebuf);
+		}
+
+		ret = rte_eth_promiscuous_get(i);
+		if (ret >= 0)
+			printf("\t  -- promiscuous mode %s\n",
+			       ret > 0 ? "enabled" : "disabled");
+
+		ret = rte_eth_allmulticast_get(i);
+		if (ret >= 0)
+			printf("\t  -- all multicast mode %s\n",
+			       ret > 0 ? "enabled" : "disabled");
+
 		ret = rte_eth_dev_get_mtu(i, &mtu);
 		if (ret == 0)
 			printf("\t  -- mtu (%d)\n", mtu);
-
-		ret = rte_eth_dev_info_get(i, &dev_info);
-		if (ret != 0) {
-			printf("Error during getting device (port %u) info: %s\n",
-				i, strerror(-ret));
-			return;
-		}
 
 		printf("  - queue\n");
 		for (j = 0; j < dev_info.nb_rx_queues; j++) {
 			ret = rte_eth_rx_queue_info_get(i, j, &queue_info);
 			if (ret == 0) {
 				printf("\t  -- queue %u rx scatter %u"
-						" descriptors %u"
-						" offloads 0x%" PRIx64
-						" mempool socket %d",
-						j,
-						queue_info.scattered_rx,
-						queue_info.nb_desc,
-						queue_info.conf.offloads,
-						queue_info.mp->socket_id);
+				       " descriptors %u"
+				       " offloads %#" PRIx64
+				       " mempool name %s socket %d",
+				       j,
+				       queue_info.scattered_rx,
+				       queue_info.nb_desc,
+				       queue_info.conf.offloads,
+				       queue_info.mp->name,
+				       queue_info.mp->socket_id);
 
 				if (queue_info.rx_buf_size != 0)
 					printf(" rx buffer size %u",
@@ -1167,7 +1203,10 @@ show_mempool(char *name)
 	if (name != NULL) {
 		struct rte_mempool *ptr = rte_mempool_lookup(name);
 		if (ptr != NULL) {
+			struct rte_mempool_ops *ops;
+
 			flags = ptr->flags;
+			ops = rte_mempool_get_ops(ptr->ops_index);
 			printf("  - Name: %s on socket %d\n"
 				"  - flags:\n"
 				"\t  -- No spread (%c)\n"
@@ -1197,6 +1236,8 @@ show_mempool(char *name)
 			printf("  - Count: avail (%u), in use (%u)\n",
 				rte_mempool_avail_count(ptr),
 				rte_mempool_in_use_count(ptr));
+			printf("  - ops_index %d ops_name %s\n",
+				ptr->ops_index, ops ? ops->name : "NA");
 
 			return;
 		}
