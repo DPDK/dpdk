@@ -2443,7 +2443,20 @@ fail1:
 	return (rc);
 }
 
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
+
+#define	INIT_EVQ_MAXNBUFS	MC_CMD_INIT_EVQ_V2_IN_DMA_ADDR_MAXNUM
+
 #if EFX_OPTS_EF10()
+# if (INIT_EVQ_MAXNBUFS < EF10_EVQ_MAXNBUFS)
+#  error "INIT_EVQ_MAXNBUFS too small"
+# endif
+#endif /* EFX_OPTS_EF10 */
+#if EFSYS_OPT_RIVERHEAD
+# if (INIT_EVQ_MAXNBUFS < RHEAD_EVQ_MAXNBUFS)
+#  error "INIT_EVQ_MAXNBUFS too small"
+# endif
+#endif /* EFSYS_OPT_RIVERHEAD */
 
 	__checkReturn	efx_rc_t
 efx_mcdi_init_evq(
@@ -2459,7 +2472,7 @@ efx_mcdi_init_evq(
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
-		MC_CMD_INIT_EVQ_V2_IN_LEN(EF10_EVQ_MAXNBUFS),
+		MC_CMD_INIT_EVQ_V2_IN_LEN(INIT_EVQ_MAXNBUFS),
 		MC_CMD_INIT_EVQ_V2_OUT_LEN);
 	boolean_t interrupting;
 	int ev_cut_through;
@@ -2472,7 +2485,7 @@ efx_mcdi_init_evq(
 	efx_rc_t rc;
 
 	npages = efx_evq_nbufs(enp, nevs);
-	if (npages > EF10_EVQ_MAXNBUFS) {
+	if (npages > INIT_EVQ_MAXNBUFS) {
 		rc = EINVAL;
 		goto fail1;
 	}
@@ -2667,6 +2680,6 @@ fail1:
 	return (rc);
 }
 
-#endif	/* EFX_OPTS_EF10() */
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
 
 #endif	/* EFSYS_OPT_MCDI */

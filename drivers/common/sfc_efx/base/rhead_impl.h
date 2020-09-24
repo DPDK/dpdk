@@ -12,6 +12,13 @@ extern "C" {
 #endif
 
 
+/*
+ * Riverhead requires physically contiguous event rings (so, just one
+ * DMA address is sufficient to represent it), but MCDI interface is still
+ * in terms of 4k size 4k-aligned DMA buffers.
+ */
+#define	RHEAD_EVQ_MAXNBUFS	32
+
 #define	RHEAD_EVQ_MAXNEVS	16384
 #define	RHEAD_EVQ_MINNEVS	256
 
@@ -96,6 +103,72 @@ LIBEFX_INTERNAL
 extern			void
 rhead_nic_unprobe(
 	__in		efx_nic_t *enp);
+
+
+/* EV */
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_ev_init(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_ev_fini(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_ev_qcreate(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index,
+	__in		efsys_mem_t *esmp,
+	__in		size_t ndescs,
+	__in		uint32_t id,
+	__in		uint32_t us,
+	__in		uint32_t flags,
+	__in		efx_evq_t *eep);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_ev_qdestroy(
+	__in		efx_evq_t *eep);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_ev_qprime(
+	__in		efx_evq_t *eep,
+	__in		unsigned int count);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_ev_qpost(
+	__in	efx_evq_t *eep,
+	__in	uint16_t data);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_ev_qpoll(
+	__in		efx_evq_t *eep,
+	__inout		unsigned int *countp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_ev_qmoderate(
+	__in		efx_evq_t *eep,
+	__in		unsigned int us);
+
+#if EFSYS_OPT_QSTATS
+
+LIBEFX_INTERNAL
+extern			void
+rhead_ev_qstats_update(
+	__in				efx_evq_t *eep,
+	__inout_ecount(EV_NQSTATS)	efsys_stat_t *stat);
+
+#endif /* EFSYS_OPT_QSTATS */
 
 
 /* INTR */
