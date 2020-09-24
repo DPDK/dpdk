@@ -1243,7 +1243,8 @@ main(int argc, char **argv)
 	char c_flag[] = "-c1";
 	char n_flag[] = "-n4";
 	char mp_flag[] = "--proc-type=secondary";
-	char *argp[argc + 3];
+	char log_flag[] = "--log-level=6";
+	char *argp[argc + 4];
 	uint16_t nb_ports;
 
 	/* preparse app arguments */
@@ -1257,18 +1258,19 @@ main(int argc, char **argv)
 	argp[1] = c_flag;
 	argp[2] = n_flag;
 	argp[3] = mp_flag;
+	argp[4] = log_flag;
 
 	for (i = 1; i < argc; i++)
-		argp[i + 3] = argv[i];
+		argp[i + 4] = argv[i];
 
-	argc += 3;
+	argc += 4;
 
 	ret = rte_eal_init(argc, argp);
 	if (ret < 0)
 		rte_panic("Cannot init EAL\n");
 
 	argc -= ret;
-	argv += (ret - 3);
+	argv += ret - 4;
 
 	if (!rte_eal_primary_proc_alive(NULL))
 		rte_exit(EXIT_FAILURE, "No primary DPDK process is running.\n");
