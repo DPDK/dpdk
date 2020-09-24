@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- *
+*
  * Copyright(c) 2019-2020 Xilinx, Inc.
  * Copyright(c) 2016-2019 Solarflare Communications Inc.
  *
@@ -26,6 +26,7 @@
 #include "sfc_debug.h"
 #include "sfc_log.h"
 #include "sfc_filter.h"
+#include "sfc_sriov.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -226,6 +227,7 @@ struct sfc_adapter {
 	rte_atomic32_t			restart_required;
 
 	struct sfc_efx_mcdi		mcdi;
+	struct sfc_sriov		sriov;
 	struct sfc_intr			intr;
 	struct sfc_port			port;
 	struct sfc_filter		filter;

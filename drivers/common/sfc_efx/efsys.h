@@ -159,7 +159,7 @@ prefetch_read_once(const volatile void *addr)
 
 #define EFSYS_OPT_FW_SUBVARIANT_AWARE 1
 
-#define EFSYS_OPT_EVB 0
+#define EFSYS_OPT_EVB 1
 
 #define EFSYS_OPT_MCDI_PROXY_AUTH_SERVER 0
 

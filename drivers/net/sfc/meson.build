@@ -39,6 +39,7 @@ sources = files(
 	'sfc_kvargs.c',
 	'sfc.c',
 	'sfc_mcdi.c',
+	'sfc_sriov.c',
 	'sfc_intr.c',
 	'sfc_ev.c',
 	'sfc_port.c',

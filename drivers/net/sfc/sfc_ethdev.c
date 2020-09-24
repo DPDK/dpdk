@@ -102,6 +102,8 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
 
+	dev_info->max_vfs = sa->sriov.num_vfs;
+
 	/* Autonegotiation may be disabled */
 	dev_info->speed_capa = ETH_LINK_SPEED_FIXED;
 	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_1000FDX))

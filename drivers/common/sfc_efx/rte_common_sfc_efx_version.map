@@ -15,6 +15,15 @@ INTERNAL {
 	efx_ev_qprime;
 	efx_ev_usecs_to_ticks;
 
+	efx_evb_fini;
+	efx_evb_init;
+	efx_evb_vport_mac_set;
+	efx_evb_vport_reset;
+	efx_evb_vport_stats;
+	efx_evb_vport_vlan_set;
+	efx_evb_vswitch_create;
+	efx_evb_vswitch_destroy;
+
 	efx_evq_nbufs;
 	efx_evq_size;
 

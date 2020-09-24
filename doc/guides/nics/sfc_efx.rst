@@ -71,6 +71,8 @@ SFC EFX PMD has support for:
 
 - Loopback
 
+- SR-IOV PF
+
 
 Non-supported Features
 ----------------------

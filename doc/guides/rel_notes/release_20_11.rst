@@ -68,6 +68,12 @@ New Features
   * Added support for non-zero priorities for group 0 flows
   * Added support for VXLAN decap combined with VLAN pop
 
+* **Updated Solarflare network PMD.**
+
+  Updated the Solarflare ``sfc_efx`` driver with changes including:
+
+  * Added SR-IOV PF support
+
 * **Extended flow-perf application.**
 
   * Started supporting user order instead of bit mask:
