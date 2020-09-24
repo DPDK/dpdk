@@ -25,6 +25,3 @@ endif
 if cc.has_function('getentropy', prefix : '#include <unistd.h>')
 	cflags += '-DRTE_LIBEAL_USE_GETENTROPY'
 endif
-if cc.has_header('getopt.h')
-	cflags += ['-DHAVE_GETOPT_H', '-DHAVE_GETOPT', '-DHAVE_GETOPT_LONG']
-endif

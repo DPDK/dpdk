@@ -242,7 +242,6 @@ getopt_internal(int nargc, char **nargv, const char *options,
 	char *oli;				/* option letter list index */
 	int optchar, short_too;
 	static int posixly_correct = -1;
-	char *buf;
 	size_t len;
 	int optreset = 0;
 
@@ -253,16 +252,16 @@ getopt_internal(int nargc, char **nargv, const char *options,
 	 * Disable GNU extensions if POSIXLY_CORRECT is set or options
 	 * string begins with a '+'.
 	 */
-	if (posixly_correct == -1)
-		posixly_correct = _dupenv_s(&buf, &len, "POSIXLY_CORRECT");
+	if (posixly_correct == -1) {
+		errno_t err = _wgetenv_s(&len, NULL, 0, L"POSIXLY_CORRECT");
+		posixly_correct = (err == 0) && (len > 0);
+	}
 	if (!posixly_correct || *options == '+')
 		flags &= ~FLAG_PERMUTE;
 	else if (*options == '-')
 		flags |= FLAG_ALLARGS;
 	if (*options == '+' || *options == '-')
 		options++;
-	if (!posixly_correct)
-		free(buf);
 	/*
 	 * reset if requested
 	 */
