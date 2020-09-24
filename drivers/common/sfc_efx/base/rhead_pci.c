@@ -56,6 +56,9 @@ rhead_pci_nic_membar_lookup(
 	boolean_t bar_found = B_FALSE;
 	efx_rc_t rc = ENOENT;
 	efsys_bar_t xil_eb;
+	efsys_bar_t nic_eb;
+	efx_dword_t magic_ed;
+	uint32_t magic;
 
 	/*
 	 * SF-119689-TC Riverhead Host Interface section 4.2.2. describes
@@ -107,8 +110,25 @@ rhead_pci_nic_membar_lookup(
 	if (bar_found == B_FALSE)
 		goto fail4;
 
+	EFSYS_PCI_FIND_MEM_BAR(espcp, ebrp->ebr_index, &nic_eb, &rc);
+	if (rc != 0)
+		goto fail5;
+
+	EFSYS_BAR_READD(&nic_eb, ebrp->ebr_offset + ER_GZ_NIC_MAGIC_OFST,
+			&magic_ed, B_FALSE);
+
+	magic = EFX_DWORD_FIELD(magic_ed, ERF_GZ_NIC_MAGIC);
+	if (magic != EFE_GZ_NIC_MAGIC_EXPECTED) {
+		rc = EINVAL;
+		goto fail6;
+	}
+
 	return (0);
 
+fail6:
+	EFSYS_PROBE(fail6);
+fail5:
+	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
