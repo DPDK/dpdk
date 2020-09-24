@@ -1155,7 +1155,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.batch_max = encp->enc_rx_batch_max;
 	info.prefix_size = encp->enc_rx_prefix_size;
 
-	if (rss->hash_support == EFX_RX_HASH_AVAILABLE && rss->channels > 0)
+	if (rss->hash_support == EFX_RX_HASH_AVAILABLE && rss->channels > 0 &&
+	    (offloads & DEV_RX_OFFLOAD_RSS_HASH))
 		info.flags |= SFC_RXQ_FLAG_RSS_HASH;
 
 	info.rxq_entries = rxq_info->entries;
