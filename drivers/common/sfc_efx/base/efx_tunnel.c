@@ -47,13 +47,6 @@
 
 #if EFSYS_OPT_TUNNEL
 
-#if EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_RIVERHEAD
-static const efx_tunnel_ops_t	__efx_tunnel_dummy_ops = {
-	NULL,	/* eto_reconfigure */
-	NULL,	/* eto_fini */
-};
-#endif /* EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_RIVERHEAD */
-
 #if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
 static	__checkReturn	boolean_t
 ef10_udp_encap_supported(
@@ -66,12 +59,28 @@ ef10_tunnel_reconfigure(
 static			void
 ef10_tunnel_fini(
 	__in		efx_nic_t *enp);
+#endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 
+#if EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON
+static const efx_tunnel_ops_t	__efx_tunnel_dummy_ops = {
+	NULL,	/* eto_reconfigure */
+	NULL,	/* eto_fini */
+};
+#endif /* EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON */
+
+#if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
 static const efx_tunnel_ops_t	__efx_tunnel_ef10_ops = {
 	ef10_tunnel_reconfigure,	/* eto_reconfigure */
 	ef10_tunnel_fini,		/* eto_fini */
 };
 #endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+static const efx_tunnel_ops_t	__efx_tunnel_rhead_ops = {
+	rhead_tunnel_reconfigure,	/* eto_reconfigure */
+	rhead_tunnel_fini,		/* eto_fini */
+};
+#endif /* EFSYS_OPT_RIVERHEAD */
 
 /* Indicates that an entry is to be set */
 static	__checkReturn		boolean_t
@@ -241,7 +250,7 @@ efx_tunnel_init(
 
 #if EFSYS_OPT_RIVERHEAD
 	case EFX_FAMILY_RIVERHEAD:
-		etop = &__efx_tunnel_dummy_ops;
+		etop = &__efx_tunnel_rhead_ops;
 		break;
 #endif /* EFSYS_OPT_RIVERHEAD */
 

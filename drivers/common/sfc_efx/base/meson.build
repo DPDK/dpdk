@@ -58,6 +58,7 @@ sources = [
 	'rhead_nic.c',
 	'rhead_pci.c',
 	'rhead_rx.c',
+	'rhead_tunnel.c',
 	'rhead_tx.c',
 ]
 

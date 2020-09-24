@@ -384,6 +384,17 @@ efx_mcdi_phy_module_get_info(
 		MC_CMD_ ## _field9, _value9,				\
 		MC_CMD_ ## _field10, _value10)
 
+/*
+ * Native setters (MCDI_IN_SET_*_NATIVE) are used when MCDI field is in
+ * network order to avoid conversion to little-endian that is done in
+ * other setters.
+ */
+#define	MCDI_IN_SET_WORD_NATIVE(_emr, _ofst, _value)			\
+	MCDI_IN2((_emr), efx_word_t, _ofst)->ew_u16[0] = (_value)
+
+#define	MCDI_IN_SET_DWORD_NATIVE(_emr, _ofst, _value)			\
+	MCDI_IN2((_emr), efx_dword_t, _ofst)->ed_u32[0] = (_value)
+
 #define	MCDI_OUT(_emr, _type, _ofst)					\
 	((_type *)((_emr).emr_out_buf + (_ofst)))
 

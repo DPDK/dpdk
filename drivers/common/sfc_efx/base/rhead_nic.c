@@ -22,6 +22,23 @@ rhead_board_cfg(
 	if ((rc = efx_mcdi_nic_board_cfg(enp)) != 0)
 		goto fail1;
 
+	/*
+	 * The tunnel encapsulation initialization happens unconditionally
+	 * for now.
+	 */
+	encp->enc_tunnel_encapsulations_supported =
+	    (1u << EFX_TUNNEL_PROTOCOL_VXLAN) |
+	    (1u << EFX_TUNNEL_PROTOCOL_GENEVE) |
+	    (1u << EFX_TUNNEL_PROTOCOL_NVGRE);
+
+	/*
+	 * Software limitation inherited from EF10. This limit is not
+	 * increased since the hardware does not report this limit, it is
+	 * handled internally resulting in a tunnel add error when there is no
+	 * space for more UDP tunnels.
+	 */
+	encp->enc_tunnel_config_udp_entries_max = EFX_TUNNEL_MAXNENTRIES;
+
 	encp->enc_clk_mult = 1; /* not used for Riverhead */
 
 	/*

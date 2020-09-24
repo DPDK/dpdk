@@ -1328,9 +1328,15 @@ ef10_filter_supported_filters(
 		rc = efx_mcdi_get_parser_disp_info(enp, &buffer[next_buf_idx],
 		    next_buf_length, B_TRUE, &mcdi_encap_list_length);
 		if (rc != 0) {
-			if (rc == ENOSPC)
+			if (rc == ENOSPC) {
 				no_space = B_TRUE;
-			else
+			} else if (rc == EINVAL) {
+				/*
+				 * Do not fail if the MCDI do not recognize the
+				 * query for encapsulated packet filters.
+				 */
+				mcdi_encap_list_length = 0;
+			} else
 				goto fail2;
 		} else {
 			for (i = next_buf_idx;

@@ -496,11 +496,18 @@ typedef enum efx_tunnel_udp_entry_state_e {
 	EFX_TUNNEL_UDP_ENTRY_APPLIED, /* Tunnel is applied by HW */
 } efx_tunnel_udp_entry_state_t;
 
+#if EFSYS_OPT_RIVERHEAD
+typedef uint32_t	efx_vnic_encap_rule_handle_t;
+#endif /* EFSYS_OPT_RIVERHEAD */
+
 typedef struct efx_tunnel_udp_entry_s {
 	uint16_t			etue_port; /* host/cpu-endian */
 	uint16_t			etue_protocol;
 	boolean_t			etue_busy;
 	efx_tunnel_udp_entry_state_t	etue_state;
+#if EFSYS_OPT_RIVERHEAD
+	efx_vnic_encap_rule_handle_t	etue_handle;
+#endif /* EFSYS_OPT_RIVERHEAD */
 } efx_tunnel_udp_entry_t;
 
 typedef struct efx_tunnel_cfg_s {
