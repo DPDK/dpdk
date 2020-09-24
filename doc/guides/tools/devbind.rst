@@ -30,11 +30,11 @@ OPTIONS
         Print the current status of all known network interfaces.
         For each device, it displays the PCI domain, bus, slot and function,
         along with a text description of the device. Depending upon whether the
-        device is being used by a kernel driver, the ``igb_uio`` driver, or no
+        device is being used by a kernel driver, the ``vfio-pci`` driver, or no
         driver, other relevant information will be displayed:
         - the Linux interface name e.g. ``if=eth0``
-        - the driver being used e.g. ``drv=igb_uio``
-        - any suitable drivers not currently using that device e.g. ``unused=igb_uio``
+        - the driver being used e.g. ``drv=vfio-pci``
+        - any suitable drivers not currently using that device e.g. ``unused=vfio-pci``
         NOTE: if this flag is passed along with a bind/unbind option, the
         status display will always occur after the other operations have taken
         place.
@@ -80,9 +80,9 @@ To display current device status::
 
    dpdk-devbind --status
 
-To bind eth1 from the current driver and move to use igb_uio::
+To bind eth1 from the current driver and move to use vfio-pci::
 
-   dpdk-devbind --bind=igb_uio eth1
+   dpdk-devbind --bind=vfio-pci eth1
 
 To unbind 0000:01:00.0 from using any driver::
 
@@ -92,7 +92,7 @@ To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver::
 
    dpdk-devbind -b ixgbe 02:00.0 02:00.1
 
-To check status of all network ports, assign one to the igb_uio driver and check status again::
+To check status of all network ports, assign one to the vfio-pci driver and check status again::
 
    # Check the status of the available devices.
    dpdk-devbind --status
@@ -105,12 +105,12 @@ To check status of all network ports, assign one to the igb_uio driver and check
    0000:0a:00.0 '82599ES 10-Gigabit' if=eth2 drv=ixgbe unused=
 
 
-   # Bind the device to igb_uio.
-   sudo dpdk-devbind -b igb_uio 0000:0a:00.0
+   # Bind the device to vfio-pci.
+   sudo dpdk-devbind -b vfio-pci 0000:0a:00.0
 
 
    # Recheck the status of the devices.
    dpdk-devbind --status
    Network devices using DPDK-compatible driver
    ============================================
-   0000:0a:00.0 '82599ES 10-Gigabit' drv=igb_uio unused=
+   0000:0a:00.0 '82599ES 10-Gigabit' drv=vfio-pci unused=
