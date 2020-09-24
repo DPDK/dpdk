@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <strings.h>
 
 #include <rte_eal.h>
 #include <rte_common.h>
@@ -46,7 +47,7 @@
 	STATS_BDR_FMT, s, w, STATS_BDR_FMT)
 
 /**< mask of enabled ports */
-static uint32_t enabled_port_mask;
+static unsigned long enabled_port_mask;
 /**< Enable stats. */
 static uint32_t enable_stats;
 /**< Enable xstats. */
@@ -128,23 +129,17 @@ static int
 parse_portmask(const char *portmask)
 {
 	char *end = NULL;
-	unsigned long pm;
 
 	errno = 0;
 
 	/* parse hexadecimal string */
-	pm = strtoul(portmask, &end, 16);
-	if ((portmask[0] == '\0') || (end == NULL) || (*end != '\0') ||
-		(errno != 0)) {
-		printf("%s ERROR parsing the port mask\n", __func__);
+	enabled_port_mask = strtoul(portmask, &end, 16);
+	if (portmask[0] == '\0' || end == NULL || *end != '\0' || errno != 0) {
+		fprintf(stderr, "Invalid portmask '%s'\n", portmask);
 		return -1;
 	}
 
-	if (pm == 0)
-		return -1;
-
-	return pm;
-
+	return 0;
 }
 
 /*
@@ -242,9 +237,7 @@ proc_info_parse_args(int argc, char **argv)
 		switch (opt) {
 		/* portmask */
 		case 'p':
-			enabled_port_mask = parse_portmask(optarg);
-			if (enabled_port_mask == 0) {
-				printf("invalid portmask\n");
+			if (parse_portmask(optarg) < 0) {
 				proc_info_usage(prgname);
 				return -1;
 			}
@@ -695,13 +688,12 @@ show_offloads(uint64_t offloads,
 static void
 show_port(void)
 {
-	uint16_t i = 0;
-	int ret = 0, j, k;
+	int i, ret, j, k;
 
 	snprintf(bdr_str, MAX_STRING_LEN, " show - Port PMD ");
 	STATS_BDR_STR(10, bdr_str);
 
-	RTE_ETH_FOREACH_DEV(i) {
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		uint16_t mtu = 0;
 		struct rte_eth_link link;
 		struct rte_eth_dev_info dev_info;
@@ -709,6 +701,15 @@ show_port(void)
 		char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 		struct rte_eth_fc_conf fc_conf;
 		struct rte_ether_addr mac;
+		struct rte_eth_dev_owner owner;
+
+		/* Skip if port is not in mask */
+		if ((enabled_port_mask & (1ul << i)) == 0)
+			continue;
+
+		/* Skip if port is unused */
+		if (!rte_eth_dev_is_valid_port(i))
+			continue;
 
 		memset(&rss_conf, 0, sizeof(rss_conf));
 
@@ -726,6 +727,11 @@ show_port(void)
 		printf("\t  -- driver %s device %s socket %d\n",
 		       dev_info.driver_name, dev_info.device->name,
 		       rte_eth_dev_socket_id(i));
+
+		ret = rte_eth_dev_owner_get(i, &owner);
+		if (ret == 0 && owner.id != RTE_ETH_DEV_NO_OWNER)
+			printf("\t --  owner %#"PRIx64":%s\n",
+			       owner.id, owner.name);
 
 		ret = rte_eth_link_get(i, &link);
 		if (ret < 0) {
@@ -1397,28 +1403,38 @@ main(int argc, char **argv)
 	if (nb_ports == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-	/* If no port mask was specified*/
-	if (enabled_port_mask == 0)
-		enabled_port_mask = 0xffff;
+	/* If no port mask was specified, then show non-owned ports */
+	if (enabled_port_mask == 0) {
+		RTE_ETH_FOREACH_DEV(i)
+			enabled_port_mask = 1ul << i;
+	}
 
-	RTE_ETH_FOREACH_DEV(i) {
-		if (enabled_port_mask & (1 << i)) {
-			if (enable_stats)
-				nic_stats_display(i);
-			else if (enable_xstats)
-				nic_xstats_display(i);
-			else if (reset_stats)
-				nic_stats_clear(i);
-			else if (reset_xstats)
-				nic_xstats_clear(i);
-			else if (enable_xstats_name)
-				nic_xstats_by_name_display(i, xstats_name);
-			else if (nb_xstats_ids > 0)
-				nic_xstats_by_ids_display(i, xstats_ids,
-						nb_xstats_ids);
-			else if (enable_metrics)
-				metrics_display(i);
-		}
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+
+		/* Skip if port is not in mask */
+		if ((enabled_port_mask & (1ul << i)) == 0)
+			continue;
+
+		/* Skip if port is unused */
+		if (!rte_eth_dev_is_valid_port(i))
+			continue;
+
+		if (enable_stats)
+			nic_stats_display(i);
+		else if (enable_xstats)
+			nic_xstats_display(i);
+		else if (reset_stats)
+			nic_stats_clear(i);
+		else if (reset_xstats)
+			nic_xstats_clear(i);
+		else if (enable_xstats_name)
+			nic_xstats_by_name_display(i, xstats_name);
+		else if (nb_xstats_ids > 0)
+			nic_xstats_by_ids_display(i, xstats_ids,
+						  nb_xstats_ids);
+		else if (enable_metrics)
+			metrics_display(i);
+
 	}
 
 	/* print port independent stats */
