@@ -1046,7 +1046,8 @@ sfc_probe(struct sfc_adapter *sa)
 	sfc_log_init(sa, "create nic");
 	rte_spinlock_init(&sa->nic_lock);
 	rc = efx_nic_create(sa->family, (efsys_identifier_t *)sa,
-			    &sa->mem_bar, &sa->nic_lock, &enp);
+			    &sa->mem_bar, 0,
+			    &sa->nic_lock, &enp);
 	if (rc != 0)
 		goto fail_nic_create;
 	sa->nic = enp;

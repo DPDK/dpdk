@@ -846,6 +846,7 @@ struct efx_nic_s {
 			int			ena_vi_base;
 			int			ena_vi_count;
 			int			ena_vi_shift;
+			uint32_t		ena_fcw_base;
 #if EFSYS_OPT_VPD
 			caddr_t			ena_svpd;
 			size_t			ena_svpd_length;
@@ -1114,6 +1115,9 @@ struct efx_txq_s {
  * Code used on EF10 *must* use EFX_BAR_VI_*() macros for per-VI registers,
  * to ensure the correct runtime VI window size is used on Medford2.
  *
+ * Code used on EF100 *must* use EFX_BAR_FCW_* macros for function control
+ * window registers, to ensure the correct starting offset is used.
+ *
  * Siena-only code may continue using EFX_BAR_TBL_*() macros for VI registers.
  */
 
@@ -1217,6 +1221,41 @@ struct efx_txq_s {
 		    (_eop), (_lock));					\
 	_NOTE(CONSTANTCONDITION)					\
 	} while (B_FALSE)
+
+/*
+ * Accessors for memory BAR function control window registers.
+ *
+ * The function control window is located at an offset which can be
+ * non-zero in case of Riverhead.
+ */
+
+#if EFSYS_OPT_RIVERHEAD
+
+#define	EFX_BAR_FCW_READD(_enp, _reg, _edp)				\
+	do {								\
+		EFX_CHECK_REG((_enp), (_reg));				\
+		EFSYS_BAR_READD((_enp)->en_esbp, _reg ## _OFST +	\
+		    (_enp)->en_arch.ef10.ena_fcw_base,			\
+		    (_edp), B_FALSE);					\
+		EFSYS_PROBE3(efx_bar_fcw_readd, const char *, #_reg,	\
+		    uint32_t, _reg ## _OFST,				\
+		    uint32_t, (_edp)->ed_u32[0]);			\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#define	EFX_BAR_FCW_WRITED(_enp, _reg, _edp)				\
+	do {								\
+		EFX_CHECK_REG((_enp), (_reg));				\
+		EFSYS_PROBE3(efx_bar_fcw_writed, const char *, #_reg,	\
+		    uint32_t, _reg ## _OFST,				\
+		    uint32_t, (_edp)->ed_u32[0]);			\
+		EFSYS_BAR_WRITED((_enp)->en_esbp, _reg ## _OFST +	\
+		    (_enp)->en_arch.ef10.ena_fcw_base,			\
+		    (_edp), B_FALSE);					\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+
+#endif	/* EFSYS_OPT_RIVERHEAD */
 
 /*
  * Accessors for memory BAR per-VI registers.

@@ -215,6 +215,7 @@ efx_nic_create(
 	__in		efx_family_t family,
 	__in		efsys_identifier_t *esip,
 	__in		efsys_bar_t *esbp,
+	__in		uint32_t fcw_offset,
 	__in		efsys_lock_t *eslp,
 	__deref_out	efx_nic_t **enpp)
 {
@@ -316,12 +317,18 @@ efx_nic_create(
 		    EFX_FEATURE_MCDI |
 		    EFX_FEATURE_MAC_HEADER_FILTERS |
 		    EFX_FEATURE_MCDI_DMA;
+		enp->en_arch.ef10.ena_fcw_base = fcw_offset;
 		break;
 #endif	/* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		rc = ENOTSUP;
 		goto fail2;
+	}
+
+	if ((family != EFX_FAMILY_RIVERHEAD) && (fcw_offset != 0)) {
+		rc = EINVAL;
+		goto fail3;
 	}
 
 	enp->en_family = family;
@@ -333,6 +340,8 @@ efx_nic_create(
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 

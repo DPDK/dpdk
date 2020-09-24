@@ -150,6 +150,7 @@ efx_nic_create(
 	__in		efx_family_t family,
 	__in		efsys_identifier_t *esip,
 	__in		efsys_bar_t *esbp,
+	__in		uint32_t fcw_offset,
 	__in		efsys_lock_t *eslp,
 	__deref_out	efx_nic_t **enpp);
 

@@ -456,7 +456,7 @@ rhead_nic_hw_unavailable(
 	if (enp->en_reset_flags & EFX_RESET_HW_UNAVAIL)
 		return (B_TRUE);
 
-	EFX_BAR_READD(enp, ER_GZ_MC_SFT_STATUS, &dword, B_FALSE);
+	EFX_BAR_FCW_READD(enp, ER_GZ_MC_SFT_STATUS, &dword);
 	if (EFX_DWORD_FIELD(dword, EFX_DWORD_0) == 0xffffffff)
 		goto unavail;
 

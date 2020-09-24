@@ -56,7 +56,7 @@ ef10_mcdi_init(
 	switch (enp->en_family) {
 #if EFSYS_OPT_RIVERHEAD
 	case EFX_FAMILY_RIVERHEAD:
-		EFX_BAR_WRITED(enp, ER_GZ_MC_DB_HWRD_REG, &dword, B_FALSE);
+		EFX_BAR_FCW_WRITED(enp, ER_GZ_MC_DB_HWRD_REG, &dword);
 		break;
 #endif	/* EFSYS_OPT_RIVERHEAD */
 	default:
@@ -166,7 +166,7 @@ ef10_mcdi_send_request(
 	switch (enp->en_family) {
 #if EFSYS_OPT_RIVERHEAD
 	case EFX_FAMILY_RIVERHEAD:
-		EFX_BAR_WRITED(enp, ER_GZ_MC_DB_LWRD_REG, &dword, B_FALSE);
+		EFX_BAR_FCW_WRITED(enp, ER_GZ_MC_DB_LWRD_REG, &dword);
 		break;
 #endif	/* EFSYS_OPT_RIVERHEAD */
 	default:
@@ -179,7 +179,7 @@ ef10_mcdi_send_request(
 	switch (enp->en_family) {
 #if EFSYS_OPT_RIVERHEAD
 	case EFX_FAMILY_RIVERHEAD:
-		EFX_BAR_WRITED(enp, ER_GZ_MC_DB_HWRD_REG, &dword, B_FALSE);
+		EFX_BAR_FCW_WRITED(enp, ER_GZ_MC_DB_HWRD_REG, &dword);
 		break;
 #endif	/* EFSYS_OPT_RIVERHEAD */
 	default:
@@ -237,11 +237,18 @@ ef10_mcdi_poll_reboot(
 
 	old_status = emip->emi_mc_reboot_status;
 
-	EFX_STATIC_ASSERT(ER_DZ_BIU_MC_SFT_STATUS_REG_OFST ==
-	    ER_GZ_MC_SFT_STATUS_OFST);
-
 	/* Update MC reboot status word */
-	EFX_BAR_TBL_READD(enp, ER_DZ_BIU_MC_SFT_STATUS_REG, 0, &dword, B_FALSE);
+	switch (enp->en_family) {
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		EFX_BAR_FCW_READD(enp, ER_GZ_MC_SFT_STATUS, &dword);
+		break;
+#endif	/* EFSYS_OPT_RIVERHEAD */
+	default:
+		EFX_BAR_READD(enp, ER_DZ_BIU_MC_SFT_STATUS_REG,
+			      &dword, B_FALSE);
+		break;
+	}
 	new_status = dword.ed_u32[0];
 
 	/* MC has rebooted if the value has changed */

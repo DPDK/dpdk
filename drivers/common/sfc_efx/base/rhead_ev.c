@@ -133,7 +133,7 @@ rhead_ev_qprime(
 	EFX_POPULATE_DWORD_2(dword, ERF_GZ_EVQ_ID, eep->ee_index,
 	    ERF_GZ_IDX, rptr);
 	/* EVQ_INT_PRIME lives function control window only on Riverhead */
-	EFX_BAR_WRITED(enp, ER_GZ_EVQ_INT_PRIME, &dword, B_FALSE);
+	EFX_BAR_FCW_WRITED(enp, ER_GZ_EVQ_INT_PRIME, &dword);
 
 	return (0);
 }
