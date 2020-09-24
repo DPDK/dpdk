@@ -98,6 +98,61 @@ rhead_nic_unprobe(
 	__in		efx_nic_t *enp);
 
 
+/* INTR */
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_intr_init(
+	__in		efx_nic_t *enp,
+	__in		efx_intr_type_t type,
+	__in		efsys_mem_t *esmp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_intr_enable(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_intr_disable(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_intr_disable_unlocked(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_intr_trigger(
+	__in		efx_nic_t *enp,
+	__in		unsigned int level);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_intr_status_line(
+	__in		efx_nic_t *enp,
+	__out		boolean_t *fatalp,
+	__out		uint32_t *qmaskp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_intr_status_message(
+	__in		efx_nic_t *enp,
+	__in		unsigned int message,
+	__out		boolean_t *fatalp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_intr_fatal(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_intr_fini(
+	__in		efx_nic_t *enp);
+
+
 #ifdef	__cplusplus
 }
 #endif

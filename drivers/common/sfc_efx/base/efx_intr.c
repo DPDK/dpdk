@@ -89,6 +89,20 @@ static const efx_intr_ops_t	__efx_intr_ef10_ops = {
 };
 #endif	/* EFX_OPTS_EF10() */
 
+#if EFSYS_OPT_RIVERHEAD
+static const efx_intr_ops_t	__efx_intr_rhead_ops = {
+	rhead_intr_init,		/* eio_init */
+	rhead_intr_enable,		/* eio_enable */
+	rhead_intr_disable,		/* eio_disable */
+	rhead_intr_disable_unlocked,	/* eio_disable_unlocked */
+	rhead_intr_trigger,		/* eio_trigger */
+	rhead_intr_status_line,		/* eio_status_line */
+	rhead_intr_status_message,	/* eio_status_message */
+	rhead_intr_fatal,		/* eio_fatal */
+	rhead_intr_fini,		/* eio_fini */
+};
+#endif	/* EFSYS_OPT_RIVERHEAD */
+
 	__checkReturn	efx_rc_t
 efx_intr_init(
 	__in		efx_nic_t *enp,
@@ -137,6 +151,12 @@ efx_intr_init(
 		eiop = &__efx_intr_ef10_ops;
 		break;
 #endif	/* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		eiop = &__efx_intr_rhead_ops;
+		break;
+#endif	/* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		EFSYS_ASSERT(B_FALSE);
