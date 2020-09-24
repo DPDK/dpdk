@@ -12,8 +12,8 @@
 
 #if EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_RIVERHEAD
 static const efx_tunnel_ops_t	__efx_tunnel_dummy_ops = {
-	NULL,	/* eto_udp_encap_supported */
 	NULL,	/* eto_reconfigure */
+	NULL,	/* eto_fini */
 };
 #endif /* EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_RIVERHEAD */
 
@@ -26,9 +26,13 @@ static	__checkReturn	efx_rc_t
 ef10_tunnel_reconfigure(
 	__in		efx_nic_t *enp);
 
+static			void
+ef10_tunnel_fini(
+	__in		efx_nic_t *enp);
+
 static const efx_tunnel_ops_t	__efx_tunnel_ef10_ops = {
-	ef10_udp_encap_supported,	/* eto_udp_encap_supported */
 	ef10_tunnel_reconfigure,	/* eto_reconfigure */
+	ef10_tunnel_fini,		/* eto_fini */
 };
 #endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 
@@ -204,22 +208,12 @@ fail1:
 efx_tunnel_fini(
 	__in		efx_nic_t *enp)
 {
-	boolean_t resetting;
-
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_TUNNEL);
 
-	if ((enp->en_etop->eto_udp_encap_supported != NULL) &&
-	    enp->en_etop->eto_udp_encap_supported(enp)) {
-		/*
-		 * The UNLOADING flag allows the MC to suppress the datapath
-		 * reset if it was set on the last call to
-		 * MC_CMD_SET_TUNNEL_ENCAP_UDP_PORTS by all functions
-		 */
-		(void) efx_mcdi_set_tunnel_encap_udp_ports(enp, NULL, B_TRUE,
-		    &resetting);
-	}
+	if (enp->en_etop->eto_fini != NULL)
+		enp->en_etop->eto_fini(enp);
 
 	enp->en_etop = NULL;
 	enp->en_mod_flags &= ~EFX_MOD_TUNNEL;
@@ -475,6 +469,23 @@ fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 
 	return (rc);
+}
+
+static			void
+ef10_tunnel_fini(
+	__in		efx_nic_t *enp)
+{
+	boolean_t resetting;
+
+	if (ef10_udp_encap_supported(enp) != B_FALSE) {
+		/*
+		 * The UNLOADING flag allows the MC to suppress the datapath
+		 * reset if it was set on the last call to
+		 * MC_CMD_SET_TUNNEL_ENCAP_UDP_PORTS by all functions
+		 */
+		(void) efx_mcdi_set_tunnel_encap_udp_ports(enp, NULL, B_TRUE,
+		    &resetting);
+	}
 }
 #endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 

@@ -303,8 +303,8 @@ efx_filter_reconfigure(
 
 #if EFSYS_OPT_TUNNEL
 typedef struct efx_tunnel_ops_s {
-	boolean_t	(*eto_udp_encap_supported)(efx_nic_t *);
 	efx_rc_t	(*eto_reconfigure)(efx_nic_t *);
+	void		(*eto_fini)(efx_nic_t *);
 } efx_tunnel_ops_t;
 #endif /* EFSYS_OPT_TUNNEL */
 
