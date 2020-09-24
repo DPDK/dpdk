@@ -1423,10 +1423,35 @@ efx_mcdi_get_vector_cfg(
 	__out_opt	uint32_t *vf_nvecp);
 
 LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_alloc_vis(
+	__in		efx_nic_t *enp,
+	__in		uint32_t min_vi_count,
+	__in		uint32_t max_vi_count,
+	__out		uint32_t *vi_basep,
+	__out		uint32_t *vi_countp,
+	__out		uint32_t *vi_shiftp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_free_vis(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 ef10_get_privilege_mask(
 	__in			efx_nic_t *enp,
 	__out			uint32_t *maskp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_nic_board_cfg(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_entity_reset(
+	__in		efx_nic_t *enp);
 
 #if EFSYS_OPT_FW_SUBVARIANT_AWARE
 

@@ -188,6 +188,27 @@ static const efx_nic_ops_t	__efx_nic_medford2_ops = {
 
 #endif	/* EFSYS_OPT_MEDFORD2 */
 
+#if EFSYS_OPT_RIVERHEAD
+
+static const efx_nic_ops_t	__efx_nic_riverhead_ops = {
+	rhead_nic_probe,		/* eno_probe */
+	rhead_board_cfg,		/* eno_board_cfg */
+	rhead_nic_set_drv_limits,	/* eno_set_drv_limits */
+	rhead_nic_reset,		/* eno_reset */
+	rhead_nic_init,			/* eno_init */
+	rhead_nic_get_vi_pool,		/* eno_get_vi_pool */
+	rhead_nic_get_bar_region,	/* eno_get_bar_region */
+	rhead_nic_hw_unavailable,	/* eno_hw_unavailable */
+	rhead_nic_set_hw_unavailable,	/* eno_set_hw_unavailable */
+#if EFSYS_OPT_DIAG
+	rhead_nic_register_test,	/* eno_register_test */
+#endif	/* EFSYS_OPT_DIAG */
+	rhead_nic_fini,			/* eno_fini */
+	rhead_nic_unprobe,		/* eno_unprobe */
+};
+
+#endif	/* EFSYS_OPT_RIVERHEAD */
+
 
 	__checkReturn	efx_rc_t
 efx_nic_create(
@@ -284,6 +305,19 @@ efx_nic_create(
 		    EFX_FEATURE_TXQ_CKSUM_OP_DESC;
 		break;
 #endif	/* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		enp->en_enop = &__efx_nic_riverhead_ops;
+		enp->en_features =
+		    EFX_FEATURE_IPV6 |
+		    EFX_FEATURE_LINK_EVENTS |
+		    EFX_FEATURE_PERIODIC_MAC_STATS |
+		    EFX_FEATURE_MCDI |
+		    EFX_FEATURE_MAC_HEADER_FILTERS |
+		    EFX_FEATURE_MCDI_DMA;
+		break;
+#endif	/* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		rc = ENOTSUP;

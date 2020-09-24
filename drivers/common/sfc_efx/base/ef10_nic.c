@@ -10,7 +10,7 @@
 #include "mcdi_mon.h"
 #endif
 
-#if EFX_OPTS_EF10()
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 
 #include "ef10_tlv_layout.h"
 
@@ -24,7 +24,7 @@ efx_mcdi_get_port_assignment(
 		MC_CMD_GET_PORT_ASSIGNMENT_OUT_LEN);
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 
 	req.emr_cmd = MC_CMD_GET_PORT_ASSIGNMENT;
 	req.emr_in_buf = payload;
@@ -68,7 +68,7 @@ efx_mcdi_get_port_modes(
 		MC_CMD_GET_PORT_MODES_OUT_LEN);
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 
 	req.emr_cmd = MC_CMD_GET_PORT_MODES;
 	req.emr_in_buf = payload;
@@ -223,6 +223,10 @@ fail1:
 	return (rc);
 }
 
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
+
+#if EFX_OPTS_EF10()
+
 	__checkReturn		efx_rc_t
 efx_mcdi_vadaptor_alloc(
 	__in			efx_nic_t *enp,
@@ -292,6 +296,10 @@ fail1:
 	return (rc);
 }
 
+#endif	/* EFX_OPTS_EF10() */
+
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
+
 	__checkReturn	efx_rc_t
 efx_mcdi_get_mac_address_pf(
 	__in			efx_nic_t *enp,
@@ -302,7 +310,7 @@ efx_mcdi_get_mac_address_pf(
 		MC_CMD_GET_MAC_ADDRESSES_OUT_LEN);
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 
 	req.emr_cmd = MC_CMD_GET_MAC_ADDRESSES;
 	req.emr_in_buf = payload;
@@ -358,7 +366,7 @@ efx_mcdi_get_mac_address_vf(
 		MC_CMD_VPORT_GET_MAC_ADDRESSES_OUT_LENMAX);
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 
 	req.emr_cmd = MC_CMD_VPORT_GET_MAC_ADDRESSES;
 	req.emr_in_buf = payload;
@@ -420,7 +428,7 @@ efx_mcdi_get_clock(
 		MC_CMD_GET_CLOCK_OUT_LEN);
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 
 	req.emr_cmd = MC_CMD_GET_CLOCK;
 	req.emr_in_buf = payload;
@@ -569,7 +577,7 @@ fail1:
 	return (rc);
 }
 
-static	__checkReturn	efx_rc_t
+	__checkReturn	efx_rc_t
 efx_mcdi_alloc_vis(
 	__in		efx_nic_t *enp,
 	__in		uint32_t min_vi_count,
@@ -631,7 +639,7 @@ fail1:
 }
 
 
-static	__checkReturn	efx_rc_t
+	__checkReturn	efx_rc_t
 efx_mcdi_free_vis(
 	__in		efx_nic_t *enp)
 {
@@ -663,6 +671,9 @@ fail1:
 	return (rc);
 }
 
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
+
+#if EFX_OPTS_EF10()
 
 static	__checkReturn	efx_rc_t
 efx_mcdi_alloc_piobuf(
@@ -977,6 +988,10 @@ ef10_nic_pio_unlink(
 {
 	return (efx_mcdi_unlink_piobuf(enp, vi_index));
 }
+
+#endif	/* EFX_OPTS_EF10() */
+
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 
 static	__checkReturn	efx_rc_t
 ef10_mcdi_get_pf_count(
@@ -1667,6 +1682,19 @@ static struct ef10_external_port_map_s {
 		(1U << TLV_PORT_MODE_NA_2x2),			/* mode 14 */
 		{ EFX_EXT_PORT_NA, 0, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
 	},
+	/*
+	 * Modes that on Riverhead allocate each port number to a separate
+	 * cage.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 2
+	 */
+	{
+		EFX_FAMILY_RIVERHEAD,
+		(1U << TLV_PORT_MODE_1x1_NA) |			/* mode 0 */
+		(1U << TLV_PORT_MODE_1x4_NA) |			/* mode 1 */
+		(1U << TLV_PORT_MODE_1x1_1x1),			/* mode 2 */
+		{ 0, 1, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
 };
 
 static	__checkReturn	efx_rc_t
@@ -1757,7 +1785,7 @@ fail1:
 	return (rc);
 }
 
-static	__checkReturn	efx_rc_t
+	__checkReturn	efx_rc_t
 efx_mcdi_nic_board_cfg(
 	__in		efx_nic_t *enp)
 {
@@ -1921,7 +1949,7 @@ fail1:
 	return (rc);
 }
 
-static	__checkReturn	efx_rc_t
+	__checkReturn	efx_rc_t
 efx_mcdi_entity_reset(
 	__in		efx_nic_t *enp)
 {
@@ -1953,6 +1981,10 @@ fail1:
 
 	return (rc);
 }
+
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
+
+#if EFX_OPTS_EF10()
 
 static	__checkReturn	efx_rc_t
 ef10_set_workaround_bug26807(

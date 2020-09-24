@@ -41,6 +41,10 @@
 #include "ef10_impl.h"
 #endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
 
+#if EFSYS_OPT_RIVERHEAD
+#include "rhead_impl.h"
+#endif	/* EFSYS_OPT_RIVERHEAD */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -835,7 +839,7 @@ struct efx_nic_s {
 #endif	/* EFSYS_OPT_SIENA */
 		int	enu_unused;
 	} en_u;
-#if EFX_OPTS_EF10()
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 	union en_arch {
 		struct {
 			int			ena_vi_base;
@@ -856,7 +860,7 @@ struct efx_nic_s {
 			size_t			ena_wc_mem_map_size;
 		} ef10;
 	} en_arch;
-#endif	/* EFX_OPTS_EF10() */
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
 #if EFSYS_OPT_EVB
 	const efx_evb_ops_t	*en_eeop;
 	struct efx_vswitch_s    *en_vswitchp;

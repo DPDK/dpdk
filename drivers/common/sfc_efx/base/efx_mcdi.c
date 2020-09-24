@@ -2032,7 +2032,7 @@ fail1:
 
 #endif	/* EFSYS_OPT_MAC_STATS */
 
-#if EFX_OPTS_EF10()
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 
 /*
  * This function returns the pf and vf number of a function.  If it is a pf the
@@ -2129,7 +2129,7 @@ fail1:
 	return (rc);
 }
 
-#endif /* EFX_OPTS_EF10() */
+#endif /* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
 
 	__checkReturn		efx_rc_t
 efx_mcdi_set_workaround(
