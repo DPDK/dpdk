@@ -2458,8 +2458,8 @@ efx_mcdi_init_evq(
 {
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
-		MC_CMD_INIT_EVQ_IN_LEN(EF10_EVQ_MAXNBUFS),
-		MC_CMD_INIT_EVQ_OUT_LEN);
+		MC_CMD_INIT_EVQ_V2_IN_LEN(EF10_EVQ_MAXNBUFS),
+		MC_CMD_INIT_EVQ_V2_OUT_LEN);
 	efx_qword_t *dma_addr;
 	uint64_t addr;
 	int npages;
@@ -2476,13 +2476,13 @@ efx_mcdi_init_evq(
 
 	req.emr_cmd = MC_CMD_INIT_EVQ;
 	req.emr_in_buf = payload;
-	req.emr_in_length = MC_CMD_INIT_EVQ_IN_LEN(npages);
+	req.emr_in_length = MC_CMD_INIT_EVQ_V2_IN_LEN(npages);
 	req.emr_out_buf = payload;
-	req.emr_out_length = MC_CMD_INIT_EVQ_OUT_LEN;
+	req.emr_out_length = MC_CMD_INIT_EVQ_V2_OUT_LEN;
 
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_SIZE, nevs);
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_INSTANCE, instance);
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_IRQ_NUM, irq);
+	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_SIZE, nevs);
+	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_INSTANCE, instance);
+	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_IRQ_NUM, irq);
 
 	interrupting = ((flags & EFX_EVQ_FLAGS_NOTIFY_MASK) ==
 	    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT);
@@ -2509,37 +2509,37 @@ efx_mcdi_init_evq(
 		rc = EINVAL;
 		goto fail2;
 	}
-	MCDI_IN_POPULATE_DWORD_6(req, INIT_EVQ_IN_FLAGS,
-	    INIT_EVQ_IN_FLAG_INTERRUPTING, interrupting,
-	    INIT_EVQ_IN_FLAG_RPTR_DOS, 0,
-	    INIT_EVQ_IN_FLAG_INT_ARMD, 0,
-	    INIT_EVQ_IN_FLAG_CUT_THRU, ev_cut_through,
-	    INIT_EVQ_IN_FLAG_RX_MERGE, 1,
-	    INIT_EVQ_IN_FLAG_TX_MERGE, 1);
+	MCDI_IN_POPULATE_DWORD_6(req, INIT_EVQ_V2_IN_FLAGS,
+	    INIT_EVQ_V2_IN_FLAG_INTERRUPTING, interrupting,
+	    INIT_EVQ_V2_IN_FLAG_RPTR_DOS, 0,
+	    INIT_EVQ_V2_IN_FLAG_INT_ARMD, 0,
+	    INIT_EVQ_V2_IN_FLAG_CUT_THRU, ev_cut_through,
+	    INIT_EVQ_V2_IN_FLAG_RX_MERGE, 1,
+	    INIT_EVQ_V2_IN_FLAG_TX_MERGE, 1);
 
 	/* If the value is zero then disable the timer */
 	if (us == 0) {
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_TMR_MODE,
-		    MC_CMD_INIT_EVQ_IN_TMR_MODE_DIS);
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_TMR_LOAD, 0);
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_TMR_RELOAD, 0);
+		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_MODE,
+		    MC_CMD_INIT_EVQ_V2_IN_TMR_MODE_DIS);
+		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_LOAD, 0);
+		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_RELOAD, 0);
 	} else {
 		unsigned int ticks;
 
 		if ((rc = efx_ev_usecs_to_ticks(enp, us, &ticks)) != 0)
 			goto fail3;
 
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_TMR_MODE,
-		    MC_CMD_INIT_EVQ_IN_TMR_INT_HLDOFF);
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_TMR_LOAD, ticks);
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_TMR_RELOAD, ticks);
+		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_MODE,
+		    MC_CMD_INIT_EVQ_V2_IN_TMR_INT_HLDOFF);
+		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_LOAD, ticks);
+		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_RELOAD, ticks);
 	}
 
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_COUNT_MODE,
-	    MC_CMD_INIT_EVQ_IN_COUNT_MODE_DIS);
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_IN_COUNT_THRSHLD, 0);
+	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_COUNT_MODE,
+	    MC_CMD_INIT_EVQ_V2_IN_COUNT_MODE_DIS);
+	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_COUNT_THRSHLD, 0);
 
-	dma_addr = MCDI_IN2(req, efx_qword_t, INIT_EVQ_IN_DMA_ADDR);
+	dma_addr = MCDI_IN2(req, efx_qword_t, INIT_EVQ_V2_IN_DMA_ADDR);
 	addr = EFSYS_MEM_ADDR(esmp);
 
 	for (i = 0; i < npages; i++) {
