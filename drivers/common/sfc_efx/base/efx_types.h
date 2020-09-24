@@ -1628,6 +1628,7 @@ extern int fix_lint;
 #define	EFX_AND_QWORD		EFX_AND_QWORD32
 #endif
 
+
 #ifdef	__cplusplus
 }
 #endif

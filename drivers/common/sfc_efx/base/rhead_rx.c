@@ -10,6 +10,35 @@
 
 #if EFSYS_OPT_RIVERHEAD
 
+/*
+ * Default Rx prefix layout on Riverhead if FW does not support Rx
+ * prefix choice using MC_CMD_GET_RX_PREFIX_ID and query its layout
+ * using MC_CMD_QUERY_RX_PREFIX_ID.
+ *
+ * See SF-119689-TC Riverhead Host Interface section 6.4.
+ */
+static const efx_rx_prefix_layout_t rhead_default_rx_prefix_layout = {
+	.erpl_id	= 0,
+	.erpl_length	= ESE_GZ_RX_PKT_PREFIX_LEN,
+	.erpl_fields	= {
+#define	RHEAD_RX_PREFIX_FIELD(_name, _big_endian) \
+	EFX_RX_PREFIX_FIELD(_name, ESF_GZ_RX_PREFIX_ ## _name, _big_endian)
+
+		RHEAD_RX_PREFIX_FIELD(LENGTH, B_FALSE),
+		RHEAD_RX_PREFIX_FIELD(RSS_HASH_VALID, B_FALSE),
+		RHEAD_RX_PREFIX_FIELD(USER_FLAG, B_FALSE),
+		RHEAD_RX_PREFIX_FIELD(CLASS, B_FALSE),
+		RHEAD_RX_PREFIX_FIELD(PARTIAL_TSTAMP, B_FALSE),
+		RHEAD_RX_PREFIX_FIELD(RSS_HASH, B_FALSE),
+		RHEAD_RX_PREFIX_FIELD(USER_MARK, B_FALSE),
+		RHEAD_RX_PREFIX_FIELD(INGRESS_VPORT, B_FALSE),
+		RHEAD_RX_PREFIX_FIELD(CSUM_FRAME, B_TRUE),
+		RHEAD_RX_PREFIX_FIELD(VLAN_STRIP_TCI, B_TRUE),
+
+#undef	RHEAD_RX_PREFIX_FIELD
+	}
+};
+
 	__checkReturn	efx_rc_t
 rhead_rx_init(
 	__in		efx_nic_t *enp)
@@ -292,6 +321,7 @@ rhead_rx_qcreate(
 
 	erp->er_eep = eep;
 	erp->er_label = label;
+	erp->er_prefix_layout = rhead_default_rx_prefix_layout;
 
 	return (0);
 

@@ -130,6 +130,7 @@ INTERNAL {
 	efx_rx_fini;
 	efx_rx_hash_default_support_get;
 	efx_rx_init;
+	efx_rx_prefix_get_layout;
 	efx_rx_qcreate;
 	efx_rx_qcreate_es_super_buffer;
 	efx_rx_qdestroy;

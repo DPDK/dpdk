@@ -944,6 +944,7 @@ struct efx_rxq_s {
 	size_t				er_buf_size;
 	efsys_mem_t			*er_esmp;
 	efx_evq_rxq_state_t		*er_ev_qstate;
+	efx_rx_prefix_layout_t		er_prefix_layout;
 };
 
 #define	EFX_RXQ_MAGIC	0x15022005
