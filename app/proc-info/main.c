@@ -39,8 +39,6 @@
 
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
-#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
-
 #define MAX_STRING_LEN 256
 
 #define STATS_BDR_FMT "========================================"
