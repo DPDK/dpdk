@@ -10,12 +10,12 @@
 
 #if EFSYS_OPT_TUNNEL
 
-#if EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON
+#if EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_RIVERHEAD
 static const efx_tunnel_ops_t	__efx_tunnel_dummy_ops = {
 	NULL,	/* eto_udp_encap_supported */
 	NULL,	/* eto_reconfigure */
 };
-#endif /* EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON */
+#endif /* EFSYS_OPT_SIENA || EFSYS_OPT_HUNTINGTON || EFSYS_OPT_RIVERHEAD */
 
 #if EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
 static	__checkReturn	boolean_t
@@ -170,6 +170,12 @@ efx_tunnel_init(
 		etop = &__efx_tunnel_ef10_ops;
 		break;
 #endif /* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		etop = &__efx_tunnel_dummy_ops;
+		break;
+#endif /* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		EFSYS_ASSERT(0);
