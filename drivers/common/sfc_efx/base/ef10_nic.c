@@ -2321,7 +2321,11 @@ fail1:
 	return (rc);
 }
 
-static	__checkReturn	efx_rc_t
+#endif	/* EFX_OPTS_EF10() */
+
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
+
+	__checkReturn	efx_rc_t
 ef10_upstream_port_vadaptor_alloc(
 	__in		efx_nic_t *enp)
 {
@@ -2372,6 +2376,10 @@ fail1:
 
 	return (rc);
 }
+
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
+
+#if EFX_OPTS_EF10()
 
 	__checkReturn	efx_rc_t
 ef10_nic_init(

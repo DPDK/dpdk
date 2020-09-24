@@ -236,6 +236,11 @@ efx_mcdi_vadaptor_free(
 
 LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
+ef10_upstream_port_vadaptor_alloc(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
 ef10_nic_probe(
 	__in		efx_nic_t *enp);
 

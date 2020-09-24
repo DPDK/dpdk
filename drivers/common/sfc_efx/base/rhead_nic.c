@@ -336,6 +336,7 @@ rhead_nic_init(
 	uint32_t vi_count, vi_base, vi_shift;
 	uint32_t vi_window_size;
 	efx_rc_t rc;
+	boolean_t alloc_vadaptor = B_TRUE;
 
 	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp));
 	EFSYS_ASSERT3U(edcp->edc_max_piobuf_count, ==, 0);
@@ -387,11 +388,33 @@ rhead_nic_init(
 	enp->en_arch.ef10.ena_wc_mem_map_offset = 0;
 	enp->en_arch.ef10.ena_wc_mem_map_size = 0;
 
-	enp->en_vport_id = EVB_PORT_ID_NULL;
-
 	enp->en_nic_cfg.enc_mcdi_max_payload_length = MCDI_CTL_SDU_LEN_MAX_V2;
 
+	/*
+	 * For SR-IOV use case, vAdaptor is allocated for PF and associated VFs
+	 * during NIC initialization when vSwitch is created and vPorts are
+	 * allocated. Hence, skip vAdaptor allocation for EVB and update vPort
+	 * ID in NIC structure with the one allocated for PF.
+	 */
+
+	enp->en_vport_id = EVB_PORT_ID_ASSIGNED;
+#if EFSYS_OPT_EVB
+	if ((enp->en_vswitchp != NULL) && (enp->en_vswitchp->ev_evcp != NULL)) {
+		/* For EVB use vPort allocated on vSwitch */
+		enp->en_vport_id = enp->en_vswitchp->ev_evcp->evc_vport_id;
+		alloc_vadaptor = B_FALSE;
+	}
+#endif
+	if (alloc_vadaptor != B_FALSE) {
+		/* Allocate a vAdaptor attached to our upstream vPort/pPort */
+		if ((rc = ef10_upstream_port_vadaptor_alloc(enp)) != 0)
+			goto fail5;
+	}
+
 	return (0);
+
+fail5:
+	EFSYS_PROBE(fail5);
 
 fail4:
 	EFSYS_PROBE(fail4);
@@ -497,6 +520,22 @@ rhead_nic_set_hw_unavailable(
 rhead_nic_fini(
 	__in		efx_nic_t *enp)
 {
+	boolean_t do_vadaptor_free = B_TRUE;
+
+#if EFSYS_OPT_EVB
+	if (enp->en_vswitchp != NULL) {
+		/*
+		 * For SR-IOV the vAdaptor is freed with the vSwitch,
+		 * so do not free it here.
+		 */
+		do_vadaptor_free = B_FALSE;
+	}
+#endif
+	if (do_vadaptor_free != B_FALSE) {
+		(void) efx_mcdi_vadaptor_free(enp, enp->en_vport_id);
+		enp->en_vport_id = EVB_PORT_ID_NULL;
+	}
+
 	(void) efx_mcdi_free_vis(enp);
 	enp->en_arch.ef10.ena_vi_count = 0;
 }
