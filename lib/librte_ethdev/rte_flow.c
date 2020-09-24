@@ -247,6 +247,8 @@ rte_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 			ret = RTE_FLOW_ITEM_TYPE_IPV6;
 		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_VLAN)
 			ret = RTE_FLOW_ITEM_TYPE_VLAN;
+		else
+			ret = RTE_FLOW_ITEM_TYPE_END;
 		break;
 	case RTE_FLOW_ITEM_TYPE_VLAN:
 		if (item->mask)
@@ -264,6 +266,8 @@ rte_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 			ret = RTE_FLOW_ITEM_TYPE_IPV6;
 		else if (rte_be_to_cpu_16(ether_type) == RTE_ETHER_TYPE_VLAN)
 			ret = RTE_FLOW_ITEM_TYPE_VLAN;
+		else
+			ret = RTE_FLOW_ITEM_TYPE_END;
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV4:
 		if (item->mask)
@@ -284,6 +288,8 @@ rte_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 			ret = RTE_FLOW_ITEM_TYPE_IPV4;
 		else if (ip_next_proto == IPPROTO_IPV6)
 			ret = RTE_FLOW_ITEM_TYPE_IPV6;
+		else
+			ret = RTE_FLOW_ITEM_TYPE_END;
 		break;
 	case RTE_FLOW_ITEM_TYPE_IPV6:
 		if (item->mask)
@@ -304,6 +310,8 @@ rte_flow_expand_rss_item_complete(const struct rte_flow_item *item)
 			ret = RTE_FLOW_ITEM_TYPE_IPV4;
 		else if (ip_next_proto == IPPROTO_IPV6)
 			ret = RTE_FLOW_ITEM_TYPE_IPV6;
+		else
+			ret = RTE_FLOW_ITEM_TYPE_END;
 		break;
 	default:
 		ret = RTE_FLOW_ITEM_TYPE_VOID;
@@ -1110,10 +1118,14 @@ rte_flow_expand_rss(struct rte_flow_expand_rss *buf, size_t size,
 	memset(flow_items, 0, sizeof(flow_items));
 	user_pattern_size -= sizeof(*item);
 	/*
-	 * Check if the last valid item has spec set
-	 * and need complete pattern.
+	 * Check if the last valid item has spec set, need complete pattern,
+	 * and the pattern can be used for expansion.
 	 */
 	missed_item.type = rte_flow_expand_rss_item_complete(last_item);
+	if (missed_item.type == RTE_FLOW_ITEM_TYPE_END) {
+		/* Item type END indicates expansion is not required. */
+		return lsize;
+	}
 	if (missed_item.type != RTE_FLOW_ITEM_TYPE_VOID) {
 		next = NULL;
 		missed = 1;
