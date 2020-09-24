@@ -50,7 +50,6 @@ extern "C" {
 #else
 #error "Cannot determine system endianness"
 #endif
-#include "efx_types.h"
 
 
 typedef bool boolean_t;
