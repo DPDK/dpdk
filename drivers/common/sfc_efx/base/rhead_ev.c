@@ -16,6 +16,13 @@
  */
 #define	EFX_RHEAD_ALWAYS_INTERRUPTING_EVQ_INDEX	(0)
 
+static	__checkReturn	boolean_t
+rhead_ev_rx_packets(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eqp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+
 
 static	__checkReturn	boolean_t
 rhead_ev_mcdi(
@@ -58,7 +65,7 @@ rhead_ev_qcreate(
 	_NOTE(ARGUNUSED(id))	/* buftbl id managed by MC */
 
 	/* Set up the handler table */
-	eep->ee_rx	= NULL; /* FIXME */
+	eep->ee_rx	= rhead_ev_rx_packets;
 	eep->ee_tx	= NULL; /* FIXME */
 	eep->ee_driver	= NULL; /* FIXME */
 	eep->ee_drv_gen	= NULL; /* FIXME */
@@ -201,6 +208,10 @@ rhead_ev_qpoll(
 
 			code = EFX_QWORD_FIELD(ev[index], ESF_GZ_E_TYPE);
 			switch (code) {
+			case ESE_GZ_EF100_EV_RX_PKTS:
+				should_abort = eep->ee_rx(eep,
+				    &(ev[index]), eecp, arg);
+				break;
 			case ESE_GZ_EF100_EV_MCDI:
 				should_abort = eep->ee_mcdi(eep,
 				    &(ev[index]), eecp, arg);
@@ -273,6 +284,49 @@ rhead_ev_qstats_update(
 	}
 }
 #endif /* EFSYS_OPT_QSTATS */
+
+static	__checkReturn	boolean_t
+rhead_ev_rx_packets(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eqp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	efx_nic_t *enp = eep->ee_enp;
+	uint32_t label;
+	uint32_t num_packets;
+	boolean_t should_abort;
+
+	EFX_EV_QSTAT_INCR(eep, EV_RX);
+
+	/* Discard events after RXQ/TXQ errors, or hardware not available */
+	if (enp->en_reset_flags &
+	    (EFX_RESET_RXQ_ERR | EFX_RESET_TXQ_ERR | EFX_RESET_HW_UNAVAIL))
+		return (B_FALSE);
+
+	label = EFX_QWORD_FIELD(*eqp, ESF_GZ_EV_RXPKTS_Q_LABEL);
+
+	/*
+	 * On EF100 the EV_RX event reports the number of received
+	 * packets (unlike EF10 which reports a descriptor index).
+	 * The client driver is responsible for maintaining the Rx
+	 * descriptor index, and computing how many descriptors are
+	 * occupied by each received packet (based on the Rx buffer size
+	 * and the packet length from the Rx prefix).
+	 */
+	num_packets = EFX_QWORD_FIELD(*eqp, ESF_GZ_EV_RXPKTS_NUM_PKT);
+
+	/*
+	 * The receive event may indicate more than one packet, and so
+	 * does not contain the packet length. Read the packet length
+	 * from the prefix when handling each packet.
+	 */
+	EFSYS_ASSERT(eecp->eec_rx_packets != NULL);
+	should_abort = eecp->eec_rx_packets(arg, label, num_packets,
+	    EFX_PKT_PREFIX_LEN);
+
+	return (should_abort);
+}
 
 static	__checkReturn	boolean_t
 rhead_ev_mcdi(

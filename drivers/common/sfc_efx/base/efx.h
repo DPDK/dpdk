@@ -2277,6 +2277,13 @@ typedef	__checkReturn	boolean_t
 	__in		uint32_t size,
 	__in		uint16_t flags);
 
+typedef	__checkReturn	boolean_t
+(*efx_rx_packets_ev_t)(
+	__in_opt	void *arg,
+	__in		uint32_t label,
+	__in		unsigned int num_packets,
+	__in		uint32_t flags);
+
 #if EFSYS_OPT_RX_PACKED_STREAM || EFSYS_OPT_RX_ES_SUPER_BUFFER
 
 /*
@@ -2394,6 +2401,7 @@ typedef __checkReturn	boolean_t
 typedef struct efx_ev_callbacks_s {
 	efx_initialized_ev_t		eec_initialized;
 	efx_rx_ev_t			eec_rx;
+	efx_rx_packets_ev_t		eec_rx_packets;
 #if EFSYS_OPT_RX_PACKED_STREAM || EFSYS_OPT_RX_ES_SUPER_BUFFER
 	efx_rx_ps_ev_t			eec_rx_ps;
 #endif
