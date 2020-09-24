@@ -1015,13 +1015,10 @@ fail1:
 ef10_rx_qdestroy(
 	__in	efx_rxq_t *erp)
 {
-	efx_nic_t *enp = erp->er_enp;
 	efx_evq_t *eep = erp->er_eep;
 	unsigned int label = erp->er_label;
 
 	ef10_ev_rxlabel_fini(eep, label);
-
-	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_rxq_t), erp);
 }
 
 		void

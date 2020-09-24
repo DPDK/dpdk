@@ -981,6 +981,9 @@ efx_rx_qdestroy(
 	--enp->en_rx_qcount;
 
 	erxop->erxo_qdestroy(erp);
+
+	/* Free the RXQ object */
+	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_rxq_t), erp);
 }
 
 	__checkReturn	efx_rc_t
@@ -1706,9 +1709,6 @@ siena_rx_qdestroy(
 
 	EFX_BAR_TBL_WRITEO(enp, FR_AZ_RX_DESC_PTR_TBL,
 			    erp->er_index, &oword, B_TRUE);
-
-	/* Free the RXQ object */
-	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_rxq_t), erp);
 }
 
 static		void
