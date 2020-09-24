@@ -17,6 +17,14 @@
 #define	EFX_RHEAD_ALWAYS_INTERRUPTING_EVQ_INDEX	(0)
 
 
+static	__checkReturn	boolean_t
+rhead_ev_mcdi(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eqp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+
+
 	__checkReturn	efx_rc_t
 rhead_ev_init(
 	__in		efx_nic_t *enp)
@@ -54,7 +62,7 @@ rhead_ev_qcreate(
 	eep->ee_tx	= NULL; /* FIXME */
 	eep->ee_driver	= NULL; /* FIXME */
 	eep->ee_drv_gen	= NULL; /* FIXME */
-	eep->ee_mcdi	= NULL; /* FIXME */
+	eep->ee_mcdi	= rhead_ev_mcdi;
 
 	/* Set up the event queue */
 	/* INIT_EVQ expects function-relative vector number */
@@ -193,6 +201,10 @@ rhead_ev_qpoll(
 
 			code = EFX_QWORD_FIELD(ev[index], ESF_GZ_E_TYPE);
 			switch (code) {
+			case ESE_GZ_EF100_EV_MCDI:
+				should_abort = eep->ee_mcdi(eep,
+				    &(ev[index]), eecp, arg);
+				break;
 			default:
 				EFSYS_PROBE3(bad_event,
 				    unsigned int, eep->ee_index,
@@ -261,5 +273,24 @@ rhead_ev_qstats_update(
 	}
 }
 #endif /* EFSYS_OPT_QSTATS */
+
+static	__checkReturn	boolean_t
+rhead_ev_mcdi(
+	__in		efx_evq_t *eep,
+	__in		efx_qword_t *eqp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	boolean_t ret;
+
+	/*
+	 * Event format was changed post Riverhead R1 and now
+	 * MCDI event layout on EF100 is exactly the same as on EF10
+	 * except added QDMA phase bit which is unused on EF10.
+	 */
+	ret = ef10_ev_mcdi(eep, eqp, eecp, arg);
+
+	return (ret);
+}
 
 #endif	/* EFSYS_OPT_RIVERHEAD */

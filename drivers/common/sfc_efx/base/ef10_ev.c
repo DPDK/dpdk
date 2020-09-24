@@ -47,13 +47,6 @@ ef10_ev_drv_gen(
 	__in		const efx_ev_callbacks_t *eecp,
 	__in_opt	void *arg);
 
-static	__checkReturn	boolean_t
-ef10_ev_mcdi(
-	__in		efx_evq_t *eep,
-	__in		efx_qword_t *eqp,
-	__in		const efx_ev_callbacks_t *eecp,
-	__in_opt	void *arg);
-
 
 static	__checkReturn	efx_rc_t
 efx_mcdi_set_evq_tmr(
@@ -857,7 +850,11 @@ ef10_ev_drv_gen(
 	return (should_abort);
 }
 
-static	__checkReturn	boolean_t
+#endif	/* EFX_OPTS_EF10() */
+
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
+
+	__checkReturn	boolean_t
 ef10_ev_mcdi(
 	__in		efx_evq_t *eep,
 	__in		efx_qword_t *eqp,
@@ -1063,6 +1060,10 @@ ef10_ev_mcdi(
 
 	return (should_abort);
 }
+
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
+
+#if EFX_OPTS_EF10()
 
 		void
 ef10_ev_rxlabel_init(
