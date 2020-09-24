@@ -12,6 +12,7 @@
 	__checkReturn			efx_rc_t
 efx_pci_config_next_ext_cap(
 	__in				efsys_pci_config_t *espcp,
+	__in				const efx_pci_ops_t *epop,
 	__inout				size_t *offsetp)
 {
 	efx_dword_t hdr;
@@ -26,9 +27,9 @@ efx_pci_config_next_ext_cap(
 	if (*offsetp == 0) {
 		*offsetp = ESE_GZ_PCI_BASE_CONFIG_SPACE_SIZE;
 	} else {
-		EFSYS_PCI_CONFIG_READD(espcp, *offsetp +
+		rc = epop->epo_config_readd(espcp, *offsetp +
 				(EFX_LOW_BIT(ESF_GZ_PCI_EXPRESS_XCAP_ID) / 8),
-				&hdr, &rc);
+				&hdr);
 		if (rc != 0) {
 			rc = EIO;
 			goto fail2;
@@ -58,6 +59,7 @@ fail1:
 	__checkReturn			efx_rc_t
 efx_pci_config_find_next_ext_cap(
 	__in				efsys_pci_config_t *espcp,
+	__in				const efx_pci_ops_t *epop,
 	__in				uint16_t cap_id,
 	__inout				size_t *offsetp)
 {
@@ -73,7 +75,7 @@ efx_pci_config_find_next_ext_cap(
 	position = *offsetp;
 
 	while (1) {
-		rc = efx_pci_config_next_ext_cap(espcp, &position);
+		rc = efx_pci_config_next_ext_cap(espcp, epop, &position);
 		if (rc != 0) {
 			if (rc == ENOENT)
 				break;
@@ -81,9 +83,9 @@ efx_pci_config_find_next_ext_cap(
 				goto fail2;
 		}
 
-		EFSYS_PCI_CONFIG_READD(espcp, position +
+		rc = epop->epo_config_readd(espcp, position +
 				(EFX_LOW_BIT(ESF_GZ_PCI_EXPRESS_XCAP_ID) / 8),
-				&hdr, &rc);
+				&hdr);
 		if (rc != 0) {
 			rc = EIO;
 			goto fail3;
@@ -116,6 +118,7 @@ fail1:
 	__checkReturn			efx_rc_t
 efx_pci_find_next_xilinx_cap_table(
 	__in				efsys_pci_config_t *espcp,
+	__in				const efx_pci_ops_t *epop,
 	__inout				size_t *pci_cap_offsetp,
 	__out				unsigned int *xilinx_tbl_barp,
 	__out				efsys_dma_addr_t *xilinx_tbl_offsetp)
@@ -134,7 +137,7 @@ efx_pci_find_next_xilinx_cap_table(
 		unsigned int tbl_bar;
 		efsys_dma_addr_t tbl_offset;
 
-		rc = efx_pci_config_find_next_ext_cap(espcp,
+		rc = efx_pci_config_find_next_ext_cap(espcp, epop,
 				ESE_GZ_PCI_EXPRESS_XCAP_ID_VNDR, &cap_offset);
 		if (rc != 0) {
 			if (rc == ENOENT)
@@ -149,7 +152,7 @@ efx_pci_find_next_xilinx_cap_table(
 		 * locator. Try to read it and skip it if the capability is
 		 * not the locator.
 		 */
-		rc = efx_pci_read_ext_cap_xilinx_table(espcp, cap_offset,
+		rc = efx_pci_read_ext_cap_xilinx_table(espcp, epop, cap_offset,
 						       &tbl_bar, &tbl_offset);
 		if (rc == 0) {
 			*xilinx_tbl_barp = tbl_bar;
@@ -183,6 +186,7 @@ fail1:
 	__checkReturn			efx_rc_t
 efx_pci_read_ext_cap_xilinx_table(
 	__in				efsys_pci_config_t *espcp,
+	__in				const efx_pci_ops_t *epop,
 	__in				size_t cap_offset,
 	__out				unsigned int *barp,
 	__out				efsys_dma_addr_t *offsetp)
@@ -199,9 +203,9 @@ efx_pci_read_ext_cap_xilinx_table(
 	efsys_dma_addr_t offset;
 	efx_rc_t rc;
 
-	EFSYS_PCI_CONFIG_READD(espcp, cap_offset +
+	rc = epop->epo_config_readd(espcp, cap_offset +
 			       (EFX_LOW_BIT(ESF_GZ_PCI_EXPRESS_XCAP_ID) / 8),
-			       &cap_hdr, &rc);
+			       &cap_hdr);
 	if (rc != 0) {
 		rc = EIO;
 		goto fail1;
@@ -213,9 +217,9 @@ efx_pci_read_ext_cap_xilinx_table(
 		goto fail2;
 	}
 
-	EFSYS_PCI_CONFIG_READD(espcp, vsec_offset +
+	rc = epop->epo_config_readd(espcp, vsec_offset +
 			       (EFX_LOW_BIT(ESF_GZ_VSEC_ID) / 8),
-			       &vsec.eo_dword[0], &rc);
+			       &vsec.eo_dword[0]);
 	if (rc != 0) {
 		rc = EIO;
 		goto fail3;
@@ -240,9 +244,9 @@ efx_pci_read_ext_cap_xilinx_table(
 		goto fail5;
 	}
 
-	EFSYS_PCI_CONFIG_READD(espcp, vsec_offset +
+	rc = epop->epo_config_readd(espcp, vsec_offset +
 			       (EFX_LOW_BIT(ESF_GZ_VSEC_TBL_BAR) / 8),
-			       &vsec.eo_dword[1], &rc);
+			       &vsec.eo_dword[1]);
 	if (rc != 0) {
 		rc = EIO;
 		goto fail6;
@@ -252,9 +256,9 @@ efx_pci_read_ext_cap_xilinx_table(
 	offset_low = EFX_OWORD_FIELD32(vsec, ESF_GZ_VSEC_TBL_OFF_LO);
 
 	if (vsec_len >= ESE_GZ_VSEC_LEN_HIGH_OFFT) {
-		EFSYS_PCI_CONFIG_READD(espcp, vsec_offset +
+		rc = epop->epo_config_readd(espcp, vsec_offset +
 				(EFX_LOW_BIT(ESF_GZ_VSEC_TBL_OFF_HI) / 8),
-				&vsec.eo_dword[2], &rc);
+				&vsec.eo_dword[2]);
 		if (rc != 0) {
 			rc = EIO;
 			goto fail7;

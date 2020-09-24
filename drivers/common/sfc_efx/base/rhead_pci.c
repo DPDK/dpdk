@@ -47,6 +47,7 @@ fail1:
 	__checkReturn			efx_rc_t
 rhead_pci_nic_membar_lookup(
 	__in				efsys_pci_config_t *espcp,
+	__in				const efx_pci_ops_t *epop,
 	__out				efx_bar_region_t *ebrp)
 {
 	boolean_t xilinx_tbl_found = B_FALSE;
@@ -65,7 +66,8 @@ rhead_pci_nic_membar_lookup(
 	 * the following discovery steps.
 	 */
 	while (1) {
-		rc = efx_pci_find_next_xilinx_cap_table(espcp, &pci_capa_offset,
+		rc = efx_pci_find_next_xilinx_cap_table(espcp, epop,
+							&pci_capa_offset,
 							&xilinx_tbl_bar,
 							&xilinx_tbl_offset);
 		if (rc != 0) {
@@ -90,7 +92,7 @@ rhead_pci_nic_membar_lookup(
 
 		xilinx_tbl_found = B_TRUE;
 
-		EFSYS_PCI_FIND_MEM_BAR(espcp, xilinx_tbl_bar, &xil_eb, &rc);
+		rc = epop->epo_find_mem_bar(espcp, xilinx_tbl_bar, &xil_eb);
 		if (rc != 0)
 			goto fail2;
 
@@ -110,7 +112,7 @@ rhead_pci_nic_membar_lookup(
 	if (bar_found == B_FALSE)
 		goto fail4;
 
-	EFSYS_PCI_FIND_MEM_BAR(espcp, ebrp->ebr_index, &nic_eb, &rc);
+	rc = epop->epo_find_mem_bar(espcp, ebrp->ebr_index, &nic_eb);
 	if (rc != 0)
 		goto fail5;
 

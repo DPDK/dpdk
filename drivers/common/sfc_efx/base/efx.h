@@ -82,6 +82,34 @@ efx_family(
 
 #if EFSYS_OPT_PCI
 
+typedef struct efx_pci_ops_s {
+	/*
+	 * Function for reading PCIe configuration space.
+	 *
+	 * espcp	System-specific PCIe device handle;
+	 * offset	Offset inside PCIe configuration space to start reading
+	 *		from;
+	 * edp		EFX DWORD structure that should be populated by function
+	 *		in little-endian order;
+	 *
+	 * Returns status code, 0 on success, any other value on error.
+	 */
+	efx_rc_t	(*epo_config_readd)(efsys_pci_config_t *espcp,
+					    uint32_t offset, efx_dword_t *edp);
+	/*
+	 * Function for finding PCIe memory bar handle by its index from a PCIe
+	 * device handle. The found memory bar is available in read-only mode.
+	 *
+	 * configp	System-specific PCIe device handle;
+	 * index	Memory bar index;
+	 * memp		Pointer to the found memory bar handle;
+	 *
+	 * Returns status code, 0 on success, any other value on error.
+	 */
+	efx_rc_t	(*epo_find_mem_bar)(efsys_pci_config_t *configp,
+					    int index, efsys_bar_t *memp);
+} efx_pci_ops_t;
+
 /* Determine EFX family and perform lookup of the function control window
  *
  * The function requires PCI config handle from which all memory bars can
@@ -95,6 +123,7 @@ efx_family_probe_bar(
 	__in		uint16_t venid,
 	__in		uint16_t devid,
 	__in		efsys_pci_config_t *espcp,
+	__in		const efx_pci_ops_t *epop,
 	__out		efx_family_t *efp,
 	__out		efx_bar_region_t *ebrp);
 

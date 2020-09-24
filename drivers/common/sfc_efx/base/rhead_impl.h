@@ -461,6 +461,7 @@ LIBEFX_INTERNAL
 extern	__checkReturn			efx_rc_t
 rhead_pci_nic_membar_lookup(
 	__in				efsys_pci_config_t *espcp,
+	__in				const efx_pci_ops_t *epop,
 	__out				efx_bar_region_t *ebrp);
 
 #endif /* EFSYS_OPT_PCI */

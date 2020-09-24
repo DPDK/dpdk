@@ -110,6 +110,7 @@ efx_family_probe_bar(
 	__in		uint16_t venid,
 	__in		uint16_t devid,
 	__in		efsys_pci_config_t *espcp,
+	__in		const efx_pci_ops_t *epop,
 	__out		efx_family_t *efp,
 	__out		efx_bar_region_t *ebrp)
 {
@@ -121,7 +122,7 @@ efx_family_probe_bar(
 #if EFSYS_OPT_RIVERHEAD
 		case EFX_PCI_DEVID_RIVERHEAD:
 		case EFX_PCI_DEVID_RIVERHEAD_VF:
-			rc = rhead_pci_nic_membar_lookup(espcp, ebrp);
+			rc = rhead_pci_nic_membar_lookup(espcp, epop, ebrp);
 			if (rc == 0)
 				*efp = EFX_FAMILY_RIVERHEAD;
 
