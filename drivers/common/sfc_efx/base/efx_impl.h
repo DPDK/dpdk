@@ -871,6 +871,9 @@ struct efx_nic_s {
 	 (_enp)->en_family == EFX_FAMILY_MEDFORD || \
 	 (_enp)->en_family == EFX_FAMILY_HUNTINGTON)
 
+#define	EFX_FAMILY_IS_EF100(_enp) \
+	((_enp)->en_family == EFX_FAMILY_RIVERHEAD)
+
 
 #define	EFX_NIC_MAGIC	0x02121996
 

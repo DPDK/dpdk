@@ -85,6 +85,20 @@ efx_family(
 		}
 	}
 
+	if (venid == EFX_PCI_VENID_XILINX) {
+		switch (devid) {
+#if EFSYS_OPT_RIVERHEAD
+		case EFX_PCI_DEVID_RIVERHEAD:
+		case EFX_PCI_DEVID_RIVERHEAD_VF:
+			*efp = EFX_FAMILY_RIVERHEAD;
+			*membarp = EFX_MEM_BAR_RIVERHEAD;
+			return (0);
+#endif /* EFSYS_OPT_RIVERHEAD */
+		default:
+			break;
+		}
+	}
+
 	*efp = EFX_FAMILY_INVALID;
 	return (ENOTSUP);
 }
