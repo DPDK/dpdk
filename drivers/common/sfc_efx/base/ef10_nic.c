@@ -2098,8 +2098,6 @@ ef10_nic_probe(
 	}
 #endif
 
-	encp->enc_features = enp->en_features;
-
 	return (0);
 
 #if EFSYS_OPT_MON_STATS

@@ -318,6 +318,7 @@ efx_nic_probe(
 	__in		efx_nic_t *enp,
 	__in		efx_fw_variant_t efv)
 {
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	const efx_nic_ops_t *enop;
 	efx_rc_t rc;
 
@@ -350,6 +351,8 @@ efx_nic_probe(
 
 	if ((rc = enop->eno_probe(enp)) != 0)
 		goto fail1;
+
+	encp->enc_features = enp->en_features;
 
 	if ((rc = efx_phy_probe(enp)) != 0)
 		goto fail2;

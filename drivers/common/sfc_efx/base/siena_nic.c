@@ -301,7 +301,6 @@ siena_nic_probe(
 	__in		efx_nic_t *enp)
 {
 	efx_port_t *epp = &(enp->en_port);
-	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	siena_link_state_t sls;
 	unsigned int mask;
 	efx_oword_t oword;
@@ -368,8 +367,6 @@ siena_nic_probe(
 	if ((rc = mcdi_mon_cfg_build(enp)) != 0)
 		goto fail12;
 #endif
-
-	encp->enc_features = enp->en_features;
 
 	return (0);
 
