@@ -2901,7 +2901,7 @@ dpaa2_configure_flow_raw(struct rte_flow *flow,
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
 
-	if (prev_key_size < spec->length) {
+	if (prev_key_size <= spec->length) {
 		ret = dpaa2_flow_extract_add_raw(&priv->extract.qos_key_extract,
 						 spec->length);
 		if (ret) {
