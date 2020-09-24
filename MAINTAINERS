@@ -29,7 +29,7 @@ T: git://dpdk.org/dpdk
 
 Next-net Tree
 M: Ferruh Yigit <ferruh.yigit@intel.com>
-M: Andrew Rybchenko <arybchenko@solarflare.com>
+M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
 T: git://dpdk.org/next/dpdk-next-net
 
 Next-net-brcm Tree
@@ -333,7 +333,7 @@ T: git://dpdk.org/dpdk
 
 Memory pool
 M: Olivier Matz <olivier.matz@6wind.com>
-M: Andrew Rybchenko <arybchenko@solarflare.com>
+M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
 F: lib/librte_mempool/
 F: drivers/mempool/ring/
 F: doc/guides/prog_guide/mempool_lib.rst
@@ -365,7 +365,7 @@ F: app/test/test_mbuf.c
 Ethernet API
 M: Thomas Monjalon <thomas@monjalon.net>
 M: Ferruh Yigit <ferruh.yigit@intel.com>
-M: Andrew Rybchenko <arybchenko@solarflare.com>
+M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
 T: git://dpdk.org/next/dpdk-next-net
 F: lib/librte_ethdev/
 F: app/test/test_ethdev*
@@ -483,7 +483,7 @@ Memory Pool Drivers
 
 Bucket memory pool
 M: Artem V. Andreev <artem.andreev@oktetlabs.ru>
-M: Andrew Rybchenko <arybchenko@solarflare.com>
+M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
 F: drivers/mempool/bucket/
 
 Marvell OCTEON TX2
@@ -852,7 +852,7 @@ F: doc/guides/nics/qede.rst
 F: doc/guides/nics/features/qede*.ini
 
 Solarflare sfc_efx
-M: Andrew Rybchenko <arybchenko@solarflare.com>
+M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
 F: drivers/common/sfc_efx/
 F: drivers/net/sfc/
 F: doc/guides/nics/sfc_efx.rst
