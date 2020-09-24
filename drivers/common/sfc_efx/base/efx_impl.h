@@ -1558,6 +1558,67 @@ efx_mcdi_mac_stats(
 
 #endif	/* EFSYS_OPT_MAC_STATS */
 
+#if EFSYS_OPT_PCI
+
+/*
+ * Find the next extended capability in a PCI device's config space
+ * with specified capability id.
+ * Passing 0 offset makes the function search from the start.
+ * If search succeeds, found capability is in modified offset.
+ *
+ * Returns ENOENT if a capability is not found.
+ */
+LIBEFX_INTERNAL
+extern	__checkReturn			efx_rc_t
+efx_pci_config_find_next_ext_cap(
+	__in				efsys_pci_config_t *espcp,
+	__in				uint16_t cap_id,
+	__inout				size_t *offsetp);
+
+/*
+ * Get the next extended capability in a PCI device's config space.
+ * Passing 0 offset makes the function get the first capability.
+ * If search succeeds, the capability is in modified offset.
+ *
+ * Returns ENOENT if there is no next capability.
+ */
+LIBEFX_INTERNAL
+extern	__checkReturn			efx_rc_t
+efx_pci_config_next_ext_cap(
+	__in				efsys_pci_config_t *espcp,
+	__inout				size_t *offsetp);
+
+/*
+ * Find the next Xilinx capabilities table location by searching
+ * PCI extended capabilities.
+ *
+ * Returns ENOENT if a table location is not found.
+ */
+LIBEFX_INTERNAL
+extern	__checkReturn			efx_rc_t
+efx_pci_find_next_xilinx_cap_table(
+	__in				efsys_pci_config_t *espcp,
+	__inout				size_t *pci_cap_offsetp,
+	__out				unsigned int *xilinx_tbl_barp,
+	__out				efsys_dma_addr_t *xilinx_tbl_offsetp);
+
+/*
+ * Read a Xilinx extended PCI capability that gives the location
+ * of a Xilinx capabilities table.
+ *
+ * Returns ENOENT if the extended PCI capability does not contain
+ * Xilinx capabilities table locator.
+ */
+LIBEFX_INTERNAL
+extern	__checkReturn			efx_rc_t
+efx_pci_read_ext_cap_xilinx_table(
+	__in				efsys_pci_config_t *espcp,
+	__in				size_t cap_offset,
+	__out				unsigned int *barp,
+	__out				efsys_dma_addr_t *offsetp);
+
+#endif /* EFSYS_OPT_PCI */
+
 #ifdef	__cplusplus
 }
 #endif

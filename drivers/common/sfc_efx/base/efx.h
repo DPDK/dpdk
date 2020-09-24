@@ -59,6 +59,19 @@ typedef enum efx_family_e {
 	EFX_FAMILY_NTYPES
 } efx_family_t;
 
+typedef enum efx_bar_type_e {
+	EFX_BAR_TYPE_MEM,
+	EFX_BAR_TYPE_IO
+} efx_bar_type_t;
+
+typedef struct efx_bar_region_s {
+	efx_bar_type_t		ebr_type;
+	int			ebr_index;
+	efsys_dma_addr_t	ebr_offset;
+	efsys_dma_addr_t	ebr_length;
+} efx_bar_region_t;
+
+/* The function is deprecated. It is used only if Riverhead is not supported. */
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_family(
@@ -66,6 +79,26 @@ efx_family(
 	__in		uint16_t devid,
 	__out		efx_family_t *efp,
 	__out		unsigned int *membarp);
+
+#if EFSYS_OPT_PCI
+
+/* Determine EFX family and perform lookup of the function control window
+ *
+ * The function requires PCI config handle from which all memory bars can
+ * be accessed.
+ * A user of the API must be aware of memory bars indexes (not available
+ * on Windows).
+ */
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_family_probe_bar(
+	__in		uint16_t venid,
+	__in		uint16_t devid,
+	__in		efsys_pci_config_t *espcp,
+	__out		efx_family_t *efp,
+	__out		efx_bar_region_t *ebrp);
+
+#endif /* EFSYS_OPT_PCI */
 
 
 #define	EFX_PCI_VENID_SFC			0x1924

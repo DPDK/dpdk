@@ -378,4 +378,10 @@
 # endif
 #endif /* EFSYS_OPT_EVB */
 
+#if EFSYS_OPT_PCI
+# if !EFSYS_OPT_RIVERHEAD
+#  error "PCI requires RIVERHEAD"
+# endif
+#endif /* EFSYS_OPT_PCI */
+
 #endif /* _SYS_EFX_CHECK_H */

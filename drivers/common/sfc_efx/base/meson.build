@@ -19,6 +19,7 @@ sources = [
 	'efx_mon.c',
 	'efx_nic.c',
 	'efx_nvram.c',
+	'efx_pci.c',
 	'efx_phy.c',
 	'efx_port.c',
 	'efx_proxy.c',
@@ -55,6 +56,7 @@ sources = [
 	'rhead_ev.c',
 	'rhead_intr.c',
 	'rhead_nic.c',
+	'rhead_pci.c',
 	'rhead_rx.c',
 	'rhead_tx.c',
 ]

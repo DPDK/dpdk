@@ -103,6 +103,47 @@ efx_family(
 	return (ENOTSUP);
 }
 
+#if EFSYS_OPT_PCI
+
+	__checkReturn	efx_rc_t
+efx_family_probe_bar(
+	__in		uint16_t venid,
+	__in		uint16_t devid,
+	__in		efsys_pci_config_t *espcp,
+	__out		efx_family_t *efp,
+	__out		efx_bar_region_t *ebrp)
+{
+	efx_rc_t rc;
+	unsigned int membar;
+
+	if (venid == EFX_PCI_VENID_XILINX) {
+		switch (devid) {
+#if EFSYS_OPT_RIVERHEAD
+		case EFX_PCI_DEVID_RIVERHEAD:
+		case EFX_PCI_DEVID_RIVERHEAD_VF:
+			rc = rhead_pci_nic_membar_lookup(espcp, ebrp);
+			if (rc == 0)
+				*efp = EFX_FAMILY_RIVERHEAD;
+
+			return (rc);
+#endif /* EFSYS_OPT_RIVERHEAD */
+		default:
+			break;
+		}
+	}
+
+	rc = efx_family(venid, devid, efp, &membar);
+	if (rc == 0) {
+		ebrp->ebr_type = EFX_BAR_TYPE_MEM;
+		ebrp->ebr_index = membar;
+		ebrp->ebr_offset = 0;
+		ebrp->ebr_length = 0;
+	}
+
+	return (rc);
+}
+
+#endif /* EFSYS_OPT_PCI */
 
 #if EFSYS_OPT_SIENA
 

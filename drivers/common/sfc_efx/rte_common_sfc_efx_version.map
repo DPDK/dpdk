@@ -19,6 +19,7 @@ INTERNAL {
 	efx_evq_size;
 
 	efx_family;
+	efx_family_probe_bar;
 
 	efx_filter_fini;
 	efx_filter_init;
