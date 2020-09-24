@@ -391,4 +391,14 @@
 # endif
 #endif /* EFSYS_OPT_EV_EXTENDED_WIDTH */
 
+/* Support descriptor proxy queues */
+#if EFSYS_OPT_DESC_PROXY
+# if !EFSYS_OPT_RIVERHEAD
+#  error "DESC_PROXY requires RIVERHEAD"
+# endif
+# if !EFSYS_OPT_EV_EXTENDED_WIDTH
+#  error "DESC_PROXY requires EV_EXTENDED_WIDTH"
+# endif
+#endif /* EFSYS_OPT_DESC_PROXY */
+
 #endif /* _SYS_EFX_CHECK_H */
