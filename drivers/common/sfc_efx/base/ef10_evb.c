@@ -9,13 +9,13 @@
 
 #if EFSYS_OPT_EVB
 
-#if EFX_OPTS_EF10()
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 
 	__checkReturn	efx_rc_t
 ef10_evb_init(
 	__in		efx_nic_t *enp)
 {
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 
 	return (0);
 }
@@ -24,7 +24,7 @@ ef10_evb_init(
 ef10_evb_fini(
 	__in		efx_nic_t *enp)
 {
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 }
 
 static	__checkReturn	efx_rc_t
@@ -545,5 +545,5 @@ ef10_evb_vport_stats(
 			EFX_STATS_UPLOAD, 0));
 }
 
-#endif /* EFX_OPTS_EF10() */
+#endif /* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
 #endif /* EFSYS_OPT_EVB */

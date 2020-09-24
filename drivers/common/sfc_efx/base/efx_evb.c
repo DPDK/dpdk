@@ -46,6 +46,24 @@ static const efx_evb_ops_t	__efx_evb_ef10_ops = {
 };
 #endif /* EFX_OPTS_EF10() */
 
+#if EFSYS_OPT_RIVERHEAD
+static const efx_evb_ops_t	__efx_evb_rhead_ops = {
+	ef10_evb_init,			/* eeo_init */
+	ef10_evb_fini,			/* eeo_fini */
+	ef10_evb_vswitch_alloc,		/* eeo_vswitch_alloc */
+	ef10_evb_vswitch_free,		/* eeo_vswitch_free */
+	ef10_evb_vport_alloc,		/* eeo_vport_alloc */
+	ef10_evb_vport_free,		/* eeo_vport_free */
+	ef10_evb_vport_mac_addr_add,	/* eeo_vport_mac_addr_add */
+	ef10_evb_vport_mac_addr_del,	/* eeo_vport_mac_addr_del */
+	ef10_evb_vadaptor_alloc,	/* eeo_vadaptor_alloc */
+	ef10_evb_vadaptor_free,		/* eeo_vadaptor_free */
+	ef10_evb_vport_assign,		/* eeo_vport_assign */
+	ef10_evb_vport_reconfigure,	/* eeo_vport_reconfigure */
+	ef10_evb_vport_stats,		/* eeo_vport_stats */
+};
+#endif /* EFSYS_OPT_RIVERHEAD */
+
 	__checkReturn	efx_rc_t
 efx_evb_init(
 	__in		efx_nic_t *enp)
@@ -82,6 +100,12 @@ efx_evb_init(
 		eeop = &__efx_evb_ef10_ops;
 		break;
 #endif /* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		eeop = &__efx_evb_rhead_ops;
+		break;
+#endif /* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		EFSYS_ASSERT(0);

@@ -373,8 +373,8 @@
 
 #if EFSYS_OPT_EVB
 /* Support enterprise virtual bridging */
-# if !(EFX_OPTS_EF10())
-#  error "EVB requires EF10 arch"
+# if !(EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10())
+#  error "EVB requires RIVERHEAD or EF10 arch"
 # endif
 #endif /* EFSYS_OPT_EVB */
 
