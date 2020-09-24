@@ -33,11 +33,26 @@ rhead_board_cfg(
 	encp->enc_tx_dma_desc_boundary = 0;
 
 	/*
-	 * Maximum number of bytes into the frame the TCP header can start for
-	 * firmware assisted TSO to work.
-	 * FIXME Get from design parameter DP_TSO_MAX_HDR_LEN.
+	 * Initialise design parameters to either a runtime value read from
+	 * the design parameters area or the well known default value
+	 * (see SF-119689-TC section 4.4 for details).
+	 * FIXME: Read design parameters area values.
 	 */
-	encp->enc_tx_tso_tcp_header_offset_limit = 0;
+	encp->enc_tx_tso_max_header_ndescs =
+	    ESE_EF100_DP_GZ_TSO_MAX_HDR_NUM_SEGS_DEFAULT;
+	encp->enc_tx_tso_max_header_length =
+	    ESE_EF100_DP_GZ_TSO_MAX_HDR_LEN_DEFAULT;
+	encp->enc_tx_tso_max_payload_ndescs =
+	    ESE_EF100_DP_GZ_TSO_MAX_PAYLOAD_NUM_SEGS_DEFAULT;
+	encp->enc_tx_tso_max_payload_length =
+	    ESE_EF100_DP_GZ_TSO_MAX_PAYLOAD_LEN_DEFAULT;
+	encp->enc_tx_tso_max_nframes =
+	    ESE_EF100_DP_GZ_TSO_MAX_NUM_FRAMES_DEFAULT;
+
+	/*
+	 * Riverhead does not put any restrictions on TCP header offset limit.
+	 */
+	encp->enc_tx_tso_tcp_header_offset_limit = UINT32_MAX;
 
 	/*
 	 * Set resource limits for MC_CMD_ALLOC_VIS. Note that we cannot use

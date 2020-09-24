@@ -1466,6 +1466,16 @@ typedef struct efx_nic_cfg_s {
 	 * the hardware to apply TSO packet edits.
 	 */
 	uint32_t		enc_tx_tso_tcp_header_offset_limit;
+	/* Maximum number of header DMA descriptors per TSO transaction. */
+	uint32_t		enc_tx_tso_max_header_ndescs;
+	/* Maximum header length acceptable by TSO transaction. */
+	uint32_t		enc_tx_tso_max_header_length;
+	/* Maximum number of payload DMA descriptors per TSO transaction. */
+	uint32_t		enc_tx_tso_max_payload_ndescs;
+	/* Maximum payload length per TSO transaction. */
+	uint32_t		enc_tx_tso_max_payload_length;
+	/* Maximum number of frames to be generated per TSO transaction. */
+	uint32_t		enc_tx_tso_max_nframes;
 	boolean_t		enc_fw_assisted_tso_enabled;
 	boolean_t		enc_fw_assisted_tso_v2_enabled;
 	boolean_t		enc_fw_assisted_tso_v2_encap_enabled;
