@@ -142,6 +142,7 @@ prefetch_read_once(const volatile void *addr)
 #define EFSYS_OPT_FILTER 1
 #define EFSYS_OPT_RX_SCATTER 0
 
+#define EFSYS_OPT_EV_EXTENDED_WIDTH 0
 #define EFSYS_OPT_EV_PREFETCH 0
 
 #define EFSYS_OPT_DECODE_INTR_FATAL 0

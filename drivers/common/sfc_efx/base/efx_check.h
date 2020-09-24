@@ -384,4 +384,11 @@
 # endif
 #endif /* EFSYS_OPT_PCI */
 
+/* Support extended width event queues */
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+# if !EFSYS_OPT_RIVERHEAD
+#  error "EV_EXTENDED_WIDTH requires RIVERHEAD"
+# endif
+#endif /* EFSYS_OPT_EV_EXTENDED_WIDTH */
+
 #endif /* _SYS_EFX_CHECK_H */
