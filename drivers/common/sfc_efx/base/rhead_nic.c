@@ -518,4 +518,54 @@ fail1:
 
 #endif	/* EFSYS_OPT_DIAG */
 
+	__checkReturn			efx_rc_t
+rhead_nic_xilinx_cap_tbl_read_ef100_locator(
+	__in				efsys_bar_t *esbp,
+	__in				efsys_dma_addr_t offset,
+	__out				efx_bar_region_t *ebrp)
+{
+	efx_oword_t entry;
+	uint32_t rev;
+	uint32_t len;
+	efx_rc_t rc;
+
+	/*
+	 * Xilinx Capabilities Table requires 32bit aligned reads.
+	 * See SF-119689-TC section 4.2.2 "Discovery Steps".
+	 */
+	EFSYS_BAR_READD(esbp, offset +
+			(EFX_LOW_BIT(ESF_GZ_CFGBAR_ENTRY_FORMAT) / 8),
+			&entry.eo_dword[0], B_FALSE);
+	EFSYS_BAR_READD(esbp, offset +
+			(EFX_LOW_BIT(ESF_GZ_CFGBAR_ENTRY_SIZE) / 8),
+			&entry.eo_dword[1], B_FALSE);
+
+	rev = EFX_OWORD_FIELD32(entry, ESF_GZ_CFGBAR_ENTRY_REV);
+	len = EFX_OWORD_FIELD32(entry, ESF_GZ_CFGBAR_ENTRY_SIZE);
+
+	if (rev != ESE_GZ_CFGBAR_ENTRY_REV_EF100 ||
+	    len < ESE_GZ_CFGBAR_ENTRY_SIZE_EF100) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	EFSYS_BAR_READD(esbp, offset +
+			(EFX_LOW_BIT(ESF_GZ_CFGBAR_EF100_BAR) / 8),
+			&entry.eo_dword[2], B_FALSE);
+
+	ebrp->ebr_index = EFX_OWORD_FIELD32(entry, ESF_GZ_CFGBAR_EF100_BAR);
+	ebrp->ebr_offset = EFX_OWORD_FIELD32(entry,
+			ESF_GZ_CFGBAR_EF100_FUNC_CTL_WIN_OFF) <<
+			ESE_GZ_EF100_FUNC_CTL_WIN_OFF_SHIFT;
+	ebrp->ebr_type = EFX_BAR_TYPE_MEM;
+	ebrp->ebr_length = 0;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 #endif	/* EFSYS_OPT_RIVERHEAD */

@@ -9,6 +9,41 @@
 
 #if EFSYS_OPT_RIVERHEAD && EFSYS_OPT_PCI
 
+/*
+ * Search for a EF100 resource locator from the given offset of an entry
+ * in a Xilinx capabilities table.
+ */
+static	__checkReturn			efx_rc_t
+rhead_xilinx_cap_tbl_find_ef100_locator(
+	__in				efsys_bar_t *esbp,
+	__in				efsys_dma_addr_t tbl_offset,
+	__out				efx_bar_region_t *ef100_ebrp)
+{
+	efx_rc_t rc;
+	efsys_dma_addr_t entry_offset = tbl_offset;
+
+	rc = efx_pci_xilinx_cap_tbl_find(esbp, ESE_GZ_CFGBAR_ENTRY_EF100,
+					   B_FALSE, &entry_offset);
+	if (rc != 0) {
+		/* EF100 locator not found (ENOENT) or other error */
+		goto fail1;
+	}
+
+	rc = rhead_nic_xilinx_cap_tbl_read_ef100_locator(esbp, entry_offset,
+							 ef100_ebrp);
+	if (rc != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 	__checkReturn			efx_rc_t
 rhead_pci_nic_membar_lookup(
 	__in				efsys_pci_config_t *espcp,
@@ -55,13 +90,27 @@ rhead_pci_nic_membar_lookup(
 		EFSYS_PCI_FIND_MEM_BAR(espcp, xilinx_tbl_bar, &xil_eb, &rc);
 		if (rc != 0)
 			goto fail2;
+
+		rc = rhead_xilinx_cap_tbl_find_ef100_locator(&xil_eb,
+							     xilinx_tbl_offset,
+							     ebrp);
+		if (rc == 0) {
+			/* Found valid EF100 locator. */
+			bar_found = B_TRUE;
+			break;
+		} else if (rc != ENOENT) {
+			/* Table access failed, so terminate search. */
+			goto fail3;
+		}
 	}
 
 	if (bar_found == B_FALSE)
-		goto fail3;
+		goto fail4;
 
 	return (0);
 
+fail4:
+	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:

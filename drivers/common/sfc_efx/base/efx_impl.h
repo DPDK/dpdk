@@ -1617,6 +1617,21 @@ efx_pci_read_ext_cap_xilinx_table(
 	__out				unsigned int *barp,
 	__out				efsys_dma_addr_t *offsetp);
 
+/*
+ * Find a capability with specified format_id in a Xilinx capabilities table.
+ * Searching is started from provided offset, taking skip_first into account.
+ * If search succeeds, found capability is in modified offset.
+ *
+ * Returns ENOENT if an entry with specified format id is not found.
+ */
+LIBEFX_INTERNAL
+extern	__checkReturn			efx_rc_t
+efx_pci_xilinx_cap_tbl_find(
+	__in				efsys_bar_t *esbp,
+	__in				uint32_t format_id,
+	__in				boolean_t skip_first,
+	__inout				efsys_dma_addr_t *entry_offsetp);
+
 #endif /* EFSYS_OPT_PCI */
 
 #ifdef	__cplusplus

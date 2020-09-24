@@ -299,4 +299,65 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn			efx_rc_t
+efx_pci_xilinx_cap_tbl_find(
+	__in				efsys_bar_t *esbp,
+	__in				uint32_t format_id,
+	__in				boolean_t skip_first,
+	__inout				efsys_dma_addr_t *entry_offsetp)
+{
+	efsys_dma_addr_t offset = *entry_offsetp;
+	boolean_t skip = skip_first;
+	efx_qword_t header;
+	uint32_t format;
+	uint32_t last;
+	efx_rc_t rc;
+
+	if (entry_offsetp == NULL) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	rc = ENOENT;
+	/*
+	 * SF-119689-TC Riverhead Host Interface section 4.2.2.
+	 * describes the following discovery steps.
+	 */
+	do {
+		/*
+		 * Xilinx Capabilities Table requires 32bit aligned reads.
+		 * See SF-119689-TC section 4.2.2 "Discovery Steps".
+		 */
+		EFSYS_BAR_READD(esbp, offset +
+				(EFX_LOW_BIT(ESF_GZ_CFGBAR_ENTRY_FORMAT) / 8),
+				&header.eq_dword[0], B_FALSE);
+		EFSYS_BAR_READD(esbp, offset +
+				(EFX_LOW_BIT(ESF_GZ_CFGBAR_ENTRY_SIZE) / 8),
+				&header.eq_dword[1], B_FALSE);
+
+		format = EFX_QWORD_FIELD32(header, ESF_GZ_CFGBAR_ENTRY_FORMAT);
+		last = EFX_QWORD_FIELD32(header, ESF_GZ_CFGBAR_ENTRY_LAST);
+
+		if (skip == B_FALSE && format == format_id) {
+			*entry_offsetp = offset;
+			rc = 0;
+			break;
+		}
+
+		offset += EFX_QWORD_FIELD32(header, ESF_GZ_CFGBAR_ENTRY_SIZE);
+		skip = B_FALSE;
+	} while (last == B_FALSE);
+
+	/*
+	 * Returns 0 if found otherwise ENOENT indicating that
+	 * search finished correctly.
+	 */
+	return (rc);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 #endif /* EFSYS_OPT_PCI */
