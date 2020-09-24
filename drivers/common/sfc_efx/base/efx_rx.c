@@ -819,6 +819,8 @@ efx_rx_qcreate_internal(
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_RX);
 
+	EFSYS_ASSERT3U(enp->en_rx_qcount + 1, <, encp->enc_rxq_limit);
+
 	EFSYS_ASSERT(ISP2(encp->enc_rxq_max_ndescs));
 	EFSYS_ASSERT(ISP2(encp->enc_rxq_min_ndescs));
 
@@ -974,6 +976,9 @@ efx_rx_qdestroy(
 	const efx_rx_ops_t *erxop = enp->en_erxop;
 
 	EFSYS_ASSERT3U(erp->er_magic, ==, EFX_RXQ_MAGIC);
+
+	EFSYS_ASSERT(enp->en_rx_qcount != 0);
+	--enp->en_rx_qcount;
 
 	erxop->erxo_qdestroy(erp);
 }
@@ -1626,7 +1631,6 @@ siena_rx_qcreate(
 	EFX_STATIC_ASSERT(EFX_EV_RX_NLABELS ==
 	    (1 << FRF_AZ_RX_DESCQ_LABEL_WIDTH));
 	EFSYS_ASSERT3U(label, <, EFX_EV_RX_NLABELS);
-	EFSYS_ASSERT3U(enp->en_rx_qcount + 1, <, encp->enc_rxq_limit);
 
 	if (index >= encp->enc_rxq_limit) {
 		rc = EINVAL;
@@ -1696,9 +1700,6 @@ siena_rx_qdestroy(
 {
 	efx_nic_t *enp = erp->er_enp;
 	efx_oword_t oword;
-
-	EFSYS_ASSERT(enp->en_rx_qcount != 0);
-	--enp->en_rx_qcount;
 
 	/* Purge descriptor queue */
 	EFX_ZERO_OWORD(oword);

@@ -844,7 +844,6 @@ ef10_rx_qcreate(
 
 	EFX_STATIC_ASSERT(EFX_EV_RX_NLABELS == (1 << ESF_DZ_RX_QLABEL_WIDTH));
 	EFSYS_ASSERT3U(label, <, EFX_EV_RX_NLABELS);
-	EFSYS_ASSERT3U(enp->en_rx_qcount + 1, <, encp->enc_rxq_limit);
 
 	if (index >= encp->enc_rxq_limit) {
 		rc = EINVAL;
@@ -1021,9 +1020,6 @@ ef10_rx_qdestroy(
 	unsigned int label = erp->er_label;
 
 	ef10_ev_rxlabel_fini(eep, label);
-
-	EFSYS_ASSERT(enp->en_rx_qcount != 0);
-	--enp->en_rx_qcount;
 
 	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_rxq_t), erp);
 }
