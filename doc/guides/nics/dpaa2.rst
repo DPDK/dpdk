@@ -538,6 +538,19 @@ For blacklisting a DPAA2 device, following commands can be used.
 
 Where x is the device object id as configured in resource container.
 
+Running secondary debug app without blacklist
+---------------------------------------------
+
+dpaa2 hardware imposes limits on some H/W access devices like Management
+Control Port and H/W portal. This causes issue in their shared usages in
+case of multi-process applications. It can overcome by using
+whitelist/blacklist in primary and secondary applications.
+
+In order to ease usage of standard debugging apps like dpdk-procinfo, dpaa2
+driver reserves extra Management Control Port and H/W portal which can be
+used by debug application to debug any existing application without
+blacklisting these devices in primary process.
+
 Limitations
 -----------
 
