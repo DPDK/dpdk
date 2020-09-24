@@ -66,6 +66,17 @@ siena_ev_qstats_update(
 
 #endif /* EFSYS_OPT_SIENA */
 
+#if EFX_OPTS_EF10() || EFSYS_OPT_SIENA
+
+static			void
+siena_ef10_ev_qpoll(
+	__in		efx_evq_t *eep,
+	__inout		unsigned int *countp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+
+#endif	/* EFX_OPTS_EF10() || EFSYS_OPT_SIENA */
+
 #if EFSYS_OPT_SIENA
 static const efx_ev_ops_t	__efx_ev_siena_ops = {
 	siena_ev_init,				/* eevo_init */
@@ -74,6 +85,7 @@ static const efx_ev_ops_t	__efx_ev_siena_ops = {
 	siena_ev_qdestroy,			/* eevo_qdestroy */
 	siena_ev_qprime,			/* eevo_qprime */
 	siena_ev_qpost,				/* eevo_qpost */
+	siena_ef10_ev_qpoll,			/* eevo_qpoll */
 	siena_ev_qmoderate,			/* eevo_qmoderate */
 #if EFSYS_OPT_QSTATS
 	siena_ev_qstats_update,			/* eevo_qstats_update */
@@ -89,6 +101,7 @@ static const efx_ev_ops_t	__efx_ev_ef10_ops = {
 	ef10_ev_qdestroy,			/* eevo_qdestroy */
 	ef10_ev_qprime,				/* eevo_qprime */
 	ef10_ev_qpost,				/* eevo_qpost */
+	siena_ef10_ev_qpoll,			/* eevo_qpoll */
 	ef10_ev_qmoderate,			/* eevo_qmoderate */
 #if EFSYS_OPT_QSTATS
 	ef10_ev_qstats_update,			/* eevo_qstats_update */
@@ -374,8 +387,6 @@ efx_ev_qprefetch(
 
 #endif	/* EFSYS_OPT_EV_PREFETCH */
 
-#define	EFX_EV_BATCH	8
-
 			void
 efx_ev_qpoll(
 	__in		efx_evq_t *eep,
@@ -383,153 +394,15 @@ efx_ev_qpoll(
 	__in		const efx_ev_callbacks_t *eecp,
 	__in_opt	void *arg)
 {
-	efx_qword_t ev[EFX_EV_BATCH];
-	unsigned int batch;
-	unsigned int total;
-	unsigned int count;
-	unsigned int index;
-	size_t offset;
-
-	/* Ensure events codes match for EF10 (Huntington/Medford) and Siena */
-	EFX_STATIC_ASSERT(ESF_DZ_EV_CODE_LBN == FSF_AZ_EV_CODE_LBN);
-	EFX_STATIC_ASSERT(ESF_DZ_EV_CODE_WIDTH == FSF_AZ_EV_CODE_WIDTH);
-
-	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_RX_EV == FSE_AZ_EV_CODE_RX_EV);
-	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_TX_EV == FSE_AZ_EV_CODE_TX_EV);
-	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_DRIVER_EV == FSE_AZ_EV_CODE_DRIVER_EV);
-	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_DRV_GEN_EV ==
-	    FSE_AZ_EV_CODE_DRV_GEN_EV);
-#if EFSYS_OPT_MCDI
-	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_MCDI_EV ==
-	    FSE_AZ_EV_CODE_MCDI_EVRESPONSE);
-#endif
+	efx_nic_t *enp = eep->ee_enp;
+	const efx_ev_ops_t *eevop = enp->en_eevop;
 
 	EFSYS_ASSERT3U(eep->ee_magic, ==, EFX_EVQ_MAGIC);
-	EFSYS_ASSERT(countp != NULL);
-	EFSYS_ASSERT(eecp != NULL);
 
-	count = *countp;
-	do {
-		/* Read up until the end of the batch period */
-		batch = EFX_EV_BATCH - (count & (EFX_EV_BATCH - 1));
-		offset = (count & eep->ee_mask) * sizeof (efx_qword_t);
-		for (total = 0; total < batch; ++total) {
-			EFSYS_MEM_READQ(eep->ee_esmp, offset, &(ev[total]));
+	EFSYS_ASSERT(eevop != NULL &&
+	    eevop->eevo_qpoll != NULL);
 
-			if (!EFX_EV_PRESENT(ev[total]))
-				break;
-
-			EFSYS_PROBE3(event, unsigned int, eep->ee_index,
-			    uint32_t, EFX_QWORD_FIELD(ev[total], EFX_DWORD_1),
-			    uint32_t, EFX_QWORD_FIELD(ev[total], EFX_DWORD_0));
-
-			offset += sizeof (efx_qword_t);
-		}
-
-#if EFSYS_OPT_EV_PREFETCH && (EFSYS_OPT_EV_PREFETCH_PERIOD > 1)
-		/*
-		 * Prefetch the next batch when we get within PREFETCH_PERIOD
-		 * of a completed batch. If the batch is smaller, then prefetch
-		 * immediately.
-		 */
-		if (total == batch && total < EFSYS_OPT_EV_PREFETCH_PERIOD)
-			EFSYS_MEM_PREFETCH(eep->ee_esmp, offset);
-#endif	/* EFSYS_OPT_EV_PREFETCH */
-
-		/* Process the batch of events */
-		for (index = 0; index < total; ++index) {
-			boolean_t should_abort;
-			uint32_t code;
-
-#if EFSYS_OPT_EV_PREFETCH
-			/* Prefetch if we've now reached the batch period */
-			if (total == batch &&
-			    index + EFSYS_OPT_EV_PREFETCH_PERIOD == total) {
-				offset = (count + batch) & eep->ee_mask;
-				offset *= sizeof (efx_qword_t);
-
-				EFSYS_MEM_PREFETCH(eep->ee_esmp, offset);
-			}
-#endif	/* EFSYS_OPT_EV_PREFETCH */
-
-			EFX_EV_QSTAT_INCR(eep, EV_ALL);
-
-			code = EFX_QWORD_FIELD(ev[index], FSF_AZ_EV_CODE);
-			switch (code) {
-			case FSE_AZ_EV_CODE_RX_EV:
-				should_abort = eep->ee_rx(eep,
-				    &(ev[index]), eecp, arg);
-				break;
-			case FSE_AZ_EV_CODE_TX_EV:
-				should_abort = eep->ee_tx(eep,
-				    &(ev[index]), eecp, arg);
-				break;
-			case FSE_AZ_EV_CODE_DRIVER_EV:
-				should_abort = eep->ee_driver(eep,
-				    &(ev[index]), eecp, arg);
-				break;
-			case FSE_AZ_EV_CODE_DRV_GEN_EV:
-				should_abort = eep->ee_drv_gen(eep,
-				    &(ev[index]), eecp, arg);
-				break;
-#if EFSYS_OPT_MCDI
-			case FSE_AZ_EV_CODE_MCDI_EVRESPONSE:
-				should_abort = eep->ee_mcdi(eep,
-				    &(ev[index]), eecp, arg);
-				break;
-#endif
-			case FSE_AZ_EV_CODE_GLOBAL_EV:
-				if (eep->ee_global) {
-					should_abort = eep->ee_global(eep,
-					    &(ev[index]), eecp, arg);
-					break;
-				}
-				/* else fallthrough */
-			default:
-				EFSYS_PROBE3(bad_event,
-				    unsigned int, eep->ee_index,
-				    uint32_t,
-				    EFX_QWORD_FIELD(ev[index], EFX_DWORD_1),
-				    uint32_t,
-				    EFX_QWORD_FIELD(ev[index], EFX_DWORD_0));
-
-				EFSYS_ASSERT(eecp->eec_exception != NULL);
-				(void) eecp->eec_exception(arg,
-					EFX_EXCEPTION_EV_ERROR, code);
-				should_abort = B_TRUE;
-			}
-			if (should_abort) {
-				/* Ignore subsequent events */
-				total = index + 1;
-
-				/*
-				 * Poison batch to ensure the outer
-				 * loop is broken out of.
-				 */
-				EFSYS_ASSERT(batch <= EFX_EV_BATCH);
-				batch += (EFX_EV_BATCH << 1);
-				EFSYS_ASSERT(total != batch);
-				break;
-			}
-		}
-
-		/*
-		 * Now that the hardware has most likely moved onto dma'ing
-		 * into the next cache line, clear the processed events. Take
-		 * care to only clear out events that we've processed
-		 */
-		EFX_SET_QWORD(ev[0]);
-		offset = (count & eep->ee_mask) * sizeof (efx_qword_t);
-		for (index = 0; index < total; ++index) {
-			EFSYS_MEM_WRITEQ(eep->ee_esmp, offset, &(ev[0]));
-			offset += sizeof (efx_qword_t);
-		}
-
-		count += total;
-
-	} while (total == batch);
-
-	*countp = count;
+	eevop->eevo_qpoll(eep, countp, eecp, arg);
 }
 
 			void
@@ -1484,3 +1357,165 @@ siena_ev_fini(
 }
 
 #endif /* EFSYS_OPT_SIENA */
+
+#if EFX_OPTS_EF10() || EFSYS_OPT_SIENA
+
+#define	EFX_EV_BATCH	8
+
+static			void
+siena_ef10_ev_qpoll(
+	__in		efx_evq_t *eep,
+	__inout		unsigned int *countp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	efx_qword_t ev[EFX_EV_BATCH];
+	unsigned int batch;
+	unsigned int total;
+	unsigned int count;
+	unsigned int index;
+	size_t offset;
+
+	/* Ensure events codes match for EF10 (Huntington/Medford) and Siena */
+	EFX_STATIC_ASSERT(ESF_DZ_EV_CODE_LBN == FSF_AZ_EV_CODE_LBN);
+	EFX_STATIC_ASSERT(ESF_DZ_EV_CODE_WIDTH == FSF_AZ_EV_CODE_WIDTH);
+
+	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_RX_EV == FSE_AZ_EV_CODE_RX_EV);
+	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_TX_EV == FSE_AZ_EV_CODE_TX_EV);
+	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_DRIVER_EV == FSE_AZ_EV_CODE_DRIVER_EV);
+	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_DRV_GEN_EV ==
+	    FSE_AZ_EV_CODE_DRV_GEN_EV);
+#if EFSYS_OPT_MCDI
+	EFX_STATIC_ASSERT(ESE_DZ_EV_CODE_MCDI_EV ==
+	    FSE_AZ_EV_CODE_MCDI_EVRESPONSE);
+#endif
+
+	EFSYS_ASSERT3U(eep->ee_magic, ==, EFX_EVQ_MAGIC);
+	EFSYS_ASSERT(countp != NULL);
+	EFSYS_ASSERT(eecp != NULL);
+
+	count = *countp;
+	do {
+		/* Read up until the end of the batch period */
+		batch = EFX_EV_BATCH - (count & (EFX_EV_BATCH - 1));
+		offset = (count & eep->ee_mask) * sizeof (efx_qword_t);
+		for (total = 0; total < batch; ++total) {
+			EFSYS_MEM_READQ(eep->ee_esmp, offset, &(ev[total]));
+
+			if (!EFX_EV_PRESENT(ev[total]))
+				break;
+
+			EFSYS_PROBE3(event, unsigned int, eep->ee_index,
+			    uint32_t, EFX_QWORD_FIELD(ev[total], EFX_DWORD_1),
+			    uint32_t, EFX_QWORD_FIELD(ev[total], EFX_DWORD_0));
+
+			offset += sizeof (efx_qword_t);
+		}
+
+#if EFSYS_OPT_EV_PREFETCH && (EFSYS_OPT_EV_PREFETCH_PERIOD > 1)
+		/*
+		 * Prefetch the next batch when we get within PREFETCH_PERIOD
+		 * of a completed batch. If the batch is smaller, then prefetch
+		 * immediately.
+		 */
+		if (total == batch && total < EFSYS_OPT_EV_PREFETCH_PERIOD)
+			EFSYS_MEM_PREFETCH(eep->ee_esmp, offset);
+#endif	/* EFSYS_OPT_EV_PREFETCH */
+
+		/* Process the batch of events */
+		for (index = 0; index < total; ++index) {
+			boolean_t should_abort;
+			uint32_t code;
+
+#if EFSYS_OPT_EV_PREFETCH
+			/* Prefetch if we've now reached the batch period */
+			if (total == batch &&
+			    index + EFSYS_OPT_EV_PREFETCH_PERIOD == total) {
+				offset = (count + batch) & eep->ee_mask;
+				offset *= sizeof (efx_qword_t);
+
+				EFSYS_MEM_PREFETCH(eep->ee_esmp, offset);
+			}
+#endif	/* EFSYS_OPT_EV_PREFETCH */
+
+			EFX_EV_QSTAT_INCR(eep, EV_ALL);
+
+			code = EFX_QWORD_FIELD(ev[index], FSF_AZ_EV_CODE);
+			switch (code) {
+			case FSE_AZ_EV_CODE_RX_EV:
+				should_abort = eep->ee_rx(eep,
+				    &(ev[index]), eecp, arg);
+				break;
+			case FSE_AZ_EV_CODE_TX_EV:
+				should_abort = eep->ee_tx(eep,
+				    &(ev[index]), eecp, arg);
+				break;
+			case FSE_AZ_EV_CODE_DRIVER_EV:
+				should_abort = eep->ee_driver(eep,
+				    &(ev[index]), eecp, arg);
+				break;
+			case FSE_AZ_EV_CODE_DRV_GEN_EV:
+				should_abort = eep->ee_drv_gen(eep,
+				    &(ev[index]), eecp, arg);
+				break;
+#if EFSYS_OPT_MCDI
+			case FSE_AZ_EV_CODE_MCDI_EVRESPONSE:
+				should_abort = eep->ee_mcdi(eep,
+				    &(ev[index]), eecp, arg);
+				break;
+#endif
+			case FSE_AZ_EV_CODE_GLOBAL_EV:
+				if (eep->ee_global) {
+					should_abort = eep->ee_global(eep,
+					    &(ev[index]), eecp, arg);
+					break;
+				}
+				/* else fallthrough */
+			default:
+				EFSYS_PROBE3(bad_event,
+				    unsigned int, eep->ee_index,
+				    uint32_t,
+				    EFX_QWORD_FIELD(ev[index], EFX_DWORD_1),
+				    uint32_t,
+				    EFX_QWORD_FIELD(ev[index], EFX_DWORD_0));
+
+				EFSYS_ASSERT(eecp->eec_exception != NULL);
+				(void) eecp->eec_exception(arg,
+					EFX_EXCEPTION_EV_ERROR, code);
+				should_abort = B_TRUE;
+			}
+			if (should_abort) {
+				/* Ignore subsequent events */
+				total = index + 1;
+
+				/*
+				 * Poison batch to ensure the outer
+				 * loop is broken out of.
+				 */
+				EFSYS_ASSERT(batch <= EFX_EV_BATCH);
+				batch += (EFX_EV_BATCH << 1);
+				EFSYS_ASSERT(total != batch);
+				break;
+			}
+		}
+
+		/*
+		 * Now that the hardware has most likely moved onto dma'ing
+		 * into the next cache line, clear the processed events. Take
+		 * care to only clear out events that we've processed
+		 */
+		EFX_SET_QWORD(ev[0]);
+		offset = (count & eep->ee_mask) * sizeof (efx_qword_t);
+		for (index = 0; index < total; ++index) {
+			EFSYS_MEM_WRITEQ(eep->ee_esmp, offset, &(ev[0]));
+			offset += sizeof (efx_qword_t);
+		}
+
+		count += total;
+
+	} while (total == batch);
+
+	*countp = count;
+}
+
+#endif	/* EFX_OPTS_EF10() || EFSYS_OPT_SIENA */

@@ -85,6 +85,8 @@ typedef struct efx_ev_ops_s {
 	void		(*eevo_qdestroy)(efx_evq_t *);
 	efx_rc_t	(*eevo_qprime)(efx_evq_t *, unsigned int);
 	void		(*eevo_qpost)(efx_evq_t *, uint16_t);
+	void		(*eevo_qpoll)(efx_evq_t *, unsigned int *,
+					const efx_ev_callbacks_t *, void *);
 	efx_rc_t	(*eevo_qmoderate)(efx_evq_t *, unsigned int);
 #if EFSYS_OPT_QSTATS
 	void		(*eevo_qstats_update)(efx_evq_t *, efsys_stat_t *);
