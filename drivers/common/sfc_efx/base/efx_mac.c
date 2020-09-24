@@ -64,6 +64,31 @@ static const efx_mac_ops_t	__efx_mac_ef10_ops = {
 };
 #endif	/* EFX_OPTS_EF10() */
 
+#if EFSYS_OPT_RIVERHEAD
+static const efx_mac_ops_t	__efx_mac_rhead_ops = {
+	ef10_mac_poll,				/* emo_poll */
+	ef10_mac_up,				/* emo_up */
+	ef10_mac_addr_set,			/* emo_addr_set */
+	ef10_mac_pdu_set,			/* emo_pdu_set */
+	ef10_mac_pdu_get,			/* emo_pdu_get */
+	ef10_mac_reconfigure,			/* emo_reconfigure */
+	ef10_mac_multicast_list_set,		/* emo_multicast_list_set */
+	ef10_mac_filter_default_rxq_set,	/* emo_filter_default_rxq_set */
+	ef10_mac_filter_default_rxq_clear,
+					/* emo_filter_default_rxq_clear */
+#if EFSYS_OPT_LOOPBACK
+	ef10_mac_loopback_set,			/* emo_loopback_set */
+#endif	/* EFSYS_OPT_LOOPBACK */
+#if EFSYS_OPT_MAC_STATS
+	ef10_mac_stats_get_mask,		/* emo_stats_get_mask */
+	efx_mcdi_mac_stats_clear,		/* emo_stats_clear */
+	efx_mcdi_mac_stats_upload,		/* emo_stats_upload */
+	efx_mcdi_mac_stats_periodic,		/* emo_stats_periodic */
+	ef10_mac_stats_update			/* emo_stats_update */
+#endif	/* EFSYS_OPT_MAC_STATS */
+};
+#endif	/* EFSYS_OPT_RIVERHEAD */
+
 	__checkReturn			efx_rc_t
 efx_mac_pdu_set(
 	__in				efx_nic_t *enp,
@@ -872,6 +897,13 @@ efx_mac_select(
 		type = EFX_MAC_MEDFORD2;
 		break;
 #endif /* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		emop = &__efx_mac_rhead_ops;
+		type = EFX_MAC_RIVERHEAD;
+		break;
+#endif /* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		rc = EINVAL;
