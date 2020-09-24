@@ -30,13 +30,28 @@ rhead_ev_tx_completion(
 	__in		const efx_ev_callbacks_t *eecp,
 	__in_opt	void *arg);
 
-
 static	__checkReturn	boolean_t
 rhead_ev_mcdi(
 	__in		efx_evq_t *eep,
 	__in		efx_qword_t *eqp,
 	__in		const efx_ev_callbacks_t *eecp,
 	__in_opt	void *arg);
+
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+static			boolean_t
+rhead_ev_ew_dispatch(
+	__in		efx_evq_t *eep,
+	__in		efx_xword_t *eventp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+
+static			void
+rhead_ev_ew_qpoll(
+	__in		efx_evq_t *eep,
+	__inout		unsigned int *countp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+#endif /* EFSYS_OPT_EV_EXTENDED_WIDTH */
 
 
 	__checkReturn	efx_rc_t
@@ -200,6 +215,13 @@ rhead_ev_qpoll(
 	unsigned int index;
 	size_t offset;
 
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+	if (eep->ee_flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH) {
+		rhead_ev_ew_qpoll(eep, countp, eecp, arg);
+		return;
+	}
+#endif /* EFSYS_OPT_EV_EXTENDED_WIDTH */
+
 	EFSYS_ASSERT3U(eep->ee_magic, ==, EFX_EVQ_MAGIC);
 	EFSYS_ASSERT(countp != NULL);
 	EFSYS_ASSERT(eecp != NULL);
@@ -284,6 +306,137 @@ rhead_ev_qpoll(
 
 	*countp = count;
 }
+
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+static			boolean_t
+rhead_ev_ew_dispatch(
+	__in		efx_evq_t *eep,
+	__in		efx_xword_t *eventp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	boolean_t should_abort;
+	uint32_t code;
+
+	EFSYS_ASSERT((eep->ee_flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH) != 0);
+
+	code = EFX_XWORD_FIELD(*eventp, ESF_GZ_EV_256_EV32_TYPE);
+	switch (code) {
+	default:
+		/* Omit currently unused reserved bits from the probe. */
+		EFSYS_PROBE7(ew_bad_event, unsigned int, eep->ee_index,
+		    uint32_t, EFX_XWORD_FIELD(*eventp, EFX_DWORD_7),
+		    uint32_t, EFX_XWORD_FIELD(*eventp, EFX_DWORD_4),
+		    uint32_t, EFX_XWORD_FIELD(*eventp, EFX_DWORD_3),
+		    uint32_t, EFX_XWORD_FIELD(*eventp, EFX_DWORD_2),
+		    uint32_t, EFX_XWORD_FIELD(*eventp, EFX_DWORD_1),
+		    uint32_t, EFX_XWORD_FIELD(*eventp, EFX_DWORD_0));
+
+		EFSYS_ASSERT(eecp->eec_exception != NULL);
+		(void) eecp->eec_exception(arg, EFX_EXCEPTION_EV_ERROR, code);
+		should_abort = B_TRUE;
+	}
+
+	return (should_abort);
+}
+
+/*
+ * Poll extended width event queue. Size of the batch is equal to cache line
+ * size divided by event size.
+ */
+#define	EF100_EV_EW_BATCH	2
+
+/*
+ * Check if event is present.
+ *
+ * Riverhead EvQs use a phase bit to indicate the presence of valid events,
+ * by flipping the phase bit on each wrap of the write index.
+ */
+#define	EF100_EV_EW_PRESENT(_xword, _phase_bit)				\
+	(EFX_XWORD_FIELD((_xword), ESF_GZ_EV_256_EV32_PHASE) == (_phase_bit))
+
+static			void
+rhead_ev_ew_qpoll(
+	__in		efx_evq_t *eep,
+	__inout		unsigned int *countp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	efx_xword_t ev[EF100_EV_EW_BATCH];
+	unsigned int batch;
+	unsigned int phase_bit;
+	unsigned int total;
+	unsigned int count;
+	unsigned int index;
+	size_t offset;
+
+	EFSYS_ASSERT3U(eep->ee_magic, ==, EFX_EVQ_MAGIC);
+	EFSYS_ASSERT((eep->ee_flags & EFX_EVQ_FLAGS_EXTENDED_WIDTH) != 0);
+	EFSYS_ASSERT(countp != NULL);
+	EFSYS_ASSERT(eecp != NULL);
+
+	count = *countp;
+	do {
+		/* Read up until the end of the batch period */
+		batch = EF100_EV_EW_BATCH - (count & (EF100_EV_EW_BATCH - 1));
+		phase_bit = (count & (eep->ee_mask + 1)) != 0;
+		offset = (count & eep->ee_mask) * sizeof (efx_xword_t);
+		for (total = 0; total < batch; ++total) {
+			EFSYS_MEM_READX(eep->ee_esmp, offset, &(ev[total]));
+
+			if (!EF100_EV_EW_PRESENT(ev[total], phase_bit))
+				break;
+
+			/* Omit unused reserved bits from the probe. */
+			EFSYS_PROBE7(ew_event, unsigned int, eep->ee_index,
+			    uint32_t, EFX_XWORD_FIELD(ev[total], EFX_DWORD_7),
+			    uint32_t, EFX_XWORD_FIELD(ev[total], EFX_DWORD_4),
+			    uint32_t, EFX_XWORD_FIELD(ev[total], EFX_DWORD_3),
+			    uint32_t, EFX_XWORD_FIELD(ev[total], EFX_DWORD_2),
+			    uint32_t, EFX_XWORD_FIELD(ev[total], EFX_DWORD_1),
+			    uint32_t, EFX_XWORD_FIELD(ev[total], EFX_DWORD_0));
+
+			offset += sizeof (efx_xword_t);
+		}
+
+		/* Process the batch of events */
+		for (index = 0; index < total; ++index) {
+			boolean_t should_abort;
+
+			EFX_EV_QSTAT_INCR(eep, EV_ALL);
+
+			should_abort =
+			    rhead_ev_ew_dispatch(eep, &(ev[index]), eecp, arg);
+
+			if (should_abort) {
+				/* Ignore subsequent events */
+				total = index + 1;
+
+				/*
+				 * Poison batch to ensure the outer
+				 * loop is broken out of.
+				 */
+				EFSYS_ASSERT(batch <= EF100_EV_EW_BATCH);
+				batch += (EF100_EV_EW_BATCH << 1);
+				EFSYS_ASSERT(total != batch);
+				break;
+			}
+		}
+
+		/*
+		 * There is no necessity to clear processed events since
+		 * phase bit which is flipping on each write index wrap
+		 * is used for event presence indication.
+		 */
+
+		count += total;
+
+	} while (total == batch);
+
+	*countp = count;
+}
+#endif /* EFSYS_OPT_EV_EXTENDED_WIDTH */
+
 
 	__checkReturn	efx_rc_t
 rhead_ev_qmoderate(
