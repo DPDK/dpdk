@@ -655,6 +655,18 @@ metrics_display(int port_id)
 }
 
 static void
+show_offloads(uint64_t offloads,
+	      const char *(show_offload)(uint64_t))
+{
+	printf(" offloads :");
+	while (offloads != 0) {
+		uint64_t offload_flag = 1ULL << __builtin_ctzll(offloads);
+		printf(" %s", show_offload(offload_flag));
+		offloads &= ~offload_flag;
+	}
+}
+
+static void
 show_port(void)
 {
 	uint16_t i = 0;
@@ -667,7 +679,6 @@ show_port(void)
 		uint16_t mtu = 0;
 		struct rte_eth_link link;
 		struct rte_eth_dev_info dev_info;
-		struct rte_eth_rxq_info queue_info;
 		struct rte_eth_rss_conf rss_conf;
 		char link_status_text[RTE_ETH_LINK_MAX_STR_LEN];
 		struct rte_eth_fc_conf fc_conf;
@@ -718,6 +729,7 @@ show_port(void)
 		ret = rte_eth_macaddr_get(i, &mac);
 		if (ret == 0) {
 			char ebuf[RTE_ETHER_ADDR_FMT_SIZE];
+
 			rte_ether_format_addr(ebuf, sizeof(ebuf), &mac);
 			printf("\t  -- mac %s\n", ebuf);
 		}
@@ -736,26 +748,69 @@ show_port(void)
 		if (ret == 0)
 			printf("\t  -- mtu (%d)\n", mtu);
 
-		printf("  - queue\n");
 		for (j = 0; j < dev_info.nb_rx_queues; j++) {
-			ret = rte_eth_rx_queue_info_get(i, j, &queue_info);
-			if (ret == 0) {
-				printf("\t  -- queue %u rx scatter %u"
-				       " descriptors %u"
-				       " offloads %#" PRIx64
-				       " mempool name %s socket %d",
-				       j,
-				       queue_info.scattered_rx,
-				       queue_info.nb_desc,
-				       queue_info.conf.offloads,
-				       queue_info.mp->name,
-				       queue_info.mp->socket_id);
+			struct rte_eth_rxq_info queue_info;
+			int count;
 
-				if (queue_info.rx_buf_size != 0)
-					printf(" rx buffer size %u",
-						queue_info.rx_buf_size);
-				printf("\n");
-			}
+			ret = rte_eth_rx_queue_info_get(i, j, &queue_info);
+			if (ret != 0)
+				break;
+
+			if (j == 0)
+				printf("  - rx queue\n");
+
+			printf("\t  -- %d descriptors ", j);
+			count = rte_eth_rx_queue_count(i, j);
+			if (count >= 0)
+				printf("%d/", count);
+			printf("%u", queue_info.nb_desc);
+
+			if (queue_info.scattered_rx)
+				printf(" scattered");
+
+			if (queue_info.conf.rx_drop_en)
+				printf(" drop_en");
+
+			if (queue_info.conf.rx_deferred_start)
+				printf(" deferred_start");
+
+			if (queue_info.rx_buf_size != 0)
+				printf(" rx buffer size %u",
+				       queue_info.rx_buf_size);
+
+			printf(" mempool %s socket %d",
+			       queue_info.mp->name,
+			       queue_info.mp->socket_id);
+
+			if (queue_info.conf.offloads != 0)
+				show_offloads(queue_info.conf.offloads, rte_eth_dev_rx_offload_name);
+
+			printf("\n");
+		}
+
+		for (j = 0; j < dev_info.nb_tx_queues; j++) {
+			struct rte_eth_txq_info queue_info;
+
+			ret = rte_eth_tx_queue_info_get(i, j, &queue_info);
+			if (ret != 0)
+				break;
+
+			if (j == 0)
+				printf("  - tx queue\n");
+
+			printf("\t  -- %d descriptors %d",
+			       j, queue_info.nb_desc);
+
+			printf(" thresh %u/%u",
+			       queue_info.conf.tx_rs_thresh,
+			       queue_info.conf.tx_free_thresh);
+
+			if (queue_info.conf.tx_deferred_start)
+				printf(" deferred_start");
+
+			if (queue_info.conf.offloads != 0)
+				show_offloads(queue_info.conf.offloads, rte_eth_dev_tx_offload_name);
+			printf("\n");
 		}
 
 		ret = rte_eth_dev_rss_hash_conf_get(i, &rss_conf);
