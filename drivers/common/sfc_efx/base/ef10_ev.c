@@ -133,16 +133,6 @@ ef10_ev_qcreate(
 
 	_NOTE(ARGUNUSED(id))	/* buftbl id managed by MC */
 
-	if (index >= encp->enc_evq_limit) {
-		rc = EINVAL;
-		goto fail1;
-	}
-
-	if (us > encp->enc_evq_timer_max_us) {
-		rc = EINVAL;
-		goto fail2;
-	}
-
 	/*
 	 * NO_CONT_EV mode is only requested from the firmware when creating
 	 * receive queues, but here it needs to be specified at event queue
@@ -156,7 +146,7 @@ ef10_ev_qcreate(
 	if (flags & EFX_EVQ_FLAGS_NO_CONT_EV) {
 		if (enp->en_nic_cfg.enc_no_cont_ev_mode_supported == B_FALSE) {
 			rc = EINVAL;
-			goto fail3;
+			goto fail1;
 		}
 	}
 
@@ -197,7 +187,7 @@ ef10_ev_qcreate(
 		rc = efx_mcdi_init_evq_v2(enp, index, esmp, ndescs, irq, us,
 		    flags);
 		if (rc != 0)
-			goto fail4;
+			goto fail2;
 	} else {
 		/*
 		 * On Huntington we need to specify the settings to use.
@@ -214,15 +204,11 @@ ef10_ev_qcreate(
 		rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, us, flags,
 		    low_latency);
 		if (rc != 0)
-			goto fail5;
+			goto fail3;
 	}
 
 	return (0);
 
-fail5:
-	EFSYS_PROBE(fail5);
-fail4:
-	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:

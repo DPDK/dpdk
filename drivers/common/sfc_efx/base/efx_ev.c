@@ -236,18 +236,28 @@ efx_ev_qcreate(
 	EFSYS_ASSERT3U(enp->en_ev_qcount + 1, <,
 	    enp->en_nic_cfg.enc_evq_limit);
 
+	if (index >= encp->enc_evq_limit) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
+	if (us > encp->enc_evq_timer_max_us) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
 	switch (flags & EFX_EVQ_FLAGS_NOTIFY_MASK) {
 	case EFX_EVQ_FLAGS_NOTIFY_INTERRUPT:
 		break;
 	case EFX_EVQ_FLAGS_NOTIFY_DISABLED:
 		if (us != 0) {
 			rc = EINVAL;
-			goto fail1;
+			goto fail3;
 		}
 		break;
 	default:
 		rc = EINVAL;
-		goto fail2;
+		goto fail4;
 	}
 
 	EFSYS_ASSERT(ISP2(encp->enc_evq_max_nevs));
@@ -257,14 +267,14 @@ efx_ev_qcreate(
 	    ndescs < encp->enc_evq_min_nevs ||
 	    ndescs > encp->enc_evq_max_nevs) {
 		rc = EINVAL;
-		goto fail3;
+		goto fail5;
 	}
 
 	/* Allocate an EVQ object */
 	EFSYS_KMEM_ALLOC(enp->en_esip, sizeof (efx_evq_t), eep);
 	if (eep == NULL) {
 		rc = ENOMEM;
-		goto fail4;
+		goto fail6;
 	}
 
 	eep->ee_magic = EFX_EVQ_MAGIC;
@@ -287,16 +297,20 @@ efx_ev_qcreate(
 
 	if ((rc = eevop->eevo_qcreate(enp, index, esmp, ndescs, id, us, flags,
 	    eep)) != 0)
-		goto fail5;
+		goto fail7;
 
 	return (0);
 
-fail5:
-	EFSYS_PROBE(fail5);
+fail7:
+	EFSYS_PROBE(fail7);
 
 	*eepp = NULL;
 	enp->en_ev_qcount--;
 	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_evq_t), eep);
+fail6:
+	EFSYS_PROBE(fail6);
+fail5:
+	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
@@ -1189,15 +1203,11 @@ siena_ev_qcreate(
 
 	_NOTE(ARGUNUSED(esmp))
 
-	if (index >= encp->enc_evq_limit) {
-		rc = EINVAL;
-		goto fail1;
-	}
 #if EFSYS_OPT_RX_SCALE
 	if (enp->en_intr.ei_type == EFX_INTR_LINE &&
 	    index >= EFX_MAXRSS_LEGACY) {
 		rc = EINVAL;
-		goto fail2;
+		goto fail1;
 	}
 #endif
 	for (size = 0;
@@ -1207,7 +1217,7 @@ siena_ev_qcreate(
 			break;
 	if (id + (1 << size) >= encp->enc_buftbl_limit) {
 		rc = EINVAL;
-		goto fail3;
+		goto fail2;
 	}
 
 	/* Set up the handler table */
@@ -1239,13 +1249,11 @@ siena_ev_qcreate(
 
 	return (0);
 
-fail3:
-	EFSYS_PROBE(fail3);
-#if EFSYS_OPT_RX_SCALE
 fail2:
 	EFSYS_PROBE(fail2);
-#endif
+#if EFSYS_OPT_RX_SCALE
 fail1:
+#endif
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 
 	return (rc);
