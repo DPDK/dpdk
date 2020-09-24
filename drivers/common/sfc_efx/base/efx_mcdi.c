@@ -60,6 +60,21 @@ static const efx_mcdi_ops_t	__efx_mcdi_ef10_ops = {
 
 #endif	/* EFX_OPTS_EF10() */
 
+#if EFSYS_OPT_RIVERHEAD
+
+static const efx_mcdi_ops_t	__efx_mcdi_rhead_ops = {
+	ef10_mcdi_init,			/* emco_init */
+	ef10_mcdi_send_request,		/* emco_send_request */
+	ef10_mcdi_poll_reboot,		/* emco_poll_reboot */
+	ef10_mcdi_poll_response,	/* emco_poll_response */
+	ef10_mcdi_read_response,	/* emco_read_response */
+	ef10_mcdi_fini,			/* emco_fini */
+	ef10_mcdi_feature_supported,	/* emco_feature_supported */
+	ef10_mcdi_get_timeout,		/* emco_get_timeout */
+};
+
+#endif	/* EFSYS_OPT_RIVERHEAD */
+
 
 
 	__checkReturn	efx_rc_t
@@ -97,6 +112,12 @@ efx_mcdi_init(
 		emcop = &__efx_mcdi_ef10_ops;
 		break;
 #endif	/* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		emcop = &__efx_mcdi_rhead_ops;
+		break;
+#endif	/* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		EFSYS_ASSERT(0);

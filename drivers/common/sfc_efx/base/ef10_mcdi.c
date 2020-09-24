@@ -8,7 +8,7 @@
 #include "efx_impl.h"
 
 
-#if EFX_OPTS_EF10()
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 
 #if EFSYS_OPT_MCDI
 
@@ -27,7 +27,7 @@ ef10_mcdi_init(
 	efx_dword_t dword;
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 	EFSYS_ASSERT(enp->en_features & EFX_FEATURE_MCDI_DMA);
 
 	/*
@@ -53,7 +53,16 @@ ef10_mcdi_init(
 		goto fail2;
 	}
 	EFX_POPULATE_DWORD_1(dword, EFX_DWORD_0, 1);
-	EFX_BAR_WRITED(enp, ER_DZ_MC_DB_HWRD_REG, &dword, B_FALSE);
+	switch (enp->en_family) {
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		EFX_BAR_WRITED(enp, ER_GZ_MC_DB_HWRD_REG, &dword, B_FALSE);
+		break;
+#endif	/* EFSYS_OPT_RIVERHEAD */
+	default:
+		EFX_BAR_WRITED(enp, ER_DZ_MC_DB_HWRD_REG, &dword, B_FALSE);
+		break;
+	}
 
 	/* Save initial MC reboot status */
 	(void) ef10_mcdi_poll_reboot(enp);
@@ -133,7 +142,7 @@ ef10_mcdi_send_request(
 	efx_dword_t dword;
 	unsigned int pos;
 
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 
 	/* Write the header */
 	for (pos = 0; pos < hdr_len; pos += sizeof (efx_dword_t)) {
@@ -154,11 +163,29 @@ ef10_mcdi_send_request(
 	/* Ring the doorbell to post the command DMA address to the MC */
 	EFX_POPULATE_DWORD_1(dword, EFX_DWORD_0,
 	    EFSYS_MEM_ADDR(esmp) >> 32);
-	EFX_BAR_WRITED(enp, ER_DZ_MC_DB_LWRD_REG, &dword, B_FALSE);
+	switch (enp->en_family) {
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		EFX_BAR_WRITED(enp, ER_GZ_MC_DB_LWRD_REG, &dword, B_FALSE);
+		break;
+#endif	/* EFSYS_OPT_RIVERHEAD */
+	default:
+		EFX_BAR_WRITED(enp, ER_DZ_MC_DB_LWRD_REG, &dword, B_FALSE);
+		break;
+	}
 
 	EFX_POPULATE_DWORD_1(dword, EFX_DWORD_0,
 	    EFSYS_MEM_ADDR(esmp) & 0xffffffff);
-	EFX_BAR_WRITED(enp, ER_DZ_MC_DB_HWRD_REG, &dword, B_FALSE);
+	switch (enp->en_family) {
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		EFX_BAR_WRITED(enp, ER_GZ_MC_DB_HWRD_REG, &dword, B_FALSE);
+		break;
+#endif	/* EFSYS_OPT_RIVERHEAD */
+	default:
+		EFX_BAR_WRITED(enp, ER_DZ_MC_DB_HWRD_REG, &dword, B_FALSE);
+		break;
+	}
 }
 
 	__checkReturn	boolean_t
@@ -210,6 +237,9 @@ ef10_mcdi_poll_reboot(
 
 	old_status = emip->emi_mc_reboot_status;
 
+	EFX_STATIC_ASSERT(ER_DZ_BIU_MC_SFT_STATUS_REG_OFST ==
+	    ER_GZ_MC_SFT_STATUS_OFST);
+
 	/* Update MC reboot status word */
 	EFX_BAR_TBL_READD(enp, ER_DZ_BIU_MC_SFT_STATUS_REG, 0, &dword, B_FALSE);
 	new_status = dword.ed_u32[0];
@@ -255,7 +285,7 @@ ef10_mcdi_feature_supported(
 	uint32_t privilege_mask = encp->enc_privilege_mask;
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
 
 	/*
 	 * Use privilege mask state at MCDI attach.
@@ -316,4 +346,4 @@ fail1:
 
 #endif	/* EFSYS_OPT_MCDI */
 
-#endif	/* EFX_OPTS_EF10() */
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */

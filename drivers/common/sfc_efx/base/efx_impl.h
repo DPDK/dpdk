@@ -37,9 +37,9 @@
 #include "medford2_impl.h"
 #endif	/* EFSYS_OPT_MEDFORD2 */
 
-#if EFX_OPTS_EF10()
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 #include "ef10_impl.h"
-#endif	/* EFX_OPTS_EF10() */
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
 
 #ifdef	__cplusplus
 extern "C" {

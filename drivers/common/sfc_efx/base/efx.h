@@ -243,8 +243,8 @@ efx_nic_check_pcie_link_speed(
 
 #if EFSYS_OPT_MCDI
 
-#if EFX_OPTS_EF10()
-/* EF10 architecture NICs require MCDIv2 commands */
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
+/* EF10 architecture and Riverhead NICs require MCDIv2 commands */
 #define	WITH_MCDI_V2 1
 #endif
 
@@ -1438,11 +1438,11 @@ typedef struct efx_nic_cfg_s {
 #if EFSYS_OPT_BIST
 	uint32_t		enc_bist_mask;
 #endif	/* EFSYS_OPT_BIST */
-#if EFX_OPTS_EF10()
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 	uint32_t		enc_pf;
 	uint32_t		enc_vf;
 	uint32_t		enc_privilege_mask;
-#endif /* EFX_OPTS_EF10() */
+#endif /* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
 	boolean_t		enc_bug26807_workaround;
 	boolean_t		enc_bug35388_workaround;
 	boolean_t		enc_bug41750_workaround;
