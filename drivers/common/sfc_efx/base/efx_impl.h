@@ -1424,17 +1424,6 @@ efx_mcdi_init_evq(
 
 LIBEFX_INTERNAL
 extern	__checkReturn	efx_rc_t
-efx_mcdi_init_evq_v2(
-	__in		efx_nic_t *enp,
-	__in		unsigned int instance,
-	__in		efsys_mem_t *esmp,
-	__in		size_t nevs,
-	__in		uint32_t irq,
-	__in		uint32_t us,
-	__in		uint32_t flags);
-
-LIBEFX_INTERNAL
-extern	__checkReturn	efx_rc_t
 efx_mcdi_fini_evq(
 	__in		efx_nic_t *enp,
 	__in		uint32_t instance);

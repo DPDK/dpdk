@@ -130,6 +130,7 @@ ef10_ev_qcreate(
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	uint32_t irq;
 	efx_rc_t rc;
+	boolean_t low_latency;
 
 	_NOTE(ARGUNUSED(id))	/* buftbl id managed by MC */
 
@@ -175,42 +176,29 @@ ef10_ev_qcreate(
 	 * created. See bug58606.
 	 */
 
-	if (encp->enc_init_evq_v2_supported) {
-		/*
-		 * On Medford the low latency license is required to enable RX
-		 * and event cut through and to disable RX batching.  If event
-		 * queue type in flags is auto, we let the firmware decide the
-		 * settings to use. If the adapter has a low latency license,
-		 * it will choose the best settings for low latency, otherwise
-		 * it will choose the best settings for throughput.
-		 */
-		rc = efx_mcdi_init_evq_v2(enp, index, esmp, ndescs, irq, us,
-		    flags);
-		if (rc != 0)
-			goto fail2;
-	} else {
-		/*
-		 * On Huntington we need to specify the settings to use.
-		 * If event queue type in flags is auto, we favour throughput
-		 * if the adapter is running virtualization supporting firmware
-		 * (i.e. the full featured firmware variant)
-		 * and latency otherwise. The Ethernet Virtual Bridging
-		 * capability is used to make this decision. (Note though that
-		 * the low latency firmware variant is also best for
-		 * throughput and corresponding type should be specified
-		 * to choose it.)
-		 */
-		boolean_t low_latency = encp->enc_datapath_cap_evb ? 0 : 1;
-		rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, us, flags,
-		    low_latency);
-		if (rc != 0)
-			goto fail3;
-	}
+	/*
+	 * On Huntington we need to specify the settings to use.
+	 * If event queue type in flags is auto, we favour throughput
+	 * if the adapter is running virtualization supporting firmware
+	 * (i.e. the full featured firmware variant)
+	 * and latency otherwise. The Ethernet Virtual Bridging
+	 * capability is used to make this decision. (Note though that
+	 * the low latency firmware variant is also best for
+	 * throughput and corresponding type should be specified
+	 * to choose it.)
+	 *
+	 * If FW supports EvQ types (e.g. on Medford and Medford2) the
+	 * type which is specified in flags is passed to FW to make the
+	 * decision and low_latency hint is ignored.
+	 */
+	low_latency = encp->enc_datapath_cap_evb ? 0 : 1;
+	rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, us, flags,
+	    low_latency);
+	if (rc != 0)
+		goto fail2;
 
 	return (0);
 
-fail3:
-	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:

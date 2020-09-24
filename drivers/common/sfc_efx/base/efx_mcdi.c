@@ -2456,146 +2456,14 @@ efx_mcdi_init_evq(
 	__in		uint32_t flags,
 	__in		boolean_t low_latency)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
 		MC_CMD_INIT_EVQ_V2_IN_LEN(EF10_EVQ_MAXNBUFS),
 		MC_CMD_INIT_EVQ_V2_OUT_LEN);
-	efx_qword_t *dma_addr;
-	uint64_t addr;
-	int npages;
-	int i;
 	boolean_t interrupting;
 	int ev_cut_through;
-	efx_rc_t rc;
-
-	npages = efx_evq_nbufs(enp, nevs);
-	if (npages > EF10_EVQ_MAXNBUFS) {
-		rc = EINVAL;
-		goto fail1;
-	}
-
-	req.emr_cmd = MC_CMD_INIT_EVQ;
-	req.emr_in_buf = payload;
-	req.emr_in_length = MC_CMD_INIT_EVQ_V2_IN_LEN(npages);
-	req.emr_out_buf = payload;
-	req.emr_out_length = MC_CMD_INIT_EVQ_V2_OUT_LEN;
-
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_SIZE, nevs);
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_INSTANCE, instance);
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_IRQ_NUM, irq);
-
-	interrupting = ((flags & EFX_EVQ_FLAGS_NOTIFY_MASK) ==
-	    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT);
-
-	/*
-	 * On Huntington RX and TX event batching can only be requested together
-	 * (even if the datapath firmware doesn't actually support RX
-	 * batching). If event cut through is enabled no RX batching will occur.
-	 *
-	 * So always enable RX and TX event batching, and enable event cut
-	 * through if we want low latency operation.
-	 */
-	switch (flags & EFX_EVQ_FLAGS_TYPE_MASK) {
-	case EFX_EVQ_FLAGS_TYPE_AUTO:
-		ev_cut_through = low_latency ? 1 : 0;
-		break;
-	case EFX_EVQ_FLAGS_TYPE_THROUGHPUT:
-		ev_cut_through = 0;
-		break;
-	case EFX_EVQ_FLAGS_TYPE_LOW_LATENCY:
-		ev_cut_through = 1;
-		break;
-	default:
-		rc = EINVAL;
-		goto fail2;
-	}
-	MCDI_IN_POPULATE_DWORD_6(req, INIT_EVQ_V2_IN_FLAGS,
-	    INIT_EVQ_V2_IN_FLAG_INTERRUPTING, interrupting,
-	    INIT_EVQ_V2_IN_FLAG_RPTR_DOS, 0,
-	    INIT_EVQ_V2_IN_FLAG_INT_ARMD, 0,
-	    INIT_EVQ_V2_IN_FLAG_CUT_THRU, ev_cut_through,
-	    INIT_EVQ_V2_IN_FLAG_RX_MERGE, 1,
-	    INIT_EVQ_V2_IN_FLAG_TX_MERGE, 1);
-
-	/* If the value is zero then disable the timer */
-	if (us == 0) {
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_MODE,
-		    MC_CMD_INIT_EVQ_V2_IN_TMR_MODE_DIS);
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_LOAD, 0);
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_RELOAD, 0);
-	} else {
-		unsigned int ticks;
-
-		if ((rc = efx_ev_usecs_to_ticks(enp, us, &ticks)) != 0)
-			goto fail3;
-
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_MODE,
-		    MC_CMD_INIT_EVQ_V2_IN_TMR_INT_HLDOFF);
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_LOAD, ticks);
-		MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_TMR_RELOAD, ticks);
-	}
-
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_COUNT_MODE,
-	    MC_CMD_INIT_EVQ_V2_IN_COUNT_MODE_DIS);
-	MCDI_IN_SET_DWORD(req, INIT_EVQ_V2_IN_COUNT_THRSHLD, 0);
-
-	dma_addr = MCDI_IN2(req, efx_qword_t, INIT_EVQ_V2_IN_DMA_ADDR);
-	addr = EFSYS_MEM_ADDR(esmp);
-
-	for (i = 0; i < npages; i++) {
-		EFX_POPULATE_QWORD_2(*dma_addr,
-		    EFX_DWORD_1, (uint32_t)(addr >> 32),
-		    EFX_DWORD_0, (uint32_t)(addr & 0xffffffff));
-
-		dma_addr++;
-		addr += EFX_BUF_SIZE;
-	}
-
-	efx_mcdi_execute(enp, &req);
-
-	if (req.emr_rc != 0) {
-		rc = req.emr_rc;
-		goto fail4;
-	}
-
-	if (req.emr_out_length_used < MC_CMD_INIT_EVQ_OUT_LEN) {
-		rc = EMSGSIZE;
-		goto fail5;
-	}
-
-	/* NOTE: ignore the returned IRQ param as firmware does not set it. */
-
-	return (0);
-
-fail5:
-	EFSYS_PROBE(fail5);
-fail4:
-	EFSYS_PROBE(fail4);
-fail3:
-	EFSYS_PROBE(fail3);
-fail2:
-	EFSYS_PROBE(fail2);
-fail1:
-	EFSYS_PROBE1(fail1, efx_rc_t, rc);
-
-	return (rc);
-}
-
-	__checkReturn	efx_rc_t
-efx_mcdi_init_evq_v2(
-	__in		efx_nic_t *enp,
-	__in		unsigned int instance,
-	__in		efsys_mem_t *esmp,
-	__in		size_t nevs,
-	__in		uint32_t irq,
-	__in		uint32_t us,
-	__in		uint32_t flags)
-{
-	efx_mcdi_req_t req;
-	EFX_MCDI_DECLARE_BUF(payload,
-		MC_CMD_INIT_EVQ_V2_IN_LEN(EF10_EVQ_MAXNBUFS),
-		MC_CMD_INIT_EVQ_V2_OUT_LEN);
-	boolean_t interrupting;
+	int ev_merge;
 	unsigned int evq_type;
 	efx_qword_t *dma_addr;
 	uint64_t addr;
@@ -2622,24 +2490,68 @@ efx_mcdi_init_evq_v2(
 	interrupting = ((flags & EFX_EVQ_FLAGS_NOTIFY_MASK) ==
 	    EFX_EVQ_FLAGS_NOTIFY_INTERRUPT);
 
-	switch (flags & EFX_EVQ_FLAGS_TYPE_MASK) {
-	case EFX_EVQ_FLAGS_TYPE_AUTO:
-		evq_type = MC_CMD_INIT_EVQ_V2_IN_FLAG_TYPE_AUTO;
-		break;
-	case EFX_EVQ_FLAGS_TYPE_THROUGHPUT:
-		evq_type = MC_CMD_INIT_EVQ_V2_IN_FLAG_TYPE_THROUGHPUT;
-		break;
-	case EFX_EVQ_FLAGS_TYPE_LOW_LATENCY:
-		evq_type = MC_CMD_INIT_EVQ_V2_IN_FLAG_TYPE_LOW_LATENCY;
-		break;
-	default:
-		rc = EINVAL;
-		goto fail2;
+	if (encp->enc_init_evq_v2_supported) {
+		/*
+		 * On Medford the low latency license is required to enable RX
+		 * and event cut through and to disable RX batching.  If event
+		 * queue type in flags is auto, we let the firmware decide the
+		 * settings to use. If the adapter has a low latency license,
+		 * it will choose the best settings for low latency, otherwise
+		 * it will choose the best settings for throughput.
+		 */
+		switch (flags & EFX_EVQ_FLAGS_TYPE_MASK) {
+		case EFX_EVQ_FLAGS_TYPE_AUTO:
+			evq_type = MC_CMD_INIT_EVQ_V2_IN_FLAG_TYPE_AUTO;
+			break;
+		case EFX_EVQ_FLAGS_TYPE_THROUGHPUT:
+			evq_type = MC_CMD_INIT_EVQ_V2_IN_FLAG_TYPE_THROUGHPUT;
+			break;
+		case EFX_EVQ_FLAGS_TYPE_LOW_LATENCY:
+			evq_type = MC_CMD_INIT_EVQ_V2_IN_FLAG_TYPE_LOW_LATENCY;
+			break;
+		default:
+			rc = EINVAL;
+			goto fail2;
+		}
+		/* EvQ type controls merging, no manual settings */
+		ev_merge = 0;
+		ev_cut_through = 0;
+	} else {
+		/* EvQ types other than manual are not supported */
+		evq_type = MC_CMD_INIT_EVQ_V2_IN_FLAG_TYPE_MANUAL;
+		/*
+		 * On Huntington RX and TX event batching can only be requested
+		 * together (even if the datapath firmware doesn't actually
+		 * support RX batching). If event cut through is enabled no RX
+		 * batching will occur.
+		 *
+		 * So always enable RX and TX event batching, and enable event
+		 * cut through if we want low latency operation.
+		 */
+		ev_merge = 1;
+		switch (flags & EFX_EVQ_FLAGS_TYPE_MASK) {
+		case EFX_EVQ_FLAGS_TYPE_AUTO:
+			ev_cut_through = low_latency ? 1 : 0;
+			break;
+		case EFX_EVQ_FLAGS_TYPE_THROUGHPUT:
+			ev_cut_through = 0;
+			break;
+		case EFX_EVQ_FLAGS_TYPE_LOW_LATENCY:
+			ev_cut_through = 1;
+			break;
+		default:
+			rc = EINVAL;
+			goto fail2;
+		}
 	}
-	MCDI_IN_POPULATE_DWORD_4(req, INIT_EVQ_V2_IN_FLAGS,
+
+	MCDI_IN_POPULATE_DWORD_7(req, INIT_EVQ_V2_IN_FLAGS,
 	    INIT_EVQ_V2_IN_FLAG_INTERRUPTING, interrupting,
 	    INIT_EVQ_V2_IN_FLAG_RPTR_DOS, 0,
 	    INIT_EVQ_V2_IN_FLAG_INT_ARMD, 0,
+	    INIT_EVQ_V2_IN_FLAG_CUT_THRU, ev_cut_through,
+	    INIT_EVQ_V2_IN_FLAG_RX_MERGE, ev_merge,
+	    INIT_EVQ_V2_IN_FLAG_TX_MERGE, ev_merge,
 	    INIT_EVQ_V2_IN_FLAG_TYPE, evq_type);
 
 	/* If the value is zero then disable the timer */
@@ -2683,18 +2595,26 @@ efx_mcdi_init_evq_v2(
 		goto fail4;
 	}
 
-	if (req.emr_out_length_used < MC_CMD_INIT_EVQ_V2_OUT_LEN) {
-		rc = EMSGSIZE;
-		goto fail5;
+	if (encp->enc_init_evq_v2_supported) {
+		if (req.emr_out_length_used < MC_CMD_INIT_EVQ_V2_OUT_LEN) {
+			rc = EMSGSIZE;
+			goto fail5;
+		}
+		EFSYS_PROBE1(mcdi_evq_flags, uint32_t,
+			    MCDI_OUT_DWORD(req, INIT_EVQ_V2_OUT_FLAGS));
+	} else {
+		if (req.emr_out_length_used < MC_CMD_INIT_EVQ_OUT_LEN) {
+			rc = EMSGSIZE;
+			goto fail6;
+		}
 	}
 
 	/* NOTE: ignore the returned IRQ param as firmware does not set it. */
 
-	EFSYS_PROBE1(mcdi_evq_flags, uint32_t,
-		    MCDI_OUT_DWORD(req, INIT_EVQ_V2_OUT_FLAGS));
-
 	return (0);
 
+fail6:
+	EFSYS_PROBE(fail6);
 fail5:
 	EFSYS_PROBE(fail5);
 fail4:
