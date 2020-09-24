@@ -355,6 +355,89 @@ rhead_rx_qdestroy(
 	__in		efx_rxq_t *erp);
 
 
+/* TX */
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_tx_init(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_tx_fini(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_tx_qcreate(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index,
+	__in		unsigned int label,
+	__in		efsys_mem_t *esmp,
+	__in		size_t ndescs,
+	__in		uint32_t id,
+	__in		uint16_t flags,
+	__in		efx_evq_t *eep,
+	__in		efx_txq_t *etp,
+	__out		unsigned int *addedp);
+
+LIBEFX_INTERNAL
+extern		void
+rhead_tx_qdestroy(
+	__in		efx_txq_t *etp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn		efx_rc_t
+rhead_tx_qpost(
+	__in			efx_txq_t *etp,
+	__in_ecount(ndescs)	efx_buffer_t *ebp,
+	__in			unsigned int ndescs,
+	__in			unsigned int completed,
+	__inout			unsigned int *addedp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_tx_qpush(
+	__in		efx_txq_t *etp,
+	__in		unsigned int added,
+	__in		unsigned int pushed);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_tx_qpace(
+	__in		efx_txq_t *etp,
+	__in		unsigned int ns);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_tx_qflush(
+	__in		efx_txq_t *etp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_tx_qenable(
+	__in		efx_txq_t *etp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_tx_qdesc_post(
+	__in		efx_txq_t *etp,
+	__in_ecount(n)	efx_desc_t *ed,
+	__in		unsigned int n,
+	__in		unsigned int completed,
+	__inout		unsigned int *addedp);
+
+#if EFSYS_OPT_QSTATS
+
+LIBEFX_INTERNAL
+extern			void
+rhead_tx_qstats_update(
+	__in				efx_txq_t *etp,
+	__inout_ecount(TX_NQSTATS)	efsys_stat_t *stat);
+
+#endif /* EFSYS_OPT_QSTATS */
+
+
 #ifdef	__cplusplus
 }
 #endif

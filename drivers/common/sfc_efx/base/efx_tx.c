@@ -205,6 +205,33 @@ static const efx_tx_ops_t	__efx_tx_medford2_ops = {
 };
 #endif /* EFSYS_OPT_MEDFORD2 */
 
+#if EFSYS_OPT_RIVERHEAD
+static const efx_tx_ops_t	__efx_tx_rhead_ops = {
+	rhead_tx_init,				/* etxo_init */
+	rhead_tx_fini,				/* etxo_fini */
+	rhead_tx_qcreate,			/* etxo_qcreate */
+	rhead_tx_qdestroy,			/* etxo_qdestroy */
+	rhead_tx_qpost,				/* etxo_qpost */
+	rhead_tx_qpush,				/* etxo_qpush */
+	rhead_tx_qpace,				/* etxo_qpace */
+	rhead_tx_qflush,			/* etxo_qflush */
+	rhead_tx_qenable,			/* etxo_qenable */
+	NULL,					/* etxo_qpio_enable */
+	NULL,					/* etxo_qpio_disable */
+	NULL,					/* etxo_qpio_write */
+	NULL,					/* etxo_qpio_post */
+	rhead_tx_qdesc_post,			/* etxo_qdesc_post */
+	NULL,					/* etxo_qdesc_dma_create */
+	NULL,					/* etxo_qdesc_tso_create */
+	NULL,					/* etxo_qdesc_tso2_create */
+	NULL,					/* etxo_qdesc_vlantci_create */
+	NULL,					/* etxo_qdesc_checksum_create */
+#if EFSYS_OPT_QSTATS
+	rhead_tx_qstats_update,			/* etxo_qstats_update */
+#endif
+};
+#endif /* EFSYS_OPT_RIVERHEAD */
+
 
 	__checkReturn	efx_rc_t
 efx_tx_init(
@@ -250,6 +277,12 @@ efx_tx_init(
 		etxop = &__efx_tx_medford2_ops;
 		break;
 #endif /* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		etxop = &__efx_tx_rhead_ops;
+		break;
+#endif /* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		EFSYS_ASSERT(0);
