@@ -55,6 +55,7 @@ sources = [
 	'rhead_ev.c',
 	'rhead_intr.c',
 	'rhead_nic.c',
+	'rhead_rx.c',
 ]
 
 extra_flags = [

@@ -226,6 +226,135 @@ rhead_intr_fini(
 	__in		efx_nic_t *enp);
 
 
+/* RX */
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_init(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_rx_fini(
+	__in		efx_nic_t *enp);
+
+#if EFSYS_OPT_RX_SCATTER
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_scatter_enable(
+	__in		efx_nic_t *enp,
+	__in		unsigned int buf_size);
+
+#endif	/* EFSYS_OPT_RX_SCATTER */
+
+#if EFSYS_OPT_RX_SCALE
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_scale_context_alloc(
+	__in		efx_nic_t *enp,
+	__in		efx_rx_scale_context_type_t type,
+	__in		uint32_t num_queues,
+	__out		uint32_t *rss_contextp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_scale_context_free(
+	__in		efx_nic_t *enp,
+	__in		uint32_t rss_context);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_scale_mode_set(
+	__in		efx_nic_t *enp,
+	__in		uint32_t rss_context,
+	__in		efx_rx_hash_alg_t alg,
+	__in		efx_rx_hash_type_t type,
+	__in		boolean_t insert);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_scale_key_set(
+	__in		efx_nic_t *enp,
+	__in		uint32_t rss_context,
+	__in_ecount(n)	uint8_t *key,
+	__in		size_t n);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_scale_tbl_set(
+	__in		efx_nic_t *enp,
+	__in		uint32_t rss_context,
+	__in_ecount(n)	unsigned int *table,
+	__in		size_t n);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	uint32_t
+rhead_rx_prefix_hash(
+	__in		efx_nic_t *enp,
+	__in		efx_rx_hash_alg_t func,
+	__in		uint8_t *buffer);
+
+#endif /* EFSYS_OPT_RX_SCALE */
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_prefix_pktlen(
+	__in		efx_nic_t *enp,
+	__in		uint8_t *buffer,
+	__out		uint16_t *lengthp);
+
+LIBEFX_INTERNAL
+extern				void
+rhead_rx_qpost(
+	__in			efx_rxq_t *erp,
+	__in_ecount(ndescs)	efsys_dma_addr_t *addrp,
+	__in			size_t size,
+	__in			unsigned int ndescs,
+	__in			unsigned int completed,
+	__in			unsigned int added);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_rx_qpush(
+	__in		efx_rxq_t *erp,
+	__in		unsigned int added,
+	__inout		unsigned int *pushedp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_qflush(
+	__in		efx_rxq_t *erp);
+
+LIBEFX_INTERNAL
+extern		void
+rhead_rx_qenable(
+	__in		efx_rxq_t *erp);
+
+union efx_rxq_type_data_u;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+rhead_rx_qcreate(
+	__in		efx_nic_t *enp,
+	__in		unsigned int index,
+	__in		unsigned int label,
+	__in		efx_rxq_type_t type,
+	__in		const union efx_rxq_type_data_u *type_data,
+	__in		efsys_mem_t *esmp,
+	__in		size_t ndescs,
+	__in		uint32_t id,
+	__in		unsigned int flags,
+	__in		efx_evq_t *eep,
+	__in		efx_rxq_t *erp);
+
+LIBEFX_INTERNAL
+extern			void
+rhead_rx_qdestroy(
+	__in		efx_rxq_t *erp);
+
+
 #ifdef	__cplusplus
 }
 #endif

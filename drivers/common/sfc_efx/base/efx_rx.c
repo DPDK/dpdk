@@ -180,6 +180,35 @@ static const efx_rx_ops_t __efx_rx_ef10_ops = {
 };
 #endif	/* EFX_OPTS_EF10() */
 
+#if EFSYS_OPT_RIVERHEAD
+static const efx_rx_ops_t __efx_rx_rhead_ops = {
+	rhead_rx_init,				/* erxo_init */
+	rhead_rx_fini,				/* erxo_fini */
+#if EFSYS_OPT_RX_SCATTER
+	rhead_rx_scatter_enable,		/* erxo_scatter_enable */
+#endif
+#if EFSYS_OPT_RX_SCALE
+	rhead_rx_scale_context_alloc,		/* erxo_scale_context_alloc */
+	rhead_rx_scale_context_free,		/* erxo_scale_context_free */
+	rhead_rx_scale_mode_set,		/* erxo_scale_mode_set */
+	rhead_rx_scale_key_set,			/* erxo_scale_key_set */
+	rhead_rx_scale_tbl_set,			/* erxo_scale_tbl_set */
+	rhead_rx_prefix_hash,			/* erxo_prefix_hash */
+#endif
+	rhead_rx_prefix_pktlen,			/* erxo_prefix_pktlen */
+	rhead_rx_qpost,				/* erxo_qpost */
+	rhead_rx_qpush,				/* erxo_qpush */
+#if EFSYS_OPT_RX_PACKED_STREAM
+	NULL,					/* erxo_qpush_ps_credits */
+	NULL,					/* erxo_qps_packet_info */
+#endif
+	rhead_rx_qflush,			/* erxo_qflush */
+	rhead_rx_qenable,			/* erxo_qenable */
+	rhead_rx_qcreate,			/* erxo_qcreate */
+	rhead_rx_qdestroy,			/* erxo_qdestroy */
+};
+#endif	/* EFSYS_OPT_RIVERHEAD */
+
 
 	__checkReturn	efx_rc_t
 efx_rx_init(
@@ -225,6 +254,12 @@ efx_rx_init(
 		erxop = &__efx_rx_ef10_ops;
 		break;
 #endif /* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		erxop = &__efx_rx_rhead_ops;
+		break;
+#endif /* EFSYS_OPT_RIVERHEAD */
 
 	default:
 		EFSYS_ASSERT(0);
