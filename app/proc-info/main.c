@@ -655,6 +655,32 @@ metrics_display(int port_id)
 }
 
 static void
+show_security_context(uint16_t portid)
+{
+	void *p_ctx = rte_eth_dev_get_sec_ctx(portid);
+	const struct rte_security_capability *s_cap;
+
+	if (p_ctx == NULL)
+		return;
+
+	printf("  - crypto context\n");
+	printf("\t  -- security context - %p\n", p_ctx);
+	printf("\t  -- size %u\n",
+	       rte_security_session_get_size(p_ctx));
+
+	s_cap = rte_security_capabilities_get(p_ctx);
+	if (s_cap) {
+		printf("\t  -- action (0x%x), protocol (0x%x),"
+		       " offload flags (0x%x)\n",
+		       s_cap->action,
+		       s_cap->protocol,
+		       s_cap->ol_flags);
+		printf("\t  -- capabilities - oper type %x\n",
+		       s_cap->crypto_capabilities->op);
+	}
+}
+
+static void
 show_offloads(uint64_t offloads,
 	      const char *(show_offload)(uint64_t))
 {
@@ -826,26 +852,8 @@ show_port(void)
 			}
 		}
 
-		printf("  - cyrpto context\n");
 #ifdef RTE_LIB_SECURITY
-		void *p_ctx = rte_eth_dev_get_sec_ctx(i);
-		printf("\t  -- security context - %p\n", p_ctx);
-
-		if (p_ctx) {
-			printf("\t  -- size %u\n",
-					rte_security_session_get_size(p_ctx));
-			const struct rte_security_capability *s_cap =
-				rte_security_capabilities_get(p_ctx);
-			if (s_cap) {
-				printf("\t  -- action (0x%x), protocol (0x%x),"
-						" offload flags (0x%x)\n",
-						s_cap->action,
-						s_cap->protocol,
-						s_cap->ol_flags);
-				printf("\t  -- capabilities - oper type %x\n",
-						s_cap->crypto_capabilities->op);
-			}
-		}
+		show_security_context(i);
 #endif
 	}
 }
@@ -1151,7 +1159,7 @@ display_crypto_feature_info(uint64_t x)
 	printf("\t\t  + AESNI: CPU (%c), HW (%c)\n",
 		(x & RTE_CRYPTODEV_FF_CPU_AESNI) ? 'y' : 'n',
 		(x & RTE_CRYPTODEV_FF_HW_ACCELERATED) ? 'y' : 'n');
-	printf("\t\t  + INLINE (%c)\n",
+	printf("\t\t  + SECURITY OFFLOAD (%c)\n",
 		(x & RTE_CRYPTODEV_FF_SECURITY) ? 'y' : 'n');
 	printf("\t\t  + ARM: NEON (%c), CE (%c)\n",
 		(x & RTE_CRYPTODEV_FF_CPU_NEON) ? 'y' : 'n',
@@ -1185,14 +1193,14 @@ show_crypto(void)
 
 		printf("  - device (%u)\n", i);
 		printf("\t  -- name (%s)\n"
-			"\t  -- driver (%s)\n"
-			"\t  -- id (%u) on socket (%d)\n"
-			"\t  -- queue pairs (%d)\n",
-			rte_cryptodev_name_get(i),
-			dev_info.driver_name,
-			dev_info.driver_id,
-			dev_info.device->numa_node,
-			rte_cryptodev_queue_pair_count(i));
+		       "\t  -- driver (%s)\n"
+		       "\t  -- id (%u) on socket (%d)\n"
+		       "\t  -- queue pairs (%d)\n",
+		       rte_cryptodev_name_get(i),
+		       dev_info.driver_name,
+		       dev_info.driver_id,
+		       dev_info.device->numa_node,
+		       rte_cryptodev_queue_pair_count(i));
 
 		display_crypto_feature_info(dev_info.feature_flags);
 
@@ -1200,14 +1208,18 @@ show_crypto(void)
 		if (rte_cryptodev_stats_get(i, &stats) == 0) {
 			printf("\t  -- stats\n");
 			printf("\t\t  + enqueue count (%"PRIu64")"
-				" error (%"PRIu64")\n",
-				stats.enqueued_count,
-				stats.enqueue_err_count);
+			       " error (%"PRIu64")\n",
+			       stats.enqueued_count,
+			       stats.enqueue_err_count);
 			printf("\t\t  + dequeue count (%"PRIu64")"
-				" error (%"PRIu64")\n",
-				stats.dequeued_count,
-				stats.dequeue_err_count);
+			       " error (%"PRIu64")\n",
+			       stats.dequeued_count,
+			       stats.dequeue_err_count);
 		}
+
+#ifdef RTE_LIBRTE_SECURITY
+		show_security_context(i);
+#endif
 	}
 }
 
