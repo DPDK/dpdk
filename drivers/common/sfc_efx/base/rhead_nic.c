@@ -52,6 +52,12 @@ rhead_board_cfg(
 	encp->enc_buftbl_limit = UINT32_MAX;
 
 	/*
+	 * Riverhead event queue creation completes
+	 * immediately (no initial event).
+	 */
+	encp->enc_evq_init_done_ev_supported = B_FALSE;
+
+	/*
 	 * Enable firmware workarounds for hardware errata.
 	 * Expected responses are:
 	 *  - 0 (zero):

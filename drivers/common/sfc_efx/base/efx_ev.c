@@ -423,6 +423,36 @@ efx_ev_qprefetch(
 
 #endif	/* EFSYS_OPT_EV_PREFETCH */
 
+/*
+ * This method is needed to ensure that eec_initialized callback
+ * is invoked after queue creation. The callback will be invoked
+ * on Riverhead boards which have no support for INIT_DONE events
+ * and will do nothing on other boards.
+ *
+ * The client drivers must call this method after calling efx_ev_create().
+ * The call must be done with the same locks being held (if any) which are
+ * normally acquired around efx_ev_qpoll() calls to ensure that
+ * eec_initialized callback is invoked within the same locking context.
+ */
+			void
+efx_ev_qcreate_check_init_done(
+	__in		efx_evq_t *eep,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	const efx_nic_cfg_t *encp;
+
+	EFSYS_ASSERT(eep != NULL);
+	EFSYS_ASSERT3U(eep->ee_magic, ==, EFX_EVQ_MAGIC);
+	EFSYS_ASSERT(eecp != NULL);
+	EFSYS_ASSERT(eecp->eec_initialized != NULL);
+
+	encp = efx_nic_cfg_get(eep->ee_enp);
+
+	if (encp->enc_evq_init_done_ev_supported == B_FALSE)
+		(void) eecp->eec_initialized(arg);
+}
+
 			void
 efx_ev_qpoll(
 	__in		efx_evq_t *eep,

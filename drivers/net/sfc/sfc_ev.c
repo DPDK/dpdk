@@ -608,6 +608,8 @@ sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index)
 	else
 		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_DISABLED;
 
+	evq->init_state = SFC_EVQ_STARTING;
+
 	/* Create the common code event queue */
 	rc = efx_ev_qcreate(sa->nic, hw_index, esmp, evq->entries,
 			    0 /* unused on EF10 */, 0, evq_flags,
@@ -632,7 +634,13 @@ sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index)
 		evq->callbacks = &sfc_ev_callbacks;
 	}
 
-	evq->init_state = SFC_EVQ_STARTING;
+	/*
+	 * Poll once to ensure that eec_initialized callback is invoked in
+	 * case if the hardware does not support INIT_DONE events. If the
+	 * hardware supports INIT_DONE events, this will do nothing, and the
+	 * corresponding event will be processed by sfc_ev_qpoll() below.
+	 */
+	efx_ev_qcreate_check_init_done(evq->common, evq->callbacks, evq);
 
 	/* Wait for the initialization event */
 	total_delay_us = 0;
@@ -665,10 +673,10 @@ done:
 	return 0;
 
 fail_timedout:
-	evq->init_state = SFC_EVQ_INITIALIZED;
 	efx_ev_qdestroy(evq->common);
 
 fail_ev_qcreate:
+	evq->init_state = SFC_EVQ_INITIALIZED;
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
 }

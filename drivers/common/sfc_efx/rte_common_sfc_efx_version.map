@@ -6,6 +6,7 @@ INTERNAL {
 	efx_ev_fini;
 	efx_ev_init;
 	efx_ev_qcreate;
+	efx_ev_qcreate_check_init_done;
 	efx_ev_qdestroy;
 	efx_ev_qmoderate;
 	efx_ev_qpending;

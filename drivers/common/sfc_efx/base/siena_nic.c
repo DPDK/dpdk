@@ -135,6 +135,12 @@ siena_board_cfg(
 	encp->enc_rx_scale_additional_modes_supported = B_FALSE;
 #endif /* EFSYS_OPT_RX_SCALE */
 
+	/*
+	 * Event queue creation is complete when an
+	 * EVQ_INIT_DONE_EV event is received.
+	 */
+	encp->enc_evq_init_done_ev_supported = B_TRUE;
+
 	encp->enc_tx_dma_desc_size_max = EFX_MASK32(FSF_AZ_TX_KER_BYTE_COUNT);
 	/* Fragments must not span 4k boundaries. */
 	encp->enc_tx_dma_desc_boundary = 4096;
