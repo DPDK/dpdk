@@ -10,6 +10,7 @@
 #include "efx.h"
 #include "efx_regs.h"
 #include "efx_regs_ef10.h"
+#include "efx_regs_ef100.h"
 #if EFSYS_OPT_MCDI
 #include "efx_mcdi.h"
 #endif	/* EFSYS_OPT_MCDI */
