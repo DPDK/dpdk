@@ -7,7 +7,7 @@
 #include "efx.h"
 #include "efx_impl.h"
 
-#if EFX_OPTS_EF10()
+#if EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10()
 
 static			void
 mcdi_phy_decode_cap(
@@ -755,4 +755,4 @@ ef10_bist_stop(
 
 #endif	/* EFSYS_OPT_BIST */
 
-#endif	/* EFX_OPTS_EF10() */
+#endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */

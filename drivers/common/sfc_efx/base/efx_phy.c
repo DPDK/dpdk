@@ -48,6 +48,26 @@ static const efx_phy_ops_t	__efx_phy_ef10_ops = {
 };
 #endif	/* EFX_OPTS_EF10() */
 
+#if EFSYS_OPT_RIVERHEAD
+static const efx_phy_ops_t	__efx_phy_rhead_ops = {
+	ef10_phy_power,			/* epo_power */
+	NULL,				/* epo_reset */
+	ef10_phy_reconfigure,		/* epo_reconfigure */
+	ef10_phy_verify,		/* epo_verify */
+	ef10_phy_oui_get,		/* epo_oui_get */
+	ef10_phy_link_state_get,	/* epo_link_state_get */
+#if EFSYS_OPT_PHY_STATS
+	ef10_phy_stats_update,		/* epo_stats_update */
+#endif	/* EFSYS_OPT_PHY_STATS */
+#if EFSYS_OPT_BIST
+	ef10_bist_enable_offline,	/* epo_bist_enable_offline */
+	ef10_bist_start,		/* epo_bist_start */
+	ef10_bist_poll,			/* epo_bist_poll */
+	ef10_bist_stop,			/* epo_bist_stop */
+#endif	/* EFSYS_OPT_BIST */
+};
+#endif	/* EFSYS_OPT_RIVERHEAD */
+
 	__checkReturn	efx_rc_t
 efx_phy_probe(
 	__in		efx_nic_t *enp)
@@ -85,6 +105,12 @@ efx_phy_probe(
 #if EFSYS_OPT_MEDFORD2
 	case EFX_FAMILY_MEDFORD2:
 		epop = &__efx_phy_ef10_ops;
+		break;
+#endif	/* EFSYS_OPT_MEDFORD2 */
+
+#if EFSYS_OPT_RIVERHEAD
+	case EFX_FAMILY_RIVERHEAD:
+		epop = &__efx_phy_rhead_ops;
 		break;
 #endif	/* EFSYS_OPT_MEDFORD2 */
 
