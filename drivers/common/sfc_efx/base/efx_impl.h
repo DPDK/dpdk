@@ -1430,6 +1430,34 @@ efx_mcdi_fini_evq(
 
 #endif	/* EFSYS_OPT_RIVERHEAD || EFX_OPTS_EF10() */
 
+#if EFX_OPTS_EF10()
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_init_rxq(
+	__in		efx_nic_t *enp,
+	__in		uint32_t ndescs,
+	__in		efx_evq_t *eep,
+	__in		uint32_t label,
+	__in		uint32_t instance,
+	__in		efsys_mem_t *esmp,
+	__in		boolean_t disable_scatter,
+	__in		boolean_t want_inner_classes,
+	__in		uint32_t buf_size,
+	__in		uint32_t ps_bufsize,
+	__in		uint32_t es_bufs_per_desc,
+	__in		uint32_t es_max_dma_len,
+	__in		uint32_t es_buf_stride,
+	__in		uint32_t hol_block_timeout);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_fini_rxq(
+	__in		efx_nic_t *enp,
+	__in		uint32_t instance);
+
+#endif	/* EFX_OPTS_EF10() */
+
 #endif /* EFSYS_OPT_MCDI */
 
 #if EFSYS_OPT_MAC_STATS
