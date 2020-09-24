@@ -7,6 +7,43 @@
 #include "efx.h"
 #include "efx_impl.h"
 
+/*
+ * State diagram of the UDP tunnel table entries
+ * (efx_tunnel_udp_entry_state_t and busy flag):
+ *
+ *                             +---------+
+ *                    +--------| APPLIED |<-------+
+ *                    |        +---------+        |
+ *                    |                           |
+ *                    |                efx_tunnel_reconfigure (end)
+ *   efx_tunnel_config_udp_remove                 |
+ *                    |                    +------------+
+ *                    v                    | BUSY ADDED |
+ *               +---------+               +------------+
+ *               | REMOVED |                      ^
+ *               +---------+                      |
+ *                    |               efx_tunnel_reconfigure (begin)
+ *  efx_tunnel_reconfigure (begin)                |
+ *                    |                           |
+ *                    v                     +-----------+
+ *            +--------------+              |   ADDED   |<---------+
+ *            | BUSY REMOVED |              +-----------+          |
+ *            +--------------+                    |                |
+ *                    |              efx_tunnel_config_udp_remove  |
+ *  efx_tunnel_reconfigure (end)                  |                |
+ *                    |                           |                |
+ *                    |        +---------+        |                |
+ *                    |        |+-------+|        |                |
+ *                    +------->|| empty ||<-------+                |
+ *                             |+-------+|                         |
+ *                             +---------+        efx_tunnel_config_udp_add
+ *                                  |                              |
+ *                                  +------------------------------+
+ *
+ * Note that there is no BUSY APPLIED state since removing an applied entry
+ * should not be blocked by ongoing reconfiguration in another thread -
+ * reconfiguration will remove only busy entries.
+ */
 
 #if EFSYS_OPT_TUNNEL
 
@@ -36,6 +73,24 @@ static const efx_tunnel_ops_t	__efx_tunnel_ef10_ops = {
 };
 #endif /* EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
 
+/* Indicates that an entry is to be set */
+static	__checkReturn		boolean_t
+ef10_entry_staged(
+	__in			efx_tunnel_udp_entry_t *entry)
+{
+	switch (entry->etue_state) {
+	case EFX_TUNNEL_UDP_ENTRY_ADDED:
+		return (entry->etue_busy);
+	case EFX_TUNNEL_UDP_ENTRY_REMOVED:
+		return (!entry->etue_busy);
+	case EFX_TUNNEL_UDP_ENTRY_APPLIED:
+		return (B_TRUE);
+	default:
+		EFSYS_ASSERT(0);
+		return (B_FALSE);
+	}
+}
+
 static	__checkReturn		efx_rc_t
 efx_mcdi_set_tunnel_encap_udp_ports(
 	__in			efx_nic_t *enp,
@@ -51,11 +106,17 @@ efx_mcdi_set_tunnel_encap_udp_ports(
 	efx_rc_t rc;
 	unsigned int i;
 	unsigned int entries_num;
+	unsigned int entry;
 
-	if (etcp == NULL)
-		entries_num = 0;
-	else
-		entries_num = etcp->etc_udp_entries_num;
+	entries_num = 0;
+	if (etcp != NULL) {
+		for (i = 0; i < etcp->etc_udp_entries_num; i++) {
+			if (ef10_entry_staged(&etcp->etc_udp_entries[i]) !=
+			    B_FALSE) {
+				entries_num++;
+			}
+		}
+	}
 
 	req.emr_cmd = MC_CMD_SET_TUNNEL_ENCAP_UDP_PORTS;
 	req.emr_in_buf = payload;
@@ -73,8 +134,11 @@ efx_mcdi_set_tunnel_encap_udp_ports(
 	MCDI_IN_SET_WORD(req, SET_TUNNEL_ENCAP_UDP_PORTS_IN_NUM_ENTRIES,
 	    entries_num);
 
-	for (i = 0; i < entries_num; ++i) {
+	for (i = 0, entry = 0; entry < entries_num; ++entry, ++i) {
 		uint16_t mcdi_udp_protocol;
+
+		while (ef10_entry_staged(&etcp->etc_udp_entries[i]) == B_FALSE)
+			i++;
 
 		switch (etcp->etc_udp_entries[i].etue_protocol) {
 		case EFX_TUNNEL_PROTOCOL_VXLAN:
@@ -97,7 +161,7 @@ efx_mcdi_set_tunnel_encap_udp_ports(
 		    TUNNEL_ENCAP_UDP_PORT_ENTRY_LEN);
 		EFX_POPULATE_DWORD_2(
 		    MCDI_IN2(req, efx_dword_t,
-			SET_TUNNEL_ENCAP_UDP_PORTS_IN_ENTRIES)[i],
+			SET_TUNNEL_ENCAP_UDP_PORTS_IN_ENTRIES)[entry],
 		    TUNNEL_ENCAP_UDP_PORT_ENTRY_UDP_PORT,
 		    etcp->etc_udp_entries[i].etue_port,
 		    TUNNEL_ENCAP_UDP_PORT_ENTRY_PROTOCOL,
@@ -230,7 +294,8 @@ efx_tunnel_config_find_udp_tunnel_entry(
 	for (i = 0; i < etcp->etc_udp_entries_num; ++i) {
 		efx_tunnel_udp_entry_t *p = &etcp->etc_udp_entries[i];
 
-		if (p->etue_port == port) {
+		if (p->etue_port == port &&
+		    p->etue_state != EFX_TUNNEL_UDP_ENTRY_REMOVED) {
 			*entryp = i;
 			return (0);
 		}
@@ -281,6 +346,8 @@ efx_tunnel_config_udp_add(
 	etcp->etc_udp_entries[etcp->etc_udp_entries_num].etue_port = port;
 	etcp->etc_udp_entries[etcp->etc_udp_entries_num].etue_protocol =
 	    protocol;
+	etcp->etc_udp_entries[etcp->etc_udp_entries_num].etue_state =
+	    EFX_TUNNEL_UDP_ENTRY_ADDED;
 
 	etcp->etc_udp_entries_num++;
 
@@ -304,6 +371,61 @@ fail1:
 	return (rc);
 }
 
+/*
+ * Returns the index of the entry after the deleted one,
+ * or one past the last entry.
+ */
+static			unsigned int
+efx_tunnel_config_udp_do_remove(
+	__in		efx_tunnel_cfg_t *etcp,
+	__in		unsigned int entry)
+{
+	EFSYS_ASSERT3U(etcp->etc_udp_entries_num, >, 0);
+	etcp->etc_udp_entries_num--;
+
+	if (entry < etcp->etc_udp_entries_num) {
+		memmove(&etcp->etc_udp_entries[entry],
+		    &etcp->etc_udp_entries[entry + 1],
+		    (etcp->etc_udp_entries_num - entry) *
+		    sizeof (etcp->etc_udp_entries[0]));
+	}
+
+	memset(&etcp->etc_udp_entries[etcp->etc_udp_entries_num], 0,
+	    sizeof (etcp->etc_udp_entries[0]));
+
+	return (entry);
+}
+
+/*
+ * Returns the index of the entry after the specified one,
+ * or one past the last entry. The index is correct whether
+ * the specified entry was removed or not.
+ */
+static			unsigned int
+efx_tunnel_config_udp_remove_prepare(
+	__in		efx_tunnel_cfg_t *etcp,
+	__in		unsigned int entry)
+{
+	unsigned int next = entry + 1;
+
+	switch (etcp->etc_udp_entries[entry].etue_state) {
+	case EFX_TUNNEL_UDP_ENTRY_ADDED:
+		next = efx_tunnel_config_udp_do_remove(etcp, entry);
+		break;
+	case EFX_TUNNEL_UDP_ENTRY_REMOVED:
+		break;
+	case EFX_TUNNEL_UDP_ENTRY_APPLIED:
+		etcp->etc_udp_entries[entry].etue_state =
+		    EFX_TUNNEL_UDP_ENTRY_REMOVED;
+		break;
+	default:
+		EFSYS_ASSERT(0);
+		break;
+	}
+
+	return (next);
+}
+
 	__checkReturn	efx_rc_t
 efx_tunnel_config_udp_remove(
 	__in		efx_nic_t *enp,
@@ -323,27 +445,24 @@ efx_tunnel_config_udp_remove(
 	if (rc != 0)
 		goto fail1;
 
-	if (etcp->etc_udp_entries[entry].etue_protocol != protocol) {
-		rc = EINVAL;
+	if (etcp->etc_udp_entries[entry].etue_busy != B_FALSE) {
+		rc = EBUSY;
 		goto fail2;
 	}
 
-	EFSYS_ASSERT3U(etcp->etc_udp_entries_num, >, 0);
-	etcp->etc_udp_entries_num--;
-
-	if (entry < etcp->etc_udp_entries_num) {
-		memmove(&etcp->etc_udp_entries[entry],
-		    &etcp->etc_udp_entries[entry + 1],
-		    (etcp->etc_udp_entries_num - entry) *
-		    sizeof (etcp->etc_udp_entries[0]));
+	if (etcp->etc_udp_entries[entry].etue_protocol != protocol) {
+		rc = EINVAL;
+		goto fail3;
 	}
 
-	memset(&etcp->etc_udp_entries[etcp->etc_udp_entries_num], 0,
-	    sizeof (etcp->etc_udp_entries[0]));
+	(void) efx_tunnel_config_udp_remove_prepare(etcp, entry);
 
 	EFSYS_UNLOCK(enp->en_eslp, state);
 
 	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
 
 fail2:
 	EFSYS_PROBE(fail2);
@@ -355,21 +474,51 @@ fail1:
 	return (rc);
 }
 
-			void
+static			boolean_t
+efx_tunnel_table_all_available(
+	__in			efx_tunnel_cfg_t *etcp)
+{
+	unsigned int i;
+
+	for (i = 0; i < etcp->etc_udp_entries_num; i++) {
+		if (etcp->etc_udp_entries[i].etue_busy != B_FALSE)
+			return (B_FALSE);
+	}
+
+	return (B_TRUE);
+}
+
+	__checkReturn	efx_rc_t
 efx_tunnel_config_clear(
 	__in			efx_nic_t *enp)
 {
 	efx_tunnel_cfg_t *etcp = &enp->en_tunnel_cfg;
 	efsys_lock_state_t state;
+	unsigned int i;
+	efx_rc_t rc;
 
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_TUNNEL);
 
 	EFSYS_LOCK(enp->en_eslp, state);
 
-	etcp->etc_udp_entries_num = 0;
-	memset(etcp->etc_udp_entries, 0, sizeof (etcp->etc_udp_entries));
+	if (efx_tunnel_table_all_available(etcp) == B_FALSE) {
+		rc = EBUSY;
+		goto fail1;
+	}
+
+	i = 0;
+	while (i < etcp->etc_udp_entries_num)
+		i = efx_tunnel_config_udp_remove_prepare(etcp, i);
 
 	EFSYS_UNLOCK(enp->en_eslp, state);
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	EFSYS_UNLOCK(enp->en_eslp, state);
+
+	return (rc);
 }
 
 	__checkReturn	efx_rc_t
@@ -377,6 +526,12 @@ efx_tunnel_reconfigure(
 	__in		efx_nic_t *enp)
 {
 	const efx_tunnel_ops_t *etop = enp->en_etop;
+	efx_tunnel_cfg_t *etcp = &enp->en_tunnel_cfg;
+	efx_tunnel_udp_entry_t *entry;
+	boolean_t locked = B_FALSE;
+	efsys_lock_state_t state;
+	boolean_t resetting;
+	unsigned int i;
 	efx_rc_t rc;
 
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_TUNNEL);
@@ -386,16 +541,89 @@ efx_tunnel_reconfigure(
 		goto fail1;
 	}
 
-	if ((rc = enp->en_etop->eto_reconfigure(enp)) != 0)
-		goto fail2;
+	EFSYS_LOCK(enp->en_eslp, state);
+	locked = B_TRUE;
 
-	return (0);
+	if (efx_tunnel_table_all_available(etcp) == B_FALSE) {
+		rc = EBUSY;
+		goto fail2;
+	}
+
+	for (i = 0; i < etcp->etc_udp_entries_num; i++) {
+		entry = &etcp->etc_udp_entries[i];
+		if (entry->etue_state != EFX_TUNNEL_UDP_ENTRY_APPLIED)
+			entry->etue_busy = B_TRUE;
+	}
+
+	EFSYS_UNLOCK(enp->en_eslp, state);
+	locked = B_FALSE;
+
+	rc = enp->en_etop->eto_reconfigure(enp);
+	if (rc != 0 && rc != EAGAIN)
+		goto fail3;
+
+	resetting = (rc == EAGAIN) ? B_TRUE : B_FALSE;
+
+	EFSYS_LOCK(enp->en_eslp, state);
+	locked = B_TRUE;
+
+	/*
+	 * Delete entries marked for removal since they are no longer
+	 * needed after successful NIC-specific reconfiguration.
+	 * Added entries become applied because they are installed in
+	 * the hardware.
+	 */
+
+	i = 0;
+	while (i < etcp->etc_udp_entries_num) {
+		unsigned int next = i + 1;
+
+		entry = &etcp->etc_udp_entries[i];
+		if (entry->etue_busy != B_FALSE) {
+			entry->etue_busy = B_FALSE;
+
+			switch (entry->etue_state) {
+			case EFX_TUNNEL_UDP_ENTRY_APPLIED:
+				break;
+			case EFX_TUNNEL_UDP_ENTRY_ADDED:
+				entry->etue_state =
+				    EFX_TUNNEL_UDP_ENTRY_APPLIED;
+				break;
+			case EFX_TUNNEL_UDP_ENTRY_REMOVED:
+				next = efx_tunnel_config_udp_do_remove(etcp, i);
+				break;
+			default:
+				EFSYS_ASSERT(0);
+				break;
+			}
+		}
+
+		i = next;
+	}
+
+	EFSYS_UNLOCK(enp->en_eslp, state);
+	locked = B_FALSE;
+
+	return ((resetting == B_FALSE) ? 0 : EAGAIN);
+
+fail3:
+	EFSYS_PROBE(fail3);
+
+	EFSYS_ASSERT(locked == B_FALSE);
+	EFSYS_LOCK(enp->en_eslp, state);
+
+	for (i = 0; i < etcp->etc_udp_entries_num; i++)
+		etcp->etc_udp_entries[i].etue_busy = B_FALSE;
+
+	EFSYS_UNLOCK(enp->en_eslp, state);
 
 fail2:
 	EFSYS_PROBE(fail2);
 
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	if (locked)
+		EFSYS_UNLOCK(enp->en_eslp, state);
 
 	return (rc);
 }

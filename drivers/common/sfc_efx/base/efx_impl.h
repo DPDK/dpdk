@@ -489,9 +489,18 @@ siena_filter_tbl_clear(
 
 #if EFSYS_OPT_TUNNEL
 
+/* State of a UDP tunnel table entry */
+typedef enum efx_tunnel_udp_entry_state_e {
+	EFX_TUNNEL_UDP_ENTRY_ADDED, /* Tunnel addition is requested */
+	EFX_TUNNEL_UDP_ENTRY_REMOVED, /* Tunnel removal is requested */
+	EFX_TUNNEL_UDP_ENTRY_APPLIED, /* Tunnel is applied by HW */
+} efx_tunnel_udp_entry_state_t;
+
 typedef struct efx_tunnel_udp_entry_s {
 	uint16_t			etue_port; /* host/cpu-endian */
 	uint16_t			etue_protocol;
+	boolean_t			etue_busy;
+	efx_tunnel_udp_entry_state_t	etue_state;
 } efx_tunnel_udp_entry_t;
 
 typedef struct efx_tunnel_cfg_s {
