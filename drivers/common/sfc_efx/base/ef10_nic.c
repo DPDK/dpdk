@@ -1109,6 +1109,12 @@ ef10_get_datapath_caps(
 	else
 		encp->enc_fw_assisted_tso_v2_encap_enabled = B_FALSE;
 
+	/* Check if TSOv3 is supported */
+	if (CAP_FLAGS2(req, TX_TSO_V3))
+		encp->enc_tso_v3_enabled = B_TRUE;
+	else
+		encp->enc_tso_v3_enabled = B_FALSE;
+
 	/* Check if the firmware has vadapter/vport/vswitch support */
 	if (CAP_FLAGS1(req, EVB))
 		encp->enc_datapath_cap_evb = B_TRUE;
