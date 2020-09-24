@@ -58,6 +58,22 @@ rhead_ev_ew_qpoll(
 	__inout		unsigned int *countp,
 	__in		const efx_ev_callbacks_t *eecp,
 	__in_opt	void *arg);
+
+#if EFSYS_OPT_DESC_PROXY
+static			boolean_t
+rhead_ev_ew_txq_desc(
+	__in		efx_evq_t *eep,
+	__in		efx_xword_t *eventp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+
+static			boolean_t
+rhead_ev_ew_virtq_desc(
+	__in		efx_evq_t *eep,
+	__in		efx_xword_t *eventp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg);
+#endif /* EFSYS_OPT_DESC_PROXY */
 #endif /* EFSYS_OPT_EV_EXTENDED_WIDTH */
 
 
@@ -114,6 +130,11 @@ rhead_ev_qcreate(
 	eep->ee_driver	= NULL; /* FIXME */
 	eep->ee_drv_gen	= NULL; /* FIXME */
 	eep->ee_mcdi	= rhead_ev_mcdi;
+
+#if EFSYS_OPT_DESC_PROXY
+	eep->ee_ew_txq_desc	= rhead_ev_ew_txq_desc;
+	eep->ee_ew_virtq_desc	= rhead_ev_ew_virtq_desc;
+#endif /* EFSYS_OPT_DESC_PROXY */
 
 	/* Set up the event queue */
 	/* INIT_EVQ expects function-relative vector number */
@@ -344,6 +365,16 @@ rhead_ev_ew_dispatch(
 		should_abort =
 		    rhead_ev_dispatch(eep, &eventp->ex_qword[0], eecp, arg);
 		break;
+
+#if EFSYS_OPT_DESC_PROXY
+	case ESE_GZ_EF100_EVEW_TXQ_DESC:
+		should_abort = eep->ee_ew_txq_desc(eep, eventp, eecp, arg);
+		break;
+
+	case ESE_GZ_EF100_EVEW_VIRTQ_DESC:
+		should_abort = eep->ee_ew_virtq_desc(eep, eventp, eecp, arg);
+		break;
+#endif /* EFSYS_OPT_DESC_PROXY */
 
 	default:
 		/* Omit currently unused reserved bits from the probe. */
@@ -588,5 +619,69 @@ rhead_ev_mcdi(
 
 	return (ret);
 }
+
+#if EFSYS_OPT_DESC_PROXY
+static			boolean_t
+rhead_ev_ew_txq_desc(
+	__in		efx_evq_t *eep,
+	__in		efx_xword_t *eventp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	efx_oword_t txq_desc;
+	uint16_t vi_id;
+	boolean_t should_abort;
+
+	_NOTE(ARGUNUSED(eep))
+
+	vi_id = EFX_XWORD_FIELD(*eventp, ESF_GZ_EV_TXQ_DP_VI_ID);
+
+	/*
+	 * NOTE: This is the raw descriptor data, and has not been converted
+	 * to host endian. The handler callback must use the EFX_OWORD macros
+	 * to extract the descriptor fields as host endian values.
+	 */
+	txq_desc = eventp->ex_oword[0];
+
+	EFSYS_ASSERT(eecp->eec_desc_proxy_txq_desc != NULL);
+	should_abort = eecp->eec_desc_proxy_txq_desc(arg, vi_id, txq_desc);
+
+	return (should_abort);
+}
+#endif /* EFSYS_OPT_DESC_PROXY */
+
+
+#if EFSYS_OPT_DESC_PROXY
+static			boolean_t
+rhead_ev_ew_virtq_desc(
+	__in		efx_evq_t *eep,
+	__in		efx_xword_t *eventp,
+	__in		const efx_ev_callbacks_t *eecp,
+	__in_opt	void *arg)
+{
+	efx_oword_t virtq_desc;
+	uint16_t vi_id;
+	uint16_t avail;
+	boolean_t should_abort;
+
+	_NOTE(ARGUNUSED(eep))
+
+	vi_id = EFX_XWORD_FIELD(*eventp, ESF_GZ_EV_VQ_DP_VI_ID);
+	avail = EFX_XWORD_FIELD(*eventp, ESF_GZ_EV_VQ_DP_AVAIL_ENTRY);
+
+	/*
+	 * NOTE: This is the raw descriptor data, and has not been converted
+	 * to host endian. The handler callback must use the EFX_OWORD macros
+	 * to extract the descriptor fields as host endian values.
+	 */
+	virtq_desc = eventp->ex_oword[0];
+
+	EFSYS_ASSERT(eecp->eec_desc_proxy_virtq_desc != NULL);
+	should_abort =
+	    eecp->eec_desc_proxy_virtq_desc(arg, vi_id, avail, virtq_desc);
+
+	return (should_abort);
+}
+#endif /* EFSYS_OPT_DESC_PROXY */
 
 #endif	/* EFSYS_OPT_RIVERHEAD */

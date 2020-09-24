@@ -902,6 +902,11 @@ struct efx_nic_s {
 typedef	boolean_t (*efx_ev_handler_t)(efx_evq_t *, efx_qword_t *,
     const efx_ev_callbacks_t *, void *);
 
+#if EFSYS_OPT_EV_EXTENDED_WIDTH
+typedef	boolean_t (*efx_ev_ew_handler_t)(efx_evq_t *, efx_xword_t *,
+    const efx_ev_callbacks_t *, void *);
+#endif /* EFSYS_OPT_EV_EXTENDED_WIDTH */
+
 typedef struct efx_evq_rxq_state_s {
 	unsigned int			eers_rx_read_ptr;
 	unsigned int			eers_rx_mask;
@@ -933,6 +938,11 @@ struct efx_evq_s {
 #if EFSYS_OPT_MCDI
 	efx_ev_handler_t		ee_mcdi;
 #endif	/* EFSYS_OPT_MCDI */
+
+#if EFSYS_OPT_DESC_PROXY
+	efx_ev_ew_handler_t		ee_ew_txq_desc;
+	efx_ev_ew_handler_t		ee_ew_virtq_desc;
+#endif /* EFSYS_OPT_DESC_PROXY */
 
 	efx_evq_rxq_state_t		ee_rxq_state[EFX_EV_RX_NLABELS];
 };

@@ -2487,6 +2487,33 @@ typedef __checkReturn	boolean_t
 
 #endif	/* EFSYS_OPT_MAC_STATS */
 
+#if EFSYS_OPT_DESC_PROXY
+
+/*
+ * NOTE: This callback returns the raw descriptor data, which has not been
+ * converted to host endian. The callback must use the EFX_OWORD macros
+ * to extract the descriptor fields as host endian values.
+ */
+typedef __checkReturn	boolean_t
+(*efx_desc_proxy_txq_desc_ev_t)(
+	__in_opt	void *arg,
+	__in		uint16_t vi_id,
+	__in		efx_oword_t txq_desc);
+
+/*
+ * NOTE: This callback returns the raw descriptor data, which has not been
+ * converted to host endian. The callback must use the EFX_OWORD macros
+ * to extract the descriptor fields as host endian values.
+ */
+typedef __checkReturn	boolean_t
+(*efx_desc_proxy_virtq_desc_ev_t)(
+	__in_opt	void *arg,
+	__in		uint16_t vi_id,
+	__in		uint16_t avail,
+	__in		efx_oword_t virtq_desc);
+
+#endif /* EFSYS_OPT_DESC_PROXY */
+
 typedef struct efx_ev_callbacks_s {
 	efx_initialized_ev_t		eec_initialized;
 	efx_rx_ev_t			eec_rx;
@@ -2511,6 +2538,11 @@ typedef struct efx_ev_callbacks_s {
 #if EFSYS_OPT_MAC_STATS
 	efx_mac_stats_ev_t		eec_mac_stats;
 #endif	/* EFSYS_OPT_MAC_STATS */
+#if EFSYS_OPT_DESC_PROXY
+	efx_desc_proxy_txq_desc_ev_t	eec_desc_proxy_txq_desc;
+	efx_desc_proxy_virtq_desc_ev_t	eec_desc_proxy_virtq_desc;
+#endif /* EFSYS_OPT_DESC_PROXY */
+
 } efx_ev_callbacks_t;
 
 LIBEFX_API
