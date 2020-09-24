@@ -1292,15 +1292,16 @@ struct efx_txq_s {
 	_NOTE(CONSTANTCONDITION)					\
 	} while (B_FALSE)
 
-#define	EFX_DMA_SYNC_QUEUE_FOR_DEVICE(_esmp, _entries, _wptr, _owptr)	\
+#define	EFX_DMA_SYNC_QUEUE_FOR_DEVICE(_esmp, _entries, _desc_size,	\
+				      _wptr, _owptr)			\
 	do {								\
 		unsigned int _new = (_wptr);				\
 		unsigned int _old = (_owptr);				\
 									\
 		if ((_new) >= (_old))					\
 			EFSYS_DMA_SYNC_FOR_DEVICE((_esmp),		\
-			    (_old) * sizeof (efx_desc_t),		\
-			    ((_new) - (_old)) * sizeof (efx_desc_t));	\
+			    (_old) * (_desc_size),			\
+			    ((_new) - (_old)) * (_desc_size));		\
 		else							\
 			/*						\
 			 * It is cheaper to sync entire map than sync	\
@@ -1309,7 +1310,7 @@ struct efx_txq_s {
 			 */						\
 			EFSYS_DMA_SYNC_FOR_DEVICE((_esmp),		\
 			    0,						\
-			    (_entries) * sizeof (efx_desc_t));		\
+			    (_entries) * (_desc_size));			\
 	_NOTE(CONSTANTCONDITION)					\
 	} while (B_FALSE)
 

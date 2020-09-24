@@ -693,7 +693,7 @@ ef10_rx_qpush(
 
 	/* Guarantee ordering of memory (descriptors) and PIO (doorbell) */
 	EFX_DMA_SYNC_QUEUE_FOR_DEVICE(erp->er_esmp, erp->er_mask + 1,
-	    wptr, pushed & erp->er_mask);
+	    EF10_RXQ_DESC_SIZE, wptr, pushed & erp->er_mask);
 	EFSYS_PIO_WRITE_BARRIER();
 	EFX_BAR_VI_WRITED(enp, ER_DZ_RX_DESC_UPD_REG,
 	    erp->er_index, &dword, B_FALSE);

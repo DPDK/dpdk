@@ -375,7 +375,7 @@ ef10_tx_qpush(
 
 		/* Ensure ordering of memory (descriptors) and PIO (doorbell) */
 		EFX_DMA_SYNC_QUEUE_FOR_DEVICE(etp->et_esmp, etp->et_mask + 1,
-					    wptr, id);
+		    EF10_TXQ_DESC_SIZE, wptr, id);
 		EFSYS_PIO_WRITE_BARRIER();
 		EFX_BAR_VI_DOORBELL_WRITEO(enp, ER_DZ_TX_DESC_UPD_REG,
 		    etp->et_index, &oword);
@@ -391,7 +391,7 @@ ef10_tx_qpush(
 
 		/* Ensure ordering of memory (descriptors) and PIO (doorbell) */
 		EFX_DMA_SYNC_QUEUE_FOR_DEVICE(etp->et_esmp, etp->et_mask + 1,
-					    wptr, id);
+		    EF10_TXQ_DESC_SIZE, wptr, id);
 		EFSYS_PIO_WRITE_BARRIER();
 		EFX_BAR_VI_WRITED2(enp, ER_DZ_TX_DESC_UPD_REG,
 		    etp->et_index, &dword, B_FALSE);

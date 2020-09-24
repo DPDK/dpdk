@@ -866,7 +866,7 @@ siena_tx_qpush(
 
 	/* Guarantee ordering of memory (descriptors) and PIO (doorbell) */
 	EFX_DMA_SYNC_QUEUE_FOR_DEVICE(etp->et_esmp, etp->et_mask + 1,
-	    wptr, pushed & etp->et_mask);
+	    SIENA_TXQ_DESC_SIZE, wptr, pushed & etp->et_mask);
 	EFSYS_PIO_WRITE_BARRIER();
 	EFX_BAR_TBL_WRITED3(enp, FR_BZ_TX_DESC_UPD_REGP0,
 			    etp->et_index, &dword, B_FALSE);
