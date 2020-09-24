@@ -824,11 +824,16 @@ efx_rx_qcreate_internal(
 	EFSYS_ASSERT(ISP2(encp->enc_rxq_max_ndescs));
 	EFSYS_ASSERT(ISP2(encp->enc_rxq_min_ndescs));
 
+	if (index >= encp->enc_rxq_limit) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
 	if (!ISP2(ndescs) ||
 	    ndescs < encp->enc_rxq_min_ndescs ||
 	    ndescs > encp->enc_rxq_max_ndescs) {
 		rc = EINVAL;
-		goto fail1;
+		goto fail2;
 	}
 
 	/* Allocate an RXQ object */
@@ -836,7 +841,7 @@ efx_rx_qcreate_internal(
 
 	if (erp == NULL) {
 		rc = ENOMEM;
-		goto fail2;
+		goto fail3;
 	}
 
 	erp->er_magic = EFX_RXQ_MAGIC;
@@ -847,17 +852,19 @@ efx_rx_qcreate_internal(
 
 	if ((rc = erxop->erxo_qcreate(enp, index, label, type, type_data, esmp,
 	    ndescs, id, flags, eep, erp)) != 0)
-		goto fail3;
+		goto fail4;
 
 	enp->en_rx_qcount++;
 	*erpp = erp;
 
 	return (0);
 
-fail3:
-	EFSYS_PROBE(fail3);
+fail4:
+	EFSYS_PROBE(fail4);
 
 	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_rxq_t), erp);
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
@@ -1635,10 +1642,6 @@ siena_rx_qcreate(
 	    (1 << FRF_AZ_RX_DESCQ_LABEL_WIDTH));
 	EFSYS_ASSERT3U(label, <, EFX_EV_RX_NLABELS);
 
-	if (index >= encp->enc_rxq_limit) {
-		rc = EINVAL;
-		goto fail1;
-	}
 	for (size = 0;
 	    (1U << size) <= encp->enc_rxq_max_ndescs / encp->enc_rxq_min_ndescs;
 	    size++)
@@ -1646,7 +1649,7 @@ siena_rx_qcreate(
 			break;
 	if (id + (1 << size) >= encp->enc_buftbl_limit) {
 		rc = EINVAL;
-		goto fail2;
+		goto fail1;
 	}
 
 	switch (type) {
@@ -1656,7 +1659,7 @@ siena_rx_qcreate(
 
 	default:
 		rc = EINVAL;
-		goto fail3;
+		goto fail2;
 	}
 
 	if (flags & EFX_RXQ_FLAG_SCATTER) {
@@ -1664,7 +1667,7 @@ siena_rx_qcreate(
 		jumbo = B_TRUE;
 #else
 		rc = EINVAL;
-		goto fail4;
+		goto fail3;
 #endif	/* EFSYS_OPT_RX_SCATTER */
 	}
 
@@ -1684,11 +1687,9 @@ siena_rx_qcreate(
 	return (0);
 
 #if !EFSYS_OPT_RX_SCATTER
-fail4:
-	EFSYS_PROBE(fail4);
-#endif
 fail3:
 	EFSYS_PROBE(fail3);
+#endif
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
