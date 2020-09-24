@@ -226,6 +226,8 @@ struct memac_regs {
 	uint32_t thm;			/**< 0x37C tx messages counter */
 };
 
+#define BMI_PORT_CFG_FDOVR 0x02000000
+
 struct rx_bmi_regs {
 	uint32_t fmbm_rcfg;		/**< Rx Configuration */
 	uint32_t fmbm_rst;		/**< Rx Status */

@@ -33,6 +33,7 @@ INTERNAL {
 	fman_if_promiscuous_enable;
 	fman_if_reset_mcast_filter_table;
 	fman_if_set_bp;
+	fman_if_set_err_fqid;
 	fman_if_set_fc_quanta;
 	fman_if_set_fc_threshold;
 	fman_if_set_fdoff;
@@ -44,6 +45,7 @@ INTERNAL {
 	fman_if_stats_get_all;
 	fman_if_stats_reset;
 	fman_ip_rev;
+	fman_if_receive_rx_errors;
 	fsl_qman_fq_portal_create;
 	netcfg_acquire;
 	netcfg_release;

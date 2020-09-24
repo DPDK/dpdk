@@ -58,29 +58,57 @@
 		(_fd)->bpid = _bpid; \
 	} while (0)
 
-#if (defined RTE_LIBRTE_DPAA_DEBUG_DRIVER)
-static void dpaa_display_frame(const struct qm_fd *fd)
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+#define DISPLAY_PRINT printf
+static void dpaa_display_frame_info(const struct qm_fd *fd,
+			uint32_t fqid, bool rx)
 {
 	int ii;
 	char *ptr;
+	struct annotations_t *annot = rte_dpaa_mem_ptov(fd->addr);
+	uint8_t format;
 
-	printf("%s::bpid %x addr %08x%08x, format %d off %d, len %d stat %x\n",
-	       __func__, fd->bpid, fd->addr_hi, fd->addr_lo, fd->format,
-		fd->offset, fd->length20, fd->status);
-
-	ptr = (char *)rte_dpaa_mem_ptov(fd->addr);
-	ptr += fd->offset;
-	printf("%02x ", *ptr);
-	for (ii = 1; ii < fd->length20; ii++) {
-		printf("%02x ", *ptr);
-		if ((ii % 16) == 0)
-			printf("\n");
-		ptr++;
+	if (!fd->status) {
+		/* Do not display correct packets.*/
+		return;
 	}
-	printf("\n");
+
+	format = (fd->opaque & DPAA_FD_FORMAT_MASK) >>
+				DPAA_FD_FORMAT_SHIFT;
+
+	DISPLAY_PRINT("fqid %d bpid %d addr 0x%lx, format %d\r\n",
+		      fqid, fd->bpid, (unsigned long)fd->addr, fd->format);
+	DISPLAY_PRINT("off %d, len %d stat 0x%x\r\n",
+		      fd->offset, fd->length20, fd->status);
+	if (rx) {
+		ptr = (char *)&annot->parse;
+		DISPLAY_PRINT("RX parser result:\r\n");
+		for (ii = 0; ii < (int)sizeof(struct dpaa_eth_parse_results_t);
+			ii++) {
+			DISPLAY_PRINT("%02x ", ptr[ii]);
+			if (((ii + 1) % 16) == 0)
+				DISPLAY_PRINT("\n");
+		}
+		DISPLAY_PRINT("\n");
+	}
+
+	if (unlikely(format == qm_fd_sg)) {
+		/*TBD:S/G display: to be implemented*/
+		return;
+	}
+
+	DISPLAY_PRINT("Frame payload:\r\n");
+	ptr = (char *)annot;
+	ptr += fd->offset;
+	for (ii = 0; ii < fd->length20; ii++) {
+		DISPLAY_PRINT("%02x ", ptr[ii]);
+		if (((ii + 1) % 16) == 0)
+			printf("\n");
+	}
+	DISPLAY_PRINT("\n");
 }
 #else
-#define dpaa_display_frame(a)
+#define dpaa_display_frame_info(a, b, c)
 #endif
 
 static inline void dpaa_slow_parsing(struct rte_mbuf *m __rte_unused,
@@ -377,7 +405,6 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	DPAA_DP_LOG(DEBUG, " FD--->MBUF off %d len = %d", offset, length);
 
 	/* Ignoring case when format != qm_fd_contig */
-	dpaa_display_frame(fd);
 	ptr = DPAA_MEMPOOL_PTOV(bp_info, qm_fd_addr(fd));
 
 	mbuf = (struct rte_mbuf *)((char *)ptr - bp_info->meta_data_size);
@@ -492,7 +519,6 @@ dpaa_rx_cb_no_prefetch(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
 
 		fd = &dqrr[i]->fd;
 		dpaa_intf = fq[0]->dpaa_intf;
-
 		format = (fd->opaque & DPAA_FD_FORMAT_MASK) >>
 				DPAA_FD_FORMAT_SHIFT;
 		if (unlikely(format == qm_fd_sg)) {
@@ -515,6 +541,7 @@ dpaa_rx_cb_no_prefetch(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
 		mbuf->next = NULL;
 		rte_mbuf_refcnt_set(mbuf, 1);
 		dpaa_eth_packet_info(mbuf, mbuf->buf_addr);
+		dpaa_display_frame_info(fd, fq[0]->fqid, true);
 	}
 }
 
@@ -532,7 +559,6 @@ dpaa_rx_cb(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
 	for (i = 0; i < num_bufs; i++) {
 		fd = &dqrr[i]->fd;
 		dpaa_intf = fq[0]->dpaa_intf;
-
 		format = (fd->opaque & DPAA_FD_FORMAT_MASK) >>
 				DPAA_FD_FORMAT_SHIFT;
 		if (unlikely(format == qm_fd_sg)) {
@@ -555,6 +581,7 @@ dpaa_rx_cb(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
 		mbuf->next = NULL;
 		rte_mbuf_refcnt_set(mbuf, 1);
 		dpaa_eth_packet_info(mbuf, mbuf->buf_addr);
+		dpaa_display_frame_info(fd, fq[0]->fqid, true);
 	}
 }
 
@@ -653,6 +680,50 @@ dpaa_rx_cb_atomic(void *event,
 	return qman_cb_dqrr_defer;
 }
 
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+static inline void dpaa_eth_err_queue(struct dpaa_if *dpaa_intf)
+{
+	struct rte_mbuf *mbuf;
+	struct qman_fq *debug_fq;
+	int ret, i;
+	struct qm_dqrr_entry *dq;
+	struct qm_fd *fd;
+
+	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
+		ret = rte_dpaa_portal_init((void *)0);
+		if (ret) {
+			DPAA_PMD_ERR("Failure in affining portal");
+			return;
+		}
+	}
+	for (i = 0; i <= DPAA_DEBUG_FQ_TX_ERROR; i++) {
+		debug_fq = &dpaa_intf->debug_queues[i];
+		ret = qman_set_vdq(debug_fq, 4, QM_VDQCR_EXACT);
+		if (ret)
+			return;
+
+		do {
+			dq = qman_dequeue(debug_fq);
+			if (!dq)
+				continue;
+			fd = &dq->fd;
+			if (i == DPAA_DEBUG_FQ_RX_ERROR)
+				DPAA_PMD_ERR("RX ERROR status: 0x%08x",
+					fd->status);
+			else
+				DPAA_PMD_ERR("TX ERROR status: 0x%08x",
+					fd->status);
+			dpaa_display_frame_info(fd, debug_fq->fqid,
+				i == DPAA_DEBUG_FQ_RX_ERROR);
+
+			mbuf = dpaa_eth_fd_to_mbuf(fd, dpaa_intf->ifid);
+			rte_pktmbuf_free(mbuf);
+			qman_dqrr_consume(debug_fq, dq);
+		} while (debug_fq->flags & QMAN_FQ_STATE_VDQCR);
+	}
+}
+#endif
+
 uint16_t dpaa_eth_queue_rx(void *q,
 			   struct rte_mbuf **bufs,
 			   uint16_t nb_bufs)
@@ -666,6 +737,11 @@ uint16_t dpaa_eth_queue_rx(void *q,
 	if (unlikely(rte_dpaa_bpid_info == NULL &&
 				rte_eal_process_type() == RTE_PROC_SECONDARY))
 		rte_dpaa_bpid_info = fq->bp_array;
+
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+	if (fq->fqid == ((struct dpaa_if *)fq->dpaa_intf)->rx_queues[0].fqid)
+		dpaa_eth_err_queue((struct dpaa_if *)fq->dpaa_intf);
+#endif
 
 	if (likely(fq->is_static))
 		return dpaa_eth_queue_portal_rx(fq, bufs, nb_bufs);
@@ -699,6 +775,7 @@ uint16_t dpaa_eth_queue_rx(void *q,
 		if (!dq)
 			continue;
 		bufs[num_rx++] = dpaa_eth_fd_to_mbuf(&dq->fd, ifid);
+		dpaa_display_frame_info(&dq->fd, fq->fqid, true);
 		qman_dqrr_consume(fq, dq);
 	} while (fq->flags & QMAN_FQ_STATE_VDQCR);
 

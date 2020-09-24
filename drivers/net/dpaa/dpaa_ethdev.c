@@ -47,6 +47,7 @@
 #include <fsl_bman.h>
 #include <fsl_fman.h>
 #include <process.h>
+#include <fmlib/fm_ext.h>
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
@@ -1949,11 +1950,19 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	dpaa_intf->nb_tx_queues = MAX_DPAA_CORES;
 
 #ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
-	dpaa_debug_queue_init(&dpaa_intf->debug_queues[
-		DPAA_DEBUG_FQ_RX_ERROR], fman_intf->fqid_rx_err);
+	ret = dpaa_debug_queue_init(&dpaa_intf->debug_queues
+			[DPAA_DEBUG_FQ_RX_ERROR], fman_intf->fqid_rx_err);
+	if (ret) {
+		DPAA_PMD_ERR("DPAA RX ERROR queue init failed!");
+		goto free_tx;
+	}
 	dpaa_intf->debug_queues[DPAA_DEBUG_FQ_RX_ERROR].dpaa_intf = dpaa_intf;
-	dpaa_debug_queue_init(&dpaa_intf->debug_queues[
-		DPAA_DEBUG_FQ_TX_ERROR], fman_intf->fqid_tx_err);
+	ret = dpaa_debug_queue_init(&dpaa_intf->debug_queues
+			[DPAA_DEBUG_FQ_TX_ERROR], fman_intf->fqid_tx_err);
+	if (ret) {
+		DPAA_PMD_ERR("DPAA TX ERROR queue init failed!");
+		goto free_tx;
+	}
 	dpaa_intf->debug_queues[DPAA_DEBUG_FQ_TX_ERROR].dpaa_intf = dpaa_intf;
 #endif
 
@@ -1999,7 +2008,12 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (!fman_intf->is_shared_mac) {
 		/* Disable RX mode */
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+		fman_if_receive_rx_errors(fman_intf,
+			FM_FD_RX_STATUS_ERR_MASK);
+#else
 		fman_if_discard_rx_errors(fman_intf);
+#endif
 		fman_if_disable_rx(fman_intf);
 		/* Disable promiscuous mode */
 		fman_if_promiscuous_disable(fman_intf);
