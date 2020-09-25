@@ -34,17 +34,12 @@ Supported Features
 - VLAN offload - Filtering and stripping
 - N-tuple filter and flow director (limited support)
 - NPAR (NIC Partitioning)
-- SR-IOV VF
+- SR-IOV PF and VF
 - GRE Tunneling offload
 - GENEVE Tunneling offload
 - VXLAN Tunneling offload
 - MPLSoUDP Tx Tunneling offload
 - Generic flow API
-
-Non-supported Features
-----------------------
-
-- SR-IOV PF
 
 Co-existence considerations
 ---------------------------

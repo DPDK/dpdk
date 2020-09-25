@@ -151,6 +151,7 @@ static void qed_handle_bulletin_post(struct ecore_hwfn *hwfn)
 void qed_iov_pf_task(void *arg)
 {
 	struct ecore_hwfn *p_hwfn = arg;
+	int rc;
 
 	if (OSAL_GET_BIT(QED_IOV_WQ_MSG_FLAG, &p_hwfn->iov_task_flags)) {
 		OSAL_CLEAR_BIT(QED_IOV_WQ_MSG_FLAG, &p_hwfn->iov_task_flags);
@@ -162,6 +163,23 @@ void qed_iov_pf_task(void *arg)
 		OSAL_CLEAR_BIT(QED_IOV_WQ_BULLETIN_UPDATE_FLAG,
 			       &p_hwfn->iov_task_flags);
 		qed_handle_bulletin_post(p_hwfn);
+	}
+
+	if (OSAL_GET_BIT(QED_IOV_WQ_FLR_FLAG, &p_hwfn->iov_task_flags)) {
+		struct ecore_ptt *p_ptt = ecore_ptt_acquire(p_hwfn);
+
+		OSAL_CLEAR_BIT(QED_IOV_WQ_FLR_FLAG, &p_hwfn->iov_task_flags);
+
+		if (!p_ptt) {
+			qed_schedule_iov(p_hwfn, QED_IOV_WQ_FLR_FLAG);
+			return;
+		}
+
+		rc = ecore_iov_vf_flr_cleanup(p_hwfn, p_ptt);
+		if (rc)
+			qed_schedule_iov(p_hwfn, QED_IOV_WQ_FLR_FLAG);
+
+		ecore_ptt_release(p_hwfn, p_ptt);
 	}
 }
 

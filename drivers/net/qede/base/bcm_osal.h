@@ -348,7 +348,9 @@ u32 qede_find_first_zero_bit(u32 *bitmap, u32 length);
 /* SR-IOV channel */
 
 int osal_pf_vf_msg(struct ecore_hwfn *p_hwfn);
-#define OSAL_VF_FLR_UPDATE(hwfn) nothing
+void osal_vf_flr_update(struct ecore_hwfn *p_hwfn);
+#define OSAL_VF_FLR_UPDATE(hwfn) \
+	osal_vf_flr_update(hwfn)
 #define OSAL_VF_SEND_MSG2PF(dev, done, msg, reply_addr, msg_size, reply_size) 0
 #define OSAL_VF_CQE_COMPLETION(_dev_p, _cqe, _protocol)	(0)
 #define OSAL_PF_VF_MSG(hwfn, vfid) \

@@ -29,6 +29,11 @@ int osal_pf_vf_msg(struct ecore_hwfn *p_hwfn)
 	return rc;
 }
 
+void osal_vf_flr_update(struct ecore_hwfn *p_hwfn)
+{
+	qed_schedule_iov(p_hwfn, QED_IOV_WQ_FLR_FLAG);
+}
+
 void osal_poll_mode_dpc(osal_int_ptr_t hwfn_cookie)
 {
 	struct ecore_hwfn *p_hwfn = (struct ecore_hwfn *)hwfn_cookie;
