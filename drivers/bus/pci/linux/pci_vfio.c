@@ -564,8 +564,20 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 							RTE_MAP_FORCE_ADDRESS);
 		}
 
+		/*
+		 * Regarding "memreg[0].size == 0":
+		 * If this BAR has MSI-X table, memreg[0].size (the
+		 * first part or the part before the table) can
+		 * legitimately be 0 for hardware using vector table
+		 * offset 0 (i.e. first part does not exist).
+		 *
+		 * When memreg[0].size is 0, "mapping the first part"
+		 * never happens, and map_addr is NULL at this
+		 * point. So check that mapping has been actually
+		 * attempted.
+		 */
 		/* if there's a second part, try to map it */
-		if (map_addr != NULL
+		if ((map_addr != NULL || memreg[0].size == 0)
 			&& memreg[1].offset && memreg[1].size) {
 			void *second_addr = RTE_PTR_ADD(bar_addr,
 						(uintptr_t)(memreg[1].offset -
