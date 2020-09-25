@@ -80,7 +80,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 	int success;
 
 	/* Reserve num elements, if available */
-	len = __atomic_load_n(&list->len, __ATOMIC_ACQUIRE);
+	len = __atomic_load_n(&list->len, __ATOMIC_RELAXED);
 
 	while (1) {
 		/* Does the list contain enough elements? */
@@ -91,7 +91,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 		if (__atomic_compare_exchange_n(&list->len,
 						&len, len - num,
 						1, __ATOMIC_ACQUIRE,
-						__ATOMIC_ACQUIRE))
+						__ATOMIC_RELAXED))
 			break;
 	}
 
