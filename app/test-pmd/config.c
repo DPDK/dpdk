@@ -2280,10 +2280,17 @@ rxtx_config_display(void)
 		struct rte_eth_txconf *tx_conf = &ports[pid].tx_conf[0];
 		uint16_t *nb_rx_desc = &ports[pid].nb_rx_desc[0];
 		uint16_t *nb_tx_desc = &ports[pid].nb_tx_desc[0];
-		uint16_t nb_rx_desc_tmp;
-		uint16_t nb_tx_desc_tmp;
 		struct rte_eth_rxq_info rx_qinfo;
 		struct rte_eth_txq_info tx_qinfo;
+		uint16_t rx_free_thresh_tmp;
+		uint16_t tx_free_thresh_tmp;
+		uint16_t tx_rs_thresh_tmp;
+		uint16_t nb_rx_desc_tmp;
+		uint16_t nb_tx_desc_tmp;
+		uint64_t offloads_tmp;
+		uint8_t pthresh_tmp;
+		uint8_t hthresh_tmp;
+		uint8_t wthresh_tmp;
 		int32_t rc;
 
 		/* per port config */
@@ -2297,41 +2304,64 @@ rxtx_config_display(void)
 		/* per rx queue config only for first queue to be less verbose */
 		for (qid = 0; qid < 1; qid++) {
 			rc = rte_eth_rx_queue_info_get(pid, qid, &rx_qinfo);
-			if (rc)
+			if (rc) {
 				nb_rx_desc_tmp = nb_rx_desc[qid];
-			else
+				rx_free_thresh_tmp =
+					rx_conf[qid].rx_free_thresh;
+				pthresh_tmp = rx_conf[qid].rx_thresh.pthresh;
+				hthresh_tmp = rx_conf[qid].rx_thresh.hthresh;
+				wthresh_tmp = rx_conf[qid].rx_thresh.wthresh;
+				offloads_tmp = rx_conf[qid].offloads;
+			} else {
 				nb_rx_desc_tmp = rx_qinfo.nb_desc;
+				rx_free_thresh_tmp =
+						rx_qinfo.conf.rx_free_thresh;
+				pthresh_tmp = rx_qinfo.conf.rx_thresh.pthresh;
+				hthresh_tmp = rx_qinfo.conf.rx_thresh.hthresh;
+				wthresh_tmp = rx_qinfo.conf.rx_thresh.wthresh;
+				offloads_tmp = rx_qinfo.conf.offloads;
+			}
 
 			printf("    RX queue: %d\n", qid);
 			printf("      RX desc=%d - RX free threshold=%d\n",
-				nb_rx_desc_tmp, rx_conf[qid].rx_free_thresh);
+				nb_rx_desc_tmp, rx_free_thresh_tmp);
 			printf("      RX threshold registers: pthresh=%d hthresh=%d "
 				" wthresh=%d\n",
-				rx_conf[qid].rx_thresh.pthresh,
-				rx_conf[qid].rx_thresh.hthresh,
-				rx_conf[qid].rx_thresh.wthresh);
-			printf("      RX Offloads=0x%"PRIx64"\n",
-				rx_conf[qid].offloads);
+				pthresh_tmp, hthresh_tmp, wthresh_tmp);
+			printf("      RX Offloads=0x%"PRIx64"\n", offloads_tmp);
 		}
 
 		/* per tx queue config only for first queue to be less verbose */
 		for (qid = 0; qid < 1; qid++) {
 			rc = rte_eth_tx_queue_info_get(pid, qid, &tx_qinfo);
-			if (rc)
+			if (rc) {
 				nb_tx_desc_tmp = nb_tx_desc[qid];
-			else
+				tx_free_thresh_tmp =
+					tx_conf[qid].tx_free_thresh;
+				pthresh_tmp = tx_conf[qid].tx_thresh.pthresh;
+				hthresh_tmp = tx_conf[qid].tx_thresh.hthresh;
+				wthresh_tmp = tx_conf[qid].tx_thresh.wthresh;
+				offloads_tmp = tx_conf[qid].offloads;
+				tx_rs_thresh_tmp = tx_conf[qid].tx_rs_thresh;
+			} else {
 				nb_tx_desc_tmp = tx_qinfo.nb_desc;
+				tx_free_thresh_tmp =
+						tx_qinfo.conf.tx_free_thresh;
+				pthresh_tmp = tx_qinfo.conf.tx_thresh.pthresh;
+				hthresh_tmp = tx_qinfo.conf.tx_thresh.hthresh;
+				wthresh_tmp = tx_qinfo.conf.tx_thresh.wthresh;
+				offloads_tmp = tx_qinfo.conf.offloads;
+				tx_rs_thresh_tmp = tx_qinfo.conf.tx_rs_thresh;
+			}
 
 			printf("    TX queue: %d\n", qid);
 			printf("      TX desc=%d - TX free threshold=%d\n",
-				nb_tx_desc_tmp, tx_conf[qid].tx_free_thresh);
+				nb_tx_desc_tmp, tx_free_thresh_tmp);
 			printf("      TX threshold registers: pthresh=%d hthresh=%d "
 				" wthresh=%d\n",
-				tx_conf[qid].tx_thresh.pthresh,
-				tx_conf[qid].tx_thresh.hthresh,
-				tx_conf[qid].tx_thresh.wthresh);
+				pthresh_tmp, hthresh_tmp, wthresh_tmp);
 			printf("      TX offloads=0x%"PRIx64" - TX RS bit threshold=%d\n",
-				tx_conf[qid].offloads, tx_conf->tx_rs_thresh);
+				offloads_tmp, tx_rs_thresh_tmp);
 		}
 	}
 }
