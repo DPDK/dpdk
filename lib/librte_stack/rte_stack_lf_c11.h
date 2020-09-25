@@ -141,11 +141,25 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 		new_head.top = tmp;
 		new_head.cnt = old_head.cnt + 1;
 
+		/*
+		 * The CAS should have release semantics to ensure that
+		 * items are read before the head is updated.
+		 * But this function is internal, and items are read
+		 * only when __rte_stack_lf_pop calls this function to
+		 * pop items from used list.
+		 * Then, those items are pushed to the free list.
+		 * Push uses a CAS store-release on head, which makes
+		 * sure that items are read before they are pushed to
+		 * the free list, without need for a CAS release here.
+		 * This CAS could also be used to ensure that the new
+		 * length is visible before the head update, but
+		 * acquire semantics on the length update is enough.
+		 */
 		success = rte_atomic128_cmp_exchange(
 				(rte_int128_t *)&list->head,
 				(rte_int128_t *)&old_head,
 				(rte_int128_t *)&new_head,
-				0, __ATOMIC_RELEASE,
+				0, __ATOMIC_RELAXED,
 				__ATOMIC_RELAXED);
 	} while (success == 0);
 
