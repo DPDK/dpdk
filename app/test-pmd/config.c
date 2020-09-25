@@ -2010,6 +2010,38 @@ tx_queue_id_is_invalid(queueid_t txq_id)
 }
 
 static int
+get_tx_ring_size(portid_t port_id, queueid_t txq_id, uint16_t *ring_size)
+{
+	struct rte_port *port = &ports[port_id];
+	struct rte_eth_txq_info tx_qinfo;
+	int ret;
+
+	ret = rte_eth_tx_queue_info_get(port_id, txq_id, &tx_qinfo);
+	if (ret == 0) {
+		*ring_size = tx_qinfo.nb_desc;
+		return ret;
+	}
+
+	if (ret != -ENOTSUP)
+		return ret;
+	/*
+	 * If the rte_eth_tx_queue_info_get is not support for this PMD,
+	 * ring_size stored in testpmd will be used for validity verification.
+	 * When configure the txq by rte_eth_tx_queue_setup with nb_tx_desc
+	 * being 0, it will use a default value provided by PMDs to setup this
+	 * txq. If the default value is 0, it will use the
+	 * RTE_ETH_DEV_FALLBACK_TX_RINGSIZE to setup this txq.
+	 */
+	if (port->nb_tx_desc[txq_id])
+		*ring_size = port->nb_tx_desc[txq_id];
+	else if (port->dev_info.default_txportconf.ring_size)
+		*ring_size = port->dev_info.default_txportconf.ring_size;
+	else
+		*ring_size = RTE_ETH_DEV_FALLBACK_TX_RINGSIZE;
+	return 0;
+}
+
+static int
 rx_desc_id_is_invalid(uint16_t rxdesc_id)
 {
 	if (rxdesc_id < nb_rxd)
@@ -3103,17 +3135,41 @@ show_tx_pkt_segments(void)
 	printf("Split packet: %s\n", split);
 }
 
+static bool
+nb_segs_is_invalid(unsigned int nb_segs)
+{
+	uint16_t ring_size;
+	uint16_t queue_id;
+	uint16_t port_id;
+	int ret;
+
+	RTE_ETH_FOREACH_DEV(port_id) {
+		for (queue_id = 0; queue_id < nb_txq; queue_id++) {
+			ret = get_tx_ring_size(port_id, queue_id, &ring_size);
+
+			if (ret)
+				return true;
+
+			if (ring_size < nb_segs) {
+				printf("nb segments per TX packets=%u >= "
+				       "TX queue(%u) ring_size=%u - ignored\n",
+				       nb_segs, queue_id, ring_size);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 void
 set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
 {
 	uint16_t tx_pkt_len;
 	unsigned i;
 
-	if (nb_segs >= (unsigned) nb_txd) {
-		printf("nb segments per TX packets=%u >= nb_txd=%u - ignored\n",
-		       nb_segs, (unsigned int) nb_txd);
+	if (nb_segs_is_invalid(nb_segs))
 		return;
-	}
 
 	/*
 	 * Check that each segment length is greater or equal than
