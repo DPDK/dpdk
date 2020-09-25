@@ -78,7 +78,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 			 struct rte_stack_lf_elem **last)
 {
 	struct rte_stack_lf_head old_head;
-	int success;
+	int success = 0;
 
 	/* Reserve num elements, if available */
 	while (1) {
