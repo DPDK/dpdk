@@ -4,6 +4,14 @@
  * www.marvell.com
  */
 
+#include <rte_alarm.h>
+
+#include "base/bcm_osal.h"
+#include "base/ecore.h"
+#include "base/ecore_sriov.h"
+#include "base/ecore_mcp.h"
+#include "base/ecore_vf.h"
+
 #include "qede_sriov.h"
 
 static void qed_sriov_enable_qid_config(struct ecore_hwfn *hwfn,
@@ -82,4 +90,57 @@ void qed_sriov_configure(struct ecore_dev *edev, int num_vfs_param)
 
 	if (num_vfs_param)
 		qed_sriov_enable(edev, num_vfs_param);
+}
+
+static void qed_handle_vf_msg(struct ecore_hwfn *hwfn)
+{
+	u64 events[ECORE_VF_ARRAY_LENGTH];
+	struct ecore_ptt *ptt;
+	int i;
+
+	ptt = ecore_ptt_acquire(hwfn);
+	if (!ptt) {
+		DP_NOTICE(hwfn, true, "PTT acquire failed\n");
+		qed_schedule_iov(hwfn, QED_IOV_WQ_MSG_FLAG);
+		return;
+	}
+
+	ecore_iov_pf_get_pending_events(hwfn, events);
+
+	ecore_for_each_vf(hwfn, i) {
+		/* Skip VFs with no pending messages */
+		if (!ECORE_VF_ARRAY_GET_VFID(events, i))
+			continue;
+
+		DP_VERBOSE(hwfn, ECORE_MSG_IOV,
+			   "Handling VF message from VF 0x%02x [Abs 0x%02x]\n",
+			   i, hwfn->p_dev->p_iov_info->first_vf_in_pf + i);
+
+		/* Copy VF's message to PF's request buffer for that VF */
+		if (ecore_iov_copy_vf_msg(hwfn, ptt, i))
+			continue;
+
+		ecore_iov_process_mbx_req(hwfn, ptt, i);
+	}
+
+	ecore_ptt_release(hwfn, ptt);
+}
+
+void qed_iov_pf_task(void *arg)
+{
+	struct ecore_hwfn *p_hwfn = arg;
+
+	if (OSAL_GET_BIT(QED_IOV_WQ_MSG_FLAG, &p_hwfn->iov_task_flags)) {
+		OSAL_CLEAR_BIT(QED_IOV_WQ_MSG_FLAG, &p_hwfn->iov_task_flags);
+		qed_handle_vf_msg(p_hwfn);
+	}
+}
+
+int qed_schedule_iov(struct ecore_hwfn *p_hwfn, enum qed_iov_wq_flag flag)
+{
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV, "Scheduling iov task [Flag: %d]\n",
+		   flag);
+
+	OSAL_SET_BIT(flag, &p_hwfn->iov_task_flags);
+	return rte_eal_alarm_set(1, qed_iov_pf_task, p_hwfn);
 }

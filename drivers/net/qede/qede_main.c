@@ -221,7 +221,9 @@ static void qed_stop_iov_task(struct ecore_dev *edev)
 
 	for_each_hwfn(edev, i) {
 		p_hwfn = &edev->hwfns[i];
-		if (!IS_PF(edev))
+		if (IS_PF(edev))
+			rte_eal_alarm_cancel(qed_iov_pf_task, p_hwfn);
+		else
 			rte_eal_alarm_cancel(qede_vf_task, p_hwfn);
 	}
 }

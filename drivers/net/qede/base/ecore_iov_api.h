@@ -14,6 +14,9 @@
 #define ECORE_ETH_VF_NUM_VLAN_FILTERS 2
 #define ECORE_VF_ARRAY_LENGTH (3)
 
+#define ECORE_VF_ARRAY_GET_VFID(arr, vfid)	\
+	(((arr)[(vfid) / 64]) & (1ULL << ((vfid) % 64)))
+
 #define IS_VF(p_dev)		((p_dev)->b_is_vf)
 #define IS_PF(p_dev)		(!((p_dev)->b_is_vf))
 #ifdef CONFIG_ECORE_SRIOV

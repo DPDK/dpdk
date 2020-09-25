@@ -281,7 +281,9 @@ out:
 
 static void qede_interrupt_action(struct ecore_hwfn *p_hwfn)
 {
+	OSAL_SPIN_LOCK(&p_hwfn->spq_lock);
 	ecore_int_sp_dpc((osal_int_ptr_t)(p_hwfn));
+	OSAL_SPIN_UNLOCK(&p_hwfn->spq_lock);
 }
 
 static void

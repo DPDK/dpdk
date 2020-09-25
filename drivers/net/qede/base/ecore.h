@@ -714,6 +714,10 @@ struct ecore_hwfn {
 
 	/* @DPDK */
 	struct ecore_ptt		*p_arfs_ptt;
+
+	/* DPDK specific, not the part of vanilla ecore */
+	osal_spinlock_t spq_lock;
+	u32 iov_task_flags;
 };
 
 enum ecore_mf_mode {

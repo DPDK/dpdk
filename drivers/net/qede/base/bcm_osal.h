@@ -177,9 +177,12 @@ typedef pthread_mutex_t osal_mutex_t;
 
 /* DPC */
 
+void osal_poll_mode_dpc(osal_int_ptr_t hwfn_cookie);
 #define OSAL_DPC_ALLOC(hwfn) OSAL_ALLOC(hwfn, GFP, sizeof(osal_dpc_t))
-#define OSAL_DPC_INIT(dpc, hwfn) nothing
-#define OSAL_POLL_MODE_DPC(hwfn) nothing
+#define OSAL_DPC_INIT(dpc, hwfn) \
+	OSAL_SPIN_LOCK_INIT(&(hwfn)->spq_lock)
+#define OSAL_POLL_MODE_DPC(hwfn) \
+	osal_poll_mode_dpc((osal_int_ptr_t)(p_hwfn))
 #define OSAL_DPC_SYNC(hwfn) nothing
 
 /* Lists */
@@ -344,10 +347,12 @@ u32 qede_find_first_zero_bit(u32 *bitmap, u32 length);
 
 /* SR-IOV channel */
 
+int osal_pf_vf_msg(struct ecore_hwfn *p_hwfn);
 #define OSAL_VF_FLR_UPDATE(hwfn) nothing
 #define OSAL_VF_SEND_MSG2PF(dev, done, msg, reply_addr, msg_size, reply_size) 0
 #define OSAL_VF_CQE_COMPLETION(_dev_p, _cqe, _protocol)	(0)
-#define OSAL_PF_VF_MSG(hwfn, vfid) 0
+#define OSAL_PF_VF_MSG(hwfn, vfid) \
+	osal_pf_vf_msg(hwfn)
 #define OSAL_PF_VF_MALICIOUS(hwfn, vfid) nothing
 #define OSAL_IOV_CHK_UCAST(hwfn, vfid, params) 0
 #define OSAL_IOV_POST_START_VPORT(hwfn, vf, vport_id, opaque_fid) nothing
