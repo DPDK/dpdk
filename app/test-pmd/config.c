@@ -3664,8 +3664,6 @@ tx_vlan_set(portid_t port_id, uint16_t vlan_id)
 	struct rte_eth_dev_info dev_info;
 	int ret;
 
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
 
@@ -3696,8 +3694,6 @@ tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
 	struct rte_eth_dev_info dev_info;
 	int ret;
 
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
 	if (vlan_id_is_invalid(vlan_id))
 		return;
 	if (vlan_id_is_invalid(vlan_id_outer))
@@ -3723,8 +3719,6 @@ tx_qinq_set(portid_t port_id, uint16_t vlan_id, uint16_t vlan_id_outer)
 void
 tx_vlan_reset(portid_t port_id)
 {
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
 	ports[port_id].dev_conf.txmode.offloads &=
 				~(DEV_TX_OFFLOAD_VLAN_INSERT |
 				  DEV_TX_OFFLOAD_QINQ_INSERT);

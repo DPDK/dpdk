@@ -4294,6 +4294,9 @@ cmd_tx_vlan_set_parsed(void *parsed_result,
 {
 	struct cmd_tx_vlan_set_result *res = parsed_result;
 
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
 	if (!port_is_stopped(res->port_id)) {
 		printf("Please stop port %d first\n", res->port_id);
 		return;
@@ -4347,6 +4350,9 @@ cmd_tx_vlan_set_qinq_parsed(void *parsed_result,
 			    __rte_unused void *data)
 {
 	struct cmd_tx_vlan_set_qinq_result *res = parsed_result;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
 
 	if (!port_is_stopped(res->port_id)) {
 		printf("Please stop port %d first\n", res->port_id);
@@ -4460,6 +4466,9 @@ cmd_tx_vlan_reset_parsed(void *parsed_result,
 			 __rte_unused void *data)
 {
 	struct cmd_tx_vlan_reset_result *res = parsed_result;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
 
 	if (!port_is_stopped(res->port_id)) {
 		printf("Please stop port %d first\n", res->port_id);
