@@ -34,6 +34,7 @@ The following options can be provided to set up an af_xdp port in DPDK.
 *   ``queue_count`` - total netdev queue number (optional, default 1);
 *   ``shared_umem`` - PMD will attempt to share UMEM with others (optional,
     default 0);
+*   ``xdp_prog`` - path to custom xdp program (optional, default none);
 
 Prerequisites
 -------------
