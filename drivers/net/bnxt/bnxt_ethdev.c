@@ -6472,6 +6472,10 @@ static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci probe\n",
 		    backing_eth_dev->data->port_id);
+
+	if (!num_rep)
+		return ret;
+
 	/* probe representor ports now */
 	ret = bnxt_rep_port_probe(pci_dev, eth_da, backing_eth_dev,
 				  pci_dev->device.devargs->args);
