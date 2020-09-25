@@ -96,7 +96,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 		/* len is updated on failure */
 		if (__atomic_compare_exchange_n(&list->len,
 						&len, len - num,
-						0, __ATOMIC_ACQUIRE,
+						1, __ATOMIC_ACQUIRE,
 						__ATOMIC_ACQUIRE))
 			break;
 	}
@@ -149,7 +149,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 				(rte_int128_t *)&list->head,
 				(rte_int128_t *)&old_head,
 				(rte_int128_t *)&new_head,
-				1, __ATOMIC_RELEASE,
+				0, __ATOMIC_RELEASE,
 				__ATOMIC_RELAXED);
 	} while (success == 0);
 
