@@ -705,6 +705,49 @@ rte_pci_get_iommu_class(void)
 	return iova_mode;
 }
 
+off_t
+rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap)
+{
+	off_t offset = RTE_PCI_CFG_SPACE_SIZE;
+	uint32_t header;
+	int ttl;
+
+	/* minimum 8 bytes per capability */
+	ttl = (RTE_PCI_CFG_SPACE_EXP_SIZE - RTE_PCI_CFG_SPACE_SIZE) / 8;
+
+	if (rte_pci_read_config(dev, &header, 4, offset) < 0) {
+		RTE_LOG(ERR, EAL, "error in reading extended capabilities\n");
+		return -1;
+	}
+
+	/*
+	 * If we have no capabilities, this is indicated by cap ID,
+	 * cap version and next pointer all being 0.
+	 */
+	if (header == 0)
+		return 0;
+
+	while (ttl != 0) {
+		if (RTE_PCI_EXT_CAP_ID(header) == cap)
+			return offset;
+
+		offset = RTE_PCI_EXT_CAP_NEXT(header);
+
+		if (offset < RTE_PCI_CFG_SPACE_SIZE)
+			break;
+
+		if (rte_pci_read_config(dev, &header, 4, offset) < 0) {
+			RTE_LOG(ERR, EAL,
+				"error in reading extended capabilities\n");
+			return -1;
+		}
+
+		ttl--;
+	}
+
+	return 0;
+}
+
 struct rte_pci_bus rte_pci_bus = {
 	.bus = {
 		.scan = rte_pci_scan,

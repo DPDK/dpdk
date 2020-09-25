@@ -746,59 +746,15 @@ nfp6000_set_interface(struct rte_pci_device *dev, struct nfp_cpp *cpp)
 	return 0;
 }
 
-#define PCI_CFG_SPACE_SIZE	256
-#define PCI_CFG_SPACE_EXP_SIZE	4096
-#define PCI_EXT_CAP_ID(header)		(int)(header & 0x0000ffff)
-#define PCI_EXT_CAP_NEXT(header)	((header >> 20) & 0xffc)
-#define PCI_EXT_CAP_ID_DSN	0x03
-static int
-nfp_pci_find_next_ext_capability(struct rte_pci_device *dev, int cap)
-{
-	uint32_t header;
-	int ttl;
-	int pos = PCI_CFG_SPACE_SIZE;
-
-	/* minimum 8 bytes per capability */
-	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
-
-	if (rte_pci_read_config(dev, &header, 4, pos) < 0) {
-		printf("nfp error reading extended capabilities\n");
-		return -1;
-	}
-
-	/*
-	 * If we have no capabilities, this is indicated by cap ID,
-	 * cap version and next pointer all being 0.
-	 */
-	if (header == 0)
-		return 0;
-
-	while (ttl-- > 0) {
-		if (PCI_EXT_CAP_ID(header) == cap)
-			return pos;
-
-		pos = PCI_EXT_CAP_NEXT(header);
-		if (pos < PCI_CFG_SPACE_SIZE)
-			break;
-
-		if (rte_pci_read_config(dev, &header, 4, pos) < 0) {
-			printf("nfp error reading extended capabilities\n");
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 static int
 nfp6000_set_serial(struct rte_pci_device *dev, struct nfp_cpp *cpp)
 {
 	uint16_t tmp;
 	uint8_t serial[6];
 	int serial_len = 6;
-	int pos;
+	off_t pos;
 
-	pos = nfp_pci_find_next_ext_capability(dev, PCI_EXT_CAP_ID_DSN);
+	pos = rte_pci_find_ext_capability(dev, RTE_PCI_EXT_CAP_ID_DSN);
 	if (pos <= 0) {
 		printf("PCI_EXT_CAP_ID_DSN not found. nfp set serial failed\n");
 		return -1;

@@ -1753,53 +1753,6 @@ ice_pf_setup(struct ice_pf *pf)
 	return 0;
 }
 
-/* PCIe configuration space setting */
-#define PCI_CFG_SPACE_SIZE          256
-#define PCI_CFG_SPACE_EXP_SIZE      4096
-#define PCI_EXT_CAP_ID(header)      (int)((header) & 0x0000ffff)
-#define PCI_EXT_CAP_NEXT(header)    (((header) >> 20) & 0xffc)
-#define PCI_EXT_CAP_ID_DSN          0x03
-
-static int
-ice_pci_find_next_ext_capability(struct rte_pci_device *dev, int cap)
-{
-	uint32_t header;
-	int ttl;
-	int pos = PCI_CFG_SPACE_SIZE;
-
-	/* minimum 8 bytes per capability */
-	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
-
-	if (rte_pci_read_config(dev, &header, 4, pos) < 0) {
-		PMD_INIT_LOG(ERR, "ice error reading extended capabilities\n");
-		return -1;
-	}
-
-	/*
-	 * If we have no capabilities, this is indicated by cap ID,
-	 * cap version and next pointer all being 0.
-	 */
-	if (header == 0)
-		return 0;
-
-	while (ttl-- > 0) {
-		if (PCI_EXT_CAP_ID(header) == cap)
-			return pos;
-
-		pos = PCI_EXT_CAP_NEXT(header);
-
-		if (pos < PCI_CFG_SPACE_SIZE)
-			break;
-
-		if (rte_pci_read_config(dev, &header, 4, pos) < 0) {
-			PMD_INIT_LOG(ERR, "ice error reading extended capabilities\n");
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 /*
  * Extract device serial number from PCIe Configuration Space and
  * determine the pkg file path according to the DSN.
@@ -1807,12 +1760,12 @@ ice_pci_find_next_ext_capability(struct rte_pci_device *dev, int cap)
 static int
 ice_pkg_file_search_path(struct rte_pci_device *pci_dev, char *pkg_file)
 {
-	int pos;
+	off_t pos;
 	char opt_ddp_filename[ICE_MAX_PKG_FILENAME_SIZE];
 	uint32_t dsn_low, dsn_high;
 	memset(opt_ddp_filename, 0, ICE_MAX_PKG_FILENAME_SIZE);
 
-	pos = ice_pci_find_next_ext_capability(pci_dev, PCI_EXT_CAP_ID_DSN);
+	pos = rte_pci_find_ext_capability(pci_dev, RTE_PCI_EXT_CAP_ID_DSN);
 
 	if (pos) {
 		rte_pci_read_config(pci_dev, &dsn_low, 4, pos + 4);

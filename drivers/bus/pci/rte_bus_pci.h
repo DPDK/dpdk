@@ -234,6 +234,25 @@ void rte_pci_unmap_device(struct rte_pci_device *dev);
 void rte_pci_dump(FILE *f);
 
 /**
+ * Find device's extended PCI capability.
+ *
+ *  @param dev
+ *    A pointer to rte_pci_device structure.
+ *
+ *  @param cap
+ *    Extended capability to be found, which can be any from
+ *    RTE_PCI_EXT_CAP_ID_*, defined in librte_pci.
+ *
+ *  @return
+ *  > 0: The offset of the next matching extended capability structure
+ *       within the device's PCI configuration space.
+ *  < 0: An error in PCI config space read.
+ *  = 0: Device does not support it.
+ */
+__rte_experimental
+off_t rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap);
+
+/**
  * Register a PCI driver.
  *
  * @param driver

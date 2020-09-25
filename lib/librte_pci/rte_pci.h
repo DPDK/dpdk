@@ -22,6 +22,21 @@ extern "C" {
 #include <inttypes.h>
 #include <sys/types.h>
 
+/*
+ * Conventional PCI and PCI-X Mode 1 devices have 256 bytes of
+ * configuration space.  PCI-X Mode 2 and PCIe devices have 4096 bytes of
+ * configuration space.
+ */
+#define RTE_PCI_CFG_SPACE_SIZE		256
+#define RTE_PCI_CFG_SPACE_EXP_SIZE	4096
+
+/* Extended Capabilities (PCI-X 2.0 and Express) */
+#define RTE_PCI_EXT_CAP_ID(header)	(header & 0x0000ffff)
+#define RTE_PCI_EXT_CAP_NEXT(header)	((header >> 20) & 0xffc)
+
+#define RTE_PCI_EXT_CAP_ID_ERR	0x01	/* Advanced Error Reporting */
+#define RTE_PCI_EXT_CAP_ID_DSN	0x03	/* Device Serial Number */
+
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx32 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
 #define PCI_PRI_STR_SIZE sizeof("XXXXXXXX:XX:XX.X")
