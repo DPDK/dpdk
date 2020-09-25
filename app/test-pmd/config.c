@@ -2010,6 +2010,38 @@ tx_queue_id_is_invalid(queueid_t txq_id)
 }
 
 static int
+get_rx_ring_size(portid_t port_id, queueid_t rxq_id, uint16_t *ring_size)
+{
+	struct rte_port *port = &ports[port_id];
+	struct rte_eth_rxq_info rx_qinfo;
+	int ret;
+
+	ret = rte_eth_rx_queue_info_get(port_id, rxq_id, &rx_qinfo);
+	if (ret == 0) {
+		*ring_size = rx_qinfo.nb_desc;
+		return ret;
+	}
+
+	if (ret != -ENOTSUP)
+		return ret;
+	/*
+	 * If the rte_eth_rx_queue_info_get is not support for this PMD,
+	 * ring_size stored in testpmd will be used for validity verification.
+	 * When configure the rxq by rte_eth_rx_queue_setup with nb_rx_desc
+	 * being 0, it will use a default value provided by PMDs to setup this
+	 * rxq. If the default value is 0, it will use the
+	 * RTE_ETH_DEV_FALLBACK_RX_RINGSIZE to setup this rxq.
+	 */
+	if (port->nb_rx_desc[rxq_id])
+		*ring_size = port->nb_rx_desc[rxq_id];
+	else if (port->dev_info.default_rxportconf.ring_size)
+		*ring_size = port->dev_info.default_rxportconf.ring_size;
+	else
+		*ring_size = RTE_ETH_DEV_FALLBACK_RX_RINGSIZE;
+	return 0;
+}
+
+static int
 get_tx_ring_size(portid_t port_id, queueid_t txq_id, uint16_t *ring_size)
 {
 	struct rte_port *port = &ports[port_id];
@@ -2042,22 +2074,38 @@ get_tx_ring_size(portid_t port_id, queueid_t txq_id, uint16_t *ring_size)
 }
 
 static int
-rx_desc_id_is_invalid(uint16_t rxdesc_id)
+rx_desc_id_is_invalid(portid_t port_id, queueid_t rxq_id, uint16_t rxdesc_id)
 {
-	if (rxdesc_id < nb_rxd)
+	uint16_t ring_size;
+	int ret;
+
+	ret = get_rx_ring_size(port_id, rxq_id, &ring_size);
+	if (ret)
+		return 1;
+
+	if (rxdesc_id < ring_size)
 		return 0;
-	printf("Invalid RX descriptor %d (must be < nb_rxd=%d)\n",
-	       rxdesc_id, nb_rxd);
+
+	printf("Invalid RX descriptor %u (must be < ring_size=%u)\n",
+	       rxdesc_id, ring_size);
 	return 1;
 }
 
 static int
-tx_desc_id_is_invalid(uint16_t txdesc_id)
+tx_desc_id_is_invalid(portid_t port_id, queueid_t txq_id, uint16_t txdesc_id)
 {
-	if (txdesc_id < nb_txd)
+	uint16_t ring_size;
+	int ret;
+
+	ret = get_tx_ring_size(port_id, txq_id, &ring_size);
+	if (ret)
+		return 1;
+
+	if (txdesc_id < ring_size)
 		return 0;
-	printf("Invalid TX descriptor %d (must be < nb_txd=%d)\n",
-	       txdesc_id, nb_txd);
+
+	printf("Invalid TX descriptor %u (must be < ring_size=%u)\n",
+	       txdesc_id, ring_size);
 	return 1;
 }
 
@@ -2178,11 +2226,7 @@ rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id)
 {
 	const struct rte_memzone *rx_mz;
 
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (rx_queue_id_is_invalid(rxq_id))
-		return;
-	if (rx_desc_id_is_invalid(rxd_id))
+	if (rx_desc_id_is_invalid(port_id, rxq_id, rxd_id))
 		return;
 	rx_mz = ring_dma_zone_lookup("rx_ring", port_id, rxq_id);
 	if (rx_mz == NULL)
@@ -2195,11 +2239,7 @@ tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id)
 {
 	const struct rte_memzone *tx_mz;
 
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-	if (tx_queue_id_is_invalid(txq_id))
-		return;
-	if (tx_desc_id_is_invalid(txd_id))
+	if (tx_desc_id_is_invalid(port_id, txq_id, txd_id))
 		return;
 	tx_mz = ring_dma_zone_lookup("tx_ring", port_id, txq_id);
 	if (tx_mz == NULL)
