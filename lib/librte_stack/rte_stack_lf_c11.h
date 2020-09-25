@@ -44,12 +44,6 @@ __rte_stack_lf_push_elems(struct rte_stack_lf_list *list,
 	do {
 		struct rte_stack_lf_head new_head;
 
-		/* Use an acquire fence to establish a synchronized-with
-		 * relationship between the list->head load and store-release
-		 * operations (as part of the rte_atomic128_cmp_exchange()).
-		 */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
-
 		/* Swing the top pointer to the first element in the list and
 		 * make the last element point to the old top.
 		 */
