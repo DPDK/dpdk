@@ -344,6 +344,11 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	if (rte_eal_intr_init() < 0) {
+		rte_eal_init_alert("Cannot init interrupt-handling thread");
+		return -1;
+	}
+
 	if (rte_eal_timer_init() < 0) {
 		rte_eal_init_alert("Cannot init TSC timer");
 		rte_errno = EFAULT;

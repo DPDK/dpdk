@@ -253,6 +253,8 @@ EXPORTS
 	rte_mcfg_timer_unlock
 	rte_mcfg_get_single_file_segments
 
+	rte_thread_is_intr
+
 	__rte_eal_trace_alarm_cancel
 	__rte_eal_trace_alarm_set
 	__rte_eal_trace_generic_double

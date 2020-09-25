@@ -42,6 +42,13 @@ typedef SYNCHRONIZATION_BARRIER pthread_barrier_t;
 #define pthread_self() \
 	((pthread_t)GetCurrentThreadId())
 
+
+static inline int
+pthread_equal(pthread_t t1, pthread_t t2)
+{
+	return t1 == t2;
+}
+
 static inline int
 pthread_setaffinity_np(pthread_t threadid, size_t cpuset_size,
 			rte_cpuset_t *cpuset)

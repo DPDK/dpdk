@@ -69,10 +69,18 @@ struct rte_epoll_event {
 struct rte_intr_handle {
 	RTE_STD_C11
 	union {
-		int vfio_dev_fd;  /**< VFIO device file descriptor */
-		int uio_cfg_fd;  /**< UIO cfg file desc for uio_pci_generic */
+		struct {
+			RTE_STD_C11
+			union {
+				/** VFIO device file descriptor */
+				int vfio_dev_fd;
+				/** UIO cfg file desc for uio_pci_generic */
+				int uio_cfg_fd;
+			};
+			int fd;	/**< interrupt event file descriptor */
+		};
+		void *handle; /**< device driver handle (Windows) */
 	};
-	int fd;	 /**< interrupt event file descriptor */
 	enum rte_intr_handle_type type;  /**< handle type */
 	uint32_t max_intr;             /**< max interrupt requested */
 	uint32_t nb_efd;               /**< number of available efd(event fd) */

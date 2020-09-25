@@ -56,6 +56,18 @@ int eal_thread_create(pthread_t *thread);
 unsigned int eal_socket_numa_node(unsigned int socket_id);
 
 /**
+ * Schedule code for execution in the interrupt thread.
+ *
+ * @param func
+ *  Function to call.
+ * @param arg
+ *  Argument to the called function.
+ * @return
+ *  0 on success, netagive error code on failure.
+ */
+int eal_intr_thread_schedule(void (*func)(void *arg), void *arg);
+
+/**
  * Open virt2phys driver interface device.
  *
  * @return 0 on success, (-1) on failure.
