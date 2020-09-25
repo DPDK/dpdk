@@ -17,5 +17,6 @@ enum qed_iov_wq_flag {
 	QED_IOV_WQ_DB_REC_HANDLER,
 };
 
+void qed_inform_vf_link_state(struct ecore_hwfn *hwfn);
 int qed_schedule_iov(struct ecore_hwfn *p_hwfn, enum qed_iov_wq_flag flag);
 void qed_iov_pf_task(void *arg);

@@ -2477,6 +2477,24 @@ static void qede_update_pf_params(struct ecore_dev *edev)
 	qed_ops->common->update_pf_params(edev, &pf_params);
 }
 
+static void qede_generate_random_mac_addr(struct rte_ether_addr *mac_addr)
+{
+	uint64_t random;
+
+	/* Set Organizationally Unique Identifier (OUI) prefix. */
+	mac_addr->addr_bytes[0] = 0x00;
+	mac_addr->addr_bytes[1] = 0x09;
+	mac_addr->addr_bytes[2] = 0xC0;
+
+	/* Force indication of locally assigned MAC address. */
+	mac_addr->addr_bytes[0] |= RTE_ETHER_LOCAL_ADMIN_ADDR;
+
+	/* Generate the last 3 bytes of the MAC address with a random number. */
+	random = rte_rand();
+
+	memcpy(&mac_addr->addr_bytes[3], &random, 3);
+}
+
 static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 {
 	struct rte_pci_device *pci_dev;
@@ -2489,7 +2507,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	uint8_t bulletin_change;
 	uint8_t vf_mac[RTE_ETHER_ADDR_LEN];
 	uint8_t is_mac_forced;
-	bool is_mac_exist;
+	bool is_mac_exist = false;
 	/* Fix up ecore debug level */
 	uint32_t dp_module = ~0 & ~ECORE_MSG_HW;
 	uint8_t dp_level = ECORE_LEVEL_VERBOSE;
@@ -2666,6 +2684,20 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 			} else {
 				DP_ERR(edev, "No VF macaddr assigned\n");
 			}
+		}
+
+		/* If MAC doesn't exist from PF, generate random one */
+		if (!is_mac_exist) {
+			struct rte_ether_addr *mac_addr;
+
+			mac_addr = (struct rte_ether_addr *)&vf_mac;
+			qede_generate_random_mac_addr(mac_addr);
+
+			rte_ether_addr_copy(mac_addr,
+					    &eth_dev->data->mac_addrs[0]);
+
+			rte_ether_addr_copy(&eth_dev->data->mac_addrs[0],
+					    &adapter->primary_mac);
 		}
 	}
 

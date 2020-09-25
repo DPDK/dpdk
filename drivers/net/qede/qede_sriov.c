@@ -126,6 +126,28 @@ static void qed_handle_vf_msg(struct ecore_hwfn *hwfn)
 	ecore_ptt_release(hwfn, ptt);
 }
 
+static void qed_handle_bulletin_post(struct ecore_hwfn *hwfn)
+{
+	struct ecore_ptt *ptt;
+	int i;
+
+	ptt = ecore_ptt_acquire(hwfn);
+	if (!ptt) {
+		DP_NOTICE(hwfn, true, "PTT acquire failed\n");
+		qed_schedule_iov(hwfn, QED_IOV_WQ_BULLETIN_UPDATE_FLAG);
+		return;
+	}
+
+	/* TODO - at the moment update bulletin board of all VFs.
+	 * if this proves to costly, we can mark VFs that need their
+	 * bulletins updated.
+	 */
+	ecore_for_each_vf(hwfn, i)
+		ecore_iov_post_vf_bulletin(hwfn, i, ptt);
+
+	ecore_ptt_release(hwfn, ptt);
+}
+
 void qed_iov_pf_task(void *arg)
 {
 	struct ecore_hwfn *p_hwfn = arg;
@@ -133,6 +155,13 @@ void qed_iov_pf_task(void *arg)
 	if (OSAL_GET_BIT(QED_IOV_WQ_MSG_FLAG, &p_hwfn->iov_task_flags)) {
 		OSAL_CLEAR_BIT(QED_IOV_WQ_MSG_FLAG, &p_hwfn->iov_task_flags);
 		qed_handle_vf_msg(p_hwfn);
+	}
+
+	if (OSAL_GET_BIT(QED_IOV_WQ_BULLETIN_UPDATE_FLAG,
+			 &p_hwfn->iov_task_flags)) {
+		OSAL_CLEAR_BIT(QED_IOV_WQ_BULLETIN_UPDATE_FLAG,
+			       &p_hwfn->iov_task_flags);
+		qed_handle_bulletin_post(p_hwfn);
 	}
 }
 
@@ -143,4 +172,30 @@ int qed_schedule_iov(struct ecore_hwfn *p_hwfn, enum qed_iov_wq_flag flag)
 
 	OSAL_SET_BIT(flag, &p_hwfn->iov_task_flags);
 	return rte_eal_alarm_set(1, qed_iov_pf_task, p_hwfn);
+}
+
+void qed_inform_vf_link_state(struct ecore_hwfn *hwfn)
+{
+	struct ecore_hwfn *lead_hwfn = ECORE_LEADING_HWFN(hwfn->p_dev);
+	struct ecore_mcp_link_capabilities caps;
+	struct ecore_mcp_link_params params;
+	struct ecore_mcp_link_state link;
+	int i;
+
+	if (!hwfn->pf_iov_info)
+		return;
+
+	rte_memcpy(&params, ecore_mcp_get_link_params(lead_hwfn),
+		   sizeof(params));
+	rte_memcpy(&link, ecore_mcp_get_link_state(lead_hwfn), sizeof(link));
+	rte_memcpy(&caps, ecore_mcp_get_link_capabilities(lead_hwfn),
+		   sizeof(caps));
+
+	/* Update bulletin of all future possible VFs with link configuration */
+	for (i = 0; i < hwfn->p_dev->p_iov_info->total_vfs; i++) {
+		ecore_iov_set_link(hwfn, i,
+				   &params, &link, &caps);
+	}
+
+	qed_schedule_iov(hwfn, QED_IOV_WQ_BULLETIN_UPDATE_FLAG);
 }
