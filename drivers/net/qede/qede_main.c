@@ -821,6 +821,7 @@ const struct qed_common_ops qed_common_ops_pass = {
 const struct qed_eth_ops qed_eth_ops_pass = {
 	INIT_STRUCT_FIELD(common, &qed_common_ops_pass),
 	INIT_STRUCT_FIELD(fill_dev_info, &qed_fill_eth_dev_info),
+	INIT_STRUCT_FIELD(sriov_configure, &qed_sriov_configure),
 };
 
 const struct qed_eth_ops *qed_get_eth_ops(void)

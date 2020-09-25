@@ -34,6 +34,7 @@
 #include "base/ecore_l2.h"
 #include "base/ecore_vf.h"
 
+#include "qede_sriov.h"
 #include "qede_logs.h"
 #include "qede_if.h"
 #include "qede_rxtx.h"

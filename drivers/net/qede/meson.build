@@ -11,6 +11,7 @@ sources = files(
 	'qede_rxtx.c',
 	'qede_debug.c',
 	'qede_regs.c',
+	'qede_sriov.c',
 )
 
 if cc.has_argument('-Wno-format-nonliteral')

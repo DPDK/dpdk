@@ -2699,6 +2699,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		adapter->vxlan.enable = false;
 		adapter->geneve.enable = false;
 		adapter->ipgre.enable = false;
+		qed_ops->sriov_configure(edev, pci_dev->max_vfs);
 	}
 
 	DP_INFO(edev, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",

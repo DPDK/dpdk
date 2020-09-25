@@ -82,6 +82,7 @@ struct qed_eth_ops {
 	const struct qed_common_ops *common;
 	int (*fill_dev_info)(struct ecore_dev *edev,
 			     struct qed_dev_eth_info *info);
+	void (*sriov_configure)(struct ecore_dev *edev, int num_vfs);
 };
 
 struct qed_link_params {
