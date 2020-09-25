@@ -164,7 +164,7 @@ bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t cp_ring_size = cpr->cp_ring_struct->ring_size;
 	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
-	uint64_t valid, desc_valid_mask = ~0UL;
+	uint64_t valid, desc_valid_mask = ~0ULL;
 	const __m128i info3_v_mask = _mm_set_epi32(CMPL_BASE_V, CMPL_BASE_V,
 						   CMPL_BASE_V, CMPL_BASE_V);
 	uint32_t raw_cons = cpr->cp_raw_cons;
