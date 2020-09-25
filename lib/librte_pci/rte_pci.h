@@ -30,12 +30,31 @@ extern "C" {
 #define RTE_PCI_CFG_SPACE_SIZE		256
 #define RTE_PCI_CFG_SPACE_EXP_SIZE	4096
 
+#define RTE_PCI_VENDOR_ID	0x00	/* 16 bits */
+#define RTE_PCI_DEVICE_ID	0x02	/* 16 bits */
+
+/* PCI Express capability registers */
+#define RTE_PCI_EXP_DEVCTL	8	/* Device Control */
+
 /* Extended Capabilities (PCI-X 2.0 and Express) */
 #define RTE_PCI_EXT_CAP_ID(header)	(header & 0x0000ffff)
 #define RTE_PCI_EXT_CAP_NEXT(header)	((header >> 20) & 0xffc)
 
-#define RTE_PCI_EXT_CAP_ID_ERR	0x01	/* Advanced Error Reporting */
-#define RTE_PCI_EXT_CAP_ID_DSN	0x03	/* Device Serial Number */
+#define RTE_PCI_EXT_CAP_ID_ERR		0x01	/* Advanced Error Reporting */
+#define RTE_PCI_EXT_CAP_ID_DSN		0x03	/* Device Serial Number */
+#define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV*/
+
+/* Single Root I/O Virtualization */
+#define RTE_PCI_SRIOV_CAP		0x04	/* SR-IOV Capabilities */
+#define RTE_PCI_SRIOV_CTRL		0x08	/* SR-IOV Control */
+#define RTE_PCI_SRIOV_INITIAL_VF	0x0c	/* Initial VFs */
+#define RTE_PCI_SRIOV_TOTAL_VF		0x0e	/* Total VFs */
+#define RTE_PCI_SRIOV_NUM_VF		0x10	/* Number of VFs */
+#define RTE_PCI_SRIOV_FUNC_LINK		0x12	/* Function Dependency Link */
+#define RTE_PCI_SRIOV_VF_OFFSET		0x14	/* First VF Offset */
+#define RTE_PCI_SRIOV_VF_STRIDE		0x16	/* Following VF Stride */
+#define RTE_PCI_SRIOV_VF_DID		0x1a	/* VF Device ID */
+#define RTE_PCI_SRIOV_SUP_PGSIZE	0x1c	/* Supported Page Sizes */
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx32 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8

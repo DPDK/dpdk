@@ -21,6 +21,7 @@
 #include <rte_ether.h>
 #include <rte_io.h>
 #include <rte_version.h>
+#include <rte_bus_pci.h>
 
 /* Forward declaration */
 struct ecore_dev;
@@ -285,11 +286,14 @@ typedef struct osal_list_t {
 	OSAL_LIST_PUSH_HEAD(new_entry, list)
 
 /* PCI config space */
-
-#define OSAL_PCI_READ_CONFIG_BYTE(dev, address, dst) nothing
-#define OSAL_PCI_READ_CONFIG_WORD(dev, address, dst) nothing
-#define OSAL_PCI_READ_CONFIG_DWORD(dev, address, dst) nothing
-#define OSAL_PCI_FIND_EXT_CAPABILITY(dev, pcie_id) 0
+#define OSAL_PCI_READ_CONFIG_BYTE(dev, address, dst) \
+	rte_pci_read_config((dev)->pci_dev, dst, 1, address)
+#define OSAL_PCI_READ_CONFIG_WORD(dev, address, dst) \
+	rte_pci_read_config((dev)->pci_dev, dst, 2, address)
+#define OSAL_PCI_READ_CONFIG_DWORD(dev, address, dst) \
+	rte_pci_read_config((dev)->pci_dev, dst, 4, address)
+#define OSAL_PCI_FIND_EXT_CAPABILITY(dev, cap) \
+	rte_pci_find_ext_capability((dev)->pci_dev, cap)
 #define OSAL_PCI_FIND_CAPABILITY(dev, pcie_id) 0
 #define OSAL_PCI_WRITE_CONFIG_WORD(dev, address, val) nothing
 #define OSAL_BAR_SIZE(dev, bar_id) 0

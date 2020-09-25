@@ -417,15 +417,16 @@ static enum _ecore_status_t ecore_iov_pci_cfg_info(struct ecore_dev *p_dev)
 	int pos = iov->pos;
 
 	DP_VERBOSE(p_dev, ECORE_MSG_IOV, "sriov ext pos %d\n", pos);
-	OSAL_PCI_READ_CONFIG_WORD(p_dev, pos + PCI_SRIOV_CTRL, &iov->ctrl);
+	OSAL_PCI_READ_CONFIG_WORD(p_dev, pos + RTE_PCI_SRIOV_CTRL, &iov->ctrl);
 
+	OSAL_PCI_READ_CONFIG_WORD(p_dev, pos + RTE_PCI_SRIOV_TOTAL_VF,
+				  &iov->total_vfs);
 	OSAL_PCI_READ_CONFIG_WORD(p_dev,
-				  pos + PCI_SRIOV_TOTAL_VF, &iov->total_vfs);
-	OSAL_PCI_READ_CONFIG_WORD(p_dev,
-				  pos + PCI_SRIOV_INITIAL_VF,
+				  pos + RTE_PCI_SRIOV_INITIAL_VF,
 				  &iov->initial_vfs);
 
-	OSAL_PCI_READ_CONFIG_WORD(p_dev, pos + PCI_SRIOV_NUM_VF, &iov->num_vfs);
+	OSAL_PCI_READ_CONFIG_WORD(p_dev, pos + RTE_PCI_SRIOV_NUM_VF,
+				  &iov->num_vfs);
 	if (iov->num_vfs) {
 		/* @@@TODO - in future we might want to add an OSAL here to
 		 * allow each OS to decide on its own how to act.
@@ -437,20 +438,21 @@ static enum _ecore_status_t ecore_iov_pci_cfg_info(struct ecore_dev *p_dev)
 	}
 
 	OSAL_PCI_READ_CONFIG_WORD(p_dev,
-				  pos + PCI_SRIOV_VF_OFFSET, &iov->offset);
+				  pos + RTE_PCI_SRIOV_VF_OFFSET, &iov->offset);
 
 	OSAL_PCI_READ_CONFIG_WORD(p_dev,
-				  pos + PCI_SRIOV_VF_STRIDE, &iov->stride);
+				  pos + RTE_PCI_SRIOV_VF_STRIDE, &iov->stride);
 
-	OSAL_PCI_READ_CONFIG_WORD(p_dev,
-				  pos + PCI_SRIOV_VF_DID, &iov->vf_device_id);
+	OSAL_PCI_READ_CONFIG_WORD(p_dev, pos + RTE_PCI_SRIOV_VF_DID,
+				  &iov->vf_device_id);
 
 	OSAL_PCI_READ_CONFIG_DWORD(p_dev,
-				   pos + PCI_SRIOV_SUP_PGSIZE, &iov->pgsz);
+				   pos + RTE_PCI_SRIOV_SUP_PGSIZE, &iov->pgsz);
 
-	OSAL_PCI_READ_CONFIG_DWORD(p_dev, pos + PCI_SRIOV_CAP, &iov->cap);
+	OSAL_PCI_READ_CONFIG_DWORD(p_dev, pos + RTE_PCI_SRIOV_CAP, &iov->cap);
 
-	OSAL_PCI_READ_CONFIG_BYTE(p_dev, pos + PCI_SRIOV_FUNC_LINK, &iov->link);
+	OSAL_PCI_READ_CONFIG_BYTE(p_dev, pos + RTE_PCI_SRIOV_FUNC_LINK,
+				  &iov->link);
 
 	DP_VERBOSE(p_dev, ECORE_MSG_IOV, "IOV info: nres %d, cap 0x%x,"
 		   "ctrl 0x%x, total %d, initial %d, num vfs %d, offset %d,"
@@ -669,7 +671,7 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn)
 
 	/* Learn the PCI configuration */
 	pos = OSAL_PCI_FIND_EXT_CAPABILITY(p_hwfn->p_dev,
-					   PCI_EXT_CAP_ID_SRIOV);
+					   RTE_PCI_EXT_CAP_ID_SRIOV);
 	if (!pos) {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV, "No PCIe IOV support\n");
 		return ECORE_SUCCESS;

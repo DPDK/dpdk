@@ -937,6 +937,9 @@ struct ecore_dev {
 	struct ecore_dbg_feature	dbg_features[DBG_FEATURE_NUM];
 	struct ecore_dbg_params		dbg_params;
 	osal_mutex_t			dbg_lock;
+
+	/* DPDK specific ecore field */
+	struct rte_pci_device		*pci_dev;
 };
 
 enum ecore_hsi_def_type {

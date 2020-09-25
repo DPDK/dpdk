@@ -2787,7 +2787,7 @@ static enum _ecore_status_t ecore_hw_init_chip(struct ecore_dev *p_dev,
 		return ECORE_IO;
 	}
 
-	OSAL_PCI_READ_CONFIG_WORD(p_dev, pos + PCI_EXP_DEVCTL, &ctrl);
+	OSAL_PCI_READ_CONFIG_WORD(p_dev, pos + RTE_PCI_EXP_DEVCTL, &ctrl);
 	wr_mbs = (ctrl & PCI_EXP_DEVCTL_PAYLOAD) >> 5;
 	ecore_wr(p_hwfn, p_ptt, PSWRQ2_REG_WR_MBS0, wr_mbs);
 
@@ -5499,9 +5499,9 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_hwfn *p_hwfn,
 	u32 tmp;
 
 	/* Read Vendor Id / Device Id */
-	OSAL_PCI_READ_CONFIG_WORD(p_dev, PCICFG_VENDOR_ID_OFFSET,
+	OSAL_PCI_READ_CONFIG_WORD(p_dev, RTE_PCI_VENDOR_ID,
 				  &p_dev->vendor_id);
-	OSAL_PCI_READ_CONFIG_WORD(p_dev, PCICFG_DEVICE_ID_OFFSET,
+	OSAL_PCI_READ_CONFIG_WORD(p_dev, RTE_PCI_DEVICE_ID,
 				  &p_dev->device_id);
 
 	/* Determine type */

@@ -37,6 +37,7 @@ static void qed_init_pci(struct ecore_dev *edev, struct rte_pci_device *pci_dev)
 	edev->regview = pci_dev->mem_resource[0].addr;
 	edev->doorbells = pci_dev->mem_resource[2].addr;
 	edev->db_size = pci_dev->mem_resource[2].len;
+	edev->pci_dev = pci_dev;
 }
 
 static int
