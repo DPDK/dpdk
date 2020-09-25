@@ -5,6 +5,7 @@ subdir('include')
 
 sources += files(
 	'eal.c',
+	'eal_alarm.c',
 	'eal_debug.c',
 	'eal_file.c',
 	'eal_hugepages.c',
