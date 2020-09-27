@@ -227,6 +227,11 @@ API Changes
   * ``_rte_eth_dev_callback_process()`` -> ``rte_eth_dev_callback_process()``
   * ``_rte_eth_dev_reset`` -> ``rte_eth_dev_internal_reset()``
 
+* ethdev: Modified field type of ``base`` and ``nb_queue`` in struct
+  ``rte_eth_dcb_tc_queue_mapping`` from ``uint8_t`` to ``uint16_t``.
+  As the data of ``uint8_t`` will be truncated when queue number under
+  a TC is greater than 256.
+
 * vhost: Moved vDPA APIs from experimental to stable.
 
 * rawdev: Added a structure size parameter to the functions

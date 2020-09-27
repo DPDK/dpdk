@@ -1522,13 +1522,13 @@ struct rte_eth_xstat_name {
 struct rte_eth_dcb_tc_queue_mapping {
 	/** rx queues assigned to tc per Pool */
 	struct {
-		uint8_t base;
-		uint8_t nb_queue;
+		uint16_t base;
+		uint16_t nb_queue;
 	} tc_rxq[ETH_MAX_VMDQ_POOL][ETH_DCB_NUM_TCS];
 	/** rx queues assigned to tc per Pool */
 	struct {
-		uint8_t base;
-		uint8_t nb_queue;
+		uint16_t base;
+		uint16_t nb_queue;
 	} tc_txq[ETH_MAX_VMDQ_POOL][ETH_DCB_NUM_TCS];
 };
 
