@@ -540,6 +540,8 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = vf->vsi_res->num_queue_pairs;
 	dev_info->min_rx_bufsize = IAVF_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = IAVF_FRAME_SIZE_MAX;
+	dev_info->max_mtu = dev_info->max_rx_pktlen - IAVF_ETH_OVERHEAD;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->hash_key_size = vf->vf_res->rss_key_size;
 	dev_info->reta_size = vf->vf_res->rss_lut_size;
 	dev_info->flow_type_rss_offloads = IAVF_RSS_OFFLOAD_ALL;
