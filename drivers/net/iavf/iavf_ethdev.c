@@ -1424,6 +1424,15 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	iavf_dev_stop(dev);
 	iavf_flow_flush(dev, NULL);
 	iavf_flow_uninit(adapter);
+
+	/*
+	 * disable promiscuous mode before reset vf
+	 * it is a workaround solution when work with kernel driver
+	 * and it is not the normal way
+	 */
+	if (vf->promisc_unicast_enabled || vf->promisc_multicast_enabled)
+		iavf_config_promisc(adapter, false, false);
+
 	iavf_shutdown_adminq(hw);
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
