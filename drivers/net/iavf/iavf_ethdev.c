@@ -121,6 +121,7 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.rx_queue_intr_enable       = iavf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable      = iavf_dev_rx_queue_intr_disable,
 	.filter_ctrl                = iavf_dev_filter_ctrl,
+	.tx_done_cleanup	    = iavf_dev_tx_done_cleanup,
 };
 
 static int
