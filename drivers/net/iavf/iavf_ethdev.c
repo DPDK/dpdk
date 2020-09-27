@@ -40,6 +40,11 @@ static const uint32_t *iavf_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int iavf_dev_stats_get(struct rte_eth_dev *dev,
 			     struct rte_eth_stats *stats);
 static int iavf_dev_stats_reset(struct rte_eth_dev *dev);
+static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
+				 struct rte_eth_xstat *xstats, unsigned int n);
+static int iavf_dev_xstats_get_names(struct rte_eth_dev *dev,
+				       struct rte_eth_xstat_name *xstats_names,
+				       unsigned int limit);
 static int iavf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int iavf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static int iavf_dev_allmulticast_enable(struct rte_eth_dev *dev);
@@ -82,6 +87,30 @@ static const struct rte_pci_id pci_id_iavf_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+struct rte_iavf_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct rte_iavf_xstats_name_off rte_iavf_stats_strings[] = {
+	{"rx_bytes", offsetof(struct iavf_eth_stats, rx_bytes)},
+	{"rx_unicast_packets", offsetof(struct iavf_eth_stats, rx_unicast)},
+	{"rx_multicast_packets", offsetof(struct iavf_eth_stats, rx_multicast)},
+	{"rx_broadcast_packets", offsetof(struct iavf_eth_stats, rx_broadcast)},
+	{"rx_dropped_packets", offsetof(struct iavf_eth_stats, rx_discards)},
+	{"rx_unknown_protocol_packets", offsetof(struct iavf_eth_stats,
+		rx_unknown_protocol)},
+	{"tx_bytes", offsetof(struct iavf_eth_stats, tx_bytes)},
+	{"tx_unicast_packets", offsetof(struct iavf_eth_stats, tx_unicast)},
+	{"tx_multicast_packets", offsetof(struct iavf_eth_stats, tx_multicast)},
+	{"tx_broadcast_packets", offsetof(struct iavf_eth_stats, tx_broadcast)},
+	{"tx_dropped_packets", offsetof(struct iavf_eth_stats, tx_discards)},
+	{"tx_error_packets", offsetof(struct iavf_eth_stats, tx_errors)},
+};
+
+#define IAVF_NB_XSTATS (sizeof(rte_iavf_stats_strings) / \
+		sizeof(rte_iavf_stats_strings[0]))
+
 static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.dev_configure              = iavf_dev_configure,
 	.dev_start                  = iavf_dev_start,
@@ -93,6 +122,9 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.link_update                = iavf_dev_link_update,
 	.stats_get                  = iavf_dev_stats_get,
 	.stats_reset                = iavf_dev_stats_reset,
+	.xstats_get                 = iavf_dev_xstats_get,
+	.xstats_get_names           = iavf_dev_xstats_get_names,
+	.xstats_reset               = iavf_dev_stats_reset,
 	.promiscuous_enable         = iavf_dev_promiscuous_enable,
 	.promiscuous_disable        = iavf_dev_promiscuous_disable,
 	.allmulticast_enable        = iavf_dev_allmulticast_enable,
@@ -1091,6 +1123,55 @@ iavf_dev_stats_reset(struct rte_eth_dev *dev)
 
 	return 0;
 }
+
+static int iavf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+				      struct rte_eth_xstat_name *xstats_names,
+				      __rte_unused unsigned int limit)
+{
+	unsigned int i;
+
+	if (xstats_names != NULL)
+		for (i = 0; i < IAVF_NB_XSTATS; i++) {
+			snprintf(xstats_names[i].name,
+				sizeof(xstats_names[i].name),
+				"%s", rte_iavf_stats_strings[i].name);
+		}
+	return IAVF_NB_XSTATS;
+}
+
+static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
+				 struct rte_eth_xstat *xstats, unsigned int n)
+{
+	int ret;
+	unsigned int i;
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_vsi *vsi = &vf->vsi;
+	struct virtchnl_eth_stats *pstats = NULL;
+
+	if (n < IAVF_NB_XSTATS)
+		return IAVF_NB_XSTATS;
+
+	ret = iavf_query_stats(adapter, &pstats);
+	if (ret != 0)
+		return 0;
+
+	if (!xstats)
+		return 0;
+
+	iavf_update_stats(vsi, pstats);
+
+	/* loop over xstats array and values from pstats */
+	for (i = 0; i < IAVF_NB_XSTATS; i++) {
+		xstats[i].id = i;
+		xstats[i].value = *(uint64_t *)(((char *)pstats) +
+			rte_iavf_stats_strings[i].offset);
+	}
+
+	return IAVF_NB_XSTATS;
+}
+
 
 static int
 iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
