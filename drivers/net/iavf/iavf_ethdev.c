@@ -676,17 +676,9 @@ iavf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	int ret;
 
-	ret = iavf_config_promisc(adapter, true, vf->promisc_multicast_enabled);
-	if (!ret)
-		vf->promisc_unicast_enabled = true;
-	else if (ret == IAVF_NOT_SUPPORTED)
-		ret = -ENOTSUP;
-	else
-		ret = -EAGAIN;
-
-	return ret;
+	return iavf_config_promisc(adapter,
+				  true, vf->promisc_multicast_enabled);
 }
 
 static int
@@ -695,18 +687,9 @@ iavf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	int ret;
 
-	ret = iavf_config_promisc(adapter, false,
-				  vf->promisc_multicast_enabled);
-	if (!ret)
-		vf->promisc_unicast_enabled = false;
-	else if (ret == IAVF_NOT_SUPPORTED)
-		ret = -ENOTSUP;
-	else
-		ret = -EAGAIN;
-
-	return ret;
+	return iavf_config_promisc(adapter,
+				  false, vf->promisc_multicast_enabled);
 }
 
 static int
@@ -715,17 +698,9 @@ iavf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	int ret;
 
-	ret = iavf_config_promisc(adapter, vf->promisc_unicast_enabled, true);
-	if (!ret)
-		vf->promisc_multicast_enabled = true;
-	else if (ret == IAVF_NOT_SUPPORTED)
-		ret = -ENOTSUP;
-	else
-		ret = -EAGAIN;
-
-	return ret;
+	return iavf_config_promisc(adapter,
+				  vf->promisc_unicast_enabled, true);
 }
 
 static int
@@ -734,17 +709,9 @@ iavf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	int ret;
 
-	ret = iavf_config_promisc(adapter, vf->promisc_unicast_enabled, false);
-	if (!ret)
-		vf->promisc_multicast_enabled = false;
-	else if (ret == IAVF_NOT_SUPPORTED)
-		ret = -ENOTSUP;
-	else
-		ret = -EAGAIN;
-
-	return ret;
+	return iavf_config_promisc(adapter,
+				  vf->promisc_unicast_enabled, false);
 }
 
 static int

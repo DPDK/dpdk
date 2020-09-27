@@ -842,10 +842,19 @@ iavf_config_promisc(struct iavf_adapter *adapter,
 
 	err = iavf_execute_vf_cmd(adapter, &args);
 
-	if (err)
+	if (err) {
 		PMD_DRV_LOG(ERR,
 			    "fail to execute command CONFIG_PROMISCUOUS_MODE");
-	return err;
+
+		if (err == IAVF_NOT_SUPPORTED)
+			return -ENOTSUP;
+
+		return -EAGAIN;
+	}
+
+	vf->promisc_unicast_enabled = enable_unicast;
+	vf->promisc_multicast_enabled = enable_multicast;
+	return 0;
 }
 
 int
