@@ -624,7 +624,7 @@ copy_data(void *dst_data, struct vhost_crypto_data_req *vc_req,
 		desc = &vc_req->head[desc->next];
 		rte_prefetch0(&vc_req->head[desc->next]);
 		to_copy = RTE_MIN(desc->len, (uint32_t)left);
-		dlen = desc->len;
+		dlen = to_copy;
 		src = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
 				VHOST_ACCESS_RO);
 		if (unlikely(!src || !dlen)) {
