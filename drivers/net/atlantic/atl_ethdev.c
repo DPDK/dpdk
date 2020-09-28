@@ -15,8 +15,6 @@
 #include "hw_atl/hw_atl_b0_internal.h"
 
 static int eth_atl_dev_init(struct rte_eth_dev *eth_dev);
-static int eth_atl_dev_uninit(struct rte_eth_dev *eth_dev);
-
 static int  atl_dev_configure(struct rte_eth_dev *dev);
 static int  atl_dev_start(struct rte_eth_dev *dev);
 static void atl_dev_stop(struct rte_eth_dev *dev);
@@ -382,6 +380,8 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
@@ -443,40 +443,6 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 }
 
 static int
-eth_atl_dev_uninit(struct rte_eth_dev *eth_dev)
-{
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
-	struct aq_hw_s *hw;
-
-	PMD_INIT_FUNC_TRACE();
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
-
-	hw = ATL_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-
-	if (hw->adapter_stopped == 0)
-		atl_dev_close(eth_dev);
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
-	/* disable uio intr before callback unregister */
-	rte_intr_disable(intr_handle);
-	rte_intr_callback_unregister(intr_handle,
-				     atl_dev_interrupt_handler, eth_dev);
-
-	rte_free(eth_dev->data->mac_addrs);
-	eth_dev->data->mac_addrs = NULL;
-
-	pthread_mutex_destroy(&hw->mbox_mutex);
-
-	return 0;
-}
-
-static int
 eth_atl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
@@ -487,7 +453,7 @@ eth_atl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 static int
 eth_atl_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, eth_atl_dev_uninit);
+	return rte_eth_dev_pci_generic_remove(pci_dev, atl_dev_close);
 }
 
 static int
@@ -722,11 +688,31 @@ atl_dev_set_link_down(struct rte_eth_dev *dev)
 static int
 atl_dev_close(struct rte_eth_dev *dev)
 {
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct aq_hw_s *hw;
+
 	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	atl_dev_stop(dev);
 
 	atl_free_queues(dev);
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+				     atl_dev_interrupt_handler, dev);
+
+	pthread_mutex_destroy(&hw->mbox_mutex);
 
 	return 0;
 }
@@ -736,7 +722,7 @@ atl_dev_reset(struct rte_eth_dev *dev)
 {
 	int ret;
 
-	ret = eth_atl_dev_uninit(dev);
+	ret = atl_dev_close(dev);
 	if (ret)
 		return ret;
 
