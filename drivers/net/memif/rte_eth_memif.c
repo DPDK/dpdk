@@ -249,16 +249,17 @@ memif_get_buffer(struct pmd_process_private *proc_private, memif_desc_t *d)
 static void
 memif_free_stored_mbufs(struct pmd_process_private *proc_private, struct memif_queue *mq)
 {
+	uint16_t cur_tail;
 	uint16_t mask = (1 << mq->log2_ring_size) - 1;
 	memif_ring_t *ring = memif_get_ring_from_queue(proc_private, mq);
 
 	/* FIXME: improve performance */
 	/* The ring->tail acts as a guard variable between Tx and Rx
 	 * threads, so using load-acquire pairs with store-release
-	 * to synchronize it between threads.
+	 * in function eth_memif_rx for S2M queues.
 	 */
-	while (mq->last_tail != __atomic_load_n(&ring->tail,
-						__ATOMIC_ACQUIRE)) {
+	cur_tail = __atomic_load_n(&ring->tail, __ATOMIC_ACQUIRE);
+	while (mq->last_tail != cur_tail) {
 		RTE_MBUF_PREFETCH_TO_FREE(mq->buffers[(mq->last_tail + 1) & mask]);
 		/* Decrement refcnt and free mbuf. (current segment) */
 		rte_mbuf_refcnt_update(mq->buffers[mq->last_tail & mask], -1);
