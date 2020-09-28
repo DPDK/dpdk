@@ -585,7 +585,13 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		n_free = ring_size - slot +
 				__atomic_load_n(&ring->tail, __ATOMIC_ACQUIRE);
 	} else {
-		slot = __atomic_load_n(&ring->tail, __ATOMIC_ACQUIRE);
+		/* For M2S queues ring->tail is updated by the sender and
+		 * this function is called in the context of sending thread.
+		 * The loads in the sender do not need to synchronize with
+		 * its own stores. Hence, the following load can be a
+		 * relaxed load.
+		 */
+		slot = __atomic_load_n(&ring->tail, __ATOMIC_RELAXED);
 		n_free = __atomic_load_n(&ring->head, __ATOMIC_ACQUIRE) - slot;
 	}
 
