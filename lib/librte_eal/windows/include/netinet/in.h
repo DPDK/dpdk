@@ -5,6 +5,8 @@
 #ifndef _IN_H_
 #define _IN_H_
 
+#include <sys/socket.h>
+
 #define IPPROTO_IP         0
 #define IPPROTO_HOPOPTS    0
 #define IPPROTO_ICMP       1
@@ -21,5 +23,15 @@
 #define IPPROTO_NONE      59
 #define IPPROTO_DSTOPTS   60
 #define IPPROTO_SCTP     132
+
+#define INET6_ADDRSTRLEN 46
+
+struct in_addr {
+	uint32_t s_addr;
+};
+
+struct in6_addr {
+	uint8_t s6_addr[16];
+};
 
 #endif
