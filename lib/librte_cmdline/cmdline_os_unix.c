@@ -2,7 +2,9 @@
  * Copyright (c) 2020 Dmitry Kozlyuk
  */
 
+#include <poll.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "cmdline_private.h"
 
@@ -24,4 +26,22 @@ void
 terminal_restore(const struct cmdline *cl)
 {
 	tcsetattr(fileno(stdin), TCSANOW, &cl->oldterm);
+}
+
+int
+cmdline_poll_char(struct cmdline *cl)
+{
+	struct pollfd pfd;
+
+	pfd.fd = cl->s_in;
+	pfd.events = POLLIN;
+	pfd.revents = 0;
+
+	return poll(&pfd, 1, 0);
+}
+
+ssize_t
+cmdline_read_char(struct cmdline *cl, char *c)
+{
+	return read(cl->s_in, c, 1);
 }

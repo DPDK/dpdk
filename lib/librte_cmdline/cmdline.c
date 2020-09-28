@@ -11,13 +11,12 @@
 #include <stdarg.h>
 #include <inttypes.h>
 #include <fcntl.h>
-#include <poll.h>
 #include <errno.h>
 #include <netinet/in.h>
 
 #include <rte_string_fns.h>
 
-#include "cmdline.h"
+#include "cmdline_private.h"
 
 static void
 cmdline_valid_buffer(struct rdline *rdl, const char *buf,
@@ -184,7 +183,6 @@ cmdline_quit(struct cmdline *cl)
 int
 cmdline_poll(struct cmdline *cl)
 {
-	struct pollfd pfd;
 	int status;
 	ssize_t read_status;
 	char c;
@@ -194,16 +192,12 @@ cmdline_poll(struct cmdline *cl)
 	else if (cl->rdl.status == RDLINE_EXITED)
 		return RDLINE_EXITED;
 
-	pfd.fd = cl->s_in;
-	pfd.events = POLLIN;
-	pfd.revents = 0;
-
-	status = poll(&pfd, 1, 0);
+	status = cmdline_poll_char(cl);
 	if (status < 0)
 		return status;
 	else if (status > 0) {
 		c = -1;
-		read_status = read(cl->s_in, &c, 1);
+		read_status = cmdline_read_char(cl, &c);
 		if (read_status < 0)
 			return read_status;
 
@@ -225,7 +219,7 @@ cmdline_interact(struct cmdline *cl)
 
 	c = -1;
 	while (1) {
-		if (read(cl->s_in, &c, 1) <= 0)
+		if (cmdline_read_char(cl, &c) <= 0)
 			break;
 		if (cmdline_in(cl, &c, 1) < 0)
 			break;
