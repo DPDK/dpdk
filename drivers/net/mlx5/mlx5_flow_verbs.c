@@ -1248,6 +1248,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 	uint64_t last_item = 0;
 	uint8_t next_protocol = 0xff;
 	uint16_t ether_type = 0;
+	char errstr[32];
 
 	if (items == NULL)
 		return -1;
@@ -1399,9 +1400,11 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			last_item = MLX5_FLOW_LAYER_MPLS;
 			break;
 		default:
+			snprintf(errstr, sizeof(errstr), "item type %d not supported",
+				 items->type);
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  NULL, "item not supported");
+						  NULL, errstr);
 		}
 		item_flags |= last_item;
 	}
@@ -1695,6 +1698,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	struct mlx5_flow_rss_desc *rss_desc = &((struct mlx5_flow_rss_desc *)
 					      priv->rss_desc)
 					      [!!priv->flow_nested_idx];
+	char errstr[32];
 
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
@@ -1840,10 +1844,11 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 			item_flags |= MLX5_FLOW_LAYER_MPLS;
 			break;
 		default:
+			snprintf(errstr, sizeof(errstr), "item type %d not supported",
+				 items->type);
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  NULL,
-						  "item not supported");
+						  NULL, errstr);
 		}
 	}
 	dev_flow->handle->layers = item_flags;
