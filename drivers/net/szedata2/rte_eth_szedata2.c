@@ -1910,10 +1910,8 @@ static int szedata2_eth_pci_remove(struct rte_pci_device *pci_dev)
 				pci_dev->device.name, i);
 		PMD_DRV_LOG(DEBUG, "Removing eth_dev %s", name);
 		eth_dev = rte_eth_dev_allocated(name);
-		if (!eth_dev) {
-			PMD_DRV_LOG(ERR, "eth_dev %s not found", name);
-			retval = retval ? retval : -ENODEV;
-		}
+		if (eth_dev == NULL)
+			continue; /* port already released */
 
 		ret = rte_szedata2_eth_dev_uninit(eth_dev);
 		if (ret != 0) {

@@ -3739,6 +3739,8 @@ static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 	int port = 0;
 
 	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
+	if (eth_dev == NULL)
+		return 0; /* port already released */
 	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
 	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
 		port = get_pf_port_number(eth_dev->data->name);

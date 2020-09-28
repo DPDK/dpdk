@@ -562,10 +562,8 @@ static int ipn3ke_vswitch_remove(struct rte_afu_device *afu_dev)
 			afu_dev->device.name, i);
 
 		ethdev = rte_eth_dev_allocated(afu_dev->device.name);
-		if (!ethdev)
-			return -ENODEV;
-
-		rte_eth_dev_destroy(ethdev, ipn3ke_rpst_uninit);
+		if (ethdev != NULL)
+			rte_eth_dev_destroy(ethdev, ipn3ke_rpst_uninit);
 	}
 
 	ret = rte_eth_switch_domain_free(hw->switch_domain_id);

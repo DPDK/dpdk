@@ -488,16 +488,14 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 
 	/* find the ethdev entry */
 	eth_dev = rte_eth_dev_allocated(name);
-	if (eth_dev == NULL)
-		return -1;
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		eth_kni_dev_stop(eth_dev);
-		return rte_eth_dev_release_port(eth_dev);
+	if (eth_dev != NULL) {
+		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+			eth_kni_dev_stop(eth_dev);
+			return rte_eth_dev_release_port(eth_dev);
+		}
+		eth_kni_close(eth_dev);
+		rte_eth_dev_release_port(eth_dev);
 	}
-
-	eth_kni_close(eth_dev);
-	rte_eth_dev_release_port(eth_dev);
 
 	is_kni_initialized--;
 	if (is_kni_initialized == 0)
