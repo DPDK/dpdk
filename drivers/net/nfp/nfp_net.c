@@ -871,6 +871,9 @@ nfp_net_close(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev;
 	int i;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	PMD_INIT_LOG(DEBUG, "Close");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);

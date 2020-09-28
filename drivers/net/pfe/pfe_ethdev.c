@@ -396,6 +396,9 @@ pfe_eth_close(struct rte_eth_dev *dev)
 	if (!g_pfe)
 		return -1;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	pfe_eth_stop(dev);
 	/* Close the device file for link status */
 	pfe_eth_close_cdev(dev->data->dev_private);

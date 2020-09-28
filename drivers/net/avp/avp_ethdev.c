@@ -2107,6 +2107,9 @@ avp_dev_close(struct rte_eth_dev *eth_dev)
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int ret;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	rte_spinlock_lock(&avp->lock);
 	if (avp->flags & AVP_F_DETACHED) {
 		PMD_DRV_LOG(ERR, "Operation not supported during VM live migration\n");

@@ -1555,6 +1555,9 @@ lio_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	lio_dev_info(lio_dev, "closing port %d\n", eth_dev->data->port_id);
 
 	if (lio_dev->intf_open)

@@ -821,6 +821,9 @@ eth_dev_close(struct rte_eth_dev *dev)
 	struct pkt_rx_queue *rxq;
 	int i;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	AF_XDP_LOG(INFO, "Closing AF_XDP ethdev on numa socket %u\n",
 		rte_socket_id());
 

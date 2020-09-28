@@ -1163,6 +1163,9 @@ eth_dev_close(struct rte_eth_dev *dev)
 	uint16_t nb_rx = dev->data->nb_rx_queues;
 	uint16_t nb_tx = dev->data->nb_tx_queues;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	eth_dev_stop(dev);
 
 	free(internals->sze_dev_path);

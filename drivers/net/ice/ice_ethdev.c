@@ -2388,6 +2388,9 @@ ice_dev_close(struct rte_eth_dev *dev)
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	/* Since stop will make link down, then the link event will be
 	 * triggered, disable the irq firstly to avoid the port_infoe etc
 	 * resources deallocation causing the interrupt service thread

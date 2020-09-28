@@ -1535,6 +1535,9 @@ eth_igb_close(struct rte_eth_dev *dev)
 	struct e1000_filter_info *filter_info =
 		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	eth_igb_stop(dev);
 
 	e1000_phy_hw_reset(hw);
@@ -3381,6 +3384,9 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	e1000_reset_hw(hw);
 

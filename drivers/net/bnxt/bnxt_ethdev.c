@@ -1408,6 +1408,9 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	/* cancel the recovery handler before remove dev */
 	rte_eal_alarm_cancel(bnxt_dev_reset_and_resume, (void *)bp);
 	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);

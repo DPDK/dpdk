@@ -204,6 +204,9 @@ eth_kni_close(struct rte_eth_dev *eth_dev)
 	struct pmd_internals *internals;
 	int ret;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	eth_kni_dev_stop(eth_dev);
 
 	/* mac_addrs must not be freed alone because part of dev_private */

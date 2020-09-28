@@ -214,6 +214,9 @@ ipn3ke_rpst_dev_close(struct rte_eth_dev *dev)
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(dev);
 	struct ipn3ke_rpst *rpst = IPN3KE_DEV_PRIVATE_TO_RPST(dev);
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	if (hw->retimer.mac_type == IFPGA_RAWDEV_RETIMER_MAC_TYPE_10GE_XFI) {
 		/* Disable the TX path */
 		ipn3ke_xmac_tx_disable(hw, rpst->port_id, 0);

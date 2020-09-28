@@ -2969,6 +2969,9 @@ static int hinic_dev_close(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	if (rte_bit_relaxed_test_and_set32(HINIC_DEV_CLOSE,
 					   &nic_dev->dev_status)) {
 		PMD_DRV_LOG(WARNING, "Device %s already closed",

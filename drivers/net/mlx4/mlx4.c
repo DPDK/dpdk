@@ -376,6 +376,8 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	struct mlx4_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));

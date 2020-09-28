@@ -963,6 +963,8 @@ ionic_dev_close(struct rte_eth_dev *eth_dev)
 	int err;
 
 	IONIC_PRINT_CALL();
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	err = ionic_lif_stop(lif);
 	if (err) {

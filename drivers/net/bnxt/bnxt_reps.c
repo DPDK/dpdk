@@ -250,6 +250,9 @@ int bnxt_representor_uninit(struct rte_eth_dev *eth_dev)
 		(struct bnxt_representor *)eth_dev->data->dev_private;
 	uint16_t vf_id;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR uninit\n", eth_dev->data->port_id);
 	eth_dev->data->mac_addrs = NULL;
 	eth_dev->dev_ops = NULL;

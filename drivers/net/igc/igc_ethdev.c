@@ -1175,6 +1175,8 @@ eth_igc_close(struct rte_eth_dev *dev)
 	int retry = 0;
 
 	PMD_INIT_FUNC_TRACE();
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	if (!adapter->stopped)
 		eth_igc_stop(dev);
@@ -1363,10 +1365,6 @@ static int
 eth_igc_dev_uninit(__rte_unused struct rte_eth_dev *eth_dev)
 {
 	PMD_INIT_FUNC_TRACE();
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
-
 	eth_igc_close(eth_dev);
 	return 0;
 }

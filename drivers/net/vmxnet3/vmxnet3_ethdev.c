@@ -889,6 +889,8 @@ static int
 vmxnet3_dev_close(struct rte_eth_dev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	vmxnet3_dev_stop(dev);
 	vmxnet3_free_queues(dev);

@@ -861,6 +861,9 @@ mrvl_dev_close(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	size_t i;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	mrvl_flush_rx_queues(dev);
 	mrvl_flush_tx_shadow_queues(dev);
 	mrvl_flow_deinit(dev);

@@ -762,6 +762,9 @@ eth_em_close(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	eth_em_stop(dev);
 	adapter->stopped = 1;
 	em_dev_free_queues(dev);

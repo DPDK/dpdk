@@ -435,6 +435,9 @@ mvneta_dev_close(struct rte_eth_dev *dev)
 	struct mvneta_priv *priv = dev->data->dev_private;
 	int i;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	if (priv->ppio)
 		mvneta_dev_stop(dev);
 

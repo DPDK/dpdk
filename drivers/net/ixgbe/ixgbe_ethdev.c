@@ -2995,6 +2995,8 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	ixgbe_pf_reset_hw(hw);
 
@@ -5448,6 +5450,8 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	ixgbe_reset_hw(hw);
 

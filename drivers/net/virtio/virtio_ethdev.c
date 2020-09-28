@@ -711,6 +711,8 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	struct rte_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
 
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	if (!hw->opened)
 		return 0;

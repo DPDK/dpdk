@@ -1468,6 +1468,9 @@ iavf_dev_close(struct rte_eth_dev *dev)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	iavf_dev_stop(dev);
 	iavf_flow_flush(dev, NULL);
 	iavf_flow_uninit(adapter);

@@ -487,6 +487,8 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	rte_event_dev_close(nic->evdev);
 
