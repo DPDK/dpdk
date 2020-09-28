@@ -99,7 +99,6 @@ static const enum rte_filter_op dpaa2_supported_filter_ops[] = {
 };
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
-static int dpaa2_dev_uninit(struct rte_eth_dev *eth_dev);
 static int dpaa2_dev_link_update(struct rte_eth_dev *dev,
 				 int wait_to_complete);
 static int dpaa2_dev_set_link_up(struct rte_eth_dev *dev);
@@ -1241,13 +1240,20 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)dev->process_private;
-	int ret;
+	int i, ret;
 	struct rte_eth_link link;
 
 	PMD_INIT_FUNC_TRACE();
 
-	dpaa2_flow_clean(dev);
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
+	if (!dpni) {
+		DPAA2_PMD_WARN("Already closed or not started");
+		return -1;
+	}
+
+	dpaa2_flow_clean(dev);
 	/* Clean the device first */
 	ret = dpni_reset(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
@@ -1258,6 +1264,31 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(dev, &link);
 
+	/* Free private queues memory */
+	dpaa2_free_rx_tx_queues(dev);
+	/* Close the device at underlying layer*/
+	ret = dpni_close(dpni, CMD_PRI_LOW, priv->token);
+	if (ret) {
+		DPAA2_PMD_ERR("Failure closing dpni device with err code %d",
+			      ret);
+	}
+
+	/* Free the allocated memory for ethernet private data and dpni*/
+	priv->hw = NULL;
+	dev->process_private = NULL;
+	rte_free(dpni);
+
+	for (i = 0; i < MAX_TCS; i++)
+		rte_free((void *)(size_t)priv->extract.tc_extract_param[i]);
+
+	if (priv->extract.qos_extract_param)
+		rte_free((void *)(size_t)priv->extract.qos_extract_param);
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
+
+	DPAA2_PMD_INFO("%s: netdev deleted", dev->data->name);
 	return 0;
 }
 
@@ -2709,56 +2740,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
 	return 0;
 init_err:
-	dpaa2_dev_uninit(eth_dev);
-	return ret;
-}
-
-static int
-dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
-{
-	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
-	struct fsl_mc_io *dpni = (struct fsl_mc_io *)eth_dev->process_private;
-	int i, ret;
-
-	PMD_INIT_FUNC_TRACE();
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
-
-	if (!dpni) {
-		DPAA2_PMD_WARN("Already closed or not started");
-		return -1;
-	}
-
 	dpaa2_dev_close(eth_dev);
 
-	dpaa2_free_rx_tx_queues(eth_dev);
-
-	/* Close the device at underlying layer*/
-	ret = dpni_close(dpni, CMD_PRI_LOW, priv->token);
-	if (ret) {
-		DPAA2_PMD_ERR(
-			     "Failure closing dpni device with err code %d",
-			     ret);
-	}
-
-	/* Free the allocated memory for ethernet private data and dpni*/
-	priv->hw = NULL;
-	eth_dev->process_private = NULL;
-	rte_free(dpni);
-
-	for (i = 0; i < MAX_TCS; i++)
-		rte_free((void *)(size_t)priv->extract.tc_extract_param[i]);
-
-	if (priv->extract.qos_extract_param)
-		rte_free((void *)(size_t)priv->extract.qos_extract_param);
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
-	DPAA2_PMD_INFO("%s: netdev deleted", eth_dev->data->name);
-	return 0;
+	return ret;
 }
 
 static int
@@ -2809,6 +2793,7 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 	dpaa2_dev->eth_dev = eth_dev;
 	eth_dev->data->rx_mbuf_alloc_failed = 0;
 
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	if (dpaa2_drv->drv_flags & RTE_DPAA2_DRV_INTR_LSC)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
@@ -2827,13 +2812,13 @@ static int
 rte_dpaa2_remove(struct rte_dpaa2_device *dpaa2_dev)
 {
 	struct rte_eth_dev *eth_dev;
+	int ret;
 
 	eth_dev = dpaa2_dev->eth_dev;
-	dpaa2_dev_uninit(eth_dev);
+	dpaa2_dev_close(eth_dev);
+	ret = rte_eth_dev_release_port(eth_dev);
 
-	rte_eth_dev_release_port(eth_dev);
-
-	return 0;
+	return ret;
 }
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd = {
