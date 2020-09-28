@@ -25,4 +25,8 @@ headers = files('cmdline.h',
 	'cmdline_cirbuf.h',
 	'cmdline_parse_portlist.h')
 
+if not is_windows
+	sources += files('cmdline_os_unix.c')
+endif
+
 deps += ['net']

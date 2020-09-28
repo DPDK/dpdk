@@ -13,6 +13,7 @@
 #include <fcntl.h>
 
 #include "cmdline.h"
+#include "cmdline_private.h"
 #include "cmdline_socket.h"
 
 struct cmdline *
@@ -36,18 +37,11 @@ struct cmdline *
 cmdline_stdin_new(cmdline_parse_ctx_t *ctx, const char *prompt)
 {
 	struct cmdline *cl;
-	struct termios oldterm, term;
-
-	tcgetattr(0, &oldterm);
-	memcpy(&term, &oldterm, sizeof(term));
-	term.c_lflag &= ~(ICANON | ECHO | ISIG);
-	tcsetattr(0, TCSANOW, &term);
-	setbuf(stdin, NULL);
 
 	cl = cmdline_new(ctx, prompt, 0, 1);
 
-	if (cl)
-		memcpy(&cl->oldterm, &oldterm, sizeof(term));
+	if (cl != NULL)
+		terminal_adjust(cl);
 
 	return cl;
 }
@@ -55,8 +49,8 @@ cmdline_stdin_new(cmdline_parse_ctx_t *ctx, const char *prompt)
 void
 cmdline_stdin_exit(struct cmdline *cl)
 {
-	if (!cl)
+	if (cl == NULL)
 		return;
 
-	tcsetattr(fileno(stdin), TCSANOW, &cl->oldterm);
+	terminal_restore(cl);
 }

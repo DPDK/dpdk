@@ -10,7 +10,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
-#include <termios.h>
 
 #include "cmdline_vt100.h"
 
