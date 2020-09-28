@@ -29,7 +29,6 @@ enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 #define ETH_VHOST_IFACE_ARG		"iface"
 #define ETH_VHOST_QUEUES_ARG		"queues"
 #define ETH_VHOST_CLIENT_ARG		"client"
-#define ETH_VHOST_DEQUEUE_ZERO_COPY	"dequeue-zero-copy"
 #define ETH_VHOST_IOMMU_SUPPORT		"iommu-support"
 #define ETH_VHOST_POSTCOPY_SUPPORT	"postcopy-support"
 #define ETH_VHOST_VIRTIO_NET_F_HOST_TSO "tso"
@@ -41,7 +40,6 @@ static const char *valid_arguments[] = {
 	ETH_VHOST_IFACE_ARG,
 	ETH_VHOST_QUEUES_ARG,
 	ETH_VHOST_CLIENT_ARG,
-	ETH_VHOST_DEQUEUE_ZERO_COPY,
 	ETH_VHOST_IOMMU_SUPPORT,
 	ETH_VHOST_POSTCOPY_SUPPORT,
 	ETH_VHOST_VIRTIO_NET_F_HOST_TSO,
@@ -1506,7 +1504,6 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 	uint64_t flags = 0;
 	uint64_t disable_flags = 0;
 	int client_mode = 0;
-	int dequeue_zero_copy = 0;
 	int iommu_support = 0;
 	int postcopy_support = 0;
 	int tso = 0;
@@ -1564,16 +1561,6 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 
 		if (client_mode)
 			flags |= RTE_VHOST_USER_CLIENT;
-	}
-
-	if (rte_kvargs_count(kvlist, ETH_VHOST_DEQUEUE_ZERO_COPY) == 1) {
-		ret = rte_kvargs_process(kvlist, ETH_VHOST_DEQUEUE_ZERO_COPY,
-					 &open_int, &dequeue_zero_copy);
-		if (ret < 0)
-			goto out_free;
-
-		if (dequeue_zero_copy)
-			flags |= RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
 	}
 
 	if (rte_kvargs_count(kvlist, ETH_VHOST_IOMMU_SUPPORT) == 1) {
@@ -1675,7 +1662,6 @@ RTE_PMD_REGISTER_PARAM_STRING(net_vhost,
 	"iface=<ifc> "
 	"queues=<int> "
 	"client=<0|1> "
-	"dequeue-zero-copy=<0|1> "
 	"iommu-support=<0|1> "
 	"postcopy-support=<0|1> "
 	"tso=<0|1> "
