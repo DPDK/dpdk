@@ -530,13 +530,14 @@ move_desc(struct vring_desc *head, struct vring_desc **cur_desc,
 	int left = size - desc->len;
 
 	while ((desc->flags & VRING_DESC_F_NEXT) && left > 0) {
-		(*nb_descs)--;
 		if (unlikely(*nb_descs == 0 || desc->next >= vq_size))
 			return -1;
 
 		desc = &head[desc->next];
 		rte_prefetch0(&head[desc->next]);
 		left -= desc->len;
+		if (left > 0)
+			(*nb_descs)--;
 	}
 
 	if (unlikely(left > 0))
