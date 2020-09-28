@@ -314,7 +314,7 @@ Custom worker function :numref:`dtg_distributor_worker`.
    * For high-performance execution logic ensure running it on correct NUMA
      and non-master core.
 
-   * Analyze run logic with ``rte_dump_stack``, ``rte_dump_registers`` and
+   * Analyze run logic with ``rte_dump_stack`` and
      ``rte_memdump`` for more insights.
 
    * Make use of objdump to ensure opcode is matching to the desired state.

@@ -7,14 +7,6 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 
-/* not implemented */
-void
-rte_dump_registers(void)
-{
-	return;
-}
-
-/* call abort(), it will generate a coredump if enabled */
 void
 __rte_panic(const char *funcname, const char *format, ...)
 {
@@ -25,8 +17,7 @@ __rte_panic(const char *funcname, const char *format, ...)
 	rte_vlog(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, format, ap);
 	va_end(ap);
 	rte_dump_stack();
-	rte_dump_registers();
-	abort();
+	abort(); /* generate a coredump if enabled */
 }
 
 /*
@@ -46,14 +37,8 @@ rte_exit(int exit_code, const char *format, ...)
 	rte_vlog(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, format, ap);
 	va_end(ap);
 
-#ifndef RTE_EAL_ALWAYS_PANIC_ON_ERROR
 	if (rte_eal_cleanup() != 0)
 		RTE_LOG(CRIT, EAL,
 			"EAL could not release all resources\n");
 	exit(exit_code);
-#else
-	rte_dump_stack();
-	rte_dump_registers();
-	abort();
-#endif
 }

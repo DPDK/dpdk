@@ -27,13 +27,6 @@ extern "C" {
 void rte_dump_stack(void);
 
 /**
- * Dump the registers of the calling core to the console.
- *
- * Note: Not implemented in a userapp environment; use gdb instead.
- */
-void rte_dump_registers(void);
-
-/**
  * Provide notification of a critical non-recoverable error and terminate
  * execution abnormally.
  *

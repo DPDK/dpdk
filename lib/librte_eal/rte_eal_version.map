@@ -38,7 +38,6 @@ DPDK_21 {
 	rte_devargs_remove;
 	rte_devargs_type_count;
 	rte_dump_physmem_layout;
-	rte_dump_registers;
 	rte_dump_stack;
 	rte_dump_tailq;
 	rte_eal_alarm_cancel;

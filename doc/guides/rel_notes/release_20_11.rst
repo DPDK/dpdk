@@ -351,6 +351,8 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: Removed the not implemented function ``rte_dump_registers()``.
+
 * ``ethdev`` changes
 
   * Following device operation function pointers moved
