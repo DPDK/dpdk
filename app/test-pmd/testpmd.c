@@ -2695,23 +2695,12 @@ close_port(portid_t pid)
 			continue;
 		}
 
-		if (rte_atomic16_cmpset(&(port->port_status),
-			RTE_PORT_STOPPED, RTE_PORT_HANDLING) == 0) {
-			printf("Port %d is now not stopped\n", pi);
-			continue;
-		}
-
 		if (port->flow_list)
 			port_flow_flush(pi);
 		rte_eth_dev_close(pi);
-
-		remove_invalid_ports();
-
-		if (rte_atomic16_cmpset(&(port->port_status),
-			RTE_PORT_HANDLING, RTE_PORT_CLOSED) == 0)
-			printf("Port %d cannot be set to closed\n", pi);
 	}
 
+	remove_invalid_ports();
 	printf("Done\n");
 }
 
@@ -2842,12 +2831,7 @@ detach_device(struct rte_device *dev)
 		return;
 	}
 	RTE_ETH_FOREACH_DEV_OF(sibling, dev) {
-		/* reset mapping between old ports and removed device */
-		rte_eth_devices[sibling].device = NULL;
 		if (ports[sibling].port_status != RTE_PORT_CLOSED) {
-			/* sibling ports are forced to be closed */
-			ports[sibling].port_status = RTE_PORT_CLOSED;
-			printf("Port %u is closed\n", sibling);
 		}
 	}
 
@@ -2903,11 +2887,8 @@ detach_devargs(char *identifier)
 				return;
 			}
 
-			/* sibling ports are forced to be closed */
 			if (ports[port_id].flow_list)
 				port_flow_flush(port_id);
-			ports[port_id].port_status = RTE_PORT_CLOSED;
-			printf("Port %u is now closed\n", port_id);
 		}
 	}
 
@@ -3052,12 +3033,6 @@ check_all_ports_link_status(uint32_t port_mask)
 	}
 }
 
-/*
- * This callback is for remove a port for a device. It has limitation because
- * it is not for multiple port removal for a device.
- * TODO: the device detach invoke will plan to be removed from user side to
- * eal. And convert all PMDs to free port resources on ether device closing.
- */
 static void
 rmv_port_callback(void *arg)
 {
@@ -3114,6 +3089,10 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		if (rte_eal_alarm_set(100000,
 				rmv_port_callback, (void *)(intptr_t)port_id))
 			fprintf(stderr, "Could not set up deferred device removal\n");
+		break;
+	case RTE_ETH_EVENT_DESTROY:
+		ports[port_id].port_status = RTE_PORT_CLOSED;
+		printf("Port %u is closed\n", port_id);
 		break;
 	default:
 		break;
