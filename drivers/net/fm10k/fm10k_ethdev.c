@@ -1841,9 +1841,10 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->tail_ptr = (volatile uint32_t *)
 		&((uint32_t *)hw->hw_addr)[FM10K_RDT(queue_id)];
 	q->offloads = offloads;
-	if (handle_rxconf(q, conf))
+	if (handle_rxconf(q, conf)) {
+		rte_free(q);
 		return -EINVAL;
-
+	}
 	/* allocate memory for the software ring */
 	q->sw_ring = rte_zmalloc_socket("fm10k sw ring",
 			(nb_desc + q->nb_fake_desc) * sizeof(struct rte_mbuf *),
