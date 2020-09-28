@@ -1552,6 +1552,10 @@ static int qede_dev_close(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE(edev);
 
+	/* only close in case of the primary process */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	/* dev_stop() shall cleanup fp resources in hw but without releasing
 	 * dma memories and sw structures so that dev_start() can be called
 	 * by the app without reconfiguration. However, in dev_close() we
@@ -1588,6 +1592,10 @@ static int qede_dev_close(struct rte_eth_dev *eth_dev)
 
 	if (ECORE_IS_CMT(edev))
 		rte_eal_alarm_cancel(qede_poll_sp_sb_cb, (void *)eth_dev);
+
+	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
 
 	return 0;
 }
@@ -2738,6 +2746,11 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		qed_ops->sriov_configure(edev, pci_dev->max_vfs);
 	}
 
+	/* Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	DP_INFO(edev, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
 		adapter->primary_mac.addr_bytes[0],
 		adapter->primary_mac.addr_bytes[1],
@@ -2772,20 +2785,8 @@ static int qede_dev_common_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
-
 	PMD_INIT_FUNC_TRACE(edev);
-
-	/* only uninitialize in the primary process */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
-
-	/* safe to close dev here */
 	qede_dev_close(eth_dev);
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
 	return 0;
 }
 
