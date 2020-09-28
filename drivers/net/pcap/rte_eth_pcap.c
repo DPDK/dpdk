@@ -734,6 +734,14 @@ eth_dev_close(struct rte_eth_dev *dev)
 	unsigned int i;
 	struct pmd_internals *internals = dev->data->dev_private;
 
+	PMD_LOG(INFO, "Closing pcap ethdev on NUMA socket %d",
+			rte_socket_id());
+
+	rte_free(dev->process_private);
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	/* Device wide flag, but cleanup must be performed per queue. */
 	if (internals->infinite_rx) {
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -747,6 +755,10 @@ eth_dev_close(struct rte_eth_dev *dev)
 			rte_ring_free(pcap_q->pkts);
 		}
 	}
+
+	if (internals->phy_mac == 0)
+		/* not dynamically allocated, must not be freed */
+		dev->data->mac_addrs = NULL;
 
 	return 0;
 }
@@ -1322,6 +1334,7 @@ eth_from_pcaps(struct rte_vdev_device *vdev,
 	else
 		eth_dev->tx_pkt_burst = eth_tx_drop;
 
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
 }
@@ -1544,30 +1557,16 @@ free_kvlist:
 static int
 pmd_pcap_remove(struct rte_vdev_device *dev)
 {
-	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
-
-	PMD_LOG(INFO, "Closing pcap ethdev on numa socket %d",
-			rte_socket_id());
 
 	if (!dev)
 		return -1;
 
-	/* reserve an ethdev entry */
 	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
-		return -1;
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		internals = eth_dev->data->dev_private;
-		if (internals != NULL && internals->phy_mac == 0)
-			/* not dynamically allocated, must not be freed */
-			eth_dev->data->mac_addrs = NULL;
-	}
+		return 0; /* port already released */
 
 	eth_dev_close(eth_dev);
-
-	rte_free(eth_dev->process_private);
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;
