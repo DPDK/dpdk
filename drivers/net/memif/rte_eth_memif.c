@@ -752,11 +752,13 @@ eth_memif_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	memif_free_stored_mbufs(proc_private, mq);
 
 	/* ring type always MEMIF_RING_S2M */
-	/* The ring->head acts as a guard variable between Tx and Rx
-	 * threads, so using load-acquire pairs with store-release
-	 * to synchronize it between threads.
+	/* For S2M queues ring->head is updated by the sender and
+	 * this function is called in the context of sending thread.
+	 * The loads in the sender do not need to synchronize with
+	 * its own stores. Hence, the following load can be a
+	 * relaxed load.
 	 */
-	slot = __atomic_load_n(&ring->head, __ATOMIC_ACQUIRE);
+	slot = __atomic_load_n(&ring->head, __ATOMIC_RELAXED);
 	n_free = ring_size - slot + mq->last_tail;
 
 	int used_slots;
@@ -812,6 +814,10 @@ eth_memif_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 no_free_slots:
 	/* ring type always MEMIF_RING_S2M */
+	/* The ring->head acts as a guard variable between Tx and Rx
+	 * threads, so using store-release pairs with load-acquire
+	 * in function eth_memif_rx for S2M rings.
+	 */
 	__atomic_store_n(&ring->head, slot, __ATOMIC_RELEASE);
 
 	/* Send interrupt, if enabled. */
