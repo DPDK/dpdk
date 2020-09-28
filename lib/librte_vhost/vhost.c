@@ -539,8 +539,6 @@ init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 	vhost_user_iotlb_init(dev, vring_idx);
 	/* Backends are set to -1 indicating an inactive device. */
 	vq->backend = -1;
-
-	TAILQ_INIT(&vq->zmbuf_list);
 }
 
 static void
@@ -702,18 +700,6 @@ vhost_set_ifname(int vid, const char *if_name, unsigned int if_len)
 
 	strncpy(dev->ifname, if_name, len);
 	dev->ifname[sizeof(dev->ifname) - 1] = '\0';
-}
-
-void
-vhost_enable_dequeue_zero_copy(int vid)
-{
-	struct virtio_net *dev = get_device(vid);
-
-	if (dev == NULL)
-		return;
-
-	dev->dequeue_zero_copy = 1;
-	VHOST_LOG_CONFIG(INFO, "dequeue zero copy is enabled\n");
 }
 
 void

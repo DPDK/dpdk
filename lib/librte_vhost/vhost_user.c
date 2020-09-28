@@ -134,46 +134,14 @@ get_blk_size(int fd)
 	return ret == -1 ? (uint64_t)-1 : (uint64_t)stat.st_blksize;
 }
 
-/*
- * Reclaim all the outstanding zmbufs for a virtqueue.
- */
-static void
-drain_zmbuf_list(struct vhost_virtqueue *vq)
-{
-	struct zcopy_mbuf *zmbuf, *next;
-
-	for (zmbuf = TAILQ_FIRST(&vq->zmbuf_list);
-	     zmbuf != NULL; zmbuf = next) {
-		next = TAILQ_NEXT(zmbuf, next);
-
-		while (!mbuf_is_consumed(zmbuf->mbuf))
-			usleep(1000);
-
-		TAILQ_REMOVE(&vq->zmbuf_list, zmbuf, next);
-		restore_mbuf(zmbuf->mbuf);
-		rte_pktmbuf_free(zmbuf->mbuf);
-		put_zmbuf(zmbuf);
-		vq->nr_zmbuf -= 1;
-	}
-}
-
 static void
 free_mem_region(struct virtio_net *dev)
 {
 	uint32_t i;
 	struct rte_vhost_mem_region *reg;
-	struct vhost_virtqueue *vq;
 
 	if (!dev || !dev->mem)
 		return;
-
-	if (dev->dequeue_zero_copy) {
-		for (i = 0; i < dev->nr_vring; i++) {
-			vq = dev->virtqueue[i];
-			if (vq)
-				drain_zmbuf_list(vq);
-		}
-	}
 
 	for (i = 0; i < dev->mem->nregions; i++) {
 		reg = &dev->mem->regions[i];
@@ -454,23 +422,6 @@ vhost_user_set_vring_num(struct virtio_net **pdev,
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
-	if (dev->dequeue_zero_copy) {
-		vq->nr_zmbuf = 0;
-		vq->last_zmbuf_idx = 0;
-		vq->zmbuf_size = vq->size;
-		if (vq->zmbufs)
-			rte_free(vq->zmbufs);
-		vq->zmbufs = rte_zmalloc(NULL, vq->zmbuf_size *
-					 sizeof(struct zcopy_mbuf), 0);
-		if (vq->zmbufs == NULL) {
-			VHOST_LOG_CONFIG(WARNING,
-				"failed to allocate mem for zero copy; "
-				"zero copy is force disabled\n");
-			dev->dequeue_zero_copy = 0;
-		}
-		TAILQ_INIT(&vq->zmbuf_list);
-	}
-
 	if (vq_is_packed(dev)) {
 		if (vq->shadow_used_packed)
 			rte_free(vq->shadow_used_packed);
@@ -524,7 +475,6 @@ numa_realloc(struct virtio_net *dev, int index)
 	int oldnode, newnode;
 	struct virtio_net *old_dev;
 	struct vhost_virtqueue *old_vq, *vq;
-	struct zcopy_mbuf *new_zmbuf;
 	struct vring_used_elem *new_shadow_used_split;
 	struct vring_used_elem_packed *new_shadow_used_packed;
 	struct batch_copy_elem *new_batch_copy_elems;
@@ -555,16 +505,6 @@ numa_realloc(struct virtio_net *dev, int index)
 			return dev;
 
 		memcpy(vq, old_vq, sizeof(*vq));
-		TAILQ_INIT(&vq->zmbuf_list);
-
-		if (dev->dequeue_zero_copy) {
-			new_zmbuf = rte_malloc_socket(NULL, vq->zmbuf_size *
-					sizeof(struct zcopy_mbuf), 0, newnode);
-			if (new_zmbuf) {
-				rte_free(vq->zmbufs);
-				vq->zmbufs = new_zmbuf;
-			}
-		}
 
 		if (vq_is_packed(dev)) {
 			new_shadow_used_packed = rte_malloc_socket(NULL,
@@ -1179,8 +1119,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			goto err_mmap;
 		}
 
-		populate = (dev->dequeue_zero_copy || dev->async_copy) ?
-			MAP_POPULATE : 0;
+		populate = dev->async_copy ? MAP_POPULATE : 0;
 		mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
 				 MAP_SHARED | populate, fd, 0);
 
@@ -1195,7 +1134,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 		reg->host_user_addr = (uint64_t)(uintptr_t)mmap_addr +
 				      mmap_offset;
 
-		if (dev->dequeue_zero_copy || dev->async_copy)
+		if (dev->async_copy)
 			if (add_guest_pages(dev, reg, alignment) < 0) {
 				VHOST_LOG_CONFIG(ERR,
 					"adding guest pages to region %u failed.\n",
@@ -1940,15 +1879,6 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	return RTE_VHOST_MSG_RESULT_OK;
 }
 
-static void
-free_zmbufs(struct vhost_virtqueue *vq)
-{
-	drain_zmbuf_list(vq);
-
-	rte_free(vq->zmbufs);
-	vq->zmbufs = NULL;
-}
-
 /*
  * when virtio is stopped, qemu will send us the GET_VRING_BASE message.
  */
@@ -2003,8 +1933,6 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 
 	vq->signalled_used_valid = false;
 
-	if (dev->dequeue_zero_copy)
-		free_zmbufs(vq);
 	if (vq_is_packed(dev)) {
 		rte_free(vq->shadow_used_packed);
 		vq->shadow_used_packed = NULL;
@@ -2057,10 +1985,6 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 			return RTE_VHOST_MSG_RESULT_ERR;
 		}
 	}
-
-	/* On disable, rings have to be stopped being processed. */
-	if (!enable && dev->dequeue_zero_copy)
-		drain_zmbuf_list(dev->virtqueue[index]);
 
 	dev->virtqueue[index]->enabled = enable;
 

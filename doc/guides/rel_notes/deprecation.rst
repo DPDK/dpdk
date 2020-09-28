@@ -171,12 +171,6 @@ Deprecation Notices
   following the IPv6 header, as proposed in RFC
   https://mails.dpdk.org/archives/dev/2020-August/177257.html.
 
-* vhost: Vhost-user dequeue zero-copy support will be removed in 20.11.
-  The only known user is OVS where the feature is still experimental,
-  and has not received any update for 2.5 years.
-  This feature faces reliability issues and is often conflicting with
-  new features being implemented.
-
 * security: The API ``rte_security_session_create`` takes only single mempool
   for session and session private data. So the application need to create
   mempool for twice the number of sessions needed and will also lead to

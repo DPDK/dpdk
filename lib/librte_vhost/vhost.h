@@ -95,20 +95,6 @@ struct buf_vector {
 };
 
 /*
- * A structure to hold some fields needed in zero copy code path,
- * mainly for associating an mbuf with the right desc_idx.
- */
-struct zcopy_mbuf {
-	struct rte_mbuf *mbuf;
-	uint32_t desc_idx;
-	uint16_t desc_count;
-	uint16_t in_use;
-
-	TAILQ_ENTRY(zcopy_mbuf) next;
-};
-TAILQ_HEAD(zcopy_mbuf_list, zcopy_mbuf);
-
-/*
  * Structure contains the info for each batched memory copy.
  */
 struct batch_copy_elem {
@@ -184,12 +170,6 @@ struct vhost_virtqueue {
 	};
 	struct rte_vhost_resubmit_info *resubmit_inflight;
 	uint64_t		global_counter;
-
-	uint16_t		nr_zmbuf;
-	uint16_t		zmbuf_size;
-	uint16_t		last_zmbuf_idx;
-	struct zcopy_mbuf	*zmbufs;
-	struct zcopy_mbuf_list	zmbuf_list;
 
 	union {
 		struct vring_used_elem  *shadow_used_split;
@@ -380,7 +360,6 @@ struct virtio_net {
 	/* to tell if we need broadcast rarp packet */
 	int16_t			broadcast_rarp;
 	uint32_t		nr_vring;
-	int			dequeue_zero_copy;
 	int			async_copy;
 	int			extbuf;
 	int			linearbuf;
@@ -718,7 +697,6 @@ int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 void vhost_attach_vdpa_device(int vid, struct rte_vdpa_device *dev);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
-void vhost_enable_dequeue_zero_copy(int vid);
 void vhost_set_builtin_virtio_net(int vid, bool enable);
 void vhost_enable_extbuf(int vid);
 void vhost_enable_linearbuf(int vid);
@@ -896,12 +874,6 @@ mbuf_is_consumed(struct rte_mbuf *m)
 	}
 
 	return true;
-}
-
-static __rte_always_inline void
-put_zmbuf(struct zcopy_mbuf *zmbuf)
-{
-	zmbuf->in_use = 0;
 }
 
 #endif /* _VHOST_NET_CDEV_H_ */

@@ -119,6 +119,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* vhost: Dequeue zero-copy support has been removed.
+
 
 API Changes
 -----------

@@ -51,50 +51,6 @@ The following is an overview of some key Vhost API functions:
     This reconnect option is enabled by default. However, it can be turned off
     by setting this flag.
 
-  - ``RTE_VHOST_USER_DEQUEUE_ZERO_COPY``
-
-    Dequeue zero copy will be enabled when this flag is set. It is disabled by
-    default.
-
-    There are some truths (including limitations) you might want to know while
-    setting this flag:
-
-    * zero copy is not good for small packets (typically for packet size below
-      512).
-
-    * zero copy is really good for VM2VM case. For iperf between two VMs, the
-      boost could be above 70% (when TSO is enabled).
-
-    * For zero copy in VM2NIC case, guest Tx used vring may be starved if the
-      PMD driver consume the mbuf but not release them timely.
-
-      For example, i40e driver has an optimization to maximum NIC pipeline which
-      postpones returning transmitted mbuf until only tx_free_threshold free
-      descs left. The virtio TX used ring will be starved if the formula
-      (num_i40e_tx_desc - num_virtio_tx_desc > tx_free_threshold) is true, since
-      i40e will not return back mbuf.
-
-      A performance tip for tuning zero copy in VM2NIC case is to adjust the
-      frequency of mbuf free (i.e. adjust tx_free_threshold of i40e driver) to
-      balance consumer and producer.
-
-    * Guest memory should be backended with huge pages to achieve better
-      performance. Using 1G page size is the best.
-
-      When dequeue zero copy is enabled, the guest phys address and host phys
-      address mapping has to be established. Using non-huge pages means far
-      more page segments. To make it simple, DPDK vhost does a linear search
-      of those segments, thus the fewer the segments, the quicker we will get
-      the mapping. NOTE: we may speed it by using tree searching in future.
-
-    * zero copy can not work when using vfio-pci with iommu mode currently, this
-      is because we don't setup iommu dma mapping for guest memory. If you have
-      to use vfio-pci driver, please insert vfio-pci kernel module in noiommu
-      mode.
-
-    * The consumer of zero copy mbufs should consume these mbufs as soon as
-      possible, otherwise it may block the operations in vhost.
-
   - ``RTE_VHOST_USER_IOMMU_SUPPORT``
 
     IOMMU support will be enabled when this flag is set. It is disabled by
@@ -362,16 +318,16 @@ Guest memory requirement
 
 * Memory pre-allocation
 
-  For non-zerocopy non-async data path, guest memory pre-allocation is not a
+  For non-async data path, guest memory pre-allocation is not a
   must. This can help save of memory. If users really want the guest memory
   to be pre-allocated (e.g., for performance reason), we can add option
   ``-mem-prealloc`` when starting QEMU. Or, we can lock all memory at vhost
   side which will force memory to be allocated when mmap at vhost side;
   option --mlockall in ovs-dpdk is an example in hand.
 
-  For async and zerocopy data path, we force the VM memory to be
-  pre-allocated at vhost lib when mapping the guest memory; and also we need
-  to lock the memory to prevent pages being swapped out to disk.
+  For async data path, we force the VM memory to be pre-allocated at vhost
+  lib when mapping the guest memory; and also we need to lock the memory to
+  prevent pages being swapped out to disk.
 
 * Memory sharing
 

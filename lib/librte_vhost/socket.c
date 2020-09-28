@@ -37,7 +37,6 @@ struct vhost_user_socket {
 	struct sockaddr_un un;
 	bool is_server;
 	bool reconnect;
-	bool dequeue_zero_copy;
 	bool iommu_support;
 	bool use_builtin_virtio_net;
 	bool extbuf;
@@ -228,9 +227,6 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	vhost_set_builtin_virtio_net(vid, vsocket->use_builtin_virtio_net);
 
 	vhost_attach_vdpa_device(vid, vsocket->vdpa_dev);
-
-	if (vsocket->dequeue_zero_copy)
-		vhost_enable_dequeue_zero_copy(vid);
 
 	if (vsocket->extbuf)
 		vhost_enable_extbuf(vid);
@@ -878,18 +874,8 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out_free;
 	}
 	vsocket->vdpa_dev = NULL;
-	vsocket->dequeue_zero_copy = flags & RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
 	vsocket->extbuf = flags & RTE_VHOST_USER_EXTBUF_SUPPORT;
 	vsocket->linearbuf = flags & RTE_VHOST_USER_LINEARBUF_SUPPORT;
-
-	if (vsocket->dequeue_zero_copy &&
-	    (flags & RTE_VHOST_USER_IOMMU_SUPPORT)) {
-		VHOST_LOG_CONFIG(ERR,
-			"error: enabling dequeue zero copy and IOMMU features "
-			"simultaneously is not supported\n");
-		goto out_mutex;
-	}
-
 	vsocket->async_copy = flags & RTE_VHOST_USER_ASYNC_COPY;
 
 	if (vsocket->async_copy &&
@@ -917,39 +903,6 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->supported_features = VIRTIO_NET_SUPPORTED_FEATURES;
 	vsocket->features           = VIRTIO_NET_SUPPORTED_FEATURES;
 	vsocket->protocol_features  = VHOST_USER_PROTOCOL_FEATURES;
-
-	/*
-	 * Dequeue zero copy can't assure descriptors returned in order.
-	 * Also, it requires that the guest memory is populated, which is
-	 * not compatible with postcopy.
-	 */
-	if (vsocket->dequeue_zero_copy) {
-		if (vsocket->extbuf) {
-			VHOST_LOG_CONFIG(ERR,
-			"error: zero copy is incompatible with external buffers\n");
-			ret = -1;
-			goto out_mutex;
-		}
-		if (vsocket->linearbuf) {
-			VHOST_LOG_CONFIG(ERR,
-			"error: zero copy is incompatible with linear buffers\n");
-			ret = -1;
-			goto out_mutex;
-		}
-		if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
-			VHOST_LOG_CONFIG(ERR,
-			"error: zero copy is incompatible with vhost client mode\n");
-			ret = -1;
-			goto out_mutex;
-		}
-		vsocket->supported_features &= ~(1ULL << VIRTIO_F_IN_ORDER);
-		vsocket->features &= ~(1ULL << VIRTIO_F_IN_ORDER);
-
-		VHOST_LOG_CONFIG(INFO,
-			"Dequeue zero copy requested, disabling postcopy support\n");
-		vsocket->protocol_features &=
-			~(1ULL << VHOST_USER_PROTOCOL_F_PAGEFAULT);
-	}
 
 	if (vsocket->async_copy) {
 		vsocket->supported_features &= ~(1ULL << VHOST_F_LOG_ALL);
