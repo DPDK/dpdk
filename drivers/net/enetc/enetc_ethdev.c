@@ -565,6 +565,9 @@ enetc_dev_close(struct rte_eth_dev *dev)
 	}
 	dev->data->nb_tx_queues = 0;
 
+	if (rte_eal_iova_mode() == RTE_IOVA_PA)
+		dpaax_iova_table_depopulate();
+
 	return 0;
 }
 
@@ -874,6 +877,7 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &enetc_ops;
 	eth_dev->rx_pkt_burst = &enetc_recv_pkts;
 	eth_dev->tx_pkt_burst = &enetc_xmit_pkts;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	/* Retrieving and storing the HW base address of device */
 	hw->hw.reg = (void *)pci_dev->mem_resource[0].addr;
@@ -916,14 +920,11 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 }
 
 static int
-enetc_dev_uninit(struct rte_eth_dev *eth_dev __rte_unused)
+enetc_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	PMD_INIT_FUNC_TRACE();
 
-	if (rte_eal_iova_mode() == RTE_IOVA_PA)
-		dpaax_iova_table_depopulate();
-
-	return 0;
+	return enetc_dev_close(eth_dev);
 }
 
 static int
