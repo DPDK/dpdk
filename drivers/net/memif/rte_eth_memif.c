@@ -735,7 +735,6 @@ eth_memif_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		rte_eth_devices[mq->in_port].process_private;
 	memif_ring_t *ring = memif_get_ring_from_queue(proc_private, mq);
 	uint16_t slot, n_free, ring_size, mask, n_tx_pkts = 0;
-	memif_ring_type_t type = mq->type;
 	struct rte_eth_link link;
 
 	if (unlikely((pmd->flags & ETH_MEMIF_FLAG_CONNECTED) == 0))
@@ -812,11 +811,8 @@ eth_memif_tx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	}
 
 no_free_slots:
-	/* update ring pointers */
-	if (type == MEMIF_RING_S2M)
-		__atomic_store_n(&ring->head, slot, __ATOMIC_RELEASE);
-	else
-		__atomic_store_n(&ring->tail, slot, __ATOMIC_RELEASE);
+	/* ring type always MEMIF_RING_S2M */
+	__atomic_store_n(&ring->head, slot, __ATOMIC_RELEASE);
 
 	/* Send interrupt, if enabled. */
 	if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0) {
