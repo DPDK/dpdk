@@ -2103,6 +2103,9 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	int skipped = 0;
 	struct rte_flow_error ferror;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	RTE_BOND_LOG(INFO, "Closing bonded device %s", dev->device->name);
 	while (internals->slave_count != skipped) {
 		uint16_t port_id = internals->slaves[skipped].port_id;
@@ -2119,6 +2122,17 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	bond_flow_ops.flush(dev, &ferror);
 	bond_ethdev_free_queues(dev);
 	rte_bitmap_reset(internals->vlan_filter_bmp);
+	rte_bitmap_free(internals->vlan_filter_bmp);
+	rte_free(internals->vlan_filter_bmpmem);
+
+	/* Try to release mempool used in mode6. If the bond
+	 * device is not mode6, free the NULL is not problem.
+	 */
+	rte_mempool_free(internals->mode6.mempool);
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
 
 	return 0;
 }
@@ -3195,6 +3209,7 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	}
 
 	internals = eth_dev->data->dev_private;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
 
@@ -3414,14 +3429,10 @@ bond_remove(struct rte_vdev_device *dev)
 	name = rte_vdev_device_name(dev);
 	RTE_BOND_LOG(INFO, "Uninitializing pmd_bond for %s", name);
 
-	/* now free all data allocation - for eth_dev structure,
-	 * dummy pci driver and internal (private) data
-	 */
-
 	/* find an ethdev entry */
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev == NULL)
-		return -ENODEV;
+		return 0; /* port already released */
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return rte_eth_dev_release_port(eth_dev);
@@ -3436,19 +3447,6 @@ bond_remove(struct rte_vdev_device *dev)
 		bond_ethdev_stop(eth_dev);
 		bond_ethdev_close(eth_dev);
 	}
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
-	internals = eth_dev->data->dev_private;
-	/* Try to release mempool used in mode6. If the bond
-	 * device is not mode6, free the NULL is not problem.
-	 */
-	rte_mempool_free(internals->mode6.mempool);
-	rte_bitmap_free(internals->vlan_filter_bmp);
-	rte_free(internals->vlan_filter_bmpmem);
-
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;
