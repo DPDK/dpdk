@@ -5,6 +5,10 @@
 #ifndef _CMDLINE_PRIVATE_H_
 #define _CMDLINE_PRIVATE_H_
 
+#include <stdarg.h>
+
+#include <rte_common.h>
+
 #include <cmdline.h>
 
 /* Disable buffering and echoing, save previous settings to oldterm. */
@@ -18,5 +22,9 @@ int cmdline_poll_char(struct cmdline *cl);
 
 /* Read one character from input. */
 ssize_t cmdline_read_char(struct cmdline *cl, char *c);
+
+/* vdprintf(3) */
+__rte_format_printf(2, 0)
+int cmdline_vdprintf(int fd, const char *format, va_list op);
 
 #endif

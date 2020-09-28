@@ -131,7 +131,7 @@ cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
 	if (cl->s_out < 0)
 		return;
 	va_start(ap, fmt);
-	vdprintf(cl->s_out, fmt, ap);
+	cmdline_vdprintf(cl->s_out, fmt, ap);
 	va_end(ap);
 }
 

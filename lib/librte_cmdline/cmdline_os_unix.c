@@ -45,3 +45,9 @@ cmdline_read_char(struct cmdline *cl, char *c)
 {
 	return read(cl->s_in, c, 1);
 }
+
+int
+cmdline_vdprintf(int fd, const char *format, va_list op)
+{
+	return vdprintf(fd, format, op);
+}
