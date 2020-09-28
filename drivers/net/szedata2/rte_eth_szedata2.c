@@ -1155,7 +1155,7 @@ eth_tx_queue_release(void *q)
 	}
 }
 
-static void
+static int
 eth_dev_close(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
@@ -1180,6 +1180,8 @@ eth_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
+
+	return 0;
 }
 
 static int

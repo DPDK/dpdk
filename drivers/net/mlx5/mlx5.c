@@ -1341,7 +1341,7 @@ mlx5_proc_priv_uninit(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-void
+int
 mlx5_dev_close(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -1351,14 +1351,14 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		/* Check if process_private released. */
 		if (!dev->process_private)
-			return;
+			return 0;
 		mlx5_tx_uar_uninit_secondary(dev);
 		mlx5_proc_priv_uninit(dev);
 		rte_eth_dev_release_port(dev);
-		return;
+		return 0;
 	}
 	if (!priv->sh)
-		return;
+		return 0;
 	DRV_LOG(DEBUG, "port %u closing device \"%s\"",
 		dev->data->port_id,
 		((priv->sh->ctx != NULL) ?
@@ -1479,6 +1479,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	 * it is freed when dev_private is freed.
 	 */
 	dev->data->mac_addrs = NULL;
+	return 0;
 }
 
 /**

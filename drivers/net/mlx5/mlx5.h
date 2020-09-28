@@ -844,7 +844,7 @@ int mlx5_proc_priv_init(struct rte_eth_dev *dev);
 int mlx5_udp_tunnel_port_add(struct rte_eth_dev *dev,
 			      struct rte_eth_udp_tunnel *udp_tunnel);
 uint16_t mlx5_eth_find_next(uint16_t port_id, struct rte_pci_device *pci_dev);
-void mlx5_dev_close(struct rte_eth_dev *dev);
+int mlx5_dev_close(struct rte_eth_dev *dev);
 
 /* Macro to iterate over all valid ports for mlx5 driver. */
 #define MLX5_ETH_FOREACH_DEV(port_id, pci_dev) \

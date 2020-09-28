@@ -277,11 +277,12 @@ static void enic_vf_dev_stop(struct rte_eth_dev *eth_dev)
  * "close" is no-op for now and solely exists so that rte_eth_dev_close()
  * can finish its own cleanup without errors.
  */
-static void enic_vf_dev_close(struct rte_eth_dev *eth_dev __rte_unused)
+static int enic_vf_dev_close(struct rte_eth_dev *eth_dev __rte_unused)
 {
 	ENICPMD_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return;
+		return 0;
+	return 0;
 }
 
 static int

@@ -4876,7 +4876,7 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 	rte_spinlock_unlock(&hw->lock);
 }
 
-static void
+static int
 hns3_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
@@ -4885,7 +4885,7 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		rte_free(eth_dev->process_private);
 		eth_dev->process_private = NULL;
-		return;
+		return 0;
 	}
 
 	if (hw->adapter_state == HNS3_NIC_STARTED)
@@ -4905,6 +4905,8 @@ hns3_dev_close(struct rte_eth_dev *eth_dev)
 	eth_dev->process_private = NULL;
 	hns3_mp_uninit_primary();
 	hns3_warn(hw, "Close port %d finished", hw->data->port_id);
+
+	return 0;
 }
 
 static int

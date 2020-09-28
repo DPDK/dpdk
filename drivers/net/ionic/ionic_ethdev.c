@@ -25,7 +25,7 @@ static int  ionic_dev_configure(struct rte_eth_dev *dev);
 static int  ionic_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int  ionic_dev_start(struct rte_eth_dev *dev);
 static void ionic_dev_stop(struct rte_eth_dev *dev);
-static void ionic_dev_close(struct rte_eth_dev *dev);
+static int  ionic_dev_close(struct rte_eth_dev *dev);
 static int  ionic_dev_set_link_up(struct rte_eth_dev *dev);
 static int  ionic_dev_set_link_down(struct rte_eth_dev *dev);
 static int  ionic_dev_link_update(struct rte_eth_dev *eth_dev,
@@ -956,7 +956,7 @@ ionic_dev_stop(struct rte_eth_dev *eth_dev)
 /*
  * Reset and stop device.
  */
-static void
+static int
 ionic_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(eth_dev);
@@ -967,14 +967,16 @@ ionic_dev_close(struct rte_eth_dev *eth_dev)
 	err = ionic_lif_stop(lif);
 	if (err) {
 		IONIC_PRINT(ERR, "Cannot stop LIF: %d", err);
-		return;
+		return -1;
 	}
 
 	err = eth_ionic_dev_uninit(eth_dev);
 	if (err) {
 		IONIC_PRINT(ERR, "Cannot destroy LIF: %d", err);
-		return;
+		return -1;
 	}
+
+	return 0;
 }
 
 static int

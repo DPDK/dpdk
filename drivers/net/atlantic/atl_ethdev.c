@@ -22,7 +22,7 @@ static int  atl_dev_start(struct rte_eth_dev *dev);
 static void atl_dev_stop(struct rte_eth_dev *dev);
 static int  atl_dev_set_link_up(struct rte_eth_dev *dev);
 static int  atl_dev_set_link_down(struct rte_eth_dev *dev);
-static void atl_dev_close(struct rte_eth_dev *dev);
+static int  atl_dev_close(struct rte_eth_dev *dev);
 static int  atl_dev_reset(struct rte_eth_dev *dev);
 static int  atl_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int  atl_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -719,7 +719,7 @@ atl_dev_set_link_down(struct rte_eth_dev *dev)
 /*
  * Reset and stop device.
  */
-static void
+static int
 atl_dev_close(struct rte_eth_dev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -727,6 +727,8 @@ atl_dev_close(struct rte_eth_dev *dev)
 	atl_dev_stop(dev);
 
 	atl_free_queues(dev);
+
+	return 0;
 }
 
 static int

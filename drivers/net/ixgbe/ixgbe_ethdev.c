@@ -147,7 +147,7 @@ static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
 static int  ixgbe_dev_set_link_up(struct rte_eth_dev *dev);
 static int  ixgbe_dev_set_link_down(struct rte_eth_dev *dev);
-static void ixgbe_dev_close(struct rte_eth_dev *dev);
+static int  ixgbe_dev_close(struct rte_eth_dev *dev);
 static int  ixgbe_dev_reset(struct rte_eth_dev *dev);
 static int ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -251,7 +251,7 @@ static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
 static int ixgbevf_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
-static void ixgbevf_dev_close(struct rte_eth_dev *dev);
+static int ixgbevf_dev_close(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_reset(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct rte_eth_dev *dev);
 static void ixgbevf_intr_enable(struct rte_eth_dev *dev);
@@ -2994,7 +2994,7 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 /*
  * Reset and stop device.
  */
-static void
+static int
 ixgbe_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
@@ -3065,6 +3065,7 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 	rte_free(dev->security_ctx);
 #endif
 
+	return 0;
 }
 
 /*
@@ -5449,7 +5450,7 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	adapter->rss_reta_updated = 0;
 }
 
-static void
+static int
 ixgbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -5478,6 +5479,8 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,
 				     ixgbevf_dev_interrupt_handler, dev);
+
+	return 0;
 }
 
 /*

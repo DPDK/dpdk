@@ -1164,7 +1164,7 @@ eth_dev_stop(struct rte_eth_dev *dev)
 	update_queuing_status(dev);
 }
 
-static void
+static int
 eth_dev_close(struct rte_eth_dev *dev)
 {
 	struct pmd_internal *internal;
@@ -1173,7 +1173,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 
 	internal = dev->data->dev_private;
 	if (!internal)
-		return;
+		return 0;
 
 	eth_dev_stop(dev);
 
@@ -1201,6 +1201,8 @@ eth_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(vring_states[dev->data->port_id]);
 	vring_states[dev->data->port_id] = NULL;
+
+	return 0;
 }
 
 static int

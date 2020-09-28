@@ -318,7 +318,7 @@ sfc_dev_set_link_down(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 sfc_dev_close(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
@@ -364,6 +364,8 @@ sfc_dev_close(struct rte_eth_dev *dev)
 
 	dev->process_private = NULL;
 	free(sa);
+
+	return 0;
 }
 
 static int

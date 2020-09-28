@@ -446,12 +446,14 @@ static void enicpmd_dev_stop(struct rte_eth_dev *eth_dev)
 /*
  * Stop device.
  */
-static void enicpmd_dev_close(struct rte_eth_dev *eth_dev)
+static int enicpmd_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
 	enic_remove(enic);
+
+	return 0;
 }
 
 static int enicpmd_dev_link_update(struct rte_eth_dev *eth_dev,

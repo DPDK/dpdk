@@ -1852,7 +1852,7 @@ nicvf_vf_stop(struct rte_eth_dev *dev, struct nicvf *nic, bool cleanup)
 	}
 }
 
-static void
+static int
 nicvf_dev_close(struct rte_eth_dev *dev)
 {
 	size_t i;
@@ -1869,6 +1869,8 @@ nicvf_dev_close(struct rte_eth_dev *dev)
 
 		nicvf_periodic_alarm_stop(nicvf_vf_interrupt, nic->snicvf[i]);
 	}
+
+	return 0;
 }
 
 static int

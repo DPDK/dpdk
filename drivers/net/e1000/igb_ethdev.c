@@ -77,7 +77,7 @@ static int  eth_igb_start(struct rte_eth_dev *dev);
 static void eth_igb_stop(struct rte_eth_dev *dev);
 static int  eth_igb_dev_set_link_up(struct rte_eth_dev *dev);
 static int  eth_igb_dev_set_link_down(struct rte_eth_dev *dev);
-static void eth_igb_close(struct rte_eth_dev *dev);
+static int eth_igb_close(struct rte_eth_dev *dev);
 static int eth_igb_reset(struct rte_eth_dev *dev);
 static int  eth_igb_promiscuous_enable(struct rte_eth_dev *dev);
 static int  eth_igb_promiscuous_disable(struct rte_eth_dev *dev);
@@ -155,7 +155,7 @@ static void igbvf_intr_disable(struct e1000_hw *hw);
 static int igbvf_dev_configure(struct rte_eth_dev *dev);
 static int igbvf_dev_start(struct rte_eth_dev *dev);
 static void igbvf_dev_stop(struct rte_eth_dev *dev);
-static void igbvf_dev_close(struct rte_eth_dev *dev);
+static int igbvf_dev_close(struct rte_eth_dev *dev);
 static int igbvf_promiscuous_enable(struct rte_eth_dev *dev);
 static int igbvf_promiscuous_disable(struct rte_eth_dev *dev);
 static int igbvf_allmulticast_enable(struct rte_eth_dev *dev);
@@ -1535,7 +1535,7 @@ eth_igb_dev_set_link_down(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_igb_close(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1604,6 +1604,8 @@ eth_igb_close(struct rte_eth_dev *dev)
 
 	/* clear all the filters list */
 	igb_filterlist_flush(dev);
+
+	return 0;
 }
 
 /*
@@ -3381,7 +3383,7 @@ igbvf_dev_stop(struct rte_eth_dev *dev)
 	adapter->stopped = true;
 }
 
-static void
+static int
 igbvf_dev_close(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3412,6 +3414,8 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(&pci_dev->intr_handle,
 				     eth_igbvf_interrupt_handler,
 				     (void *)dev);
+
+	return 0;
 }
 
 static int

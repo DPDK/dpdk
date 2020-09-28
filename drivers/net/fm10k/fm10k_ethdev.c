@@ -2777,7 +2777,7 @@ fm10k_close_mbx_service(struct fm10k_hw *hw)
 	hw->mbx.ops.disconnect(hw, &hw->mbx);
 }
 
-static void
+static int
 fm10k_dev_close(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2822,6 +2822,8 @@ fm10k_dev_close(struct rte_eth_dev *dev)
 		rte_intr_callback_unregister(intr_handle,
 			fm10k_dev_interrupt_handler_vf, (void *)dev);
 	}
+
+	return 0;
 }
 
 static const struct eth_dev_ops fm10k_eth_dev_ops = {

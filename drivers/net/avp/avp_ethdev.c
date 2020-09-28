@@ -38,7 +38,7 @@ static int avp_dev_create(struct rte_pci_device *pci_dev,
 static int avp_dev_configure(struct rte_eth_dev *dev);
 static int avp_dev_start(struct rte_eth_dev *dev);
 static void avp_dev_stop(struct rte_eth_dev *dev);
-static void avp_dev_close(struct rte_eth_dev *dev);
+static int avp_dev_close(struct rte_eth_dev *dev);
 static int avp_dev_info_get(struct rte_eth_dev *dev,
 			    struct rte_eth_dev_info *dev_info);
 static int avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
@@ -2103,7 +2103,7 @@ unlock:
 	rte_spinlock_unlock(&avp->lock);
 }
 
-static void
+static int
 avp_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
@@ -2139,6 +2139,7 @@ avp_dev_close(struct rte_eth_dev *eth_dev)
 
 unlock:
 	rte_spinlock_unlock(&avp->lock);
+	return 0;
 }
 
 static int

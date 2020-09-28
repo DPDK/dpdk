@@ -1544,7 +1544,7 @@ static void qede_poll_sp_sb_cb(void *param)
 	}
 }
 
-static void qede_dev_close(struct rte_eth_dev *eth_dev)
+static int qede_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
@@ -1588,6 +1588,8 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 
 	if (ECORE_IS_CMT(edev))
 		rte_eal_alarm_cancel(qede_poll_sp_sb_cb, (void *)eth_dev);
+
+	return 0;
 }
 
 static int

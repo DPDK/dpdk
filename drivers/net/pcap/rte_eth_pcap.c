@@ -728,7 +728,7 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_dev_close(struct rte_eth_dev *dev)
 {
 	unsigned int i;
@@ -748,6 +748,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 		}
 	}
 
+	return 0;
 }
 
 static void

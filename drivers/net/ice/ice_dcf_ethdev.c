@@ -847,13 +847,13 @@ ice_dcf_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 ice_dcf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ice_dcf_adapter *adapter = dev->data->dev_private;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return;
+		return 0;
 
 	dev->dev_ops = NULL;
 	dev->rx_pkt_burst = NULL;
@@ -861,6 +861,8 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 
 	ice_dcf_uninit_parent_adapter(dev);
 	ice_dcf_uninit_hw(dev, &adapter->real_hw);
+
+	return 0;
 }
 
 static int

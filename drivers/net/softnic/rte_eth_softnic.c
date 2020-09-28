@@ -201,10 +201,10 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 	softnic_mtr_free(p);
 }
 
-static void
+static int
 pmd_dev_close(struct rte_eth_dev *dev __rte_unused)
 {
-	return;
+	return 0;
 }
 
 static int

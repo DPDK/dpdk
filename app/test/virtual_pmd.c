@@ -62,9 +62,11 @@ static void  virtual_ethdev_stop(struct rte_eth_dev *eth_dev __rte_unused)
 		rte_pktmbuf_free(pkt);
 }
 
-static void
+static int
 virtual_ethdev_close(struct rte_eth_dev *dev __rte_unused)
-{}
+{
+	return 0;
+}
 
 static int
 virtual_ethdev_configure_success(struct rte_eth_dev *dev __rte_unused)

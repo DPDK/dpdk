@@ -369,7 +369,7 @@ static void dpaa_eth_dev_stop(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = dpaa_eth_tx_drop_all;
 }
 
-static void dpaa_eth_dev_close(struct rte_eth_dev *dev)
+static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 {
 	struct fman_if *fif = dev->process_private;
 	struct __fman_if *__fif;
@@ -392,6 +392,8 @@ static void dpaa_eth_dev_close(struct rte_eth_dev *dev)
 					     dpaa_interrupt_handler,
 					     (void *)dev);
 	}
+
+	return 0;
 }
 
 static int

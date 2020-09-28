@@ -199,7 +199,7 @@ static void ena_init_rings(struct ena_adapter *adapter,
 static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int ena_start(struct rte_eth_dev *dev);
 static void ena_stop(struct rte_eth_dev *dev);
-static void ena_close(struct rte_eth_dev *dev);
+static int ena_close(struct rte_eth_dev *dev);
 static int ena_dev_reset(struct rte_eth_dev *dev);
 static int ena_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 static void ena_rx_queue_release_all(struct rte_eth_dev *dev);
@@ -500,7 +500,7 @@ err:
 	ena_com_delete_debug_area(&adapter->ena_dev);
 }
 
-static void ena_close(struct rte_eth_dev *dev)
+static int ena_close(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
@@ -526,6 +526,8 @@ static void ena_close(struct rte_eth_dev *dev)
 	 * release of the resource in the rte_eth_dev_release_port().
 	 */
 	dev->data->mac_addrs = NULL;
+
+	return 0;
 }
 
 static int

@@ -280,7 +280,7 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 	return;
 }
 
-static void
+static int
 bnx2x_dev_close(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
@@ -295,6 +295,8 @@ bnx2x_dev_close(struct rte_eth_dev *dev)
 
 	/* free ilt */
 	bnx2x_free_ilt_mem(sc);
+
+	return 0;
 }
 
 static int

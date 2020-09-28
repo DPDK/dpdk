@@ -370,7 +370,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void
+static int
 mlx4_dev_close(struct rte_eth_dev *dev)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
@@ -400,6 +400,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		MLX4_ASSERT(priv->ctx == NULL);
 	mlx4_intr_uninstall(priv);
 	memset(priv, 0, sizeof(*priv));
+	return 0;
 }
 
 static const struct eth_dev_ops mlx4_dev_ops = {

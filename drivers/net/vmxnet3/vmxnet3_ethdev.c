@@ -64,7 +64,7 @@ static int eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev);
 static int vmxnet3_dev_configure(struct rte_eth_dev *dev);
 static int vmxnet3_dev_start(struct rte_eth_dev *dev);
 static void vmxnet3_dev_stop(struct rte_eth_dev *dev);
-static void vmxnet3_dev_close(struct rte_eth_dev *dev);
+static int vmxnet3_dev_close(struct rte_eth_dev *dev);
 static void vmxnet3_dev_set_rxmode(struct vmxnet3_hw *hw, uint32_t feature, int set);
 static int vmxnet3_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -888,13 +888,15 @@ vmxnet3_free_queues(struct rte_eth_dev *dev)
 /*
  * Reset and stop device.
  */
-static void
+static int
 vmxnet3_dev_close(struct rte_eth_dev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
 
 	vmxnet3_dev_stop(dev);
 	vmxnet3_free_queues(dev);
+
+	return 0;
 }
 
 static void

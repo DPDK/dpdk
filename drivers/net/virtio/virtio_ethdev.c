@@ -704,7 +704,7 @@ virtio_alloc_queues(struct rte_eth_dev *dev)
 
 static void virtio_queues_unbind_intr(struct rte_eth_dev *dev);
 
-static void
+static int
 virtio_dev_close(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
@@ -713,7 +713,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
 
 	if (!hw->opened)
-		return;
+		return 0;
 	hw->opened = false;
 
 	/* reset the NIC */
@@ -743,6 +743,8 @@ virtio_dev_close(struct rte_eth_dev *dev)
 		if (!hw->modern)
 			rte_pci_ioport_unmap(VTPCI_IO(hw));
 	}
+
+	return 0;
 }
 
 static int

@@ -376,9 +376,10 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 eth_dev_close(struct rte_eth_dev *dev __rte_unused)
 {
+	return 0;
 }
 
 static void

@@ -208,7 +208,7 @@ ipn3ke_rpst_dev_stop(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+static int
 ipn3ke_rpst_dev_close(struct rte_eth_dev *dev)
 {
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(dev);
@@ -221,6 +221,8 @@ ipn3ke_rpst_dev_close(struct rte_eth_dev *dev)
 		/* Disable the RX path */
 		ipn3ke_xmac_rx_disable(hw, rpst->port_id, 0);
 	}
+
+	return 0;
 }
 
 /*

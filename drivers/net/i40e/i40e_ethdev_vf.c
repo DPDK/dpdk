@@ -90,7 +90,7 @@ static int i40evf_dev_xstats_reset(struct rte_eth_dev *dev);
 static int i40evf_vlan_filter_set(struct rte_eth_dev *dev,
 				  uint16_t vlan_id, int on);
 static int i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
-static void i40evf_dev_close(struct rte_eth_dev *dev);
+static int i40evf_dev_close(struct rte_eth_dev *dev);
 static int i40evf_dev_reset(struct rte_eth_dev *dev);
 static int i40evf_check_vf_reset_done(struct rte_eth_dev *dev);
 static int i40evf_dev_promiscuous_enable(struct rte_eth_dev *dev);
@@ -2401,7 +2401,7 @@ i40evf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return ret;
 }
 
-static void
+static int
 i40evf_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2433,6 +2433,7 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	vf->aq_resp = NULL;
 
 	hw->adapter_closed = 1;
+	return 0;
 }
 
 /*

@@ -240,7 +240,7 @@ fs_dev_set_link_down(struct rte_eth_dev *dev)
 }
 
 static void fs_dev_free_queues(struct rte_eth_dev *dev);
-static void
+static int
 fs_dev_close(struct rte_eth_dev *dev)
 {
 	struct sub_device *sdev;
@@ -259,6 +259,7 @@ fs_dev_close(struct rte_eth_dev *dev)
 	}
 	fs_dev_free_queues(dev);
 	fs_unlock(dev, 0);
+	return 0;
 }
 
 static int

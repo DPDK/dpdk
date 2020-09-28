@@ -2965,7 +2965,7 @@ static void hinic_nic_dev_destroy(struct rte_eth_dev *eth_dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void hinic_dev_close(struct rte_eth_dev *dev)
+static int hinic_dev_close(struct rte_eth_dev *dev)
 {
 	struct hinic_nic_dev *nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
@@ -2973,7 +2973,7 @@ static void hinic_dev_close(struct rte_eth_dev *dev)
 					   &nic_dev->dev_status)) {
 		PMD_DRV_LOG(WARNING, "Device %s already closed",
 			    dev->data->name);
-		return;
+		return 0;
 	}
 
 	/* stop device first */
@@ -3000,6 +3000,8 @@ static void hinic_dev_close(struct rte_eth_dev *dev)
 
 	/* deinit nic hardware device */
 	hinic_nic_dev_destroy(dev);
+
+	return 0;
 }
 
 static const struct eth_dev_ops hinic_pmd_ops = {

@@ -50,7 +50,7 @@
 #include <errno.h>
 
 /* Prototypes */
-static void nfp_net_close(struct rte_eth_dev *dev);
+static int nfp_net_close(struct rte_eth_dev *dev);
 static int nfp_net_configure(struct rte_eth_dev *dev);
 static void nfp_net_dev_interrupt_handler(void *param);
 static void nfp_net_dev_interrupt_delayed_handler(void *param);
@@ -864,7 +864,7 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 }
 
 /* Reset and stop device. The device can not be restarted. */
-static void
+static int
 nfp_net_close(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
@@ -906,6 +906,8 @@ nfp_net_close(struct rte_eth_dev *dev)
 	 * The ixgbe PMD driver disables the pcie master on the
 	 * device. The i40e does not...
 	 */
+
+	return 0;
 }
 
 static int

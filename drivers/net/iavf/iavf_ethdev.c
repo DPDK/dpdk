@@ -32,7 +32,7 @@
 static int iavf_dev_configure(struct rte_eth_dev *dev);
 static int iavf_dev_start(struct rte_eth_dev *dev);
 static void iavf_dev_stop(struct rte_eth_dev *dev);
-static void iavf_dev_close(struct rte_eth_dev *dev);
+static int iavf_dev_close(struct rte_eth_dev *dev);
 static int iavf_dev_reset(struct rte_eth_dev *dev);
 static int iavf_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
@@ -1463,7 +1463,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static void
+static int
 iavf_dev_close(struct rte_eth_dev *dev)
 {
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1506,6 +1506,8 @@ iavf_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(vf->aq_resp);
 	vf->aq_resp = NULL;
+
+	return 0;
 }
 
 static int

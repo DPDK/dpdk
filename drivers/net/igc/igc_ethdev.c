@@ -183,7 +183,7 @@ static void eth_igc_stop(struct rte_eth_dev *dev);
 static int eth_igc_start(struct rte_eth_dev *dev);
 static int eth_igc_set_link_up(struct rte_eth_dev *dev);
 static int eth_igc_set_link_down(struct rte_eth_dev *dev);
-static void eth_igc_close(struct rte_eth_dev *dev);
+static int eth_igc_close(struct rte_eth_dev *dev);
 static int eth_igc_reset(struct rte_eth_dev *dev);
 static int eth_igc_promiscuous_enable(struct rte_eth_dev *dev);
 static int eth_igc_promiscuous_disable(struct rte_eth_dev *dev);
@@ -1165,7 +1165,7 @@ igc_dev_free_queues(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
-static void
+static int
 eth_igc_close(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1199,6 +1199,8 @@ eth_igc_close(struct rte_eth_dev *dev)
 
 	/* Reset any pending lock */
 	igc_reset_swfw_lock(hw);
+
+	return 0;
 }
 
 static void

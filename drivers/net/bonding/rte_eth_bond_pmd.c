@@ -2095,7 +2095,7 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 	}
 }
 
-void
+int
 bond_ethdev_close(struct rte_eth_dev *dev)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
@@ -2119,6 +2119,8 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	bond_flow_ops.flush(dev, &ferror);
 	bond_ethdev_free_queues(dev);
 	rte_bitmap_reset(internals->vlan_filter_bmp);
+
+	return 0;
 }
 
 /* forward declaration */

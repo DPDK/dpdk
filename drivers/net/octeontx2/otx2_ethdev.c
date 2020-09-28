@@ -2252,7 +2252,7 @@ rx_disable:
 }
 
 static int otx2_nix_dev_reset(struct rte_eth_dev *eth_dev);
-static void otx2_nix_dev_close(struct rte_eth_dev *eth_dev);
+static int otx2_nix_dev_close(struct rte_eth_dev *eth_dev);
 
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops otx2_eth_dev_ops = {
@@ -2665,10 +2665,11 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	return 0;
 }
 
-static void
+static int
 otx2_nix_dev_close(struct rte_eth_dev *eth_dev)
 {
 	otx2_eth_dev_uninit(eth_dev, true);
+	return 0;
 }
 
 static int

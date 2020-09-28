@@ -478,7 +478,7 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 octeontx_dev_close(struct rte_eth_dev *dev)
 {
 	struct octeontx_txq *txq = NULL;
@@ -517,6 +517,8 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 
 	dev->tx_pkt_burst = NULL;
 	dev->rx_pkt_burst = NULL;
+
+	return 0;
 }
 
 static int

@@ -77,7 +77,7 @@ static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 static int ice_dev_configure(struct rte_eth_dev *dev);
 static int ice_dev_start(struct rte_eth_dev *dev);
 static void ice_dev_stop(struct rte_eth_dev *dev);
-static void ice_dev_close(struct rte_eth_dev *dev);
+static int ice_dev_close(struct rte_eth_dev *dev);
 static int ice_dev_reset(struct rte_eth_dev *dev);
 static int ice_dev_info_get(struct rte_eth_dev *dev,
 			    struct rte_eth_dev_info *dev_info);
@@ -2383,7 +2383,7 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	pf->adapter_stopped = true;
 }
 
-static void
+static int
 ice_dev_close(struct rte_eth_dev *dev)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -2431,6 +2431,8 @@ ice_dev_close(struct rte_eth_dev *dev)
 	/* unregister callback func from eal lib */
 	rte_intr_callback_unregister(intr_handle,
 				     ice_interrupt_handler, dev);
+
+	return 0;
 }
 
 static int

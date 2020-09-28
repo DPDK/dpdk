@@ -545,7 +545,7 @@ enetc_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void
+static int
 enetc_dev_close(struct rte_eth_dev *dev)
 {
 	uint16_t i;
@@ -564,6 +564,8 @@ enetc_dev_close(struct rte_eth_dev *dev)
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;
+
+	return 0;
 }
 
 static int

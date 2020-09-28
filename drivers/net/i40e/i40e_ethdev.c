@@ -225,7 +225,7 @@ static int eth_i40e_dev_uninit(struct rte_eth_dev *eth_dev);
 static int i40e_dev_configure(struct rte_eth_dev *dev);
 static int i40e_dev_start(struct rte_eth_dev *dev);
 static void i40e_dev_stop(struct rte_eth_dev *dev);
-static void i40e_dev_close(struct rte_eth_dev *dev);
+static int i40e_dev_close(struct rte_eth_dev *dev);
 static int  i40e_dev_reset(struct rte_eth_dev *dev);
 static int i40e_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int i40e_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -2608,7 +2608,7 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	pf->adapter->rss_reta_updated = 0;
 }
 
-static void
+static int
 i40e_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -2748,6 +2748,7 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	i40e_tm_conf_uninit(dev);
 
 	hw->adapter_closed = 1;
+	return 0;
 }
 
 /*

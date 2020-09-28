@@ -198,7 +198,7 @@ eth_kni_dev_stop(struct rte_eth_dev *dev)
 	dev->data->dev_link.link_status = 0;
 }
 
-static void
+static int
 eth_kni_close(struct rte_eth_dev *eth_dev)
 {
 	struct pmd_internals *internals;
@@ -214,6 +214,8 @@ eth_kni_close(struct rte_eth_dev *eth_dev)
 	if (ret)
 		PMD_LOG(WARNING, "Not able to release kni for %s",
 			eth_dev->data->name);
+
+	return 0;
 }
 
 static int

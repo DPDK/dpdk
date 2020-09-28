@@ -1218,7 +1218,7 @@ memif_dev_start(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static void
+static int
 memif_dev_close(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
@@ -1239,6 +1239,8 @@ memif_dev_close(struct rte_eth_dev *dev)
 	}
 
 	rte_free(dev->process_private);
+
+	return 0;
 }
 
 static int

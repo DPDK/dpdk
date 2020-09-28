@@ -841,13 +841,15 @@ hn_dev_stop(struct rte_eth_dev *dev)
 	hn_vf_stop(dev);
 }
 
-static void
+static int
 hn_dev_close(struct rte_eth_dev *dev)
 {
 	PMD_INIT_FUNC_TRACE();
 
 	hn_vf_close(dev);
 	hn_dev_free_queues(dev);
+
+	return 0;
 }
 
 static const struct eth_dev_ops hn_eth_dev_ops = {

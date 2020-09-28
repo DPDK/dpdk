@@ -16,7 +16,7 @@ static int  axgbe_dev_configure(struct rte_eth_dev *dev);
 static int  axgbe_dev_start(struct rte_eth_dev *dev);
 static void axgbe_dev_stop(struct rte_eth_dev *dev);
 static void axgbe_dev_interrupt_handler(void *param);
-static void axgbe_dev_close(struct rte_eth_dev *dev);
+static int axgbe_dev_close(struct rte_eth_dev *dev);
 static int axgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int axgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static int axgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
@@ -410,10 +410,11 @@ axgbe_dev_stop(struct rte_eth_dev *dev)
 }
 
 /* Clear all resources like TX/RX queues. */
-static void
+static int
 axgbe_dev_close(struct rte_eth_dev *dev)
 {
 	axgbe_dev_clear_queues(dev);
+	return 0;
 }
 
 static int

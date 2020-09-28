@@ -398,14 +398,14 @@ pfe_eth_exit(struct rte_eth_dev *dev, struct pfe *pfe)
 	pfe->nb_devs--;
 }
 
-static void
+static int
 pfe_eth_close(struct rte_eth_dev *dev)
 {
 	if (!dev)
-		return;
+		return -1;
 
 	if (!g_pfe)
-		return;
+		return -1;
 
 	pfe_eth_exit(dev, g_pfe);
 
@@ -415,6 +415,8 @@ pfe_eth_close(struct rte_eth_dev *dev)
 		rte_free(g_pfe);
 		g_pfe = NULL;
 	}
+
+	return 0;
 }
 
 static int

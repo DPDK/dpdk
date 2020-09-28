@@ -42,7 +42,7 @@ typedef int  (*eth_dev_set_link_up_t)(struct rte_eth_dev *dev);
 typedef int  (*eth_dev_set_link_down_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to link down a configured Ethernet device. */
 
-typedef void (*eth_dev_close_t)(struct rte_eth_dev *dev);
+typedef int (*eth_dev_close_t)(struct rte_eth_dev *dev);
 /**< @internal Function used to close a configured Ethernet device. */
 
 typedef int (*eth_dev_reset_t)(struct rte_eth_dev *dev);

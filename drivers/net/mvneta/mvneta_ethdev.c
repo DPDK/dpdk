@@ -429,7 +429,7 @@ mvneta_dev_stop(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void
+static int
 mvneta_dev_close(struct rte_eth_dev *dev)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
@@ -455,6 +455,8 @@ mvneta_dev_close(struct rte_eth_dev *dev)
 		mvneta_neta_deinit();
 		rte_mvep_deinit(MVEP_MOD_T_NETA);
 	}
+
+	return 0;
 }
 
 /**

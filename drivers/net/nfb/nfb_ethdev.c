@@ -209,7 +209,7 @@ nfb_eth_dev_info(struct rte_eth_dev *dev,
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void
+static int
 nfb_eth_dev_close(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
@@ -235,6 +235,8 @@ nfb_eth_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
+
+	return 0;
 }
 
 /**

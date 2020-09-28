@@ -34,7 +34,7 @@
 static int eth_em_configure(struct rte_eth_dev *dev);
 static int eth_em_start(struct rte_eth_dev *dev);
 static void eth_em_stop(struct rte_eth_dev *dev);
-static void eth_em_close(struct rte_eth_dev *dev);
+static int eth_em_close(struct rte_eth_dev *dev);
 static int eth_em_promiscuous_enable(struct rte_eth_dev *dev);
 static int eth_em_promiscuous_disable(struct rte_eth_dev *dev);
 static int eth_em_allmulticast_enable(struct rte_eth_dev *dev);
@@ -758,7 +758,7 @@ eth_em_stop(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+static int
 eth_em_close(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -782,6 +782,8 @@ eth_em_close(struct rte_eth_dev *dev)
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,
 				     eth_em_interrupt_handler, dev);
+
+	return 0;
 }
 
 static int

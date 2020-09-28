@@ -855,7 +855,7 @@ mrvl_dev_stop(struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to Ethernet device structure.
  */
-static void
+static int
 mrvl_dev_close(struct rte_eth_dev *dev)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
@@ -915,6 +915,8 @@ mrvl_dev_close(struct rte_eth_dev *dev)
 		mrvl_deinit_pp2();
 		rte_mvep_deinit(MVEP_MOD_T_PP2);
 	}
+
+	return 0;
 }
 
 /**

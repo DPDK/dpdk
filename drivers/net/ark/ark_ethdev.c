@@ -30,7 +30,7 @@ static int eth_ark_dev_uninit(struct rte_eth_dev *eth_dev);
 static int eth_ark_dev_configure(struct rte_eth_dev *dev);
 static int eth_ark_dev_start(struct rte_eth_dev *dev);
 static void eth_ark_dev_stop(struct rte_eth_dev *dev);
-static void eth_ark_dev_close(struct rte_eth_dev *dev);
+static int eth_ark_dev_close(struct rte_eth_dev *dev);
 static int eth_ark_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int eth_ark_dev_link_update(struct rte_eth_dev *dev,
@@ -676,7 +676,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	}
 }
 
-static void
+static int
 eth_ark_dev_close(struct rte_eth_dev *dev)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
@@ -706,6 +706,8 @@ eth_ark_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = 0;
+
+	return 0;
 }
 
 static int
