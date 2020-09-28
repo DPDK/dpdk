@@ -13,31 +13,31 @@
 /** update the scheduler pmd's capability with attaching device's
  *  capability.
  *  For each device to be attached, the scheduler's capability should be
- *  the common capability set of all slaves
+ *  the common capability set of all workers
  **/
 static uint32_t
 sync_caps(struct rte_cryptodev_capabilities *caps,
 		uint32_t nb_caps,
-		const struct rte_cryptodev_capabilities *slave_caps)
+		const struct rte_cryptodev_capabilities *worker_caps)
 {
-	uint32_t sync_nb_caps = nb_caps, nb_slave_caps = 0;
+	uint32_t sync_nb_caps = nb_caps, nb_worker_caps = 0;
 	uint32_t i;
 
-	while (slave_caps[nb_slave_caps].op != RTE_CRYPTO_OP_TYPE_UNDEFINED)
-		nb_slave_caps++;
+	while (worker_caps[nb_worker_caps].op != RTE_CRYPTO_OP_TYPE_UNDEFINED)
+		nb_worker_caps++;
 
 	if (nb_caps == 0) {
-		rte_memcpy(caps, slave_caps, sizeof(*caps) * nb_slave_caps);
-		return nb_slave_caps;
+		rte_memcpy(caps, worker_caps, sizeof(*caps) * nb_worker_caps);
+		return nb_worker_caps;
 	}
 
 	for (i = 0; i < sync_nb_caps; i++) {
 		struct rte_cryptodev_capabilities *cap = &caps[i];
 		uint32_t j;
 
-		for (j = 0; j < nb_slave_caps; j++) {
+		for (j = 0; j < nb_worker_caps; j++) {
 			const struct rte_cryptodev_capabilities *s_cap =
-					&slave_caps[j];
+					&worker_caps[j];
 
 			if (s_cap->op != cap->op || s_cap->sym.xform_type !=
 					cap->sym.xform_type)
@@ -72,7 +72,7 @@ sync_caps(struct rte_cryptodev_capabilities *caps,
 			break;
 		}
 
-		if (j < nb_slave_caps)
+		if (j < nb_worker_caps)
 			continue;
 
 		/* remove a uncommon cap from the array */
@@ -97,10 +97,10 @@ update_scheduler_capability(struct scheduler_ctx *sched_ctx)
 		sched_ctx->capabilities = NULL;
 	}
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
 		struct rte_cryptodev_info dev_info;
 
-		rte_cryptodev_info_get(sched_ctx->slaves[i].dev_id, &dev_info);
+		rte_cryptodev_info_get(sched_ctx->workers[i].dev_id, &dev_info);
 
 		nb_caps = sync_caps(tmp_caps, nb_caps, dev_info.capabilities);
 		if (nb_caps == 0)
@@ -127,10 +127,10 @@ update_scheduler_feature_flag(struct rte_cryptodev *dev)
 
 	dev->feature_flags = 0;
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
 		struct rte_cryptodev_info dev_info;
 
-		rte_cryptodev_info_get(sched_ctx->slaves[i].dev_id, &dev_info);
+		rte_cryptodev_info_get(sched_ctx->workers[i].dev_id, &dev_info);
 
 		dev->feature_flags |= dev_info.feature_flags;
 	}
@@ -142,15 +142,15 @@ update_max_nb_qp(struct scheduler_ctx *sched_ctx)
 	uint32_t i;
 	uint32_t max_nb_qp;
 
-	if (!sched_ctx->nb_slaves)
+	if (!sched_ctx->nb_workers)
 		return;
 
-	max_nb_qp = sched_ctx->nb_slaves ? UINT32_MAX : 0;
+	max_nb_qp = sched_ctx->nb_workers ? UINT32_MAX : 0;
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
 		struct rte_cryptodev_info dev_info;
 
-		rte_cryptodev_info_get(sched_ctx->slaves[i].dev_id, &dev_info);
+		rte_cryptodev_info_get(sched_ctx->workers[i].dev_id, &dev_info);
 		max_nb_qp = dev_info.max_nb_queue_pairs < max_nb_qp ?
 				dev_info.max_nb_queue_pairs : max_nb_qp;
 	}
@@ -160,11 +160,11 @@ update_max_nb_qp(struct scheduler_ctx *sched_ctx)
 
 /** Attach a device to the scheduler. */
 int
-rte_cryptodev_scheduler_slave_attach(uint8_t scheduler_id, uint8_t slave_id)
+rte_cryptodev_scheduler_worker_attach(uint8_t scheduler_id, uint8_t worker_id)
 {
 	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(scheduler_id);
 	struct scheduler_ctx *sched_ctx;
-	struct scheduler_slave *slave;
+	struct scheduler_worker *worker;
 	struct rte_cryptodev_info dev_info;
 	uint32_t i;
 
@@ -184,30 +184,30 @@ rte_cryptodev_scheduler_slave_attach(uint8_t scheduler_id, uint8_t slave_id)
 	}
 
 	sched_ctx = dev->data->dev_private;
-	if (sched_ctx->nb_slaves >=
-			RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES) {
-		CR_SCHED_LOG(ERR, "Too many slaves attached");
+	if (sched_ctx->nb_workers >=
+			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS) {
+		CR_SCHED_LOG(ERR, "Too many workers attached");
 		return -ENOMEM;
 	}
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++)
-		if (sched_ctx->slaves[i].dev_id == slave_id) {
-			CR_SCHED_LOG(ERR, "Slave already added");
+	for (i = 0; i < sched_ctx->nb_workers; i++)
+		if (sched_ctx->workers[i].dev_id == worker_id) {
+			CR_SCHED_LOG(ERR, "Worker already added");
 			return -ENOTSUP;
 		}
 
-	slave = &sched_ctx->slaves[sched_ctx->nb_slaves];
+	worker = &sched_ctx->workers[sched_ctx->nb_workers];
 
-	rte_cryptodev_info_get(slave_id, &dev_info);
+	rte_cryptodev_info_get(worker_id, &dev_info);
 
-	slave->dev_id = slave_id;
-	slave->driver_id = dev_info.driver_id;
-	sched_ctx->nb_slaves++;
+	worker->dev_id = worker_id;
+	worker->driver_id = dev_info.driver_id;
+	sched_ctx->nb_workers++;
 
 	if (update_scheduler_capability(sched_ctx) < 0) {
-		slave->dev_id = 0;
-		slave->driver_id = 0;
-		sched_ctx->nb_slaves--;
+		worker->dev_id = 0;
+		worker->driver_id = 0;
+		sched_ctx->nb_workers--;
 
 		CR_SCHED_LOG(ERR, "capabilities update failed");
 		return -ENOTSUP;
@@ -221,11 +221,11 @@ rte_cryptodev_scheduler_slave_attach(uint8_t scheduler_id, uint8_t slave_id)
 }
 
 int
-rte_cryptodev_scheduler_slave_detach(uint8_t scheduler_id, uint8_t slave_id)
+rte_cryptodev_scheduler_worker_detach(uint8_t scheduler_id, uint8_t worker_id)
 {
 	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(scheduler_id);
 	struct scheduler_ctx *sched_ctx;
-	uint32_t i, slave_pos;
+	uint32_t i, worker_pos;
 
 	if (!dev) {
 		CR_SCHED_LOG(ERR, "Operation not supported");
@@ -244,26 +244,26 @@ rte_cryptodev_scheduler_slave_detach(uint8_t scheduler_id, uint8_t slave_id)
 
 	sched_ctx = dev->data->dev_private;
 
-	for (slave_pos = 0; slave_pos < sched_ctx->nb_slaves; slave_pos++)
-		if (sched_ctx->slaves[slave_pos].dev_id == slave_id)
+	for (worker_pos = 0; worker_pos < sched_ctx->nb_workers; worker_pos++)
+		if (sched_ctx->workers[worker_pos].dev_id == worker_id)
 			break;
-	if (slave_pos == sched_ctx->nb_slaves) {
-		CR_SCHED_LOG(ERR, "Cannot find slave");
+	if (worker_pos == sched_ctx->nb_workers) {
+		CR_SCHED_LOG(ERR, "Cannot find worker");
 		return -ENOTSUP;
 	}
 
-	if (sched_ctx->ops.slave_detach(dev, slave_id) < 0) {
-		CR_SCHED_LOG(ERR, "Failed to detach slave");
+	if (sched_ctx->ops.worker_detach(dev, worker_id) < 0) {
+		CR_SCHED_LOG(ERR, "Failed to detach worker");
 		return -ENOTSUP;
 	}
 
-	for (i = slave_pos; i < sched_ctx->nb_slaves - 1; i++) {
-		memcpy(&sched_ctx->slaves[i], &sched_ctx->slaves[i+1],
-				sizeof(struct scheduler_slave));
+	for (i = worker_pos; i < sched_ctx->nb_workers - 1; i++) {
+		memcpy(&sched_ctx->workers[i], &sched_ctx->workers[i+1],
+				sizeof(struct scheduler_worker));
 	}
-	memset(&sched_ctx->slaves[sched_ctx->nb_slaves - 1], 0,
-			sizeof(struct scheduler_slave));
-	sched_ctx->nb_slaves--;
+	memset(&sched_ctx->workers[sched_ctx->nb_workers - 1], 0,
+			sizeof(struct scheduler_worker));
+	sched_ctx->nb_workers--;
 
 	if (update_scheduler_capability(sched_ctx) < 0) {
 		CR_SCHED_LOG(ERR, "capabilities update failed");
@@ -459,8 +459,8 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 	sched_ctx->ops.create_private_ctx = scheduler->ops->create_private_ctx;
 	sched_ctx->ops.scheduler_start = scheduler->ops->scheduler_start;
 	sched_ctx->ops.scheduler_stop = scheduler->ops->scheduler_stop;
-	sched_ctx->ops.slave_attach = scheduler->ops->slave_attach;
-	sched_ctx->ops.slave_detach = scheduler->ops->slave_detach;
+	sched_ctx->ops.worker_attach = scheduler->ops->worker_attach;
+	sched_ctx->ops.worker_detach = scheduler->ops->worker_detach;
 	sched_ctx->ops.option_set = scheduler->ops->option_set;
 	sched_ctx->ops.option_get = scheduler->ops->option_get;
 
@@ -485,11 +485,11 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 }
 
 int
-rte_cryptodev_scheduler_slaves_get(uint8_t scheduler_id, uint8_t *slaves)
+rte_cryptodev_scheduler_workers_get(uint8_t scheduler_id, uint8_t *workers)
 {
 	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(scheduler_id);
 	struct scheduler_ctx *sched_ctx;
-	uint32_t nb_slaves = 0;
+	uint32_t nb_workers = 0;
 
 	if (!dev) {
 		CR_SCHED_LOG(ERR, "Operation not supported");
@@ -503,16 +503,16 @@ rte_cryptodev_scheduler_slaves_get(uint8_t scheduler_id, uint8_t *slaves)
 
 	sched_ctx = dev->data->dev_private;
 
-	nb_slaves = sched_ctx->nb_slaves;
+	nb_workers = sched_ctx->nb_workers;
 
-	if (slaves && nb_slaves) {
+	if (workers && nb_workers) {
 		uint32_t i;
 
-		for (i = 0; i < nb_slaves; i++)
-			slaves[i] = sched_ctx->slaves[i].dev_id;
+		for (i = 0; i < nb_workers; i++)
+			workers[i] = sched_ctx->workers[i].dev_id;
 	}
 
-	return (int)nb_slaves;
+	return (int)nb_workers;
 }
 
 int

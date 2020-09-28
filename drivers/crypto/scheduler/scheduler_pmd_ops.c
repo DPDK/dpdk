@@ -12,43 +12,43 @@
 
 #include "scheduler_pmd_private.h"
 
-/** attaching the slaves predefined by scheduler's EAL options */
+/** attaching the workers predefined by scheduler's EAL options */
 static int
-scheduler_attach_init_slave(struct rte_cryptodev *dev)
+scheduler_attach_init_worker(struct rte_cryptodev *dev)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint8_t scheduler_id = dev->data->dev_id;
 	int i;
 
-	for (i = sched_ctx->nb_init_slaves - 1; i >= 0; i--) {
-		const char *dev_name = sched_ctx->init_slave_names[i];
-		struct rte_cryptodev *slave_dev =
+	for (i = sched_ctx->nb_init_workers - 1; i >= 0; i--) {
+		const char *dev_name = sched_ctx->init_worker_names[i];
+		struct rte_cryptodev *worker_dev =
 				rte_cryptodev_pmd_get_named_dev(dev_name);
 		int status;
 
-		if (!slave_dev) {
-			CR_SCHED_LOG(ERR, "Failed to locate slave dev %s",
+		if (!worker_dev) {
+			CR_SCHED_LOG(ERR, "Failed to locate worker dev %s",
 					dev_name);
 			return -EINVAL;
 		}
 
-		status = rte_cryptodev_scheduler_slave_attach(
-				scheduler_id, slave_dev->data->dev_id);
+		status = rte_cryptodev_scheduler_worker_attach(
+				scheduler_id, worker_dev->data->dev_id);
 
 		if (status < 0) {
-			CR_SCHED_LOG(ERR, "Failed to attach slave cryptodev %u",
-					slave_dev->data->dev_id);
+			CR_SCHED_LOG(ERR, "Failed to attach worker cryptodev %u",
+					worker_dev->data->dev_id);
 			return status;
 		}
 
-		CR_SCHED_LOG(INFO, "Scheduler %s attached slave %s",
+		CR_SCHED_LOG(INFO, "Scheduler %s attached worker %s",
 				dev->data->name,
-				sched_ctx->init_slave_names[i]);
+				sched_ctx->init_worker_names[i]);
 
-		rte_free(sched_ctx->init_slave_names[i]);
-		sched_ctx->init_slave_names[i] = NULL;
+		rte_free(sched_ctx->init_worker_names[i]);
+		sched_ctx->init_worker_names[i] = NULL;
 
-		sched_ctx->nb_init_slaves -= 1;
+		sched_ctx->nb_init_workers -= 1;
 	}
 
 	return 0;
@@ -62,17 +62,17 @@ scheduler_pmd_config(struct rte_cryptodev *dev,
 	uint32_t i;
 	int ret;
 
-	/* although scheduler_attach_init_slave presents multiple times,
+	/* although scheduler_attach_init_worker presents multiple times,
 	 * there will be only 1 meaningful execution.
 	 */
-	ret = scheduler_attach_init_slave(dev);
+	ret = scheduler_attach_init_worker(dev);
 	if (ret < 0)
 		return ret;
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
 
-		ret = rte_cryptodev_configure(slave_dev_id, config);
+		ret = rte_cryptodev_configure(worker_dev_id, config);
 		if (ret < 0)
 			break;
 	}
@@ -89,7 +89,7 @@ update_order_ring(struct rte_cryptodev *dev, uint16_t qp_id)
 	if (sched_ctx->reordering_enabled) {
 		char order_ring_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 		uint32_t buff_size = rte_align32pow2(
-			sched_ctx->nb_slaves * PER_SLAVE_BUFF_SIZE);
+			sched_ctx->nb_workers * PER_WORKER_BUFF_SIZE);
 
 		if (qp_ctx->order_ring) {
 			rte_ring_free(qp_ctx->order_ring);
@@ -135,10 +135,10 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 	if (dev->data->dev_started)
 		return 0;
 
-	/* although scheduler_attach_init_slave presents multiple times,
+	/* although scheduler_attach_init_worker presents multiple times,
 	 * there will be only 1 meaningful execution.
 	 */
-	ret = scheduler_attach_init_slave(dev);
+	ret = scheduler_attach_init_worker(dev);
 	if (ret < 0)
 		return ret;
 
@@ -155,18 +155,18 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 		return -1;
 	}
 
-	if (!sched_ctx->nb_slaves) {
-		CR_SCHED_LOG(ERR, "No slave in the scheduler");
+	if (!sched_ctx->nb_workers) {
+		CR_SCHED_LOG(ERR, "No worker in the scheduler");
 		return -1;
 	}
 
-	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.slave_attach, -ENOTSUP);
+	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.worker_attach, -ENOTSUP);
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
 
-		if ((*sched_ctx->ops.slave_attach)(dev, slave_dev_id) < 0) {
-			CR_SCHED_LOG(ERR, "Failed to attach slave");
+		if ((*sched_ctx->ops.worker_attach)(dev, worker_dev_id) < 0) {
+			CR_SCHED_LOG(ERR, "Failed to attach worker");
 			return -ENOTSUP;
 		}
 	}
@@ -178,16 +178,16 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 		return -1;
 	}
 
-	/* start all slaves */
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-		struct rte_cryptodev *slave_dev =
-				rte_cryptodev_pmd_get_dev(slave_dev_id);
+	/* start all workers */
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
+		struct rte_cryptodev *worker_dev =
+				rte_cryptodev_pmd_get_dev(worker_dev_id);
 
-		ret = (*slave_dev->dev_ops->dev_start)(slave_dev);
+		ret = (*worker_dev->dev_ops->dev_start)(worker_dev);
 		if (ret < 0) {
-			CR_SCHED_LOG(ERR, "Failed to start slave dev %u",
-					slave_dev_id);
+			CR_SCHED_LOG(ERR, "Failed to start worker dev %u",
+					worker_dev_id);
 			return ret;
 		}
 	}
@@ -205,23 +205,23 @@ scheduler_pmd_stop(struct rte_cryptodev *dev)
 	if (!dev->data->dev_started)
 		return;
 
-	/* stop all slaves first */
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-		struct rte_cryptodev *slave_dev =
-				rte_cryptodev_pmd_get_dev(slave_dev_id);
+	/* stop all workers first */
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
+		struct rte_cryptodev *worker_dev =
+				rte_cryptodev_pmd_get_dev(worker_dev_id);
 
-		(*slave_dev->dev_ops->dev_stop)(slave_dev);
+		(*worker_dev->dev_ops->dev_stop)(worker_dev);
 	}
 
 	if (*sched_ctx->ops.scheduler_stop)
 		(*sched_ctx->ops.scheduler_stop)(dev);
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
 
-		if (*sched_ctx->ops.slave_detach)
-			(*sched_ctx->ops.slave_detach)(dev, slave_dev_id);
+		if (*sched_ctx->ops.worker_detach)
+			(*sched_ctx->ops.worker_detach)(dev, worker_dev_id);
 	}
 }
 
@@ -237,13 +237,13 @@ scheduler_pmd_close(struct rte_cryptodev *dev)
 	if (dev->data->dev_started)
 		return -EBUSY;
 
-	/* close all slaves first */
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-		struct rte_cryptodev *slave_dev =
-				rte_cryptodev_pmd_get_dev(slave_dev_id);
+	/* close all workers first */
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
+		struct rte_cryptodev *worker_dev =
+				rte_cryptodev_pmd_get_dev(worker_dev_id);
 
-		ret = (*slave_dev->dev_ops->dev_close)(slave_dev);
+		ret = (*worker_dev->dev_ops->dev_close)(worker_dev);
 		if (ret < 0)
 			return ret;
 	}
@@ -283,19 +283,19 @@ scheduler_pmd_stats_get(struct rte_cryptodev *dev,
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t i;
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-		struct rte_cryptodev *slave_dev =
-				rte_cryptodev_pmd_get_dev(slave_dev_id);
-		struct rte_cryptodev_stats slave_stats = {0};
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
+		struct rte_cryptodev *worker_dev =
+				rte_cryptodev_pmd_get_dev(worker_dev_id);
+		struct rte_cryptodev_stats worker_stats = {0};
 
-		(*slave_dev->dev_ops->stats_get)(slave_dev, &slave_stats);
+		(*worker_dev->dev_ops->stats_get)(worker_dev, &worker_stats);
 
-		stats->enqueued_count += slave_stats.enqueued_count;
-		stats->dequeued_count += slave_stats.dequeued_count;
+		stats->enqueued_count += worker_stats.enqueued_count;
+		stats->dequeued_count += worker_stats.dequeued_count;
 
-		stats->enqueue_err_count += slave_stats.enqueue_err_count;
-		stats->dequeue_err_count += slave_stats.dequeue_err_count;
+		stats->enqueue_err_count += worker_stats.enqueue_err_count;
+		stats->dequeue_err_count += worker_stats.dequeue_err_count;
 	}
 }
 
@@ -306,12 +306,12 @@ scheduler_pmd_stats_reset(struct rte_cryptodev *dev)
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t i;
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-		struct rte_cryptodev *slave_dev =
-				rte_cryptodev_pmd_get_dev(slave_dev_id);
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
+		struct rte_cryptodev *worker_dev =
+				rte_cryptodev_pmd_get_dev(worker_dev_id);
 
-		(*slave_dev->dev_ops->stats_reset)(slave_dev);
+		(*worker_dev->dev_ops->stats_reset)(worker_dev);
 	}
 }
 
@@ -329,32 +329,32 @@ scheduler_pmd_info_get(struct rte_cryptodev *dev,
 	if (!dev_info)
 		return;
 
-	/* although scheduler_attach_init_slave presents multiple times,
+	/* although scheduler_attach_init_worker presents multiple times,
 	 * there will be only 1 meaningful execution.
 	 */
-	scheduler_attach_init_slave(dev);
+	scheduler_attach_init_worker(dev);
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-		struct rte_cryptodev_info slave_info;
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
+		struct rte_cryptodev_info worker_info;
 
-		rte_cryptodev_info_get(slave_dev_id, &slave_info);
-		uint32_t dev_max_sess = slave_info.sym.max_nb_sessions;
+		rte_cryptodev_info_get(worker_dev_id, &worker_info);
+		uint32_t dev_max_sess = worker_info.sym.max_nb_sessions;
 		if (dev_max_sess != 0) {
 			if (max_nb_sess == 0 ||	dev_max_sess < max_nb_sess)
-				max_nb_sess = slave_info.sym.max_nb_sessions;
+				max_nb_sess = worker_info.sym.max_nb_sessions;
 		}
 
-		/* Get the max headroom requirement among slave PMDs */
-		headroom_sz = slave_info.min_mbuf_headroom_req >
+		/* Get the max headroom requirement among worker PMDs */
+		headroom_sz = worker_info.min_mbuf_headroom_req >
 				headroom_sz ?
-				slave_info.min_mbuf_headroom_req :
+				worker_info.min_mbuf_headroom_req :
 				headroom_sz;
 
-		/* Get the max tailroom requirement among slave PMDs */
-		tailroom_sz = slave_info.min_mbuf_tailroom_req >
+		/* Get the max tailroom requirement among worker PMDs */
+		tailroom_sz = worker_info.min_mbuf_tailroom_req >
 				tailroom_sz ?
-				slave_info.min_mbuf_tailroom_req :
+				worker_info.min_mbuf_tailroom_req :
 				tailroom_sz;
 	}
 
@@ -409,15 +409,15 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (dev->data->queue_pairs[qp_id] != NULL)
 		scheduler_pmd_qp_release(dev, qp_id);
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_id = sched_ctx->slaves[i].dev_id;
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_id = sched_ctx->workers[i].dev_id;
 
 		/*
-		 * All slaves will share the same session mempool
+		 * All workers will share the same session mempool
 		 * for session-less operations, so the objects
 		 * must be big enough for all the drivers used.
 		 */
-		ret = rte_cryptodev_queue_pair_setup(slave_id, qp_id,
+		ret = rte_cryptodev_queue_pair_setup(worker_id, qp_id,
 				qp_conf, socket_id);
 		if (ret < 0)
 			return ret;
@@ -434,12 +434,12 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	dev->data->queue_pairs[qp_id] = qp_ctx;
 
-	/* although scheduler_attach_init_slave presents multiple times,
+	/* although scheduler_attach_init_worker presents multiple times,
 	 * there will be only 1 meaningful execution.
 	 */
-	ret = scheduler_attach_init_slave(dev);
+	ret = scheduler_attach_init_worker(dev);
 	if (ret < 0) {
-		CR_SCHED_LOG(ERR, "Failed to attach slave");
+		CR_SCHED_LOG(ERR, "Failed to attach worker");
 		scheduler_pmd_qp_release(dev, qp_id);
 		return ret;
 	}
@@ -461,10 +461,10 @@ scheduler_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 	uint8_t i = 0;
 	uint32_t max_priv_sess_size = 0;
 
-	/* Check what is the maximum private session size for all slaves */
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-		struct rte_cryptodev *dev = &rte_cryptodevs[slave_dev_id];
+	/* Check what is the maximum private session size for all workers */
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
+		struct rte_cryptodev *dev = &rte_cryptodevs[worker_dev_id];
 		uint32_t priv_sess_size = (*dev->dev_ops->sym_session_get_size)(dev);
 
 		if (max_priv_sess_size < priv_sess_size)
@@ -484,10 +484,10 @@ scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev,
 	uint32_t i;
 	int ret;
 
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		struct scheduler_slave *slave = &sched_ctx->slaves[i];
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		struct scheduler_worker *worker = &sched_ctx->workers[i];
 
-		ret = rte_cryptodev_sym_session_init(slave->dev_id, sess,
+		ret = rte_cryptodev_sym_session_init(worker->dev_id, sess,
 					xform, mempool);
 		if (ret < 0) {
 			CR_SCHED_LOG(ERR, "unable to config sym session");
@@ -506,11 +506,11 @@ scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev,
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t i;
 
-	/* Clear private data of slaves */
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		struct scheduler_slave *slave = &sched_ctx->slaves[i];
+	/* Clear private data of workers */
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		struct scheduler_worker *worker = &sched_ctx->workers[i];
 
-		rte_cryptodev_sym_session_clear(slave->dev_id, sess);
+		rte_cryptodev_sym_session_clear(worker->dev_id, sess);
 	}
 }
 

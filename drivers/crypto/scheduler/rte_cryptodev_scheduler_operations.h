@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-typedef int (*rte_cryptodev_scheduler_slave_attach_t)(
-		struct rte_cryptodev *dev, uint8_t slave_id);
-typedef int (*rte_cryptodev_scheduler_slave_detach_t)(
-		struct rte_cryptodev *dev, uint8_t slave_id);
+typedef int (*rte_cryptodev_scheduler_worker_attach_t)(
+		struct rte_cryptodev *dev, uint8_t worker_id);
+typedef int (*rte_cryptodev_scheduler_worker_detach_t)(
+		struct rte_cryptodev *dev, uint8_t worker_id);
 
 typedef int (*rte_cryptodev_scheduler_start_t)(struct rte_cryptodev *dev);
 typedef int (*rte_cryptodev_scheduler_stop_t)(struct rte_cryptodev *dev);
@@ -36,8 +36,8 @@ typedef int (*rte_cryptodev_scheduler_config_option_get)(
 		void *option);
 
 struct rte_cryptodev_scheduler_ops {
-	rte_cryptodev_scheduler_slave_attach_t slave_attach;
-	rte_cryptodev_scheduler_slave_attach_t slave_detach;
+	rte_cryptodev_scheduler_worker_attach_t worker_attach;
+	rte_cryptodev_scheduler_worker_attach_t worker_detach;
 
 	rte_cryptodev_scheduler_start_t scheduler_start;
 	rte_cryptodev_scheduler_stop_t scheduler_stop;

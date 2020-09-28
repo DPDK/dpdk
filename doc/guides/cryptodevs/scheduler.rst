@@ -16,12 +16,12 @@ crypto ops among them in a certain manner.
 The Cryptodev Scheduler PMD library (**librte_pmd_crypto_scheduler**) acts as
 a software crypto PMD and shares the same API provided by librte_cryptodev.
 The PMD supports attaching multiple crypto PMDs, software or hardware, as
-slaves, and distributes the crypto workload to them with certain behavior.
+workers, and distributes the crypto workload to them with certain behavior.
 The behaviors are categorizes as different "modes". Basically, a scheduling
-mode defines certain actions for scheduling crypto ops to its slaves.
+mode defines certain actions for scheduling crypto ops to its workers.
 
 The librte_pmd_crypto_scheduler library exports a C API which provides an API
-for attaching/detaching slaves, set/get scheduling modes, and enable/disable
+for attaching/detaching workers, set/get scheduling modes, and enable/disable
 crypto ops reordering.
 
 Limitations
@@ -62,7 +62,7 @@ two calls:
   created. This value may be overwritten internally if there are too
   many devices are attached.
 
-* slave: If a cryptodev has been initialized with specific name, it can be
+* worker: If a cryptodev has been initialized with specific name, it can be
   attached to the scheduler using this parameter, simply filling the name
   here. Multiple cryptodevs can be attached initially by presenting this
   parameter multiple times.
@@ -84,13 +84,13 @@ Example:
 
 .. code-block:: console
 
-    ... --vdev "crypto_aesni_mb0,name=aesni_mb_1" --vdev "crypto_aesni_mb1,name=aesni_mb_2" --vdev "crypto_scheduler,slave=aesni_mb_1,slave=aesni_mb_2" ...
+    ... --vdev "crypto_aesni_mb0,name=aesni_mb_1" --vdev "crypto_aesni_mb1,name=aesni_mb_2" --vdev "crypto_scheduler,worker=aesni_mb_1,worker=aesni_mb_2" ...
 
 .. note::
 
     * The scheduler cryptodev cannot be started unless the scheduling mode
-      is set and at least one slave is attached. Also, to configure the
-      scheduler in the run-time, like attach/detach slave(s), change
+      is set and at least one worker is attached. Also, to configure the
+      scheduler in the run-time, like attach/detach worker(s), change
       scheduling mode, or enable/disable crypto op ordering, one should stop
       the scheduler first, otherwise an error will be returned.
 
@@ -111,7 +111,7 @@ operation:
    *Initialization mode parameter*: **round-robin**
 
    Round-robin mode, which distributes the enqueued burst of crypto ops
-   among its slaves in a round-robin manner. This mode may help to fill
+   among its workers in a round-robin manner. This mode may help to fill
    the throughput gap between the physical core and the existing cryptodevs
    to increase the overall performance.
 
@@ -119,15 +119,15 @@ operation:
 
    *Initialization mode parameter*: **packet-size-distr**
 
-   Packet-size based distribution mode, which works with 2 slaves, the primary
-   slave and the secondary slave, and distributes the enqueued crypto
+   Packet-size based distribution mode, which works with 2 workers, the primary
+   worker and the secondary worker, and distributes the enqueued crypto
    operations to them based on their data lengths. A crypto operation will be
-   distributed to the primary slave if its data length is equal to or bigger
+   distributed to the primary worker if its data length is equal to or bigger
    than the designated threshold, otherwise it will be handled by the secondary
-   slave.
+   worker.
 
    A typical usecase in this mode is with the QAT cryptodev as the primary and
-   a software cryptodev as the secondary slave. This may help applications to
+   a software cryptodev as the secondary worker. This may help applications to
    process additional crypto workload than what the QAT cryptodev can handle on
    its own, by making use of the available CPU cycles to deal with smaller
    crypto workloads.
@@ -148,11 +148,11 @@ operation:
 
    *Initialization mode parameter*: **fail-over**
 
-   Fail-over mode, which works with 2 slaves, the primary slave and the
-   secondary slave. In this mode, the scheduler will enqueue the incoming
-   crypto operation burst to the primary slave. When one or more crypto
+   Fail-over mode, which works with 2 workers, the primary worker and the
+   secondary worker. In this mode, the scheduler will enqueue the incoming
+   crypto operation burst to the primary worker. When one or more crypto
    operations fail to be enqueued, then they will be enqueued to the secondary
-   slave.
+   worker.
 
 *   **CDEV_SCHED_MODE_MULTICORE:**
 
@@ -167,16 +167,16 @@ operation:
    For mixed traffic (IMIX) the optimal number of worker cores is around 2-3.
    For large packets (1.5 kbytes) scheduler shows linear scaling in performance
    up to eight cores.
-   Each worker uses its own slave cryptodev. Only software cryptodevs
+   Each worker uses its own cryptodev. Only software cryptodevs
    are supported. Only the same type of cryptodevs should be used concurrently.
 
    The multi-core mode uses one extra parameter:
 
    * corelist: Semicolon-separated list of logical cores to be used as workers.
-     The number of worker cores should be equal to the number of slave cryptodevs.
+     The number of worker cores should be equal to the number of worker cryptodevs.
      These cores should be present in EAL core list parameter and
      should not be used by the application or any other process.
 
    Example:
     ... --vdev "crypto_aesni_mb1,name=aesni_mb_1" --vdev "crypto_aesni_mb_pmd2,name=aesni_mb_2" \
-    --vdev "crypto_scheduler,slave=aesni_mb_1,slave=aesni_mb_2,mode=multi-core,corelist=23;24" ...
+    --vdev "crypto_scheduler,worker=aesni_mb_1,worker=aesni_mb_2,mode=multi-core,corelist=23;24" ...

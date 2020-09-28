@@ -10,7 +10,7 @@
 #define CRYPTODEV_NAME_SCHEDULER_PMD	crypto_scheduler
 /**< Scheduler Crypto PMD device name */
 
-#define PER_SLAVE_BUFF_SIZE			(256)
+#define PER_WORKER_BUFF_SIZE			(256)
 
 extern int scheduler_logtype_driver;
 
@@ -18,7 +18,7 @@ extern int scheduler_logtype_driver;
 	rte_log(RTE_LOG_ ## level, scheduler_logtype_driver,		\
 			"%s() line %u: "fmt "\n", __func__, __LINE__, ##args)
 
-struct scheduler_slave {
+struct scheduler_worker {
 	uint8_t dev_id;
 	uint16_t qp_id;
 	uint32_t nb_inflight_cops;
@@ -35,8 +35,8 @@ struct scheduler_ctx {
 
 	uint32_t max_nb_queue_pairs;
 
-	struct scheduler_slave slaves[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
-	uint32_t nb_slaves;
+	struct scheduler_worker workers[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS];
+	uint32_t nb_workers;
 
 	enum rte_cryptodev_scheduler_mode mode;
 
@@ -49,8 +49,8 @@ struct scheduler_ctx {
 	uint16_t wc_pool[RTE_MAX_LCORE];
 	uint16_t nb_wc;
 
-	char *init_slave_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
-	int nb_init_slaves;
+	char *init_worker_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS];
+	int nb_init_workers;
 } __rte_cache_aligned;
 
 struct scheduler_qp_ctx {

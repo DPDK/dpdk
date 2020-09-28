@@ -2274,11 +2274,11 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		 */
 		if (!strcmp(dev_info.driver_name, "crypto_scheduler")) {
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
-			uint32_t nb_slaves =
-				rte_cryptodev_scheduler_slaves_get(cdev_id,
+			uint32_t nb_workers =
+				rte_cryptodev_scheduler_workers_get(cdev_id,
 								NULL);
 
-			sessions_needed = enabled_cdev_count * nb_slaves;
+			sessions_needed = enabled_cdev_count * nb_workers;
 #endif
 		} else
 			sessions_needed = enabled_cdev_count;

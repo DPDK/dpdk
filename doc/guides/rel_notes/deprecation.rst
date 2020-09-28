@@ -182,13 +182,6 @@ Deprecation Notices
   to one it means it represents IV, when is set to zero it means J0 is used
   directly, in this case 16 bytes of J0 need to be passed.
 
-* scheduler: The functions ``rte_cryptodev_scheduler_slave_attach``,
-  ``rte_cryptodev_scheduler_slave_detach`` and
-  ``rte_cryptodev_scheduler_slaves_get`` will be replaced in 20.11 by
-  ``rte_cryptodev_scheduler_worker_attach``,
-  ``rte_cryptodev_scheduler_worker_detach`` and
-  ``rte_cryptodev_scheduler_workers_get`` accordingly.
-
 * eventdev: Following structures will be modified to support DLB PMD
   and future extensions:
 

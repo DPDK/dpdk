@@ -26,8 +26,8 @@ struct mc_scheduler_ctx {
 };
 
 struct mc_scheduler_qp_ctx {
-	struct scheduler_slave slaves[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
-	uint32_t nb_slaves;
+	struct scheduler_worker workers[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS];
+	uint32_t nb_workers;
 
 	uint32_t last_enq_worker_idx;
 	uint32_t last_deq_worker_idx;
@@ -132,15 +132,15 @@ schedule_dequeue_ordering(void *qp, struct rte_crypto_op **ops,
 }
 
 static int
-slave_attach(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint8_t slave_id)
+worker_attach(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused uint8_t worker_id)
 {
 	return 0;
 }
 
 static int
-slave_detach(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint8_t slave_id)
+worker_detach(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused uint8_t worker_id)
 {
 	return 0;
 }
@@ -154,7 +154,7 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 	struct rte_ring *deq_ring;
 	uint32_t core_id = rte_lcore_id();
 	int i, worker_idx = -1;
-	struct scheduler_slave *slave;
+	struct scheduler_worker *worker;
 	struct rte_crypto_op *enq_ops[MC_SCHED_BUFFER_SIZE];
 	struct rte_crypto_op *deq_ops[MC_SCHED_BUFFER_SIZE];
 	uint16_t processed_ops;
@@ -177,15 +177,16 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 		return -1;
 	}
 
-	slave = &sched_ctx->slaves[worker_idx];
+	worker = &sched_ctx->workers[worker_idx];
 	enq_ring = mc_ctx->sched_enq_ring[worker_idx];
 	deq_ring = mc_ctx->sched_deq_ring[worker_idx];
 
 	while (!mc_ctx->stop_signal) {
 		if (pending_enq_ops) {
 			processed_ops =
-				rte_cryptodev_enqueue_burst(slave->dev_id,
-					slave->qp_id, &enq_ops[pending_enq_ops_idx],
+				rte_cryptodev_enqueue_burst(worker->dev_id,
+					worker->qp_id,
+					&enq_ops[pending_enq_ops_idx],
 					pending_enq_ops);
 			pending_enq_ops -= processed_ops;
 			pending_enq_ops_idx += processed_ops;
@@ -195,8 +196,8 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 							MC_SCHED_BUFFER_SIZE, NULL);
 			if (processed_ops) {
 				pending_enq_ops_idx = rte_cryptodev_enqueue_burst(
-							slave->dev_id, slave->qp_id,
-							enq_ops, processed_ops);
+						worker->dev_id, worker->qp_id,
+						enq_ops, processed_ops);
 				pending_enq_ops = processed_ops - pending_enq_ops_idx;
 				inflight_ops += pending_enq_ops_idx;
 			}
@@ -209,8 +210,9 @@ mc_scheduler_worker(struct rte_cryptodev *dev)
 			pending_deq_ops -= processed_ops;
 			pending_deq_ops_idx += processed_ops;
 		} else if (inflight_ops) {
-			processed_ops = rte_cryptodev_dequeue_burst(slave->dev_id,
-					slave->qp_id, deq_ops, MC_SCHED_BUFFER_SIZE);
+			processed_ops = rte_cryptodev_dequeue_burst(
+					worker->dev_id, worker->qp_id, deq_ops,
+					MC_SCHED_BUFFER_SIZE);
 			if (processed_ops) {
 				inflight_ops -= processed_ops;
 				if (reordering_enabled) {
@@ -264,16 +266,16 @@ scheduler_start(struct rte_cryptodev *dev)
 				qp_ctx->private_qp_ctx;
 		uint32_t j;
 
-		memset(mc_qp_ctx->slaves, 0,
-				RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES *
-				sizeof(struct scheduler_slave));
-		for (j = 0; j < sched_ctx->nb_slaves; j++) {
-			mc_qp_ctx->slaves[j].dev_id =
-					sched_ctx->slaves[j].dev_id;
-			mc_qp_ctx->slaves[j].qp_id = i;
+		memset(mc_qp_ctx->workers, 0,
+				RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS *
+				sizeof(struct scheduler_worker));
+		for (j = 0; j < sched_ctx->nb_workers; j++) {
+			mc_qp_ctx->workers[j].dev_id =
+					sched_ctx->workers[j].dev_id;
+			mc_qp_ctx->workers[j].qp_id = i;
 		}
 
-		mc_qp_ctx->nb_slaves = sched_ctx->nb_slaves;
+		mc_qp_ctx->nb_workers = sched_ctx->nb_workers;
 
 		mc_qp_ctx->last_enq_worker_idx = 0;
 		mc_qp_ctx->last_deq_worker_idx = 0;
@@ -347,7 +349,7 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 		mc_ctx->sched_enq_ring[i] = rte_ring_lookup(r_name);
 		if (!mc_ctx->sched_enq_ring[i]) {
 			mc_ctx->sched_enq_ring[i] = rte_ring_create(r_name,
-						PER_SLAVE_BUFF_SIZE,
+						PER_WORKER_BUFF_SIZE,
 						rte_socket_id(),
 						RING_F_SC_DEQ | RING_F_SP_ENQ);
 			if (!mc_ctx->sched_enq_ring[i]) {
@@ -361,7 +363,7 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 		mc_ctx->sched_deq_ring[i] = rte_ring_lookup(r_name);
 		if (!mc_ctx->sched_deq_ring[i]) {
 			mc_ctx->sched_deq_ring[i] = rte_ring_create(r_name,
-						PER_SLAVE_BUFF_SIZE,
+						PER_WORKER_BUFF_SIZE,
 						rte_socket_id(),
 						RING_F_SC_DEQ | RING_F_SP_ENQ);
 			if (!mc_ctx->sched_deq_ring[i]) {
@@ -387,8 +389,8 @@ exit:
 }
 
 static struct rte_cryptodev_scheduler_ops scheduler_mc_ops = {
-	slave_attach,
-	slave_detach,
+	worker_attach,
+	worker_detach,
 	scheduler_start,
 	scheduler_stop,
 	scheduler_config_qp,

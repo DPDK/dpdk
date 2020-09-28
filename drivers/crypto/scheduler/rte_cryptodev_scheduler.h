@@ -10,9 +10,9 @@
  *
  * RTE Cryptodev Scheduler Device
  *
- * The RTE Cryptodev Scheduler Device allows the aggregation of multiple (slave)
+ * The RTE Cryptodev Scheduler Device allows the aggregation of multiple worker
  * Cryptodevs into a single logical crypto device, and the scheduling the
- * crypto operations to the slaves based on the mode of the specified mode of
+ * crypto operations to the workers based on the mode of the specified mode of
  * operation specified and supported. This implementation supports 3 modes of
  * operation: round robin, packet-size based, and fail-over.
  */
@@ -25,8 +25,8 @@ extern "C" {
 #endif
 
 /** Maximum number of bonded devices per device */
-#ifndef RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES
-#define RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES	(8)
+#ifndef RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS
+#define RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS	(8)
 #endif
 
 /** Maximum number of multi-core worker cores */
@@ -106,34 +106,33 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
  *
  * @param scheduler_id
  *   The target scheduler device ID
- * @param slave_id
+ * @param worker_id
  *   Crypto device ID to be attached
  *
  * @return
- *   - 0 if the slave is attached.
+ *   - 0 if the worker is attached.
  *   - -ENOTSUP if the operation is not supported.
  *   - -EBUSY if device is started.
- *   - -ENOMEM if the scheduler's slave list is full.
+ *   - -ENOMEM if the scheduler's worker list is full.
  */
 int
-rte_cryptodev_scheduler_slave_attach(uint8_t scheduler_id, uint8_t slave_id);
+rte_cryptodev_scheduler_worker_attach(uint8_t scheduler_id, uint8_t worker_id);
 
 /**
  * Detach a crypto device from the scheduler
  *
  * @param scheduler_id
  *   The target scheduler device ID
- * @param slave_id
+ * @param worker_id
  *   Crypto device ID to be detached
  *
  * @return
- *   - 0 if the slave is detached.
+ *   - 0 if the worker is detached.
  *   - -ENOTSUP if the operation is not supported.
  *   - -EBUSY if device is started.
  */
 int
-rte_cryptodev_scheduler_slave_detach(uint8_t scheduler_id, uint8_t slave_id);
-
+rte_cryptodev_scheduler_worker_detach(uint8_t scheduler_id, uint8_t worker_id);
 
 /**
  * Set the scheduling mode
@@ -199,21 +198,21 @@ int
 rte_cryptodev_scheduler_ordering_get(uint8_t scheduler_id);
 
 /**
- * Get the attached slaves' count and/or ID
+ * Get the attached workers' count and/or ID
  *
  * @param scheduler_id
  *   The target scheduler device ID
- * @param slaves
- *   If successful, the function will write back all slaves' device IDs to it.
+ * @param workers
+ *   If successful, the function will write back all workers' device IDs to it.
  *   This parameter will either be an uint8_t array of
- *   RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES elements or NULL.
+ *   RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS elements or NULL.
  *
  * @return
- *   - non-negative number: the number of slaves attached
+ *   - non-negative number: the number of workers attached
  *   - -ENOTSUP if the operation is not supported.
  */
 int
-rte_cryptodev_scheduler_slaves_get(uint8_t scheduler_id, uint8_t *slaves);
+rte_cryptodev_scheduler_workers_get(uint8_t scheduler_id, uint8_t *workers);
 
 /**
  * Set the mode specific option

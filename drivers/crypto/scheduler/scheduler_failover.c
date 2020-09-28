@@ -8,20 +8,20 @@
 #include "rte_cryptodev_scheduler_operations.h"
 #include "scheduler_pmd_private.h"
 
-#define PRIMARY_SLAVE_IDX	0
-#define SECONDARY_SLAVE_IDX	1
-#define NB_FAILOVER_SLAVES	2
-#define SLAVE_SWITCH_MASK	(0x01)
+#define PRIMARY_WORKER_IDX	0
+#define SECONDARY_WORKER_IDX	1
+#define NB_FAILOVER_WORKERS	2
+#define WORKER_SWITCH_MASK	(0x01)
 
 struct fo_scheduler_qp_ctx {
-	struct scheduler_slave primary_slave;
-	struct scheduler_slave secondary_slave;
+	struct scheduler_worker primary_worker;
+	struct scheduler_worker secondary_worker;
 
 	uint8_t deq_idx;
 };
 
 static __rte_always_inline uint16_t
-failover_slave_enqueue(struct scheduler_slave *slave,
+failover_worker_enqueue(struct scheduler_worker *worker,
 		struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	uint16_t i, processed_ops;
@@ -29,9 +29,9 @@ failover_slave_enqueue(struct scheduler_slave *slave,
 	for (i = 0; i < nb_ops && i < 4; i++)
 		rte_prefetch0(ops[i]->sym->session);
 
-	processed_ops = rte_cryptodev_enqueue_burst(slave->dev_id,
-			slave->qp_id, ops, nb_ops);
-	slave->nb_inflight_cops += processed_ops;
+	processed_ops = rte_cryptodev_enqueue_burst(worker->dev_id,
+			worker->qp_id, ops, nb_ops);
+	worker->nb_inflight_cops += processed_ops;
 
 	return processed_ops;
 }
@@ -46,11 +46,12 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	if (unlikely(nb_ops == 0))
 		return 0;
 
-	enqueued_ops = failover_slave_enqueue(&qp_ctx->primary_slave,
+	enqueued_ops = failover_worker_enqueue(&qp_ctx->primary_worker,
 			ops, nb_ops);
 
 	if (enqueued_ops < nb_ops)
-		enqueued_ops += failover_slave_enqueue(&qp_ctx->secondary_slave,
+		enqueued_ops += failover_worker_enqueue(
+				&qp_ctx->secondary_worker,
 				&ops[enqueued_ops],
 				nb_ops - enqueued_ops);
 
@@ -79,28 +80,28 @@ schedule_dequeue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct fo_scheduler_qp_ctx *qp_ctx =
 			((struct scheduler_qp_ctx *)qp)->private_qp_ctx;
-	struct scheduler_slave *slaves[NB_FAILOVER_SLAVES] = {
-			&qp_ctx->primary_slave, &qp_ctx->secondary_slave};
-	struct scheduler_slave *slave = slaves[qp_ctx->deq_idx];
+	struct scheduler_worker *workers[NB_FAILOVER_WORKERS] = {
+			&qp_ctx->primary_worker, &qp_ctx->secondary_worker};
+	struct scheduler_worker *worker = workers[qp_ctx->deq_idx];
 	uint16_t nb_deq_ops = 0, nb_deq_ops2 = 0;
 
-	if (slave->nb_inflight_cops) {
-		nb_deq_ops = rte_cryptodev_dequeue_burst(slave->dev_id,
-			slave->qp_id, ops, nb_ops);
-		slave->nb_inflight_cops -= nb_deq_ops;
+	if (worker->nb_inflight_cops) {
+		nb_deq_ops = rte_cryptodev_dequeue_burst(worker->dev_id,
+			worker->qp_id, ops, nb_ops);
+		worker->nb_inflight_cops -= nb_deq_ops;
 	}
 
-	qp_ctx->deq_idx = (~qp_ctx->deq_idx) & SLAVE_SWITCH_MASK;
+	qp_ctx->deq_idx = (~qp_ctx->deq_idx) & WORKER_SWITCH_MASK;
 
 	if (nb_deq_ops == nb_ops)
 		return nb_deq_ops;
 
-	slave = slaves[qp_ctx->deq_idx];
+	worker = workers[qp_ctx->deq_idx];
 
-	if (slave->nb_inflight_cops) {
-		nb_deq_ops2 = rte_cryptodev_dequeue_burst(slave->dev_id,
-			slave->qp_id, &ops[nb_deq_ops], nb_ops - nb_deq_ops);
-		slave->nb_inflight_cops -= nb_deq_ops2;
+	if (worker->nb_inflight_cops) {
+		nb_deq_ops2 = rte_cryptodev_dequeue_burst(worker->dev_id,
+			worker->qp_id, &ops[nb_deq_ops], nb_ops - nb_deq_ops);
+		worker->nb_inflight_cops -= nb_deq_ops2;
 	}
 
 	return nb_deq_ops + nb_deq_ops2;
@@ -119,15 +120,15 @@ schedule_dequeue_ordering(void *qp, struct rte_crypto_op **ops,
 }
 
 static int
-slave_attach(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint8_t slave_id)
+worker_attach(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused uint8_t worker_id)
 {
 	return 0;
 }
 
 static int
-slave_detach(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint8_t slave_id)
+worker_detach(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused uint8_t worker_id)
 {
 	return 0;
 }
@@ -138,8 +139,8 @@ scheduler_start(struct rte_cryptodev *dev)
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint16_t i;
 
-	if (sched_ctx->nb_slaves < 2) {
-		CR_SCHED_LOG(ERR, "Number of slaves shall no less than 2");
+	if (sched_ctx->nb_workers < 2) {
+		CR_SCHED_LOG(ERR, "Number of workers shall no less than 2");
 		return -ENOMEM;
 	}
 
@@ -156,12 +157,12 @@ scheduler_start(struct rte_cryptodev *dev)
 			((struct scheduler_qp_ctx *)
 				dev->data->queue_pairs[i])->private_qp_ctx;
 
-		rte_memcpy(&qp_ctx->primary_slave,
-				&sched_ctx->slaves[PRIMARY_SLAVE_IDX],
-				sizeof(struct scheduler_slave));
-		rte_memcpy(&qp_ctx->secondary_slave,
-				&sched_ctx->slaves[SECONDARY_SLAVE_IDX],
-				sizeof(struct scheduler_slave));
+		rte_memcpy(&qp_ctx->primary_worker,
+				&sched_ctx->workers[PRIMARY_WORKER_IDX],
+				sizeof(struct scheduler_worker));
+		rte_memcpy(&qp_ctx->secondary_worker,
+				&sched_ctx->workers[SECONDARY_WORKER_IDX],
+				sizeof(struct scheduler_worker));
 	}
 
 	return 0;
@@ -198,8 +199,8 @@ scheduler_create_private_ctx(__rte_unused struct rte_cryptodev *dev)
 }
 
 static struct rte_cryptodev_scheduler_ops scheduler_fo_ops = {
-	slave_attach,
-	slave_detach,
+	worker_attach,
+	worker_detach,
 	scheduler_start,
 	scheduler_stop,
 	scheduler_config_qp,
@@ -210,8 +211,8 @@ static struct rte_cryptodev_scheduler_ops scheduler_fo_ops = {
 
 static struct rte_cryptodev_scheduler fo_scheduler = {
 		.name = "failover-scheduler",
-		.description = "scheduler which enqueues to the primary slave, "
-				"and only then enqueues to the secondary slave "
+		.description = "scheduler which enqueues to the primary worker, "
+				"and only then enqueues to the secondary worker "
 				"upon failing on enqueuing to primary",
 		.mode = CDEV_SCHED_MODE_FAILOVER,
 		.ops = &scheduler_fo_ops

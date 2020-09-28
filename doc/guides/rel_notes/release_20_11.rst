@@ -306,6 +306,17 @@ API Changes
 
 * vhost: Moved vDPA APIs from experimental to stable.
 
+* scheduler: Renamed functions ``rte_cryptodev_scheduler_slave_attach``,
+  ``rte_cryptodev_scheduler_slave_detach`` and
+  ``rte_cryptodev_scheduler_slaves_get`` to
+  ``rte_cryptodev_scheduler_worker_attach``,
+  ``rte_cryptodev_scheduler_worker_detach`` and
+  ``rte_cryptodev_scheduler_workers_get`` accordingly.
+
+* scheduler: Renamed the configuration value
+  ``RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES`` to
+  ``RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS``.
+
 * ipsec: ``RTE_SATP_LOG2_NUM`` has been dropped from ``enum`` and
   subsequently moved ``rte_ipsec`` lib from experimental to stable.
 

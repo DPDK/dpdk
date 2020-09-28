@@ -240,7 +240,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 					"crypto_scheduler")) {
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
 			uint32_t nb_slaves =
-				rte_cryptodev_scheduler_slaves_get(cdev_id,
+				rte_cryptodev_scheduler_workers_get(cdev_id,
 								NULL);
 
 			sessions_needed = enabled_cdev_count *

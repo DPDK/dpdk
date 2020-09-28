@@ -18,18 +18,18 @@ uint8_t cryptodev_scheduler_driver_id;
 
 struct scheduler_init_params {
 	struct rte_cryptodev_pmd_init_params def_p;
-	uint32_t nb_slaves;
+	uint32_t nb_workers;
 	enum rte_cryptodev_scheduler_mode mode;
 	char mode_param_str[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN];
 	uint32_t enable_ordering;
 	uint16_t wc_pool[RTE_MAX_LCORE];
 	uint16_t nb_wc;
-	char slave_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES]
+	char worker_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS]
 			[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN];
 };
 
 #define RTE_CRYPTODEV_VDEV_NAME			("name")
-#define RTE_CRYPTODEV_VDEV_SLAVE		("slave")
+#define RTE_CRYPTODEV_VDEV_WORKER		("worker")
 #define RTE_CRYPTODEV_VDEV_MODE			("mode")
 #define RTE_CRYPTODEV_VDEV_MODE_PARAM		("mode_param")
 #define RTE_CRYPTODEV_VDEV_ORDERING		("ordering")
@@ -40,7 +40,7 @@ struct scheduler_init_params {
 
 static const char * const scheduler_valid_params[] = {
 	RTE_CRYPTODEV_VDEV_NAME,
-	RTE_CRYPTODEV_VDEV_SLAVE,
+	RTE_CRYPTODEV_VDEV_WORKER,
 	RTE_CRYPTODEV_VDEV_MODE,
 	RTE_CRYPTODEV_VDEV_MODE_PARAM,
 	RTE_CRYPTODEV_VDEV_ORDERING,
@@ -193,31 +193,31 @@ cryptodev_scheduler_create(const char *name,
 		break;
 	}
 
-	for (i = 0; i < init_params->nb_slaves; i++) {
-		sched_ctx->init_slave_names[sched_ctx->nb_init_slaves] =
+	for (i = 0; i < init_params->nb_workers; i++) {
+		sched_ctx->init_worker_names[sched_ctx->nb_init_workers] =
 			rte_zmalloc_socket(
 				NULL,
 				RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN, 0,
 				SOCKET_ID_ANY);
 
-		if (!sched_ctx->init_slave_names[
-				sched_ctx->nb_init_slaves]) {
+		if (!sched_ctx->init_worker_names[
+				sched_ctx->nb_init_workers]) {
 			CR_SCHED_LOG(ERR, "driver %s: Insufficient memory",
 					name);
 			return -ENOMEM;
 		}
 
-		strncpy(sched_ctx->init_slave_names[
-					sched_ctx->nb_init_slaves],
-				init_params->slave_names[i],
+		strncpy(sched_ctx->init_worker_names[
+					sched_ctx->nb_init_workers],
+				init_params->worker_names[i],
 				RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN - 1);
 
-		sched_ctx->nb_init_slaves++;
+		sched_ctx->nb_init_workers++;
 	}
 
 	/*
 	 * Initialize capabilities structure as an empty structure,
-	 * in case device information is requested when no slaves are attached
+	 * in case device information is requested when no workers are attached
 	 */
 	sched_ctx->capabilities = rte_zmalloc_socket(NULL,
 			sizeof(struct rte_cryptodev_capabilities),
@@ -249,12 +249,12 @@ cryptodev_scheduler_remove(struct rte_vdev_device *vdev)
 
 	sched_ctx = dev->data->dev_private;
 
-	if (sched_ctx->nb_slaves) {
+	if (sched_ctx->nb_workers) {
 		uint32_t i;
 
-		for (i = 0; i < sched_ctx->nb_slaves; i++)
-			rte_cryptodev_scheduler_slave_detach(dev->data->dev_id,
-					sched_ctx->slaves[i].dev_id);
+		for (i = 0; i < sched_ctx->nb_workers; i++)
+			rte_cryptodev_scheduler_worker_detach(dev->data->dev_id,
+					sched_ctx->workers[i].dev_id);
 	}
 
 	return rte_cryptodev_pmd_destroy(dev);
@@ -374,19 +374,19 @@ parse_name_arg(const char *key __rte_unused,
 	return 0;
 }
 
-/** Parse slave */
+/** Parse worker */
 static int
-parse_slave_arg(const char *key __rte_unused,
+parse_worker_arg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
 	struct scheduler_init_params *param = extra_args;
 
-	if (param->nb_slaves >= RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES) {
-		CR_SCHED_LOG(ERR, "Too many slaves.");
+	if (param->nb_workers >= RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS) {
+		CR_SCHED_LOG(ERR, "Too many workers.");
 		return -ENOMEM;
 	}
 
-	strncpy(param->slave_names[param->nb_slaves++], value,
+	strncpy(param->worker_names[param->nb_workers++], value,
 			RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN - 1);
 
 	return 0;
@@ -498,8 +498,8 @@ scheduler_parse_init_params(struct scheduler_init_params *params,
 		if (ret < 0)
 			goto free_kvlist;
 
-		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_SLAVE,
-				&parse_slave_arg, params);
+		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_WORKER,
+				&parse_worker_arg, params);
 		if (ret < 0)
 			goto free_kvlist;
 
@@ -534,10 +534,10 @@ cryptodev_scheduler_probe(struct rte_vdev_device *vdev)
 			rte_socket_id(),
 			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS
 		},
-		.nb_slaves = 0,
+		.nb_workers = 0,
 		.mode = CDEV_SCHED_MODE_NOT_SET,
 		.enable_ordering = 0,
-		.slave_names = { {0} }
+		.worker_names = { {0} }
 	};
 	const char *name;
 
@@ -566,7 +566,7 @@ RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_SCHEDULER_PMD,
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SCHEDULER_PMD,
 	"max_nb_queue_pairs=<int> "
 	"socket_id=<int> "
-	"slave=<name>");
+	"worker=<name>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(scheduler_crypto_drv,
 		cryptodev_scheduler_pmd_drv.driver,
 		cryptodev_scheduler_driver_id);

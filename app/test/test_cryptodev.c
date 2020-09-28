@@ -479,29 +479,29 @@ testsuite_setup(void)
 	char vdev_args[VDEV_ARGS_SIZE] = {""};
 	char temp_str[VDEV_ARGS_SIZE] = {"mode=multi-core,"
 		"ordering=enable,name=cryptodev_test_scheduler,corelist="};
-	uint16_t slave_core_count = 0;
+	uint16_t worker_core_count = 0;
 	uint16_t socket_id = 0;
 
 	if (gbl_driver_id == rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD))) {
 
-		/* Identify the Slave Cores
-		 * Use 2 slave cores for the device args
+		/* Identify the Worker Cores
+		 * Use 2 worker cores for the device args
 		 */
 		RTE_LCORE_FOREACH_SLAVE(i) {
-			if (slave_core_count > 1)
+			if (worker_core_count > 1)
 				break;
 			snprintf(vdev_args, sizeof(vdev_args),
 					"%s%d", temp_str, i);
 			strcpy(temp_str, vdev_args);
 			strlcat(temp_str, ";", sizeof(temp_str));
-			slave_core_count++;
+			worker_core_count++;
 			socket_id = rte_lcore_to_socket_id(i);
 		}
-		if (slave_core_count != 2) {
+		if (worker_core_count != 2) {
 			RTE_LOG(ERR, USER1,
 				"Cryptodev scheduler test require at least "
-				"two slave cores to run. "
+				"two worker cores to run. "
 				"Please use the correct coremask.\n");
 			return TEST_FAILED;
 		}
@@ -11712,7 +11712,7 @@ test_chacha20_poly1305_decrypt_test_case_rfc8439(void)
 
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
 
-/* global AESNI slave IDs for the scheduler test */
+/* global AESNI worker IDs for the scheduler test */
 uint8_t aesni_ids[2];
 
 static int
@@ -11810,7 +11810,7 @@ test_scheduler_attach_slave_op(void)
 		ts_params->qp_conf.mp_session_private =
 				ts_params->session_priv_mpool;
 
-		ret = rte_cryptodev_scheduler_slave_attach(sched_id,
+		ret = rte_cryptodev_scheduler_worker_attach(sched_id,
 				(uint8_t)i);
 
 		TEST_ASSERT(ret == 0,
@@ -11834,7 +11834,7 @@ test_scheduler_detach_slave_op(void)
 	int ret;
 
 	for (i = 0; i < 2; i++) {
-		ret = rte_cryptodev_scheduler_slave_detach(sched_id,
+		ret = rte_cryptodev_scheduler_worker_detach(sched_id,
 				aesni_ids[i]);
 		TEST_ASSERT(ret == 0,
 			"Failed to detach device %u", aesni_ids[i]);

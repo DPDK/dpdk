@@ -9,11 +9,11 @@
 #include "scheduler_pmd_private.h"
 
 struct rr_scheduler_qp_ctx {
-	struct scheduler_slave slaves[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
-	uint32_t nb_slaves;
+	struct scheduler_worker workers[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS];
+	uint32_t nb_workers;
 
-	uint32_t last_enq_slave_idx;
-	uint32_t last_deq_slave_idx;
+	uint32_t last_enq_worker_idx;
+	uint32_t last_deq_worker_idx;
 };
 
 static uint16_t
@@ -21,8 +21,8 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct rr_scheduler_qp_ctx *rr_qp_ctx =
 			((struct scheduler_qp_ctx *)qp)->private_qp_ctx;
-	uint32_t slave_idx = rr_qp_ctx->last_enq_slave_idx;
-	struct scheduler_slave *slave = &rr_qp_ctx->slaves[slave_idx];
+	uint32_t worker_idx = rr_qp_ctx->last_enq_worker_idx;
+	struct scheduler_worker *worker = &rr_qp_ctx->workers[worker_idx];
 	uint16_t i, processed_ops;
 
 	if (unlikely(nb_ops == 0))
@@ -31,13 +31,13 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	for (i = 0; i < nb_ops && i < 4; i++)
 		rte_prefetch0(ops[i]->sym->session);
 
-	processed_ops = rte_cryptodev_enqueue_burst(slave->dev_id,
-			slave->qp_id, ops, nb_ops);
+	processed_ops = rte_cryptodev_enqueue_burst(worker->dev_id,
+			worker->qp_id, ops, nb_ops);
 
-	slave->nb_inflight_cops += processed_ops;
+	worker->nb_inflight_cops += processed_ops;
 
-	rr_qp_ctx->last_enq_slave_idx += 1;
-	rr_qp_ctx->last_enq_slave_idx %= rr_qp_ctx->nb_slaves;
+	rr_qp_ctx->last_enq_worker_idx += 1;
+	rr_qp_ctx->last_enq_worker_idx %= rr_qp_ctx->nb_workers;
 
 	return processed_ops;
 }
@@ -64,34 +64,35 @@ schedule_dequeue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct rr_scheduler_qp_ctx *rr_qp_ctx =
 			((struct scheduler_qp_ctx *)qp)->private_qp_ctx;
-	struct scheduler_slave *slave;
-	uint32_t last_slave_idx = rr_qp_ctx->last_deq_slave_idx;
+	struct scheduler_worker *worker;
+	uint32_t last_worker_idx = rr_qp_ctx->last_deq_worker_idx;
 	uint16_t nb_deq_ops;
 
-	if (unlikely(rr_qp_ctx->slaves[last_slave_idx].nb_inflight_cops == 0)) {
+	if (unlikely(rr_qp_ctx->workers[last_worker_idx].nb_inflight_cops
+			== 0)) {
 		do {
-			last_slave_idx += 1;
+			last_worker_idx += 1;
 
-			if (unlikely(last_slave_idx >= rr_qp_ctx->nb_slaves))
-				last_slave_idx = 0;
+			if (unlikely(last_worker_idx >= rr_qp_ctx->nb_workers))
+				last_worker_idx = 0;
 			/* looped back, means no inflight cops in the queue */
-			if (last_slave_idx == rr_qp_ctx->last_deq_slave_idx)
+			if (last_worker_idx == rr_qp_ctx->last_deq_worker_idx)
 				return 0;
-		} while (rr_qp_ctx->slaves[last_slave_idx].nb_inflight_cops
+		} while (rr_qp_ctx->workers[last_worker_idx].nb_inflight_cops
 				== 0);
 	}
 
-	slave = &rr_qp_ctx->slaves[last_slave_idx];
+	worker = &rr_qp_ctx->workers[last_worker_idx];
 
-	nb_deq_ops = rte_cryptodev_dequeue_burst(slave->dev_id,
-			slave->qp_id, ops, nb_ops);
+	nb_deq_ops = rte_cryptodev_dequeue_burst(worker->dev_id,
+			worker->qp_id, ops, nb_ops);
 
-	last_slave_idx += 1;
-	last_slave_idx %= rr_qp_ctx->nb_slaves;
+	last_worker_idx += 1;
+	last_worker_idx %= rr_qp_ctx->nb_workers;
 
-	rr_qp_ctx->last_deq_slave_idx = last_slave_idx;
+	rr_qp_ctx->last_deq_worker_idx = last_worker_idx;
 
-	slave->nb_inflight_cops -= nb_deq_ops;
+	worker->nb_inflight_cops -= nb_deq_ops;
 
 	return nb_deq_ops;
 }
@@ -109,15 +110,15 @@ schedule_dequeue_ordering(void *qp, struct rte_crypto_op **ops,
 }
 
 static int
-slave_attach(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint8_t slave_id)
+worker_attach(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused uint8_t worker_id)
 {
 	return 0;
 }
 
 static int
-slave_detach(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint8_t slave_id)
+worker_detach(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused uint8_t worker_id)
 {
 	return 0;
 }
@@ -142,19 +143,19 @@ scheduler_start(struct rte_cryptodev *dev)
 				qp_ctx->private_qp_ctx;
 		uint32_t j;
 
-		memset(rr_qp_ctx->slaves, 0,
-				RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES *
-				sizeof(struct scheduler_slave));
-		for (j = 0; j < sched_ctx->nb_slaves; j++) {
-			rr_qp_ctx->slaves[j].dev_id =
-					sched_ctx->slaves[j].dev_id;
-			rr_qp_ctx->slaves[j].qp_id = i;
+		memset(rr_qp_ctx->workers, 0,
+				RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS *
+				sizeof(struct scheduler_worker));
+		for (j = 0; j < sched_ctx->nb_workers; j++) {
+			rr_qp_ctx->workers[j].dev_id =
+					sched_ctx->workers[j].dev_id;
+			rr_qp_ctx->workers[j].qp_id = i;
 		}
 
-		rr_qp_ctx->nb_slaves = sched_ctx->nb_slaves;
+		rr_qp_ctx->nb_workers = sched_ctx->nb_workers;
 
-		rr_qp_ctx->last_enq_slave_idx = 0;
-		rr_qp_ctx->last_deq_slave_idx = 0;
+		rr_qp_ctx->last_enq_worker_idx = 0;
+		rr_qp_ctx->last_deq_worker_idx = 0;
 	}
 
 	return 0;
@@ -191,8 +192,8 @@ scheduler_create_private_ctx(__rte_unused struct rte_cryptodev *dev)
 }
 
 static struct rte_cryptodev_scheduler_ops scheduler_rr_ops = {
-	slave_attach,
-	slave_detach,
+	worker_attach,
+	worker_detach,
 	scheduler_start,
 	scheduler_stop,
 	scheduler_config_qp,
@@ -204,7 +205,7 @@ static struct rte_cryptodev_scheduler_ops scheduler_rr_ops = {
 static struct rte_cryptodev_scheduler scheduler = {
 		.name = "roundrobin-scheduler",
 		.description = "scheduler which will round robin burst across "
-				"slave crypto devices",
+				"worker crypto devices",
 		.mode = CDEV_SCHED_MODE_ROUNDROBIN,
 		.ops = &scheduler_rr_ops
 };
