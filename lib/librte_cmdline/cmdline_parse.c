@@ -15,7 +15,7 @@
 
 #include <rte_string_fns.h>
 
-#include "cmdline.h"
+#include "cmdline_private.h"
 
 #ifdef RTE_LIBRTE_CMDLINE_DEBUG
 #define debug_printf printf

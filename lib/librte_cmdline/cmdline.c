@@ -18,6 +18,10 @@
 
 #include "cmdline_private.h"
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+#define write _write
+#endif
+
 static void
 cmdline_valid_buffer(struct rdline *rdl, const char *buf,
 		     __rte_unused unsigned int size)

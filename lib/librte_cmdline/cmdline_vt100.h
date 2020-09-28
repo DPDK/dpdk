@@ -31,7 +31,11 @@ extern "C" {
 #define vt100_multi_right  "\033\133%uC"
 #define vt100_multi_left   "\033\133%uD"
 #define vt100_suppr        "\033\133\063\176"
+#ifndef RTE_EXEC_ENV_WINDOWS
 #define vt100_home         "\033M\033E"
+#else
+#define vt100_home         "\033M\033[E"
+#endif
 #define vt100_word_left    "\033\142"
 #define vt100_word_right   "\033\146"
 

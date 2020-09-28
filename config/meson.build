@@ -275,6 +275,8 @@ if is_windows
 		add_project_arguments('-D__USE_MINGW_ANSI_STDIO', language: 'c')
 	endif
 
+	add_project_link_arguments('-lws2_32', language: 'c')
+
 	# Contrary to docs, VirtualAlloc2() is exported by mincore.lib
 	# in Windows SDK, while MinGW exports it by advapi32.a.
 	if is_ms_linker
