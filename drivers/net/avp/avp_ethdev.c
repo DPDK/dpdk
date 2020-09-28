@@ -957,8 +957,6 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &avp_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &avp_recv_pkts;
 	eth_dev->tx_pkt_burst = &avp_xmit_pkts;
-	/* Let rte_eth_dev_close() release the port resources */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		/*

@@ -3209,7 +3209,6 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	}
 
 	internals = eth_dev->data->dev_private;
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
 

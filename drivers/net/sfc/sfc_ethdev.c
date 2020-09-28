@@ -343,7 +343,7 @@ sfc_dev_close(struct rte_eth_dev *dev)
 	}
 
 	/*
-	 * Cleanup all resources in accordance with RTE_ETH_DEV_CLOSE_REMOVE.
+	 * Cleanup all resources.
 	 * Rollback primary process sfc_eth_dev_init() below.
 	 */
 
@@ -2191,8 +2191,6 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 		goto fail_kvargs_parse;
 
 	sfc_log_init(sa, "entry");
-
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	dev->data->mac_addrs = rte_zmalloc("sfc", RTE_ETHER_ADDR_LEN, 0);
 	if (dev->data->mac_addrs == NULL) {

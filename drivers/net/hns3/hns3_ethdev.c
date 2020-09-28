@@ -5695,11 +5695,6 @@ hns3_dev_init(struct rte_eth_dev *eth_dev)
 			    &eth_dev->data->mac_addrs[0]);
 
 	hw->adapter_state = HNS3_NIC_INITIALIZED;
-	/*
-	 * Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	if (rte_atomic16_read(&hns->hw.reset.schedule) == SCHEDULE_PENDING) {
 		hns3_err(hw, "Reschedule reset service after dev_init");

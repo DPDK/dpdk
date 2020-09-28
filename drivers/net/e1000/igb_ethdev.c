@@ -841,11 +841,6 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
-	/* Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
 
@@ -996,11 +991,6 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 			RTE_ETHER_ADDR_LEN * hw->mac.rar_entry_count);
 		return -ENOMEM;
 	}
-
-	/* Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	/* Generate a random MAC address, if none was assigned by PF. */
 	if (rte_is_zero_ether_addr(perm_addr)) {

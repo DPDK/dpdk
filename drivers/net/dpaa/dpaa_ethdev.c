@@ -2127,7 +2127,6 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 
 	qman_ern_register_cb(dpaa_free_mbuf);
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	if (dpaa_drv->drv_flags & RTE_DPAA_DRV_INTR_LSC)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 

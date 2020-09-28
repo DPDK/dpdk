@@ -2793,7 +2793,6 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 	dpaa2_dev->eth_dev = eth_dev;
 	eth_dev->data->rx_mbuf_alloc_failed = 0;
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	if (dpaa2_drv->drv_flags & RTE_DPAA2_DRV_INTR_LSC)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 

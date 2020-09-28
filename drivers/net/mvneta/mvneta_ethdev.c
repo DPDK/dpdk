@@ -834,9 +834,6 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	mvneta_set_tx_function(eth_dev);
 	eth_dev->dev_ops = &mvneta_ops;
 
-	/* Flag to call rte_eth_dev_release_port() in rte_eth_dev_close(). */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
 out_free:

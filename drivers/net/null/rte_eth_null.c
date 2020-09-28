@@ -548,7 +548,6 @@ eth_dev_null_create(struct rte_vdev_device *dev, struct pmd_options *args)
 	data->mac_addrs = &internals->eth_addr;
 	data->promiscuous = 1;
 	data->all_multicast = 1;
-	data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	eth_dev->dev_ops = &ops;
 

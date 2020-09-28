@@ -1171,8 +1171,6 @@ err_secondary:
 		err = ENOMEM;
 		goto error;
 	}
-	/* Flag to call rte_eth_dev_release_port() in rte_eth_dev_close(). */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	if (priv->representor) {
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 		eth_dev->data->representor_id = priv->representor_id;

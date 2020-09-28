@@ -1959,7 +1959,6 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	eth_dev->dev_ops = &axgbe_eth_dev_ops;
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	eth_dev->rx_descriptor_status = axgbe_dev_rx_descriptor_status;
 	eth_dev->tx_descriptor_status = axgbe_dev_tx_descriptor_status;

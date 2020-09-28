@@ -1586,11 +1586,6 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->adapter_stopped = 1;
 	hw->adapter_closed = 0;
 
-	/* Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	if(i40evf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
 		return -1;

@@ -390,7 +390,6 @@ pmd_ethdev_register(struct rte_vdev_device *vdev,
 	dev->device = &vdev->device;
 
 	/* dev->data */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	dev->data->dev_private = dev_private;
 	dev->data->dev_link.link_speed = ETH_SPEED_NUM_100G;
 	dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;

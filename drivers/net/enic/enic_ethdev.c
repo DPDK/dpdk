@@ -1292,8 +1292,6 @@ static int eth_enic_dev_init(struct rte_eth_dev *eth_dev,
 	enic->port_id = eth_dev->data->port_id;
 	enic->rte_dev = eth_dev;
 	enic->dev_data = eth_dev->data;
-	/* Let rte_eth_dev_close() release the port resources */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pdev);

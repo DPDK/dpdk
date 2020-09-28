@@ -1699,11 +1699,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
 					&dev->data->mac_addrs[0]);
 
-	/* Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	/* Init dcb to sw mode by default */
 	ret = i40e_dcb_init_configure(dev, TRUE);
 	if (ret != I40E_SUCCESS) {

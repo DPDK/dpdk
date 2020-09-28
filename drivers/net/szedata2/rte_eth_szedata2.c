@@ -1488,9 +1488,6 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev, struct port_info *pi)
 	PMD_INIT_LOG(INFO, "Initializing eth_dev %s (driver %s)", data->name,
 			RTE_STR(RTE_SZEDATA2_DRIVER_NAME));
 
-	/* Let rte_eth_dev_close() release the port resources */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	/* Fill internal private structure. */
 	internals->dev = dev;
 	/* Get index of szedata2 device file and create path to device file */

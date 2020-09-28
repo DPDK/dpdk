@@ -604,7 +604,7 @@ F: drivers/net/thunderx/
 F: doc/guides/nics/thunderx.rst
 F: doc/guides/nics/features/thunderx.ini
 
-Cavium LiquidIO
+Cavium LiquidIO - UNMAINTAINED
 M: Shijith Thotton <sthotton@marvell.com>
 M: Srisivasubramanian Srinivasan <srinivasan@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
@@ -793,7 +793,7 @@ F: drivers/net/nfb/
 F: doc/guides/nics/nfb.rst
 F: doc/guides/nics/features/nfb.ini
 
-Netronome nfp
+Netronome nfp - UNMAINTAINED
 M: Heinrich Kuhn <heinrich.kuhn@netronome.com>
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
@@ -829,7 +829,7 @@ F: doc/guides/nics/pfe.rst
 F: drivers/net/pfe/
 F: doc/guides/nics/features/pfe.ini
 
-Pensando ionic
+Pensando ionic - UNMAINTAINED
 M: Alfredo Cardigliano <cardigliano@ntop.org>
 F: drivers/net/ionic/
 F: doc/guides/nics/ionic.rst

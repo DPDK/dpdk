@@ -358,7 +358,6 @@ do_eth_dev_ring_create(const char *name,
 
 	eth_dev->dev_ops = &ops;
 	data->numa_node = numa_node;
-	data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	/* finally assign rx and tx ops */
 	eth_dev->rx_pkt_burst = eth_ring_rx;

@@ -3129,12 +3129,6 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 		goto mc_addr_fail;
 	}
 
-	/*
-	 * Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	/* create hardware nic_device */
 	rc = hinic_nic_dev_create(eth_dev);
 	if (rc) {

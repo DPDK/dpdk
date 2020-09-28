@@ -457,9 +457,6 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		rte_kvargs_free(kvlist);
 	}
 
-	/* Let rte_eth_dev_close() release the port resources */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	/*
 	 * Get number of available DMA RX and TX queues, which is maximum
 	 * number of queues that can be created and store it in private device

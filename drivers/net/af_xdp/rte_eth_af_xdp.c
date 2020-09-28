@@ -1448,8 +1448,6 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	eth_dev->dev_ops = &ops;
 	eth_dev->rx_pkt_burst = eth_af_xdp_rx;
 	eth_dev->tx_pkt_burst = eth_af_xdp_tx;
-	/* Let rte_eth_dev_close() release the port resources. */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 	AF_XDP_LOG(INFO, "Zero copy between umem and mbuf enabled.\n");

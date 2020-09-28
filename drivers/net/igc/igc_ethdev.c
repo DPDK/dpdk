@@ -1323,11 +1323,6 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 		goto err_late;
 	}
 
-	/* Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	hw->mac.get_link_status = 1;
 	igc->stopped = 0;
 

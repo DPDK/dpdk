@@ -1334,7 +1334,6 @@ eth_from_pcaps(struct rte_vdev_device *vdev,
 	else
 		eth_dev->tx_pkt_burst = eth_tx_drop;
 
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
 }

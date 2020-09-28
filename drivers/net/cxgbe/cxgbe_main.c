@@ -2142,8 +2142,6 @@ allocate_mac:
 			goto out_free;
 		}
 
-		pi->eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 		if (i > 0) {
 			/* First port will be notified by upper layer */
 			rte_eth_dev_probing_finish(eth_dev);

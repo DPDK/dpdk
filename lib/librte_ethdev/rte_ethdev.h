@@ -1654,11 +1654,6 @@ struct rte_eth_dev_owner {
 	char name[RTE_ETH_MAX_OWNER_NAME_LEN]; /**< The owner name. */
 };
 
-/**
- * Port is released (i.e. totally freed and data erased) on close.
- * Temporary flag for PMD migration to new rte_eth_dev_close() behaviour.
- */
-#define RTE_ETH_DEV_CLOSE_REMOVE 0x0001
 /** Device supports link state interrupt */
 #define RTE_ETH_DEV_INTR_LSC     0x0002
 /** Device is a bonded slave */
@@ -2282,8 +2277,7 @@ int rte_eth_dev_set_link_down(uint16_t port_id);
 
 /**
  * Close a stopped Ethernet device. The device cannot be restarted!
- * The function frees all port resources if the driver supports
- * the flag RTE_ETH_DEV_CLOSE_REMOVE.
+ * The function frees all port resources.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.

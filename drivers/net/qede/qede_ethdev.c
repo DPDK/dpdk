@@ -2746,11 +2746,6 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		qed_ops->sriov_configure(edev, pci_dev->max_vfs);
 	}
 
-	/* Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	DP_INFO(edev, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
 		adapter->primary_mac.addr_bytes[0],
 		adapter->primary_mac.addr_bytes[1],

@@ -2198,11 +2198,6 @@ ice_dev_init(struct rte_eth_dev *dev)
 		goto err_init_mac;
 	}
 
-	/* Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-
 	ret = ice_res_pool_init(&pf->msix_pool, 1,
 				hw->func_caps.common_cap.num_msix_vectors - 1);
 	if (ret) {

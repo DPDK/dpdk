@@ -1027,7 +1027,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			ERROR("can not allocate rte ethdev");
 			goto port_error;
 		}
-		eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 		eth_dev->data->dev_private = priv;
 		eth_dev->data->mac_addrs = priv->mac;
 		eth_dev->device = &pci_dev->device;

@@ -211,10 +211,6 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 	PMD_DRV_LOG(INFO, "calling bnxt_print_link_info\n");
 	bnxt_print_link_info(eth_dev);
 
-	/* Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	PMD_DRV_LOG(INFO,
 		    "Switch domain id %d: Representor Device %d init done\n",
 		    vf_rep_bp->switch_domain_id, vf_rep_bp->vf_id);

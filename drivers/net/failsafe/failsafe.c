@@ -180,7 +180,6 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		ERROR("Unable to allocate rte_eth_dev");
 		return -1;
 	}
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	priv = PRIV(dev);
 	priv->data = dev->data;
 	priv->rxp = FS_RX_PROXY_INIT;
