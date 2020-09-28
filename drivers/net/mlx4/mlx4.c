@@ -400,6 +400,8 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		MLX4_ASSERT(priv->ctx == NULL);
 	mlx4_intr_uninstall(priv);
 	memset(priv, 0, sizeof(*priv));
+	/* mac_addrs must not be freed because part of dev_private */
+	dev->data->mac_addrs = NULL;
 	return 0;
 }
 
@@ -1025,6 +1027,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			ERROR("can not allocate rte ethdev");
 			goto port_error;
 		}
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 		eth_dev->data->dev_private = priv;
 		eth_dev->data->mac_addrs = priv->mac;
 		eth_dev->device = &pci_dev->device;
