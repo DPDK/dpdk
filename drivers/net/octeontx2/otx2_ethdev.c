@@ -2698,7 +2698,7 @@ nix_remove(struct rte_pci_device *pci_dev)
 		if (rc)
 			return rc;
 
-		rte_eth_dev_pci_release(eth_dev);
+		rte_eth_dev_release_port(eth_dev);
 	}
 
 	/* Nothing to be done for secondary processes */

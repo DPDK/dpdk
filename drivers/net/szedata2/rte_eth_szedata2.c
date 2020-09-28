@@ -1802,7 +1802,7 @@ szedata2_eth_dev_release_interval(struct rte_eth_dev **eth_devs,
 
 	for (i = from; i < to; i++) {
 		rte_szedata2_eth_dev_uninit(eth_devs[i]);
-		rte_eth_dev_pci_release(eth_devs[i]);
+		rte_eth_dev_release_port(eth_devs[i]);
 	}
 }
 
@@ -1853,7 +1853,7 @@ static int szedata2_eth_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Failed to init eth_dev for port %u",
 					i);
-			rte_eth_dev_pci_release(eth_devs[i]);
+			rte_eth_dev_release_port(eth_devs[i]);
 			szedata2_eth_dev_release_interval(eth_devs, 0, i);
 			rte_free(list_entry);
 			return ret;
@@ -1922,7 +1922,7 @@ static int szedata2_eth_pci_remove(struct rte_pci_device *pci_dev)
 			retval = retval ? retval : ret;
 		}
 
-		rte_eth_dev_pci_release(eth_dev);
+		rte_eth_dev_release_port(eth_dev);
 	}
 
 	return retval;

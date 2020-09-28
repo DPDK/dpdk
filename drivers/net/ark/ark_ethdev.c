@@ -105,7 +105,7 @@ eth_ark_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	ret = eth_ark_dev_init(eth_dev);
 	if (ret)
-		rte_eth_dev_pci_release(eth_dev);
+		rte_eth_dev_release_port(eth_dev);
 
 	return ret;
 }

@@ -107,16 +107,6 @@ rte_eth_dev_pci_allocate(struct rte_pci_device *dev, size_t private_data_size)
 	return eth_dev;
 }
 
-static inline void
-rte_eth_dev_pci_release(struct rte_eth_dev *eth_dev)
-{
-	eth_dev->device = NULL;
-	eth_dev->intr_handle = NULL;
-
-	/* free ether device */
-	rte_eth_dev_release_port(eth_dev);
-}
-
 typedef int (*eth_dev_pci_callback_t)(struct rte_eth_dev *eth_dev);
 
 /**
@@ -138,7 +128,7 @@ rte_eth_dev_pci_generic_probe(struct rte_pci_device *pci_dev,
 	RTE_FUNC_PTR_OR_ERR_RET(*dev_init, -EINVAL);
 	ret = dev_init(eth_dev);
 	if (ret)
-		rte_eth_dev_pci_release(eth_dev);
+		rte_eth_dev_release_port(eth_dev);
 	else
 		rte_eth_dev_probing_finish(eth_dev);
 
@@ -167,7 +157,7 @@ rte_eth_dev_pci_generic_remove(struct rte_pci_device *pci_dev,
 			return ret;
 	}
 
-	rte_eth_dev_pci_release(eth_dev);
+	rte_eth_dev_release_port(eth_dev);
 	return 0;
 }
 
