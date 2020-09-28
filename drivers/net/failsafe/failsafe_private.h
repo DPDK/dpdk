@@ -236,6 +236,7 @@ int failsafe_eal_uninit(struct rte_eth_dev *dev);
 
 int failsafe_eth_dev_state_sync(struct rte_eth_dev *dev);
 void failsafe_eth_dev_unregister_callbacks(struct sub_device *sdev);
+int failsafe_eth_dev_close(struct rte_eth_dev *dev);
 void failsafe_dev_remove(struct rte_eth_dev *dev);
 void failsafe_stats_increment(struct rte_eth_stats *to,
 				struct rte_eth_stats *from);

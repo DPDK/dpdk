@@ -239,29 +239,6 @@ fs_dev_set_link_down(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static void fs_dev_free_queues(struct rte_eth_dev *dev);
-static int
-fs_dev_close(struct rte_eth_dev *dev)
-{
-	struct sub_device *sdev;
-	uint8_t i;
-
-	fs_lock(dev, 0);
-	failsafe_hotplug_alarm_cancel(dev);
-	if (PRIV(dev)->state == DEV_STARTED)
-		dev->dev_ops->dev_stop(dev);
-	PRIV(dev)->state = DEV_ACTIVE - 1;
-	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
-		DEBUG("Closing sub_device %d", i);
-		failsafe_eth_dev_unregister_callbacks(sdev);
-		rte_eth_dev_close(PORT_ID(sdev));
-		sdev->state = DEV_ACTIVE - 1;
-	}
-	fs_dev_free_queues(dev);
-	fs_unlock(dev, 0);
-	return 0;
-}
-
 static int
 fs_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
@@ -654,6 +631,46 @@ fs_dev_free_queues(struct rte_eth_dev *dev)
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;
+}
+
+int
+failsafe_eth_dev_close(struct rte_eth_dev *dev)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret;
+
+	fs_lock(dev, 0);
+	failsafe_hotplug_alarm_cancel(dev);
+	if (PRIV(dev)->state == DEV_STARTED)
+		dev->dev_ops->dev_stop(dev);
+	PRIV(dev)->state = DEV_ACTIVE - 1;
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		DEBUG("Closing sub_device %d", i);
+		failsafe_eth_dev_unregister_callbacks(sdev);
+		rte_eth_dev_close(PORT_ID(sdev));
+		sdev->state = DEV_ACTIVE - 1;
+	}
+	rte_eth_dev_callback_unregister(RTE_ETH_ALL, RTE_ETH_EVENT_NEW,
+					failsafe_eth_new_event_callback, dev);
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		fs_unlock(dev, 0);
+		return 0;
+	}
+	fs_dev_free_queues(dev);
+	ret = failsafe_eal_uninit(dev);
+	if (ret)
+		ERROR("Error while uninitializing sub-EAL");
+	failsafe_args_free(dev);
+	rte_free(PRIV(dev)->subs);
+	rte_free(PRIV(dev)->mcast_addrs);
+	/* mac_addrs must not be freed alone because part of dev_private */
+	dev->data->mac_addrs = NULL;
+	fs_unlock(dev, 0);
+	ret = pthread_mutex_destroy(&PRIV(dev)->hotplug_mutex);
+	if (ret)
+		ERROR("Error while destroying hotplug mutex");
+	return 0;
 }
 
 static int
@@ -1484,7 +1501,7 @@ const struct eth_dev_ops failsafe_ops = {
 	.dev_stop = fs_dev_stop,
 	.dev_set_link_down = fs_dev_set_link_down,
 	.dev_set_link_up = fs_dev_set_link_up,
-	.dev_close = fs_dev_close,
+	.dev_close = failsafe_eth_dev_close,
 	.promiscuous_enable = fs_promiscuous_enable,
 	.promiscuous_disable = fs_promiscuous_disable,
 	.allmulticast_enable = fs_allmulticast_enable,

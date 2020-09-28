@@ -60,12 +60,6 @@ fs_sub_device_alloc(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
-fs_sub_device_free(struct rte_eth_dev *dev)
-{
-	rte_free(PRIV(dev)->subs);
-}
-
 static void fs_hotplug_alarm(void *arg);
 
 int
@@ -186,6 +180,7 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		ERROR("Unable to allocate rte_eth_dev");
 		return -1;
 	}
+	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	priv = PRIV(dev);
 	priv->data = dev->data;
 	priv->rxp = FS_RX_PROXY_INIT;
@@ -285,7 +280,7 @@ unregister_new_callback:
 free_args:
 	failsafe_args_free(dev);
 free_subs:
-	fs_sub_device_free(dev);
+	rte_free(PRIV(dev)->subs);
 free_dev:
 	/* mac_addrs must not be freed alone because part of dev_private */
 	dev->data->mac_addrs = NULL;
@@ -301,20 +296,8 @@ fs_rte_eth_free(const char *name)
 
 	dev = rte_eth_dev_allocated(name);
 	if (dev == NULL)
-		return -ENODEV;
-	rte_eth_dev_callback_unregister(RTE_ETH_ALL, RTE_ETH_EVENT_NEW,
-					failsafe_eth_new_event_callback, dev);
-	ret = failsafe_eal_uninit(dev);
-	if (ret)
-		ERROR("Error while uninitializing sub-EAL");
-	failsafe_args_free(dev);
-	fs_sub_device_free(dev);
-	ret = pthread_mutex_destroy(&PRIV(dev)->hotplug_mutex);
-	if (ret)
-		ERROR("Error while destroying hotplug mutex");
-	rte_free(PRIV(dev)->mcast_addrs);
-	/* mac_addrs must not be freed alone because part of dev_private */
-	dev->data->mac_addrs = NULL;
+		return 0; /* port already released */
+	ret = failsafe_eth_dev_close(dev);
 	rte_eth_dev_release_port(dev);
 	return ret;
 }
