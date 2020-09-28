@@ -11,7 +11,6 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <netinet/in.h>
-#include <termios.h>
 #ifdef RTE_EXEC_ENV_FREEBSD
 #include <sys/socket.h>
 #endif

@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
-#include <termios.h>
 #include <sys/queue.h>
 
 #include <cmdline_rdline.h>
