@@ -514,11 +514,11 @@ next_slot:
 
 /* Supply master with new buffers */
 refill:
-	/* The ring->head acts as a guard variable between Tx and Rx
-	 * threads, so using load-acquire pairs with store-release
-	 * to synchronize it between threads.
+	/* ring->head is updated by the receiver and this function
+	 * is called in the context of receiver thread. The loads in
+	 * the receiver do not need to synchronize with its own stores.
 	 */
-	head = __atomic_load_n(&ring->head, __ATOMIC_ACQUIRE);
+	head = __atomic_load_n(&ring->head, __ATOMIC_RELAXED);
 	n_slots = ring_size - head + mq->last_tail;
 
 	if (n_slots < 32)
@@ -543,6 +543,10 @@ refill:
 			(uint8_t *)proc_private->regions[d0->region]->addr;
 	}
 no_free_mbufs:
+	/* The ring->head acts as a guard variable between Tx and Rx
+	 * threads, so using store-release pairs with load-acquire
+	 * in function eth_memif_tx.
+	 */
 	__atomic_store_n(&ring->head, head, __ATOMIC_RELEASE);
 
 	mq->n_pkts += n_rx_pkts;
