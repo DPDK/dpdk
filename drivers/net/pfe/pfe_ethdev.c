@@ -385,29 +385,23 @@ pfe_eth_stop(struct rte_eth_dev *dev/*, int wake*/)
 	dev->tx_pkt_burst = &pfe_dummy_xmit_pkts;
 }
 
-static void
-pfe_eth_exit(struct rte_eth_dev *dev, struct pfe *pfe)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	pfe_eth_stop(dev);
-	/* Close the device file for link status */
-	pfe_eth_close_cdev(dev->data->dev_private);
-
-	rte_eth_dev_release_port(dev);
-	pfe->nb_devs--;
-}
-
 static int
 pfe_eth_close(struct rte_eth_dev *dev)
 {
+	PMD_INIT_FUNC_TRACE();
+
 	if (!dev)
 		return -1;
 
 	if (!g_pfe)
 		return -1;
 
-	pfe_eth_exit(dev, g_pfe);
+	pfe_eth_stop(dev);
+	/* Close the device file for link status */
+	pfe_eth_close_cdev(dev->data->dev_private);
+
+	munmap(g_pfe->cbus_baseaddr, g_pfe->cbus_size);
+	g_pfe->nb_devs--;
 
 	if (g_pfe->nb_devs == 0) {
 		pfe_hif_exit(g_pfe);
@@ -852,6 +846,8 @@ pfe_eth_init(struct rte_vdev_device *vdev, struct pfe *pfe, int id)
 	eth_dev->data->nb_rx_queues = 1;
 	eth_dev->data->nb_tx_queues = 1;
 
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* For link status, open the PFE CDEV; Error from this function
 	 * is silently ignored; In case of error, the link status will not
 	 * be available.
@@ -1144,6 +1140,7 @@ pmd_pfe_remove(struct rte_vdev_device *vdev)
 {
 	const char *name;
 	struct rte_eth_dev *eth_dev = NULL;
+	int ret = 0;
 
 	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
@@ -1155,19 +1152,12 @@ pmd_pfe_remove(struct rte_vdev_device *vdev)
 		return 0;
 
 	eth_dev = rte_eth_dev_allocated(name);
-	if (eth_dev == NULL)
-		return -ENODEV;
-
-	pfe_eth_exit(eth_dev, g_pfe);
-	munmap(g_pfe->cbus_baseaddr, g_pfe->cbus_size);
-
-	if (g_pfe->nb_devs == 0) {
-		pfe_hif_exit(g_pfe);
-		pfe_hif_lib_exit(g_pfe);
-		rte_free(g_pfe);
-		g_pfe = NULL;
+	if (eth_dev) {
+		pfe_eth_close(eth_dev);
+		ret = rte_eth_dev_release_port(eth_dev);
 	}
-	return 0;
+
+	return ret;
 }
 
 static
