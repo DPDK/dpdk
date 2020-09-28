@@ -376,8 +376,24 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	struct rte_device *rdev = dev->device;
 	struct rte_dpaa_device *dpaa_dev;
 	struct rte_intr_handle *intr_handle;
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	int loop;
 
 	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	if (!dpaa_intf) {
+		DPAA_PMD_WARN("Already closed or not started");
+		return -1;
+	}
+
+	/* DPAA FM deconfig */
+	if (!(default_q || fmc_q)) {
+		if (dpaa_fm_deconfig(dpaa_intf, dev->process_private))
+			DPAA_PMD_WARN("DPAA FM deconfig failed\n");
+	}
 
 	dpaa_dev = container_of(rdev, struct rte_dpaa_device, device);
 	intr_handle = &dpaa_dev->intr_handle;
@@ -392,6 +408,42 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 					     dpaa_interrupt_handler,
 					     (void *)dev);
 	}
+
+	/* release configuration memory */
+	if (dpaa_intf->fc_conf)
+		rte_free(dpaa_intf->fc_conf);
+
+	/* Release RX congestion Groups */
+	if (dpaa_intf->cgr_rx) {
+		for (loop = 0; loop < dpaa_intf->nb_rx_queues; loop++)
+			qman_delete_cgr(&dpaa_intf->cgr_rx[loop]);
+
+		qman_release_cgrid_range(dpaa_intf->cgr_rx[loop].cgrid,
+					 dpaa_intf->nb_rx_queues);
+	}
+
+	rte_free(dpaa_intf->cgr_rx);
+	dpaa_intf->cgr_rx = NULL;
+	/* Release TX congestion Groups */
+	if (dpaa_intf->cgr_tx) {
+		for (loop = 0; loop < MAX_DPAA_CORES; loop++)
+			qman_delete_cgr(&dpaa_intf->cgr_tx[loop]);
+
+		qman_release_cgrid_range(dpaa_intf->cgr_tx[loop].cgrid,
+					 MAX_DPAA_CORES);
+		rte_free(dpaa_intf->cgr_tx);
+		dpaa_intf->cgr_tx = NULL;
+	}
+
+	rte_free(dpaa_intf->rx_queues);
+	dpaa_intf->rx_queues = NULL;
+
+	rte_free(dpaa_intf->tx_queues);
+	dpaa_intf->tx_queues = NULL;
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
 
 	return 0;
 }
@@ -1978,70 +2030,6 @@ free_rx:
 }
 
 static int
-dpaa_dev_uninit(struct rte_eth_dev *dev)
-{
-	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-	int loop;
-
-	PMD_INIT_FUNC_TRACE();
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
-
-	if (!dpaa_intf) {
-		DPAA_PMD_WARN("Already closed or not started");
-		return -1;
-	}
-
-	/* DPAA FM deconfig */
-	if (!(default_q || fmc_q)) {
-		if (dpaa_fm_deconfig(dpaa_intf, dev->process_private))
-			DPAA_PMD_WARN("DPAA FM deconfig failed\n");
-	}
-
-	dpaa_eth_dev_close(dev);
-
-	/* release configuration memory */
-	if (dpaa_intf->fc_conf)
-		rte_free(dpaa_intf->fc_conf);
-
-	/* Release RX congestion Groups */
-	if (dpaa_intf->cgr_rx) {
-		for (loop = 0; loop < dpaa_intf->nb_rx_queues; loop++)
-			qman_delete_cgr(&dpaa_intf->cgr_rx[loop]);
-
-		qman_release_cgrid_range(dpaa_intf->cgr_rx[loop].cgrid,
-					 dpaa_intf->nb_rx_queues);
-	}
-
-	rte_free(dpaa_intf->cgr_rx);
-	dpaa_intf->cgr_rx = NULL;
-
-	/* Release TX congestion Groups */
-	if (dpaa_intf->cgr_tx) {
-		for (loop = 0; loop < MAX_DPAA_CORES; loop++)
-			qman_delete_cgr(&dpaa_intf->cgr_tx[loop]);
-
-		qman_release_cgrid_range(dpaa_intf->cgr_tx[loop].cgrid,
-					 MAX_DPAA_CORES);
-		rte_free(dpaa_intf->cgr_tx);
-		dpaa_intf->cgr_tx = NULL;
-	}
-
-	rte_free(dpaa_intf->rx_queues);
-	dpaa_intf->rx_queues = NULL;
-
-	rte_free(dpaa_intf->tx_queues);
-	dpaa_intf->tx_queues = NULL;
-
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
-
-	return 0;
-}
-
-static int
 rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 	       struct rte_dpaa_device *dpaa_dev)
 {
@@ -2139,6 +2127,7 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 
 	qman_ern_register_cb(dpaa_free_mbuf);
 
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	if (dpaa_drv->drv_flags & RTE_DPAA_DRV_INTR_LSC)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
@@ -2157,15 +2146,15 @@ static int
 rte_dpaa_remove(struct rte_dpaa_device *dpaa_dev)
 {
 	struct rte_eth_dev *eth_dev;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev = dpaa_dev->eth_dev;
-	dpaa_dev_uninit(eth_dev);
+	dpaa_eth_dev_close(eth_dev);
+	ret = rte_eth_dev_release_port(eth_dev);
 
-	rte_eth_dev_release_port(eth_dev);
-
-	return 0;
+	return ret;
 }
 
 static void __attribute__((destructor(102))) dpaa_finish(void)
