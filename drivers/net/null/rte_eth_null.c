@@ -458,7 +458,23 @@ eth_mac_address_set(__rte_unused struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+eth_dev_close(struct rte_eth_dev *dev)
+{
+	PMD_LOG(INFO, "Closing null ethdev on NUMA socket %u",
+			rte_socket_id());
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	/* mac_addrs must not be freed alone because part of dev_private */
+	dev->data->mac_addrs = NULL;
+
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
+	.dev_close = eth_dev_close,
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
 	.dev_configure = eth_dev_configure,
@@ -532,6 +548,7 @@ eth_dev_null_create(struct rte_vdev_device *dev, struct pmd_options *args)
 	data->mac_addrs = &internals->eth_addr;
 	data->promiscuous = 1;
 	data->all_multicast = 1;
+	data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	eth_dev->dev_ops = &ops;
 
@@ -701,18 +718,12 @@ rte_pmd_null_remove(struct rte_vdev_device *dev)
 	if (!dev)
 		return -EINVAL;
 
-	PMD_LOG(INFO, "Closing null ethdev on numa socket %u",
-			rte_socket_id());
-
 	/* find the ethdev entry */
 	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
-		return -1;
+		return 0; /* port already released */
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* mac_addrs must not be freed alone because part of dev_private */
-		eth_dev->data->mac_addrs = NULL;
-
+	eth_dev_close(eth_dev);
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;
