@@ -705,9 +705,6 @@ eth_ark_dev_close(struct rte_eth_dev *dev)
 		dev->data->rx_queues[i] = 0;
 	}
 
-	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = 0;
-
 	return 0;
 }
 

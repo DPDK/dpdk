@@ -2420,9 +2420,6 @@ ice_dev_close(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
 
-	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = NULL;
-
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 

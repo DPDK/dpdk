@@ -3257,9 +3257,6 @@ static int hinic_dev_uninit(struct rte_eth_dev *dev)
 
 	rte_free(nic_dev->mc_list);
 
-	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = NULL;
-
 	return HINIC_OK;
 }
 

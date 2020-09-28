@@ -236,9 +236,6 @@ nfb_eth_dev_close(struct rte_eth_dev *dev)
 	}
 	dev->data->nb_tx_queues = 0;
 
-	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = NULL;
-
 	return 0;
 }
 
