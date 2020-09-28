@@ -226,7 +226,38 @@ static int
 eth_link_update(struct rte_eth_dev *dev __rte_unused,
 		int wait_to_complete __rte_unused) { return 0; }
 
+static int
+eth_dev_close(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *internals = NULL;
+	struct ring_queue *r = NULL;
+	uint16_t i;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	eth_dev_stop(dev);
+
+	internals = dev->data->dev_private;
+	if (internals->action == DEV_CREATE) {
+		/*
+		 * it is only necessary to delete the rings in rx_queues because
+		 * they are the same used in tx_queues
+		 */
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			r = dev->data->rx_queues[i];
+			rte_ring_free(r->rng);
+		}
+	}
+
+	/* mac_addrs must not be freed alone because part of dev_private */
+	dev->data->mac_addrs = NULL;
+
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
+	.dev_close = eth_dev_close,
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
 	.dev_set_link_up = eth_dev_set_link_up,
@@ -327,6 +358,7 @@ do_eth_dev_ring_create(const char *name,
 
 	eth_dev->dev_ops = &ops;
 	data->numa_node = numa_node;
+	data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	/* finally assign rx and tx ops */
 	eth_dev->rx_pkt_burst = eth_ring_rx;
@@ -658,9 +690,6 @@ rte_pmd_ring_remove(struct rte_vdev_device *dev)
 {
 	const char *name = rte_vdev_device_name(dev);
 	struct rte_eth_dev *eth_dev = NULL;
-	struct pmd_internals *internals = NULL;
-	struct ring_queue *r = NULL;
-	uint16_t i;
 
 	PMD_LOG(INFO, "Un-Initializing pmd_ring for %s", name);
 
@@ -670,24 +699,9 @@ rte_pmd_ring_remove(struct rte_vdev_device *dev)
 	/* find an ethdev entry */
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev == NULL)
-		return -ENODEV;
+		return 0; /* port already released */
 
-	eth_dev_stop(eth_dev);
-
-	internals = eth_dev->data->dev_private;
-	if (internals->action == DEV_CREATE) {
-		/*
-		 * it is only necessary to delete the rings in rx_queues because
-		 * they are the same used in tx_queues
-		 */
-		for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
-			r = eth_dev->data->rx_queues[i];
-			rte_ring_free(r->rng);
-		}
-	}
-
-	/* mac_addrs must not be freed alone because part of dev_private */
-	eth_dev->data->mac_addrs = NULL;
+	eth_dev_close(eth_dev);
 	rte_eth_dev_release_port(eth_dev);
 	return 0;
 }
