@@ -201,9 +201,40 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 	softnic_mtr_free(p);
 }
 
-static int
-pmd_dev_close(struct rte_eth_dev *dev __rte_unused)
+static void
+pmd_free(struct pmd_internals *p)
 {
+	if (p == NULL)
+		return;
+
+	if (p->params.conn_port)
+		softnic_conn_free(p->conn);
+
+	softnic_thread_free(p);
+	softnic_pipeline_free(p);
+	softnic_table_action_profile_free(p);
+	softnic_port_in_action_profile_free(p);
+	softnic_tap_free(p);
+	softnic_tmgr_free(p);
+	softnic_link_free(p);
+	softnic_swq_free(p);
+	softnic_mempool_free(p);
+
+	tm_hierarchy_free(p);
+	softnic_mtr_free(p);
+
+	rte_free(p);
+}
+
+static int
+pmd_dev_close(struct rte_eth_dev *dev)
+{
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	pmd_free(dev->data->dev_private);
+	dev->data->dev_private = NULL; /* already freed */
+	dev->data->mac_addrs = NULL; /* statically allocated */
 	return 0;
 }
 
@@ -335,31 +366,6 @@ pmd_init(struct pmd_params *params)
 	return p;
 }
 
-static void
-pmd_free(struct pmd_internals *p)
-{
-	if (p == NULL)
-		return;
-
-	if (p->params.conn_port)
-		softnic_conn_free(p->conn);
-
-	softnic_thread_free(p);
-	softnic_pipeline_free(p);
-	softnic_table_action_profile_free(p);
-	softnic_port_in_action_profile_free(p);
-	softnic_tap_free(p);
-	softnic_tmgr_free(p);
-	softnic_link_free(p);
-	softnic_swq_free(p);
-	softnic_mempool_free(p);
-
-	tm_hierarchy_free(p);
-	softnic_mtr_free(p);
-
-	rte_free(p);
-}
-
 static struct rte_ether_addr eth_addr = {
 	.addr_bytes = {0},
 };
@@ -384,6 +390,7 @@ pmd_ethdev_register(struct rte_vdev_device *vdev,
 	dev->device = &vdev->device;
 
 	/* dev->data */
+	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	dev->data->dev_private = dev_private;
 	dev->data->dev_link.link_speed = ETH_SPEED_NUM_100G;
 	dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
@@ -652,12 +659,9 @@ pmd_remove(struct rte_vdev_device *vdev)
 	/* Find the ethdev entry */
 	dev = rte_eth_dev_allocated(rte_vdev_device_name(vdev));
 	if (dev == NULL)
-		return -ENODEV;
+		return 0; /* port already released */
 
-	/* Free device data structures*/
-	pmd_free(dev->data->dev_private);
-	dev->data->dev_private = NULL; /* already freed */
-	dev->data->mac_addrs = NULL; /* statically allocated */
+	pmd_dev_close(dev);
 	rte_eth_dev_release_port(dev);
 
 	return 0;
