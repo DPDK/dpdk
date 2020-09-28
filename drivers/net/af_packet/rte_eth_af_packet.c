@@ -377,8 +377,32 @@ eth_stats_reset(struct rte_eth_dev *dev)
 }
 
 static int
-eth_dev_close(struct rte_eth_dev *dev __rte_unused)
+eth_dev_close(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *internals;
+	struct tpacket_req *req;
+	unsigned int q;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	PMD_LOG(INFO, "Closing AF_PACKET ethdev on NUMA socket %u",
+		rte_socket_id());
+
+	internals = dev->data->dev_private;
+	req = &internals->req;
+	for (q = 0; q < internals->nb_queues; q++) {
+		munmap(internals->rx_queue[q].map,
+			2 * req->tp_block_size * req->tp_block_nr);
+		rte_free(internals->rx_queue[q].rd);
+		rte_free(internals->tx_queue[q].rd);
+	}
+	free(internals->if_name);
+	rte_free(internals->rx_queue);
+	rte_free(internals->tx_queue);
+
+	/* mac_addrs must not be freed alone because part of dev_private */
+	dev->data->mac_addrs = NULL;
 	return 0;
 }
 
@@ -835,6 +859,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	data->nb_tx_queues = (uint16_t)nb_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &(*internals)->eth_addr;
+	data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	(*eth_dev)->dev_ops = &ops;
 
@@ -1033,13 +1058,7 @@ exit:
 static int
 rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 {
-	struct rte_eth_dev *eth_dev = NULL;
-	struct pmd_internals *internals;
-	struct tpacket_req *req;
-	unsigned q;
-
-	PMD_LOG(INFO, "Closing AF_PACKET ethdev on numa socket %u",
-		rte_socket_id());
+	struct rte_eth_dev *eth_dev;
 
 	if (dev == NULL)
 		return -1;
@@ -1047,26 +1066,9 @@ rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 	/* find the ethdev entry */
 	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
-		return -1;
+		return 0; /* port already released */
 
-	/* mac_addrs must not be freed alone because part of dev_private */
-	eth_dev->data->mac_addrs = NULL;
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return rte_eth_dev_release_port(eth_dev);
-
-	internals = eth_dev->data->dev_private;
-	req = &internals->req;
-	for (q = 0; q < internals->nb_queues; q++) {
-		munmap(internals->rx_queue[q].map,
-			2 * req->tp_block_size * req->tp_block_nr);
-		rte_free(internals->rx_queue[q].rd);
-		rte_free(internals->tx_queue[q].rd);
-	}
-	free(internals->if_name);
-	rte_free(internals->rx_queue);
-	rte_free(internals->tx_queue);
-
+	eth_dev_close(eth_dev);
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;
