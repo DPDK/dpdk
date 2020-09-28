@@ -1460,6 +1460,11 @@ ice_switch_parse_dcf_action(struct ice_dcf_adapter *ad,
 			else
 				rule_info->sw_act.vsi_handle = act_vf->id;
 			break;
+
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			rule_info->sw_act.fltr_act = ICE_DROP_PACKET;
+			break;
+
 		default:
 			rte_flow_error_set(error,
 					   EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
