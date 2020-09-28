@@ -749,14 +749,14 @@ prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
 		wb_data->src = src + offset;
 		dlen = desc->len;
 		dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr,
-			&dlen, VHOST_ACCESS_RW) + offset;
+			&dlen, VHOST_ACCESS_RW);
 		if (unlikely(!dst || dlen != desc->len)) {
 			VC_LOG_ERR("Failed to map descriptor");
 			goto error_exit;
 		}
 
-		wb_data->dst = dst;
-		wb_data->len = RTE_MIN(desc->len - offset, write_back_len);
+		wb_data->dst = dst + offset;
+		wb_data->len = RTE_MIN(dlen - offset, write_back_len);
 		write_back_len -= wb_data->len;
 		src += offset + wb_data->len;
 		offset = 0;
@@ -801,7 +801,7 @@ prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
 			goto error_exit;
 		}
 
-		wb_data->src = src;
+		wb_data->src = src + offset;
 		wb_data->dst = dst;
 		wb_data->len = RTE_MIN(desc->len - offset, write_back_len);
 		write_back_len -= wb_data->len;
