@@ -410,7 +410,11 @@ no_free_bufs:
 
 refill:
 	if (type == MEMIF_RING_M2S) {
-		head = __atomic_load_n(&ring->head, __ATOMIC_ACQUIRE);
+		/* ring->head is updated by the receiver and this function
+		 * is called in the context of receiver thread. The loads in
+		 * the receiver do not need to synchronize with its own stores.
+		 */
+		head = __atomic_load_n(&ring->head, __ATOMIC_RELAXED);
 		n_slots = ring_size - head + mq->last_tail;
 
 		while (n_slots--) {
