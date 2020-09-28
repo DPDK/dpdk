@@ -69,3 +69,11 @@ DPDK_21 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	cmdline_get_rdline;
+
+	local: *;
+};

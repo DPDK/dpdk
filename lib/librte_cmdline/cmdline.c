@@ -13,13 +13,10 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <errno.h>
-#include <termios.h>
 #include <netinet/in.h>
 
 #include <rte_string_fns.h>
 
-#include "cmdline_parse.h"
-#include "cmdline_rdline.h"
 #include "cmdline.h"
 
 static void
@@ -101,6 +98,12 @@ cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out)
 	rdline_newline(&cl->rdl, cl->prompt);
 
 	return cl;
+}
+
+struct rdline*
+cmdline_get_rdline(struct cmdline *cl)
+{
+	return &cl->rdl;
 }
 
 void

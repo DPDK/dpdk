@@ -294,8 +294,10 @@ cmd_get_history_bufsize_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
 {
+	struct rdline *rdl = cmdline_get_rdline(cl);
+
 	cmdline_printf(cl, "History buffer size: %zu\n",
-			sizeof(cl->rdl.history_buf));
+			sizeof(rdl->history_buf));
 }
 
 cmdline_parse_token_string_t cmd_get_history_bufsize_tok =
@@ -326,7 +328,9 @@ cmd_clear_history_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
 {
-	rdline_clear_history(&cl->rdl);
+	struct rdline *rdl = cmdline_get_rdline(cl);
+
+	rdline_clear_history(rdl);
 }
 
 cmdline_parse_token_string_t cmd_clear_history_tok =

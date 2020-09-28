@@ -11,12 +11,9 @@
 #include <stdarg.h>
 #include <inttypes.h>
 #include <fcntl.h>
-#include <termios.h>
 
-#include "cmdline_parse.h"
-#include "cmdline_rdline.h"
-#include "cmdline_socket.h"
 #include "cmdline.h"
+#include "cmdline_socket.h"
 
 struct cmdline *
 cmdline_file_new(cmdline_parse_ctx_t *ctx, const char *prompt, const char *path)
