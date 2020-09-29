@@ -68,6 +68,7 @@ struct virtio_user_dev {
 	bool		started;
 };
 
+int virtio_user_dev_set_features(struct virtio_user_dev *dev);
 int virtio_user_start_device(struct virtio_user_dev *dev);
 int virtio_user_stop_device(struct virtio_user_dev *dev);
 int virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,

@@ -112,9 +112,41 @@ virtio_user_queue_setup(struct virtio_user_dev *dev,
 }
 
 int
-virtio_user_start_device(struct virtio_user_dev *dev)
+virtio_user_dev_set_features(struct virtio_user_dev *dev)
 {
 	uint64_t features;
+	int ret = -1;
+
+	pthread_mutex_lock(&dev->mutex);
+
+	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER &&
+			dev->vhostfd < 0)
+		goto error;
+
+	/* Step 0: tell vhost to create queues */
+	if (virtio_user_queue_setup(dev, virtio_user_create_queue) < 0)
+		goto error;
+
+	features = dev->features;
+
+	/* Strip VIRTIO_NET_F_MAC, as MAC address is handled in vdev init */
+	features &= ~(1ull << VIRTIO_NET_F_MAC);
+	/* Strip VIRTIO_NET_F_CTRL_VQ, as devices do not really need to know */
+	features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
+	features &= ~(1ull << VIRTIO_NET_F_STATUS);
+	ret = dev->ops->send_request(dev, VHOST_USER_SET_FEATURES, &features);
+	if (ret < 0)
+		goto error;
+	PMD_DRV_LOG(INFO, "set features: %" PRIx64, features);
+error:
+	pthread_mutex_unlock(&dev->mutex);
+
+	return ret;
+}
+
+int
+virtio_user_start_device(struct virtio_user_dev *dev)
+{
 	int ret;
 
 	/*
@@ -136,24 +168,6 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER &&
 			dev->vhostfd < 0)
 		goto error;
-
-	/* Step 0: tell vhost to create queues */
-	if (virtio_user_queue_setup(dev, virtio_user_create_queue) < 0)
-		goto error;
-
-	/* Step 1: negotiate protocol features & set features */
-	features = dev->features;
-
-
-	/* Strip VIRTIO_NET_F_MAC, as MAC address is handled in vdev init */
-	features &= ~(1ull << VIRTIO_NET_F_MAC);
-	/* Strip VIRTIO_NET_F_CTRL_VQ, as devices do not really need to know */
-	features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
-	features &= ~(1ull << VIRTIO_NET_F_STATUS);
-	ret = dev->ops->send_request(dev, VHOST_USER_SET_FEATURES, &features);
-	if (ret < 0)
-		goto error;
-	PMD_DRV_LOG(INFO, "set features: %" PRIx64, features);
 
 	/* Step 2: share memory regions */
 	ret = dev->ops->send_request(dev, VHOST_USER_SET_MEM_TABLE, NULL);
