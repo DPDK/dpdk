@@ -62,9 +62,9 @@ hns3_shaper_para_calc(struct hns3_hw *hw, uint32_t ir, uint8_t shaper_level,
 		return -EINVAL;
 	}
 
-	if (ir > HNS3_ETHER_MAX_RATE) {
-		hns3_err(hw, "rate(%d) exceeds the rate driver supported "
-			 "HNS3_ETHER_MAX_RATE(%d)", ir, HNS3_ETHER_MAX_RATE);
+	if (ir > hw->max_tm_rate) {
+		hns3_err(hw, "rate(%d) exceeds the max rate(%d) driver "
+			 "supported.", ir, hw->max_tm_rate);
 		return -EINVAL;
 	}
 
@@ -100,7 +100,7 @@ hns3_shaper_para_calc(struct hns3_hw *hw, uint32_t ir, uint8_t shaper_level,
 		 * ir_calc gets minimum value when tick is the maximum value.
 		 * At the same time, value of ir_u_calc can only be increased up
 		 * to eight after the while loop if the value of ir is equal
-		 * to HNS3_ETHER_MAX_RATE.
+		 * to hw->max_tm_rate.
 		 */
 		uint32_t numerator;
 		do {
@@ -736,7 +736,7 @@ hns3_dcb_info_init(struct hns3_hw *hw)
 		hw->dcb_info.pg_dwrr[i] = i ? 0 : BW_MAX_PERCENT;
 		hw->dcb_info.pg_info[i].pg_id = i;
 		hw->dcb_info.pg_info[i].pg_sch_mode = HNS3_SCH_MODE_DWRR;
-		hw->dcb_info.pg_info[i].bw_limit = HNS3_ETHER_MAX_RATE;
+		hw->dcb_info.pg_info[i].bw_limit = hw->max_tm_rate;
 
 		if (i != 0)
 			continue;
@@ -1405,7 +1405,7 @@ hns3_dcb_info_cfg(struct hns3_adapter *hns)
 	hw->dcb_info.pg_dwrr[0] = BW_MAX_PERCENT;
 	hw->dcb_info.pg_info[0].pg_id = 0;
 	hw->dcb_info.pg_info[0].pg_sch_mode = HNS3_SCH_MODE_DWRR;
-	hw->dcb_info.pg_info[0].bw_limit = HNS3_ETHER_MAX_RATE;
+	hw->dcb_info.pg_info[0].bw_limit = hw->max_tm_rate;
 	hw->dcb_info.pg_info[0].tc_bit_map = hw->hw_tc_map;
 
 	/* Each tc has same bw for valid tc by default */
