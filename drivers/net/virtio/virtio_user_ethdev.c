@@ -818,9 +818,63 @@ virtio_user_pmd_remove(struct rte_vdev_device *vdev)
 	return 0;
 }
 
+static int virtio_user_pmd_dma_map(struct rte_vdev_device *vdev, void *addr,
+		uint64_t iova, size_t len)
+{
+	const char *name;
+	struct rte_eth_dev *eth_dev;
+	struct virtio_user_dev *dev;
+	struct virtio_hw *hw;
+
+	if (!vdev)
+		return -EINVAL;
+
+	name = rte_vdev_device_name(vdev);
+	eth_dev = rte_eth_dev_allocated(name);
+	/* Port has already been released by close. */
+	if (!eth_dev)
+		return 0;
+
+	hw = (struct virtio_hw *)eth_dev->data->dev_private;
+	dev = hw->virtio_user_dev;
+
+	if (dev->ops->dma_map)
+		return dev->ops->dma_map(dev, addr, iova, len);
+
+	return 0;
+}
+
+static int virtio_user_pmd_dma_unmap(struct rte_vdev_device *vdev, void *addr,
+		uint64_t iova, size_t len)
+{
+	const char *name;
+	struct rte_eth_dev *eth_dev;
+	struct virtio_user_dev *dev;
+	struct virtio_hw *hw;
+
+	if (!vdev)
+		return -EINVAL;
+
+	name = rte_vdev_device_name(vdev);
+	eth_dev = rte_eth_dev_allocated(name);
+	/* Port has already been released by close. */
+	if (!eth_dev)
+		return 0;
+
+	hw = (struct virtio_hw *)eth_dev->data->dev_private;
+	dev = hw->virtio_user_dev;
+
+	if (dev->ops->dma_unmap)
+		return dev->ops->dma_unmap(dev, addr, iova, len);
+
+	return 0;
+}
+
 static struct rte_vdev_driver virtio_user_driver = {
 	.probe = virtio_user_pmd_probe,
 	.remove = virtio_user_pmd_remove,
+	.dma_map = virtio_user_pmd_dma_map,
+	.dma_unmap = virtio_user_pmd_dma_unmap,
 };
 
 RTE_PMD_REGISTER_VDEV(net_virtio_user, virtio_user_driver);
