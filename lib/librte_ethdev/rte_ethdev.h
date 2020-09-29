@@ -2452,7 +2452,7 @@ int rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link);
  *   No free is required.
  */
 __rte_experimental
-const char *rte_eth_link_speed_to_str(uint32_t speed_link);
+const char *rte_eth_link_speed_to_str(uint32_t link_speed);
 
 /**
  * @warning
