@@ -37,6 +37,10 @@ cdata.set('OUTPUT', join_paths(meson.build_root(), 'doc', 'api'))
 cdata.set('HTML_OUTPUT', 'html')
 cdata.set('TOPDIR', meson.source_root())
 cdata.set('STRIP_FROM_PATH', meson.source_root())
+cdata.set('WARN_AS_ERROR', 'NO')
+if get_option('werror')
+	cdata.set('WARN_AS_ERROR', 'YES')
+endif
 
 doxy_conf = configure_file(input: 'doxy-api.conf.in',
 	output: 'doxy-api.conf',

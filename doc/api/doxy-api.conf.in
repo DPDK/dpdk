@@ -108,3 +108,5 @@ GENERATE_LATEX          = NO
 GENERATE_MAN            = NO
 
 HAVE_DOT                = NO
+
+WARN_AS_ERROR           = @WARN_AS_ERROR@
