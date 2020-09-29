@@ -6,7 +6,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <linux/major.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <sys/socket.h>
 
 #include <rte_malloc.h>
@@ -519,17 +521,55 @@ get_integer_arg(const char *key __rte_unused,
 	return -errno;
 }
 
+static uint32_t
+vdpa_dynamic_major_num(void)
+{
+	FILE *fp;
+	char *line = NULL;
+	size_t size;
+	char name[11];
+	bool found = false;
+	uint32_t num;
+
+	fp = fopen("/proc/devices", "r");
+	if (fp == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot open /proc/devices: %s",
+			     strerror(errno));
+		return UNNAMED_MAJOR;
+	}
+
+	while (getline(&line, &size, fp) > 0) {
+		char *stripped = line + strspn(line, " ");
+		if ((sscanf(stripped, "%u %10s", &num, name) == 2) &&
+		    (strncmp(name, "vhost-vdpa", 10) == 0)) {
+			found = true;
+			break;
+		}
+	}
+	fclose(fp);
+	return found ? num : UNNAMED_MAJOR;
+}
+
 static enum virtio_user_backend_type
 virtio_user_backend_type(const char *path)
 {
 	struct stat sb;
 
-	if (stat(path, &sb) == -1)
+	if (stat(path, &sb) == -1) {
+		PMD_INIT_LOG(ERR, "Stat fails: %s (%s)\n", path,
+			     strerror(errno));
 		return VIRTIO_USER_BACKEND_UNKNOWN;
+	}
 
-	return S_ISSOCK(sb.st_mode) ?
-		VIRTIO_USER_BACKEND_VHOST_USER :
-		VIRTIO_USER_BACKEND_VHOST_KERNEL;
+	if (S_ISSOCK(sb.st_mode)) {
+		return VIRTIO_USER_BACKEND_VHOST_USER;
+	} else if (S_ISCHR(sb.st_mode)) {
+		if (major(sb.st_rdev) == MISC_MAJOR)
+			return VIRTIO_USER_BACKEND_VHOST_KERNEL;
+		if (major(sb.st_rdev) == vdpa_dynamic_major_num())
+			return VIRTIO_USER_BACKEND_VHOST_VDPA;
+	}
+	return VIRTIO_USER_BACKEND_UNKNOWN;
 }
 
 static struct rte_eth_dev *
