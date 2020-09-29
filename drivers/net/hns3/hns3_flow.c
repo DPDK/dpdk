@@ -1356,7 +1356,6 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 	const struct rte_flow_action_rss *rss;
 	const struct rte_flow_action *act;
 	uint32_t act_index = 0;
-	uint64_t flow_types;
 	uint16_t n;
 
 	NEXT_ITEM_OF_ACTION(act, actions, act_index);
@@ -1364,7 +1363,7 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 
 	if (rss == NULL) {
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  act, "no valid queues");
 	}
 
@@ -1372,48 +1371,32 @@ hns3_parse_rss_filter(struct rte_eth_dev *dev,
 		if (rss->queue[n] < dev->data->nb_rx_queues)
 			continue;
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  act,
 					  "queue id > max number of queues");
 	}
 
-	/* Parse flow types of RSS */
 	if (!(rss->types & HNS3_ETH_RSS_SUPPORT) && rss->types)
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  act,
 					  "Flow types is unsupported by "
 					  "hns3's RSS");
-
-	flow_types = rss->types & HNS3_ETH_RSS_SUPPORT;
-	if (flow_types != rss->types)
-		hns3_warn(hw, "RSS flow types(%" PRIx64 ") include unsupported "
-			  "flow types", rss->types);
-
-	/* Parse RSS related parameters from RSS configuration */
-	switch (rss->func) {
-	case RTE_ETH_HASH_FUNCTION_DEFAULT:
-	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
-	case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
-	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
-		break;
-	default:
+	if (rss->func >= RTE_ETH_HASH_FUNCTION_MAX)
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, act,
-					  "input RSS hash functions are not supported");
-	}
-
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
+					  "RSS hash func are not supported");
 	if (rss->level)
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, act,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
 					  "a nonzero RSS encapsulation level is not supported");
 	if (rss->key_len && rss->key_len != RTE_DIM(rss_conf->key))
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, act,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
 					  "RSS hash key must be exactly 40 bytes");
 	if (rss->queue_num > RTE_DIM(rss_conf->queue))
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, act,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, act,
 					  "too many queues for RSS context");
 
 	if (rss->types & (ETH_RSS_L4_DST_ONLY | ETH_RSS_L4_SRC_ONLY) &&
