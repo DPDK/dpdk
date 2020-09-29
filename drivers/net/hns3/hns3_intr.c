@@ -1888,7 +1888,6 @@ hns3_reset_process(struct hns3_adapter *hns, enum hns3_reset_level new_level)
 		if (hw->reset.wait_data->result == HNS3_WAIT_REQUEST)
 			rte_eal_alarm_cancel(hns3_wait_callback,
 					     hw->reset.wait_data);
-		ret = -EBUSY;
 		goto err;
 	}
 
