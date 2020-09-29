@@ -42,6 +42,7 @@ if is_linux
 		'virtio_user/vhost_kernel.c',
 		'virtio_user/vhost_kernel_tap.c',
 		'virtio_user/vhost_user.c',
+		'virtio_user/vhost_vdpa.c',
 		'virtio_user/virtio_user_dev.c')
 	deps += ['bus_vdev']
 endif

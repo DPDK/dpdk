@@ -389,6 +389,12 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 				dev->vhostfds[q] = -1;
 				dev->tapfds[q] = -1;
 			}
+		} else if (dev->backend_type ==
+				VIRTIO_USER_BACKEND_VHOST_VDPA) {
+			dev->ops = &virtio_ops_vdpa;
+		} else {
+			PMD_DRV_LOG(ERR, "Unknown backend type");
+			return -1;
 		}
 	}
 

@@ -76,6 +76,7 @@ New Features
 
 * **Updated Virtio driver.**
 
+  * Added support for Vhost-vDPA backend to Virtio-user PMD.
   * Changed default link speed to unknown.
   * Added support for 200G link speed.
 
