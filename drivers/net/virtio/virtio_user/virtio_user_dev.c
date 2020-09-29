@@ -788,9 +788,6 @@ virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status)
 	if (dev->backend_type != VIRTIO_USER_BACKEND_VHOST_USER)
 		return 0;
 
-	if (!(dev->protocol_features & (1ULL << VHOST_USER_PROTOCOL_F_STATUS)))
-		return 0;
-
 	ret = dev->ops->send_request(dev, VHOST_USER_SET_STATUS, &arg);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "VHOST_USER_SET_STATUS failed (%d): %s", ret,
@@ -809,9 +806,6 @@ virtio_user_update_status(struct virtio_user_dev *dev)
 
 	/* Vhost-user only for now */
 	if (dev->backend_type != VIRTIO_USER_BACKEND_VHOST_USER)
-		return 0;
-
-	if (!(dev->protocol_features & (1UL << VHOST_USER_PROTOCOL_F_STATUS)))
 		return 0;
 
 	err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS, &ret);

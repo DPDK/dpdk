@@ -277,9 +277,13 @@ vhost_user_sock(struct virtio_user_dev *dev,
 	msg.size = 0;
 
 	switch (req) {
+	case VHOST_USER_GET_STATUS:
+		if (!(dev->protocol_features &
+				(1ULL << VHOST_USER_PROTOCOL_F_STATUS)))
+			return 0;
+		/* Fallthrough */
 	case VHOST_USER_GET_FEATURES:
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
-	case VHOST_USER_GET_STATUS:
 		need_reply = 1;
 		break;
 
