@@ -241,6 +241,7 @@ rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 	if (ret < 0) {
 		RTE_EDEV_LOG_ERR("Failed to get info for eventdev %d: %s!",
 				 dev_id, dev_info.driver_name);
+		rte_free(adapter);
 		return ret;
 	}
 
