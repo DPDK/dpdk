@@ -52,6 +52,12 @@ struct hns3_qs_to_pri_link_cmd {
 	uint16_t rsvd;
 	uint8_t priority;
 #define HNS3_DCB_QS_PRI_LINK_VLD_MSK	BIT(0)
+#define HNS3_DCB_QS_ID_L_MSK		GENMASK(9, 0)
+#define HNS3_DCB_QS_ID_L_S		0
+#define HNS3_DCB_QS_ID_H_MSK		GENMASK(14, 10)
+#define HNS3_DCB_QS_ID_H_S		10
+#define HNS3_DCB_QS_ID_H_EXT_S		11
+#define HNS3_DCB_QS_ID_H_EXT_MSK	GENMASK(15, 11)
 	uint8_t link_vld;
 	uint8_t rsvd1[18];
 };
@@ -89,11 +95,12 @@ struct hns3_pg_shapping_cmd {
 	uint32_t rsvd1[4];
 };
 
-#define HNS3_BP_GRP_NUM		32
+#define HNS3_BP_GRP_NUM			32
 #define HNS3_BP_SUB_GRP_ID_S		0
 #define HNS3_BP_SUB_GRP_ID_M		GENMASK(4, 0)
 #define HNS3_BP_GRP_ID_S		5
 #define HNS3_BP_GRP_ID_M		GENMASK(9, 5)
+
 struct hns3_bp_to_qs_map_cmd {
 	uint8_t tc_id;
 	uint8_t rsvd[2];
@@ -165,15 +172,13 @@ int hns3_dcb_init_hw(struct hns3_hw *hw);
 
 int hns3_dcb_info_init(struct hns3_hw *hw);
 
-int
-hns3_fc_enable(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
+int hns3_fc_enable(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf);
 
-int
-hns3_dcb_pfc_enable(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf);
+int hns3_dcb_pfc_enable(struct rte_eth_dev *dev,
+			struct rte_eth_pfc_conf *pfc_conf);
 
-void hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q);
-
-void hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_queue);
+int hns3_queue_to_tc_mapping(struct hns3_hw *hw, uint16_t nb_rx_q,
+			     uint16_t nb_tx_q);
 
 int hns3_dcb_cfg_update(struct hns3_adapter *hns);
 

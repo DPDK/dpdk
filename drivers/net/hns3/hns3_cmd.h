@@ -9,7 +9,6 @@
 #define HNS3_CMDQ_RX_INVLD_B		0
 #define HNS3_CMDQ_RX_OUTVLD_B		1
 #define HNS3_CMD_DESC_ALIGNMENT		4096
-#define HNS3_QUEUE_ID_MASK		0x1ff
 #define HNS3_CMD_FLAG_NEXT		BIT(2)
 
 struct hns3_hw;
@@ -388,7 +387,8 @@ struct hns3_pf_res_cmd {
 	uint16_t pf_own_fun_number;
 	uint16_t tx_buf_size;
 	uint16_t dv_buf_size;
-	uint16_t tqp_num_ext;
+	/* number of queues that exceed 1024 */
+	uint16_t ext_tqp_num;
 	uint16_t roh_pf_intr_vector_number;
 	uint32_t rsv[1];
 };
@@ -671,7 +671,6 @@ struct hns3_config_mac_speed_dup_cmd {
 	uint8_t rsv[22];
 };
 
-#define HNS3_RING_ID_MASK		GENMASK(9, 0)
 #define HNS3_TQP_ENABLE_B		0
 
 #define HNS3_MAC_CFG_AN_EN_B		0
@@ -835,7 +834,7 @@ struct hns3_dev_specs_0_cmd {
 	uint32_t max_tm_rate;
 };
 
-#define HNS3_MAX_TQP_NUM_PER_FUNC	64
+#define HNS3_MAX_TQP_NUM_HIP08_PF	64
 #define HNS3_DEFAULT_TX_BUF		0x4000    /* 16k  bytes */
 #define HNS3_TOTAL_PKT_BUF		0x108000  /* 1.03125M bytes */
 #define HNS3_DEFAULT_DV			0xA000    /* 40k byte */

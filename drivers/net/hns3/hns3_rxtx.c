@@ -405,7 +405,7 @@ hns3_tqp_enable(struct hns3_hw *hw, uint16_t queue_id, bool enable)
 	req = (struct hns3_cfg_com_tqp_queue_cmd *)desc.data;
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_CFG_COM_TQP_QUEUE, false);
-	req->tqp_id = rte_cpu_to_le_16(queue_id & HNS3_RING_ID_MASK);
+	req->tqp_id = rte_cpu_to_le_16(queue_id);
 	req->stream_id = 0;
 	hns3_set_bit(req->enable, HNS3_TQP_ENABLE_B, enable ? 1 : 0);
 
@@ -426,7 +426,7 @@ hns3_send_reset_tqp_cmd(struct hns3_hw *hw, uint16_t queue_id, bool enable)
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RESET_TQP_QUEUE, false);
 
 	req = (struct hns3_reset_tqp_queue_cmd *)desc.data;
-	req->tqp_id = rte_cpu_to_le_16(queue_id & HNS3_RING_ID_MASK);
+	req->tqp_id = rte_cpu_to_le_16(queue_id);
 	hns3_set_bit(req->reset_req, HNS3_TQP_RESET_B, enable ? 1 : 0);
 
 	ret = hns3_cmd_send(hw, &desc, 1);
@@ -446,7 +446,7 @@ hns3_get_reset_status(struct hns3_hw *hw, uint16_t queue_id)
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RESET_TQP_QUEUE, true);
 
 	req = (struct hns3_reset_tqp_queue_cmd *)desc.data;
-	req->tqp_id = rte_cpu_to_le_16(queue_id & HNS3_RING_ID_MASK);
+	req->tqp_id = rte_cpu_to_le_16(queue_id);
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
@@ -1341,6 +1341,22 @@ hns3_rx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_rxconf *conf,
 	return 0;
 }
 
+uint32_t
+hns3_get_tqp_reg_offset(uint16_t queue_id)
+{
+	uint32_t reg_offset;
+
+	/* Need an extend offset to config queue > 1024 */
+	if (queue_id < HNS3_MIN_EXTEND_QUEUE_ID)
+		reg_offset = HNS3_TQP_REG_OFFSET + queue_id * HNS3_TQP_REG_SIZE;
+	else
+		reg_offset = HNS3_TQP_REG_OFFSET + HNS3_TQP_EXT_REG_OFFSET +
+			     (queue_id - HNS3_MIN_EXTEND_QUEUE_ID) *
+			     HNS3_TQP_REG_SIZE;
+
+	return reg_offset;
+}
+
 int
 hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		    unsigned int socket_id, const struct rte_eth_rxconf *conf,
@@ -1422,6 +1438,8 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->configured = true;
 	rxq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
 				idx * HNS3_TQP_REG_SIZE);
+	rxq->io_base = (void *)((char *)hw->io_base +
+					hns3_get_tqp_reg_offset(idx));
 	rxq->io_head_reg = (volatile void *)((char *)rxq->io_base +
 			   HNS3_RING_RX_HEAD_REG);
 	rxq->rx_buf_len = rx_buf_size;
@@ -2183,8 +2201,8 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		txq->pvid_sw_shift_en = false;
 	txq->max_non_tso_bd_num = hw->max_non_tso_bd_num;
 	txq->configured = true;
-	txq->io_base = (void *)((char *)hw->io_base + HNS3_TQP_REG_OFFSET +
-				idx * HNS3_TQP_REG_SIZE);
+	txq->io_base = (void *)((char *)hw->io_base +
+						hns3_get_tqp_reg_offset(idx));
 	txq->io_tail_reg = (volatile void *)((char *)txq->io_base +
 					     HNS3_RING_TX_TAIL_REG);
 	txq->min_tx_pkt_len = hw->min_tx_pkt_len;

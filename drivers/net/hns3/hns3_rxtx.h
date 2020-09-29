@@ -661,4 +661,6 @@ void hns3_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_rxq_info *qinfo);
 void hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		       struct rte_eth_txq_info *qinfo);
+uint32_t hns3_get_tqp_reg_offset(uint16_t idx);
+
 #endif /* _HNS3_RXTX_H_ */

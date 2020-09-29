@@ -46,6 +46,8 @@
 #define HNS3_FD_AD_QUEUE_REGION_SIZE_M	GENMASK(20, 17)
 #define HNS3_FD_AD_COUNTER_HIGH_BIT	7
 #define HNS3_FD_AD_COUNTER_HIGH_BIT_B	26
+#define HNS3_FD_AD_QUEUE_ID_HIGH_BIT	10
+#define HNS3_FD_AD_QUEUE_ID_HIGH_BIT_B	21
 
 enum HNS3_PORT_TYPE {
 	HOST_PORT,
@@ -437,6 +439,9 @@ static int hns3_fd_ad_config(struct hns3_hw *hw, int loc,
 	/* set extend bit if counter_id is in [128 ~ 255] */
 	if (action->counter_id & BIT(HNS3_FD_AD_COUNTER_HIGH_BIT))
 		hns3_set_bit(ad_data, HNS3_FD_AD_COUNTER_HIGH_BIT_B, 1);
+	/* set extend bit if queue id > 1024 */
+	if (action->queue_id & BIT(HNS3_FD_AD_QUEUE_ID_HIGH_BIT))
+		hns3_set_bit(ad_data, HNS3_FD_AD_QUEUE_ID_HIGH_BIT_B, 1);
 	ad_data <<= HNS3_FD_AD_DATA_S;
 	hns3_set_bit(ad_data, HNS3_FD_AD_DROP_B, action->drop_packet);
 	if (action->nb_queues == 1)

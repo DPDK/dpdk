@@ -89,6 +89,9 @@
 #define HNS3_TQP_REG_OFFSET			0x80000
 #define HNS3_TQP_REG_SIZE			0x200
 
+#define HNS3_TQP_EXT_REG_OFFSET			0x100
+#define HNS3_MIN_EXTEND_QUEUE_ID		1024
+
 /* bar registers for tqp interrupt */
 #define HNS3_TQP_INTR_CTRL_REG			0x20000
 #define HNS3_TQP_INTR_GL0_REG			0x20100

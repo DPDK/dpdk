@@ -1191,20 +1191,21 @@ hns3vf_get_capability(struct hns3_hw *hw)
 static int
 hns3vf_check_tqp_info(struct hns3_hw *hw)
 {
-	uint16_t tqps_num;
-
-	tqps_num = hw->tqps_num;
-	if (tqps_num > HNS3_MAX_TQP_NUM_PER_FUNC || tqps_num == 0) {
-		PMD_INIT_LOG(ERR, "Get invalid tqps_num(%u) from PF. valid "
-				  "range: 1~%d",
-			     tqps_num, HNS3_MAX_TQP_NUM_PER_FUNC);
+	if (hw->tqps_num == 0) {
+		PMD_INIT_LOG(ERR, "Get invalid tqps_num(0) from PF.");
 		return -EINVAL;
 	}
 
-	hw->alloc_rss_size = RTE_MIN(hw->rss_size_max, hw->tqps_num);
+	if (hw->rss_size_max == 0) {
+		PMD_INIT_LOG(ERR, "Get invalid rss_size_max(0) from PF.");
+		return -EINVAL;
+	}
+
+	hw->tqps_num = RTE_MIN(hw->rss_size_max, hw->tqps_num);
 
 	return 0;
 }
+
 static int
 hns3vf_get_port_base_vlan_filter_state(struct hns3_hw *hw)
 {
@@ -1295,6 +1296,7 @@ hns3vf_get_tc_info(struct hns3_hw *hw)
 {
 	uint8_t resp_msg;
 	int ret;
+	int i;
 
 	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_TCINFO, 0, NULL, 0,
 				true, &resp_msg, sizeof(resp_msg));
@@ -1305,6 +1307,11 @@ hns3vf_get_tc_info(struct hns3_hw *hw)
 	}
 
 	hw->hw_tc_map = resp_msg;
+
+	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
+		if (hw->hw_tc_map & BIT(i))
+			hw->num_tc++;
+	}
 
 	return 0;
 }
@@ -1366,17 +1373,10 @@ hns3vf_get_configuration(struct hns3_hw *hw)
 }
 
 static int
-hns3vf_set_tc_info(struct hns3_adapter *hns)
+hns3vf_set_tc_queue_mapping(struct hns3_adapter *hns, uint16_t nb_rx_q,
+			    uint16_t nb_tx_q)
 {
 	struct hns3_hw *hw = &hns->hw;
-	uint16_t nb_rx_q = hw->data->nb_rx_queues;
-	uint16_t nb_tx_q = hw->data->nb_tx_queues;
-	uint8_t i;
-
-	hw->num_tc = 0;
-	for (i = 0; i < HNS3_MAX_TC_NUM; i++)
-		if (hw->hw_tc_map & BIT(i))
-			hw->num_tc++;
 
 	if (nb_rx_q < hw->num_tc) {
 		hns3_err(hw, "number of Rx queues(%d) is less than tcs(%d).",
@@ -1390,10 +1390,7 @@ hns3vf_set_tc_info(struct hns3_adapter *hns)
 		return -EINVAL;
 	}
 
-	hns3_set_rss_size(hw, nb_rx_q);
-	hns3_tc_queue_mapping_cfg(hw, nb_tx_q);
-
-	return 0;
+	return hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
 }
 
 static void
@@ -1783,19 +1780,32 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 	}
 
+	ret = hns3_tqp_stats_init(hw);
+	if (ret)
+		goto err_get_config;
+
+	ret = hns3vf_set_tc_queue_mapping(hns, hw->tqps_num, hw->tqps_num);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to set tc info, ret = %d.", ret);
+		goto err_set_tc_queue;
+	}
+
 	ret = hns3vf_clear_vport_list(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to clear tbl list: %d", ret);
-		goto err_get_config;
+		goto err_set_tc_queue;
 	}
 
 	ret = hns3vf_init_hardware(hns);
 	if (ret)
-		goto err_get_config;
+		goto err_set_tc_queue;
 
 	hns3_set_default_rss_args(hw);
 
 	return 0;
+
+err_set_tc_queue:
+	hns3_tqp_stats_uninit(hw);
 
 err_get_config:
 	hns3vf_disable_irq0(hw);
@@ -1825,6 +1835,7 @@ hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 	(void)hns3_config_gro(hw, false);
 	(void)hns3vf_set_alive(hw, false);
 	(void)hns3vf_set_promisc_mode(hw, false, false, false);
+	hns3_tqp_stats_uninit(hw);
 	hns3vf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
 	hns3_intr_unregister(&pci_dev->intr_handle, hns3vf_interrupt_handler,
@@ -2006,9 +2017,11 @@ static int
 hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
+	uint16_t nb_rx_q = hw->data->nb_rx_queues;
+	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	int ret;
 
-	ret = hns3vf_set_tc_info(hns);
+	ret = hns3vf_set_tc_queue_mapping(hns, nb_rx_q, nb_tx_q);
 	if (ret)
 		return ret;
 

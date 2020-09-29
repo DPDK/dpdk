@@ -2660,6 +2660,49 @@ hns3_query_function_status(struct hns3_hw *hw)
 }
 
 static int
+hns3_get_pf_max_tqp_num(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct hns3_pf *pf = &hns->pf;
+
+	if (pf->tqp_config_mode == HNS3_FLEX_MAX_TQP_NUM_MODE) {
+		/*
+		 * The total_tqps_num obtained from firmware is maximum tqp
+		 * numbers of this port, which should be used for PF and VFs.
+		 * There is no need for pf to have so many tqp numbers in
+		 * most cases. RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF,
+		 * coming from config file, is assigned to maximum queue number
+		 * for the PF of this port by user. So users can modify the
+		 * maximum queue number of PF according to their own application
+		 * scenarios, which is more flexible to use. In addition, many
+		 * memories can be saved due to allocating queue statistics
+		 * room according to the actual number of queues required. The
+		 * maximum queue number of PF for network engine with
+		 * revision_id greater than 0x30 is assigned by config file.
+		 */
+		if (RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF <= 0) {
+			hns3_err(hw, "RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF(%d) "
+				 "must be greater than 0.",
+				 RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF);
+			return -EINVAL;
+		}
+
+		hw->tqps_num = RTE_MIN(RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF,
+				       hw->total_tqps_num);
+	} else {
+		/*
+		 * Due to the limitation on the number of PF interrupts
+		 * available, the maximum queue number assigned to PF on
+		 * the network engine with revision_id 0x21 is 64.
+		 */
+		hw->tqps_num = RTE_MIN(hw->total_tqps_num,
+				       HNS3_MAX_TQP_NUM_HIP08_PF);
+	}
+
+	return 0;
+}
+
+static int
 hns3_query_pf_resource(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
@@ -2676,9 +2719,13 @@ hns3_query_pf_resource(struct hns3_hw *hw)
 	}
 
 	req = (struct hns3_pf_res_cmd *)desc.data;
-	hw->total_tqps_num = rte_le_to_cpu_16(req->tqp_num);
+	hw->total_tqps_num = rte_le_to_cpu_16(req->tqp_num) +
+			     rte_le_to_cpu_16(req->ext_tqp_num);
+	ret = hns3_get_pf_max_tqp_num(hw);
+	if (ret)
+		return ret;
+
 	pf->pkt_buf_size = rte_le_to_cpu_16(req->buf_size) << HNS3_BUF_UNIT_S;
-	hw->tqps_num = RTE_MIN(hw->total_tqps_num, HNS3_MAX_TQP_NUM_PER_FUNC);
 	pf->func_num = rte_le_to_cpu_16(req->pf_own_fun_number);
 
 	if (req->tx_buf_size)
@@ -2902,7 +2949,9 @@ hns3_query_dev_specifications(struct hns3_hw *hw)
 static int
 hns3_get_capability(struct hns3_hw *hw)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct rte_pci_device *pci_dev;
+	struct hns3_pf *pf = &hns->pf;
 	struct rte_eth_dev *eth_dev;
 	uint16_t device_id;
 	uint8_t revision;
@@ -2936,6 +2985,7 @@ hns3_get_capability(struct hns3_hw *hw)
 		hw->tso_mode = HNS3_TSO_SW_CAL_PSEUDO_H_CSUM;
 		hw->vlan_mode = HNS3_SW_SHIFT_AND_DISCARD_MODE;
 		hw->min_tx_pkt_len = HNS3_HIP08_MIN_TX_PKT_LEN;
+		pf->tqp_config_mode = HNS3_FIXED_MAX_TQP_NUM_MODE;
 		return 0;
 	}
 
@@ -2953,6 +3003,7 @@ hns3_get_capability(struct hns3_hw *hw)
 	hw->tso_mode = HNS3_TSO_HW_CAL_PSEUDO_H_CSUM;
 	hw->vlan_mode = HNS3_HW_SHIFT_AND_DISCARD_MODE;
 	hw->min_tx_pkt_len = HNS3_HIP09_MIN_TX_PKT_LEN;
+	pf->tqp_config_mode = HNS3_FLEX_MAX_TQP_NUM_MODE;
 
 	return 0;
 }
@@ -3048,7 +3099,7 @@ hns3_get_configuration(struct hns3_hw *hw)
 
 	ret = hns3_get_board_configuration(hw);
 	if (ret)
-		PMD_INIT_LOG(ERR, "Failed to get board configuration: %d", ret);
+		PMD_INIT_LOG(ERR, "failed to get board configuration: %d", ret);
 
 	return ret;
 }
@@ -3081,29 +3132,18 @@ hns3_map_tqps_to_func(struct hns3_hw *hw, uint16_t func_id, uint16_t tqp_pid,
 static int
 hns3_map_tqp(struct hns3_hw *hw)
 {
-	uint16_t tqps_num = hw->total_tqps_num;
-	uint16_t func_id;
-	uint16_t tqp_id;
-	bool is_pf;
-	int num;
 	int ret;
 	int i;
 
 	/*
-	 * In current version VF is not supported when PF is driven by DPDK
-	 * driver, so we allocate tqps to PF as much as possible.
+	 * In current version, VF is not supported when PF is driven by DPDK
+	 * driver, so we assign total tqps_num tqps allocated to this port
+	 * to PF.
 	 */
-	tqp_id = 0;
-	num = DIV_ROUND_UP(hw->total_tqps_num, HNS3_MAX_TQP_NUM_PER_FUNC);
-	for (func_id = HNS3_PF_FUNC_ID; func_id < num; func_id++) {
-		is_pf = func_id == HNS3_PF_FUNC_ID ? true : false;
-		for (i = 0;
-		     i < HNS3_MAX_TQP_NUM_PER_FUNC && tqp_id < tqps_num; i++) {
-			ret = hns3_map_tqps_to_func(hw, func_id, tqp_id++, i,
-						    is_pf);
-			if (ret)
-				return ret;
-		}
+	for (i = 0; i < hw->total_tqps_num; i++) {
+		ret = hns3_map_tqps_to_func(hw, HNS3_PF_FUNC_ID, i, i, true);
+		if (ret)
+			return ret;
 	}
 
 	return 0;
@@ -4558,17 +4598,21 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 		goto err_get_config;
 	}
 
+	ret = hns3_tqp_stats_init(hw);
+	if (ret)
+		goto err_get_config;
+
 	ret = hns3_init_hardware(hns);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init hardware: %d", ret);
-		goto err_get_config;
+		goto err_init_hw;
 	}
 
 	/* Initialize flow director filter list & hash */
 	ret = hns3_fdir_filter_init(hns);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to alloc hashmap for fdir: %d", ret);
-		goto err_hw_init;
+		goto err_fdir;
 	}
 
 	hns3_set_default_rss_args(hw);
@@ -4577,16 +4621,17 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 	if (ret) {
 		PMD_INIT_LOG(ERR, "fail to enable hw error interrupts: %d",
 			     ret);
-		goto err_fdir;
+		goto err_enable_intr;
 	}
 
 	return 0;
 
-err_fdir:
+err_enable_intr:
 	hns3_fdir_filter_uninit(hns);
-err_hw_init:
+err_fdir:
 	hns3_uninit_umv_space(hw);
-
+err_init_hw:
+	hns3_tqp_stats_uninit(hw);
 err_get_config:
 	hns3_pf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
@@ -4618,6 +4663,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	hns3_promisc_uninit(hw);
 	hns3_fdir_filter_uninit(hns);
 	hns3_uninit_umv_space(hw);
+	hns3_tqp_stats_uninit(hw);
 	hns3_pf_disable_irq0(hw);
 	rte_intr_disable(&pci_dev->intr_handle);
 	hns3_intr_unregister(&pci_dev->intr_handle, hns3_interrupt_handler,

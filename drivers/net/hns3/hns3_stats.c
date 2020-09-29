@@ -330,6 +330,8 @@ static const struct hns3_xstats_name_offset hns3_tx_queue_strings[] = {
 #define HNS3_FIX_NUM_STATS (HNS3_NUM_MAC_STATS + HNS3_NUM_ERROR_INT_XSTATS + \
 			    HNS3_NUM_RESET_XSTATS)
 
+static void hns3_tqp_stats_clear(struct hns3_hw *hw);
+
 /*
  * Query all the MAC statistics data of Network ICL command ,opcode id: 0x0034.
  * This command is used before send 'query_mac_stat command', the descriptor
@@ -456,8 +458,7 @@ hns3_update_tqp_stats(struct hns3_hw *hw)
 		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_QUERY_RX_STATUS,
 					  true);
 
-		desc.data[0] = rte_cpu_to_le_32((uint32_t)i &
-						HNS3_QUEUE_ID_MASK);
+		desc.data[0] = rte_cpu_to_le_32((uint32_t)i);
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
 			hns3_err(hw, "Failed to query RX No.%d queue stat: %d",
@@ -471,8 +472,7 @@ hns3_update_tqp_stats(struct hns3_hw *hw)
 		hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_QUERY_TX_STATUS,
 					  true);
 
-		desc.data[0] = rte_cpu_to_le_32((uint32_t)i &
-						HNS3_QUEUE_ID_MASK);
+		desc.data[0] = rte_cpu_to_le_32((uint32_t)i);
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
 			hns3_err(hw, "Failed to query TX No.%d queue stat: %d",
@@ -553,7 +553,6 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	struct hns3_tqp_stats *stats = &hw->tqp_stats;
 	struct hns3_cmd_desc desc_reset;
 	struct hns3_rx_queue *rxq;
 	struct hns3_tx_queue *txq;
@@ -561,14 +560,13 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	/*
-	 * If this is a reset xstats is NULL, and we have cleared the
-	 * registers by reading them.
+	 * Note: Reading hardware statistics of rx/tx queue packet number
+	 * will clear them.
 	 */
 	for (i = 0; i < hw->tqps_num; i++) {
 		hns3_cmd_setup_basic_desc(&desc_reset, HNS3_OPC_QUERY_RX_STATUS,
 					  true);
-		desc_reset.data[0] = rte_cpu_to_le_32((uint32_t)i &
-						      HNS3_QUEUE_ID_MASK);
+		desc_reset.data[0] = rte_cpu_to_le_32((uint32_t)i);
 		ret = hns3_cmd_send(hw, &desc_reset, 1);
 		if (ret) {
 			hns3_err(hw, "Failed to reset RX No.%d queue stat: %d",
@@ -578,8 +576,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 
 		hns3_cmd_setup_basic_desc(&desc_reset, HNS3_OPC_QUERY_TX_STATUS,
 					  true);
-		desc_reset.data[0] = rte_cpu_to_le_32((uint32_t)i &
-						      HNS3_QUEUE_ID_MASK);
+		desc_reset.data[0] = rte_cpu_to_le_32((uint32_t)i);
 		ret = hns3_cmd_send(hw, &desc_reset, 1);
 		if (ret) {
 			hns3_err(hw, "Failed to reset TX No.%d queue stat: %d",
@@ -614,7 +611,7 @@ hns3_stats_reset(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	memset(stats, 0, sizeof(struct hns3_tqp_stats));
+	hns3_tqp_stats_clear(hw);
 
 	return 0;
 }
@@ -668,8 +665,7 @@ hns3_get_queue_stats(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	/* Get rx queue stats */
 	for (j = 0; j < dev->data->nb_rx_queues; j++) {
 		for (i = 0; i < HNS3_NUM_RX_QUEUE_STATS; i++) {
-			reg_offset = HNS3_TQP_REG_OFFSET +
-					HNS3_TQP_REG_SIZE * j;
+			reg_offset = hns3_get_tqp_reg_offset(j);
 			xstats[*count].value = hns3_read_dev(hw,
 				reg_offset + hns3_rx_queue_strings[i].offset);
 			xstats[*count].id = *count;
@@ -680,8 +676,7 @@ hns3_get_queue_stats(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	/* Get tx queue stats */
 	for (j = 0; j < dev->data->nb_tx_queues; j++) {
 		for (i = 0; i < HNS3_NUM_TX_QUEUE_STATS; i++) {
-			reg_offset = HNS3_TQP_REG_OFFSET +
-					HNS3_TQP_REG_SIZE * j;
+			reg_offset = hns3_get_tqp_reg_offset(j);
 			xstats[*count].value = hns3_read_dev(hw,
 				reg_offset + hns3_tx_queue_strings[i].offset);
 			xstats[*count].id = *count;
@@ -1070,4 +1065,50 @@ hns3_dev_xstats_reset(struct rte_eth_dev *dev)
 	memset(&pf->abn_int_stats, 0, sizeof(struct hns3_err_msix_intr_stats));
 
 	return 0;
+}
+
+int
+hns3_tqp_stats_init(struct hns3_hw *hw)
+{
+	struct hns3_tqp_stats *tqp_stats = &hw->tqp_stats;
+
+	tqp_stats->rcb_rx_ring_pktnum = rte_zmalloc("hns3_rx_ring_pkt_num",
+					 sizeof(uint64_t) * hw->tqps_num, 0);
+	if (tqp_stats->rcb_rx_ring_pktnum == NULL) {
+		hns3_err(hw, "failed to allocate rx_ring pkt_num.");
+		return -ENOMEM;
+	}
+
+	tqp_stats->rcb_tx_ring_pktnum = rte_zmalloc("hns3_tx_ring_pkt_num",
+					 sizeof(uint64_t) * hw->tqps_num, 0);
+	if (tqp_stats->rcb_tx_ring_pktnum == NULL) {
+		hns3_err(hw, "failed to allocate tx_ring pkt_num.");
+		rte_free(tqp_stats->rcb_rx_ring_pktnum);
+		tqp_stats->rcb_rx_ring_pktnum = NULL;
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void
+hns3_tqp_stats_uninit(struct hns3_hw *hw)
+{
+	struct hns3_tqp_stats *tqp_stats = &hw->tqp_stats;
+
+	rte_free(tqp_stats->rcb_rx_ring_pktnum);
+	tqp_stats->rcb_rx_ring_pktnum = NULL;
+	rte_free(tqp_stats->rcb_tx_ring_pktnum);
+	tqp_stats->rcb_tx_ring_pktnum = NULL;
+}
+
+static void
+hns3_tqp_stats_clear(struct hns3_hw *hw)
+{
+	struct hns3_tqp_stats *stats = &hw->tqp_stats;
+
+	stats->rcb_rx_ring_pktnum_rcd = 0;
+	stats->rcb_tx_ring_pktnum_rcd = 0;
+	memset(stats->rcb_rx_ring_pktnum, 0, sizeof(uint64_t) * hw->tqps_num);
+	memset(stats->rcb_tx_ring_pktnum, 0, sizeof(uint64_t) * hw->tqps_num);
 }

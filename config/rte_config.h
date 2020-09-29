@@ -117,6 +117,9 @@
 /* fm10k defines */
 #define RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE 1
 
+/* hns3 defines */
+#define RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF 256
+
 /* i40e defines */
 #define RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC 1
 #undef RTE_LIBRTE_I40E_16BYTE_RX_DESC
