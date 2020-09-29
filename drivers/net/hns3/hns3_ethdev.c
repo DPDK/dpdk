@@ -2709,6 +2709,7 @@ hns3_parse_cfg(struct hns3_cfg *cfg, struct hns3_cmd_desc *desc)
 {
 	struct hns3_cfg_param_cmd *req;
 	uint64_t mac_addr_tmp_high;
+	uint8_t ext_rss_size_max;
 	uint64_t mac_addr_tmp;
 	uint32_t i;
 
@@ -2761,6 +2762,21 @@ hns3_parse_cfg(struct hns3_cfg *cfg, struct hns3_cmd_desc *desc)
 					HNS3_CFG_UMV_TBL_SPACE_S);
 	if (!cfg->umv_space)
 		cfg->umv_space = HNS3_DEFAULT_UMV_SPACE_PER_PF;
+
+	ext_rss_size_max = hns3_get_field(rte_le_to_cpu_32(req->param[2]),
+					       HNS3_CFG_EXT_RSS_SIZE_M,
+					       HNS3_CFG_EXT_RSS_SIZE_S);
+
+	/*
+	 * Field ext_rss_size_max obtained from firmware will be more flexible
+	 * for future changes and expansions, which is an exponent of 2, instead
+	 * of reading out directly. If this field is not zero, hns3 PF PMD
+	 * driver uses it as rss_size_max under one TC. Device, whose revision
+	 * id is greater than or equal to PCI_REVISION_ID_HIP09_A, obtains the
+	 * maximum number of queues supported under a TC through this field.
+	 */
+	if (ext_rss_size_max)
+		cfg->rss_size_max = 1U << ext_rss_size_max;
 }
 
 /* hns3_get_board_cfg: query the static parameter from NCL_config file in flash

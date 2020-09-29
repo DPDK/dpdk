@@ -441,6 +441,8 @@ struct hns3_umv_spc_alc_cmd {
 #define HNS3_CFG_SPEED_ABILITY_M	GENMASK(7, 0)
 #define HNS3_CFG_UMV_TBL_SPACE_S	16
 #define HNS3_CFG_UMV_TBL_SPACE_M	GENMASK(31, 16)
+#define HNS3_CFG_EXT_RSS_SIZE_S		0
+#define HNS3_CFG_EXT_RSS_SIZE_M		GENMASK(3, 0)
 
 #define HNS3_ACCEPT_TAG1_B		0
 #define HNS3_ACCEPT_UNTAG1_B		1
@@ -567,20 +569,25 @@ struct hns3_rss_input_tuple_cmd {
 	uint8_t rsv[16];
 };
 
-#define HNS3_RSS_CFG_TBL_SIZE	16
+#define HNS3_RSS_CFG_TBL_SIZE		16
+#define HNS3_RSS_CFG_TBL_SIZE_H		4
+#define HNS3_RSS_CFG_TBL_BW_H		2
+#define HNS3_RSS_CFG_TBL_BW_L		8
 
 /* Configure the indirection table, opcode:0x0D07 */
 struct hns3_rss_indirection_table_cmd {
 	uint16_t start_table_index;  /* Bit3~0 must be 0x0. */
 	uint16_t rss_set_bitmap;
-	uint8_t rsv[4];
-	uint8_t rss_result[HNS3_RSS_CFG_TBL_SIZE];
+	uint8_t rss_result_h[HNS3_RSS_CFG_TBL_SIZE_H];
+	uint8_t rss_result_l[HNS3_RSS_CFG_TBL_SIZE];
 };
 
 #define HNS3_RSS_TC_OFFSET_S		0
-#define HNS3_RSS_TC_OFFSET_M		(0x3ff << HNS3_RSS_TC_OFFSET_S)
+#define HNS3_RSS_TC_OFFSET_M		GENMASK(10, 0)
+#define HNS3_RSS_TC_SIZE_MSB_S		11
+#define HNS3_RSS_TC_SIZE_MSB_OFFSET	3
 #define HNS3_RSS_TC_SIZE_S		12
-#define HNS3_RSS_TC_SIZE_M		(0x7 << HNS3_RSS_TC_SIZE_S)
+#define HNS3_RSS_TC_SIZE_M		GENMASK(14, 12)
 #define HNS3_RSS_TC_VALID_B		15
 
 /* Configure the tc_size and tc_offset, opcode:0x0D08 */

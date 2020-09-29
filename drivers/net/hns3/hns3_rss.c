@@ -266,11 +266,15 @@ hns3_set_rss_input_tuple(struct hns3_hw *hw)
  * Used to configure the indirection table of rss.
  */
 int
-hns3_set_rss_indir_table(struct hns3_hw *hw, uint8_t *indir, uint16_t size)
+hns3_set_rss_indir_table(struct hns3_hw *hw, uint16_t *indir, uint16_t size)
 {
 	struct hns3_rss_indirection_table_cmd *req;
 	struct hns3_cmd_desc desc;
-	int ret, i, j, num;
+	uint8_t qid_msb_off;
+	uint8_t qid_msb_val;
+	uint16_t q_id;
+	uint16_t i, j;
+	int ret;
 
 	req = (struct hns3_rss_indirection_table_cmd *)desc.data;
 
@@ -281,9 +285,17 @@ hns3_set_rss_indir_table(struct hns3_hw *hw, uint8_t *indir, uint16_t size)
 				rte_cpu_to_le_16(i * HNS3_RSS_CFG_TBL_SIZE);
 		req->rss_set_bitmap = rte_cpu_to_le_16(HNS3_RSS_SET_BITMAP_MSK);
 		for (j = 0; j < HNS3_RSS_CFG_TBL_SIZE; j++) {
-			num = i * HNS3_RSS_CFG_TBL_SIZE + j;
-			req->rss_result[j] = indir[num];
+			q_id = indir[i * HNS3_RSS_CFG_TBL_SIZE + j];
+			req->rss_result_l[j] = q_id & 0xff;
+
+			qid_msb_off =
+				j * HNS3_RSS_CFG_TBL_BW_H / HNS3_BITS_PER_BYTE;
+			qid_msb_val = (q_id >> HNS3_RSS_CFG_TBL_BW_L & 0x1)
+					<< (j * HNS3_RSS_CFG_TBL_BW_H %
+					HNS3_BITS_PER_BYTE);
+			req->rss_result_h[qid_msb_off] |= qid_msb_val;
 		}
+
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
 			hns3_err(hw,
@@ -294,7 +306,8 @@ hns3_set_rss_indir_table(struct hns3_hw *hw, uint8_t *indir, uint16_t size)
 	}
 
 	/* Update redirection table of hw */
-	memcpy(hw->rss_info.rss_indirection_tbl, indir,	HNS3_RSS_IND_TBL_SIZE);
+	memcpy(hw->rss_info.rss_indirection_tbl, indir,
+	       sizeof(hw->rss_info.rss_indirection_tbl));
 
 	return 0;
 }
@@ -302,10 +315,11 @@ hns3_set_rss_indir_table(struct hns3_hw *hw, uint8_t *indir, uint16_t size)
 int
 hns3_rss_reset_indir_table(struct hns3_hw *hw)
 {
-	uint8_t *lut;
+	uint16_t *lut;
 	int ret;
 
-	lut = rte_zmalloc("hns3_rss_lut", HNS3_RSS_IND_TBL_SIZE, 0);
+	lut = rte_zmalloc("hns3_rss_lut",
+			  HNS3_RSS_IND_TBL_SIZE * sizeof(uint16_t), 0);
 	if (lut == NULL) {
 		hns3_err(hw, "No hns3_rss_lut memory can be allocated");
 		return -ENOMEM;
@@ -487,7 +501,7 @@ hns3_dev_rss_reta_update(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rss_conf *rss_cfg = &hw->rss_info;
 	uint16_t i, indir_size = HNS3_RSS_IND_TBL_SIZE; /* Table size is 512 */
-	uint8_t indirection_tbl[HNS3_RSS_IND_TBL_SIZE];
+	uint16_t indirection_tbl[HNS3_RSS_IND_TBL_SIZE];
 	uint16_t idx, shift, allow_rss_queues;
 	int ret;
 
@@ -499,7 +513,7 @@ hns3_dev_rss_reta_update(struct rte_eth_dev *dev,
 	}
 	rte_spinlock_lock(&hw->lock);
 	memcpy(indirection_tbl, rss_cfg->rss_indirection_tbl,
-		HNS3_RSS_IND_TBL_SIZE);
+	       sizeof(rss_cfg->rss_indirection_tbl));
 	allow_rss_queues = RTE_MIN(dev->data->nb_rx_queues, hw->rss_size_max);
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
@@ -598,6 +612,8 @@ hns3_set_rss_tc_mode(struct hns3_hw *hw)
 		hns3_set_bit(mode, HNS3_RSS_TC_VALID_B, (tc_valid[i] & 0x1));
 		hns3_set_field(mode, HNS3_RSS_TC_SIZE_M, HNS3_RSS_TC_SIZE_S,
 			       tc_size[i]);
+		if (tc_size[i] >> HNS3_RSS_TC_SIZE_MSB_OFFSET > 0)
+			hns3_set_bit(mode, HNS3_RSS_TC_SIZE_MSB_S, 1);
 		hns3_set_field(mode, HNS3_RSS_TC_OFFSET_M, HNS3_RSS_TC_OFFSET_S,
 			       tc_offset[i]);
 

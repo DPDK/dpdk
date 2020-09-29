@@ -125,7 +125,6 @@ static const struct key_info tuple_key_info[] = {
 	{INNER_SCTP_TAG, 32},
 };
 
-#define HNS3_BITS_PER_BYTE	8
 #define MAX_KEY_LENGTH		400
 #define MAX_200B_KEY_LENGTH	200
 #define MAX_META_DATA_LENGTH	16

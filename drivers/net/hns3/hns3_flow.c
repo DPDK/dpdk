@@ -1531,15 +1531,14 @@ hns3_update_indir_table(struct rte_eth_dev *dev,
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	uint8_t indir_tbl[HNS3_RSS_IND_TBL_SIZE];
+	uint16_t indir_tbl[HNS3_RSS_IND_TBL_SIZE];
 	uint16_t j, allow_rss_queues;
-	uint8_t queue_id;
 	uint32_t i;
 
 	allow_rss_queues = RTE_MIN(dev->data->nb_rx_queues, hw->rss_size_max);
 	/* Fill in redirection table */
 	memcpy(indir_tbl, hw->rss_info.rss_indirection_tbl,
-	       HNS3_RSS_IND_TBL_SIZE);
+	       sizeof(hw->rss_info.rss_indirection_tbl));
 	for (i = 0, j = 0; i < HNS3_RSS_IND_TBL_SIZE; i++, j++) {
 		j %= num;
 		if (conf->queue[j] >= allow_rss_queues) {
@@ -1549,8 +1548,7 @@ hns3_update_indir_table(struct rte_eth_dev *dev,
 				 allow_rss_queues);
 			return -EINVAL;
 		}
-		queue_id = conf->queue[j];
-		indir_tbl[i] = queue_id;
+		indir_tbl[i] = conf->queue[j];
 	}
 
 	return hns3_set_rss_indir_table(hw, indir_tbl, HNS3_RSS_IND_TBL_SIZE);

@@ -64,6 +64,8 @@
 #define HNS3_HIP08_MIN_TX_PKT_LEN	33
 #define HNS3_HIP09_MIN_TX_PKT_LEN	9
 
+#define HNS3_BITS_PER_BYTE	8
+
 #define HNS3_4_TCS			4
 #define HNS3_8_TCS			8
 
