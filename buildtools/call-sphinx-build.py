@@ -27,8 +27,10 @@ for root, dirs, files in os.walk(src):
     srcfiles.extend([join(root, f) for f in files])
 
 # run sphinx, putting the html output in a "html" directory
-process = run(sphinx_cmd + ['-b', 'html', src, join(dst, 'html')], check=True)
-print(str(process.args) + ' Done OK')
+with open(join(dst, 'sphinx_html.out'), 'w') as out:
+    process = run(sphinx_cmd + ['-b', 'html', src, join(dst, 'html')],
+                  check=True,
+                  stdout=out)
 
 # create a gcc format .d file giving all the dependencies of this doc build
 with open(join(dst, '.html.d'), 'w') as d:
