@@ -465,19 +465,11 @@ rx_queue_count(struct mlx5_rxq_data *rxq)
 {
 	struct rxq_zip *zip = &rxq->zip;
 	volatile struct mlx5_cqe *cqe;
+	unsigned int cq_ci = rxq->cq_ci;
 	const unsigned int cqe_n = (1 << rxq->cqe_n);
 	const unsigned int cqe_cnt = cqe_n - 1;
-	unsigned int cq_ci;
-	unsigned int used;
+	unsigned int used = 0;
 
-	/* if we are processing a compressed cqe */
-	if (zip->ai) {
-		used = zip->cqe_cnt - zip->ca;
-		cq_ci = zip->cq_ci;
-	} else {
-		used = 0;
-		cq_ci = rxq->cq_ci;
-	}
 	cqe = &(*rxq->cqes)[cq_ci & cqe_cnt];
 	while (check_cqe(cqe, cqe_n, cq_ci) != MLX5_CQE_STATUS_HW_OWN) {
 		int8_t op_own;
@@ -485,14 +477,17 @@ rx_queue_count(struct mlx5_rxq_data *rxq)
 
 		op_own = cqe->op_own;
 		if (MLX5_CQE_FORMAT(op_own) == MLX5_COMPRESSED)
-			n = rte_be_to_cpu_32(cqe->byte_cnt);
+			if (unlikely(zip->ai))
+				n = zip->cqe_cnt - zip->ai;
+			else
+				n = rte_be_to_cpu_32(cqe->byte_cnt);
 		else
 			n = 1;
 		cq_ci += n;
 		used += n;
 		cqe = &(*rxq->cqes)[cq_ci & cqe_cnt];
 	}
-	used = RTE_MIN(used, (1U << rxq->elts_n) - 1);
+	used = RTE_MIN(used, cqe_n);
 	return used;
 }
 
@@ -515,11 +510,12 @@ mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	struct rte_eth_dev *dev = ETH_DEV(rxq_ctrl->priv);
 
-	if (dev->rx_pkt_burst != mlx5_rx_burst) {
+	if (dev->rx_pkt_burst == NULL ||
+	    dev->rx_pkt_burst == removed_rx_burst) {
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	if (offset >= (1 << rxq->elts_n)) {
+	if (offset >= (1 << rxq->cqe_n)) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -630,7 +626,8 @@ mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_data *rxq;
 
-	if (dev->rx_pkt_burst != mlx5_rx_burst) {
+	if (dev->rx_pkt_burst == NULL ||
+	    dev->rx_pkt_burst == removed_rx_burst) {
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
