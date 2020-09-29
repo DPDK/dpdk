@@ -168,9 +168,9 @@ hns3_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	if (cnt) {
 		if (!cnt->shared || cnt->shared != shared)
 			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  cnt,
-						  "Counter id is used,shared flag not match");
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				cnt,
+				"Counter id is used, shared flag not match");
 		cnt->ref_cnt++;
 		return 0;
 	}
@@ -178,7 +178,7 @@ hns3_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id,
 	cnt = rte_zmalloc("hns3 counter", sizeof(*cnt), 0);
 	if (cnt == NULL)
 		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_ACTION, cnt,
+					  RTE_FLOW_ERROR_TYPE_HANDLE, cnt,
 					  "Alloc mem for counter failed");
 	cnt->id = id;
 	cnt->shared = shared;
@@ -206,13 +206,13 @@ hns3_counter_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 	cnt = hns3_counter_lookup(dev, flow->counter_id);
 	if (cnt == NULL)
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 					  "Can't find counter id");
 
 	ret = hns3_get_count(&hns->hw, flow->counter_id, &value);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "Read counter fail.");
 		return ret;
 	}
@@ -374,9 +374,9 @@ hns3_handle_actions(struct rte_eth_dev *dev,
 			    (const struct rte_flow_action_mark *)actions->conf;
 			if (mark->id >= HNS3_MAX_FILTER_ID)
 				return rte_flow_error_set(error, EINVAL,
-						     RTE_FLOW_ERROR_TYPE_ACTION,
-						     actions,
-						     "Invalid Mark ID");
+						RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+						actions,
+						"Invalid Mark ID");
 			rule->fd_id = mark->id;
 			rule->flags |= HNS3_RULE_FLAG_FDID;
 			break;
@@ -390,9 +390,9 @@ hns3_handle_actions(struct rte_eth_dev *dev,
 			counter_num = pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_1];
 			if (act_count->id >= counter_num)
 				return rte_flow_error_set(error, EINVAL,
-						     RTE_FLOW_ERROR_TYPE_ACTION,
-						     actions,
-						     "Invalid counter id");
+						RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+						actions,
+						"Invalid counter id");
 			rule->act_cnt = *act_count;
 			rule->flags |= HNS3_RULE_FLAG_COUNTER;
 			break;
@@ -556,7 +556,7 @@ hns3_parse_ipv4(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		    ipv4_mask->hdr.time_to_live ||
 		    ipv4_mask->hdr.hdr_checksum) {
 			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
 						  "Only support src & dst ip,tos,proto in IPV4");
 		}
@@ -621,7 +621,7 @@ hns3_parse_ipv6(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		if (ipv6_mask->hdr.vtc_flow ||
 		    ipv6_mask->hdr.payload_len || ipv6_mask->hdr.hop_limits) {
 			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
 						  "Only support src & dst ip,proto in IPV6");
 		}
@@ -681,7 +681,7 @@ hns3_parse_tcp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		    tcp_mask->hdr.rx_win ||
 		    tcp_mask->hdr.cksum || tcp_mask->hdr.tcp_urp) {
 			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
 						  "Only support src & dst port in TCP");
 		}
@@ -728,7 +728,7 @@ hns3_parse_udp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		udp_mask = item->mask;
 		if (udp_mask->hdr.dgram_len || udp_mask->hdr.dgram_cksum) {
 			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
 						  "Only support src & dst port in UDP");
 		}
@@ -775,7 +775,7 @@ hns3_parse_sctp(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		sctp_mask = item->mask;
 		if (sctp_mask->hdr.cksum)
 			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  RTE_FLOW_ERROR_TYPE_ITEM_MASK,
 						  item,
 						  "Only support src & dst port in SCTP");
 
@@ -920,14 +920,14 @@ hns3_parse_vxlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (vxlan_mask->flags)
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
 					  "Flags is not supported in VxLAN");
 
 	/* VNI must be totally masked or not. */
 	if (memcmp(vxlan_mask->vni, full_mask, VNI_OR_TNI_LEN) &&
 	    memcmp(vxlan_mask->vni, zero_mask, VNI_OR_TNI_LEN))
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
 					  "VNI must be totally masked or not in VxLAN");
 	if (vxlan_mask->vni[0]) {
 		hns3_set_bit(rule->input_set, OUTER_TUN_VNI, 1);
@@ -971,14 +971,14 @@ hns3_parse_nvgre(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (nvgre_mask->protocol || nvgre_mask->c_k_s_rsvd0_ver)
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
 					  "Ver/protocal is not supported in NVGRE");
 
 	/* TNI must be totally masked or not. */
 	if (memcmp(nvgre_mask->tni, full_mask, VNI_OR_TNI_LEN) &&
 	    memcmp(nvgre_mask->tni, zero_mask, VNI_OR_TNI_LEN))
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
 					  "TNI must be totally masked or not in NVGRE");
 
 	if (nvgre_mask->tni[0]) {
@@ -1025,13 +1025,13 @@ hns3_parse_geneve(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	if (geneve_mask->ver_opt_len_o_c_rsvd0 || geneve_mask->protocol)
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
 					  "Ver/protocal is not supported in GENEVE");
 	/* VNI must be totally masked or not. */
 	if (memcmp(geneve_mask->vni, full_mask, VNI_OR_TNI_LEN) &&
 	    memcmp(geneve_mask->vni, zero_mask, VNI_OR_TNI_LEN))
 		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
 					  "VNI must be totally masked or not in GENEVE");
 	if (geneve_mask->vni[0]) {
 		hns3_set_bit(rule->input_set, OUTER_TUN_VNI, 1);
@@ -1062,7 +1062,7 @@ hns3_parse_tunnel(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_HANDLE,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  NULL, "Unsupported tunnel type!");
 	}
 	if (ret)
@@ -1116,7 +1116,7 @@ hns3_parse_normal(const struct rte_flow_item *item,
 		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_HANDLE,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  NULL, "Unsupported normal type!");
 	}
 
@@ -1132,7 +1132,7 @@ hns3_validate_item(const struct rte_flow_item *item,
 
 	if (item->last)
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, item,
+					  RTE_FLOW_ERROR_TYPE_ITEM_LAST, item,
 					  "Not supported last point for range");
 
 	for (i = 0; i < step_mngr.count; i++) {
@@ -1218,7 +1218,7 @@ hns3_parse_fdir_filter(struct rte_eth_dev *dev,
 
 	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_PERFECT)
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM_NUM, NULL,
+					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 					  "fdir_conf.mode isn't perfect");
 
 	step_mngr.items = first_items;
