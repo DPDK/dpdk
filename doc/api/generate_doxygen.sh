@@ -6,8 +6,10 @@ DOXYCONF=$1
 OUTDIR=$2
 SCRIPTCSS=$3
 
+OUT_FILE=$(dirname $OUTDIR)/doxygen.out
+
 # run doxygen, capturing all the header files it processed
-doxygen "${DOXYCONF}" > doxygen.out
-echo "$OUTDIR: $(awk '/Preprocessing/ {printf("%s ", substr($2, 1, length($2) - 3))}' doxygen.out)" > $OUTDIR.d
+doxygen "${DOXYCONF}" > $OUT_FILE
+echo "$OUTDIR: $(awk '/Preprocessing/ {printf("%s ", substr($2, 1, length($2) - 3))}' $OUT_FILE)" > $OUTDIR.d
 
 "${SCRIPTCSS}" "${OUTDIR}"/doxygen.css
