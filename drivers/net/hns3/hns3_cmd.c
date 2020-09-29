@@ -443,7 +443,7 @@ static void hns3_parse_capability(struct hns3_hw *hw,
 	if (hns3_get_bit(caps, HNS3_CAPS_PHY_IMP_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_COPPER_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_TQP_TXRX_INDEP_B))
-		hns3_set_bit(hw->capability, HNS3_CAPS_TQP_TXRX_INDEP_B, 1);
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_INDEP_TXRX_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_STASH_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_STASH_B, 1);
 }

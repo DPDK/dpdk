@@ -757,20 +757,25 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	bool gro_en;
 	int ret;
 
+	hw->cfg_max_queues = RTE_MAX(nb_rx_q, nb_tx_q);
+
 	/*
-	 * Hardware does not support individually enable/disable/reset the Tx or
-	 * Rx queue in hns3 network engine. Driver must enable/disable/reset Tx
-	 * and Rx queues at the same time. When the numbers of Tx queues
-	 * allocated by upper applications are not equal to the numbers of Rx
-	 * queues, driver needs to setup fake Tx or Rx queues to adjust numbers
-	 * of Tx/Rx queues. otherwise, network engine can not work as usual. But
-	 * these fake queues are imperceptible, and can not be used by upper
-	 * applications.
+	 * Some versions of hardware network engine does not support
+	 * individually enable/disable/reset the Tx or Rx queue. These devices
+	 * must enable/disable/reset Tx and Rx queues at the same time. When the
+	 * numbers of Tx queues allocated by upper applications are not equal to
+	 * the numbers of Rx queues, driver needs to setup fake Tx or Rx queues
+	 * to adjust numbers of Tx/Rx queues. otherwise, network engine can not
+	 * work as usual. But these fake queues are imperceptible, and can not
+	 * be used by upper applications.
 	 */
-	ret = hns3_set_fake_rx_or_tx_queues(dev, nb_rx_q, nb_tx_q);
-	if (ret) {
-		hns3_err(hw, "Failed to set rx/tx fake queues: %d", ret);
-		return ret;
+	if (!hns3_dev_indep_txrx_supported(hw)) {
+		ret = hns3_set_fake_rx_or_tx_queues(dev, nb_rx_q, nb_tx_q);
+		if (ret) {
+			hns3_err(hw, "fail to set Rx/Tx fake queues, ret = %d.",
+				 ret);
+			return ret;
+		}
 	}
 
 	hw->adapter_state = HNS3_NIC_CONFIGURING;
@@ -955,6 +960,10 @@ hns3vf_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_TX_OFFLOAD_GENEVE_TNL_TSO |
 				 DEV_TX_OFFLOAD_MBUF_FAST_FREE |
 				 hns3_txvlan_cap_get(hw));
+
+	if (hns3_dev_indep_txrx_supported(hw))
+		info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
+				 RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 
 	info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = HNS3_MAX_RING_DESC,
@@ -1849,16 +1858,20 @@ static int
 hns3vf_do_stop(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
-	bool reset_queue;
+	int ret;
 
 	hw->mac.link_status = ETH_LINK_DOWN;
 
 	if (rte_atomic16_read(&hw->reset.disable_cmd) == 0) {
 		hns3vf_configure_mac_addr(hns, true);
-		reset_queue = true;
-	} else
-		reset_queue = false;
-	return hns3_stop_queues(hns, reset_queue);
+		ret = hns3_reset_all_tqps(hns);
+		if (ret) {
+			hns3_err(hw, "failed to reset all queues ret = %d",
+				 ret);
+			return ret;
+		}
+	}
+	return 0;
 }
 
 static void
@@ -1914,6 +1927,7 @@ hns3vf_dev_stop(struct rte_eth_dev *dev)
 
 	rte_spinlock_lock(&hw->lock);
 	if (rte_atomic16_read(&hw->reset.resetting) == 0) {
+		hns3_stop_tqps(hw);
 		hns3vf_do_stop(hns);
 		hns3vf_unmap_rx_interrupt(dev);
 		hns3_dev_release_mbufs(hns);
@@ -2025,9 +2039,9 @@ hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 	if (ret)
 		return ret;
 
-	ret = hns3_start_queues(hns, reset_queue);
+	ret = hns3_init_queues(hns, reset_queue);
 	if (ret)
-		hns3_err(hw, "Failed to start queues: %d", ret);
+		hns3_err(hw, "failed to init queues, ret = %d.", ret);
 
 	return ret;
 }
@@ -2157,6 +2171,33 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 		rte_spinlock_unlock(&hw->lock);
 		return ret;
 	}
+
+	/*
+	 * There are three register used to control the status of a TQP
+	 * (contains a pair of Tx queue and Rx queue) in the new version network
+	 * engine. One is used to control the enabling of Tx queue, the other is
+	 * used to control the enabling of Rx queue, and the last is the master
+	 * switch used to control the enabling of the tqp. The Tx register and
+	 * TQP register must be enabled at the same time to enable a Tx queue.
+	 * The same applies to the Rx queue. For the older network enginem, this
+	 * function only refresh the enabled flag, and it is used to update the
+	 * status of queue in the dpdk framework.
+	 */
+	ret = hns3_start_all_txqs(dev);
+	if (ret) {
+		hw->adapter_state = HNS3_NIC_CONFIGURED;
+		rte_spinlock_unlock(&hw->lock);
+		return ret;
+	}
+
+	ret = hns3_start_all_rxqs(dev);
+	if (ret) {
+		hns3_stop_all_txqs(dev);
+		hw->adapter_state = HNS3_NIC_CONFIGURED;
+		rte_spinlock_unlock(&hw->lock);
+		return ret;
+	}
+
 	hw->adapter_state = HNS3_NIC_STARTED;
 	rte_spinlock_unlock(&hw->lock);
 
@@ -2169,11 +2210,12 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 
 	/* Enable interrupt of all rx queues before enabling queues */
 	hns3_dev_all_rx_queue_intr_enable(hw, true);
+
 	/*
-	 * When finished the initialization, enable queues to receive/transmit
-	 * packets.
+	 * After finished the initialization, start all tqps to receive/transmit
+	 * packets and refresh all queue status.
 	 */
-	hns3_enable_all_queues(hw, true);
+	hns3_start_tqps(hw);
 
 	return ret;
 }
@@ -2315,6 +2357,7 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 	rte_spinlock_lock(&hw->lock);
 	if (hw->adapter_state == HNS3_NIC_STARTED ||
 	    hw->adapter_state == HNS3_NIC_STOPPING) {
+		hns3_enable_all_queues(hw, false);
 		hns3vf_do_stop(hns);
 		hw->reset.mbuf_deferred_free = true;
 	} else
@@ -2557,7 +2600,7 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 		rte_intr_enable(&pci_dev->intr_handle);
 	}
 
-	ret = hns3_reset_all_queues(hns);
+	ret = hns3_reset_all_tqps(hns);
 	if (ret) {
 		hns3_err(hw, "Failed to reset all queues: %d", ret);
 		return ret;
@@ -2595,6 +2638,10 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.tx_queue_setup     = hns3_tx_queue_setup,
 	.rx_queue_release   = hns3_dev_rx_queue_release,
 	.tx_queue_release   = hns3_dev_tx_queue_release,
+	.rx_queue_start     = hns3_dev_rx_queue_start,
+	.rx_queue_stop      = hns3_dev_rx_queue_stop,
+	.tx_queue_start     = hns3_dev_tx_queue_start,
+	.tx_queue_stop      = hns3_dev_tx_queue_stop,
 	.rx_queue_intr_enable   = hns3_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable  = hns3_dev_rx_queue_intr_disable,
 	.rxq_info_get       = hns3_rxq_info_get,

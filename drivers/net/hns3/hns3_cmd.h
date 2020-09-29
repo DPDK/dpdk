@@ -159,6 +159,7 @@ enum hns3_opcode_type {
 	HNS3_OPC_QUERY_RX_STATUS        = 0x0B13,
 	HNS3_OPC_CFG_COM_TQP_QUEUE      = 0x0B20,
 	HNS3_OPC_RESET_TQP_QUEUE        = 0x0B22,
+	HNS3_OPC_RESET_TQP_QUEUE_INDEP  = 0x0B23,
 
 	/* TSO command */
 	HNS3_OPC_TSO_GENERIC_CONFIG     = 0x0C01,
@@ -810,7 +811,8 @@ struct hns3_reset_tqp_queue_cmd {
 	uint16_t tqp_id;
 	uint8_t reset_req;
 	uint8_t ready_to_reset;
-	uint8_t rsv[20];
+	uint8_t queue_direction;
+	uint8_t rsv[19];
 };
 
 #define HNS3_CFG_RESET_MAC_B		3

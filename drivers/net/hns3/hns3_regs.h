@@ -83,6 +83,8 @@
 #define HNS3_RING_TX_BD_ERR_REG			0x00074
 
 #define HNS3_RING_EN_REG			0x00090
+#define HNS3_RING_RX_EN_REG			0x00098
+#define HNS3_RING_TX_EN_REG			0x000d4
 
 #define HNS3_RING_EN_B				0
 

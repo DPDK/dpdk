@@ -74,7 +74,7 @@ hns3_tx_queue_release_mbufs(struct hns3_tx_queue *txq)
 {
 	uint16_t i;
 
-	/* Note: Fake rx queue will not enter here */
+	/* Note: Fake tx queue will not enter here */
 	if (txq->sw_ring) {
 		for (i = 0; i < txq->nb_tx_desc; i++) {
 			if (txq->sw_ring[i].mbuf) {
@@ -371,27 +371,159 @@ hns3_enable_all_queues(struct hns3_hw *hw, bool en)
 	struct hns3_rx_queue *rxq;
 	struct hns3_tx_queue *txq;
 	uint32_t rcb_reg;
+	void *tqp_base;
 	int i;
 
 	for (i = 0; i < hw->cfg_max_queues; i++) {
-		if (i < nb_rx_q)
-			rxq = hw->data->rx_queues[i];
-		else
-			rxq = hw->fkq_data.rx_queues[i - nb_rx_q];
-		if (i < nb_tx_q)
-			txq = hw->data->tx_queues[i];
-		else
-			txq = hw->fkq_data.tx_queues[i - nb_tx_q];
-		if (rxq == NULL || txq == NULL ||
-		    (en && (rxq->rx_deferred_start || txq->tx_deferred_start)))
-			continue;
+		if (hns3_dev_indep_txrx_supported(hw)) {
+			rxq = i < nb_rx_q ? hw->data->rx_queues[i] : NULL;
+			txq = i < nb_tx_q ? hw->data->tx_queues[i] : NULL;
+			/*
+			 * After initialization, rxq and txq won't be NULL at
+			 * the same time.
+			 */
+			if (rxq != NULL)
+				tqp_base = rxq->io_base;
+			else if (txq != NULL)
+				tqp_base = txq->io_base;
+			else
+				return;
+		} else {
+			rxq = i < nb_rx_q ? hw->data->rx_queues[i] :
+			      hw->fkq_data.rx_queues[i - nb_rx_q];
 
-		rcb_reg = hns3_read_dev(rxq, HNS3_RING_EN_REG);
+			tqp_base = rxq->io_base;
+		}
+		/*
+		 * This is the master switch that used to control the enabling
+		 * of a pair of Tx and Rx queues. Both the Rx and Tx point to
+		 * the same register
+		 */
+		rcb_reg = hns3_read_reg(tqp_base, HNS3_RING_EN_REG);
 		if (en)
 			rcb_reg |= BIT(HNS3_RING_EN_B);
 		else
 			rcb_reg &= ~BIT(HNS3_RING_EN_B);
-		hns3_write_dev(rxq, HNS3_RING_EN_REG, rcb_reg);
+		hns3_write_reg(tqp_base, HNS3_RING_EN_REG, rcb_reg);
+	}
+}
+
+static void
+hns3_enable_txq(struct hns3_tx_queue *txq, bool en)
+{
+	struct hns3_hw *hw = &txq->hns->hw;
+	uint32_t reg;
+
+	if (hns3_dev_indep_txrx_supported(hw)) {
+		reg = hns3_read_dev(txq, HNS3_RING_TX_EN_REG);
+		if (en)
+			reg |= BIT(HNS3_RING_EN_B);
+		else
+			reg &= ~BIT(HNS3_RING_EN_B);
+		hns3_write_dev(txq, HNS3_RING_TX_EN_REG, reg);
+	}
+	txq->enabled = en;
+}
+
+static void
+hns3_enable_rxq(struct hns3_rx_queue *rxq, bool en)
+{
+	struct hns3_hw *hw = &rxq->hns->hw;
+	uint32_t reg;
+
+	if (hns3_dev_indep_txrx_supported(hw)) {
+		reg = hns3_read_dev(rxq, HNS3_RING_RX_EN_REG);
+		if (en)
+			reg |= BIT(HNS3_RING_EN_B);
+		else
+			reg &= ~BIT(HNS3_RING_EN_B);
+		hns3_write_dev(rxq, HNS3_RING_RX_EN_REG, reg);
+	}
+	rxq->enabled = en;
+}
+
+int
+hns3_start_all_txqs(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_tx_queue *txq;
+	uint16_t i, j;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = hw->data->tx_queues[i];
+		if (!txq) {
+			hns3_err(hw, "Tx queue %u not available or setup.", i);
+			goto start_txqs_fail;
+		}
+		/*
+		 * Tx queue is enabled by default. Therefore, the Tx queues
+		 * needs to be disabled when deferred_start is set. There is
+		 * another master switch used to control the enabling of a pair
+		 * of Tx and Rx queues. And the master switch is disabled by
+		 * default.
+		 */
+		if (txq->tx_deferred_start)
+			hns3_enable_txq(txq, false);
+		else
+			hns3_enable_txq(txq, true);
+	}
+	return 0;
+
+start_txqs_fail:
+	for (j = 0; j < i; j++) {
+		txq = hw->data->tx_queues[j];
+		hns3_enable_txq(txq, false);
+	}
+	return -EINVAL;
+}
+
+int
+hns3_start_all_rxqs(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_rx_queue *rxq;
+	uint16_t i, j;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = hw->data->rx_queues[i];
+		if (!rxq) {
+			hns3_err(hw, "Rx queue %u not available or setup.", i);
+			goto start_rxqs_fail;
+		}
+		/*
+		 * Rx queue is enabled by default. Therefore, the Rx queues
+		 * needs to be disabled when deferred_start is set. There is
+		 * another master switch used to control the enabling of a pair
+		 * of Tx and Rx queues. And the master switch is disabled by
+		 * default.
+		 */
+		if (rxq->rx_deferred_start)
+			hns3_enable_rxq(rxq, false);
+		else
+			hns3_enable_rxq(rxq, true);
+	}
+	return 0;
+
+start_rxqs_fail:
+	for (j = 0; j < i; j++) {
+		rxq = hw->data->rx_queues[j];
+		hns3_enable_rxq(rxq, false);
+	}
+	return -EINVAL;
+}
+
+void
+hns3_stop_all_txqs(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_tx_queue *txq;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = hw->data->tx_queues[i];
+		if (!txq)
+			continue;
+		hns3_enable_txq(txq, false);
 	}
 }
 
@@ -428,16 +560,17 @@ hns3_send_reset_tqp_cmd(struct hns3_hw *hw, uint16_t queue_id, bool enable)
 	req = (struct hns3_reset_tqp_queue_cmd *)desc.data;
 	req->tqp_id = rte_cpu_to_le_16(queue_id);
 	hns3_set_bit(req->reset_req, HNS3_TQP_RESET_B, enable ? 1 : 0);
-
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
-		hns3_err(hw, "Send tqp reset cmd error, ret = %d", ret);
+		hns3_err(hw, "send tqp reset cmd error, queue_id = %u, "
+			     "ret = %d", queue_id, ret);
 
 	return ret;
 }
 
 static int
-hns3_get_reset_status(struct hns3_hw *hw, uint16_t queue_id)
+hns3_get_tqp_reset_status(struct hns3_hw *hw, uint16_t queue_id,
+			  uint8_t *reset_status)
 {
 	struct hns3_reset_tqp_queue_cmd *req;
 	struct hns3_cmd_desc desc;
@@ -450,19 +583,20 @@ hns3_get_reset_status(struct hns3_hw *hw, uint16_t queue_id)
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret) {
-		hns3_err(hw, "Get reset status error, ret =%d", ret);
+		hns3_err(hw, "get tqp reset status error, queue_id = %u, "
+			     "ret = %d.", queue_id, ret);
 		return ret;
 	}
-
-	return hns3_get_bit(req->ready_to_reset, HNS3_TQP_RESET_B);
+	*reset_status = hns3_get_bit(req->ready_to_reset, HNS3_TQP_RESET_B);
+	return ret;
 }
 
 static int
-hns3_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
+hns3pf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 {
 #define HNS3_TQP_RESET_TRY_MS	200
+	uint8_t reset_status;
 	uint64_t end;
-	int reset_status;
 	int ret;
 
 	ret = hns3_tqp_enable(hw, queue_id, false);
@@ -479,27 +613,33 @@ hns3_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 		hns3_err(hw, "Send reset tqp cmd fail, ret = %d", ret);
 		return ret;
 	}
-	ret = -ETIMEDOUT;
 	end = get_timeofday_ms() + HNS3_TQP_RESET_TRY_MS;
 	do {
 		/* Wait for tqp hw reset */
 		rte_delay_ms(HNS3_POLL_RESPONE_MS);
-		reset_status = hns3_get_reset_status(hw, queue_id);
-		if (reset_status) {
-			ret = 0;
+		ret = hns3_get_tqp_reset_status(hw, queue_id, &reset_status);
+		if (ret)
+			goto tqp_reset_fail;
+
+		if (reset_status)
 			break;
-		}
 	} while (get_timeofday_ms() < end);
 
-	if (ret) {
-		hns3_err(hw, "Reset TQP fail, ret = %d", ret);
-		return ret;
+	if (!reset_status) {
+		ret = -ETIMEDOUT;
+		hns3_err(hw, "reset tqp timeout, queue_id = %u, ret = %d",
+			     queue_id, ret);
+		goto tqp_reset_fail;
 	}
 
 	ret = hns3_send_reset_tqp_cmd(hw, queue_id, false);
 	if (ret)
 		hns3_err(hw, "Deassert the soft reset fail, ret = %d", ret);
 
+	return ret;
+
+tqp_reset_fail:
+	hns3_send_reset_tqp_cmd(hw, queue_id, false);
 	return ret;
 }
 
@@ -516,28 +656,33 @@ hns3vf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 
 	memcpy(msg_data, &queue_id, sizeof(uint16_t));
 
-	return hns3_send_mbx_msg(hw, HNS3_MBX_QUEUE_RESET, 0, msg_data,
+	ret = hns3_send_mbx_msg(hw, HNS3_MBX_QUEUE_RESET, 0, msg_data,
 				 sizeof(msg_data), true, NULL, 0);
+	if (ret)
+		hns3_err(hw, "fail to reset tqp, queue_id = %u, ret = %d.",
+			 queue_id, ret);
+	return ret;
 }
 
 static int
-hns3_reset_queue(struct hns3_adapter *hns, uint16_t queue_id)
+hns3_reset_tqp(struct hns3_adapter *hns, uint16_t queue_id)
 {
 	struct hns3_hw *hw = &hns->hw;
+
 	if (hns->is_vf)
 		return hns3vf_reset_tqp(hw, queue_id);
 	else
-		return hns3_reset_tqp(hw, queue_id);
+		return hns3pf_reset_tqp(hw, queue_id);
 }
 
 int
-hns3_reset_all_queues(struct hns3_adapter *hns)
+hns3_reset_all_tqps(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 	int ret, i;
 
 	for (i = 0; i < hw->cfg_max_queues; i++) {
-		ret = hns3_reset_queue(hns, i);
+		ret = hns3_reset_tqp(hns, i);
 		if (ret) {
 			hns3_err(hw, "Failed to reset No.%d queue: %d", i, ret);
 			return ret;
@@ -545,6 +690,121 @@ hns3_reset_all_queues(struct hns3_adapter *hns)
 	}
 	return 0;
 }
+
+static int
+hns3_send_reset_queue_cmd(struct hns3_hw *hw, uint16_t queue_id,
+			  enum hns3_ring_type queue_type, bool enable)
+{
+	struct hns3_reset_tqp_queue_cmd *req;
+	struct hns3_cmd_desc desc;
+	int queue_direction;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RESET_TQP_QUEUE_INDEP, false);
+
+	req = (struct hns3_reset_tqp_queue_cmd *)desc.data;
+	req->tqp_id = rte_cpu_to_le_16(queue_id);
+	queue_direction = queue_type == HNS3_RING_TYPE_TX ? 0 : 1;
+	req->queue_direction = rte_cpu_to_le_16(queue_direction);
+	hns3_set_bit(req->reset_req, HNS3_TQP_RESET_B, enable ? 1 : 0);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret)
+		hns3_err(hw, "send queue reset cmd error, queue_id = %u, "
+			 "queue_type = %s, ret = %d.", queue_id,
+			 queue_type == HNS3_RING_TYPE_TX ? "Tx" : "Rx", ret);
+	return ret;
+}
+
+static int
+hns3_get_queue_reset_status(struct hns3_hw *hw, uint16_t queue_id,
+			    enum hns3_ring_type queue_type,
+			    uint8_t *reset_status)
+{
+	struct hns3_reset_tqp_queue_cmd *req;
+	struct hns3_cmd_desc desc;
+	int queue_direction;
+	int ret;
+
+	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_RESET_TQP_QUEUE_INDEP, true);
+
+	req = (struct hns3_reset_tqp_queue_cmd *)desc.data;
+	req->tqp_id = rte_cpu_to_le_16(queue_id);
+	queue_direction = queue_type == HNS3_RING_TYPE_TX ? 0 : 1;
+	req->queue_direction = rte_cpu_to_le_16(queue_direction);
+
+	ret = hns3_cmd_send(hw, &desc, 1);
+	if (ret) {
+		hns3_err(hw, "get queue reset status error, queue_id = %u "
+			 "queue_type = %s, ret = %d.", queue_id,
+			 queue_type == HNS3_RING_TYPE_TX ? "Tx" : "Rx", ret);
+		return ret;
+	}
+
+	*reset_status = hns3_get_bit(req->ready_to_reset, HNS3_TQP_RESET_B);
+	return  ret;
+}
+
+static int
+hns3_reset_queue(struct hns3_hw *hw, uint16_t queue_id,
+		 enum hns3_ring_type queue_type)
+{
+#define HNS3_QUEUE_RESET_TRY_MS	200
+	struct hns3_tx_queue *txq;
+	struct hns3_rx_queue *rxq;
+	uint32_t reset_wait_times;
+	uint32_t max_wait_times;
+	uint8_t reset_status;
+	int ret;
+
+	if (queue_type == HNS3_RING_TYPE_TX) {
+		txq = hw->data->tx_queues[queue_id];
+		hns3_enable_txq(txq, false);
+	} else {
+		rxq = hw->data->rx_queues[queue_id];
+		hns3_enable_rxq(rxq, false);
+	}
+
+	ret = hns3_send_reset_queue_cmd(hw, queue_id, queue_type, true);
+	if (ret) {
+		hns3_err(hw, "send reset queue cmd fail, ret = %d.", ret);
+		return ret;
+	}
+
+	reset_wait_times = 0;
+	max_wait_times = HNS3_QUEUE_RESET_TRY_MS / HNS3_POLL_RESPONE_MS;
+	while (reset_wait_times < max_wait_times) {
+		/* Wait for queue hw reset */
+		rte_delay_ms(HNS3_POLL_RESPONE_MS);
+		ret = hns3_get_queue_reset_status(hw, queue_id,
+						queue_type, &reset_status);
+		if (ret)
+			goto queue_reset_fail;
+
+		if (reset_status)
+			break;
+		reset_wait_times++;
+	}
+
+	if (!reset_status) {
+		hns3_err(hw, "reset queue timeout, queue_id = %u, "
+			     "queue_type = %s", queue_id,
+			     queue_type == HNS3_RING_TYPE_TX ? "Tx" : "Rx");
+		ret = -ETIMEDOUT;
+		goto queue_reset_fail;
+	}
+
+	ret = hns3_send_reset_queue_cmd(hw, queue_id, queue_type, false);
+	if (ret)
+		hns3_err(hw, "deassert queue reset fail, ret = %d.", ret);
+
+	return ret;
+
+queue_reset_fail:
+	hns3_send_reset_queue_cmd(hw, queue_id, queue_type, false);
+	return ret;
+}
+
 
 void
 hns3_set_queue_intr_gl(struct hns3_hw *hw, uint16_t queue_id,
@@ -658,7 +918,7 @@ hns3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 }
 
 static int
-hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
+hns3_init_rxq(struct hns3_adapter *hns, uint16_t idx)
 {
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rx_queue *rxq;
@@ -669,7 +929,7 @@ hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 	rxq = (struct hns3_rx_queue *)hw->data->rx_queues[idx];
 	ret = hns3_alloc_rx_queue_mbufs(hw, rxq);
 	if (ret) {
-		hns3_err(hw, "Failed to alloc mbuf for No.%d rx queue: %d",
+		hns3_err(hw, "fail to alloc mbuf for Rx queue %u, ret = %d.",
 			 idx, ret);
 		return ret;
 	}
@@ -687,7 +947,7 @@ hns3_dev_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 }
 
 static void
-hns3_fake_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
+hns3_init_fake_rxq(struct hns3_adapter *hns, uint16_t idx)
 {
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rx_queue *rxq;
@@ -701,9 +961,8 @@ hns3_fake_rx_queue_start(struct hns3_adapter *hns, uint16_t idx)
 }
 
 static void
-hns3_init_tx_queue(struct hns3_tx_queue *queue)
+hns3_init_txq(struct hns3_tx_queue *txq)
 {
-	struct hns3_tx_queue *txq = queue;
 	struct hns3_desc *desc;
 	int i;
 
@@ -718,26 +977,6 @@ hns3_init_tx_queue(struct hns3_tx_queue *queue)
 	txq->next_to_clean = 0;
 	txq->tx_bd_ready = txq->nb_tx_desc - 1;
 	hns3_init_tx_queue_hw(txq);
-}
-
-static void
-hns3_dev_tx_queue_start(struct hns3_adapter *hns, uint16_t idx)
-{
-	struct hns3_hw *hw = &hns->hw;
-	struct hns3_tx_queue *txq;
-
-	txq = (struct hns3_tx_queue *)hw->data->tx_queues[idx];
-	hns3_init_tx_queue(txq);
-}
-
-static void
-hns3_fake_tx_queue_start(struct hns3_adapter *hns, uint16_t idx)
-{
-	struct hns3_hw *hw = &hns->hw;
-	struct hns3_tx_queue *txq;
-
-	txq = (struct hns3_tx_queue *)hw->fkq_data.tx_queues[idx];
-	hns3_init_tx_queue(txq);
 }
 
 static void
@@ -766,38 +1005,41 @@ hns3_init_tx_ring_tc(struct hns3_adapter *hns)
 }
 
 static int
-hns3_start_rx_queues(struct hns3_adapter *hns)
+hns3_init_rx_queues(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rx_queue *rxq;
-	int i, j;
+	uint16_t i, j;
 	int ret;
 
 	/* Initialize RSS for queues */
 	ret = hns3_config_rss(hns);
 	if (ret) {
-		hns3_err(hw, "Failed to configure rss %d", ret);
+		hns3_err(hw, "failed to configure rss, ret = %d.", ret);
 		return ret;
 	}
 
 	for (i = 0; i < hw->data->nb_rx_queues; i++) {
 		rxq = (struct hns3_rx_queue *)hw->data->rx_queues[i];
-		if (rxq == NULL || rxq->rx_deferred_start)
+		if (!rxq) {
+			hns3_err(hw, "Rx queue %u not available or setup.", i);
+			goto out;
+		}
+
+		if (rxq->rx_deferred_start)
 			continue;
-		ret = hns3_dev_rx_queue_start(hns, i);
+
+		ret = hns3_init_rxq(hns, i);
 		if (ret) {
-			hns3_err(hw, "Failed to start No.%d rx queue: %d", i,
+			hns3_err(hw, "failed to init Rx queue %u, ret = %d.", i,
 				 ret);
 			goto out;
 		}
 	}
 
-	for (i = 0; i < hw->fkq_data.nb_fake_rx_queues; i++) {
-		rxq = (struct hns3_rx_queue *)hw->fkq_data.rx_queues[i];
-		if (rxq == NULL || rxq->rx_deferred_start)
-			continue;
-		hns3_fake_rx_queue_start(hns, i);
-	}
+	for (i = 0; i < hw->fkq_data.nb_fake_rx_queues; i++)
+		hns3_init_fake_rxq(hns, i);
+
 	return 0;
 
 out:
@@ -809,74 +1051,104 @@ out:
 	return ret;
 }
 
-static void
-hns3_start_tx_queues(struct hns3_adapter *hns)
+static int
+hns3_init_tx_queues(struct hns3_adapter *hns)
 {
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_tx_queue *txq;
-	int i;
+	uint16_t i;
 
 	for (i = 0; i < hw->data->nb_tx_queues; i++) {
 		txq = (struct hns3_tx_queue *)hw->data->tx_queues[i];
-		if (txq == NULL || txq->tx_deferred_start)
+		if (!txq) {
+			hns3_err(hw, "Tx queue %u not available or setup.", i);
+			return -EINVAL;
+		}
+
+		if (txq->tx_deferred_start)
 			continue;
-		hns3_dev_tx_queue_start(hns, i);
+		hns3_init_txq(txq);
 	}
 
 	for (i = 0; i < hw->fkq_data.nb_fake_tx_queues; i++) {
 		txq = (struct hns3_tx_queue *)hw->fkq_data.tx_queues[i];
-		if (txq == NULL || txq->tx_deferred_start)
-			continue;
-		hns3_fake_tx_queue_start(hns, i);
+		hns3_init_txq(txq);
 	}
-
 	hns3_init_tx_ring_tc(hns);
+
+	return 0;
 }
 
 /*
- * Start all queues.
- * Note: just init and setup queues, and don't enable queue rx&tx.
+ * Init all queues.
+ * Note: just init and setup queues, and don't enable tqps.
  */
 int
-hns3_start_queues(struct hns3_adapter *hns, bool reset_queue)
+hns3_init_queues(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
 	if (reset_queue) {
-		ret = hns3_reset_all_queues(hns);
+		ret = hns3_reset_all_tqps(hns);
 		if (ret) {
-			hns3_err(hw, "Failed to reset all queues %d", ret);
+			hns3_err(hw, "failed to reset all queues, ret = %d.",
+				 ret);
 			return ret;
 		}
 	}
 
-	ret = hns3_start_rx_queues(hns);
+	ret = hns3_init_rx_queues(hns);
 	if (ret) {
-		hns3_err(hw, "Failed to start rx queues: %d", ret);
+		hns3_err(hw, "failed to init rx queues, ret = %d.", ret);
 		return ret;
 	}
 
-	hns3_start_tx_queues(hns);
+	ret = hns3_init_tx_queues(hns);
+	if (ret) {
+		hns3_dev_release_mbufs(hns);
+		hns3_err(hw, "failed to init tx queues, ret = %d.", ret);
+	}
 
-	return 0;
+	return ret;
 }
 
-int
-hns3_stop_queues(struct hns3_adapter *hns, bool reset_queue)
+void
+hns3_start_tqps(struct hns3_hw *hw)
 {
-	struct hns3_hw *hw = &hns->hw;
-	int ret;
+	struct hns3_tx_queue *txq;
+	struct hns3_rx_queue *rxq;
+	uint16_t i;
+
+	hns3_enable_all_queues(hw, true);
+
+	for (i = 0; i < hw->data->nb_tx_queues; i++) {
+		txq = hw->data->tx_queues[i];
+		if (txq->enabled)
+			hw->data->tx_queue_state[i] =
+				RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	for (i = 0; i < hw->data->nb_rx_queues; i++) {
+		rxq = hw->data->rx_queues[i];
+		if (rxq->enabled)
+			hw->data->rx_queue_state[i] =
+				RTE_ETH_QUEUE_STATE_STARTED;
+	}
+}
+
+void
+hns3_stop_tqps(struct hns3_hw *hw)
+{
+	uint16_t i;
 
 	hns3_enable_all_queues(hw, false);
-	if (reset_queue) {
-		ret = hns3_reset_all_queues(hns);
-		if (ret) {
-			hns3_err(hw, "Failed to reset all queues %d", ret);
-			return ret;
-		}
-	}
-	return 0;
+
+	for (i = 0; i < hw->data->nb_tx_queues; i++)
+		hw->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	for (i = 0; i < hw->data->nb_rx_queues; i++)
+		hw->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 }
 
 /*
@@ -1202,13 +1474,12 @@ hns3_set_fake_rx_or_tx_queues(struct rte_eth_dev *dev, uint16_t nb_rx_q,
 	int ret;
 
 	/* Setup new number of fake RX/TX queues and reconfigure device. */
-	hw->cfg_max_queues = RTE_MAX(nb_rx_q, nb_tx_q);
 	rx_need_add_nb_q = hw->cfg_max_queues - nb_rx_q;
 	tx_need_add_nb_q = hw->cfg_max_queues - nb_tx_q;
 	ret = hns3_fake_rx_queue_config(hw, rx_need_add_nb_q);
 	if (ret) {
 		hns3_err(hw, "Fail to configure fake rx queues: %d", ret);
-		goto cfg_fake_rx_q_fail;
+		return ret;
 	}
 
 	ret = hns3_fake_tx_queue_config(hw, tx_need_add_nb_q);
@@ -1241,8 +1512,6 @@ setup_fake_rx_q_fail:
 	(void)hns3_fake_tx_queue_config(hw, 0);
 cfg_fake_tx_q_fail:
 	(void)hns3_fake_rx_queue_config(hw, 0);
-cfg_fake_rx_q_fail:
-	hw->cfg_max_queues = 0;
 
 	return ret;
 }
@@ -1258,7 +1527,7 @@ hns3_dev_release_mbufs(struct hns3_adapter *hns)
 	if (dev_data->rx_queues)
 		for (i = 0; i < dev_data->nb_rx_queues; i++) {
 			rxq = dev_data->rx_queues[i];
-			if (rxq == NULL || rxq->rx_deferred_start)
+			if (rxq == NULL)
 				continue;
 			hns3_rx_queue_release_mbufs(rxq);
 		}
@@ -1266,7 +1535,7 @@ hns3_dev_release_mbufs(struct hns3_adapter *hns)
 	if (dev_data->tx_queues)
 		for (i = 0; i < dev_data->nb_tx_queues; i++) {
 			txq = dev_data->tx_queues[i];
-			if (txq == NULL || txq->tx_deferred_start)
+			if (txq == NULL)
 				continue;
 			hns3_tx_queue_release_mbufs(txq);
 		}
@@ -1315,10 +1584,49 @@ hns3_rx_buf_len_calc(struct rte_mempool *mp, uint16_t *rx_buf_len)
 }
 
 static int
+hns3_rxq_conf_runtime_check(struct hns3_hw *hw, uint16_t buf_size,
+				uint16_t nb_desc)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
+	struct rte_eth_rxmode *rxmode = &hw->data->dev_conf.rxmode;
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	uint16_t min_vec_bds;
+
+	/*
+	 * HNS3 hardware network engine set scattered as default. If the driver
+	 * is not work in scattered mode and the pkts greater than buf_size
+	 * but smaller than max_rx_pkt_len will be distributed to multiple BDs.
+	 * Driver cannot handle this situation.
+	 */
+	if (!hw->data->scattered_rx && rxmode->max_rx_pkt_len > buf_size) {
+		hns3_err(hw, "max_rx_pkt_len is not allowed to be set greater "
+			     "than rx_buf_len if scattered is off.");
+		return -EINVAL;
+	}
+
+	if (pkt_burst == hns3_recv_pkts_vec) {
+		min_vec_bds = HNS3_DEFAULT_RXQ_REARM_THRESH +
+			      HNS3_DEFAULT_RX_BURST;
+		if (nb_desc < min_vec_bds ||
+		    nb_desc % HNS3_DEFAULT_RXQ_REARM_THRESH) {
+			hns3_err(hw, "if Rx burst mode is vector, "
+				 "number of descriptor is required to be "
+				 "bigger than min vector bds:%u, and could be "
+				 "divided by rxq rearm thresh:%u.",
+				 min_vec_bds, HNS3_DEFAULT_RXQ_REARM_THRESH);
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
+static int
 hns3_rx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_rxconf *conf,
 			 struct rte_mempool *mp, uint16_t nb_desc,
 			 uint16_t *buf_size)
 {
+	int ret;
+
 	if (nb_desc > HNS3_MAX_RING_DESC || nb_desc < HNS3_MIN_RING_DESC ||
 	    nb_desc % HNS3_ALIGN_RING_DESC) {
 		hns3_err(hw, "Number (%u) of rx descriptors is invalid",
@@ -1336,6 +1644,14 @@ hns3_rx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_rxconf *conf,
 				rte_pktmbuf_data_room_size(mp),
 				HNS3_MIN_BD_BUF_SIZE + RTE_PKTMBUF_HEADROOM);
 		return -EINVAL;
+	}
+
+	if (hw->data->dev_started) {
+		ret = hns3_rxq_conf_runtime_check(hw, *buf_size, nb_desc);
+		if (ret) {
+			hns3_err(hw, "Rx queue runtime setup fail.");
+			return ret;
+		}
 	}
 
 	return 0;
@@ -1370,11 +1686,6 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	int rx_entry_len;
 	int ret;
 
-	if (dev->data->dev_started) {
-		hns3_err(hw, "rx_queue_setup after dev_start no supported");
-		return -EINVAL;
-	}
-
 	ret = hns3_rx_queue_conf_check(hw, conf, mp, nb_desc, &rx_buf_size);
 	if (ret)
 		return ret;
@@ -1402,7 +1713,12 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	rxq->mb_pool = mp;
 	rxq->rx_free_thresh = (conf->rx_free_thresh > 0) ?
 		conf->rx_free_thresh : HNS3_DEFAULT_RX_FREE_THRESH;
+
 	rxq->rx_deferred_start = conf->rx_deferred_start;
+	if (rxq->rx_deferred_start && !hns3_dev_indep_txrx_supported(hw)) {
+		hns3_warn(hw, "deferred start is not supported.");
+		rxq->rx_deferred_start = false;
+	}
 
 	rx_entry_len = (rxq->nb_rx_desc + HNS3_DEFAULT_RX_BURST) *
 			sizeof(struct hns3_entry);
@@ -2132,11 +2448,6 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	int tx_entry_len;
 	int ret;
 
-	if (dev->data->dev_started) {
-		hns3_err(hw, "tx_queue_setup after dev_start no supported");
-		return -EINVAL;
-	}
-
 	ret = hns3_tx_queue_conf_check(hw, conf, nb_desc,
 				       &tx_rs_thresh, &tx_free_thresh, idx);
 	if (ret)
@@ -2160,6 +2471,11 @@ hns3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 	}
 
 	txq->tx_deferred_start = conf->tx_deferred_start;
+	if (txq->tx_deferred_start && !hns3_dev_indep_txrx_supported(hw)) {
+		hns3_warn(hw, "deferred start is not supported.");
+		txq->tx_deferred_start = false;
+	}
+
 	tx_entry_len = sizeof(struct hns3_entry) * txq->nb_tx_desc;
 	txq->sw_ring = rte_zmalloc_socket("hns3 TX sw ring", tx_entry_len,
 					  RTE_CACHE_LINE_SIZE, socket_id);
@@ -3376,4 +3692,99 @@ hns3_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+}
+
+int
+hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_rx_queue *rxq = dev->data->rx_queues[rx_queue_id];
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	int ret;
+
+	if (!hns3_dev_indep_txrx_supported(hw))
+		return -ENOTSUP;
+
+	ret = hns3_reset_queue(hw, rx_queue_id, HNS3_RING_TYPE_RX);
+	if (ret) {
+		hns3_err(hw, "fail to reset Rx queue %u, ret = %d.",
+			 rx_queue_id, ret);
+		return ret;
+	}
+
+	ret = hns3_init_rxq(hns, rx_queue_id);
+	if (ret) {
+		hns3_err(hw, "fail to init Rx queue %u, ret = %d.",
+			 rx_queue_id, ret);
+		return ret;
+	}
+
+	hns3_enable_rxq(rxq, true);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return ret;
+}
+
+int
+hns3_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_rx_queue *rxq = dev->data->rx_queues[rx_queue_id];
+
+	if (!hns3_dev_indep_txrx_supported(hw))
+		return -ENOTSUP;
+
+	hns3_enable_rxq(rxq, false);
+	hns3_rx_queue_release_mbufs(rxq);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+int
+hns3_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_tx_queue *txq = dev->data->tx_queues[tx_queue_id];
+	int ret;
+
+	if (!hns3_dev_indep_txrx_supported(hw))
+		return -ENOTSUP;
+
+	ret = hns3_reset_queue(hw, tx_queue_id, HNS3_RING_TYPE_TX);
+	if (ret) {
+		hns3_err(hw, "fail to reset Tx queue %u, ret = %d.",
+			 tx_queue_id, ret);
+		return ret;
+	}
+
+	hns3_init_txq(txq);
+	hns3_enable_txq(txq, true);
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return ret;
+}
+
+int
+hns3_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_tx_queue *txq = dev->data->tx_queues[tx_queue_id];
+
+	if (!hns3_dev_indep_txrx_supported(hw))
+		return -ENOTSUP;
+
+	hns3_enable_txq(txq, false);
+	hns3_tx_queue_release_mbufs(txq);
+	/*
+	 * All the mbufs in sw_ring are released and all the pointers in sw_ring
+	 * are set to NULL. If this queue is still called by upper layer,
+	 * residual SW status of this txq may cause these pointers in sw_ring
+	 * which have been set to NULL to be released again. To avoid it,
+	 * reinit the txq.
+	 */
+	hns3_init_txq(txq);
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
 }
