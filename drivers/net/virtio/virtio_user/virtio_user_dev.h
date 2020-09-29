@@ -10,6 +10,12 @@
 #include "../virtio_pci.h"
 #include "../virtio_ring.h"
 
+enum virtio_user_backend_type {
+	VIRTIO_USER_BACKEND_UNKNOWN,
+	VIRTIO_USER_BACKEND_VHOST_USER,
+	VIRTIO_USER_BACKEND_VHOST_KERNEL,
+};
+
 struct virtio_user_queue {
 	uint16_t used_idx;
 	bool avail_wrap_counter;
@@ -17,6 +23,7 @@ struct virtio_user_queue {
 };
 
 struct virtio_user_dev {
+	enum virtio_user_backend_type backend_type;
 	/* for vhost_user backend */
 	int		vhostfd;
 	int		listenfd;   /* listening fd */
@@ -60,13 +67,13 @@ struct virtio_user_dev {
 	bool		started;
 };
 
-int is_vhost_user_by_type(const char *path);
 int virtio_user_start_device(struct virtio_user_dev *dev);
 int virtio_user_stop_device(struct virtio_user_dev *dev);
 int virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 			 int cq, int queue_size, const char *mac, char **ifname,
 			 int server, int mrg_rxbuf, int in_order,
-			 int packed_vq);
+			 int packed_vq,
+			 enum virtio_user_backend_type backend_type);
 void virtio_user_dev_uninit(struct virtio_user_dev *dev);
 void virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx);
 void virtio_user_handle_cq_packed(struct virtio_user_dev *dev,

@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 
 #include <rte_malloc.h>
@@ -518,6 +519,19 @@ get_integer_arg(const char *key __rte_unused,
 	return -errno;
 }
 
+static enum virtio_user_backend_type
+virtio_user_backend_type(const char *path)
+{
+	struct stat sb;
+
+	if (stat(path, &sb) == -1)
+		return VIRTIO_USER_BACKEND_UNKNOWN;
+
+	return S_ISSOCK(sb.st_mode) ?
+		VIRTIO_USER_BACKEND_VHOST_USER :
+		VIRTIO_USER_BACKEND_VHOST_KERNEL;
+}
+
 static struct rte_eth_dev *
 virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 {
@@ -579,6 +593,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 	struct rte_kvargs *kvlist = NULL;
 	struct rte_eth_dev *eth_dev;
 	struct virtio_hw *hw;
+	enum virtio_user_backend_type backend_type = VIRTIO_USER_BACKEND_UNKNOWN;
 	uint64_t queues = VIRTIO_USER_DEF_Q_NUM;
 	uint64_t cq = VIRTIO_USER_DEF_CQ_EN;
 	uint64_t queue_size = VIRTIO_USER_DEF_Q_SZ;
@@ -631,8 +646,17 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 		goto end;
 	}
 
+	backend_type = virtio_user_backend_type(path);
+	if (backend_type == VIRTIO_USER_BACKEND_UNKNOWN) {
+		PMD_INIT_LOG(ERR,
+			     "unable to determine backend type for path %s",
+			path);
+		goto end;
+	}
+
+
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_INTERFACE_NAME) == 1) {
-		if (is_vhost_user_by_type(path)) {
+		if (backend_type != VIRTIO_USER_BACKEND_VHOST_KERNEL) {
 			PMD_INIT_LOG(ERR,
 				"arg %s applies only to vhost-kernel backend",
 				VIRTIO_USER_ARG_INTERFACE_NAME);
@@ -751,7 +775,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 	hw = eth_dev->data->dev_private;
 	if (virtio_user_dev_init(hw->virtio_user_dev, path, queues, cq,
 			 queue_size, mac_addr, &ifname, server_mode,
-			 mrg_rxbuf, in_order, packed_vq) < 0) {
+			 mrg_rxbuf, in_order, packed_vq, backend_type) < 0) {
 		PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");
 		virtio_user_eth_dev_free(eth_dev);
 		goto end;
