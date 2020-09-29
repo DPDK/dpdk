@@ -34,7 +34,7 @@ cdata = configuration_data()
 cdata.set('VERSION', meson.project_version())
 cdata.set('API_EXAMPLES', join_paths(meson.build_root(), 'doc', 'api', 'examples.dox'))
 cdata.set('OUTPUT', join_paths(meson.build_root(), 'doc', 'api'))
-cdata.set('HTML_OUTPUT', 'api')
+cdata.set('HTML_OUTPUT', 'html')
 cdata.set('TOPDIR', meson.source_root())
 cdata.set('STRIP_FROM_PATH', meson.source_root())
 
@@ -45,8 +45,8 @@ doxy_conf = configure_file(input: 'doxy-api.conf.in',
 doxy_build = custom_target('doxygen',
 	depends: example,
 	input: doxy_conf,
-	output: 'api',
-	depfile: 'api.d',
+	output: 'html',
+	depfile: 'html.d',
 	command: [generate_doxygen, '@INPUT@', '@OUTPUT@', generate_css],
 	install: get_option('enable_docs'),
 	install_dir: htmldir,
