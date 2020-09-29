@@ -784,11 +784,15 @@ virtio_user_send_status_update(struct virtio_user_dev *dev, uint8_t status)
 	int ret;
 	uint64_t arg = status;
 
-	/* Vhost-user only for now */
-	if (dev->backend_type != VIRTIO_USER_BACKEND_VHOST_USER)
+	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER)
+		ret = dev->ops->send_request(dev,
+				VHOST_USER_SET_STATUS, &arg);
+	else if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA)
+		ret = dev->ops->send_request(dev,
+				VHOST_USER_SET_STATUS, &status);
+	else
 		return 0;
 
-	ret = dev->ops->send_request(dev, VHOST_USER_SET_STATUS, &arg);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "VHOST_USER_SET_STATUS failed (%d): %s", ret,
 			     strerror(errno));
@@ -802,24 +806,32 @@ int
 virtio_user_update_status(struct virtio_user_dev *dev)
 {
 	uint64_t ret;
+	uint8_t status;
 	int err;
 
-	/* Vhost-user only for now */
-	if (dev->backend_type != VIRTIO_USER_BACKEND_VHOST_USER)
-		return 0;
+	if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_USER) {
+		err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS, &ret);
+		if (!err && ret > UINT8_MAX) {
+			PMD_INIT_LOG(ERR, "Invalid VHOST_USER_GET_STATUS "
+					"response 0x%" PRIx64 "\n", ret);
+			return -1;
+		}
 
-	err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS, &ret);
+		status = ret;
+	} else if (dev->backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA) {
+		err = dev->ops->send_request(dev, VHOST_USER_GET_STATUS,
+				&status);
+	} else {
+		return 0;
+	}
+
 	if (err) {
 		PMD_INIT_LOG(ERR, "VHOST_USER_GET_STATUS failed (%d): %s", err,
 			     strerror(errno));
 		return -1;
 	}
-	if (ret > UINT8_MAX) {
-		PMD_INIT_LOG(ERR, "Invalid VHOST_USER_GET_STATUS response 0x%" PRIx64 "\n", ret);
-		return -1;
-	}
 
-	dev->status = ret;
+	dev->status = status;
 	PMD_INIT_LOG(DEBUG, "Updated Device Status(0x%08x):\n"
 			"\t-RESET: %u\n"
 			"\t-ACKNOWLEDGE: %u\n"
