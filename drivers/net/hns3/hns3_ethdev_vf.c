@@ -64,12 +64,18 @@ static int hns3vf_add_mc_mac_addr(struct hns3_hw *hw,
 static int hns3vf_remove_mc_mac_addr(struct hns3_hw *hw,
 				     struct rte_ether_addr *mac_addr);
 /* set PCI bus mastering */
-static void
+static int
 hns3vf_set_bus_master(const struct rte_pci_device *device, bool op)
 {
 	uint16_t reg;
+	int ret;
 
-	rte_pci_read_config(device, &reg, sizeof(reg), PCI_COMMAND);
+	ret = rte_pci_read_config(device, &reg, sizeof(reg), PCI_COMMAND);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
+			     PCI_COMMAND);
+		return ret;
+	}
 
 	if (op)
 		/* set the master bit */
@@ -77,7 +83,7 @@ hns3vf_set_bus_master(const struct rte_pci_device *device, bool op)
 	else
 		reg &= ~(PCI_COMMAND_MASTER);
 
-	rte_pci_write_config(device, &reg, sizeof(reg), PCI_COMMAND);
+	return rte_pci_write_config(device, &reg, sizeof(reg), PCI_COMMAND);
 }
 
 /**
@@ -94,16 +100,34 @@ hns3vf_find_pci_capability(const struct rte_pci_device *device, int cap)
 	uint8_t pos;
 	uint8_t id;
 	int ttl;
+	int ret;
 
-	rte_pci_read_config(device, &status, sizeof(status), PCI_STATUS);
+	ret = rte_pci_read_config(device, &status, sizeof(status), PCI_STATUS);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x", PCI_STATUS);
+		return 0;
+	}
+
 	if (!(status & PCI_STATUS_CAP_LIST))
 		return 0;
 
 	ttl = MAX_PCIE_CAPABILITY;
-	rte_pci_read_config(device, &pos, sizeof(pos), PCI_CAPABILITY_LIST);
+	ret = rte_pci_read_config(device, &pos, sizeof(pos),
+				  PCI_CAPABILITY_LIST);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
+			     PCI_CAPABILITY_LIST);
+		return 0;
+	}
+
 	while (ttl-- && pos >= PCI_STD_HEADER_SIZEOF) {
-		rte_pci_read_config(device, &id, sizeof(id),
-				    (pos + PCI_CAP_LIST_ID));
+		ret = rte_pci_read_config(device, &id, sizeof(id),
+					  (pos + PCI_CAP_LIST_ID));
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
+				     (pos + PCI_CAP_LIST_ID));
+			break;
+		}
 
 		if (id == 0xFF)
 			break;
@@ -111,8 +135,13 @@ hns3vf_find_pci_capability(const struct rte_pci_device *device, int cap)
 		if (id == cap)
 			return (int)pos;
 
-		rte_pci_read_config(device, &pos, sizeof(pos),
-				    (pos + PCI_CAP_LIST_NEXT));
+		ret = rte_pci_read_config(device, &pos, sizeof(pos),
+					  (pos + PCI_CAP_LIST_NEXT));
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
+				     (pos + PCI_CAP_LIST_NEXT));
+			break;
+		}
 	}
 	return 0;
 }
@@ -122,11 +151,18 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 {
 	uint16_t control;
 	int pos;
+	int ret;
 
 	pos = hns3vf_find_pci_capability(device, PCI_CAP_ID_MSIX);
 	if (pos) {
-		rte_pci_read_config(device, &control, sizeof(control),
+		ret = rte_pci_read_config(device, &control, sizeof(control),
 				    (pos + PCI_MSIX_FLAGS));
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
+				     (pos + PCI_MSIX_FLAGS));
+			return -ENXIO;
+		}
+
 		if (op)
 			control |= PCI_MSIX_FLAGS_ENABLE;
 		else
@@ -2576,7 +2612,11 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 
 	if (hw->reset.level == HNS3_VF_FULL_RESET) {
 		rte_intr_disable(&pci_dev->intr_handle);
-		hns3vf_set_bus_master(pci_dev, true);
+		ret = hns3vf_set_bus_master(pci_dev, true);
+		if (ret) {
+			hns3_err(hw, "failed to set pci bus, ret = %d", ret);
+			return ret;
+		}
 	}
 
 	/* Firmware command initialize */
