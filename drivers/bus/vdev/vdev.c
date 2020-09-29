@@ -135,6 +135,56 @@ vdev_parse(const char *name, void *addr)
 }
 
 static int
+vdev_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	struct rte_vdev_device *vdev = RTE_DEV_TO_VDEV(dev);
+	const struct rte_vdev_driver *driver;
+
+	if (!vdev) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	if (!vdev->device.driver) {
+		VDEV_LOG(DEBUG, "no driver attach to device %s", dev->name);
+		return 1;
+	}
+
+	driver = container_of(vdev->device.driver, const struct rte_vdev_driver,
+			driver);
+
+	if (driver->dma_map)
+		return driver->dma_map(vdev, addr, iova, len);
+
+	return 0;
+}
+
+static int
+vdev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	struct rte_vdev_device *vdev = RTE_DEV_TO_VDEV(dev);
+	const struct rte_vdev_driver *driver;
+
+	if (!vdev) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	if (!vdev->device.driver) {
+		VDEV_LOG(DEBUG, "no driver attach to device %s", dev->name);
+		return 1;
+	}
+
+	driver = container_of(vdev->device.driver, const struct rte_vdev_driver,
+			driver);
+
+	if (driver->dma_unmap)
+		return driver->dma_unmap(vdev, addr, iova, len);
+
+	return 0;
+}
+
+static int
 vdev_probe_all_drivers(struct rte_vdev_device *dev)
 {
 	const char *name;
@@ -551,6 +601,8 @@ static struct rte_bus rte_vdev_bus = {
 	.plug = vdev_plug,
 	.unplug = vdev_unplug,
 	.parse = vdev_parse,
+	.dma_map = vdev_dma_map,
+	.dma_unmap = vdev_dma_unmap,
 	.dev_iterate = rte_vdev_dev_iterate,
 };
 

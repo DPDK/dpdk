@@ -64,13 +64,53 @@ typedef int (rte_vdev_probe_t)(struct rte_vdev_device *dev);
 typedef int (rte_vdev_remove_t)(struct rte_vdev_device *dev);
 
 /**
+ * Driver-specific DMA mapping. After a successful call the device
+ * will be able to read/write from/to this segment.
+ *
+ * @param dev
+ *   Pointer to the Virtual device.
+ * @param addr
+ *   Starting virtual address of memory to be mapped.
+ * @param iova
+ *   Starting IOVA address of memory to be mapped.
+ * @param len
+ *   Length of memory segment being mapped.
+ * @return
+ *   - 0 On success.
+ *   - Negative value and rte_errno is set otherwise.
+ */
+typedef int (rte_vdev_dma_map_t)(struct rte_vdev_device *dev, void *addr,
+			    uint64_t iova, size_t len);
+
+/**
+ * Driver-specific DMA un-mapping. After a successful call the device
+ * will not be able to read/write from/to this segment.
+ *
+ * @param dev
+ *   Pointer to the Virtual device.
+ * @param addr
+ *   Starting virtual address of memory to be unmapped.
+ * @param iova
+ *   Starting IOVA address of memory to be unmapped.
+ * @param len
+ *   Length of memory segment being unmapped.
+ * @return
+ *   - 0 On success.
+ *   - Negative value and rte_errno is set otherwise.
+ */
+typedef int (rte_vdev_dma_unmap_t)(struct rte_vdev_device *dev, void *addr,
+			      uint64_t iova, size_t len);
+
+/**
  * A virtual device driver abstraction.
  */
 struct rte_vdev_driver {
 	TAILQ_ENTRY(rte_vdev_driver) next; /**< Next in list. */
-	struct rte_driver driver;      /**< Inherited general driver. */
-	rte_vdev_probe_t *probe;       /**< Virtual device probe function. */
-	rte_vdev_remove_t *remove;     /**< Virtual device remove function. */
+	struct rte_driver driver;        /**< Inherited general driver. */
+	rte_vdev_probe_t *probe;         /**< Virtual device probe function. */
+	rte_vdev_remove_t *remove;       /**< Virtual device remove function. */
+	rte_vdev_dma_map_t *dma_map;     /**< Virtual device DMA map function. */
+	rte_vdev_dma_unmap_t *dma_unmap; /**< Virtual device DMA unmap function. */
 };
 
 /**
