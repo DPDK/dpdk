@@ -16,7 +16,7 @@
 
 /* SP or DWRR */
 #define HNS3_DCB_TX_SCHD_DWRR_MSK	BIT(0)
-#define HNS3_DCB_TX_SCHD_SP_MSK		(0xFE)
+#define HNS3_DCB_TX_SCHD_SP_MSK		0xFE
 
 enum hns3_shap_bucket {
 	HNS3_DCB_SHAP_C_BUCKET = 0,
@@ -81,18 +81,46 @@ struct hns3_nq_to_qs_link_cmd {
 #define HNS3_DCB_SHAP_BS_S_MSK  GENMASK(25, 21)
 #define HNS3_DCB_SHAP_BS_S_LSH	21
 
+/*
+ * For more flexible selection of shapping algorithm in different network
+ * engine, the algorithm calculating shapping parameter is moved to firmware to
+ * execute. Bit HNS3_TM_RATE_VLD_B of flag field in hns3_pri_shapping_cmd,
+ * hns3_pg_shapping_cmd or hns3_port_shapping_cmd is set to 1 to require
+ * firmware to recalculate shapping parameters. However, whether the parameters
+ * are recalculated depends on the firmware version. If firmware doesn't support
+ * the calculation of shapping parameters, such as on network engine with
+ * revision id 0x21, the value driver calculated will be used to configure to
+ * hardware. On the contrary, firmware ignores configuration of driver
+ * and recalculates the parameter.
+ */
+#define HNS3_TM_RATE_VLD_B	0
+
 struct hns3_pri_shapping_cmd {
 	uint8_t pri_id;
 	uint8_t rsvd[3];
 	uint32_t pri_shapping_para;
-	uint32_t rsvd1[4];
+	uint8_t flag;
+	uint8_t rsvd1[3];
+	uint32_t pri_rate;  /* Unit Mbps */
+	uint8_t rsvd2[8];
 };
 
 struct hns3_pg_shapping_cmd {
 	uint8_t pg_id;
 	uint8_t rsvd[3];
 	uint32_t pg_shapping_para;
-	uint32_t rsvd1[4];
+	uint8_t flag;
+	uint8_t rsvd1[3];
+	uint32_t pg_rate; /* Unit Mbps */
+	uint8_t rsvd2[8];
+};
+
+struct hns3_port_shapping_cmd {
+	uint32_t port_shapping_para;
+	uint8_t flag;
+	uint8_t rsvd[3];
+	uint32_t port_rate;   /* Unit Mbps */
+	uint8_t rsvd1[12];
 };
 
 #define HNS3_BP_GRP_NUM			32
@@ -113,11 +141,6 @@ struct hns3_pfc_en_cmd {
 	uint8_t tx_rx_en_bitmap;
 	uint8_t pri_en_bitmap;
 	uint8_t rsvd[22];
-};
-
-struct hns3_port_shapping_cmd {
-	uint32_t port_shapping_para;
-	uint32_t rsvd[5];
 };
 
 struct hns3_cfg_pause_param_cmd {
