@@ -646,7 +646,7 @@ static void
 bnxt_ulp_destroy_vfr_default_rules(struct bnxt *bp, bool global)
 {
 	struct bnxt_ulp_vfr_rule_info *info;
-	uint8_t port_id;
+	uint16_t port_id;
 	struct rte_eth_dev *vfr_eth_dev;
 	struct bnxt_representor *vfr_bp;
 

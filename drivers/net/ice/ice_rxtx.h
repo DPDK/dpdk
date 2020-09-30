@@ -71,7 +71,7 @@ struct ice_rx_queue {
 	uint16_t rxrearm_start;	/**< the idx we start the re-arming from */
 	uint64_t mbuf_initializer; /**< value to init mbufs */
 
-	uint8_t port_id; /* device port ID */
+	uint16_t port_id; /* device port ID */
 	uint8_t crc_len; /* 0 if CRC stripped, 4 otherwise */
 	uint8_t fdir_enabled; /* 0 if FDIR disabled, 1 when enabled */
 	uint16_t queue_id; /* RX queue index */
@@ -117,7 +117,7 @@ struct ice_tx_queue {
 	uint8_t pthresh; /**< Prefetch threshold register. */
 	uint8_t hthresh; /**< Host threshold register. */
 	uint8_t wthresh; /**< Write-back threshold reg. */
-	uint8_t port_id; /* Device port identifier. */
+	uint16_t port_id; /* Device port identifier. */
 	uint16_t queue_id; /* TX queue index. */
 	uint32_t q_teid; /* TX schedule node id. */
 	uint16_t reg_idx;

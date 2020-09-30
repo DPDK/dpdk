@@ -242,7 +242,7 @@ qede_write_fwdump(const char *dump_file, void *dump, size_t len)
 }
 
 int
-qede_save_fw_dump(uint8_t port_id)
+qede_save_fw_dump(uint16_t port_id)
 {
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
 	struct rte_dev_reg_info regs;
