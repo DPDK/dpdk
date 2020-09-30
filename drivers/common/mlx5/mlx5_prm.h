@@ -2835,6 +2835,14 @@ struct mlx5_mini_cqe8 {
 	uint32_t byte_cnt;
 };
 
+/* Mini CQE responder format. */
+enum {
+	MLX5_CQE_RESP_FORMAT_HASH = 0x0,
+	MLX5_CQE_RESP_FORMAT_CSUM = 0x1,
+	MLX5_CQE_RESP_FORMAT_CSUM_FLOW_TAG = 0x2,
+	MLX5_CQE_RESP_FORMAT_CSUM_STRIDX = 0x3,
+};
+
 /* srTCM PRM flow meter parameters. */
 enum {
 	MLX5_FLOW_COLOR_RED = 0,

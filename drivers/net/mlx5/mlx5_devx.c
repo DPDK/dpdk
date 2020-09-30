@@ -367,15 +367,11 @@ rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	}
 	if (priv->config.cqe_comp && !rxq_data->hw_timestamp &&
 	    !rxq_data->lro) {
-		cq_attr.cqe_comp_en = MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
-#ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
+		cq_attr.cqe_comp_en = 1u;
 		cq_attr.mini_cqe_res_format =
 				mlx5_rxq_mprq_enabled(rxq_data) ?
-				MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX :
-				MLX5DV_CQE_RES_FORMAT_HASH;
-#else
-		cq_attr.mini_cqe_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
-#endif
+					MLX5_CQE_RESP_FORMAT_CSUM_STRIDX :
+					MLX5_CQE_RESP_FORMAT_HASH;
 		/*
 		 * For vectorized Rx, it must not be doubled in order to
 		 * make cq_ci and rq_ci aligned.
@@ -392,10 +388,8 @@ rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 			"Port %u Rx CQE compression is disabled for LRO.",
 			dev->data->port_id);
 	}
-#ifdef HAVE_IBV_MLX5_MOD_CQE_128B_PAD
 	if (priv->config.cqe_pad)
-		cq_attr.cqe_size = MLX5DV_CQ_INIT_ATTR_FLAGS_CQE_PAD;
-#endif
+		cq_attr.cqe_size = MLX5_CQE_SIZE_128B;
 	log_cqe_n = log2above(cqe_n);
 	cq_size = sizeof(struct mlx5_cqe) * (1 << log_cqe_n);
 	/* Query the EQN for this core. */
