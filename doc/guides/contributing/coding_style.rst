@@ -765,7 +765,7 @@ specializations, run the ``app/test`` binary, and use the ``dump_log_types``
 Python Code
 -----------
 
-All Python code should work with Python 2.7+ and 3.2+ and be compliant with
+All Python code should be compliant with
 `PEP8 (Style Guide for Python Code) <https://www.python.org/dev/peps/pep-0008/>`_.
 
 The ``pep8`` tool can be used for testing compliance with the guidelines.

@@ -1,9 +1,8 @@
-#! /usr/bin/env python
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 #
 
-from __future__ import print_function
 import sys
 import os
 import getopt
@@ -11,10 +10,6 @@ import subprocess
 from glob import glob
 from os.path import exists, abspath, dirname, basename
 from os.path import join as path_join
-
-if sys.version_info.major < 3:
-    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
-    print("Please use Python 3 instead", file=sys.stderr)
 
 # The PCI base class for all devices
 network_class = {'Class': '02', 'Vendor': None, 'Device': None,
@@ -154,14 +149,6 @@ To bind all functions on device 0000:02:00 to ixgbe kernel driver
 
     """ % locals())  # replace items from local variables
 
-
-# This is roughly compatible with check_output function in subprocess module
-# which is only available in python 2.7.
-def check_output(args, stderr=None):
-    '''Run a command and capture its output'''
-    return subprocess.Popen(args, stdout=subprocess.PIPE,
-                            stderr=stderr).communicate()[0]
-
 # check if a specific kernel module is loaded
 def module_is_loaded(module):
     global loaded_modules
@@ -218,8 +205,7 @@ def get_pci_device_details(dev_id, probe_lspci):
     device = {}
 
     if probe_lspci:
-        extra_info = check_output(["lspci", "-vmmks", dev_id]).splitlines()
-
+        extra_info = subprocess.check_output(["lspci", "-vmmks", dev_id]).splitlines()
         # parse lspci details
         for line in extra_info:
             if len(line) == 0:
@@ -255,7 +241,7 @@ def get_device_details(devices_type):
     # first loop through and read details for all devices
     # request machine readable format, with numeric IDs and String
     dev = {}
-    dev_lines = check_output(["lspci", "-Dvmmnnk"]).splitlines()
+    dev_lines = subprocess.check_output(["lspci", "-Dvmmnnk"]).splitlines()
     for dev_line in dev_lines:
         if len(dev_line) == 0:
             if device_type_match(dev, devices_type):
@@ -283,7 +269,7 @@ def get_device_details(devices_type):
         # check what is the interface if any for an ssh connection if
         # any to this host, so we can mark it later.
         ssh_if = []
-        route = check_output(["ip", "-o", "route"])
+        route = subprocess.check_output(["ip", "-o", "route"])
         # filter out all lines for 169.254 routes
         route = "\n".join(filter(lambda ln: not ln.startswith("169.254"),
                              route.decode().splitlines()))

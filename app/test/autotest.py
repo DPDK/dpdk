@@ -1,9 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 
 # Script that uses either test app or qemu controlled by python-pexpect
-from __future__ import print_function
 import autotest_data
 import autotest_runner
 import sys
@@ -16,10 +15,6 @@ def usage():
 if len(sys.argv) < 3:
     usage()
     sys.exit(1)
-
-if sys.version_info.major < 3:
-    print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
-    print("Please use Python 3 instead", file=sys.stderr)
 
 target = sys.argv[2]
 

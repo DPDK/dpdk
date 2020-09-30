@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2019 Intel Corporation
 
@@ -9,7 +9,6 @@ ABI version is supplied via command-line parameter. This script is to be called
 from the devtools/update-abi.sh utility.
 """
 
-from __future__ import print_function
 import argparse
 import sys
 import re
@@ -160,10 +159,6 @@ def __generate_internal_abi(f_out, lines):
     print("};", file=f_out)
 
 def __main():
-    if sys.version_info.major < 3:
-        print("WARNING: Python 2 is deprecated for use in DPDK, and will not work in future releases.", file=sys.stderr)
-        print("Please use Python 3 instead", file=sys.stderr)
-
     arg_parser = argparse.ArgumentParser(
         description='Merge versions in linker version script.')
 

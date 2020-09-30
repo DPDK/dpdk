@@ -122,6 +122,8 @@ Removed Items
 
 * vhost: Dequeue zero-copy support has been removed.
 
+* Removed Python 2 support since it was EOL'd in January 2020.
+
 
 API Changes
 -----------

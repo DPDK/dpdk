@@ -1,10 +1,10 @@
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 
 # The main logic behind running autotests in parallel
 
-from __future__ import print_function
-import StringIO
+import io
 import csv
 from multiprocessing import Pool, Queue
 import pexpect
@@ -50,11 +50,7 @@ def first_cpu_on_node(node_nr):
                 map(os.path.basename, cpu_path)
             )
     )
-    # for compatibility between python 3 and 2 we need to make interable out
-    # of filter return as it returns list in python 2 and a generator in 3
-    m = next(iter(cpu_name))
-    return int(m.group(1))
-
+    return int(next(cpu_name).group(1))
 
 pool_child = None  # per-process child
 
@@ -78,7 +74,7 @@ def pool_init(queue, result_queue):
     cmdline = "%s %s" % (cmdline, prefix_cmdline)
 
     # prepare logging of init
-    startuplog = StringIO.StringIO()
+    startuplog = io.StringIO()
 
     # run test app
     try:
@@ -86,8 +82,7 @@ def pool_init(queue, result_queue):
         print("\n%s %s\n" % ("=" * 20, prefix), file=startuplog)
         print("\ncmdline=%s" % cmdline, file=startuplog)
 
-        pool_child = pexpect.spawn(cmdline, logfile=startuplog)
-
+        pool_child = pexpect.spawn(cmdline, logfile=startuplog, encoding='utf-8')
         # wait for target to boot
         if not wait_prompt(pool_child):
             pool_child.close()
@@ -138,7 +133,7 @@ def run_test(target, test):
     # create log buffer for each test
     # in multiprocessing environment, the logging would be
     # interleaved and will create a mess, hence the buffering
-    logfile = StringIO.StringIO()
+    logfile = io.StringIO()
     pool_child.logfile = logfile
 
     # make a note when the test started
@@ -210,9 +205,9 @@ class AutotestRunner:
         # parse the binary for available test commands
         binary = cmdline.split()[0]
         stripped = 'not stripped' not in \
-                   subprocess.check_output(['file', binary])
+                   subprocess.check_output(['file', binary]).decode()
         if not stripped:
-            symbols = subprocess.check_output(['nm', binary]).decode('utf-8')
+            symbols = subprocess.check_output(['nm', binary]).decode()
             self.avail_cmds = re.findall('test_register_(\w+)', symbols)
         else:
             self.avail_cmds = None
