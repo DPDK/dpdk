@@ -615,6 +615,23 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 
 	PMD_LOG(INFO, "Initializing pmd_ring for %s", name);
 
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			PMD_LOG(ERR, "Failed to probe %s", name);
+			return -1;
+		}
+		eth_dev->dev_ops = &ops;
+		eth_dev->device = &dev->device;
+
+		eth_dev->rx_pkt_burst = eth_ring_rx;
+		eth_dev->tx_pkt_burst = eth_ring_tx;
+
+		rte_eth_dev_probing_finish(eth_dev);
+
+		return 0;
+	}
+
 	if (params == NULL || params[0] == '\0') {
 		ret = eth_dev_ring_create(name, dev, rte_socket_id(), DEV_CREATE,
 				&eth_dev);
