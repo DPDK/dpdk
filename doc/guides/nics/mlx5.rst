@@ -1247,8 +1247,8 @@ Quick Start Guide on OFED/EN
 
         echo [num_vfs] > /sys/class/infiniband/mlx5_0/device/sriov_numvfs
 
-6. Compile DPDK and you are ready to go. See instructions on
-   :ref:`Development Kit Build System <Development_Kit_Build_System>`
+6. Install DPDK and you are ready to go.
+   See :doc:`compilation instructions <../linux_gsg/build_dpdk>`.
 
 Enable switchdev mode
 ---------------------

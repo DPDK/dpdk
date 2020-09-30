@@ -335,8 +335,8 @@ Quick Start Guide
 
         service openibd restart
 
-4. Compile DPDK and you are ready to go. See instructions on
-   :ref:`Development Kit Build System <Development_Kit_Build_System>`
+4. Install DPDK and you are ready to go.
+   See :doc:`compilation instructions <../linux_gsg/build_dpdk>`.
 
 Performance tuning
 ------------------
