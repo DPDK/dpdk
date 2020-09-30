@@ -1349,6 +1349,9 @@ main(int argc, char **argv)
 	if (enable_iter_mempool)
 		iter_mempool(mempool_iter_name);
 
+	RTE_ETH_FOREACH_DEV(i)
+		rte_eth_dev_close(i);
+
 	ret = rte_eal_cleanup();
 	if (ret)
 		printf("Error from rte_eal_cleanup(), %d\n", ret);
