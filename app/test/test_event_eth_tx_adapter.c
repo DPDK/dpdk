@@ -45,7 +45,7 @@ static uint64_t eid = ~0ULL;
 static uint32_t tid;
 
 static inline int
-port_init_common(uint8_t port, const struct rte_eth_conf *port_conf,
+port_init_common(uint16_t port, const struct rte_eth_conf *port_conf,
 		struct rte_mempool *mp)
 {
 	const uint16_t rx_ring_size = RING_SIZE, tx_ring_size = RING_SIZE;
@@ -104,7 +104,7 @@ port_init_common(uint8_t port, const struct rte_eth_conf *port_conf,
 }
 
 static inline int
-port_init(uint8_t port, struct rte_mempool *mp)
+port_init(uint16_t port, struct rte_mempool *mp)
 {
 	struct rte_eth_conf conf = { 0 };
 	return port_init_common(port, &conf, mp);

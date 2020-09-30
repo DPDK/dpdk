@@ -55,7 +55,7 @@ static const struct rte_bpf_xsym bpf_xsym[] = {
 struct cmd_bpf_ld_result {
 	cmdline_fixed_string_t bpf;
 	cmdline_fixed_string_t dir;
-	uint8_t port;
+	uint16_t port;
 	uint16_t queue;
 	cmdline_fixed_string_t op;
 	cmdline_fixed_string_t flags;
@@ -153,7 +153,7 @@ cmdline_parse_inst_t cmd_operate_bpf_ld_parse = {
 struct cmd_bpf_unld_result {
 	cmdline_fixed_string_t bpf;
 	cmdline_fixed_string_t dir;
-	uint8_t port;
+	uint16_t port;
 	uint16_t queue;
 };
 
