@@ -271,7 +271,7 @@ Forwarding application is shown below:
 .. code-block:: c
 
     static inline int
-    port_init(uint8_t port, struct rte_mempool *mbuf_pool)
+    port_init(uint16_t port, struct rte_mempool *mbuf_pool)
     {
         struct rte_eth_conf port_conf = port_conf_default;
         const uint16_t rx_rings = 1, tx_rings = 1;
