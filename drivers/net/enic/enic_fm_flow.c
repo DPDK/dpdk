@@ -8,6 +8,8 @@
 #include <rte_ethdev_driver.h>
 #include <rte_flow_driver.h>
 #include <rte_ether.h>
+#include <rte_hash.h>
+#include <rte_jhash.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_memzone.h>
@@ -42,6 +44,9 @@
 
 /* Tag used for implicit VF <-> representor flows */
 #define FM_VF_REP_TAG 1
+
+/* Max number of actions supported by VIC is 2K. Make hash table double that. */
+#define FM_MAX_ACTION_TABLE_SIZE 4096
 
 /*
  * Flow exact match tables (FET) in the VIC and rte_flow groups.
@@ -90,11 +95,17 @@ struct enic_fm_counter {
 	uint32_t handle;
 };
 
+struct enic_fm_action {
+	int ref;
+	uint64_t handle;
+	struct fm_action key;
+};
+
 /* rte_flow.fm */
 struct enic_fm_flow {
 	bool counter_valid;
 	uint64_t entry_handle;
-	uint64_t action_handle;
+	struct enic_fm_action  *action;
 	struct enic_fm_counter *counter;
 	struct enic_fm_fet *fet;
 	/* Auto-added steer action for hairpin flows (e.g. vnic->vnic) */
@@ -155,6 +166,8 @@ struct enic_flowman {
 	 */
 	struct enic_fm_fet *default_eg_fet;
 	struct enic_fm_fet *default_ig_fet;
+	/* hash table for Action reuse */
+	struct rte_hash *action_hash;
 	/* Flows that jump to the default table above */
 	TAILQ_HEAD(jump_flow_list, enic_fm_jump_flow) jump_list;
 	/*
@@ -1953,19 +1966,26 @@ enic_fm_counter_alloc(struct enic_flowman *fm, struct rte_flow_error *error,
 }
 
 static int
-enic_fm_action_free(struct enic_flowman *fm, uint64_t handle)
+enic_fm_action_free(struct enic_flowman *fm, struct enic_fm_action *ah)
 {
 	uint64_t args[2];
-	int rc;
+	int ret = 0;
 
 	ENICPMD_FUNC_TRACE();
-	args[0] = FM_ACTION_FREE;
-	args[1] = handle;
-	rc = flowman_cmd(fm, args, 2);
-	if (rc)
-		ENICPMD_LOG(ERR, "cannot free action: rc=%d handle=0x%" PRIx64,
-			    rc, handle);
-	return rc;
+	RTE_ASSERT(ah->ref > 0);
+	ah->ref--;
+	if (ah->ref == 0) {
+		args[0] = FM_ACTION_FREE;
+		args[1] = ah->handle;
+		ret = flowman_cmd(fm, args, 2);
+		if (ret)
+			/* This is a "should never happen" error. */
+			ENICPMD_LOG(ERR, "freeing action rc=%d handle=0x%"
+				    PRIx64, ret, ah->handle);
+		rte_hash_del_key(fm->action_hash, (const void *)&ah->key);
+		free(ah);
+	}
+	return ret;
 }
 
 static int
@@ -2041,9 +2061,9 @@ __enic_fm_flow_free(struct enic_flowman *fm, struct enic_fm_flow *fm_flow)
 		enic_fm_entry_free(fm, fm_flow->entry_handle);
 		fm_flow->entry_handle = FM_INVALID_HANDLE;
 	}
-	if (fm_flow->action_handle != FM_INVALID_HANDLE) {
-		enic_fm_action_free(fm, fm_flow->action_handle);
-		fm_flow->action_handle = FM_INVALID_HANDLE;
+	if (fm_flow->action != NULL) {
+		enic_fm_action_free(fm, fm_flow->action);
+		fm_flow->action = NULL;
 	}
 	enic_fm_counter_free(fm, fm_flow);
 	if (fm_flow->fet) {
@@ -2153,6 +2173,71 @@ enic_fm_add_exact_entry(struct enic_flowman *fm,
 	return 0;
 }
 
+static int
+enic_action_handle_get(struct enic_flowman *fm, struct fm_action *action_in,
+		       struct rte_flow_error *error,
+		       struct enic_fm_action **ah_o)
+{
+	struct enic_fm_action *ah;
+	struct fm_action *fma;
+	uint64_t args[2];
+	int ret = 0;
+
+	ret = rte_hash_lookup_data(fm->action_hash, action_in,
+				   (void **)&ah);
+	if (ret < 0 && ret != -ENOENT)
+		return rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "enic: rte_hash_lookup(aciton)");
+
+	if (ret == -ENOENT) {
+		/* Allocate a new action on the NIC. */
+		fma = &fm->cmd.va->fm_action;
+		memcpy(fma, action_in, sizeof(*fma));
+
+		ah = calloc(1, sizeof(*ah));
+		memcpy(&ah->key, action_in, sizeof(struct fm_action));
+		if (ah == NULL)
+			return rte_flow_error_set(error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_HANDLE,
+					   NULL, "enic: calloc(fm-action)");
+		args[0] = FM_ACTION_ALLOC;
+		args[1] = fm->cmd.pa;
+		ret = flowman_cmd(fm, args, 2);
+		if (ret != 0) {
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "enic: devcmd(action-alloc)");
+			goto error_with_ah;
+		}
+		ah->handle = args[0];
+		ret = rte_hash_add_key_data(fm->action_hash,
+					    (const void *)action_in,
+					    (void *)ah);
+		if (ret != 0) {
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL,
+					   "enic: rte_hash_add_key_data(actn)");
+			goto error_with_action_handle;
+		}
+		ENICPMD_LOG(DEBUG, "action allocated: handle=0x%" PRIx64,
+			    ah->handle);
+	}
+
+	/* Action handle struct is valid, increment reference count. */
+	ah->ref++;
+	*ah_o = ah;
+	return 0;
+error_with_action_handle:
+	args[0] = FM_ACTION_FREE;
+	args[1] = ah->handle;
+	flowman_cmd(fm, args, 2);
+error_with_ah:
+	free(ah);
+	return ret;
+}
+
 /* Push match-action to the NIC. */
 static int
 __enic_fm_flow_add_entry(struct enic_flowman *fm,
@@ -2164,29 +2249,18 @@ __enic_fm_flow_add_entry(struct enic_flowman *fm,
 			 struct rte_flow_error *error)
 {
 	struct enic_fm_counter *ctr;
-	struct fm_action *fma;
-	uint64_t action_h;
+	struct enic_fm_action *ah = NULL;
 	uint64_t entry_h;
-	uint64_t args[3];
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
-	/* Allocate action. */
-	fma = &fm->cmd.va->fm_action;
-	memcpy(fma, action_in, sizeof(*fma));
-	args[0] = FM_ACTION_ALLOC;
-	args[1] = fm->cmd.pa;
-	ret = flowman_cmd(fm, args, 2);
-	if (ret != 0) {
-		ENICPMD_LOG(ERR, "allocating TCAM table action rc=%d", ret);
-		rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			NULL, "enic: devcmd(action-alloc)");
+
+	/* Get or create an aciton handle. */
+	ret = enic_action_handle_get(fm, action_in, error, &ah);
+	if (ret)
 		return ret;
-	}
-	action_h = args[0];
-	fm_flow->action_handle = action_h;
-	match_in->ftm_action = action_h;
-	ENICPMD_LOG(DEBUG, "action allocated: handle=0x%" PRIx64, action_h);
+	match_in->ftm_action = ah->handle;
+	fm_flow->action = ah;
 
 	/* Allocate counter if requested. */
 	if (match_in->ftm_flags & FMEF_COUNTER) {
@@ -2260,7 +2334,7 @@ enic_fm_flow_add_entry(struct enic_flowman *fm,
 		return NULL;
 	}
 	flow->fm = fm_flow;
-	fm_flow->action_handle = FM_INVALID_HANDLE;
+	fm_flow->action = NULL;
 	fm_flow->entry_handle = FM_INVALID_HANDLE;
 	if (__enic_fm_flow_add_entry(fm, fm_flow, match_in, action_in,
 				     attrs->group, attrs->ingress, error)) {
@@ -2356,7 +2430,7 @@ add_hairpin_steer(struct enic_flowman *fm, struct rte_flow *flow,
 	if (ret)
 		goto error_with_flow;
 	/* Add the ingress flow */
-	fm_flow->action_handle = FM_INVALID_HANDLE;
+	fm_flow->action = NULL;
 	fm_flow->entry_handle = FM_INVALID_HANDLE;
 	ret = __enic_fm_flow_add_entry(fm, fm_flow, fm_tcam_entry, fm_action,
 				       FM_TCAM_RTE_GROUP, 1 /* ingress */, error);
@@ -2610,7 +2684,7 @@ enic_fm_flow_flush(struct rte_eth_dev *dev,
 		 */
 		if (fm->ig_tcam_hndl == FM_INVALID_HANDLE) {
 			fm_flow->entry_handle = FM_INVALID_HANDLE;
-			fm_flow->action_handle = FM_INVALID_HANDLE;
+			fm_flow->action = NULL;
 			fm_flow->fet = NULL;
 		}
 		enic_fm_flow_free(fm, flow);
@@ -2663,6 +2737,31 @@ enic_fm_tcam_tbl_alloc(struct enic_flowman *fm, uint32_t direction,
 	*handle = args[0];
 	ENICPMD_LOG(DEBUG, "%s TCAM table allocated, handle=0x%" PRIx64,
 		    (direction == FM_INGRESS) ? "IG" : "EG", *handle);
+	return 0;
+}
+
+static int
+enic_fm_init_actions(struct enic_flowman *fm)
+{
+	struct rte_hash *a_hash;
+	char name[RTE_HASH_NAMESIZE];
+	struct rte_hash_parameters params = {
+		.entries = FM_MAX_ACTION_TABLE_SIZE,
+		.key_len = sizeof(struct fm_action),
+		.hash_func = rte_jhash,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	ENICPMD_FUNC_TRACE();
+	snprintf((char *)name, sizeof(name), "fm-ah-%s",
+		 fm->owner_enic->bdf_name);
+	params.name = name;
+
+	a_hash = rte_hash_create(&params);
+	if (a_hash == NULL)
+		return -rte_errno;
+	fm->action_hash = a_hash;
 	return 0;
 }
 
@@ -2779,6 +2878,12 @@ enic_fm_init(struct enic *enic)
 		ENICPMD_LOG(ERR, "cannot alloc counters");
 		goto error_tables;
 	}
+	/* set up action handle hash */
+	rc = enic_fm_init_actions(fm);
+	if (rc) {
+		ENICPMD_LOG(ERR, "cannot create action hash, error:%d", rc);
+		goto error_tables;
+	}
 	/*
 	 * One default exact match table for each direction. We hold onto
 	 * it until close.
@@ -2827,6 +2932,7 @@ enic_fm_destroy(struct enic *enic)
 	if (enic->fm == NULL)
 		return;
 	fm = enic->fm;
+	enic_fm_flow_flush(enic->rte_dev, NULL);
 	enic_fet_free(fm, fm->default_eg_fet);
 	enic_fet_free(fm, fm->default_ig_fet);
 	/* Free all exact match tables still open */
@@ -2836,6 +2942,7 @@ enic_fm_destroy(struct enic *enic)
 	}
 	enic_fm_free_tcam_tables(fm);
 	enic_fm_free_all_counters(fm);
+	rte_hash_free(fm->action_hash);
 	enic_free_consistent(enic, sizeof(union enic_flowman_cmd_mem),
 		fm->cmd.va, fm->cmd.pa);
 	fm->cmd.va = NULL;
