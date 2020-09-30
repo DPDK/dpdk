@@ -1034,8 +1034,12 @@ iavf_hash_destroy(__rte_unused struct iavf_adapter *ad,
 		  struct rte_flow *flow,
 		  __rte_unused struct rte_flow_error *error)
 {
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
 	struct virtchnl_rss_cfg *rss_cfg;
 	int ret = 0;
+
+	if (vf->vf_reset)
+		return 0;
 
 	rss_cfg = (struct virtchnl_rss_cfg *)flow->rule;
 
