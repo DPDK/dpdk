@@ -205,6 +205,9 @@ API Changes
   and the function ``rte_rawdev_queue_conf_get()``
   from ``void`` to ``int`` allowing the return of error codes from drivers.
 
+* stack: the experimental tag has been dropped from the stack library, and its
+  interfaces are considered stable as of DPDK 20.11.
+
 * bpf: ``RTE_BPF_XTYPE_NUM`` has been dropped from ``rte_bpf_xtype``.
 
 

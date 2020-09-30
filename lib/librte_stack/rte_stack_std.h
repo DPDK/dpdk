@@ -19,7 +19,6 @@
  * @return
  *   Actual number of objects pushed (either 0 or *n*).
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 __rte_stack_std_push(struct rte_stack *s, void * const *obj_table,
 		     unsigned int n)
@@ -59,7 +58,6 @@ __rte_stack_std_push(struct rte_stack *s, void * const *obj_table,
  * @return
  *   Actual number of objects popped (either 0 or *n*).
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 __rte_stack_std_pop(struct rte_stack *s, void **obj_table, unsigned int n)
 {
@@ -94,7 +92,6 @@ __rte_stack_std_pop(struct rte_stack *s, void **obj_table, unsigned int n)
  * @return
  *   The number of used entries in the stack.
  */
-__rte_experimental
 static __rte_always_inline unsigned int
 __rte_stack_std_count(struct rte_stack *s)
 {
