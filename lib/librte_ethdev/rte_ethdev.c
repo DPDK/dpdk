@@ -2166,10 +2166,7 @@ void
 rte_eth_tx_buffer_drop_callback(struct rte_mbuf **pkts, uint16_t unsent,
 		void *userdata __rte_unused)
 {
-	unsigned i;
-
-	for (i = 0; i < unsent; i++)
-		rte_pktmbuf_free(pkts[i]);
+	rte_pktmbuf_free_bulk(pkts, unsent);
 }
 
 void
@@ -2177,11 +2174,8 @@ rte_eth_tx_buffer_count_callback(struct rte_mbuf **pkts, uint16_t unsent,
 		void *userdata)
 {
 	uint64_t *count = userdata;
-	unsigned i;
 
-	for (i = 0; i < unsent; i++)
-		rte_pktmbuf_free(pkts[i]);
-
+	rte_pktmbuf_free_bulk(pkts, unsent);
 	*count += unsent;
 }
 
