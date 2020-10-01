@@ -1,0 +1,20 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2020 Intel Corporation
+
+mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 0
+
+pipeline PIPELINE0 create 0
+
+pipeline PIPELINE0 port in 0 source MEMPOOL0 ./examples/packet.pcap
+pipeline PIPELINE0 port in 1 source MEMPOOL0 ./examples/packet.pcap
+pipeline PIPELINE0 port in 2 source MEMPOOL0 ./examples/packet.pcap
+pipeline PIPELINE0 port in 3 source MEMPOOL0 ./examples/packet.pcap
+
+pipeline PIPELINE0 port out 0 sink none
+pipeline PIPELINE0 port out 1 sink none
+pipeline PIPELINE0 port out 2 sink none
+pipeline PIPELINE0 port out 3 sink none
+
+pipeline PIPELINE0 build ./examples/l2fwd_macswp.spec
+
+thread 1 pipeline PIPELINE0 enable

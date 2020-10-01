@@ -1,0 +1,25 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2020 Intel Corporation
+
+mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 0
+
+link LINK0 dev 0000:18:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+link LINK1 dev 0000:18:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+link LINK2 dev 0000:3b:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+link LINK3 dev 0000:3b:00.1 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+
+pipeline PIPELINE0 create 0
+
+pipeline PIPELINE0 port in 0 link LINK0 rxq 0 bsz 32
+pipeline PIPELINE0 port in 1 link LINK1 rxq 0 bsz 32
+pipeline PIPELINE0 port in 2 link LINK2 rxq 0 bsz 32
+pipeline PIPELINE0 port in 3 link LINK3 rxq 0 bsz 32
+
+pipeline PIPELINE0 port out 0 link LINK0 txq 0 bsz 32
+pipeline PIPELINE0 port out 1 link LINK1 txq 0 bsz 32
+pipeline PIPELINE0 port out 2 link LINK2 txq 0 bsz 32
+pipeline PIPELINE0 port out 3 link LINK3 txq 0 bsz 32
+
+pipeline PIPELINE0 build ./examples/pipeline/examples/l2fwd_macswp.spec
+
+thread 1 pipeline PIPELINE0 enable
