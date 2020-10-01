@@ -289,6 +289,14 @@ enum instruction_type {
 	INSTR_ALU_SUB_HH, /* dst = H, src = H */
 	INSTR_ALU_SUB_MI, /* dst = MEF, src = I */
 	INSTR_ALU_SUB_HI, /* dst = H, src = I */
+
+	/* ckadd dst src
+	 * dst = dst '+ src[0:1] '+ src[2:3] + ...
+	 * dst = H, src = {H, h.header}
+	 */
+	INSTR_ALU_CKADD_FIELD,    /* src = H */
+	INSTR_ALU_CKADD_STRUCT20, /* src = h.header, with sizeof(header) = 20 */
+	INSTR_ALU_CKADD_STRUCT,   /* src = h.hdeader, with any sizeof(header) */
 };
 
 struct instr_operand {
@@ -2979,6 +2987,53 @@ instr_alu_sub_translate(struct rte_swx_pipeline *p,
 	return 0;
 }
 
+static int
+instr_alu_ckadd_translate(struct rte_swx_pipeline *p,
+			  struct action *action __rte_unused,
+			  char **tokens,
+			  int n_tokens,
+			  struct instruction *instr,
+			  struct instruction_data *data __rte_unused)
+{
+	char *dst = tokens[1], *src = tokens[2];
+	struct header *hdst, *hsrc;
+	struct field *fdst, *fsrc;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	fdst = header_field_parse(p, dst, &hdst);
+	CHECK(fdst && (fdst->n_bits == 16), EINVAL);
+
+	/* CKADD_FIELD. */
+	fsrc = header_field_parse(p, src, &hsrc);
+	if (fsrc) {
+		instr->type = INSTR_ALU_CKADD_FIELD;
+		instr->alu.dst.struct_id = (uint8_t)hdst->struct_id;
+		instr->alu.dst.n_bits = fdst->n_bits;
+		instr->alu.dst.offset = fdst->offset / 8;
+		instr->alu.src.struct_id = (uint8_t)hsrc->struct_id;
+		instr->alu.src.n_bits = fsrc->n_bits;
+		instr->alu.src.offset = fsrc->offset / 8;
+		return 0;
+	}
+
+	/* CKADD_STRUCT, CKADD_STRUCT20. */
+	hsrc = header_parse(p, src);
+	CHECK(hsrc, EINVAL);
+
+	instr->type = INSTR_ALU_CKADD_STRUCT;
+	if ((hsrc->st->n_bits / 8) == 20)
+		instr->type = INSTR_ALU_CKADD_STRUCT20;
+
+	instr->alu.dst.struct_id = (uint8_t)hdst->struct_id;
+	instr->alu.dst.n_bits = fdst->n_bits;
+	instr->alu.dst.offset = fdst->offset / 8;
+	instr->alu.src.struct_id = (uint8_t)hsrc->struct_id;
+	instr->alu.src.n_bits = hsrc->st->n_bits;
+	instr->alu.src.offset = 0; /* Unused. */
+	return 0;
+}
+
 static inline void
 instr_alu_add_exec(struct rte_swx_pipeline *p)
 {
@@ -3159,6 +3214,169 @@ instr_alu_sub_hi_exec(struct rte_swx_pipeline *p)
 	thread_ip_inc(p);
 }
 
+static inline void
+instr_alu_ckadd_field_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint8_t *dst_struct, *src_struct;
+	uint16_t *dst16_ptr, dst;
+	uint64_t *src64_ptr, src64, src64_mask, src;
+	uint64_t r;
+
+	TRACE("[Thread %2u] ckadd (field)\n", p->thread_id);
+
+	/* Structs. */
+	dst_struct = t->structs[ip->alu.dst.struct_id];
+	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
+	dst = *dst16_ptr;
+
+	src_struct = t->structs[ip->alu.src.struct_id];
+	src64_ptr = (uint64_t *)&src_struct[ip->alu.src.offset];
+	src64 = *src64_ptr;
+	src64_mask = UINT64_MAX >> (64 - ip->alu.src.n_bits);
+	src = src64 & src64_mask;
+
+	r = dst;
+	r = ~r & 0xFFFF;
+
+	/* The first input (r) is a 16-bit number. The second and the third
+	 * inputs are 32-bit numbers. In the worst case scenario, the sum of the
+	 * three numbers (output r) is a 34-bit number.
+	 */
+	r += (src >> 32) + (src & 0xFFFFFFFF);
+
+	/* The first input is a 16-bit number. The second input is an 18-bit
+	 * number. In the worst case scenario, the sum of the two numbers is a
+	 * 19-bit number.
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
+	 * a 3-bit number (0 .. 7). Their sum is a 17-bit number (0 .. 0x10006).
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
+	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
+	 * 0x10006), the output r is (0 .. 7). So no carry bit can be generated,
+	 * therefore the output r is always a 16-bit number.
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	r = ~r & 0xFFFF;
+	r = r ? r : 0xFFFF;
+
+	*dst16_ptr = (uint16_t)r;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_ckadd_struct20_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint8_t *dst_struct, *src_struct;
+	uint16_t *dst16_ptr;
+	uint32_t *src32_ptr;
+	uint64_t r0, r1;
+
+	TRACE("[Thread %2u] ckadd (struct of 20 bytes)\n", p->thread_id);
+
+	/* Structs. */
+	dst_struct = t->structs[ip->alu.dst.struct_id];
+	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
+
+	src_struct = t->structs[ip->alu.src.struct_id];
+	src32_ptr = (uint32_t *)&src_struct[0];
+
+	r0 = src32_ptr[0]; /* r0 is a 32-bit number. */
+	r1 = src32_ptr[1]; /* r1 is a 32-bit number. */
+	r0 += src32_ptr[2]; /* The output r0 is a 33-bit number. */
+	r1 += src32_ptr[3]; /* The output r1 is a 33-bit number. */
+	r0 += r1 + src32_ptr[4]; /* The output r0 is a 35-bit number. */
+
+	/* The first input is a 16-bit number. The second input is a 19-bit
+	 * number. Their sum is a 20-bit number.
+	 */
+	r0 = (r0 & 0xFFFF) + (r0 >> 16);
+
+	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
+	 * a 4-bit number (0 .. 15). The sum is a 17-bit number (0 .. 0x1000E).
+	 */
+	r0 = (r0 & 0xFFFF) + (r0 >> 16);
+
+	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
+	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
+	 * 0x1000E), the output r is (0 .. 15). So no carry bit can be
+	 * generated, therefore the output r is always a 16-bit number.
+	 */
+	r0 = (r0 & 0xFFFF) + (r0 >> 16);
+
+	r0 = ~r0 & 0xFFFF;
+	r0 = r0 ? r0 : 0xFFFF;
+
+	*dst16_ptr = (uint16_t)r0;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_ckadd_struct_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint8_t *dst_struct, *src_struct;
+	uint16_t *dst16_ptr;
+	uint32_t *src32_ptr;
+	uint64_t r = 0;
+	uint32_t i;
+
+	TRACE("[Thread %2u] ckadd (struct)\n", p->thread_id);
+
+	/* Structs. */
+	dst_struct = t->structs[ip->alu.dst.struct_id];
+	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
+
+	src_struct = t->structs[ip->alu.src.struct_id];
+	src32_ptr = (uint32_t *)&src_struct[0];
+
+	/* The max number of 32-bit words in a 256-byte header is 8 = 2^3.
+	 * Therefore, in the worst case scenario, a 35-bit number is added to a
+	 * 16-bit number (the input r), so the output r is 36-bit number.
+	 */
+	for (i = 0; i < ip->alu.src.n_bits / 32; i++, src32_ptr++)
+		r += *src32_ptr;
+
+	/* The first input is a 16-bit number. The second input is a 20-bit
+	 * number. Their sum is a 21-bit number.
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
+	 * a 5-bit number (0 .. 31). The sum is a 17-bit number (0 .. 0x1000E).
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
+	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
+	 * 0x1001E), the output r is (0 .. 31). So no carry bit can be
+	 * generated, therefore the output r is always a 16-bit number.
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	r = ~r & 0xFFFF;
+	r = r ? r : 0xFFFF;
+
+	*dst16_ptr = (uint16_t)r;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
 #define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
 
 static int
@@ -3275,6 +3493,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					       n_tokens - tpos,
 					       instr,
 					       data);
+
+	if (!strcmp(tokens[tpos], "ckadd"))
+		return instr_alu_ckadd_translate(p,
+						 action,
+						 &tokens[tpos],
+						 n_tokens - tpos,
+						 instr,
+						 data);
 
 	CHECK(0, EINVAL);
 }
@@ -3447,6 +3673,10 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_ALU_SUB_HH] = instr_alu_sub_hh_exec,
 	[INSTR_ALU_SUB_MI] = instr_alu_sub_mi_exec,
 	[INSTR_ALU_SUB_HI] = instr_alu_sub_hi_exec,
+
+	[INSTR_ALU_CKADD_FIELD] = instr_alu_ckadd_field_exec,
+	[INSTR_ALU_CKADD_STRUCT] = instr_alu_ckadd_struct_exec,
+	[INSTR_ALU_CKADD_STRUCT20] = instr_alu_ckadd_struct20_exec,
 };
 
 static inline void
