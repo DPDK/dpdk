@@ -42,4 +42,6 @@ EXPERIMENTAL {
 	# added in 20.11
 	rte_swx_port_ethdev_reader_ops;
 	rte_swx_port_ethdev_writer_ops;
+	rte_swx_port_sink_ops;
+	rte_swx_port_source_ops;
 };
