@@ -922,7 +922,6 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_txq_ctrl *txq_ctrl =
 		container_of(txq_data, struct mlx5_txq_ctrl, txq);
 	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
-	struct ibv_qp_attr mod;
 	unsigned int cqe_n;
 	struct mlx5dv_qp qp;
 	struct mlx5dv_cq cq_info;
@@ -956,37 +955,10 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = errno;
 		goto error;
 	}
-	mod = (struct ibv_qp_attr){
-		/* Move the QP to this state. */
-		.qp_state = IBV_QPS_INIT,
-		/* IB device port number. */
-		.port_num = (uint8_t)priv->dev_port,
-	};
-	ret = mlx5_glue->modify_qp(txq_obj->qp, &mod,
-				   (IBV_QP_STATE | IBV_QP_PORT));
+	ret = mlx5_ibv_modify_qp(txq_obj, MLX5_TXQ_MOD_RST2RDY,
+				 (uint8_t)priv->dev_port);
 	if (ret) {
-		DRV_LOG(ERR,
-			"Port %u Tx queue %u QP state to IBV_QPS_INIT failed.",
-			dev->data->port_id, idx);
-		rte_errno = errno;
-		goto error;
-	}
-	mod = (struct ibv_qp_attr){
-		.qp_state = IBV_QPS_RTR
-	};
-	ret = mlx5_glue->modify_qp(txq_obj->qp, &mod, IBV_QP_STATE);
-	if (ret) {
-		DRV_LOG(ERR,
-			"Port %u Tx queue %u QP state to IBV_QPS_RTR failed.",
-			dev->data->port_id, idx);
-		rte_errno = errno;
-		goto error;
-	}
-	mod.qp_state = IBV_QPS_RTS;
-	ret = mlx5_glue->modify_qp(txq_obj->qp, &mod, IBV_QP_STATE);
-	if (ret) {
-		DRV_LOG(ERR,
-			"Port %u Tx queue %u QP state to IBV_QPS_RTS failed.",
+		DRV_LOG(ERR, "Port %u Tx queue %u QP state modifying failed.",
 			dev->data->port_id, idx);
 		rte_errno = errno;
 		goto error;

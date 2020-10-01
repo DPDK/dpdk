@@ -1237,7 +1237,6 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	return -rte_errno;
 #else
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
 	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
 	void *reg_addr;
 	uint32_t cqe_n;
@@ -1286,13 +1285,11 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	*txq_data->qp_db = 0;
 	txq_data->qp_num_8s = txq_obj->sq_devx->id << 8;
 	/* Change Send Queue state to Ready-to-Send. */
-	msq_attr.sq_state = MLX5_SQC_STATE_RST;
-	msq_attr.state = MLX5_SQC_STATE_RDY;
-	ret = mlx5_devx_cmd_modify_sq(txq_obj->sq_devx, &msq_attr);
+	ret = mlx5_devx_modify_sq(txq_obj, MLX5_TXQ_MOD_RST2RDY, 0);
 	if (ret) {
 		rte_errno = errno;
 		DRV_LOG(ERR,
-			"Port %u Tx queue %u SP state to SQC_STATE_RDY failed.",
+			"Port %u Tx queue %u SQ state to SQC_STATE_RDY failed.",
 			dev->data->port_id, idx);
 		goto error;
 	}

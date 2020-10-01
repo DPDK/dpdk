@@ -16,8 +16,6 @@
 #include <rte_common.h>
 #include <rte_eal_paging.h>
 
-#include <mlx5_glue.h>
-#include <mlx5_devx_cmds.h>
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>
 #include <mlx5_malloc.h>
