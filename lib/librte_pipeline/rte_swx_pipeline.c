@@ -352,6 +352,12 @@ enum instruction_type {
 
 	/* table TABLE */
 	INSTR_TABLE,
+
+	/* extern e.obj.func */
+	INSTR_EXTERN_OBJ,
+
+	/* extern f.func */
+	INSTR_EXTERN_FUNC,
 };
 
 struct instr_operand {
@@ -381,6 +387,15 @@ struct instr_hdr_validity {
 
 struct instr_table {
 	uint8_t table_id;
+};
+
+struct instr_extern_obj {
+	uint8_t ext_obj_id;
+	uint8_t func_id;
+};
+
+struct instr_extern_func {
+	uint8_t ext_func_id;
 };
 
 struct instr_dst_src {
@@ -413,6 +428,8 @@ struct instruction {
 		struct instr_dma dma;
 		struct instr_dst_src alu;
 		struct instr_table table;
+		struct instr_extern_obj ext_obj;
+		struct instr_extern_func ext_func;
 	};
 };
 
@@ -1271,6 +1288,50 @@ extern_obj_find(struct rte_swx_pipeline *p, const char *name)
 	return NULL;
 }
 
+static struct extern_type_member_func *
+extern_obj_member_func_parse(struct rte_swx_pipeline *p,
+			     const char *name,
+			     struct extern_obj **obj)
+{
+	struct extern_obj *object;
+	struct extern_type_member_func *func;
+	char *object_name, *func_name;
+
+	if (name[0] != 'e' || name[1] != '.')
+		return NULL;
+
+	object_name = strdup(&name[2]);
+	if (!object_name)
+		return NULL;
+
+	func_name = strchr(object_name, '.');
+	if (!func_name) {
+		free(object_name);
+		return NULL;
+	}
+
+	*func_name = 0;
+	func_name++;
+
+	object = extern_obj_find(p, object_name);
+	if (!object) {
+		free(object_name);
+		return NULL;
+	}
+
+	func = extern_type_member_func_find(object->type, func_name);
+	if (!func) {
+		free(object_name);
+		return NULL;
+	}
+
+	if (obj)
+		*obj = object;
+
+	free(object_name);
+	return func;
+}
+
 static struct field *
 extern_obj_mailbox_field_parse(struct rte_swx_pipeline *p,
 			       const char *name,
@@ -1551,6 +1612,16 @@ extern_func_find(struct rte_swx_pipeline *p, const char *name)
 			return elem;
 
 	return NULL;
+}
+
+static struct extern_func *
+extern_func_parse(struct rte_swx_pipeline *p,
+		  const char *name)
+{
+	if (name[0] != 'f' || name[1] != '.')
+		return NULL;
+
+	return extern_func_find(p, &name[2]);
 }
 
 static struct field *
@@ -2095,6 +2166,12 @@ static inline void
 thread_yield(struct rte_swx_pipeline *p)
 {
 	p->thread_id = (p->thread_id + 1) & (RTE_SWX_PIPELINE_THREADS_MAX - 1);
+}
+
+static inline void
+thread_yield_cond(struct rte_swx_pipeline *p, int cond)
+{
+	p->thread_id = (p->thread_id + cond) & (RTE_SWX_PIPELINE_THREADS_MAX - 1);
 }
 
 /*
@@ -2758,6 +2835,94 @@ instr_table_exec(struct rte_swx_pipeline *p)
 
 	/* Thread. */
 	thread_ip_action_call(p, t, action_id);
+}
+
+/*
+ * extern.
+ */
+static int
+instr_extern_translate(struct rte_swx_pipeline *p,
+		       struct action *action __rte_unused,
+		       char **tokens,
+		       int n_tokens,
+		       struct instruction *instr,
+		       struct instruction_data *data __rte_unused)
+{
+	char *token = tokens[1];
+
+	CHECK(n_tokens == 2, EINVAL);
+
+	if (token[0] == 'e') {
+		struct extern_obj *obj;
+		struct extern_type_member_func *func;
+
+		func = extern_obj_member_func_parse(p, token, &obj);
+		CHECK(func, EINVAL);
+
+		instr->type = INSTR_EXTERN_OBJ;
+		instr->ext_obj.ext_obj_id = obj->id;
+		instr->ext_obj.func_id = func->id;
+
+		return 0;
+	}
+
+	if (token[0] == 'f') {
+		struct extern_func *func;
+
+		func = extern_func_parse(p, token);
+		CHECK(func, EINVAL);
+
+		instr->type = INSTR_EXTERN_FUNC;
+		instr->ext_func.ext_func_id = func->id;
+
+		return 0;
+	}
+
+	CHECK(0, EINVAL);
+}
+
+static inline void
+instr_extern_obj_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t obj_id = ip->ext_obj.ext_obj_id;
+	uint32_t func_id = ip->ext_obj.func_id;
+	struct extern_obj_runtime *obj = &t->extern_objs[obj_id];
+	rte_swx_extern_type_member_func_t func = obj->funcs[func_id];
+
+	TRACE("[Thread %2u] extern obj %u member func %u\n",
+	      p->thread_id,
+	      obj_id,
+	      func_id);
+
+	/* Extern object member function execute. */
+	uint32_t done = func(obj->obj, obj->mailbox);
+
+	/* Thread. */
+	thread_ip_inc_cond(t, done);
+	thread_yield_cond(p, done ^ 1);
+}
+
+static inline void
+instr_extern_func_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t ext_func_id = ip->ext_func.ext_func_id;
+	struct extern_func_runtime *ext_func = &t->extern_funcs[ext_func_id];
+	rte_swx_extern_func_t func = ext_func->func;
+
+	TRACE("[Thread %2u] extern func %u\n",
+	      p->thread_id,
+	      ext_func_id);
+
+	/* Extern function execute. */
+	uint32_t done = func(ext_func->mailbox);
+
+	/* Thread. */
+	thread_ip_inc_cond(t, done);
+	thread_yield_cond(p, done ^ 1);
 }
 
 /*
@@ -4367,6 +4532,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					     instr,
 					     data);
 
+	if (!strcmp(tokens[tpos], "extern"))
+		return instr_extern_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
 	CHECK(0, EINVAL);
 }
 
@@ -4571,6 +4744,8 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_ALU_SHR_HI] = instr_alu_shr_hi_exec,
 
 	[INSTR_TABLE] = instr_table_exec,
+	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
+	[INSTR_EXTERN_FUNC] = instr_extern_func_exec,
 };
 
 static inline void
