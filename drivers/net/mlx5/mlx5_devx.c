@@ -79,7 +79,7 @@ mlx5_devx_modify_rq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
  *   DevX Rx queue object.
  */
 static void
-rxq_release_devx_rq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
+mlx5_rxq_release_devx_rq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	struct mlx5_devx_dbr_page *dbr_page = rxq_ctrl->rq_dbrec_page;
 
@@ -106,7 +106,7 @@ rxq_release_devx_rq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
  *   DevX Rx queue object.
  */
 static void
-rxq_release_devx_cq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
+mlx5_rxq_release_devx_cq_resources(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	struct mlx5_devx_dbr_page *dbr_page = rxq_ctrl->cq_dbrec_page;
 
@@ -147,8 +147,8 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_obj *rxq_obj)
 		if (rxq_obj->devx_channel)
 			mlx5_glue->devx_destroy_event_channel
 							(rxq_obj->devx_channel);
-		rxq_release_devx_rq_resources(rxq_obj->rxq_ctrl);
-		rxq_release_devx_cq_resources(rxq_obj->rxq_ctrl);
+		mlx5_rxq_release_devx_rq_resources(rxq_obj->rxq_ctrl);
+		mlx5_rxq_release_devx_cq_resources(rxq_obj->rxq_ctrl);
 	}
 }
 
@@ -247,7 +247,7 @@ mlx5_devx_wq_attr_fill(struct mlx5_priv *priv, struct mlx5_rxq_ctrl *rxq_ctrl,
  *   The DevX RQ object initialized, NULL otherwise and rte_errno is set.
  */
 static struct mlx5_devx_obj *
-rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
@@ -325,7 +325,7 @@ rxq_create_devx_rq_resources(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	return rq;
 error:
-	rxq_release_devx_rq_resources(rxq_ctrl);
+	mlx5_rxq_release_devx_rq_resources(rxq_ctrl);
 	return NULL;
 }
 
@@ -341,7 +341,7 @@ error:
  *   The DevX CQ object initialized, NULL otherwise and rte_errno is set.
  */
 static struct mlx5_devx_obj *
-rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
+mlx5_rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_devx_obj *cq_obj = 0;
 	struct mlx5_devx_cq_attr cq_attr = { 0 };
@@ -451,7 +451,7 @@ rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 error:
 	if (cq_obj)
 		mlx5_devx_cmd_destroy(cq_obj);
-	rxq_release_devx_cq_resources(rxq_ctrl);
+	mlx5_rxq_release_devx_cq_resources(rxq_ctrl);
 	return NULL;
 }
 
@@ -558,13 +558,13 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		tmpl->fd = mlx5_os_get_devx_channel_fd(tmpl->devx_channel);
 	}
 	/* Create CQ using DevX API. */
-	tmpl->devx_cq = rxq_create_devx_cq_resources(dev, idx);
+	tmpl->devx_cq = mlx5_rxq_create_devx_cq_resources(dev, idx);
 	if (!tmpl->devx_cq) {
 		DRV_LOG(ERR, "Failed to create CQ.");
 		goto error;
 	}
 	/* Create RQ using DevX API. */
-	tmpl->rq = rxq_create_devx_rq_resources(dev, idx);
+	tmpl->rq = mlx5_rxq_create_devx_rq_resources(dev, idx);
 	if (!tmpl->rq) {
 		DRV_LOG(ERR, "Port %u Rx queue %u RQ creation failure.",
 			dev->data->port_id, idx);
@@ -589,8 +589,8 @@ error:
 		claim_zero(mlx5_devx_cmd_destroy(tmpl->devx_cq));
 	if (tmpl->devx_channel)
 		mlx5_glue->devx_destroy_event_channel(tmpl->devx_channel);
-	rxq_release_devx_rq_resources(rxq_ctrl);
-	rxq_release_devx_cq_resources(rxq_ctrl);
+	mlx5_rxq_release_devx_rq_resources(rxq_ctrl);
+	mlx5_rxq_release_devx_cq_resources(rxq_ctrl);
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 }
@@ -878,7 +878,7 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
  *   DevX Tx queue object.
  */
 static void
-txq_release_devx_sq_resources(struct mlx5_txq_obj *txq_obj)
+mlx5_txq_release_devx_sq_resources(struct mlx5_txq_obj *txq_obj)
 {
 	if (txq_obj->sq_devx)
 		claim_zero(mlx5_devx_cmd_destroy(txq_obj->sq_devx));
@@ -900,7 +900,7 @@ txq_release_devx_sq_resources(struct mlx5_txq_obj *txq_obj)
  *   DevX Tx queue object.
  */
 static void
-txq_release_devx_cq_resources(struct mlx5_txq_obj *txq_obj)
+mlx5_txq_release_devx_cq_resources(struct mlx5_txq_obj *txq_obj)
 {
 	if (txq_obj->cq_devx)
 		claim_zero(mlx5_devx_cmd_destroy(txq_obj->cq_devx));
@@ -922,40 +922,38 @@ txq_release_devx_cq_resources(struct mlx5_txq_obj *txq_obj)
  *   Txq object to destroy.
  */
 static void
-txq_release_devx_resources(struct mlx5_txq_obj *txq_obj)
+mlx5_txq_release_devx_resources(struct mlx5_txq_obj *txq_obj)
 {
 	MLX5_ASSERT(txq_obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_SQ);
 
-	txq_release_devx_cq_resources(txq_obj);
-	txq_release_devx_sq_resources(txq_obj);
+	mlx5_txq_release_devx_cq_resources(txq_obj);
+	mlx5_txq_release_devx_sq_resources(txq_obj);
 }
 
 /**
- * Create a DevX CQ object for an Tx queue.
+ * Create a DevX CQ object and its resources for an Tx queue.
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param cqe_n
- *   Number of entries in the CQ.
  * @param idx
  *   Queue index in DPDK Tx queue array.
- * @param rxq_obj
- *   Pointer to Tx queue object data.
  *
  * @return
- *   The DevX CQ object initialized, NULL otherwise and rte_errno is set.
+ *   Number of CQEs in CQ, 0 otherwise and rte_errno is set.
  */
-static struct mlx5_devx_obj *
-mlx5_tx_devx_cq_new(struct rte_eth_dev *dev, uint32_t cqe_n, uint16_t idx,
-		    struct mlx5_txq_obj *txq_obj)
+static uint32_t
+mlx5_txq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
-	struct mlx5_devx_obj *cq_obj = NULL;
+	struct mlx5_txq_ctrl *txq_ctrl =
+			container_of(txq_data, struct mlx5_txq_ctrl, txq);
+	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
 	struct mlx5_devx_cq_attr cq_attr = { 0 };
 	struct mlx5_cqe *cqe;
 	size_t page_size;
 	size_t alignment;
+	uint32_t cqe_n;
 	uint32_t i;
 	int ret;
 
@@ -965,22 +963,25 @@ mlx5_tx_devx_cq_new(struct rte_eth_dev *dev, uint32_t cqe_n, uint16_t idx,
 	if (page_size == (size_t)-1) {
 		DRV_LOG(ERR, "Failed to get mem page size.");
 		rte_errno = ENOMEM;
-		return NULL;
+		return 0;
 	}
 	/* Allocate memory buffer for CQEs. */
 	alignment = MLX5_CQE_BUF_ALIGNMENT;
 	if (alignment == (size_t)-1) {
 		DRV_LOG(ERR, "Failed to get CQE buf alignment.");
 		rte_errno = ENOMEM;
-		return NULL;
+		return 0;
 	}
+	/* Create the Completion Queue. */
+	cqe_n = (1UL << txq_data->elts_n) / MLX5_TX_COMP_THRESH +
+		1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
 	cqe_n = 1UL << log2above(cqe_n);
 	if (cqe_n > UINT16_MAX) {
 		DRV_LOG(ERR,
 			"Port %u Tx queue %u requests to many CQEs %u.",
 			dev->data->port_id, txq_data->idx, cqe_n);
 		rte_errno = EINVAL;
-		return NULL;
+		return 0;
 	}
 	txq_obj->cq_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
 				      cqe_n * sizeof(struct mlx5_cqe),
@@ -991,7 +992,7 @@ mlx5_tx_devx_cq_new(struct rte_eth_dev *dev, uint32_t cqe_n, uint16_t idx,
 			"Port %u Tx queue %u cannot allocate memory (CQ).",
 			dev->data->port_id, txq_data->idx);
 		rte_errno = ENOMEM;
-		return NULL;
+		return 0;
 	}
 	/* Register allocated buffer in user space with DevX. */
 	txq_obj->cq_umem = mlx5_glue->devx_umem_reg(priv->sh->ctx,
@@ -1027,50 +1028,47 @@ mlx5_tx_devx_cq_new(struct rte_eth_dev *dev, uint32_t cqe_n, uint16_t idx,
 	cq_attr.log_cq_size = rte_log2_u32(cqe_n);
 	cq_attr.log_page_size = rte_log2_u32(page_size);
 	/* Create completion queue object with DevX. */
-	cq_obj = mlx5_devx_cmd_create_cq(priv->sh->ctx, &cq_attr);
-	if (!cq_obj) {
+	txq_obj->cq_devx = mlx5_devx_cmd_create_cq(priv->sh->ctx, &cq_attr);
+	if (!txq_obj->cq_devx) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Port %u Tx queue %u CQ creation failure.",
 			dev->data->port_id, idx);
 		goto error;
 	}
-	txq_data->cqe_n = log2above(cqe_n);
-	txq_data->cqe_s = 1 << txq_data->cqe_n;
 	/* Initial fill CQ buffer with invalid CQE opcode. */
 	cqe = (struct mlx5_cqe *)txq_obj->cq_buf;
-	for (i = 0; i < txq_data->cqe_s; i++) {
+	for (i = 0; i < cqe_n; i++) {
 		cqe->op_own = (MLX5_CQE_INVALID << 4) | MLX5_CQE_OWNER_MASK;
 		++cqe;
 	}
-	return cq_obj;
+	return cqe_n;
 error:
 	ret = rte_errno;
-	txq_release_devx_cq_resources(txq_obj);
+	mlx5_txq_release_devx_cq_resources(txq_obj);
 	rte_errno = ret;
-	return NULL;
+	return 0;
 }
 
 /**
- * Create a SQ object using DevX.
+ * Create a SQ object and its resources using DevX.
  *
  * @param dev
  *   Pointer to Ethernet device.
  * @param idx
  *   Queue index in DPDK Tx queue array.
- * @param rxq_obj
- *   Pointer to Tx queue object data.
  *
  * @return
- *   The DevX SQ object initialized, NULL otherwise and rte_errno is set.
+ *   Number of WQEs in SQ, 0 otherwise and rte_errno is set.
  */
-static struct mlx5_devx_obj *
-mlx5_devx_sq_new(struct rte_eth_dev *dev, uint16_t idx,
-		 struct mlx5_txq_obj *txq_obj)
+static uint32_t
+mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
+	struct mlx5_txq_ctrl *txq_ctrl =
+			container_of(txq_data, struct mlx5_txq_ctrl, txq);
+	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
 	struct mlx5_devx_create_sq_attr sq_attr = { 0 };
-	struct mlx5_devx_obj *sq_obj = NULL;
 	size_t page_size;
 	uint32_t wqe_n;
 	int ret;
@@ -1081,7 +1079,7 @@ mlx5_devx_sq_new(struct rte_eth_dev *dev, uint16_t idx,
 	if (page_size == (size_t)-1) {
 		DRV_LOG(ERR, "Failed to get mem page size.");
 		rte_errno = ENOMEM;
-		return NULL;
+		return 0;
 	}
 	wqe_n = RTE_MIN(1UL << txq_data->elts_n,
 			(uint32_t)priv->sh->device_attr.max_qp_wr);
@@ -1117,7 +1115,6 @@ mlx5_devx_sq_new(struct rte_eth_dev *dev, uint16_t idx,
 		DRV_LOG(ERR, "Failed to allocate SQ door-bell.");
 		goto error;
 	}
-	txq_data->wqe_n = log2above(wqe_n);
 	sq_attr.tis_lst_sz = 1;
 	sq_attr.tis_num = priv->sh->tis->id;
 	sq_attr.state = MLX5_SQC_STATE_RST;
@@ -1131,7 +1128,7 @@ mlx5_devx_sq_new(struct rte_eth_dev *dev, uint16_t idx,
 	sq_attr.wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
 	sq_attr.wq_attr.pd = priv->sh->pdn;
 	sq_attr.wq_attr.log_wq_stride = rte_log2_u32(MLX5_WQE_SIZE);
-	sq_attr.wq_attr.log_wq_sz = txq_data->wqe_n;
+	sq_attr.wq_attr.log_wq_sz = log2above(wqe_n);
 	sq_attr.wq_attr.dbr_umem_valid = 1;
 	sq_attr.wq_attr.dbr_addr = txq_obj->sq_dbrec_offset;
 	sq_attr.wq_attr.dbr_umem_id =
@@ -1140,19 +1137,19 @@ mlx5_devx_sq_new(struct rte_eth_dev *dev, uint16_t idx,
 	sq_attr.wq_attr.wq_umem_id = mlx5_os_get_umem_id(txq_obj->sq_umem);
 	sq_attr.wq_attr.wq_umem_offset = (uintptr_t)txq_obj->sq_buf % page_size;
 	/* Create Send Queue object with DevX. */
-	sq_obj = mlx5_devx_cmd_create_sq(priv->sh->ctx, &sq_attr);
-	if (!sq_obj) {
+	txq_obj->sq_devx = mlx5_devx_cmd_create_sq(priv->sh->ctx, &sq_attr);
+	if (!txq_obj->sq_devx) {
 		rte_errno = errno;
 		DRV_LOG(ERR, "Port %u Tx queue %u SQ creation failure.",
 			dev->data->port_id, idx);
 		goto error;
 	}
-	return sq_obj;
+	return wqe_n;
 error:
 	ret = rte_errno;
-	txq_release_devx_sq_resources(txq_obj);
+	mlx5_txq_release_devx_sq_resources(txq_obj);
 	rte_errno = ret;
-	return NULL;
+	return 0;
 }
 #endif
 
@@ -1188,6 +1185,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
 	void *reg_addr;
 	uint32_t cqe_n;
+	uint32_t wqe_n;
 	int ret = 0;
 
 	MLX5_ASSERT(txq_data);
@@ -1195,15 +1193,13 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_obj->type = MLX5_TXQ_OBJ_TYPE_DEVX_SQ;
 	txq_obj->txq_ctrl = txq_ctrl;
 	txq_obj->dev = dev;
-	/* Create the Completion Queue. */
-	cqe_n = (1UL << txq_data->elts_n) / MLX5_TX_COMP_THRESH +
-		1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
-	/* Create completion queue object with DevX. */
-	txq_obj->cq_devx = mlx5_tx_devx_cq_new(dev, cqe_n, idx, txq_obj);
-	if (!txq_obj->cq_devx) {
+	cqe_n = mlx5_txq_create_devx_cq_resources(dev, idx);
+	if (!cqe_n) {
 		rte_errno = errno;
 		goto error;
 	}
+	txq_data->cqe_n = log2above(cqe_n);
+	txq_data->cqe_s = 1 << txq_data->cqe_n;
 	txq_data->cqe_m = txq_data->cqe_s - 1;
 	txq_data->cqes = (volatile struct mlx5_cqe *)txq_obj->cq_buf;
 	txq_data->cq_ci = 0;
@@ -1212,12 +1208,13 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 						txq_obj->cq_dbrec_offset);
 	*txq_data->cq_db = 0;
 	/* Create Send Queue object with DevX. */
-	txq_obj->sq_devx = mlx5_devx_sq_new(dev, idx, txq_obj);
-	if (!txq_obj->sq_devx) {
+	wqe_n = mlx5_txq_create_devx_sq_resources(dev, idx);
+	if (!wqe_n) {
 		rte_errno = errno;
 		goto error;
 	}
 	/* Create the Work Queue. */
+	txq_data->wqe_n = log2above(wqe_n);
 	txq_data->wqe_s = 1 << txq_data->wqe_n;
 	txq_data->wqe_m = txq_data->wqe_s - 1;
 	txq_data->wqes = (struct mlx5_wqe *)txq_obj->sq_buf;
@@ -1262,7 +1259,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
-	txq_release_devx_resources(txq_obj);
+	mlx5_txq_release_devx_resources(txq_obj);
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 #endif
@@ -1283,7 +1280,7 @@ mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj)
 			claim_zero(mlx5_devx_cmd_destroy(txq_obj->tis));
 #ifdef HAVE_MLX5DV_DEVX_UAR_OFFSET
 	} else {
-		txq_release_devx_resources(txq_obj);
+		mlx5_txq_release_devx_resources(txq_obj);
 #endif
 	}
 }
