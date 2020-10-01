@@ -5,6 +5,7 @@
 APP = pipeline
 
 # all source are stored in SRCS-y
+SRCS-y += cli.c
 SRCS-y += conn.c
 SRCS-y += main.c
 SRCS-y += obj.c
