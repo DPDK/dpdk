@@ -65,4 +65,6 @@ EXPERIMENTAL {
 	rte_swx_pipeline_free;
 	rte_swx_pipeline_port_in_config;
 	rte_swx_pipeline_port_in_type_register;
+	rte_swx_pipeline_port_out_config;
+	rte_swx_pipeline_port_out_type_register;
 };

@@ -97,6 +97,56 @@ rte_swx_pipeline_port_in_config(struct rte_swx_pipeline *p,
 				uint32_t port_id,
 				const char *port_type_name,
 				void *args);
+
+/*
+ * Pipeline output ports
+ */
+
+/**
+ * Pipeline output port type register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Output port type name.
+ * @param[in] ops
+ *   Output port type operations.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Output port type with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_port_out_type_register(struct rte_swx_pipeline *p,
+					const char *name,
+					struct rte_swx_port_out_ops *ops);
+
+/**
+ * Pipeline output port configure
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] port_id
+ *   Output port ID.
+ * @param[in] port_type_name
+ *   Existing output port type name.
+ * @param[in] args
+ *   Output port creation arguments.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -ENODEV: Output port object creation error.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_port_out_config(struct rte_swx_pipeline *p,
+				 uint32_t port_id,
+				 const char *port_type_name,
+				 void *args);
+
 /**
  * Pipeline build
  *

@@ -111,6 +111,90 @@ struct rte_swx_port_in_ops {
 	rte_swx_port_in_stats_read_t stats_read;
 };
 
+/*
+ * Output port
+ */
+
+/**
+ * Output port create
+ *
+ * @param[in] args
+ *   Arguments for output port creation. Format specific to each port type.
+ * @return
+ *   Handle to output port instance on success, NULL on error.
+ */
+typedef void *
+(*rte_swx_port_out_create_t)(void *args);
+
+/**
+ * Output port free
+ *
+ * @param[in] args
+ *   Output port handle.
+ */
+typedef void
+(*rte_swx_port_out_free_t)(void *port);
+
+/**
+ * Output port packet transmit
+ *
+ * @param[in] port
+ *   Output port handle.
+ * @param[in] pkt
+ *   Packet to be transmitted.
+ */
+typedef void
+(*rte_swx_port_out_pkt_tx_t)(void *port,
+			     struct rte_swx_pkt *pkt);
+
+/**
+ * Output port flush
+ *
+ * @param[in] port
+ *   Output port handle.
+ */
+typedef void
+(*rte_swx_port_out_flush_t)(void *port);
+
+/** Output port statistics counters. */
+struct rte_swx_port_out_stats {
+	/** Number of packets. */
+	uint64_t n_pkts;
+
+	/** Number of bytes. */
+	uint64_t n_bytes;
+};
+
+/**
+ * Output port statistics counters read
+ *
+ * @param[in] port
+ *   Output port handle.
+ * @param[out] stats
+ *   Output port statistics counters. Must point to valid memory.
+ */
+typedef void
+(*rte_swx_port_out_stats_read_t)(void *port,
+				 struct rte_swx_port_out_stats *stats);
+
+/** Output port operations. */
+struct rte_swx_port_out_ops {
+	/** Create. Must be non-NULL. */
+	rte_swx_port_out_create_t create;
+
+	/** Free. Must be non-NULL. */
+	rte_swx_port_out_free_t free;
+
+	/** Packet transmission. Must be non-NULL. */
+	rte_swx_port_out_pkt_tx_t pkt_tx;
+
+	/** Flush. May be NULL. */
+	rte_swx_port_out_flush_t flush;
+
+	/** Statistics counters read. Must be non-NULL. */
+	rte_swx_port_out_stats_read_t stats_read;
+};
+
 #ifdef __cplusplus
 }
 #endif
