@@ -297,6 +297,12 @@ enum instruction_type {
 	INSTR_ALU_CKADD_FIELD,    /* src = H */
 	INSTR_ALU_CKADD_STRUCT20, /* src = h.header, with sizeof(header) = 20 */
 	INSTR_ALU_CKADD_STRUCT,   /* src = h.hdeader, with any sizeof(header) */
+
+	/* cksub dst src
+	 * dst = dst '- src
+	 * dst = H, src = H
+	 */
+	INSTR_ALU_CKSUB_FIELD,
 };
 
 struct instr_operand {
@@ -3034,6 +3040,36 @@ instr_alu_ckadd_translate(struct rte_swx_pipeline *p,
 	return 0;
 }
 
+static int
+instr_alu_cksub_translate(struct rte_swx_pipeline *p,
+			  struct action *action __rte_unused,
+			  char **tokens,
+			  int n_tokens,
+			  struct instruction *instr,
+			  struct instruction_data *data __rte_unused)
+{
+	char *dst = tokens[1], *src = tokens[2];
+	struct header *hdst, *hsrc;
+	struct field *fdst, *fsrc;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	fdst = header_field_parse(p, dst, &hdst);
+	CHECK(fdst && (fdst->n_bits == 16), EINVAL);
+
+	fsrc = header_field_parse(p, src, &hsrc);
+	CHECK(fsrc, EINVAL);
+
+	instr->type = INSTR_ALU_CKSUB_FIELD;
+	instr->alu.dst.struct_id = (uint8_t)hdst->struct_id;
+	instr->alu.dst.n_bits = fdst->n_bits;
+	instr->alu.dst.offset = fdst->offset / 8;
+	instr->alu.src.struct_id = (uint8_t)hsrc->struct_id;
+	instr->alu.src.n_bits = fsrc->n_bits;
+	instr->alu.src.offset = fsrc->offset / 8;
+	return 0;
+}
+
 static inline void
 instr_alu_add_exec(struct rte_swx_pipeline *p)
 {
@@ -3261,6 +3297,77 @@ instr_alu_ckadd_field_exec(struct rte_swx_pipeline *p)
 	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
 	 * 0x10006), the output r is (0 .. 7). So no carry bit can be generated,
 	 * therefore the output r is always a 16-bit number.
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	r = ~r & 0xFFFF;
+	r = r ? r : 0xFFFF;
+
+	*dst16_ptr = (uint16_t)r;
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_cksub_field_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint8_t *dst_struct, *src_struct;
+	uint16_t *dst16_ptr, dst;
+	uint64_t *src64_ptr, src64, src64_mask, src;
+	uint64_t r;
+
+	TRACE("[Thread %2u] cksub (field)\n", p->thread_id);
+
+	/* Structs. */
+	dst_struct = t->structs[ip->alu.dst.struct_id];
+	dst16_ptr = (uint16_t *)&dst_struct[ip->alu.dst.offset];
+	dst = *dst16_ptr;
+
+	src_struct = t->structs[ip->alu.src.struct_id];
+	src64_ptr = (uint64_t *)&src_struct[ip->alu.src.offset];
+	src64 = *src64_ptr;
+	src64_mask = UINT64_MAX >> (64 - ip->alu.src.n_bits);
+	src = src64 & src64_mask;
+
+	r = dst;
+	r = ~r & 0xFFFF;
+
+	/* Subtraction in 1's complement arithmetic (i.e. a '- b) is the same as
+	 * the following sequence of operations in 2's complement arithmetic:
+	 *    a '- b = (a - b) % 0xFFFF.
+	 *
+	 * In order to prevent an underflow for the below subtraction, in which
+	 * a 33-bit number (the subtrahend) is taken out of a 16-bit number (the
+	 * minuend), we first add a multiple of the 0xFFFF modulus to the
+	 * minuend. The number we add to the minuend needs to be a 34-bit number
+	 * or higher, so for readability reasons we picked the 36-bit multiple.
+	 * We are effectively turning the 16-bit minuend into a 36-bit number:
+	 *    (a - b) % 0xFFFF = (a + 0xFFFF00000 - b) % 0xFFFF.
+	 */
+	r += 0xFFFF00000ULL; /* The output r is a 36-bit number. */
+
+	/* A 33-bit number is subtracted from a 36-bit number (the input r). The
+	 * result (the output r) is a 36-bit number.
+	 */
+	r -= (src >> 32) + (src & 0xFFFFFFFF);
+
+	/* The first input is a 16-bit number. The second input is a 20-bit
+	 * number. Their sum is a 21-bit number.
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	/* The first input is a 16-bit number (0 .. 0xFFFF). The second input is
+	 * a 5-bit number (0 .. 31). The sum is a 17-bit number (0 .. 0x1001E).
+	 */
+	r = (r & 0xFFFF) + (r >> 16);
+
+	/* When the input r is (0 .. 0xFFFF), the output r is equal to the input
+	 * r, so the output is (0 .. 0xFFFF). When the input r is (0x10000 ..
+	 * 0x1001E), the output r is (0 .. 31). So no carry bit can be
+	 * generated, therefore the output r is always a 16-bit number.
 	 */
 	r = (r & 0xFFFF) + (r >> 16);
 
@@ -3502,6 +3609,14 @@ instr_translate(struct rte_swx_pipeline *p,
 						 instr,
 						 data);
 
+	if (!strcmp(tokens[tpos], "cksub"))
+		return instr_alu_cksub_translate(p,
+						 action,
+						 &tokens[tpos],
+						 n_tokens - tpos,
+						 instr,
+						 data);
+
 	CHECK(0, EINVAL);
 }
 
@@ -3677,6 +3792,7 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_ALU_CKADD_FIELD] = instr_alu_ckadd_field_exec,
 	[INSTR_ALU_CKADD_STRUCT] = instr_alu_ckadd_struct_exec,
 	[INSTR_ALU_CKADD_STRUCT20] = instr_alu_ckadd_struct20_exec,
+	[INSTR_ALU_CKSUB_FIELD] = instr_alu_cksub_field_exec,
 };
 
 static inline void
