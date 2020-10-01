@@ -8,5 +8,6 @@ sources = files('rte_pipeline.c',
 headers = files('rte_pipeline.h',
 	'rte_port_in_action.h',
 	'rte_table_action.h',
-	'rte_swx_pipeline.h',)
+	'rte_swx_pipeline.h',
+	'rte_swx_extern.h',)
 deps += ['port', 'table', 'meter', 'sched', 'cryptodev']

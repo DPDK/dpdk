@@ -19,6 +19,7 @@ extern "C" {
 #include <rte_compat.h>
 
 #include "rte_swx_port.h"
+#include "rte_swx_extern.h"
 
 /** Name size. */
 #ifndef RTE_SWX_NAME_SIZE
@@ -146,6 +147,118 @@ rte_swx_pipeline_port_out_config(struct rte_swx_pipeline *p,
 				 uint32_t port_id,
 				 const char *port_type_name,
 				 void *args);
+
+/*
+ * Extern objects and functions
+ */
+
+/**
+ * Pipeline extern type register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Extern type name.
+ * @param[in] mailbox_struct_type_name
+ *   Name of existing struct type used to define the mailbox size and layout for
+ *   the extern objects that are instances of this type. Each extern object gets
+ *   its own mailbox, which is used to pass the input arguments to the member
+ *   functions and retrieve the output results.
+ * @param[in] constructor
+ *   Function used to create the extern objects that are instances of this type.
+ * @param[in] destructor
+ *   Function used to free the extern objects that are instances of  this type.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Extern type with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_extern_type_register(struct rte_swx_pipeline *p,
+	const char *name,
+	const char *mailbox_struct_type_name,
+	rte_swx_extern_type_constructor_t constructor,
+	rte_swx_extern_type_destructor_t destructor);
+
+/**
+ * Pipeline extern type member function register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] extern_type_name
+ *   Existing extern type name.
+ * @param[in] name
+ *   Name for the new member function to be added to the extern type.
+ * @param[in] member_func
+ *   The new member function.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Member function with this name already exists for this type;
+ *   -ENOSPC: Maximum number of member functions reached for this type.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_extern_type_member_func_register(struct rte_swx_pipeline *p,
+	const char *extern_type_name,
+	const char *name,
+	rte_swx_extern_type_member_func_t member_func);
+
+/**
+ * Pipeline extern object configure
+ *
+ * Instantiate a given extern type to create new extern object.
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] extern_type_name
+ *   Existing extern type name.
+ * @param[in] name
+ *   Name for the new object instantiating the extern type.
+ * @param[in] args
+ *   Extern object constructor arguments.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Extern object with this name already exists;
+ *   -ENODEV: Extern object constructor error.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_extern_object_config(struct rte_swx_pipeline *p,
+				      const char *extern_type_name,
+				      const char *name,
+				      const char *args);
+
+/**
+ * Pipeline extern function register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Extern function name.
+ * @param[in] mailbox_struct_type_name
+ *   Name of existing struct type used to define the mailbox size and layout for
+ *   this extern function. The mailbox is used to pass the input arguments to
+ *   the extern function and retrieve the output results.
+ * @param[in] func
+ *   The extern function.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Extern function with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_extern_func_register(struct rte_swx_pipeline *p,
+				      const char *name,
+				      const char *mailbox_struct_type_name,
+				      rte_swx_extern_func_t func);
 
 /*
  * Packet headers and meta-data

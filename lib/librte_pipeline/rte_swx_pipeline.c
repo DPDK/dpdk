@@ -91,6 +91,70 @@ struct port_out_runtime {
 };
 
 /*
+ * Extern object.
+ */
+struct extern_type_member_func {
+	TAILQ_ENTRY(extern_type_member_func) node;
+	char name[RTE_SWX_NAME_SIZE];
+	rte_swx_extern_type_member_func_t func;
+	uint32_t id;
+};
+
+TAILQ_HEAD(extern_type_member_func_tailq, extern_type_member_func);
+
+struct extern_type {
+	TAILQ_ENTRY(extern_type) node;
+	char name[RTE_SWX_NAME_SIZE];
+	struct struct_type *mailbox_struct_type;
+	rte_swx_extern_type_constructor_t constructor;
+	rte_swx_extern_type_destructor_t destructor;
+	struct extern_type_member_func_tailq funcs;
+	uint32_t n_funcs;
+};
+
+TAILQ_HEAD(extern_type_tailq, extern_type);
+
+struct extern_obj {
+	TAILQ_ENTRY(extern_obj) node;
+	char name[RTE_SWX_NAME_SIZE];
+	struct extern_type *type;
+	void *obj;
+	uint32_t struct_id;
+	uint32_t id;
+};
+
+TAILQ_HEAD(extern_obj_tailq, extern_obj);
+
+#ifndef RTE_SWX_EXTERN_TYPE_MEMBER_FUNCS_MAX
+#define RTE_SWX_EXTERN_TYPE_MEMBER_FUNCS_MAX 8
+#endif
+
+struct extern_obj_runtime {
+	void *obj;
+	uint8_t *mailbox;
+	rte_swx_extern_type_member_func_t funcs[RTE_SWX_EXTERN_TYPE_MEMBER_FUNCS_MAX];
+};
+
+/*
+ * Extern function.
+ */
+struct extern_func {
+	TAILQ_ENTRY(extern_func) node;
+	char name[RTE_SWX_NAME_SIZE];
+	struct struct_type *mailbox_struct_type;
+	rte_swx_extern_func_t func;
+	uint32_t struct_id;
+	uint32_t id;
+};
+
+TAILQ_HEAD(extern_func_tailq, extern_func);
+
+struct extern_func_runtime {
+	uint8_t *mailbox;
+	rte_swx_extern_func_t func;
+};
+
+/*
  * Header.
  */
 struct header {
@@ -130,6 +194,10 @@ struct thread {
 
 	/* Packet meta-data. */
 	uint8_t *metadata;
+
+	/* Extern objects and functions. */
+	struct extern_obj_runtime *extern_objs;
+	struct extern_func_runtime *extern_funcs;
 };
 
 #ifndef RTE_SWX_PIPELINE_THREADS_MAX
@@ -142,6 +210,9 @@ struct rte_swx_pipeline {
 	struct port_in_tailq ports_in;
 	struct port_out_type_tailq port_out_types;
 	struct port_out_tailq ports_out;
+	struct extern_type_tailq extern_types;
+	struct extern_obj_tailq extern_objs;
+	struct extern_func_tailq extern_funcs;
 	struct header_tailq headers;
 	struct struct_type *metadata_st;
 	uint32_t metadata_struct_id;
@@ -153,6 +224,8 @@ struct rte_swx_pipeline {
 	uint32_t n_structs;
 	uint32_t n_ports_in;
 	uint32_t n_ports_out;
+	uint32_t n_extern_objs;
+	uint32_t n_extern_funcs;
 	uint32_t n_headers;
 	int build_done;
 	int numa_node;
@@ -607,6 +680,395 @@ port_out_free(struct rte_swx_pipeline *p)
 }
 
 /*
+ * Extern object.
+ */
+static struct extern_type *
+extern_type_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct extern_type *elem;
+
+	TAILQ_FOREACH(elem, &p->extern_types, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+static struct extern_type_member_func *
+extern_type_member_func_find(struct extern_type *type, const char *name)
+{
+	struct extern_type_member_func *elem;
+
+	TAILQ_FOREACH(elem, &type->funcs, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+static struct extern_obj *
+extern_obj_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct extern_obj *elem;
+
+	TAILQ_FOREACH(elem, &p->extern_objs, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+int
+rte_swx_pipeline_extern_type_register(struct rte_swx_pipeline *p,
+	const char *name,
+	const char *mailbox_struct_type_name,
+	rte_swx_extern_type_constructor_t constructor,
+	rte_swx_extern_type_destructor_t destructor)
+{
+	struct extern_type *elem;
+	struct struct_type *mailbox_struct_type;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!extern_type_find(p, name), EEXIST);
+
+	CHECK_NAME(mailbox_struct_type_name, EINVAL);
+	mailbox_struct_type = struct_type_find(p, mailbox_struct_type_name);
+	CHECK(mailbox_struct_type, EINVAL);
+
+	CHECK(constructor, EINVAL);
+	CHECK(destructor, EINVAL);
+
+	/* Node allocation. */
+	elem = calloc(1, sizeof(struct extern_type));
+	CHECK(elem, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(elem->name, name);
+	elem->mailbox_struct_type = mailbox_struct_type;
+	elem->constructor = constructor;
+	elem->destructor = destructor;
+	TAILQ_INIT(&elem->funcs);
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->extern_types, elem, node);
+
+	return 0;
+}
+
+int
+rte_swx_pipeline_extern_type_member_func_register(struct rte_swx_pipeline *p,
+	const char *extern_type_name,
+	const char *name,
+	rte_swx_extern_type_member_func_t member_func)
+{
+	struct extern_type *type;
+	struct extern_type_member_func *type_member;
+
+	CHECK(p, EINVAL);
+
+	CHECK(extern_type_name, EINVAL);
+	type = extern_type_find(p, extern_type_name);
+	CHECK(type, EINVAL);
+	CHECK(type->n_funcs < RTE_SWX_EXTERN_TYPE_MEMBER_FUNCS_MAX, ENOSPC);
+
+	CHECK(name, EINVAL);
+	CHECK(!extern_type_member_func_find(type, name), EEXIST);
+
+	CHECK(member_func, EINVAL);
+
+	/* Node allocation. */
+	type_member = calloc(1, sizeof(struct extern_type_member_func));
+	CHECK(type_member, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(type_member->name, name);
+	type_member->func = member_func;
+	type_member->id = type->n_funcs;
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&type->funcs, type_member, node);
+	type->n_funcs++;
+
+	return 0;
+}
+
+int
+rte_swx_pipeline_extern_object_config(struct rte_swx_pipeline *p,
+				      const char *extern_type_name,
+				      const char *name,
+				      const char *args)
+{
+	struct extern_type *type;
+	struct extern_obj *obj;
+	void *obj_handle;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(extern_type_name, EINVAL);
+	type = extern_type_find(p, extern_type_name);
+	CHECK(type, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!extern_obj_find(p, name), EEXIST);
+
+	/* Node allocation. */
+	obj = calloc(1, sizeof(struct extern_obj));
+	CHECK(obj, ENOMEM);
+
+	/* Object construction. */
+	obj_handle = type->constructor(args);
+	if (!obj_handle) {
+		free(obj);
+		CHECK(0, ENODEV);
+	}
+
+	/* Node initialization. */
+	strcpy(obj->name, name);
+	obj->type = type;
+	obj->obj = obj_handle;
+	obj->struct_id = p->n_structs;
+	obj->id = p->n_extern_objs;
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->extern_objs, obj, node);
+	p->n_extern_objs++;
+	p->n_structs++;
+
+	return 0;
+}
+
+static int
+extern_obj_build(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+		struct extern_obj *obj;
+
+		t->extern_objs = calloc(p->n_extern_objs,
+					sizeof(struct extern_obj_runtime));
+		CHECK(t->extern_objs, ENOMEM);
+
+		TAILQ_FOREACH(obj, &p->extern_objs, node) {
+			struct extern_obj_runtime *r =
+				&t->extern_objs[obj->id];
+			struct extern_type_member_func *func;
+			uint32_t mailbox_size =
+				obj->type->mailbox_struct_type->n_bits / 8;
+
+			r->obj = obj->obj;
+
+			r->mailbox = calloc(1, mailbox_size);
+			CHECK(r->mailbox, ENOMEM);
+
+			TAILQ_FOREACH(func, &obj->type->funcs, node)
+				r->funcs[func->id] = func->func;
+
+			t->structs[obj->struct_id] = r->mailbox;
+		}
+	}
+
+	return 0;
+}
+
+static void
+extern_obj_build_free(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+		uint32_t j;
+
+		if (!t->extern_objs)
+			continue;
+
+		for (j = 0; j < p->n_extern_objs; j++) {
+			struct extern_obj_runtime *r = &t->extern_objs[j];
+
+			free(r->mailbox);
+		}
+
+		free(t->extern_objs);
+		t->extern_objs = NULL;
+	}
+}
+
+static void
+extern_obj_free(struct rte_swx_pipeline *p)
+{
+	extern_obj_build_free(p);
+
+	/* Extern objects. */
+	for ( ; ; ) {
+		struct extern_obj *elem;
+
+		elem = TAILQ_FIRST(&p->extern_objs);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->extern_objs, elem, node);
+		if (elem->obj)
+			elem->type->destructor(elem->obj);
+		free(elem);
+	}
+
+	/* Extern types. */
+	for ( ; ; ) {
+		struct extern_type *elem;
+
+		elem = TAILQ_FIRST(&p->extern_types);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->extern_types, elem, node);
+
+		for ( ; ; ) {
+			struct extern_type_member_func *func;
+
+			func = TAILQ_FIRST(&elem->funcs);
+			if (!func)
+				break;
+
+			TAILQ_REMOVE(&elem->funcs, func, node);
+			free(func);
+		}
+
+		free(elem);
+	}
+}
+
+/*
+ * Extern function.
+ */
+static struct extern_func *
+extern_func_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct extern_func *elem;
+
+	TAILQ_FOREACH(elem, &p->extern_funcs, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+int
+rte_swx_pipeline_extern_func_register(struct rte_swx_pipeline *p,
+				      const char *name,
+				      const char *mailbox_struct_type_name,
+				      rte_swx_extern_func_t func)
+{
+	struct extern_func *f;
+	struct struct_type *mailbox_struct_type;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!extern_func_find(p, name), EEXIST);
+
+	CHECK_NAME(mailbox_struct_type_name, EINVAL);
+	mailbox_struct_type = struct_type_find(p, mailbox_struct_type_name);
+	CHECK(mailbox_struct_type, EINVAL);
+
+	CHECK(func, EINVAL);
+
+	/* Node allocation. */
+	f = calloc(1, sizeof(struct extern_func));
+	CHECK(func, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(f->name, name);
+	f->mailbox_struct_type = mailbox_struct_type;
+	f->func = func;
+	f->struct_id = p->n_structs;
+	f->id = p->n_extern_funcs;
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->extern_funcs, f, node);
+	p->n_extern_funcs++;
+	p->n_structs++;
+
+	return 0;
+}
+
+static int
+extern_func_build(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+		struct extern_func *func;
+
+		/* Memory allocation. */
+		t->extern_funcs = calloc(p->n_extern_funcs,
+					 sizeof(struct extern_func_runtime));
+		CHECK(t->extern_funcs, ENOMEM);
+
+		/* Extern function. */
+		TAILQ_FOREACH(func, &p->extern_funcs, node) {
+			struct extern_func_runtime *r =
+				&t->extern_funcs[func->id];
+			uint32_t mailbox_size =
+				func->mailbox_struct_type->n_bits / 8;
+
+			r->func = func->func;
+
+			r->mailbox = calloc(1, mailbox_size);
+			CHECK(r->mailbox, ENOMEM);
+
+			t->structs[func->struct_id] = r->mailbox;
+		}
+	}
+
+	return 0;
+}
+
+static void
+extern_func_build_free(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+		uint32_t j;
+
+		if (!t->extern_funcs)
+			continue;
+
+		for (j = 0; j < p->n_extern_funcs; j++) {
+			struct extern_func_runtime *r = &t->extern_funcs[j];
+
+			free(r->mailbox);
+		}
+
+		free(t->extern_funcs);
+		t->extern_funcs = NULL;
+	}
+}
+
+static void
+extern_func_free(struct rte_swx_pipeline *p)
+{
+	extern_func_build_free(p);
+
+	for ( ; ; ) {
+		struct extern_func *elem;
+
+		elem = TAILQ_FIRST(&p->extern_funcs);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->extern_funcs, elem, node);
+		free(elem);
+	}
+}
+
+/*
  * Header.
  */
 static struct header *
@@ -826,6 +1288,9 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	TAILQ_INIT(&pipeline->ports_in);
 	TAILQ_INIT(&pipeline->port_out_types);
 	TAILQ_INIT(&pipeline->ports_out);
+	TAILQ_INIT(&pipeline->extern_types);
+	TAILQ_INIT(&pipeline->extern_objs);
+	TAILQ_INIT(&pipeline->extern_funcs);
 	TAILQ_INIT(&pipeline->headers);
 
 	pipeline->n_structs = 1; /* Struct 0 is reserved for action_data. */
@@ -843,6 +1308,8 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 
 	metadata_free(p);
 	header_free(p);
+	extern_func_free(p);
+	extern_obj_free(p);
 	port_out_free(p);
 	port_in_free(p);
 	struct_free(p);
@@ -870,6 +1337,14 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = extern_obj_build(p);
+	if (status)
+		goto error;
+
+	status = extern_func_build(p);
+	if (status)
+		goto error;
+
 	status = header_build(p);
 	if (status)
 		goto error;
@@ -884,6 +1359,8 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 error:
 	metadata_build_free(p);
 	header_build_free(p);
+	extern_func_build_free(p);
+	extern_obj_build_free(p);
 	port_out_build_free(p);
 	port_in_build_free(p);
 	struct_build_free(p);

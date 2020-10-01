@@ -62,6 +62,10 @@ EXPERIMENTAL {
 	# added in 20.11
 	rte_swx_pipeline_build;
 	rte_swx_pipeline_config;
+	rte_swx_pipeline_extern_func_register;
+	rte_swx_pipeline_extern_object_config;
+	rte_swx_pipeline_extern_type_member_func_register;
+	rte_swx_pipeline_extern_type_register;
 	rte_swx_pipeline_free;
 	rte_swx_pipeline_packet_header_register;
 	rte_swx_pipeline_packet_metadata_register;

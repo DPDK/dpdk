@@ -167,6 +167,7 @@ The public API headers are grouped by topics:
     [port_in_action]   (@ref rte_port_in_action.h)
     [table_action]     (@ref rte_table_action.h)
   * SWX pipeline:
+    [extern]           (@ref rte_swx_extern.h),
     [pipeline]         (@ref rte_swx_pipeline.h)
   * SWX port:
     [port]             (@ref rte_swx_port.h)
