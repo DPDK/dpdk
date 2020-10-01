@@ -236,6 +236,12 @@ enum instruction_type {
 	INSTR_HDR_EMIT6_TX,
 	INSTR_HDR_EMIT7_TX,
 	INSTR_HDR_EMIT8_TX,
+
+	/* validate h.header */
+	INSTR_HDR_VALIDATE,
+
+	/* invalidate h.header */
+	INSTR_HDR_INVALIDATE,
 };
 
 struct instr_io {
@@ -252,10 +258,15 @@ struct instr_io {
 	} hdr;
 };
 
+struct instr_hdr_validity {
+	uint8_t header_id;
+};
+
 struct instruction {
 	enum instruction_type type;
 	union {
 		struct instr_io io;
+		struct instr_hdr_validity valid;
 	};
 };
 
@@ -2098,6 +2109,84 @@ instr_hdr_emit8_tx_exec(struct rte_swx_pipeline *p)
 	instr_tx_exec(p);
 }
 
+/*
+ * validate.
+ */
+static int
+instr_hdr_validate_translate(struct rte_swx_pipeline *p,
+			     struct action *action __rte_unused,
+			     char **tokens,
+			     int n_tokens,
+			     struct instruction *instr,
+			     struct instruction_data *data __rte_unused)
+{
+	struct header *h;
+
+	CHECK(n_tokens == 2, EINVAL);
+
+	h = header_parse(p, tokens[1]);
+	CHECK(h, EINVAL);
+
+	instr->type = INSTR_HDR_VALIDATE;
+	instr->valid.header_id = h->id;
+	return 0;
+}
+
+static inline void
+instr_hdr_validate_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t header_id = ip->valid.header_id;
+
+	TRACE("[Thread %2u] validate header %u\n", p->thread_id, header_id);
+
+	/* Headers. */
+	t->valid_headers = MASK64_BIT_SET(t->valid_headers, header_id);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+/*
+ * invalidate.
+ */
+static int
+instr_hdr_invalidate_translate(struct rte_swx_pipeline *p,
+			       struct action *action __rte_unused,
+			       char **tokens,
+			       int n_tokens,
+			       struct instruction *instr,
+			       struct instruction_data *data __rte_unused)
+{
+	struct header *h;
+
+	CHECK(n_tokens == 2, EINVAL);
+
+	h = header_parse(p, tokens[1]);
+	CHECK(h, EINVAL);
+
+	instr->type = INSTR_HDR_INVALIDATE;
+	instr->valid.header_id = h->id;
+	return 0;
+}
+
+static inline void
+instr_hdr_invalidate_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t header_id = ip->valid.header_id;
+
+	TRACE("[Thread %2u] invalidate header %u\n", p->thread_id, header_id);
+
+	/* Headers. */
+	t->valid_headers = MASK64_BIT_CLR(t->valid_headers, header_id);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
 #define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
 
 static int
@@ -2166,6 +2255,22 @@ instr_translate(struct rte_swx_pipeline *p,
 						n_tokens - tpos,
 						instr,
 						data);
+
+	if (!strcmp(tokens[tpos], "validate"))
+		return instr_hdr_validate_translate(p,
+						    action,
+						    &tokens[tpos],
+						    n_tokens - tpos,
+						    instr,
+						    data);
+
+	if (!strcmp(tokens[tpos], "invalidate"))
+		return instr_hdr_invalidate_translate(p,
+						      action,
+						      &tokens[tpos],
+						      n_tokens - tpos,
+						      instr,
+						      data);
 
 	CHECK(0, EINVAL);
 }
@@ -2308,6 +2413,9 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_HDR_EMIT6_TX] = instr_hdr_emit6_tx_exec,
 	[INSTR_HDR_EMIT7_TX] = instr_hdr_emit7_tx_exec,
 	[INSTR_HDR_EMIT8_TX] = instr_hdr_emit8_tx_exec,
+
+	[INSTR_HDR_VALIDATE] = instr_hdr_validate_exec,
+	[INSTR_HDR_INVALIDATE] = instr_hdr_invalidate_exec,
 };
 
 static inline void
