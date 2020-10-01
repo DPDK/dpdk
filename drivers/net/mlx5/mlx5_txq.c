@@ -1168,7 +1168,6 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 	struct mlx5_txq_obj *txq_obj = NULL;
 	union {
 		struct ibv_qp_init_attr_ex init;
-		struct ibv_cq_init_attr_ex cq;
 		struct ibv_qp_attr mod;
 	} attr;
 	unsigned int cqe_n;
@@ -1198,9 +1197,6 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		return NULL;
 	}
 	memset(&tmpl, 0, sizeof(struct mlx5_txq_obj));
-	attr.cq = (struct ibv_cq_init_attr_ex){
-		.comp_mask = 0,
-	};
 	cqe_n = desc / MLX5_TX_COMP_THRESH +
 		1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
 	tmpl.cq = mlx5_glue->create_cq(priv->sh->ctx, cqe_n, NULL, NULL, 0);
