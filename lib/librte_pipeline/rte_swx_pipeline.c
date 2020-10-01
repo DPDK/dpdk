@@ -255,6 +255,18 @@ enum instruction_type {
 	INSTR_MOV,   /* dst = MEF, src = MEFT */
 	INSTR_MOV_S, /* (dst, src) = (MEF, H) or (dst, src) = (H, MEFT) */
 	INSTR_MOV_I, /* dst = HMEF, src = I */
+
+	/* dma h.header t.field
+	 * memcpy(h.header, t.field, sizeof(h.header))
+	 */
+	INSTR_DMA_HT,
+	INSTR_DMA_HT2,
+	INSTR_DMA_HT3,
+	INSTR_DMA_HT4,
+	INSTR_DMA_HT5,
+	INSTR_DMA_HT6,
+	INSTR_DMA_HT7,
+	INSTR_DMA_HT8,
 };
 
 struct instr_operand {
@@ -290,12 +302,26 @@ struct instr_dst_src {
 	};
 };
 
+struct instr_dma {
+	struct {
+		uint8_t header_id[8];
+		uint8_t struct_id[8];
+	} dst;
+
+	struct {
+		uint8_t offset[8];
+	} src;
+
+	uint16_t n_bytes[8];
+};
+
 struct instruction {
 	enum instruction_type type;
 	union {
 		struct instr_io io;
 		struct instr_hdr_validity valid;
 		struct instr_dst_src mov;
+		struct instr_dma dma;
 	};
 };
 
@@ -2529,6 +2555,170 @@ instr_mov_i_exec(struct rte_swx_pipeline *p)
 	thread_ip_inc(p);
 }
 
+/*
+ * dma.
+ */
+static int
+instr_dma_translate(struct rte_swx_pipeline *p,
+		    struct action *action,
+		    char **tokens,
+		    int n_tokens,
+		    struct instruction *instr,
+		    struct instruction_data *data __rte_unused)
+{
+	char *dst = tokens[1];
+	char *src = tokens[2];
+	struct header *h;
+	struct field *tf;
+
+	CHECK(action, EINVAL);
+	CHECK(n_tokens == 3, EINVAL);
+
+	h = header_parse(p, dst);
+	CHECK(h, EINVAL);
+
+	tf = action_field_parse(action, src);
+	CHECK(tf, EINVAL);
+
+	instr->type = INSTR_DMA_HT;
+	instr->dma.dst.header_id[0] = h->id;
+	instr->dma.dst.struct_id[0] = h->struct_id;
+	instr->dma.n_bytes[0] = h->st->n_bits / 8;
+	instr->dma.src.offset[0] = tf->offset / 8;
+
+	return 0;
+}
+
+static inline void
+__instr_dma_ht_exec(struct rte_swx_pipeline *p, uint32_t n_dma);
+
+static inline void
+__instr_dma_ht_exec(struct rte_swx_pipeline *p, uint32_t n_dma)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint8_t *action_data = t->structs[0];
+	uint64_t valid_headers = t->valid_headers;
+	uint32_t i;
+
+	for (i = 0; i < n_dma; i++) {
+		uint32_t header_id = ip->dma.dst.header_id[i];
+		uint32_t struct_id = ip->dma.dst.struct_id[i];
+		uint32_t offset = ip->dma.src.offset[i];
+		uint32_t n_bytes = ip->dma.n_bytes[i];
+
+		struct header_runtime *h = &t->headers[header_id];
+		uint8_t *h_ptr0 = h->ptr0;
+		uint8_t *h_ptr = t->structs[struct_id];
+
+		void *dst = MASK64_BIT_GET(valid_headers, header_id) ?
+			h_ptr : h_ptr0;
+		void *src = &action_data[offset];
+
+		TRACE("[Thread %2u] dma h.s t.f\n", p->thread_id);
+
+		/* Headers. */
+		memcpy(dst, src, n_bytes);
+		t->structs[struct_id] = dst;
+		valid_headers = MASK64_BIT_SET(valid_headers, header_id);
+	}
+
+	t->valid_headers = valid_headers;
+}
+
+static inline void
+instr_dma_ht_exec(struct rte_swx_pipeline *p)
+{
+	__instr_dma_ht_exec(p, 1);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_dma_ht2_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 2 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_dma_ht_exec(p, 2);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_dma_ht3_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 3 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_dma_ht_exec(p, 3);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_dma_ht4_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 4 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_dma_ht_exec(p, 4);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_dma_ht5_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 5 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_dma_ht_exec(p, 5);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_dma_ht6_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 6 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_dma_ht_exec(p, 6);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_dma_ht7_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 7 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_dma_ht_exec(p, 7);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_dma_ht8_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 8 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_dma_ht_exec(p, 8);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
 #define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
 
 static int
@@ -2616,6 +2806,14 @@ instr_translate(struct rte_swx_pipeline *p,
 
 	if (!strcmp(tokens[tpos], "mov"))
 		return instr_mov_translate(p,
+					   action,
+					   &tokens[tpos],
+					   n_tokens - tpos,
+					   instr,
+					   data);
+
+	if (!strcmp(tokens[tpos], "dma"))
+		return instr_dma_translate(p,
 					   action,
 					   &tokens[tpos],
 					   n_tokens - tpos,
@@ -2770,6 +2968,15 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_MOV] = instr_mov_exec,
 	[INSTR_MOV_S] = instr_mov_s_exec,
 	[INSTR_MOV_I] = instr_mov_i_exec,
+
+	[INSTR_DMA_HT] = instr_dma_ht_exec,
+	[INSTR_DMA_HT2] = instr_dma_ht2_exec,
+	[INSTR_DMA_HT3] = instr_dma_ht3_exec,
+	[INSTR_DMA_HT4] = instr_dma_ht4_exec,
+	[INSTR_DMA_HT5] = instr_dma_ht5_exec,
+	[INSTR_DMA_HT6] = instr_dma_ht6_exec,
+	[INSTR_DMA_HT7] = instr_dma_ht7_exec,
+	[INSTR_DMA_HT8] = instr_dma_ht8_exec,
 };
 
 static inline void
