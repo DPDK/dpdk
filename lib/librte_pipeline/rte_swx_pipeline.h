@@ -147,6 +147,91 @@ rte_swx_pipeline_port_out_config(struct rte_swx_pipeline *p,
 				 const char *port_type_name,
 				 void *args);
 
+/*
+ * Packet headers and meta-data
+ */
+
+/** Structure (struct) field. */
+struct rte_swx_field_params {
+	/** Struct field name. */
+	const char *name;
+
+	/** Struct field size (in bits).
+	 * Restriction: All struct fields must be a multiple of 8 bits.
+	 * Restriction: All struct fields must be no greater than 64 bits.
+	 */
+	uint32_t n_bits;
+};
+
+/**
+ * Pipeline struct type register
+ *
+ * Structs are used extensively in many part of the pipeline to define the size
+ * and layout of a specific memory piece such as: headers, meta-data, action
+ * data stored in a table entry, mailboxes for extern objects and functions.
+ * Similar to C language structs, they are a well defined sequence of fields,
+ * with each field having a unique name and a constant size.
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Struct type name.
+ * @param[in] fields
+ *   The sequence of struct fields.
+ * @param[in] n_fields
+ *   The number of struct fields.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Struct type with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_struct_type_register(struct rte_swx_pipeline *p,
+				      const char *name,
+				      struct rte_swx_field_params *fields,
+				      uint32_t n_fields);
+
+/**
+ * Pipeline packet header register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Header name.
+ * @param[in] struct_type_name
+ *   The struct type instantiated by this packet header.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Header with this name already exists;
+ *   -ENOSPC: Maximum number of headers reached for the pipeline.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_packet_header_register(struct rte_swx_pipeline *p,
+					const char *name,
+					const char *struct_type_name);
+
+/**
+ * Pipeline packet meta-data register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] struct_type_name
+ *   The struct type instantiated by the packet meta-data.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_packet_metadata_register(struct rte_swx_pipeline *p,
+					  const char *struct_type_name);
+
+
 /**
  * Pipeline build
  *
