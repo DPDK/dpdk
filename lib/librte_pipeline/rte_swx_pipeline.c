@@ -349,6 +349,9 @@ enum instruction_type {
 	INSTR_ALU_SHR_HH, /* dst = H, src = H */
 	INSTR_ALU_SHR_MI, /* dst = MEF, src = I */
 	INSTR_ALU_SHR_HI, /* dst = H, src = I */
+
+	/* table TABLE */
+	INSTR_TABLE,
 };
 
 struct instr_operand {
@@ -374,6 +377,10 @@ struct instr_io {
 
 struct instr_hdr_validity {
 	uint8_t header_id;
+};
+
+struct instr_table {
+	uint8_t table_id;
 };
 
 struct instr_dst_src {
@@ -405,6 +412,7 @@ struct instruction {
 		struct instr_dst_src mov;
 		struct instr_dma dma;
 		struct instr_dst_src alu;
+		struct instr_table table;
 	};
 };
 
@@ -2058,6 +2066,15 @@ thread_ip_reset(struct rte_swx_pipeline *p, struct thread *t)
 }
 
 static inline void
+thread_ip_action_call(struct rte_swx_pipeline *p,
+		      struct thread *t,
+		      uint32_t action_id)
+{
+	t->ret = t->ip + 1;
+	t->ip = p->action_instructions[action_id];
+}
+
+static inline void
 thread_ip_inc(struct rte_swx_pipeline *p);
 
 static inline void
@@ -2668,6 +2685,79 @@ instr_hdr_invalidate_exec(struct rte_swx_pipeline *p)
 
 	/* Thread. */
 	thread_ip_inc(p);
+}
+
+/*
+ * table.
+ */
+static struct table *
+table_find(struct rte_swx_pipeline *p, const char *name);
+
+static int
+instr_table_translate(struct rte_swx_pipeline *p,
+		      struct action *action,
+		      char **tokens,
+		      int n_tokens,
+		      struct instruction *instr,
+		      struct instruction_data *data __rte_unused)
+{
+	struct table *t;
+
+	CHECK(!action, EINVAL);
+	CHECK(n_tokens == 2, EINVAL);
+
+	t = table_find(p, tokens[1]);
+	CHECK(t, EINVAL);
+
+	instr->type = INSTR_TABLE;
+	instr->table.table_id = t->id;
+	return 0;
+}
+
+static inline void
+instr_table_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t table_id = ip->table.table_id;
+	struct rte_swx_table_state *ts = &t->table_state[table_id];
+	struct table_runtime *table = &t->tables[table_id];
+	uint64_t action_id;
+	uint8_t *action_data;
+	int done, hit;
+
+	/* Table. */
+	done = table->func(ts->obj,
+			   table->mailbox,
+			   table->key,
+			   &action_id,
+			   &action_data,
+			   &hit);
+	if (!done) {
+		/* Thread. */
+		TRACE("[Thread %2u] table %u (not finalized)\n",
+		      p->thread_id,
+		      table_id);
+
+		thread_yield(p);
+		return;
+	}
+
+	action_id = hit ? action_id : ts->default_action_id;
+	action_data = hit ? action_data : ts->default_action_data;
+
+	TRACE("[Thread %2u] table %u (%s, action %u)\n",
+	      p->thread_id,
+	      table_id,
+	      hit ? "hit" : "miss",
+	      (uint32_t)action_id);
+
+	t->action_id = action_id;
+	t->structs[0] = action_data;
+	t->hit = hit;
+
+	/* Thread. */
+	thread_ip_action_call(p, t, action_id);
 }
 
 /*
@@ -4269,6 +4359,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					       instr,
 					       data);
 
+	if (!strcmp(tokens[tpos], "table"))
+		return instr_table_translate(p,
+					     action,
+					     &tokens[tpos],
+					     n_tokens - tpos,
+					     instr,
+					     data);
+
 	CHECK(0, EINVAL);
 }
 
@@ -4471,6 +4569,8 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_ALU_SHR_HH] = instr_alu_shr_hh_exec,
 	[INSTR_ALU_SHR_MI] = instr_alu_shr_mi_exec,
 	[INSTR_ALU_SHR_HI] = instr_alu_shr_hi_exec,
+
+	[INSTR_TABLE] = instr_table_exec,
 };
 
 static inline void
