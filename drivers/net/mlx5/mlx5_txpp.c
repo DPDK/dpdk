@@ -31,36 +31,24 @@ static const char * const mlx5_txpp_stat_names[] = {
 
 /* Destroy Event Queue Notification Channel. */
 static void
-mlx5_txpp_destroy_eqn(struct mlx5_dev_ctx_shared *sh)
+mlx5_txpp_destroy_event_channel(struct mlx5_dev_ctx_shared *sh)
 {
 	if (sh->txpp.echan) {
 		mlx5_glue->devx_destroy_event_channel(sh->txpp.echan);
 		sh->txpp.echan = NULL;
 	}
-	sh->txpp.eqn = 0;
 }
 
 /* Create Event Queue Notification Channel. */
 static int
-mlx5_txpp_create_eqn(struct mlx5_dev_ctx_shared *sh)
+mlx5_txpp_create_event_channel(struct mlx5_dev_ctx_shared *sh)
 {
-	uint32_t lcore;
-
 	MLX5_ASSERT(!sh->txpp.echan);
-	lcore = (uint32_t)rte_lcore_to_cpu_id(-1);
-	if (mlx5_glue->devx_query_eqn(sh->ctx, lcore, &sh->txpp.eqn)) {
-		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to query EQ number %d.", rte_errno);
-		sh->txpp.eqn = 0;
-		return -rte_errno;
-	}
 	sh->txpp.echan = mlx5_glue->devx_create_event_channel(sh->ctx,
 			MLX5DV_DEVX_CREATE_EVENT_CHANNEL_FLAGS_OMIT_EV_DATA);
 	if (!sh->txpp.echan) {
-		sh->txpp.eqn = 0;
 		rte_errno = errno;
-		DRV_LOG(ERR, "Failed to create event channel %d.",
-			rte_errno);
+		DRV_LOG(ERR, "Failed to create event channel %d.", rte_errno);
 		return -rte_errno;
 	}
 	return 0;
@@ -285,7 +273,7 @@ mlx5_txpp_create_rearm_queue(struct mlx5_dev_ctx_shared *sh)
 	cq_attr.cqe_size = (sizeof(struct mlx5_cqe) == 128) ?
 			    MLX5_CQE_SIZE_128B : MLX5_CQE_SIZE_64B;
 	cq_attr.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
-	cq_attr.eqn = sh->txpp.eqn;
+	cq_attr.eqn = sh->eqn;
 	cq_attr.q_umem_valid = 1;
 	cq_attr.q_umem_offset = 0;
 	cq_attr.q_umem_id = mlx5_os_get_umem_id(wq->cq_umem);
@@ -525,7 +513,7 @@ mlx5_txpp_create_clock_queue(struct mlx5_dev_ctx_shared *sh)
 	cq_attr.use_first_only = 1;
 	cq_attr.overrun_ignore = 1;
 	cq_attr.uar_page_id = mlx5_os_get_devx_uar_page_id(sh->tx_uar);
-	cq_attr.eqn = sh->txpp.eqn;
+	cq_attr.eqn = sh->eqn;
 	cq_attr.q_umem_valid = 1;
 	cq_attr.q_umem_offset = 0;
 	cq_attr.q_umem_id = mlx5_os_get_umem_id(wq->cq_umem);
@@ -951,7 +939,7 @@ mlx5_txpp_create(struct mlx5_dev_ctx_shared *sh, struct mlx5_priv *priv)
 	sh->txpp.test = !!(tx_pp < 0);
 	sh->txpp.skew = priv->config.tx_skew;
 	sh->txpp.freq = priv->config.hca_attr.dev_freq_khz;
-	ret = mlx5_txpp_create_eqn(sh);
+	ret = mlx5_txpp_create_event_channel(sh);
 	if (ret)
 		goto exit;
 	ret = mlx5_txpp_alloc_pp_index(sh);
@@ -972,7 +960,7 @@ exit:
 		mlx5_txpp_destroy_rearm_queue(sh);
 		mlx5_txpp_destroy_clock_queue(sh);
 		mlx5_txpp_free_pp_index(sh);
-		mlx5_txpp_destroy_eqn(sh);
+		mlx5_txpp_destroy_event_channel(sh);
 		sh->txpp.tick = 0;
 		sh->txpp.test = 0;
 		sh->txpp.skew = 0;
@@ -994,7 +982,7 @@ mlx5_txpp_destroy(struct mlx5_dev_ctx_shared *sh)
 	mlx5_txpp_destroy_rearm_queue(sh);
 	mlx5_txpp_destroy_clock_queue(sh);
 	mlx5_txpp_free_pp_index(sh);
-	mlx5_txpp_destroy_eqn(sh);
+	mlx5_txpp_destroy_event_channel(sh);
 	sh->txpp.tick = 0;
 	sh->txpp.test = 0;
 	sh->txpp.skew = 0;

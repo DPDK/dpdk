@@ -561,7 +561,6 @@ struct mlx5_dev_txpp {
 	uint32_t tick; /* Completion tick duration in nanoseconds. */
 	uint32_t test; /* Packet pacing test mode. */
 	int32_t skew; /* Scheduling skew. */
-	uint32_t eqn; /* Event Queue number. */
 	struct rte_intr_handle intr_handle; /* Periodic interrupt. */
 	void *echan; /* Event Channel. */
 	struct mlx5_txpp_wq clock_queue; /* Clock Queue. */
@@ -603,6 +602,7 @@ struct mlx5_dev_ctx_shared {
 	LIST_ENTRY(mlx5_dev_ctx_shared) next;
 	uint32_t refcnt;
 	uint32_t devx:1; /* Opened with DV. */
+	uint32_t eqn; /* Event Queue number. */
 	uint32_t max_port; /* Maximal IB device port index. */
 	void *ctx; /* Verbs/DV/DevX context. */
 	void *pd; /* Protection Domain. */

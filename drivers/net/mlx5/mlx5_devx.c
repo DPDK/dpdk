@@ -350,11 +350,9 @@ rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_ctrl *rxq_ctrl =
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	size_t page_size = rte_mem_page_size();
-	uint32_t lcore = (uint32_t)rte_lcore_to_cpu_id(-1);
 	unsigned int cqe_n = mlx5_rxq_cqe_num(rxq_data);
 	struct mlx5_devx_dbr_page *dbr_page;
 	int64_t dbr_offset;
-	uint32_t eqn = 0;
 	void *buf = NULL;
 	uint16_t event_nums[1] = {0};
 	uint32_t log_cqe_n;
@@ -392,12 +390,6 @@ rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 		cq_attr.cqe_size = MLX5_CQE_SIZE_128B;
 	log_cqe_n = log2above(cqe_n);
 	cq_size = sizeof(struct mlx5_cqe) * (1 << log_cqe_n);
-	/* Query the EQN for this core. */
-	if (mlx5_glue->devx_query_eqn(priv->sh->ctx, lcore, &eqn)) {
-		DRV_LOG(ERR, "Failed to query EQN for CQ.");
-		goto error;
-	}
-	cq_attr.eqn = eqn;
 	buf = rte_calloc_socket(__func__, 1, cq_size, page_size,
 				rxq_ctrl->socket);
 	if (!buf) {
@@ -425,6 +417,7 @@ rxq_create_devx_cq_resources(struct rte_eth_dev *dev, uint16_t idx)
 	rxq_data->cq_uar =
 			mlx5_os_get_devx_uar_base_addr(priv->sh->devx_rx_uar);
 	/* Create CQ using DevX API. */
+	cq_attr.eqn = priv->sh->eqn;
 	cq_attr.uar_page_id =
 			mlx5_os_get_devx_uar_page_id(priv->sh->devx_rx_uar);
 	cq_attr.q_umem_id = mlx5_os_get_umem_id(rxq_ctrl->cq_umem);

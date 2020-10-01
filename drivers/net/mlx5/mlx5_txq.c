@@ -985,7 +985,7 @@ mlx5_devx_cq_new(struct rte_eth_dev *dev, uint32_t cqe_n, uint16_t idx,
 	cq_attr.cqe_size = (sizeof(struct mlx5_cqe) == 128) ?
 			    MLX5_CQE_SIZE_128B : MLX5_CQE_SIZE_64B;
 	cq_attr.uar_page_id = mlx5_os_get_devx_uar_page_id(priv->sh->tx_uar);
-	cq_attr.eqn = priv->sh->txpp.eqn;
+	cq_attr.eqn = priv->sh->eqn;
 	cq_attr.q_umem_valid = 1;
 	cq_attr.q_umem_offset = (uintptr_t)txq_obj->cq_buf % page_size;
 	cq_attr.q_umem_id = mlx5_os_get_umem_id(txq_obj->cq_umem);
