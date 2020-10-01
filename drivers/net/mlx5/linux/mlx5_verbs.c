@@ -113,6 +113,70 @@ mlx5_ibv_modify_wq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
 }
 
 /**
+ * Modify QP using Verbs API.
+ *
+ * @param txq_obj
+ *   Verbs Tx queue object.
+ * @param type
+ *   Type of change queue state.
+ * @param dev_port
+ *   IB device port number.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_ibv_modify_qp(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
+		   uint8_t dev_port)
+{
+	struct ibv_qp_attr mod = {
+		.qp_state = IBV_QPS_RESET,
+		.port_num = dev_port,
+	};
+	int attr_mask = (IBV_QP_STATE | IBV_QP_PORT);
+	int ret;
+
+	if (type != MLX5_TXQ_MOD_RST2RDY) {
+		ret = mlx5_glue->modify_qp(obj->qp, &mod, IBV_QP_STATE);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change Tx QP state to RESET %s",
+				strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+		if (type == MLX5_TXQ_MOD_RDY2RST)
+			return 0;
+	}
+	if (type == MLX5_TXQ_MOD_ERR2RDY)
+		attr_mask = IBV_QP_STATE;
+	mod.qp_state = IBV_QPS_INIT;
+	ret = mlx5_glue->modify_qp(obj->qp, &mod, attr_mask);
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change Tx QP state to INIT %s",
+			strerror(errno));
+		rte_errno = errno;
+		return ret;
+	}
+	mod.qp_state = IBV_QPS_RTR;
+	ret = mlx5_glue->modify_qp(obj->qp, &mod, IBV_QP_STATE);
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change Tx QP state to RTR %s",
+			strerror(errno));
+		rte_errno = errno;
+		return ret;
+	}
+	mod.qp_state = IBV_QPS_RTS;
+	ret = mlx5_glue->modify_qp(obj->qp, &mod, IBV_QP_STATE);
+	if (ret) {
+		DRV_LOG(ERR, "Cannot change Tx QP state to RTS %s",
+			strerror(errno));
+		rte_errno = errno;
+		return ret;
+	}
+	return 0;
+}
+
+/**
  * Create a CQ Verbs object.
  *
  * @param dev
@@ -1043,5 +1107,6 @@ struct mlx5_obj_ops ibv_obj_ops = {
 	.drop_action_create = mlx5_ibv_drop_action_create,
 	.drop_action_destroy = mlx5_ibv_drop_action_destroy,
 	.txq_obj_new = mlx5_txq_ibv_obj_new,
+	.txq_obj_modify = mlx5_ibv_modify_qp,
 	.txq_obj_release = mlx5_txq_ibv_obj_release,
 };

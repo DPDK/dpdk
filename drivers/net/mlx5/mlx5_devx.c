@@ -73,6 +73,62 @@ mlx5_devx_modify_rq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
 }
 
 /**
+ * Modify SQ using DevX API.
+ *
+ * @param txq_obj
+ *   DevX Tx queue object.
+ * @param type
+ *   Type of change queue state.
+ * @param dev_port
+ *   Unnecessary.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_devx_modify_sq(struct mlx5_txq_obj *obj, enum mlx5_txq_modify_type type,
+		    uint8_t dev_port)
+{
+	struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
+	int ret;
+
+	if (type != MLX5_TXQ_MOD_RST2RDY) {
+		/* Change queue state to reset. */
+		if (type == MLX5_TXQ_MOD_ERR2RDY)
+			msq_attr.sq_state = MLX5_SQC_STATE_ERR;
+		else
+			msq_attr.sq_state = MLX5_SQC_STATE_RDY;
+		msq_attr.state = MLX5_SQC_STATE_RST;
+		ret = mlx5_devx_cmd_modify_sq(obj->sq_devx, &msq_attr);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change the Tx SQ state to RESET"
+				" %s", strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+	}
+	if (type != MLX5_TXQ_MOD_RDY2RST) {
+		/* Change queue state to ready. */
+		msq_attr.sq_state = MLX5_SQC_STATE_RST;
+		msq_attr.state = MLX5_SQC_STATE_RDY;
+		ret = mlx5_devx_cmd_modify_sq(obj->sq_devx, &msq_attr);
+		if (ret) {
+			DRV_LOG(ERR, "Cannot change the Tx SQ state to READY"
+				" %s", strerror(errno));
+			rte_errno = errno;
+			return ret;
+		}
+	}
+	/*
+	 * The dev_port variable is relevant only in Verbs API, and there is a
+	 * pointer that points to this function and a parallel function in verbs
+	 * intermittently, so they should have the same parameters.
+	 */
+	(void)dev_port;
+	return 0;
+}
+
+/**
  * Release the resources allocated for an RQ DevX object.
  *
  * @param rxq_ctrl
@@ -1298,5 +1354,6 @@ struct mlx5_obj_ops devx_obj_ops = {
 	.drop_action_create = mlx5_devx_drop_action_create,
 	.drop_action_destroy = mlx5_devx_drop_action_destroy,
 	.txq_obj_new = mlx5_txq_devx_obj_new,
+	.txq_obj_modify = mlx5_devx_modify_sq,
 	.txq_obj_release = mlx5_txq_devx_obj_release,
 };

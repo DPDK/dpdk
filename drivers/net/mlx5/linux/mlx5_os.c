@@ -1375,6 +1375,13 @@ err_secondary:
 						ibv_obj_ops.drop_action_create;
 		priv->obj_ops.drop_action_destroy =
 						ibv_obj_ops.drop_action_destroy;
+#ifndef HAVE_MLX5DV_DEVX_UAR_OFFSET
+		priv->obj_ops.txq_obj_modify = ibv_obj_ops.txq_obj_modify;
+#else
+		if (!config->dv_esw_en)
+			priv->obj_ops.txq_obj_modify =
+						ibv_obj_ops.txq_obj_modify;
+#endif
 	} else {
 		priv->obj_ops = ibv_obj_ops;
 	}

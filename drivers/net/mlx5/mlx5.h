@@ -774,6 +774,13 @@ struct mlx5_txq_obj {
 	};
 };
 
+enum mlx5_txq_modify_type {
+	MLX5_TXQ_MOD_RDY2RDY, /* modify state from ready to ready. */
+	MLX5_TXQ_MOD_RST2RDY, /* modify state from reset to ready. */
+	MLX5_TXQ_MOD_RDY2RST, /* modify state from ready to reset. */
+	MLX5_TXQ_MOD_ERR2RDY, /* modify state from error to ready. */
+};
+
 /* HW objects operations structure. */
 struct mlx5_obj_ops {
 	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
@@ -790,6 +797,8 @@ struct mlx5_obj_ops {
 	int (*drop_action_create)(struct rte_eth_dev *dev);
 	void (*drop_action_destroy)(struct rte_eth_dev *dev);
 	int (*txq_obj_new)(struct rte_eth_dev *dev, uint16_t idx);
+	int (*txq_obj_modify)(struct mlx5_txq_obj *obj,
+			      enum mlx5_txq_modify_type type, uint8_t dev_port);
 	void (*txq_obj_release)(struct mlx5_txq_obj *txq_obj);
 };
 
