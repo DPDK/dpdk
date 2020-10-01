@@ -60,6 +60,16 @@ EXPERIMENTAL {
 	rte_table_action_crypto_sym_session_get;
 
 	# added in 20.11
+	rte_swx_ctl_action_arg_info_get;
+	rte_swx_ctl_action_info_get;
+	rte_swx_ctl_pipeline_info_get;
+	rte_swx_ctl_pipeline_numa_node_get;
+	rte_swx_ctl_pipeline_port_in_stats_read;
+	rte_swx_ctl_pipeline_port_out_stats_read;
+	rte_swx_ctl_table_action_info_get;
+	rte_swx_ctl_table_info_get;
+	rte_swx_ctl_table_match_field_info_get;
+	rte_swx_ctl_table_ops_get;
 	rte_swx_pipeline_action_config;
 	rte_swx_pipeline_build;
 	rte_swx_pipeline_config;

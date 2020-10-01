@@ -6152,6 +6152,18 @@ action_find(struct rte_swx_pipeline *p, const char *name)
 	return NULL;
 }
 
+static struct action *
+action_find_by_id(struct rte_swx_pipeline *p, uint32_t id)
+{
+	struct action *action = NULL;
+
+	TAILQ_FOREACH(action, &p->actions, node)
+		if (action->id == id)
+			return action;
+
+	return NULL;
+}
+
 static struct field *
 action_field_find(struct action *a, const char *name)
 {
@@ -6943,6 +6955,177 @@ rte_swx_pipeline_run(struct rte_swx_pipeline *p, uint32_t n_instructions)
  * Control.
  */
 int
+rte_swx_ctl_pipeline_info_get(struct rte_swx_pipeline *p,
+			      struct rte_swx_ctl_pipeline_info *pipeline)
+{
+	struct action *action;
+	struct table *table;
+	uint32_t n_actions = 0, n_tables = 0;
+
+	if (!p || !pipeline)
+		return -EINVAL;
+
+	TAILQ_FOREACH(action, &p->actions, node)
+		n_actions++;
+
+	TAILQ_FOREACH(table, &p->tables, node)
+		n_tables++;
+
+	pipeline->n_ports_in = p->n_ports_in;
+	pipeline->n_ports_out = p->n_ports_out;
+	pipeline->n_actions = n_actions;
+	pipeline->n_tables = n_tables;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_numa_node_get(struct rte_swx_pipeline *p, int *numa_node)
+{
+	if (!p || !numa_node)
+		return -EINVAL;
+
+	*numa_node = p->numa_node;
+	return 0;
+}
+
+int
+rte_swx_ctl_action_info_get(struct rte_swx_pipeline *p,
+			    uint32_t action_id,
+			    struct rte_swx_ctl_action_info *action)
+{
+	struct action *a = NULL;
+
+	if (!p || (action_id >= p->n_actions) || !action)
+		return -EINVAL;
+
+	a = action_find_by_id(p, action_id);
+	if (!a)
+		return -EINVAL;
+
+	strcpy(action->name, a->name);
+	action->n_args = a->st ? a->st->n_fields : 0;
+	return 0;
+}
+
+int
+rte_swx_ctl_action_arg_info_get(struct rte_swx_pipeline *p,
+				uint32_t action_id,
+				uint32_t action_arg_id,
+				struct rte_swx_ctl_action_arg_info *action_arg)
+{
+	struct action *a = NULL;
+	struct field *arg = NULL;
+
+	if (!p || (action_id >= p->n_actions) || !action_arg)
+		return -EINVAL;
+
+	a = action_find_by_id(p, action_id);
+	if (!a || !a->st || (action_arg_id >= a->st->n_fields))
+		return -EINVAL;
+
+	arg = &a->st->fields[action_arg_id];
+	strcpy(action_arg->name, arg->name);
+	action_arg->n_bits = arg->n_bits;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_table_info_get(struct rte_swx_pipeline *p,
+			   uint32_t table_id,
+			   struct rte_swx_ctl_table_info *table)
+{
+	struct table *t = NULL;
+
+	if (!p || !table)
+		return -EINVAL;
+
+	t = table_find_by_id(p, table_id);
+	if (!t)
+		return -EINVAL;
+
+	strcpy(table->name, t->name);
+	strcpy(table->args, t->args);
+	table->n_match_fields = t->n_fields;
+	table->n_actions = t->n_actions;
+	table->default_action_is_const = t->default_action_is_const;
+	table->size = t->size;
+	return 0;
+}
+
+int
+rte_swx_ctl_table_match_field_info_get(struct rte_swx_pipeline *p,
+	uint32_t table_id,
+	uint32_t match_field_id,
+	struct rte_swx_ctl_table_match_field_info *match_field)
+{
+	struct table *t;
+	struct match_field *f;
+
+	if (!p || (table_id >= p->n_tables) || !match_field)
+		return -EINVAL;
+
+	t = table_find_by_id(p, table_id);
+	if (!t || (match_field_id >= t->n_fields))
+		return -EINVAL;
+
+	f = &t->fields[match_field_id];
+	match_field->match_type = f->match_type;
+	match_field->is_header = t->is_header;
+	match_field->n_bits = f->field->n_bits;
+	match_field->offset = f->field->offset;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_table_action_info_get(struct rte_swx_pipeline *p,
+	uint32_t table_id,
+	uint32_t table_action_id,
+	struct rte_swx_ctl_table_action_info *table_action)
+{
+	struct table *t;
+
+	if (!p || (table_id >= p->n_tables) || !table_action)
+		return -EINVAL;
+
+	t = table_find_by_id(p, table_id);
+	if (!t || (table_action_id >= t->n_actions))
+		return -EINVAL;
+
+	table_action->action_id = t->actions[table_action_id]->id;
+
+	return 0;
+}
+
+int
+rte_swx_ctl_table_ops_get(struct rte_swx_pipeline *p,
+			  uint32_t table_id,
+			  struct rte_swx_table_ops *table_ops,
+			  int *is_stub)
+{
+	struct table *t;
+
+	if (!p || (table_id >= p->n_tables))
+		return -EINVAL;
+
+	t = table_find_by_id(p, table_id);
+	if (!t)
+		return -EINVAL;
+
+	if (t->type) {
+		if (table_ops)
+			memcpy(table_ops, &t->type->ops, sizeof(*table_ops));
+		*is_stub = 0;
+	} else {
+		*is_stub = 1;
+	}
+
+	return 0;
+}
+
+int
 rte_swx_pipeline_table_state_get(struct rte_swx_pipeline *p,
 				 struct rte_swx_table_state **table_state)
 {
@@ -6961,5 +7144,41 @@ rte_swx_pipeline_table_state_set(struct rte_swx_pipeline *p,
 		return -EINVAL;
 
 	p->table_state = table_state;
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_port_in_stats_read(struct rte_swx_pipeline *p,
+					uint32_t port_id,
+					struct rte_swx_port_in_stats *stats)
+{
+	struct port_in *port;
+
+	if (!p || !stats)
+		return -EINVAL;
+
+	port = port_in_find(p, port_id);
+	if (!port)
+		return -EINVAL;
+
+	port->type->ops.stats_read(port->obj, stats);
+	return 0;
+}
+
+int
+rte_swx_ctl_pipeline_port_out_stats_read(struct rte_swx_pipeline *p,
+					 uint32_t port_id,
+					 struct rte_swx_port_out_stats *stats)
+{
+	struct port_out *port;
+
+	if (!p || !stats)
+		return -EINVAL;
+
+	port = port_out_find(p, port_id);
+	if (!port)
+		return -EINVAL;
+
+	port->type->ops.stats_read(port->obj, stats);
 	return 0;
 }
