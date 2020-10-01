@@ -5701,6 +5701,230 @@ instr_verify(struct rte_swx_pipeline *p __rte_unused,
 }
 
 static int
+instr_pattern_extract_many_detect(struct instruction *instr,
+				  struct instruction_data *data,
+				  uint32_t n_instr,
+				  uint32_t *n_pattern_instr)
+{
+	uint32_t i;
+
+	for (i = 0; i < n_instr; i++) {
+		if (data[i].invalid)
+			break;
+
+		if (instr[i].type != INSTR_HDR_EXTRACT)
+			break;
+
+		if (i == RTE_DIM(instr->io.hdr.header_id))
+			break;
+
+		if (i && data[i].n_users)
+			break;
+	}
+
+	if (i < 2)
+		return 0;
+
+	*n_pattern_instr = i;
+	return 1;
+}
+
+static void
+instr_pattern_extract_many_optimize(struct instruction *instr,
+				    struct instruction_data *data,
+				    uint32_t n_instr)
+{
+	uint32_t i;
+
+	for (i = 1; i < n_instr; i++) {
+		instr[0].type++;
+		instr[0].io.hdr.header_id[i] = instr[i].io.hdr.header_id[0];
+		instr[0].io.hdr.struct_id[i] = instr[i].io.hdr.struct_id[0];
+		instr[0].io.hdr.n_bytes[i] = instr[i].io.hdr.n_bytes[0];
+
+		data[i].invalid = 1;
+	}
+}
+
+static int
+instr_pattern_emit_many_tx_detect(struct instruction *instr,
+				  struct instruction_data *data,
+				  uint32_t n_instr,
+				  uint32_t *n_pattern_instr)
+{
+	uint32_t i;
+
+	for (i = 0; i < n_instr; i++) {
+		if (data[i].invalid)
+			break;
+
+		if (instr[i].type != INSTR_HDR_EMIT)
+			break;
+
+		if (i == RTE_DIM(instr->io.hdr.header_id))
+			break;
+
+		if (i && data[i].n_users)
+			break;
+	}
+
+	if (!i)
+		return 0;
+
+	if (instr[i].type != INSTR_TX)
+		return 0;
+
+	i++;
+
+	*n_pattern_instr = i;
+	return 1;
+}
+
+static void
+instr_pattern_emit_many_tx_optimize(struct instruction *instr,
+				    struct instruction_data *data,
+				    uint32_t n_instr)
+{
+	uint32_t i;
+
+	/* Any emit instruction in addition to the first one. */
+	for (i = 1; i < n_instr - 1; i++) {
+		instr[0].type++;
+		instr[0].io.hdr.header_id[i] = instr[i].io.hdr.header_id[0];
+		instr[0].io.hdr.struct_id[i] = instr[i].io.hdr.struct_id[0];
+		instr[0].io.hdr.n_bytes[i] = instr[i].io.hdr.n_bytes[0];
+
+		data[i].invalid = 1;
+	}
+
+	/* The TX instruction is the last one in the pattern. */
+	instr[0].type++;
+	instr[0].io.io.offset = instr[i].io.io.offset;
+	instr[0].io.io.n_bits = instr[i].io.io.n_bits;
+	data[i].invalid = 1;
+}
+
+static int
+instr_pattern_dma_many_detect(struct instruction *instr,
+			      struct instruction_data *data,
+			      uint32_t n_instr,
+			      uint32_t *n_pattern_instr)
+{
+	uint32_t i;
+
+	for (i = 0; i < n_instr; i++) {
+		if (data[i].invalid)
+			break;
+
+		if (instr[i].type != INSTR_DMA_HT)
+			break;
+
+		if (i == RTE_DIM(instr->dma.dst.header_id))
+			break;
+
+		if (i && data[i].n_users)
+			break;
+	}
+
+	if (i < 2)
+		return 0;
+
+	*n_pattern_instr = i;
+	return 1;
+}
+
+static void
+instr_pattern_dma_many_optimize(struct instruction *instr,
+				struct instruction_data *data,
+				uint32_t n_instr)
+{
+	uint32_t i;
+
+	for (i = 1; i < n_instr; i++) {
+		instr[0].type++;
+		instr[0].dma.dst.header_id[i] = instr[i].dma.dst.header_id[0];
+		instr[0].dma.dst.struct_id[i] = instr[i].dma.dst.struct_id[0];
+		instr[0].dma.src.offset[i] = instr[i].dma.src.offset[0];
+		instr[0].dma.n_bytes[i] = instr[i].dma.n_bytes[0];
+
+		data[i].invalid = 1;
+	}
+}
+
+static uint32_t
+instr_optimize(struct instruction *instructions,
+	       struct instruction_data *instruction_data,
+	       uint32_t n_instructions)
+{
+	uint32_t i, pos = 0;
+
+	for (i = 0; i < n_instructions; ) {
+		struct instruction *instr = &instructions[i];
+		struct instruction_data *data = &instruction_data[i];
+		uint32_t n_instr = 0;
+		int detected;
+
+		/* Extract many. */
+		detected = instr_pattern_extract_many_detect(instr,
+							     data,
+							     n_instructions - i,
+							     &n_instr);
+		if (detected) {
+			instr_pattern_extract_many_optimize(instr,
+							    data,
+							    n_instr);
+			i += n_instr;
+			continue;
+		}
+
+		/* Emit many + TX. */
+		detected = instr_pattern_emit_many_tx_detect(instr,
+							     data,
+							     n_instructions - i,
+							     &n_instr);
+		if (detected) {
+			instr_pattern_emit_many_tx_optimize(instr,
+							    data,
+							    n_instr);
+			i += n_instr;
+			continue;
+		}
+
+		/* DMA many. */
+		detected = instr_pattern_dma_many_detect(instr,
+							 data,
+							 n_instructions - i,
+							 &n_instr);
+		if (detected) {
+			instr_pattern_dma_many_optimize(instr, data, n_instr);
+			i += n_instr;
+			continue;
+		}
+
+		/* No pattern starting at the current instruction. */
+		i++;
+	}
+
+	/* Eliminate the invalid instructions that have been optimized out. */
+	for (i = 0; i < n_instructions; i++) {
+		struct instruction *instr = &instructions[i];
+		struct instruction_data *data = &instruction_data[i];
+
+		if (data->invalid)
+			continue;
+
+		if (i != pos) {
+			memcpy(&instructions[pos], instr, sizeof(*instr));
+			memcpy(&instruction_data[pos], data, sizeof(*data));
+		}
+
+		pos++;
+	}
+
+	return pos;
+}
+
+static int
 instruction_config(struct rte_swx_pipeline *p,
 		   struct action *a,
 		   const char **instructions,
@@ -5751,6 +5975,8 @@ instruction_config(struct rte_swx_pipeline *p,
 	err = instr_verify(p, a, instr, data, n_instructions);
 	if (err)
 		goto error;
+
+	n_instructions = instr_optimize(instr, data, n_instructions);
 
 	err = instr_jmp_resolve(instr, data, n_instructions);
 	if (err)
