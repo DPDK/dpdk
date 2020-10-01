@@ -213,6 +213,9 @@ enum instruction_type {
 	/* rx m.port_in */
 	INSTR_RX,
 
+	/* tx m.port_out */
+	INSTR_TX,
+
 	/* extract h.header */
 	INSTR_HDR_EXTRACT,
 	INSTR_HDR_EXTRACT2,
@@ -222,6 +225,17 @@ enum instruction_type {
 	INSTR_HDR_EXTRACT6,
 	INSTR_HDR_EXTRACT7,
 	INSTR_HDR_EXTRACT8,
+
+	/* emit h.header */
+	INSTR_HDR_EMIT,
+	INSTR_HDR_EMIT_TX,
+	INSTR_HDR_EMIT2_TX,
+	INSTR_HDR_EMIT3_TX,
+	INSTR_HDR_EMIT4_TX,
+	INSTR_HDR_EMIT5_TX,
+	INSTR_HDR_EMIT6_TX,
+	INSTR_HDR_EMIT7_TX,
+	INSTR_HDR_EMIT8_TX,
 };
 
 struct instr_io {
@@ -1636,6 +1650,114 @@ instr_rx_exec(struct rte_swx_pipeline *p)
 }
 
 /*
+ * tx.
+ */
+static int
+instr_tx_translate(struct rte_swx_pipeline *p,
+		   struct action *action __rte_unused,
+		   char **tokens,
+		   int n_tokens,
+		   struct instruction *instr,
+		   struct instruction_data *data __rte_unused)
+{
+	struct field *f;
+
+	CHECK(n_tokens == 2, EINVAL);
+
+	f = metadata_field_parse(p, tokens[1]);
+	CHECK(f, EINVAL);
+
+	instr->type = INSTR_TX;
+	instr->io.io.offset = f->offset / 8;
+	instr->io.io.n_bits = f->n_bits;
+	return 0;
+}
+
+static inline void
+emit_handler(struct thread *t)
+{
+	struct header_out_runtime *h0 = &t->headers_out[0];
+	struct header_out_runtime *h1 = &t->headers_out[1];
+	uint32_t offset = 0, i;
+
+	/* No header change or header decapsulation. */
+	if ((t->n_headers_out == 1) &&
+	    (h0->ptr + h0->n_bytes == t->ptr)) {
+		TRACE("Emit handler: no header change or header decap.\n");
+
+		t->pkt.offset -= h0->n_bytes;
+		t->pkt.length += h0->n_bytes;
+
+		return;
+	}
+
+	/* Header encapsulation (optionally, with prior header decasulation). */
+	if ((t->n_headers_out == 2) &&
+	    (h1->ptr + h1->n_bytes == t->ptr) &&
+	    (h0->ptr == h0->ptr0)) {
+		uint32_t offset;
+
+		TRACE("Emit handler: header encapsulation.\n");
+
+		offset = h0->n_bytes + h1->n_bytes;
+		memcpy(t->ptr - offset, h0->ptr, h0->n_bytes);
+		t->pkt.offset -= offset;
+		t->pkt.length += offset;
+
+		return;
+	}
+
+	/* Header insertion. */
+	/* TBD */
+
+	/* Header extraction. */
+	/* TBD */
+
+	/* For any other case. */
+	TRACE("Emit handler: complex case.\n");
+
+	for (i = 0; i < t->n_headers_out; i++) {
+		struct header_out_runtime *h = &t->headers_out[i];
+
+		memcpy(&t->header_out_storage[offset], h->ptr, h->n_bytes);
+		offset += h->n_bytes;
+	}
+
+	if (offset) {
+		memcpy(t->ptr - offset, t->header_out_storage, offset);
+		t->pkt.offset -= offset;
+		t->pkt.length += offset;
+	}
+}
+
+static inline void
+instr_tx_exec(struct rte_swx_pipeline *p);
+
+static inline void
+instr_tx_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint64_t port_id = METADATA_READ(t, ip->io.io.offset, ip->io.io.n_bits);
+	struct port_out_runtime *port = &p->out[port_id];
+	struct rte_swx_pkt *pkt = &t->pkt;
+
+	TRACE("[Thread %2u]: tx 1 pkt to port %u\n",
+	      p->thread_id,
+	      (uint32_t)port_id);
+
+	/* Headers. */
+	emit_handler(t);
+
+	/* Packet. */
+	port->pkt_tx(port->obj, pkt);
+
+	/* Thread. */
+	thread_ip_reset(p, t);
+	instr_rx_exec(p);
+}
+
+/*
  * extract.
  */
 static int
@@ -1797,6 +1919,185 @@ instr_hdr_extract8_exec(struct rte_swx_pipeline *p)
 	thread_ip_inc(p);
 }
 
+/*
+ * emit.
+ */
+static int
+instr_hdr_emit_translate(struct rte_swx_pipeline *p,
+			 struct action *action __rte_unused,
+			 char **tokens,
+			 int n_tokens,
+			 struct instruction *instr,
+			 struct instruction_data *data __rte_unused)
+{
+	struct header *h;
+
+	CHECK(n_tokens == 2, EINVAL);
+
+	h = header_parse(p, tokens[1]);
+	CHECK(h, EINVAL);
+
+	instr->type = INSTR_HDR_EMIT;
+	instr->io.hdr.header_id[0] = h->id;
+	instr->io.hdr.struct_id[0] = h->struct_id;
+	instr->io.hdr.n_bytes[0] = h->st->n_bits / 8;
+	return 0;
+}
+
+static inline void
+__instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit);
+
+static inline void
+__instr_hdr_emit_exec(struct rte_swx_pipeline *p, uint32_t n_emit)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t n_headers_out = t->n_headers_out;
+	struct header_out_runtime *ho = &t->headers_out[n_headers_out - 1];
+	uint8_t *ho_ptr = NULL;
+	uint32_t ho_nbytes = 0, i;
+
+	for (i = 0; i < n_emit; i++) {
+		uint32_t header_id = ip->io.hdr.header_id[i];
+		uint32_t struct_id = ip->io.hdr.struct_id[i];
+		uint32_t n_bytes = ip->io.hdr.n_bytes[i];
+
+		struct header_runtime *hi = &t->headers[header_id];
+		uint8_t *hi_ptr = t->structs[struct_id];
+
+		TRACE("[Thread %2u]: emit header %u\n",
+		      p->thread_id,
+		      header_id);
+
+		/* Headers. */
+		if (!i) {
+			if (!t->n_headers_out) {
+				ho = &t->headers_out[0];
+
+				ho->ptr0 = hi->ptr0;
+				ho->ptr = hi_ptr;
+
+				ho_ptr = hi_ptr;
+				ho_nbytes = n_bytes;
+
+				n_headers_out = 1;
+
+				continue;
+			} else {
+				ho_ptr = ho->ptr;
+				ho_nbytes = ho->n_bytes;
+			}
+		}
+
+		if (ho_ptr + ho_nbytes == hi_ptr) {
+			ho_nbytes += n_bytes;
+		} else {
+			ho->n_bytes = ho_nbytes;
+
+			ho++;
+			ho->ptr0 = hi->ptr0;
+			ho->ptr = hi_ptr;
+
+			ho_ptr = hi_ptr;
+			ho_nbytes = n_bytes;
+
+			n_headers_out++;
+		}
+	}
+
+	ho->n_bytes = ho_nbytes;
+	t->n_headers_out = n_headers_out;
+}
+
+static inline void
+instr_hdr_emit_exec(struct rte_swx_pipeline *p)
+{
+	__instr_hdr_emit_exec(p, 1);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_hdr_emit_tx_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 2 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_hdr_emit_exec(p, 1);
+	instr_tx_exec(p);
+}
+
+static inline void
+instr_hdr_emit2_tx_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 3 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_hdr_emit_exec(p, 2);
+	instr_tx_exec(p);
+}
+
+static inline void
+instr_hdr_emit3_tx_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 4 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_hdr_emit_exec(p, 3);
+	instr_tx_exec(p);
+}
+
+static inline void
+instr_hdr_emit4_tx_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 5 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_hdr_emit_exec(p, 4);
+	instr_tx_exec(p);
+}
+
+static inline void
+instr_hdr_emit5_tx_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 6 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_hdr_emit_exec(p, 5);
+	instr_tx_exec(p);
+}
+
+static inline void
+instr_hdr_emit6_tx_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 7 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_hdr_emit_exec(p, 6);
+	instr_tx_exec(p);
+}
+
+static inline void
+instr_hdr_emit7_tx_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 8 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_hdr_emit_exec(p, 7);
+	instr_tx_exec(p);
+}
+
+static inline void
+instr_hdr_emit8_tx_exec(struct rte_swx_pipeline *p)
+{
+	TRACE("[Thread %2u] *** The next 9 instructions are fused. ***\n",
+	      p->thread_id);
+
+	__instr_hdr_emit_exec(p, 8);
+	instr_tx_exec(p);
+}
+
 #define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
 
 static int
@@ -1842,6 +2143,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					  instr,
 					  data);
 
+	if (!strcmp(tokens[tpos], "tx"))
+		return instr_tx_translate(p,
+					  action,
+					  &tokens[tpos],
+					  n_tokens - tpos,
+					  instr,
+					  data);
+
 	if (!strcmp(tokens[tpos], "extract"))
 		return instr_hdr_extract_translate(p,
 						   action,
@@ -1849,6 +2158,14 @@ instr_translate(struct rte_swx_pipeline *p,
 						   n_tokens - tpos,
 						   instr,
 						   data);
+
+	if (!strcmp(tokens[tpos], "emit"))
+		return instr_hdr_emit_translate(p,
+						action,
+						&tokens[tpos],
+						n_tokens - tpos,
+						instr,
+						data);
 
 	CHECK(0, EINVAL);
 }
@@ -1971,6 +2288,7 @@ typedef void (*instr_exec_t)(struct rte_swx_pipeline *);
 
 static instr_exec_t instruction_table[] = {
 	[INSTR_RX] = instr_rx_exec,
+	[INSTR_TX] = instr_tx_exec,
 
 	[INSTR_HDR_EXTRACT] = instr_hdr_extract_exec,
 	[INSTR_HDR_EXTRACT2] = instr_hdr_extract2_exec,
@@ -1980,6 +2298,16 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_HDR_EXTRACT6] = instr_hdr_extract6_exec,
 	[INSTR_HDR_EXTRACT7] = instr_hdr_extract7_exec,
 	[INSTR_HDR_EXTRACT8] = instr_hdr_extract8_exec,
+
+	[INSTR_HDR_EMIT] = instr_hdr_emit_exec,
+	[INSTR_HDR_EMIT_TX] = instr_hdr_emit_tx_exec,
+	[INSTR_HDR_EMIT2_TX] = instr_hdr_emit2_tx_exec,
+	[INSTR_HDR_EMIT3_TX] = instr_hdr_emit3_tx_exec,
+	[INSTR_HDR_EMIT4_TX] = instr_hdr_emit4_tx_exec,
+	[INSTR_HDR_EMIT5_TX] = instr_hdr_emit5_tx_exec,
+	[INSTR_HDR_EMIT6_TX] = instr_hdr_emit6_tx_exec,
+	[INSTR_HDR_EMIT7_TX] = instr_hdr_emit7_tx_exec,
+	[INSTR_HDR_EMIT8_TX] = instr_hdr_emit8_tx_exec,
 };
 
 static inline void
