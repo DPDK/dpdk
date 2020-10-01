@@ -4688,7 +4688,8 @@ rte_eth_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 		return -EINVAL;
 	}
 
-	if (dev->data->rx_queues[queue_id] == NULL) {
+	if (dev->data->rx_queues == NULL ||
+			dev->data->rx_queues[queue_id] == NULL) {
 		RTE_ETHDEV_LOG(ERR,
 			       "Rx queue %"PRIu16" of device with port_id=%"
 			       PRIu16" has not been setup\n",
@@ -4727,7 +4728,8 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 		return -EINVAL;
 	}
 
-	if (dev->data->tx_queues[queue_id] == NULL) {
+	if (dev->data->tx_queues == NULL ||
+			dev->data->tx_queues[queue_id] == NULL) {
 		RTE_ETHDEV_LOG(ERR,
 			       "Tx queue %"PRIu16" of device with port_id=%"
 			       PRIu16" has not been setup\n",
