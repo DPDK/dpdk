@@ -42,6 +42,7 @@ if is_windows
 		'eal',
 		'ring',
 		'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci',
+		'hash',
 	] # only supported libraries for windows
 endif
 
