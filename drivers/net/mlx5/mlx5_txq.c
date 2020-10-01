@@ -1260,6 +1260,66 @@ error:
 }
 
 /**
+ * Create a QP Verbs object.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   Queue index in DPDK Tx queue array.
+ * @param rxq_obj
+ *   Pointer to Tx queue object data.
+ *
+ * @return
+ *   The QP Verbs object initialized, NULL otherwise and rte_errno is set.
+ */
+static struct ibv_qp *
+mlx5_ibv_qp_new(struct rte_eth_dev *dev, uint16_t idx,
+		struct mlx5_txq_obj *txq_obj)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
+	struct mlx5_txq_ctrl *txq_ctrl =
+			container_of(txq_data, struct mlx5_txq_ctrl, txq);
+	struct ibv_qp *qp_obj = NULL;
+	struct ibv_qp_init_attr_ex qp_attr = { 0 };
+	const int desc = 1 << txq_data->elts_n;
+
+	MLX5_ASSERT(!txq_ctrl->obj);
+	/* CQ to be associated with the send queue. */
+	qp_attr.send_cq = txq_obj->cq;
+	/* CQ to be associated with the receive queue. */
+	qp_attr.recv_cq = txq_obj->cq;
+	/* Max number of outstanding WRs. */
+	qp_attr.cap.max_send_wr = ((priv->sh->device_attr.max_qp_wr < desc) ?
+				   priv->sh->device_attr.max_qp_wr : desc);
+	/*
+	 * Max number of scatter/gather elements in a WR, must be 1 to prevent
+	 * libmlx5 from trying to affect must be 1 to prevent libmlx5 from
+	 * trying to affect too much memory. TX gather is not impacted by the
+	 * device_attr.max_sge limit and will still work properly.
+	 */
+	qp_attr.cap.max_send_sge = 1;
+	qp_attr.qp_type = IBV_QPT_RAW_PACKET,
+	/* Do *NOT* enable this, completions events are managed per Tx burst. */
+	qp_attr.sq_sig_all = 0;
+	qp_attr.pd = priv->sh->pd;
+	qp_attr.comp_mask = IBV_QP_INIT_ATTR_PD;
+	if (txq_data->inlen_send)
+		qp_attr.cap.max_inline_data = txq_ctrl->max_inline_data;
+	if (txq_data->tso_en) {
+		qp_attr.max_tso_header = txq_ctrl->max_tso_header;
+		qp_attr.comp_mask |= IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
+	}
+	qp_obj = mlx5_glue->create_qp_ex(priv->sh->ctx, &qp_attr);
+	if (qp_obj == NULL) {
+		DRV_LOG(ERR, "port %u Tx queue %u QP creation failure",
+			dev->data->port_id, idx);
+		rte_errno = errno;
+	}
+	return qp_obj;
+}
+
+/**
  * Create the Tx queue Verbs object.
  *
  * @param dev
@@ -1282,10 +1342,7 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		container_of(txq_data, struct mlx5_txq_ctrl, txq);
 	struct mlx5_txq_obj tmpl;
 	struct mlx5_txq_obj *txq_obj = NULL;
-	union {
-		struct ibv_qp_init_attr_ex init;
-		struct ibv_qp_attr mod;
-	} attr;
+	struct ibv_qp_attr mod;
 	unsigned int cqe_n;
 	struct mlx5dv_qp qp = { .comp_mask = MLX5DV_QP_MASK_UAR_MMAP_OFFSET };
 	struct mlx5dv_cq cq_info;
@@ -1322,56 +1379,18 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		rte_errno = errno;
 		goto error;
 	}
-	attr.init = (struct ibv_qp_init_attr_ex){
-		/* CQ to be associated with the send queue. */
-		.send_cq = tmpl.cq,
-		/* CQ to be associated with the receive queue. */
-		.recv_cq = tmpl.cq,
-		.cap = {
-			/* Max number of outstanding WRs. */
-			.max_send_wr =
-				((priv->sh->device_attr.max_qp_wr <
-				  desc) ?
-				 priv->sh->device_attr.max_qp_wr :
-				 desc),
-			/*
-			 * Max number of scatter/gather elements in a WR,
-			 * must be 1 to prevent libmlx5 from trying to affect
-			 * too much memory. TX gather is not impacted by the
-			 * device_attr.max_sge limit and will still work
-			 * properly.
-			 */
-			.max_send_sge = 1,
-		},
-		.qp_type = IBV_QPT_RAW_PACKET,
-		/*
-		 * Do *NOT* enable this, completions events are managed per
-		 * Tx burst.
-		 */
-		.sq_sig_all = 0,
-		.pd = priv->sh->pd,
-		.comp_mask = IBV_QP_INIT_ATTR_PD,
-	};
-	if (txq_data->inlen_send)
-		attr.init.cap.max_inline_data = txq_ctrl->max_inline_data;
-	if (txq_data->tso_en) {
-		attr.init.max_tso_header = txq_ctrl->max_tso_header;
-		attr.init.comp_mask |= IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
-	}
-	tmpl.qp = mlx5_glue->create_qp_ex(priv->sh->ctx, &attr.init);
+	tmpl.qp = mlx5_ibv_qp_new(dev, idx, &tmpl);
 	if (tmpl.qp == NULL) {
-		DRV_LOG(ERR, "port %u Tx queue %u QP creation failure",
-			dev->data->port_id, idx);
 		rte_errno = errno;
 		goto error;
 	}
-	attr.mod = (struct ibv_qp_attr){
+	mod = (struct ibv_qp_attr){
 		/* Move the QP to this state. */
 		.qp_state = IBV_QPS_INIT,
 		/* IB device port number. */
 		.port_num = (uint8_t)priv->dev_port,
 	};
-	ret = mlx5_glue->modify_qp(tmpl.qp, &attr.mod,
+	ret = mlx5_glue->modify_qp(tmpl.qp, &mod,
 				   (IBV_QP_STATE | IBV_QP_PORT));
 	if (ret) {
 		DRV_LOG(ERR,
@@ -1380,10 +1399,10 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		rte_errno = errno;
 		goto error;
 	}
-	attr.mod = (struct ibv_qp_attr){
+	mod = (struct ibv_qp_attr){
 		.qp_state = IBV_QPS_RTR
 	};
-	ret = mlx5_glue->modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
+	ret = mlx5_glue->modify_qp(tmpl.qp, &mod, IBV_QP_STATE);
 	if (ret) {
 		DRV_LOG(ERR,
 			"port %u Tx queue %u QP state to IBV_QPS_RTR failed",
@@ -1391,8 +1410,8 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 		rte_errno = errno;
 		goto error;
 	}
-	attr.mod.qp_state = IBV_QPS_RTS;
-	ret = mlx5_glue->modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
+	mod.qp_state = IBV_QPS_RTS;
+	ret = mlx5_glue->modify_qp(tmpl.qp, &mod, IBV_QP_STATE);
 	if (ret) {
 		DRV_LOG(ERR,
 			"port %u Tx queue %u QP state to IBV_QPS_RTS failed",
