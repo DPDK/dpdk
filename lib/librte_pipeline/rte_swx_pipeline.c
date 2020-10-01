@@ -358,6 +358,84 @@ enum instruction_type {
 
 	/* extern f.func */
 	INSTR_EXTERN_FUNC,
+
+	/* jmp LABEL
+	 * Unconditional jump
+	 */
+	INSTR_JMP,
+
+	/* jmpv LABEL h.header
+	 * Jump if header is valid
+	 */
+	INSTR_JMP_VALID,
+
+	/* jmpnv LABEL h.header
+	 * Jump if header is invalid
+	 */
+	INSTR_JMP_INVALID,
+
+	/* jmph LABEL
+	 * Jump if table lookup hit
+	 */
+	INSTR_JMP_HIT,
+
+	/* jmpnh LABEL
+	 * Jump if table lookup miss
+	 */
+	INSTR_JMP_MISS,
+
+	/* jmpa LABEL ACTION
+	 * Jump if action run
+	 */
+	INSTR_JMP_ACTION_HIT,
+
+	/* jmpna LABEL ACTION
+	 * Jump if action not run
+	 */
+	INSTR_JMP_ACTION_MISS,
+
+	/* jmpeq LABEL a b
+	 * Jump is a is equal to b
+	 * a = HMEFT, b = HMEFTI
+	 */
+	INSTR_JMP_EQ,   /* (a, b) = (MEFT, MEFT) or (a, b) = (H, H) */
+	INSTR_JMP_EQ_S, /* (a, b) = (MEFT, H) or (a, b) = (H, MEFT) */
+	INSTR_JMP_EQ_I, /* (a, b) = (MEFT, I) or (a, b) = (H, I) */
+
+	/* jmpneq LABEL a b
+	 * Jump is a is not equal to b
+	 * a = HMEFT, b = HMEFTI
+	 */
+	INSTR_JMP_NEQ,   /* (a, b) = (MEFT, MEFT) or (a, b) = (H, H) */
+	INSTR_JMP_NEQ_S, /* (a, b) = (MEFT, H) or (a, b) = (H, MEFT) */
+	INSTR_JMP_NEQ_I, /* (a, b) = (MEFT, I) or (a, b) = (H, I) */
+
+	/* jmplt LABEL a b
+	 * Jump if a is less than b
+	 * a = HMEFT, b = HMEFTI
+	 */
+	INSTR_JMP_LT,    /* a = MEF, b = MEF */
+	INSTR_JMP_LT_MH, /* a = MEF, b = H */
+	INSTR_JMP_LT_HM, /* a = H, b = MEF */
+	INSTR_JMP_LT_HH, /* a = H, b = H */
+	INSTR_JMP_LT_MI, /* a = MEF, b = I */
+	INSTR_JMP_LT_HI, /* a = H, b = I */
+
+	/* jmpgt LABEL a b
+	 * Jump if a is greater than b
+	 * a = HMEFT, b = HMEFTI
+	 */
+	INSTR_JMP_GT,    /* a = MEF, b = MEF */
+	INSTR_JMP_GT_MH, /* a = MEF, b = H */
+	INSTR_JMP_GT_HM, /* a = H, b = MEF */
+	INSTR_JMP_GT_HH, /* a = H, b = H */
+	INSTR_JMP_GT_MI, /* a = MEF, b = I */
+	INSTR_JMP_GT_HI, /* a = H, b = I */
+
+	/* return
+	 * Return from action
+	 */
+	INSTR_RETURN,
 };
 
 struct instr_operand {
@@ -419,6 +497,21 @@ struct instr_dma {
 	uint16_t n_bytes[8];
 };
 
+struct instr_jmp {
+	struct instruction *ip;
+
+	union {
+		struct instr_operand a;
+		uint8_t header_id;
+		uint8_t action_id;
+	};
+
+	union {
+		struct instr_operand b;
+		uint32_t b_val;
+	};
+};
+
 struct instruction {
 	enum instruction_type type;
 	union {
@@ -430,6 +523,7 @@ struct instruction {
 		struct instr_table table;
 		struct instr_extern_obj ext_obj;
 		struct instr_extern_func ext_func;
+		struct instr_jmp jmp;
 	};
 };
 
@@ -543,6 +637,9 @@ struct thread {
 #define MASK64_BIT_GET(mask, pos) ((mask) & (1LLU << (pos)))
 #define MASK64_BIT_SET(mask, pos) ((mask) | (1LLU << (pos)))
 #define MASK64_BIT_CLR(mask, pos) ((mask) & ~(1LLU << (pos)))
+
+#define HEADER_VALID(thread, header_id) \
+	MASK64_BIT_GET((thread)->valid_headers, header_id)
 
 #define ALU(thread, ip, operator)  \
 {                                                                              \
@@ -724,6 +821,118 @@ struct thread {
 									       \
 	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);               \
 }
+
+#define JMP_CMP(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *a_struct = (thread)->structs[(ip)->jmp.a.struct_id];          \
+	uint64_t *a64_ptr = (uint64_t *)&a_struct[(ip)->jmp.a.offset];         \
+	uint64_t a64 = *a64_ptr;                                               \
+	uint64_t a64_mask = UINT64_MAX >> (64 - (ip)->jmp.a.n_bits);           \
+	uint64_t a = a64 & a64_mask;                                           \
+									       \
+	uint8_t *b_struct = (thread)->structs[(ip)->jmp.b.struct_id];          \
+	uint64_t *b64_ptr = (uint64_t *)&b_struct[(ip)->jmp.b.offset];         \
+	uint64_t b64 = *b64_ptr;                                               \
+	uint64_t b64_mask = UINT64_MAX >> (64 - (ip)->jmp.b.n_bits);           \
+	uint64_t b = b64 & b64_mask;                                           \
+									       \
+	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+#define JMP_CMP_S(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *a_struct = (thread)->structs[(ip)->jmp.a.struct_id];          \
+	uint64_t *a64_ptr = (uint64_t *)&a_struct[(ip)->jmp.a.offset];         \
+	uint64_t a64 = *a64_ptr;                                               \
+	uint64_t a64_mask = UINT64_MAX >> (64 - (ip)->jmp.a.n_bits);           \
+	uint64_t a = a64 & a64_mask;                                           \
+									       \
+	uint8_t *b_struct = (thread)->structs[(ip)->jmp.b.struct_id];          \
+	uint64_t *b64_ptr = (uint64_t *)&b_struct[(ip)->jmp.b.offset];         \
+	uint64_t b64 = *b64_ptr;                                               \
+	uint64_t b = ntoh64(b64) >> (64 - (ip)->jmp.b.n_bits);                 \
+									       \
+	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
+}
+
+#define JMP_CMP_MH JMP_CMP_S
+
+#define JMP_CMP_HM(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *a_struct = (thread)->structs[(ip)->jmp.a.struct_id];          \
+	uint64_t *a64_ptr = (uint64_t *)&a_struct[(ip)->jmp.a.offset];         \
+	uint64_t a64 = *a64_ptr;                                               \
+	uint64_t a = ntoh64(a64) >> (64 - (ip)->jmp.a.n_bits);                 \
+									       \
+	uint8_t *b_struct = (thread)->structs[(ip)->jmp.b.struct_id];          \
+	uint64_t *b64_ptr = (uint64_t *)&b_struct[(ip)->jmp.b.offset];         \
+	uint64_t b64 = *b64_ptr;                                               \
+	uint64_t b64_mask = UINT64_MAX >> (64 - (ip)->jmp.b.n_bits);           \
+	uint64_t b = b64 & b64_mask;                                           \
+									       \
+	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
+}
+
+#define JMP_CMP_HH(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *a_struct = (thread)->structs[(ip)->jmp.a.struct_id];          \
+	uint64_t *a64_ptr = (uint64_t *)&a_struct[(ip)->jmp.a.offset];         \
+	uint64_t a64 = *a64_ptr;                                               \
+	uint64_t a = ntoh64(a64) >> (64 - (ip)->jmp.a.n_bits);                 \
+									       \
+	uint8_t *b_struct = (thread)->structs[(ip)->jmp.b.struct_id];          \
+	uint64_t *b64_ptr = (uint64_t *)&b_struct[(ip)->jmp.b.offset];         \
+	uint64_t b64 = *b64_ptr;                                               \
+	uint64_t b = ntoh64(b64) >> (64 - (ip)->jmp.b.n_bits);                 \
+									       \
+	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
+}
+
+#else
+
+#define JMP_CMP_S JMP_CMP
+#define JMP_CMP_MH JMP_CMP
+#define JMP_CMP_HM JMP_CMP
+#define JMP_CMP_HH JMP_CMP
+
+#endif
+
+#define JMP_CMP_I(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *a_struct = (thread)->structs[(ip)->jmp.a.struct_id];          \
+	uint64_t *a64_ptr = (uint64_t *)&a_struct[(ip)->jmp.a.offset];         \
+	uint64_t a64 = *a64_ptr;                                               \
+	uint64_t a64_mask = UINT64_MAX >> (64 - (ip)->jmp.a.n_bits);           \
+	uint64_t a = a64 & a64_mask;                                           \
+									       \
+	uint64_t b = (ip)->jmp.b_val;                                          \
+									       \
+	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
+}
+
+#define JMP_CMP_MI JMP_CMP_I
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+#define JMP_CMP_HI(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *a_struct = (thread)->structs[(ip)->jmp.a.struct_id];          \
+	uint64_t *a64_ptr = (uint64_t *)&a_struct[(ip)->jmp.a.offset];         \
+	uint64_t a64 = *a64_ptr;                                               \
+	uint64_t a = ntoh64(a64) >> (64 - (ip)->jmp.a.n_bits);                 \
+									       \
+	uint64_t b = (ip)->jmp.b_val;                                          \
+									       \
+	(thread)->ip = (a operator b) ? (ip)->jmp.ip : ((thread)->ip + 1);     \
+}
+
+#else
+
+#define JMP_CMP_HI JMP_CMP_I
+
+#endif
 
 #define METADATA_READ(thread, offset, n_bits)                                  \
 ({                                                                             \
@@ -2048,6 +2257,42 @@ metadata_free(struct rte_swx_pipeline *p)
 /*
  * Instruction.
  */
+static int
+instruction_is_jmp(struct instruction *instr)
+{
+	switch (instr->type) {
+	case INSTR_JMP:
+	case INSTR_JMP_VALID:
+	case INSTR_JMP_INVALID:
+	case INSTR_JMP_HIT:
+	case INSTR_JMP_MISS:
+	case INSTR_JMP_ACTION_HIT:
+	case INSTR_JMP_ACTION_MISS:
+	case INSTR_JMP_EQ:
+	case INSTR_JMP_EQ_S:
+	case INSTR_JMP_EQ_I:
+	case INSTR_JMP_NEQ:
+	case INSTR_JMP_NEQ_S:
+	case INSTR_JMP_NEQ_I:
+	case INSTR_JMP_LT:
+	case INSTR_JMP_LT_MH:
+	case INSTR_JMP_LT_HM:
+	case INSTR_JMP_LT_HH:
+	case INSTR_JMP_LT_MI:
+	case INSTR_JMP_LT_HI:
+	case INSTR_JMP_GT:
+	case INSTR_JMP_GT_MH:
+	case INSTR_JMP_GT_HM:
+	case INSTR_JMP_GT_HH:
+	case INSTR_JMP_GT_MI:
+	case INSTR_JMP_GT_HI:
+		return 1;
+
+	default:
+		return 0;
+	}
+}
+
 static struct field *
 action_field_parse(struct action *action, const char *name);
 
@@ -2134,6 +2379,12 @@ static inline void
 thread_ip_reset(struct rte_swx_pipeline *p, struct thread *t)
 {
 	t->ip = p->instructions;
+}
+
+static inline void
+thread_ip_set(struct thread *t, struct instruction *ip)
+{
+	t->ip = ip;
 }
 
 static inline void
@@ -4351,6 +4602,684 @@ instr_alu_ckadd_struct_exec(struct rte_swx_pipeline *p)
 	thread_ip_inc(p);
 }
 
+/*
+ * jmp.
+ */
+static struct action *
+action_find(struct rte_swx_pipeline *p, const char *name);
+
+static int
+instr_jmp_translate(struct rte_swx_pipeline *p __rte_unused,
+		    struct action *action __rte_unused,
+		    char **tokens,
+		    int n_tokens,
+		    struct instruction *instr,
+		    struct instruction_data *data)
+{
+	CHECK(n_tokens == 2, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	instr->type = INSTR_JMP;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	return 0;
+}
+
+static int
+instr_jmp_valid_translate(struct rte_swx_pipeline *p,
+			  struct action *action __rte_unused,
+			  char **tokens,
+			  int n_tokens,
+			  struct instruction *instr,
+			  struct instruction_data *data)
+{
+	struct header *h;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	h = header_parse(p, tokens[2]);
+	CHECK(h, EINVAL);
+
+	instr->type = INSTR_JMP_VALID;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	instr->jmp.header_id = h->id;
+	return 0;
+}
+
+static int
+instr_jmp_invalid_translate(struct rte_swx_pipeline *p,
+			    struct action *action __rte_unused,
+			    char **tokens,
+			    int n_tokens,
+			    struct instruction *instr,
+			    struct instruction_data *data)
+{
+	struct header *h;
+
+	CHECK(n_tokens == 2, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	h = header_parse(p, tokens[2]);
+	CHECK(h, EINVAL);
+
+	instr->type = INSTR_JMP_INVALID;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	instr->jmp.header_id = h->id;
+	return 0;
+}
+
+static int
+instr_jmp_hit_translate(struct rte_swx_pipeline *p __rte_unused,
+			struct action *action,
+			char **tokens,
+			int n_tokens,
+			struct instruction *instr,
+			struct instruction_data *data)
+{
+	CHECK(!action, EINVAL);
+	CHECK(n_tokens == 2, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	instr->type = INSTR_JMP_HIT;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	return 0;
+}
+
+static int
+instr_jmp_miss_translate(struct rte_swx_pipeline *p __rte_unused,
+			 struct action *action,
+			 char **tokens,
+			 int n_tokens,
+			 struct instruction *instr,
+			 struct instruction_data *data)
+{
+	CHECK(!action, EINVAL);
+	CHECK(n_tokens == 2, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	instr->type = INSTR_JMP_MISS;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	return 0;
+}
+
+static int
+instr_jmp_action_hit_translate(struct rte_swx_pipeline *p,
+			       struct action *action,
+			       char **tokens,
+			       int n_tokens,
+			       struct instruction *instr,
+			       struct instruction_data *data)
+{
+	struct action *a;
+
+	CHECK(!action, EINVAL);
+	CHECK(n_tokens == 3, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	a = action_find(p, tokens[2]);
+	CHECK(a, EINVAL);
+
+	instr->type = INSTR_JMP_ACTION_HIT;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	instr->jmp.action_id = a->id;
+	return 0;
+}
+
+static int
+instr_jmp_action_miss_translate(struct rte_swx_pipeline *p,
+				struct action *action,
+				char **tokens,
+				int n_tokens,
+				struct instruction *instr,
+				struct instruction_data *data)
+{
+	struct action *a;
+
+	CHECK(!action, EINVAL);
+	CHECK(n_tokens == 3, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	a = action_find(p, tokens[2]);
+	CHECK(a, EINVAL);
+
+	instr->type = INSTR_JMP_ACTION_MISS;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	instr->jmp.action_id = a->id;
+	return 0;
+}
+
+static int
+instr_jmp_eq_translate(struct rte_swx_pipeline *p,
+		       struct action *action,
+		       char **tokens,
+		       int n_tokens,
+		       struct instruction *instr,
+		       struct instruction_data *data)
+{
+	char *a = tokens[2], *b = tokens[3];
+	struct field *fa, *fb;
+	uint32_t a_struct_id, b_struct_id, b_val;
+
+	CHECK(n_tokens == 4, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	fa = struct_field_parse(p, action, a, &a_struct_id);
+	CHECK(fa, EINVAL);
+
+	/* JMP_EQ or JMP_EQ_S. */
+	fb = struct_field_parse(p, action, b, &b_struct_id);
+	if (fb) {
+		instr->type = INSTR_JMP_EQ;
+		if ((a[0] == 'h' && b[0] != 'h') ||
+		    (a[0] != 'h' && b[0] == 'h'))
+			instr->type = INSTR_JMP_EQ_S;
+		instr->jmp.ip = NULL; /* Resolved later. */
+
+		instr->jmp.a.struct_id = (uint8_t)a_struct_id;
+		instr->jmp.a.n_bits = fa->n_bits;
+		instr->jmp.a.offset = fa->offset / 8;
+		instr->jmp.b.struct_id = (uint8_t)b_struct_id;
+		instr->jmp.b.n_bits = fb->n_bits;
+		instr->jmp.b.offset = fb->offset / 8;
+		return 0;
+	}
+
+	/* JMP_EQ_I. */
+	b_val = strtoul(b, &b, 0);
+	CHECK(!b[0], EINVAL);
+
+	if (a[0] == 'h')
+		b_val = htonl(b_val);
+
+	instr->type = INSTR_JMP_EQ_I;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	instr->jmp.a.struct_id = (uint8_t)a_struct_id;
+	instr->jmp.a.n_bits = fa->n_bits;
+	instr->jmp.a.offset = fa->offset / 8;
+	instr->jmp.b_val = (uint32_t)b_val;
+	return 0;
+}
+
+static int
+instr_jmp_neq_translate(struct rte_swx_pipeline *p,
+			struct action *action,
+			char **tokens,
+			int n_tokens,
+			struct instruction *instr,
+			struct instruction_data *data)
+{
+	char *a = tokens[2], *b = tokens[3];
+	struct field *fa, *fb;
+	uint32_t a_struct_id, b_struct_id, b_val;
+
+	CHECK(n_tokens == 4, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	fa = struct_field_parse(p, action, a, &a_struct_id);
+	CHECK(fa, EINVAL);
+
+	/* JMP_NEQ or JMP_NEQ_S. */
+	fb = struct_field_parse(p, action, b, &b_struct_id);
+	if (fb) {
+		instr->type = INSTR_JMP_NEQ;
+		if ((a[0] == 'h' && b[0] != 'h') ||
+		    (a[0] != 'h' && b[0] == 'h'))
+			instr->type = INSTR_JMP_NEQ_S;
+		instr->jmp.ip = NULL; /* Resolved later. */
+
+		instr->jmp.a.struct_id = (uint8_t)a_struct_id;
+		instr->jmp.a.n_bits = fa->n_bits;
+		instr->jmp.a.offset = fa->offset / 8;
+		instr->jmp.b.struct_id = (uint8_t)b_struct_id;
+		instr->jmp.b.n_bits = fb->n_bits;
+		instr->jmp.b.offset = fb->offset / 8;
+		return 0;
+	}
+
+	/* JMP_NEQ_I. */
+	b_val = strtoul(b, &b, 0);
+	CHECK(!b[0], EINVAL);
+
+	if (a[0] == 'h')
+		b_val = htonl(b_val);
+
+	instr->type = INSTR_JMP_NEQ_I;
+	instr->jmp.ip = NULL; /* Resolved later. */
+	instr->jmp.a.struct_id = (uint8_t)a_struct_id;
+	instr->jmp.a.n_bits = fa->n_bits;
+	instr->jmp.a.offset = fa->offset / 8;
+	instr->jmp.b_val = (uint32_t)b_val;
+	return 0;
+}
+
+static int
+instr_jmp_lt_translate(struct rte_swx_pipeline *p,
+		       struct action *action,
+		       char **tokens,
+		       int n_tokens,
+		       struct instruction *instr,
+		       struct instruction_data *data)
+{
+	char *a = tokens[2], *b = tokens[3];
+	struct field *fa, *fb;
+	uint32_t a_struct_id, b_struct_id, b_val;
+
+	CHECK(n_tokens == 4, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	fa = struct_field_parse(p, action, a, &a_struct_id);
+	CHECK(fa, EINVAL);
+
+	/* JMP_LT, JMP_LT_MH, JMP_LT_HM, JMP_LT_HH. */
+	fb = struct_field_parse(p, action, b, &b_struct_id);
+	if (fb) {
+		instr->type = INSTR_JMP_LT;
+		if (a[0] == 'h' && b[0] == 'm')
+			instr->type = INSTR_JMP_LT_HM;
+		if (a[0] == 'm' && b[0] == 'h')
+			instr->type = INSTR_JMP_LT_MH;
+		if (a[0] == 'h' && b[0] == 'h')
+			instr->type = INSTR_JMP_LT_HH;
+		instr->jmp.ip = NULL; /* Resolved later. */
+
+		instr->jmp.a.struct_id = (uint8_t)a_struct_id;
+		instr->jmp.a.n_bits = fa->n_bits;
+		instr->jmp.a.offset = fa->offset / 8;
+		instr->jmp.b.struct_id = (uint8_t)b_struct_id;
+		instr->jmp.b.n_bits = fb->n_bits;
+		instr->jmp.b.offset = fb->offset / 8;
+		return 0;
+	}
+
+	/* JMP_LT_MI, JMP_LT_HI. */
+	b_val = strtoul(b, &b, 0);
+	CHECK(!b[0], EINVAL);
+
+	instr->type = INSTR_JMP_LT_MI;
+	if (a[0] == 'h')
+		instr->type = INSTR_JMP_LT_HI;
+	instr->jmp.ip = NULL; /* Resolved later. */
+
+	instr->jmp.a.struct_id = (uint8_t)a_struct_id;
+	instr->jmp.a.n_bits = fa->n_bits;
+	instr->jmp.a.offset = fa->offset / 8;
+	instr->jmp.b_val = (uint32_t)b_val;
+	return 0;
+}
+
+static int
+instr_jmp_gt_translate(struct rte_swx_pipeline *p,
+		       struct action *action,
+		       char **tokens,
+		       int n_tokens,
+		       struct instruction *instr,
+		       struct instruction_data *data)
+{
+	char *a = tokens[2], *b = tokens[3];
+	struct field *fa, *fb;
+	uint32_t a_struct_id, b_struct_id, b_val;
+
+	CHECK(n_tokens == 4, EINVAL);
+
+	strcpy(data->jmp_label, tokens[1]);
+
+	fa = struct_field_parse(p, action, a, &a_struct_id);
+	CHECK(fa, EINVAL);
+
+	/* JMP_GT, JMP_GT_MH, JMP_GT_HM, JMP_GT_HH. */
+	fb = struct_field_parse(p, action, b, &b_struct_id);
+	if (fb) {
+		instr->type = INSTR_JMP_GT;
+		if (a[0] == 'h' && b[0] == 'm')
+			instr->type = INSTR_JMP_GT_HM;
+		if (a[0] == 'm' && b[0] == 'h')
+			instr->type = INSTR_JMP_GT_MH;
+		if (a[0] == 'h' && b[0] == 'h')
+			instr->type = INSTR_JMP_GT_HH;
+		instr->jmp.ip = NULL; /* Resolved later. */
+
+		instr->jmp.a.struct_id = (uint8_t)a_struct_id;
+		instr->jmp.a.n_bits = fa->n_bits;
+		instr->jmp.a.offset = fa->offset / 8;
+		instr->jmp.b.struct_id = (uint8_t)b_struct_id;
+		instr->jmp.b.n_bits = fb->n_bits;
+		instr->jmp.b.offset = fb->offset / 8;
+		return 0;
+	}
+
+	/* JMP_GT_MI, JMP_GT_HI. */
+	b_val = strtoul(b, &b, 0);
+	CHECK(!b[0], EINVAL);
+
+	instr->type = INSTR_JMP_GT_MI;
+	if (a[0] == 'h')
+		instr->type = INSTR_JMP_GT_HI;
+	instr->jmp.ip = NULL; /* Resolved later. */
+
+	instr->jmp.a.struct_id = (uint8_t)a_struct_id;
+	instr->jmp.a.n_bits = fa->n_bits;
+	instr->jmp.a.offset = fa->offset / 8;
+	instr->jmp.b_val = (uint32_t)b_val;
+	return 0;
+}
+
+static inline void
+instr_jmp_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmp\n", p->thread_id);
+
+	thread_ip_set(t, ip->jmp.ip);
+}
+
+static inline void
+instr_jmp_valid_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t header_id = ip->jmp.header_id;
+
+	TRACE("[Thread %2u] jmpv\n", p->thread_id);
+
+	t->ip = HEADER_VALID(t, header_id) ? ip->jmp.ip : (t->ip + 1);
+}
+
+static inline void
+instr_jmp_invalid_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	uint32_t header_id = ip->jmp.header_id;
+
+	TRACE("[Thread %2u] jmpnv\n", p->thread_id);
+
+	t->ip = HEADER_VALID(t, header_id) ? (t->ip + 1) : ip->jmp.ip;
+}
+
+static inline void
+instr_jmp_hit_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct instruction *ip_next[] = {t->ip + 1, ip->jmp.ip};
+
+	TRACE("[Thread %2u] jmph\n", p->thread_id);
+
+	t->ip = ip_next[t->hit];
+}
+
+static inline void
+instr_jmp_miss_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+	struct instruction *ip_next[] = {ip->jmp.ip, t->ip + 1};
+
+	TRACE("[Thread %2u] jmpnh\n", p->thread_id);
+
+	t->ip = ip_next[t->hit];
+}
+
+static inline void
+instr_jmp_action_hit_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpa\n", p->thread_id);
+
+	t->ip = (ip->jmp.action_id == t->action_id) ? ip->jmp.ip : (t->ip + 1);
+}
+
+static inline void
+instr_jmp_action_miss_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpna\n", p->thread_id);
+
+	t->ip = (ip->jmp.action_id == t->action_id) ? (t->ip + 1) : ip->jmp.ip;
+}
+
+static inline void
+instr_jmp_eq_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpeq\n", p->thread_id);
+
+	JMP_CMP(t, ip, ==);
+}
+
+static inline void
+instr_jmp_eq_s_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpeq (s)\n", p->thread_id);
+
+	JMP_CMP_S(t, ip, ==);
+}
+
+static inline void
+instr_jmp_eq_i_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpeq (i)\n", p->thread_id);
+
+	JMP_CMP_I(t, ip, ==);
+}
+
+static inline void
+instr_jmp_neq_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpneq\n", p->thread_id);
+
+	JMP_CMP(t, ip, !=);
+}
+
+static inline void
+instr_jmp_neq_s_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpneq (s)\n", p->thread_id);
+
+	JMP_CMP_S(t, ip, !=);
+}
+
+static inline void
+instr_jmp_neq_i_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpneq (i)\n", p->thread_id);
+
+	JMP_CMP_I(t, ip, !=);
+}
+
+static inline void
+instr_jmp_lt_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmplt\n", p->thread_id);
+
+	JMP_CMP(t, ip, <);
+}
+
+static inline void
+instr_jmp_lt_mh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmplt (mh)\n", p->thread_id);
+
+	JMP_CMP_MH(t, ip, <);
+}
+
+static inline void
+instr_jmp_lt_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmplt (hm)\n", p->thread_id);
+
+	JMP_CMP_HM(t, ip, <);
+}
+
+static inline void
+instr_jmp_lt_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmplt (hh)\n", p->thread_id);
+
+	JMP_CMP_HH(t, ip, <);
+}
+
+static inline void
+instr_jmp_lt_mi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmplt (mi)\n", p->thread_id);
+
+	JMP_CMP_MI(t, ip, <);
+}
+
+static inline void
+instr_jmp_lt_hi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmplt (hi)\n", p->thread_id);
+
+	JMP_CMP_HI(t, ip, <);
+}
+
+static inline void
+instr_jmp_gt_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpgt\n", p->thread_id);
+
+	JMP_CMP(t, ip, >);
+}
+
+static inline void
+instr_jmp_gt_mh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpgt (mh)\n", p->thread_id);
+
+	JMP_CMP_MH(t, ip, >);
+}
+
+static inline void
+instr_jmp_gt_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpgt (hm)\n", p->thread_id);
+
+	JMP_CMP_HM(t, ip, >);
+}
+
+static inline void
+instr_jmp_gt_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpgt (hh)\n", p->thread_id);
+
+	JMP_CMP_HH(t, ip, >);
+}
+
+static inline void
+instr_jmp_gt_mi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpgt (mi)\n", p->thread_id);
+
+	JMP_CMP_MI(t, ip, >);
+}
+
+static inline void
+instr_jmp_gt_hi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] jmpgt (hi)\n", p->thread_id);
+
+	JMP_CMP_HI(t, ip, >);
+}
+
+/*
+ * return.
+ */
+static int
+instr_return_translate(struct rte_swx_pipeline *p __rte_unused,
+		       struct action *action,
+		       char **tokens __rte_unused,
+		       int n_tokens,
+		       struct instruction *instr,
+		       struct instruction_data *data __rte_unused)
+{
+	CHECK(action, EINVAL);
+	CHECK(n_tokens == 1, EINVAL);
+
+	instr->type = INSTR_RETURN;
+	return 0;
+}
+
+static inline void
+instr_return_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+
+	TRACE("[Thread %2u] return\n", p->thread_id);
+
+	t->ip = t->ret;
+}
+
 #define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
 
 static int
@@ -4540,7 +5469,115 @@ instr_translate(struct rte_swx_pipeline *p,
 					      instr,
 					      data);
 
+	if (!strcmp(tokens[tpos], "jmp"))
+		return instr_jmp_translate(p,
+					   action,
+					   &tokens[tpos],
+					   n_tokens - tpos,
+					   instr,
+					   data);
+
+	if (!strcmp(tokens[tpos], "jmpv"))
+		return instr_jmp_valid_translate(p,
+						 action,
+						 &tokens[tpos],
+						 n_tokens - tpos,
+						 instr,
+						 data);
+
+	if (!strcmp(tokens[tpos], "jmpnv"))
+		return instr_jmp_invalid_translate(p,
+						   action,
+						   &tokens[tpos],
+						   n_tokens - tpos,
+						   instr,
+						   data);
+
+	if (!strcmp(tokens[tpos], "jmph"))
+		return instr_jmp_hit_translate(p,
+					       action,
+					       &tokens[tpos],
+					       n_tokens - tpos,
+					       instr,
+					       data);
+
+	if (!strcmp(tokens[tpos], "jmpnh"))
+		return instr_jmp_miss_translate(p,
+						action,
+						&tokens[tpos],
+						n_tokens - tpos,
+						instr,
+						data);
+
+	if (!strcmp(tokens[tpos], "jmpa"))
+		return instr_jmp_action_hit_translate(p,
+						      action,
+						      &tokens[tpos],
+						      n_tokens - tpos,
+						      instr,
+						      data);
+
+	if (!strcmp(tokens[tpos], "jmpna"))
+		return instr_jmp_action_miss_translate(p,
+						       action,
+						       &tokens[tpos],
+						       n_tokens - tpos,
+						       instr,
+						       data);
+
+	if (!strcmp(tokens[tpos], "jmpeq"))
+		return instr_jmp_eq_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
+	if (!strcmp(tokens[tpos], "jmpneq"))
+		return instr_jmp_neq_translate(p,
+					       action,
+					       &tokens[tpos],
+					       n_tokens - tpos,
+					       instr,
+					       data);
+
+	if (!strcmp(tokens[tpos], "jmplt"))
+		return instr_jmp_lt_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
+	if (!strcmp(tokens[tpos], "jmpgt"))
+		return instr_jmp_gt_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
+	if (!strcmp(tokens[tpos], "return"))
+		return instr_return_translate(p,
+					      action,
+					      &tokens[tpos],
+					      n_tokens - tpos,
+					      instr,
+					      data);
+
 	CHECK(0, EINVAL);
+}
+
+static struct instruction_data *
+label_find(struct instruction_data *data, uint32_t n, const char *label)
+{
+	uint32_t i;
+
+	for (i = 0; i < n; i++)
+		if (!strcmp(label, data[i].label))
+			return &data[i];
+
+	return NULL;
 }
 
 static uint32_t
@@ -4591,6 +5628,32 @@ instr_label_check(struct instruction_data *instruction_data,
 }
 
 static int
+instr_jmp_resolve(struct instruction *instructions,
+		  struct instruction_data *instruction_data,
+		  uint32_t n_instructions)
+{
+	uint32_t i;
+
+	for (i = 0; i < n_instructions; i++) {
+		struct instruction *instr = &instructions[i];
+		struct instruction_data *data = &instruction_data[i];
+		struct instruction_data *found;
+
+		if (!instruction_is_jmp(instr))
+			continue;
+
+		found = label_find(instruction_data,
+				   n_instructions,
+				   data->jmp_label);
+		CHECK(found, EINVAL);
+
+		instr->jmp.ip = &instr[found - instruction_data];
+	}
+
+	return 0;
+}
+
+static int
 instruction_config(struct rte_swx_pipeline *p,
 		   struct action *a,
 		   const char **instructions,
@@ -4635,6 +5698,10 @@ instruction_config(struct rte_swx_pipeline *p,
 	}
 
 	err = instr_label_check(data, n_instructions);
+	if (err)
+		goto error;
+
+	err = instr_jmp_resolve(instr, data, n_instructions);
 	if (err)
 		goto error;
 
@@ -4746,6 +5813,38 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_TABLE] = instr_table_exec,
 	[INSTR_EXTERN_OBJ] = instr_extern_obj_exec,
 	[INSTR_EXTERN_FUNC] = instr_extern_func_exec,
+
+	[INSTR_JMP] = instr_jmp_exec,
+	[INSTR_JMP_VALID] = instr_jmp_valid_exec,
+	[INSTR_JMP_INVALID] = instr_jmp_invalid_exec,
+	[INSTR_JMP_HIT] = instr_jmp_hit_exec,
+	[INSTR_JMP_MISS] = instr_jmp_miss_exec,
+	[INSTR_JMP_ACTION_HIT] = instr_jmp_action_hit_exec,
+	[INSTR_JMP_ACTION_MISS] = instr_jmp_action_miss_exec,
+
+	[INSTR_JMP_EQ] = instr_jmp_eq_exec,
+	[INSTR_JMP_EQ_S] = instr_jmp_eq_s_exec,
+	[INSTR_JMP_EQ_I] = instr_jmp_eq_i_exec,
+
+	[INSTR_JMP_NEQ] = instr_jmp_neq_exec,
+	[INSTR_JMP_NEQ_S] = instr_jmp_neq_s_exec,
+	[INSTR_JMP_NEQ_I] = instr_jmp_neq_i_exec,
+
+	[INSTR_JMP_LT] = instr_jmp_lt_exec,
+	[INSTR_JMP_LT_MH] = instr_jmp_lt_mh_exec,
+	[INSTR_JMP_LT_HM] = instr_jmp_lt_hm_exec,
+	[INSTR_JMP_LT_HH] = instr_jmp_lt_hh_exec,
+	[INSTR_JMP_LT_MI] = instr_jmp_lt_mi_exec,
+	[INSTR_JMP_LT_HI] = instr_jmp_lt_hi_exec,
+
+	[INSTR_JMP_GT] = instr_jmp_gt_exec,
+	[INSTR_JMP_GT_MH] = instr_jmp_gt_mh_exec,
+	[INSTR_JMP_GT_HM] = instr_jmp_gt_hm_exec,
+	[INSTR_JMP_GT_HH] = instr_jmp_gt_hh_exec,
+	[INSTR_JMP_GT_MI] = instr_jmp_gt_mi_exec,
+	[INSTR_JMP_GT_HI] = instr_jmp_gt_hi_exec,
+
+	[INSTR_RETURN] = instr_return_exec,
 };
 
 static inline void
