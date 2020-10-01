@@ -6,9 +6,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/queue.h>
+#include <arpa/inet.h>
 
 #include <rte_common.h>
 #include <rte_prefetch.h>
+#include <rte_byteorder.h>
 
 #include "rte_swx_pipeline.h"
 #include "rte_swx_ctl.h"
@@ -31,6 +33,9 @@ do {                                                                           \
 #else
 #define TRACE(...)
 #endif
+
+#define ntoh64(x) rte_be_to_cpu_64(x)
+#define hton64(x) rte_cpu_to_be_64(x)
 
 /*
  * Struct.
@@ -242,6 +247,21 @@ enum instruction_type {
 
 	/* invalidate h.header */
 	INSTR_HDR_INVALIDATE,
+
+	/* mov dst src
+	 * dst = src
+	 * dst = HMEF, src = HMEFTI
+	 */
+	INSTR_MOV,   /* dst = MEF, src = MEFT */
+	INSTR_MOV_S, /* (dst, src) = (MEF, H) or (dst, src) = (H, MEFT) */
+	INSTR_MOV_I, /* dst = HMEF, src = I */
+};
+
+struct instr_operand {
+	uint8_t struct_id;
+	uint8_t n_bits;
+	uint8_t offset;
+	uint8_t pad;
 };
 
 struct instr_io {
@@ -262,11 +282,20 @@ struct instr_hdr_validity {
 	uint8_t header_id;
 };
 
+struct instr_dst_src {
+	struct instr_operand dst;
+	union {
+		struct instr_operand src;
+		uint32_t src_val;
+	};
+};
+
 struct instruction {
 	enum instruction_type type;
 	union {
 		struct instr_io io;
 		struct instr_hdr_validity valid;
+		struct instr_dst_src mov;
 	};
 };
 
@@ -380,6 +409,57 @@ struct thread {
 #define MASK64_BIT_GET(mask, pos) ((mask) & (1LLU << (pos)))
 #define MASK64_BIT_SET(mask, pos) ((mask) | (1LLU << (pos)))
 #define MASK64_BIT_CLR(mask, pos) ((mask) & ~(1LLU << (pos)))
+
+#define MOV(thread, ip)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->mov.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->mov.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->mov.dst.n_bits);       \
+									       \
+	uint8_t *src_struct = (thread)->structs[(ip)->mov.src.struct_id];      \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->mov.src.offset];   \
+	uint64_t src64 = *src64_ptr;                                           \
+	uint64_t src64_mask = UINT64_MAX >> (64 - (ip)->mov.src.n_bits);       \
+	uint64_t src = src64 & src64_mask;                                     \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);               \
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+#define MOV_S(thread, ip)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->mov.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->mov.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->mov.dst.n_bits);       \
+									       \
+	uint8_t *src_struct = (thread)->structs[(ip)->mov.src.struct_id];      \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->mov.src.offset];   \
+	uint64_t src64 = *src64_ptr;                                           \
+	uint64_t src = ntoh64(src64) >> (64 - (ip)->mov.src.n_bits);           \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);               \
+}
+
+#else
+
+#define MOV_S MOV
+
+#endif
+
+#define MOV_I(thread, ip)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->mov.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->mov.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->mov.dst.n_bits);       \
+									       \
+	uint64_t src = (ip)->mov.src_val;                                      \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | (src & dst64_mask);               \
+}
 
 #define METADATA_READ(thread, offset, n_bits)                                  \
 ({                                                                             \
@@ -944,6 +1024,50 @@ extern_obj_find(struct rte_swx_pipeline *p, const char *name)
 	return NULL;
 }
 
+static struct field *
+extern_obj_mailbox_field_parse(struct rte_swx_pipeline *p,
+			       const char *name,
+			       struct extern_obj **object)
+{
+	struct extern_obj *obj;
+	struct field *f;
+	char *obj_name, *field_name;
+
+	if ((name[0] != 'e') || (name[1] != '.'))
+		return NULL;
+
+	obj_name = strdup(&name[2]);
+	if (!obj_name)
+		return NULL;
+
+	field_name = strchr(obj_name, '.');
+	if (!field_name) {
+		free(obj_name);
+		return NULL;
+	}
+
+	*field_name = 0;
+	field_name++;
+
+	obj = extern_obj_find(p, obj_name);
+	if (!obj) {
+		free(obj_name);
+		return NULL;
+	}
+
+	f = struct_type_field_find(obj->type->mailbox_struct_type, field_name);
+	if (!f) {
+		free(obj_name);
+		return NULL;
+	}
+
+	if (object)
+		*object = obj;
+
+	free(obj_name);
+	return f;
+}
+
 int
 rte_swx_pipeline_extern_type_register(struct rte_swx_pipeline *p,
 	const char *name,
@@ -1180,6 +1304,50 @@ extern_func_find(struct rte_swx_pipeline *p, const char *name)
 			return elem;
 
 	return NULL;
+}
+
+static struct field *
+extern_func_mailbox_field_parse(struct rte_swx_pipeline *p,
+				const char *name,
+				struct extern_func **function)
+{
+	struct extern_func *func;
+	struct field *f;
+	char *func_name, *field_name;
+
+	if ((name[0] != 'f') || (name[1] != '.'))
+		return NULL;
+
+	func_name = strdup(&name[2]);
+	if (!func_name)
+		return NULL;
+
+	field_name = strchr(func_name, '.');
+	if (!field_name) {
+		free(func_name);
+		return NULL;
+	}
+
+	*field_name = 0;
+	field_name++;
+
+	func = extern_func_find(p, func_name);
+	if (!func) {
+		free(func_name);
+		return NULL;
+	}
+
+	f = struct_type_field_find(func->mailbox_struct_type, field_name);
+	if (!f) {
+		free(func_name);
+		return NULL;
+	}
+
+	if (function)
+		*function = func;
+
+	free(func_name);
+	return f;
 }
 
 int
@@ -1562,6 +1730,82 @@ metadata_free(struct rte_swx_pipeline *p)
 /*
  * Instruction.
  */
+static struct field *
+action_field_parse(struct action *action, const char *name);
+
+static struct field *
+struct_field_parse(struct rte_swx_pipeline *p,
+		   struct action *action,
+		   const char *name,
+		   uint32_t *struct_id)
+{
+	struct field *f;
+
+	switch (name[0]) {
+	case 'h':
+	{
+		struct header *header;
+
+		f = header_field_parse(p, name, &header);
+		if (!f)
+			return NULL;
+
+		*struct_id = header->struct_id;
+		return f;
+	}
+
+	case 'm':
+	{
+		f = metadata_field_parse(p, name);
+		if (!f)
+			return NULL;
+
+		*struct_id = p->metadata_struct_id;
+		return f;
+	}
+
+	case 't':
+	{
+		if (!action)
+			return NULL;
+
+		f = action_field_parse(action, name);
+		if (!f)
+			return NULL;
+
+		*struct_id = 0;
+		return f;
+	}
+
+	case 'e':
+	{
+		struct extern_obj *obj;
+
+		f = extern_obj_mailbox_field_parse(p, name, &obj);
+		if (!f)
+			return NULL;
+
+		*struct_id = obj->struct_id;
+		return f;
+	}
+
+	case 'f':
+	{
+		struct extern_func *func;
+
+		f = extern_func_mailbox_field_parse(p, name, &func);
+		if (!f)
+			return NULL;
+
+		*struct_id = func->struct_id;
+		return f;
+	}
+
+	default:
+		return NULL;
+	}
+}
+
 static inline void
 pipeline_port_inc(struct rte_swx_pipeline *p)
 {
@@ -2187,6 +2431,104 @@ instr_hdr_invalidate_exec(struct rte_swx_pipeline *p)
 	thread_ip_inc(p);
 }
 
+/*
+ * mov.
+ */
+static int
+instr_mov_translate(struct rte_swx_pipeline *p,
+		    struct action *action,
+		    char **tokens,
+		    int n_tokens,
+		    struct instruction *instr,
+		    struct instruction_data *data __rte_unused)
+{
+	char *dst = tokens[1], *src = tokens[2];
+	struct field *fdst, *fsrc;
+	uint32_t dst_struct_id, src_struct_id, src_val;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
+	CHECK(fdst, EINVAL);
+
+	/* MOV or MOV_S. */
+	fsrc = struct_field_parse(p, action, src, &src_struct_id);
+	if (fsrc) {
+		instr->type = INSTR_MOV;
+		if ((dst[0] == 'h' && src[0] != 'h') ||
+		    (dst[0] != 'h' && src[0] == 'h'))
+			instr->type = INSTR_MOV_S;
+
+		instr->mov.dst.struct_id = (uint8_t)dst_struct_id;
+		instr->mov.dst.n_bits = fdst->n_bits;
+		instr->mov.dst.offset = fdst->offset / 8;
+		instr->mov.src.struct_id = (uint8_t)src_struct_id;
+		instr->mov.src.n_bits = fsrc->n_bits;
+		instr->mov.src.offset = fsrc->offset / 8;
+		return 0;
+	}
+
+	/* MOV_I. */
+	src_val = strtoul(src, &src, 0);
+	CHECK(!src[0], EINVAL);
+
+	if (dst[0] == 'h')
+		src_val = htonl(src_val);
+
+	instr->type = INSTR_MOV_I;
+	instr->mov.dst.struct_id = (uint8_t)dst_struct_id;
+	instr->mov.dst.n_bits = fdst->n_bits;
+	instr->mov.dst.offset = fdst->offset / 8;
+	instr->mov.src_val = (uint32_t)src_val;
+	return 0;
+}
+
+static inline void
+instr_mov_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] mov\n",
+	      p->thread_id);
+
+	MOV(t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_mov_s_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] mov (s)\n",
+	      p->thread_id);
+
+	MOV_S(t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_mov_i_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] mov m.f %x\n",
+	      p->thread_id,
+	      ip->mov.src_val);
+
+	MOV_I(t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
 #define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
 
 static int
@@ -2271,6 +2613,14 @@ instr_translate(struct rte_swx_pipeline *p,
 						      n_tokens - tpos,
 						      instr,
 						      data);
+
+	if (!strcmp(tokens[tpos], "mov"))
+		return instr_mov_translate(p,
+					   action,
+					   &tokens[tpos],
+					   n_tokens - tpos,
+					   instr,
+					   data);
 
 	CHECK(0, EINVAL);
 }
@@ -2416,6 +2766,10 @@ static instr_exec_t instruction_table[] = {
 
 	[INSTR_HDR_VALIDATE] = instr_hdr_validate_exec,
 	[INSTR_HDR_INVALIDATE] = instr_hdr_invalidate_exec,
+
+	[INSTR_MOV] = instr_mov_exec,
+	[INSTR_MOV_S] = instr_mov_s_exec,
+	[INSTR_MOV_I] = instr_mov_i_exec,
 };
 
 static inline void
@@ -2444,6 +2798,21 @@ action_find(struct rte_swx_pipeline *p, const char *name)
 			return elem;
 
 	return NULL;
+}
+
+static struct field *
+action_field_find(struct action *a, const char *name)
+{
+	return a->st ? struct_type_field_find(a->st, name) : NULL;
+}
+
+static struct field *
+action_field_parse(struct action *action, const char *name)
+{
+	if (name[0] != 't' || name[1] != '.')
+		return NULL;
+
+	return action_field_find(action, &name[2]);
 }
 
 int
