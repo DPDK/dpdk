@@ -535,6 +535,19 @@ int
 rte_swx_pipeline_build(struct rte_swx_pipeline *p);
 
 /**
+ * Pipeline run
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] n_instructions
+ *   Number of instructions to execute.
+ */
+__rte_experimental
+void
+rte_swx_pipeline_run(struct rte_swx_pipeline *p,
+		     uint32_t n_instructions);
+
+/**
  * Pipeline free
  *
  * @param[in] p
