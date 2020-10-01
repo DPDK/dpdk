@@ -178,6 +178,26 @@ struct header_out_runtime {
 };
 
 /*
+ * Instruction.
+ */
+struct instruction {
+};
+
+/*
+ * Action.
+ */
+struct action {
+	TAILQ_ENTRY(action) node;
+	char name[RTE_SWX_NAME_SIZE];
+	struct struct_type *st;
+	struct instruction *instructions;
+	uint32_t n_instructions;
+	uint32_t id;
+};
+
+TAILQ_HEAD(action_tailq, action);
+
+/*
  * Pipeline.
  */
 struct thread {
@@ -216,9 +236,11 @@ struct rte_swx_pipeline {
 	struct header_tailq headers;
 	struct struct_type *metadata_st;
 	uint32_t metadata_struct_id;
+	struct action_tailq actions;
 
 	struct port_in_runtime *in;
 	struct port_out_runtime *out;
+	struct instruction **action_instructions;
 	struct thread threads[RTE_SWX_PIPELINE_THREADS_MAX];
 
 	uint32_t n_structs;
@@ -226,6 +248,7 @@ struct rte_swx_pipeline {
 	uint32_t n_ports_out;
 	uint32_t n_extern_objs;
 	uint32_t n_extern_funcs;
+	uint32_t n_actions;
 	uint32_t n_headers;
 	int build_done;
 	int numa_node;
@@ -1268,6 +1291,123 @@ metadata_free(struct rte_swx_pipeline *p)
 }
 
 /*
+ * Instruction.
+ */
+static int
+instruction_config(struct rte_swx_pipeline *p __rte_unused,
+		   struct action *a __rte_unused,
+		   const char **instructions __rte_unused,
+		   uint32_t n_instructions __rte_unused)
+{
+	return 0;
+}
+
+/*
+ * Action.
+ */
+static struct action *
+action_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct action *elem;
+
+	if (!name)
+		return NULL;
+
+	TAILQ_FOREACH(elem, &p->actions, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+int
+rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
+			       const char *name,
+			       const char *args_struct_type_name,
+			       const char **instructions,
+			       uint32_t n_instructions)
+{
+	struct struct_type *args_struct_type;
+	struct action *a;
+	int err;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!action_find(p, name), EEXIST);
+
+	if (args_struct_type_name) {
+		CHECK_NAME(args_struct_type_name, EINVAL);
+		args_struct_type = struct_type_find(p, args_struct_type_name);
+		CHECK(args_struct_type, EINVAL);
+	} else {
+		args_struct_type = NULL;
+	}
+
+	/* Node allocation. */
+	a = calloc(1, sizeof(struct action));
+	CHECK(a, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(a->name, name);
+	a->st = args_struct_type;
+	a->id = p->n_actions;
+
+	/* Instruction translation. */
+	err = instruction_config(p, a, instructions, n_instructions);
+	if (err) {
+		free(a);
+		return err;
+	}
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->actions, a, node);
+	p->n_actions++;
+
+	return 0;
+}
+
+static int
+action_build(struct rte_swx_pipeline *p)
+{
+	struct action *action;
+
+	p->action_instructions = calloc(p->n_actions,
+					sizeof(struct instruction *));
+	CHECK(p->action_instructions, ENOMEM);
+
+	TAILQ_FOREACH(action, &p->actions, node)
+		p->action_instructions[action->id] = action->instructions;
+
+	return 0;
+}
+
+static void
+action_build_free(struct rte_swx_pipeline *p)
+{
+	free(p->action_instructions);
+	p->action_instructions = NULL;
+}
+
+static void
+action_free(struct rte_swx_pipeline *p)
+{
+	action_build_free(p);
+
+	for ( ; ; ) {
+		struct action *action;
+
+		action = TAILQ_FIRST(&p->actions);
+		if (!action)
+			break;
+
+		TAILQ_REMOVE(&p->actions, action, node);
+		free(action->instructions);
+		free(action);
+	}
+}
+
+/*
  * Pipeline.
  */
 int
@@ -1292,6 +1432,7 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	TAILQ_INIT(&pipeline->extern_objs);
 	TAILQ_INIT(&pipeline->extern_funcs);
 	TAILQ_INIT(&pipeline->headers);
+	TAILQ_INIT(&pipeline->actions);
 
 	pipeline->n_structs = 1; /* Struct 0 is reserved for action_data. */
 	pipeline->numa_node = numa_node;
@@ -1306,6 +1447,7 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	if (!p)
 		return;
 
+	action_free(p);
 	metadata_free(p);
 	header_free(p);
 	extern_func_free(p);
@@ -1353,10 +1495,15 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = action_build(p);
+	if (status)
+		goto error;
+
 	p->build_done = 1;
 	return 0;
 
 error:
+	action_build_free(p);
 	metadata_build_free(p);
 	header_build_free(p);
 	extern_func_build_free(p);

@@ -344,6 +344,38 @@ int
 rte_swx_pipeline_packet_metadata_register(struct rte_swx_pipeline *p,
 					  const char *struct_type_name);
 
+/*
+ * Pipeline action
+ */
+
+/**
+ * Pipeline action configure
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Action name.
+ * @param[in] args_struct_type_name
+ *   The struct type instantiated by the action data. The action data represent
+ *   the action arguments that are stored in the table entry together with the
+ *   action ID. Set to NULL when the action does not have any arguments.
+ * @param[in] instructions
+ *   Action instructions.
+ * @param[in] n_instructions
+ *   Number of action instructions.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Action with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
+			       const char *name,
+			       const char *args_struct_type_name,
+			       const char **instructions,
+			       uint32_t n_instructions);
 
 /**
  * Pipeline build

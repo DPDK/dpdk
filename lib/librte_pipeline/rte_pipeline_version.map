@@ -60,6 +60,7 @@ EXPERIMENTAL {
 	rte_table_action_crypto_sym_session_get;
 
 	# added in 20.11
+	rte_swx_pipeline_action_config;
 	rte_swx_pipeline_build;
 	rte_swx_pipeline_config;
 	rte_swx_pipeline_extern_func_register;
