@@ -1,0 +1,118 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2020 Intel Corporation
+ */
+#ifndef __INCLUDE_RTE_SWX_PORT_H__
+#define __INCLUDE_RTE_SWX_PORT_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @file
+ * RTE SWX Port
+ *
+ * Packet I/O port interface.
+ */
+
+#include <stdint.h>
+
+/** Packet. */
+struct rte_swx_pkt {
+	/** Opaque packet handle. */
+	void *handle;
+
+	/** Buffer where the packet is stored. */
+	uint8_t *pkt;
+
+	/** Packet buffer offset of the first packet byte. */
+	uint32_t offset;
+
+	/** Packet length in bytes. */
+	uint32_t length;
+};
+
+/*
+ * Input port
+ */
+
+/**
+ * Input port create
+ *
+ * @param[in] args
+ *   Arguments for input port creation. Format specific to each port type.
+ * @return
+ *   Handle to input port instance on success, NULL on error.
+ */
+typedef void *
+(*rte_swx_port_in_create_t)(void *args);
+
+/**
+ * Input port free
+ *
+ * @param[in] args
+ *   Input port handle.
+ */
+typedef void
+(*rte_swx_port_in_free_t)(void *port);
+
+/**
+ * Input port packet receive
+ *
+ * @param[in] port
+ *   Input port handle.
+ * @param[out] pkt
+ *   Received packet. Only valid when the function returns 1. Must point to
+ *   valid memory.
+ * @return
+ *   0 when no packet was received, 1 when a packet was received. No other
+ *   return values are allowed.
+ */
+typedef int
+(*rte_swx_port_in_pkt_rx_t)(void *port,
+			    struct rte_swx_pkt *pkt);
+
+/** Input port statistics counters. */
+struct rte_swx_port_in_stats {
+	/** Number of packets. */
+	uint64_t n_pkts;
+
+	/** Number of bytes. */
+	uint64_t n_bytes;
+
+	/** Number of empty polls. */
+	uint64_t n_empty;
+};
+
+/**
+ * Input port statistics counters read
+ *
+ * @param[in] port
+ *   Input port handle.
+ * @param[out] stats
+ *   Input port statistics counters. Must point to valid memory.
+ */
+typedef void
+(*rte_swx_port_in_stats_read_t)(void *port,
+				struct rte_swx_port_in_stats *stats);
+
+/** Input port operations. */
+struct rte_swx_port_in_ops {
+	/** Create. Must be non-NULL. */
+	rte_swx_port_in_create_t create;
+
+	/** Free. Must be non-NULL. */
+	rte_swx_port_in_free_t free;
+
+	/** Packet reception. Must be non-NULL. */
+	rte_swx_port_in_pkt_rx_t pkt_rx;
+
+	/** Statistics counters read. Must be non-NULL. */
+	rte_swx_port_in_stats_read_t stats_read;
+};
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

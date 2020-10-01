@@ -18,6 +18,12 @@ extern "C" {
 
 #include <rte_compat.h>
 
+#include "rte_swx_port.h"
+
+/** Name size. */
+#ifndef RTE_SWX_NAME_SIZE
+#define RTE_SWX_NAME_SIZE 64
+#endif
 /*
  * Pipeline setup and operation
  */
@@ -43,6 +49,54 @@ int
 rte_swx_pipeline_config(struct rte_swx_pipeline **p,
 			int numa_node);
 
+/*
+ * Pipeline input ports
+ */
+
+/**
+ * Pipeline input port type register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Input port type name.
+ * @param[in] ops
+ *   Input port type operations.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Input port type with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_port_in_type_register(struct rte_swx_pipeline *p,
+				       const char *name,
+				       struct rte_swx_port_in_ops *ops);
+
+/**
+ * Pipeline input port configure
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] port_id
+ *   Input port ID.
+ * @param[in] port_type_name
+ *   Existing input port type name.
+ * @param[in] args
+ *   Input port creation arguments.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -ENODEV: Input port object creation error.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_port_in_config(struct rte_swx_pipeline *p,
+				uint32_t port_id,
+				const char *port_type_name,
+				void *args);
 /**
  * Pipeline build
  *

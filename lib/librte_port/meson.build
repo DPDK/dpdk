@@ -21,7 +21,8 @@ headers = files(
 	'rte_port_sched.h',
 	'rte_port_source_sink.h',
 	'rte_port_sym_crypto.h',
-	'rte_port_eventdev.h')
+	'rte_port_eventdev.h',
+	'rte_swx_port.h',)
 deps += ['ethdev', 'sched', 'ip_frag', 'cryptodev', 'eventdev']
 
 if dpdk_conf.has('RTE_PORT_PCAP')

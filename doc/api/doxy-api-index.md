@@ -168,6 +168,8 @@ The public API headers are grouped by topics:
     [table_action]     (@ref rte_table_action.h)
   * SWX pipeline:
     [pipeline]         (@ref rte_swx_pipeline.h)
+  * SWX port:
+    [port]             (@ref rte_swx_port.h)
   * [graph]            (@ref rte_graph.h):
     [graph_worker]     (@ref rte_graph_worker.h)
   * graph_nodes:
