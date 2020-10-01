@@ -5654,6 +5654,53 @@ instr_jmp_resolve(struct instruction *instructions,
 }
 
 static int
+instr_verify(struct rte_swx_pipeline *p __rte_unused,
+	     struct action *a,
+	     struct instruction *instr,
+	     struct instruction_data *data __rte_unused,
+	     uint32_t n_instructions)
+{
+	if (!a) {
+		enum instruction_type type;
+		uint32_t i;
+
+		/* Check that the first instruction is rx. */
+		CHECK(instr[0].type == INSTR_RX, EINVAL);
+
+		/* Check that there is at least one tx instruction. */
+		for (i = 0; i < n_instructions; i++) {
+			type = instr[i].type;
+
+			if (instr[i].type == INSTR_TX)
+				break;
+		}
+		CHECK(i < n_instructions, EINVAL);
+
+		/* Check that the last instruction is either tx or unconditional
+		 * jump.
+		 */
+		type = instr[n_instructions - 1].type;
+		CHECK((type == INSTR_TX) || (type == INSTR_JMP), EINVAL);
+	}
+
+	if (a) {
+		enum instruction_type type;
+		uint32_t i;
+
+		/* Check that there is at least one return or tx instruction. */
+		for (i = 0; i < n_instructions; i++) {
+			type = instr[i].type;
+
+			if ((type == INSTR_RETURN) || (type == INSTR_TX))
+				break;
+		}
+		CHECK(i < n_instructions, EINVAL);
+	}
+
+	return 0;
+}
+
+static int
 instruction_config(struct rte_swx_pipeline *p,
 		   struct action *a,
 		   const char **instructions,
@@ -5698,6 +5745,10 @@ instruction_config(struct rte_swx_pipeline *p,
 	}
 
 	err = instr_label_check(data, n_instructions);
+	if (err)
+		goto error;
+
+	err = instr_verify(p, a, instr, data, n_instructions);
 	if (err)
 		goto error;
 
