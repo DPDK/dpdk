@@ -18,7 +18,7 @@
  * @return
  *   - length
  */
-
+__rte_internal
 int32_t
 cpt_pmd_ops_helper_get_mlen_direct_mode(void);
 
@@ -29,6 +29,7 @@ cpt_pmd_ops_helper_get_mlen_direct_mode(void);
  * @return
  *   - length
  */
+__rte_internal
 int
 cpt_pmd_ops_helper_get_mlen_sg_mode(void);
 
@@ -38,6 +39,7 @@ cpt_pmd_ops_helper_get_mlen_sg_mode(void);
  * @return
  *  - length
  */
+__rte_internal
 int
 cpt_pmd_ops_helper_asym_get_mlen(void);
 
@@ -50,13 +52,13 @@ cpt_pmd_ops_helper_asym_get_mlen(void);
  * @return
  *  - 0 on success, negative on error
  */
-__rte_experimental
+__rte_internal
 int cpt_fpm_init(uint64_t *fpm_table_iova);
 
 /*
  * Clear ECC FMUL precomputed table
  */
-__rte_experimental
+__rte_internal
 void cpt_fpm_clear(void);
 
 #endif /* _CPT_PMD_OPS_HELPER_H_ */

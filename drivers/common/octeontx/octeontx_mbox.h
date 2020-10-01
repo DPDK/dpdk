@@ -35,11 +35,16 @@ struct octeontx_mbox_hdr {
 	uint8_t res_code; /* Functional layer response code */
 };
 
+__rte_internal
 int octeontx_mbox_init(void);
 void octeontx_set_global_domain(uint16_t global_domain);
+__rte_internal
 uint16_t octeontx_get_global_domain(void);
+__rte_internal
 int octeontx_mbox_set_ram_mbox_base(uint8_t *ram_mbox_base, uint16_t domain);
+__rte_internal
 int octeontx_mbox_set_reg(uint8_t *reg, uint16_t domain);
+__rte_internal
 int octeontx_mbox_send(struct octeontx_mbox_hdr *hdr,
 		void *txdata, uint16_t txlen, void *rxdata, uint16_t rxlen);
 

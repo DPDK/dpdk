@@ -1,4 +1,4 @@
-DPDK_21 {
+INTERNAL {
 	global:
 
 	rte_mvep_deinit;

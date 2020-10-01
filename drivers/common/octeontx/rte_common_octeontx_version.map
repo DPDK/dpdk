@@ -1,4 +1,4 @@
-DPDK_21 {
+INTERNAL {
 	global:
 
 	octeontx_get_global_domain;
