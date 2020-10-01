@@ -78,6 +78,17 @@ New Features
     ``--portmask=N``
     where N represents the hexadecimal bitmask of ports used.
 
+* **Updated the pipeline library for alignment with the P4 language.**
+
+  Added new Software Switch (SWX) pipeline type that provides more
+  flexibility through API and feature alignment with the P4 language.
+
+  * The packet headers, meta-data, actions, tables and pipelines are
+    dynamically defined instead of selected from pre-defined set.
+  * The actions and the pipeline are defined with instructions.
+  * Extern objects and functions can be plugged into the pipeline.
+  * Transaction-oriented table updates.
+
 
 Removed Items
 -------------
