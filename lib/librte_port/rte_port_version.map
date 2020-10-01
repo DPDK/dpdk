@@ -34,8 +34,12 @@ DPDK_21 {
 EXPERIMENTAL {
 	global:
 
+	# added in 19.11
 	rte_port_eventdev_reader_ops;
-	rte_port_eventdev_writer_ops;
 	rte_port_eventdev_writer_nodrop_ops;
+	rte_port_eventdev_writer_ops;
 
+	# added in 20.11
+	rte_swx_port_ethdev_reader_ops;
+	rte_swx_port_ethdev_writer_ops;
 };

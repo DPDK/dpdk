@@ -171,7 +171,8 @@ The public API headers are grouped by topics:
     [extern]           (@ref rte_swx_extern.h),
     [pipeline]         (@ref rte_swx_pipeline.h)
   * SWX port:
-    [port]             (@ref rte_swx_port.h)
+    [port]             (@ref rte_swx_port.h),
+    [ethdev]           (@ref rte_swx_port_ethdev.h)
   * SWX table:
     [table]            (@ref rte_swx_table.h)
   * [graph]            (@ref rte_graph.h):
