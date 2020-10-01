@@ -391,6 +391,176 @@ int
 rte_swx_pipeline_table_state_set(struct rte_swx_pipeline *p,
 				 struct rte_swx_table_state *table_state);
 
+/*
+ * High Level Reference Table Update API.
+ */
+
+/** Pipeline control opaque data structure. */
+struct rte_swx_ctl_pipeline;
+
+/**
+ * Pipeline control create
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @return
+ *   Pipeline control handle, on success, or NULL, on error.
+ */
+__rte_experimental
+struct rte_swx_ctl_pipeline *
+rte_swx_ctl_pipeline_create(struct rte_swx_pipeline *p);
+
+/**
+ * Pipeline table entry add
+ *
+ * Schedule entry for addition to table or update as part of the next commit
+ * operation.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] table_name
+ *   Table name.
+ * @param[in] entry
+ *   Entry to be added to the table.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_table_entry_add(struct rte_swx_ctl_pipeline *ctl,
+				     const char *table_name,
+				     struct rte_swx_table_entry *entry);
+
+/**
+ * Pipeline table default entry add
+ *
+ * Schedule table default entry update as part of the next commit operation.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] table_name
+ *   Table name.
+ * @param[in] entry
+ *   The new table default entry. The *key* and *key_mask* entry fields are
+ *   ignored.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_table_default_entry_add(struct rte_swx_ctl_pipeline *ctl,
+					     const char *table_name,
+					     struct rte_swx_table_entry *entry);
+
+/**
+ * Pipeline table entry delete
+ *
+ * Schedule entry for deletion from table as part of the next commit operation.
+ * Request is silently discarded if no such entry exists.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] table_name
+ *   Table name.
+ * @param[in] entry
+ *   Entry to be deleted from the table. The *action_id* and *action_data* entry
+ *   fields are ignored.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_table_entry_delete(struct rte_swx_ctl_pipeline *ctl,
+					const char *table_name,
+					struct rte_swx_table_entry *entry);
+
+/**
+ * Pipeline commit
+ *
+ * Perform all the scheduled table work.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] abort_on_fail
+ *   When non-zero (false), all the scheduled work is discarded after a failed
+ *   commit. Otherwise, the scheduled work is still kept pending for the next
+ *   commit.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_commit(struct rte_swx_ctl_pipeline *ctl,
+			    int abort_on_fail);
+
+/**
+ * Pipeline abort
+ *
+ * Discard all the scheduled table work.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ */
+__rte_experimental
+void
+rte_swx_ctl_pipeline_abort(struct rte_swx_ctl_pipeline *ctl);
+
+/**
+ * Pipeline table entry read
+ *
+ * Read table entry from string.
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] table_name
+ *   Table name.
+ * @param[in] string
+ *   String containing the table entry.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+struct rte_swx_table_entry *
+rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
+				      const char *table_name,
+				      const char *string);
+
+/**
+ * Pipeline table print to file
+ *
+ * Print all the table entries to file.
+ *
+ * @param[in] f
+ *   Output file.
+ * @param[in] ctl
+ *   Pipeline control handle.
+ * @param[in] table_name
+ *   Table name.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument.
+ */
+__rte_experimental
+int
+rte_swx_ctl_pipeline_table_fprintf(FILE *f,
+				   struct rte_swx_ctl_pipeline *ctl,
+				   const char *table_name);
+
+/**
+ * Pipeline control free
+ *
+ * @param[in] ctl
+ *   Pipeline control handle.
+ */
+__rte_experimental
+void
+rte_swx_ctl_pipeline_free(struct rte_swx_ctl_pipeline *ctl);
+
 #ifdef __cplusplus
 }
 #endif

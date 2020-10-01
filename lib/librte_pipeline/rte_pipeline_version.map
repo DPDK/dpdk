@@ -62,10 +62,19 @@ EXPERIMENTAL {
 	# added in 20.11
 	rte_swx_ctl_action_arg_info_get;
 	rte_swx_ctl_action_info_get;
+	rte_swx_ctl_pipeline_abort;
+	rte_swx_ctl_pipeline_commit;
+	rte_swx_ctl_pipeline_create;
+	rte_swx_ctl_pipeline_free;
 	rte_swx_ctl_pipeline_info_get;
 	rte_swx_ctl_pipeline_numa_node_get;
 	rte_swx_ctl_pipeline_port_in_stats_read;
 	rte_swx_ctl_pipeline_port_out_stats_read;
+	rte_swx_ctl_pipeline_table_default_entry_add;
+	rte_swx_ctl_pipeline_table_entry_add;
+	rte_swx_ctl_pipeline_table_entry_delete;
+	rte_swx_ctl_pipeline_table_entry_read;
+	rte_swx_ctl_pipeline_table_fprintf;
 	rte_swx_ctl_table_action_info_get;
 	rte_swx_ctl_table_info_get;
 	rte_swx_ctl_table_match_field_info_get;
