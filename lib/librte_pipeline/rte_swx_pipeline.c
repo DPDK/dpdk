@@ -267,6 +267,17 @@ enum instruction_type {
 	INSTR_DMA_HT6,
 	INSTR_DMA_HT7,
 	INSTR_DMA_HT8,
+
+	/* add dst src
+	 * dst += src
+	 * dst = HMEF, src = HMEFTI
+	 */
+	INSTR_ALU_ADD,    /* dst = MEF, src = MEF */
+	INSTR_ALU_ADD_MH, /* dst = MEF, src = H */
+	INSTR_ALU_ADD_HM, /* dst = H, src = MEF */
+	INSTR_ALU_ADD_HH, /* dst = H, src = H */
+	INSTR_ALU_ADD_MI, /* dst = MEF, src = I */
+	INSTR_ALU_ADD_HI, /* dst = H, src = I */
 };
 
 struct instr_operand {
@@ -322,6 +333,7 @@ struct instruction {
 		struct instr_hdr_validity valid;
 		struct instr_dst_src mov;
 		struct instr_dma dma;
+		struct instr_dst_src alu;
 	};
 };
 
@@ -435,6 +447,136 @@ struct thread {
 #define MASK64_BIT_GET(mask, pos) ((mask) & (1LLU << (pos)))
 #define MASK64_BIT_SET(mask, pos) ((mask) | (1LLU << (pos)))
 #define MASK64_BIT_CLR(mask, pos) ((mask) & ~(1LLU << (pos)))
+
+#define ALU(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->alu.dst.n_bits);       \
+	uint64_t dst = dst64 & dst64_mask;                                     \
+									       \
+	uint8_t *src_struct = (thread)->structs[(ip)->alu.src.struct_id];      \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->alu.src.offset];   \
+	uint64_t src64 = *src64_ptr;                                           \
+	uint64_t src64_mask = UINT64_MAX >> (64 - (ip)->alu.src.n_bits);       \
+	uint64_t src = src64 & src64_mask;                                     \
+									       \
+	uint64_t result = dst operator src;                                    \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | (result & dst64_mask);            \
+}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+#define ALU_S(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->alu.dst.n_bits);       \
+	uint64_t dst = dst64 & dst64_mask;                                     \
+									       \
+	uint8_t *src_struct = (thread)->structs[(ip)->alu.src.struct_id];      \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->alu.src.offset];   \
+	uint64_t src64 = *src64_ptr;                                           \
+	uint64_t src = ntoh64(src64) >> (64 - (ip)->alu.src.n_bits);           \
+									       \
+	uint64_t result = dst operator src;                                    \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | (result & dst64_mask);            \
+}
+
+#define ALU_MH ALU_S
+
+#define ALU_HM(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->alu.dst.n_bits);       \
+	uint64_t dst = ntoh64(dst64) >> (64 - (ip)->alu.dst.n_bits);           \
+									       \
+	uint8_t *src_struct = (thread)->structs[(ip)->alu.src.struct_id];      \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->alu.src.offset];   \
+	uint64_t src64 = *src64_ptr;                                           \
+	uint64_t src64_mask = UINT64_MAX >> (64 - (ip)->alu.src.n_bits);       \
+	uint64_t src = src64 & src64_mask;                                     \
+									       \
+	uint64_t result = dst operator src;                                    \
+	result = hton64(result << (64 - (ip)->alu.dst.n_bits));                \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | result;                           \
+}
+
+#define ALU_HH(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->alu.dst.n_bits);       \
+	uint64_t dst = ntoh64(dst64) >> (64 - (ip)->alu.dst.n_bits);           \
+									       \
+	uint8_t *src_struct = (thread)->structs[(ip)->alu.src.struct_id];      \
+	uint64_t *src64_ptr = (uint64_t *)&src_struct[(ip)->alu.src.offset];   \
+	uint64_t src64 = *src64_ptr;                                           \
+	uint64_t src = ntoh64(src64) >> (64 - (ip)->alu.src.n_bits);           \
+									       \
+	uint64_t result = dst operator src;                                    \
+	result = hton64(result << (64 - (ip)->alu.dst.n_bits));                \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | result;                           \
+}
+
+#else
+
+#define ALU_S ALU
+#define ALU_MH ALU
+#define ALU_HM ALU
+#define ALU_HH ALU
+
+#endif
+
+#define ALU_I(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->alu.dst.n_bits);       \
+	uint64_t dst = dst64 & dst64_mask;                                     \
+									       \
+	uint64_t src = (ip)->alu.src_val;                                      \
+									       \
+	uint64_t result = dst operator src;                                    \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | (result & dst64_mask);            \
+}
+
+#define ALU_MI ALU_I
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+#define ALU_HI(thread, ip, operator)  \
+{                                                                              \
+	uint8_t *dst_struct = (thread)->structs[(ip)->alu.dst.struct_id];      \
+	uint64_t *dst64_ptr = (uint64_t *)&dst_struct[(ip)->alu.dst.offset];   \
+	uint64_t dst64 = *dst64_ptr;                                           \
+	uint64_t dst64_mask = UINT64_MAX >> (64 - (ip)->alu.dst.n_bits);       \
+	uint64_t dst = ntoh64(dst64) >> (64 - (ip)->alu.dst.n_bits);           \
+									       \
+	uint64_t src = (ip)->alu.src_val;                                      \
+									       \
+	uint64_t result = dst operator src;                                    \
+	result = hton64(result << (64 - (ip)->alu.dst.n_bits));                \
+									       \
+	*dst64_ptr = (dst64 & ~dst64_mask) | result;                           \
+}
+
+#else
+
+#define ALU_HI ALU_I
+
+#endif
 
 #define MOV(thread, ip)  \
 {                                                                              \
@@ -2719,6 +2861,151 @@ instr_dma_ht8_exec(struct rte_swx_pipeline *p)
 	thread_ip_inc(p);
 }
 
+/*
+ * alu.
+ */
+static int
+instr_alu_add_translate(struct rte_swx_pipeline *p,
+			struct action *action,
+			char **tokens,
+			int n_tokens,
+			struct instruction *instr,
+			struct instruction_data *data __rte_unused)
+{
+	char *dst = tokens[1], *src = tokens[2];
+	struct field *fdst, *fsrc;
+	uint32_t dst_struct_id, src_struct_id, src_val;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
+	CHECK(fdst, EINVAL);
+
+	/* ADD, ADD_HM, ADD_MH, ADD_HH. */
+	fsrc = struct_field_parse(p, action, src, &src_struct_id);
+	if (fsrc) {
+		instr->type = INSTR_ALU_ADD;
+		if (dst[0] == 'h' && src[0] == 'm')
+			instr->type = INSTR_ALU_ADD_HM;
+		if (dst[0] == 'm' && src[0] == 'h')
+			instr->type = INSTR_ALU_ADD_MH;
+		if (dst[0] == 'h' && src[0] == 'h')
+			instr->type = INSTR_ALU_ADD_HH;
+
+		instr->alu.dst.struct_id = (uint8_t)dst_struct_id;
+		instr->alu.dst.n_bits = fdst->n_bits;
+		instr->alu.dst.offset = fdst->offset / 8;
+		instr->alu.src.struct_id = (uint8_t)src_struct_id;
+		instr->alu.src.n_bits = fsrc->n_bits;
+		instr->alu.src.offset = fsrc->offset / 8;
+		return 0;
+	}
+
+	/* ADD_MI, ADD_HI. */
+	src_val = strtoul(src, &src, 0);
+	CHECK(!src[0], EINVAL);
+
+	instr->type = INSTR_ALU_ADD_MI;
+	if (dst[0] == 'h')
+		instr->type = INSTR_ALU_ADD_HI;
+
+	instr->alu.dst.struct_id = (uint8_t)dst_struct_id;
+	instr->alu.dst.n_bits = fdst->n_bits;
+	instr->alu.dst.offset = fdst->offset / 8;
+	instr->alu.src_val = (uint32_t)src_val;
+	return 0;
+}
+
+static inline void
+instr_alu_add_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] add\n", p->thread_id);
+
+	/* Structs. */
+	ALU(t, ip, +);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_add_mh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] add (mh)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_MH(t, ip, +);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_add_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] add (hm)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HM(t, ip, +);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_add_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] add (hh)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HH(t, ip, +);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_add_mi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] add (mi)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_MI(t, ip, +);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_add_hi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] add (hi)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HI(t, ip, +);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
 #define RTE_SWX_INSTRUCTION_TOKENS_MAX 16
 
 static int
@@ -2819,6 +3106,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					   n_tokens - tpos,
 					   instr,
 					   data);
+
+	if (!strcmp(tokens[tpos], "add"))
+		return instr_alu_add_translate(p,
+					       action,
+					       &tokens[tpos],
+					       n_tokens - tpos,
+					       instr,
+					       data);
 
 	CHECK(0, EINVAL);
 }
@@ -2977,6 +3272,13 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_DMA_HT6] = instr_dma_ht6_exec,
 	[INSTR_DMA_HT7] = instr_dma_ht7_exec,
 	[INSTR_DMA_HT8] = instr_dma_ht8_exec,
+
+	[INSTR_ALU_ADD] = instr_alu_add_exec,
+	[INSTR_ALU_ADD_MH] = instr_alu_add_mh_exec,
+	[INSTR_ALU_ADD_HM] = instr_alu_add_hm_exec,
+	[INSTR_ALU_ADD_HH] = instr_alu_add_hh_exec,
+	[INSTR_ALU_ADD_MI] = instr_alu_add_mi_exec,
+	[INSTR_ALU_ADD_HI] = instr_alu_add_hi_exec,
 };
 
 static inline void
