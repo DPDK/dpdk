@@ -789,15 +789,12 @@ mlx5_ibv_drop_action_destroy(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device.
  * @param idx
  *   Queue index in DPDK Tx queue array.
- * @param rxq_obj
- *   Pointer to Tx queue object data.
  *
  * @return
- *   The QP Verbs object initialized, NULL otherwise and rte_errno is set.
+ *   The QP Verbs object, NULL otherwise and rte_errno is set.
  */
 static struct ibv_qp *
-mlx5_ibv_qp_new(struct rte_eth_dev *dev, uint16_t idx,
-		struct mlx5_txq_obj *txq_obj)
+mlx5_txq_ibv_qp_create(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
@@ -807,11 +804,11 @@ mlx5_ibv_qp_new(struct rte_eth_dev *dev, uint16_t idx,
 	struct ibv_qp_init_attr_ex qp_attr = { 0 };
 	const int desc = 1 << txq_data->elts_n;
 
-	MLX5_ASSERT(txq_ctrl->obj);
+	MLX5_ASSERT(txq_ctrl->obj->cq);
 	/* CQ to be associated with the send queue. */
-	qp_attr.send_cq = txq_obj->cq;
+	qp_attr.send_cq = txq_ctrl->obj->cq;
 	/* CQ to be associated with the receive queue. */
-	qp_attr.recv_cq = txq_obj->cq;
+	qp_attr.recv_cq = txq_ctrl->obj->cq;
 	/* Max number of outstanding WRs. */
 	qp_attr.cap.max_send_wr = ((priv->sh->device_attr.max_qp_wr < desc) ?
 				   priv->sh->device_attr.max_qp_wr : desc);
@@ -890,7 +887,7 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = errno;
 		goto error;
 	}
-	txq_obj->qp = mlx5_ibv_qp_new(dev, idx, txq_obj);
+	txq_obj->qp = mlx5_txq_ibv_qp_create(dev, idx);
 	if (txq_obj->qp == NULL) {
 		rte_errno = errno;
 		goto error;
