@@ -789,8 +789,7 @@ struct mlx5_obj_ops {
 	void (*hrxq_destroy)(struct mlx5_hrxq *hrxq);
 	int (*drop_action_create)(struct rte_eth_dev *dev);
 	void (*drop_action_destroy)(struct rte_eth_dev *dev);
-	struct mlx5_txq_obj *(*txq_obj_new)(struct rte_eth_dev *dev,
-					    uint16_t idx);
+	int (*txq_obj_new)(struct rte_eth_dev *dev, uint16_t idx);
 	void (*txq_obj_release)(struct mlx5_txq_obj *txq_obj);
 };
 

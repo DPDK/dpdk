@@ -520,9 +520,9 @@ out:
  *   Queue index in DPDK Tx queue array.
  *
  * @return
- *   The DevX/Verbs object initialized, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct mlx5_txq_obj *
+static int
 mlx5_os_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;

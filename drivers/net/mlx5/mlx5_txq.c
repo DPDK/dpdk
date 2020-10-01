@@ -1298,21 +1298,29 @@ int
 mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_txq_ctrl *txq;
+	struct mlx5_txq_ctrl *txq_ctrl;
 
 	if (!(*priv->txqs)[idx])
 		return 0;
-	txq = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	if (!rte_atomic32_dec_and_test(&txq->refcnt))
+	txq_ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
+	if (!rte_atomic32_dec_and_test(&txq_ctrl->refcnt))
 		return 1;
-	if (txq->obj) {
-		priv->obj_ops.txq_obj_release(txq->obj);
-		txq->obj = NULL;
+	if (txq_ctrl->obj) {
+		priv->obj_ops.txq_obj_release(txq_ctrl->obj);
+		LIST_REMOVE(txq_ctrl->obj, next);
+		mlx5_free(txq_ctrl->obj);
+		txq_ctrl->obj = NULL;
 	}
-	txq_free_elts(txq);
-	mlx5_mr_btree_free(&txq->txq.mr_ctrl.cache_bh);
-	LIST_REMOVE(txq, next);
-	mlx5_free(txq);
+	if (txq_ctrl->type == MLX5_TXQ_TYPE_STANDARD) {
+		if (txq_ctrl->txq.fcqs) {
+			mlx5_free(txq_ctrl->txq.fcqs);
+			txq_ctrl->txq.fcqs = NULL;
+		}
+		txq_free_elts(txq_ctrl);
+		mlx5_mr_btree_free(&txq_ctrl->txq.mr_ctrl.cache_bh);
+	}
+	LIST_REMOVE(txq_ctrl, next);
+	mlx5_free(txq_ctrl);
 	(*priv->txqs)[idx] = NULL;
 	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;

@@ -819,9 +819,9 @@ mlx5_devx_drop_action_destroy(struct rte_eth_dev *dev)
  *   Queue index in DPDK Tx queue array.
  *
  * @return
- *   The hairpin DevX object initialized, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct mlx5_txq_obj *
+static int
 mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -829,20 +829,11 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_txq_ctrl *txq_ctrl =
 		container_of(txq_data, struct mlx5_txq_ctrl, txq);
 	struct mlx5_devx_create_sq_attr attr = { 0 };
-	struct mlx5_txq_obj *tmpl = NULL;
+	struct mlx5_txq_obj *tmpl = txq_ctrl->obj;
 	uint32_t max_wq_data;
 
 	MLX5_ASSERT(txq_data);
-	MLX5_ASSERT(!txq_ctrl->obj);
-	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl), 0,
-			   txq_ctrl->socket);
-	if (!tmpl) {
-		DRV_LOG(ERR,
-			"Port %u Tx queue %u cannot allocate memory resources.",
-			dev->data->port_id, txq_data->idx);
-		rte_errno = ENOMEM;
-		return NULL;
-	}
+	MLX5_ASSERT(tmpl);
 	tmpl->type = MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN;
 	tmpl->txq_ctrl = txq_ctrl;
 	attr.hairpin = 1;
@@ -854,9 +845,8 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 			DRV_LOG(ERR, "Total data size %u power of 2 is "
 				"too large for hairpin.",
 				priv->config.log_hp_size);
-			mlx5_free(tmpl);
 			rte_errno = ERANGE;
-			return NULL;
+			return -rte_errno;
 		}
 		attr.wq_attr.log_hairpin_data_sz = priv->config.log_hp_size;
 	} else {
@@ -874,14 +864,10 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 		DRV_LOG(ERR,
 			"Port %u tx hairpin queue %u can't create SQ object.",
 			dev->data->port_id, idx);
-		mlx5_free(tmpl);
 		rte_errno = errno;
-		return NULL;
+		return -rte_errno;
 	}
-	DRV_LOG(DEBUG, "Port %u sxq %u updated with %p.", dev->data->port_id,
-		idx, (void *)&tmpl);
-	LIST_INSERT_HEAD(&priv->txqsobj, tmpl, next);
-	return tmpl;
+	return 0;
 }
 
 #ifdef HAVE_MLX5DV_DEVX_UAR_OFFSET
@@ -1179,9 +1165,9 @@ error:
  *   Queue index in DPDK Tx queue array.
  *
  * @return
- *   The DevX object initialized, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-struct mlx5_txq_obj *
+int
 mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -1195,27 +1181,17 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	DRV_LOG(ERR, "Port %u Tx queue %u cannot create with DevX, no UAR.",
 		     dev->data->port_id, idx);
 	rte_errno = ENOMEM;
-	return NULL;
+	return -rte_errno;
 #else
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_devx_modify_sq_attr msq_attr = { 0 };
-	struct mlx5_txq_obj *txq_obj = NULL;
+	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
 	void *reg_addr;
 	uint32_t cqe_n;
 	int ret = 0;
 
 	MLX5_ASSERT(txq_data);
-	MLX5_ASSERT(!txq_ctrl->obj);
-	txq_obj = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-			      sizeof(struct mlx5_txq_obj), 0,
-			      txq_ctrl->socket);
-	if (!txq_obj) {
-		DRV_LOG(ERR,
-			"Port %u Tx queue %u cannot allocate memory resources.",
-			dev->data->port_id, txq_data->idx);
-		rte_errno = ENOMEM;
-		return NULL;
-	}
+	MLX5_ASSERT(txq_obj);
 	txq_obj->type = MLX5_TXQ_OBJ_TYPE_DEVX_SQ;
 	txq_obj->txq_ctrl = txq_ctrl;
 	txq_obj->dev = dev;
@@ -1267,17 +1243,6 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 			dev->data->port_id, idx);
 		goto error;
 	}
-	txq_data->fcqs = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-				     txq_data->cqe_s * sizeof(*txq_data->fcqs),
-				     RTE_CACHE_LINE_SIZE,
-				     txq_ctrl->socket);
-	if (!txq_data->fcqs) {
-		DRV_LOG(ERR,
-			"Port %u Tx queue %u cannot allocate memory (FCQ).",
-			dev->data->port_id, idx);
-		rte_errno = ENOMEM;
-		goto error;
-	}
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/*
 	 * If using DevX need to query and store TIS transport domain value.
@@ -1294,18 +1259,12 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_ctrl->uar_mmap_offset =
 				mlx5_os_get_devx_uar_mmap_offset(sh->tx_uar);
 	txq_uar_init(txq_ctrl);
-	LIST_INSERT_HEAD(&priv->txqsobj, txq_obj, next);
-	return txq_obj;
+	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
 	txq_release_devx_resources(txq_obj);
-	if (txq_data->fcqs) {
-		mlx5_free(txq_data->fcqs);
-		txq_data->fcqs = NULL;
-	}
-	mlx5_free(txq_obj);
 	rte_errno = ret; /* Restore rte_errno. */
-	return NULL;
+	return -rte_errno;
 #endif
 }
 
@@ -1327,12 +1286,6 @@ mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj)
 		txq_release_devx_resources(txq_obj);
 #endif
 	}
-	if (txq_obj->txq_ctrl->txq.fcqs) {
-		mlx5_free(txq_obj->txq_ctrl->txq.fcqs);
-		txq_obj->txq_ctrl->txq.fcqs = NULL;
-	}
-	LIST_REMOVE(txq_obj, next);
-	mlx5_free(txq_obj);
 }
 
 struct mlx5_obj_ops devx_obj_ops = {

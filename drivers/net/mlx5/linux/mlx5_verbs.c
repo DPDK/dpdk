@@ -807,7 +807,7 @@ mlx5_ibv_qp_new(struct rte_eth_dev *dev, uint16_t idx,
 	struct ibv_qp_init_attr_ex qp_attr = { 0 };
 	const int desc = 1 << txq_data->elts_n;
 
-	MLX5_ASSERT(!txq_ctrl->obj);
+	MLX5_ASSERT(txq_ctrl->obj);
 	/* CQ to be associated with the send queue. */
 	qp_attr.send_cq = txq_obj->cq;
 	/* CQ to be associated with the receive queue. */
@@ -851,17 +851,16 @@ mlx5_ibv_qp_new(struct rte_eth_dev *dev, uint16_t idx,
  *   Queue index in DPDK Tx queue array.
  *
  * @return
- *   The Verbs object initialized, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-struct mlx5_txq_obj *
+int
 mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
 	struct mlx5_txq_ctrl *txq_ctrl =
 		container_of(txq_data, struct mlx5_txq_ctrl, txq);
-	struct mlx5_txq_obj tmpl;
-	struct mlx5_txq_obj *txq_obj = NULL;
+	struct mlx5_txq_obj *txq_obj = txq_ctrl->obj;
 	struct ibv_qp_attr mod;
 	unsigned int cqe_n;
 	struct mlx5dv_qp qp;
@@ -871,26 +870,28 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	int ret = 0;
 
 	MLX5_ASSERT(txq_data);
+	MLX5_ASSERT(txq_obj);
+	txq_obj->type = MLX5_TXQ_OBJ_TYPE_IBV;
+	txq_obj->txq_ctrl = txq_ctrl;
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_TX_QUEUE;
 	priv->verbs_alloc_ctx.obj = txq_ctrl;
 	if (mlx5_getenv_int("MLX5_ENABLE_CQE_COMPRESSION")) {
 		DRV_LOG(ERR, "Port %u MLX5_ENABLE_CQE_COMPRESSION "
 			"must never be set.", dev->data->port_id);
 		rte_errno = EINVAL;
-		return NULL;
+		return -rte_errno;
 	}
-	memset(&tmpl, 0, sizeof(struct mlx5_txq_obj));
 	cqe_n = desc / MLX5_TX_COMP_THRESH +
 		1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
-	tmpl.cq = mlx5_glue->create_cq(priv->sh->ctx, cqe_n, NULL, NULL, 0);
-	if (tmpl.cq == NULL) {
+	txq_obj->cq = mlx5_glue->create_cq(priv->sh->ctx, cqe_n, NULL, NULL, 0);
+	if (txq_obj->cq == NULL) {
 		DRV_LOG(ERR, "Port %u Tx queue %u CQ creation failure.",
 			dev->data->port_id, idx);
 		rte_errno = errno;
 		goto error;
 	}
-	tmpl.qp = mlx5_ibv_qp_new(dev, idx, &tmpl);
-	if (tmpl.qp == NULL) {
+	txq_obj->qp = mlx5_ibv_qp_new(dev, idx, txq_obj);
+	if (txq_obj->qp == NULL) {
 		rte_errno = errno;
 		goto error;
 	}
@@ -900,7 +901,8 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		/* IB device port number. */
 		.port_num = (uint8_t)priv->dev_port,
 	};
-	ret = mlx5_glue->modify_qp(tmpl.qp, &mod, (IBV_QP_STATE | IBV_QP_PORT));
+	ret = mlx5_glue->modify_qp(txq_obj->qp, &mod,
+				   (IBV_QP_STATE | IBV_QP_PORT));
 	if (ret) {
 		DRV_LOG(ERR,
 			"Port %u Tx queue %u QP state to IBV_QPS_INIT failed.",
@@ -911,7 +913,7 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	mod = (struct ibv_qp_attr){
 		.qp_state = IBV_QPS_RTR
 	};
-	ret = mlx5_glue->modify_qp(tmpl.qp, &mod, IBV_QP_STATE);
+	ret = mlx5_glue->modify_qp(txq_obj->qp, &mod, IBV_QP_STATE);
 	if (ret) {
 		DRV_LOG(ERR,
 			"Port %u Tx queue %u QP state to IBV_QPS_RTR failed.",
@@ -920,21 +922,12 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	mod.qp_state = IBV_QPS_RTS;
-	ret = mlx5_glue->modify_qp(tmpl.qp, &mod, IBV_QP_STATE);
+	ret = mlx5_glue->modify_qp(txq_obj->qp, &mod, IBV_QP_STATE);
 	if (ret) {
 		DRV_LOG(ERR,
 			"Port %u Tx queue %u QP state to IBV_QPS_RTS failed.",
 			dev->data->port_id, idx);
 		rte_errno = errno;
-		goto error;
-	}
-	txq_obj = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-			      sizeof(struct mlx5_txq_obj), 0,
-			      txq_ctrl->socket);
-	if (!txq_obj) {
-		DRV_LOG(ERR, "Port %u Tx queue %u cannot allocate memory.",
-			dev->data->port_id, idx);
-		rte_errno = ENOMEM;
 		goto error;
 	}
 	qp.comp_mask = MLX5DV_QP_MASK_UAR_MMAP_OFFSET;
@@ -943,9 +936,9 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	if (priv->sh->devx && !priv->sh->tdn)
 		qp.comp_mask |= MLX5DV_QP_MASK_RAW_QP_HANDLES;
 #endif
-	obj.cq.in = tmpl.cq;
+	obj.cq.in = txq_obj->cq;
 	obj.cq.out = &cq_info;
-	obj.qp.in = tmpl.qp;
+	obj.qp.in = txq_obj->qp;
 	obj.qp.out = &qp;
 	ret = mlx5_glue->dv_init_obj(&obj, MLX5DV_OBJ_CQ | MLX5DV_OBJ_QP);
 	if (ret != 0) {
@@ -963,7 +956,7 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->cqe_n = log2above(cq_info.cqe_cnt);
 	txq_data->cqe_s = 1 << txq_data->cqe_n;
 	txq_data->cqe_m = txq_data->cqe_s - 1;
-	txq_data->qp_num_8s = ((struct ibv_qp *)tmpl.qp)->qp_num << 8;
+	txq_data->qp_num_8s = ((struct ibv_qp *)txq_obj->qp)->qp_num << 8;
 	txq_data->wqes = qp.sq.buf;
 	txq_data->wqe_n = log2above(qp.sq.wqe_cnt);
 	txq_data->wqe_s = 1 << txq_data->wqe_n;
@@ -978,15 +971,6 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_data->wqe_pi = 0;
 	txq_data->wqe_comp = 0;
 	txq_data->wqe_thres = txq_data->wqe_s / MLX5_TX_COMP_THRESH_INLINE_DIV;
-	txq_data->fcqs = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-				     txq_data->cqe_s * sizeof(*txq_data->fcqs),
-				     RTE_CACHE_LINE_SIZE, txq_ctrl->socket);
-	if (!txq_data->fcqs) {
-		DRV_LOG(ERR, "Port %u Tx queue %u can't allocate memory (FCQ).",
-			dev->data->port_id, idx);
-		rte_errno = ENOMEM;
-		goto error;
-	}
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/*
 	 * If using DevX need to query and store TIS transport domain value.
@@ -994,7 +978,7 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	 * Will use this value on Rx, when creating matching TIR.
 	 */
 	if (priv->sh->devx && !priv->sh->tdn) {
-		ret = mlx5_devx_cmd_qp_query_tis_td(tmpl.qp, qp.tisn,
+		ret = mlx5_devx_cmd_qp_query_tis_td(txq_obj->qp, qp.tisn,
 						    &priv->sh->tdn);
 		if (ret) {
 			DRV_LOG(ERR, "Fail to query port %u Tx queue %u QP TIS "
@@ -1008,8 +992,6 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		}
 	}
 #endif
-	txq_obj->qp = tmpl.qp;
-	txq_obj->cq = tmpl.cq;
 	txq_ctrl->bf_reg = qp.bf.reg;
 	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
 		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
@@ -1024,25 +1006,17 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	txq_uar_init(txq_ctrl);
-	txq_obj->txq_ctrl = txq_ctrl;
-	LIST_INSERT_HEAD(&priv->txqsobj, txq_obj, next);
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
-	return txq_obj;
+	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
-	if (tmpl.cq)
-		claim_zero(mlx5_glue->destroy_cq(tmpl.cq));
-	if (tmpl.qp)
-		claim_zero(mlx5_glue->destroy_qp(tmpl.qp));
-	if (txq_data->fcqs) {
-		mlx5_free(txq_data->fcqs);
-		txq_data->fcqs = NULL;
-	}
-	if (txq_obj)
-		mlx5_free(txq_obj);
+	if (txq_obj->cq)
+		claim_zero(mlx5_glue->destroy_cq(txq_obj->cq));
+	if (txq_obj->qp)
+		claim_zero(mlx5_glue->destroy_qp(txq_obj->qp));
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	rte_errno = ret; /* Restore rte_errno. */
-	return NULL;
+	return -rte_errno;
 }
 
 /**
@@ -1057,12 +1031,6 @@ mlx5_txq_ibv_obj_release(struct mlx5_txq_obj *txq_obj)
 	MLX5_ASSERT(txq_obj);
 	claim_zero(mlx5_glue->destroy_qp(txq_obj->qp));
 	claim_zero(mlx5_glue->destroy_cq(txq_obj->cq));
-	if (txq_obj->txq_ctrl->txq.fcqs) {
-		mlx5_free(txq_obj->txq_ctrl->txq.fcqs);
-		txq_obj->txq_ctrl->txq.fcqs = NULL;
-	}
-	LIST_REMOVE(txq_obj, next);
-	mlx5_free(txq_obj);
 }
 
 struct mlx5_obj_ops ibv_obj_ops = {

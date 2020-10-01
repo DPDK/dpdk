@@ -12,8 +12,7 @@ struct mlx5_verbs_ops {
 	mlx5_dereg_mr_t dereg_mr;
 };
 
-struct mlx5_txq_obj *mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev,
-					  uint16_t idx);
+int mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx);
 void mlx5_txq_ibv_obj_release(struct mlx5_txq_obj *txq_obj);
 
 /* Verbs ops struct */
