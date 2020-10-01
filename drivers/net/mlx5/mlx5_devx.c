@@ -208,7 +208,7 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_obj *rxq_obj)
 {
 	MLX5_ASSERT(rxq_obj);
 	MLX5_ASSERT(rxq_obj->rq);
-	if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN) {
+	if (rxq_obj->rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN) {
 		mlx5_devx_modify_rq(rxq_obj, MLX5_RXQ_MOD_RDY2RST);
 		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
 	} else {
@@ -550,7 +550,6 @@ mlx5_rxq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 
 	MLX5_ASSERT(rxq_data);
 	MLX5_ASSERT(tmpl);
-	tmpl->type = MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN;
 	tmpl->rxq_ctrl = rxq_ctrl;
 	attr.hairpin = 1;
 	max_wq_data = priv->config.hca_attr.log_max_hairpin_wq_data_sz;
@@ -611,7 +610,6 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	MLX5_ASSERT(tmpl);
 	if (rxq_ctrl->type == MLX5_RXQ_TYPE_HAIRPIN)
 		return mlx5_rxq_obj_hairpin_new(dev, idx);
-	tmpl->type = MLX5_RXQ_OBJ_TYPE_DEVX_RQ;
 	tmpl->rxq_ctrl = rxq_ctrl;
 	if (rxq_ctrl->irq) {
 		int devx_ev_flag =
