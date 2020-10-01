@@ -1147,7 +1147,7 @@ vhost_enqueue_single_packed(struct virtio_net *dev,
 	uint16_t buf_id = 0;
 	uint32_t len = 0;
 	uint16_t desc_count;
-	uint32_t size = pkt->pkt_len + dev->vhost_hlen;
+	uint32_t size = pkt->pkt_len + sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	uint16_t num_buffers = 0;
 	uint32_t buffer_len[vq->size];
 	uint16_t buffer_buf_id[vq->size];
@@ -1262,7 +1262,7 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 	uint16_t avail_idx = vq->last_avail_idx;
 	uint64_t desc_addrs[PACKED_BATCH_SIZE];
 	struct virtio_net_hdr_mrg_rxbuf *hdrs[PACKED_BATCH_SIZE];
-	uint32_t buf_offset = dev->vhost_hlen;
+	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	uint64_t lens[PACKED_BATCH_SIZE];
 	uint16_t ids[PACKED_BATCH_SIZE];
 	uint16_t i;
@@ -1308,7 +1308,8 @@ virtio_dev_rx_batch_packed(struct virtio_net *dev,
 		rte_prefetch0((void *)(uintptr_t)desc_addrs[i]);
 		hdrs[i] = (struct virtio_net_hdr_mrg_rxbuf *)
 					(uintptr_t)desc_addrs[i];
-		lens[i] = pkts[i]->pkt_len + dev->vhost_hlen;
+		lens[i] = pkts[i]->pkt_len +
+			sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	}
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
@@ -2263,7 +2264,7 @@ vhost_reserve_avail_batch_packed(struct virtio_net *dev,
 	struct virtio_net_hdr *hdr;
 	uint64_t lens[PACKED_BATCH_SIZE];
 	uint64_t buf_lens[PACKED_BATCH_SIZE];
-	uint32_t buf_offset = dev->vhost_hlen;
+	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	uint16_t flags, i;
 
 	if (unlikely(avail_idx & PACKED_BATCH_MASK))
@@ -2340,7 +2341,7 @@ virtio_dev_tx_batch_packed(struct virtio_net *dev,
 			   struct rte_mbuf **pkts)
 {
 	uint16_t avail_idx = vq->last_avail_idx;
-	uint32_t buf_offset = dev->vhost_hlen;
+	uint32_t buf_offset = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	uintptr_t desc_addrs[PACKED_BATCH_SIZE];
 	uint16_t ids[PACKED_BATCH_SIZE];
 	uint16_t i;
