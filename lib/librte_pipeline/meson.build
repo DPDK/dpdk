@@ -9,5 +9,6 @@ headers = files('rte_pipeline.h',
 	'rte_port_in_action.h',
 	'rte_table_action.h',
 	'rte_swx_pipeline.h',
-	'rte_swx_extern.h',)
+	'rte_swx_extern.h',
+	'rte_swx_ctl.h',)
 deps += ['port', 'table', 'meter', 'sched', 'cryptodev']

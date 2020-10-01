@@ -10,6 +10,7 @@
 #include <rte_common.h>
 
 #include "rte_swx_pipeline.h"
+#include "rte_swx_ctl.h"
 
 #define CHECK(condition, err_code)                                             \
 do {                                                                           \
@@ -198,6 +199,55 @@ struct action {
 TAILQ_HEAD(action_tailq, action);
 
 /*
+ * Table.
+ */
+struct table_type {
+	TAILQ_ENTRY(table_type) node;
+	char name[RTE_SWX_NAME_SIZE];
+	enum rte_swx_table_match_type match_type;
+	struct rte_swx_table_ops ops;
+};
+
+TAILQ_HEAD(table_type_tailq, table_type);
+
+struct match_field {
+	enum rte_swx_table_match_type match_type;
+	struct field *field;
+};
+
+struct table {
+	TAILQ_ENTRY(table) node;
+	char name[RTE_SWX_NAME_SIZE];
+	char args[RTE_SWX_NAME_SIZE];
+	struct table_type *type; /* NULL when n_fields == 0. */
+
+	/* Match. */
+	struct match_field *fields;
+	uint32_t n_fields;
+	int is_header; /* Only valid when n_fields > 0. */
+	struct header *header; /* Only valid when n_fields > 0. */
+
+	/* Action. */
+	struct action **actions;
+	struct action *default_action;
+	uint8_t *default_action_data;
+	uint32_t n_actions;
+	int default_action_is_const;
+	uint32_t action_data_size_max;
+
+	uint32_t size;
+	uint32_t id;
+};
+
+TAILQ_HEAD(table_tailq, table);
+
+struct table_runtime {
+	rte_swx_table_lookup_t func;
+	void *mailbox;
+	uint8_t **key;
+};
+
+/*
  * Pipeline.
  */
 struct thread {
@@ -214,6 +264,12 @@ struct thread {
 
 	/* Packet meta-data. */
 	uint8_t *metadata;
+
+	/* Tables. */
+	struct table_runtime *tables;
+	struct rte_swx_table_state *table_state;
+	uint64_t action_id;
+	int hit; /* 0 = Miss, 1 = Hit. */
 
 	/* Extern objects and functions. */
 	struct extern_obj_runtime *extern_objs;
@@ -237,10 +293,13 @@ struct rte_swx_pipeline {
 	struct struct_type *metadata_st;
 	uint32_t metadata_struct_id;
 	struct action_tailq actions;
+	struct table_type_tailq table_types;
+	struct table_tailq tables;
 
 	struct port_in_runtime *in;
 	struct port_out_runtime *out;
 	struct instruction **action_instructions;
+	struct rte_swx_table_state *table_state;
 	struct thread threads[RTE_SWX_PIPELINE_THREADS_MAX];
 
 	uint32_t n_structs;
@@ -249,6 +308,7 @@ struct rte_swx_pipeline {
 	uint32_t n_extern_objs;
 	uint32_t n_extern_funcs;
 	uint32_t n_actions;
+	uint32_t n_tables;
 	uint32_t n_headers;
 	int build_done;
 	int numa_node;
@@ -265,6 +325,21 @@ struct_type_find(struct rte_swx_pipeline *p, const char *name)
 	TAILQ_FOREACH(elem, &p->struct_types, node)
 		if (strcmp(elem->name, name) == 0)
 			return elem;
+
+	return NULL;
+}
+
+static struct field *
+struct_type_field_find(struct struct_type *st, const char *name)
+{
+	uint32_t i;
+
+	for (i = 0; i < st->n_fields; i++) {
+		struct field *f = &st->fields[i];
+
+		if (strcmp(f->name, name) == 0)
+			return f;
+	}
 
 	return NULL;
 }
@@ -1106,6 +1181,50 @@ header_find(struct rte_swx_pipeline *p, const char *name)
 	return NULL;
 }
 
+static struct field *
+header_field_parse(struct rte_swx_pipeline *p,
+		   const char *name,
+		   struct header **header)
+{
+	struct header *h;
+	struct field *f;
+	char *header_name, *field_name;
+
+	if ((name[0] != 'h') || (name[1] != '.'))
+		return NULL;
+
+	header_name = strdup(&name[2]);
+	if (!header_name)
+		return NULL;
+
+	field_name = strchr(header_name, '.');
+	if (!field_name) {
+		free(header_name);
+		return NULL;
+	}
+
+	*field_name = 0;
+	field_name++;
+
+	h = header_find(p, header_name);
+	if (!h) {
+		free(header_name);
+		return NULL;
+	}
+
+	f = struct_type_field_find(h->st, field_name);
+	if (!f) {
+		free(header_name);
+		return NULL;
+	}
+
+	if (header)
+		*header = h;
+
+	free(header_name);
+	return f;
+}
+
 int
 rte_swx_pipeline_packet_header_register(struct rte_swx_pipeline *p,
 					const char *name,
@@ -1229,6 +1348,18 @@ header_free(struct rte_swx_pipeline *p)
 /*
  * Meta-data.
  */
+static struct field *
+metadata_field_parse(struct rte_swx_pipeline *p, const char *name)
+{
+	if (!p->metadata_st)
+		return NULL;
+
+	if (name[0] != 'm' || name[1] != '.')
+		return NULL;
+
+	return struct_type_field_find(p->metadata_st, &name[2]);
+}
+
 int
 rte_swx_pipeline_packet_metadata_register(struct rte_swx_pipeline *p,
 					  const char *struct_type_name)
@@ -1408,6 +1539,536 @@ action_free(struct rte_swx_pipeline *p)
 }
 
 /*
+ * Table.
+ */
+static struct table_type *
+table_type_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct table_type *elem;
+
+	TAILQ_FOREACH(elem, &p->table_types, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+static struct table_type *
+table_type_resolve(struct rte_swx_pipeline *p,
+		   const char *recommended_type_name,
+		   enum rte_swx_table_match_type match_type)
+{
+	struct table_type *elem;
+
+	/* Only consider the recommended type if the match type is correct. */
+	if (recommended_type_name)
+		TAILQ_FOREACH(elem, &p->table_types, node)
+			if (!strcmp(elem->name, recommended_type_name) &&
+			    (elem->match_type == match_type))
+				return elem;
+
+	/* Ignore the recommended type and get the first element with this match
+	 * type.
+	 */
+	TAILQ_FOREACH(elem, &p->table_types, node)
+		if (elem->match_type == match_type)
+			return elem;
+
+	return NULL;
+}
+
+static struct table *
+table_find(struct rte_swx_pipeline *p, const char *name)
+{
+	struct table *elem;
+
+	TAILQ_FOREACH(elem, &p->tables, node)
+		if (strcmp(elem->name, name) == 0)
+			return elem;
+
+	return NULL;
+}
+
+static struct table *
+table_find_by_id(struct rte_swx_pipeline *p, uint32_t id)
+{
+	struct table *table = NULL;
+
+	TAILQ_FOREACH(table, &p->tables, node)
+		if (table->id == id)
+			return table;
+
+	return NULL;
+}
+
+int
+rte_swx_pipeline_table_type_register(struct rte_swx_pipeline *p,
+				     const char *name,
+				     enum rte_swx_table_match_type match_type,
+				     struct rte_swx_table_ops *ops)
+{
+	struct table_type *elem;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!table_type_find(p, name), EEXIST);
+
+	CHECK(ops, EINVAL);
+	CHECK(ops->create, EINVAL);
+	CHECK(ops->lkp, EINVAL);
+	CHECK(ops->free, EINVAL);
+
+	/* Node allocation. */
+	elem = calloc(1, sizeof(struct table_type));
+	CHECK(elem, ENOMEM);
+
+	/* Node initialization. */
+	strcpy(elem->name, name);
+	elem->match_type = match_type;
+	memcpy(&elem->ops, ops, sizeof(*ops));
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->table_types, elem, node);
+
+	return 0;
+}
+
+static enum rte_swx_table_match_type
+table_match_type_resolve(struct rte_swx_match_field_params *fields,
+			 uint32_t n_fields)
+{
+	uint32_t i;
+
+	for (i = 0; i < n_fields; i++)
+		if (fields[i].match_type != RTE_SWX_TABLE_MATCH_EXACT)
+			break;
+
+	if (i == n_fields)
+		return RTE_SWX_TABLE_MATCH_EXACT;
+
+	if ((i == n_fields - 1) &&
+	    (fields[i].match_type == RTE_SWX_TABLE_MATCH_LPM))
+		return RTE_SWX_TABLE_MATCH_LPM;
+
+	return RTE_SWX_TABLE_MATCH_WILDCARD;
+}
+
+int
+rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
+			      const char *name,
+			      struct rte_swx_pipeline_table_params *params,
+			      const char *recommended_table_type_name,
+			      const char *args,
+			      uint32_t size)
+{
+	struct table_type *type;
+	struct table *t;
+	struct action *default_action;
+	struct header *header = NULL;
+	int is_header = 0;
+	uint32_t offset_prev = 0, action_data_size_max = 0, i;
+
+	CHECK(p, EINVAL);
+
+	CHECK_NAME(name, EINVAL);
+	CHECK(!table_find(p, name), EEXIST);
+
+	CHECK(params, EINVAL);
+
+	/* Match checks. */
+	CHECK(!params->n_fields || params->fields, EINVAL);
+	for (i = 0; i < params->n_fields; i++) {
+		struct rte_swx_match_field_params *field = &params->fields[i];
+		struct header *h;
+		struct field *hf, *mf;
+		uint32_t offset;
+
+		CHECK_NAME(field->name, EINVAL);
+
+		hf = header_field_parse(p, field->name, &h);
+		mf = metadata_field_parse(p, field->name);
+		CHECK(hf || mf, EINVAL);
+
+		offset = hf ? hf->offset : mf->offset;
+
+		if (i == 0) {
+			is_header = hf ? 1 : 0;
+			header = hf ? h : NULL;
+			offset_prev = offset;
+
+			continue;
+		}
+
+		CHECK((is_header && hf && (h->id == header->id)) ||
+		      (!is_header && mf), EINVAL);
+
+		CHECK(offset > offset_prev, EINVAL);
+		offset_prev = offset;
+	}
+
+	/* Action checks. */
+	CHECK(params->n_actions, EINVAL);
+	CHECK(params->action_names, EINVAL);
+	for (i = 0; i < params->n_actions; i++) {
+		const char *action_name = params->action_names[i];
+		struct action *a;
+		uint32_t action_data_size;
+
+		CHECK(action_name, EINVAL);
+
+		a = action_find(p, action_name);
+		CHECK(a, EINVAL);
+
+		action_data_size = a->st ? a->st->n_bits / 8 : 0;
+		if (action_data_size > action_data_size_max)
+			action_data_size_max = action_data_size;
+	}
+
+	CHECK(params->default_action_name, EINVAL);
+	for (i = 0; i < p->n_actions; i++)
+		if (!strcmp(params->action_names[i],
+			    params->default_action_name))
+			break;
+	CHECK(i < params->n_actions, EINVAL);
+	default_action = action_find(p, params->default_action_name);
+	CHECK((default_action->st && params->default_action_data) ||
+	      !params->default_action_data, EINVAL);
+
+	/* Table type checks. */
+	if (params->n_fields) {
+		enum rte_swx_table_match_type match_type;
+
+		match_type = table_match_type_resolve(params->fields,
+						      params->n_fields);
+		type = table_type_resolve(p,
+					  recommended_table_type_name,
+					  match_type);
+		CHECK(type, EINVAL);
+	} else {
+		type = NULL;
+	}
+
+	/* Memory allocation. */
+	t = calloc(1, sizeof(struct table));
+	CHECK(t, ENOMEM);
+
+	t->fields = calloc(params->n_fields, sizeof(struct match_field));
+	if (!t->fields) {
+		free(t);
+		CHECK(0, ENOMEM);
+	}
+
+	t->actions = calloc(params->n_actions, sizeof(struct action *));
+	if (!t->actions) {
+		free(t->fields);
+		free(t);
+		CHECK(0, ENOMEM);
+	}
+
+	if (action_data_size_max) {
+		t->default_action_data = calloc(1, action_data_size_max);
+		if (!t->default_action_data) {
+			free(t->actions);
+			free(t->fields);
+			free(t);
+			CHECK(0, ENOMEM);
+		}
+	}
+
+	/* Node initialization. */
+	strcpy(t->name, name);
+	if (args && args[0])
+		strcpy(t->args, args);
+	t->type = type;
+
+	for (i = 0; i < params->n_fields; i++) {
+		struct rte_swx_match_field_params *field = &params->fields[i];
+		struct match_field *f = &t->fields[i];
+
+		f->match_type = field->match_type;
+		f->field = is_header ?
+			header_field_parse(p, field->name, NULL) :
+			metadata_field_parse(p, field->name);
+	}
+	t->n_fields = params->n_fields;
+	t->is_header = is_header;
+	t->header = header;
+
+	for (i = 0; i < params->n_actions; i++)
+		t->actions[i] = action_find(p, params->action_names[i]);
+	t->default_action = default_action;
+	if (default_action->st)
+		memcpy(t->default_action_data,
+		       params->default_action_data,
+		       default_action->st->n_bits / 8);
+	t->n_actions = params->n_actions;
+	t->default_action_is_const = params->default_action_is_const;
+	t->action_data_size_max = action_data_size_max;
+
+	t->size = size;
+	t->id = p->n_tables;
+
+	/* Node add to tailq. */
+	TAILQ_INSERT_TAIL(&p->tables, t, node);
+	p->n_tables++;
+
+	return 0;
+}
+
+static struct rte_swx_table_params *
+table_params_get(struct table *table)
+{
+	struct rte_swx_table_params *params;
+	struct field *first, *last;
+	uint8_t *key_mask;
+	uint32_t key_size, key_offset, action_data_size, i;
+
+	/* Memory allocation. */
+	params = calloc(1, sizeof(struct rte_swx_table_params));
+	if (!params)
+		return NULL;
+
+	/* Key offset and size. */
+	first = table->fields[0].field;
+	last = table->fields[table->n_fields - 1].field;
+	key_offset = first->offset / 8;
+	key_size = (last->offset + last->n_bits - first->offset) / 8;
+
+	/* Memory allocation. */
+	key_mask = calloc(1, key_size);
+	if (!key_mask) {
+		free(params);
+		return NULL;
+	}
+
+	/* Key mask. */
+	for (i = 0; i < table->n_fields; i++) {
+		struct field *f = table->fields[i].field;
+		uint32_t start = (f->offset - first->offset) / 8;
+		size_t size = f->n_bits / 8;
+
+		memset(&key_mask[start], 0xFF, size);
+	}
+
+	/* Action data size. */
+	action_data_size = 0;
+	for (i = 0; i < table->n_actions; i++) {
+		struct action *action = table->actions[i];
+		uint32_t ads = action->st ? action->st->n_bits / 8 : 0;
+
+		if (ads > action_data_size)
+			action_data_size = ads;
+	}
+
+	/* Fill in. */
+	params->match_type = table->type->match_type;
+	params->key_size = key_size;
+	params->key_offset = key_offset;
+	params->key_mask0 = key_mask;
+	params->action_data_size = action_data_size;
+	params->n_keys_max = table->size;
+
+	return params;
+}
+
+static void
+table_params_free(struct rte_swx_table_params *params)
+{
+	if (!params)
+		return;
+
+	free(params->key_mask0);
+	free(params);
+}
+
+static int
+table_state_build(struct rte_swx_pipeline *p)
+{
+	struct table *table;
+
+	p->table_state = calloc(p->n_tables,
+				sizeof(struct rte_swx_table_state));
+	CHECK(p->table_state, ENOMEM);
+
+	TAILQ_FOREACH(table, &p->tables, node) {
+		struct rte_swx_table_state *ts = &p->table_state[table->id];
+
+		if (table->type) {
+			struct rte_swx_table_params *params;
+
+			/* ts->obj. */
+			params = table_params_get(table);
+			CHECK(params, ENOMEM);
+
+			ts->obj = table->type->ops.create(params,
+				NULL,
+				table->args,
+				p->numa_node);
+
+			table_params_free(params);
+			CHECK(ts->obj, ENODEV);
+		}
+
+		/* ts->default_action_data. */
+		if (table->action_data_size_max) {
+			ts->default_action_data =
+				malloc(table->action_data_size_max);
+			CHECK(ts->default_action_data, ENOMEM);
+
+			memcpy(ts->default_action_data,
+			       table->default_action_data,
+			       table->action_data_size_max);
+		}
+
+		/* ts->default_action_id. */
+		ts->default_action_id = table->default_action->id;
+	}
+
+	return 0;
+}
+
+static void
+table_state_build_free(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	if (!p->table_state)
+		return;
+
+	for (i = 0; i < p->n_tables; i++) {
+		struct rte_swx_table_state *ts = &p->table_state[i];
+		struct table *table = table_find_by_id(p, i);
+
+		/* ts->obj. */
+		if (table->type && ts->obj)
+			table->type->ops.free(ts->obj);
+
+		/* ts->default_action_data. */
+		free(ts->default_action_data);
+	}
+
+	free(p->table_state);
+	p->table_state = NULL;
+}
+
+static void
+table_state_free(struct rte_swx_pipeline *p)
+{
+	table_state_build_free(p);
+}
+
+static int
+table_stub_lkp(void *table __rte_unused,
+	       void *mailbox __rte_unused,
+	       uint8_t **key __rte_unused,
+	       uint64_t *action_id __rte_unused,
+	       uint8_t **action_data __rte_unused,
+	       int *hit)
+{
+	*hit = 0;
+	return 1; /* DONE. */
+}
+
+static int
+table_build(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+		struct table *table;
+
+		t->tables = calloc(p->n_tables, sizeof(struct table_runtime));
+		CHECK(t->tables, ENOMEM);
+
+		TAILQ_FOREACH(table, &p->tables, node) {
+			struct table_runtime *r = &t->tables[table->id];
+
+			if (table->type) {
+				uint64_t size;
+
+				size = table->type->ops.mailbox_size_get();
+
+				/* r->func. */
+				r->func = table->type->ops.lkp;
+
+				/* r->mailbox. */
+				if (size) {
+					r->mailbox = calloc(1, size);
+					CHECK(r->mailbox, ENOMEM);
+				}
+
+				/* r->key. */
+				r->key = table->is_header ?
+					&t->structs[table->header->struct_id] :
+					&t->structs[p->metadata_struct_id];
+			} else {
+				r->func = table_stub_lkp;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static void
+table_build_free(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+		uint32_t j;
+
+		if (!t->tables)
+			continue;
+
+		for (j = 0; j < p->n_tables; j++) {
+			struct table_runtime *r = &t->tables[j];
+
+			free(r->mailbox);
+		}
+
+		free(t->tables);
+		t->tables = NULL;
+	}
+}
+
+static void
+table_free(struct rte_swx_pipeline *p)
+{
+	table_build_free(p);
+
+	/* Tables. */
+	for ( ; ; ) {
+		struct table *elem;
+
+		elem = TAILQ_FIRST(&p->tables);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->tables, elem, node);
+		free(elem->fields);
+		free(elem->actions);
+		free(elem->default_action_data);
+		free(elem);
+	}
+
+	/* Table types. */
+	for ( ; ; ) {
+		struct table_type *elem;
+
+		elem = TAILQ_FIRST(&p->table_types);
+		if (!elem)
+			break;
+
+		TAILQ_REMOVE(&p->table_types, elem, node);
+		free(elem);
+	}
+}
+
+/*
  * Pipeline.
  */
 int
@@ -1433,6 +2094,8 @@ rte_swx_pipeline_config(struct rte_swx_pipeline **p, int numa_node)
 	TAILQ_INIT(&pipeline->extern_funcs);
 	TAILQ_INIT(&pipeline->headers);
 	TAILQ_INIT(&pipeline->actions);
+	TAILQ_INIT(&pipeline->table_types);
+	TAILQ_INIT(&pipeline->tables);
 
 	pipeline->n_structs = 1; /* Struct 0 is reserved for action_data. */
 	pipeline->numa_node = numa_node;
@@ -1447,6 +2110,8 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	if (!p)
 		return;
 
+	table_state_free(p);
+	table_free(p);
 	action_free(p);
 	metadata_free(p);
 	header_free(p);
@@ -1499,10 +2164,20 @@ rte_swx_pipeline_build(struct rte_swx_pipeline *p)
 	if (status)
 		goto error;
 
+	status = table_build(p);
+	if (status)
+		goto error;
+
+	status = table_state_build(p);
+	if (status)
+		goto error;
+
 	p->build_done = 1;
 	return 0;
 
 error:
+	table_state_build_free(p);
+	table_build_free(p);
 	action_build_free(p);
 	metadata_build_free(p);
 	header_build_free(p);
@@ -1513,4 +2188,29 @@ error:
 	struct_build_free(p);
 
 	return status;
+}
+
+/*
+ * Control.
+ */
+int
+rte_swx_pipeline_table_state_get(struct rte_swx_pipeline *p,
+				 struct rte_swx_table_state **table_state)
+{
+	if (!p || !table_state || !p->build_done)
+		return -EINVAL;
+
+	*table_state = p->table_state;
+	return 0;
+}
+
+int
+rte_swx_pipeline_table_state_set(struct rte_swx_pipeline *p,
+				 struct rte_swx_table_state *table_state)
+{
+	if (!p || !table_state || !p->build_done)
+		return -EINVAL;
+
+	p->table_state = table_state;
+	return 0;
 }

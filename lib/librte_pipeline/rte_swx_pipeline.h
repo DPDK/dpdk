@@ -19,6 +19,7 @@ extern "C" {
 #include <rte_compat.h>
 
 #include "rte_swx_port.h"
+#include "rte_swx_table.h"
 #include "rte_swx_extern.h"
 
 /** Name size. */
@@ -376,6 +377,123 @@ rte_swx_pipeline_action_config(struct rte_swx_pipeline *p,
 			       const char *args_struct_type_name,
 			       const char **instructions,
 			       uint32_t n_instructions);
+
+/*
+ * Pipeline table
+ */
+
+/**
+ * Pipeline table type register
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Table type name.
+ * @param[in] match_type
+ *   Match type implemented by the new table type.
+ * @param[in] ops
+ *   Table type operations.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Table type with this name already exists.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_table_type_register(struct rte_swx_pipeline *p,
+				     const char *name,
+				     enum rte_swx_table_match_type match_type,
+				     struct rte_swx_table_ops *ops);
+
+/** Match field parameters. */
+struct rte_swx_match_field_params {
+	/** Match field name. Must be either a field of one of the registered
+	 * packet headers ("h.header.field") or a field of the registered
+	 * meta-data ("m.field").
+	 */
+	const char *name;
+
+	/** Match type of the field. */
+	enum rte_swx_table_match_type match_type;
+};
+
+/** Pipeline table parameters. */
+struct rte_swx_pipeline_table_params {
+	/** The set of match fields for the current table.
+	 * Restriction: All the match fields of the current table need to be
+	 * part of the same struct, i.e. either all the match fields are part of
+	 * the same header or all the match fields are part of the meta-data.
+	 */
+	struct rte_swx_match_field_params *fields;
+
+	/** The number of match fields for the current table. If set to zero, no
+	 * "regular" entries (i.e. entries other than the default entry) can be
+	 * added to the current table and the match process always results in
+	 * lookup miss.
+	 */
+	uint32_t n_fields;
+
+	/** The set of actions for the current table. */
+	const char **action_names;
+
+	/** The number of actions for the current table. Must be at least one.
+	 */
+	uint32_t n_actions;
+
+	/** The default table action that gets executed on lookup miss. Must be
+	 * one of the table actions included in the *action_names*.
+	 */
+	const char *default_action_name;
+
+	/** Default action data. The size of this array is the action data size
+	 * of the default action. Must be NULL if the default action data size
+	 * is zero.
+	 */
+	uint8_t *default_action_data;
+
+	/** If non-zero (true), then the default action of the current table
+	 * cannot be changed. If zero (false), then the default action can be
+	 * changed in the future with another action from the *action_names*
+	 * list.
+	 */
+	int default_action_is_const;
+};
+
+/**
+ * Pipeline table configure
+ *
+ * @param[out] p
+ *   Pipeline handle.
+ * @param[in] name
+ *   Table name.
+ * @param[in] params
+ *   Table parameters.
+ * @param[in] recommended_table_type_name
+ *   Recommended table type. Typically set to NULL. Useful as guidance when
+ *   there are multiple table types registered for the match type of the table,
+ *   as determined from the table match fields specification. Silently ignored
+ *   if the recommended table type does not exist or it serves a different match
+ *   type.
+ * @param[in] args
+ *   Table creation arguments.
+ * @param[in] size
+ *   Guideline on maximum number of table entries.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Table with this name already exists;
+ *   -ENODEV: Table creation error.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
+			      const char *name,
+			      struct rte_swx_pipeline_table_params *params,
+			      const char *recommended_table_type_name,
+			      const char *args,
+			      uint32_t size);
 
 /**
  * Pipeline build

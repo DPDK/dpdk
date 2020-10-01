@@ -22,7 +22,8 @@ headers = files('rte_table.h',
 		'rte_table_hash_func_arm64.h',
 		'rte_lru.h',
 		'rte_table_array.h',
-		'rte_table_stub.h')
+		'rte_table_stub.h',
+		'rte_swx_table.h',)
 deps += ['mbuf', 'port', 'lpm', 'hash', 'acl']
 
 if arch_subdir == 'x86'

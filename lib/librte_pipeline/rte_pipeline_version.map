@@ -75,4 +75,8 @@ EXPERIMENTAL {
 	rte_swx_pipeline_port_out_config;
 	rte_swx_pipeline_port_out_type_register;
 	rte_swx_pipeline_struct_type_register;
+	rte_swx_pipeline_table_config;
+	rte_swx_pipeline_table_state_get;
+	rte_swx_pipeline_table_state_set;
+	rte_swx_pipeline_table_type_register;
 };
