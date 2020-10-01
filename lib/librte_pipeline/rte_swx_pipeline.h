@@ -496,6 +496,26 @@ rte_swx_pipeline_table_config(struct rte_swx_pipeline *p,
 			      uint32_t size);
 
 /**
+ * Pipeline instructions configure
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] instructions
+ *   Pipeline instructions.
+ * @param[in] n_instructions
+ *   Number of pipeline instructions.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_instructions_config(struct rte_swx_pipeline *p,
+				     const char **instructions,
+				     uint32_t n_instructions);
+
+/**
  * Pipeline build
  *
  * Once called, the pipeline build operation marks the end of pipeline

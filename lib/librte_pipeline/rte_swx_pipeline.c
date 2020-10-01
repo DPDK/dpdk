@@ -274,6 +274,10 @@ struct thread {
 	/* Extern objects and functions. */
 	struct extern_obj_runtime *extern_objs;
 	struct extern_func_runtime *extern_funcs;
+
+	/* Instructions. */
+	struct instruction *ip;
+	struct instruction *ret;
 };
 
 #ifndef RTE_SWX_PIPELINE_THREADS_MAX
@@ -300,6 +304,7 @@ struct rte_swx_pipeline {
 	struct port_out_runtime *out;
 	struct instruction **action_instructions;
 	struct rte_swx_table_state *table_state;
+	struct instruction *instructions;
 	struct thread threads[RTE_SWX_PIPELINE_THREADS_MAX];
 
 	uint32_t n_structs;
@@ -310,6 +315,7 @@ struct rte_swx_pipeline {
 	uint32_t n_actions;
 	uint32_t n_tables;
 	uint32_t n_headers;
+	uint32_t n_instructions;
 	int build_done;
 	int numa_node;
 };
@@ -1424,6 +1430,12 @@ metadata_free(struct rte_swx_pipeline *p)
 /*
  * Instruction.
  */
+static inline void
+thread_ip_reset(struct rte_swx_pipeline *p, struct thread *t)
+{
+	t->ip = p->instructions;
+}
+
 static int
 instruction_config(struct rte_swx_pipeline *p __rte_unused,
 		   struct action *a __rte_unused,
@@ -2110,6 +2122,8 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	if (!p)
 		return;
 
+	free(p->instructions);
+
 	table_state_free(p);
 	table_free(p);
 	action_free(p);
@@ -2122,6 +2136,28 @@ rte_swx_pipeline_free(struct rte_swx_pipeline *p)
 	struct_free(p);
 
 	free(p);
+}
+
+int
+rte_swx_pipeline_instructions_config(struct rte_swx_pipeline *p,
+				     const char **instructions,
+				     uint32_t n_instructions)
+{
+	int err;
+	uint32_t i;
+
+	err = instruction_config(p, NULL, instructions, n_instructions);
+	if (err)
+		return err;
+
+	/* Thread instruction pointer reset. */
+	for (i = 0; i < RTE_SWX_PIPELINE_THREADS_MAX; i++) {
+		struct thread *t = &p->threads[i];
+
+		thread_ip_reset(p, t);
+	}
+
+	return 0;
 }
 
 int
