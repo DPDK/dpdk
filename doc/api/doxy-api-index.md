@@ -175,7 +175,8 @@ The public API headers are grouped by topics:
     [ethdev]           (@ref rte_swx_port_ethdev.h),
     [src/sink]         (@ref rte_swx_port_source_sink.h)
   * SWX table:
-    [table]            (@ref rte_swx_table.h)
+    [table]            (@ref rte_swx_table.h),
+    [table_em]         (@ref rte_swx_table_em.h)
   * [graph]            (@ref rte_graph.h):
     [graph_worker]     (@ref rte_graph_worker.h)
   * graph_nodes:

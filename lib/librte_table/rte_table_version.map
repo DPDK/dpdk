@@ -18,3 +18,11 @@ DPDK_21 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	# added in 20.11
+	rte_swx_table_exact_match_ops;
+	rte_swx_table_exact_match_unoptimized_ops;
+};
