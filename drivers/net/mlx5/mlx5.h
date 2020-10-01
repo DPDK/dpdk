@@ -735,18 +735,10 @@ struct mlx5_hrxq {
 	uint8_t rss_key[]; /* Hash key. */
 };
 
-enum mlx5_txq_obj_type {
-	MLX5_TXQ_OBJ_TYPE_IBV,		/* mlx5_txq_obj with ibv_wq. */
-	MLX5_TXQ_OBJ_TYPE_DEVX_SQ,	/* mlx5_txq_obj with mlx5_devx_sq. */
-	MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN,
-	/* mlx5_txq_obj with mlx5_devx_tq and hairpin support. */
-};
-
 /* Verbs/DevX Tx queue elements. */
 struct mlx5_txq_obj {
 	LIST_ENTRY(mlx5_txq_obj) next; /* Pointer to the next element. */
 	struct mlx5_txq_ctrl *txq_ctrl; /* Pointer to the control queue. */
-	enum mlx5_txq_obj_type type; /* The txq object type. */
 	RTE_STD_C11
 	union {
 		struct {

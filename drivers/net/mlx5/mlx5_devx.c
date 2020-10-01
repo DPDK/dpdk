@@ -890,7 +890,6 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 
 	MLX5_ASSERT(txq_data);
 	MLX5_ASSERT(tmpl);
-	tmpl->type = MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN;
 	tmpl->txq_ctrl = txq_ctrl;
 	attr.hairpin = 1;
 	attr.tis_lst_sz = 1;
@@ -980,8 +979,6 @@ mlx5_txq_release_devx_cq_resources(struct mlx5_txq_obj *txq_obj)
 static void
 mlx5_txq_release_devx_resources(struct mlx5_txq_obj *txq_obj)
 {
-	MLX5_ASSERT(txq_obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_SQ);
-
 	mlx5_txq_release_devx_cq_resources(txq_obj);
 	mlx5_txq_release_devx_sq_resources(txq_obj);
 }
@@ -1245,7 +1242,6 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 
 	MLX5_ASSERT(txq_data);
 	MLX5_ASSERT(txq_obj);
-	txq_obj->type = MLX5_TXQ_OBJ_TYPE_DEVX_SQ;
 	txq_obj->txq_ctrl = txq_ctrl;
 	txq_obj->dev = dev;
 	cqe_n = mlx5_txq_create_devx_cq_resources(dev, idx);
@@ -1328,7 +1324,7 @@ void
 mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj)
 {
 	MLX5_ASSERT(txq_obj);
-	if (txq_obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN) {
+	if (txq_obj->txq_ctrl->type == MLX5_TXQ_TYPE_HAIRPIN) {
 		if (txq_obj->tis)
 			claim_zero(mlx5_devx_cmd_destroy(txq_obj->tis));
 #ifdef HAVE_MLX5DV_DEVX_UAR_OFFSET

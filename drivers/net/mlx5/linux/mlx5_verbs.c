@@ -931,7 +931,6 @@ mlx5_txq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 
 	MLX5_ASSERT(txq_data);
 	MLX5_ASSERT(txq_obj);
-	txq_obj->type = MLX5_TXQ_OBJ_TYPE_IBV;
 	txq_obj->txq_ctrl = txq_ctrl;
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_TX_QUEUE;
 	priv->verbs_alloc_ctx.obj = txq_ctrl;
