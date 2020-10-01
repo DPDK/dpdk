@@ -276,7 +276,6 @@ enum mlx5_txq_type {
 /* Verbs/DevX Tx queue elements. */
 struct mlx5_txq_obj {
 	LIST_ENTRY(mlx5_txq_obj) next; /* Pointer to the next element. */
-	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_txq_ctrl *txq_ctrl; /* Pointer to the control queue. */
 	enum mlx5_txq_obj_type type; /* The txq object type. */
 	RTE_STD_C11
@@ -405,8 +404,7 @@ int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
 void mlx5_tx_uar_uninit_secondary(struct rte_eth_dev *dev);
 struct mlx5_txq_obj *mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 				      enum mlx5_txq_obj_type type);
-struct mlx5_txq_obj *mlx5_txq_obj_get(struct rte_eth_dev *dev, uint16_t idx);
-int mlx5_txq_obj_release(struct mlx5_txq_obj *txq_ibv);
+void mlx5_txq_obj_release(struct mlx5_txq_obj *txq_obj);
 int mlx5_txq_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_txq_ctrl *mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,

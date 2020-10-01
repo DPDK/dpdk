@@ -437,6 +437,7 @@ mlx5_tx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t *desc)
 	mlx5_txq_release(dev, idx);
 	return 0;
 }
+
 /**
  * DPDK callback to configure a TX queue.
  *
@@ -833,7 +834,6 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 	}
 	DRV_LOG(DEBUG, "port %u sxq %u updated with %p", dev->data->port_id,
 		idx, (void *)&tmpl);
-	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->txqsobj, tmpl, next);
 	return tmpl;
 }
@@ -1126,7 +1126,6 @@ mlx5_txq_obj_devx_new(struct rte_eth_dev *dev, uint16_t idx)
 	txq_ctrl->bf_reg = reg_addr;
 	txq_ctrl->uar_mmap_offset =
 		mlx5_os_get_devx_uar_mmap_offset(sh->tx_uar);
-	rte_atomic32_set(&txq_obj->refcnt, 1);
 	txq_uar_init(txq_ctrl);
 	LIST_INSERT_HEAD(&priv->txqsobj, txq_obj, next);
 	return txq_obj;
@@ -1360,7 +1359,6 @@ mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
 #endif
 	txq_obj->qp = tmpl.qp;
 	txq_obj->cq = tmpl.cq;
-	rte_atomic32_inc(&txq_obj->refcnt);
 	txq_ctrl->bf_reg = qp.bf.reg;
 	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
 		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
@@ -1397,64 +1395,30 @@ error:
 }
 
 /**
- * Get an Tx queue Verbs object.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param idx
- *   Queue index in DPDK Tx queue array.
- *
- * @return
- *   The Verbs object if it exists.
- */
-struct mlx5_txq_obj *
-mlx5_txq_obj_get(struct rte_eth_dev *dev, uint16_t idx)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_txq_ctrl *txq_ctrl;
-
-	if (idx >= priv->txqs_n)
-		return NULL;
-	if (!(*priv->txqs)[idx])
-		return NULL;
-	txq_ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	if (txq_ctrl->obj)
-		rte_atomic32_inc(&txq_ctrl->obj->refcnt);
-	return txq_ctrl->obj;
-}
-
-/**
  * Release an Tx verbs queue object.
  *
  * @param txq_obj
- *   Verbs Tx queue object.
- *
- * @return
- *   1 while a reference on it exists, 0 when freed.
+ *   Verbs Tx queue object..
  */
-int
+void
 mlx5_txq_obj_release(struct mlx5_txq_obj *txq_obj)
 {
 	MLX5_ASSERT(txq_obj);
-	if (rte_atomic32_dec_and_test(&txq_obj->refcnt)) {
-		if (txq_obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN) {
-			if (txq_obj->tis)
-				claim_zero(mlx5_devx_cmd_destroy(txq_obj->tis));
-		} else if (txq_obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_SQ) {
-			txq_release_sq_resources(txq_obj);
-		} else {
-			claim_zero(mlx5_glue->destroy_qp(txq_obj->qp));
-			claim_zero(mlx5_glue->destroy_cq(txq_obj->cq));
-		}
-		if (txq_obj->txq_ctrl->txq.fcqs) {
-			mlx5_free(txq_obj->txq_ctrl->txq.fcqs);
-			txq_obj->txq_ctrl->txq.fcqs = NULL;
-		}
-		LIST_REMOVE(txq_obj, next);
-		mlx5_free(txq_obj);
-		return 0;
+	if (txq_obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN) {
+		if (txq_obj->tis)
+			claim_zero(mlx5_devx_cmd_destroy(txq_obj->tis));
+	} else if (txq_obj->type == MLX5_TXQ_OBJ_TYPE_DEVX_SQ) {
+		txq_release_sq_resources(txq_obj);
+	} else {
+		claim_zero(mlx5_glue->destroy_qp(txq_obj->qp));
+		claim_zero(mlx5_glue->destroy_cq(txq_obj->cq));
 	}
-	return 1;
+	if (txq_obj->txq_ctrl->txq.fcqs) {
+		mlx5_free(txq_obj->txq_ctrl->txq.fcqs);
+		txq_obj->txq_ctrl->txq.fcqs = NULL;
+	}
+	LIST_REMOVE(txq_obj, next);
+	mlx5_free(txq_obj);
 }
 
 /**
@@ -1967,12 +1931,11 @@ struct mlx5_txq_ctrl *
 mlx5_txq_get(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_txq_data *txq_data = (*priv->txqs)[idx];
 	struct mlx5_txq_ctrl *ctrl = NULL;
 
-	if ((*priv->txqs)[idx]) {
-		ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl,
-				    txq);
-		mlx5_txq_obj_get(dev, idx);
+	if (txq_data) {
+		ctrl = container_of(txq_data, struct mlx5_txq_ctrl, txq);
 		rte_atomic32_inc(&ctrl->refcnt);
 	}
 	return ctrl;
@@ -1998,18 +1961,19 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->txqs)[idx])
 		return 0;
 	txq = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	if (txq->obj && !mlx5_txq_obj_release(txq->obj))
+	if (!rte_atomic32_dec_and_test(&txq->refcnt))
+		return 1;
+	if (txq->obj) {
+		mlx5_txq_obj_release(txq->obj);
 		txq->obj = NULL;
-	if (rte_atomic32_dec_and_test(&txq->refcnt)) {
-		txq_free_elts(txq);
-		mlx5_mr_btree_free(&txq->txq.mr_ctrl.cache_bh);
-		LIST_REMOVE(txq, next);
-		mlx5_free(txq);
-		(*priv->txqs)[idx] = NULL;
-		dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
-		return 0;
 	}
-	return 1;
+	txq_free_elts(txq);
+	mlx5_mr_btree_free(&txq->txq.mr_ctrl.cache_bh);
+	LIST_REMOVE(txq, next);
+	mlx5_free(txq);
+	(*priv->txqs)[idx] = NULL;
+	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
 }
 
 /**
