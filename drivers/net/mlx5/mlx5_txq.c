@@ -1050,8 +1050,8 @@ mlx5_txq_obj_devx_new(struct rte_eth_dev *dev, uint16_t idx)
 			dev->data->port_id, txq_data->idx);
 		goto error;
 	}
-	/* Allocate doorbell record for completion queue. */
-	txq_obj->cq_dbrec_offset = mlx5_get_dbr(sh->ctx,
+	/* Allocate doorbell record for send queue. */
+	txq_obj->sq_dbrec_offset = mlx5_get_dbr(sh->ctx,
 						&priv->dbrpgs,
 						&txq_obj->sq_dbrec_page);
 	if (txq_obj->sq_dbrec_offset < 0)
@@ -1076,9 +1076,9 @@ mlx5_txq_obj_devx_new(struct rte_eth_dev *dev, uint16_t idx)
 	sq_attr.wq_attr.log_wq_stride = rte_log2_u32(MLX5_WQE_SIZE);
 	sq_attr.wq_attr.log_wq_sz = txq_data->wqe_n;
 	sq_attr.wq_attr.dbr_umem_valid = 1;
-	sq_attr.wq_attr.dbr_addr = txq_obj->cq_dbrec_offset;
+	sq_attr.wq_attr.dbr_addr = txq_obj->sq_dbrec_offset;
 	sq_attr.wq_attr.dbr_umem_id =
-			mlx5_os_get_umem_id(txq_obj->cq_dbrec_page->umem);
+			mlx5_os_get_umem_id(txq_obj->sq_dbrec_page->umem);
 	sq_attr.wq_attr.wq_umem_valid = 1;
 	sq_attr.wq_attr.wq_umem_id = mlx5_os_get_umem_id(txq_obj->sq_umem);
 	sq_attr.wq_attr.wq_umem_offset = (uintptr_t)txq_obj->sq_buf % page_size;
