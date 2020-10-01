@@ -338,6 +338,17 @@ enum instruction_type {
 	INSTR_ALU_SHL_HH, /* dst = H, src = H */
 	INSTR_ALU_SHL_MI, /* dst = MEF, src = I */
 	INSTR_ALU_SHL_HI, /* dst = H, src = I */
+
+	/* shr dst src
+	 * dst >>= src
+	 * dst = HMEF, src = HMEFTI
+	 */
+	INSTR_ALU_SHR,    /* dst = MEF, src = MEF */
+	INSTR_ALU_SHR_MH, /* dst = MEF, src = H */
+	INSTR_ALU_SHR_HM, /* dst = H, src = MEF */
+	INSTR_ALU_SHR_HH, /* dst = H, src = H */
+	INSTR_ALU_SHR_MI, /* dst = MEF, src = I */
+	INSTR_ALU_SHR_HI, /* dst = H, src = I */
 };
 
 struct instr_operand {
@@ -3158,6 +3169,58 @@ instr_alu_shl_translate(struct rte_swx_pipeline *p,
 }
 
 static int
+instr_alu_shr_translate(struct rte_swx_pipeline *p,
+			struct action *action,
+			char **tokens,
+			int n_tokens,
+			struct instruction *instr,
+			struct instruction_data *data __rte_unused)
+{
+	char *dst = tokens[1], *src = tokens[2];
+	struct field *fdst, *fsrc;
+	uint32_t dst_struct_id, src_struct_id, src_val;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
+	CHECK(fdst, EINVAL);
+
+	/* SHR, SHR_HM, SHR_MH, SHR_HH. */
+	fsrc = struct_field_parse(p, action, src, &src_struct_id);
+	if (fsrc) {
+		instr->type = INSTR_ALU_SHR;
+		if (dst[0] == 'h' && src[0] == 'm')
+			instr->type = INSTR_ALU_SHR_HM;
+		if (dst[0] == 'm' && src[0] == 'h')
+			instr->type = INSTR_ALU_SHR_MH;
+		if (dst[0] == 'h' && src[0] == 'h')
+			instr->type = INSTR_ALU_SHR_HH;
+
+		instr->alu.dst.struct_id = (uint8_t)dst_struct_id;
+		instr->alu.dst.n_bits = fdst->n_bits;
+		instr->alu.dst.offset = fdst->offset / 8;
+		instr->alu.src.struct_id = (uint8_t)src_struct_id;
+		instr->alu.src.n_bits = fsrc->n_bits;
+		instr->alu.src.offset = fsrc->offset / 8;
+		return 0;
+	}
+
+	/* SHR_MI, SHR_HI. */
+	src_val = strtoul(src, &src, 0);
+	CHECK(!src[0], EINVAL);
+
+	instr->type = INSTR_ALU_SHR_MI;
+	if (dst[0] == 'h')
+		instr->type = INSTR_ALU_SHR_HI;
+
+	instr->alu.dst.struct_id = (uint8_t)dst_struct_id;
+	instr->alu.dst.n_bits = fdst->n_bits;
+	instr->alu.dst.offset = fdst->offset / 8;
+	instr->alu.src_val = (uint32_t)src_val;
+	return 0;
+}
+
+static int
 instr_alu_and_translate(struct rte_swx_pipeline *p,
 			struct action *action,
 			char **tokens,
@@ -3569,6 +3632,96 @@ instr_alu_shl_hi_exec(struct rte_swx_pipeline *p)
 
 	/* Structs. */
 	ALU_HI(t, ip, <<);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_shr_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] shr\n", p->thread_id);
+
+	/* Structs. */
+	ALU(t, ip, >>);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_shr_mh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] shr (mh)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_MH(t, ip, >>);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_shr_hm_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] shr (hm)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HM(t, ip, >>);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_shr_hh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] shr (hh)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HH(t, ip, >>);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_shr_mi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] shr (mi)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_MI(t, ip, >>);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+static inline void
+instr_alu_shr_hi_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	TRACE("[Thread %2u] shr (hi)\n", p->thread_id);
+
+	/* Structs. */
+	ALU_HI(t, ip, >>);
 
 	/* Thread. */
 	thread_ip_inc(p);
@@ -4108,6 +4261,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					       instr,
 					       data);
 
+	if (!strcmp(tokens[tpos], "shr"))
+		return instr_alu_shr_translate(p,
+					       action,
+					       &tokens[tpos],
+					       n_tokens - tpos,
+					       instr,
+					       data);
+
 	CHECK(0, EINVAL);
 }
 
@@ -4303,6 +4464,13 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_ALU_SHL_HH] = instr_alu_shl_hh_exec,
 	[INSTR_ALU_SHL_MI] = instr_alu_shl_mi_exec,
 	[INSTR_ALU_SHL_HI] = instr_alu_shl_hi_exec,
+
+	[INSTR_ALU_SHR] = instr_alu_shr_exec,
+	[INSTR_ALU_SHR_MH] = instr_alu_shr_mh_exec,
+	[INSTR_ALU_SHR_HM] = instr_alu_shr_hm_exec,
+	[INSTR_ALU_SHR_HH] = instr_alu_shr_hh_exec,
+	[INSTR_ALU_SHR_MI] = instr_alu_shr_mi_exec,
+	[INSTR_ALU_SHR_HI] = instr_alu_shr_hi_exec,
 };
 
 static inline void
