@@ -644,6 +644,32 @@ int
 rte_swx_pipeline_build(struct rte_swx_pipeline *p);
 
 /**
+ * Pipeline build from specification file
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ * @param[in] spec
+ *   Pipeline specification file.
+ * @param[out] err_line
+ *   In case of error and non-NULL, the line number within the *spec* file where
+ *   the error occurred. The first line number in the file is 1.
+ * @param[out] err_msg
+ *   In case of error and non-NULL, the error message.
+ * @return
+ *   0 on success or the following error codes otherwise:
+ *   -EINVAL: Invalid argument;
+ *   -ENOMEM: Not enough space/cannot allocate memory;
+ *   -EEXIST: Resource with the same name already exists;
+ *   -ENODEV: Extern object or table creation error.
+ */
+__rte_experimental
+int
+rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
+				 FILE *spec,
+				 uint32_t *err_line,
+				 const char **err_msg);
+
+/**
  * Pipeline run
  *
  * @param[in] p
