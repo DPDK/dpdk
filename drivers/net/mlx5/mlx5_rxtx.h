@@ -261,48 +261,9 @@ struct mlx5_txq_data {
 	/* Storage for queued packets, must be the last field. */
 } __rte_cache_aligned;
 
-enum mlx5_txq_obj_type {
-	MLX5_TXQ_OBJ_TYPE_IBV,		/* mlx5_txq_obj with ibv_wq. */
-	MLX5_TXQ_OBJ_TYPE_DEVX_SQ,	/* mlx5_txq_obj with mlx5_devx_sq. */
-	MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN,
-	/* mlx5_txq_obj with mlx5_devx_tq and hairpin support. */
-};
-
 enum mlx5_txq_type {
 	MLX5_TXQ_TYPE_STANDARD, /* Standard Tx queue. */
 	MLX5_TXQ_TYPE_HAIRPIN, /* Hairpin Rx queue. */
-};
-
-/* Verbs/DevX Tx queue elements. */
-struct mlx5_txq_obj {
-	LIST_ENTRY(mlx5_txq_obj) next; /* Pointer to the next element. */
-	struct mlx5_txq_ctrl *txq_ctrl; /* Pointer to the control queue. */
-	enum mlx5_txq_obj_type type; /* The txq object type. */
-	RTE_STD_C11
-	union {
-		struct {
-			void *cq; /* Completion Queue. */
-			void *qp; /* Queue Pair. */
-		};
-		struct {
-			struct mlx5_devx_obj *sq;
-			/* DevX object for Sx queue. */
-			struct mlx5_devx_obj *tis; /* The TIS object. */
-		};
-		struct {
-			struct rte_eth_dev *dev;
-			struct mlx5_devx_obj *cq_devx;
-			void *cq_umem;
-			void *cq_buf;
-			int64_t cq_dbrec_offset;
-			struct mlx5_devx_dbr_page *cq_dbrec_page;
-			struct mlx5_devx_obj *sq_devx;
-			void *sq_umem;
-			void *sq_buf;
-			int64_t sq_dbrec_offset;
-			struct mlx5_devx_dbr_page *sq_dbrec_page;
-		};
-	};
 };
 
 /* TX queue control descriptor. */
@@ -400,11 +361,9 @@ int mlx5_tx_hairpin_queue_setup
 	(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	 const struct rte_eth_hairpin_conf *hairpin_conf);
 void mlx5_tx_queue_release(void *dpdk_txq);
+void txq_uar_init(struct mlx5_txq_ctrl *txq_ctrl);
 int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
 void mlx5_tx_uar_uninit_secondary(struct rte_eth_dev *dev);
-struct mlx5_txq_obj *mlx5_txq_obj_new(struct rte_eth_dev *dev, uint16_t idx,
-				      enum mlx5_txq_obj_type type);
-void mlx5_txq_obj_release(struct mlx5_txq_obj *txq_obj);
 int mlx5_txq_obj_verify(struct rte_eth_dev *dev);
 struct mlx5_txq_ctrl *mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,

@@ -735,6 +735,45 @@ struct mlx5_hrxq {
 	uint8_t rss_key[]; /* Hash key. */
 };
 
+enum mlx5_txq_obj_type {
+	MLX5_TXQ_OBJ_TYPE_IBV,		/* mlx5_txq_obj with ibv_wq. */
+	MLX5_TXQ_OBJ_TYPE_DEVX_SQ,	/* mlx5_txq_obj with mlx5_devx_sq. */
+	MLX5_TXQ_OBJ_TYPE_DEVX_HAIRPIN,
+	/* mlx5_txq_obj with mlx5_devx_tq and hairpin support. */
+};
+
+/* Verbs/DevX Tx queue elements. */
+struct mlx5_txq_obj {
+	LIST_ENTRY(mlx5_txq_obj) next; /* Pointer to the next element. */
+	struct mlx5_txq_ctrl *txq_ctrl; /* Pointer to the control queue. */
+	enum mlx5_txq_obj_type type; /* The txq object type. */
+	RTE_STD_C11
+	union {
+		struct {
+			void *cq; /* Completion Queue. */
+			void *qp; /* Queue Pair. */
+		};
+		struct {
+			struct mlx5_devx_obj *sq;
+			/* DevX object for Sx queue. */
+			struct mlx5_devx_obj *tis; /* The TIS object. */
+		};
+		struct {
+			struct rte_eth_dev *dev;
+			struct mlx5_devx_obj *cq_devx;
+			void *cq_umem;
+			void *cq_buf;
+			int64_t cq_dbrec_offset;
+			struct mlx5_devx_dbr_page *cq_dbrec_page;
+			struct mlx5_devx_obj *sq_devx;
+			void *sq_umem;
+			void *sq_buf;
+			int64_t sq_dbrec_offset;
+			struct mlx5_devx_dbr_page *sq_dbrec_page;
+		};
+	};
+};
+
 /* HW objects operations structure. */
 struct mlx5_obj_ops {
 	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
@@ -750,6 +789,9 @@ struct mlx5_obj_ops {
 	void (*hrxq_destroy)(struct mlx5_hrxq *hrxq);
 	int (*drop_action_create)(struct rte_eth_dev *dev);
 	void (*drop_action_destroy)(struct rte_eth_dev *dev);
+	struct mlx5_txq_obj *(*txq_obj_new)(struct rte_eth_dev *dev,
+					    uint16_t idx);
+	void (*txq_obj_release)(struct mlx5_txq_obj *txq_obj);
 };
 
 struct mlx5_priv {
