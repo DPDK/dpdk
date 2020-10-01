@@ -341,7 +341,9 @@ vhost_user_set_features(struct virtio_net **pdev, struct VhostUserMsg *msg,
 
 	dev->features = features;
 	if (dev->features &
-		((1 << VIRTIO_NET_F_MRG_RXBUF) | (1ULL << VIRTIO_F_VERSION_1))) {
+		((1ULL << VIRTIO_NET_F_MRG_RXBUF) |
+		 (1ULL << VIRTIO_F_VERSION_1) |
+		 (1ULL << VIRTIO_F_RING_PACKED))) {
 		dev->vhost_hlen = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	} else {
 		dev->vhost_hlen = sizeof(struct virtio_net_hdr);
