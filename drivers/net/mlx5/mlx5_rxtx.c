@@ -16,8 +16,6 @@
 #include <rte_cycles.h>
 #include <rte_flow.h>
 
-#include <mlx5_glue.h>
-#include <mlx5_devx_cmds.h>
 #include <mlx5_prm.h>
 #include <mlx5_common.h>
 
@@ -898,30 +896,7 @@ mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 		struct mlx5_rxq_ctrl *rxq_ctrl =
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 
-		if (rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_IBV) {
-			struct ibv_wq_attr mod = {
-				.attr_mask = IBV_WQ_ATTR_STATE,
-				.wq_state = sm->state,
-			};
-
-			ret = mlx5_glue->modify_wq(rxq_ctrl->obj->wq, &mod);
-		} else { /* rxq_ctrl->obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_RQ. */
-			struct mlx5_devx_modify_rq_attr rq_attr;
-
-			memset(&rq_attr, 0, sizeof(rq_attr));
-			if (sm->state == IBV_WQS_RESET) {
-				rq_attr.rq_state = MLX5_RQC_STATE_ERR;
-				rq_attr.state = MLX5_RQC_STATE_RST;
-			} else if (sm->state == IBV_WQS_RDY) {
-				rq_attr.rq_state = MLX5_RQC_STATE_RST;
-				rq_attr.state = MLX5_RQC_STATE_RDY;
-			} else if (sm->state == IBV_WQS_ERR) {
-				rq_attr.rq_state = MLX5_RQC_STATE_RDY;
-				rq_attr.state = MLX5_RQC_STATE_ERR;
-			}
-			ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq,
-						      &rq_attr);
-		}
+		ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, sm->state);
 		if (ret) {
 			DRV_LOG(ERR, "Cannot change Rx WQ state to %u  - %s",
 					sm->state, strerror(errno));

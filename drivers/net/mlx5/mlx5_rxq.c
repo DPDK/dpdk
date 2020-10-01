@@ -513,7 +513,7 @@ mlx5_rx_queue_stop_primary(struct rte_eth_dev *dev, uint16_t idx)
 	int ret;
 
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, false);
+	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, MLX5_RXQ_MOD_RDY2RST);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to RESET:  %s",
 			strerror(errno));
@@ -612,7 +612,7 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 	/* Reset RQ consumer before moving queue ro READY state. */
 	*rxq->rq_db = rte_cpu_to_be_32(0);
 	rte_io_wmb();
-	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, true);
+	ret = priv->obj_ops.rxq_obj_modify(rxq_ctrl->obj, MLX5_RXQ_MOD_RST2RDY);
 	if (ret) {
 		DRV_LOG(ERR, "Cannot change Rx WQ state to READY:  %s",
 			strerror(errno));

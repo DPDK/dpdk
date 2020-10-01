@@ -4,7 +4,6 @@
 
 #include <stddef.h>
 #include <errno.h>
-#include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -97,16 +96,18 @@ mlx5_rxq_obj_modify_wq_vlan_strip(struct mlx5_rxq_obj *rxq_obj, int on)
  *
  * @param rxq_obj
  *   Verbs Rx queue object.
+ * @param type
+ *   Type of change queue state.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_ibv_modify_wq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
+mlx5_ibv_modify_wq(struct mlx5_rxq_obj *rxq_obj, uint8_t type)
 {
 	struct ibv_wq_attr mod = {
 		.attr_mask = IBV_WQ_ATTR_STATE,
-		.wq_state = is_start ? IBV_WQS_RDY : IBV_WQS_RESET,
+		.wq_state = (enum ibv_wq_state)type,
 	};
 
 	return mlx5_glue->modify_wq(rxq_obj->wq, &mod);
@@ -418,7 +419,7 @@ mlx5_rxq_ibv_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	/* Change queue state to ready. */
-	ret = mlx5_ibv_modify_wq(tmpl, true);
+	ret = mlx5_ibv_modify_wq(tmpl, IBV_WQS_RDY);
 	if (ret) {
 		DRV_LOG(ERR,
 			"Port %u Rx queue %u WQ state to IBV_WQS_RDY failed.",

@@ -52,22 +52,37 @@ mlx5_rxq_obj_modify_rq_vlan_strip(struct mlx5_rxq_obj *rxq_obj, int on)
  *
  * @param rxq_obj
  *   DevX Rx queue object.
+ * @param type
+ *   Type of change queue state.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_devx_modify_rq(struct mlx5_rxq_obj *rxq_obj, bool is_start)
+mlx5_devx_modify_rq(struct mlx5_rxq_obj *rxq_obj, uint8_t type)
 {
 	struct mlx5_devx_modify_rq_attr rq_attr;
 
 	memset(&rq_attr, 0, sizeof(rq_attr));
-	if (is_start) {
+	switch (type) {
+	case MLX5_RXQ_MOD_ERR2RST:
+		rq_attr.rq_state = MLX5_RQC_STATE_ERR;
+		rq_attr.state = MLX5_RQC_STATE_RST;
+		break;
+	case MLX5_RXQ_MOD_RST2RDY:
 		rq_attr.rq_state = MLX5_RQC_STATE_RST;
 		rq_attr.state = MLX5_RQC_STATE_RDY;
-	} else {
+		break;
+	case MLX5_RXQ_MOD_RDY2ERR:
+		rq_attr.rq_state = MLX5_RQC_STATE_RDY;
+		rq_attr.state = MLX5_RQC_STATE_ERR;
+		break;
+	case MLX5_RXQ_MOD_RDY2RST:
 		rq_attr.rq_state = MLX5_RQC_STATE_RDY;
 		rq_attr.state = MLX5_RQC_STATE_RST;
+		break;
+	default:
+		break;
 	}
 	return mlx5_devx_cmd_modify_rq(rxq_obj->rq, &rq_attr);
 }
@@ -194,7 +209,7 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_obj *rxq_obj)
 	MLX5_ASSERT(rxq_obj);
 	MLX5_ASSERT(rxq_obj->rq);
 	if (rxq_obj->type == MLX5_RXQ_OBJ_TYPE_DEVX_HAIRPIN) {
-		mlx5_devx_modify_rq(rxq_obj, false);
+		mlx5_devx_modify_rq(rxq_obj, MLX5_RXQ_MOD_RDY2RST);
 		claim_zero(mlx5_devx_cmd_destroy(rxq_obj->rq));
 	} else {
 		MLX5_ASSERT(rxq_obj->devx_cq);
@@ -628,7 +643,7 @@ mlx5_rxq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		goto error;
 	}
 	/* Change queue state to ready. */
-	ret = mlx5_devx_modify_rq(tmpl, true);
+	ret = mlx5_devx_modify_rq(tmpl, MLX5_RXQ_MOD_RST2RDY);
 	if (ret)
 		goto error;
 	rxq_data->cq_arm_sn = 0;

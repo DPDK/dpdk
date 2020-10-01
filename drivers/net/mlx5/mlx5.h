@@ -766,6 +766,13 @@ struct mlx5_txq_obj {
 	};
 };
 
+enum mlx5_rxq_modify_type {
+	MLX5_RXQ_MOD_ERR2RST, /* modify state from error to reset. */
+	MLX5_RXQ_MOD_RST2RDY, /* modify state from reset to ready. */
+	MLX5_RXQ_MOD_RDY2ERR, /* modify state from ready to error. */
+	MLX5_RXQ_MOD_RDY2RST, /* modify state from ready to reset. */
+};
+
 enum mlx5_txq_modify_type {
 	MLX5_TXQ_MOD_RDY2RDY, /* modify state from ready to ready. */
 	MLX5_TXQ_MOD_RST2RDY, /* modify state from reset to ready. */
@@ -778,7 +785,7 @@ struct mlx5_obj_ops {
 	int (*rxq_obj_modify_vlan_strip)(struct mlx5_rxq_obj *rxq_obj, int on);
 	int (*rxq_obj_new)(struct rte_eth_dev *dev, uint16_t idx);
 	int (*rxq_event_get)(struct mlx5_rxq_obj *rxq_obj);
-	int (*rxq_obj_modify)(struct mlx5_rxq_obj *rxq_obj, bool is_start);
+	int (*rxq_obj_modify)(struct mlx5_rxq_obj *rxq_obj, uint8_t type);
 	void (*rxq_obj_release)(struct mlx5_rxq_obj *rxq_obj);
 	int (*ind_table_new)(struct rte_eth_dev *dev, const unsigned int log_n,
 			     struct mlx5_ind_table_obj *ind_tbl);
