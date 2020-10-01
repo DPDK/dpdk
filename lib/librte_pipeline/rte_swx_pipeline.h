@@ -657,6 +657,18 @@ rte_swx_pipeline_run(struct rte_swx_pipeline *p,
 		     uint32_t n_instructions);
 
 /**
+ * Pipeline flush
+ *
+ * Flush all output ports of the pipeline.
+ *
+ * @param[in] p
+ *   Pipeline handle.
+ */
+__rte_experimental
+void
+rte_swx_pipeline_flush(struct rte_swx_pipeline *p);
+
+/**
  * Pipeline free
  *
  * @param[in] p

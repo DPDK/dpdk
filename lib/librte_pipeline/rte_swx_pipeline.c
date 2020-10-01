@@ -6951,6 +6951,19 @@ rte_swx_pipeline_run(struct rte_swx_pipeline *p, uint32_t n_instructions)
 		instr_exec(p);
 }
 
+void
+rte_swx_pipeline_flush(struct rte_swx_pipeline *p)
+{
+	uint32_t i;
+
+	for (i = 0; i < p->n_ports_out; i++) {
+		struct port_out_runtime *port = &p->out[i];
+
+		if (port->flush)
+			port->flush(port->obj);
+	}
+}
+
 /*
  * Control.
  */
