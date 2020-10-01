@@ -346,6 +346,115 @@ rte_swx_pipeline_packet_metadata_register(struct rte_swx_pipeline *p,
 					  const char *struct_type_name);
 
 /*
+ * Instructions
+ */
+
+/**
+ * Instruction operands:
+ *
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>|     | Description               | Format           | DST | SRC |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| hdr | Header                    | h.header         |     |     |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| act | Action                    | ACTION           |     |     |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| tbl | Table                     | TABLE            |     |     |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| H   | Header field              | h.header.field   | YES | YES |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| M   | Meta-data field           | m.field          | YES | YES |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| E   | Extern obj mailbox field  | e.ext_obj.field  | YES | YES |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| F   | Extern func mailbox field | f.ext_func.field | YES | YES |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| T   | Table action data field   | t.header.field   | NO  | YES |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *<pre>| I   | Immediate value (32-bit)  | h.header.field   | NO  | YES |</pre>
+ *<pre>+-----+---------------------------+------------------+-----+-----+</pre>
+ *
+ * Instruction set:
+ *
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| Instr.     | Instruction          | Instruction       | 1st  | 2nd    |</pre>
+ *<pre>| Name       | Description          | Format            | opnd.| opnd.  |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| rx         | Receive one pkt      | rx m.port_in      | M    |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| tx         | Transmit one pkt     | tx m.port_out     | M    |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| extract    | Extract one hdr      | extract h.hdr     | hdr  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| emit       | Emit one hdr         | emit h.hdr        | hdr  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| validate   | Validate one hdr     | validate h.hdr    | hdr  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| invalidate | Invalidate one hdr   | invalidate h.hdr  | hdr  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| mov        | dst = src            | mov dst src       | HMEF | HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| dma        | memcpy(h.hdr,        | dma h.hdr t.field | hdr  | T      |</pre>
+ *<pre>|            |    &t.field,         |                   |      |        |</pre>
+ *<pre>|            |    sizeof(h.hdr)     |                   |      |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| add        | dst += src           | add dst src       | HMEF | HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| sub        | dst -= src           | add dst src       | HMEF | HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| ckadd      | Checksum add: dst =  | add dst src       | HMEF | HMEFTI |</pre>
+ *<pre>|            | dst '+ src[0:1] '+   |                   |      | or hdr |</pre>
+ *<pre>|            | src[2:3] '+ ...      |                   |      |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| cksub      | Checksum subtract:   | add dst src       | HMEF | HMEFTI |</pre>
+ *<pre>|            | dst = dst '- src     |                   |      |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| and        | dst &= src           | and dst src       | HMEF | HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| or         | dst |= src           | or  dst src       | HMEF | HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| xor        | dst ^= src           | xor dst src       | HMEF | HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| shl        | dst <<= src          | shl dst src       | HMEF | HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| shr        | dst >>= src          | shr dst src       | HMEF | HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| table      | Table lookup         | table TABLE       | tbl  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| extern     | Ext obj member func  | extern e.obj.mfunc| ext  |        |</pre>
+ *<pre>|            | call or ext func call| extern f.func     |      |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmp        | Unconditional jump   | jmp LABEL         |      |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmpv       | Jump if hdr is valid | jmpv LABEL h.hdr  | hdr  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmpnv      | Jump if hdr is inval | jmpnv LABEL h.hdr | hdr  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmph       | Jump if tbl lkp hit  | jmph LABEL        |      |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmpnh      | Jump if tbl lkp miss | jmpnh LABEL       |      |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmpa       | Jump if action run   | jmpa LABEL ACTION | act  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmpna      | Jump if act not run  | jmpna LABEL ACTION| act  |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmpeq      | Jump if (a == b)     | jmpeq LABEL a b   | HMEFT| HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmpneq     | Jump if (a != b)     | jmpneq LABEL a b  | HMEFT| HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmplt      | Jump if (a < b)      | jmplt LABEL a b   | HMEFT| HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| jmpgt      | Jump if (a > b)      | jmpgt LABEL a b   | HMEFT| HMEFTI |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *<pre>| return     | Return from action   | return            |      |        |</pre>
+ *<pre>+------------+----------------------+-------------------+------+--------+</pre>
+ *
+ * At initialization time, the pipeline and action instructions (including the
+ * symbolic name operands) are translated to internal data structures that are
+ * used at run-time.
+ */
+
+/*
  * Pipeline action
  */
 
