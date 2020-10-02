@@ -30,7 +30,7 @@ extern "C" {
 /**
  * Structure to pass FPGA 4G FEC configuration.
  */
-struct fpga_5gnr_fec_conf {
+struct rte_fpga_5gnr_fec_conf {
 	/** 1 if PF is used for dataplane, 0 for VFs */
 	bool pf_mode_en;
 	/** Number of UL queues per VF */
@@ -64,8 +64,8 @@ struct fpga_5gnr_fec_conf {
  */
 __rte_experimental
 int
-fpga_5gnr_fec_configure(const char *dev_name,
-		const struct fpga_5gnr_fec_conf *conf);
+rte_fpga_5gnr_fec_configure(const char *dev_name,
+		const struct rte_fpga_5gnr_fec_conf *conf);
 
 #ifdef __cplusplus
 }

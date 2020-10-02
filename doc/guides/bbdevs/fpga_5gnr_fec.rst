@@ -169,12 +169,12 @@ queues, priorities, load balance, bandwidth and other settings necessary for the
 device to perform FEC functions.
 
 This configuration needs to be executed at least once after reboot or PCI FLR and can
-be achieved by using the function ``fpga_5gnr_fec_configure()``, which sets up the
-parameters defined in ``fpga_5gnr_fec_conf`` structure:
+be achieved by using the function ``rte_fpga_5gnr_fec_configure()``, which sets up the
+parameters defined in ``rte_fpga_5gnr_fec_conf`` structure:
 
 .. code-block:: c
 
-  struct fpga_5gnr_fec_conf {
+  struct rte_fpga_5gnr_fec_conf {
       bool pf_mode_en;
       uint8_t vf_ul_queues_number[FPGA_5GNR_FEC_NUM_VFS];
       uint8_t vf_dl_queues_number[FPGA_5GNR_FEC_NUM_VFS];
@@ -213,15 +213,15 @@ parameters defined in ``fpga_5gnr_fec_conf`` structure:
   the FLR time out then set this setting to 0x262=610.
 
 
-An example configuration code calling the function ``fpga_5gnr_fec_configure()`` is shown
+An example configuration code calling the function ``rte_fpga_5gnr_fec_configure()`` is shown
 below:
 
 .. code-block:: c
 
-  struct fpga_5gnr_fec_conf conf;
+  struct rte_fpga_5gnr_fec_conf conf;
   unsigned int i;
 
-  memset(&conf, 0, sizeof(struct fpga_5gnr_fec_conf));
+  memset(&conf, 0, sizeof(struct rte_fpga_5gnr_fec_conf));
   conf.pf_mode_en = 1;
 
   for (i = 0; i < FPGA_5GNR_FEC_NUM_VFS; ++i) {
@@ -234,7 +234,7 @@ below:
   conf.ul_load_balance = 64;
 
   /* setup FPGA PF */
-  ret = fpga_5gnr_fec_configure(info->dev_name, &conf);
+  ret = rte_fpga_5gnr_fec_configure(info->dev_name, &conf);
   TEST_ASSERT_SUCCESS(ret,
       "Failed to configure 4G FPGA PF for bbdev %s",
       info->dev_name);

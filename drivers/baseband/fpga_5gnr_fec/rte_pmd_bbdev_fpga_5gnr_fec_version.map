@@ -5,6 +5,6 @@ DPDK_21 {
 EXPERIMENTAL {
 	global:
 
-	fpga_5gnr_fec_configure;
+	rte_fpga_5gnr_fec_configure;
 
 };
