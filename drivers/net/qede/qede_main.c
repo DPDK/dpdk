@@ -587,13 +587,12 @@ qed_get_current_link(struct ecore_dev *edev, struct qed_link_output *if_link)
 	hwfn = &edev->hwfns[0];
 	if (IS_PF(edev)) {
 		ptt = ecore_ptt_acquire(hwfn);
-		if (!ptt)
-			DP_NOTICE(hwfn, true, "Failed to fill link; No PTT\n");
-
+		if (ptt) {
 			qed_fill_link(hwfn, ptt, if_link);
-
-		if (ptt)
 			ecore_ptt_release(hwfn, ptt);
+		} else {
+			DP_NOTICE(hwfn, true, "Failed to fill link; No PTT\n");
+		}
 	} else {
 		qed_fill_link(hwfn, NULL, if_link);
 	}
