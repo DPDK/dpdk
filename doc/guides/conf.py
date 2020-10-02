@@ -22,7 +22,7 @@ try:
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 except:
     print('Install the sphinx ReadTheDocs theme for improved html documentation '
-          'layout: pip install sphinx_rtd_theme')
+          'layout: https://sphinx-rtd-theme.readthedocs.io/')
     pass
 
 project = 'Data Plane Development Kit'

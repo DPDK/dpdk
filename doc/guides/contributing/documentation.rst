@@ -164,14 +164,10 @@ For full support with figure and table captioning the latest version of Sphinx c
 .. code-block:: console
 
    # Ubuntu/Debian.
-   sudo apt-get -y install python-pip
-   sudo pip install --upgrade sphinx
-   sudo pip install --upgrade sphinx_rtd_theme
+   sudo apt-get -y install python3-sphinx python3-sphinx-rtd-theme
 
    # Red Hat/Fedora.
-   sudo dnf     -y install python-pip
-   sudo pip install --upgrade sphinx
-   sudo pip install --upgrade sphinx_rtd_theme
+   sudo dnf     -y install python3-sphinx python3-sphinx_rtd_theme
 
 For further information on getting started with Sphinx see the
 `Sphinx Getting Started <http://www.sphinx-doc.org/en/master/usage/quickstart.html>`_.

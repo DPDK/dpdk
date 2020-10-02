@@ -50,7 +50,7 @@ and query information using the telemetry client python script.
 
 #. Launch the telemetry client script::
 
-      python usertools/dpdk-telemetry.py
+      ./usertools/dpdk-telemetry.py
 
 #. When connected, the script displays the following, waiting for user input::
 

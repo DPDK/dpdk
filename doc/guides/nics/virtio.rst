@@ -154,7 +154,7 @@ Host2VM communication example
         modprobe uio
         echo 512 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
         modprobe uio_pci_generic
-        python usertools/dpdk-devbind.py -b uio_pci_generic 00:03.0
+        ./usertools/dpdk-devbind.py -b uio_pci_generic 00:03.0
 
     We use testpmd as the forwarding application in this example.
 
@@ -329,7 +329,7 @@ To support Rx interrupts,
 
     .. code-block:: console
 
-        python usertools/dpdk-devbind.py -b vfio-pci 00:03.0
+        ./usertools/dpdk-devbind.py -b vfio-pci 00:03.0
 
 Example
 ~~~~~~~

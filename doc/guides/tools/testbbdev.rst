@@ -43,7 +43,7 @@ The tool application has a number of command line options:
 
 .. code-block:: console
 
-  python test-bbdev.py [-h] [-p TESTAPP_PATH] [-e EAL_PARAMS] [-t TIMEOUT]
+    test-bbdev.py [-h] [-p TESTAPP_PATH] [-e EAL_PARAMS] [-t TIMEOUT]
                        [-c TEST_CASE [TEST_CASE ...]]
                        [-v TEST_VECTOR [TEST_VECTOR...]] [-n NUM_OPS]
                        [-b BURST_SIZE [BURST_SIZE ...]] [-l NUM_LCORES]
