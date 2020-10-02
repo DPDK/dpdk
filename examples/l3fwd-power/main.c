@@ -821,20 +821,23 @@ power_freq_scaleup_heuristic(unsigned lcore_id,
  *  0 on success
  */
 static int
-sleep_until_rx_interrupt(int num)
+sleep_until_rx_interrupt(int num, int lcore)
 {
 	/*
 	 * we want to track when we are woken up by traffic so that we can go
-	 * back to sleep again without log spamming.
+	 * back to sleep again without log spamming. Avoid cache line sharing
+	 * to prevent threads stepping on each others' toes.
 	 */
-	static bool timeout;
+	static struct {
+		bool wakeup;
+	} __rte_cache_aligned status[RTE_MAX_LCORE];
 	struct rte_epoll_event event[num];
 	int n, i;
 	uint16_t port_id;
 	uint8_t queue_id;
 	void *data;
 
-	if (!timeout) {
+	if (status[lcore].wakeup) {
 		RTE_LOG(INFO, L3FWD_POWER,
 				"lcore %u sleeps until interrupt triggers\n",
 				rte_lcore_id());
@@ -851,7 +854,7 @@ sleep_until_rx_interrupt(int num)
 			" port %d queue %d\n",
 			rte_lcore_id(), port_id, queue_id);
 	}
-	timeout = n == 0;
+	status[lcore].wakeup = n != 0;
 
 	return 0;
 }
@@ -1050,7 +1053,8 @@ start_rx:
 				if (intr_en) {
 					turn_on_off_intr(qconf, 1);
 					sleep_until_rx_interrupt(
-							qconf->n_rx_queue);
+							qconf->n_rx_queue,
+							lcore_id);
 					turn_on_off_intr(qconf, 0);
 					/**
 					 * start receiving packets immediately
@@ -1473,7 +1477,8 @@ start_rx:
 				if (intr_en) {
 					turn_on_off_intr(qconf, 1);
 					sleep_until_rx_interrupt(
-						qconf->n_rx_queue);
+							qconf->n_rx_queue,
+							lcore_id);
 					turn_on_off_intr(qconf, 0);
 					/**
 					 * start receiving packets immediately
