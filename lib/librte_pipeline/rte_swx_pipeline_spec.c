@@ -213,9 +213,8 @@ struct_block_parse(struct struct_spec *s,
 		return -ENOMEM;
 	}
 
-	new_fields = reallocarray(s->fields,
-				  s->n_fields + 1,
-				  sizeof(struct rte_swx_field_params));
+	new_fields = realloc(s->fields,
+			     (s->n_fields + 1) * sizeof(struct rte_swx_field_params));
 	if (!new_fields) {
 		free(name);
 
@@ -452,9 +451,8 @@ action_block_parse(struct action_spec *s,
 		return -ENOMEM;
 	}
 
-	new_instructions = reallocarray(s->instructions,
-					s->n_instructions + 1,
-					sizeof(char *));
+	new_instructions = realloc(s->instructions,
+				   (s->n_instructions + 1) * sizeof(char *));
 	if (!new_instructions) {
 		free(instr);
 
@@ -620,9 +618,8 @@ table_key_block_parse(struct table_spec *s,
 		return -ENOMEM;
 	}
 
-	new_fields = reallocarray(s->params.fields,
-				  s->params.n_fields + 1,
-				  sizeof(struct rte_swx_match_field_params));
+	new_fields = realloc(s->params.fields,
+			     (s->params.n_fields + 1) * sizeof(struct rte_swx_match_field_params));
 	if (!new_fields) {
 		free(name);
 
@@ -700,9 +697,8 @@ table_actions_block_parse(struct table_spec *s,
 		return -ENOMEM;
 	}
 
-	new_action_names = reallocarray(s->params.action_names,
-					s->params.n_actions + 1,
-					sizeof(char *));
+	new_action_names = realloc(s->params.action_names,
+				   (s->params.n_actions + 1) * sizeof(char *));
 	if (!new_action_names) {
 		free(name);
 
@@ -1019,9 +1015,8 @@ apply_block_parse(struct apply_spec *s,
 		return -ENOMEM;
 	}
 
-	new_instructions = reallocarray(s->instructions,
-					s->n_instructions + 1,
-					sizeof(char *));
+	new_instructions = realloc(s->instructions,
+				   (s->n_instructions + 1) * sizeof(char *));
 	if (!new_instructions) {
 		free(instr);
 
