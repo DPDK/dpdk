@@ -35,13 +35,12 @@
 #define VC_LOG_DBG(fmt, args...)
 #endif
 
-#define VIRTIO_CRYPTO_FEATURES ((1 << VIRTIO_F_NOTIFY_ON_EMPTY) |	\
-		(1 << VIRTIO_RING_F_INDIRECT_DESC) |			\
-		(1 << VIRTIO_RING_F_EVENT_IDX) |			\
-		(1 << VIRTIO_CRYPTO_SERVICE_CIPHER) |			\
-		(1 << VIRTIO_CRYPTO_SERVICE_MAC) |			\
-		(1 << VIRTIO_NET_F_CTRL_VQ) |				\
-		(1 << VHOST_USER_PROTOCOL_F_CONFIG))
+#define VIRTIO_CRYPTO_FEATURES ((1ULL << VIRTIO_F_NOTIFY_ON_EMPTY) |	\
+		(1ULL << VIRTIO_RING_F_INDIRECT_DESC) |			\
+		(1ULL << VIRTIO_RING_F_EVENT_IDX) |			\
+		(1ULL << VIRTIO_NET_F_CTRL_VQ) |			\
+		(1ULL << VIRTIO_F_VERSION_1) |				\
+		(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))
 
 #define IOVA_TO_VVA(t, r, a, l, p)					\
 	((t)(uintptr_t)vhost_iova_to_vva(r->dev, r->vq, a, l, p))
@@ -1401,6 +1400,27 @@ vhost_crypto_complete_one_vm_requests(struct rte_crypto_op **ops,
 }
 
 int
+rte_vhost_crypto_driver_start(const char *path)
+{
+	uint64_t protocol_features;
+	int ret;
+
+	ret = rte_vhost_driver_set_features(path, VIRTIO_CRYPTO_FEATURES);
+	if (ret)
+		return -1;
+
+	ret = rte_vhost_driver_get_protocol_features(path, &protocol_features);
+	if (ret)
+		return -1;
+	protocol_features |= (1ULL << VHOST_USER_PROTOCOL_F_CONFIG);
+	ret = rte_vhost_driver_set_protocol_features(path, protocol_features);
+	if (ret)
+		return -1;
+
+	return rte_vhost_driver_start(path);
+}
+
+int
 rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 		struct rte_mempool *sess_pool,
 		struct rte_mempool *sess_priv_pool,
@@ -1415,13 +1435,6 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 	if (!dev) {
 		VC_LOG_ERR("Invalid vid %i", vid);
 		return -EINVAL;
-	}
-
-	ret = rte_vhost_driver_set_features(dev->ifname,
-			VIRTIO_CRYPTO_FEATURES);
-	if (ret < 0) {
-		VC_LOG_ERR("Error setting features");
-		return -1;
 	}
 
 	vcrypto = rte_zmalloc_socket(NULL, sizeof(*vcrypto),

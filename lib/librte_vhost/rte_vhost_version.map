@@ -55,6 +55,7 @@ EXPERIMENTAL {
 	rte_vhost_driver_get_protocol_features;
 	rte_vhost_driver_get_queue_num;
 	rte_vhost_crypto_create;
+	rte_vhost_crypto_driver_start;
 	rte_vhost_crypto_free;
 	rte_vhost_crypto_fetch_requests;
 	rte_vhost_crypto_finalize_requests;

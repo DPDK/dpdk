@@ -598,7 +598,8 @@ main(int argc, char *argv[])
 			rte_vhost_driver_callback_register(lo->socket_files[j],
 				&virtio_crypto_device_ops);
 
-			ret = rte_vhost_driver_start(lo->socket_files[j]);
+			ret = rte_vhost_crypto_driver_start(
+					lo->socket_files[j]);
 			if (ret < 0)  {
 				RTE_LOG(ERR, USER1, "failed to start vhost.\n");
 				goto error_exit;

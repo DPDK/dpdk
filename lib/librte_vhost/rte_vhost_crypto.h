@@ -21,6 +21,18 @@ enum rte_vhost_crypto_zero_copy {
 };
 
 /**
+ * Start vhost crypto driver
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @return
+ *  0 on success, -1 on failure
+ */
+__rte_experimental
+int
+rte_vhost_crypto_driver_start(const char *path);
+
+/**
  *  Create Vhost-crypto instance
  *
  * @param vid

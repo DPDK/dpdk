@@ -381,6 +381,9 @@ API Changes
 
 * vhost: Moved vDPA APIs from experimental to stable.
 
+* vhost: Add a new function ``rte_vhost_crypto_driver_start`` to be called
+  instead of ``rte_vhost_driver_start`` by crypto applications.
+
 * cryptodev: The structure ``rte_crypto_sym_vec`` is updated to support both
   cpu_crypto synchrounous operation and asynchronous raw data-path APIs.
 
