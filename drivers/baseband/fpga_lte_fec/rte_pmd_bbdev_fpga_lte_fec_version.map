@@ -5,6 +5,6 @@ DPDK_21 {
 EXPERIMENTAL {
 	global:
 
-	fpga_lte_fec_configure;
+	rte_fpga_lte_fec_configure;
 
 };

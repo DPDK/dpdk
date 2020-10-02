@@ -309,6 +309,10 @@ API Changes
 * ipsec: ``RTE_SATP_LOG2_NUM`` has been dropped from ``enum`` and
   subsequently moved ``rte_ipsec`` lib from experimental to stable.
 
+* baseband/fpga_lte_fec: Renamed function ``fpga_lte_fec_configure`` to
+  ``rte_fpga_lte_fec_configure`` and structure ``fpga_lte_fec_conf`` to
+  ``rte_fpga_lte_fec_conf``.
+
 * baseband/fpga_5gnr_fec: Renamed function ``fpga_5gnr_fec_configure`` to
   ``rte_fpga_5gnr_fec_configure`` and structure ``fpga_5gnr_fec_conf`` to
   ``rte_fpga_5gnr_fec_conf``.

@@ -580,14 +580,14 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 #ifdef RTE_LIBRTE_PMD_BBDEV_FPGA_LTE_FEC
 	if ((get_init_device() == true) &&
 		(!strcmp(info->drv.driver_name, FPGA_LTE_PF_DRIVER_NAME))) {
-		struct fpga_lte_fec_conf conf;
+		struct rte_fpga_lte_fec_conf conf;
 		unsigned int i;
 
 		printf("Configure FPGA LTE FEC Driver %s with default values\n",
 				info->drv.driver_name);
 
 		/* clear default configuration before initialization */
-		memset(&conf, 0, sizeof(struct fpga_lte_fec_conf));
+		memset(&conf, 0, sizeof(struct rte_fpga_lte_fec_conf));
 
 		/* Set PF mode :
 		 * true if PF is used for data plane
@@ -615,7 +615,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 		conf.flr_time_out = FLR_4G_TIMEOUT;
 
 		/* setup FPGA PF with configuration information */
-		ret = fpga_lte_fec_configure(info->dev_name, &conf);
+		ret = rte_fpga_lte_fec_configure(info->dev_name, &conf);
 		TEST_ASSERT_SUCCESS(ret,
 				"Failed to configure 4G FPGA PF for bbdev %s",
 				info->dev_name);
