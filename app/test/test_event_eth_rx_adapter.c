@@ -464,7 +464,7 @@ adapter_multi_eth_add_del(void)
 	int err;
 	struct rte_event ev;
 
-	uint16_t port_index, drv_id = 0;
+	uint16_t port_index, port_index_base, drv_id = 0;
 	char driver_name[50];
 
 	struct rte_event_eth_rx_adapter_queue_conf queue_config;
@@ -484,6 +484,7 @@ adapter_multi_eth_add_del(void)
 
 	/* add the max port for rx_adapter */
 	port_index = rte_eth_dev_count_total();
+	port_index_base = port_index;
 	for (; port_index < RTE_MAX_ETHPORTS; port_index += 1) {
 		snprintf(driver_name, sizeof(driver_name), "%s%u", "net_null",
 				drv_id);
@@ -511,6 +512,17 @@ adapter_multi_eth_add_del(void)
 		err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
 				port_index, -1);
 		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	}
+
+	/* delete vdev ports */
+	for (drv_id = 0, port_index = port_index_base;
+	     port_index < RTE_MAX_ETHPORTS;
+	     drv_id += 1, port_index += 1) {
+		snprintf(driver_name, sizeof(driver_name), "%s%u", "net_null",
+				drv_id);
+		err = rte_vdev_uninit(driver_name);
+		TEST_ASSERT(err == 0, "Failed driver %s got %d",
+			    driver_name, err);
 	}
 
 	return TEST_SUCCESS;
