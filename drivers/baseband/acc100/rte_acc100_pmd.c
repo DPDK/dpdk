@@ -685,6 +685,7 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 				RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE |
 				RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE |
 #ifdef ACC100_EXT_MEM
+				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK |
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE |
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE |
 #endif
@@ -1419,10 +1420,7 @@ enqueue_ldpc_enc_n_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op **ops,
 	acc100_fcw_le_fill(ops[0], &desc->req.fcw_le, num);
 
 	/** This could be done at polling */
-	desc->req.word0 = ACC100_DMA_DESC_TYPE;
-	desc->req.word1 = 0; /**< Timestamp could be disabled */
-	desc->req.word2 = 0;
-	desc->req.word3 = 0;
+	acc100_header_init(&desc->req);
 	desc->req.numCBs = num;
 
 	in_length_in_bytes = ops[0]->ldpc_enc.input.data->data_len;
@@ -1505,12 +1503,165 @@ enqueue_ldpc_enc_one_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
 	return 1;
 }
 
+static inline int
+harq_loopback(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
+		uint16_t total_enqueued_cbs) {
+	struct acc100_fcw_ld *fcw;
+	union acc100_dma_desc *desc;
+	int next_triplet = 1;
+	struct rte_mbuf *hq_output_head, *hq_output;
+	uint16_t harq_in_length = op->ldpc_dec.harq_combined_input.length;
+	if (harq_in_length == 0) {
+		rte_bbdev_log(ERR, "Loopback of invalid null size\n");
+		return -EINVAL;
+	}
+
+	int h_comp = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION
+			) ? 1 : 0;
+	if (h_comp == 1)
+		harq_in_length = harq_in_length * 8 / 6;
+	harq_in_length = RTE_ALIGN(harq_in_length, 64);
+	uint16_t harq_dma_length_in = (h_comp == 0) ?
+			harq_in_length :
+			harq_in_length * 6 / 8;
+	uint16_t harq_dma_length_out = harq_dma_length_in;
+	bool ddr_mem_in = check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE);
+	union acc100_harq_layout_data *harq_layout = q->d->harq_layout;
+	uint16_t harq_index = (ddr_mem_in ?
+			op->ldpc_dec.harq_combined_input.offset :
+			op->ldpc_dec.harq_combined_output.offset)
+			/ ACC100_HARQ_OFFSET;
+
+	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
+			& q->sw_ring_wrap_mask);
+	desc = q->ring_addr + desc_idx;
+	fcw = &desc->req.fcw_ld;
+	/* Set the FCW from loopback into DDR */
+	memset(fcw, 0, sizeof(struct acc100_fcw_ld));
+	fcw->FCWversion = ACC100_FCW_VER;
+	fcw->qm = 2;
+	fcw->Zc = 384;
+	if (harq_in_length < 16 * ACC100_N_ZC_1)
+		fcw->Zc = 16;
+	fcw->ncb = fcw->Zc * ACC100_N_ZC_1;
+	fcw->rm_e = 2;
+	fcw->hcin_en = 1;
+	fcw->hcout_en = 1;
+
+	rte_bbdev_log(DEBUG, "Loopback IN %d Index %d offset %d length %d %d\n",
+			ddr_mem_in, harq_index,
+			harq_layout[harq_index].offset, harq_in_length,
+			harq_dma_length_in);
+
+	if (ddr_mem_in && (harq_layout[harq_index].offset > 0)) {
+		fcw->hcin_size0 = harq_layout[harq_index].size0;
+		fcw->hcin_offset = harq_layout[harq_index].offset;
+		fcw->hcin_size1 = harq_in_length - fcw->hcin_offset;
+		harq_dma_length_in = (fcw->hcin_size0 + fcw->hcin_size1);
+		if (h_comp == 1)
+			harq_dma_length_in = harq_dma_length_in * 6 / 8;
+	} else {
+		fcw->hcin_size0 = harq_in_length;
+	}
+	harq_layout[harq_index].val = 0;
+	rte_bbdev_log(DEBUG, "Loopback FCW Config %d %d %d\n",
+			fcw->hcin_size0, fcw->hcin_offset, fcw->hcin_size1);
+	fcw->hcout_size0 = harq_in_length;
+	fcw->hcin_decomp_mode = h_comp;
+	fcw->hcout_comp_mode = h_comp;
+	fcw->gain_i = 1;
+	fcw->gain_h = 1;
+
+	/* Set the prefix of descriptor. This could be done at polling */
+	acc100_header_init(&desc->req);
+
+	/* Null LLR input for Decoder */
+	desc->req.data_ptrs[next_triplet].address =
+			q->lb_in_addr_iova;
+	desc->req.data_ptrs[next_triplet].blen = 2;
+	desc->req.data_ptrs[next_triplet].blkid = ACC100_DMA_BLKID_IN;
+	desc->req.data_ptrs[next_triplet].last = 0;
+	desc->req.data_ptrs[next_triplet].dma_ext = 0;
+	next_triplet++;
+
+	/* HARQ Combine input from either Memory interface */
+	if (!ddr_mem_in) {
+		next_triplet = acc100_dma_fill_blk_type_out(&desc->req,
+				op->ldpc_dec.harq_combined_input.data,
+				op->ldpc_dec.harq_combined_input.offset,
+				harq_dma_length_in,
+				next_triplet,
+				ACC100_DMA_BLKID_IN_HARQ);
+	} else {
+		desc->req.data_ptrs[next_triplet].address =
+				op->ldpc_dec.harq_combined_input.offset;
+		desc->req.data_ptrs[next_triplet].blen =
+				harq_dma_length_in;
+		desc->req.data_ptrs[next_triplet].blkid =
+				ACC100_DMA_BLKID_IN_HARQ;
+		desc->req.data_ptrs[next_triplet].dma_ext = 1;
+		next_triplet++;
+	}
+	desc->req.data_ptrs[next_triplet - 1].last = 1;
+	desc->req.m2dlen = next_triplet;
+
+	/* Dropped decoder hard output */
+	desc->req.data_ptrs[next_triplet].address =
+			q->lb_out_addr_iova;
+	desc->req.data_ptrs[next_triplet].blen = ACC100_BYTES_IN_WORD;
+	desc->req.data_ptrs[next_triplet].blkid = ACC100_DMA_BLKID_OUT_HARD;
+	desc->req.data_ptrs[next_triplet].last = 0;
+	desc->req.data_ptrs[next_triplet].dma_ext = 0;
+	next_triplet++;
+
+	/* HARQ Combine output to either Memory interface */
+	if (check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE
+			)) {
+		desc->req.data_ptrs[next_triplet].address =
+				op->ldpc_dec.harq_combined_output.offset;
+		desc->req.data_ptrs[next_triplet].blen =
+				harq_dma_length_out;
+		desc->req.data_ptrs[next_triplet].blkid =
+				ACC100_DMA_BLKID_OUT_HARQ;
+		desc->req.data_ptrs[next_triplet].dma_ext = 1;
+		next_triplet++;
+	} else {
+		hq_output_head = op->ldpc_dec.harq_combined_output.data;
+		hq_output = op->ldpc_dec.harq_combined_output.data;
+		next_triplet = acc100_dma_fill_blk_type_out(
+				&desc->req,
+				op->ldpc_dec.harq_combined_output.data,
+				op->ldpc_dec.harq_combined_output.offset,
+				harq_dma_length_out,
+				next_triplet,
+				ACC100_DMA_BLKID_OUT_HARQ);
+		/* HARQ output */
+		mbuf_append(hq_output_head, hq_output, harq_dma_length_out);
+		op->ldpc_dec.harq_combined_output.length =
+				harq_dma_length_out;
+	}
+	desc->req.data_ptrs[next_triplet - 1].last = 1;
+	desc->req.d2mlen = next_triplet - desc->req.m2dlen;
+	desc->req.op_addr = op;
+
+	/* One CB (one op) was successfully prepared to enqueue */
+	return 1;
+}
+
 /** Enqueue one decode operations for ACC100 device in CB mode */
 static inline int
 enqueue_ldpc_dec_one_op_cb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 		uint16_t total_enqueued_cbs, bool same_op)
 {
 	int ret;
+	if (unlikely(check_bit(op->ldpc_dec.op_flags,
+			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK))) {
+		ret = harq_loopback(q, op, total_enqueued_cbs);
+		return ret;
+	}
 
 	union acc100_dma_desc *desc;
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
