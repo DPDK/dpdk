@@ -7,6 +7,7 @@
 
 #include "acc100_pf_enum.h"
 #include "acc100_vf_enum.h"
+#include "rte_acc100_cfg.h"
 
 /* Helper macro for logging */
 #define rte_bbdev_log(level, fmt, ...) \
@@ -98,6 +99,13 @@
 #define ACC100_SIG_UL_4G_LAST 21
 #define ACC100_SIG_DL_4G      27
 #define ACC100_SIG_DL_4G_LAST 31
+#define ACC100_NUM_ACCS       5
+#define ACC100_ACCMAP_0       0
+#define ACC100_ACCMAP_1       2
+#define ACC100_ACCMAP_2       1
+#define ACC100_ACCMAP_3       3
+#define ACC100_ACCMAP_4       4
+#define ACC100_PF_VAL         2
 
 /* max number of iterations to allocate memory block for all rings */
 #define ACC100_SW_RING_MEM_ALLOC_ATTEMPTS 5
@@ -517,6 +525,8 @@ static const struct acc100_registry_addr vf_reg_addr = {
 /* Private data structure for each ACC100 device */
 struct acc100_device {
 	void *mmio_base;  /**< Base address of MMIO registers (BAR0) */
+	uint32_t ddr_size; /* Size in kB */
+	struct rte_acc100_conf acc100_conf; /* ACC100 Initial configuration */
 	bool pf_device; /**< True if this is a PF ACC100 device */
 	bool configured; /**< True if this ACC100 device is configured */
 };
