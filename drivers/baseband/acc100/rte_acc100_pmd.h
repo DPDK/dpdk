@@ -88,6 +88,8 @@
 #define ACC100_TMPL_PRI_3      0x0f0e0d0c
 #define ACC100_QUEUE_ENABLE    0x80000000  /* Bit to mark Queue as Enabled */
 #define ACC100_WORDS_IN_ARAM_SIZE (128 * 1024 / 4)
+#define ACC100_FDONE    0x80000000
+#define ACC100_SDONE    0x40000000
 
 #define ACC100_NUM_TMPL       32
 /* Mapping of signals for the available engines */
@@ -120,6 +122,9 @@
 #define ACC100_FCW_TD_BLEN                24
 #define ACC100_FCW_LE_BLEN                32
 #define ACC100_FCW_LD_BLEN                36
+#define ACC100_5GUL_SIZE_0                16
+#define ACC100_5GUL_SIZE_1                40
+#define ACC100_5GUL_OFFSET_0              36
 
 #define ACC100_FCW_VER         2
 #define ACC100_MUX_5GDL_DESC   6
@@ -402,6 +407,7 @@ struct __rte_packed acc100_dma_req_desc {
 union acc100_dma_desc {
 	struct acc100_dma_req_desc req;
 	union acc100_dma_rsp_desc rsp;
+	uint64_t atom_hdr;
 };
 
 
