@@ -344,13 +344,15 @@ cmd_query_caps_list_parsed(void *parsed_result,
 		unsigned int i;
 		for (i = 0; i < pkt_caps_list.num_vcpu; ++i)
 			cmdline_printf(cl, "Capabilities of [%d] vcore are:"
-					" turbo possibility: %ld, is priority core: %ld.\n",
+					" turbo possibility: %" PRId64 ", "
+					"is priority core: %" PRId64 ".\n",
 					i,
 					pkt_caps_list.turbo[i],
 					pkt_caps_list.priority[i]);
 	} else {
 		cmdline_printf(cl, "Capabilities of [%d] vcore are:"
-				" turbo possibility: %ld, is priority core: %ld.\n",
+				" turbo possibility: %" PRId64 ", "
+				"is priority core: %" PRId64 ".\n",
 				lcore_id,
 				pkt_caps_list.turbo[lcore_id],
 				pkt_caps_list.priority[lcore_id]);
