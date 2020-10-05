@@ -10,6 +10,7 @@
 #include <rte_regexdev.h>
 #include <rte_regexdev_core.h>
 #include <rte_regexdev_driver.h>
+#include <rte_dev.h>
 
 #include <mlx5_common.h>
 #include <mlx5_glue.h>
@@ -350,7 +351,7 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 			     qp->nb_obj * sizeof(struct mlx5_regex_sq), 64);
 	if (!qp->sqs) {
 		DRV_LOG(ERR, "Can't allocate sq array memory.");
-		rte_errno  = ENOMEM;
+		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
 	log_desc = rte_log2_u32(qp->nb_desc / qp->nb_obj);
@@ -367,16 +368,25 @@ mlx5_regex_qp_setup(struct rte_regexdev *dev, uint16_t qp_ind,
 		}
 	}
 
+	ret = mlx5_mr_btree_init(&qp->mr_ctrl.cache_bh, MLX5_MR_BTREE_CACHE_N,
+				 rte_socket_id());
+	if (ret) {
+		DRV_LOG(ERR, "Error setting up mr btree");
+		goto err_btree;
+	}
+
 	ret = mlx5_regexdev_setup_fastpath(priv, qp_ind);
 	if (ret) {
-		DRV_LOG(ERR, "Fail to setup fastpath.");
+		DRV_LOG(ERR, "Error setting up fastpath");
 		goto err_fp;
 	}
 	return 0;
 
 err_fp:
+	mlx5_mr_btree_free(&qp->mr_ctrl.cache_bh);
+err_btree:
 	for (i = 0; i < qp->nb_obj; i++)
-		ret = regex_ctrl_destroy_sq(priv, qp, i);
+		regex_ctrl_destroy_sq(priv, qp, i);
 err_sq:
 	regex_ctrl_destroy_cq(priv, &qp->cq);
 err_cq:

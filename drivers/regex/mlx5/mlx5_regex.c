@@ -194,6 +194,16 @@ mlx5_regex_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->regexdev->device = (struct rte_device *)pci_dev;
 	priv->regexdev->data->dev_private = priv;
 	priv->regexdev->state = RTE_REGEXDEV_READY;
+	priv->mr_scache.reg_mr_cb = mlx5_common_verbs_reg_mr;
+	priv->mr_scache.dereg_mr_cb = mlx5_common_verbs_dereg_mr;
+	ret = mlx5_mr_btree_init(&priv->mr_scache.cache,
+				 MLX5_MR_BTREE_CACHE_N * 2,
+				 rte_socket_id());
+	if (ret) {
+		DRV_LOG(ERR, "MR init tree failed.");
+	    rte_errno = ENOMEM;
+		goto error;
+	}
 	return 0;
 
 error:
