@@ -565,8 +565,16 @@ struct acc100_device {
 	rte_iova_t sw_rings_iova;  /* IOVA address of sw_rings */
 	/* Virtual address of the info memory routed to the this function under
 	 * operation, whether it is PF or VF.
+	 * HW may DMA information data at this location asynchronously
 	 */
+	union acc100_info_ring_data *info_ring;
+
 	union acc100_harq_layout_data *harq_layout;
+	/* Virtual Info Ring head */
+	uint16_t info_ring_head;
+	/* Number of bytes available for each queue in device, depending on
+	 * how many queues are enabled with configure()
+	 */
 	uint32_t sw_ring_size;
 	uint32_t ddr_size; /* Size in kB */
 	uint32_t *tail_ptrs; /* Base address of response tail pointer buffer */
@@ -580,6 +588,14 @@ struct acc100_device {
 	uint16_t q_assigned_bit_map[ACC100_NUM_QGRPS];
 	bool pf_device; /**< True if this is a PF ACC100 device */
 	bool configured; /**< True if this ACC100 device is configured */
+};
+
+/**
+ * Structure with details about RTE_BBDEV_EVENT_DEQUEUE event. It's passed to
+ * the callback function.
+ */
+struct acc100_deq_intr_details {
+	uint16_t queue_id;
 };
 
 #endif /* _RTE_ACC100_PMD_H_ */
