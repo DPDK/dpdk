@@ -152,6 +152,12 @@ New Features
     ``--portmask=N``
     where N represents the hexadecimal bitmask of ports used.
 
+* **Added Intel ACC100 bbdev PMD.**
+
+  Added a new ``acc100`` bbdev driver for the Intel\ |reg| ACC100 accelerator
+  also known as Mount Bryce.  See the
+  :doc:`../bbdevs/acc100` BBDEV guide for more details on this new driver.
+
 * **Added Marvell OCTEON TX2 regex PMD.**
 
   Added a new PMD driver for hardware regex offload block for OCTEON TX2 SoC.

@@ -89,6 +89,23 @@ struct rte_acc100_conf {
 	struct rte_acc100_arbitration arb_dl_5g[RTE_ACC100_NUM_VFS];
 };
 
+/**
+ * Configure a ACC100 device
+ *
+ * @param dev_name
+ *   The name of the device. This is the short form of PCI BDF, e.g. 00:01.0.
+ *   It can also be retrieved for a bbdev device from the dev_name field in the
+ *   rte_bbdev_info structure returned by rte_bbdev_info_get().
+ * @param conf
+ *   Configuration to apply to ACC100 HW.
+ *
+ * @return
+ *   Zero on success, negative value on failure.
+ */
+__rte_experimental
+int
+rte_acc100_configure(const char *dev_name, struct rte_acc100_conf *conf);
+
 #ifdef __cplusplus
 }
 #endif

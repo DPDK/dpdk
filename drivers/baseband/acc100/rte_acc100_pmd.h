@@ -158,6 +158,7 @@
 #define ACC100_RESET_HARD       0x1FF
 #define ACC100_ENGINES_MAX      9
 #define ACC100_LONG_WAIT        1000
+#define ACC100_GPEX_AXIMAP_NUM  17
 
 /* ACC100 DMA Descriptor triplet */
 struct acc100_dma_triplet {
