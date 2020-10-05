@@ -1994,6 +1994,243 @@ acc100_dma_enqueue(struct acc100_queue *q, uint16_t n,
 
 }
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+/* Validates turbo encoder parameters */
+static inline int
+validate_enc_op(struct rte_bbdev_enc_op *op)
+{
+	struct rte_bbdev_op_turbo_enc *turbo_enc = &op->turbo_enc;
+	struct rte_bbdev_op_enc_turbo_cb_params *cb = NULL;
+	struct rte_bbdev_op_enc_turbo_tb_params *tb = NULL;
+	uint16_t kw, kw_neg, kw_pos;
+
+	if (op->mempool == NULL) {
+		rte_bbdev_log(ERR, "Invalid mempool pointer");
+		return -1;
+	}
+	if (turbo_enc->input.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid input pointer");
+		return -1;
+	}
+	if (turbo_enc->output.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid output pointer");
+		return -1;
+	}
+	if (turbo_enc->rv_index > 3) {
+		rte_bbdev_log(ERR,
+				"rv_index (%u) is out of range 0 <= value <= 3",
+				turbo_enc->rv_index);
+		return -1;
+	}
+	if (turbo_enc->code_block_mode != 0 &&
+			turbo_enc->code_block_mode != 1) {
+		rte_bbdev_log(ERR,
+				"code_block_mode (%u) is out of range 0 <= value <= 1",
+				turbo_enc->code_block_mode);
+		return -1;
+	}
+
+	if (turbo_enc->code_block_mode == 0) {
+		tb = &turbo_enc->tb_params;
+		if ((tb->k_neg < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| tb->k_neg > RTE_BBDEV_TURBO_MAX_CB_SIZE)
+				&& tb->c_neg > 0) {
+			rte_bbdev_log(ERR,
+					"k_neg (%u) is out of range %u <= value <= %u",
+					tb->k_neg, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
+			return -1;
+		}
+		if (tb->k_pos < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| tb->k_pos > RTE_BBDEV_TURBO_MAX_CB_SIZE) {
+			rte_bbdev_log(ERR,
+					"k_pos (%u) is out of range %u <= value <= %u",
+					tb->k_pos, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
+			return -1;
+		}
+		if (tb->c_neg > (RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1))
+			rte_bbdev_log(ERR,
+					"c_neg (%u) is out of range 0 <= value <= %u",
+					tb->c_neg,
+					RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1);
+		if (tb->c < 1 || tb->c > RTE_BBDEV_TURBO_MAX_CODE_BLOCKS) {
+			rte_bbdev_log(ERR,
+					"c (%u) is out of range 1 <= value <= %u",
+					tb->c, RTE_BBDEV_TURBO_MAX_CODE_BLOCKS);
+			return -1;
+		}
+		if (tb->cab > tb->c) {
+			rte_bbdev_log(ERR,
+					"cab (%u) is greater than c (%u)",
+					tb->cab, tb->c);
+			return -1;
+		}
+		if ((tb->ea < RTE_BBDEV_TURBO_MIN_CB_SIZE || (tb->ea % 2))
+				&& tb->r < tb->cab) {
+			rte_bbdev_log(ERR,
+					"ea (%u) is less than %u or it is not even",
+					tb->ea, RTE_BBDEV_TURBO_MIN_CB_SIZE);
+			return -1;
+		}
+		if ((tb->eb < RTE_BBDEV_TURBO_MIN_CB_SIZE || (tb->eb % 2))
+				&& tb->c > tb->cab) {
+			rte_bbdev_log(ERR,
+					"eb (%u) is less than %u or it is not even",
+					tb->eb, RTE_BBDEV_TURBO_MIN_CB_SIZE);
+			return -1;
+		}
+
+		kw_neg = 3 * RTE_ALIGN_CEIL(tb->k_neg + 4,
+					RTE_BBDEV_TURBO_C_SUBBLOCK);
+		if (tb->ncb_neg < tb->k_neg || tb->ncb_neg > kw_neg) {
+			rte_bbdev_log(ERR,
+					"ncb_neg (%u) is out of range (%u) k_neg <= value <= (%u) kw_neg",
+					tb->ncb_neg, tb->k_neg, kw_neg);
+			return -1;
+		}
+
+		kw_pos = 3 * RTE_ALIGN_CEIL(tb->k_pos + 4,
+					RTE_BBDEV_TURBO_C_SUBBLOCK);
+		if (tb->ncb_pos < tb->k_pos || tb->ncb_pos > kw_pos) {
+			rte_bbdev_log(ERR,
+					"ncb_pos (%u) is out of range (%u) k_pos <= value <= (%u) kw_pos",
+					tb->ncb_pos, tb->k_pos, kw_pos);
+			return -1;
+		}
+		if (tb->r > (tb->c - 1)) {
+			rte_bbdev_log(ERR,
+					"r (%u) is greater than c - 1 (%u)",
+					tb->r, tb->c - 1);
+			return -1;
+		}
+	} else {
+		cb = &turbo_enc->cb_params;
+		if (cb->k < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| cb->k > RTE_BBDEV_TURBO_MAX_CB_SIZE) {
+			rte_bbdev_log(ERR,
+					"k (%u) is out of range %u <= value <= %u",
+					cb->k, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
+			return -1;
+		}
+
+		if (cb->e < RTE_BBDEV_TURBO_MIN_CB_SIZE || (cb->e % 2)) {
+			rte_bbdev_log(ERR,
+					"e (%u) is less than %u or it is not even",
+					cb->e, RTE_BBDEV_TURBO_MIN_CB_SIZE);
+			return -1;
+		}
+
+		kw = RTE_ALIGN_CEIL(cb->k + 4, RTE_BBDEV_TURBO_C_SUBBLOCK) * 3;
+		if (cb->ncb < cb->k || cb->ncb > kw) {
+			rte_bbdev_log(ERR,
+					"ncb (%u) is out of range (%u) k <= value <= (%u) kw",
+					cb->ncb, cb->k, kw);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+/* Validates LDPC encoder parameters */
+static inline int
+validate_ldpc_enc_op(struct rte_bbdev_enc_op *op)
+{
+	struct rte_bbdev_op_ldpc_enc *ldpc_enc = &op->ldpc_enc;
+
+	if (op->mempool == NULL) {
+		rte_bbdev_log(ERR, "Invalid mempool pointer");
+		return -1;
+	}
+	if (ldpc_enc->input.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid input pointer");
+		return -1;
+	}
+	if (ldpc_enc->output.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid output pointer");
+		return -1;
+	}
+	if (ldpc_enc->input.length >
+			RTE_BBDEV_LDPC_MAX_CB_SIZE >> 3) {
+		rte_bbdev_log(ERR, "CB size (%u) is too big, max: %d",
+				ldpc_enc->input.length,
+				RTE_BBDEV_LDPC_MAX_CB_SIZE);
+		return -1;
+	}
+	if ((ldpc_enc->basegraph > 2) || (ldpc_enc->basegraph == 0)) {
+		rte_bbdev_log(ERR,
+				"BG (%u) is out of range 1 <= value <= 2",
+				ldpc_enc->basegraph);
+		return -1;
+	}
+	if (ldpc_enc->rv_index > 3) {
+		rte_bbdev_log(ERR,
+				"rv_index (%u) is out of range 0 <= value <= 3",
+				ldpc_enc->rv_index);
+		return -1;
+	}
+	if (ldpc_enc->code_block_mode > 1) {
+		rte_bbdev_log(ERR,
+				"code_block_mode (%u) is out of range 0 <= value <= 1",
+				ldpc_enc->code_block_mode);
+		return -1;
+	}
+	int K = (ldpc_enc->basegraph == 1 ? 22 : 10) * ldpc_enc->z_c;
+	if (ldpc_enc->n_filler >= K) {
+		rte_bbdev_log(ERR,
+				"K and F are not compatible %u %u",
+				K, ldpc_enc->n_filler);
+		return -1;
+	}
+	return 0;
+}
+
+/* Validates LDPC decoder parameters */
+static inline int
+validate_ldpc_dec_op(struct rte_bbdev_dec_op *op)
+{
+	struct rte_bbdev_op_ldpc_dec *ldpc_dec = &op->ldpc_dec;
+
+	if (op->mempool == NULL) {
+		rte_bbdev_log(ERR, "Invalid mempool pointer");
+		return -1;
+	}
+	if ((ldpc_dec->basegraph > 2) || (ldpc_dec->basegraph == 0)) {
+		rte_bbdev_log(ERR,
+				"BG (%u) is out of range 1 <= value <= 2",
+				ldpc_dec->basegraph);
+		return -1;
+	}
+	if (ldpc_dec->iter_max == 0) {
+		rte_bbdev_log(ERR,
+				"iter_max (%u) is equal to 0",
+				ldpc_dec->iter_max);
+		return -1;
+	}
+	if (ldpc_dec->rv_index > 3) {
+		rte_bbdev_log(ERR,
+				"rv_index (%u) is out of range 0 <= value <= 3",
+				ldpc_dec->rv_index);
+		return -1;
+	}
+	if (ldpc_dec->code_block_mode > 1) {
+		rte_bbdev_log(ERR,
+				"code_block_mode (%u) is out of range 0 <= value <= 1",
+				ldpc_dec->code_block_mode);
+		return -1;
+	}
+	int K = (ldpc_dec->basegraph == 1 ? 22 : 10) * ldpc_dec->z_c;
+	if (ldpc_dec->n_filler >= K) {
+		rte_bbdev_log(ERR,
+				"K and F are not compatible %u %u",
+				K, ldpc_dec->n_filler);
+		return -1;
+	}
+	return 0;
+}
+#endif
+
 /* Enqueue one encode operations for ACC100 device in CB mode */
 static inline int
 enqueue_enc_one_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
@@ -2004,6 +2241,14 @@ enqueue_enc_one_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
 	uint32_t in_offset, out_offset, out_length, mbuf_total_left,
 		seg_total_left;
 	struct rte_mbuf *input, *output_head, *output;
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	if (validate_enc_op(op) == -1) {
+		rte_bbdev_log(ERR, "Turbo encoder validation failed");
+		return -EINVAL;
+	}
+#endif
 
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
 			& q->sw_ring_wrap_mask);
@@ -2050,6 +2295,14 @@ enqueue_ldpc_enc_n_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op **ops,
 	int i, next_triplet;
 	uint16_t  in_length_in_bytes;
 	struct rte_bbdev_op_ldpc_enc *enc = &ops[0]->ldpc_enc;
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	if (validate_ldpc_enc_op(ops[0]) == -1) {
+		rte_bbdev_log(ERR, "LDPC encoder validation failed");
+		return -EINVAL;
+	}
+#endif
 
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
 			& q->sw_ring_wrap_mask);
@@ -2105,6 +2358,14 @@ enqueue_ldpc_enc_one_op_cb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
 		seg_total_left;
 	struct rte_mbuf *input, *output_head, *output;
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	if (validate_ldpc_enc_op(op) == -1) {
+		rte_bbdev_log(ERR, "LDPC encoder validation failed");
+		return -EINVAL;
+	}
+#endif
+
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
 			& q->sw_ring_wrap_mask);
 	desc = q->ring_addr + desc_idx;
@@ -2153,6 +2414,14 @@ enqueue_enc_one_op_tb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
 		seg_total_left;
 	struct rte_mbuf *input, *output_head, *output;
 	uint16_t current_enqueued_cbs = 0;
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	if (validate_enc_op(op) == -1) {
+		rte_bbdev_log(ERR, "Turbo encoder validation failed");
+		return -EINVAL;
+	}
+#endif
 
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
 			& q->sw_ring_wrap_mask);
@@ -2221,6 +2490,142 @@ enqueue_enc_one_op_tb(struct acc100_queue *q, struct rte_bbdev_enc_op *op,
 	return current_enqueued_cbs;
 }
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+/* Validates turbo decoder parameters */
+static inline int
+validate_dec_op(struct rte_bbdev_dec_op *op)
+{
+	struct rte_bbdev_op_turbo_dec *turbo_dec = &op->turbo_dec;
+	struct rte_bbdev_op_dec_turbo_cb_params *cb = NULL;
+	struct rte_bbdev_op_dec_turbo_tb_params *tb = NULL;
+
+	if (op->mempool == NULL) {
+		rte_bbdev_log(ERR, "Invalid mempool pointer");
+		return -1;
+	}
+	if (turbo_dec->input.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid input pointer");
+		return -1;
+	}
+	if (turbo_dec->hard_output.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid hard_output pointer");
+		return -1;
+	}
+	if (check_bit(turbo_dec->op_flags, RTE_BBDEV_TURBO_SOFT_OUTPUT) &&
+			turbo_dec->soft_output.data == NULL) {
+		rte_bbdev_log(ERR, "Invalid soft_output pointer");
+		return -1;
+	}
+	if (turbo_dec->rv_index > 3) {
+		rte_bbdev_log(ERR,
+				"rv_index (%u) is out of range 0 <= value <= 3",
+				turbo_dec->rv_index);
+		return -1;
+	}
+	if (turbo_dec->iter_min < 1) {
+		rte_bbdev_log(ERR,
+				"iter_min (%u) is less than 1",
+				turbo_dec->iter_min);
+		return -1;
+	}
+	if (turbo_dec->iter_max <= 2) {
+		rte_bbdev_log(ERR,
+				"iter_max (%u) is less than or equal to 2",
+				turbo_dec->iter_max);
+		return -1;
+	}
+	if (turbo_dec->iter_min > turbo_dec->iter_max) {
+		rte_bbdev_log(ERR,
+				"iter_min (%u) is greater than iter_max (%u)",
+				turbo_dec->iter_min, turbo_dec->iter_max);
+		return -1;
+	}
+	if (turbo_dec->code_block_mode != 0 &&
+			turbo_dec->code_block_mode != 1) {
+		rte_bbdev_log(ERR,
+				"code_block_mode (%u) is out of range 0 <= value <= 1",
+				turbo_dec->code_block_mode);
+		return -1;
+	}
+
+	if (turbo_dec->code_block_mode == 0) {
+		tb = &turbo_dec->tb_params;
+		if ((tb->k_neg < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| tb->k_neg > RTE_BBDEV_TURBO_MAX_CB_SIZE)
+				&& tb->c_neg > 0) {
+			rte_bbdev_log(ERR,
+					"k_neg (%u) is out of range %u <= value <= %u",
+					tb->k_neg, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
+			return -1;
+		}
+		if ((tb->k_pos < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| tb->k_pos > RTE_BBDEV_TURBO_MAX_CB_SIZE)
+				&& tb->c > tb->c_neg) {
+			rte_bbdev_log(ERR,
+					"k_pos (%u) is out of range %u <= value <= %u",
+					tb->k_pos, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
+			return -1;
+		}
+		if (tb->c_neg > (RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1))
+			rte_bbdev_log(ERR,
+					"c_neg (%u) is out of range 0 <= value <= %u",
+					tb->c_neg,
+					RTE_BBDEV_TURBO_MAX_CODE_BLOCKS - 1);
+		if (tb->c < 1 || tb->c > RTE_BBDEV_TURBO_MAX_CODE_BLOCKS) {
+			rte_bbdev_log(ERR,
+					"c (%u) is out of range 1 <= value <= %u",
+					tb->c, RTE_BBDEV_TURBO_MAX_CODE_BLOCKS);
+			return -1;
+		}
+		if (tb->cab > tb->c) {
+			rte_bbdev_log(ERR,
+					"cab (%u) is greater than c (%u)",
+					tb->cab, tb->c);
+			return -1;
+		}
+		if (check_bit(turbo_dec->op_flags, RTE_BBDEV_TURBO_EQUALIZER) &&
+				(tb->ea < RTE_BBDEV_TURBO_MIN_CB_SIZE
+						|| (tb->ea % 2))
+				&& tb->cab > 0) {
+			rte_bbdev_log(ERR,
+					"ea (%u) is less than %u or it is not even",
+					tb->ea, RTE_BBDEV_TURBO_MIN_CB_SIZE);
+			return -1;
+		}
+		if (check_bit(turbo_dec->op_flags, RTE_BBDEV_TURBO_EQUALIZER) &&
+				(tb->eb < RTE_BBDEV_TURBO_MIN_CB_SIZE
+						|| (tb->eb % 2))
+				&& tb->c > tb->cab) {
+			rte_bbdev_log(ERR,
+					"eb (%u) is less than %u or it is not even",
+					tb->eb, RTE_BBDEV_TURBO_MIN_CB_SIZE);
+		}
+	} else {
+		cb = &turbo_dec->cb_params;
+		if (cb->k < RTE_BBDEV_TURBO_MIN_CB_SIZE
+				|| cb->k > RTE_BBDEV_TURBO_MAX_CB_SIZE) {
+			rte_bbdev_log(ERR,
+					"k (%u) is out of range %u <= value <= %u",
+					cb->k, RTE_BBDEV_TURBO_MIN_CB_SIZE,
+					RTE_BBDEV_TURBO_MAX_CB_SIZE);
+			return -1;
+		}
+		if (check_bit(turbo_dec->op_flags, RTE_BBDEV_TURBO_EQUALIZER) &&
+				(cb->e < RTE_BBDEV_TURBO_MIN_CB_SIZE ||
+				(cb->e % 2))) {
+			rte_bbdev_log(ERR,
+					"e (%u) is less than %u or it is not even",
+					cb->e, RTE_BBDEV_TURBO_MIN_CB_SIZE);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 /** Enqueue one decode operations for ACC100 device in CB mode */
 static inline int
 enqueue_dec_one_op_cb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
@@ -2232,6 +2637,14 @@ enqueue_dec_one_op_cb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 		h_out_length, mbuf_total_left, seg_total_left;
 	struct rte_mbuf *input, *h_output_head, *h_output,
 		*s_output_head, *s_output;
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	if (validate_dec_op(op) == -1) {
+		rte_bbdev_log(ERR, "Turbo decoder validation failed");
+		return -EINVAL;
+	}
+#endif
 
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
 			& q->sw_ring_wrap_mask);
@@ -2450,6 +2863,13 @@ enqueue_ldpc_dec_one_op_cb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 		return ret;
 	}
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	if (validate_ldpc_dec_op(op) == -1) {
+		rte_bbdev_log(ERR, "LDPC decoder validation failed");
+		return -EINVAL;
+	}
+#endif
 	union acc100_dma_desc *desc;
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
 			& q->sw_ring_wrap_mask);
@@ -2547,6 +2967,14 @@ enqueue_ldpc_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 	struct rte_mbuf *input, *h_output_head, *h_output;
 	uint16_t current_enqueued_cbs = 0;
 
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	if (validate_ldpc_dec_op(op) == -1) {
+		rte_bbdev_log(ERR, "LDPC decoder validation failed");
+		return -EINVAL;
+	}
+#endif
+
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
 			& q->sw_ring_wrap_mask);
 	desc = q->ring_addr + desc_idx;
@@ -2631,6 +3059,14 @@ enqueue_dec_one_op_tb(struct acc100_queue *q, struct rte_bbdev_dec_op *op,
 	struct rte_mbuf *input, *h_output_head, *h_output,
 		*s_output_head, *s_output;
 	uint16_t current_enqueued_cbs = 0;
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	/* Validate op structure */
+	if (validate_dec_op(op) == -1) {
+		rte_bbdev_log(ERR, "Turbo decoder validation failed");
+		return -EINVAL;
+	}
+#endif
 
 	uint16_t desc_idx = ((q->sw_ring_head + total_enqueued_cbs)
 			& q->sw_ring_wrap_mask);
