@@ -522,11 +522,56 @@ static const struct acc100_registry_addr vf_reg_addr = {
 	.ddr_range = HWVfDmaDdrBaseRangeRoVf,
 };
 
+/* Structure associated with each queue. */
+struct __rte_cache_aligned acc100_queue {
+	union acc100_dma_desc *ring_addr;  /* Virtual address of sw ring */
+	rte_iova_t ring_addr_iova;  /* IOVA address of software ring */
+	uint32_t sw_ring_head;  /* software ring head */
+	uint32_t sw_ring_tail;  /* software ring tail */
+	/* software ring size (descriptors, not bytes) */
+	uint32_t sw_ring_depth;
+	/* mask used to wrap enqueued descriptors on the sw ring */
+	uint32_t sw_ring_wrap_mask;
+	/* MMIO register used to enqueue descriptors */
+	void *mmio_reg_enqueue;
+	uint8_t vf_id;  /* VF ID (max = 63) */
+	uint8_t qgrp_id;  /* Queue Group ID */
+	uint16_t aq_id;  /* Atomic Queue ID */
+	uint16_t aq_depth;  /* Depth of atomic queue */
+	uint32_t aq_enqueued;  /* Count how many "batches" have been enqueued */
+	uint32_t aq_dequeued;  /* Count how many "batches" have been dequeued */
+	uint32_t irq_enable;  /* Enable ops dequeue interrupts if set to 1 */
+	struct rte_mempool *fcw_mempool;  /* FCW mempool */
+	enum rte_bbdev_op_type op_type;  /* Type of this Queue: TE or TD */
+	/* Internal Buffers for loopback input */
+	uint8_t *lb_in;
+	uint8_t *lb_out;
+	rte_iova_t lb_in_addr_iova;
+	rte_iova_t lb_out_addr_iova;
+	struct acc100_device *d;
+};
+
 /* Private data structure for each ACC100 device */
 struct acc100_device {
 	void *mmio_base;  /**< Base address of MMIO registers (BAR0) */
+	void *sw_rings_base;  /* Base addr of un-aligned memory for sw rings */
+	void *sw_rings;  /* 64MBs of 64MB aligned memory for sw rings */
+	rte_iova_t sw_rings_iova;  /* IOVA address of sw_rings */
+	/* Virtual address of the info memory routed to the this function under
+	 * operation, whether it is PF or VF.
+	 */
+	union acc100_harq_layout_data *harq_layout;
+	uint32_t sw_ring_size;
 	uint32_t ddr_size; /* Size in kB */
+	uint32_t *tail_ptrs; /* Base address of response tail pointer buffer */
+	rte_iova_t tail_ptr_iova; /* IOVA address of tail pointers */
+	/* Max number of entries available for each queue in device, depending
+	 * on how many queues are enabled with configure()
+	 */
+	uint32_t sw_ring_max_depth;
 	struct rte_acc100_conf acc100_conf; /* ACC100 Initial configuration */
+	/* Bitmap capturing which Queues have already been assigned */
+	uint16_t q_assigned_bit_map[ACC100_NUM_QGRPS];
 	bool pf_device; /**< True if this is a PF ACC100 device */
 	bool configured; /**< True if this ACC100 device is configured */
 };
