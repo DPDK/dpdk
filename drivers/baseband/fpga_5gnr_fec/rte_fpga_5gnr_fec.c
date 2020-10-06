@@ -1839,7 +1839,7 @@ fpga_5gnr_fec_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 
 	rte_bbdev_log_debug(
 			"Init device %s [%s] @ virtaddr %p phyaddr %#"PRIx64,
-			dev->device->driver->name, dev->data->name,
+			drv->driver.name, dev->data->name,
 			(void *)pci_dev->mem_resource[0].addr,
 			pci_dev->mem_resource[0].phys_addr);
 }
@@ -1895,7 +1895,7 @@ fpga_5gnr_fec_probe(struct rte_pci_driver *pci_drv,
 		((uint16_t)(version_id >> 16)), ((uint16_t)version_id));
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-	if (!strcmp(bbdev->device->driver->name,
+	if (!strcmp(pci_drv->driver.name,
 			RTE_STR(FPGA_5GNR_FEC_PF_DRIVER_NAME)))
 		print_static_reg_debug_info(d->mmio_base);
 #endif
