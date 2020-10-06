@@ -371,7 +371,7 @@ table_entry_duplicate(struct rte_swx_ctl_pipeline *ctl,
 		}
 	}
 
-	return entry;
+	return new_entry;
 
 error:
 	table_entry_free(new_entry);
