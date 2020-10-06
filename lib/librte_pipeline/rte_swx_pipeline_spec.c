@@ -35,9 +35,17 @@ struct extobj_spec {
 static void
 extobj_spec_free(struct extobj_spec *s)
 {
+	if (!s)
+		return;
+
 	free(s->name);
+	s->name = NULL;
+
 	free(s->extern_type_name);
+	s->extern_type_name = NULL;
+
 	free(s->pragma);
+	s->pragma = NULL;
 }
 
 static int
@@ -246,8 +254,14 @@ struct header_spec {
 static void
 header_spec_free(struct header_spec *s)
 {
+	if (!s)
+		return;
+
 	free(s->name);
+	s->name = NULL;
+
 	free(s->struct_type_name);
+	s->struct_type_name = NULL;
 }
 
 static int
@@ -297,7 +311,11 @@ struct metadata_spec {
 static void
 metadata_spec_free(struct metadata_spec *s)
 {
+	if (!s)
+		return;
+
 	free(s->struct_type_name);
+	s->struct_type_name = NULL;
 }
 
 static int
