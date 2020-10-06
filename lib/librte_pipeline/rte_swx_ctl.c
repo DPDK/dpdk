@@ -1463,6 +1463,7 @@ rte_swx_ctl_pipeline_table_entry_read(struct rte_swx_ctl_pipeline *ctl,
 		arg_offset += arg->n_bits / 8;
 	}
 
+	free(s0);
 	return entry;
 
 error:
