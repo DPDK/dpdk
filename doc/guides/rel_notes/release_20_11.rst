@@ -304,6 +304,10 @@ API Changes
 
 * bpf: ``RTE_BPF_XTYPE_NUM`` has been dropped from ``rte_bpf_xtype``.
 
+* acl: ``RTE_ACL_CLASSIFY_NUM`` enum value has been removed.
+  This enum value was not used inside DPDK, while it prevented to add new
+  classify algorithms without causing an ABI breakage.
+
 
 ABI Changes
 -----------

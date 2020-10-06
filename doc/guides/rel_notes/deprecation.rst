@@ -202,10 +202,6 @@ Deprecation Notices
   - https://patches.dpdk.org/patch/71457/
   - https://patches.dpdk.org/patch/71456/
 
-* acl: ``RTE_ACL_CLASSIFY_NUM`` enum value will be removed.
-  This enum value is not used inside DPDK, while it prevents to add new
-  classify algorithms without causing an ABI breakage.
-
 * sched: To allow more traffic classes, flexible mapping of pipe queues to
   traffic classes, and subport level configuration of pipes and queues
   changes will be made to macros, data structures and API functions defined

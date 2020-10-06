@@ -241,7 +241,6 @@ enum rte_acl_classify_alg {
 	RTE_ACL_CLASSIFY_AVX2 = 3,    /**< requires AVX2 support. */
 	RTE_ACL_CLASSIFY_NEON = 4,    /**< requires NEON support. */
 	RTE_ACL_CLASSIFY_ALTIVEC = 5,    /**< requires ALTIVEC support. */
-	RTE_ACL_CLASSIFY_NUM          /* should always be the last one. */
 };
 
 /**
