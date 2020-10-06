@@ -428,7 +428,10 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 	} while (nb_tx_pkts < ring_mask);
 
 	if (nb_tx_pkts) {
-		bnxt_tx_cmp(txq, nb_tx_pkts);
+		if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			bnxt_tx_cmp_fast(txq, nb_tx_pkts);
+		else
+			bnxt_tx_cmp(txq, nb_tx_pkts);
 		cpr->cp_raw_cons = raw_cons;
 		bnxt_db_cq(cpr);
 	}

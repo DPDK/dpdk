@@ -39,6 +39,7 @@ struct bnxt_tx_queue {
 	struct bnxt_cp_ring_info	*cp_ring;
 	const struct rte_memzone *mz;
 	struct rte_mbuf **free;
+	uint64_t offloads;
 };
 
 void bnxt_free_txq_stats(struct bnxt_tx_queue *txq);

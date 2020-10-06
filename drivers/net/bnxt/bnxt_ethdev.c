@@ -920,7 +920,9 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->rx_offload_capa = BNXT_DEV_RX_OFFLOAD_SUPPORT;
 	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TIMESTAMP;
-	dev_info->tx_offload_capa = BNXT_DEV_TX_OFFLOAD_SUPPORT;
+	dev_info->tx_queue_offload_capa = DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	dev_info->tx_offload_capa = BNXT_DEV_TX_OFFLOAD_SUPPORT |
+				    dev_info->tx_queue_offload_capa;
 	dev_info->flow_type_rss_offloads = BNXT_ETH_RSS_SUPPORT;
 
 	dev_info->speed_capa = bnxt_get_speed_capabilities(bp);
@@ -1191,6 +1193,7 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 {
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 #ifndef RTE_LIBRTE_IEEE1588
+	uint64_t offloads = eth_dev->data->dev_conf.txmode.offloads;
 	struct bnxt *bp = eth_dev->data->dev_private;
 
 	/*
@@ -1198,7 +1201,7 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 	 * or tx offloads.
 	 */
 	if (!eth_dev->data->scattered_rx &&
-	    !eth_dev->data->dev_conf.txmode.offloads &&
+	    !(offloads & ~DEV_TX_OFFLOAD_MBUF_FAST_FREE) &&
 	    !BNXT_TRUFLOW_EN(bp)) {
 		PMD_DRV_LOG(INFO, "Using vector mode transmit for port %d\n",
 			    eth_dev->data->port_id);
@@ -1210,7 +1213,7 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 		    "Port %d scatter: %d tx offload: %" PRIX64 "\n",
 		    eth_dev->data->port_id,
 		    eth_dev->data->scattered_rx,
-		    eth_dev->data->dev_conf.txmode.offloads);
+		    offloads);
 #endif
 #endif
 	return bnxt_xmit_pkts;
@@ -2685,7 +2688,7 @@ bnxt_txq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_rs_thresh = 0;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
-	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
+	qinfo->conf.offloads = txq->offloads;
 }
 
 static const struct {

@@ -13,10 +13,10 @@
 #include "bnxt.h"
 #include "bnxt_cpr.h"
 #include "bnxt_ring.h"
-#include "bnxt_rxtx_vec_common.h"
 
 #include "bnxt_txq.h"
 #include "bnxt_txr.h"
+#include "bnxt_rxtx_vec_common.h"
 
 /*
  * RX Ring handling
@@ -339,37 +339,6 @@ out:
 }
 
 static void
-bnxt_tx_cmp_vec(struct bnxt_tx_queue *txq, int nr_pkts)
-{
-	struct bnxt_tx_ring_info *txr = txq->tx_ring;
-	struct rte_mbuf **free = txq->free;
-	uint16_t cons = txr->tx_cons;
-	unsigned int blk = 0;
-
-	while (nr_pkts--) {
-		struct bnxt_sw_tx_bd *tx_buf;
-		struct rte_mbuf *mbuf;
-
-		tx_buf = &txr->tx_buf_ring[cons];
-		cons = RING_NEXT(txr->tx_ring_struct, cons);
-		mbuf = rte_pktmbuf_prefree_seg(tx_buf->mbuf);
-		if (unlikely(mbuf == NULL))
-			continue;
-		tx_buf->mbuf = NULL;
-
-		if (blk && mbuf->pool != free[0]->pool) {
-			rte_mempool_put_bulk(free[0]->pool, (void **)free, blk);
-			blk = 0;
-		}
-		free[blk++] = mbuf;
-	}
-	if (blk)
-		rte_mempool_put_bulk(free[0]->pool, (void **)free, blk);
-
-	txr->tx_cons = cons;
-}
-
-static void
 bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 {
 	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
@@ -399,7 +368,10 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 
 	cpr->valid = !!(raw_cons & cp_ring_struct->ring_size);
 	if (nb_tx_pkts) {
-		bnxt_tx_cmp_vec(txq, nb_tx_pkts);
+		if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			bnxt_tx_cmp_fast(txq, nb_tx_pkts);
+		else
+			bnxt_tx_cmp_vec(txq, nb_tx_pkts);
 		cpr->cp_raw_cons = raw_cons;
 		bnxt_db_cq(cpr);
 	}

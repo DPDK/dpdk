@@ -131,6 +131,8 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_free_thresh =
 		RTE_MIN(rte_align32pow2(nb_desc) / 4, RTE_BNXT_MAX_TX_BURST);
+	txq->offloads = eth_dev->data->dev_conf.txmode.offloads |
+			tx_conf->offloads;
 
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
