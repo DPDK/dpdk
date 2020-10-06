@@ -31,13 +31,6 @@ DPDK_21 {
 	local: *;
 };
 
-DPDK_20.0 {
-	global:
-
-	rte_mempool_populate_iova;
-	rte_mempool_populate_virt;
-};
-
 EXPERIMENTAL {
 	global:
 
