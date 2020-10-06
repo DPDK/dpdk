@@ -188,6 +188,9 @@ New Features
   * Added new ``RTE_ACL_CLASSIFY_AVX512X16`` vector implementation,
     which can process up to 16 flows in parallel. Requires AVX512 support.
 
+  * Added new ``RTE_ACL_CLASSIFY_AVX512X32`` vector implementation,
+    which can process up to 32 flows in parallel. Requires AVX512 support.
+
 
 Removed Items
 -------------

@@ -132,6 +132,8 @@ rte_acl_classify_avx512x16(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	return rte_acl_classify_scalar(ctx, data, results, num, categories);
 }
 
+#include "acl_run_avx512x16.h"
+
 int
 rte_acl_classify_avx512x32(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories)
@@ -140,13 +142,15 @@ rte_acl_classify_avx512x32(const struct rte_acl_ctx *ctx, const uint8_t **data,
 
 	/* split huge lookup (gt 256) into series of fixed size ones */
 	while (num > max_iter) {
-		search_avx512x8x2(ctx, data, results, max_iter, categories);
+		search_avx512x16x2(ctx, data, results, max_iter, categories);
 		data += max_iter;
 		results += max_iter * categories;
 		num -= max_iter;
 	}
 
 	/* select classify method based on number of remaining requests */
+	if (num >= 2 * MAX_SEARCHES_AVX16)
+		return search_avx512x16x2(ctx, data, results, num, categories);
 	if (num >= MAX_SEARCHES_AVX16)
 		return search_avx512x8x2(ctx, data, results, num, categories);
 	if (num >= MAX_SEARCHES_SSE8)

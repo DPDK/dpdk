@@ -342,6 +342,7 @@ test_classify_run(struct rte_acl_ctx *acx, struct ipv4_7tuple test_data[],
 		RTE_ACL_CLASSIFY_NEON,
 		RTE_ACL_CLASSIFY_ALTIVEC,
 		RTE_ACL_CLASSIFY_AVX512X16,
+		RTE_ACL_CLASSIFY_AVX512X32,
 	};
 
 	/* swap all bytes in the data to network order */
