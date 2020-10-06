@@ -329,6 +329,7 @@ rte_acl_classify_alg(const struct rte_acl_ctx *ctx,
  *   existing algorithm, and that it could be run on the given CPU.
  * @return
  *   - -EINVAL if the parameters are invalid.
+ *   - -ENOTSUP requested algorithm is not supported by given platform.
  *   - Zero if operation completed successfully.
  */
 extern int
