@@ -21,11 +21,20 @@ foreach f:base_flags
 	compile_time_cpuflags += ['RTE_CPUFLAG_' + f]
 endforeach
 
-optional_flags = ['AES', 'PCLMUL',
-		'AVX', 'AVX2', 'AVX512F',
-		'RDRND', 'RDSEED',
-		'AVX512BW', 'AVX512DQ',
-		'AVX512VL', 'VPCLMULQDQ']
+optional_flags = [
+	'AES',
+	'AVX',
+	'AVX2',
+	'AVX512BW',
+	'AVX512CD',
+	'AVX512DQ',
+	'AVX512F',
+	'AVX512VL',
+	'PCLMUL',
+	'RDRND',
+	'RDSEED',
+	'VPCLMULQDQ',
+]
 foreach f:optional_flags
 	if cc.get_define('__@0@__'.format(f), args: machine_args) == '1'
 		if f == 'PCLMUL' # special case flags with different defines
