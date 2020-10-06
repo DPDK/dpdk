@@ -1064,7 +1064,7 @@ rte_swx_pipeline_build_from_spec(struct rte_swx_pipeline *p,
 		goto error;
 	}
 
-	if (!p) {
+	if (!spec) {
 		if (err_line)
 			*err_line = 0;
 		if (err_msg)
