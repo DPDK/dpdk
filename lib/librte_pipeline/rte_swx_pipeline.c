@@ -5671,7 +5671,7 @@ instr_verify(struct rte_swx_pipeline *p __rte_unused,
 		for (i = 0; i < n_instructions; i++) {
 			type = instr[i].type;
 
-			if (instr[i].type == INSTR_TX)
+			if (type == INSTR_TX)
 				break;
 		}
 		CHECK(i < n_instructions, EINVAL);
