@@ -11,6 +11,7 @@ struct acl_flow_avx512 {
 	uint32_t num_packets;       /* number of packets processed */
 	uint32_t total_packets;     /* max number of packets to process */
 	uint32_t root_index;        /* current root index */
+	uint32_t first_load_sz;     /* first load size for new packet */
 	const uint64_t *trans;      /* transition table */
 	const uint32_t *data_index; /* input data indexes */
 	const uint8_t **idata;      /* input data */
@@ -24,6 +25,7 @@ acl_set_flow_avx512(struct acl_flow_avx512 *flow, const struct rte_acl_ctx *ctx,
 {
 	flow->num_packets = 0;
 	flow->total_packets = total_packets;
+	flow->first_load_sz = ctx->first_load_sz;
 	flow->root_index = ctx->trie[trie].root_index;
 	flow->trans = ctx->trans_table;
 	flow->data_index = ctx->trie[trie].data_index;

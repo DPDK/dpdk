@@ -1581,6 +1581,37 @@ acl_check_bld_param(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 	return 0;
 }
 
+/*
+ * With current ACL implementation first field in the rule definition
+ * has always to be one byte long. Though for optimising *classify*
+ * implementation it might be useful to be able to use 4B reads
+ * (as we do for rest of the fields).
+ * This function checks input config to determine is it safe to do 4B
+ * loads for first ACL field. For that we need to make sure that
+ * first field in our rule definition doesn't have the biggest offset,
+ * i.e. we still do have other fields located after the first one.
+ * Contrary if first field has the largest offset, then it means
+ * first field can occupy the very last byte in the input data buffer,
+ * and we have to do single byte load for it.
+ */
+static uint32_t
+get_first_load_size(const struct rte_acl_config *cfg)
+{
+	uint32_t i, max_ofs, ofs;
+
+	ofs = 0;
+	max_ofs = 0;
+
+	for (i = 0; i != cfg->num_fields; i++) {
+		if (cfg->defs[i].field_index == 0)
+			ofs = cfg->defs[i].offset;
+		else if (max_ofs < cfg->defs[i].offset)
+			max_ofs = cfg->defs[i].offset;
+	}
+
+	return (ofs < max_ofs) ? sizeof(uint32_t) : sizeof(uint8_t);
+}
+
 int
 rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 {
@@ -1617,6 +1648,9 @@ rte_acl_build(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 			if (rc == 0) {
 				/* set data indexes. */
 				acl_set_data_indexes(ctx);
+
+				/* determine can we always do 4B load */
+				ctx->first_load_sz = get_first_load_size(cfg);
 
 				/* copy in build config. */
 				ctx->config = *cfg;

@@ -497,6 +497,7 @@ rte_acl_dump(const struct rte_acl_ctx *ctx)
 	printf("acl context <%s>@%p\n", ctx->name, ctx);
 	printf("  socket_id=%"PRId32"\n", ctx->socket_id);
 	printf("  alg=%"PRId32"\n", ctx->alg);
+	printf("  first_load_sz=%"PRIu32"\n", ctx->first_load_sz);
 	printf("  max_rules=%"PRIu32"\n", ctx->max_rules);
 	printf("  rule_size=%"PRIu32"\n", ctx->rule_sz);
 	printf("  num_rules=%"PRIu32"\n", ctx->num_rules);

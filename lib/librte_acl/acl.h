@@ -169,6 +169,7 @@ struct rte_acl_ctx {
 	int32_t             socket_id;
 	/** Socket ID to allocate memory from. */
 	enum rte_acl_classify_alg alg;
+	uint32_t           first_load_sz;
 	void               *rules;
 	uint32_t            max_rules;
 	uint32_t            rule_sz;

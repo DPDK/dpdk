@@ -418,7 +418,7 @@ match_check_process_avx512x8x2(struct acl_flow_avx512 *flow, uint32_t fm[2],
 
 		if (n[0] != 0) {
 			inp[0] = get_next_bytes_avx512x8(flow, &pdata[0],
-				rm[0], &di[0], sizeof(uint8_t));
+				rm[0], &di[0], flow->first_load_sz);
 			first_trans8(flow, inp[0], rm[0], &tr_lo[0],
 				&tr_hi[0]);
 			rm[0] = _mm256_test_epi32_mask(tr_lo[0],
@@ -427,7 +427,7 @@ match_check_process_avx512x8x2(struct acl_flow_avx512 *flow, uint32_t fm[2],
 
 		if (n[1] != 0) {
 			inp[1] = get_next_bytes_avx512x8(flow, &pdata[2],
-				rm[1], &di[1], sizeof(uint8_t));
+				rm[1], &di[1], flow->first_load_sz);
 			first_trans8(flow, inp[1], rm[1], &tr_lo[1],
 				&tr_hi[1]);
 			rm[1] = _mm256_test_epi32_mask(tr_lo[1],
@@ -452,9 +452,9 @@ search_trie_avx512x8x2(struct acl_flow_avx512 *flow)
 	start_flow8(flow, MASK8_BIT, UINT8_MAX, &pdata[2], &idx[1], &di[1]);
 
 	in[0] = get_next_bytes_avx512x8(flow, &pdata[0], UINT8_MAX, &di[0],
-			sizeof(uint8_t));
+			flow->first_load_sz);
 	in[1] = get_next_bytes_avx512x8(flow, &pdata[2], UINT8_MAX, &di[1],
-			sizeof(uint8_t));
+			flow->first_load_sz);
 
 	first_trans8(flow, in[0], UINT8_MAX, &tr_lo[0], &tr_hi[0]);
 	first_trans8(flow, in[1], UINT8_MAX, &tr_lo[1], &tr_hi[1]);
