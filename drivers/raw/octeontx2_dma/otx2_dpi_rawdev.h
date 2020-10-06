@@ -190,8 +190,8 @@ union dpi_dma_instr_hdr_u {
 	} s;
 };
 
-int otx2_dpi_queue_open(uint16_t vf_id, uint32_t size, uint32_t gaura);
-int otx2_dpi_queue_close(uint16_t vf_id);
+int otx2_dpi_queue_open(struct dpi_vf_s *dpivf, uint32_t size, uint32_t gaura);
+int otx2_dpi_queue_close(struct dpi_vf_s *dpivf);
 int test_otx2_dma_rawdev(uint16_t val);
 
 #endif /* _DPI_RAWDEV_H_ */

@@ -39,14 +39,14 @@ union dpi_mbox_message_u {
 };
 
 static inline int
-send_msg_to_pf(const char *value, int size)
+send_msg_to_pf(struct rte_pci_addr *pci, const char *value, int size)
 {
 	char buff[255] = { 0 };
 	int res, fd;
 
 	res = snprintf(buff, sizeof(buff), "%s/" PCI_PRI_FMT "/%s",
-		       rte_pci_get_sysfs_path(), DPI_PF_DBDF_DOMAIN,
-		       DPI_PF_DBDF_BUS, DPI_PF_DBDF_DEVICE & 0x7,
+		       rte_pci_get_sysfs_path(), pci->domain,
+		       pci->bus, DPI_PF_DBDF_DEVICE & 0x7,
 		       DPI_PF_DBDF_FUNCTION & 0x7, DPI_PF_MBOX_SYSFS_ENTRY);
 	if ((res < 0) || ((size_t)res > sizeof(buff)))
 		return -ERANGE;
@@ -63,20 +63,20 @@ send_msg_to_pf(const char *value, int size)
 }
 
 int
-otx2_dpi_queue_open(uint16_t vf_id, uint32_t size, uint32_t gaura)
+otx2_dpi_queue_open(struct dpi_vf_s *dpivf, uint32_t size, uint32_t gaura)
 {
 	union dpi_mbox_message_u mbox_msg;
 	int ret = 0;
 
 	/* DPI PF driver expects vfid starts from index 0 */
-	mbox_msg.s.vfid = vf_id;
+	mbox_msg.s.vfid = dpivf->vf_id;
 	mbox_msg.s.cmd = DPI_QUEUE_OPEN;
 	mbox_msg.s.csize = size;
 	mbox_msg.s.aura = gaura;
 	mbox_msg.s.sso_pf_func = otx2_sso_pf_func_get();
 	mbox_msg.s.npa_pf_func = otx2_npa_pf_func_get();
 
-	ret = send_msg_to_pf((const char *)&mbox_msg,
+	ret = send_msg_to_pf(&dpivf->dev->addr, (const char *)&mbox_msg,
 				sizeof(mbox_msg));
 	if (ret < 0)
 		otx2_dpi_dbg("Failed to send mbox message to dpi pf");
@@ -85,16 +85,16 @@ otx2_dpi_queue_open(uint16_t vf_id, uint32_t size, uint32_t gaura)
 }
 
 int
-otx2_dpi_queue_close(uint16_t vf_id)
+otx2_dpi_queue_close(struct dpi_vf_s *dpivf)
 {
 	union dpi_mbox_message_u mbox_msg;
 	int ret = 0;
 
 	/* DPI PF driver expects vfid starts from index 0 */
-	mbox_msg.s.vfid = vf_id;
+	mbox_msg.s.vfid = dpivf->vf_id;
 	mbox_msg.s.cmd = DPI_QUEUE_CLOSE;
 
-	ret = send_msg_to_pf((const char *)&mbox_msg,
+	ret = send_msg_to_pf(&dpivf->dev->addr, (const char *)&mbox_msg,
 				sizeof(mbox_msg));
 	if (ret < 0)
 		otx2_dpi_dbg("Failed to send mbox message to dpi pf");

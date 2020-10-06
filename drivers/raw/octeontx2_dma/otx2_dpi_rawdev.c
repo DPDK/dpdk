@@ -60,7 +60,7 @@ dma_queue_finish(struct dpi_vf_s *dpivf)
 		reg = otx2_read64(dpivf->vf_bar0 + DPI_VDMA_SADDR);
 	}
 
-	if (otx2_dpi_queue_close(dpivf->vf_id) < 0)
+	if (otx2_dpi_queue_close(dpivf) < 0)
 		return -EACCES;
 
 	rte_mempool_put(dpivf->chunk_pool, dpivf->base_ptr);
@@ -323,7 +323,7 @@ otx2_dpi_rawdev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config,
 	otx2_write64(0, dpivf->vf_bar0 + DPI_VDMA_REQQ_CTL);
 	otx2_write64(((uint64_t)buf >> 7) << 7,
 		     dpivf->vf_bar0 + DPI_VDMA_SADDR);
-	if (otx2_dpi_queue_open(dpivf->vf_id, DPI_CHUNK_SIZE, gaura) < 0) {
+	if (otx2_dpi_queue_open(dpivf, DPI_CHUNK_SIZE, gaura) < 0) {
 		otx2_err("Unable to open DPI VF %d", dpivf->vf_id);
 		rte_mempool_put(conf->chunk_pool, buf);
 		return -EACCES;
