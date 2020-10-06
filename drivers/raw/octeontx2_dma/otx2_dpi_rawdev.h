@@ -140,6 +140,7 @@ struct dpi_dma_queue_ctx_s {
 	uint16_t req_type:2;
 	uint16_t use_lock:1;
 	uint16_t deallocv;
+	uint16_t  pem_id;
 
 	struct dpi_cring_data_s *c_ring;
 };

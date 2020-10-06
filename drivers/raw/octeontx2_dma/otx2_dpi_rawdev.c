@@ -201,6 +201,8 @@ otx2_dpi_rawdev_enqueue_bufs(struct rte_rawdev *dev,
 		index += 4;
 		hdr->s.fport = 0;
 		hdr->s.lport = 0;
+		if (ctx->xtype !=  DPI_XTYPE_INTERNAL_ONLY)
+			hdr->s.lport = ctx->pem_id;
 
 		/* For inbound case, src pointers are last pointers.
 		 * For all other cases, src pointers are first pointers.
