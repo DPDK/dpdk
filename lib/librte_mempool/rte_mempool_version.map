@@ -12,13 +12,17 @@ DPDK_21 {
 	rte_mempool_create_empty;
 	rte_mempool_dump;
 	rte_mempool_free;
+	rte_mempool_get_page_size;
 	rte_mempool_in_use_count;
 	rte_mempool_list_dump;
 	rte_mempool_lookup;
 	rte_mempool_mem_iter;
 	rte_mempool_obj_iter;
 	rte_mempool_op_calc_mem_size_default;
+	rte_mempool_op_calc_mem_size_helper;
 	rte_mempool_op_populate_default;
+	rte_mempool_op_populate_helper;
+	rte_mempool_ops_get_info;
 	rte_mempool_ops_table;
 	rte_mempool_populate_anon;
 	rte_mempool_populate_default;
@@ -33,14 +37,6 @@ DPDK_21 {
 
 EXPERIMENTAL {
 	global:
-
-	# added in 18.05
-	rte_mempool_ops_get_info;
-
-	# added in 19.11
-	rte_mempool_get_page_size;
-	rte_mempool_op_calc_mem_size_helper;
-	rte_mempool_op_populate_helper;
 
 	# added in 20.05
 	__rte_mempool_trace_ops_dequeue_bulk;
