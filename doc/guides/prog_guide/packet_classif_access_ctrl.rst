@@ -379,6 +379,10 @@ There are several implementations of classify algorithm:
 *   **RTE_ACL_CLASSIFY_ALTIVEC**: vector implementation, can process up to 8
     flows in parallel. Requires ALTIVEC support.
 
+*   **RTE_ACL_CLASSIFY_AVX512X16**: vector implementation, can process up to 16
+    flows in parallel. Uses 256-bit width SIMD registers.
+    Requires AVX512 support.
+
 It is purely a runtime decision which method to choose, there is no build-time difference.
 All implementations operates over the same internal RT structures and use similar principles. The main difference is that vector implementations can manually exploit IA SIMD instructions and process several input data flows in parallel.
 At startup ACL library determines the highest available classify method for the given platform and sets it as default one. Though the user has an ability to override the default classifier function for a given ACL context or perform particular search using non-default classify method. In that case it is user responsibility to make sure that given platform supports selected classify implementation.

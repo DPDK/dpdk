@@ -496,7 +496,7 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	 * highest index, that points to itself)
 	 */
 
-	node_array[RTE_ACL_DFA_SIZE] = RTE_ACL_DFA_SIZE | RTE_ACL_NODE_SINGLE;
+	node_array[RTE_ACL_DFA_SIZE] = RTE_ACL_IDLE_NODE;
 
 	for (n = 0; n < RTE_ACL_DFA_SIZE; n++)
 		node_array[n] = no_match;

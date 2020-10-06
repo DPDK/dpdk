@@ -183,6 +183,11 @@ New Features
   * Extern objects and functions can be plugged into the pipeline.
   * Transaction-oriented table updates.
 
+* **Add new AVX512 specific classify algorithms for ACL library.**
+
+  * Added new ``RTE_ACL_CLASSIFY_AVX512X16`` vector implementation,
+    which can process up to 16 flows in parallel. Requires AVX512 support.
+
 
 Removed Items
 -------------

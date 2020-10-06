@@ -77,6 +77,13 @@ struct rte_acl_bitset {
  */
 
 /*
+ * Each ACL RT contains an idle nomatch node:
+ * a SINGLE node at predefined position (RTE_ACL_DFA_SIZE)
+ * that points to itself.
+ */
+#define RTE_ACL_IDLE_NODE	(RTE_ACL_DFA_SIZE | RTE_ACL_NODE_SINGLE)
+
+/*
  * Structure of a node is a set of ptrs and each ptr has a bit map
  * of values associated with this transition.
  */
