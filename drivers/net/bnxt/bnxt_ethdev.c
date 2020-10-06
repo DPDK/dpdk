@@ -1279,7 +1279,7 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	eth_dev->data->scattered_rx = bnxt_scattered_rx(eth_dev);
 	eth_dev->data->dev_started = 1;
 
-	bnxt_link_update(eth_dev, 1, ETH_LINK_UP);
+	bnxt_link_update_op(eth_dev, 1);
 
 	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		vlan_mask |= ETH_VLAN_FILTER_MASK;
@@ -1347,6 +1347,7 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct rte_eth_link link;
 
 	eth_dev->data->dev_started = 0;
 	eth_dev->data->scattered_rx = 0;
@@ -1369,15 +1370,15 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	bnxt_cancel_fw_health_check(bp);
 
 	/* Do not bring link down during reset recovery */
-	if (!is_bnxt_in_error(bp))
+	if (!is_bnxt_in_error(bp)) {
 		bnxt_dev_set_link_down_op(eth_dev);
-
-	/* Wait for link to be reset and the async notification to process.
-	 * During reset recovery, there is no need to wait and
-	 * VF/NPAR functions do not have privilege to change PHY config.
-	 */
-	if (!is_bnxt_in_error(bp) && BNXT_SINGLE_PF(bp))
-		bnxt_link_update(eth_dev, 1, ETH_LINK_DOWN);
+		/* Wait for link to be reset */
+		if (BNXT_SINGLE_PF(bp))
+			rte_delay_ms(500);
+		/* clear the recorded link status */
+		memset(&link, 0, sizeof(link));
+		rte_eth_linkstatus_set(eth_dev, &link);
+	}
 
 	/* Clean queue intr-vector mapping */
 	rte_intr_efd_disable(intr_handle);
@@ -1557,14 +1558,13 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
-int bnxt_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete,
-		     bool exp_link_status)
+int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 {
 	int rc = 0;
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_link new;
-	int cnt = exp_link_status ? BNXT_LINK_UP_WAIT_CNT :
-		  BNXT_LINK_DOWN_WAIT_CNT;
+	int cnt = wait_to_complete ? BNXT_MAX_LINK_WAIT_CNT :
+			BNXT_MIN_LINK_WAIT_CNT;
 
 	rc = is_bnxt_in_error(bp);
 	if (rc)
@@ -1582,11 +1582,17 @@ int bnxt_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete,
 			goto out;
 		}
 
-		if (!wait_to_complete || new.link_status == exp_link_status)
+		if (!wait_to_complete || new.link_status)
 			break;
 
 		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
 	} while (cnt--);
+
+	/* Only single function PF can bring phy down.
+	 * When port is stopped, report link down for VF/MH/NPAR functions.
+	 */
+	if (!BNXT_SINGLE_PF(bp) && !eth_dev->data->dev_started)
+		memset(&new, 0, sizeof(new));
 
 out:
 	/* Timed out or success */
@@ -1602,12 +1608,6 @@ out:
 	}
 
 	return rc;
-}
-
-int bnxt_link_update_op(struct rte_eth_dev *eth_dev,
-			int wait_to_complete)
-{
-	return bnxt_link_update(eth_dev, wait_to_complete, ETH_LINK_UP);
 }
 
 static int bnxt_promiscuous_enable_op(struct rte_eth_dev *eth_dev)

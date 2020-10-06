@@ -268,8 +268,8 @@ struct bnxt_pf_info {
 };
 
 /* Max wait time for link up is 10s and link down is 500ms */
-#define BNXT_LINK_UP_WAIT_CNT	200
-#define BNXT_LINK_DOWN_WAIT_CNT	10
+#define BNXT_MAX_LINK_WAIT_CNT	200
+#define BNXT_MIN_LINK_WAIT_CNT	10
 #define BNXT_LINK_WAIT_INTERVAL	50
 struct bnxt_link_info {
 	uint32_t		phy_flags;
