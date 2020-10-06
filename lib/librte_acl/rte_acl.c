@@ -226,6 +226,7 @@ acl_get_best_alg(void)
 #elif defined(RTE_ARCH_PPC_64)
 		RTE_ACL_CLASSIFY_ALTIVEC,
 #elif defined(RTE_ARCH_X86)
+		RTE_ACL_CLASSIFY_AVX512X16,
 		RTE_ACL_CLASSIFY_AVX2,
 		RTE_ACL_CLASSIFY_SSE,
 #endif
