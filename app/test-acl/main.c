@@ -862,9 +862,10 @@ search_ip5tuples(__rte_unused void *arg)
 {
 	uint64_t pkt, start, tm;
 	uint32_t i, lcore;
+	long double st;
 
 	lcore = rte_lcore_id();
-	start = rte_rdtsc();
+	start = rte_rdtsc_precise();
 	pkt = 0;
 
 	for (i = 0; i != config.iter_num; i++) {
@@ -872,12 +873,16 @@ search_ip5tuples(__rte_unused void *arg)
 			config.trace_step, config.alg.name);
 	}
 
-	tm = rte_rdtsc() - start;
+	tm = rte_rdtsc_precise() - start;
+
+	st = (long double)tm / rte_get_timer_hz();
 	dump_verbose(DUMP_NONE, stdout,
 		"%s  @lcore %u: %" PRIu32 " iterations, %" PRIu64 " pkts, %"
-		PRIu32 " categories, %" PRIu64 " cycles, %#Lf cycles/pkt\n",
-		__func__, lcore, i, pkt, config.run_categories,
-		tm, (pkt == 0) ? 0 : (long double)tm / pkt);
+		PRIu32 " categories, %" PRIu64 " cycles (%.2Lf sec), "
+		"%.2Lf cycles/pkt, %.2Lf pkt/sec\n",
+		__func__, lcore, i, pkt,
+		config.run_categories, tm, st,
+		(pkt == 0) ? 0 : (long double)tm / pkt, pkt / st);
 
 	return 0;
 }
