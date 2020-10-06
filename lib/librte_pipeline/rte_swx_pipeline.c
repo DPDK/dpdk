@@ -5932,7 +5932,6 @@ instruction_config(struct rte_swx_pipeline *p,
 {
 	struct instruction *instr = NULL;
 	struct instruction_data *data = NULL;
-	char *string = NULL;
 	int err = 0;
 	uint32_t i;
 
@@ -5955,15 +5954,17 @@ instruction_config(struct rte_swx_pipeline *p,
 	}
 
 	for (i = 0; i < n_instructions; i++) {
-		string = strdup(instructions[i]);
+		char *string = strdup(instructions[i]);
 		if (!string) {
 			err = ENOMEM;
 			goto error;
 		}
 
 		err = instr_translate(p, a, string, &instr[i], &data[i]);
-		if (err)
+		if (err) {
+			free(string);
 			goto error;
+		}
 
 		free(string);
 	}
@@ -5982,8 +5983,6 @@ instruction_config(struct rte_swx_pipeline *p,
 	if (err)
 		goto error;
 
-	free(data);
-
 	if (a) {
 		a->instructions = instr;
 		a->n_instructions = n_instructions;
@@ -5992,10 +5991,10 @@ instruction_config(struct rte_swx_pipeline *p,
 		p->n_instructions = n_instructions;
 	}
 
+	free(data);
 	return 0;
 
 error:
-	free(string);
 	free(data);
 	free(instr);
 	return err;
