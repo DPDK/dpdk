@@ -281,7 +281,11 @@ fips_test_init(const char *req_file_path, const char *rsp_file_path,
 
 	fips_test_clear();
 
-	strcpy(info.file_name, req_file_path);
+	if (rte_strscpy(info.file_name, req_file_path,
+				sizeof(info.file_name)) < 0) {
+		RTE_LOG(ERR, USER1, "Path %s too long\n", req_file_path);
+		return -EINVAL;
+	}
 	info.algo = FIPS_TEST_ALGO_MAX;
 	if (parse_file_type(req_file_path) < 0) {
 		RTE_LOG(ERR, USER1, "File %s type not supported\n",
@@ -307,7 +311,11 @@ fips_test_init(const char *req_file_path, const char *rsp_file_path,
 		return -ENOMEM;
 	}
 
-	strlcpy(info.device_name, device_name, sizeof(info.device_name));
+	if (rte_strscpy(info.device_name, device_name,
+				sizeof(info.device_name)) < 0) {
+		RTE_LOG(ERR, USER1, "Device name %s too long\n", device_name);
+		return -EINVAL;
+	}
 
 	if (fips_test_parse_header() < 0) {
 		RTE_LOG(ERR, USER1, "Failed parsing header\n");

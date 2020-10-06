@@ -14,6 +14,7 @@
 #define MAX_NB_TESTS		10240
 #define MAX_BUF_SIZE		2048
 #define MAX_STRING_SIZE		64
+#define MAX_FILE_NAME_SIZE	256
 #define MAX_DIGEST_SIZE		64
 
 #define POSITIVE_TEST		0
@@ -164,7 +165,7 @@ struct fips_test_interim_info {
 	uint32_t vec_start_off;
 	uint32_t nb_vec_lines;
 	char device_name[MAX_STRING_SIZE];
-	char file_name[MAX_STRING_SIZE];
+	char file_name[MAX_FILE_NAME_SIZE];
 
 	union {
 		struct aesavs_interim_data aes_data;
