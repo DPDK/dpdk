@@ -315,8 +315,21 @@ cryptodev_fips_validate_parse_args(int argc, char **argv)
 		}
 	}
 
-	if (env.req_path == NULL || env.rsp_path == NULL ||
-			env.dev_id == UINT32_MAX) {
+	if (env.dev_id == UINT32_MAX) {
+		RTE_LOG(ERR, USER1, "No device specified\n");
+		cryptodev_fips_validate_usage(prgname);
+		return -EINVAL;
+	}
+
+	if ((env.req_path == NULL && env.rsp_path != NULL) ||
+			(env.req_path != NULL && env.rsp_path == NULL)) {
+		RTE_LOG(ERR, USER1, "Missing req path or rsp path\n");
+		cryptodev_fips_validate_usage(prgname);
+		return -EINVAL;
+	}
+
+	if (env.req_path == NULL && env.self_test == 0) {
+		RTE_LOG(ERR, USER1, "--self-test must be set if req path is missing\n");
 		cryptodev_fips_validate_usage(prgname);
 		return -EINVAL;
 	}
@@ -346,6 +359,11 @@ main(int argc, char *argv[])
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Error %i: Failed init\n", ret);
 		return -1;
+	}
+
+	if (env.req_path == NULL || env.rsp_path == NULL) {
+		printf("No request, exit.\n");
+		goto exit;
 	}
 
 	if (!env.is_path_folder) {
