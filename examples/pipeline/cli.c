@@ -836,8 +836,8 @@ cmd_pipeline_table_update(char **tokens,
 	}
 
 	if (strcmp(file_name_delete, "none")) {
-		file_add = fopen(file_name_delete, "r");
-		if (!file_add) {
+		file_delete = fopen(file_name_delete, "r");
+		if (!file_delete) {
 			snprintf(out, out_size, "Cannot open file %s",
 				file_name_delete);
 			goto error;
@@ -845,8 +845,8 @@ cmd_pipeline_table_update(char **tokens,
 	}
 
 	if (strcmp(file_name_default, "none")) {
-		file_add = fopen(file_name_default, "r");
-		if (!file_add) {
+		file_default = fopen(file_name_default, "r");
+		if (!file_default) {
 			snprintf(out, out_size, "Cannot open file %s",
 				file_name_default);
 			goto error;
