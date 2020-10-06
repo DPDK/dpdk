@@ -16,7 +16,6 @@ static struct rte_tailq_elem rte_acl_tailq = {
 };
 EAL_REGISTER_TAILQ(rte_acl_tailq)
 
-#ifndef RTE_ARCH_X86
 #ifndef CC_AVX2_SUPPORT
 /*
  * If the compiler doesn't support AVX2 instructions,
@@ -33,6 +32,7 @@ rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
 }
 #endif
 
+#ifndef RTE_ARCH_X86
 int
 rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
