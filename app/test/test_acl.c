@@ -266,22 +266,20 @@ rte_acl_ipv4vlan_build(struct rte_acl_ctx *ctx,
 }
 
 /*
- * Test scalar and SSE ACL lookup.
+ * Test ACL lookup (selected alg).
  */
 static int
-test_classify_run(struct rte_acl_ctx *acx, struct ipv4_7tuple test_data[],
-	size_t dim)
+test_classify_alg(struct rte_acl_ctx *acx, struct ipv4_7tuple test_data[],
+	const uint8_t *data[], size_t dim, enum rte_acl_classify_alg alg)
 {
-	int ret, i;
-	uint32_t result, count;
+	int32_t ret;
+	uint32_t i, result, count;
 	uint32_t results[dim * RTE_ACL_MAX_CATEGORIES];
-	const uint8_t *data[dim];
-	/* swap all bytes in the data to network order */
-	bswap_test_data(test_data, dim, 1);
 
-	/* store pointers to test data */
-	for (i = 0; i < (int) dim; i++)
-		data[i] = (uint8_t *)&test_data[i];
+	/* set given classify alg, skip test if alg is not supported */
+	ret = rte_acl_set_ctx_classify(acx, alg);
+	if (ret != 0)
+		return (ret == -ENOTSUP) ? 0 : ret;
 
 	/**
 	 * these will run quite a few times, it's necessary to test code paths
@@ -291,12 +289,13 @@ test_classify_run(struct rte_acl_ctx *acx, struct ipv4_7tuple test_data[],
 		ret = rte_acl_classify(acx, data, results,
 				count, RTE_ACL_MAX_CATEGORIES);
 		if (ret != 0) {
-			printf("Line %i: SSE classify failed!\n", __LINE__);
-			goto err;
+			printf("Line %i: classify(alg=%d) failed!\n",
+				__LINE__, alg);
+			return ret;
 		}
 
 		/* check if we allow everything we should allow */
-		for (i = 0; i < (int) count; i++) {
+		for (i = 0; i < count; i++) {
 			result =
 				results[i * RTE_ACL_MAX_CATEGORIES + ACL_ALLOW];
 			if (result != test_data[i].allow) {
@@ -304,63 +303,63 @@ test_classify_run(struct rte_acl_ctx *acx, struct ipv4_7tuple test_data[],
 					"(expected %"PRIu32" got %"PRIu32")!\n",
 					__LINE__, i, test_data[i].allow,
 					result);
-				ret = -EINVAL;
-				goto err;
+				return -EINVAL;
 			}
 		}
 
 		/* check if we deny everything we should deny */
-		for (i = 0; i < (int) count; i++) {
+		for (i = 0; i < count; i++) {
 			result = results[i * RTE_ACL_MAX_CATEGORIES + ACL_DENY];
 			if (result != test_data[i].deny) {
 				printf("Line %i: Error in deny results at %i "
 					"(expected %"PRIu32" got %"PRIu32")!\n",
 					__LINE__, i, test_data[i].deny,
 					result);
-				ret = -EINVAL;
-				goto err;
+				return -EINVAL;
 			}
 		}
 	}
 
-	/* make a quick check for scalar */
-	ret = rte_acl_classify_alg(acx, data, results,
-			dim, RTE_ACL_MAX_CATEGORIES,
-			RTE_ACL_CLASSIFY_SCALAR);
-	if (ret != 0) {
-		printf("Line %i: scalar classify failed!\n", __LINE__);
-		goto err;
-	}
+	/* restore default classify alg */
+	return rte_acl_set_ctx_classify(acx, RTE_ACL_CLASSIFY_DEFAULT);
+}
 
-	/* check if we allow everything we should allow */
-	for (i = 0; i < (int) dim; i++) {
-		result = results[i * RTE_ACL_MAX_CATEGORIES + ACL_ALLOW];
-		if (result != test_data[i].allow) {
-			printf("Line %i: Error in allow results at %i "
-					"(expected %"PRIu32" got %"PRIu32")!\n",
-					__LINE__, i, test_data[i].allow,
-					result);
-			ret = -EINVAL;
-			goto err;
-		}
-	}
+/*
+ * Test ACL lookup (all possible methods).
+ */
+static int
+test_classify_run(struct rte_acl_ctx *acx, struct ipv4_7tuple test_data[],
+	size_t dim)
+{
+	int32_t ret;
+	uint32_t i;
+	const uint8_t *data[dim];
 
-	/* check if we deny everything we should deny */
-	for (i = 0; i < (int) dim; i++) {
-		result = results[i * RTE_ACL_MAX_CATEGORIES + ACL_DENY];
-		if (result != test_data[i].deny) {
-			printf("Line %i: Error in deny results at %i "
-					"(expected %"PRIu32" got %"PRIu32")!\n",
-					__LINE__, i, test_data[i].deny,
-					result);
-			ret = -EINVAL;
-			goto err;
-		}
-	}
+	static const enum rte_acl_classify_alg alg[] = {
+		RTE_ACL_CLASSIFY_SCALAR,
+		RTE_ACL_CLASSIFY_SSE,
+		RTE_ACL_CLASSIFY_AVX2,
+		RTE_ACL_CLASSIFY_NEON,
+		RTE_ACL_CLASSIFY_ALTIVEC,
+	};
+
+	/* swap all bytes in the data to network order */
+	bswap_test_data(test_data, dim, 1);
+
+	/* store pointers to test data */
+	for (i = 0; i < dim; i++)
+		data[i] = (uint8_t *)&test_data[i];
 
 	ret = 0;
+	for (i = 0; i != RTE_DIM(alg); i++) {
+		ret = test_classify_alg(acx, test_data, data, dim, alg[i]);
+		if (ret < 0) {
+			printf("Line %i: %s() for alg=%d failed, errno=%d\n",
+				__LINE__, __func__, alg[i], -ret);
+			break;
+		}
+	}
 
-err:
 	/* swap data back to cpu order so that next time tests don't fail */
 	bswap_test_data(test_data, dim, 0);
 	return ret;
