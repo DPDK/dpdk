@@ -13,14 +13,11 @@ sources = files('base/dpaa2_hw_dpni.c',
 		'dpaa2_flow.c',
 		'dpaa2_rxtx.c',
 		'dpaa2_sparser.c',
+		'dpaa2_ptp.c',
+		'mc/dprtc.c',
 		'mc/dpkg.c',
 		'mc/dpdmux.c',
 		'mc/dpni.c')
-
-if dpdk_conf.has('RTE_LIBRTE_IEEE1588')
-	sources += files('mc/dprtc.c')
-	sources += files('dpaa2_ptp.c')
-endif
 
 includes += include_directories('base', 'mc')
 

@@ -160,7 +160,6 @@ struct dpaa2_dev_priv {
 	uint16_t ss_offset;
 	uint64_t ss_iova;
 	uint64_t ss_param_iova;
-#if defined(RTE_LIBRTE_IEEE1588)
 	/*stores timestamp of last received packet on dev*/
 	uint64_t rx_timestamp;
 	/*stores timestamp of last received tx confirmation packet on dev*/
@@ -169,7 +168,6 @@ struct dpaa2_dev_priv {
 	 * it corresponds to last packet transmitted
 	 */
 	struct dpaa2_queue *next_tx_conf_queue;
-#endif
 
 	struct rte_eth_dev *eth_dev; /**< Pointer back to holding ethdev */
 
@@ -227,7 +225,6 @@ void dpaa2_dev_free_eqresp_buf(uint16_t eqresp_ci);
 void dpaa2_flow_clean(struct rte_eth_dev *dev);
 uint16_t dpaa2_dev_tx_conf(void *queue)  __rte_unused;
 
-#if defined(RTE_LIBRTE_IEEE1588)
 int dpaa2_timesync_enable(struct rte_eth_dev *dev);
 int dpaa2_timesync_disable(struct rte_eth_dev *dev);
 int dpaa2_timesync_read_time(struct rte_eth_dev *dev,
@@ -240,5 +237,4 @@ int dpaa2_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 						uint32_t flags __rte_unused);
 int dpaa2_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 					  struct timespec *timestamp);
-#endif
 #endif /* _DPAA2_ETHDEV_H */
