@@ -1062,7 +1062,7 @@ aesni_mb_pmd_sec_sess_destroy(void *dev __rte_unused,
 
 	if (sess_priv) {
 		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-		memset(sess, 0, sizeof(struct aesni_mb_session));
+		memset(sess_priv, 0, sizeof(struct aesni_mb_session));
 		set_sec_session_private_data(sess, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
