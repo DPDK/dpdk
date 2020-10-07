@@ -3,34 +3,83 @@ EXPORTS
 	per_lcore__lcore_id
 	per_lcore__rte_errno
 	per_lcore__thread_id
+	rte_bus_dump
+	rte_bus_find
+	rte_bus_find_by_device
+	rte_bus_find_by_name
+	rte_bus_get_iommu_class
+	rte_bus_probe
 	rte_bus_register
+	rte_bus_scan
+	rte_bus_unregister
 	rte_calloc
 	rte_calloc_socket
 	rte_cpu_get_flag_enabled
+	rte_cpu_get_flag_name
+	rte_ctrl_thread_create
+	rte_delay_us
+	rte_delay_us_block
+	rte_delay_us_callback_register
 	rte_dev_is_probed
+	rte_dev_probe
+	rte_dev_remove
+	rte_devargs_add
+	rte_devargs_dump
 	rte_devargs_insert
 	rte_devargs_next
 	rte_devargs_parse
+	rte_devargs_parsef
 	rte_devargs_remove
+	rte_devargs_type_count
+	rte_dump_physmem_layout
+	rte_dump_registers
+	rte_dump_stack
+	rte_dump_tailq
+	rte_eal_cleanup
+	rte_eal_get_lcore_state
+	rte_eal_get_physmem_size
+	rte_eal_get_runtime_dir
 	rte_eal_has_hugepages
 	rte_eal_has_pci
+	rte_eal_hotplug_add
+	rte_eal_hotplug_remove
 	rte_eal_init
 	rte_eal_iova_mode
+	rte_eal_lcore_role
 	rte_eal_mbuf_user_pool_ops
 	rte_eal_mp_remote_launch
 	rte_eal_mp_wait_lcore
 	rte_eal_process_type
 	rte_eal_remote_launch
-	rte_log
 	rte_eal_tailq_lookup
 	rte_eal_tailq_register
 	rte_eal_using_phys_addrs
+	rte_eal_wait_lcore
+	rte_exit
 	rte_free
+	rte_get_master_lcore
+	rte_get_next_lcore
 	rte_get_tsc_hz
 	rte_hexdump
+	rte_hypervisor_get
 	rte_intr_rx_ctl
+	rte_lcore_count
+	rte_lcore_has_role
+	rte_lcore_index
+	rte_lcore_is_enabled
+	rte_lcore_to_socket_id
+	rte_log
+	rte_log_cur_msg_loglevel
+	rte_log_cur_msg_logtype
+	rte_log_dump
+	rte_log_get_global_level
+	rte_log_get_level
+	rte_log_get_stream
 	rte_log_register
+	rte_log_set_global_level
 	rte_log_set_level
+	rte_log_set_level_pattern
+	rte_log_set_level_regexp
 	rte_malloc
 	rte_malloc_dump_stats
 	rte_malloc_get_socket_stats
@@ -53,6 +102,7 @@ EXPORTS
 	rte_mem_lock_page
 	rte_mem_virt2iova
 	rte_mem_virt2phy
+	rte_memdump
 	rte_memory_get_nchannel
 	rte_memory_get_nrank
 	rte_memzone_dump
@@ -62,16 +112,53 @@ EXPORTS
 	rte_memzone_reserve_aligned
 	rte_memzone_reserve_bounded
 	rte_memzone_walk
+	rte_openlog_stream
+	rte_realloc
+	rte_rtm_supported
+	rte_service_attr_get
+	rte_service_attr_reset_all
+	rte_service_component_register
+	rte_service_component_runstate_set
+	rte_service_component_unregister
+	rte_service_dump
+	rte_service_finalize
+	rte_service_get_by_name
+	rte_service_get_count
+	rte_service_get_name
+	rte_service_lcore_add
+	rte_service_lcore_attr_get
+	rte_service_lcore_attr_reset_all
+	rte_service_lcore_count
+	rte_service_lcore_count_services
+	rte_service_lcore_del
+	rte_service_lcore_list
+	rte_service_lcore_reset_all
+	rte_service_lcore_start
+	rte_service_lcore_stop
+	rte_service_map_lcore_get
+	rte_service_map_lcore_set
+	rte_service_may_be_active
+	rte_service_probe_capability
+	rte_service_run_iter_on_app_lcore
+	rte_service_runstate_get
+	rte_service_runstate_set
+	rte_service_set_runstate_mapped_check
+	rte_service_set_stats_enable
+	rte_service_start_with_defaults
+	rte_set_application_usage_hook
+	rte_socket_count
 	rte_socket_id
+	rte_socket_id_by_idx
 	rte_strerror
+	rte_strscpy
 	rte_strsplit
 	rte_sys_gettid
+	rte_thread_get_affinity
+	rte_thread_set_affinity
+	rte_thread_setname
 	rte_vfio_container_dma_map
 	rte_vfio_container_dma_unmap
 	rte_vlog
-	rte_realloc
-	rte_rtm_supported
-	rte_strscpy
 	rte_zmalloc
 	rte_zmalloc_socket
 
@@ -80,6 +167,8 @@ EXPORTS
 	rte_mp_reply
 	rte_mp_sendmsg
 
+	rte_dev_event_callback_register
+	rte_dev_event_callback_unregister
 	rte_fbarray_attach
 	rte_fbarray_destroy
 	rte_fbarray_detach
@@ -112,8 +201,12 @@ EXPORTS
 	rte_mp_request_async
 	rte_mp_request_sync
 
+	rte_class_find
 	rte_class_find_by_name
-	rte_class_register;
+	rte_class_register
+	rte_class_unregister
+	rte_dev_iterator_init
+	rte_dev_iterator_next
 	rte_fbarray_find_prev_free
 	rte_fbarray_find_prev_n_free
 	rte_fbarray_find_prev_n_used
@@ -124,6 +217,8 @@ EXPORTS
 	rte_memseg_list_walk_thread_unsafe
 	rte_memseg_walk_thread_unsafe
 
+	rte_delay_us_sleep
+	rte_dev_event_callback_process
 	rte_malloc_heap_create
 	rte_malloc_heap_destroy
 	rte_malloc_heap_get_socket
@@ -144,15 +239,66 @@ EXPORTS
 	rte_extmem_register
 	rte_extmem_unregister
 
+	rte_dev_dma_map
+	rte_dev_dma_unmap
 	rte_fbarray_find_biggest_free
 	rte_fbarray_find_biggest_used
 	rte_fbarray_find_rev_biggest_free
 	rte_fbarray_find_rev_biggest_used
+	rte_realloc_socket
+
+	rte_lcore_cpuset
+	rte_lcore_to_cpu_id
+	rte_mcfg_timer_lock
+	rte_mcfg_timer_unlock
+	rte_mcfg_get_single_file_segments
+
+	__rte_eal_trace_alarm_cancel
+	__rte_eal_trace_alarm_set
+	__rte_eal_trace_generic_double
+	__rte_eal_trace_generic_float
+	__rte_eal_trace_generic_func
+	__rte_eal_trace_generic_i16
+	__rte_eal_trace_generic_i32
+	__rte_eal_trace_generic_i64
+	__rte_eal_trace_generic_i8
+	__rte_eal_trace_generic_int
+	__rte_eal_trace_generic_long
+	__rte_eal_trace_generic_ptr
+	__rte_eal_trace_generic_str
+	__rte_eal_trace_generic_u16
+	__rte_eal_trace_generic_u32
+	__rte_eal_trace_generic_u64
+	__rte_eal_trace_generic_u8
+	__rte_eal_trace_generic_void
+	__rte_eal_trace_intr_callback_register
+	__rte_eal_trace_intr_callback_unregister
+	__rte_eal_trace_intr_enable
+	__rte_eal_trace_intr_disable
+	__rte_eal_trace_mem_free
+	__rte_eal_trace_mem_malloc
+	__rte_eal_trace_mem_realloc
+	__rte_eal_trace_mem_zmalloc
+	__rte_eal_trace_memzone_free
+	__rte_eal_trace_memzone_lookup
+	__rte_eal_trace_memzone_reserve
+	__rte_eal_trace_thread_lcore_ready
+	__rte_eal_trace_thread_remote_launch
 	__rte_trace_mem_per_thread_alloc
 	__rte_trace_point_emit_field
 	__rte_trace_point_register
 	per_lcore_trace_mem
 	per_lcore_trace_point_sz
+	rte_log_can_log
+
+	rte_lcore_callback_register
+	rte_lcore_callback_unregister
+	rte_lcore_dump
+	rte_lcore_iterate
+	rte_mp_disable
+	rte_service_lcore_may_be_active
+	rte_thread_register
+	rte_thread_unregister
 
 	rte_mem_lock
 	rte_mem_map
