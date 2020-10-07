@@ -70,6 +70,7 @@
 #define CRYPTODEV_NAME_OCTEONTX2_PMD	crypto_octeontx2
 #define CRYPTODEV_NAME_CAAM_JR_PMD	crypto_caam_jr
 #define CRYPTODEV_NAME_NITROX_PMD	crypto_nitrox_sym
+#define CRYPTODEV_NAME_BCMFS_PMD	crypto_bcmfs
 
 /**
  * Write (spread) data from buffer to mbuf data

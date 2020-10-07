@@ -96,3 +96,14 @@ Limitations
 
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 * CCM is not supported on Broadcom`s SoCs having FlexSparc4 unit.
+
+Testing
+-------
+
+The symmetric crypto operations on BCMFS crypto PMD may be verified by running the test
+application:
+
+.. code-block:: console
+
+    ./dpdk-test
+    RTE>>cryptodev_bcmfs_autotest

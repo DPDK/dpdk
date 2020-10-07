@@ -12961,6 +12961,20 @@ test_cryptodev_nitrox(void)
 	return unit_test_suite_runner(&cryptodev_testsuite);
 }
 
+static int
+test_cryptodev_bcmfs(void)
+{
+	gbl_driver_id =	rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_BCMFS_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "BCMFS PMD must be loaded.\n");
+		return TEST_FAILED;
+	}
+
+	return unit_test_suite_runner(&cryptodev_testsuite);
+}
+
 REGISTER_TEST_COMMAND(cryptodev_qat_autotest, test_cryptodev_qat);
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_autotest, test_cryptodev_aesni_mb);
 REGISTER_TEST_COMMAND(cryptodev_cpu_aesni_mb_autotest,
@@ -12983,3 +12997,4 @@ REGISTER_TEST_COMMAND(cryptodev_octeontx_autotest, test_cryptodev_octeontx);
 REGISTER_TEST_COMMAND(cryptodev_octeontx2_autotest, test_cryptodev_octeontx2);
 REGISTER_TEST_COMMAND(cryptodev_caam_jr_autotest, test_cryptodev_caam_jr);
 REGISTER_TEST_COMMAND(cryptodev_nitrox_autotest, test_cryptodev_nitrox);
+REGISTER_TEST_COMMAND(cryptodev_bcmfs_autotest, test_cryptodev_bcmfs);
