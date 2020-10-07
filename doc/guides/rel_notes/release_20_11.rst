@@ -369,7 +369,13 @@ API Changes
 
 * ethdev: ``rte_eth_rx_descriptor_done()`` API has been deprecated.
 
-* Renamed internal ethdev APIs:
+* ethdev: Renamed basic statistics per queue. An underscore is inserted
+  between the queue number and the rest of the xstat name:
+
+  * ``rx_qN*`` -> ``rx_qN_*``
+  * ``tx_qN*`` -> ``tx_qN_*``
+
+* ethdev: Renamed internal functions:
 
   * ``_rte_eth_dev_callback_process()`` -> ``rte_eth_dev_callback_process()``
   * ``_rte_eth_dev_reset`` -> ``rte_eth_dev_internal_reset()``

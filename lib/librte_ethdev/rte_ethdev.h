@@ -1507,6 +1507,13 @@ struct rte_eth_xstat {
  * An array of this structure is returned by rte_eth_xstats_get_names().
  * It lists the names of extended statistics for a PMD. The *rte_eth_xstat*
  * structure references these names by their array index.
+ *
+ * The xstats should follow a common naming scheme.
+ * Some names are standardized in rte_stats_strings.
+ * Examples:
+ *     - rx_missed_errors
+ *     - tx_q3_bytes
+ *     - tx_size_128_to_255_packets
  */
 struct rte_eth_xstat_name {
 	char name[RTE_ETH_XSTATS_NAME_SIZE]; /**< The statistic name. */

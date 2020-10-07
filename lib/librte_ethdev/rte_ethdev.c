@@ -2545,7 +2545,7 @@ rte_eth_basic_stats_get_names(struct rte_eth_dev *dev,
 		for (idx = 0; idx < RTE_NB_RXQ_STATS; idx++) {
 			snprintf(xstats_names[cnt_used_entries].name,
 				sizeof(xstats_names[0].name),
-				"rx_q%u%s",
+				"rx_q%u_%s",
 				id_queue, rte_rxq_stats_strings[idx].name);
 			cnt_used_entries++;
 		}
@@ -2556,7 +2556,7 @@ rte_eth_basic_stats_get_names(struct rte_eth_dev *dev,
 		for (idx = 0; idx < RTE_NB_TXQ_STATS; idx++) {
 			snprintf(xstats_names[cnt_used_entries].name,
 				sizeof(xstats_names[0].name),
-				"tx_q%u%s",
+				"tx_q%u_%s",
 				id_queue, rte_txq_stats_strings[idx].name);
 			cnt_used_entries++;
 		}
