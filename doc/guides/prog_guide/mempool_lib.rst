@@ -104,6 +104,8 @@ These user-owned caches can be explicitly passed to ``rte_mempool_generic_put()`
 The ``rte_mempool_default_cache()`` call returns the default internal cache if any.
 In contrast to the default caches, user-owned caches can be used by unregistered non-EAL threads too.
 
+.. _Mempool_Handlers:
+
 Mempool Handlers
 ------------------------
 

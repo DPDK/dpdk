@@ -28,12 +28,16 @@ Implementation
 The library supports two types of stacks: standard (lock-based) and lock-free.
 Both types use the same set of interfaces, but their implementations differ.
 
+.. _Stack_Library_Std_Stack:
+
 Lock-based Stack
 ----------------
 
 The lock-based stack consists of a contiguous array of pointers, a current
 index, and a spinlock. Accesses to the stack are made multi-thread safe by the
 spinlock.
+
+.. _Stack_Library_LF_Stack:
 
 Lock-free Stack
 ------------------
