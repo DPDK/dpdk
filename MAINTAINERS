@@ -967,6 +967,13 @@ F: drivers/crypto/armv8/
 F: doc/guides/cryptodevs/armv8.rst
 F: doc/guides/cryptodevs/features/armv8.ini
 
+Broadcom FlexSparc
+M: Ajit Khaparde <ajit.khaparde@broadcom.com>
+M: Raveendra Padasalagi <raveendra.padasalagi@broadcom.com>
+M: Vikas Gupta <vikas.gupta@broadcom.com>
+F: drivers/crypto/bcmfs/
+F: doc/guides/cryptodevs/bcmfs.rst
+
 Cavium OCTEON TX crypto
 M: Anoob Joseph <anoobj@marvell.com>
 F: drivers/common/cpt/

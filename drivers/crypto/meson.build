@@ -8,6 +8,7 @@ endif
 drivers = ['aesni_gcm',
 	   'aesni_mb',
 	   'armv8',
+	   'bcmfs',
 	   'caam_jr',
 	   'ccp',
 	   'dpaa_sec',

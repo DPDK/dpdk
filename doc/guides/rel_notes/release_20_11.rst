@@ -159,6 +159,11 @@ New Features
   * Added support for SNOW3G-UEA2/UIA2 algorithms.
   * Added support for KASUMI-F8/F9 algorithms.
 
+* **Added Broadcom BCMFS symmetric crypto PMD.**
+
+  Added a symmetric crypto PMD for Broadcom FlexSparc crypto units.
+  See :doc:`../cryptodevs/bcmfs` guide for more details on this new PMD.
+
 * **Updated Marvell NITROX symmetric crypto PMD.**
 
   * Added AES-GCM support.
