@@ -132,6 +132,12 @@ static void
 spu_req_init(struct bcmfs_sym_request *sr, rte_iova_t iova __rte_unused)
 {
 	memset(sr, 0, sizeof(*sr));
+	sr->fptr = iova;
+	sr->cptr = iova + offsetof(struct bcmfs_sym_request, cipher_key);
+	sr->aptr = iova + offsetof(struct bcmfs_sym_request, auth_key);
+	sr->iptr = iova + offsetof(struct bcmfs_sym_request, iv);
+	sr->dptr = iova + offsetof(struct bcmfs_sym_request, digest);
+	sr->rptr = iova + offsetof(struct bcmfs_sym_request, resp);
 }
 
 static void
@@ -244,6 +250,7 @@ bcmfs_sym_pmd_enqueue_op_burst(void *queue_pair,
 			       uint16_t nb_ops)
 {
 	int i, j;
+	int retval;
 	uint16_t enq = 0;
 	struct bcmfs_sym_request *sreq;
 	struct bcmfs_sym_session *sess;
@@ -273,6 +280,11 @@ bcmfs_sym_pmd_enqueue_op_burst(void *queue_pair,
 		/* save context */
 		qp->infl_msgs[i] = &sreq->msgs;
 		qp->infl_msgs[i]->ctx = (void *)sreq;
+
+		/* pre process the request crypto h/w acceleration */
+		retval = bcmfs_process_sym_crypto_op(ops[i], sess, sreq);
+		if (unlikely(retval < 0))
+			goto enqueue_err;
 	}
 	/* Send burst request to hw QP */
 	enq = bcmfs_enqueue_op_burst(qp, (void **)qp->infl_msgs, i);
@@ -287,6 +299,17 @@ enqueue_err:
 		rte_mempool_put(qp->sr_mp, qp->infl_msgs[j]->ctx);
 
 	return enq;
+}
+
+static void bcmfs_sym_set_request_status(struct rte_crypto_op *op,
+					 struct bcmfs_sym_request *out)
+{
+	if (*out->resp == BCMFS_SYM_RESPONSE_SUCCESS)
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	else if (*out->resp == BCMFS_SYM_RESPONSE_HASH_TAG_ERROR)
+		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	else
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 }
 
 static uint16_t
@@ -307,6 +330,9 @@ bcmfs_sym_pmd_dequeue_op_burst(void *queue_pair,
 	/* get rte_crypto_ops */
 	for (i = 0; i < deq; i++) {
 		sreq = (struct bcmfs_sym_request *)qp->infl_msgs[i]->ctx;
+
+		/* set the status based on the response from the crypto h/w */
+		bcmfs_sym_set_request_status(sreq->op, sreq);
 
 		ops[pkts++] = sreq->op;
 
