@@ -220,6 +220,11 @@ New Features
 
   See the :doc:`../regexdevs/octeontx2` for more details.
 
+* **Updated Software Eventdev driver.**
+
+  Added performance tuning arguments to allow tuning the scheduler for
+  better throughtput in high core count use cases.
+
 * **Updated ioat rawdev driver**
 
   The ioat rawdev driver has been updated and enhanced. Changes include:
