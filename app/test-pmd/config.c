@@ -1835,6 +1835,7 @@ port_flow_query(portid_t port_id, uint32_t rule,
 	union {
 		struct rte_flow_query_count count;
 		struct rte_flow_action_rss rss_conf;
+		struct rte_flow_query_age age;
 	} query;
 	int ret;
 
@@ -1857,6 +1858,7 @@ port_flow_query(portid_t port_id, uint32_t rule,
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 	case RTE_FLOW_ACTION_TYPE_RSS:
+	case RTE_FLOW_ACTION_TYPE_AGE:
 		break;
 	default:
 		printf("Cannot query action type %d (%s)\n",
@@ -1883,6 +1885,16 @@ port_flow_query(portid_t port_id, uint32_t rule,
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		rss_config_display(&query.rss_conf);
+		break;
+	case RTE_FLOW_ACTION_TYPE_AGE:
+		printf("%s:\n"
+		       " aged: %u\n"
+		       " sec_since_last_hit_valid: %u\n"
+		       " sec_since_last_hit: %" PRIu32 "\n",
+		       name,
+		       query.age.aged,
+		       query.age.sec_since_last_hit_valid,
+		       query.age.sec_since_last_hit);
 		break;
 	default:
 		printf("Cannot display result for action type %d (%s)\n",
