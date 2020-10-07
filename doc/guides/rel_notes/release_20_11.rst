@@ -387,6 +387,8 @@ API Changes
   * ``rx_qN*`` -> ``rx_qN_*``
   * ``tx_qN*`` -> ``tx_qN_*``
 
+* ethdev: Added capability to query age flow action.
+
 * ethdev: Renamed internal functions:
 
   * ``_rte_eth_dev_callback_process()`` -> ``rte_eth_dev_callback_process()``
