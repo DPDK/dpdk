@@ -252,16 +252,6 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	txq = rte_zmalloc_socket("HN_TXQ", sizeof(*txq), RTE_CACHE_LINE_SIZE,
-				 socket_id);
-	if (!txq)
-		return -ENOMEM;
-
-	txq->hv = hv;
-	txq->chan = hv->channels[queue_idx];
-	txq->port_id = dev->data->port_id;
-	txq->queue_id = queue_idx;
-
 	tx_free_thresh = tx_conf->tx_free_thresh;
 	if (tx_free_thresh == 0)
 		tx_free_thresh = RTE_MIN(nb_desc / 4,
@@ -276,6 +266,15 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	txq = rte_zmalloc_socket("HN_TXQ", sizeof(*txq), RTE_CACHE_LINE_SIZE,
+				 socket_id);
+	if (!txq)
+		return -ENOMEM;
+
+	txq->hv = hv;
+	txq->chan = hv->channels[queue_idx];
+	txq->port_id = dev->data->port_id;
+	txq->queue_id = queue_idx;
 	txq->free_thresh = tx_free_thresh;
 
 	snprintf(name, sizeof(name),
