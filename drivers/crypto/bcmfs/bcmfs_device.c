@@ -12,6 +12,7 @@
 
 #include "bcmfs_device.h"
 #include "bcmfs_logs.h"
+#include "bcmfs_qp.h"
 #include "bcmfs_vfio.h"
 
 struct bcmfs_device_attr {
@@ -76,6 +77,9 @@ fsdev_allocate_one_dev(struct rte_vdev_device *vdev,
 	/* attach to VFIO */
 	if (bcmfs_attach_vfio(fsdev))
 		goto cleanup;
+
+	/* Maximum number of QPs supported */
+	fsdev->max_hw_qps = fsdev->mmap_size / BCMFS_HW_QUEUE_IO_ADDR_LEN;
 
 	TAILQ_INSERT_TAIL(&fsdev_list, fsdev, next);
 

@@ -7,5 +7,6 @@ deps += ['eal', 'bus_vdev']
 sources = files(
 		'bcmfs_logs.c',
 		'bcmfs_device.c',
-		'bcmfs_vfio.c'
+		'bcmfs_vfio.c',
+		'bcmfs_qp.c'
 		)

@@ -11,6 +11,7 @@
 #include <rte_bus_vdev.h>
 
 #include "bcmfs_logs.h"
+#include "bcmfs_qp.h"
 
 /* max number of dev nodes */
 #define BCMFS_MAX_NODES		4
@@ -44,6 +45,10 @@ struct bcmfs_device {
 	uint8_t *mmap_addr;
 	/* mapped size */
 	uint32_t mmap_size;
+	/* max number of h/w queue pairs detected */
+	uint16_t max_hw_qps;
+	/* current qpairs in use */
+	struct bcmfs_qp *qps_in_use[BCMFS_MAX_HW_QUEUES];
 };
 
 #endif /* _BCMFS_DEVICE_H_ */
