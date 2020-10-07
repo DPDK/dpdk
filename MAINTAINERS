@@ -973,6 +973,7 @@ M: Raveendra Padasalagi <raveendra.padasalagi@broadcom.com>
 M: Vikas Gupta <vikas.gupta@broadcom.com>
 F: drivers/crypto/bcmfs/
 F: doc/guides/cryptodevs/bcmfs.rst
+F: doc/guides/cryptodevs/features/bcmfs.ini
 
 Cavium OCTEON TX crypto
 M: Anoob Joseph <anoobj@marvell.com>

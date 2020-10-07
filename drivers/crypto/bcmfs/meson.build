@@ -12,5 +12,7 @@ sources = files(
 		'hw/bcmfs4_rm.c',
 		'hw/bcmfs5_rm.c',
 		'hw/bcmfs_rm_common.c',
-		'bcmfs_sym_pmd.c'
+		'bcmfs_sym_pmd.c',
+		'bcmfs_sym_capabilities.c',
+		'bcmfs_sym_session.c'
 		)

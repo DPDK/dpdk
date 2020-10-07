@@ -14,6 +14,8 @@
 #include "bcmfs_qp.h"
 #include "bcmfs_sym_pmd.h"
 #include "bcmfs_sym_req.h"
+#include "bcmfs_sym_session.h"
+#include "bcmfs_sym_capabilities.h"
 
 uint8_t cryptodev_bcmfs_driver_id;
 
@@ -65,6 +67,7 @@ bcmfs_sym_dev_info_get(struct rte_cryptodev *dev,
 		dev_info->max_nb_queue_pairs = fsdev->max_hw_qps;
 		/* No limit of number of sessions */
 		dev_info->sym.max_nb_sessions = 0;
+		dev_info->capabilities = bcmfs_sym_get_capabilities();
 	}
 }
 
@@ -228,6 +231,10 @@ static struct rte_cryptodev_ops crypto_bcmfs_ops = {
 	/* Queue-Pair management */
 	.queue_pair_setup       = bcmfs_sym_qp_setup,
 	.queue_pair_release     = bcmfs_sym_qp_release,
+	/* Crypto session related operations */
+	.sym_session_get_size   = bcmfs_sym_session_get_private_size,
+	.sym_session_configure  = bcmfs_sym_session_configure,
+	.sym_session_clear      = bcmfs_sym_session_clear
 };
 
 /** Enqueue burst */
@@ -239,6 +246,7 @@ bcmfs_sym_pmd_enqueue_op_burst(void *queue_pair,
 	int i, j;
 	uint16_t enq = 0;
 	struct bcmfs_sym_request *sreq;
+	struct bcmfs_sym_session *sess;
 	struct bcmfs_qp *qp = (struct bcmfs_qp *)queue_pair;
 
 	if (nb_ops == 0)
@@ -252,6 +260,10 @@ bcmfs_sym_pmd_enqueue_op_burst(void *queue_pair,
 		nb_ops = qp->nb_descriptors - qp->nb_pending_requests;
 
 	for (i = 0; i < nb_ops; i++) {
+		sess = bcmfs_sym_get_session(ops[i]);
+		if (unlikely(sess == NULL))
+			goto enqueue_err;
+
 		if (rte_mempool_get(qp->sr_mp, (void **)&sreq))
 			goto enqueue_err;
 
@@ -356,6 +368,7 @@ bcmfs_sym_dev_create(struct bcmfs_device *fsdev)
 	fsdev->sym_dev = internals;
 
 	internals->sym_dev_id = cryptodev->data->dev_id;
+	internals->fsdev_capabilities = bcmfs_sym_get_capabilities();
 
 	BCMFS_LOG(DEBUG, "Created bcmfs-sym device %s as cryptodev instance %d",
 		  cryptodev->data->name, internals->sym_dev_id);

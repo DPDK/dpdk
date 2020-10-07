@@ -15,6 +15,47 @@ Supported Broadcom SoCs
 * Stingray
 * Stingray2
 
+Features
+--------
+
+The BCMFS SYM PMD has support for:
+
+Cipher algorithms:
+
+* ``RTE_CRYPTO_CIPHER_3DES_CBC``
+* ``RTE_CRYPTO_CIPHER_3DES_CTR``
+* ``RTE_CRYPTO_CIPHER_AES128_CBC``
+* ``RTE_CRYPTO_CIPHER_AES192_CBC``
+* ``RTE_CRYPTO_CIPHER_AES256_CBC``
+* ``RTE_CRYPTO_CIPHER_AES128_CTR``
+* ``RTE_CRYPTO_CIPHER_AES192_CTR``
+* ``RTE_CRYPTO_CIPHER_AES256_CTR``
+* ``RTE_CRYPTO_CIPHER_AES_XTS``
+* ``RTE_CRYPTO_CIPHER_DES_CBC``
+
+Hash algorithms:
+
+* ``RTE_CRYPTO_AUTH_SHA1``
+* ``RTE_CRYPTO_AUTH_SHA1_HMAC``
+* ``RTE_CRYPTO_AUTH_SHA224``
+* ``RTE_CRYPTO_AUTH_SHA224_HMAC``
+* ``RTE_CRYPTO_AUTH_SHA256``
+* ``RTE_CRYPTO_AUTH_SHA256_HMAC``
+* ``RTE_CRYPTO_AUTH_SHA384``
+* ``RTE_CRYPTO_AUTH_SHA384_HMAC``
+* ``RTE_CRYPTO_AUTH_SHA512``
+* ``RTE_CRYPTO_AUTH_SHA512_HMAC``
+* ``RTE_CRYPTO_AUTH_AES_XCBC_MAC``
+* ``RTE_CRYPTO_AUTH_AES_CBC_MAC``
+* ``RTE_CRYPTO_AUTH_MD5_HMAC``
+* ``RTE_CRYPTO_AUTH_AES_GMAC``
+* ``RTE_CRYPTO_AUTH_AES_CMAC``
+
+Supported AEAD algorithms:
+
+* ``RTE_CRYPTO_AEAD_AES_GCM``
+* ``RTE_CRYPTO_AEAD_AES_CCM``
+
 Installation
 ------------
 Information about kernel, rootfs and toolchain can be found at
@@ -49,3 +90,9 @@ For example, below commands can be run to get hold of a device node by VFIO.
     io_device_name="vfio-platform"
     echo $io_device_name > /sys/bus/platform/devices/${SETUP_SYSFS_DEV_NAME}/driver_override
     echo ${SETUP_SYSFS_DEV_NAME} > /sys/bus/platform/drivers_probe
+
+Limitations
+-----------
+
+* Only supports the session-oriented API implementation (session-less APIs are not supported).
+* CCM is not supported on Broadcom`s SoCs having FlexSparc4 unit.
