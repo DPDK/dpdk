@@ -44,6 +44,47 @@ static struct bcmfs_device_attr dev_table[] = {
 	}
 };
 
+struct bcmfs_hw_queue_pair_ops_table bcmfs_hw_queue_pair_ops_table = {
+	.tl =  RTE_SPINLOCK_INITIALIZER,
+	.num_ops = 0
+};
+
+int bcmfs_hw_queue_pair_register_ops(const struct bcmfs_hw_queue_pair_ops *h)
+{
+	struct bcmfs_hw_queue_pair_ops *ops;
+	int16_t ops_index;
+
+	rte_spinlock_lock(&bcmfs_hw_queue_pair_ops_table.tl);
+
+	if (h->enq_one_req == NULL || h->dequeue == NULL ||
+	    h->ring_db == NULL || h->startq == NULL || h->stopq == NULL) {
+		rte_spinlock_unlock(&bcmfs_hw_queue_pair_ops_table.tl);
+		BCMFS_LOG(ERR,
+			  "Missing callback while registering device ops");
+		return -EINVAL;
+	}
+
+	if (strlen(h->name) >= sizeof(ops->name) - 1) {
+		rte_spinlock_unlock(&bcmfs_hw_queue_pair_ops_table.tl);
+		BCMFS_LOG(ERR, "%s(): fs device_ops <%s>: name too long",
+				__func__, h->name);
+		return -EEXIST;
+	}
+
+	ops_index = bcmfs_hw_queue_pair_ops_table.num_ops++;
+	ops = &bcmfs_hw_queue_pair_ops_table.qp_ops[ops_index];
+	strlcpy(ops->name, h->name, sizeof(ops->name));
+	ops->enq_one_req = h->enq_one_req;
+	ops->dequeue = h->dequeue;
+	ops->ring_db = h->ring_db;
+	ops->startq = h->startq;
+	ops->stopq = h->stopq;
+
+	rte_spinlock_unlock(&bcmfs_hw_queue_pair_ops_table.tl);
+
+	return ops_index;
+}
+
 TAILQ_HEAD(fsdev_list, bcmfs_device);
 static struct fsdev_list fsdev_list = TAILQ_HEAD_INITIALIZER(fsdev_list);
 
@@ -54,6 +95,7 @@ fsdev_allocate_one_dev(struct rte_vdev_device *vdev,
 		       enum bcmfs_device_type dev_type __rte_unused)
 {
 	struct bcmfs_device *fsdev;
+	uint32_t i;
 
 	fsdev = rte_calloc(__func__, 1, sizeof(*fsdev), 0);
 	if (!fsdev)
@@ -68,6 +110,15 @@ fsdev_allocate_one_dev(struct rte_vdev_device *vdev,
 		BCMFS_LOG(ERR, "devname is too long");
 		goto cleanup;
 	}
+
+	/* check if registered ops name is present in directory path */
+	for (i = 0; i < bcmfs_hw_queue_pair_ops_table.num_ops; i++)
+		if (strstr(dirpath,
+			   bcmfs_hw_queue_pair_ops_table.qp_ops[i].name))
+			fsdev->sym_hw_qp_ops =
+				&bcmfs_hw_queue_pair_ops_table.qp_ops[i];
+	if (!fsdev->sym_hw_qp_ops)
+		goto cleanup;
 
 	strcpy(fsdev->dirname, dirpath);
 	strcpy(fsdev->name, devname);

@@ -44,6 +44,8 @@ struct bcmfs_qp_config {
 	uint16_t nb_descriptors;
 	/* Maximum number of h/w descriptors needed by a request */
 	uint16_t max_descs_req;
+	/* h/w ops associated with qp */
+	struct bcmfs_hw_queue_pair_ops *ops;
 };
 
 struct bcmfs_queue {
@@ -61,6 +63,8 @@ struct bcmfs_queue {
 		/* s/w pointer for completion h/w queue*/
 		uint32_t cmpl_read_ptr;
 	};
+	/* number of inflight descriptor accumulated  before next db ring */
+	uint16_t descs_inflight;
 	/* Memzone name */
 	char memz_name[RTE_MEMZONE_NAMESIZE];
 };

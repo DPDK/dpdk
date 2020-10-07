@@ -8,6 +8,7 @@
 
 #include <sys/queue.h>
 
+#include <rte_spinlock.h>
 #include <rte_bus_vdev.h>
 
 #include "bcmfs_logs.h"
@@ -31,6 +32,19 @@ enum bcmfs_device_type {
 	BCMFS_UNKNOWN
 };
 
+/* A table to store registered queue pair opertations */
+struct bcmfs_hw_queue_pair_ops_table {
+	rte_spinlock_t tl;
+	/* Number of used ops structs in the table. */
+	uint32_t num_ops;
+	 /*  Storage for all possible ops structs. */
+	struct bcmfs_hw_queue_pair_ops qp_ops[BCMFS_MAX_NODES];
+};
+
+/* HW queue pair ops register function */
+int
+bcmfs_hw_queue_pair_register_ops(const struct bcmfs_hw_queue_pair_ops *qp_ops);
+
 struct bcmfs_device {
 	TAILQ_ENTRY(bcmfs_device) next;
 	/* Directory path for vfio */
@@ -49,6 +63,8 @@ struct bcmfs_device {
 	uint16_t max_hw_qps;
 	/* current qpairs in use */
 	struct bcmfs_qp *qps_in_use[BCMFS_MAX_HW_QUEUES];
+	/* queue pair ops exported by symmetric crypto hw */
+	struct bcmfs_hw_queue_pair_ops *sym_hw_qp_ops;
 };
 
 #endif /* _BCMFS_DEVICE_H_ */

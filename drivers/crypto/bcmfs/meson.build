@@ -8,5 +8,8 @@ sources = files(
 		'bcmfs_logs.c',
 		'bcmfs_device.c',
 		'bcmfs_vfio.c',
-		'bcmfs_qp.c'
+		'bcmfs_qp.c',
+		'hw/bcmfs4_rm.c',
+		'hw/bcmfs5_rm.c',
+		'hw/bcmfs_rm_common.c'
 		)

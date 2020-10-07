@@ -227,6 +227,7 @@ bcmfs_qp_setup(struct bcmfs_qp **qp_addr,
 	qp->qpair_id = queue_pair_id;
 	qp->ioreg = qp_conf->iobase;
 	qp->nb_descriptors = nb_descriptors;
+	qp->ops = qp_conf->ops;
 
 	qp->stats.enqueued_count = 0;
 	qp->stats.dequeued_count = 0;
