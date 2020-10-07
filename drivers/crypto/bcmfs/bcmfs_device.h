@@ -38,6 +38,12 @@ struct bcmfs_device {
 	char name[BCMFS_DEV_NAME_LEN];
 	/* Parent vdev */
 	struct rte_vdev_device *vdev;
+	/* vfio handle */
+	int vfio_dev_fd;
+	/* mapped address */
+	uint8_t *mmap_addr;
+	/* mapped size */
+	uint32_t mmap_size;
 };
 
 #endif /* _BCMFS_DEVICE_H_ */

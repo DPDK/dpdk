@@ -12,6 +12,7 @@
 
 #include "bcmfs_device.h"
 #include "bcmfs_logs.h"
+#include "bcmfs_vfio.h"
 
 struct bcmfs_device_attr {
 	const char name[BCMFS_MAX_PATH_LEN];
@@ -71,6 +72,10 @@ fsdev_allocate_one_dev(struct rte_vdev_device *vdev,
 	strcpy(fsdev->name, devname);
 
 	fsdev->vdev = vdev;
+
+	/* attach to VFIO */
+	if (bcmfs_attach_vfio(fsdev))
+		goto cleanup;
 
 	TAILQ_INSERT_TAIL(&fsdev_list, fsdev, next);
 
