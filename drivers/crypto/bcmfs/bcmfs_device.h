@@ -65,6 +65,12 @@ struct bcmfs_device {
 	struct bcmfs_qp *qps_in_use[BCMFS_MAX_HW_QUEUES];
 	/* queue pair ops exported by symmetric crypto hw */
 	struct bcmfs_hw_queue_pair_ops *sym_hw_qp_ops;
+	/* a cryptodevice attached to bcmfs device */
+	struct rte_cryptodev *cdev;
+	/* a rte_device to register with cryptodev */
+	struct rte_device sym_rte_dev;
+	/* private info to keep with cryptodev */
+	struct bcmfs_sym_dev_private *sym_dev;
 };
 
 #endif /* _BCMFS_DEVICE_H_ */

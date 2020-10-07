@@ -344,3 +344,40 @@ bcmfs_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 
 	return deq;
 }
+
+void bcmfs_qp_stats_get(struct bcmfs_qp **qp, int num_qp,
+			struct bcmfs_qp_stats *stats)
+{
+	int i;
+
+	if (stats == NULL) {
+		BCMFS_LOG(ERR, "invalid param: stats %p",
+			  stats);
+		return;
+	}
+
+	for (i = 0; i < num_qp; i++) {
+		if (qp[i] == NULL) {
+			BCMFS_LOG(DEBUG, "Uninitialised qp %d", i);
+			continue;
+		}
+
+		stats->enqueued_count += qp[i]->stats.enqueued_count;
+		stats->dequeued_count += qp[i]->stats.dequeued_count;
+		stats->enqueue_err_count += qp[i]->stats.enqueue_err_count;
+		stats->dequeue_err_count += qp[i]->stats.dequeue_err_count;
+	}
+}
+
+void bcmfs_qp_stats_reset(struct bcmfs_qp **qp, int num_qp)
+{
+	int i;
+
+	for (i = 0; i < num_qp; i++) {
+		if (qp[i] == NULL) {
+			BCMFS_LOG(DEBUG, "Uninitialised qp %d", i);
+			continue;
+		}
+		memset(&qp[i]->stats, 0, sizeof(qp[i]->stats));
+	}
+}

@@ -11,5 +11,6 @@ sources = files(
 		'bcmfs_qp.c',
 		'hw/bcmfs4_rm.c',
 		'hw/bcmfs5_rm.c',
-		'hw/bcmfs_rm_common.c'
+		'hw/bcmfs_rm_common.c',
+		'bcmfs_sym_pmd.c'
 		)

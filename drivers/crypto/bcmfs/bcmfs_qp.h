@@ -24,6 +24,13 @@ enum bcmfs_queue_type {
 	BCMFS_RM_CPLQ
 };
 
+#define BCMFS_QP_IOBASE_XLATE(base, idx)	\
+		((base) + ((idx) * BCMFS_HW_QUEUE_IO_ADDR_LEN))
+
+/* Max pkts for preprocessing before submitting to h/w qp */
+#define BCMFS_MAX_REQS_BUFF	64
+
+/* qp stats */
 struct bcmfs_qp_stats {
 	/* Count of all operations enqueued */
 	uint64_t enqueued_count;
@@ -92,6 +99,10 @@ struct bcmfs_qp {
 	struct bcmfs_qp_stats stats;
 	/* h/w ops associated with qp */
 	struct bcmfs_hw_queue_pair_ops *ops;
+	/* bcmfs requests pool*/
+	struct rte_mempool *sr_mp;
+	/* a temporary buffer to keep message pointers */
+	struct bcmfs_qp_message *infl_msgs[BCMFS_MAX_REQS_BUFF];
 
 } __rte_cache_aligned;
 
@@ -122,5 +133,10 @@ int
 bcmfs_qp_setup(struct bcmfs_qp **qp_addr,
 	       uint16_t queue_pair_id,
 	       struct bcmfs_qp_config *bcmfs_conf);
+
+/* stats functions*/
+void bcmfs_qp_stats_get(struct bcmfs_qp **qp, int num_qp,
+			struct bcmfs_qp_stats *stats);
+void bcmfs_qp_stats_reset(struct bcmfs_qp **qp, int num_qp);
 
 #endif /* _BCMFS_QP_H_ */

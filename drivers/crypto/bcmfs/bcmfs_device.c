@@ -14,6 +14,7 @@
 #include "bcmfs_logs.h"
 #include "bcmfs_qp.h"
 #include "bcmfs_vfio.h"
+#include "bcmfs_sym_pmd.h"
 
 struct bcmfs_device_attr {
 	const char name[BCMFS_MAX_PATH_LEN];
@@ -240,6 +241,7 @@ bcmfs_vdev_probe(struct rte_vdev_device *vdev)
 	char out_dirname[BCMFS_MAX_PATH_LEN];
 	uint32_t fsdev_dev[BCMFS_MAX_NODES];
 	enum bcmfs_device_type dtype;
+	int err;
 	int i = 0;
 	int dev_idx;
 	int count = 0;
@@ -291,7 +293,20 @@ bcmfs_vdev_probe(struct rte_vdev_device *vdev)
 		return -ENODEV;
 	}
 
+	err = bcmfs_sym_dev_create(fsdev);
+	if (err) {
+		BCMFS_LOG(WARNING,
+			  "Failed to create BCMFS SYM PMD for device %s",
+			  fsdev->name);
+		goto pmd_create_fail;
+	}
+
 	return 0;
+
+pmd_create_fail:
+	fsdev_release(fsdev);
+
+	return err;
 }
 
 static int
