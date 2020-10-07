@@ -2024,8 +2024,10 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	q->ops = &def_txq_ops;
 	q->tail_ptr = (volatile uint32_t *)
 		&((uint32_t *)hw->hw_addr)[FM10K_TDT(queue_id)];
-	if (handle_txconf(q, conf))
+	if (handle_txconf(q, conf)) {
+		rte_free(q);
 		return -EINVAL;
+	}
 
 	/* allocate memory for the software ring */
 	q->sw_ring = rte_zmalloc_socket("fm10k sw ring",
