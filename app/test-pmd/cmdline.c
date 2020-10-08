@@ -248,6 +248,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (port_id) macs|mcast_macs"
 			"       Display list of mac addresses added to port.\n\n"
+
+			"show port (port_id) fec capabilities"
+			"	Show fec capabilities of a port.\n\n"
+
+			"show port (port_id) fec_mode"
+			"	Show fec mode of a port.\n\n"
 		);
 	}
 
@@ -750,6 +756,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (port_id) queue-region\n"
 			"    show all queue region related configuration info\n\n"
+
+			"set port (port_id) fec_mode auto|off|rs|baser\n"
+			"    set fec mode for a specific port\n\n"
 
 			, list_pkt_forwarding_modes()
 		);
@@ -19218,6 +19227,226 @@ cmdline_parse_inst_t cmd_show_tx_metadata = {
 	},
 };
 
+/* *** show fec capability per port configuration *** */
+struct cmd_show_fec_capability_result {
+	cmdline_fixed_string_t cmd_show;
+	cmdline_fixed_string_t cmd_port;
+	cmdline_fixed_string_t cmd_fec;
+	cmdline_fixed_string_t cmd_keyword;
+	portid_t cmd_pid;
+};
+
+static void
+cmd_show_fec_capability_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+#define FEC_CAP_NUM 2
+	struct cmd_show_fec_capability_result *res = parsed_result;
+	struct rte_eth_fec_capa speed_fec_capa[FEC_CAP_NUM];
+	unsigned int num = FEC_CAP_NUM;
+	unsigned int ret_num;
+	int ret;
+
+	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
+		printf("Invalid port id %u\n", res->cmd_pid);
+		return;
+	}
+
+	ret = rte_eth_fec_get_capability(res->cmd_pid, speed_fec_capa, num);
+	if (ret == -ENOTSUP) {
+		printf("Function not implemented\n");
+		return;
+	} else if (ret < 0) {
+		printf("Get FEC capability failed\n");
+		return;
+	}
+
+	ret_num = (unsigned int)ret;
+	show_fec_capability(ret_num, speed_fec_capa);
+}
+
+cmdline_parse_token_string_t cmd_show_fec_capability_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_fec_capability_result,
+			cmd_show, "show");
+cmdline_parse_token_string_t cmd_show_fec_capability_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_fec_capability_result,
+			cmd_port, "port");
+cmdline_parse_token_num_t cmd_show_fec_capability_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_fec_capability_result,
+			cmd_pid, UINT16);
+cmdline_parse_token_string_t cmd_show_fec_capability_fec =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_fec_capability_result,
+			cmd_fec, "fec");
+cmdline_parse_token_string_t cmd_show_fec_capability_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_fec_capability_result,
+			cmd_keyword, "capabilities");
+
+cmdline_parse_inst_t cmd_show_capability = {
+	.f = cmd_show_fec_capability_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> fec capabilities",
+	.tokens = {
+		(void *)&cmd_show_fec_capability_show,
+		(void *)&cmd_show_fec_capability_port,
+		(void *)&cmd_show_fec_capability_pid,
+		(void *)&cmd_show_fec_capability_fec,
+		(void *)&cmd_show_fec_capability_keyword,
+		NULL,
+	},
+};
+
+/* *** show fec mode per port configuration *** */
+struct cmd_show_fec_metadata_result {
+	cmdline_fixed_string_t cmd_show;
+	cmdline_fixed_string_t cmd_port;
+	cmdline_fixed_string_t cmd_keyword;
+	portid_t cmd_pid;
+};
+
+static void
+cmd_show_fec_mode_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+#define FEC_NAME_SIZE 16
+	struct cmd_show_fec_metadata_result *res = parsed_result;
+	uint32_t mode;
+	char buf[FEC_NAME_SIZE];
+	int ret;
+
+	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
+		printf("Invalid port id %u\n", res->cmd_pid);
+		return;
+	}
+	ret = rte_eth_fec_get(res->cmd_pid, &mode);
+	if (ret == -ENOTSUP) {
+		printf("Function not implemented\n");
+		return;
+	} else if (ret < 0) {
+		printf("Get FEC mode failed\n");
+		return;
+	}
+
+	switch (mode) {
+	case RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC):
+		strlcpy(buf, "off", sizeof(buf));
+		break;
+	case RTE_ETH_FEC_MODE_CAPA_MASK(AUTO):
+		strlcpy(buf, "auto", sizeof(buf));
+		break;
+	case RTE_ETH_FEC_MODE_CAPA_MASK(BASER):
+		strlcpy(buf, "baser", sizeof(buf));
+		break;
+	case RTE_ETH_FEC_MODE_CAPA_MASK(RS):
+		strlcpy(buf, "rs", sizeof(buf));
+		break;
+	default:
+		return;
+	}
+
+	printf("%s\n", buf);
+}
+
+cmdline_parse_token_string_t cmd_show_fec_mode_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_fec_metadata_result,
+			cmd_show, "show");
+cmdline_parse_token_string_t cmd_show_fec_mode_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_fec_metadata_result,
+			cmd_port, "port");
+cmdline_parse_token_num_t cmd_show_fec_mode_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_fec_metadata_result,
+			cmd_pid, UINT16);
+cmdline_parse_token_string_t cmd_show_fec_mode_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_fec_metadata_result,
+			cmd_keyword, "fec_mode");
+
+cmdline_parse_inst_t cmd_show_fec_mode = {
+	.f = cmd_show_fec_mode_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> fec_mode",
+	.tokens = {
+		(void *)&cmd_show_fec_mode_show,
+		(void *)&cmd_show_fec_mode_port,
+		(void *)&cmd_show_fec_mode_pid,
+		(void *)&cmd_show_fec_mode_keyword,
+		NULL,
+	},
+};
+
+/* *** set fec mode per port configuration *** */
+struct cmd_set_port_fec_mode {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t fec_mode;
+	cmdline_fixed_string_t fec_value;
+};
+
+/* Common CLI fields for set fec mode */
+cmdline_parse_token_string_t cmd_set_port_fec_mode_set =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_port_fec_mode,
+		 set, "set");
+cmdline_parse_token_string_t cmd_set_port_fec_mode_port =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_port_fec_mode,
+		 port, "port");
+cmdline_parse_token_num_t cmd_set_port_fec_mode_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_set_port_fec_mode,
+		 port_id, UINT16);
+cmdline_parse_token_string_t cmd_set_port_fec_mode_str =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_port_fec_mode,
+		 fec_mode, "fec_mode");
+cmdline_parse_token_string_t cmd_set_port_fec_mode_value =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_port_fec_mode,
+		 fec_value, NULL);
+
+static void
+cmd_set_port_fec_mode_parsed(
+	void *parsed_result,
+	__rte_unused struct cmdline *cl,
+	__rte_unused void *data)
+{
+	struct cmd_set_port_fec_mode *res = parsed_result;
+	uint16_t port_id = res->port_id;
+	uint32_t mode;
+	int ret;
+
+	ret = parse_fec_mode(res->fec_value, &mode);
+	if (ret < 0) {
+		printf("Unknown fec mode: %s for Port %d\n", res->fec_value,
+			port_id);
+		return;
+	}
+
+	ret = rte_eth_fec_set(port_id, mode);
+	if (ret == -ENOTSUP) {
+		printf("Function not implemented\n");
+		return;
+	} else if (ret < 0) {
+		printf("Set FEC mode failed\n");
+		return;
+	}
+}
+
+cmdline_parse_inst_t cmd_set_fec_mode = {
+	.f = cmd_set_port_fec_mode_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> fec_mode auto|off|rs|baser",
+	.tokens = {
+		(void *)&cmd_set_port_fec_mode_set,
+		(void *)&cmd_set_port_fec_mode_port,
+		(void *)&cmd_set_port_fec_mode_port_id,
+		(void *)&cmd_set_port_fec_mode_str,
+		(void *)&cmd_set_port_fec_mode_value,
+		NULL,
+	},
+};
+
 /* show port supported ptypes */
 
 /* Common result structure for show port ptypes */
@@ -19853,6 +20082,9 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_show_set_raw,
 	(cmdline_parse_inst_t *)&cmd_show_set_raw_all,
 	(cmdline_parse_inst_t *)&cmd_config_tx_dynf_specific,
+	(cmdline_parse_inst_t *)&cmd_show_fec_mode,
+	(cmdline_parse_inst_t *)&cmd_set_fec_mode,
+	(cmdline_parse_inst_t *)&cmd_show_capability,
 	NULL,
 };
 

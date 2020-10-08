@@ -139,6 +139,28 @@ const struct rss_type_info rss_type_table[] = {
 	{ NULL, 0 },
 };
 
+static const struct {
+	enum rte_eth_fec_mode mode;
+	const char *name;
+} fec_mode_name[] = {
+	{
+		.mode = RTE_ETH_FEC_NOFEC,
+		.name = "off",
+	},
+	{
+		.mode = RTE_ETH_FEC_AUTO,
+		.name = "auto",
+	},
+	{
+		.mode = RTE_ETH_FEC_BASER,
+		.name = "baser",
+	},
+	{
+		.mode = RTE_ETH_FEC_RS,
+		.name = "rs",
+	},
+};
+
 static void
 print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
@@ -3189,6 +3211,40 @@ set_tx_pkt_split(const char *name)
 		}
 	}
 	printf("unknown value: \"%s\"\n", name);
+}
+
+int
+parse_fec_mode(const char *name, uint32_t *mode)
+{
+	uint8_t i;
+
+	for (i = 0; i < RTE_DIM(fec_mode_name); i++) {
+		if (strcmp(fec_mode_name[i].name, name) == 0) {
+			*mode = RTE_ETH_FEC_MODE_TO_CAPA(fec_mode_name[i].mode);
+			return 0;
+		}
+	}
+	return -1;
+}
+
+void
+show_fec_capability(unsigned int num, struct rte_eth_fec_capa *speed_fec_capa)
+{
+	unsigned int i, j;
+
+	printf("FEC capabilities:\n");
+
+	for (i = 0; i < num; i++) {
+		printf("%s : ",
+			rte_eth_link_speed_to_str(speed_fec_capa[i].speed));
+
+		for (j = RTE_ETH_FEC_AUTO; j < RTE_DIM(fec_mode_name); j++) {
+			if (RTE_ETH_FEC_MODE_TO_CAPA(j) &
+						speed_fec_capa[i].capa)
+				printf("%s ", fec_mode_name[j].name);
+		}
+		printf("\n");
+	}
 }
 
 void

@@ -619,6 +619,20 @@ For example::
   00000020: 03 06 00 00 00 FA 00 00 00 00 08 00 00 00 00 00 | ................
   00000030: 06 00                                           | ..
 
+show fec capabilities
+~~~~~~~~~~~~~~~~~~~~~
+
+Show fec capabilities of a port::
+
+  testpmd> show port (port_id) fec capabilities
+
+show fec mode
+~~~~~~~~~~~~~
+
+Show fec mode of a port::
+
+  testpmd> show port (port_id) fec_mode
+
 
 Configuration Functions
 -----------------------
@@ -2011,6 +2025,14 @@ during the flow rule creation::
           raw_encap index 3 / end
 
 Otherwise the default index ``0`` is used.
+
+Set fec mode
+~~~~~~~~~~~~
+
+Set fec mode for a specific port::
+
+  testpmd> set port (port_id) fec_mode auto|off|rs|baser
+
 
 Port Functions
 --------------
