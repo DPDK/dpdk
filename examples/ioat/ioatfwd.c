@@ -361,15 +361,11 @@ ioat_enqueue_packets(struct rte_mbuf **pkts,
 	for (i = 0; i < nb_rx; i++) {
 		/* Perform data copy */
 		ret = rte_ioat_enqueue_copy(dev_id,
-			pkts[i]->buf_iova
-			- addr_offset,
-			pkts_copy[i]->buf_iova
-			- addr_offset,
-			rte_pktmbuf_data_len(pkts[i])
-			+ addr_offset,
+			pkts[i]->buf_iova - addr_offset,
+			pkts_copy[i]->buf_iova - addr_offset,
+			rte_pktmbuf_data_len(pkts[i]) + addr_offset,
 			(uintptr_t)pkts[i],
-			(uintptr_t)pkts_copy[i],
-			0 /* nofence */);
+			(uintptr_t)pkts_copy[i]);
 
 		if (ret != 1)
 			break;

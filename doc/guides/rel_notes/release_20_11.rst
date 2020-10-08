@@ -116,6 +116,10 @@ New Features
     to better reflect the APIs' purposes, and remove the implication that
     they are limited to copy operations only.
     [Note: The old API is still provided but marked as deprecated in the code]
+  * Added a new API ``rte_ioat_fence()`` to add a fence between operations.
+    This API replaces the ``fence`` flag parameter in the ``rte_ioat_enqueue_copies()`` function,
+    and is clearer as there is no ambiguity as to whether the flag should be
+    set on the last operation before the fence or the first operation after it.
 
 * **Updated the pipeline library for alignment with the P4 language.**
 

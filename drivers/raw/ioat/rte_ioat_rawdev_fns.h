@@ -47,8 +47,7 @@ struct rte_ioat_rawdev {
  */
 static inline int
 rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
-		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl,
-		int fence)
+		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
 {
 	struct rte_ioat_rawdev *ioat =
 			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
@@ -69,7 +68,7 @@ rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 	desc = &ioat->desc_ring[write];
 	desc->size = length;
 	/* set descriptor write-back every 16th descriptor */
-	desc->u.control_raw = (uint32_t)((!!fence << 4) | (!(write & 0xF)) << 3);
+	desc->u.control_raw = (uint32_t)((!(write & 0xF)) << 3);
 	desc->src_addr = src;
 	desc->dest_addr = dst;
 
@@ -80,6 +79,23 @@ rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 
 	ioat->enqueued++;
 	return 1;
+}
+
+/* add fence to last written descriptor */
+static inline int
+rte_ioat_fence(int dev_id)
+{
+	struct rte_ioat_rawdev *ioat =
+			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
+	unsigned short write = ioat->next_write;
+	unsigned short mask = ioat->ring_size - 1;
+	struct rte_ioat_generic_hw_desc *desc;
+
+	write = (write - 1) & mask;
+	desc = &ioat->desc_ring[write];
+
+	desc->u.control.fence = 1;
+	return 0;
 }
 
 /*

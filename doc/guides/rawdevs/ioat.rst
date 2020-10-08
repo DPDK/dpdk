@@ -203,8 +203,7 @@ a burst of copies to the device and start the hardware processing of them:
                                 dsts[i]->buf_iova + dsts[i]->data_off,
                                 length,
                                 (uintptr_t)srcs[i],
-                                (uintptr_t)dsts[i],
-                                0 /* nofence */) != 1) {
+                                (uintptr_t)dsts[i]) != 1) {
                         printf("Error with rte_ioat_enqueue_copy for buffer %u\n",
                                         i);
                         return -1;

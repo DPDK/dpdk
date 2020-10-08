@@ -61,18 +61,33 @@ struct rte_ioat_rawdev_config {
  *   operation has been completed and the user polls for the completion details.
  *   NOTE: If hdls_disable configuration option for the device is set, this
  *   parameter is ignored.
- * @param fence
- *   A flag parameter indicating that hardware should not begin to perform any
- *   subsequently enqueued copy operations until after this operation has
- *   completed
  * @return
  *   Number of operations enqueued, either 0 or 1
  */
 static inline int
 __rte_experimental
 rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
-		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl,
-		int fence);
+		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl);
+
+/**
+ * Add a fence to force ordering between operations
+ *
+ * This adds a fence to a sequence of operations to enforce ordering, such that
+ * all operations enqueued before the fence must be completed before operations
+ * after the fence.
+ * NOTE: Since this fence may be added as a flag to the last operation enqueued,
+ * this API may not function correctly when called immediately after an
+ * "rte_ioat_perform_ops" call i.e. before any new operations are enqueued.
+ *
+ * @param dev_id
+ *   The rawdev device id of the ioat instance
+ * @return
+ *   Number of fences enqueued, either 0 or 1
+ */
+static inline int
+__rte_experimental
+rte_ioat_fence(int dev_id);
+
 
 /**
  * Trigger hardware to begin performing enqueued operations

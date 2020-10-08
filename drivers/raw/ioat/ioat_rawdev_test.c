@@ -60,8 +60,7 @@ test_enqueue_copies(int dev_id)
 				dst->buf_iova + dst->data_off,
 				length,
 				(uintptr_t)src,
-				(uintptr_t)dst,
-				0 /* no fence */) != 1) {
+				(uintptr_t)dst) != 1) {
 			PRINT_ERR("Error with rte_ioat_enqueue_copy\n");
 			return -1;
 		}
@@ -112,8 +111,7 @@ test_enqueue_copies(int dev_id)
 					dsts[i]->buf_iova + dsts[i]->data_off,
 					length,
 					(uintptr_t)srcs[i],
-					(uintptr_t)dsts[i],
-					0 /* nofence */) != 1) {
+					(uintptr_t)dsts[i]) != 1) {
 				PRINT_ERR("Error with rte_ioat_enqueue_copy for buffer %u\n",
 						i);
 				return -1;
