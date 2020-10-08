@@ -50,6 +50,8 @@ The `accel-config <https://github.com/intel/idxd-config>`_ utility library can b
 
 .. note::
         The device configuration can also be done by directly interacting with the sysfs nodes.
+        An example of how this may be done can be seen in the script ``dpdk_idxd_cfg.py``
+        included in the driver source directory.
 
 There are some mandatory configuration steps before being able to use a device with an application.
 The internal engines, which do the copies or other operations,
