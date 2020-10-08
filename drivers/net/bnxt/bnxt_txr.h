@@ -8,12 +8,8 @@
 
 #include <rte_io.h>
 
-#define MAX_TX_RINGS	16
-#define BNXT_TX_PUSH_THRESH 92
 #define BNXT_MAX_TSO_SEGS	32
 #define BNXT_MIN_PKT_SIZE	52
-
-#define B_TX_DB(db, prod)	rte_write32((DB_KEY_TX | (prod)), db)
 
 struct bnxt_tx_ring_info {
 	uint16_t		tx_prod;
@@ -25,15 +21,11 @@ struct bnxt_tx_ring_info {
 
 	rte_iova_t		tx_desc_mapping;
 
-#define BNXT_DEV_STATE_CLOSING	0x1
-	uint32_t		dev_state;
-
 	struct bnxt_ring	*tx_ring_struct;
 };
 
 struct bnxt_sw_tx_bd {
 	struct rte_mbuf		*mbuf; /* mbuf associated with TX descriptor */
-	uint8_t			is_gso;
 	unsigned short		nr_bds;
 };
 

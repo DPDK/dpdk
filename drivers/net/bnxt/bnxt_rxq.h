@@ -20,19 +20,14 @@ struct bnxt_rx_queue {
 					 * and fast path
 					 */
 	struct rte_mempool	*mb_pool; /* mbuf pool for RX ring */
-	struct rte_mbuf		*pkt_first_seg; /* 1st seg of pkt */
-	struct rte_mbuf		*pkt_last_seg; /* Last seg of pkt */
 	uint64_t		mbuf_initializer; /* val to init mbuf */
 	uint16_t		nb_rx_desc; /* num of RX desc */
-	uint16_t		rx_tail; /* cur val of RDT register */
-	uint16_t		nb_rx_hold; /* num held free RX desc */
 	uint16_t		rx_free_thresh; /* max free RX desc to hold */
 	uint16_t		queue_id; /* RX queue index */
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	uint16_t		rxrearm_nb; /* number of descs to reinit. */
 	uint16_t		rxrearm_start; /* next desc index to reinit. */
 #endif
-	uint16_t		reg_idx; /* RX queue register index */
 	uint16_t		port_id; /* Device port identifier */
 	uint8_t			crc_len; /* 0 if CRC stripped, 4 otherwise */
 	uint8_t			rx_deferred_start; /* not in global dev start */

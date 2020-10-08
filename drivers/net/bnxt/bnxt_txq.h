@@ -14,18 +14,11 @@ struct bnxt_cp_ring_info;
 struct bnxt_tx_queue {
 	uint16_t		nb_tx_desc;    /* number of TX descriptors */
 	uint16_t		tx_free_thresh;/* minimum TX before freeing */
-	/** Index to last TX descriptor to have been cleaned. */
-	uint16_t		last_desc_cleaned;
-	/** Total number of TX descriptors ready to be allocated. */
-	uint16_t		tx_next_dd; /* next desc to scan for DD bit */
-	uint16_t		tx_next_rs; /* next desc to set RS bit */
 	uint16_t		queue_id; /* TX queue index */
-	uint16_t		reg_idx; /* TX queue register index */
 	uint16_t		port_id; /* Device port identifier */
 	uint8_t			pthresh; /* Prefetch threshold register */
 	uint8_t			hthresh; /* Host threshold register */
 	uint8_t			wthresh; /* Write-back threshold reg */
-	uint32_t		ctx_curr; /* Hardware context states */
 	uint8_t			tx_deferred_start; /* not in global dev start */
 	uint8_t			tx_started; /* TX queue is started */
 
