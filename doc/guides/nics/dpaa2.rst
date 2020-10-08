@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright 2016 NXP
+    Copyright 2016,2020 NXP
 
 
 DPAA2 Poll Mode Driver
@@ -300,7 +300,7 @@ The diagram below shows the dpaa2 drivers involved in a networking
 scenario and the objects bound to each driver.  A brief description
 of each driver follows.
 
-.. code-block: console
+.. code-block:: console
 
 
                                        +------------+
