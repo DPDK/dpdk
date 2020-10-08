@@ -452,6 +452,7 @@ extern struct fwd_lcore  **fwd_lcores;
 extern struct fwd_stream **fwd_streams;
 
 extern uint16_t vxlan_gpe_udp_port; /**< UDP port of tunnel VXLAN-GPE. */
+extern uint16_t geneve_udp_port; /**< UDP port of tunnel GENEVE. */
 
 extern portid_t nb_peer_eth_addrs; /**< Number of peer ethernet addresses. */
 extern struct rte_ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];

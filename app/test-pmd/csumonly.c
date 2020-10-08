@@ -43,6 +43,7 @@
 #include <rte_flow.h>
 #include <rte_gro.h>
 #include <rte_gso.h>
+#include <rte_geneve.h>
 
 #include "testpmd.h"
 
@@ -63,6 +64,7 @@
 #endif
 
 uint16_t vxlan_gpe_udp_port = 4790;
+uint16_t geneve_udp_port = RTE_GENEVE_DEFAULT_PORT;
 
 /* structure that caches offload info for the current packet */
 struct testpmd_offload_info {
@@ -331,6 +333,64 @@ parse_vxlan_gpe(struct rte_udp_hdr *udp_hdr,
 		return;
 
 	info->l2_len += RTE_ETHER_VXLAN_GPE_HLEN;
+}
+
+/* Fill in outer layers length */
+static void
+update_tunnel_outer(struct testpmd_offload_info *info)
+{
+	info->is_tunnel = 1;
+	info->outer_ethertype = info->ethertype;
+	info->outer_l2_len = info->l2_len;
+	info->outer_l3_len = info->l3_len;
+	info->outer_l4_proto = info->l4_proto;
+}
+
+/* Parse a geneve header */
+static void
+parse_geneve(struct rte_udp_hdr *udp_hdr,
+	    struct testpmd_offload_info *info)
+{
+	struct rte_ether_hdr *eth_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
+	struct rte_geneve_hdr *geneve_hdr;
+	uint16_t geneve_len;
+
+	/* Check udp destination port. */
+	if (udp_hdr->dst_port != _htons(geneve_udp_port))
+		return;
+
+	geneve_hdr = (struct rte_geneve_hdr *)((char *)udp_hdr +
+				sizeof(struct rte_udp_hdr));
+	geneve_len = sizeof(struct rte_geneve_hdr) + geneve_hdr->opt_len * 4;
+	if (!geneve_hdr->proto || geneve_hdr->proto ==
+	    _htons(RTE_ETHER_TYPE_IPV4)) {
+		update_tunnel_outer(info);
+		ipv4_hdr = (struct rte_ipv4_hdr *)((char *)geneve_hdr +
+			   geneve_len);
+		parse_ipv4(ipv4_hdr, info);
+		info->ethertype = _htons(RTE_ETHER_TYPE_IPV4);
+		info->l2_len = 0;
+	} else if (geneve_hdr->proto == _htons(RTE_ETHER_TYPE_IPV6)) {
+		update_tunnel_outer(info);
+		ipv6_hdr = (struct rte_ipv6_hdr *)((char *)geneve_hdr +
+			   geneve_len);
+		info->ethertype = _htons(RTE_ETHER_TYPE_IPV6);
+		parse_ipv6(ipv6_hdr, info);
+		info->l2_len = 0;
+
+	} else if (geneve_hdr->proto == _htons(RTE_GENEVE_TYPE_ETH)) {
+		update_tunnel_outer(info);
+		eth_hdr = (struct rte_ether_hdr *)((char *)geneve_hdr +
+			  geneve_len);
+		parse_ethernet(eth_hdr, info);
+	} else
+		return;
+
+	info->l2_len +=
+		(sizeof(struct rte_udp_hdr) + sizeof(struct rte_geneve_hdr) +
+		((struct rte_geneve_hdr *)geneve_hdr)->opt_len * 4);
 }
 
 /* Parse a gre header */
@@ -865,9 +925,17 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				}
 				parse_vxlan(udp_hdr, &info,
 					    m->packet_type);
-				if (info.is_tunnel)
+				if (info.is_tunnel) {
 					tx_ol_flags |=
 						PKT_TX_TUNNEL_VXLAN;
+					goto tunnel_update;
+				}
+				parse_geneve(udp_hdr, &info);
+				if (info.is_tunnel) {
+					tx_ol_flags |=
+						PKT_TX_TUNNEL_GENEVE;
+					goto tunnel_update;
+				}
 			} else if (info.l4_proto == IPPROTO_GRE) {
 				struct simple_gre_hdr *gre_hdr;
 

@@ -1149,11 +1149,11 @@ Where:
 * ``ip|udp|tcp|sctp`` always relate to  the inner layer.
 
 * ``outer-ip`` relates to the outer IP layer (only for IPv4) in the case where the packet is recognized
-  as a tunnel packet by the forwarding engine (vxlan, gre and ipip are
+  as a tunnel packet by the forwarding engine (vxlan, gre, ipip and geneve are
   supported). See also the ``csum parse-tunnel`` command.
 
 * ``outer-udp`` relates to the outer UDP layer in the case where the packet is recognized
-  as a tunnel packet by the forwarding engine (vxlan, vxlan-gpe are
+  as a tunnel packet by the forwarding engine (vxlan, vxlan-gpe, geneve are
   supported). See also the ``csum parse-tunnel`` command.
 
 .. note::
@@ -1213,7 +1213,7 @@ engine::
    testpmd> csum parse-tunnel (on|off) (tx_port_id)
 
 If enabled, the csum forward engine will try to recognize supported
-tunnel headers (vxlan, gre, ipip).
+tunnel headers (vxlan, gre, ipip, geneve).
 
 If disabled, treat tunnel packets as non-tunneled packets (a inner
 header is handled as a packet payload).
