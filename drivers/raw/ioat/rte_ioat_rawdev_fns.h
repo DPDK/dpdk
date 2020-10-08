@@ -51,15 +51,29 @@ enum rte_ioat_dev_type {
 
 /**
  * @internal
+ * some statistics for tracking, if added/changed update xstats fns
+ */
+struct rte_ioat_xstats {
+	uint64_t enqueue_failed;
+	uint64_t enqueued;
+	uint64_t started;
+	uint64_t completed;
+};
+
+/**
+ * @internal
  * Structure representing an IOAT device instance
  */
 struct rte_ioat_rawdev {
+	/* common fields at the top - match those in rte_idxd_rawdev */
 	enum rte_ioat_dev_type type;
+	struct rte_ioat_xstats xstats;
+
 	struct rte_rawdev *rawdev;
 	const struct rte_memzone *mz;
 	const struct rte_memzone *desc_mz;
 
-	volatile uint16_t *doorbell;
+	volatile uint16_t *doorbell __rte_cache_aligned;
 	phys_addr_t status_addr;
 	phys_addr_t ring_addr;
 
@@ -71,12 +85,6 @@ struct rte_ioat_rawdev {
 
 	unsigned short next_read;
 	unsigned short next_write;
-
-	/* some statistics for tracking, if added/changed update xstats fns*/
-	uint64_t enqueue_failed __rte_cache_aligned;
-	uint64_t enqueued;
-	uint64_t started;
-	uint64_t completed;
 
 	/* to report completions, the device will write status back here */
 	volatile uint64_t status __rte_cache_aligned;
@@ -209,7 +217,7 @@ __ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 	struct rte_ioat_generic_hw_desc *desc;
 
 	if (space == 0) {
-		ioat->enqueue_failed++;
+		ioat->xstats.enqueue_failed++;
 		return 0;
 	}
 
@@ -228,7 +236,7 @@ __ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 					(int64_t)src_hdl);
 	rte_prefetch0(&ioat->desc_ring[ioat->next_write & mask]);
 
-	ioat->enqueued++;
+	ioat->xstats.enqueued++;
 	return 1;
 }
 
@@ -261,7 +269,7 @@ __ioat_perform_ops(int dev_id)
 			.control.completion_update = 1;
 	rte_compiler_barrier();
 	*ioat->doorbell = ioat->next_write;
-	ioat->started = ioat->enqueued;
+	ioat->xstats.started = ioat->xstats.enqueued;
 }
 
 /**
@@ -328,7 +336,7 @@ __ioat_completed_ops(int dev_id, uint8_t max_copies,
 
 end:
 	ioat->next_read = read;
-	ioat->completed += count;
+	ioat->xstats.completed += count;
 	return count;
 }
 

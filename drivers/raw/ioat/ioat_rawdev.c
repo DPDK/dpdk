@@ -132,16 +132,14 @@ ioat_xstats_get(const struct rte_rawdev *dev, const unsigned int ids[],
 		uint64_t values[], unsigned int n)
 {
 	const struct rte_ioat_rawdev *ioat = dev->dev_private;
+	const uint64_t *stats = (const void *)&ioat->xstats;
 	unsigned int i;
 
 	for (i = 0; i < n; i++) {
-		switch (ids[i]) {
-		case 0: values[i] = ioat->enqueue_failed; break;
-		case 1: values[i] = ioat->enqueued; break;
-		case 2: values[i] = ioat->started; break;
-		case 3: values[i] = ioat->completed; break;
-		default: values[i] = 0; break;
-		}
+		if (ids[i] < sizeof(ioat->xstats)/sizeof(*stats))
+			values[i] = stats[ids[i]];
+		else
+			values[i] = 0;
 	}
 	return n;
 }
@@ -167,35 +165,17 @@ static int
 ioat_xstats_reset(struct rte_rawdev *dev, const uint32_t *ids, uint32_t nb_ids)
 {
 	struct rte_ioat_rawdev *ioat = dev->dev_private;
+	uint64_t *stats = (void *)&ioat->xstats;
 	unsigned int i;
 
 	if (!ids) {
-		ioat->enqueue_failed = 0;
-		ioat->enqueued = 0;
-		ioat->started = 0;
-		ioat->completed = 0;
+		memset(&ioat->xstats, 0, sizeof(ioat->xstats));
 		return 0;
 	}
 
-	for (i = 0; i < nb_ids; i++) {
-		switch (ids[i]) {
-		case 0:
-			ioat->enqueue_failed = 0;
-			break;
-		case 1:
-			ioat->enqueued = 0;
-			break;
-		case 2:
-			ioat->started = 0;
-			break;
-		case 3:
-			ioat->completed = 0;
-			break;
-		default:
-			IOAT_PMD_WARN("Invalid xstat id - cannot reset value");
-			break;
-		}
-	}
+	for (i = 0; i < nb_ids; i++)
+		if (ids[i] < sizeof(ioat->xstats)/sizeof(*stats))
+			stats[ids[i]] = 0;
 
 	return 0;
 }
