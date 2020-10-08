@@ -111,6 +111,11 @@ New Features
 
   * Added a per-device configuration flag to disable management
     of user-provided completion handles.
+  * Renamed the ``rte_ioat_do_copies()`` API to ``rte_ioat_perform_ops()``,
+    and renamed the ``rte_ioat_completed_copies()`` API to ``rte_ioat_completed_ops()``
+    to better reflect the APIs' purposes, and remove the implication that
+    they are limited to copy operations only.
+    [Note: The old API is still provided but marked as deprecated in the code]
 
 * **Updated the pipeline library for alignment with the P4 language.**
 
@@ -229,6 +234,10 @@ API Changes
   system, and does not require a specific command per device type.
   Following this change, the ``ioat_rawdev_autotest`` command has been
   removed as no longer needed.
+
+* raw/ioat: As noted above, the ``rte_ioat_do_copies()`` and
+  ``rte_ioat_completed_copies()`` functions have been renamed to
+  ``rte_ioat_perform_ops()`` and ``rte_ioat_completed_ops()`` respectively.
 
 * stack: the experimental tag has been dropped from the stack library, and its
   interfaces are considered stable as of DPDK 20.11.

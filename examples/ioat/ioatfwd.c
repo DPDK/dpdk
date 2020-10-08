@@ -406,7 +406,7 @@ ioat_rx_port(struct rxtx_port_config *rx_config)
 			nb_enq = ioat_enqueue_packets(pkts_burst,
 				nb_rx, rx_config->ioat_ids[i]);
 			if (nb_enq > 0)
-				rte_ioat_do_copies(rx_config->ioat_ids[i]);
+				rte_ioat_perform_ops(rx_config->ioat_ids[i]);
 		} else {
 			/* Perform packet software copy, free source packets */
 			int ret;
@@ -452,7 +452,7 @@ ioat_tx_port(struct rxtx_port_config *tx_config)
 	for (i = 0; i < tx_config->nb_queues; i++) {
 		if (copy_mode == COPY_MODE_IOAT_NUM) {
 			/* Deque the mbufs from IOAT device. */
-			nb_dq = rte_ioat_completed_copies(
+			nb_dq = rte_ioat_completed_ops(
 				tx_config->ioat_ids[i], MAX_PKT_BURST,
 				(void *)mbufs_src, (void *)mbufs_dst);
 		} else {

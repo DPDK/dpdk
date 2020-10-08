@@ -394,7 +394,7 @@ packet using ``pktmbuf_sw_copy()`` function and enqueue them to an rte_ring:
                 nb_enq = ioat_enqueue_packets(pkts_burst,
                     nb_rx, rx_config->ioat_ids[i]);
                 if (nb_enq > 0)
-                    rte_ioat_do_copies(rx_config->ioat_ids[i]);
+                    rte_ioat_perform_ops(rx_config->ioat_ids[i]);
             } else {
                 /* Perform packet software copy, free source packets */
                 int ret;
@@ -433,7 +433,7 @@ The packets are received in burst mode using ``rte_eth_rx_burst()``
 function. When using hardware copy mode the packets are enqueued in
 copying device's buffer using ``ioat_enqueue_packets()`` which calls
 ``rte_ioat_enqueue_copy()``. When all received packets are in the
-buffer the copy operations are started by calling ``rte_ioat_do_copies()``.
+buffer the copy operations are started by calling ``rte_ioat_perform_ops()``.
 Function ``rte_ioat_enqueue_copy()`` operates on physical address of
 the packet. Structure ``rte_mbuf`` contains only physical address to
 start of the data buffer (``buf_iova``). Thus the address is adjusted
@@ -490,7 +490,7 @@ or indirect mbufs, then multiple copy operations must be used.
 
 
 All completed copies are processed by ``ioat_tx_port()`` function. When using
-hardware copy mode the function invokes ``rte_ioat_completed_copies()``
+hardware copy mode the function invokes ``rte_ioat_completed_ops()``
 on each assigned IOAT channel to gather copied packets. If software copy
 mode is used the function dequeues copied packets from the rte_ring. Then each
 packet MAC address is changed if it was enabled. After that copies are sent
@@ -510,7 +510,7 @@ in burst mode using `` rte_eth_tx_burst()``.
         for (i = 0; i < tx_config->nb_queues; i++) {
             if (copy_mode == COPY_MODE_IOAT_NUM) {
                 /* Deque the mbufs from IOAT device. */
-                nb_dq = rte_ioat_completed_copies(
+                nb_dq = rte_ioat_completed_ops(
                     tx_config->ioat_ids[i], MAX_PKT_BURST,
                     (void *)mbufs_src, (void *)mbufs_dst);
             } else {

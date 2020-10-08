@@ -83,10 +83,10 @@ rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 }
 
 /*
- * Trigger hardware to begin performing enqueued copy operations
+ * Trigger hardware to begin performing enqueued operations
  */
 static inline void
-rte_ioat_do_copies(int dev_id)
+rte_ioat_perform_ops(int dev_id)
 {
 	struct rte_ioat_rawdev *ioat =
 			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
@@ -114,10 +114,10 @@ rte_ioat_get_last_completed(struct rte_ioat_rawdev *ioat, int *error)
 }
 
 /*
- * Returns details of copy operations that have been completed
+ * Returns details of operations that have been completed
  */
 static inline int
-rte_ioat_completed_copies(int dev_id, uint8_t max_copies,
+rte_ioat_completed_ops(int dev_id, uint8_t max_copies,
 		uintptr_t *src_hdls, uintptr_t *dst_hdls)
 {
 	struct rte_ioat_rawdev *ioat =
@@ -163,6 +163,18 @@ end:
 	ioat->next_read = read;
 	ioat->completed += count;
 	return count;
+}
+
+static inline void
+__rte_deprecated_msg("use rte_ioat_perform_ops() instead")
+rte_ioat_do_copies(int dev_id) { rte_ioat_perform_ops(dev_id); }
+
+static inline int
+__rte_deprecated_msg("use rte_ioat_completed_ops() instead")
+rte_ioat_completed_copies(int dev_id, uint8_t max_copies,
+		uintptr_t *src_hdls, uintptr_t *dst_hdls)
+{
+	return rte_ioat_completed_ops(dev_id, max_copies, src_hdls, dst_hdls);
 }
 
 #endif /* _RTE_IOAT_RAWDEV_FNS_H_ */

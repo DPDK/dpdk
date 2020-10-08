@@ -157,9 +157,9 @@ Performing Data Copies
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 To perform data copies using IOAT rawdev devices, the functions
-``rte_ioat_enqueue_copy()`` and ``rte_ioat_do_copies()`` should be used.
+``rte_ioat_enqueue_copy()`` and ``rte_ioat_perform_ops()`` should be used.
 Once copies have been completed, the completion will be reported back when
-the application calls ``rte_ioat_completed_copies()``.
+the application calls ``rte_ioat_completed_ops()``.
 
 The ``rte_ioat_enqueue_copy()`` function enqueues a single copy to the
 device ring for copying at a later point. The parameters to that function
@@ -172,11 +172,11 @@ pointers if packet data is being copied.
 
 While the ``rte_ioat_enqueue_copy()`` function enqueues a copy operation on
 the device ring, the copy will not actually be performed until after the
-application calls the ``rte_ioat_do_copies()`` function. This function
+application calls the ``rte_ioat_perform_ops()`` function. This function
 informs the device hardware of the elements enqueued on the ring, and the
 device will begin to process them. It is expected that, for efficiency
 reasons, a burst of operations will be enqueued to the device via multiple
-enqueue calls between calls to the ``rte_ioat_do_copies()`` function.
+enqueue calls between calls to the ``rte_ioat_perform_ops()`` function.
 
 The following code from ``test_ioat_rawdev.c`` demonstrates how to enqueue
 a burst of copies to the device and start the hardware processing of them:
@@ -210,10 +210,10 @@ a burst of copies to the device and start the hardware processing of them:
                         return -1;
                 }
         }
-        rte_ioat_do_copies(dev_id);
+        rte_ioat_perform_ops(dev_id);
 
 To retrieve information about completed copies, the API
-``rte_ioat_completed_copies()`` should be used. This API will return to the
+``rte_ioat_completed_ops()`` should be used. This API will return to the
 application a set of completion handles passed in when the relevant copies
 were enqueued.
 
@@ -223,9 +223,9 @@ is correct before freeing the data buffers using the returned handles:
 
 .. code-block:: C
 
-        if (rte_ioat_completed_copies(dev_id, 64, (void *)completed_src,
+        if (rte_ioat_completed_ops(dev_id, 64, (void *)completed_src,
                         (void *)completed_dst) != RTE_DIM(srcs)) {
-                printf("Error with rte_ioat_completed_copies\n");
+                printf("Error with rte_ioat_completed_ops\n");
                 return -1;
         }
         for (i = 0; i < RTE_DIM(srcs); i++) {

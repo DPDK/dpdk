@@ -65,12 +65,12 @@ test_enqueue_copies(int dev_id)
 			PRINT_ERR("Error with rte_ioat_enqueue_copy\n");
 			return -1;
 		}
-		rte_ioat_do_copies(dev_id);
+		rte_ioat_perform_ops(dev_id);
 		usleep(10);
 
-		if (rte_ioat_completed_copies(dev_id, 1, (void *)&completed[0],
+		if (rte_ioat_completed_ops(dev_id, 1, (void *)&completed[0],
 				(void *)&completed[1]) != 1) {
-			PRINT_ERR("Error with rte_ioat_completed_copies\n");
+			PRINT_ERR("Error with rte_ioat_completed_ops\n");
 			return -1;
 		}
 		if (completed[0] != src || completed[1] != dst) {
@@ -119,12 +119,12 @@ test_enqueue_copies(int dev_id)
 				return -1;
 			}
 		}
-		rte_ioat_do_copies(dev_id);
+		rte_ioat_perform_ops(dev_id);
 		usleep(100);
 
-		if (rte_ioat_completed_copies(dev_id, 64, (void *)completed_src,
+		if (rte_ioat_completed_ops(dev_id, 64, (void *)completed_src,
 				(void *)completed_dst) != RTE_DIM(srcs)) {
-			PRINT_ERR("Error with rte_ioat_completed_copies\n");
+			PRINT_ERR("Error with rte_ioat_completed_ops\n");
 			return -1;
 		}
 		for (i = 0; i < RTE_DIM(srcs); i++) {
