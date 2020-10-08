@@ -196,8 +196,8 @@ struct rte_idxd_rawdev {
 /*
  * Enqueue a copy operation onto the ioat device
  */
-static inline int
-rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
+static __rte_always_inline int
+__ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
 {
 	struct rte_ioat_rawdev *ioat =
@@ -233,8 +233,8 @@ rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 }
 
 /* add fence to last written descriptor */
-static inline int
-rte_ioat_fence(int dev_id)
+static __rte_always_inline int
+__ioat_fence(int dev_id)
 {
 	struct rte_ioat_rawdev *ioat =
 			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
@@ -252,8 +252,8 @@ rte_ioat_fence(int dev_id)
 /*
  * Trigger hardware to begin performing enqueued operations
  */
-static inline void
-rte_ioat_perform_ops(int dev_id)
+static __rte_always_inline void
+__ioat_perform_ops(int dev_id)
 {
 	struct rte_ioat_rawdev *ioat =
 			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
@@ -268,8 +268,8 @@ rte_ioat_perform_ops(int dev_id)
  * @internal
  * Returns the index of the last completed operation.
  */
-static inline int
-rte_ioat_get_last_completed(struct rte_ioat_rawdev *ioat, int *error)
+static __rte_always_inline int
+__ioat_get_last_completed(struct rte_ioat_rawdev *ioat, int *error)
 {
 	uint64_t status = ioat->status;
 
@@ -283,8 +283,8 @@ rte_ioat_get_last_completed(struct rte_ioat_rawdev *ioat, int *error)
 /*
  * Returns details of operations that have been completed
  */
-static inline int
-rte_ioat_completed_ops(int dev_id, uint8_t max_copies,
+static __rte_always_inline int
+__ioat_completed_ops(int dev_id, uint8_t max_copies,
 		uintptr_t *src_hdls, uintptr_t *dst_hdls)
 {
 	struct rte_ioat_rawdev *ioat =
@@ -295,7 +295,7 @@ rte_ioat_completed_ops(int dev_id, uint8_t max_copies,
 	int error;
 	int i = 0;
 
-	end_read = (rte_ioat_get_last_completed(ioat, &error) + 1) & mask;
+	end_read = (__ioat_get_last_completed(ioat, &error) + 1) & mask;
 	count = (end_read - (read & mask)) & mask;
 
 	if (error) {
@@ -330,6 +330,185 @@ end:
 	ioat->next_read = read;
 	ioat->completed += count;
 	return count;
+}
+
+static __rte_always_inline int
+__idxd_write_desc(int dev_id, const struct rte_idxd_hw_desc *desc,
+		const struct rte_idxd_user_hdl *hdl)
+{
+	struct rte_idxd_rawdev *idxd =
+			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
+	struct rte_idxd_desc_batch *b = &idxd->batch_ring[idxd->next_batch];
+
+	/* check for room in the handle ring */
+	if (((idxd->next_free_hdl + 1) & (idxd->hdl_ring_sz - 1)) == idxd->next_ret_hdl)
+		goto failed;
+
+	/* check for space in current batch */
+	if (b->op_count >= BATCH_SIZE)
+		goto failed;
+
+	/* check that we can actually use the current batch */
+	if (b->submitted)
+		goto failed;
+
+	/* write the descriptor */
+	b->ops[b->op_count++] = *desc;
+
+	/* store the completion details */
+	if (!idxd->hdls_disable)
+		idxd->hdl_ring[idxd->next_free_hdl] = *hdl;
+	if (++idxd->next_free_hdl == idxd->hdl_ring_sz)
+		idxd->next_free_hdl = 0;
+
+	return 1;
+
+failed:
+	rte_errno = ENOSPC;
+	return 0;
+}
+
+static __rte_always_inline int
+__idxd_enqueue_copy(int dev_id, rte_iova_t src, rte_iova_t dst,
+		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
+{
+	const struct rte_idxd_hw_desc desc = {
+			.op_flags =  (idxd_op_memmove << IDXD_CMD_OP_SHIFT) |
+				IDXD_FLAG_CACHE_CONTROL,
+			.src = src,
+			.dst = dst,
+			.size = length
+	};
+	const struct rte_idxd_user_hdl hdl = {
+			.src = src_hdl,
+			.dst = dst_hdl
+	};
+	return __idxd_write_desc(dev_id, &desc, &hdl);
+}
+
+static __rte_always_inline int
+__idxd_fence(int dev_id)
+{
+	static const struct rte_idxd_hw_desc fence = {
+			.op_flags = IDXD_FLAG_FENCE
+	};
+	static const struct rte_idxd_user_hdl null_hdl;
+	return __idxd_write_desc(dev_id, &fence, &null_hdl);
+}
+
+static __rte_always_inline void
+__idxd_movdir64b(volatile void *dst, const void *src)
+{
+	asm volatile (".byte 0x66, 0x0f, 0x38, 0xf8, 0x02"
+			:
+			: "a" (dst), "d" (src));
+}
+
+static __rte_always_inline void
+__idxd_perform_ops(int dev_id)
+{
+	struct rte_idxd_rawdev *idxd =
+			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
+	struct rte_idxd_desc_batch *b = &idxd->batch_ring[idxd->next_batch];
+
+	if (b->submitted || b->op_count == 0)
+		return;
+	b->hdl_end = idxd->next_free_hdl;
+	b->comp.status = 0;
+	b->submitted = 1;
+	b->batch_desc.size = b->op_count + 1;
+	__idxd_movdir64b(idxd->portal, &b->batch_desc);
+
+	if (++idxd->next_batch == idxd->batch_ring_sz)
+		idxd->next_batch = 0;
+}
+
+static __rte_always_inline int
+__idxd_completed_ops(int dev_id, uint8_t max_ops,
+		uintptr_t *src_hdls, uintptr_t *dst_hdls)
+{
+	struct rte_idxd_rawdev *idxd =
+			(struct rte_idxd_rawdev *)rte_rawdevs[dev_id].dev_private;
+	struct rte_idxd_desc_batch *b = &idxd->batch_ring[idxd->next_completed];
+	uint16_t h_idx = idxd->next_ret_hdl;
+	int n = 0;
+
+	while (b->submitted && b->comp.status != 0) {
+		idxd->last_completed_hdl = b->hdl_end;
+		b->submitted = 0;
+		b->op_count = 0;
+		if (++idxd->next_completed == idxd->batch_ring_sz)
+			idxd->next_completed = 0;
+		b = &idxd->batch_ring[idxd->next_completed];
+	}
+
+	if (!idxd->hdls_disable)
+		for (n = 0; n < max_ops && h_idx != idxd->last_completed_hdl; n++) {
+			src_hdls[n] = idxd->hdl_ring[h_idx].src;
+			dst_hdls[n] = idxd->hdl_ring[h_idx].dst;
+			if (++h_idx == idxd->hdl_ring_sz)
+				h_idx = 0;
+		}
+	else
+		while (h_idx != idxd->last_completed_hdl) {
+			n++;
+			if (++h_idx == idxd->hdl_ring_sz)
+				h_idx = 0;
+		}
+
+	idxd->next_ret_hdl = h_idx;
+
+	return n;
+}
+
+static inline int
+rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
+		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
+{
+	enum rte_ioat_dev_type *type =
+			(enum rte_ioat_dev_type *)rte_rawdevs[dev_id].dev_private;
+	if (*type == RTE_IDXD_DEV)
+		return __idxd_enqueue_copy(dev_id, src, dst, length,
+				src_hdl, dst_hdl);
+	else
+		return __ioat_enqueue_copy(dev_id, src, dst, length,
+				src_hdl, dst_hdl);
+}
+
+static inline int
+rte_ioat_fence(int dev_id)
+{
+	enum rte_ioat_dev_type *type =
+			(enum rte_ioat_dev_type *)rte_rawdevs[dev_id].dev_private;
+	if (*type == RTE_IDXD_DEV)
+		return __idxd_fence(dev_id);
+	else
+		return __ioat_fence(dev_id);
+}
+
+static inline void
+rte_ioat_perform_ops(int dev_id)
+{
+	enum rte_ioat_dev_type *type =
+			(enum rte_ioat_dev_type *)rte_rawdevs[dev_id].dev_private;
+	if (*type == RTE_IDXD_DEV)
+		return __idxd_perform_ops(dev_id);
+	else
+		return __ioat_perform_ops(dev_id);
+}
+
+static inline int
+rte_ioat_completed_ops(int dev_id, uint8_t max_copies,
+		uintptr_t *src_hdls, uintptr_t *dst_hdls)
+{
+	enum rte_ioat_dev_type *type =
+			(enum rte_ioat_dev_type *)rte_rawdevs[dev_id].dev_private;
+	if (*type == RTE_IDXD_DEV)
+		return __idxd_completed_ops(dev_id, max_copies,
+				src_hdls, dst_hdls);
+	else
+		return __ioat_completed_ops(dev_id,  max_copies,
+				src_hdls, dst_hdls);
 }
 
 static inline void

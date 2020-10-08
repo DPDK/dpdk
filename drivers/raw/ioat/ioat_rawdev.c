@@ -260,6 +260,7 @@ ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 	rawdev->driver_name = dev->device.driver->name;
 
 	ioat = rawdev->dev_private;
+	ioat->type = RTE_IOAT_DEV;
 	ioat->rawdev = rawdev;
 	ioat->mz = mz;
 	ioat->regs = dev->mem_resource[0].addr;

@@ -153,6 +153,7 @@ idxd_rawdev_create(const char *name, struct rte_device *dev,
 
 	idxd = rawdev->dev_private;
 	*idxd = *base_idxd; /* copy over the main fields already passed in */
+	idxd->public.type = RTE_IDXD_DEV;
 	idxd->rawdev = rawdev;
 	idxd->mz = mz;
 
