@@ -105,6 +105,13 @@ New Features
     ``--portmask=N``
     where N represents the hexadecimal bitmask of ports used.
 
+* **Updated ioat rawdev driver**
+
+  The ioat rawdev driver has been updated and enhanced. Changes include:
+
+  * Added a per-device configuration flag to disable management
+    of user-provided completion handles.
+
 * **Updated the pipeline library for alignment with the P4 language.**
 
   Added new Software Switch (SWX) pipeline type that provides more

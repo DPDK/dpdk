@@ -129,6 +129,9 @@ output, the ``dev_private`` structure element cannot be NULL, and must
 point to a valid ``rte_ioat_rawdev_config`` structure, containing the ring
 size to be used by the device. The ring size must be a power of two,
 between 64 and 4096.
+If it is not needed, the tracking by the driver of user-provided completion
+handles may be disabled by setting the ``hdls_disable`` flag in
+the configuration structure also.
 
 The following code shows how the device is configured in
 ``test_ioat_rawdev.c``:

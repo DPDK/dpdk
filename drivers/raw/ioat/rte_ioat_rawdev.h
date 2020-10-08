@@ -38,7 +38,8 @@ extern "C" {
  * an ioat rawdev instance.
  */
 struct rte_ioat_rawdev_config {
-	unsigned short ring_size;
+	unsigned short ring_size; /**< size of job submission descriptor ring */
+	bool hdls_disable;    /**< if set, ignore user-supplied handle params */
 };
 
 /**
@@ -56,6 +57,7 @@ struct rte_ioat_rawdev {
 
 	unsigned short ring_size;
 	struct rte_ioat_generic_hw_desc *desc_ring;
+	bool hdls_disable;
 	__m128i *hdls; /* completion handles for returning to user */
 
 
@@ -88,10 +90,14 @@ struct rte_ioat_rawdev {
  *   The length of the data to be copied
  * @param src_hdl
  *   An opaque handle for the source data, to be returned when this operation
- *   has been completed and the user polls for the completion details
+ *   has been completed and the user polls for the completion details.
+ *   NOTE: If hdls_disable configuration option for the device is set, this
+ *   parameter is ignored.
  * @param dst_hdl
  *   An opaque handle for the destination data, to be returned when this
- *   operation has been completed and the user polls for the completion details
+ *   operation has been completed and the user polls for the completion details.
+ *   NOTE: If hdls_disable configuration option for the device is set, this
+ *   parameter is ignored.
  * @param fence
  *   A flag parameter indicating that hardware should not begin to perform any
  *   subsequently enqueued copy operations until after this operation has
@@ -126,8 +132,10 @@ rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 	desc->u.control_raw = (uint32_t)((!!fence << 4) | (!(write & 0xF)) << 3);
 	desc->src_addr = src;
 	desc->dest_addr = dst;
+	if (!ioat->hdls_disable)
+		ioat->hdls[write] = _mm_set_epi64x((int64_t)dst_hdl,
+					(int64_t)src_hdl);
 
-	ioat->hdls[write] = _mm_set_epi64x((int64_t)dst_hdl, (int64_t)src_hdl);
 	rte_prefetch0(&ioat->desc_ring[ioat->next_write & mask]);
 
 	ioat->enqueued++;
@@ -174,19 +182,29 @@ rte_ioat_get_last_completed(struct rte_ioat_rawdev *ioat, int *error)
 /**
  * Returns details of copy operations that have been completed
  *
- * Returns to the caller the user-provided "handles" for the copy operations
- * which have been completed by the hardware, and not already returned by
- * a previous call to this API.
+ * If the hdls_disable option was not set when the device was configured,
+ * the function will return to the caller the user-provided "handles" for
+ * the copy operations which have been completed by the hardware, and not
+ * already returned by a previous call to this API.
+ * If the hdls_disable option for the device was set on configure, the
+ * max_copies, src_hdls and dst_hdls parameters will be ignored, and the
+ * function returns the number of newly-completed operations.
  *
  * @param dev_id
  *   The rawdev device id of the ioat instance
  * @param max_copies
  *   The number of entries which can fit in the src_hdls and dst_hdls
- *   arrays, i.e. max number of completed operations to report
+ *   arrays, i.e. max number of completed operations to report.
+ *   NOTE: If hdls_disable configuration option for the device is set, this
+ *   parameter is ignored.
  * @param src_hdls
- *   Array to hold the source handle parameters of the completed copies
+ *   Array to hold the source handle parameters of the completed copies.
+ *   NOTE: If hdls_disable configuration option for the device is set, this
+ *   parameter is ignored.
  * @param dst_hdls
- *   Array to hold the destination handle parameters of the completed copies
+ *   Array to hold the destination handle parameters of the completed copies.
+ *   NOTE: If hdls_disable configuration option for the device is set, this
+ *   parameter is ignored.
  * @return
  *   -1 on error, with rte_errno set appropriately.
  *   Otherwise number of completed operations i.e. number of entries written
@@ -212,6 +230,11 @@ rte_ioat_completed_copies(int dev_id, uint8_t max_copies,
 		return -1;
 	}
 
+	if (ioat->hdls_disable) {
+		read += count;
+		goto end;
+	}
+
 	if (count > max_copies)
 		count = max_copies;
 
@@ -229,7 +252,7 @@ rte_ioat_completed_copies(int dev_id, uint8_t max_copies,
 		src_hdls[i] = hdls[0];
 		dst_hdls[i] = hdls[1];
 	}
-
+end:
 	ioat->next_read = read;
 	ioat->completed += count;
 	return count;
