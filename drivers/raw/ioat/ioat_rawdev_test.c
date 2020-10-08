@@ -16,6 +16,23 @@ int ioat_rawdev_test(uint16_t dev_id); /* pre-define to keep compiler happy */
 static struct rte_mempool *pool;
 static unsigned short expected_ring_size[MAX_SUPPORTED_RAWDEVS];
 
+#define PRINT_ERR(...) print_err(__func__, __LINE__, __VA_ARGS__)
+
+static inline int
+__rte_format_printf(3, 4)
+print_err(const char *func, int lineno, const char *format, ...)
+{
+	va_list ap;
+	int ret;
+
+	ret = fprintf(stderr, "In %s:%d - ", func, lineno);
+	va_start(ap, format);
+	ret += vfprintf(stderr, format, ap);
+	va_end(ap);
+
+	return ret;
+}
+
 static int
 test_enqueue_copies(int dev_id)
 {
@@ -45,7 +62,7 @@ test_enqueue_copies(int dev_id)
 				(uintptr_t)src,
 				(uintptr_t)dst,
 				0 /* no fence */) != 1) {
-			printf("Error with rte_ioat_enqueue_copy\n");
+			PRINT_ERR("Error with rte_ioat_enqueue_copy\n");
 			return -1;
 		}
 		rte_ioat_do_copies(dev_id);
@@ -53,18 +70,18 @@ test_enqueue_copies(int dev_id)
 
 		if (rte_ioat_completed_copies(dev_id, 1, (void *)&completed[0],
 				(void *)&completed[1]) != 1) {
-			printf("Error with rte_ioat_completed_copies\n");
+			PRINT_ERR("Error with rte_ioat_completed_copies\n");
 			return -1;
 		}
 		if (completed[0] != src || completed[1] != dst) {
-			printf("Error with completions: got (%p, %p), not (%p,%p)\n",
+			PRINT_ERR("Error with completions: got (%p, %p), not (%p,%p)\n",
 					completed[0], completed[1], src, dst);
 			return -1;
 		}
 
 		for (i = 0; i < length; i++)
 			if (dst_data[i] != src_data[i]) {
-				printf("Data mismatch at char %u\n", i);
+				PRINT_ERR("Data mismatch at char %u\n", i);
 				return -1;
 			}
 		rte_pktmbuf_free(src);
@@ -97,7 +114,7 @@ test_enqueue_copies(int dev_id)
 					(uintptr_t)srcs[i],
 					(uintptr_t)dsts[i],
 					0 /* nofence */) != 1) {
-				printf("Error with rte_ioat_enqueue_copy for buffer %u\n",
+				PRINT_ERR("Error with rte_ioat_enqueue_copy for buffer %u\n",
 						i);
 				return -1;
 			}
@@ -107,18 +124,18 @@ test_enqueue_copies(int dev_id)
 
 		if (rte_ioat_completed_copies(dev_id, 64, (void *)completed_src,
 				(void *)completed_dst) != RTE_DIM(srcs)) {
-			printf("Error with rte_ioat_completed_copies\n");
+			PRINT_ERR("Error with rte_ioat_completed_copies\n");
 			return -1;
 		}
 		for (i = 0; i < RTE_DIM(srcs); i++) {
 			char *src_data, *dst_data;
 
 			if (completed_src[i] != srcs[i]) {
-				printf("Error with source pointer %u\n", i);
+				PRINT_ERR("Error with source pointer %u\n", i);
 				return -1;
 			}
 			if (completed_dst[i] != dsts[i]) {
-				printf("Error with dest pointer %u\n", i);
+				PRINT_ERR("Error with dest pointer %u\n", i);
 				return -1;
 			}
 
@@ -126,7 +143,7 @@ test_enqueue_copies(int dev_id)
 			dst_data = rte_pktmbuf_mtod(dsts[i], char *);
 			for (j = 0; j < length; j++)
 				if (src_data[j] != dst_data[j]) {
-					printf("Error with copy of packet %u, byte %u\n",
+					PRINT_ERR("Error with copy of packet %u, byte %u\n",
 							i, j);
 					return -1;
 				}
@@ -159,26 +176,26 @@ ioat_rawdev_test(uint16_t dev_id)
 
 	rte_rawdev_info_get(dev_id, &info, sizeof(p));
 	if (p.ring_size != expected_ring_size[dev_id]) {
-		printf("Error, initial ring size is not as expected (Actual: %d, Expected: %d)\n",
+		PRINT_ERR("Error, initial ring size is not as expected (Actual: %d, Expected: %d)\n",
 				(int)p.ring_size, expected_ring_size[dev_id]);
 		return -1;
 	}
 
 	p.ring_size = IOAT_TEST_RINGSIZE;
 	if (rte_rawdev_configure(dev_id, &info, sizeof(p)) != 0) {
-		printf("Error with rte_rawdev_configure()\n");
+		PRINT_ERR("Error with rte_rawdev_configure()\n");
 		return -1;
 	}
 	rte_rawdev_info_get(dev_id, &info, sizeof(p));
 	if (p.ring_size != IOAT_TEST_RINGSIZE) {
-		printf("Error, ring size is not %d (%d)\n",
+		PRINT_ERR("Error, ring size is not %d (%d)\n",
 				IOAT_TEST_RINGSIZE, (int)p.ring_size);
 		return -1;
 	}
 	expected_ring_size[dev_id] = p.ring_size;
 
 	if (rte_rawdev_start(dev_id) != 0) {
-		printf("Error with rte_rawdev_start()\n");
+		PRINT_ERR("Error with rte_rawdev_start()\n");
 		return -1;
 	}
 
@@ -189,7 +206,7 @@ ioat_rawdev_test(uint16_t dev_id)
 			2048, /* data room size */
 			info.socket_id);
 	if (pool == NULL) {
-		printf("Error with mempool creation\n");
+		PRINT_ERR("Error with mempool creation\n");
 		return -1;
 	}
 
@@ -198,14 +215,14 @@ ioat_rawdev_test(uint16_t dev_id)
 
 	snames = malloc(sizeof(*snames) * nb_xstats);
 	if (snames == NULL) {
-		printf("Error allocating xstat names memory\n");
+		PRINT_ERR("Error allocating xstat names memory\n");
 		goto err;
 	}
 	rte_rawdev_xstats_names_get(dev_id, snames, nb_xstats);
 
 	ids = malloc(sizeof(*ids) * nb_xstats);
 	if (ids == NULL) {
-		printf("Error allocating xstat ids memory\n");
+		PRINT_ERR("Error allocating xstat ids memory\n");
 		goto err;
 	}
 	for (i = 0; i < nb_xstats; i++)
@@ -213,7 +230,7 @@ ioat_rawdev_test(uint16_t dev_id)
 
 	stats = malloc(sizeof(*stats) * nb_xstats);
 	if (stats == NULL) {
-		printf("Error allocating xstat memory\n");
+		PRINT_ERR("Error allocating xstat memory\n");
 		goto err;
 	}
 
@@ -233,7 +250,7 @@ ioat_rawdev_test(uint16_t dev_id)
 
 	rte_rawdev_stop(dev_id);
 	if (rte_rawdev_xstats_reset(dev_id, NULL, 0) != 0) {
-		printf("Error resetting xstat values\n");
+		PRINT_ERR("Error resetting xstat values\n");
 		goto err;
 	}
 
