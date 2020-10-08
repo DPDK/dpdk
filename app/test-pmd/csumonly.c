@@ -63,7 +63,7 @@
 #define _htons(x) (x)
 #endif
 
-uint16_t vxlan_gpe_udp_port = 4790;
+uint16_t vxlan_gpe_udp_port = RTE_VXLAN_GPE_DEFAULT_PORT;
 uint16_t geneve_udp_port = RTE_GENEVE_DEFAULT_PORT;
 
 /* structure that caches offload info for the current packet */
@@ -181,6 +181,17 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 	}
 }
 
+/* Fill in outer layers length */
+static void
+update_tunnel_outer(struct testpmd_offload_info *info)
+{
+	info->is_tunnel = 1;
+	info->outer_ethertype = info->ethertype;
+	info->outer_l2_len = info->l2_len;
+	info->outer_l3_len = info->l3_len;
+	info->outer_l4_proto = info->l4_proto;
+}
+
 /*
  * Parse a GTP protocol header.
  * No optional fields and next extension header type.
@@ -201,11 +212,7 @@ parse_gtp(struct rte_udp_hdr *udp_hdr,
 	    udp_hdr->dst_port != _htons(RTE_GTPU_UDP_PORT))
 		return;
 
-	info->is_tunnel = 1;
-	info->outer_ethertype = info->ethertype;
-	info->outer_l2_len = info->l2_len;
-	info->outer_l3_len = info->l3_len;
-	info->outer_l4_proto = info->l4_proto;
+	update_tunnel_outer(info);
 	info->l2_len = 0;
 
 	gtp_hdr = (struct rte_gtp_hdr *)((char *)udp_hdr +
@@ -250,18 +257,15 @@ parse_vxlan(struct rte_udp_hdr *udp_hdr,
 {
 	struct rte_ether_hdr *eth_hdr;
 
-	/* check udp destination port, 4789 is the default vxlan port
-	 * (rfc7348) or that the rx offload flag is set (i40e only
-	 * currently) */
-	if (udp_hdr->dst_port != _htons(4789) &&
+	/* check udp destination port, RTE_VXLAN_DEFAULT_PORT (4789) is the
+	 * default vxlan port (rfc7348) or that the rx offload flag is set
+	 * (i40e only currently)
+	 */
+	if (udp_hdr->dst_port != _htons(RTE_VXLAN_DEFAULT_PORT) &&
 		RTE_ETH_IS_TUNNEL_PKT(pkt_type) == 0)
 		return;
 
-	info->is_tunnel = 1;
-	info->outer_ethertype = info->ethertype;
-	info->outer_l2_len = info->l2_len;
-	info->outer_l3_len = info->l3_len;
-	info->outer_l4_proto = info->l4_proto;
+	update_tunnel_outer(info);
 
 	eth_hdr = (struct rte_ether_hdr *)((char *)udp_hdr +
 		sizeof(struct rte_udp_hdr) +
@@ -291,11 +295,7 @@ parse_vxlan_gpe(struct rte_udp_hdr *udp_hdr,
 
 	if (!vxlan_gpe_hdr->proto || vxlan_gpe_hdr->proto ==
 	    RTE_VXLAN_GPE_TYPE_IPV4) {
-		info->is_tunnel = 1;
-		info->outer_ethertype = info->ethertype;
-		info->outer_l2_len = info->l2_len;
-		info->outer_l3_len = info->l3_len;
-		info->outer_l4_proto = info->l4_proto;
+		update_tunnel_outer(info);
 
 		ipv4_hdr = (struct rte_ipv4_hdr *)((char *)vxlan_gpe_hdr +
 			   vxlan_gpe_len);
@@ -305,11 +305,7 @@ parse_vxlan_gpe(struct rte_udp_hdr *udp_hdr,
 		info->l2_len = 0;
 
 	} else if (vxlan_gpe_hdr->proto == RTE_VXLAN_GPE_TYPE_IPV6) {
-		info->is_tunnel = 1;
-		info->outer_ethertype = info->ethertype;
-		info->outer_l2_len = info->l2_len;
-		info->outer_l3_len = info->l3_len;
-		info->outer_l4_proto = info->l4_proto;
+		update_tunnel_outer(info);
 
 		ipv6_hdr = (struct rte_ipv6_hdr *)((char *)vxlan_gpe_hdr +
 			   vxlan_gpe_len);
@@ -319,11 +315,7 @@ parse_vxlan_gpe(struct rte_udp_hdr *udp_hdr,
 		info->l2_len = 0;
 
 	} else if (vxlan_gpe_hdr->proto == RTE_VXLAN_GPE_TYPE_ETH) {
-		info->is_tunnel = 1;
-		info->outer_ethertype = info->ethertype;
-		info->outer_l2_len = info->l2_len;
-		info->outer_l3_len = info->l3_len;
-		info->outer_l4_proto = info->l4_proto;
+		update_tunnel_outer(info);
 
 		eth_hdr = (struct rte_ether_hdr *)((char *)vxlan_gpe_hdr +
 			  vxlan_gpe_len);
@@ -333,17 +325,6 @@ parse_vxlan_gpe(struct rte_udp_hdr *udp_hdr,
 		return;
 
 	info->l2_len += RTE_ETHER_VXLAN_GPE_HLEN;
-}
-
-/* Fill in outer layers length */
-static void
-update_tunnel_outer(struct testpmd_offload_info *info)
-{
-	info->is_tunnel = 1;
-	info->outer_ethertype = info->ethertype;
-	info->outer_l2_len = info->l2_len;
-	info->outer_l3_len = info->l3_len;
-	info->outer_l4_proto = info->l4_proto;
 }
 
 /* Parse a geneve header */
@@ -412,11 +393,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		gre_len += GRE_EXT_LEN;
 
 	if (gre_hdr->proto == _htons(RTE_ETHER_TYPE_IPV4)) {
-		info->is_tunnel = 1;
-		info->outer_ethertype = info->ethertype;
-		info->outer_l2_len = info->l2_len;
-		info->outer_l3_len = info->l3_len;
-		info->outer_l4_proto = info->l4_proto;
+		update_tunnel_outer(info);
 
 		ipv4_hdr = (struct rte_ipv4_hdr *)((char *)gre_hdr + gre_len);
 
@@ -425,11 +402,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		info->l2_len = 0;
 
 	} else if (gre_hdr->proto == _htons(RTE_ETHER_TYPE_IPV6)) {
-		info->is_tunnel = 1;
-		info->outer_ethertype = info->ethertype;
-		info->outer_l2_len = info->l2_len;
-		info->outer_l3_len = info->l3_len;
-		info->outer_l4_proto = info->l4_proto;
+		update_tunnel_outer(info);
 
 		ipv6_hdr = (struct rte_ipv6_hdr *)((char *)gre_hdr + gre_len);
 
@@ -438,11 +411,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		info->l2_len = 0;
 
 	} else if (gre_hdr->proto == _htons(RTE_ETHER_TYPE_TEB)) {
-		info->is_tunnel = 1;
-		info->outer_ethertype = info->ethertype;
-		info->outer_l2_len = info->l2_len;
-		info->outer_l3_len = info->l3_len;
-		info->outer_l4_proto = info->l4_proto;
+		update_tunnel_outer(info);
 
 		eth_hdr = (struct rte_ether_hdr *)((char *)gre_hdr + gre_len);
 

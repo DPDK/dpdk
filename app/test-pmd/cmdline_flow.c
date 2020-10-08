@@ -23,6 +23,7 @@
 #include <cmdline_parse_num.h>
 #include <rte_flow.h>
 #include <rte_hexdump.h>
+#include <rte_vxlan.h>
 
 #include "testpmd.h"
 
@@ -421,7 +422,7 @@ struct vxlan_encap_conf vxlan_encap_conf = {
 	.select_tos_ttl = 0,
 	.vni = "\x00\x00\x00",
 	.udp_src = 0,
-	.udp_dst = RTE_BE16(4789),
+	.udp_dst = RTE_BE16(RTE_VXLAN_DEFAULT_PORT),
 	.ipv4_src = RTE_IPV4(127, 0, 0, 1),
 	.ipv4_dst = RTE_IPV4(255, 255, 255, 255),
 	.ipv6_src = "\x00\x00\x00\x00\x00\x00\x00\x00"
