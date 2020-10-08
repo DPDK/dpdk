@@ -18,7 +18,8 @@ if is_freebsd
 	includes += include_directories('bsd')
 endif
 if is_windows
-	sources += files('windows/pci.c')
+	sources += files('windows/pci.c',
+			'windows/pci_netuio.c')
 	includes += include_directories('windows')
 endif
 
