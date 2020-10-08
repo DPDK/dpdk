@@ -58,12 +58,6 @@ DPDK_21 {
 	local: *;
 };
 
-DPDK_20.0 {
-	global:
-	rte_cryptodev_info_get;
-	rte_cryptodev_sym_capability_get;
-};
-
 EXPERIMENTAL {
 	global:
 
