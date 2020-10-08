@@ -45,6 +45,70 @@ idxd_dev_dump(struct rte_rawdev *dev, FILE *f)
 }
 
 int
+idxd_dev_configure(const struct rte_rawdev *dev,
+		rte_rawdev_obj_t config, size_t config_size)
+{
+	struct idxd_rawdev *idxd = dev->dev_private;
+	struct rte_idxd_rawdev *rte_idxd = &idxd->public;
+	struct rte_ioat_rawdev_config *cfg = config;
+	uint16_t max_desc = cfg->ring_size;
+	uint16_t max_batches = max_desc / BATCH_SIZE;
+	uint16_t i;
+
+	if (config_size != sizeof(*cfg))
+		return -EINVAL;
+
+	if (dev->started) {
+		IOAT_PMD_ERR("%s: Error, device is started.", __func__);
+		return -EAGAIN;
+	}
+
+	rte_idxd->hdls_disable = cfg->hdls_disable;
+
+	/* limit the batches to what can be stored in hardware */
+	if (max_batches > idxd->max_batches) {
+		IOAT_PMD_DEBUG("Ring size of %u is too large for this device, need to limit to %u batches of %u",
+				max_desc, idxd->max_batches, BATCH_SIZE);
+		max_batches = idxd->max_batches;
+		max_desc = max_batches * BATCH_SIZE;
+	}
+	if (!rte_is_power_of_2(max_desc))
+		max_desc = rte_align32pow2(max_desc);
+	IOAT_PMD_DEBUG("Rawdev %u using %u descriptors in %u batches",
+			dev->dev_id, max_desc, max_batches);
+
+	/* in case we are reconfiguring a device, free any existing memory */
+	rte_free(rte_idxd->batch_ring);
+	rte_free(rte_idxd->hdl_ring);
+
+	rte_idxd->batch_ring = rte_zmalloc(NULL,
+			sizeof(*rte_idxd->batch_ring) * max_batches, 0);
+	if (rte_idxd->batch_ring == NULL)
+		return -ENOMEM;
+
+	rte_idxd->hdl_ring = rte_zmalloc(NULL,
+			sizeof(*rte_idxd->hdl_ring) * max_desc, 0);
+	if (rte_idxd->hdl_ring == NULL) {
+		rte_free(rte_idxd->batch_ring);
+		rte_idxd->batch_ring = NULL;
+		return -ENOMEM;
+	}
+	rte_idxd->batch_ring_sz = max_batches;
+	rte_idxd->hdl_ring_sz = max_desc;
+
+	for (i = 0; i < rte_idxd->batch_ring_sz; i++) {
+		struct rte_idxd_desc_batch *b = &rte_idxd->batch_ring[i];
+		b->batch_desc.completion = rte_mem_virt2iova(&b->comp);
+		b->batch_desc.desc_addr = rte_mem_virt2iova(&b->null_desc);
+		b->batch_desc.op_flags = (idxd_op_batch << IDXD_CMD_OP_SHIFT) |
+				IDXD_FLAG_COMPLETION_ADDR_VALID |
+				IDXD_FLAG_REQUEST_COMPLETION;
+	}
+
+	return 0;
+}
+
+int
 idxd_rawdev_create(const char *name, struct rte_device *dev,
 		   const struct idxd_rawdev *base_idxd,
 		   const struct rte_rawdev_ops *ops)

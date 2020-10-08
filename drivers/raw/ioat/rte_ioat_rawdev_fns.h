@@ -187,6 +187,7 @@ struct rte_idxd_rawdev {
 	uint16_t next_ret_hdl;   /* the next user hdl to return */
 	uint16_t last_completed_hdl; /* the last user hdl that has completed */
 	uint16_t next_free_hdl;  /* where the handle for next op will go */
+	uint16_t hdls_disable;   /* disable tracking completion handles */
 
 	struct rte_idxd_user_hdl *hdl_ring;
 	struct rte_idxd_desc_batch *batch_ring;

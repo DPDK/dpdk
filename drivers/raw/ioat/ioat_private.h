@@ -59,6 +59,9 @@ extern int idxd_rawdev_create(const char *name, struct rte_device *dev,
 
 extern int idxd_rawdev_close(struct rte_rawdev *dev);
 
+extern int idxd_dev_configure(const struct rte_rawdev *dev,
+		rte_rawdev_obj_t config, size_t config_size);
+
 extern int idxd_rawdev_test(uint16_t dev_id);
 
 extern int idxd_dev_dump(struct rte_rawdev *dev, FILE *f);
