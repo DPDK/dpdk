@@ -61,4 +61,6 @@ extern int idxd_rawdev_close(struct rte_rawdev *dev);
 
 extern int idxd_rawdev_test(uint16_t dev_id);
 
+extern int idxd_dev_dump(struct rte_rawdev *dev, FILE *f);
+
 #endif /* _IOAT_PRIVATE_H_ */

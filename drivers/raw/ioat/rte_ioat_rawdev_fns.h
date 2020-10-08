@@ -90,6 +90,86 @@ struct rte_ioat_rawdev {
 #define RTE_IOAT_CHANSTS_HALTED			0x3
 #define RTE_IOAT_CHANSTS_ARMED			0x4
 
+/*
+ * Defines used in the data path for interacting with hardware.
+ */
+#define IDXD_CMD_OP_SHIFT 24
+enum rte_idxd_ops {
+	idxd_op_nop = 0,
+	idxd_op_batch,
+	idxd_op_drain,
+	idxd_op_memmove,
+	idxd_op_fill
+};
+
+#define IDXD_FLAG_FENCE                 (1 << 0)
+#define IDXD_FLAG_COMPLETION_ADDR_VALID (1 << 2)
+#define IDXD_FLAG_REQUEST_COMPLETION    (1 << 3)
+#define IDXD_FLAG_CACHE_CONTROL         (1 << 8)
+
+/**
+ * Hardware descriptor used by DSA hardware, for both bursts and
+ * for individual operations.
+ */
+struct rte_idxd_hw_desc {
+	uint32_t pasid;
+	uint32_t op_flags;
+	rte_iova_t completion;
+
+	RTE_STD_C11
+	union {
+		rte_iova_t src;      /* source address for copy ops etc. */
+		rte_iova_t desc_addr; /* descriptor pointer for batch */
+	};
+	rte_iova_t dst;
+
+	uint32_t size;    /* length of data for op, or batch size */
+
+	/* 28 bytes of padding here */
+} __rte_aligned(64);
+
+/**
+ * Completion record structure written back by DSA
+ */
+struct rte_idxd_completion {
+	uint8_t status;
+	uint8_t result;
+	/* 16-bits pad here */
+	uint32_t completed_size; /* data length, or descriptors for batch */
+
+	rte_iova_t fault_address;
+	uint32_t invalid_flags;
+} __rte_aligned(32);
+
+#define BATCH_SIZE 64
+
+/**
+ * Structure used inside the driver for building up and submitting
+ * a batch of operations to the DSA hardware.
+ */
+struct rte_idxd_desc_batch {
+	struct rte_idxd_completion comp; /* the completion record for batch */
+
+	uint16_t submitted;
+	uint16_t op_count;
+	uint16_t hdl_end;
+
+	struct rte_idxd_hw_desc batch_desc;
+
+	/* batches must always have 2 descriptors, so put a null at the start */
+	struct rte_idxd_hw_desc null_desc;
+	struct rte_idxd_hw_desc ops[BATCH_SIZE];
+};
+
+/**
+ * structure used to save the "handles" provided by the user to be
+ * returned to the user on job completion.
+ */
+struct rte_idxd_user_hdl {
+	uint64_t src;
+	uint64_t dst;
+};
+
 /**
  * @internal
  * Structure representing an IDXD device instance

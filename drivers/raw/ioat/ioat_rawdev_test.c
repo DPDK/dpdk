@@ -270,7 +270,8 @@ err:
 }
 
 int
-idxd_rawdev_test(uint16_t dev_id __rte_unused)
+idxd_rawdev_test(uint16_t dev_id)
 {
+	rte_rawdev_dump(dev_id, stdout);
 	return 0;
 }
