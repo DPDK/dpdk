@@ -3,10 +3,12 @@
 
 .. include:: <isonum.txt>
 
-IOAT Rawdev Driver for Intel\ |reg| QuickData Technology
-======================================================================
+IOAT Rawdev Driver
+===================
 
 The ``ioat`` rawdev driver provides a poll-mode driver (PMD) for Intel\ |reg|
+Data Streaming Accelerator `(Intel DSA)
+<https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator>`_ and for Intel\ |reg|
 QuickData Technology, part of Intel\ |reg| I/O Acceleration Technology
 `(Intel I/OAT)
 <https://www.intel.com/content/www/us/en/wireless-network/accel-technology.html>`_.
@@ -17,61 +19,30 @@ be done by software, freeing up CPU cycles for other tasks.
 Hardware Requirements
 ----------------------
 
-On Linux, the presence of an Intel\ |reg| QuickData Technology hardware can
-be detected by checking the output of the ``lspci`` command, where the
-hardware will be often listed as "Crystal Beach DMA" or "CBDMA". For
-example, on a system with Intel\ |reg| Xeon\ |reg| CPU E5-2699 v4 @2.20GHz,
-lspci shows:
-
-.. code-block:: console
-
-  # lspci | grep DMA
-  00:04.0 System peripheral: Intel Corporation Xeon E7 v4/Xeon E5 v4/Xeon E3 v4/Xeon D Crystal Beach DMA Channel 0 (rev 01)
-  00:04.1 System peripheral: Intel Corporation Xeon E7 v4/Xeon E5 v4/Xeon E3 v4/Xeon D Crystal Beach DMA Channel 1 (rev 01)
-  00:04.2 System peripheral: Intel Corporation Xeon E7 v4/Xeon E5 v4/Xeon E3 v4/Xeon D Crystal Beach DMA Channel 2 (rev 01)
-  00:04.3 System peripheral: Intel Corporation Xeon E7 v4/Xeon E5 v4/Xeon E3 v4/Xeon D Crystal Beach DMA Channel 3 (rev 01)
-  00:04.4 System peripheral: Intel Corporation Xeon E7 v4/Xeon E5 v4/Xeon E3 v4/Xeon D Crystal Beach DMA Channel 4 (rev 01)
-  00:04.5 System peripheral: Intel Corporation Xeon E7 v4/Xeon E5 v4/Xeon E3 v4/Xeon D Crystal Beach DMA Channel 5 (rev 01)
-  00:04.6 System peripheral: Intel Corporation Xeon E7 v4/Xeon E5 v4/Xeon E3 v4/Xeon D Crystal Beach DMA Channel 6 (rev 01)
-  00:04.7 System peripheral: Intel Corporation Xeon E7 v4/Xeon E5 v4/Xeon E3 v4/Xeon D Crystal Beach DMA Channel 7 (rev 01)
-
-On a system with Intel\ |reg| Xeon\ |reg| Gold 6154 CPU @ 3.00GHz, lspci
-shows:
-
-.. code-block:: console
-
-  # lspci | grep DMA
-  00:04.0 System peripheral: Intel Corporation Sky Lake-E CBDMA Registers (rev 04)
-  00:04.1 System peripheral: Intel Corporation Sky Lake-E CBDMA Registers (rev 04)
-  00:04.2 System peripheral: Intel Corporation Sky Lake-E CBDMA Registers (rev 04)
-  00:04.3 System peripheral: Intel Corporation Sky Lake-E CBDMA Registers (rev 04)
-  00:04.4 System peripheral: Intel Corporation Sky Lake-E CBDMA Registers (rev 04)
-  00:04.5 System peripheral: Intel Corporation Sky Lake-E CBDMA Registers (rev 04)
-  00:04.6 System peripheral: Intel Corporation Sky Lake-E CBDMA Registers (rev 04)
-  00:04.7 System peripheral: Intel Corporation Sky Lake-E CBDMA Registers (rev 04)
-
+The ``dpdk-devbind.py`` script, included with DPDK,
+can be used to show the presence of supported hardware.
+Running ``dpdk-devbind.py --status-dev misc`` will show all the miscellaneous,
+or rawdev-based devices on the system.
+For Intel\ |reg| QuickData Technology devices, the hardware will be often listed as "Crystal Beach DMA",
+or "CBDMA".
+For Intel\ |reg| DSA devices, they are currently (at time of writing) appearing as devices with type "0b25",
+due to the absence of pci-id database entries for them at this point.
 
 Compilation
 ------------
 
-For builds done with ``make``, the driver compilation is enabled by the
-``CONFIG_RTE_LIBRTE_PMD_IOAT_RAWDEV`` build configuration option. This is
-enabled by default in builds for x86 platforms, and disabled in other
-configurations.
-
-For builds using ``meson`` and ``ninja``, the driver will be built when the
-target platform is x86-based.
+For builds using ``meson`` and ``ninja``, the driver will be built when the target platform is x86-based.
+No additional compilation steps are necessary.
 
 Device Setup
 -------------
 
-The Intel\ |reg| QuickData Technology HW devices will need to be bound to a
-user-space IO driver for use. The script ``dpdk-devbind.py`` script
-included with DPDK can be used to view the state of the devices and to bind
-them to a suitable DPDK-supported kernel driver. When querying the status
-of the devices, they will appear under the category of "Misc (rawdev)
-devices", i.e. the command ``dpdk-devbind.py --status-dev misc`` can be
-used to see the state of those devices alone.
+The HW devices to be used will need to be bound to a user-space IO driver for use.
+The ``dpdk-devbind.py`` script can be used to view the state of the devices
+and to bind them to a suitable DPDK-supported kernel driver, such as ``vfio-pci``.
+For example::
+
+	$ dpdk-devbind.py -b vfio-pci 00:04.0 00:04.1
 
 Device Probing and Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

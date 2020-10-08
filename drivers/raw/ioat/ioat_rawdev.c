@@ -10,6 +10,7 @@
 
 #include "rte_ioat_rawdev.h"
 #include "ioat_spec.h"
+#include "ioat_private.h"
 
 static struct rte_pci_driver ioat_pmd_drv;
 
@@ -28,14 +29,6 @@ static struct rte_pci_driver ioat_pmd_drv;
 #define IOAT_DEVICE_ID_ICX	0x0b00
 
 RTE_LOG_REGISTER(ioat_pmd_logtype, rawdev.ioat, INFO);
-
-#define IOAT_PMD_LOG(level, fmt, args...) rte_log(RTE_LOG_ ## level, \
-	ioat_pmd_logtype, "%s(): " fmt "\n", __func__, ##args)
-
-#define IOAT_PMD_DEBUG(fmt, args...)  IOAT_PMD_LOG(DEBUG, fmt, ## args)
-#define IOAT_PMD_INFO(fmt, args...)   IOAT_PMD_LOG(INFO, fmt, ## args)
-#define IOAT_PMD_ERR(fmt, args...)    IOAT_PMD_LOG(ERR, fmt, ## args)
-#define IOAT_PMD_WARN(fmt, args...)   IOAT_PMD_LOG(WARNING, fmt, ## args)
 
 #define DESC_SZ sizeof(struct rte_ioat_generic_hw_desc)
 #define COMPLETION_SZ sizeof(__m128i)
