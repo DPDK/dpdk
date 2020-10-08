@@ -426,6 +426,12 @@ The command line options are:
     Set the UDP port number of tunnel VXLAN-GPE to N.
     The default value is 4790.
 
+*   ``--geneve-parsed-port=N``
+
+    Set the UDP port number that is used for parsing the GENEVE protocol to N.
+    HW may be configured with another tunnel Geneve port.
+    The default value is 6081.
+
 *   ``--mlockall``
 
     Enable locking all memory.

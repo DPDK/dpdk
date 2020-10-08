@@ -70,8 +70,8 @@ usage(char* progname)
 	       "--rxpt= | --rxht= | --rxwt= |"
 	       " --rxfreet= | --txpt= | --txht= | --txwt= | --txfreet= | "
 	       "--txrst= | --tx-offloads= | | --rx-offloads= | "
-	       "--vxlan-gpe-port= | --record-core-cycles | "
-	       "--record-burst-stats]\n",
+	       "--vxlan-gpe-port= | --geneve-parsed-port= | "
+	       "--record-core-cycles | --record-burst-stats]\n",
 	       progname);
 #ifdef RTE_LIBRTE_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
@@ -202,6 +202,7 @@ usage(char* progname)
 	printf("  --rx-offloads=0xXXXXXXXX: hexadecimal bitmask of RX queue offloads\n");
 	printf("  --hot-plug: enable hot plug for device.\n");
 	printf("  --vxlan-gpe-port=N: UPD port of tunnel VXLAN-GPE\n");
+	printf("  --geneve-parsed-port=N: UPD port to parse GENEVE tunnel protocol\n");
 	printf("  --mlockall: lock all memory\n");
 	printf("  --no-mlockall: do not lock all memory\n");
 	printf("  --mp-alloc <native|anon|xmem|xmemhuge>: mempool allocation method.\n"
@@ -671,6 +672,7 @@ launch_args_parse(int argc, char** argv)
 		{ "rx-offloads",		1, 0, 0 },
 		{ "hot-plug",			0, 0, 0 },
 		{ "vxlan-gpe-port",		1, 0, 0 },
+		{ "geneve-parsed-port",		1, 0, 0 },
 		{ "mlockall",			0, 0, 0 },
 		{ "no-mlockall",		0, 0, 0 },
 		{ "mp-alloc",			1, 0, 0 },
@@ -1310,6 +1312,15 @@ launch_args_parse(int argc, char** argv)
 				else
 					rte_exit(EXIT_FAILURE,
 						 "vxlan-gpe-port must be >= 0\n");
+			}
+			if (!strcmp(lgopts[opt_idx].name,
+				    "geneve-parsed-port")) {
+				n = atoi(optarg);
+				if (n >= 0)
+					geneve_udp_port = (uint16_t)n;
+				else
+					rte_exit(EXIT_FAILURE,
+						 "geneve-parsed-port must be >= 0\n");
 			}
 			if (!strcmp(lgopts[opt_idx].name, "print-event"))
 				if (parse_event_printing_config(optarg, 1)) {
