@@ -886,6 +886,27 @@ testsuite_setup(void)
 }
 
 static void
+crypto_adapter_teardown(void)
+{
+	int ret;
+
+	ret = rte_event_crypto_adapter_stop(TEST_ADAPTER_ID);
+	if (ret < 0)
+		RTE_LOG(ERR, USER1, "Failed to stop adapter!");
+
+	ret = rte_event_crypto_adapter_queue_pair_del(TEST_ADAPTER_ID,
+					TEST_CDEV_ID, TEST_CDEV_QP_ID);
+	if (ret < 0)
+		RTE_LOG(ERR, USER1, "Failed to delete queue pair!");
+
+	ret = rte_event_crypto_adapter_free(TEST_ADAPTER_ID);
+	if (ret < 0)
+		RTE_LOG(ERR, USER1, "Failed to free adapter!");
+
+	crypto_adapter_setup_done = 0;
+}
+
+static void
 crypto_teardown(void)
 {
 	/* Free mbuf mempool */
@@ -927,6 +948,7 @@ eventdev_teardown(void)
 static void
 testsuite_teardown(void)
 {
+	crypto_adapter_teardown();
 	crypto_teardown();
 	eventdev_teardown();
 }
