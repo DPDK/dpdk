@@ -203,6 +203,12 @@ ioat_xstats_reset(struct rte_rawdev *dev, const uint32_t *ids, uint32_t nb_ids)
 	return 0;
 }
 
+static int
+ioat_dev_close(struct rte_rawdev *dev __rte_unused)
+{
+	return 0;
+}
+
 extern int ioat_rawdev_test(uint16_t dev_id);
 
 static int
@@ -212,6 +218,7 @@ ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 			.dev_configure = ioat_dev_configure,
 			.dev_start = ioat_dev_start,
 			.dev_stop = ioat_dev_stop,
+			.dev_close = ioat_dev_close,
 			.dev_info_get = ioat_dev_info_get,
 			.xstats_get = ioat_xstats_get,
 			.xstats_get_names = ioat_xstats_get_names,
