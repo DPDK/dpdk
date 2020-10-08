@@ -45,6 +45,24 @@ idxd_dev_dump(struct rte_rawdev *dev, FILE *f)
 }
 
 int
+idxd_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
+		size_t info_size)
+{
+	struct rte_ioat_rawdev_config *cfg = dev_info;
+	struct idxd_rawdev *idxd = dev->dev_private;
+	struct rte_idxd_rawdev *rte_idxd = &idxd->public;
+
+	if (info_size != sizeof(*cfg))
+		return -EINVAL;
+
+	if (cfg != NULL) {
+		cfg->ring_size = rte_idxd->hdl_ring_sz;
+		cfg->hdls_disable = rte_idxd->hdls_disable;
+	}
+	return 0;
+}
+
+int
 idxd_dev_configure(const struct rte_rawdev *dev,
 		rte_rawdev_obj_t config, size_t config_size)
 {

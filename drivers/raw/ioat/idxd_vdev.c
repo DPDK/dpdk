@@ -35,6 +35,7 @@ static const struct rte_rawdev_ops idxd_vdev_ops = {
 		.dev_selftest = idxd_rawdev_test,
 		.dump = idxd_dev_dump,
 		.dev_configure = idxd_dev_configure,
+		.dev_info_get = idxd_dev_info_get,
 };
 
 static void *

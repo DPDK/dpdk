@@ -62,6 +62,9 @@ extern int idxd_rawdev_close(struct rte_rawdev *dev);
 extern int idxd_dev_configure(const struct rte_rawdev *dev,
 		rte_rawdev_obj_t config, size_t config_size);
 
+extern int idxd_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
+		size_t info_size);
+
 extern int idxd_rawdev_test(uint16_t dev_id);
 
 extern int idxd_dev_dump(struct rte_rawdev *dev, FILE *f);
