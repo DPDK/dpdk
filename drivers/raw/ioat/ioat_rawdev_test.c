@@ -273,5 +273,5 @@ int
 idxd_rawdev_test(uint16_t dev_id)
 {
 	rte_rawdev_dump(dev_id, stdout);
-	return 0;
+	return ioat_rawdev_test(dev_id);
 }

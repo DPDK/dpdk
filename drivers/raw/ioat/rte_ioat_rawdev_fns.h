@@ -184,6 +184,8 @@ struct rte_idxd_user_hdl {
  */
 struct rte_idxd_rawdev {
 	enum rte_ioat_dev_type type;
+	struct rte_ioat_xstats xstats;
+
 	void *portal; /* address to write the batch descriptor */
 
 	/* counters to track the batches and the individual op handles */
@@ -369,9 +371,11 @@ __idxd_write_desc(int dev_id, const struct rte_idxd_hw_desc *desc,
 	if (++idxd->next_free_hdl == idxd->hdl_ring_sz)
 		idxd->next_free_hdl = 0;
 
+	idxd->xstats.enqueued++;
 	return 1;
 
 failed:
+	idxd->xstats.enqueue_failed++;
 	rte_errno = ENOSPC;
 	return 0;
 }
@@ -429,6 +433,7 @@ __idxd_perform_ops(int dev_id)
 
 	if (++idxd->next_batch == idxd->batch_ring_sz)
 		idxd->next_batch = 0;
+	idxd->xstats.started = idxd->xstats.enqueued;
 }
 
 static __rte_always_inline int
@@ -466,6 +471,7 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops,
 
 	idxd->next_ret_hdl = h_idx;
 
+	idxd->xstats.completed += n;
 	return n;
 }
 

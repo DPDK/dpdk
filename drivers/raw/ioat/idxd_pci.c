@@ -107,6 +107,9 @@ static const struct rte_rawdev_ops idxd_pci_ops = {
 		.dev_start = idxd_pci_dev_start,
 		.dev_stop = idxd_pci_dev_stop,
 		.dev_info_get = idxd_dev_info_get,
+		.xstats_get = ioat_xstats_get,
+		.xstats_get_names = ioat_xstats_get_names,
+		.xstats_reset = ioat_xstats_reset,
 };
 
 /* each portal uses 4 x 4k pages */

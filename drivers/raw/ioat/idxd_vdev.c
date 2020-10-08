@@ -36,6 +36,9 @@ static const struct rte_rawdev_ops idxd_vdev_ops = {
 		.dump = idxd_dev_dump,
 		.dev_configure = idxd_dev_configure,
 		.dev_info_get = idxd_dev_info_get,
+		.xstats_get = ioat_xstats_get,
+		.xstats_get_names = ioat_xstats_get_names,
+		.xstats_reset = ioat_xstats_reset,
 };
 
 static void *
