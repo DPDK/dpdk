@@ -15,6 +15,10 @@ otx2_npa_enq(struct rte_mempool *mp, void * const *obj_table, unsigned int n)
 	const uint64_t addr = npa_lf_aura_handle_to_base(aura_handle) +
 				 NPA_LF_AURA_OP_FREE0;
 
+	/* Ensure mbuf init changes are written before the free pointers
+	 * are enqueued to the stack.
+	 */
+	rte_io_wmb();
 	for (index = 0; index < n; index++)
 		otx2_store_pair((uint64_t)obj_table[index], reg, addr);
 

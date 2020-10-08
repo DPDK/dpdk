@@ -63,6 +63,18 @@ otx2_lmt_submit(rte_iova_t io_address)
 	return result;
 }
 
+static __rte_always_inline uint64_t
+otx2_lmt_submit_release(rte_iova_t io_address)
+{
+	uint64_t result;
+
+	asm volatile (
+		".cpu  generic+lse\n"
+		"ldeorl xzr,%x[rf],[%[rs]]" :
+		 [rf] "=r"(result) : [rs] "r"(io_address));
+	return result;
+}
+
 static __rte_always_inline void
 otx2_lmt_mov(void *out, const void *in, const uint32_t lmtext)
 {
