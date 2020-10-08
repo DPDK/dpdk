@@ -268,6 +268,70 @@ union rte_ioat_hw_desc {
 	struct rte_ioat_pq_update_hw_desc pq_update;
 };
 
+/*** Definitions for Intel(R) Data Streaming Accelerator Follow ***/
+
+#define IDXD_CMD_SHIFT 20
+enum rte_idxd_cmds {
+	idxd_enable_dev = 1,
+	idxd_disable_dev,
+	idxd_drain_all,
+	idxd_abort_all,
+	idxd_reset_device,
+	idxd_enable_wq,
+	idxd_disable_wq,
+	idxd_drain_wq,
+	idxd_abort_wq,
+	idxd_reset_wq,
+};
+
+/* General bar0 registers */
+struct rte_idxd_bar0 {
+	uint32_t __rte_cache_aligned version;    /* offset 0x00 */
+	uint64_t __rte_aligned(0x10) gencap;     /* offset 0x10 */
+	uint64_t __rte_aligned(0x10) wqcap;      /* offset 0x20 */
+	uint64_t __rte_aligned(0x10) grpcap;     /* offset 0x30 */
+	uint64_t __rte_aligned(0x08) engcap;     /* offset 0x38 */
+	uint64_t __rte_aligned(0x10) opcap;      /* offset 0x40 */
+	uint64_t __rte_aligned(0x20) offsets[2]; /* offset 0x60 */
+	uint32_t __rte_aligned(0x20) gencfg;     /* offset 0x80 */
+	uint32_t __rte_aligned(0x08) genctrl;    /* offset 0x88 */
+	uint32_t __rte_aligned(0x10) gensts;     /* offset 0x90 */
+	uint32_t __rte_aligned(0x08) intcause;   /* offset 0x98 */
+	uint32_t __rte_aligned(0x10) cmd;        /* offset 0xA0 */
+	uint32_t __rte_aligned(0x08) cmdstatus;  /* offset 0xA8 */
+	uint64_t __rte_aligned(0x20) swerror[4]; /* offset 0xC0 */
+};
+
+struct rte_idxd_wqcfg {
+	uint32_t wqcfg[8] __rte_aligned(32); /* 32-byte register */
+};
+
+#define WQ_SIZE_IDX      0 /* size is in first 32-bit value */
+#define WQ_THRESHOLD_IDX 1 /* WQ threshold second 32-bits */
+#define WQ_MODE_IDX      2 /* WQ mode and other flags */
+#define WQ_SIZES_IDX     3 /* WQ transfer and batch sizes */
+#define WQ_OCC_INT_IDX   4 /* WQ occupancy interrupt handle */
+#define WQ_OCC_LIMIT_IDX 5 /* WQ occupancy limit */
+#define WQ_STATE_IDX     6 /* WQ state and occupancy state */
+
+#define WQ_MODE_SHARED    0
+#define WQ_MODE_DEDICATED 1
+#define WQ_PRIORITY_SHIFT 4
+#define WQ_BATCH_SZ_SHIFT 5
+#define WQ_STATE_SHIFT 30
+#define WQ_STATE_MASK 0x3
+
+struct rte_idxd_grpcfg {
+	uint64_t grpwqcfg[4]  __rte_cache_aligned; /* 64-byte register set */
+	uint64_t grpengcfg;  /* offset 32 */
+	uint32_t grpflags;   /* offset 40 */
+};
+
+#define GENSTS_DEV_STATE_MASK 0x03
+#define CMDSTATUS_ACTIVE_SHIFT 31
+#define CMDSTATUS_ACTIVE_MASK (1 << 31)
+#define CMDSTATUS_ERR_MASK 0xFF
+
 #ifdef __cplusplus
 }
 #endif

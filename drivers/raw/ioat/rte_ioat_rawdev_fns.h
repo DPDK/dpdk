@@ -41,9 +41,20 @@ struct rte_ioat_generic_hw_desc {
 
 /**
  * @internal
- * Structure representing a device instance
+ * Identify the data path to use.
+ * Must be first field of rte_ioat_rawdev and rte_idxd_rawdev structs
+ */
+enum rte_ioat_dev_type {
+	RTE_IOAT_DEV,
+	RTE_IDXD_DEV,
+};
+
+/**
+ * @internal
+ * Structure representing an IOAT device instance
  */
 struct rte_ioat_rawdev {
+	enum rte_ioat_dev_type type;
 	struct rte_rawdev *rawdev;
 	const struct rte_memzone *mz;
 	const struct rte_memzone *desc_mz;
@@ -78,6 +89,28 @@ struct rte_ioat_rawdev {
 #define RTE_IOAT_CHANSTS_SUSPENDED		0x2
 #define RTE_IOAT_CHANSTS_HALTED			0x3
 #define RTE_IOAT_CHANSTS_ARMED			0x4
+
+/**
+ * @internal
+ * Structure representing an IDXD device instance
+ */
+struct rte_idxd_rawdev {
+	enum rte_ioat_dev_type type;
+	void *portal; /* address to write the batch descriptor */
+
+	/* counters to track the batches and the individual op handles */
+	uint16_t batch_ring_sz;  /* size of batch ring */
+	uint16_t hdl_ring_sz;    /* size of the user hdl ring */
+
+	uint16_t next_batch;     /* where we write descriptor ops */
+	uint16_t next_completed; /* batch where we read completions */
+	uint16_t next_ret_hdl;   /* the next user hdl to return */
+	uint16_t last_completed_hdl; /* the last user hdl that has completed */
+	uint16_t next_free_hdl;  /* where the handle for next op will go */
+
+	struct rte_idxd_user_hdl *hdl_ring;
+	struct rte_idxd_desc_batch *batch_ring;
+};
 
 /*
  * Enqueue a copy operation onto the ioat device

@@ -6,6 +6,7 @@ reason = 'only supported on x86'
 sources = files(
 	'idxd_pci.c',
 	'idxd_vdev.c',
+	'ioat_common.c',
 	'ioat_rawdev.c',
 	'ioat_rawdev_test.c')
 deps += ['bus_pci',

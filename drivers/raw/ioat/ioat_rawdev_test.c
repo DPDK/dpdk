@@ -7,6 +7,7 @@
 #include <rte_mbuf.h>
 #include "rte_rawdev.h"
 #include "rte_ioat_rawdev.h"
+#include "ioat_private.h"
 
 #define MAX_SUPPORTED_RAWDEVS 64
 #define TEST_SKIPPED 77
@@ -266,4 +267,10 @@ err:
 	free(stats);
 	free(ids);
 	return -1;
+}
+
+int
+idxd_rawdev_test(uint16_t dev_id __rte_unused)
+{
+	return 0;
 }
