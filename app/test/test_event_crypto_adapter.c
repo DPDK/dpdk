@@ -736,14 +736,29 @@ configure_event_crypto_adapter(enum rte_event_crypto_adapter_mode mode)
 	uint32_t cap;
 	int ret;
 
+	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
+
+	/* Skip mode and capability mismatch check for SW eventdev */
+	if (!(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW) &&
+	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
+	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND))
+		goto adapter_create;
+
+	if ((mode == RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD) &&
+	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_FWD))
+		return -ENOTSUP;
+
+	if ((mode == RTE_EVENT_CRYPTO_ADAPTER_OP_NEW) &&
+	    !(cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW))
+		return -ENOTSUP;
+
+adapter_create:
 	/* Create adapter with default port creation callback */
 	ret = rte_event_crypto_adapter_create(TEST_ADAPTER_ID,
-					      TEST_CDEV_ID,
+					      evdev,
 					      &conf, mode);
 	TEST_ASSERT_SUCCESS(ret, "Failed to create event crypto adapter\n");
-
-	ret = rte_event_crypto_adapter_caps_get(TEST_ADAPTER_ID, evdev, &cap);
-	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
 
 	if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
 		ret = rte_event_crypto_adapter_queue_pair_add(TEST_ADAPTER_ID,
@@ -799,6 +814,8 @@ test_crypto_adapter_conf(enum rte_event_crypto_adapter_mode mode)
 			TEST_ASSERT(ret >= 0, "Failed to link queue %d "
 					"port=%u\n", qid,
 					params.crypto_event_port_id);
+		} else {
+			return ret;
 		}
 		crypto_adapter_setup_done = 1;
 	}
@@ -833,10 +850,8 @@ test_crypto_adapter_conf_op_forward_mode(void)
 	enum rte_event_crypto_adapter_mode mode;
 
 	mode = RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD;
-	TEST_ASSERT_SUCCESS(test_crypto_adapter_conf(mode),
-				"Failed to config crypto adapter");
 
-	return TEST_SUCCESS;
+	return test_crypto_adapter_conf(mode);
 }
 
 static int
@@ -845,10 +860,8 @@ test_crypto_adapter_conf_op_new_mode(void)
 	enum rte_event_crypto_adapter_mode mode;
 
 	mode = RTE_EVENT_CRYPTO_ADAPTER_OP_NEW;
-	TEST_ASSERT_SUCCESS(test_crypto_adapter_conf(mode),
-				"Failed to config crypto adapter");
 
-	return TEST_SUCCESS;
+	return test_crypto_adapter_conf(mode);
 }
 
 
