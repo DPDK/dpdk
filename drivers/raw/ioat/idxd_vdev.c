@@ -2,6 +2,12 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <limits.h>
+#include <sys/mman.h>
+
+#include <rte_memzone.h>
 #include <rte_bus_vdev.h>
 #include <rte_kvargs.h>
 #include <rte_string_fns.h>
@@ -23,6 +29,36 @@ struct idxd_vdev_args {
 	uint8_t device_id;
 	uint8_t wq_id;
 };
+
+static const struct rte_rawdev_ops idxd_vdev_ops = {
+		.dev_close = idxd_rawdev_close,
+		.dev_selftest = idxd_rawdev_test,
+};
+
+static void *
+idxd_vdev_mmap_wq(struct idxd_vdev_args *args)
+{
+	void *addr;
+	char path[PATH_MAX];
+	int fd;
+
+	snprintf(path, sizeof(path), "/dev/dsa/wq%u.%u",
+			args->device_id, args->wq_id);
+	fd = open(path, O_RDWR);
+	if (fd < 0) {
+		IOAT_PMD_ERR("Failed to open device path");
+		return NULL;
+	}
+
+	addr = mmap(NULL, 0x1000, PROT_WRITE, MAP_SHARED, fd, 0);
+	close(fd);
+	if (addr == MAP_FAILED) {
+		IOAT_PMD_ERR("Failed to mmap device");
+		return NULL;
+	}
+
+	return addr;
+}
 
 static int
 idxd_rawdev_parse_wq(const char *key __rte_unused, const char *value,
@@ -71,9 +107,31 @@ free:
 }
 
 static int
+idxd_vdev_get_max_batches(struct idxd_vdev_args *args)
+{
+	char sysfs_path[PATH_MAX];
+	FILE *f;
+	int ret;
+
+	snprintf(sysfs_path, sizeof(sysfs_path),
+			"/sys/bus/dsa/devices/wq%u.%u/size",
+			args->device_id, args->wq_id);
+	f = fopen(sysfs_path, "r");
+	if (f == NULL)
+		return -1;
+
+	if (fscanf(f, "%d", &ret) != 1)
+		ret = -1;
+
+	fclose(f);
+	return ret;
+}
+
+static int
 idxd_rawdev_probe_vdev(struct rte_vdev_device *vdev)
 {
 	struct rte_kvargs *kvlist;
+	struct idxd_rawdev idxd = {{0}}; /* double {} to avoid error on BSD12 */
 	struct idxd_vdev_args vdev_args;
 	const char *name;
 	int ret = 0;
@@ -96,13 +154,32 @@ idxd_rawdev_probe_vdev(struct rte_vdev_device *vdev)
 		return -EINVAL;
 	}
 
+	idxd.qid = vdev_args.wq_id;
+	idxd.u.vdev.dsa_id = vdev_args.device_id;
+	idxd.max_batches = idxd_vdev_get_max_batches(&vdev_args);
+
+	idxd.public.portal = idxd_vdev_mmap_wq(&vdev_args);
+	if (idxd.public.portal == NULL) {
+		IOAT_PMD_ERR("WQ mmap failed");
+		return -ENOENT;
+	}
+
+	ret = idxd_rawdev_create(name, &vdev->device, &idxd, &idxd_vdev_ops);
+	if (ret) {
+		IOAT_PMD_ERR("Failed to create rawdev %s", name);
+		return ret;
+	}
+
 	return 0;
 }
 
 static int
 idxd_rawdev_remove_vdev(struct rte_vdev_device *vdev)
 {
+	struct idxd_rawdev *idxd;
 	const char *name;
+	struct rte_rawdev *rdev;
+	int ret = 0;
 
 	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
@@ -110,7 +187,34 @@ idxd_rawdev_remove_vdev(struct rte_vdev_device *vdev)
 
 	IOAT_PMD_INFO("Remove DSA vdev %p", name);
 
-	return 0;
+	rdev = rte_rawdev_pmd_get_named_dev(name);
+	if (!rdev) {
+		IOAT_PMD_ERR("Invalid device name (%s)", name);
+		return -EINVAL;
+	}
+
+	idxd = rdev->dev_private;
+
+	/* free context and memory */
+	if (rdev->dev_private != NULL) {
+		IOAT_PMD_DEBUG("Freeing device driver memory");
+		rdev->dev_private = NULL;
+
+		if (munmap(idxd->public.portal, 0x1000) < 0) {
+			IOAT_PMD_ERR("Error unmapping portal");
+			ret = -errno;
+		}
+
+		rte_free(idxd->public.batch_ring);
+		rte_free(idxd->public.hdl_ring);
+
+		rte_memzone_free(idxd->mz);
+	}
+
+	if (rte_rawdev_pmd_release(rdev))
+		IOAT_PMD_ERR("Device cleanup failed");
+
+	return ret;
 }
 
 struct rte_vdev_driver idxd_rawdev_drv_vdev = {

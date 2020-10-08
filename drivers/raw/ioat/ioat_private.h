@@ -45,6 +45,10 @@ struct idxd_rawdev {
 	uint16_t max_batches;
 
 	union {
+		struct {
+			unsigned int dsa_id;
+		} vdev;
+
 		struct idxd_pci_common *pci;
 	} u;
 };
