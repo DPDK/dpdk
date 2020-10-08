@@ -53,6 +53,16 @@ struct idxd_rawdev {
 	} u;
 };
 
+int ioat_xstats_get(const struct rte_rawdev *dev, const unsigned int ids[],
+		uint64_t values[], unsigned int n);
+
+int ioat_xstats_get_names(const struct rte_rawdev *dev,
+		struct rte_rawdev_xstats_name *names,
+		unsigned int size);
+
+int ioat_xstats_reset(struct rte_rawdev *dev, const uint32_t *ids,
+		uint32_t nb_ids);
+
 extern int idxd_rawdev_create(const char *name, struct rte_device *dev,
 		       const struct idxd_rawdev *idxd,
 		       const struct rte_rawdev_ops *ops);

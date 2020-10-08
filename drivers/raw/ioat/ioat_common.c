@@ -5,8 +5,67 @@
 #include <rte_rawdev_pmd.h>
 #include <rte_memzone.h>
 #include <rte_common.h>
+#include <rte_string_fns.h>
 
 #include "ioat_private.h"
+
+static const char * const xstat_names[] = {
+		"failed_enqueues", "successful_enqueues",
+		"copies_started", "copies_completed"
+};
+
+int
+ioat_xstats_get(const struct rte_rawdev *dev, const unsigned int ids[],
+		uint64_t values[], unsigned int n)
+{
+	const struct rte_ioat_rawdev *ioat = dev->dev_private;
+	const uint64_t *stats = (const void *)&ioat->xstats;
+	unsigned int i;
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] > sizeof(ioat->xstats)/sizeof(*stats))
+			values[i] = 0;
+		else
+			values[i] = stats[ids[i]];
+	}
+	return n;
+}
+
+int
+ioat_xstats_get_names(const struct rte_rawdev *dev,
+		struct rte_rawdev_xstats_name *names,
+		unsigned int size)
+{
+	unsigned int i;
+
+	RTE_SET_USED(dev);
+	if (size < RTE_DIM(xstat_names))
+		return RTE_DIM(xstat_names);
+
+	for (i = 0; i < RTE_DIM(xstat_names); i++)
+		strlcpy(names[i].name, xstat_names[i], sizeof(names[i]));
+
+	return RTE_DIM(xstat_names);
+}
+
+int
+ioat_xstats_reset(struct rte_rawdev *dev, const uint32_t *ids, uint32_t nb_ids)
+{
+	struct rte_ioat_rawdev *ioat = dev->dev_private;
+	uint64_t *stats = (void *)&ioat->xstats;
+	unsigned int i;
+
+	if (!ids) {
+		memset(&ioat->xstats, 0, sizeof(ioat->xstats));
+		return 0;
+	}
+
+	for (i = 0; i < nb_ids; i++)
+		if (ids[i] < sizeof(ioat->xstats)/sizeof(*stats))
+			stats[ids[i]] = 0;
+
+	return 0;
+}
 
 int
 idxd_rawdev_close(struct rte_rawdev *dev __rte_unused)
