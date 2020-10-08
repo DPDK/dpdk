@@ -72,6 +72,7 @@ struct cpt_request_info {
 		uint64_t ei3;
 	} ist;
 	uint8_t *rptr;
+	const struct otx2_cpt_qp *qp;
 
 	/** Control path fields */
 	uint64_t time_out;

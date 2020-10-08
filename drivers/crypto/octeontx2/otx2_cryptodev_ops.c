@@ -425,6 +425,48 @@ priv_put:
 	return -ENOTSUP;
 }
 
+static __rte_always_inline void __rte_hot
+otx2_ca_enqueue_req(const struct otx2_cpt_qp *qp,
+		    struct cpt_request_info *req,
+		    void *lmtline)
+{
+	union cpt_inst_s inst;
+	uint64_t lmt_status;
+
+	inst.u[0] = 0;
+	inst.s9x.res_addr = req->comp_baddr;
+	inst.u[2] = 0;
+	inst.u[3] = 0;
+
+	inst.s9x.ei0 = req->ist.ei0;
+	inst.s9x.ei1 = req->ist.ei1;
+	inst.s9x.ei2 = req->ist.ei2;
+	inst.s9x.ei3 = req->ist.ei3;
+
+	inst.s9x.qord = 1;
+	inst.s9x.grp = qp->ev.queue_id;
+	inst.s9x.tt = qp->ev.sched_type;
+	inst.s9x.tag = (RTE_EVENT_TYPE_CRYPTODEV << 28) |
+			qp->ev.flow_id;
+	inst.s9x.wq_ptr = (uint64_t)req >> 3;
+	req->qp = qp;
+
+	do {
+		/* Copy CPT command to LMTLINE */
+		memcpy(lmtline, &inst, sizeof(inst));
+
+		/*
+		 * Make sure compiler does not reorder memcpy and ldeor.
+		 * LMTST transactions are always flushed from the write
+		 * buffer immediately, a DMB is not required to push out
+		 * LMTSTs.
+		 */
+		rte_io_wmb();
+		lmt_status = otx2_lmt_submit(qp->lf_nq_reg);
+	} while (lmt_status == 0);
+
+}
+
 static __rte_always_inline int32_t __rte_hot
 otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 		     struct pending_queue *pend_q,
@@ -433,6 +475,11 @@ otx2_cpt_enqueue_req(const struct otx2_cpt_qp *qp,
 	void *lmtline = qp->lmtline;
 	union cpt_inst_s inst;
 	uint64_t lmt_status;
+
+	if (qp->ca_enable) {
+		otx2_ca_enqueue_req(qp, req, lmtline);
+		return 0;
+	}
 
 	if (unlikely(pend_q->pending_count >= OTX2_CPT_DEFAULT_CMD_QLEN))
 		return -EAGAIN;

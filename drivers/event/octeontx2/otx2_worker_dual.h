@@ -10,6 +10,7 @@
 
 #include <otx2_common.h>
 #include "otx2_evdev.h"
+#include "otx2_evdev_crypto_adptr_dp.h"
 
 /* SSO Operations */
 static __rte_always_inline uint16_t
@@ -63,25 +64,32 @@ otx2_ssogws_dual_get_work(struct otx2_ssogws_state *ws,
 	ws->cur_tt = event.sched_type;
 	ws->cur_grp = event.queue_id;
 
-	if (event.sched_type != SSO_TT_EMPTY &&
-	    event.event_type == RTE_EVENT_TYPE_ETHDEV) {
-		uint8_t port = event.sub_event_type;
+	if (event.sched_type != SSO_TT_EMPTY) {
+		if ((flags & NIX_RX_OFFLOAD_SECURITY_F) &&
+		    (event.event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
+			get_work1 = otx2_handle_crypto_event(get_work1);
+		} else if (event.event_type == RTE_EVENT_TYPE_ETHDEV) {
+			uint8_t port = event.sub_event_type;
 
-		event.sub_event_type = 0;
-		otx2_wqe_to_mbuf(get_work1, mbuf, port,
-				 event.flow_id, flags, lookup_mem);
-		/* Extracting tstamp, if PTP enabled. CGX will prepend the
-		 * timestamp at starting of packet data and it can be derieved
-		 * from WQE 9 dword which corresponds to SG iova.
-		 * rte_pktmbuf_mtod_offset can be used for this purpose but it
-		 * brings down the performance as it reads mbuf->buf_addr which
-		 * is not part of cache in general fast path.
-		 */
-		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)get_work1)
-					     + OTX2_SSO_WQE_SG_PTR);
-		otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp, flags,
-					(uint64_t *)tstamp_ptr);
-		get_work1 = mbuf;
+			event.sub_event_type = 0;
+			otx2_wqe_to_mbuf(get_work1, mbuf, port,
+					 event.flow_id, flags, lookup_mem);
+			/* Extracting tstamp, if PTP enabled. CGX will prepend
+			 * the timestamp at starting of packet data and it can
+			 * be derieved from WQE 9 dword which corresponds to SG
+			 * iova.
+			 * rte_pktmbuf_mtod_offset can be used for this purpose
+			 * but it brings down the performance as it reads
+			 * mbuf->buf_addr which is not part of cache in general
+			 * fast path.
+			 */
+			tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)
+						     get_work1) +
+						     OTX2_SSO_WQE_SG_PTR);
+			otx2_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp,
+						flags, (uint64_t *)tstamp_ptr);
+			get_work1 = mbuf;
+		}
 	}
 
 	ev->event = event.get_work0;
