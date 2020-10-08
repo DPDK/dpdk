@@ -109,6 +109,8 @@ New Features
 
   The ioat rawdev driver has been updated and enhanced. Changes include:
 
+  * Added support for Intel\ |reg| Data Streaming Accelerator hardware.
+    For more information, see https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator
   * Added a per-device configuration flag to disable management
     of user-provided completion handles.
   * Renamed the ``rte_ioat_do_copies()`` API to ``rte_ioat_perform_ops()``,
