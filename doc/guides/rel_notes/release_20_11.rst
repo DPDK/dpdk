@@ -75,6 +75,11 @@ New Features
   * Added support for non-zero priorities for group 0 flows
   * Added support for VXLAN decap combined with VLAN pop
 
+* **Added hns3 FEC PMD, for supporting query and config FEC mode.**
+
+  Added the FEC PMD which provides functions for query FEC capabilities and
+  current FEC mode from device. Also, PMD for configuring FEC mode is also provided.
+
 * **Updated Solarflare network PMD.**
 
   Updated the Solarflare ``sfc_efx`` driver with changes including:

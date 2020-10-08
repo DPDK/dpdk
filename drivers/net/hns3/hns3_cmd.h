@@ -99,6 +99,7 @@ enum hns3_opcode_type {
 	HNS3_OPC_QUERY_LINK_STATUS      = 0x0307,
 	HNS3_OPC_CONFIG_MAX_FRM_SIZE    = 0x0308,
 	HNS3_OPC_CONFIG_SPEED_DUP       = 0x0309,
+	HNS3_OPC_CONFIG_FEC_MODE        = 0x031A,
 
 	/* PFC/Pause commands */
 	HNS3_OPC_CFG_MAC_PAUSE_EN       = 0x0701,
@@ -687,9 +688,25 @@ struct hns3_config_auto_neg_cmd {
 	uint8_t   rsv[20];
 };
 
+#define HNS3_MAC_CFG_FEC_AUTO_EN_B	0
+#define HNS3_MAC_CFG_FEC_MODE_S		1
+#define HNS3_MAC_CFG_FEC_MODE_M	GENMASK(3, 1)
+#define HNS3_MAC_FEC_OFF		0
+#define HNS3_MAC_FEC_BASER		1
+#define HNS3_MAC_FEC_RS			2
+
 struct hns3_sfp_speed_cmd {
 	uint32_t  sfp_speed;
-	uint32_t  rsv[5];
+	uint8_t   query_type; /* 0: sfp speed, 1: active fec */
+	uint8_t   active_fec; /* current FEC mode */
+	uint16_t  rsv1;
+	uint32_t  rsv2[4];
+};
+
+/* Configure FEC mode, opcode:0x031A */
+struct hns3_config_fec_cmd {
+	uint8_t fec_mode;
+	uint8_t rsv[23];
 };
 
 #define HNS3_MAC_MGR_MASK_VLAN_B		BIT(0)
