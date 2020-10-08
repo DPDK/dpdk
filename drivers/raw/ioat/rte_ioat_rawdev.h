@@ -5,6 +5,10 @@
 #ifndef _RTE_IOAT_RAWDEV_H_
 #define _RTE_IOAT_RAWDEV_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file rte_ioat_rawdev.h
  *
@@ -100,7 +104,8 @@ rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl,
 		int fence)
 {
-	struct rte_ioat_rawdev *ioat = rte_rawdevs[dev_id].dev_private;
+	struct rte_ioat_rawdev *ioat =
+			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
 	unsigned short read = ioat->next_read;
 	unsigned short write = ioat->next_write;
 	unsigned short mask = ioat->ring_size - 1;
@@ -141,7 +146,8 @@ rte_ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 static inline void
 rte_ioat_do_copies(int dev_id)
 {
-	struct rte_ioat_rawdev *ioat = rte_rawdevs[dev_id].dev_private;
+	struct rte_ioat_rawdev *ioat =
+			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
 	ioat->desc_ring[(ioat->next_write - 1) & (ioat->ring_size - 1)].u
 			.control.completion_update = 1;
 	rte_compiler_barrier();
@@ -190,7 +196,8 @@ static inline int
 rte_ioat_completed_copies(int dev_id, uint8_t max_copies,
 		uintptr_t *src_hdls, uintptr_t *dst_hdls)
 {
-	struct rte_ioat_rawdev *ioat = rte_rawdevs[dev_id].dev_private;
+	struct rte_ioat_rawdev *ioat =
+			(struct rte_ioat_rawdev *)rte_rawdevs[dev_id].dev_private;
 	unsigned short mask = (ioat->ring_size - 1);
 	unsigned short read = ioat->next_read;
 	unsigned short end_read, count;
@@ -212,13 +219,13 @@ rte_ioat_completed_copies(int dev_id, uint8_t max_copies,
 		__m128i hdls0 = _mm_load_si128(&ioat->hdls[read & mask]);
 		__m128i hdls1 = _mm_load_si128(&ioat->hdls[(read + 1) & mask]);
 
-		_mm_storeu_si128((void *)&src_hdls[i],
+		_mm_storeu_si128((__m128i *)&src_hdls[i],
 				_mm_unpacklo_epi64(hdls0, hdls1));
-		_mm_storeu_si128((void *)&dst_hdls[i],
+		_mm_storeu_si128((__m128i *)&dst_hdls[i],
 				_mm_unpackhi_epi64(hdls0, hdls1));
 	}
 	for (; i < count; i++, read++) {
-		uintptr_t *hdls = (void *)&ioat->hdls[read & mask];
+		uintptr_t *hdls = (uintptr_t *)&ioat->hdls[read & mask];
 		src_hdls[i] = hdls[0];
 		dst_hdls[i] = hdls[1];
 	}
@@ -227,5 +234,9 @@ rte_ioat_completed_copies(int dev_id, uint8_t max_copies,
 	ioat->completed += count;
 	return count;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_IOAT_RAWDEV_H_ */
