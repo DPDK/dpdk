@@ -388,6 +388,17 @@ int otx2_sso_tx_adapter_queue_del(uint8_t id,
 				  const struct rte_eth_dev *eth_dev,
 				  int32_t tx_queue_id);
 
+/* Event crypto adapter API's */
+int otx2_ca_caps_get(const struct rte_eventdev *dev,
+		     const struct rte_cryptodev *cdev, uint32_t *caps);
+
+int otx2_ca_qp_add(const struct rte_eventdev *dev,
+		   const struct rte_cryptodev *cdev, int32_t queue_pair_id,
+		   const struct rte_event *event);
+
+int otx2_ca_qp_del(const struct rte_eventdev *dev,
+		   const struct rte_cryptodev *cdev, int32_t queue_pair_id);
+
 /* Clean up API's */
 typedef void (*otx2_handle_event_t)(void *arg, struct rte_event ev);
 void ssogws_flush_events(struct otx2_ssogws *ws, uint8_t queue_id,

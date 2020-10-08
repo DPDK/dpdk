@@ -1,3 +1,12 @@
 DPDK_21 {
 	local: *;
 };
+
+INTERNAL {
+	global:
+
+	otx2_cpt_af_reg_read;
+	otx2_cpt_af_reg_write;
+
+	local: *;
+};

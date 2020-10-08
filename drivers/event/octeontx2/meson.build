@@ -6,6 +6,7 @@ sources = files('otx2_worker.c',
 		'otx2_worker_dual.c',
 		'otx2_evdev.c',
 		'otx2_evdev_adptr.c',
+		'otx2_evdev_crypto_adptr.c',
 		'otx2_evdev_irq.c',
 		'otx2_evdev_selftest.c',
 		'otx2_tim_evdev.c',
@@ -24,6 +25,7 @@ foreach flag: extra_flags
 	endif
 endforeach
 
-deps += ['bus_pci', 'common_octeontx2', 'mempool_octeontx2', 'pmd_octeontx2']
+deps += ['bus_pci', 'common_octeontx2', 'mempool_octeontx2', 'pmd_octeontx2', 'pmd_octeontx2_crypto']
 
 includes += include_directories('../../crypto/octeontx2')
+includes += include_directories('../../common/cpt')

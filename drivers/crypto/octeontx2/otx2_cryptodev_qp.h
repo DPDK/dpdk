@@ -6,6 +6,7 @@
 #define _OTX2_CRYPTODEV_QP_H_
 
 #include <rte_common.h>
+#include <rte_eventdev.h>
 #include <rte_mempool.h>
 #include <rte_spinlock.h>
 
@@ -30,6 +31,12 @@ struct otx2_cpt_qp {
 	/**< Metabuf info required to support operations on the queue pair */
 	rte_iova_t iq_dma_addr;
 	/**< Instruction queue address */
+	struct rte_event ev;
+	/**< Event information required for binding cryptodev queue to
+	 * eventdev queue. Used by crypto adapter.
+	 */
+	uint8_t ca_enable;
+	/**< Set when queue pair is added to crypto adapter */
 };
 
 #endif /* _OTX2_CRYPTODEV_QP_H_ */

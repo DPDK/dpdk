@@ -21,9 +21,11 @@ int otx2_cpt_queues_detach(const struct rte_cryptodev *dev);
 
 int otx2_cpt_msix_offsets_get(const struct rte_cryptodev *dev);
 
+__rte_internal
 int otx2_cpt_af_reg_read(const struct rte_cryptodev *dev, uint64_t reg,
 			 uint64_t *val);
 
+__rte_internal
 int otx2_cpt_af_reg_write(const struct rte_cryptodev *dev, uint64_t reg,
 			  uint64_t val);
 

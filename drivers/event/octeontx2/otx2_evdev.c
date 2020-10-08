@@ -1587,6 +1587,10 @@ static struct rte_eventdev_ops otx2_sso_ops = {
 
 	.timer_adapter_caps_get = otx2_tim_caps_get,
 
+	.crypto_adapter_caps_get = otx2_ca_caps_get,
+	.crypto_adapter_queue_pair_add = otx2_ca_qp_add,
+	.crypto_adapter_queue_pair_del = otx2_ca_qp_del,
+
 	.xstats_get       = otx2_sso_xstats_get,
 	.xstats_reset     = otx2_sso_xstats_reset,
 	.xstats_get_names = otx2_sso_xstats_get_names,
