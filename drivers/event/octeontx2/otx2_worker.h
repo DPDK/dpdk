@@ -198,8 +198,7 @@ otx2_ssogws_swtag_untag(struct otx2_ssogws *ws)
 static __rte_always_inline void
 otx2_ssogws_swtag_flush(struct otx2_ssogws *ws)
 {
-	otx2_write64(0, OTX2_SSOW_GET_BASE_ADDR(ws->getwrk_op) +
-		     SSOW_LF_GWS_OP_SWTAG_FLUSH);
+	otx2_write64(0, ws->swtag_flush_op);
 	ws->cur_tt = SSO_SYNC_EMPTY;
 }
 
@@ -216,20 +215,18 @@ otx2_ssogws_swtag_wait(struct otx2_ssogws *ws)
 #ifdef RTE_ARCH_ARM64
 	uint64_t swtp;
 
-	asm volatile (
-			"	ldr %[swtb], [%[swtp_loc]]	\n"
-			"	cbz %[swtb], done%=		\n"
-			"	sevl				\n"
-			"rty%=:	wfe				\n"
-			"	ldr %[swtb], [%[swtp_loc]]	\n"
-			"	cbnz %[swtb], rty%=		\n"
-			"done%=:				\n"
-			: [swtb] "=&r" (swtp)
-			: [swtp_loc] "r" (ws->swtp_op)
-			);
+	asm volatile("		ldr %[swtb], [%[swtp_loc]]	\n"
+		     "		tbz %[swtb], 62, done%=		\n"
+		     "		sevl				\n"
+		     "rty%=:	wfe				\n"
+		     "		ldr %[swtb], [%[swtp_loc]]	\n"
+		     "		tbnz %[swtb], 62, rty%=		\n"
+		     "done%=:					\n"
+		     : [swtb] "=&r" (swtp)
+		     : [swtp_loc] "r" (ws->tag_op));
 #else
 	/* Wait for the SWTAG/SWTAG_FULL operation */
-	while (otx2_read64(ws->swtp_op))
+	while (otx2_read64(ws->tag_op) & BIT_ULL(62))
 		;
 #endif
 }
@@ -316,6 +313,8 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
 					     m->ol_flags, 4, flags);
 		otx2_nix_xmit_one(cmd, txq->lmt_addr, txq->io_addr, flags);
 	}
+
+	otx2_write64(0, ws->swtag_flush_op);
 
 	return 1;
 }

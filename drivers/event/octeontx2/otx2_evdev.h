@@ -162,15 +162,15 @@ struct otx2_sso_evdev {
 	struct otx2_timesync_info *tstamp;
 } __rte_cache_aligned;
 
-#define OTX2_SSOGWS_OPS \
-	/* WS ops */			\
-	uintptr_t getwrk_op;		\
-	uintptr_t tag_op;		\
-	uintptr_t wqp_op;		\
-	uintptr_t swtp_op;		\
-	uintptr_t swtag_norm_op;	\
-	uintptr_t swtag_desched_op;	\
-	uint8_t cur_tt;			\
+#define OTX2_SSOGWS_OPS                                                        \
+	/* WS ops */                                                           \
+	uintptr_t getwrk_op;                                                   \
+	uintptr_t tag_op;                                                      \
+	uintptr_t wqp_op;                                                      \
+	uintptr_t swtag_flush_op;                                              \
+	uintptr_t swtag_norm_op;                                               \
+	uintptr_t swtag_desched_op;                                            \
+	uint8_t cur_tt;                                                        \
 	uint8_t cur_grp
 
 /* Event port aka GWS */

@@ -771,7 +771,7 @@ sso_set_port_ops(struct otx2_ssogws *ws, uintptr_t base)
 	ws->tag_op		= base + SSOW_LF_GWS_TAG;
 	ws->wqp_op		= base + SSOW_LF_GWS_WQP;
 	ws->getwrk_op		= base + SSOW_LF_GWS_OP_GET_WORK;
-	ws->swtp_op		= base + SSOW_LF_GWS_SWTP;
+	ws->swtag_flush_op	= base + SSOW_LF_GWS_OP_SWTAG_FLUSH;
 	ws->swtag_norm_op	= base + SSOW_LF_GWS_OP_SWTAG_NORM;
 	ws->swtag_desched_op	= base + SSOW_LF_GWS_OP_SWTAG_DESCHED;
 }
