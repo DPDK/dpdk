@@ -86,32 +86,6 @@ struct rte_ioat_registers {
 
 #define RTE_IOAT_CHANCMP_ALIGN			8	/* CHANCMP address must be 64-bit aligned */
 
-struct rte_ioat_generic_hw_desc {
-	uint32_t size;
-	union {
-		uint32_t control_raw;
-		struct {
-			uint32_t int_enable: 1;
-			uint32_t src_snoop_disable: 1;
-			uint32_t dest_snoop_disable: 1;
-			uint32_t completion_update: 1;
-			uint32_t fence: 1;
-			uint32_t reserved2: 1;
-			uint32_t src_page_break: 1;
-			uint32_t dest_page_break: 1;
-			uint32_t bundle: 1;
-			uint32_t dest_dca: 1;
-			uint32_t hint: 1;
-			uint32_t reserved: 13;
-			uint32_t op: 8;
-		} control;
-	} u;
-	uint64_t src_addr;
-	uint64_t dest_addr;
-	uint64_t next;
-	uint64_t op_specific[4];
-};
-
 struct rte_ioat_dma_hw_desc {
 	uint32_t size;
 	union {

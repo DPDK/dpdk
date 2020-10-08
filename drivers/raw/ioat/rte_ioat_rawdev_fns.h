@@ -8,7 +8,36 @@
 #include <rte_rawdev.h>
 #include <rte_memzone.h>
 #include <rte_prefetch.h>
-#include "rte_ioat_spec.h"
+
+/**
+ * @internal
+ * Structure representing a device descriptor
+ */
+struct rte_ioat_generic_hw_desc {
+	uint32_t size;
+	union {
+		uint32_t control_raw;
+		struct {
+			uint32_t int_enable: 1;
+			uint32_t src_snoop_disable: 1;
+			uint32_t dest_snoop_disable: 1;
+			uint32_t completion_update: 1;
+			uint32_t fence: 1;
+			uint32_t reserved2: 1;
+			uint32_t src_page_break: 1;
+			uint32_t dest_page_break: 1;
+			uint32_t bundle: 1;
+			uint32_t dest_dca: 1;
+			uint32_t hint: 1;
+			uint32_t reserved: 13;
+			uint32_t op: 8;
+		} control;
+	} u;
+	uint64_t src_addr;
+	uint64_t dest_addr;
+	uint64_t next;
+	uint64_t op_specific[4];
+};
 
 /**
  * @internal
@@ -19,7 +48,7 @@ struct rte_ioat_rawdev {
 	const struct rte_memzone *mz;
 	const struct rte_memzone *desc_mz;
 
-	volatile struct rte_ioat_registers *regs;
+	volatile uint16_t *doorbell;
 	phys_addr_t status_addr;
 	phys_addr_t ring_addr;
 
@@ -40,7 +69,15 @@ struct rte_ioat_rawdev {
 
 	/* to report completions, the device will write status back here */
 	volatile uint64_t status __rte_cache_aligned;
+
+	/* pointer to the register bar */
+	volatile struct rte_ioat_registers *regs;
 };
+
+#define RTE_IOAT_CHANSTS_IDLE			0x1
+#define RTE_IOAT_CHANSTS_SUSPENDED		0x2
+#define RTE_IOAT_CHANSTS_HALTED			0x3
+#define RTE_IOAT_CHANSTS_ARMED			0x4
 
 /*
  * Enqueue a copy operation onto the ioat device
@@ -109,7 +146,7 @@ rte_ioat_perform_ops(int dev_id)
 	ioat->desc_ring[(ioat->next_write - 1) & (ioat->ring_size - 1)].u
 			.control.completion_update = 1;
 	rte_compiler_barrier();
-	ioat->regs->dmacount = ioat->next_write;
+	*ioat->doorbell = ioat->next_write;
 	ioat->started = ioat->enqueued;
 }
 

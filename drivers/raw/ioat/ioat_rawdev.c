@@ -4,10 +4,12 @@
 
 #include <rte_cycles.h>
 #include <rte_bus_pci.h>
+#include <rte_memzone.h>
 #include <rte_string_fns.h>
 #include <rte_rawdev_pmd.h>
 
 #include "rte_ioat_rawdev.h"
+#include "ioat_spec.h"
 
 static struct rte_pci_driver ioat_pmd_drv;
 
@@ -268,6 +270,7 @@ ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 	ioat->rawdev = rawdev;
 	ioat->mz = mz;
 	ioat->regs = dev->mem_resource[0].addr;
+	ioat->doorbell = &ioat->regs->dmacount;
 	ioat->ring_size = 0;
 	ioat->desc_ring = NULL;
 	ioat->status_addr = ioat->mz->iova +
