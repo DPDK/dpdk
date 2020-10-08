@@ -41,7 +41,8 @@ extern "C" {
 static const char * const cryptodev_pmd_valid_params[] = {
 	RTE_CRYPTODEV_PMD_NAME_ARG,
 	RTE_CRYPTODEV_PMD_MAX_NB_QP_ARG,
-	RTE_CRYPTODEV_PMD_SOCKET_ID_ARG
+	RTE_CRYPTODEV_PMD_SOCKET_ID_ARG,
+	NULL
 };
 
 /**
