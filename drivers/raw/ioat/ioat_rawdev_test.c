@@ -155,6 +155,52 @@ test_enqueue_copies(int dev_id)
 	return 0;
 }
 
+static int
+test_enqueue_fill(int dev_id)
+{
+	const unsigned int length[] = {8, 64, 1024, 50, 100, 89};
+	struct rte_mbuf *dst = rte_pktmbuf_alloc(pool);
+	char *dst_data = rte_pktmbuf_mtod(dst, char *);
+	struct rte_mbuf *completed[2] = {0};
+	uint64_t pattern = 0xfedcba9876543210;
+	unsigned int i, j;
+
+	for (i = 0; i < RTE_DIM(length); i++) {
+		/* reset dst_data */
+		memset(dst_data, 0, length[i]);
+
+		/* perform the fill operation */
+		if (rte_ioat_enqueue_fill(dev_id, pattern,
+				dst->buf_iova + dst->data_off, length[i],
+				(uintptr_t)dst) != 1) {
+			PRINT_ERR("Error with rte_ioat_enqueue_fill\n");
+			return -1;
+		}
+
+		rte_ioat_perform_ops(dev_id);
+		usleep(100);
+
+		if (rte_ioat_completed_ops(dev_id, 1, (void *)&completed[0],
+			(void *)&completed[1]) != 1) {
+			PRINT_ERR("Error with completed ops\n");
+			return -1;
+		}
+		/* check the result */
+		for (j = 0; j < length[i]; j++) {
+			char pat_byte = ((char *)&pattern)[j % 8];
+			if (dst_data[j] != pat_byte) {
+				PRINT_ERR("Error with fill operation (length = %u): got (%x), not (%x)\n",
+						length[i], dst_data[j],
+						pat_byte);
+				return -1;
+			}
+		}
+	}
+
+	rte_pktmbuf_free(dst);
+	return 0;
+}
+
 int
 ioat_rawdev_test(uint16_t dev_id)
 {
@@ -234,10 +280,26 @@ ioat_rawdev_test(uint16_t dev_id)
 	}
 
 	/* run the test cases */
+	printf("Running Copy Tests\n");
 	for (i = 0; i < 100; i++) {
 		unsigned int j;
 
 		if (test_enqueue_copies(dev_id) != 0)
+			goto err;
+
+		rte_rawdev_xstats_get(dev_id, ids, stats, nb_xstats);
+		for (j = 0; j < nb_xstats; j++)
+			printf("%s: %"PRIu64"   ", snames[j].name, stats[j]);
+		printf("\r");
+	}
+	printf("\n");
+
+	/* test enqueue fill operation */
+	printf("Running Fill Tests\n");
+	for (i = 0; i < 100; i++) {
+		unsigned int j;
+
+		if (test_enqueue_fill(dev_id) != 0)
 			goto err;
 
 		rte_rawdev_xstats_get(dev_id, ids, stats, nb_xstats);

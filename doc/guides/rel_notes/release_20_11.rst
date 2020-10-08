@@ -111,6 +111,8 @@ New Features
 
   * Added support for Intel\ |reg| Data Streaming Accelerator hardware.
     For more information, see https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator
+  * Added support for the fill operation via the API ``rte_ioat_enqueue_fill()``,
+    where the hardware fills an area of memory with a repeating pattern.
   * Added a per-device configuration flag to disable management
     of user-provided completion handles.
   * Renamed the ``rte_ioat_do_copies()`` API to ``rte_ioat_perform_ops()``,

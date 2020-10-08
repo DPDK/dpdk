@@ -115,6 +115,13 @@ enum rte_idxd_ops {
 #define IDXD_FLAG_REQUEST_COMPLETION    (1 << 3)
 #define IDXD_FLAG_CACHE_CONTROL         (1 << 8)
 
+#define IOAT_COMP_UPDATE_SHIFT	3
+#define IOAT_CMD_OP_SHIFT	24
+enum rte_ioat_ops {
+	ioat_op_copy = 0,	/* Standard DMA Operation */
+	ioat_op_fill		/* Block Fill */
+};
+
 /**
  * Hardware descriptor used by DSA hardware, for both bursts and
  * for individual operations.
@@ -203,11 +210,8 @@ struct rte_idxd_rawdev {
 	struct rte_idxd_desc_batch *batch_ring;
 };
 
-/*
- * Enqueue a copy operation onto the ioat device
- */
 static __rte_always_inline int
-__ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
+__ioat_write_desc(int dev_id, uint32_t op, uint64_t src, phys_addr_t dst,
 		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
 {
 	struct rte_ioat_rawdev *ioat =
@@ -229,7 +233,8 @@ __ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 	desc = &ioat->desc_ring[write];
 	desc->size = length;
 	/* set descriptor write-back every 16th descriptor */
-	desc->u.control_raw = (uint32_t)((!(write & 0xF)) << 3);
+	desc->u.control_raw = (uint32_t)((op << IOAT_CMD_OP_SHIFT) |
+			(!(write & 0xF) << IOAT_COMP_UPDATE_SHIFT));
 	desc->src_addr = src;
 	desc->dest_addr = dst;
 
@@ -240,6 +245,27 @@ __ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
 
 	ioat->xstats.enqueued++;
 	return 1;
+}
+
+static __rte_always_inline int
+__ioat_enqueue_fill(int dev_id, uint64_t pattern, phys_addr_t dst,
+		unsigned int length, uintptr_t dst_hdl)
+{
+	static const uintptr_t null_hdl;
+
+	return __ioat_write_desc(dev_id, ioat_op_fill, pattern, dst, length,
+			null_hdl, dst_hdl);
+}
+
+/*
+ * Enqueue a copy operation onto the ioat device
+ */
+static __rte_always_inline int
+__ioat_enqueue_copy(int dev_id, phys_addr_t src, phys_addr_t dst,
+		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
+{
+	return __ioat_write_desc(dev_id, ioat_op_copy, src, dst, length,
+			src_hdl, dst_hdl);
 }
 
 /* add fence to last written descriptor */
@@ -381,6 +407,23 @@ failed:
 }
 
 static __rte_always_inline int
+__idxd_enqueue_fill(int dev_id, uint64_t pattern, rte_iova_t dst,
+		unsigned int length, uintptr_t dst_hdl)
+{
+	const struct rte_idxd_hw_desc desc = {
+			.op_flags =  (idxd_op_fill << IDXD_CMD_OP_SHIFT) |
+				IDXD_FLAG_CACHE_CONTROL,
+			.src = pattern,
+			.dst = dst,
+			.size = length
+	};
+	const struct rte_idxd_user_hdl hdl = {
+			.dst = dst_hdl
+	};
+	return __idxd_write_desc(dev_id, &desc, &hdl);
+}
+
+static __rte_always_inline int
 __idxd_enqueue_copy(int dev_id, rte_iova_t src, rte_iova_t dst,
 		unsigned int length, uintptr_t src_hdl, uintptr_t dst_hdl)
 {
@@ -473,6 +516,18 @@ __idxd_completed_ops(int dev_id, uint8_t max_ops,
 
 	idxd->xstats.completed += n;
 	return n;
+}
+
+static inline int
+rte_ioat_enqueue_fill(int dev_id, uint64_t pattern, phys_addr_t dst,
+		unsigned int len, uintptr_t dst_hdl)
+{
+	enum rte_ioat_dev_type *type =
+			(enum rte_ioat_dev_type *)rte_rawdevs[dev_id].dev_private;
+	if (*type == RTE_IDXD_DEV)
+		return __idxd_enqueue_fill(dev_id, pattern, dst, len, dst_hdl);
+	else
+		return __ioat_enqueue_fill(dev_id, pattern, dst, len, dst_hdl);
 }
 
 static inline int

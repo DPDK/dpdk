@@ -285,6 +285,16 @@ is correct before freeing the data buffers using the returned handles:
         }
 
 
+Filling an Area of Memory
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The IOAT driver also has support for the ``fill`` operation, where an area
+of memory is overwritten, or filled, with a short pattern of data.
+Fill operations can be performed in much the same was as copy operations
+described above, just using the ``rte_ioat_enqueue_fill()`` function rather
+than the ``rte_ioat_enqueue_copy()`` function.
+
+
 Querying Device Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

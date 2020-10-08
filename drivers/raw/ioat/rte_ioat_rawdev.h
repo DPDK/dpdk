@@ -38,6 +38,33 @@ struct rte_ioat_rawdev_config {
 };
 
 /**
+ * Enqueue a fill operation onto the ioat device
+ *
+ * This queues up a fill operation to be performed by hardware, but does not
+ * trigger hardware to begin that operation.
+ *
+ * @param dev_id
+ *   The rawdev device id of the ioat instance
+ * @param pattern
+ *   The pattern to populate the destination buffer with
+ * @param dst
+ *   The physical address of the destination buffer
+ * @param length
+ *   The length of the destination buffer
+ * @param dst_hdl
+ *   An opaque handle for the destination data, to be returned when this
+ *   operation has been completed and the user polls for the completion details.
+ *   NOTE: If hdls_disable configuration option for the device is set, this
+ *   parameter is ignored.
+ * @return
+ *   Number of operations enqueued, either 0 or 1
+ */
+static inline int
+__rte_experimental
+rte_ioat_enqueue_fill(int dev_id, uint64_t pattern, phys_addr_t dst,
+		unsigned int length, uintptr_t dst_hdl);
+
+/**
  * Enqueue a copy operation onto the ioat device
  *
  * This queues up a copy operation to be performed by hardware, but does not
