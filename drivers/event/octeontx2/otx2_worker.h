@@ -255,15 +255,6 @@ otx2_ssogws_head_wait(struct otx2_ssogws *ws)
 #endif
 }
 
-static __rte_always_inline void
-otx2_ssogws_order(struct otx2_ssogws *ws, const uint8_t wait_flag)
-{
-	if (wait_flag)
-		otx2_ssogws_head_wait(ws);
-
-	rte_io_wmb();
-}
-
 static __rte_always_inline const struct otx2_eth_txq *
 otx2_ssogws_xtract_meta(struct rte_mbuf *m,
 			const uint64_t txq_data[][RTE_MAX_QUEUES_PER_PORT])
@@ -295,10 +286,9 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
 		return otx2_sec_event_tx(ws, ev, m, txq, flags);
 	}
 
-	rte_prefetch_non_temporal(&txq_data[m->port][0]);
 	/* Perform header writes before barrier for TSO */
 	otx2_nix_xmit_prepare_tso(m, flags);
-	otx2_ssogws_order(ws, !ev->sched_type);
+	rte_io_wmb();
 	txq = otx2_ssogws_xtract_meta(m, txq_data);
 	otx2_ssogws_prepare_pkt(txq, m, cmd, flags);
 
@@ -306,12 +296,31 @@ otx2_ssogws_event_tx(struct otx2_ssogws *ws, struct rte_event ev[],
 		const uint16_t segdw = otx2_nix_prepare_mseg(m, cmd, flags);
 		otx2_nix_xmit_prepare_tstamp(cmd, &txq->cmd[0],
 					     m->ol_flags, segdw, flags);
-		otx2_nix_xmit_mseg_one(cmd, txq->lmt_addr, txq->io_addr, segdw);
+		if (!ev->sched_type) {
+			otx2_nix_xmit_mseg_prep_lmt(cmd, txq->lmt_addr, segdw);
+			otx2_ssogws_head_wait(ws);
+			if (otx2_nix_xmit_submit_lmt(txq->io_addr) == 0)
+				otx2_nix_xmit_mseg_one(cmd, txq->lmt_addr,
+						       txq->io_addr, segdw);
+		} else {
+			otx2_nix_xmit_mseg_one(cmd, txq->lmt_addr, txq->io_addr,
+					       segdw);
+		}
 	} else {
 		/* Passing no of segdw as 4: HDR + EXT + SG + SMEM */
 		otx2_nix_xmit_prepare_tstamp(cmd, &txq->cmd[0],
 					     m->ol_flags, 4, flags);
-		otx2_nix_xmit_one(cmd, txq->lmt_addr, txq->io_addr, flags);
+
+		if (!ev->sched_type) {
+			otx2_nix_xmit_prep_lmt(cmd, txq->lmt_addr, flags);
+			otx2_ssogws_head_wait(ws);
+			if (otx2_nix_xmit_submit_lmt(txq->io_addr) == 0)
+				otx2_nix_xmit_one(cmd, txq->lmt_addr,
+						  txq->io_addr, flags);
+		} else {
+			otx2_nix_xmit_one(cmd, txq->lmt_addr, txq->io_addr,
+					  flags);
+		}
 	}
 
 	otx2_write64(0, ws->swtag_flush_op);
