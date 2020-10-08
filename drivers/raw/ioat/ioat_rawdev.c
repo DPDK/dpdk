@@ -128,8 +128,6 @@ ioat_dev_close(struct rte_rawdev *dev __rte_unused)
 	return 0;
 }
 
-extern int ioat_rawdev_test(uint16_t dev_id);
-
 static int
 ioat_rawdev_create(const char *name, struct rte_pci_device *dev)
 {

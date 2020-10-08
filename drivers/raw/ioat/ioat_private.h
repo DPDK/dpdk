@@ -63,6 +63,8 @@ int ioat_xstats_get_names(const struct rte_rawdev *dev,
 int ioat_xstats_reset(struct rte_rawdev *dev, const uint32_t *ids,
 		uint32_t nb_ids);
 
+extern int ioat_rawdev_test(uint16_t dev_id);
+
 extern int idxd_rawdev_create(const char *name, struct rte_device *dev,
 		       const struct idxd_rawdev *idxd,
 		       const struct rte_rawdev_ops *ops);
@@ -74,8 +76,6 @@ extern int idxd_dev_configure(const struct rte_rawdev *dev,
 
 extern int idxd_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 		size_t info_size);
-
-extern int idxd_rawdev_test(uint16_t dev_id);
 
 extern int idxd_dev_dump(struct rte_rawdev *dev, FILE *f);
 

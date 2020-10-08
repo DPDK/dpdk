@@ -32,7 +32,7 @@ struct idxd_vdev_args {
 
 static const struct rte_rawdev_ops idxd_vdev_ops = {
 		.dev_close = idxd_rawdev_close,
-		.dev_selftest = idxd_rawdev_test,
+		.dev_selftest = ioat_rawdev_test,
 		.dump = idxd_dev_dump,
 		.dev_configure = idxd_dev_configure,
 		.dev_info_get = idxd_dev_info_get,
