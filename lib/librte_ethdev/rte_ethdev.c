@@ -3660,6 +3660,50 @@ rte_eth_led_off(uint16_t port_id)
 	return eth_err(port_id, (*dev->dev_ops->dev_led_off)(dev));
 }
 
+int
+rte_eth_fec_get_capability(uint16_t port_id,
+			   struct rte_eth_fec_capa *speed_fec_capa,
+			   unsigned int num)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	if (speed_fec_capa == NULL && num > 0)
+		return -EINVAL;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fec_get_capability, -ENOTSUP);
+	ret = (*dev->dev_ops->fec_get_capability)(dev, speed_fec_capa, num);
+
+	return ret;
+}
+
+int
+rte_eth_fec_get(uint16_t port_id, uint32_t *fec_capa)
+{
+	struct rte_eth_dev *dev;
+
+	if (fec_capa == NULL)
+		return -EINVAL;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fec_get, -ENOTSUP);
+	return eth_err(port_id, (*dev->dev_ops->fec_get)(dev, fec_capa));
+}
+
+int
+rte_eth_fec_set(uint16_t port_id, uint32_t fec_capa)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fec_set, -ENOTSUP);
+	return eth_err(port_id, (*dev->dev_ops->fec_set)(dev, fec_capa));
+}
+
 /*
  * Returns index into MAC address array of addr. Use 00:00:00:00:00:00 to find
  * an empty spot.

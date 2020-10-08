@@ -575,6 +575,87 @@ typedef int (*eth_tx_hairpin_queue_setup_t)
 	 const struct rte_eth_hairpin_conf *hairpin_conf);
 
 /**
+ * @internal
+ * Get Forward Error Correction(FEC) capability.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param speed_fec_capa
+ *   speed_fec_capa is out only with per-speed capabilities.
+ * @param num
+ *   a number of elements in an speed_fec_capa array.
+ *
+ * @return
+ *   Negative errno value on error, positive value on success.
+ *
+ * @retval positive value
+ *   A non-negative value lower or equal to num: success. The return value
+ *   is the number of entries filled in the fec capa array.
+ *   A non-negative value higher than num: error, the given fec capa array
+ *   is too small. The return value corresponds to the num that should
+ *   be given to succeed. The entries in the fec capa array are not valid
+ *   and shall not be used by the caller.
+ * @retval -ENOTSUP
+ *   Operation is not supported.
+ * @retval -EIO
+ *   Device is removed.
+ * @retval -EINVAL
+ *   *num* or *speed_fec_capa* invalid.
+ */
+typedef int (*eth_fec_get_capability_t)(struct rte_eth_dev *dev,
+		struct rte_eth_fec_capa *speed_fec_capa, unsigned int num);
+
+/**
+ * @internal
+ * Get Forward Error Correction(FEC) mode.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param fec_capa
+ *   a bitmask of enabled FEC modes. If AUTO bit is set, other
+ *   bits specify FEC modes which may be negotiated. If AUTO
+ *   bit is clear, specify FEC modes to be used (only one valid
+ *   mode per speed may be set).
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, get FEC success.
+ * @retval -ENOTSUP
+ *   Operation is not supported.
+ * @retval -EIO
+ *   Device is removed.
+ */
+typedef int (*eth_fec_get_t)(struct rte_eth_dev *dev,
+			     uint32_t *fec_capa);
+
+/**
+ * @internal
+ * Set Forward Error Correction(FEC) mode.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param fec_capa
+ *   bitmask of allowed FEC modes. It must be only one
+ *   if AUTO is disabled. If AUTO is enabled, other
+ *   bits specify FEC modes which may be negotiated.
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, set FEC success.
+ * @retval -ENOTSUP
+ *   Operation is not supported.
+ * @retval -EINVAL
+ *   Unsupported FEC mode requested.
+ * @retval -EIO
+ *   Device is removed.
+ */
+typedef int (*eth_fec_set_t)(struct rte_eth_dev *dev, uint32_t fec_capa);
+
+/**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
@@ -713,6 +794,13 @@ struct eth_dev_ops {
 	/**< Set up device RX hairpin queue. */
 	eth_tx_hairpin_queue_setup_t tx_hairpin_queue_setup;
 	/**< Set up device TX hairpin queue. */
+
+	eth_fec_get_capability_t fec_get_capability;
+	/**< Get Forward Error Correction(FEC) capability. */
+	eth_fec_get_t fec_get;
+	/**< Get Forward Error Correction(FEC) mode. */
+	eth_fec_set_t fec_set;
+	/**< Set Forward Error Correction(FEC) mode. */
 };
 
 /**

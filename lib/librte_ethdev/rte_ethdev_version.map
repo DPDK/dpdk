@@ -229,6 +229,9 @@ EXPERIMENTAL {
 	# added in 20.11
 	rte_eth_link_speed_to_str;
 	rte_eth_link_to_str;
+	rte_eth_fec_get_capability;
+	rte_eth_fec_get;
+	rte_eth_fec_set;
 };
 
 INTERNAL {

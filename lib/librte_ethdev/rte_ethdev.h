@@ -1544,6 +1544,29 @@ struct rte_eth_dcb_info {
 	struct rte_eth_dcb_tc_queue_mapping tc_queue;
 };
 
+/**
+ * This enum indicates the possible Forward Error Correction (FEC) modes
+ * of an ethdev port.
+ */
+enum rte_eth_fec_mode {
+	RTE_ETH_FEC_NOFEC = 0,      /**< FEC is off */
+	RTE_ETH_FEC_AUTO,	    /**< FEC autonegotiation modes */
+	RTE_ETH_FEC_BASER,          /**< FEC using common algorithm */
+	RTE_ETH_FEC_RS,             /**< FEC using RS algorithm */
+};
+
+/* Translate from FEC mode to FEC capa */
+#define RTE_ETH_FEC_MODE_TO_CAPA(x)	(1U << (x))
+
+/* This macro indicates FEC capa mask */
+#define RTE_ETH_FEC_MODE_CAPA_MASK(x)	(1U << (RTE_ETH_FEC_ ## x))
+
+/* A structure used to get capabilities per link speed */
+struct rte_eth_fec_capa {
+	uint32_t speed; /**< Link speed (see ETH_SPEED_NUM_*) */
+	uint32_t capa;  /**< FEC capabilities bitmask */
+};
+
 #define RTE_ETH_ALL RTE_MAX_ETHPORTS
 
 /* Macros to check for valid port */
@@ -3389,6 +3412,88 @@ int  rte_eth_led_on(uint16_t port_id);
  *   - (-EIO) if device is removed.
  */
 int  rte_eth_led_off(uint16_t port_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get Forward Error Correction(FEC) capability.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param speed_fec_capa
+ *   speed_fec_capa is out only with per-speed capabilities.
+ *   If set to NULL, the function returns the required number
+ *   of required array entries.
+ * @param num
+ *   a number of elements in an speed_fec_capa array.
+ *
+ * @return
+ *   - A non-negative value lower or equal to num: success. The return value
+ *     is the number of entries filled in the fec capa array.
+ *   - A non-negative value higher than num: error, the given fec capa array
+ *     is too small. The return value corresponds to the num that should
+ *     be given to succeed. The entries in fec capa array are not valid and
+ *     shall not be used by the caller.
+ *   - (-ENOTSUP) if underlying hardware OR driver doesn't support.
+ *     that operation.
+ *   - (-EIO) if device is removed.
+ *   - (-ENODEV)  if *port_id* invalid.
+ *   - (-EINVAL)  if *num* or *speed_fec_capa* invalid
+ */
+__rte_experimental
+int rte_eth_fec_get_capability(uint16_t port_id,
+			       struct rte_eth_fec_capa *speed_fec_capa,
+			       unsigned int num);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get current Forward Error Correction(FEC) mode.
+ * If link is down and AUTO is enabled, AUTO is returned, otherwise,
+ * configured FEC mode is returned.
+ * If link is up, current FEC mode is returned.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param fec_capa
+ *   A bitmask of enabled FEC modes. If AUTO bit is set, other
+ *   bits specify FEC modes which may be negotiated. If AUTO
+ *   bit is clear, specify FEC modes to be used (only one valid
+ *   mode per speed may be set).
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if underlying hardware OR driver doesn't support.
+ *     that operation.
+ *   - (-EIO) if device is removed.
+ *   - (-ENODEV)  if *port_id* invalid.
+ */
+__rte_experimental
+int rte_eth_fec_get(uint16_t port_id, uint32_t *fec_capa);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Set Forward Error Correction(FEC) mode.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param fec_capa
+ *   A bitmask of allowed FEC modes. If AUTO bit is set, other
+ *   bits specify FEC modes which may be negotiated. If AUTO
+ *   bit is clear, specify FEC modes to be used (only one valid
+ *   mode per speed may be set).
+ * @return
+ *   - (0) if successful.
+ *   - (-EINVAL) if the FEC mode is not valid.
+ *   - (-ENOTSUP) if underlying hardware OR driver doesn't support.
+ *   - (-EIO) if device is removed.
+ *   - (-ENODEV)  if *port_id* invalid.
+ */
+__rte_experimental
+int rte_eth_fec_set(uint16_t port_id, uint32_t fec_capa);
 
 /**
  * Get current status of the Ethernet link flow control for Ethernet device

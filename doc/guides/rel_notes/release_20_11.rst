@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added the FEC API, for a generic FEC query and config.**
+
+  Added the FEC API which provides functions for query FEC capabilities and
+  current FEC mode from device. Also, API for configuring FEC mode is also provided.
+
 * **Updated Broadcom bnxt driver.**
 
   Updated the Broadcom bnxt driver with new features and improvements, including:
