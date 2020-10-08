@@ -8,4 +8,5 @@ sources = files('ioat_rawdev.c',
 deps += ['rawdev', 'bus_pci', 'mbuf']
 
 install_headers('rte_ioat_rawdev.h',
+		'rte_ioat_rawdev_fns.h',
 		'rte_ioat_spec.h')
