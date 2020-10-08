@@ -238,7 +238,7 @@ F: lib/librte_eal/include/rte_bitmap.h
 F: app/test/test_bitmap.c
 
 MCSlock
-M: Phil Yang <phil.yang@arm.com>
+M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
 F: lib/librte_eal/include/generic/rte_mcslock.h
 F: app/test/test_mcslock.c
 
