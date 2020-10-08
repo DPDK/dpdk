@@ -219,6 +219,11 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 			return ret;
 		}
 
+		/* Enable mbuf fast free if PMD has the capability. */
+		if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+			local_port_conf.txmode.offloads |=
+				DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
 		rx_conf = dev_info.default_rxconf;
 		rx_conf.offloads = port_conf.rxmode.offloads;
 
