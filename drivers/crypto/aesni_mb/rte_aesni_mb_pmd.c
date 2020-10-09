@@ -213,19 +213,11 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 			sess->cipher.direction = DECRYPT;
 
 		sess->auth.algo = AES_GMAC;
-		/*
-		 * Multi-buffer lib supports 8, 12 and 16 bytes of digest.
-		 * If size requested is different, generate the full digest
-		 * (16 bytes) in a temporary location and then memcpy
-		 * the requested number of bytes.
-		 */
-		if (sess->auth.req_digest_len != 16 &&
-				sess->auth.req_digest_len != 12 &&
-				sess->auth.req_digest_len != 8) {
-			sess->auth.gen_digest_len = 16;
-		} else {
-			sess->auth.gen_digest_len = sess->auth.req_digest_len;
+		if (sess->auth.req_digest_len > get_digest_byte_length(AES_GMAC)) {
+			AESNI_MB_LOG(ERR, "Invalid digest size\n");
+			return -EINVAL;
 		}
+		sess->auth.gen_digest_len = sess->auth.req_digest_len;
 		sess->iv.length = xform->auth.iv.length;
 		sess->iv.offset = xform->auth.iv.offset;
 
@@ -721,6 +713,12 @@ aesni_mb_set_session_aead_parameters(const MB_MGR *mb_mgr,
 			return -EINVAL;
 		}
 
+		/* GCM digest size must be between 1 and 16 */
+		if (sess->auth.req_digest_len == 0 ||
+				sess->auth.req_digest_len > 16) {
+			AESNI_MB_LOG(ERR, "Invalid digest size\n");
+			return -EINVAL;
+		}
 		break;
 
 	default:
