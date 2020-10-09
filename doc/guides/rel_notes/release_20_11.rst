@@ -326,6 +326,9 @@ API Changes
 * sched: Added ``subport_profile_id`` as argument
   to function ``rte_sched_subport_config``.
 
+* sched: Removed ``tb_rate``, ``tc_rate``, ``tc_period`` and ``tb_size``
+  from ``struct rte_sched_subport_params``.
+
 
 ABI Changes
 -----------
