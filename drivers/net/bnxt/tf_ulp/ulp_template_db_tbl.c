@@ -368,6 +368,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.mark_db_lfid_entries    = 65536,
 	.mark_db_gfid_entries    = 65536,
 	.flow_count_db_entries   = 16384,
+	.fdb_parent_flow_entries = 2,
 	.num_resources_per_flow  = 8,
 	.num_phy_ports           = 2,
 	.ext_cntr_table_type     = 0,

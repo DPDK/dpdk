@@ -11,6 +11,7 @@
 
 #define ULP_BUFFER_ALIGN_8_BYTE		8
 #define ULP_BUFFER_ALIGN_16_BYTE	16
+#define ULP_BUFFER_ALIGN_64_BYTE	64
 
 /*
  * Macros for bitmap sets and gets
@@ -52,6 +53,9 @@
 #define ULP_BITS_2_BYTE(bits_x)		(((bits_x) + 7) / 8)
 /* Macro to convert bits to bytes with no round off*/
 #define ULP_BITS_2_BYTE_NR(bits_x)	((bits_x) / 8)
+
+/* Macro to round off to next multiple of 8*/
+#define ULP_BYTE_ROUND_OFF_8(x)	(((x) + 7) & ~7)
 
 /* Macros to read the computed fields */
 #define ULP_COMP_FLD_IDX_RD(params, idx) \

@@ -207,13 +207,16 @@ ulp_flow_db_alloc_resource(struct bnxt_ulp_flow_db *flow_db)
 		return -ENOMEM;
 	}
 	size = (flow_tbl->num_flows / sizeof(uint64_t)) + 1;
-	flow_tbl->active_reg_flows = rte_zmalloc("active reg flows", size, 0);
+	size =  ULP_BYTE_ROUND_OFF_8(size);
+	flow_tbl->active_reg_flows = rte_zmalloc("active reg flows", size,
+						 ULP_BUFFER_ALIGN_64_BYTE);
 	if (!flow_tbl->active_reg_flows) {
 		BNXT_TF_DBG(ERR, "Failed to alloc memory active reg flows\n");
 		return -ENOMEM;
 	}
 
-	flow_tbl->active_dflt_flows = rte_zmalloc("active dflt flows", size, 0);
+	flow_tbl->active_dflt_flows = rte_zmalloc("active dflt flows", size,
+						  ULP_BUFFER_ALIGN_64_BYTE);
 	if (!flow_tbl->active_dflt_flows) {
 		BNXT_TF_DBG(ERR, "Failed to alloc memory active dflt flows\n");
 		return -ENOMEM;
@@ -282,6 +285,86 @@ ulp_flow_db_func_id_set(struct bnxt_ulp_flow_db *flow_db,
 		flow_db->func_id_tbl[flow_id] = func_id;
 	else /* This should never happen */
 		BNXT_TF_DBG(ERR, "Invalid flow id, flowdb corrupt\n");
+}
+
+/*
+ * Initialize the parent-child database. Memory is allocated in this
+ * call and assigned to the database
+ *
+ * flow_db [in] Ptr to flow table
+ * num_entries[in] - number of entries to allocate
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+static int32_t
+ulp_flow_db_parent_tbl_init(struct bnxt_ulp_flow_db *flow_db,
+			    uint32_t num_entries)
+{
+	struct ulp_fdb_parent_child_db *p_db;
+	uint32_t size, idx;
+
+	/* update the sizes for the allocation */
+	p_db = &flow_db->parent_child_db;
+	p_db->child_bitset_size = (flow_db->flow_tbl.num_flows /
+				   sizeof(uint64_t)) + 1; /* size in bytes */
+	p_db->child_bitset_size = ULP_BYTE_ROUND_OFF_8(p_db->child_bitset_size);
+	p_db->entries_count = num_entries;
+
+	/* allocate the memory */
+	p_db->parent_flow_tbl = rte_zmalloc("fdb parent flow tbl",
+					    sizeof(struct ulp_fdb_parent_info) *
+					    p_db->entries_count, 0);
+	if (!p_db->parent_flow_tbl) {
+		BNXT_TF_DBG(ERR,
+			    "Failed to allocate memory fdb parent flow tbl\n");
+		return -ENOMEM;
+	}
+	size = p_db->child_bitset_size * p_db->entries_count;
+
+	/*
+	 * allocate the big chunk of memory to be statically carved into
+	 * child_fid_bitset pointer.
+	 */
+	p_db->parent_flow_tbl_mem = rte_zmalloc("fdb parent flow tbl mem",
+						size,
+						ULP_BUFFER_ALIGN_64_BYTE);
+	if (!p_db->parent_flow_tbl_mem) {
+		BNXT_TF_DBG(ERR,
+			    "Failed to allocate memory fdb parent flow mem\n");
+		return -ENOMEM;
+	}
+
+	/* set the pointers in parent table to their offsets */
+	for (idx = 0 ; idx < p_db->entries_count; idx++) {
+		p_db->parent_flow_tbl[idx].child_fid_bitset =
+			(uint64_t *)&p_db->parent_flow_tbl_mem[idx *
+			p_db->child_bitset_size];
+	}
+	/* success */
+	return 0;
+}
+
+/*
+ * Deinitialize the parent-child database. Memory is deallocated in
+ * this call and all flows should have been purged before this
+ * call.
+ *
+ * flow_db [in] Ptr to flow table
+ *
+ * Returns none
+ */
+static void
+ulp_flow_db_parent_tbl_deinit(struct bnxt_ulp_flow_db *flow_db)
+{
+	/* free the memory related to parent child database */
+	if (flow_db->parent_child_db.parent_flow_tbl_mem) {
+		rte_free(flow_db->parent_child_db.parent_flow_tbl_mem);
+		flow_db->parent_child_db.parent_flow_tbl_mem = NULL;
+	}
+	if (flow_db->parent_child_db.parent_flow_tbl) {
+		rte_free(flow_db->parent_child_db.parent_flow_tbl);
+		flow_db->parent_child_db.parent_flow_tbl = NULL;
+	}
 }
 
 /*
@@ -357,6 +440,14 @@ ulp_flow_db_init(struct bnxt_ulp_context *ulp_ctxt)
 			    "Failed to allocate mem for flow table func id\n");
 		goto error_free;
 	}
+	/* initialize the parent child database */
+	if (ulp_flow_db_parent_tbl_init(flow_db,
+					dparms->fdb_parent_flow_entries)) {
+		BNXT_TF_DBG(ERR,
+			    "Failed to allocate mem for parent child db\n");
+		goto error_free;
+	}
+
 	/* All good so return. */
 	BNXT_TF_DBG(INFO, "FlowDB initialized with %d flows.\n",
 		    flow_tbl->num_flows);
@@ -388,6 +479,7 @@ ulp_flow_db_deinit(struct bnxt_ulp_context *ulp_ctxt)
 	bnxt_ulp_cntxt_ptr2_flow_db_set(ulp_ctxt, NULL);
 
 	/* Free up all the memory. */
+	ulp_flow_db_parent_tbl_deinit(flow_db);
 	ulp_flow_db_dealloc_resource(flow_db);
 	rte_free(flow_db->func_id_tbl);
 	rte_free(flow_db);
@@ -578,7 +670,7 @@ ulp_flow_db_resource_del(struct bnxt_ulp_context *ulp_ctxt,
 	flow_tbl = &flow_db->flow_tbl;
 	/* check for max flows */
 	if (fid >= flow_tbl->num_flows || !fid) {
-		BNXT_TF_DBG(ERR, "Invalid flow index\n");
+		BNXT_TF_DBG(ERR, "Invalid flow index %x\n", fid);
 		return -EINVAL;
 	}
 
@@ -1048,5 +1140,255 @@ ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 		return -ENOENT;
 	}
 	*cfa_action = hndl;
+	return 0;
+}
+
+/*
+ * Allocate the entry in the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * fid [in] The flow id to the flow entry
+ *
+ * returns index on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_flow_alloc(struct bnxt_ulp_context *ulp_ctxt,
+			      uint32_t fid)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx, free_idx = 0;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	/* check for max flows */
+	if (fid >= flow_db->flow_tbl.num_flows || !fid) {
+		BNXT_TF_DBG(ERR, "Invalid flow index\n");
+		return -EINVAL;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	for (idx = 0; idx <= p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid == fid) {
+			BNXT_TF_DBG(ERR, "fid is already allocated\n");
+			return -EINVAL;
+		}
+		if (!p_pdb->parent_flow_tbl[idx].parent_fid && !free_idx)
+			free_idx = idx + 1;
+	}
+	/* no free slots */
+	if (!free_idx) {
+		BNXT_TF_DBG(ERR, "parent child db is full\n");
+		return -ENOMEM;
+	}
+
+	free_idx -= 1;
+	/* set the Fid in the parent child */
+	p_pdb->parent_flow_tbl[free_idx].parent_fid = fid;
+	return free_idx;
+}
+
+/*
+ * Free the entry in the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * fid [in] The flow id to the flow entry
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_flow_free(struct bnxt_ulp_context *ulp_ctxt,
+			     uint32_t fid)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	/* check for max flows */
+	if (fid >= flow_db->flow_tbl.num_flows || !fid) {
+		BNXT_TF_DBG(ERR, "Invalid flow index\n");
+		return -EINVAL;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	for (idx = 0; idx <= p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid == fid) {
+			/* free the contents */
+			p_pdb->parent_flow_tbl[idx].parent_fid = 0;
+			memset(p_pdb->parent_flow_tbl[idx].child_fid_bitset,
+			       0, p_pdb->child_bitset_size);
+			return 0;
+		}
+	}
+	BNXT_TF_DBG(ERR, "parent entry not found = %x\n", fid);
+	return -EINVAL;
+}
+
+/*
+ * Set or reset the child flow in the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * child_fid [in] The flow id of the child flow entry
+ * set_flag [in] Use 1 for setting child, 0 to reset
+ *
+ * returns zero on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_child_flow_set(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t parent_fid,
+				  uint32_t child_fid,
+				  uint32_t set_flag)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx, a_idx;
+	uint64_t *t;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	/* check for fid validity */
+	if (parent_fid >= flow_db->flow_tbl.num_flows || !parent_fid) {
+		BNXT_TF_DBG(ERR, "Invalid parent flow index %x\n", parent_fid);
+		return -EINVAL;
+	}
+
+	/* check for fid validity */
+	if (child_fid >= flow_db->flow_tbl.num_flows || !child_fid) {
+		BNXT_TF_DBG(ERR, "Invalid child flow index %x\n", child_fid);
+		return -EINVAL;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	a_idx = child_fid / ULP_INDEX_BITMAP_SIZE;
+	for (idx = 0; idx <= p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid == parent_fid) {
+			t = p_pdb->parent_flow_tbl[idx].child_fid_bitset;
+			if (set_flag)
+				ULP_INDEX_BITMAP_SET(t[a_idx], child_fid);
+			else
+				ULP_INDEX_BITMAP_RESET(t[a_idx], child_fid);
+			return 0;
+		}
+	}
+	BNXT_TF_DBG(ERR, "Unable to set the parent-child flow %x:%x\n",
+		    parent_fid, child_fid);
+	return -1;
+}
+
+/*
+ * Get the parent index from the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * parent_idx [out] The parent index of parent flow entry
+ *
+ * returns zero on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_flow_idx_get(struct bnxt_ulp_context *ulp_ctxt,
+				uint32_t parent_fid,
+				uint32_t *parent_idx)
+{
+	struct bnxt_ulp_flow_db *flow_db;
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx;
+
+	flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ulp_ctxt);
+	if (!flow_db) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	/* check for fid validity */
+	if (parent_fid >= flow_db->flow_tbl.num_flows || !parent_fid) {
+		BNXT_TF_DBG(ERR, "Invalid parent flow index %x\n", parent_fid);
+		return -EINVAL;
+	}
+
+	p_pdb = &flow_db->parent_child_db;
+	for (idx = 0; idx <= p_pdb->entries_count; idx++) {
+		if (p_pdb->parent_flow_tbl[idx].parent_fid == parent_fid) {
+			*parent_idx = idx;
+			return 0;
+		}
+	}
+	BNXT_TF_DBG(ERR, "Unable to get the parent flow %x\n", parent_fid);
+	return -1;
+}
+
+/*
+ * Get the next child flow in the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * child_fid [in/out] The flow id of the child flow entry
+ *
+ * returns zero on success and negative on failure.
+ * Pass child_fid as zero for first entry.
+ */
+int32_t
+ulp_flow_db_parent_child_flow_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
+					     uint32_t parent_idx,
+					     uint32_t *child_fid)
+{
+	struct ulp_fdb_parent_child_db *p_pdb;
+	uint32_t idx, s_idx, mod_fid;
+	uint32_t next_fid = *child_fid;
+	uint64_t *child_bitset;
+	uint64_t bs;
+
+	/* check for fid validity */
+	p_pdb = &flow_db->parent_child_db;
+	if (parent_idx >= p_pdb->entries_count ||
+	    !p_pdb->parent_flow_tbl[parent_idx].parent_fid) {
+		BNXT_TF_DBG(ERR, "Invalid parent flow index %x\n", parent_idx);
+		return -EINVAL;
+	}
+
+	child_bitset = p_pdb->parent_flow_tbl[parent_idx].child_fid_bitset;
+	do {
+		/* increment the flow id to find the next valid flow id */
+		next_fid++;
+		if (next_fid >= flow_db->flow_tbl.num_flows)
+			return -ENOENT;
+		idx = next_fid / ULP_INDEX_BITMAP_SIZE;
+		mod_fid = next_fid % ULP_INDEX_BITMAP_SIZE;
+		s_idx = idx;
+		while (!(bs = child_bitset[idx])) {
+			idx++;
+			if ((idx * ULP_INDEX_BITMAP_SIZE) >=
+			    flow_db->flow_tbl.num_flows)
+				return -ENOENT;
+		}
+		/*
+		 * remove the previous bits in the bitset bs to find the
+		 * next non zero bit in the bitset. This needs to be done
+		 * only if the idx is same as he one you started.
+		 */
+		if (s_idx == idx)
+			bs &= (-1UL >> mod_fid);
+		next_fid = (idx * ULP_INDEX_BITMAP_SIZE) + __builtin_clzl(bs);
+		if (*child_fid >= next_fid) {
+			BNXT_TF_DBG(ERR, "Parent Child Database is corrupt\n");
+			return -ENOENT;
+		}
+		idx = next_fid / ULP_INDEX_BITMAP_SIZE;
+	} while (!ULP_INDEX_BITMAP_GET(child_bitset[idx], next_fid));
+	*child_fid = next_fid;
 	return 0;
 }

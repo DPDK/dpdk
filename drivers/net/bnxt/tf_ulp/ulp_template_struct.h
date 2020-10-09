@@ -160,6 +160,7 @@ struct bnxt_ulp_device_params {
 	uint64_t			int_flow_db_num_entries;
 	uint64_t			ext_flow_db_num_entries;
 	uint32_t			flow_count_db_entries;
+	uint32_t			fdb_parent_flow_entries;
 	uint32_t			num_resources_per_flow;
 	uint32_t			ext_cntr_table_type;
 	uint64_t			byte_count_mask;

@@ -52,11 +52,26 @@ struct bnxt_ulp_flow_tbl {
 	uint32_t	num_resources;
 };
 
+/* Structure to maintain parent-child flow relationships */
+struct ulp_fdb_parent_info {
+	uint32_t	parent_fid;
+	uint64_t	*child_fid_bitset;
+};
+
+/* Structure to maintain parent-child flow relationships */
+struct ulp_fdb_parent_child_db {
+	struct ulp_fdb_parent_info	*parent_flow_tbl;
+	uint32_t			child_bitset_size;
+	uint32_t			entries_count;
+	uint8_t				*parent_flow_tbl_mem;
+};
+
 /* Structure for the flow database resource information. */
 struct bnxt_ulp_flow_db {
 	struct bnxt_ulp_flow_tbl	flow_tbl;
 	uint16_t			*func_id_tbl;
 	uint32_t			func_id_tbl_size;
+	struct ulp_fdb_parent_child_db	parent_child_db;
 };
 
 /* flow db resource params to add resources */
@@ -235,5 +250,74 @@ int32_t
 ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint32_t flow_id,
 				   uint16_t *cfa_action);
+/*
+ * Allocate the entry in the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * fid [in] The flow id to the flow entry
+ *
+ * returns index on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_flow_alloc(struct bnxt_ulp_context *ulp_ctxt,
+			      uint32_t fid);
+
+/*
+ * Free the entry in the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * fid [in] The flow id to the flow entry
+ *
+ * returns 0 on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_flow_free(struct bnxt_ulp_context *ulp_ctxt,
+			     uint32_t fid);
+
+/*
+ * Set or reset the child flow in the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * child_fid [in] The flow id of the child flow entry
+ * set_flag [in] Use 1 for setting child, 0 to reset
+ *
+ * returns zero on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_child_flow_set(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t parent_fid,
+				  uint32_t child_fid,
+				  uint32_t set_flag);
+
+/*
+ * Get the parent index from the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * parent_idx [out] The parent index of parent flow entry
+ *
+ * returns zero on success and negative on failure.
+ */
+int32_t
+ulp_flow_db_parent_flow_idx_get(struct bnxt_ulp_context *ulp_ctxt,
+				uint32_t parent_fid,
+				uint32_t *parent_idx);
+
+/*
+ * Get the next child flow in the parent-child database
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * parent_fid [in] The flow id of the parent flow entry
+ * child_fid [in/out] The flow id of the child flow entry
+ *
+ * returns zero on success and negative on failure.
+ * Pass child_fid as zero for first entry.
+ */
+int32_t
+ulp_flow_db_parent_child_flow_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
+					     uint32_t parent_idx,
+					     uint32_t *child_fid);
+
 
 #endif /* _ULP_FLOW_DB_H_ */
