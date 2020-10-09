@@ -490,15 +490,7 @@ exit:
 #define IV_OFF (sizeof(struct rte_crypto_op) + sizeof(struct rte_crypto_sym_op))
 #define CRYPTODEV_FIPS_MAX_RETRIES	16
 
-typedef int (*fips_test_one_case_t)(void);
-typedef int (*fips_prepare_op_t)(void);
-typedef int (*fips_prepare_xform_t)(struct rte_crypto_sym_xform *);
-
-struct fips_test_ops {
-	fips_prepare_xform_t prepare_xform;
-	fips_prepare_op_t prepare_op;
-	fips_test_one_case_t test;
-} test_ops;
+struct fips_test_ops test_ops;
 
 static int
 prepare_data_mbufs(struct fips_val *val)
@@ -622,13 +614,21 @@ prepare_cipher_op(void)
 	return 0;
 }
 
-static int
+int
 prepare_auth_op(void)
 {
 	struct rte_crypto_sym_op *sym = env.op->sym;
 	int ret;
 
 	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+
+	if (vec.iv.len) {
+		uint8_t *iv = rte_crypto_op_ctod_offset(env.op, uint8_t *,
+				IV_OFF);
+		memset(iv, 0, vec.iv.len);
+		if (vec.iv.val)
+			memcpy(iv, vec.iv.val, vec.iv.len);
+	}
 
 	ret = prepare_data_mbufs(&vec.pt);
 	if (ret < 0)
@@ -660,7 +660,7 @@ prepare_auth_op(void)
 	return 0;
 }
 
-static int
+int
 prepare_aead_op(void)
 {
 	struct rte_crypto_sym_op *sym = env.op->sym;
@@ -850,7 +850,7 @@ prepare_hmac_xform(struct rte_crypto_sym_xform *xform)
 	return 0;
 }
 
-static int
+int
 prepare_gcm_xform(struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_cryptodev_symmetric_capability *cap;
@@ -890,6 +890,47 @@ prepare_gcm_xform(struct rte_crypto_sym_xform *xform)
 				aead_xform->digest_length,
 				aead_xform->aad_length,
 				aead_xform->iv.length);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+int
+prepare_gmac_xform(struct rte_crypto_sym_xform *xform)
+{
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_crypto_auth_xform *auth_xform = &xform->auth;
+
+	xform->type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
+	auth_xform->algo = RTE_CRYPTO_AUTH_AES_GMAC;
+	auth_xform->op = (info.op == FIPS_TEST_ENC_AUTH_GEN) ?
+			RTE_CRYPTO_AUTH_OP_GENERATE :
+			RTE_CRYPTO_AUTH_OP_VERIFY;
+	auth_xform->iv.offset = IV_OFF;
+	auth_xform->iv.length = vec.iv.len;
+	auth_xform->digest_length = vec.aead.digest.len;
+	auth_xform->key.data = vec.aead.key.val;
+	auth_xform->key.length = vec.aead.key.len;
+
+	cap_idx.algo.auth = auth_xform->algo;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
+	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	if (rte_cryptodev_sym_capability_check_auth(cap,
+			auth_xform->key.length,
+			auth_xform->digest_length, 0) != 0) {
+		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+				info.device_name, auth_xform->key.length,
+				auth_xform->digest_length);
 		return -EPERM;
 	}
 

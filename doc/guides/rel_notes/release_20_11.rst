@@ -241,6 +241,7 @@ New Features
 * **Updated FIPS validation sample application.**
 
   * Added scatter gather support.
+  * Added NIST GCMVS complaint GMAC test method support.
 
 
 Removed Items

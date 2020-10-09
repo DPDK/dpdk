@@ -156,6 +156,11 @@ struct sha_interim_data {
 	enum rte_crypto_auth_algorithm algo;
 };
 
+struct gcm_interim_data {
+	uint8_t is_gmac;
+	uint8_t gen_iv;
+};
+
 struct fips_test_interim_info {
 	FILE *fp_rd;
 	FILE *fp_wr;
@@ -175,6 +180,7 @@ struct fips_test_interim_info {
 		struct tdes_interim_data tdes_data;
 		struct ccm_interim_data ccm_data;
 		struct sha_interim_data sha_data;
+		struct gcm_interim_data gcm_data;
 	} interim_info;
 
 	enum fips_test_op op;
@@ -259,5 +265,25 @@ parse_write_hex_str(struct fips_val *src);
 
 int
 update_info_vec(uint32_t count);
+
+typedef int (*fips_test_one_case_t)(void);
+typedef int (*fips_prepare_op_t)(void);
+typedef int (*fips_prepare_xform_t)(struct rte_crypto_sym_xform *);
+
+struct fips_test_ops {
+	fips_prepare_xform_t prepare_xform;
+	fips_prepare_op_t prepare_op;
+	fips_test_one_case_t test;
+};
+
+extern struct fips_test_ops test_ops;
+
+int prepare_aead_op(void);
+
+int prepare_auth_op(void);
+
+int prepare_gcm_xform(struct rte_crypto_sym_xform *xform);
+
+int prepare_gmac_xform(struct rte_crypto_sym_xform *xform);
 
 #endif
