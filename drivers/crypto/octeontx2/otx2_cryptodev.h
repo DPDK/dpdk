@@ -36,7 +36,7 @@ struct otx2_cpt_vf {
 };
 
 struct cpt_meta_info {
-	uint64_t deq_op_info[4];
+	uint64_t deq_op_info[5];
 	uint64_t comp_code_sz;
 	union cpt_res_s cpt_res __rte_aligned(16);
 	struct cpt_request_info cpt_req;

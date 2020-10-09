@@ -25,7 +25,12 @@ ipsec_lp_len_precalc(struct rte_security_ipsec_xform *ipsec,
 {
 	struct rte_crypto_sym_xform *cipher_xform, *auth_xform;
 
-	lp->partial_len = sizeof(struct rte_ipv4_hdr);
+	if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4)
+		lp->partial_len = sizeof(struct rte_ipv4_hdr);
+	else if (ipsec->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV6)
+		lp->partial_len = sizeof(struct rte_ipv6_hdr);
+	else
+		return -EINVAL;
 
 	if (ipsec->proto == RTE_SECURITY_IPSEC_SA_PROTO_ESP) {
 		lp->partial_len += sizeof(struct rte_esp_hdr);
@@ -203,6 +208,7 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	struct otx2_ipsec_po_out_sa *sa;
 	struct otx2_sec_session *sess;
 	struct otx2_cpt_inst_s inst;
+	struct rte_ipv6_hdr *ip6;
 	struct rte_ipv4_hdr *ip;
 	int ret;
 
@@ -222,6 +228,7 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 	lp->ip_id = 0;
 	lp->seq_lo = 1;
 	lp->seq_hi = 0;
+	lp->tunnel_type = ipsec->tunnel.type;
 
 	ret = ipsec_po_sa_ctl_set(ipsec, crypto_xform, ctl);
 	if (ret)
@@ -254,6 +261,24 @@ crypto_sec_ipsec_outb_session_create(struct rte_cryptodev *crypto_dev,
 				sizeof(struct in_addr));
 			memcpy(&ip->dst_addr, &ipsec->tunnel.ipv4.dst_ip,
 				sizeof(struct in_addr));
+		} else if (ipsec->tunnel.type ==
+				RTE_SECURITY_IPSEC_TUNNEL_IPV6) {
+			ip6 = &sa->template.ipv6_hdr;
+			ip6->vtc_flow = rte_cpu_to_be_32(0x60000000 |
+				((ipsec->tunnel.ipv6.dscp <<
+					RTE_IPV6_HDR_TC_SHIFT) &
+					RTE_IPV6_HDR_TC_MASK) |
+				((ipsec->tunnel.ipv6.flabel <<
+					RTE_IPV6_HDR_FL_SHIFT) &
+					RTE_IPV6_HDR_FL_MASK));
+			ip6->hop_limits = ipsec->tunnel.ipv6.hlimit;
+			ip6->proto = (ipsec->proto ==
+					RTE_SECURITY_IPSEC_SA_PROTO_ESP) ?
+					IPPROTO_ESP : IPPROTO_AH;
+			memcpy(&ip6->src_addr, &ipsec->tunnel.ipv6.src_addr,
+				sizeof(struct in6_addr));
+			memcpy(&ip6->dst_addr, &ipsec->tunnel.ipv6.dst_addr,
+				sizeof(struct in6_addr));
 		} else {
 			return -EINVAL;
 		}
@@ -342,6 +367,7 @@ crypto_sec_ipsec_inb_session_create(struct rte_cryptodev *crypto_dev,
 	if (ret)
 		return ret;
 
+	lp->tunnel_type = ipsec->tunnel.type;
 	auth_xform = crypto_xform;
 	cipher_xform = crypto_xform->next;
 

@@ -842,6 +842,7 @@ otx2_cpt_sec_post_process(struct rte_crypto_op *cop, uintptr_t *rsp)
 	vq_cmd_word0_t *word0 = (vq_cmd_word0_t *)&req->ist.ei0;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m = sym_op->m_src;
+	struct rte_ipv6_hdr *ip6;
 	struct rte_ipv4_hdr *ip;
 	uint16_t m_len;
 	int mdata_len;
@@ -852,9 +853,17 @@ otx2_cpt_sec_post_process(struct rte_crypto_op *cop, uintptr_t *rsp)
 
 	if ((word0->s.opcode & 0xff) == OTX2_IPSEC_PO_PROCESS_IPSEC_INB) {
 		data = rte_pktmbuf_mtod(m, char *);
-		ip = (struct rte_ipv4_hdr *)(data + OTX2_IPSEC_PO_INB_RPTR_HDR);
 
-		m_len = rte_be_to_cpu_16(ip->total_length);
+		if (rsp[4] == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			ip = (struct rte_ipv4_hdr *)(data +
+				OTX2_IPSEC_PO_INB_RPTR_HDR);
+			m_len = rte_be_to_cpu_16(ip->total_length);
+		} else {
+			ip6 = (struct rte_ipv6_hdr *)(data +
+				OTX2_IPSEC_PO_INB_RPTR_HDR);
+			m_len = rte_be_to_cpu_16(ip6->payload_len) +
+				sizeof(struct rte_ipv6_hdr);
+		}
 
 		m->data_len = m_len;
 		m->pkt_len = m_len;

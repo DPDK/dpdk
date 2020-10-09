@@ -176,6 +176,7 @@ Features supported
 ~~~~~~~~~~~~~~~~~~
 
 * IPv4
+* IPv6
 * ESP
 * Tunnel mode
 * AES-128/192/256-GCM

@@ -319,7 +319,7 @@ ipsec_po_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 			return -EINVAL;
 	}
 
-	ctl->inner_ip_ver = OTX2_IPSEC_PO_SA_IP_VERSION_4;
+	ctl->inner_ip_ver = ctl->outer_ip_ver;
 
 	if (ipsec->mode == RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT)
 		ctl->ipsec_mode = OTX2_IPSEC_PO_SA_MODE_TRANSPORT;
