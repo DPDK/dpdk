@@ -7378,6 +7378,8 @@ flow_dv_translate_item_icmp(void *matcher, void *key,
 {
 	const struct rte_flow_item_icmp *icmp_m = item->mask;
 	const struct rte_flow_item_icmp *icmp_v = item->spec;
+	uint32_t icmp_header_data_m = 0;
+	uint32_t icmp_header_data_v = 0;
 	void *headers_m;
 	void *headers_v;
 	void *misc3_m = MLX5_ADDR_OF(fte_match_param, matcher,
@@ -7412,6 +7414,17 @@ flow_dv_translate_item_icmp(void *matcher, void *key,
 		 icmp_m->hdr.icmp_code);
 	MLX5_SET(fte_match_set_misc3, misc3_v, icmp_code,
 		 icmp_v->hdr.icmp_code & icmp_m->hdr.icmp_code);
+	icmp_header_data_m = rte_be_to_cpu_16(icmp_m->hdr.icmp_seq_nb);
+	icmp_header_data_m |= rte_be_to_cpu_16(icmp_m->hdr.icmp_ident) << 16;
+	if (icmp_header_data_m) {
+		icmp_header_data_v = rte_be_to_cpu_16(icmp_v->hdr.icmp_seq_nb);
+		icmp_header_data_v |=
+			 rte_be_to_cpu_16(icmp_v->hdr.icmp_ident) << 16;
+		MLX5_SET(fte_match_set_misc3, misc3_m, icmp_header_data,
+			 icmp_header_data_m);
+		MLX5_SET(fte_match_set_misc3, misc3_v, icmp_header_data,
+			 icmp_header_data_v & icmp_header_data_m);
+	}
 }
 
 /**

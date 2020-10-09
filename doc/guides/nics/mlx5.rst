@@ -288,7 +288,7 @@ Limitations
   - The input buffer, providing the removal size, is not validated.
   - The buffer size must match the length of the headers to be removed.
 
-- ICMP/ICMP6 code/type matching, IP-in-IP and MPLS flow matching are all
+- ICMP(code/type/identifier/sequence number) / ICMP6(code/type) matching, IP-in-IP and MPLS flow matching are all
   mutually exclusive features which cannot be supported together
   (see :ref:`mlx5_firmware_config`).
 
@@ -1009,7 +1009,7 @@ Below are some firmware configurations listed.
 
     FLEX_PARSER_PROFILE_ENABLE=1
 
-- enable ICMP/ICMP6 code/type fields matching::
+- enable ICMP(code/type/identifier/sequence number) / ICMP6(code/type) fields matching::
 
     FLEX_PARSER_PROFILE_ENABLE=2
 
