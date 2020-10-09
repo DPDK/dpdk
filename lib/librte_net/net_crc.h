@@ -20,6 +20,17 @@ rte_crc16_ccitt_sse42_handler(const uint8_t *data, uint32_t data_len);
 uint32_t
 rte_crc32_eth_sse42_handler(const uint8_t *data, uint32_t data_len);
 
+/* AVX512 */
+
+void
+rte_net_crc_avx512_init(void);
+
+uint32_t
+rte_crc16_ccitt_avx512_handler(const uint8_t *data, uint32_t data_len);
+
+uint32_t
+rte_crc32_eth_avx512_handler(const uint8_t *data, uint32_t data_len);
+
 /* NEON */
 
 void

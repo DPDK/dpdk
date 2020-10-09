@@ -65,6 +65,8 @@ New Features
 * **Updated CRC modules of the net library.**
 
   * Added runtime selection of the optimal architecture-specific CRC path.
+  * Added optimized implementations of CRC32-Ethernet and CRC16-CCITT
+    using the AVX512 and VPCLMULQDQ instruction sets.
 
 * **Added the FEC API, for a generic FEC query and config.**
 

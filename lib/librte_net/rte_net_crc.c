@@ -37,6 +37,12 @@ static const rte_net_crc_handler handlers_scalar[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_handler,
 };
+#ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
+static const rte_net_crc_handler handlers_avx512[] = {
+	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_avx512_handler,
+	[RTE_NET_CRC32_ETH] = rte_crc32_eth_avx512_handler,
+};
+#endif
 #ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
 static const rte_net_crc_handler handlers_sse42[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_sse42_handler,
@@ -134,6 +140,39 @@ rte_crc32_eth_handler(const uint8_t *data, uint32_t data_len)
 		crc32_eth_lut);
 }
 
+/* AVX512/VPCLMULQDQ handling */
+
+#define AVX512_VPCLMULQDQ_CPU_SUPPORTED ( \
+	rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) && \
+	rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) && \
+	rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512DQ) && \
+	rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512VL) && \
+	rte_cpu_get_flag_enabled(RTE_CPUFLAG_PCLMULQDQ) && \
+	rte_cpu_get_flag_enabled(RTE_CPUFLAG_VPCLMULQDQ) \
+)
+
+static const rte_net_crc_handler *
+avx512_vpclmulqdq_get_handlers(void)
+{
+#ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
+	if (AVX512_VPCLMULQDQ_CPU_SUPPORTED)
+		return handlers_avx512;
+#endif
+	return NULL;
+}
+
+static uint8_t
+avx512_vpclmulqdq_init(void)
+{
+#ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
+	if (AVX512_VPCLMULQDQ_CPU_SUPPORTED) {
+		rte_net_crc_avx512_init();
+		return 1;
+	}
+#endif
+	return 0;
+}
+
 /* SSE4.2/PCLMULQDQ handling */
 
 #define SSE42_PCLMULQDQ_CPU_SUPPORTED \
@@ -196,6 +235,11 @@ rte_net_crc_set_alg(enum rte_net_crc_alg alg)
 	handlers = NULL;
 
 	switch (alg) {
+	case RTE_NET_CRC_AVX512:
+		handlers = avx512_vpclmulqdq_get_handlers();
+		if (handlers != NULL)
+			break;
+		/* fall-through */
 	case RTE_NET_CRC_SSE42:
 		handlers = sse42_pclmulqdq_get_handlers();
 		break; /* for x86, always break here */
@@ -235,6 +279,8 @@ RTE_INIT(rte_net_crc_init)
 
 	if (sse42_pclmulqdq_init())
 		alg = RTE_NET_CRC_SSE42;
+	if (avx512_vpclmulqdq_init())
+		alg = RTE_NET_CRC_AVX512;
 	if (neon_pmull_init())
 		alg = RTE_NET_CRC_NEON;
 

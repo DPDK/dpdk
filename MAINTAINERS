@@ -1245,6 +1245,7 @@ Packet CRC
 M: Jasvinder Singh <jasvinder.singh@intel.com>
 F: lib/librte_net/net_crc.h
 F: lib/librte_net/rte_net_crc*
+F: lib/librte_net/net_crc_avx512.c
 F: lib/librte_net/net_crc_sse.c
 F: app/test/test_crc.c
 
