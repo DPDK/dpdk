@@ -95,6 +95,33 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 	rxq->rxrearm_nb -= nb;
 }
 
+/*
+ * Transmit completion function for use when DEV_TX_OFFLOAD_MBUF_FAST_FREE
+ * is enabled.
+ */
+static inline void
+bnxt_tx_cmp_vec_fast(struct bnxt_tx_queue *txq, int nr_pkts)
+{
+	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	uint32_t ring_mask = txr->tx_ring_struct->ring_mask;
+	struct rte_mbuf **free = txq->free;
+	uint16_t cons = txr->tx_cons;
+	unsigned int blk = 0;
+
+	while (nr_pkts--) {
+		struct bnxt_sw_tx_bd *tx_buf;
+
+		tx_buf = &txr->tx_buf_ring[cons];
+		cons = (cons + 1) & ring_mask;
+		free[blk++] = tx_buf->mbuf;
+		tx_buf->mbuf = NULL;
+	}
+	if (blk)
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, blk);
+
+	txr->tx_cons = cons;
+}
+
 static inline void
 bnxt_tx_cmp_vec(struct bnxt_tx_queue *txq, int nr_pkts)
 {

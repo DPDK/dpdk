@@ -369,7 +369,7 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 	cpr->valid = !!(raw_cons & cp_ring_struct->ring_size);
 	if (nb_tx_pkts) {
 		if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
-			bnxt_tx_cmp_fast(txq, nb_tx_pkts);
+			bnxt_tx_cmp_vec_fast(txq, nb_tx_pkts);
 		else
 			bnxt_tx_cmp_vec(txq, nb_tx_pkts);
 		cpr->cp_raw_cons = raw_cons;

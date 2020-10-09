@@ -337,6 +337,40 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	return 0;
 }
 
+/*
+ * Transmit completion function for use when DEV_TX_OFFLOAD_MBUF_FAST_FREE
+ * is enabled.
+ */
+static void bnxt_tx_cmp_fast(struct bnxt_tx_queue *txq, int nr_pkts)
+{
+	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	struct rte_mbuf **free = txq->free;
+	uint16_t cons = txr->tx_cons;
+	unsigned int blk = 0;
+	int i, j;
+
+	for (i = 0; i < nr_pkts; i++) {
+		struct bnxt_sw_tx_bd *tx_buf;
+		unsigned short nr_bds;
+
+		tx_buf = &txr->tx_buf_ring[cons];
+		nr_bds = tx_buf->nr_bds;
+		for (j = 0; j < nr_bds; j++) {
+			if (tx_buf->mbuf) {
+				/* Add mbuf to the bulk free array */
+				free[blk++] = tx_buf->mbuf;
+				tx_buf->mbuf = NULL;
+			}
+			cons = RING_NEXT(txr->tx_ring_struct, cons);
+			tx_buf = &txr->tx_buf_ring[cons];
+		}
+	}
+	if (blk)
+		rte_mempool_put_bulk(free[0]->pool, (void *)free, blk);
+
+	txr->tx_cons = cons;
+}
+
 static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
